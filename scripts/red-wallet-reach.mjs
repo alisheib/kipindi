@@ -56,13 +56,16 @@ for (const [i, c] of MUTATIONS.entries()) {
   writeFileSync(c.file, mutated, "utf8");
   const r = runGate();
   writeFileSync(c.file, original, "utf8");
+  const failures = r.out.split(/\r?\n/).filter((l) => l.startsWith("FAIL "));
 
   if (r.code === 0) {
     problems.push(`case ${i + 1} (${c.name}): stayed GREEN`);
     console.log(`  ${i + 1}. NOT CAUGHT   ${c.name}`);
   } else if (!r.out.includes(`FAIL ${c.expect}`)) {
-    const lines = r.out.split("\n").filter((l) => l.startsWith("FAIL")).slice(0, 3).map((l) => l.trim());
-    problems.push(`case ${i + 1} (${c.name}): red, but not on "${c.expect}" — got ${lines.join(" | ") || "(no FAIL line)"}`);
+    problems.push(`case ${i + 1} (${c.name}): red, but not on "${c.expect}" — got ${failures.slice(0, 3).join(" | ") || "(no FAIL line)"}`);
+    console.log(`  ${i + 1}. WRONG REASON ${c.name}`);
+  } else if (c.onlyFailure && (failures.length !== 1 || !failures[0].startsWith(`FAIL ${c.expect}`))) {
+    problems.push(`case ${i + 1} (${c.name}): expected only "${c.expect}" — got ${failures.join(" | ")}`);
     console.log(`  ${i + 1}. WRONG REASON ${c.name}`);
   } else {
     caught++;

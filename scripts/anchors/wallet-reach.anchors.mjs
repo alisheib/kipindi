@@ -47,7 +47,7 @@
  * (WP6b); the gate reads its source, so each was provable from the commit that added it, before the mount.
  */
 
-/** @typedef {{ name: string, file: string, suite: string, from: string, to: string, why: string, expect: string }} RedMutation */
+/** @typedef {{ name: string, file: string, suite: string, from: string, to: string, why: string, expect: string, onlyFailure?: boolean }} RedMutation */
 
 const BAR = "src/components/layout/top-app-bar.tsx";
 const PILL = "src/components/layout/wallet-balance-pill.tsx";
@@ -250,12 +250,13 @@ export const MUTATIONS = [
   },
   {
     name: "journey-plus-takes-the-words-with-it",
-    why: "the classic pill's label idiom carried across: the words hidden below 1280, so on a phone the gilt pill is a bare + glyph. S4 measured the row with the words in and the + out, never the other way round",
+    why: "the words borrow the glyph's existing CSS class, so both spans disappear below 360. The phone keeps an aria-label but has no visible Deposit words or glyph; S4 measured the row with the words in and the glyph out",
     file: JBAR,
     suite: "wallet-reach",
     from: `<span>{t.journey.depositAction}</span>`,
-    to: `<span className="hidden xl:inline">{t.journey.depositAction}</span>`,
-    expect: "8c.3 its + is the one part that yields",
+    to: `<span className="kp-jhdr__plus">{t.journey.depositAction}</span>`,
+    expect: "8c.3 its glyph is the one part that yields",
+    onlyFailure: true,
   },
   {
     name: "journey-sign-in-yields-on-phones",
