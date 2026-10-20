@@ -551,6 +551,13 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   A second vendor review found no replacement cleared for this public minute-history API and real-money settlement:
   Gold-API.com's aggregate minute endpoints and public terms leave exact minute OPEN, raw-history redistribution and
   settlement rights unresolved. No existing round or feed has been changed. Release B remains local and not live.
+  A read-only probe through the existing production Twelve Data key on 2026-10-20 returned HTTP 200 and
+  valid UTC one-minute OHLC rows for BTC/USD and XAU/USD. That confirms the current key works technically;
+  it is not evidence of public display, history redistribution or settlement permission.
+  Ali then attested that 50pick's full Twelve Data licence covers this use in Tanzania and directed the
+  release to keep the feed and mark the rights question done. The owner statement and the limit of what was
+  independently inspected are recorded in [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md)
+  § "2026-10-20 · U43 Twelve Data use — owner attestation". Engineering and visual release gates remain open.
   The corrected source, guards and copy are committed on `codex/u43-release-b` at `85be2888a`; `main` is unchanged.
   After that commit, Phosphor readers r9a and r10 pass 61/0 and 90/0, and typecheck passes. The board and system
   physical mutation proofs caught 57/57 and 18/18 reversals; the feedback-law proof caught 29/29 and restored all
@@ -582,6 +589,10 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   as did the mixed-result settlement; the repairs are committed at `3bcbec37e`. These are local findings
   and repairs, not a production result or an after score. The source-frozen state matrix remains
   held while the Maswali lane uses the browser and main-push slot.
+  A subsequent source read found a remaining result-moment gap: both-side holders receive no
+  board or detail announcement because the single-result prop is null; a cashed-out leg can
+  also be omitted from the board's result while detail still includes it. This is under repair
+  with a neutral aggregate and an exact mutation proof. No new capture or after score follows yet.
   ▶ **WORKING BRIEF:**
   `docs/design-brief/u43-2026-10/BRIEF.md` — where it stands, Ali's rulings, the fixed points, the data facts, five work
   packages (the round card; the live line and the chart made to agree; the board and the two chip rows; the market card;

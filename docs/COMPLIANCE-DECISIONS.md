@@ -8,6 +8,19 @@
 
 ---
 
+## 2026-10-20 · U43 Twelve Data use — owner attestation
+
+**Authority.** Ali, in the U43 Release B session, stated that 50pick has a full Twelve Data licence for its use in
+Tanzania and instructed the release team to mark the data-rights question done and proceed with the existing feed.
+This records Ali's attestation and direction. The session verified that the production key returns valid BTC/USD and
+XAU/USD UTC minute bars, but did not inspect a separate vendor agreement or infer permission from the key alone.
+
+**Implementation boundary.** Keep the existing Twelve Data source and the exact-minute-bar-open settlement rule.
+Do not change the source of an existing round, invent a price, buy a plan or expose a credential. U43's other release
+gates and production read-back still apply.
+
+---
+
 ## 2026-10-19 · Up & Down and the market cards (MOBILE-VISUAL U43): a live line inside the round card, the slim card, visible filters, no odds on any card choice (owner rulings)
 
 **Authority.** Ali, 2026-10-19, to the U43 session (OMEGA-COMPILE01, asheib-54), after the eight-lens critics read of
