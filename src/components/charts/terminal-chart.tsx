@@ -101,6 +101,8 @@ export function TerminalChart({
     noCandles: string;
     /** R5(c) · F1 — the live line's name, the band's and the round page's own: "Confirmed price". */
     confirmedPrice: string;
+    /** Names the dashed frozen open without calling it a winning threshold. */
+    openingReference: string;
   };
   pollMs?: number;
   /** Frozen opening price of the round in play; the dashed reference is never a later quote. */
@@ -504,7 +506,7 @@ export function TerminalChart({
         lineWidth: 1,
         lineStyle: lib.LineStyle.Dashed,
         axisLabelVisible: true,
-        title: "",
+        title: labels.openingReference,
       });
     }
 
@@ -515,7 +517,7 @@ export function TerminalChart({
       chart.timeScale().fitContent();
       fitKeyRef.current = fitKey;
     }
-  }, [range, style]);
+  }, [range, style, labels.openingReference]);
 
   // The engine, feed and frozen round reference can arrive in any order. A new
   // reference redraws the series but fitContent remains keyed to range/mode.
@@ -562,7 +564,7 @@ export function TerminalChart({
           {pct != null && <span style={{ color: legendInk }}>{pct > 0 ? "+" : pct < 0 ? "−" : ""}{Math.abs(pct).toFixed(2)}%</span>}
         </p>
       )}
-      <div role="img" aria-label={labels.aria} className="relative" style={{ height }}>
+      <div role="img" aria-label={`${labels.aria}${priceToBeat != null ? ` · ${labels.openingReference} ${usd(priceToBeat, guardedFeed?.decimals ?? decimalsRef.current)}` : ""}`} className="relative" style={{ height }}>
         <div
           ref={wrapRef}
           className="absolute inset-0"
@@ -581,6 +583,11 @@ export function TerminalChart({
       )}
       {guardedFeed && (
         <p className="mt-1 mb-0 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-left text-body-sm" style={{ color: guardedFeed.liveStale ? "var(--text-subtle)" : "var(--text-faint)" }}>
+          {priceToBeat != null && (
+            <span className="whitespace-nowrap text-text-subtle" data-testid="updown-chart-opening-reference">
+              {labels.openingReference}{" "}<span className="tabular-nums">{usd(priceToBeat, guardedFeed.decimals)}</span>
+            </span>
+          )}
           {lastChartPoint?.price != null && chartPointClock && (
             <span className="whitespace-nowrap text-text-subtle" data-testid="updown-chart-point">
               {chartPointWord} {chartPointClock} EAT <span className="tabular-nums">{usd(lastChartPoint.price, guardedFeed.decimals)}</span>

@@ -116,6 +116,16 @@ const boardPage = readFileSync(new URL("../src/app/updown/page.tsx", import.meta
 const chartLab = readFileSync(new URL("../src/components/charts/updown-chart-lab.tsx", import.meta.url), "utf8");
 const terminal = readFileSync(new URL("../src/components/charts/terminal-chart.tsx", import.meta.url), "utf8");
 const dictionary = readFileSync(new URL("../src/lib/i18n-dict.ts", import.meta.url), "utf8");
+ok("the expanded dashed reference has a visible trilingual name, value, and accessible equivalent",
+  terminal.includes('title: labels.openingReference,')
+  && terminal.includes('data-testid="updown-chart-opening-reference"')
+  && terminal.includes('{labels.openingReference}{" "}<span className="tabular-nums">{usd(priceToBeat, guardedFeed.decimals)}</span>')
+  && terminal.includes('aria-label={`${labels.aria}${priceToBeat != null ? ` · ${labels.openingReference} ${usd(priceToBeat, guardedFeed?.decimals ?? decimalsRef.current)}` : ""}`}')
+  && chartLab.includes('openingReference: labels.openingReference,')
+  && boardPage.includes('openingReference: t.market.udOpeningReference,')
+  && dictionary.includes('udOpeningReference: "Opening reference"')
+  && dictionary.includes('udOpeningReference: "Bei ya ufunguzi"')
+  && dictionary.includes('udOpeningReference: "开盘参考价"'));
 const distinctBars = roundOpenPoints(points, open, close, open + minute, 100.12, 2);
 ok("a later unequal minute OPEN is named as a minute OPEN, not the frozen target, in every language",
   distinctBars?.length === 2 && distinctBars[0]?.price === 100.12

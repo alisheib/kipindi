@@ -30,12 +30,12 @@ const checks = [
   ["closed placeholder announced as a clock", card.replace('aria-hidden={!counting}', 'aria-hidden={false}')],
   ["kit urgency removed", card.replace('urgent ? "m-urgent" : undefined', 'urgent ? undefined : undefined')],
   ["confirming payout removed", card.replace('locked || awaitingResult || state === "confirming"', "locked")],
-  ["viewer result removed", card.replace("settledNow && myResults && myResults.length > 0", "false && myResults && myResults.length > 0")],
-  ["empty UP round called a win", card.replace('price.kind === "priced" ? t.market.udUpWins : t.market.udUp', 'price.kind === "oneSided" ? t.market.udUp : t.market.udUpWins')],
-  ["empty DOWN round called a win", card.replace('price.kind === "priced" ? t.market.udDownWins : t.market.udDown', 'price.kind === "oneSided" ? t.market.udDown : t.market.udDownWins')],
-  ["one-sided guest refund explanation removed", card.replace('state === "resolved" && price.kind === "oneSided" ? (', 'false && price.kind === "oneSided" ? (')],
+  ["viewer result removed", card.replace("{settledNow && settled && cardResults.length > 0 && (", "{false && settled && cardResults.length > 0 && (")],
+  ["empty UP round called a win", card.replace('settled && price.kind === "priced" ? t.market.udUpWins : t.market.udUp', 'price.kind === "oneSided" ? t.market.udUp : t.market.udUpWins')],
+  ["empty DOWN round called a win", card.replace('settled && price.kind === "priced" ? t.market.udDownWins : t.market.udDown', 'price.kind === "oneSided" ? t.market.udDown : t.market.udDownWins')],
+  ["one-sided guest refund explanation removed", card.replace('settled && state === "resolved" && price.kind === "oneSided" ? (', 'false && price.kind === "oneSided" ? (')],
   ["empty settled round explanation removed", card.replace('state === "resolved" && price.kind === "none" ? (', 'false && price.kind === "none" ? (')],
-  ["single result omits what its amount means", card.replace('myResults[0].status === "WIN" ? t.market.udPaidOut : t.market.udStake', 'myResults[0].status === "WIN" ? "" : ""')],
+  ["single result omits what its amount means", card.replace('cardResults[0].payout == null ? t.market.udPaidOut', 'cardResults[0].payout == null ? ""')],
   ["latest asset price impersonates round read", card.replace('readQuotedAt, openPrice, readPrice });', 'sourceQuotedAt: readQuotedAt, openPrice, livePrice: readPrice });')],
   ["closing price stamped with opening quote", card.replace('closePrice != null ? closeQuotedAt : openPrice != null ? openQuotedAt : null', 'closePrice != null ? openQuotedAt : openPrice != null ? openQuotedAt : null')],
   ["failed observation called no newer price", card.replace('readUnavailable ? t.market.udReadUnavailable', 'readUnavailable ? t.home.udMatchNoNewPrice')],
@@ -55,7 +55,7 @@ for (const [name, mutant] of checks) {
 }
 const detailMutants = [
   ["refunded detail amount called payout", detailPage.replace('result === "VOID" ? t.market.udRefundTitle : t.market.udPaidOut', 'result === "VOID" ? t.market.udPaidOut : t.market.udPaidOut')],
-  ["lost detail amount shows zero payout", detailPage.replace('result === "LOSS" ? myPosition?.stake ?? 0 : myPosition?.payout ?? 0', 'myPosition?.payout ?? 0')],
+  ["lost detail amount shows zero payout", detailPage.replace('result === "LOSS" ? myPosition?.stake ?? null : myPosition?.payout ?? null', 'myPosition?.payout ?? 0')],
   ["detail confirming loses frozen payouts", detailPage.replace('{isOpen || locked || awaitingResult ? (', '{isOpen || locked ? (')],
   ["detail next round invented", detailPage.replace('round.successor.chainRunning ? t.market.udNextAfterResult', 'true ? t.market.udNextAfterResult')],
   ["detail pool reverts to volume", detailPage.replace('className="mt-1 font-mono text-micro uppercase eyebrow text-text-subtle">{t.market.udPool}</p>', 'className="mt-1 font-mono text-micro uppercase eyebrow text-text-subtle">{t.market.udVolume}</p>')],
@@ -88,7 +88,8 @@ for (const [name, before] of [
 
 const podMutants = [
   ["settled hold mislabelled as unavailable", countdown.replace('&& hand.phase !== "hold";', ';'), css],
-  ["settled hold shows false digits", countdown.replace('const textOnlyPod = settled && (!inHandover || !hand!.counting);', 'const textOnlyPod = inHandover && hand!.phase === "live";'), css],
+  ["settled hold shows false digits", countdown.replace('const textOnlyPod = paymentPending || (settled && (!inHandover || !hand!.counting));', 'const textOnlyPod = paymentPending || (inHandover && hand!.phase === "live");'), css],
+  ["pending payment shows false digits", countdown.replace('const textOnlyPod = paymentPending || (settled && (!inHandover || !hand!.counting));', 'const textOnlyPod = settled && (!inHandover || !hand!.counting);'), css],
   ["settled successor shows false digits", countdown.replace('{!textOnlyPod && <span', '{true && <span'), css],
   ["text-only label loses translated emphasis", countdown.replace('"m-tick font-mono text-body-sm font-semibold uppercase eyebrow text-text-subtle"', '"m-tick font-mono text-micro font-semibold uppercase eyebrow text-text-subtle"'), css],
   ["text-only pod regains its empty mobile clock box", countdown, css.replace('.ud-round-pod[data-text-only="true"] { min-height: var(--tap-min); width: fit-content; max-width: 100%; border-radius: var(--r-pill); }', '.ud-round-pod[data-text-only="true"] { min-height: calc(var(--type-h2) + var(--sp-4) + 3 * var(--sp-2) + 2px); width: 100%; }'), handover],

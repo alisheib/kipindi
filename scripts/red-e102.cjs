@@ -58,6 +58,12 @@ const MUTATIONS = [
     with: `  if (awaitingResult) return { enabled: true, intervalMs: LIVE_ROUND_MS };`,
   },
   {
+    name: "unpaid-verdict-keeps-fast-polling-through-an-objection",
+    file: "src/lib/refresh-cadence.ts",
+    find: `  if (paymentPending) return { enabled: true, intervalMs: PAYMENT_PENDING_MS };`,
+    with: `  if (paymentPending) return { enabled: true, intervalMs: AWAITING_RESULT_MS };`,
+  },
+  {
     name: "poller-ACCEPTS-enabled-but-ignores-it (the symbol without the behaviour)",
     file: "src/components/ui/refresh-poller.tsx",
     find: `    if (!enabled) return;`,
@@ -66,15 +72,21 @@ const MUTATIONS = [
   {
     name: "cadence-called-with-constants (one cadence for every phase, rule-shaped)",
     file: "src/app/updown/[roundId]/page.tsx",
-    find: `        settled: decided,\n        awaitingResult,`,
+    find: `        settled: round.settled,\n        awaitingResult,`,
     with: `        settled: false,\n        awaitingResult: false,`,
+  },
+  {
+    name: "unpaid-verdict-is-never-passed-to-poller",
+    file: "src/app/updown/[roundId]/page.tsx",
+    find: `        paymentPending: decided && !round.settled,`,
+    with: `        paymentPending: false,`,
   },
   {
     // ⭐ E-166 · the same mutation one level down, in the field that was added after §3.3 was
     // written. `active: true` is a permanent handover poll on a decided round.
     name: "handover-active-is-a-constant (a permanent poll wearing a new field name)",
     file: "src/app/updown/[roundId]/page.tsx",
-    find: `          active: decided && round.successor.chainRunning && round.successor.roundId == null,`,
+    find: `          active: round.settled && round.successor.chainRunning && round.successor.roundId == null,`,
     with: `          active: true,`,
   },
 ];

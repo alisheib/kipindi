@@ -74,6 +74,7 @@ import { emptySideOf, type UpDownPricing } from "@/lib/updown-pricing";
 import { sideWord } from "@/lib/side-label";
 import type { PublicSourceClass } from "@/lib/server/updown-symbols";
 import type { UpDownReceiptInfo } from "@/lib/updown-receipt";
+import { validRealizedPayout } from "@/lib/updown-result-truth";
 import { noticeBody, type KeptBody } from "@/components/ui/empty-state-text";
 import { BetBreakNotice } from "@/components/rg/bet-break-notice";
 
@@ -133,7 +134,7 @@ export type UpDownCardProps = {
   myPayoutIfUp?: number | null;
   myPayoutIfDown?: number | null;
   /** Settled rows grouped by side on the server; no client inference from a single row. */
-  myResults?: Array<{ status: "WIN" | "LOSS" | "VOID"; side: "UP" | "DOWN"; stake: number; payout: number }>;
+  myResults?: Array<{ status: "OPEN" | "WIN" | "LOSS" | "VOID" | "CASHED_OUT"; side: "UP" | "DOWN"; stake: number; payout: number | null }>;
   volumeTzs: number;
   players: number;
   /**
@@ -148,6 +149,10 @@ export type UpDownCardProps = {
    */
   pricing: UpDownPricing;
   state: UpDownCardState;
+  /** Actual market payout state, separate from the price verdict in `state`. */
+  settled: boolean;
+  settledAtMs: number | null;
+  correctionKind: "objection" | "record" | null;
   outcome?: "UP" | "DOWN" | null;
   closePrice?: number | null;
   voidReason?: "no-move" | "source-failed" | "operator" | null;
@@ -205,13 +210,12 @@ export type UpDownCardProps = {
   /**
    * ⭐ E-166 · when this round's result landed, and what follows it.
    *
-   * ⛔ BOTH COME FROM THE SERVER. The hold is anchored to `resolvedAtMs` so it cannot restart on
+   * ⛔ BOTH COME FROM THE SERVER. The hold is anchored to `settledAtMs` so it cannot restart on
    * every poll, and the successor's instants are the chain's own — a card that derived "when
    * does the next match start" from the grid would be a second answer to a question the server
    * already answers, and it would keep counting down to a boundary the chain had abandoned.
    * ⛔ Omit them and the card behaves exactly as it did before, so this is additive.
    */
-  resolvedAtMs?: number | null;
   successor?: RoundSuccessor;
   /** The board already has this successor card, so a second link is redundant. */
   successorOnBoard?: boolean;
@@ -319,6 +323,7 @@ type CardClock = {
 
 function cardClock(p: {
   state: UpDownCardState;
+  paymentSettled: boolean;
   selectionClosesAtMs: number | null;
   closesAtMs: number;
   expectedResultAtMs: number | null;
@@ -356,7 +361,7 @@ function cardClock(p: {
   // server and client markup agree (the same rule `running` uses below).
   const resultRunning = resultTarget != null && (secondsLeft == null || clock.counting);
   const handover = handoverClock({
-    state,
+    state: p.paymentSettled ? state : "confirming",
     settledAtMs: holdAnchor,
     successorExists: p.successorExists,
     successorOpensAtMs: p.successorOpensAtMs,
@@ -380,7 +385,8 @@ function cardClock(p: {
    * per-second digits never animate — see the twin of this block in `round-countdown.tsx` for
    * the full reasoning, including why reduced motion needs no branch of its own.
    */
-  const podPhase = inHandover ? `h:${handover.phase}`
+  const podPhase = settledNow && !p.paymentSettled ? "payment-pending"
+    : inHandover ? `h:${handover.phase}`
     : settledNow ? "settled" : awaitingResult ? (resultRunning ? "result" : "spent")
     : locked ? "locked" : running ? "open" : "idle";
 
@@ -463,11 +469,11 @@ export function UpDownCard(props: UpDownCardProps) {
   const {
     roundId, assetName, assetTicker, assetIcon, assetKey, durationMinutes, decimals,
     readPrice, readUnavailable, openPrice, upTarget, downTarget, opensAtMs, closesAtMs, volumeTzs, players,
-    pricing, state, outcome, closePrice, voidReason,
+    pricing, state, settled, settledAtMs, correctionKind, outcome, closePrice, voidReason,
     sourceClass, openQuotedAt, readQuotedAt, closeQuotedAt, className,
     selectionClosesAtMs, serverNowMs, myExactPayout, myPayoutIfUp, myPayoutIfDown, myResults, myRefundedStake,
     marketId, isAuthed, minStake, maxStake, walletBalance, myUpStake = 0, myDownStake = 0,
-    expectedResultAtMs = null, resolvedAtMs = null, successor, successorOnBoard = false, nextMarketOpenAtMs = null,
+    expectedResultAtMs = null, successor, successorOnBoard = false, nextMarketOpenAtMs = null,
     chainPaused, receipt, breakBody = null, journey = null,
   } = props;
   const { t, locale } = useT();
@@ -533,7 +539,7 @@ export function UpDownCard(props: UpDownCardProps) {
   // observed settle, exactly as before.
   const holdAnchorRef = useRef<number | null>(null);
   const clockOf = (n: number | null, at: number): CardClock => cardClock({
-    state, selectionClosesAtMs: selectionClosesAtMs ?? null, closesAtMs, expectedResultAtMs,
+    state, paymentSettled: settled, selectionClosesAtMs: selectionClosesAtMs ?? null, closesAtMs, expectedResultAtMs,
     successorExists: successor?.roundId != null,
     successorOpensAtMs: successor?.opensAtMs ?? null,
     chainRunning: successor?.chainRunning ?? false,
@@ -541,10 +547,10 @@ export function UpDownCard(props: UpDownCardProps) {
   });
   const serverNow = useServerNowGated(serverNowMs, (n) => cardKey(clockOf(n, n ?? serverNowMs ?? closesAtMs)));
   // ⛔ THE HOLD IS OWED FROM WHEN THIS CARD LEARNED THE RESULT. The board polls every 20s, so a
-  // hold measured from the server's `resolvedAt` would be spent before the card ever rendered
+  // hold measured from the server's `settledAt` would be spent before the card ever rendered
   // the outcome — the result would flash and be replaced in one paint. See `useHoldAnchor`.
   const settledNow = state === "resolved" || state === "void";
-  const holdAnchor = useHoldAnchor(roundId, settledNow, resolvedAtMs, serverNow);
+  const holdAnchor = useHoldAnchor(roundId, settledNow && settled, settledAtMs, serverNow);
   holdAnchorRef.current = holdAnchor;
   const nowMs = serverNow ?? serverNowMs ?? closesAtMs;
   const c = clockOf(serverNow, nowMs);
@@ -638,8 +644,16 @@ export function UpDownCard(props: UpDownCardProps) {
   // needs only WHY it came back here, not a second promise that it came back in full.
   // Reuse the canonical reason-only void notes; unmatched has its own reason because
   // that round decided normally and must never be described as void.
-  const ownRefundAmountShown = settledNow && !!myResults?.length && myResults.every((r) => r.status === "VOID");
-  const cardRefundCopyText = ownRefundAmountShown && refundCopy?.claimsRefund && refundReason
+  const cardResults = myResults?.map((r) => ({ ...r, payout: validRealizedPayout(r) ? r.payout : null })) ?? [];
+  const incompleteCardResult = cardResults.some((r) => r.payout == null);
+  const cardPayoutSum = cardResults.reduce((sum, result) => sum + (result.payout ?? 0), 0);
+  const cardPayoutTotal = !incompleteCardResult && Number.isSafeInteger(cardPayoutSum) ? cardPayoutSum : null;
+  const ownRefundAmountShown = settledNow && settled && cardResults.length > 0
+    && cardResults.every((r) => r.status === "VOID" && r.payout === r.stake);
+  const cardRefundCopyText = incompleteCardResult && refundReason
+    ? refundReason === "unmatched" ? t.market.udRefundUnmatchedReason
+      : (t.market as Record<string, string>)[VOID_NOTE_KEY[refundReason]]
+    : ownRefundAmountShown && refundCopy?.claimsRefund && refundReason
     ? refundReason === "unmatched" ? t.market.udRefundUnmatchedReason
       : (t.market as Record<string, string>)[VOID_NOTE_KEY[refundReason]]
     : refundCopyText;
@@ -817,7 +831,8 @@ export function UpDownCard(props: UpDownCardProps) {
              className="ud-clock-caption m-tick text-body-sm text-text-subtle"
              aria-live="polite">
           {bettable && <Dot tone="neutral" size={6} pulse />}
-          {settledNow ? t.market.udResultLabel
+          {settledNow && !settled ? t.market.udSettlementPending
+            : settledNow ? t.market.udResultLabel
             : awaitingResult ? (resultRunning ? t.market.udResultIn : t.market.udAwaitingResult)
             : locked ? t.market.udClosesIn
             : urgent ? t.market.udLastSeconds
@@ -826,8 +841,8 @@ export function UpDownCard(props: UpDownCardProps) {
         {settledNow ? (
           <span className="ud-card-result m-tick inline-flex items-center gap-1.5 font-semibold"
                 style={{ color: state === "void" ? "var(--text-muted)" : outcome === "UP" ? "var(--yes-300)" : "var(--no-300)" }}>
-            {state === "void" ? t.market.statusVoid : outcome === "UP" ? <><I.arrowUp s={14} edge="start" text="body-700" />{price.kind === "priced" ? t.market.udUpWins : t.market.udUp}</>
-              : outcome === "DOWN" ? <><I.arrowDown s={14} edge="start" text="body-700" />{price.kind === "priced" ? t.market.udDownWins : t.market.udDown}</> : t.market.statusResolved}
+            {state === "void" ? t.market.statusVoid : outcome === "UP" ? <><I.arrowUp s={14} edge="start" text="body-700" />{settled && price.kind === "priced" ? t.market.udUpWins : t.market.udUp}</>
+              : outcome === "DOWN" ? <><I.arrowDown s={14} edge="start" text="body-700" />{settled && price.kind === "priced" ? t.market.udDownWins : t.market.udDown}</> : t.market.statusResolved}
           </span>
         ) : (
           <CardCountdownDigits
@@ -922,7 +937,7 @@ export function UpDownCard(props: UpDownCardProps) {
             empty emptyLabel={price.kind === "oneSided" ? t.market.oneSideOnly : players === 0 ? t.market.noBetsYet : t.market.noPoolYet} />
         ) : (
           <TippingBar className="mt-0.5" yesPct={upPct} height={7} showLabels={false}
-            recastOnHover={false} resolved={state === "resolved"}
+            recastOnHover={false} resolved={state === "resolved" && settled}
             probabilityLabel={fill(t.market.barReading, {
               yesPct: upPct, yesWord: t.market.udUp, noPct: 100 - upPct, noWord: t.market.udDown,
             })} />
@@ -1020,7 +1035,7 @@ export function UpDownCard(props: UpDownCardProps) {
             )}
             {nextRoundWords && <p className="ud-card-next m-0 text-text-subtle">{nextRoundWords}</p>}
           </div>
-        ) : refundReason ? (
+        ) : settled && refundReason ? (
           // ── A REFUND, WITH ITS REAL REASON (E-65 / E-39) ──────────────────
           //
           // ⛔ THIS BRANCH USED TO BE `state === "void"` ONLY, AND THAT IS THE BUG.
@@ -1042,48 +1057,68 @@ export function UpDownCard(props: UpDownCardProps) {
               <p className="mt-0 text-body-sm leading-[1.5] text-text-muted text-balance">{cardRefundCopyText}</p>
             )}
           </div>
-        ) : state === "resolved" && price.kind === "oneSided" ? (
+        ) : settled && state === "resolved" && price.kind === "oneSided" ? (
           <p className="m-0 text-body-sm text-text-muted">{t.market.udRefundUnmatchedReason}</p>
         ) : state === "resolved" && price.kind === "none" ? (
-          <p className="m-0 text-body-sm text-text-muted">{t.market.udNoBetsPlaced}</p>
-        ) : state === "resolved" ? null : (
+          <p className="m-0 text-body-sm text-text-muted">{players > 0 ? t.market.udNoActiveStakes : t.market.udNoBetsPlaced}</p>
+        ) : settledNow ? null : (
           <p className="m-0 text-body-sm text-text-muted">{t.market.udAwaitingResult}</p>
         )}
 
-        {settledNow && myResults && myResults.length > 0 && (
+        {settledNow && !settled && (
+          <p role="status" className="mt-2.5 mb-0 text-body-sm leading-[1.45] text-text-muted">
+            {t.market.udPaymentPending}
+          </p>
+        )}
+        {correctionKind && (
+          <p className="mt-2.5 mb-0 text-body-sm leading-[1.45] text-text-muted">
+            {correctionKind === "objection" ? t.market.resCorrectedOnObjection : t.market.udVerdictChanged}
+          </p>
+        )}
+
+        {settledNow && settled && cardResults.length > 0 && (
           <div className="ud-card-own-result text-body-sm text-text-muted">
-            {myResults.length === 1 ? (
+            {cardResults.length === 1 ? (
               <p className="m-0 flex flex-wrap items-baseline gap-x-1.5">
                 <span>{t.market.udYourResult}:</span>
-                <span>{myResults[0].status === "WIN" ? t.market.udWon
-                  : myResults[0].status === "LOSS" ? t.market.udLost : t.market.udRefundTitle}</span>
+                <span>{cardResults[0].payout == null ? t.market.udPayoutUnavailable
+                  : cardResults[0].status === "WIN" ? t.market.udWon
+                  : cardResults[0].status === "LOSS" ? t.market.udLost
+                  : cardResults[0].status === "CASHED_OUT" ? t.market.udPosCashedOut : t.market.udRefundTitle}</span>
                 <span aria-hidden>·</span>
-                {myResults[0].status !== "VOID" && (
-                  <span>{myResults[0].status === "WIN" ? t.market.udPaidOut : t.market.udStake}</span>
+                {cardResults[0].status !== "VOID" && (
+                  <span>{cardResults[0].payout == null ? t.market.udPaidOut
+                    : cardResults[0].status === "LOSS" ? t.market.udStake : t.market.udPaidOut}</span>
                 )}
                 <span className="amount font-semibold"
-                      style={{ color: myResults[0].status === "WIN" ? "var(--gold-300)" : "var(--text)" }}>
-                  {formatTzs(myResults[0].status === "LOSS" ? myResults[0].stake : myResults[0].payout)}
+                      style={{ color: cardResults[0].status === "WIN" && cardResults[0].payout != null ? "var(--gold-300)" : "var(--text)" }}>
+                  {cardResults[0].payout == null ? t.market.udPayoutUnavailable
+                    : formatTzs(cardResults[0].status === "LOSS" ? cardResults[0].stake : cardResults[0].payout)}
                 </span>
               </p>
             ) : (
               <>
                 <p className="m-0 flex flex-wrap items-baseline gap-x-1.5">
-                  <span>{myResults.some((result) => result.side === "UP") && myResults.some((result) => result.side === "DOWN")
+                  <span>{cardResults.some((result) => result.side === "UP") && cardResults.some((result) => result.side === "DOWN")
                     ? t.market.udBothSidesHeld : t.market.udYourResult}</span><span aria-hidden>·</span>
-                  <span>{myResults.every((result) => result.status === "VOID") ? t.market.udRefundTitle : t.market.udPaidOut}</span>
+                  <span>{cardResults.every((result) => result.status === "VOID" && result.payout === result.stake)
+                    ? t.market.udRefundTitle : t.market.udPaidOut}</span>
                   <span className="amount font-semibold text-text">
-                    {formatTzs(myResults.reduce((sum, result) => sum + result.payout, 0))}
+                    {cardPayoutTotal == null ? t.market.udPayoutUnavailable : formatTzs(cardPayoutTotal)}
                   </span>
                 </p>
-                {myResults.map((result) => (
+                {cardResults.map((result) => (
                   <p key={`${result.side}-${result.status}`} className="m-0 flex flex-wrap items-baseline gap-x-1.5">
                     <span>{result.side === "UP" ? t.market.udUp : t.market.udDown}</span><span aria-hidden>·</span>
-                    <span>{result.status === "WIN" ? t.market.udWon
-                      : result.status === "LOSS" ? t.market.udLost : t.market.udRefundTitle}</span><span aria-hidden>·</span>
-                    {result.status !== "VOID" && <span>{result.status === "WIN" ? t.market.udPaidOut : t.market.udStake}</span>}
+                    <span>{result.payout == null ? t.market.udPayoutUnavailable
+                      : result.status === "WIN" ? t.market.udWon
+                      : result.status === "LOSS" ? t.market.udLost
+                      : result.status === "CASHED_OUT" ? t.market.udPosCashedOut : t.market.udRefundTitle}</span><span aria-hidden>·</span>
+                    {result.status !== "VOID" && <span>{result.payout == null ? t.market.udPaidOut
+                      : result.status === "LOSS" ? t.market.udStake : t.market.udPaidOut}</span>}
                     <span className="amount font-semibold text-text">
-                      {formatTzs(result.status === "LOSS" ? result.stake : result.payout)}
+                      {result.payout == null ? t.market.udPayoutUnavailable
+                        : formatTzs(result.status === "LOSS" ? result.stake : result.payout)}
                     </span>
                   </p>
                 ))}

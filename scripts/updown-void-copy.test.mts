@@ -143,11 +143,27 @@ const ALL: RefundReason[] = ["no-move", "source-failed", "source-mismatch", "ope
      !/you lost|you lose|did not win/i.test(en.udRefundUnmatched), en.udRefundUnmatched);
   ok("3.6 · the source-failure sentence owns it as OUR failure",
      /we could not/i.test(en.udRefundSourceFailed), en.udRefundSourceFailed);
-  // Every sentence must reassure that the money is back — that is the one fact a refunded
-  // player most needs, and it must not depend on which branch they landed in.
-  ok("3.7 · ⭐ EVERY reason states the stake is back in full",
-     ALL.every((r) => /back in full/i.test(en[REFUND_REASON_KEY[r]])),
-     ALL.filter((r) => !/back in full/i.test(en[REFUND_REASON_KEY[r]])).join(", "));
+  ok("3.6b · a source-failed VOID never denies an earlier paid cash-out in any language",
+     !/nobody was paid/i.test(en.udRefundSourceFailed + en.udVoidNoteSourceFailed)
+     && !/hakuna aliyelipwa/i.test(dict.sw.market.udRefundSourceFailed + dict.sw.market.udVoidNoteSourceFailed)
+     && !/无人获得派彩/.test(dict.zh.market.udRefundSourceFailed + dict.zh.market.udVoidNoteSourceFailed));
+  // A player may have sold an earlier leg. Only the remaining stake was refunded;
+  // every reason must say so, in all three languages.
+  ok("3.7 · ⭐ EVERY reason says the remaining stake was returned in full",
+     ALL.every((r) => /remaining stake was returned in full/i.test(en[REFUND_REASON_KEY[r]])
+       && /Dau lako lililobaki limerudishwa kikamilifu/.test(dict.sw.market[REFUND_REASON_KEY[r]])
+       && /您剩余的投注金额已全额退回/.test(dict.zh.market[REFUND_REASON_KEY[r]])),
+     ALL.filter((r) => !/remaining stake was returned in full/i.test(en[REFUND_REASON_KEY[r]])).join(", "));
+  ok("3.8 · an unmatched round may have had an earlier cash-out on the other side",
+     /No stake remained on the other side/.test(en.udRefundUnmatchedReason)
+       && /Hakuna dau lililobaki upande mwingine/.test(dict.sw.market.udRefundUnmatchedReason)
+       && /另一方没有剩余投注/.test(dict.zh.market.udRefundUnmatchedReason));
+  ok("3.9 · a VOID outcome chip never claims an unpaid or already-cashed-out stake was refunded",
+     en.udVoided === "Void" && dict.sw.market.udVoided === "Batili" && dict.zh.market.udVoided === "作废");
+  ok("3.10 · legacy VOID body describes held stakes after payment, preserving earlier cash-outs",
+     /Remaining held stakes are returned in full when settlement completes\. Earlier cash-outs keep their paid amount/.test(en.udVoidedBody)
+       && /Dau yaliyobaki hurejeshwa kikamilifu malipo yakikamilika\. Malipo ya kuuza dau mapema hayabadiliki/.test(dict.sw.market.udVoidedBody)
+       && /仍持有的投注金额将在结算完成时全额退回。此前兑现的金额保持不变/.test(dict.zh.market.udVoidedBody));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -167,8 +183,8 @@ const ALL: RefundReason[] = ["no-move", "source-failed", "source-mismatch", "ope
   // ⛔ Both must key off THIS VIEWER's refund, not merely the round's state — otherwise the
   // decided-but-refunded case is unreachable, which is exactly how E-65 survived.
   ok("4.5 · ⭐ the card branches on whether THIS viewer was refunded, not on `state === void`",
-     /\) : refundReason \?/.test(card));
-  ok("4.6 · …and so does the round page", /\) : refundReason \?/.test(page));
+     /\) : settled && refundReason \?/.test(card));
+  ok("4.6 · …and so does the round page, only after payment", /\) : round\.settled && refundReason \?/.test(page));
 
   // ⛔ REACHABILITY, NOT EXISTENCE — AND THE DIFFERENCE COST A LIVE DEFECT.
   //
@@ -186,7 +202,7 @@ const ALL: RefundReason[] = ["no-move", "source-failed", "source-mismatch", "ope
   // sliced 2,200 characters after that key and missed the assertion by a few lines — a guard
   // that depends on how much prose sits between two statements is a guard that will drift.
   ok("4.9 · ⭐ the RESULT panel itself carries the refund reason — a branch that exists but cannot be reached is not a fix",
-     /\{refundReason && \(/.test(page) && /REFUND_REASON_KEY\[refundReason\]/.test(page),
+     /\{round\.settled && refundReason && \(/.test(page) && /REFUND_REASON_KEY\[refundReason\]/.test(page),
      "a refunded player matches `decided && myPosition && result` FIRST and never reaches the branch below");
   ok("4.7 · the card is fed the viewer's refunded stake", /myRefundedStake/.test(card));
   // ⚠️ PINS THE COMPUTATION, NOT THE FIELD NAME. The first version grepped for

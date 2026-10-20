@@ -27,6 +27,7 @@ const passage = (source: string, start: string, end: string) => {
 const rulesU43 = passage(rules, "The projected return on a bet confirmation or receipt is conditional.", "A player may hold");
 const decisionChart = passage(decisions, "**2026-10-20 implementation clarification:**", "3. **The phone filter");
 const decisionReturn = passage(decisions, "**2026-10-20 implementation correction:**", "**What it supersedes");
+const decisionFeed = passage(decisions, "## 2026-10-20 · U43 Twelve Data use — owner attestation", "---");
 
 ok("Swahili duration places the numeral after dakika", roundDuration(dict.sw, 5) === "dakika 5" && roundName(dict.sw, "Bitcoin", 5) === "Bitcoin Juu na Chini · dakika 5");
 const classicRail = '.kp-rail:not(.kp-rail--journey):lang(sw) .kp-rail__item:not(.kp-rail__item--coin)';
@@ -94,6 +95,11 @@ ok("owner decision record corrects the payout promise without changing settlemen
   decisionReturn.includes("lock fixes only the conditional return for a winning pick.")
   && decisionReturn.includes("It is paid only if that pick wins; a voided round returns the stake.")
   && decisionReturn.includes("The settlement rule and amount computation are unchanged."));
+ok("owner feed attestation is recorded without claiming an inspected vendor agreement",
+  decisionFeed.includes("Ali's attestation and direction.")
+  && decisionFeed.includes("full Twelve Data licence for its use in Tanzania")
+  && decisionFeed.includes("did not inspect a separate vendor agreement or infer permission from the key alone.")
+  && decisionFeed.includes("Keep the existing Twelve Data source and the exact-minute-bar-open settlement rule."));
 
 console.log(`U43 SYSTEM: ${failures} failed`);
 process.exit(failures ? 1 : 0);

@@ -221,7 +221,7 @@ export function useHoldAnchor(
 export function RoundCountdownPod({
   closesAtMs, isOpen, label, serverNowMs, resultMode = false,
   lastSecondsLabel,
-  roundClosesAtMs, resultTargetMs = null, settled = false, resultLabels,
+  roundClosesAtMs, resultTargetMs = null, settled = false, paymentPending = false, resultLabels,
   handover, handoverLabels,
 }: {
   closesAtMs: number; isOpen: boolean; label: string; serverNowMs?: number;
@@ -257,6 +257,8 @@ export function RoundCountdownPod({
   /** The measured result instant, or null when the asset is under the sample floor (A-5). */
   resultTargetMs?: number | null;
   settled?: boolean;
+  /** The price verdict exists, but the market payout transaction has not committed. */
+  paymentPending?: boolean;
   /** Captions for the phases the pod can now enter on its own. Translated on the server. */
   resultLabels?: { resultIn: string; awaiting: string; settled: string };
   /**
@@ -295,9 +297,9 @@ export function RoundCountdownPod({
   const pastClose = clock?.awaiting === true;
   // The pod only takes over once it is genuinely past the boundary; before that the caller's
   // phase stands, which is what keeps this additive for the board card.
-  const inResult = pastClose || resultMode;
+  const inResult = !paymentPending && (pastClose || resultMode);
   const target = pastClose ? (clock!.targetMs ?? roundClosesAtMs!) : closesAtMs;
-  const caption = pastClose && resultLabels
+  const caption = !paymentPending && pastClose && resultLabels
     ? (settled ? resultLabels.settled : resultTargetMs != null ? resultLabels.resultIn : resultLabels.awaiting)
     : label;
 
@@ -346,11 +348,12 @@ export function RoundCountdownPod({
     : hand!.phase === "live" ? handoverLabels.live
     : hand!.phase === "waiting" ? handoverLabels.waiting
     : handoverLabels.unavailable;
-  const textOnlyPod = settled && (!inHandover || !hand!.counting);
+  const textOnlyPod = paymentPending || (settled && (!inHandover || !hand!.counting));
   const shownCaption = urgent ? lastSecondsLabel! : handCaption ?? caption;
   // ⛔ Keep `—:—` as the non-counting fallback, never the dead `00:00` measured on
   // production. Settled text-only phases hide this fallback behind the truthful label.
-  const shownDigits = inHandover
+  const shownDigits = paymentPending ? "—:—"
+    : inHandover
     ? (hand!.counting ? mmss(handLeft) : "—:—")
     : settled ? "—:—"
     : spent ? "—:—"
@@ -375,7 +378,8 @@ export function RoundCountdownPod({
    * 0.01ms globally (motion.css §"THREE GATES"), so this becomes an instant state change and
    * the handover still happens. That is why the kit utility is used instead of a bespoke one.
    */
-  const podPhase = inHandover ? `h:${hand!.phase}`
+  const podPhase = paymentPending ? "payment-pending"
+    : inHandover ? `h:${hand!.phase}`
     : settled ? "settled" : spent ? "spent" : inResult ? "result" : isOpen ? "open" : "idle";
 
   return (

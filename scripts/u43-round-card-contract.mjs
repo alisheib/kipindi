@@ -47,18 +47,19 @@ export function roundCardIssues(card, controls, mark, detailPage, action, countd
   need(card.includes('<RoundLiveLine assetKey={assetKey} opensAtMs={opensAtMs}'), "live-line slot");
   need(card.includes('const quoteVisible = locked || awaitingResult || state === "confirming"'),
     "frozen payout rows survive confirming");
-  need(card.includes('settledNow && myResults && myResults.length > 0'), "viewer result from settled rows");
-  need(card.includes('outcome === "UP" ? <><I.arrowUp s={14} edge="start" text="body-700" />{price.kind === "priced" ? t.market.udUpWins : t.market.udUp}</>')
-    && card.includes('outcome === "DOWN" ? <><I.arrowDown s={14} edge="start" text="body-700" />{price.kind === "priced" ? t.market.udDownWins : t.market.udDown}</>'),
+  need(card.includes('{settledNow && settled && cardResults.length > 0 && ('), "viewer result from settled rows");
+  need(card.includes('outcome === "UP" ? <><I.arrowUp s={14} edge="start" text="body-700" />{settled && price.kind === "priced" ? t.market.udUpWins : t.market.udUp}</>')
+    && card.includes('outcome === "DOWN" ? <><I.arrowDown s={14} edge="start" text="body-700" />{settled && price.kind === "priced" ? t.market.udDownWins : t.market.udDown}</>'),
     "only a two-sided result claims a win; one-sided and empty results name direction");
-  need(card.includes('state === "resolved" && price.kind === "oneSided" ? (')
+  need(card.includes('settled && state === "resolved" && price.kind === "oneSided" ? (')
     && card.includes('<p className="m-0 text-body-sm text-text-muted">{t.market.udRefundUnmatchedReason}</p>')
     && card.includes('state === "resolved" && price.kind === "none" ? (')
-    && card.includes('<p className="m-0 text-body-sm text-text-muted">{t.market.udNoBetsPlaced}</p>'),
+    && card.includes('players > 0 ? t.market.udNoActiveStakes : t.market.udNoBetsPlaced'),
     "settled guest card explains an unmatched refund or an empty pool without claiming a viewer refund");
-  need(card.includes('myResults[0].status !== "VOID" && (')
-    && card.includes('myResults[0].status === "WIN" ? t.market.udPaidOut : t.market.udStake')
-    && card.includes('formatTzs(myResults[0].status === "LOSS" ? myResults[0].stake : myResults[0].payout)'),
+  need(card.includes('cardResults[0].status !== "VOID" && (')
+    && card.includes('cardResults[0].payout == null ? t.market.udPaidOut')
+    && card.includes('cardResults[0].payout == null ? t.market.udPayoutUnavailable')
+    && card.includes('formatTzs(cardResults[0].status === "LOSS" ? cardResults[0].stake : cardResults[0].payout)'),
     "single result labels lost stake and total winner payout distinctly");
   need(!card.includes('btn btn-ghost btn-lg pointer-events-none'), "no fake awaiting-result button");
   need(card.includes('<UpDownSidePair assetName={assetName} onPick={go} />'), "signed-out choices use shared pair");
@@ -73,8 +74,8 @@ export function roundCardIssues(card, controls, mark, detailPage, action, countd
     "detail clock names final betting seconds even when motion is reduced");
   need(detailPage.includes('result === "LOSS" ? t.market.udStake')
     && detailPage.includes('result === "VOID" ? t.market.udRefundTitle : t.market.udPaidOut')
-    && detailPage.includes('result === "LOSS" ? myPosition?.stake ?? 0 : myPosition?.payout ?? 0')
-    && detailPage.includes('{formatTzs(resultAmount)}'),
+    && detailPage.includes('result === "LOSS" ? myPosition?.stake ?? null : myPosition?.payout ?? null')
+    && detailPage.includes('resultAmount == null ? t.market.udPayoutUnavailable : formatTzs(resultAmount)'),
     "detail receipt labels earned payout, lost stake and returned stake by their real meaning");
   need(detailPage.includes('<Chip>{roundDuration(t, round.durationMinutes)}</Chip>'),
     "detail duration follows each language's grammar");
@@ -94,7 +95,7 @@ export function roundCardIssues(card, controls, mark, detailPage, action, countd
     && !detailPage.includes('${Math.abs(pMove).toFixed(dec)}'),
     "hero and proof both group a four-digit USD move through the shared formatter");
   need(detailPage.includes('round.state === "resolved" && price.kind !== "priced" && (')
-    && detailPage.includes('price.kind === "oneSided" ? t.market.udRefundUnmatchedReason : t.market.udNoBetsPlaced'),
+    && detailPage.includes('round.players > 0 ? t.market.udNoActiveStakes : t.market.udNoBetsPlaced'),
     "settlement proof explains a resolved round without a two-sided pool");
   need(detailPage.includes('{isOpen || locked || awaitingResult ? (')
     && action.includes('if (locked || confirming)')
@@ -124,7 +125,8 @@ export function handoverPodIssues(countdown, css, handover) {
   const need = (ok, what) => { if (!ok) issues.push(what); };
   need(countdown.includes('const inHandover = hand != null && hand.phase !== "none" && hand.phase !== "hold";')
     && countdown.includes('settled ? resultLabels.settled')
-    && countdown.includes('const textOnlyPod = settled && (!inHandover || !hand!.counting);')
+    && countdown.includes('const textOnlyPod = paymentPending || (settled && (!inHandover || !hand!.counting));')
+    && countdown.includes('const podPhase = paymentPending ? "payment-pending"')
     && countdown.includes('data-text-only={textOnlyPod ? "true" : undefined}')
     && countdown.includes('{!textOnlyPod && <span')
     && countdown.includes('"m-tick font-mono text-body-sm font-semibold uppercase eyebrow text-text-subtle"'),

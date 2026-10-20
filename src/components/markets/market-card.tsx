@@ -703,7 +703,7 @@ export function MarketCard({
       ) : (
         <div className="mcardp-actions mcardp-actions--single">
           <p className="mcardp-fact gap-1" data-market-part="state">
-            {statusWord === "VOID" ? t.market.resVoidRefund
+            {statusWord === "VOID" ? (settledAt ? t.market.resVoidRefund : t.market.resVoidPending)
               : isResolved ? <>{t.market.resFinalPool}<span className="amount">{formatTzs(volume)}</span></>
               : t.market.waitingForResults}
           </p>

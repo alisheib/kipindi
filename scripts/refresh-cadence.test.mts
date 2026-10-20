@@ -16,7 +16,7 @@
 import { readFileSync } from "node:fs";
 import {
   refreshCadence, handoverPollUntil,
-  AWAITING_RESULT_MS, LIVE_ROUND_MS, HANDOVER_MS, HANDOVER_GRACE_MS, HANDOVER_MAX_MS,
+  AWAITING_RESULT_MS, PAYMENT_PENDING_MS, LIVE_ROUND_MS, HANDOVER_MS, HANDOVER_GRACE_MS, HANDOVER_MAX_MS,
 } from "../src/lib/refresh-cadence.ts";
 
 let pass = 0; const fails: string[] = [];
@@ -49,6 +49,13 @@ console.log("\n── 2 · open / locked matches the board, and a DECIDED round 
   const both = refreshCadence({ settled: true, awaitingResult: true });
   ok("2.3 settled wins over awaiting, so a caller deriving both independently cannot poll forever",
     both.enabled === false);
+  const pending = refreshCadence({ settled: false, awaitingResult: false, paymentPending: true });
+  ok("2.4 a decided but unpaid round still refreshes when money finally moves",
+    pending.enabled === true && pending.intervalMs === PAYMENT_PENDING_MS);
+  ok("2.5 an objection cannot keep a low-end phone on the 5s price cadence for hours",
+    pending.intervalMs > LIVE_ROUND_MS && pending.intervalMs > AWAITING_RESULT_MS);
+  ok("2.6 the committed payout ends the pending-payment poll",
+    refreshCadence({ settled: true, awaitingResult: false, paymentPending: true }).enabled === false);
 }
 
 console.log("\n── 3 · the round page is WIRED to it (the defect was that it had no poller at all) ──");
@@ -113,6 +120,9 @@ console.log("\n── 3 · the round page is WIRED to it (the defect was that it
   ok("3.3 ⭐ …and it is asked about THIS round's state — both arguments bound, neither a literal",
     !!call && !isLiteral(bindings.get("settled")) && !isLiteral(bindings.get("awaitingResult")),
     call ? `settled=${bindings.get("settled")} awaitingResult=${bindings.get("awaitingResult")}` : "no refreshCadence({…}) call found");
+  ok("3.3a payment-pending cadence is bound to the actual verdict and payment stamp",
+    bindings.get("paymentPending") === "decided && !round.settled",
+    `paymentPending=${bindings.get("paymentPending")}`);
   // ⛔ AND THE NEW ARM IS SUBJECT TO THE SAME LAW. `handover: { active: true, … }` is exactly the
   // `cadence-called-with-constants` mutation one level down: it would pin the page to a
   // permanent handover poll on a decided round, which is §2.2's defect wearing a new field name.
@@ -216,7 +226,7 @@ console.log("\n── 5 · E-166 · the HANDOVER arm polls a settled round, and 
   ok("5c.2 ⭐ …bounded by the shared rule, never by a number typed on the page",
     /untilMs:\s*handoverPollUntil\(\{/.test(round));
   ok("5c.3 ⭐ and `active` is false the moment a successor is in hand",
-    /active:\s*decided && round\.successor\.chainRunning && round\.successor\.roundId == null/.test(round));
+    /active:\s*round\.settled && round\.successor\.chainRunning && round\.successor\.roundId == null/.test(round));
   ok("5c.4 ⛔ the page's clock is the SERVER's, so the bound cannot be beaten by a fast handset",
     /nowMs:\s*round\.serverNowMs/.test(round));
 }

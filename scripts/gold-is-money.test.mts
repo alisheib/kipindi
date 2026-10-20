@@ -97,12 +97,12 @@ for (const f of IDENTITY_SURFACES) {
 // status stay neutral. Keep this mixed surface explicit rather than exempting it.
 {
   const card = strip(read("src/components/updown/updown-card.tsx"));
-  const earnedGold = /myResults\[0\]\.status === "WIN" \? "var\(--gold-300\)" : "var\(--text\)"/;
-  const scoped = card.includes("settledNow && myResults && myResults.length > 0") && earnedGold.test(card);
+  const earnedGold = /cardResults\[0\]\.status === "WIN" && cardResults\[0\]\.payout != null \? "var\(--gold-300\)" : "var\(--text\)"/;
+  const scoped = card.includes("settledNow && settled && cardResults.length > 0") && earnedGold.test(card);
   ok("1.card · Up & Down's only gold is the viewer's earned WIN payout",
     scoped && [...card.matchAll(MONEY_INK)].length === 1 && [...card.matchAll(MONEY_CLASS)].length === 0);
-  const mutant = card.replace('myResults[0].status === "WIN" ? "var(--gold-300)"',
-    'myResults[0].status === "LOSS" ? "var(--gold-300)"');
+  const mutant = card.replace('cardResults[0].status === "WIN" && cardResults[0].payout != null ? "var(--gold-300)"',
+    'cardResults[0].status === "LOSS" && cardResults[0].payout != null ? "var(--gold-300)"');
   ok("1.card.control · a LOSS painted gold fails the earned-money gate",
     mutant !== card && !earnedGold.test(mutant));
 }

@@ -15,13 +15,13 @@
  *     also suppressed the moment.**
  *     ✅ **2026-08-10 (DA-5 / E-115): that `readStoredBet()` gate no longer exists.** The
  *     long-form poller was rebuilt on this component's own contract — settled rows,
- *     `finalPayout`, status read never inferred — so the sentence above is history. This file
- *     stays the precedent; it is no longer the only one obeying the rule.
+ *     `finalPayout`, status read never inferred — so the sentence above is history. Dedicated
+ *     Up & Down bell/push rows were later added at settlement, under Ali's 2026-08-22 ruling.
+ *     This file stays the precedent for the on-screen result moment.
  *
- * ⛔ ALI'S 2026-07-24 DECISION STANDS AND THIS DOES NOT TOUCH IT. Shown the measured volume
- * (6.7 messages/hour per player on today's board, 15/hour on a 3-minute chain) he chose
- * **in-app only — no email, no push, no inbox row**. Everything here is client-side rendering
- * of data the page already has. ⛔ Do not "complete" this by calling `notifyWin`/`notifyLoss`.
+ * ⛔ This component only renders the observed moment. Ali's later 2026-08-22 ruling put
+ * terminal Up & Down results in the bell and push; settlement writes those durable rows.
+ * Nothing here sends a second message or email. Do not duplicate the settlement emitter.
  *
  * ⛔ IT FIRES ON AN OBSERVED TRANSITION, NEVER ON MOUNT. A popup that fires because you opened
  * a page is not a moment, it is an ambush — and it would re-congratulate a player every time
@@ -31,7 +31,7 @@
  * remounting client children). `sessionStorage` then makes it once-per-round even across a
  * genuine remount.
  *
- * ⛔ THE THREE OUTCOMES ARE NOT TWO, AND CONFLATING THEM IS A FALSE MONEY STATEMENT.
+ * ⛔ THE ROW OUTCOMES AND A MIXED ROUND ARE DISTINCT MONEY STATEMENTS.
  * A round can resolve DOWN and still hand an UP backer their whole stake back, because nobody
  * took the other side (E-65). Saying "you lost" there would be the E-39/E-65/E-68 defect on the
  * most screenshot-able screen in the product. The status is read off the POSITION ROW, never
@@ -51,11 +51,12 @@ import { DWELL_RESULT_MS } from "@/lib/feedback-timing";
 import { routeOutcome } from "@/lib/outcome-announcement";
 import { isAttentive, presenceSinceMs, serverNow } from "@/lib/presence-window";
 import { recordAway } from "@/lib/away-ledger";
+import type { RoundAnnouncement } from "@/lib/updown-result-truth";
 
 export type AnnounceableRound = {
   roundId: string;
   /**
-   * When the SERVER recorded the result — `BoardRound.resolvedAtMs`, already finite-checked
+   * When the market's money transaction committed — `BoardRound.settledAtMs`, finite-checked
    * where it is built (`updown-board.ts`), so it is a real instant or `null` and never NaN.
    *
    * ⭐ IT IS WHAT LETS THIS LANE OBEY THE PRESENCE LAW, AND IT COST NO SERVER CHANGE: both
@@ -66,7 +67,7 @@ export type AnnounceableRound = {
    * now"; that is exactly the case the RED harness found.
    */
   settledAtMs?: number | null;
-  myResult: { status: "WIN" | "LOSS" | "VOID"; side: "UP" | "DOWN"; stake: number; payout: number } | null;
+  myResult: RoundAnnouncement | null;
 };
 
 /** Once per round per browser session, so a remount cannot re-fire a result. */
@@ -107,7 +108,8 @@ export function UpDownResultAnnouncer({ rounds }: { rounds: AnnounceableRound[] 
       const res = r.myResult!;
       if (alreadyAnnounced(r.roundId)) continue;
 
-      const sideWord = res.side === "UP" ? t.market.udUp : t.market.udDown;
+      const sideWord = res.side === "UP" ? t.market.udUp
+        : res.side === "DOWN" ? t.market.udDown : t.market.udBothSides;
 
       /* ⭐ THE SAME LAW THE MARKET LANE OBEYS, FROM THE SAME MODULE. A round that settled while
        * the player was away is held for the calm bar; one they watched land still gets its
@@ -139,6 +141,20 @@ export function UpDownResultAnnouncer({ rounds }: { rounds: AnnounceableRound[] 
           net: res.payout - res.stake,
           label: `${t.market.udUpDown} · ${sideWord}`,
         });
+      } else if (routing.channel === "TOAST" && res.status === "MIXED") {
+        // Several legs can have different outcomes, including an earlier cash-out. State
+        // both stored totals without calling the round a win or striking any amount in gold.
+        toast({
+          title: t.market.udMixedResultTitle,
+          description: t.market.udMixedResultBody
+            .replace("{stake}", formatTzs(res.stake))
+            .replace("{payout}", formatTzs(res.payout)),
+          variant: "factual",
+          durationMs: DWELL_RESULT_MS,
+          groupKey: routing.groupKey,
+          groupLabel: (n) => ({ title: t.market.udMixedGrouped.replace("{n}", formatNumber(n)) }),
+        });
+        delivered = true;
       } else if (routing.channel === "TOAST" && res.status === "VOID") {
         // A refund is neither a win nor a loss and must say so in its own words. The amount is
         // the stake that came back, which for a void IS the payout.
@@ -197,6 +213,7 @@ export function UpDownResultAnnouncer({ rounds }: { rounds: AnnounceableRound[] 
           stake: res.stake,
           settledAtMs: r.settledAtMs ?? null,
           label: `${t.market.udUpDown} · ${sideWord}`,
+          recordHref: "/updown/history",
         });
       }
 

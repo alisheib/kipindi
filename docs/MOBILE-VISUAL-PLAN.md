@@ -593,6 +593,49 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   board or detail announcement because the single-result prop is null; a cashed-out leg can
   also be omitted from the board's result while detail still includes it. This is under repair
   with a neutral aggregate and an exact mutation proof. No new capture or after score follows yet.
+  **Earlier branch checkpoint, 2026-10-20:** board and detail now use the same full player-position
+  snapshot and announce one result only after the market's payout transaction commits. Mixed
+  WIN/LOSS or cash-out results state the actual total stake and payout without a winner seal;
+  all-VOID sides state the full returned stake. A decided round with unpaid positions shows
+  pending settlement and the still-OPEN stake/side, keeps a slower payment poll, and cannot
+  claim a refund, paid result or next-round handover. The memory fixture covers a real mixed
+  settlement, cash-out plus win, both-side VOID, and reachable unpaid price, no-price VOID and
+  one-sided states. Its source/fixture guard is green with **23/23** red reversals caught and
+  restored; related board, handover, presence, refresh and result-announcement red fleets
+  caught **57/57, 21/21, 20/20, 10/10 and 8/8** respectively. The exact type-only gold
+  exemption passed `test:visual-pass-r5c` **109/0**, failed under a physical removal, and was
+  restored to **109/0**. Ali's recorded 2026-10-20 Twelve Data licence attestation closes the
+  feed-rights decision for this release; older rights-open paragraphs above are dated audit
+  history. PostgreSQL, full release gates, source-frozen captures, two independent 24-cell
+  reviews and any after score are still outstanding. **Release B is not live.**
+  **Current U43 source state, 2026-10-20:** further local checks found that a cash-out can
+  leave a zero active pool, a VOID or one-sided verdict can be recorded while refunds are
+  held, and malformed historical payout rows can be null, negative or inconsistent with
+  their terminal status. The board, detail and result announcer now fail closed on such
+  payout rows or a still-OPEN position after a market settlement stamp: no partial
+  whole-round amount, WIN seal or full-refund claim. The card and
+  detail retain the itemized position record and label the amount unavailable. The memory
+  fixture covers real cash-out to zero pool followed by both resolved and VOID rounds,
+  mixed outcomes, a decided but unpaid holder, a settled market with an OPEN leg, and
+  malformed terminal payouts. It passed
+  in memory; its result guard caught **63/63** in-memory and physical reversals, including
+  the settled-but-OPEN leg, and restored every planted source file. PostgreSQL replay
+  still awaits the shared heavy-job slot. The round-card guard
+  and its in-memory red passed; the gold-is-money guard passed **60/0** after its
+  earned-WIN predicate was repinned to the validated card row. Related cash-out/VOID copy and generic market panel
+  guards caught **20/20** physical red plants and restored the source; the B2 labelled
+  opening-reference chart caught **48/48** and restored it. Stored round evidence and
+  audit notes now distinguish remaining held stakes from earlier paid cash-outs and
+  describe payment as pending until it commits. Board and detail use the money market's
+  corrected verdict and show an officer correction cue beside unchanged price readings;
+  the officer transaction, healer and their separate money proof remain under test.
+  The history page's decided-but-unpaid chip, VOID wording, terminal-null payout and
+  cash-out P&L handling remain open until the Maswali-owned history files are handed off.
+  The Phosphor r9b dictionary commit pin also needs its final committed SHA. Ali's
+  recorded Twelve Data licence attestation closes this release's feed-rights decision;
+  earlier rights-open notes above are dated history. Source-frozen captures, two
+  independent 24-cell reviews, full money and release gates, and any after score are
+  still outstanding. **Release B is not live.**
   ▶ **WORKING BRIEF:**
   `docs/design-brief/u43-2026-10/BRIEF.md` — where it stands, Ali's rulings, the fixed points, the data facts, five work
   packages (the round card; the live line and the chart made to agree; the board and the two chip rows; the market card;

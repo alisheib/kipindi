@@ -23,6 +23,42 @@ const SVC = new URL("../src/lib/server/market-service.ts", import.meta.url);
 
 const MUTATIONS = [
   {
+    name: "void chip claims a refund before money settles",
+    file: DICT,
+    from: `      udVoided: "Void",`,
+    to: `      udVoided: "Void · refunded",`,
+  },
+  {
+    name: "void body erases prior cash-out and claims all stakes paid",
+    file: DICT,
+    from: `      udVoidedBody: "The price did not move enough to call. Remaining held stakes are returned in full when settlement completes. Earlier cash-outs keep their paid amount.",`,
+    to: `      udVoidedBody: "The price did not move enough to call. Every stake is returned in full.",`,
+  },
+  {
+    name: "source-failed refund denies an already-paid cash-out",
+    file: DICT,
+    from: `      udRefundSourceFailed: "We could not confirm a closing price for this round. Your remaining stake was returned in full.",`,
+    to: `      udRefundSourceFailed: "We could not confirm a closing price for this round, so nobody was paid. Your remaining stake was returned in full.",`,
+  },
+  {
+    name: "source-failed guest note denies an already-paid cash-out",
+    file: DICT,
+    from: `      udVoidNoteSourceFailed: "Hatukuweza kuthibitisha bei ya kufunga ya raundi hii.",`,
+    to: `      udVoidNoteSourceFailed: "Hatukuweza kuthibitisha bei ya kufunga ya raundi hii, hivyo hakuna aliyelipwa.",`,
+  },
+  {
+    name: "source-failed refund claims the whole original stake after a cash-out",
+    file: DICT,
+    from: `      udRefundSourceFailed: "We could not confirm a closing price for this round. Your remaining stake was returned in full.",`,
+    to: `      udRefundSourceFailed: "We could not confirm a closing price for this round. Your stake is back in full.",`,
+  },
+  {
+    name: "unmatched copy denies an earlier opposing cash-out",
+    file: DICT,
+    from: `      udRefundUnmatchedReason: "No stake remained on the other side, so there was nothing to win or lose.",`,
+    to: `      udRefundUnmatchedReason: "Nobody backed the other side, so there was nothing to win or lose.",`,
+  },
+  {
     // 🔴 E-94, REVERTED: every void reason back to one wallet row. Driven on production — a
     // no-move refund and an operator void were byte-identical in the only record a player keeps.
     name: "wallet-row-loses-the-reason — a no-move refund and an operator void read the same",
@@ -76,28 +112,28 @@ const MUTATIONS = [
     // The shipped two-branch ternary, back on the card.
     name: "card-back-to-two-branches — the shipped E-65 ternary, restored",
     file: CARD,
-    from: `        ) : refundReason ? (`,
+    from: `        ) : settled && refundReason ? (`,
     to: `        ) : state === "void" ? (`,
   },
   {
     name: "round-page-back-to-two-branches — the same defect on the detail page",
     file: PAGE,
-    from: `            ) : refundReason ? (`,
+    from: `            ) : round.settled && refundReason ? (`,
     to: `            ) : round.state === "void" ? (`,
   },
   {
     // Two reasons sharing one sentence — the defect in its original shape, at the copy layer.
     name: "two-reasons-one-sentence — unmatched inherits the no-move copy",
     file: DICT,
-    from: `      udRefundUnmatched: "Nobody backed the other side, so there was nothing to win and nothing to lose. Your stake is back in full.",`,
-    to: `      udRefundUnmatched: "The price did not move far enough either way, so the round could not be called. Your stake is back in full.",`,
+    from: `      udRefundUnmatched: "No stake remained on the other side, so there was nothing to win or lose. Your remaining stake was returned in full.",`,
+    to: `      udRefundUnmatched: "The price did not move far enough either way, so the round could not be called. Your remaining stake was returned in full.",`,
   },
   {
     // 🔴 THE LIVE DEFECT, restored: the result panel shadows the refund branch, so the one
     // player who WAS refunded never sees why. Found on production, not by this suite.
     name: "result-panel-shadows-the-reason — the refunded player never reaches the explanation",
     file: PAGE,
-    from: `                {refundReason && (`,
+    from: `                {round.settled && refundReason && (`,
     to: `                {false && (`,
   },
   {

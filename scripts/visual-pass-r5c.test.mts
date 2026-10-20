@@ -269,6 +269,14 @@ const census = new Map<string, Hit[]>();
 
   // ⭐ PLANTS — each spelling of gold the census promises to see, planted in memory, is seen; decoys are not.
   const n = (f: string, s: string) => goldHits(f, s).length;
+  const tierFile = "src/app/leaderboard/tier-hint.tsx";
+  const tierSource = raw(tierFile);
+  const tierType = 'type Tier = "bronze" | "silver" | "gold" | "diamond" | "sovereign";';
+  ok("1.4 · CONTROL · only the exact Tier type declaration is exempt from the gold paint census",
+    tierSource.split("\n").filter((line) => line === tierType).length === 1 && n(tierFile, tierSource) === 0);
+  ok("1.4 · PLANT · a runtime gold variant beside the Tier type is still counted",
+    n(tierFile, `${tierSource}\nconst unearnedTier = <Chip variant="gold" />;`) === 1
+      && n(tierFile, tierSource.replace(tierType, `${tierType} const unearnedTier = <Chip variant="gold" />;`)) === 2);
   const plateFile = "src/components/ui/icon-plate.tsx";
   const plateSource = raw(plateFile);
   const plateType = 'export type PlateVariant = "identity" | "quiet" | "info" | "success" | "warning" | "danger" | "gold";';

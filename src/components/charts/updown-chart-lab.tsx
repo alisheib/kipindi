@@ -56,6 +56,7 @@ export function UpDownChartLab({
     quotedWord: string;
     /** R5(c) · F1 — the terminal's live line is named with the band's word. */
     confirmedPrice: string;
+    openingReference: string;
   };
   /** The in-play round's frozen opening price, the chart's dashed reference. */
   priceToBeat?: number | null;
@@ -189,6 +190,7 @@ export function UpDownChartLab({
               quotedWord: labels.quotedWord,
               noCandles: labels.noCandles,
               confirmedPrice: labels.confirmedPrice,
+              openingReference: labels.openingReference,
             }}
             priceToBeat={priceToBeat}
             pinnedReads={pinnedReads}

@@ -28,6 +28,20 @@ const PAGE = "src/app/updown/[roundId]/page.tsx";
 /** @type {RedMutation[]} */
 export const MUTATIONS = [
   {
+    name: "price verdict starts the board-card payment hold early",
+    file: CARD,
+    suite: "updown-handover",
+    from: `  const holdAnchor = useHoldAnchor(roundId, settledNow && settled, settledAtMs, serverNow);`,
+    to: `  const holdAnchor = useHoldAnchor(roundId, settledNow, settledAtMs, serverNow);`,
+  },
+  {
+    name: "board card dates payment at the price verdict",
+    file: "src/app/updown/page.tsx",
+    suite: "updown-handover",
+    from: `                settledAtMs={r.settledAtMs}`,
+    to: `                settledAtMs={r.resolvedAtMs}`,
+  },
+  {
     // THE PRODUCT AS IT SHIPPED: no handover at all. Every surface falls back to "Round settled".
     // ⚠️ RE-ANCHORED 2026-10-08. `a7da5f89` (U35 · D36) folded the hand-written
     // `state === "resolved" || state === "void"` into `roundIsSettled(state)`, so the old anchor

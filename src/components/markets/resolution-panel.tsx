@@ -128,7 +128,7 @@ export function ResolutionPanel({
   // Only the real recorded excerpt is ever shown — empty/whitespace → omit the block.
   // Not shown after a correction on objection: the recorded quote justified the verdict that was thrown out.
   const evidenceText = correctedOnObjection ? null : (evidence?.trim() || null);
-  // ⭐ C1 · settlement refunds EVERY stake at zero fee when one pool is empty, whatever the verdict
+  // ⭐ C1 · settlement refunds every still-held stake at zero fee when one pool is empty, whatever the verdict
   // (`settleMarket`'s one-sided branch, rules §7). `poolFee(…, winner)` would still price a loser-share
   // fee off the funded side and mark the empty pool the winner: a fee nobody was charged, printed on the
   // one panel a player reads to check we paid him correctly. Read from the POOLS, never a rounded 0/100.
@@ -267,10 +267,10 @@ export function ResolutionPanel({
       )}
 
       {/* Settlement / pool composition — exact stored values only. A refund (void, or one side only) shows
-          no fee row and no winning pool: settled, it says every stake was refunded; before the money moves,
-          that every stake will be (a RESOLVED market cannot be reopened, so the pools are final). */}
+          no fee row and no winning pool. The copy follows settledAt and only names still-held stakes;
+          positions cashed out earlier keep their separate paid amount. */}
       {refundedAll ? (
-        <p className="text-body-sm leading-relaxed text-text-muted">{isVoid || settledAt ? t.market.resVoidRefund : t.market.resOneSidedPending}</p>
+        <p className="text-body-sm leading-relaxed text-text-muted">{settledAt ? t.market.resVoidRefund : isVoid ? t.market.resVoidPending : t.market.resOneSidedPending}</p>
       ) : (
         <div className="rounded-md border border-border/60 bg-bg-overlay/40 font-mono text-[12.5px]">
           <Row label={t.market.resFinalPool} value={formatTzs(gross)} strong />

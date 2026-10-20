@@ -34,6 +34,8 @@ export type LedgerEntry = {
   stake: number;
   settledAtMs: number | null;
   label: string;
+  /** The product's own durable result list. Older entries without it open the bell. */
+  recordHref?: "/updown/history" | "/positions?tab=settled";
 };
 
 export type AwaySummary = {
@@ -41,6 +43,7 @@ export type AwaySummary = {
   wins: number;
   losses: number;
   voids: number;
+  mixed: number;
   /** ⛔ NON-NULL ONLY WHEN `homogeneous` IS. See `summarise`. */
   figure: number | null;
   /** The single outcome every entry shares, or `null` when the set is mixed. */
@@ -163,6 +166,7 @@ export function summarise(entries: LedgerEntry[]): AwaySummary {
   const wins = entries.filter((e) => e.kind === "WIN").length;
   const losses = entries.filter((e) => e.kind === "LOSS").length;
   const voids = entries.filter((e) => e.kind === "VOID").length;
+  const mixed = entries.filter((e) => e.kind === "MIXED").length;
   const total = entries.length;
 
   const kinds = new Set(entries.map((e) => e.kind));
@@ -178,5 +182,13 @@ export function summarise(entries: LedgerEntry[]): AwaySummary {
     figure = entries.reduce((sum, e) => sum + e.stake, 0);
   }
 
-  return { total, wins, losses, voids, figure, homogeneous };
+  return { total, wins, losses, voids, mixed, figure, homogeneous };
+}
+
+/** A mixed-product backlog or an old entry belongs in the common durable bell. */
+export function awayRecordHref(entries: readonly LedgerEntry[]): string {
+  const destinations = new Set(entries.map((entry) => entry.recordHref));
+  return destinations.size === 1 && destinations.has("/updown/history") ? "/updown/history"
+    : destinations.size === 1 && destinations.has("/positions?tab=settled") ? "/positions?tab=settled"
+    : "/notifications";
 }

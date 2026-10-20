@@ -26,10 +26,10 @@
  * @see docs/DESIGN_AUTHORITY.md §F5 · §F6 · §M7
  */
 
-/** The three outcomes a settled position can carry. ⚠️ Read off the row, never inferred
- *  from the market's public outcome: a market can resolve YES and still refund an unmatched
- *  backer in full, and saying "you lost" there is a false money statement. */
-export type OutcomeKind = "WIN" | "LOSS" | "VOID";
+/** A settled result can be one row outcome or a mixed round aggregate. Read each row,
+ *  never infer from the market's public outcome: a market can resolve YES and still refund
+ *  an unmatched backer in full, and saying "you lost" there is a false money statement. */
+export type OutcomeKind = "WIN" | "LOSS" | "VOID" | "MIXED";
 
 /** How the player came to be looking at this outcome. */
 export type PresenceClass = "LIVE" | "RETURNING";
@@ -99,7 +99,7 @@ export function routeOutcome(
    * `settledAtMs < presenceSinceMs` coerces `null` to 0 and routes it away anyway. `undefined`
    * does not coerce: `undefined < n` is false, `n - undefined` is NaN, and `NaN > MAX` is
    * false — so without rule 2 an absent timestamp falls through EVERY gate and reaches the
-   * seal. A producer reading an optional field (`round.resolvedAtMs`, a row whose `settledAt`
+   * seal. A producer reading an optional field (`round.settledAtMs`, a row whose `settledAt`
    * is missing) hands us exactly that. ⛔ Never narrow this back to `number | null`. */
   outcome: { kind: OutcomeKind; settledAtMs: number | null | undefined },
   ctx: PresenceContext,
@@ -120,7 +120,7 @@ export function routeOutcome(
   //     below exactly as `undefined` does: `NaN < n` is false, `n - NaN` is NaN, `NaN > MAX` is
   //     false. So without this gate an instant that failed to parse falls through EVERY check
   //     and lands on the seal. Producers normalise too (`notify-poller` parses defensively, the
-  //     board's `resolvedAtMs` is finite-checked server-side); this is the backstop for the next
+  //     board's `settledAtMs` is finite-checked server-side); this is the backstop for the next
   //     producer, which is the one this module cannot see.
   //
   //     ⭐ THE `typeof` GUARD IS LOAD-BEARING AND THE RED HARNESS PROVED IT, ON THIS VERY LINE.

@@ -19,7 +19,8 @@ import { publicSourceClassFor, type PublicSourceClass } from "./updown-symbols";
 // CHART-SPRINT-2 · the terminal chart's vendor-bars tier (real market OHLC; E-53-safe proxying).
 import { vendorBarsFor, VENDOR_PLAN } from "./updown-terminal-vendor";
 import { ROUND_LINE_WINDOW_MS, vendorOpenPoints } from "@/lib/updown-vendor-opens";
-import { ratesFor, listPositionsForUser, listPositionsForMarket, projectedPayout, type StoredMarket } from "./market-service";
+import { ratesFor, listPositionsForUser, projectedPayout, type StoredMarket, type StoredPosition } from "./market-service";
+import { validRealizedPayout, type RoundResultRow } from "@/lib/updown-result-truth";
 // What a wallet can stake — the bet path's own figure (`buyPosition`'s refusal states it), for the quick-bet pre-flight.
 import { spendableOf } from "@/lib/spendable";
 // ⭐ D2 · the shape the player surfaces price a bet from. Isomorphic by design — the card is a
@@ -106,6 +107,8 @@ export type BoardRound = {
   marginBps: number | null;
   outcome: "UP" | "DOWN" | "VOID" | null;
   voidReason: string | null;
+  /** A final verdict was changed after review; price observations remain the original record. */
+  correctionKind: "objection" | "record" | null;
   volumeTzs: number;
   players: number;
   /**
@@ -159,7 +162,10 @@ export type BoardRound = {
    * every player sees one clock — the one the server will actually settle against.
    */
   serverNowMs: number;
+  /** The market's payout transaction has committed; a price verdict alone is not payment. */
   settled: boolean;
+  /** The market's actual settlement instant, never the earlier price-verdict instant. */
+  settledAtMs: number | null;
   /** The signed-in viewer's OWN open stake on each side of this round, in TZS (0 when
    *  none, or when signed out). Powers the "you're in" indicator + quick-bet state on
    *  the card. Read from the viewer's OPEN positions — the real money, not client
@@ -172,7 +178,7 @@ export type BoardRound = {
   /**
    * ⭐ WHAT HAPPENED TO THIS VIEWER'S MONEY ON THIS ROUND — Ali's decision, 2026-08-05.
    *
-   * ⛔ THE BOARD HAS NEVER CARRIED THIS, AND THAT IS WHY UP & DOWN HAS NO WIN MOMENT.
+   * ⛔ THE BOARD ONCE DID NOT CARRY THIS, WHICH LEFT UP & DOWN WITHOUT A WIN MOMENT.
    * `myStakesByMarket` recorded a settled position ONLY when `finalPayout === stake` (a
    * refund); a WIN and a LOSS were both recorded as *nothing*, and `myUpStake`/`myDownStake`
    * are zeroed the instant a position leaves OPEN because "only live money counts as you're
@@ -181,9 +187,9 @@ export type BoardRound = {
    *
    * The other half of the same silence: the platform's `WinCelebrationHost` was fired by
    * `notify-poller.tsx`, gated on a `readStoredBet()` localStorage record that the Up & Down
-   * quick-bet path never writes — and gated behind notifications, which
-   * `perEventNotificationsSuppressed()` turns off for UPDOWN. Suppressing the MESSAGE (Ali's
-   * dated 2026-07-24 decision, which stands) also suppressed the MOMENT.
+   * quick-bet path never wrote. The dated 2026-07-24 message restriction was later
+   * reversed for bell and push on 2026-08-22; settlement owns those durable messages,
+   * while this board field owns the watched result moment.
    *
    * ⛔ `payout` IS THE REALISED FIGURE, never a projection. A celebrated amount that is not
    * the amount paid is a false money statement of the E-39/E-65 kind, on the one screen a
@@ -205,7 +211,7 @@ export type BoardRound = {
   } | null;
   /** Settled money, aggregated by side and recorded status. A hedged holder has
    * both sides here; no single side is chosen on their behalf. */
-  myResults: Array<{ status: "WIN" | "LOSS" | "VOID"; side: "UP" | "DOWN"; stake: number; payout: number }>;
+  myResults: RoundResultRow[];
   /**
    * What this viewer takes home if their side wins — EXACT, once the pool is frozen
    * (LOCKED or CONFIRMING).
@@ -384,6 +390,14 @@ export function roundState(
   return "open";
 }
 
+/** The market is the payout authority, including an officer-corrected legacy round. */
+function marketOutcomeForRound(m: StoredMarket | null): BoardRound["outcome"] {
+  if (!m || (m.status !== "RESOLVED" && m.status !== "VOIDED")) return null;
+  return m.resolvedOutcome === "YES" ? "UP"
+    : m.resolvedOutcome === "NO" ? "DOWN"
+    : m.resolvedOutcome === "VOID" ? "VOID" : null;
+}
+
 /**
  * What a stake ALREADY IN THE POOL is paid if its side wins.
  *
@@ -457,7 +471,14 @@ async function toBoardRound(
   if (!m) return null;
   const rates = ratesFor(m);
   const closesAtMs = Date.parse(r.closesAt);
-  const state = roundState(r, closesAtMs, nowMs, m.selectionClosedAt);
+  // The market decides payouts. Legacy objection rulings could change its verdict while the
+  // companion round retained the old price outcome. Read the market first and fail closed if
+  // a terminal market has no valid verdict; never put the stale round word beside paid money.
+  const outcome = marketOutcomeForRound(m);
+  const correctionKind = m.resolutionEvidence?.startsWith("UPDOWN_OFFICER_CORRECTION:")
+    ? "objection" as const
+    : r.outcome && outcome && r.outcome !== outcome ? "record" as const : null;
+  const state = roundState({ ...r, outcome }, closesAtMs, nowMs, m.selectionClosedAt);
   const myUpStake = mine?.up ?? 0;
   const myDownStake = mine?.down ?? 0;
   const myStake = myUpStake + myDownStake;
@@ -478,8 +499,9 @@ async function toBoardRound(
     upTarget: r.upTarget,
     downTarget: r.downTarget,
     marginBps: r.marginBps,
-    outcome: r.outcome,
-    voidReason: r.voidReason,
+    outcome,
+    voidReason: outcome === "VOID" && r.outcome !== "VOID" ? "operator" : r.voidReason,
+    correctionKind,
     volumeTzs: m.yesPool + m.noPool,
     // The count players see (`predictors.ts`): the Up & Down card and the round page both read this value.
     players: shownPredictors(m),
@@ -524,7 +546,9 @@ async function toBoardRound(
     },
     serverNowMs: nowMs,
     state,
-    settled: !!r.settledAt,
+    settled: m.settledAt != null,
+    settledAtMs: m.settledAt != null && Number.isFinite(Date.parse(m.settledAt))
+      ? Date.parse(m.settledAt) : null,
     myUpStake: mine?.up ?? 0,
     myDownStake: mine?.down ?? 0,
     myRefundedStake: mine?.refunded ?? 0,
@@ -670,10 +694,12 @@ type MyMarketStake = {
   up: number;
   down: number;
   refunded: number;
+  /** Same indexed user/market snapshot also builds the detail's itemised position. */
+  positions: StoredPosition[];
   /** The settled outcome for this viewer, or null while nothing has settled. See
    *  `BoardRound.myResult` for why this exists and why `payout` must be the realised figure. */
   result: { status: "WIN" | "LOSS" | "VOID"; side: "UP" | "DOWN"; stake: number; payout: number } | null;
-  results: Array<{ status: "WIN" | "LOSS" | "VOID"; side: "UP" | "DOWN"; stake: number; payout: number }>;
+  results: RoundResultRow[];
 };
 
 /** The viewer's OPEN stake per market, split UP(=YES)/DOWN(=NO). Empty when signed
@@ -689,7 +715,8 @@ async function myStakesByMarket(userId: string | undefined, marketIds: readonly 
   const positions = (await Promise.all([...new Set(marketIds)]
     .map((marketId) => positionStore.listForUserAndMarket(userId, marketId)))).flat();
   for (const p of positions) {
-    const e = out.get(p.marketId) ?? { up: 0, down: 0, refunded: 0, result: null, results: [] };
+    const e = out.get(p.marketId) ?? { up: 0, down: 0, refunded: 0, positions: [], result: null, results: [] };
+    e.positions.push(p);
     // ⭐ E-65 · A VOID position with its full stake returned was refunded, even
     // when the round itself decided one-sided. Equal money alone is not proof:
     // a winning position may return exactly stake, and a hedged player may break even.
@@ -700,20 +727,33 @@ async function myStakesByMarket(userId: string | undefined, marketIds: readonly 
       // ⛔ The status is read off the POSITION ROW, never inferred from the round's outcome:
       // a round can resolve DOWN and still hand an UP backer their stake back when nobody
       // took the other side (E-65), so "my side !== the outcome" is NOT a loss.
-      if (p.status === "WIN" || p.status === "LOSS" || p.status === "VOID") {
+      if (p.status === "WIN" || p.status === "LOSS" || p.status === "VOID" || p.status === "CASHED_OUT") {
         const side = p.side === "YES" ? "UP" : "DOWN";
+        const knownPayout = validRealizedPayout({ status: p.status, stake: p.stake, payout: p.finalPayout })
+          ? p.finalPayout : null;
         const prev = e.results.find((item) => item.side === side && item.status === p.status);
-        if (prev) { prev.stake += p.stake; prev.payout += p.finalPayout ?? 0; }
-        else e.results.push({ status: p.status, side, stake: p.stake, payout: p.finalPayout ?? 0 });
+        if (prev) {
+          prev.stake += p.stake;
+          prev.payout = prev.payout != null && knownPayout != null ? prev.payout + knownPayout : null;
+        } else e.results.push({ status: p.status, side, stake: p.stake, payout: knownPayout });
         // The legacy single-result field is defined only when it is genuinely one
         // result. A hedger or mixed-status holder is never represented by the last row.
-        e.result = e.results.length === 1 ? { ...e.results[0] } : null;
+        const only = e.results.length === 1 ? e.results[0] : null;
+        e.result = only && only.payout != null && only.status !== "CASHED_OUT" && only.status !== "OPEN"
+          ? { ...only, payout: only.payout, status: only.status } : null;
       }
       out.set(p.marketId, e);
       continue; // only live money counts as "you're in"
     }
     if (p.side === "YES") e.up += p.stake;
     else e.down += p.stake;
+    // An OPEN row in a market later stamped settled is an incomplete money state.
+    // Carry it to the aggregate reader so a paid WIN leg cannot be announced alone.
+    const openSide = p.side === "YES" ? "UP" : "DOWN";
+    const open = e.results.find((item) => item.side === openSide && item.status === "OPEN");
+    if (open) open.stake += p.stake;
+    else e.results.push({ status: "OPEN", side: openSide, stake: p.stake, payout: null });
+    e.result = null;
     out.set(p.marketId, e);
   }
   return out;
@@ -1021,12 +1061,15 @@ export async function getMyUpDownHistory(userId: string, limit = 200): Promise<M
   // Resolve each position's round + asset. Bounded by the page limit; distinct markets
   // are cached so multiple positions on one round cost one lookup.
   const roundCache = new Map<string, Awaited<ReturnType<typeof roundStore.getByMarketId>>>();
+  const marketCache = new Map<string, StoredMarket | null>();
   const assetCache = new Map<string, StoredAsset | null>();
   const chainCache = new Map<string, StoredChain | null>();
   const rows: MyRoundRow[] = [];
   for (const p of positions) {
     let round = roundCache.get(p.marketId);
     if (round === undefined) { round = await roundStore.getByMarketId(p.marketId); roundCache.set(p.marketId, round); }
+    let market = marketCache.get(p.marketId);
+    if (market === undefined) { market = await marketStore.get(p.marketId); marketCache.set(p.marketId, market); }
     let chain = round ? chainCache.get(round.chainId) : null;
     if (round && chain === undefined) { chain = await chainStore.get(round.chainId); chainCache.set(round.chainId, chain); }
     let asset = chain ? assetCache.get(chain.assetId) : null;
@@ -1044,7 +1087,7 @@ export async function getMyUpDownHistory(userId: string, limit = 200): Promise<M
       stake: p.stake,
       status: p.status,
       payout: p.finalPayout,
-      outcome: round?.outcome ?? null,
+      outcome: marketOutcomeForRound(market),
       openPrice: round?.openPrice ?? null,
       closePrice: round?.closePrice ?? null,
       decimals: asset?.decimals ?? 2,
@@ -1452,34 +1495,40 @@ export type MyRoundPosition = {
   placedAt: string;
 };
 
-async function myPositionFor(
-  userId: string | undefined, marketId: string,
-): Promise<{
+function myPositionFor(
+  positions: readonly StoredPosition[] | undefined,
+  marketSettled: boolean,
+): {
   side: "UP" | "DOWN"; stake: number; payout: number | null;
   result: "WIN" | "LOSS" | "VOID" | "CASHED_OUT" | "MIXED" | null; ids: string[];
   /** Every position this viewer holds on this round, newest first. Never truncated. */
   items: MyRoundPosition[];
   /** True when the viewer backed BOTH sides — the aggregate `side` cannot describe them. */
   hedged: boolean;
-} | null> {
-  if (!userId) return null;
-  // A failed read must reach the round page's retry boundary, not erase a holder's result.
-  const positions = (await listPositionsForMarket(marketId)).filter((p) => p.userId === userId);
-  if (positions.length === 0) return null;
-  let up = 0, down = 0, stake = 0, payout = 0, anyPayout = false, allSettled = true;
+  /** A terminal row lacks a valid recorded payout; no aggregate figure or WIN seal is safe. */
+  incompletePayout: boolean;
+} | null {
+  if (!positions?.length) return null;
+  let up = 0, down = 0, stake = 0, payout = 0, anyPayout = false, allSettled = true, incompletePayout = false;
   const settledStatuses = new Set<"WIN" | "LOSS" | "VOID" | "CASHED_OUT">();
   for (const p of positions) {
     stake += p.stake;
     if (p.side === "YES") up += p.stake; else down += p.stake;
-    if (p.finalPayout != null) { payout += p.finalPayout; anyPayout = true; }
+    const validPayout = p.status !== "OPEN" && validRealizedPayout({ status: p.status, stake: p.stake, payout: p.finalPayout });
+    if (validPayout) { payout += p.finalPayout!; anyPayout = true; }
     if (p.status === "OPEN") allSettled = false;
-    else settledStatuses.add(p.status);
+    else {
+      settledStatuses.add(p.status);
+      if (!validPayout) incompletePayout = true;
+    }
   }
+  if (marketSettled && !allSettled) incompletePayout = true;
+  if (!Number.isSafeInteger(stake) || !Number.isSafeInteger(payout)) incompletePayout = true;
   const side: "UP" | "DOWN" = up >= down ? "UP" : "DOWN";
   // One winning leg does not make the player's combined position a win. In
   // particular, a two-sided holder can receive less than their total stake.
   // Keep each settled row below, and give a mixed aggregate a neutral label.
-  const result: "WIN" | "LOSS" | "VOID" | "CASHED_OUT" | "MIXED" | null = !allSettled
+  const result: "WIN" | "LOSS" | "VOID" | "CASHED_OUT" | "MIXED" | null = !allSettled || incompletePayout
     ? null : settledStatuses.size === 1 ? [...settledStatuses][0] : "MIXED";
   // ⭐ Newest first, matching /updown/history's own ordering so a player reading both
   // surfaces sees their positions in one order. `listForMarket` orders by the store's
@@ -1489,7 +1538,8 @@ async function myPositionFor(
       id: p.id,
       side: (p.side === "YES" ? "UP" : "DOWN") as "UP" | "DOWN",
       stake: p.stake,
-      payout: p.finalPayout,
+      payout: p.status !== "OPEN" && validRealizedPayout({ status: p.status, stake: p.stake, payout: p.finalPayout })
+        ? p.finalPayout : null,
       status: p.status,
       placedAt: p.placedAt,
     }))
@@ -1499,10 +1549,10 @@ async function myPositionFor(
   // matches nothing, the browser silently stays at the top, and the deep link is
   // indistinguishable from the generic href it replaced — the subtler version of the same bug.
   return {
-    side, stake, payout: anyPayout ? payout : null, result,
+    side, stake, payout: anyPayout && !incompletePayout ? payout : null, result,
     ids: items.map((p) => p.id),
     items,
-    hedged: up > 0 && down > 0,
+    hedged: up > 0 && down > 0, incompletePayout,
   };
 }
 
@@ -1524,7 +1574,7 @@ export async function getRoundDetail(roundId: string, userId?: string): Promise<
   myPosition: {
     side: "UP" | "DOWN"; stake: number; payout: number | null;
     result: "WIN" | "LOSS" | "VOID" | "CASHED_OUT" | "MIXED" | null; ids: string[];
-    items: MyRoundPosition[]; hedged: boolean;
+    items: MyRoundPosition[]; hedged: boolean; incompletePayout: boolean;
   } | null;
   proof: {
     openPrice: number | null; closePrice: number | null;
@@ -1558,7 +1608,7 @@ export async function getRoundDetail(roundId: string, userId?: string): Promise<
   // perfectly with the fourth argument missing, so `expectedResultAtMs` would have been null
   // on `/updown/[roundId]` for ever while the board card worked — a feature that is present in
   // the code, passes tsc, and does nothing on half the surfaces it claims to cover.
-  const bareBoard = await toBoardRound(r, chain, a, mine, await measuredLagSeconds(a.key));
+  const bareBoard = await toBoardRound(r, chain, a, mine, await measuredLagSeconds(a.key), m);
   if (!bareBoard) return null;
   const board = await withRoundQuoteTimes(bareBoard, r);
   // ⭐ E-166 · THE DETAIL PAGE NEEDS THIS TOO, and it is the surface that would have shipped
@@ -1579,12 +1629,12 @@ export async function getRoundDetail(roundId: string, userId?: string): Promise<
   // reads so far and a resolved one the full window up to close.
   const decided = board.state === "resolved" || board.state === "void";
   const endMs = decided ? Date.parse(r.closesAt) : Date.now();
-  const [win, myPosition, walletBalance, detailBounds] = await Promise.all([
+  const [win, walletBalance, detailBounds] = await Promise.all([
     roundReadWindow(a.id, Date.parse(r.opensAt), endMs),
-    myPositionFor(userId, r.marketId),
     walletBalanceOf(userId),
     stakeBoundsFor(chain),
   ]);
+  const myPosition = myPositionFor(mine?.positions, board.settled);
 
   return {
     round: board,

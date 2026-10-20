@@ -15,6 +15,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
+import { roundAnnouncementFor } from "@/lib/updown-result-truth";
 import { I } from "@/components/ui/glyphs";
 import { getBoard } from "@/lib/server/updown-board";
 import { currentSession } from "@/lib/server/auth-service";
@@ -238,6 +239,7 @@ export default async function UpDownPage({
                 sourceLabel: t.market[SOURCE_CLASS_KEY[activeAsset.sourceClass]],
                 quotedWord: t.market.udQuoted,
                 confirmedPrice: t.market.udConfirmedPrice,
+                openingReference: t.market.udOpeningReference,
               }}
               priceToBeat={inPlay?.openPrice ?? null}
               pinnedReads={chartPricePins}
@@ -260,9 +262,13 @@ export default async function UpDownPage({
         {/* ⭐ THE RESULT MOMENT (Ali, 2026-08-05). Announces on the OBSERVED transition of a
             round this viewer holds from unsettled → settled, which the RefreshPoller above
             delivers by re-rendering this server tree without remounting client children.
-            ⛔ In-app only — no email, no push, no inbox row. Ali's 2026-07-24 suppression of
-            per-round Up & Down notifications STANDS; this renders data the page already has. */}
-        <UpDownResultAnnouncer rounds={rounds.map((r) => ({ roundId: r.roundId, settledAtMs: r.resolvedAtMs, myResult: r.myResult }))} />
+            The 2026-08-22 ruling also writes durable bell/push records at settlement;
+            this component owns only the on-screen moment and sends no duplicate. */}
+        <UpDownResultAnnouncer rounds={rounds.map((r) => ({
+          roundId: r.roundId,
+          settledAtMs: r.settledAtMs,
+          myResult: roundAnnouncementFor(r.myResults, r.settled),
+        }))} />
         {rounds.length === 0 ? (
           // ⭐ UD-22 · a chain between rounds is NOT an idle market. Rounds are
           // operator-generated (E-67), so the gap between them showed the same copy as
@@ -327,7 +333,9 @@ export default async function UpDownPage({
                 /* ⭐ E-166 · what this card says once its round is finished. The instants are
                    the SERVER's — the chain's own next boundary and the successor market's own
                    lock — so the card never invents "when does the next match start". */
-                resolvedAtMs={r.resolvedAtMs}
+                settled={r.settled}
+                settledAtMs={r.settledAtMs}
+                correctionKind={r.correctionKind}
                 successor={r.successor}
                 successorOnBoard={rounds.some((card) => card.roundId === r.successor?.roundId)}
                 nextMarketOpenAtMs={nextMarketOpenAtMs}
