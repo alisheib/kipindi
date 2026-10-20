@@ -9,7 +9,10 @@ const SUBJECTS: readonly [RegExp, DuoGlyphKey][] = [
   [/withdraw|cash.out|payout|paid out|paid by|returned to players|unlocked to cash/i, "cashOut"],
   [/deposit/i, "arrowDownToLine"],
   [/wallet|liability|held for unverified/i, "wallet"],
-  [/bonus|grant|jackpot|guarantee/i, "gift"],
+  // Bonuses are gifts; Maswali jackpot carry and the guarantee are money
+  // pools/reserves, so they share the neutral money subject instead.
+  [/bonus|grant/i, "gift"],
+  [/jackpot|guarantee/i, "coins"],
   [/tax|levies|TRA \+ GBT/i, "tax"],
   // The desk builds these labels in its server reader rather than JSX literals.
   [/^Stake today$|^Loss today$/i, "coins"],
