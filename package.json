@@ -1409,6 +1409,8 @@
     "test:webhook-secret": "tsx scripts/webhook-secret.test.mts",
     "test:wallet-empty-escape": "tsx scripts/wallet-empty-escape.test.mts",
     "test:rules-copy": "tsx scripts/rules-copy.test.mts",
+    "test:rules-pages-locale": "node scripts/rules-pages-locale.test.mjs",
+    "red:rules-pages-locale": "node scripts/rules-pages-locale.test.mjs --prove-red",
     "qa:rules-pages": "node scripts/live/rules-pages-drive.mjs",
     "qa:wallet-empty-escape": "node scripts/live/wallet-empty-escape-drive.mjs",
     "ops:e266-eth-zh-icon": "tsx scripts/live/ops/e266-eth-zh-icon.mts",

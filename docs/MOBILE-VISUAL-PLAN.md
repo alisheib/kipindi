@@ -547,11 +547,26 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   two-sided bet, distinguishes a confirmed open from a failed read, and makes the receipt payout conditional on a
   win; the shared five-second receipt timer remains the owner-approved rule. Focused guard/red restoration and a
   source-frozen seven-width state matrix are next. `test:u43-board` is 39/0, `test:u43-system` is 15/0,
-  `test:visual-pass-r5h` is 60/0, and `test:mobile-visual-plan` is 718/0 with 19/19 red plants; the dictionary pin
-  in `test:visual-pass-r10` still fails 1/90 while the dictionary is uncommitted. No after score is recorded.
+  `test:visual-pass-r5h` is 60/0, and `test:mobile-visual-plan` is 718/0 with 19/19 red plants. No after score is recorded.
   A second vendor review found no replacement cleared for this public minute-history API and real-money settlement:
   Gold-API.com's aggregate minute endpoints and public terms leave exact minute OPEN, raw-history redistribution and
   settlement rights unresolved. No existing round or feed has been changed. Release B remains local and not live.
+  The corrected source, guards and copy are committed on `codex/u43-release-b` at `85be2888a`; `main` is unchanged.
+  After that commit, Phosphor readers r9a and r10 pass 61/0 and 90/0, and typecheck passes. The board and system
+  physical mutation proofs caught 57/57 and 18/18 reversals; the feedback-law proof caught 29/29 and restored all
+  files byte for byte. The receipt-fit proof caught 5/5 in-memory reversals; the market-rail source proof caught 2/2
+  and its earlier 320px browser reversal remained valid. The house-bot disclosure guard first found three exact
+  commit-pin failures in the changed dictionary and Rules pages. Its working-tree pin now passes 122/0 and caught
+  the old references in a physical reversal; that pin will be committed after the final rebase so its source SHA
+  exists in a fresh checkout. A fresh state matrix and both independent 24-cell reviews are still owed.
+  An independent vendor search found [TraderMade Enterprise](https://tradermade.com/pricing) documents both
+  [BTC/USD and XAU/USD](https://tradermade.com/historical-currencies-list) and
+  [minute OHLC](https://marketdata.tradermade.com/docs/restful-api), but its
+  [standard terms](https://www.tradermade.com/terms-and-conditions) require prior permission for public display.
+  An agreement would need to name 50pick's public history API, audit retention, and real-money settlement before
+  a key and live minute-open validation could clear this source. A later feed cutover must retain each existing
+  round's captured source; unresolved rounds must drain or read through a provider pinned to that round.
+  No replacement source is authorized yet.
   ▶ **WORKING BRIEF:**
   `docs/design-brief/u43-2026-10/BRIEF.md` — where it stands, Ali's rulings, the fixed points, the data facts, five work
   packages (the round card; the live line and the chart made to agree; the board and the two chip rows; the market card;
