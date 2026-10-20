@@ -43,6 +43,11 @@ check("3.2 local state fixture arms and settles one predecessor",
 check("3.3 local state fixture verifies exact adjacent handover",
   seed.includes("testHandover.opened.opensAt !== testHandover.closed.closesAt")
   && seed.includes("testHandover?.opened?.id"));
+check("3.4 locked-card spacing measures a plotted line, an unavailable line or the footer when the feed has no visible line",
+  driver.includes('const nextVisible = selected.querySelector(\':scope > [data-testid="round-live-line"], :scope > [data-testid="round-live-line-unavailable"], :scope > .ud-foot\');')
+  && driver.includes("actionToNextVisible: action && nextVisible")
+  && driver.includes("cardGeometry?.actionToNextVisible")
+  && !driver.includes('const line = selected.querySelector(\':scope > [data-testid="round-live-line"]\');'));
 
 console.log(`U43 board window: ${failed ? `${failed} failed` : "all checks passed"}`);
 process.exit(failed ? 1 : 0);

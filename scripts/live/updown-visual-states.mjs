@@ -307,12 +307,14 @@ async function photograph(phase, path = BOARD, filter = () => true) {
           cardGeometry: (() => {
             if (!selected) return null;
             const action = selected.querySelector(":scope > .ud-act");
-            const line = selected.querySelector(':scope > [data-testid="round-live-line"]');
+            // The local mock feed may truthfully render the unavailable sentence
+            // or no visible line. Measure the next visible row in all three cases.
+            const nextVisible = selected.querySelector(':scope > [data-testid="round-live-line"], :scope > [data-testid="round-live-line-unavailable"], :scope > .ud-foot');
             return {
               height: selected.getBoundingClientRect().height,
               layout: selected.getAttribute("data-ud-layout"),
-              actionToLine: action && line
-                ? line.getBoundingClientRect().top - action.getBoundingClientRect().bottom : null,
+              actionToNextVisible: action && nextVisible
+                ? nextVisible.getBoundingClientRect().top - action.getBoundingClientRect().bottom : null,
             };
           })(),
           heldAction: (() => {
@@ -399,9 +401,9 @@ async function photograph(phase, path = BOARD, filter = () => true) {
         }
       }
       if (phase === "p7-locked" && p.width === 320 && path === BOARD) {
-        const gap = (await sampleFrame()).cardGeometry?.actionToLine;
-        if (!Number.isFinite(gap)) throw new Error("320px locked card/action-to-line gap could not be measured");
-        if (gap > 24) throw new Error(`320px locked card leaves ${gap.toFixed(1)}px of blank space before its price line`);
+        const gap = (await sampleFrame()).cardGeometry?.actionToNextVisible;
+        if (!Number.isFinite(gap)) throw new Error("320px locked card/action-to-next-row gap could not be measured");
+        if (gap > 24) throw new Error(`320px locked card leaves ${gap.toFixed(1)}px of blank space before its next visible row`);
       }
       const file = `${phase}__${p.id}.png`;
       const accepted = await verifiedScreenshot({

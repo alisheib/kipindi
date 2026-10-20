@@ -24,4 +24,10 @@ export const MUTATIONS = [
     to: "if (!testHandover?.opened?.id) {",
     expect: "3.3 local state fixture verifies exact adjacent handover",
   },
+  {
+    file: "scripts/live/updown-visual-states.mjs",
+    from: ':scope > [data-testid="round-live-line"], :scope > [data-testid="round-live-line-unavailable"], :scope > .ud-foot',
+    to: ':scope > [data-testid="round-live-line"]',
+    expect: "3.4 locked-card spacing measures a plotted line, an unavailable line or the footer when the feed has no visible line",
+  },
 ].map((mutation, index) => ({ name: `U43-window-${index + 1}`, suite: "u43-board-window", ...mutation }));

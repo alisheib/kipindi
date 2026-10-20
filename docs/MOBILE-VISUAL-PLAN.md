@@ -510,6 +510,13 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   neutral/slate HOT rule Ali recorded in DESIGN_AUTHORITY §B2a; the current card already follows that rule.
   The design-frozen ceiling for U43's edited last-resort error page was lowered from 23 to 22; adding one
   raw inline colour to a copy failed at 23/22, and the restored guard passed.
+  The post-commit local `qa:u43-capture` wrote **72 page cells across seven widths and three languages**, with
+  no capture problems in its index. The local state driver wrote **14 phases and 125 shot records**, but one
+  320px locked-player cell failed before its screenshot: its spacing assertion looked only for a plotted vendor
+  line, while the local feed can truthfully show an unavailable line or no visible line. The assertion now
+  measures the next visible row (plot, unavailable sentence or footer); its focused guard passed and its
+  targeted red fleet caught **5/5** reversals. The state driver still needs a fresh browser run; its failed
+  cell is not counted as a pass. Production capture and the two full eight-lens reviews are also owed.
   ▶ **WORKING BRIEF:**
   `docs/design-brief/u43-2026-10/BRIEF.md` — where it stands, Ali's rulings, the fixed points, the data facts, five work
   packages (the round card; the live line and the chart made to agree; the board and the two chip rows; the market card;
