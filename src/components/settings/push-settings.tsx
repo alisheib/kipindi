@@ -28,6 +28,9 @@ export function PushSettings() {
   const { t } = useT();
   const { toast } = useToast();
   const [state, setState] = useState<State>("loading");
+  // The on-state Fill arrives only after this mount's server-confirmed opt-in.
+  // An existing subscription read on load is already at rest.
+  const [settledOn, setSettledOn] = useState(false);
   // The player closed the browser's permission prompt without answering: OFF, with a one-line next step.
   const [dismissed, setDismissed] = useState(false);
   const [pending, start] = useTransition();
@@ -58,7 +61,7 @@ export function PushSettings() {
           // A missing VAPID key is caught on mount, so here there are three causes and three answers.
           const permission = Notification.permission;
           if (permission === "denied") { setState("blocked"); return; }
-          if (permission === "default") { setDismissed(true); setState("off"); return; }
+          if (permission === "default") { setState("unconfigured"); return; }
           // Granted, but the subscription itself failed: the refusal toast, and the switch stays off.
           toast({ title: t.push.errOnTitle, description: t.push.errOnBody, variant: "factual" });
           setState("off");
@@ -72,6 +75,7 @@ export function PushSettings() {
         // The body is what "Couldn't update push notifications." never said.
         if (!r.ok) { toast({ title: t.push.errOnTitle, description: t.push.errOnBody, variant: "factual" }); setState("off"); return; }
         setState("on");
+        setSettledOn(true);
         toast({ title: t.push.enabledToast, variant: "success" });
       } catch {
         toast({ title: t.push.errOnTitle, description: t.push.errOnBody, variant: "factual" });
@@ -81,6 +85,7 @@ export function PushSettings() {
   }
 
   function disable() {
+    setSettledOn(false);
     start(async () => {
       try {
         const reg = await navigator.serviceWorker.getRegistration();
@@ -130,7 +135,7 @@ export function PushSettings() {
               glyph-tile size, set by the atom as a number (the spacing scale is overridden, so `h-10 w-10` would be 80px).
               The brand tint and the 8px corner typed here are the variant's now; the switch says the state. */}
           <IconPlate size={40} variant="identity" aria-hidden>
-            <I.bellRing s={plateGlyph(40)} tier="duo" />
+            <I.bellRing s={plateGlyph(40)} tier={state === "on" ? "fill" : "duo"} className={state === "on" && settledOn ? "g-settle" : undefined} />
           </IconPlate>
           <div className="min-w-0">
             {/* text-balance, like the SMS card below it: a two-line title never leaves one word alone at 360. */}

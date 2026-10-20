@@ -1128,6 +1128,8 @@
     "test:glyph-motion": "tsx scripts/glyph-motion.test.mts",
     "test:phosphor-w8-opt-in-motion": "tsx scripts/phosphor-w8-opt-in-motion.test.mts",
     "red:phosphor-w8-opt-in-motion": "tsx scripts/phosphor-w8-opt-in-motion.test.mts --prove-red",
+    "test:phosphor-w8-push-motion": "tsx scripts/phosphor-w8-push-motion.test.mts",
+    "red:phosphor-w8-push-motion": "tsx scripts/phosphor-w8-push-motion.test.mts --prove-red",
     "test:phosphor-w8-receipt-motion": "tsx scripts/phosphor-w8-receipt-motion.test.mts",
     "red:phosphor-w8-receipt-motion": "tsx scripts/phosphor-w8-receipt-motion.test.mts --prove-red",
     "qa:button-contrast": "node scripts/live-button-contrast.mjs",

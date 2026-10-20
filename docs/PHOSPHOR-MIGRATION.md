@@ -923,6 +923,10 @@ plants the source, trigger and timing reversals in memory.
 The same wallet result eyebrow gives the confirmed deposit arrow one downward nudge, and a requested withdrawal
 (`PENDING`, `PROCESSING` or immediately `CONFIRMED`) one upward nudge; review, held, failed and the ordinary wallet page stay still.
 
+The browser push settings plate keeps `bellRing` in Duotone while off and uses its generated Phosphor Fill when on.
+Its Fill settles only after the server saves a new subscription in this mount; an existing subscription read on load,
+a refused request, and a disabled subscription remain still.
+
 ### W9 — Close
 An adversarial audit (refute by mutation), `test:all` with the database suites, full tiles (360 / 768 / 1280 / 1920 + 320
 × sw / en / zh, both shells, admin) read one by one, the production read-back. DESIGN_AUTHORITY final; §1 all ✅; the

@@ -318,6 +318,7 @@ export const FILL_KEYS: readonly string[] = [
   "info", "warning", "alertCircle", "checkCircle", "xCircle", "void", "clock", "clockPending", "lock", "shieldcheck", "bellOff", "eye",
   "rotateCcw", "mail", "camera", "flame2", "edit",
   "bell", // a toggle on: "notify me" on a market, and the header bell while its panel is open (CHROME_FILLS)
+  "bellRing", // W8: the saved browser-push subscription's identity glyph changes from Duo to Fill
   "chevronUp", "chevronDown", // the 24h move on every market card: the solid caret is the direction, where ▲▼ were typed
   "wallet", "arrowDownToLine", // W7 installed-app Wallet and Deposit shortcuts rasterise these Fill drawings
 ];
@@ -365,7 +366,7 @@ export const DUO_KEYS: readonly string[] = [
  * File names inside `public/icons/g/`.
  */
 export const PREVIOUS_SPRITES: readonly string[] = [
-  "app.778e8e94.svg", "admin.5c185f72.svg",
+  "app.c21618eb.svg", "admin.5c185f72.svg",
 ];
 
 /** Keys that share one Phosphor drawing because they mean the same thing; the swap collapses each pair. */
