@@ -4,7 +4,7 @@
  * scripts/glyphs/extras.ts. PHOSPHOR-MIGRATION: what every glyph of the family `I` draws, and where its drawings live.
  */
 export const GLYPH_SOURCE = { package: "@phosphor-icons/core", version: "2.1.1" } as const;
-export const GLYPH_SPRITES = { app: "/icons/g/app.a50a277b.svg", admin: "/icons/g/admin.5c185f72.svg" } as const;
+export const GLYPH_SPRITES = { app: "/icons/g/app.164b54fb.svg", admin: "/icons/g/admin.5c185f72.svg" } as const;
 export type GlyphVariant = "regular" | "bold" | "fill" | "duo";
 export type GlyphInk = readonly [x0: number, x1: number];
 /**
@@ -23,7 +23,7 @@ export const GLYPH_REGISTRY = {
   "approvals": { s: "p-check-square-offset", g: "admin", i: { bold: [27.97, 228], fill: [32, 224], duo: [32, 224] } },
   "archive": { s: "p-archive", g: "admin", i: { bold: [12, 244], fill: [16, 240], duo: [16, 240] } },
   "arrowDown": { s: "p-arrow-down", g: "app", i: { bold: [43.97, 212.03] }, m: { d: "M128 40V216M56 144L128 216L200 144", x: [56, 200] } },
-  "arrowDownToLine": { s: "p-arrow-line-down", g: "shell", i: { bold: [28, 228], duo: [32, 224] }, m: { d: "M128 32V184M56 112L128 184L200 112M40 216H216", x: [40, 216] } },
+  "arrowDownToLine": { s: "p-arrow-line-down", g: "shell", fa: 1, i: { bold: [28, 228], fill: [32, 224], duo: [32, 224] }, m: { d: "M128 32V184M56 112L128 184L200 112M40 216H216", x: [40, 216] } },
   "arrowLeft": { s: "p-arrow-left", g: "app", i: { bold: [27.99, 228] }, m: { d: "M216 128H40M112 56L40 128L112 200", x: [40, 216] } },
   "arrowRight": { s: "p-arrow-right", g: "app", i: { bold: [28, 228.03] }, m: { d: "M40 128H216M144 56L216 128L144 200", x: [40, 216] } },
   "arrowUp": { s: "p-arrow-up", g: "app", i: { bold: [43.97, 212.02] }, m: { d: "M128 216V40M56 112L128 40L200 112", x: [56, 200] } },
@@ -34,7 +34,7 @@ export const GLYPH_REGISTRY = {
   "bank": { s: "p-bank", g: "app", i: { bold: [4, 252] } },
   "bell": { s: "p-bell", g: "shell", i: { bold: [28.01, 227.99], fill: [32.01, 223.98], duo: [32.01, 223.98] } },
   "bellOff": { s: "p-bell-slash", g: "app", i: { bold: [28.02, 219.9], fill: [32, 224.01] } },
-  "bellRing": { s: "p-bell-ringing", g: "app", i: { regular: [27.71, 228.32], bold: [23.72, 232.31], duo: [27.71, 228.32] } },
+  "bellRing": { s: "p-bell-ringing", g: "app", i: { regular: [27.71, 228.32], bold: [23.72, 232.31], fill: [27.71, 228.32], duo: [27.71, 228.32] } },
   "bolt": { s: "p-lightning", g: "app", i: { bold: [36, 220] } },
   "bot": { s: "p-robot", g: "app", i: { bold: [20, 236], fill: [24, 232], duo: [24, 232] } },
   "brain": { s: "p-brain", g: "admin", i: { bold: [3.99, 252], fill: [12.01, 244], duo: [7.99, 248] } },
@@ -181,6 +181,7 @@ export const GLYPH_REGISTRY = {
   "staffConsole": { s: "p-identification-badge", g: "app", i: { bold: [36, 220], duo: [40, 216] } },
   "standIn": { s: "p-arrow-bend-down-right", g: "app", i: { bold: [20, 236.01] } },
   "star": { s: "p-star", g: "app", i: { regular: [16.01, 239.99], bold: [11.99, 244.03], fill: [16.06, 239.93], duo: [16.01, 239.99] } },
+  "sunHorizon": { s: "p-sun-horizon", g: "app", i: { bold: [4, 252], duo: [8, 248] } },
   "target": { s: "p-target", g: "app", i: { bold: [19.87, 236.05] } },
   "tax": { s: "p-invoice", g: "admin", i: { bold: [12.04, 236], fill: [16, 232], duo: [16, 232] } },
   "tech": { s: "p-cpu", g: "app", i: { regular: [16, 240], bold: [12, 244], duo: [16, 240] } },
@@ -197,7 +198,7 @@ export const GLYPH_REGISTRY = {
   "ussd": { s: "x-ussd", g: "app", i: { bold: [52, 204] } },
   "vibrate": { s: "p-vibrate", g: "app", i: { bold: [24, 232], duo: [8, 248] } },
   "void": { s: "p-prohibit", g: "app", i: { bold: [20, 236], fill: [20, 236], duo: [24, 232] } },
-  "wallet": { s: "p-wallet", g: "app", i: { bold: [27.99, 236], duo: [32, 232] }, m: { d: "M192 40H56a16 16 0 0 0-16 16V184a16 16 0 0 0 16 16H216a8 8 0 0 0 8-8V80a8 8 0 0 0-8-8H56a16 16 0 0 1-16-16", x: [40, 224], f: "M168 132a12 12 0 1 0 24 0a12 12 0 1 0 -24 0Z", fx: [168, 192] } },
+  "wallet": { s: "p-wallet", g: "app", i: { bold: [27.99, 236], fill: [32, 232], duo: [32, 232] }, m: { d: "M192 40H56a16 16 0 0 0-16 16V184a16 16 0 0 0 16 16H216a8 8 0 0 0 8-8V80a8 8 0 0 0-8-8H56a16 16 0 0 1-16-16", x: [40, 224], f: "M168 132a12 12 0 1 0 24 0a12 12 0 1 0 -24 0Z", fx: [168, 192] } },
   "warning": { s: "p-warning", g: "app", i: { regular: [15.99, 240], bold: [11.99, 244], fill: [15.99, 240] } },
   "weather": { s: "p-cloud-sun", g: "app", i: { regular: [17.09, 240], bold: [13.07, 244], duo: [17.09, 240] } },
   "weeks": { s: "p-list-numbers", g: "admin", i: { bold: [28, 228], fill: [32, 224], duo: [31.81, 224] } },
