@@ -29,6 +29,7 @@ function fiftyFirstOptInPersists(bell: string): boolean {
 }
 
 function blockedConfirmationKeepsWatch(bell: string): boolean {
+  if (!/if \(!writeWatchlist\(next\)\) return;\s*setWatching\(true\);\s*setSettledOn\(true\);\s*try \{\s*new Notification/.test(bell)) return false;
   const source = bell.match(/try \{\s*new Notification\(t\.market\.watchingTitle,[\s\S]*?\);\s*\} catch \{\s*\}/)?.[0];
   if (!source) return false;
   const Notification = class { constructor() { throw new Error("browser blocked confirmation"); } };
