@@ -31,6 +31,16 @@ const hasHardWeekReviews = (source) => {
     && move.includes('New close: ${THU} 17:00 (EAT)')
     && move.includes('lateReview.gated && !lateReview.closed') && move.includes('await lateReview.cancel();')
     && move.includes('earlyReview.gated && !!moved')
+    && seal.includes('await single.click();') && seal.includes('await go(page, closedPath);')
+    && seal.includes('Seal 1 result?') && seal.includes('awaitingSecond')
+    && seal.includes('role: "MODERATOR", phone: "+255700000074"')
+    && seal.includes('Confirm ${code} M1 as second officer?')
+    && seal.includes('word: "CONFIRM", confirm: "Confirm this seal"')
+    && seal.includes('secondSeal.gated && !!confirmed')
+    && seal.includes('Allow single-admin resolution?')
+    && seal.includes('Seal 14 results?')
+    && seal.includes('plan.slice(1)')
+    && seal.includes('getByRole("textbox", { name: `${first.label} seal evidence`, exact: true })')
     && seal.includes('getByRole("textbox", { name: `${s.label} seal evidence`, exact: true })');
 };
 
@@ -69,5 +79,11 @@ if (process.argv.includes("--prove-red")) {
   const noEvidenceLabel = driveSource.replace('getByRole("textbox", { name: `${s.label} seal evidence`, exact: true })', 'getByPlaceholder("What the source says", { exact: true })');
   assert.notEqual(noEvidenceLabel, driveSource, "evidence-label mutation must plant");
   assert.equal(hasHardWeekReviews(noEvidenceLabel), false, "losing the accessible evidence selector must turn the drive guard red");
-  console.log("maswali admin checklist RED: omitted guarantee, stale requirement, lost dialog gates and evidence label are caught");
+  const noSecondGate = driveSource.replace('word: "CONFIRM", confirm: "Confirm this seal"', 'word: "", confirm: "Confirm this seal"');
+  assert.notEqual(noSecondGate, driveSource, "second-officer gate mutation must plant");
+  assert.equal(hasHardWeekReviews(noSecondGate), false, "losing the second-officer typed gate must turn the drive guard red");
+  const noPolicyRestore = driveSource.replace('"Allow single-admin resolution?"', '"No policy restore?"');
+  assert.notEqual(noPolicyRestore, driveSource, "policy-restore mutation must plant");
+  assert.equal(hasHardWeekReviews(noPolicyRestore), false, "omitting the local policy restore must turn the drive guard red");
+  console.log("maswali admin checklist RED: omitted guarantee, stale requirement, lost dialog gates, second-officer policy restore and evidence label are caught");
 }

@@ -14,8 +14,9 @@
  *   2 · (inside 4) when the open refuses for want of a licence basis or of guarantee, the Owner records the basis
  *       (typed RECORD) or pays in exactly what the refusal says is short (typed FUND GUARANTEE), then opens again;
  *   5 · a close after the first event is refused in the service's words; an earlier close is accepted (MB-28);
- *   6 · on the seeded weeks (`/api/dev-test/seed-maswali`; a 409 means the shots already seeded this store): seals the
- *       closed week's fifteen results (typed SEAL); reads the ready week's prepared settlement, then releases it (typed
+ *   6 · on the seeded weeks (`/api/dev-test/seed-maswali`; a 409 means the shots already seeded this store): enables the
+ *       two-officer rule only after seeding, seals M1, has a different MODERATOR confirm its exact review, returns the
+ *       local rule to single-admin, then seals the other fourteen; reads the ready week's prepared settlement and releases it (typed
  *       RELEASE); pauses and resumes sales (PAUSE / RESUME); voids the week that voids whole (VOID); holds, releases,
  *       holds again and forfeits a winning share (HOLD, RELEASE, FORFEIT SHARE).
  * After each act: what the page SAYS (the outcome sentence and the state chip), no console error since the act before,
@@ -571,18 +572,85 @@ await part("6.1 · seal", async () => {
   await link.click(); // the list's own link: a client navigation
   await until(async () => clip(await page.getByRole("heading", { level: 1 }).first().textContent()) === code, 120_000);
   ok(`6.1 the list's link opens ${code}: its chip Closed, the seal console ready`, (await chipOf(page)) === "Closed" && (await card(page, "Seal the results").count()) > 0, await chipOf(page));
+  const closedPath = new URL(page.url()).pathname;
+  await go(page, "/admin/resolver-queue");
+  const single = page.getByRole("switch", { name: "Two-admin authorization: off", exact: true });
+  ok("6.1a the local resolution policy starts with single-admin authorization", (await single.count()) === 1 && (await single.getAttribute("aria-checked")) === "false");
+  await single.click();
+  const twoOn = await until(async () => (await page.getByRole("switch", { name: "Two-admin authorization: on", exact: true }).getAttribute("aria-checked")) === "true", 30_000);
+  ok("6.1b the Owner enables the local two-officer ceremony after the seed finishes", !!twoOn);
+  await go(page, closedPath);
   const sc = card(page, "Seal the results");
   const plan = ROWS.map((r, i) => ({ label: r.label, outcome: i < 10 && i % 2 === 1 ? "NO" : "YES" }));
-  for (const s of plan) {
-    const combo = sc.getByRole("combobox", { name: `${s.label} result`, exact: true });
+  const first = plan[0];
+  const firstRow = sc.getByRole("row").filter({ has: page.getByRole("combobox", { name: `${first.label} result`, exact: true }) });
+  await firstRow.getByRole("textbox", { name: `${first.label} seal evidence`, exact: true }).fill(`The source's official result for ${first.label}: ${first.outcome}.`);
+  await choose(page, firstRow.getByRole("combobox", { name: `${first.label} result`, exact: true }), first.outcome);
+  await sc.getByRole("button", { name: "Seal 1 result", exact: true }).click();
+  const firstSeal = await confirmDialog(page, "Seal 1 result?", { word: "SEAL", confirm: "Seal", alert: sc.getByRole("alert") });
+  const awaitingSecond = firstSeal.closed && await until(async () => {
+    const row = region(page, "Millionea results to seal").getByRole("row").filter({ has: page.getByRole("cell", { name: "M1", exact: true }) });
+    return clip(await row.textContent()).includes("awaits a second officer");
+  }, 60_000);
+  ok("6.1c M1 was sealed under the two-officer rule and now awaits a second officer", firstSeal.gated && !!awaitingSecond, firstSeal.refusal);
+  await checkpoint(page, "6.1c", "11a-awaits-second");
+
+  const confirmerCtx = await browser.newContext({ viewport: { width: 360, height: 900 } });
+  try {
+    await confirmerCtx.addCookies([{ name: "kp-locale", value: "en", url: BASE }]);
+    const confirmer = await confirmerCtx.newPage();
+    watch(confirmer, "confirmer");
+    const seeded = await confirmerCtx.request.post(`${BASE}/api/dev-test/seed-admin`, {
+      data: { role: "MODERATOR", phone: "+255700000074", name: "Mo Second Seal Officer" },
+    });
+    ok("6.1d a distinct MODERATOR signs in to confirm the seal", seeded.ok(), String(seeded.status()));
+    await go(confirmer, closedPath);
+    const sealRow = region(confirmer, "Millionea results to seal").getByRole("row").filter({ has: confirmer.getByRole("cell", { name: "M1", exact: true }) });
+    await sealRow.getByRole("button", { name: "Confirm as second officer", exact: true }).click();
+    const title = `Confirm ${code} M1 as second officer?`;
+    const dialog = confirmer.getByRole("alertdialog", { name: title, exact: true });
+    await dialog.waitFor();
+    const reviewText = clip(await dialog.textContent());
+    ok("6.1e the second officer sees the exact week, slot, question and sealed result",
+      reviewText.includes(`Week: ${code}`) && reviewText.includes("Slot: M1") && reviewText.includes("Sealed result: YES")
+        && reviewText.includes("Will event 1 happen this weekend?"), reviewText);
+    for (const width of [360, 1280]) {
+      await confirmer.setViewportSize({ width, height: 900 });
+      await confirmer.waitForTimeout(400);
+      const fit = await confirmer.evaluate(() => {
+        const dlg = document.querySelector('[role="alertdialog"]')?.getBoundingClientRect();
+        return { lang: document.documentElement.lang, overflow: document.documentElement.scrollWidth - innerWidth,
+          left: dlg?.left ?? -1, right: dlg?.right ?? innerWidth + 1 };
+      });
+      ok(`6.1f the second-officer review fits at ${width}px and html lang is English`,
+        fit.lang === "en" && fit.overflow <= 1 && fit.left >= -1 && fit.right <= width + 1, JSON.stringify(fit));
+      await shot(confirmer, `11b-second-officer-${width}`);
+    }
+    const secondSeal = await confirmDialog(confirmer, title, { word: "CONFIRM", confirm: "Confirm this seal", alert: (dlg) => dlg.getByRole("alert") });
+    const confirmed = secondSeal.closed && await until(async () => !clip(await sealRow.textContent()).includes("awaits a second officer"), 60_000);
+    ok("6.1g the distinct officer confirms M1 after its hard typed-word review", secondSeal.gated && !!confirmed, secondSeal.refusal);
+    await checkpoint(confirmer, "6.1g", "11c-second-confirmed");
+  } finally {
+    await confirmerCtx.close();
+  }
+
+  await go(page, "/admin/resolver-queue");
+  await page.getByRole("switch", { name: "Two-admin authorization: on", exact: true }).click();
+  const relaxed = await confirmDialog(page, "Allow single-admin resolution?", { confirm: "Yes, single admin can resolve" });
+  const twoOff = relaxed.closed && await until(async () => (await page.getByRole("switch", { name: "Two-admin authorization: off", exact: true }).getAttribute("aria-checked")) === "false", 30_000);
+  ok("6.1h the Owner returns the local policy to its initial single-admin state", !!twoOff, relaxed.refusal);
+  await go(page, closedPath);
+  const remaining = card(page, "Seal the results");
+  for (const s of plan.slice(1)) {
+    const combo = remaining.getByRole("combobox", { name: `${s.label} result`, exact: true });
     // ⚠️ A `has` locator is re-run inside each candidate row, so it is rooted at the page, never at the card.
-    const row = sc.getByRole("row").filter({ has: page.getByRole("combobox", { name: `${s.label} result`, exact: true }) });
+    const row = remaining.getByRole("row").filter({ has: page.getByRole("combobox", { name: `${s.label} result`, exact: true }) });
     await row.getByRole("textbox", { name: `${s.label} seal evidence`, exact: true }).fill(`The source's official result for ${s.label}: ${s.outcome}.`);
     await choose(page, combo, s.outcome);
   }
   await shot(page, "11-seal-console-filled");
-  await sc.getByRole("button", { name: "Seal 15 results", exact: true }).click();
-  const r = await confirmDialog(page, "Seal 15 results?", { word: "SEAL", confirm: "Seal", alert: sc.getByRole("alert") });
+  await remaining.getByRole("button", { name: "Seal 14 results", exact: true }).click();
+  const r = await confirmDialog(page, "Seal 14 results?", { word: "SEAL", confirm: "Seal", alert: remaining.getByRole("alert") });
   const results = region(page, "Millionea results to seal");
   const sealedAll = r.closed && await until(async () => {
     for (const s of plan) {
@@ -591,9 +659,9 @@ await part("6.1 · seal", async () => {
     }
     return true;
   }, 60_000);
-  ok("6.1b fifteen results sealed in one act (the confirm armed only on SEAL): each row shows the result it was given", r.gated && !!sealedAll, r.refusal);
+  ok("6.1i all fifteen results are sealed, including M1's second-officer confirmation", r.gated && !!sealedAll, r.refusal);
   const chip = await until(async () => ((await chipOf(page)) === "Sealing" ? "Sealing" : null), 30_000);
-  ok("6.1c the week is being sealed: its chip reads Sealing and its objection window is open", chip === "Sealing" && (await page.getByText(/^Objection window to /).count()) > 0, await chipOf(page));
+  ok("6.1j the week is being sealed: its chip reads Sealing and its objection window is open", chip === "Sealing" && (await page.getByText(/^Objection window to /).count()) > 0, await chipOf(page));
   await checkpoint(page, "6.1", "12-sealed");
 });
 
