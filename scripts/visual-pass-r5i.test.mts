@@ -360,7 +360,10 @@ section("2 · I-1 · an app state wears the app-state family — the crests, the
   const PROF = read("src/app/profile/page.tsx");
   ok("2.8 · /profile's hero is the PageHero recipe (one `info` radial over `--hero-panel-grad`), not an emerald → rose tilt",
     /"radial-gradient\(800px 320px at 100% 0%, oklch\(45% 0\.10 240 \/ 0\.18\), transparent 60%\), " \+\s*"var\(--hero-panel-grad\)"/.test(PROF) && !/oklch\([\d.]+% [\d.]+ (?:152|22) /.test(PROF));
-  ok("2.8′ · the open count's glyph is its neighbours' — the Stat's own icon ink", /icon=\{<I\.sparkle s=\{14\} \/>\}/.test(PROF));
+  ok("2.8′ · the open count's glyph is its neighbours' — the Stat's shared identity plate", /icon=\{<StatIcon glyph="sparkle" \/>\}/.test(PROF)
+    && /icon=\{<StatIcon glyph="wallet" \/>\}/.test(PROF)
+    && /icon=\{<StatIcon glyph="resolved" \/>\}/.test(PROF)
+    && /<IconPlate size=\{26\} variant="identity"/.test(read("src/components/ui/stat.tsx")));
 
   // 2.9 · the activity page: one label ink for every tile; Stat has no betting label tint left.
   const ACT = read("src/app/profile/activity/page.tsx");
