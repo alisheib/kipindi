@@ -548,8 +548,8 @@ The route:
 - **Merge and read-back.** Merge `origin/main` into `maswali-build`, push `main`, then read back production per AGENTS.md §4.
   `?dpl=` must match on all three hosts, health must pass, `qa:chunks-prod` and production `qa:live` must pass, the changed pages are looked
   at in a real browser, and every Millionea route must 404 while WITHDRAWN.
-- **Exception.** A docs-only push skips the build checks. Only the doc guards and the read-back run, under Ali's
-  efficiency ruling of 2026-10-10.
+- **Docs-only pushes.** Run the changed document guards and mutation proofs, plus AGENTS.md §4's typecheck,
+  exact-commit build, local `qa:live` and production read-back. Every `main` push deploys the real-money app.
 
 **Decisions taken under Ali's delegation (2026-10-17).** They are recorded here and in the v6 manifest's L-rows.
 1. **The won chip.** O-6's success chip is a Millionea-only `STATUS_TONE_EXCEPTIONS` row. Yes/No and Up & Down won
@@ -1408,33 +1408,17 @@ R-LAUNCH means "launch once built and the drive passes". Real money enters at th
 
 ### §7a · Branch and worktree strategy
 
-**Worktree.** S0 created `C:\50pick-ssd\kipindi-maswali` (OMEGA-COMPILE01) on branch `maswali-plan`. Once S0 is merged,
-the build reuses that worktree on a fresh branch:
-
-```
-git -C C:\50pick-ssd\kipindi-maswali fetch origin
-git -C C:\50pick-ssd\kipindi-maswali switch -c maswali-build origin/main
-cd C:\50pick-ssd\kipindi-maswali ; npm ci ; npx prisma generate
-```
-
-On another machine, create an equivalent SSD worktree off `origin/main` — a path is a fact about a machine (AGENTS.md
-§10), never copy one from here. **Ali-Blade15 (since 2026-10-17):**
-- **Worktree.** `git -C C:\kipindi-main worktree add -b maswali-build C:\kipindi-maswali origin/main`, then a real
-  `npm ci` and `prisma generate` under `~/heavy-node-lock.sh`.
-- **Never a `node_modules` junction.** Turbopack refuses one, and `npm ci` through one empties the other tree.
-- **The lock.** Heavy jobs take that laptop's lock (one at a time: its RAM fails under parallel load). The throwaway
-  PostgreSQL is `scripts/db-scratch.mts` (embedded, port 5433, override `KP_SCRATCH_PORT`).
-
-- `TEMP=C:\50pick-ssd\tmp`.
-- Copy the three MSVC DLLs into embedded-postgres `native/bin`.
-- Give the lane its own ports. Check that they are free; the suggestion is `next dev` on 3410 and the throwaway PostgreSQL on 55440.
-- Run one `next dev` in this worktree only.
-- `F:` is never used for builds, tests or servers.
+**Worktree.** Each active build session uses its own SSD worktree and branch, following AGENTS.md §§4 and 10. Check the
+actual host, path and branch in the shell before work; continue an existing on-board branch only after fetching current
+`main`. Install dependencies in that worktree after a dependency or schema change. On OMEGA-COMPILE01, keep builds, tests,
+servers and temporary files on the SSD; copy the three MSVC DLLs into embedded-postgres `native/bin` when needed. Check
+ports before use, and run only one `next dev` per worktree. Never delete a `node_modules` junction as if it were a folder.
 
 **Session start, every time:**
 
 1. `hostname && pwd && git rev-parse --show-toplevel && git branch --show-current && git status --short`.
-2. `git fetch origin`, then `git merge origin/main` into `maswali-build`. Rebase only if nothing has been pushed since the last merge.
+2. Fetch using the access AGENTS.md §9 permits, then bring current `origin/main` into this session's branch. Rebase only
+   if nothing has been pushed since its last merge.
 3. Read NEXT-PLAN ▶ 0i, then §0.
 
 **Commits:**
@@ -1444,8 +1428,9 @@ On another machine, create an equivalent SSD worktree off `origin/main` — a pa
 - Commit a type together with its users.
 
 **Pushes and merges:**
-- Non-release sessions push only `maswali-build`.
-- **Who merges (Ali, 2026-10-17):** *"any session that finishes, let it push … each session pushes whatever it finished, until the final session, who finishes everything, puts it live."* The session that finishes a green step merges `maswali-build` into `main` itself; the board records this beside its release-owner line. The release goes out per AGENTS.md §4: typecheck, `next build` at the exact commit, local `qa:live`, the deploy read-backs, and production `qa:live`. A docs-only push runs the doc guards and the read-back only (Ali's efficiency ruling, 2026-10-10).
+- Non-release sessions push only their own branches. The board names the sole release owner; the release owner alone
+  pushes `main` after the gates in AGENTS.md §4, including typecheck, exact-commit `next build`, local `qa:live`, deploy
+  read-backs and production `qa:live`. Docs-only pushes follow the same push gates.
 - A money session also runs `test:all`, `e2e:money`, `e2e:fault` and `e2e:card` on a throwaway PostgreSQL first.
 - Every push to `main` is a live deploy. Millionea is merged **dark**: the rollout ceiling is `WITHDRAWN` in code until S8.
 - Small, frequent merges keep the diff against the Vodacom lane small.
