@@ -399,9 +399,11 @@ console.log("\n§11b · F1 — the card's direction follows settlement's side wh
     liveLineToken(85000, null) === "--gilt" && liveLineToken(85000, { upTarget: null, downTarget: null }) === "--gilt"
     && liveLineToken(null, { upTarget: 85000.02, downTarget: 84999.98 }) === "--gilt");
   const heroSrc = readFileSync(new URL("../src/components/updown/price-hero.tsx", import.meta.url), "utf8");
-  ok("11b.6 the round detail keeps raw price ink neutral while target lines retain side colours",
-    heroSrc.includes('const priceInk = "var(--text)";')
-    && heroSrc.includes('stroke={priceInk}')
+  ok("11b.6 the round detail's observed price follows the reached target; opening gilt and target lines remain distinct",
+    /const ink = tone\s*\? \(tone === "level" \? "var\(--text-muted\)" : tone === "up" \? "var\(--yes-300\)" : "var\(--no-300\)"\)/.test(heroSrc)
+    && (heroSrc.match(/color: ink/g) ?? []).length === 2
+    && heroSrc.includes('stroke={ink}')
+    && heroSrc.includes('y1={openY} x2="606" y2={openY} stroke="var(--gilt)"')
     && heroSrc.includes('stroke="var(--yes-400)"')
     && heroSrc.includes('stroke="var(--no-400)"'));
 
@@ -433,7 +435,7 @@ console.log("\n§11b · F1 — the card's direction follows settlement's side wh
   const termWiring = (s: string): string[] => {
     const d: string[] = [];
     if (!s.includes("price: priceToBeatRef.current,")) d.push("the dashed reference does not use the frozen opening price");
-    if (!s.includes('color: ink("--text-subtle"),')) d.push("the reference wears a side or winnings colour");
+    if (!/price:\s*priceToBeatRef\.current,\s*color:\s*ink\("--gilt"\),/.test(s)) d.push("the frozen opening reference lost its gilt ink");
     if (s.includes("price: data.livePrice,") || s.includes("liveLineToken(data.livePrice")) d.push("a later quote replaced the opening reference");
     if (!s.includes('const showConfirmedAside = showLine && (guardedFeed?.sourceTier === "vendor" || lastChartPoint?.price !== guardedFeed?.livePrice);')
         || !s.includes('{showConfirmedAside && (')
@@ -554,8 +556,16 @@ console.log("\n§11b · F1 — the card's direction follows settlement's side wh
       readRow(sw).words === fill(dict.sw.market.udLevelBy, { amount: "$0.01" }) && /\S <span class="amount">\$0\.01<\/span> \S/.test(sw), readRow(sw).words ?? "no words");
 
     // ── the reading floor on the same card (found by the band's frame panel) ──
-    const floorDefects = (html: string, minSentences = 1): string[] => {
+    const floorDefects = (html: string, expectedBrief: string): string[] => {
       const d: string[] = [];
+      const beatAt = html.indexOf('<div class="ud-beat ');
+      const nowAt = html.indexOf('<div class="ud-now"');
+      const splitAt = html.indexOf('<div class="ud-split');
+      const actAt = html.indexOf('<div class="ud-act"');
+      const footAt = html.indexOf('<div class="ud-foot');
+      const articleEnd = html.indexOf("</article>");
+      if (!(beatAt >= 0 && beatAt < nowAt && nowAt < splitAt && splitAt < actAt && actAt < footAt && footAt < articleEnd))
+        return ["the rendered card's reading sections are absent or out of order"];
       const foot = html.slice(html.indexOf('<div class="ud-foot'), html.indexOf("</article>"));
       const footTag = foot.slice(0, foot.indexOf(">"));
       if (!/\btext-body-sm\b/.test(footTag)) d.push("the trust line is not on the kit's 13px");
@@ -563,41 +573,65 @@ console.log("\n§11b · F1 — the card's direction follows settlement's side wh
       // Visible EAT minute stays whole; dateTime preserves exact seconds.
       if (!/<time class="whitespace-nowrap font-mono tabular-nums" dateTime="[^"]+">\d\d:\d\d EAT<\/time>/.test(foot)) d.push("the quote stamp is not held whole with its exact instant");
       if (/\$85,000\.00/.test(foot)) d.push("the opening price repeats in the source line");
-      const beat = html.slice(html.indexOf('<div class="ud-beat '), html.indexOf('<div class="ud-now"'));
+      const beat = html.slice(beatAt, nowAt);
       if (/\btruncate\b/.test(beat)) d.push("the price-to-beat line truncates");
       if (!/<span class="ud-figure whitespace-nowrap font-mono font-semibold tabular-nums text-text">\$85,000\.00<\/span>/.test(beat))
         d.push("the price-to-beat amount is not whole in the mono face");
-      const act = html.slice(html.indexOf('<div class="ud-act"'), html.indexOf('<div class="ud-foot'));
+      // U43 moved the single refund condition ABOVE the two choices. It is still
+      // a sentence at the 13px reading floor, in both player states and locales.
+      const beforeChoices = html.slice(splitAt, actAt);
+      const briefs = [...beforeChoices.matchAll(/<p class="([^"]*\bud-refund-brief\b[^"]*)">([\s\S]*?)<\/p>/g)];
+      if (briefs.length !== 1) d.push(`the refund condition before the choices has ${briefs.length} sentence(s), expected 1`);
+      else {
+        if (!/\btext-body-sm\b/.test(briefs[0][1]) || /\bhidden\b|text-\[10px\]/.test(briefs[0][1]))
+          d.push("the refund condition before the choices is not a visible 13px sentence");
+        if (briefs[0][2].replace(/<[^>]+>/g, "") !== expectedBrief)
+          d.push("the refund condition before the choices no longer states the real empty pool");
+      }
+      const act = html.slice(actAt, footAt);
       if (/<p class="[^"]*text-\[10px\]/.test(act)) d.push("a sentence under the action row is still 10px");
-      // ⛔ The population, or the line above passes over nothing: the sentences must actually be there, at 13px.
+      // The compact card suppresses the duplicate empty-side note inside the
+      // stake control; its one remaining helper must still meet the same floor.
       const lifted = (act.match(/<p class="[^"]*\btext-body-sm\b[^"]*">/g) ?? []).length;
-      if (lifted < minSentences) d.push(`only ${lifted} sentence(s) at 13px under the action row, expected ${minSentences} — nothing was measured`);
+      if (lifted !== 1) d.push(`${lifted} sentence(s) at 13px under the action row, expected 1 — nothing was measured or the empty-side fact was repeated`);
       return d;
     };
     const signedOut = (loc: Locale) => renderToStaticMarkup(createElement(AppRouterContext.Provider, { value: router as never },
       createElement(I18nProvider, { initial: loc }, createElement(UpDownCard, { ...BASE, readPrice: 85018.52, pricing: { ...BASE.pricing, show: true, rates: { estimatedWinningsRate: 0.4 } } } as never))));
     const PRE_F1_FOOT = '<div class="ud-foot flex flex-wrap items-center justify-between gap-x-2 gap-y-1 font-mono text-[9.5px] text-text-faint"><span class="min-w-0">Soko la crypto · imenukuliwa 14:25:34 EAT</span><span class="shrink-0 tabular-nums">Ufunguzi $85,000.00</span></div></article>';
-    // The authed card's quick-bet control (`updown-stake-controls.tsx`, size "card") — its helper line and the empty-side
-    // sentence, two sentences that were 10px on the board card. ⚠️ RE-COUNTED 2026-10-14: the estimate note was the third
-    // (and the signed-out card's second); Ali's ruling of that day ("keep up and down only") took the multiple it explained
-    // off the buttons, and the note left the card with it — so the populations are 2 signed in and 1 signed out, measured.
+    // U43: the empty-side/refund sentence moved before the buttons, while the
+    // compact authed control hides its duplicate. One helper remains below the
+    // buttons for signed-in and signed-out readers; each sentence stays 13px.
     const signedIn = (loc: Locale) => renderToStaticMarkup(createElement(AppRouterContext.Provider, { value: router as never },
       createElement(I18nProvider, { initial: loc }, createElement(UpDownCard, { ...BASE, readPrice: 85018.52, isAuthed: true, marketId: "mkt_f1",
         minStake: 1000, maxStake: 100000, walletBalance: 50000, pricing: { ...BASE.pricing, show: true, rates: { estimatedWinningsRate: 0.4 } } } as never))));
     const real = (["sw", "en", "zh"] as const).flatMap((l) => [
-      ...floorDefects(signedOut(l), 1).map((x) => `${l} signed out: ${x}`),
-      ...floorDefects(signedIn(l), 2).map((x) => `${l} signed in: ${x}`),
+      ...floorDefects(signedOut(l), dict[l].market.udNobodyBackedEither).map((x) => `${l} signed out: ${x}`),
+      ...floorDefects(signedIn(l), dict[l].market.udNobodyBackedEither).map((x) => `${l} signed in: ${x}`),
     ]);
     const html0 = signedOut("sw");
-    proves("11b.12 the source line is 13px with its quote time whole and no repeated opening price; the price-to-beat line holds its figure; every sentence under the action row is 13px, signed in and out (en/sw/zh)",
-      real, floorDefects(html0.slice(0, html0.indexOf('<div class="ud-foot')) + PRE_F1_FOOT));
+    proves("11b.12 the source line and both action sentences meet the 13px floor; the refund condition precedes the choices once, in en/sw/zh and both player states",
+      real, floorDefects(html0.slice(0, html0.indexOf('<div class="ud-foot')) + PRE_F1_FOOT, dict.sw.market.udNobodyBackedEither));
     // One control per defect, so each clause is shown to bite on its own.
-    const truncPlant = floorDefects(html0.replace('<span class="ud-figure whitespace-nowrap font-mono font-semibold tabular-nums text-text">$85,000.00</span>', '<span class="truncate">$85,000.00</span>'));
+    const truncPlant = floorDefects(html0.replace('<span class="ud-figure whitespace-nowrap font-mono font-semibold tabular-nums text-text">$85,000.00</span>', '<span class="truncate">$85,000.00</span>'), dict.sw.market.udNobodyBackedEither);
     ok("11b.12b · CONTROL bites: a price-to-beat line that truncates the opening price",
       html0.includes('<span class="ud-figure whitespace-nowrap font-mono font-semibold tabular-nums text-text">$85,000.00</span>')
       && truncPlant.some((x) => /price-to-beat/.test(x)), truncPlant.join("; "));
-    const tenPlant = floorDefects(signedIn("sw").replaceAll(' text-body-sm leading-[1.45] text-text-faint', ' text-[10px] leading-[1.45] text-text-faint'), 2);
-    ok("11b.12c · CONTROL bites: the quick-bet sentences back at 10px", tenPlant.some((x) => /10px/.test(x)) && tenPlant.some((x) => /nothing was measured/.test(x)), tenPlant.join("; "));
+    const tenPlant = floorDefects(signedIn("sw").replaceAll(' text-body-sm leading-[1.45] text-text-faint', ' text-[10px] leading-[1.45] text-text-faint'), dict.sw.market.udNobodyBackedEither);
+    ok("11b.12c · CONTROL bites: the quick-bet helper back at 10px", tenPlant.some((x) => /10px/.test(x)) && tenPlant.some((x) => /nothing was measured/.test(x)), tenPlant.join("; "));
+    const brief10 = signedIn("sw").replace('ud-refund-brief m-0 text-body-sm', 'ud-refund-brief m-0 text-[10px]');
+    const briefPlant = floorDefects(brief10, dict.sw.market.udNobodyBackedEither);
+    ok("11b.12d · CONTROL bites: the pre-choice refund condition shrunk to 10px",
+      brief10 !== signedIn("sw") && briefPlant.some((x) => /refund condition.*13px/.test(x)), briefPlant.join("; "));
+    const movedBrief = signedIn("sw").match(/<p class="ud-refund-brief[^>]*>[\s\S]*?<\/p>/)?.[0] ?? "";
+    const placedAfter = signedIn("sw").replace(movedBrief, "").replace('<div class="ud-act">', `<div class="ud-act">${movedBrief}`);
+    const orderPlant = floorDefects(placedAfter, dict.sw.market.udNobodyBackedEither);
+    ok("11b.12e · CONTROL bites: the refund condition moved after the choices",
+      movedBrief.length > 0 && placedAfter !== signedIn("sw") && orderPlant.some((x) => /before the choices/.test(x)), orderPlant.join("; "));
+    const falseBrief = signedIn("sw").replace(dict.sw.market.udNobodyBackedEither, "Hakuna dau bado.");
+    const falseBriefPlant = floorDefects(falseBrief, dict.sw.market.udNobodyBackedEither);
+    ok("11b.12f · CONTROL bites: the brief stops explaining the actual one-sided refund condition",
+      falseBrief !== signedIn("sw") && falseBriefPlant.some((x) => /real empty pool/.test(x)), falseBriefPlant.join("; "));
   } catch (e) {
     ok("11b.10 the card renders on the server", false, String((e as Error)?.stack ?? e).split("\n").slice(0, 3).join(" | "));
   }
@@ -635,9 +669,9 @@ const WANT: Record<string, Record<Locale, Want>> = {
     zh: { verdict: "暂无领先方", aged: "当时无领先方", detail: "14:26 时 · 与开盘价仅差 $0.20，不足以判定", note: "若以此价收盘，所有投注全额退还。", rule: "以 14:32 的价格判定。与开盘价相差不足 $0.40，所有投注均退还。" },
   },
   S4: {
-    en: { verdict: "Kick-off · Pick a side", detail: "No new price since the open at 14:20", agedDetail: "Opened at 14:20", rule: "" },
-    sw: { verdict: "Mwanzo · Chagua upande", detail: "Bado hakuna bei mpya tangu ufunguzi saa 14:20", agedDetail: "Ilifunguliwa saa 14:20", rule: "" },
-    zh: { verdict: "开局 · 选择一方", detail: "自 14:20 开盘以来暂无新价格", agedDetail: "14:20 开盘", rule: "" },
+    en: { verdict: "Kick-off · Pick a side", detail: "No new price since 14:20", agedDetail: "Opened at 14:20", rule: "" },
+    sw: { verdict: "Mwanzo · Chagua upande", detail: "Hakuna bei mpya tangu 14:20", agedDetail: "Ilifunguliwa saa 14:20", rule: "" },
+    zh: { verdict: "开局 · 选择一方", detail: "自 14:20 开盘暂无新价格", agedDetail: "14:20 开盘", rule: "" },
   },
 };
 const ROUNDS: Record<string, UpdownBandRound> = { S1, S2, S3, S4 };
@@ -654,6 +688,21 @@ for (const [name, byLoc] of Object.entries(WANT)) {
     if ((w.note ?? undefined) !== want.note) bad.push(`note "${w.note}"`);
     ok(`12.${name}.${loc} ${want.verdict}`, bad.length === 0, bad.join(" · "));
   }
+}
+// No price has been observed after this round's open. A shorter U43 sentence
+// must not turn that absence into an invented direction in any language.
+const FALSE_KICKOFF = {
+  en: "Price rose since {time}",
+  sw: "Bei ilipanda tangu {time}",
+  zh: "自 {time} 起价格上涨",
+} as const;
+for (const loc of ["en", "sw", "zh"] as const) {
+  const planted = { ...dict[loc], home: { ...dict[loc].home, udMatchNoNewPrice: FALSE_KICKOFF[loc] } } as Dict;
+  const correct = seen(matchWords(dict[loc] as Dict, loc, S4).detail);
+  const invented = seen(matchWords(planted, loc, S4).detail);
+  ok(`12.S4.${loc} · CONTROL bites: a no-read kick-off falsely claims a price rise`,
+    matchLead(S4) === "kickoff" && correct === WANT.S4[loc].detail
+    && invented !== correct && invented.includes("14:20"), invented);
 }
 {
   const w = matchWords(dict.en as Dict, "en", S6);

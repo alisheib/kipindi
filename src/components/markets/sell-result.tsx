@@ -81,8 +81,7 @@ export function SellResultModal({
   return (
     <OperationResultModal
       open={open}
-      variant={resultData.variant === "success" ? "success" : "neutral"}
-      successCrestTone="neutral"
+      variant={resultData.variant}
       eyebrow={resultData.variant === "success" ? t.common.positionSold : t.common.cashOutFailed}
       title={
         resultData.variant === "success"
@@ -107,7 +106,7 @@ export function SellResultModal({
       ] : undefined}
       primaryLabel={resultData.variant === "success" ? t.common.doneSawa : t.common.close}
       onClose={onClose}
-      stripTone="brand"
+      stripTone={resultData.variant === "success" ? "gold" : "brand"}
     />
   );
 }

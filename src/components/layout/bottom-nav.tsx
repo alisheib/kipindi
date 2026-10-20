@@ -1,11 +1,13 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { I, type GlyphKey } from "@/components/ui/glyphs";
 import { NavGlyph } from "@/components/ui/nav-glyph";
 import { useT } from "@/lib/i18n";
 import { NavMore } from "@/components/layout/nav-more";
+import { MARK } from "@/lib/brand-mark";
 import type { ProposalsState } from "@/lib/server/proposals-config";
 
 /**
@@ -180,6 +182,12 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
          used it. One attribute is the whole fix: no z-index change, and not one line of the
          vendored do-not-edit physics touched. */
       data-needle-keepout=""
+      style={{
+        "--kp-coin-green": MARK.green,
+        "--kp-coin-red": MARK.red,
+        "--kp-coin-gold": MARK.gold,
+        "--kp-coin-pivot": MARK.pivot,
+      } as CSSProperties}
     >
       {/* 2026-09-13 — `minmax(0, 1fr)`, not `1fr`: a bare `1fr` track has an `auto` minimum, so a
           long Swahili label ("Juu na Chini", "Mubashara") widened its slot into its neighbour instead
@@ -211,7 +219,7 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
                 coin's rect sits inside one of them, because reasoning about it got it wrong once. */}
             <span className="kp-coin" aria-hidden data-needle-keepout="">
               {/* Painted by DOM order: ring → needle → face → verb.
-                  The deposit door uses brand colour; the actual logo keeps its artwork. */}
+                  The lifted deposit coin inherits the brand mark's four colours. */}
               <span className="kp-coin__needle" />
               <span className="kp-coin__face">
                 {walletHeld ? (
@@ -221,7 +229,7 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
                      2026-10-19 §8a). It was a hand-drawn "+": `I.plus` is a plus inside a circle, and a
                      second ring on the disc reads as a button on a button. The arrow has no ring, and at
                      24px it is the size of the rail's other glyphs (R-RAIL 4B).
-                     ⚠️ `currentColor` is the point: `.kp-coin__verb` sets the door's brand ink. */
+                     ⚠️ `currentColor` is the point: `.kp-coin__verb` sets the mark's navy. */
                   <I.arrowDownToLine s={24} className="kp-coin__verb" />
                 )}
               </span>
@@ -282,7 +290,7 @@ function RailDest({
             glyphs (R-RAIL 4B) in a 56×32 pip grown to fit them. */}
         <span className="kp-rail__pip">
           <NavGlyph glyph={glyph} on={on} s={24} />
-          {/* The product-line dot, same 5px brand mark as the desktop nav. */}
+          {/* The product-line dot, same 5px gilt mark as the desktop nav. */}
           {accent && <span className="kp-rail__dot" aria-hidden />}
         </span>
         <span className="kp-rail__label">{label}</span>

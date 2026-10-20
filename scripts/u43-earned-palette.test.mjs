@@ -1,311 +1,107 @@
-/** U43 B5: a stake is not a win; reserve won-money and side inks for their facts. */
-import { readFileSync } from "node:fs";
+/** U43 gold restoration: exact action paint, with factual outcomes retained. */
+import { readFileSync, writeFileSync, unlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { MUTATIONS } from "./anchors/u43-earned-palette.anchors.mjs";
 
-const read = (path) => readFileSync(path, "utf8").replace(/\r\n/g, "\n");
-const panel = read("src/components/updown/round-stake-panel.tsx");
-const journey = read("src/components/journey/updown/jud-arm.tsx");
-const hook = read("src/components/updown/use-quick-bet.ts");
-const kit = read("src/components/ui/toast.tsx");
-const glyphs = read("src/components/ui/glyphs.tsx");
-const sharedSheet = read("src/components/journey/bet-sheet/bet-sheet.tsx");
-const css = read("src/app/globals.css");
-const authority = read("docs/DESIGN_AUTHORITY.md");
-const betConfirm = read("src/components/markets/bet-confirm-modal.tsx");
-const sellConfirm = read("src/components/markets/sell-confirm-modal.tsx");
-const registration = read("src/app/auth/register/page.tsx");
-const receipt = read("src/components/updown/updown-bet-receipt-modal.tsx");
-const blocked = read("src/components/updown/updown-bet-blocked-modal.tsx");
-const resultModal = read("src/components/markets/operation-result-modal.tsx");
-const sellResult = read("src/components/markets/sell-result.tsx");
-const dictionary = read("src/lib/i18n-dict.ts");
-
-function fragments(p, j, h, k) {
-  const button = p.match(/<button\s+type="button" onClick=\{\(\) => bet\.place\(lockedSide\)\}[\s\S]*?<\/button>/)?.[0] ?? "";
-  const journeyButton = j.match(/<Button\s+type="button"[^>]*data-testid="jud-place"[\s\S]*?<\/Button>/)?.[0] ?? "";
-  const toast = h.match(/toast\(\{\s*title: copy\.placed,[\s\S]*?\}\);/)?.[0] ?? "";
-  const start = k.lastIndexOf("  factual: {");
-  const end = start < 0 ? -1 : k.indexOf("\n  },", start);
-  const factual = start < 0 || end < 0 ? "" : k.slice(start, end);
-  return { button, journeyButton, toast, factual };
-}
-
-function issues(p, j, h, k, g = glyphs) {
-  const { button, journeyButton, toast, factual } = fragments(p, j, h, k);
-  const found = [];
-  const need = (ok, description) => { if (!ok) found.push(description); };
-  need(button.length > 200 && button.includes("bet.place(lockedSide)"), "detail bet button is located");
-  need(button.includes('className="btn btn-primary btn-lg mt-3 w-full justify-center"'),
-    "detail bet confirm uses the kit's brand action, not unearned gold");
-  need(!/btn-(?:gold|yes|no)|(?:--gold-|--yes-|--no-)/.test(button),
-    "detail bet confirm borrows neither won-money nor side ink");
-  need(journeyButton.length > 200 && journeyButton.includes("bet.place(side)"), "Journey bet confirm is located");
-  need(journeyButton.includes('variant="primary"') && !/variant="(?:gold|yes|no)"/.test(journeyButton),
-    "Journey bet confirm uses the kit's brand action, not unearned gold or side ink");
-  need(toast.length > 120 && toast.includes("formatTzs(amount)") && toast.includes("copy.up") && toast.includes("copy.down"),
-    "placed-bet toast names the actual side and formatted stake");
-  need(toast.includes('variant: "factual"') && !/variant: "(?:success|danger|gold|default)"/.test(toast),
-    "placed-bet toast selects the neutral factual variant");
-  const plateGlyphBody = g.match(/export function plateGlyph\([^)]*\): number \{\s*return \{([^}]+)\}\[plateEdge\];/)?.[1] ?? "";
-  need(factual.includes('bar: "bg-text-muted"') && factual.includes('icon: <I.info s={plateGlyph(40)} />')
-    && factual.includes('plate: "quiet"') && factual.includes('rail: "bg-text-muted"')
-    && factual.includes('surface: ""')
-    && /<IconPlate size=\{40\} variant=\{v\.plate\}[^>]*>\s*\{v\.icon\}\s*<\/IconPlate>/.test(k)
-    && /(?:^|,)\s*40:\s*20\s*(?:,|$)/.test(plateGlyphBody),
-    "factual toast renders a neutral, untinted quiet plate with its 20px information glyph");
-  return found;
-}
-
-function assertClean(label, p, j, h, k) {
-  const found = issues(p, j, h, k);
-  if (found.length) throw new Error(`${label}: ${found.join("; ")}`);
-  console.log(`PASS ${label}`);
-}
-
-assertClean("U43 earned-money palette and placed-bet feedback", panel, journey, hook, kit);
-const original = fragments(panel, journey, hook, kit);
-const mutants = [
-  ["gold classic detail commit", panel.replace(original.button, original.button.replace("btn-primary", "btn-gold")), journey, hook, kit],
-  ["side-coloured classic detail commit", panel.replace(original.button, original.button.replace("btn-primary", "btn-yes")), journey, hook, kit],
-  ["gold Journey detail commit", panel, journey.replace(original.journeyButton, original.journeyButton.replace('variant="primary"', 'variant="gold"')), hook, kit],
-  ["side-coloured Journey detail commit", panel, journey.replace(original.journeyButton, original.journeyButton.replace('variant="primary"', 'variant="yes"')), hook, kit],
-  ["green placed-bet toast", panel, journey, hook.replace(original.toast, original.toast.replace('variant: "factual"', 'variant: "success"')), kit],
-  ["brand placed-bet toast", panel, journey, hook.replace(original.toast, original.toast.replace('variant: "factual"', 'variant: "default"')), kit],
-  ["green factual kit tint", panel, journey, hook, kit.replace(original.factual, original.factual.replace('bar: "bg-text-muted"', 'bar: "bg-success"'))],
-  ["congratulatory factual glyph", panel, journey, hook, kit.replace(original.factual, original.factual.replace('icon: <I.info s={plateGlyph(40)} />', 'icon: <I.checkCircle s={plateGlyph(40)} />'))],
-  ["wrong factual glyph size", panel, journey, hook, kit.replace(original.factual, original.factual.replace('plateGlyph(40)', 'plateGlyph(36)'))],
-  ["coloured factual plate", panel, journey, hook, kit.replace(original.factual, original.factual.replace('plate: "quiet"', 'plate: "success"'))],
-  ["factual glyph not rendered", panel, journey, hook, kit.replace('{v.icon}\n        </IconPlate>', '{null}\n        </IconPlate>')],
-  ["wrong shared 40px plate glyph size", panel, journey, hook, kit, glyphs.replace('40: 20', '40: 18')],
+const paths = {
+  panel: "src/components/updown/round-stake-panel.tsx",
+  jud: "src/components/journey/updown/jud-arm.tsx",
+  sheet: "src/components/journey/bet-sheet/bet-sheet.tsx",
+  css: "src/app/globals.css",
+  law: "docs/DESIGN_AUTHORITY.md",
+  bet: "src/components/markets/bet-confirm-modal.tsx",
+  sell: "src/components/markets/sell-confirm-modal.tsx",
+  registration: "src/app/auth/register/page.tsx",
+  receipt: "src/components/updown/updown-bet-receipt-modal.tsx",
+  blocked: "src/components/updown/updown-bet-blocked-modal.tsx",
+  result: "src/components/markets/operation-result-modal.tsx",
+  saleResult: "src/components/markets/sell-result.tsx",
+  hook: "src/components/updown/use-quick-bet.ts",
+  kit: "src/components/ui/toast.tsx",
+  glyphs: "src/components/ui/glyphs.tsx",
+  dict: "src/lib/i18n-dict.ts",
+  header: "src/components/layout/top-app-bar.tsx",
+  wallet: "src/components/layout/wallet-sheet.tsx",
+  balance: "src/components/layout/wallet-balance-pill.tsx",
+  journeyHeader: "src/components/journey/journey-top-bar.tsx",
+  bottom: "src/components/layout/bottom-nav.tsx",
+  bell: "src/components/layout/notifications-panel.tsx",
+  avatar: "src/components/layout/avatar-menu.tsx",
+  price: "src/components/updown/price-hero.tsx",
+  chart: "src/components/charts/terminal-chart.tsx",
+  status: "src/lib/status-tone.ts",
+  language: "src/components/ui/language-menu.tsx",
+  error: "src/app/global-error.tsx",
+};
+const src = Object.fromEntries(Object.entries(paths).map(([key, path]) => [
+  key, readFileSync(process.env.U43_EARNED_MUTANT_FILE === path ? process.env.U43_EARNED_MUTANT_PATH : path, "utf8").replace(/\r\n/g, "\n"),
+]));
+const tag = (value, marker, name) => {
+  const at = value.indexOf(marker);
+  const start = at < 0 ? -1 : value.lastIndexOf(`<${name}`, at);
+  const end = at < 0 ? -1 : value.indexOf(`</${name}>`, at);
+  return start < 0 || end < 0 ? "" : value.slice(start, end + name.length + 3);
+};
+const checks = [
+  ["detail-gold", () => tag(src.panel, "bet.place(lockedSide)", "button").includes('className="btn btn-gold btn-lg mt-3 w-full justify-center"')],
+  ["journey-gold", () => tag(src.jud, 'data-testid="jud-place"', "Button").includes('variant="gold"') && tag(src.jud, 'data-testid="jud-place"', "Button").includes("bet.place(side)")],
+  ["low-deposit-gold", () => tag(src.sheet, 'data-testid="journey-sheet-deposit"', "Button").includes('variant="gold"') && tag(src.sheet, 'data-testid="journey-sheet-deposit"', "Button").includes('className="kp-bsheet__deposit gilt-metal"') && tag(src.sheet, 'data-testid="journey-sheet-deposit"', "Button").includes("onDeposit(selectedDeposit)")],
+  ["sheet-commit-gold", () => tag(src.sheet, 'data-testid="journey-sheet-place"', "Button").includes('variant="gold"') && tag(src.sheet, 'data-testid="journey-sheet-place"', "Button").includes("onClick={onPlace}")],
+  ["sheet-disabled-gold", () => src.css.includes(".kp-bsheet .btn-gold:disabled {") && !src.css.includes(".kp-bsheet .btn-primary:disabled {")],
+  ["sheet-rail-ink", () => /\.kp-bsheet__rails \{[^}]*color:\s*var\(--gold-fg\)/s.test(src.css)],
+  ["bet-confirm-gold", () => tag(src.bet, "ref={confirmRef}", "button").includes("onConfirm()") && tag(src.bet, "ref={confirmRef}", "button").includes('className="btn btn-gold btn-lg w-full"')],
+  ["sell-confirm-gold", () => tag(src.sell, "ref={confirmRef}", "button").includes("onConfirm()") && tag(src.sell, "ref={confirmRef}", "button").includes('className="btn btn-gold btn-lg w-full"')],
+  ["free-exit-success", () => src.sell.includes('borderColor: isFree ? "color-mix(in oklab, var(--success-500) 62%, transparent)"') && src.sell.includes('background:  isFree ? "color-mix(in oklab, var(--success-500) 18%, transparent)"') && src.sell.includes('style={{ color: isFree ? "var(--success-fg)" : "var(--text)" }}') && src.sell.includes('{isFree ? t.dialog.noFee : `−${formatTzs(fee)}`}')],
+  ["header-deposit-gold", () => tag(src.header, 'data-testid="deposit-header"', "Link").includes('className="btn gilt-metal btn-md btn-pill"')],
+  ["wallet-deposit-gold", () => tag(src.wallet, 'data-testid="wallet-sheet-deposit"', "Link").includes('className="btn gilt-metal btn-lg kp-wsheet__act"')],
+  ["journey-header-deposit-gold", () => src.journeyHeader.includes('className="btn gilt-metal btn-md btn-pill kp-jhdr__pill"')],
+  ["balance-gold", () => src.balance.includes('"cursor-pointer text-gold-300 hover:text-gold-200"') && src.balance.includes("var(--gold-300) 22%") && src.balance.includes('text-[var(--gold-300)] transition-colors')],
+  ["bottom-coin-colors", () => ["green", "red", "gold", "pivot"].every((key) => src.bottom.includes(`"--kp-coin-${key}": MARK.${key}`))],
+  ["classic-bell-gold", () => src.bell.includes('journey ? "brand" : "gold"') && src.bell.includes('journey ? "bg-brand-500/[0.04]" : "bg-gold-500/[0.04]"')],
+  ["avatar-accent-gold", () => src.avatar.includes('accent ? "hover:bg-gold-500/10"') && src.avatar.includes('accent ? "text-gold-300"')],
+  ["classic-language-gold", () => src.language.includes('journey ? "var(--brand-300)" : "var(--gilt)"')],
+  ["resolved-gold", () => src.status.includes('RESOLVED: { player: "giltStruck", admin: "gilt", proposals: "giltStruck" }') && src.status.includes('LIVE:')],
+  ["price-reference-gold", () => src.price.includes('stroke="var(--gilt)"') && src.price.includes('fill="var(--gilt)"')],
+  ["price-direction", () => src.price.includes('tone === "up" ? "var(--yes-300)" : "var(--no-300)"') && src.price.includes('isUp ? "var(--yes-300)" : "var(--no-300)"')],
+  ["chart-reference-gold", () => src.chart.includes('color: ink("--gilt")') && src.chart.includes('className="whitespace-nowrap text-gold-300" data-testid="updown-chart-opening-reference"')],
+  ["error-mark-gold", () => src.error.includes('const NEEDLE = "oklch(86% 0.13 82)"')],
+  ["placed-toast-factual", () => /toast\(\{\s*title: copy\.placed,[\s\S]*?variant: "factual"/.test(src.hook) && src.kit.includes('bar: "bg-text-muted"') && src.kit.includes('plate: "quiet"') && src.kit.includes('icon: <I.info s={plateGlyph(40)} />') && src.glyphs.includes("40: 20")],
+  ["refused-toasts-factual", () => src.hook.includes('description: fail.description, variant: "factual", durationMs: 0') && src.hook.includes('description: errCopy.udErrBusy, variant: "factual", durationMs: 0')],
+  ["receipt-side", () => src.receipt.includes('variant="success"') && src.receipt.includes('stripTone={placed.side === "UP" ? "yes" : "no"}') && src.receipt.includes('primaryLabel={t.market.udRcKeepPlaying}') && src.receipt.includes('footnote={projected != null ? t.market.udEstimateNote : undefined}') && !src.receipt.includes('successCrestTone="neutral"')],
+  ["receipt-side-button", () => src.result.includes('stripTone === "gold" ? "btn-gold" : stripTone === "yes" ? "btn-yes" : stripTone === "no" ? "btn-no" : "btn-primary"') && src.result.includes('className={`btn ${effectiveBtn} btn-lg w-full`}')],
+  ["blocked-neutral", () => src.blocked.includes('open={!!blocked}') && src.blocked.includes('variant="neutral"') && !src.blocked.includes("autoCloseMs=")],
+  ["sale-outcomes", () => src.saleResult.includes('variant={resultData.variant}') && src.saleResult.includes('stripTone={resultData.variant === "success" ? "gold" : "brand"}') && src.saleResult.includes('resultData.net >= 0') && src.saleResult.includes('t.common.fullStakeReturned') && src.saleResult.includes('t.common.stakeReturnedMinusFee')],
+  ["registered-offers-neutral", () => ["referral.newPlayerBonusTzs", "invite.bonusAmountTzs"].every((field) => src.registration.split(`<span className="amount text-text">{formatTzs(${field})}</span>`).length === 2) && !/className="[^"]*(?:gold|gilt)[^"]*"/.test(src.registration)],
+  ["localized-continue", () => {
+    const words = [...src.dict.matchAll(/udRcKeepPlaying:\s*"([^"]+)"/g)].map((m) => m[1]);
+    return words.length === 3 && words[0] === "Keep playing" && words[1] === "Endelea kucheza" && words[2] === "继续游戏";
+  }],
+  ["current-law", () => src.law.includes("Current player rule (Ali, 2026-10-20): restore the full earlier house-gold treatment") && src.law.includes("A bet, sale or deposit still earns no money by itself.")],
 ];
-let rejected = 0;
-for (const [label, p, j, h, k, g = glyphs] of mutants) {
-  if (p === panel && j === journey && h === hook && k === kit && g === glyphs) throw new Error(`mutation did not alter source: ${label}`);
-  if (issues(p, j, h, k, g).length === 0) throw new Error(`guard missed mutation: ${label}`);
-  rejected++;
-  console.log(`RED caught ${label}`);
-}
-console.log(`U43 earned palette: guard passed, ${rejected}/${mutants.length} in-memory mutations rejected`);
 
-// The shared low-balance block is mounted by Journey Up & Down as well as the
-// question sheet. Its deposit is an action to add money, never earned money.
-function lowBlockIssues(sheetSource, cssSource) {
-  const start = sheetSource.indexOf("export function LowBlock(");
-  const end = sheetSource.indexOf("export function BetSheetBody(", start);
-  const lowBlock = start < 0 || end < 0 ? "" : sheetSource.slice(start, end);
-  const door = lowBlock.match(/<Button\s+type="button"[^>]*data-testid="journey-sheet-deposit"[\s\S]*?<\/Button>/)?.[0] ?? "";
-  const rails = cssSource.match(/\.kp-bsheet__rails \{([^}]*)\}/)?.[1] ?? "";
-  const found = [];
-  if (!door.includes("onDeposit(selectedDeposit)")) found.push("shared deposit door is located");
-  if (!door.includes('variant="primary"') || !door.includes('className="kp-bsheet__deposit"')
-    || /variant="(?:gold|yes|no)"|\bgilt-metal\b|\bbtn-gold\b/.test(door))
-    found.push("shared deposit door uses the brand action without unearned gold or side ink");
-  if (!/color:\s*var\(--pearl-50\)/.test(rails) || /var\(--(?:gold|gilt)/.test(rails))
-    found.push("rail names keep readable pearl ink on the brand door");
-  return found;
-}
-const lowProblems = lowBlockIssues(sharedSheet, css);
-if (lowProblems.length) throw new Error(`shared low-balance palette: ${lowProblems.join("; ")}`);
-console.log("PASS shared LowBlock deposit door and rail ink");
-const lowMutants = [
-  ["gold shared deposit door", sharedSheet.replace('variant="primary" size="xl" fullWidth className="kp-bsheet__deposit"', 'variant="gold" size="xl" fullWidth className="kp-bsheet__deposit"'), css],
-  ["gilt shared deposit door", sharedSheet.replace('className="kp-bsheet__deposit"', 'className="kp-bsheet__deposit gilt-metal"'), css],
-  ["dark gold rail names", sharedSheet, css.replace(/(\.kp-bsheet__rails \{[^}]*color:\s*)var\(--pearl-50\)/, "$1var(--gold-fg)")],
-];
-for (const [label, sheetSource, cssSource] of lowMutants) {
-  if (sheetSource === sharedSheet && cssSource === css) throw new Error(`mutation did not alter source: ${label}`);
-  if (lowBlockIssues(sheetSource, cssSource).length === 0) throw new Error(`guard missed mutation: ${label}`);
-  console.log(`RED caught ${label}`);
-}
-console.log(`U43 shared deposit palette: guard passed, ${lowMutants.length}/${lowMutants.length} in-memory mutations rejected`);
+const failed = checks.filter(([, check]) => !check()).map(([id]) => id);
+for (const id of failed) console.error(`FAIL ${id}`);
+if (failed.length) process.exit(1);
+console.log(`PASS U43 gold and factual palette (${checks.length} checks)`);
 
-// Keep the owning design law current: legacy D1 prose remains as history, but
-// the first M3a paragraph is the binding rule for these player controls.
-function lawIssues(source) {
-  const start = source.indexOf("### M3a — Player money actions and earned gold");
-  const end = source.indexOf("### M4 — Money is mono", start);
-  const law = start < 0 || end < 0 ? "" : source.slice(start, end);
-  const found = [];
-  if (!law.includes("**Current player rule (Ali, 2026-10-19): gold marks only money the player has won.**"))
-    found.push("M3a reserves player gold for money won");
-  if (!law.includes("Bet, sell, deposit and withdrawal controls use their approved brand or side treatment;"))
-    found.push("M3a names the player money controls");
-  if (!law.includes("moving or committing a stake is not a win."))
-    found.push("M3a says a stake commit is not a win");
-  if (!law.includes("Its Continue action, crest and eyebrow use neutral or brand ink."))
-    found.push("M3a keeps receipt Continue out of the side colours");
-  return found;
-}
-const lawProblems = lawIssues(authority);
-if (lawProblems.length) throw new Error(`design law: ${lawProblems.join("; ")}`);
-console.log("PASS DESIGN_AUTHORITY M3a current player law");
-const wrongLaw = authority.replace("gold marks only money the player has won.", "gold marks money the player has moved.");
-if (wrongLaw === authority || lawIssues(wrongLaw).length === 0) throw new Error("guard missed mutation: unearned gold rule restored");
-console.log("RED caught unearned gold rule restored");
-const wrongReceiptLaw = authority.replace("Its Continue action, crest and eyebrow use neutral or brand ink.", "Its Continue action borrows the side colour.");
-if (wrongReceiptLaw === authority || lawIssues(wrongReceiptLaw).length === 0) throw new Error("guard missed mutation: side-coloured Continue rule restored");
-console.log("RED caught side-coloured Continue rule restored");
-
-// The question market reached from the U43 market card has the same rule at
-// its final confirm. The shared Journey question sheet and exit dialog do too.
-function commitIssues(betSource, sellSource, sheetSource, cssSource) {
-  const confirm = (source) => {
-    const start = source.indexOf("ref={confirmRef}");
-    const end = start < 0 ? -1 : source.indexOf("</button>", start);
-    return start < 0 || end < 0 ? "" : source.slice(start, end);
-  };
-  const bet = confirm(betSource);
-  const sell = confirm(sellSource);
-  const sheet = sheetSource.match(/\{footerLine && <Button[\s\S]*?<\/Button>\}/)?.[0] ?? "";
-  const found = [];
-  if (!bet.includes("onConfirm()") || !bet.includes('className="btn btn-primary btn-lg w-full"') || /btn-(?:gold|yes|no)/.test(bet))
-    found.push("question bet confirm uses brand, not unearned gold or a side");
-  if (!sell.includes("onConfirm()") || !sell.includes('className="btn btn-primary btn-lg w-full"') || /btn-(?:gold|yes|no)/.test(sell))
-    found.push("sell confirm uses brand, not unearned gold or a side");
-  if (!sheet.includes("onClick={onPlace}") || !sheet.includes('variant="primary"') || /variant="(?:gold|yes|no)"/.test(sheet))
-    found.push("Journey question bet commit uses brand");
-  if (!/\.kp-bsheet \.btn-primary:disabled \{/.test(cssSource) || /\.kp-bsheet \.btn-gold:disabled \{/.test(cssSource))
-    found.push("shared disabled bet commit styling follows the brand button");
-  return found;
-}
-const commitProblems = commitIssues(betConfirm, sellConfirm, sharedSheet, css);
-if (commitProblems.length) throw new Error(`money commit palette: ${commitProblems.join("; ")}`);
-console.log("PASS question bet, sell and Journey commits use brand");
-const commitMutants = [
-  ["gold question bet confirm", betConfirm.replace('className="btn btn-primary btn-lg w-full"', 'className="btn btn-gold btn-lg w-full"'), sellConfirm, sharedSheet, css],
-  ["gold sell confirm", betConfirm, sellConfirm.replace('className="btn btn-primary btn-lg w-full"', 'className="btn btn-gold btn-lg w-full"'), sharedSheet, css],
-  ["gold Journey stake commit", betConfirm, sellConfirm, sharedSheet.replace('variant="primary" size="xl" fullWidth className="kp-bsheet__commit"', 'variant="gold" size="xl" fullWidth className="kp-bsheet__commit"'), css],
-  ["gold-only disabled commit style", betConfirm, sellConfirm, sharedSheet, css.replace('.kp-bsheet .btn-primary:disabled {', '.kp-bsheet .btn-gold:disabled {')],
-];
-for (const [label, b, s, sh, c] of commitMutants) {
-  if (b === betConfirm && s === sellConfirm && sh === sharedSheet && c === css) throw new Error(`mutation did not alter source: ${label}`);
-  if (commitIssues(b, s, sh, c).length === 0) throw new Error(`guard missed mutation: ${label}`);
-  console.log(`RED caught ${label}`);
-}
-console.log(`U43 shared commit palette: guard passed, ${commitMutants.length}/${commitMutants.length} in-memory mutations rejected`);
-
-// These registration ribbons show an offer before the player has won it.
-// Keep the real amounts and their three-language copy, but use neutral ink.
-function registrationIssues(source) {
-  const found = [];
-  for (const field of ["referral.newPlayerBonusTzs", "invite.bonusAmountTzs"]) {
-    const exact = `<span className="amount text-text">{formatTzs(${field})}</span>`;
-    if (source.split(exact).length !== 2) found.push(`${field} is a formatted neutral offer, exactly once`);
+if (process.argv.includes("--prove-red")) {
+  for (const { name: expected, file, from: before, to: after } of MUTATIONS) {
+    const key = Object.entries(paths).find(([, path]) => path === file)?.[0];
+    if (!key) throw new Error(`red anchor names an unread source: ${file}`);
+    if (src[key].split(before).length !== 2) throw new Error(`plant premise is not unique: ${key} ${expected}`);
+    const temp = join(tmpdir(), `u43-earned-${randomUUID()}.tmp`);
+    try {
+      writeFileSync(temp, src[key].replace(before, after), "utf8");
+      const run = spawnSync(process.execPath, [process.argv[1]], {
+        cwd: process.cwd(), encoding: "utf8", env: { ...process.env, U43_EARNED_MUTANT_FILE: file, U43_EARNED_MUTANT_PATH: temp },
+      });
+      if (run.status === 0 || !(run.stderr + run.stdout).includes(`FAIL ${expected}`))
+        throw new Error(`guard missed physical red mutation: ${key} ${expected}\n${run.stderr}${run.stdout}`);
+      console.log(`RED ${expected}`);
+    } finally { unlinkSync(temp); }
   }
-  if (/className="[^"]*(?:gold|gilt)[^"]*"/.test(source))
-    found.push("registration offers and their cards carry no gold or gilt classes");
-  return found;
+  console.log(`PASS ${MUTATIONS.length} independent physical red mutations`);
 }
-const registrationProblems = registrationIssues(registration);
-if (registrationProblems.length) throw new Error(`registration palette: ${registrationProblems.join("; ")}`);
-console.log("PASS registration offers use factual amounts and neutral ink");
-const registrationMutants = [
-  ["gold referral offer", "referral.newPlayerBonusTzs"],
-  ["gold invitation offer", "invite.bonusAmountTzs"],
-];
-for (const [label, field] of registrationMutants) {
-  const exact = `<span className="amount text-text">{formatTzs(${field})}</span>`;
-  const mutant = registration.replace(exact, exact.replace("text-text", "text-gold-300"));
-  if (mutant === registration || registrationIssues(mutant).length === 0)
-    throw new Error(`guard missed mutation: ${label}`);
-  console.log(`RED caught ${label}`);
-}
-console.log(`U43 registration offer palette: guard passed, ${registrationMutants.length}/${registrationMutants.length} in-memory mutations rejected`);
-
-// A placed bet has a side, but no win. Its receipt keeps the shared success
-// lifecycle and side strip while Continue, crest and eyebrow are neutral/brand.
-// Refusals stay until acknowledged or dismissed, and a free exit returns stake.
-function feedbackIssues(r, b, modal, h, sell) {
-  const found = [];
-  const receiptStart = r.indexOf("<OperationResultModal");
-  const receiptCall = receiptStart < 0 ? "" : r.slice(receiptStart, r.indexOf("/>", receiptStart) + 2);
-  if (!receiptCall.includes('variant="success"') || !receiptCall.includes('successCrestTone="neutral"')
-    || !receiptCall.includes('stripTone={placed.side === "UP" ? "yes" : "no"}')
-    || !receiptCall.includes('primaryLabel={t.market.udRcKeepPlaying}') || /autoCloseMs=/.test(receiptCall))
-    found.push("placed-bet receipt uses a neutral crest, actual side strip, localized Continue and shared timer");
-  if (!modal.includes('successCrestTone?: "neutral"')
-    || !modal.includes('const tone = variant === "success" && successCrestTone === "neutral" ? TONE.neutral : TONE[variant];'))
-    found.push("shared result modal actually applies neutral crest and eyebrow ink");
-  if (!modal.includes('if (open && variant === "success")')
-    || !modal.includes('{variant === "success" && (')
-    || !modal.includes('background: STRIP_GRADIENTS[stripTone] ?? STRIP_GRADIENTS.brand')
-    || !modal.includes('const effectiveBtn = variant === "success"\n    ? (stripTone === "gold" ? "btn-gold" : "btn-primary")\n    : tone.primaryBtn;')
-    || !modal.includes('className={`btn ${effectiveBtn} btn-lg w-full`}')
-    || !modal.includes('{primaryLabel ?? t.common.doneSawa}'))
-    found.push("success auto-close and actual side strip remain; localized Continue renders as brand");
-  const blockedStart = b.indexOf("<OperationResultModal");
-  const blockedCall = blockedStart < 0 ? "" : b.slice(blockedStart, b.indexOf("/>", blockedStart) + 2);
-  if (!blockedCall.includes('open={!!blocked}') || !blockedCall.includes('variant="neutral"')
-    || !blockedCall.includes('title={blocked?.title ?? ""}') || !blockedCall.includes('subtitle={blocked?.body}')
-    || /autoCloseMs=/.test(blockedCall))
-    found.push("blocked bet stays a neutral acknowledgement with its actual localized reason");
-  if (!h.includes('toast({ title: copy.failed, description: fail.description, variant: "factual", durationMs: 0 });')
-    || !h.includes('toast({ title: copy.failed, description: errCopy.udErrBusy, variant: "factual", durationMs: 0 });'))
-    found.push("both refused-bet toast paths are factual and sticky");
-  if (!sell.includes('borderColor: isFree ? "var(--border)"')
-    || !sell.includes('background:  isFree ? "var(--bg-elevated)"')
-    || !sell.includes('style={{ color: "var(--text)" }}')
-    || !sell.includes('{isFree ? t.dialog.noFee : `−${formatTzs(fee)}`}'))
-    found.push("free-exit panel reports no fee with neutral border, wash and ink");
-  return found;
-}
-const feedbackProblems = feedbackIssues(receipt, blocked, resultModal, hook, sellConfirm);
-if (feedbackProblems.length) throw new Error(`U43 receipt/refusal/exit palette: ${feedbackProblems.join("; ")}`);
-console.log("PASS placed receipt, blocked refusal, sticky toasts and free exit use their factual palette");
-const feedbackMutants = [
-  ["green receipt crest", receipt.replace('successCrestTone="neutral"', 'successCrestTone="success"'), blocked, resultModal, hook, sellConfirm],
-  ["brand strip instead of actual side", receipt.replace('stripTone={placed.side === "UP" ? "yes" : "no"}', 'stripTone="brand"'), blocked, resultModal, hook, sellConfirm],
-  ["side-coloured Continue", receipt, blocked, resultModal.replace('stripTone === "gold" ? "btn-gold" : "btn-primary"', 'stripTone === "gold" ? "btn-gold" : stripTone === "yes" ? "btn-yes" : stripTone === "no" ? "btn-no" : "btn-primary"'), hook, sellConfirm],
-  ["unlocalized Continue", receipt.replace('primaryLabel={t.market.udRcKeepPlaying}', 'primaryLabel="Continue"'), blocked, resultModal, hook, sellConfirm],
-  ["green shared crest override", receipt, blocked, resultModal.replace('successCrestTone === "neutral" ? TONE.neutral', 'successCrestTone === "neutral" ? TONE.success'), hook, sellConfirm],
-  ["lost success-only timer", receipt, blocked, resultModal.replace('if (open && variant === "success")', 'if (open)'), hook, sellConfirm],
-  ["red blocked refusal", receipt, blocked.replace('variant="neutral"', 'variant="danger"'), resultModal, hook, sellConfirm],
-  ["red server refusal toast", receipt, blocked, resultModal, hook.replace('description: fail.description, variant: "factual"', 'description: fail.description, variant: "danger"'), sellConfirm],
-  ["red transport refusal toast", receipt, blocked, resultModal, hook.replace('description: errCopy.udErrBusy, variant: "factual"', 'description: errCopy.udErrBusy, variant: "danger"'), sellConfirm],
-  ["green free-exit border", receipt, blocked, resultModal, hook, sellConfirm.replace('borderColor: isFree ? "var(--border)"', 'borderColor: isFree ? "var(--success-500)"')],
-  ["green free-exit wash", receipt, blocked, resultModal, hook, sellConfirm.replace('background:  isFree ? "var(--bg-elevated)"', 'background:  isFree ? "var(--success-bg)"')],
-  ["green free-exit fee ink", receipt, blocked, resultModal, hook, sellConfirm.replace('style={{ color: "var(--text)" }}', 'style={{ color: isFree ? "var(--success-fg)" : "var(--text)" }}')],
-];
-for (const [label, r, b, modal, h, sell] of feedbackMutants) {
-  if (r === receipt && b === blocked && modal === resultModal && h === hook && sell === sellConfirm)
-    throw new Error(`mutation did not alter source: ${label}`);
-  if (feedbackIssues(r, b, modal, h, sell).length === 0) throw new Error(`guard missed mutation: ${label}`);
-  console.log(`RED caught ${label}`);
-}
-console.log(`U43 receipt/refusal/exit palette: guard passed, ${feedbackMutants.length}/${feedbackMutants.length} in-memory mutations rejected`);
-
-function continueWordsIssue(src) {
-  const words = [...src.matchAll(/udRcKeepPlaying:\s*"([^"]+)"/g)].map((m) => m[1]);
-  return words.length !== 3 || words[0] !== "Keep playing" || words[1] !== "Endelea kucheza" || words[2] !== "继续游戏";
-}
-if (continueWordsIssue(dictionary)) throw new Error("receipt Continue must have its current EN/SW/ZH words");
-console.log("PASS receipt Continue uses its EN, SW and ZH words");
-for (const [language, word] of [["English", "Keep playing"], ["Swahili", "Endelea kucheza"], ["Chinese", "继续游戏"]]) {
-  const mutant = dictionary.replace(`udRcKeepPlaying: "${word}"`, 'udRcKeepPlaying: "Continue"');
-  if (mutant === dictionary || !continueWordsIssue(mutant)) throw new Error(`guard missed ${language} Continue word mutation`);
-  console.log(`RED caught ${language} Continue word mutation`);
-}
-
-function sellResultIssues(source) {
-  const start = source.indexOf("<OperationResultModal");
-  const call = start < 0 ? "" : source.slice(start, source.indexOf("/>", start) + 2);
-  const found = [];
-  if (!call.includes('variant={resultData.variant === "success" ? "success" : "neutral"}')
-    || !call.includes('successCrestTone="neutral"') || !call.includes('stripTone="brand"'))
-    found.push("sale success keeps its timer but both sale outcomes use neutral crest ink");
-  if (!call.includes('resultData.net >= 0') || !call.includes('t.common.fullStakeReturned')
-    || !call.includes('t.common.stakeReturnedMinusFee'))
-    found.push("sale result still distinguishes full stake from fee-reduced return");
-  return found;
-}
-const saleProblems = sellResultIssues(sellResult);
-if (saleProblems.length) throw new Error(`U43 sale result palette: ${saleProblems.join("; ")}`);
-console.log("PASS sale result keeps factual return wording and neutral crest");
-for (const [label, mutant] of [
-  ["green sale success crest", sellResult.replace('successCrestTone="neutral"', 'successCrestTone="success"')],
-  ["red failed sale crest", sellResult.replace('variant={resultData.variant === "success" ? "success" : "neutral"}', 'variant={resultData.variant}')],
-  ["gold sale progress strip", sellResult.replace('stripTone="brand"', 'stripTone="gold"')],
-]) {
-  if (mutant === sellResult || sellResultIssues(mutant).length === 0) throw new Error(`guard missed mutation: ${label}`);
-  console.log(`RED caught ${label}`);
-}
-console.log("U43 sale result palette: guard passed, 3/3 in-memory mutations rejected");

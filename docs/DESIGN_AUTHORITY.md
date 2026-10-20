@@ -165,14 +165,14 @@ The brand hue is **royal indigo, OKLCH hue 268** — matching `design-master-bri
 |---|---|---|---|
 | YES | `#00A24F` | `oklch(62% 0.17 152)` | winning / affirmative money surface |
 | NO | `#E6424C` | `oklch(62% 0.20 22)` | losing / negative money surface |
-| Gilt | `#D49824` | `oklch(72% 0.14 78)` | earned winnings only on player surfaces (§M3a) |
+| Gilt | `#D49824` | `oklch(72% 0.14 78)` | 50pick's signature metal and named money controls; struck payout ink remains earned (§M3a) |
 | Canvas royal | `#060A50` | hue 268 (L deepened to ~15% by design) | app background |
 | Aqua | `#36BABA` | `oklch(72% 0.110 195)` | finishing accent only (see B4) |
 | Claret | `#A4273F` | `oklch(48% 0.160 15)` | editorial weight only (see B4) |
 
 `src/app/globals.css` is authoritative for the exact values. Brand-identity hexes in
 `src/lib/brand-mark.ts` owns the logo colours: its green and red halves name YES and NO,
-while its needle and hub are pearl under Ali's current player rule (§M3a).
+while its needle and hub use the delivered gilt under Ali's current ruling (§M3a).
 
 ⚠️ **A `teal-*` name means royal indigo, not teal.** `--teal-50` … `--teal-950` in `globals.css`, and the Tailwind
 `teal-*` utilities bridged from them, are DEPRECATED backward-compatible aliases: each is literally `var(--royal-N)`,
@@ -186,7 +186,7 @@ Recorded 2026-08-06 because an outside design pass reconstructed the mark from p
 
 **What the mark is** (`src/lib/brand-mark.ts`, the ONE definition — audit C11; delivered
 `mark-a`, 2026-07-09): a circle split **YES-emerald LEFT · NO-rose RIGHT** by a diagonal
-chord, the **pearl NEEDLE** riding the seam past the rim, over a pearl hub with a navy pivot.
+chord, the **gilt NEEDLE** riding the seam past the rim, over a gilt hub with a navy pivot.
 ⛔ **No ring, no numerals** — the wordmark carries the name.
 
 1. ⛔ **There is no "50" glyph in the mark.** A coin face bearing numerals contradicts the
@@ -196,13 +196,13 @@ chord, the **pearl NEEDLE** riding the seam past the rim, over a pearl hub with 
    dial. The mark is not a logo that sits near the UI; it is **the UI's own instrument
    reduced**, and anything built on it must read as that instrument.
 
-**U43 colour ruling (Ali, 2026-10-19).** The shared instrument keeps its shape, but the
-`TippingBar` needle, the conviction dial that consumes `--bar-needle`, settled shimmer and
-hover sweep read a crowd split, not money won.
-They use neutral `--text` ink. Only the YES and NO fills use green and red. The identity
-mark's YES/NO halves keep their delivered side colours; its needle and hub use pearl.
-The win-rate `NeedleDial` on `/positions` uses that same neutral ink, including when the
-rate is 0%; a percentage of past results is not a payout to this viewer (§M3).
+**Current colour ruling (Ali, 2026-10-20).** Restore the delivered gilt on the
+mark's needle and hub, the `TippingBar` needle and conviction dial that consume
+`--bar-needle`, and the settled shimmer and hover sweep. They are the shared
+instrument's signature, not claims that a player won. The YES and NO fills keep
+their own green and red. The win-rate `NeedleDial` on `/positions` follows the
+same instrument gold, including at 0%; its printed percentage remains a factual
+measure, not a payout. This supersedes U43's 2026-10-19 neutral-instrument pass.
 
 **The −14° axis is measured from this artwork, not chosen.** From the shipped coordinates
 (`x1 38.39, y1 3.43 → x2 61.61, y2 96.57`): `atan(23.22 / 93.14) = 13.998°`, so
@@ -231,9 +231,9 @@ player-visible needle and hub follow the current mark ink. The shortcut icons re
 by the Phosphor migration; do not edit that lane's unfinished artwork from U43. The
 reliable test is the generator's output list, not the directory name.
 
-**Current mark ink (Ali, 2026-10-19):** the YES and NO halves keep `#1EA362` and
-`#B03A3E`; the needle and hub use `#F7F8FC`. The earlier delivered gold centre is
-superseded on player-visible React, PWA and exported artwork. Regenerate assets from
+**Current mark ink (Ali, 2026-10-20):** the YES and NO halves keep `#1EA362` and
+`#B03A3E`; the needle and hub use the delivered `#E3BC66` gold on player-visible
+React, PWA and exported artwork. Regenerate assets from
 `brand-mark.ts`; never recolour a generated image by hand.
 
 **Reproduction law** (enforced in `FiftyMark`, which auto-switches below 24px): full mark
@@ -271,15 +271,16 @@ be mistaken for one:
 in `--yes-*`. Urgency is carried by the kit's `m-urgent` motion and the player's LIVE signal by a neutral pip and word (§B11);
 the text keeps its neutral ink. `test:betting-ink` pins the sites.
 
-**U43 palette amendment (Ali, 2026-10-19).** On player surfaces, live status and HOT
+**U43 palette amendment (Ali, 2026-10-19; gold restoration 2026-10-20).** On player surfaces, live status and HOT
 crowd signals are neutral. Green and red name only the two betting sides and their outcomes.
 The shared ticker's LIVE pip, word, separators and controls are neutral; keyboard focus uses
-brand. Bell unread signs, menu destinations, active navigation dots and coming-soon flags
-use brand or neutral ink. A balance delta keeps its signed number in neutral ink. The
-language selection tick and footer midpoint use brand. Ali's 2026-10-20 amendment restores
+brand. The Journey balance delta keeps its signed number in neutral ink; the classic
+capsule retains its earlier directional delta. The full pre-B5 house-gold
+treatment returns on named shell accents and controls (§M3a), including the classic bell,
+product-line dots, footer midpoint and deposit doors. Ali's 2026-10-20 amendment restores
 the external social marks' original vendor colours; these registered marks are not app-state
 or betting-side ink. The 50pick mark keeps YES/NO side halves
-and uses a pearl needle and hub (§B1a).
+and uses its delivered gilt needle and hub (§B1a).
 On the Up & Down board, round page and market board, a recoverable page error uses a neutral
 alert mark and explicit retry words. An invalid custom stake keeps `aria-invalid`, a strong
 neutral field edge and a plain range sentence. The chart's delayed-source receipt is neutral
@@ -509,7 +510,7 @@ the money is moving). Receipts would have been a third. All three read `status-t
 `playerStatusChip`, the `/wallet` row's printed word through `playerStatusInk` (`TONE_INK`, the chip's own text colour) —
 so one payment reads one colour everywhere: **waiting is royal** (Pending, Processing, In review), **Completed is
 success green**, **Failed is the failure colour**, and **Reversed and Cancelled are slate** — terminal and inert, the
-money is back or never left. ⛔ Never gilt: moving your own money in or out earns nothing (§M3a D1). A deposit held for
+money is back or never left. These receipt status words do not borrow the gold of the deposit control (§M3a). A deposit held for
 return is SHOWN as Reversed (`presentedStatus`, `lib/wallet/receipts.ts`), as its notice and email say.
 
 **6. VOID IS SLATE TO THE PLAYER TOO (2026-10-10, the S6 visual pass's round 7, R7-B; round 6's read R8-3, readers 4, 5
@@ -526,10 +527,11 @@ follows the dictionary: the ticket and position cards, the board cards, the home
 page and history, the market's resolution panel and `/results`' notable card (both hand-typed royal until this change);
 a void printed as a word takes the slate chip's own text (`playerStatusInk`, `--text-muted`).
 
-**7. RESOLVED IS SLATE ON EVERY SURFACE (2026-10-19, U43).** It says that a market has reached a final state;
-it does not say this viewer won money. Ali reserved gold for money a player has won. A WIN amount or earned-win
-state can still use the earned-money tone, while the market's RESOLVED chip is neutral. The three status surfaces
-take this from `STATUS_TONE`, including the market card, `/results` and the resolution panel.
+**7. RESOLVED HAS ITS EARLIER GILT STATUS TONE AGAIN (Ali, 2026-10-20).** U43's
+2026-10-19 slate replacement is superseded. The status says the market has reached
+a final state; it is not a claim that this viewer won. The three status surfaces
+take the named tone from `STATUS_TONE`, including the market card, `/results` and
+the resolution panel. A player's won amount has its separate earned-money treatment.
 
 **⛔ THE KEPT SURFACE SPLIT — LIVE.** Ali's 2026-10-19 U43 ruling replaces the older player
 broadcast red: the player sees a neutral word and pip, because red and green name the two
@@ -2813,7 +2815,7 @@ not a failure.
   `.m-out` (scrim `.m-scrim`) · toast → the toast component's own transition. There is no
   third entrance.
 
-### M3 — Gold is struck, and struck means earned
+### M3 — Gilt material and earned amounts
 
 Gilt renders as satin metal — one calm `--gilt-metal` ramp anchored on the **measured**
 former delivered mark sample: `#E3BC66` = `oklch(81.2% 0.1141 85.4)`, written at hue **84** (E-124 — the
@@ -2821,18 +2823,26 @@ delivery's `0.095` figure round-trips to a duller `#D7B672`; every gilt chroma s
 ×1.2011). An even `--gilt-metal-edge` ring; one soft `shimmer-gilt` specular sweep on hover
 (a per-layer keyframe — do not "simplify" it back to one value, the metal slides off the
 button). **No bloom** — radial glow dilutes the financial texture; **rays are banned**.
-The usage law has teeth: **struck gold appears only where money was earned** (a won payout,
-its celebration or its resolved win seal). A decorative element wearing `--gilt-metal` is a violation, not
-a style choice. And `.gilt-metal:focus-visible` **keeps a real `outline`** (E-129): a
-box-shadow ring is invisible in forced-colors, wherever an earned-money action uses it.
+**Earned payout figures and win celebrations use the struck treatment.** Ali's
+2026-10-20 ruling also restores the named earlier house-gold identity and controls
+in §M3a. A gold deposit or bet button marks an action, not a won amount; an
+ordinary amount must not acquire `.gilt-ink` for decoration. `.gilt-metal:focus-visible`
+**keeps a real `outline`** (E-129): a box-shadow ring is invisible in forced-colors.
 Maswali Millionea's jackpot, floor, rollover and stub are unearned and never gold: §M8a item 7.
 
-### M3a — Player money actions and earned gold (D1, D5; U43 B5)
+### M3a — Named house gold and money controls (D1, D5; U43 B5)
 
-**Current player rule (Ali, 2026-10-19): gold marks only money the player has won.**
-Bet, sell, deposit and withdrawal controls use their approved brand or side treatment;
-moving or committing a stake is not a win. The older decisions below explain how the
-palette reached this rule and do not grant an exception to it.
+**Current player rule (Ali, 2026-10-20): restore the full earlier house-gold treatment
+that U43 B5 removed.** The delivered mark, shared needle and split instrument,
+available wallet balance and its flash/eye, deposit entries, bet and sell commit
+buttons, classic bell and shell accents, and RESOLVED status regain their named
+gold treatment. A bet, sale or deposit still earns no money by itself. Earned
+payout amounts and win celebrations remain separately identified by the struck
+win treatment (§M3). Gold is not a generic tint for unrelated copy, a HOT/LIVE
+signal, an unearned bonus offer or an error. The U43 2026-10-19 gold-only-winnings
+restriction is superseded at these named sites; its neutral LIVE/HOT and side-ink
+rules remain in force. Restore a component from its pre-B5 role, not by recolouring
+every neutral surface.
 
 Historical rulings, added 2026-08-21 — **D1 and D5, applied at their stated defaults at
 that time.** §M3 said struck gold meant **earned**. Two families of surface had been
@@ -2842,7 +2852,7 @@ reading it as *"money is involved"*, which is not the same claim:
   gold, and not claret. Moving your own money into or out of your own wallet earns nothing,
   so gold overstates it; and a routine transfer is not an irreversible ceremony (§B4a), so
   claret overstates it in the other direction. D1 then let bet and sell commits keep gold;
-  Ali's 2026-10-19 player rule above supersedes that allowance.
+  U43 removed that gold, and Ali's 2026-10-20 ruling restores those named commits.
 - **D5 — the wallet's promotional cards.** A **zero** bonus balance and a **deposit
   inducement** are not earned money. A card that says *you have TZS 0 in bonuses*, and a card
   whose whole purpose is to ask you to pay money in, must not wear the ink this platform uses
@@ -2851,31 +2861,30 @@ reading it as *"money is involved"*, which is not the same claim:
 ⚠️ **Historical SJ-12 decision, applied 2026-09-29 at the S15 flip:** the journey's two deposit
 buttons followed D1 and the header-pill precedent, not D5.
 - **The low-balance "Weka pesa TZS {x}"** was treated as a deposit entry rather than an inducement
-  card and wore `gilt-metal` like the header pill. U43 B5 replaces that gold door with brand.
+  card and wore `gilt-metal` like the header pill. U43 B5 changed that door to brand;
+  the current ruling restores its earlier gold treatment.
 - **"Lipa TZS {x}"** on the journey deposit screen was a brand (`btn-primary`) deposit commit.
 
-At that time the bet commit "Weka dau · TZS {x}" kept gold. It now follows the current
-player rule above. The deck's gold "Nimeelewa, anza" and gold active tab were not adopted:
+The bet commit "Weka dau · TZS {x}" keeps its earlier gold treatment under the
+current ruling. The deck's gold "Nimeelewa, anza" and gold active tab were not adopted:
 they use `btn-primary` and `--pill-active` (owner ruling R5: 50pick's look, unchanged).
 
-**Applied by Ali on 2026-10-19 (U43 B5):** gold is reserved for money the player **won**.
-An available wallet balance, its flash and eye, a deposit entry,
-the header and Wallet sheet deposit doors, and the classic rail deposit door now use neutral
-ink or brand colour. Bell and avatar controls, LIVE/status chrome, coming-soon flags and
-footer dividers likewise cannot borrow won-money gold or the two sides' colours. The actual
-50pick logo retains its YES/NO geometry with a neutral centre; external social marks
-retain their original vendor colours under Ali's 2026-10-20 amendment. The old D1/SJ-12
-gold entry exception above records its history; it is no longer permission to paint an
-unearned amount or deposit door gold. The shared shell guard `test:u43-shell-palette`
-pins these surfaces with mutation proof. Other pre-existing gold money commits require a
-separate audit before claiming this rule platform-wide.
+**Historical U43 B5 pass (2026-10-19, superseded for gold on 2026-10-20):**
+it removed gold from the wallet balance, flash and eye, deposit and bet/sell doors,
+classic rail coin, bell, navigation dots, footer midpoint, instrument needle and
+mark centre. Ali asked for that earlier gold treatment back after seeing it live.
+The shared `test:u43-shell-palette` and `test:u43-bar-ink` guards now pin the
+restored paint with mutation proof. LIVE and HOT remain neutral. External social
+marks keep their original vendor colours under Ali's 2026-10-20 amendment.
 
 Two more surfaces where gold is decided, both by the same test:
 - **The result after an act** — `OperationResultModal`'s `stripTone` (its auto-close strip;
-  `src/components/markets/operation-result-modal.tsx`). A placed bet passes its SIDE, `yes` or `no`,
-  to the strip and commit seal. Its Continue action, crest and eyebrow use neutral or brand ink. Every other result takes the default `brand` — a sale's result too
-  (`SellResultModal`), because it returns a stake and earns nothing, as do deposits, withdrawals and every console
-  act. `gold` is kept for money earned, and no caller passes it today.
+  `src/components/markets/operation-result-modal.tsx`). A placed bet passes its
+  SIDE, `yes` or `no`, to the strip and Continue action; its crest names a
+  commitment, not a win. A successful sale (`SellResultModal`) restores its
+  earlier gold completion treatment; a failed sale stays neutral or brand and
+  never claims money returned. Deposit, withdrawal and console results keep
+  their own named treatments. The modal does not infer a payout from its colour.
 - **The board's HOT flag is slate** (Ali, 2026-10-19, U43 B4). "Hot" is a crowd signal,
   not a betting side or won money. The market card asks the kit for its neutral variant;
   the kit's older `hot` variant has other callers and is not its colour source.
@@ -3020,11 +3029,11 @@ design (designer R2 Q5, confirmed). A Maswali Millionea win lands its amount fin
 
 Identity motion (mark-flip on the needle axis, `.mark-pending`'s ambient breath — listed in
 the frozen ambient-loop set and in the third gate's list) is reserved for the trademark. The
-mark's YES/NO halves stay the delivered hexes (#1EA362 / #B03A3E), with a pearl
-needle and hub (#F7F8FC) in chrome; on the seal
+mark's YES/NO halves stay the delivered hexes (#1EA362 / #B03A3E), with the
+delivered gilt needle and hub (#E3BC66) in chrome; on the seal
 it renders single-ink relief. Clear space 0.25 × diameter is law even inside our own seal —
-76px on a 114px face is the ceiling, not a style choice. Surface gold is the earned-money
-treatment (M3); the mark's neutral centre no longer borrows it. `--m-pivot` is
+76px on a 114px face is the ceiling, not a style choice. The mark's gold centre
+is identity, while a struck payout figure states money earned (§M3). `--m-pivot` is
 reserved for the needle and dials — `.g-ring` takes `--m-glide` (a bell is neither).
 
 ### M8a — Millionea exceptions (Ali, 2026-10-17)
@@ -3103,14 +3112,15 @@ answered**, in a file `docs/README.md` marks 🟢 LAW and which the design-syste
 as the single front door. A law doc asserting refuted state is worse than a stale note: it is
 the thing a session is told to trust. Found by auditing the close-out, not by reading it.
 
-1. ✅ **Q5 — GOLD IS MONEY, AND NOTHING ELSE.** Both halves resolved: the Gold **asset chip**
+1. ✅ **Q5 — GOLD AS MONEY INK; THE HOUSE MARK RETAINS ITS METAL.** Both halves resolved: the Gold **asset chip**
    (`updown-card.tsx` `AssetMark`) and the **tier ring / badge** (`TIER_RING`, `.tier-*`) are
    off the money tokens. The rule, narrower than "no gold anywhere": a tier or asset may be
    METALLIC; it may not wear `--gilt`, `--gilt-metal`, `--gilt-ink`, `--gilt-strong` or
    `--gold-300…500`. ⛔ **Q7 forced this decision** — with the lettermarks final, the standing
    *"accept it, artwork replaces the tint anyway"* answer ceased to exist. **Enforced by
    `npm run test:gold-is-money`**, which exists because this law shipped as prose and was
-   already broken in its own file (E-141).
+   already broken in its own file (E-141). Ali's 2026-10-20 restoration in §M3a
+   names the brand and control exceptions; it does not recolour the Gold asset chip.
    ⭐ **And not the warning ink either — Ali's ruling (1) of 2026-10-10.** `--warning-fg` *was* `--gilt` (F3), so every
    warning on the platform wore money's gold; the warning family is its own amber now (F3's note), so gold-is-money's
    money-ink list no longer names it — an amber warning is not money, and money's gold is not a warning.

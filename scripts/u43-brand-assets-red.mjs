@@ -1,4 +1,4 @@
-/** U43 brand asset red proof: a gold centre or stale export must break the sync guard. */
+/** U43 brand asset red proof: a missing gilt centre or stale export breaks sync. */
 import { readFileSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -26,7 +26,8 @@ try {
       writeFileSync(file, text.replace(from, to));
       const result = run();
       const output = `${result.stdout}${result.stderr}`;
-      const caught = result.status !== 0 && output.includes("DRIFTED") && output.includes(expectedAsset);
+      const caught = result.status !== 0 && output.includes(`DRIFTED  ${expectedAsset}`)
+        && (relativeFile !== "src/lib/brand-mark.ts" || output.includes("DRIFTED  public/og/og-1200x630.png"));
       check(`${label}: red`, caught);
       if (!caught) console.log(`  diagnostic: exit=${result.status}; ${output.split("\n").filter((line) => /DRIFTED|error/i.test(line)).slice(0, 5).join(" | ")}`);
     } finally {

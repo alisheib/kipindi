@@ -160,14 +160,14 @@ const REGISTRY: Record<string, [number, string]> = {
   "src/components/markets/comments-thread.tsx": [2, "SIDE — a commenter's side chip"],
   "src/components/markets/conviction-dial.tsx": [16, "SIDE — the dial's two sides (track, gradients, labels, the side's Place button, the placed bet's strip)"],
   "src/components/markets/market-card.tsx": [2, "SIDE — the card's YES/NO buttons"],
-  // 14 → 12 (MASWALI-BUILD S5): the crest's two side tests became one `sealed` line.
-  // 12 → 8 (U43 Release B): Continue stopped borrowing the side buttons; only the strip and seal keep the side.
-  "src/components/markets/operation-result-modal.tsx": [8, "SIDE — a placed bet's strip and commit seal (`stripTone` yes/no); Continue is brand"],
+  // MASWALI-BUILD S5 folded the crest's two side tests into one sealed line.
+  // Ali's 2026-10-20 restoration keeps the placed-bet strip, seal and Continue action in the staked side.
+  "src/components/markets/operation-result-modal.tsx": [12, "SIDE — a placed bet's strip, commit seal and Continue action follow its `stripTone` yes/no; earned money uses gold"],
   "src/components/maswali/maswali-slip.tsx": [2, "SIDE — the slip's pick controls: the chosen side in its button's ink with the check, one lit control per row, the other a ghost (§B2)"],
   "src/components/markets/position-card.tsx": [2, "SIDE — a position's side chip"],
   "src/components/markets/side-picker.tsx": [4, "SIDE — the picked side's chip and the two side buttons"],
   "src/components/onboarding/first-visit-primer.tsx": [20, "SIDE — the primer's picture of the two sides, their bar and their pools"],
-  "src/components/updown/price-hero.tsx": [6, "SIDE — only the frozen UP and DOWN target labels and lines (§B12.2); observed prices stay neutral"],
+  "src/components/updown/price-hero.tsx": [14, "SIDE — the observed price, move, path and point follow the first target reached; target bands and labels stay directional (§B12.2)"],
   "src/components/updown/round-action-panel.tsx": [2, "SIDE — each side's amount"],
   "src/components/updown/round-stake-panel.tsx": [4, "SIDE — the locked side's chip"],
   "src/components/updown/updown-bet-receipt-modal.tsx": [2, "SIDE — the receipt's strip in the side staked"],
@@ -196,7 +196,6 @@ const REGISTRY: Record<string, [number, string]> = {
   "src/components/markets/circular-progress.tsx": [2, "KIT — the side tones of a ring whose one consumer is the console"],
   "src/components/ui/password-input.tsx": [3, "a local NAME: the strength meter's strong step is called `yes` and paints the success family (D2's own example)"],
   // ── OWNER: the classic bell and capsule (frozen chrome), a third party's mark, dead CSS ──────────────────────────────
-  "src/components/layout/notifications-panel.tsx": [2, "OWNER — the classic bell's rose count and \"Clear all\" hover (the journey's are brand and danger)"],
   "src/components/layout/wallet-balance-pill.tsx": [2, "OWNER — the classic capsule's ±delta (the journey's `.kp-jbal__delta` is the text's ink)"],
   "src/components/ui/social-marks.tsx": [1, "a third party's mark: WhatsApp's own green"],
   "src/app/state-tokens.css": [2, "DEAD — `.countdown--critical` (no consumer; it would paint time in the NO rose, §B2a)"],
@@ -267,9 +266,9 @@ section("2 · I-1 · an app state wears the app-state family — the crests, the
       && !/--(?:yes|no)-\d/.test(tone), tone.slice(0, 160));
   ok("2.1′ · the failure's way out is the primary action (never `btn-no`, the NO side's stake button), as every non-success result's is",
     /danger: \{[^}]*primaryBtn: "btn-primary",/.test(tone) && (tone.match(/primaryBtn: "btn-primary"/g) ?? []).length === 5 && !/btn-no/.test(tone));
-  ok("2.1″ · a detail row's good and bad are the app-state inks; a placed bet's strip keeps its SIDE and Continue is brand",
+  ok("2.1″ · detail rows use app-state ink; the placed bet's strip and Continue use its side, earned money uses gold",
     /d\.tone === "good" \? "var\(--success-fg\)"/.test(ORM) && /d\.tone === "bad"  \? "var\(--danger-fg\)"/.test(ORM)
-      && /const effectiveBtn = variant === "success"\s*\? \(stripTone === "gold" \? "btn-gold" : "btn-primary"\)\s*: tone\.primaryBtn;/.test(ORM)
+      && /const effectiveBtn = variant === "success"\s*\? \(stripTone === "gold" \? "btn-gold" : stripTone === "yes" \? "btn-yes" : stripTone === "no" \? "btn-no" : "btn-primary"\)\s*: tone\.primaryBtn;/.test(ORM)
       && /yes:\s*"linear-gradient\(90deg, var\(--yes-700\), var\(--yes-400\)\)"/.test(ORM));
 
   // 2.2 · global-error's "!" mark — the danger family written out (the page ships without the stylesheet).
@@ -322,10 +321,14 @@ section("2 · I-1 · an app state wears the app-state family — the crests, the
     ["CONTROL · the KYC uploader's done tile (the convention)", "src/components/profile/kyc-doc-uploader.tsx", /done \? "border-success-border bg-success-500\/\[0\.07\] cursor-pointer hover:border-success-500"/],
   ];
   for (const [what, f, re] of SUCCESS_MARKS) ok(`2.5 · ${what} — the success family`, re.test(read(f)), f);
-  ok("2.5u · a free exit returns stake with a neutral box and No fee ink",
-    /borderColor: isFree \? "var\(--border\)"/.test(read("src/components/markets/sell-confirm-modal.tsx"))
-      && /background:\s+isFree \? "var\(--bg-elevated\)"/.test(read("src/components/markets/sell-confirm-modal.tsx"))
-      && /style=\{\{ color: "var\(--text\)" \}\}/.test(read("src/components/markets/sell-confirm-modal.tsx")));
+  const sellConfirm = read("src/components/markets/sell-confirm-modal.tsx");
+  ok("2.5u · a fee-free exit returns stake in the success box and says No fee in success ink",
+    /const fee = Math\.max\(0, stake - value\);/.test(sellConfirm)
+      && /const isFree = fee <= 0;/.test(sellConfirm)
+      && /borderColor: isFree \? "color-mix\(in oklab, var\(--success-500\) 62%, transparent\)"/.test(sellConfirm)
+      && /background:\s+isFree \? "color-mix\(in oklab, var\(--success-500\) 18%, transparent\)"/.test(sellConfirm)
+      && /color: isFree \? "var\(--success-fg\)" : "var\(--text\)"/.test(sellConfirm)
+      && /\{isFree \? t\.dialog\.noFee : `−\$\{formatTzs\(fee\)\}`\}/.test(sellConfirm));
   ok("2.5′ · …and none of them carries the YES green", ["src/app/profile/security/security-client.tsx", "src/components/markets/resolution-panel.tsx", "src/components/markets/sell-confirm-modal.tsx", "src/app/agent/apply/apply-client.tsx"].every((f) => !/yes-\d00/.test(read(f))));
 
   // 2.6 · the auth eyebrow: success and danger, as its medallion.
@@ -558,12 +561,13 @@ section("5 · contrast — every new ink pair measured on its worst surface (≥
     ["the Sign out plate's glyph: danger ink on its 10% plate (card)", token("danger-fg"), over(token("danger-500"), 0.10, CARD), 3],
     ["a success mark: success ink on a card", token("success-fg"), CARD, 4.5],
     ["the 2FA plate: success ink on its 10% plate (card)", token("success-fg"), over(token("success-500"), 0.10, CARD), 3],
-    ["the free window's \"No fee\": text ink on its neutral elevated box", token("text"), ELEV, 4.5],
+    ["the free window's \"No fee\": success ink on its 18% success wash (modal)", token("success-fg"), over(token("success-500"), 0.18, MODAL), 4.5],
     ["the auth eyebrow: success / danger ink on the auth panel", token("danger-fg"), ELEV, 4.5],
     ["the dial's factual line: the faint ink on a card (Up & Down's own pair, 13px)", token("text-faint"), CARD, 4.5],
     ["the journey's brand pip (the bell, the Arifa row): pearl digits on `--brand-600`", token("pearl-50"), token("brand-600"), 4.5],
     ["a net earned on /updown/history: gilt on the elevated tile", token("gilt"), ELEV, 4.5],
-    ["the balance's ±delta: text ink on the capsule's inset fill", token("text"), INSET, 4.5],
+    ["the balance's positive delta: YES ink on the capsule's inset fill", token("yes-300"), INSET, 4.5],
+    ["the balance's negative delta: NO ink on the capsule's inset fill", token("no-300"), INSET, 4.5],
     ["the placed pulse: the neutral 40% ring on the board (a mark)", over(token("text"), 0.40, BG), BG, 3],
     ["the language glyphs: brand-200 / brand-300 on the 90% scrim", token("brand-300"), over(BG, 0.9, MODAL), 4.5],
     ["global-error's mark: its danger ink on its 18% disc", lit(82, 0.16, 25), over(lit(57, 0.22, 25), 0.18, lit(15, 0.13, 268)), 4.5],
@@ -600,8 +604,8 @@ section("6 · what must STAY — the sides keep the pair, a loss keeps the betti
   const plantedSidePair = updownControls.replace('side === "UP" ? "btn-yes" : "btn-no"', 'side === "UP" ? "btn-yes" : "btn-yes"');
   ok("6.1′ CONTROL · collapsing DOWN into the UP button fails the side-pair guard",
     plantedSidePair !== updownControls && !updownSidePair(plantedSidePair));
-  ok("6.2 · both placed-bet receipts keep actual side strips and brand Continue actions", /stripTone=\{placed\.side === "UP" \? "yes" : "no"\}/.test(read("src/components/updown/updown-bet-receipt-modal.tsx")) && /stripTone=\{resultData\.variant === "success" \? \(resultData\.side === "YES" \? "yes" : "no"\) : undefined\}/.test(read("src/components/markets/conviction-dial.tsx"))
-    && /const effectiveBtn = variant === "success"\s*\? \(stripTone === "gold" \? "btn-gold" : "btn-primary"\)\s*: tone\.primaryBtn;/.test(read("src/components/markets/operation-result-modal.tsx")));
+  ok("6.2 · both placed-bet receipts keep actual side strips and matching side Continue actions", /stripTone=\{placed\.side === "UP" \? "yes" : "no"\}/.test(read("src/components/updown/updown-bet-receipt-modal.tsx")) && /stripTone=\{resultData\.variant === "success" \? \(resultData\.side === "YES" \? "yes" : "no"\) : undefined\}/.test(read("src/components/markets/conviction-dial.tsx"))
+    && /const effectiveBtn = variant === "success"\s*\? \(stripTone === "gold" \? "btn-gold" : stripTone === "yes" \? "btn-yes" : stripTone === "no" \? "btn-no" : "btn-primary"\)\s*: tone\.primaryBtn;/.test(read("src/components/markets/operation-result-modal.tsx")));
   ok("6.3 · LOSS keeps the betting rose (the owner's ruling) — the position chip and a negative net", /return status === "LOSS" \? "no"/.test(read("src/lib/status-tone.ts")) && /LOSS: "Betting rose \(`no`\)/.test(read("src/lib/status-tone.ts")));
   // U43 B4 (2026-10-19): the headline can now name the NO-leading funded
   // side, so its figure is neutral while the side caption carries its ink.
@@ -611,13 +615,21 @@ section("6 · what must STAY — the sides keep the pair, a loss keeps the betti
       && /\.mcardp-pctcap \{[^}]*color:\s*var\(--yes-400\)/.test(CSS)
       && /\.mcardp-pctcap--no \{[^}]*color:\s*var\(--no-400\)/.test(CSS)
       && /const leadingSide = noPool > yesPool \? "NO" : "YES"/.test(read("src/components/markets/market-card.tsx")));
-  ok("6.5 · U43 · classic unread dots, wash, count and Clear all use brand or neutral",
-    /const unreadDot = "brand";/.test(read("src/components/layout/notifications-panel.tsx"))
-      && /const unreadWash = "bg-brand-500\/\[0\.04\]";/.test(read("src/components/layout/notifications-panel.tsx"))
+  ok("6.5 · the classic bell's unread dots and wash are gold; the journey bell, counts and Clear all keep their own tones",
+    /const unreadDot = journey \? "brand" : "gold";/.test(read("src/components/layout/notifications-panel.tsx"))
+      && /const unreadWash = journey \? "bg-brand-500\/\[0\.04\]" : "bg-gold-500\/\[0\.04\]";/.test(read("src/components/layout/notifications-panel.tsx"))
       && /const countTone = "brand";/.test(read("src/components/layout/notifications-panel.tsx"))
-      && /const clearAllHover = "hover:text-text";/.test(read("src/components/layout/notifications-panel.tsx")));
-  ok("6.6 · U43 · the classic capsule's signed delta is neutral, not a betting side",
-    /style=\{\{ color: "var\(--text\)" \}\}/.test(read("src/components/layout/wallet-balance-pill.tsx")));
+      && /const clearAllHover = "hover:text-text";/.test(read("src/components/layout/notifications-panel.tsx"))
+      && /<Dot tone=\{unreadDot\}/.test(read("src/components/layout/notifications-panel.tsx")));
+  ok("6.6 · the classic capsule's signed delta follows its positive or negative ink",
+    /style=\{\{ color: delta > 0 \? "var\(--yes-300\)" : "var\(--no-300\)" \}\}/.test(read("src/components/layout/wallet-balance-pill.tsx")));
+  const priceHero = read("src/components/updown/price-hero.tsx");
+  ok("6.6′ · the observed Up & Down price follows the reached target; its opening reference stays gilt",
+    /const ink = tone\s*\? \(tone === "level" \? "var\(--text-muted\)" : tone === "up" \? "var\(--yes-300\)" : "var\(--no-300\)"\)/.test(priceHero)
+      && (priceHero.match(/color: ink/g) ?? []).length === 2
+      && /<path d=\{line\} fill="none" stroke=\{ink\}/.test(priceHero)
+      && (priceHero.match(/fill=\{ink\}/g) ?? []).length === 3
+      && /<line x1="0" y1=\{openY\} x2="606" y2=\{openY\} stroke="var\(--gilt\)"/.test(priceHero));
   ok("6.7 · OWNER · `hot` still shares the NO rose with `no` in the chip (the split is the owner's call, §B2a)", /no:\s*ROSE,/.test(read("src/components/ui/chip.tsx")) && /hot:\s*ROSE,/.test(read("src/components/ui/chip.tsx")));
   ok("6.8 · no RG notice, helpline or limit control was touched: the RG page keeps its three neutral notices and its limits form",
     (read("src/app/profile/responsible-gambling/page.tsx").match(/<Callout tone="neutral" size="md" glyph="(?:lock|pause|clock)">/g) ?? []).length === 3

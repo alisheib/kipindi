@@ -369,10 +369,10 @@ const MUTATIONS = [
     to: `  opacity: 1;\n  background: oklch(62% 0.12 268);`,
   },
   {
-    name: "U43 B5 · drop the plate's opacity: 1 — .btn:disabled's 0.45 would dim plate and words together, which the gate cannot score",
+    name: "drop the gold commit plate's opacity: 1 — .btn:disabled's 0.45 would dim plate and words together, which the gate cannot score",
     kind: "throw",
-    from: `.kp-bsheet .btn-primary:disabled {\n  opacity: 1;\n`,
-    to: `.kp-bsheet .btn-primary:disabled {\n`,
+    from: `.kp-bsheet .btn-gold:disabled {\n  opacity: 1;\n`,
+    to: `.kp-bsheet .btn-gold:disabled {\n`,
   },
 ];
 

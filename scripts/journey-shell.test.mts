@@ -1586,9 +1586,9 @@ function g7Header(W: World, ok: Ok) {
   // ⭐ RE-PINNED IN THE OPEN 2026-10-17 (PHOSPHOR-MIGRATION W2): the gap is the deposit arrow's — Phosphor's arrow-line-down
   // Bold starts its ink at x28 of 256, 1.53px at 14px (the hand-drawn "+" freed 2.55 of 24, 1.49px) — so the padding is
   // calc(11px + 28 * 14px / 512), half the gap a side.
-  ok("7.pill · ↓ Weka pesa is the kit's brand pill at the 44px rung, padded 12px below 360 and from 360 A5's 22px plus the arrow's freed 1.53px shared evenly, named by its words",
+  ok("7.pill · ↓ Weka pesa is the gilt pill at the 44px rung, padded 12px below 360 and from 360 A5's 22px plus the arrow's freed 1.53px shared evenly, named by its words",
     pillRule.includes("padding: 0 12px;") && minWidthRule(css, 360, ".kp-jhdr__pill").includes("padding: 0 calc(11px + 28 * 14px / 512)")
-      && bar.includes(`className="btn btn-primary btn-md btn-pill kp-jhdr__pill"`) && bar.includes(`href="/wallet/deposit"`)
+      && bar.includes(`className="btn gilt-metal btn-md btn-pill kp-jhdr__pill"`) && bar.includes(`href="/wallet/deposit"`)
       && bar.includes("aria-label={t.journey.depositAction}") && bar.includes(`data-testid="journey-deposit"`),
     show({ pillRule, from360: minWidthRule(css, 360, ".kp-jhdr__pill") }));
   ok("7.figure · the capsule's figure is 12px below 360 and 14px from 360, and its padding 10px (the capsule's own rules, WP4)",

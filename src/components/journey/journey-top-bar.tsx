@@ -216,7 +216,7 @@ export function JourneyTopBar({
               href="/wallet/deposit"
               aria-label={t.journey.depositAction}
               data-testid="journey-deposit"
-              className="btn btn-primary btn-md btn-pill kp-jhdr__pill"
+              className="btn gilt-metal btn-md btn-pill kp-jhdr__pill"
             >
               {/* Its ink on the pill's start padding (round 10, R10-A6: a centred control frames its ink). */}
               <span aria-hidden className="kp-jhdr__plus"><I.arrowDownToLine s={14} edge="start" /></span>

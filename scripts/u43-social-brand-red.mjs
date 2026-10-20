@@ -4,10 +4,10 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { MUTATIONS } from "./anchors/u43-shell-palette.anchors.mjs";
+import { MUTATIONS } from "./anchors/u43-social-brand.anchors.mjs";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const plants = MUTATIONS.filter((item) => item.file === "src/components/ui/social-marks.tsx");
+const plants = MUTATIONS;
 if (plants.length !== 3) throw new Error(`Expected three social-mark plants, found ${plants.length}`);
 const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const guard = () => {

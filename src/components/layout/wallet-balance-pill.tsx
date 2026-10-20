@@ -9,7 +9,7 @@ import { useT } from "@/lib/i18n";
  * Why this exists: previously the pill silently jumped from
  * TZS 100,000 → TZS 86,800 the moment a bet debited the wallet. No
  * confirmation that the action landed beyond the toast. Now the
- * number rolls + the pill outline pulses brand for ~700 ms, giving
+ * number rolls + the pill outline pulses gilt for ~700 ms, giving
  * the player a calm "yes, your money moved" affordance. Reduced-
  * motion users see the number snap with no pulse — same visual end
  * state, no motion.
@@ -222,8 +222,8 @@ export function WalletBalancePill({ balance, held = false }: { balance: number; 
         height: "var(--h-control-md)",
         background: "var(--bg-inset)",
         boxShadow: flashing
-          ? "0 0 0 3px color-mix(in oklab, var(--brand-300) 22%, transparent), inset 0 0 0 1px var(--brand-300)"
-          : "inset 0 0 0 1px var(--border-control)",
+          ? "0 0 0 3px color-mix(in oklab, var(--gold-300) 22%, transparent), inset 0 0 0 1px var(--gold-300)"
+          : "inset 0 0 0 1px color-mix(in oklab, var(--border-gold) 35%, transparent)",
         transitionDuration: "260ms",
       }}
       data-testid="wallet-balance-capsule"
@@ -266,8 +266,8 @@ export function WalletBalancePill({ balance, held = false }: { balance: number; 
         // clipped, so a `right <= viewport` check passed it. The check was wrong, not the
         // layout: a bar must end where its container ends.
         "pl-1.5 pr-1 text-caption sm:pl-3 sm:pr-2.5 sm:text-label",
-        // U43 B5 · a wallet balance is money available, not money won. Earned payout alone keeps gold.
-        "cursor-pointer text-text hover:text-brand-200",
+        // The figure carries the balance's earlier gold treatment; the currency word stays muted.
+        "cursor-pointer text-gold-300 hover:text-gold-200",
       )}
       style={{ gap: 7, transitionDuration: "260ms" }}
       data-testid="wallet-balance-pill"
@@ -345,7 +345,7 @@ export function WalletBalancePill({ balance, held = false }: { balance: number; 
         <span
           aria-hidden
           className="wbp-delta pointer-events-none absolute bottom-0 right-1 font-mono text-[9.5px] leading-none tabular-nums"
-          style={{ color: "var(--text)" }}
+          style={{ color: delta > 0 ? "var(--yes-300)" : "var(--no-300)" }}
         >
           {delta > 0 ? "+" : ""}
           {formatNumber(delta)}
@@ -403,7 +403,7 @@ export function WalletBalancePill({ balance, held = false }: { balance: number; 
           balanced 14px on each side of the glyph does the same job there.
           ⛔ This is DENSITY, not inconsistency: the type size, the padding and the eye's hit
           area already step at the same breakpoint, for the same reason. */}
-      <span aria-hidden className="hidden h-[24px] w-px shrink-0 bg-[var(--border-control)] sm:block" />
+      <span aria-hidden className="hidden h-[24px] w-px shrink-0 bg-[color-mix(in_oklab,var(--gold-300)_26%,transparent)] sm:block" />
       {/* ⭐ THE EYE IS A REAL TARGET NOW, NOT A GLYPH IN A GAP. Its hit area went 28px → 40px
           wide while the glyph stayed 14px, so nothing about the capsule's width or rhythm
           changed and the control became eight pixels easier to hit than the tap floor's
@@ -411,7 +411,7 @@ export function WalletBalancePill({ balance, held = false }: { balance: number; 
           ⛔ EVERY NUMBER IS AN ARBITRARY LITERAL ON PURPOSE. `theme.extend.spacing` is
           overridden (tailwind.config.ts): `h-11` is 96px and `w-7` is 40px, so a scale token
           would ship a 96×40 control while the class list still read correct.
-          The eye shares the capsule's neutral ink and uses brand for hover.
+          The eye shares the capsule's gold ink and brightens on hover.
           ⛔ PV-13a (2026-09-03) — `h-[42px]` WAS HAND-TYPED HERE, 2px off the 40/44 rung
           ladder (§K1), on every top bar (measured on production: 42px inside a 44px
           capsule — the comment three lines up already said "44px tall is the WCAG 2.5.5
@@ -425,7 +425,7 @@ export function WalletBalancePill({ balance, held = false }: { balance: number; 
       <CashEye
         bare
         size={14}
-        className="inline-flex h-full w-[var(--tap-min)] shrink-0 items-center justify-center rounded-r-pill text-text-muted transition-colors hover:bg-[color-mix(in_oklab,var(--brand-300)_10%,transparent)] hover:text-brand-200"
+        className="inline-flex h-full w-[var(--tap-min)] shrink-0 items-center justify-center rounded-r-pill text-[var(--gold-300)] transition-colors hover:bg-[color-mix(in_oklab,var(--gold-300)_10%,transparent)] hover:text-gold-200"
       />
     </div>
     <WalletSheet open={open} onClose={() => setOpen(false)} balance={effectiveBalance} held={held} anchorRef={capsuleRef} />
@@ -438,9 +438,9 @@ export function WalletBalancePill({ balance, held = false }: { balance: number; 
  * the figure "TZS 2,000". Only the journey header renders it (S6 WP6a), and that header mounts only for a
  * journey viewer (WP6b), so the classic bar and everyone outside the journey are untouched.
  *
- * ⭐ WHAT IT KEEPS FROM THE CLASSIC PILL: the roll and the brand flash (`useBalanceRoll`, one hook for both),
+ * ⭐ WHAT IT KEEPS FROM THE CLASSIC PILL: the roll and the gilt flash (`useBalanceRoll`, one hook for both),
  * the reserved box that is the wider of figure and mask (D31), the compact form from TZS 1,000,000
- * (`formatBalancePill`, VODACOM-PLAN §0h point 14), the neutral figure on a live balance, and the Wallet a tap
+ * (`formatBalancePill`, VODACOM-PLAN §0h point 14), the gold figure on a live balance, and the Wallet a tap
  * opens: the same WalletSheet, in the journey's words ("Weka pesa", "Toa pesa").
  * ⭐ WHAT IT DROPS, BY RULING (SJ-15): the eye and the caret. Hiding balances lives in the Wallet it opens,
  * beside Withdraw, so both stay one tap from the capsule (V19, redefined).
@@ -455,7 +455,7 @@ export function WalletBalancePill({ balance, held = false }: { balance: number; 
  * the caption row, and the widths say no: at 320 the figure box is 64.8px, "Balance" takes about 40 of it and
  * "+1,000" needs 34, so the two would overprint in English. It covers the whole row on the capsule's own fill
  * and crossfades with the caption. A frozen wallet shows none: its caption is the frozen word, which nothing
- * may cover, and the brand ring still marks the move.
+ * may cover, and the gilt ring still marks the move.
  * ⚠️ All paint is in globals.css (the kp-jbal rules), on tokens. The flash is a data attribute the stylesheet
  * answers, not an inline style, so the classic capsule's inline border stays the only one in this file.
  */

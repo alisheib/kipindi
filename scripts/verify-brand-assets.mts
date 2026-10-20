@@ -187,11 +187,16 @@ console.log("\n== 4. the unpublished share-picture generator (S11 WP8) ==");
   const firstPx = await rawOf(first), secondPx = await rawOf(second);
   const same = firstPx.width === X_W && firstPx.height === OG_H && firstPx.channels === secondPx.channels
     && firstPx.data.equals(secondPx.data);
+  const published = await rawOf(readFileSync(resolve(ROOT, "public/og/og-1200x630.png")));
+  const publishedMatches = published.width === firstPx.width && published.height === firstPx.height
+    && published.channels === firstPx.channels && published.data.equals(firstPx.data);
   const generator = readFileSync(resolve(ROOT, "scripts/build-og-picture.mts"), "utf8");
   const fromMark = generator.includes('import { markSvg } from "../src/lib/brand-mark.ts";')
     && generator.includes('markSvg({ variant: "color" })');
   if (!fromKey || !same || !fromMark) bad++;
   console.log(`  ${fromKey && same && fromMark ? "IN SYNC " : "DRIFTED "} two renders are pixel-identical, the lines read the named dictionary key, and the mark reads brand-mark.ts`);
+  if (!publishedMatches) bad++;
+  console.log(`  ${publishedMatches ? "IN SYNC " : "DRIFTED "} public/og/og-1200x630.png matches the reviewed current-mark render pixel for pixel`);
 }
 
 console.log(`\nVERDICT: ${bad === 0 ? "every report/brand asset is in sync with src/lib/brand-mark.ts, the X card is the share picture's middle, and the unpublished picture generator is deterministic" : bad + " asset(s) DRIFTED from the source of truth"}`);

@@ -31,9 +31,9 @@ export const LANGS: Locale[] = ["en", "sw", "zh"];
 const CODES: Record<Locale, string> = { en: "EN", sw: "SW", zh: "ZH" };
 export const NAMES: Record<Locale, string> = { en: "English", sw: "Kiswahili", zh: "中文" };
 
-/** The selected language wears brand ink in either player shell; selection is not won money. */
+/** The classic language menu keeps its gilt tick; the journey menu uses brand ink. */
 export function LanguageMenu({ journey = false }: { journey?: boolean } = {}) {
-  const tickInk = "var(--brand-300)";
+  const tickInk = journey ? "var(--brand-300)" : "var(--gilt)";
   const { locale, setLocale, t } = useT();
   const ref = useRef<HTMLDetailsElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);

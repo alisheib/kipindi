@@ -1,8 +1,8 @@
 /**
  * 50pick brand primitives — FINAL (logo round 2, Direction B "Needle").
  *
- * The mark: YES emerald LEFT · NO rose RIGHT · a pearl NEEDLE riding the seam
- * past the rim (same object as TippingBar needle + conviction dial) over a pearl
+ * The mark: YES emerald LEFT · NO rose RIGHT · a gilt NEEDLE riding the seam
+ * past the rim (same object as TippingBar needle + conviction dial) over a gilt
  * hub with a navy pivot. No ring, no numerals — the wordmark carries the name.
  *
  * Geometry + colours live in `@/lib/brand-mark` (the ONE definition, shared with
@@ -344,7 +344,7 @@ export function TippingBar({
         {mark != null && Number.isFinite(mark) && (
           <div className="tipbar-mark" style={{ left: `${Math.max(6, Math.min(94, mark))}%` }} aria-hidden />
         )}
-        {/* Tipping needle — neutral reading ink, sits on the boundary, tilts with
+        {/* Tipping needle — gilt champagne, sits on the boundary, tilts with
             lean. At extremes the position is clamped to the inner 6..94
             range so the needle never clips the rounded corner. */}
         <div

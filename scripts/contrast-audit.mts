@@ -782,12 +782,12 @@ function ruleOpacity(selector: string): number {
   return m ? parseFloat(m[1].trim()) : 1;
 }
 /**
- * ⭐ U43 B5 — THE BET SHEET'S OWN DISABLED BRAND COMMIT (`.kp-bsheet .btn-primary:disabled`, globals.css).
+ * ⭐ THE BET SHEET'S OWN DISABLED GOLD COMMIT (`.kp-bsheet .btn-gold:disabled`, globals.css).
  * Its words are scored on its navy plate below. ⛔ That ratio is the painted one only while the rule sets `opacity: 1`: without it
  * `.btn:disabled`'s 0.45 still applies and dims the plate and its words together, which this gate does not model — so a
  * rule that drops it is REFUSED here rather than scored as though it were opaque.
  */
-const SHEET_COMMIT_OFF = ".kp-bsheet .btn-primary:disabled";
+const SHEET_COMMIT_OFF = ".kp-bsheet .btn-gold:disabled";
 if (!/(?:^|;)\s*opacity\s*:/.test(ruleBody(SHEET_COMMIT_OFF)) || ruleOpacity(SHEET_COMMIT_OFF) !== 1) {
   throw new Error(
     `contrast-audit: "${SHEET_COMMIT_OFF}" does not set opacity: 1, so .btn:disabled's dimming still paints it — ` +
@@ -941,8 +941,8 @@ const CHECKS: Check[] = [
 
   // ── Gold, checked for the first time (ATOM 2d) ────────────────────────────
   { name: "btn-gold label (gold-fg on gold-500)", fg: T.btnGoldFg, bg: T.btnGoldBg, min: 4.5 },
-  // U43 B5 — the sheet's disabled "Weka dau": its words (text, 4.5) on its own navy plate.
-  { name: "U43 · the sheet's disabled brand commit — its words on its navy plate", fg: ruleValue(SHEET_COMMIT_OFF, "color"), bg: ruleValue(SHEET_COMMIT_OFF, "background"), min: 4.5 },
+  // The sheet's disabled "Weka dau": its words (text, 4.5) on its own navy plate.
+  { name: "the sheet's disabled gold commit — its words on its navy plate", fg: ruleValue(SHEET_COMMIT_OFF, "color"), bg: ruleValue(SHEET_COMMIT_OFF, "background"), min: 4.5 },
   { name: "--gilt money ink on --bg", fg: T.gilt, bg: T.bg, min: 4.5 },
   { name: "--gilt money ink on --bg-elevated", fg: T.gilt, bg: T.bgElevated, min: 4.5 },
   { name: "--gilt money ink on --panel", fg: T.gilt, bg: T.panel, min: 4.5 },
@@ -1371,16 +1371,16 @@ function endOfButtonOpenTag(s: string, from: number): number {
   // than printing a quiet, meaningless PASS.
   console.log(`   (checked ${calls} call-site opacity utilit${calls === 1 ? "y" : "ies"} across ${buttons} btn-yes/no/danger/gold buttons, ${runaways} unreadable open tag(s))`);
   // U43 B1 uses one UpDownSidePair declaration for both signed-in and signed-out
-  // cards. U43 B5 also moves unearned result actions to the brand family. The
-  // solid side/money census has twelve remaining call sites; prove the shared
-  // side pair and the earned-only gold branch before accepting that floor.
+  // cards. A placed bet's result action follows its actual side; a successful
+  // sale can use the gold branch. Prove those explicit branches before accepting
+  // a census with no call-site opacity defects.
   const pair = readFileSync(join(ROOT, "src/components/updown/updown-stake-controls.tsx"), "utf8");
   const sharedPair = pair.includes('export function UpDownSidePair(')
     && pair.includes('(["UP", "DOWN"] as const).map((side) => (')
     && pair.includes('side === "UP" ? "btn-yes" : "btn-no"');
   const result = readFileSync(join(ROOT, "src/components/markets/operation-result-modal.tsx"), "utf8");
-  const earnedOnlyGold = result.includes('(stripTone === "gold" ? "btn-gold" : "btn-primary")');
-  if (buttons < 12 || runaways > 0 || !sharedPair || !earnedOnlyGold) {
+  const resultActions = result.includes('stripTone === "gold" ? "btn-gold" : stripTone === "yes" ? "btn-yes" : stripTone === "no" ? "btn-no" : "btn-primary"');
+  if (buttons < 12 || runaways > 0 || !sharedPair || !resultActions) {
     console.log(`FAIL  §P-u2 CONTROL — the population collapsed (${buttons} buttons, ${runaways} runaway) — this is 0 reach, not 0 defects`);
     process.exitCode = 1;
   }

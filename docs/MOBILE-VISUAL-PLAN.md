@@ -25,20 +25,21 @@
 ## §0 — RESUME AT
 
 **U43 current release checkpoint, 2026-10-20.** Release B first reached production at
-`a12f7b26d663ebf995088c77aee36e6f711e4db2`. The post-deploy read-back found
-the exact SHA on all three public hosts and a healthy `/api/health`;
-`qa:chunks-prod` passed 6/6 on both www and apex, and signed-out production
-`qa:live` passed 362/0. Ali then showed two live desktop problems: with the chart
-collapsed, the board leaves a large empty left column beside the cards; the
-candles use muted aqua/pearl rather than his requested green/red. He also asked
-for Instagram orange and WhatsApp's recognizable colour to return. The U43
-hotfix commit carries the corrections; its exact production deployment and
-browser read-back must establish when those fixes are live. This checkpoint
-does not claim a verified hotfix deployment. The required
-two independent 24-cell 10/10 reviews have not been measured, so U43 remains
-open and has **no after score**. The long Release B work log below records
-earlier checkpoints; its older “not live” statements are historical, not the
-current production state.
+`a12f7b26d663ebf995088c77aee36e6f711e4db2`. Its desktop chart/layout/social
+hotfix is **LIVE at `3ec111a83e3aecfb96af91ddba38bbd467b5c00b`**: all three
+hosts served that exact SHA, `/api/health` found the database reachable and migrated,
+`qa:chunks-prod` passed 6/6 on www and apex, and signed-out production `qa:live`
+passed 359/0. Real-browser reads at 1280 and 1920 found the collapsed cards beside
+each other without the former empty middle column or horizontal overflow, green/red
+7D candles, and Instagram/WhatsApp brand fills without the grayscale filter. Local
+`qa:live` against `next dev` was interrupted by repeated development navigations,
+so it is not counted as a pass. Ali then directed restoration of the full earlier
+gold treatment, including wallet and deposit controls. The restoration is in this
+branch with its source, brand assets and focused guards; production read-back of
+that change remains a release gate. The required two independent 24-cell 10/10 reviews have
+not been measured, so U43 remains open and has **no after score**. The long Release B
+work log below records earlier checkpoints; its older “not live” statements are
+historical, not the current production state.
 
 ### ⛔ IS MOBILE VISUALISATION DONE? **NO.** Read this before telling anyone otherwise.
 

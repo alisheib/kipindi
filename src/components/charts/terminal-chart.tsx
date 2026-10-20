@@ -508,7 +508,7 @@ export function TerminalChart({
     if (lastSeries && priceToBeatRef.current != null) {
       priceLineRef.current = lastSeries.createPriceLine({
         price: priceToBeatRef.current,
-        color: ink("--text-subtle"),
+        color: ink("--gilt"),
         lineWidth: 1,
         lineStyle: lib.LineStyle.Dashed,
         axisLabelVisible: true,
@@ -590,7 +590,7 @@ export function TerminalChart({
       {guardedFeed && (
         <p className="mt-1 mb-0 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-left text-body-sm" style={{ color: guardedFeed.liveStale ? "var(--text-subtle)" : "var(--text-faint)" }}>
           {priceToBeat != null && (
-            <span className="whitespace-nowrap text-text-subtle" data-testid="updown-chart-opening-reference">
+            <span className="whitespace-nowrap text-gold-300" data-testid="updown-chart-opening-reference">
               {labels.openingReference}{" "}<span className="tabular-nums">{usd(priceToBeat, guardedFeed.decimals)}</span>
             </span>
           )}

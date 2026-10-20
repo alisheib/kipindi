@@ -41,8 +41,8 @@ try {
   check("baseline guard is green", baseline.code === 0);
   for (const item of MUTATIONS.filter((entry) => entry.kind === "css"))
     mutation(item.name, item.from, item.to, item.expected);
-  const override = run(`${original}\n:root {\n  --bar-needle: var(--gilt);\n}\n`);
-  check("a late gold override turns the unique-definition guard red", override.code !== 0 && override.output.includes("FAIL 1.2 "));
+  const override = run(`${original}\n:root {\n  --bar-needle: var(--text);\n}\n`);
+  check("a late plain override turns the unique-definition guard red", override.code !== 0 && override.output.includes("FAIL 1.2 "));
   for (const item of MUTATIONS.filter((entry) => entry.kind === "position"))
     positionMutation(item.name, item.from, item.to);
 } finally {

@@ -5,11 +5,11 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { MUTATIONS } from "./anchors/u43-board.anchors.mjs";
+import { MUTATIONS } from "./anchors/u43-desktop-board.anchors.mjs";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const label = "saved closed desktop chart puts cards first without an empty chart column";
-const plants = MUTATIONS.filter((item) => item.expect === label);
+const plants = MUTATIONS;
 if (plants.length !== 3) throw new Error(`Expected exactly three desktop layout plants; found ${plants.length}`);
 const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const guard = () => {

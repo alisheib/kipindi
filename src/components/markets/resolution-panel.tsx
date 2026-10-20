@@ -138,9 +138,8 @@ export function ResolutionPanel({
     <section className="glass-panel p-5 space-y-4">
       {/* Header — title + outcome chip */}
       <div className="flex items-center justify-between gap-3">
-        {/* The resolution chip is a terminal status in slate. Ali's U43 gold rule
-            reserves gold for the player's earned WIN; a market verdict does not
-            establish what this particular player won. */}
+        {/* The market's resolved seal uses struck gilt; VOID remains slate. The
+            player's individual win or refund is stated in their own position. */}
         <h2 className="font-display text-[16px] font-semibold text-text flex items-center gap-2">
           <I.shieldcheck s={16} edge="start" className="text-text-subtle" />
           {t.market.resTitle}

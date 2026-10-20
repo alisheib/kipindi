@@ -171,10 +171,10 @@ check("3.7a the headline names the funded leader, including NO", cardFunction.in
   && cardFunction.includes('sideWord(t, leadingSide, productLine)') && cardFunction.includes('{leadingPct}') && cardFunction.includes('mcardp-pctcap--no'));
 check("3.8 the price figure stays neutral and the side caption keeps its ink", /\.mcardp-pct \{[^}]*color: var\(--text\)/.test(readFileSync("src/app/globals.css", "utf8")) && /\.mcardp-pctcap \{[^}]*color: var\(--yes-400\)/.test(readFileSync("src/app/globals.css", "utf8")));
 check("3.9 all three languages name the seven-day trend", ["en", "sw", "zh"].every((locale) => !!(dict[locale].market as Record<string, string>).spark7d));
-check("3.10 a resolved status is neutral everywhere; a player's WIN still owns gold",
-  STATUS_TONE.RESOLVED.player === "slate" && STATUS_TONE.RESOLVED.admin === "slate" && STATUS_TONE.RESOLVED.proposals === "slate"
-  && TONE_CHIP[STATUS_TONE.RESOLVED.player] === "neutral" && TONE_CHIP[STATUS_TONE.WIN.player] === "gold");
-check("3.11 market verdict chips read the shared neutral status tone, never the gold variant",
+check("3.10 a resolved status restores gilt everywhere; a player's WIN still owns gold",
+  STATUS_TONE.RESOLVED.player === "giltStruck" && STATUS_TONE.RESOLVED.admin === "gilt" && STATUS_TONE.RESOLVED.proposals === "giltStruck"
+  && TONE_CHIP[STATUS_TONE.RESOLVED.player] === "resolved" && TONE_CHIP[STATUS_TONE.WIN.player] === "gold");
+check("3.11 market verdict chips read the shared restored status tone",
   read("src/app/markets/[id]/page.tsx").includes('<Chip variant={TONE_CHIP[STATUS_TONE.RESOLVED.player]} size="lg" metrics="status">')
   && read("src/app/results/page.tsx").includes('<Chip variant={TONE_CHIP[STATUS_TONE.RESOLVED.player]} size="sm" metrics="status">')
   && read("src/components/markets/resolution-panel.tsx").includes('<Chip variant={TONE_CHIP[STATUS_TONE[isVoid ? "VOID" : "RESOLVED"].player]} metrics="status">'));

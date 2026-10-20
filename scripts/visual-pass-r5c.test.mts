@@ -2,7 +2,8 @@
  * ROUND 5 OF THE VISUAL PASS, HELPER C (2026-10-09) — THE SECOND GOLD AUDIT. Every gold paint in the player's code was
  * found, ruled in DESIGN_AUTHORITY's own words — allowed (money won, earned commissions, identity metal, the live balance,
  * the brand mark's needle, an illustration's single accent) or a defect — and every defect in a shared page body or the
- * journey was fixed. U43 moved deposit doors to brand and the Up & Down opening reference to neutral. Classic chrome (frozen) and the
+ * journey was fixed. U43 briefly moved deposit doors to brand and the Up & Down opening reference to neutral;
+ * Ali restored the named earlier house-gold treatment on 2026-10-20. Classic chrome and the
  * `--warning-fg: var(--gilt)` token are the owner's, and are pinned here as they stand so a change to them is deliberate.
  * ⭐ THE TOKEN WAS RULED ON 2026-10-10 — Ali's ruling (1): WARNINGS ARE AMBER, NOT GOLD. R8-A re-hued the whole warning
  * family to hue 64 (`globals.css`), which this census's own hue rule (70–100) does not call gold, so the family LEFT the
@@ -12,8 +13,9 @@
  *   npx tsx scripts/visual-pass-r5c.test.mts        (npm run test:visual-pass-r5c)
  *
  * The owner's rule (Ali, 2026-10-09): consistency and perfection in each move. ONE rule, the same way everywhere:
- *   · PLAYER GOLD now marks only money won (Ali, 2026-10-19); old D1 commit and deposit-door rulings are historical.
- *     Earned commissions and explicitly earned bonus celebrations keep their recorded treatments outside U43.
+ *   · PLAYER GOLD marks earned money and the named house mark, reading instrument, wallet, money-in doors,
+ *     commits, and classic navigation treatments restored by Ali on 2026-10-20 (§M3a). Earned commissions and
+ *     bonus celebrations keep their recorded treatments.
  *   · A HIGHLIGHT that is not money — "this one", the current step, progress, a selection, an accent — is the BRAND
  *     family, the product's one non-money accent: `--brand-300` ink, `--brand-400` marks (the rail's unread dot, every
  *     pip), `--brand-500` rings and fills (the focus ring, the selected pill's halo `--glow-selected`, §E4's glows).
@@ -27,7 +29,7 @@
  *       a new gold use anywhere fails until it is ruled and registered (with plants proving the scanner sees each form)
  *   §2  the items the readers raised (tiles r5-4, r5-6) and the RG page's last warning box
  *   §3  non-money accents use brand; the Phosphor identity plate owns its glyph ink
- *   §4  money that was not EARNED is not gold (D1 commits, D5 inducements, §B12 projections, zero)
+ *   §4  remaining unearned surfaces do not borrow gold (D5 inducements, §B12 projections, zero)
  *   §5  the warning family keeps its one meaning (F3 toasts, §B11 words, RG notices, clocks, one limit ramp)
  *   §6  the sanctioned gold that must STAY — the controls that keep §1 from passing because gold was deleted
  *   §7  the owner's items, pinned as they stand (classic chrome, the token, the hashed legal links)
@@ -140,9 +142,8 @@ function goldHits(file: string, src: string): Hit[] {
  * ⭐ THE REGISTRY — every file that paints gold, its count and its RULING. This is the audit's table in machine form:
  * a count that rises fails (a new gold use must be ruled, then registered here with its reason); a count that falls
  * passes and asks to be locked in (a ratchet above the tree is slack, not safety — `type-scale`'s own rule).
- * "OWNER" = frozen classic chrome, the `--warning-fg: var(--gilt)` token, or a hashed legal text: the change is
- * written in R5-C's report for Ali. "the token's" = a legitimate warning (§B11: somebody must act) whose amber is the
- * `--warning-*` family, struck in gilt until the owner re-hues it (F3).
+ * "OWNER" = the named classic chrome and hashed legal text: the change is written in R5-C's report for Ali.
+ * The historical `--warning-fg: var(--gilt)` token was re-hued to amber on 2026-10-10 and is outside this census.
  * ⭐ R8-A (2026-10-10, Ali's ruling (1)): the owner re-hued it — amber, hue 64. Every count below that was "the token's"
  * dropped out of this gold census (files that painted ONLY the warning family left the table; mixed files keep their
  * gold count), and those rulings live on, file by file, in `test:visual-pass-r8a` §3's WARNING registry.
@@ -151,7 +152,7 @@ const REGISTRY: Record<string, [number, string]> = {
   // ── allowed: settled winnings, earned commissions, identity metal and legacy live-balance treatments ────────────────
   // U43: sign-up bonus offers are not won; R4-I §14.3 and test:u43-earned-palette pin both neutral figures.
   // R8-A (2026-10-10): −5 — the hedge caution's box and words are amber now (Ali's ruling (1)); r8a §3 holds them.
-  "src/app/markets/[id]/page.tsx": [2, "a settled WIN's status word and payout (§M3); U43 moved the resolved status chip to slate"],
+  "src/app/markets/[id]/page.tsx": [2, "a settled WIN's status word and payout (§M3); RESOLVED now uses the restored shared gilt tone"],
   "src/app/positions/performance/page.tsx": [15, "a positive net and row (money earned) · the best-win crest, only with a win · the streak in identity metal"],
   "src/app/profile/invite/agent-dashboard.tsx": [4, "commission EARNED, gold only when > 0 (§M3)"],
   "src/app/profile/invite/page.tsx": [12, "the earnings dial, its wash and the Earned figure, gold only once money was earned; per-friend earnings > 0"],
@@ -165,34 +166,38 @@ const REGISTRY: Record<string, [number, string]> = {
   "src/app/wallet/wallet-client.tsx": [2, "the live balance card's warm edge (money, §8a) ×2"],
   "src/components/brand/reward-burst.tsx": [7, "the gold medallion for money earned (the proposal bonus) — `success` for an approval"],
   "src/components/journey/tickets/ticket-card.tsx": [2, "a won ticket's struck payout (§M3)"],
-  // U43: both the shared question commit and low-balance deposit door use brand;
-  // `test:u43-earned-palette` pins each and rejects restoring gold in memory.
-  // U43 (2026-10-19): Journey Juu/Chini's commit is brand. `test:u43-earned-palette`
-  // pins its primary variant and rejects a gold mutation; any gold added here
-  // is unregistered and fails §1.1 below.
+  // Ali's 2026-10-20 ruling restores the earlier money-commit gold in Journey and Juu/Chini.
+  "src/components/journey/bet-sheet/bet-sheet.tsx": [3, "the question confirm commit and low-balance deposit door, named gold controls (§M3a)"],
+  "src/components/journey/journey-top-bar.tsx": [1, "the journey money-in Deposit door (§M3a)"],
+  "src/components/journey/updown/jud-arm.tsx": [1, "the Juu/Chini stake commit (§M3a)"],
   "src/components/journey/question/journey-holder.tsx": [2, "S8's settled WIN status and payout, money earned (§M3), as the classic holder"],
   "src/components/markets/position-card.tsx": [2, "a settled WIN's struck payout (§M3)"],
   "src/components/markets/position-share.tsx": [4, "sharing a WIN — the celebration's own moment (§M3)"],
   // R8-A (2026-10-10): the cautions left with the amber family (Ali's ruling (1)) — −6 here, −2 below; r8a §3 holds them.
-  "src/components/markets/resolution-panel.tsx": [2, "the winning pool's money row (§M3); U43 moved the resolved status chip to slate"],
-  // U43: classic bet and sell confirms use brand; the earned-palette guard pins them.
+  "src/components/markets/resolution-panel.tsx": [2, "the winning pool's money row (§M3); RESOLVED now uses the restored shared gilt tone"],
+  "src/components/markets/bet-confirm-modal.tsx": [1, "the classic bet commit (§M3a)"],
+  "src/components/markets/sell-confirm-modal.tsx": [1, "the classic sell commit (§M3a)"],
+  "src/components/markets/sell-result.tsx": [1, "successful sale completion uses gold; failure stays brand (§M3a)"],
   "src/components/markets/win-celebration.tsx": [5, "the celebration (§M3)"],
   "src/components/positions/pnl-summary-strip.tsx": [1, "a positive settled net (money earned); the win-rate NeedleDial is neutral (§B1a)"],
-  // U43 (2026-10-19): the detail-page bet commit is brand, not won-money gold.
-  // `test:u43-earned-palette` pins the button and proves a gold mutation red;
-  // any new gold here is unregistered and fails this census's §1.1.
+  "src/components/updown/round-stake-panel.tsx": [1, "the detail-page bet commit (§M3a)"],
+  "src/components/updown/price-hero.tsx": [2, "the round-opening reference line is the earlier gilt instrument (§B12, §M3a)"],
   "src/components/updown/updown-card.tsx": [1, "U43: the player's settled WIN payout only; LOSS and refund amounts use neutral ink (§M3)"],
   // MASWALI-BUILD S5 (DESIGN_AUTHORITY §M8a items 6–8): Millionea's gold is two files and no more. The pool figure, the home
   // card, the seal line, the ticket and the week strip paint none (the jackpot, the floor, the rollover and the stub are
   // unearned, §M8a item 7) — the ticket draws its won amount through the win ledger's component.
   "src/components/maswali/maswali-win-ledger.tsx": [3, "earned money only (§M8a items 7–8): `.gilt-ink` on 'Kwa tiketi yako' / 'Jumla yako' and on a won ticket's paid amount; the ticket card's struck payout stat (the platform card's own)"],
   "src/components/maswali/maswali-slip.tsx": [2, "the Millionea money commit (§M3a): the confirm sheet's armed 'Kata tiketi', the kit's gold Button in `.gilt-metal` — the slip's 'Endelea' is brand primary"],
-  "src/lib/notification-appearance.ts": [3, "WIN — 'the only money outcome that is gold'"],
+  "src/lib/notification-appearance.ts": [1, "WIN's notification plate retains the earned-money gold tone"],
   // R8-A (2026-10-10): −1 — TONE_INK.amber (`text-warning-fg`) is amber, not gold (Ali's ruling (1)).
   "src/lib/status-tone.ts": [2, "the dictionary's struck gilt: RESOLVED, WIN (§B11)"],
   "src/components/home/landing-hero.tsx": [2, "the pool and paid-out totals — money (Q5); OWNER question: D5's 'inducement' clause on a landing figure"],
   // ── allowed: the brand mark, chart reference lines, illustration accents, identity metal ───────────────────────────
-  "src/components/brand.tsx": [1, "GiltCorner's default ink (the best-win crest only); the TippingBar needle is neutral (§B1a)"],
+  "src/components/brand.tsx": [1, "GiltCorner's default ink (the best-win crest only); the TippingBar needle restores gilt (§B1a)"],
+  "src/lib/brand-mark.ts": [1, "the delivered mark's gilt needle and hub (§B1a, Ali 2026-10-20)"],
+  "src/app/global-error.tsx": [1, "the standalone last-resort mark's gilt needle (§B1a)"],
+  "src/components/layout/needle.css": [10, "the shared house needle's gilt seam, hub, rim and aura (§B1a)"],
+  "src/components/charts/terminal-chart.tsx": [1, "the round opening-reference chart label (§B12)"],
   "src/components/charts/pnl-chart.tsx": [4, "the break-even reference line (§B12: gilt marks the line a chart is READ AGAINST)"],
   "src/components/ui/empty-state.tsx": [1, "the illustrations' single gold accent (§C7)"],
   "src/app/leaderboard/page.tsx": [9, "rank and standing in the tier ladder's METAL (Q5) · the tier names"],
@@ -208,7 +213,7 @@ const REGISTRY: Record<string, [number, string]> = {
   // S8 WP5 (+1, 92 → 93): `.kp-bsheet .btn-gold:disabled`, the bet sheet's own disabled gold — a `.btn-gold` selector
   // that DE-golds the button (a navy plate, subtle words), ruled by VODACOM-PLAN §0g design call 4 and scoped to the
   // sheet by S8-PLAN Open point 20; every other gold button keeps `.btn:disabled`.
-  "src/app/globals.css": [72, "the gold ramp and aliases, `--metal-gold` identity, the win seal and paid money (`.kp-settled__amt`, `.kp-mine__n--gold`), the earned-money celebration and Phosphor's win-only `.kp-plate--gold` recipe; dead CSS and admin definitions remain. U43 B5 moved deposit rails to pearl ink and the disabled question-sheet commit to brand, removing both unearned gold uses."],
+  "src/app/globals.css": [95, "the gold ramp and aliases, identity metal, earned money, restored house needle, wallet figure, money-in coin and deposit rails, classic badge/footer, and gold button recipes (§M3a); dead CSS and admin definitions remain"],
   "src/app/motion.css": [22, "the gilt material — gilt-metal on deposit doors and the celebration, gilt-ink on earned figures, the win toast's tint; dead: `.m-skeleton`"],
   "src/app/state-tokens.css": [2, "`.countdown--urgent` — dead CSS (no consumer)"],
   "src/components/ui/button.tsx": [2, "the `gold` variant — bet and sell commits"],
@@ -216,14 +221,20 @@ const REGISTRY: Record<string, [number, string]> = {
   "src/components/ui/dot.tsx": [2, "the kit's `gold` tone, reserved for won money; the player bell uses brand"],
   "src/components/ui/stat.tsx": [3, "the `gold` tone and `struck` — money"],
   "src/components/ui/toast.tsx": [6, "the gold toast (a win)"],
-  "src/components/markets/operation-result-modal.tsx": [5, "the opt-in gold strip for earned money (no caller)"],
+  "src/components/markets/operation-result-modal.tsx": [5, "the opt-in gold strip for a named successful completion; a failed sale stays brand (§M3a)"],
   "src/components/markets/circular-progress.tsx": [1, "the tone union's `gold` (admin-only consumer)"],
   "src/styles/chat/chat-tokens.css": [3, "gilt-edge tokens defined and never consumed — no render"],
   // R8-A (2026-10-10): the KYC page's 'more information needed' box is amber now (r8a §3); what remains is the approval
   // crest — a `<RewardBurst` (counted as the component) told `success`, so it paints no gold (§4.6 above holds that).
   "src/app/profile/kyc/page.tsx": [1, "the approval crest — a `<RewardBurst` told `success` (the component, counted; it paints no gold)"],
-  // ── OWNER: classic chrome (frozen for S6/S7) and the hashed legal texts ───────────────────────────────────────────
+  // ── OWNER: restored classic chrome and hashed legal texts ──────────────────────────────────────────────────────────
   "src/app/legal/_components.tsx": [2, "the regulator-letter frame's corners — CLARET ink (§B4), the GiltCorner component counted"],
+  "src/components/layout/avatar-menu.tsx": [2, "classic avatar accent restored to gold; staff destination stays brand (§M3a)"],
+  "src/components/layout/notifications-panel.tsx": [3, "classic bell's unread marks and illustration restored to gold; Journey bell stays brand (§M3a)"],
+  "src/components/layout/top-app-bar.tsx": [2, "classic Deposit door and product-line dot restored to gold (§M3a)"],
+  "src/components/layout/wallet-balance-pill.tsx": [9, "classic wallet amount, flash, and eye restored to gold (§M3a)"],
+  "src/components/layout/wallet-sheet.tsx": [1, "Wallet sheet Deposit door restored to gold (§M3a)"],
+  "src/components/ui/language-menu.tsx": [1, "classic selected-language tick restored to gilt; Journey stays brand (§M3a)"],
   "src/app/legal/responsible-gambling/page.tsx": [6, "OWNER — the RG links' gold: the binding English is hashed (RG_EN_SHA), so the recolour ships with the next policy version"],
   "src/app/legal/terms/page.tsx": [12, "OWNER — the RG links' gold: `content()` is hashed (TERMS_TEXT_SHA), so the recolour ships with the next Terms version"],
   "src/lib/offline-document.ts": [3, "the offline page's tokens and its copy of the footer's claret rule (R5-D's area; follows `.claret-rule`, OWNER)"],
@@ -241,12 +252,14 @@ const census = new Map<string, Hit[]>();
     const hits = goldHits(f, readFileSync(join(ROOT, f), "utf8"));
     if (hits.length) census.set(f, hits);
   }
-  // ⭐ CONTROLS FIRST: the scanner must SEE earned gold while the mark and wallet have none.
-  ok("1.0 · CONTROL · the scanner sees the earned-money celebration but no gold mark, wallet capsule or unearned bet confirm",
-    (census.get("src/components/markets/win-celebration.tsx")?.length ?? 0) >= 4 && (census.get("src/components/markets/bet-confirm-modal.tsx")?.length ?? 0) === 0
-      && (census.get("src/components/layout/wallet-balance-pill.tsx")?.length ?? 0) === 0 && (census.get("src/lib/brand-mark.ts")?.length ?? 0) === 0
-      && (census.get("src/components/layout/needle.css")?.length ?? 0) === 0
-      && (census.get("src/app/global-error.tsx")?.length ?? 0) === 0);
+  // ⭐ CONTROLS FIRST: the scanner must SEE earned gold and the named restored house-gold uses.
+  ok("1.0 · CONTROL · the scanner sees earned gold and the restored mark, wallet, bet commit, and instrument",
+    (census.get("src/components/markets/win-celebration.tsx")?.length ?? 0) >= 4
+      && (census.get("src/components/markets/bet-confirm-modal.tsx")?.length ?? 0) === 1
+      && (census.get("src/components/layout/wallet-balance-pill.tsx")?.length ?? 0) === 9
+      && (census.get("src/lib/brand-mark.ts")?.length ?? 0) === 1
+      && (census.get("src/components/layout/needle.css")?.length ?? 0) === 10
+      && (census.get("src/app/global-error.tsx")?.length ?? 0) === 1);
   const unregistered = [...census.keys()].filter((f) => !(f in REGISTRY));
   ok("1.1 · no file paints gold unruled — every one is in the registry with its ruling", unregistered.length === 0,
     unregistered.map((f) => `${f}: ${census.get(f)!.map((x) => `${x.line}:${x.match}`).join(" ")}`).join(" | "));
@@ -264,7 +277,7 @@ const census = new Map<string, Hit[]>();
     const planted = read(f) + '\nconst unearned = <span className="text-gold-300">ordinary words</span>;';
     ok(`1.3s PLANT · a new non-money gold use in ${f} exceeds its ruled census`, goldHits(f, planted).length === REGISTRY[f][0] + 1);
   }
-  ok("1.3d CONTROL · the shared low-balance deposit rails use pearl ink on the brand door", /\.kp-bsheet__rails[^}]*color: var\(--pearl-50\)/.test(CSS));
+  ok("1.3d CONTROL · the shared low-balance deposit rails restore gold ink", /\.kp-bsheet__rails[^}]*color: var\(--gold-fg\)/.test(CSS));
   ok("1.3d PLANT · an unrelated extra gold CSS use still exceeds the exact registry", goldHits("src/app/globals.css", CSS + '\n.unearned-sheet-words { color: var(--gold-300); }').length === REGISTRY["src/app/globals.css"][0] + 1);
 
   // ⭐ PLANTS — each spelling of gold the census promises to see, planted in memory, is seen; decoys are not.
@@ -346,10 +359,10 @@ section("2 · the items — notifications, the agent page, proposals, /results, 
     /borderColor: "var\(--border-royal\)"/.test(featured) && /text-brand-300">\s*<I\.crown s=\{13\} \/> <span className="kp-track-end kp-track-end--16">\{t\.results\.notableResult\}<\/span>/.test(featured) /* the label in R5-A's tracked span (F19), merged 2026-10-09 */ && !/gold/.test(featured));
   ok("2.4′ · the page's glyph rides in its eyebrow's ink", /<span className="text-text-subtle"><I\.resolved s=\{18\} \/><\/span>/.test(RES));
   const resolvedChip = '<Chip variant={TONE_CHIP[STATUS_TONE.RESOLVED.player]} size="sm" metrics="status">';
-  ok("2.4″ · CONTROL · the market verdict uses the shared neutral status tone, while a WIN still earns gold",
-    featured.includes(resolvedChip) && /RESOLVED:\s*\{ player: "slate", admin: "slate", proposals: "slate" \}/.test(read("src/lib/status-tone.ts")));
+  ok("2.4″ · CONTROL · the market verdict uses the restored shared RESOLVED gilt tone, while a WIN stays gilt",
+    featured.includes(resolvedChip) && /RESOLVED:\s*\{ player: "giltStruck", admin: "gilt", proposals: "giltStruck" \}/.test(read("src/lib/status-tone.ts")));
   const oldGoldSeal = featured.replace(resolvedChip, '<Chip variant="resolved" size="sm" metrics="status">');
-  ok("2.4‴ · PLANT · restoring the gold verdict is caught", oldGoldSeal !== featured && !oldGoldSeal.includes(resolvedChip));
+  ok("2.4‴ · PLANT · hardcoding a seal instead of consuming the shared tone is caught", oldGoldSeal !== featured && !oldGoldSeal.includes(resolvedChip));
 
   // 2.5 · fairness: the chain's highlighted step and the list's numerals.
   const FAIR = read("src/app/fairness/page.tsx");
@@ -373,9 +386,9 @@ section("2 · the items — notifications, the agent page, proposals, /results, 
   ok("2.7 · the KYC rail's current step is the brand ring and label, its fill the brand line — no gold on the page",
     /\? "border-2 border-brand-500 bg-brand-500\/10 text-brand-300"/.test(KYC) && /\? "text-brand-300"/.test(KYC) && /var\(--brand-500\) 75%/.test(KYC) && !/gold/.test(KYC));
 
-  // 2.8 · the probability bar keeps the mark's needle geometry (§B1a) in neutral reading ink.
-  ok("2.8 · U43 · the bar's reading needle uses neutral ink while keeping the brand instrument's geometry (§B1a)",
-    /--bar-needle:\s*var\(--text\);/.test(CSS) && /background:\s*var\(--bar-needle\)/.test(rule(CSS, ".tipbar-needle")));
+  // 2.8 · the probability bar keeps the mark's needle geometry and restored gilt ink (§B1a).
+  ok("2.8 · the bar's reading needle restores gilt while keeping the brand instrument's geometry (§B1a)",
+    /--bar-needle:\s*var\(--gilt\);/.test(CSS) && /background:\s*var\(--bar-needle\)/.test(rule(CSS, ".tipbar-needle")));
 
   // 2.9 · the empty-state art: §C7 "a single gold accent" per illustration — exactly one, never two.
   const EMPTY = read("src/components/ui/empty-state.tsx");
@@ -436,9 +449,10 @@ section("3 · non-money accents use brand; Phosphor glyphs use the identity plat
     ["the carousels' arrows", "src/app/results/notable-carousel.tsx", /color: "var\(--brand-300\)"/],
     ["the proposal timeline's current step", "src/components/proposals/status-timeline.tsx", /now \? "var\(--brand-300\)"/],
     ["/profile's set-apart row (the agent dashboard)", "src/app/profile/page.tsx", /accent \? "border-brand-600\/60 hover:border-brand-500"/],
-    ["both shells' staff row", "src/components/layout/avatar-menu.tsx", /accent \? "hover:bg-brand-500\/10" : "hover:bg-bg-overlay"/],
-    ["both shells' current-language tick", "src/components/ui/language-menu.tsx", /const tickInk = "var\(--brand-300\)";/],
-    ["both player bells' unread dot and wash", "src/components/layout/notifications-panel.tsx", /const unreadDot = "brand";\s*const unreadWash = "bg-brand-500\/\[0\.04\]";/],
+    ["staff destination's separate brand identity", "src/components/layout/avatar-menu.tsx", /className="text-brand-300\/70 transition-colors group-hover:text-brand-300"/],
+    ["classic avatar's restored gold accent", "src/components/layout/avatar-menu.tsx", /accent \? "hover:bg-gold-500\/10" : "hover:bg-bg-overlay"/],
+    ["classic gilt and Journey brand current-language tick", "src/components/ui/language-menu.tsx", /const tickInk = journey \? "var\(--brand-300\)" : "var\(--gilt\)";/],
+    ["classic gold and Journey brand bell unread wash", "src/components/layout/notifications-panel.tsx", /const unreadDot = journey \? "brand" : "gold";\s*const unreadWash = journey \? "bg-brand-500\/\[0\.04\]" : "bg-gold-500\/\[0\.04\]";/],
     ["the primer's instruction and its 'share' hinge", "src/components/onboarding/first-visit-primer.tsx", /style=\{\{ color: "var\(--brand-300\)" \}\}>\{dragLabel\}/],
     ["the primer's progress strip, step bars and pager", "src/components/onboarding/first-visit-primer.tsx", /linear-gradient\(90deg, var\(--brand-500\), var\(--brand-300\)\)/],
     ["the consent and install cards' glyph", "src/components/analytics/consent-prompt.tsx", /text-brand-300" aria-hidden><I\.chart/],
@@ -469,7 +483,7 @@ section("3 · non-money accents use brand; Phosphor glyphs use the identity plat
 }
 
 /* ══ §4 · MONEY THAT WAS NOT EARNED IS NOT GOLD ═══════════════════════════════════════════════════════════════════════ */
-section("4 · money that was not EARNED is not gold — D1 commits, D5 inducements, §B12 projections, zero, approvals");
+section("4 · unearned promotions, projected payouts, zero and approvals do not borrow earned-money gold");
 {
   ok("4.1 · D1: 'Confirm deposit' and 'Confirm withdrawal' are brand — the commit's first press, like the dialog's own button",
     /className="btn btn-primary btn-lg w-full">\s*\{t\.common\.confirmDeposit\}/.test(read("src/app/wallet/deposit/deposit-confirm.tsx"))
@@ -586,14 +600,13 @@ section("5 · the warning family keeps its one meaning — F3 toasts, §B11 word
 section("6 · the sanctioned gold that must STAY — so the census cannot pass because gold was deleted");
 {
   ok("6.1 · the celebration strikes its amount (`.gilt-ink`) and its button is gilt-metal (§M3)", /struck \? "gilt-ink" : "text-gold-300"/.test(read("src/components/markets/win-celebration.tsx")) && /btn gilt-metal btn-md/.test(read("src/components/markets/win-celebration.tsx")));
-  ok("6.2 · bet and sell commits use brand: a stake is not a won payout (U43)", /btn btn-primary btn-lg w-full/.test(read("src/components/markets/bet-confirm-modal.tsx")) && /btn btn-primary btn-lg w-full/.test(read("src/components/markets/sell-confirm-modal.tsx")));
-  ok("6.3 · the deposit doors use brand (header, journey, Wallet sheet — Ali's U43 ruling)", /btn btn-primary btn-md btn-pill/.test(read("src/components/layout/top-app-bar.tsx")) && /btn btn-primary btn-md btn-pill kp-jhdr__pill/.test(read("src/components/journey/journey-top-bar.tsx")) && /btn btn-primary btn-lg kp-wsheet__act/.test(read("src/components/layout/wallet-sheet.tsx")));
-  ok("6.4 · the live balance is neutral and a player's WIN retains its earned-money tone", /color:\s*var\(--text\)/.test(rule(CSS, ".kp-jbal__fig")) && /WIN:\s*\{ player: "gilt" \}/.test(read("src/lib/status-tone.ts")));
-  ok("6.5 · the earned bonus medallion and P&L reference retain gold; Up & Down's opening reference is neutral",
+  ok("6.2 · bet and sell commits restore their named gold treatment (§M3a)", /btn btn-gold btn-lg w-full/.test(read("src/components/markets/bet-confirm-modal.tsx")) && /btn btn-gold btn-lg w-full/.test(read("src/components/markets/sell-confirm-modal.tsx")));
+  ok("6.3 · Deposit doors restore gilt in both headers and Wallet sheet (§M3a)", /btn gilt-metal btn-md btn-pill/.test(read("src/components/layout/top-app-bar.tsx")) && /btn gilt-metal btn-md btn-pill kp-jhdr__pill/.test(read("src/components/journey/journey-top-bar.tsx")) && /btn gilt-metal btn-lg kp-wsheet__act/.test(read("src/components/layout/wallet-sheet.tsx")));
+  ok("6.4 · the live balance restores gold and a player's WIN retains its earned-money tone", /color:\s*var\(--gold-300\)/.test(rule(CSS, ".kp-jbal__fig")) && /WIN:\s*\{ player: "gilt" \}/.test(read("src/lib/status-tone.ts")));
+  ok("6.5 · the earned bonus medallion and P&L reference retain gold; Up & Down's opening reference restores gilt",
     /tone = "gold",/.test(read("src/components/brand/reward-burst.tsx"))
     && /stroke="var\(--gilt\)"/.test(read("src/components/charts/pnl-chart.tsx"))
-    && /stroke="var\(--text-subtle\)"/.test(read("src/components/updown/price-hero.tsx"))
-    && !/var\(--gilt\)/.test(read("src/components/updown/price-hero.tsx")));
+    && /stroke="var\(--gilt\)"/.test(read("src/components/updown/price-hero.tsx")));
   ok("6.6 · the gilt material still exists for money (`.gilt-metal`, `.gilt-ink`)", /\.gilt-metal\s*\{/.test(MOTION) && /\.gilt-ink\s*\{/.test(MOTION));
 }
 
@@ -604,21 +617,21 @@ section("7 · the owner's items, pinned as they stand — shared player chrome, 
   // holds the family's values, hue and contrast; this pin holds only that the gilt alias is gone for good.
   ok("7.1 · RULED (Ali, 2026-10-10) · `--warning-fg` is the amber, never `var(--gilt)` — F3's token re-hued, the owner item closed",
     /--warning-fg:\s*oklch\(82% 0\.13 64\);/.test(CSS) && !/--warning-fg:\s*var\(--gilt\)/.test(CSS));
-  ok("7.2 · U43 B5 · the Juu na Chini product-line dots use brand in both nav and rail", /borderRadius: "var\(--r-pill\)", background: "var\(--brand-300\)"/.test(read("src/components/layout/top-app-bar.tsx")) && /background:\s*var\(--brand-300\)/.test(rule(CSS, ".kp-rail__dot")));
-  ok("7.3 · U43 B5 · both bells, the language tick and staff row use brand for navigation status",
-    /const unreadDot = "brand";\s*const unreadWash = "bg-brand-500\/\[0\.04\]";/.test(read("src/components/layout/notifications-panel.tsx"))
-      && /const tickInk = "var\(--brand-300\)";/.test(read("src/components/ui/language-menu.tsx"))
-      && /accent \? "hover:bg-brand-500\/10" : "hover:bg-bg-overlay"/.test(read("src/components/layout/avatar-menu.tsx")));
+  ok("7.2 · the Juu na Chini product-line dots restore gilt in nav and rail", /borderRadius: "var\(--r-pill\)", background: "var\(--gilt\)"/.test(read("src/components/layout/top-app-bar.tsx")) && /background:\s*var\(--gilt\)/.test(rule(CSS, ".kp-rail__dot")));
+  ok("7.3 · classic bells and language tick restore gilt, while Journey and staff identity stay brand",
+    /const unreadDot = journey \? "brand" : "gold";\s*const unreadWash = journey \? "bg-brand-500\/\[0\.04\]" : "bg-gold-500\/\[0\.04\]";/.test(read("src/components/layout/notifications-panel.tsx"))
+      && /const tickInk = journey \? "var\(--brand-300\)" : "var\(--gilt\)";/.test(read("src/components/ui/language-menu.tsx"))
+      && /className="text-brand-300\/70 transition-colors group-hover:text-brand-300"/.test(read("src/components/layout/avatar-menu.tsx")));
   ok("7.4 · the session-ended notice is the warning family (the player must sign in again — §B11) — amber, not gilt, since Ali's ruling (1) of 2026-10-10", /tone="warning"\s*glyph="alertCircle"\s*testId="session-ended-notice"/.test(read("src/components/layout/app-shell.tsx")));
   ok("7.5 · OWNER · the legal RG links are gold and HASHED (RG_EN_SHA, TERMS_TEXT_SHA): the recolour ships with a new version",
     /text-gold-300 hover:text-gold-200/.test(read("src/app/legal/responsible-gambling/page.tsx")) && /text-gold-300 hover:text-gold-200/.test(read("src/app/legal/terms/page.tsx")));
   ok("7.6 · the regulator-letter frame's corners are claret (§B4), not gilt", (read("src/app/legal/_components.tsx").match(/ink="var\(--claret-400\)"/g) ?? []).length === 2);
   // 7.7 · the "coming soon" tag renders in the classic header, rail and avatar menu and in page bodies.
-  // Its base is neutral in both player shells: a future feature is neither won money nor a betting side.
+  // Its classic base restores the older house accent; page body and Journey stay neutral.
   const csBase = rule(CSS, ".cs-badge");
   const csScoped = /#main-content \.cs-badge,\s*:root:is\(\[data-shell="journey"\], #kp-journey-shell\) \.cs-badge\s*\{\s*background:\s*var\(--bg-inset\);\s*border-color:\s*var\(--border\);\s*\}/.test(CSS);
-  ok("7.7 · U43 B5 · coming-soon is neutral in both player shells and page bodies",
-    /background:\s*var\(--bg-inset\)/.test(csBase) && /border:\s*1px solid var\(--border\)/.test(csBase) && csScoped);
+  ok("7.7 · the classic coming-soon flag restores warm gold; page bodies and Journey stay neutral",
+    /var\(--gold-500\) 9%/.test(csBase) && /var\(--gold-500\) 22%/.test(csBase) && csScoped);
 }
 
 console.log(`\nvisual-pass-r5c: ${pass} passed, ${fails.length} failed\n`);
