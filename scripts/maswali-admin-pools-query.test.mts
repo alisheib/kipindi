@@ -1,27 +1,21 @@
 import assert from "node:assert/strict";
 import { readFileSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { MUTATIONS } from "./anchors/maswali-admin-pools-query.anchors.mjs";
 import { openState, poolsLine, poolsSearchParams, queryOpenWeeks, queryRolloverTrail } from "../src/lib/maswali-admin-pools-query.ts";
 import type { PoolsTrailRow, PoolsWeek } from "../src/lib/server/maswali-console.ts";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
-const source = fileURLToPath(new URL("../src/lib/maswali-admin-pools-query.ts", import.meta.url));
-
 if (process.argv.includes("--prove-red")) {
-  for (const plant of [
-    { anchor: '(query.line === "ALL" || w.visibility === query.line) &&\n    (!code || w.code.toLocaleUpperCase("en").includes(code))',
-      mutation: 'true &&\n    (!code || w.code.toLocaleUpperCase("en").includes(code))',
-      failure: /trail line filter keeps only the requested line/, name: "trail line filter" },
-    { anchor: 'typeof raw[key] === "string" ? raw[key] : undefined',
-      mutation: 'raw[key] as string | undefined',
-      failure: /repeated or unknown URL controls cannot crash or leak into pools links/, name: "scalar URL controls" },
-  ]) {
+  for (const plant of MUTATIONS) {
+    const source = resolve(root, plant.file);
     const before = readFileSync(source, "utf8");
     const normalized = before.replace(/\r\n/g, "\n");
-    assert.equal(normalized.split(plant.anchor).length - 1, 1, `${plant.name} anchor must be unique`);
+    assert.equal(normalized.split(plant.from).length - 1, 1, `${plant.name} anchor must be unique`);
     try {
-      writeFileSync(source, normalized.replace(plant.anchor, plant.mutation));
+      writeFileSync(source, normalized.replace(plant.from, plant.to));
       const run = spawnSync(process.execPath, ["--import", "tsx", "scripts/maswali-admin-pools-query.test.mts"],
         { cwd: root, encoding: "utf8", env: { ...process.env, NODE_ENV: "test" } });
       assert.notEqual(run.status, 0, `removing ${plant.name} must fail the behavior guard`);

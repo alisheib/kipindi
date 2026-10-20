@@ -1,35 +1,22 @@
 import assert from "node:assert/strict";
 import { readFileSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { MUTATIONS } from "./anchors/maswali-admin-form-validation.anchors.mjs";
 import { validGuaranteeDraft, validShareDecision } from "../src/lib/maswali-admin-form-validation.ts";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
-const source = fileURLToPath(new URL("../src/lib/maswali-admin-form-validation.ts", import.meta.url));
 const poolsControl = fileURLToPath(new URL("../src/app/admin/maswali/pools/pools-controls.tsx", import.meta.url));
 const integrityControl = fileURLToPath(new URL("../src/app/admin/maswali/integrity/integrity-controls.tsx", import.meta.url));
 
 if (process.argv.includes("--prove-red")) {
-  for (const plant of [
-    { file: source, anchor: "ref.length >= 5 && ref.length <= 120", mutation: "ref.length >= 0 && ref.length <= 120",
-      failure: /blank rail reference cannot open a money confirmation/, name: "blank reference" },
-    { file: poolsControl, anchor: 'disabled={pending || !ready} onClick={() => setMode("fund")}',
-      mutation: 'disabled={pending} onClick={() => setMode("fund")}',
-      failure: /Pay in must stay disabled until both the amount and rail reference are valid/, name: "fund-button gate" },
-    { file: integrityControl, anchor: "if (!validShareDecision(reason)) { setTried(true); return; }",
-      mutation: "if (false) { setTried(true); return; }",
-      failure: /Hold must refuse a blank decision inside the confirmation/, name: "share-decision gate" },
-    { file: integrityControl, anchor: '{!open && error && <span role="alert"',
-      mutation: '{error && <span role="alert"',
-      failure: /Hold failure must have one visible alert inside its open confirmation/, name: "hold-alert placement" },
-    { file: integrityControl, anchor: '{mode === null && error && <span role="alert"',
-      mutation: '{error && <span role="alert"',
-      failure: /Release or forfeit failure must have one visible alert inside its open confirmation/, name: "decision-alert placement" },
-  ]) {
-    const before = readFileSync(plant.file, "utf8");
-    assert.equal(before.split(plant.anchor).length - 1, 1, `${plant.name} plant must have one target`);
+  for (const plant of MUTATIONS) {
+    const target = resolve(root, plant.file);
+    const before = readFileSync(target, "utf8");
+    assert.equal(before.split(plant.from).length - 1, 1, `${plant.name} plant must have one target`);
     try {
-      writeFileSync(plant.file, before.replace(plant.anchor, plant.mutation));
+      writeFileSync(target, before.replace(plant.from, plant.to));
       const run = spawnSync(process.execPath, ["--import", "tsx", "scripts/maswali-admin-form-validation.test.mts"],
         { cwd: root, encoding: "utf8", env: { ...process.env, NODE_ENV: "test" } });
       assert.notEqual(run.status, 0, `${plant.name} must turn the guard red`);
@@ -37,7 +24,7 @@ if (process.argv.includes("--prove-red")) {
         `${plant.name} failure must name the missing behavior, not a loader error`);
       process.stdout.write(`RED: ${plant.name} behavior is caught\n`);
     } finally {
-      writeFileSync(plant.file, before);
+      writeFileSync(target, before);
     }
   }
   process.exit(0);
