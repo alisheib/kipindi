@@ -34,9 +34,19 @@ each other without the former empty middle column or horizontal overflow, green/
 7D candles, and Instagram/WhatsApp brand fills without the grayscale filter. Local
 `qa:live` against `next dev` was interrupted by repeated development navigations,
 so it is not counted as a pass. Ali then directed restoration of the full earlier
-gold treatment, including wallet and deposit controls. The restoration is in this
-branch with its source, brand assets and focused guards; production read-back of
-that change remains a release gate. The required two independent 24-cell 10/10 reviews have
+gold treatment, including wallet and deposit controls. He directed an immediate
+push before the remaining gates; the restoration was committed and pushed to
+`main` at `dd1386f060522a41e30dd532513422c9fea6064b` after exact-commit
+typecheck and build passed. Focused guards passed. A later local `qa:live` on
+the working tree passed 385/0 via `localhost:3417`; the prior
+`127.0.0.1` development-server run failed on cross-origin navigation. The
+Phosphor descendant `d268ef919` (which includes `dd1386f06`) is serving on all
+three production hosts: health reports reachable, migrated DB; www and apex
+chunk checks passed 6/6 each; signed-out production `qa:live` passed 362/0.
+Its 24 fresh production frames have not yet been visually read. The remaining
+release gates are still due. Ali stopped this session for continuation on
+another machine; the guard handoff has two unfinished red expectation labels.
+The required two independent 24-cell 10/10 reviews have
 not been measured, so U43 remains open and has **no after score**. The long Release B
 work log below records earlier checkpoints; its older “not live” statements are
 historical, not the current production state.
