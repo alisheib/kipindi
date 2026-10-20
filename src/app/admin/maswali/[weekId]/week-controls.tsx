@@ -22,6 +22,7 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 import { isMaswaliVoidReason, MASWALI_VOID_REASON_LABEL } from "@/lib/maswali-void-reason";
+import { withoutSealedPicks } from "@/lib/maswali-seal-batch";
 import {
   attestMaswaliParityAction, confirmMaswaliSealAction, correctMaswaliSealAction, moveMaswaliCloseAction, openMaswaliWeekAction,
   sealMaswaliQuestionsAction, voidMaswaliQuestionAction,
@@ -42,7 +43,7 @@ function useAct() {
       router.refresh();
     });
   };
-  return { pending, error, run, setError };
+  return { pending, error, run, setError, start };
 }
 
 // ── Attest and open ─────────────────────────────────────────────────────────────────────────────────
@@ -123,9 +124,11 @@ type Can = { seal: boolean; void: boolean; correct: boolean; confirm: boolean };
 export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, can, need }: {
   weekId: string; weekCode: string; rows: SealRowView[]; voidReasons: string[]; windowOpen: boolean; can: Can; need: Record<keyof Can, string>;
 }) {
+  const router = useRouter();
   const mayAct = useMayAct();
-  const { pending, error, run, setError } = useAct();
+  const { pending, error, run, setError, start } = useAct();
   const [picks, setPicks] = useState<Record<number, { outcome: string; evidence: string }>>({});
+  const [sealAuditWarning, setSealAuditWarning] = useState<string | null>(null);
   const [sealOpen, setSealOpen] = useState(false);
   const [confirmRow, setConfirmRow] = useState<SealRowView | null>(null);
   const [voidRow, setVoidRow] = useState<SealRowView | null>(null);
@@ -133,7 +136,9 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
   const [voidEvidence, setVoidEvidence] = useState("");
   const [correctRow, setCorrectRow] = useState<SealRowView | null>(null);
   const [correction, setCorrection] = useState({ outcome: "YES", evidence: "", voidReason: "" });
-  const chosen = Object.entries(picks).filter(([, p]) => p.outcome === "YES" || p.outcome === "NO").map(([slot, p]) => ({ slot: Number(slot), ...p }));
+  const chosen = Object.entries(picks)
+    .filter(([slot, p]) => rows.some((row) => row.slot === Number(slot) && row.outcome === null) && (p.outcome === "YES" || p.outcome === "NO"))
+    .map(([slot, p]) => ({ slot: Number(slot), ...p }));
   const evidenceMissing = chosen.some((c) => c.evidence.trim().length < 10);
 
   return (
@@ -207,13 +212,28 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
           ? <Button size="sm" disabled={pending || chosen.length === 0 || evidenceMissing} onClick={() => { setError(null); setSealOpen(true); }}>Seal {chosen.length || ""} result{chosen.length === 1 ? "" : "s"}</Button>
           : <ActReadOnly />) : <ControlLocked what="Seal results" need={need.seal} />}
         {evidenceMissing && <span className="text-body-sm text-warning">Each seal records its evidence (at least 10 characters).</span>}
+        {sealAuditWarning && <p role="alert" className="text-body-sm text-warning w-full">{sealAuditWarning}</p>}
         {!confirmRow && error && <p role="alert" className="text-body-sm text-danger-fg w-full">{error}</p>}
       </div>
 
       <ConfirmModal open={sealOpen} onClose={() => setSealOpen(false)} loading={pending} tone="brand" tier="hard" typedWord="SEAL"
         title={`Seal ${chosen.length} result${chosen.length === 1 ? "" : "s"}?`} confirmLabel="Seal"
         body={`${chosen.map((c) => `${rows.find((r) => r.slot === c.slot)?.label} ${c.outcome}`).join(" · ")}. A seal is final once its objection window closes; until then only its own correction changes it.`}
-        onConfirm={() => run(() => sealMaswaliQuestionsAction(fd({ weekId, seals: JSON.stringify(chosen) })), () => { setSealOpen(false); setPicks({}); })} />
+        onConfirm={() => {
+          setError(null);
+          setSealAuditWarning(null);
+          start(async () => {
+            const result = await sealMaswaliQuestionsAction(fd({ weekId, seals: JSON.stringify(chosen) }));
+            if (result.sealed.length) setPicks((current) => withoutSealedPicks(current, result.sealed));
+            setSealOpen(false);
+            setSealAuditWarning(result.auditWarning);
+            if (!result.ok) {
+              const applied = result.sealed.map((slot) => rows.find((row) => row.slot === slot)?.label ?? `slot ${slot}`);
+              setError(applied.length ? `${applied.join(", ")} sealed. ${result.error} The sealed results will not be retried.` : result.error);
+            }
+            router.refresh();
+          });
+        }} />
 
       <ConfirmModal open={!!voidRow} onClose={() => setVoidRow(null)} loading={pending} tone="claret" tier="hard" typedWord="VOID"
         title={`Void ${voidRow?.label ?? ""}?`} confirmLabel="Void the question"

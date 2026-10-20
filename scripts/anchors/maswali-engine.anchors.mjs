@@ -11,6 +11,7 @@
  */
 const DAL = "src/lib/server/maswali-dal.ts";
 const SVC = "src/lib/server/maswali-service.ts";
+const BATCH = "src/lib/maswali-seal-batch.ts";
 
 export const MUTATIONS = [
   {
@@ -68,5 +69,69 @@ export const MUTATIONS = [
     to: "  const U = F + paid - (R + S);",
     expect: "no top-up when R + S already reaches the floor",
     suite: "money",
+  },
+  {
+    name: "(8) a partial bulk seal skips the device audit until every row succeeds",
+    file: BATCH,
+    from: "  if (sealed.length) {",
+    to: "  if (sealed.length && !failure) {",
+    expect: "7.8 · ⭐ a partial batch still records exactly",
+    suite: "engine",
+  },
+  {
+    name: "(9) second-officer confirmation ignores a changed outcome",
+    file: SVC,
+    from: "    if (q.outcome !== input.expectedOutcome || q.sealedAt !== input.expectedSealedAt) {",
+    to: "    if (q.sealedAt !== input.expectedSealedAt) {",
+    expect: "7.2 · ⛔ a changed outcome cannot be confirmed",
+    suite: "engine",
+  },
+  {
+    name: "(10) second-officer confirmation ignores a changed seal timestamp",
+    file: SVC,
+    from: "    if (q.outcome !== input.expectedOutcome || q.sealedAt !== input.expectedSealedAt) {",
+    to: "    if (q.outcome !== input.expectedOutcome) {",
+    expect: "7.3 · ⛔ even a same-outcome reseal",
+    suite: "engine",
+  },
+  {
+    name: "(11) the bulk form erases every input after a partial seal",
+    file: BATCH,
+    from: "  return remaining;",
+    to: "  return {};",
+    expect: "7.9 · the form clears only landed picks",
+    suite: "engine",
+  },
+  {
+    name: "(12) the admin action bypasses the batch device note",
+    file: "src/app/admin/maswali/actions.ts",
+    from: "    (sealed) => noteDevice(session.userId, weekId, sealed),",
+    to: "    async () => {},",
+    expect: "7.13 · the real admin action gives the batch helper",
+    suite: "engine",
+  },
+  {
+    name: "(13) the seal form clears all chosen inputs instead of only landed slots",
+    file: "src/app/admin/maswali/[weekId]/week-controls.tsx",
+    from: "withoutSealedPicks(current, result.sealed)",
+    to: "withoutSealedPicks(current, chosen.map((row) => row.slot))",
+    expect: "7.14 · the real seal form clears only returned successes",
+    suite: "engine",
+  },
+  {
+    name: "(14) bulk input accepts a question slot outside the week",
+    file: BATCH,
+    from: "row.slot < 1 || row.slot > 15 ||",
+    to: "false ||",
+    expect: "7.16 · ⛔ only integer question slots",
+    suite: "engine",
+  },
+  {
+    name: "(15) bulk input accepts the same slot twice",
+    file: BATCH,
+    from: "    if (seen.has(row.slot)) return `Slot ${row.slot} appears more than once.`;",
+    to: "    if (false) return `Slot ${row.slot} appears more than once.`;",
+    expect: "7.17 · ⛔ duplicate slots cannot partially seal",
+    suite: "engine",
   },
 ];

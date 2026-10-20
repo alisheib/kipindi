@@ -30,6 +30,10 @@ const { saveMaswaliConfig } = await import("../../src/lib/server/maswali-config.
 const { setRequireTwoOfficerResolution } = await import("../../src/lib/server/resolution-policy.ts");
 const { marketStore } = await import("../../src/lib/server/market-dal.ts");
 const consoleRead = await import("../../src/lib/server/maswali-console.ts");
+const { applySealBatch, parseSealRows, withoutSealedPicks } = await import("../../src/lib/maswali-seal-batch.ts");
+const { noteSealDevice, recentNewDeviceSeals, SEAL_DEVICE_ACTION, SEAL_NEW_DEVICE_ACTION } = await import("../../src/lib/server/maswali-integrity.ts");
+const { auditFlush, getAuditByActionsDurable } = await import("../../src/lib/server/audit.ts");
+const { readFileSync } = await import("node:fs");
 
 process.exitCode = 1;
 let pass = 0, fail = 0;
@@ -267,10 +271,81 @@ console.log("\n§7 · the two-officer flag");
   const s = await svc.sealQuestion({ weekId: w1.id, slot: 11, outcome: "YES", evidence: "Official result for reserve 1", officerId: SEALER, now: afterClose });
   const q = (await questionStore.listForWeek(w1.id)).find((x) => x.slot === 11)!;
   ok("7.1 · with the flag on, the seal records stage 1 and waits", s.ok && q.twoOfficerAtStage1 === true && q.stage2By === null);
-  ok("7.2 · ⛔ the sealer cannot confirm their own seal", !(await svc.confirmSeal({ weekId: w1.id, slot: 11, officerId: SEALER })).ok);
-  ok("7.3 · a second officer confirms it", (await svc.confirmSeal({ weekId: w1.id, slot: 11, officerId: READER })).ok);
-  ok("7.4 · a seal made with the flag off needs no second officer", !(await svc.confirmSeal({ weekId: w1.id, slot: 1, officerId: READER })).ok);
+  const reviewed = { expectedOutcome: "YES" as const, expectedSealedAt: q.sealedAt! };
+  ok("7.2 · ⛔ a changed outcome cannot be confirmed from a stale review",
+    !(await svc.confirmSeal({ weekId: w1.id, slot: 11, officerId: READER, expectedOutcome: "NO", expectedSealedAt: q.sealedAt! })).ok
+      && (await questionStore.get(q.id))?.stage2By === null);
+  ok("7.3 · ⛔ even a same-outcome reseal invalidates the reviewed timestamp",
+    !(await svc.confirmSeal({ weekId: w1.id, slot: 11, officerId: READER, expectedOutcome: "YES", expectedSealedAt: "2020-01-01T00:00:00.000Z" })).ok
+      && (await questionStore.get(q.id))?.stage2By === null);
+  ok("7.4 · ⛔ the sealer cannot confirm their own seal", !(await svc.confirmSeal({ weekId: w1.id, slot: 11, officerId: SEALER, ...reviewed })).ok);
+  ok("7.5 · a second officer confirms exactly the seal they reviewed", (await svc.confirmSeal({ weekId: w1.id, slot: 11, officerId: READER, ...reviewed })).ok);
+  const q1 = (await questionStore.listForWeek(w1.id)).find((x) => x.slot === 1)!;
+  ok("7.6 · a seal made with the flag off needs no second officer", !(await svc.confirmSeal({ weekId: w1.id, slot: 1, officerId: READER, expectedOutcome: q1.outcome!, expectedSealedAt: q1.sealedAt! })).ok);
   await setRequireTwoOfficerResolution(false, OWNER);
+
+  const device = (slots: number[], ip: string) => noteSealDevice({ officerId: SEALER, weekId: w1.id, slots, ip, userAgent: "maswali-batch-test" });
+  const first = await applySealBatch([
+    { slot: 13, outcome: "YES" as const, evidence: "Official result for reserve 3" },
+    { slot: 11, outcome: "NO" as const, evidence: "Already sealed reserve 1" },
+  ], (row) => svc.sealQuestion({ weekId: w1.id, ...row, officerId: SEALER, now: afterClose }),
+  (slots) => device(slots, "198.51.100.121"), () => "Unexpected seal error");
+  ok("7.7 · ⛔ a later service refusal reports exactly the first landed slot",
+    !first.ok && first.sealed.length === 1 && first.sealed[0] === 13 && /Slot 11/.test(errOf(first))
+      && (await questionStore.listForWeek(w1.id)).find((x) => x.slot === 13)?.outcome === "YES");
+  await auditFlush();
+  const deviceRows = (await recentNewDeviceSeals(200))?.filter((row) => row.officerId === SEALER && row.weekId === w1.id) ?? [];
+  const deviceAudit = (await getAuditByActionsDurable([SEAL_DEVICE_ACTION, SEAL_NEW_DEVICE_ACTION], { limit: 200 })).entries
+    .filter((entry) => entry.actorId === SEALER && entry.targetId === w1.id && entry.ip === "198.51.100.121");
+  ok("7.8 · ⭐ a partial batch still records exactly the successful slot in both device audits",
+    deviceRows.length === 1 && deviceRows[0].firstSeal && deviceAudit.length === 2
+      && deviceAudit.some((entry) => entry.category === "ADMIN" && entry.action === SEAL_DEVICE_ACTION)
+      && deviceAudit.some((entry) => entry.category === "COMPLIANCE" && entry.action === SEAL_NEW_DEVICE_ACTION)
+      && deviceAudit.every((entry) => JSON.stringify(entry.payload?.slots) === "[13]"));
+  const remaining = withoutSealedPicks({ 13: "landed", 11: "refused", 15: "unattempted" }, first.sealed);
+  ok("7.9 · the form clears only landed picks; refused and unattempted values survive",
+    !(13 in remaining) && remaining[11] === "refused" && remaining[15] === "unattempted");
+
+  const second = await applySealBatch([
+    { slot: 14, outcome: "YES" as const, evidence: "Official result for reserve 4" },
+    { slot: 15, outcome: "NO" as const, evidence: "Official result for reserve 5" },
+  ], (row) => row.slot === 15 ? Promise.reject(new Error("Injected failure after first seal"))
+    : svc.sealQuestion({ weekId: w1.id, ...row, officerId: SEALER, now: afterClose }),
+  (slots) => device(slots, "198.51.100.122"), () => "The second call threw");
+  ok("7.10 · ⛔ a throw after one success still reports only the landed slot",
+    !second.ok && second.sealed.length === 1 && second.sealed[0] === 14 && /Slot 15: The second call threw/.test(errOf(second))
+      && (await questionStore.listForWeek(w1.id)).find((x) => x.slot === 14)?.outcome === "YES");
+  await auditFlush();
+  const twoDevices = (await recentNewDeviceSeals(200))?.filter((row) => row.officerId === SEALER && row.weekId === w1.id) ?? [];
+  const thrownDeviceAudit = (await getAuditByActionsDurable([SEAL_DEVICE_ACTION, SEAL_NEW_DEVICE_ACTION], { limit: 200 })).entries
+    .filter((entry) => entry.actorId === SEALER && entry.targetId === w1.id && entry.ip === "198.51.100.122");
+  ok("7.11 · ⭐ a thrown later seal still records exactly the earlier slot in both device audits",
+    twoDevices.length === 2 && thrownDeviceAudit.length === 2
+      && thrownDeviceAudit.every((entry) => JSON.stringify(entry.payload?.slots) === "[14]"));
+  const deviceFailed = await applySealBatch([{ slot: 99 }], async () => ({ ok: true }), async () => { throw new Error("audit unavailable"); }, () => "Seal failed");
+  ok("7.12 · a device-note failure does not erase landed slot identity or claim a complete audit",
+    deviceFailed.ok && deviceFailed.sealed[0] === 99 && !!deviceFailed.auditWarning);
+  const actionSource = readFileSync("src/app/admin/maswali/actions.ts", "utf8");
+  ok("7.13 · the real admin action gives the batch helper every successful slot for device audit",
+    actionSource.includes("const result = await applySealBatch(rows,")
+      && actionSource.includes("(sealed) => noteDevice(session.userId, weekId, sealed)"));
+  const consoleSource = readFileSync("src/app/admin/maswali/[weekId]/week-controls.tsx", "utf8");
+  ok("7.14 · the real seal form clears only returned successes and excludes newly sealed rows",
+    consoleSource.includes("withoutSealedPicks(current, result.sealed)")
+      && consoleSource.includes("row.slot === Number(slot) && row.outcome === null"));
+  ok("7.15 · ⛔ a malformed row or non-string evidence is rejected before any seal",
+    typeof parseSealRows('[null]') === "string"
+      && typeof parseSealRows('[{"slot":1,"outcome":"YES","evidence":null}]') === "string"
+      && typeof parseSealRows('[{"slot":1,"outcome":{},"evidence":"Official record"}]') === "string");
+  ok("7.16 · ⛔ only integer question slots 1 through 15 are accepted",
+    typeof parseSealRows('[{"slot":0,"outcome":"YES","evidence":"Official record"}]') === "string"
+      && typeof parseSealRows('[{"slot":16,"outcome":"YES","evidence":"Official record"}]') === "string"
+      && typeof parseSealRows('[{"slot":1.5,"outcome":"YES","evidence":"Official record"}]') === "string");
+  ok("7.17 · ⛔ duplicate slots cannot partially seal the same question twice",
+    typeof parseSealRows('[{"slot":1,"outcome":"YES","evidence":"Official record"},{"slot":1,"outcome":"NO","evidence":"Official record"}]') === "string");
+  ok("7.18 · the real admin action validates rows before the first irreversible seal",
+    actionSource.includes('const rows = parseSealRows(str(formData, "seals"));')
+      && actionSource.indexOf('const rows = parseSealRows(str(formData, "seals"));') < actionSource.indexOf("const result = await applySealBatch(rows,"));
 }
 
 // ── §8 · the week void ──────────────────────────────────────────────────────

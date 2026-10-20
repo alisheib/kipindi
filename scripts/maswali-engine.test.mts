@@ -17,6 +17,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:maswali-engine",
   casesFile: "scripts/lib/maswali-engine-child.mts",
-  minPass: { memory: 110, postgres: 109 }, // the counts of 27b94368 (v3db, 2026-10-17): a case that stops running fails
+  minPass: { memory: 124, postgres: 123 }, // S5 partial-batch and stale-second-officer cases raise both-store floors
   dbPrefix: "mlw_engine",
 });

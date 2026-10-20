@@ -19,6 +19,7 @@ import {
 } from "@/lib/server/maswali-service";
 import { guaranteeReader } from "@/lib/server/maswali-money-service";
 import { noteSealDevice } from "@/lib/server/maswali-integrity";
+import { applySealBatch, parseSealRows, type SealBatchResult } from "@/lib/maswali-seal-batch";
 import { clientMeta } from "@/lib/server/auth-service";
 import { eatWeekStartMs } from "@/lib/eat-day";
 import type { MaswaliOutcome } from "@/lib/maswali-score";
@@ -144,41 +145,23 @@ export async function moveMaswaliCloseAction(formData: FormData): Promise<Action
   }
 }
 
-/** One row of a seal: a YES/NO with its evidence, or a VOID with its ground (MR-15). */
-type SealRow = { slot: number; outcome: MaswaliOutcome; evidence: string; voidReason?: string | null };
-
-function parseSeals(raw: string): SealRow[] | string {
-  let rows: unknown;
-  try { rows = JSON.parse(raw); } catch { return "The seals could not be read."; }
-  if (!Array.isArray(rows) || rows.length === 0 || rows.length > 15) return "Seal between one and fifteen questions at once.";
-  return rows as SealRow[];
-}
-
 /**
  * Seal one or more questions by ONE officer (MR-14: no AI seals; the AI's suggestion only sits beside the row). A VOID is
  * its own control (`voidMaswaliQuestion`): the same service, but a seal that sends money back is never mixed into a
  * bulk YES/NO by accident.
  */
-export async function sealMaswaliQuestionsAction(formData: FormData): Promise<{ ok: true; sealed: number[] } | { ok: false; error: string; sealed: number[] }> {
+export async function sealMaswaliQuestionsAction(formData: FormData): Promise<SealBatchResult> {
   const session = await requireStaff(CONTROL_DOMAIN.sealMaswaliQuestion, "sealMaswaliQuestion");
   const weekId = str(formData, "weekId");
-  const rows = parseSeals(str(formData, "seals"));
-  if (typeof rows === "string") return { ok: false, error: rows, sealed: [] };
-  if (rows.some((r) => r.outcome !== "YES" && r.outcome !== "NO")) return { ok: false, error: "A void is sealed on its own, with its ground.", sealed: [] };
-  const sealed: number[] = [];
-  try {
-    for (const row of rows) {
-      const r = await sealQuestion({ weekId, slot: Number(row.slot), outcome: row.outcome, evidence: String(row.evidence ?? ""), officerId: session.userId });
-      if (!r.ok) { refresh(weekId); return { ok: false, error: `Slot ${row.slot}: ${r.error}`, sealed }; }
-      sealed.push(Number(row.slot));
-    }
-    await noteDevice(session.userId, weekId, sealed);
-    refresh(weekId);
-    return { ok: true, sealed };
-  } catch (err) {
-    refresh(weekId);
-    return { ok: false, error: safeError(err, "The seal could not be recorded"), sealed };
-  }
+  const rows = parseSealRows(str(formData, "seals"));
+  if (typeof rows === "string") return { ok: false, error: rows, sealed: [], auditWarning: null };
+  if (rows.some((r) => r.outcome !== "YES" && r.outcome !== "NO")) return { ok: false, error: "A void is sealed on its own, with its ground.", sealed: [], auditWarning: null };
+  const result = await applySealBatch(rows,
+    (row) => sealQuestion({ weekId, slot: row.slot, outcome: row.outcome, evidence: row.evidence, officerId: session.userId }),
+    (sealed) => noteDevice(session.userId, weekId, sealed),
+    (error) => safeError(error, "The seal could not be recorded"));
+  try { refresh(weekId); } catch { /* The returned landed slots remain authoritative; the client also refreshes. */ }
+  return result;
 }
 
 export async function voidMaswaliQuestionAction(formData: FormData): Promise<ActionResult> {
@@ -203,7 +186,12 @@ export async function confirmMaswaliSealAction(formData: FormData): Promise<Acti
   const session = await requireStaff(CONTROL_DOMAIN.confirmMaswaliSeal, "confirmMaswaliSeal");
   const weekId = str(formData, "weekId");
   try {
-    const r = await confirmSeal({ weekId, slot: Number(str(formData, "slot")), officerId: session.userId });
+    const expectedOutcome = str(formData, "expectedOutcome");
+    const expectedSealedAt = str(formData, "expectedSealedAt");
+    if ((expectedOutcome !== "YES" && expectedOutcome !== "NO" && expectedOutcome !== "VOID") || !expectedSealedAt) {
+      return { ok: false, error: "Reload the week and review the sealed result before confirming it." };
+    }
+    const r = await confirmSeal({ weekId, slot: Number(str(formData, "slot")), officerId: session.userId, expectedOutcome, expectedSealedAt });
     if (!r.ok) return { ok: false, error: r.error };
     refresh(weekId);
     return { ok: true, weekId };

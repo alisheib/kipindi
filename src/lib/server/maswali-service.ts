@@ -602,16 +602,22 @@ export async function sealQuestion(input: {
 }
 
 /** The second officer's confirmation of a seal made while the two-officer flag was on (MR-14). ⛔ Never the sealer. */
-export async function confirmSeal(input: { weekId: string; slot: number; officerId: string; now?: Date }): Promise<Result> {
+export async function confirmSeal(input: { weekId: string; slot: number; officerId: string; expectedOutcome: MaswaliOutcome; expectedSealedAt: string; now?: Date }): Promise<Result> {
   const nowMs = (input.now ?? new Date()).getTime();
   return withLock(MASWALI_CHAIN_LOCK, async () => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
     const q = (await questionStore.listForWeek(week.id)).find((x) => x.slot === input.slot);
     if (!q || q.outcome === null) return refuse("Nothing to confirm.");
+    if (q.outcome !== input.expectedOutcome || q.sealedAt !== input.expectedSealedAt) {
+      return refuse("This seal changed since you reviewed it. Refresh the week and read the result again.");
+    }
     if (q.twoOfficerAtStage1 !== true) return refuse("This seal needs no second officer.");
     if (q.stage2By) return refuse("Already confirmed.");
     if (q.sealedBy === input.officerId) return refuse("The officer who sealed it cannot confirm it — a second officer must.");
+    // The graded-set recompute runs after the stamp. Refuse an unreadable frozen snapshot before
+    // changing the question, so a known recompute refusal cannot report a landed signoff as failed.
+    if (!frozenRules(week)) return refuse(`Week ${week.code}'s frozen rules cannot be read.`);
     await questionStore.patch(q.id, { stage2By: input.officerId, stage2At: new Date(nowMs).toISOString() });
     audit({ category: "ADMIN", action: "maswali.question.confirmed", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id, payload: { week: week.code, slot: slotLabel(q.slot) } });
     const r = await recomputeGateLocked(week.id, nowMs);
