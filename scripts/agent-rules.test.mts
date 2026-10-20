@@ -68,6 +68,16 @@ const callsRepoPrivate = (text: string) => /\(private\)|private repo|repository 
 const asksForLightTheme = (text: string) => /dark (and|\/|×|x) light|light mode screenshots?/i.test(text);
 const hasPastePrompt = (text: string) => /Paste the prompt below into a fresh Claude Code session/i.test(text);
 
+/** The access guide may describe old login failures, but cannot authorize an agent to reuse Ali's login. */
+const safeGitHubAccess = (text: string) => {
+  const github = text.split("### 2.1 GitHub")[1]?.split("### 2.2 Cloudflare")[0] ?? "";
+  return /50pick-owned GitHub App installation or dedicated bot\s+account/.test(github) &&
+    /not a token from Ali's personal account/.test(github) &&
+    /that the Git command will use it rather than the saved personal Windows login/.test(github) &&
+    /If the only available credential is personal, Ali performs the push himself/.test(github) &&
+    !/Create a token at \*\*https:\/\/github\.com\/settings\/tokens\/new/.test(github);
+};
+
 /** A record says so in its first lines, and names the file that replaced it. */
 const isBannerRecord = (text: string) => {
   const head = text.split(/\r?\n/).slice(0, 15).join("\n");
@@ -105,6 +115,8 @@ for (const f of ["AGENTS.md", "README.md"]) check(!restatesARate(must(f)), `4.2 
 for (const f of ["AGENTS.md", "README.md", "docs/SETUP.md", "docs/RAILWAY-LIVE.md"]) check(!callsRepoPrivate(must(f)), `4.3 · ${f} does not call the (public) repository private`);
 check(!asksForLightTheme(must("docs/MODULE-CERTIFICATION-PROGRAM.md")), "4.4 · no certification step asks for light-theme screenshots (there is one theme)");
 check(!hasPastePrompt(must("docs/RAILWAY-LIVE.md")), "4.5 · docs/RAILWAY-LIVE.md carries no paste-in session prompt");
+const agentAccess = must("docs/AGENT-ACCESS.md");
+check(safeGitHubAccess(agentAccess), "4.6 · access guide requires a project or bot credential for GitHub writes");
 
 /* ─── 5 · the old prompts and handoffs say they are records ─────────────────────────────────────────── */
 console.log("\n§5 · old prompts and handoffs are banner records");
@@ -125,6 +137,7 @@ check(callsRepoPrivate("GitHub: https://github.com/alisheib/kipindi.git (private
 check(asksForLightTheme("screenshots × dark and light"), "6.10 PLANT · a light-theme screenshot step is reported");
 check(hasPastePrompt("Paste the prompt below into a fresh Claude Code session, with this file present"), "6.11 PLANT · a paste-in session prompt is reported");
 check(!isBannerRecord("# Codex takeover prompt\n\nYou are Codex."), "6.12 PLANT · a handoff without its RECORD banner is reported");
+check(!safeGitHubAccess(agentAccess.replace("If the only available credential is personal, Ali performs the push himself", "If the only available credential is personal, the agent performs the push")), "6.13 PLANT · an access guide telling the agent to use a personal login is reported");
 
 console.log(failed === 0 ? "\nALL PASS — test:agent-rules" : `\n${failed} FAILED — test:agent-rules`);
 process.exit(failed === 0 ? 0 : 1);
