@@ -7,7 +7,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Chip } from "../src/components/ui/chip";
 import { adminKpiGlyph } from "../src/components/admin/admin-kpi-glyph";
-import { MarketStatusBadge, KycStatusBadge, DsarStatusBadge } from "../src/components/admin/status-badge";
+import { MarketStatusBadge, KycStatusBadge, DsarStatusBadge, AccountStatusBadge } from "../src/components/admin/status-badge";
 
 const root = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 const read = (path: string) => readFileSync(join(root, path), "utf8");
@@ -96,6 +96,8 @@ function defects(s: typeof files): string[] {
   for (const name of ["MARKET_GLYPH", "KycStatusBadge", "KycStageBadge", "DsarStatusBadge", "ObjectionStatusBadge", "AccountStatusBadge"])
     if (!s.status.includes(name)) bad.push(`${name} is missing its status family`);
   if ((s.status.match(/glyph=\{/g) ?? []).length < 6) bad.push("all six shared admin status families need glyphs");
+  if (!s.status.includes('presented === "CLOSED" ? "xCircle" : "info"'))
+    bad.push("unknown account statuses need a neutral information glyph, distinct from CLOSED");
   if (!s.payout.includes('<I.checkCircle s={11} tier="fill"') || !s.payout.includes('<I.xCircle s={11} tier="fill"'))
     bad.push("payout rail status needs distinct filled outcomes");
   if (!s.restricted.includes('<IconPlate size={40} variant="warning"') || !s.restricted.includes('tier="fill"'))
@@ -141,8 +143,13 @@ check("status chip renders its Fill glyph and the word", html.includes('data-g="
 const live = renderToStaticMarkup(createElement(MarketStatusBadge, { status: "LIVE" }));
 const rejected = renderToStaticMarkup(createElement(KycStatusBadge, { status: "REJECTED" }));
 const partial = renderToStaticMarkup(createElement(DsarStatusBadge, { status: "PARTIAL", deletionFailed: true }));
+const unknownAccount = renderToStaticMarkup(createElement(AccountStatusBadge, { status: "UNMAPPED_STATE" }));
+const closedAccount = renderToStaticMarkup(createElement(AccountStatusBadge, { status: "CLOSED" }));
 check("stored admin statuses render distinct Fill meanings",
   live.includes('data-g="live.fill"') && rejected.includes('data-g="xCircle.fill"') && partial.includes('data-g="alertCircle.fill"'));
+check("unknown account state stays neutral while CLOSED stays terminal",
+  unknownAccount.includes('data-kit-chip-variant="neutral"') && unknownAccount.includes('data-g="info.fill"')
+  && unknownAccount.includes("Unmapped state") && closedAccount.includes('data-g="xCircle.fill"'));
 
 if (process.argv.includes("--prove-red")) {
   const plants: Array<[string, keyof typeof files, string, string]> = [
@@ -157,6 +164,7 @@ if (process.argv.includes("--prove-red")) {
     ["desk money label becomes generic", "subject", '[/^Stake today$|^Loss today$/i, "coins"]', '[/^Stake today$|^Loss today$/i, "chart"]'],
     ["desk account label becomes generic", "subject", '[/^Accounts$/i, "users"]', '[/^Accounts$/i, "chart"]'],
     ["AI token swallows Wait p95", "subject", '/\\bAI\\b|anthropic|oracle|cycle|model|stored \\(180d\\)/i', '/AI|anthropic|oracle|cycle|model|stored \\(180d\\)/i'],
+    ["unknown account falsely marked failed", "status", 'presented === "CLOSED" ? "xCircle" : "info"', 'presented === "CLOSED" ? "xCircle" : "xCircle"'],
   ];
   for (const [name, key, from, to] of plants) {
     if (!files[key].includes(from)) { check(name, false, "plant anchor absent"); continue; }

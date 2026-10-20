@@ -398,7 +398,8 @@ function humanise(token: string): string {
 export function AccountStatusBadge({ status, size = "sm" }: { status: string; size?: "sm" | "md" | "lg" }) {
   const presented = presentedAccountStatus(status);
   const glyph: FillGlyphKey = presented === "ACTIVE" ? "checkCircle"
-    : presented === "COOLED_OFF" ? "clock" : presented === "SUSPENDED" || presented === "SELF_EXCLUDED" ? "lock" : "xCircle";
+    : presented === "COOLED_OFF" ? "clock" : presented === "SUSPENDED" || presented === "SELF_EXCLUDED" ? "lock"
+    : presented === "CLOSED" ? "xCircle" : "info";
   return <Chip size={size} variant={playerStatusVariant(status)} glyph={glyph}>{accountStatusLabel(status)}</Chip>;
 }
 
