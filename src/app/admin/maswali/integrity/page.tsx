@@ -169,7 +169,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
           </div>
           {v.voidablePage.allTotal === 0 ? <div className="p-4 text-body-sm text-text-secondary">No week is waiting to be voided.</div>
             : v.voidablePage.total === 0 ? <EmptyState title="No voidable weeks match these filters" body="Try another week code or line." /> : (
-            <><p className="px-4 pt-3 font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{v.voidablePage.total} of {v.voidablePage.allTotal} weeks waiting</p>
+            <><p className="px-4 pt-3 font-mono text-micro uppercase tracking-widest text-text-subtle">{v.voidablePage.total} of {v.voidablePage.allTotal} weeks waiting</p>
             <ul className="space-y-2 p-4">
               {v.voidable.map((w) => (
                 <li key={w.id} className="flex items-center gap-3 flex-wrap">
