@@ -276,12 +276,12 @@ const afterClose = new Date(Date.parse((await weekStore.get(w1.id))!.closesAt) +
   const reviewed3 = { expectedOutcome: q3.outcome!, expectedSealedAt: q3.sealedAt! };
   const sameSealClock = new Date(q3.sealedAt!);
   const raced = await Promise.all([
-    svc.correctSeal({ weekId: w1.id, slot: 3, outcome: "NO", evidence: "Corrected result from the official source", ...reviewed3, officerId: SEALER, now: sameSealClock }),
-    svc.correctSeal({ weekId: w1.id, slot: 3, outcome: "NO", evidence: "Second review of the same stale seal", ...reviewed3, officerId: SEALER, now: sameSealClock }),
+    svc.correctSeal({ weekId: w1.id, slot: 3, outcome: reviewed3.expectedOutcome, evidence: "Corrected evidence from the official source", ...reviewed3, officerId: SEALER, now: sameSealClock }),
+    svc.correctSeal({ weekId: w1.id, slot: 3, outcome: reviewed3.expectedOutcome, evidence: "Second review of the same stale seal", ...reviewed3, officerId: SEALER, now: sameSealClock }),
   ]);
   ok("6.11a · ⛔ concurrent corrections of one reviewed seal land exactly once",
     raced.filter((r) => r.ok).length === 1 && raced.filter((r) => !r.ok).every((r) => /seal changed/.test(errOf(r)))
-      && (await questionStore.get(q3.id))?.outcome === "NO" && Date.parse((await questionStore.get(q3.id))?.sealedAt ?? "") > sameSealClock.getTime());
+      && (await questionStore.get(q3.id))?.outcome === reviewed3.expectedOutcome && Date.parse((await questionStore.get(q3.id))?.sealedAt ?? "") > sameSealClock.getTime());
   const fix = await svc.correctSeal({ weekId: w1.id, slot: 2, outcome: "YES", evidence: "Corrected: the source updated its final score", ...reviewed2, officerId: SEALER, now: new Date(afterClose.getTime() + 3_600_000) });
   const w2c = (await weekStore.get(w1.id))!;
   ok("6.12 · the sealer's correction lands inside the window and RESTARTS it", fix.ok && Date.parse(w2c.objectionsCloseAt!) > end, errOf(fix));

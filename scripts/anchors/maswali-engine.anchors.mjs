@@ -207,4 +207,12 @@ export const MUTATIONS = [
     expect: "6.11a · ⛔ concurrent corrections",
     suite: "engine",
   },
+  {
+    name: "(25) a same-clock correction reuses the reviewed seal version",
+    file: SVC,
+    from: '    const revisedAt = new Date(Math.max(nowMs, Date.parse(q.sealedAt!) + 1)).toISOString();',
+    to: '    const revisedAt = new Date(nowMs).toISOString();',
+    expect: "6.11a · ⛔ concurrent corrections",
+    suite: "engine",
+  },
 ];
