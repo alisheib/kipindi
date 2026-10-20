@@ -75,9 +75,9 @@ overlap: replace its private SVG with `I.bell` on the shared plate, with its rul
 long campaign and classic-parity reds, a fresh classic parity browser comparison, the changed-file readers, the
 database battery, exact-commit typecheck/build/local `qa:live`, and visual tiles before pushing `main`; finish the
 production read-back required by AGENTS.md §4. No Phosphor 2b–3 code is live at this checkpoint.
-`test:red-anchors` currently reports 7256 pass / 2 fail on the rebased branch: current `main` added three U43 red
-harnesses without audited anchors, raising its unanchored count from the ratchet's 64 to 67. The U43 owner was told;
-recheck the final live tree and repair this gate before the Phosphor push.
+The inherited U43 red-anchor gap is repaired on this branch at `135ccb2ac`: the three red harnesses now declare their
+exact plants, `test:red-anchors` passes 7,299/7,299 with the unanchored ceiling still 64, and all three mutation
+proofs pass. Recheck after U43's final live commit before the Phosphor push.
 
 ⏳ **Owed — checks not run because Ali asked to ship (2026-10-19); run them on live `main` first (AGENTS.md §4):**
 - before/after tiles of every changed surface (phones at 390px and 2x, desktop at 1280px), read one by one;
