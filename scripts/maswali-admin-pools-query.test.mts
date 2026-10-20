@@ -18,9 +18,10 @@ if (process.argv.includes("--prove-red")) {
       failure: /repeated or unknown URL controls cannot crash or leak into pools links/, name: "scalar URL controls" },
   ]) {
     const before = readFileSync(source, "utf8");
-    assert.equal(before.split(plant.anchor).length - 1, 1, `${plant.name} anchor must be unique`);
+    const normalized = before.replace(/\r\n/g, "\n");
+    assert.equal(normalized.split(plant.anchor).length - 1, 1, `${plant.name} anchor must be unique`);
     try {
-      writeFileSync(source, before.replace(plant.anchor, plant.mutation));
+      writeFileSync(source, normalized.replace(plant.anchor, plant.mutation));
       const run = spawnSync(process.execPath, ["--import", "tsx", "scripts/maswali-admin-pools-query.test.mts"],
         { cwd: root, encoding: "utf8", env: { ...process.env, NODE_ENV: "test" } });
       assert.notEqual(run.status, 0, `removing ${plant.name} must fail the behavior guard`);
