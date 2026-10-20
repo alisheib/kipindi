@@ -617,15 +617,42 @@ function method(obj: string, name: string): string {
 {
   const files = SRC.filter(({ s }) => /db\.objection\.(create|update)\(/.test(s)).map(({ f }) => f);
   ok("C.5 · objection rows are written in exactly one file, objections-service.ts", sameSet(files, ["src/lib/server/objections-service.ts"]), files.join(", "));
-  const os = decomment(read("src/lib/server/objections-service.ts"));
-  let writes = 0, noted = 0;
-  for (const m of os.matchAll(/db\.objection\.(create|update)\(/g)) {
-    writes++;
-    const open = (m.index ?? 0) + m[0].length - 1;
-    const end = open + callArgs(os, open).length + 2;
-    if (os.slice(end, end + 160).includes("noteObjectionWrite();")) noted++;
-  }
-  ok("C.5b · every objection write is followed by noteObjectionWrite() — five writes, five notes", writes === 5 && noted === 5, `${noted}/${writes}`);
+  const objectionNotes = (source: string) => {
+    const os = decomment(source);
+    const names = ["fileObjection", "closeObjectionsForVoidedMarket", "holdSettlementAsOfficer", "rejectObjection", "upholdObjection"];
+    const expected = [1, 2, 1, 1, 2];
+    const parts = names.map((name, index) => {
+      const start = os.indexOf(`export async function ${name}(`);
+      const end = index + 1 < names.length ? os.indexOf(`export async function ${names[index + 1]}(`, start + 1) : os.length;
+      return start >= 0 && end > start ? os.slice(start, end) : "";
+    });
+    const writes = parts.map((part) => [...part.matchAll(/db\.objection\.(create|update)\(/g)].length);
+    const notes = parts.map((part) => [...part.matchAll(/\bnoteObjectionWrite\(\)/g)].length);
+    const ordered = parts.every((part) => part.lastIndexOf("noteObjectionWrite()") > part.lastIndexOf("db.objection."));
+    const close = parts[1], uphold = parts[4];
+    const rollbackNotes = close.indexOf("noteObjectionWrite();", close.indexOf("for (const prior of changedMemory.reverse())"))
+        > close.indexOf("for (const prior of changedMemory.reverse())")
+      && close.indexOf("noteObjectionWrite();", close.indexOf("for (const prior of changedMemory.reverse())"))
+        < close.indexOf("if (rollbackErrors.length)")
+      && uphold.indexOf("noteObjectionWrite();", uphold.indexOf("const after = await db.objection.findById(objectionId)"))
+        > uphold.indexOf("const after = await db.objection.findById(objectionId)")
+      && uphold.indexOf("noteObjectionWrite();", uphold.indexOf("const after = await db.objection.findById(objectionId)"))
+        < uphold.indexOf("if (rollbackErrors.length)");
+    const afterCommitNotes = close.includes("afterCommit(tx, () => noteObjectionWrite());")
+      && /afterCommit\(tx, \(\) => \{\s*noteObjectionWrite\(\);/.test(uphold);
+    const count = [...os.matchAll(/db\.objection\.(create|update)\(/g)].length;
+    return { pass: count === 7 && writes.every((n, i) => n === expected[i])
+        && notes.every((n, i) => n === expected[i]) && ordered && rollbackNotes && afterCommitNotes,
+      count, noted: notes.reduce((sum, n) => sum + n, 0) };
+  };
+  const original = decomment(read("src/lib/server/objections-service.ts"));
+  const census = objectionNotes(original);
+  ok("C.5b · every objection write invalidates rulings, including both memory rollbacks", census.pass,
+    `${census.noted}/${census.count}`);
+  const noteSites = [...original.matchAll(/\bnoteObjectionWrite\(\)/g)];
+  ok("C.5b′ PLANT · every one of seven note sites is load-bearing", noteSites.length === 7
+    && noteSites.every((site) => !objectionNotes(original.slice(0, site.index) + "void 0" + original.slice((site.index ?? 0) + site[0].length)).pass),
+    `${noteSites.length} site(s)`);
 }
 {
   const svc = decomment(read("src/lib/server/market-service.ts"));

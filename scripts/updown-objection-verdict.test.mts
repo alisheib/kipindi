@@ -59,6 +59,7 @@ const { withLock } = await import("../src/lib/server/locks.ts");
 const { buyPosition, settleMarket, emergencyVoidMarket } = await import("../src/lib/server/market-service.ts");
 const { getAuditForTargetsDurable, auditFlush, auditPending } = await import("../src/lib/server/audit.ts");
 const { holdSettlementAsOfficer, upholdObjection, rejectObjection, closeObjectionsForVoidedMarket } = await import("../src/lib/server/objections-service.ts");
+const { objectionRulings } = await import("../src/lib/server/reversals.ts");
 const { getBoard, getRoundDetail } = await import("../src/lib/server/updown-board.ts");
 const { seedDefaultSources, addSource } = await import("../src/lib/server/source-registry.ts");
 
@@ -584,9 +585,18 @@ if (!process.env.DATABASE_URL) {
   assert.ok(first.ok && second.ok);
   const update = db.objection.update;
   let calls = 0;
+  let interimRulingCached = false;
   db.objection.update = async (...args) => {
-    if (++calls === 2) throw new Error("injected second emergency case write fault");
-    return update(...args);
+    const call = ++calls;
+    if (call === 2) throw new Error("injected second emergency case write fault");
+    const written = await update(...args);
+    if (call === 1) {
+      // A cold reader can observe the first temporary UPHELD row while the
+      // memory twin is between its first and second case writes.
+      globalThis.__50PICK_RULINGS = undefined;
+      interimRulingCached = (await objectionRulings()).has(f.round.marketId);
+    }
+    return written;
   };
   let threw = false;
   const upBefore = await balance(upPlayer), downBefore = await balance(downPlayer);
@@ -603,6 +613,8 @@ if (!process.env.DATABASE_URL) {
     !(await marketStore.get(f.round.marketId))?.settledAt &&
     (await UD.roundStore.get(f.round.id))?.outcome === "UP" &&
     (await balance(upPlayer)) === upBefore && (await balance(downPlayer)) === downBefore);
+  check("MEMORY EMERGENCY FAULT: rollback invalidates a cached temporary ruling",
+    interimRulingCached && !(await objectionRulings()).has(f.round.marketId));
   const retry = await emergencyVoidMarket({ marketId: f.round.marketId, officerId: reviewer,
     reason: "Fixture emergency void with one case-write fault." });
   check("MEMORY EMERGENCY FAULT: retry pays each holder once and closes both cases", retry.ok &&

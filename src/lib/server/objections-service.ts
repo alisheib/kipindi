@@ -282,6 +282,9 @@ export async function closeObjectionsForVoidedMarket(
             });
           } catch (rollbackError) { rollbackErrors.push(rollbackError); }
         }
+        // A reader may have cached the temporary UPHELD row before the memory
+        // rollback. Invalidate that snapshot even when a restore itself failed.
+        noteObjectionWrite();
         if (rollbackErrors.length) throw new AggregateError([error, ...rollbackErrors], "emergency objection closure and memory rollback failed");
       }
       throw error;
@@ -702,6 +705,9 @@ export async function upholdObjection(
             reviewNote: liveObjection.reviewNote, remedy: (liveObjection as StoredObjection).remedy,
           });
         } catch (rollbackError) { rollbackErrors.push(rollbackError); }
+        // The failed ruling could have been observed between its memory write
+        // and this restore; the rulings memo must not keep that temporary row.
+        noteObjectionWrite();
         if (rollbackErrors.length) throw new AggregateError([error, ...rollbackErrors], "officer ruling and memory rollback failed");
       }
       throw error;
