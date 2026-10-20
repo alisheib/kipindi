@@ -1,15 +1,14 @@
-/** PHOSPHOR-MIGRATION W6: preserve earlier measured entries while recording only the changed capture section. */
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+/** PHOSPHOR-MIGRATION W6: preserve earlier entries and exclude unchanged clock cells. */
+import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import { spawnSync } from "node:child_process";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const GEN = join(ROOT, "scripts/glyphs/parity-entries.mjs");
-const folder = mkdtempSync(join(tmpdir(), "phos-parity-"));
-if (!resolve(folder).startsWith(resolve(tmpdir(), "phos-parity-"))) throw new Error("temporary fixture escaped its parent");
-const baseFile = join(folder, "base.json"), currentFile = join(folder, "current.json");
+// The generator executes with virtual files. Red plants never mutate the checkout.
+const generator = readFileSync(GEN, "utf8")
+  .replace('import { readFileSync, writeFileSync } from "node:fs";', "")
+  .replaceAll("import.meta.url", JSON.stringify(pathToFileURL(GEN).href));
 const previous = { matrix: [{ id: "w3-matrix-header-html", field: "regions.header.html", cells: 1, replace: [["A", "B"]], reason: "earlier measured entry" }], sell: [], book: [], question: [] };
 const cell = (html, layout) => ({ regions: { main: { count: 1, html, layout } } });
 const base = {
@@ -24,32 +23,25 @@ const current = {
   book: { "book-player|en|360|/watchlist": cell("b-same", "b-new") },
   blobs: { "m-new": '<main><div class="new">Empty</div></main>', "l-new": "main 0,0,100x110 base\nmain>div0 0,0,100x56 new", "b-same": "<main>Clock</main>", "b-new": "main>span0 0,0,85x17 same" },
 };
-const read = (out) => {
-  const source = readFileSync(out, "utf8"), prefix = "export const GLYPH_SWAP = ";
+function run(extra) {
+  const files = new Map([
+    ["base.json", JSON.stringify(base)], ["current.json", JSON.stringify(current)],
+    ["out.mjs", `export const GLYPH_SWAP = ${JSON.stringify(previous)};\n`],
+  ]);
+  const read = (path) => { if (!files.has(path)) throw new Error(`unexpected read: ${path}`); return files.get(path); };
+  const write = (path, value) => { if (path !== "out.mjs") throw new Error(`unexpected output: ${path}`); files.set(path, value); };
+  const virtualProcess = { argv: [process.execPath, GEN, "base.json", "current.json", "--measured", "main", "--wave", "W6", "--out", "out.mjs", ...extra], exit: (code) => { throw new Error(`generator exited ${code}`); } };
+  new Function("readFileSync", "writeFileSync", "process", "console", generator)(read, write, virtualProcess, { log() {}, error() {} });
+  const source = files.get("out.mjs"), prefix = "export const GLYPH_SWAP = ";
   return JSON.parse(source.slice(source.indexOf(prefix) + prefix.length).trim().replace(/;$/, ""));
-};
-const run = (name, extra) => {
-  const out = join(folder, `${name}.mjs`);
-  writeFileSync(out, `export const GLYPH_SWAP = ${JSON.stringify(previous)};\n`);
-  const result = spawnSync(process.execPath, [GEN, baseFile, currentFile, "--measured", "main", "--wave", "W6", "--out", out, ...extra], { cwd: ROOT, encoding: "utf8" });
-  if (result.status !== 0) throw new Error(`${name}: generator exited ${result.status}: ${result.stderr}`);
-  return read(out);
-};
+}
 const valid = (result) => result.matrix.some((e) => e.id === "w3-matrix-header-html")
   && result.matrix.some((e) => e.id === "w6-matrix-main-html")
   && result.matrix.some((e) => e.id === "w6-matrix-main-layout")
   && result.book.length === 0;
-
-try {
-  writeFileSync(baseFile, JSON.stringify(base));
-  writeFileSync(currentFile, JSON.stringify(current));
-  const green = run("green", ["--sections", "matrix", "--append"]);
-  if (!valid(green)) throw new Error("the W3 entry, W6 /positions entries, or time-left exclusion is wrong");
-  if (process.argv.includes("--prove-red")) {
-    if (valid(run("without-append", ["--sections", "matrix"]))) throw new Error("removing --append escaped the guard");
-    if (valid(run("without-sections", ["--append"]))) throw new Error("removing --sections escaped the guard");
-    console.log("2/2 dropped-flag plants caught");
-  } else console.log("W3 entry kept · W6 matrix recorded · uncounted book clock excluded");
-} finally {
-  rmSync(folder, { recursive: true, force: true });
-}
+if (!valid(run(["--sections", "matrix", "--append"]))) throw new Error("the W3 entry, W6 /positions entries, or time-left exclusion is wrong");
+if (process.argv.includes("--prove-red")) {
+  if (valid(run(["--sections", "matrix"]))) throw new Error("removing --append escaped the guard");
+  if (valid(run(["--append"]))) throw new Error("removing --sections escaped the guard");
+  console.log("2/2 dropped-flag plants caught");
+} else console.log("W3 entry kept · W6 matrix recorded · uncounted book clock excluded");

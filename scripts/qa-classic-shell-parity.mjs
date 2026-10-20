@@ -1356,8 +1356,19 @@ const SNAPSHOT = ({ crest, props, animated, notFound, pageBody, sell, confirm, t
   };
 };
 
+/** The open ticket's ring ticks every 15 seconds. Mask only its live value, never its shape, colour or other SVGs. */
+const maskPositionCountdown = (html) => String(html).replace(
+  /<svg\b(?=[^>]*\brole="img")(?=[^>]*\bclass="shrink-0")[^>]*>[\s\S]*?<\/svg>/g,
+  (svg) => {
+    if ([...svg.matchAll(/<circle\b/g)].length !== 2 || !/<circle\b[^>]*\bstroke-dashoffset="[^"]*"/.test(svg) || !/<text\b[^>]*>[^<]*<\/text>/.test(svg)) return svg;
+    return svg.replace(/\baria-label="[^"]*"/, 'aria-label="~countdown"')
+      .replace(/\bstroke-dashoffset="[^"]*"/, 'stroke-dashoffset="~"')
+      .replace(/(<text\b[^>]*>)[^<]*(<\/text>)/, '$1~$2');
+  },
+);
+
 /** What changes between two servers of the SAME tree and is not the product: React ids, asset hashes, the port, store ids, times. */
-const norm = (s) => String(s)
+const norm = (s) => maskPositionCountdown(s)
   .replace(/_[Rr]_[0-9A-Za-z]+_/g, "_id_")
   .replace(/«[Rr][0-9A-Za-z]*»/g, "_id_")
   .replace(/https?:\/\/localhost(?::\d+)?/g, "http://localhost")
@@ -2218,6 +2229,21 @@ async function open(page, route, plant) {
 }
 const localeCookie = (locale) => ({ name: "kp-locale", value: locale, domain: HOST, path: "/" });
 
+/** A dev-server document replacement is one browser interruption, not a page difference. */
+async function evaluateStableSnapshot(page, args, plant) {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try { return await page.evaluate(SNAPSHOT, args); }
+    catch (e) {
+      if (!/Execution context was destroyed/.test(String(e)) || attempt === 3) throw e;
+      await page.waitForLoadState("load", { timeout: 120_000 });
+      await page.locator("main").first().waitFor({ timeout: 120_000 });
+      await hydrated(page);
+      await applyPlant(page, plant);
+      await settleNeedle(page);
+    }
+  }
+}
+
 /** One attempt in a FRESH context — a context carried across cells accumulates visits, and the overlays count visits. */
 async function captureOnce(jar, locale, width, route, plant = null) {
   const ctx = await b.newContext({ viewport: { width, height: HEIGHT } });
@@ -2228,11 +2254,12 @@ async function captureOnce(jar, locale, width, route, plant = null) {
     page.on("pageerror", fileError(pageErrors, devOnly));
     const { status, body, needle } = await open(page, route, plant);
     const args = { crest: CREST, props: PROPS, animated: ANIMATED, notFound: route === "/account" || route === NOT_FOUND, pageBody: jar.length > 0 && route === BODY_ROUTE, trace: TRACE };
-    let snap = await page.evaluate(SNAPSHOT, args);
+    // Turbopack may replace this warmed document. The retry still judges its landed URL and regions.
+    let snap = await evaluateStableSnapshot(page, args, plant);
     let stable = false;
     for (let i = 0; i < 6 && !stable; i++) {
       await page.waitForTimeout(700);
-      const next = await page.evaluate(SNAPSHOT, args);
+      const next = await evaluateStableSnapshot(page, args, plant);
       stable = JSON.stringify(next) === JSON.stringify(snap);
       snap = next;
     }
@@ -2502,7 +2529,7 @@ async function probeBook(jar) {
       await ctx.addCookies([...jar, localeCookie("en")]);
       const page = await ctx.newPage();
       await open(page, route, null);
-      const snap = await page.evaluate(SNAPSHOT, bookArgsOf(route));
+      const snap = await evaluateStableSnapshot(page, bookArgsOf(route), null);
       if (snap.url.split("?")[0] !== route) {
         probe[name] = null;
         probe[`${name}Error`] = `it landed on ${snap.url}`;
@@ -3154,6 +3181,29 @@ async function proveRed() {
       && glyphAt("/icons/g/app.304710bb.svg#p-clock-bold") !== glyphAt("/icons/g/app.304710bb.svg#p-clock-regular")
       && glyphAt("/icons/g/app.304710bb.svg#p-clock-bold") !== glyphAt("/icons/g/admin.304710bb.svg#p-clock-bold")
       && glyphAt("/icons/g/app.304710bb.svg#p-clock-bold") !== glyphAt("/icons/g/app.svg#p-clock-bold"));
+  const ring = (dash, word, klass = "shrink-0") => `<svg width="44" height="44" role="img" aria-label="${word}" class="${klass}"><circle cx="22" cy="22" r="19" stroke="var(--bg-overlay)"></circle><circle cx="22" cy="22" r="19" stroke="var(--aqua-400)" stroke-dasharray="119" stroke-dashoffset="${dash}"></circle><text x="50%">${word}</text></svg>`;
+  ok("P.1d the open-ticket countdown's changing value is masked, while its arc ink, shape and another SVG remain compared",
+    norm(ring(12.2, "3d")) === norm(ring(12.6, "2d"))
+      && norm(ring(12.2, "3d")).includes('stroke-dashoffset="~"')
+      && norm(ring(12.2, "3d")) !== norm(ring(12.2, "3d").replace("aqua-400", "no-400"))
+      && norm(ring(12.2, "3d")) !== norm(ring(12.2, "3d").replace('r="19"', 'r="18"'))
+      && norm(ring(12.2, "3d", "other")) !== norm(ring(12.6, "2d", "other")));
+  {
+    let reads = 0, loads = 0, replants = 0;
+    const interrupted = {
+      evaluate: async () => { if (++reads === 1) throw new Error("Execution context was destroyed"); return { landed: true }; },
+      waitForLoadState: async () => { loads++; },
+      locator: () => ({ first: () => ({ waitFor: async () => {} }) }),
+      waitForFunction: async () => true,
+      addStyleTag: async () => { replants++; },
+    };
+    const resumed = await evaluateStableSnapshot(interrupted, {}, { css: "header { color: red; }" });
+    let refused = false;
+    try { await evaluateStableSnapshot({ evaluate: async () => { throw new Error("real snapshot failure"); } }, {}, null); }
+    catch (e) { refused = String(e).includes("real snapshot failure"); }
+    ok("P.1e one document replacement is retried after load, hydration and plant; another snapshot failure is reported",
+      resumed.landed === true && reads === 2 && loads === 1 && replants === 1 && refused);
+  }
   const named = run("/account", cell(404, "f1"), cell(200, "f1"));
   ok("P.2 /account 404 → 200 is the named expected difference, not a failure", named.unexpected.length === 0 && named.expected.map((e) => e.id).join() === "account-streams-200", JSON.stringify(named));
   const wrongTo = run("/account", cell(404, "f1"), cell(500, "f1"));
