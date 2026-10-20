@@ -260,8 +260,9 @@ async function readHubQuestions(weekId: string) {
 /**
  * Next 16.4's legacy data cache (`cacheComponents` is off in this app). Keep the route dynamic: the gate, week state,
  * owner's tickets/notices, pause, buying decision and ledger-derived pool are all read for each request. The open's
- * question-set hash is an immutable version of the published copy; a two-second TTL bounds seals from non-action callers
- * such as the scheduler, while officer actions also expire the tag. DRIVE and DRAFT rows never enter a shared cache.
+ * question-set hash is an immutable version of the published copy. Time-based revalidation is a second freshness path;
+ * officer actions expire the tag with a blocking miss so confirmed seals are not served stale. DRIVE and DRAFT rows
+ * never enter a shared cache.
  */
 const cachedPublicHubQuestions = unstable_cache(
   async (weekId: string, _questionSetHash: string) => readHubQuestions(weekId),
