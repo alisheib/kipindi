@@ -21,10 +21,13 @@ try {
     const key = file.includes("-capture.mjs") ? "capture" : "states";
     const path = paths[key], source = originals.get(key);
     if (readFileSync(path, "utf8") !== source) throw new Error(`${name}: source changed during red fleet`);
-    const count = source.split(from).length - 1;
+    const lineEnding = source.includes("\r\n") ? "\r\n" : "\n";
+    const exactFrom = from.replace(/\n/g, lineEnding);
+    const exactTo = to.replace(/\n/g, lineEnding);
+    const count = source.split(exactFrom).length - 1;
     if (count !== 1) throw new Error(`${name}: expected anchor count, saw ${count}`);
     try {
-      writeFileSync(path, source.replace(from, to));
+      writeFileSync(path, source.replace(exactFrom, exactTo));
       const result = run(), output = `${result.stdout}\n${result.stderr}`;
       if (result.status === 0 || !output.includes(expected)) {
         throw new Error(`${name}: guard missed the planted reversal: ${output.slice(0, 750)}`);
