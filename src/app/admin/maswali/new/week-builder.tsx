@@ -173,7 +173,7 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
           </div>
           {([["textEn", "Question · English"], ["textSw", "Question · Kiswahili"], ["textZh", "Question · 中文"]] as const).map(([k, l]) => (
             <Field key={k} label={l} hint={`${r[k].length} / ${TEXT_GUIDE}${r[k].length > TEXT_GUIDE ? " · long for the slip" : ""}`}>
-              <Input size="sm" value={r[k]} onChange={(e) => set(i, { [k]: e.target.value } as Partial<Row>)} />
+              <Textarea rows={5} value={r[k]} onChange={(e) => set(i, { [k]: e.target.value } as Partial<Row>)} />
             </Field>
           ))}
           <div className="flex items-center gap-2 flex-wrap">

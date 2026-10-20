@@ -29,6 +29,7 @@
  *    decode them (`test:source-bytes`). A slash in a pattern is written `[/]`.
  */
 import { chromium } from "playwright";
+import { checkOpenChecklist } from "./maswali-admin-checklist.mjs";
 import { mkdirSync } from "node:fs";
 
 const BASE = process.env.BASE || "http://localhost:3410";
@@ -287,7 +288,7 @@ async function part(name, fn) {
 }
 
 // ── State the parts hand on ──────────────────────────────────────────────────────────────────────────────────────────
-let standing = { licence: "?", guarantee: "?" };
+let standing = { licence: "?", guarantee: "?", requirement: "?" };
 let weekPath = null, driveCode = null, opened = false;
 let SAT = null, SUN = null, THU = null;
 
@@ -304,6 +305,9 @@ await part("1 · sign in", async () => {
   };
   ok(`1.3 the standing reads: licence basis ${standing.licence}, guarantee ${standing.guarantee}`, standing.licence !== "?" && standing.guarantee !== "?");
   await checkpoint(page, "1", "01-weeks");
+  await go(page, "/admin/maswali/pools");
+  standing.requirement = /Needed now:\s*(TZS [\d,]+)/.exec(await page.locator("main").textContent())?.[1] ?? "?";
+  ok(`1.4 the pools page states the guarantee needed now: ${standing.requirement}`, standing.requirement !== "?");
 });
 
 // ── 3 · the draft ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -398,9 +402,17 @@ await part("3 · draft", async () => {
   await until(async () => /^MLD-\d{4}-W\d{2}$/.test(clip(await h1.textContent())), 120_000);
   driveCode = clip(await h1.textContent());
   ok(`3.6 the week is ${driveCode}, on the drive line, its chip Draft`, /^MLD-\d{4}-W\d{2}$/.test(driveCode) && (await chipOf(page)) === "Draft", `${driveCode} · ${await chipOf(page)}`);
+  // Pools' "Needed now" covers already open weeks, so a draft must not change it. The draft's
+  // prospective floor appears in its own opening checklist and is checked separately below.
+  const beforeRequirement = standing.requirement;
+  await go(page, "/admin/maswali/pools");
+  standing.requirement = /Needed now:\s*(TZS [\d,]+)/.exec(await page.locator("main").textContent())?.[1] ?? "?";
+  ok(`3.6b the pools page still needs ${standing.requirement} for already open weeks`, standing.requirement === beforeRequirement);
+  await go(page, weekPath);
   const problems = (await card(page, "Before it can open").getByRole("listitem").allTextContents()).map((t) => clip(t).replace(/^•\s*/, ""));
-  ok("3.7 the open's checklist names one thing left, in words: the second reader's attestation (MB-79)",
-    problems.length === 1 && /A second reader has not attested/.test(problems[0]), problems.join(" | ").slice(0, 400));
+  const checklist = checkOpenChecklist(standing, problems);
+  ok("3.7 the open's checklist matches the live licence, guarantee and second-reader state (MB-79)",
+    checklist.ok, `${checklist.reason}; ${problems.join(" | ").slice(0, 400)}`);
   const qs = region(page, "Millionea week questions");
   const off2 = [];
   for (const r of ROWS) {
