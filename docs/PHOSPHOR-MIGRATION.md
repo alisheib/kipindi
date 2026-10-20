@@ -921,7 +921,7 @@ uses Phosphor's Regular centreline from `scripts/glyphs/marks.ts`; `.m-draw` run
 mounts after the confirmed event. A withdrawal or a failed/pending deposit retains the static result glyph. Its guard
 plants the source, trigger and timing reversals in memory.
 The same wallet result eyebrow gives the confirmed deposit arrow one downward nudge, and a requested withdrawal
-(`PENDING` or `PROCESSING`) one upward nudge; review, held, failed and the ordinary wallet page stay still.
+(`PENDING`, `PROCESSING` or immediately `CONFIRMED`) one upward nudge; review, held, failed and the ordinary wallet page stay still.
 
 ### W9 — Close
 An adversarial audit (refute by mutation), `test:all` with the database suites, full tiles (360 / 768 / 1280 / 1920 + 320

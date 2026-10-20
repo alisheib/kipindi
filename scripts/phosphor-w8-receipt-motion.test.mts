@@ -27,7 +27,7 @@ function claims(w: World): string[] {
   hold("placed Up and Down bet asks for draw", /<OperationResultModal\s+drawCheck\s+open\s+variant="success"/.test(w.updown));
   hold("only confirmed deposit asks for draw", /drawCheck=\{!!deposited && status === "CONFIRMED" && variant === "success"\}/.test(w.wallet));
   hold("deposit arrow nudges on confirmation", /!!deposited && status === "CONFIRMED" && variant === "success"\s*\? <I\.arrowDownToLine[^>]*className="g-nudge-down"/.test(w.wallet));
-  hold("withdrawal arrow nudges only on request", /!!withdrawal && \(status === "PENDING" \|\| status === "PROCESSING"\) && variant === "info"\s*\? <I\.arrowUpFromLine[^>]*className="g-nudge-up"/.test(w.wallet));
+  hold("withdrawal arrow nudges only on accepted request", /!!withdrawal && \(status === "PENDING" \|\| status === "PROCESSING" \|\| status === "CONFIRMED"\) && \(variant === "info" \|\| variant === "success"\)\s*\? <I\.arrowUpFromLine[^>]*className="g-nudge-up"/.test(w.wallet));
   return missing;
 }
 
@@ -48,7 +48,8 @@ const plants: Array<[string, keyof World, string, string]> = [
   ["withdrawal draws a deposit check", "wallet", '!!deposited && status === "CONFIRMED"', 'status === "CONFIRMED"'],
   ["deposit under review draws a check", "wallet", ' && variant === "success"', ""],
   ["deposit arrow nudges before confirmation", "wallet", '!!deposited && status === "CONFIRMED" && variant === "success"\n    ? <I.arrowDownToLine', '!!deposited\n    ? <I.arrowDownToLine'],
-  ["held withdrawal nudges", "wallet", '(status === "PENDING" || status === "PROCESSING") && variant === "info"', 'variant === "info"'],
+  ["held withdrawal nudges", "wallet", '(status === "PENDING" || status === "PROCESSING" || status === "CONFIRMED") && (variant === "info" || variant === "success")', '(variant === "info" || variant === "success")'],
+  ["immediately completed withdrawal stays still", "wallet", ' || status === "CONFIRMED") && (variant', ') && (variant'],
 ];
 for (const [name, key, from, to] of plants) {
   if (!world[key].includes(from)) throw new Error(`plant absent: ${name}`);

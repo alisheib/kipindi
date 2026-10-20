@@ -55,7 +55,7 @@ export function WalletResultModal({
   const { eyebrow, title, subtitle, variant } = walletResultCopy(t, { isWithdraw: !!withdrawal, status, depositKind });
   const flowGlyph = !!deposited && status === "CONFIRMED" && variant === "success"
     ? <I.arrowDownToLine s={14} text="mono-700" className="g-nudge-down" />
-    : !!withdrawal && (status === "PENDING" || status === "PROCESSING") && variant === "info"
+    : !!withdrawal && (status === "PENDING" || status === "PROCESSING" || status === "CONFIRMED") && (variant === "info" || variant === "success")
       ? <I.arrowUpFromLine s={14} text="mono-700" className="g-nudge-up" />
       : null;
 
