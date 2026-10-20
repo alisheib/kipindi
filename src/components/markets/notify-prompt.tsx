@@ -32,11 +32,14 @@ function readWatchlist(): string[] {
   }
 }
 
-function writeWatchlist(ids: string[]) {
+function writeWatchlist(ids: string[]): boolean {
   try {
     localStorage.setItem(KEY, JSON.stringify(ids.slice(0, 50)));
+    return true;
   } catch {
-    /* private browsing */
+    // Private browsing can refuse storage. The control must not claim an opt-in
+    // or animate its confirmed glyph when no watch was saved.
+    return false;
   }
 }
 
@@ -81,14 +84,14 @@ export function NotifyPrompt({ marketId, marketTitle }: { marketId: string; mark
           return;
         }
         const next = Array.from(new Set([...readWatchlist(), marketId]));
-        writeWatchlist(next);
+        if (!writeWatchlist(next)) return;
         setWatching(true);
         setSettledOn(true);
         // Confirmation chirp so the user sees it works
         new Notification(t.market.watchingTitle, { body: marketTitle.slice(0, 80), tag: `50pick-${marketId}` });
       } else {
         const next = readWatchlist().filter((x) => x !== marketId);
-        writeWatchlist(next);
+        if (!writeWatchlist(next)) return;
         setWatching(false);
         setSettledOn(false);
       }

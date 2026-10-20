@@ -22,9 +22,11 @@ function claims(star: string, bell: string): string[] {
 
   hold("bell starts static", /const \[settledOn, setSettledOn\] = useState\(false\)/.test(bell));
   hold("bell resets for another market", /useEffect\(\(\) => \{\s*setSettledOn\(false\);\s*if \(typeof Notification/.test(bell));
-  hold("bell waits for opt-in", /writeWatchlist\(next\);\s*setWatching\(true\);\s*setSettledOn\(true\);/.test(bell)
+  hold("bell waits for opt-in", /if \(!writeWatchlist\(next\)\) return;\s*setWatching\(true\);\s*setSettledOn\(true\);/.test(bell)
     && /if \(Notification\.permission !== "granted"\) \{\s*setPending\(false\);\s*return;\s*\}/.test(bell));
-  hold("bell resets on opt-out", /writeWatchlist\(next\);\s*setWatching\(false\);\s*setSettledOn\(false\);/.test(bell));
+  hold("bell requires a stored opt-in", /function writeWatchlist\(ids: string\[\]\): boolean/.test(bell)
+    && /localStorage\.setItem\(KEY, JSON\.stringify\(ids\.slice\(0, 50\)\)\);\s*return true;\s*\} catch \{[\s\S]*?return false;/.test(bell));
+  hold("bell resets on opt-out", /if \(!writeWatchlist\(next\)\) return;\s*setWatching\(false\);\s*setSettledOn\(false\);/.test(bell));
   hold("bell settles only its Fill", /watching \? <I\.bell s=\{14\} tier="fill" className=\{settledOn \? "g-settle" : undefined\} \/> : <I\.bell s=\{14\} \/>/.test(bell));
   return missing;
 }
@@ -36,7 +38,7 @@ if (baseline.length) {
 }
 
 if (!process.argv.includes("--prove-red")) {
-  console.log("W8 opt-in motion: 10/10 claims pass");
+  console.log("W8 opt-in motion: 11/11 claims pass");
   process.exit(0);
 }
 
@@ -48,7 +50,8 @@ const plants: Array<[name: string, target: string, star: string, bell: string]> 
   ["star settles when off too", "star settles only when confirmed on", watch.replace('className={on && settledOn ? "g-settle" : undefined}', 'className="g-settle"'), notify],
   ["bell animates on load", "bell starts static", watch, notify.replace("const [settledOn, setSettledOn] = useState(false)", "const [settledOn, setSettledOn] = useState(true)")],
   ["bell carries motion into another market", "bell resets for another market", watch, notify.replace("useEffect(() => {\n    setSettledOn(false);\n    if (typeof Notification", "useEffect(() => {\n    if (typeof Notification")],
-  ["bell settles before storing the opt-in", "bell waits for opt-in", watch, notify.replace("writeWatchlist(next);\n        setWatching(true);\n        setSettledOn(true);", "setSettledOn(true);\n        writeWatchlist(next);\n        setWatching(true);")],
+  ["bell settles before storing the opt-in", "bell waits for opt-in", watch, notify.replace("if (!writeWatchlist(next)) return;\n        setWatching(true);\n        setSettledOn(true);", "setSettledOn(true);\n        writeWatchlist(next);\n        setWatching(true);")],
+  ["bell treats refused storage as success", "bell requires a stored opt-in", watch, notify.replace("    return false;\n  }\n}\n\nexport function NotifyPrompt", "    return true;\n  }\n}\n\nexport function NotifyPrompt")],
   ["bell carries a previous activation through opt-out", "bell resets on opt-out", watch, notify.replace("setWatching(false);\n        setSettledOn(false);", "setWatching(false);")],
   ["bell settles without a successful opt-in", "bell settles only its Fill", watch, notify.replace('className={settledOn ? "g-settle" : undefined}', 'className="g-settle"')],
 ];
