@@ -32,8 +32,12 @@
 import { chromium } from "playwright";
 import { loginOnce, BASE as DEFAULT_BASE } from "./live/harness.mjs";
 import { ADMIN_ROUTES } from "./design-gate/routes.mjs";
+import { adminLoadSession } from "./admin-load-persona.mjs";
 
 const BASE = process.argv[2] || DEFAULT_BASE;
+if (new URL(BASE).origin !== new URL(DEFAULT_BASE).origin) {
+  throw new Error("admin load target and LIVE_BASE must name the same origin");
+}
 
 /** The register's own target for DG-A-01: "GREEN when `load` < 5 s". Every admin route is
  *  held to it — an operator's console page that takes longer is a defect wherever it lives. */
@@ -86,7 +90,7 @@ async function freshSession() {
   if (ctx) await ctx.close().catch(() => {});
   if (signins >= MAX_SIGNINS) throw new Error(`refusing sign-in #${signins + 1}`);
   signins++;
-  const state = await loginOnce(b, "admin");
+  const state = await adminLoadSession(b, BASE, loginOnce);
   ctx = await b.newContext({ storageState: state, viewport: { width: 1440, height: 1000 }, colorScheme: "dark" });
   p = await ctx.newPage();
 }

@@ -1141,6 +1141,8 @@
     "qa:popover-clip": "node scripts/popover-clip-test.mjs",
     "qa:chart-axis": "node scripts/chart-axis-test.mjs",
     "qa:admin-load": "node scripts/admin-load-budget.mjs",
+    "test:admin-load-persona": "node scripts/admin-load-persona.test.mjs",
+    "red:admin-load-persona": "node scripts/admin-load-persona.test.mjs --red",
     "qa:dg-measure": "node scripts/design-gate/measure.mjs",
     "qa:dg-overlays": "node scripts/design-gate/overlays.mjs",
     "qa:dg-shots": "node scripts/design-gate/shots.mjs",
