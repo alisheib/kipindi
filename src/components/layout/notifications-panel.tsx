@@ -18,6 +18,7 @@ import { useModalLock } from "@/lib/use-modal-lock";
 // would let a win be gold in the bell and grey on the page, and nothing would say so.
 import { appearanceKind, iconFor, tierFor, tintFor } from "@/lib/notification-appearance";
 import { readableNotificationBody } from "@/lib/notification-text";
+import { advanceNotificationArrival, type NotificationArrivalState } from "@/lib/notification-arrival";
 import { DotSeq } from "@/components/ui/dot-seq";
 import { moneyRuns, moneySentence } from "@/lib/fill-nodes";
 
@@ -122,19 +123,10 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
    */
   const unread = serverUnread ?? items.filter((n) => !n.readAt).length;
 
-  /**
-   * `null` until the FIRST poll has landed — the baseline, not a count.
-   *
-   * 🔴 IT USED TO START AT `0`, AND THAT MADE THE FIRST POLL AN ARRIVAL. `refresh()` runs
-   * on mount, so any player holding even one unread notification tripped
-   * `clientUnread > 0` on page load and the bell rang — and, until this change, the
-   * handset VIBRATED — for a render they had not asked for. Seeding on the first poll is
-   * what the comment below always claimed: only an unread that appears WHILE the player
-   * is watching is an arrival.
-   * (The old guard `prevUnreadRef.current >= 0` was a tautology on a counter that can
-   * never be negative; it read like a condition and tested nothing.)
-   */
-  const prevUnreadRef = useRef<number | null>(null);
+  /** `null` until the first successful poll: existing unread rows are a baseline,
+   * not an arrival. The ID/time state also distinguishes a new row from an older
+   * row exposed by the bell's thirty-row cap after a dismissal. */
+  const arrivalRef = useRef<NotificationArrivalState | null>(null);
   /**
    * Monotonic per-request sequence — the stale-response guard (the B-20 pattern from
    * `vote-control.tsx`, applied to a poller instead of a click).
@@ -144,7 +136,7 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
    * the three optimistic handlers (dismiss / mark-all / clear-all), which each `await
    * refresh()` right after mutating `items` locally. Applied in ARRIVAL order, a poll
    * issued before an optimistic dismiss and answered after it puts the dismissed row back
-   * — and rewrites `prevUnreadRef` from that stale payload, so the NEXT honest poll reads
+   * — and rewrites `arrivalRef` from that stale payload, so the NEXT honest poll reads
    * as an arrival and rings the bell for nothing.
    *
    * ⚠️ Not `ringSeq` below: that is a CSS keyframe-restart counter, not a request number.
@@ -214,11 +206,9 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
     setItems(r.items);
     // ⛔ The list is capped at 30; this is not. Keep them separate.
     setServerUnread(r.unread);
-    const clientUnread = r.items.filter((n: StoredNotification) => !n.readAt).length;
-    if (prevUnreadRef.current !== null && clientUnread > prevUnreadRef.current) {
-      setRingSeq((s) => s + 1);
-    }
-    prevUnreadRef.current = clientUnread;
+    const arrival = advanceNotificationArrival(arrivalRef.current, r.items);
+    arrivalRef.current = arrival.state;
+    if (arrival.ring) setRingSeq((s) => s + 1);
     return true;
   }, []);
 
@@ -243,7 +233,7 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
    *    previous one has ANSWERED, so two beats can never be in flight together. An
    *    interval on 2G stacks requests that then land out of ORDER — precisely the hazard
    *    `refreshSeq` was written to survive, now prevented instead of merely detected.
-   *    (`refreshSeq` and the `prevUnreadRef` baseline stay exactly as they were: the other
+   *    (`refreshSeq` and the `arrivalRef` baseline stay exactly as they were: the other
    *    seven callers are still unordered, and the seq guard is what keeps a late answer
    *    from resurrecting a dismissed row or faking an arrival.)
    *  · `inFlightRef` extends the same guard across those other callers — a beat that would
