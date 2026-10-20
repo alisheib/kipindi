@@ -1,5 +1,6 @@
 /**
- * The Instagram and TikTok marks, in their own colours.
+ * The external social marks keep their vendor geometry. Ali's 2026-10-19 player
+ * rule makes their rendered ink neutral: green and red name only betting sides.
  *
  * ⛔ WHY THESE ARE NOT IN `glyphs.tsx`, AND COULD NOT BE. That file's `G` wrapper hard-codes
  * `fill="none" stroke="currentColor" strokeWidth="1.9"` — that IS the family contract, and it
@@ -47,6 +48,7 @@
  */
 
 type MarkProps = { s?: number; className?: string };
+const PLAYER_MARK_STYLE = { filter: "grayscale(1) brightness(1.6)" } as const;
 
 /* ⭐ FIXED IDS, AND THE DUPLICATE CASE IS BENIGN BY CONSTRUCTION. These render once per page
    (the footer is the only consumer). If a second instance ever appears, the duplicate id
@@ -75,7 +77,7 @@ const TIKTOK_D =
 
 export function InstagramMark({ s = 16, className }: MarkProps) {
   return (
-    <svg viewBox="0 0 24 24" width={s} height={s} className={className} aria-hidden>
+    <svg viewBox="0 0 24 24" width={s} height={s} className={className} style={PLAYER_MARK_STYLE} aria-hidden>
       <defs>
         <radialGradient id={IG_GRADIENT_ID} cx="30%" cy="107%" r="150%">
           <stop offset="0%" stopColor="#FDF497" />
@@ -92,7 +94,7 @@ export function InstagramMark({ s = 16, className }: MarkProps) {
 
 export function TikTokMark({ s = 16, className }: MarkProps) {
   return (
-    <svg viewBox="0 0 24 24" width={s} height={s} className={className} aria-hidden>
+    <svg viewBox="0 0 24 24" width={s} height={s} className={className} style={PLAYER_MARK_STYLE} aria-hidden>
       {/* ⭐ THE PATH IS DEFINED ONCE AND USED THREE TIMES. The mark is one note in three
           offset copies; writing the 900-byte path out three times would have tripled the
           markup on every player-facing page for no drawing anyone could see. The `<defs>`
@@ -109,7 +111,7 @@ export function TikTokMark({ s = 16, className }: MarkProps) {
 
 export function WhatsAppMark({ s = 16, className }: MarkProps) {
   return (
-    <svg viewBox="0 0 24 24" width={s} height={s} className={className} aria-hidden>
+    <svg viewBox="0 0 24 24" width={s} height={s} className={className} style={PLAYER_MARK_STYLE} aria-hidden>
       <path fill="#25D366" d={WHATSAPP_BUBBLE_D} />
       <path fill="#FFFFFF" d={WHATSAPP_HANDSET_D} />
     </svg>

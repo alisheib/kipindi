@@ -31,14 +31,9 @@ export const LANGS: Locale[] = ["en", "sw", "zh"];
 const CODES: Record<Locale, string> = { en: "EN", sw: "SW", zh: "ZH" };
 export const NAMES: Record<Locale, string> = { en: "English", sw: "Kiswahili", zh: "中文" };
 
-/**
- * ⭐ `journey` (R5-C, the second gold audit, 2026-10-09): the current language's tick in the journey is the brand ink of
- * the row it marks (that row's fill is `--pill-active`, the brand family's "this one"), not `--gilt` — a selection is
- * never money (DESIGN_AUTHORITY Q5). The classic header's menu is frozen chrome (S6/S7) and keeps its gilt tick until
- * the owner rules: the change for it is this same ink with the prop dropped. Absent, the markup is what it always was.
- */
+/** The selected language wears brand ink in either player shell; selection is not won money. */
 export function LanguageMenu({ journey = false }: { journey?: boolean } = {}) {
-  const tickInk = journey ? "var(--brand-300)" : "var(--gilt)";
+  const tickInk = "var(--brand-300)";
   const { locale, setLocale, t } = useT();
   const ref = useRef<HTMLDetailsElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);

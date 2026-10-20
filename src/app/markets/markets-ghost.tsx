@@ -178,7 +178,7 @@ export function MarketsBoardGhost() {
         {Array.from({ length: PLAYER_PER_PAGE }).map((_, i) => (
           <div
             key={i}
-            className="kp-shimmer-track rounded-md border border-border bg-bg-elevated"
+            className="kp-shimmer-track rounded-[var(--r-lg)] border border-border bg-bg-elevated"
             style={{ height: MARKET_CARD_H }}
           />
         ))}

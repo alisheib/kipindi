@@ -39,7 +39,7 @@ import { useT } from "@/lib/i18n";
 import { formatNumber, formatTzs } from "@/lib/utils";
 import { initPresence, subscribeReturn } from "@/lib/presence-window";
 import {
-  initLedger, readAway, subscribeAway, clearAway, removeAway, summarise, type LedgerEntry,
+  initLedger, readAway, subscribeAway, clearAway, removeAway, summarise, awayRecordHref, type LedgerEntry,
 } from "@/lib/away-ledger";
 import { dispatchWinCelebration } from "@/components/markets/win-celebration";
 
@@ -133,14 +133,15 @@ export function AwaySummaryBar({
       glyph="clock"
       testId="away-summary-bar"
       dismissLabel={t.common.dismiss}
-      // Dismissing IS the acknowledgement — the durable record is the bell, which keeps every
-      // one of these as a trilingual row for 180 days. Nothing is lost by clearing.
+      // Dismissing acknowledges this presentation buffer. Settlement writes each terminal
+      // outcome to the durable bell, including Up & Down's dedicated emitter; the product's
+      // own history lists remain available through the action above.
       onDismiss={clearAway}
       action={
         wins.length > 0 ? (
           <NoticeBarAction tone="info" onClick={openSeal}>{t.notif.awayView}</NoticeBarAction>
         ) : (
-          <NoticeBarAction tone="info" href="/positions?tab=settled">{t.notif.awayView}</NoticeBarAction>
+          <NoticeBarAction tone="info" href={awayRecordHref(entries)}>{t.notif.awayView}</NoticeBarAction>
         )
       }
     >

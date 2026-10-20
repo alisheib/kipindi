@@ -81,7 +81,8 @@ export function SellResultModal({
   return (
     <OperationResultModal
       open={open}
-      variant={resultData.variant}
+      variant={resultData.variant === "success" ? "success" : "neutral"}
+      successCrestTone="neutral"
       eyebrow={resultData.variant === "success" ? t.common.positionSold : t.common.cashOutFailed}
       title={
         resultData.variant === "success"

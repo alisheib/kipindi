@@ -40,7 +40,7 @@ import { FeaturedContest } from "./featured-contest";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { roundStore } from "@/lib/server/updown-dal";
 import { getServerT } from "@/lib/i18n-server";
-import { pickLocalized } from "@/lib/localized";
+import { marketDisplayTitle } from "@/lib/updown-round-name";
 import { PageContainer } from "@/components/layout/page-container";
 
 export async function generateMetadata() {
@@ -180,7 +180,7 @@ export default async function LivePage({
   // Titles are pre-localised here so the client carousel stays i18n-free.
   const { tipping: tippingMarkets, mostContested } = liveContest(markets);
   const topContested = mostContested.map(({ row: m, yesPct }) => ({
-    id: m.id, title: pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh), yesPct, productLine: m.productLine, roundId: m.roundId,
+    id: m.id, title: marketDisplayTitle(t, locale, m), yesPct, productLine: m.productLine, roundId: m.roundId,
   }));
 
   return (

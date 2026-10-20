@@ -501,7 +501,7 @@ section("5 · a label that takes its tracking back is one line, and fits its sit
   // Every site, every language: the words at 10px JetBrains Mono (0.6em a glyph, an ideograph 1em) with the site's tracking.
   const SITE: Array<[string, string[], number]> = [
     ["src/app/updown/history/page.tsx", ["market.udNetReturn"], 0.14], ["src/app/updown/[roundId]/page.tsx", ["market.udYourPick", "market.udStake", "market.udPlayers"], 0.14],
-    ["src/app/updown/page.tsx", ["market.udStreaming"], 0.10], ["src/app/wallet/withdraw/page.tsx", ["common.balanceFrozen", "wallet.available"], 0.14],
+    ["src/app/wallet/withdraw/page.tsx", ["common.balanceFrozen", "wallet.available"], 0.14],
     ["src/app/wallet/money-form-ghost.tsx", ["wallet.available"], 0.14], ["src/app/wallet/wallet-client.tsx", ["wallet.txnStatusReview", "wallet.txnStatusConfirmed", "wallet.txnStatusReversed", "wallet.txnStatusCancelled", "wallet.txnStatusProcessing", "wallet.txnStatusFailed"], 0.14],
     ["src/components/markets/bet-confirm-modal.tsx", ["dialog.stakeLabel"], 0.14], ["src/components/markets/sell-confirm-modal.tsx", ["dialog.earlyExitFee"], 0.14],
     ["src/components/updown/price-hero.tsx", ["market.udOpenPrice"], 0.14], ["src/components/updown/round-countdown.tsx", ["market.udClosesIn", "market.udResultIn"], 0.14],
@@ -511,6 +511,13 @@ section("5 · a label that takes its tracking back is one line, and fits its sit
   const listed = new Set(SITE.map(([f]) => f).concat("src/app/results/loading.tsx"));
   ok(`5.2 · every site the hazard's audit named still takes its tracking back (${listed.size} files of the ${sitesWithClass.length} that draw a take-back label; the full census is \`test:visual-pass-r7c\` §2's)`,
     [...listed].every((f) => sitesWithClass.includes(f)), [...listed].filter((f) => !sitesWithClass.includes(f)).join(", "));
+  // U43's board no longer has the old streaming eyebrow; reintroducing a tracked label there
+  // would require a measured site in this audit and the full r7c census.
+  const board = code("src/app/updown/page.tsx");
+  const boardHasNoTrackedLabel = (src: string) => !/\bkp-track-end\b/.test(src);
+  ok("5.2′ · the U43 board has no obsolete tracked streaming eyebrow", boardHasNoTrackedLabel(board));
+  ok("5.2′ PLANT · reintroducing a tracked board label fails its absence guard",
+    !boardHasNoTrackedLabel(`${board}<span className="kp-track-end">stream</span>`));
   const mono = (s: string, tr: number) => Array.from(s.toUpperCase()).reduce((w, ch) => w + (WIDE.test(ch) ? 10 : 6) + tr * 10, 0);
   const widest = SITE.flatMap(([f, keys, tr]) => keys.flatMap((k) => LOCALES.map((l) => ({ f, k, l, w: mono(k === "market.udYourPick" ? `${word(l, k)} · ${word(l, "market.udStake")}` : word(l, k), tr) }))));
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-14 (S12 WP3, word-ledger row 26). Review 2's `market.udStake` "Kiasi" → "Dau lako"
@@ -521,9 +528,22 @@ section("5 · a label that takes its tracking back is one line, and fits its sit
   // 16px side padding). 5.3″ reads those premises; every other label keeps the 160px bound in 5.3.
   const RP = "src/app/updown/[roundId]/page.tsx";
   const roundLabel = (x: { f: string; k: string }) => x.f === RP && x.k === "market.udYourPick";
-  const max = widest.filter((x) => !roundLabel(x)).reduce((a, b2) => (b2.w > a.w ? b2 : a));
+  const podLabel = (x: { f: string; k: string }) => x.f === "src/components/updown/round-countdown.tsx";
+  const max = widest.filter((x) => !roundLabel(x) && !podLabel(x)).reduce((a, b2) => (b2.w > a.w ? b2 : a));
   ok(`5.3 · every such label, in all three languages, is narrower than 160px (the widest: ${max.l} "${word(max.l, max.k)}" ${max.w.toFixed(1)}px) — no site's column is narrower than its label`,
     max.w < 160, j(max));
+  // U43 B5 calls it a "round" in every language. The Swahili clock caption is
+  // longer than 160px, but the pod owns a full mobile row before its digits.
+  const pod = widest.filter(podLabel);
+  const podMax = pod.reduce((a, b2) => (b2.w > a.w ? b2 : a));
+  const podCss = raw("src/app/globals.css");
+  const mobilePod = (s: string) => /@media \(max-width: 639px\) \{[\s\S]{0,160}\.ud-round-pod \{ width: 100%; flex-direction: column; align-items: flex-start; gap: var\(--sp-2\); \}/.test(s);
+  ok(`5.3′ · the round clock's longest caption (${podMax.l} ${podMax.w.toFixed(1)}px) fits its own 254px mobile row, stacked above the digits`,
+    pod.length === 2 * LOCALES.length && podMax.w < 254 && mobilePod(podCss)
+      && has("src/components/updown/round-countdown.tsx", 'style={{ whiteSpace: "nowrap" }}>{shownCaption}</span>'));
+  const podWithoutMobileRow = podCss.replace('.ud-round-pod { width: 100%; flex-direction: column;', '.ud-round-pod { width: auto; flex-direction: column;');
+  ok("5.3′ PLANT · removing the round clock's full mobile row fails its site-specific width proof",
+    podWithoutMobileRow !== podCss && !mobilePod(podWithoutMobileRow));
   const round = widest.filter(roundLabel);
   const roundMax = round.reduce((a, b2) => (b2.w > a.w ? b2 : a));
   const roundPremises = {

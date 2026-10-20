@@ -25,6 +25,7 @@
  * never count a capture as real visitors, and the first-visit primer hides itself for this marker.
  */
 import { mkdirSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -36,7 +37,7 @@ const BASE = (process.env.BASE || "https://www.50pick.tz").replace(/\/$/, "");
 const TAG = process.env.TAG || `${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}`;
 const OUT = process.env.OUT || join(REPO, ".qa-shots", "u43", TAG);
 const LOCALES = (process.env.LOCALES || "sw,en,zh").split(",").map((s) => s.trim()).filter(Boolean);
-const HEIGHT_FOR = { 320: 640, 360: 780, 390: 844, 412: 915, 768: 1024, 1024: 768, 1280: 800, 1440: 900, 1920: 1080 };
+const HEIGHT_FOR = { 320: 640, 360: 740, 390: 844, 412: 915, 768: 1024, 1024: 768, 1280: 800, 1440: 900, 1920: 1080 };
 const WIDTHS = (process.env.WIDTHS || "320,360,390,768,1024,1280,1920").split(",").map(Number).filter(Boolean);
 const SURFACES = (process.env.SURFACES || "updown,updown-chart,updown-sheet,markets").split(",").map((s) => s.trim());
 const STORAGE = process.env.STORAGE || undefined;
@@ -53,16 +54,26 @@ if (!/HeadlessChrome/.test(UA) || !/HeadlessChrome/.test(UA_DESKTOP)) {
 }
 
 /** Transitions and animations off for a stable frame; the countdown still ticks (it is text, not an animation). */
-const STILL = "*,*::before,*::after{transition:none!important;animation:none!important;caret-color:transparent!important}";
+const STILL = "*,*::before,*::after{transition:none!important;animation:none!important;caret-color:transparent!important}nextjs-portal{visibility:hidden!important}";
 
 /** The visible text and accessible name of every side choice on a page (the YES/NO and Up/Down buttons, the home rows). */
-const CHOICE_TEXTS = () => [...document.querySelectorAll(".btn-yes, .btn-no, .kp-qrow__btn")]
+const CHOICE_TEXTS = () => [...document.querySelectorAll(".btn-yes, .btn-no, .kp-qrow__btn, .kp-jcard__pick")]
   .filter((e) => e.getClientRects().length > 0)
   .slice(0, 24)
   .map((e) => ({ text: (e.textContent || "").replace(/\s+/g, " ").trim(), aria: e.getAttribute("aria-label") || "" }));
 
 mkdirSync(OUT, { recursive: true });
-const index = { base: BASE, tag: TAG, startedAt: new Date().toISOString(), pages: [] };
+const checkoutHead = execFileSync("git", ["rev-parse", "HEAD"], { cwd: REPO }).toString().trim();
+const localBase = ["localhost", "127.0.0.1"].includes(new URL(BASE).hostname);
+const trackedDirty = execFileSync("git", ["status", "--porcelain", "--untracked-files=no"], { cwd: REPO }).toString().trim() !== "";
+const untrackedRunnable = execFileSync("git", ["status", "--porcelain", "--untracked-files=all", "--", "src", "scripts"],
+  { cwd: REPO }).toString().split(/\r?\n/).some((line) => line.startsWith("?? "));
+if (localBase && process.env.REQUIRE_CLEAN === "1" && (trackedDirty || untrackedRunnable)) {
+  throw new Error("exact-source local capture requires committed source and scripts");
+}
+const index = { base: BASE, tag: TAG, checkoutHead, sourceHead: localBase ? checkoutHead : null,
+  sourceClaim: localBase ? "local checkout; require clean tree and a fresh server for exact-source evidence" : "remote deployment SHA unverified by this capture",
+  trackedDirty, untrackedRunnable, surfaces: SURFACES, startedAt: new Date().toISOString(), pages: [] };
 
 /** Geometry a reader cannot take off a picture. Runs in the page. */
 function measurePage(kind) {
@@ -131,22 +142,9 @@ function measurePage(kind) {
  * under the header is photographed whole. Page frames keep their chrome — that is what a player sees.
  */
 async function withoutChrome(page, fn) {
-  await page.evaluate(() => {
-    for (const el of document.querySelectorAll("body *")) {
-      if (el.closest("article.mcardp")) continue;
-      const p = getComputedStyle(el).position;
-      if (p === "fixed" || (p === "sticky" && el.matches("header, .app-topbar"))) {
-        el.setAttribute("data-u43-hid", el.style.visibility || "");
-        el.style.visibility = "hidden";
-      }
-    }
-  });
+  const style = await page.addStyleTag({ content: ".app-topbar,.kp-rail,.cm-bubble,[data-toaster],nextjs-portal{visibility:hidden!important}" });
   try { return await fn(); }
-  finally {
-    await page.evaluate(() => {
-      for (const el of document.querySelectorAll("[data-u43-hid]")) { el.style.visibility = el.getAttribute("data-u43-hid"); el.removeAttribute("data-u43-hid"); }
-    }).catch(() => {});
-  }
+  finally { await style.evaluate((el) => el.remove()).catch(() => {}); }
 }
 
 async function shoot(page, file, opts = {}) {
@@ -157,6 +155,13 @@ async function shoot(page, file, opts = {}) {
 async function settle(page, ms = 1200) {
   await page.waitForLoadState("load").catch(() => {});
   await page.waitForTimeout(ms);
+}
+
+async function waitForCardGlyphs(page) {
+  await page.waitForFunction(() => [...document.querySelectorAll("article.mcardp svg")]
+    .filter((el) => el.querySelector("use") && el.getClientRects().length > 0).every((el) => {
+    try { return el.getBBox().width > 0; } catch { return false; }
+  }), null, { timeout: 10000 });
 }
 
 async function runCell(browser, locale, width) {
@@ -178,9 +183,10 @@ async function runCell(browser, locale, width) {
 
   try {
     if (SURFACES.includes("updown")) {
-      await page.addInitScript(() => { try { localStorage.setItem("kp-updown-viz", "cubes"); localStorage.setItem("50pick-primer-seen", "1"); } catch {} });
+      await page.addInitScript(() => { try { localStorage.setItem("kp-updown-chart-open", "closed"); localStorage.setItem("50pick-primer-seen", "1"); } catch {} });
       await page.goto(`${BASE}/updown`, { waitUntil: "domcontentloaded", timeout: 60000 });
       await settle(page, 2500);
+      await waitForCardGlyphs(page);
       await page.addStyleTag({ content: STILL });
       await page.waitForTimeout(300);
       const m = await page.evaluate(measurePage, "updown");
@@ -199,10 +205,11 @@ async function runCell(browser, locale, width) {
 
     if (SURFACES.includes("updown-chart")) {
       const p2 = await ctx.newPage();
-      await p2.addInitScript(() => { try { localStorage.setItem("kp-updown-viz", "chart"); localStorage.setItem("50pick-primer-seen", "1"); } catch {} });
+      await p2.addInitScript(() => { try { localStorage.setItem("kp-updown-chart-open", "open"); localStorage.setItem("50pick-primer-seen", "1"); } catch {} });
       await p2.goto(`${BASE}/updown`, { waitUntil: "domcontentloaded", timeout: 60000 });
       await settle(p2, 2500);
-      await p2.locator("canvas").first().waitFor({ timeout: 12000 }).catch(() => {});
+      await waitForCardGlyphs(p2);
+      await p2.waitForFunction(() => !!document.querySelector('.ud-chart-slot [role="img"] > div[style*="opacity: 1"] canvas'), null, { timeout: 15000 });
       await p2.waitForTimeout(1500);
       await p2.addStyleTag({ content: STILL });
       const m = await p2.evaluate(measurePage, "updown-chart");
@@ -216,14 +223,28 @@ async function runCell(browser, locale, width) {
       await p3.addInitScript(() => { try { localStorage.setItem("50pick-primer-seen", "1"); } catch {} });
       await p3.goto(`${BASE}/updown`, { waitUntil: "domcontentloaded", timeout: 60000 });
       await settle(p3, 2000);
+      const rails = await p3.evaluate(() => [...document.querySelectorAll('nav[data-filter-rail]')].map((rail) => ({
+        clientWidth: rail.clientWidth, scrollWidth: rail.scrollWidth,
+        visible: rail.getClientRects().length > 0,
+      })));
+      if (rails.length !== 2 || rails.some((rail) => !rail.visible || rail.clientWidth === 0)) {
+        throw new Error(`phone filter rails absent or unmeasurable at ${cell}`);
+      }
+      const sheetOverflow = rails.some((rail) => rail.scrollWidth > rail.clientWidth + 1);
       const trigger = p3.locator("details.kp-fsheet > summary, .kp-fsheet summary").first();
-      if (await trigger.count()) {
-        await trigger.click().catch(() => {});
+      const sheetPresent = await trigger.isVisible().catch(() => false);
+      if (sheetPresent !== sheetOverflow) {
+        throw new Error(`phone filter sheet/rail-overflow mismatch at ${cell}: ${JSON.stringify({ rails, sheetPresent })}`);
+      }
+      if (sheetOverflow) {
+        await trigger.click();
         await p3.waitForTimeout(900);
         await p3.addStyleTag({ content: STILL });
-        out.push({ surface: "updown-sheet", cell, locale, width, height, files: [await shoot(p3, `updown-sheet__${cell}.png`)], lang: await p3.evaluate(() => document.documentElement.lang) });
+        out.push({ surface: "updown-sheet", cell, locale, width, height, rails, sheetOverflow, sheetPresent,
+          files: [await shoot(p3, `updown-sheet__${cell}.png`)], lang: await p3.evaluate(() => document.documentElement.lang) });
       } else {
-        out.push({ surface: "updown-sheet", cell, locale, width, height, files: [], note: "no filter-sheet trigger found" });
+        out.push({ surface: "updown-sheet", cell, locale, width, height, rails, sheetOverflow, sheetPresent,
+          files: [], lang: await p3.evaluate(() => document.documentElement.lang) });
       }
       await p3.close();
     }
@@ -242,6 +263,18 @@ async function runCell(browser, locale, width) {
       await withoutChrome(p4, async () => {
         for (let i = 0; i < n; i++) {
           if (!(await cards.nth(i).isVisible())) continue;
+          // Lower cards may scroll during locator.screenshot before their button ink paints.
+          // Put them on screen first, wait for paint, and refuse an unreadable choice.
+          await cards.nth(i).scrollIntoViewIfNeeded();
+          await p4.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+          const sideButtons = cards.nth(i).locator("button.btn-yes, button.btn-no");
+          if (await sideButtons.count()) {
+            if (await sideButtons.count() !== 2 || !(await sideButtons.nth(0).isVisible()) || !(await sideButtons.nth(1).isVisible())
+              || !(await sideButtons.nth(0).textContent())?.trim() || !(await sideButtons.nth(1).textContent())?.trim()) {
+              throw new Error(`market card ${i} has an unreadable side choice`);
+            }
+          }
+          await p4.waitForTimeout(120);
           await cards.nth(i).screenshot({ path: join(OUT, `markets__${cell}__card${i}.png`) });
           files.push(`markets__${cell}__card${i}.png`);
         }
@@ -263,7 +296,31 @@ async function runCell(browser, locale, width) {
       await p5.waitForTimeout(300);
       const files = [await shoot(p5, `${surface}__${cell}__s00.png`), await shoot(p5, `${surface}__${cell}__full.png`, { fullPage: true })];
       const choices = await p5.evaluate(CHOICE_TEXTS);
-      out.push({ surface, cell, locale, width, height, files, choices, lang: await p5.evaluate(() => document.documentElement.lang) });
+      const journeyReadback = await p5.evaluate(() => ({
+        journeyHome: !!document.querySelector('[data-testid="journey-home"]'),
+        cards: [...document.querySelectorAll('[data-testid="journey-card"]')].slice(0, 4).map((card) => ({
+          id: card.getAttribute("data-row-id"),
+          title: card.querySelector(".kp-jcard__title")?.textContent?.trim() ?? null,
+          choices: [...card.querySelectorAll(".kp-jcard__pick")].map((pick) => ({
+            text: pick.textContent?.replace(/\s+/g, " ").trim() ?? "", aria: pick.getAttribute("aria-label") ?? "",
+          })),
+          result: card.querySelector(".kp-jcard__closed,.kp-jcard__settled")?.textContent?.trim() ?? null,
+        })),
+      }));
+      if (journeyReadback.cards.length) {
+        const journeyCards = p5.locator('[data-testid="journey-card"]');
+        await withoutChrome(p5, async () => {
+          for (let i = 0; i < journeyReadback.cards.length; i++) {
+            await journeyCards.nth(i).scrollIntoViewIfNeeded();
+            await p5.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+            const crop = `${surface}__${cell}__journey-card${i}.png`;
+            await journeyCards.nth(i).screenshot({ path: join(OUT, crop) });
+            files.push(crop);
+          }
+        });
+      }
+      out.push({ surface, cell, locale, width, height, files, choices, journeyReadback,
+        lang: await p5.evaluate(() => document.documentElement.lang) });
       await p5.close();
     }
   } catch (e) {

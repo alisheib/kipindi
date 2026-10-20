@@ -19,7 +19,9 @@
  * "0 horizontal overflow" bar (§0.1b rule 3): two texts overlapping inside an SVG overflow
  * nothing at all.
  */
-import { priceTagOffsetY } from "../src/components/updown/price-hero.tsx";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { PriceHero, priceTagOffsetY } from "../src/components/updown/price-hero.tsx";
 
 let pass = 0; const fails: string[] = [];
 const ok = (n: string, c: boolean, d = "") => { if (c) pass++; else fails.push(`${n}${d ? ` — ${d}` : ""}`); };
@@ -103,6 +105,39 @@ const clears = (lastY: number, targets: Array<number | null>, preferAbove: boole
   ok("5.3 the helper is given BOTH target baselines, offset exactly as they are drawn",
      /priceTagOffsetY\(\s*parseFloat\(lastY\),[\s\S]{0,260}?parseFloat\(upY\) - 4[\s\S]{0,120}?parseFloat\(downY\) \+ 11/.test(src),
      "passing the LINE positions instead of the LABEL baselines measures the wrong gap");
+}
+
+// ── §6 · U43 B5 — market data is neutral; the frozen targets name the two sides ──
+{
+  const render = (tone: "up" | "down" | "level") => renderToStaticMarkup(createElement(PriceHero, {
+    openPrice: 100, upTarget: 101, downTarget: 99, livePrice: 102,
+    priceSeries: [{ t: "2026-10-19T10:30:00.000Z", price: 100 }, { t: "2026-10-19T10:31:00.000Z", price: 102 }],
+    decimals: 2, tone,
+    copy: { priceLabel: "Confirmed price", openLabel: "Open", upLabel: "Up target", downLabel: "Down target",
+      awaitingRead: "Awaiting read", aboveBelow: null, source: null, chartAlt: "Confirmed round prices" },
+  }));
+  for (const tone of ["up", "down", "level"] as const) {
+    const html = render(tone);
+    const gradients = html.slice(html.indexOf("<defs>"), html.indexOf("</defs>") + 7);
+    ok(`6.1 ${tone}: confirmed number, move, path, point and tag use neutral ink`,
+      /class="font-mono font-bold tabular-nums" style="[^"]*color:var\(--text\)"/.test(html)
+      && /class="font-mono font-semibold tabular-nums" style="[^"]*color:var\(--text\)"/.test(html)
+      && /<path d="[^"]+" fill="none" stroke="var\(--text\)"/.test(html)
+      && /<circle class="ud-point"[^>]*fill="var\(--text\)"/.test(html)
+      && /<text class="ud-svg-label"[^>]*fill="var\(--text\)"[^>]*>\$102\.00<\/text>/.test(html),
+      "a raw price or move must not inherit a side colour");
+    ok(`6.2 ${tone}: open reference and observed-price washes are neutral`,
+      /<line x1="0" y1="[^"]+" x2="606" y2="[^"]+" stroke="var\(--text-subtle\)" stroke-width="1\.25"/.test(html)
+      && /<text class="ud-svg-label" x="0"[^>]*fill="var\(--text-subtle\)"/.test(html)
+      && gradients.includes('id="udAboveWash"') && gradients.includes('id="udBelowWash"')
+      && !/--(?:gilt|yes-|no-)/.test(gradients) && !html.includes("var(--gilt)"),
+      "the opening reference and price area are data, not earned money or a side");
+    ok(`6.3 ${tone}: UP and DOWN target lines and labels retain side colours`,
+      /<line x1="0" y1="[^"]+" x2="606" y2="[^"]+" stroke="var\(--yes-400\)"/.test(html)
+      && /<line x1="0" y1="[^"]+" x2="606" y2="[^"]+" stroke="var\(--no-400\)"/.test(html)
+      && /style="color:var\(--yes-300\)"[^>]*>UP TARGET/.test(html)
+      && /style="color:var\(--no-300\)"[^>]*>DOWN TARGET/.test(html));
+  }
 }
 
 console.log(`\nUP & DOWN CHART LABELS — ${pass} passed, ${fails.length} failed`);

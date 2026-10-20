@@ -484,7 +484,8 @@ const ghostAt = (path: string, l: Locale) => inApp(path, l, h(JourneyRouteGhost 
     // ⚠️ MOVED BY THE VODACOM PLAN S7 (WP7, A24 item 2, 2026-10-12): a journey reader's `/` is the journey home, so its ghost
     // is the home's own (`journey-home-ghost.tsx`), which draws the How-to card's title in words; it was the landing hero's.
     ["/", (l) => dict[l].journey.howToCardTitle],
-    ["/updown", (l) => dict[l].market.udStreaming],
+    // U43 removed the duplicate live label; the loading view keeps the page's question in each language.
+    ["/updown", (l) => dict[l].market.udTagline],
     ["/positions", (l) => dict[l].journey.tabTickets],
     ["/account", (l) => `>${dict[l].journey.tabAccount}</h1>`],
     ["/updown/history", (l) => dict[l].journey.tabTickets],

@@ -317,6 +317,7 @@ export function NotifyPoller() {
                   stake: p.stake,
                   settledAtMs,
                   label,
+                  recordHref: "/positions?tab=settled",
                 });
               }
 

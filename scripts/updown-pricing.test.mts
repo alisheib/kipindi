@@ -7,7 +7,8 @@
  *   · NO MULTIPLE ON ANY UP & DOWN CHOICE. The board card's two buttons (signed in and out), the one-tap stake control
  *     and the round page's two-way control say the side's word and nothing else (§3, §5, §8 — rendered, en/sw/zh).
  *   · THE MONEY AT THE COMMIT STAYS, AND IT IS STILL THE POOL'S. The round page's confirm panel states the projected
- *     return in shillings and the receipt repeats it — computed by `payoutFor`, the function settlement pays with
+ *     return in shillings and the receipt repeats the money action's committed `payoutIfWin` — computed server-side
+ *     by `payoutFor`, the function settlement pays with
  *     (§1, §5.8, §5.14, §8.4). Informed consent at the money commit is a UX commitment (CLAUDE.md).
  *   · THE EMPTY SIDE IS STILL SAID BEFORE ANY STAKE, AND ITS TRUTH IS THE POOL'S. With no multiple on the card the
  *     standards' old signature for an empty counterparty (a side quoted at exactly 1.00×) has nothing to read; the
@@ -40,6 +41,7 @@ import {
 } from "../src/lib/updown-pricing.ts";
 import { payoutFor } from "../src/lib/payout.ts";
 import { dict as DICTS } from "../src/lib/i18n-dict.ts";
+import { cardRefundBrief } from "../src/lib/updown-card-refund.ts";
 import { formatTzs } from "../src/lib/utils.ts";
 
 const PRICING = "src/lib/updown-pricing.ts";
@@ -48,6 +50,7 @@ const CARD = "src/components/updown/updown-card.tsx";
 const CONTROLS = "src/components/updown/updown-stake-controls.tsx";
 const PANEL = "src/components/updown/round-stake-panel.tsx";
 const RECEIPT = "src/components/updown/updown-bet-receipt-modal.tsx";
+const QUICK_BET = "src/components/updown/use-quick-bet.ts";
 // ⚠️ 2026-08-07 · `updown-bet-box.tsx` is GONE (deleted with Session B Stage 1 — zero
 // call sites; RoundStakePanel is the round page's one bet surface). The BOX slice went
 // with it; three surfaces remain.
@@ -176,7 +179,7 @@ ok("1.6 an untouched round is 1.00× on BOTH sides — the honest 'your stake co
      mismatches === 0, `${mismatches} disagreed`);
   ok("1.8 …and not one of them quotes a winner below their own stake", floorBreaches === 0,
      `${floorBreaches} below 1.00×`);
-  ok("1.9 …and `projectedReturn` is the same call, so the confirm panel and the receipt cannot differ",
+  ok("1.9 `projectedReturn` uses the pool function for the pre-commit confirm quote",
      projectedReturn(P(90_000, 10_000), "DOWN", 2_000) ===
        Math.round(2_000 * (impliedMultiplier(P(90_000, 10_000), "DOWN", 2_000) as number)));
 }
@@ -316,24 +319,28 @@ function sideButtonBodies(code: string): Array<{ side: "yes" | "no"; body: strin
   }
   return out;
 }
-// The side's arrow is the family's arrowUp/arrowDown (PHOSPHOR-MIGRATION W4, §8b; the trend zigzags before).
-const GLYPH_OR_SPINNER = /\{bet\.pendingSide === "(?:UP|DOWN)" \? <Spinner size=\{12\} \/> : <I\.arrow(?:Up|Down) [^}]*\}[^}]*\} \/>\}|<I\.arrow(?:Up|Down) [^>]*\/>/g;
-// `{ }` is what a stripped JSX comment (`{/* … */}`) leaves behind; `{" "}` is an explicit space.
-const wordOnly = (b: { side: "yes" | "no"; body: string }) =>
-  b.body.replace(GLYPH_OR_SPINNER, "").replace(/\{\s*\}/g, "").replace(/\{"\s*"\}/g, "").replace(/\s+/g, "") ===
-  (b.side === "yes" ? "{t.market.udUp}" : "{t.market.udDown}");
+// U43 B1 renders both signed-in and signed-out choices from one mapped pair.
+// §8 below also reads its actual HTML in all three languages and four pool states.
+const pairWordOnly = (b: { side: "yes" | "no"; body: string }) =>
+  /\{sideWord\(t, side, "UPDOWN"\)\}/.test(b.body)
+  && /<I\.arrowUp/.test(b.body) && /<I\.arrowDown/.test(b.body)
+  && !/formatTzs|impliedMultiplier|×|<span[^>]*>[^<]*\d+(?:\.\d+)?[×%]/.test(b.body);
 {
   const cardButtons = sideButtonBodies(cardCode);
   const controlButtons = sideButtonBodies(controlsCode);
-  ok("5.7 the card's two signed-out buttons hold the glyph and the side's word and NOTHING else",
-     cardButtons.length === 2 && cardButtons.every(wordOnly), JSON.stringify(cardButtons.map((b) => b.body.trim().slice(0, 140))));
-  ok("5.7b …and so do the two buttons of the shared controls",
-     controlButtons.length === 2 && controlButtons.every(wordOnly), JSON.stringify(controlButtons.map((b) => b.body.trim().slice(0, 160))));
-  // ⛔ The population: 2 + 2 or the checks above pass over nothing.
-  ok("5.7c CONTROL · the reader finds exactly the four side buttons (2 on the card, 2 in the controls)",
-     cardButtons.length === 2 && controlButtons.length === 2, `${cardButtons.length} + ${controlButtons.length}`);
-  ok("5.7d CONTROL · a button carrying a multiple is NOT word-only (the reader can fail)",
-     !wordOnly({ side: "yes", body: ` <I.arrowUp s={14} edge="start" text="body-700" className={GLYPH_NO_SHRINK} /> {t.market.udUp}\n<span className="font-mono text-[12.5px]">× 1.26</span>` }));
+  ok("5.7 the signed-out card uses the same Up/Down pair as the stake controls",
+     cardButtons.length === 0 && cardCode.includes('<UpDownSidePair assetName={assetName} onPick={go} />')
+     && controlsCode.includes('<UpDownSidePair assetName={assetName} onPick={bet.place}'),
+     `${cardButtons.length} private card buttons`);
+  ok("5.7b the shared pair's visible button holds arrows and the side word, with no figure",
+     controlButtons.length === 1 && controlButtons.every(pairWordOnly),
+     JSON.stringify(controlButtons.map((b) => b.body.trim().slice(0, 180))));
+  ok("5.7c CONTROL · one declaration maps both sides, rather than dropping a choice",
+     cardButtons.length === 0 && controlButtons.length === 1
+     && controlsCode.includes('(["UP", "DOWN"] as const).map((side) => ('),
+     `${cardButtons.length} + ${controlButtons.length} declarations`);
+  ok("5.7d CONTROL · a multiple planted inside the pair is rejected",
+     controlButtons.length === 1 && !pairWordOnly({ ...controlButtons[0], body: `${controlButtons[0].body}<span>× 1.26</span>` }));
 }
 ok("5.8 the round page's confirm panel projects the return from the POOL, not a rate",
    /projectedReturn\(/.test(panelCode) && !/bet\.stake\s*\*\s*est/.test(panelCode));
@@ -359,8 +366,10 @@ ok("5.12 both pages hand the surfaces the server's pricing object",
 ok("5.13 no surface re-implements the fee — they all call the shared module",
    !/payoutFor\(|poolFee\(/.test(cardCode + controlsCode + panelCode + receiptCode));
 // ⭐ What the ruling deliberately KEEPS: the money at the commit (CLAUDE.md "UX commitments").
-ok("5.14 the bet receipt keeps its projected return — the shared function at the amount actually staked, labelled, qualified",
-   /impliedMultiplier\(pricing, placed\.side, placed\.amount\)/.test(receiptCode)
+ok("5.14 the bet receipt keeps the money action's committed return, labelled and qualified",
+   /payoutIfWin: placed\.payoutIfWin,/.test(read(QUICK_BET))
+   && /receiptProjectedPayout\(pricing\.show, placed\)/.test(receiptCode)
+   && !/impliedMultiplier\(pricing, placed\.side, placed\.amount\)/.test(receiptCode)
    && /label: t\.market\.udRcProjected/.test(receiptCode)
    && /footnote=\{projected != null \? t\.market\.udEstimateNote : undefined\}/.test(receiptCode));
 
@@ -376,17 +385,21 @@ ok("6.4 …and it states the consequence, not merely the fact",
    /udNobodyBacked:\s*"[^"]*stake comes back/.test(dict));
 // ⚠️ The old note said "× figures are pool estimates" underneath a config constant. Now that it
 // IS the pool, the note has to own the other half: it MOVES.
-ok("6.5 the estimate note tells the player the figure moves with every later bet",
-   /udEstimateNote:\s*"[^"]*moves with every bet/i.test(dict));
-ok("6.6 …and that the lock replaces it with the exact payout",
-   /udEstimateNote:\s*"[^"]*exact payout/i.test(dict));
+ok("6.5 the estimate note tells the player the figure changes until betting closes",
+   /udEstimateNote:\s*"[^"]*changes until betting closes/i.test(dict));
+const enEstimateNote = DICTS.en.market.udEstimateNote;
+ok("6.6 …and that lock fixes only the conditional winning return, with a void refund",
+   enEstimateNote.includes("Winning return then fixes; paid only if you win.")
+   && enEstimateNote.includes("A void refunds your stake.")
+   && !enEstimateNote.includes("becomes your exact payout"));
 // ⭐ 2026-10-14 · the note opened on "×", the multiple the buttons printed. Nothing prints one now, so it must name what
 // it qualifies — the projected return, in the very words the receipt's row uses — in every language.
 for (const loc of ["en", "sw", "zh"] as const) {
   const note = DICTS[loc].market.udEstimateNote;
   const name = DICTS[loc].market.udRcProjected;
-  ok(`6.7.${loc} the note no longer opens on "×" and names the projected return as its row does ("${name}")`,
-     !note.includes("×") && note.toLowerCase().includes(name.toLowerCase()), note);
+  const projectionWord = { en: name, sw: "Makisio", zh: name }[loc];
+  ok(`6.7.${loc} the note no longer opens on "×" and names the projected return ("${projectionWord}")`,
+     !note.includes("×") && note.toLowerCase().includes(projectionWord.toLowerCase()), note);
 }
 // ⭐ "…and wherever this should be reflected as well": the BINDING Up & Down rules said "The displayed multiplier reflects
 // the live pools". Nothing displays one now, so §2 names the projected return — and the document's version moved with it.
@@ -403,17 +416,19 @@ for (const loc of ["en", "sw", "zh"] as const) {
   }
   const meta = read("src/app/legal/rules/up-down/page.tsx");
   const versions = [...meta.matchAll(/(?:Version|Toleo|版本) (\d{4}-\d{2}-\d{2})/g)].map((m) => m[1]);
-  ok("6.9 …and the document's version moved with its words: en/sw/zh each at 2026-10-14 or later",
-     versions.length === 3 && versions.every((v) => v >= "2026-10-14"), versions.join(" · "));
+  ok("6.9 …and the document's version moved with its conditional-return correction: en/sw/zh each at 2026-10-20 or later",
+     versions.length === 3 && versions.every((v) => v >= "2026-10-20"), versions.join(" · "));
   // ⭐ 2026-10-14, the same day · the ruling's Swahili carried S4-COPY-AUDIT's class-10 agreement error forward. "Dau" is
-  // ma-class in the plural ("madau"), so the clause agrees in ya-: "Madau yakifungwa" (the qualifier) and "…hadi madau
-  // yatakapofungwa" (Rules §2). Read on the dictionary value and the comment-free rulebook, both directions.
+  // ma-class in the plural ("madau"), so the clause agrees in ya-: "madau yakifungwa" in both
+  // the qualifier and Rules §2. Read on the dictionary value and the comment-free rulebook.
   const swNote = DICTS.sw.market.udEstimateNote;
-  ok("6.10 the Swahili qualifier says \"Madau yakifungwa\" (class 6), never the class-10 \"Dau zikifungwa\"",
-     swNote.includes("Madau yakifungwa, yanakuwa malipo yako kamili.") && !/\bdau zikifungwa\b/i.test(swNote), swNote);
-  ok("6.11 …and the binding Rules §2 in Swahili says \"Si ahadi hadi madau yatakapofungwa.\", never \"dau zitakapofungwa\"",
-     rules.includes("Si ahadi hadi madau yatakapofungwa.") && !/\bdau zitakapofungwa\b/i.test(rules),
-     (rules.match(/Si ahadi hadi[^.<]*\./) ?? ["(no §2 sentence)"])[0]);
+  ok("6.10 the Swahili qualifier uses plural madau and conditions payment on winning",
+     swNote.includes("hadi madau yafungwe.") && swNote.includes("hulipwa ukishinda tu.")
+     && !/\bdau zikifungwa\b/i.test(swNote), swNote);
+  ok("6.11 …and the binding Rules §2 uses plural madau with the conditional return",
+     rules.includes("Madau yakifungwa, kiasi utakachopata ukishinda kinakuwa thabiti; utakipata tu ukishinda.")
+     && !/\bdau zitakapofungwa\b/i.test(rules),
+     (rules.match(/Madau yakifungwa[^.<]*\./) ?? ["(no §2 sentence)"])[0]);
 }
 
 // ── §7. RG — INFORMATION, NOT PROMOTION ──────────────────────────────────────────────────
@@ -466,6 +481,7 @@ console.log("\n§8 · rendered: the choices read Up and Down only, the commit ke
   const panelProps = (pricing: UpDownPricing, lockedSide: "UP" | "DOWN" | null) => ({
     marketId: "mkt_rule", isAuthed: true, minStake: 500, maxStake: 1_000_000, myUpStake: 0, myDownStake: 0,
     pricing, assetName: "Bitcoin", signInHref: "/auth/login", lockedSide, walletBalance: 50_000,
+    upTarget: 85_000.02, downTarget: 84_999.98,
     selectionClosesAtMs: NOW + 30 * MIN, serverNowMs: NOW,
   });
   // ⚠️ A tag becomes NOTHING, not a space: the notice body holds its phrases in nowrap spans (`noticeBody`), and in
@@ -486,11 +502,13 @@ console.log("\n§8 · rendered: the choices read Up and Down only, the commit ke
       : null;
   };
   const allSentences = (loc: Loc) => [expectedSentence(loc, "BOTH"), expectedSentence(loc, "UP"), expectedSentence(loc, "DOWN")] as string[];
+  const allCardSentences = (loc: Loc) => ["BOTH", "UP", "DOWN"].map((side) => cardRefundBrief(DICTS[loc], side as "BOTH" | "UP" | "DOWN")) as string[];
+  const allChoiceSentences = (loc: Loc) => [...allSentences(loc), ...allCardSentences(loc)];
   // The old note's core, in each language — present in the old sentence and in the new one, so a card carrying EITHER fails.
-  const NOTE_CORE: Record<Loc, string> = { en: "moves with every bet", sw: "hubadilika kwa kila dau jipya", zh: "随每一笔新投注变动" };
+  const NOTE_CORE: Record<Loc, string> = { en: "changes until betting closes", sw: "Makisio hubadilika", zh: "下注截止前会变动" };
 
   /** Every defect of one rendered CHOICE surface (a card or the two-way control) against the rule. */
-  function choiceDefects(loc: Loc, html: string, pricing: UpDownPricing, isCard: boolean): string[] {
+  function choiceDefects(loc: Loc, html: string, pricing: UpDownPricing, mode: "card" | "detail" | "journey" | "compact"): string[] {
     const d: string[] = [];
     const t = DICTS[loc].market;
     const all = text(html);
@@ -502,14 +520,24 @@ console.log("\n§8 · rendered: the choices read Up and Down only, the commit ke
     }
     if (/×/.test(all)) d.push(`a "×" is printed: …${(all.match(/.{0,30}×.{0,20}/) ?? [""])[0]}…`);
     if (all.includes(NOTE_CORE[loc]) || all.includes(t.udEstimateNote)) d.push("the estimate note is on a choice surface");
-    const want = expectedSentence(loc, emptySideOf(pricing));
+    const want = mode === "card" ? cardRefundBrief(DICTS[loc], emptySideOf(pricing))
+      : mode === "detail" || mode === "journey" ? expectedSentence(loc, emptySideOf(pricing)) : null;
     if (want != null && !all.includes(want)) d.push(`the empty-side sentence is missing: "${want}"`);
-    for (const s of allSentences(loc)) if (s !== want && all.includes(s)) d.push(`a false empty-side sentence is shown: "${s}"`);
-    if (isCard) {
+    if (want != null && all.split(want).length !== 2) d.push(`the empty-side sentence appears more than once: "${want}"`);
+    for (const s of allChoiceSentences(loc)) if (s !== want && all.includes(s)) d.push(`a false empty-side sentence is shown: "${s}"`);
+    if (mode === "detail") {
+      const band = all.includes(t.udBandBeforeBet);
+      if (band !== (pricing.upPool > 0 && pricing.downPool > 0)) d.push("the pre-bet void-band note disagrees with funded sides");
+    }
+    if (mode === "card") {
+      const brief = html.match(/<p class="ud-refund-brief[^\"]*"[^>]*>([\s\S]*?)<\/p>/);
+      if (want != null && (!brief || text(brief[1]) !== want || (brief.index ?? -1) >= html.indexOf('class="ud-act'))) {
+        d.push("the empty-side sentence is not the exact brief before the choices");
+      }
       // The card's own split row must agree: a two-sided price iff no side is empty.
-      const split = html.slice(html.indexOf('<div class="ud-split">'), html.indexOf('<div class="ud-prices">'));
+      const split = html.slice(html.indexOf('<div class="ud-split">'), html.indexOf('class="ud-act'));
       const twoSidedPrice = /\d%/.test(text(split));
-      const sentenceShown = allSentences(loc).some((s) => all.includes(s));
+      const sentenceShown = allChoiceSentences(loc).some((s) => all.includes(s));
       if (twoSidedPrice === sentenceShown) d.push(`the split row (${twoSidedPrice ? "a two-sided price" : "no price"}) and the empty-side sentence (${sentenceShown ? "shown" : "absent"}) disagree`);
     }
     return d;
@@ -535,6 +563,10 @@ console.log("\n§8 · rendered: the choices read Up and Down only, the commit ke
     const warn = expectedSentence(loc, refundWarningFor(pricing, side));
     if (warn != null && !all.includes(warn)) d.push(`the side-aware warning is missing: "${warn}"`);
     for (const s of allSentences(loc)) if (s !== warn && all.includes(s)) d.push(`a false warning is shown: "${s}"`);
+    const band = all.includes(t.udBandBeforeBet);
+    if (band !== (pricing.upPool > 0 && pricing.downPool > 0)) d.push("the pre-bet void-band note disagrees with funded sides");
+    const commitAt = html.indexOf(`aria-label="${t.udConfirm}`);
+    if (band && (commitAt < 0 || !text(html.slice(0, commitAt)).includes(t.udBandBeforeBet))) d.push("the void-band note follows the money commit");
     return d;
   }
 
@@ -562,28 +594,31 @@ console.log("\n§8 · rendered: the choices read Up and Down only, the commit ke
      renderError === "" && renders.length === LOCALES.length * POOLS.length * 2 * 5, renderError || `${renders.length}`);
 
   const defectsOf = (r: (typeof renders)[number], html = r.html) =>
-    r.kind === "panel" ? panelDefects(r.loc, html, r.pricing, r.side!) : choiceDefects(r.loc, html, r.pricing, r.kind === "card");
+    r.kind === "panel" ? panelDefects(r.loc, html, r.pricing, r.side!) : choiceDefects(r.loc, html, r.pricing, r.kind === "card" ? "card" : "detail");
   const bad = renders.flatMap((r) => defectsOf(r).map((x) => `${r.what}: ${x}`));
   const choices = renders.filter((r) => r.kind !== "panel");
   const panels = renders.filter((r) => r.kind === "panel");
   ok(`8.1 every choice surface reads "${DICTS.en.market.udUp}"/"${DICTS.en.market.udDown}" (and "${DICTS.sw.market.udUp}"/"${DICTS.sw.market.udDown}", "${DICTS.zh.market.udUp}"/"${DICTS.zh.market.udDown}") and nothing else — no "×", no estimate note (${choices.length} renders)`,
-     choices.every((r) => !choiceDefects(r.loc, r.html, r.pricing, r.kind === "card").some((x) => /button|×|estimate note|side buttons/.test(x))),
+     choices.every((r) => !choiceDefects(r.loc, r.html, r.pricing, r.kind === "card" ? "card" : "detail").some((x) => /button|×|estimate note|side buttons/.test(x))),
      bad.filter((x) => /button|×|estimate note|side buttons/.test(x)).slice(0, 4).join(" · "));
   ok("8.2 the empty-side sentence appears iff the pools leave a side empty — and names that side — on every card and control",
-     choices.every((r) => !choiceDefects(r.loc, r.html, r.pricing, r.kind === "card").some((x) => /empty-side sentence/.test(x))),
+     choices.every((r) => !choiceDefects(r.loc, r.html, r.pricing, r.kind === "card" ? "card" : "detail").some((x) => /empty-side sentence/.test(x))),
      bad.filter((x) => /empty-side sentence/.test(x)).slice(0, 4).join(" · "));
   ok("8.3 …and on the card it agrees with the split row: a two-sided price iff no sentence",
-     choices.every((r) => !choiceDefects(r.loc, r.html, r.pricing, r.kind === "card").some((x) => /split row/.test(x))),
+     choices.every((r) => !choiceDefects(r.loc, r.html, r.pricing, r.kind === "card" ? "card" : "detail").some((x) => /split row/.test(x))),
      bad.filter((x) => /split row/.test(x)).slice(0, 4).join(" · "));
   ok(`8.4 the confirm panel states the pool's projected return in shillings, qualified, with no multiple, side-aware (${panels.length} renders)`,
      panels.every((r) => defectsOf(r).length === 0),
      bad.filter((x) => /confirm panel/.test(x)).slice(0, 4).join(" · "));
+  ok("8.4b the detail choice and confirm disclose the void band iff both sides are backed, in all three languages",
+     renders.filter((r) => r.kind !== "card").every((r) => !defectsOf(r).some((x) => /void-band/.test(x))),
+     bad.filter((x) => /void-band/.test(x)).slice(0, 4).join(" · "));
   // ⛔ THE POPULATION — each state the rule distinguishes was actually rendered, or 8.2 passes over nothing.
   const shownOnce = (pred: (r: (typeof renders)[number]) => boolean) => renders.filter(pred).length;
   ok("8.5 CONTROL · the renders cover a sentence shown (one-sided, empty) AND withheld (two-sided), in every language",
      LOCALES.every((loc) =>
-       shownOnce((r) => r.loc === loc && r.kind === "card" && allSentences(loc).some((s) => text(r.html).includes(s))) >= 6
-       && shownOnce((r) => r.loc === loc && r.kind === "card" && !allSentences(loc).some((s) => text(r.html).includes(s))) >= 2));
+       shownOnce((r) => r.loc === loc && r.kind === "card" && allCardSentences(loc).some((s) => text(r.html).includes(s))) >= 6
+       && shownOnce((r) => r.loc === loc && r.kind === "card" && !allCardSentences(loc).some((s) => text(r.html).includes(s))) >= 2));
 
   // ⭐ PLANTED DEFECTS — each must be REPORTED by the same reader, or 8.1–8.4 cannot fail.
   const pick = (what: string) => renders.find((r) => r.what === what)!;
@@ -593,15 +628,15 @@ console.log("\n§8 · rendered: the choices read Up and Down only, the commit ke
   const plantMultiple = twoOut.html.replace(/(<button[^>]*class="btn btn-yes[^"]*"[^>]*>[\s\S]*?)(<\/button>)/, `$1<span class="font-mono text-[12.5px]">× 1.26</span>$2`);
   ok("8.1′ PLANT · a multiple put back on the signed-out Up button is reported",
      plantMultiple !== twoOut.html && defectsOf(twoOut, plantMultiple).some((x) => /Up button reads|×/.test(x)), defectsOf(twoOut, plantMultiple).join(" · "));
-  const oldNote = `<p class="flex items-start gap-1">× ${DICTS.en.market.udEstimateNote.slice(DICTS.en.market.udEstimateNote.indexOf("moves"))}</p>`;
+  const oldNote = `<p class="flex items-start gap-1">× ${DICTS.en.market.udEstimateNote.slice(DICTS.en.market.udEstimateNote.indexOf("changes"))}</p>`;
   const plantNote = twoOut.html.replace("</article>", `${oldNote}</article>`);
   ok("8.1″ PLANT · the old estimate note under the buttons is reported", defectsOf(twoOut, plantNote).some((x) => /estimate note|×/.test(x)));
   const sw = DICTS.sw.market;
-  const swDownEmpty = sw.udNobodyBacked.replace("{side}", sw.udDown);
+  const swDownEmpty = cardRefundBrief(DICTS.sw, "DOWN")!;
   const plantDropped = dropParagraphsWith(oneIn.html, swDownEmpty);
   ok("8.2′ PLANT · the sentence dropped from a one-sided card is reported",
      plantDropped !== oneIn.html && defectsOf(oneIn, plantDropped).some((x) => /missing/.test(x)), defectsOf(oneIn, plantDropped).join(" · "));
-  const plantFalse = twoOut.html.replace("</article>", `<p>${DICTS.en.market.udNobodyBacked.replace("{side}", DICTS.en.market.udDown)}</p></article>`);
+  const plantFalse = twoOut.html.replace("</article>", `<p>${cardRefundBrief(DICTS.en, "DOWN")}</p></article>`);
   ok("8.2″ PLANT · the sentence shown on a two-sided card is reported (the lie a presence check never sees)",
      defectsOf(twoOut, plantFalse).some((x) => /false empty-side sentence|disagree/.test(x)), defectsOf(twoOut, plantFalse).join(" · "));
   const plantPanelMult = panelUp.html.replace(/(<span class="amount text-body-sm font-semibold text-text-muted">[^<]+<\/span>)/, `$1<span class="font-mono text-[11px] tabular-nums text-text-faint">× 1.26</span>`);
@@ -658,7 +693,7 @@ console.log("\n§8 · rendered: the choices read Up and Down only, the commit ke
     return d;
   }
   const journeyDefectsOf = (r: (typeof journey)[number], html = r.html) =>
-    r.kind === "panel" ? journeyPanelDefects(r.loc, html, r.pricing, r.side!) : choiceDefects(r.loc, html, r.pricing, false);
+    r.kind === "panel" ? journeyPanelDefects(r.loc, html, r.pricing, r.side!) : choiceDefects(r.loc, html, r.pricing, r.what.startsWith("journey card") ? "compact" : "journey");
   const journeyBad = journey.flatMap((r) => journeyDefectsOf(r).map((x) => `${r.what}: ${x}`));
   ok(`8.6 the journey arm (S12): the card control, the two-way control and the ?side= panel say Up and Down only — no "×", no estimate note on a choice, the panel's projection the pool's with its qualifier, the empty side iff true (${journey.length} renders)`,
      journeyError === "" && journey.length === LOCALES.length * POOLS.length * 2 * 4 && journeyBad.length === 0,

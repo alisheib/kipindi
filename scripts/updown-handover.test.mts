@@ -255,23 +255,24 @@ console.log("\n── 8 · the surfaces are WIRED to it (asserting the call, nev
   ok("8.3 ⭐ the auto-advance calls the rule — not a fourth copy of the decision",
     /handoverClock\(\{/.test(adv));
   // ⛔ ASSERT WHAT THE CALL CARRIES (§5b.2). A `handoverClock({...})` fed the MOUNT instant
-  // instead of the server's `resolvedAt` would satisfy 8.1 and be the exact defect the rule's
+  // instead of the server's `settledAt` would satisfy 8.1 and be the exact defect the rule's
   // header forbids, so the argument itself is the check.
   // ⛔ TRACED TO THE SERVER FIELD, NOT MERELY "a variable called settledAtMs". Each surface is
   // checked at the point where the value ENTERS it, so an edit that swapped in `Date.now()` — the
   // defect the rule's header names, because a mount-anchored hold restarts on every poll — fails
   // here rather than passing on a plausible-looking identifier.
   // ⚠️ THE CHAIN GAINED A LINK 2026-08-19 AND THESE TWO CAUGHT IT, which is what they are for.
-  // The rule is no longer fed the server's `resolvedAt` directly — it is fed `holdAnchor`, which
-  // `useHoldAnchor` derives FROM `resolvedAt`, because a hold measured from the server's stamp
+  // The rule is no longer fed the server's `settledAt` directly — it is fed `holdAnchor`, which
+  // `useHoldAnchor` derives FROM `settledAt`, because a hold measured from the server's stamp
   // is already spent by the time a 5s (round page) or 20s (board) poll delivers the result.
   // So the trace is now two hops, and both are asserted.
   ok("8.4a ⭐ the board card feeds the rule its hold anchor…",
     /settledAtMs:\s*holdAnchor\b/.test(card));
-  ok("8.4a2 ⭐ …which is `useHoldAnchor` over the server's `resolvedAtMs` prop",
-    /useHoldAnchor\(\s*roundId,\s*settledNow,\s*resolvedAtMs,/.test(card));
+  ok("8.4a2 ⭐ …which is `useHoldAnchor` over actual payment and `settledAtMs`",
+    /useHoldAnchor\(\s*roundId,\s*settledNow && settled,\s*settledAtMs,/.test(card));
   ok("8.4b ⭐ …which the board page fills from the server payload",
-    /resolvedAtMs=\{r\.resolvedAtMs\}/.test(code("src/app/updown/page.tsx")));
+    /settled=\{r\.settled\}/.test(code("src/app/updown/page.tsx"))
+    && /settledAtMs=\{r\.settledAtMs\}/.test(code("src/app/updown/page.tsx")));
   ok("8.4c ⭐ the pod feeds the rule its hold anchor…",
     /settledAtMs:\s*holdAnchor\b/.test(pod));
   ok("8.4c2 ⭐ …over the server's `handover.settledAtMs`",
@@ -300,10 +301,10 @@ console.log("\n── 8 · the surfaces are WIRED to it (asserting the call, nev
    * ⭐ AND THE COUNT WAS NEVER THE RULE THE COMMENT ABOVE STATES. `=== 3` is satisfied by
    * "the pod drifted onto a different field AND someone added a fourth site" — the exact
    * divergence this exists to catch, passing. Naming the three is strictly stronger: each must
-   * read `round.resolvedAtMs` itself, and a fifth consumer is free to appear without lying
+   * read `round.settledAtMs` itself, and a fifth consumer is free to appear without lying
    * about the other three.
    */
-  const readsResolved = (s: string) => /settledAtMs[:=]\s*\{?round\.resolvedAtMs\}?/.test(s);
+  const readsPaid = (s: string) => /settledAtMs[:=]\s*\{?round\.settledAtMs\}?/.test(s);
   /**
    * ⛔ BOUNDED BY THE SYNTAX, NEVER BY A CHARACTER COUNT. The first version of this capped each
    * block at 200/400 chars and `<UpDownHandover …/>` is ~600 — so `autoAdvance` read `false`
@@ -315,14 +316,14 @@ console.log("\n── 8 · the surfaces are WIRED to it (asserting the call, nev
   const pollBound = /handoverPollUntil\(\{[\s\S]*?\}\)/.exec(page)?.[0] ?? "";
   const podProp = /handover=\{\{[\s\S]*?\}\}/.exec(page)?.[0] ?? "";
   const advProp = /<UpDownHandover[\s\S]*?\/>/.exec(page)?.[0] ?? "";
-  ok("8.4d ⭐ all THREE round-page consumers read `round.resolvedAtMs` — the poll bound, the pod "
+  ok("8.4d ⭐ all THREE round-page consumers read `round.settledAtMs` — the poll bound, the pod "
     + "and the auto-advance",
-    [pollBound, podProp, advProp].every((s) => s.length > 0 && readsResolved(s)),
-    `pollBound=${readsResolved(pollBound)} pod=${readsResolved(podProp)} autoAdvance=${readsResolved(advProp)}`
+    [pollBound, podProp, advProp].every((s) => s.length > 0 && readsPaid(s)),
+    `pollBound=${readsPaid(pollBound)} pod=${readsPaid(podProp)} autoAdvance=${readsPaid(advProp)}`
     + " (a `false` on a found block is a real drift; an empty block means the site was renamed)");
   // ⛔ CONTROL · the matcher must be able to say NO, or 8.4d is decoration.
   ok("8.4d-control · a consumer reading a DIFFERENT field is detected",
-    !readsResolved("settledAtMs={round.closesAtMs}"));
+    !readsPaid("settledAtMs={round.closesAtMs}") && !readsPaid("settledAtMs={round.resolvedAtMs}"));
   ok("8.4e ⛔ and NO surface reaches for the device clock to decide a handover phase",
     [card, pod, adv].every((s) => !/handoverClock\(\{[^}]*Date\.now\(\)/s.test(s)));
   ok("8.5 ⛔ and no surface re-derives the successor's instants — they come from the payload",
@@ -457,9 +458,15 @@ console.log("\n── 8 · the surfaces are WIRED to it (asserting the call, nev
     !/"00:00"/.test(pod), "a literal 00:00 is still reachable in round-countdown.tsx");
   ok("8.21 ⭐ nor does the board card", !/"00:00"/.test(card));
 
-  // ⛔ "Closed" is never a result (copy discipline §7).
-  ok("8.22 ⭐ the card's header word comes from the round's state, not from `!bettable`",
-    /state === "resolved" \? t\.market\.statusResolved/.test(card));
+  // ⛔ "Closed" is never a result. U43 removed the old status chip and names
+  // the outcome in the one result row, from settled state and outcome only.
+  const resultWord = (s: string) => /\{settledNow \? \(/.test(s)
+    && /state === "void" \? t\.market\.statusVoid : outcome === "UP"/.test(s)
+    && /outcome === "DOWN"[\s\S]*?: t\.market\.statusResolved/.test(s);
+  ok("8.22 the card's result row comes from the settled state and outcome",
+    resultWord(card));
+  ok("8.22-control a result chosen from bettable state is rejected",
+    !resultWord(card.replace('{settledNow ? (', '{!bettable ? (')));
 }
 
 console.log("\n── 9 · the copy exists in all three languages, and stays on one line ──");

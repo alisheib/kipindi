@@ -58,7 +58,7 @@ export function WalletSheet({
   held: boolean;
   anchorRef: React.RefObject<HTMLElement | null>;
   /** S6 · the journey capsule's Wallet: its two doors read "Weka pesa" and "Toa pesa", and its figure takes the capsule's
-   *  ink (gold on a live balance only). Omitted, today's words and today's ink. */
+   *  neutral ink. Omitted, the classic words. */
   journey?: boolean;
   /** S6 · the reader is on a self-imposed break (AppShell's `promoSuppressed`): no Deposit, Withdraw alone. The journey
    *  capsule passes it; omitted, both doors as today. */
@@ -138,7 +138,7 @@ export function WalletSheet({
                 href="/wallet/deposit"
                 onClick={(event) => { onClose(); if (journey) { event.preventDefault(); window.location.assign("/wallet/deposit"); } }}
                 aria-describedby={depVia}
-                className="btn gilt-metal btn-lg kp-wsheet__act"
+                className="btn btn-primary btn-lg kp-wsheet__act"
                 data-testid="wallet-sheet-deposit"
               >
                 {/* ⭐ Round 10 (R10-A6, tiles 132–137): each door's glyph puts its ink on the door's start padding, so its

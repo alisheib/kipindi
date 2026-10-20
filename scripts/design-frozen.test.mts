@@ -119,7 +119,7 @@ const BY_DESIGN = new Set<string>([
  */
 const FROZEN_RATCHET = new Map<string, number>([
   // ── Player surfaces still to canonicalize (the real backlog) ──────────────
-  ["src/app/global-error.tsx", 23],                          // ships without app CSS. −1, 2026-10-09 (R5-C's gold audit): the gold "Try again" (a gold stop and a dark-gold ink) became the flat primary royal and the RG link the link ink — two literals in, three out
+  ["src/app/global-error.tsx", 22],                          // ships without app CSS. −1, 2026-10-09 (R5-C's gold audit): the gold "Try again" (a gold stop and a dark-gold ink) became the flat primary royal and the RG link the link ink — two literals in, three out. −1, 2026-10-20 (U43 B5): the shared error palette removed another literal.
   ["src/components/onboarding/first-visit-primer.tsx", 19],
   ["src/components/markets/conviction-dial.tsx", 15],
   ["src/components/ui/chip.tsx", 11],                       // −1, PV-13c 2026-09-03: the `signal` variant stopped hand-typing its aqua oklch and now reads the brand ramp through `color-mix()` — see the drift note in chip.tsx. −2, R8-A 2026-10-10 (Ali's ruling (1), warnings are amber, not gold): `paused` and `warning` stopped hand-typing their hue-80 ink and fills and read the warning family (`--warning-500` mixes, `--warning-fg`)
@@ -210,15 +210,10 @@ const FROZEN_RATCHET = new Map<string, number>([
   // Every one was measured on this tree; none was invented to pad the list.
   ["src/app/updown/[roundId]/page.tsx", 7],                  // padding + letterSpacing on the round page. −1, PV-13c 2026-09-03: a raw `.chip` span became <Chip>
   ["src/components/admin/admin-shell.tsx", 3],               // 3× hand-typed letterSpacing. −1 recorded 2026-09-03 (PV-13c): the entry was already STALE at HEAD — this file is untouched by that row, the ratchet had simply not been lowered when one value was fixed earlier
-  ["src/components/updown/round-countdown.tsx", 3],
+  ["src/components/updown/round-countdown.tsx", 1],
   ["src/app/positions/performance/page.tsx", 2],             // raw-oklch radial gradients
   ["src/components/layout/live-ticker.tsx", 1],              // the end cap's oklch fade beside var(--bg-inset). 2 → 1 on 2026-10-08 (round 3): the LIVE label's fade moved into `.ticker-label` in globals.css, where the journey's leading-edge rule can reach it
-  // ⬇️ 2 → 1 on 2026-08-25. The capsule rebuild added a hairline seam and an eye hover
-  // tint, and this gate caught them as RAW colours — correctly. Both now read
-  // `color-mix(in oklab, var(--gold-300) N%, transparent)`, i.e. they CONSUME the token
-  // rather than restating a colour, which is exactly what B10 asks for. Re-measuring
-  // afterwards showed the file needs only one, so the budget follows the code down.
-  ["src/components/layout/wallet-balance-pill.tsx", 1],
+  // U43 B5 removed the last raw value from the classic balance pill; a new one is now refused.
   ["src/components/updown/price-hero.tsx", 2],
   // ⚠️ CHART-SPRINT-2 final: the terminal's token-bridge probe literals moved
   // to `charts/ink-bridge.ts` — a .ts file this tsx-only scanner cannot see
@@ -289,7 +284,7 @@ const CSS_SYSTEM = new Set<string>([
  * statements were true of every file a guard was looking at.
  */
 const CSS_RATCHET = new Map<string, number>([
-  ["src/styles/chat/chat-styles.css", 78],
+  ["src/styles/chat/chat-styles.css", 77],
 ]);
 
 /**
@@ -501,7 +496,7 @@ function judge(files: string[], ratchet: Map<string, number>, scan: (s: string) 
     const allowed = ratchet.get(rel) ?? 0;
     if (hits.length > allowed) {
       over.push(`${rel} — ${hits.length} > ${allowed}`);
-      for (const h of hits.slice(0, 6)) over.push(`      :${h.line}  ${h.what}`);
+      for (const h of hits.slice(0, 12)) over.push(`      :${h.line}  ${h.what}`);
     }
   }
   for (const [rel, n] of ratchet) {

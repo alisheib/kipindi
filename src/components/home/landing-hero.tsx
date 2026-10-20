@@ -96,7 +96,7 @@ export type LandingMine = {
 };
 
 export type HeroCardData = {
-  charts: Map<string, { spark?: number[]; move24h?: number }>;
+  charts: Map<string, { spark?: (number | null)[]; move24h?: number }>;
   traders: Map<string, string[]>;
 };
 

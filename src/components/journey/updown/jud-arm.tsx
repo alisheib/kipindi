@@ -11,10 +11,10 @@
  *     the stake shown (Open point 7), as the classic control does; the buttons say the side's word and its arrow, nothing
  *     else (the owner's ruling of 2026-10-14).
  *   · `JudConfirm` — the round page's `?side=` panel: the chosen side as a chip, the stake box and chips, the projected
- *     return in shillings ("Ukishinda ≈ TZS 634", muted — projected money is not earned money), and one gold commit
+ *     return in shillings ("Ukishinda ≈ TZS 634", muted — projected money is not earned money), and one brand commit
  *     ("Weka dau · TZS 500").
  * Not enough money draws the sheet's own low rows (`LowBlock`, one block for both products) from the sheet's own frame
- * (`judFrame`): the callout, the gilt deposit door with the rails' names, and "Tumia {x} badala yake", which SETS the
+ * (`judFrame`): the callout, the brand deposit door with the rails' names, and "Tumia {x} badala yake", which SETS the
  * stake and never places (Open point 11).
  *
  * ⛔ THE MONEY PATH IS THE CLASSIC ONE, UNTOUCHED. Every placement is `bet.place(side)` on the `useUpDownQuickBet` the
@@ -209,7 +209,7 @@ export function JudTwoWay({ bet, round, viewer, assetName, receipt, onWatchRound
     <Lines t={t} locale={locale} nowMs={nowMs} frame={frame} id={id} />
     {prompt && <p className="kp-jud__prompt">{prompt}</p>}
     <div className="kp-jud__sides">{sideButton("UP")}{sideButton("DOWN")}</div>
-    <EmptySideNote t={t} side={judEmptySide(round.pricing, null)} />
+    {size === "detail" && <EmptySideNote t={t} side={judEmptySide(round.pricing, null)} />}
     <span aria-live="polite" className="sr-only">{bet.liveMessage}</span>
     <UpDownBetBlockedModal blocked={bet.blocked} onClose={bet.clearBlocked} />
     {receipt && <UpDownBetReceiptModal key={bet.placedReceipt?.nonce ?? 0} placed={bet.placedReceipt} info={receipt} pricing={round.pricing}
@@ -248,7 +248,7 @@ export function JudConfirm({ bet, round, viewer, assetName, receipt, side }: Arm
         onClick={() => setText(String(instead.stake))}><span>{fillNodes(t.journey.udUseInstead, { amount: <span className="amount">{formatTzs(instead.stake)}</span> })}</span></Button>} />
     <Lines t={t} locale={locale} nowMs={nowMs} frame={frame} id={id} />
     {bet.locallyLocked && <p className="kp-jud__prompt">{t.market.udErrSelectionClosed}</p>}
-    <Button type="button" variant="gold" size="xl" fullWidth className="kp-bsheet__commit" data-testid="jud-place" disabled={!ready}
+    <Button type="button" variant="primary" size="xl" fullWidth className="kp-bsheet__commit" data-testid="jud-place" disabled={!ready}
       aria-busy={bet.pending || undefined} aria-describedby={describedBy} onClick={() => { if (ready) bet.place(side); }}>
       {bet.pending ? <><Spinner size={14} /><span>{t.market.udPlacing}</span></>
         : <span>{frame.stake !== null && frame.breaks === null ? <SheetSentence t={t} locale={locale} nowMs={nowMs} line={{ key: "journey.placeCta", vars: { amount: frame.stake } }} /> : t.journey.placeCtaBare}</span>}

@@ -56,6 +56,23 @@ const j = (v: unknown) => JSON.stringify(v);
  *  that is not a change — exactly the shape a pin is supposed to distinguish from a real one. */
 const lf = (s: string) => s.replace(/\r\n/g, "\n");
 
+/** Reviewed publication bytes, independent of a rebased commit's name.
+ * The path is part of the pin. A fresh clone always has its current HEAD blob,
+ * but need not have the pre-rebase commit that originally introduced it. */
+export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
+  // S5 player/register and MB-89 multi-ticket words, merged with U43's reviewed three-language copy.
+  // The exact merged dictionary blob is pinned; a future copy edit must be reviewed and re-pinned.
+  "src/lib/i18n-dict.ts": "e634e4dc797e8c1f383deeb1c2a3f58f49946d96",
+  "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
+  "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
+};
+
+export function u43ReviewedBlobMatches(rel: string, committedBlobId: string | null): boolean {
+  const expected = U43_REVIEWED_BLOBS[rel];
+  return expected !== undefined && /^[a-f0-9]{40}$/.test(expected)
+    && committedBlobId === expected;
+}
+
 /**
  * ⛔ THE REGISTER — ONE FILE, ONE EXACT STRING. NOT A SHAPE.
  *
@@ -197,33 +214,30 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     // pin), whose dictionary also holds MOBILE-VISUAL U43 release A's (9393dcb53, Ali's ruling 4: the card choices'
     // figures and their aria words leave, `udLockedOneSided` joins), which landed under the 1c210f39e pin.
     const W4 = "7a0b819fd";
-    // PHOSPHOR-MIGRATION 1b (W4's review, 2026-10-19), presentation only: the Up & Down rulebook's caution sign gains its
-    // word for a screen reader in each language ("Warning: ", "Onyo: ", "警告：", sr-only — the ⚠️ it replaced was read
-    // aloud), and the legal shell's note on its sigils is brought up to date (a comment). Pinned at 1b's commit as it
-    // stands on main (the commit before this pin).
-    const W4B = "2aab5f0ec";
     // PHOSPHOR-MIGRATION release 2a part 2: these two legal files changed only their icon plates. Pin the exact
     // committed source while D19a continues to refuse any unreviewed change to their published words.
     const PHOS_R2A_PART2 = "a843ff73fcaa919298a4f056008c7ee560ca84f7";
+    // U43 Release B's rules pages and the reviewed S5/U43 merged dictionary are
+    // pinned by their exact Git blobs above. Rebase may rewrite the introducing commits;
+    // any changed blob must be reviewed and re-pinned in this file explicitly.
     const APPROVED_EXTRA = new Map([
       ["src/app/legal/_components.tsx", PHOS_R2A_PART2],
       ["src/app/legal/rules/page.tsx", PHOS_R2A_PART2],
-      // The S5 player/register words plus MB-89's reviewed three-language multi-ticket controls. Pin the exact blob:
-      // a cherry-pick changes the source commit, but the approved dictionary's blob remains in main's reachable tree.
-      ["src/lib/i18n-dict.ts", "f451ebb20549e441c2e49cf19f9e66f4c8eecddd"],
       ["src/app/legal/privacy/page.tsx", "8d126b819"],
       ["src/app/legal/responsible-gambling/page.tsx", W4],
-      ["src/app/legal/rules/_content-up-down.tsx", W4B],
-      ["src/app/legal/rules/up-down/page.tsx", W4],
     ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };
-    const extraBlob = (rel: string) => { try {
-      const pin = APPROVED_EXTRA.get(rel);
-      return lf(git("cat-file", "blob", rel === "src/lib/i18n-dict.ts" ? pin! : `${pin}:${rel}`));
-    } catch { return null; } };
-    const goldenOf = (rel: string) => APPROVED_EXTRA.has(rel) ? extraBlob(rel) : APPROVED_TEXT.has(rel) ? approvedBlob(rel) : blobOf(rel);
+    const extraBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_EXTRA.get(rel)}:${rel}`)); } catch { return null; } };
+    const u43Blob = (rel: string) => {
+      try {
+        if (!u43ReviewedBlobMatches(rel, git("rev-parse", `HEAD:${rel}`).trim())) return null;
+        return lf(git("cat-file", "blob", `HEAD:${rel}`));
+      } catch { return null; }
+    };
+    const goldenOf = (rel: string) => rel in U43_REVIEWED_BLOBS ? u43Blob(rel)
+      : APPROVED_EXTRA.has(rel) ? extraBlob(rel) : APPROVED_TEXT.has(rel) ? approvedBlob(rel) : blobOf(rel);
     const approvedEqual = (rel: string, source: string) => goldenOf(rel) !== null && lf(source) === goldenOf(rel);
-    const isApprovedPublication = (rel: string) => (APPROVED_TEXT.has(rel) || APPROVED_EXTRA.has(rel)) && approvedEqual(rel, read(rel));
+    const isApprovedPublication = (rel: string) => (APPROVED_TEXT.has(rel) || APPROVED_EXTRA.has(rel) || rel in U43_REVIEWED_BLOBS) && approvedEqual(rel, read(rel));
     const compare = (paths: string[]) => {
       const missing: string[] = [], differs: string[] = [];
       let compared = 0;
@@ -238,6 +252,11 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     ok("5.0 · POPULATION · `origin/main` resolves and is PRINTED, the published legal text derives to at least 14 tracked files, and the two named carriers are in the list — a pin whose ref is missing or whose path list resolves to nothing must fail LOUDLY, never skip",
       mainSha.length >= 7 && legal.length >= 14 && PUBLIC_TEXT.includes("src/lib/i18n-dict.ts") && PUBLIC_TEXT.includes("src/lib/terms-version.ts"),
       j({ originMain: mainSha, legalFiles: legal.length, pinned: PUBLIC_TEXT.length }));
+    const u43Paths = Object.keys(U43_REVIEWED_BLOBS);
+    ok("5.0.u43 · POPULATION · exactly the reviewed dictionary and two Up & Down Rules files are pinned to current HEAD's exact blobs; a rewritten commit name cannot erase the pin",
+      u43Paths.length === 3 && u43Paths.every((rel) => PUBLIC_TEXT.includes(rel)
+        && /^[a-f0-9]{40}$/.test(U43_REVIEWED_BLOBS[rel]) && u43Blob(rel) !== null),
+      j({ paths: u43Paths, blobs: U43_REVIEWED_BLOBS }));
     const real = compare(PUBLIC_TEXT);
     ok(`5.1 · ⛔ D19a · every published legal and dictionary file matches its approved committed source (S8–S12 at ${APPROVED_REF}, visual presentation at c3e28b473, other files at origin/main ${mainSha || "(unresolved)"})`,
       real.compared === PUBLIC_TEXT.length && real.differs.length === 0 && real.missing.length === 0,

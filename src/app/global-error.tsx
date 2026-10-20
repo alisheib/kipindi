@@ -183,8 +183,8 @@ export default function GlobalError({
   const TEXT = "oklch(98% 0.012 268)";
   const TEXT_MUTED = "oklch(86% 0.040 268)";
   const TEXT_SUBTLE = "oklch(70% 0.080 268)";
-  // The mark's NEEDLE only (DESIGN_AUTHORITY §B1a: the gilt needle is the mark's own) — nothing else on this page is gold.
-  const GOLD = "oklch(86% 0.13 82)";
+  // Even this standalone error mark keeps its needle neutral; gold states money won.
+  const NEEDLE = TEXT;
   // ⛔ R5-C, the second gold audit (2026-10-09): "Try again" was a GOLD button and the RG link gold — neither is money
   // (Q5). The button is the kit's primary royal, written out because this page ships without the app's CSS — flat, at
   // the midpoint of `.btn-primary`'s 53%→48% wash (one value, so `design-frozen`'s budget for this file does not grow) —
@@ -237,7 +237,7 @@ export default function GlobalError({
             <g clipPath="url(#ge-coin)">
               <path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 L 30.65 -27.62 Z" fill="oklch(58% 0.16 152)" />
               <path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 L 30.65 -27.62 Z" fill="oklch(60% 0.18 22)" />
-              <line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke={GOLD} strokeWidth="2" strokeLinecap="round" />
+              <line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke={NEEDLE} strokeWidth="2" strokeLinecap="round" />
               <text
                 x="50"
                 y="55"

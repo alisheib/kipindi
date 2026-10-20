@@ -669,7 +669,7 @@ function g1Tabs(I: Impl, W: World, ok: Ok) {
     ],
     {
       en: { nav: { updown: "Up & Down" }, journey: { tabTickets: "My tickets", tabTicketsShort: "My tickets", tabAccount: "Account" } },
-      sw: { nav: { updown: "Juu/Chini" }, journey: { tabTickets: "Tiketi zangu", tabAccount: "Akaunti" } },
+      sw: { nav: { updown: "Juu na Chini" }, journey: { tabAccount: "Akaunti" } },
     },
   );
   const flagged = (s: string) => ctl.some((p) => p.includes(s));
@@ -722,13 +722,13 @@ const DENY: Array<string | null> = [
   "/wallet", "/wallet/withdraw", "/wallet/depositx", "/help", "/account", "/profile", "/profile/kyc",
   "/profile/responsible-gambling", "/positions/performance", "/positions/pos_1", "/auth/login", "/s",
 ];
-/** What the two older predicates answered before S6 — a frozen record, so an edit to either is a decision. */
+/** The current route decision; U43 added a one-click stake to the Up & Down board. */
 const GOLDEN: Array<[string | null, boolean, boolean]> = [
   [null, false, false], ["", false, false], ["/", false, false],
   ["/wallet", true, true], ["/wallet/", true, true], ["/wallet/deposit", true, true], ["/wallet/deposit/return", true, true],
   ["/wallet/withdraw", true, true], ["/walletx", false, false],
   ["/markets", false, false], ["/markets/mkt_abc", false, true], ["/markets/mkt_abc/x", false, true],
-  ["/updown", false, false], ["/updown/udr_1", false, true], ["/updown/history", false, true],
+  ["/updown", false, true], ["/updown/udr_1", false, true], ["/updown/history", false, true],
   ["/proposals", false, false], ["/proposals/new", false, true], ["/proposals/new/x", false, true], ["/proposals/newer", false, false],
   ["/positions", false, false], ["/profile", false, false], ["/help", false, false],
 ];
@@ -738,6 +738,7 @@ const VERBATIM = [
   "export function isMoneySurface(path: string | null): boolean {",
   String.raw`const MONEY_ROUTE = /^\/wallet(\/|$)/;`,
   String.raw`  /^\/markets\/[^/]+/,`,
+  String.raw`  /^\/updown\/?$/,`,
   String.raw`  /^\/updown\/[^/]+/,`,
   String.raw`  /^\/proposals\/new(\/|$)/,`,
 ];
@@ -761,7 +762,7 @@ function g2Surfaces(I: Impl, W: World, ok: Ok) {
   for (const p of ALLOW) ok(`2.allow.${p} · a journey surface`, I.journeySurface(p) === true);
   for (const p of DENY) ok(`2.deny.${pathName(p)} · not a journey surface (named or nothing)`, I.journeySurface(p) === false);
   for (const [p, money, commit] of GOLDEN) {
-    ok(`2.golden.${pathName(p)} · money ${money}, commit ${commit} — as before S6`,
+    ok(`2.golden.${pathName(p)} · money ${money}, commit ${commit} — current route decision`,
       I.moneySurface(p) === money && I.commitSurface(p) === commit, `money ${I.moneySurface(p)}, commit ${I.commitSurface(p)}`);
   }
   for (const [rel, allowed] of MAY_IMPORT) {
@@ -1038,8 +1039,8 @@ const OVERLAY_TERM = "journeyOn && isJourneySurface(pathname) && !notFoundShown"
  * with the term false, the expression is today's.
  */
 const OVERLAY_JOINS: ReadonlyArray<{ id: string; file: string; says: string; today: string; join: string; end: string }> = [
-  { id: "needle", file: OVERLAY_NEEDLE, says: "the Needle hides where it hid, and for a journey viewer on a journey page",
-    today: "const suppressed = hiddenPref || isMoneySurface(pathname)", join: ` || (${OVERLAY_TERM})`, end: ";" },
+  { id: "needle", file: OVERLAY_NEEDLE, says: "the Needle keeps the U43 stand-down and hides for a journey viewer on a journey page",
+    today: "const suppressed = hiddenPref || isMoneySurface(pathname) || suppressNeedleOnU43(pathname)", join: ` || (${OVERLAY_TERM})`, end: ";" },
   { id: "needle.deps", file: OVERLAY_NEEDLE, says: "its gate runs again when the flag goes up or down",
     today: "}, [hiddenPref, pathname", join: ", journeyOn, notFoundShown", end: "]);" },
   { id: "channels.eligible", file: OVERLAY_CHANNELS, says: "the channels panel is eligible where it was, and never on a journey page for a journey viewer",
@@ -1049,8 +1050,8 @@ const OVERLAY_JOINS: ReadonlyArray<{ id: string; file: string; says: string; tod
 const OVERLAY_GUARDS: ReadonlyArray<{ id: string; file: string; says: string; pinned: string; guard: string }> = [
   { id: "channels.render", file: OVERLAY_CHANNELS, says: "its render refuses too, straight after the pinned route-and-break guard",
     pinned: "if (promoSuppressed || suppressedRoute(pathname)) return null;", guard: "if (journeyHidden) return null;" },
-  { id: "chat", file: OVERLAY_CHAT, says: "the chat bubble stands down straight after its HIDE_ON guard",
-    pinned: "if (pathname && HIDE_ON.test(pathname)) return null;", guard: `if (${OVERLAY_TERM}) return null;` },
+  { id: "chat", file: OVERLAY_CHAT, says: "the journey stand-down follows the U43 route stand-down",
+    pinned: "if (suppressChatOnU43(pathname)) return null;", guard: `if (${OVERLAY_TERM}) return null;` },
 ];
 /**
  * The HIDE_ON patterns as `test:marketing-optout` and `test:social-panel` read them, each backslash spelled "~": they
@@ -1675,9 +1676,9 @@ function g7Header(W: World, ok: Ok) {
   // ⭐ RE-PINNED IN THE OPEN 2026-10-17 (PHOSPHOR-MIGRATION W2): the gap is the deposit arrow's — Phosphor's arrow-line-down
   // Bold starts its ink at x28 of 256, 1.53px at 14px (the hand-drawn "+" freed 2.55 of 24, 1.49px) — so the padding is
   // calc(11px + 28 * 14px / 512), half the gap a side.
-  ok("7.pill · ↓ Weka pesa is the kit's gilt pill at the 44px rung, padded 12px below 360 and from 360 A5's 22px plus the arrow's freed 1.53px shared evenly, named by its words",
+  ok("7.pill · ↓ Weka pesa is the kit's brand pill at the 44px rung, padded 12px below 360 and from 360 A5's 22px plus the arrow's freed 1.53px shared evenly, named by its words",
     pillRule.includes("padding: 0 12px;") && minWidthRule(css, 360, ".kp-jhdr__pill").includes("padding: 0 calc(11px + 28 * 14px / 512)")
-      && bar.includes(`className="btn gilt-metal btn-md btn-pill kp-jhdr__pill"`) && bar.includes(`href="/wallet/deposit"`)
+      && bar.includes(`className="btn btn-primary btn-md btn-pill kp-jhdr__pill"`) && bar.includes(`href="/wallet/deposit"`)
       && bar.includes("aria-label={t.journey.depositAction}") && bar.includes(`data-testid="journey-deposit"`),
     show({ pillRule, from360: minWidthRule(css, 360, ".kp-jhdr__pill") }));
   ok("7.figure · the capsule's figure is 12px below 360 and 14px from 360, and its padding 10px (the capsule's own rules, WP4)",
@@ -1918,13 +1919,17 @@ function g8Tabs(I: Impl, W: World, G: Graph, ok: Ok) {
       && minWidthRule(css, 360, ".kp-jtab__label").includes("white-space: nowrap")
       && rail.includes(`<span className="kp-rail__label kp-jtab__label">`),
     baseRule(css, ".kp-jtab__label"));
-  // ⭐ S5-TAB (the lead's rulings, 2026-10-19) · THE SAME MEASURE WITH FIVE TABS, in the words the rail says (the tickets
-  // tab's short rail label: sw "Tiketi", en "Tickets", zh 我的注单): every label of every language fits ONE line in its fifth
-  // of a 320 phone — 320 is one of the five widths we hold — so no five-tab label needs the wrap.
+  // S5-TAB's short tickets label still fits a fifth of a 320 phone. U43's full Swahili game name, Juu na Chini,
+  // takes two centred lines in the five-tab rail at 320 and 360; every other label fits one line.
   const five = railWords(I.tabsFor(true));
   const over320f = five.filter((l) => oneLine(l.s) > 320 / 5);
-  ok("8.label.measure.five · with five tabs, measured: every label in sw, en and zh — the tickets tab's short rail label among them — fits one line in its fifth of a 320 phone, so none needs the wrap",
-    Number.isFinite(micro) && Number.isFinite(pad) && five.length === 15 && over320f.length === 0,
+  const over360f = five.filter((l) => oneLine(l.s) > 360 / 5);
+  const swGame = (l: (typeof five)[number]) => l.loc === "sw" && l.key === "updown" && l.s === "Juu na Chini";
+  ok("8.label.measure.five · the only five-tab label over its track at 320 and 360 is Swahili Juu na Chini; it fits two lines and each word fits the 320 track",
+    Number.isFinite(micro) && Number.isFinite(pad) && five.length === 15
+      && over320f.length === 1 && over360f.length === 1 && swGame(over320f[0]) && swGame(over360f[0])
+      && linesIn(over320f[0].s, 320 / 5) === 2
+      && over320f[0].s.split(" ").every((w) => oneLine(w) <= 320 / 5),
     show({ over320: over320f.map((l) => `${l.loc} ${l.s} ${oneLine(l.s).toFixed(1)} > ${320 / 5}`) }));
   ok("8.label.five · the rail says each tab's rail label where it has one (the tickets tab's short words among five); the desktop link keeps the label, which its page is titled by",
     rail.includes("const label = tabLabel(t, d.railLabel ?? d.label);") && !bar.includes("railLabel") && count(bar, "tabLabel(t, d.label)") === 3);
@@ -1941,18 +1946,23 @@ function g8Tabs(I: Impl, W: World, G: Graph, ok: Ok) {
     !wraps || (align.below.includes("justify-content: flex-start") && align.from360.includes("justify-content: center")
       && Object.values(perLang).every((r) => r.includes("justify-content: center")) && fitsFrom.sw > 320 && fitsFrom.en <= 320 && fitsFrom.zh <= 320),
     show(align));
-  // ⭐ S5-TAB · R9-C's rule with FIVE tabs: the slots centre from five times the longest rail word — the same 317 in every
-  // language ("Juu/Chini", "Millionea", "Questions", "Up & Down", each 63.4px) — so ONE rule on the five-tab nav centres them
-  // from 317, every width we hold; below it (no width we hold) they would stack from the top, as R9-C's rule says.
+  // U43's full Swahili game name moves only that locale's five-tab centring threshold to 416. English and Chinese
+  // still centre from 317; Swahili keeps its pips top-aligned while the name wraps at 320 and 360.
   const FIVE = `.kp-rail--journey[data-tabs="5"]`;
   const fitsFrom5 = Object.fromEntries((["en", "sw", "zh"] as const).map((loc) => [loc, Number((5 * Math.max(...five.filter((l) => l.loc === loc).map((l) => oneLine(l.s)))).toFixed(1))]));
-  const from5 = Math.max(...Object.values(fitsFrom5));
-  const align5 = { below: baseRule(css, `${FIVE} .kp-rail__item`), from: minWidthRule(css, from5, `${FIVE} .kp-rail__item`), fitsFrom: fitsFrom5,
-    perLang: (["en", "sw", "zh"] as const).filter((loc) => css.includes(`${FIVE}:lang(${loc})`)) };
-  ok("8.align.five · with five tabs every language's longest rail word fits its fifth from the same width, 317, so one rule centres the slots from there (they stack from the top only below it) — centred at every width we hold",
-    !wraps || (align5.below.includes("justify-content: flex-start") && align5.from.includes("justify-content: center") && align5.perLang.length === 0
-      && from5 <= 320 && Object.values(fitsFrom5).every((w) => w === from5)),
-    show({ ...align5, from5 }));
+  const SW_FIVE = `${FIVE}:lang(sw)`;
+  const align5 = { below: baseRule(css, `${FIVE} .kp-rail__item`), from317: minWidthRule(css, fitsFrom5.en, `${FIVE} .kp-rail__item`),
+    swAt317: minWidthRule(css, fitsFrom5.en, `${SW_FIVE} .kp-rail__item`),
+    swAt416: minWidthRule(css, fitsFrom5.sw, `${SW_FIVE} .kp-rail__item`), fitsFrom: fitsFrom5 };
+  ok("8.align.five · EN/ZH centre from 317; SW keeps pips aligned while Juu na Chini wraps and centres from its measured 416px threshold",
+    !wraps || (align5.below.includes("justify-content: flex-start") && align5.from317.includes("justify-content: center")
+      && align5.swAt317.includes("justify-content: flex-start") && align5.swAt416.includes("justify-content: center")
+      && fitsFrom5.en === 317 && fitsFrom5.zh === 317 && fitsFrom5.sw === 416),
+    show(align5));
+  const swLabel = { below: baseRule(css, `${SW_FIVE} .kp-jtab__label`), from416: minWidthRule(css, fitsFrom5.sw, `${SW_FIVE} .kp-jtab__label`) };
+  ok("8.label.five.sw-wrap · the full Swahili game name wraps at 320 and 360 without ellipsis, then returns to one line from 416",
+    swLabel.below.includes("white-space: normal") && swLabel.below.includes("text-overflow: clip")
+      && swLabel.from416.includes("white-space: nowrap"), show(swLabel));
 
   // ⛔ ONE UNREAD POLLER PER WIDTH (the WP3 review's cost, VODACOM-PLAN §0h point 16).
   const both = ([null, true, false] as const).filter((w) => I.pollers(w).bell && I.pollers(w).dot);
@@ -3006,6 +3016,7 @@ if (!PROVE_RED) {
     /** A22's defect: /watchlist taken into the journey surfaces, so its Needle, panel and chat bubble stand down. */
     const takesWatchlist = (p: string | null) => p === "/watchlist" || SURF.isJourneySurface(p);
     const dropsHome = (p: string | null) => p !== "/" && SURF.isJourneySurface(p);
+    const forgetsUpdownBoard = (p: string | null) => p !== "/updown" && p !== "/updown/" && SURF.isCommitSurface(p);
     const forgetsRounds = (p: string | null) => SURF.isCommitSurface(p) && !(p ?? "").startsWith("/updown/");
     const pillOnBreak: Impl["header"] = (i) => ({ ...HDR.journeyHeaderState(i), pill: HDR.journeyHeaderState({ ...i, onBreak: false }).pill });
     const pillWhenHeld: Impl["header"] = (i) => ({ ...HDR.journeyHeaderState(i), pill: HDR.journeyHeaderState({ ...i, walletHeld: false }).pill });
@@ -3320,12 +3331,13 @@ ${s}`);
     const moreReturns = withFile(WORLD, JTABS, (s) => s.replace("</ul>", `</ul><NavMore items={[]} label="" variant="rail" />`));
     const railSaysPage = withFile(WORLD, JTABS, (s) => s.replace("aria-current={tabAriaCurrent(pathname, d.key, tabs)}", `aria-current={on ? "page" : undefined}`));
     // S5-TAB's rail plants: four tabs whatever the shell answers; the tickets tab's long words among five; the five-track
-    // grid gone; Swahili's five-tab centring keyed at the four's width; the five-tab slots centred where English wraps.
+    // grid gone; centring shifted off the measured width; Swahili's two-line full game name forced onto one line.
     const railFour = withFile(WORLD, JTABS, (s) => s.replace("const tabs = journeyTabsFor(millionea);", "const tabs = journeyTabsFor(false);"));
     const railLongWords = withFile(WORLD, JTABS, (s) => s.replace("const label = tabLabel(t, d.railLabel ?? d.label);", "const label = tabLabel(t, d.label);"));
     const fiveInFour = withCss((s) => s.replace(`${LF}.kp-rail--journey[data-tabs="5"] > ul { grid-template-columns: repeat(5, minmax(0, 1fr)); }`, ""));
     const fiveAt350 = withCss((s) => s.replace(`@media (min-width: 317px) { .kp-rail--journey[data-tabs="5"] .kp-rail__item {`, `@media (min-width: 350px) { .kp-rail--journey[data-tabs="5"] .kp-rail__item {`));
     const fiveCentredBelow = withCss(inRule(`.kp-rail--journey[data-tabs="5"] .kp-rail__item`, "justify-content: flex-start", "justify-content: center"));
+    const fiveSwNoWrap = withCss(inRule(`.kp-rail--journey[data-tabs="5"]:lang(sw) .kp-jtab__label`, "white-space: normal", "white-space: nowrap"));
     const accountNamed = withFile(WORLD, JTABS, (s) => s.replace("<Link", "<Link aria-label={tabLabel(t, d.label)}"));
     const guestCancelled = withFile(WORLD, JTABS, (s) => s.replace("<button", `<Link href="/positions" onClick={(e) => e.preventDefault()}`).replace("</button>", "</Link>"));
     const dotOnDesktop = withFile(WORLD, JTABS, (s) => s.replace(" && pollers.dot", ""));
@@ -3558,6 +3570,8 @@ ${s}`);
         impl: { journeySurface: takesWatchlist }, landed: takesWatchlist("/watchlist"), landedAs: "the watchlist loses its overlays" },
       { name: "isJourneySurface drops /", expect: at("2.allow./ ·"),
         impl: { journeySurface: dropsHome }, landed: !dropsHome("/"), landedAs: "the home board keeps every overlay for a journey viewer" },
+      { name: "the commit gate forgets the Up & Down board's one-click stake", expect: at("2.golden./updown ·"),
+        impl: { commitSurface: forgetsUpdownBoard }, landed: !forgetsUpdownBoard("/updown"), landedAs: "an invitation may sit on the board's stake buttons" },
       { name: "the commit gate forgets Up & Down rounds", expect: at("2.golden./updown/udr_1 ·"),
         impl: { commitSurface: forgetsRounds }, landed: !forgetsRounds("/updown/udr_1"), landedAs: "an invitation may sit on a round's commit" },
       { name: "surfaces.ts gains an import", expect: at(`2.pure.${SURFACES} ·`),
@@ -3822,9 +3836,11 @@ ${s}`);
       { name: "the rail's tickets tab says its long words among five (S5-TAB)", expect: at("8.label.five ·"),
         world: railLongWords, landed: changed(railLongWords, JTABS), landedAs: "\"Tiketi zangu\" in a 72px fifth of a 360 phone" },
       { name: "the five tabs' centring keyed at the old English width, 350 (S5-TAB)", expect: at("8.align.five ·"),
-        world: fiveAt350, landed: cssChanged(fiveAt350), landedAs: "on a 320 phone the five slots stack from the top, though every label fits one line from 317" },
+        world: fiveAt350, landed: cssChanged(fiveAt350), landedAs: "on a 320 phone EN/ZH slots stack from the top although their labels fit from 317" },
       { name: "the five-tab slots centred below their width (S5-TAB)", expect: at("8.align.five ·"),
         world: fiveCentredBelow, landed: cssChanged(fiveCentredBelow), landedAs: "below 317 a slot whose label no longer fits would lift its pip above the others" },
+      { name: "Swahili's full five-tab game name forced onto one line (U43/S5)", expect: at("8.label.five.sw-wrap ·"),
+        world: fiveSwNoWrap, landed: cssChanged(fiveSwNoWrap), landedAs: "Juu na Chini is ellipsised on the 320 and 360 phone rails" },
       { name: "a tab says page for its whole section (A12)", expect: at("8.aria ·"),
         world: railSaysPage, landed: changed(railSaysPage, JTABS), landedAs: "the board announces Maswali as the current page" },
       { name: "a tab link gets an aria-label", expect: at("8.name ·"),

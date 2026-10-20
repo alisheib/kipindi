@@ -238,7 +238,9 @@ section("2 · F1 F4 + H1's siblings: every market title is balanced and keeps it
     // Round 7 (R7-A) moved this pin: the white space after a hyphen token is its own text node (`afterRun`), the words `rest`.
     { name: "/live's wall", file: "src/app/live/pulse-grid.tsx", draws: [`<>{lead}{keepFigures(rest)}</>`, `<KeepHyphenated text={title} />`],
       balanced: (s) => /font-display text-\[13\.5px\] font-semibold leading-snug text-text text-balance/.test(s) },
-    { name: "/results' notable result", file: "src/app/results/page.tsx", draws: [`{keepFigures(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh))}`],
+    // U43 B5, 2026-10-20: results now names an Up & Down round through the shared marketDisplayTitle;
+    // keepFigures still protects the displayed figures. Re-pin the actual call, not the old plain-market helper.
+    { name: "/results' notable result", file: "src/app/results/page.tsx", draws: [`{keepFigures(marketDisplayTitle(t, locale, m))}`],
       // The hover ink is R5-C's (the second gold audit moved it gold-100 → brand-200 on this title; merged 2026-10-09).
       balanced: (s) => cls(s, `font-semibold leading-tight text-text text-balance group-hover:text-brand-200">`) },
     { name: "the proposals board", file: "src/app/proposals/page.tsx", draws: [`text-balance">{keepFigures(pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh))}</p>`],
@@ -282,7 +284,9 @@ section("2 · F1 F4 + H1's siblings: every market title is balanced and keeps it
   ok("2.2″ PLANT · a surface that loses its balance or its keepFigures is reported",
     // R8-A (2026-10-10): the plant follows the pin above — the title hovers in the link blue's step now (ruling (2)).
     surfaceFault(SURFACES[4], code(SURFACES[4].file).replace("text-text text-balance group-hover:text-brand-200", "text-text group-hover:text-brand-200")).length > 0
-      && surfaceFault(SURFACES[6], code(SURFACES[6].file).replace("{keepFigures(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh))}", "{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}")).length > 0);
+      && surfaceFault(SURFACES[6], code(SURFACES[6].file).replace("{keepFigures(marketDisplayTitle(t, locale, m))}", "{marketDisplayTitle(t, locale, m)}")).length > 0);
+  ok("2.2⁗ PLANT · the notable result bypasses the shared Up & Down title name",
+    surfaceFault(SURFACES[6], code(SURFACES[6].file).replace("{keepFigures(marketDisplayTitle(t, locale, m))}", "{keepFigures(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh))}")).length > 0);
   // The bet dialog draws its title with keepText (its last two words, R4-I) AND the cards' figure runs.
   const dialog = keptRanges("Je, mkimbiaji wa Tanzania atavunja dakika 28:00 kwenye 10K ya World Athletics ijayo?", figureRuns("Je, mkimbiaji wa Tanzania atavunja dakika 28:00 kwenye 10K ya World Athletics ijayo?"))
     .map(([a, b]) => "Je, mkimbiaji wa Tanzania atavunja dakika 28:00 kwenye 10K ya World Athletics ijayo?".slice(a, b));

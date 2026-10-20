@@ -8,6 +8,19 @@
 
 ---
 
+## 2026-10-20 · U43 Twelve Data use — owner attestation
+
+**Authority.** Ali, in the U43 Release B session, stated that 50pick has a full Twelve Data licence for its use in
+Tanzania and instructed the release team to mark the data-rights question done and proceed with the existing feed.
+This records Ali's attestation and direction. The session verified that the production key returns valid BTC/USD and
+XAU/USD UTC minute bars, but did not inspect a separate vendor agreement or infer permission from the key alone.
+
+**Implementation boundary.** Keep the existing Twelve Data source and the exact-minute-bar-open settlement rule.
+Do not change the source of an existing round, invent a price, buy a plan or expose a credential. U43's other release
+gates and production read-back still apply.
+
+---
+
 ## 2026-10-19 · Up & Down and the market cards (MOBILE-VISUAL U43): a live line inside the round card, the slim card, visible filters, no odds on any card choice (owner rulings)
 
 **Authority.** Ali, 2026-10-19, to the U43 session (OMEGA-COMPILE01, asheib-54), after the eight-lens critics read of
@@ -16,7 +29,7 @@ market cards: *"for market cards we can remove odds please, keep yes and no only
 plan perfectly cleanly"*. Then his choice of the option offered, for each of four questions:
 
 1. **Charts — "Live line in the card"** (offered beside "No chart by default" and "Big chart by default"). The Up & Down
-   round a player can bet on carries a small line of the price since the round opened, with the round's price to beat as
+   round a player can bet on carries a small line of the price since the round opened, with the opening reference price as
    a dashed reference line, drawn from the same market feed the result is read from, every point timed. The board's
    chart view (DESIGN_AUTHORITY §B12.6's lab) stays one tap away and is fixed so that it never shows a different price
    from the card. ⭐ This **reverses in part** the closing order of 2026-09-04, *"no need for round chart — remove it for
@@ -27,10 +40,15 @@ plan perfectly cleanly"*. Then his choice of the option offered, for each of fou
    - the house desk reads that same cache (`peekVendorBar`, [`HOUSE-BOTS.md`](HOUSE-BOTS.md)), so a warm one-minute cache
      gives it fresher prices and it stakes on more rounds. Its limits are unchanged.
 2. **The round card — "Slim card"** (offered beside "Keep every detail, polish only"). One line per fact: which round it
-   is (its time window), the price to beat once, the time left beside it, the pool, players and split, then the stake
+   is (its time window), the opening reference price once, the time left beside it, the pool, players and split, then the stake
    chips and Up/Down.
    - Removed: the ±$0.02 target tiles, the repeated price, the empty clock boxes and the status said three times.
    - The source-and-time line stays, merged into one line.
+
+   **2026-10-20 implementation clarification:** The opening price is the chart's dashed reference, not a winning
+   boundary. The round has separate frozen Up and Down targets. A close strictly between them voids and refunds stakes;
+   the exact targets appear on round details before a bet. The compact card says that a small move may refund. This
+   clarifies the earlier "price to beat" shorthand without changing Ali's card or chart choice or the settlement rule.
 3. **The phone filter — "Visible chips"** (offered beside "Keep the Filters button"). On a phone the assets and durations
    are two short rows of chips, one tap to switch, with no sheet. The sheet returns by itself only when the choices stop
    fitting.
@@ -473,6 +491,11 @@ reflected as well. mark this as decision, keep up and down only"*. The rule in f
    fixed odds. It is not a promise until betting closes."* (sw and zh alike). The binding words moved, so the document is
    re-dated **v2026-10-14** (`src/app/legal/rules/up-down/page.tsx`). **Why no notice:** nothing a player may do, and no
    figure a player is paid, changed — the sentence now names the figure the platform actually shows.
+
+   **2026-10-20 implementation correction:** The last clause above could imply that betting close alone guarantees
+   payment. The receipt qualifier and the three binding Rules translations at v2026-10-20 now state that lock fixes only the conditional
+   return for a winning pick. It is paid only if that pick wins; a voided round returns the stake. The settlement rule
+   and amount computation are unchanged.
 
 **What it supersedes, in part.** `UPDOWN-FINAL-DESIGN.md` D2 part 1 ("a live, pool-implied multiplier" on the card) — the
 card half only; D2 part 2, the empty-side state, stands. The Vodacom record's S4 canvas call "Juu/Chini keeps its own side

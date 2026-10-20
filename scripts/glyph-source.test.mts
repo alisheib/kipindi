@@ -45,8 +45,6 @@ const IMPORTS_PHOSPHOR = /(?:\bfrom\s*|\bimport\s*\(?\s*|\brequire\s*\(\s*)["']@
  * mark, vendor marks, generated images) or are the family itself.
  */
 const SVG_RATCHET: Record<string, [count: number, why: string]> = {
-  "src/app/api/og/market/[id]/route.tsx": [2, "the share image, rendered to PNG on the server"],
-  "src/app/api/og/page/route.tsx": [1, "the share image, rendered to PNG on the server"],
   "src/app/global-error.tsx": [1, "the brand mark on the last-resort error page, which cannot import components"],
   "src/components/admin/admin-charts.tsx": [4, "charts"],
   "src/components/badges/Badge.tsx": [1, "the badge medallion's ring (R-BADGES: identity art)"],
@@ -56,6 +54,7 @@ const SVG_RATCHET: Record<string, [count: number, why: string]> = {
   "src/components/charts/micro-spark.tsx": [1, "a chart"],
   "src/components/charts/pnl-chart.tsx": [1, "a chart"],
   "src/components/charts/ring.tsx": [1, "a chart"],
+  "src/components/charts/round-live-line.tsx": [1, "the Up & Down minute-open price chart (U43 B2), not an icon"],
   "src/components/charts/updown-match-track.tsx": [2, "a chart"],
   "src/components/charts/volume-spark.tsx": [1, "a chart"],
   // PHOSPHOR-MIGRATION release 2: 2 → 1 — the two-tone `NeedleMark` is the family's `needle` in Duotone (§8a).
@@ -77,7 +76,7 @@ const SVG_RATCHET: Record<string, [count: number, why: string]> = {
   "src/components/ui/social-marks.tsx": [3, "vendor marks (Instagram, TikTok, WhatsApp) in their own colours"],
   "src/components/ui/spinner.tsx": [1, "the spinner"],
   "src/components/updown/price-hero.tsx": [1, "a chart"],
-  "src/lib/brand-mark.ts": [3, "the brand mark's source drawings"],
+  "src/lib/brand-mark.ts": [4, "the brand mark and exported lockup source drawings"],
   "src/lib/offline-document.ts": [3, "the offline page, which cannot load the app's components"],
 };
 
@@ -86,6 +85,8 @@ const FRAMES_256 = new Set(["src/components/ui/glyphs.tsx", "src/lib/offline-doc
 
 /** SVG drawn as a data URI in src/ — the 2026-10-17 census, each file and how many, each with its reason. */
 const DATA_SVG: Record<string, [count: number, why: string]> = {
+  "src/app/api/og/market/[id]/route.tsx": [1, "the one-source brand mark embedded in the PNG share image"],
+  "src/app/api/og/page/route.tsx": [1, "the one-source brand mark embedded in the PNG share image"],
   "src/components/layout/needle.css": [1, "the Needle's drag cursor: a CSS cursor takes an image, never an element (W7 draws it from the family's rotateCcw)"],
 };
 const DATA_SVG_RE = new RegExp("data:image[/]svg[+]xml", "g");
@@ -126,7 +127,6 @@ const TEXT_ICONS: Record<string, [count: number, why: string]> = {
   "src/app/updown/history/page.tsx": [3, TYPOGRAPHY],
   "src/components/brand.tsx": [3, TEMPLATE_COMMENT],
   "src/components/layout/wallet-balance-pill.tsx": [1, TEMPLATE_COMMENT],
-  "src/components/updown/updown-card.tsx": [1, TYPOGRAPHY],
   "src/lib/affiliate-rules.ts": [1, TYPOGRAPHY],
   "src/lib/ai-cycle-rules.ts": [2, `${TYPOGRAPHY} ("USD→TZS", a rate's two currencies)`],
   "src/lib/chat/send-message.ts": [10, "the support chatbot's instructions and answers about paths — not an interface"],
@@ -300,6 +300,10 @@ const plants: [string, RegExp, World][] = [
   ["a new page hand-draws an icon", /§3 src\/app\/zz-new\/page\.tsx draws 1 inline <svg>/, withFile("src/app/zz-new/page.tsx", "export default function P() { return <svg viewBox=\"0 0 24 24\"><path d=\"M1 1\"/></svg>; }\n")],
   ["a listed file draws one more", /§3 src\/components\/ui\/button\.tsx draws 2 inline <svg>, more than its 1/, edit("src/components/ui/button.tsx", (t) => t + "\nexport const Z = () => <svg><path d=\"M1 1\"/></svg>;\n")],
   ["a listed file draws fewer and the list is not lowered", /§3 src\/components\/ui\/spinner\.tsx no longer draws/, edit("src/components/ui/spinner.tsx", (t) => t.split("<svg").join("<span"))],
+  ["U43's price chart gains an unreviewed second drawing", /§3 src\/components\/charts\/round-live-line\.tsx draws 2 inline <svg>, more than its 1/,
+    edit("src/components/charts/round-live-line.tsx", (t) => t + "\nexport const EXTRA = () => <svg viewBox=\"0 0 24 24\" />;\n")],
+  ["U43's price chart vanishes while its exception remains", /§3 src\/components\/charts\/round-live-line\.tsx no longer draws/,
+    edit("src/components/charts/round-live-line.tsx", (t) => t.split("<svg").join("<span"))],
   ["a hand-drawn 256-grid glyph", /§4 src\/app\/zz-new\/icon\.tsx draws on the 256 grid by hand/, withFile("src/app/zz-new/icon.tsx", 'export const V = "x"; const a = <path />; const vb = <g viewBox="0 0 256 256" />;\n')],
   ["a stylesheet draws an icon as a data URI", new RegExp("§5 src/app/zz-new/page[.]css draws 1 SVG as a data URI"),
     { ...world, css: new Map([...world.css, ["src/app/zz-new/page.css", ".x { background: url(\"data:image/svg+xml;utf8,<svg/>\"); }"]]) }],

@@ -1,13 +1,11 @@
 "use client";
 
-import type { CSSProperties } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { I, type GlyphKey } from "@/components/ui/glyphs";
 import { NavGlyph } from "@/components/ui/nav-glyph";
 import { useT } from "@/lib/i18n";
 import { NavMore } from "@/components/layout/nav-more";
-import { MARK } from "@/lib/brand-mark";
 import type { ProposalsState } from "@/lib/server/proposals-config";
 
 /**
@@ -29,7 +27,7 @@ import type { ProposalsState } from "@/lib/server/proposals-config";
  * extra code. It also STAYS in the desktop header's `CORE_ITEMS` (§3 of the same update): the
  * phone toolbar was the request, and no primary destination is hidden on a tablet or a laptop.
  *
- * ⚠️ ONE DEPOSIT PER SCREEN. Below 1024 this coin is the only one and the header's gold pill
+ * ⚠️ ONE DEPOSIT PER SCREEN. Below 1024 this coin is the only one and the header's deposit pill
  * yields (`top-app-bar.tsx`, `hidden lg:inline-flex`); at 1024 and up this rail is absent
  * (`lg:hidden`) and the pill is the only one. `qa:landing-ten` V25 is what holds that true.
  *
@@ -72,9 +70,8 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
    *  the middle track. The grid below is still five equal tracks. */
   const items = [
     { href: "/markets", glyph: "markets" as const,    label: t.common.markets },
-    /* 2026-09-14 — the rail has its own short label (`nav.updown`): the product title "Juu na Chini"
-       cannot fit a fifth of a 360 phone and read "Juu na Ch…" on every Swahili page. The accessible
-       name stays the VISIBLE label (WCAG 2.5.3 label-in-name: a voice user says what they see). */
+    /* The full product name wraps in the Swahili phone rail. The accessible name stays
+       the visible label (WCAG 2.5.3 label-in-name: a voice user says what they see). */
     // One meaning, one glyph (PHOSPHOR-MIGRATION R-LEXICON): Up & Down is `trade` in both shells; Live is `live`.
     { href: "/updown",  glyph: "trade" as const,      label: t.nav.updown, accent: true },
     { href: "/live",    glyph: "live" as const,       label: t.nav.live },
@@ -196,17 +193,6 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
          used it. One attribute is the whole fix: no z-index change, and not one line of the
          vendored do-not-edit physics touched. */
       data-needle-keepout=""
-      /* ⭐ THE MARK'S COLOURS, FROM THE ONE PLACE THEY ARE DEFINED (`lib/brand-mark.ts`, audit C11).
-         They are brand identity, not theme tokens (DESIGN_AUTHORITY B1), so they are not in
-         `globals.css` — and handing them over as custom properties keeps the coin's geometry in the
-         stylesheet while its colours stay downstream of the one definition the exported assets and
-         the in-app mark also read. ⚠️ Set on the NAV so the whole coin subtree inherits them. */
-      style={{
-        "--kp-coin-green": MARK.green,
-        "--kp-coin-red": MARK.red,
-        "--kp-coin-gold": MARK.gold,
-        "--kp-coin-pivot": MARK.pivot,
-      } as CSSProperties}
     >
       {/* 2026-09-13 — `minmax(0, 1fr)`, not `1fr`: a bare `1fr` track has an `auto` minimum, so a
           long Swahili label ("Juu na Chini", "Mubashara") widened its slot into its neighbour instead
@@ -237,9 +223,8 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
                 painted one. Both keep-outs stand; they are different rectangles. V22 asserts the
                 coin's rect sits inside one of them, because reasoning about it got it wrong once. */}
             <span className="kp-coin" aria-hidden data-needle-keepout="">
-              {/* Painted by DOM order: ring (the element's own background) → needle → face → verb.
-                  That order is what lets one gold line cross the ring and show past the rim while
-                  staying hidden under the struck disc. */}
+              {/* Painted by DOM order: ring → needle → face → verb.
+                  The deposit door uses brand colour; the actual logo keeps its artwork. */}
               <span className="kp-coin__needle" />
               <span className="kp-coin__face">
                 {walletHeld ? (
@@ -249,7 +234,7 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
                      2026-10-19 §8a). It was a hand-drawn "+": `I.plus` is a plus inside a circle, and a
                      second ring on the disc reads as a button on a button. The arrow has no ring, and at
                      24px it is the size of the rail's other glyphs (R-RAIL 4B).
-                     ⚠️ `currentColor` is the point: `.kp-coin__verb` sets the mark's navy. */
+                     ⚠️ `currentColor` is the point: `.kp-coin__verb` sets the door's brand ink. */
                   <I.arrowDownToLine s={24} className="kp-coin__verb" />
                 )}
               </span>
@@ -310,7 +295,7 @@ function RailDest({
             glyphs (R-RAIL 4B) in a 56×32 pip grown to fit them. */}
         <span className="kp-rail__pip">
           <NavGlyph glyph={glyph} on={on} s={24} />
-          {/* The product-line dot, same 5px gilt mark as the desktop nav. */}
+          {/* The product-line dot, same 5px brand mark as the desktop nav. */}
           {accent && <span className="kp-rail__dot" aria-hidden />}
         </span>
         <span className="kp-rail__label">{label}</span>

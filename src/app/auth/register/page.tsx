@@ -133,9 +133,8 @@ export default async function RegisterPage({
             subtitle={t.auth.tanzaniaMobile18}
           />
 
-          {/* ⭐ R4-I (2026-10-09, R4-K's gold audit — Q5 "gold is money, and nothing else"): a bonus IS money, so its FIGURE
-              keeps gold (`.amount`); the card around it, its gift plate, its hint and the referral code are not money and
-              wear the neutral card, the brand plate and the muted ink. They were a gilt card from edge to edge. */}
+          {/* A sign-up offer has not been won. Its amount stays formatted and readable in neutral ink;
+              the card, gift plate, hint and referral code keep their existing neutral and brand treatment. */}
           {referral && (
             <div className="overflow-hidden rounded-xl border border-border bg-bg-elevated">
               <div className="flex items-center gap-3 p-3.5">
@@ -149,7 +148,7 @@ export default async function RegisterPage({
                   {/* A sign-up offer only: the ribbon never carries a deposit-tied bonus (RG policy, 2026-09-26). */}
                   {referral.newPlayerBonusTzs > 0 && (
                     <p className="mt-1 text-body-sm font-semibold text-text-muted">
-                      {t.auth.signUpAndGet} <span className="amount text-gold-300">{formatTzs(referral.newPlayerBonusTzs)}</span> {t.auth.toStart}
+                      {t.auth.signUpAndGet} <span className="amount text-text">{formatTzs(referral.newPlayerBonusTzs)}</span> {t.auth.toStart}
                     </p>
                   )}
                 </div>
@@ -164,7 +163,7 @@ export default async function RegisterPage({
                   <I.gift s={plateGlyph(40)} tier="duo" />
                 </IconPlate>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[14px] font-bold text-text">{t.auth.claimBonus} <span className="amount text-gold-300">{formatTzs(invite.bonusAmountTzs)}</span></p>
+                  <p className="text-[14px] font-bold text-text">{t.auth.claimBonus} <span className="amount text-text">{formatTzs(invite.bonusAmountTzs)}</span></p>
                   <p className="mt-1 text-body-sm font-semibold text-text-muted">{t.auth.bonusWalletHint}</p>
                 </div>
               </div>

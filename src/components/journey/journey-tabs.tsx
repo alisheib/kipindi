@@ -12,8 +12,8 @@
  * phone, whichever shell drew it. Since PHOSPHOR-MIGRATION W3 the pip is 56×32 around a 24px glyph, and the lit tab
  * draws its Fill glyph on the opaque `--nav-pill` (`NavGlyph`; R-INDICATOR 3B, R-RAIL 4B). The nav keeps the Needle's
  * keep-out, for the reason the classic rail gives (the fidget must never take a tap meant for a tab). Below 360 alone
- * the label may wrap (A17), and there the slots stack from the top so a two-line label cannot lift its pip above
- * its neighbours' (`globals.css`, the journey rail's rules).
+ * the four-tab label may wrap (A17); the five-tab Swahili game name also wraps below 416. There the slots stack from
+ * the top so a two-line label cannot lift its pip above its neighbours' (`globals.css`, the journey rail's rules).
  *
  * ── WHAT IS NOT, AND WHY ─────────────────────────────────────────────────────────────────────────────────────────
  *   · Four tabs — five while Millionea shows — from `journeyTabsFor`, in equal tracks: no centre coin, no More, no
@@ -34,9 +34,9 @@
  * money colours as one still gradient) and its glyph rests in gold (`kp-millionea-glyph` on the pip), while a lit
  * Millionea tab takes the siblings' treatment, its Fill glyph on the pill (both in globals.css). Shown on the shell's own
  * answer (`millionea`, the one the classic chrome's Millionea doors take). While five tabs show, the nav says so
- * (`data-tabs`): five equal tracks centred from one width of their own (317: every five-tab label fits one line there,
- * in every language), and the tickets tab says its short rail label (`railLabel`). Without Millionea the rail is
- * today's, byte for byte.
+ * (`data-tabs`): five equal tracks. English and Chinese centre from 317; the full Swahili "Juu na Chini" wraps below
+ * 416 with top-aligned pips, then centres on one line. Tickets uses its short rail label (`railLabel`). Without
+ * Millionea the rail is today's, byte for byte.
  */
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";

@@ -24,6 +24,7 @@ import { randomId } from "./crypto";
 import { emit } from "./event-bus";
 import type { StoredNotification } from "./store";
 import { formatTzs } from "@/lib/utils";
+import { emergencyRefundDestination } from "@/lib/emergency-refund-destination";
 // 2026-09-13 · the one review-wait number every surface quotes (the submitted notice and the officer's
 // overdue-review alert), and the label that alert names a player by.
 import { KYC_REVIEW_SLA_HOURS } from "@/lib/kyc-sla";
@@ -1279,38 +1280,39 @@ export function notifyRefund(userId: string, opts: { stake: number; marketTitle:
   });
 }
 
-/** Player notice: a market they had a stake in was cancelled (emergency void).
- *  Carries the admin's reason and confirms the full refund.
+/** Player notice: a still-held stake was refunded by an emergency void.
+ *  Carries the admin's reason and the actual real/bonus destination.
  *  🔴 ROUND 3 (2026-10-09, tile 192): it read "…before settlement.. Dau lako lote limerejeshwa kwenye pochi yako.
  *  · pos_34d10350dfa7510cfad5" — the officer's reason kept its own full stop under the template's, and the position
  *  id was appended to the sentence. `endClause` ends the reason once, in the reader's own stop; the id rides the
  *  link, which opens the refunded ticket on its market's page (it opened /wallet, and one link for every refund of a
- *  market is why the id had to be in the words). The wallet is still where the sentence says the money went. */
-export function notifyMarketCancelled(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; reason: string; positionId?: string }) {
+ *  market is why the id had to be in the words). */
+export function notifyMarketCancelled(userId: string, opts: { stake: number; bonusStakeTzs: number; marketTitle: LocalizedText; marketId: string; reason: string; positionId?: string }) {
+  const destination = emergencyRefundDestination(opts.stake, opts.bonusStakeTzs);
   return notify({
     userId,
-    kind: "REFUND", // money returned to the wallet
+    kind: "REFUND", // the message names credits at refund; current balances can reflect a bonus re-lock
     titleEn: `Market cancelled · ${formatTzs(opts.stake)} refunded`,
     titleSw: `Soko limefutwa · ${formatTzs(opts.stake)} imerejeshwa`,
     titleZh: `市场已取消 · 已退款 ${formatTzs(opts.stake)}`,
-    bodyEn: `"${clipQuote(opts.marketTitle.en, 60)}" was cancelled: ${endClause(clipQuote(opts.reason, 120), ".")} Your full stake has been returned to your wallet.`,
-    bodySw: `"${clipQuote(opts.marketTitle.sw, 60)}" limefutwa: ${endClause(clipQuote(opts.reason, 120), ".")} Dau lako lote limerejeshwa kwenye pochi yako.`,
-    bodyZh: `"${clipQuote(opts.marketTitle.zh, 60)}" 已取消：${endClause(clipQuote(opts.reason, 120), "。")}您的本金已全额退回钱包。`,
+    bodyEn: `"${clipQuote(opts.marketTitle.en, 60)}" was cancelled: ${endClause(clipQuote(opts.reason, 120), ".")} ${destination.en}`,
+    bodySw: `"${clipQuote(opts.marketTitle.sw, 60)}" limefutwa: ${endClause(clipQuote(opts.reason, 120), ".")} ${destination.sw}`,
+    bodyZh: `"${clipQuote(opts.marketTitle.zh, 60)}" 已取消：${endClause(clipQuote(opts.reason, 120), "。")} ${destination.zh}`,
     href: ticketHref(opts.marketId, opts.positionId, "/wallet"),
   });
 }
 
-/** Officer confirmation that an emergency void completed — who/what/how-many. */
+/** Officer confirmation: refundedCount counts open stakes, not distinct players. */
 export function notifyAdminMarketCancelled(adminUserId: string, opts: { title: string; reason: string; refundedCount: number; refundedTzs: number }) {
   return notify({
     userId: adminUserId,
     kind: "SECURITY",
-    titleEn: `Market cancelled · ${opts.refundedCount} refunded`,
-    titleSw: `Soko limefutwa · ${opts.refundedCount} wamerejeshewa`,
-    titleZh: `市场已取消 · ${opts.refundedCount} 人已退款`,
-    bodyEn: `"${clipQuote(opts.title, 60)}" was emergency-voided — ${formatTzs(opts.refundedTzs)} refunded to ${opts.refundedCount} ${opts.refundedCount === 1 ? "player" : "players"}. Reason: ${clipQuote(opts.reason, 100)}`,
-    bodySw: `Soko limefutwa kwa dharura. ${formatTzs(opts.refundedTzs)} imerejeshwa.`,
-    bodyZh: `"${clipQuote(opts.title, 60)}" 已紧急作废 — 已向 ${opts.refundedCount} 位玩家退款 ${formatTzs(opts.refundedTzs)}。原因：${clipQuote(opts.reason, 100)}`,
+    titleEn: `Market cancelled · ${opts.refundedCount} ${opts.refundedCount === 1 ? "stake" : "stakes"} refunded`,
+    titleSw: `Soko limefutwa · Madau yaliyorejeshwa: ${opts.refundedCount}`,
+    titleZh: `市场已取消 · 已退回 ${opts.refundedCount} 笔投注`,
+    bodyEn: `"${clipQuote(opts.title, 60)}" was emergency-voided — ${opts.refundedCount} open ${opts.refundedCount === 1 ? "stake was" : "stakes were"} refunded in full, totalling ${formatTzs(opts.refundedTzs)}. Reason: ${clipQuote(opts.reason, 100)}`,
+    bodySw: `"${clipQuote(opts.title, 60)}" limefutwa kwa dharura — madau ${opts.refundedCount} yaliyokuwa wazi yamerejeshwa kikamilifu, jumla ${formatTzs(opts.refundedTzs)}. Sababu: ${clipQuote(opts.reason, 100)}`,
+    bodyZh: `"${clipQuote(opts.title, 60)}" 已紧急作废 — ${opts.refundedCount} 笔未结投注已全额退回，合计 ${formatTzs(opts.refundedTzs)}。原因：${clipQuote(opts.reason, 100)}`,
     href: "/admin/markets",
   });
 }

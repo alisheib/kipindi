@@ -5,8 +5,8 @@
  * Design rules honoured (00-README + 01-RULES):
  *  - ZERO new tokens. Everything resolves to globals.css (glass-panel,
  *    gilt-eyebrow, gilt-rule, --gilt, --aqua-300, --no-300, --border …).
- *  - Gold appears ONLY on settled (earned) profit + the gilt Needle, the
- *    brand signature. Unrealised value is neutral ink and always labelled
+ *  - The P&L figure uses gilt only for settled profit; the win-rate Needle
+ *    reads in neutral ink. Unrealised value is neutral ink and always labelled
  *    "if settled now" (no payout promises pre-resolution).
  *  - Losses render in --no-300 with calm copy. No emojis; line-art only.
  *  - Every figure is passed in from real server data — nothing is
@@ -121,7 +121,7 @@ function Cell({ label, value, sub, valueClass = "text-text" }: {
 }
 
 /**
- * NeedleDial — the gilt Needle as a conviction dial (brand signature; same
+ * NeedleDial — the neutral Needle as a conviction dial (brand signature; same
  * object as the TippingBar needle). Tilt encodes deviation from 50%:
  * upright at 50, leans right when winning, left when losing. ±26° max.
  * Static SVG — no animation needed, so nothing to gate on reduced motion.
@@ -133,11 +133,11 @@ function NeedleDial({ rate }: { rate: number }) {
       <circle cx="22" cy="22" r="20" fill="var(--bg-overlay)" stroke="var(--border-strong)" strokeWidth="1.5" />
       <line
         x1="22" y1="34" x2="22" y2="7"
-        stroke="var(--gilt)" strokeWidth="2.4" strokeLinecap="round"
+        stroke="var(--bar-needle)" strokeWidth="2.4" strokeLinecap="round"
         transform={`rotate(${tilt.toFixed(1)} 22 34)`}
         style={{ filter: "drop-shadow(0 0 4px var(--bar-needle-glow))" }}
       />
-      <circle cx="22" cy="34" r="2.4" fill="var(--gilt)" />
+      <circle cx="22" cy="34" r="2.4" fill="var(--bar-needle)" />
     </svg>
   );
 }

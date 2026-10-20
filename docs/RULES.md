@@ -225,6 +225,17 @@ are levied on the fee *we* earned. Enforced in `payout.ts` → `levySplit`; rate
 > `mkt_85d2b28535bcc68a86ae`, wallet 191,740 → 189,740, i.e. the money really moved. The
 > hedge is accepted with no cap and no block.
 
+The projected return on a bet confirmation or receipt is conditional. Later bets can change
+the pool until betting closes. At lock, the amount for a winning pick is fixed; the player
+receives it only if that pick wins on a valid result. A voided or one-sided round returns the
+stake. The receipt's estimate must never say that lock alone turns the amount into a payout.
+
+For a banded Up & Down round, the opening price is a reference, not the winning threshold.
+The frozen Up and Down targets are shown on round details before a bet. A closing price at
+or above the Up target wins Up; one at or below the Down target wins Down. A close strictly
+between the targets voids the round and returns every stake. A small move from the open can
+therefore return stakes rather than produce a winner.
+
 A player may hold as many positions as they like on one market, on one side or on both. There
 is no per-market cap and no hedging block. Enforced by the *absence* of a guard in
 `buyPosition` — the "ONE ACCOUNT, ONE SIDE" block was removed 2026-08-14. See §2.5: the two

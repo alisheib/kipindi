@@ -435,7 +435,7 @@ export interface MarketStore {
 }
 
 export interface PositionStore {
-  get(id: string): Promise<StoredPosition | null>;
+  get(id: string, tx?: Prisma.TransactionClient | null): Promise<StoredPosition | null>;
   // tx (audit C3): pass a Prisma transaction client to persist the position in
   // the SAME transaction as its wallet/txn/ledger movement (settlement), so a
   // credit and its "paid" mark commit together — no double-pay on resume, no
@@ -541,7 +541,7 @@ export interface PositionStore {
    * players.
    */
   leaderboardPlayerCounts(): Promise<{ all: number; market: number; updown: number }>;
-  listForMarket(marketId: string): Promise<StoredPosition[]>;
+  listForMarket(marketId: string, tx?: Prisma.TransactionClient | null): Promise<StoredPosition[]>;
   /**
    * Positions across a KNOWN SET of markets, in one indexed query.
    *
@@ -882,7 +882,7 @@ const memoryPositions: PositionStore = {
     return Array.from(positions.values())
       .filter((p) => p.userId === userId && p.status === "OPEN" && p.houseBotId == null).length;
   },
-  async listForMarket(marketId) {
+  async listForMarket(marketId, _tx) {
     return Array.from(positions.values()).filter((p) => p.marketId === marketId);
   },
   async listForMarkets(marketIds) {
@@ -1444,8 +1444,8 @@ const prismaMarkets: MarketStore = {
 };
 
 const prismaPositions: PositionStore = {
-  async get(id) {
-    const r = await pc().position.findUnique({ where: { id } });
+  async get(id, tx) {
+    const r = await (tx ?? pc()).position.findUnique({ where: { id } });
     return r ? toStoredPosition(r) : null;
   },
   async set(p, tx) {
@@ -1592,8 +1592,8 @@ const prismaPositions: PositionStore = {
     );
     return { all: Number(row?.all ?? 0), market: Number(row?.market ?? 0), updown: Number(row?.updown ?? 0) };
   },
-  async listForMarket(marketId) {
-    const rows = await pc().position.findMany({ where: { marketId } });
+  async listForMarket(marketId, tx) {
+    const rows = await (tx ?? pc()).position.findMany({ where: { marketId } });
     return rows.map(toStoredPosition);
   },
   async listForMarkets(marketIds) {

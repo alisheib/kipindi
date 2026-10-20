@@ -18,7 +18,7 @@
  */
 import { randomId } from "./crypto";
 import { audit } from "./audit";
-import { withLock } from "./locks";
+import { withLock, afterCommit } from "./locks";
 // The oracle's confirmed reading is republished here for the house desk's own price read (2026-09-23);
 // see `publishOracleBar` for why the desk could otherwise never hold a price it was allowed to use.
 import { publishOracleBar } from "./updown-terminal-vendor";
@@ -762,10 +762,10 @@ export async function openRound(
     resolutionCriterion: targets
       ? `${asset.nameEn} (${asset.symbol}) price at ${closeIso}, read from ${capturedSourceDomain}. ` +
         `Opening price ${openPrice}. UP if the price reaches ${targets.upTarget} (+${(marginBps / 100).toFixed(2)}%), ` +
-        `DOWN if it reaches ${targets.downTarget} (−${(marginBps / 100).toFixed(2)}%), otherwise VOID and every stake is refunded.`
+        `DOWN if it reaches ${targets.downTarget} (−${(marginBps / 100).toFixed(2)}%), otherwise VOID. Stakes still held are returned in full when settlement completes; earlier cash-outs keep their paid amount.`
       : `${asset.nameEn} (${asset.symbol}) price at ${closeIso}, read from ${capturedSourceDomain}, ` +
         `compared with the price at ${openBoundaryIso}. UP if higher by more than ` +
-        `${minMoveFor(asset).toFixed(asset.decimals)}, DOWN if lower by more than that, otherwise VOID and every stake is refunded.`,
+        `${minMoveFor(asset).toFixed(asset.decimals)}, DOWN if lower by more than that, otherwise VOID. Stakes still held are returned in full when settlement completes; earlier cash-outs keep their paid amount.`,
     resolutionAt: closeIso,
     // ⭐ E-72 · BETS CLOSE BEFORE THE ROUND DOES — the last 20%, floored at 30s.
     //
@@ -917,11 +917,16 @@ export async function closeRound(
   const side = outcomeToSide(outcome);
   const nowIso = new Date().toISOString();
 
-  const applied = await withLock(`market:${round.marketId}`, async () => {
-    const m = await marketStore.get(round.marketId);
+  const applied = await withLock(`market:${round.marketId}`, async (lockTx) => {
+    const m = await marketStore.get(round.marketId, lockTx);
     if (!m) return { done: false as const, reason: "market gone" };
     // Re-check under the lock — another fire may already have resolved this round.
     if (m.status === "RESOLVED" || m.status === "VOIDED") return { done: false as const, reason: "already resolved" };
+    const currentRound = await roundStore.get(roundId);
+    if (!currentRound) return { done: false as const, reason: "round gone" };
+    const memoryMarketBefore = lockTx ? null : structuredClone(m);
+    const memoryRoundBefore = lockTx ? null : structuredClone(currentRound);
+    try {
     await marketStore.stamp(round.marketId, {
       status: side === "VOID" ? "VOIDED" : "RESOLVED",
       resolvedOutcome: side,
@@ -929,11 +934,11 @@ export async function closeRound(
       resolutionStage2By: "system_updown", resolutionStage2At: nowIso,
       resolutionEvidence:
         side === "VOID"
-          ? useTargets
-            ? `Round voided (${finalVoidReason}): close ${closePrice} stayed inside the band [${round.downTarget}, ${round.upTarget}] (open ${round.openPrice} ± ${((round.marginBps ?? 0) / 100).toFixed(2)}%). Every stake is refunded in full.`
-            : sourceMismatch
-              ? `Round voided (source-mismatch): ${sourceMismatch}. Every stake is refunded in full.`
-              : `Round voided (${finalVoidReason}). Every stake is refunded in full.`
+          ? sourceMismatch
+            ? `Round voided (source-mismatch): ${sourceMismatch}. Stakes still held are due full return when settlement commits; earlier cash-outs keep their paid amount.`
+            : finalVoidReason === "no-move" && useTargets && decided.voidReason === "no-move"
+              ? `Round voided (no-move): close ${closePrice} stayed inside the band [${round.downTarget}, ${round.upTarget}] (open ${round.openPrice} ± ${((round.marginBps ?? 0) / 100).toFixed(2)}%). Stakes still held are due full return when settlement commits; earlier cash-outs keep their paid amount.`
+              : `Round voided (${finalVoidReason}). Stakes still held are due full return when settlement commits; earlier cash-outs keep their paid amount.`
           : useTargets
             ? `Close ${closePrice} ${outcome === "UP" ? `≥ up target ${round.upTarget}` : `≤ down target ${round.downTarget}`} (open ${round.openPrice} ± ${((round.marginBps ?? 0) / 100).toFixed(2)}%, ${asset.symbol}, ${evidenceDomain}).`
             : `Open ${round.openPrice} → close ${closePrice} (${asset.symbol}, ${evidenceDomain}). Moved ${((closePrice ?? 0) - (round.openPrice ?? 0)).toFixed(asset.decimals)}.`,
@@ -943,7 +948,43 @@ export async function closeRound(
       resolutionNotifiedAt: nowIso,
       settledAt: null,
       updatedAt: nowIso,
-    });
+    }, lockTx);
+    if (lockTx) {
+      await lockTx.upDownRound.update({ where: { id: roundId }, data: {
+        closeObservationId, closePrice, outcome,
+        voidReason: finalVoidReason, resolvedAt: new Date(nowIso),
+      } });
+    } else {
+      await roundStore.patch(roundId, {
+        closeObservationId, closePrice, outcome,
+        voidReason: finalVoidReason, resolvedAt: nowIso,
+      });
+    }
+    } catch (error) {
+      // In memory there is no transaction. A round write fault after the market
+      // stamp must restore both rows before releasing this market mutex.
+      if (!lockTx && memoryMarketBefore && memoryRoundBefore) {
+        globalThis.__50PICK_UD_ROUNDS?.set(roundId, memoryRoundBefore);
+        await marketStore.set(memoryMarketBefore);
+      }
+      throw error;
+    }
+    afterCommit(lockTx, () => { audit({
+      category: "COMPLIANCE",
+      action: outcome === "VOID" ? "updown.round.voided" : "updown.round.resolved",
+      actorId: "system_updown",
+      targetType: "UpDownRound",
+      targetId: roundId,
+      payload: {
+        assetKey: asset.key, durationMinutes: chain.durationMinutes, roundNumber: round.roundNumber,
+        marketId: round.marketId,
+        openPrice: round.openPrice, closePrice,
+        openObservationId: round.openObservationId, closeObservationId,
+        outcome, side, voidReason: finalVoidReason,
+        yesPool: m.yesPool, noPool: m.noPool, players: m.predictorCount,
+        note: settlementNote(outcome, finalVoidReason, round.openObservationId, closeObservationId),
+      },
+    }); });
     return { done: true as const, yesPool: m.yesPool, noPool: m.noPool, predictorCount: m.predictorCount };
   });
 
@@ -951,41 +992,31 @@ export async function closeRound(
     return { ok: false, error: `Round not resolved: ${applied.reason}` };
   }
 
-  await roundStore.patch(roundId, {
-    closeObservationId,
-    closePrice,
-    outcome,
-    voidReason: finalVoidReason,
-    resolvedAt: nowIso,
-  });
-
-  audit({
-    category: "COMPLIANCE",
-    action: outcome === "VOID" ? "updown.round.voided" : "updown.round.resolved",
-    actorId: "system_updown",
-    targetType: "UpDownRound",
-    targetId: roundId,
-    payload: {
-      assetKey: asset.key, durationMinutes: chain.durationMinutes, roundNumber: round.roundNumber,
-      marketId: round.marketId,
-      openPrice: round.openPrice, closePrice,
-      openObservationId: round.openObservationId, closeObservationId,
-      outcome, side, voidReason: finalVoidReason,
-      yesPool: applied.yesPool, noPool: applied.noPool, players: applied.predictorCount,
-      note: settlementNote(outcome, finalVoidReason, round.openObservationId, closeObservationId),
-    },
-  });
-
   // Money moves here, through the untouched settlement path.
   const s = await settleMarket(round.marketId, { actorId: "system_updown" });
   if (s.ok) {
-    await roundStore.patch(roundId, { settledAt: new Date().toISOString() });
+    await withLock(`market:${round.marketId}`, async (lockTx) => {
+      const current = await marketStore.get(round.marketId, lockTx);
+      // An officer emergency VOID can win the gap after the price verdict was
+      // recorded. Never stamp this old price outcome as settled over its VOID.
+      if (!current?.settledAt || current.resolvedOutcome !== side) return;
+      if (lockTx) {
+        await lockTx.upDownRound.update({ where: { id: roundId }, data: { settledAt: new Date(current.settledAt) } });
+      } else {
+        const currentRound = await roundStore.get(roundId);
+        if (currentRound?.outcome === outcome) await roundStore.patch(roundId, { settledAt: current.settledAt });
+      }
+    });
   } else {
     // OBJECTION_OPEN is the freeze doing its job — leave the money where it is; the
     // scheduler retries and an officer clears the objection.
     console.warn(`[updown] round ${roundId} resolved but not settled: ${s.code} ${s.error}`);
   }
-  return { ok: true, data: { outcome, settled: s.ok } };
+  const finalMarket = await marketStore.get(round.marketId);
+  const finalOutcome: RoundOutcome = finalMarket?.resolvedOutcome === "YES" ? "UP"
+    : finalMarket?.resolvedOutcome === "NO" ? "DOWN"
+    : finalMarket?.resolvedOutcome === "VOID" ? "VOID" : outcome;
+  return { ok: true, data: { outcome: finalOutcome, settled: !!finalMarket?.settledAt } };
 }
 
 /**
@@ -1023,8 +1054,7 @@ export function settlementNote(
   closeObservationId: string | null,
 ): string {
   const TERMS =
-    " Settlement is immediate (owner decision 2026-07-24); the standing-objection freeze, " +
-    "the winner floor and exact conservation are unchanged.";
+    " Settlement follows the standing-objection gate; the winner floor and exact conservation are unchanged.";
 
   if (outcome !== "VOID") {
     // The only branch entitled to the original sentence — and it now states the condition
@@ -1035,7 +1065,7 @@ export function settlementNote(
     );
   }
 
-  const refunded = " Every stake is refunded in full.";
+  const refunded = " Stakes still held are due full return when settlement commits; earlier cash-outs keep their paid amount.";
   switch (voidReason) {
     case "no-move":
       return (
@@ -1069,10 +1099,8 @@ export function settlementNote(
   }
 }
 
-/**
- * Operator void — the recovery path for a bad or stuck round. Refunds every stake in
- * full through the same settlement code as an automatic void.
- */
+/** Operator void — the recovery path for a bad or stuck round. Remaining OPEN
+ * stakes return in full through the same settlement code as an automatic void. */
 export async function voidRoundByOperator(roundId: string, officerId: string, reason: string): Promise<LifecycleResult<{ settled: boolean }>> {
   const round = await roundStore.get(roundId);
   if (!round) return { ok: false, error: "Round not found." };
@@ -1127,7 +1155,7 @@ export async function voidRoundByOperator(roundId: string, officerId: string, re
 //     off the thing that returns money already staked in it.
 //
 // It never invents a price and never decides a winner: an unconfirmed round VOIDs and
-// every stake is refunded in full, through `closeRound` → `settleMarket`, the same
+// remaining OPEN stakes return in full, through `closeRound` → `settleMarket`, the same
 // money path as every other void. This module still moves no money itself.
 
 /** Kill switch, separate from `UPDOWN_SCHEDULER` on purpose — see above. */
@@ -1143,7 +1171,7 @@ export type HealReport = {
   scanned: number;
   /** Closed with a real verdict — a confirmed reading arrived late. */
   resolved: number;
-  /** Closed VOID → every stake refunded in full. */
+  /** Closed VOID → remaining OPEN stakes due full return at settlement. */
   voided: number;
   /** Was already resolved; its money finally moved. */
   settled: number;
@@ -1195,17 +1223,66 @@ export async function healStuckRounds(opts?: { now?: number; limit?: number }): 
     report.scanned++;
     try {
       const s = await settleMarket(round.marketId, { actorId: "system_updown_healer" });
-      if (s.ok) {
-        await roundStore.patch(round.id, { settledAt: new Date().toISOString() });
+      if (s.ok || (s.code === "INVALID" && /already settled/i.test(s.error))) {
+        // The market is the payable verdict. An officer may have upheld a hold
+        // with REVERSE or VOID after closeRound recorded the price result; older
+        // rows had only their settledAt mirrored here and could keep a false
+        // winner forever. Copy the final verdict and the market's actual settle
+        // instant, preserving recorded prices and frozen targets as evidence.
+        const marketOutcome = await withLock(`market:${round.marketId}`, async (lockTx) => {
+          const m = await marketStore.get(round.marketId, lockTx);
+          if (!m?.settledAt || !m.resolvedOutcome) {
+            throw new Error("market settlement returned without a recorded verdict and settledAt");
+          }
+          const currentRound = lockTx
+            ? await lockTx.upDownRound.findUnique({ where: { id: round.id } })
+            : await roundStore.get(round.id);
+          if (!currentRound) throw new Error("settled market has no linked UpDown round");
+          const outcome = sideToOutcome(m.resolvedOutcome);
+          const previousOutcome = currentRound.outcome;
+          const memoryMarketBefore = lockTx ? null : structuredClone(m);
+          const memoryRoundBefore = lockTx ? null : structuredClone(currentRound as StoredRound);
+          try {
+            // Old officer or repair actions could change the payable market verdict
+            // without leaving a provenance prefix. A mismatch is evidence of a
+            // changed RECORD, not proof that an officer upheld an objection. Keep
+            // that fact durable before replacing the old round outcome; otherwise
+            // its only player-visible correction cue disappears after this heal.
+            if (previousOutcome && previousOutcome !== outcome &&
+                !m.resolutionEvidence?.startsWith("UPDOWN_OFFICER_CORRECTION:") &&
+                !m.resolutionEvidence?.startsWith("UPDOWN_OPERATOR_VOID:") &&
+                !m.resolutionEvidence?.startsWith("UPDOWN_RECORD_CORRECTION:")) {
+              await marketStore.stamp(m.id, {
+                resolutionEvidence: `UPDOWN_RECORD_CORRECTION: Stored round verdict ${previousOutcome} was reconciled with the paid market verdict ${outcome}. Prior resolution record: ${m.resolutionEvidence ?? "none recorded"}`,
+              }, lockTx);
+            }
+            const voidReason = outcome === "VOID"
+              ? previousOutcome === "VOID" &&
+                (currentRound.voidReason === "operator" || currentRound.voidReason === "source-failed" ||
+                 currentRound.voidReason === "source-mismatch" || currentRound.voidReason === "no-move")
+                ? currentRound.voidReason : "operator"
+              : null;
+            if (lockTx) {
+              await lockTx.upDownRound.update({ where: { id: round.id }, data: {
+                outcome, voidReason, settledAt: new Date(m.settledAt),
+              } });
+            } else {
+              await roundStore.patch(round.id, { outcome, voidReason, settledAt: m.settledAt });
+            }
+          } catch (error) {
+            if (!lockTx && memoryMarketBefore && memoryRoundBefore) {
+              globalThis.__50PICK_UD_ROUNDS?.set(round.id, memoryRoundBefore);
+              await marketStore.set(memoryMarketBefore);
+            }
+            throw error;
+          }
+          return m.resolvedOutcome;
+        });
         report.settled++;
-        auditHealed(round, "settled", { detail: "resolved round whose settlement had not completed" });
-      } else if (s.code === "INVALID" && /already settled/i.test(s.error)) {
-        // The market's money DID move; only the round's own stamp was lost. Mirror it
-        // back rather than leaving a row that reads as unpaid forever.
-        const m = await marketStore.get(round.marketId);
-        await roundStore.patch(round.id, { settledAt: m?.settledAt ?? new Date().toISOString() });
-        report.settled++;
-        auditHealed(round, "settled", { detail: "round's settledAt stamp restored from its market" });
+        auditHealed(round, "settled", {
+          detail: s.ok ? "resolved round settled and reconciled with market verdict" : "round restored from already settled market",
+          previousOutcome: round.outcome, marketOutcome,
+        });
       } else {
         // TOO_EARLY / OBJECTION_OPEN are the freeze doing its job — not a fault.
         report.waiting++;
@@ -1447,24 +1524,93 @@ async function finishRound(
   // market already carries onto the round, then let the settlement sweep above pay
   // it. Without this the round is stuck forever in the one state the healer's main
   // path cannot reach.
-  const m = await marketStore.get(round.marketId);
-  if (m && (m.status === "RESOLVED" || m.status === "VOIDED") && m.resolvedOutcome) {
-    const outcome = sideToOutcome(m.resolvedOutcome);
-    await roundStore.patch(round.id, {
-      closeObservationId,
-      closePrice,
-      outcome,
-      voidReason: outcome === "VOID" ? (round.voidReason ?? voidReason) : null,
-      resolvedAt: m.resolutionStage2At ?? new Date().toISOString(),
-    });
-    auditHealed(round, outcome === "VOID" ? "voided" : "resolved", {
+  const reconciled = await reconcileTerminalRound(round, closeObservationId, closePrice, voidReason);
+  if (reconciled) {
+    if (!reconciled.already) auditHealed(round, reconciled.outcome === "VOID" ? "voided" : "resolved", {
       detail: "round row reconciled from a market that was already adjudicated",
-      marketStatus: m.status,
     });
     return true;
   }
   console.warn(`[updown-heal] round ${round.id} not closed: ${r.error}`);
   return false;
+}
+
+/**
+ * Reconcile the legacy market-stamped/round-open crash shape. A stale price
+ * observation from the caller must not overwrite a later officer verdict.
+ * Exported so the market-lock interleaving can be proved in both stores.
+ */
+export async function reconcileTerminalRound(
+  round: StoredRound,
+  closeObservationId: string | null,
+  closePrice: number | null,
+  voidReason: VoidReason,
+): Promise<{ already: boolean; outcome: RoundOutcome | null } | null> {
+  return withLock(`market:${round.marketId}`, async (lockTx) => {
+    const m = await marketStore.get(round.marketId, lockTx);
+    if (!m || (m.status !== "RESOLVED" && m.status !== "VOIDED") || !m.resolvedOutcome) return null;
+    const current = lockTx
+      ? await lockTx.upDownRound.findUnique({ where: { id: round.id } })
+      : await roundStore.get(round.id);
+    if (!current) return null;
+    const outcome = sideToOutcome(m.resolvedOutcome);
+    // The transactional Prisma read carries Date objects; the memory DAL and
+    // marketStore return ISO strings. Compare and patch one normalized shape.
+    const roundResolvedAt = current.resolvedAt instanceof Date ? current.resolvedAt.toISOString() : current.resolvedAt;
+    const roundSettledAt = current.settledAt instanceof Date ? current.settledAt.toISOString() : current.settledAt;
+    // A round with a recorded result is only complete when it agrees with the
+    // market's payable verdict and settlement stamp. Older officer corrections
+    // could leave a settled round saying UP over a paid DOWN/VOID market.
+    if (current.outcome === outcome && roundResolvedAt && roundSettledAt === m.settledAt) {
+      return { already: true, outcome };
+    }
+    const verdictMismatch = current.outcome != null && current.outcome !== outcome;
+    const priorEvidence = m.resolutionEvidence ?? "";
+    const marketBefore = lockTx ? null : structuredClone(m);
+    const roundBefore = lockTx ? null : structuredClone(current as StoredRound);
+    try {
+      // The mismatch itself may be the only surviving public clue that a record
+      // was corrected. Keep that clue in the market before making both rows agree;
+      // do not claim an officer ruled unless the existing evidence says so.
+      if (verdictMismatch &&
+          !m.resolutionEvidence?.startsWith("UPDOWN_OFFICER_CORRECTION:") &&
+          !m.resolutionEvidence?.startsWith("UPDOWN_OPERATOR_VOID:") &&
+          !m.resolutionEvidence?.startsWith("UPDOWN_RECORD_CORRECTION:")) {
+        const correctionEvidence = `UPDOWN_RECORD_CORRECTION: Stored round verdict ${current.outcome} was reconciled with the market verdict ${outcome}. Prior resolution record: ${priorEvidence || "none recorded"}`;
+        await marketStore.stamp(m.id, { resolutionEvidence: correctionEvidence }, lockTx);
+      }
+      // A stale caller's close observation cannot replace an observation that
+      // this round already recorded. In a VOID, preserve even null observations:
+      // an officer's cancellation never creates a price read.
+      const recorded = !!roundResolvedAt || current.outcome != null;
+      const recordedReason = current.outcome === "VOID" &&
+        (current.voidReason === "operator" || current.voidReason === "source-failed" ||
+         current.voidReason === "source-mismatch" || current.voidReason === "no-move")
+        ? current.voidReason : null;
+      const evidenceReason: VoidReason | null = priorEvidence.startsWith("UPDOWN_OFFICER_CORRECTION:") ||
+        priorEvidence.startsWith("UPDOWN_OPERATOR_VOID:") ? "operator"
+        : priorEvidence.startsWith("Round voided (no-move)") ? "no-move"
+        : priorEvidence.startsWith("Round voided (source-mismatch)") ? "source-mismatch"
+        : priorEvidence.startsWith("Round voided (source-failed)") ? "source-failed" : null;
+      await roundStore.patch(round.id, {
+        closeObservationId: recorded || m.status === "VOIDED" ? current.closeObservationId : closeObservationId,
+        closePrice: recorded || m.status === "VOIDED"
+          ? current.closePrice == null ? null : Number(current.closePrice)
+          : closePrice,
+        outcome,
+        voidReason: outcome === "VOID" ? recordedReason ?? evidenceReason : null,
+        resolvedAt: roundResolvedAt ?? m.resolutionStage2At ?? new Date().toISOString(),
+        settledAt: m.settledAt,
+      }, lockTx);
+    } catch (error) {
+      if (!lockTx && marketBefore && roundBefore) {
+        globalThis.__50PICK_UD_ROUNDS?.set(round.id, roundBefore);
+        await marketStore.set(marketBefore);
+      }
+      throw error;
+    }
+    return { already: false, outcome };
+  });
 }
 
 function auditHealed(round: StoredRound, action: HealOutcome, payload: Record<string, unknown>): void {
@@ -1486,7 +1632,7 @@ function auditHealed(round: StoredRound, action: HealOutcome, payload: Record<st
       boundaryAt: round.boundaryAt,
       note:
         "Closed by the Up & Down self-healer. A round that cannot confirm a price VOIDs " +
-        "and every stake is refunded in full through the same settlement path as any other void; the " +
+        "and stakes still held are due full return when settlement commits; earlier cash-outs keep their paid amount. The " +
         "healer never invents a price and never decides a winner.",
     },
   });

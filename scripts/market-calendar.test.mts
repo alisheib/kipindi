@@ -92,6 +92,16 @@ ok("0.1 · the fixture dates really are Fri/Sat/Sun",
      nextOpenAfter("macro", "2026-08-05T12:34:00Z"));
   ok("4.3 · crypto is always already open",
      nextOpenAfter("crypto", "2026-08-01T12:00:00Z") === "2026-08-01T12:00:00.000Z");
+  // U43 B3: the player board uses the same measured daily dead hours as the
+  // round-opening gate. An opening shown during that hour would be invented.
+  ok("4.4 · from a measured Tuesday 21:00 dead hour, next open is 22:00 UTC",
+     nextOpenAfter("macro", "2026-10-20T21:15:00Z", [21]) === "2026-10-20T22:00:00.000Z");
+  ok("4.5 · the daily dead hour never overrides the longer weekend closure",
+     nextOpenAfter("macro", "2026-10-23T21:15:00Z", [21]) === "2026-10-25T22:00:00.000Z");
+  ok("4.6 · an hour outside the measured break is already open",
+     nextOpenAfter("macro", "2026-10-20T20:15:00Z", [21]) === "2026-10-20T20:15:00.000Z");
+  ok("4.7 · crypto ignores metal-only dead hours",
+     nextOpenAfter("crypto", "2026-10-20T21:15:00Z", [21]) === "2026-10-20T21:15:00.000Z");
 }
 
 // ── 5 · ⛔ REPRODUCE THE DEFECT, then show the calendar refuses it ───────────

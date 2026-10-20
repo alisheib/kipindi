@@ -12,8 +12,8 @@
  * check the outcome rather than take it on faith. It renders only once the round is
  * decided; a half-filled receipt mid-round would imply a result that does not exist yet.
  *
- * Gold appears at most twice and both are earned/committed money: the Confirm button and
- * a winning payout. Everything else is neutral or YES/NO — never gold for decoration.
+ * Gold marks a winning payout after settlement. The Confirm button is a brand action;
+ * the other facts are neutral or UP/DOWN side ink.
  */
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -31,9 +31,9 @@ import { isStaffRole } from "@/lib/server/roles";
 import { getServerT } from "@/lib/i18n-server";
 // ⛔ ONE RULE FOR "why did this stake come back", shared with the card — five copies would be
 // five chances to disagree about someone money.
-import { refundReasonFor, REFUND_REASON_KEY, viewerRefundCopy } from "@/lib/updown-refund-reason";
+import { isRefundedPosition, refundReasonFor, REFUND_REASON_KEY, VOID_NOTE_KEY, viewerRefundCopy } from "@/lib/updown-refund-reason";
 import { pickLocalized } from "@/lib/localized";
-import { roundName } from "@/lib/updown-round-name";
+import { roundDuration, roundName } from "@/lib/updown-round-name";
 // ⛔ ONE lexicon for side words across both products — never a local ternary (test:labels §4).
 import { outcomeWord, positionStatusGlyph, sideWord } from "@/lib/side-label";
 import { formatNumber, formatTzs } from "@/lib/utils";
@@ -47,7 +47,7 @@ import { RoundCountdownPod } from "@/components/updown/round-countdown";
 import { PriceHero } from "@/components/updown/price-hero";
 import { RoundActionPanel } from "@/components/updown/round-action-panel";
 import { AssetMark } from "@/components/updown/updown-card";
-import { SOURCE_CLASS_KEY, fmtEAT } from "@/lib/updown-source-label";
+import { SOURCE_CLASS_KEY, fmtEAT, fmtEATClock } from "@/lib/updown-source-label";
 // E-101 · one rule for "where does this ticket live", shared with the wallet and the emails.
 import { positionListHref } from "@/lib/position-permalink";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
@@ -64,6 +64,7 @@ import { refreshCadence, handoverPollUntil } from "@/lib/refresh-cadence";
 import { UpDownHandover } from "@/components/updown/updown-handover";
 import { usd } from "@/lib/usd-price";
 import { heroPrice, roundIsSettled } from "@/lib/updown-card-phase";
+import { roundAnnouncementFor } from "@/lib/updown-result-truth";
 import { isLockedOut } from "@/lib/server/responsible-gambling";
 import { breakSentence, breakStateOf } from "@/lib/break-end";
 import { stemOf } from "@/lib/display-stem";
@@ -191,14 +192,9 @@ export default async function UpDownRoundPage({
   const locked = round.state === "locked";
   const decided = roundIsSettled(round.state);
 
-  /* Hero price: the current live read while open, the round's own close once decided.
-     ⭐ D36 · THIS RULE NOW LIVES IN `heroPrice`, and `/updown` CALLS THE SAME FUNCTION. It was
-     written here and only here, so the board — which never had it — showed a settled card
-     ticking today's quote while this page showed the same round's close. A rule that exists on
-     one of two surfaces is not a rule; it is a coincidence that held until someone built the
-     second surface. Sharing the function is what makes "the two cannot disagree" structural
-     rather than something a comment asserts. */
-  const heroLive = heroPrice({ state: round.state, closePrice: round.closePrice, livePrice: asset.livePrice });
+  /* The hero uses this round's confirmed read and frozen close. An asset-wide latest
+     quote may belong to another round, so it cannot date or colour this round. */
+  const heroLive = heroPrice({ state: round.state, closePrice: round.closePrice, livePrice: round.readPrice });
   const move = heroLive != null && round.openPrice != null ? heroLive - round.openPrice : null;
   /* ⭐ R5 (2026-09-27, spec updown-band-v2 §12) · THIS PAGE AGREES WITH THE LANDING BAND.
      The band says "Juu iliongoza saa 14:26" from settlement's own target rule; a player who taps
@@ -217,20 +213,24 @@ export default async function UpDownRoundPage({
   // "imenukuliwa 18:55:02 EAT" is one unit and never splits at a line end: one nowrap run. Round 5 (2026-10-09, review 3
   // H4's sweep): it was no-break spaces — characters in the page's text, travelling into a copy and a find-in-page — and
   // is now a span, the keep helpers' convention (keep-words.tsx); the words are the dictionary's and the formatter's.
-  const quotedAt = asset.sourceQuotedAt ? fmtEAT(asset.sourceQuotedAt) : null;
+  const shownQuotedAt = decided
+    ? round.closePrice != null ? round.closeQuotedAt : round.openQuotedAt
+    : heroLive != null ? round.readQuotedAt : round.openQuotedAt;
+  const quotedAt = fmtEAT(shownQuotedAt);
+  const openClock = fmtEATClock(Date.parse(round.opensAt));
   const stamp = quotedAt ? <span className="whitespace-nowrap">{t.market.udQuoted} <span className="font-mono tabular-nums">{quotedAt}</span></span> : null;
-  const deltaFigure = move == null ? null : <span className="font-mono tabular-nums whitespace-nowrap">${Math.abs(move).toFixed(dec)}</span>;
+  const deltaFigure = move == null ? null : <span className="font-mono tabular-nums whitespace-nowrap">{usd(Math.abs(move), dec)}</span>;
   const moveText = move == null || move === 0 ? null
     : !decided && tone === "level" ? fillNodes(t.market.udLevelBy, { amount: deltaFigure })
       : <>{move > 0 ? t.market.udAboveOpenBy : t.market.udBelowOpenBy}{" "}{deltaFigure}</>;
   // E-53 · the KIND of market, never the vendor. The class arrives already resolved from
   // the server (`publicSourceClassFor`), so the domain is not in this payload to leak.
-  const source = decided
+  const source = decided || heroLive == null
     ? <>{t.market[SOURCE_CLASS_KEY[asset.sourceClass]]}{stamp && <>{" · "}{stamp}</>}</>
     : t.market[SOURCE_CLASS_KEY[asset.sourceClass]];
   // Two clauses, never split inside: the move and its quote stamp. Below 400 they stack and the "·" hides, so no
   // line ends on a dangling dot — the landing band's own rule (frame panel round 3, 2026-09-27).
-  const aboveBelow = decided ? moveText
+  const aboveBelow = decided || heroLive == null ? moveText
     : moveText && stamp
       ? <><span className="ud-hero-chunk">{moveText}</span><span className="ud-hero-sep">{" · "}</span><span className="ud-hero-chunk">{stamp}</span></>
       : (moveText ?? stamp);
@@ -268,15 +268,16 @@ export default async function UpDownRoundPage({
   const awaitingResult = round.state === "confirming";
   const resultTarget = awaitingResult ? round.expectedResultAtMs ?? null : null;
   const countLabel = isOpen ? t.market.udBetsCloseIn
-    : locked ? t.market.udResultIn
+    : locked ? t.market.udClosesIn
     : awaitingResult ? (resultTarget != null ? t.market.udResultIn : t.market.udAwaitingResult)
-    : t.market.udRoundSettled;
+    : round.settled ? t.market.udRoundSettled : t.market.udSettlementPending;
 
   // Result panel data (resolved rounds the viewer actually played).
   // ⭐ E-65 · WHY THIS VIEWER GOT THEIR STAKE BACK, from the rule the card shares. Fires on a
   // VOIDED round AND on a DECIDED one that refunded this player for want of a counterparty —
   // two opposite events that used to print the same sentence.
-  const myRefundedStake = myPosition && myPosition.payout != null && myPosition.payout === myPosition.stake ? myPosition.stake : 0;
+  const myRefundedStake = myPosition?.items.reduce((sum, item) =>
+    sum + (isRefundedPosition(item.status, item.stake, item.payout) ? item.stake : 0), 0) ?? 0;
   const refundReason = refundReasonFor({
     outcome: round.state === "void" ? "VOID" : (round.outcome ?? null),
     voidReason: round.voidReason,
@@ -286,6 +287,19 @@ export default async function UpDownRoundPage({
   // nothing returned (never bet, or cashed out) is told why it voided and never "your stake is back".
   const refundCopy = viewerRefundCopy(refundReason, myRefundedStake);
   const result = myPosition?.result ?? null;
+  // A decided round can still hold OPEN money while an objection blocks payment.
+  // Show only those unpaid legs: a past cash-out is already received, not held stake.
+  const pendingItems = decided && !round.settled
+    ? myPosition?.items.filter((item) => item.status === "OPEN") ?? []
+    : [];
+  const pendingStake = pendingItems.reduce((sum, item) => sum + item.stake, 0);
+  const earlierCashouts = decided && !round.settled
+    ? myPosition?.items.filter((item) => item.status === "CASHED_OUT") ?? []
+    : [];
+  const earlierCashoutPayout = earlierCashouts.every((item) => item.payout != null && Number.isFinite(item.payout))
+    ? earlierCashouts.reduce((sum, item) => sum + (item.payout ?? 0), 0) : null;
+  const pendingUp = pendingItems.some((item) => item.side === "UP");
+  const pendingDown = pendingItems.some((item) => item.side === "DOWN");
   /**
    * ⭐ E-87 · THE CHIP HAD THREE STATES AND THE WORLD HAS FOUR — and this is E-65's own defect,
    * one line further on.
@@ -307,8 +321,11 @@ export default async function UpDownRoundPage({
    * reason says so without claiming the round did not happen.
    */
   const resultLabel =
-    result === "WIN" ? t.market.resolvedWin
+    myPosition?.incompletePayout ? t.market.udPayoutUnavailable
+    : result === "WIN" ? t.market.resolvedWin
     : result === "LOSS" ? t.market.resolvedLoss
+    : result === "MIXED" ? (myPosition?.hedged ? t.market.udBothSides : t.market.udPositionsOnRound)
+    : result === "CASHED_OUT" ? t.market.udPosCashedOut
     // The round DECIDED and this player was refunded anyway — never call that a void.
     : refundReason === "unmatched" ? t.market.udRefundTitle
     : t.market.udVoided;
@@ -329,12 +346,19 @@ export default async function UpDownRoundPage({
    * may be repainted on taste.
    */
   const resultVariant =
-    result === "WIN" ? "resolved" as const
+    myPosition?.incompletePayout ? "neutral" as const
+    : result === "WIN" ? "resolved" as const
     : result === "LOSS" ? "no" as const
+    : result === "MIXED" || result === "CASHED_OUT" ? "neutral" as const
     : refundReason === "unmatched" ? "neutral" as const
     : TONE_CHIP[STATUS_TONE.VOID.player];
-  // DA-7 · the "Paid out" figure. A WIN is money the player EARNED, so M3 puts it in struck
-  // type rather than gold colour; everything else keeps plain text ink. The class carries its
+  // Name the amount by its money meaning: earned payout, lost stake, or returned stake.
+  // Only a WIN is money the player earned, so M3 puts it in struck type.
+  const resultAmountLabel = result === "LOSS" ? t.market.udStake
+    : result === "VOID" ? t.market.udRefundTitle : t.market.udPaidOut;
+  const resultAmount = myPosition?.incompletePayout ? null
+    : result === "LOSS" ? myPosition?.stake ?? null : myPosition?.payout ?? null;
+  // The class carries its
   // own gradient, mono family and tabular-nums, so no `color` may be set alongside it — a flat
   // colour under a transparent fill is two sources of truth for one figure.
   const payoutStruck = result === "WIN";
@@ -392,14 +416,15 @@ export default async function UpDownRoundPage({
           hard five-minute ceiling when that instant is unknown). There is no input that makes
           it unbounded — `test:refresh-cadence` §5 proves it. */}
       <RefreshPoller {...refreshCadence({
-        settled: decided,
+        settled: round.settled,
         awaitingResult,
+        paymentPending: decided && !round.settled,
         handover: {
           // Nothing left to wait for once the successor row is open, or once the chain has
           // said there will not be one.
-          active: decided && round.successor.chainRunning && round.successor.roundId == null,
+          active: round.settled && round.successor.chainRunning && round.successor.roundId == null,
           untilMs: handoverPollUntil({
-            settledAtMs: round.resolvedAtMs,
+            settledAtMs: round.settledAtMs,
             successorOpensAtMs: round.successor.opensAtMs,
             nowMs: round.serverNowMs,
           }),
@@ -409,13 +434,11 @@ export default async function UpDownRoundPage({
       {/* ⭐ THE RESULT MOMENT — the same shared announcer the board mounts, so the two surfaces
           cannot drift. It fires on the OBSERVED transition the poller above delivers, and
           `sessionStorage` keeps it to once per round even if the player has both open.
-          ⛔ In-app only; Ali's 2026-07-24 notification suppression is untouched. */}
+          The later bell/push ruling is implemented by settlement, not this visual moment. */}
       <UpDownResultAnnouncer rounds={[{
         roundId,
-        settledAtMs: round.resolvedAtMs,
-        myResult: myPosition && myPosition.result
-          ? { status: myPosition.result, side: myPosition.side, stake: myPosition.stake, payout: myPosition.payout ?? 0 }
-          : null,
+        settledAtMs: round.settledAtMs,
+        myResult: roundAnnouncementFor(round.myResults, round.settled),
       }]} />
       <HashFocus />
       <div className="flex flex-col gap-[18px]">
@@ -472,7 +495,7 @@ export default async function UpDownRoundPage({
                   {name}{" "}<span className="whitespace-nowrap">{t.market.udTitle}</span>
                 </span>
                 {/* PV-13c (2026-09-03) — was a raw `<span className="chip">`. */}
-                <Chip>{round.durationMinutes} {t.market.udMin}</Chip>
+                <Chip>{roundDuration(t, round.durationMinutes)}</Chip>
               </h1>
               <p className="mt-1 flex items-center gap-1.5 font-mono text-micro font-semibold uppercase tracking-[0.10em] text-text-subtle">
                 {isOpen && <span className="live-dot" />}
@@ -494,6 +517,7 @@ export default async function UpDownRoundPage({
             isOpen={isOpen || locked || resultTarget != null}
             serverNowMs={round.serverNowMs}
             label={countLabel}
+            lastSecondsLabel={isOpen ? t.market.udLastSeconds : undefined}
             resultMode={resultTarget != null}
             /* ⭐ E-104 · THE INSTANTS, so the pod enters the result phase BY ITSELF.
                🔴 Watched on production 2026-08-05 (`udr_8bd25a9f786ea498f132`): at the close
@@ -506,18 +530,19 @@ export default async function UpDownRoundPage({
                already carried the rule: the instants do not go stale, so derive from them. */
             roundClosesAtMs={Date.parse(round.closesAt)}
             resultTargetMs={round.expectedResultAtMs ?? null}
-            settled={decided}
+            settled={round.settled}
+            paymentPending={decided && !round.settled}
             resultLabels={{
               resultIn: t.market.udResultIn,
               awaiting: t.market.udAwaitingResult,
               settled: t.market.udRoundSettled,
             }}
             /* ⭐ E-166 · past the hold this pod stops reading `Round settled 00:00` — the dead
-               clock measured on production 2026-08-19 — and becomes the handover ticker. Same
-               box, same 28px digits; only the caption and the digits change. */
+               clock measured on production 2026-08-19 — and becomes the handover ticker.
+               Phases without a target show one compact, truthful label. */
             handover={{
               roundId,
-              settledAtMs: round.resolvedAtMs,
+              settledAtMs: round.settledAtMs,
               successorExists: round.successor.roundId != null,
               successorOpensAtMs: round.successor.opensAtMs,
               chainRunning: round.successor.chainRunning,
@@ -531,14 +556,19 @@ export default async function UpDownRoundPage({
           />
         </header>
 
-        {/* ⭐ E-166 · THE HANDOVER BAR. It renders nothing until the hold has passed, then states
-            what comes next and — when auto-advance is deferred by an open overlay, an in-flight
-            bet, or a player who deliberately opened an already-settled round — offers the way
-            out. It also OWNS the auto-advance itself; the gates are in its own header. */}
+        {decided && !round.settled && (
+          <p role="status" className="m-0 text-body-sm text-text-muted" style={inset}>
+            {t.market.udPaymentPending}
+          </p>
+        )}
+
+        {/* ⭐ E-166 · THE HANDOVER. The pod above states the visible next-round phase; this
+            component announces the fuller phase once to screen readers and offers a link when
+            a real successor is open. It also owns auto-advance and its deferral gates. */}
         <UpDownHandover
           roundId={roundId}
-          settled={decided}
-          settledAtMs={round.resolvedAtMs}
+          settled={round.settled}
+          settledAtMs={round.settledAtMs}
           successorRoundId={round.successor.roundId}
           successorOpensAtMs={round.successor.opensAtMs}
           chainRunning={round.successor.chainRunning}
@@ -581,7 +611,10 @@ export default async function UpDownRoundPage({
               openLabel: t.market.udOpenPrice,
               upLabel: t.market.udUp,
               downLabel: t.market.udDown,
-              awaitingRead: t.market.udAwaitingRead,
+              awaitingRead: round.readUnavailable ? t.market.udReadUnavailable
+                : (round.state === "open" || round.state === "locked") && round.openPrice != null && openClock
+                  ? t.home.udMatchNoNewPrice.replace("{time}", openClock)
+                  : t.market.udAwaitingRead,
               aboveBelow,
               source,
               chartAlt: `${name} ${t.market.udTitle}`,
@@ -597,7 +630,7 @@ export default async function UpDownRoundPage({
                 zero refetch, exactly as the board card does. `isOpen`/`locked` here
                 only pick which branch the SERVER renders first; the panel keeps itself
                 honest between polls. */}
-            {isOpen || locked ? (
+            {isOpen || locked || awaitingResult ? (
               <RoundActionPanel
                 state={round.state}
                 selectionClosedAt={round.selectionClosedAt}
@@ -606,6 +639,7 @@ export default async function UpDownRoundPage({
                 myExactPayout={round.myExactPayout}
                 myPayoutIfUp={round.myPayoutIfUp}
                 myPayoutIfDown={round.myPayoutIfDown}
+                nextRoundWords={round.successor.chainRunning ? t.market.udNextAfterResult : t.market.udNextMatchNoneBody}
                 ariaStake={t.market.udStake}
                 stakePanel={{
                   marketId: round.marketId,
@@ -615,6 +649,8 @@ export default async function UpDownRoundPage({
                   myUpStake: round.myUpStake,
                   myDownStake: round.myDownStake,
                   pricing: round.pricing,
+                  upTarget: round.upTarget,
+                  downTarget: round.downTarget,
                   assetName: name,
                   signInHref: `/auth/login?next=${encodeURIComponent(`/updown/${roundId}${lockedSide ? `?side=${lockedSide}` : ""}`)}`,
                   lockedSide: judSide ?? lockedSide,
@@ -628,7 +664,32 @@ export default async function UpDownRoundPage({
                   breakBody,
                 }}
               />
-            ) : decided && myPosition && result ? (
+            ) : decided && !round.settled && pendingItems.length > 0 ? (
+              <section aria-label={t.market.udYourPick} className="ticket-scope" style={{ ...card, padding: "14px 16px 16px" }}>
+                {myPosition?.ids.map((pid) => (
+                  <span key={pid} id={pid} className="ticket-anchor block scroll-mt-24" aria-hidden="true" />
+                ))}
+                <div className="flex items-center justify-between gap-2.5">
+                  <p className={eyebrow}>{t.market.udYourPick}</p>
+                  <Chip variant="neutral">{t.market.udSettlementPending}</Chip>
+                </div>
+                <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <p className="m-0 font-mono text-micro uppercase eyebrow text-text-subtle">{t.market.udStake}</p>
+                    <p className="mt-1 m-0 text-title-md font-bold leading-none amount text-text">{formatTzs(pendingStake)}</p>
+                  </div>
+                  <p className="m-0 text-label amount text-text-muted">
+                    {pendingUp && pendingDown ? t.market.udBothSides : pendingUp ? t.market.udUp : t.market.udDown}
+                  </p>
+                </div>
+                {earlierCashouts.length > 0 && (
+                  <p className="mt-3 mb-0 text-body-sm text-text-muted">
+                    {t.market.udPosCashedOut} · {t.market.udPaidOut}{" "}
+                    <span className="amount">{earlierCashoutPayout == null ? t.market.udPayoutUnavailable : formatTzs(earlierCashoutPayout)}</span>
+                  </p>
+                )}
+              </section>
+            ) : decided && myPosition && (result || myPosition.incompletePayout) ? (
               <section aria-label={t.market.udYourResult} className="ticket-scope" style={{ ...card, padding: "14px 16px 16px" }}>
                 {/* ⭐ E-101 · THE LANDING TARGET. `/positions/<id>` redirects here with the
                     position id as the fragment, and a fragment that names nothing scrolls
@@ -644,12 +705,12 @@ export default async function UpDownRoundPage({
                 </div>
                 <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
                   <div>
-                    <p className="m-0 font-mono text-micro uppercase eyebrow text-text-subtle">{t.market.udPaidOut}</p>
-                    <p className={`mt-1 m-0 text-title-md font-bold leading-none amount${payoutStruck ? " gilt-ink" : " text-text"}`}>{formatTzs(myPosition.payout ?? 0)}</p>
+                    <p className="m-0 font-mono text-micro uppercase eyebrow text-text-subtle">{resultAmountLabel}</p>
+                    <p className={`mt-1 m-0 text-title-md font-bold leading-none amount${payoutStruck ? " gilt-ink" : " text-text"}`}>{resultAmount == null ? t.market.udPayoutUnavailable : formatTzs(resultAmount)}</p>
                   </div>
                   <div className="text-right">
                     {/* Ends on its figure's edge, its trailing tracking taken back (F19, round 6 · C11). */}
-                    <p className="m-0 font-mono text-micro uppercase eyebrow text-text-subtle kp-track-end">{t.market.udYourPick} · {t.market.udStake}</p>
+                    <p className="m-0 font-mono text-micro uppercase eyebrow text-text-subtle kp-track-end">{t.market.udYourPick}{result === "WIN" || result === "MIXED" ? ` · ${t.market.udStake}` : ""}</p>
                     {/* ⛔ A HEDGED HOLDER IS NOT QUOTED ONE SIDE. `myPositionFor` derives its
                         single `side` with `up >= down`, which is a tie-break, not a fact about
                         the bet — so a player who backed BOTH ways was shown the larger leg as
@@ -657,7 +718,7 @@ export default async function UpDownRoundPage({
                     <p className="mt-1 m-0 text-label amount text-text-muted">
                       {myPosition.hedged
                         ? t.market.udBothSides
-                        : myPosition.side === "UP" ? t.market.udUp : t.market.udDown} · {formatTzs(myPosition.stake)}
+                        : myPosition.side === "UP" ? t.market.udUp : t.market.udDown}{result === "WIN" || result === "MIXED" ? ` · ${formatTzs(myPosition.stake)}` : ""}
                     </p>
                   </div>
                 </div>
@@ -693,14 +754,17 @@ export default async function UpDownRoundPage({
                             <Chip className="tabular-nums" variant={p.side === "UP" ? "yes" : "no"}>
                               {p.side === "UP" ? <I.arrowUp s={12} text="body-700" /> : <I.arrowDown s={12} text="body-700" />}<span className="sr-only">{sideWord(t, p.side, "UPDOWN")} </span>{formatTzs(p.stake)}
                             </Chip>
-                            <Chip variant={positionStatusChip(p.status)}><StateGlyph s={12} tier={state.tier} aria-hidden />{POSITION_STATUS_LABEL(t, p.status)}</Chip>
+                            <Chip variant={p.payout == null ? "neutral" : positionStatusChip(p.status)}>
+                              {p.payout != null && <StateGlyph s={12} tier={state.tier} aria-hidden />}
+                              {p.payout == null ? t.market.udPayoutUnavailable : POSITION_STATUS_LABEL(t, p.status)}
+                            </Chip>
                           </span>
                           {/* DG-A-12 · §M4 + §T1 — a player's own payout. `.amount` replaces
                               `font-mono … tabular-nums`; 12.5 → `text-body-sm` (13), the +0.5
                               already ruled for `.admin-tbl` and the only rung at or above
                               §T4's floor. */}
                           <span className="ml-auto amount text-body-sm font-bold text-text">
-                            {p.payout == null ? "—" : formatTzs(p.payout)}
+                            {p.payout == null ? t.market.udPayoutUnavailable : formatTzs(p.payout)}
                           </span>
                         </li>
                         );
@@ -718,8 +782,13 @@ export default async function UpDownRoundPage({
                     nothing about why. That is E-65 surviving its own fix, one branch further
                     down. ⚠️ The guard asserted the branch EXISTED; it did not assert it was
                     REACHABLE, and those are different claims. */}
-                {refundReason && (
-                  refundCopy?.claimsRefund ? (
+                {round.settled && refundReason && (
+                  myPosition.incompletePayout ? (
+                    <p className="mt-3 m-0 text-body-sm leading-[1.55] text-text-muted">
+                      {refundReason === "unmatched" ? t.market.udRefundUnmatchedReason
+                        : (t.market as Record<string, string>)[VOID_NOTE_KEY[refundReason]]}
+                    </p>
+                  ) : refundCopy?.claimsRefund ? (
                     <p className="mt-3 m-0 text-body-sm leading-[1.55] text-text-muted">
                       {(t.market as Record<string, string>)[REFUND_REASON_KEY[refundReason]]}
                     </p>
@@ -744,12 +813,7 @@ export default async function UpDownRoundPage({
                     2026-10-09, review C14). Everybody else reads today's words. */}
                 <Link href={positionListHref("UPDOWN", myPosition.ids[0] ?? "")} className="btn btn-ghost btn-sm mt-3.5 w-full justify-center">{journey ? t.journey.tabTickets : t.market.udOpenInPositions}</Link>
               </section>
-            ) : round.state === "confirming" ? (
-              <section style={{ ...inset, padding: 16 }}>
-                <Chip variant={TONE_CHIP[STATUS_TONE.PENDING.player]}>{t.market.udSettlingTitle}</Chip>
-                <p className="mt-2 text-body-sm leading-[1.55] text-text-muted">{t.market.udConfirmingBody}</p>
-              </section>
-            ) : refundReason ? (
+            ) : round.settled && refundReason ? (
               // ── A REFUND, WITH ITS REAL REASON (E-65) ────────────────────
               // ⛔ Driven by `refundReasonFor`, the SAME rule the card uses — so the board and
               // this page cannot say different things about one player's money. It also fires
@@ -776,7 +840,6 @@ export default async function UpDownRoundPage({
                 on #stake at the bottom of the view, and with the pool between them the round's countdown fell off
                 the top. Countdown → confirmed price → the slip now fit one phone screen; the pool follows. */}
             <section aria-label={t.market.udPool} style={{ ...card, padding: "14px 16px 16px" }}>
-              <p className={eyebrow}>{t.market.udPool}</p>
               <div className="mt-2.5 flex items-baseline justify-between gap-3">
                 <div>
                   {/* ⭐ DG-A-12 · §M4 + §T1 — THE POOL FIGURE AND THE COUNT BESIDE IT MOVE TOGETHER.
@@ -790,7 +853,7 @@ export default async function UpDownRoundPage({
                       take `.amount` (§M4 governs amounts only). `leading-[1.1]` stays on both:
                       the rung would otherwise impose 24px and open the pair up. */}
                   <p className="m-0 amount text-title-sm font-bold leading-[1.1] text-text">{formatTzs(round.volumeTzs)}</p>
-                  <p className="mt-1 font-mono text-micro uppercase eyebrow text-text-subtle">{t.market.udVolume}</p>
+                  <p className="mt-1 font-mono text-micro uppercase eyebrow text-text-subtle">{t.market.udPool}</p>
                 </div>
                 <div className="text-right">
                   <p className="m-0 flex items-center justify-end gap-1.5 font-mono text-title-sm font-bold leading-[1.1] tabular-nums text-text">
@@ -823,7 +886,7 @@ export default async function UpDownRoundPage({
                     empty emptyLabel={price.kind === "oneSided" ? t.market.oneSideOnly : round.players === 0 ? t.market.noBetsYet : t.market.noPoolYet} />
                 ) : (
                   <TippingBar className="mt-1.5" yesPct={upPct} height={7} showLabels={false}
-                    recastOnHover={false} resolved={round.state === "resolved"}
+                    recastOnHover={false} resolved={round.state === "resolved" && round.settled}
                     probabilityLabel={t.market.probBarAria.replace("{side}", t.market.udUp)} />
                 )}
                 <div className="mt-1.5 flex items-baseline justify-between gap-2 font-mono text-[10.5px] tabular-nums text-text-muted">
@@ -835,15 +898,15 @@ export default async function UpDownRoundPage({
           </div>
         </div>
 
-        {/* ── Settlement proof (only once decided; never a half-filled shell) ── */}
+        {/* ── Price proof (only once decided; payment is named separately) ── */}
         {proof && (
-          <section aria-label={t.market.udSettlementProof} style={{ ...card, padding: "16px 18px 18px" }}>
+          <section aria-label={round.settled && !round.correctionKind ? t.market.udSettlementProof : t.market.udPriceVerdictProof} style={{ ...card, padding: "16px 18px 18px" }}>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="gilt-eyebrow">{t.market.udSettlementProof}</span>
+              <span className={eyebrow}>{round.settled && !round.correctionKind ? t.market.udSettlementProof : t.market.udPriceVerdictProof}</span>
               {/* On the card's edge where it shares the heading's line, its trailing 0.14em taken back (round 7, R7-C). */}
               <span className="font-mono text-micro uppercase eyebrow text-text-subtle kp-track-end">{t.market.udRoundLabel} {round.roundId} · {t.market.udAuditableRecord}</span>
             </div>
-            <div className="gilt-rule" style={{ margin: "10px 0 14px" }} />
+            <div className="border-t border-border-subtle/60" style={{ margin: "10px 0 14px" }} />
 
             <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
               {/* E-53 · the endpoint is gone from BOTH readings. It named the vendor and,
@@ -876,9 +939,23 @@ export default async function UpDownRoundPage({
                   {OutcomeGlyph && <OutcomeGlyph s={16} edge="start" text="mono-700" />}
                   {outcomeLabel}
                 </p>
+                {round.correctionKind && (
+                  <p className="mt-2 mb-0 text-body-sm text-text-muted">
+                    {round.correctionKind === "objection" ? t.market.resCorrectedOnObjection
+                      : round.correctionKind === "operator" ? t.market.udOfficerCancelledAfterPrice
+                      : t.market.udVerdictChanged}
+                    {" "}{t.market.udPriceRecordOriginal}
+                  </p>
+                )}
+                {round.state === "resolved" && price.kind !== "priced" && (
+                  <p className="mt-2 mb-0 text-body-sm text-text-muted">
+                    {price.kind === "oneSided" ? t.market.udRefundUnmatchedReason
+                      : round.players > 0 ? t.market.udNoActiveStakes : t.market.udNoBetsPlaced}
+                  </p>
+                )}
                 <dl className="mt-[11px] grid grid-cols-[auto_1fr] gap-x-2.5 gap-y-[5px] font-sans text-body-sm">
                   <dt className="text-text-faint">{t.market.udMove}</dt>
-                  <dd className="m-0 font-mono tabular-nums text-text-muted">{pMove != null ? `${sgn(pMove)}$${Math.abs(pMove).toFixed(dec)}` : "—"}</dd>
+                  <dd className="m-0 font-mono tabular-nums text-text-muted">{pMove != null ? `${sgn(pMove)}${usd(Math.abs(pMove), dec)}` : "—"}</dd>
                   <dt className="text-text-faint">{t.market.udPercent}</dt>
                   <dd className="m-0 font-mono tabular-nums text-text-muted">{pMovePct != null ? `${sgn(pMovePct)}${Math.abs(pMovePct).toFixed(3)}%` : "—"}</dd>
                   {round.upTarget != null && round.downTarget != null && (
@@ -922,7 +999,7 @@ export default async function UpDownRoundPage({
                 </p>
                 {/* The quote's rule is the market page's own (`border-l-2 border-border/60`), not gilt: a source excerpt is
                     not money (R5-C, the second gold audit, 2026-10-09; Q5) — the resolution panel's evidence reads the same. */}
-                <pre className="m-0 font-mono text-[10.5px] text-text-muted" style={{ ...inset, borderLeft: "2px solid color-mix(in oklab, var(--border) 60%, transparent)", borderRadius: "var(--r-sm)", padding: "11px 13px", lineHeight: 1.65, whiteSpace: "pre-wrap", overflowWrap: "break-word" }}>{evidence}</pre>
+                <pre className="m-0 p-3 font-mono text-[10.5px] text-text-muted" style={{ ...inset, borderLeft: "2px solid color-mix(in oklab, var(--border) 60%, transparent)", borderRadius: "var(--r-sm)", lineHeight: 1.65, whiteSpace: "pre-wrap", overflowWrap: "break-word" }}>{evidence}</pre>
               </div>
             )}
 

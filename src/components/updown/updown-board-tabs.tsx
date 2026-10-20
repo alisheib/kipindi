@@ -19,9 +19,11 @@
  * UD-10); only a plain left-click becomes a transition.
  */
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { FilterPill } from "@/components/ui/filter-pill";
 import { FilterSheet, FilterSheetGroup } from "@/components/markets/filter-sheet";
+import { roundDuration } from "@/lib/updown-round-name";
+import { pendingAssetHasDuration } from "@/lib/updown-filter-pending";
 
 export type BoardTab = { key: string; href: string; label: string };
 
@@ -72,6 +74,20 @@ export function UpDownBoardTabs({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const assetRailRef = useRef<HTMLElement>(null);
+  const durationRailRef = useRef<HTMLElement>(null);
+  const [choicesOverflow, setChoicesOverflow] = useState(false);
+
+  // U43 B3: both axes stay visible as one row each. The kit sheet is an extra way to
+  // reach an option only when a row genuinely cannot display all of its choices.
+  useEffect(() => {
+    const rails = [assetRailRef.current, durationRailRef.current].filter((rail): rail is HTMLElement => rail != null);
+    const measure = () => setChoicesOverflow(rails.some((rail) => rail.scrollWidth > rail.clientWidth + 1));
+    const observer = new ResizeObserver(measure);
+    rails.forEach((rail) => observer.observe(rail));
+    measure();
+    return () => observer.disconnect();
+  }, [assetTabs, durationTabs]);
 
   const go = (hrefTarget: string, blocked = false) => (e: React.MouseEvent) => {
     // Let the browser own anything that is not a plain left-click (new tab etc.).
@@ -133,8 +149,12 @@ export function UpDownBoardTabs({
      the one the board is still on — the best available knowledge, and true a moment later in
      the overwhelming majority of cases. Never "none", which is true in none of them. */
   const pending = isPending && pendingHref != null ? new URLSearchParams(pendingHref.split("?")[1] ?? "") : null;
+  // An asset-only URL is the server choosing a new duration. Keep the old
+  // asset selected alongside its old duration until that board arrives; Gold
+  // cannot momentarily claim Bitcoin's 3-minute round.
+  const pendingAssetReady = pendingAssetHasDuration(pending?.get("asset") ?? null, pending?.get("d") ?? null, activeAssetKey);
   const assetOn = (tab: BoardTab) =>
-    pending != null ? pending.get("asset") === tab.key : tab.key === activeAssetKey;
+    pending != null && pendingAssetReady ? pending.get("asset") === tab.key : tab.key === activeAssetKey;
   const durationOn = (t: { d: number; href: string }) =>
     pending != null && pending.has("d") ? Number(pending.get("d")) === t.d : t.d === activeDuration;
 
@@ -188,7 +208,11 @@ export function UpDownBoardTabs({
     return () => clearTimeout(t);
   }, [isPending, pendingHref]);
 
-  /* ── UD-13b · WHAT THE PHONE SHOWS INSTEAD ────────────────────────────────────────────
+  /* ── UD-13b HISTORY, SUPERSEDED BY U43 ON 2026-10-19 ──────────────────────────────────
+     Ali's current ruling keeps assets and durations in two visible one-row rails on phones.
+     The sheet below is shown only if a measured row cannot display all its chips. The older
+     sheet-first reasoning below records the defect the previous design addressed, not the
+     current visibility rule.
      🔴 THE DEFECT, MEASURED ON PRODUCTION 2026-08-25 BEFORE ANY CODE MOVED. At 360 and 414
      these two rails wrap to FOUR rows of chips — 100px of assets over 96px of durations,
      **196px** — and the first game card sits at **top 652 of a 900px viewport**. Seventy-two
@@ -234,12 +258,13 @@ export function UpDownBoardTabs({
   // ⛔ Composed here, not in the dictionary: `"{asset} · {duration}"` has nothing to translate,
   // and `test:i18n`'s untranslated-values check correctly refused it as a key.
   const activeAssetText = activeAsset?.label ?? assetsLabel;
-  const activeDurText = activeDur ? `${activeDur.d} ${minLabel}` : durationsLabel;
+  const durationText = (minutes: number) => roundDuration({ market: { udMin: minLabel } }, minutes);
+  const activeDurText = activeDur ? durationText(activeDur.d) : durationsLabel;
 
   return (
     <>
-      {/* ── The phone sheet — ONE trigger, naming what the board is showing ───────────── */}
-      <div className="mt-4 sm:hidden">
+      {/* The sheet is a measured overflow escape hatch; two rows of chips remain in view. */}
+      <div className={choicesOverflow ? "mt-2 sm:hidden" : "hidden"}>
         <FilterSheet
           label={sheetLabel}
           value={`${activeAssetText} · ${activeDurText}`}
@@ -278,7 +303,7 @@ export function UpDownBoardTabs({
                 <FilterPill
                   key={tItem.d}
                   href={tItem.href}
-                  label={`${tItem.d} ${minLabel}`}
+                  label={durationText(tItem.d)}
                   className={assetSwitching ? "kp-fchip-waiting" : undefined}
                   blocked={assetSwitching}
                   on={durationOn(tItem)}
@@ -301,7 +326,7 @@ export function UpDownBoardTabs({
           filter rail. ⛔ No count: `BoardAsset` carries none and the board reads rounds for the
           ACTIVE chain only, so a number here would be invented — A-5 forbids that, and
           `durations.length` is a count of chains wearing the costume of a count of games. */}
-      <nav aria-label={assetsLabel} data-filter-rail className="mt-4 hidden flex-wrap gap-2 sm:flex">
+      <nav ref={assetRailRef} aria-label={assetsLabel} data-filter-rail className="ud-filter-rail mt-4 flex gap-2">
         {assetTabs.map((tab) => (
           <FilterPill
             key={tab.key}
@@ -327,12 +352,12 @@ export function UpDownBoardTabs({
           These were the only genuinely sub-floor controls in the product at **40px** (`h-7`);
           they are 44px now, so this is a hit-area fix as well as a shape one. */}
       {durationTabs.length > 0 && (
-        <nav aria-label={durationsLabel} data-filter-rail className="mt-2 hidden flex-wrap gap-1.5 sm:flex">
+        <nav ref={durationRailRef} aria-label={durationsLabel} data-filter-rail className="ud-filter-rail mt-2 flex gap-0.5">
           {durationTabs.map((tItem) => (
             <FilterPill
               key={tItem.d}
               href={tItem.href}
-              label={`${tItem.d} ${minLabel}`}
+              label={durationText(tItem.d)}
                   className={assetSwitching ? "kp-fchip-waiting" : undefined}
                   blocked={assetSwitching}
               on={durationOn(tItem)}

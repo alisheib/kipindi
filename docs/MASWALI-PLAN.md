@@ -30,7 +30,7 @@
 ## §0 · RESUME AT
 
 **State (2026-10-20):** S1–S4 are on `main` dark. S5's SSD release branch
-`codex/maswali-coord-20261019` includes the last fetched `main` at `a504ad280`.
+`codex/maswali-coord-20261019` includes the U43 `main` release at `a12f7b26`.
 The player and admin surfaces, global admin search/filter/sort/paging, bounded integrity
 report coverage, reviewed consequential actions, partial-seal and device-audit feedback,
 multi-ticket slip, separate Results section, public settled-week sitemap and share image,
@@ -41,13 +41,15 @@ WITHDRAWN-route drive and three-language player tile read passed. Classic parity
 the then-current `main` passed 67/67, and the results filter's mutation proof was repaired
 and passed after the archive refactor. The final exact-commit browser and tile reads,
 exclusive two-store `test:all`, build and local `qa:live`, deployment and production
-read-back remain open. S5 owns the shared heavy-job lock; no `main` push is under way.
+read-back remain open. The U43 task owns the `main` push lock for its live read-back and hotfix;
+S5 owns the shared heavy-job lock and must recheck both locks and remote `main` before release.
 The rollout remains `WITHDRAWN`.
 
-**Cross-device checkpoint (2026-10-20):** The remote branch
-`codex/maswali-coord-20261019` is pushed through the clean S5 source commit
-`46135acdec22f9404decaac20f6d62ec4d6c0286`. This is a branch checkpoint,
-not a `main` release. The first clean two-store `test:all` baseline found four
+**Cross-device checkpoint (2026-10-20):** Fetch the remote branch
+`codex/maswali-coord-20261019` and read its HEAD; it merges U43 `a12f7b26` above the
+clean S5 source commit `46135acdec22f9404decaac20f6d62ec4d6c0286` and its
+documentation checkpoint `d566067acf54808c90a9cb172b6592af763bb6ff`. This is
+a branch checkpoint, not a `main` release. The first clean two-store `test:all` baseline found four
 failures in the new work (the house-bot report line pin and visual passes R5-G,
 R8-B and R9-A); all four were repaired and their focused checks pass on the
 checkpoint. A fresh exact-commit two-store `test:all`, current-`main` classic
@@ -55,7 +57,7 @@ parity, final 135-cell admin tile/tap sweep, compiled multi-slip browser drive,
 exact-commit build and local live QA are in progress or still owed. New devices
 must fetch the branch, recheck remote `main` and both shared locks, and use their
 own authorized nonpersonal GitHub credential; OMEGA's repository deploy key is
-local to that machine. U43 may advance `main` first, in which case merge its
+local to that machine. U43 may advance `main` again for its hotfix, in which case merge its
 actual remote commit and repeat every affected release check. Never use the
 personal token offered in chat or write production data.
 
@@ -209,9 +211,9 @@ The State paragraph below is the last push's.)**
      `simple-journey-flag`, `visual-pass-r4i`, `-r6c`, `-r9c` (a five-label twin of §4's widths), and
      `qa-journey-shell.mjs`'s copy of the table. ⭐ The lead's ruling on the widths (measured with r9c's own model:
      with five tabs a slot is 72px at 360, and the Swahili "Tiketi zangu" needs 83.2): while five tabs show, the rail's
-     tickets tab carries a short Swahili label, "Tiketi" (its page keeps the title, as Juu/Chini's rail label is short),
-     so every label sits on one line from 360 (the English "My tickets" from 350); the centring thresholds re-derived
-     from the five real labels. **Then** the classic top
+     tickets tab carries a short Swahili label, "Tiketi" (its page keeps the title). U43's full "Juu na Chini" name
+     wraps on the five-tab rail below 416, with all pips top-aligned; English and Chinese centre from 317. The thresholds
+     are re-derived from the five real labels. **Then** the classic top
      bar's core link after Up & Down — Results folds into More at 1024–1279 only while Millionea shows, which needs
      More's lit state to know the band (at 1280 and up the hidden Results row would light More too) and its
      screen-reader text; the header-fit anchors and red read that file. Merge it into

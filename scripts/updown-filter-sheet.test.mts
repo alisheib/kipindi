@@ -1,12 +1,11 @@
 /**
- * UD-13b — THE UP & DOWN BOARD'S PHONE FILTERS, AND THE ONE THING THAT MAKES THEM SAFE.
+ * UD-13b / U43 — THE UP & DOWN BOARD'S TWO VISIBLE FILTER ROWS.
  *
  *   npm run test:updown-filter-sheet     (proven by: npm run red:updown-filter-sheet)
  *
- * > *"For the mobile version, the filters — the bitcoin, ethereum, durations etc. — use design
- * >  to create something aesthetically and performance-wise good; a drawer or any type of
- * >  filtering, not to keep everything visible at the same time. But we don't want to create
- * >  anything outside the box — it's all from our UI kit."* — Ali, 2026-08-25
+ * Ali's 2026-10-19 ruling: assets and durations are two short visible rows on phones;
+ * the sheet is available only when an axis cannot fit. The earlier collapsed-sheet
+ * design is kept below as history; the U43 assertions in §1 and §3 govern today.
  *
  * 🔴 THE DEFECT, MEASURED ON PRODUCTION BEFORE ANY CODE MOVED (`/updown`, signed in):
  * at 360 and 414 the asset rail and the duration rail wrap to FOUR rows of chips — **196px**
@@ -30,6 +29,7 @@ import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decomment } from "./lib/decomment.mts";
+import { pendingAssetHasDuration } from "../src/lib/updown-filter-pending.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 let pass = 0, fail = 0;
@@ -44,18 +44,20 @@ const page = decomment(readFileSync(join(ROOT, PAGE), "utf8"));
 const css = readFileSync(join(ROOT, "src/app/globals.css"), "utf8");
 const { dict } = await import("../src/lib/i18n-dict.ts");
 
-// ── 1 · THE SHEET EXISTS, AND ONLY BELOW `sm` ──────────────────────────────
+// ── 1 · U43 2026-10-19: TWO VISIBLE RAILS, SHEET ONLY FOR OVERFLOW ──────────
 {
   ok("1: the board renders a FilterSheet", /<FilterSheet/.test(tabs));
-  ok("1: …inside a wrapper that hides it from `sm` up",
-     /className="mt-4 sm:hidden"[\s\S]{0,200}<FilterSheet/.test(tabs));
-  // ⚠️ The two rails must still EXIST — this is a disclosure, not a deletion. A guard that
-  // only checked "the sheet is there" would pass on a change that threw the chips away at
-  // every width, which is a different product and not the one Ali asked for.
-  ok("1: the asset rail still exists and is shown from `sm` up",
-     /aria-label=\{assetsLabel\} data-filter-rail className="mt-4 hidden flex-wrap gap-2 sm:flex"/.test(tabs));
-  ok("1: the duration rail still exists and is shown from `sm` up",
-     /aria-label=\{durationsLabel\} data-filter-rail className="mt-2 hidden flex-wrap gap-1.5 sm:flex"/.test(tabs));
+  ok("1: the sheet appears only after measured overflow and only on phones",
+     /className=\{choicesOverflow \? "mt-2 sm:hidden" : "hidden"\}/.test(tabs)
+     && /scrollWidth > rail\.clientWidth \+ 1/.test(tabs));
+  ok("1: the asset rail is visible at every width",
+     /aria-label=\{assetsLabel\} data-filter-rail className="ud-filter-rail mt-4 flex gap-2"/.test(tabs));
+  ok("1: the duration rail is visible at every width",
+     /aria-label=\{durationsLabel\} data-filter-rail className="ud-filter-rail mt-2 flex gap-0\.5"/.test(tabs));
+  ok("1: both rails hold one row and allow horizontal reach",
+     /\.ud-filter-rail\s*\{[^}]*overflow-x:\s*auto/.test(css)
+     && /\.ud-filter-rail\s*\{[^}]*max-width:\s*100%/.test(css)
+     && !/flex-wrap/.test((tabs.match(/<nav ref=\{assetRailRef\}[\s\S]*?<\/nav>/) ?? [""])[0]));
 }
 
 // ── 2 · ⭐ THE TRIGGER NAMES THE ACTIVE SELECTION — the assertion this file is for ──
@@ -80,12 +82,10 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
      /ariaLabel=\{sheetAria\.replace\("\{asset\}", activeAssetText\)\.replace\("\{duration\}", activeDurText\)\}/.test(tabs));
 }
 
-// ── 3 · THE BAND IS `sm`, BECAUSE THAT IS WHERE THE DEFECT IS ──────────────
+// ── 3 · U43: THE SHEET IS A PHONE OVERFLOW ESCAPE HATCH ─────────────────────
 {
-  // ⛔ `lg` would collapse the filters on tablets, where the rails measured a single clean
-  // 44px row. The measurement is the reason; pin it so a later "tidy-up" cannot widen it.
-  ok("3: ⛔ the split is at `sm`, never at `md` or `lg`",
-     /sm:hidden/.test(tabs) && /sm:flex/.test(tabs) && !/\b(md|lg):(hidden|flex)\b/.test(tabs));
+  ok("3: the overflow escape hatch ends at `sm`",
+     /choicesOverflow \? "mt-2 sm:hidden"/.test(tabs) && !/\b(md|lg):(hidden|flex)\b/.test(tabs));
 }
 
 // ── 4 · ⛔ NOTHING OUTSIDE THE KIT ──────────────────────────────────────────
@@ -246,6 +246,18 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
   // active duration, never to "none" — which is the exact shape of the defect.
   ok("9: ⛔ …and a pending href with no `d` falls through to the real active duration",
      /pending != null && pending\.has\("d"\)/.test(tabs) && /: t\.d === activeDuration/.test(tabs));
+  // U43 2026-10-20: BTC 3 minutes -> Gold has no 3-minute chain. The old
+  // duration remains selected while the new board streams, so the old asset
+  // must remain selected with it instead of announcing Gold + 3 minutes.
+  ok("9: pending asset-only URL keeps the old asset and duration together",
+      !pendingAssetHasDuration("XAU", null, "BTC")
+      && /pending != null && pendingAssetReady \? pending\.get\("asset"\) === tab\.key : tab\.key === activeAssetKey/.test(tabs)
+      && /pendingAssetHasDuration\(pending\?\.get\("asset"\) \?\? null, pending\?\.get\("d"\) \?\? null, activeAssetKey\)/.test(tabs));
+  ok("9: a shared duration still gives immediate asset feedback",
+      pendingAssetHasDuration("XAU", "15", "BTC")
+      && pendingAssetHasDuration("BTC", null, "BTC")
+      && !pendingAssetHasDuration("XAU", "oops", "BTC")
+      && !pendingAssetHasDuration(null, null, "BTC"));
 }
 
 // ── 10 · 🔴 THE SHEET MUST LEAVE, NOT VANISH ──
@@ -348,7 +360,7 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
   const header = decomment(readFileSync(join(ROOT, "src/components/ui/page-header.tsx"), "utf8"));
   const OLD_SHAPE = /<div className="flex items-start justify-between gap-3">\s*<PageHeader[^>]*subtitle=/;
   ok("12: ⭐ the board hands its pills to PageHeader as `actions`, beside its tagline",
-     /<PageHeader\s+eyebrow=\{t\.market\.udStreaming\}\s+title=\{t\.market\.udTitle\}\s+subtitle=\{t\.market\.udTagline\}\s+actions=\{/.test(page));
+     /<PageHeader\s+className="ud-board-header"\s+title=\{t\.market\.udTitle\}\s+subtitle=\{t\.market\.udTagline\}\s+actions=\{/.test(page));
   ok("12: ⛔ …and never again sets a subtitled PageHeader beside them in a flex row", !OLD_SHAPE.test(page));
   const rowEnd = header.indexOf(") : head}");
   const sub = header.indexOf("{subtitle}");

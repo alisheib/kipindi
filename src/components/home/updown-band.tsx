@@ -6,7 +6,7 @@
  * them. We need something more elite, more unique, more visually appealing"*, rated 10/10 by a UI/UX +
  * gambling-industry panel on real frames before it ships. The price-line chart and its countdown ring are
  * gone. The band is a football scoreboard for one live round:
- *   G1 the fixture (asset mark, name, duration) and ONE clock line — "Dau linafungwa baada ya 01:52";
+ *   G1 the fixture (asset mark, name, duration) and ONE clock line — "Dau linafungwa 01:52";
  *   G2 the plate — who is ahead, dated ("Juu inaongoza · saa 14:26 · Juu ya ufunguzi kwa $18.52"), with
  *      the Up and Down bet links INSIDE it, directly under the answer: the teams are the buttons;
  *   G3 one match timeline — a stem per confirmed read, the lock where betting closes, the flag where the

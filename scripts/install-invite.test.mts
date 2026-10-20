@@ -135,8 +135,10 @@ const needleOwnMoney = ["MONEY_ROUTE", "function isMoneySurface", "const isMoney
 ok("5.2 ⭐ ONE definition of a money surface — the Needle imports it rather than declaring its own",
    /export function isMoneySurface/.test(surf) && /import \{[^}]*\bisMoneySurface\b[^}]*\} from "@\/lib\/surfaces"/.test(needleCode) && needleOwnMoney.length === 0,
    `${needleOwnMoney.length > 0 ? `needle.tsx declares its own: ${needleOwnMoney.join(", ")} · ` : ""}two definitions of "money surface" is the drift this repo has filed four times`);
-ok("5.3 the commit gate covers the poll bet card AND the Up & Down round card",
-   /\/\^\\\/markets\\\/\[\^\/\]\+\//.test(surf) && /\/\^\\\/updown\\\/\[\^\/\]\+\//.test(surf), surf.match(/COMMIT_ROUTE[\s\S]{0,320}/)?.[0] ?? "");
+ok("5.3 the commit gate covers the poll bet card, the Up & Down board, and the round card",
+   /\/\^\\\/markets\\\/\[\^\/\]\+\//.test(surf)
+     && surf.includes(String.raw`  /^\/updown\/?$/,`)
+     && /\/\^\\\/updown\\\/\[\^\/\]\+\//.test(surf), surf.match(/COMMIT_ROUTE[\s\S]{0,320}/)?.[0] ?? "");
 /* 🔴 THIS CHECK PINNED THE DEFECT FOR THREE WEEKS. It asserted an INLINE
    `bottom: "calc(96px + env(safe-area-inset-bottom))"` — and 96px is the clearance for a tab bar
    that is `lg:hidden`, so above `lg` the card floated a third of the way up a short laptop

@@ -232,12 +232,14 @@ const ST = req("../src/lib/status-tone.ts") as {
   ok(`2.3 · CENSUS · ${uses.length} places a void, refund, reversal or cancellation is worded in player code: not one drawn in the royal family (a hand-typed \`pending\`, \`info\` or brand ink)`,
     uses.length >= 30 && royal.length === 0, j(royal));
   const plantFeatured = code("src/app/results/page.tsx").replace(/<Chip variant=\{TONE_CHIP\[STATUS_TONE\.VOID\.player\]\} size="sm" metrics="status">\{t\.common\.voided\}/, '<Chip variant="pending" size="sm">{t.common.voided}');
-  const plantPanel = code("src/components/markets/resolution-panel.tsx").replace("variant={isVoid ? TONE_CHIP[STATUS_TONE.VOID.player] : \"resolved\"}", "variant={isVoid ? \"pending\" : \"resolved\"}");
+  const panel = code("src/components/markets/resolution-panel.tsx");
+  const panelTone = 'variant={TONE_CHIP[STATUS_TONE[isVoid ? "VOID" : "RESOLVED"].player]}';
+  const plantPanel = panel.replace(panelTone, 'variant={isVoid ? "pending" : "resolved"}');
   ok("2.3′ PLANT · the round-6 royal void chips — /results' notable card, the market's resolution panel — are each reported",
-    voidRoyal(plantFeatured).length === 1 && voidRoyal(plantPanel).length === 1, j({ f: voidRoyal(plantFeatured).length, p: voidRoyal(plantPanel).length }));
-  ok("2.4 · the two hand-typed void chips read the dictionary now — /results' notable card and the market's resolution panel — and each states the seal's status metrics, so the slot's size does not follow its colour (chip.tsx, G1)",
+    panel.includes(panelTone) && plantPanel !== panel && voidRoyal(plantFeatured).length === 1 && voidRoyal(plantPanel).length === 1, j({ f: voidRoyal(plantFeatured).length, p: voidRoyal(plantPanel).length }));
+  ok("2.4 · the two void chips read the dictionary, and the resolution panel's RESOLVED arm does too; each keeps status metrics",
     has("src/app/results/page.tsx", '<Chip variant={TONE_CHIP[STATUS_TONE.VOID.player]} size="sm" metrics="status">{t.common.voided}</Chip>')
-      && has("src/components/markets/resolution-panel.tsx", '<Chip variant={isVoid ? TONE_CHIP[STATUS_TONE.VOID.player] : "resolved"} metrics="status">'));
+      && has("src/components/markets/resolution-panel.tsx", `<Chip ${panelTone} metrics="status">`));
   {
     // The home's settled rows: a VOID row's pill was the royal STATUS pill (23px, 11px type) beside its YES/NO siblings'
     // 21px base pills — its height followed its colour. As the slate chip it takes the base metrics with them.
@@ -262,7 +264,7 @@ const ST = req("../src/lib/status-tone.ts") as {
   const READERS: Array<[string, string]> = [
     ["src/components/journey/tickets/ticket-card.tsx", "variant={positionStatusChip(p.status)}"],
     ["src/components/markets/position-card.tsx", "variant={positionStatusChip(status)}"],
-    ["src/components/markets/market-card.tsx", "variant={TONE_CHIP[STATUS_TONE[statusWord].player]}"],
+    ["src/components/markets/market-card.tsx", 'variant={TONE_CHIP[STATUS_TONE[statusWord].player]}'],
     ["src/components/home/trust-band.tsx", "TONE_CHIP[STATUS_TONE.VOID.player]"],
     ["src/components/updown/updown-card.tsx", "<Chip variant={TONE_CHIP[STATUS_TONE.VOID.player]}>{t.market.statusVoid}</Chip>"],
     ["src/app/updown/[roundId]/page.tsx", ": TONE_CHIP[STATUS_TONE.VOID.player];"],

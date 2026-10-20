@@ -492,16 +492,28 @@ section("5 · the not-found mark (tiles 345–398: the market not-found stood th
   ok(`5.3 · only client code loads it (${loaders.length}: ${loaders.map((f) => f.split("/").pop()).join(", ")})`, loaders.length === 7 && servers.length === 0, JSON.stringify(servers));
 }
 {
-  // The three overlays: the stand-down term joined by `&& !notFoundShown`, the mark read once each.
+  // The three overlays: the journey stand-down term joined by `&& !notFoundShown`, the mark read once each. U43 adds
+  // its overlay route gate to the Needle; S5 then adds the slip while it is a real page.
   const TERM = "journeyOn && isJourneySurface(pathname) && !notFoundShown";
+  const needleLine = `const suppressed = hiddenPref || isMoneySurface(pathname) || suppressNeedleOnU43(pathname) || (${TERM});`;
   const sites: Array<[string, string, string]> = [
-    ["the Needle", NEEDLE, `const suppressed = hiddenPref || isMoneySurface(pathname) || (${TERM});`],
+    ["the Needle", NEEDLE, needleLine],
     ["the chat bubble", CHAT, `if (${TERM}) return null;`],
     ["the channels panel", CHANNELS, `const journeyHidden = ${TERM};`],
   ];
   const overlay = (s: string, line: string) => count(s, line) === 1 && count(s, "const notFoundShown = useNotFoundShown();") === 1
     && s.includes('import { useNotFoundShown } from "@/lib/not-found-mark";');
   for (const [name, file, line] of sites) ok(`5.4 · ${name} stands down for a journey page that is not a not-found page: ${line}`, overlay(read(file), line));
+  const needle = read(NEEDLE);
+  ok("5.4a · the Needle also stands down for U43 overlay routes and a real Millionea slip, feeding the combined gate to the engine",
+    needle.includes('import { suppressNeedleOnU43 } from "@/lib/u43-overlay-routes";')
+      && count(needle, "const standDown = suppressed || (isSlipSurface(pathname) && !notFoundShown);") === 1
+      && count(needle, "wantSuppressed.current = standDown;") === 1
+      && count(needle, "apiRef.current?.setSuppressed(standDown);") === 1);
+  ok("5.4a′ PLANT · dropping the U43 gate from the Needle is reported",
+    !overlay(needle.replace(" || suppressNeedleOnU43(pathname)", ""), needleLine));
+  ok("5.4a″ PLANT · dropping the Millionea slip gate from the Needle is reported",
+    !needle.replace(" || (isSlipSurface(pathname) && !notFoundShown)", "").includes("const standDown = suppressed || (isSlipSurface(pathname) && !notFoundShown);"));
   ok("5.4′ PLANT · the chat's term without the mark (the market not-found loses its bubble again) is reported",
     !overlay(read(CHAT).replace(`if (${TERM}) return null;`, "if (journeyOn && isJourneySurface(pathname)) return null;"), sites[1][2]));
   ok("5.5 · the Needle's gate runs again when the mark comes or goes", read(NEEDLE).includes("}, [hiddenPref, pathname, journeyOn, notFoundShown]);"));

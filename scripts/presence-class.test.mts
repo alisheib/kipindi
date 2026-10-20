@@ -64,7 +64,7 @@ const load = (rel: string) => import(pathToFileURL(join(ROOT, rel)).href);
 
 const { routeOutcome, MAX_LIVE_AGE_MS } = (await load("src/lib/outcome-announcement.ts")) as
   typeof import("../src/lib/outcome-announcement.ts");
-const { summarise } = (await load("src/lib/away-ledger.ts")) as
+const { summarise, awayRecordHref } = (await load("src/lib/away-ledger.ts")) as
   typeof import("../src/lib/away-ledger.ts");
 const { groupKeyFor, mergeGroup } = (await load("src/lib/toast-group.ts")) as
   typeof import("../src/lib/toast-group.ts");
@@ -212,7 +212,7 @@ ok("1.6 · a LIVE loss and a LIVE refund are BOTH toasts, in DIFFERENT groups",
 /** ⭐ 1.7 — THE INVARIANT, ENUMERATED. Over the whole cross-product, `CEREMONY` may appear
  *  ONLY in the single all-green cell. This is the check that survives a rename. */
 {
-  const kinds: OutcomeKind[] = ["WIN", "LOSS", "VOID"];
+  const kinds: OutcomeKind[] = ["WIN", "LOSS", "VOID", "MIXED"];
   const settles: [string, number | null | undefined][] = [
     ["null", null], ["undefined", undefined], ["nan", Number.NaN],
     ["stale", NOW - (MAX_LIVE_AGE_MS + 5_000)], ["fresh", NOW - 1_000],
@@ -339,6 +339,9 @@ ok("5.4 · two refunds state what came BACK",
     return s.homogeneous === "VOID" && s.figure === 3_000; })());
 ok("5.5 · a win beside a refund is still MIXED — 'paid' and 'returned' are different columns",
   summarise([e("WIN", 8_000, 1_000, "a"), e("VOID", 1_000, 1_000, "b")]).figure === null);
+ok("5.5b · even a homogeneous mixed-round backlog states only a count",
+  (() => { const s = summarise([e("MIXED", 3_000, 5_000, "a"), e("MIXED", 2_000, 4_000, "b")]);
+    return s.total === 2 && s.mixed === 2 && s.homogeneous === "MIXED" && s.figure === null; })());
 ok("5.6 · the empty set states nothing at all",
   (() => { const s = summarise([]); return s.total === 0 && s.figure === null && s.homogeneous === null; })());
 ok("5.control · a homogeneous set DOES produce a figure (5.1/5.5 are not vacuous)",
@@ -389,10 +392,12 @@ ok("6.3 · the bar is a NoticeBar — it blocks nothing and takes no focus",
   const lenses = lensList ? [...lensList[1].matchAll(/"([a-z]+)"/g)].map((m) => m[1]) : [];
   const parser = sliceBraces(port, "export function parsePortfolioParams(");
   const keys = parser ? [...parser.matchAll(/one\("([a-z]+)"\)/g)].map((m) => m[1]) : [];
-  const hrefs = [...barSrc.matchAll(/href="(\/positions[^"]*)"/g)].map((m) => m[1]);
-  ok("6.8.control · the lens list, the parser's keys and the bar's /positions links are all locatable",
-    lenses.length >= 3 && keys.includes("tab") && hrefs.length >= 1,
-    `lenses=${lenses.length} keys=${keys.join(",")} hrefs=${hrefs.length}`);
+  const marketEntry = { ...e("LOSS", 0, 500), recordHref: "/positions?tab=settled" as const };
+  const updownEntry = { ...e("MIXED", 500, 1_000), recordHref: "/updown/history" as const };
+  const hrefs = [awayRecordHref([marketEntry])];
+  ok("6.8.control · the lens list, parser keys and market result destination are locatable",
+    lenses.length >= 3 && keys.includes("tab") && awayRecordHref([marketEntry]).startsWith("/positions"),
+    `lenses=${lenses.length} keys=${keys.join(",")} market=${awayRecordHref([marketEntry])}`);
   const bad = hrefs.filter((h) => {
     const q = new URLSearchParams(h.split("?")[1] ?? "");
     for (const [k, v] of q) {
@@ -403,7 +408,22 @@ ok("6.3 · the bar is a NoticeBar — it blocks nothing and takes no focus",
   });
   ok("6.8 · ⛔ every /positions link in the bar uses only keys parsePortfolioParams reads, with a real lens",
     bad.length === 0, `unread by the page: ${bad.join(" · ")}`);
-  ok("6.9 · the away link opens the SETTLED lens", hrefs.includes("/positions?tab=settled"), hrefs.join(" · "));
+  ok("6.9 · market outcomes open the SETTLED lens", awayRecordHref([marketEntry]) === "/positions?tab=settled");
+  ok("6.10 · Up & Down outcomes open their own result history", awayRecordHref([updownEntry]) === "/updown/history");
+  ok("6.11 · a mixed-product backlog opens the common bell", awayRecordHref([marketEntry, updownEntry]) === "/notifications");
+  ok("6.12 · old entries with no destination open the bell, not the wrong product",
+    awayRecordHref([e("LOSS", 0, 500)]) === "/notifications");
+  ok("6.13 · the bar actually uses the shared destination rule",
+    /href=\{awayRecordHref\(entries\)\}/.test(barSrc));
+  const marketProducer = stripComments(read(POLLER));
+  const updownProducer = stripComments(read("src/components/updown/updown-result-announcer.tsx"));
+  const bellWriter = stripComments(read("src/lib/server/notification-service.ts"));
+  ok("6.14 · both producers name their own result lists, and the common bell holds Up & Down results",
+    /recordHref: "\/positions\?tab=settled"/.test(marketProducer)
+      && /recordHref: "\/updown\/history"/.test(updownProducer)
+      && /notifyUpDownResult\(userId, "WIN"/.test(bellWriter)
+      && /notifyUpDownResult\(userId, "LOSS"/.test(bellWriter)
+      && /notifyUpDownResult\(userId, "REFUND"/.test(bellWriter));
 }
 ok("6.6 · ⛔ the attention window re-seeds when the PLAYER changes, not once per page-load",
   /who !== identity/.test(stripComments(read(PRESENCE)))
@@ -434,13 +454,16 @@ ok("7.4 · ⛔ and it is NOT in the throttle tier's infinite-loop list",
 console.log("\n§8 · every new token exists in all three locales and none is the English");
 
 const DICT = read("src/lib/i18n-dict.ts");
+const notifSections = [...DICT.matchAll(/^    notif:\s*\{([\s\S]*?)^    \},/gm)].map((m) => m[1]);
+ok("8.control · the dictionary has one notifications section in each locale", notifSections.length === 3);
+const NOTIF_DICT = notifSections.join("\n");
 for (const key of ["awayTitle", "awayWon", "awayLost", "awayReturned", "awayMixed", "awayView"]) {
-  const vals = [...DICT.matchAll(new RegExp(`\\b${key}:\\s*"((?:[^"\\\\]|\\\\.)*)"`, "g"))].map((m) => m[1]);
+  const vals = [...NOTIF_DICT.matchAll(new RegExp(`\\b${key}:\\s*"((?:[^"\\\\]|\\\\.)*)"`, "g"))].map((m) => m[1]);
   ok(`8.1 · ${key} is defined three times`, vals.length === 3, `found ${vals.length}`);
   ok(`8.2 · ${key} is not three copies of the English`, new Set(vals).size >= 2);
 }
 for (const key of ["awayWon", "awayLost", "awayReturned", "awayMixed"]) {
-  const vals = [...DICT.matchAll(new RegExp(`\\b${key}:\\s*"((?:[^"\\\\]|\\\\.)*)"`, "g"))].map((m) => m[1]);
+  const vals = [...NOTIF_DICT.matchAll(new RegExp(`\\b${key}:\\s*"((?:[^"\\\\]|\\\\.)*)"`, "g"))].map((m) => m[1]);
   ok(`8.3 · ${key} keeps its {n} placeholder in every locale`,
     vals.length === 3 && vals.every((v) => v.includes("{n}")),
     "a dropped placeholder prints the brace to the player");

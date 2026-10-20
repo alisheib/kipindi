@@ -8,15 +8,15 @@
  * shipping the superseded round-1 logo).
  *
  * The mark ("mark-a", delivered 2026-07-09): a circle split YES-emerald LEFT ·
- * NO-rose RIGHT by a diagonal chord, the gilt NEEDLE riding the seam past the
- * rim, over a gilt hub with a navy pivot. No ring, no numerals. Delivered brand
- * hex is authoritative (brand identity ≠ theme tokens — see DESIGN_AUTHORITY B1).
+ * NO-rose RIGHT by a diagonal chord, the pearl NEEDLE riding the seam past the
+ * rim, over a neutral pearl hub with a navy pivot. No ring, no numerals. The
+ * YES/NO halves keep their delivered side colours; Ali's U43 rule reserves gold
+ * for won money, so the needle and hub are pearl on player-visible assets.
  */
 
 export const MARK = {
   green: "#1EA362",
   red: "#B03A3E",
-  gold: "#E3BC66",
   pivot: "#1A2140",
   whiteInk: "#F7F8FC",
   darkInk: "#1A2140",
@@ -43,8 +43,8 @@ export function markColors(variant: FiftyMarkVariant, simple: boolean) {
   return {
     green: mono ? hexA(ink, variant === "white" ? 0.3 : 0.26) : MARK.green,
     red: mono ? hexA(ink, variant === "white" ? 0.14 : 0.11) : MARK.red,
-    needle: mono ? ink : MARK.gold,
-    hub: mono ? ink : MARK.gold,
+    needle: mono ? ink : MARK.whiteInk,
+    hub: mono ? ink : MARK.whiteInk,
     pivot: !simple && !mono ? MARK.pivot : null,
   };
 }
@@ -70,6 +70,22 @@ export function markSvg(opts: { variant?: FiftyMarkVariant; simplified?: boolean
   const simple = opts.simplified ?? false;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" aria-label="50pick">
   ${markInnerSvg(variant, simple)}
+</svg>`;
+}
+
+/** The shipped wordmark lockups, with their mark taken from this same source. */
+export function lockupSvg(layout: "horizontal" | "stacked"): string {
+  const wide = layout === "horizontal";
+  const viewBox = wide ? "0 0 292 64" : "0 0 220 178";
+  const transform = wide ? "translate(4,4) scale(0.56)" : "translate(62,4) scale(0.96)";
+  const text = wide
+    ? '<text x="77" y="48" font-family="Sora, ui-sans-serif, sans-serif" font-weight="700" font-size="46" letter-spacing="-0.025em" fill="#F7F8FC">50pick<tspan dx="4" font-family="&#39;JetBrains Mono&#39;, ui-monospace, monospace" font-weight="500" font-size="24" fill="#F7F8FC" fill-opacity="0.62" letter-spacing="0">.tz</tspan></text>'
+    : '<text x="110" y="158" text-anchor="middle" font-family="Sora, ui-sans-serif, sans-serif" font-weight="700" font-size="38" letter-spacing="-0.025em" fill="#F7F8FC">50pick<tspan dx="3" font-family="&#39;JetBrains Mono&#39;, ui-monospace, monospace" font-weight="500" font-size="20" fill="#F7F8FC" fill-opacity="0.62" letter-spacing="0">.tz</tspan></text>';
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}">
+  <g transform="${transform}">
+  ${markInnerSvg("color", false)}
+  </g>
+  ${text}
 </svg>`;
 }
 

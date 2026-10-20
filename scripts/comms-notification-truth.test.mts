@@ -80,7 +80,7 @@ const EMITTED: { fn: string; row: StoredNotification | null }[] = [
   // The Up & Down daily digest (E-37). Driven on a LOSING day: that is the branch
   // that carries the LCCP claim, and the one that was promised and never built.
   { fn: "notifyUpDownDigest",        row: await N.notifyUpDownDigest(U, { dayKey: "2026-08-02", titleEn: "Up & Down · you lost TZS 11,300", titleSw: "Up & Down · umepoteza TZS 11,300", titleZh: "涨跌 · 亏损 TZS 11,300", bodyEn: "2 Aug: 4 rounds — won 1 (TZS 8,700 paid), lost 3 (TZS 15,000). Staked TZS 20,000, returned TZS 8,700.", bodySw: "2 Ago: raundi 4 — umeshinda 1 (TZS 8,700 imelipwa), umepoteza 3 (TZS 15,000). Umeweka TZS 20,000, umerudishiwa TZS 8,700.", bodyZh: "2026年8月2日：共 4 轮 — 赢 1 轮（赔付 TZS 8,700）、输 3 轮（TZS 15,000）。投注 TZS 20,000，收回 TZS 8,700。" }) },
-  { fn: "notifyMarketCancelled",     row: await N.notifyMarketCancelled(U, { stake: 10_000, marketTitle: { en: "Cancelled poll", sw: "Kura iliyoghairiwa", zh: "已取消投票" }, marketId: "mkt_6", reason: "Source retracted the result" }) },
+  { fn: "notifyMarketCancelled",     row: await N.notifyMarketCancelled(U, { stake: 10_000, bonusStakeTzs: 0, marketTitle: { en: "Cancelled poll", sw: "Kura iliyoghairiwa", zh: "已取消投票" }, marketId: "mkt_6", reason: "Source retracted the result" }) },
   { fn: "notifyDeposit",             row: await N.notifyDeposit(U, { status: "CONFIRMED", amount: 50_000, provider: "Selcom", txnId: "txn_1" }) },
   { fn: "notifyWithdraw",            row: await N.notifyWithdraw(U, { status: "CONFIRMED", amount: 20_000, net: 19_700, provider: "M-Pesa" }) },
   { fn: "notifyBonusCredited",       row: await N.notifyBonusCredited(U, { amountTzs: 5_000, wagerRequiredTzs: 25_000 }) },

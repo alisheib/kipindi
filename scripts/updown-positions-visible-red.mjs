@@ -1,11 +1,10 @@
 /**
  * RED proof for `test:updown-positions-visible`.
  *
- * ⛔ IT RESTORES THE REAL PRE-FIX SOURCE, VERBATIM — not a mutation invented to match the
- * guard's locators. That distinction is the whole point: a guard and a RED proof that
- * share a wrong locator agree with each other and are both wrong, and the suite then
- * presents as a working gate over a defect it cannot see. Every string below is the text
- * that was actually in the file before 2026-08-15.
+ * ⛔ D1–D4 restore the pre-fix visibility defects; D5–D14 plant named silent-read
+ * fallbacks on the current paths. D5 now targets the indexed per-market read that
+ * replaced the old account-wide board read. A guard and a RED proof that share a wrong
+ * locator agree with each other and are both wrong, so every anchor is required to land.
  *
  * Each defect is restored ON ITS OWN and the guard is run against it, so this proves each
  * assertion GROUP is load-bearing — not merely that the suite goes red when the file is
@@ -55,12 +54,16 @@ function mutate(file, rawFrom, rawTo, label) {
   writeFileSync(file, before.replace(from, to), "utf8");
 }
 
-function guardIsRed() {
+function guardIsRed(suite = "visible", expected = "") {
+  const command = suite === "fault"
+    ? "npx tsx scripts/updown-position-read-fail.test.mts"
+    : "npx tsx scripts/updown-positions-visible.test.mts";
   try {
-    execSync("npx tsx scripts/updown-positions-visible.test.mts", { stdio: "pipe" });
+    execSync(command, { stdio: "pipe" });
     return false; // exited 0 — the guard did NOT catch it
-  } catch {
-    return true;
+  } catch (error) {
+    const output = `${error.stdout ?? ""}\n${error.stderr ?? ""}`;
+    return !expected || output.includes(expected);
   }
 }
 
@@ -111,10 +114,100 @@ const cases = [
     name: "D4 · myPositionFor caps across ALL rounds, then filters to this one",
     apply: () => {
       mutate(BOARD,
-        "  const positions = (await listPositionsForMarket(marketId).catch(() => [])).filter((p) => p.userId === userId);",
+        "  const positions = (await listPositionsForMarket(marketId)).filter((p) => p.userId === userId);",
         "  const positions = (await listPositionsForUser(userId, 500, \"UPDOWN\").catch(() => [])).filter((p) => p.marketId === marketId);",
         "restore the global-cap-then-filter read");
     },
+  },
+  {
+    name: "D5 · a failed board position read claims the player has no stake",
+    suite: "fault",
+    expected: "board must not turn failed position read into no stake",
+    apply: () => mutate(BOARD,
+      '.map((marketId) => positionStore.listForUserAndMarket(userId, marketId))',
+      '.map((marketId) => positionStore.listForUserAndMarket(userId, marketId).catch(() => []))',
+      "restore the board's silent-empty fallback on each indexed read"),
+  },
+  {
+    name: "D6 · a failed history position read claims the player has no bets",
+    suite: "fault",
+    expected: "history must not turn failed position read into no bets",
+    apply: () => mutate(BOARD,
+      '  const positions = await listPositionsForUser(userId, limit, "UPDOWN");',
+      '  const positions = await listPositionsForUser(userId, limit, "UPDOWN").catch(() => []);',
+      "restore the history's silent-empty fallback"),
+  },
+  {
+    name: "D7 · a failed round position read claims the player never bet",
+    suite: "fault",
+    expected: "detail must not turn a failed market-position read into no bet",
+    apply: () => mutate(BOARD,
+      "  const positions = (await listPositionsForMarket(marketId)).filter((p) => p.userId === userId);",
+      "  const positions = (await listPositionsForMarket(marketId).catch(() => [])).filter((p) => p.userId === userId);",
+      "restore the round's silent-empty fallback"),
+  },
+  {
+    name: "D8 · a failed asset catalog read claims there are no markets",
+    suite: "fault",
+    expected: "player board must not turn failed asset catalog read into an empty market",
+    apply: () => mutate(BOARD,
+      "    assetStore.list({ enabledOnly: true }),",
+      "    assetStore.list({ enabledOnly: true }).catch(() => [] as StoredAsset[]),",
+      "restore the asset catalog's silent-empty fallback"),
+  },
+  {
+    name: "D9 · a failed chain catalog read claims there are no rounds",
+    suite: "fault",
+    expected: "player board must not turn failed chain catalog read into an empty market",
+    apply: () => mutate(BOARD,
+      "    chainStore.list(),",
+      "    chainStore.list().catch(() => [] as StoredChain[]),",
+      "restore the chain catalog's silent-empty fallback"),
+  },
+  {
+    name: "D10 · a failed round list claims the live board is empty",
+    suite: "fault",
+    expected: "player board must not turn failed round list read into an empty market",
+    apply: () => mutate(BOARD,
+      "  const raw = await roundStore.list({ chainId: chain.id, limit: 24 });",
+      "  const raw = await roundStore.list({ chainId: chain.id, limit: 24 }).catch(() => []);",
+      "restore the round list's silent-empty fallback"),
+  },
+  {
+    name: "D11 · a failed history round lookup becomes Unknown",
+    suite: "fault",
+    expected: "history must not turn failed round lookup into Unknown",
+    apply: () => mutate(BOARD,
+      "round = await roundStore.getByMarketId(p.marketId);",
+      "round = await roundStore.getByMarketId(p.marketId).catch(() => null);",
+      "restore the round lookup's silent-null fallback"),
+  },
+  {
+    name: "D12 · a failed history chain lookup becomes Unknown",
+    suite: "fault",
+    expected: "history must not turn failed chain lookup into Unknown",
+    apply: () => mutate(BOARD,
+      "chain = await chainStore.get(round.chainId);",
+      "chain = await chainStore.get(round.chainId).catch(() => null);",
+      "restore the chain lookup's silent-null fallback"),
+  },
+  {
+    name: "D13 · a failed history asset lookup becomes Unknown",
+    suite: "fault",
+    expected: "history must not turn failed asset lookup into Unknown",
+    apply: () => mutate(BOARD,
+      "asset = await assetStore.get(chain.assetId);",
+      "asset = await assetStore.get(chain.assetId).catch(() => null);",
+      "restore the asset lookup's silent-null fallback"),
+  },
+  {
+    name: "D14 · a failed successor lookup claims there is no next round",
+    suite: "fault",
+    expected: "detail must not turn failed successor lookup into no next round",
+    apply: () => mutate(BOARD,
+      "  const pool = siblings ?? await roundStore.list({ chainId: chain.id, limit: 4 });",
+      "  const pool = siblings ?? await roundStore.list({ chainId: chain.id, limit: 4 }).catch(() => []);",
+      "restore the detail successor's silent-empty fallback"),
   },
 ];
 
@@ -128,12 +221,18 @@ if (guardIsRed()) {
   process.exit(2);
 }
 console.log("  ok   baseline · the guard is green on the current tree\n");
+if (guardIsRed("fault")) {
+  restore();
+  console.error("✗ the position-read fault guard is ALREADY red on the unmodified tree");
+  process.exit(2);
+}
+console.log("  ok   baseline · the real position-read fault guard is green\n");
 
 let caught = 0;
 for (const c of cases) {
   restore();
   c.apply();
-  const red = guardIsRed();
+  const red = guardIsRed(c.suite, c.expected);
   console.log(`  ${red ? "ok  " : "FAIL"} ${c.name} → guard ${red ? "went RED" : "STAYED GREEN"}`);
   if (red) caught++;
 }

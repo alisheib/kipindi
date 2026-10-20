@@ -153,7 +153,7 @@ async function withMemoryLockInner<T>(key: string, fn: (tx: null) => Promise<T>)
 
 /* ── Postgres advisory lock (production) ────────────────────────────── */
 
-async function withAdvisoryLock<T>(key: string, fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+async function withAdvisoryLock<T>(key: string, fn: (tx: Prisma.TransactionClient) => Promise<T>, timeoutMs = 30000): Promise<T> {
   const db = prisma()!;
   const lockId = hashKey64(key);
 
@@ -200,7 +200,7 @@ async function withAdvisoryLock<T>(key: string, fn: (tx: Prisma.TransactionClien
     // transaction instead of each opening their own.
     return await lockStore.run({ tx, held: new Set([key]), committed }, () => fn(tx));
   }, {
-    timeout: 30000,  // 30s — covers worst-case resolution payouts
+    timeout: timeoutMs,  // emergency market-wide restitution can need a measured larger budget
     maxWait: 10000,  // 10s — queue time waiting for a pool connection
   });
   runCommitted(committed);
@@ -275,9 +275,13 @@ export async function drainLock(key: string, o: { timeout: string }): Promise<"d
  * error escape the lock rather than swallowing it inside (see buyPosition's
  * BetAbort, which is caught outside withLock for exactly this reason).
  */
-export async function withLock<T>(key: string, fn: (tx: Prisma.TransactionClient | null) => Promise<T>): Promise<T> {
+export async function withLock<T>(key: string, fn: (tx: Prisma.TransactionClient | null) => Promise<T>, options?: { timeoutMs?: number }): Promise<T> {
   if (hasDatabase()) {
-    return withAdvisoryLock(key, fn);
+    const timeoutMs = options?.timeoutMs ?? 30000;
+    if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 30000 || timeoutMs > 600000) {
+      throw new Error("withLock timeout must be an integer from 30s through 10min");
+    }
+    return withAdvisoryLock(key, fn, timeoutMs);
   }
   return withMemoryLock(key, fn);
 }

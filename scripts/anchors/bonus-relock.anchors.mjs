@@ -41,7 +41,7 @@ export const MUTATIONS = [
        + "grant becomes INVISIBLE TO THE QUERY again and a refunded qualifying bet clears the "
        + "bonus at zero risk. This mutation removes the FIX, not the symptom.",
     file: BONUS,
-    from: "  const reversible = await db.bonusGrant.listReversibleByUser(userId);",
+    from: "  const reversible = await db.bonusGrant.listReversibleByUser(userId, tx);",
     to: "  const reversible = await db.bonusGrant.listActiveByUser(userId);",
     check: "1.5 · ★★ THE REFUND RE-LOCKS IT — the grant is ACTIVE again, not FULFILLED",
   },

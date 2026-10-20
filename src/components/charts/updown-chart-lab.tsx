@@ -23,6 +23,7 @@ import { TerminalChart, type TerminalRange, type TerminalStyle } from "./termina
 /* ⛔ The SHARED axis key, not a re-typed one — `FilterGroupKey` is the product's single
    definition of "the mono word that names an axis" (`filter-pill.tsx`). */
 import { FilterGroupKey } from "@/components/ui/filter-pill";
+import type { ConfirmedPricePin } from "@/lib/updown-vendor-opens";
 
 const RANGE_KEY = "kp-updown-range";
 const STYLE_KEY = "kp-updown-style";
@@ -35,7 +36,8 @@ export function UpDownChartLab({
   assetKey,
   locale,
   labels,
-  round = null,
+  priceToBeat = null,
+  pinnedReads = [],
 }: {
   assetKey: string;
   /** Platform locale — the chart chrome follows the page, not the browser. */
@@ -54,9 +56,12 @@ export function UpDownChartLab({
     quotedWord: string;
     /** R5(c) · F1 — the terminal's live line is named with the band's word. */
     confirmedPrice: string;
+    openingReference: string;
   };
-  /** R5(c) · F1 — the targets of the board's in-play round; the terminal's live line wears their verdict ink. */
-  round?: { upTarget: number | null; downTarget: number | null } | null;
+  /** The in-play round's frozen opening price, the chart's dashed reference. */
+  priceToBeat?: number | null;
+  /** Confirmed prices on the displayed cards, at their actual provider minute. */
+  pinnedReads?: readonly ConfirmedPricePin[];
 }) {
   const [range, setRange] = useState<TerminalRange>("1H");
   const [pinnedStyle, setPinnedStyle] = useState<TerminalStyle | null>(null);
@@ -185,8 +190,10 @@ export function UpDownChartLab({
               quotedWord: labels.quotedWord,
               noCandles: labels.noCandles,
               confirmedPrice: labels.confirmedPrice,
+              openingReference: labels.openingReference,
             }}
-            round={round}
+            priceToBeat={priceToBeat}
+            pinnedReads={pinnedReads}
           />
         ) : (
           <div className="grid place-items-center" style={{ height: 300 }}>

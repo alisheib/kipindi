@@ -12,8 +12,8 @@
  * pill"*. A fidget parked at the edge of `/markets/<id>` is harmless; a dismissible card anchored
  * to the bottom of the viewport can land on the one gold control that commits money. This repo has
  * already shipped a WhatsApp FAB sitting on top of a CTA, and only LOOKING found it.
- * ⛔ So `isCommitSurface` adds the surfaces that carry a money COMMIT control — the poll bet card
- * and the Up & Down round card — and it is the predicate the invitation uses.
+ * ⛔ So `isCommitSurface` adds the surfaces that carry a money COMMIT control — the poll bet card,
+ * the Up & Down board's one-click stake, and the round card — and it is the predicate the invitation uses.
  */
 
 /** Money surfaces where a fidget must never appear (CLAUDE-CODE-BRIEF §4.1). */
@@ -24,18 +24,18 @@ export function isMoneySurface(path: string | null): boolean {
 }
 
 /**
- * Every route that puts a MONEY COMMIT CONTROL on screen — the poll bet card's gold confirm and
- * the Up & Down round card's one-click commit, plus everything `isMoneySurface` already covers.
+ * Every route that puts a MONEY COMMIT CONTROL on screen — the poll bet card's confirm and
+ * the Up & Down board and round card's one-click commit, plus everything `isMoneySurface` already covers.
  *
- * ⚠️ THE BOARDS ARE NOT LISTED, AND THAT IS ON PURPOSE. `/markets` and `/updown` are browse
- * surfaces with no commit control, and suppressing an invitation there would leave nowhere for it
- * to appear on a phone. The DETAIL routes are the ones that commit.
+ * ⚠️ `/markets` remains a browse surface. `/updown` now carries a one-click stake on its board,
+ * so an invitation must stand down there as well as on the detail card.
  * ⛔ Keep this a pure function of the path with no hooks: it is called from a render and from an
  * effect, and a predicate that needs a hook is a predicate two callers will disagree about.
  */
 const COMMIT_ROUTE = [
   /^\/markets\/[^/]+/,        // a poll's bet card
-  /^\/updown\/[^/]+/,         // an Up & Down round card (NOT /updown itself)
+  /^\/updown\/?$/,           // the Up & Down board's one-click stake
+  /^\/updown\/[^/]+/,         // an Up & Down round card
   /^\/proposals\/new(\/|$)/,  // a paid submission
   // MASWALI-BUILD S5 · ⛔ the slip stays OUT of MONEY_ROUTE (a recorded decision: that line is pinned verbatim and hides
   // the Needle platform-wide); it joins HERE, the wider list, with the one other Millionea page that moves money.

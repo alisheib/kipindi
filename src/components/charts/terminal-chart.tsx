@@ -38,14 +38,13 @@
  * library renders raw UTC otherwise, three hours behind Tanzania — F21); the
  * receipt footer keeps the platform's EAT grammar (fmtEAT), same as the card.
  */
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import type { IChartApi, ISeriesApi, IPriceLine, UTCTimestamp } from "lightweight-charts";
-import { fmtEAT } from "@/lib/updown-source-label";
+import { fmtEAT, fmtEATClock } from "@/lib/updown-source-label";
 import { usd } from "@/lib/usd-price";
-// ⭐ R5(c) · F1 — the live line's ink is the in-play round's TARGETS, the rule the card and the round page read.
-import { liveLineToken } from "@/lib/updown-match";
 import { makeInkResolver, tokRaw } from "./ink-bridge";
 import { ascUnique } from "./chart-series";
+import { maskConflictingVendorOpens, type ConfirmedPricePin } from "@/lib/updown-vendor-opens";
 
 export type TerminalRange = "15M" | "30M" | "1H" | "6H" | "12H" | "24H" | "7D";
 export type TerminalStyle = "line" | "candles";
@@ -55,6 +54,7 @@ type Candle = { t: number; o: number; h: number; l: number; c: number; n?: numbe
 export const HISTORY_DEADLINE_MS = 12_000;
 
 type Feed = {
+  sourceTier: "vendor" | "confirmed";
   series:
     | { mode: "line"; points: LinePoint[] }
     | { mode: "candles"; candles: Candle[]; bucketMs: number; gaps: number[] };
@@ -76,7 +76,8 @@ export function TerminalChart({
   height = 300,
   labels,
   pollMs = 30_000,
-  round = null,
+  priceToBeat = null,
+  pinnedReads = [],
 }: {
   assetKey: string;
   /** Pane watermark — the instrument's public name (never the vendor, E-53). */
@@ -100,14 +101,14 @@ export function TerminalChart({
     noCandles: string;
     /** R5(c) · F1 — the live line's name, the band's and the round page's own: "Confirmed price". */
     confirmedPrice: string;
+    /** Names the dashed frozen open without calling it a winning threshold. */
+    openingReference: string;
   };
   pollMs?: number;
-  /**
-   * R5(c) · F1 (2026-09-27) · the targets of the round IN PLAY on the board (its first unsettled round that has them),
-   * so the live line wears that round's verdict ink — the card under the chart paints the same read the same way.
-   * ⛔ ONLY the targets: the terminal still charts history, never the round's frame (§B12.6). Null ⇒ the gilt reference.
-   */
-  round?: { upTarget: number | null; downTarget: number | null } | null;
+  /** Frozen opening price of the round in play; the dashed reference is never a later quote. */
+  priceToBeat?: number | null;
+  /** Immutable reads printed on the visible round cards. */
+  pinnedReads?: readonly ConfirmedPricePin[];
 }) {
   const [feed, setFeed] = useState<Feed | null>(null);
   const [status, setStatus] = useState<"loading" | "ok" | "empty" | "error">("loading");
@@ -131,9 +132,21 @@ export function TerminalChart({
   const rangeRef = useRef<TerminalRange>(range);
   const decimalsRef = useRef<number>(2);
   const latestBarRef = useRef<{ o: number; h: number; l: number; c: number; t: number } | null>(null);
-  // Read by `draw` at paint time, so a new round's targets never force a series rebuild (the effect below recolours).
-  const roundRef = useRef(round);
-  roundRef.current = round;
+  // Read by `draw` at paint time; a new round changes the reference without changing history.
+  const priceToBeatRef = useRef(priceToBeat);
+  priceToBeatRef.current = priceToBeat;
+  // The provider can revise its historical bar after settlement. A conflicting
+  // bar is whitespace on the chart, while the card keeps its immutable receipt.
+  // Apply this at paint time as card pins can refresh without a vendor response.
+  const guardedFeed = useMemo<Feed | null>(() => {
+    if (feed?.sourceTier !== "vendor") return feed;
+    const pins = [...pinnedReads, { quotedAt: feed.sourceQuotedAt, price: feed.livePrice }];
+    const series = maskConflictingVendorOpens(feed.series, pins, feed.decimals);
+    // A pane with only revised bars is unavailable, rather than a blank canvas
+    // that appears to assert a flat or absent market.
+    if (series.mode === "line" ? !series.points.some((point) => point.price != null) : series.candles.length === 0) return null;
+    return { ...feed, series } as Feed;
+  }, [feed, pinnedReads]);
 
   // ── data: fetch the window; poll while visible; refresh on tab reveal ─────
   useEffect(() => {
@@ -347,8 +360,8 @@ export function TerminalChart({
     const lib = libRef.current;
     if (!chart || !lib) return;
     const ink = makeInkResolver();
-    const yes = ink("--yes-400");
-    const no = ink("--no-400");
+    const curve = ink("--aqua-300");
+    const downCandle = ink("--text-muted");
     /* ⭐ THE AXIS SPEAKS THE PAGE'S PRICE (2026-10-09, the visual pass's round 4, tiles 164 and 202). The engine's own
        "price" format printed the scale as "2896.04" — no grouping, no currency — beside the band's "$2,896.00" and the
        line's own name below the pane, which `usd()` spells. One spelling (`@/lib/usd-price`), so the scale, the live
@@ -373,9 +386,9 @@ export function TerminalChart({
     let lastSeries: ISeriesApi<"Area"> | ISeriesApi<"Candlestick"> | null = null;
     if (data.series.mode === "candles") {
       const s = chart.addSeries(lib.CandlestickSeries, {
-        upColor: yes, downColor: no,
-        borderUpColor: yes, borderDownColor: no,
-        wickUpColor: yes, wickDownColor: no,
+        upColor: curve, downColor: downCandle,
+        borderUpColor: curve, borderDownColor: downCandle,
+        wickUpColor: curve, wickDownColor: downCandle,
         priceFormat,
         // The gilt line is THE live-price statement; the series' own last-value
         // label duplicated it (two stacked axis tags, production 2026-09-04) and
@@ -383,8 +396,8 @@ export function TerminalChart({
         lastValueVisible: false,
         priceLineVisible: false,
       });
-      const formingUp = ink("--yes-400", 0.45);
-      const formingDown = ink("--no-400", 0.45);
+      const formingUp = ink("--aqua-300", 0.45);
+      const formingDown = ink("--text-muted", 0.45);
       const bars = [
         ...data.series.candles.map((c) => ({
           time: at(c.t), open: c.o, high: c.h, low: c.l, close: c.c,
@@ -408,6 +421,9 @@ export function TerminalChart({
       lastSeries = s;
       legendModeRef.current = "candles";
       const lastReal = data.series.candles[data.series.candles.length - 1];
+      // If the only candle was revised away, the prior legend is not evidence.
+      latestBarRef.current = null;
+      setLegend(null);
       if (lastReal) {
         const bar = { o: lastReal.o, h: lastReal.h, l: lastReal.l, c: lastReal.c, t: lastReal.t };
         latestBarRef.current = bar;
@@ -429,7 +445,7 @@ export function TerminalChart({
         hv.setData(ascUnique(data.series.candles.map((c) => ({
           time: at(c.t),
           value: c.v ?? 0,
-          color: c.c >= c.o ? ink("--yes-400", c.forming ? 0.18 : 0.3) : ink("--no-400", c.forming ? 0.18 : 0.3),
+          color: c.c >= c.o ? ink("--aqua-300", c.forming ? 0.18 : 0.3) : ink("--text-muted", c.forming ? 0.18 : 0.3),
         }))));
         seriesListRef.current.push(hv as never);
       }
@@ -445,10 +461,7 @@ export function TerminalChart({
       // step must reserve its slot or the outage's width collapses to nothing
       // (the trading-terminal session-break idiom).
       const real = data.series.points.filter((pt) => pt.price != null);
-      const first = real[0]?.price ?? null, last = real[real.length - 1]?.price ?? null;
-      const dirInk = first != null && last != null
-        ? (last > first ? yes : last < first ? no : ink("--text-muted"))
-        : yes;
+      const dirInk = curve;
       const runs: LinePoint[][] = [[]];
       const gapTimes: number[] = [];
       for (const p of data.series.points) {
@@ -459,8 +472,8 @@ export function TerminalChart({
       liveRuns.forEach((run, idx) => {
         const s = chart.addSeries(lib.AreaSeries, {
           lineColor: dirInk,
-          topColor: first != null && last != null && last < first ? ink("--no-400", 0.24) : first != null && last != null && last === first ? ink("--text-muted", 0.16) : ink("--yes-400", 0.24),
-          bottomColor: first != null && last != null && last < first ? ink("--no-400", 0.02) : ink("--yes-400", 0.02),
+          topColor: ink("--aqua-300", 0.20),
+          bottomColor: ink("--aqua-300", 0.02),
           lineWidth: 2,
           priceFormat,
           // A one-read run must still paint — a lone marker, not nothing.
@@ -484,19 +497,16 @@ export function TerminalChart({
       // tags carrying one number is the candle-mode duplication again.
     }
 
-    // The live price as ONE reference line — hidden when the feed is
-    // STALE, because a reference line from a dead feed wears a live market's
-    // face (F20); the receipt footer still carries the quote's own time.
-    // ⭐ R5(c) · F1 (2026-09-27): its ink is the in-play round's verdict by the TARGETS (`liveLineToken` —
-    // settlement's rule, pinned by test:updown-match §11b), gilt only when no round with targets is in play.
-    if (lastSeries && data.livePrice != null && data.liveStale !== true) {
+    // The frozen opening price is a reference, not either winning boundary. It is independent
+    // of the latest confirmed quote and stays put when the feed is delayed.
+    if (lastSeries && priceToBeatRef.current != null) {
       priceLineRef.current = lastSeries.createPriceLine({
-        price: data.livePrice,
-        color: ink(liveLineToken(data.livePrice, roundRef.current)),
+        price: priceToBeatRef.current,
+        color: ink("--text-subtle"),
         lineWidth: 1,
         lineStyle: lib.LineStyle.Dashed,
         axisLabelVisible: true,
-        title: "",
+        title: labels.openingReference,
       });
     }
 
@@ -507,71 +517,93 @@ export function TerminalChart({
       chart.timeScale().fitContent();
       fitKeyRef.current = fitKey;
     }
-  }, [range, style]);
+  }, [range, style, labels.openingReference]);
 
-  // The engine (async library chunk) and the first feed race freely; the draw
-  // effect keys on BOTH, so whichever arrives second triggers the paint — a
-  // state dependency, not a polling shim.
-  useEffect(() => { if (feed && engineGen > 0) draw(feed); }, [feed, engineGen, draw]);
+  // The engine, feed and frozen round reference can arrive in any order. A new
+  // reference redraws the series but fitContent remains keyed to range/mode.
+  useEffect(() => { if (guardedFeed && engineGen > 0) draw(guardedFeed); }, [guardedFeed, engineGen, draw, priceToBeat]);
+  const showLine = guardedFeed != null && guardedFeed.livePrice != null && guardedFeed.liveStale !== true;
 
-  // ⭐ R5(c) · F1 · the ONE token the live line and its named figure below both wear. A new round (the board polls every
-  // 20 s) or a read crossing a target recolours the drawn line in place — never a rebuild, never a viewport yank (F2).
-  const lineToken = liveLineToken(feed?.livePrice ?? null, round);
-  useEffect(() => {
-    priceLineRef.current?.applyOptions({ color: makeInkResolver()(lineToken) });
-  }, [lineToken]);
-  const showLine = feed != null && feed.livePrice != null && feed.liveStale !== true;
+  // A chart point is a bar's OPEN when vendor bars exist, or a dated platform
+  // read during fallback. Name its time and kind beside the separate current
+  // quote so two prices from different instants cannot appear contradictory.
+  const lastChartPoint = guardedFeed?.series.mode === "line"
+    ? guardedFeed.series.points.slice().reverse().find((point) => point.price != null)
+    : guardedFeed?.series.mode === "candles"
+      ? (() => { const bar = guardedFeed.series.candles.at(-1); return bar ? { t: bar.t, price: bar.o } : null; })()
+      : null;
+  const chartPointClock = lastChartPoint ? fmtEATClock(lastChartPoint.t) : null;
+  // The card and axis already state the opening reference. A fallback chart point is the
+  // confirmed read itself, so repeating the same figure as "current" adds noise.
+  // Vendor minute OPENs can differ from the later confirmed quote; show both then.
+  const showConfirmedAside = showLine && (guardedFeed?.sourceTier === "vendor" || lastChartPoint?.price !== guardedFeed?.livePrice);
 
-  const receipt = feed?.sourceQuotedAt
-    ? `${labels.sourceLabel} · ${labels.quotedWord} ${fmtEAT(feed.sourceQuotedAt)}`
+  const receipt = guardedFeed?.sourceQuotedAt
+    ? `${labels.sourceLabel} · ${labels.quotedWord} ${fmtEAT(guardedFeed.sourceQuotedAt)}`
     : labels.sourceLabel;
 
   const pct = legend ? ((legend.c - legend.o) / (legend.o || 1)) * 100 : null;
   // E-261's three-state grammar (§B12.2: up=yes · down=no · flat=muted) — the `>=` here was
   // the last two-state residue in the chart system, green-at-flat on the legend's own window.
-  const legendInk = legend
-    ? (legend.c > legend.o ? "var(--yes-300)" : legend.c < legend.o ? "var(--no-300)" : "var(--text-muted)")
-    : undefined;
+  const legendInk = legend ? "var(--text-muted)" : undefined;
+  const words = locale === "sw"
+    ? { o: "Ufunguzi", h: "Kilele", l: "Chini", c: "Kufunga", minuteOpen: "Ufunguzi wa dakika", barOpen: "Ufunguzi wa kipindi", chartRead: "Bei ya chati" }
+    : locale === "zh"
+      ? { o: "开盘", h: "最高", l: "最低", c: "收盘", minuteOpen: "分钟开盘价", barOpen: "时段开盘价", chartRead: "图表读数" }
+      : { o: "Open", h: "High", l: "Low", c: "Close", minuteOpen: "Minute open", barOpen: "Bar open", chartRead: "Chart read" };
+  const chartPointWord = guardedFeed?.sourceTier === "vendor"
+    ? range === "15M" || range === "30M" || range === "1H" ? words.minuteOpen : words.barOpen
+    : words.chartRead;
   return (
     <div>
       {legend && (
         <p className="mb-1 mt-0 flex flex-wrap items-baseline gap-x-2 font-mono text-body-sm tabular-nums">
-          {([['O', legend.o], ['H', legend.h], ['L', legend.l], ['C', legend.c]] as const).map(([k, v]) => (
+          {([[words.o, legend.o], [words.h, legend.h], [words.l, legend.l], [words.c, legend.c]] as const).map(([k, v]) => (
             <span key={k}><span className="text-text-faint">{k}</span> <span className="text-text">{v.toLocaleString(locale, { minimumFractionDigits: decimalsRef.current, maximumFractionDigits: decimalsRef.current })}</span></span>
           ))}
           {pct != null && <span style={{ color: legendInk }}>{pct > 0 ? "+" : pct < 0 ? "−" : ""}{Math.abs(pct).toFixed(2)}%</span>}
         </p>
       )}
-      <div role="img" aria-label={labels.aria} className="relative" style={{ height }}>
+      <div role="img" aria-label={`${labels.aria}${priceToBeat != null ? ` · ${labels.openingReference} ${usd(priceToBeat, guardedFeed?.decimals ?? decimalsRef.current)}` : ""}`} className="relative" style={{ height }}>
         <div
           ref={wrapRef}
           className="absolute inset-0"
-          style={{ opacity: feed ? 1 : 0, transition: "opacity var(--dur-arrive) var(--ease-glide)" }}
+          style={{ opacity: guardedFeed ? 1 : 0, transition: "opacity var(--dur-arrive) var(--ease-glide)" }}
         />
-        {!feed && (
+        {!guardedFeed && (
           <div className="absolute inset-0 grid place-items-center">
             <span className="font-mono text-body-sm text-text-subtle">
-              {status === "empty" ? labels.empty : status === "error" ? labels.error : labels.loading}
+              {status === "empty" ? labels.empty : status === "error" || feed != null ? labels.error : labels.loading}
             </span>
           </div>
         )}
       </div>
-      {feed?.candlesUnavailable && style === "candles" && (
-        <p className="mt-1 mb-0 font-mono text-body-sm text-text-subtle">{labels.noCandles}</p>
+      {guardedFeed?.candlesUnavailable && style === "candles" && (
+        <p className="mt-1 mb-0 text-body-sm text-text-subtle">{labels.noCandles}</p>
       )}
-      {feed && (
-        <p className="mt-1 mb-0 flex flex-wrap items-baseline justify-end gap-x-3 gap-y-0.5 text-right font-mono text-body-sm" style={{ color: feed.liveStale ? "var(--danger-fg)" : "var(--text-faint)" }}>
+      {guardedFeed && (
+        <p className="mt-1 mb-0 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-left text-body-sm" style={{ color: guardedFeed.liveStale ? "var(--text-subtle)" : "var(--text-faint)" }}>
+          {priceToBeat != null && (
+            <span className="whitespace-nowrap text-text-subtle" data-testid="updown-chart-opening-reference">
+              {labels.openingReference}{" "}<span className="tabular-nums">{usd(priceToBeat, guardedFeed.decimals)}</span>
+            </span>
+          )}
+          {lastChartPoint?.price != null && chartPointClock && (
+            <span className="whitespace-nowrap text-text-subtle" data-testid="updown-chart-point">
+              {chartPointWord} {chartPointClock} EAT <span className="tabular-nums">{usd(lastChartPoint.price, guardedFeed.decimals)}</span>
+            </span>
+          )}
           {/* ⭐ R5(c) · F1 (2026-09-27) · THE LINE IS NAMED, in its own ink: "Confirmed price $63,590.62" — the band's and the
               round page's word for the newest confirmed read, which a dashed line on a canvas could not say (and which a
               screen reader never heard). Held whole; it drops with the line when the feed is stale (F20). */}
-          {showLine && (
-            <span className="whitespace-nowrap" data-line-ink={lineToken} style={{ color: `var(${lineToken})` }}>
-              {labels.confirmedPrice}{" "}<span className="tabular-nums">{usd(feed.livePrice, feed.decimals)}</span>
+          {showConfirmedAside && (
+            <span className="whitespace-nowrap text-text-subtle">
+              {labels.confirmedPrice}{" "}<span className="tabular-nums">{usd(guardedFeed.livePrice, guardedFeed.decimals)}</span>
             </span>
           )}
           {/* No vendor attribution by the owner's explicit, informed decision —
               §B12.6 records it. */}
-          <span>{receipt}</span>
+          <span className="tabular-nums text-text-subtle">{receipt}</span>
         </p>
       )}
     </div>

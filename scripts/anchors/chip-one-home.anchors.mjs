@@ -14,11 +14,11 @@
 
 export const MUTATIONS = [
   {
-    name: "a call site spells a chip as a CSS class again (the updown card's duration pill)",
+    name: "a call site spells a chip as a CSS class again (the updown card's void status pill)",
     file: "src/components/updown/updown-card.tsx",
     expect: "4.2",
-    from: `<Chip style={{ marginLeft: 6, verticalAlign: "middle" }}>{durationMinutes} {t.market.udMin}</Chip>`,
-    to: `<span className="chip" style={{ marginLeft: 6, verticalAlign: "middle" }}>{durationMinutes} {t.market.udMin}</span>`,
+    from: `<Chip variant={TONE_CHIP[STATUS_TONE.VOID.player]}>{t.market.statusVoid}</Chip>`,
+    to: `<span className="chip">{t.market.statusVoid}</span>`,
   },
   {
     name: "the CSS family comes back — a second definition of the chip, beside the component",

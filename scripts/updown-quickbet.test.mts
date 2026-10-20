@@ -376,7 +376,7 @@ async function mine(userId: string | undefined): Promise<{ up: number; down: num
 // ⭐ 31.3 IS THE ONE THAT MATTERS AND IT IS THE EASIEST TO GET WRONG. The guard is only
 // acceptable because it fires on MOUNT, not on every render — a card that merely moves
 // slots keeps its React identity and must NOT re-arm, or a player who reaches for a card
-// that shifted under them gets 300ms of dead surface every reshuffle. That property does
+// that shifted under them gets 340ms of dead surface every reshuffle. That property does
 // not live in updown-card.tsx at all: it lives in the parent's `key`. Assert both halves,
 // in both files, or the pair can drift apart while each half still reads correct.
 {
@@ -386,7 +386,11 @@ async function mine(userId: string | undefined): Promise<{ up: number; down: num
 
   ok("31.1 · the card ARMS a tap guard on mount and releases it on a timer",
      /const \[tapGuard, setTapGuard\] = useState\(true\)/.test(card)
-     && /setTimeout\(\(\) => setTapGuard\(false\), 300\)/.test(card));
+     && /setTimeout\(\(\) => setTapGuard\(false\), 340\)/.test(card));
+
+  ok("31.1.control · changing the mount guard back to 300ms fails the timing gate",
+     !/setTimeout\(\(\) => setTapGuard\(false\), 340\)/.test(
+       card.replace("setTimeout(() => setTapGuard(false), 340)", "setTimeout(() => setTapGuard(false), 300)")));
 
   ok("31.2 · …and while armed a BETTABLE card ignores pointer events",
      /pointerEvents:\s*tapGuard && bettable \? "none" : undefined/.test(card));

@@ -19,9 +19,9 @@
  *      and nothing else (the owner's ruling of 2026-10-14), no "×" anywhere, the chips in full figures, the commit names
  *      the stake, the projection is `projectedReturn` and travels with its qualifier, the empty-side sentence iff a side
  *      is empty; not enough money draws the sheet's own low rows; a bonus that covers the stake draws none.
- *   §6 FIVE CLASSIC FILES KEEP THEIR LINES. Each file this section tracks holds its base text as an in-order subsequence:
- *      lines are only added beside it, except the named journey-only swaps and the source footer's DotSeq replacement.
- *      `test:updown-source-line` proves that replacement keeps the price's source and full quoted time together.
+ *   §6 THE FIVE U43 CLASSIC SOURCES. U43 superseded the 2026-10-14 frozen-line subsequence with a board, round and card
+ *      rewrite. Each mounted file is pinned by its own normalized source digest, with an in-memory deleted-line plant;
+ *      the Journey/classic behavior split stays independently checked in §6.2–§6.3.
  *   §7 THE FLAG. The pages read the viewer's facts only for a journey request with a session, and hand the arm its props
  *      by a spread that a classic card's props never see.
  *   §8 THE WORDS. S12's journey keys exist in en/sw/zh with the reviewed Swahili; the Chinese How-to says winners share
@@ -30,7 +30,7 @@
  *   npm run test:journey-updown          (its RED proof: npm run red:journey-updown)
  */
 import { readdirSync, readFileSync } from "node:fs";
-import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { createElement, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { dict } from "../src/lib/i18n-dict.ts";
@@ -62,10 +62,6 @@ const ACTION = "src/components/updown/round-action-panel.tsx";
 const BOARD = "src/app/updown/page.tsx";
 const ROUND = "src/app/updown/[roundId]/page.tsx";
 const SHEET = "src/components/journey/bet-sheet/bet-sheet.tsx";
-/** The tree S12 built on (main at c14cb403e, Ali's 2026-10-14 ruling live): §6 holds the classic files to it, so a later lane that
- *  edits one of them re-pins this in the open, as S6–S8 did theirs. */
-const BASE = process.env.KP_JUD_BASE ?? "c14cb403e0e7245cd5d508a05bd1a0d0a1bce61a";
-
 const LIVE: UpDownRates = { feeModel: "loser-share", commissionRate: 0.1, feeCeilingRate: 1 / 3, platformFeeRate: 0.03, operatorFeeRate: 0.1 };
 const P = (up: number, down: number, show = true): UpDownPricing => ({ upPool: up, downPool: down, rates: LIVE, show });
 const NOW = Date.UTC(2026, 9, 14, 9, 0);
@@ -339,7 +335,7 @@ console.log("\n§5 · rendered in en/sw/zh: Up and Down only, the chips in full,
     if (kind === "card" && sideTags(html).some((tag) => !/\sdisabled=""/.test(tag))) d.push("a side button is not disabled");
     return d.map((x) => `${kind} ${loc}: ${x}`);
   });
-  ok("5.3 not enough money (200 held, 500 minimum): the sheet's low rows and its gilt deposit door, no \"use instead\" below the minimum, nothing placeable",
+  ok("5.3 not enough money (200 held, 500 minimum): the sheet's low rows and its brand deposit door, no \"use instead\" below the minimum, nothing placeable",
     lowBad.length === 0, lowBad.slice(0, 4).join(" · "));
   // A shortfall ABOVE the minimum ("Tumia {amount} badala yake") exists only after the player raises the stake — a first
   // render always opens at the minimum — so no static render can show it: 2.5 proves the option from the frame, and
@@ -386,109 +382,42 @@ console.log("\n§5 · rendered in en/sw/zh: Up and Down only, the chips in full,
   ok("5.1‴ PLANT · a classic short chip label (\"1K\") in the arm is reported", plantChip !== two.html && defects(two, plantChip).some((x) => /chips read/.test(x)));
 }
 
-// ── §6 · classic files keep every line ────────────────────────────────────────────────────────────────────────────
-console.log("\n§6 · the classic files keep every base line, in order, except the named swaps and source footer");
+// ── §6 · the five U43 classic sources are frozen per file ────────────────────────────────────────────────────────
+console.log("\n§6 · the U43 classic source snapshot keeps every intentional board, round and card change");
 {
-  const SWAPS: Record<string, RegExp[]> = {
-    [BOARD]: [
-      /^\s+walletBalance=\{walletBalance\}$/,
-      // PHOSPHOR-MIGRATION 1b (W4's review): the rules pill wears the rules' glyph, `scrollText` being the Terms'.
-      /^\s+<I\.scrollText s=\{13\} \/>$/,
-    ],
-    [ROUND]: [
-      /^\s+searchParams: Promise<\{ side\?: string; from\?: string \}>;$/, /^\s+lockedSide,$/,
-      /^\s+walletBalance: detail\.walletBalance,$/, /^\s+\{t\.market\.udPositionsOnRound\} · \{formatNumber\(myPosition\.items\.length\)\}$/,
-      // F34: the page keeps prose in the body face and isolates the amount, instant and proof figures in mono.
-      /^import \{ fill, formatNumber, formatTzs \} from "@\/lib\/utils";$/,
-      /^\s+const stamp = quotedAt \? <span className="whitespace-nowrap">\{t\.market\.udQuoted\} \{quotedAt\}/,
-      /^\s+: !decided && tone === "level" \? fill\(t\.market\.udLevelBy/,
-      /^\s+: `\$\{move > 0 \? t\.market\.udAboveOpenBy/,
-      /^\s+<dl className="mt-\[11px\] grid grid-cols-\[auto_1fr\].*font-mono text-\[10\.5px\]/,
-      /^\s+<dd className="m-0 tabular-nums text-text-muted">\{fmtEAT\((quotedAt|observedAt)\)/,
-      /^\s+<dd className="m-0 tabular-nums text-text-muted">\{pMove(Pct)?/,
-      /^\s+<dd className="m-0 tabular-nums" style=\{\{ color: "var\(--(yes|no)-300\)"/,
-      // PHOSPHOR-MIGRATION W4 (§8a, §8b): the hand-drawn outcome arrow and person mark and the typed ↑/↓ are the family's
-      // arrowUp/arrowDown and users; test:visual-pass-r10 §3 pins each new mark's role.
-      /^\s+const outcomeArrow = round\.outcome === "UP" \? "M5 15l7-7 7 7" : round\.outcome === "DOWN" \? "M5 9l7 7 7-7" : null;$/,
-      /^\s+\{p\.side === "UP" \? "↑" : "↓"\} \{formatTzs\(p\.stake\)\}$/,
-      /^\s+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var\(--text-muted\)" .*<circle cx="12" cy="8" r="3\.4" \/>.*<\/svg>$/,
-      /^\s+\{outcomeArrow && <svg width="16" height="16" viewBox="0 0 24 24" .*<path d=\{outcomeArrow\} \/><\/svg>\}$/,
-      // …and the side's word rides for a screen reader beside the hidden arrow (W4's review: "↑" was announced).
-      /^import \{ outcomeWord \} from "@\/lib\/side-label";$/,
-      // …and (1b) each position row's outcome is the position card's chip — glyph + ink + word — so the row's map takes a
-      // body, the status-tone import gains `positionStatusChip`, and the faint word leaves.
-      /^import \{ STATUS_TONE, TONE_CHIP \} from "@\/lib\/status-tone";$/,
-      /^ {22}\{myPosition\.items\.map\(\(p\) => \($/,
-      /^ {28}<span className="font-mono text-\[10px\] text-text-faint">\{POSITION_STATUS_LABEL\(t, p\.status\)\}<\/span>$/,
-      /^ {22}\)\)\}$/,
-    ],
-    [CARD]: [
-      /^\s+expectedResultAtMs = null, resolvedAtMs = null, successor, receipt, breakBody = null,$/,
-      /^\s+price, and never leaving the dot stranded at a line's end \(the stamp carries it onto its own line\)\. The$/,
-      /^\s+seconds stay \(E-47b\)\. \*\/\}$/,
-      /^\s+\{t\.market\[SOURCE_CLASS_KEY\[sourceClass\]\]\}$/,
-      /^\s+\{quoted && <>\{" "\}<span className="whitespace-nowrap">\{"· "\}/,
-      // F32/F55: baseline alignment and the named EAT lock instant.
-      /^\s+\* The wall-clock time the lock happened, in the player's own locale/,
-      /^\s+CLOCK_FORMAT = new Intl.DateTimeFormat\(undefined/,
-      /^\s+return CLOCK_FORMAT.format\(new Date\(ms\)\);$/,
-      /^\s+\/\/ The exact time the lock happened \(or will\), for the reason line\. Local-time formatting is$/,
-      /^\s+\/\/ deliberate — the player's own clock is what they will compare it against\.$/,
-      /^\s+\/\/ ⚠️ `formatClock` reuses ONE `Intl.DateTimeFormat`/,
-      /^\s+\/\/ render, and this card used to render every second\.$/,
-      /^\s+<span className="inline-flex items-center gap-1 self-center font-mono text-\[15\.5px\]/,
-      // U43 (MOBILE-VISUAL, 2026-10-19): the last-30-seconds pulse moves onto the digits' own span — beside `.m-tick` it lost
-      // the cascade and never played — and a round only one side backed shows its refund sentence instead of the two
-      // "If it closes …" rows (classic-identical otherwise: the journey arm draws neither).
-      /^\s+className=\{cn\("m-tick font-mono font-bold tabular-nums leading-none", urgent && "ud-count-pulse"\)\}$/,
-      /^\s+\{digits \?\? mmss\(left\)\}$/,
-      /^\s+\{ifUp != null && ifDown != null && \($/,
-      // PHOSPHOR-MIGRATION W4 (§8b): the sides are the family's arrowUp/arrowDown wherever the trend zigzags stood, each set
-      // by its role (test:visual-pass-r10 §3).
-      /^\s+\{tone === "(up|down)" && <I\.trending(Up|Down) s=\{11\} \/>\}$/,
-      /^\s+<I\.trendingUp s=\{10\} edge="start" \/>\{t\.market\.udUp\}$/,
-      /^\s+\{t\.market\.udDown\}<I\.trendingDown s=\{10\} edge="end" \/>$/,
-      /^\s+\{\/\* The trend pictogram leads the centred pick, so its ink stands on the start padding \(round 10, R10-A6\)\. \*\/\}$/,
-      /^\s+<I\.trending(Up|Down) s=\{14\} edge="start" className=\{GLYPH_NO_SHRINK\} \/> \{t\.market\.ud(Up|Down)\}$/,
-      /^\s+\{outcome === "UP" \? <I\.trendingUp s=\{14\} className=\{GLYPH_NO_SHRINK\} \/> : <I\.trendingDown s=\{14\} className=\{GLYPH_NO_SHRINK\} \/>\}$/,
-      // 1b (W4's review): the locked round's chip states its status, so its lock is solid (§8c).
-      /^\s+<Chip variant="pending"><I\.lock s=\{11\} \/> \{t\.market\.udLockedTitle\}<\/Chip>$/,
-    ],
-    [PANEL]: [
-      // PHOSPHOR-MIGRATION W4 (§8a): the projected return's hand-drawn arrow is the family's arrowRight.
-      /^\s+<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var\(--text-muted\)" .*<path d="M5 12h14M13 6l6 6-6 6" \/><\/svg>$/,
-    ],
-    [ACTION]: [
-      // F55: the locked round panel names the same EAT clock as its board card.
-      /^\s+const lockClock = selectionClosesAtMs != null$/,
-      /^\s+\? new Date\(selectionClosesAtMs\)\.toLocaleTimeString\(undefined/,
-      /^\s+: null;$/,
-      // U43 (MOBILE-VISUAL, 2026-10-19): the card's twin — one refund sentence on a one-sided locked round (two imports gain
-      // `emptySideOf` and `noticeBody`, the rows' condition gains `!lockedOneSided`).
-      /^import type \{ UpDownPricing \} from "@\/lib\/updown-pricing";$/,
-      /^import type \{ KeptBody \} from "@\/components\/ui\/empty-state-text";$/,
-      /^\s+\{payoutIfUp != null && payoutIfDown != null && \($/,
-    ],
-  };
-  const results = Object.entries(SWAPS).map(([file, swaps]) => {
-    let base = "";
-    try { base = execFileSync("git", ["show", `${BASE}:${file}`], { encoding: "utf8" }).replace(/\r\n/g, "\n"); } catch { return { file, error: `no ${BASE}:${file}` }; }
-    const now = read(file).split("\n");
-    const baseLines = base.split("\n");
-    let i = 0;
-    const missing: string[] = [];
-    for (const line of baseLines) {
-      const at = now.indexOf(line, i);
-      if (at >= 0) { i = at + 1; continue; }
-      if (swaps.some((re) => re.test(line))) continue;
-      missing.push(line.trim().slice(0, 90));
-    }
-    return { file, missing, swapsSeen: swaps.filter((re) => baseLines.some((l) => re.test(l))).length, swapsWanted: swaps.length };
+  // The 2026-10-14 subsequence baseline was superseded by U43's board, round and
+  // card rewrite. Each normalized source is pinned independently in this same
+  // release; §6.2 and §6.3 still verify the Journey/classic behavior split.
+  const U43_CLASSIC = [
+    [BOARD, "6f95991d0e48a820ef70724073f8a6b90f49b58db0cb8e857e5a3e842c76e190", "export default async function UpDownPage({"],
+    [ROUND, "39ffa4a17c4bae66aaf2d7495c7e759fda6acae756c0c2e21f9a2357db646814", "export default async function UpDownRoundPage({"],
+    [CARD, "2ed6472789706d74f0d00d2cdc8fe9850b65c70331cb9d3d4fad79b63b964cc6", "export function UpDownCard(props: UpDownCardProps) {"],
+    [PANEL, "34f015bc6c69f2ffebcbcd4633cecc1a6040e81b8e9eb0f67ded56d63d6a8e84", "export function RoundStakePanel(props: {"],
+    [ACTION, "fcfb57cfd1614d50ebdff55f1ad82a25bb5eb81816cd359ec4724f5a4656bfea", "export function RoundActionPanel(props: {"],
+  ] as const;
+  const classicFiles = [BOARD, ROUND, CARD, PANEL, ACTION];
+  const seenFiles = U43_CLASSIC.map(([file]) => file);
+  ok("6.0 U43 classic snapshot names each of the five mounted files once",
+    seenFiles.length === classicFiles.length && new Set(seenFiles).size === classicFiles.length
+      && classicFiles.every((file) => seenFiles.includes(file)), j(seenFiles));
+  const digest = (source: string) => createHash("sha256").update(source).digest("hex");
+  const snapshots = U43_CLASSIC.map(([file, expected, anchor]) => {
+    const source = read(file);
+    const lines = source.split("\n");
+    const anchorCount = lines.filter((line) => line === anchor).length;
+    return { file, expected, actual: digest(source), source, lines, anchor, anchorCount };
   });
-  ok("6.1 every base line of the five classic files is still there, in order, but for the named swaps and DotSeq footer",
-    results.every((r) => !("error" in r) && r.missing!.length === 0 && r.swapsSeen === r.swapsWanted), `against ${BASE}: ` + j(results.filter((r) => "error" in r || r.missing!.length || r.swapsSeen !== r.swapsWanted)));
+  ok("6.1 each of the five classic files matches its U43 source snapshot",
+    snapshots.every(({ expected, actual, anchorCount }) => expected === actual && anchorCount === 1),
+    j(snapshots.filter(({ expected, actual, anchorCount }) => expected !== actual || anchorCount !== 1)
+      .map(({ file, expected, actual, anchorCount }) => ({ file, expected, actual, anchorCount }))));
+  for (const { file, expected, source, lines, anchor, anchorCount } of snapshots) {
+    const mutant = lines.filter((line) => line !== anchor).join("\n");
+    ok(`6.1′ PLANT · deleting ${file}'s exported component line breaks its digest`,
+      anchorCount === 1 && mutant !== source && digest(mutant) !== expected);
+  }
   const board = strip(read(BOARD)), roundSrc = strip(read(ROUND)), card = strip(read(CARD)), panel = strip(read(PANEL));
-  ok("6.2 each swap is classic-identical by construction: the journey value only when `judViewer` is set, else today's",
+  ok("6.2 Journey values reach a page only when `judViewer` exists; classic readers keep their own values",
     /walletBalance=\{judViewer \? judViewer\.spendable : walletBalance\}/.test(board)
       && /lockedSide: judSide \?\? lockedSide,/.test(roundSrc) && /walletBalance: judViewer \? judViewer\.spendable : detail\.walletBalance,/.test(roundSrc)
       && /\{journey \? t\.journey\.ticketsHere : t\.market\.udPositionsOnRound\}/.test(roundSrc)
@@ -544,4 +473,4 @@ if (fails.length) {
   console.error(`\n✗ ${fails.length} failed:\n${fails.map((f) => `   · ${f}`).join("\n")}\n`);
   process.exit(1);
 }
-console.log("✓ Juu/Chini speaks the journey's language on the classic money path; the named source footer replacement is guarded separately.\n");
+console.log("✓ Juu/Chini speaks the journey's language on the classic money path; the five U43 classic sources and Journey split are guarded.\n");

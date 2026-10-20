@@ -18,7 +18,7 @@ import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import sharp from "sharp";
-import { markSvg, maskableSvg, tileSvg } from "../src/lib/brand-mark.ts";
+import { markSvg, lockupSvg, maskableSvg, tileSvg } from "../src/lib/brand-mark.ts";
 import { ogLines, renderOgPicture } from "./build-og-picture.mts";
 import { dict } from "../src/lib/i18n-dict.ts";
 
@@ -31,6 +31,8 @@ for (const [name, svg] of [
   ["mark-white.svg", markSvg({ variant: "white" })],
   ["mark-dark.svg", markSvg({ variant: "dark" })],
   ["mark-simplified.svg", markSvg({ variant: "color", simplified: true })],
+  ["lockup-horizontal.svg", lockupSvg("horizontal")],
+  ["lockup-stacked.svg", lockupSvg("stacked")],
 ] as Array<[string, string]>) {
   /* ⛔ LINE ENDINGS ARE NORMALISED, AND THE FIRST RUN OF THIS CHECK PROVED WHY IT MATTERS.
      `core.autocrlf` is true on this machine, so git rewrites text files LF→CRLF ON CHECKOUT:
@@ -50,6 +52,13 @@ for (const [name, svg] of [
     console.log("   --- generated ---\n" + svg + "\n");
   }
 }
+{
+  const norm = (x: string) => x.replace(/\r\n/g, "\n").replace(/\s+$/, "");
+  const ok = norm(readFileSync(resolve(ROOT, "public/favicon.svg"), "utf8"))
+    === norm(markSvg({ variant: "color", simplified: true }));
+  if (!ok) bad++;
+  console.log(`  ${ok ? "IN SYNC " : "DRIFTED "} public/favicon.svg`);
+}
 
 console.log("\n== 2. report logo PNG: re-rasterised vs committed (pixels) ==");
 const transparent = { r: 0, g: 0, b: 0, alpha: 0 } as const;
@@ -59,6 +68,8 @@ for (const [svg, size, out] of [
   [markSvg({ variant: "dark" }), 512, "mark-dark-512.png"],
   [maskableSvg(), 512, "maskable-512.png"],
   [tileSvg(), 512, "tile-512.png"],
+  [markSvg({ variant: "color", simplified: true }), 16, "favicon-16.png"],
+  [markSvg({ variant: "color", simplified: true }), 32, "favicon-32.png"],
 ] as Array<[string, number, string]>) {
   const fresh = await sharp(Buffer.from(svg), { density: 384 })
     .resize(size, size, { fit: "contain", background: transparent })
@@ -84,6 +95,22 @@ for (const [svg, size, out] of [
     `  dims=${oldPx.info.width}x${oldPx.info.height}x${oldPx.info.channels}` +
     (sameDims ? `  maxChannelDelta=${maxDiff}  differingSamples=${nDiff}/${freshPx.data.length}` : "  DIMENSION MISMATCH"),
   );
+}
+{
+  const ico = readFileSync(resolve(ROOT, "public/favicon.ico"));
+  let ok = ico.length >= 38 && ico.readUInt16LE(0) === 0 && ico.readUInt16LE(2) === 1
+    && ico.readUInt16LE(4) === 2;
+  for (const [i, size] of [16, 32].entries()) {
+    if (!ok) break;
+    const at = 6 + i * 16;
+    const length = ico.readUInt32LE(at + 8);
+    const offset = ico.readUInt32LE(at + 12);
+    const png = readFileSync(resolve(ROOT, `public/icons/favicon-${size}.png`));
+    ok = ico.readUInt8(at) === size && ico.readUInt8(at + 1) === size
+      && offset + length <= ico.length && ico.subarray(offset, offset + length).equals(png);
+  }
+  if (!ok) bad++;
+  console.log(`  ${ok ? "IN SYNC " : "DRIFTED "} public/favicon.ico = 16px + 32px generated PNG payloads`);
 }
 
 console.log("\n== 3. the X card: the share picture's middle 1200×600, pixel for pixel ==");

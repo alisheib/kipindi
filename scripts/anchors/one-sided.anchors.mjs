@@ -112,6 +112,13 @@ export const MUTATIONS = [
     to: `    && ((m.yesPool > 0 && m.noPool === 0 && opts.outcome === "YES") || (m.yesPool === 0 && m.noPool > 0 && opts.outcome === "NO"));`,
     expect: "6.1",
   },
+  {
+    name: "the pending one-sided panel promises to return already cashed-out stakes again",
+    file: "src/lib/i18n-dict.ts",
+    from: `      resOneSidedPending: "Only one side holds stakes, so remaining held stakes will be refunded in full when settlement completes. Earlier cash-outs keep their paid amount. No settlement fee will be taken.",`,
+    to: `      resOneSidedPending: "Only one side holds stakes, so every stake will be refunded in full when settlement completes. No fee will be taken.",`,
+    expect: "8.7",
+  },
   // ── landing v3 C1 · commit A — the detail page, its side picker, its resolution panel, the result ink ──
   {
     name: "C1-A · the detail page falls back to the old helper again (100/0 on a one-sided pool, 50/50 on an empty one)",

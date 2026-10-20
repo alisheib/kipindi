@@ -82,18 +82,8 @@ const MUTATIONS = [
   {
     name: "status inferred from the round outcome instead of the position row",
     file: BOARD,
-    find: `        p.status === "WIN" ? "WIN" : p.status === "LOSS" ? "LOSS" : "VOID";`,
-    with: `        payout > p.stake ? "WIN" : payout > 0 ? "VOID" : "LOSS";`,
-  },
-  {
-    name: "⭐ stripComments returns nothing — §4's six absence checks would pass over \"\"",
-    file: SUITE,
-    find: `function stripComments(src: string): string {\n  return src`,
-    with: `function stripComments(src: string): string {\n  return "" || src`,
-    // ⚠️ EXPECTED TO BE MISSED: `"" || src` is still src. This mutation is here to be reported
-    // honestly — it documents that §4.control guards the SHAPE of the stripped source, not
-    // every possible way the stripper could misbehave.
-    expectMiss: true,
+    find: `else e.results.push({ status: p.status, side, stake: p.stake, payout: knownPayout });`,
+    with: `else e.results.push({ status: p.finalPayout > p.stake ? "WIN" : p.finalPayout > 0 ? "VOID" : "LOSS", side, stake: p.stake, payout: knownPayout });`,
   },
   {
     name: "⭐ stripComments returns EMPTY — the real vacuity, and §4.control must catch it",
@@ -117,7 +107,7 @@ const before = run();
 console.log(`   exit=${before.status}  ${before.stdout.match(/\d+ passed, \d+ failed/)?.[0] ?? ""}`);
 if (before.status !== 0) { console.error("   ✗ not green to begin with"); process.exit(2); }
 
-let proven = 0, documented = 0;
+let proven = 0;
 for (const m of MUTATIONS) {
   console.log(`\n── mutation: ${m.name} ──`);
   const original = readFileSync(m.file, "utf8");
@@ -130,13 +120,12 @@ for (const m of MUTATIONS) {
   const out = r.stdout + r.stderr;
   const failed = Number(out.match(/^updown-result-announce: (\d+) passed, (\d+) failed$/m)?.[2] ?? 0);
   const caught = r.status !== 0 && failed >= 1;
-  console.log(`   exit=${r.status}  failures=${failed}  ${m.expectMiss ? (caught ? "⚠️ CAUGHT (better than documented)" : "· missed, AS DOCUMENTED") : caught ? "✓ CAUGHT" : "✗ MISSED"}`);
+  console.log(`   exit=${r.status}  failures=${failed}  ${caught ? "✓ CAUGHT" : "✗ MISSED"}`);
   for (const line of out.split(/\r?\n/).filter((l) => l.includes("FAIL")).slice(0, 3)) console.log(`     ${line.trim()}`);
   writeFileSync(m.file, original, "utf8");
   if (readFileSync(m.file, "utf8") !== original) { console.error("   🔴 REVERT FAILED"); process.exit(2); }
-  if (m.expectMiss) documented++; else if (caught) proven++;
+  if (caught) proven++;
 }
 
-const required = MUTATIONS.filter((m) => !m.expectMiss).length;
-console.log(`\n${proven}/${required} required mutations caught (+${documented} documented-miss) — files restored byte-for-byte.`);
-process.exit(proven === required ? 0 : 1);
+console.log(`\n${proven}/${MUTATIONS.length} mutations caught — files restored byte-for-byte.`);
+process.exit(proven === MUTATIONS.length ? 0 : 1);

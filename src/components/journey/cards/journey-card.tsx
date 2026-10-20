@@ -64,6 +64,7 @@ import { keepFigures } from "@/components/ui/keep-words";
 import { cardFace, type CardMeta, type PickFace } from "@/lib/journey/card-face";
 import { cardCloseLabel, cardCloseText, type CardCloseLabel } from "@/lib/markets/card-close-label";
 import { cardTitle } from "@/lib/markets/short-title";
+import { marketDisplayTitle } from "@/lib/updown-round-name";
 import { normaliseCompetition } from "@/lib/markets/competitions";
 import { competitionLabel } from "@/lib/markets/competition-label";
 import { marketCategoryLabel, pickLocalized } from "@/lib/localized";
@@ -148,7 +149,9 @@ export function JourneyCard({ m, nowMs, t, locale, heading = "h2", from, roundId
   const close = cardCloseLabel(m, nowMs);
   const face = cardFace({ productLine: m.productLine, status: m.status, resolvedOutcome: m.resolvedOutcome, bettable, estimates, close, onBreak });
   const openSheet = face.picks.kind === "open" && storedProductLine(m.productLine) === "MARKET" && sheet?.bettable && sheet.id === m.id ? sheet : null;
-  const title = cardTitle(locale, m);
+  const title = m.productLine === "UPDOWN"
+    ? { text: marketDisplayTitle(t, locale, m), short: false }
+    : cardTitle(locale, m);
   const competition = normaliseCompetition(m.competition);
   const where = [marketCategoryLabel(t, m.category), competition ? competitionLabel(t, competition) : null]
     .filter((w): w is string => w !== null)
@@ -176,7 +179,7 @@ export function JourneyCard({ m, nowMs, t, locale, heading = "h2", from, roundId
   return (
     <article className="kp-jcard" data-row-id={m.id} data-testid="journey-card" data-sheet={openSheet ? JSON.stringify(openSheet) : undefined}
       data-sheet-title={openSheet ? title.text : undefined} data-sheet-origin={openSheet ? (from === "home" ? "home" : "card") : undefined}>
-      <Link href={target as never} className="kp-jcard__open" aria-label={pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)} />
+      <Link href={target as never} className="kp-jcard__open" aria-label={m.productLine === "UPDOWN" ? title.text : pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)} />
       <div className="kp-jcard__meta">
         <DotSeq text={where} className="kp-jcard__where" />
         {face.meta && label && (

@@ -1,0 +1,23 @@
+/** Refund-destination reversals consumed by red:emergency-refund-destination. */
+export const MUTATIONS = [
+  { file: "src/lib/server/market-service.ts", name: "mixed in-app refund is misreported as main-balance only",
+    from: "void notifyMarketCancelled(p.userId, { stake: p.stake, bonusStakeTzs: bonusPart,",
+    to: "void notifyMarketCancelled(p.userId, { stake: p.stake, bonusStakeTzs: 0,",
+    failure: "FAIL mixed notice names both actual balances in EN, SW and ZH" },
+  { file: "src/lib/server/market-service.ts", name: "mixed email omits its bonus-balance refund",
+    from: "reason, amount: p.stake, bonusStakeTzs: bonusPart, reference: p.id",
+    to: "reason, amount: p.stake, bonusStakeTzs: 0, reference: p.id",
+    failure: "FAIL mixed refund email lists the two actual balance amounts and Chinese copy" },
+  { file: "src/lib/emergency-refund-destination.ts", name: "mixed Swahili copy sends the bonus portion to the main balance",
+    from: "${formatTzs(real)} iliwekwa kwenye salio kuu na ${formatTzs(bonus)} kwenye salio la bonasi wakati wa marejesho.",
+    to: "${formatTzs(real)} iliwekwa kwenye salio kuu na ${formatTzs(bonus)} kwenye salio kuu wakati wa marejesho.",
+    failure: "FAIL mixed notice names both actual balances in EN, SW and ZH" },
+  { file: "src/lib/emergency-refund-destination.ts", name: "bonus-only Chinese copy names the main balance",
+    from: "您的全部投注 ${formatTzs(bonus)} 已计入奖金余额。",
+    to: "您的全部投注 ${formatTzs(bonus)} 已计入主余额。",
+    failure: "FAIL bonus-only notice names bonus balance, never main, in all locales" },
+  { file: "src/lib/server/email.ts", name: "the refund email omits its bonus-balance row",
+    from: '      ...(destination.bonus > 0 ? [{ label: "Credited to bonus at refund", value: formatTzs(destination.bonus), tone: "good" as const }] : []),',
+    to: '      ...(false && destination.bonus > 0 ? [{ label: "Credited to bonus at refund", value: formatTzs(destination.bonus), tone: "good" as const }] : []),',
+    failure: "FAIL mixed refund email lists the two actual balance amounts and Chinese copy" },
+];

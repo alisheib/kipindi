@@ -1,5 +1,6 @@
 /**
- * The asset mark — a round glyph chip carrying which asset this is ("₿", "Au", "Ag"…).
+ * The asset mark — a round glyph chip carrying which asset this is (BTC's family
+ * currency glyph, "Au", "Ag"…).
  *
  * ⭐ HOISTED 2026-09-27 (landing v3, R5) out of `updown-card.tsx`, which is a `"use client"` module: the
  * landing's Up & Down band is a server component and must not reach into a client module for a helper.
@@ -19,6 +20,7 @@
  */
 import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
+import { I } from "@/components/ui/glyphs";
 
 /**
  * The two-character mark for an asset.
@@ -28,10 +30,11 @@ import { cn } from "@/lib/utils";
  * which is also what the design spec asked for.
  */
 export const ASSET_MARKS: Record<string, string> = {
-  gold: "Au", silver: "Ag", platinum: "Pt", copper: "Cu", oil: "Oil", fx: "FX", crypto: "₿",
+  gold: "Au", silver: "Ag", platinum: "Pt", copper: "Cu", oil: "Oil", fx: "FX",
 };
 
 export function markFor(icon: string, ticker: string): string {
+  if (icon === "crypto") return ticker.toUpperCase();
   return ASSET_MARKS[icon] ?? ticker.slice(-2).toUpperCase();
 }
 
@@ -50,7 +53,9 @@ export function AssetMark({ icon, ticker, size, className }: {
       data-lg={size != null && size >= 44 ? "" : undefined}
       style={size != null ? ({ "--mark": `${size}px` } as CSSProperties) : undefined}
     >
-      {markFor(icon, ticker)}
+      {icon === "crypto" && ticker.toUpperCase() === "BTC"
+        ? <I.crypto s={size != null && size >= 44 ? 20 : 16} />
+        : markFor(icon, ticker)}
     </span>
   );
 }

@@ -399,8 +399,10 @@ if (process.env.R7C_LIST) for (const r of [...rows].sort((a, b) => a.kind.locale
   const ruled = (k: Row["kind"]) => rows.filter((r) => r.kind === k).map((r) => `${r.file}<${r.tag}>`).sort();
   ok(`2.4 · the padded boxes are boxes — their edge is the box's, their words padded: the Wallet's bonus pill and the cashback pill, the dial's lock pill and its bet button's stake, the home row's NO button, the handover's ghost button, the time field's suffix: ${j(ruled("BOXED"))}`,
     j(ruled("BOXED")) === j(["src/app/wallet/wallet-client.tsx<span>", "src/components/home/landing-hero.tsx<Link>", "src/components/markets/conviction-dial.tsx<button>", "src/components/markets/conviction-dial.tsx<span>", "src/components/ui/cashback-promo.tsx<span>", "src/components/ui/time-select.tsx<span>", "src/components/updown/updown-handover.tsx<a>"]));
-  ok(`2.5 · the labels that end on a glyph end on the glyph's edge (C11's two, the landing's "see all ›" links): ${j(ruled("GLYPH"))}`,
-    j(ruled("GLYPH")) === j(["src/components/home/landing-hero.tsx<Link>", "src/components/home/topic-tiles.tsx<Link>", "src/components/home/trust-band.tsx<Link>", "src/components/markets/conviction-dial.tsx<InfoHint>", "src/components/updown/updown-card.tsx<div>"]));
+  // U43's round card moved its trailing affordance to a separate kit Button, so its old end-label glyph no longer
+  // belongs in this census. The census still rejects a tracked end label with no take-back or glyph.
+  ok(`2.5 · labels that end on a glyph end on that glyph's edge (C11's two and the landing's "see all ›" links): ${j(ruled("GLYPH"))}`,
+    j(ruled("GLYPH")) === j(["src/components/home/landing-hero.tsx<Link>", "src/components/home/topic-tiles.tsx<Link>", "src/components/home/trust-band.tsx<Link>", "src/components/markets/conviction-dial.tsx<InfoHint>"]));
   // The step each label takes back is its own tracking.
   const STEP: Record<string, number> = { "": 0.14, "--16": 0.16, "--12": 0.12, "--10": 0.1, "--08": 0.08, "--06": 0.06, "--05": 0.05 };
   const stepOf = (r: Row): number | null => {

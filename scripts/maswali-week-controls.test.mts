@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 const controls = readFileSync(join("src", "app", "admin", "maswali", "[weekId]", "week-controls.tsx"), "utf8");
 const page = readFileSync(join("src", "app", "admin", "maswali", "[weekId]", "page.tsx"), "utf8");
+const selectKit = readFileSync(join("src", "components", "ui", "select.tsx"), "utf8");
 let passed = 0;
 let failed = 0;
 function ok(name: string, condition: boolean) {
@@ -48,9 +49,10 @@ function secondReviewed(source: string) {
 function evidenceNamed(source: string) {
   return seal(source).includes('aria-label={`${r.label} seal evidence`}');
 }
-function pendingResultReadable(source: string) {
+function pendingResultReadable(source: string, kit = selectKit) {
   const s = seal(source);
-  return s.includes('<Select size="xs" className="min-w-[100px] min-h-[40px]" value={p.outcome}')
+  return s.includes('<Select size="md" className="min-w-[100px]" value={p.outcome}')
+    && kit.includes('const h = size === "xs" ? "min-h-[32px]" : size === "sm" ? "min-h-[36px]" : "min-h-[44px]";')
     && s.includes('ariaLabel={`${r.label} result`}')
     && s.includes('<Button size="sm" variant="ghost" onClick={() => { setVoidRow(r)')
     && s.includes('<Button size="sm" variant="ghost" onClick={() => { setCorrectRow(r)')
@@ -81,12 +83,15 @@ if (process.argv.includes("--prove-red")) {
   const nameless = controls.replace('aria-label={`${r.label} seal evidence`}', "");
   if (nameless === controls) throw new Error("Seal evidence name plant target missing");
   ok("red: nameless evidence cannot identify its row to an officer", !evidenceNamed(nameless));
-  const narrowResult = controls.replace('min-w-[100px] min-h-[40px]', 'min-h-[40px]');
+  const narrowResult = controls.replace('<Select size="md" className="min-w-[100px]" value={p.outcome}', '<Select size="md" value={p.outcome}');
   if (narrowResult === controls) throw new Error("Pending-result width plant target missing");
   ok("red: removing the pending-result width permits vertical wrapping", !pendingResultReadable(narrowResult));
-  const shortResult = controls.replace('min-w-[100px] min-h-[40px]', 'min-w-[100px]');
+  const shortResult = controls.replace('<Select size="md" className="min-w-[100px]" value={p.outcome}', '<Select size="xs" className="min-w-[100px]" value={p.outcome}');
   if (shortResult === controls) throw new Error("Pending-result height plant target missing");
   ok("red: removing the pending-result height permits a 32px tap target", !pendingResultReadable(shortResult));
+  const shortKit = selectKit.replace(': "min-h-[44px]";', ': "min-h-[36px]";');
+  if (shortKit === selectKit) throw new Error("Select kit height plant target missing");
+  ok("red: shrinking the shared md Select floor below 40px is reported", !pendingResultReadable(controls, shortKit));
   const shortVoid = controls.replace('<Button size="sm" variant="ghost" onClick={() => { setVoidRow(r)', '<Button size="xs" variant="ghost" onClick={() => { setVoidRow(r)');
   if (shortVoid === controls) throw new Error("Void target size plant missing");
   ok("red: shrinking the consequential Void target to 32px turns the guard red", !pendingResultReadable(shortVoid));

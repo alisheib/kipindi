@@ -1,10 +1,9 @@
 /**
  * Prove a change to `.mcardp-details` does NOT move card layout.
  *
- * `MARKET_CARD_H = 349` (card-geometry.ts) is consumed by BOTH `/markets` skeletons, and the
- * Details row is deliberately a constant one-line height so the card never changes height between
- * boards. That is the whole reason §4e was deferred twice. So: measure every card's box, the
- * Details row's own box, and the grid's row offsets — before and after — and diff them.
+ * The market-card skeleton and card share --mcard-h geometry tokens. The Details row stays one
+ * line tall so card and skeleton do not drift. Measure every card's box, row offsets and document
+ * height, then hit-test the 40px Info, Share and Details targets in the browser.
  *
  * Run: npm run qa:card-geometry -- <label>
  */
@@ -80,4 +79,12 @@ if (existsSync(other)) {
       console.log(`  (expected) ${k} details box height ${JSON.stringify(prev[k].detailsHeights)} -> ${JSON.stringify(result[k].detailsHeights)}`);
     }
   }
+}
+
+// The painted 17px footer row is not the tap target. Browser hit testing verifies the
+// out-of-flow reach on the board cards and the landing featured card.
+process.env.BASE = BASE;
+for (const path of ["/markets", "/"]) {
+  process.env.HIT_PATH = path;
+  await import(`./u43-market-hit-probe.mjs?path=${encodeURIComponent(path)}`);
 }

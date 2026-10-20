@@ -81,8 +81,8 @@ export const MUTATIONS = [
     why: "⛔ THE CSS TRAP, RESTORED: the Deposit CTA is hidden by classes ON the `.btn` instead of on a wrapper. `.btn { display: inline-flex }` is declared at globals.css:911, AFTER `@tailwind utilities`, so at equal specificity the component class wins and `.hidden` is silently ignored — the control renders at 360 anyway, 33px past the edge, while the class list reads correct",
     file: BAR,
     suite: "wallet-reach",
-    from: `              className="btn gilt-metal btn-md btn-pill"`,
-    to: `              className="btn gilt-metal btn-md btn-pill hidden sm:inline-flex"`,
+    from: `              className="btn btn-primary btn-md btn-pill"`,
+    to: `              className="btn btn-primary btn-md btn-pill hidden sm:inline-flex"`,
     expect: "4: ⛔ and the hide is NOT on the button itself",
   },
   {
@@ -196,12 +196,12 @@ export const MUTATIONS = [
   },
   {
     name: "held-figure-stays-gold",
-    why: "the held half of the plain-ink rule is dropped, so a FROZEN wallet's figure keeps the gold of money you can use. The S4 held frame draws it in plain ink because gold marks a balance a player can spend; the masked half still looks right, which is what makes this the easy slip",
+    why: "the held figure is painted gold again, even though Ali reserves gold for money a player has won. The available, held and masked balance figures must all stay neutral",
     file: CSS,
     suite: "wallet-reach",
     from: `.kp-jbal:is([data-held], [data-masked]) .kp-jbal__fig { color: var(--text); }`,
-    to: `.kp-jbal[data-masked] .kp-jbal__fig { color: var(--text); }`,
-    expect: "8.8 gold on a live balance, plain ink when held or masked",
+    to: `.kp-jbal[data-held] .kp-jbal__fig { color: var(--gold-300); }`,
+    expect: "8.8 neutral ink on available, held and masked balances",
   },
   {
     name: "flash-ring-goes-inline",
@@ -257,6 +257,15 @@ export const MUTATIONS = [
     to: `<span className="kp-jhdr__plus">{t.journey.depositAction}</span>`,
     expect: "8c.3 its glyph is the one part that yields",
     onlyFailure: true,
+  },
+  {
+    name: "journey-words-hidden-until-xl",
+    why: "the classic pill's label idiom carried across: the words hidden below 1280, so on a phone the deposit pill is only a glyph. S4 measured the row with the words in and the glyph out, never the other way round",
+    file: JBAR,
+    suite: "wallet-reach",
+    from: `<span>{t.journey.depositAction}</span>`,
+    to: `<span className="hidden xl:inline">{t.journey.depositAction}</span>`,
+    expect: "8c.3 its glyph is the one part that yields",
   },
   {
     name: "journey-sign-in-yields-on-phones",

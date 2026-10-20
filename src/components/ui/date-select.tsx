@@ -59,9 +59,9 @@ const HEIGHT: Record<NonNullable<Props["size"]>, string> = {
 // `lg` shares md's 16px type (so does <Input>): the extra 4px is BOX, not text —
 // a taller target beside a taller field, not a bigger date.
 const TYPE: Record<NonNullable<Props["size"]>, string> = {
-  sm: "px-2.5 text-[13px]",
-  md: "px-3.5 text-[16px]",
-  lg: "px-2.5 text-[16px]",
+  sm: "px-[10px] text-[13px]",
+  md: "px-[14px] text-[16px]",
+  lg: "px-[10px] text-[16px]",
 };
 
 // Widths must comfortably fit the digits in the mono font or the centered text

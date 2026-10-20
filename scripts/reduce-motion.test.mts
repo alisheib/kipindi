@@ -308,7 +308,6 @@ const KEPT: { sel: string; why: string }[] = [
   { sel: ".live-dot", why: "liveness itself. Re-declared at reduced as opacity-only m-breathe with box-shadow: none — the cheap form, not the loud one" },
   { sel: ".cm-status-dot", why: "same rule, support-chat side" },
   { sel: ".m-live-pip", why: "the kit's liveness pip — the same signal as .live-dot and already the cheap opacity-only m-breathe" },
-  { sel: ".m-urgent", why: "a STATE signal (time running out), not decoration; m-breathe is opacity-only" },
   { sel: ".countdown--urgent", why: "cd-pulse is 60s steps(1) — one recomputation a minute, a re-trigger tick rather than motion" },
   { sel: ".countdown--critical", why: "same 60s steps(1) tick" },
 ];

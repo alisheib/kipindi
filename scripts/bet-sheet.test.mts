@@ -984,11 +984,17 @@ function run(impl: Impl, log: (l: string) => void): string[] {
   ok("8.viewport-quiet · an unlifted sheet only removes its keyboard properties: no inherited custom property is written onto the panel, which restyled the whole sheet inside the opening tap (A21)",
     lifecycle.unliftedQuiet && /translate: 0 calc\(-1 \* var\(--bsheet-keyboard-lift, 0px\)\)/.test(impl.src.css)
       && /var\(--bsheet-visible-height, 100dvh\)/.test(impl.src.css), j(lifecycle));
-  ok("9.tokens · inset neutral estimate, standard figure ink, kit gold commit, metal deposit row with dark rail ink, info callouts, forced-colours-safe selected outline and one capped scrolling middle",
+  const depositRows = rendered.filter((x) => x.html.includes('data-testid="journey-sheet-deposit"'));
+  ok("9.tokens · inset neutral estimate, standard figure ink, brand commit and deposit rows with pearl rail ink, info callouts, forced-colours-safe selected outline and one capped scrolling middle",
     /\.kp-bsheet__estimate \{[^}]*background: var\(--bg-inset\)/.test(impl.src.css)
       && /\.kp-bsheet__estimate-figure[^}]*color: var\(--text\)/.test(impl.src.css)
-      && sheetSrc.includes('variant="gold" size="xl" fullWidth className="kp-bsheet__deposit gilt-metal"') && sheetSrc.includes('Callout tone="info"')
-      && /\.kp-bsheet__rails[^}]*color: var\(--gold-fg\)/.test(impl.src.css)
+      && sheetSrc.includes('variant="primary" size="xl" fullWidth className="kp-bsheet__deposit"') && sheetSrc.includes('Callout tone="info"')
+      && depositRows.length > 0 && depositRows.every((x) => /<button[^>]*class="btn btn-primary btn-xl w-full kp-bsheet__deposit"[^>]*data-testid="journey-sheet-deposit"/.test(x.html))
+      && sheetSrc.includes('variant="primary" size="xl" fullWidth className="kp-bsheet__commit"')
+      && commitRows.length > 0 && commitRows.every((x) => /<button[^>]*class="btn btn-primary btn-xl w-full kp-bsheet__commit"[^>]*data-testid="journey-sheet-place"/.test(x.html))
+      && /\.kp-bsheet__rails[^}]*color: var\(--pearl-50\)/.test(impl.src.css)
+      && /\.kp-bsheet \.btn-primary:disabled \{/.test(impl.src.css)
+      && !/\.kp-bsheet \.btn-gold:disabled \{/.test(impl.src.css)
       && /\.kp-bsheet__chip\[aria-pressed="true"\][^}]*outline: 2px solid var\(--brand-400\)/.test(impl.src.css)
       && /\.kp-bsheet__scroll[^}]*min-height: 0[^}]*overflow-y: auto/.test(impl.src.css)
       && /\.kp-bsheet__scroll > \* \{[^}]*flex-shrink: 0/.test(impl.src.css)
@@ -1262,8 +1268,12 @@ if (!PROVE_RED) {
     { name: "closing keeps the last live message active", expect: /^8\.lifecycle /, impl: withSrc({ sheet: SOURCES.sheet.replace('if (!open) { setLive(""); return; }', '') }) },
     { name: "a closed exit ghost retains its polite live region", expect: /^8\.lifecycle /, impl: withSrc({ sheet: SOURCES.sheet.replace('{open && <p className="sr-only" aria-live="polite"', '{<p className="sr-only" aria-live="polite"') }) },
     { name: "the estimate's figure painted gold", expect: /^9\.tokens /, impl: withSrc({ css: SOURCES.css.replace(/(\.kp-bsheet__estimate-figure[^}]*color: )var\(--text\)/, "$1var(--gilt)") }) },
-    { name: "metal highlights only the deposit label instead of the whole row", expect: /^9\.tokens /, impl: withSrc({ sheet: SOURCES.sheet.replace('className="kp-bsheet__deposit gilt-metal"', 'className="kp-bsheet__deposit"').replace('className="kp-bsheet__deposit-copy"><span>', 'className="kp-bsheet__deposit-copy"><span className="gilt-metal">') }) },
-    { name: "ghost hover clears the money door's metal wash behind dark rail ink", expect: /^9\.tokens /, impl: withSrc({ sheet: SOURCES.sheet.replace('variant="gold" size="xl" fullWidth className="kp-bsheet__deposit gilt-metal"', 'variant="ghost" size="xl" fullWidth className="kp-bsheet__deposit gilt-metal"') }) },
+    { name: "deposit door reverts to unearned gold", expect: /^9\.tokens /, impl: withSrc({ sheet: SOURCES.sheet.replace('variant="primary" size="xl" fullWidth className="kp-bsheet__deposit"', 'variant="gold" size="xl" fullWidth className="kp-bsheet__deposit"') }) },
+    { name: "deposit door regains a gilt-metal wash", expect: /^9\.tokens /, impl: withSrc({ sheet: SOURCES.sheet.replace('className="kp-bsheet__deposit"', 'className="kp-bsheet__deposit gilt-metal"') }) },
+    { name: "deposit door drifts to ghost ink", expect: /^9\.tokens /, impl: withSrc({ sheet: SOURCES.sheet.replace('variant="primary" size="xl" fullWidth className="kp-bsheet__deposit"', 'variant="ghost" size="xl" fullWidth className="kp-bsheet__deposit"') }) },
+    { name: "deposit rails revert to dark gold ink on royal", expect: /^9\.tokens /, impl: withSrc({ css: SOURCES.css.replace(/(\.kp-bsheet__rails[^}]*color: )var\(--pearl-50\)/, "$1var(--gold-fg)") }) },
+    { name: "stake commit reverts to unearned gold", expect: /^9\.tokens /, impl: withSrc({ sheet: SOURCES.sheet.replace('variant="primary" size="xl" fullWidth className="kp-bsheet__commit"', 'variant="gold" size="xl" fullWidth className="kp-bsheet__commit"') }) },
+    { name: "disabled stake commit restyled as a gold-only control", expect: /^9\.tokens /, impl: withSrc({ css: SOURCES.css.replace('.kp-bsheet .btn-primary:disabled {', '.kp-bsheet .btn-gold:disabled {') }) },
     { name: "a short viewport shrinks multiline controls across their edges", expect: /^9\.tokens /, impl: withSrc({ css: SOURCES.css.replace('.kp-bsheet__scroll > * { flex-shrink: 0; }', '.kp-bsheet__scroll > * { flex-shrink: 1; }') }) },
     { name: "the deposit door loses its vertical reading space", expect: /^9\.tokens /, impl: withSrc({ css: SOURCES.css.replace(/(\.kp-bsheet__deposit \{[^}]*); padding-block: var\(--sp-2\)/, '$1') }) },
     { name: "a late font no longer remeasures the whole estimate", expect: /^9\.figure-fit /, impl: withSrc({ parts: SOURCES.parts.replace('document.fonts.addEventListener("loadingdone", fitEstimateFigure)', 'document.fonts.addEventListener("loadingdone", () => {})') }) },

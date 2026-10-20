@@ -18,8 +18,9 @@
  * empty list and the page said they had no position on a round they had played.
  *
  * ⛔ WHAT THIS FILE MAY AND MAY NOT CLAIM. These are SOURCE assertions, so each one is
- * written to fail on the real pre-fix text — `scripts/updown-positions-visible-red.mjs`
- * restores that text verbatim and requires this suite to go red. A check that would pass
+ * written to fail on the real pre-fix visibility defects — `scripts/updown-positions-visible-red.mjs`
+ * restores those defects and plants named silent-read fallbacks on the current read paths.
+ * It requires this suite or the live read-fault guard to go red. A check that would pass
  * with the feature absent is worth nothing here, so every "the cap is gone" assertion is
  * paired with a positive control proving the file was actually read and understood.
  */
@@ -55,6 +56,7 @@ const history = stripComments(readFileSync(HISTORY, "utf8"));
 const round = stripComments(readFileSync(ROUND, "utf8"));
 const board = stripComments(readFileSync(BOARD, "utf8"));
 const dict = readFileSync(DICT, "utf8");
+const boardStakeRead = board.match(/async function myStakesByMarket\([\s\S]*?\n\}/)?.[0] ?? "";
 
 console.log("\n── 1 · the history card renders EVERY bet ─────────────────────────\n");
 
@@ -155,6 +157,20 @@ ok("4.3 …and still restricts to the viewer",
 ok("4.4 it returns the itemised list",
   /items:\s*MyRoundPosition\[\]/.test(board) && /export type MyRoundPosition/.test(board),
   "items is not part of the contract");
+
+// A read error is not a player with no positions. All three routes have retry
+// boundaries, so signed-in reads must throw while guests keep their early return.
+ok("4.5 the board keeps the guest shortcut and propagates a signed-in read failure",
+  /if \(!userId \|\| marketIds\.length === 0\) return out;/.test(boardStakeRead)
+  && /const positions = \(await Promise\.all\(\[\.\.\.new Set\(marketIds\)\]\s*\.map\(\(marketId\) => positionStore\.listForUserAndMarket\(userId, marketId\)\)\)\)\.flat\(\);/.test(boardStakeRead)
+  && !/\.catch\(\(\) => \[\]\)/.test(boardStakeRead),
+  "the board may silently erase a signed-in player's stake");
+ok("4.6 the history read propagates failure instead of claiming no bets",
+  /export async function getMyUpDownHistory\([\s\S]{0,150}const positions = await listPositionsForUser\(userId, limit, "UPDOWN"\);/.test(board),
+  "the history may show an empty book after a failed read");
+ok("4.7 the round detail keeps the guest shortcut and propagates a signed-in read failure",
+  /if \(!userId\) return null;\s*const positions = \(await listPositionsForMarket\(marketId\)\)\.filter\(\(p\) => p\.userId === userId\);/.test(board),
+  "the round may hide a player's result after a failed read");
 
 console.log("\n── 5 · the copy exists in all three languages ─────────────────────\n");
 

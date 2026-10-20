@@ -40,6 +40,8 @@ export type PlacedSignal = { side: "UP" | "DOWN"; amount: number; nonce: number 
 export type PlacedReceipt = {
   side: "UP" | "DOWN";
   amount: number;
+  /** The projection saved by the money path for this bet, after the pool was read at commit. */
+  payoutIfWin: number;
   placedAt: string;
   bonusStakeTzs: number;
   nonce: number;
@@ -75,7 +77,7 @@ export function usePlacePulse(nonce: number | undefined, ms = 260): boolean {
  *
  * SUCCESS feedback is FOUR channels (E-64, 2026-08-05): a `justPlaced` signal the surface
  * turns into a 150–250ms pulse, a short mobile haptic, an `aria-live` message for screen
- * readers, and a 3-second `variant: "success"` toast naming the side and the amount.
+ * readers, and a 3-second neutral `factual` toast naming the side and the amount.
  *
  * ⛔ THE TOAST WAS ABSENT FOR A REASON THAT DID NOT SURVIVE CONTACT WITH PLAYERS. It was
  * removed because it piled up on rapid taps, leaving only the three quiet channels — none
@@ -375,6 +377,7 @@ export function useUpDownQuickBet(opts: {
           if (placed) {
             setPlacedReceipt({
               side, amount, nonce: nonce.current,
+              payoutIfWin: placed.payoutIfWin,
               placedAt: placed.placedAt,
               bonusStakeTzs: placed.bonusStakeTzs,
             });
@@ -396,7 +399,7 @@ export function useUpDownQuickBet(opts: {
           toast({
             title: copy.placed,
             description: `${side === "UP" ? copy.up : copy.down} · ${formatTzs(amount)}`,
-            variant: "success",
+            variant: "factual",
             // §F8 · the dwell is named, not typed. The value is unchanged (3s — Ali:
             // "keep placing bets popups normal"); what changed is that it is now filed
             // beside the dwells it has to be read against instead of sitting here as a
@@ -412,10 +415,9 @@ export function useUpDownQuickBet(opts: {
           // This tap's entry, and only this tap's, comes back out (UD-7).
           mutateInFlight((m) => { m.delete(key); });
           // UD-3/UD-4 · the refusal, in the player's own language, presented per the §5
-          // matrix: race/transient → STICKY toast (a money refusal stays until read), at the
-          // registry's rank — `danger` for a fault, `factual` for a slip the player can fix
-          // (§F2/§F3; R5-I, 2026-10-09, `fail.variant`); compliance/account block → the
-          // acknowledge-modal the surface hosts.
+          // matrix: race/transient → STICKY factual toast (a money refusal stays until read);
+          // compliance/account block → the acknowledge-modal the surface hosts. The registry
+          // still classifies the reason; U43 shows the refusal in neutral ink, not side ink.
           const code = r && "code" in r ? (r as { code?: string }).code : undefined;
           const serverError = r && "error" in r ? (r as { error?: string }).error : undefined;
           // C2/C3 · the machine REASON and its figures, when the service emits them. This is
@@ -428,7 +430,7 @@ export function useUpDownQuickBet(opts: {
           } else {
             if (fail.lockNow) setLockedByServer(true);
             setLiveMessage(fail.description);
-            toast({ title: copy.failed, description: fail.description, variant: fail.variant, durationMs: 0 });
+            toast({ title: copy.failed, description: fail.description, variant: "factual", durationMs: 0 });
           }
         }
       } catch (e) {
@@ -442,7 +444,7 @@ export function useUpDownQuickBet(opts: {
         if (isActionRedirect(e)) return;
         // Transport-level failure — no server verdict at all. Sticky, like every
         // money-path failure: the player must be able to read why nothing happened.
-        toast({ title: copy.failed, description: errCopy.udErrBusy, variant: "danger", durationMs: 0 });
+        toast({ title: copy.failed, description: errCopy.udErrBusy, variant: "factual", durationMs: 0 });
       }
     });
   };

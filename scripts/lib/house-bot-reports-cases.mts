@@ -2164,10 +2164,13 @@ export const PLAYER_NOTIFIER_HASHES: Readonly<Record<string, string>> = {
   // PHOSPHOR-MIGRATION release 2a part 2: the cancelled-market notice's stored kind changes from DEPOSIT to REFUND;
   // its three titles, three bodies, and ticket link are unchanged. Re-measured with this exact declaration, so the
   // no-house-reader and no-house-word controls below still pin its complete body.
-  notifyMarketCancelled: "6c966707df773a2ee236adb8a7847195eea3046f23b1527680e05aec8bd12b3a",
+  // U43 money truth: an emergency void returns a still-held stake to its original
+  // main/bonus balances. The three player-notice languages and the refund email
+  // now name that split; neither declaration reads or prints house-bot exposure.
+  notifyMarketCancelled: "50b41cc5427eb588a28db42434e673ec000756bd2461da1de2bd4fef3ff0b2fe",
   notifyObjectionDecided: "715f4026aa917afa661c735fc0129d51eef99666ce8a843bbe7dec2751f3c9d9",
   notifyVerdictRecorded: "cb4d94a7fcd3d2743bd46624e338bf872b1dcde0cc113d4008c78a4c3fc69e93",
-  marketCancelledRefundHtml: "9459244bfe07cd3e2166c2c9d56efb330290f00b133ac4a052e0d3159c8a1c9b",
+  marketCancelledRefundHtml: "cff26be2236c6909d0bd5d4538a9e578e95bfd36372684e35155f0001aa2755f",
   notifyVerdictRecordedForMarket: "abd5e1f6a346fa8c1d5ab9210f6512ac07d78c991da73ed0d3b6f662fc04fa6d",
 };
 /** One function declaration's own text (the fnBody of seam 6.h1b, cut by the syntax tree at its closing brace), or "". */
@@ -3111,7 +3114,7 @@ if (STORE === "memory") {
       j({ droppedRole, unrelated }));
 
     const EMAIL_FILE = "src/lib/server/email.ts";
-    const M5_ROW_LABELS = ["Market", "Reason", "Players refunded", "Total refunded"];
+    const M5_ROW_LABELS = ["Market", "Reason", "Stakes refunded", "Total refunded"];
     const emailCode = lf(decomment(read(EMAIL_FILE)));
     const letterOf = (code: string) => functionDeclarationText(EMAIL_FILE, code, "marketCancelledAdminHtml");
     const rowsOf = (letter: string) => ({
@@ -3119,11 +3122,11 @@ if (STORE === "memory") {
       rows: (letter.match(/\{\s*label:/g) ?? []).length,
     });
     const real = rowsOf(letterOf(emailCode));
-    ok("0.m5.2 · ⛔ the officer's cancellation confirmation states the same four things whatever the house held: marketCancelledAdminHtml's rows are exactly Market, Reason, Players refunded, Total refunded, and every label is a PLAIN string literal — a conditional label or a fifth row is a fact about the book reaching an officer's letter through a door no notice pin watches (0.198.2's PLAYER_NOTIFIERS cover marketCancelledRefundHtml, not this one)",
+    ok("0.m5.2 · ⛔ the officer's cancellation confirmation states the same four things whatever the house held: marketCancelledAdminHtml's rows are exactly Market, Reason, Stakes refunded, Total refunded, and every label is a PLAIN string literal — a conditional label or a fifth row is a fact about the book reaching an officer's letter through a door no notice pin watches (0.198.2's PLAYER_NOTIFIERS cover marketCancelledRefundHtml, not this one)",
       j(real.labels) === j(M5_ROW_LABELS) && real.rows === M5_ROW_LABELS.length, j(real));
-    const PLAYERS_ROW = '      { label: "Players refunded", value: String(refundedCount) },';
-    const conditional = rowsOf(letterOf(plant(emailCode, PLAYERS_ROW, '      { label: refundedTzs > 0 ? "Players refunded (incl. positions held)" : "Players refunded", value: String(refundedCount) },')));
-    const fifth = rowsOf(letterOf(plant(emailCode, PLAYERS_ROW, `${PLAYERS_ROW}\n      { label: "Of which house stakes", value: formatTzs(refundedTzs) },`)));
+    const STAKES_ROW = '      { label: "Stakes refunded", value: String(refundedCount) },';
+    const conditional = rowsOf(letterOf(plant(emailCode, STAKES_ROW, '      { label: refundedTzs > 0 ? "Stakes refunded (incl. house stakes)" : "Stakes refunded", value: String(refundedCount) },')));
+    const fifth = rowsOf(letterOf(plant(emailCode, STAKES_ROW, `${STAKES_ROW}\n      { label: "Of which house stakes", value: formatTzs(refundedTzs) },`)));
     /** ⭐ THE POSITIVE SIDE: this pin freezes the ROWS, not the letter. One more line of prose must still be allowed. */
     const CTA = '    ${ctaButton("/admin/markets", "Open markets")}';
     const extraProse = rowsOf(letterOf(plant(emailCode, CTA, '    ${subtitle("The market is closed and nothing further is owed on it.")}\n' + CTA)));
@@ -3387,7 +3390,7 @@ if (STORE === "memory") {
       j({ notifierProblems, adminTwinNames: r2Exports.filter((x) => wordsOf(adminTwin).has(x)), adminTwinWords: words(printedTexts("src/lib/server/notification-service.ts", adminTwin)) }));
     const notif = lf(code5("src/lib/server/notification-service.ts")), email = lf(code5("src/lib/server/email.ts"));
     const CANCEL_TITLE = "    titleEn: `Market cancelled · ${formatTzs(opts.stake)} refunded`,";
-    const REFUND_ROW = "      { label: \"Refunded to wallet\", value: formatTzs(amount), tone: \"good\" },";
+    const REFUND_ROW = "      ...(destination.real > 0 ? [{ label: \"Refunded to main balance\", value: formatTzs(destination.real), tone: \"good\" as const }] : []),";
     const ADMIN_TWIN_BODY = "    bodySw: `Soko limefutwa kwa dharura. ${formatTzs(opts.refundedTzs)} imerejeshwa.`,";
     const plants = {
       reader: playerNotifierProblems("src/lib/server/notification-service.ts", plant(notif, CANCEL_TITLE, `    titleEn: \`Market cancelled · \${formatTzs(opts.stake)} refunded\${(await houseStakeForAudit(opts.marketId))?.yes ?? ""}\`,`), "notifyMarketCancelled", r2Exports, words),
@@ -4415,12 +4418,13 @@ await guard("11.247", async () => {
    * `plans/house-bots/DEFERRED-TESTS.md` §1j.
    */
   const anchor = await w.mdal.marketStore.get(m.id);
+  const anchor2 = await w.mdal.marketStore.get(m2.id);
   const PUBLIC_READERS: Array<[string, () => Promise<unknown>]> = [
     ["getMarket", () => SVC.getMarket(m.id)],
     ["getMarket(voided)", () => SVC.getMarket(m2.id)],
     ["listMarkets", () => SVC.listMarkets()],
     ["getSimilarMarkets", () => SVC.getSimilarMarkets(anchor, 6)],
-    ["getCardCharts", () => HIST.getCardCharts([m.id, m2.id])],
+    ["getCardCharts", () => HIST.getCardCharts([anchor, anchor2])],
     ["countCommentsByMarkets", () => COMMENTS.countCommentsByMarkets([m.id, m2.id])],
     ["leaderboard", () => w.mdal.positionStore.leaderboard(50)],
     ["leaderboardPlayerCounts", () => w.mdal.positionStore.leaderboardPlayerCounts()],

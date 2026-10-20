@@ -75,7 +75,7 @@ type BodyProps = BetSheetProps & {
  * ⭐ THE LOW FRAME'S ROWS — ONE BLOCK, TWO HOSTS (Vodacom S12 WP10, S12-PLAN Open point 32). The sheet draws them between
  * its estimate and its balance row, and Juu/Chini's journey arm (`components/journey/updown/jud-arm.tsx`) draws the same
  * rows from the same frame: the low callout, the loss room, a pending deposit by its age, why no deposit is offered, the
- * gilt deposit door with the open rails' names and its other amounts, the below-minimum note, the two doors out, then the
+ * brand deposit door with the open rails' names and its other amounts, the below-minimum note, the two doors out, then the
  * host's own second option (`instead`: the sheet's "bet instead", which places; Juu/Chini's "use instead", which sets the
  * stake). Every figure is the frame's. ⛔ It stays in this file, not `sheet-parts.tsx`: `test:bet-sheet` reads this
  * file's source for the deposit door and plants its copies here, and the sheet's rendered rows are byte-identical to the
@@ -122,7 +122,7 @@ export function LowBlock({ t, locale, nowMs, frame, calloutId, railNames, deposi
           : low.depositRefusal === "sof_required" ? { key: "journey.sheetSofRequired" } : low.depositRefusal === "deposit_max" ? { key: "journey.sheetDepositMax", vars: { max: low.depositMaximum ?? "—" } } : { key: "journey.sheetDepositLimit", vars: { amount: low.requestedDeposit ?? "—" } }} /></p>}
         {low?.eyebrow && !cashHidden && <p className="kp-bsheet__eyebrow">{t.journey.lowChoose}</p>}
         {options && selectedDeposit !== undefined && <>
-          <Button type="button" variant="gold" size="xl" fullWidth className="kp-bsheet__deposit gilt-metal" data-testid="journey-sheet-deposit" onClick={() => onDeposit(selectedDeposit)} leading={<I.wallet s={20} text="body-600" />} trailing={<I.chevronRight s={20} text="body-600" />}>
+          <Button type="button" variant="primary" size="xl" fullWidth className="kp-bsheet__deposit" data-testid="journey-sheet-deposit" onClick={() => onDeposit(selectedDeposit)} leading={<I.wallet s={20} text="body-600" />} trailing={<I.chevronRight s={20} text="body-600" />}>
             <span className="kp-bsheet__deposit-copy"><span>{fillNodes(t.journey.lowDeposit, { amount: <Cash hidden={cashHidden} className="amount">{formatTzs(selectedDeposit)}</Cash> })}</span>
               <span className="kp-bsheet__rails"><DotSeq text={railNames.join(" · ")} /></span>
             </span>
@@ -278,7 +278,7 @@ export function BetSheetBody(props: BodyProps) {
           {/* ⭐ A refusal wears the notice box every other refusal wears (A25 item 14; s4-4-inline-refusals draws it): "Something
               went wrong at our end", maintenance, the rate limit and "Temporarily unavailable" were plain secondary text. */}
           {frame.lines.length > 0 && <div id={lineId} className="kp-bsheet__lines"><Callout tone="info" role="status">{frame.lines.map((line, index) => <p key={`${line.key}-${index}`}><SheetSentence t={t} locale={locale} nowMs={nowMs} line={line} /></p>)}</Callout></div>}
-          {footerLine && <Button type="button" variant="gold" size="xl" fullWidth className="kp-bsheet__commit" data-testid="journey-sheet-place" disabled={!frame.cta?.enabled} aria-describedby={descriptionId} onClick={onPlace}><span><SheetSentence t={t} locale={locale} nowMs={nowMs} line={footerLine} /></span></Button>}
+          {footerLine && <Button type="button" variant="primary" size="xl" fullWidth className="kp-bsheet__commit" data-testid="journey-sheet-place" disabled={!frame.cta?.enabled} aria-describedby={descriptionId} onClick={onPlace}><span><SheetSentence t={t} locale={locale} nowMs={nowMs} line={footerLine} /></span></Button>}
         </>}
     </div>
   </>;

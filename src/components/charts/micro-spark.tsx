@@ -1,6 +1,6 @@
 /**
  * MicroSpark — THE inline micro-chart. One component behind every sparkline a
- * card, panel or row renders (market card 24h YES% · wallet 30-day balance).
+ * card, panel or row renders (market card seven-day YES% · wallet 30-day balance).
  *
  * ⭐ THE MICRO/FULL COLOUR LAW (CHART-SPRINT 2026-09-04, from two dated rulings
  * this component inherits rather than re-decides):
@@ -22,7 +22,7 @@
  * Hook-free on purpose — usable from server components (results, invite) and
  * client components (market card, wallet) alike.
  */
-import { smoothPath, linePath, closeArea, seriesToXY } from "./chart-core";
+import { smoothPath, linePath, closeArea, seriesToXY, type XY } from "./chart-core";
 import { cn } from "@/lib/utils";
 
 export function MicroSpark({
@@ -33,12 +33,14 @@ export function MicroSpark({
   padY = 4,
   smooth = false,
   area = false,
+  areaOpacity = 0.06,
   pip = false,
+  minSpan = 1,
   stretch = false,
   lineClassName,
   className,
 }: {
-  data: number[];
+  data: readonly (number | null)[];
   width: number;
   height: number;
   /** Inner padding in viewBox units. The market card runs padX 0 — its spark
@@ -50,8 +52,12 @@ export function MicroSpark({
   smooth?: boolean;
   /** Faint fill under the line (market-card idiom). */
   area?: boolean;
+  /** The market's aqua fill is 10%; other consumers keep the existing 6%. */
+  areaOpacity?: number;
   /** Terminal dot on the latest value (wallet idiom). */
   pip?: boolean;
+  /** A small move may use only part of the chart height. */
+  minSpan?: number;
   /** `preserveAspectRatio="none"` — the svg fills its column and the caller
    *  sizes it with CSS. Strokes stay uniform via non-scaling-stroke. */
   stretch?: boolean;
@@ -62,16 +68,32 @@ export function MicroSpark({
   className?: string;
 }) {
   if (!Array.isArray(data) || data.length < 2) return null;
-  const pts = seriesToXY(data, { x0: padX, x1: width - padX, y0: padY, y1: height - padY });
-  const line = smooth ? smoothPath(pts) : linePath(pts);
-  const [lastX, lastY] = pts[pts.length - 1];
+  const known = data.flatMap((v, i) => v !== null && Number.isFinite(v) ? [{ i, v }] : []);
+  if (known.length < 2) return null;
+  const min = Math.min(...known.map((x) => x.v));
+  // The extra floor value affects only the scale, not the rendered line.
+  const scaled = seriesToXY([...known.map((x) => x.v), min + Math.max(1, minSpan)],
+    { x0: 0, x1: 0, y0: padY, y1: height - padY });
+  const points: (XY | null)[] = data.map((v, i) => {
+    const j = known.findIndex((x) => x.i === i);
+    return v === null || j < 0 ? null : [padX + (i / (data.length - 1)) * (width - 2 * padX), scaled[j][1]];
+  });
+  const segments: XY[][] = [];
+  for (const point of points) {
+    if (point === null) { if (segments.at(-1)?.length === 0) segments.pop(); segments.push([]); }
+    else { if (segments.length === 0) segments.push([]); segments[segments.length - 1].push(point); }
+  }
+  const drawable = segments.filter((s) => s.length >= 2);
+  if (drawable.length === 0) return null;
+  const latest = points.at(-1);
+  const [lastX, lastY] = latest ?? drawable[drawable.length - 1].at(-1)!;
   // 2026-09-13 · A STRETCHED PIP IS HTML, NOT SVG. `stretch` scales the viewBox on X only, so an
   // svg circle drew as a flattened oval on the wallet at 1280 (about 14 by 5 px). The line may
   // stretch; the dot must stay round. So the stretched pip is a dot laid over the svg at the same
   // point: x as a percentage of the width, y in px (the height is never scaled). An unstretched
   // spark scales uniformly and keeps its circle. The wrapper takes `className` so the caller's
   // sizing and the dot's percentage refer to the same box.
-  const htmlPip = pip && stretch;
+  const htmlPip = pip && stretch && !!latest;
   const svg = (
     <svg
       className={htmlPip ? "block w-full" : className}
@@ -81,21 +103,14 @@ export function MicroSpark({
       preserveAspectRatio={stretch ? "none" : undefined}
       aria-hidden
     >
-      {area && (
-        <path d={closeArea(line, lastX, pts[0][0], height)} fill="var(--aqua-400)" fillOpacity={0.06} stroke="none" />
-      )}
-      <path
-        className={lineClassName}
-        d={line}
-        pathLength={1}
-        fill="none"
-        stroke="var(--aqua-400)"
-        strokeWidth={1.5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        vectorEffect="non-scaling-stroke"
-      />
-      {pip && !stretch && <circle cx={lastX} cy={lastY} r="2.4" fill="var(--aqua-400)" />}
+      {drawable.map((pts, i) => {
+        const line = smooth ? smoothPath(pts) : linePath(pts);
+        return <g key={i}>
+          {area && <path d={closeArea(line, pts.at(-1)![0], pts[0][0], height)} fill="var(--aqua-400)" fillOpacity={areaOpacity} stroke="none" />}
+          <path className={lineClassName} d={line} pathLength={1} fill="none" stroke="var(--aqua-400)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        </g>;
+      })}
+      {pip && latest && !stretch && <circle cx={lastX} cy={lastY} r="2.4" fill="var(--aqua-400)" />}
     </svg>
   );
   if (!htmlPip) return svg;

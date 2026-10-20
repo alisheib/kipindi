@@ -35,18 +35,14 @@ import type { ProposalsState } from "@/lib/server/proposals-config";
  *
  * `--r-pill` used to mean BOTH "product line" (Up & Down) and "account action" (Sign in / Sign
  * up) — one shape, two kinds. Shape now has exactly one meaning: Up & Down is a destination, so
- * it takes destination geometry, and its distinction moves to a 5px gilt dot plus `--brand-300`
+ * it takes destination geometry, and its distinction moves to a 5px brand dot plus `--brand-300`
  * ink.
  *
  * **Current destination = `--pill-active` + `--text` + weight 600. That is the ONLY active
  * treatment, at every width** — the bottom rail says it the same way. It used to say it with
  * `--aqua-300`, a second active language for one idea.
  *
- * ⚠️ THE GILT DOT WAS VERIFIED AGAINST `test:gold-is-money` BEFORE SHIPPING, as the plan required.
- * The gate is scoped to two named identity surfaces (`identity-avatar.tsx`, `updown-card.tsx`) and
- * the `.tier-*` rank rules, so it does not object to a nav dot — and the dot is not identity, rank
- * or status: it marks a distinct PRODUCT LINE. If a future revision widens that gate to nav
- * chrome, the dot goes `--brand-300`, not gold; it is one token change and nothing else moves.
+ * U43 B5 applies Ali's later rule: navigation is brand, while gold marks money won.
  */
 type NavItem = {
   href: string;
@@ -305,33 +301,11 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
               past the viewport edge. The span is not a `.btn`, so the utility applies to it.
               ⚠️ This is the idiom this file already uses for the same reason. */}
           {user.isAuthed && !user.walletHeld && !pathname.startsWith("/wallet/deposit") && (
-            // ⭐ THE MONEY-IN CTA, ON STRUCK GILT — M3, 2026-08-07 (ATOM D-2).
-            //
-            // ⚠️ THIS DELIBERATELY REVERSES AN EARLIER DECISION, AND THE EARLIER ONE IS
-            // NOT BEING CALLED WRONG. This CTA used to carry a bespoke gold GRADIENT and
-            // was moved to the kit's flat `.btn-gold` because it was "the only gold
-            // gradient left in a flat-gold system" — correct reasoning about a system
-            // whose gold was flat. M3 changes that premise at the root: *gold is struck,
-            // and struck means earned.* One satin ramp, re-derived from the trademark's
-            // #E3BC66, with an even edge ring and one specular sweep on hover. The
-            // delivery names this exact control — "Continue / Deposit / earned-money CTA".
-            // So the gradient returns, but as the SYSTEM's one ramp rather than as a
-            // one-off: `--gilt-metal` is a token, and it is the same metal as the mark.
-            //
-            // ⛔ `btn-gold` IS DROPPED, NOT LAYERED. Both classes paint a fill, and
-            // stacking them would leave two answers to one question relying on import
-            // order to pick a winner. `.gilt-metal` is a COMPLETE control skin — fill,
-            // ink, edge, hover, active, focus-visible and disabled — so `.btn` supplies
-            // the geometry and typography and the rung supplies the material, which is
-            // M2's division of labour. ⚠️ The other four `.btn-gold` sites are ATOM E's;
-            // this is the one representative control, per INTAKE §3 step 3.
-            //
-            // Measured, not assumed: `--gold-fg` on the struck ramp's worst stop reads
-            // 7.25 against a 4.5 floor (`test:contrast`), so the change costs nothing in
-            // legibility. Pill shape; label hidden < sm.
+            // U43 B5: Deposit moves money into the wallet; it does not mean the player won it.
+            // The brand button preserves the existing pill geometry and readable label.
             /* 🔴 THE DEPOSIT CTA YIELDS BELOW `lg`, AND THE RULE IS **ONE DEPOSIT PER SCREEN**.
                UPDATE-2026-09-28 §1: below 1024 the bottom rail shows (`lg:hidden`) and its CENTRE
-               COIN is the wallet's door, so a second gold Deposit in this header would be the same
+               COIN is the wallet's door, so a second Deposit in this header would be the same
                control twice on one screen. At 1024 and up there is no rail, so this pill is the
                only one and it stays exactly as E-190 left it. `bottom-nav.tsx` is where the coin
                and this hand-off are written down.
@@ -368,7 +342,7 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
                  visible word (three locales) nor by `href` alone — `cashback-promo.tsx` is a
                  legitimate second /wallet/deposit CTA. The testid is the identity. */
               data-testid="deposit-header"
-              className="btn gilt-metal btn-md btn-pill"
+              className="btn btn-primary btn-md btn-pill"
             >
               <I.arrowDownToLine s={14} />
               {/* ⛔ THE LABEL YIELDS AT THE lg–xl BAND (1024–1279), AND IT IS THE SAME RULE AS
@@ -547,7 +521,7 @@ function NavLink({ it, pathname }: { it: NavItem; pathname: string }) {
         fontWeight: active ? 600 : 500,
       }}
     >
-      {/* The product-line mark: a 5px gilt dot. It replaces a glassy indigo pill, a bespoke
+      {/* The product-line mark: a 5px brand dot. It replaces a glassy indigo pill, a bespoke
           gradient, a brand border, a glow AND a green/rose arrow pair — five distinctions for one
           idea, on an item that is simply another destination. */}
       {accent && (
@@ -555,7 +529,7 @@ function NavLink({ it, pathname }: { it: NavItem; pathname: string }) {
           aria-hidden
           style={{
             flex: "none", width: 5, height: 5,
-            borderRadius: "var(--r-pill)", background: "var(--gilt)",
+            borderRadius: "var(--r-pill)", background: "var(--brand-300)",
           }}
         />
       )}

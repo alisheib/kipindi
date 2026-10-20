@@ -318,8 +318,7 @@ export function AvatarMenu({
                 exactly session 21's unexplained observation, "/admin/updown served the
                 signed-out player shell to a freshly signed-in ADMIN". Same root cause as Ali's
                 missing navbar, mirrored. 🔒 `npm run test:shell-boundary`. */}
-            {/* PHOSPHOR-MIGRATION release 2a part 2: Ali chose the royal identity plate for both shells' staff row;
-                gold remains reserved for money (DESIGN_AUTHORITY Q5). */}
+            {/* Staff is a destination in both player shells; the family identity plate uses brand ink. */}
             {isAdmin && (
               <div className="border-t border-border px-2 py-2">
                 <a
@@ -388,7 +387,7 @@ export function AvatarMenu({
                        `ConfirmDialog` clones the trigger with `onClick`/`disabled` only, so the
                        role survives the clone. */
                     role="menuitem"
-                    className="w-full flex items-center gap-2.5 px-3 py-2 font-display text-body-sm font-semibold text-danger-fg hover:bg-danger-500/10 transition-colors text-left"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 font-display text-body-sm font-semibold text-text-muted hover:text-text hover:bg-bg-overlay transition-colors text-left"
                   >
                     <I.logOut s={15} aria-hidden />
                     {t.common.signOut}
@@ -477,10 +476,10 @@ function Item({ href, icon: Ico, en, sw, zh, accent, current, proposalsBadge, jo
         className={cn(
           "flex items-center gap-2.5 px-3 py-2 font-display text-body-sm text-text transition-colors",
           current ? "font-semibold" : "font-medium",
-          accent ? "hover:bg-gold-500/10" : "hover:bg-bg-overlay",
+          accent ? "hover:bg-brand-500/10" : "hover:bg-bg-overlay",
         )}
       >
-        <span className={accent ? "text-gold-300" : "text-text-subtle"}><Ico s={15} /></span>
+        <span className={accent ? "text-brand-300" : "text-text-subtle"}><Ico s={15} /></span>
         {/* The journey's label keeps its last two words together (`keepLastWords`: the widest two-word end is ~88px at
             Sora 13px, inside the label's ~139px beside INAKUJA — visual-pass-r4h §6.6); one span, so the words stay one flex item. */}
         {journey ? <span>{keepLastWords(primary)}</span> : primary}
