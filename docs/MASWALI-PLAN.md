@@ -85,6 +85,12 @@ local live QA. The leaderboard fix still needs compiled-browser confirmation.
 U43 still owns `main-push.lock`; S5 has not pushed `main`, and Millionea remains
 `WITHDRAWN`. Fetch and read the remote coordinator branch HEAD rather than
 assuming an older hash in this section is final.
+The interrupted two-store run at `7f91c8ea9` recorded 264 passed checks and
+seven actual reds: house-bot-rules, house-bot-seam, results-freshness,
+wallet-status-writers, red-anchors, watchlist and report-parity. The latter
+five have focused fixes in the coordinator branch; the two house-bot guards
+still need diagnosis. The test process and its disposable PostgreSQL were
+stopped, and the run is not a final suite verdict.
 
 **Next:** Run every remaining changed-file reader and mutation proof, fresh current-`main`
 classic parity, admin and player browser/tile reads, clean-environment two-store `test:all`,
