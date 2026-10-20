@@ -160,6 +160,13 @@ export const NOT_EYEBROW = new Map([
   ["app/admin/markets/page.tsx :: <span className=\"font-mono text-caption uppercase tracking-[0.08em] text-text-tertiary\">Void · refunded</span> ↵ ) : m.status === \"RESOLVED\" ? (", "STATUS_CHIP"],
   ["app/admin/markets/page.tsx :: <span className={`inline-flex items-center gap-1.5 font-mono text-caption font-bold uppercase tracking-[0.08em] ${m.resolvedOutcome === \"YES\" ? \"text-yes-300\" : \"text-no-", "STATUS_CHIP"],
   ["app/admin/markets/page.tsx :: <td className=\"font-mono text-caption uppercase tracking-[0.14em] text-text-muted\">{m.category}</td> ↵ {/* B6: a settled market shows its VERDICT (read from resolvedOutco", "OTHER"],
+  // Maswali list counts report filtered rows against the full result set. They are data readouts,
+  // like the admin markets counts above: none names a section, acts as a control, or states status.
+  ["app/admin/maswali/integrity/page.tsx :: <><p className=\"px-4 pt-3 font-mono text-micro uppercase tracking-widest text-text-subtle\">{formatNumber(v.voidablePage.total)} of {adminCount(v.voidablePage.allTotal, \"w", "OTHER"],
+  ["app/admin/maswali/integrity/page.tsx :: <p className=\"px-4 pt-3 font-mono text-micro uppercase tracking-widest text-text-subtle\">{formatNumber(v.heldPage.total)} of {adminCount(v.heldPage.allTotal, \"held share\"", "OTHER"],
+  ["app/admin/maswali/integrity/page.tsx :: <p className=\"px-4 pt-3 font-mono text-micro uppercase tracking-widest text-text-subtle\">{formatNumber(v.winnersPage.total)} of {adminCount(v.winnersPage.allTotal, \"winne", "OTHER"],
+  ["app/admin/maswali/integrity/page.tsx :: <p className=\"px-4 pt-3 font-mono text-micro uppercase tracking-widest text-text-subtle\">{formatNumber(v.sealWeeks.total)} of {adminCount(v.sealWeeks.allTotal, \"sealed we", "OTHER"],
+  ["app/admin/maswali/page.tsx :: <p className=\"px-4 pt-3 font-mono text-micro uppercase tracking-widest text-text-subtle\">{weeks.total} of {weeks.allTotal} {weeks.allTotal === 1 ? \"week\" : \"weeks\"}</p> ↵", "OTHER"],
   ["app/admin/objections/objection-decision.tsx :: className=\"inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.08em] text-text-tertiary\" ↵ title=\"Upholding or rejecting an objection is a complia", "OTHER"],
   ["app/admin/objections/objection-decision.tsx :: className=\"inline-flex min-h-[40px] items-center gap-1 rounded-md border border-border bg-bg-overlay px-2.5 py-1.5 font-mono text-micro font-bold uppercase tracking-[0.08", "CONTROL_LABEL"],
   ["app/admin/objections/objection-decision.tsx :: className=\"inline-flex min-h-[40px] items-center gap-1 rounded-md border border-warning-border bg-warning-bg px-2.5 py-1.5 font-mono text-micro font-bold uppercase tracki", ["CONTROL_LABEL",2]],
