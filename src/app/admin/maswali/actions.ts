@@ -14,7 +14,7 @@ import { safeError } from "@/lib/server/safe-error";
 import { requireStaff } from "@/lib/server/rbac-guard";
 import { CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import {
-  attestParity, confirmSeal, correctSeal, createWeek, editDraftQuestion, moveClose, openWeek, sealQuestion,
+  attestParity, confirmSeal, correctSeal, createWeek, editDraftQuestion, editDraftQuestions, moveClose, openWeek, sealQuestion,
   type DraftQuestionInput,
 } from "@/lib/server/maswali-service";
 import { guaranteeReader } from "@/lib/server/maswali-money-service";
@@ -79,6 +79,26 @@ export async function editMaswaliQuestionAction(formData: FormData): Promise<Act
     return { ok: true, weekId };
   } catch (err) {
     return { ok: false, error: safeError(err, "The question could not be saved") };
+  }
+}
+
+/** One builder submission, one service decision and one transaction for all changed slots. */
+export async function editMaswaliQuestionsAction(formData: FormData): Promise<ActionResult> {
+  const session = await requireStaff(CONTROL_DOMAIN.editMaswaliQuestion, "editMaswaliQuestions");
+  const weekId = str(formData, "weekId");
+  try {
+    let edits: unknown;
+    try { edits = JSON.parse(str(formData, "edits")); } catch { return { ok: false, error: "The changes could not be read." }; }
+    if (!Array.isArray(edits) || edits.length < 1 || edits.length > 15 || edits.some((edit) => !edit || typeof edit !== "object" || Array.isArray(edit)
+      || !Number.isInteger(edit.slot) || !edit.changes || typeof edit.changes !== "object" || Array.isArray(edit.changes))) {
+      return { ok: false, error: "Choose one to fifteen changed questions to save." };
+    }
+    const r = await editDraftQuestions({ weekId, edits, officerId: session.userId });
+    if (!r.ok) return { ok: false, error: r.error };
+    refresh(weekId);
+    return { ok: true, weekId };
+  } catch (err) {
+    return { ok: false, error: safeError(err, "The questions could not be saved") };
   }
 }
 

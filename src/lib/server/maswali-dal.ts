@@ -252,6 +252,8 @@ export interface QuestionStore {
   createMany(cycleId: string, rows: Array<DraftQuestionFields & { id: string }>): Promise<void>;
   /** A draft's text, only while its week is DRAFT (the caller checks the week; this refuses non-draft columns). */
   editDraftQuestion(id: string, fields: Partial<DraftQuestionFields>): Promise<void>;
+  /** One builder save: every changed draft slot lands together, or none does. */
+  editDraftQuestions(edits: ReadonlyArray<{ id: string; fields: Partial<DraftQuestionFields> }>, tx?: Prisma.TransactionClient): Promise<void>;
   patch(id: string, fields: Partial<StoredQuestion>, tx?: Prisma.TransactionClient): Promise<void>;
 }
 
@@ -443,6 +445,17 @@ const memoryQuestions: QuestionStore = {
     for (const k of Object.keys(fields)) if (!DRAFT_EDITABLE.has(k as keyof DraftQuestionFields)) throw new Error(`questionStore.editDraftQuestion: '${k}' is not a draft field`);
     const cur = memQuestions.get(id);
     if (cur) memQuestions.set(id, { ...cur, ...fields });
+  },
+  async editDraftQuestions(edits) {
+    const updated = new Map<string, StoredQuestion>();
+    for (const { id, fields } of edits) {
+      for (const k of Object.keys(fields)) if (!DRAFT_EDITABLE.has(k as keyof DraftQuestionFields)) throw new Error(`questionStore.editDraftQuestions: '${k}' is not a draft field`);
+      if (updated.has(id)) throw new Error(`questionStore.editDraftQuestions: duplicate question ${id}`);
+      const cur = memQuestions.get(id);
+      if (!cur) throw new Error(`questionStore.editDraftQuestions: missing question ${id}`);
+      updated.set(id, { ...cur, ...fields });
+    }
+    for (const [id, row] of updated) memQuestions.set(id, row);
   },
   async patch(id, fields) {
     refuseUnpatchable("questionStore", fields, QUESTION_PATCHABLE);
@@ -716,6 +729,22 @@ const prismaQuestions: QuestionStore = {
     }
     if (Object.keys(data).length === 0) return;
     await pc().maswaliQuestion.update({ where: { id }, data });
+  },
+  async editDraftQuestions(edits, tx) {
+    const rows = edits.map(({ id, fields }) => {
+      const data: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(fields)) {
+        if (!DRAFT_EDITABLE.has(k as keyof DraftQuestionFields)) throw new Error(`questionStore.editDraftQuestions: '${k}' is not a draft field`);
+        data[k] = k === "eventStartsAt" || k === "voidDeadlineAt" ? new Date(v as string) : v;
+      }
+      return { id, data };
+    });
+    if (new Set(rows.map((row) => row.id)).size !== rows.length) throw new Error("questionStore.editDraftQuestions: duplicate question");
+    const write = async (db: Prisma.TransactionClient) => {
+      for (const { id, data } of rows) await db.maswaliQuestion.update({ where: { id }, data });
+    };
+    if (tx) await write(tx);
+    else await pc().$transaction(write);
   },
   async patch(id, fields, tx) {
     const data: Record<string, unknown> = {};

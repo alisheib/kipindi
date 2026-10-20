@@ -25,7 +25,7 @@ import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { utcToZonedLocal } from "@/lib/maswali-time";
 import type { DraftSuggestion } from "@/lib/server/maswali-console";
-import { createMaswaliWeekAction, editMaswaliQuestionAction } from "../actions";
+import { createMaswaliWeekAction, editMaswaliQuestionsAction } from "../actions";
 
 const CATEGORIES = ["sports", "macro", "weather", "crypto", "culture", "tech", "other"] as const;
 const KINDS = ["SPORT", "PRICE", "WEATHER", "ANNOUNCEMENT"] as const;
@@ -71,10 +71,7 @@ const toQuestion = (r: Row) => ({
   probabilityEstimate: r.probabilityPct === "" ? null : Number(r.probabilityPct) / 100, probabilitySource: r.probabilitySource || null,
 });
 
-/**
- * `edit` opens the builder on an existing DRAFT: the week's start and line are fixed, and saving sends only the rows that
- * changed, one by one (`editDraftQuestion`; any edit clears the second reader's attestation, MB-79).
- */
+/** `edit` opens a DRAFT: its start and line stay fixed, and the changed slots save as one batch (MB-79). */
 export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { defaultMonday: string; edit?: { weekId: string; rows: Row[] }; suggestions?: DraftSuggestion[] }) {
   const router = useRouter();
   const mayAct = useMayAct();
@@ -102,17 +99,17 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
     if (edit) {
       const changed = rows.map((r, i) => ({ r, i })).filter(({ r, i }) => JSON.stringify(r) !== JSON.stringify(edit.rows[i]));
       if (changed.length === 0) { setError("Nothing changed."); return; }
+      const edits = changed.map(({ r }) => {
+        const { role: _role, ordinal: _ordinal, ...changes } = toQuestion(r);
+        void _role; void _ordinal;
+        return { slot: r.role === "MAIN" ? r.ordinal : r.ordinal + 10, changes };
+      });
+      const form = new FormData();
+      form.set("weekId", edit.weekId);
+      form.set("edits", JSON.stringify(edits));
       start(async () => {
-        for (const { r } of changed) {
-          const { role: _role, ordinal: _ordinal, ...changes } = toQuestion(r);
-          void _role; void _ordinal;
-          const f = new FormData();
-          f.set("weekId", edit.weekId);
-          f.set("slot", String(r.role === "MAIN" ? r.ordinal : r.ordinal + 10));
-          f.set("changes", JSON.stringify(changes));
-          const res = await editMaswaliQuestionAction(f);
-          if (!res.ok) { setError(`${label(r)}: ${res.error}`); return; }
-        }
+        const res = await editMaswaliQuestionsAction(form);
+        if (!res.ok) { setError(res.error); return; }
         router.push(`/admin/maswali/${edit.weekId}` as Route);
       });
       return;

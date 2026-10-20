@@ -682,6 +682,8 @@
     "test:maswali-commitment": "tsx scripts/maswali-commitment.test.mts",
     "test:maswali-time": "tsx scripts/maswali-time.test.mts",
     "test:maswali-engine": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-engine.test.mts",
+    "test:maswali-batch-edit": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-batch-edit.test.mts",
+    "red:maswali-batch-edit": "tsx scripts/maswali-batch-edit.test.mts --prove-red",
     "red:maswali-engine": "node scripts/red-maswali-engine.mjs",
     "test:maswali-purchase": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-purchase.test.mts",
     "test:maswali-settle": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-settle.test.mts",

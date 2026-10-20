@@ -154,6 +154,23 @@ export async function createWeek(input: {
   });
 }
 
+/** Validate one draft edit without writing; the batch must finish every check before its first write. */
+function preparedDraftEdit(q: StoredQuestion, changes: Partial<DraftQuestionInput>, week: StoredWeek): DraftQuestionFields | string {
+  const cfg = getMaswaliConfig();
+  // ⛔ An edit never moves a question: role, ordinal and slot are the stored draft's, whatever was sent.
+  const { role: _role, ordinal: _ordinal, ...content } = changes;
+  void _role; void _ordinal;
+  const merged: DraftQuestionInput = {
+    category: q.category, textEn: q.textEn, textSw: q.textSw, textZh: q.textZh,
+    criterionEn: q.criterionEn, criterionSw: q.criterionSw, criterionZh: q.criterionZh, sourceUrl: q.sourceUrl,
+    fallbackSourceUrl: q.fallbackSourceUrl, readingTolerance: q.readingTolerance, eventKind: q.eventKind,
+    eventLocalStart: utcToLocalInput(q.eventStartsAt, q.eventZone), eventZone: q.eventZone,
+    probabilityEstimate: q.probabilityEstimate, probabilitySource: q.probabilitySource, linkedMarketId: q.linkedMarketId,
+    ...content, role: q.role, ordinal: q.ordinal,
+  };
+  return draftFields(merged, Date.parse(week.finalDeadlineAt), cfg.voidDeadlineHours);
+}
+
 /** Edit a DRAFT question. ⛔ Refused past DRAFT (the DAL also refuses any non-draft column); clears the parity attestation. */
 export async function editDraftQuestion(input: { weekId: string; slot: number; changes: Partial<DraftQuestionInput>; officerId: string }): Promise<Result> {
   return withLock(MASWALI_CHAIN_LOCK, async () => {
@@ -162,19 +179,7 @@ export async function editDraftQuestion(input: { weekId: string; slot: number; c
     if (week.state !== "DRAFT") return refuse(`Week ${week.code} is ${week.state}: its questions are frozen (MR-13).`);
     const q = (await questionStore.listForWeek(week.id)).find((x) => x.slot === input.slot);
     if (!q) return refuse(`No ${slotLabel(input.slot)} in week ${week.code}.`);
-    const cfg = getMaswaliConfig();
-    // ⛔ An edit never moves a question: its role and ordinal (and so its slot) are the draft's, whatever was sent.
-    const { role: _role, ordinal: _ordinal, ...changes } = input.changes;
-    void _role; void _ordinal;
-    const merged: DraftQuestionInput = {
-      category: q.category, textEn: q.textEn, textSw: q.textSw, textZh: q.textZh,
-      criterionEn: q.criterionEn, criterionSw: q.criterionSw, criterionZh: q.criterionZh, sourceUrl: q.sourceUrl,
-      fallbackSourceUrl: q.fallbackSourceUrl, readingTolerance: q.readingTolerance, eventKind: q.eventKind,
-      eventLocalStart: utcToLocalInput(q.eventStartsAt, q.eventZone), eventZone: q.eventZone,
-      probabilityEstimate: q.probabilityEstimate, probabilitySource: q.probabilitySource, linkedMarketId: q.linkedMarketId,
-      ...changes, role: q.role, ordinal: q.ordinal,
-    };
-    const f = draftFields(merged, Date.parse(week.finalDeadlineAt), cfg.voidDeadlineHours);
+    const f = preparedDraftEdit(q, input.changes, week);
     if (typeof f === "string") return refuse(f);
     const { role: _r, ordinal: _o, slot: _s, ...editable } = f;
     void _r; void _o; void _s;
@@ -184,6 +189,45 @@ export async function editDraftQuestion(input: { weekId: string; slot: number; c
       payload: { slot: input.slot, fields: Object.keys(input.changes) } });
     return { ok: true };
   });
+}
+
+/** Save the builder's changed slots together. A later refusal cannot leave an earlier slot saved. */
+export async function editDraftQuestions(input: {
+  weekId: string; edits: Array<{ slot: number; changes: Partial<DraftQuestionInput> }>; officerId: string;
+}): Promise<Result> {
+  const result = await withLock(MASWALI_CHAIN_LOCK, async (tx): Promise<Result> => {
+    const week = await weekStore.get(input.weekId);
+    if (!week) return refuse("No such week.");
+    if (week.state !== "DRAFT") return refuse(`Week ${week.code} is ${week.state}: its questions are frozen (MR-13).`);
+    if (!Array.isArray(input.edits) || input.edits.length < 1 || input.edits.length > MAIN_COUNT + RESERVE_COUNT) {
+      return refuse("Choose one to fifteen changed questions to save.");
+    }
+    const questions = new Map((await questionStore.listForWeek(week.id)).map((q) => [q.slot, q]));
+    const seen = new Set<number>();
+    const patches: Array<{ id: string; fields: Partial<DraftQuestionFields> }> = [];
+    for (const edit of input.edits) {
+      if (!Number.isInteger(edit.slot) || edit.slot < 1 || edit.slot > MAIN_COUNT + RESERVE_COUNT || seen.has(edit.slot)) {
+        return refuse("Each changed question must name one distinct slot from M1 through A5.");
+      }
+      seen.add(edit.slot);
+      const q = questions.get(edit.slot);
+      if (!q) return refuse(`No ${slotLabel(edit.slot)} in week ${week.code}.`);
+      if (!edit.changes || typeof edit.changes !== "object" || Array.isArray(edit.changes)) return refuse(`${slotLabel(edit.slot)}: the change could not be read.`);
+      const fields = preparedDraftEdit(q, edit.changes, week);
+      if (typeof fields === "string") return refuse(fields);
+      const { role: _role, ordinal: _ordinal, slot: _slot, ...editable } = fields;
+      void _role; void _ordinal; void _slot;
+      patches.push({ id: q.id, fields: editable });
+    }
+    // The chain lock carries a Postgres transaction through both writes and the attestation clear.
+    // The memory store validates its entire batch before it swaps any question row.
+    await questionStore.editDraftQuestions(patches, tx ?? undefined);
+    if (week.parityAttestedBy) await weekStore.patch(week.id, { parityAttestedBy: null, parityAttestedAt: null }, tx ?? undefined);
+    return { ok: true };
+  });
+  if (result.ok) audit({ category: "ADMIN", action: "maswali.week.draft_edited", actorId: input.officerId, targetType: "MaswaliCycle", targetId: input.weekId,
+    payload: { slots: input.edits.map((edit) => edit.slot), fields: input.edits.map((edit) => Object.keys(edit.changes)) } });
+  return result;
 }
 
 /** The officer's view of a stored start: the local "YYYY-MM-DDTHH:MM" in its own zone. */
