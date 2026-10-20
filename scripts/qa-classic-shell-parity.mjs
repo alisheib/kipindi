@@ -164,6 +164,7 @@
  * beside it (`.rejected.json` for a baseline that failed a check, `.current.json` for a compare that found differences).
  */
 import { chromium } from "playwright";
+import { maskPositionCountdown, steadyTimeLeftLayout, timeLeftPaths } from "./qa/classic-parity-noise.mjs";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -1356,17 +1357,6 @@ const SNAPSHOT = ({ crest, props, animated, notFound, pageBody, sell, confirm, t
   };
 };
 
-/** The open ticket's ring ticks every 15 seconds. Mask only its live value, never its shape, colour or other SVGs. */
-const maskPositionCountdown = (html) => String(html).replace(
-  /<svg\b(?=[^>]*\brole="img")(?=[^>]*\bclass="shrink-0")[^>]*>[\s\S]*?<\/svg>/g,
-  (svg) => {
-    if ([...svg.matchAll(/<circle\b/g)].length !== 2 || !/<circle\b[^>]*\bstroke-dashoffset="[^"]*"/.test(svg) || !/<text\b[^>]*>[^<]*<\/text>/.test(svg)) return svg;
-    return svg.replace(/\baria-label="[^"]*"/, 'aria-label="~countdown"')
-      .replace(/\bstroke-dashoffset="[^"]*"/, 'stroke-dashoffset="~"')
-      .replace(/(<text\b[^>]*>)[^<]*(<\/text>)/, '$1~$2');
-  },
-);
-
 /** What changes between two servers of the SAME tree and is not the product: React ids, asset hashes, the port, store ids, times. */
 const norm = (s) => maskPositionCountdown(s)
   .replace(/_[Rr]_[0-9A-Za-z]+_/g, "_id_")
@@ -1543,50 +1533,6 @@ function applyGlyphSwap(field, text, glyphs) {
   }
   return text;
 }
-/**
- * PHOSPHOR-MIGRATION owed classic calibration: the book masks a card's live date as `~date` in
- * markup, but the unmasked date still changes the right-aligned time label's x/width by 2–3px
- * between fresh servers of this SAME commit. Derive only those two element paths from the
- * captured markup; retain their y, height and every computed style except the resulting auto
- * margin. A changed card structure, colour, font, line height or neighbouring box still differs.
- */
-function timeLeftPaths(html) {
-  const paths = new Map(), stack = [];
-  const voids = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"]);
-  for (const token of String(html ?? "").matchAll(/<\/?([A-Za-z][\w:-]*)\b([^>]*?)>/g)) {
-    const [whole, rawTag, attrs] = token, tag = rawTag.toLowerCase();
-    if (whole.startsWith("</")) {
-      while (stack.length && stack.pop().tag !== tag) { /* malformed ancestors close here too */ }
-      continue;
-    }
-    const parent = stack.at(-1);
-    const path = parent ? `${parent.path}>${tag}${parent.next++}` : tag;
-    const isMeta = /\bclass="[^"]*\bmcardp-meta-right\b/.test(attrs);
-    const isTime = /\bclass="[^"]*\bmcardp-timeleft\b/.test(attrs);
-    if (isTime && parent?.isMeta) { paths.set(parent.path, "parent"); paths.set(path, "child"); }
-    if (!whole.endsWith("/>") && !voids.has(tag)) stack.push({ tag, path, next: 0, isMeta });
-  }
-  return paths;
-}
-
-function steadyTimeLeftLayout(layout, html, store) {
-  const paths = timeLeftPaths(html);
-  if (!paths.size) return layout;
-  return String(layout).split(NL).map((line) => {
-    const match = /^(\S+) (\S+) ([0-9a-f]{12})$/.exec(line);
-    if (!match || !paths.has(match[1])) return line;
-    const [, path, geo, id] = match;
-    const stableGeo = geo.replace(/^-?[\d.]+,(-?[\d.]+),-?[\d.]+x(-?[\d.]+)$/, "~,$1,~x$2");
-    const sig = store[id];
-    if (!sig || stableGeo === geo) return line;
-    // The computed auto margin is a consequence of this label's varying width, never a style rule.
-    const stableSig = paths.get(path) === "child" ? sig : sig.replace(/^margin-left:-?[\d.]+px$/m, "margin-left:~");
-    const stableId = createHash("sha1").update(stableSig).digest("hex").slice(0, 12);
-    store[stableId] = stableSig;
-    return `${path} ${stableGeo} ${stableId}`;
-  }).join(NL);
-}
-
 /** Every field that differs, split into the named EXPECTED differences and everything else. */
 function diffCells(route, base, cur, baseStore, curStore, list = EXPECTED_DIFFS) {
   const a = fieldsOf(base, baseStore), b = fieldsOf(cur, curStore);
@@ -3168,8 +3114,9 @@ async function proveRed() {
       return steadyTimeLeftLayout(layout, html, own);
     };
     const was = sample(20, 70, 12), moved = sample(18, 72, 14);
-    ok("P.1c the same masked live date has one geometry across fresh servers, while a vertical move, colour or path change remains visible",
+    ok("P.1c the same masked live date keeps its right edge across fresh servers; a lost alignment, vertical move, colour or path change remains visible",
       timeLeftPaths(html).size === 2 && was === moved && was !== sample(18, 72, 14, 31)
+      && was !== sample(2, 72, 0)
       && was !== sample(18, 72, 14, 30, "rgb(9, 2, 3)") && was !== sample(18, 72, 14, 30, "rgb(1, 2, 3)", "main>article0>span9"));
   }
   // PHOSPHOR-MIGRATION W2 · the sprite name's hash is read as ~, and nothing else in a glyph is: another symbol, another
@@ -3181,10 +3128,12 @@ async function proveRed() {
       && glyphAt("/icons/g/app.304710bb.svg#p-clock-bold") !== glyphAt("/icons/g/app.304710bb.svg#p-clock-regular")
       && glyphAt("/icons/g/app.304710bb.svg#p-clock-bold") !== glyphAt("/icons/g/admin.304710bb.svg#p-clock-bold")
       && glyphAt("/icons/g/app.304710bb.svg#p-clock-bold") !== glyphAt("/icons/g/app.svg#p-clock-bold"));
-  const ring = (dash, word, klass = "shrink-0") => `<svg width="44" height="44" role="img" aria-label="${word}" class="${klass}"><circle cx="22" cy="22" r="19" stroke="var(--bg-overlay)"></circle><circle cx="22" cy="22" r="19" stroke="var(--aqua-400)" stroke-dasharray="119" stroke-dashoffset="${dash}"></circle><text x="50%">${word}</text></svg>`;
-  ok("P.1d the open-ticket countdown's changing value is masked, while its arc ink, shape and another SVG remain compared",
+  const ring = (dash, word, klass = "shrink-0", label = "Selection closes") => `<svg width="44" height="44" role="img" aria-label="${label}" class="${klass}"><circle cx="22" cy="22" r="19" stroke="var(--bg-overlay)"></circle><circle cx="22" cy="22" r="19" stroke="var(--aqua-400)" stroke-dasharray="119" stroke-dashoffset="${dash}"></circle><text x="50%">${word}</text></svg>`;
+  ok("P.1d the open-ticket countdown's numeric value is masked, while its accessible status, arc ink, shape and another SVG remain compared",
     norm(ring(12.2, "3d")) === norm(ring(12.6, "2d"))
       && norm(ring(12.2, "3d")).includes('stroke-dashoffset="~"')
+      && norm(ring(12.2, "3d")).includes('aria-label="Selection closes"')
+      && norm(ring(12.2, "3d")) !== norm(ring(12.6, "2d", "shrink-0", "Selection closed"))
       && norm(ring(12.2, "3d")) !== norm(ring(12.2, "3d").replace("aqua-400", "no-400"))
       && norm(ring(12.2, "3d")) !== norm(ring(12.2, "3d").replace('r="19"', 'r="18"'))
       && norm(ring(12.2, "3d", "other")) !== norm(ring(12.6, "2d", "other")));

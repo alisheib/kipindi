@@ -534,6 +534,8 @@
     "glyphs:parity-entries": "node scripts/glyphs/parity-entries.mjs",
     "test:phosphor-parity-entries": "node scripts/glyphs/parity-entries.test.mjs",
     "red:phosphor-parity-entries": "node scripts/glyphs/parity-entries.test.mjs --prove-red",
+    "test:classic-parity-noise": "node scripts/qa/classic-parity-noise.test.mjs",
+    "red:classic-parity-noise": "node scripts/qa/classic-parity-noise.test.mjs --prove-red",
     "test:glyph-map": "tsx scripts/glyph-map.test.mts",
     "red:glyph-map": "tsx scripts/glyph-map.test.mts --prove-red",
     "test:glyph-sync": "tsx scripts/glyph-sync.test.mts",

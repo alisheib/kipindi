@@ -55,9 +55,12 @@ family Duotone glyphs on the shared empty plate; error states use the filled dan
 typecheck, a build, local `qa:live`, motion, and the full three-language responsive sweep; the final-commit build remains
 before push. The database battery has seven failures already present on live `main`. Classic parity's same-code null
 comparison passed 68/68. Its W6 comparison found only the empty `/positions` card in 24 signed-in cells; the exact
-main-region HTML and layout pairs are generated into the parity register, preserving W3's entries. Four book-clock
-width changes remain outside the register because their displayed time advances independently. The new generator
-selection and preservation guard passes, and its two dropped-flag mutations are caught. The long campaign red proof,
+main-region HTML and layout pairs are generated into the parity register, preserving W3's entries. The book's four
+time-label width changes now compare equal in the saved null pair only when the label stays aligned to its card row's
+right edge. The open-ticket ring masks its changing number but keeps its accessible status words. The lightweight
+`test:classic-parity-noise` and `red:classic-parity-noise` catch both retired broad masks; a fresh browser comparison
+is still owed. The new generator selection and preservation guard passes, and its two dropped-flag mutations are
+caught. The long campaign red proof,
 classic parity red proof and final comparison remain before the live push. Release 2c follows with category plates,
 money doors and stat tiles.
 
