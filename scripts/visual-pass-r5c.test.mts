@@ -212,7 +212,7 @@ const REGISTRY: Record<string, [number, string]> = {
   // S8 WP5 (+1, 92 → 93): `.kp-bsheet .btn-gold:disabled`, the bet sheet's own disabled gold — a `.btn-gold` selector
   // that DE-golds the button (a navy plate, subtle words), ruled by VODACOM-PLAN §0g design call 4 and scoped to the
   // sheet by S8-PLAN Open point 20; every other gold button keeps `.btn:disabled`.
-  "src/app/globals.css": [95, "the gold ramp and aliases, identity metal, earned money, restored house needle, wallet figure, money-in coin and deposit rails, classic badge/footer, and gold button recipes (§M3a); dead CSS and admin definitions remain"],
+  "src/app/globals.css": [96, "the gold ramp and aliases, identity metal including the shared empty plate's single accent, earned money, restored house needle, wallet figure, money-in coin and deposit rails, classic badge/footer, and gold button recipes (§M3a); dead CSS and admin definitions remain"],
   "src/app/motion.css": [22, "the gilt material — gilt-metal on deposit doors and the celebration, gilt-ink on earned figures, the win toast's tint; dead: `.m-skeleton`"],
   "src/app/state-tokens.css": [2, "`.countdown--urgent` — dead CSS (no consumer)"],
   "src/components/ui/button.tsx": [2, "the `gold` variant — bet and sell commits"],
@@ -229,7 +229,7 @@ const REGISTRY: Record<string, [number, string]> = {
   // ── OWNER: restored classic chrome and hashed legal texts ──────────────────────────────────────────────────────────
   "src/app/legal/_components.tsx": [2, "the regulator-letter frame's corners — CLARET ink (§B4), the GiltCorner component counted"],
   "src/components/layout/avatar-menu.tsx": [2, "classic avatar accent restored to gold; staff destination stays brand (§M3a)"],
-  "src/components/layout/notifications-panel.tsx": [3, "classic bell's unread marks and illustration restored to gold; Journey bell stays brand (§M3a)"],
+  "src/components/layout/notifications-panel.tsx": [2, "classic bell's unread marks restored to gold; Journey bell stays brand and shared empty art uses identity metal (§M3a, §C7)"],
   "src/components/layout/top-app-bar.tsx": [2, "classic Deposit door and product-line dot restored to gold (§M3a)"],
   "src/components/layout/wallet-balance-pill.tsx": [9, "classic wallet amount, flash, and eye restored to gold (§M3a)"],
   "src/components/layout/wallet-sheet.tsx": [1, "Wallet sheet Deposit door restored to gold (§M3a)"],
