@@ -637,19 +637,20 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   earlier rights-open notes above are dated history. Source-frozen captures, two
   independent 24-cell reviews, full money and release gates, and any after score are
   still outstanding. **Release B is not live.**
-  **Latest local checkpoint, 2026-10-20:** Winner payout, refund/VOID and officer
-  objection passed focused memory and disposable-PostgreSQL fault controls,
-  including restored physical red mutations. The two-grant bonus restitution
-  provenance correction passed its focused tests. The three required money,
-  fault and card E2E suites passed on separate migrated disposable databases;
-  typecheck passed after narrow integration repairs. A capture-premise guard
-  now distinguishes a fitting chip rail from one that genuinely needs a sheet.
-  A read-only production census found no round outcome that disagrees with its
-  market verdict; the terminal-round recovery guard is still being sealed.
-  The BoardViz first-paint and B5 motion guards and red proofs pass. The
-  Maswali-owned `/updown/history` still needs pending and cash-out money truth
-  after that lane's handoff. Gold calendar closure and the actual Up & Down
-  error boundary are being prepared as separately labelled browser evidence.
+  **Latest local checkpoint, 2026-10-20:** The integrated branch is committed.
+  Winner payout, refund/VOID, officer objection, bonus restitution and
+  terminal-round reconciliation passed focused memory and disposable-PostgreSQL
+  controls. The required money, fault and card E2E suites passed on separate
+  migrated disposable databases; typecheck, house-bot disclosure and the R5c,
+  R9a and R9b visual guards passed after commit. The changed-source red fleet
+  caught and restored every tested reversal, including the PostgreSQL winner
+  plant. A read-only production census found no round verdict mismatch. The
+  first clean-source 320px state sweep stopped before any scored frame: its
+  driver asked for Gold 5-minute rounds that the current movement gate refuses.
+  That driver premise is being corrected; the run provides no after evidence.
+  The Gold weekend closure fixture has a guard and mutation proof, and must be
+  labelled as a QA clock simulation in browser evidence. The Maswali-owned
+  `/updown/history` still needs pending and cash-out money truth after handoff.
   The full `test:all`, final seven-width state matrix, two independent 24-cell
   reviews, exact-commit build, local `qa:live` and production read-back have not
   run. No after score or Release B production state is claimed.

@@ -40,6 +40,21 @@ check("state index pins local SHA and refuses dirty exact-source claims",
   states.includes('const index = { base: BASE, tag: TAG, dur: DUR, sourceHead, trackedDirty,')
   && states.includes('process.env.REQUIRE_CLEAN === "1" && (trackedDirty || untrackedRunnable)')
   && states.includes('"--untracked-files=all", "--", "src", "scripts"'));
+check("state seed uses BTC 5m and the real Gold 15m/40-tick floor with no rejected chain",
+  states.includes('const GOLD_DUR = 15;')
+  && states.includes('if (DUR !== 5) throw new Error(')
+  && states.includes('durations: [GOLD_DUR], assets: ["XAU"], minMoveTicks: 40')
+  && states.includes('goldSeed.chains?.length !== 1 || !goldChain || goldSeed.notes?.length')
+  && states.includes('durations: [DUR], assets: ["BTC"], pause: ["XAU"]')
+  && states.includes('chain.assetId !== goldChain.assetId')
+  && states.includes('seed.chains?.length !== 2 || !btcChain')
+  && states.includes('chain.assetId === goldChain.assetId && chain.durationMinutes === GOLD_DUR && chain.state === "PAUSED"')
+  && states.includes('seed.chains.filter((chain) => chain.state === "RUNNING").length !== 1')
+  && states.includes('seed.notes?.length) die('));
+check("only BTC arms and settles while Gold has no round",
+  states.includes('armed.chains !== 1 || armed.out?.length !== 1')
+  && states.includes('lastSettle.chains !== 1 || lastSettle.out?.length !== 1')
+  && states.includes('only the BTC ${DUR}-minute chain may arm a lead-in round'));
 check("market seeds fail on missing real resolved or one-sided money",
   states.includes('const resolvedSeeds = await post("/api/dev-test/resolve-seed-markets"')
   && states.includes('resolvedSeeds.resolved !== 2')
@@ -62,15 +77,18 @@ check("market result, one-sided and VOID visual states are required",
   && states.includes('card.text.includes(voidWord[requirement.locale])'));
 check("Gold stop goes through service and requires selected XAU readback",
   states.includes('const stoppedChains = await post("/api/dev-test/updown-handover", { phase: "stop" })')
+  && states.includes('stoppedChains.chains !== 2')
+  && states.includes('stoppedChains.out.some((row) => row.durationMinutes === GOLD_DUR && row.ok)')
   && states.includes('stoppedChains.out.some((row) => !row.ok)')
-  && states.includes('sample.signedIn === requirement.signedIn && sample.goldSelected')
+  && states.includes('sample.signedIn === requirement.signedIn && sample.goldSelected && sample.goldDurationSelected')
   && states.includes('sample.cards === 0 && sample.emptyState && sample.bettableChoiceCount === 0')
   && states.includes('stoppedGoldWords[requirement.locale].some((words) => sample.emptyStateText?.includes(words))')
-  && states.includes('index.goldStopped = { chains: stoppedChains.chains, out: stoppedChains.out }')
+  && states.includes('index.goldStopped = { goldDurationMinutes: GOLD_DUR, chains: stoppedChains.chains, out: stoppedChains.out }')
+  && states.includes('goldDurationSelected: !!document.querySelector(')
   && states.includes('emptyStateText: requirement.stoppedGold ? final.emptyStateText : null')
   && states.includes('bettableChoiceCount: requirement.stoppedGold ? final.bettableChoiceCount : null'));
 check("stopped Gold is photographed in every selected width, locale and viewer cell",
-  states.includes('await photograph("p13-gold-board", "/updown?asset=XAU");')
+  states.includes('await photograph("p13-gold-board", `/updown?asset=XAU&d=${GOLD_DUR}`);')
   && states.includes('if (stoppedGold) return !!document.querySelector(\'[data-empty-state]\')')
   && states.includes('stoppedGold: requirement.stoppedGold')
   && states.includes('const chartReady = requirement.stoppedGold || await p.page.waitForFunction')

@@ -56,6 +56,8 @@ if (!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(BASE)) {
 const TAG = process.env.TAG || "states";
 const OUT = process.env.OUT || join(REPO, ".qa-shots", "u43", TAG);
 const DUR = Number(process.env.DUR || 5);
+const GOLD_DUR = 15; // XAU/USD's measured catalogue minimum; 5/10 are refused by createChain.
+if (DUR !== 5) throw new Error("U43 state fixture uses the BTC 5-minute lifecycle and a separate Gold 15-minute chain");
 
 mkdirSync(OUT, { recursive: true });
 
@@ -126,12 +128,31 @@ const index = { base: BASE, tag: TAG, dur: DUR, sourceHead, trackedDirty, untrac
 
 // ── Seed ──────────────────────────────────────────────────────────────────────────────────────────────────────
 console.log("=== seed");
-const seed = await post("/api/dev-test/updown-seed", { durations: [5, 10, 15], assets: ["BTC", "XAU"], feedProvider: "mock-bars" });
+// Seed Gold first at its REAL 15-minute minimum and 40-tick band. Then pause its
+// chain through the seed service while starting BTC 5m. The chip is present for
+// every board frame, but handover arms only BTC; Gold never gains a fake round.
+const goldSeed = await post("/api/dev-test/updown-seed", {
+  durations: [GOLD_DUR], assets: ["XAU"], minMoveTicks: 40, feedProvider: "mock-bars",
+});
+const goldChain = goldSeed.chains?.find((chain) => chain.durationMinutes === GOLD_DUR && chain.state === "RUNNING");
+if (!goldSeed.ok || goldSeed.assets?.length !== 1 || goldSeed.assets[0]?.key !== "XAU" || !goldSeed.assets[0]?.enabled
+  || goldSeed.chains?.length !== 1 || !goldChain || goldSeed.notes?.length) {
+  die(`real Gold ${GOLD_DUR}m chain seed premise failed: ${JSON.stringify(goldSeed).slice(0, 220)}`);
+}
+const seed = await post("/api/dev-test/updown-seed", {
+  durations: [DUR], assets: ["BTC"], pause: ["XAU"], feedProvider: "mock-bars",
+});
+const btcChain = seed.chains?.find((chain) => chain.durationMinutes === DUR && chain.state === "RUNNING"
+  && chain.assetId !== goldChain.assetId);
 if (!seed.ok || !seed.assets?.some((asset) => asset.key === "XAU" && asset.enabled)
   || !seed.assets?.some((asset) => asset.key === "BTC" && asset.enabled)
-  || seed.chains?.filter((chain) => chain.durationMinutes === DUR && chain.state === "RUNNING").length < 2
-  || seed.notes?.length) die(`BTC/XAU chain seed premise failed: ${JSON.stringify(seed).slice(0, 220)}`);
-index.chainSeed = { assets: seed.assets, chainCount: seed.chains.length, notes: seed.notes };
+  || seed.chains?.length !== 2 || !btcChain
+  || !seed.chains.some((chain) => chain.assetId === goldChain.assetId && chain.durationMinutes === GOLD_DUR && chain.state === "PAUSED")
+  || seed.chains.filter((chain) => chain.state === "RUNNING").length !== 1
+  || seed.notes?.length) die(`BTC ${DUR}m plus paused Gold ${GOLD_DUR}m seed premise failed: ${JSON.stringify(seed).slice(0, 240)}`);
+index.chainSeed = { assets: seed.assets, btc: { assetId: btcChain.assetId, durationMinutes: DUR },
+  gold: { assetId: goldChain.assetId, durationMinutes: GOLD_DUR, state: "PAUSED" },
+  chainCount: seed.chains.length, notes: seed.notes };
 const seededMarkets = await post("/api/dev-test/seed-markets");
 if (!seededMarkets.ok || !Array.isArray(seededMarkets.ids) || seededMarkets.ids.length < 15) {
   die("generic market catalogue seed did not return enough live market IDs");
@@ -224,11 +245,14 @@ if (warmed.some((row) => !row.ok)) die(`browser warm-up failed: ${JSON.stringify
 // the state sweep, with an adjacent settled card for the handover read.
 const armed = await post("/api/dev-test/updown-handover", { phase: "arm", leadSeconds: 5 });
 const armedTest = armed.out?.find((o) => o.durationMinutes === DUR && o.round)?.round;
-if (!armedTest?.id) die(`the fresh ${DUR}-minute chain did not open a lead-in round`);
+if (!armedTest?.id || armed.chains !== 1 || armed.out?.length !== 1) {
+  die(`only the BTC ${DUR}-minute chain may arm a lead-in round: ${JSON.stringify(armed).slice(0, 300)}`);
+}
 await waitUntil(Date.parse(armedTest.closesAt) + 1500, "the real lead-in close");
 const lastSettle = await post("/api/dev-test/updown-handover", { phase: "settle" });
 const testHandover = lastSettle.out?.find((o) => o.durationMinutes === DUR && o.closed?.id === armedTest.id);
-if (!testHandover?.opened?.id || testHandover.opened.opensAt !== testHandover.closed.closesAt) {
+if (!testHandover?.opened?.id || lastSettle.chains !== 1 || lastSettle.out?.length !== 1
+  || testHandover.opened.opensAt !== testHandover.closed.closesAt) {
   die(`the lead-in did not hand over to an adjacent ${DUR}-minute round: ${JSON.stringify(testHandover).slice(0, 300)}`);
 }
 for (const row of lastSettle.out ?? []) {
@@ -327,7 +351,7 @@ const stoppedGoldWords = {
 };
 function exactMarketReady(sample, requirement) {
   if (requirement.stoppedGold) return sample?.lang === requirement.locale
-    && sample.signedIn === requirement.signedIn && sample.goldSelected
+    && sample.signedIn === requirement.signedIn && sample.goldSelected && sample.goldDurationSelected
     && sample.cards === 0 && sample.emptyState && sample.bettableChoiceCount === 0
     && stoppedGoldWords[requirement.locale].some((words) => sample.emptyStateText?.includes(words));
   if (!frameReady(sample, requirement)) return false;
@@ -449,6 +473,7 @@ async function photograph(phase, path = BOARD, filter = () => true) {
             text: card.innerText.slice(0, 600),
           })),
           goldSelected: !!document.querySelector('nav[data-filter-rail] a[href*="asset=XAU"][aria-current="page"]'),
+          goldDurationSelected: !!document.querySelector('nav[data-filter-rail] a[href*="asset=XAU&d=15"][aria-current="page"]'),
           emptyState: !!document.querySelector("[data-empty-state]"),
           emptyStateText: document.querySelector("[data-empty-state]")?.textContent?.trim().slice(0, 400) ?? null,
           bettableChoiceCount: document.querySelectorAll('article.mcardp[data-phase="open"] .ud-act button.btn-yes:not([disabled]),article.mcardp[data-phase="open"] .ud-act button.btn-no:not([disabled])').length,
@@ -631,7 +656,8 @@ async function photograph(phase, path = BOARD, filter = () => true) {
         signedIn: final.signedIn, signedInOk: (p.who === "player") === final.signedIn,
         file, beforeMs: accepted.before.now, afterMs: final.now, attempts: accepted.attempt,
         marketCase: requirement.marketCase, marketCards: final.marketCards,
-        goldSelected: final.goldSelected, emptyStateText: requirement.stoppedGold ? final.emptyStateText : null,
+        goldSelected: final.goldSelected, goldDurationSelected: final.goldDurationSelected,
+        emptyStateText: requirement.stoppedGold ? final.emptyStateText : null,
         bettableChoiceCount: requirement.stoppedGold ? final.bettableChoiceCount : null,
         cards: cardFiles, heldAction: final.heldAction, oneSideCaption: final.oneSideCaption,
         cardGeometry: final.cardGeometry,
@@ -828,13 +854,15 @@ for (const [phase, marketCase] of Object.entries(marketCases)) {
   await photograph(phase, path, inFullMatrix((p) => p.who === "guest" || p.width === 1280));
 }
 const stoppedChains = await post("/api/dev-test/updown-handover", { phase: "stop" });
-if (!stoppedChains.ok || stoppedChains.phase !== "stop" || stoppedChains.chains < 1
-  || !stoppedChains.out?.some((row) => row.durationMinutes === DUR && row.ok)
+if (!stoppedChains.ok || stoppedChains.phase !== "stop" || stoppedChains.chains !== 2
+  || stoppedChains.out?.length !== 2
+  || !stoppedChains.out.some((row) => row.durationMinutes === DUR && row.ok)
+  || !stoppedChains.out.some((row) => row.durationMinutes === GOLD_DUR && row.ok)
   || stoppedChains.out.some((row) => !row.ok)) {
   die(`Gold stopped-chain premise did not read back: ${JSON.stringify(stoppedChains).slice(0, 220)}`);
 }
-index.goldStopped = { chains: stoppedChains.chains, out: stoppedChains.out };
-await photograph("p13-gold-board", "/updown?asset=XAU");
+index.goldStopped = { goldDurationMinutes: GOLD_DUR, chains: stoppedChains.chains, out: stoppedChains.out };
+await photograph("p13-gold-board", `/updown?asset=XAU&d=${GOLD_DUR}`);
 
 await finishCapture();
 

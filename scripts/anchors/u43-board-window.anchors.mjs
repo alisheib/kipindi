@@ -20,8 +20,8 @@ export const MUTATIONS = [
   },
   {
     file: "scripts/live/updown-visual-states.mjs",
-    from: "if (!testHandover?.opened?.id || testHandover.opened.opensAt !== testHandover.closed.closesAt) {",
-    to: "if (!testHandover?.opened?.id) {",
+    from: "testHandover.opened.opensAt !== testHandover.closed.closesAt",
+    to: "false",
     expect: "3.3 local state fixture verifies exact adjacent handover",
   },
   {
