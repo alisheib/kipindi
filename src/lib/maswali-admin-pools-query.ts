@@ -6,6 +6,14 @@ export type OpenState = "ALL" | "OPEN" | "CLOSED" | "RESOLVING";
 export type OpenSort = "week" | "state" | "sales" | "coverage" | "topUp";
 export type TrailSort = "week" | "settled" | "sales" | "winners" | "paid" | "carried";
 
+/** Only scalar, known URL controls are allowed into the two tables' links and readers. */
+export function poolsSearchParams(raw: Record<string, string | string[] | undefined>): Record<string, string | undefined> {
+  const keys = ["tpage", "tcode", "tline", "tsort", "tdir", "oline", "ostate", "osort", "odir"] as const;
+  const safe: Record<string, string | undefined> = {};
+  for (const key of keys) safe[key] = typeof raw[key] === "string" ? raw[key] : undefined;
+  return safe;
+}
+
 export const poolsLine = (value?: string): PoolsLine =>
   value === "PUBLIC" || value === "DRIVE" ? value : "ALL";
 

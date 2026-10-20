@@ -2,26 +2,34 @@ import assert from "node:assert/strict";
 import { readFileSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { openState, poolsLine, queryOpenWeeks, queryRolloverTrail } from "../src/lib/maswali-admin-pools-query.ts";
+import { openState, poolsLine, poolsSearchParams, queryOpenWeeks, queryRolloverTrail } from "../src/lib/maswali-admin-pools-query.ts";
 import type { PoolsTrailRow, PoolsWeek } from "../src/lib/server/maswali-console.ts";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const source = fileURLToPath(new URL("../src/lib/maswali-admin-pools-query.ts", import.meta.url));
 
 if (process.argv.includes("--prove-red")) {
-  const before = readFileSync(source, "utf8");
-  const anchor = '(query.line === "ALL" || w.visibility === query.line) &&\n    (!code || w.code.toLocaleUpperCase("en").includes(code))';
-  assert.equal(before.split(anchor).length - 1, 1, "the trail line-filter anchor must be unique");
-  try {
-    writeFileSync(source, before.replace(anchor, 'true &&\n    (!code || w.code.toLocaleUpperCase("en").includes(code))'));
-    const run = spawnSync(process.execPath, ["--import", "tsx", "scripts/maswali-admin-pools-query.test.mts"],
-      { cwd: root, encoding: "utf8", env: { ...process.env, NODE_ENV: "test" } });
-    assert.notEqual(run.status, 0, "removing the line filter must fail the behavior guard");
-    assert.match(`${run.stdout}\n${run.stderr}`, /trail line filter keeps only the requested line/,
-      "the failed assertion must name the filter, not a loader or syntax error");
-    process.stdout.write("RED: removing the line filter fails its behavior assertion\n");
-  } finally {
-    writeFileSync(source, before);
+  for (const plant of [
+    { anchor: '(query.line === "ALL" || w.visibility === query.line) &&\n    (!code || w.code.toLocaleUpperCase("en").includes(code))',
+      mutation: 'true &&\n    (!code || w.code.toLocaleUpperCase("en").includes(code))',
+      failure: /trail line filter keeps only the requested line/, name: "trail line filter" },
+    { anchor: 'typeof raw[key] === "string" ? raw[key] : undefined',
+      mutation: 'raw[key] as string | undefined',
+      failure: /repeated or unknown URL controls cannot crash or leak into pools links/, name: "scalar URL controls" },
+  ]) {
+    const before = readFileSync(source, "utf8");
+    assert.equal(before.split(plant.anchor).length - 1, 1, `${plant.name} anchor must be unique`);
+    try {
+      writeFileSync(source, before.replace(plant.anchor, plant.mutation));
+      const run = spawnSync(process.execPath, ["--import", "tsx", "scripts/maswali-admin-pools-query.test.mts"],
+        { cwd: root, encoding: "utf8", env: { ...process.env, NODE_ENV: "test" } });
+      assert.notEqual(run.status, 0, `removing ${plant.name} must fail the behavior guard`);
+      assert.match(`${run.stdout}\n${run.stderr}`, plant.failure,
+        `the failed assertion must name ${plant.name}, not a loader or syntax error`);
+      process.stdout.write(`RED: removing ${plant.name} fails its behavior assertion\n`);
+    } finally {
+      writeFileSync(source, before);
+    }
   }
   process.exit(0);
 }
@@ -36,6 +44,10 @@ const open = [
 ];
 assert.equal(poolsLine("nonsense"), "ALL", "unknown line cannot select an invented population");
 assert.equal(openState("nonsense"), "ALL", "unknown state cannot select an invented population");
+assert.deepEqual(poolsSearchParams({ tcode: ["one", "two"], tline: "DRIVE", irrelevant: "ignored" }),
+  { tpage: undefined, tcode: undefined, tline: "DRIVE", tsort: undefined, tdir: undefined,
+    oline: undefined, ostate: undefined, osort: undefined, odir: undefined },
+  "repeated or unknown URL controls cannot crash or leak into pools links");
 assert.deepEqual(queryOpenWeeks(open, { line: "PUBLIC", state: "ALL", sort: "sales", dir: "desc" }).map((w) => w.row.code),
   ["MLN-2026-W03", "MLN-2026-W01"], "open line filter and numeric sort compose");
 assert.deepEqual(queryOpenWeeks(open, { line: "ALL", state: "CLOSED", sort: "week", dir: "asc" }).map((w) => w.row.code),
@@ -56,4 +68,4 @@ assert.deepEqual(queryRolloverTrail(trail, { code: "", line: "PUBLIC", sort: "pa
   [25, 24], "numeric sort runs before the visible page is sliced");
 assert.equal(queryRolloverTrail(trail, { code: "not-a-week", line: "ALL", sort: "week", dir: "asc" }).length, 0,
   "a missing code yields an honest empty result");
-process.stdout.write("maswali admin pools query: 8 behavior assertions PASS\n");
+process.stdout.write("maswali admin pools query: 9 behavior assertions PASS\n");

@@ -18,7 +18,7 @@ import { readMillioneaSwitchFresh } from "@/lib/server/millionea-switch";
 import { weekStore } from "@/lib/server/maswali-dal";
 import { formatTzs } from "@/lib/utils";
 import { fmtEat, weekStateChip } from "@/lib/maswali-admin-format";
-import { openState, poolsLine, queryOpenWeeks, queryRolloverTrail, type OpenSort, type TrailSort } from "@/lib/maswali-admin-pools-query";
+import { openState, poolsLine, poolsSearchParams, queryOpenWeeks, queryRolloverTrail, type OpenSort, type TrailSort } from "@/lib/maswali-admin-pools-query";
 import { GuaranteeCeremony, LicenceCeremony, ReleaseControl, RolloutCeremony, SunsetCeremony } from "./pools-controls";
 
 export const metadata = { title: "Admin · Millionea · Pools" };
@@ -33,8 +33,8 @@ const money = (v: number | null) => (v === null ? "Unreadable" : formatTzs(v));
  * ⛔ A BALANCE THAT COULD NOT BE READ SAYS SO; it is never shown as 0. The exposure is a share of the 1,024 ways to
  *    answer the ten mains that some live ticket holds — a count, never a list of who holds what.
  */
-type PoolsSearch = { tpage?: string; tcode?: string; tline?: string; tsort?: string; tdir?: string; oline?: string; ostate?: string; osort?: string; odir?: string };
-type PoolsPageProps = { searchParams: Promise<PoolsSearch> };
+type PoolsSearch = Record<string, string | undefined>;
+type PoolsPageProps = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 function withQuery(sp: PoolsSearch, changes: Record<string, string | null>, page?: keyof PoolsSearch): string {
   const next = new URLSearchParams();
@@ -52,7 +52,7 @@ export default async function AdminMaswaliPoolsPage(props: PoolsPageProps) {
 }
 
 async function Content({ searchParams }: PoolsPageProps) {
-  const sp = await searchParams;
+  const sp = poolsSearchParams(await searchParams);
   const session = await currentSession();
   const role = session?.role;
   const [v, standing, sw, can] = await Promise.all([
