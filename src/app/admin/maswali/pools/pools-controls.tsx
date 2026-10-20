@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ConfirmModal } from "@/components/ui/modal";
 import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
+import { validGuaranteeDraft } from "@/lib/maswali-admin-form-validation";
 import {
   fundMaswaliGuaranteeAction, releaseMaswaliSettlementAction, returnMaswaliGuaranteeAction, setMaswaliLicenceBasisAction,
   setMillioneaRolloutAction, sunsetMaswaliAction,
@@ -76,15 +77,16 @@ export function GuaranteeCeremony({ canFund, canReturn }: { canFund: boolean; ca
   const [mode, setMode] = useState<"fund" | "return" | null>(null);
   if (!mayAct) return <ActReadOnly />;
   const word = mode === "return" ? RETURN_WORD : FUND_WORD;
+  const ready = validGuaranteeDraft(amount, reference);
   return (
     <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Amount (TZS)"><Input size="sm" inputMode="numeric" grouped value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))} /></Field>
-        <Field label="Bank or rail reference"><Input size="sm" value={reference} onChange={(e) => setReference(e.target.value)} /></Field>
+        <Field label="Amount (TZS)" required hint="A whole number above zero"><Input size="sm" inputMode="numeric" grouped value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))} /></Field>
+        <Field label="Bank or rail reference" required hint="5–120 characters from the bank or payment rail"><Input size="sm" maxLength={120} value={reference} onChange={(e) => setReference(e.target.value)} /></Field>
       </div>
       <div className="flex gap-2 flex-wrap">
-        {canFund && <Button size="sm" disabled={pending || !amount} onClick={() => setMode("fund")}>Pay in</Button>}
-        {canReturn && <Button size="sm" variant="ghost" disabled={pending || !amount} onClick={() => setMode("return")}>Take back</Button>}
+        {canFund && <Button size="sm" disabled={pending || !ready} onClick={() => setMode("fund")}>Pay in</Button>}
+        {canReturn && <Button size="sm" variant="ghost" disabled={pending || !ready} onClick={() => setMode("return")}>Take back</Button>}
       </div>
       <Feedback error={error} note={note} />
       <UnsavedChangesGuard dirty={amount !== "" || reference.trim() !== ""} body="A guarantee movement has been typed but not recorded. Leaving now discards it." />

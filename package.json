@@ -703,6 +703,8 @@
     "red:maswali-admin-shots-caret": "node scripts/maswali-admin-shots-caret.test.mjs --prove-red",
     "test:maswali-admin-pools-query": "tsx scripts/maswali-admin-pools-query.test.mts",
     "red:maswali-admin-pools-query": "tsx scripts/maswali-admin-pools-query.test.mts --prove-red",
+    "test:maswali-admin-form-validation": "tsx scripts/maswali-admin-form-validation.test.mts",
+    "red:maswali-admin-form-validation": "tsx scripts/maswali-admin-form-validation.test.mts --prove-red",
     "qa:maswali-admin-drive": "node scripts/maswali-admin-drive.mjs",
     "qa:maswali-player-shots": "node scripts/maswali-player-shots.mjs",
     "qa:maswali-player-drive": "node scripts/maswali-player-drive.mjs",

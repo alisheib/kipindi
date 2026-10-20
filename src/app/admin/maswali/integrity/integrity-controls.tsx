@@ -15,6 +15,7 @@ import { ConfirmModal } from "@/components/ui/modal";
 import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
+import { validShareDecision } from "@/lib/maswali-admin-form-validation";
 import {
   forfeitMaswaliShareAction, holdMaswaliShareAction, pauseMaswaliSalesAction, releaseMaswaliShareAction, resumeMaswaliSalesAction,
   voidMaswaliWeekAction,
@@ -85,16 +86,24 @@ export function HoldShareControl({ ticketId, serial }: { ticketId: string; seria
   const { pending, error, note, run } = useAct();
   const [reason, setReason] = useState("");
   const [open, setOpen] = useState(false);
+  const [tried, setTried] = useState(false);
   if (!mayAct) return <ActReadOnly />;
   return (
     <span className="inline-flex flex-col gap-1">
       <Button size="xs" variant="ghost" disabled={pending} onClick={() => setOpen(true)}>Hold…</Button>
       {error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
       {note && <span role="status" className="text-body-sm text-success">{note}</span>}
-      <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="warning" tier="hard" typedWord="HOLD"
+      <ConfirmModal open={open} onClose={() => { setOpen(false); setTried(false); }} loading={pending} tone="warning" tier="hard" typedWord="HOLD"
         title={`Hold the share on ${serial}?`} confirmLabel="Hold it"
-        body={<Field label="Why (a reversed deposit funded it, a disqualification found later)"><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>}
-        onConfirm={() => run(() => holdMaswaliShareAction(fd({ ticketId, reason })), () => setOpen(false))} />
+        body={<div className="space-y-2"><Field label="Why (a reversed deposit funded it, a disqualification found later)" required hint="5–300 characters"
+          error={tried && !validShareDecision(reason) ? "Write why this share is held (5–300 characters)." : undefined}>
+          <Textarea rows={2} maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
+          {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
+        </div>}
+        onConfirm={() => {
+          if (!validShareDecision(reason)) { setTried(true); return; }
+          run(() => holdMaswaliShareAction(fd({ ticketId, reason })), () => { setOpen(false); setReason(""); setTried(false); });
+        }} />
     </span>
   );
 }
@@ -106,6 +115,7 @@ export function HeldShareControls({ ticketId, serial, canRelease, canForfeit, re
   const { pending, error, note, run } = useAct();
   const [text, setText] = useState("");
   const [mode, setMode] = useState<"release" | "forfeit" | null>(null);
+  const [tried, setTried] = useState(false);
   if (!mayAct) return <ActReadOnly />;
   return (
     <span className="inline-flex flex-col gap-1.5 items-start">
@@ -115,18 +125,24 @@ export function HeldShareControls({ ticketId, serial, canRelease, canForfeit, re
       </span>
       {error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
       {note && <span role="status" className="text-body-sm text-success">{note}</span>}
-      <ConfirmModal open={mode !== null} onClose={() => setMode(null)} loading={pending} tone={mode === "forfeit" ? "claret" : "brand"} tier="hard"
+      <ConfirmModal open={mode !== null} onClose={() => { setMode(null); setTried(false); }} loading={pending} tone={mode === "forfeit" ? "claret" : "brand"} tier="hard"
         typedWord={mode === "forfeit" ? FORFEIT_WORD : "RELEASE"}
         title={mode === "forfeit" ? `Forfeit the share on ${serial}?` : `Release the share on ${serial}?`} confirmLabel={mode === "forfeit" ? "Forfeit to the jackpot" : "Release it"}
         body={
           <div className="space-y-2 text-left">
             <p>{mode === "forfeit" ? "The whole share leaves the wallet and goes back to the jackpot, for the next winning week — never to the house (OD-07)." : "The player keeps the share; the wallet's hold lifts once no other share is held."}</p>
-            <Field label="The decision"><Textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} /></Field>
+            <Field label="The decision" required hint="5–300 characters"
+              error={tried && !validShareDecision(text) ? "Write the decision (5–300 characters)." : undefined}>
+              <Textarea rows={2} maxLength={300} value={text} onChange={(e) => setText(e.target.value)} /></Field>
+            {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
           </div>
         }
-        onConfirm={() => run(() => (mode === "forfeit"
-          ? forfeitMaswaliShareAction(fd({ ticketId, typed: FORFEIT_WORD, reason: text }))
-          : releaseMaswaliShareAction(fd({ ticketId, note: text }))), () => { setMode(null); setText(""); })} />
+        onConfirm={() => {
+          if (!validShareDecision(text)) { setTried(true); return; }
+          run(() => (mode === "forfeit"
+            ? forfeitMaswaliShareAction(fd({ ticketId, typed: FORFEIT_WORD, reason: text }))
+            : releaseMaswaliShareAction(fd({ ticketId, note: text }))), () => { setMode(null); setText(""); setTried(false); });
+        }} />
     </span>
   );
 }
