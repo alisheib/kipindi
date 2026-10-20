@@ -922,6 +922,9 @@ mounts after the confirmed event. A withdrawal or a failed/pending deposit retai
 plants the source, trigger and timing reversals in memory.
 The same wallet result eyebrow gives the confirmed deposit arrow one downward nudge, and a requested withdrawal
 (`PENDING`, `PROCESSING` or immediately `CONFIRMED`) one upward nudge; review, held, failed and the ordinary wallet page stay still.
+The wallet event motion is claimed once per transaction ID in tab session storage before the receipt portal's first
+paint. Refreshing or remounting that ID shows the receipt statically; when storage is blocked, the receipt still reads
+and stays still. A later eligible transaction may animate.
 
 The browser push settings plate keeps `bellRing` in Duotone while off and uses its generated Phosphor Fill when on.
 Its Fill settles only after the server saves a new subscription in this mount; an existing subscription read on load,

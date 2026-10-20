@@ -17,13 +17,14 @@
  * under review (L6) reads "Payment under review", a deposit held for return reads "Held for return" — `depositKind`,
  * decided on the server from the stored row (`depositResultKind`), never from the URL.
  */
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useT } from "@/lib/i18n";
 import { OperationResultModal } from "@/components/markets/operation-result-modal";
 import { I } from "@/components/ui/glyphs";
 import { formatTzs } from "@/lib/utils";
 import { walletResultCopy } from "@/lib/wallet/result-copy";
+import { claimWalletResultMotion } from "@/lib/wallet/result-motion";
 import type { DepositResultKind } from "@/lib/wallet/receipts";
 
 export function WalletResultModal({
@@ -42,28 +43,45 @@ export function WalletResultModal({
   const router = useRouter();
   const { t } = useT();
   const [open, setOpen] = useState(true);
+  // The portal starts unmounted on SSR. Claim in a layout effect, before its
+  // first browser paint, so a static check never flashes before a draw-on one.
+  const [animatedTxnId, setAnimatedTxnId] = useState<string | null>(null);
   // B-16 — no refresh on mount. This modal renders from the search params of a
   // page the server JUST rendered with the post-mutation state (the action
   // redirected here), so dispatching "50pick:refresh" re-fetched a page that
   // could not be fresher — a third RSC fetch per deposit on top of the pair the
   // dial/sell double used to fire. The balance pill is in the same fresh render.
 
-  if (!deposited && !withdrawal) return null;
-
   const txnId = deposited || withdrawal || "";
   const amt = amount ? formatTzs(Number(amount)) : undefined;
   const { eyebrow, title, subtitle, variant } = walletResultCopy(t, { isWithdraw: !!withdrawal, status, depositKind });
-  const flowGlyph = !!deposited && status === "CONFIRMED" && variant === "success"
-    ? <I.arrowDownToLine s={14} text="mono-700" className="g-nudge-down" />
-    : !!withdrawal && (status === "PENDING" || status === "PROCESSING" || status === "CONFIRMED") && (variant === "info" || variant === "success")
-      ? <I.arrowUpFromLine s={14} text="mono-700" className="g-nudge-up" />
+  const depositConfirmed = !!deposited && status === "CONFIRMED" && variant === "success";
+  const withdrawalRequested = !!withdrawal && (status === "PENDING" || status === "PROCESSING" || status === "CONFIRMED")
+    && (variant === "info" || variant === "success");
+  useLayoutEffect(() => {
+    // Accessing sessionStorage itself can throw in restricted browsers. Motion
+    // stays off, while the receipt and its status remain fully visible.
+    try {
+      if (claimWalletResultMotion(window.sessionStorage, txnId, depositConfirmed || withdrawalRequested)) {
+        setAnimatedTxnId(txnId);
+      }
+    } catch { /* static receipt when storage is unavailable */ }
+  }, [txnId, depositConfirmed, withdrawalRequested]);
+  const animate = animatedTxnId === txnId;
+
+  if (!deposited && !withdrawal) return null;
+
+  const flowGlyph = depositConfirmed
+    ? <I.arrowDownToLine s={14} text="mono-700" className={animate ? "g-nudge-down" : undefined} />
+    : withdrawalRequested
+      ? <I.arrowUpFromLine s={14} text="mono-700" className={animate ? "g-nudge-up" : undefined} />
       : null;
 
   const close = () => { setOpen(false); router.replace("/wallet"); };
 
   return (
     <OperationResultModal
-      drawCheck={!!deposited && status === "CONFIRMED" && variant === "success"}
+      drawCheck={animate && depositConfirmed}
       open={open}
       variant={variant}
       eyebrow={flowGlyph ? <span className="inline-flex flex-wrap items-center justify-center gap-1">{flowGlyph}{eyebrow}</span> : eyebrow}

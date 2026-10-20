@@ -27,9 +27,11 @@ function claims(w: World): string[] {
     && /<CrestIcon variant=\{variant\} color=\{tone\.fg\} drawCheck=\{drawCheck\} \/>/.test(w.modal));
   hold("placed bet asks for draw", /drawCheck=\{resultData\.variant === "success"\}/.test(w.dial));
   hold("placed Up and Down bet asks for draw", /<OperationResultModal\s+drawCheck\s+open\s+variant="success"/.test(w.updown));
-  hold("only confirmed deposit asks for draw", /drawCheck=\{!!deposited && status === "CONFIRMED" && variant === "success"\}/.test(w.wallet));
-  hold("deposit arrow nudges on confirmation", /!!deposited && status === "CONFIRMED" && variant === "success"\s*\? <I\.arrowDownToLine[^>]*className="g-nudge-down"/.test(w.wallet));
-  hold("withdrawal arrow nudges only on accepted request", /!!withdrawal && \(status === "PENDING" \|\| status === "PROCESSING" \|\| status === "CONFIRMED"\) && \(variant === "info" \|\| variant === "success"\)\s*\? <I\.arrowUpFromLine[^>]*className="g-nudge-up"/.test(w.wallet));
+  hold("only confirmed deposit asks for draw", /const depositConfirmed = !!deposited && status === "CONFIRMED" && variant === "success"/.test(w.wallet)
+    && /drawCheck=\{animate && depositConfirmed\}/.test(w.wallet));
+  hold("deposit arrow nudges on confirmation", /const flowGlyph = depositConfirmed\s*\? <I\.arrowDownToLine[^>]*className=\{animate \? "g-nudge-down" : undefined\}/.test(w.wallet));
+  hold("withdrawal arrow nudges only on accepted request", /const withdrawalRequested = !!withdrawal && \(status === "PENDING" \|\| status === "PROCESSING" \|\| status === "CONFIRMED"\)\s*&& \(variant === "info" \|\| variant === "success"\)/.test(w.wallet)
+    && /: withdrawalRequested\s*\? <I\.arrowUpFromLine[^>]*className=\{animate \? "g-nudge-up" : undefined\}/.test(w.wallet));
   return missing;
 }
 
@@ -48,11 +50,12 @@ const plants: Array<[string, keyof World, string, string]> = [
   ["failure draws as success", "modal", 'variant === "success") return', 'variant === "danger") return'],
   ["bet draw before success", "dial", 'resultData.variant === "success"', 'resultData.variant !== "success"'],
   ["Up and Down bet loses its draw", "updown", "      drawCheck\n      open", "      open"],
-  ["withdrawal draws a deposit check", "wallet", '!!deposited && status === "CONFIRMED"', 'status === "CONFIRMED"'],
-  ["deposit under review draws a check", "wallet", ' && variant === "success"', ""],
-  ["deposit arrow nudges before confirmation", "wallet", '!!deposited && status === "CONFIRMED" && variant === "success"\n    ? <I.arrowDownToLine', '!!deposited\n    ? <I.arrowDownToLine'],
-  ["held withdrawal nudges", "wallet", '(status === "PENDING" || status === "PROCESSING" || status === "CONFIRMED") && (variant === "info" || variant === "success")', '(variant === "info" || variant === "success")'],
-  ["immediately completed withdrawal stays still", "wallet", ' || status === "CONFIRMED") && (variant', ') && (variant'],
+  ["withdrawal draws a deposit check", "wallet", 'const depositConfirmed = !!deposited', 'const depositConfirmed = !!withdrawal'],
+  ["deposit under review draws a check", "wallet", 'status === "CONFIRMED" && variant === "success"', 'status === "CONFIRMED"'],
+  ["deposit arrow nudges before confirmation", "wallet", 'const flowGlyph = depositConfirmed', 'const flowGlyph = !!deposited'],
+  ["held withdrawal nudges", "wallet", '&& (variant === "info" || variant === "success");', ';'],
+  ["immediately completed withdrawal stays still", "wallet", ' || status === "CONFIRMED")\n    && (variant', ')\n    && (variant'],
+  ["receipt draws on a refreshed URL", "wallet", 'drawCheck={animate && depositConfirmed}', 'drawCheck={depositConfirmed}'],
 ];
 for (const [name, key, from, to] of plants) {
   if (!world[key].includes(from)) throw new Error(`plant absent: ${name}`);
