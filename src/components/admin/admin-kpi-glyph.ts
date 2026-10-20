@@ -4,6 +4,7 @@ import type { DuoGlyphKey } from "@/components/ui/glyphs";
  * card door: the same "GGR" card must carry the same glyph on every admin page. More
  * specific phrases precede broad ones (for example, "withdrawal fee" before "fee"). */
 const SUBJECTS: readonly [RegExp, DuoGlyphKey][] = [
+  [/^Payout float$/i, "coins"],
   [/refund/i, "refund"],
   [/withdraw|cash.out|payout|paid out|paid by|returned to players|unlocked to cash/i, "cashOut"],
   [/deposit/i, "arrowDownToLine"],

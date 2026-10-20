@@ -33,6 +33,7 @@ const files = {
   invites: read("src/app/admin/invites/page.tsx"),
   aiUsage: read("src/app/admin/ai-usage/page.tsx"),
   agents: read("src/app/admin/agents/page.tsx"),
+  maswaliPools: read("src/app/admin/maswali/pools/page.tsx"),
 };
 
 const DESK_SUBJECTS = [
@@ -50,6 +51,7 @@ const EXACT_SUBJECTS = [
   ["house", "Funded free cash", "coins"],
   ["aiUsage", "Funded cycles", "brain"],
   ["agents", "Refunds owed", "refund"],
+  ["maswaliPools", "Payout float", "coins"],
 ] as const;
 
 function mapperFromSource(source: string): (label: string) => string {
@@ -179,6 +181,7 @@ if (process.argv.includes("--prove-red")) {
     ["unknown account falsely marked failed", "status", 'presented === "CLOSED" ? "xCircle" : "info"', 'presented === "CLOSED" ? "xCircle" : "xCircle"'],
     ["cash stocks and funded cycles become deposits", "subject", '[/deposit/i, "arrowDownToLine"]', '[/deposit|custodial cash|funded free cash|funded cycles/i, "arrowDownToLine"]'],
     ["refund owed becomes a paid cash-out", "subject", '[/refund/i, "refund"]', '[/refund/i, "cashOut"]'],
+    ["payout reserve becomes a paid cash-out", "subject", '[/^Payout float$/i, "coins"]', '[/^Payout float$/i, "cashOut"]'],
   ];
   for (const [name, key, from, to] of plants) {
     if (!files[key].includes(from)) { check(name, false, "plant anchor absent"); continue; }
