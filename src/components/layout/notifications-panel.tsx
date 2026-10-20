@@ -206,7 +206,7 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
     setItems(r.items);
     // ⛔ The list is capped at 30; this is not. Keep them separate.
     setServerUnread(r.unread);
-    const arrival = advanceNotificationArrival(arrivalRef.current, r.items);
+    const arrival = advanceNotificationArrival(arrivalRef.current, r.items, r.unread);
     arrivalRef.current = arrival.state;
     if (arrival.ring) setRingSeq((s) => s + 1);
     return true;

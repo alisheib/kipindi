@@ -69,6 +69,12 @@ Release 2c follows with category plates, money doors and stat tiles. The downstr
 on GitHub but still descend from W6's old pre-rebase commit; restack each branch's own commits onto live `main` before
 its separate release. The next machine can derive the exact old bases from the branch graph in §8d.
 
+⏳ **Later waves are staged, not released:** 2c's category, money-door and stat plates; 2d's console cards; and release
+3's consolidation and motion await 2b's live read-back and a fresh rebase in that order. W8's bell arrival guard now
+also catches a new unread ID whose timestamp ties the previous newest row when the server's full unread total rises;
+an existing row changing read state and a count change without a new visible ID remain still. The focused guard and
+its seven mutation plants pass on the staged branch. Full W9 closure remains owed.
+
 ⏳ **Owed — checks not run because Ali asked to ship (2026-10-19); run them on live `main` first (AGENTS.md §4):**
 - before/after tiles of every changed surface (phones at 390px and 2x, desktop at 1280px), read one by one;
 - the classic parity, calibrated: a baseline on a fresh in-memory server of `main`, its null compare (exit 0),

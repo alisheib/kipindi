@@ -7,11 +7,13 @@ type ArrivalRow = { id: string; readAt: string | null; createdAt: string };
 export type NotificationArrivalState = {
   ids: ReadonlySet<string>;
   newestAtMs: number;
+  unreadCount: number;
 };
 
 export function advanceNotificationArrival(
   previous: NotificationArrivalState | null,
   rows: readonly ArrivalRow[],
+  unreadCount: number,
 ): { state: NotificationArrivalState; ring: boolean } {
   const ids = new Set<string>();
   let newestAtMs = previous?.newestAtMs ?? -Infinity;
@@ -19,10 +21,15 @@ export function advanceNotificationArrival(
   for (const row of rows) {
     ids.add(row.id);
     const createdAtMs = Date.parse(row.createdAt);
-    if (previous && !row.readAt && !previous.ids.has(row.id) && createdAtMs > previous.newestAtMs) {
+    // A new ID with the same timestamp as the old head is still an arrival when
+    // the server's full unread total rises. Count alone is insufficient: an
+    // existing row could change read state without being a new notification.
+    if (previous && !row.readAt && !previous.ids.has(row.id)
+      && (createdAtMs > previous.newestAtMs
+        || (createdAtMs === previous.newestAtMs && unreadCount > previous.unreadCount))) {
       ring = true;
     }
     if (Number.isFinite(createdAtMs)) newestAtMs = Math.max(newestAtMs, createdAtMs);
   }
-  return { state: { ids, newestAtMs }, ring };
+  return { state: { ids, newestAtMs, unreadCount }, ring };
 }
