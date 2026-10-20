@@ -48,11 +48,20 @@ function secondReviewed(source: string) {
 function evidenceNamed(source: string) {
   return seal(source).includes('aria-label={`${r.label} seal evidence`}');
 }
+function pendingResultReadable(source: string) {
+  const s = seal(source);
+  return s.includes('<Select size="xs" className="min-w-[100px] min-h-[40px]" value={p.outcome}')
+    && s.includes('ariaLabel={`${r.label} result`}')
+    && s.includes('<Button size="sm" variant="ghost" onClick={() => { setVoidRow(r)')
+    && s.includes('<Button size="sm" variant="ghost" onClick={() => { setCorrectRow(r)')
+    && s.includes('<Button size="sm" variant="ghost" disabled={pending || !r.sealedAtIso} onClick={() => { setError(null); setConfirmRow(r); }}');
+}
 
 ok("language signoff opens a hard kit review naming the week before its action", attestReviewed(controls));
 ok("sales-close review freezes code and old/new EAT values before its action", moveReviewed(controls));
 ok("second officer reviews week, slot and outcome and submits both stale guards", secondReviewed(controls));
 ok("each seal-row evidence input has its own slot-specific accessible name", evidenceNamed(controls));
+ok("pending results retain a readable trigger when a second-officer action widens the table", pendingResultReadable(controls));
 ok("server page passes week code and raw seal version into the reviews",
   page.includes("<AttestOpenControls weekId={week.id} weekCode={week.code}")
   && page.includes("<MoveCloseForm weekId={week.id} weekCode={week.code}")
@@ -72,6 +81,21 @@ if (process.argv.includes("--prove-red")) {
   const nameless = controls.replace('aria-label={`${r.label} seal evidence`}', "");
   if (nameless === controls) throw new Error("Seal evidence name plant target missing");
   ok("red: nameless evidence cannot identify its row to an officer", !evidenceNamed(nameless));
+  const narrowResult = controls.replace('min-w-[100px] min-h-[40px]', 'min-h-[40px]');
+  if (narrowResult === controls) throw new Error("Pending-result width plant target missing");
+  ok("red: removing the pending-result width permits vertical wrapping", !pendingResultReadable(narrowResult));
+  const shortResult = controls.replace('min-w-[100px] min-h-[40px]', 'min-w-[100px]');
+  if (shortResult === controls) throw new Error("Pending-result height plant target missing");
+  ok("red: removing the pending-result height permits a 32px tap target", !pendingResultReadable(shortResult));
+  const shortVoid = controls.replace('<Button size="sm" variant="ghost" onClick={() => { setVoidRow(r)', '<Button size="xs" variant="ghost" onClick={() => { setVoidRow(r)');
+  if (shortVoid === controls) throw new Error("Void target size plant missing");
+  ok("red: shrinking the consequential Void target to 32px turns the guard red", !pendingResultReadable(shortVoid));
+  const shortCorrect = controls.replace('<Button size="sm" variant="ghost" onClick={() => { setCorrectRow(r)', '<Button size="xs" variant="ghost" onClick={() => { setCorrectRow(r)');
+  if (shortCorrect === controls) throw new Error("Correct target size plant missing");
+  ok("red: shrinking the consequential Correct target to 32px turns the guard red", !pendingResultReadable(shortCorrect));
+  const shortConfirm = controls.replace('<Button size="sm" variant="ghost" disabled={pending || !r.sealedAtIso}', '<Button size="xs" variant="ghost" disabled={pending || !r.sealedAtIso}');
+  if (shortConfirm === controls) throw new Error("Second-officer target size plant missing");
+  ok("red: shrinking the second-officer target to 32px turns the guard red", !pendingResultReadable(shortConfirm));
 }
 
 console.log(`maswali week controls: ${passed} passed, ${failed} failed`);

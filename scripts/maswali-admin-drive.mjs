@@ -608,6 +608,28 @@ await part("6.1 · seal", async () => {
   }, 60_000);
   ok("6.1c M1 was sealed under the two-officer rule and now awaits a second officer", firstSeal.gated && !!awaitingSecond, firstSeal.refusal);
   await checkpoint(page, "6.1c", "11a-awaits-second");
+  for (const width of [360, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    const pendingResult = region(page, "Millionea results to seal").getByRole("combobox", { name: "M2 result", exact: true });
+    await pendingResult.scrollIntoViewIfNeeded();
+    const fit = await pendingResult.evaluate((button) => {
+      const label = button.querySelector("span");
+      const text = document.createRange();
+      if (label) text.selectNodeContents(label);
+      const row = button.closest("tr");
+      const voidButton = Array.from(row?.querySelectorAll("button") ?? []).find((el) => el.textContent?.trim() === "Void…");
+      const secondButton = Array.from(button.closest("tbody")?.querySelectorAll("button") ?? []).find((el) => el.textContent?.trim() === "Confirm as second officer");
+      return { trigger: button.getBoundingClientRect().width, triggerHeight: button.getBoundingClientRect().height,
+        voidHeight: voidButton?.getBoundingClientRect().height ?? 0, secondHeight: secondButton?.getBoundingClientRect().height ?? 0,
+        lines: label ? text.getClientRects().length : 0,
+        root: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+    });
+    ok(`6.1c the pending result stays one readable line after first seal at ${width}px`,
+      fit.trigger >= 99 && fit.triggerHeight >= 40 && fit.voidHeight >= 40 && fit.secondHeight >= 40
+        && fit.lines === 1 && fit.root <= 1, JSON.stringify(fit));
+    await shot(page, `11a-awaits-second-${width}`);
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
 
   const confirmerCtx = await browser.newContext({ viewport: { width: 360, height: 900 } });
   try {
@@ -677,6 +699,17 @@ await part("6.1 · seal", async () => {
   const chip = await until(async () => ((await chipOf(page)) === "Sealing" ? "Sealing" : null), 30_000);
   ok("6.1j the week is being sealed: its chip reads Sealing and its objection window is open", chip === "Sealing" && (await page.getByText(/^Objection window to /).count()) > 0, await chipOf(page));
   await checkpoint(page, "6.1", "12-sealed");
+  for (const width of [360, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    const correction = region(page, "Millionea results to seal").getByRole("button", { name: "Correct…", exact: true }).first();
+    await correction.scrollIntoViewIfNeeded();
+    const fit = await correction.evaluate((button) => ({ height: button.getBoundingClientRect().height,
+      root: document.documentElement.scrollWidth - document.documentElement.clientWidth }));
+    ok(`6.1k the sealed result's correction target is touch-sized at ${width}px`,
+      fit.height >= 40 && fit.root <= 1, JSON.stringify(fit));
+    await shot(page, `12-sealed-correct-${width}`);
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
 });
 
 await part("6.2 · preview and release", async () => {

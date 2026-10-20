@@ -186,7 +186,7 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
                     {r.outcome
                       ? <span>{r.outcome}{r.voidReason ? ` · ${isMaswaliVoidReason(r.voidReason) ? MASWALI_VOID_REASON_LABEL[r.voidReason] : r.voidReason}` : ""}<span className="block text-body-sm text-text-tertiary">{r.sealedAt}{r.awaitingSecond ? " · awaits a second officer" : ""}</span></span>
                       : can.seal && mayAct
-                        ? <Select size="xs" value={p.outcome} onChange={(v) => setPicks((s) => ({ ...s, [r.slot]: { ...p, outcome: v } }))} ariaLabel={`${r.label} result`}
+                        ? <Select size="xs" className="min-w-[100px] min-h-[40px]" value={p.outcome} onChange={(v) => setPicks((s) => ({ ...s, [r.slot]: { ...p, outcome: v } }))} ariaLabel={`${r.label} result`}
                             options={[{ value: "", label: "Not yet" }, { value: "YES", label: "YES" }, { value: "NO", label: "NO" }]} />
                         : "—"}
                   </td>
@@ -197,9 +197,9 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
                   </td>
                   <td className="text-left align-top">
                     <div className="flex flex-col gap-1.5 items-start">
-                      {!r.outcome && (can.void ? (mayAct ? <Button size="xs" variant="ghost" onClick={() => { setVoidRow(r); setVoidReason(""); setVoidEvidence(""); }}>Void…</Button> : <ActReadOnly />) : <ControlLocked what="Void" need={need.void} />)}
-                      {r.outcome && windowOpen && (can.correct ? (mayAct ? <Button size="xs" variant="ghost" onClick={() => { setCorrectRow(r); setCorrection({ outcome: r.outcome === "NO" ? "YES" : "NO", evidence: "", voidReason: "" }); }}>Correct…</Button> : <ActReadOnly />) : <ControlLocked what="Correct" need={need.correct} />)}
-                      {r.awaitingSecond && (can.confirm ? (mayAct ? <Button size="xs" variant="ghost" disabled={pending || !r.sealedAtIso} onClick={() => { setError(null); setConfirmRow(r); }}>Confirm as second officer</Button> : <ActReadOnly />) : <ControlLocked what="Confirm" need={need.confirm} />)}
+                      {!r.outcome && (can.void ? (mayAct ? <Button size="sm" variant="ghost" onClick={() => { setVoidRow(r); setVoidReason(""); setVoidEvidence(""); }}>Void…</Button> : <ActReadOnly />) : <ControlLocked what="Void" need={need.void} />)}
+                      {r.outcome && windowOpen && (can.correct ? (mayAct ? <Button size="sm" variant="ghost" onClick={() => { setCorrectRow(r); setCorrection({ outcome: r.outcome === "NO" ? "YES" : "NO", evidence: "", voidReason: "" }); }}>Correct…</Button> : <ActReadOnly />) : <ControlLocked what="Correct" need={need.correct} />)}
+                      {r.awaitingSecond && (can.confirm ? (mayAct ? <Button size="sm" variant="ghost" disabled={pending || !r.sealedAtIso} onClick={() => { setError(null); setConfirmRow(r); }}>Confirm as second officer</Button> : <ActReadOnly />) : <ControlLocked what="Confirm" need={need.confirm} />)}
                     </div>
                   </td>
                 </tr>
