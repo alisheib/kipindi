@@ -325,27 +325,18 @@ section("6 · the content edge is the house gutter (E51; tiles 345 351: cards x2
 }
 
 /* ══ §7 · THE WATERMARK ═══════════════════════════════════════════════════════════════════════════════════════════════ */
-section("7 · the market question's column ends before the watermark (E49; tile 433: 赛's ink to x701 over the mark at x680–741)");
+section("7 · the market question uses its full measure after the watermark retires (E49)");
 {
   const page = code("src/app/markets/[id]/page.tsx");
-  const mark = /<span aria-hidden className="(pointer-events-none absolute right-(\d+) [^"]+)">\s*<Cat s=\{96\} className="h-\[2em\] w-\[2em\]" \/>/.exec(page);
   const h1 = /<h1 data-stem=[^>]*?className="([^"]+)"/.exec(page)?.[1] ?? "";
-  const pr = /\bpr-\[calc\(2em\+(\d+)px\)\]/.exec(h1);
-  const rungs = (cls: string) => (/(?:^|\s)text-([a-z0-9-]+)\s+md:text-([a-z0-9-]+)/.exec(cls) ?? []).slice(1).join(",");
-  ok("7.locate · the watermark is a 2em box at right-N, on the same type rungs as the h1", !!mark && rungs(mark?.[1] ?? "") === rungs(h1) && rungs(h1) === "title-lg,display-3", `${rungs(mark?.[1] ?? "")} vs ${rungs(h1)}`);
-  const right = tw(mark?.[2] ?? "");
-  const air = Number(pr?.[1] ?? NaN) - right;
-  // The page column's right edge: 16px in from the screen on a phone and at 768 (tile 433: x752), the reading tier's
-  // inner edge at 1280 ((1280 + 1080) / 2 − 32 = 1148). The gap is the same at every width: it is written in the h1's em.
-  for (const [w, px, contentRight] of [[390, rung("title-lg"), 390 - tw("3")], [768, rung("display-3"), 768 - tw("3")], [1280, rung("display-3"), 1148]] as const) {
-    const markLeft = contentRight - right - 2 * px;
-    const h1Right = contentRight - (2 * px + Number(pr?.[1]));
-    ok(`7.1 · at ${w} (${px}px): the question's column ends at x${h1Right}, ${markLeft - h1Right}px before the mark's box at x${markLeft}`, markLeft - h1Right === 8 && air === 8);
-  }
+  ok("7.locate · the category is now a plate beside its label", /<CategoryPlate category=\{m\.category\} \/>\s*<Chip variant="cat"/.test(page));
+  ok("7.1 · the question takes the full column without the retired watermark's padding",
+     !!h1 && !/\bpr-\[calc\(2em\+12px\)\]/.test(h1) && !/<Cat s=\{96\}/.test(page));
   // Re-pinned (round 7, R7-C, 2026-10-10): R4-D's set-back is one rule for every display heading now — the h1 asks the shared
   // module (`stemOf`), and globals.css sets the first line back (0.075em at 700) where its Tailwind utility did.
   ok("7.2 · R4-D's first-line indent is kept", /<h1 data-stem=\{stemOf\(/.test(page) && /\[data-stem=""\]:where\(:not\(\.kp-hero__grp\)\) \{ text-indent: -0\.075em; \}/.test(css) && h1.includes("text-balance"));
-  ok("7.1′ PLANT · without the padding the column runs under the mark (tile 433: ink to x701 > the mark's box at x676)", 701 > 752 - right - 2 * rung("display-3"));
+  ok("7.1′ PLANT · returning the old padding fails the full-column rule",
+     /\bpr-\[calc\(2em\+12px\)\]/.test(`${h1} pr-[calc(2em+12px)]`));
 }
 
 /* ══ §8 · GOLD IS MONEY ═══════════════════════════════════════════════════════════════════════════════════════════════ */

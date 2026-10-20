@@ -537,11 +537,11 @@ section("11 · E2 E3 the journey's Wallet doors and captions at 320 (tiles 488 4
 }
 
 /* ══ §12 · E13 · THE CARD WATERMARK ════════════════════════════════════════════════════════════════════════════ */
-section("12 · E13 the card watermark is not lit behind the card's controls (tiles 160 184)");
+section("12 · E13 the retired card watermark cannot light behind controls (tiles 160 184)");
 {
   const lit = (css: string) => /:hover[^{}]*\.mcardp-watermark\s*\{/.test(css);
-  ok("12.1 · no hover rule reaches the watermark, and it keeps its resting ink (0.055, --border-strong)",
-    !lit(CSS) && /opacity:\s*0\.055/.test(rule(CSS, ".mcardp-watermark")) && /color:\s*var\(--border-strong\)/.test(rule(CSS, ".mcardp-watermark")));
+  ok("12.1 · the retired watermark has no CSS or hover rule",
+    !lit(CSS) && !rule(CSS, ".mcardp-watermark") && !/mcardp-watermark/.test(read("src/components/markets/market-card.tsx")));
   ok("12.1′ PLANT · the round-3 lift put back is reported", lit(`${CSS}\n@media (hover: hover) { .mcardp:hover .mcardp-watermark { opacity: 0.22; color: var(--brand-400); } }`));
   // RE-PINNED 2026-10-11 (round 9 of the visual pass, R9-C): the lift rides `translate` — on `transform` it never drew on a
   // board card, whose `.market-grid > *` entrance (`kp-rise`, filled `both`) held `transform: none` (`test:visual-pass-r9c` §1).

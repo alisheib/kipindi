@@ -70,13 +70,13 @@ export const MUTATIONS = [
     expect: "5: ⭐ the bet column spaces its cards with a flex gap, which an out-of-flow heading cannot take a rung of",
   },
   {
-    name: "watermark-hangs-from-the-header-again",
-    why: "the category watermark hangs from the bottom of its box instead of centring on the question, so a glyph twice the question's height climbs over the gilt hairline and under SHARE — the collision the tiles measured",
+    name: "category-plate-leaves-its-label",
+    why: "the category plate is removed from the label row, so the visible category loses its icon while the retired watermark remains absent",
     file: PAGE,
     suite: "market-columns",
-    from: `              <span aria-hidden className="pointer-events-none absolute right-1 top-1/2 -z-10 flex -translate-y-1/2 text-text opacity-[0.07] text-title-lg md:text-display-3">`,
-    to: `              <span aria-hidden className="pointer-events-none absolute right-1 bottom-0 -z-10 flex text-text opacity-[0.07] text-title-lg md:text-display-3">`,
-    expect: "5: the category watermark is drawn on the question's own box — centred on it, two of its ems, behind it",
+    from: `            <CategoryPlate category={m.category} />`,
+    to: `            {/* category plate removed */}`,
+    expect: "5: the category plate sits beside the category label above the question",
   },
   {
     name: "actions-wrap-one-by-one",

@@ -775,11 +775,11 @@ section("8 · H5 keep-units.tsx is gone, and nothing names it as live code");
 /* ══ §9 · THE WIDEST RUN FITS ════════════════════════════════════════════════════════════════════════════════════════ */
 section("9 · the widest figure run fits the narrowest title line (a run is nowrap: wider, it would overflow)");
 {
-  // The narrowest title line is the market page's h1 at 320: 28px Sora 700, -0.02em, in 320 - 2 × 16 - (2em + 12px).
-  const H1 = { size: 28, wght: 700 as const, ls: -0.02 }, h1Line = 320 - 32 - (2 * 28 + 12);
+  // The watermark is retired; the title has the whole 320px viewport less two 16px gutters.
+  const H1 = { size: 28, wght: 700 as const, ls: -0.02 }, h1Line = 320 - 32;
   const page = code("src/app/markets/[id]/page.tsx");
-  ok("9.locate · the market h1: text-title-lg (28px), bold, tracking \u22120.02em, pr-[calc(2em+12px)]",
-    /className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-\[-0\.02em\] text-text text-balance pr-\[calc\(2em\+12px\)\]/.test(page) && h1Line === 220);
+  ok("9.locate · the market h1 uses the full 288px measure without watermark padding",
+    /className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-\[-0\.02em\] text-text text-balance"/.test(page) && h1Line === 288);
   // Every seeded title's runs, and the platform's own ways of putting a figure in a question.
   const PLATFORM = ["TZS 1 bilioni", "TZS 2.5 bilioni", "TZS 100 milioni", "TZS 4,200", "TZS 500,000", "TZS 1,000,000", "$100,000", "$5.5 bilioni", "USD 5.5 billion",
     "dakika 28:00", "Septemba 30", "asilimia 100", "nyuzi 35", "2026-27赛季", "15万美元", "8月31日"];
@@ -787,11 +787,9 @@ section("9 · the widest figure run fits the narrowest title line (a run is nowr
   const widest = all.map((r) => [r, adv(r, H1)] as const).sort((a, b) => b[1] - a[1]);
   ok(`9.1 · every seeded title's runs (${SEEDED.flatMap(figureRuns).length}) and the platform's phrasings of a figure fit: the widest, "${widest[0][0]}", is ${widest[0][1].toFixed(1)}px at the h1's 28px, inside its ${h1Line}px line at 320`,
     widest.length > 15 && widest[0][1] <= h1Line, show(widest.slice(0, 3)));
-  ok("9.1′ CONTROL · \"December 2026\" would not (225px) — why a month keeps only its day (1.3″) — nor would an absurd figure (\"TZS 10,000,000 bilioni\")",
-    adv("December 2026", H1) > h1Line && keepFigures("before December 2026?") === "before December 2026?" && adv("TZS 10,000,000 bilioni", H1) > h1Line);
-  // Measured, not asserted — named in round 5's report as an owner question: a 14-character figure is as wide as a
-  // 14-letter word at that h1 (which has no overflow-wrap), and reaches into the 8px before its 7%-opacity watermark.
-  console.log(`       (wider than the 220px line at 320: ${["TZS 10,000,000", "USD 100 million"].map((x) => `"${x}" ${adv(x, H1).toFixed(1)}px`).join(", ")}; "?" after one adds ${adv("?", H1).toFixed(1)}px)`);
+  ok("9.1′ CONTROL · an absurd figure still exceeds the full title measure",
+    adv("TZS 10,000,000 bilioni", H1) > h1Line && keepFigures("before December 2026?") === "before December 2026?");
+  console.log(`       (against the 288px line at 320: ${["TZS 10,000,000", "USD 100 million"].map((x) => `"${x}" ${adv(x, H1).toFixed(1)}px`).join(", ")}; "?" after one adds ${adv("?", H1).toFixed(1)}px)`);
 }
 
 /* ══ the end ═════════════════════════════════════════════════════════════════════════════════════════════════════════ */

@@ -298,8 +298,8 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
     ["src/app/auth/2fa/page.tsx", '<I.arrowLeft s={12} edge="start" text="mono-400" className="mt-0.5" />', 1, "text", "the back link's start — it typed ← (the mono face's arrow, a weight under its words); on its first line (3.6)"],
     ["src/app/auth/otp/page.tsx", '<I.arrowLeft s={12} edge="start" text="mono-400" className="mt-0.5" />', 1, "text", "the change-number link's start — it typed ←; on its first line where its words wrap (3.6)"],
     ["src/app/help/page.tsx", '<I.chevronDown s={13} edge="end" className="transition-transform group-open:rotate-180" />', 1, "edge", "each FAQ row's end (§2)"],
-    ["src/app/profile/activity/page.tsx", "<I.arrowDownToLine s={14} />", 1, "slot", "the Deposits tile's pictogram: the slot pulls it (§4) — the one deposit arrow since PHOSPHOR-MIGRATION W4 (§8b; it drew the plain ↓)"],
-    ["src/app/profile/activity/page.tsx", "<I.arrowUpFromLine s={14} />", 1, "slot", "the Withdrawals tile's pictogram: the slot pulls it (§4) — the one withdraw arrow since W4 (it drew the plain ↑)"],
+    ["src/components/journey/bet-sheet/bet-sheet.tsx", "<I.arrowDownToLine s={20} />", 1, "w5", "the shortfall deposit door in the bet sheet"],
+    ["src/components/ui/cashback-promo.tsx", '<I.arrowDownToLine s={13} edge="start" />', 1, "edge", "the cashback deposit door starts at the glyph's ink"],
     ["src/app/profile/kyc/page.tsx", '<I.arrowLeft s={12} edge="start" text="mono-400" />', 1, "text", "the footer's back link's start — it typed ←"],
     ["src/app/wallet/wallet-client.tsx", '<I.arrowDownToLine s={14} edge="start" text="body-600" />', 1, "text", "“↓ Weka pesa”: an arrow among words leading a centred control (§6) — now the one deposit arrow (R-LEXICON 5.4A)"],
     ["src/app/wallet/wallet-client.tsx", '<I.arrowUpFromLine s={14} edge="start" text="body-600" />', 1, "text", "“↑ Toa pesa” — now the one withdraw arrow (R-LEXICON 5.4A)"],
@@ -508,7 +508,7 @@ section("4 · A4 Stat's icon slot pulls its glyph onto the column's edge (tiles 
   const STAT = new RegExp(`<Stat${WS}(?:[^<>{}]|[{](?:[^{}]|[{](?:[^{}]|[{][^{}]*[}])*[}])*[}])*?icon=[{](<(?:[^<>{}]|[{][^{}]*[}])*?/>)[}]`, "g");
   const calls: Array<[string, string]> = [];
   for (const f of PLAYER_TSX) for (const m of code(f).matchAll(STAT)) calls.push([f, squash(m[1])]);
-  const notGlyph = calls.filter(([, el]) => !new RegExp("^<I[.][A-Za-z]+ s=[{]14[}]").test(el));
+  const notGlyph = calls.filter(([, el]) => !/^<I\.[A-Za-z]+ s=\{14\}/.test(el) && !/^<StatIcon glyph="[A-Za-z]+"(?: ghost)?\s*\/>/.test(el));
   const byFile = (f: string) => calls.filter(([g]) => g === f).length;
   ok(`4.3 · every Stat icon on a player surface is a family glyph the slot pulls — ${calls.length} sites: the market page 3, /profile 3, /agent 3, the agent dashboard 2, /profile/activity 6, and the ghosts (/agent 3, /profile 3)`,
     notGlyph.length === 0 && byFile("src/app/markets/[id]/page.tsx") === 3 && byFile("src/app/profile/page.tsx") === 3 && byFile("src/app/agent/page.tsx") === 3
@@ -516,7 +516,7 @@ section("4 · A4 Stat's icon slot pulls its glyph onto the column's edge (tiles 
     j({ notGlyph, n: calls.length }));
   ok("4.3′ CONTROL · /profile's ghost drew bare 14px boxes, which the slot cannot pull — it draws the page's three glyphs, unpainted (labels land where the page's do)",
     !code("src/app/profile/loading.tsx").includes('icon={<span className="block h-[14px] w-[14px]" />}')
-      && ["wallet", "sparkle", "check"].every((g) => has("src/app/profile/loading.tsx", `icon={<I.${g} s={14} className="text-transparent" />}`)));
+      && ["wallet", "sparkle", "resolved"].every((g) => has("src/app/profile/loading.tsx", `icon={<StatIcon glyph="${g}" ghost />}`)));
 }
 
 /* ══ §5 · A5 · A HEADING'S LEADING GLYPH ═════════════════════════════════════════════════════════════════════════════════ */

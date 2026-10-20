@@ -118,13 +118,12 @@ const railClasses = asideClasses(page);
   ok("5: ⭐ …and the signed-in branch still opens on the D40 sr-only heading (the premise)",
      /<h2 id=\{BET_PANEL_HEADING\} className="sr-only">/.test(page));
   const h1At = page.indexOf("<h1 ");
-  const boxAt = h1At < 0 ? -1 : page.lastIndexOf(`<div className="relative isolate">`, h1At);
-  const box = boxAt < 0 ? "" : page.slice(boxAt, h1At);
-  ok("5: the category watermark is drawn on the question's own box — centred on it, two of its ems, behind it",
-     box.length > 0 && /absolute right-1 top-1\/2 -z-10 flex -translate-y-1\/2/.test(box)
-       && /text-title-lg md:text-display-3/.test(box) && /className="h-\[2em\] w-\[2em\]"/.test(box), `${box.length} chars between the box and the <h1>`);
-  ok("5: ⛔ …and never again from the whole header's bottom edge",
-     !/absolute right-1 bottom-0 -z-10/.test(page) && /<header className="mt-3 mb-5">/.test(page));
+  const header = page.slice(page.indexOf('<header className="mt-3 mb-5">'), h1At);
+  ok("5: the category plate sits beside the category label above the question",
+     /<CategoryPlate category=\{m\.category\} \/>\s*<Chip variant="cat"/.test(header));
+  ok("5: the retired category watermark cannot overlap the question or actions",
+     h1At > 0 && !/absolute right-1 (?:top-1\/2|bottom-0) -z-10/.test(header)
+       && !/pr-\[calc\(2em\+12px\)\]/.test(page.slice(h1At, page.indexOf("</h1>", h1At))));
   const groupAt = page.indexOf(`<div className="ml-auto flex items-center gap-2">`);
   const group = groupAt < 0 ? "" : page.slice(groupAt, page.indexOf("</div>", groupAt));
   ok("5: the source link, the star and SHARE are ONE right-aligned group, so they wrap together",
@@ -144,7 +143,7 @@ const railClasses = asideClasses(page);
   ok("6: …and the close time is a kit Stat on the sm-plain rung, with its glyph",
      // R4-I (2026-10-09): labelled `common.resolves` — Swahili `market.resolves` read "Inaisha", "it ends".
      /<Stat size="sm-plain" labelStyle="widest" boxed="card" label=\{t\.common\.resolves\}/.test(strip)
-       && strip.includes("icon={<I.calendarClock s={14} />}"));
+       && strip.includes('icon={<StatIcon glyph="calendarClock" />}'));
   ok("6: ⛔ the local KPI fork is gone", !/function KPI\(/.test(page) && !/<KPI /.test(page));
 }
 
