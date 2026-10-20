@@ -11,11 +11,12 @@
  *   duo  — Phosphor Duotone: its Regular outline over a tone of the same ink at `--glyph-tone` (R-TONE)
  * A tier a key does not ship falls back to Bold, so a glyph is never blank.
  *
- * ⭐ WHERE THE DRAWINGS LIVE. A glyph renders `<svg><use href></svg>`: the chrome's keys (the tab bars and headers) point
+ * ⭐ WHERE THE DRAWINGS LIVE. An ordinary glyph renders `<svg><use href></svg>`: the chrome's keys (the tab bars and headers) point
  * at symbols the root layout inlines once per page (`GlyphShellSprite`), so they paint with the first byte of HTML; every
  * other key points into a content-hashed sprite (`/icons/g/app.<hash>.svg`, cached for good, served by the service
  * worker), and the console's own keys into `/icons/g/admin.<hash>.svg`, which a player never downloads. The browser
- * downloads each drawing once — not once per component bundle, as an icon library's React components would.
+ * downloads each drawing once — not once per component bundle, as an icon library's React components would. The receipt's
+ * `I.check draw` is the one centreline path generated from Phosphor's check and drawn on by the kit's `m-draw`.
  */
 import { Children, cloneElement, isValidElement, type CSSProperties, type ReactElement, type ReactNode, type SVGProps } from "react";
 import { GLYPH_REGISTRY, GLYPH_SPRITES, type GlyphKey as RegistryKey, type GlyphVariant } from "./glyph-registry.generated";
