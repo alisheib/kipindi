@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { useT } from "@/lib/i18n";
@@ -165,7 +165,7 @@ export function RouteError({
           className={`mb-3 mt-5 inline-flex h-[44px] w-[44px] items-center justify-center rounded-full border ${tone === "neutral" ? "border-border-strong bg-bg-overlay text-text-subtle" : "border-danger-border bg-danger-500/10 text-danger-fg"}`}
           style={{ boxShadow: tone === "neutral" ? "0 0 0 7px var(--bg-overlay)" : "0 0 0 7px var(--danger-wash)" }}
         >
-          <I.alertCircle s={19} />
+          <I.alertCircle s={plateGlyph(44)} />
         </div>
         <p className={`font-mono text-micro font-bold uppercase tracking-[0.20em] ${tone === "neutral" ? "text-text-subtle" : "text-danger-fg"}`}>
           {eyebrow ?? t.error.somethingWentWrong}
