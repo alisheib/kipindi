@@ -4,14 +4,15 @@ import type { DuoGlyphKey } from "@/components/ui/glyphs";
  * card door: the same "GGR" card must carry the same glyph on every admin page. More
  * specific phrases precede broad ones (for example, "withdrawal fee" before "fee"). */
 const SUBJECTS: readonly [RegExp, DuoGlyphKey][] = [
-  [/withdraw|cash.out|payout|paid out|paid by|returned to players|refund|unlocked to cash/i, "cashOut"],
-  [/deposit|custodial cash|funded free cash|funded cycles/i, "arrowDownToLine"],
+  [/refund/i, "refund"],
+  [/withdraw|cash.out|payout|paid out|paid by|returned to players|unlocked to cash/i, "cashOut"],
+  [/deposit/i, "arrowDownToLine"],
   [/wallet|liability|held for unverified/i, "wallet"],
   [/bonus|grant|jackpot|guarantee/i, "gift"],
   [/tax|levies|TRA \+ GBT/i, "tax"],
   // The desk builds these labels in its server reader rather than JSX literals.
   [/^Stake today$|^Loss today$/i, "coins"],
-  [/fee|commission|GGR|NGR|margin|spend|cost|sales|staked|turnover|handle|pool|float|money frozen|exposure|loss limit|payable|free cash|net retained/i, "coins"],
+  [/fee|commission|GGR|NGR|margin|spend|cost|sales|staked|turnover|handle|pool|float|money frozen|exposure|loss limit|payable|free cash|custodial cash|net retained/i, "coins"],
   [/agent|affiliate|referrer|referral|partner/i, "agent"],
   [/invite|invited|conversion/i, "invites"],
   [/staff|owner|officer|auditor|support|trading|growth/i, "staff"],

@@ -6,6 +6,7 @@ import ts from "typescript";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Chip } from "../src/components/ui/chip";
+import { I } from "../src/components/ui/glyphs";
 import { adminKpiGlyph } from "../src/components/admin/admin-kpi-glyph";
 import { MarketStatusBadge, KycStatusBadge, DsarStatusBadge, AccountStatusBadge } from "../src/components/admin/status-badge";
 
@@ -30,6 +31,8 @@ const files = {
   system: read("src/app/admin/system/page.tsx"),
   house: read("src/app/admin/house/page.tsx"),
   invites: read("src/app/admin/invites/page.tsx"),
+  aiUsage: read("src/app/admin/ai-usage/page.tsx"),
+  agents: read("src/app/admin/agents/page.tsx"),
 };
 
 const DESK_SUBJECTS = [
@@ -37,6 +40,16 @@ const DESK_SUBJECTS = [
   ["Loss today", "coins"],
   ["Open exposure", "coins"],
   ["Accounts", "users"],
+] as const;
+
+const EXACT_SUBJECTS = [
+  ["system", "Wait p95", "clock"],
+  ["house", "Net retained", "coins"],
+  ["invites", "Campaigns", "megaphone"],
+  ["house", "Custodial cash", "coins"],
+  ["house", "Funded free cash", "coins"],
+  ["aiUsage", "Funded cycles", "brain"],
+  ["agents", "Refunds owed", "refund"],
 ] as const;
 
 function mapperFromSource(source: string): (label: string) => string {
@@ -79,11 +92,7 @@ function defects(s: typeof files): string[] {
     if (!s.desk.includes(`"${label}"`)) bad.push(`desk no longer supplies ${label}`);
     if (subject(label) !== glyph) bad.push(`desk ${label} must use ${glyph}, got ${subject(label)}`);
   }
-  for (const [file, label, glyph] of [
-    ["system", "Wait p95", "clock"],
-    ["house", "Net retained", "coins"],
-    ["invites", "Campaigns", "megaphone"],
-  ] as const) {
+  for (const [file, label, glyph] of EXACT_SUBJECTS) {
     if (!s[file].includes(`label="${label}"`)) bad.push(`${file} no longer supplies ${label}`);
     if (subject(label) !== glyph) bad.push(`${file} ${label} must use ${glyph}, got ${subject(label)}`);
   }
@@ -134,10 +143,13 @@ const generic = [...new Set(labels.filter((label) => adminKpiGlyph(label) === "c
 check(`semantic subjects for ${labels.length} literal KPI labels`, labels.length >= 200 && generic.length === 0, generic.join(", "));
 check("semantic subjects for dynamic desk KPI labels",
   DESK_SUBJECTS.every(([label, glyph]) => adminKpiGlyph(label) === glyph));
-check("exact system, house and invite subjects",
-  files.system.includes('label="Wait p95"') && adminKpiGlyph("Wait p95") === "clock"
-  && files.house.includes('label="Net retained"') && adminKpiGlyph("Net retained") === "coins"
-  && files.invites.includes('label="Campaigns"') && adminKpiGlyph("Campaigns") === "megaphone");
+check("exact KPI subjects render their literal page meanings in Duotone",
+  EXACT_SUBJECTS.every(([file, label, glyph]) => {
+    const Glyph = I[adminKpiGlyph(label)];
+    const html = renderToStaticMarkup(createElement(Glyph, { s: 14, tier: "duo" }));
+    return files[file].includes(`label="${label}"`) && adminKpiGlyph(label) === glyph
+      && html.includes(`data-g="${glyph}.duo"`);
+  }));
 const html = renderToStaticMarkup(createElement(Chip, { size: "sm", variant: "success", glyph: "checkCircle" }, "Approved"));
 check("status chip renders its Fill glyph and the word", html.includes('data-g="checkCircle.fill"') && html.includes("Approved"));
 const live = renderToStaticMarkup(createElement(MarketStatusBadge, { status: "LIVE" }));
@@ -165,6 +177,8 @@ if (process.argv.includes("--prove-red")) {
     ["desk account label becomes generic", "subject", '[/^Accounts$/i, "users"]', '[/^Accounts$/i, "chart"]'],
     ["AI token swallows Wait p95", "subject", '/\\bAI\\b|anthropic|oracle|cycle|model|stored \\(180d\\)/i', '/AI|anthropic|oracle|cycle|model|stored \\(180d\\)/i'],
     ["unknown account falsely marked failed", "status", 'presented === "CLOSED" ? "xCircle" : "info"', 'presented === "CLOSED" ? "xCircle" : "xCircle"'],
+    ["cash stocks and funded cycles become deposits", "subject", '[/deposit/i, "arrowDownToLine"]', '[/deposit|custodial cash|funded free cash|funded cycles/i, "arrowDownToLine"]'],
+    ["refund owed becomes a paid cash-out", "subject", '[/refund/i, "refund"]', '[/refund/i, "cashOut"]'],
   ];
   for (const [name, key, from, to] of plants) {
     if (!files[key].includes(from)) { check(name, false, "plant anchor absent"); continue; }
