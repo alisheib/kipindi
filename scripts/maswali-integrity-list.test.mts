@@ -70,9 +70,13 @@ if (process.argv.includes("--prove-red")) {
   const unsorted = helper.replace("return pageRows(all, ordered, query.page, perPage);", "return pageRows(all, filtered, query.page, perPage);");
   if (unsorted === helper) throw new Error("Held global-sort plant target missing");
   ok("red: a held page sliced without sorting fails the highest-share assertion", mutated(unsorted).selectHeldShares(held, query({ hsort: "share", hdir: "desc" }).held, 20).rows[0]?.weekSeq !== 1);
-  const winnerUnsorted = helper.replace("return pageRows(all, ordered, query.page, perPage);\n}\n\nexport type SealListWeek", "return pageRows(all, filtered, query.page, perPage);\n}\n\nexport type SealListWeek");
+  const winnerUnsorted = helper.replace(/return pageRows\(all, ordered, query\.page, perPage\);(?=\r?\n}\r?\n\r?\nexport type SealListWeek)/, "return pageRows(all, filtered, query.page, perPage);");
   if (winnerUnsorted === helper) throw new Error("Winner global-sort plant target missing");
   ok("red: a winner page sliced without sorting fails the highest-share assertion", mutated(winnerUnsorted).selectWinnerTickets(winners, query({ wsort: "share", wdir: "desc" }).winners, 20).rows[0]?.seq !== 1);
+  const windowsHelper = helper.replace(/\r?\n/g, "\r\n");
+  const windowsPlant = windowsHelper.replace(/return pageRows\(all, ordered, query\.page, perPage\);(?=\r?\n}\r?\n\r?\nexport type SealListWeek)/, "return pageRows(all, filtered, query.page, perPage);");
+  if (windowsPlant === windowsHelper) throw new Error("Winner CRLF plant target missing");
+  ok("red: the same winner guard catches a CRLF checkout", mutated(windowsPlant).selectWinnerTickets(winners, query({ wsort: "share", wdir: "desc" }).winners, 20).rows[0]?.seq !== 1);
   const unfilteredSeals = helper.replace("return pageRows(all, sorted(filtered, (week) => week.seq, query.dir), query.page, perPage);", "return pageRows(all, sorted([...all], (week) => week.seq, query.dir), query.page, perPage);");
   if (unfilteredSeals === helper) throw new Error("Seal filter plant target missing");
   ok("red: paging unfiltered seal weeks fails the older-week lookup", mutated(unfilteredSeals).selectSealWeeks(seals, query({ sq: "MW-01" }).seals, 4).rows[0]?.seq !== 1);
