@@ -1820,7 +1820,13 @@ function dialogFacts(W: World): DialogFacts {
   // The result: its own padding (the panel's is none), its title and the helper behind it, and a detail row.
   const rq = squash(W.files.get(RESULT_MODAL) ?? "");
   const hold = rq.indexOf("onPointerMove={onPointerMoveHold}");
-  const inner = hold < 0 ? null : classesAt(rq, rq.lastIndexOf("<div", hold));
+  const innerOpen = hold < 0 ? -1 : rq.lastIndexOf("<div", hold);
+  const innerTag = innerOpen < 0 ? "" : rq.slice(innerOpen, hold);
+  // U43 adds a conditional compact class to this same wrapper. Read its literal
+  // padding classes for Sell, which leaves compactOnPhone false; the receipt's
+  // compact padding is measured by test:u43-receipt-fit instead.
+  const innerTemplate = innerTag.match(/className=\{`([^$]*)\$\{compactOnPhone \? " orm-phone-compact" : ""\}`\}/);
+  const inner = innerTemplate ? innerTemplate[1].split(" ").filter(Boolean) : classesAt(rq, innerOpen);
   const innerPads = (inner ?? []).filter((c) => c.startsWith("p-"));
   const innerLg = (inner ?? []).filter((c) => c.startsWith("lg:p-"));
   const titleWhole = rq.includes(WHOLE_TITLE);
@@ -2510,6 +2516,8 @@ const PLANTS: Plant[] = [
     world: (w) => inFile(w, RESULT_MODAL, "px-3 py-2 flex flex-wrap items-baseline", "px-3 py-2 flex items-baseline") },
   { name: "the result's title grows to 34px (its widest figure no longer fits a 320 phone's line)", expect: ["6.result"],
     world: (w) => inFile(w, RESULT_MODAL, "font-display text-[22px] font-bold", "font-display text-[34px] font-bold") },
+  { name: "the result's inner phone padding widens and leaves too little room for its money figures", expect: ["6.result"],
+    world: (w) => inFile(w, RESULT_MODAL, 'className={`p-6 lg:p-7', 'className={`p-10 lg:p-7') },
   { name: "a word the dialogs draw is missing in Chinese (the model would measure an empty eyebrow)", expect: ["6.model"],
     world: (w) => withEntry(w, "zh", "dialog", "earlyExitFee", "") },
   { name: "the eyebrow's tracking is misread in the stylesheet (the model no longer draws the boxes the browser drew)", expect: ["6.control"],

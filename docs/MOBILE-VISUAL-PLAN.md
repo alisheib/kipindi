@@ -578,8 +578,9 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   through the indexed player-and-market lookup, reusing one market snapshot and clock for board
   selection and viewer hydration. Its in-memory fixture proved that the former cap hid a real
   TZS 2,000 stake behind 501 newer positions, and both the old-cap and second-market-read physical
-  reversals failed the guard; the PostgreSQL run remains owed. These are local findings and repairs,
-  not a production result or an after score. The source-frozen state matrix remains
+  reversals failed the guard. The same older-position fixture passed on a disposable PostgreSQL,
+  as did the mixed-result settlement; the repairs are committed at `3bcbec37e`. These are local findings
+  and repairs, not a production result or an after score. The source-frozen state matrix remains
   held while the Maswali lane uses the browser and main-push slot.
   ▶ **WORKING BRIEF:**
   `docs/design-brief/u43-2026-10/BRIEF.md` — where it stands, Ali's rulings, the fixed points, the data facts, five work

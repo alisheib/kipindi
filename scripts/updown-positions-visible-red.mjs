@@ -1,11 +1,10 @@
 /**
  * RED proof for `test:updown-positions-visible`.
  *
- * ⛔ IT RESTORES THE REAL PRE-FIX SOURCE, VERBATIM — not a mutation invented to match the
- * guard's locators. That distinction is the whole point: a guard and a RED proof that
- * share a wrong locator agree with each other and are both wrong, and the suite then
- * presents as a working gate over a defect it cannot see. Every string below is the text
- * that was actually in the file before 2026-08-15.
+ * ⛔ D1–D4 restore the pre-fix visibility defects; D5–D14 plant named silent-read
+ * fallbacks on the current paths. D5 now targets the indexed per-market read that
+ * replaced the old account-wide board read. A guard and a RED proof that share a wrong
+ * locator agree with each other and are both wrong, so every anchor is required to land.
  *
  * Each defect is restored ON ITS OWN and the guard is run against it, so this proves each
  * assertion GROUP is load-bearing — not merely that the suite goes red when the file is

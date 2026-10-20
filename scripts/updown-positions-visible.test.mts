@@ -18,8 +18,9 @@
  * empty list and the page said they had no position on a round they had played.
  *
  * ⛔ WHAT THIS FILE MAY AND MAY NOT CLAIM. These are SOURCE assertions, so each one is
- * written to fail on the real pre-fix text — `scripts/updown-positions-visible-red.mjs`
- * restores that text verbatim and requires this suite to go red. A check that would pass
+ * written to fail on the real pre-fix visibility defects — `scripts/updown-positions-visible-red.mjs`
+ * restores those defects and plants named silent-read fallbacks on the current read paths.
+ * It requires this suite or the live read-fault guard to go red. A check that would pass
  * with the feature absent is worth nothing here, so every "the cap is gone" assertion is
  * paired with a positive control proving the file was actually read and understood.
  */
