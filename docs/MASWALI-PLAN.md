@@ -44,6 +44,21 @@ exclusive two-store `test:all`, build and local `qa:live`, deployment and produc
 read-back remain open. S5 owns the shared heavy-job lock; no `main` push is under way.
 The rollout remains `WITHDRAWN`.
 
+**Cross-device checkpoint (2026-10-20):** The remote branch
+`codex/maswali-coord-20261019` is pushed through the clean S5 source commit
+`46135acdec22f9404decaac20f6d62ec4d6c0286`. This is a branch checkpoint,
+not a `main` release. The first clean two-store `test:all` baseline found four
+failures in the new work (the house-bot report line pin and visual passes R5-G,
+R8-B and R9-A); all four were repaired and their focused checks pass on the
+checkpoint. A fresh exact-commit two-store `test:all`, current-`main` classic
+parity, final 135-cell admin tile/tap sweep, compiled multi-slip browser drive,
+exact-commit build and local live QA are in progress or still owed. New devices
+must fetch the branch, recheck remote `main` and both shared locks, and use their
+own authorized nonpersonal GitHub credential; OMEGA's repository deploy key is
+local to that machine. U43 may advance `main` first, in which case merge its
+actual remote commit and repeat every affected release check. Never use the
+personal token offered in chat or write production data.
+
 **Next:** Run every remaining changed-file reader and mutation proof, fresh current-`main`
 classic parity, admin and player browser/tile reads, clean-environment two-store `test:all`,
 typecheck, exact-commit production build, bundle verification and local live QA. Recheck
