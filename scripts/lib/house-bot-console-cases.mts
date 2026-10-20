@@ -11162,7 +11162,7 @@ export default function Ruling513Control() {
         && operatorSites.length >= 3 && [...operatorSites, ...detailSites].every((c: string) => !/\brow-link\b/.test(c)),
       j({ rule: rule.replace(/\s+/g, " ").trim().slice(0, 90), sites: operatorSites.length + detailSites.length }));
     ok("1.474 · CONTROL · the class really IS still used on this page for its own purpose — a FIXED word, the roster's way out — so the line above is a rule about what it may WRAP and not a ban that emptied itself",
-      /className="row-link[^"]*"[^>]*>open →</.test(pageCode)
+      /className="row-link[^"]*"[^>]*>open <I\.arrowRight s=\{12\} className="inline-block align-middle" aria-hidden \/>/.test(pageCode)
         && (pageCode.match(/\brow-link\b/g) ?? []).length >= 1
         && !/row-link[^"]*"[^>]*data-operator-text/.test(pageCode),
       j({ rowLinkUses: (pageCode.match(/\brow-link\b/g) ?? []).length }));

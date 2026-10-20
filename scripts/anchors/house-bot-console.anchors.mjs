@@ -1032,8 +1032,8 @@ export const MUTATIONS = [
      * the declaration names 1.407, which is the assertion whose subject this is. */
     name: "432h-rowlink · the roster loses its way-out link while the page it opens exists, so an account is reachable only by typing a URL",
     file: PAGE,
-    from: `<Link href={r.href as Route} className="row-link whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">open →</Link>`,
-    to: `<Link href={r.href as Route} className="whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">open →</Link>`,
+    from: `<Link href={r.href as Route} className="row-link whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">open <I.arrowRight s={12} className="inline-block align-middle" aria-hidden /></Link>`,
+    to: `<Link href={r.href as Route} className="whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">open <I.arrowRight s={12} className="inline-block align-middle" aria-hidden /></Link>`,
     expect: "1.407 · 432(h) · the roster carries a way-out link EXACTLY when",
     suite: "console-mem",
   },
