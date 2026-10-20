@@ -11,7 +11,7 @@
  * which is what production actually did — and asserts the guard fails on the COMPOSITION
  * assertion specifically, not on a rotted selector.
  *
- * ⚠️ Needs a dev server on the target URL; it edits `src/app/results/page.tsx` in place, lets the
+ * ⚠️ Needs a dev server on the target URL; it edits `src/lib/results/archive.ts` in place, lets the
  * server recompile, then restores from an in-memory copy in a `finally`.
  *
  * ⛔ AND IT NEEDS A **POPULATED** BOARD, WHICH IS NOT THE SAME REQUIREMENT.
@@ -33,13 +33,13 @@ import { execFileSync } from "node:child_process";
 import { injectDefect } from "./red-anchor.mjs";
 
 const BASE = process.argv[2] || "http://localhost:3009";
-const SRC = "src/app/results/page.tsx";
+const SRC = "src/lib/results/archive.ts";
 
 /** The defect exactly as production shipped it: a search wipes the category out of the read. */
 const DEFECT = {
   name: "the category is dropped whenever a search is active (what production did)",
-  from: "  const all = activeCat === \"all\" ? searched : searched.filter((m) => m.category === activeCat);",
-  to: "  const all = searching ? searched : (activeCat === \"all\" ? searched : searched.filter((m) => m.category === activeCat));",
+  from: '  return filterRows(rows, state, archiveAxes(nowMs, matchesText));',
+  to: '  return filterRows(rows, state.q ? { ...state, cat: "all" } : state, archiveAxes(nowMs, matchesText));',
 };
 
 const original = readFileSync(SRC, "utf8");
