@@ -7,11 +7,14 @@ import ts from "typescript";
 import * as search from "../src/lib/search/index.ts";
 import { adminCount } from "../src/lib/utils.ts";
 import { integrityListParams, parseIntegrityListQuery, selectHeldShares, selectSealWeeks, selectVoidableWeeks, selectWinnerTickets } from "../src/lib/maswali-integrity-list.ts";
+import { clusterCoverage } from "../src/lib/maswali-cluster-coverage.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const helper = readFileSync(join(root, "src/lib/maswali-integrity-list.ts"), "utf8");
 const page = readFileSync(join(root, "src/app/admin/maswali/integrity/page.tsx"), "utf8");
 const consoleRead = readFileSync(join(root, "src/lib/server/maswali-console.ts"), "utf8");
+const coverageSource = readFileSync(join(root, "src/lib/maswali-cluster-coverage.ts"), "utf8");
+const reportSource = readFileSync(join(root, "src/lib/server/maswali-integrity.ts"), "utf8");
 const searchBox = readFileSync(join(root, "src/components/ui/search-box.tsx"), "utf8");
 let passed = 0, failed = 0;
 function ok(name: string, condition: boolean) {
@@ -94,6 +97,45 @@ ok("Integrity counts show one week, ticket, held share, winner and sealed week w
   && adminCount(1, "held share") === "1 held share" && adminCount(1, "winner") === "1 winner"
   && adminCount(1, "sealed week") === "1 sealed week" && adminCount(1000, "week") === "1,000 weeks");
 
+const smallCoverage = clusterCoverage(4, 2, false);
+ok("connected report with four holders and two groups is complete",
+  smallCoverage.connectedHoldersChecked === 4 && smallCoverage.groupsShown === 2 && !smallCoverage.limited);
+function holderBoundary(cover: typeof clusterCoverage) {
+  const at = cover(5_000, 0, false), past = cover(5_001, 0, false);
+  return at.connectedHoldersChecked === 5_000 && !at.limited
+    && past.connectedHoldersChecked === 5_000 && past.holdersTotal === 5_001 && past.limited;
+}
+ok("⛔ the 5,000-holder boundary announces a limited connection sample only above the cap", holderBoundary(clusterCoverage));
+function groupBoundary(cover: typeof clusterCoverage) {
+  const at = cover(10, 50, false), past = cover(10, 51, false);
+  return at.groupsShown === 50 && !at.limited
+    && past.groupsShown === 50 && past.groupsFound === 51 && past.limited;
+}
+ok("⛔ the 50-group boundary reports found versus shown without hiding the 51st", groupBoundary(clusterCoverage));
+ok("a reached connection-source cap is marked limited even with every holder in scope", clusterCoverage(10, 0, true).limited);
+function reportWired(source: string) {
+  return source.includes("connectedGroups(userIds.slice(0, CLUSTER_HOLDER_SCAN_LIMIT))")
+    && source.includes("const coverage = clusterCoverage(userIds.length, groups.length, connected?.sourceLimitReached ?? false);")
+    && source.includes("groups: groups.slice(0, coverage.groupsShown)")
+    && source.includes("a.length > CLUSTER_SOURCE_GROUP_LIMIT || b.length > CLUSTER_SOURCE_GROUP_LIMIT");
+}
+ok("the report uses its measured holder and group coverage to bound the real result", reportWired(reportSource));
+function warningWired(source: string) {
+  return source.includes("c.coverage.limited && <p role=\"alert\"")
+    && source.includes("c.coverage.connectedHoldersChecked.toLocaleString")
+    && source.includes("c.coverage.groupsShown < c.coverage.groupsFound")
+    && source.includes("!c.readable && <p role=\"alert\"")
+    && source.includes('c.coverage.limited ? "No group in the checked records." : "No group to look at."');
+}
+ok("Integrity warns separately about incomplete reads and a bounded holder or group result", warningWired(page));
+
+function mutatedCoverage(source: string): typeof clusterCoverage {
+  const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const mod = { exports: {} as Record<string, unknown> };
+  runInNewContext(compiled, { module: mod, exports: mod.exports });
+  return mod.exports.clusterCoverage as typeof clusterCoverage;
+}
+
 function mutated(source: string) {
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const mod = { exports: {} as Record<string, unknown> };
@@ -104,6 +146,24 @@ function mutated(source: string) {
   return mod.exports as { selectHeldShares: typeof selectHeldShares; selectWinnerTickets: typeof selectWinnerTickets; selectSealWeeks: typeof selectSealWeeks; selectVoidableWeeks: typeof selectVoidableWeeks };
 }
 if (process.argv.includes("--prove-red")) {
+  const unlimitedHolders = coverageSource.replace("Math.min(holdersTotal, CLUSTER_HOLDER_SCAN_LIMIT)", "holdersTotal");
+  if (unlimitedHolders === coverageSource) throw new Error("Holder-cap plant target missing");
+  ok("red: a hidden 5,001st holder fails the holder-coverage boundary", !holderBoundary(mutatedCoverage(unlimitedHolders)));
+  const unlimitedGroups = coverageSource.replace("Math.min(groupsFound, CLUSTER_GROUP_DISPLAY_LIMIT)", "groupsFound");
+  if (unlimitedGroups === coverageSource) throw new Error("Group-cap plant target missing");
+  ok("red: a hidden 51st group fails the group-coverage boundary", !groupBoundary(mutatedCoverage(unlimitedGroups)));
+  const hiddenSourceLimit = coverageSource.replace("|| connectionSourceLimitReached ||", "|| false ||");
+  if (hiddenSourceLimit === coverageSource) throw new Error("Source-cap plant target missing");
+  ok("red: a source scan at its cap fails the limited-report assertion", !mutatedCoverage(hiddenSourceLimit)(10, 0, true).limited);
+  const hiddenWarning = page.replace("c.coverage.limited && <p role=\"alert\"", "false && <p role=\"alert\"");
+  if (hiddenWarning === page) throw new Error("Limited-report warning plant target missing");
+  ok("red: removing the warning fails the page wiring guard", !warningWired(hiddenWarning));
+  const unboundedReport = reportSource.replace("connectedGroups(userIds.slice(0, CLUSTER_HOLDER_SCAN_LIMIT))", "connectedGroups(userIds)");
+  if (unboundedReport === reportSource) throw new Error("Connected-holder scope plant target missing");
+  ok("red: a report that bypasses the measured holder scope fails the source guard", !reportWired(unboundedReport));
+  const unboundedDisplay = reportSource.replace("groups: groups.slice(0, coverage.groupsShown)", "groups");
+  if (unboundedDisplay === reportSource) throw new Error("Group-display scope plant target missing");
+  ok("red: a report that bypasses the measured group scope fails the source guard", !reportWired(unboundedDisplay));
   const brokenCount = page.replace('adminCount(v.voidablePage.allTotal, "week")', 'v.voidablePage.allTotal');
   if (brokenCount === page) throw new Error("Integrity singular count plant target missing");
   ok("red: a raw voidable count loses the singular count guard", !countLabelsAreSingularSafe(brokenCount));

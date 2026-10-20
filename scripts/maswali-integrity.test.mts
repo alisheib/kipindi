@@ -9,6 +9,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:maswali-integrity",
   casesFile: "scripts/lib/maswali-integrity-child.mts",
-  minPass: 10,
+  minPass: 11,
   dbPrefix: "mlw_integrity",
 });

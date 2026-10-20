@@ -50,6 +50,9 @@ console.log("\n§1 · the cluster report at close");
   ok("1.3 · ⭐ the two accounts with the same fifteen answers are one group", answers.some((g) => J(g) === J([a, c].sort())), J(answers));
   ok("1.4 · the stranger is in no group", !r.groups.some((g) => g.accounts.some((x) => x.userId === d)));
   ok("1.5 · each account carries its ticket count", r.groups.flatMap((g) => g.accounts).find((x) => x.userId === a)?.tickets === 2);
+  ok("1.6 · a small complete report names full holder and group coverage without a limit warning",
+    r.coverage.holdersTotal === 4 && r.coverage.connectedHoldersChecked === 4 && r.coverage.groupsFound === 2
+      && r.coverage.groupsShown === 2 && !r.coverage.connectionSourceLimitReached && !r.coverage.limited);
 }
 
 // ── §2 · pick shifts ────────────────────────────────────────────────────────

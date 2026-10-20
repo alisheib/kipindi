@@ -17,12 +17,13 @@ import { ticketStore, weekStore, type StoredWeek } from "./maswali-dal";
 import { getAuditPage } from "./audit";
 import { db } from "./store";
 import { SLOT_COUNT, slotLabel } from "@/lib/maswali-score";
+import { clusterCoverage, CLUSTER_HOLDER_SCAN_LIMIT, CLUSTER_SOURCE_GROUP_LIMIT, type ClusterCoverage } from "@/lib/maswali-cluster-coverage";
 
 const onPostgres = () => hasDatabase() && process.env.USE_PRISMA_DAL !== "false";
 const LOOKBACK_DAYS = 60;
 
 export type ClusterGroup = { accounts: Array<{ userId: string; holder: string; tickets: number }>; basis: "records" | "answers"; detail: string };
-export type ClusterReport = { weekId: string; code: string; holders: number; groups: ClusterGroup[]; readable: boolean };
+export type ClusterReport = { weekId: string; code: string; holders: number; groups: ClusterGroup[]; readable: boolean; coverage: ClusterCoverage };
 
 const holderName = async (userId: string) => {
   // ⚠️ The memory store answers synchronously: never `.catch` the call itself, catch the awaited read.
@@ -32,10 +33,11 @@ const holderName = async (userId: string) => {
 };
 
 /** Accounts among `userIds` the platform's records connect, as groups of user ids (two or more each). */
-async function connectedGroups(userIds: string[]): Promise<string[][] | null> {
-  if (userIds.length < 2) return [];
+async function connectedGroups(userIds: string[]): Promise<{ groups: string[][]; sourceLimitReached: boolean } | null> {
+  if (userIds.length < 2) return { groups: [], sourceLimitReached: false };
   const since = new Date(Date.now() - LOOKBACK_DAYS * 86_400_000).toISOString();
   const links = new Map<string, Set<string>>();
+  let sourceLimitReached = false;
   const add = (key: string, users: string[]) => {
     for (const u of users) { const s = links.get(u) ?? new Set<string>(); for (const v of users) if (v !== u) s.add(v); links.set(u, s); }
     void key;
@@ -48,12 +50,13 @@ async function connectedGroups(userIds: string[]): Promise<string[][] | null> {
       const a = await c.$queryRaw<Array<{ users: string[] }>>`
         SELECT array_agg(DISTINCT "actorId") AS users FROM "AuditLog"
          WHERE "actorId" IN (${ids}) AND ip IS NOT NULL AND "createdAt" >= ${since}::timestamp
-         GROUP BY ip HAVING count(DISTINCT "actorId") > 1 LIMIT 500`;
+         GROUP BY ip HAVING count(DISTINCT "actorId") > 1 LIMIT ${CLUSTER_SOURCE_GROUP_LIMIT + 1}`;
       const b = await c.$queryRaw<Array<{ users: string[] }>>`
         SELECT array_agg(DISTINCT "userId") AS users FROM "Transaction"
          WHERE "userId" IN (${ids}) AND type = 'WITHDRAWAL' AND msisdn IS NOT NULL
-         GROUP BY msisdn HAVING count(DISTINCT "userId") > 1 LIMIT 500`;
-      for (const r of [...a, ...b]) add("", r.users);
+         GROUP BY msisdn HAVING count(DISTINCT "userId") > 1 LIMIT ${CLUSTER_SOURCE_GROUP_LIMIT + 1}`;
+      sourceLimitReached = a.length > CLUSTER_SOURCE_GROUP_LIMIT || b.length > CLUSTER_SOURCE_GROUP_LIMIT;
+      for (const r of [...a.slice(0, CLUSTER_SOURCE_GROUP_LIMIT), ...b.slice(0, CLUSTER_SOURCE_GROUP_LIMIT)]) add("", r.users);
     } catch (err) {
       console.error("[maswali-integrity] the connection read failed:", (err as Error)?.message ?? err);
       return null;
@@ -61,7 +64,9 @@ async function connectedGroups(userIds: string[]): Promise<string[][] | null> {
   } else {
     // The memory store keeps the recent audit ring; a test seam only — production reads the table above.
     const byKey = new Map<string, Set<string>>();
-    for (const e of getAuditPage({ limit: 5_000 })) {
+    const auditEntries = getAuditPage({ limit: CLUSTER_HOLDER_SCAN_LIMIT });
+    sourceLimitReached = auditEntries.length >= CLUSTER_HOLDER_SCAN_LIMIT;
+    for (const e of auditEntries) {
       if (!e.actorId || !userIds.includes(e.actorId) || !e.ip) continue;
       const s = byKey.get(e.ip) ?? new Set<string>(); s.add(e.actorId); byKey.set(e.ip, s);
     }
@@ -75,7 +80,7 @@ async function connectedGroups(userIds: string[]): Promise<string[][] | null> {
     while (stack.length) { const x = stack.pop()!; if (seen.has(x)) continue; seen.add(x); group.push(x); for (const y of links.get(x) ?? []) if (!seen.has(y)) stack.push(y); }
     if (group.length > 1) groups.push(group.sort());
   }
-  return groups;
+  return { groups, sourceLimitReached };
 }
 
 /** ⭐ The cluster report for one week that has closed (its commitment is fixed, so the report describes what will pay). */
@@ -85,8 +90,8 @@ export async function clusterReport(week: StoredWeek): Promise<ClusterReport> {
   for (const t of tickets) perUser.set(t.userId, (perUser.get(t.userId) ?? 0) + 1);
   const userIds = [...perUser.keys()];
   const groups: ClusterGroup[] = [];
-  const connected = await connectedGroups(userIds.slice(0, 5_000));
-  for (const g of connected ?? []) {
+  const connected = await connectedGroups(userIds.slice(0, CLUSTER_HOLDER_SCAN_LIMIT));
+  for (const g of connected?.groups ?? []) {
     groups.push({ basis: "records", detail: `${g.length} accounts the platform's records connect`,
       accounts: await Promise.all(g.map(async (u) => ({ userId: u, holder: await holderName(u), tickets: perUser.get(u) ?? 0 }))) });
   }
@@ -99,7 +104,8 @@ export async function clusterReport(week: StoredWeek): Promise<ClusterReport> {
     groups.push({ basis: "answers", detail: `${list.length} accounts hold the same fifteen answers`,
       accounts: await Promise.all(list.map(async (u) => ({ userId: u, holder: await holderName(u), tickets: perUser.get(u) ?? 0 }))) });
   }
-  return { weekId: week.id, code: week.code, holders: userIds.length, groups: groups.slice(0, 50), readable: connected !== null };
+  const coverage = clusterCoverage(userIds.length, groups.length, connected?.sourceLimitReached ?? false);
+  return { weekId: week.id, code: week.code, holders: userIds.length, groups: groups.slice(0, coverage.groupsShown), readable: connected !== null, coverage };
 }
 
 // ── MB-94 · A SEAL FROM A NEW DEVICE ─────────────────────────────────────────────────────────────────

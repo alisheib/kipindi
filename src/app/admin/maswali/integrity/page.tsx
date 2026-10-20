@@ -127,8 +127,15 @@ async function Content({ searchParams }: IntegrityPageProps) {
             <div className="divide-y divide-border-subtle">
               {clusters.map((c, i) => c === null ? <p key={i} className="p-4 text-body-sm text-danger-fg">A week's report could not be read.</p> : (
                 <section key={c.weekId} className="p-4 space-y-2">
-                  <h3 className="font-semibold text-body tabular">{c.code} · {c.holders.toLocaleString("en")} holders{c.readable ? "" : " · the records could not all be read"}</h3>
-                  {c.groups.length === 0 ? <p className="text-body-sm text-text-secondary">No group to look at.</p> : (
+                  <h3 className="font-semibold text-body tabular">{c.code} · {c.holders.toLocaleString("en")} holders</h3>
+                  {!c.readable && <p role="alert" className="text-body-sm text-danger-fg">Connection records could not be read. Answer groups may still appear.</p>}
+                  {c.coverage.limited && <p role="alert" className="text-body-sm text-warning">
+                    Limited report. Connection checks considered {c.coverage.connectedHoldersChecked.toLocaleString("en")} of {c.coverage.holdersTotal.toLocaleString("en")} holders.
+                    {c.coverage.connectionSourceLimitReached && " The connection-source scan reached its limit; more links may exist."}
+                    {c.coverage.groupsShown < c.coverage.groupsFound && ` Showing ${c.coverage.groupsShown.toLocaleString("en")} of ${c.coverage.groupsFound.toLocaleString("en")} groups.`}
+                    {" Review the underlying records before treating this as complete."}
+                  </p>}
+                  {c.groups.length === 0 ? <p className="text-body-sm text-text-secondary">{c.coverage.limited ? "No group in the checked records." : "No group to look at."}</p> : (
                     <ul className="space-y-2 text-body-sm">
                       {c.groups.map((g, j) => (
                         <li key={j}>
