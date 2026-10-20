@@ -256,12 +256,45 @@ const afterClose = new Date(Date.parse((await weekStore.get(w1.id))!.closesAt) +
   const end = Date.parse(w.objectionsCloseAt!);
   ok("6.9 · the objection window is 24 h, never closing before 12:00 EAT (OD-05)", end === svc.objectionWindowEnd(afterClose.getTime(), 24, "12:00") && end >= afterClose.getTime() + 24 * 3_600_000);
   ok("6.10 · objectionWindowEnd: a window ending at 06:00 EAT is held to 12:00", svc.objectionWindowEnd(Date.parse("2026-11-01T03:00:00Z") - 24 * 3_600_000, 24, "12:00") === Date.parse("2026-11-01T09:00:00Z"));
-  const wrongOfficer = await svc.correctSeal({ weekId: w1.id, slot: 2, outcome: "YES", evidence: "I read it differently", officerId: READER, now: afterClose });
+  const q2 = (await questionStore.listForWeek(w1.id)).find((q) => q.slot === 2)!;
+  const reviewed2 = { expectedOutcome: q2.outcome!, expectedSealedAt: q2.sealedAt! };
+  const noCorrectionEvidence = await svc.correctSeal({ weekId: w1.id, slot: 2, outcome: "YES", evidence: "  ", ...reviewed2, officerId: SEALER, now: afterClose });
+  ok("6.10a · ⛔ a correction without evidence is refused before touching the seal",
+    !noCorrectionEvidence.ok && /evidence/.test(errOf(noCorrectionEvidence)) && (await questionStore.get(q2.id))?.outcome === "NO");
+  const invalidCorrectionOutcome = await svc.correctSeal({ weekId: w1.id, slot: 2, outcome: "MAYBE" as never, evidence: "Official corrected result", ...reviewed2, officerId: SEALER, now: afterClose });
+  ok("6.10b · ⛔ an outcome outside YES, NO, VOID cannot be corrected into the record",
+    !invalidCorrectionOutcome.ok && /YES, NO or VOID/.test(errOf(invalidCorrectionOutcome)) && (await questionStore.get(q2.id))?.outcome === "NO");
+  const prematureCorrectionVoid = await svc.correctSeal({ weekId: w1.id, slot: 2, outcome: "VOID", voidReason: "not_played", evidence: "Official source still awaits the event", ...reviewed2, officerId: SEALER, now: afterClose });
+  ok("6.10c · ⛔ a correction cannot use not-played before its void deadline",
+    !prematureCorrectionVoid.ok && /void deadline/.test(errOf(prematureCorrectionVoid)) && (await questionStore.get(q2.id))?.outcome === "NO");
+  const nonVoidGround = await svc.correctSeal({ weekId: w1.id, slot: 2, outcome: "YES", voidReason: "not_played", evidence: "Official corrected result", ...reviewed2, officerId: SEALER, now: afterClose });
+  ok("6.10d · ⛔ a YES correction cannot carry a VOID ground",
+    !nonVoidGround.ok && /Only a VOID/.test(errOf(nonVoidGround)) && (await questionStore.get(q2.id))?.outcome === "NO");
+  const wrongOfficer = await svc.correctSeal({ weekId: w1.id, slot: 2, outcome: "YES", evidence: "I read it differently", ...reviewed2, officerId: READER, now: afterClose });
   ok("6.11 · ⛔ only the sealer may correct a seal (OD-09)", !wrongOfficer.ok && /Only the officer who sealed/.test(errOf(wrongOfficer)));
-  const fix = await svc.correctSeal({ weekId: w1.id, slot: 2, outcome: "YES", evidence: "Corrected: the source updated its final score", officerId: SEALER, now: new Date(afterClose.getTime() + 3_600_000) });
+  const q3 = (await questionStore.listForWeek(w1.id)).find((q) => q.slot === 3)!;
+  const reviewed3 = { expectedOutcome: q3.outcome!, expectedSealedAt: q3.sealedAt! };
+  const sameSealClock = new Date(q3.sealedAt!);
+  const raced = await Promise.all([
+    svc.correctSeal({ weekId: w1.id, slot: 3, outcome: "NO", evidence: "Corrected result from the official source", ...reviewed3, officerId: SEALER, now: sameSealClock }),
+    svc.correctSeal({ weekId: w1.id, slot: 3, outcome: "NO", evidence: "Second review of the same stale seal", ...reviewed3, officerId: SEALER, now: sameSealClock }),
+  ]);
+  ok("6.11a · ⛔ concurrent corrections of one reviewed seal land exactly once",
+    raced.filter((r) => r.ok).length === 1 && raced.filter((r) => !r.ok).every((r) => /seal changed/.test(errOf(r)))
+      && (await questionStore.get(q3.id))?.outcome === "NO" && Date.parse((await questionStore.get(q3.id))?.sealedAt ?? "") > sameSealClock.getTime());
+  const fix = await svc.correctSeal({ weekId: w1.id, slot: 2, outcome: "YES", evidence: "Corrected: the source updated its final score", ...reviewed2, officerId: SEALER, now: new Date(afterClose.getTime() + 3_600_000) });
   const w2c = (await weekStore.get(w1.id))!;
   ok("6.12 · the sealer's correction lands inside the window and RESTARTS it", fix.ok && Date.parse(w2c.objectionsCloseAt!) > end, errOf(fix));
-  ok("6.13 · ⛔ no correction once the window has closed", !(await svc.correctSeal({ weekId: w1.id, slot: 2, outcome: "NO", evidence: "too late for this one", officerId: SEALER, now: new Date(Date.parse(w2c.objectionsCloseAt!) + 1) })).ok);
+  const replay = await svc.correctSeal({ weekId: w1.id, slot: 2, outcome: "YES", evidence: "Replayed correction must not record twice", ...reviewed2, officerId: SEALER, now: new Date(afterClose.getTime() + 3_600_001) });
+  ok("6.12a · ⛔ replaying a reviewed correction cannot write or restart the window twice",
+    !replay.ok && /seal changed/.test(errOf(replay)) && (await weekStore.get(w1.id))?.objectionsCloseAt === w2c.objectionsCloseAt);
+  await auditFlush();
+  const correctedAudit = (await getAuditByActionsDurable(["maswali.question.corrected"], { limit: 200 })).entries
+    .filter((entry) => entry.targetId === q2.id || entry.targetId === q3.id);
+  ok("6.12b · ⭐ each landed correction is audited once, and refusals leave no audit",
+    correctedAudit.length === 2 && correctedAudit.every((entry) => entry.actorId === SEALER));
+  const corrected2 = (await questionStore.get(q2.id))!;
+  ok("6.13 · ⛔ no correction once the window has closed", !(await svc.correctSeal({ weekId: w1.id, slot: 2, outcome: "NO", evidence: "too late for this one", expectedOutcome: corrected2.outcome!, expectedSealedAt: corrected2.sealedAt!, officerId: SEALER, now: new Date(Date.parse(w2c.objectionsCloseAt!) + 1) })).ok);
 }
 
 // ── §7 · two officers ───────────────────────────────────────────────────────

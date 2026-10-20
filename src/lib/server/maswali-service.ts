@@ -631,10 +631,18 @@ export async function confirmSeal(input: { weekId: string; slot: number; officer
  * set is final again. ⛔ Never after SETTLED: a paid week is never clawed back.
  */
 export async function correctSeal(input: {
-  weekId: string; slot: number; outcome: MaswaliOutcome; evidence: string; voidReason?: string | null; officerId: string; now?: Date;
+  weekId: string; slot: number; outcome: MaswaliOutcome; evidence: string; voidReason?: string | null;
+  expectedOutcome: MaswaliOutcome; expectedSealedAt: string; officerId: string; now?: Date;
 }): Promise<Result> {
   const nowMs = (input.now ?? new Date()).getTime();
+  const evidence = input.evidence.trim();
+  if (evidence.length < 10) return refuse("A seal records its evidence (at least 10 characters).");
+  if (input.outcome !== "YES" && input.outcome !== "NO" && input.outcome !== "VOID") return refuse("A result is YES, NO or VOID.");
   if (input.outcome === "VOID" && !isMaswaliVoidReason(input.voidReason)) return refuse("A void names its ground from the closed list (MR-15).");
+  if (input.outcome !== "VOID" && input.voidReason) return refuse("Only a VOID carries a void ground.");
+  if ((input.expectedOutcome !== "YES" && input.expectedOutcome !== "NO" && input.expectedOutcome !== "VOID") || !input.expectedSealedAt) {
+    return refuse("Reload the week and review the sealed result before correcting it.");
+  }
   return withLock(MASWALI_CHAIN_LOCK, async () => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
@@ -643,9 +651,17 @@ export async function correctSeal(input: {
     const q = (await questionStore.listForWeek(week.id)).find((x) => x.slot === input.slot);
     if (!q || q.outcome === null) return refuse("Nothing sealed to correct.");
     if (q.sealedBy !== input.officerId) return refuse("Only the officer who sealed a question may correct it; anyone else files an objection.");
+    if (q.outcome !== input.expectedOutcome || q.sealedAt !== input.expectedSealedAt) {
+      return refuse("The seal changed; reload the week and review it again before correcting it.");
+    }
+    if (input.outcome === "VOID" && !voidGroundAvailable(input.voidReason as MaswaliVoidReason, Date.parse(q.voidDeadlineAt), nowMs)) {
+      return refuse(`${slotLabel(q.slot)} cannot void on that ground before its void deadline (${q.voidDeadlineAt}).`);
+    }
+    // Keep the reviewed seal version unique even if two writes share one clock millisecond.
+    const revisedAt = new Date(Math.max(nowMs, Date.parse(q.sealedAt!) + 1)).toISOString();
     await questionStore.patch(q.id, {
       outcome: input.outcome, voidReason: input.outcome === "VOID" ? (input.voidReason as MaswaliVoidReason) : null,
-      evidence: input.evidence.trim(), sealedAt: new Date(nowMs).toISOString(), stage2By: null, stage2At: null,
+      evidence, sealedAt: revisedAt, stage2By: null, stage2At: null,
     });
     // The graded set may have changed: the window restarts from the corrected record (OD-09).
     await weekStore.patch(week.id, { gradedSetFinalAt: null, objectionsCloseAt: null });

@@ -197,7 +197,9 @@ export async function correctMaswaliSealAction(formData: FormData): Promise<Acti
     const slot = Number(str(formData, "slot"));
     const r = await correctSeal({
       weekId, slot, outcome, evidence: str(formData, "evidence"),
-      voidReason: outcome === "VOID" ? str(formData, "voidReason") : null, officerId: session.userId,
+      voidReason: outcome === "VOID" ? str(formData, "voidReason") : null,
+      expectedOutcome: str(formData, "expectedOutcome") as MaswaliOutcome,
+      expectedSealedAt: str(formData, "expectedSealedAt"), officerId: session.userId,
     });
     if (!r.ok) return { ok: false, error: r.error };
     const audited = await noteDevice(session.userId, weekId, [slot]);

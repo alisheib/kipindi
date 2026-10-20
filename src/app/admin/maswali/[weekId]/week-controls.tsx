@@ -135,8 +135,10 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
   const [voidRow, setVoidRow] = useState<SealRowView | null>(null);
   const [voidReason, setVoidReason] = useState("");
   const [voidEvidence, setVoidEvidence] = useState("");
+  const [voidTried, setVoidTried] = useState(false);
   const [correctRow, setCorrectRow] = useState<SealRowView | null>(null);
   const [correction, setCorrection] = useState({ outcome: "YES", evidence: "", voidReason: "" });
+  const [correctTried, setCorrectTried] = useState(false);
   const chosen = Object.entries(picks)
     .filter(([slot, p]) => rows.some((row) => row.slot === Number(slot) && row.outcome === null) && (p.outcome === "YES" || p.outcome === "NO"))
     .map(([slot, p]) => ({ slot: Number(slot), ...p }));
@@ -197,8 +199,8 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
                   </td>
                   <td className="text-left align-top">
                     <div className="flex flex-col gap-1.5 items-start">
-                      {!r.outcome && (can.void ? (mayAct ? <Button size="sm" variant="ghost" onClick={() => { setVoidRow(r); setVoidReason(""); setVoidEvidence(""); }}>Void…</Button> : <ActReadOnly />) : <ControlLocked what="Void" need={need.void} />)}
-                      {r.outcome && windowOpen && (can.correct ? (mayAct ? <Button size="sm" variant="ghost" onClick={() => { setCorrectRow(r); setCorrection({ outcome: r.outcome === "NO" ? "YES" : "NO", evidence: "", voidReason: "" }); }}>Correct…</Button> : <ActReadOnly />) : <ControlLocked what="Correct" need={need.correct} />)}
+                      {!r.outcome && (can.void ? (mayAct ? <Button size="sm" variant="ghost" onClick={() => { setVoidRow(r); setVoidReason(""); setVoidEvidence(""); setVoidTried(false); }}>Void…</Button> : <ActReadOnly />) : <ControlLocked what="Void" need={need.void} />)}
+                      {r.outcome && windowOpen && (can.correct ? (mayAct ? <Button size="sm" variant="ghost" disabled={!r.sealedAtIso} onClick={() => { setError(null); setCorrectRow(r); setCorrection({ outcome: r.outcome === "NO" ? "YES" : "NO", evidence: "", voidReason: "" }); setCorrectTried(false); }}>Correct…</Button> : <ActReadOnly />) : <ControlLocked what="Correct" need={need.correct} />)}
                       {r.awaitingSecond && (can.confirm ? (mayAct ? <Button size="sm" variant="ghost" disabled={pending || !r.sealedAtIso} onClick={() => { setError(null); setConfirmRow(r); }}>Confirm as second officer</Button> : <ActReadOnly />) : <ControlLocked what="Confirm" need={need.confirm} />)}
                     </div>
                   </td>
@@ -236,28 +238,40 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
           });
         }} />
 
-      <ConfirmModal open={!!voidRow} onClose={() => setVoidRow(null)} loading={pending} tone="claret" tier="hard" typedWord="VOID"
+      <ConfirmModal open={!!voidRow} onClose={() => { setVoidRow(null); setVoidTried(false); }} loading={pending} tone="claret" tier="hard" typedWord="VOID"
         title={`Void ${voidRow?.label ?? ""}?`} confirmLabel="Void the question"
         body={
           <div className="space-y-3 text-left">
             <p>A voided main is replaced by the next usable reserve; a voided reserve is skipped (MR-17).</p>
-            <Field label="Ground"><Select size="md" value={voidReason} onChange={setVoidReason} ariaLabel="Void ground" options={[{ value: "", label: "Choose the ground" }, ...voidReasons.map((v) => ({ value: v, label: isMaswaliVoidReason(v) ? MASWALI_VOID_REASON_LABEL[v] : v }))]} /></Field>
-            <Field label="Evidence"><Input size="md" value={voidEvidence} onChange={(e) => setVoidEvidence(e.target.value)} placeholder="What happened, as the source records it" /></Field>
+            <Field label="Ground" required error={voidTried && !isMaswaliVoidReason(voidReason) ? "Choose a ground from the list." : undefined}><Select size="md" value={voidReason} onChange={setVoidReason} ariaLabel="Void ground" options={[{ value: "", label: "Choose the ground" }, ...voidReasons.map((v) => ({ value: v, label: isMaswaliVoidReason(v) ? MASWALI_VOID_REASON_LABEL[v] : v }))]} /></Field>
+            <Field label="Evidence" required error={voidTried && voidEvidence.trim().length < 10 ? "Write at least 10 characters of evidence." : undefined}><Input size="md" value={voidEvidence} onChange={(e) => setVoidEvidence(e.target.value)} placeholder="What happened, as the source records it" /></Field>
           </div>
         }
-        onConfirm={() => voidRow && run(() => voidMaswaliQuestionAction(fd({ weekId, slot: String(voidRow.slot), voidReason, evidence: voidEvidence })), () => setVoidRow(null), setSealAuditWarning)} />
+        onConfirm={() => {
+          setVoidTried(true);
+          if (!voidRow || !isMaswaliVoidReason(voidReason) || voidEvidence.trim().length < 10) return;
+          run(() => voidMaswaliQuestionAction(fd({ weekId, slot: String(voidRow.slot), voidReason, evidence: voidEvidence })), () => setVoidRow(null), setSealAuditWarning);
+        }} />
 
-      <ConfirmModal open={!!correctRow} onClose={() => setCorrectRow(null)} loading={pending} tone="warning" tier="hard" typedWord="CORRECT"
+      <ConfirmModal open={!!correctRow} onClose={() => { setCorrectRow(null); setCorrectTried(false); }} loading={pending} tone="warning" tier="hard" typedWord="CORRECT"
         title={`Correct ${correctRow?.label ?? ""}?`} confirmLabel="Record the correction"
         body={
           <div className="space-y-3 text-left">
             <p>Only the officer who sealed it may correct it, and only inside the objection window; the window starts again (OD-09).</p>
             <Field label="Correct result"><Select size="md" value={correction.outcome} onChange={(v) => setCorrection((c) => ({ ...c, outcome: v }))} ariaLabel="Correct result" options={[{ value: "YES", label: "YES" }, { value: "NO", label: "NO" }, { value: "VOID", label: "VOID" }]} /></Field>
-            {correction.outcome === "VOID" && <Field label="Ground"><Select size="md" value={correction.voidReason} onChange={(v) => setCorrection((c) => ({ ...c, voidReason: v }))} ariaLabel="Void ground" options={[{ value: "", label: "Choose the ground" }, ...voidReasons.map((v) => ({ value: v, label: isMaswaliVoidReason(v) ? MASWALI_VOID_REASON_LABEL[v] : v }))]} /></Field>}
-            <Field label="Evidence"><Input size="md" value={correction.evidence} onChange={(e) => setCorrection((c) => ({ ...c, evidence: e.target.value }))} /></Field>
+            {correction.outcome === "VOID" && <Field label="Ground" required error={correctTried && !isMaswaliVoidReason(correction.voidReason) ? "Choose a ground from the list." : undefined}><Select size="md" value={correction.voidReason} onChange={(v) => setCorrection((c) => ({ ...c, voidReason: v }))} ariaLabel="Void ground" options={[{ value: "", label: "Choose the ground" }, ...voidReasons.map((v) => ({ value: v, label: isMaswaliVoidReason(v) ? MASWALI_VOID_REASON_LABEL[v] : v }))]} /></Field>}
+            <Field label="Evidence" required error={correctTried && correction.evidence.trim().length < 10 ? "Write at least 10 characters of evidence." : undefined}><Input size="md" value={correction.evidence} onChange={(e) => setCorrection((c) => ({ ...c, evidence: e.target.value }))} /></Field>
+            {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
           </div>
         }
-        onConfirm={() => correctRow && run(() => correctMaswaliSealAction(fd({ weekId, slot: String(correctRow.slot), outcome: correction.outcome, evidence: correction.evidence, voidReason: correction.voidReason })), () => setCorrectRow(null), setSealAuditWarning)} />
+        onConfirm={() => {
+          setCorrectTried(true);
+          if (!correctRow || correction.evidence.trim().length < 10 || (correction.outcome === "VOID" && !isMaswaliVoidReason(correction.voidReason))) return;
+          if (!correctRow.outcome || !correctRow.sealedAtIso) { setError("Reload the week and review the sealed result before correcting it."); return; }
+          run(() => correctMaswaliSealAction(fd({ weekId, slot: String(correctRow.slot), outcome: correction.outcome,
+            evidence: correction.evidence, voidReason: correction.voidReason,
+            expectedOutcome: correctRow.outcome, expectedSealedAt: correctRow.sealedAtIso })), () => setCorrectRow(null), setSealAuditWarning);
+        }} />
     </div>
   );
 }
