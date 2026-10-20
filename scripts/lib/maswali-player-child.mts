@@ -542,6 +542,13 @@ ok("8.3 · the week settled: two tickets of ten of ten", releasedA.ok && (await 
   const list = reg.rows;
   ok("8.15 · the register's list: the settled week, and only final public weeks", reg.total === 1 && list.length === 1 && list[0].id === A.id && list.every((w: any) => w.state === "SETTLED" || w.state === "VOIDED"),
     J(list.map((w: any) => w.code)));
+  const { millioneaSitemap } = await import("../../src/lib/maswali-sitemap.ts");
+  const siteRows = await dal.weekStore.list({ visibility: "PUBLIC", states: ["SETTLED"] });
+  const site = millioneaSitemap("ACTIVE", siteRows, "https://www.50pick.tz");
+  const settledA = await dal.weekStore.get(A.id);
+  ok("8.15a · the real store's settled public week enters discovery, never an open or DRIVE week",
+    site.some((entry: any) => entry.url.endsWith(`/millionea/register/${A.code}`) && entry.lastModified instanceof Date && entry.lastModified.toISOString() === settledA?.settledAt)
+      && !site.some((entry: any) => entry.url.endsWith(`/millionea/register/${B.code}`) || entry.url.endsWith(`/millionea/register/${D.code}`)));
   const fB = await P.maswaliPoolFigure(B.id);
   ok("8.16 · ⭐ once N settled, N+1's carry is known: what the claim reads (N's remainder), no longer pending",
     fB.carryIn === expectA.carryOut && fB.carryPendingCode === null && fB.atLeast === false && fB.jackpot === Math.max(floor, fB.carryIn + fB.sales), J(fB));
