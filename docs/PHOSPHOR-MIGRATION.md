@@ -64,6 +64,18 @@ caught. The long campaign red proof,
 classic parity red proof and final comparison remain before the live push. Release 2c follows with category plates,
 money doors and stat tiles.
 
+**2026-10-20 handoff checkpoint:** release 2b's branch is pushed as `codex/phosphor-2b-w6`. After U43's
+`3ec111a83` hotfix, W6 was rebased locally on `origin/main` and the focused palette, empty-state, glyph-source,
+glyph-sync, plan and parity-entry guards passed. Mutation proofs passed for the palette, glyph-sync, plan, parity
+entries and classic-parity noise. This is not a release proof:
+U43 holds the `main` push lock while preparing Ali's later house-gold restoration, and Maswali S5 holds the shared
+heavy-test lock for its database release checks. Fetch `origin/main` again, rebase W6 on both lanes' final live commits,
+and keep U43's latest gold ruling while preserving W6's one-source Duotone empty plates. The classic empty bell is the
+overlap: replace its private SVG with `I.bell` on the shared plate, with its ruled classic gold accent. Then run the
+long campaign and classic-parity reds, a fresh classic parity browser comparison, the changed-file readers, the
+database battery, exact-commit typecheck/build/local `qa:live`, and visual tiles before pushing `main`; finish the
+production read-back required by AGENTS.md §4. No Phosphor 2b–3 code is live at this checkpoint.
+
 ⏳ **Owed — checks not run because Ali asked to ship (2026-10-19); run them on live `main` first (AGENTS.md §4):**
 - before/after tiles of every changed surface (phones at 390px and 2x, desktop at 1280px), read one by one;
 - the classic parity, calibrated: a baseline on a fresh in-memory server of `main`, its null compare (exit 0),
