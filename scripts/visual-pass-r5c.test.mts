@@ -263,15 +263,24 @@ const census = new Map<string, Hit[]>();
   const unregistered = [...census.keys()].filter((f) => !(f in REGISTRY));
   ok("1.1 · no file paints gold unruled — every one is in the registry with its ruling", unregistered.length === 0,
     unregistered.map((f) => `${f}: ${census.get(f)!.map((x) => `${x.line}:${x.match}`).join(" ")}`).join(" | "));
-  const rose: string[] = [];
-  const fell: string[] = [];
-  for (const [f, [n]] of Object.entries(REGISTRY)) {
-    const got = census.get(f)?.length ?? 0;
-    if (got > n) rose.push(`${f}: ${got} > ${n} — ${census.get(f)!.map((x) => `${x.line}:${x.match}`).join(" ")}`);
-    else if (got < n) fell.push(`${f}: ${got} < ${n}`);
-  }
-  ok("1.2 · no registered file gained a gold use (a new one must be RULED, then registered with its reason)", rose.length === 0, rose.join(" | "));
-  if (fell.length) note(`✓ fewer than the registry — lock it in: ${fell.join(" · ")}`);
+  const registryDrift = (registry: typeof REGISTRY) => {
+    const rose: string[] = [];
+    const fell: string[] = [];
+    for (const [f, [n]] of Object.entries(registry)) {
+      const got = census.get(f)?.length ?? 0;
+      if (got > n) rose.push(`${f}: ${got} > ${n} — ${census.get(f)!.map((x) => `${x.line}:${x.match}`).join(" ")}`);
+      else if (got < n) fell.push(`${f}: ${got} < ${n}`);
+    }
+    return { rose, fell };
+  };
+  const registryPasses = (registry: typeof REGISTRY) => {
+    const { rose, fell } = registryDrift(registry);
+    return rose.length === 0 && fell.length === 0;
+  };
+  const { rose, fell } = registryDrift(REGISTRY);
+  ok("1.2 · each registered gold count is exact (a new use or a stale allowance must be RULED)", registryPasses(REGISTRY), [...rose, ...fell].join(" | "));
+  const plate = "src/app/globals.css";
+  ok("1.2′ PLANT · a stale higher allowance is rejected", !registryPasses({ ...REGISTRY, [plate]: [REGISTRY[plate][0] + 1, REGISTRY[plate][1]] }));
   ok("1.3 · the registry's every entry carries its ruling", Object.values(REGISTRY).every(([n, why]) => n > 0 && why.length > 12));
   for (const f of ["src/components/updown/updown-card.tsx", "src/components/journey/question/journey-holder.tsx"]) {
     const planted = read(f) + '\nconst unearned = <span className="text-gold-300">ordinary words</span>;';
