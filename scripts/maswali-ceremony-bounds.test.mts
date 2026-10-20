@@ -24,7 +24,9 @@ ok("pause normalizes internal whitespace before its limit", pauseReasonLengthOk(
 ok("licence limits accept exactly five and five hundred normalized characters", licenceRefLengthOk("a".repeat(MASWALI_LICENCE_REF_MIN)) && licenceRefLengthOk("a".repeat(MASWALI_LICENCE_REF_MAX)));
 ok("licence limits reject four and five hundred one normalized characters", !licenceRefLengthOk("a".repeat(MASWALI_LICENCE_REF_MIN - 1)) && !licenceRefLengthOk("a".repeat(MASWALI_LICENCE_REF_MAX + 1)));
 ok("licence form uses its shared normalized bound and caps input", pools.includes("!licenceRefLengthOk(ref)") && pools.includes("maxLength={MASWALI_LICENCE_REF_MAX}"));
-ok("rollout and sunset forms use the shared reason bound and cap input", (pools.match(/!reasonLengthOk\(reason\)/g) ?? []).length === 2 && (pools.match(/maxLength=\{MASWALI_REASON_MAX\}/g) ?? []).length === 2);
+ok("rollout and sunset forms use the shared reason bound at open and final submit, and cap input",
+  (pools.match(/!reasonLengthOk\(reason\)/g) ?? []).length === 3
+    && (pools.match(/maxLength=\{MASWALI_REASON_MAX\}/g) ?? []).length === 2);
 ok("pause and resume form chooses the matching service normalization", integrity.includes("paused ? reasonLengthOk(text) : pauseReasonLengthOk(text)") && integrity.includes("maxLength={MASWALI_REASON_MAX}"));
 ok("all four server ceremonies read the same bounds", licence.includes("LICENCE_REF_MAX = MASWALI_LICENCE_REF_MAX") && pause.includes("PAUSE_REASON_MAX = MASWALI_REASON_MAX")
   && switchSource.includes("MILLIONEA_REASON_MAX = MASWALI_REASON_MAX") && service.includes("reason.length > MASWALI_REASON_MAX"));

@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ConfirmModal } from "@/components/ui/modal";
 import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
-import { validGuaranteeDraft } from "@/lib/maswali-admin-form-validation";
+import { sunsetChoices, sunsetConfirmText, validGuaranteeDraft, type SunsetCandidate } from "@/lib/maswali-admin-form-validation";
 import { MASWALI_LICENCE_REF_MIN, MASWALI_LICENCE_REF_MAX, MASWALI_REASON_MIN, MASWALI_REASON_MAX,
   licenceRefLengthOk, reasonLengthOk } from "@/lib/maswali-ceremony-bounds";
 import {
@@ -150,25 +150,42 @@ export function RolloutCeremony({ expectSeq, current }: { expectSeq: number; cur
   );
 }
 
-export function SunsetCeremony({ weeks }: { weeks: Array<{ id: string; label: string }> }) {
+export function SunsetCeremony({ weeks }: { weeks: SunsetCandidate[] }) {
   const mayAct = useMayAct();
   const { pending, error, note, run } = useAct();
-  const [weekId, setWeekId] = useState(weeks[0]?.id ?? "");
+  const [weekId, setWeekId] = useState("");
+  const [lookup, setLookup] = useState("");
   const [reason, setReason] = useState("");
   const [open, setOpen] = useState(false);
   if (!mayAct) return <ActReadOnly />;
   if (weeks.length === 0) return <p className="text-body-sm text-text-secondary">No public week can be made final now.</p>;
+  const choices = sunsetChoices(weeks, lookup);
+  const selected = weeks.find((week) => week.id === weekId) ?? null;
+  const review = selected ? sunsetConfirmText(selected) : null;
   return (
     <div className="space-y-3">
-      <Field label="The final week"><Select size="sm" value={weekId} onChange={setWeekId} ariaLabel="Final week" options={weeks.map((w) => ({ value: w.id, label: w.label }))} /></Field>
+      {choices.needsLookup && <Field label="Find the final week by code" hint={`Search all ${weeks.length} eligible public weeks before choosing.`}>
+        <Input size="sm" value={lookup} maxLength={32} onChange={(event) => { setLookup(event.target.value); setWeekId(""); setOpen(false); }} placeholder="MLN-2026-W01" />
+      </Field>}
+      {choices.needsLookup && lookup.trim() && <p role="status" className="text-body-sm text-text-secondary">
+        {choices.total === 0 ? "No eligible week matches that code." : choices.total > choices.rows.length
+          ? `${choices.total} matching weeks; showing the first ${choices.rows.length}. Refine the code to find the right week.`
+          : `${choices.total} matching ${choices.total === 1 ? "week" : "weeks"}.`}
+      </p>}
+      <Field label="The final week" hint="Choose the exact week before confirming."><Select size="sm" value={weekId} onChange={setWeekId} ariaLabel="Final week"
+        placeholder="Choose an eligible week" disabled={choices.rows.length === 0}
+        options={choices.rows.map((week) => ({ value: week.id, label: `${week.code} · ${week.state.toLowerCase()}` }))} /></Field>
       <Field label="Why Millionea is stopping" hint={`${MASWALI_REASON_MIN}–${MASWALI_REASON_MAX} characters.`}><Textarea rows={2} maxLength={MASWALI_REASON_MAX} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
-      <Button size="sm" variant="claret" disabled={pending || !reasonLengthOk(reason)} onClick={() => setOpen(true)}>Make it the final week</Button>
+      <Button size="sm" variant="claret" disabled={pending || !selected || !reasonLengthOk(reason)} onClick={() => setOpen(true)}>Make it the final week</Button>
       <Feedback error={error} note={note} />
-      <UnsavedChangesGuard dirty={reason.trim() !== ""} body="A reason for the final week has been typed but not recorded. Leaving now discards it." />
-      <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="claret" tier="hard" typedWord={SUNSET_WORD}
-        title="Stop Millionea after this week?" confirmLabel="Make it final"
-        body="A drafted week becomes final only a full week before it opens (OD-03); the current week becomes final at once. After a final week that ran, no week opens again."
-        onConfirm={() => run(() => sunsetMaswaliAction(fd({ weekId, reason, typed: SUNSET_WORD })), () => { setOpen(false); setReason(""); })} />
+      <UnsavedChangesGuard dirty={weekId !== "" || lookup.trim() !== "" || reason.trim() !== ""} body="A final week has been chosen but not recorded. Leaving now discards it." />
+      <ConfirmModal open={open && !!selected} onClose={() => setOpen(false)} loading={pending} tone="claret" tier="hard" typedWord={SUNSET_WORD}
+        title={review?.title ?? "Choose a final week"} confirmLabel="Make it final"
+        body={review?.body ?? "Choose the exact eligible week before confirming."}
+        onConfirm={() => {
+          if (!selected || !reasonLengthOk(reason)) return;
+          run(() => sunsetMaswaliAction(fd({ weekId: selected.id, reason, typed: SUNSET_WORD })), () => { setOpen(false); setWeekId(""); setLookup(""); setReason(""); });
+        }} />
     </div>
   );
 }

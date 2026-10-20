@@ -243,7 +243,7 @@ async function Content({ searchParams }: PoolsPageProps) {
             <section className="space-y-2">
               <h3 className="font-semibold text-body">Stop the product</h3>
               <p className="text-body-sm text-text-secondary">{standing?.sunset.kind === "ENDING" ? `Week ${standing.sunset.week.code} is the final week.` : standing?.sunset.kind === "RETIRED" ? "Millionea has ended." : "The final week runs normally; if no ticket gets 10 of 10, the top score shares the jackpot (MR-30)."}</p>
-              {canSunset ? <SunsetCeremony weeks={sunsetCandidates.map((w) => ({ id: w.id, label: `${w.code} · ${w.state.toLowerCase()}` }))} />
+              {canSunset ? <SunsetCeremony weeks={sunsetCandidates.map((w) => ({ id: w.id, code: w.code, state: w.state }))} />
                 : <ControlLocked what="Make a week the final week" need={CONTROL_DOMAIN.sunsetMaswali} block />}
             </section>
           </div>

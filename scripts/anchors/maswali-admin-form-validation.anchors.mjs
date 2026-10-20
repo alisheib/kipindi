@@ -16,6 +16,27 @@ export const MUTATIONS = [
     failure: /Pay in must stay disabled until both the amount and rail reference are valid/,
   },
   {
+    name: "long final-week lookup",
+    file: "src/lib/maswali-admin-form-validation.ts",
+    from: "needsLookup ? [] : [...weeks]",
+    to: "[...weeks]",
+    failure: /a long final-week list requires a code lookup before choices appear/,
+  },
+  {
+    name: "final-week review identity",
+    file: "src/lib/maswali-admin-form-validation.ts",
+    from: "title: `Make ${week.code} the final week?`,",
+    to: 'title: "Make this the final week?",',
+    failure: /the hard final-week confirmation must name the selected draft week/,
+  },
+  {
+    name: "final-week selection gate",
+    file: "src/app/admin/maswali/pools/pools-controls.tsx",
+    from: "disabled={pending || !selected || !reasonLengthOk(reason)}",
+    to: "disabled={pending || !reasonLengthOk(reason)}",
+    failure: /the final-week action must refuse a missing selection and a short reason/,
+  },
+  {
     name: "share-decision gate",
     file: "src/app/admin/maswali/integrity/integrity-controls.tsx",
     from: "if (!validShareDecision(reason)) { setTried(true); return; }",
