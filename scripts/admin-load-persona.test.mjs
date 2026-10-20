@@ -23,7 +23,7 @@ assert.match(loader, /await adminLoadSession\(b, BASE, loginOnce\)/, "the load s
 assert.match(loader, /new URL\(BASE\)\.origin !== new URL\(DEFAULT_BASE\)\.origin/, "the login and measured target must match");
 await verify(adminLoadPersona, adminLoadSession);
 
-if (process.argv.includes("--red")) {
+if (process.argv.includes("--prove-red")) {
   const source = readFileSync(new URL("./admin-load-persona.mjs", import.meta.url), "utf8");
   assert.ok(source.includes('"local:ADMIN"'), "missing local-fixture mutation site");
   const broken = source.replace('"local:ADMIN"', '"admin"');
