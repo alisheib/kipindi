@@ -31,7 +31,7 @@ forever.
 
 | Blocked | Verdict |
 |---|---|
-| `git credential fill` (reading the stored GitHub token) | 🔴 **Leave this blocked.** It reads a live secret into the transcript. The right fix is a separately configured project or bot credential (§2.1), not opening the credential store. |
+| `git credential fill` (reading the stored GitHub token) | 🔴 **Leave this blocked.** It reads a live secret into the transcript. The right fix is a separately configured service credential (§2.1), not opening the credential store. |
 | `Remove-Item docs/<stale>.md` | Safe to allow, scoped to the repo. |
 | `Get-ChildItem -Recurse` across `C:\` roots | Safe to allow read-only, scoped. |
 | `railway run … --create` (creating an R2 bucket) | Reasonable to keep behind a prompt — it mutates cloud infrastructure. |
@@ -102,22 +102,29 @@ is nearly as fast and it still stops the unusual thing.
 
 ### 2.1 GitHub — 🔴 the blocker that matters most
 
-Needed for: an authorized Git push, PR, release or repository-secret change.
+Needed for: an authorized Git push, PR, release or repository-secret change. A deploy key
+covers Git access to its repository; it does not grant GitHub API access for PRs or secrets.
 
 **The 2026-07-31 block:** `gh` was unauthenticated while Git could push through Windows
 Credential Manager. That did not establish an agent-safe identity. A saved credential may
 belong to Ali personally; a successful push is not proof that an agent may use it.
 
-1. An authorized human provisions a **50pick-owned GitHub App installation or dedicated bot
-   account**, limited to this repository and the operation at hand. Grant Contents read/write
-   for a push; add Secrets or Actions permissions only for tasks that need them. Use a
-   short-lived credential, not a token from Ali's personal account. An agent cannot create
-   or authorize its own bot account or widen its permissions.
+1. An authorized human provisions a **50pick-owned GitHub App installation, dedicated bot
+   account, or repository-scoped SSH deploy key with write access**, limited to this
+   repository and the operation at hand. Grant Contents read/write for a push through an App
+   or bot; add Secrets or Actions permissions only for tasks that need them. A deploy key is
+   attached directly to the repository, with "Allow write access" enabled by the human
+   ([GitHub's deploy-key guide](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys)).
+   Use a short-lived token or remove a temporary deploy key after the release, not a token
+   from Ali's personal account. An agent cannot create or authorize its own bot account,
+   install its own deploy key, or widen its permissions.
 2. The human makes that credential available through a secure local credential or process
    environment, **never chat**. Before a write, the agent verifies the service identity and
    that the Git command will use it rather than the saved personal Windows login. A read-only
-   `gh auth status` can help for a bot account; a GitHub App installation token has no user
-   login to check that way. Do not print or retrieve the token itself.
+   `gh auth status` can help for a bot account; a GitHub App installation token and an SSH
+   deploy key have no user login to check that way. For a deploy key, pin Git to that SSH
+   identity, verify repository-bound authentication, and have the human confirm write access
+   in repository settings. Do not print or retrieve a token or private key.
 3. If the only available credential is personal, Ali performs the push himself after the
    release owner gives him the reviewed commit and checks. The agent does not borrow his
    login, including when he offers it.
@@ -236,7 +243,8 @@ holds the secrets; this file holds the map to them.
 
 1. **Never paste a secret into the chat.** A human enters a project credential through a
    secure local flow; an agent never prints it. The transcript is permanent.
-2. **Expiry on everything.** 30 days. A token an agent used once does not need to outlive
+2. **Time-box access.** Set token expiry to 30 days or less; remove a temporary repository
+   deploy key after the release. A credential an agent used once does not need to outlive
    the task.
 3. **Least privilege beats convenience.** The bucket-scoped R2 token blocked an agent today —
    that is the control working, not failing. Grant the narrow thing.
