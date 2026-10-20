@@ -14,12 +14,14 @@ function claims(star: string, bell: string): string[] {
   const hold = (name: string, ok: boolean) => { if (!ok) missing.push(name); };
 
   hold("star starts static", /const \[settledOn, setSettledOn\] = useState\(false\)/.test(star));
+  hold("star resets for another market", /useEffect\(\(\) => \{\s*setSettledOn\(false\);\s*const sync =/.test(star));
   hold("star waits for confirmation", /if \(d\?\.marketId === marketId\) \{\s*setOn\(d\.watching\);\s*setSettledOn\(d\.watching\);\s*\}/.test(star)
     && /if \(!r\.ok\)[\s\S]*?return;\s*\}\s*setOn\(r\.watching\);\s*window\.dispatchEvent\(new CustomEvent\("50pick:watch"/.test(star));
   hold("star resets before optimism", /const prev = on;\s*setSettledOn\(false\);\s*setOn\(!prev\);/.test(star));
   hold("star settles only when confirmed on", /<I\.star s=\{size\} tier=\{on \? "fill" : undefined\} className=\{on && settledOn \? "g-settle" : undefined\} \/>/.test(star));
 
   hold("bell starts static", /const \[settledOn, setSettledOn\] = useState\(false\)/.test(bell));
+  hold("bell resets for another market", /useEffect\(\(\) => \{\s*setSettledOn\(false\);\s*if \(typeof Notification/.test(bell));
   hold("bell waits for opt-in", /writeWatchlist\(next\);\s*setWatching\(true\);\s*setSettledOn\(true\);/.test(bell)
     && /if \(Notification\.permission !== "granted"\) \{\s*setPending\(false\);\s*return;\s*\}/.test(bell));
   hold("bell resets on opt-out", /writeWatchlist\(next\);\s*setWatching\(false\);\s*setSettledOn\(false\);/.test(bell));
@@ -34,16 +36,18 @@ if (baseline.length) {
 }
 
 if (!process.argv.includes("--prove-red")) {
-  console.log("W8 opt-in motion: 8/8 claims pass");
+  console.log("W8 opt-in motion: 10/10 claims pass");
   process.exit(0);
 }
 
 const plants: Array<[name: string, target: string, star: string, bell: string]> = [
   ["star animates on load", "star starts static", watch.replace("const [settledOn, setSettledOn] = useState(false)", "const [settledOn, setSettledOn] = useState(true)"), notify],
+  ["star carries motion into another market", "star resets for another market", watch.replace("useEffect(() => {\n    setSettledOn(false);\n    const sync =", "useEffect(() => {\n    const sync ="), notify],
   ["star animates before confirmation", "star waits for confirmation", watch.replace("setSettledOn(d.watching)", "setSettledOn(true)"), notify],
   ["star carries a previous confirmation into optimism", "star resets before optimism", watch.replace("setSettledOn(false);\n    setOn(!prev)", "setOn(!prev)"), notify],
   ["star settles when off too", "star settles only when confirmed on", watch.replace('className={on && settledOn ? "g-settle" : undefined}', 'className="g-settle"'), notify],
   ["bell animates on load", "bell starts static", watch, notify.replace("const [settledOn, setSettledOn] = useState(false)", "const [settledOn, setSettledOn] = useState(true)")],
+  ["bell carries motion into another market", "bell resets for another market", watch, notify.replace("useEffect(() => {\n    setSettledOn(false);\n    if (typeof Notification", "useEffect(() => {\n    if (typeof Notification")],
   ["bell settles before storing the opt-in", "bell waits for opt-in", watch, notify.replace("writeWatchlist(next);\n        setWatching(true);\n        setSettledOn(true);", "setSettledOn(true);\n        writeWatchlist(next);\n        setWatching(true);")],
   ["bell carries a previous activation through opt-out", "bell resets on opt-out", watch, notify.replace("setWatching(false);\n        setSettledOn(false);", "setWatching(false);")],
   ["bell settles without a successful opt-in", "bell settles only its Fill", watch, notify.replace('className={settledOn ? "g-settle" : undefined}', 'className="g-settle"')],

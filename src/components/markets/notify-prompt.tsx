@@ -49,6 +49,7 @@ export function NotifyPrompt({ marketId, marketTitle }: { marketId: string; mark
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
+    setSettledOn(false);
     if (typeof Notification === "undefined") {
       setSupported(false);
       return;

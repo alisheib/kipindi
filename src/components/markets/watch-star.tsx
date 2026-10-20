@@ -41,6 +41,7 @@ export function WatchStar({
   // stale until a full refresh. A window event keeps every star for the same
   // market in agreement the moment the server confirms.
   useEffect(() => {
+    setSettledOn(false);
     const sync = (e: Event) => {
       const d = (e as CustomEvent<{ marketId: string; watching: boolean }>).detail;
       if (d?.marketId === marketId) {

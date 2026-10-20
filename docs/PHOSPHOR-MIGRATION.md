@@ -913,7 +913,7 @@ Each has its reduced-motion branches (§M6). DA's drift that `.m-draw` runs 820 
 
 The opt-in motion candidate puts `.g-settle` on the watch star only after the server confirms the shared watch event;
 an optimistic Fill that may roll back stays still. The notification bell settles only after permission and the local
-watchlist write. Both start static on page load, and both remove the class on opt-out. The W8 opt-in guard plants each
+watchlist write. Both start static on page load, reset if a component takes another market, and remove the class on opt-out. The W8 opt-in guard plants each
 timing reversal in memory.
 
 ### W9 — Close
