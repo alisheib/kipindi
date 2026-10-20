@@ -314,7 +314,7 @@ export const FILL_KEYS: readonly string[] = [
   // A status in a status container: the doors Callout, NoticeBar, StatusFlag, Toast, a receipt's status, the KYC panel's
   // plate and the proposal's chip draw their glyph in Fill. Circled keys only for a tick or a cross: Phosphor fills a
   // bare `check` or `x` into a solid square, which reads as a checkbox.
-  "info", "warning", "alertCircle", "checkCircle", "xCircle", "clock", "clockPending", "lock", "shieldcheck", "bellOff", "eye",
+  "info", "warning", "alertCircle", "checkCircle", "xCircle", "void", "clock", "clockPending", "lock", "shieldcheck", "bellOff", "eye",
   "rotateCcw", "mail", "camera", "flame2", "edit",
   "bell", // a toggle on: "notify me" on a market, and the header bell while its panel is open (CHROME_FILLS)
   "chevronUp", "chevronDown", // the 24h move on every market card: the solid caret is the direction, where ▲▼ were typed

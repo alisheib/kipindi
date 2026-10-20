@@ -81,7 +81,7 @@ const LABEL: Record<MarketStatus, string> = {
   VOIDED: LIFECYCLE.voided.en,
 };
 const MARKET_GLYPH: Record<MarketStatus, FillGlyphKey> = {
-  DRAFT: "edit", LIVE: "live", CLOSED: "lock", RESOLVED: "resolved", VOIDED: "xCircle",
+  DRAFT: "edit", LIVE: "live", CLOSED: "lock", RESOLVED: "resolved", VOIDED: "void",
 };
 
 export function MarketStatusBadge({

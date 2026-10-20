@@ -109,6 +109,8 @@ function defects(s: typeof files): string[] {
   if ((s.status.match(/glyph=\{/g) ?? []).length < 6) bad.push("all six shared admin status families need glyphs");
   if (!s.status.includes('presented === "CLOSED" ? "xCircle" : "info"'))
     bad.push("unknown account statuses need a neutral information glyph, distinct from CLOSED");
+  if (!s.status.includes('VOIDED: "void"'))
+    bad.push("voided markets need the distinct void glyph, not the failed-state cross");
   if (!s.payout.includes('<I.checkCircle s={11} tier="fill"') || !s.payout.includes('<I.xCircle s={11} tier="fill"'))
     bad.push("payout rail status needs distinct filled outcomes");
   if (!s.restricted.includes('<IconPlate size={40} variant="warning"') || !s.restricted.includes('tier="fill"'))
@@ -155,12 +157,14 @@ check("exact KPI subjects render their literal page meanings in Duotone",
 const html = renderToStaticMarkup(createElement(Chip, { size: "sm", variant: "success", glyph: "checkCircle" }, "Approved"));
 check("status chip renders its Fill glyph and the word", html.includes('data-g="checkCircle.fill"') && html.includes("Approved"));
 const live = renderToStaticMarkup(createElement(MarketStatusBadge, { status: "LIVE" }));
+const voided = renderToStaticMarkup(createElement(MarketStatusBadge, { status: "VOIDED" }));
 const rejected = renderToStaticMarkup(createElement(KycStatusBadge, { status: "REJECTED" }));
 const partial = renderToStaticMarkup(createElement(DsarStatusBadge, { status: "PARTIAL", deletionFailed: true }));
 const unknownAccount = renderToStaticMarkup(createElement(AccountStatusBadge, { status: "UNMAPPED_STATE" }));
 const closedAccount = renderToStaticMarkup(createElement(AccountStatusBadge, { status: "CLOSED" }));
 check("stored admin statuses render distinct Fill meanings",
-  live.includes('data-g="live.fill"') && rejected.includes('data-g="xCircle.fill"') && partial.includes('data-g="alertCircle.fill"'));
+  live.includes('data-g="live.fill"') && voided.includes('data-g="void.fill"')
+  && rejected.includes('data-g="xCircle.fill"') && partial.includes('data-g="alertCircle.fill"'));
 check("unknown account state stays neutral while CLOSED stays terminal",
   unknownAccount.includes('data-kit-chip-variant="neutral"') && unknownAccount.includes('data-g="info.fill"')
   && unknownAccount.includes("Unmapped state") && closedAccount.includes('data-g="xCircle.fill"'));
@@ -179,6 +183,7 @@ if (process.argv.includes("--prove-red")) {
     ["desk account label becomes generic", "subject", '[/^Accounts$/i, "users"]', '[/^Accounts$/i, "chart"]'],
     ["AI token swallows Wait p95", "subject", '/\\bAI\\b|anthropic|oracle|cycle|model|stored \\(180d\\)/i', '/AI|anthropic|oracle|cycle|model|stored \\(180d\\)/i'],
     ["unknown account falsely marked failed", "status", 'presented === "CLOSED" ? "xCircle" : "info"', 'presented === "CLOSED" ? "xCircle" : "xCircle"'],
+    ["voided market falsely marked failed", "status", 'VOIDED: "void"', 'VOIDED: "xCircle"'],
     ["cash stocks and funded cycles become deposits", "subject", '[/deposit/i, "arrowDownToLine"]', '[/deposit|custodial cash|funded free cash|funded cycles/i, "arrowDownToLine"]'],
     ["refund owed becomes a paid cash-out", "subject", '[/refund/i, "refund"]', '[/refund/i, "cashOut"]'],
     ["payout reserve becomes a paid cash-out", "subject", '[/^Payout float$/i, "coins"]', '[/^Payout float$/i, "cashOut"]'],

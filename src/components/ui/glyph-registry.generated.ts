@@ -4,7 +4,7 @@
  * scripts/glyphs/extras.ts. PHOSPHOR-MIGRATION: what every glyph of the family `I` draws, and where its drawings live.
  */
 export const GLYPH_SOURCE = { package: "@phosphor-icons/core", version: "2.1.1" } as const;
-export const GLYPH_SPRITES = { app: "/icons/g/app.778e8e94.svg", admin: "/icons/g/admin.5c185f72.svg" } as const;
+export const GLYPH_SPRITES = { app: "/icons/g/app.a50a277b.svg", admin: "/icons/g/admin.5c185f72.svg" } as const;
 export type GlyphVariant = "regular" | "bold" | "fill" | "duo";
 export type GlyphInk = readonly [x0: number, x1: number];
 /**
@@ -196,7 +196,7 @@ export const GLYPH_REGISTRY = {
   "users": { s: "p-users", g: "app", i: { bold: [1, 254.98], fill: [2.23, 253.79], duo: [2.17, 253.77] } },
   "ussd": { s: "x-ussd", g: "app", i: { bold: [52, 204] } },
   "vibrate": { s: "p-vibrate", g: "app", i: { bold: [24, 232], duo: [8, 248] } },
-  "void": { s: "p-prohibit", g: "app", i: { bold: [20, 236], duo: [24, 232] } },
+  "void": { s: "p-prohibit", g: "app", i: { bold: [20, 236], fill: [20, 236], duo: [24, 232] } },
   "wallet": { s: "p-wallet", g: "app", i: { bold: [27.99, 236], duo: [32, 232] }, m: { d: "M192 40H56a16 16 0 0 0-16 16V184a16 16 0 0 0 16 16H216a8 8 0 0 0 8-8V80a8 8 0 0 0-8-8H56a16 16 0 0 1-16-16", x: [40, 224], f: "M168 132a12 12 0 1 0 24 0a12 12 0 1 0 -24 0Z", fx: [168, 192] } },
   "warning": { s: "p-warning", g: "app", i: { regular: [15.99, 240], bold: [11.99, 244], fill: [15.99, 240] } },
   "weather": { s: "p-cloud-sun", g: "app", i: { regular: [17.09, 240], bold: [13.07, 244], duo: [17.09, 240] } },
