@@ -57,9 +57,11 @@ type Props = {
   pageParam?: string;
   placeholder: string;
   ariaLabel: string;
-  /** `url` (default) writes to the query string; `controlled` is for client-only
-   *  filters over an already-loaded list (the /live wall, admin proposals). */
-  mode?: "url" | "controlled";
+  /** `url` (default) debounces into the URL; `form` submits the current text with a GET filter form;
+   *  `controlled` is for client-only filters over an already-loaded list. */
+  mode?: "url" | "form" | "controlled";
+  /** The GET form that owns this input in `form` mode, even when the field sits above that form. */
+  formId?: string;
   value?: string;
   onChange?: (v: string) => void;
   debounceMs?: number;
@@ -79,6 +81,7 @@ export function SearchBox({
   placeholder,
   ariaLabel,
   mode = "url",
+  formId,
   value,
   onChange,
   debounceMs = 250,
@@ -92,7 +95,7 @@ export function SearchBox({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [searching, startTransition] = useTransition();
-  const [q, setQ] = useState(mode === "url" ? (searchParams.get(param) ?? "") : (value ?? ""));
+  const [q, setQ] = useState(mode === "controlled" ? (value ?? "") : (searchParams.get(param) ?? ""));
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -100,13 +103,13 @@ export function SearchBox({
   // back/forward (and any filter link that carries `q`) moved the URL while the
   // box kept showing the old text. When the URL param changes and the player
   // is NOT actively typing in the box, the URL wins.
-  const urlValue = mode === "url" ? (searchParams.get(param) ?? "") : null;
+  const urlValue = mode === "controlled" ? null : (searchParams.get(param) ?? "");
   const lastUrlRef = useRef(urlValue);
   useEffect(() => {
-    if (mode !== "url" || urlValue === null) return;
+    if (mode === "controlled" || urlValue === null) return;
     if (urlValue === lastUrlRef.current) return;
     lastUrlRef.current = urlValue;
-    if (document.activeElement === inputRef.current) return; // mid-typing — theirs wins
+    if (mode === "url" && document.activeElement === inputRef.current) return; // debounced typing — theirs wins
     setQ(urlValue);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlValue, mode]);
@@ -125,6 +128,7 @@ export function SearchBox({
   };
 
   useEffect(() => {
+    if (mode === "form") return;
     const current = mode === "url" ? (searchParams.get(param) ?? "") : (value ?? "");
     if (current === q.trim()) return;
     if (debounce.current) clearTimeout(debounce.current);
@@ -171,10 +175,12 @@ export function SearchBox({
         <input
           ref={inputRef}
           type="search"
+          name={mode === "form" ? param : undefined}
+          form={mode === "form" ? formId : undefined}
           value={q}
           maxLength={MAX_QUERY_LEN}
           onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); flush(); } }}
+          onKeyDown={(e) => { if (e.key === "Enter" && mode !== "form") { e.preventDefault(); flush(); } }}
           placeholder={placeholder}
           aria-label={ariaLabel}
           enterKeyHint="search"
@@ -186,7 +192,14 @@ export function SearchBox({
             type="button"
             aria-label={t.common.clearSearch}
             className="clear-btn"
-            onClick={() => { setQ(""); if (debounce.current) clearTimeout(debounce.current); push(""); }}
+            onClick={() => {
+              setQ("");
+              if (debounce.current) clearTimeout(debounce.current);
+              if (mode === "form") {
+                if (inputRef.current) inputRef.current.value = "";
+                inputRef.current?.form?.requestSubmit();
+              } else push("");
+            }}
           >
             <I.x s={15} />
           </button>

@@ -89,10 +89,9 @@ async function AdminMaswaliContent({ searchParams }: MaswaliPageProps) {
         <AdminCard title="Weeks" sw="Wiki" padding="p-0">
           <div className="border-b border-border-subtle p-4">
             <span className="mb-1 block text-body-sm text-text-secondary">Week code</span>
-            <SearchBox placeholder="Search week code" ariaLabel="Search week codes" helpFields={["code"]} />
+            <SearchBox mode="form" formId="maswali-week-filters" placeholder="Search week code" ariaLabel="Search week codes" helpFields={["code"]} />
           </div>
-          <form method="get" action="/admin/maswali" className="flex flex-wrap items-end gap-3 border-b border-border-subtle p-4">
-            {query.q && <input type="hidden" name="q" value={query.q} />}
+          <form id="maswali-week-filters" method="get" action="/admin/maswali" className="flex flex-wrap items-end gap-3 border-b border-border-subtle p-4">
             <div className="min-w-[145px] flex-1 text-body-sm text-text-secondary">
               <span id="maswali-week-state-label">State</span>
               <Select key={query.state} name="state" ariaLabel="Week state" defaultValue={query.state} className="mt-1" options={[{ value: "", label: "All states" }, ...WEEK_STATES.map((state) => ({ value: state, label: state }))]} />

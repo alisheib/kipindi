@@ -94,6 +94,8 @@ assert.match(pools, /fd\(\{ kind: review\.kind, ref: review\.ref \}\)/,
   "the licence action must submit the same basis and reference reviewed in the dialog");
 assert.match(pools, /if \(!review \|\| !licenceReviewDraft\(review\.kind, review\.ref\)\) return;/,
   "the licence confirmation must revalidate its frozen values at final submit");
+assert.match(pools, /<UnsavedChangesGuard dirty=\{kind !== "OWNER_RULING" \|\| ref\.trim\(\) !== ""\}/,
+  "a changed licence basis must guard navigation even when its reference is empty");
 assert.match(pools, /className="break-all">(?:Bank or rail reference|Where it is kept):/g,
   "long references must wrap in the confirmation rather than being clipped");
 assert.match(pools, /const \[weekId, setWeekId\] = useState\(""\)/,

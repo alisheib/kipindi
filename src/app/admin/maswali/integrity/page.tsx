@@ -146,10 +146,9 @@ async function Content({ searchParams }: IntegrityPageProps) {
 
         <AdminCard title="Weeks that void whole" sw="Wiki zinazobatilishwa" padding="p-0">
           <div className="border-b border-border-subtle p-4">
-            <SearchBox param="vq" pageParam="vpage" placeholder="Search week code" ariaLabel="Search weeks waiting to be voided" helpFields={["week"]} />
-            <form method="get" action={INTEGRITY_HREF} className="mt-3 flex flex-wrap items-end gap-3">
+            <SearchBox mode="form" formId="maswali-voidable-filters" param="vq" pageParam="vpage" placeholder="Search week code" ariaLabel="Search weeks waiting to be voided" helpFields={["week"]} />
+            <form id="maswali-voidable-filters" method="get" action={INTEGRITY_HREF} className="mt-3 flex flex-wrap items-end gap-3">
               <OtherListState params={listParams} list="v" />
-              {query.voidable.q && <input type="hidden" name="vq" value={query.voidable.q} />}
               <div className="min-w-[130px] flex-1 text-body-sm text-text-secondary"><span>Line</span>
                 <Select key={query.voidable.line} name="vline" ariaLabel="Voidable week line" defaultValue={query.voidable.line} className="mt-1"
                   options={[{ value: "", label: "All lines" }, { value: "PUBLIC", label: "Public" }, { value: "DRIVE", label: "Drive" }]} />
@@ -185,10 +184,9 @@ async function Content({ searchParams }: IntegrityPageProps) {
 
         <AdminCard title="Held shares" sw="Zawadi zilizozuiliwa" padding="p-0">
           <div className="border-b border-border-subtle p-4">
-            <SearchBox param="hq" pageParam="hpage" placeholder="Week, ticket or holder" ariaLabel="Search held shares" helpFields={["week", "ticket", "holder"]} />
-            <form method="get" action={INTEGRITY_HREF} className="mt-3 flex flex-wrap items-end gap-3">
+            <SearchBox mode="form" formId="maswali-held-filters" param="hq" pageParam="hpage" placeholder="Week, ticket or holder" ariaLabel="Search held shares" helpFields={["week", "ticket", "holder"]} />
+            <form id="maswali-held-filters" method="get" action={INTEGRITY_HREF} className="mt-3 flex flex-wrap items-end gap-3">
               <OtherListState params={listParams} list="h" />
-              {query.held.q && <input type="hidden" name="hq" value={query.held.q} />}
               <input type="hidden" name="hsort" value={query.held.sort} /><input type="hidden" name="hdir" value={query.held.dir} />
               <div className="min-w-[160px] flex-1 text-body-sm text-text-secondary"><span>Decision</span>
                 <Select key={query.held.decision} name="hdecision" ariaLabel="Held share decision" defaultValue={query.held.decision} className="mt-1"
@@ -235,10 +233,9 @@ async function Content({ searchParams }: IntegrityPageProps) {
 
         <AdminCard title="Winners" sw="Washindi" padding="p-0">
           <div className="border-b border-border-subtle p-4">
-            <SearchBox param="wq" pageParam="wpage" placeholder="Week or ticket serial" ariaLabel="Search Millionea winners" helpFields={["week", "ticket"]} />
-            <form method="get" action={INTEGRITY_HREF} className="mt-3 flex flex-wrap items-end gap-3">
+            <SearchBox mode="form" formId="maswali-winners-filters" param="wq" pageParam="wpage" placeholder="Week or ticket serial" ariaLabel="Search Millionea winners" helpFields={["week", "ticket"]} />
+            <form id="maswali-winners-filters" method="get" action={INTEGRITY_HREF} className="mt-3 flex flex-wrap items-end gap-3">
               <OtherListState params={listParams} list="w" />
-              {query.winners.q && <input type="hidden" name="wq" value={query.winners.q} />}
               <input type="hidden" name="wsort" value={query.winners.sort} /><input type="hidden" name="wdir" value={query.winners.dir} />
               <div className="min-w-[160px] flex-1 text-body-sm text-text-secondary"><span>Screening</span>
                 <Select key={query.winners.review} name="wreview" ariaLabel="Winner screening" defaultValue={query.winners.review} className="mt-1"
@@ -287,10 +284,9 @@ async function Content({ searchParams }: IntegrityPageProps) {
 
         <AdminCard title="Seal log" sw="Kumbukumbu ya muhuri" padding="p-0">
           <div className="border-b border-border-subtle p-4">
-            <SearchBox param="sq" pageParam="spage" placeholder="Search sealed week code" ariaLabel="Search seal log weeks" helpFields={["week"]} />
-            <form method="get" action={INTEGRITY_HREF} className="mt-3 flex flex-wrap items-end gap-3">
+            <SearchBox mode="form" formId="maswali-seals-filters" param="sq" pageParam="spage" placeholder="Search sealed week code" ariaLabel="Search seal log weeks" helpFields={["week"]} />
+            <form id="maswali-seals-filters" method="get" action={INTEGRITY_HREF} className="mt-3 flex flex-wrap items-end gap-3">
               <OtherListState params={listParams} list="s" />
-              {query.seals.q && <input type="hidden" name="sq" value={query.seals.q} />}
               <input type="hidden" name="sdir" value={query.seals.dir} />
               <div className="min-w-[160px] flex-1 text-body-sm text-text-secondary"><span>Week state</span>
                 <Select key={query.seals.state} name="sstate" ariaLabel="Sealed week state" defaultValue={query.seals.state} className="mt-1"

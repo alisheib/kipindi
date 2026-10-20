@@ -44,6 +44,13 @@ export const MUTATIONS = [
     failure: /the licence action must submit the same basis and reference reviewed in the dialog/,
   },
   {
+    name: "licence basis unsaved guard",
+    file: "src/app/admin/maswali/pools/pools-controls.tsx",
+    from: 'dirty={kind !== "OWNER_RULING" || ref.trim() !== ""}',
+    to: 'dirty={ref.trim() !== ""}',
+    failure: /a changed licence basis must guard navigation even when its reference is empty/,
+  },
+  {
     name: "long final-week lookup",
     file: "src/lib/maswali-admin-form-validation.ts",
     from: "needsLookup ? [] : [...weeks]",

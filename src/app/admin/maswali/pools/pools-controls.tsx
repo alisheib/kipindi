@@ -129,7 +129,7 @@ export function LicenceCeremony() {
       </Field>}
       <Button size="sm" disabled={pending || (kind !== "NONE" && !licenceRefLengthOk(ref))} onClick={() => setReview(licenceReviewDraft(kind, ref))}>Record</Button>
       <Feedback error={error} note={note} />
-      <UnsavedChangesGuard dirty={ref.trim() !== ""} body="A licence basis has been typed but not recorded. Leaving now discards it." />
+      <UnsavedChangesGuard dirty={kind !== "OWNER_RULING" || ref.trim() !== ""} body="A licence basis has been chosen but not recorded. Leaving now discards it." />
       <ConfirmModal open={review !== null} onClose={() => setReview(null)} loading={pending} tone="brand" tier="hard" typedWord="RECORD"
         title="Record the licence basis?" confirmLabel="Record it"
         body={<div className="space-y-2">

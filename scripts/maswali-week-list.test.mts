@@ -12,6 +12,7 @@ import { parseWeekListQuery, selectWeekPage, weekListParams } from "../src/lib/m
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const helperPath = join(root, "src/lib/maswali-week-list.ts");
 const page = readFileSync(join(root, "src/app/admin/maswali/page.tsx"), "utf8");
+const searchBox = readFileSync(join(root, "src/components/ui/search-box.tsx"), "utf8");
 const consoleRead = readFileSync(join(root, "src/lib/server/maswali-console.ts"), "utf8");
 const helper = readFileSync(helperPath, "utf8");
 let passed = 0, failed = 0;
@@ -52,7 +53,17 @@ const invalid = query({ state: "BAD", line: "NOPE", sort: "sql", dir: "sideways"
 ok("invalid URL controls cannot change the read", invalid.state === "" && invalid.line === "" && invalid.sort === "week" && invalid.dir === "desc");
 const params = weekListParams(query({ q: " MW-2026 ", state: "OPEN", line: "DRIVE", sort: "tickets", dir: "asc" }));
 ok("validated URL state preserves filters and sort for pager links", params.q === "MW-2026" && params.state === "OPEN" && params.line === "DRIVE" && params.sort === "tickets" && params.dir === "asc" && !("page" in params));
-ok("kit search and filter form preserve URL state while resetting page", /<SearchBox[^>]*helpFields=\{\["code"\]\}/.test(page) && /<form method="get"/.test(page) && /name="q" value=\{query\.q\}/.test(page) && /name="sort" value=\{query\.sort\}/.test(page) && /name="dir" value=\{query\.dir\}/.test(page) && !/name="page"/.test(page));
+const weekFormWired = (source: string) => /<SearchBox mode="form" formId="maswali-week-filters"[^>]*helpFields=\{\["code"\]\}/.test(source)
+  && /<form id="maswali-week-filters" method="get"/.test(source)
+  && !/type="hidden" name="q"/.test(source);
+ok("kit search is the GET form's sole q input and keeps URL state while resetting page", weekFormWired(page)
+  && /name="sort" value=\{query\.sort\}/.test(page) && /name="dir" value=\{query\.dir\}/.test(page) && !/name="page"/.test(page));
+const formSearchWired = (source: string) => source.includes('name={mode === "form" ? param : undefined}')
+  && source.includes('form={mode === "form" ? formId : undefined}')
+  && source.includes('if (mode === "form") return;')
+  && source.includes('e.key === "Enter" && mode !== "form"');
+ok("form search submits the current field on Apply or Enter without a competing debounce", formSearchWired(searchBox));
+ok("form search resyncs on URL/back navigation even when the input stays focused", searchBox.includes('mode === "url" && document.activeElement === inputRef.current'));
 ok("six scalar headings sort; filtered pager keeps validated state", (page.match(/<SortTh field=/g) ?? []).length === 6 && /sp=\{listParams\}/.test(page) && /baseHref=\{buildBaseHref\("\/admin\/maswali", listParams\)\}/.test(page));
 ok("empty states report the actual cause", page.includes("weeks.allTotal === 0") && page.includes("No week yet") && page.includes("weeks.total === 0") && page.includes("No weeks match these filters"));
 ok("server reads the complete list and selects before building page rows", /weekStore\.list\(\{\}\)/.test(consoleRead) && /selectWeekPage\(weeks, askedPage, perPage, query\)/.test(consoleRead) && /selected\.weeks\.map\(rowOf\)/.test(consoleRead));
@@ -68,6 +79,12 @@ function mutated(source: string) {
   return mod.exports as { selectWeekPage: typeof selectWeekPage };
 }
 if (process.argv.includes("--prove-red")) {
+  const detached = page.replace('mode="form" formId="maswali-week-filters"', 'mode="url" formId="maswali-week-filters"');
+  if (detached === page) throw new Error("Week form-mode plant target missing");
+  ok("red: a detached week search would lose a rapid Apply value", !weekFormWired(detached));
+  const noFieldName = searchBox.replace('name={mode === "form" ? param : undefined}', 'name={undefined}');
+  if (noFieldName === searchBox) throw new Error("SearchBox form-name plant target missing");
+  ok("red: a nameless form search cannot submit typed text", !formSearchWired(noFieldName));
   const noSubstring = helper.replace("matchesQuery(parsed, { code: w.code }, CODE_SEARCH)", "w.code.toLowerCase() === query.q.toLowerCase()");
   if (noSubstring === helper) throw new Error("Substring plant target missing");
   const plantedSearch = mutated(noSubstring).selectWeekPage(all, 1, 20, query({ q: "w-2026-0" }));

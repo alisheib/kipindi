@@ -65,6 +65,15 @@ ok("untrusted URL values fall back to safe controls and first pages", bad.held.d
 const params = integrityListParams(query({ hq: " Amina ", hdecision: "pending", hpage: "2", wq: "MW-01", wsort: "share", wpage: "3", sq: "MW-02", sstate: "VOIDED", spage: "4", vq: "MW-03", vline: "DRIVE", vsort: "tickets", vpage: "5" }));
 ok("URL params preserve each list's independent filter, sort and page", params.hq === "Amina" && params.hdecision === "pending" && params.hpage === "2" && params.wq === "MW-01" && params.wsort === "share" && params.wpage === "3" && params.sq === "MW-02" && params.sstate === "VOIDED" && params.spage === "4" && params.vq === "MW-03" && params.vline === "DRIVE" && params.vsort === "tickets" && params.vpage === "5");
 ok("all four kit searches reset only their own pager", ["h", "w", "s", "v"].every((prefix) => page.includes(`param="${prefix}q" pageParam="${prefix}page"`)) && searchBox.includes("sp.delete(pageParam)"));
+const formIds = { v: "maswali-voidable-filters", h: "maswali-held-filters", w: "maswali-winners-filters", s: "maswali-seals-filters" };
+const allSearchFormsWired = (source: string) => Object.entries(formIds).every(([prefix, id]) =>
+  source.includes(`<SearchBox mode="form" formId="${id}" param="${prefix}q"`)
+  && source.includes(`<form id="${id}" method="get" action={INTEGRITY_HREF}`)
+  && !source.includes(`type="hidden" name="${prefix}q"`));
+ok("all four searches submit current text through their own GET filter form", allSearchFormsWired(page));
+ok("the shared form search has a named associated field and native Enter", searchBox.includes('name={mode === "form" ? param : undefined}')
+  && searchBox.includes('form={mode === "form" ? formId : undefined}')
+  && searchBox.includes('e.key === "Enter" && mode !== "form"'));
 ok("all four pagers retain sibling state and use their own page key", ["h", "w", "s", "v"].every((prefix) => page.includes(`baseHref={buildBaseHref(INTEGRITY_HREF, listParams, "${prefix}page")} param="${prefix}page"`)));
 ok("all four filter forms retain sibling controls and omit their own page", ["h", "w", "s", "v"].every((prefix) => page.includes(`<OtherListState params={listParams} list="${prefix}" />`)) && /!key\.startsWith\(list\)/.test(page));
 ok("read model selects complete winner, held, seal and voidable sets before page-only hydration", consoleRead.includes("selectHeldShares(allHeld") && consoleRead.includes("selectWinnerTickets(won") && consoleRead.includes("for (const { ticket: t, code } of selectedWinners.rows)") && consoleRead.includes("selectSealWeeks(sealed") && consoleRead.includes("for (const w of selectedSeals.rows)") && consoleRead.includes("selectVoidableWeeks(voidable") && consoleRead.includes("selectedVoidable.rows.map(rowOf)"));
@@ -98,6 +107,12 @@ if (process.argv.includes("--prove-red")) {
   const brokenCount = page.replace('adminCount(v.voidablePage.allTotal, "week")', 'v.voidablePage.allTotal');
   if (brokenCount === page) throw new Error("Integrity singular count plant target missing");
   ok("red: a raw voidable count loses the singular count guard", !countLabelsAreSingularSafe(brokenCount));
+  const detached = page.replace('mode="form" formId="maswali-voidable-filters"', 'mode="url" formId="maswali-voidable-filters"');
+  if (detached === page) throw new Error("Voidable form-mode plant target missing");
+  ok("red: a detached voidable search loses fast Apply text", !allSearchFormsWired(detached));
+  const duplicate = page.replace('<OtherListState params={listParams} list="h" />', '<OtherListState params={listParams} list="h" /><input type="hidden" name="hq" value={query.held.q} />');
+  if (duplicate === page) throw new Error("Held duplicate-search plant target missing");
+  ok("red: a hidden held query cannot override the typed search", !allSearchFormsWired(duplicate));
   const unsorted = helper.replace("return pageRows(all, ordered, query.page, perPage);", "return pageRows(all, filtered, query.page, perPage);");
   if (unsorted === helper) throw new Error("Held global-sort plant target missing");
   ok("red: a held page sliced without sorting fails the highest-share assertion", mutated(unsorted).selectHeldShares(held, query({ hsort: "share", hdir: "desc" }).held, 20).rows[0]?.weekSeq !== 1);
