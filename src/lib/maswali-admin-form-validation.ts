@@ -1,8 +1,29 @@
+import { licenceRefLengthOk } from "./maswali-ceremony-bounds";
+
 /** Match the money service's amount/reference gate before opening its confirmation. */
 export function validGuaranteeDraft(amount: string, reference: string): boolean {
   const value = Number(amount);
   const ref = reference.trim();
   return /^\d+$/.test(amount) && Number.isSafeInteger(value) && value > 0 && ref.length >= 5 && ref.length <= 120;
+}
+
+export type GuaranteeReview = { mode: "fund" | "return"; amount: string; reference: string };
+
+/** Freeze the values shown in the money confirmation and sent to the action. */
+export function guaranteeReviewDraft(mode: GuaranteeReview["mode"], amount: string, reference: string): GuaranteeReview | null {
+  if (!validGuaranteeDraft(amount, reference)) return null;
+  return { mode, amount: String(Number(amount)), reference: reference.trim() };
+}
+
+export type LicenceReview = { kind: "OWNER_RULING" | "GBT_WRITTEN" | "NONE"; ref: string; label: string };
+
+/** Match the licence service's canonical reference before review and submission. */
+export function licenceReviewDraft(kind: string, ref: string): LicenceReview | null {
+  if (kind === "NONE") return { kind, ref: "", label: "None (withdraw it)" };
+  if (kind !== "OWNER_RULING" && kind !== "GBT_WRITTEN") return null;
+  const canonicalRef = ref.trim().replace(/\s+/g, " ");
+  if (!licenceRefLengthOk(canonicalRef)) return null;
+  return { kind, ref: canonicalRef, label: kind === "GBT_WRITTEN" ? "The Gaming Board's letter" : "The Owner's dated ruling" };
 }
 
 /** Match the share service's required decision length inside its confirmation. */

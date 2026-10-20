@@ -15,7 +15,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { ConfirmModal } from "@/components/ui/modal";
 import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
-import { sunsetChoices, sunsetConfirmText, validGuaranteeDraft, type SunsetCandidate } from "@/lib/maswali-admin-form-validation";
+import { guaranteeReviewDraft, licenceReviewDraft, sunsetChoices, sunsetConfirmText, validGuaranteeDraft,
+  type GuaranteeReview, type LicenceReview, type SunsetCandidate } from "@/lib/maswali-admin-form-validation";
+import { formatTzs } from "@/lib/utils";
 import { MASWALI_LICENCE_REF_MIN, MASWALI_LICENCE_REF_MAX, MASWALI_REASON_MIN, MASWALI_REASON_MAX,
   licenceRefLengthOk, reasonLengthOk } from "@/lib/maswali-ceremony-bounds";
 import {
@@ -76,9 +78,9 @@ export function GuaranteeCeremony({ canFund, canReturn }: { canFund: boolean; ca
   const { pending, error, note, run } = useAct();
   const [amount, setAmount] = useState("");
   const [reference, setReference] = useState("");
-  const [mode, setMode] = useState<"fund" | "return" | null>(null);
+  const [review, setReview] = useState<GuaranteeReview | null>(null);
   if (!mayAct) return <ActReadOnly />;
-  const word = mode === "return" ? RETURN_WORD : FUND_WORD;
+  const word = review?.mode === "return" ? RETURN_WORD : FUND_WORD;
   const ready = validGuaranteeDraft(amount, reference);
   return (
     <div className="space-y-3">
@@ -87,17 +89,26 @@ export function GuaranteeCeremony({ canFund, canReturn }: { canFund: boolean; ca
         <Field label="Bank or rail reference" required hint="5–120 characters from the bank or payment rail"><Input size="sm" maxLength={120} value={reference} onChange={(e) => setReference(e.target.value)} /></Field>
       </div>
       <div className="flex gap-2 flex-wrap">
-        {canFund && <Button size="sm" disabled={pending || !ready} onClick={() => setMode("fund")}>Pay in</Button>}
-        {canReturn && <Button size="sm" variant="ghost" disabled={pending || !ready} onClick={() => setMode("return")}>Take back</Button>}
+        {canFund && <Button size="sm" disabled={pending || !ready} onClick={() => setReview(guaranteeReviewDraft("fund", amount, reference))}>Pay in</Button>}
+        {canReturn && <Button size="sm" variant="ghost" disabled={pending || !ready} onClick={() => setReview(guaranteeReviewDraft("return", amount, reference))}>Take back</Button>}
       </div>
       <Feedback error={error} note={note} />
       <UnsavedChangesGuard dirty={amount !== "" || reference.trim() !== ""} body="A guarantee movement has been typed but not recorded. Leaving now discards it." />
-      <ConfirmModal open={mode !== null} onClose={() => setMode(null)} loading={pending} tone={mode === "return" ? "warning" : "brand"} tier="hard" typedWord={word}
-        title={mode === "return" ? "Take guarantee money back?" : "Pay into the guarantee?"} confirmLabel={mode === "return" ? "Take it back" : "Pay it in"}
-        body={mode === "return"
-          ? "Never below what the unsettled weeks need (OD-02); the service refuses a return that would leave the floor unbacked."
-          : "Owner capital paid in to back the floor. It is the owner's money, committed: it never counts as retained earnings."}
-        onConfirm={() => run(() => (mode === "return" ? returnMaswaliGuaranteeAction : fundMaswaliGuaranteeAction)(fd({ amount, reference, typed: word })), () => { setMode(null); setAmount(""); setReference(""); })} />
+      <ConfirmModal open={review !== null} onClose={() => setReview(null)} loading={pending} tone={review?.mode === "return" ? "warning" : "brand"} tier="hard" typedWord={word}
+        title={review?.mode === "return" ? "Take guarantee money back?" : "Pay into the guarantee?"} confirmLabel={review?.mode === "return" ? "Take it back" : "Pay it in"}
+        body={<div className="space-y-2">
+          <p>Amount: <strong>{review ? formatTzs(Number(review.amount)) : ""}</strong></p>
+          <p className="break-all">Bank or rail reference: <strong>{review?.reference}</strong></p>
+          <p>{review?.mode === "return"
+            ? "Never below what the unsettled weeks need (OD-02); the service refuses a return that would leave the floor unbacked."
+            : "Owner capital paid in to back the floor. It is the owner's money, committed: it never counts as retained earnings."}</p>
+        </div>}
+        onConfirm={() => {
+          if (!review || !validGuaranteeDraft(review.amount, review.reference)) return;
+          run(() => (review.mode === "return" ? returnMaswaliGuaranteeAction : fundMaswaliGuaranteeAction)(
+            fd({ amount: review.amount, reference: review.reference, typed: word })),
+          () => { setReview(null); setAmount(""); setReference(""); });
+        }} />
     </div>
   );
 }
@@ -107,7 +118,7 @@ export function LicenceCeremony() {
   const { pending, error, note, run } = useAct();
   const [kind, setKind] = useState("OWNER_RULING");
   const [ref, setRef] = useState("");
-  const [open, setOpen] = useState(false);
+  const [review, setReview] = useState<LicenceReview | null>(null);
   if (!mayAct) return <ActReadOnly />;
   return (
     <div className="space-y-3">
@@ -116,13 +127,20 @@ export function LicenceCeremony() {
       {kind !== "NONE" && <Field label="Where it is kept" hint={`${MASWALI_LICENCE_REF_MIN}–${MASWALI_LICENCE_REF_MAX} characters after spaces are folded.`}>
         <Textarea rows={2} maxLength={MASWALI_LICENCE_REF_MAX} value={ref} onChange={(e) => setRef(e.target.value)} />
       </Field>}
-      <Button size="sm" disabled={pending || (kind !== "NONE" && !licenceRefLengthOk(ref))} onClick={() => setOpen(true)}>Record</Button>
+      <Button size="sm" disabled={pending || (kind !== "NONE" && !licenceRefLengthOk(ref))} onClick={() => setReview(licenceReviewDraft(kind, ref))}>Record</Button>
       <Feedback error={error} note={note} />
       <UnsavedChangesGuard dirty={ref.trim() !== ""} body="A licence basis has been typed but not recorded. Leaving now discards it." />
-      <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="brand" tier="hard" typedWord="RECORD"
+      <ConfirmModal open={review !== null} onClose={() => setReview(null)} loading={pending} tone="brand" tier="hard" typedWord="RECORD"
         title="Record the licence basis?" confirmLabel="Record it"
-        body={kind === "NONE" ? "No week can open while no basis is recorded." : "Weeks can open once this is recorded and the guarantee covers them."}
-        onConfirm={() => run(() => setMaswaliLicenceBasisAction(fd({ kind, ref })), () => { setOpen(false); setRef(""); })} />
+        body={<div className="space-y-2">
+          <p>Basis: <strong>{review?.label}</strong></p>
+          {review?.kind !== "NONE" && <p className="break-all">Where it is kept: <strong>{review?.ref}</strong></p>}
+          <p>{review?.kind === "NONE" ? "No week can open while no basis is recorded." : "Weeks can open once this is recorded and the guarantee covers them."}</p>
+        </div>}
+        onConfirm={() => {
+          if (!review || !licenceReviewDraft(review.kind, review.ref)) return;
+          run(() => setMaswaliLicenceBasisAction(fd({ kind: review.kind, ref: review.ref })), () => { setReview(null); setRef(""); });
+        }} />
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { MUTATIONS } from "./anchors/maswali-admin-form-validation.anchors.mjs";
 import { injectDefect } from "./red-anchor.mjs";
-import { sunsetChoices, sunsetConfirmText, validGuaranteeDraft, validShareDecision } from "../src/lib/maswali-admin-form-validation.ts";
+import { guaranteeReviewDraft, licenceReviewDraft, sunsetChoices, sunsetConfirmText, validGuaranteeDraft, validShareDecision } from "../src/lib/maswali-admin-form-validation.ts";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const poolsControl = fileURLToPath(new URL("../src/app/admin/maswali/pools/pools-controls.tsx", import.meta.url));
@@ -39,6 +39,16 @@ assert.equal(validGuaranteeDraft("-1", "BANK-123"), false, "negative amount cann
 assert.equal(validGuaranteeDraft("1.5", "BANK-123"), false, "fractional amount cannot open a money confirmation");
 assert.equal(validGuaranteeDraft("9007199254740992", "BANK-123"), false, "unsafe integer cannot open a money confirmation");
 assert.equal(validGuaranteeDraft("1000", "X".repeat(121)), false, "long rail reference cannot open a money confirmation");
+assert.deepEqual(guaranteeReviewDraft("fund", "001000", "  BANK-123  "),
+  { mode: "fund", amount: "1000", reference: "BANK-123" }, "money review freezes the canonical amount and exact submitted reference");
+assert.equal(guaranteeReviewDraft("return", "1000", "BAD"), null, "a refused money draft cannot make a review snapshot");
+assert.deepEqual(licenceReviewDraft("GBT_WRITTEN", "  Board   letter  42  "),
+  { kind: "GBT_WRITTEN", ref: "Board letter 42", label: "The Gaming Board's letter" },
+  "licence review names the Board basis and the canonical reference sent to the service");
+assert.deepEqual(licenceReviewDraft("NONE", "stale reference"),
+  { kind: "NONE", ref: "", label: "None (withdraw it)" }, "withdrawal review cannot carry a stale reference");
+assert.equal(licenceReviewDraft("OWNER_RULING", "bad"), null, "a short licence reference cannot make a review snapshot");
+assert.equal(licenceReviewDraft("UNKNOWN", "valid reference"), null, "an unknown licence basis cannot make a review snapshot");
 assert.equal(validShareDecision(" reason "), true, "a written share decision can confirm");
 assert.equal(validShareDecision(""), false, "blank share decision cannot confirm");
 assert.equal(validShareDecision("abcd"), false, "short share decision cannot confirm");
@@ -62,10 +72,30 @@ const page = readFileSync(poolsPage, "utf8");
 const integrity = readFileSync(integrityControl, "utf8");
 assert.match(pools, /const ready = validGuaranteeDraft\(amount, reference\)/,
   "the guarantee form must derive readiness from both entered fields");
-assert.match(pools, /disabled=\{pending \|\| !ready\} onClick=\{\(\) => setMode\("fund"\)\}/,
+assert.match(pools, /disabled=\{pending \|\| !ready\} onClick=\{\(\) => setReview\(guaranteeReviewDraft\("fund", amount, reference\)\)\}/,
   "Pay in must stay disabled until both the amount and rail reference are valid");
-assert.match(pools, /disabled=\{pending \|\| !ready\} onClick=\{\(\) => setMode\("return"\)\}/,
+assert.match(pools, /disabled=\{pending \|\| !ready\} onClick=\{\(\) => setReview\(guaranteeReviewDraft\("return", amount, reference\)\)\}/,
   "Take back must stay disabled until both the amount and rail reference are valid");
+assert.match(pools, /Amount: <strong>\{review \? formatTzs\(Number\(review\.amount\)\) : ""\}<\/strong>/,
+  "the guarantee confirmation must show the frozen amount with the shared TZS formatter");
+assert.match(pools, /Bank or rail reference: <strong>\{review\?\.reference\}<\/strong>/,
+  "the guarantee confirmation must show the exact reviewed rail reference");
+assert.match(pools, /fd\(\{ amount: review\.amount, reference: review\.reference, typed: word \}\)/,
+  "the guarantee action must submit the same amount and reference reviewed in the dialog");
+assert.match(pools, /if \(!review \|\| !validGuaranteeDraft\(review\.amount, review\.reference\)\) return;/,
+  "the guarantee confirmation must revalidate its frozen values at final submit");
+assert.match(pools, /onClick=\{\(\) => setReview\(licenceReviewDraft\(kind, ref\)\)\}/,
+  "the licence record button must freeze the basis and reference at review time");
+assert.match(pools, /Basis: <strong>\{review\?\.label\}<\/strong>/,
+  "the licence confirmation must show the exact basis selected");
+assert.match(pools, /Where it is kept: <strong>\{review\?\.ref\}<\/strong>/,
+  "the licence confirmation must show the exact canonical reference");
+assert.match(pools, /fd\(\{ kind: review\.kind, ref: review\.ref \}\)/,
+  "the licence action must submit the same basis and reference reviewed in the dialog");
+assert.match(pools, /if \(!review \|\| !licenceReviewDraft\(review\.kind, review\.ref\)\) return;/,
+  "the licence confirmation must revalidate its frozen values at final submit");
+assert.match(pools, /className="break-all">(?:Bank or rail reference|Where it is kept):/g,
+  "long references must wrap in the confirmation rather than being clipped");
 assert.match(pools, /const \[weekId, setWeekId\] = useState\(""\)/,
   "a final week must be chosen explicitly, not silently default to the first candidate");
 assert.match(pools, /const choices = sunsetChoices\(weeks, lookup\)/,
@@ -88,4 +118,4 @@ assert.match(integrity, /\{!open && error && <span role="alert"/,
   "Hold failure must have one visible alert inside its open confirmation");
 assert.match(integrity, /\{mode === null && error && <span role="alert"/,
   "Release or forfeit failure must have one visible alert inside its open confirmation");
-process.stdout.write("maswali admin form validation: 21 behavior and 14 control-wiring assertions PASS\n");
+process.stdout.write("maswali admin form validation: behavior and control-wiring assertions PASS\n");
