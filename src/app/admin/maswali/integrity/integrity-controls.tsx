@@ -91,7 +91,7 @@ export function HoldShareControl({ ticketId, serial }: { ticketId: string; seria
   return (
     <span className="inline-flex flex-col gap-1">
       <Button size="xs" variant="ghost" disabled={pending} onClick={() => setOpen(true)}>Hold…</Button>
-      {error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
+      {!open && error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
       {note && <span role="status" className="text-body-sm text-success">{note}</span>}
       <ConfirmModal open={open} onClose={() => { setOpen(false); setTried(false); }} loading={pending} tone="warning" tier="hard" typedWord="HOLD"
         title={`Hold the share on ${serial}?`} confirmLabel="Hold it"
@@ -123,7 +123,7 @@ export function HeldShareControls({ ticketId, serial, canRelease, canForfeit, re
         {canRelease ? <Button size="xs" variant="ghost" disabled={pending} onClick={() => setMode("release")}>Release…</Button> : <ControlLocked what="Release" need={releaseNeed} />}
         {canForfeit ? <Button size="xs" variant="claret" disabled={pending} onClick={() => setMode("forfeit")}>Forfeit…</Button> : <ControlLocked what="Forfeit" need={forfeitNeed} />}
       </span>
-      {error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
+      {mode === null && error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
       {note && <span role="status" className="text-body-sm text-success">{note}</span>}
       <ConfirmModal open={mode !== null} onClose={() => { setMode(null); setTried(false); }} loading={pending} tone={mode === "forfeit" ? "claret" : "brand"} tier="hard"
         typedWord={mode === "forfeit" ? FORFEIT_WORD : "RELEASE"}

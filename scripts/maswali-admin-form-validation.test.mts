@@ -19,6 +19,12 @@ if (process.argv.includes("--prove-red")) {
     { file: integrityControl, anchor: "if (!validShareDecision(reason)) { setTried(true); return; }",
       mutation: "if (false) { setTried(true); return; }",
       failure: /Hold must refuse a blank decision inside the confirmation/, name: "share-decision gate" },
+    { file: integrityControl, anchor: '{!open && error && <span role="alert"',
+      mutation: '{error && <span role="alert"',
+      failure: /Hold failure must have one visible alert inside its open confirmation/, name: "hold-alert placement" },
+    { file: integrityControl, anchor: '{mode === null && error && <span role="alert"',
+      mutation: '{error && <span role="alert"',
+      failure: /Release or forfeit failure must have one visible alert inside its open confirmation/, name: "decision-alert placement" },
   ]) {
     const before = readFileSync(plant.file, "utf8");
     assert.equal(before.split(plant.anchor).length - 1, 1, `${plant.name} plant must have one target`);
@@ -62,4 +68,8 @@ assert.match(integrity, /if \(!validShareDecision\(reason\)\) \{ setTried\(true\
   "Hold must refuse a blank decision inside the confirmation");
 assert.match(integrity, /if \(!validShareDecision\(text\)\) \{ setTried\(true\); return; \}/,
   "Release and forfeit must refuse a blank decision inside the confirmation");
-process.stdout.write("maswali admin form validation: 12 behavior and 5 control-wiring assertions PASS\n");
+assert.match(integrity, /\{!open && error && <span role="alert"/,
+  "Hold failure must have one visible alert inside its open confirmation");
+assert.match(integrity, /\{mode === null && error && <span role="alert"/,
+  "Release or forfeit failure must have one visible alert inside its open confirmation");
+process.stdout.write("maswali admin form validation: 12 behavior and 7 control-wiring assertions PASS\n");
