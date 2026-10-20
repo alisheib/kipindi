@@ -1,6 +1,9 @@
 /** U43 B5: Ali's 2026-10-19 player palette rule in the shared shell. */
 import { readFileSync } from "node:fs";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { STATUS_TONE, TONE_CHIP } from "../src/lib/status-tone.ts";
+import { InstagramMark, TikTokMark, WhatsAppMark } from "../src/components/ui/social-marks.tsx";
 import { decomment } from "./lib/decomment.mts";
 
 let failed = 0;
@@ -112,18 +115,30 @@ check("5.9 Coming soon flag and footer rule contain no money or side ink",
 check("5.10 selected language tick uses brand in both player shells",
   languageMenu.includes('const tickInk = "var(--brand-300)";')
   && !/gilt|gold|--yes-|--no-/.test(languageMenu));
-const socialNeutral = (marks: string) =>
-  marks.includes('const PLAYER_MARK_STYLE = { filter: "grayscale(1) brightness(1.6)" } as const;')
-  && (marks.match(/style=\{PLAYER_MARK_STYLE\}/g) ?? []).length === 3;
-check("5.11 all mounted social marks keep their shapes with neutral player ink",
-  socialNeutral(socialMarks)
+const socialBranded = (marks: string) =>
+  !/PLAYER_MARK_STYLE|grayscale\(|brightness\(/.test(marks)
+  && marks.includes('fill={`url(#${IG_GRADIENT_ID})`}')
+  && marks.includes('<path fill="#25D366" d={WHATSAPP_BUBBLE_D} />')
+  && marks.includes('<use href={`#${TT_NOTE_ID}`} fill="#25F4EE"')
+  && !/style=\{/.test(marks.slice(marks.indexOf('export function InstagramMark')));
+const instagramMarkup = renderToStaticMarkup(createElement(InstagramMark));
+const tiktokMarkup = renderToStaticMarkup(createElement(TikTokMark));
+const whatsAppMarkup = renderToStaticMarkup(createElement(WhatsAppMark));
+check("5.11 all mounted social marks render their original vendor colours",
+  socialBranded(socialMarks)
+  && instagramMarkup.includes('stop-color="#FD5949"')
+  && instagramMarkup.includes('stop-color="#D6249F"')
+  && tiktokMarkup.includes('fill="#25F4EE"')
+  && tiktokMarkup.includes('fill="#FE2C55"')
+  && whatsAppMarkup.includes('fill="#25D366"')
+  && ![instagramMarkup, tiktokMarkup, whatsAppMarkup].some((mark) => /filter:|filter=/.test(mark))
   && footer.includes('<Mark s={16} />')
   && channels.includes('<Mark s={24} />')
   && shareButton.includes('<WhatsAppMark s={18} />')
   && positionShare.includes('<WhatsAppMark s={14} />')
   && invite.includes('<WhatsAppMark s={14} />'));
-check("5.11′ PLANT · restoring vendor colours makes the social ink guard red",
-  !socialNeutral(socialMarks.replace('filter: "grayscale(1) brightness(1.6)"', 'filter: "none"')));
+check("5.11′ PLANT · borrowing YES green for WhatsApp makes the social guard red",
+  !socialBranded(socialMarks.replace('<path fill="#25D366" d={WHATSAPP_BUBBLE_D} />', '<path fill="var(--yes-500)" d={WHATSAPP_BUBBLE_D} />')));
 check("6.1 earned WIN retains gold while the YES/NO logo halves and neutral needle remain defined",
   STATUS_TONE.WIN.player === "gilt"
   && read("src/lib/brand-mark.ts").includes('green: "#1EA362"')
@@ -147,7 +162,9 @@ check("7.1 design law records Ali's later gold and side rulings",
   authority.includes("Current player rule (Ali, 2026-10-19): gold marks only money the player has won")
   && !authority.includes("Bet and sell keep gold")
   && !authority.includes('The bet commit "Weka dau · TZS {x}" keeps gold')
-  && authority.includes("Green and red name only the two betting sides"));
+  && authority.includes("Green and red name only the two betting sides")
+  && authority.includes("external social marks' original vendor colours")
+  && !authority.includes("external social marks\nretain their shape with neutral player ink"));
 
 console.log(`U43 shell palette: ${failed ? `${failed} failed` : "all checks passed"}`);
 process.exit(failed ? 1 : 0);

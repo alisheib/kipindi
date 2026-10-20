@@ -52,6 +52,13 @@ ok("price tape, duplicate live eyebrow and view switch are removed", !/<PriceTap
 // control must report collapsed until a real chart is mounted after hydration.
 ok("recent outcomes remain before the inline chart", viz.indexOf('className="ud-board-cubes"') > 0 && viz.indexOf('className="ud-board-cubes"') < viz.indexOf('className="ud-board-chart"') && viz.includes("aria-expanded={open === true}"));
 ok("phone card precedes the chart; desktop puts chart beside it", /\.ud-board-rounds\s*\{\s*order:\s*1/.test(css) && /\.ud-board-lab\s*\{\s*order:\s*2/.test(css) && /grid-template-columns:\s*minmax\(0, 1fr\) 392px/.test(css));
+ok("saved closed desktop chart puts cards first without an empty chart column",
+  viz.includes('data-viz-state={open === null ? "pending" : open ? "open" : "closed"}')
+  && css.includes('.ud-board-stage:has(.ud-board-viz[data-viz-state="closed"]) { grid-template-columns: minmax(0, 1fr); }')
+  && css.includes('.ud-board-stage:has(.ud-board-viz[data-viz-state="closed"]) .ud-board-rounds { grid-column: 1; grid-row: 1; }')
+  && css.includes('.ud-board-stage:has(.ud-board-viz[data-viz-state="closed"]) .ud-board-lab { grid-column: 1; grid-row: 2; margin-top: var(--sp-5); }')
+  && css.includes('.ud-board-stage:has(.ud-board-viz[data-viz-state="closed"]) .ud-board-chart { order: 2; }')
+  && css.includes('.ud-board-stage:has(.ud-board-viz[data-viz-state="closed"]) .ud-board-cubes { order: 1; }'));
 ok("tablet result card stays slim beside the live round",
   page.includes('<div className="grid items-start gap-4"')
   && css.includes('.ud-card { height: auto; gap: var(--ud-gap); padding: var(--ud-pad); }'));

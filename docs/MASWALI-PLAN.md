@@ -30,7 +30,8 @@
 ## §0 · RESUME AT
 
 **State (2026-10-20):** S1–S4 are on `main` dark. S5's SSD release branch
-`codex/maswali-coord-20261019` includes the U43 `main` release at `a12f7b26`.
+`codex/maswali-coord-20261019` includes the U43 `main` release at `a12f7b26`
+and its live chart/layout/social-mark hotfix at `3ec111a83`.
 The player and admin surfaces, global admin search/filter/sort/paging, bounded integrity
 report coverage, reviewed consequential actions, partial-seal and device-audit feedback,
 multi-ticket slip, separate Results section, public settled-week sitemap and share image,
@@ -46,13 +47,23 @@ S5 owns the shared heavy-job lock and must recheck both locks and remote `main` 
 The rollout remains `WITHDRAWN`.
 
 **Cross-device checkpoint (2026-10-20):** Fetch the remote branch
-`codex/maswali-coord-20261019` and read its HEAD; it merges U43 `a12f7b26` above the
+`codex/maswali-coord-20261019` and read its HEAD; it merges U43 `a12f7b26`
+and hotfix `3ec111a83` above the
 clean S5 source commit `46135acdec22f9404decaac20f6d62ec4d6c0286` and its
 documentation checkpoint `d566067acf54808c90a9cb172b6592af763bb6ff`. This is
 a branch checkpoint, not a `main` release. The first clean two-store `test:all` baseline found four
 failures in the new work (the house-bot report line pin and visual passes R5-G,
 R8-B and R9-A); all four were repaired and their focused checks pass on the
-checkpoint. A fresh exact-commit two-store `test:all`, current-`main` classic
+checkpoint. A subsequent exact-commit `46135acd` two-store `test:all` finished
+635/637 green: the only two reds were spacing-scale's stale 405 count and
+week-controls' stale `xs` token; both were corrected in the newer merged branch
+and their focused guards pass. The compiled `d566067a` responsive sweep found
+9 leaderboard empty-state heading alignment failures at tablet, laptop and
+desktop across all three languages (11,376 passes, 19 warnings); this remains
+open and must be fixed and rechecked. A real-browser `47a9d7f9` Swahili probe
+confirmed the five-tab rail and full `Juu na Chini` label fit at 320 and 360
+without overflow. None of those earlier-commit results substitutes for a fresh
+exact-commit two-store `test:all`, current-`main` classic
 parity, final 135-cell admin tile/tap sweep, compiled multi-slip browser drive,
 exact-commit build and local live QA are in progress or still owed. New devices
 must fetch the branch, recheck remote `main` and both shared locks, and use their

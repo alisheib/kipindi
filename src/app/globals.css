@@ -8704,6 +8704,14 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   .ud-board-chart { order: 1; }
   .ud-board-cubes { order: 2; }
   .ud-chart-slot:not([hidden]) { min-height: 380px; }
+  /* A saved closed chart must not strand the playable cards at the far edge
+     of an empty chart column. Keep the player's choice, fill the board with
+     cards first, then put recent results and the chart control underneath. */
+  .ud-board-stage:has(.ud-board-viz[data-viz-state="closed"]) { grid-template-columns: minmax(0, 1fr); }
+  .ud-board-stage:has(.ud-board-viz[data-viz-state="closed"]) .ud-board-rounds { grid-column: 1; grid-row: 1; }
+  .ud-board-stage:has(.ud-board-viz[data-viz-state="closed"]) .ud-board-lab { grid-column: 1; grid-row: 2; margin-top: var(--sp-5); }
+  .ud-board-stage:has(.ud-board-viz[data-viz-state="closed"]) .ud-board-chart { order: 2; }
+  .ud-board-stage:has(.ud-board-viz[data-viz-state="closed"]) .ud-board-cubes { order: 1; }
 }
 @media (prefers-reduced-motion: reduce) { .ud-chart-trigger > :last-child { transition: none; } }
 [data-motion="reduced"] .ud-chart-trigger > :last-child,
