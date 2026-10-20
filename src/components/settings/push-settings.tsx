@@ -61,7 +61,7 @@ export function PushSettings() {
           // A missing VAPID key is caught on mount, so here there are three causes and three answers.
           const permission = Notification.permission;
           if (permission === "denied") { setState("blocked"); return; }
-          if (permission === "default") { setState("unconfigured"); return; }
+          if (permission === "default") { setDismissed(true); setState("off"); return; }
           // Granted, but the subscription itself failed: the refusal toast, and the switch stays off.
           toast({ title: t.push.errOnTitle, description: t.push.errOnBody, variant: "factual" });
           setState("off");
