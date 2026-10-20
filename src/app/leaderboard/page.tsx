@@ -350,6 +350,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
 
       {rows.length === 0 ? (
         <EmptyState
+          fill
           kind="leaderboard"
           title={t.leaderboard.emptyTitle}
           body={breakBody ?? t.leaderboard.emptyBody}
