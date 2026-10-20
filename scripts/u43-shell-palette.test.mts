@@ -94,9 +94,14 @@ check("5.4 classic unread bell restores gold while Journey stays brand; count an
   && bell.includes('const unreadWash = journey ? "bg-brand-500/[0.04]" : "bg-gold-500/[0.04]";')
   && bell.includes('const countTone = "brand";')
   && bell.includes('const clearAllHover = "hover:text-text";'));
-check("5.5 classic empty bell illustration restores house gold",
-  bell.includes('<circle cx="42" cy="14" r="4" fill="var(--gold-400)" stroke="none" />'));
-check("5.6 avatar staff destination keeps its separate brand identity plate",
+const emptyBellStart = bell.indexOf("{items.length === 0 && (");
+const emptyBellEnd = bell.indexOf("{t.notif.noNotificationsHint}", emptyBellStart);
+const emptyBell = emptyBellStart >= 0 && emptyBellEnd > emptyBellStart ? bell.slice(emptyBellStart, emptyBellEnd) : "";
+check("5.5 empty bell uses its Duotone identity plate, never earned-money gold",
+  emptyBell.includes('<IconPlate size={56} variant="empty" className="mx-auto mb-3" aria-hidden>')
+  && emptyBell.includes('<I.bell s={plateGlyph(56)} tier="duo" />')
+  && !/variant="gold"|var\(--gold-|text-gold|bg-gold/.test(emptyBell));
+ check("5.6 avatar staff destination keeps its separate brand identity plate",
   menu.includes('hover:bg-brand-500/10')
   && menu.includes('text-brand-300/80 leading-tight')
   && menu.includes('className="text-brand-300/70 transition-colors group-hover:text-brand-300"')
