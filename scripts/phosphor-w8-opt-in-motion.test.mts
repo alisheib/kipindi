@@ -11,6 +11,23 @@ const notify = decomment(readFileSync("src/components/markets/notify-prompt.tsx"
 const sidePicker = decomment(readFileSync("src/components/markets/side-picker.tsx", "utf8")).replace(/\r\n/g, "\n");
 const detailPage = decomment(readFileSync("src/app/markets/[id]/page.tsx", "utf8")).replace(/\r\n/g, "\n");
 
+function fiftyFirstOptInPersists(bell: string): boolean {
+  const source = bell.match(/function writeWatchlist\([\s\S]*?\n\}\n\nexport function NotifyPrompt/)?.[0]
+    .replace(/\n\nexport function NotifyPrompt$/, "")
+    .replace("ids: string[]", "ids")
+    .replace("): boolean", ")");
+  if (!source) return false;
+  let stored = "";
+  const localStorage = { setItem: (_key: string, value: string) => { stored = value; } };
+  try {
+    const write = new Function("localStorage", "KEY", `${source}; return writeWatchlist;`)(localStorage, "50pick-notify-markets") as (ids: string[]) => boolean;
+    const ids = Array.from({ length: 51 }, (_, i) => `market-${i}`);
+    return write(ids) && JSON.parse(stored).includes("market-50") && JSON.parse(stored).length === 51;
+  } catch {
+    return false;
+  }
+}
+
 function claims(star: string, bell: string, side = sidePicker, detail = detailPage): string[] {
   const missing: string[] = [];
   const hold = (name: string, ok: boolean) => { if (!ok) missing.push(name); };
@@ -27,7 +44,8 @@ function claims(star: string, bell: string, side = sidePicker, detail = detailPa
   hold("bell waits for opt-in", /if \(!writeWatchlist\(next\)\) return;\s*setWatching\(true\);\s*setSettledOn\(true\);/.test(bell)
     && /if \(Notification\.permission !== "granted"\) \{\s*setPending\(false\);\s*return;\s*\}/.test(bell));
   hold("bell requires a stored opt-in", /function writeWatchlist\(ids: string\[\]\): boolean/.test(bell)
-    && /localStorage\.setItem\(KEY, JSON\.stringify\(ids\.slice\(0, 50\)\)\);\s*return true;\s*\} catch \{[\s\S]*?return false;/.test(bell));
+    && /localStorage\.setItem\(KEY, JSON\.stringify\(ids\)\);\s*return true;\s*\} catch \{[\s\S]*?return false;/.test(bell));
+  hold("bell persists the accepted market even after fifty watches", fiftyFirstOptInPersists(bell));
   hold("bell resets on opt-out", /if \(!writeWatchlist\(next\)\) return;\s*setWatching\(false\);\s*setSettledOn\(false\);/.test(bell));
   hold("bell settles only its Fill", /watching \? <I\.bell s=\{14\} tier="fill" className=\{settledOn \? "g-settle" : undefined\} \/> : <I\.bell s=\{14\} \/>/.test(bell));
   hold("bell remounts for another market", /<NotifyPrompt key=\{marketId\} marketId=\{marketId\} marketTitle=\{marketTitle\} \/>/.test(side));
@@ -42,7 +60,7 @@ if (baseline.length) {
 }
 
 if (!process.argv.includes("--prove-red")) {
-  console.log("W8 opt-in motion: 13/13 claims pass");
+  console.log("W8 opt-in motion: 14/14 claims pass");
   process.exit(0);
 }
 
@@ -56,6 +74,7 @@ const plants: Array<[name: string, target: string, star: string, bell: string]> 
   ["bell carries motion into another market", "bell resets for another market", watch, notify.replace("useEffect(() => {\n    setSettledOn(false);\n    if (typeof Notification", "useEffect(() => {\n    if (typeof Notification")],
   ["bell settles before storing the opt-in", "bell waits for opt-in", watch, notify.replace("if (!writeWatchlist(next)) return;\n        setWatching(true);\n        setSettledOn(true);", "setSettledOn(true);\n        writeWatchlist(next);\n        setWatching(true);")],
   ["bell treats refused storage as success", "bell requires a stored opt-in", watch, notify.replace("    return false;\n  }\n}\n\nexport function NotifyPrompt", "    return true;\n  }\n}\n\nexport function NotifyPrompt")],
+  ["bell accepts a truncated fifty-first market", "bell persists the accepted market even after fifty watches", watch, notify.replace("JSON.stringify(ids)", "JSON.stringify(ids.slice(0, 50))")],
   ["bell carries a previous activation through opt-out", "bell resets on opt-out", watch, notify.replace("setWatching(false);\n        setSettledOn(false);", "setWatching(false);")],
   ["bell settles without a successful opt-in", "bell settles only its Fill", watch, notify.replace('className={settledOn ? "g-settle" : undefined}', 'className="g-settle"')],
 ];

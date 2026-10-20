@@ -34,7 +34,10 @@ function readWatchlist(): string[] {
 
 function writeWatchlist(ids: string[]): boolean {
   try {
-    localStorage.setItem(KEY, JSON.stringify(ids.slice(0, 50)));
+    // A successful opt-in must persist its market. Truncating the first 50
+    // silently accepted the 51st without saving it; the bet paths also keep
+    // the full list, and the poller prunes a market after its result lands.
+    localStorage.setItem(KEY, JSON.stringify(ids));
     return true;
   } catch {
     // Private browsing can refuse storage. The control must not claim an opt-in

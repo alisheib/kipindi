@@ -913,7 +913,7 @@ Each has its reduced-motion branches (§M6). DA's drift that `.m-draw` runs 820 
 
 The opt-in motion candidate puts `.g-settle` on the watch star only after the server confirms the shared watch event;
 an optimistic Fill that may roll back stays still. The notification bell settles only after permission and the local
-watchlist write. Both start static on page load, remount on market identity changes, and remove the class on opt-out. The W8 opt-in guard plants each
+watchlist write. That write preserves the new market even when the list already holds fifty: its former first-fifty truncation claimed an opt-in that was never saved. Both start static on page load, remount on market identity changes, and remove the class on opt-out. The W8 opt-in guard plants each
 timing reversal in memory.
 
 The receipt-motion candidate draws the success check only for a confirmed poll or Up & Down bet, or a confirmed deposit. The family key `I.check`
