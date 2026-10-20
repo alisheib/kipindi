@@ -538,6 +538,8 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/app/profile/loading.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 text-transparent" />', 2, "ghost", "the ghost of /profile's row ends, pulled as the page's are"],
     ['src/app/profile/notifications/page.tsx', '<I.chevronRight s={12} edge="end" text="mono-400" />', 1, "text", "a row cue's end, after its count"],
     ['src/app/profile/page.tsx', '<I.chevronRight s={16} edge="end" />', 2, "row", "the setting rows' and the sign-out row's end"],
+    ['src/app/results/millionea-results-view.tsx', '<I.chevronRight s={14} edge="end" text="body-400" />', 1, "text", "the Millionea register link's 14px mark lands after its body text"],
+    ['src/app/results/millionea-results-view.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle" />', 1, "row", "the settled-week row's end mark lands on the row edge"],
     ['src/app/proposals/[id]/page.tsx', '<I.arrowRight s={15} text="body-600" />', 1, "button", B],
     ['src/app/proposals/[id]/page.tsx', '<I.chevronLeft s={11} edge="start" text="body-400" />', 1, "text", "the back link's start, centred by its ink — PHOSPHOR W4's review: a typed back arrow, written as an escape"],
     ['src/app/proposals/page.tsx', '<I.arrowRight s={12} edge="end" text="mono-400" />', 1, "text", "a link cue's end"],
