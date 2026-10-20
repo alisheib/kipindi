@@ -94,7 +94,7 @@ const git = (cwd: string, args: string[]) => execFileSync("git", ["-C", cwd, ...
 async function runAgainst(root: string): Promise<{ results: Result[]; crash: string | null }> {
   const results: Result[] = [];
   try {
-    await runChatbotCases((label, cond, detail = "") => results.push({ label, pass: !!cond, detail }), () => {}, root);
+    await runChatbotCases((label, cond, detail = "") => results.push({ label, pass: !!cond, detail }), () => {}, root, "origin/main");
     return { results, crash: null };
   } catch (e) {
     return { results, crash: e instanceof Error ? `${e.message}` : String(e) };
