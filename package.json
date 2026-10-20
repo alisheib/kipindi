@@ -426,6 +426,8 @@
     "test:proposal-close": "tsx scripts/proposal-selection-close.test.mts",
     "test:kyc": "tsx scripts/kyc-review.test.mts && tsx scripts/kyc-submit-notify.test.mts && tsx scripts/kyc-flow-stress.test.mts && tsx scripts/kyc-security.test.mts",
     "test:responsive": "node scripts/responsive-audit.mjs",
+    "test:responsive-locale": "node scripts/responsive-locale.test.mjs",
+    "red:responsive-locale": "node scripts/responsive-locale.test.mjs --prove-red",
     "test:motion": "node scripts/motion-adoption-verify.mjs",
     "test:all": "node scripts/test-all.mjs",
     "backfill:zh": "tsx scripts/backfill-zh-titles.mts",
