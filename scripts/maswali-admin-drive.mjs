@@ -7,7 +7,8 @@
  * ONCE PER SERVER: right after `qa:maswali-admin-shots` (whose seed call built the weeks), or on its own (step 6 seeds).
  *   1 · the Owner signs in (`/api/dev-test/seed-admin`, as the shots do) and reads the product's standing;
  *   3 · checks the trusted sources the draft cites, then drafts a DRIVE week in the builder — fifteen cards, each
- *       criterion from its kind's template with every {…} filled, a calendar suggestion in M1 when the store has one.
+ *       criterion from its kind's template with every {…} filled; seeds a local calendar fixture through the events
+ *       console, checks that its suggestion fills M1, then edits M1 into the officer's reviewed question.
  *       A drive week, because the seeded public week is selling and one public week sells at a time (MR-3);
  *   4 · the drafter's own attestation is refused (MB-79); a second reader — a MODERATOR, in a browser context of their
  *       own (a second context for the SAME account would sign the first out) — attests; the Owner opens the week;
@@ -335,25 +336,38 @@ await part("3 · draft", async () => {
     r.expectEat = fmtEat(eatMs(r.date, r.time));
   }
 
+  // The fresh memory store has no operator-authored calendar rows. Add one through the real admin form, only on this
+  // localhost store, inside the builder's upcoming event window. The suggestion is a starting point, not a publishable
+  // question: after checking it fills M1, the officer edits that question before saving the draft.
+  const fixtureTitle = `Drive test fixture: a Saturday result for ${SAT}`;
+  await go(page, "/admin/events");
+  const eventForm = page.locator("form").filter({ has: page.getByText("Add a real event", { exact: true }) });
+  await eventForm.getByRole("textbox", { name: "What happens", exact: true }).fill(fixtureTitle);
+  await eventForm.locator('input[name="startsAt"]').fill(`${SAT}T10:00`);
+  await eventForm.getByRole("textbox", { name: "Official source URL", exact: true }).fill("https://www.nbc.co.tz/results");
+  await eventForm.getByRole("button", { name: "Add event", exact: true }).click();
+  const seededFixture = await until(async () => (await page.getByText(fixtureTitle, { exact: true }).count()) > 0, 30_000);
+  ok("3.1c the Owner adds one named local calendar fixture through the events console", !!seededFixture, fixtureTitle);
+  await go(page, "/admin/maswali/new");
+
   const line = page.getByRole("combobox", { name: "Line", exact: true });
   await choose(page, line, "Drive (private)");
   ok("3.2 the line is the private drive (a public week is selling, and one sells at a time, MR-3)", clip(await line.textContent()) === "Drive (private)", clip(await line.textContent()));
 
-  // §7b S4 item 7 · a suggestion fills a card; the officer edits from there (only the English words are kept here).
+  // §7b S4 item 7 · the event suggestion fills a card; the officer then edits it into a reviewed question.
   const calendar = page.locator("details").filter({ hasText: "Start from the calendar" });
-  if ((await calendar.count()) === 0) {
-    skipped("3.3 a calendar suggestion fills a card", "this store has no fixture or AI-drafted poll in the week's window — the in-memory store seeds neither (draftSuggestions, maswali-console.ts:172; the list renders only when it has one, week-builder.tsx:142)");
-  } else {
+  if (ok("3.3 a local calendar suggestion appears in the builder", (await calendar.count()) === 1)) {
     await calendar.locator("summary").click();
-    const fillSel = calendar.getByRole("combobox").first();
+    const fillSel = calendar.getByRole("combobox", { name: `Fill a slot with ${fixtureTitle}`, exact: true });
     const named = await fillSel.evaluate((el) => document.getElementById(el.getAttribute("aria-labelledby") ?? "")?.textContent ?? "");
     const sgText = clip(named.replace(/^Fill a slot with /, ""));
     await fillSel.click();
     await page.getByRole("option", { name: "M1", exact: true }).click();
     const m1 = page.locator('section[aria-label="Question M1"]').getByRole("textbox", { name: "Question · English", exact: true });
     const took = await until(async () => clip(await m1.inputValue()) === sgText, 10_000);
-    ok(`3.3 a calendar suggestion fills M1 with its words ("${clip(sgText, 60)}")`, !!took && sgText.length > 0, clip(await m1.inputValue(), 120));
-    if (took) { ROWS[0].keepEnglish = true; ROWS[0].en = sgText; }
+    ok(`3.3b the calendar suggestion fills M1 with its words ("${clip(sgText, 60)}")`, !!took && sgText === fixtureTitle, clip(await m1.inputValue(), 120));
+    await m1.fill(ROWS[0].en);
+    ok("3.3c the officer edits M1 to the reviewed question before saving", (await m1.inputValue()) === ROWS[0].en);
   }
 
   const cards = [];
@@ -363,7 +377,7 @@ await part("3 · draft", async () => {
     await sec.scrollIntoViewIfNeeded();
     await choose(page, sec.getByRole("combobox", { name: `${r.label} category`, exact: true }), r.category);
     await choose(page, sec.getByRole("combobox", { name: `${r.label} kind`, exact: true }), r.kind);
-    if (!r.keepEnglish) await field("Question · English").fill(r.en);
+    await field("Question · English").fill(r.en);
     await field("Question · Kiswahili").fill(r.sw);
     await field("Question · 中文").fill(r.zh);
     // MB-21 · the kind's own template, read back from the box, then every {…} filled from the card's facts.

@@ -17,6 +17,18 @@ const hasFreshRequirementRead = (source) => {
   const back = afterSave.indexOf("await go(page, weekPath);");
   return pools >= 0 && pools < needed && needed < back;
 };
+const hasCalendarFixture = (source) => {
+  const draft = source.split('await part("3 · draft"')[1]?.split('await part("4 · attest and open"')[0] ?? "";
+  const event = draft.indexOf('await go(page, "/admin/events");');
+  const add = draft.indexOf('eventForm.getByRole("button", { name: "Add event", exact: true }).click();');
+  const returnToBuilder = draft.indexOf('await go(page, "/admin/maswali/new");', add);
+  const suggestion = draft.indexOf('Fill a slot with ${fixtureTitle}', returnToBuilder);
+  const reviewed = draft.indexOf('await m1.fill(ROWS[0].en);', suggestion);
+  return event >= 0 && event < add && add < returnToBuilder && returnToBuilder < suggestion && suggestion < reviewed
+    && draft.includes('getByText(fixtureTitle, { exact: true })')
+    && draft.includes('sgText === fixtureTitle')
+    && !draft.includes('skipped("3.3');
+};
 const hasHardWeekReviews = (source) => {
   const attest = source.split('await part("4 · attest and open"')[1]?.split('await part("5 · move the close"')[0] ?? "";
   const move = source.split('await part("5 · move the close"')[1]?.split('await part("6.0 · seed"')[0] ?? "";
@@ -54,6 +66,7 @@ assert.equal(checkOpenChecklist({ ...fresh, guarantee: "TZS 750,000", requiremen
   "the prospective open requirement must not be below the existing open-weeks requirement");
 assert.equal(checkOpenChecklist(seeded, [attestation, "Unknown blocker"]).ok, false, "an unexpected blocker must fail");
 assert.equal(hasFreshRequirementRead(driveSource), true, "drive must reread the pools requirement after the draft saves and before comparing the checklist");
+assert.equal(hasCalendarFixture(driveSource), true, "drive must add a local fixture through the admin UI, read the suggestion, and edit it before saving");
 assert.equal(hasHardWeekReviews(driveSource), true,
   "drive must gate and read both attestation and close reviews, cancel refused modals, and use the labelled evidence input");
 console.log("maswali admin checklist: seeded, fresh, missing and wrong-amount states PASS");
@@ -70,6 +83,12 @@ if (process.argv.includes("--prove-red")) {
   assert.ok(plantAt > driveSource.indexOf("driveCode = clip(await h1.textContent());"), "stale standing mutation must plant after the draft");
   const stale = driveSource.slice(0, plantAt) + 'standing.requirement = "TZS 0";' + driveSource.slice(plantAt + requirementLine.length);
   assert.equal(hasFreshRequirementRead(stale), false, "keeping the pre-draft requirement must turn the timing guard red");
+  const noFixture = driveSource.replace('await go(page, "/admin/events");', 'void fixtureTitle;');
+  assert.notEqual(noFixture, driveSource, "calendar-fixture mutation must plant");
+  assert.equal(hasCalendarFixture(noFixture), false, "omitting the local event-console visit must turn the fixture guard red");
+  const unreviewed = driveSource.replace('await m1.fill(ROWS[0].en);', 'void m1;');
+  assert.notEqual(unreviewed, driveSource, "calendar-review mutation must plant");
+  assert.equal(hasCalendarFixture(unreviewed), false, "leaving a starter event title as a question must turn the guard red");
   const noAttestGate = driveSource.replace('word: "ATTEST", confirm: "Record the attestation"', 'word: "", confirm: "Record the attestation"');
   assert.notEqual(noAttestGate, driveSource, "attest-gate mutation must plant");
   assert.equal(hasHardWeekReviews(noAttestGate), false, "losing a typed attestation gate must turn the drive guard red");
