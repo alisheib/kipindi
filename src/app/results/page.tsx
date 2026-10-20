@@ -44,6 +44,7 @@ import { outcomeWord, sideWord, type LabelProductLine } from "@/lib/side-label";
 import { STATUS_TONE, TONE_CHIP, playerStatusInk } from "@/lib/status-tone";
 import { PageContainer } from "@/components/layout/page-container";
 import { ROOT_OPEN_GRAPH } from "../layout";
+import { MillioneaResultsSection } from "./millionea-results";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -141,6 +142,10 @@ export default async function ResultsPage({
             promise — and eight cards with the open card's YES/NO buttons where the page draws nine closed ones. */}
         <Suspense fallback={<ResultsGhostBands notable={!searching && pageNum === 1} searching={searching} />}>
           <ResultsContent state={state} searching={searching} pageNum={pageNum} />
+        </Suspense>
+        {/* A separate register read: its weeks never enter the classic archive's counts, search, or pager. */}
+        <Suspense fallback={null}>
+          <MillioneaResultsSection />
         </Suspense>
       </div>
     </PageContainer>
