@@ -27,8 +27,13 @@ console.log("\n§1 · the grid — every identity on every cell");
   let cells = 0;
   for (const R of [0, 500_000, 2_000_000]) for (const S of [0, 300_000, 1_200_000]) for (const k of [0, 1, 3, 7, 870, 1_000, 1_400]) {
     cells++;
-    const a = run(R, S, k);
     const tag = `R=${R} S=${S} k=${k}`;
+    let a: ReturnType<typeof run>;
+    try { a = run(R, S, k); }
+    catch (error) {
+      ok(`1 · ${tag}: arithmetic returns a result`, false, String(error));
+      continue;
+    }
     if (k === 0) {
       ok(`1 · ${tag}: no winner → the whole of S rolls, nothing charged`, a.kind === "ROLLOVER" && a.rolled === S && a.jackpotAfter === R + S, JSON.stringify(a), true);
       continue;
@@ -43,8 +48,13 @@ console.log("\n§1 · the grid — every identity on every cell");
     ok(`1 · ${tag}: no top-up when R + S already reaches the floor`, R + S < 1_000_000 || a.U === 0, JSON.stringify(a), true);
   }
   ok(`1.count · all ${cells} cells (3 × 3 × 7) ran, every identity held`, cells === 63 && fail === 0, String(cells));
-  const big = run(0, 300_000, 1_400);
-  ok("1.floor · ⛔ no winner floor: at k = 1,400 a share is below a ticket's price, and it is paid as computed", big.kind === "PAYOUT" && big.share < 1_000 && big.share === 621, JSON.stringify(big));
+  const floorLabel = "1.floor · ⛔ no winner floor: at k = 1,400 a share is below a ticket's price, and it is paid as computed";
+  try {
+    const big = run(0, 300_000, 1_400);
+    ok(floorLabel, big.kind === "PAYOUT" && big.share < 1_000 && big.share === 621, JSON.stringify(big));
+  } catch (error) {
+    ok(floorLabel, false, `arithmetic threw ${String(error)}`);
+  }
 }
 
 // ── §2 · worked example A ───────────────────────────────────────────────────
@@ -61,12 +71,18 @@ console.log("\n§2 · worked example A — the six weeks, to the shilling");
   ];
   let fees = 0, topups = 0, paid = 0, carried = 0;
   for (const r of rows) {
-    const a = run(carried, r.S, r.k);
+    const label = `2.${r.wk} · week ${r.wk} (R claimed ${carried.toLocaleString("en")})`;
+    let a: ReturnType<typeof run>;
+    try { a = run(carried, r.S, r.k); }
+    catch (error) {
+      ok(label, false, `arithmetic threw ${String(error)}`);
+      break;
+    }
     const got = a.kind === "ROLLOVER"
       ? { J: undefined, F: 0, tra: 0, gbt: 0, net: 0, share: undefined, U: 0, paid: 0, after: a.jackpotAfter }
       : { J: a.J, F: a.F, tra: a.tra, gbt: a.gbt, net: a.net, share: a.share, U: a.U, paid: a.paid, after: a.jackpotAfter };
     const want = { J: r.J, F: r.F, tra: r.tra, gbt: r.gbt, net: r.net, share: r.share, U: r.U, paid: r.paid, after: r.after };
-    ok(`2.${r.wk} · week ${r.wk} (R claimed ${carried.toLocaleString("en")})`, carried === r.R && JSON.stringify(got) === JSON.stringify(want), `${JSON.stringify(got)} vs ${JSON.stringify(want)}`);
+    ok(label, carried === r.R && JSON.stringify(got) === JSON.stringify(want), `${JSON.stringify(got)} vs ${JSON.stringify(want)}`);
     fees += got.F; topups += got.U; paid += got.paid; carried = got.after;
   }
   ok("2.Σ · fees 468,000 · top-ups 300,000 · paid 3,132,000 — the table's totals", fees === 468_000 && topups === 300_000 && paid === 3_132_000, `${fees}/${topups}/${paid}`);
