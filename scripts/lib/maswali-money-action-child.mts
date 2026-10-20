@@ -139,11 +139,19 @@ const sessionResult = await buy(session, week.id, "e2e-action-session-0001", [W.
   { ...ACTIVE, playStartedAt: Date.now() - 16 * 60_000 });
 ok("the signed play clock enforces the session limit on the action", !sessionResult.ok && sessionResult.reason === "session_limit_reached"
   && (await W.bal(session)).balance === 50_000, reason(sessionResult));
+const loss = await W.user({ balance: 50_000 });
+await RG.setLimits(loss, { dailyLossLimit: price });
+const lossFirst = await buy(loss, week.id, "e2e-action-loss-first-0001", [W.WIN]);
+const lossBefore = (await W.bal(loss)).balance;
+const lossResult = await buy(loss, week.id, "e2e-action-loss-second-0001", [W.LOSE]);
+ok("the daily loss limit refuses the next ticket without a second debit", lossFirst.ok && !lossResult.ok
+  && lossResult.reason === "loss_limit_daily" && (await W.bal(loss)).balance === lossBefore
+  && (await tickets(loss, week.id)).length === 1, reason(lossResult));
 
 ok("every refusal reason has registered translated player copy", [changedSession, killed, invalid, incomplete, bonusResult,
-  poorResult, staffResult, deskResult, excludedResult, coolingResult, suspendedResult, sessionResult]
+  poorResult, staffResult, deskResult, excludedResult, coolingResult, suspendedResult, sessionResult, lossResult]
   .every((r: any) => !r.ok && typeof r.reason === "string" && !!FAILURE.REASONS[r.reason]));
-ok("every refused account remains nonnegative", (await Promise.all([refused, bonus, poor, staff, desk.userId, excluded, cooling, suspended, session]
+ok("every refused account remains nonnegative", (await Promise.all([refused, bonus, poor, staff, desk.userId, excluded, cooling, suspended, session, loss]
   .map((id) => W.bal(id)))).every((w: any) => w.balance >= 0));
 
 console.log(`\n@@SUMMARY ${json({ pass, fail, store: STORE })}`);

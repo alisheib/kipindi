@@ -8,6 +8,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "e2e:maswali-money",
   casesFile: "scripts/lib/maswali-money-action-child.mts",
-  minPass: { memory: 37, postgres: 37 },
+  minPass: { memory: 38, postgres: 38 },
   dbPrefix: "mlw_action",
 });

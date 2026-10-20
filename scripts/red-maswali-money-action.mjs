@@ -6,13 +6,14 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { MUTATIONS } from "./anchors/maswali-money-action.anchors.mjs";
+import { injectDefect } from "./red-anchor.mjs";
 
 const root = resolve(import.meta.dirname, "..");
-const target = "src/lib/server/maswali-player-acts.ts";
+const mutation = MUTATIONS[0];
+const target = mutation.file;
 const file = resolve(root, target);
 const source = readFileSync(file, "utf8");
-const needle = "playStartedAt: opts.playStartedAt, stateNow: deps.stateNow";
-if (source.split(needle).length !== 2) throw new Error(`RED refused: expected one action play-clock forwarding line in ${target}`);
 const dirty = spawnSync("git", ["diff", "--quiet", "--", target], { cwd: root });
 if (dirty.status !== 0) throw new Error(`RED refused: ${target} already has local edits`);
 const run = () => spawnSync("npx", ["tsx", "scripts/lib/maswali-money-action-child.mts"], {
@@ -23,13 +24,13 @@ const run = () => spawnSync("npx", ["tsx", "scripts/lib/maswali-money-action-chi
 
 let red;
 try {
-  writeFileSync(file, source.replace(needle, "playStartedAt: undefined, stateNow: deps.stateNow"));
+  writeFileSync(file, injectDefect(source, mutation.from, mutation.to));
   red = run();
 } finally {
   writeFileSync(file, source);
 }
 const redOut = `${red?.stdout ?? ""}\n${red?.stderr ?? ""}`;
-const caught = red?.status !== 0 && /FAIL \[memory\] the signed play clock enforces the session limit on the action/.test(redOut);
+const caught = red?.status !== 0 && redOut.includes(`FAIL [memory] ${mutation.expect}`);
 if (!caught) {
   process.stdout.write(redOut);
   throw new Error("RED FAILED: dropping the signed play clock did not fail its action assertion");
