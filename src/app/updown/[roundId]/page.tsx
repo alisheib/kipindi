@@ -309,6 +309,8 @@ export default async function UpDownRoundPage({
   const resultLabel =
     result === "WIN" ? t.market.resolvedWin
     : result === "LOSS" ? t.market.resolvedLoss
+    : result === "MIXED" ? (myPosition?.hedged ? t.market.udBothSides : t.market.udPositionsOnRound)
+    : result === "CASHED_OUT" ? t.market.udPosCashedOut
     // The round DECIDED and this player was refunded anyway — never call that a void.
     : refundReason === "unmatched" ? t.market.udRefundTitle
     : t.market.udVoided;
@@ -331,12 +333,13 @@ export default async function UpDownRoundPage({
   const resultVariant =
     result === "WIN" ? "resolved" as const
     : result === "LOSS" ? "no" as const
+    : result === "MIXED" || result === "CASHED_OUT" ? "neutral" as const
     : refundReason === "unmatched" ? "neutral" as const
     : TONE_CHIP[STATUS_TONE.VOID.player];
   // Name the amount by its money meaning: earned payout, lost stake, or returned stake.
   // Only a WIN is money the player earned, so M3 puts it in struck type.
-  const resultAmountLabel = result === "WIN" ? t.market.udPaidOut
-    : result === "LOSS" ? t.market.udStake : t.market.udRefundTitle;
+  const resultAmountLabel = result === "LOSS" ? t.market.udStake
+    : result === "VOID" ? t.market.udRefundTitle : t.market.udPaidOut;
   const resultAmount = result === "LOSS" ? myPosition?.stake ?? 0 : myPosition?.payout ?? 0;
   // The class carries its
   // own gradient, mono family and tabular-nums, so no `color` may be set alongside it — a flat
@@ -417,7 +420,8 @@ export default async function UpDownRoundPage({
       <UpDownResultAnnouncer rounds={[{
         roundId,
         settledAtMs: round.resolvedAtMs,
-        myResult: myPosition && myPosition.result
+        myResult: myPosition && !myPosition.hedged
+          && (myPosition.result === "WIN" || myPosition.result === "LOSS" || myPosition.result === "VOID")
           ? { status: myPosition.result, side: myPosition.side, stake: myPosition.stake, payout: myPosition.payout ?? 0 }
           : null,
       }]} />
@@ -659,7 +663,7 @@ export default async function UpDownRoundPage({
                   </div>
                   <div className="text-right">
                     {/* Ends on its figure's edge, its trailing tracking taken back (F19, round 6 · C11). */}
-                    <p className="m-0 font-mono text-micro uppercase eyebrow text-text-subtle kp-track-end">{t.market.udYourPick}{result === "WIN" ? ` · ${t.market.udStake}` : ""}</p>
+                    <p className="m-0 font-mono text-micro uppercase eyebrow text-text-subtle kp-track-end">{t.market.udYourPick}{result === "WIN" || result === "MIXED" ? ` · ${t.market.udStake}` : ""}</p>
                     {/* ⛔ A HEDGED HOLDER IS NOT QUOTED ONE SIDE. `myPositionFor` derives its
                         single `side` with `up >= down`, which is a tie-break, not a fact about
                         the bet — so a player who backed BOTH ways was shown the larger leg as
@@ -667,7 +671,7 @@ export default async function UpDownRoundPage({
                     <p className="mt-1 m-0 text-label amount text-text-muted">
                       {myPosition.hedged
                         ? t.market.udBothSides
-                        : myPosition.side === "UP" ? t.market.udUp : t.market.udDown}{result === "WIN" ? ` · ${formatTzs(myPosition.stake)}` : ""}
+                        : myPosition.side === "UP" ? t.market.udUp : t.market.udDown}{result === "WIN" || result === "MIXED" ? ` · ${formatTzs(myPosition.stake)}` : ""}
                     </p>
                   </div>
                 </div>

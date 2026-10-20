@@ -1,6 +1,6 @@
 /** U43 B5 receipt in-memory mutation proof; no source file is written. */
 import { readFileSync } from "node:fs";
-import { bandBeforeBetIssues, receiptCommitTruthIssues, receiptEstimateTruthIssues, receiptFormatIssues, receiptResultTimeIssues } from "./u43-receipt-format-contract.mjs";
+import { bandBeforeBetIssues, receiptCommitTruthIssues, receiptEstimateTruthIssues, receiptFormatIssues, receiptRoundCloseIssues } from "./u43-receipt-format-contract.mjs";
 
 const original = readFileSync("src/components/updown/updown-bet-receipt-modal.tsx", "utf8");
 if (receiptFormatIssues(original).length) throw new Error("Baseline receipt format guard failed");
@@ -9,7 +9,7 @@ const cases = [
   ["device clock returns", "const clock = fmtEATClock(ms);", 'const clock = new Date(ms).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });'],
   ["EAT zone vanishes", 'return clock == null ? null : `${clock} EAT`;', "return clock;"],
   ["betting deadline drops", "const betsClose = clockOf(info.selectionClosedAt);", "const betsClose = null;"],
-  ["result deadline drops", "const resultDue = clockOf(info.closesAt);", "const resultDue = null;"],
+  ["round close drops", "const roundClose = clockOf(info.closesAt);", "const roundClose = null;"],
 ];
 for (const [name, from, to] of cases) {
   if (original.split(from).length !== 2) throw new Error(`Mutation anchor not unique: ${name}`);
@@ -18,21 +18,23 @@ for (const [name, from, to] of cases) {
 console.log(`U43 receipt format red proof: ${cases.length} reversions caught`);
 
 const dictionary = readFileSync("src/lib/i18n-dict.ts", "utf8");
-if (receiptResultTimeIssues(dictionary, original).length) throw new Error("Baseline expected-result guard failed");
-const dueCases = [
-  ["English promises a due result", "dict", 'udRcResultDue: "Result expected"', 'udRcResultDue: "Result due"'],
-  ["Swahili promises a due result", "dict", 'udRcResultDue: "Matokeo yanatarajiwa"', 'udRcResultDue: "Matokeo yanatolewa"'],
-  ["Chinese promises a published result", "dict", 'udRcResultDue: "预计结果时间"', 'udRcResultDue: "结果公布"'],
-  ["receipt borrows the betting-close label", "modal", 'if (resultDue) details.push({ label: t.market.udRcResultDue, value: resultDue });', 'if (resultDue) details.push({ label: t.market.udRcBetsClose, value: resultDue });'],
+if (receiptRoundCloseIssues(dictionary, original).length) throw new Error("Baseline round-close guard failed");
+const closeCases = [
+  ["English promises the result at the close", "dict", 'udRcRoundCloses: "Round closes"', 'udRcRoundCloses: "Result expected"'],
+  ["Swahili promises the result at the close", "dict", 'udRcRoundCloses: "Raundi inafungwa"', 'udRcRoundCloses: "Matokeo yanatarajiwa"'],
+  ["Chinese promises the result at the close", "dict", 'udRcRoundCloses: "回合结束"', 'udRcRoundCloses: "预计结果时间"'],
+  ["receipt borrows the betting-close label", "modal", 'if (roundClose) details.push({ label: t.market.udRcRoundCloses, value: roundClose });', 'if (roundClose) details.push({ label: t.market.udRcBetsClose, value: roundClose });'],
+  ["round close reads the betting-close instant", "modal", "const roundClose = clockOf(info.closesAt);", "const roundClose = clockOf(info.selectionClosedAt);"],
+  ["retired result-due key returns", "dict", 'udRcRoundCloses: "Round closes"', 'udRcResultDue: "Result expected"'],
 ];
-for (const [name, target, from, to] of dueCases) {
+for (const [name, target, from, to] of closeCases) {
   const source = target === "dict" ? dictionary : original;
   if (source.split(from).length !== 2) throw new Error(`Mutation anchor not unique: ${name}`);
   const mutated = source.replace(from, to);
-  const issues = receiptResultTimeIssues(target === "dict" ? mutated : dictionary, target === "modal" ? mutated : original);
+  const issues = receiptRoundCloseIssues(target === "dict" ? mutated : dictionary, target === "modal" ? mutated : original);
   if (!issues.length) throw new Error(`RED MISSED: ${name}`);
 }
-console.log(`U43 receipt expected-result red proof: ${dueCases.length} reversions caught`);
+console.log(`U43 receipt round-close red proof: ${closeCases.length} reversions caught`);
 
 const legal = readFileSync("src/app/legal/rules/_content-up-down.tsx", "utf8");
 const meta = readFileSync("src/app/legal/rules/up-down/page.tsx", "utf8");

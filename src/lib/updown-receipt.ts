@@ -41,7 +41,7 @@ export type UpDownReceiptInfo = {
   durationMinutes: number;
   /** ISO — when betting stops. Null on legacy rounds with no window. */
   selectionClosedAt: string | null;
-  /** ISO — the round's close, i.e. when the result is due. */
+  /** ISO — the round's close and deciding-price label; the source may publish the result later. */
   closesAt: string;
   /** The round's open price, or null when it has not been read yet. */
   openPrice: number | null;

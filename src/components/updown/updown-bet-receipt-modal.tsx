@@ -86,7 +86,9 @@ export function UpDownBetReceiptModal({
   const exitMinutes = freeExitMinutesFor(info, placed);
 
   const betsClose = clockOf(info.selectionClosedAt);
-  const resultDue = clockOf(info.closesAt);
+  // This is the boundary whose minute-open price decides the round. The source
+  // publishes that bar later, so this clock is not a promised result time.
+  const roundClose = clockOf(info.closesAt);
 
   const details: OperationDetail[] = [
     { label: t.market.udStake, value: formatTzs(placed.amount) },
@@ -103,7 +105,7 @@ export function UpDownBetReceiptModal({
     });
   }
   if (betsClose) details.push({ label: t.market.udRcBetsClose, value: betsClose });
-  if (resultDue) details.push({ label: t.market.udRcResultDue, value: resultDue });
+  if (roundClose) details.push({ label: t.market.udRcRoundCloses, value: roundClose });
   details.push(
     exitMinutes != null
       ? { label: t.market.udRcExitLabel, value: t.market.udRcExitValue.replace("{mins}", String(exitMinutes)) }

@@ -10,7 +10,7 @@
  * unknown price, and nothing derives a price from anything but a CONFIRMED observation.
  */
 import { assetStore, chainStore, roundStore, observationStore, type StoredAsset, type StoredChain, type StoredRound } from "./updown-dal";
-import { marketStore } from "./market-dal";
+import { marketStore, positionStore } from "./market-dal";
 import { getUpDownConfig, stakeBoundsFor } from "./updown-config";
 // E-53 · the player is told the KIND of market, never who sells us the data. Resolved
 // HERE, on the server, because translating a vendor string in the browser still ships the
@@ -19,7 +19,7 @@ import { publicSourceClassFor, type PublicSourceClass } from "./updown-symbols";
 // CHART-SPRINT-2 · the terminal chart's vendor-bars tier (real market OHLC; E-53-safe proxying).
 import { vendorBarsFor, VENDOR_PLAN } from "./updown-terminal-vendor";
 import { ROUND_LINE_WINDOW_MS, vendorOpenPoints } from "@/lib/updown-vendor-opens";
-import { ratesFor, listPositionsForUser, listPositionsForMarket, projectedPayout } from "./market-service";
+import { ratesFor, listPositionsForUser, listPositionsForMarket, projectedPayout, type StoredMarket } from "./market-service";
 // What a wallet can stake — the bet path's own figure (`buyPosition`'s refusal states it), for the quick-bet pre-flight.
 import { spendableOf } from "@/lib/spendable";
 // ⭐ D2 · the shape the player surfaces price a bet from. Isomorphic by design — the card is a
@@ -448,12 +448,16 @@ async function toBoardRound(
    *  it has too little history to quote one. Passed in — never recomputed per round, which
    *  would be one query per card. */
   medianLagSeconds?: number | null,
+  /** Board selection and viewer hydration reuse the same row and clock. Neither a
+   *  close-boundary crossing nor a new bet between the passes may change the card. */
+  marketSnapshot?: StoredMarket | null,
+  nowMs = Date.now(),
 ): Promise<BoardRound | null> {
-  const m = await marketStore.get(r.marketId);
+  const m = marketSnapshot === undefined ? await marketStore.get(r.marketId) : marketSnapshot;
   if (!m) return null;
   const rates = ratesFor(m);
   const closesAtMs = Date.parse(r.closesAt);
-  const state = roundState(r, closesAtMs, Date.now(), m.selectionClosedAt);
+  const state = roundState(r, closesAtMs, nowMs, m.selectionClosedAt);
   const myUpStake = mine?.up ?? 0;
   const myDownStake = mine?.down ?? 0;
   const myStake = myUpStake + myDownStake;
@@ -518,7 +522,7 @@ async function toBoardRound(
       roundHref: `/updown/${r.id}`,
       freeExitGraceMinutes: rates.freeExitGraceMinutes,
     },
-    serverNowMs: Date.now(),
+    serverNowMs: nowMs,
     state,
     settled: !!r.settledAt,
     myUpStake: mine?.up ?? 0,
@@ -673,14 +677,17 @@ type MyMarketStake = {
 };
 
 /** The viewer's OPEN stake per market, split UP(=YES)/DOWN(=NO). Empty when signed
- *  out. One query, then grouped — never an N+1 across the board. */
-async function myStakesByMarket(userId: string | undefined): Promise<Map<string, MyMarketStake>> {
+ *  out. The board passes only its selected card markets (at most three), and detail
+ *  passes its one market. Each unbounded reader uses the [userId, marketId] index:
+ *  an account-wide newest-N page can lose an older stake on the visible round. */
+async function myStakesByMarket(userId: string | undefined, marketIds: readonly string[]): Promise<Map<string, MyMarketStake>> {
   const out = new Map<string, MyMarketStake>();
-  if (!userId) return out;
-  // UPDOWN only — this map powers the card's "you're in" indicator, so it must not
-  // pull the player's long-form-poll positions.
+  if (!userId || marketIds.length === 0) return out;
+  // The callers pass Up & Down market IDs only. No account-wide cap and no scan of
+  // every player's positions on a busy round.
   // A failed money-row read is not an empty account. Let the route show its retry state.
-  const positions = await listPositionsForUser(userId, 500, "UPDOWN");
+  const positions = (await Promise.all([...new Set(marketIds)]
+    .map((marketId) => positionStore.listForUserAndMarket(userId, marketId)))).flat();
   for (const p of positions) {
     const e = out.get(p.marketId) ?? { up: 0, down: 0, refunded: 0, result: null, results: [] };
     // ⭐ E-65 · A VOID position with its full stake returned was refunded, even
@@ -768,12 +775,11 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
 }> {
   const cfg = await getUpDownConfig();
   const defaultBounds = { min: cfg.defaultMinStake, max: cfg.defaultMaxStake };
-  const [enabled, allChains, mineByMarket, walletBalance] = await Promise.all([
+  const [enabled, allChains, walletBalance] = await Promise.all([
     // A failed catalog read is not an empty market. Let the page's retry boundary
     // show the fault for guests and players alike.
     assetStore.list({ enabledOnly: true }),
     chainStore.list(),
-    myStakesByMarket(opts?.userId),
     walletBalanceOf(opts?.userId),
   ]);
 
@@ -900,8 +906,11 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
 
   // Newest first, bounded — never an unbounded scan of a table that grows every minute.
   const raw = await roundStore.list({ chainId: chain.id, limit: 24 });
+  const marketRows = await Promise.all(raw.map((r) => marketStore.get(r.marketId)));
+  const marketById = new Map(raw.map((r, i) => [r.marketId, marketRows[i]]));
+  const nowMs = Date.now();
   const mapped = (await Promise.all(
-    raw.map((r) => toBoardRound(r, chain, activeAssetRow, mineByMarket.get(r.marketId), lagSeconds)),
+    raw.map((r, i) => toBoardRound(r, chain, activeAssetRow, undefined, lagSeconds, marketRows[i], nowMs)),
   )).filter(Boolean) as BoardRound[];
 
   // The board shows what a player can act on or is watching: every started round that has
@@ -922,7 +931,6 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
   // player stake on a round whose OPEN PRICE is not yet fixed — they would be betting
   // against a line that does not exist. Without this the board showed two "LIVE"
   // 5-minute rounds side by side with different countdowns.
-  const nowMs = Date.now();
   const started = mapped.filter(
     (r) => !roundIsSettled(r.state) && Date.parse(r.opensAt) <= nowMs,
   );
@@ -948,14 +956,21 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
   const lastDone = latestNonOverlappingResult(mapped, current);
   // ⭐ E-166 · the settled card must be able to say what comes NEXT, not "Closed". Resolved here
   // — after the selection — so the cost is one lookup for the one card that can use it.
-  const selected = await withSuccessors(
-    [current, justClosed, lastDone].filter(Boolean) as BoardRound[],
-    chain,
-    raw,
-  );
+  const selectedBare = [current, justClosed, lastDone].filter(Boolean) as BoardRound[];
+  const mineByMarket = await myStakesByMarket(opts?.userId, selectedBare.map((r) => r.marketId));
+  const byId = new Map(raw.map((r) => [r.id, r]));
+  // Selection above depends only on round state and timing. Attach the viewer's
+  // position after it, so only visible cards need indexed money-row reads.
+  const selectedWithMine = (await Promise.all(selectedBare.map(async (round) => {
+    const mine = mineByMarket.get(round.marketId);
+    if (!mine) return round;
+    const stored = byId.get(round.roundId);
+    const market = marketById.get(round.marketId);
+    return stored && market ? toBoardRound(stored, chain, activeAssetRow, mine, lagSeconds, market, nowMs) : null;
+  }))).filter(Boolean) as BoardRound[];
+  const selected = await withSuccessors(selectedWithMine, chain, raw);
   // Price provenance is needed only for the cards actually returned, not every
   // historical row mapped above. Each read is bounded to that round's window.
-  const byId = new Map(raw.map((r) => [r.id, r]));
   const rounds = await Promise.all(selected.map((r) => {
     const stored = byId.get(r.roundId);
     return stored ? withRoundQuoteTimes(r, stored) : r;
@@ -1441,7 +1456,7 @@ async function myPositionFor(
   userId: string | undefined, marketId: string,
 ): Promise<{
   side: "UP" | "DOWN"; stake: number; payout: number | null;
-  result: "WIN" | "LOSS" | "VOID" | null; ids: string[];
+  result: "WIN" | "LOSS" | "VOID" | "CASHED_OUT" | "MIXED" | null; ids: string[];
   /** Every position this viewer holds on this round, newest first. Never truncated. */
   items: MyRoundPosition[];
   /** True when the viewer backed BOTH sides — the aggregate `side` cannot describe them. */
@@ -1451,17 +1466,21 @@ async function myPositionFor(
   // A failed read must reach the round page's retry boundary, not erase a holder's result.
   const positions = (await listPositionsForMarket(marketId)).filter((p) => p.userId === userId);
   if (positions.length === 0) return null;
-  let up = 0, down = 0, stake = 0, payout = 0, anyPayout = false, anyWin = false, anyVoid = false, allSettled = true;
+  let up = 0, down = 0, stake = 0, payout = 0, anyPayout = false, allSettled = true;
+  const settledStatuses = new Set<"WIN" | "LOSS" | "VOID" | "CASHED_OUT">();
   for (const p of positions) {
     stake += p.stake;
     if (p.side === "YES") up += p.stake; else down += p.stake;
     if (p.finalPayout != null) { payout += p.finalPayout; anyPayout = true; }
-    if (p.status === "WIN") anyWin = true;
-    else if (p.status === "VOID") anyVoid = true;
     if (p.status === "OPEN") allSettled = false;
+    else settledStatuses.add(p.status);
   }
   const side: "UP" | "DOWN" = up >= down ? "UP" : "DOWN";
-  const result: "WIN" | "LOSS" | "VOID" | null = !allSettled ? null : anyVoid && !anyWin ? "VOID" : anyWin ? "WIN" : "LOSS";
+  // One winning leg does not make the player's combined position a win. In
+  // particular, a two-sided holder can receive less than their total stake.
+  // Keep each settled row below, and give a mixed aggregate a neutral label.
+  const result: "WIN" | "LOSS" | "VOID" | "CASHED_OUT" | "MIXED" | null = !allSettled
+    ? null : settledStatuses.size === 1 ? [...settledStatuses][0] : "MIXED";
   // ⭐ Newest first, matching /updown/history's own ordering so a player reading both
   // surfaces sees their positions in one order. `listForMarket` orders by the store's
   // own key, so the sort is explicit here rather than assumed.
@@ -1504,7 +1523,7 @@ export async function getRoundDetail(roundId: string, userId?: string): Promise<
    *  `items` is every one of those positions, itemised and never truncated. */
   myPosition: {
     side: "UP" | "DOWN"; stake: number; payout: number | null;
-    result: "WIN" | "LOSS" | "VOID" | null; ids: string[];
+    result: "WIN" | "LOSS" | "VOID" | "CASHED_OUT" | "MIXED" | null; ids: string[];
     items: MyRoundPosition[]; hedged: boolean;
   } | null;
   proof: {
@@ -1533,7 +1552,7 @@ export async function getRoundDetail(roundId: string, userId?: string): Promise<
 
   // The viewer's OWN open stake per side on THIS round — powers the "you're in"
   // indicator + optimistic base on the inline bet box (same source as the board card).
-  const mine = userId ? (await myStakesByMarket(userId)).get(r.marketId) : undefined;
+  const mine = userId ? (await myStakesByMarket(userId, [r.marketId])).get(r.marketId) : undefined;
   // ⛔ E-99 · THE LAG MUST BE PASSED HERE TOO. This is the ROUND DETAIL path, and it was the
   // one that would have silently shipped broken: `toBoardRound(r, chain, mine)` type-checks
   // perfectly with the fourth argument missing, so `expectedResultAtMs` would have been null

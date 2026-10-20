@@ -289,20 +289,30 @@ console.log("\n§7i · both surfaces call the one function");
     (phase.match(/state === "resolved" \|\| state === "void"/g) ?? []).length === 1,
     "three functions here each carried their own copy; the board carried none, and that missing copy was D36");
 
-  /* ⚠️ THE REST OF THE TREE STILL SPELLS IT BY HAND — seven copies, and this counts them so an
-     EIGHTH cannot arrive unnoticed. They are correct today and are left alone rather than folded
+  /* ⚠️ THE REST OF THE TREE STILL SPELLS IT BY HAND — five copies, and this counts them so a
+     sixth cannot arrive unnoticed. They are correct today and are left alone rather than folded
      into an unrelated commit; the number is the point, not the spelling. Raise it deliberately,
      or better, replace a copy with `roundIsSettled` and lower it. */
+  const settledCount = (source: string) =>
+    (strip(source).match(/=== "resolved" \|\| [\w.]+ === "void"/g) ?? []).length;
   const HAND_SPELT = [
     ["src/components/updown/updown-card.tsx", 2],
     ["src/app/updown/[roundId]/page.tsx", 1],
-    ["src/lib/server/updown-board.ts", 3],
+    ["src/lib/server/updown-board.ts", 2],
   ] as const;
   for (const [rel, expected] of HAND_SPELT) {
-    const hits = (strip(read(rel)).match(/=== "resolved" \|\| [\w.]+ === "void"/g) ?? []).length;
+    const hits = settledCount(read(rel));
     ok(`§7q ${rel} still hand-spells the settled test exactly ${expected}×`, hits === expected,
       `found ${hits} — if this grew, route it through \`roundIsSettled\`; if it shrank, lower the number here`);
   }
+  const serverBoard = read("src/lib/server/updown-board.ts");
+  const selection = '(r) => !roundIsSettled(r.state) && Date.parse(r.opensAt) <= nowMs,';
+  const handSpeltSelection = '(r) => !(r.state === "resolved" || r.state === "void") && Date.parse(r.opensAt) <= nowMs,';
+  const copied = serverBoard.replace(selection, handSpeltSelection);
+  ok("§7q control · restoring the board selection's third hand-spelt settled check is rejected",
+    serverBoard.includes(selection) && copied !== serverBoard
+      && settledCount(serverBoard) === 2 && settledCount(copied) === 3,
+    "the real board selection must be found, and the same count must catch the extra copy");
 
   /* ⭐ §7r · THE POPULATION PROOF. The six states §7a–§7b exercise are not a list somebody
      remembered — they are the whole union, read out of the source and compared. Add a seventh
@@ -374,5 +384,5 @@ console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fai
 // ⛔ A suite that silently stops running is a suite that cannot fail (see `chart-series`).
 // ⛔ RAISE THIS WITH EVERY SECTION ADDED. Left at 28 while §7 added 17, the whole of §7 could be
 //    deleted and this suite would still report ALL PASS over the 32 that remained.
-if (pass + fail < 62) { console.error(`!! only ${pass + fail} assertions ran — treating as failure.`); process.exit(3); }
+if (pass + fail < 63) { console.error(`!! only ${pass + fail} assertions ran — treating as failure.`); process.exit(3); }
 process.exit(fail === 0 ? 0 : 1);

@@ -14,24 +14,25 @@ export function receiptFormatIssues(source) {
     && !clock.includes("toLocaleTimeString("),
   "receipt clock is a 24-hour EAT minute with its zone stated");
   need(details.includes("const betsClose = clockOf(info.selectionClosedAt);")
-    && details.includes("const resultDue = clockOf(info.closesAt);")
+    && details.includes("const roundClose = clockOf(info.closesAt);")
     && details.includes("if (betsClose) details.push(")
-    && details.includes("if (resultDue) details.push("),
-  "both receipt deadlines use that clock and omit missing instants");
+    && details.includes("if (roundClose) details.push("),
+  "betting and round-close instants use that clock and omit missing instants");
   return issues;
 }
 
-/** The close is the expected result time, not a promise that settlement has finished. */
-export function receiptResultTimeIssues(dictionarySource, modalSource) {
+/** The close labels the deciding-price minute; it does not promise publication of the result. */
+export function receiptRoundCloseIssues(dictionarySource, modalSource) {
   const issues = [];
-  const labels = [...dictionarySource.matchAll(/\budRcResultDue:\s*"([^"]*)"/g)].map((match) => match[1]);
-  if (labels.length !== 3 || labels[0] !== "Result expected" || labels[1] !== "Matokeo yanatarajiwa"
-    || labels[2] !== "预计结果时间") {
-    issues.push("receipt result time is explicitly expected in English, Swahili and Chinese");
+  const labels = [...dictionarySource.matchAll(/\budRcRoundCloses:\s*"([^"]*)"/g)].map((match) => match[1]);
+  if (labels.length !== 3 || labels[0] !== "Round closes" || labels[1] !== "Raundi inafungwa"
+    || labels[2] !== "回合结束" || /\budRcResultDue:/.test(dictionarySource)) {
+    issues.push("receipt names the round close, without promising a published result, in all three languages");
   }
-  if (!modalSource.includes("const resultDue = clockOf(info.closesAt);")
-    || !modalSource.includes("if (resultDue) details.push({ label: t.market.udRcResultDue, value: resultDue });")) {
-    issues.push("the expected-result label belongs to the round close clock");
+  if (!modalSource.includes("const roundClose = clockOf(info.closesAt);")
+    || !modalSource.includes("if (roundClose) details.push({ label: t.market.udRcRoundCloses, value: roundClose });")
+    || /\budRcResultDue\b|\bresultDue\b/.test(modalSource)) {
+    issues.push("the round-close label belongs only to the round close clock");
   }
   return issues;
 }

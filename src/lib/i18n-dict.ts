@@ -1179,7 +1179,7 @@ export const dict = {
       // it is `udEstimateNote`, which already exists and already says exactly this — it is
       // reused rather than restated so the round page's confirm panel and this receipt cannot drift.
       udRcProjected: "Projected return", udRcOpenPrice: "Open price",
-      udRcBetsClose: "Betting closes", udRcResultDue: "Result expected",
+      udRcBetsClose: "Betting closes", udRcRoundCloses: "Round closes",
       // ⛔ The exit row is COMPUTED per bet, never stated as a constant. Cash-out needs
       // `freeExitGraceMinutes` of betting time still left when the bet lands (the RUNWAY rule
       // in market-service.cashOutValue), and an Up & Down round's betting window IS its
@@ -4499,7 +4499,7 @@ export const dict = {
       udPosCashedOut: "Imeghairiwa",
       udHistoryCapped: "Tunaonyesha dau {n} za hivi karibuni — jumla hapo juu ni za hizo tu.",
       udRcProjected: "Marejesho yanayotarajiwa", udRcOpenPrice: "Bei ya ufunguzi",
-      udRcBetsClose: "Madau yanafungwa", udRcResultDue: "Matokeo yanatarajiwa",
+      udRcBetsClose: "Madau yanafungwa", udRcRoundCloses: "Raundi inafungwa",
       udRcExitLabel: "Kughairi bila malipo", udRcExitValue: "dakika {mins}",
       udRcNoExitLabel: "Hakuna kutoka mapema", udRcNoExitValue: "Litaenda hadi matokeo",
       udRcKeepPlaying: "Endelea kucheza", udRcWatchRound: "Tazama raundi hii",
@@ -7259,7 +7259,7 @@ export const dict = {
       udPosCashedOut: "已取消",
       udHistoryCapped: "仅显示最近 {n} 笔下注——上方合计也只涵盖这些。",
       udRcProjected: "预计回报", udRcOpenPrice: "开盘价",
-      udRcBetsClose: "投注截止", udRcResultDue: "预计结果时间",
+      udRcBetsClose: "投注截止", udRcRoundCloses: "回合结束",
       udRcExitLabel: "免费取消", udRcExitValue: "{mins} 分钟",
       udRcNoExitLabel: "不可提前退出", udRcNoExitValue: "将持有至结果公布",
       udRcKeepPlaying: "继续游戏", udRcWatchRound: "观看本轮",

@@ -55,6 +55,7 @@ const history = stripComments(readFileSync(HISTORY, "utf8"));
 const round = stripComments(readFileSync(ROUND, "utf8"));
 const board = stripComments(readFileSync(BOARD, "utf8"));
 const dict = readFileSync(DICT, "utf8");
+const boardStakeRead = board.match(/async function myStakesByMarket\([\s\S]*?\n\}/)?.[0] ?? "";
 
 console.log("\n── 1 · the history card renders EVERY bet ─────────────────────────\n");
 
@@ -159,7 +160,9 @@ ok("4.4 it returns the itemised list",
 // A read error is not a player with no positions. All three routes have retry
 // boundaries, so signed-in reads must throw while guests keep their early return.
 ok("4.5 the board keeps the guest shortcut and propagates a signed-in read failure",
-  /if \(!userId\) return out;[\s\S]{0,240}const positions = await listPositionsForUser\(userId, 500, "UPDOWN"\);/.test(board),
+  /if \(!userId \|\| marketIds\.length === 0\) return out;/.test(boardStakeRead)
+  && /const positions = \(await Promise\.all\(\[\.\.\.new Set\(marketIds\)\]\s*\.map\(\(marketId\) => positionStore\.listForUserAndMarket\(userId, marketId\)\)\)\)\.flat\(\);/.test(boardStakeRead)
+  && !/\.catch\(\(\) => \[\]\)/.test(boardStakeRead),
   "the board may silently erase a signed-in player's stake");
 ok("4.6 the history read propagates failure instead of claiming no bets",
   /export async function getMyUpDownHistory\([\s\S]{0,150}const positions = await listPositionsForUser\(userId, limit, "UPDOWN"\);/.test(board),

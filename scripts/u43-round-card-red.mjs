@@ -54,7 +54,7 @@ for (const [name, mutant] of checks) {
   }
 }
 const detailMutants = [
-  ["refunded detail amount called payout", detailPage.replace('result === "LOSS" ? t.market.udStake : t.market.udRefundTitle', 'result === "LOSS" ? t.market.udStake : t.market.udPaidOut')],
+  ["refunded detail amount called payout", detailPage.replace('result === "VOID" ? t.market.udRefundTitle : t.market.udPaidOut', 'result === "VOID" ? t.market.udPaidOut : t.market.udPaidOut')],
   ["lost detail amount shows zero payout", detailPage.replace('result === "LOSS" ? myPosition?.stake ?? 0 : myPosition?.payout ?? 0', 'myPosition?.payout ?? 0')],
   ["detail confirming loses frozen payouts", detailPage.replace('{isOpen || locked || awaitingResult ? (', '{isOpen || locked ? (')],
   ["detail next round invented", detailPage.replace('round.successor.chainRunning ? t.market.udNextAfterResult', 'true ? t.market.udNextAfterResult')],

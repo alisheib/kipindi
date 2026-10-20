@@ -32,7 +32,7 @@ if (scratch) {
 }
 
 const { db } = await import("../src/lib/server/store.ts");
-const { positionStore } = await import("../src/lib/server/market-dal.ts");
+const { marketStore, positionStore } = await import("../src/lib/server/market-dal.ts");
 const { buyPosition } = await import("../src/lib/server/market-service.ts");
 const { getBoard, getRoundDetail, getMyUpDownHistory } = await import("../src/lib/server/updown-board.ts");
 const UC = await import("../src/lib/server/updown-config.ts");
@@ -77,7 +77,17 @@ const bet = await buyPosition(userId, { marketId: round.data.marketId, side: "YE
   idempotencyKey: `prf-${process.pid}` });
 if (!bet.ok) throw new Error(`fixture bet: ${bet.error}`);
 
-const board = await getBoard({ assetKey: tag, durationMinutes: 5, userId });
+const marketReadForBoard = marketStore.get;
+let boardMarketReads = 0;
+marketStore.get = async (marketId, tx) => {
+  boardMarketReads++;
+  return marketReadForBoard(marketId, tx);
+};
+let board: Awaited<ReturnType<typeof getBoard>>;
+try { board = await getBoard({ assetKey: tag, durationMinutes: 5, userId }); }
+finally { marketStore.get = marketReadForBoard; }
+assert.equal(boardMarketReads, 1,
+  "the board reuses one market snapshot for selection and viewer hydration");
 assert.equal(board.rounds.find((r) => r.roundId === round.data.id)?.myUpStake, 2_000, "board fixture must show this stake");
 const detail = await getRoundDetail(round.data.id, userId);
 assert.equal(detail?.myPosition?.stake, 2_000, "detail fixture must show this stake");
@@ -123,21 +133,54 @@ for (const [store, method, label] of [
     `history must not turn failed ${label} lookup into Unknown`);
 }
 
-const userRead = positionStore.listForUser;
-const userFault = new Error("fixture position-by-user read failure");
-positionStore.listForUser = async () => { throw userFault; };
+// A player's old stake cannot vanish because they have made >500 newer Up & Down
+// positions elsewhere. The previous board and detail readers capped the entire
+// account before filtering for the shown market. This fixture makes that cap's
+// failure concrete: the original position is absent from the old 500-row view.
+const liveMarket = await marketStore.get(round.data.marketId);
+const held = await positionStore.get(bet.data.positionId);
+assert.ok(liveMarket && held, "the cap fixture needs its real market and held position");
+const otherMarketId = `ud_prf_noise_${process.pid}`;
+await marketStore.set({ ...liveMarket, id: otherMarketId, yesPool: 501, noPool: 0,
+  predictorCount: 1, createdAt: now, updatedAt: now });
+for (let offset = 0; offset < 501; offset += 20) {
+  await Promise.all(Array.from({ length: Math.min(20, 501 - offset) }, (_, index) => {
+    const i = offset + index;
+    return positionStore.set({ ...held, id: `ud_prf_noise_${process.pid}_${i}`,
+      marketId: otherMarketId, stake: 1, potentialPayout: 1,
+      idempotencyKey: null, placedAt: new Date(Date.parse(held.placedAt) + i + 1).toISOString() });
+  }));
+}
+assert.equal((await positionStore.listForUser(userId, 500, "UPDOWN")).some((p) => p.id === held.id), false,
+  "premise: the old account-wide 500-position cap discards the visible round's stake");
+const uncappedBoard = await getBoard({ assetKey: tag, durationMinutes: 5, userId });
+assert.equal(uncappedBoard.rounds.find((r) => r.roundId === round.data.id)?.myUpStake, held.stake,
+  "the board still shows the older held stake after 501 newer positions elsewhere");
+const uncappedDetail = await getRoundDetail(round.data.id, userId);
+assert.equal(uncappedDetail?.round.myUpStake, held.stake,
+  "the round detail still shows the older held stake after 501 newer positions elsewhere");
+
+const ownMarketRead = positionStore.listForUserAndMarket;
+const ownMarketFault = new Error("fixture own-position-by-market read failure");
+positionStore.listForUserAndMarket = async () => { throw ownMarketFault; };
 try {
-  await assert.rejects(() => getBoard({ assetKey: tag, durationMinutes: 5, userId }), (e) => e === userFault,
+  await assert.rejects(() => getBoard({ assetKey: tag, durationMinutes: 5, userId }), (e) => e === ownMarketFault,
     "board must not turn failed position read into no stake");
-  await assert.rejects(() => getRoundDetail(round.data.id, userId), (e) => e === userFault,
+  await assert.rejects(() => getRoundDetail(round.data.id, userId), (e) => e === ownMarketFault,
     "detail must not turn failed position read into no stake");
-  await assert.rejects(() => getMyUpDownHistory(userId), (e) => e === userFault,
-    "history must not turn failed position read into no bets");
   const guestBoard = await getBoard({ assetKey: tag, durationMinutes: 5 });
   assert.equal(guestBoard.rounds.find((r) => r.roundId === round.data.id)?.myUpStake, 0,
     "guest board must remain anonymous");
   const guestDetail = await getRoundDetail(round.data.id);
   assert.equal(guestDetail?.myPosition, null, "guest detail must remain anonymous");
+} finally { positionStore.listForUserAndMarket = ownMarketRead; }
+
+const userRead = positionStore.listForUser;
+const userFault = new Error("fixture history position-by-user read failure");
+positionStore.listForUser = async () => { throw userFault; };
+try {
+  await assert.rejects(() => getMyUpDownHistory(userId), (e) => e === userFault,
+    "history must not turn failed position read into no bets");
 } finally { positionStore.listForUser = userRead; }
 
 const marketRead = positionStore.listForMarket;

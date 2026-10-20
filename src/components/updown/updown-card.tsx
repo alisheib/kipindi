@@ -1067,13 +1067,27 @@ export function UpDownCard(props: UpDownCardProps) {
                 </span>
               </p>
             ) : (
-              <p className="m-0 flex flex-wrap items-baseline gap-x-1.5">
-                <span>{t.market.udBothSidesHeld}</span><span aria-hidden>·</span>
-                <span>{myResults.every((result) => result.status === "VOID") ? t.market.udRefundTitle : t.market.udPaidOut}</span>
-                <span className="amount font-semibold text-text">
-                  {formatTzs(myResults.reduce((sum, result) => sum + result.payout, 0))}
-                </span>
-              </p>
+              <>
+                <p className="m-0 flex flex-wrap items-baseline gap-x-1.5">
+                  <span>{myResults.some((result) => result.side === "UP") && myResults.some((result) => result.side === "DOWN")
+                    ? t.market.udBothSidesHeld : t.market.udYourResult}</span><span aria-hidden>·</span>
+                  <span>{myResults.every((result) => result.status === "VOID") ? t.market.udRefundTitle : t.market.udPaidOut}</span>
+                  <span className="amount font-semibold text-text">
+                    {formatTzs(myResults.reduce((sum, result) => sum + result.payout, 0))}
+                  </span>
+                </p>
+                {myResults.map((result) => (
+                  <p key={`${result.side}-${result.status}`} className="m-0 flex flex-wrap items-baseline gap-x-1.5">
+                    <span>{result.side === "UP" ? t.market.udUp : t.market.udDown}</span><span aria-hidden>·</span>
+                    <span>{result.status === "WIN" ? t.market.udWon
+                      : result.status === "LOSS" ? t.market.udLost : t.market.udRefundTitle}</span><span aria-hidden>·</span>
+                    {result.status !== "VOID" && <span>{result.status === "WIN" ? t.market.udPaidOut : t.market.udStake}</span>}
+                    <span className="amount font-semibold text-text">
+                      {formatTzs(result.status === "LOSS" ? result.stake : result.payout)}
+                    </span>
+                  </p>
+                ))}
+              </>
             )}
           </div>
         )}

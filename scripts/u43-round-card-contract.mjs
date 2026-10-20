@@ -71,8 +71,8 @@ export function roundCardIssues(card, controls, mark, detailPage, action, countd
   need(detailPage.includes('lastSecondsLabel={isOpen ? t.market.udLastSeconds : undefined}')
     && countdown.includes('const shownCaption = urgent ? lastSecondsLabel! : handCaption ?? caption;'),
     "detail clock names final betting seconds even when motion is reduced");
-  need(detailPage.includes('result === "WIN" ? t.market.udPaidOut')
-    && detailPage.includes('result === "LOSS" ? t.market.udStake : t.market.udRefundTitle')
+  need(detailPage.includes('result === "LOSS" ? t.market.udStake')
+    && detailPage.includes('result === "VOID" ? t.market.udRefundTitle : t.market.udPaidOut')
     && detailPage.includes('result === "LOSS" ? myPosition?.stake ?? 0 : myPosition?.payout ?? 0')
     && detailPage.includes('{formatTzs(resultAmount)}'),
     "detail receipt labels earned payout, lost stake and returned stake by their real meaning");

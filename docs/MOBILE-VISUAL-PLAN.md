@@ -567,6 +567,20 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   a key and live minute-open validation could clear this source. A later feed cutover must retain each existing
   round's captured source; unresolved rounds must drain or read through a provider pinned to that round.
   No replacement source is authorized yet.
+  A further Release B truth audit found three local issues after `85be2888a`: the receipt called the
+  round's closing boundary an expected result time, the detail page called a two-sided holder a winner
+  when only one leg won, and the board's latest-500-position read could omit an older position on a
+  visible round. The receipt now names the closing boundary in all three languages; its focused guard
+  and 33 in-memory reversals passed. The mixed-result repair was exercised through a real local
+  settlement: TZS 20,000 staked on both sides paid TZS 3,582, with stored WIN and LOSS legs; the
+  detail now uses a neutral mixed headline and the card shows each side. Its guard and physical
+  classifier reversal passed. The board and detail now read every position for their visible markets
+  through the indexed player-and-market lookup, reusing one market snapshot and clock for board
+  selection and viewer hydration. Its in-memory fixture proved that the former cap hid a real
+  TZS 2,000 stake behind 501 newer positions, and both the old-cap and second-market-read physical
+  reversals failed the guard; the PostgreSQL run remains owed. These are local findings and repairs,
+  not a production result or an after score. The source-frozen state matrix remains
+  held while the Maswali lane uses the browser and main-push slot.
   ▶ **WORKING BRIEF:**
   `docs/design-brief/u43-2026-10/BRIEF.md` — where it stands, Ali's rulings, the fixed points, the data facts, five work
   packages (the round card; the live line and the chart made to agree; the board and the two chip rows; the market card;

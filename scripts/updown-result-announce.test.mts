@@ -96,7 +96,7 @@ console.log("§0 · the slices this suite reasons over (refuse to measure an emp
 const effect = sliceBraces(announcer, "useEffect(() => {");
 ok("0.1 the announcer's effect body is locatable", effect != null);
 ok("0.2 …and is substantial", (effect?.length ?? 0) > 600, `${effect?.length ?? 0} chars`);
-const myStakes = sliceBraces(board, "async function myStakesByMarket(userId: string | undefined): Promise<Map<string, MyMarketStake>> {");
+const myStakes = sliceBraces(board, "async function myStakesByMarket(userId: string | undefined, marketIds: readonly string[]): Promise<Map<string, MyMarketStake>> {");
 ok("0.3 `myStakesByMarket`'s body is locatable", myStakes != null);
 ok("0.4 …and is substantial", (myStakes?.length ?? 0) > 500, `${myStakes?.length ?? 0} chars`);
 if (!effect || !myStakes) {

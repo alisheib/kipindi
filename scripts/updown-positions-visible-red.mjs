@@ -125,9 +125,9 @@ const cases = [
     suite: "fault",
     expected: "board must not turn failed position read into no stake",
     apply: () => mutate(BOARD,
-      '  const positions = await listPositionsForUser(userId, 500, "UPDOWN");',
-      '  const positions = await listPositionsForUser(userId, 500, "UPDOWN").catch(() => []);',
-      "restore the board's silent-empty fallback"),
+      '.map((marketId) => positionStore.listForUserAndMarket(userId, marketId))',
+      '.map((marketId) => positionStore.listForUserAndMarket(userId, marketId).catch(() => []))',
+      "restore the board's silent-empty fallback on each indexed read"),
   },
   {
     name: "D6 · a failed history position read claims the player has no bets",
