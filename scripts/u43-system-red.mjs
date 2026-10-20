@@ -2,6 +2,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { MUTATIONS as cases } from "./anchors/u43-system.anchors.mjs";
+import { injectDefect } from "./red-anchor.mjs";
 
 const gate = () => {
   try { return { code: 0, out: execFileSync("npx", ["tsx", "scripts/u43-system.test.mts"], { encoding: "utf8", shell: process.platform === "win32" }) }; }
@@ -11,12 +12,9 @@ if (gate().code !== 0) throw new Error("System guard is red before mutation");
 let caught = 0;
 for (const item of cases) {
   const original = readFileSync(item.file, "utf8");
-  const positions = [...original.matchAll(new RegExp(item.from.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"))]
-    .map((match) => match.index)
-    .filter((index) => !item.lineStart || index === 0 || original[index - 1] === "\n");
-  if (positions.length !== 1) throw new Error(`Anchor invalid: ${item.file} ${item.expect}`);
+  const mutated = injectDefect(original, item.from, item.to);
   let result;
-  try { writeFileSync(item.file, original.slice(0, positions[0]) + item.to + original.slice(positions[0] + item.from.length)); result = gate(); }
+  try { writeFileSync(item.file, mutated); result = gate(); }
   finally { writeFileSync(item.file, original); }
   const pass = result.code !== 0 && result.out.includes(`FAIL ${item.expect}`);
   console.log(`${pass ? "CAUGHT" : "MISSED"} ${item.expect}`);
