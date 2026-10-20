@@ -27,6 +27,9 @@ const files = {
   pollDetail: read("src/app/admin/ai-polls/[id]/page.tsx"),
   pollMissing: read("src/app/admin/ai-polls/[id]/not-found.tsx"),
   desk: read("src/lib/server/house-console-read.ts"),
+  system: read("src/app/admin/system/page.tsx"),
+  house: read("src/app/admin/house/page.tsx"),
+  invites: read("src/app/admin/invites/page.tsx"),
 };
 
 const DESK_SUBJECTS = [
@@ -76,6 +79,14 @@ function defects(s: typeof files): string[] {
     if (!s.desk.includes(`"${label}"`)) bad.push(`desk no longer supplies ${label}`);
     if (subject(label) !== glyph) bad.push(`desk ${label} must use ${glyph}, got ${subject(label)}`);
   }
+  for (const [file, label, glyph] of [
+    ["system", "Wait p95", "clock"],
+    ["house", "Net retained", "coins"],
+    ["invites", "Campaigns", "megaphone"],
+  ] as const) {
+    if (!s[file].includes(`label="${label}"`)) bad.push(`${file} no longer supplies ${label}`);
+    if (subject(label) !== glyph) bad.push(`${file} ${label} must use ${glyph}, got ${subject(label)}`);
+  }
   if ((s.kpi.match(/\{subject\}/g) ?? []).length !== 2 || !s.kpi.includes('variant="identity"') ||
       !s.kpi.includes('tier="duo"') || !s.kpi.includes("plateGlyph(26)"))
     bad.push("KPI normal and unavailable paths need one derived Duotone identity plate");
@@ -121,6 +132,10 @@ const generic = [...new Set(labels.filter((label) => adminKpiGlyph(label) === "c
 check(`semantic subjects for ${labels.length} literal KPI labels`, labels.length >= 200 && generic.length === 0, generic.join(", "));
 check("semantic subjects for dynamic desk KPI labels",
   DESK_SUBJECTS.every(([label, glyph]) => adminKpiGlyph(label) === glyph));
+check("exact system, house and invite subjects",
+  files.system.includes('label="Wait p95"') && adminKpiGlyph("Wait p95") === "clock"
+  && files.house.includes('label="Net retained"') && adminKpiGlyph("Net retained") === "coins"
+  && files.invites.includes('label="Campaigns"') && adminKpiGlyph("Campaigns") === "megaphone");
 const html = renderToStaticMarkup(createElement(Chip, { size: "sm", variant: "success", glyph: "checkCircle" }, "Approved"));
 check("status chip renders its Fill glyph and the word", html.includes('data-g="checkCircle.fill"') && html.includes("Approved"));
 const live = renderToStaticMarkup(createElement(MarketStatusBadge, { status: "LIVE" }));
@@ -141,6 +156,7 @@ if (process.argv.includes("--prove-red")) {
     ["missing poll loses the empty plate", "pollMissing", '<IconPlate size={48} variant="empty"', '<span className="private-tile"'],
     ["desk money label becomes generic", "subject", '[/^Stake today$|^Loss today$/i, "coins"]', '[/^Stake today$|^Loss today$/i, "chart"]'],
     ["desk account label becomes generic", "subject", '[/^Accounts$/i, "users"]', '[/^Accounts$/i, "chart"]'],
+    ["AI token swallows Wait p95", "subject", '/\\bAI\\b|anthropic|oracle|cycle|model|stored \\(180d\\)/i', '/AI|anthropic|oracle|cycle|model|stored \\(180d\\)/i'],
   ];
   for (const [name, key, from, to] of plants) {
     if (!files[key].includes(from)) { check(name, false, "plant anchor absent"); continue; }
