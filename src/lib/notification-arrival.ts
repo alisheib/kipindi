@@ -6,6 +6,7 @@ type ArrivalRow = { id: string; readAt: string | null; createdAt: string };
 
 export type NotificationArrivalState = {
   ids: ReadonlySet<string>;
+  unreadIds: ReadonlySet<string>;
   newestAtMs: number;
   unreadCount: number;
 };
@@ -16,20 +17,27 @@ export function advanceNotificationArrival(
   unreadCount: number,
 ): { state: NotificationArrivalState; ring: boolean } {
   const ids = new Set<string>();
+  const unreadIds = new Set<string>();
   let newestAtMs = previous?.newestAtMs ?? -Infinity;
   let ring = false;
+  // A read and a new arrival can cancel in the full unread total. The rows
+  // still show the read transition, so retain their prior unread IDs.
+  const readTransition = previous !== null && rows.some((row) =>
+    !!row.readAt && previous.unreadIds.has(row.id));
   for (const row of rows) {
     ids.add(row.id);
+    if (!row.readAt) unreadIds.add(row.id);
     const createdAtMs = Date.parse(row.createdAt);
     // A new ID with the same timestamp as the old head is still an arrival when
-    // the server's full unread total rises. Count alone is insufficient: an
-    // existing row could change read state without being a new notification.
+    // the full unread total rises or a visible read cancels its rise. Count
+    // alone is insufficient: an existing row could change read state.
     if (previous && !row.readAt && !previous.ids.has(row.id)
       && (createdAtMs > previous.newestAtMs
-        || (createdAtMs === previous.newestAtMs && unreadCount > previous.unreadCount))) {
+        || (createdAtMs === previous.newestAtMs
+          && (unreadCount > previous.unreadCount || readTransition)))) {
       ring = true;
     }
     if (Number.isFinite(createdAtMs)) newestAtMs = Math.max(newestAtMs, createdAtMs);
   }
-  return { state: { ids, newestAtMs, unreadCount }, ring };
+  return { state: { ids, unreadIds, newestAtMs, unreadCount }, ring };
 }

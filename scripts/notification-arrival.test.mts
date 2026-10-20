@@ -26,6 +26,10 @@ function failures(advance: Advance): string[] {
   check("reading a row does not ring", !run(base.state, first.map((r, i) => i === 1 ? { ...r, readAt: at(31) } : r)).ring);
   check("an older row exposed after dismissing another does not ring", !run(base.state, [...first.slice(1), row("old", -1)], 29).ring);
   check("a timestamp-tied arrival rings when the full unread total rises", run(base.state, [row("tied", 29), ...first.slice(1)], 31).ring);
+  check("a timestamp-tied arrival rings when a visible read cancels its count rise",
+    run(base.state, [row("tied", 29), row("n29", 29, at(31)), ...first.slice(1, 29)], 30).ring);
+  check("an older row exposed after a read does not ring",
+    !run(base.state, [row("n29", 29, at(31)), ...first.slice(1, 29), row("old", 28)], 29).ring);
   check("a count rise without a new visible ID does not invent an arrival", !run(base.state, first, 31).ring);
   check("a falling unread total alone does not ring", !run(base.state, first, 29).ring);
   const newRead = run(base.state, [row("read", 30, at(30)), ...first.slice(1)]);
@@ -50,7 +54,7 @@ if (!wired || baseline.length) {
 }
 
 if (!process.argv.includes("--prove-red")) {
-  console.log("Notification arrival: 13/13 behavior cases and stale-response wiring pass");
+  console.log("Notification arrival: 15/15 behavior cases and stale-response wiring pass");
   process.exit(0);
 }
 
@@ -73,8 +77,9 @@ const plants: Array<[string, Advance, string]> = [
   ["drop new-ID check", mutated("!previous.ids.has(row.id)", "false"), "a fresh unread rings at the thirty-row cap"],
   ["ring for an existing row's revised timestamp", mutated("!previous.ids.has(row.id)", "true"), "a revised timestamp on an existing row does not ring"],
   ["ring for an old row exposed by the cap", mutated("createdAtMs > previous.newestAtMs", "true"), "an older row exposed after dismissing another does not ring"],
-  ["ring for an already-read arrival", mutated("!row.readAt", "true"), "a newly arrived read row does not ring"],
+  ["ring for an already-read arrival", mutated("previous && !row.readAt", "previous && true"), "a newly arrived read row does not ring"],
   ["ignore the full unread count", mutated("unreadCount > previous.unreadCount", "false"), "a timestamp-tied arrival rings when the full unread total rises"],
+  ["ignore a cancelling read transition", mutated("|| readTransition", ""), "a timestamp-tied arrival rings when a visible read cancels its count rise"],
 ];
 let caught = 0;
 for (const [name, plant, target] of plants) {
