@@ -52,15 +52,41 @@ import type { Dict, Locale } from "@/lib/i18n-dict";
 import { MILLIONEA_HREF, MillioneaPreviewMark, MillioneaReadingLinks } from "../../millionea-parts";
 import { bySlot, msOf, nextWeekNumber, ordinalOf, previousWeekNumber, textIn } from "../../millionea-view";
 import { kept, ticketSalesRuns, WeekStateChip } from "../register-parts";
+import { ROOT_OPEN_GRAPH } from "@/app/layout";
+import { weekStore } from "@/lib/server/maswali-dal";
+import { loadPublishedOgWeek } from "@/lib/server/millionea-og-week";
+import { normalizeMillioneaWeekCode } from "@/lib/server/maswali-player";
+import { dict } from "@/lib/i18n-dict";
+import { WEEK_STATE_KEY } from "@/lib/maswali-week-label";
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ week: string }> }): Promise<Metadata> {
   // The title obeys the same answer as the body (the account hub's precedent): a hidden product's page is titled as the
   // identical 404 is, and asking never rejects (visual-pass-r5d 1.4″).
   if (!(await millioneaDoor()).visible) return notFoundMetadata();
   const { t } = await getServerT();
-  return { title: `${t.millionea.registerTitle} · ${t.millionea.productLabel}` };
+  const ordinary = { title: `${t.millionea.registerTitle} · ${t.millionea.productLabel}` };
+  const door = await millioneaDoor(); // React-cached: the same audience answer as the 404 gate above.
+  if (door.state !== "ACTIVE") return ordinary; // STAFF_PREVIEW has no Millionea share card.
+  const { week: rawCode } = await params;
+  const code = normalizeMillioneaWeekCode(rawCode);
+  let week: Awaited<ReturnType<typeof loadPublishedOgWeek>> = null;
+  try { week = await loadPublishedOgWeek(door, code, weekStore.getByCode); }
+  catch { return ordinary; } // Metadata may fail; the body's read decides the page.
+  if (!week) return ordinary; // The body decides 404; some valid register pages are not OG-eligible yet.
+  const english = dict.en;
+  const weekNumber = weekNumberOf(week.code);
+  const title = `${weekWord(t, weekNumber)} · ${t.millionea.productLabel}`;
+  const shareTitle = `${weekWord(english, weekNumber)} · ${english.millionea.productTitle}`;
+  const description = millioneaWord(english, WEEK_STATE_KEY[week.state]);
+  const image = `/api/og/millionea/${encodeURIComponent(week.code)}`;
+  return {
+    title,
+    description,
+    openGraph: { ...ROOT_OPEN_GRAPH, title: shareTitle, description, images: [{ url: image, width: 1200, height: 630 }] },
+    twitter: { card: "summary_large_image", title: shareTitle, description, images: [image] },
+  };
 }
 
 type Q = MillioneaRegisterQuestion;

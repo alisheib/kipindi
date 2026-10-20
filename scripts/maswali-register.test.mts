@@ -300,11 +300,15 @@ check("8.1", "R10 · \"Week register\" in sentence case, and the page's title an
 });
 
 // ── §9 · A1 · no "·" opens or closes a line ─────────────────────────────────────────────────────────────────────────
-/** The document's <title> ("Week register · Millionea", the platform's page · product convention) is the browser tab's, not
- *  a line laid out on the page — the one " · " join a register file may hold. */
-const TAB_TITLE = "`${t.millionea.registerTitle} · ${t.millionea.productLabel}`";
-check("9.1", "A1 · no register file joins two facts into one string with \" · \" (the ledger's notes, the standing, the head) — the tab title alone excepted", (w) => {
-  const hits = (["week", "index", "parts"] as const).flatMap((k) => [...code(w, k).split(TAB_TITLE).join("").matchAll(/\} · \$\{|` · \$\{|\} · `/g)].map(() => FILES[k]));
+/** The index's document title is browser text, not a line laid out in its body. The week file's metadata ends at `type Q`. */
+const INDEX_TAB_TITLE = "`${t.millionea.registerTitle} · ${t.millionea.productLabel}`";
+check("9.1", "A1 · no register body joins two facts into one string with \" · \" (the ledger's notes, the standing, the head); metadata titles excepted", (w) => {
+  const hits = (["week", "index", "parts"] as const).flatMap((k) => {
+    const full = code(w, k);
+    const boundary = full.indexOf("type Q = MillioneaRegisterQuestion;");
+    const body = k === "week" && boundary >= 0 ? full.slice(boundary) : full.split(INDEX_TAB_TITLE).join("");
+    return [...body.matchAll(/\} · \$\{|` · \$\{|\} · `/g)].map(() => FILES[k]);
+  });
   return [hits.length === 0, j(hits)];
 });
 check("9.2", "A1 · the ledger's two notes stand on their own line (`noted`), and each levy is its own row — never one \"TRA … · GBT …\" row", (w) => {
