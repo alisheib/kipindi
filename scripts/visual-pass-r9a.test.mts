@@ -648,7 +648,14 @@ section("5 · A5 every pair of buttons stands 12px apart — the card's YES/NO a
       && rule(".mcardp-actions .btn").includes("padding: 0 var(--sp-2);"));
   // The census: every element whose own children hold two or more buttons (a `btn` class, a Button, a SubmitButton).
   const TAGRE = new RegExp("<([a-zA-Z][A-Za-z0-9_.]*)((?:[^<>{}]|[{](?:[^{}]|[{][^{}]*[}])*[}])*?)(/?)>|</([a-zA-Z][A-Za-z0-9_.]*)>", "g");
-  const CLS = new RegExp('className=(?:"([^"]*)"|[{]`([^`]*)`[}])');
+  // A pair can carry its fixed gap as the first cn() argument and add only a
+  // conditional layout class afterward (the Maswali slip's action rail does).
+  // Read that fixed class rather than treating the entire container as unstyled.
+  const CLS = new RegExp('className=(?:"([^"]*)"|[{]`([^`]*)`[}]|[{]cn[(]"([^"]*)")');
+  const classOf = (attrs: string) => {
+    const c = CLS.exec(attrs);
+    return c ? (c[1] ?? c[2] ?? c[3] ?? "") : "";
+  };
   const isBtn = (tag: string, a: string) => tag === "Button" || tag === "SubmitButton" || (new RegExp("[ " + QUOTE + "'" + BACKTICK + "]btn[ " + QUOTE + "'" + BACKTICK + "]").test(` ${a} `) && a.includes("btn-"));
   const pairs: Array<{ f: string; line: number; cls: string; n: number }> = [];
   for (const f of PLAYER_TSX) {
@@ -659,9 +666,8 @@ section("5 · A5 every pair of buttons stands 12px apart — the card's YES/NO a
         for (let i = stack.length - 1; i >= 0; i--) if (stack[i].tag === m[4]) { if (stack[i].n >= 2) pairs.push({ f, ...stack[i] }); stack.length = i; break; }
         continue;
       }
-      const c = CLS.exec(m[2] ?? "");
       if (isBtn(m[1], m[2] ?? "") && stack.length) stack[stack.length - 1].n++;
-      if (m[3] !== "/") stack.push({ tag: m[1], cls: c ? (c[1] ?? c[2] ?? "") : "", line: src.slice(0, m.index).split(NL).length, n: 0 });
+      if (m[3] !== "/") stack.push({ tag: m[1], cls: classOf(m[2] ?? ""), line: src.slice(0, m.index).split(NL).length, n: 0 });
     }
   }
   // S12 (WP9): Juu/Chini's journey arm — its column (`.kp-jud`: "Tumia … badala yake" above the commit) and its Up/Down pair
@@ -682,6 +688,12 @@ section("5 · A5 every pair of buttons stands 12px apart — the card's YES/NO a
     ["src/app/wallet/deposit/wait/deposit-waiting-client.tsx", "space-y-5 pb-16", "the receipt page's status sections and conditional full-width actions are stacked as separate rows"],
   ];
   const at12 = (cls: string) => new RegExp("(?:^| )gap(?:-x)?-2(?: |$)").test(cls) || Object.keys(CSS_PAIRS).some((k) => cls.split(" ").includes(k) && rule(CSS_PAIRS[k]).includes("gap: var(--sp-3)"));
+  const slipRail = pairs.find((p) => p.f === "src/components/maswali/maswali-slip.tsx" && p.cls === "flex items-center gap-2");
+  ok("5.2a · the slip action rail's fixed gap inside cn() is read from its source",
+    slipRail?.cls === "flex items-center gap-2" && at12(slipRail.cls), j(slipRail));
+  const downgradedRail = classOf(' className={cn("flex items-center gap-1.5", actionLabel && "flex-wrap")}');
+  ok("5.2a′ RED · the same cn() rail with an 8px gap is rejected",
+    downgradedRail === "flex items-center gap-1.5" && !at12(downgradedRail), j({ downgradedRail }));
   const footerBranches = (s: string) => {
     const start = s.indexOf('<div className="kp-bsheet__footer">');
     if (start < 0) return false;
