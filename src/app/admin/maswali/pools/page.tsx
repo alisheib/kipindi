@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { AdminBody, KpiGrid } from "@/components/admin/admin-body";
@@ -7,12 +8,17 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { currentSession } from "@/lib/server/auth-service";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
-import { AdminPagination, parsePage } from "@/components/admin/admin-pagination";
+import { AdminPagination, buildBaseHref, parsePage } from "@/components/admin/admin-pagination";
+import { parseSort, SortTh } from "@/components/admin/admin-sort";
+import { Button } from "@/components/ui/button";
+import { FilterPill } from "@/components/ui/filter-pill";
+import { Input } from "@/components/ui/input";
 import { CONSOLE_PER_PAGE, consoleStanding, poolsView } from "@/lib/server/maswali-console";
 import { readMillioneaSwitchFresh } from "@/lib/server/millionea-switch";
 import { weekStore } from "@/lib/server/maswali-dal";
 import { formatTzs } from "@/lib/utils";
 import { fmtEat, weekStateChip } from "@/lib/maswali-admin-format";
+import { openState, poolsLine, queryOpenWeeks, queryRolloverTrail, type OpenSort, type TrailSort } from "@/lib/maswali-admin-pools-query";
 import { GuaranteeCeremony, LicenceCeremony, ReleaseControl, RolloutCeremony, SunsetCeremony } from "./pools-controls";
 
 export const metadata = { title: "Admin · Millionea · Pools" };
@@ -27,7 +33,19 @@ const money = (v: number | null) => (v === null ? "Unreadable" : formatTzs(v));
  * ⛔ A BALANCE THAT COULD NOT BE READ SAYS SO; it is never shown as 0. The exposure is a share of the 1,024 ways to
  *    answer the ten mains that some live ticket holds — a count, never a list of who holds what.
  */
-type PoolsPageProps = { searchParams: Promise<{ tpage?: string }> };
+type PoolsSearch = { tpage?: string; tcode?: string; tline?: string; tsort?: string; tdir?: string; oline?: string; ostate?: string; osort?: string; odir?: string };
+type PoolsPageProps = { searchParams: Promise<PoolsSearch> };
+
+function withQuery(sp: PoolsSearch, changes: Record<string, string | null>, page?: keyof PoolsSearch): string {
+  const next = new URLSearchParams();
+  for (const [key, value] of Object.entries(sp)) if (value && key !== page) next.set(key, value);
+  for (const [key, value] of Object.entries(changes)) {
+    if (value) next.set(key, value);
+    else next.delete(key);
+  }
+  const query = next.toString();
+  return `/admin/maswali/pools${query ? `?${query}` : ""}`;
+}
 
 export default async function AdminMaswaliPoolsPage(props: PoolsPageProps) {
   return <AdminPageGate title="Millionea · Pools"><Content {...props} /></AdminPageGate>;
@@ -53,8 +71,16 @@ async function Content({ searchParams }: PoolsPageProps) {
   if (!v) {
     return (<><AdminPageHead title="Millionea · Pools" sw="Mifuko" /><AdminBody><p className="text-body-sm text-danger-fg">The pools could not be read.</p></AdminBody></>);
   }
-  const trailPage = parsePage(sp.tpage, v.trail.length, CONSOLE_PER_PAGE);
-  const trailRows = v.trail.slice((trailPage - 1) * CONSOLE_PER_PAGE, trailPage * CONSOLE_PER_PAGE);
+  const openLine = poolsLine(sp.oline);
+  const state = openState(sp.ostate);
+  const openSort = parseSort<OpenSort>(sp, ["week", "state", "sales", "coverage", "topUp"], "week", "desc", "o");
+  const openRows = queryOpenWeeks(v.weeks, { line: openLine, state, ...openSort });
+  const trailLine = poolsLine(sp.tline);
+  const trailCode = (sp.tcode ?? "").trim();
+  const trailSort = parseSort<TrailSort>(sp, ["week", "settled", "sales", "winners", "paid", "carried"], "settled", "desc", "t");
+  const trail = queryRolloverTrail(v.trail, { code: trailCode, line: trailLine, ...trailSort });
+  const trailPage = parsePage(sp.tpage, trail.length, CONSOLE_PER_PAGE);
+  const trailRows = trail.slice((trailPage - 1) * CONSOLE_PER_PAGE, trailPage * CONSOLE_PER_PAGE);
   const short = v.guarantee !== null && v.guarantee < v.requirement;
   const floatShort = v.float !== null && v.pendingPayout > v.float;
   return (
@@ -69,13 +95,33 @@ async function Content({ searchParams }: PoolsPageProps) {
         </KpiGrid>
 
         <AdminCard title="Open weeks" sw="Wiki zilizo wazi" padding="p-0">
+          {v.weeks.length > 0 && <div className="space-y-2 border-b border-border-subtle p-4">
+            <div className="flex flex-wrap gap-1" aria-label="Open week line">
+              {([ ["ALL", "All lines"], ["PUBLIC", "Public"], ["DRIVE", "Drive"] ] as const).map(([value, label]) =>
+                <FilterPill key={value} href={withQuery(sp, { oline: value === "ALL" ? null : value })} label={label} on={openLine === value} replace scroll={false} />)}
+            </div>
+            <div className="flex flex-wrap gap-1" aria-label="Open week state">
+              {([ ["ALL", "All states"], ["OPEN", "Selling"], ["CLOSED", "Closed"], ["RESOLVING", "Sealing"] ] as const).map(([value, label]) =>
+                <FilterPill key={value} href={withQuery(sp, { ostate: value === "ALL" ? null : value })} label={label} on={state === value} replace scroll={false} />)}
+            </div>
+            <p className="text-body-sm text-text-secondary" data-result-count={openRows.length}>{openRows.length} matching open week{openRows.length === 1 ? "" : "s"}</p>
+          </div>}
           {v.weeks.length === 0 ? <EmptyState title="No open week" body="A week appears here from its open until it settles." />
+            : openRows.length === 0 ? <div className="space-y-2 p-4 text-body-sm"><p>No open week matches these filters.</p><Link className="link" href={withQuery(sp, { oline: null, ostate: null })}>Clear open-week filters</Link></div>
             : (
               <ScrollX label="Millionea open weeks">
                 <table className="admin-tbl min-w-[1000px]">
-                  <thead><tr><th className="text-left">Week</th><th className="text-left">State</th><th className="text-right">Sales</th><th className="text-right">Carry claimed</th><th className="text-right">Coverage</th><th className="text-right">Worst top-up</th><th className="text-left">Settlement</th></tr></thead>
+                  <thead><tr>
+                    <SortTh field="week" label="Week" current={openSort.sort} dir={openSort.dir} sp={sp} baseHref="/admin/maswali/pools" prefix="o" />
+                    <SortTh field="state" label="State" current={openSort.sort} dir={openSort.dir} sp={sp} baseHref="/admin/maswali/pools" prefix="o" />
+                    <SortTh field="sales" label="Sales" current={openSort.sort} dir={openSort.dir} sp={sp} baseHref="/admin/maswali/pools" prefix="o" align="right" />
+                    <th className="text-right">Carry claimed</th>
+                    <SortTh field="coverage" label="Coverage" current={openSort.sort} dir={openSort.dir} sp={sp} baseHref="/admin/maswali/pools" prefix="o" align="right" />
+                    <SortTh field="topUp" label="Worst top-up" current={openSort.sort} dir={openSort.dir} sp={sp} baseHref="/admin/maswali/pools" prefix="o" align="right" />
+                    <th className="text-left">Settlement</th>
+                  </tr></thead>
                   <tbody>
-                    {v.weeks.map((w) => {
+                    {openRows.map((w) => {
                       const chip = weekStateChip(w.row.state);
                       const a = w.preview?.arithmetic;
                       return (
@@ -107,11 +153,37 @@ async function Content({ searchParams }: PoolsPageProps) {
         </AdminCard>
 
         <AdminCard title="Rollover trail" sw="Historia ya jackpot" padding="p-0">
+          {v.trail.length > 0 && <div className="space-y-3 border-b border-border-subtle p-4">
+            <form action="/admin/maswali/pools" method="get" role="search" className="flex flex-wrap items-end gap-2">
+              {Object.entries(sp).filter(([key, value]) => key !== "tcode" && key !== "tpage" && value).map(([key, value]) =>
+                <input key={key} type="hidden" name={key} value={value} />)}
+              <label className="min-w-[180px] flex-1 text-body-sm">Find a week by code
+                <Input className="mt-1" size="sm" name="tcode" defaultValue={trailCode} maxLength={32} placeholder="MLN-2026-W01" />
+              </label>
+              <Button type="submit" size="sm">Find week</Button>
+            </form>
+            <div className="flex flex-wrap gap-1" aria-label="Rollover trail line">
+              {([ ["ALL", "All lines"], ["PUBLIC", "Public"], ["DRIVE", "Drive"] ] as const).map(([value, label]) =>
+                <FilterPill key={value} href={withQuery(sp, { tline: value === "ALL" ? null : value }, "tpage")} label={label} on={trailLine === value} replace scroll={false} />)}
+            </div>
+            <p className="text-body-sm text-text-secondary" data-result-count={trail.length}>{trail.length} matching settled week{trail.length === 1 ? "" : "s"}</p>
+          </div>}
           {v.trail.length === 0 ? <EmptyState title="No settled week yet" body="Each settled week appears here with what it claimed, paid and carried." />
+            : trail.length === 0 ? <div className="space-y-2 p-4 text-body-sm"><p>No settled week matches this search and line.</p><Link className="link" href={withQuery(sp, { tcode: null, tline: null }, "tpage")}>Clear trail filters</Link></div>
             : (
               <ScrollX label="Millionea rollover trail">
                 <table className="admin-tbl min-w-[980px]">
-                  <thead><tr><th className="text-left">Week</th><th className="text-left">Settled</th><th className="text-right">Sales</th><th className="text-right">Carry in</th><th className="text-right">Winners</th><th className="text-right">Fee</th><th className="text-right">Top-up</th><th className="text-right">Paid</th><th className="text-right">Carried on</th><th className="text-right">Levy on own top-up</th></tr></thead>
+                  <thead><tr>
+                    <SortTh field="week" label="Week" current={trailSort.sort} dir={trailSort.dir} sp={sp} baseHref="/admin/maswali/pools" prefix="t" />
+                    <SortTh field="settled" label="Settled" current={trailSort.sort} dir={trailSort.dir} sp={sp} baseHref="/admin/maswali/pools" prefix="t" />
+                    <SortTh field="sales" label="Sales" current={trailSort.sort} dir={trailSort.dir} sp={sp} baseHref="/admin/maswali/pools" prefix="t" align="right" />
+                    <th className="text-right">Carry in</th>
+                    <SortTh field="winners" label="Winners" current={trailSort.sort} dir={trailSort.dir} sp={sp} baseHref="/admin/maswali/pools" prefix="t" align="right" />
+                    <th className="text-right">Fee</th><th className="text-right">Top-up</th>
+                    <SortTh field="paid" label="Paid" current={trailSort.sort} dir={trailSort.dir} sp={sp} baseHref="/admin/maswali/pools" prefix="t" align="right" />
+                    <SortTh field="carried" label="Carried on" current={trailSort.sort} dir={trailSort.dir} sp={sp} baseHref="/admin/maswali/pools" prefix="t" align="right" />
+                    <th className="text-right">Levy on own top-up</th>
+                  </tr></thead>
                   <tbody>
                     {trailRows.map((t) => (
                       <tr key={t.code}>
@@ -126,9 +198,9 @@ async function Content({ searchParams }: PoolsPageProps) {
                 </table>
               </ScrollX>
             )}
-          {v.trail.length > CONSOLE_PER_PAGE && (
+          {trail.length > CONSOLE_PER_PAGE && (
             <div className="border-t border-border-subtle px-4 py-2">
-              <AdminPagination page={trailPage} total={v.trail.length} perPage={CONSOLE_PER_PAGE} baseHref="/admin/maswali/pools" param="tpage" />
+              <AdminPagination page={trailPage} total={trail.length} perPage={CONSOLE_PER_PAGE} baseHref={buildBaseHref("/admin/maswali/pools", sp, "tpage")} param="tpage" />
             </div>
           )}
         </AdminCard>
