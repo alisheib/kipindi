@@ -400,6 +400,7 @@
     "test:2fa": "tsx scripts/player-2fa.test.mts",
     "test:totp-enc": "tsx scripts/totp-encryption.test.mts",
     "test:watchlist": "tsx scripts/watchlist-alerts.test.mts",
+    "red:watchlist-async": "node scripts/watchlist-async-red.mjs",
     "test:push": "tsx scripts/push-service.test.mts",
     "test:win-share": "tsx scripts/win-share.test.mts",
     "test:insights": "tsx scripts/insights.test.mts",
