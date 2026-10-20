@@ -652,21 +652,21 @@ const factLineDefects = (m: string, n: number, joined: string) => {
 const cutDefects = (src: string) => {
   const s = squash(code(src));
   const d: string[] = [];
-  const okAt = s.indexOf("if (r.ok && r.data) {"), refusal = s.indexOf("const failure = r as ReasonedFailure;");
+  const okAt = s.indexOf("if (r.ok && r.data && r.data.tickets.length === slips.length"), refusal = s.indexOf("const failure = r as ReasonedFailure;");
   const branch = okAt >= 0 && refusal > okAt ? s.slice(okAt, refusal) : "";
   if (!branch.includes("setLanding({") || !branch.includes("setConfirmOpen(false);")) d.push("the landed cut does not close the sheet and wait for it");
-  if (/setCut\(|setPicks\(/.test(branch)) d.push("the landed cut opens the stamp or clears the slip while the sheet is still on screen");
+  if (/setCut\(|setDraft\(/.test(branch)) d.push("the landed cut opens the stamp or clears the slip while the sheet is still on screen");
   const at = s.indexOf("useEffect(() => { if (landing === null || confirmOpen) return;");
   const effect = at < 0 ? "" : s.slice(at, s.indexOf("}, [landing, confirmOpen]);", at));
   if (!effect) d.push("no effect waits for the sheet to have closed");
-  if (!effect.includes('exitBeatMs("--t-quick")') || !effect.includes("setPicks(landing.cleared);") || !effect.includes("setCut(landing.cut);")) d.push("the stamp and the cleared slip do not wait for the sheet's exit beat");
+  if (!effect.includes('exitBeatMs("--t-quick")') || !effect.includes("setDraft(landing.cleared);") || !effect.includes("setCut(landing.cut);")) d.push("the stamp and the cleared slip do not wait for the sheet's exit beat");
   return d;
 };
 {
   const d = cutDefects(read(SLIP_CLIENT));
   ok("4.P1 · a landed cut closes the confirm sheet FIRST; only once its exit beat is over (`exitBeatMs(\"--t-quick\")`, nothing under reduced motion) does the slip clear and the stamp open — the stamp never stands over a leaving sheet whose answers already read \"—\"",
     d.length === 0, d.join(" | "));
-  const old = read(SLIP_CLIENT).replace("        requestId.current = null;\n        const first = r.data.tickets[0];", "        setPicks(emptyPicks(hiddenSlots));\n        requestId.current = null;\n        const first = r.data.tickets[0];");
+  const old = read(SLIP_CLIENT).replace("          requestId.current = null;", "          setDraft(newSlipDraft(hiddenSlots, VOIDED_ROW_FILL));\n          requestId.current = null;");
   ok("4.P1′ PLANT · the old order (the slip cleared inside the landed branch, beside the closing sheet) is reported",
     old !== read(SLIP_CLIENT) && cutDefects(old).some((x) => x.includes("while the sheet is still on screen")));
 }
@@ -674,8 +674,10 @@ const cutDefects = (src: string) => {
 // P2 · the stamp's serial on one line, its facts stacked
 {
   const sc = squash(code(read(SLIP_CLIENT)));
-  ok("4.P2a · the cut's stamp asks for the mono serial and carries Millionea's Chinese rule (`titleFace=\"mono\"`, `className=\"kp-mln-zh\"`), and its facts stand one per line, centred, with no separator to end a line",
-    sc.includes('titleFace="mono" className="kp-mln-zh"') && sc.includes('<MaswaliFacts layout="stack" className="kp-mln-facts--center"'));
+  ok("4.P2a · a single cut's stamp asks for the mono serial, a batch has a count heading and every serial, both carry Millionea's Chinese rule and stacked centred facts",
+    sc.includes('titleFace={cut?.serials.length === 1 ? "mono" : undefined} className="kp-mln-zh"')
+      && sc.includes('cut.serials.map((serial, i) => ({ label: fill(t.millionea.draftTicket, { n: formatNumber(cut.firstTicketNumber + i) }), value: serial }))')
+      && sc.includes('<MaswaliFacts layout="stack" className="kp-mln-facts--center"'));
   const { OperationResultModal } = req("../src/components/markets/operation-result-modal.tsx") as { OperationResultModal: (p: Record<string, unknown>) => unknown };
   const result = (p: Record<string, unknown>) => inApp("en", h(OperationResultModal as never, { open: true, variant: "success", onClose() {}, title: "MLN-2026-W49-000041", ...p } as never));
   const h2Of = (m: string) => /<h2 class="([^"]+)"/.exec(m)?.[1] ?? "";
@@ -868,7 +870,7 @@ const railDefects = (src: string) => {
   const rail = s.slice(s.indexOf("{!closed && ( <div className=\"sticky bottom-"));
   const d: string[] = [];
   if (!rail.startsWith('{!closed && ( <div className="sticky bottom-[calc(65px+env(safe-area-inset-bottom,0px))] z-30 flex flex-col gap-2')) d.push("the rail is not a column");
-  if (!rail.includes('style={{ background: "var(--panel)" }}> <SteppedProgress groups={groups} /> <div className="flex items-center gap-2">')) d.push("the meter has not the rail's full width on its own row");
+  if (!rail.includes('style={{ background: "var(--panel)" }}> <SteppedProgress groups={groups} /> <div className={cn("flex items-center gap-2", actionLabel && "flex-wrap")}>')) d.push("the meter has not the rail's full width on its own row");
   if (!s.includes('<span key="mains" className="whitespace-nowrap">{fill(t.millionea.mainsProgress, { a: progress.mains })}</span>') || !s.includes('<span key="reserves" className="whitespace-nowrap">{fill(t.millionea.reservesProgress, { b: progress.reserves })}</span>')) d.push("the two counts are not whole facts");
   if (!s.includes('{ key: "cap", node: capLine, className: "xl:hidden" }') || !s.includes("<span>{capLine}</span>")) d.push("the cap stands twice from 1280");
   if (!s.includes('q.eventAt === null ? null : <span key="event" className="whitespace-nowrap">{fill(t.millionea.eventAt, { when: eatWeekdayClock(t, q.eventAt) })}</span>')) d.push("the event's day and time are not one run");
@@ -883,7 +885,7 @@ const railDefects = (src: string) => {
     m.length === 0 && contrast("--bg-inset", "--panel") < 1.1, m.join(" | "));
   ok("4.P7′ PLANT · the old near-invisible track, and the meter back beside the button, are reported",
     meterDefects(read(STEPPED).replace(': "var(--border-strong)" }} />', ': "var(--bg-inset)" }} />')).length > 0
-      && railDefects(read(SLIP).replace('style={{ background: "var(--panel)" }}>\n          <SteppedProgress groups={groups} />\n          <div className="flex items-center gap-2">', 'style={{ background: "var(--panel)" }}>\n          <div className="flex items-center gap-2">\n          <SteppedProgress groups={groups} />')).some((x) => x.includes("full width")));
+      && railDefects(read(SLIP).replace('style={{ background: "var(--panel)" }}>\n          <SteppedProgress groups={groups} />\n          <div className={cn("flex items-center gap-2", actionLabel && "flex-wrap")}>', 'style={{ background: "var(--panel)" }}>\n          <div className={cn("flex items-center gap-2", actionLabel && "flex-wrap")}>\n          <SteppedProgress groups={groups} />')).some((x) => x.includes("full width")));
 }
 
 // P10 · money that came back says so; a ticket that counts for nothing rests

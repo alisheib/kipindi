@@ -95,7 +95,6 @@ export default async function MillioneaSlipPage() {
   }
   const closesAt = msOf(slip.week.closesAt) ?? nowMs;
   const cancelAt = msOf(slip.cancelIfBoughtNow);
-  const deposit = `/wallet/deposit?${new URLSearchParams({ amount: String(Math.max(0, slip.ticketPrice - (slip.balance ?? 0))) })}`;
   return (
     <PageContainer tier="reading" className="kp-mln-zh">
       {/* The way back to the hub over the slip's head, as the S-slip frames draw it ("‹ MASWALI MILLIONEA"). */}
@@ -116,7 +115,6 @@ export default async function MillioneaSlipPage() {
         balance={slip.balance}
         cancelIfBoughtNow={cancelAt}
         pct={pctNum(slip.feeRate)}
-        depositHref={deposit}
       />
     </PageContainer>
   );

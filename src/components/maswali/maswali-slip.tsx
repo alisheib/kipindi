@@ -196,7 +196,7 @@ function SlipRow({ q, pick, closed, flagged, onPick }: {
 }
 
 export function MaswaliSlip({
-  week, questions, picks, onPick, closesAt, firstEventAt, serverNow, price, cap, ticketNumber, closed, closedJustNow, onContinue, className,
+  week, questions, picks, onPick, closesAt, firstEventAt, serverNow, price, cap, ticketNumber, actionLabel, closed, closedJustNow, onContinue, className,
 }: {
   week: number;
   /** All fifteen, mains first. */
@@ -212,6 +212,8 @@ export function MaswaliSlip({
   cap: number;
   /** This would be the player's n-th ticket of the week. */
   ticketNumber: number;
+  /** The composer names the total when several independently answered tickets will be confirmed together. */
+  actionLabel?: string;
   /** Sales have closed: the band says so, the controls rest, the rail leaves. */
   closed?: boolean;
   /** …and they closed while the player was looking (M2): the band reveals on the mark's axis. */
@@ -324,7 +326,7 @@ export function MaswaliSlip({
             <MaswaliClosingPill closesAt={closesAt} serverNow={serverNow} className="self-start" />
             <div className="flex flex-col gap-2">
               {progress.ready ? (
-                <Button type="button" variant="primary" size="lg" fullWidth onClick={press}>{moneyRuns(fill(t.millionea.continueAt, { price: priceText }))}</Button>
+                <Button type="button" variant="primary" size="lg" fullWidth onClick={press}>{moneyRuns(actionLabel ?? fill(t.millionea.continueAt, { price: priceText }))}</Button>
               ) : (
                 <Button type="button" variant="ghost" size="lg" fullWidth onClick={press} className="border-border-control">{t.millionea.answerAll}</Button>
               )}
@@ -338,13 +340,13 @@ export function MaswaliSlip({
       {!closed && (
         <div className="sticky bottom-[calc(65px+env(safe-area-inset-bottom,0px))] z-30 flex flex-col gap-2 border-t border-border-strong px-3 py-2 shadow-overlay-up lg:bottom-0 xl:hidden" style={{ background: "var(--panel)" }}>
           <SteppedProgress groups={groups} />
-          <div className="flex items-center gap-2">
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+          <div className={cn("flex items-center gap-2", actionLabel && "flex-wrap")}>
+            <div className={cn("flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1", actionLabel && "basis-full")}>
               <span className="min-w-0 font-mono text-body-sm text-text-muted"><MaswaliFacts facts={progressFacts} /></span>
               <MaswaliClosingPill closesAt={closesAt} serverNow={serverNow} compact />
             </div>
             {progress.ready ? (
-              <Button type="button" variant="primary" size="md" onClick={press} className="shrink-0">{moneyRuns(fill(t.millionea.continueAt, { price: priceText }))}</Button>
+              <Button type="button" variant="primary" size="md" onClick={press} className={cn("shrink-0", actionLabel && "w-full")}>{moneyRuns(actionLabel ?? fill(t.millionea.continueAt, { price: priceText }))}</Button>
             ) : (
               <Button type="button" variant="ghost" size="md" onClick={press} className="shrink-0 border-border-control">{t.millionea.answerAll}</Button>
             )}
@@ -362,13 +364,15 @@ export function MaswaliSlip({
  * With the main balance short, the platform's own deposit entry (`depositDoor`, the composer's) replaces the commit.
  */
 export function MaswaliSlipConfirm({
-  open, onClose, week, questions, picks, price, balance, ticketNumber, cap, cancelUntil, pct, lowBalance, depositDoor, pending, onCommit,
+  open, onClose, week, questions, picks, slips, price, balance, ticketNumber, cap, cancelUntil, pct, lowBalance, depositDoor, pending, onCommit,
 }: {
   open: boolean;
   onClose: () => void;
   week: number;
   questions: readonly SlipQuestion[];
   picks: SlipPicks;
+  /** Every independently answered ticket in this one atomic purchase; omitted for the original single-ticket view. */
+  slips?: readonly SlipPicks[];
   price: number;
   /** The main balance (bonus money never counts here). */
   balance: number;
@@ -390,9 +394,12 @@ export function MaswaliSlipConfirm({
   const commitRef = useRef<HTMLButtonElement>(null);
   const priceText = formatTzs(price);
   const balanceText = formatTzs(balance);
+  const count = slips?.length ?? 1;
+  const many = count > 1;
   const lines = [
     fill(t.millionea.fromMain, { price: priceText, balance: balanceText }),
-    fill(t.millionea.ticketNofCap, { n: formatNumber(ticketNumber), cap: formatNumber(cap) }),
+    many ? fill(t.millionea.ticketsOfCap, { from: formatNumber(ticketNumber), to: formatNumber(ticketNumber + count - 1), cap: formatNumber(cap) })
+      : fill(t.millionea.ticketNofCap, { n: formatNumber(ticketNumber), cap: formatNumber(cap) }),
     cancelUntil === null ? null : fill(t.millionea.cancelFreeUntil, { time: eatClock(cancelUntil) }),
     fill(t.millionea.ruleShared, { pct }),
   ].filter((l): l is string => l !== null);
@@ -408,7 +415,7 @@ export function MaswaliSlipConfirm({
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 flex-col gap-0.5">
             <span className="font-mono text-label uppercase eyebrow text-text-subtle"><MaswaliFacts facts={[t.millionea.productTitle, keepFact(locale, weekWord(t, week))]} /></span>
-            <h2 id={titleId} className="font-display text-title-md font-semibold text-text">{t.millionea.confirmTitle}</h2>
+            <h2 id={titleId} className="font-display text-title-md font-semibold text-text">{many ? fill(t.millionea.confirmTickets, { n: formatNumber(count) }) : t.millionea.confirmTitle}</h2>
           </div>
           {/* ⭐ THE HEADER ROW'S ✕, as the bet confirm's (the one convention, `CloseX` in modal.tsx; r6c §10 "header-row"):
               this sheet opens on its eyebrow, so the ✕ comes to the TITLE's first line — under the 16px eyebrow line and
@@ -419,7 +426,18 @@ export function MaswaliSlipConfirm({
           <CloseX withheld={pending} onClick={() => { if (!pending) onClose(); }} label={t.common.close}
             className="mt-[7.5px] -mb-[7.5px] -mr-1.5 lg:-mr-3 shrink-0" />
         </div>
-        <PicksList questions={questions} picks={picks} />
+        {many ? (
+          <div className="flex flex-col gap-1" data-testid="millionea-confirm-tickets">
+            {slips?.map((slip, i) => (
+              <details key={i} className="rounded-control border border-border px-3">
+                <summary className="flex min-h-[44px] cursor-pointer items-center font-mono text-body-sm text-text">
+                  {fill(t.millionea.draftTicket, { n: formatNumber(ticketNumber + i) })}
+                </summary>
+                <div className="border-t border-border pb-3 pt-2"><PicksList questions={questions} picks={slip} /></div>
+              </details>
+            ))}
+          </div>
+        ) : <PicksList questions={questions} picks={picks} />}
         <div className="flex flex-col gap-1 border-t border-border pt-2 text-body-sm text-text-muted">
           {/* Each line a fact line (A1): "TZS 1,000 · from main balance (…)", "Shared equally… · 13% fee at payout". */}
           {lines.map((l) => <p key={l}><MaswaliFacts facts={factsOf(l).map((f) => keepFact(locale, f))} /></p>)}
@@ -436,7 +454,7 @@ export function MaswaliSlipConfirm({
         <div className="flex flex-col gap-2">
           {!lowBalance && (
             <Button ref={commitRef} type="button" variant="gold" size="lg" fullWidth className="gilt-metal" loading={pending} onClick={onCommit}>
-              {pending ? t.millionea.inFlight : moneyRuns(fill(t.millionea.cutTicket, { price: priceText }))}
+              {pending ? t.millionea.inFlight : moneyRuns(fill(many ? t.millionea.cutTickets : t.millionea.cutTicket, { price: priceText, n: formatNumber(count) }))}
             </Button>
           )}
           <Button ref={cancelRef} type="button" variant="ghost" size="md" fullWidth onClick={onClose} disabled={pending}>

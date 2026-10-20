@@ -728,8 +728,9 @@ console.log("\n§8 · controls — each check above fails on a planted copy");
   ok("8.5‴ · Results dropped from More instead of moved there is reported", resultsGone.some((x) => x.includes("does not move into More")), j(resultsGone));
   const cardOnBreak = doorDefects(plant("src/components/maswali/maswali-home-card-door.tsx", "if (onBreak) return null;", ""));
   ok("8.6 · a card drawn on a break is reported", cardOnBreak.some((x) => x.includes("card's door")));
-  const autoBuy = slipDefects(read(`${APP}/slip/slip-client.tsx`).replace("  useEffect(() => {\n    const kept = readKept(weekId);", "  useEffect(() => {\n    commit();\n    const kept = readKept(weekId);"));
-  ok("8.7 · a slip that buys from an effect is reported", autoBuy.some((x) => x.includes("effect")));
+  const unchangedSlip = read(`${APP}/slip/slip-client.tsx`);
+  const autoBuy = slipDefects(unchangedSlip.replace("  useEffect(() => {\n    const kept = readKept(weekId, hiddenSlots, cap);", "  useEffect(() => {\n    commit();\n    const kept = readKept(weekId, hiddenSlots, cap);"));
+  ok("8.7 · a slip that buys from an effect is reported", autoBuy.some((x) => x.includes("effect")) && autoBuy.length > slipDefects(unchangedSlip).length);
 }
 
 // ── §9 · round 3's reads ───────────────────────────────────────────────────────────────────────────────────────────
