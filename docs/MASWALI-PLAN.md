@@ -72,6 +72,20 @@ local to that machine. U43 may advance `main` again for its hotfix, in which cas
 actual remote commit and repeat every affected release check. Never use the
 personal token offered in chat or write production data.
 
+**Latest S5 branch checkpoint (2026-10-20):** The coordinator branch now also
+contains the objection-rollback cache invalidation and seven-site freshness
+proof, repaired U43 RED anchors and post-commit watchlist assertion, the
+leaderboard empty-panel alignment and report/visual guard repairs, and
+versioned, input-validated admin seal corrections. These changes were tested
+with focused guards and mutation proofs on their source branches; the objection
+verdict memory test passed 75/75 and results freshness passed 59/59 in each
+store. Their combined exact commit still needs the full two-store suite,
+money battery, real-browser tile and responsive reads, typecheck, build and
+local live QA. The leaderboard fix still needs compiled-browser confirmation.
+U43 still owns `main-push.lock`; S5 has not pushed `main`, and Millionea remains
+`WITHDRAWN`. Fetch and read the remote coordinator branch HEAD rather than
+assuming an older hash in this section is final.
+
 **Next:** Run every remaining changed-file reader and mutation proof, fresh current-`main`
 classic parity, admin and player browser/tile reads, clean-environment two-store `test:all`,
 typecheck, exact-commit production build, bundle verification and local live QA. Recheck
