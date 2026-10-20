@@ -21,6 +21,7 @@ import { randomId } from "./crypto";
 import { withLock } from "./locks";
 import { buyPosition, createMarket } from "./market-service";
 import { refundVoidedWeek } from "./maswali-void";
+import { invalidateMillioneaRegisterWeek } from "./maswali-register-cache";
 import { millioneaStateNow } from "./millionea-switch";
 import type { RolloutState } from "@/lib/millionea-rollout";
 import { marketStore } from "./market-dal";
@@ -648,6 +649,7 @@ export async function correctSeal(input: {
     });
     // The graded set may have changed: the window restarts from the corrected record (OD-09).
     await weekStore.patch(week.id, { gradedSetFinalAt: null, objectionsCloseAt: null });
+    invalidateMillioneaRegisterWeek(week.code);
     audit({ category: "ADMIN", action: "maswali.question.corrected", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id,
       payload: { week: week.code, slot: slotLabel(q.slot), from: q.outcome, to: input.outcome } });
     const r = await recomputeGateLocked(week.id, nowMs);
@@ -716,6 +718,7 @@ export async function voidWeek(input: { weekId: string; actorId?: string; now?: 
     const won = await weekStore.stampVoid(week.id);
     const after = (await weekStore.get(week.id))!;
     if (!won) return after.state === "VOIDED" ? { ok: true, week: after } : refuse(`Week ${week.code} changed while it was being voided; refresh and try again.`);
+    invalidateMillioneaRegisterWeek(week.code);
     audit({ category: "ADMIN", action: "maswali.week.voided", actorId: input.actorId ?? SYSTEM, targetType: "MaswaliCycle", targetId: week.id,
       payload: { code: week.code, marketId: week.marketId, ticketCount: week.ticketCount } });
     return { ok: true, week: after };
@@ -723,6 +726,7 @@ export async function voidWeek(input: { weekId: string; actorId?: string; now?: 
   if (!stamped.ok) return stamped;
   const r = await refundVoidedWeek(stamped.week.id);
   if (!r.ok) return refuse(`Week ${stamped.week.code} is VOIDED, and its refunds have not landed: ${r.error} The tick retries them; the heal runs them now.`);
+  if (!r.already) invalidateMillioneaRegisterWeek(stamped.week.code);
   // S5 · a voided week is final, so the next week of its line can count its carry (MR-3): every open figure moves.
   if (!r.already) noteMaswaliPoolChanged();
   return { ok: true, week: (await weekStore.get(input.weekId))!, already: r.already, refunded: r.tickets };

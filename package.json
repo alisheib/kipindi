@@ -719,6 +719,8 @@
     "red:maswali-results-section": "tsx scripts/maswali-results-section.test.mts --prove-red",
     "test:maswali-og-week": "tsx scripts/maswali-og-week.test.mts",
     "red:maswali-og-week": "tsx scripts/maswali-og-week.test.mts --prove-red",
+    "test:maswali-register-cache": "tsx scripts/maswali-register-cache.test.mts",
+    "red:maswali-register-cache": "tsx scripts/maswali-register-cache.test.mts --prove-red",
     "qa:maswali-admin-shots": "node scripts/maswali-admin-shots.mjs",
     "qa:maswali-seal-scroll": "node scripts/maswali-seal-scroll.mjs",
     "red:maswali-seal-scroll": "node scripts/maswali-seal-scroll.mjs --prove-red",

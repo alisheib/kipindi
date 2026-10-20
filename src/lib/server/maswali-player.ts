@@ -47,6 +47,7 @@ import { exitWindowFacts } from "@/lib/exit-window";
 import { eatNextWeekAt } from "@/lib/eat-day";
 import { normalizeMillioneaSerial } from "@/lib/millionea-serial";
 import { unstable_cache } from "next/cache";
+import { readCachedMillioneaRegisterWeek } from "./maswali-register-cache";
 
 const UNSETTLED: WeekState[] = ["OPEN", "CLOSED", "RESOLVING"];
 const GRADING: WeekState[] = ["CLOSED", "RESOLVING"];
@@ -1034,6 +1035,17 @@ export async function millioneaRegisterWeek(code: string): Promise<MillioneaRegi
     remainder: settled && week.jackpot != null ? week.jackpot - (week.fee ?? 0) - (week.paidTotal ?? 0) : null,
     questions, substitutions, basis, winningScore, resolution, standing, scores,
   };
+}
+
+/** The week page keeps its route gate per request; only its terminal PUBLIC projection is memoised briefly. */
+export async function cachedMillioneaRegisterWeek(code: string): Promise<MillioneaRegisterWeek | null> {
+  const want = normalizeMillioneaWeekCode(code);
+  if (!want) return null;
+  return readCachedMillioneaRegisterWeek(
+    want,
+    () => weekStore.getByCode(want),
+    () => millioneaRegisterWeek(want),
+  );
 }
 
 // ── HOW TO PLAY: THE FROZEN RULES (§10 3.4) ──────────────────────────────────────────────────────────

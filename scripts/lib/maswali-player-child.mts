@@ -40,6 +40,7 @@ const W: any = await loadMaswaliWorld();
 const { svc: market } = W.w;
 const { dal, money, ledger, acct } = W;
 const P: any = await import("../../src/lib/server/maswali-player.ts");
+const CACHE: any = await import("../../src/lib/server/maswali-register-cache.ts");
 const ACT: any = await import("../../src/lib/server/maswali-player-acts.ts");
 const FEED: any = await import("../../src/lib/server/maswali-pool-feed.ts");
 const BUS: any = await import("../../src/lib/server/event-bus.ts");
@@ -536,6 +537,24 @@ ok("8.3 · the week settled: two tickets of ten of ten", releasedA.ok && (await 
       && r.scores.reduce((s: number, n: number) => s + n, 0) === graded, J(r && { standing: r.standing.map((s: any) => s.ticketsWithoutAMiss), scores: r.scores }));
   ok("8.13 · ⛔ no names on the register: no account id, phone or display name anywhere in it",
     !!r && !J(r).includes(P1) && !J(r).includes(P2) && !/phoneE164|displayName|userId/.test(J(r)));
+  // The seed's clocks are ahead of the wall clock; inject an instant after its recorded close for the cache policy only.
+  const afterClose = () => Date.parse(r.closedAt) + DAY;
+  let projections = 0;
+  const project = async () => { projections++; return P.millioneaRegisterWeek(A.code); };
+  const readHead = () => dal.weekStore.getByCode(A.code);
+  const cached1 = await CACHE.readCachedMillioneaRegisterWeek(A.code, readHead, project, afterClose);
+  const cached2 = await CACHE.readCachedMillioneaRegisterWeek(A.code, readHead, project, afterClose);
+  ok("8.13a · the actual PUBLIC settled projection is cached after its close on this store",
+    !!cached1 && cached1 === cached2 && cached1.id === A.id && cached1.jackpot === expectA.J && projections === 1,
+    J({ projections, code: cached1?.code }));
+  CACHE.invalidateMillioneaRegisterWeek(A.code.toLowerCase());
+  const cached3 = await CACHE.readCachedMillioneaRegisterWeek(A.code, readHead, project, afterClose);
+  ok("8.13b · explicit invalidation reads the current store again, even for a lower-case action code",
+    !!cached3 && cached3 !== cached2 && cached3.jackpot === expectA.J && projections === 2, J({ projections }));
+  const hidden = await CACHE.readCachedMillioneaRegisterWeek(A.code,
+    async () => ({ ...(await readHead()), visibility: "DRIVE" }), project, afterClose);
+  ok("8.13c · a request whose current week is DRIVE cannot reuse the PUBLIC projection",
+    hidden === null && projections === 2, J({ hidden, projections }));
   const nulls = await Promise.all([P.millioneaRegisterWeek(B.code), P.millioneaRegisterWeek(D.code), P.millioneaRegisterWeek("MLN-1999-W01"), P.millioneaRegisterWeek("<script>")]);
   ok("8.14 · ⛔ never a week still selling, never a drive week, never a code that is not a week", nulls.every((x: any) => x === null), J(nulls.map((x: any) => x === null)));
   const reg = await P.millioneaRegister({ perPage: 12 });

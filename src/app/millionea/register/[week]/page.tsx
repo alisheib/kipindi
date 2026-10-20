@@ -40,7 +40,7 @@ import { I } from "@/components/ui/glyphs";
 import { MaswaliOutcomeStamp } from "@/components/maswali/maswali-outcome-stamp";
 import { counted, millioneaWord, reserveLabel, sourceLabel, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
 import { millioneaGate } from "@/lib/server/millionea-gate";
-import { millioneaRegisterWeek, type MillioneaRegisterQuestion, type MillioneaRegisterWeek } from "@/lib/server/maswali-player";
+import { cachedMillioneaRegisterWeek, type MillioneaRegisterQuestion, type MillioneaRegisterWeek } from "@/lib/server/maswali-player";
 import { getServerT } from "@/lib/i18n-server";
 import { isMaswaliVoidReason, MASWALI_VOID_REASON_KEY } from "@/lib/maswali-void-reason";
 import { marketCategoryLabel } from "@/lib/localized";
@@ -314,7 +314,7 @@ export default async function MillioneaRegisterWeekPage({ params }: { params: Pr
   const gate = await millioneaGate();
   const { week: code } = await params;
   const { t, locale } = await getServerT();
-  const w = await millioneaRegisterWeek(code);
+  const w = await cachedMillioneaRegisterWeek(code);
   if (!w) notFound();
   const nowMs = Date.now();
   const week = weekNumberOf(w.code);

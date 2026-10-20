@@ -33,6 +33,7 @@
 import { createHash } from "node:crypto";
 import { audit } from "./audit";
 import { afterCommit, runOutsideLock, withLock } from "./locks";
+import { invalidateMillioneaRegisterWeek } from "./maswali-register-cache";
 import { acct, maswaliForfeitReturnEntries, maswaliJackpotOf, maswaliRolloverEntries, maswaliSettlementEntries, maswaliSunsetEntries, withMoneyTx, type LedgerLine } from "./ledger";
 import { questionStore, ticketStore, weekStore, type SettledTicketRow, type StoredTicket, type StoredWeek, type WeekSettlementStamp } from "./maswali-dal";
 import { marketStore, positionStore } from "./market-dal";
@@ -442,6 +443,7 @@ export async function settleMaswaliWeek(input: {
       await liftHoldsIfClear(heldAccounts, `Millionea ${first.code} · already settled`);
       return out;
     }
+    invalidateMillioneaRegisterWeek(first.code); // The money transaction has committed; a read begun earlier cannot refill it.
     // ⭐ R4c · AFTER THE COMMIT. Read inside the lock, Postgres answers the week as it was before this transaction (still
     //    RESOLVING, its figures empty) — so the week is read here, and the float check is handed the paid total the
     //    settlement committed (the figure `stampSettlement` wrote), never a row from inside the lock. Nothing after the
