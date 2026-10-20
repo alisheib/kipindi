@@ -236,11 +236,24 @@ console.log("\n§7 · a voided week refunds every ticket");
   const { week: v, start } = await W.openWeek({ weeksAhead: 3 });
   const a = await W.user({ balance: 50_000 }), b = await W.user({ balance: 50_000 });
   // `a` holds a bonus with progress made on other bets: a ticket accrues no turnover (OD-27), so its refund must remove none.
+  // The bonus offer is withdrawn in shipped code. Open it only for this local fixture, then
+  // restore the switch: a refused grant makes a zero-to-zero turnover assertion vacuous.
   const bonus = await import("../../src/lib/server/bonus-service.ts");
-  await bonus.creditBonus(a, { amountTzs: 10_000, source: "ADMIN", sourceRef: `mln-wager-${a}`, wagerMultiplier: 10, notifyPlayer: false });
+  const bonusGrant = await (async () => {
+    const previous = process.env.FEATURE_BONUS;
+    process.env.FEATURE_BONUS = "ACTIVE";
+    try {
+      return await bonus.creditBonus(a, { amountTzs: 10_000, source: "ADMIN", sourceRef: `mln-wager-${a}`, wagerMultiplier: 10, notifyPlayer: false });
+    } finally {
+      if (previous === undefined) delete process.env.FEATURE_BONUS;
+      else process.env.FEATURE_BONUS = previous;
+    }
+  })();
+  ok("7.0a · premise: the local bonus fixture was actually granted", bonusGrant.ok, bonusGrant.ok ? "granted" : bonusGrant.error);
   await bonus.recordWagering(a, 5_000);
   const wagerLeft = async () => (await bonus.getBonusSummary(a)).activeWagerRemainingTzs;
   const leftBefore = await wagerLeft();
+  ok("7.0c · premise: the bonus has 95,000 turnover left for a bad refund to reverse", leftBefore === 95_000, `${leftBefore}`);
   await W.buy(a, v.id, [W.WIN, W.LOSE]);
   ok("7.0b · buying tickets accrues no turnover against the bonus", (await wagerLeft()) === leftBefore, `${leftBefore} → ${await wagerLeft()}`);
   await W.buy(b, v.id, [W.WIN]);
