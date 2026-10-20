@@ -30,10 +30,17 @@ export const MUTATIONS = [
     failure: /the guarantee action must submit the same amount and reference reviewed in the dialog/,
   },
   {
+    name: "money reference wrapping",
+    file: "src/app/admin/maswali/pools/pools-controls.tsx",
+    from: 'Bank or rail reference: <strong className="block break-words">',
+    to: 'Bank or rail reference: <strong>',
+    failure: /a rail reference must get its own line and wrap only when it cannot fit/,
+  },
+  {
     name: "licence review reference",
     file: "src/app/admin/maswali/pools/pools-controls.tsx",
-    from: 'Where it is kept: <strong>{review?.ref}</strong>',
-    to: 'Where it is kept: <strong>{ref}</strong>',
+    from: 'Where it is kept: <strong className="block break-words">{review?.ref}</strong>',
+    to: 'Where it is kept: <strong className="block break-words">{ref}</strong>',
     failure: /the licence confirmation must show the exact canonical reference/,
   },
   {
@@ -44,11 +51,25 @@ export const MUTATIONS = [
     failure: /the licence action must submit the same basis and reference reviewed in the dialog/,
   },
   {
+    name: "licence reference wrapping",
+    file: "src/app/admin/maswali/pools/pools-controls.tsx",
+    from: 'Where it is kept: <strong className="block break-words">',
+    to: 'Where it is kept: <strong>',
+    failure: /a licence reference must get its own line and wrap only when it cannot fit/,
+  },
+  {
     name: "licence basis unsaved guard",
     file: "src/app/admin/maswali/pools/pools-controls.tsx",
-    from: 'dirty={kind !== "OWNER_RULING" || ref.trim() !== ""}',
+    from: 'dirty={kind !== savedKind || ref.trim() !== ""}',
     to: 'dirty={ref.trim() !== ""}',
     failure: /a changed licence basis must guard navigation even when its reference is empty/,
+  },
+  {
+    name: "licence saved basis reset",
+    file: "src/app/admin/maswali/pools/pools-controls.tsx",
+    from: 'setSavedKind(review.kind); setReview(null); setRef("");',
+    to: 'setReview(null); setRef("");',
+    failure: /a saved licence basis must clear the unsaved warning after successful recording/,
   },
   {
     name: "long final-week lookup",

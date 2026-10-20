@@ -715,6 +715,8 @@
     "red:maswali-admin-pools-query": "tsx scripts/maswali-admin-pools-query.test.mts --prove-red",
     "test:maswali-admin-form-validation": "tsx scripts/maswali-admin-form-validation.test.mts",
     "red:maswali-admin-form-validation": "tsx scripts/maswali-admin-form-validation.test.mts --prove-red",
+    "test:maswali-week-controls": "tsx scripts/maswali-week-controls.test.mts",
+    "red:maswali-week-controls": "tsx scripts/maswali-week-controls.test.mts --prove-red",
     "qa:maswali-admin-drive": "node scripts/maswali-admin-drive.mjs",
     "test:maswali-admin-checklist": "node scripts/maswali-admin-checklist.test.mjs",
     "red:maswali-admin-checklist": "node scripts/maswali-admin-checklist.test.mjs --prove-red",

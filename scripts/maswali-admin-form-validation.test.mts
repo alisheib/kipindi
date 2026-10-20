@@ -78,7 +78,7 @@ assert.match(pools, /disabled=\{pending \|\| !ready\} onClick=\{\(\) => setRevie
   "Take back must stay disabled until both the amount and rail reference are valid");
 assert.match(pools, /Amount: <strong>\{review \? formatTzs\(Number\(review\.amount\)\) : ""\}<\/strong>/,
   "the guarantee confirmation must show the frozen amount with the shared TZS formatter");
-assert.match(pools, /Bank or rail reference: <strong>\{review\?\.reference\}<\/strong>/,
+assert.match(pools, /Bank or rail reference: <strong[^>]*>\{review\?\.reference\}<\/strong>/,
   "the guarantee confirmation must show the exact reviewed rail reference");
 assert.match(pools, /fd\(\{ amount: review\.amount, reference: review\.reference, typed: word \}\)/,
   "the guarantee action must submit the same amount and reference reviewed in the dialog");
@@ -88,16 +88,20 @@ assert.match(pools, /onClick=\{\(\) => setReview\(licenceReviewDraft\(kind, ref\
   "the licence record button must freeze the basis and reference at review time");
 assert.match(pools, /Basis: <strong>\{review\?\.label\}<\/strong>/,
   "the licence confirmation must show the exact basis selected");
-assert.match(pools, /Where it is kept: <strong>\{review\?\.ref\}<\/strong>/,
+assert.match(pools, /Where it is kept: <strong[^>]*>\{review\?\.ref\}<\/strong>/,
   "the licence confirmation must show the exact canonical reference");
 assert.match(pools, /fd\(\{ kind: review\.kind, ref: review\.ref \}\)/,
   "the licence action must submit the same basis and reference reviewed in the dialog");
 assert.match(pools, /if \(!review \|\| !licenceReviewDraft\(review\.kind, review\.ref\)\) return;/,
   "the licence confirmation must revalidate its frozen values at final submit");
-assert.match(pools, /<UnsavedChangesGuard dirty=\{kind !== "OWNER_RULING" \|\| ref\.trim\(\) !== ""\}/,
+assert.match(pools, /<UnsavedChangesGuard dirty=\{kind !== savedKind \|\| ref\.trim\(\) !== ""\}/,
   "a changed licence basis must guard navigation even when its reference is empty");
-assert.match(pools, /className="break-all">(?:Bank or rail reference|Where it is kept):/g,
-  "long references must wrap in the confirmation rather than being clipped");
+assert.match(pools, /setSavedKind\(review\.kind\); setReview\(null\); setRef\(""\);/,
+  "a saved licence basis must clear the unsaved warning after successful recording");
+assert.match(pools, /Bank or rail reference: <strong className="block break-words">/,
+  "a rail reference must get its own line and wrap only when it cannot fit");
+assert.match(pools, /Where it is kept: <strong className="block break-words">/,
+  "a licence reference must get its own line and wrap only when it cannot fit");
 assert.match(pools, /const \[weekId, setWeekId\] = useState\(""\)/,
   "a final week must be chosen explicitly, not silently default to the first candidate");
 assert.match(pools, /const choices = sunsetChoices\(weeks, lookup\)/,

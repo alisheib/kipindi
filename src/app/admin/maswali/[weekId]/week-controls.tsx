@@ -47,20 +47,28 @@ function useAct() {
 
 // ── Attest and open ─────────────────────────────────────────────────────────────────────────────────
 
-export function AttestOpenControls({ weekId, attestedBy, canAttest, canOpen, openReady, attestNeed, openNeed }: {
-  weekId: string; attestedBy: string | null; canAttest: boolean; canOpen: boolean; openReady: boolean; attestNeed: string; openNeed: string;
+export function AttestOpenControls({ weekId, weekCode, attestedBy, canAttest, canOpen, openReady, attestNeed, openNeed }: {
+  weekId: string; weekCode: string; attestedBy: string | null; canAttest: boolean; canOpen: boolean; openReady: boolean; attestNeed: string; openNeed: string;
 }) {
   const mayAct = useMayAct();
-  const { pending, error, run } = useAct();
+  const { pending, error, run, setError } = useAct();
   const [confirm, setConfirm] = useState(false);
+  const [attestConfirm, setAttestConfirm] = useState(false);
   return (
     <div className="flex items-center gap-3 flex-wrap">
       {attestedBy ? <span className="text-body-sm text-success">The three languages are attested.</span>
-        : canAttest ? (mayAct ? <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => attestMaswaliParityAction(fd({ weekId })))}>I read all three languages: they agree</Button> : <ActReadOnly />)
+        : canAttest ? (mayAct ? <Button size="sm" variant="ghost" disabled={pending} onClick={() => { setError(null); setAttestConfirm(true); }}>I read all three languages: they agree</Button> : <ActReadOnly />)
         : <ControlLocked what="Attest the languages" need={attestNeed} />}
       {canOpen ? (mayAct ? <Button size="sm" disabled={pending || !openReady} onClick={() => setConfirm(true)}>Open the week</Button> : <ActReadOnly />)
         : <ControlLocked what="Open the week" need={openNeed} />}
-      {error && <p role="alert" className="text-body-sm text-danger-fg w-full">{error}</p>}
+      {!attestConfirm && error && <p role="alert" className="text-body-sm text-danger-fg w-full">{error}</p>}
+      <ConfirmModal open={attestConfirm} onClose={() => setAttestConfirm(false)} loading={pending} tone="brand" tier="hard" typedWord="ATTEST"
+        title={`Attest ${weekCode}'s three languages?`} confirmLabel="Record the attestation"
+        body={<div className="space-y-2">
+          <p>Confirm that you personally read {weekCode}&apos;s English, Swahili and Chinese questions and that their meanings agree. This records your signoff; editing a question clears it.</p>
+          {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
+        </div>}
+        onConfirm={() => run(() => attestMaswaliParityAction(fd({ weekId })), () => setAttestConfirm(false))} />
       <ConfirmModal open={confirm} onClose={() => setConfirm(false)} loading={pending} tone="brand"
         title="Open the week for sale?" confirmLabel="Open the week"
         body="The rules, the fifteen questions and their sources freeze now and cannot change afterwards (MR-13). Players can buy as soon as Millionea is visible to them."
@@ -71,11 +79,12 @@ export function AttestOpenControls({ weekId, attestedBy, canAttest, canOpen, ope
 
 // ── Move the close ──────────────────────────────────────────────────────────────────────────────────
 
-export function MoveCloseForm({ weekId, currentEat }: { weekId: string; currentEat: string }) {
+export function MoveCloseForm({ weekId, weekCode, currentEat }: { weekId: string; weekCode: string; currentEat: string }) {
   const mayAct = useMayAct();
-  const { pending, error, run } = useAct();
+  const { pending, error, run, setError } = useAct();
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
+  const [review, setReview] = useState<{ fromEat: string; toEat: string; closeAt: string } | null>(null);
   return (
     <div className="space-y-3 max-w-form">
       <p className="text-body-sm text-text-secondary">Now closes {currentEat} (EAT). Earlier, never inside the next notice period; later, never past the first event less its buffer (MB-28).</p>
@@ -83,9 +92,21 @@ export function MoveCloseForm({ weekId, currentEat }: { weekId: string; currentE
         <Field label="New close date (EAT)"><DateSelect value={date} onChange={setDate} size="sm" /></Field>
         <Field label="New close time (EAT)"><TimeSelect value={time} onChange={setTime} size="sm" aria-label="New close time" /></Field>
       </div>
-      {mayAct ? <Button size="sm" disabled={pending || !date || !time} onClick={() => run(() => moveMaswaliCloseAction(fd({ weekId, closeAt: `${date}T${time}` })), () => { setDate(""); setTime(""); })}>Move the close</Button> : <ActReadOnly />}
-      {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
+      {mayAct ? <Button size="sm" disabled={pending || !date || !time} onClick={() => { setError(null); setReview({ fromEat: currentEat, toEat: `${date} ${time}`, closeAt: `${date}T${time}` }); }}>Move the close</Button> : <ActReadOnly />}
+      {!review && error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
       <UnsavedChangesGuard dirty={date !== "" || time !== ""} body="A new sales close has been chosen but not moved. Leaving now discards it." />
+      <ConfirmModal open={review !== null} onClose={() => setReview(null)} loading={pending} tone="warning" tier="hard" typedWord="MOVE CLOSE"
+        title={`Move ${weekCode}'s sales close?`} confirmLabel="Move the close"
+        body={<div className="space-y-2">
+          <p>Current close: <strong>{review?.fromEat} (EAT)</strong></p>
+          <p>New close: <strong>{review?.toEat} (EAT)</strong></p>
+          <p>The service checks the notice period, free-cancel window and first event before accepting this move.</p>
+          {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
+        </div>}
+        onConfirm={() => {
+          if (!review) return;
+          run(() => moveMaswaliCloseAction(fd({ weekId, closeAt: review.closeAt })), () => { setReview(null); setDate(""); setTime(""); });
+        }} />
     </div>
   );
 }
@@ -94,18 +115,19 @@ export function MoveCloseForm({ weekId, currentEat }: { weekId: string; currentE
 
 export type SealRowView = {
   slot: number; label: string; textEn: string; criterionEn: string; sourceUrl: string; eventEat: string; voidDeadlineEat: string;
-  outcome: string | null; voidReason: string | null; sealedBy: string | null; sealedAt: string | null;
+  outcome: string | null; voidReason: string | null; sealedBy: string | null; sealedAt: string | null; sealedAtIso: string | null;
   awaitingSecond: boolean; proposedVoid: boolean; aiSuggestion: string | null;
 };
 type Can = { seal: boolean; void: boolean; correct: boolean; confirm: boolean };
 
-export function SealConsole({ weekId, rows, voidReasons, windowOpen, can, need }: {
-  weekId: string; rows: SealRowView[]; voidReasons: string[]; windowOpen: boolean; can: Can; need: Record<keyof Can, string>;
+export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, can, need }: {
+  weekId: string; weekCode: string; rows: SealRowView[]; voidReasons: string[]; windowOpen: boolean; can: Can; need: Record<keyof Can, string>;
 }) {
   const mayAct = useMayAct();
   const { pending, error, run, setError } = useAct();
   const [picks, setPicks] = useState<Record<number, { outcome: string; evidence: string }>>({});
   const [sealOpen, setSealOpen] = useState(false);
+  const [confirmRow, setConfirmRow] = useState<SealRowView | null>(null);
   const [voidRow, setVoidRow] = useState<SealRowView | null>(null);
   const [voidReason, setVoidReason] = useState("");
   const [voidEvidence, setVoidEvidence] = useState("");
@@ -118,6 +140,22 @@ export function SealConsole({ weekId, rows, voidReasons, windowOpen, can, need }
     <div>
       <UnsavedChangesGuard dirty={Object.values(picks).some((p) => p.outcome !== "" || p.evidence.trim() !== "")}
         body="Results have been entered but not sealed. Leaving now discards them." />
+      <ConfirmModal open={confirmRow !== null} onClose={() => setConfirmRow(null)} loading={pending} tone="brand" tier="hard" typedWord="CONFIRM"
+        title={`Confirm ${weekCode} ${confirmRow?.label ?? ""} as second officer?`} confirmLabel="Confirm this seal"
+        body={<div className="space-y-2">
+          <p>Week: <strong>{weekCode}</strong> · Slot: <strong>{confirmRow?.label}</strong></p>
+          <p>Question: {confirmRow?.textEn}</p>
+          <p>Sealed result: <strong>{confirmRow?.outcome}</strong>{confirmRow?.voidReason ? ` · ${isMaswaliVoidReason(confirmRow.voidReason) ? MASWALI_VOID_REASON_LABEL[confirmRow.voidReason] : confirmRow.voidReason}` : ""}</p>
+          <p>The service refuses this signoff if the seal changes before you confirm it.</p>
+          {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
+        </div>}
+        onConfirm={() => {
+          const row = confirmRow;
+          if (!row?.outcome || !row.sealedAtIso) return;
+          const expectedOutcome = row.outcome;
+          const expectedSealedAt = row.sealedAtIso;
+          run(() => confirmMaswaliSealAction(fd({ weekId, slot: String(row.slot), expectedOutcome, expectedSealedAt })), () => setConfirmRow(null));
+        }} />
       {/* The 1,040px result table stays horizontally scrollable. Paint containment keeps its offscreen columns out of
           the document's own scroll width on narrow screens; the named, focusable ScrollX still reaches every column. */}
       <ScrollX label="Millionea results to seal" style={{ contain: "paint" }}>
@@ -148,14 +186,14 @@ export function SealConsole({ weekId, rows, voidReasons, windowOpen, can, need }
                   </td>
                   <td className="text-left align-top min-w-[220px]">
                     {!r.outcome && can.seal && mayAct
-                      ? <Input size="sm" value={p.evidence} placeholder="What the source says" onChange={(e) => setPicks((s) => ({ ...s, [r.slot]: { ...p, evidence: e.target.value } }))} />
+                      ? <Input size="sm" value={p.evidence} aria-label={`${r.label} seal evidence`} placeholder="What the source says" onChange={(e) => setPicks((s) => ({ ...s, [r.slot]: { ...p, evidence: e.target.value } }))} />
                       : null}
                   </td>
                   <td className="text-left align-top">
                     <div className="flex flex-col gap-1.5 items-start">
                       {!r.outcome && (can.void ? (mayAct ? <Button size="xs" variant="ghost" onClick={() => { setVoidRow(r); setVoidReason(""); setVoidEvidence(""); }}>Void…</Button> : <ActReadOnly />) : <ControlLocked what="Void" need={need.void} />)}
                       {r.outcome && windowOpen && (can.correct ? (mayAct ? <Button size="xs" variant="ghost" onClick={() => { setCorrectRow(r); setCorrection({ outcome: r.outcome === "NO" ? "YES" : "NO", evidence: "", voidReason: "" }); }}>Correct…</Button> : <ActReadOnly />) : <ControlLocked what="Correct" need={need.correct} />)}
-                      {r.awaitingSecond && (can.confirm ? (mayAct ? <Button size="xs" variant="ghost" disabled={pending} onClick={() => run(() => confirmMaswaliSealAction(fd({ weekId, slot: String(r.slot) })))}>Confirm as second officer</Button> : <ActReadOnly />) : <ControlLocked what="Confirm" need={need.confirm} />)}
+                      {r.awaitingSecond && (can.confirm ? (mayAct ? <Button size="xs" variant="ghost" disabled={pending || !r.sealedAtIso} onClick={() => { setError(null); setConfirmRow(r); }}>Confirm as second officer</Button> : <ActReadOnly />) : <ControlLocked what="Confirm" need={need.confirm} />)}
                     </div>
                   </td>
                 </tr>
@@ -169,7 +207,7 @@ export function SealConsole({ weekId, rows, voidReasons, windowOpen, can, need }
           ? <Button size="sm" disabled={pending || chosen.length === 0 || evidenceMissing} onClick={() => { setError(null); setSealOpen(true); }}>Seal {chosen.length || ""} result{chosen.length === 1 ? "" : "s"}</Button>
           : <ActReadOnly />) : <ControlLocked what="Seal results" need={need.seal} />}
         {evidenceMissing && <span className="text-body-sm text-warning">Each seal records its evidence (at least 10 characters).</span>}
-        {error && <p role="alert" className="text-body-sm text-danger-fg w-full">{error}</p>}
+        {!confirmRow && error && <p role="alert" className="text-body-sm text-danger-fg w-full">{error}</p>}
       </div>
 
       <ConfirmModal open={sealOpen} onClose={() => setSealOpen(false)} loading={pending} tone="brand" tier="hard" typedWord="SEAL"

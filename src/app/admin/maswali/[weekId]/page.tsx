@@ -54,6 +54,7 @@ async function Content({ params }: Props) {
     slot: q.slot, label: slotLabel(q.slot), textEn: q.textEn, criterionEn: q.criterionEn, sourceUrl: q.sourceUrl,
     eventEat: fmtEat(q.eventStartsAt), voidDeadlineEat: fmtEat(q.voidDeadlineAt),
     outcome: q.outcome, voidReason: q.voidReason, sealedBy: q.sealedBy, sealedAt: q.sealedAt ? fmtEat(q.sealedAt) : null,
+    sealedAtIso: q.sealedAt,
     awaitingSecond: q.twoOfficerAtStage1 === true && !q.stage2By && q.outcome !== null, proposedVoid: proposedVoids.includes(q.slot),
     aiSuggestion: typeof q.aiSuggestion === "object" && q.aiSuggestion ? JSON.stringify(q.aiSuggestion).slice(0, 160) : null,
   }));
@@ -84,7 +85,7 @@ async function Content({ params }: Props) {
             ) : <p className="text-body-sm text-success">Every check passes: the week can open.</p>}
             <p className="mt-3 text-body-sm"><Link href={`/admin/maswali/${week.id}/edit` as Route} className="link">Edit the questions</Link> <span className="text-text-tertiary">· an edit clears the attestation</span></p>
             <div className="mt-3">
-              <AttestOpenControls weekId={week.id} attestedBy={week.parityAttestedBy} canAttest={canAttest} canOpen={canOpen} openReady={!!problems && problems.length === 0}
+              <AttestOpenControls weekId={week.id} weekCode={week.code} attestedBy={week.parityAttestedBy} canAttest={canAttest} canOpen={canOpen} openReady={!!problems && problems.length === 0}
                 attestNeed={CONTROL_DOMAIN.attestMaswaliParity} openNeed={CONTROL_DOMAIN.openMaswaliWeek} />
             </div>
           </AdminCard>
@@ -92,14 +93,14 @@ async function Content({ params }: Props) {
 
         {week.state === "OPEN" && (
           <AdminCard title="Move the sales close" sw="Badilisha muda wa kufunga" >
-            {canMove ? <MoveCloseForm weekId={week.id} currentEat={fmtEat(week.closesAt)} />
+            {canMove ? <MoveCloseForm weekId={week.id} weekCode={week.code} currentEat={fmtEat(week.closesAt)} />
               : <ControlLocked what="Move the close" need={CONTROL_DOMAIN.moveMaswaliClose} block />}
           </AdminCard>
         )}
 
         {sealable ? (
           <AdminCard title="Seal the results" sw="Muhuri wa matokeo" padding="p-0">
-            <SealConsole weekId={week.id} rows={sealRows} voidReasons={[...MASWALI_VOID_REASONS]} windowOpen={windowOpen}
+            <SealConsole weekId={week.id} weekCode={week.code} rows={sealRows} voidReasons={[...MASWALI_VOID_REASONS]} windowOpen={windowOpen}
               can={{ seal: canSeal, void: canVoid, correct: canCorrect, confirm: canConfirm }}
               need={{ seal: CONTROL_DOMAIN.sealMaswaliQuestion, void: CONTROL_DOMAIN.voidMaswaliQuestion, correct: CONTROL_DOMAIN.correctMaswaliSeal, confirm: CONTROL_DOMAIN.confirmMaswaliSeal }} />
           </AdminCard>

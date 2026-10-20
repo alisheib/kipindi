@@ -98,7 +98,7 @@ export function GuaranteeCeremony({ canFund, canReturn }: { canFund: boolean; ca
         title={review?.mode === "return" ? "Take guarantee money back?" : "Pay into the guarantee?"} confirmLabel={review?.mode === "return" ? "Take it back" : "Pay it in"}
         body={<div className="space-y-2">
           <p>Amount: <strong>{review ? formatTzs(Number(review.amount)) : ""}</strong></p>
-          <p className="break-all">Bank or rail reference: <strong>{review?.reference}</strong></p>
+          <p>Bank or rail reference: <strong className="block break-words">{review?.reference}</strong></p>
           <p>{review?.mode === "return"
             ? "Never below what the unsettled weeks need (OD-02); the service refuses a return that would leave the floor unbacked."
             : "Owner capital paid in to back the floor. It is the owner's money, committed: it never counts as retained earnings."}</p>
@@ -117,6 +117,7 @@ export function LicenceCeremony() {
   const mayAct = useMayAct();
   const { pending, error, note, run } = useAct();
   const [kind, setKind] = useState("OWNER_RULING");
+  const [savedKind, setSavedKind] = useState("OWNER_RULING");
   const [ref, setRef] = useState("");
   const [review, setReview] = useState<LicenceReview | null>(null);
   if (!mayAct) return <ActReadOnly />;
@@ -129,17 +130,17 @@ export function LicenceCeremony() {
       </Field>}
       <Button size="sm" disabled={pending || (kind !== "NONE" && !licenceRefLengthOk(ref))} onClick={() => setReview(licenceReviewDraft(kind, ref))}>Record</Button>
       <Feedback error={error} note={note} />
-      <UnsavedChangesGuard dirty={kind !== "OWNER_RULING" || ref.trim() !== ""} body="A licence basis has been chosen but not recorded. Leaving now discards it." />
+      <UnsavedChangesGuard dirty={kind !== savedKind || ref.trim() !== ""} body="A licence basis has been chosen but not recorded. Leaving now discards it." />
       <ConfirmModal open={review !== null} onClose={() => setReview(null)} loading={pending} tone="brand" tier="hard" typedWord="RECORD"
         title="Record the licence basis?" confirmLabel="Record it"
         body={<div className="space-y-2">
           <p>Basis: <strong>{review?.label}</strong></p>
-          {review?.kind !== "NONE" && <p className="break-all">Where it is kept: <strong>{review?.ref}</strong></p>}
+          {review?.kind !== "NONE" && <p>Where it is kept: <strong className="block break-words">{review?.ref}</strong></p>}
           <p>{review?.kind === "NONE" ? "No week can open while no basis is recorded." : "Weeks can open once this is recorded and the guarantee covers them."}</p>
         </div>}
         onConfirm={() => {
           if (!review || !licenceReviewDraft(review.kind, review.ref)) return;
-          run(() => setMaswaliLicenceBasisAction(fd({ kind: review.kind, ref: review.ref })), () => { setReview(null); setRef(""); });
+          run(() => setMaswaliLicenceBasisAction(fd({ kind: review.kind, ref: review.ref })), () => { setSavedKind(review.kind); setReview(null); setRef(""); });
         }} />
     </div>
   );
