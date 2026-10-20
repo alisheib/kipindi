@@ -208,15 +208,19 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     const APPROVED_EXTRA = new Map([
       ["src/app/legal/_components.tsx", PHOS_R2A_PART2],
       ["src/app/legal/rules/page.tsx", PHOS_R2A_PART2],
-      // The S5 player and register merge carries the reviewed Millionea words; the privacy wrapper is our W4/S5 merge.
-      ["src/lib/i18n-dict.ts", "7d09235e6"],
+      // The S5 player/register words plus MB-89's reviewed three-language multi-ticket controls. Pin the exact blob:
+      // a cherry-pick changes the source commit, but the approved dictionary's blob remains in main's reachable tree.
+      ["src/lib/i18n-dict.ts", "f451ebb20549e441c2e49cf19f9e66f4c8eecddd"],
       ["src/app/legal/privacy/page.tsx", "8d126b819"],
       ["src/app/legal/responsible-gambling/page.tsx", W4],
       ["src/app/legal/rules/_content-up-down.tsx", W4B],
       ["src/app/legal/rules/up-down/page.tsx", W4],
     ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };
-    const extraBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_EXTRA.get(rel)}:${rel}`)); } catch { return null; } };
+    const extraBlob = (rel: string) => { try {
+      const pin = APPROVED_EXTRA.get(rel);
+      return lf(git("cat-file", "blob", rel === "src/lib/i18n-dict.ts" ? pin! : `${pin}:${rel}`));
+    } catch { return null; } };
     const goldenOf = (rel: string) => APPROVED_EXTRA.has(rel) ? extraBlob(rel) : APPROVED_TEXT.has(rel) ? approvedBlob(rel) : blobOf(rel);
     const approvedEqual = (rel: string, source: string) => goldenOf(rel) !== null && lf(source) === goldenOf(rel);
     const isApprovedPublication = (rel: string) => (APPROVED_TEXT.has(rel) || APPROVED_EXTRA.has(rel)) && approvedEqual(rel, read(rel));
