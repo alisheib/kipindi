@@ -277,7 +277,7 @@ function Ledger({ t, w }: { t: Dict; w: MillioneaRegisterWeek }) {
     rows.push({ key: "out", node: <ReceiptRow className={ROW} label={kept(fill(t.millionea.carriedOut, { week: next }), [weekWord(t, next)])} value={fig(w.carriedForward)} /> });
   }
   return (
-    <section aria-labelledby="mln-reg-ledger" className="mat-flat flex flex-col gap-2 rounded-card p-3 pr-14 xl:pr-3">
+    <section aria-labelledby="mln-reg-ledger" className="mat-flat flex flex-col gap-2 rounded-card p-3 pr-[56px] xl:pr-3">
       <h2 id="mln-reg-ledger" className="font-display text-title-sm font-bold text-text">{t.millionea.regLedger}</h2>
       <div className="flex flex-col border-t border-border">{rows.map((r) => <div key={r.key}>{r.node}</div>)}</div>
     </section>
@@ -321,7 +321,7 @@ export default async function MillioneaRegisterWeekPage({ params }: { params: Pr
         {w.standing && w.standing.length > 0 && (
           <section aria-labelledby="mln-reg-standing" className="flex flex-col gap-2">
             <h2 id="mln-reg-standing" className="font-display text-title-sm font-bold text-text">{t.millionea.regStanding}</h2>
-            <ol className="flex flex-col pr-14 xl:pr-0">
+            <ol className="flex flex-col pr-[56px] xl:pr-0">
               {w.standing.map((s) => (
                 // The result's place, its attested time and the count, each in its own column — never "1 · 2 Dec, 00:00" in
                 // one string (A1) — the count grouped as every count is.

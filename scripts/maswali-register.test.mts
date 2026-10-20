@@ -421,14 +421,14 @@ check("12.2", "the index's ghost rows carry the week, its chip and its facts as 
 // ── §14 · the register week's right-aligned facts clear the resting fixed controls ──────────────────────────────────
 check("14.1", "the week ledger reserves a scoped right lane through 1024 for its money values, restoring normal padding at 1280", (w) => {
   const s = code(w, "week");
-  const lane = s.includes('<section aria-labelledby="mln-reg-ledger" className="mat-flat flex flex-col gap-2 rounded-card p-3 pr-14 xl:pr-3">');
+  const lane = s.includes('<section aria-labelledby="mln-reg-ledger" className="mat-flat flex flex-col gap-2 rounded-card p-3 pr-[56px] xl:pr-3">');
   const values = s.includes('<div className="flex flex-col border-t border-border">{rows.map((r) => <div key={r.key}>{r.node}</div>)}</div>');
   return [lane && values, j({ lane, values })];
 });
 check("14.2", "the survivor list reserves the same scoped right lane through 1024 so its counts stay visible beside the Needle", (w) => {
   const s = code(w, "week");
   const heading = s.includes('<h2 id="mln-reg-standing"');
-  const lane = s.includes('<ol className="flex flex-col pr-14 xl:pr-0">');
+  const lane = s.includes('<ol className="flex flex-col pr-[56px] xl:pr-0">');
   const counts = s.includes('{formatNumber(s.ticketsWithoutAMiss)}');
   return [heading && lane && counts, j({ heading, lane, counts })];
 });
@@ -543,8 +543,10 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["the week's ghost without the table's bands from 1024", "12.1", plantSrc("weekGhost", '<div className="hidden flex-col lg:flex">', '<div className="hidden">')],
   ["the index ghost's rows without the chip", "12.2", plantSrc("indexGhost", '<GhostBar className="h-[23px] w-[88px] rounded-pill" />', "")],
   // §14
-  ["the ledger's right lane removed, exposing the fee to the resting chat control", "14.1", plantSrc("week", 'rounded-card p-3 pr-14 xl:pr-3', 'rounded-card p-3')],
-  ["the survivor list's right lane removed, exposing counts to the resting Needle", "14.2", plantSrc("week", '<ol className="flex flex-col pr-14 xl:pr-0">', '<ol className="flex flex-col">')],
+  ["the ledger's right lane removed, exposing the fee to the resting chat control", "14.1", plantSrc("week", 'rounded-card p-3 pr-[56px] xl:pr-3', 'rounded-card p-3')],
+  ["the ledger's padding regresses to the inverted spacing scale", "14.1", plantSrc("week", 'rounded-card p-3 pr-[56px] xl:pr-3', 'rounded-card p-3 pr-14 xl:pr-3')],
+  ["the survivor list's right lane removed, exposing counts to the resting Needle", "14.2", plantSrc("week", '<ol className="flex flex-col pr-[56px] xl:pr-0">', '<ol className="flex flex-col">')],
+  ["the survivor lane regresses to the inverted spacing scale", "14.2", plantSrc("week", '<ol className="flex flex-col pr-[56px] xl:pr-0">', '<ol className="flex flex-col pr-14 xl:pr-0">')],
 ];
 let caught = 0;
 for (const [name, target, world] of PLANTS) {
