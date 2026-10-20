@@ -28,6 +28,18 @@ function fiftyFirstOptInPersists(bell: string): boolean {
   }
 }
 
+function blockedConfirmationKeepsWatch(bell: string): boolean {
+  const source = bell.match(/try \{\s*new Notification\(t\.market\.watchingTitle,[\s\S]*?\);\s*\} catch \{\s*\}/)?.[0];
+  if (!source) return false;
+  const Notification = class { constructor() { throw new Error("browser blocked confirmation"); } };
+  try {
+    new Function("Notification", "t", "marketTitle", "marketId", source)(Notification, { market: { watchingTitle: "Watching" } }, "Market", "m-1");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function claims(star: string, bell: string, side = sidePicker, detail = detailPage): string[] {
   const missing: string[] = [];
   const hold = (name: string, ok: boolean) => { if (!ok) missing.push(name); };
@@ -46,6 +58,8 @@ function claims(star: string, bell: string, side = sidePicker, detail = detailPa
   hold("bell requires a stored opt-in", /function writeWatchlist\(ids: string\[\]\): boolean/.test(bell)
     && /localStorage\.setItem\(KEY, JSON\.stringify\(ids\)\);\s*return true;\s*\} catch \{[\s\S]*?return false;/.test(bell));
   hold("bell persists the accepted market even after fifty watches", fiftyFirstOptInPersists(bell));
+  hold("bell survives a refused permission request", /let r: NotificationPermission;\s*try \{\s*r = await Notification\.requestPermission\(\);\s*\} catch \{\s*setPermission\(Notification\.permission\);\s*return;\s*\}/.test(bell));
+  hold("bell keeps a stored watch when the optional confirmation is blocked", blockedConfirmationKeepsWatch(bell));
   hold("bell resets on opt-out", /if \(!writeWatchlist\(next\)\) return;\s*setWatching\(false\);\s*setSettledOn\(false\);/.test(bell));
   hold("bell settles only its Fill", /watching \? <I\.bell s=\{14\} tier="fill" className=\{settledOn \? "g-settle" : undefined\} \/> : <I\.bell s=\{14\} \/>/.test(bell));
   hold("bell remounts for another market", /<NotifyPrompt key=\{marketId\} marketId=\{marketId\} marketTitle=\{marketTitle\} \/>/.test(side));
@@ -60,7 +74,7 @@ if (baseline.length) {
 }
 
 if (!process.argv.includes("--prove-red")) {
-  console.log("W8 opt-in motion: 14/14 claims pass");
+  console.log("W8 opt-in motion: 16/16 claims pass");
   process.exit(0);
 }
 
@@ -75,6 +89,8 @@ const plants: Array<[name: string, target: string, star: string, bell: string]> 
   ["bell settles before storing the opt-in", "bell waits for opt-in", watch, notify.replace("if (!writeWatchlist(next)) return;\n        setWatching(true);\n        setSettledOn(true);", "setSettledOn(true);\n        writeWatchlist(next);\n        setWatching(true);")],
   ["bell treats refused storage as success", "bell requires a stored opt-in", watch, notify.replace("    return false;\n  }\n}\n\nexport function NotifyPrompt", "    return true;\n  }\n}\n\nexport function NotifyPrompt")],
   ["bell accepts a truncated fifty-first market", "bell persists the accepted market even after fifty watches", watch, notify.replace("JSON.stringify(ids)", "JSON.stringify(ids.slice(0, 50))")],
+  ["bell throws when permission request is refused", "bell survives a refused permission request", watch, notify.replace(/try \{\s*r = await Notification\.requestPermission\(\);\s*\} catch \{\s*setPermission\(Notification\.permission\);\s*return;\s*\}/, "r = await Notification.requestPermission();")],
+  ["bell throws after saving a watch when the confirmation is blocked", "bell keeps a stored watch when the optional confirmation is blocked", watch, notify.replace(/try \{\s*new Notification\(t\.market\.watchingTitle,[\s\S]*?\);\s*\} catch \{\s*\}/, "new Notification(t.market.watchingTitle, { body: marketTitle.slice(0, 80), tag: `50pick-${marketId}` });")],
   ["bell carries a previous activation through opt-out", "bell resets on opt-out", watch, notify.replace("setWatching(false);\n        setSettledOn(false);", "setWatching(false);")],
   ["bell settles without a successful opt-in", "bell settles only its Fill", watch, notify.replace('className={settledOn ? "g-settle" : undefined}', 'className="g-settle"')],
 ];

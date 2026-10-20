@@ -75,7 +75,14 @@ export function NotifyPrompt({ marketId, marketTitle }: { marketId: string; mark
     try {
       if (!watching) {
         if (permission === "default") {
-          const r = await Notification.requestPermission();
+          let r: NotificationPermission;
+          try {
+            r = await Notification.requestPermission();
+          } catch {
+            // Some browsers expose the API but refuse the permission request.
+            setPermission(Notification.permission);
+            return;
+          }
           setPermission(r);
           if (r !== "granted") {
             setPending(false);
@@ -91,7 +98,12 @@ export function NotifyPrompt({ marketId, marketTitle }: { marketId: string; mark
         setWatching(true);
         setSettledOn(true);
         // Confirmation chirp so the user sees it works
-        new Notification(t.market.watchingTitle, { body: marketTitle.slice(0, 80), tag: `50pick-${marketId}` });
+        try {
+          new Notification(t.market.watchingTitle, { body: marketTitle.slice(0, 80), tag: `50pick-${marketId}` });
+        } catch {
+          // The optional confirmation may be blocked even after permission was
+          // granted. The persisted watch remains active.
+        }
       } else {
         const next = readWatchlist().filter((x) => x !== marketId);
         if (!writeWatchlist(next)) return;
