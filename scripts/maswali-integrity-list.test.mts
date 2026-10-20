@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { runInNewContext } from "node:vm";
 import ts from "typescript";
 import * as search from "../src/lib/search/index.ts";
-import { integrityListParams, parseIntegrityListQuery, selectHeldShares, selectSealWeeks, selectWinnerTickets } from "../src/lib/maswali-integrity-list.ts";
+import { integrityListParams, parseIntegrityListQuery, selectHeldShares, selectSealWeeks, selectVoidableWeeks, selectWinnerTickets } from "../src/lib/maswali-integrity-list.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const helper = readFileSync(join(root, "src/lib/maswali-integrity-list.ts"), "utf8");
@@ -30,6 +30,8 @@ const winners = held.map((row) => ({ code: row.weekCode, seq: row.weekSeq, ticke
   serial: row.serial, payout: row.payout, frozenReason: row.forfeited ? "review" : null,
 }}));
 const seals = Array.from({ length: 11 }, (_, i) => ({ code: `MW-${String(11 - i).padStart(2, "0")}`, seq: 11 - i, state: (i % 2 ? "VOIDED" : "SETTLED") }));
+const voidable = Array.from({ length: 26 }, (_, i) => ({ code: `MW-${String(26 - i).padStart(2, "0")}`, seq: 26 - i,
+  visibility: (i % 2 ? "DRIVE" : "PUBLIC") as "PUBLIC" | "DRIVE", ticketCount: i + 1 }));
 
 const h1 = selectHeldShares(held, query().held, 20);
 ok("held shares are paged without a silent cap", h1.total === 45 && h1.allTotal === 45 && h1.rows.length === 20 && selectHeldShares(held, query({ hpage: "3" }).held, 20).rows.length === 5);
@@ -47,15 +49,25 @@ ok("seal-log week search reaches an older week before paging", selectSealWeeks(s
 ok("seal state filter and ascending sort precede week paging", selectSealWeeks(seals, query({ sstate: "VOIDED", sdir: "asc", spage: "2" }).seals, 2).rows[0]?.seq === 6);
 ok("seal log pages whole weeks, not individual question rows", selectSealWeeks(seals, query({ spage: "3" }).seals, 4).rows.length === 3);
 
-const bad = query({ hdecision: "BAD", hsort: "sql", hdir: "other", hpage: "2junk", wreview: "BAD", wsort: "age", wpage: "-2", sstate: "OPEN", spage: "NaN" });
-ok("untrusted URL values fall back to safe controls and first pages", bad.held.decision === "" && bad.held.sort === "week" && bad.held.dir === "desc" && bad.held.page === 1 && bad.winners.review === "" && bad.winners.sort === "week" && bad.winners.page === 1 && bad.seals.state === "" && bad.seals.page === 1);
-const params = integrityListParams(query({ hq: " Amina ", hdecision: "pending", hpage: "2", wq: "MW-01", wsort: "share", wpage: "3", sq: "MW-02", sstate: "VOIDED", spage: "4" }));
-ok("URL params preserve each list's independent filter, sort and page", params.hq === "Amina" && params.hdecision === "pending" && params.hpage === "2" && params.wq === "MW-01" && params.wsort === "share" && params.wpage === "3" && params.sq === "MW-02" && params.sstate === "VOIDED" && params.spage === "4");
-ok("all three kit searches reset only their own pager", ["h", "w", "s"].every((prefix) => page.includes(`param="${prefix}q" pageParam="${prefix}page"`)) && searchBox.includes("sp.delete(pageParam)"));
-ok("all three pagers retain sibling state and use their own page key", ["h", "w", "s"].every((prefix) => page.includes(`baseHref={buildBaseHref(INTEGRITY_HREF, listParams, "${prefix}page")} param="${prefix}page"`)));
-ok("all three filter forms retain sibling controls and omit their own page", ["h", "w", "s"].every((prefix) => page.includes(`<OtherListState params={listParams} list="${prefix}" />`)) && /!key\.startsWith\(list\)/.test(page));
-ok("read model selects complete winner, held, seal sets before page-only hydration", consoleRead.includes("selectHeldShares(allHeld") && consoleRead.includes("selectWinnerTickets(won") && consoleRead.includes("for (const { ticket: t, code } of selectedWinners.rows)") && consoleRead.includes("selectSealWeeks(sealed") && consoleRead.includes("for (const w of selectedSeals.rows)"));
-ok("all three empty states distinguish no records from no matches", page.includes("v.heldPage.allTotal === 0") && page.includes("No held shares match these filters") && page.includes("v.winnersPage.allTotal === 0") && page.includes("No winners match these filters") && page.includes("v.sealWeeks.allTotal === 0") && page.includes("No sealed weeks match these filters"));
+ok("voidable queue pages the complete eligible set", selectVoidableWeeks(voidable, query().voidable, 20).total === 26
+  && selectVoidableWeeks(voidable, query({ vpage: "2" }).voidable, 20).rows.length === 6);
+ok("voidable code lookup reaches a week beyond the first page", selectVoidableWeeks(voidable, query({ vq: "mw-01" }).voidable, 20).rows[0]?.seq === 1);
+ok("voidable line filter applies before paging", selectVoidableWeeks(voidable, query({ vline: "DRIVE" }).voidable, 5).total === 13);
+ok("voidable ticket-count sort applies before paging", selectVoidableWeeks(voidable, query({ vsort: "tickets", vdir: "desc" }).voidable, 20).rows[0]?.ticketCount === 26);
+ok("voidable filtered pager clamps after lookup", selectVoidableWeeks(voidable, query({ vq: "MW-01", vpage: "99" }).voidable, 20).page === 1);
+ok("voidable empty cause separates no eligible week from no match", selectVoidableWeeks([], query().voidable, 20).allTotal === 0
+  && selectVoidableWeeks(voidable, query({ vq: "absent" }).voidable, 20).allTotal === 26
+  && selectVoidableWeeks(voidable, query({ vq: "absent" }).voidable, 20).total === 0);
+
+const bad = query({ hdecision: "BAD", hsort: "sql", hdir: "other", hpage: "2junk", wreview: "BAD", wsort: "age", wpage: "-2", sstate: "OPEN", spage: "NaN", vline: "PRIVATE", vsort: "name", vpage: "-3" });
+ok("untrusted URL values fall back to safe controls and first pages", bad.held.decision === "" && bad.held.sort === "week" && bad.held.dir === "desc" && bad.held.page === 1 && bad.winners.review === "" && bad.winners.sort === "week" && bad.winners.page === 1 && bad.seals.state === "" && bad.seals.page === 1 && bad.voidable.line === "" && bad.voidable.sort === "week" && bad.voidable.page === 1);
+const params = integrityListParams(query({ hq: " Amina ", hdecision: "pending", hpage: "2", wq: "MW-01", wsort: "share", wpage: "3", sq: "MW-02", sstate: "VOIDED", spage: "4", vq: "MW-03", vline: "DRIVE", vsort: "tickets", vpage: "5" }));
+ok("URL params preserve each list's independent filter, sort and page", params.hq === "Amina" && params.hdecision === "pending" && params.hpage === "2" && params.wq === "MW-01" && params.wsort === "share" && params.wpage === "3" && params.sq === "MW-02" && params.sstate === "VOIDED" && params.spage === "4" && params.vq === "MW-03" && params.vline === "DRIVE" && params.vsort === "tickets" && params.vpage === "5");
+ok("all four kit searches reset only their own pager", ["h", "w", "s", "v"].every((prefix) => page.includes(`param="${prefix}q" pageParam="${prefix}page"`)) && searchBox.includes("sp.delete(pageParam)"));
+ok("all four pagers retain sibling state and use their own page key", ["h", "w", "s", "v"].every((prefix) => page.includes(`baseHref={buildBaseHref(INTEGRITY_HREF, listParams, "${prefix}page")} param="${prefix}page"`)));
+ok("all four filter forms retain sibling controls and omit their own page", ["h", "w", "s", "v"].every((prefix) => page.includes(`<OtherListState params={listParams} list="${prefix}" />`)) && /!key\.startsWith\(list\)/.test(page));
+ok("read model selects complete winner, held, seal and voidable sets before page-only hydration", consoleRead.includes("selectHeldShares(allHeld") && consoleRead.includes("selectWinnerTickets(won") && consoleRead.includes("for (const { ticket: t, code } of selectedWinners.rows)") && consoleRead.includes("selectSealWeeks(sealed") && consoleRead.includes("for (const w of selectedSeals.rows)") && consoleRead.includes("selectVoidableWeeks(voidable") && consoleRead.includes("selectedVoidable.rows.map(rowOf)"));
+ok("all four empty states distinguish no records from no matches", page.includes("v.heldPage.allTotal === 0") && page.includes("No held shares match these filters") && page.includes("v.winnersPage.allTotal === 0") && page.includes("No winners match these filters") && page.includes("v.sealWeeks.allTotal === 0") && page.includes("No sealed weeks match these filters") && page.includes("v.voidablePage.allTotal === 0") && page.includes("No voidable weeks match these filters"));
 
 function mutated(source: string) {
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
@@ -64,7 +76,7 @@ function mutated(source: string) {
     if (name === "@/lib/search") return search;
     throw new Error(`Unexpected module in mutation: ${name}`);
   }});
-  return mod.exports as { selectHeldShares: typeof selectHeldShares; selectWinnerTickets: typeof selectWinnerTickets; selectSealWeeks: typeof selectSealWeeks };
+  return mod.exports as { selectHeldShares: typeof selectHeldShares; selectWinnerTickets: typeof selectWinnerTickets; selectSealWeeks: typeof selectSealWeeks; selectVoidableWeeks: typeof selectVoidableWeeks };
 }
 if (process.argv.includes("--prove-red")) {
   const unsorted = helper.replace("return pageRows(all, ordered, query.page, perPage);", "return pageRows(all, filtered, query.page, perPage);");
@@ -80,6 +92,11 @@ if (process.argv.includes("--prove-red")) {
   const unfilteredSeals = helper.replace("return pageRows(all, sorted(filtered, (week) => week.seq, query.dir), query.page, perPage);", "return pageRows(all, sorted([...all], (week) => week.seq, query.dir), query.page, perPage);");
   if (unfilteredSeals === helper) throw new Error("Seal filter plant target missing");
   ok("red: paging unfiltered seal weeks fails the older-week lookup", mutated(unfilteredSeals).selectSealWeeks(seals, query({ sq: "MW-01" }).seals, 4).rows[0]?.seq !== 1);
+  const unfilteredVoidable = helper.replace('const ordered = sorted(filtered, (week) => query.sort === "tickets" ? week.ticketCount : week.seq, query.dir);',
+    'const ordered = sorted([...all], (week) => query.sort === "tickets" ? week.ticketCount : week.seq, query.dir);');
+  if (unfilteredVoidable === helper) throw new Error("Voidable full-set lookup plant target missing");
+  ok("red: paging unfiltered voidable weeks fails the beyond-page code lookup",
+    mutated(unfilteredVoidable).selectVoidableWeeks(voidable, query({ vq: "MW-01" }).voidable, 20).rows[0]?.seq !== 1);
 }
 console.log(`maswali integrity lists: ${passed} passed, ${failed} failed`);
 if (failed) process.exitCode = 1;

@@ -40,12 +40,12 @@ export const dynamic = "force-dynamic";
 type IntegrityPageProps = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 const INTEGRITY_HREF = "/admin/maswali/integrity";
 
-function OtherListState({ params, list }: { params: Record<string, string | undefined>; list: "h" | "w" | "s" }) {
+function OtherListState({ params, list }: { params: Record<string, string | undefined>; list: "h" | "w" | "s" | "v" }) {
   return Object.entries(params).filter(([key, value]) => value && !key.startsWith(list)).map(([key, value]) =>
     <input key={key} type="hidden" name={key} value={value} />);
 }
 
-function clearListHref(params: Record<string, string | undefined>, list: "h" | "w" | "s") {
+function clearListHref(params: Record<string, string | undefined>, list: "h" | "w" | "s" | "v") {
   return buildBaseHref(INTEGRITY_HREF, Object.fromEntries(Object.entries(params).filter(([key]) => !key.startsWith(list))));
 }
 
@@ -80,6 +80,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
     held: { ...query.held, page: v.heldPage.page },
     winners: { ...query.winners, page: v.winnersPage.page },
     seals: { ...query.seals, page: v.sealWeeks.page },
+    voidable: { ...query.voidable, page: v.voidablePage.page },
   };
   const listParams = integrityListParams(linkQuery);
 
@@ -143,17 +144,43 @@ async function Content({ searchParams }: IntegrityPageProps) {
           )}
         </AdminCard>
 
-        <AdminCard title="Weeks that void whole" sw="Wiki zinazobatilishwa">
-          {v.voidable.length === 0 ? <p className="text-body-sm text-text-secondary">No week is waiting to be voided.</p> : (
-            <ul className="space-y-2">
+        <AdminCard title="Weeks that void whole" sw="Wiki zinazobatilishwa" padding="p-0">
+          <div className="border-b border-border-subtle p-4">
+            <SearchBox param="vq" pageParam="vpage" placeholder="Search voidable week code" ariaLabel="Search weeks waiting to be voided" helpFields={["week"]} />
+            <form method="get" action={INTEGRITY_HREF} className="mt-3 flex flex-wrap items-end gap-3">
+              <OtherListState params={listParams} list="v" />
+              {query.voidable.q && <input type="hidden" name="vq" value={query.voidable.q} />}
+              <div className="min-w-[130px] flex-1 text-body-sm text-text-secondary"><span>Line</span>
+                <Select key={query.voidable.line} name="vline" ariaLabel="Voidable week line" defaultValue={query.voidable.line} className="mt-1"
+                  options={[{ value: "", label: "All lines" }, { value: "PUBLIC", label: "Public" }, { value: "DRIVE", label: "Drive" }]} />
+              </div>
+              <div className="min-w-[130px] flex-1 text-body-sm text-text-secondary"><span>Sort by</span>
+                <Select key={query.voidable.sort} name="vsort" ariaLabel="Voidable week sort" defaultValue={query.voidable.sort} className="mt-1"
+                  options={[{ value: "week", label: "Week" }, { value: "tickets", label: "Tickets to refund" }]} />
+              </div>
+              <div className="min-w-[130px] flex-1 text-body-sm text-text-secondary"><span>Order</span>
+                <Select key={query.voidable.dir} name="vdir" ariaLabel="Voidable week order" defaultValue={query.voidable.dir} className="mt-1"
+                  options={[{ value: "desc", label: "Newest or most first" }, { value: "asc", label: "Oldest or least first" }]} />
+              </div>
+              <Button type="submit" size="sm">Apply</Button>
+              {(query.voidable.q || query.voidable.line || query.voidable.sort !== "week" || query.voidable.dir !== "desc")
+                && <Link href={clearListHref(listParams, "v") as never} className="btn btn-ghost btn-sm">Clear</Link>}
+            </form>
+          </div>
+          {v.voidablePage.allTotal === 0 ? <div className="p-4 text-body-sm text-text-secondary">No week is waiting to be voided.</div>
+            : v.voidablePage.total === 0 ? <EmptyState title="No voidable weeks match these filters" body="Try another week code or line." /> : (
+            <><p className="px-4 pt-3 font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{v.voidablePage.total} of {v.voidablePage.allTotal} weeks waiting</p>
+            <ul className="space-y-2 p-4">
               {v.voidable.map((w) => (
                 <li key={w.id} className="flex items-center gap-3 flex-wrap">
                   <span className="tabular">{w.code}</span><span className="text-body-sm text-text-tertiary">{w.ticketCount.toLocaleString("en")} tickets to refund in full</span>
                   {canVoid ? <VoidWeekControl weekId={w.id} code={w.code} /> : <ControlLocked what="Void the week" need={CONTROL_DOMAIN.voidMaswaliWeek} />}
                 </li>
               ))}
-            </ul>
+            </ul></>
           )}
+          {v.voidablePage.total > CONSOLE_PER_PAGE && <AdminPagination page={v.voidablePage.page} total={v.voidablePage.total} perPage={CONSOLE_PER_PAGE}
+            baseHref={buildBaseHref(INTEGRITY_HREF, listParams, "vpage")} param="vpage" />}
         </AdminCard>
 
         <AdminCard title="Held shares" sw="Zawadi zilizozuiliwa" padding="p-0">

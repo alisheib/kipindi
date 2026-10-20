@@ -30,7 +30,7 @@ import { guaranteeRequirement } from "@/lib/maswali-money";
 import type { RolloutState } from "@/lib/millionea-rollout";
 import { formatTzs } from "@/lib/utils";
 import { parseWeekListQuery, selectWeekPage, type WeekListQuery } from "@/lib/maswali-week-list";
-import { parseIntegrityListQuery, selectHeldShares, selectWinnerTickets, selectSealWeeks, type IntegrityListQuery } from "@/lib/maswali-integrity-list";
+import { parseIntegrityListQuery, selectHeldShares, selectWinnerTickets, selectSealWeeks, selectVoidableWeeks, type IntegrityListQuery } from "@/lib/maswali-integrity-list";
 
 const HOUR = 3_600_000;
 
@@ -312,6 +312,7 @@ export type IntegrityView = {
   winnersPage: { total: number; allTotal: number; page: number };
   /** Weeks a compliance officer may void whole (MR-18): the void is certain and the window has closed. */
   voidable: ConsoleWeekRow[];
+  voidablePage: { total: number; allTotal: number; page: number };
 };
 
 const holderOf = async (userId: string) => {
@@ -331,9 +332,9 @@ export const SEAL_WEEKS_PER_PAGE = 4;
  * page an officer decides it on). Every week is read; paid tickets are read at the query (`won`), never every ticket;
  * the held shares, winners and seal weeks are all filtered and sorted over their complete sets before paging.
  */
-export async function integrityView(now: Date = new Date(), pages: { held?: number; winners?: number; sealWeeks?: number } = {}, query: IntegrityListQuery = parseIntegrityListQuery({})): Promise<IntegrityView> {
+export async function integrityView(now: Date = new Date(), pages: { held?: number; winners?: number; sealWeeks?: number; voidable?: number } = {}, query: IntegrityListQuery = parseIntegrityListQuery({})): Promise<IntegrityView> {
   const weeks = await weekStore.list({});
-  const allHeld: HeldShare[] = [], winners: WinnerRow[] = [], sealLog: SealLogRow[] = [], voidable: ConsoleWeekRow[] = [];
+  const allHeld: HeldShare[] = [], winners: WinnerRow[] = [], sealLog: SealLogRow[] = [], voidable: StoredWeek[] = [];
   const won: Array<{ ticket: StoredTicket; code: string; seq: number }> = [];
   const holderCache = new Map<string, ReturnType<typeof holderOf>>();
   const holderFor = (userId: string) => {
@@ -347,7 +348,7 @@ export async function integrityView(now: Date = new Date(), pages: { held?: numb
     }
     if ((w.state === "CLOSED" || w.state === "RESOLVING") && w.objectionsCloseAt && Date.parse(w.objectionsCloseAt) <= now.getTime()) {
       const gate = settlementGate(gradable(await questionStore.listForWeek(w.id)));
-      if (gate.ready && gate.weekVoid) voidable.push(await rowOf(w));
+      if (gate.ready && gate.weekVoid) voidable.push(w);
     }
   }
   for (const { ticket: t, code, seq } of won) {
@@ -357,6 +358,7 @@ export async function integrityView(now: Date = new Date(), pages: { held?: numb
   }
   const selectedHeld = selectHeldShares(allHeld, { ...query.held, page: pages.held ?? query.held.page }, CONSOLE_PER_PAGE);
   const selectedWinners = selectWinnerTickets(won, { ...query.winners, page: pages.winners ?? query.winners.page }, CONSOLE_PER_PAGE);
+  const selectedVoidable = selectVoidableWeeks(voidable, { ...query.voidable, page: pages.voidable ?? query.voidable.page }, CONSOLE_PER_PAGE);
   for (const { ticket: t, code } of selectedWinners.rows) {
     const h = await holderFor(t.userId);
     const ageDays = h.createdAt ? Math.floor((now.getTime() - Date.parse(h.createdAt)) / 86_400_000) : 0;
@@ -372,6 +374,8 @@ export async function integrityView(now: Date = new Date(), pages: { held?: numb
   return {
     held: selectedHeld.rows, heldPage: { total: selectedHeld.total, allTotal: selectedHeld.allTotal, page: selectedHeld.page },
     sealLog, sealWeeks: { total: selectedSeals.total, allTotal: selectedSeals.allTotal, page: selectedSeals.page },
-    winners, winnersPage: { total: selectedWinners.total, allTotal: selectedWinners.allTotal, page: selectedWinners.page }, voidable,
+    winners, winnersPage: { total: selectedWinners.total, allTotal: selectedWinners.allTotal, page: selectedWinners.page },
+    voidable: await Promise.all(selectedVoidable.rows.map(rowOf)),
+    voidablePage: { total: selectedVoidable.total, allTotal: selectedVoidable.allTotal, page: selectedVoidable.page },
   };
 }

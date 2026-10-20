@@ -4,6 +4,8 @@ type Direction = "asc" | "desc";
 type HeldSort = "week" | "ticket" | "holder" | "share" | "decision";
 type WinnerSort = "week" | "ticket" | "share";
 type SealSort = "week";
+type VoidableSort = "week" | "tickets";
+type VoidableLine = "" | "PUBLIC" | "DRIVE";
 type HeldDecision = "" | "pending" | "forfeited";
 type WinnerReview = "" | "flagged" | "clear";
 type SealState = "" | "SETTLED" | "VOIDED";
@@ -12,6 +14,7 @@ export type IntegrityListQuery = {
   held: { q: string; decision: HeldDecision; sort: HeldSort; dir: Direction; page: number };
   winners: { q: string; review: WinnerReview; sort: WinnerSort; dir: Direction; page: number };
   seals: { q: string; state: SealState; sort: SealSort; dir: Direction; page: number };
+  voidable: { q: string; line: VoidableLine; sort: VoidableSort; dir: Direction; page: number };
 };
 
 const first = (value: string | string[] | undefined) => typeof value === "string" ? value : Array.isArray(value) ? value[0] ?? "" : "";
@@ -36,10 +39,15 @@ export function parseIntegrityListQuery(sp: Record<string, string | string[] | u
       q: qOf(first(sp.sq)), state: oneOf(first(sp.sstate), ["", "SETTLED", "VOIDED"] as const, ""),
       sort: "week", dir: dirOf(first(sp.sdir)), page: pageOf(first(sp.spage)),
     },
+    voidable: {
+      q: qOf(first(sp.vq)), line: oneOf(first(sp.vline), ["", "PUBLIC", "DRIVE"] as const, ""),
+      sort: oneOf(first(sp.vsort), ["week", "tickets"] as const, "week"),
+      dir: dirOf(first(sp.vdir)), page: pageOf(first(sp.vpage)),
+    },
   };
 }
 
-/** These are the only values passed to sort links, filter forms and the three independent pagers. */
+/** These are the only values passed to sort links, filter forms and the four independent pagers. */
 export function integrityListParams(query: IntegrityListQuery): Record<string, string | undefined> {
   return {
     hq: query.held.q || undefined,
@@ -56,6 +64,11 @@ export function integrityListParams(query: IntegrityListQuery): Record<string, s
     sstate: query.seals.state || undefined,
     sdir: query.seals.dir === "desc" ? undefined : query.seals.dir,
     spage: query.seals.page > 1 ? String(query.seals.page) : undefined,
+    vq: query.voidable.q || undefined,
+    vline: query.voidable.line || undefined,
+    vsort: query.voidable.sort === "week" ? undefined : query.voidable.sort,
+    vdir: query.voidable.dir === "desc" ? undefined : query.voidable.dir,
+    vpage: query.voidable.page > 1 ? String(query.voidable.page) : undefined,
   };
 }
 
@@ -83,6 +96,7 @@ const WINNER_SEARCH: EntitySchema = { fields: {
   week: { columns: ["code"], kind: "text" }, ticket: { columns: ["serial"], kind: "text" },
 }, default: ["code", "serial"], viewModel: true };
 const SEAL_SEARCH: EntitySchema = { fields: { week: { columns: ["code"], kind: "text" } }, default: ["code"], viewModel: true };
+const VOIDABLE_SEARCH: EntitySchema = { fields: { week: { columns: ["code"], kind: "text" } }, default: ["code"], viewModel: true };
 
 export type HeldListRow = { weekCode: string; weekSeq: number; serial: string; holder: string; payout: number; forfeited: boolean };
 export function selectHeldShares<T extends HeldListRow>(all: readonly T[], query: IntegrityListQuery["held"], perPage: number): Result<T> {
@@ -118,4 +132,13 @@ export function selectSealWeeks<T extends SealListWeek>(all: readonly T[], query
   const parsed = parseQuery(query.q, { fields: ["week"] });
   const filtered = all.filter((week) => matchesQuery(parsed, { code: week.code }, SEAL_SEARCH) && (!query.state || week.state === query.state));
   return pageRows(all, sorted(filtered, (week) => week.seq, query.dir), query.page, perPage);
+}
+
+export type VoidableListWeek = { code: string; seq: number; visibility: "PUBLIC" | "DRIVE"; ticketCount: number };
+export function selectVoidableWeeks<T extends VoidableListWeek>(all: readonly T[], query: IntegrityListQuery["voidable"], perPage: number): Result<T> {
+  const parsed = parseQuery(query.q, { fields: ["week"] });
+  const filtered = all.filter((week) => matchesQuery(parsed, { code: week.code }, VOIDABLE_SEARCH)
+    && (!query.line || week.visibility === query.line));
+  const ordered = sorted(filtered, (week) => query.sort === "tickets" ? week.ticketCount : week.seq, query.dir);
+  return pageRows(all, ordered, query.page, perPage);
 }
