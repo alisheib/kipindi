@@ -112,47 +112,76 @@ export async function clusterReport(week: StoredWeek): Promise<ClusterReport> {
 
 export const SEAL_DEVICE_ACTION = "maswali.seal.device";
 export const SEAL_NEW_DEVICE_ACTION = "maswali.seal.new_device";
+/** A seal whose device could not be checked against the officer's own history: Compliance sees it, never an all-clear. */
+export const SEAL_DEVICE_UNCHECKED_ACTION = "maswali.seal.device_unchecked";
 
 /**
- * After a seal, a void or a correction: record where it came from, and raise a compliance record when the officer has
- * never sealed from there before. ⛔ Never blocks the seal (it has already landed) and never throws: an unreadable history
- * is recorded as such, not as "new".
+ * The officer's own seal-device history, counted EXACTLY: every seal-device row they have, and those from this same
+ * device. Counted in the read on both stores (`getAuditForActorDurable`'s `actions` and `from` filters), so an officer's
+ * other audit rows, however many, can never crowd a device out of the answer (S5 review: a window over the newest rows of
+ * every action went silent for a busy officer, and the integrity page then read all clear).
  */
+type SealDeviceHistory = { seals: number; fromDevice: number };
 type SealDeviceAuditPort = {
-  read: (actorId: string, opts: { limit: number }) => Promise<{ entries: Array<{ action: string; ip?: string | null; userAgent?: string | null }>; truncated: boolean }>;
+  history: (officerId: string, device: { ip: string | null; userAgent: string | null }) => Promise<SealDeviceHistory>;
   write: (entry: Parameters<typeof import("./audit").audit>[0]) => Promise<{ recorded: boolean }>;
 };
 
-/** True only when the history was sufficient and every required audit row was recorded. Never throws. */
+async function defaultSealDevicePort(): Promise<SealDeviceAuditPort> {
+  const { getAuditForActorDurable, audit } = await import("./audit");
+  return {
+    history: async (officerId, device) => {
+      const [all, same] = await Promise.all([
+        getAuditForActorDurable(officerId, { actions: [SEAL_DEVICE_ACTION], limit: 1 }),
+        getAuditForActorDurable(officerId, { actions: [SEAL_DEVICE_ACTION], from: device, limit: 1 }),
+      ]);
+      return { seals: all.total, fromDevice: same.total };
+    },
+    write: audit,
+  };
+}
+
+/**
+ * After a seal, a void or a correction: record where it came from, and raise a COMPLIANCE record when the officer has
+ * never sealed from there before — or when that could not be checked (`SEAL_DEVICE_UNCHECKED_ACTION`), so the integrity
+ * page never reads an unread history as all clear. ⛔ Never blocks the seal (it has already landed) and never throws.
+ * True only when the history was read and every required audit row was recorded.
+ */
 export async function noteSealDevice(
   input: { officerId: string; weekId: string; slots: number[]; ip: string | null; userAgent: string | null },
   injected?: SealDeviceAuditPort,
 ): Promise<boolean> {
   try {
-    const port: SealDeviceAuditPort = injected ?? await import("./audit").then(({ getAuditForActorDurable, audit }) => ({ read: getAuditForActorDurable, write: audit }));
-    const past = await port.read(input.officerId, { limit: 500 }).catch(() => null);
-    const matched = past?.entries.some((e) => e.action === SEAL_DEVICE_ACTION && e.ip === input.ip && e.userAgent === input.userAgent) ?? false;
-    // A bounded or failed history cannot establish that a device is new. An observed match is still enough.
-    const historyReadable = past !== null && (matched || !past.truncated);
-    const seen = historyReadable ? matched : null;
+    const port = injected ?? await defaultSealDevicePort();
+    // Read BEFORE this seal's own device row is written, or the count would always include it.
+    const history = await port.history(input.officerId, { ip: input.ip, userAgent: input.userAgent }).catch(() => null);
     const device = await port.write({ category: "ADMIN", action: SEAL_DEVICE_ACTION, actorId: input.officerId, targetType: "MaswaliCycle", targetId: input.weekId,
       payload: { slots: input.slots }, ip: input.ip, userAgent: input.userAgent });
-    let newDeviceRecorded = true;
-    if (seen === false) {
+    let flagRecorded = true;
+    if (history === null) {
+      const unchecked = await port.write({ category: "COMPLIANCE", action: SEAL_DEVICE_UNCHECKED_ACTION, actorId: input.officerId, targetType: "MaswaliCycle", targetId: input.weekId,
+        payload: { slots: input.slots }, ip: input.ip, userAgent: input.userAgent });
+      flagRecorded = unchecked.recorded;
+    } else if (history.fromDevice === 0) {
       const newDevice = await port.write({ category: "COMPLIANCE", action: SEAL_NEW_DEVICE_ACTION, actorId: input.officerId, targetType: "MaswaliCycle", targetId: input.weekId,
-        payload: { slots: input.slots, firstSeal: !past?.entries.some((e) => e.action === SEAL_DEVICE_ACTION) }, ip: input.ip, userAgent: input.userAgent });
-      newDeviceRecorded = newDevice.recorded;
+        payload: { slots: input.slots, firstSeal: history.seals === 0 }, ip: input.ip, userAgent: input.userAgent });
+      flagRecorded = newDevice.recorded;
     }
-    return historyReadable && device.recorded && newDeviceRecorded;
+    return history !== null && device.recorded && flagRecorded;
   } catch { return false; /* a note about a seal that already landed never surfaces as the seal failing */ }
 }
 
-/** The recent new-device seal records, newest first, for the integrity page. */
-export async function recentNewDeviceSeals(limit = 20): Promise<Array<{ officerId: string | null; weekId: string | null; at: string; firstSeal: boolean }> | null> {
+/** One record the integrity page lists: a seal from a new device, or one whose device could not be checked. */
+export type SealDeviceFlag = { officerId: string | null; weekId: string | null; at: string; kind: "new" | "unchecked"; firstSeal: boolean };
+
+/** The recent seal-device flags, newest first, for the integrity page — both kinds, so an unchecked seal is never hidden. */
+export async function recentNewDeviceSeals(limit = 20): Promise<SealDeviceFlag[] | null> {
   try {
     const { getAuditByActionsDurable } = await import("./audit");
-    const r = await getAuditByActionsDurable([SEAL_NEW_DEVICE_ACTION], { limit });
+    // Both are COMPLIANCE rows: naming the category makes the read a range scan of one category (`getAuditByActionsDurable`).
+    const r = await getAuditByActionsDurable([SEAL_NEW_DEVICE_ACTION, SEAL_DEVICE_UNCHECKED_ACTION], { category: "COMPLIANCE", limit });
     return r.entries.map((e) => ({ officerId: e.actorId, weekId: e.targetId ?? null, at: e.createdAt,
+      kind: e.action === SEAL_DEVICE_UNCHECKED_ACTION ? "unchecked" as const : "new" as const,
       firstSeal: !!(e.payload as { firstSeal?: boolean } | null)?.firstSeal }));
   } catch {
     return null;

@@ -31,8 +31,8 @@ const { setRequireTwoOfficerResolution } = await import("../../src/lib/server/re
 const { marketStore } = await import("../../src/lib/server/market-dal.ts");
 const consoleRead = await import("../../src/lib/server/maswali-console.ts");
 const { applySealBatch, parseSealRows, withoutSealedPicks } = await import("../../src/lib/maswali-seal-batch.ts");
-const { noteSealDevice, recentNewDeviceSeals, SEAL_DEVICE_ACTION, SEAL_NEW_DEVICE_ACTION } = await import("../../src/lib/server/maswali-integrity.ts");
-const { auditFlush, getAuditByActionsDurable } = await import("../../src/lib/server/audit.ts");
+const { noteSealDevice, recentNewDeviceSeals, SEAL_DEVICE_ACTION, SEAL_NEW_DEVICE_ACTION, SEAL_DEVICE_UNCHECKED_ACTION } = await import("../../src/lib/server/maswali-integrity.ts");
+const { audit, auditFlush, getAuditByActionsDurable } = await import("../../src/lib/server/audit.ts");
 const { readFileSync } = await import("node:fs");
 
 process.exitCode = 1;
@@ -385,25 +385,55 @@ console.log("\n§7 · the two-officer flag");
   const auditInput = { officerId: SEALER, weekId: w1.id, slots: [13], ip: "198.51.100.222", userAgent: "injected-device" };
   const written: string[] = [];
   const adminFailed = await noteSealDevice(auditInput, {
-    read: async () => ({ entries: [], truncated: false }),
+    history: async () => ({ seals: 0, fromDevice: 0 }),
     write: async (entry) => { written.push(entry.action); return { recorded: entry.action !== SEAL_DEVICE_ACTION }; },
   });
   ok("7.20 · ⛔ an ADMIN audit that resolves unrecorded cannot be reported as complete",
     !adminFailed && written.join(",") === `${SEAL_DEVICE_ACTION},${SEAL_NEW_DEVICE_ACTION}`);
   const complianceFailed = await noteSealDevice(auditInput, {
-    read: async () => ({ entries: [], truncated: false }),
+    history: async () => ({ seals: 0, fromDevice: 0 }),
     write: async (entry) => ({ recorded: entry.action !== SEAL_NEW_DEVICE_ACTION }),
   });
   ok("7.21 · ⛔ an unrecorded new-device COMPLIANCE row is a nonblocking incomplete audit", !complianceFailed);
-  const truncatedActions: string[] = [];
-  const incompleteHistory = await noteSealDevice(auditInput, {
-    read: async () => ({ entries: [], truncated: true }),
-    write: async (entry) => { truncatedActions.push(entry.action); return { recorded: true }; },
+  // ⭐ 7.22 · THE TRUE PREMISE (S5 review, findings 1 and A1): the history is the officer's OWN seal-device rows, counted
+  //    exactly — an officer whose other audit rows outnumber any read window is still answered. The real readers, on both
+  //    stores: under the old window over every action, the known device below read as "could not be checked" (a warning
+  //    on every seal) and the new one raised nothing.
+  const BUSY = "usr_busy_sealer";
+  const busyNote = (ip: string, userAgent: string) => noteSealDevice({ officerId: BUSY, weekId: w1.id, slots: [12], ip, userAgent });
+  const busyFirst = await busyNote("198.51.100.31", "busy-phone");
+  await auditFlush();
+  for (let i = 0; i < 501; i++) void audit({ category: "ADMIN", action: "maswali.test.officer_activity", actorId: BUSY, targetType: "MaswaliCycle", targetId: w1.id, payload: { i } });
+  await auditFlush();
+  const busyKnown = await busyNote("198.51.100.31", "busy-phone");
+  await auditFlush();
+  const busyNew = await busyNote("198.51.100.32", "busy-laptop");
+  await auditFlush();
+  const busyFlags = (await recentNewDeviceSeals(200))?.filter((row) => row.officerId === BUSY) ?? [];
+  ok("7.22 · ⭐ an officer with more audit rows than any window: the known device needs no flag and no warning, a new one is flagged",
+    busyFirst && busyKnown && busyNew && busyFlags.length === 2 && busyFlags.every((row) => row.kind === "new")
+      && busyFlags[0].firstSeal === false && busyFlags[1].firstSeal === true, JSON.stringify({ busyFirst, busyKnown, busyNew, busyFlags }));
+  const uncheckedActions: string[] = [];
+  const unreadHistory = await noteSealDevice(auditInput, {
+    history: async () => { throw new Error("injected history outage"); },
+    write: async (entry) => { uncheckedActions.push(`${entry.category}:${entry.action}`); return { recorded: true }; },
   });
-  ok("7.22 · ⛔ truncated seal history never invents a new device",
-    !incompleteHistory && truncatedActions.join(",") === SEAL_DEVICE_ACTION);
+  ok("7.22b · ⛔ an unreadable history is never silence: a COMPLIANCE 'device unchecked' row, and the officer is warned",
+    !unreadHistory && uncheckedActions.join(",") === `ADMIN:${SEAL_DEVICE_ACTION},COMPLIANCE:${SEAL_DEVICE_UNCHECKED_ACTION}`, uncheckedActions.join(","));
+  const UNREAD = "usr_unread_sealer";
+  await noteSealDevice({ officerId: UNREAD, weekId: w1.id, slots: [12], ip: "198.51.100.33", userAgent: "unread-device" },
+    { history: async () => { throw new Error("injected history outage"); }, write: audit });
+  await auditFlush();
+  const unreadFlags = (await recentNewDeviceSeals(200))?.filter((row) => row.officerId === UNREAD) ?? [];
+  ok("7.22c · ⛔ the integrity page's reader returns the unchecked seal, as unchecked",
+    unreadFlags.length === 1 && unreadFlags[0].kind === "unchecked" && unreadFlags[0].weekId === w1.id, JSON.stringify(unreadFlags));
+  const integrityPage = readFileSync("src/app/admin/maswali/integrity/page.tsx", "utf8").split("\r\n").join("\n");
+  const allClearAt = integrityPage.indexOf("Every recent seal came from a device its officer had sealed from before.");
+  ok("7.22d · …and the page names it, keeping the all-clear sentence for an empty list only",
+    /d\.kind === "unchecked"\s*\?\s*<span className="text-warning"> · the device could not be checked against their earlier seals<\/span>/.test(integrityPage)
+      && allClearAt > 0 && integrityPage.slice(allClearAt - 140, allClearAt).includes("newDevices.length === 0 ?"));
   const thrownAudit = await noteSealDevice(auditInput, {
-    read: async () => ({ entries: [], truncated: false }),
+    history: async () => ({ seals: 0, fromDevice: 0 }),
     write: async () => { throw new Error("injected audit outage"); },
   });
   ok("7.23 · an audit write throw is contained after the irreversible seal", !thrownAudit);

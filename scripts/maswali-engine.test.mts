@@ -17,6 +17,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:maswali-engine",
   casesFile: "scripts/lib/maswali-engine-child.mts",
-  minPass: { memory: 137, postgres: 136 }, // correction validation, stale-review race and audit cases run on both stores
+  minPass: { memory: 140, postgres: 139 }, // S5-FIX-SRV 1: the exact device history (7.22-7.22d) on both stores
   dbPrefix: "mlw_engine",
 });
