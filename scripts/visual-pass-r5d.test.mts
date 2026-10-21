@@ -316,7 +316,9 @@ function serverOnly(entry: string, text: (p: string) => string = raw): { reached
   // ⚠️ MOVED BY THE VODACOM PLAN S7 (WP7, A24 item 2, 2026-10-12): the binding reads the words alone (`const { t } = useT();`)
   // — the locale went with the classic landing's ghost, shelved at "/" since a journey reader's `/` is the journey home —
   // and still takes the rails, which that shelved ghost draws (2.9).
-  const shape = (s: string) => hasDirective(s, "use client") && s.includes("export function JourneyRouteGhost({ rails, at }: { rails: readonly string[]; at?: JourneyGhostPage }) {")
+  // ⚠️ MOVED BY MASWALI-BUILD S5-FIX-PLATFORM D6 (2026-10-21): …and `millionea`, the rollout's answer, so a Millionea address
+  // draws Millionea's ghost only for a reader it is visible to (`test:millionea-dark-edge` §6).
+  const shape = (s: string) => hasDirective(s, "use client") && s.includes("export function JourneyRouteGhost({ rails, at, millionea = false }: { rails: readonly string[]; at?: JourneyGhostPage; millionea?: boolean }) {")
     && squash(s).includes("const { t } = useT();") && s.includes('import { useT } from "@/lib/i18n";');
   ok("2.1 · route-ghost.tsx is client code: the ghosts take the rails alone and read the words from the client dictionary (`useT`)", shape(ghost));
   ok("2.1′ PLANT · the ghosts drawn by a server component again (the directive gone) is reported", !shape(ghost.replace(/^\s*"use client";/, "")));
@@ -362,12 +364,14 @@ function serverOnly(entry: string, text: (p: string) => string = raw): { reached
 }
 {
   const loading = code(LOADING);
-  const arm = (s: string) => squash(s).includes("(await resolveSimpleJourney()).journey) { return <LazyJourneyRouteGhost rails={heroRailNames(null)} />; }")
+  // ⚠️ RE-PINNED, MASWALI-BUILD S5-FIX-PLATFORM D6 (2026-10-21): the arm also hands Millionea's visibility, only while true.
+  const ARM = "(await resolveSimpleJourney()).journey) { const millionea = (await resolveMillionea()).visible; return <LazyJourneyRouteGhost rails={heroRailNames(null)} {...(millionea ? { millionea } : {})} />; }";
+  const arm = (s: string) => squash(s).includes(ARM)
     && s.includes('import { LazyJourneyRouteGhost } from "@/components/journey/route-ghost-lazy";')
     && !s.includes("@/components/journey/route-ghost\"") && !/getServerT/.test(s);
-  ok("2.5 · the root loading file hands the lazy binding the one server answer the browser cannot read (the rails that pay out), and no words and no ghost of its own", arm(loading));
+  ok("2.5 · the root loading file hands the lazy binding the server answers the browser cannot read (the rails that pay out; Millionea's visibility, only while true), and no words and no ghost of its own", arm(loading));
   ok("2.5′ PLANT · the words handed in again (the dictionary written into every payload) is reported",
-    !arm(loading.replace("<LazyJourneyRouteGhost rails={heroRailNames(null)} />", "<LazyJourneyRouteGhost rails={heroRailNames(null)} t={t} />")));
+    !arm(loading.replace("<LazyJourneyRouteGhost rails={heroRailNames(null)} {...(millionea ? { millionea } : {})} />", "<LazyJourneyRouteGhost rails={heroRailNames(null)} {...(millionea ? { millionea } : {})} t={t} />")));
 }
 
 /** The root loading element as Next writes it into a payload — Flight's shape: a "use client" export is a reference

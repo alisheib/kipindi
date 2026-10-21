@@ -466,6 +466,14 @@ export interface PositionStore {
    */
   listForUser(userId: string, limit?: number, productLine?: ProductLineFilter): Promise<StoredPosition[]>;
   /**
+   * A user's SCORED positions, newest first: every line but Millionea's (MASWALI-PLAN S5 item 9 — a ticket is no prediction
+   * any board scores), the tickets left out IN the read, before its `limit` (MASWALI-BUILD S5-FIX-PLATFORM D7). One bounded
+   * query for the leaderboard's per-row streak and sparkline on its "all" lens, where S5 had read each scored line on its
+   * own — twice main's rows per row — to stop a page of tickets crowding out the predictions (S5 re-review 8). For an
+   * account with no tickets it is the every-line page `listForUser(userId, limit)` returns, row for row.
+   */
+  listScoredForUser(userId: string, limit?: number): Promise<StoredPosition[]>;
+  /**
    * How many markets this account is OPEN in on its OWN book — `houseBotId is null`, so a position the desk
    * placed from the account is not one the holder is in.
    *
@@ -874,6 +882,13 @@ const memoryPositions: PositionStore = {
     return Array.from(positions.values())
       .filter((p) => p.userId === userId)
       .filter((p) => !pl || (markets.get(p.marketId)?.productLine ?? "MARKET") === pl)
+      .sort((a, b) => b.placedAt.localeCompare(a.placedAt))
+      .slice(0, limit);
+  },
+  async listScoredForUser(userId, limit = 100) {
+    // Every line but Millionea's, left out before the limit — as the SQL twin, and as this store's leaderboard counts.
+    return Array.from(positions.values())
+      .filter((p) => p.userId === userId && storedProductLine(markets.get(p.marketId)?.productLine) !== "MASWALI")
       .sort((a, b) => b.placedAt.localeCompare(a.placedAt))
       .slice(0, limit);
   },
@@ -1530,6 +1545,17 @@ const prismaPositions: PositionStore = {
     const rows = await pc().position.findMany({
       // Indexed JOIN on the market relation — the DB filters by game, not the app.
       where: { userId, ...(pl ? { market: { productLine: pl } } : {}) },
+      orderBy: { placedAt: "desc" },
+      take: limit,
+    });
+    return rows.map(toStoredPosition);
+  },
+  async listScoredForUser(userId, limit = 100) {
+    const rows = await pc().position.findMany({
+      // `listForUser`'s join on the market, negated: the database leaves the tickets out, before `take`. The column is
+      // NOT NULL, and any value but 'MASWALI' is a scored line here as in the memory twin (`storedProductLine` reads an
+      // unknown value as MARKET).
+      where: { userId, market: { productLine: { not: "MASWALI" } } },
       orderBy: { placedAt: "desc" },
       take: limit,
     });

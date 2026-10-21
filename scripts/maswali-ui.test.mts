@@ -26,10 +26,11 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { MILLIONEA_DARK_PATH, isMillioneaPath, isMillioneaTicketsPath, millioneaDarkAtEdge, millioneaEdgeAsks } from "../src/lib/millionea-edge.ts";
+import { isMillioneaPath, isMillioneaTicketsPath, millioneaDarkAtEdge, millioneaEdgeAsks } from "../src/lib/millionea-edge.ts";
+import { UNROUTED_HEADER, UNROUTED_PATH } from "../src/lib/unrouted.ts";
 import { isCommitSurface, isJourneySurface, isMoneySurface, isSlipSurface } from "../src/lib/surfaces.ts";
 import { millioneaTicketHref } from "../src/lib/position-permalink.ts";
-import { MILLIONEA_ROUTES } from "./live/millionea-dark.mjs";
+import { MILLIONEA_ROUTES, MILLIONEA_SPELLINGS } from "./live/millionea-dark.mjs";
 import { decomment } from "./lib/decomment.mts";
 import { NOT_FOUND_WORDS } from "../src/components/ui/not-found-words.ts";
 import { dict, type Locale } from "../src/lib/i18n-dict.ts";
@@ -215,12 +216,16 @@ console.log("\n§3 · L5 — a kill hides the product, never a player's own tick
 // ── §4 · the edge ──────────────────────────────────────────────────────────────────────────────────────────────────
 console.log("\n§4 · the edge — a dark address answers the router's own 404 while the ceiling hides it");
 {
-  const yes = ["/millionea", "/millionea/slip", "/millionea/how", "/millionea/tickets", "/millionea/tickets/1043", "/millionea/register", "/millionea/register/2026-W42", "/legal/rules/millionea"];
-  const no = ["/millioneas", "/millionea-x", "/markets", "/", "/legal/rules", "/legal/rules/millioneax", "/positions", "/positions/pos_1", "/_millionea-dark"];
-  ok("4.1 · a Millionea address is the product's pages and its rules; a look-alike is not", yes.every(isMillioneaPath) && !no.some(isMillioneaPath),
+  // S5-FIX-PLATFORM D4: the share image is a Millionea address. D2 (not reproduced): an address counts as typed — Next
+  // answers an encoded spelling (`/%6Dillionea`) as an unknown address, so the edge leaves it to Next.
+  const yes = ["/millionea", "/millionea/slip", "/millionea/how", "/millionea/tickets", "/millionea/tickets/1043", "/millionea/register", "/millionea/register/2026-W42", "/legal/rules/millionea",
+    "/api/og/millionea/2026-W42"];
+  const no = ["/millioneas", "/millionea-x", "/markets", "/", "/legal/rules", "/legal/rules/millioneax", "/positions", "/positions/pos_1", "/_millionea-dark", UNROUTED_PATH, "/Millionea",
+    "/%6Dillionea", "/millionea%2Fslip"];
+  ok("4.1 · a Millionea address is the product's pages, its rules and its share image, as typed; a look-alike or an encoded spelling is not", yes.every(isMillioneaPath) && !no.some(isMillioneaPath),
     j({ missed: yes.filter((p) => !isMillioneaPath(p)), caught: no.filter(isMillioneaPath) }));
   ok("4.2 · the tickets are the list and one ticket", isMillioneaTicketsPath("/millionea/tickets") && isMillioneaTicketsPath("/millionea/tickets/1043")
-    && !isMillioneaTicketsPath("/millionea") && !isMillioneaTicketsPath("/millionea/ticketsx"));
+    && !isMillioneaTicketsPath("/millionea/%74ickets") && !isMillioneaTicketsPath("/millionea") && !isMillioneaTicketsPath("/millionea/ticketsx"));
   type V = { signedIn: boolean; staff: boolean; holder: boolean };
   const GUEST: V = { signedIn: false, staff: false, holder: false }, PLAYER: V = { signedIn: true, staff: false, holder: false };
   const HOLDER: V = { signedIn: true, staff: false, holder: true }, STAFF: V = { signedIn: true, staff: true, holder: false };
@@ -249,16 +254,18 @@ console.log("\n§4 · the edge — a dark address answers the router's own 404 w
     && millioneaEdgeAsks("/millionea", "WITHDRAWN") && millioneaEdgeAsks("/millionea/tickets/1", "STAFF_PREVIEW"));
   const signedOutDark = (MILLIONEA_ROUTES as readonly string[]).filter((r) => !millioneaDarkAtEdge(r, GUEST, "WITHDRAWN") || !millioneaDarkAtEdge(r, GUEST, "STAFF_PREVIEW"));
   ok("4.6 · every route qa:live's dark section asks is a 404 here for a signed-out visitor below ACTIVE — the status the root loading file cannot give", signedOutDark.length === 0, j(signedOutDark));
-  ok("4.7 · the dark address is a private segment (no route can ever answer it but the 404)", MILLIONEA_DARK_PATH.startsWith("/_") && !existsSync(join(ROOT, "src/app", MILLIONEA_DARK_PATH.slice(1))));
+  ok("4.7 · the unrouted address is a private segment (no route can ever answer it but the 404)", UNROUTED_PATH.startsWith("/_") && !existsSync(join(ROOT, "src/app", UNROUTED_PATH.slice(1))));
 }
+// ⚠️ RE-PINNED (S5-FIX-PLATFORM D1, D5): the belt MARKS the request unrouted (next.config's one rewrite answers it, with no
+// rewrite header in the response) instead of rewriting it, and asks the ticket entitlement through a late load
+// (`ticketHolderAtEdge`). Their behaviour — the real proxy's answers, the rewrite's scope — is `test:millionea-dark-edge`'s.
 const PROXY_BELT = [
+  `requestHeaders.delete(UNROUTED_HEADER);`,
   "if (millioneaEdgeAsks(pathname)) {",
   "const session = await readVerifiedSession(cookie);",
-  "const holder = isMillioneaTicketsPath(pathname) ? await millioneaTicketEntitledAtEdge(pathname, session) : false;",
+  "const holder = session !== null && isMillioneaTicketsPath(pathname) ? await ticketHolderAtEdge(pathname, session) : false;",
   'if (millioneaDarkAtEdge(pathname, { signedIn: session !== null, staff: !!session && isStaffRole(session.role), holder })) {',
-  "const url = req.nextUrl.clone();",
-  "url.pathname = MILLIONEA_DARK_PATH;",
-  "return withSecurityHeaders(NextResponse.rewrite(url, { request: { headers: requestHeaders } }), secure);",
+  'requestHeaders.set(UNROUTED_HEADER, "1");',
 ];
 const proxyDefects = (proxy: string) => {
   const s = squash(code(proxy));
@@ -266,8 +273,10 @@ const proxyDefects = (proxy: string) => {
   const at: number[] = [];
   for (const line of PROXY_BELT) at.push(s.indexOf(line, at.length === 0 ? s.indexOf('requestHeaders.set( "x-kp-document"') : at[at.length - 1] + 1));
   const d: string[] = [];
-  if (!s.includes('import { MILLIONEA_DARK_PATH, millioneaDarkAtEdge, millioneaEdgeAsks } from "@/lib/millionea-edge";')) d.push("the proxy does not import the edge's decision");
-  if (!s.includes('import { millioneaTicketEntitledAtEdge } from "@/lib/server/millionea-edge-entitlement";')) d.push("the proxy does not import the pre-render ticket entitlement");
+  if (!s.includes('import { millioneaDarkAtEdge, millioneaEdgeAsks } from "@/lib/millionea-edge";')) d.push("the proxy does not import the edge's decision");
+  if (!s.includes('import { UNROUTED_HEADER } from "@/lib/unrouted";')) d.push("the proxy does not import the unrouted mark");
+  if (!s.includes('const { millioneaTicketEntitledAtEdge } = await import("@/lib/server/millionea-edge-entitlement");')) d.push("the proxy does not ask the pre-render ticket entitlement");
+  if (s.includes("NextResponse.rewrite(")) d.push("⛔ the proxy rewrites (Next copies a proxy rewrite's target into the response)");
   if (at.some((n) => n < 0) || at.some((n, i) => i > 0 && n < at[i - 1])) d.push(`the belt is not written in order: ${j(at)}`);
   const setDoc = s.indexOf('requestHeaders.set( "x-kp-document"'), passOn = s.indexOf("NextResponse.next({ request: { headers: requestHeaders } })");
   if (!(setDoc >= 0 && at[0] > setDoc && passOn > at[at.length - 1])) d.push(`the belt is not between the header sets and the pass-on: ${j({ setDoc, belt: at[0], passOn })}`);
@@ -275,7 +284,7 @@ const proxyDefects = (proxy: string) => {
 };
 {
   const d = proxyDefects(read("src/proxy.ts"));
-  ok("4.8 · the proxy wires the belt after it sets the request headers and before it passes them on: a dark address is rewritten to the private segment under those same headers, so the 404 renders as an unknown address's does",
+  ok(`4.8 · the proxy wires the belt after it sets the request headers and before it passes them on: a client's ${UNROUTED_HEADER} is dropped, and a dark address is marked unrouted on those same headers, so next.config's rewrite answers it as an unknown address's 404`,
     d.length === 0, d.join(" | "));
 }
 const verifiedClaimsDefects = (src: string) => {
@@ -329,29 +338,32 @@ const verifiedClaimsDefects = (src: string) => {
   const unread = await millioneaTicketEntitledAtEdge(list, signed, { ...reads, activeSession: async () => ({ state: "unavailable" as const }) }, now);
   const listDenied = await millioneaTicketEntitledAtEdge(list, signed, { ...reads, holdsAny: async () => { throw new Error("read failed"); } }, now);
   const detailDenied = await millioneaTicketEntitledAtEdge(own, signed, { ...reads, holdsAny: async () => { throw new Error("read failed"); } }, now);
-  let detailFailed = false;
-  try { await millioneaTicketEntitledAtEdge(own, signed, { ...reads, ownerOf: async () => { throw new Error("read failed"); } }, now); }
-  catch { detailFailed = true; }
-  ok("4.8e · an unreadable registry follows getSessionState; a failed holding admission denies both routes privately, while a later detail read surfaces its error (B-1)",
-    unread && !listDenied && !detailDenied && detailFailed);
+  // ⚠️ RE-PINNED (S5-FIX-PLATFORM D5): a failed detail read used to THROW out of here — into the proxy, which answered the
+  // whole request 500, never reaching the page. It now lets the request on to the page, whose own read answers it or
+  // throws to its retryable error boundary (B-1): the error still surfaces, where the page draws it.
+  let detailPassed: boolean | "threw" = false;
+  try { detailPassed = await millioneaTicketEntitledAtEdge(own, signed, { ...reads, ownerOf: async () => { throw new Error("read failed"); } }, now); }
+  catch { detailPassed = "threw"; }
+  ok("4.8e · an unreadable registry follows getSessionState; a failed holding admission denies both routes privately, while a later detail read's failure goes on to the page's own error path (B-1) — never a throw into the proxy",
+    unread && !listDenied && !detailDenied && detailPassed === true, j({ unread, listDenied, detailDenied, detailPassed }));
 }
 const edgeTicketDefects = (src: string) => {
   const s = squash(code(src));
   const d: string[] = [];
   if (!s.includes('activeSession: readActiveSession') || !s.includes('ticketStore.listForUser(userId, { limit: 1 })')) d.push("the list does not check this session and its own held ticket");
-  if (!s.includes('ticketStore.getBySerial(serial)') || !s.includes('(await reads.ownerOf(serial)) === session.userId')) d.push("the detail does not compare the serial's owner to the signed account");
+  if (!s.includes('ticketStore.getBySerial(serial)') || !s.includes("try { owner = await reads.ownerOf(serial); } catch { return true; } return owner === session.userId;")) d.push("the detail does not compare the serial's owner to the signed account");
   if (!s.includes('const serial = normalizeMillioneaSerial(decoded);') || !s.includes('try { decoded = decodeURIComponent(tail); } catch { return false; }') || !s.includes('if (!tail || tail.includes("/")) return false;')) d.push("the detail does not parse one minted serial like the page");
   if (!s.includes('try { active = await reads.activeSession(session.userId, session.sessionId); } catch { return false; }')
     || !s.includes('if (active.state === "absent" || (active.state === "active" && active.sessionId !== session.sessionId)) return false;')) d.push("an ended session is not denied before the ticket read");
   if (!s.includes('now - lastSeen > SESSION_IDLE_TIMEOUT_MS') || !s.includes('now > session.exp')) d.push("an expired or idle cookie is not denied before the ticket read");
   if (!s.includes('try { holds = await reads.holdsAny(session.userId); } catch { return false; }')
     || !s.includes('if (!holds) return false;')
-    || !s.includes('return serial !== null && (await reads.ownerOf(serial)) === session.userId;')) d.push("the holding admission or later detail-read error policy differs from the page");
+    || !s.includes("if (serial === null) return false; let owner: string | null; try { owner = await reads.ownerOf(serial); } catch { return true; }")) d.push("the holding admission or later detail-read error policy differs from the page");
   return d;
 };
 {
   const src = read("src/lib/server/millionea-edge-entitlement.ts");
-  ok("4.8f · the production proxy entitlement uses the active-session registry, bounded own-list lookup and serial owner lookup, and fails closed",
+  ok("4.8f · the production proxy entitlement uses the active-session registry, bounded own-list lookup and serial owner lookup, fails closed before admission and to the page after it (B-1), and never throws",
     edgeTicketDefects(src).length === 0, edgeTicketDefects(src).join(" | "));
 }
 const darkDriveStatusDefects = (src: string) => {
@@ -375,14 +387,20 @@ const darkDriveStatusDefects = (src: string) => {
   ok("4.9 · qa:live's dark section reads the platform's own not-found words (English, as it asks for them)", dark.NOT_FOUND_EN === NOT_FOUND_WORDS.en.notFound, j(dark.NOT_FOUND_EN));
   const NOT_FOUND_PAGE = `<title>${NOT_FOUND_WORDS.en.notFound} · 404 · 50pick</title><h1>${NOT_FOUND_WORDS.en.notFound}</h1><a href="/markets">Markets</a>`;
   const HUB_PAGE = '<h1>Maswali Millionea</h1><a data-testid="millionea-hub-fill" href="/millionea/slip">Fill a ticket</a>';
-  const routeChecks = async (health: { ceiling: string; state: string }, answer: (route: string) => { status: number; body: string }) => {
+  const HTML = { "content-type": "text/html; charset=utf-8" };
+  type Served = { status: number; body: string; headers?: Record<string, string> };
+  // S5-FIX-PLATFORM D1/D4: below ACTIVE each route is fetched beside its unknown twin (`unknownTwinOf`), which this site
+  // answers as an unknown address — the 404 page, HTML.
+  const routeChecks = async (health: { ceiling: string; state: string }, answer: (route: string) => Served) => {
     const real = globalThis.fetch;
     const seen: Array<{ label: string; cond: boolean }> = [];
     globalThis.fetch = (async (url: string | URL) => {
       const path = new URL(String(url)).pathname;
       if (path === "/api/health") return new Response(JSON.stringify({ millionea: health }), { status: 200, headers: { "content-type": "application/json" } });
-      if ((MILLIONEA_ROUTES as readonly string[]).includes(path)) { const a = answer(path); return new Response(a.body, { status: a.status }); }
-      return new Response('<a href="/markets">Markets</a>', { status: 200 });
+      if ((MILLIONEA_ROUTES as readonly string[]).includes(path)) { const a = answer(path); return new Response(a.body, { status: a.status, headers: a.headers ?? HTML }); }
+      // A twin, and an encoded spelling (Next answers one as an unknown address: D2, not reproduced): the unknown 404.
+      if (path.includes("kpzzzzzzz") || (MILLIONEA_SPELLINGS as readonly string[]).includes(path)) return new Response(NOT_FOUND_PAGE, { status: 404, headers: HTML });
+      return new Response('<a href="/markets">Markets</a>', { status: 200, headers: HTML });
     }) as typeof fetch;
     try {
       await dark.millioneaDarkSection({ base: "http://site.test", ok: (label, cond) => { seen.push({ label, cond }); }, log: () => {} });
@@ -395,12 +413,20 @@ const darkDriveStatusDefects = (src: string) => {
   const W = { ceiling: "WITHDRAWN", state: "WITHDRAWN" }, K = { ceiling: "ACTIVE", state: "WITHDRAWN" };
   const wDark = await routeChecks(W, () => ({ status: 404, body: NOT_FOUND_PAGE }));
   const wLeak = await routeChecks(W, (r) => (r === "/millionea" ? { status: 200, body: NOT_FOUND_PAGE } : { status: 404, body: NOT_FOUND_PAGE }));
-  ok("4.10 · at a WITHDRAWN ceiling every route must answer the 404 STATUS (the edge's rewrite) — and a 200 is red even with the not-found words",
+  ok("4.10 · at a WITHDRAWN ceiling every route must answer the 404 STATUS (the edge's unrouted answer) — and a 200 is red even with the not-found words",
     allPass(wDark) && wLeak.filter((x) => !x.cond).length === 1, j({ dark: wDark.map((x) => x.cond), leak: wLeak.map((x) => x.cond) }));
-  const kDark = await routeChecks(K, () => ({ status: 200, body: NOT_FOUND_PAGE }));
-  const kLeak = await routeChecks(K, (r) => (r === "/millionea" ? { status: 200, body: HUB_PAGE } : { status: 200, body: NOT_FOUND_PAGE }));
-  ok("4.11 · the Owner's kill under an ACTIVE ceiling: every route must answer the not-found PAGE (its words, no trace) under the streamed 200 — and the product's own page is red",
-    allPass(kDark) && kLeak.filter((x) => !x.cond).length === 1 && kDark.every((x) => x.label.includes("not-found page")), j({ dark: kDark.map((x) => x.cond), leak: kLeak.map((x) => x.cond) }));
+  const wMarker = await routeChecks(W, (r) => (r === "/millionea" ? { status: 404, body: NOT_FOUND_PAGE, headers: { ...HTML, "x-middleware-rewrite": "/_millionea-dark" } } : { status: 404, body: NOT_FOUND_PAGE }));
+  const wPlainOg = await routeChecks(W, (r) => (r.startsWith("/api/og/") ? { status: 404, body: "Not found", headers: { "content-type": "text/plain;charset=UTF-8", "cache-control": "no-store" } } : { status: 404, body: NOT_FOUND_PAGE }));
+  ok("4.10a · …and a 404 that answers otherwise than its unknown twin is red: the S5 proxy rewrite's `x-middleware-rewrite: /_millionea-dark` (D1), the share image's own plain-text 404 (D4) — one red route each",
+    wMarker.filter((x) => !x.cond).length === 1 && !wMarker.find((x) => x.label.startsWith("/millionea "))?.cond
+      && wPlainOg.filter((x) => !x.cond).length === 1 && !wPlainOg.find((x) => x.label.startsWith("/api/og/"))?.cond,
+    j({ marker: wMarker.map((x) => x.cond), plainOg: wPlainOg.map((x) => x.cond) }));
+  // Under the kill the edge stands aside: a page answers the not-found page under the streamed 200, the share image its own 404.
+  const kDark = await routeChecks(K, (r) => (r.startsWith("/api/") ? { status: 404, body: "Not found" } : { status: 200, body: NOT_FOUND_PAGE }));
+  const kLeak = await routeChecks(K, (r) => (r === "/millionea" ? { status: 200, body: HUB_PAGE } : r.startsWith("/api/") ? { status: 404, body: "Not found" } : { status: 200, body: NOT_FOUND_PAGE }));
+  ok("4.11 · the Owner's kill under an ACTIVE ceiling: every page must answer the not-found PAGE (its words, no trace) under the streamed 200, the share image a 404 with no trace — and the product's own page is red",
+    allPass(kDark) && kLeak.filter((x) => !x.cond).length === 1
+      && kDark.every((x) => x.label.includes(x.label.startsWith("/api/") ? "a 404 with no Millionea trace" : "not-found page")), j({ dark: kDark.map((x) => x.cond), leak: kLeak.map((x) => x.cond) }));
   const live = await routeChecks({ ceiling: "ACTIVE", state: "ACTIVE" }, () => ({ status: 200, body: HUB_PAGE }));
   ok("4.12 · CONTROL · at ACTIVE the dark checks do not run", live.length === 0, j(live));
 }
@@ -428,7 +454,9 @@ const doorDefects = (src: (rel: string) => string) => {
   const items = rail.slice(rail.indexOf("const items = ["), rail.indexOf("];", rail.indexOf("const items = [")));
   if (items.includes("/millionea")) d.push("⛔ Millionea took a rail slot");
   if (count(shell, "const millioneaRow = !promoSuppressed && (await resolveMillionea()).visible;") !== 1) d.push("the shell does not answer the row from the rollout and the break, once");
-  if (count(shell, "millionea={millioneaRow}") !== 4 || !/<LazyJourneyTopBar [^>]*millionea=\{millioneaRow\}/.test(shell) || !/<LazyJourneyTabs [^>]*millionea=\{millioneaRow\}/.test(shell)) d.push("the shell's one answer is not handed to all four navs (both bars, both rails)");
+  // S5-FIX-PLATFORM D3: the answer is spread, the prop handed only while it is true (`{}` otherwise: no "millionea":false).
+  if (count(shell, "{...millioneaProp}") !== 4 || !shell.includes("const millioneaProp: { millionea?: true } = millioneaRow ? { millionea: true } : {};")
+    || ["LazyJourneyTopBar", "TopAppBar", "LazyJourneyTabs", "BottomNav"].some((nav) => !new RegExp(`<${nav} [^>]*\\{\\.\\.\\.millioneaProp\\}`).test(shell))) d.push("the shell's one answer is not handed to all four navs (both bars, both rails)");
   const card = squash(code(src("src/components/maswali/maswali-home-card-door.tsx")));
   const steps = ["if (!door.visible) return null;", "if (onBreak) return null;", "if (!hub) return null;", "if (!model) return null;", 'data-testid="millionea-home-card"'].map((x) => card.indexOf(x));
   if (steps.some((n, i) => n < 0 || (i > 0 && n < steps[i - 1]))) d.push(`the card's door: hidden, on a break, unread or unmodelled must draw nothing, in that order: ${j(steps)}`);
@@ -644,7 +672,9 @@ const slipDefects = (src: string) => {
     const d: string[] = [];
     if (!needle.includes("const standDown = suppressed || (isSlipSurface(pathname) && !notFoundShown); wantSuppressed.current = standDown; apiRef.current?.setSuppressed(standDown);")) d.push("needle: the slip's stand-down is not beside its pinned line, lifted on the not-found page");
     if (!chat.includes("if (journeyOn && isJourneySurface(pathname) && !notFoundShown) return null; if (isSlipSurface(pathname) && !notFoundShown) return null;")) d.push("chat: the slip's stand-down is not straight after the journey's guard, lifted on the not-found page");
-    if (!consent.includes("const overMoney = isCommitSurface(pathname) && !notFoundShown;") || !consent.includes("!gaExcluded(pathname) && !overMoney;")) d.push("consent: the commit-surface rule holds on a not-found page");
+    // S5-FIX-PLATFORM D9: the lift is Millionea's alone — every other commit address's not-found keeps the card off, as
+    // production always has (the S5 lift had been written for any commit address, a classic change nobody ruled).
+    if (!consent.includes("const overMoney = isCommitSurface(pathname) && !(notFoundShown && isMillioneaPath(pathname));") || !consent.includes("!gaExcluded(pathname) && !overMoney;")) d.push("consent: the commit-surface rule holds on a dark Millionea not-found page, or lifts on another commit address's");
     return d;
   };
   const NEEDLE = "src/components/layout/needle.tsx", CHAT = "src/components/chat/ChatRoot.tsx", CONSENT = "src/components/analytics/consent-prompt.tsx";
@@ -653,8 +683,12 @@ const slipDefects = (src: string) => {
     !ov.some((x) => x.startsWith("needle")), ov.join(" | "));
   ok("6.5 · the chat bubble stands down on the slip, straight after the journey's guard, closing and clearing nothing — and comes back on its not-found page",
     !ov.some((x) => x.startsWith("chat")), ov.join(" | "));
-  ok("6.6 · the consent card keeps off a money control, and a not-found page at a commit address carries none: it may ask there",
+  ok("6.6 · the consent card keeps off a money control; a dark Millionea commit address's not-found page carries none and may ask, as an unknown address does — and every other commit address's not-found keeps it off, as production does",
     !ov.some((x) => x.startsWith("consent")), ov.join(" | "));
+  const liftAnywhere = overlayDefects(read(NEEDLE), read(CHAT), read(CONSENT).replace("!(notFoundShown && isMillioneaPath(pathname))", "!notFoundShown"));
+  const neverLift = overlayDefects(read(NEEDLE), read(CHAT), read(CONSENT).replace("!(notFoundShown && isMillioneaPath(pathname))", "true"));
+  ok("6.6′ CONTROL · the S5 lift on ANY commit address's not-found page (a classic change), and no lift at all, are each reported",
+    liftAnywhere.some((x) => x.startsWith("consent")) && neverLift.some((x) => x.startsWith("consent")));
   const stuckNeedle = overlayDefects(read(NEEDLE).replace("(isSlipSurface(pathname) && !notFoundShown)", "isSlipSurface(pathname)"), read(CHAT), read(CONSENT));
   const stuckChat = overlayDefects(read(NEEDLE), read(CHAT).replace("if (isSlipSurface(pathname) && !notFoundShown) return null;", "if (isSlipSurface(pathname)) return null;"), read(CONSENT));
   const goneChat = overlayDefects(read(NEEDLE), read(CHAT).replace("if (isSlipSurface(pathname) && !notFoundShown) return null;", ""), read(CONSENT));
@@ -694,14 +728,14 @@ console.log("\n§8 · controls — each check above fails on a planted copy");
   const unbelted = proxyDefects(read("src/proxy.ts").replace("if (millioneaEdgeAsks(pathname)) {", "if (false) {"));
   ok("8.4 · a proxy whose belt never runs is reported", unbelted.length > 0);
   const proxy = read("src/proxy.ts"), entitlement = read("src/lib/server/millionea-edge-entitlement.ts");
-  const noPreflight = proxy.replace("await millioneaTicketEntitledAtEdge(pathname, session)", "true");
+  const noPreflight = proxy.replace("await ticketHolderAtEdge(pathname, session)", "true");
   ok("8.4a · a proxy that lets every signed non-holder stream a not-found page is reported",
     noPreflight !== proxy && proxyDefects(noPreflight).length > 0);
   const verifier = read("src/lib/proxy-session.ts");
   const noUserClaim = verifier.replace("userId: payload.userId,", "");
   ok("8.4a′ · a verifier that signs off on a cookie but returns no account claim is reported",
     noUserClaim !== verifier && verifiedClaimsDefects(noUserClaim).includes("userId"));
-  const noOwner = entitlement.replace('(await reads.ownerOf(serial)) === session.userId', 'true');
+  const noOwner = entitlement.replace("  return owner === session.userId;", "  return true;");
   ok("8.4b · a detail read that admits another account's serial is reported",
     noOwner !== entitlement && edgeTicketDefects(noOwner).some((x) => x.includes("owner")));
   const noRegistry = entitlement.replace('activeSession: readActiveSession', 'activeSession: async () => ({ state: "unavailable" })');
@@ -1088,6 +1122,6 @@ const emptyListDefects = (src: string) => {
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI UI: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run PRINTS; it only rises, to a printed number. §3.1 and §4.3 each run a small case table. */
-const MIN_ASSERTIONS = 149; // 2026-10-21 green run, through §14 (S5-FIX-PLAYER P2)
+const MIN_ASSERTIONS = 149; // 2026-10-21 green run, through §14 (S5-FIX-PLAYER P2); S5-FIX-PLATFORM's 4.10a and 6.6′ sit beside it — the floor rises to the integrated run's printed count
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

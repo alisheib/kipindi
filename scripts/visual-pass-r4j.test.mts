@@ -107,9 +107,10 @@ function bareChrome(shell: string): { ok: boolean; why: string } {
   const headerBoxed = shell.replace(/\{journeyShown \? <LazyJourneyTopBar ([^\n]*?) \/> : <TopAppBar/,
     '{journeyShown ? <Suspense fallback={<div aria-hidden="true" className="kp-jhdr" />}><LazyJourneyTopBar $1 /></Suspense> : <TopAppBar');
   ok("1.1′ PLANT · the header back in its boundary over the bar's empty box is reported", headerBoxed !== shell && !bareChrome(headerBoxed).ok);
-  // RE-ANCHORED, MASWALI-BUILD S5-TAB (2026-10-19): the rail's arm takes `millionea={millioneaRow}` (its fifth tab).
-  const tabsBoxed = shell.replace("{journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} millionea={millioneaRow} /> :",
-    "{journeyShown ? <Suspense fallback={null}><LazyJourneyTabs userId={session?.userId ?? null} millionea={millioneaRow} /></Suspense> :");
+  // RE-ANCHORED, MASWALI-BUILD S5-TAB (2026-10-19): the rail's arm takes the Millionea answer (its fifth tab) — spread as
+  // `{...millioneaProp}` since S5-FIX-PLATFORM D3 (2026-10-21), handed only while it is true.
+  const tabsBoxed = shell.replace("{journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} {...millioneaProp} /> :",
+    "{journeyShown ? <Suspense fallback={null}><LazyJourneyTabs userId={session?.userId ?? null} {...millioneaProp} /></Suspense> :");
   ok("1.1″ PLANT · the tabs back in theirs is reported", tabsBoxed !== shell && !bareChrome(tabsBoxed).ok);
 }
 
@@ -240,8 +241,10 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
   const loading = read(LOADING), shell = read(SHELL);
   // ⚠️ MOVED IN ROUND 5 (review G1, R5-D): the arm renders the ghosts' lazy client binding with the one server answer
   // the browser cannot read (the rails); the words are the client dictionary's (`test:visual-pass-r5d` §2).
+  // ⚠️ RE-PINNED, MASWALI-BUILD S5-FIX-PLATFORM D6 (2026-10-21): …and the rollout's answer for Millionea's ghosts, handed only
+  // while it is true (`test:millionea-dark-edge` §6 renders both).
   const journeyArm = (s: string) => squash(s).includes(
-    'const pathname = (await headers()).get("x-pathname") ?? ""; if (!pathname.startsWith("/admin") && !isOptOutPath(pathname) && (await resolveSimpleJourney()).journey) { return <LazyJourneyRouteGhost rails={heroRailNames(null)} />; }');
+    'const pathname = (await headers()).get("x-pathname") ?? ""; if (!pathname.startsWith("/admin") && !isOptOutPath(pathname) && (await resolveSimpleJourney()).journey) { const millionea = (await resolveMillionea()).visible; return <LazyJourneyRouteGhost rails={heroRailNames(null)} {...(millionea ? { millionea } : {})} />; }');
   const classicArm = (s: string) => squash(s).includes('return ( <div className="mx-auto max-w-[1280px] px-3 lg:px-6 py-10"> <SectionLoader height={360} /> </div> );');
   ok("3.1 · the root loading file asks AppShell's own questions — not the console, not the opt-out page, the per-request resolver — and draws the journey's ghost for a journey reader alone",
     journeyArm(loading) && shell.includes('if (pathname.startsWith("/admin")) {') && shell.includes("if (isOptOutPath(pathname)) {") && shell.includes("const journeyRead = resolveSimpleJourney();"));
@@ -367,13 +370,15 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
   const PAGE_FILE = read("src/app/page.tsx");
   const HOME_GHOST_IMPORT = 'import { JourneyHomeGhost } from "@/components/journey/home/journey-home-ghost";';
   // RE-PINNED (MASWALI-BUILD S5 pages, deliberately): the page's fallback holds the Millionea card's slot on the doors' one
-  // answer (`millionea={millionea}`); the root's picture of "/" cannot ask, and stays the plain ghost.
-  const homeEntry = (g: string, p: string) => squash(g).includes('"/": <JourneyHomeGhost t={t} />,') && g.includes(HOME_GHOST_IMPORT)
+  // answer (`millionea={millionea}`). ⚠️ RE-PINNED AGAIN (S5-FIX-PLATFORM D6 with the doors lane's H1, 2026-10-21): the root's
+  // picture of "/" is now handed the rollout's per-request answer by the root loading file, and passes it on, so it holds
+  // the slot for a reader Millionea is visible to (no read of its own).
+  const homeEntry = (g: string, p: string) => squash(g).includes('"/": <JourneyHomeGhost t={t} millionea={millionea} />,') && g.includes(HOME_GHOST_IMPORT)
     && !/"\/": <HomeGhost/.test(squash(g)) && squash(p).includes("<Suspense fallback={<JourneyHomeGhost t={t} millionea={millionea} />}>") && p.includes(HOME_GHOST_IMPORT);
   ok("3.14 · \"/\" draws the journey home's own ghost (journey-home-ghost.tsx), the same drawing app/page.tsx's journey arm stands in its Suspense boundary — the root's picture of the home and the page's own are one; the landing's ghost is shelved, unmounted (3.9 and 3.10 hold it still)",
     homeEntry(ghost, PAGE_FILE));
   ok("3.14′ PLANT · \"/\" back to the landing's ghost is reported",
-    !homeEntry(ghost.replace('"/": <JourneyHomeGhost t={t} />,', '"/": <HomeGhost t={t} locale={locale} rails={rails} />,'), PAGE_FILE));
+    !homeEntry(ghost.replace('"/": <JourneyHomeGhost t={t} millionea={millionea} />,', '"/": <HomeGhost t={t} locale={locale} rails={rails} />,'), PAGE_FILE));
   ok("3.14″ PLANT · the page's Suspense fallback drawn as anything but the home's ghost is reported",
     !homeEntry(ghost, PAGE_FILE.replace("<Suspense fallback={<JourneyHomeGhost t={t} millionea={millionea} />}>", "<Suspense fallback={null}>")));
 }

@@ -3090,7 +3090,8 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     tab but with writing in it kind of colors … in mixed glowing green red color and gold like 50pick design for
     uniqueness like kalshi how it states some of its tabs … perfect with perfect visual appearance of what we have".*
     Millionea gets its OWN tab, right after Up & Down / Juu/Chini, in every nav that has tabs, and only while Millionea
-    is visible to the viewer (the shell's own answer; while WITHDRAWN every nav is byte-identical to before): the journey
+    is visible to the viewer (the shell's own answer; while WITHDRAWN every nav draws what it drew before Millionea, with
+    one ruled change that every reader gets: the classic bar's More panel is opaque, below): the journey
     rail's fifth tab (five equal tracks while it shows, four when it does not), the journey's desktop link, and a core
     link of the classic top bar (while it shows, Results moves into More, as its first row, at every width — measured
     2026-10-19: the bar's room is capped at `--w-board`, 1280px, and with both inline the Swahili bar of a signed-in
@@ -3120,8 +3121,10 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     link and the classic phone rail's More row are its words in the ink alone, so every row of a More list starts its
     words at one x (the lead's tile read, 2026-10-19: the row's mark had set its words ~28px right of every other row's).
     More's two panels are opaque, the kit's elevated surface whole (`bg-bg-elevated`, the language menu's): the bar's
-    was 95% under a backdrop blur, and at 1280 the page's own words read through it. This gold is the Owner's label for
-    a destination, not money: item 7 is untouched.
+    was 95% under a backdrop blur, and at 1280 the page's own words read through it. ⚠️ The bar's panel is opaque for
+    EVERY reader, Millionea shown or not: the one change to the classic chrome this item rules (the lead's tile read,
+    2026-10-19; kept at S5's release review, 2026-10-21). The phone rail's panel was opaque already. This gold is the
+    Owner's label for a destination, not money: item 7 is untouched.
     The other doors stand: one card on the journey home after the head (the How-to card and the headline) and before the
     topic chips; on classic, one card at the head of `/markets`; and a third switch in Tiketi zangu. Placing the card
     there deviates from the sponsor deck's home (recorded in `docs/COMPLIANCE-DECISIONS.md`, 2026-10-17).

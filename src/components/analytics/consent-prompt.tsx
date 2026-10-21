@@ -12,9 +12,11 @@
  *  · **No close button.** Closing without answering would be a third answer that means nothing; the visitor can
  *    simply ignore the card, and analytics stays off.
  *  · **Only where analytics could run:** the live hosts, not an excluded page (`gaExcluded`), and never over a
- *    money control (`isCommitSurface`, re-evaluated on every route like `InstallInvite`) — which a not-found page at a
- *    commit address does not carry, so the card may ask there (MASWALI-BUILD S5; the S5 review of 24ec0d33, LOW 11:
- *    a dark Millionea slip is a missing page).
+ *    money control (`isCommitSurface`, re-evaluated on every route like `InstallInvite`). ⭐ A not-found page at a
+ *    MILLIONEA commit address (its slip, a ticket) lifts that rule: while the product is hidden such an address is a
+ *    missing page, and answers as an unknown address does, card included (MASWALI-BUILD S5; the S5 review of 24ec0d33,
+ *    LOW 11). ⛔ Only Millionea's: every other commit address's not-found keeps the card off, as production always has
+ *    (S5-FIX-PLATFORM D9 — the lift had been written for any commit address, a change to classic pages nobody ruled).
  *  · **Automation is not asked** (HeadlessChrome/Playwright) — a bot never consents, so it is never measured —
  *    unless a driver asks with `?consent=1`, so the card can still be photographed (the primer's convention).
  *  · **The bottom invitation slot, priority 0**: it outranks the install invitation (1), because consent is a
@@ -28,6 +30,7 @@ import { I } from "@/components/ui/glyphs";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n";
 import { isCommitSurface } from "@/lib/surfaces";
+import { isMillioneaPath } from "@/lib/millionea-edge";
 import { useNotFoundShown } from "@/lib/not-found-mark";
 import { useInvitationSlot } from "@/lib/invitation-slot";
 import { GA_HOSTS, gaExcluded } from "@/lib/google-tag";
@@ -62,7 +65,7 @@ export function ConsentPrompt() {
     return () => window.clearTimeout(timer);
   }, []);
 
-  const overMoney = isCommitSurface(pathname) && !notFoundShown;
+  const overMoney = isCommitSurface(pathname) && !(notFoundShown && isMillioneaPath(pathname));
   const eligible = askable && ready && consent === "unset" && !!pathname && !gaExcluded(pathname) && !overMoney;
   const holdsSlot = useInvitationSlot("analytics-consent", "bottom", 0, eligible);
   if (!holdsSlot) return null;

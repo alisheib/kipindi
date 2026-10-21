@@ -21,6 +21,8 @@ await runTwoStores({
   casesFile: "scripts/lib/maswali-player-child.mts",
   // S5-FIX-PLAYER (2026-10-21): 186 printed on each store — seven new cases (P5 7.10, P7 7.11, P6 8.0, P9 12.0 and 12.9,
   // P8 12b.4a, P10 13.3a; 4.3 and 8.21 re-pinned in the open).
+  // S5 integration (2026-10-21): S5-FIX-PLATFORM D7 adds 11.2e beside these; the floor rises to the integrated run's
+  // printed count.
   minPass: { memory: 186, postgres: 186 },
   dbPrefix: "mlw_player",
 });

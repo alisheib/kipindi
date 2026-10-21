@@ -3443,9 +3443,9 @@ ${s}`);
     // whichever value it is handed.)
     const headerBoxed = withFile(WORLD, SHELL, (s) => s.replace("{journeyShown ? <LazyJourneyTopBar user=",
       `{journeyShown ? <Suspense fallback={<div aria-hidden="true" className="kp-jhdr" />}><LazyJourneyTopBar user=`)
-      .replace("invitePaid={invitePaid} millionea={millioneaRow} /> : <TopAppBar", "invitePaid={invitePaid} millionea={millioneaRow} /></Suspense> : <TopAppBar"));
-    const tabsBoxed = withFile(WORLD, SHELL, (s) => s.replace("{journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} millionea={millioneaRow} /> :",
-      "{journeyShown ? <Suspense fallback={null}><LazyJourneyTabs userId={session?.userId ?? null} millionea={millioneaRow} /></Suspense> :"));
+      .replace("invitePaid={invitePaid} {...millioneaProp} /> : <TopAppBar", "invitePaid={invitePaid} {...millioneaProp} /></Suspense> : <TopAppBar"));
+    const tabsBoxed = withFile(WORLD, SHELL, (s) => s.replace("{journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} {...millioneaProp} /> :",
+      "{journeyShown ? <Suspense fallback={null}><LazyJourneyTabs userId={session?.userId ?? null} {...millioneaProp} /></Suspense> :"));
     const offlineDeferred = withFile(
       withFile(WORLD, SHELL_LAZY, (s) => `${s}${LF}export const LazyOfflineBanner = dynamic(() => `
         + `import("@/components/ui/offline-banner").then((m) => m.OfflineBanner).catch(nothingIfLost));${LF}`),

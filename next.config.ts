@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 // ⛔ Relative, never "@/…": Next loads this file through its own TypeScript hook, where the app's path aliases do not exist.
 import { staticSecurityHeaders } from "./src/lib/security-headers";
+import { UNROUTED_REWRITE } from "./src/lib/unrouted";
 
 /** The only production addresses sent a one-year `immutable` cache: public/'s own static folders and files, and Next's
  *  hashed build output. Exact folders, never a file-name suffix (see `headers()` below; `test:static-cache-scope`). */
@@ -115,6 +116,12 @@ const config: NextConfig = {
         headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
       })),
     ];
+  },
+  // ONE REWRITE, AND ONLY FOR A REQUEST THE PROXY MARKED (MASWALI-BUILD S5-FIX-PLATFORM D1; `src/lib/unrouted.ts`): an
+  // address the edge answers as unrouted — a Millionea address while its ceiling hides it — goes where no route stands,
+  // so the router's own 404 answers it with nothing of its own in the response. Every other request is untouched.
+  async rewrites() {
+    return { beforeFiles: [UNROUTED_REWRITE], afterFiles: [], fallback: [] };
   },
 };
 
