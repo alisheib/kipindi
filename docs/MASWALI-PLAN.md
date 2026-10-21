@@ -40,7 +40,23 @@ search/filter/sort/paging, bounded integrity report coverage, reviewed consequen
 device-audit feedback, versioned seal corrections, the multi-ticket slip, the separate Results section, the public
 settled-week sitemap and share image, and bounded public week and register caches. The rollout stays `WITHDRAWN`.
 
-**⏳ IN FLIGHT (2026-10-21, OMEGA-COMPILE01 — the Claude session asheib-65 took S5 over from Codex on Ali's word):**
+**⏹ STOPPED (2026-10-21 ~10:45 UTC, on Ali's word: "finish … so we proceed on another session with clean pushed").
+RESUME HERE, from any machine:** read branch `maswali-handover-20261021`, folder `handover/maswali-2026-10-21/` —
+README.md (every branch, each lane's state at the stop, the next steps in order), `critics/` (round 1 of Ali's 10/10
+design pass: scores and fixes per surface, the LEAD RULINGS, the design lanes' brief and file ownership) and `tools/`.
+Every lane committed and pushed at the stop; a commit marked "WIP … not verified" does not compile or was not run.
+- Finished and verified: `claude/maswali-s5-fix-srv` (`9935dfd47`, all 16 server/console findings with guards and plants);
+  `claude/maswali-s5-fix-platform` commits 1–7 (D1–D9, r5j 3.7.2; head `c1e3a1b28`: 8–11 written, not fully verified;
+  D12–D14 not started); `claude/maswali-s5-parity` (`9a0c6b033`, the instrument fixed, --prove-red 299/299).
+- `claude/maswali-s5-fix-player`: P1–P19 code complete (`cdb4bf46e`), its verification round was running — read its head.
+- WIP, not compiling: `claude/maswali-s5-design-hub` (`7fe758046`), `-slip` (`524128dbb`), `-register` (`3bf97ffdf`),
+  `-tickets` (`96e5e9a94`); `-doors`, `claude/maswali-s7`, `mln-s6-notices`: read their heads.
+- `main` = `c63c89387` (U43's CI-repair release + docs) — NOT deployed: Railway paused builds platform-wide
+  (status.railway.com); production serves `d268ef919`. Pushes during a pause are dropped: re-trigger by hand with the
+  hand-over's `tools/railway-deploy-main.mjs` when builds return, then U43's owed read-back (see the README).
+- The repository was cleaned on Ali's word (stale branches merged or archived in `F:\kipindi-archive\*-20261021.bundle`).
+
+**⏳ The day's record (2026-10-21, OMEGA-COMPILE01 — the Claude session asheib-65 took S5 over from Codex on Ali's word):**
 - Running on `d1c5910f`: `test:all` with the database suites in the release tree; the classic-parity calibration on
   a `main` tree (`--prove-red`, the baseline, a null compare); every `red:*` that reads an S5-changed file in its own
   tree; four read-only reviews (server and data, player, admin and shared UI, dark-release safety).
