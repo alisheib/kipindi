@@ -136,12 +136,19 @@ const plateDefects = (m: string) => {
   ok("1.7 · L5 · zh says \"大奖：至少 TZS 1,000,000\" — never \"大奖 至少\", two Han words parted by a space", zh.includes("大奖：至少 TZS 1,000,000") && !/大奖 至少/.test(zh), zh);
 }
 
-// L7 · a time is in the body face, kept whole, its figures tabular.
+// L7 · a time as §T5 sets a numeral (the lead's ruling, 2026-10-21): the weekday in the body face, the clock `.mono`, one run.
+const TIME_RUN = /<span class="whitespace-nowrap">([^<]+) <span class="mono">(\d{2}:\d{2})<\/span><\/span>/;
+const timeDefects = (l: L, state: string) => {
+  const WEEKDAY: Record<L, string> = { en: "Friday", sw: "Ijumaa", zh: "周五" };
+  const m = TIME_RUN.exec(state);
+  return m && m[1] === WEEKDAY[l] && m[2] === "18:00" && !/font-mono|tabular-nums">[^<]*\d/.test(state) ? [] : [`${l}: ${m?.[0] ?? state.slice(0, 160)}`];
+};
 {
-  const time = LOCALES.map((l) => elementAt(stateOf(card(l, "open · no ticket")), "whitespace-nowrap tabular-nums"));
-  const WANT: Record<L, string> = { en: "Friday 18:00", sw: "Ijumaa 18:00", zh: "周五 18:00" };
-  const wrong = LOCALES.filter((l, i) => textOf(time[i]) !== WANT[l] || /font-mono/.test(time[i]));
-  ok("1.8 · L7 · the close is a body-face run with tabular figures, never parted (\"Ijumaa 18:00\") — the hosts' own close labels; it was mono mid-sentence", wrong.length === 0, j(time));
+  const wrong = LOCALES.flatMap((l) => timeDefects(l, stateOf(card(l, "open · no ticket"))));
+  ok("1.8 · L7 · the close is set as §T5 sets a numeral — the weekday in the sentence's face, the clock \"18:00\" a `.mono` numeral (JetBrains Mono, tabular), the whole run never parted (\"Ijumaa 18:00\"); it was one mono run, weekday and all",
+    wrong.length === 0, wrong.join(" | "));
+  ok("1.8′ PLANT · the old all-mono run, and an all-body-face one, are both reported",
+    timeDefects("en", '<span class="whitespace-nowrap font-mono">Friday 18:00</span>').length > 0 && timeDefects("en", '<span class="whitespace-nowrap tabular-nums">Friday 18:00</span>').length > 0);
 }
 
 // L8 · paused says what is paused; L9 · the register's won words; L10 · the presale's date.
@@ -189,7 +196,8 @@ const nameDefects = (l: L, m: string) => {
   const when = (l: L) => fill(dict[l].millionea.checkWindowUntil, { when: `${dict[l].millionea.weekdays[4]} 09:00` });
   const window = LOCALES.filter((l) => textOf(stateOf(card(l, "closed · 15 of 15, objection"))) !== `${fill(dict[l].millionea.resultsOut, { n: 15 })} · ${when(l)}`);
   const settling = LOCALES.filter((l) => textOf(stateOf(card(l, "closed · 15 of 15, settling"))) !== `${fill(dict[l].millionea.resultsOut, { n: 15 })} · ${dict[l].millionea.weekStatusSettling}`);
-  const none = LOCALES.filter((l) => textOf(stateOf(card(l, "closed · 6"))) !== fill(dict[l].millionea.resultsOut, { n: 6 }));
+  // While results arrive: "Sales closed" (the hub's own `salesClosedAt` words) and the count — two lines, as the open card's.
+  const none = LOCALES.filter((l) => textOf(stateOf(card(l, "closed · 6"))) !== `${dict[l].millionea.salesClosedAt.split(" · ")[0]} · ${fill(dict[l].millionea.resultsOut, { n: 6 })}`);
   const words: Record<L, [string, string]> = { en: ["Objection window until", "Settling"], sw: ["Dirisha la pingamizi hadi", "Inakamilishwa"], zh: ["异议窗口至", "待结算"] };
   const ruled = LOCALES.filter((l) => !dict[l].millionea.checkWindowUntil.startsWith(words[l][0]) || dict[l].millionea.weekStatusSettling !== words[l][1]);
   ok("1.14 · P6 · after every result is in, the card says where the week stands — \"Objection window until Friday 09:00\" while it runs, then \"Settling\" (the lead's words; `millioneaWeekPhase`/`weekPhaseWord`, the hub's one answer) — and only the count while results still come in",
@@ -214,6 +222,8 @@ const nameDefects = (l: L, m: string) => {
 
 // ── §2 · the ghost ────────────────────────────────────────────────────────────────────────────────────────────────────
 console.log("\n§2 · the card's loading picture (H1)");
+/** 2.3's check — what a ghost leaves readable — set in §2 and run again by its plant in §4. */
+let hiddenDefects: (g: string) => string[] = () => ["unset"];
 /** The common card set at the ghost's own sizes — week 49, TZS 1,000,000, 13%, Friday 18:00, TZS 1,000 — for comparison. */
 const req = createRequire(import.meta.url);
 const { MaswaliHomeCard } = req("../src/components/maswali/maswali-home-card.tsx") as { MaswaliHomeCard: (p: Record<string, unknown>) => unknown };
@@ -224,7 +234,7 @@ const twin = (l: L, host: DoorHost) => inApp(l, React.createElement(MaswaliHomeC
 } as never));
 /** The layout skeleton of a door: its elements' tags and layout classes, in order (words, ids, links and ink aside; the
  *  plate is its 48px box — the card's carries the mark inside, the ghost's is the bar's plate). */
-const LAYOUT = /^(?:kp-mln-door\S*|kp-mln-facts\S*|kp-mln-fact|kp-mln-zh|mat-raised|amount|text-body-\S+|font-(?:display|semibold)|whitespace-nowrap|tabular-nums|sr-only)$/;
+const LAYOUT = /^(?:kp-mln-door\S*|kp-mln-facts\S*|kp-mln-fact|kp-mln-zh|mat-raised|amount|mono|text-body-\S+|font-(?:display|semibold)|whitespace-nowrap|tabular-nums|sr-only)$/;
 const skeleton = (m: string) => [...m.replace(/(class="[^"]*kp-mln-door__plate[^"]*"[^>]*>)<svg[\s\S]*?<\/svg>/, "$1").matchAll(/<(\w+)([^>]*)>/g)].map(([, tag, attrs]) => {
   const cls = (/class="([^"]*)"/.exec(attrs)?.[1] ?? "").split(" ").filter((c) => LAYOUT.test(c)).join(".");
   return tag === "a" || tag === "div" ? `box.${cls}` : `${tag}.${cls}`;
@@ -242,12 +252,14 @@ const skeleton = (m: string) => [...m.replace(/(class="[^"]*kp-mln-door__plate[^
     return g.replace(/span\.(?=\s|$)/g, "") === c.replace(/span\.(?=\s|$)/g, "") ? [] : [`${l} ${h}`];
   }));
   ok("2.2 · H1 · the ghost is the card's anatomy, element for element: the same door grid and host box, the 48px plate's slot, the title's facts, both phone-stacked fact lists, the figure's rung and the 20px chevron", shapes.length === 0, j(shapes));
-  const hiddenDefects = (g: string) => {
+  hiddenDefects = (g: string) => {
     const d: string[] = [];
     if (!/^<div aria-hidden="true" class="kp-mln-zh kp-mln-ghost kp-shimmer-track kp-mln-door kp-mln-door--/.test(g)) d.push("the root is not an aria-hidden ghost of the door");
     if (/\sid="|<a\s/.test(g)) d.push("an id or a link");
-    // every text run sits inside a hidden span
-    const bare = g.replace(/<span class="kp-mln-ghost__words">[\s\S]*?<\/span><\/span>/g, "").replace(/<span class="sr-only"> · <\/span>/g, "");
+    // every text run sits inside a hidden span: each hidden element removed whole (balanced), nothing readable is left
+    let bare = g;
+    for (let hidden = elementAt(bare, 'class="kp-mln-ghost__words"'); hidden !== ""; hidden = elementAt(bare, 'class="kp-mln-ghost__words"')) bare = bare.replace(hidden, "");
+    bare = bare.replace(/<span class="sr-only"> · <\/span>/g, "");
     if (textOf(bare).trim() !== "") d.push(`words not hidden: "${textOf(bare).trim().slice(0, 40)}"`);
     if (!g.includes('data-ghost-part="millionea"')) d.push("no ghost part mark");
     return d;
@@ -284,12 +296,13 @@ const cssDefects = (css: string) => {
   if (!css.includes("@media (hover: hover) { .kp-mln-door:hover { border-color: var(--border-royal); } }") || !css.includes("transition: border-color var(--t-quick) linear;")) d.push("no How-to hover (M5)");
   if (!css.includes(".kp-mln-door--journey { padding: var(--sp-3) 14px var(--sp-3) var(--sp-3); border: 1px solid var(--border); background: var(--bg-elevated); }")) d.push("the journey box is not the How-to card's");
   if (!css.includes(".kp-mln-door--board { padding: var(--sp-3); } @media (min-width: 640px) { .kp-mln-door--board { padding-inline: var(--sp-4); } }")) d.push("the board box's inset is not the market card's");
-  if (!css.includes(".kp-mln-ghost__words { visibility: hidden; }") || !css.includes(".kp-mln-ghost__bar { border-radius: var(--r-xs); background: var(--bg-overlay); -webkit-box-decoration-break: clone; box-decoration-break: clone; }")) d.push("the ghost's words are not hidden over line bars");
+  if (!css.includes(".kp-mln-ghost__words, .kp-mln-ghost .kp-mln-fact::before { visibility: hidden; }") || !css.includes(".kp-mln-ghost__bar { border-radius: var(--r-xs); background: var(--bg-overlay); -webkit-box-decoration-break: clone; box-decoration-break: clone; }")) d.push("the ghost's words and its facts' marks are not hidden over line bars");
+  if (!css.includes("@media (max-width: 767.98px) { .kp-mln-door .kp-mln-facts--phone > .kp-mln-fact { padding-inline-start: 1em; text-indent: -1em; } }")) d.push("below 768 a wrapped fact's continuation does not hang (it reads as a fact of its own)");
   return d;
 };
 {
   const d = cssDefects(CSS);
-  ok("3.1 · M1 L1 L2 M5 H1 · the door's one anatomy — a head row of three over a full-width body below 768, the body under the title from 768, one row from 1280 — each host's box, the How-to card's hover, and the ghost's hidden words over line bars", d.length === 0, d.join(" | "));
+  ok("3.1 · M1 L1 L2 M5 H1 · the door's one anatomy — a head row of three over a full-width body below 768 (a wrapped fact's continuation hanging one em in), the body under the title from 768, one row from 1280 — each host's box, the How-to card's hover, and the ghost's hidden words and marks over line bars", d.length === 0, d.join(" | "));
 }
 
 // ── §4 · controls ─────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -304,17 +317,18 @@ console.log("\n§4 · controls — each check fails on a planted copy");
   ok("4.3 · the zh tickets line as it was (\"您本周的彩票：3/10\") is caught by its own check's pattern", /\b3\/10\b/.test("您本周的彩票：3/10"));
   ok("4.4 · a name that is not the title and the figure is reported (L11)", nameDefects("en", card("en", "open · no ticket").replace('aria-labelledby="mln-card-title mln-card-figure"', 'aria-labelledby="mln-card-title mln-card-state"')).length > 0);
   const g = FX.ghost.en.journey;
-  ok("4.5 · a ghost whose words show is reported (H1: 2.3)", g.includes('<span class="kp-mln-ghost__words">') && LOCALES.length > 0
-    && (() => { const shown = g.replaceAll('<span class="kp-mln-ghost__words">', '<span class="shown">'); const bare = shown.replace(/<span class="kp-mln-ghost__words">[\s\S]*?<\/span><\/span>/g, ""); return textOf(bare).trim() !== ""; })());
-  ok("4.6 · the stylesheet without the full-width phone body, or with the ghost's words visible, is reported (3.1)",
+  ok("4.5 · a ghost whose words show is reported (H1: 2.3)", g.includes('<span class="kp-mln-ghost__words">')
+    && hiddenDefects(g.replaceAll('<span class="kp-mln-ghost__words">', '<span class="shown">')).some((x) => x.startsWith("words not hidden")));
+  ok("4.6 · the stylesheet without the full-width phone body, with the ghost's words visible, or without the hanging continuation, is reported (3.1)",
     cssDefects(CSS.replace('"plate head chev" "rule rule rule" "state state state"', '"plate head chev" "plate rule chev" "plate state chev"')).length > 0
-      && cssDefects(CSS.replace(".kp-mln-ghost__words { visibility: hidden; }", ".kp-mln-ghost__words { color: transparent; }")).length > 0);
+      && cssDefects(CSS.replace(".kp-mln-ghost__words, .kp-mln-ghost .kp-mln-fact::before { visibility: hidden; }", ".kp-mln-ghost__words { color: transparent; }")).length > 0
+      && cssDefects(CSS.replace("padding-inline-start: 1em; text-indent: -1em;", "padding-inline-start: 0;")).length > 0);
   const twinOff = skeleton(FX.ghost.en.board.replace("kp-mln-door__rule", "kp-mln-door__body"));
   ok("4.7 · a ghost whose anatomy drifts from the card's is reported (2.2)", twinOff.replace(/span\.(?=\s|$)/g, "") !== skeleton(twin("en", "board")).replace(/span\.(?=\s|$)/g, ""));
 }
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI DOORS: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run prints. */
-const MIN_ASSERTIONS = 33;
+const MIN_ASSERTIONS = 34;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

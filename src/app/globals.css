@@ -4800,7 +4800,10 @@ html[data-sheet-open] .route-enter { animation: none; }
 @media (hover: hover) { .kp-mln-ghost:hover { border-color: var(--border); } }
 .kp-mln-ghost .kp-mln-door__chev { color: transparent; }
 .kp-mln-ghost__bar { border-radius: var(--r-xs); background: var(--bg-overlay); -webkit-box-decoration-break: clone; box-decoration-break: clone; }
-.kp-mln-ghost__words { visibility: hidden; }
+.kp-mln-ghost__words, .kp-mln-ghost .kp-mln-fact::before { visibility: hidden; }
+/* Below 768 the body is one fact per line: a fact too long for its line hangs its continuation one em in, so the line it
+   runs on never reads as a fact of its own ("pamoja na kiasi kinachohamishwa kutoka" / "  Wiki 46 itakapokamilika"). */
+@media (max-width: 767.98px) { .kp-mln-door .kp-mln-facts--phone > .kp-mln-fact { padding-inline-start: 1em; text-indent: -1em; } }
 .kp-hero__trust-glyph { display: flex; justify-content: center; color: var(--text-subtle); }
 /* The wallet names are the row's emphasis — brand spellings from the payment catalogue, in the
    reader's own list form (`rail-list.ts`); the joiners and the sentence stay muted. */

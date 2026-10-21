@@ -22,7 +22,7 @@
 import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 
-export const DOOR_PAGES = ["door-ghosts", "door-states"];
+export const DOOR_PAGES = ["door-ghosts", "door-states", "door-results"];
 const GUARD_WIDTHS = [320, 360, 768, 1280];
 const TOL = 2;
 
@@ -43,15 +43,22 @@ const MEASURE = (host) => {
   document.body.appendChild(probe);
   const royal = getComputedStyle(probe).color;
   probe.remove();
-  const time = card?.querySelector(".kp-mln-door__state .tabular-nums");
+  // The platform's numeral face, read the browser's way: a `.mono` probe's computed family.
+  const monoProbe = document.createElement("span");
+  monoProbe.className = "mono";
+  document.body.appendChild(monoProbe);
+  const monoFace = getComputedStyle(monoProbe).fontFamily;
+  monoProbe.remove();
+  const clock = card?.querySelector(".kp-mln-door__state .whitespace-nowrap > .mono");
+  const run = clock?.parentElement;
   const amount = card?.querySelector(".kp-mln-door__rule .amount");
   const cs = card ? getComputedStyle(card) : null;
   return {
     card: box(card), after: box(after), plate: box(card?.querySelector(".kp-mln-door__plate")), title: box(card?.querySelector("#mln-card-title")),
     chev: box(card?.querySelector(".kp-mln-door__chev")), rule: box(card?.querySelector(".kp-mln-door__rule")), state: box(card?.querySelector(".kp-mln-door__state")),
     figurePx: amount ? getComputedStyle(amount).fontSize : null,
-    timeFace: time ? getComputedStyle(time).fontFamily : null, timeNums: time ? getComputedStyle(time).fontVariantNumeric : null,
-    monoFace: getComputedStyle(document.documentElement).getPropertyValue("--font-mono").trim(),
+    runFace: run ? getComputedStyle(run).fontFamily : null, clockFace: clock ? getComputedStyle(clock).fontFamily : null,
+    clockNums: clock ? getComputedStyle(clock).fontVariantNumeric : null, monoFace,
     padding: cs ? `${cs.paddingTop} ${cs.paddingRight} ${cs.paddingBottom} ${cs.paddingLeft}` : null,
     border: cs ? cs.borderTopColor : null, royal,
     howtoPlate: box(document.querySelector('[data-testid="journey-howto-card"] .kp-jhowto__plate')),
@@ -66,7 +73,8 @@ const GHOST_MEASURE = (host) => {
 };
 /** The page's column (the PageContainer the card stands in), swapped for a ghost's markup. */
 const SWAP_COLUMN = ([host, html]) => {
-  const anchor = host === "journey" ? document.querySelector('[data-testid="journey-home"]') : document.querySelector('[data-testid="millionea-home-card"]');
+  // The column's own children that stand with or without a card: the journey home's list, the board's search.
+  const anchor = host === "journey" ? document.querySelector('[data-testid="journey-home"]') : document.querySelector(".kp-markets-search");
   const column = anchor?.parentElement;
   if (!column) return false;
   column.outerHTML = html;
@@ -116,11 +124,13 @@ export async function shootDoors(o) {
             ok(`doors ${tag} · M1 · the body's edge is ${width < 768 ? "the plate's (the full inner width)" : width < 1280 ? "the title's" : "its own column's"} (${m.rule?.x.toFixed(1)} vs ${bodyX.toFixed(1)})`,
               width >= 1280 ? m.rule.x > m.title.x + m.title.w : Math.abs(m.rule.x - bodyX) <= 1 && Math.abs(m.state.x - bodyX) <= 1);
             ok(`doors ${tag} · L3 · the figure is 16px (${m.figurePx})`, m.figurePx === "16px");
-            ok(`doors ${tag} · L7 · the close is in the body face with tabular figures (${(m.timeFace ?? "").split(",")[0]}; ${m.timeNums})`,
-              !!m.timeFace && !m.timeFace.includes("JetBrains") && /tabular-nums/.test(m.timeNums ?? ""));
+            ok(`doors ${tag} · L7 · the close as §T5 sets a numeral: the weekday in the sentence's face (${(m.runFace ?? "").split(",")[0]}), the clock in the numeral face, tabular (${(m.clockFace ?? "").split(",")[0]}; ${m.clockNums})`,
+              !!m.runFace && !!m.clockFace && m.clockFace === m.monoFace && m.runFace !== m.monoFace && /tabular-nums/.test(m.clockNums ?? ""));
             const inset = host === "journey" ? "12px 14px 12px 12px" : width < 640 ? "12px 12px 12px 12px" : "12px 16px 12px 16px";
-            ok(`doors ${tag} · L2 · the host's inset (${m.padding}, want ${inset})${host === "journey" && m.howtoPlate ? ` and the plate under the How-to card's (x ${m.plate.x} vs ${m.howtoPlate.x})` : ""}`,
-              m.padding === inset && (host !== "journey" || !m.howtoPlate || Math.abs(m.plate.x - m.howtoPlate.x) <= 0.5));
+            // Below 1024 the How-to card stands above the door (from 1024 it sits beside the headline): the two plates align.
+            const stacked = host === "journey" && width < 1024 && !!m.howtoPlate;
+            ok(`doors ${tag} · L2 · the host's inset (${m.padding}, want ${inset})${stacked ? ` and the plate under the How-to card's (x ${m.plate.x} vs ${m.howtoPlate.x})` : ""}`,
+              m.padding === inset && (!stacked || Math.abs(m.plate.x - m.howtoPlate.x) <= 0.5));
             ok(`doors ${tag} · no horizontal overflow (${m.overflow}px)`, m.overflow <= 1);
             const name = `${FX.names[locale].title} ${FX.names[locale].figure}`;
             ok(`doors ${tag} · L11 · the link's accessible name is "${name}"`, (await page.getByRole("link", { name, exact: true }).count()) === 1);
@@ -170,8 +180,9 @@ export async function shootDoors(o) {
           const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
           ok(`doors ${tag} · every state drawn (${hs.length} of ${FX.states.length}), no horizontal overflow (${over}px)`, hs.length === FX.states.length && over <= 1);
           const region = await page.evaluate(() => { const r = document.querySelector('[data-testid="millionea-home-card"]').getBoundingClientRect(); return { top: r.top + scrollY, bottom: r.bottom + scrollY }; });
+          // 260px of overlap between tiles: the fixed bars (a phone's header ~56px and tab rail ~75px) hide ~131px of each.
           let n = 1;
-          for (let top = Math.max(0, region.top - 120); n <= 12; n++, top += HEIGHT - 120) {
+          for (let top = Math.max(0, region.top - 120); n <= 16; n++, top += HEIGHT - 260) {
             await page.evaluate((y) => window.scrollTo(0, y), top);
             await frames(page);
             await page.screenshot({ path: `${OUT}/door-states-${host}-${locale}-${width}-s${n}.png`, fullPage: false });
@@ -183,6 +194,57 @@ export async function shootDoors(o) {
     }
   }
   writeFileSync(`${OUT}/door-states-heights.json`, JSON.stringify({ states: FX.states, heights }, null, 1));
+  // ── /results' Millionea section (L14 L15 L16) and classic /positions' row ─────────────────────────────────────────────
+  if (want("door-results")) {
+    for (const locale of LOCALES) {
+      const ctx = await contextWith([await demoSession(browser, BASE)], locale);
+      const page = await ctx.newPage();
+      for (const width of WIDTHS) {
+        await page.setViewportSize({ width, height: HEIGHT });
+        const tag = `results · ${locale} @${width}`;
+        await open(page, "/results");
+        const section = page.getByTestId("millionea-results-section");
+        const drawn = (await section.count()) === 1;
+        ok(`doors ${tag} · L16 · the section stands on the archive as it opens`, drawn);
+        if (drawn) {
+          const geo = await page.evaluate(() => [...document.querySelectorAll('[data-testid="millionea-results-section"] li > a')].map((a) => {
+            const facts = a.querySelector('[data-testid="millionea-results-facts"]')?.getBoundingClientRect();
+            const chev = a.querySelector(":scope > svg")?.getBoundingClientRect();
+            return { facts: facts && { x: facts.left, r: facts.right }, chev: chev && { x: chev.left }, h: a.getBoundingClientRect().height };
+          }));
+          if (width >= 1024) {
+            const gaps = geo.map((g) => (g.chev && g.facts ? Math.round(g.chev.x - g.facts.r) : null));
+            ok(`doors ${tag} · L15 · from 1024 a row is one line, its facts ending beside the chevron (gaps ${gaps.join(", ")}px; they stood ~900px apart)`, geo.length > 0 && gaps.every((g) => g !== null && g >= 0 && g <= 24));
+          }
+          ok(`doors ${tag} · each row is a ≥ 48px tap target (${geo.map((g) => g.h.toFixed(0)).join(", ")})`, geo.length > 0 && geo.every((g) => g.h >= 48));
+          await section.scrollIntoViewIfNeeded();
+          await page.evaluate(() => window.scrollBy(0, -80));
+          await frames(page);
+          await page.screenshot({ path: `${OUT}/door-results-${locale}-${width}.png`, fullPage: false });
+        }
+        if (width === 360 || width === 1280) {
+          for (const q of ["?q=week", "?page=2", "?cat=sports", "?out=void", "?when=7d", "?product=UPDOWN"]) {
+            await open(page, `/results${q}`);
+            ok(`doors ${tag} · L16 · no section under ${q}`, (await page.getByTestId("millionea-results-section").count()) === 0);
+          }
+          await open(page, "/results?sort=volume");
+          ok(`doors ${tag} · L16 · a sort keeps the section`, (await page.getByTestId("millionea-results-section").count()) === 1);
+        }
+        // Classic /positions' row: the demo player holds this week's ticket, so the row stands; it ends on the doors' chevron.
+        await open(page, "/positions");
+        const row = page.getByTestId("positions-millionea-row");
+        if ((await row.count()) === 1) {
+          const end = await row.evaluate((a) => a.querySelector(":scope > svg:last-child")?.getAttribute("data-g") ?? "");
+          ok(`doors ${tag} · /positions' row ends on the doors' chevron (${end})`, end.startsWith("chevronRight."));
+          await row.scrollIntoViewIfNeeded();
+          await page.evaluate(() => window.scrollBy(0, -120));
+          await frames(page);
+          await page.screenshot({ path: `${OUT}/door-positions-${locale}-${width}.png`, fullPage: false });
+        } else ok(`doors ${tag} · /positions draws the Millionea row for the ticket the demo player holds`, false);
+      }
+      await ctx.close();
+    }
+  }
   // RED CONTROL: a slot grown by 40px must be reported by the same comparison.
   if (want("door-ghosts")) {
     const ctx = await contextWith([await demoSession(browser, BASE)], "sw");

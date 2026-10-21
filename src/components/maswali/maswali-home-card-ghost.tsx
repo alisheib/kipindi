@@ -51,7 +51,8 @@ export function MaswaliHomeCardGhost({ t, locale, host, preview = false, classNa
     bar(fillNodes(rule[at] ?? "", { amount, pct })),
     ...rule.slice(at + 1).map((f) => keep(fill(f, { pct }))),
   ];
-  const when = <span className="whitespace-nowrap tabular-nums">{`${t.millionea.weekdays[4]} 18:00`}</span>;
+  // The close as the card sets it (`doorTime`): the weekday in the body face, the clock a `.mono` numeral, one run.
+  const when = <span className="whitespace-nowrap">{t.millionea.weekdays[4]} <span className="mono">18:00</span></span>;
   const state = [bar(fillNodes(t.millionea.salesCloseAt, { when })), keep(fill(t.millionea.cardPrice, { price: formatTzs(1_000) }))];
   return (
     <div aria-hidden className={cn("kp-mln-zh kp-mln-ghost kp-shimmer-track", doorClass(host), className)} data-ghost-part="millionea">

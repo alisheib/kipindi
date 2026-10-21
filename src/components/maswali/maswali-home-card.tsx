@@ -5,7 +5,7 @@ import { IconPlate } from "@/components/ui/icon-plate";
 import { I, plateGlyph } from "@/components/ui/glyphs";
 import { MillioneaGlyph } from "@/components/maswali/maswali-glyph";
 import { MaswaliFacts, factsOf, keepFact } from "@/components/maswali/maswali-facts";
-import { counted, eatWeekdayClock, weekWord } from "@/components/maswali/maswali-format";
+import { counted, eatClock, eatWeekday, weekWord } from "@/components/maswali/maswali-format";
 import { formatEatDay } from "@/lib/eat-day";
 import { fillNodes } from "@/lib/fill-nodes";
 import { cn, fill, formatNumber, formatTzs } from "@/lib/utils";
@@ -68,9 +68,11 @@ export function doorClass(host: DoorHost): string {
   return host === "journey" ? "kp-mln-door kp-mln-door--journey" : "kp-mln-door kp-mln-door--board mat-raised";
 }
 
-/** "Friday 18:00": a printed time, in the body face with tabular figures and never parted (L7, the hosts' close labels). */
+/** "Friday 18:00": a printed time as §T5 sets a numeral — the weekday in the sentence's own face, the clock a numeral
+ *  (`.mono`: JetBrains Mono, tabular figures) — the whole never parted (L7; the lead's ruling of 2026-10-21: it was one mono
+ *  run mid-sentence, weekday and all). */
 export function doorTime(t: Dict, atMs: number): ReactNode {
-  return <span className="whitespace-nowrap tabular-nums">{eatWeekdayClock(t, atMs)}</span>;
+  return <span className="whitespace-nowrap">{eatWeekday(t, atMs)} <span className="mono">{eatClock(atMs)}</span></span>;
 }
 
 export function MaswaliHomeCard({ t, locale, week, jackpot, pct, cap, state, finalWeek, atLeast = false, pendingWeek = null, preview = false, host = "board", href = "/millionea", idBase = "mln-card", className }: {
@@ -133,12 +135,16 @@ export function MaswaliHomeCard({ t, locale, week, jackpot, pct, cap, state, fin
               : keep(fill(t.millionea.cardPrice, { price: formatTzs(state.price) }))];
       break;
     case "closed": {
-      // P6 on the card: after "15 of 15 results in", where the week stands — the objection window and its end while it
-      // runs (the hub's line, `checkWindowUntil`), then "Settling" — the one answer every surface says; never a guess.
+      // P6 on the card, in the week's own order: while results arrive, "Sales closed" (the hub's `salesClosedAt` words — the
+      // past tense of the open card's "Sales close Friday 18:00": a reader learns no ticket can be bought) and the count;
+      // once every result needed is in, the count and where the week stands — the objection window and its end while it runs
+      // (the hub's `checkWindowUntil`), then "Settling" — the one answer every surface says (`millioneaWeekPhase`).
+      // Two lines either way, as the open card's two: the card and its loading picture keep one height through the week.
       const { kind, objectionsUntil, word } = state.phase;
-      meta = [keep(fill(t.millionea.resultsOut, { n: formatNumber(state.resultsIn) })),
-        kind === "objections" && objectionsUntil !== null ? <span key="objections">{fillNodes(t.millionea.checkWindowUntil, { when: doorTime(t, objectionsUntil) })}</span>
-          : kind === "settling" ? word : null];
+      const count = keep(fill(t.millionea.resultsOut, { n: formatNumber(state.resultsIn) }));
+      meta = kind === "objections" && objectionsUntil !== null
+        ? [count, <span key="objections">{fillNodes(t.millionea.checkWindowUntil, { when: doorTime(t, objectionsUntil) })}</span>]
+        : kind === "settling" ? [count, word] : [factsOf(t.millionea.salesClosedAt)[0], count];
       break;
     }
     case "settledWon":
