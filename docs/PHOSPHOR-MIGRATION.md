@@ -108,11 +108,14 @@ Before/after tiles of the W6 surfaces: 54 + 54, no overflow, no page error; the 
 ticket in Duotone on the shared plate); the rest not yet read. **The classic-parity instrument** now waits for every
 scrolling strip's `data-edges` before it reads a page (SETTLE `strips-marked`, `0558fc782` on the parked branch: the
 Maswali lane's 251/252 flake on /results); its `--prove-red` (P.8s) has not run.
+**Production, read back 2026-10-21 (Ali approved it by hand):** www, the apex and the Railway host serve `d268ef919` —
+Railway did not redeploy for `4471bb440` or `cffe67cf2`, which change only docs and one test script, so production runs
+`main`'s exact code; `/api/health` is reachable and migrated on all three; `qa:chunks-prod` holds 6/6 routes (154 GETs)
+on both public origins; production `qa:live` passes 360/360 (its signed-in [E3] not measured: no QA sign-in was asked).
 
 ⏳ **Owed:**
-- W6: the production read-back's `qa:chunks-prod` on both origins and production `qa:live` (this PC's permission guard
-  refuses production reads; Ali approves them by hand), the rest of `red:campaign-visuals`, the tile read, and the
-  parity instrument's null compare and `--prove-red` with the strips settle.
+- W6: the rest of `red:campaign-visuals`, the tile read, and the parity instrument's null compare and `--prove-red` with
+  the strips settle.
 - Release 1 (2026-10-19): the calibrated classic parity's null compare and `--prove-red`; of 1b's 43 red twins, the 23
   left (`red:deposit-recheck`, `red:deposit-status-read` among them) and `red:measure`; the server-bound
   `red:bar-geometry`, `red:count-truth`, `red:journey-header-fit` (alone), `qa:landing-ten`, `qa:journey-header-fit` and
@@ -121,13 +124,12 @@ Maswali lane's 251/252 flake on /results); its `--prove-red` (P.8s) has not run.
   and 3.9, `test:rate-copy` (and their reds), `red:house-bot-chatbot`, `red:results-filter`'s stale anchor; U43's
   release B left about 27 more red on main, which U43 is repairing (2026-10-21).
 
-🧹 **Stale, waiting on Ali's approval** (the permission guard refused deleting them; every commit on them is on `main` or
-on the two parked branches, checked by patch identity on 2026-10-21): Codex's worktrees on `C:\50pick-ssd`
-(`kipindi-phos-a0`, `-admin`, `-b0`, `-build`, `-m`, `-qa-clean`, `-r2`, `-r2a`, `-red` — unlink its `node_modules`
-junction first — `-w5-rest`, `-w6-build`, `-w7`), this session's trees (`kipindi-phos-2c`, `-2d`, `-3`, `-prew6`,
-`-red2c`, `-w6`), the local and origin branches `codex/phosphor-*`, `phosphor-2a`, `phosphor-r2`, `phos-measure-w4`,
-origin's `phosphor-migration`, `phosphor-w2`, `phosphor-w3`, `phosphor-w3-admin`, `phosphor-w3-fix`, and this
-session's superseded `phosphor-2c`, `phosphor-2d`, `phosphor-3` (their content is in the `-v2` branches).
+🧹 **Cleaned 2026-10-21 (Ali approved it):** every stale Phosphor worktree on `C:\50pick-ssd` (Codex's twelve and this
+session's six) and every stale Phosphor branch, local and on origin (`codex/phosphor-*`, the old `phosphor-*` wave
+branches, this session's superseded `phosphor-2c`, `-2d`, `-3`), is removed; every commit on them was on `main` or on the
+two parked branches, checked by patch identity first. Their refs are archived, verified, in
+`F:\kipindi-archive\phosphor-stale-20261021.bundle` (31 refs; `git fetch <bundle> 'refs/*:refs/restored/*'` brings any
+of them back). Only `phosphor-2d-v2` and `phosphor-3-v2` remain.
 
 **Next:** W5's remainder — the 2c and 2d checklist above, then its release from `phosphor-2d-v2`; then W7 + W8 from
 `phosphor-3-v2`; then W9.
