@@ -730,6 +730,8 @@ section("5 · F4's pattern · every useSyncExternalStore reader is classified, a
     "src/lib/analytics-consent.ts": "the reader's consent, not a page's state",
     "src/lib/journey/one-poller.ts": "a media query, not a page's state",
     "src/lib/journey/use-unread-count.ts": "the unread feed, not a page's state",
+    // Came in with MASWALI-BUILD S5-FIX-SRV (dd0627d5f); classified at the S5 integration (2026-10-21).
+    "src/app/admin/maswali/audit-warning.tsx": "a console page's standing audit warning: raised by that page's own controls, read by the StandingAuditWarning the same page draws, and deleted in that reader's unmount cleanup — a page that is left takes its warning with it, and nothing outside the page reads it",
     // Came in with main (S14's U47b-2, 4116d4be) after this suite was written; classified at the merge.
     "src/components/admin/admin-crumbs.tsx": "a record page's registered name for its last crumb, read by the admin header KEYED BY THE PATH BEING DRAWN (crumbNames.get(lastSegmentOf(pathname))): a page that is left cannot name the next one — F4's own principle, already",
   };
