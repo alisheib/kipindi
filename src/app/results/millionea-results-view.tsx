@@ -1,10 +1,8 @@
 import Link from "next/link";
 import { EmptyState } from "@/components/ui/empty-state";
 import { I } from "@/components/ui/glyphs";
-import { MaswaliFacts } from "@/components/maswali/maswali-facts";
-import { weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
-import { MILLIONEA_HREF, MillioneaPreviewMark, registerWeekHref } from "@/app/millionea/millionea-parts";
-import { WeekStateChip, weekFacts } from "@/app/millionea/register/register-parts";
+import { MILLIONEA_HREF, MillioneaPreviewMark } from "@/app/millionea/millionea-parts";
+import { WeekRow, WeekStateChip, weekFacts } from "@/app/millionea/register/register-parts";
 import { ARCHIVE_DEFAULTS, type ArchiveState } from "@/lib/results/archive";
 import type { Dict } from "@/lib/i18n-dict";
 import type { MillioneaWeekSummary } from "@/lib/server/maswali-player";
@@ -22,10 +20,13 @@ export function millioneaSectionShown(state: ArchiveState, searching: boolean, p
 
 /**
  * Latest final PUBLIC weeks, with the register's own facts. No classic market metric includes these rows.
- * ⭐ S5-DESIGN-DOORS L14 L15: a week's facts are Millionea's fact line (`MaswaliFacts`, A1: one per line below 768, side by
- * side from 768 with the platform's own separator, never one opening or ending a line — the hand-typed "·" stood ~2× the
- * platform's gap apart and could open a line); and from 1024 a row is one line — the week and its state at the start, its
- * facts at the end beside the chevron — where the facts stood ~900px from the chevron that opens them on a 1280 board.
+ * ⭐ ONE WEEK ROW, THE REGISTER'S (`WeekRow`, register-parts.tsx — S5-DESIGN-REGISTER's shared row, adopted with no fork; the
+ * register critic's L3: the row was written twice): its code, the week and its state chip, its facts, the chevron of its door.
+ * The row carries the doors critic's L14 and L15 for both lists: a week's facts are Millionea's fact line (`MaswaliFacts`,
+ * A1: one per line below 768, side by side from 768 with the platform's own separator, never one opening or ending a line —
+ * the hand-typed "·" stood ~2× the platform's gap apart and could open a line), and from 1024 they end beside the chevron
+ * that opens them (they stood ~900px from it on a 1280 board). The list draws the rules between rows and above the first
+ * (`divide-y`, `border-t`), as the register's index does; the row draws none.
  */
 export function MillioneaResultsView({ t, preview, weeks }: { t: Dict; preview: boolean; weeks: MillioneaWeekSummary[] }) {
   return (
@@ -41,29 +42,8 @@ export function MillioneaResultsView({ t, preview, weeks }: { t: Dict; preview: 
       {weeks.length === 0 ? (
         <EmptyState fill title={t.millionea.regEmpty} />
       ) : (
-        <ul role="list" className="flex flex-col">
-          {weeks.map((w) => {
-            const facts = weekFacts(t, w);
-            return (
-              <li key={w.id} className="border-t border-border">
-                <Link href={registerWeekHref(w.code) as never} className="flex min-w-0 items-center justify-between gap-3 py-3 text-text" style={{ minHeight: "var(--h-control-lg)" }}>
-                  <span className="flex min-w-0 flex-1 flex-col gap-1 lg:flex-row lg:items-center lg:gap-6">
-                    <span className="flex min-w-0 flex-col gap-1 lg:shrink-0">
-                      <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{w.code}</span>
-                      <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <span className="text-body font-semibold text-text">{weekWord(t, weekNumberOf(w.code))}</span>
-                        <WeekStateChip t={t} state={w.state} />
-                      </span>
-                    </span>
-                    <span className="min-w-0 text-body-sm text-text-muted lg:ml-auto" data-testid="millionea-results-facts">
-                      <MaswaliFacts layout="phone" facts={facts} />
-                    </span>
-                  </span>
-                  <I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle" />
-                </Link>
-              </li>
-            );
-          })}
+        <ul role="list" className="flex flex-col divide-y divide-border border-t border-border">
+          {weeks.map((w) => <WeekRow key={w.id} t={t} code={w.code} chip={<WeekStateChip t={t} state={w.state} />} facts={weekFacts(t, w)} />)}
         </ul>
       )}
     </section>

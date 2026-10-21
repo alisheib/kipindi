@@ -26,6 +26,8 @@ const real = {
   access: source("src/app/results/millionea-results-access.ts"),
   view: source("src/app/results/millionea-results-view.tsx"),
   data: source("src/lib/server/maswali-player.ts"),
+  // The row /results draws is the register's one row (S5-DESIGN-REGISTER's `WeekRow`, adopted with no fork, 2026-10-21).
+  parts: source("src/app/millionea/register/register-parts.tsx"),
 };
 type Sources = typeof real;
 const assert = (label: string, passes: boolean): void => {
@@ -48,7 +50,7 @@ const weeks = [
 ];
 
 function sourceChecks(w: Sources) {
-  const p = w.page, s = w.server, a = w.access, v = w.view, d = w.data;
+  const p = w.page, s = w.server, a = w.access, v = w.view, d = w.data, pr = w.parts;
   const sectionAt = p.indexOf("<MillioneaResultsSection />");
   const classicAt = p.indexOf("<ResultsContent state={state} searching={searching} pageNum={pageNum} />");
   return {
@@ -65,18 +67,25 @@ function sourceChecks(w: Sources) {
     contained: /try \{\s*return \{ preview: access\.preview, weeks: await read\(\) \};\s*\} catch \(err\) \{[^}]*return null;\s*\}/.test(a),
     publicFinal: d.includes('weekStore.list({ visibility: "PUBLIC", states: TERMINAL })')
       && d.includes("return (await millioneaRegister({ perPage: limit })).rows;"),
+    // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-DOORS, the lead's instruction): a week's row is the register's one row
+    // (`WeekRow`), handed the week's chip and its facts; the section's own chevron is the register link's alone.
     view: v.includes("{preview && <MillioneaPreviewMark t={t} />}")
       && v.includes("<EmptyState fill title={t.millionea.regEmpty} />")
-      && v.includes("const facts = weekFacts(t, w);")
-      && v.includes("<WeekStateChip t={t} state={w.state} />")
-      && v.includes("registerWeekHref(w.code)")
+      && v.includes("facts={weekFacts(t, w)}")
+      && v.includes("chip={<WeekStateChip t={t} state={w.state} />}")
       && v.includes("href={MILLIONEA_HREF.register}")
       && v.includes("{t.millionea.productTitle}")
       && v.includes("data-testid=\"millionea-results-section\"")
-      && count(v, "<I.chevronRight") === 2,
-    // S5-DESIGN-DOORS L14 L15: the facts are Millionea's one fact line (no hand-typed "·"), at the row's end from 1024.
-    factLine: v.includes('<MaswaliFacts layout="phone" facts={facts} />') && !/>·</.test(v)
-      && v.includes('<span className="min-w-0 text-body-sm text-text-muted lg:ml-auto" data-testid="millionea-results-facts">'),
+      && count(v, "<I.chevronRight") === 1,
+    // S5-DESIGN-DOORS L14 L15, through the one row: /results draws `WeekRow` and no row of its own (no fork — no <li>, no
+    // link of its own, no hand-typed "·"), its list drawing the rules (above the first row and between rows); the row's
+    // facts are Millionea's one fact line, ending at the row's end from 1024 beside the chevron.
+    factLine: v.includes("<WeekRow key={w.id} t={t} code={w.code} chip={<WeekStateChip t={t} state={w.state} />} facts={weekFacts(t, w)} />")
+      && v.includes('<ul role="list" className="flex flex-col divide-y divide-border border-t border-border">')
+      && !/<li\b|registerWeekHref|>·</.test(v)
+      && count(pr, '<MaswaliFacts layout="phone" facts={facts} />') === 1
+      && pr.includes('<span className="min-w-0 text-body-sm text-text-muted lg:ml-auto" data-testid="millionea-week-facts">')
+      && pr.includes('<span className="flex min-w-0 flex-1 flex-col gap-1">'),
   };
 }
 
@@ -171,9 +180,12 @@ if (process.argv.includes("--prove-red")) {
     { name: "drive week reaches results", file: "data", from: 'visibility: "PUBLIC", states: TERMINAL', to: 'visibility: "DRIVE", states: TERMINAL', fails: "publicFinal" },
     { name: "preview mark removed", file: "view", from: "{preview && <MillioneaPreviewMark t={t} />}", to: "", fails: "view" },
     { name: "fake empty result", file: "view", from: "<EmptyState fill title={t.millionea.regEmpty} />", to: "<EmptyState fill title={t.results.noResolvedYet} />", fails: "view" },
-    { name: "week facts removed", file: "view", from: "const facts = weekFacts(t, w);", to: "const facts = [];", fails: "view" },
+    { name: "week facts removed", file: "view", from: "facts={weekFacts(t, w)}", to: "facts={[]}", fails: "view" },
     { name: "section under every filter again", file: "page", from: "{millioneaSectionShown(state, searching, pageNum) && (", to: "{true && (", fails: "mounted" },
-    { name: "hand-rolled separators back", file: "view", from: '<MaswaliFacts layout="phone" facts={facts} />', to: "{facts.map((f, i) => <span key={i}>{i > 0 && <span>·</span>}{f}</span>)}", fails: "factLine" },
+    { name: "hand-rolled separators back", file: "parts", from: '<MaswaliFacts layout="phone" facts={facts} />', to: "{facts.map((f, i) => <span key={i}>{i > 0 && <span>·</span>}{f}</span>)}", fails: "factLine" },
+    { name: "a forked row back", file: "view", from: "<WeekRow key={w.id} t={t} code={w.code} chip={<WeekStateChip t={t} state={w.state} />} facts={weekFacts(t, w)} />", to: "<li key={w.id}><Link href={registerWeekHref(w.code) as never}>{w.code}</Link></li>", fails: "factLine" },
+    { name: "the facts far from the chevron again", file: "parts", from: 'text-text-muted lg:ml-auto" data-testid="millionea-week-facts"', to: 'text-text-muted" data-testid="millionea-week-facts"', fails: "factLine" },
+    { name: "the list's rules dropped", file: "view", from: "divide-y divide-border border-t border-border", to: "", fails: "factLine" },
   ];
   assert("L16 · the section drawn under every filter turns the placement red", placedChecks(() => true).length > 0);
   for (const m of mutations) {

@@ -213,8 +213,9 @@ export async function shootDoors(o) {
         const drawn = (await section.count()) === 1;
         ok(`doors ${tag} · L16 · the section stands on the archive as it opens`, drawn);
         if (drawn) {
+          // The rows are the register's one row (`WeekRow`, adopted 2026-10-21): its facts carry its own testid.
           const geo = await page.evaluate(() => [...document.querySelectorAll('[data-testid="millionea-results-section"] li > a')].map((a) => {
-            const facts = a.querySelector('[data-testid="millionea-results-facts"]')?.getBoundingClientRect();
+            const facts = a.querySelector('[data-testid="millionea-week-facts"]')?.getBoundingClientRect();
             const chev = a.querySelector(":scope > svg")?.getBoundingClientRect();
             return { facts: facts && { x: facts.left, r: facts.right }, chev: chev && { x: chev.left }, h: a.getBoundingClientRect().height };
           }));
