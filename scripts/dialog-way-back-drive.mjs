@@ -207,7 +207,8 @@ for (const [name, launcher] of ENGINES) {
     // WebKit, measured 2026-10-21, mostly keeps the page still even with the plant (1 of 6 cases jumped in one run — the
     // capsule on /markets by the keyboard — and 0 of 6 in the next). So Chromium is held to catching every planted case,
     // and WebKit's planted cases are reported as what that engine does — the fix (`preventScroll`) is held in both by the
-    // checks above. Last run (1ba838d86, 15:52Z): 24 passed, 0 failed; Chromium 6/6 planted cases jumped.
+    // checks above. Last run (4852d7a7c, 16:20Z): 26 passed, 0 failed — the purchase case 1200 -> 0 under the stamp -> 0
+    // after it, in both engines; Chromium 6/6 planted cases jumped, WebKit 1/6.
     const red = await runEngine(name, launcher, true);
     let jumpedHere = 0;
     for (const r of red ?? []) {
