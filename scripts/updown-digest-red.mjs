@@ -16,6 +16,11 @@
  *   · wrong-tz        — the digest binned by UTC days instead of East Africa days.
  *   · dead-link       — the page ignoring the `?day=` the digest sends it.
  *
+ * Added 2026-10-21 (U43 Release B queued settlement's notices after the commit), each a shape §5's old 400-character
+ * look-back could not see or a premise of the queued form:
+ *   · refund-moved-into-the-else · win-gate-weakened — a round notice outside its gate's if-block;
+ *   · orphan-queue-never-run — the one exempt notice queued and never run.
+ *
  *   node scripts/updown-digest-red.mjs
  */
 import { readFileSync, writeFileSync } from "node:fs";
@@ -44,12 +49,53 @@ const MUTATIONS = [
     // ⚠️ RE-ANCHORED 2026-10-14 (the Vodacom plan's S12 WP12): the title goes through `messageTitles` now — the switch
     // that carries the approved short title from the S15 flip. The mutation is unchanged: the refund comes out from
     // behind the gate.
+    // ⚠️ RE-ANCHORED 2026-10-21 (U43 Release B, c29cb7526): the refund notice is QUEUED after the commit now
+    // (`queueSettlementEffect(() => { void notifyRefund(…); })`). The mutation is unchanged: it comes out from behind the gate.
     from: `      if (!perEventNotificationsSuppressed(m)) {
-        notifyRefund(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, positionId: p.id });
+        queueSettlementEffect(() => { void notifyRefund(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, positionId: p.id }); });
       } else {`,
-    to: `      notifyRefund(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, positionId: p.id });
+    to: `      queueSettlementEffect(() => { void notifyRefund(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, positionId: p.id }); });
       if (false) {
       } else {`,
+    expect: "notifyRefund: every round call site is gated",
+  },
+  {
+    // ⭐ ADDED 2026-10-21 (U43 Release B). The refund moves INTO the gate's else branch — the branch the digest takes — so
+    // it is sent for every Up & Down round, beside the round's own announcement. The gate's text stays a line above the
+    // call, so §5's old 400-character look-back still saw it and passed; only the structural block test (the call must
+    // lie INSIDE the gate's if-block) reports it.
+    name: "refund-moved-into-the-else (the look-back alone passes it)",
+    file: "src/lib/server/market-service.ts",
+    from: `      if (!perEventNotificationsSuppressed(m)) {
+        queueSettlementEffect(() => { void notifyRefund(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, positionId: p.id }); });
+      } else {`,
+    to: `      if (!perEventNotificationsSuppressed(m)) {
+      } else {
+        queueSettlementEffect(() => { void notifyRefund(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, positionId: p.id }); });`,
+    expect: "notifyRefund: every round call site is gated",
+  },
+  {
+    // ⭐ ADDED 2026-10-21 (U43 Release B). The win's gate is weakened so it always opens — every Up & Down win gets the
+    // long-form receipt the digest exists to replace. The predicate's NAME is still in the line above the call, so the
+    // look-back alone passed it; it is no longer the gate.
+    name: "win-gate-weakened (true || …, the look-back alone passes it)",
+    file: "src/lib/server/market-service.ts",
+    from: `        if (!perEventNotificationsSuppressed(m)) {
+          // E-101 · the bell entry opens THIS ticket.`,
+    to: `        if (true || !perEventNotificationsSuppressed(m)) {
+          // E-101 · the bell entry opens THIS ticket.`,
+    expect: "notifyWin: every round call site is gated",
+  },
+  {
+    // ⭐ ADDED 2026-10-21 (U43 Release B). The orphan repair queues its refund notice after the commit; if its caller never
+    // runs that queue, the exempt notice is never sent — the exemption names a call that cannot run.
+    name: "orphan-queue-never-run",
+    file: "src/lib/server/market-service.ts",
+    from: `    for (const effect of result.effects) {
+      try { effect(); } catch { /* committed refund remains final */ }`,
+    to: `    for (const effect of [] as typeof result.effects) {
+      try { effect(); } catch { /* committed refund remains final */ }`,
+    expect: "the one exempt notifyRefund is the orphan repair, not a round",
   },
   {
     name: "no-idempotence (a digest every 15 minutes, forever)",
@@ -106,12 +152,9 @@ const MUTATIONS = [
     // is the page handing the parser a validator that lets `lol` through, after which
     // `state.day` IS the raw param and drives the filter, the chip and the empty state.
     //
-    // ⛔ AS OF 2026-10-08 THIS CASE CANNOT BE PROVEN: §7's assertion for it is stale. It still
-    // pattern-matches the deleted `const dayKey = dayWindow ? rawDay : null`, so it fails on the
-    // UNTOUCHED tree and fails identically with this plant — the suite cannot tell the defect
-    // from the fix. The runner below scores every case as a DELTA against the baseline and so
-    // reports this one as MISSED until that assertion is re-anchored to today's page (it should
-    // then fail on this plant, by the label named in `expect`). Delete this paragraph when it does.
+    // ✅ PROVEN AGAIN 2026-10-21 (U43 helper lane u43-ha): §7's assertion reads today's page, the baseline is green, and
+    // this plant fails exactly its own label ("one validated day drives the filter, the chip AND the empty state").
+    // The 2026-10-08 paragraph that said this case could not be proven asked to be deleted once it could; it was.
     name: "raw-param-filter (?day=lol empties the page with no way out)",
     file: "src/app/updown/history/page.tsx",
     from: `  const state = parseUdParams(sp, assetIds, durIds, (d) => !!d && !!eatDayWindow(d));`,
