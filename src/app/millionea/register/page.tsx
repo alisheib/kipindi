@@ -17,23 +17,18 @@
  * ⛔ THE GATE FIRST (MR-2): public means every reader the rollout admits, not a hidden product's page.
  * ⛔ Never a drive week, never a week whose results can still change (`millioneaRegister`). An unearned surface: no gold.
  */
-import { Fragment } from "react";
 import type { Metadata } from "next";
 import { generateMetadata as notFoundMetadata } from "@/app/not-found";
 import { millioneaDoor } from "@/lib/server/millionea-doors";
-import Link from "next/link";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
-import { I } from "@/components/ui/glyphs";
-import { weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
 import { millioneaGate } from "@/lib/server/millionea-gate";
-import { millioneaRegister, type MillioneaWeekSummary } from "@/lib/server/maswali-player";
+import { millioneaRegister } from "@/lib/server/maswali-player";
 import { getServerT } from "@/lib/i18n-server";
-import type { Dict } from "@/lib/i18n-dict";
-import { MILLIONEA_HREF, MillioneaPreviewMark, MillioneaReadingLinks, registerWeekHref } from "../millionea-parts";
-import { WeekStateChip, weekFacts } from "./register-parts";
+import { MILLIONEA_HREF, MillioneaPreviewMark, MillioneaReadingLinks } from "../millionea-parts";
+import { WeekRow, WeekStateChip, weekFacts } from "./register-parts";
 
 export const dynamic = "force-dynamic";
 
@@ -43,35 +38,6 @@ export async function generateMetadata(): Promise<Metadata> {
   if (!(await millioneaDoor()).visible) return notFoundMetadata();
   const { t } = await getServerT();
   return { title: `${t.millionea.registerTitle} · ${t.millionea.productLabel}` };
-}
-
-/** One week's row: its code, its week and state chip, its facts, and the chevron of a door. */
-function WeekRow({ t, w }: { t: Dict; w: MillioneaWeekSummary }) {
-  const facts = weekFacts(t, w);
-  return (
-    <li className="border-b border-border">
-      <Link href={registerWeekHref(w.code) as never} className="flex items-center justify-between gap-3 py-3 text-text" style={{ minHeight: "var(--h-control-lg)" }}>
-        <span className="flex min-w-0 flex-col gap-1">
-          <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{w.code}</span>
-          <span className="flex flex-col gap-1 md:flex-row md:items-center md:gap-6">
-            <span className="flex flex-wrap items-center gap-x-2 gap-y-1 md:w-[200px] md:shrink-0">
-              <span className="text-body font-semibold text-text">{weekWord(t, weekNumberOf(w.code))}</span>
-              <WeekStateChip t={t} state={w.state} />
-            </span>
-            <span className="flex min-w-0 flex-col gap-0.5 text-body-sm text-text-muted md:flex-row md:flex-wrap md:items-baseline md:gap-x-2" data-testid="millionea-week-facts">
-              {facts.map((f, i) => (
-                <Fragment key={i}>
-                  {i > 0 && <span aria-hidden className="hidden text-text-subtle md:inline">·</span>}
-                  <span>{f}</span>
-                </Fragment>
-              ))}
-            </span>
-          </span>
-        </span>
-        <I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle" />
-      </Link>
-    </li>
-  );
 }
 
 export default async function MillioneaRegisterPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
@@ -90,8 +56,9 @@ export default async function MillioneaRegisterPage({ searchParams }: { searchPa
         {total === 0 ? (
           <EmptyState title={t.millionea.regEmpty} />
         ) : (
-          <ul role="list" className="flex flex-col">
-            {weeks.map((w) => <WeekRow key={w.id} t={t} w={w} />)}
+          // The shared row (L3); the list divides its rows and draws its own top edge — the row draws no rule.
+          <ul role="list" className="flex flex-col divide-y divide-border border-t border-border">
+            {weeks.map((w) => <WeekRow key={w.id} t={t} code={w.code} chip={<WeekStateChip t={t} state={w.state} />} facts={weekFacts(t, w)} />)}
           </ul>
         )}
         {total > PLAYER_PER_PAGE && (

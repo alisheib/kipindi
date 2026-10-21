@@ -281,20 +281,24 @@ const FACTS: Record<(typeof LOCALES)[number], Record<keyof typeof WEEKS, string[
   zh: { pending: ["退款处理中"], landed: ["每张彩票已退款"], wonOne: ["1 张彩票中奖", "大奖 TZS 1,013,000"],
     wonMany: ["3 张彩票中奖", "大奖 TZS 1,050,000"], rolled: ["无 10/10", "TZS 412,000 滚存至下周", "费用 0"] },
 };
-check("7.1", "R9 · every index row is one pattern — the week, its state as the week page's chip, then `weekFacts` — never \"Week 48 · Voided\" beside \"Week 45: 1 ticket won\"", (w) => {
-  const s = code(w, "index");
-  const row = s.includes('<span className="text-body font-semibold text-text">{weekWord(t, weekNumberOf(w.code))}</span> <WeekStateChip t={t} state={w.state} />')
-    && s.includes("const facts = weekFacts(t, w);");
-  const old = /settledWon|regStrataRow|WEEK_STATE_KEY|millioneaWord/.test(s);
-  return [row && !old, j({ row, old })];
+// ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER, the critic's L3, and the DOORS lane's four gaps): ONE row for the
+// register's index and /results' section — `WeekRow` in register-parts — whose facts are a fact list (`MaswaliFacts`,
+// `phone`: one per line below 768, the platform's separators from 768, never opening or ending a line), whose facts end
+// at the row's end from 1024, and which draws no rule of its own (the list divides its rows).
+check("7.1", "R9 · L3 · every index row is the ONE shared row — the week, its state as the week page's chip, then `weekFacts` — never \"Week 48 · Voided\" beside \"Week 45: 1 ticket won\", and never a row drawn twice", (w) => {
+  const s = code(w, "index"), p = code(w, "parts");
+  const use = s.includes("<WeekRow key={w.id} t={t} code={w.code} chip={<WeekStateChip t={t} state={w.state} />} facts={weekFacts(t, w)} />");
+  const row = p.includes('<span className="text-body font-semibold text-text">{weekWord(t, weekNumberOf(code))}</span> {chip}');
+  const old = /settledWon|regStrataRow|WEEK_STATE_KEY|millioneaWord|function WeekRow/.test(s);
+  return [use && row && !old, j({ use, row, old })];
 });
-check("7.2", "R9 · A1 · the facts share one line only from 768, their \"·\" drawn there alone; below 768 each fact is its own line, with no separator", (w) => {
-  const s = code(w, "index");
-  const stack = s.includes('<span className="flex min-w-0 flex-col gap-0.5 text-body-sm text-text-muted md:flex-row md:flex-wrap md:items-baseline md:gap-x-2" data-testid="millionea-week-facts">');
-  const sep = s.includes('{i > 0 && <span aria-hidden className="hidden text-text-subtle md:inline">·</span>}');
-  const row = s.slice(s.indexOf("function WeekRow("), s.indexOf("export default async function"));
-  const others = count(row, "·") - count(row, '<span aria-hidden className="hidden text-text-subtle md:inline">·</span>');
-  return [stack && sep && others === 0, j({ stack, sep, others })];
+check("7.2", "R9 · A1 · the facts are a fact list — one per line below 768, side by side from 768 between separators that never open or end a line (`MaswaliFacts`, `phone`) — ending at the row's end from 1024; the row draws no \"·\" and no rule of its own (the list divides its rows)", (w) => {
+  const p = code(w, "parts"), s = code(w, "index");
+  const facts = p.includes('<span className="min-w-0 text-body-sm text-text-muted lg:ml-auto" data-testid="millionea-week-facts"> <MaswaliFacts layout="phone" facts={facts} /> </span>');
+  const row = p.slice(p.indexOf("export function WeekRow("), p.indexOf("/** An instant the register prints"));
+  const hand = count(row, "·") > 0 || /<li className=/.test(row);
+  const list = s.includes('<ul role="list" className="flex flex-col divide-y divide-border border-t border-border">');
+  return [facts && !hand && list, j({ facts, hand, list })];
 });
 check("7.3", "R9 · each week's facts, rendered in three languages: refunds on their way until every refund landed, then every ticket refunded; winners and the jackpot; a rolled week's carry and fee 0", (w) => {
   const off: string[] = [];
@@ -624,8 +628,11 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["R6 undone — \"This week's questions\" on a past week", "6.2", plantSrc("week", "const heading = fill(t.millionea.regWeekQuestions, { week: weekNumberOf(w.code) });", "const heading = t.millionea.weekQuestions;")],
   ["R6 — zh says 本周 again", "6.3", plantWord("zh", "regWeekQuestions", "本周题目")],
   // §7
-  ["R9 undone — the old two-grammar row line", "7.1", plantSrc("index", "const facts = weekFacts(t, w);", "const facts = [counted(1, t.millionea.settledWonOne, t.millionea.settledWon, { week: 45 })];")],
-  ["R9 — the separators drawn at every width (a phone line can open on \"·\")", "7.2", plantSrc("index", '{i > 0 && <span aria-hidden className="hidden text-text-subtle md:inline">·</span>}', '{i > 0 && <span aria-hidden className="text-text-subtle">·</span>}')],
+  ["R9 undone — the old two-grammar row line", "7.1", plantSrc("index", "facts={weekFacts(t, w)}", "facts={[counted(1, t.millionea.settledWonOne, t.millionea.settledWon, { week: 45 })]}")],
+  ["L3 undone — the index draws its own row again", "7.1", plantSrc("index", "export default async function", "function WeekRow() { return null; }\nexport default async function")],
+  ["R9 — the facts side by side at every width (a phone line can open on \"·\")", "7.2", plantSrc("parts", '<MaswaliFacts layout="phone" facts={facts} />', '<MaswaliFacts facts={facts} />')],
+  ["the facts back after the week's column, far from the chevron", "7.2", plantSrc("parts", 'className="min-w-0 text-body-sm text-text-muted lg:ml-auto"', 'className="min-w-0 text-body-sm text-text-muted"')],
+  ["the row drawing its own rule again", "7.2", plantSrc("parts", "<li>\n      <Link href={registerWeekHref(code) as never}", '<li className="border-b border-border">\n      <Link href={registerWeekHref(code) as never}')],
   ["R9 — a voided week says \"every ticket refunded\" before the refunds landed", "7.3", { ...REAL, weekFacts: (t, w) => (w.state === "VOIDED" ? [t.millionea.regRefunded] : weekFacts(t, w)) }],
   ["R9 — the carry's amount free to break", "7.4", { ...REAL, weekFacts: (t, w) => (w.state === "SETTLED" && (w.winners ?? 0) === 0 ? [...fill(t.millionea.settledRollover, { amount: "TZS 412,000" }).split(" · "), t.millionea.feeZero] : weekFacts(t, w)) }],
   ["L1 undone — a week nobody won says its carry without \"no 10/10\"", "7.3", { ...REAL, weekFacts: (t, w) => (w.state === "SETTLED" && (w.winners ?? 0) === 0 ? weekFacts(t, w).slice(1) : weekFacts(t, w)) }],

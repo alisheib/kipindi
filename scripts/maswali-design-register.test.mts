@@ -111,7 +111,7 @@ type Box = { left: number; top: number; width: number; height: number };
 const L = {
   row: req(`../${FILES.row}`) as { ReceiptRow: Row },
   ledger: req(`../${FILES.ledger}`) as { millioneaLedgerRows: LedgerFn; MaswaliLedger: Row },
-  parts: req(`../${FILES.parts}`) as { WeekStateChip: Row; weekChipKey: (s: string, p: unknown, paused?: boolean) => string; weekChipWord: (t: unknown, s: string, p: unknown, paused?: boolean) => string },
+  parts: req(`../${FILES.parts}`) as { WeekStateChip: Row; WeekRow: Row; weekChipKey: (s: string, p: unknown, paused?: boolean) => string; weekChipWord: (t: unknown, s: string, p: unknown, paused?: boolean) => string },
   carry: req(`../${FILES.carry}`) as { carryGeometry: Geometry },
   seal: req(`../${FILES.seal}`) as { MaswaliSealLine: Row; sealLineOf: (q: unknown[], picks: unknown, o?: unknown) => unknown },
   tone: req(`../${FILES.tone}`) as { STATUS_TONE: Record<string, Record<string, string>>; STATUS_TONE_EXCEPTIONS: Record<string, string>; TONE_CHIP: Record<string, string>; playerStatusChip: (w: string) => string | null },
@@ -131,6 +131,7 @@ type World = {
   ledger: LedgerFn;
   Ledger: Row;
   Chip: Row;
+  WeekRow: Row;
   chipKey: (s: string, p: unknown, paused?: boolean) => string;
   geometry: Geometry;
   Seal: Row;
@@ -143,6 +144,7 @@ const REAL: World = {
   ledger: L.ledger.millioneaLedgerRows,
   Ledger: L.ledger.MaswaliLedger,
   Chip: L.parts.WeekStateChip,
+  WeekRow: L.parts.WeekRow,
   chipKey: L.parts.weekChipKey,
   geometry: L.carry.carryGeometry,
   Seal: L.seal.MaswaliSealLine,
@@ -422,6 +424,16 @@ check("3.4", "the `/results` section's call (a final week's state alone) renders
   return [beforePartsBlob === BEFORE_PARTS_BLOB && off.length === 0, j({ blob: beforePartsBlob, off })];
 });
 
+check("3.5", "ONE WEEK ROW (L3, /results adopts it): rendered, its facts are a fact list (`kp-mln-facts--phone`: one per line below 768, the platform's separators from 768) that ends at the row's end from 1024 (`lg:ml-auto`, the content `flex-1`, the week's column `shrink-0`), under the testid /results reads; the row draws no rule and no \"·\" of its own — the list divides its rows", (w) => {
+  const m = inApp("sw", h(w.WeekRow as never, { t: dict.sw, code: "MLN-2026-W48", chip: h(w.Chip as never, { t: dict.sw, state: "VOIDED" } as never), facts: ["Kila tiketi imerejeshwa", "ada 0"] } as never));
+  const li = /^<li>/.test(m);
+  const facts = m.includes('<span class="min-w-0 text-body-sm text-text-muted lg:ml-auto" data-testid="millionea-week-facts"><span class="kp-mln-facts kp-mln-facts--phone">');
+  const content = m.includes('<span class="flex min-w-0 flex-1 flex-col gap-1">') && m.includes('<span class="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 md:w-[200px]">');
+  const handDots = (m.replace(/<span class="sr-only"> · <\/span>/g, "").match(/·/g) ?? []).length;
+  const link = /<a [^>]*href="\/millionea\/register\/MLN-2026-W48"/.test(m) && m.includes("min-height:var(--h-control-lg)");
+  return [li && facts && content && handDots === 0 && link, j({ li, facts, content, handDots, link })];
+});
+
 // ── §4 · the carry ────────────────────────────────────────────────────────────────────────────────────────────────────
 const VIEW = { width: 360, height: 780 };
 check("4.1", "THE TOKEN AT ITS TRUE SCALE: the carry's scale is the ratio of the two boxes' HEIGHTS — the annex glyph's 18px into a main's 24px is 0.75, whatever stands beside the glyph (\"↪4\" is 26px wide) — and its offset is centre to centre", (w) => {
@@ -530,8 +542,8 @@ const plantSeal = (from: string, to: string): World | null => {
 const plantParts = (from: string, to: string): World | null => {
   const s = planted("parts", from, to);
   if (s === null) return null;
-  const mod = compileAt(FILES.parts, s) as { WeekStateChip: Row; weekChipKey: World["chipKey"] };
-  return { ...REAL, Chip: mod.WeekStateChip, chipKey: mod.weekChipKey };
+  const mod = compileAt(FILES.parts, s) as { WeekStateChip: Row; WeekRow: Row; weekChipKey: World["chipKey"] };
+  return { ...REAL, Chip: mod.WeekStateChip, WeekRow: mod.WeekRow, chipKey: mod.weekChipKey };
 };
 const PLANTS: Array<[string, string, World | null]> = [
   // §1
@@ -568,6 +580,9 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["the exception row dropped (a divergence unwritten)", "3.3", plantSrc("tone", 'MILLIONEA_WEEK_SETTLED: "Slate on', 'MILLIONEA_WEEK_SETTLED_OLD: "Slate on')],
   ["a moved baseline (the parity proves nothing)", "1.0", { ...REAL, beforeBlob: "0000000000000000000000000000000000000000" }],
   ["the /results chip's markup changed (a fork)", "3.4", plantParts('className="shrink-0 self-start" data-testid="millionea-week-state"', 'className="shrink-0" data-testid="millionea-week-state"')],
+  ["the row's facts hand-joined with \"·\" again", "3.5", plantParts('<MaswaliFacts layout="phone" facts={facts} />', '{facts.map((f, i) => <span key={i}>{i > 0 ? " · " : ""}{f}</span>)}')],
+  ["the row's facts left after the week's column (far from the chevron)", "3.5", plantParts("text-body-sm text-text-muted lg:ml-auto", "text-body-sm text-text-muted")],
+  ["the row drawing its own rule", "3.5", plantParts("<li>\n      <Link href={registerWeekHref(code) as never}", '<li className="border-t border-border">\n      <Link href={registerWeekHref(code) as never}')],
   // §4
   ["the scale measured by width again (the token twice its size)", "4.1", { ...REAL, geometry: (o, d, v) => { const g = L.carry.carryGeometry(o, d, v); return g && { ...g, s: o.width / d.width }; } }],
   ["a carry that plays with an end off screen (H6)", "4.2", { ...REAL, geometry: (o, d) => ({ dx: o.left - d.left, dy: o.top - d.top, s: o.height / d.height }) }],
