@@ -107,6 +107,8 @@ export function millioneaTracesIn(html) {
   for (const m of s.matchAll(id)) found.push(`testid:${m[1]}`);
   const href = new RegExp(`href(?:=|${BS}${BS}?":)${BS}${BS}?"(/millionea(?:[/?#][^"${BS}${BS}]*)?)${BS}${BS}?"`, "g");
   for (const m of s.matchAll(href)) found.push(`href:${m[1]}`);
+  const prop = new RegExp(`${BS}${BS}?"millionea${BS}${BS}?":`, "g");
+  for (const m of s.matchAll(prop)) found.push(`prop:${m[0].replace(/[^a-z:"]/g, "")}`);
   return [...new Set(found)];
 }
 
@@ -119,8 +121,10 @@ export function millioneaTracesControl() {
   want("element link", `<a href="/millionea">`, 1);
   want("link with a path", `<a href="/millionea/tickets#t1">`, 1);
   want("RSC link, escaped", `[${BS}"$${BS}",${BS}"a${BS}",null,{${BS}"href${BS}":${BS}"/millionea${BS}"}]`, 1);
+  want("RSC prop, escaped in a document", `self.__next_f.push([1,"{${BS}"invitePaid${BS}":false,${BS}"millionea${BS}":false}"])`, 1);
+  want("prop in a flight", `{"inviteVisible":false,"millionea":false}`, 1);
   want("a page with none", `<p>Maswali Millionea is coming.</p><a href="/markets">Markets</a>`, 0);
-  want("look-alikes", `<a href="/millioneas"><div data-testid="millioneax">`, 0);
+  want("look-alikes", `<a href="/millioneas"><div data-testid="millioneax"><span>"millioneas":1</span>`, 0);
   return problems;
 }
 
@@ -145,7 +149,7 @@ export async function millioneaDarkSection({ base, ok, log = console.log }) {
     err ? `(GET /api/health failed: ${err})` : `(HTTP ${status}; millionea = ${JSON.stringify(ml ?? null)})`);
 
   const problems = millioneaTracesControl();
-  ok(`control · the Millionea trace matcher catches test ids and links (element and RSC payload) and passes look-alikes`,
+  ok(`control · the Millionea trace matcher catches test ids, links and the prop (element and RSC payload) and passes look-alikes`,
     problems.length === 0, problems.slice(0, 2).join(" | "));
 
   const state = agrees ? ml.state : null;
@@ -191,7 +195,7 @@ export async function millioneaDarkSection({ base, ok, log = console.log }) {
       html = await r.text();
     } catch (e) { why = String(e?.message ?? e); }
     const traces = millioneaTracesIn(html);
-    ok(`${page} carries no Millionea entry for a signed-out visitor while Millionea is ${state ?? "unreadable"}`,
+    ok(`${page} carries no Millionea entry, and no Millionea prop in its payload, for a signed-out visitor while Millionea is ${state ?? "unreadable"}`,
       code === 200 && traces.length === 0, why ? `(fetch failed: ${why})` : `(HTTP ${code}; traces ${traces.join(", ") || "none"})`);
   }
   return state;

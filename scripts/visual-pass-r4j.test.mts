@@ -107,9 +107,10 @@ function bareChrome(shell: string): { ok: boolean; why: string } {
   const headerBoxed = shell.replace(/\{journeyShown \? <LazyJourneyTopBar ([^\n]*?) \/> : <TopAppBar/,
     '{journeyShown ? <Suspense fallback={<div aria-hidden="true" className="kp-jhdr" />}><LazyJourneyTopBar $1 /></Suspense> : <TopAppBar');
   ok("1.1′ PLANT · the header back in its boundary over the bar's empty box is reported", headerBoxed !== shell && !bareChrome(headerBoxed).ok);
-  // RE-ANCHORED, MASWALI-BUILD S5-TAB (2026-10-19): the rail's arm takes `millionea={millioneaRow}` (its fifth tab).
-  const tabsBoxed = shell.replace("{journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} millionea={millioneaRow} /> :",
-    "{journeyShown ? <Suspense fallback={null}><LazyJourneyTabs userId={session?.userId ?? null} millionea={millioneaRow} /></Suspense> :");
+  // RE-ANCHORED, MASWALI-BUILD S5-TAB (2026-10-19): the rail's arm takes the Millionea answer (its fifth tab) — spread as
+  // `{...millioneaProp}` since S5-FIX-PLATFORM D3 (2026-10-21), handed only while it is true.
+  const tabsBoxed = shell.replace("{journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} {...millioneaProp} /> :",
+    "{journeyShown ? <Suspense fallback={null}><LazyJourneyTabs userId={session?.userId ?? null} {...millioneaProp} /></Suspense> :");
   ok("1.1″ PLANT · the tabs back in theirs is reported", tabsBoxed !== shell && !bareChrome(tabsBoxed).ok);
 }
 

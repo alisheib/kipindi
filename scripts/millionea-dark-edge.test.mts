@@ -11,6 +11,7 @@
  *   §3 D4 · the share image is a Millionea address
  *   §4 D5 · the ticket entitlement is loaded late and never throws: a failed read is private absence before admission
  *      and the page's own error path after it (B-1); the real proxy runs the late load for a signed request
+ *   §5 D3 · the shell hands the navs `millionea` only while it is true
  * Every section carries its PLANT: the check run on a copy with the fix undone, seen to fail.
  * The HTTP proof — `next start`, a dark address beside its unknown twin, status, header set and body — is qa:live's
  * dark section (`scripts/live/millionea-dark.mjs`) and the lane's probe, reported with the commit.
@@ -246,6 +247,31 @@ const ENT = "src/lib/server/millionea-edge-entitlement.ts";
   const signed = await Promise.all(["/millionea/tickets", "/millionea/tickets/MLN-2026-W42-000017"].map((p) => ask(p, { cookie: `kp_session=${cookie}` })));
   ok("4.3 · the real proxy, signed in with no registry row, at both tickets addresses: the entitlement loads late, answers no, and the request is marked dark — no throw",
     signed.every((a) => a.status === 200 && marked(a)), j(signed.map((a) => [a.status, marked(a)])));
+}
+
+/* ══ §5 · D3 · THE SHELL'S PROP, ONLY WHEN TRUE ══════════════════════════════════════════════════════════════════════ */
+section("5 · D3 · the shell hands the four navs `millionea` only while it is true, so a classic page's payload carries none");
+const shellDefects = (shellSrc: string, navs: Record<string, string>) => {
+  const s = squash(decomment(shellSrc));
+  const d: string[] = [];
+  if (!s.includes("const millioneaProp: { millionea?: true } = millioneaRow ? { millionea: true } : {};")) d.push("no prop object that is empty while Millionea is hidden");
+  if (count(s, "{...millioneaProp}") !== 4) d.push(`the prop object reaches ${count(s, "{...millioneaProp}")} navs, not the four`);
+  if (/millionea=\{/.test(s)) d.push("a nav is still handed millionea={…}: false is written into every payload");
+  for (const [file, sig] of Object.entries(navs)) if (!squash(decomment(raw(file))).includes(sig)) d.push(`${file} does not default the prop to false`);
+  return d;
+};
+{
+  const NAVS = {
+    "src/components/layout/top-app-bar.tsx": "invitePaid = false, millionea = false }",
+    "src/components/layout/bottom-nav.tsx": "walletHeld = false, millionea = false }",
+    "src/components/journey/journey-tabs.tsx": "export function JourneyTabs({ userId, millionea = false }",
+    "src/components/journey/journey-top-bar.tsx": "millionea = false,",
+  };
+  const SHELL = "src/components/layout/app-shell.tsx";
+  const d = shellDefects(raw(SHELL), NAVS);
+  ok("5.1 · `millioneaProp` is `{}` while Millionea is hidden and is spread into exactly the four navs, each of which defaults the prop to false", d.length === 0, d.join(" | "));
+  const s5 = raw(SHELL).split("{...millioneaProp}").join("millionea={millioneaRow}");
+  ok("5.1′ PLANT · the S5 shell (`millionea={millioneaRow}` on each nav) is reported", shellDefects(s5, NAVS).some((x) => x.includes("still handed")));
 }
 
 console.log(`\nmillionea-dark-edge: ${pass} passed, ${fails.length} failed`);

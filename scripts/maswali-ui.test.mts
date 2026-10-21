@@ -454,7 +454,9 @@ const doorDefects = (src: (rel: string) => string) => {
   const items = rail.slice(rail.indexOf("const items = ["), rail.indexOf("];", rail.indexOf("const items = [")));
   if (items.includes("/millionea")) d.push("⛔ Millionea took a rail slot");
   if (count(shell, "const millioneaRow = !promoSuppressed && (await resolveMillionea()).visible;") !== 1) d.push("the shell does not answer the row from the rollout and the break, once");
-  if (count(shell, "millionea={millioneaRow}") !== 4 || !/<LazyJourneyTopBar [^>]*millionea=\{millioneaRow\}/.test(shell) || !/<LazyJourneyTabs [^>]*millionea=\{millioneaRow\}/.test(shell)) d.push("the shell's one answer is not handed to all four navs (both bars, both rails)");
+  // S5-FIX-PLATFORM D3: the answer is spread, the prop handed only while it is true (`{}` otherwise: no "millionea":false).
+  if (count(shell, "{...millioneaProp}") !== 4 || !shell.includes("const millioneaProp: { millionea?: true } = millioneaRow ? { millionea: true } : {};")
+    || ["LazyJourneyTopBar", "TopAppBar", "LazyJourneyTabs", "BottomNav"].some((nav) => !new RegExp(`<${nav} [^>]*\\{\\.\\.\\.millioneaProp\\}`).test(shell))) d.push("the shell's one answer is not handed to all four navs (both bars, both rails)");
   const card = squash(code(src("src/components/maswali/maswali-home-card-door.tsx")));
   const steps = ["if (!door.visible) return null;", "if (onBreak) return null;", "if (!hub) return null;", "if (!model) return null;", 'data-testid="millionea-home-card"'].map((x) => card.indexOf(x));
   if (steps.some((n, i) => n < 0 || (i > 0 && n < steps[i - 1]))) d.push(`the card's door: hidden, on a break, unread or unmodelled must draw nothing, in that order: ${j(steps)}`);
