@@ -29,10 +29,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { isStaffRole } from "@/lib/server/roles";
 import { PROD_HEADERS, SECURITY_HEADERS } from "@/lib/security-headers";
 // Pure and isomorphic (the rollout's own pure module and nothing else): Millionea's dark addresses answer a real 404 here.
-import { MILLIONEA_DARK_PATH, millioneaDarkAtEdge, millioneaEdgeAsks } from "@/lib/millionea-edge";
+import { millioneaDarkAtEdge, millioneaEdgeAsks } from "@/lib/millionea-edge";
 import { isMillioneaTicketsPath } from "@/lib/millionea-edge";
-import { millioneaTicketEntitledAtEdge } from "@/lib/server/millionea-edge-entitlement";
-import { readVerifiedSession } from "@/lib/proxy-session";
+// How such an address answers — unrouted, through next.config's one rewrite, with no rewrite header of its own.
+import { UNROUTED_HEADER } from "@/lib/unrouted";
+import { readVerifiedSession, type VerifiedProxySession } from "@/lib/proxy-session";
 
 // Must match COOKIE_NAME in src/lib/server/session.ts
 const SESSION_COOKIE = "kp_session";
@@ -225,27 +226,44 @@ export async function proxy(req: NextRequest) {
     "x-kp-document",
     req.headers.get("sec-fetch-mode") === "navigate" && !req.headers.has("next-action") ? "1" : "0",
   );
+  // ⛔ THE UNROUTED MARK IS THIS PROXY'S ALONE (`lib/unrouted.ts`): a client's own copy is dropped from every request here,
+  // so only the belt below can send a request to the not-found answer.
+  requestHeaders.delete(UNROUTED_HEADER);
   // MASWALI-BUILD S5 · MILLIONEA'S DARK ADDRESSES ANSWER A REAL 404 (`lib/millionea-edge.ts`). The root loading file streams
-  // a page's `notFound()` under a 200, so while the CEILING hides an address from this request it is rewritten here to a
-  // private segment no route answers, under the headers set above: the router's own 404, status and document as any
-  // unknown address gets. The cookie is read only for a Millionea address below ACTIVE; whatever passes still meets the
-  // page's own gate (the stored switch, the stored role, and — on the tickets, L5 — whether this account holds one).
+  // a page's `notFound()` under a 200, so while the CEILING hides an address from this request the request is marked
+  // UNROUTED here, and next.config's one rewrite answers it where no route stands: the router's own 404 — status, headers
+  // and document — as any unknown address gets, and no rewrite header of its own (S5-FIX-PLATFORM D1; a proxy rewrite put
+  // its target, which named the product, into every such response). The cookie is read only for a Millionea address below
+  // ACTIVE, the tickets' ownership (L5) only for a signed-in request at one (`ticketHolderAtEdge`); whatever passes still
+  // meets the page's own gate (the stored switch, the stored role, and — on the tickets — whether this account holds one).
   if (millioneaEdgeAsks(pathname)) {
     const session = await readVerifiedSession(cookie);
-    const holder = isMillioneaTicketsPath(pathname)
-      ? await millioneaTicketEntitledAtEdge(pathname, session)
-      : false;
+    const holder = session !== null && isMillioneaTicketsPath(pathname) ? await ticketHolderAtEdge(pathname, session) : false;
     if (millioneaDarkAtEdge(pathname, { signedIn: session !== null, staff: !!session && isStaffRole(session.role), holder })) {
-      const url = req.nextUrl.clone();
-      url.pathname = MILLIONEA_DARK_PATH;
-      url.search = "";
-      return withSecurityHeaders(NextResponse.rewrite(url, { request: { headers: requestHeaders } }), secure);
+      requestHeaders.set(UNROUTED_HEADER, "1");
     }
   }
   return withSecurityHeaders(
     NextResponse.next({ request: { headers: requestHeaders } }),
     secure,
   );
+}
+
+/**
+ * L5 AT THE EDGE — may this signed-in request reach the ticket list, or this ticket, while the product is hidden?
+ * ⭐ LOADED HERE AND NOWHERE ELSE (S5-FIX-PLATFORM D5): the entitlement module brings the store, the session registry and
+ *    the database client with it, so it loads on the first signed-in request to a dark ticket address, not with the proxy
+ *    — a module that cannot load then costs that request, never every request the proxy answers.
+ * ⛔ NEVER A 500: a module that fails to load, or anything it throws, is private absence (the dark answer), as the page's
+ *    own admission treats a failed holding read (`millioneaTicketAdmission`).
+ */
+async function ticketHolderAtEdge(pathname: string, session: VerifiedProxySession): Promise<boolean> {
+  try {
+    const { millioneaTicketEntitledAtEdge } = await import("@/lib/server/millionea-edge-entitlement");
+    return await millioneaTicketEntitledAtEdge(pathname, session);
+  } catch {
+    return false;
+  }
 }
 
 export const config = {
