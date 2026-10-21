@@ -26,14 +26,29 @@
 
 **U43 · ⏸ PAUSED by Ali on 2026-10-21 (other priorities). U43 is NOT done and has no after score.** Live, in order:
 Release A `9393dcb53` + A.1 `ee76c9489` (2026-10-19); Release B `a12f7b26d` + its desktop chart/layout/social hotfix
-`3ec111a83` (2026-10-20, Codex); Ali's house-gold restoration `dd1386f06` (2026-10-20); and the **CI-repair release of
-2026-10-21** (Claude, asheib-bb, branch `u43-seal`). Release B reached `main` with 28 test suites red that its own source
-changes broke. The CI-repair release re-points each guard to the new source shape (a dated comment, the property kept,
-a mutation proof — none weakened) and fixes three real defects those guards exposed: `settleMarket` again AWAITS the
-proposer's prize and the watchers' settled alert after commit (Release B had made both fire-and-forget); the settlement
-and emergency-void chart points are awaited too; and a call that joins an enclosing lock's transaction no longer drops
-every post-commit effect (`drainCommitted` in `locks.ts`; no production caller nests today). The ⏸ U43 block below
-lists what is owed.
+`3ec111a83` (2026-10-20, Codex); Ali's house-gold restoration `dd1386f06` (2026-10-20). **On `main`, NOT yet deployed:**
+the **CI-repair release `110587e7e`** (2026-10-21 09:59Z, Claude, asheib-bb). Release B reached `main` with 28 test
+suites red that its own source changes broke. The CI-repair release re-points each guard to the new source shape (a
+dated comment, the property kept, a mutation proof — none weakened) and fixes three real defects those guards exposed:
+`settleMarket` again AWAITS the proposer's prize and the watchers' settled alert after commit (Release B had made both
+fire-and-forget); the settlement and emergency-void chart points are awaited too; and a call that joins an enclosing
+lock's transaction no longer drops every post-commit effect (`drainCommitted` in `locks.ts`; no production caller nests
+today). Before the push, at the exact commit: typecheck 0, `next build` green, local `qa:live` 386/0 (source identical
+at `2919a4ff7`), `e2e:money`, `e2e:fault` and `e2e:card` PASS on their own disposable PostgreSQL databases. Linux CI on
+the candidate failed only `dead-css` (item 3 below), the five Maswali suites, and `updown-push` (fixed in `110587e7e`).
+
+⛔ **PRODUCTION HAS NOT DEPLOYED ANY PUSH SINCE 2026-10-20 16:02Z.** That deployment (`4471bb440`) FAILED inside
+Railway's builder ("railpack prepare exited with an error" pulling `ghcr.io/railwayapp/railpack-builder:latest` — not
+this code), and since then Railway created no deployment for `cffe67cf2`, `5dea3f410` or `110587e7e` — no record of
+any status, not even a skipped one, so the push events are not reaching Railway — although the service's trigger is
+intact (branch `main`, `alisheib/kipindi`, `checkSuites: false`; the repository has no plain webhook, Railway uses its
+GitHub App). Production serves `d268ef919`
+on www, apex and the Railway host, healthy (database reachable and migrated). A manual `serviceInstanceDeploy` of
+`110587e7e` was refused by the session's auto-mode classifier, so **Ali presses Deploy** on the 50pick service in
+Railway (or re-connects its GitHub trigger). There is no migration and no dependency change between `d268ef919` and
+`110587e7e`. **Owed after the deploy:** the AGENTS.md §4 read-back — `?dpl=110587e7e…` on all three hosts,
+`/api/health`, `qa:chunks-prod` on www and apex, production `qa:live` — then this paragraph rewritten as live. The
+⏸ U43 block below lists the rest of what is owed.
 
 ### ⛔ IS MOBILE VISUALISATION DONE? **NO.** Read this before telling anyone otherwise.
 
@@ -327,9 +342,13 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
      - e. *Board layout:* at 1280 and 1920 the cards leave the right third empty (BRIEF B3: the chart beside the current
        round); at 360 the Swahili first card sits 51px lower than the English one (the title and its two pills wrap);
        the 320 top padding differs from the 360 one.
-  3. **`test:dead-css`** still reports `.kp-track-end--10` (`globals.css`), which lost its last consumer in Release B;
-     `test:visual-pass-r5a` (the Maswali lane's) still requires the rule, so delete it together with that check's line,
-     agreed with the Maswali session. Already red before Release B and the Maswali lane's, shipping with its S5 release:
+  3. **`test:needle-rest`** (a live-server suite) has been red since Release B, reported by the Maswali lane on
+     2026-10-21: 92/0 at `e4b148a05`, 55/35 at `3ec111a83` — the Needle stays parked over a control ("Tafuta soko") and
+     never glides. The Maswali lane is bisecting `1b7a91782`…`1384383fd`; first suspect: Release B's new
+     `suppressNeedleOnU43(pathname)` term in `needle.tsx`. U43's to fix.
+     **`test:dead-css`** still reports `.kp-track-end--10` (`globals.css`), which lost its last consumer in Release B;
+     `test:visual-pass-r5a` (the Maswali lane's) still requires the rule, so the Maswali S5 release deletes both in one
+     commit (agreed 2026-10-21). Already red before Release B and the Maswali lane's, shipping with its S5 release:
      `test:rate-copy`, `test:visual-pass-r5a`, `r5j` (3.7.2 and the Millionea counts), `r6c`, `r7c`.
   4. **Stale remote branches** — the auto-mode classifier refused their deletion, so it needs Ali's approval:
      `codex/u43-release-b`, `claude/updown-visual-10`, `codex/updown-no-odds` (every commit is in `main` or `u43-seal`).
