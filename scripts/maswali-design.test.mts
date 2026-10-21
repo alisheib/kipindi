@@ -157,9 +157,12 @@ const PICKS = Array.from({ length: 15 }, () => "YES" as const);
   const page = squash(code(read(TICKET_PAGE)));
   ok("2.H1f · a ticket's void line says \"refunded\" only once ITS refund landed, \"on its way back\" before",
     page.includes('fill(refund === "pending" ? t.millionea.weekVoidedBodyPending : t.millionea.weekVoidedBody, {'));
-  const reg = squash(code(read(REGISTER_WEEK)));
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-FIX-PLAYER P3): the register's ledger rows are built in register-parts.tsx
+  // (`registerLedgerRows`, rendered by test:maswali-register §15); the week page draws them.
+  const reg = squash(code(read("src/app/millionea/register/register-parts.tsx")));
   ok("2.H1g · the register's voided ledger: \"refunded\" only once every refund landed",
-    reg.includes("node: w.refundsPending ? <ReceiptRow") && reg.includes("t.millionea.refundEachPending"));
+    reg.includes('rows.push(w.refundsPending ? { key: "refund", label: kept(fill(t.millionea.refundEachPending, { price }), [price])')
+      && squash(code(read(REGISTER_WEEK))).includes("const rows = registerLedgerRows(t, w);"));
 }
 
 // H2 · final only on the week's word

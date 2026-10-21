@@ -6,12 +6,13 @@
 import type { ReactNode } from "react";
 import { Chip } from "@/components/ui/chip";
 import { keepConnectives, runAndDashRanges } from "@/components/ui/keep-run";
-import { counted, millioneaWord } from "@/components/maswali/maswali-format";
+import { counted, millioneaWord, weekWord } from "@/components/maswali/maswali-format";
 import { WEEK_STATE_KEY } from "@/lib/maswali-week-label";
 import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
-import { fill, formatTzs } from "@/lib/utils";
-import type { MillioneaWeekSummary } from "@/lib/server/maswali-player";
+import { fill, formatNumber, formatTzs, formatTzsSigned, pctNum } from "@/lib/utils";
+import type { MillioneaRegisterWeek, MillioneaWeekSummary } from "@/lib/server/maswali-player";
 import type { Dict } from "@/lib/i18n-dict";
+import { nextWeekNumber, previousWeekNumber } from "../millionea-view";
 
 /**
  * A FINAL WEEK'S STATE, AS ITS OWN CHIP (R4: the heading read "Week 48 · Voided" and wrapped at 320 into a line that began
@@ -61,4 +62,79 @@ export function weekFacts(t: Dict, w: MillioneaWeekSummary): ReactNode[] {
   }
   const amount = formatTzs(w.carriedForward ?? 0);
   return [kept(fill(t.millionea.regCarried, { amount }), [amount]), t.millionea.feeZero];
+}
+
+/** A label with a note of its own: the note on its own line, never after a "·" (A1). */
+function noted(head: string, note: string): ReactNode {
+  return (
+    <span className="flex flex-col">
+      <span>{keepConnectives(head)}</span>
+      <span>{keepConnectives(note)}</span>
+    </span>
+  );
+}
+
+/** One row of a week's ledger as the register's week page draws it — a receipt row: its label, its figure (an amount
+ *  formatted the platform's way, or "—"), the row's tone and emphasis, and `quiet` for a figure in the muted ink (a levy's). */
+export type LedgerRow = { key: string; label: ReactNode; value: string; tone?: "warning"; emphasis?: "fee" | "muted"; quiet?: boolean };
+
+/**
+ * ⭐ ONE WEEK'S LEDGER, ROW BY ROW, TO THE SHILLING (§10 §3.17; MR-20–MR-25) — what the register's week page prints, in
+ * order, every figure the settlement's own column (the read model's), every label's runs kept whole (A1). Pure: the page
+ * draws each row as a receipt row, and `test:maswali-register` reads these rows' words and figures in three languages.
+ *   · S5-FIX-PLAYER P3 · "To winners" is J − F — the win ledger's and How to play's one figure — and stands BEFORE the equal
+ *     split it is divided by; the share and the rounding remainder under it reconcile it (it printed k × share).
+ *   · P4 · the rounding remainder only in a week the house did not top up (MR-25: a top-up already leaves it out, so
+ *     nothing carries) — the win ledger's own rule (`winLinesOf`).
+ *   · P11 · a fee taken is the platform's signed figure ("−TZS 136,500", rule A4) — it printed "TZS −136,500"; a week that
+ *     took none, "TZS 0".
+ */
+export function registerLedgerRows(t: Dict, w: MillioneaRegisterWeek): LedgerRow[] {
+  const money = (n: number | null) => (n === null ? "—" : formatTzs(n));
+  const fee = (n: number | null) => (n === null ? "—" : n > 0 ? formatTzsSigned(-n) : formatTzs(0));
+  const prev = previousWeekNumber(w.opensAt), next = nextWeekNumber(w.opensAt);
+  const price = formatTzs(w.ticketPrice);
+  const sales = w.sales ?? 0, carryIn = w.carryIn ?? 0;
+  const pct = w.feeRate !== null ? pctNum(w.feeRate) : null;
+  const carriedOut = kept(fill(t.millionea.carriedOut, { week: next }), [weekWord(t, next)]);
+  const sold = fill(t.millionea.regTicketsSold, { n: formatNumber(w.tickets), price });
+  const rows: LedgerRow[] = [];
+  if (carryIn > 0) rows.push({ key: "in", label: kept(fill(t.millionea.carriedIn, { week: prev }), [weekWord(t, prev)]), value: money(carryIn) });
+  // The count and the unit-price phrase each keep their own phone-sized run in every language.
+  rows.push({ key: "sold", label: kept(sold, ticketSalesRuns(sold, price)), value: money(sales) });
+  rows.push({ key: "pool", label: t.millionea.poolTotal, value: money(carryIn + sales) });
+  rows.push({ key: "floor", label: t.millionea.floor, value: money(w.floor) });
+  if (w.state === "VOIDED") {
+    // "Every ticket refunded" only once every refund landed (MR-18, the read model's `refundsPending`); until then, that the
+    // money is on its way back — never a refund stated before it happened (the S5 UI review, HIGH 1).
+    rows.push(w.refundsPending
+      ? { key: "refund", label: kept(fill(t.millionea.refundEachPending, { price }), [price]), value: money(sales), emphasis: "muted" }
+      : { key: "refund", label: kept(fill(t.millionea.refundEach, { price }), [price]), value: money(sales) });
+    rows.push({ key: "again", label: t.millionea.carriedForwardAgain, value: money(carryIn) });
+    return rows;
+  }
+  if ((w.winners ?? 0) === 0) {
+    // A week nobody won takes no fee (MR-21): the settlement's own fee column, "TZS 0", in the ledger's one money format.
+    rows.push({ key: "fee", label: t.millionea.fee, value: fee(w.fee) });
+    rows.push({ key: "out", label: carriedOut, value: money(w.carriedForward) });
+    return rows;
+  }
+  rows.push({ key: "jackpot", label: t.millionea.jackpot, value: money(w.jackpot) });
+  rows.push({ key: "fee", label: pct === null ? t.millionea.fee : kept(fill(t.millionea.feeLine, { pct }), [`${pct}%`]), value: fee(w.fee), tone: "warning", emphasis: "fee" });
+  if (w.traLevy !== null && w.gbtLevy !== null && (w.fee ?? 0) > 0) {
+    // The levies' shares OF THE FEE (MR-24), from what the settlement booked — one row each under the fee, its amount beside
+    // it, where one "TRA … · GBT …" row could start a line with its "·" (A1).
+    const taken = w.fee ?? 0;
+    const tra = pctNum(w.traLevy / taken), gbt = pctNum(w.gbtLevy / taken);
+    rows.push({ key: "tra", label: kept(fill(t.millionea.regLevyTra, { pct: tra }), [`TRA ${tra}%`]), value: money(w.traLevy), emphasis: "muted", quiet: true });
+    rows.push({ key: "gbt", label: kept(fill(t.millionea.regLevyGbt, { pct: gbt }), [`GBT ${gbt}%`]), value: money(w.gbtLevy), emphasis: "muted", quiet: true });
+  }
+  if ((w.topUp ?? 0) > 0) rows.push({ key: "topup", label: noted(t.millionea.topUp, t.millionea.topUpNote), value: money(w.topUp) });
+  rows.push({ key: "winners", label: t.millionea.toWinners, value: money(w.toWinners) });
+  // "÷ 3 winning tickets": the operator never ends a line — it is one run with the word after it.
+  const perTicket = counted(w.winners ?? 0, t.millionea.perTicketOne, t.millionea.perTicket);
+  rows.push({ key: "share", label: kept(perTicket, perTicket.match(/^÷ \S+/) ?? []), value: money(w.share) });
+  if ((w.topUp ?? 0) === 0 && (w.remainder ?? 0) > 0) rows.push({ key: "dust", label: noted(t.millionea.remainder, t.millionea.remainderNote), value: money(w.remainder) });
+  rows.push({ key: "out", label: carriedOut, value: money(w.carriedForward) });
+  return rows;
 }

@@ -43,14 +43,14 @@ import { fileURLToPath } from "node:url";
 import { createElement, Fragment, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { dict } from "../src/lib/i18n-dict.ts";
-import { fill } from "../src/lib/utils.ts";
+import { fill, formatTzs, formatTzsSigned } from "../src/lib/utils.ts";
 import { outcomeWord } from "../src/lib/side-label.ts";
 import { outcomeStampText } from "../src/components/maswali/maswali-outcome-stamp.tsx";
 import { sourceLabel } from "../src/components/maswali/maswali-format.ts";
-import { kept, ticketSalesRuns, weekFacts } from "../src/app/millionea/register/register-parts.tsx";
+import { kept, registerLedgerRows, ticketSalesRuns, weekFacts } from "../src/app/millionea/register/register-parts.tsx";
 import { STATUS_TONE, TONE_CHIP } from "../src/lib/status-tone.ts";
 import { DEFAULT_GRANTS } from "../src/lib/server/roles.ts";
-import type { MillioneaWeekSummary } from "../src/lib/server/maswali-player.ts";
+import type { MillioneaRegisterWeek, MillioneaWeekSummary } from "../src/lib/server/maswali-player.ts";
 import { decomment, decommentCss } from "./lib/decomment.mts";
 
 process.exitCode = 1;
@@ -92,6 +92,7 @@ type World = {
   ticketSalesRuns: typeof ticketSalesRuns;
   weekFacts: typeof weekFacts;
   kept: typeof kept;
+  ledger: typeof registerLedgerRows;
   weekChip: string;
 };
 const REAL: World = {
@@ -102,6 +103,7 @@ const REAL: World = {
   ticketSalesRuns,
   weekFacts,
   kept,
+  ledger: registerLedgerRows,
   weekChip: TONE_CHIP[STATUS_TONE.VOID.player],
 };
 const code = (w: World, k: FileKey) => squash(decomment(w.src[k]));
@@ -314,9 +316,11 @@ check("9.1", "A1 · no register body joins two facts into one string with \" · 
   });
   return [hits.length === 0, j(hits)];
 });
+// ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-FIX-PLAYER P3/P4/P11): the ledger's rows are built in register-parts.tsx
+// (`registerLedgerRows`, pure, rendered by §15 below in three languages); the page draws them as receipt rows.
 check("9.2", "A1 · the ledger's two notes stand on their own line (`noted`), and each levy is its own row — never one \"TRA … · GBT …\" row", (w) => {
-  const s = code(w, "week");
-  const notes = s.includes("label={noted(t.millionea.topUp, t.millionea.topUpNote)}") && s.includes("label={noted(t.millionea.remainder, t.millionea.remainderNote)}");
+  const s = code(w, "parts");
+  const notes = s.includes("label: noted(t.millionea.topUp, t.millionea.topUpNote)") && s.includes("label: noted(t.millionea.remainder, t.millionea.remainderNote)");
   const levies = s.includes("fill(t.millionea.regLevyTra, { pct: tra })") && s.includes("fill(t.millionea.regLevyGbt, { pct: gbt })") && !s.includes("t.millionea.levies");
   return [notes && levies, j({ notes, levies })];
 });
@@ -334,21 +338,21 @@ check("9.4", "A1 · `kept` draws each run it is given as ONE nowrap span, the wo
   return [whole && runs, j({ a: nowrapRuns(a), b: nowrapRuns(b), c: nowrapRuns(c) })];
 });
 check("9.5", "A1 · every ledger label that carries a week, an amount or a % is drawn through `kept` with that run", (w) => {
-  const s = code(w, "week");
+  const s = code(w, "parts");
   const want = [
-    "label={kept(fill(t.millionea.carriedIn, { week: prev }), [weekWord(t, prev)])}",
-    "label={kept(sold, ticketSalesRuns(sold, price))}",
-    "label={kept(fill(t.millionea.refundEachPending, { price }), [price])}",
-    "label={kept(fill(t.millionea.refundEach, { price }), [price])}",
+    "label: kept(fill(t.millionea.carriedIn, { week: prev }), [weekWord(t, prev)])",
+    "label: kept(sold, ticketSalesRuns(sold, price))",
+    "label: kept(fill(t.millionea.refundEachPending, { price }), [price])",
+    "label: kept(fill(t.millionea.refundEach, { price }), [price])",
     "kept(fill(t.millionea.feeLine, { pct }), [`${pct}%`])",
-    "label={kept(perTicket, perTicket.match(/^÷ \\S+/) ?? [])}",
+    "label: kept(perTicket, perTicket.match(/^÷ \\S+/) ?? [])",
   ];
   const missing = want.filter((x) => !s.includes(x));
-  const outs = count(s, "label={kept(fill(t.millionea.carriedOut, { week: next }), [weekWord(t, next)])}");
-  return [missing.length === 0 && outs === 2, j({ missing, outs })];
+  const outs = count(s, "const carriedOut = kept(fill(t.millionea.carriedOut, { week: next }), [weekWord(t, next)]);") + count(s, "label: carriedOut,");
+  return [missing.length === 0 && outs === 3, j({ missing, outs })];
 });
 check("9.5s", "R2 · a sold ticket's count and translated unit-price phrase are two separate kept runs at phone width", (w) => {
-  const s = code(w, "week");
+  const s = code(w, "parts");
   const price = "TZS 1,000";
   const cases: Array<["en" | "sw" | "zh", string[]]> = [
     ["en", ["1,050 tickets", "at TZS 1,000"]],
@@ -361,7 +365,7 @@ check("9.5s", "R2 · a sold ticket's count and translated unit-price phrase are 
     const keptRuns = nowrapRuns(w.kept(sold, runs));
     return j(runs) === j(want) && want.every((part) => keptRuns.includes(part)) ? [] : [`${locale}: ${j({ sold, runs, keptRuns })}`];
   });
-  return [s.includes("label={kept(sold, ticketSalesRuns(sold, price))}") && off.length === 0, j(off)];
+  return [s.includes("label: kept(sold, ticketSalesRuns(sold, price))") && off.length === 0, j(off)];
 });
 
 check("9.6", "A1 · the reserve rule's range keeps its two ends together — \"A1 to A5\", \"A1 hadi A5\", \"A1 至 A5\" — one run in every language", (w) => {
@@ -429,7 +433,8 @@ check("12.2", "the index's ghost rows carry the week, its chip and its facts as 
 check("14.1", "the week ledger reserves a scoped right lane through 1024 for its money values, restoring normal padding at 1280", (w) => {
   const s = code(w, "week");
   const lane = s.includes('<section aria-labelledby="mln-reg-ledger" className="mat-flat flex flex-col gap-2 rounded-card p-3 pr-[56px] xl:pr-3">');
-  const values = s.includes('<div className="flex flex-col border-t border-border">{rows.map((r) => <div key={r.key}>{r.node}</div>)}</div>');
+  const values = s.includes('<div className="flex flex-col border-t border-border">{rows.map((r) => ( <div key={r.key}> <ReceiptRow className={ROW} tone={r.tone} emphasis={r.emphasis} label={r.label} value={<span className={r.quiet ? "amount text-text-muted" : "amount"}>{r.value}</span>} /> </div> ))}</div>')
+    && s.includes("const rows = registerLedgerRows(t, w);");
   return [lane && values, j({ lane, values })];
 });
 check("14.2", "the survivor list reserves the same scoped right lane through 1024 so its counts stay visible beside the Needle", (w) => {
@@ -438,6 +443,65 @@ check("14.2", "the survivor list reserves the same scoped right lane through 102
   const lane = s.includes('<ol className="flex flex-col pr-[56px] xl:pr-0">');
   const counts = s.includes('{formatNumber(s.ticketsWithoutAMiss)}');
   return [heading && lane && counts, j({ heading, lane, counts })];
+});
+
+// ── §15 · S5-FIX-PLAYER P3 · P4 · P11 · the ledger's figures, rendered ─────────────────────────────────────────────────
+/** A settled week as the register reads it: a week with winners, `over` the case's own figures. */
+const regWeek = (over: Partial<MillioneaRegisterWeek>): MillioneaRegisterWeek => ({
+  id: "w", code: "MLN-2026-W48", state: "SETTLED", isFinal: false, closedAt: null, settledAt: null, tickets: 1_050, sales: 1_050_000, carryIn: 0,
+  jackpot: 1_050_000, winners: 3, share: 304_500, fee: 136_500, topUp: 0, paid: 913_500, carriedForward: 0, refundsPending: false,
+  opensAt: "2026-11-23T00:00:00+03:00", closesAt: "2026-11-27T18:00:00+03:00", questionSetHash: null, ticketMerkleRoot: null, ticketPrice: 1_000,
+  floor: 1_000_000, feeRate: 0.13, traLevy: 13_650, gbtLevy: 6_825, toWinners: 913_500, remainder: 0, questions: [], substitutions: [], basis: "TEN_OF_TEN",
+  winningScore: 10, resolution: "single", standing: null, scores: null, ...over,
+} as MillioneaRegisterWeek);
+/** The settlement's own arithmetic for the cases: a week with dust and no top-up (k = 7 over J = 1,050,000: share 130,500, dust
+ *  0), one with dust (k = 7 over 1,051,000: J − F = 914,370, share 130,624, dust 2), and a floor week topped up (k = 7 over
+ *  the floor: J − F = 870,000, share 124,285, dust 5 — which the top-up already left out). */
+const LEDGER_CASES = {
+  dust: regWeek({ sales: 1_051_000, tickets: 1_051, jackpot: 1_051_000, fee: 136_630, winners: 7, share: 130_624, paid: 914_368, toWinners: 914_370, remainder: 2,
+    traLevy: 13_663, gbtLevy: 6_832, carriedForward: 2 }),
+  topped: regWeek({ sales: 300_000, tickets: 300, jackpot: 1_000_000, fee: 130_000, winners: 7, share: 124_285, paid: 869_995, toWinners: 870_000, remainder: 5,
+    topUp: 699_995, traLevy: 13_000, gbtLevy: 6_500, carriedForward: 0 }),
+  rolled: regWeek({ sales: 412_000, tickets: 412, jackpot: null, fee: 0, winners: 0, share: null, paid: null, toWinners: null, remainder: null,
+    traLevy: null, gbtLevy: null, topUp: null, carriedForward: 412_000 }),
+};
+type Rendered = Array<{ key: string; label: string; value: string }>;
+const ledgerOf = (w: World, l: (typeof LOCALES)[number], week: MillioneaRegisterWeek): Rendered =>
+  w.ledger(w.dict[l] as never, week).map((r) => ({ key: r.key, label: textOf(r.label), value: r.value }));
+check("15.1", "P3 · \"To winners\" is J − F — the win ledger's and How to play's one figure — and stands BEFORE \"÷ k\": 914,370 over a share of 130,624 (never k × share, 914,368, under that label), in every language", (w) => {
+  const off = LOCALES.flatMap((l) => {
+    const rows = ledgerOf(w, l, LEDGER_CASES.dust);
+    const keys = rows.map((r) => r.key);
+    const winners = rows.find((r) => r.key === "winners");
+    const ok = winners?.label === mln(w, l).toWinners && winners.value === formatTzs(914_370) && keys.indexOf("winners") >= 0 && keys.indexOf("winners") + 1 === keys.indexOf("share")
+      && !rows.some((r) => r.value === formatTzs(914_368));
+    return ok ? [] : [`${l}: ${j(rows.map((r) => [r.key, r.value]))}`];
+  });
+  return [off.length === 0, off.join(" | ")];
+});
+check("15.2", "P4 · the rounding remainder is printed in a week the house did not top up (TZS 2, carried) and NEVER in a topped-up week (its TZS 5 was left out of the top-up, so nothing carried)", (w) => {
+  const off = LOCALES.flatMap((l) => {
+    const dust = ledgerOf(w, l, LEDGER_CASES.dust).find((r) => r.key === "dust");
+    const topped = ledgerOf(w, l, LEDGER_CASES.topped);
+    const ok = dust?.value === formatTzs(2) && dust.label.startsWith(mln(w, l).remainder) && !topped.some((r) => r.key === "dust")
+      && topped.some((r) => r.key === "topup" && r.value === formatTzs(699_995)) && topped.find((r) => r.key === "winners")?.value === formatTzs(870_000);
+    return ok ? [] : [`${l}: ${j({ dust, topped: topped.map((r) => [r.key, r.value]) })}`];
+  });
+  return [off.length === 0, off.join(" | ")];
+});
+check("15.3", "P11 · a fee taken is the platform's signed money, \"−TZS 136,630\" (never \"TZS −136,630\"), and a week nobody won took \"TZS 0\"", (w) => {
+  const off = LOCALES.flatMap((l) => {
+    const taken = ledgerOf(w, l, LEDGER_CASES.dust).find((r) => r.key === "fee")?.value;
+    const none = ledgerOf(w, l, LEDGER_CASES.rolled).find((r) => r.key === "fee")?.value;
+    return taken === formatTzsSigned(-136_630) && taken === "−TZS 136,630" && none === "TZS 0" ? [] : [`${l}: ${j({ taken, none })}`];
+  });
+  return [off.length === 0, off.join(" | ")];
+});
+check("15.4", "the whole ledger of a won week, in order and to the shilling: sold, pool, floor, jackpot, fee, TRA, GBT, to winners, ÷ k, remainder, carried forward", (w) => {
+  const rows = ledgerOf(w, "en", LEDGER_CASES.dust);
+  const want = [["sold", "TZS 1,051,000"], ["pool", "TZS 1,051,000"], ["floor", "TZS 1,000,000"], ["jackpot", "TZS 1,051,000"], ["fee", "−TZS 136,630"],
+    ["tra", "TZS 13,663"], ["gbt", "TZS 6,832"], ["winners", "TZS 914,370"], ["share", "TZS 130,624"], ["dust", "TZS 2"], ["out", "TZS 2"]];
+  return [j(rows.map((r) => [r.key, r.value])) === j(want), j(rows.map((r) => [r.key, r.value]))];
 });
 
 // ── the run ─────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -457,7 +521,7 @@ if (!PROVE_RED) {
   const { pass, fail } = runAll(REAL, false);
   console.log(`\n${"═".repeat(70)}\n  MASWALI REGISTER: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
   /** The floor is the count a green run PRINTS; it only rises, to a printed number. */
-  const MIN_ASSERTIONS = 41;
+  const MIN_ASSERTIONS = 45; // S5-FIX-PLAYER §15 (P3, P4, P11) added four
   if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
   process.exit(fail === 0 ? 0 : 1);
 }
@@ -523,12 +587,12 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["R10 undone — \"Week Register\" in title case", "8.1", plantWord("en", "registerTitle", "Week Register")],
   ["zh's door and title disagree", "8.1", plantWord("zh", "register", "每周登记册")],
   // §9
-  ["A1 undone — a ledger note after a \"·\"", "9.1", plantSrc("week", "label={noted(t.millionea.topUp, t.millionea.topUpNote)}", "label={`${t.millionea.topUp} · ${t.millionea.topUpNote}`}")],
-  ["A1 undone — the levies in one \"·\"-joined row", "9.2", plantSrc("week", "fill(t.millionea.regLevyGbt, { pct: gbt })", "fill(t.millionea.levies, { tra, gbt })")],
+  ["A1 undone — a ledger note after a \"·\"", "9.1", plantSrc("parts", "label: noted(t.millionea.topUp, t.millionea.topUpNote)", "label: `${t.millionea.topUp} · ${t.millionea.topUpNote}`")],
+  ["A1 undone — the levies in one \"·\"-joined row", "9.2", plantSrc("parts", "fill(t.millionea.regLevyGbt, { pct: gbt })", "fill(t.millionea.levies, { tra, gbt })")],
   ["A1 undone — the standing's count ungrouped", "9.3", plantSrc("week", "{formatNumber(s.ticketsWithoutAMiss)}", "{s.ticketsWithoutAMiss}")],
   ["a `kept` that keeps nothing", "9.4", { ...REAL, kept: (text) => text }],
-  ["A1 undone — the refund's price free to break", "9.5", plantSrc("week", "label={kept(fill(t.millionea.refundEach, { price }), [price])}", "label={fill(t.millionea.refundEach, { price })}")],
-  ["R2 undone — the sold label uses its old multiplication split", "9.5s", plantSrc("week", "label={kept(sold, ticketSalesRuns(sold, price))}", 'label={kept(sold, [sold.split(" × ")[0].trim(), `× ${price}`])}')],
+  ["A1 undone — the refund's price free to break", "9.5", plantSrc("parts", "label: kept(fill(t.millionea.refundEach, { price }), [price])", "label: fill(t.millionea.refundEach, { price })")],
+  ["R2 undone — the sold label uses its old multiplication split", "9.5s", plantSrc("parts", "label: kept(sold, ticketSalesRuns(sold, price))", 'label: kept(sold, [sold.split(" × ")[0].trim(), `× ${price}`])')],
   ["R2 undone — the unit-price helper keeps the entire sold label", "9.5s", { ...REAL, ticketSalesRuns: (sold) => [sold] }],
   ["A1 undone — the reserve rule's range free to part", "9.6", plantSrc("week", "{kept(t.millionea.regSubRule, t.millionea.regSubRule.match(/A1\\s\\S+\\sA5/) ?? [])}", "{t.millionea.regSubRule}")],
   ["the log's old order — an untimed entry read as the earliest", "9.7", plantSrc("week", "].sort((a, b) => order(a.at) - order(b.at));", "].sort((a, b) => (msOf(a.at) ?? 0) - (msOf(b.at) ?? 0));")],
@@ -554,6 +618,12 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["the ledger's padding regresses to the inverted spacing scale", "14.1", plantSrc("week", 'rounded-card p-3 pr-[56px] xl:pr-3', 'rounded-card p-3 pr-14 xl:pr-3')],
   ["the survivor list's right lane removed, exposing counts to the resting Needle", "14.2", plantSrc("week", '<ol className="flex flex-col pr-[56px] xl:pr-0">', '<ol className="flex flex-col">')],
   ["the survivor lane regresses to the inverted spacing scale", "14.2", plantSrc("week", '<ol className="flex flex-col pr-[56px] xl:pr-0">', '<ol className="flex flex-col pr-14 xl:pr-0">')],
+  ["the ledger's rows no longer the builder's (the page drawing its own again)", "14.1", plantSrc("week", "const rows = registerLedgerRows(t, w);", "const rows = [] as ReturnType<typeof registerLedgerRows>;")],
+  // §15 — each fix undone in the builder itself
+  ["P3 undone — \"To winners\" prints k × share, after the split", "15.1", { ...REAL, ledger: (t, wk) => { const rows = registerLedgerRows(t, wk); const i = rows.findIndex((r) => r.key === "winners"); const [row] = rows.splice(i, 1); rows.splice(i + 1, 0, { ...row, value: wk.paid === null ? "—" : formatTzs(wk.paid) }); return rows; } }],
+  ["P4 undone — the remainder printed in a topped-up week", "15.2", { ...REAL, ledger: (t, wk) => { const rows = registerLedgerRows(t, wk); if ((wk.topUp ?? 0) > 0 && (wk.remainder ?? 0) > 0) rows.splice(rows.length - 1, 0, { key: "dust", label: t.millionea.remainder, value: formatTzs(wk.remainder ?? 0) }); return rows; } }],
+  ["P11 undone — the fee unsigned (\"TZS −136,630\")", "15.3", { ...REAL, ledger: (t, wk) => registerLedgerRows(t, wk).map((r) => (r.key === "fee" && (wk.fee ?? 0) > 0 ? { ...r, value: formatTzs(-(wk.fee ?? 0)) } : r)) }],
+  ["the levies dropped from a won week's ledger", "15.4", { ...REAL, ledger: (t, wk) => registerLedgerRows(t, wk).filter((r) => r.key !== "tra" && r.key !== "gbt") }],
 ];
 let caught = 0;
 for (const [name, target, world] of PLANTS) {

@@ -38,7 +38,7 @@ import { ReceiptRow } from "@/components/ui/receipt-row";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { I } from "@/components/ui/glyphs";
 import { MaswaliOutcomeStamp } from "@/components/maswali/maswali-outcome-stamp";
-import { counted, millioneaWord, reserveLabel, sourceLabel, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
+import { millioneaWord, reserveLabel, sourceLabel, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
 import { millioneaGate } from "@/lib/server/millionea-gate";
 import { cachedMillioneaRegisterWeek, type MillioneaRegisterQuestion, type MillioneaRegisterWeek } from "@/lib/server/maswali-player";
 import { getServerT } from "@/lib/i18n-server";
@@ -46,12 +46,12 @@ import { isMaswaliVoidReason, MASWALI_VOID_REASON_KEY } from "@/lib/maswali-void
 import { marketCategoryLabel } from "@/lib/localized";
 import { formatEatDateTime } from "@/lib/eat-day";
 import { MAIN_COUNT } from "@/lib/maswali-score";
-import { fill, formatNumber, formatTzs, pctNum } from "@/lib/utils";
+import { fill, formatNumber } from "@/lib/utils";
 import { keepConnectives } from "@/components/ui/keep-run";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import { MILLIONEA_HREF, MillioneaPreviewMark, MillioneaReadingLinks } from "../../millionea-parts";
-import { bySlot, msOf, nextWeekNumber, ordinalOf, previousWeekNumber, textIn } from "../../millionea-view";
-import { kept, ticketSalesRuns, WeekStateChip } from "../register-parts";
+import { bySlot, msOf, ordinalOf, textIn } from "../../millionea-view";
+import { kept, registerLedgerRows, WeekStateChip } from "../register-parts";
 import { ROOT_OPEN_GRAPH } from "@/app/layout";
 import { weekStore } from "@/lib/server/maswali-dal";
 import { loadPublishedOgWeek } from "@/lib/server/millionea-og-week";
@@ -250,62 +250,20 @@ function Substitutions({ t, locale, w, nowMs }: { t: Dict; locale: Locale; w: Mi
   );
 }
 
-/** The week's whole ledger, to the shilling (§10 §3.17; MR-20–MR-25), each line the settlement's own column. */
+/** The week's whole ledger, to the shilling (§10 §3.17; MR-20–MR-25): the rows `registerLedgerRows` builds — each figure the
+ *  settlement's own column, in its order (S5-FIX-PLAYER P3, P4, P11) — drawn as the receipt's own rows. */
 function Ledger({ t, w }: { t: Dict; w: MillioneaRegisterWeek }) {
-  const prev = previousWeekNumber(w.opensAt), next = nextWeekNumber(w.opensAt);
-  const fig = (n: number | null) => <span className="amount">{n === null ? "—" : formatTzs(n)}</span>;
   const ROW = "gap-3 border-b border-border py-1.5";
-  const price = formatTzs(w.ticketPrice);
-  const sales = w.sales ?? 0, carryIn = w.carryIn ?? 0;
-  const pct = w.feeRate !== null ? pctNum(w.feeRate) : null;
-  /** A label with a note of its own: the note on its own line, never after a "·" (A1). */
-  const noted = (head: string, note: string) => (
-    <span className="flex flex-col">
-      <span>{keepConnectives(head)}</span>
-      <span>{keepConnectives(note)}</span>
-    </span>
-  );
-  const sold = fill(t.millionea.regTicketsSold, { n: formatNumber(w.tickets), price });
-  const rows: Array<{ key: string; node: React.ReactNode }> = [];
-  if (carryIn > 0) rows.push({ key: "in", node: <ReceiptRow className={ROW} label={kept(fill(t.millionea.carriedIn, { week: prev }), [weekWord(t, prev)])} value={fig(carryIn)} /> });
-  // The count and the unit-price phrase each keep their own phone-sized run in every language.
-  rows.push({ key: "sold", node: <ReceiptRow className={ROW} label={kept(sold, ticketSalesRuns(sold, price))} value={fig(sales)} /> });
-  rows.push({ key: "pool", node: <ReceiptRow className={ROW} label={t.millionea.poolTotal} value={fig(carryIn + sales)} /> });
-  rows.push({ key: "floor", node: <ReceiptRow className={ROW} label={t.millionea.floor} value={fig(w.floor)} /> });
-  if (w.state === "VOIDED") {
-    // "Every ticket refunded" only once every refund landed (MR-18, the read model's `refundsPending`); until then, that
-    // the money is on its way back — never a refund stated before it happened (the S5 UI review, HIGH 1).
-    rows.push({ key: "refund", node: w.refundsPending
-      ? <ReceiptRow className={ROW} emphasis="muted" label={kept(fill(t.millionea.refundEachPending, { price }), [price])} value={fig(sales)} />
-      : <ReceiptRow className={ROW} label={kept(fill(t.millionea.refundEach, { price }), [price])} value={fig(sales)} /> });
-    rows.push({ key: "again", node: <ReceiptRow className={ROW} label={t.millionea.carriedForwardAgain} value={fig(carryIn)} /> });
-  } else if ((w.winners ?? 0) > 0) {
-    rows.push({ key: "jackpot", node: <ReceiptRow className={ROW} label={t.millionea.jackpot} value={fig(w.jackpot)} /> });
-    rows.push({ key: "fee", node: <ReceiptRow className={ROW} tone="warning" emphasis="fee" label={pct === null ? t.millionea.fee : kept(fill(t.millionea.feeLine, { pct }), [`${pct}%`])} value={fig(w.fee === null ? null : -w.fee)} /> });
-    if (w.traLevy !== null && w.gbtLevy !== null && (w.fee ?? 0) > 0) {
-      // The levies' shares OF THE FEE (MR-24), from what the settlement booked — one row each under the fee, its amount
-      // beside it, where one "TRA … · GBT …" row could start a line with its "·" (A1).
-      const fee = w.fee ?? 0;
-      const tra = pctNum(w.traLevy / fee), gbt = pctNum(w.gbtLevy / fee);
-      rows.push({ key: "tra", node: <ReceiptRow className={ROW} emphasis="muted" label={kept(fill(t.millionea.regLevyTra, { pct: tra }), [`TRA ${tra}%`])} value={<span className="amount text-text-muted">{formatTzs(w.traLevy)}</span>} /> });
-      rows.push({ key: "gbt", node: <ReceiptRow className={ROW} emphasis="muted" label={kept(fill(t.millionea.regLevyGbt, { pct: gbt }), [`GBT ${gbt}%`])} value={<span className="amount text-text-muted">{formatTzs(w.gbtLevy)}</span>} /> });
-    }
-    if ((w.topUp ?? 0) > 0) rows.push({ key: "topup", node: <ReceiptRow className={ROW} label={noted(t.millionea.topUp, t.millionea.topUpNote)} value={fig(w.topUp)} /> });
-    // "÷ 3 winning tickets": the operator never ends a line — it is one run with the word after it.
-    const perTicket = counted(w.winners ?? 0, t.millionea.perTicketOne, t.millionea.perTicket);
-    rows.push({ key: "share", node: <ReceiptRow className={ROW} label={kept(perTicket, perTicket.match(/^÷ \S+/) ?? [])} value={fig(w.share)} /> });
-    rows.push({ key: "paid", node: <ReceiptRow className={ROW} label={t.millionea.toWinners} value={fig(w.paid)} /> });
-    if ((w.remainder ?? 0) > 0) rows.push({ key: "dust", node: <ReceiptRow className={ROW} label={noted(t.millionea.remainder, t.millionea.remainderNote)} value={fig(w.remainder)} /> });
-    rows.push({ key: "out", node: <ReceiptRow className={ROW} label={kept(fill(t.millionea.carriedOut, { week: next }), [weekWord(t, next)])} value={fig(w.carriedForward)} /> });
-  } else {
-    // A week nobody won takes no fee (MR-21): the settlement's own fee column, "TZS 0", in the ledger's one money format.
-    rows.push({ key: "fee", node: <ReceiptRow className={ROW} label={t.millionea.fee} value={fig(w.fee === null ? null : -w.fee)} /> });
-    rows.push({ key: "out", node: <ReceiptRow className={ROW} label={kept(fill(t.millionea.carriedOut, { week: next }), [weekWord(t, next)])} value={fig(w.carriedForward)} /> });
-  }
+  const rows = registerLedgerRows(t, w);
   return (
     <section aria-labelledby="mln-reg-ledger" className="mat-flat flex flex-col gap-2 rounded-card p-3 pr-[56px] xl:pr-3">
       <h2 id="mln-reg-ledger" className="font-display text-title-sm font-bold text-text">{t.millionea.regLedger}</h2>
-      <div className="flex flex-col border-t border-border">{rows.map((r) => <div key={r.key}>{r.node}</div>)}</div>
+      <div className="flex flex-col border-t border-border">{rows.map((r) => (
+        <div key={r.key}>
+          <ReceiptRow className={ROW} tone={r.tone} emphasis={r.emphasis} label={r.label}
+            value={<span className={r.quiet ? "amount text-text-muted" : "amount"}>{r.value}</span>} />
+        </div>
+      ))}</div>
     </section>
   );
 }

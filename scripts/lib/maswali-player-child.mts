@@ -526,6 +526,8 @@ ok("8.3 · the week settled: two tickets of ten of ten", releasedA.ok && (await 
   const r = await P.millioneaRegisterWeek(A.code.toLowerCase());
   ok("8.10 · ⭐ the register's week: public, final, every figure the settlement's own (the case of the code does not matter)",
     !!r && r.state === "SETTLED" && r.jackpot === expectA.J && r.fee === expectA.F && r.winners === 2 && r.share === expectA.share && r.topUp === expectA.U
+      // S5-FIX-PLAYER P3 · "To winners" is J − F, the win ledger's own figure (8.5) — never k × share.
+      && r.toWinners === expectA.J - expectA.F
       && r.paid === expectA.paid && r.remainder === expectA.dust && r.carriedForward === expectA.carryOut && r.questionSetHash === A.questionSetHash
       && r.tickets === salesA / price && r.refundsPending === false, J(r && { J: r.jackpot, k: r.winners }));
   ok("8.11 · the fifteen with their results, no substitutions in a week with no void, basis 10 of 10, one officer's seals",

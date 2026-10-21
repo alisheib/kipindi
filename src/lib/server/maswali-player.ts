@@ -958,7 +958,12 @@ export type MillioneaRegisterWeek = MillioneaWeekSummary & {
   feeRate: number | null;
   traLevy: number | null;
   gbtLevy: number | null;
-  /** The rounding line, (J − F) − k × share; null in a week nobody won. What actually went on is `carriedForward`. */
+  /** J − F, what the equal split divides — "To winners", the win ledger's and How to play's one figure (S5-FIX-PLAYER P3);
+   *  null in a week nobody won and in a voided week. The share and the remainder below reconcile it. */
+  toWinners: number | null;
+  /** The rounding line, (J − F) − k × share; null in a week nobody won. What actually went on is `carriedForward` — and in a
+   *  week the house topped up it carried nothing (MR-25: the top-up already leaves it out), so the page prints it only in a
+   *  week with no top-up. */
   remainder: number | null;
   questions: MillioneaRegisterQuestion[];
   /** The substitution map, from the final record only: each voided main, when it voided, and the reserve that counted. */
@@ -1032,6 +1037,7 @@ export async function millioneaRegisterWeek(code: string): Promise<MillioneaRegi
     opensAt: week.opensAt, closesAt: week.closesAt, questionSetHash: week.questionSetHash, ticketMerkleRoot: week.ticketMerkleRoot,
     ticketPrice: rules.ticketPriceTzs, floor: rules.floorTzs, feeRate: terms?.feeRate ?? null,
     traLevy: settled ? week.traLevy : null, gbtLevy: settled ? week.gbtLevy : null,
+    toWinners: settled && week.jackpot != null && (week.winningTickets ?? 0) > 0 ? week.jackpot - (week.fee ?? 0) : null,
     remainder: settled && week.jackpot != null ? week.jackpot - (week.fee ?? 0) - (week.paidTotal ?? 0) : null,
     questions, substitutions, basis, winningScore, resolution, standing, scores,
   };
