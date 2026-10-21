@@ -1386,3 +1386,87 @@ export async function millioneaNotices(userId: string, line: WeekVisibility = "P
   }
   return out;
 }
+
+// ── S5-DESIGN-HUB · THE HUB'S OWN READS (MASWALI-BUILD S5-DESIGN-HUB; the lead's rulings of 2026-10-21) ─────────────────
+// Added at the end, in the hub lane's own block (the design lanes' rule for this shared file): nothing above is changed.
+
+/** M7 · a sales close the officer moved (MB-28, `moveClose`): the close the week had before its latest move, and the one
+ *  it has now — what the hub's notice says, "it is now Friday 16:00 (was 18:00)". */
+export type MillioneaCloseMove = { from: string; to: string };
+
+/**
+ * ⭐ M7 · THE MOVED CLOSE, FROM ITS ONE RECORD. The week stores only its close; the close it had before a move is written
+ * nowhere but the audit entry `moveClose` writes in the same act (`maswali.week.close_moved`, payload `{ code, from, to }`),
+ * so it is read from there — one indexed read of the week's own entries (`@@index([targetType, targetId])`), and only while
+ * the week sells with its close ahead (a moved close is news only until it passes). ⛔ The entry must say the close the
+ * week HAS: an entry whose `to` is not the stored close (a later move, a store that disagrees) says nothing, so the hub
+ * never prints a "was" it cannot stand behind (AGENTS §6). A failed read is no notice, never an error page.
+ */
+export async function millioneaCloseMove(week: Pick<MillioneaHubWeek, "id" | "state" | "opensAt" | "closesAt">, nowMs: number): Promise<MillioneaCloseMove | null> {
+  const closeMs = Date.parse(week.closesAt);
+  if (week.state !== "OPEN" || !Number.isFinite(closeMs) || closeMs <= nowMs) return null;
+  try {
+    const { getAuditForTargetsDurable } = await import("./audit");
+    // A move is made only after the week opened; a day of margin before its scheduled open covers an early open.
+    const since = new Date(Date.parse(week.opensAt) - 86_400_000).toISOString();
+    const { entries } = await getAuditForTargetsDurable({ targetType: "MaswaliCycle", targetIds: [week.id], actions: ["maswali.week.close_moved"], sinceIso: since, limit: 5 });
+    const latest = entries[0];
+    const from = typeof latest?.payload?.from === "string" ? latest.payload.from : null;
+    const to = typeof latest?.payload?.to === "string" ? latest.payload.to : null;
+    if (!from || !to || Date.parse(to) !== closeMs || !Number.isFinite(Date.parse(from)) || Date.parse(from) === closeMs) return null;
+    return { from, to };
+  } catch {
+    return null;
+  }
+}
+
+/** L22 · the final week announced ahead (OD-03): its stamped code and its scheduled open. */
+export type MillioneaFinalAhead = { code: string; opensAt: string };
+
+/**
+ * ⭐ L22 · OD-03'S ANNOUNCEMENT — the final week is made final at least a full week before its sales open (`sunsetMaswali`
+ * refuses a drafted week any later), and from that act until it opens the hub says so (the lead's ruling of 2026-10-21: a
+ * calm bar on the hub, while Millionea is ENDING and the week on sale is not the final one). The final week is the
+ * service's own answer (`sunsetState`), read only for the public line (a drive week is never final); null while no final
+ * week waits to open, and on any failed read (an announcement is never a guess).
+ */
+export async function millioneaFinalWeekAhead(line: WeekVisibility): Promise<MillioneaFinalAhead | null> {
+  if (line !== "PUBLIC") return null;
+  try {
+    const life = await sunsetState();
+    if (life.kind !== "ENDING" || life.week.state !== "DRAFT") return null;
+    return { code: life.week.code, opensAt: life.week.opensAt };
+  } catch {
+    return null;
+  }
+}
+
+/** The week's two public commitments (MR-13), as the hub's week section prints them (the lead's ruling on R1-register H2:
+ *  the hash from the open, the root once closed). Each null until it is stamped. */
+export type MillioneaHubCommitments = {
+  /** The question set's hash, published at the open (MR-13), and when — the week's open, the register's own instant. */
+  questionSetHash: string | null;
+  publishedAt: string | null;
+  /** The tickets' commitment, fixed at the close with its count (MR-13). */
+  ticketRoot: string | null;
+  closedAt: string | null;
+  ticketCount: number | null;
+};
+
+/**
+ * ⭐ THE HUB WEEK'S COMMITMENTS (the lead's ruling, 2026-10-21: the data now, the lines drawn in round 2 with the register
+ * lane's words). Read from the week's own stamped columns — nothing derived, nothing before it is stamped: the hash from
+ * the open, the root, its close and its count once the week has closed. A DRAFT has none (it was never published).
+ */
+export async function millioneaHubCommitments(weekId: string): Promise<MillioneaHubCommitments | null> {
+  const w = await weekStore.get(weekId);
+  if (!w || w.state === "DRAFT") return null;
+  const rooted = !!w.ticketMerkleRoot && !!w.closedAt;
+  return {
+    questionSetHash: w.questionSetHash,
+    publishedAt: w.questionSetHash ? w.opensAt : null,
+    ticketRoot: rooted ? w.ticketMerkleRoot : null,
+    closedAt: rooted ? w.closedAt : null,
+    ticketCount: rooted ? w.ticketCount : null,
+  };
+}

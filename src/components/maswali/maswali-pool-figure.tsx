@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { MaswaliCarry } from "@/components/maswali/maswali-carry";
 import { MaswaliFacts, factsOf, keepFact } from "@/components/maswali/maswali-facts";
 import { counted } from "@/components/maswali/maswali-format";
+import { ReceiptRow, type ReceiptEmphasis } from "@/components/ui/receipt-row";
 import { fillNodes } from "@/lib/fill-nodes";
 import { cn, fill, formatTzs, formatTzsSigned } from "@/lib/utils";
 import type { Dict, Locale } from "@/lib/i18n-dict";
@@ -19,6 +20,10 @@ import type { Dict, Locale } from "@/lib/i18n-dict";
  * once it is final"). ⛔ A held ticket never shows a potential payout: this block never names a player's share.
  * Every figure is a prop, read by the composer from the ledger (`maswali-money`), and every rate from the week's frozen
  * snapshot (`pct`); nothing here is computed but the words around them.
+ * ⭐ S5-DESIGN-HUB (Ali 2026-10-21 10/10 pass; R1-hub H1, H2, M4): TWO PARTS, the HEAD (`MaswaliPoolHead`: the label, the
+ * figure, its rule, the final week's line and the carry's line) and the LEDGER (`MaswaliPoolLedger`: the public rows, the
+ * kit's receipt rows). The hub draws the buy block BETWEEN them on a phone, so its door stands on the first screen, and
+ * pins the head with the door from 1024 while the ledger reads on under it.
  */
 export type PoolCarriedIn = {
   /** The week it came from (or, pending, waits on) — the calendar chain's; null when no such week is known: the row then
@@ -47,12 +52,10 @@ export type PoolView =
   | { kind: "sunset"; carriedIn: PoolCarriedIn | null; sales: Sales; pool: number; fee: number; toWinners: number; winningTickets: number; perTicket: number; top: { score: number; tickets: number } };
 
 /** One ledger row as the block draws it — exported with the builder below, so a suite reads what the block will say.
- *  `words`: the value is words, not a figure ("Not yet settled", "13% at payout") — the body face, free to wrap. */
+ *  `words`: the value is words, not a figure ("Not yet settled", "13% at payout") — the kit row's muted words. */
 export type PoolLedgerRow = { key: string; label: ReactNode; value: ReactNode; ink?: "text" | "muted" | "subtle"; weight?: "medium" | "semibold" | "bold"; words?: boolean };
 type Row = PoolLedgerRow;
 
-const INK = { text: "text-text", muted: "text-text-muted", subtle: "text-text-subtle" } as const;
-const WEIGHT = { medium: "font-medium", semibold: "font-semibold", bold: "font-bold" } as const;
 const DASH = "—";
 
 /**
@@ -63,6 +66,8 @@ const DASH = "—";
  * value says so in words ("Not yet settled") — it once read "Carried in (Week 47) · Week 47 not yet settled — –"; and
  * before a payout the fee row's value is the rate and when it is taken ("13% at payout") — its dash read as "no fee"
  * under the rule's "13% fee at payout". A fee taken is the platform's signed figure ("−TZS 136,500", A4).
+ * ⭐ S5-DESIGN-HUB L15: a refund row states its figure — the week's sales, what the refunds return in all — never a dash
+ * beside a sentence that names an amount ("If the void stands, every ticket is refunded TZS 1,000 … —").
  */
 export function poolLedgerRows(t: Dict, view: PoolView, pct: number, carry?: { from: string; play: boolean }): PoolLedgerRow[] {
   const v = view;
@@ -116,12 +121,13 @@ export function poolLedgerRows(t: Dict, view: PoolView, pct: number, carry?: { f
         break;
       case "voiding":
         rows.push({ key: "jackpot", label: t.millionea.jackpot, value: DASH, ink: "muted" });
-        rows.push({ key: "refund", label: fill(t.millionea.refundEachIfVoid, { price: money(v.price) }), value: DASH, ink: "muted" });
+        // L15 · what the refunds would return in all: every ticket's price, i.e. the week's sales — conditional, so muted.
+        rows.push({ key: "refund", label: fill(t.millionea.refundEachIfVoid, { price: money(v.price) }), value: money(v.sales.amount), ink: "muted" });
         break;
       case "voided":
         rows.push(v.refundLanded
           ? { key: "refund", label: fill(t.millionea.refundEach, { price: money(v.price) }), value: money(v.refunded) }
-          : { key: "refund", label: fill(t.millionea.refundEachPending, { price: money(v.price) }), value: DASH, ink: "muted" });
+          : { key: "refund", label: fill(t.millionea.refundEachPending, { price: money(v.price) }), value: money(v.sales.amount), ink: "muted" });
         rows.push({ key: "again", label: `${t.millionea.carriedForwardAgain} · ${fill(t.millionea.week, { week: v.carriedForward.week })}`, value: money(v.carriedForward.amount), weight: "bold" });
         break;
       case "sunset":
@@ -144,72 +150,138 @@ export function poolRule(t: Dict, view: PoolView, pct: number): string | null {
 }
 
 /**
- * ⭐ ONE ORDER, THE CARD'S (S5 VIS P3): the figure, the R-HEADLINE's rule, then — while an earlier week is unsettled — the
- * carry's line; the rule's facts and every "·"-joined label are drawn as fact lines (`maswali-facts.tsx`, A1), so no line
- * of the block starts or ends with a separator and no phrase ("Week 47's", "13% fee") is torn.
+ * ⭐ S5-DESIGN-HUB H3 · THE FINAL WEEK'S LINE (MR-30, OD-03; RULES §2.12 "the sunset"): in the final week a pool with no
+ * 10/10 goes to the week's highest-scoring tickets, shared equally — so under a figure the 10/10 rule alone would
+ * overstate, the head says it, in the words How to play's rule says it. None on a void (no pool is shared) and none once
+ * the sunset has settled (its own rule line names the top score).
  */
-export function MaswaliPoolFigure({ t, locale, view, pct, carry, tick, className }: {
+export function poolFinalLine(t: Dict, view: PoolView, final: boolean): string | null {
+  return final && (view.kind === "selling" || view.kind === "presale") ? t.millionea.finalWeekRule : null;
+}
+
+/** The headline's figure: the larger of the floor and the carry plus sales, from the composer; "at least" around it while
+ *  the carry waits; a dash before sales and on a void. The figure itself is one unbreakable run. */
+function headlineOf(t: Dict, v: PoolView): ReactNode {
+  const whole = (n: number) => <span className="amount">{formatTzs(n)}</span>;
+  if (v.kind === "presale" || v.kind === "voiding" || v.kind === "voided") return DASH;
+  if (v.kind === "sunset") return whole(v.pool);
+  return v.carriedIn?.amount === null ? fillNodes(t.millionea.atLeast, { amount: whole(v.jackpot) }) : whole(v.jackpot);
+}
+
+/**
+ * ⭐ THE HEAD — ONE ORDER, THE CARD'S (S5 VIS P3): the label, the figure, the R-HEADLINE's rule, the final week's line,
+ * then — while an earlier week is unsettled — the carry's line; the rule's facts are a fact line (`maswali-facts.tsx`,
+ * A1), so no line starts or ends with a separator and no phrase ("Week 47's", "13% fee") is torn.
+ * ⭐ L10 · the figure at the title-sm rung below 360 and title-md from 360: "at least TZS 1,000,000" holds one line in
+ * the 256px a 320 phone gives it (22px left "at least" alone on a line above the figure).
+ * `labelId` names the block's label, so the column that holds it can be named by it (L17).
+ */
+export function MaswaliPoolHead({ t, locale, view, pct, final = false, tick, labelId, className }: {
   t: Dict;
   /** The reader's language: the fact lines keep its phrases whole (`keepFact`). */
   locale: Locale;
   view: PoolView;
   /** The week's fee rate as a number of percent (`pctNum` of the snapshot's rate). */
   pct: number;
-  /** M7 — the carried-in figure travels from `from` (last week's figure) once, when `play` (the composer's seen state). */
-  carry?: { from: string; play: boolean };
+  /** The week is Millionea's final week (MR-30): the head says what a pool with no 10/10 does. */
+  final?: boolean;
   /** A real sale or a settlement moved the larger-of-two figure: it dips and lands once (`.m-tick`). */
   tick?: boolean;
+  /** The id the label carries. */
+  labelId?: string;
   className?: string;
 }) {
   const v = view;
   const pending = v.carriedIn?.amount === null;
-  const money = (n: number) => formatTzs(n);
-  const rows = poolLedgerRows(t, view, pct, carry);
-
-  // The headline: the larger of the floor and the carry plus sales, from the composer; a dash before sales and on a void.
-  // The figure is one unbreakable run; "at least" around it may wrap (a 320px column cannot hold both on one line).
-  const whole = (n: number) => <span className="amount">{money(n)}</span>;
-  const figure =
-    v.kind === "presale" || v.kind === "voiding" || v.kind === "voided" ? DASH
-      : v.kind === "sunset" ? whole(v.pool)
-        : pending ? fillNodes(t.millionea.atLeast, { amount: whole(v.jackpot) })
-          : whole(v.jackpot);
   const rule = poolRule(t, view, pct);
+  const finalLine = poolFinalLine(t, view, final);
   const facts = (line: string) => <MaswaliFacts facts={factsOf(line).map((f) => keepFact(locale, f))} />;
-
   return (
-    <section className={cn("mat-flat flex flex-col gap-2 rounded-card p-3", className)}>
-      <div className="flex flex-col gap-1">
-        <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{t.millionea.jackpot}</span>
-        <span className={cn("font-mono text-title-md font-semibold text-text tabular-nums", tick && "m-tick")}>{figure}</span>
-        {rule && <span className="text-body-sm text-text-muted">{facts(rule)}</span>}
-        {pending && v.carriedIn && v.carriedIn.week !== null && (
-          <span className="text-body-sm text-text-muted text-pretty">{keepFact(locale, fill(t.millionea.pendingCarry, { week: v.carriedIn.week }))}</span>
-        )}
-      </div>
-      <dl className="flex flex-col border-t border-border">
-        {rows.map((r) => (
-          <div key={r.key} className={cn("flex items-baseline justify-between gap-2 border-b border-border py-1.5", INK[r.ink ?? "text"])}>
-            {/* A figure inside a label ("Kila tiketi imerejeshwa TZS 1,000") is set whole in the money face (§M4, through
-                `keepFact`'s money reader); a "·"-joined label is a fact line. */}
-            <dt className="min-w-0 flex-1 text-body-sm">{typeof r.label === "string" ? facts(r.label) : r.label}</dt>
-            <dd className={cn(r.words ? "text-right text-body-sm" : "amount text-right text-body-sm", WEIGHT[r.weight ?? "medium"], r.key === "jackpot" && tick && "m-tick")}>{r.value}</dd>
-          </div>
-        ))}
-      </dl>
-    </section>
+    <div className={cn("mat-flat flex flex-col gap-1 rounded-card p-3", className)} data-testid="millionea-hub-jackpot">
+      <span id={labelId} className="font-mono text-micro uppercase eyebrow text-text-subtle">{t.millionea.jackpot}</span>
+      <span className={cn("font-mono text-title-sm font-semibold text-text tabular-nums xs:text-title-md", tick && "m-tick")} data-testid="millionea-hub-figure">{headlineOf(t, v)}</span>
+      {rule && <span className="text-body-sm text-text-muted">{facts(rule)}</span>}
+      {finalLine && <span className="text-body-sm text-text-muted text-pretty" data-testid="millionea-hub-final-rule">{keepFact(locale, finalLine)}</span>}
+      {pending && v.carriedIn && v.carriedIn.week !== null && (
+        <span className="text-body-sm text-text-muted text-pretty">{keepFact(locale, fill(t.millionea.pendingCarry, { week: v.carriedIn.week }))}</span>
+      )}
+    </div>
+  );
+}
+
+/** How a ledger row is drawn by the kit's receipt row (M4, as the register's ledger draws its rows): a figure in the
+ *  money face, the jackpot the receipt's amount, a fee taken the receipt's fee line, words the receipt's muted words. */
+function receiptOf(r: PoolLedgerRow): { emphasis: ReceiptEmphasis; tone?: "warning"; quiet: boolean } {
+  if (r.words) return { emphasis: "muted", quiet: false };
+  if (r.key === "fee" && typeof r.value === "string" && r.value.startsWith("−")) return { emphasis: "fee", tone: "warning", quiet: false };
+  if (r.weight === "bold" && r.value !== DASH) return { emphasis: "amount", quiet: false };
+  return { emphasis: "row", quiet: r.ink === "muted" || r.ink === "subtle" };
+}
+
+/**
+ * ⭐ THE LEDGER — THE KIT'S RECEIPT ROWS (R1-hub M4): the register's ledger, How to play's and the win ledger draw their
+ * rows with `ReceiptRow`; the hub drew a home-made `<dl>` beside them, two typographies for one row, and its Swahili
+ * label ended a line on the connective ("Kiwango cha" / "chini …"), which the kit row's label never does.
+ * ⭐ R1-motion L1 · A LIVE FRAME TICKS EACH VALUE IT CHANGED (`ticked`: the rows the frame moved and the frame's count):
+ * the value is re-keyed on that count, so `.m-tick` dips and lands it once — never on the first paint, never counting.
+ */
+export function MaswaliPoolLedger({ t, locale, view, pct, carry, ticked, className }: {
+  t: Dict;
+  locale: Locale;
+  view: PoolView;
+  pct: number;
+  /** M7 — the carried-in figure travels from `from` (the rollover notice's figure) once, when `play`. */
+  carry?: { from: string; play: boolean };
+  /** The rows the last live frame changed, and how many frames have changed them. */
+  ticked?: { n: number; keys: ReadonlySet<string> };
+  className?: string;
+}) {
+  const v = view;
+  const pending = v.carriedIn?.amount === null;
+  const rows = poolLedgerRows(t, view, pct, carry);
+  // A figure inside a label ("Kila tiketi imerejeshwa TZS 1,000") is set whole in the money face (§M4, through `keepFact`'s
+  // money reader); a "·"-joined label is a fact line.
+  const label = (l: ReactNode) => (typeof l === "string" ? <MaswaliFacts facts={factsOf(l).map((f) => keepFact(locale, f))} /> : l);
+  return (
+    <div className={cn("mat-flat flex flex-col rounded-card px-3 py-1.5", className)} data-testid="millionea-hub-ledger">
+      {rows.map((r, i) => {
+        const look = receiptOf(r);
+        const moved = !!ticked && ticked.n > 0 && ticked.keys.has(r.key);
+        // "at least TZS 1,000,000" at the receipt's amount rung would leave "at least" alone on a line beside its label at
+        // 320; below 360 it takes the body rung, as the head's figure steps down a rung there (L10).
+        const fit = r.key === "jackpot" && pending && look.emphasis === "amount" ? "text-body-sm xs:text-body-lg" : null;
+        return (
+          <ReceiptRow
+            key={r.key}
+            className={cn("gap-3 py-1.5", i > 0 && "border-t border-border")}
+            emphasis={look.emphasis}
+            tone={look.tone}
+            label={label(r.label)}
+            value={(
+              <span
+                key={moved ? `${r.key}:${ticked?.n}` : r.key}
+                className={cn(!r.words && "amount", look.quiet && "text-text-muted", fit, moved && "m-tick")}
+                data-row={r.key}
+              >
+                {r.value}
+              </span>
+            )}
+          />
+        );
+      })}
+    </div>
   );
 }
 
 /** "Wiki 41 · hakuna 10/10 · TZS 389,000 imehamishwa · ada 0" — last week as one closed ledger row (the hub, §3.3),
- *  its facts a fact line (A1); the carried figure keeps its id, the origin of this week's M7 carry. */
+ *  its facts a fact line (A1); `id` marks the carried figure when a page carries from it. */
 export function MaswaliLastWeek({ t, locale, week, carried, id, className }: {
   t: Dict;
   locale: Locale;
   week: number;
   /** What last week carried forward (it had no 10/10). */
   carried: number;
-  /** The carried figure's id: the origin of this week's M7 carry. */
+  /** The carried figure's id, when a page carries from it. */
   id?: string;
   className?: string;
 }) {
@@ -230,4 +302,3 @@ export function MaswaliLastWeek({ t, locale, week, carried, id, className }: {
     </p>
   );
 }
-
