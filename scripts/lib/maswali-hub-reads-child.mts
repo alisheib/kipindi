@@ -20,7 +20,7 @@ process.env.SESSION_SECRET ??= "maswali-hub-reads-session-secret-0123456789abcde
 // The week timer stays off: nothing here waits on a tick.
 process.env.MASWALI_SCHEDULER = "false";
 
-const { loadMaswaliWorld, DRAFTER, OWNER } = await import("./maswali-money-world.mts");
+const { loadMaswaliWorld, DRAFTER, OWNER, READER } = await import("./maswali-money-world.mts");
 const W: any = await loadMaswaliWorld();
 const P: any = await import("../../src/lib/server/maswali-player.ts");
 const { auditFlush }: any = await import("../../src/lib/server/audit.ts");
@@ -63,19 +63,10 @@ const { week, start } = await W.openWeek({ weeksAhead: 2 });
   ok("1.6 · a close already past: nothing", (await P.millioneaCloseMove(hubWeek(w2), Date.parse(w2.closesAt) + 1)) === null);
 }
 
-// ── §2 · L22 · the final week announced ahead ─────────────────────────────────────────────────────────────────────────
-console.log("\n§2 · L22 · OD-03's announcement: the final week, a full week ahead");
-{
-  ok("2.1 · no final week: nothing", (await P.millioneaFinalWeekAhead("PUBLIC")) === null);
-  const ahead = W.weekStartAhead(5);
-  const c = await W.svc.createWeek({ weekStartMs: ahead, visibility: "PUBLIC", questions: W.questions(ahead), officerId: DRAFTER, now: new Date(ahead - 3 * DAY) });
-  const s = c.ok ? await W.svc.sunsetMaswali({ weekId: c.week.id, ownerId: OWNER, typed: W.svc.SUNSET_WORD, reason: "test: the final week is announced a full week ahead" }) : c;
-  const a = await P.millioneaFinalWeekAhead("PUBLIC");
-  ok("2.2 · the drafted final week is announced: its stamped code and its scheduled open", s.ok && !!a && a.code === c.week.code && a.opensAt === c.week.opensAt, J({ s: s.ok ? "ok" : s.error, a }));
-  ok("2.3 · the drive line announces nothing (a drive week is never final)", (await P.millioneaFinalWeekAhead("DRIVE")) === null);
-  // §3 reads the draft before the control below resets the world.
-  ok("3.1 · a draft has no commitment (it was never published)", (await P.millioneaHubCommitments(c.week.id)) === null);
-}
+// ⛔ ONE WORLD, NEVER RESET: the Postgres store keeps every row (`setup` resets only the memory stores, and funding the
+// guarantee twice is refused by its reference), so the sections run in an order whose LAST step is the Owner's sunset:
+// the week on sale (§1) closes in §3, the next one opens and closes in §4, and only then is the final week drafted,
+// announced (§2) and opened (the §2 control).
 
 // ── §3 · the hub week's commitments ───────────────────────────────────────────────────────────────────────────────────
 console.log("\n§3 · the hub week's two commitments, each the week's own stamped column");
@@ -93,19 +84,11 @@ console.log("\n§3 · the hub week's two commitments, each the week's own stampe
     b.ok && closed.ok && !!c && !!c.ticketRoot && c.ticketRoot === after.ticketMerkleRoot && c.closedAt === after.closedAt && c.ticketCount === 3 && after.ticketCount === 3, J(c));
 }
 
-// ── §2 CONTROL · the final week as the week on sale ───────────────────────────────────────────────────────────────────
-{
-  await W.setup({ guarantee: 20_000_000 });
-  const { week: w } = await W.openWeek({ weeksAhead: 2 });
-  const s = await W.svc.sunsetMaswali({ weekId: w.id, ownerId: OWNER, typed: W.svc.SUNSET_WORD, reason: "test: the Owner stops Millionea mid-week" });
-  ok("2.4 · CONTROL · the final week on sale is no announcement ahead (its own head says it): nothing", s.ok && (await P.millioneaFinalWeekAhead("PUBLIC")) === null, s.ok ? "" : s.error);
-}
-
 // ── §4 · L20 · each held ticket's free-cancel end ─────────────────────────────────────────────────────────────────────
 console.log("\n§4 · L20 · each held ticket's free-cancel end — the ticket page's own (RULES §2.6)");
 {
-  await W.setup({ guarantee: 20_000_000 });
-  const { week: w } = await W.openWeek({ weeksAhead: 2 });
+  // The week after: §3 closed the one on sale, and one week sells at a time (MR-3).
+  const { week: w } = await W.openWeek({ weeksAhead: 3 });
   const p = await W.user({ balance: 100_000 });
   ok("4.1 · no ticket held: no end", J(await P.millioneaHubCancelEnds(w.id, p)) === "{}");
   const b = await W.buy(p, w.id, [W.LOSE, W.WIN]);
@@ -119,6 +102,25 @@ console.log("\n§4 · L20 · each held ticket's free-cancel end — the ticket p
   ok("4.3 · once every window has passed: none", J(await P.millioneaHubCancelEnds(w.id, p, past)) === "{}");
   const closed = await W.svc.closeWeek({ weekId: w.id, now: new Date(Date.parse(w.closesAt) + 60_000) });
   ok("4.4 · CONTROL · a week no longer on sale: none", closed.ok && J(await P.millioneaHubCancelEnds(w.id, p)) === "{}", closed.ok ? "" : closed.error);
+}
+
+// ── §2 · L22 · the final week announced ahead — last, as the Owner's sunset ends the world's calendar ───────────────────
+console.log("\n§2 · L22 · OD-03's announcement: the final week, a full week ahead");
+{
+  ok("2.1 · no final week: nothing", (await P.millioneaFinalWeekAhead("PUBLIC")) === null);
+  const ahead = W.weekStartAhead(5);
+  const c = await W.svc.createWeek({ weekStartMs: ahead, visibility: "PUBLIC", questions: W.questions(ahead), officerId: DRAFTER, now: new Date(ahead - 3 * DAY) });
+  const s = c.ok ? await W.svc.sunsetMaswali({ weekId: c.week.id, ownerId: OWNER, typed: W.svc.SUNSET_WORD, reason: "test: the final week is announced a full week ahead" }) : c;
+  const a = await P.millioneaFinalWeekAhead("PUBLIC");
+  ok("2.2 · the drafted final week is announced: its stamped code and its scheduled open", s.ok && !!a && a.code === c.week.code && a.opensAt === c.week.opensAt, J({ s: s.ok ? "ok" : s.error, a }));
+  ok("2.3 · the drive line announces nothing (a drive week is never final)", (await P.millioneaFinalWeekAhead("DRIVE")) === null);
+  ok("3.1 · a draft has no commitment (it was never published)", c.ok && (await P.millioneaHubCommitments(c.week.id)) === null);
+  // CONTROL · the same final week, opened (no week sells: §3 and §4 closed theirs): on sale, its own head says it — no
+  // announcement ahead any more.
+  const at = c.ok ? await W.svc.attestParity({ weekId: c.week.id, officerId: READER }) : c;
+  const op = at.ok ? await W.svc.openWeek({ weekId: c.week.id, officerId: DRAFTER, guarantee: W.money.guaranteeReader, now: new Date(ahead + 60_000) }) : at;
+  ok("2.4 · CONTROL · once the final week is on sale it is no announcement ahead (its own head says it): nothing",
+    op.ok && op.week.state === "OPEN" && (await P.millioneaFinalWeekAhead("PUBLIC")) === null, op.ok ? "" : op.error);
 }
 
 console.log(`\n@@SUMMARY ${JSON.stringify({ pass, fail, store: STORE })}`);
