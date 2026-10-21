@@ -1122,6 +1122,6 @@ const emptyListDefects = (src: string) => {
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI UI: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run PRINTS; it only rises, to a printed number. §3.1 and §4.3 each run a small case table. */
-const MIN_ASSERTIONS = 149; // 2026-10-21 green run, through §14 (S5-FIX-PLAYER P2); S5-FIX-PLATFORM's 4.10a and 6.6′ sit beside it — the floor rises to the integrated run's printed count
+const MIN_ASSERTIONS = 151; // 2026-10-21 S5 integration green run (int1): §14 (S5-FIX-PLAYER P2) + S5-FIX-PLATFORM 4.10a and 6.6′
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);
