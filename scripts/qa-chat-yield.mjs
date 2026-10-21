@@ -190,8 +190,13 @@ async function guard(kind, path, w) {
   const figs = await figures(page, kind);
   ok(`PREMISE ${tag} · ${path} answers 200 with a figure to put under the bubble`, r?.status() === 200 && figs.length > 0, `(status ${r?.status()}, ${figs.length} figures)`);
   if (!figs.length) { await ctx.close(); return; }
-  const fig = figs[0];
-  const at = await underBubble(page, fig.id);
+  // The first figure that CAN lie under the bubble: one near the page's top never reaches it (no scroll moves it down).
+  let fig = figs[0], at = null;
+  for (const f of figs) {
+    at = await underBubble(page, f.id);
+    fig = f;
+    if (at?.overlap) break;
+  }
   await rest(page);
   const census = await page.evaluate(CENSUS);
   const over = await opacityNow(page);
