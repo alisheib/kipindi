@@ -30,8 +30,7 @@ what §0 points to.
 - **Parity instrument:** `claude/maswali-s5-parity` (Phosphor's strips settle cherry-picked + the /watchlist time canonical).
 - **S7:** `claude/maswali-s7` (the wide-winner settlement fix S7-F8; on top of Codex's `codex/maswali-s7-integration-20261019`).
 - **S6:** `mln-s6-notices` (round 17, in progress), `mln-s6-int` (L+D squashed), `mln-s6-reports` (round 15 accepted);
-  Codex's preserved WIP: `codex/maswali-s6-n-r17-finish-20261019`, `codex/maswali-s6-n-cont-20261019` (being reconciled by
-  the notices lane), `codex/maswali-s6-ld-prep-20261019` (staged L+D prep), `codex/maswali-s5-vis-p`, `-vis-r` (tiny WIP).
+  Codex's preserved WIP (the two S6 notices attempts are reconciled into mln-s6-notices bd74c982c, archived and deleted): `codex/maswali-s6-ld-prep-20261019` (staged L+D prep), `codex/maswali-s5-vis-p`, `-vis-r` (tiny WIP).
 
 ## Next, in order (the lead's plan when stopped)
 1. Read each lane's last report line in §0 (or its head commit) — every lane committed and pushed at the stop; some commits
@@ -76,3 +75,6 @@ what §0 points to.
 - **HUB notes for round 2**: the paused Callout needs `salesPaused` in FILL_KEYS (map.ts + glyphs:gen) then glyph="salesPaused";
   the final-week rule key is `millionea.finalWeekRule` (How's ruleSunset should reuse its clause — one wording).
 - **S5-DESIGN-TICKETS** at `96e5e9a94` = WIP, NOT verified, with one KNOWN tsc error (ticket-acts.tsx calls the new cancel button without its required `price` prop). Done and checked: `c69c788f9` (dev-only seed route seed-maswali-tickets + scripts/maswali-ticket-shots.mjs: all 19 ticket states across 12 weeks). Its before tiles show the win seal breaking a 7-digit amount ("TZS" / "1,740,000") at 320/360 in all three languages. Everything else of R1-tickets is still to do.
+
+- **S6 NOTICES — round 17 COMPLETE** at `bd74c982c` (14 commits; notify 138/0 mem + 144/0 PG; claims 635/0; red:maswali-claims 29/29). Owed at that head: tsc, the both-store suites and the reds listed in MASWALI-PLAN §0.
+- **S5-DESIGN-DOORS** at `5bc6e2c57`: nearly all of R1-doors done and verified (the ghost equals the card); the last commit is static-verified only.
