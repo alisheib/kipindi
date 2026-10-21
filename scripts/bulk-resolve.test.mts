@@ -37,7 +37,7 @@ import { decideAutoResolve } from "../src/lib/server/market-service.ts";
 import { sourceMatchesAny, type TrustedSource } from "../src/lib/server/source-registry.ts";
 import { BULK_REASON, composeOverrideJustification } from "../src/app/admin/resolver-queue/bulk-verdict-copy.ts";
 import { compareBy, parseSort, SORT_OPTIONS } from "../src/app/admin/resolver-queue/queue-order.ts";
-import { CEREMONY } from "../src/lib/admin-status-lexicon.ts";
+import { BULK_VERDICT, CEREMONY } from "../src/lib/admin-status-lexicon.ts";
 
 const ROOT = process.cwd();
 let pass = 0, fail = 0;
@@ -620,6 +620,13 @@ const V = (m: VerdictMarket, over: Partial<Parameters<typeof bulkVerdictFor>[0]>
   const row = read("src/app/admin/resolver-queue/row-select.tsx");
   ok("11.15 the row states a verdict for an ELIGIBLE market too, not only a blocked one",
      /verdict\.eligible \?/.test(row));
+  // ⛔ MASWALI-BUILD S7-F8 14 · with two-admin authorization ON the bar STAGES ("Stage selected"), yet an eligible row said
+  //    "…this one will seal" (and its title "the bulk bar will" seal it) — read on S7-F7 6–8's render, 2026-10-21, at every
+  //    width. The row picks its words by the verdict's own `stage`, the field the bar acts on; the staged words never say seal.
+  ok("11.15b an eligible row says what the bar will do: 'will seal' in single-admin, 'staged for a second officer' in two-admin",
+     /: verdict\.stage === "stage1" \? BULK_VERDICT\.eligibleStaged\.en : BULK_VERDICT\.eligible\.en\}/.test(row)
+       && /: verdict\.stage === "stage1"\s*\? "This market clears the auto-resolve floor\. Two-admin authorization is on, so the bulk bar stages it/.test(row)
+       && /second officer/.test(BULK_VERDICT.eligibleStaged.en) && !/\bseal/i.test(BULK_VERDICT.eligibleStaged.en));
   ok("11.16 the tooltip carries EVERY reason, not just the headline", /verdict\.all\.map/.test(row));
   ok("11.17 the tap target is a 44px literal, never an overridden scale class",
      /min-h-\[44px\]/.test(row) && !/\bh-8\b/.test(row) && !/\bh-10\b/.test(row));

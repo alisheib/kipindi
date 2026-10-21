@@ -491,4 +491,28 @@ export const MUTATIONS = [
     from: `{canBulk && twoOfficerRead !== null && verdictById.has(m.id) && (\n                    <RowVerdict`,
     to: `{canBulk && verdictById.has(m.id) && (\n                    <RowVerdict`,
   },
+
+  /* ── MASWALI-BUILD S7-F8 14 · an eligible row says what the bar will do (11.15b): with two-admin ON it is staged for a
+     second officer, never "will seal". One plant each for the words, their title and the dictionary entry. */
+  {
+    name: "S7-F8 · an eligible row says 'this one will seal' with two-admin ON, where the bar only stages it",
+    file: ROW,
+    expect: "11.15b an eligible row says what the bar will do",
+    from: `{verdict.modeIsAuto ? BULK_VERDICT.eligibleAuto.en : verdict.stage === "stage1" ? BULK_VERDICT.eligibleStaged.en : BULK_VERDICT.eligible.en}`,
+    to: `{verdict.modeIsAuto ? BULK_VERDICT.eligibleAuto.en : BULK_VERDICT.eligible.en}`,
+  },
+  {
+    name: "S7-F8 · an eligible row's title says 'the bulk bar will' seal it with two-admin ON",
+    file: ROW,
+    expect: "11.15b an eligible row says what the bar will do",
+    from: `            ? "This market clears the auto-resolve floor. Two-admin authorization is on, so the bulk bar stages it — a different officer countersigns it on the market's own card to seal it."`,
+    to: `            ? "This market clears the auto-resolve floor. Resolution mode is set to human, so nothing seals it automatically — the bulk bar will."`,
+  },
+  {
+    name: "S7-F8 · the dictionary's staged words say 'will seal' again",
+    file: "src/lib/admin-status-lexicon.ts",
+    expect: "11.15b an eligible row says what the bar will do",
+    from: `  eligibleStaged:           { en: "Clears the auto-resolve floor — this one will be staged for a second officer" },`,
+    to: `  eligibleStaged:           { en: "Clears the auto-resolve floor — this one will seal" },`,
+  },
 ];

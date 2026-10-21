@@ -777,6 +777,8 @@ export const PROPOSAL = {
  */
 export const BULK_VERDICT = {
   eligible:                 { en: "Clears the auto-resolve floor — this one will seal" },
+  /** S7-F8 14 · two-admin ON: the bar STAGES (`stage1`) and a different officer seals on the market's own card. */
+  eligibleStaged:           { en: "Clears the auto-resolve floor — this one will be staged for a second officer" },
   eligibleAuto:             { en: "Would auto-seal" },
   alreadyResolved:          { en: "Already resolved — the verdict is sealed" },
   awaitingCountersignature: { en: "Staged already — countersign it on the market's own card, not in bulk" },
