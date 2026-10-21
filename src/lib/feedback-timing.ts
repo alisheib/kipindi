@@ -158,3 +158,11 @@ export const DWELL_BET_PLACED_MS = 3_000;
 
 /** The journey bet sheet's committed ticket receipt (S8 A12): five seconds, banked while it is being read. */
 export const DWELL_BET_RECEIPT_MS = 5_000;
+
+/**
+ * A Millionea purchase of SEVERAL tickets, stamped (MASWALI-BUILD S5; Ali 2026-10-21 10/10 pass, the slip critic's LOW —
+ * the literal stood at its call site). **60s**: the stamp lists every ticket's serial, up to the week's cap of them — each a
+ * document the player may want to note — so it waits a minute, banked while it is read, exactly as the single ticket's
+ * stamp keeps the shared result's 5s (one ticket, one serial: the bet receipt's beat, "keep placing bets popups normal").
+ */
+export const DWELL_MILLIONEA_BATCH_STAMP_MS = 60_000;

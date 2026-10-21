@@ -116,7 +116,30 @@ type Props = {
   /** Classes for everything inside the panel (a wrapper drawn only when given): Millionea's `.kp-mln-zh`, since the dialog
    *  is portalled out of the page's root (S5 VIS A2/A3). Omitted: the panel's children exactly as before. */
   className?: string;
+  /** Modal's `handoff` (Ali 2026-10-21 10/10 pass, the motion critic's H1): opened in the same commit as the dialog it
+   *  replaces closes, this result holds the page's dim from its first frame. Omitted: exactly as before. */
+  handoff?: boolean;
+  /** Modal's `panelDelay` (…H1): the panel rises one exit beat (`--t-quick`) late, once the dialog it replaces has left;
+   *  both clamps zero the wait. Omitted: exactly as before. */
+  panelDelay?: boolean;
 };
+
+/**
+ * ⭐ E-269'S RULE, FOR THE STRIP TOO (Ali 2026-10-21 10/10 pass; the motion critic's L6 — a platform change, every success
+ * result): under either clamp of §M6 (the OS preference, the in-app switch / `minimal` tier) the auto-close strip HOLDS
+ * FULL. It drained on its own rAF loop, which no clamp reaches, so a reader who asked for no motion watched a bar run down
+ * all the same. Full says "this result is still here", which is true until the timer closes it — exactly the toast's
+ * calm branch (`.toast-countdown`, motion.css). The `reduced` throttle tier keeps the drain, as it keeps the toast's.
+ * The same three gates `exitBeatMs` and the win celebration read.
+ */
+function stripStill(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true ||
+    document.documentElement.classList.contains("kp-reduce-motion") ||
+    document.documentElement.getAttribute("data-motion") === "minimal"
+  );
+}
 
 /** The panel's children inside a `className` wrapper when one is given — and exactly as given (a fragment) otherwise. */
 function PanelClass({ className, children }: { className?: string; children: ReactNode }) {
@@ -218,7 +241,7 @@ const STRIP_GRADIENTS: Record<string, string> = {
 export function OperationResultModal({
   open, variant, eyebrow, title, subtitle, details, footnote, compactOnPhone = false,
   primaryLabel, secondaryLabel, onPrimary, onSecondary, onClose,
-  autoCloseMs, stripTone = "brand", successCrestTone, stamp, titleFace, className,
+  autoCloseMs, stripTone = "brand", successCrestTone, stamp, titleFace, className, handoff, panelDelay,
 }: Props) {
   const { t } = useT();
   const closeRef = useRef(onClose);
@@ -374,6 +397,8 @@ export function OperationResultModal({
     // bar always lines up with the moment-of-close regardless of
     // how many times the effect re-runs.
     if (stripRef.current) stripRef.current.style.transform = "scaleX(1)";
+    // ⭐ Under a clamp the strip holds full (`stripStill`, E-269's rule); the timer, the pause and the close are untouched.
+    const still = stripStill();
     let rafId: number | null = null;
     const tick = () => {
       // Held: the strip sits at the banked figure and the loop stays alive waiting for the
@@ -382,7 +407,7 @@ export function OperationResultModal({
       if (pausedRef.current) {
         const banked = remainingRef.current ?? 0;
         if (stripRef.current) {
-          stripRef.current.style.transform = `scaleX(${Math.max(0, Math.min(1, banked / closeMs))})`;
+          stripRef.current.style.transform = `scaleX(${still ? 1 : Math.max(0, Math.min(1, banked / closeMs))})`;
         }
         rafId = requestAnimationFrame(tick);
         return;
@@ -390,7 +415,7 @@ export function OperationResultModal({
       const target = closeTargetRef.current;
       if (target === null) { rafId = null; return; }
       const remaining = target - performance.now();
-      const pct = Math.max(0, Math.min(1, remaining / closeMs));
+      const pct = still ? 1 : Math.max(0, Math.min(1, remaining / closeMs));
       if (stripRef.current) stripRef.current.style.transform = `scaleX(${pct})`;
       if (remaining <= 0) {
         rafId = null;
@@ -447,6 +472,8 @@ export function OperationResultModal({
       describedBy={subtitle ? subtitleId : undefined}
       maxWidth={460}
       initialFocus={primaryRef}
+      handoff={handoff}
+      panelDelay={panelDelay}
       panelClassName="overflow-hidden !p-0"
     >
       <PanelClass className={className}>

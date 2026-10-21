@@ -174,6 +174,19 @@ export function useExitPhase(open: boolean, beat: ExitBeat = "--t-quick"): { pre
 }
 
 /**
+ * ⭐ THE HAND-OFF'S TWO EDGES (`handoff` below; Ali 2026-10-21 10/10 pass, the motion critic's H1). `handoff` is read at
+ * each edge of `open` and held for that phase, as `useExitPhase` holds its own — in render, so no frame is painted between
+ * the edge and its answer: `dimHeld` while a dialog opened with it is open (its dim stands at full strength from the first
+ * frame), `dimDropped` while a dialog closed with it plays its exit (its dim is gone at once). Both false for a dialog that
+ * never asks: the dialog draws what it drew before.
+ */
+function useHandoff(open: boolean, handoff: boolean | undefined): { dimHeld: boolean; dimDropped: boolean } {
+  const [edge, setEdge] = React.useState({ open, handoff: open && handoff === true });
+  if (edge.open !== open) setEdge({ open, handoff: handoff === true });
+  return { dimHeld: open && edge.handoff, dimDropped: !open && edge.handoff };
+}
+
+/**
  * The dialog's ✕ — ONE definition (R4-I, 2026-10-09). Modal pins it to the panel's corner; ConfirmModal draws it in its
  * header row (see there), and so do the sell and bet confirms (`sell-confirm-modal.tsx`, `bet-confirm-modal.tsx`, which
  * import it). A 48px box (`h-8 w-8` on this repo's overridden scale), a 16px glyph.
@@ -285,6 +298,22 @@ export type ModalProps = {
    * component draws nothing on its first commit, so the dialog would blink.
    */
   refocusKey?: string | number;
+  /**
+   * ⭐ ONE DIM ACROSS TWO DIALOGS — ADDITIVE, AND INERT UNLESS SET (Ali 2026-10-21 10/10 pass; the motion critic's H1). A
+   * dialog that closes in the same commit another opens in its place (the Millionea confirm sheet into the cut's stamp)
+   * passes it on BOTH: the one opening holds the page's dim at full strength from its first frame (no `.m-scrim` fade in),
+   * and the one closing drops its own dim at once while its panel still plays `.m-out` — so the dim never lifts between
+   * them, and the page behind is never seen bare (it was, for ~100ms, still live, while the slip reset under no dim).
+   * Read at each edge of `open` and held for that phase (`useHandoff`). Omitted, every dialog renders exactly as before.
+   */
+  handoff?: boolean;
+  /**
+   * ⭐ THE PANEL RISES ONE BEAT LATE — ADDITIVE, AND INERT UNLESS SET (…H1): the panel's entrance waits `--t-quick`
+   * (`animation-delay`), the beat of `.m-out`, so the dialog opened by a hand-off rises only once the panel it replaces has
+   * left — two panels are never up at once (S5 VIS P1). Both clamps zero the wait (motion.css: `animation-delay: 0s
+   * !important`), so with motion off the panel is simply there. Omitted, every dialog renders exactly as before.
+   */
+  panelDelay?: boolean;
 };
 
 /** The shared centered-dialog shell. Controlled — the caller owns `open`. */
@@ -309,6 +338,8 @@ export function Modal({
   sheetUntil = "sm",
   anchorRef,
   refocusKey,
+  handoff,
+  panelDelay,
 }: ModalProps) {
   const { t } = useT();
   const [mounted, setMounted] = React.useState(false);
@@ -337,6 +368,7 @@ export function Modal({
      is closed, and focus must be given back then (`leaveLayer`) — not a beat
      later. What lingers is a non-interactive, `aria-hidden` ghost playing its fade. */
   const { present, exiting } = useExitPhase(open, "--t-quick");
+  const { dimHeld, dimDropped } = useHandoff(open, handoff);
 
   useModalLock(open);
   // Keep SSR's first render empty, then supply the portal refs before the first browser paint.
@@ -542,7 +574,8 @@ export function Modal({
       } ${exiting ? "pointer-events-none" : ""}`}
       style={{ zIndex }}
     >
-      <button
+      {/* ⭐ A dialog closed by a hand-off drops its dim at once (`handoff`): the dialog opening in its place holds the page's. */}
+      {!(exiting && dimDropped) && <button
         type="button"
         aria-label={t.common.cancel}
         tabIndex={-1}
@@ -550,10 +583,12 @@ export function Modal({
         /* The scrim fades with the panel. `.m-scrim` and `.m-out` are both
            `animation` shorthands, so they cannot be worn at once — the later
            declaration would win outright. Swapping the class keeps the blur by
-           naming the same token the utility does; no value is restated. */
-        className={`${exiting ? "m-out" : "m-scrim"} fixed inset-0 bg-black/60${anchored ? " kp-modal-scrim--anchored" : ""}`}
-        style={exiting ? { backdropFilter: "blur(var(--m-blur-behind))" } : undefined}
-      />
+           naming the same token the utility does; no value is restated.
+           ⭐ A dialog opened by a hand-off (`handoff`) wears neither: its dim is already there, at full strength, from its
+           first frame — the blur kept the same way. */
+        className={`${exiting ? "m-out " : dimHeld ? "" : "m-scrim "}fixed inset-0 bg-black/60${anchored ? " kp-modal-scrim--anchored" : ""}`}
+        style={exiting || dimHeld ? { backdropFilter: "blur(var(--m-blur-behind))" } : undefined}
+      />}
       {/* ⭐ RUNG 3 (M2) — the dialog PICKS a rung instead of composing one. `mat-modal`
           carries the wash, the border and `--elev-modal` together, so the three classes
           it replaces (`border border-border-strong bg-bg-elevated shadow-modal`) are
@@ -604,6 +639,8 @@ export function Modal({
           ...(anchored && anchorAt
             ? ({ "--anchor-top": `${anchorAt.top}px`, "--anchor-right": `${anchorAt.right}px` } as React.CSSProperties)
             : null),
+          // ⭐ `panelDelay`: the entrance waits the exit beat of the panel it replaces; nothing is added without it.
+          ...(panelDelay && !exiting ? { animationDelay: "var(--t-quick)" } : null),
         }}
       >
         {showClose && <CloseX onClick={onClose} label={t.common.close} className="absolute right-3 top-3" />}
@@ -671,6 +708,16 @@ type ConfirmModalBase = {
    * closing mid-request reads as cancelled while the server goes ahead.
    */
   confirmHeld?: boolean;
+  /**
+   * ⭐ CLASSES FOR THE PANEL — ADDITIVE, AND INERT UNLESS SET (Ali 2026-10-21 10/10 pass; the slip critic's M11 and the
+   * tickets critic's M4): the dialog is portalled out of the page's root, so a page whose rules hang on its root (Millionea's
+   * Chinese keep, `.kp-mln-zh`) hands them to the panel here. Omitted, the panel's classes are exactly as before.
+   */
+  panelClassName?: string;
+  /** Modal's `handoff` (one dim across this confirm and the result that replaces it), passed through. Omitted: as before. */
+  handoff?: boolean;
+  /** Modal's `panelDelay` (the panel rises one exit beat late), passed through. Omitted: as before. */
+  panelDelay?: boolean;
 };
 
 /* ⛔ THE TIER AND ITS TYPED WORD ARE ONE DECISION, NOT TWO INDEPENDENT PROPS (S-17,
@@ -775,6 +822,9 @@ export function ConfirmModal({
   loading = false,
   armKey,
   confirmHeld = false,
+  panelClassName,
+  handoff,
+  panelDelay,
 }: ConfirmModalProps) {
   const { t } = useT();
   /* What the officer typed into the gate — read through `gateReading` before it is compared (vb6). */
@@ -881,6 +931,10 @@ export function ConfirmModal({
          it was taken out of the row: that gave a title 56px more line on a phone (48 from 1024), so one that wrapped beside
          the ✕ could fold back to one line while the request ran, and the body rose under it. Now nothing moves. */
       showClose={false}
+      /* ⭐ The three opt-ins (Ali 2026-10-21 10/10 pass), each passed only when its caller sets it. */
+      panelClassName={panelClassName}
+      handoff={handoff}
+      panelDelay={panelDelay}
     >
       <div className="mb-3 flex items-start gap-3">
         <IconPlate size={36} className="mt-0.5" aria-hidden
