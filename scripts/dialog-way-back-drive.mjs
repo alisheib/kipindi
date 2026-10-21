@@ -175,9 +175,10 @@ for (const [name, launcher] of ENGINES) {
     if (r.openerHeldFocus) ok(`${name} · ${r.label} · focus is back on the opener`, r.backOnOpener);
   }
   if (PROVE_RED) {
-    // ⚠️ THE JUMP IS AN ENGINE'S. Blink scrolls a focused element that the lock has unstuck into view; WebKit, measured
-    // here 2026-10-21, keeps the page still even with the plant — so WebKit's planted cases are reported, and only an
-    // engine that jumps at all is held to catching every case.
+    // ⚠️ THE JUMP IS BLINK'S. Chromium scrolls a focused element that the lock has unstuck into view, in every case here;
+    // WebKit, measured 2026-10-21, mostly keeps the page still even with the plant (1 of 6 cases jumped: the capsule on
+    // /markets by the keyboard). So Chromium is held to catching every planted case, and WebKit's planted cases are
+    // reported as what that engine does — the fix (`preventScroll`) is held in both by the checks above.
     const red = await runEngine(name, launcher, true);
     let jumpedHere = 0;
     for (const r of red ?? []) {
@@ -185,15 +186,15 @@ for (const [name, launcher] of ENGINES) {
       log(`${name} · PLANT (every focus scrolls) · ${r.label}: scrollY ${r.before.y} → ${r.after.y} · ${jumped ? "CAUGHT" : "no jump in this engine"} · focus back on the opener: ${r.backOnOpener}`);
       if (jumped) jumpedHere++;
     }
-    if (jumpedHere > 0) {
+    if (name === "chromium") {
       planted += (red ?? []).length;
       caught += jumpedHere;
-      ok(`${name} · RED CONTROL · every planted case jumps (${jumpedHere}/${(red ?? []).length})`, jumpedHere === (red ?? []).length);
+      ok(`${name} · RED CONTROL · every planted case jumps (${jumpedHere}/${(red ?? []).length})`, red !== null && jumpedHere === red.length && red.length > 0);
     } else {
-      log(`${name} · RED CONTROL · this engine never moves the page on that focus, planted or not: nothing for the plant to show here`);
+      log(`${name} · RED CONTROL (reported, not held) · ${jumpedHere}/${(red ?? []).length} planted cases moved the page in this engine`);
     }
   }
 }
 
-log(`\nqa:dialog-way-back: ${pass} passed, ${fail} failed${PROVE_RED ? ` · RED CONTROL — ${caught}/${planted} planted cases jumped (in the engines that jump)` : ""}`);
+log(`\nqa:dialog-way-back: ${pass} passed, ${fail} failed${PROVE_RED ? ` · RED CONTROL — Chromium ${caught}/${planted} planted cases jumped` : ""}`);
 process.exit(fail === 0 && (!PROVE_RED || (planted > 0 && caught === planted)) ? 0 : 1);
