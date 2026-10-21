@@ -818,9 +818,7 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["L13 undone — a sealed reserve still the open ring", "19.1", plantSrc("seal", 'out === "YES" || out === "NO" ? "sealed" : "standby"', '"standby"')],
   ["L14 undone — no close fact (the lock moment dead again)", "20.1", plantSrc("player", ' facts.push({ kind: "close", at: week.closedAt });', " void 0;")],
   ["L14 — the scheduled close instead of the recorded one", "20.1", plantSrc("player", 'facts.push({ kind: "close", at: week.closedAt });', 'facts.push({ kind: "close", at: week.closesAt });')],
-  ["L14 — the lock line outside the stub's moment", "20.1", plantSrc("ticket", "{cut || reveal || lock
-", "{cut || reveal
-")],
+  ["L14 — the lock line outside the stub's moment", "20.1", plantSrc("ticket", "{cut || reveal || lock\n", "{cut || reveal\n")],
   ["M9 undone — the head ghost ignores its kinds", "21.1", plantSrc("headGhost", "        {kinds === 3 && <div className=\"h-[44px] w-[96px] rounded-md bg-bg-overlay kp-shimmer-track\" />}\n", "")],
   ["M9 undone — the 70px Seal Line ghost", "21.1", plantSrc("ticketGhost", '          <GhostBar className={cn("mt-1.5 w-full", cancelOpen ? "h-[18px]" : "h-[32px]")} />\n', "")],
   ["round 2 undone — the gold rows after the totals", "23.1", plantSrc("ledger", "  const at = rows.findIndex((r) => r.key === \"share\");", "  const at = rows.length - 1;")],
