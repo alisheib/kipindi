@@ -447,7 +447,9 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
     "src/app/legal/privacy/page.tsx": [3, "a path in the privacy policy's sentence (“Profile → Notifications”), in each language — the D19a-pinned legal text, frozen"],
     "src/app/s/optout-refusal.tsx": [1, "a path in a sentence (“Wasifu → Arifa”): the words' own face — S12 with the dictionary's arrows"],
     // MASWALI-BUILD S5 (2026-10-18): the worked example's eyebrow, beside its figures in their own mono face.
-    "src/app/millionea/how/page.tsx": [1, "data: the worked example's voided main → its reserve (“4 → A1”, as MASWALI-PLAN §10 §3.4 draws it)"],
+    // RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER): How's "4 → A1" eyebrow is gone (the critic's L16: one meaning
+    // drawn two ways — the reserve's own ↪ glyph says it); the register's log prints the objection window's two ends (P6).
+    "src/app/millionea/register/[week]/page.tsx": [1, "data: the objection window's two ends in the week's log (“from → to”, as the delivery's log prints it, P6)"],
   };
   // Read as the player gets it (PHOSPHOR W4's review): a JS escape (`←`, `\u{…}`) or an HTML entity is the character.
   const ENT: Record<string, number> = { larr: 0x2190, uarr: 0x2191, rarr: 0x2192, darr: 0x2193 };

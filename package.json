@@ -760,6 +760,7 @@
     "test:maswali-admin-touch": "tsx scripts/maswali-admin-touch.test.mts",
     "red:maswali-admin-touch": "tsx scripts/maswali-admin-touch.test.mts --prove-red",
     "qa:maswali-player-shots": "node scripts/maswali-player-shots.mjs",
+    "qa:maswali-register-shots": "node scripts/maswali-register-shots.mjs",
     "qa:maswali-player-drive": "node scripts/maswali-player-drive.mjs",
     "red:maswali-rbac": "node scripts/red-maswali-rbac.mjs",
     "test:phosphor-plan": "tsx scripts/phosphor-plan.test.mts",
