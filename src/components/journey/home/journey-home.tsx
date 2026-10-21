@@ -78,8 +78,8 @@ export async function JourneyHome({ searchParams }: { searchParams: Promise<Home
     matchesQuery(search, m as unknown as Record<string, string | null | undefined>, MARKET_SEARCH));
   const { onBreak, seeds } = await journeyCardState(view.shown, nowMs, session?.userId);
   // MASWALI-BUILD S5 · the Millionea card (§M8a item 11, O-7): for a reader the rollout admits and who is not on a break,
-  // its figure this render's; null — nothing drawn — otherwise (`maswali-home-card-door.tsx`).
-  const millionea = await millioneaHomeCard(t, nowMs, { onBreak: onBreak !== null });
+  // its figure this render's; null — nothing drawn — otherwise (`maswali-home-card-door.tsx`). In the How-to card's own box.
+  const millionea = await millioneaHomeCard(t, nowMs, { onBreak: onBreak !== null, host: "journey" });
   return (
     <JourneyHomeView
       t={t}

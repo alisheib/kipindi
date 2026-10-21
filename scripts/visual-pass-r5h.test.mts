@@ -216,8 +216,11 @@ const isClientFile = (p: string, text: (p: string) => string = raw) => hasDirect
 /** For a player loading file: the drawings it renders (itself when it is client code; else the client modules it loads). */
 const drawingsOf = (f: string, text: (p: string) => string = raw) => (isClientFile(f, text) ? [f]
   : loads(f, text).map((x) => x.to).filter((to): to is string => to !== null && isClientFile(to, text) && !to.endsWith("route-ghost-lazy.tsx")));
-/** The server's own loading files may ask the server these, and nothing else. */
-const SERVER_ASKS = ["@/lib/server/journey-preview", "@/lib/server/payout-rails", "@/lib/feature-state"];
+/** The server's own loading files may ask the server these, and nothing else. MASWALI-BUILD S5-DESIGN-DOORS H1 adds the
+ *  Millionea door's answer (`millionea-doors`: will the card be offered, and is it a preview), which /markets' loading hands
+ *  its drawing as two booleans — as the wallet's hands its drawing the bonus answer — so the board's picture holds the
+ *  card's slot. An answer, never a tree: the drawing is still the client's. */
+const SERVER_ASKS = ["@/lib/server/journey-preview", "@/lib/server/payout-rails", "@/lib/feature-state", "@/lib/server/millionea-doors"];
 // S8 WP8: the parent segment selects the question's picture from ONE pathname header. This is reader/path selection,
 // not server words. Strip only these exact two approved lines; another header/cookie/word read still fails below.
 function withoutQuestionPathRead(f: string, s: string): string {
@@ -225,7 +228,7 @@ function withoutQuestionPathRead(f: string, s: string): string {
   const pathRead = 'const pathname = (await headers()).get("x-pathname") ?? "";';
   if (f !== "src/app/markets/loading.tsx" || count(s, headerImport) !== 1 || count(s, pathRead) !== 1
     || !s.includes('if (journey && /^\\/markets\\/[^/]+$/.test(pathname)) return <LazyJourneyRouteGhost rails={[]} at="/markets/[id]" />;')
-    || !s.includes('import MarketsGhost from "./markets-ghost";') || !s.includes('return <MarketsGhost />;')) return s;
+    || !s.includes('import MarketsGhost from "./markets-ghost";') || !s.includes("return <MarketsGhost millionea={millionea} preview={millionea && (await millioneaDoor()).preview} />;")) return s;
   return s.replace(headerImport, "").replace(pathRead, "");
 }
 function wordsCheck(text: (p: string) => string) {

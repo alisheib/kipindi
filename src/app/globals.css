@@ -4770,6 +4770,37 @@ html[data-sheet-open] .route-enter { animation: none; }
    lead's ruling); other languages are untouched, and the platform-wide eyebrow is a separate, later platform question. */
 .kp-mln-zh:lang(zh) .eyebrow { letter-spacing: 0; }
 .kp-mln-zh:lang(zh) .eyebrow:is(.text-micro, .text-caption) { font-size: 12px; line-height: 16px; }
+/* ⭐ MASWALI-BUILD S5-DESIGN-DOORS · THE MILLIONEA DOOR (the critic's R1 M1 L1 L2 L4 M5; `maswali-home-card.tsx` says why).
+   ONE ANATOMY: a head row of three on one axis — the 48px plate, the title, the chevron, 14px apart (the How-to card's own
+   row) — and under it the body: the R-HEADLINE's facts, then the state's. Below 768 the body runs the card's full inner
+   width (a 9-to-13-line card was a two-line door's column: its facts wrapped in 164px at 320); from 768 it stands under the
+   title; from 1280 the card is one row, plate | title | headline | state | chevron, a void state's words at the row's end.
+   The body opens 12px under the head row (the card's own inset), the state 4px under the headline (the facts' rhythm).
+   ITS HOST'S BOX: the journey home's How-to card (`--journey`) or the board's market card (`--board`, with `mat-raised`: 12px,
+   16px across from 640, as `.mcardp`). ONE HOVER, THE HOW-TO CARD'S: on a pointer that hovers, the border turns royal.
+   `.kp-mln-ghost` is its loading picture (`maswali-home-card-ghost.tsx`): the same box, its words hidden over bars. */
+.kp-mln-door { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; grid-template-areas: "plate head chev" "rule rule rule" "state state state"; column-gap: 14px; align-items: center; min-width: 0; border-radius: var(--r-lg); color: var(--text); transition: border-color var(--t-quick) linear; }
+@media (hover: hover) { .kp-mln-door:hover { border-color: var(--border-royal); } }
+.kp-mln-door__plate { grid-area: plate; }
+.kp-mln-door__head { grid-area: head; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.kp-mln-door__title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); min-width: 0; }
+.kp-mln-door__rule { grid-area: rule; min-width: 0; margin-top: var(--sp-3); }
+.kp-mln-door__state { grid-area: state; min-width: 0; margin-top: var(--sp-1); }
+.kp-mln-door__head + .kp-mln-door__state { margin-top: var(--sp-3); }
+.kp-mln-door__chev { grid-area: chev; color: var(--text-subtle); }
+.kp-mln-door--journey { padding: var(--sp-3) 14px var(--sp-3) var(--sp-3); border: 1px solid var(--border); background: var(--bg-elevated); }
+.kp-mln-door--board { padding: var(--sp-3); }
+@media (min-width: 640px) { .kp-mln-door--board { padding-inline: var(--sp-4); } }
+@media (min-width: 768px) { .kp-mln-door { grid-template-areas: "plate head chev" ". rule ." ". state ."; } }
+@media (min-width: 1280px) {
+  .kp-mln-door { grid-template-columns: 48px max-content minmax(0, 1fr) max-content auto; grid-template-areas: "plate head rule state chev"; }
+  .kp-mln-door__rule, .kp-mln-door__state, .kp-mln-door__head + .kp-mln-door__state { margin-top: 0; margin-inline-start: var(--sp-2); }
+}
+.kp-mln-ghost { cursor: default; }
+@media (hover: hover) { .kp-mln-ghost:hover { border-color: var(--border); } }
+.kp-mln-ghost .kp-mln-door__chev { color: transparent; }
+.kp-mln-ghost__bar { border-radius: var(--r-xs); background: var(--bg-overlay); -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.kp-mln-ghost__words { visibility: hidden; }
 .kp-hero__trust-glyph { display: flex; justify-content: center; color: var(--text-subtle); }
 /* The wallet names are the row's emphasis — brand spellings from the payment catalogue, in the
    reader's own list form (`rail-list.ts`); the joiners and the sentence stay muted. */

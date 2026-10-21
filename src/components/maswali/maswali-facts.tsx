@@ -32,16 +32,20 @@ import type { Locale } from "@/lib/i18n-dict";
  *  below 768 and side by side from 768 (`phone`). */
 export type FactsLayout = "flow" | "stack" | "phone";
 
-export function MaswaliFacts({ facts, layout = "flow", className }: {
+export function MaswaliFacts({ facts, layout = "flow", className, id, ids }: {
   facts: ReadonlyArray<ReactNode>;
   layout?: FactsLayout;
   className?: string;
+  /** The list's own id, and each fact's (aligned with `facts`, an empty fact's dropped with it): what a link's
+   *  `aria-labelledby` / `aria-describedby` name (the home card, S5-DESIGN-DOORS L11). Absent, nothing is written. */
+  id?: string;
+  ids?: ReadonlyArray<string | undefined>;
 }) {
-  const shown = facts.filter((f) => f !== null && f !== undefined && f !== false && f !== "");
+  const shown = facts.map((f, i) => [f, ids?.[i]] as const).filter(([f]) => f !== null && f !== undefined && f !== false && f !== "");
   return (
-    <span className={cn("kp-mln-facts", layout === "stack" && "kp-mln-facts--stack", layout === "phone" && "kp-mln-facts--phone", className)}>
-      {shown.map((f, i) => (
-        <span key={i} className="kp-mln-fact">
+    <span id={id} className={cn("kp-mln-facts", layout === "stack" && "kp-mln-facts--stack", layout === "phone" && "kp-mln-facts--phone", className)}>
+      {shown.map(([f, factId], i) => (
+        <span key={i} id={factId} className="kp-mln-fact">
           {f}
           {i < shown.length - 1 && <span className="sr-only">{" · "}</span>}
         </span>

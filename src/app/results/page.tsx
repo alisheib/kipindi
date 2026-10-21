@@ -46,6 +46,7 @@ import { STATUS_TONE, TONE_CHIP, playerStatusInk } from "@/lib/status-tone";
 import { PageContainer } from "@/components/layout/page-container";
 import { ROOT_OPEN_GRAPH } from "../layout";
 import { MillioneaResultsSection } from "./millionea-results";
+import { millioneaSectionShown } from "./millionea-results-view";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -144,10 +145,13 @@ export default async function ResultsPage({
         <Suspense fallback={<ResultsGhostBands notable={!searching && pageNum === 1} searching={searching} />}>
           <ResultsContent state={state} searching={searching} pageNum={pageNum} />
         </Suspense>
-        {/* A separate register read: its weeks never enter the classic archive's counts, search, or pager. */}
-        <Suspense fallback={null}>
-          <MillioneaResultsSection />
-        </Suspense>
+        {/* A separate register read: its weeks never enter the classic archive's counts, search, or pager — and it stands on
+            the archive's first, unfiltered page alone (S5-DESIGN-DOORS L16, `millioneaSectionShown`). */}
+        {millioneaSectionShown(state, searching, pageNum) && (
+          <Suspense fallback={null}>
+            <MillioneaResultsSection />
+          </Suspense>
+        )}
       </div>
     </PageContainer>
   );

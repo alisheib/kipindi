@@ -280,7 +280,8 @@ function suspenseCensus(src: Src): string[] {
       // 2), so the ghost comes from its own module; test:journey-home §6 pins its importers and test:visual-pass-r4j 3.14
       // the two places.
       // RE-PINNED (MASWALI-BUILD S5 pages): the home's ghost now holds the Millionea card's slot on the doors' answer.
-      if (f === "src/app/page.tsx" && fb === "<JourneyHomeGhost t={t} millionea={millionea} />"
+      // RE-PINNED (S5-DESIGN-DOORS H1, 2026-10-21): …the card's own picture, in the reader's language, the preview chip held.
+      if (f === "src/app/page.tsx" && fb === "<JourneyHomeGhost t={t} locale={locale} millionea={millionea} preview={preview} />"
         && s.includes('import { JourneyHomeGhost } from "@/components/journey/home/journey-home-ghost";')) continue;
       bad.push(`${f}: ${fb.slice(0, 60)}`);
     }
@@ -296,7 +297,7 @@ function suspenseCensus(src: Src): string[] {
     now.length === 0, now.join(" | "));
   const back = suspenseCensus(planted("src/app/markets/page.tsx", "<Suspense fallback={<MarketsBoardGhost />}>", "<Suspense fallback={<GridSkeleton />}>"));
   ok("2.1′ PLANT · /markets' own GridSkeleton back as the fallback is reported", back.length > 0, back.join(" | "));
-  const homeBack = suspenseCensus(planted("src/app/page.tsx", "<Suspense fallback={<JourneyHomeGhost t={t} millionea={millionea} />}>", "<Suspense fallback={<HomeSkeleton />}>"));
+  const homeBack = suspenseCensus(planted("src/app/page.tsx", "<Suspense fallback={<JourneyHomeGhost t={t} locale={locale} millionea={millionea} preview={preview} />}>", "<Suspense fallback={<HomeSkeleton />}>"));
   ok("2.1″ PLANT · `/`'s journey arm standing a skeleton of its own in place of the home's ghost is reported", homeBack.length > 0, homeBack.join(" | "));
   const wrongBoardImport = suspenseCensus(planted("src/app/markets/page.tsx", 'import { MarketsBoardGhost } from "./markets-ghost";', 'import { MarketsBoardGhost } from "./unreviewed-ghost";'));
   ok("2.1‴ PLANT · the moved board fallback imported from another drawing is rejected", wrongBoardImport.some(w => w.startsWith("src/app/markets/page.tsx:")));

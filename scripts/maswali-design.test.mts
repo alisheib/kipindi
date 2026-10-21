@@ -299,8 +299,12 @@ const liveDefects = (slipSrc: string, ticketSrc: string) => {
   const card = squash(code(read(CARD)));
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-19 (S5 VIS P3): the card has ONE headline block at every width — the 768 figure block is
   // gone — so one `{!voidKind && (` guards the figure's rule; the void's words are a fact line (A1, `factsIn`).
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-DOORS M6): a week nobody won states no jackpot either — `noHeadline` names
+  // the three states, and the headline's facts are an empty list for them (test:maswali-doors renders all three).
   ok("2.M7d · the card draws no figure's rule on a void (one headline block, at every width), and says the void's own words",
-    count(card, "{!voidKind && (") === 1 && card.includes("meta = factsIn(t.millionea.weekVoidingShort);") && card.includes("meta = factsIn(state.refundsPending ? t.millionea.weekVoidedShortPending : t.millionea.weekVoidedShort);"));
+    count(card, "const headline: ReactNode[] = noHeadline ? [] : [") === 1
+      && card.includes('const noHeadline = state.kind === "voiding" || state.kind === "voided" || state.kind === "settledRollover";')
+      && card.includes("meta = factsIn(t.millionea.weekVoidingShort);") && card.includes("meta = factsIn(state.refundsPending ? t.millionea.weekVoidedShortPending : t.millionea.weekVoidedShort);"));
 }
 
 // L8 L10 L11 L12 L13
@@ -451,10 +455,12 @@ const heldGuardDefects = (hubSrc: string) => {
   const door = squash(code(read("src/components/maswali/maswali-home-card-door.tsx")));
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-19 (S5 VIS P3): the waiting week's line is drawn ONCE, after the R-HEADLINE, at every
   // width (it was drawn twice: in the phone column and again in the 768 block, in another order).
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-DOORS M2): drawn once, as the headline's fact right after the figure it
+  // adds to (4.P3a holds the order in three languages).
   ok("2.R4e · the card draws that bound as the hub does — \"at least\" around the figure and the waiting week's line — and the door hands it the model's bound and the template's next week",
     card.includes("return jackpot !== null && atLeast ? fillNodes(t.millionea.atLeast, { amount: run }) : run;")
       && card.includes("const pending = jackpot !== null && pendingWeek !== null ? fill(t.millionea.pendingCarry, { week: pendingWeek }) : null;")
-      && count(card, "{pending && <span") === 1
+      && count(card, "pending ? keep(pending) : null,") === 1
       && door.includes("homeCardOf(t, hub, configuredFeeRate(), nowMs, nextWeekOpen(hub, millioneaOpenTemplate(), nowMs))")
       && door.includes("atLeast={model.atLeast} pendingWeek={model.pendingWeek}"));
   const hubSrc = squash(code(read(HUB)));
@@ -476,7 +482,7 @@ const heldGuardDefects = (hubSrc: string) => {
     [REGISTER_WEEK, '<PageContainer tier="reading" className="kp-mln-zh">'],
     ["src/app/millionea/tickets/page.tsx", '<PageContainer tier="reading" className="kp-mln-zh space-y-6">'],
     [TICKET_PAGE, '<PageContainer tier="receipt" id={view.positionId} className="kp-mln-zh space-y-5">'],
-    [CARD, 'className={cn("kp-mln-zh mat-raised flex items-start gap-2 rounded-card p-3'],
+    [CARD, 'className={cn("kp-mln-zh", doorClass(host), className)}'], // re-pinned 2026-10-21: the door's box (S5-DESIGN-DOORS L2)
     ["src/app/positions/page.tsx", 'className="kp-mln-zh mat-flat flex min-h-[44px] items-center gap-3 rounded-control'],
   ];
   const zhDefects = (readAt: (rel: string) => string) => {
@@ -492,7 +498,7 @@ const heldGuardDefects = (hubSrc: string) => {
   };
   const z = zhDefects(read);
   ok("2.R5a · every Millionea page root, the home card and the /positions row carry `.kp-mln-zh`, the one rule that keeps a Chinese word whole (keep-all, and anywhere as the floor)", z.length === 0, z.join(" | "));
-  const plantedZh = zhDefects((r) => (r === CARD ? read(r).replace('"kp-mln-zh mat-raised', '"mat-raised') : read(r)));
+  const plantedZh = zhDefects((r) => (r === CARD ? read(r).replace('cn("kp-mln-zh", doorClass(host)', "cn(doorClass(host)") : read(r)));
   ok("2.R5a′ CONTROL · the card without the rule is reported", plantedZh.includes(CARD));
 }
 
@@ -500,7 +506,7 @@ const heldGuardDefects = (hubSrc: string) => {
 console.log("\n§3 · controls — each source check fails on a planted copy");
 {
   const plant = (rel: string, from: string, to: string) => (r: string) => (r === rel ? read(r).replace(from, to) : read(r));
-  const goldCard = goldDefects(plant(CARD, 'const run = <span className={cn("amount", className)}>{figure}</span>;', 'const run = <span className={cn("amount gilt-ink", className)}>{figure}</span>;'));
+  const goldCard = goldDefects(plant(CARD, 'const run = <span className="amount text-body-lg font-semibold text-text">{figure}</span>;', 'const run = <span className="amount gilt-ink text-body-lg font-semibold text-text">{figure}</span>;'));
   ok("3.1 · gold planted on the card's figure is reported", goldCard.some((x) => x.startsWith(CARD)));
   const toggles = radioDefects(read(SLIP).replace("aria-checked={yesLit}", "aria-pressed={yesLit}"));
   ok("3.2 · toggle semantics put back on an answer are reported", toggles.some((x) => x.includes("aria-pressed")));
@@ -717,17 +723,19 @@ const cardBlockDefects = (src: string) => {
   const disorder = LOCALES.flatMap((l) => {
     const d = dict[l].millionea;
     const head = FACTS.factsOf(d.ruleWithFigure);
-    const marks = [d.productLabel, (head[0] ?? "").replace("{amount}", "").trim(), fill(head[1] ?? "", { pct: 13 }), fill(head[2] ?? "", { pct: 13 }),
-      fill(d.pendingCarry, { week: 47 }), d.salesCloseAt.replace("{when}", "").trim(), fill(d.yourTicketsThisWeek, { n: 1, cap: 10 })];
+    // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-DOORS M2): the carry stands right after the figure it adds to — it hung
+    // after the fee and read as adding to the fee.
+    const marks = [d.productLabel, (head[0] ?? "").replace("{amount}", "").trim(), fill(d.pendingCarry, { week: 47 }), fill(head[1] ?? "", { pct: 13 }),
+      fill(head[2] ?? "", { pct: 13 }), d.salesCloseAt.replace("{when}", "").trim(), fill(d.yourTicketsThisWeek, { n: 1, cap: 10 })];
     const text = cardOf(l);
     const at = marks.map((m) => text.indexOf(m));
     return at.some((x, i) => x < 0 || (i > 0 && x <= at[i - 1])) ? [`${l}: ${j(at)} in "${text}"`] : [];
   });
-  ok("4.P3a · the card says ONE order in every language — its title, the R-HEADLINE (\"Jackpot\" with its figure, the 10/10 share, the fee at payout), the carry's line, then the close and the reader's tickets — from one markup at every width",
+  ok("4.P3a · the card says ONE order in every language — its title, the figure (\"Jackpot\" with it), the carry's line that adds to it, the 10/10 share, the fee at payout, then the close and the reader's tickets — from one markup at every width",
     disorder.length === 0, disorder.join(" | "));
   const b = cardBlockDefects(read(CARD));
   ok("4.P3b · no width draws the card otherwise: no 768-only block (it dropped \"Jackpot\" and set its lines in another order), the headline and the state one fact per line below 768", b.length === 0, b.join(" | "));
-  const old768 = read(CARD).replace("      <I.chevronRight s={18}", '      <span className="hidden md:flex xl:hidden" />\n      <I.chevronRight s={18}');
+  const old768 = read(CARD).replace("      <I.chevronRight s={20}", '      <span className="hidden md:flex xl:hidden" />\n      <I.chevronRight s={20}');
   ok("4.P3b′ PLANT · a 768-only block put back on the card is reported", old768 !== read(CARD) && cardBlockDefects(old768).some((x) => x.includes("768")));
   const { MaswaliPoolFigure } = req("../src/components/maswali/maswali-pool-figure.tsx") as { MaswaliPoolFigure: (p: Record<string, unknown>) => unknown };
   const hubOrder = LOCALES.filter((l) => {
@@ -1001,7 +1009,7 @@ const listDefects = (page: string, ticketSrc: string, bar: string) => {
     ["sw", "mainsProgress", "Makuu {a}/10"],
     ["sw", "carriedIn", "Kiasi kutoka Wiki {week}"], ["sw", "carriedInPending", "Bado haijakamilika"],
     ["zh", "ruleShared", "由所有 10/10 彩票平分 · 派奖时扣除 {pct}% 费用"],
-    ["zh", "ruleWithFigure", "大奖 {amount} · 由所有 10/10 彩票平分 · 派奖时扣除 {pct}% 费用"],
+    ["zh", "ruleWithFigure", "大奖：{amount} · 由所有 10/10 彩票平分 · 派奖时扣除 {pct}% 费用"], // S5-DESIGN-DOORS L5: "大奖 至少" spaced two Han words
     ["zh", "stripResults", "结果与派奖 · {range}"], ["zh", "stripEvents", "事件 · {range}"],
     ["zh", "mains", "正选题"], ["zh", "mainsProgress", "正选 {a}/10"], ["zh", "eventAt", "事件 {when}"], ["zh", "firstEventAt", "首个事件：{when}"],
     ["zh", "ticketRunning", "待结算"], ["zh", "howThree", "所有 10/10 彩票平分大奖；{pct}% 费用仅在派奖时扣除。"], ["zh", "carriedInPending", "尚未结算"],

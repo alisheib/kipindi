@@ -18,6 +18,7 @@
 import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
 import { premise, mintStaffPass, demoSession, LOCALE_COOKIE } from "./live/journey-pass.mjs";
+import { shootDoors } from "./lib/maswali-door-shots.mjs";
 
 const BASE = process.env.BASE || "http://localhost:3410";
 const OUT = ".50pick-shots/maswali-player-shots";
@@ -198,6 +199,10 @@ for (const locale of passCookie ? LOCALES : []) {
   }
   await ctx.close();
 }
+
+// MASWALI-BUILD S5-DESIGN-DOORS · every state of the Millionea card and its loading pictures, measured in the real pages —
+// opt-in by name (MASWALI_SHOTS_PAGES=door-ghosts,door-states): `scripts/lib/maswali-door-shots.mjs` says how.
+await shootDoors({ browser, BASE, OUT, WIDTHS, LOCALES, HEIGHT, ok, open, contextWith, demoSession, mintStaffPass, want: (n) => PAGE_FILTER.includes(n) });
 
 ok("no page error on any page", errs.length === 0, errs.slice(0, 3).join(" | "));
 await browser.close();

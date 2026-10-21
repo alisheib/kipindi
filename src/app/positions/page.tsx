@@ -362,7 +362,9 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
           <span className="min-w-0 flex-1">
             {fillNodes(t.millionea.positionsRow, { n: <span className="font-mono tabular-nums">{formatNumber(millioneaHeld)}</span> })}
           </span>
-          <I.arrowRight s={14} edge="end" className="shrink-0 text-text-muted" />
+          {/* S5-DESIGN-DOORS: a door's end mark, the one every other Millionea door ends on (the register's and /results'
+              rows' chevron, their size and ink); it was the only arrow among them. */}
+          <I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle" />
         </Link>
       )}
 
