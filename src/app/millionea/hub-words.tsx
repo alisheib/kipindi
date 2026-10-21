@@ -48,6 +48,18 @@ export function nextOpenWords(t: Dict, atMs: number): string {
   return fill(t.millionea.nextOpensAt, { when: eatWeekdayClock(t, atMs) });
 }
 
+/**
+ * M10 · the rollover notice that IS this week's carry in — the one whose week the figure names as its source
+ * (`carryFromCode`) — or none: the carry never travels from a week the ledger does not name, nor while that carry waits on
+ * its week; and of two unseen rollovers (a reader away for two weeks) only that one is the origin, so one id is drawn.
+ */
+export function carryingRollover<N extends { notice: string; code: string }>(
+  notices: readonly N[], pool: { carryFromCode: string | null; carryIn: number | null } | null,
+): N | null {
+  if (!pool || !pool.carryFromCode || (pool.carryIn ?? 0) <= 0) return null;
+  return notices.find((n) => n.notice === "ROLLOVER" && n.code === pool.carryFromCode) ?? null;
+}
+
 /** L22 · "Week 52 will be Millionea's final week. It opens 30 Nov." — the lead's words, the day as every "on {date}" line
  *  reads it (`formatEatDate`: zh "2026年11月30日", a digit first). */
 export function finalAheadWords(t: Dict, locale: Locale, week: number, opensMs: number, nowMs: number): ReactNode {

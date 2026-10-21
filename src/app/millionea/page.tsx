@@ -57,7 +57,7 @@ import type { Dict, Locale } from "@/lib/i18n-dict";
 import { HubPoolHead, HubPoolLedger, HubPoolLive } from "./hub-pool";
 import { HubNotices, type HubNotice } from "./hub-notices";
 import { HubOutcomeStamp, HubPressGroup } from "./hub-stamp";
-import { closeMovedWords, finalAheadWords, nextOpenWords, voidingWords } from "./hub-words";
+import { carryingRollover, closeMovedWords, finalAheadWords, nextOpenWords, voidingWords } from "./hub-words";
 import { MILLIONEA_HREF, MillioneaPreviewMark, MillioneaReadingLinks, registerWeekHref, ticketPageHref } from "./millionea-parts";
 import { WeekCommitments, WeekStateChip, weekChipWord } from "./register/register-parts";
 import { bySlot, capReachedLine, gradableOf, lineOf, millioneaWeekPhase, msOf, ordinalOf, phaseNow, phasesOf, resultDoorSerial, resultLine, textIn } from "./millionea-view";
@@ -132,9 +132,9 @@ function voidingNow(w: MillioneaHubWeek, nowMs: number): boolean {
  * The once-per-week notices, said in the reader's language (§10 §3.15–§3.16). A result line counts the reader's own
  * tickets of THAT week — read by its week (`millioneaMyTicketsWeek`, round 3's RR4: never looked for on a page of the
  * list), only when such a notice waits — and its door opens a winning ticket: the seal plays there, on the reader's tap.
- * `carryId` marks the rollover's figure as the origin of the carry into this week's ledger (M10).
+ * `carry` marks ONE rollover's figure — the week this week's ledger carries in from — as the carry's origin (M10).
  */
-async function noticesOf(t: Dict, hub: MillioneaHub, userId: string | null, carryId: string | null): Promise<HubNotice[]> {
+async function noticesOf(t: Dict, hub: MillioneaHub, userId: string | null, carry: { code: string; id: string } | null): Promise<HubNotice[]> {
   if (hub.notices.length === 0) return [];
   const weeks = new Map<string, MillioneaTicketsWeek | null>();
   if (userId) {
@@ -149,7 +149,7 @@ async function noticesOf(t: Dict, hub: MillioneaHub, userId: string | null, carr
       const text = n.nextWeekCode
         ? fill(t.millionea.rolloverNotice, { prev: week, amount, week: weekNumberOf(n.nextWeekCode) })
         : `${weekWord(t, week)} · ${fill(t.millionea.settledRollover, { amount })}`;
-      return { weekId: n.weekId, notice: n.notice, text, door: null, carry: carryId ? { figure: amount, id: carryId } : undefined };
+      return { weekId: n.weekId, notice: n.notice, text, door: null, carry: carry && n.code === carry.code ? { figure: amount, id: carry.id } : undefined };
     }
     if (n.notice === "WEEK_VOID") {
       return { weekId: n.weekId, notice: n.notice, text: counted(n.tickets, t.millionea.resultRefundedOne, t.millionea.resultRefunded, { week }), door: null };
@@ -441,11 +441,11 @@ export default async function MillioneaHubPage({ searchParams }: { searchParams:
     hub.life === "ENDING" && !w?.isFinal ? millioneaFinalWeekAhead(hub.line) : Promise.resolve(null),
     w ? millioneaHubCommitments(w.id) : Promise.resolve(null),
   ]);
-  // M10 · the carry leaves from the rollover notice's own figure — and only when that rollover IS this week's carry in
+  // M10 · the carry leaves from the rollover notice's own figure — and only from the rollover that IS this week's carry in
   // (the figure's own provenance, `carryFromCode`), so it never travels from a week the ledger does not name.
-  const rollover = hub.notices.find((n): n is Extract<MillioneaNotice, { notice: "ROLLOVER" }> => n.notice === "ROLLOVER");
-  const carries = !!rollover && !!w?.pool && w.pool.carryFromCode === rollover.code && (w.pool.carryIn ?? 0) > 0;
-  const notices = await noticesOf(t, hub, gate.userId, carries ? CARRIED_FIGURE_ID : null);
+  const rollover = carryingRollover(hub.notices, w?.pool ?? null);
+  const carries = rollover !== null;
+  const notices = await noticesOf(t, hub, gate.userId, rollover ? { code: rollover.code, id: CARRIED_FIGURE_ID } : null);
   const phases = w ? phasesOf(w) : null;
   // M3 · the guest's doors back to the slip, this page's own query carried (its `ref` and `invite` beside `next`).
   const query = new URLSearchParams();

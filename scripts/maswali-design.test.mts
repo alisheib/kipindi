@@ -1314,7 +1314,9 @@ const weekLabelDefects = (src: string) => {
   // long ago (`retired`); and the carry leaves from the rollover notice's own figure, only when that rollover is this week's
   // carry in by the figure's own provenance (`carryFromCode`) — never from a row that is not drawn.
   if (!s.includes("if (!last || (!retired && !hub.lastWeekIsPrevious)) return null;")) d.push("\"Last week\" names a week that is not the one before the hub's");
-  if (!s.includes("const carries = !!rollover && !!w?.pool && w.pool.carryFromCode === rollover.code && (w.pool.carryIn ?? 0) > 0;")
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-HUB 6): the rollover that carries is `carryingRollover`'s — the one whose
+  // week the figure names, of however many unseen (test:maswali-hub 6.5 holds its cases) — so one id is ever drawn.
+  if (!s.includes("const rollover = carryingRollover(hub.notices, w?.pool ?? null);") || !s.includes("const carries = rollover !== null;")
     || !s.includes("carryFrom={carries ? CARRIED_FIGURE_ID : undefined}")) d.push("the carry can leave from a figure that is not this week's carry");
   const mine = s.slice(s.indexOf("function MineBlock("), s.indexOf("function BuyDoor("));
   if (!mine.includes("const onSale = w.state === \"OPEN\";") || !mine.includes("{onSale && <p className=\"text-body-sm text-text-muted\">{keepFact(locale, fill(t.millionea.yourTicketsThisWeek,")) d.push("a week being graded says \"Your tickets this week: n of cap\"");

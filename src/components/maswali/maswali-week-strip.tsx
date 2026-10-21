@@ -65,7 +65,7 @@ export function MaswaliWeekStrip({ t, phases, current, className }: {
       : [eatWeekday(t, phases.resultsFrom), eatWeekday(t, phases.resultsTo)]),
   ];
   return (
-    <ol className={cn("flex flex-col gap-2 md:grid md:grid-cols-3 md:gap-3", className)}>
+    <ol className={cn("flex flex-col gap-2 md:grid md:grid-cols-3 md:gap-3", className)} data-testid="millionea-week-strip">
       {rows.map((row, i) => {
         const now = current === i;
         return (

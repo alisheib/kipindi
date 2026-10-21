@@ -263,6 +263,55 @@ if (RUN === "a") {
   await shoot("open", "classic", demoClassic, { check: openCheck });
   await shoot("open", "journey", demoJourney, { check: openCheck });
 
+  // ── L7 · the loading drawing stands where the page lands ──────────────────────────────────────────────────────────────
+  // A move to the hub from How to play, its answer slowed (the network throttled, so the route's loading drawing paints
+  // while the page streams): each band's top in the drawing, then in the page — the head's title, the strip, the
+  // jackpot's head, the door, the ledger and the questions. The first screen's bands must land where they were drawn.
+  if (want("ghost")) {
+    const bandsOf = (ghost) => {
+      const top = (el) => (el ? Math.round(el.getBoundingClientRect().top + window.scrollY) : null);
+      if (ghost) {
+        const g = document.querySelector('[aria-busy="true"]');
+        if (!g) return null;
+        const q = (n) => g.querySelector(`[data-ghost="${n}"]`);
+        return { title: top(g.querySelector("h1")), strip: top(q("strip")), jackpot: top(q("jackpot")), door: top(q("door")), ledger: top(q("ledger")), questions: top(q("questions")) };
+      }
+      const h = document.querySelector('[data-testid="millionea-hub"]');
+      const q = (n) => document.querySelector(`[data-testid="${n}"]`);
+      return { title: top(h?.querySelector("h1")), strip: top(q("millionea-week-strip")), jackpot: top(q("millionea-hub-jackpot")), door: top(q("millionea-hub-fill") ?? q("millionea-hub-guest")),
+        ledger: top(q("millionea-hub-ledger")), questions: top(q("millionea-hub-questions")) };
+    };
+    for (const [ctx, shell, locale, width] of [[demoClassic, "classic", "sw", 360], [demoClassic, "classic", "sw", 1280], [demoClassic, "classic", "en", 360], [demoClassic, "classic", "zh", 360], [demoJourney, "journey", "sw", 360]]) {
+      const label = `ghost · ${shell} · ${locale} @${width}`;
+      await setLocale(ctx, locale);
+      const page = await ctx.newPage();
+      page.on("pageerror", (e) => errs.push(`${label}: ${e}`));
+      await page.setViewportSize({ width, height: HEIGHT });
+      await open(page, "/millionea/how");
+      const cdp = await ctx.newCDPSession(page);
+      await cdp.send("Network.enable");
+      await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 400, downloadThroughput: 12 * 1024, uploadThroughput: 64 * 1024 });
+      await page.evaluate(() => { const a = [...document.querySelectorAll('a[href="/millionea"]')].find((x) => x.getBoundingClientRect().width > 0); a?.click(); });
+      const drawn = await page.waitForSelector('[aria-busy="true"] [data-ghost="strip"]', { timeout: 20_000 }).then(() => true).catch(() => false);
+      const ghost = drawn ? await page.evaluate(bandsOf, true) : null;
+      if (drawn) await page.screenshot({ path: `${OUT}/ghost-${shell}-${locale}-${width}.png` });
+      await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+      await page.waitForSelector('[data-testid="millionea-hub"]', { timeout: 60_000 }).catch(() => {});
+      await page.waitForTimeout(800);
+      const real = await page.evaluate(bandsOf, false);
+      await page.screenshot({ path: `${OUT}/ghost-landed-${shell}-${locale}-${width}.png` });
+      ok(`${label} · L7 the route's loading drawing is shown on the way in`, drawn && !!ghost);
+      if (ghost && real) {
+        const off = Object.fromEntries(Object.keys(real).map((k) => [k, real[k] === null || ghost[k] === null ? null : real[k] - ghost[k]]));
+        console.log(`L7 ${label} · page − drawing, px: ${j(off)}`);
+        const first = ["title", "strip", "jackpot", "door"].filter((k) => off[k] !== null && real[k] < HEIGHT);
+        ok(`${label} · L7 the first screen's bands land where they were drawn (±4px: ${first.map((k) => `${k} ${off[k]}`).join(", ")})`,
+          first.length >= 3 && first.every((k) => Math.abs(off[k]) <= 4), j({ ghost, real }));
+      }
+      await page.close();
+    }
+  }
+
   // ── S2 · a guest ───────────────────────────────────────────────────────────────────────────────────────────────────────
   const guestCheck = async (page, label, locale, width) => {
     await openWeekChecks(page, label, locale, width, { door: "millionea-hub-guest" });

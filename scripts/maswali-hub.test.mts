@@ -226,6 +226,16 @@ console.log("\n§6 · M9/M10 · a returning notice is the platform's calm bar (N
   const pending = dressedOf("en", figure(), NOT_MOVED, { from: "mln-carried-figure", play: true }).some((r) => carryIn([r], r.key)?.type === MaswaliCarry);
   const none2 = dressedOf("en", landed, NOT_MOVED, null).some((r) => carryIn([r], r.key)?.type === MaswaliCarry);
   ok("6.4′ CONTROL · no other row carries; a carry still pending (no figure yet) lands nowhere; and with no notice to carry from, nothing carries", !elsewhere && !pending && !none2, j({ elsewhere, pending, none2 }));
+  // M10 · ONE origin: of two unseen rollovers (a reader away for two weeks), only the week this week's figure carries in
+  // from — its own `carryFromCode` — marks the id; none while that carry waits on its week, none from a week it does not name.
+  const { carryingRollover } = req("../src/app/millionea/hub-words.tsx") as typeof import("../src/app/millionea/hub-words.tsx");
+  const two = [{ notice: "ROLLOVER", code: "MLN-2026-W46" }, { notice: "RESULT", code: "MLN-2026-W47" }, { notice: "ROLLOVER", code: "MLN-2026-W47" }];
+  const from = (carryFromCode: string | null, carryIn: number | null) => carryingRollover(two, { carryFromCode, carryIn })?.code ?? null;
+  ok("6.5 · the origin is the rollover the figure names: Week 47's of two unseen rollovers; none from Week 45; none while the carry is pending (no figure)",
+    from("MLN-2026-W47", 389_000) === "MLN-2026-W47" && from("MLN-2026-W45", 389_000) === null && from("MLN-2026-W47", null) === null && carryingRollover(two, null) === null,
+    j([from("MLN-2026-W47", 389_000), from("MLN-2026-W45", 389_000), from("MLN-2026-W47", null)]));
+  const firstFound = two.find((n) => n.notice === "ROLLOVER")?.code; // the old rule: the first rollover, whichever week it was
+  ok("6.5′ PLANT · the old rule (the first rollover notice) names Week 46, a week this week's figure does not carry from", firstFound === "MLN-2026-W46" && firstFound !== from("MLN-2026-W47", 389_000));
 }
 
 // ── §7 · L2/L18 · the strip ───────────────────────────────────────────────────────────────────────────────────────────
@@ -369,7 +379,8 @@ console.log("\n§10 · the hub's new and changed words, as decided, in three lan
 }
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI HUB: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
-/** The floor is the count a green run prints (S5-DESIGN-HUB 3: 34; 4, the one ledger and zh's spacing rule: 43). It only rises. */
-const MIN_ASSERTIONS = 43;
+/** The floor is the count a green run prints (S5-DESIGN-HUB 3: 34; 4, the one ledger and zh's spacing rule: 43; 6, one
+ *  carry origin: 45). It only rises. */
+const MIN_ASSERTIONS = 45;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);
