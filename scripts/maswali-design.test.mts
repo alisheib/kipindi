@@ -45,7 +45,7 @@ import { TICKET_SHOWN_KEY } from "../src/lib/maswali-week-label.ts";
 import type { MillioneaNotice } from "../src/lib/server/maswali-player.ts";
 import { MILLIONEA_GLYPHS } from "../src/components/maswali/maswali-glyph.tsx";
 import { I } from "../src/components/ui/glyphs.tsx";
-import { GLYPH_MAP, NEW_KEYS } from "./glyphs/map.ts";
+import { FILL_KEYS, GLYPH_MAP, NEW_KEYS } from "./glyphs/map.ts";
 import { decomment } from "./lib/decomment.mts";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
@@ -1048,6 +1048,42 @@ const slipRefusalDefects = (src: string) => {
   ok("5.P13′ PLANT · the purchase result's \"Nothing was charged.\" put back on the slip is reported", old !== read(SLIP_PAGE) && slipRefusalDefects(old).length > 0);
 }
 
+// P15 · the hub counts down and prints the close only while the week sells; P17 · each icon its lexicon meaning
+const sellingDefects = (src: string) => {
+  const s = squash(code(src));
+  const d: string[] = [];
+  const at = s.indexOf("function BuyBlock(");
+  const block = at < 0 ? "" : s.slice(at, s.indexOf("function GradingBlock(", at));
+  if (!block.includes("const open = w.selling;")) d.push("the close line and the pill do not ask whether the week sells");
+  if (/const open = w\.state === "OPEN"/.test(block)) d.push("the close line asks the state alone (a paused week counts down)");
+  if (!block.includes("{open && ( <p className=\"flex items-center gap-1.5 text-body-sm text-text-muted\"> <I.clock s={14} className=\"shrink-0\" />")) d.push("the printed close is not drawn under `open` with the clock");
+  if (!block.includes("{open && !breakBody && <MaswaliClosingPill closesAt={closesMs} serverNow={nowMs} className=\"self-start\" />}")) d.push("the pill is not drawn under `open`");
+  return d;
+};
+const iconDefects = (src: string) => {
+  const s = squash(code(src));
+  const d: string[] = [];
+  if (!s.includes('{w?.isFinal && <Callout tone="info" glyph="finalWeek" role="status">{t.millionea.finalWeek}</Callout>}')) d.push("the final week's notice does not draw its own key");
+  if (/glyph="flag"/.test(s)) d.push("the hub draws `flag` (object to a result) for a fact that is not an objection");
+  if (/<I\.hourglassHalf\b/.test(s)) d.push("the hub draws the countdown's hourglass beside a printed time");
+  return d;
+};
+{
+  const d = sellingDefects(read(HUB));
+  ok("5.P15 · the hub prints the sales close and its closing pill only while the week SELLS to the reader (`selling`: OPEN, before the close, not paused, the rollout selling its line) — never a countdown over a paused week or a public week at STAFF_PREVIEW", d.length === 0, d.join(" | "));
+  const old = read(HUB).replace("const open = w.selling;", 'const open = w.state === "OPEN" && closesMs > nowMs;');
+  ok("5.P15′ PLANT · the old state-only `open` (a paused week counted down) is reported", old !== read(HUB) && sellingDefects(old).some((x) => x.includes("state alone")));
+  const i = iconDefects(read(HUB));
+  const REG = (await import("../src/components/ui/glyph-registry.generated.ts")).GLYPH_REGISTRY as Record<string, { s?: string; i?: Record<string, unknown> }>;
+  const fill = REG.finalWeek?.s === "p-flag-checkered" && !!REG.finalWeek?.i?.fill && (FILL_KEYS as readonly string[]).includes("finalWeek");
+  ok("5.P17 · each icon on the hub says its §10c meaning: the final-week notice draws `finalWeek` (flag-checkered, shipped in Fill for the Callout's status) — not `flag`, which means \"object to a result\" — and the printed close draws `clock`, the hourglass staying the countdown's",
+    i.length === 0 && fill, j({ i, fill: REG.finalWeek }));
+  const oldIcons = read(HUB).replace('glyph="finalWeek"', 'glyph="flag"').replace("<I.clock s={14} className=\"shrink-0\" />", "<I.hourglassHalf s={14} className=\"shrink-0\" />");
+  const caught = iconDefects(oldIcons);
+  ok("5.P17′ PLANT · the old `flag` and hourglass put back are each reported",
+    caught.some((x) => x.includes("draws `flag`")) && caught.some((x) => x.includes("hourglass")) && caught.some((x) => x.includes("its own key")), j(caught));
+}
+
 // P18 · the slip's two notices are the kit's Callout, never a hand-rolled copy
 const kitNoticeDefects = (src: string) => {
   const s = squash(code(src));
@@ -1078,7 +1114,7 @@ const kitNoticeDefects = (src: string) => {
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI DESIGN: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run prints; VIS-P's fact, example and word plants brought it to 110, and S5-FIX-PLAYER's §5
- *  (P13, P18) to 119. */
-const MIN_ASSERTIONS = 119;
+ *  (P13, P15, P17, P18) to 123. */
+const MIN_ASSERTIONS = 123;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

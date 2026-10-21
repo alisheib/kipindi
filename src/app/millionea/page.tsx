@@ -212,7 +212,10 @@ function BuyBlock({ t, locale, w, signedIn, nowMs, nextOpen, breakBody }: {
   breakBody: { text: string; keep: readonly string[] } | null;
 }) {
   const closesMs = msOf(w.closesAt) ?? 0;
-  const open = w.state === "OPEN" && closesMs > nowMs;
+  // ⭐ S5-FIX-PLAYER P15 · THE CLOSE AND ITS COUNTDOWN STAND ONLY WHILE THE WEEK SELLS TO THIS READER (`selling`: OPEN, before
+  // its close, not paused, and the rollout sells its line): a paused week, or a public week at STAFF_PREVIEW, has nothing
+  // anyone can buy before that close, so nothing is counted down to it.
+  const open = w.selling;
   const atCap = !!w.mine && w.mine.held >= w.mine.cap;
   let door: React.ReactNode = null;
   if (breakBody) {
@@ -239,9 +242,11 @@ function BuyBlock({ t, locale, w, signedIn, nowMs, nextOpen, breakBody }: {
   return (
     <div className="flex flex-col gap-3" data-testid="millionea-hub-buy">
       {door}
+      {/* A printed time draws the clock (MASWALI-PLAN §10c: `clock` is "a time or date"); the hourglass is the countdown's
+          own key, worn by the closing pill below (S5-FIX-PLAYER P17). */}
       {open && (
         <p className="flex items-center gap-1.5 text-body-sm text-text-muted">
-          <I.hourglassHalf s={14} className="shrink-0" />
+          <I.clock s={14} className="shrink-0" />
           <span>{fillNodes(t.millionea.salesCloseAt, { when: <span className="whitespace-nowrap font-mono text-text">{eatWeekdayClock(t, closesMs)}</span> })}</span>
         </p>
       )}
@@ -289,7 +294,9 @@ export default async function MillioneaHubPage() {
           <Callout tone="neutral" role="status">{fill(t.millionea.stoppedSunset, { week: weekNumberOf(hub.lastWeek.code) })}</Callout>
         )}
         {hub.paused && <Callout tone="neutral" role="status">{t.millionea.paused}</Callout>}
-        {w?.isFinal && <Callout tone="info" glyph="flag" role="status">{t.millionea.finalWeek}</Callout>}
+        {/* The final week's own key (§10c `finalWeek`, flag-checkered, in Fill for a Callout's status): `flag` means
+            "object to a result" (S5-FIX-PLAYER P17). */}
+        {w?.isFinal && <Callout tone="info" glyph="finalWeek" role="status">{t.millionea.finalWeek}</Callout>}
 
         {w ? (
           <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,640px)_400px] xl:gap-8">

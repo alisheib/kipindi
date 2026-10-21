@@ -4,7 +4,7 @@
  * scripts/glyphs/extras.ts. PHOSPHOR-MIGRATION: what every glyph of the family `I` draws, and where its drawings live.
  */
 export const GLYPH_SOURCE = { package: "@phosphor-icons/core", version: "2.1.1" } as const;
-export const GLYPH_SPRITES = { app: "/icons/g/app.db7c4180.svg", admin: "/icons/g/admin.75aeb290.svg" } as const;
+export const GLYPH_SPRITES = { app: "/icons/g/app.849769b4.svg", admin: "/icons/g/admin.75aeb290.svg" } as const;
 export type GlyphVariant = "regular" | "bold" | "fill" | "duo";
 export type GlyphInk = readonly [x0: number, x1: number];
 /**
@@ -86,7 +86,7 @@ export const GLYPH_REGISTRY = {
   "fileSpreadsheet": { s: "p-file-xls", g: "admin", i: { bold: [31.99, 224.01] } },
   "fileText": { s: "p-file-text", g: "app", i: { bold: [36, 220] } },
   "filter": { s: "p-funnel", g: "app", i: { bold: [20, 236] } },
-  "finalWeek": { s: "p-flag-checkered", g: "app", i: { bold: [36, 236] } },
+  "finalWeek": { s: "p-flag-checkered", g: "app", i: { bold: [36, 236], fill: [40, 232.03] } },
   "finance": { s: "p-calculator", g: "admin", i: { bold: [36, 220], fill: [40, 216] } },
   "flag": { s: "p-flag", g: "app", i: { bold: [36, 236], fill: [40, 232], duo: [40, 232.03] } },
   "flame2": { s: "p-fire", g: "app", i: { bold: [36, 220], fill: [40, 216] } },
