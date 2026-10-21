@@ -474,6 +474,11 @@ export type MillioneaHubWeek = {
   opensAt: string;
   closesAt: string;
   closedAt: string | null;
+  /** When the week's graded set became final (MR-16: its objection window opens then), or null while it is not. ⭐
+   *  S5-FIX-PLAYER P6: with `objectionsCloseAt`, what `millioneaWeekPhase` says the week's phase from. */
+  gradedSetFinalAt: string | null;
+  /** When the week's objection window closes — stamped with the graded set, never before its EAT floor (MR-16) — or null. */
+  objectionsCloseAt: string | null;
   firstEventAt: string | null;
   ticketPrice: number;
   ticketCap: number;
@@ -577,7 +582,8 @@ async function hubWeekOf(week: StoredWeek, viewer: MillioneaViewer, nowMs: numbe
   }
   return {
     id: week.id, code: week.code, visibility: week.visibility, state: week.state, isFinal: week.isFinal,
-    opensAt: week.opensAt, closesAt: week.closesAt, closedAt: week.closedAt, firstEventAt: firstEventOf(questions),
+    opensAt: week.opensAt, closesAt: week.closesAt, closedAt: week.closedAt,
+    gradedSetFinalAt: week.gradedSetFinalAt, objectionsCloseAt: week.objectionsCloseAt, firstEventAt: firstEventOf(questions),
     ticketPrice: terms.rules.ticketPriceTzs, ticketCap: terms.rules.ticketCapPerWeek,
     selling: week.state === "OPEN" && Date.parse(week.closesAt) > nowMs && !paused && rolloutSells(viewer.state, week.visibility),
     pool: await maswaliPoolFigure(week.id).catch(() => null),
@@ -758,6 +764,8 @@ export type MillioneaTicketView = MillioneaTicketRow & {
   week: {
     id: string; code: string; visibility: WeekVisibility; state: WeekState; isFinal: boolean;
     opensAt: string; closesAt: string; closedAt: string | null; settledAt: string | null; questionSetHash: string | null;
+    /** P6 · the graded set's finality and the objection window's end, as the hub week carries them (`millioneaWeekPhase`). */
+    gradedSetFinalAt: string | null; objectionsCloseAt: string | null;
   };
   questions: MillioneaQuestion[];
   /** ⭐ S5-FIX-PLAYER P10 · the slots the slip filled ITSELF (MB-15): questions already sealed VOID — the final record's —
@@ -922,6 +930,7 @@ export async function millioneaTicket(userId: string, serial: string, now: Date 
     week: {
       id: week.id, code: week.code, visibility: week.visibility, state: week.state, isFinal: week.isFinal,
       opensAt: week.opensAt, closesAt: week.closesAt, closedAt: week.closedAt, settledAt: week.settledAt, questionSetHash: week.questionSetHash,
+      gradedSetFinalAt: week.gradedSetFinalAt, objectionsCloseAt: week.objectionsCloseAt,
     },
     questions: questionsOf(qs, gq),
     slipFilled,

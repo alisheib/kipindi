@@ -32,23 +32,22 @@ import { MaswaliLastWeek } from "@/components/maswali/maswali-pool-figure";
 import { MaswaliHeldTicketRow } from "@/components/maswali/maswali-ticket";
 import { MaswaliOutcomeStamp } from "@/components/maswali/maswali-outcome-stamp";
 import { MaswaliClosingPill } from "@/components/maswali/maswali-slip";
-import { counted, eatWeekdayClock, millioneaWord, reserveLabel, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
+import { counted, eatWeekdayClock, reserveLabel, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
 import { millioneaGate } from "@/lib/server/millionea-gate";
 import { millioneaHub, millioneaMyTicketsWeek, type MillioneaHub, type MillioneaHubWeek, type MillioneaNotice, type MillioneaTicketsWeek } from "@/lib/server/maswali-player";
 import { millioneaBreakOf, millioneaDoor, millioneaOpenTemplate } from "@/lib/server/millionea-doors";
 import { nextWeekOpen } from "@/components/maswali/maswali-card-model";
 import { getServerT } from "@/lib/i18n-server";
 import { breakSentence } from "@/lib/break-end";
-import { WEEK_STATE_KEY } from "@/lib/maswali-week-label";
 import { marketCategoryLabel } from "@/lib/localized";
 import { fillNodes, moneyRuns } from "@/lib/fill-nodes";
 import { cn, fill, formatNumber, formatTzs } from "@/lib/utils";
-import { RESERVE_COUNT, weekVoidCertain } from "@/lib/maswali-score";
+import { RESERVE_COUNT } from "@/lib/maswali-score";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import { HubPool } from "./hub-pool";
 import { HubNotices, type HubNotice } from "./hub-notices";
 import { MILLIONEA_HREF, MillioneaPreviewMark, MillioneaReadingLinks, registerWeekHref, signInHref, ticketPageHref } from "./millionea-parts";
-import { bySlot, capReachedLine, gradableOf, lineOf, msOf, ordinalOf, phaseNow, phasesOf, resultDoorSerial, resultLine, textIn } from "./millionea-view";
+import { bySlot, capReachedLine, lineOf, millioneaWeekPhase, msOf, ordinalOf, phaseNow, phasesOf, resultDoorSerial, resultLine, textIn, weekPhaseWord } from "./millionea-view";
 
 export const dynamic = "force-dynamic";
 
@@ -63,9 +62,17 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t.millionea.productTitle };
 }
 
-/** The week's eyebrow: "WIKI 42 · WAZI" (the state's word, through WEEK_STATE_KEY). */
-function weekEyebrow(t: Dict, w: { code: string; state: MillioneaHubWeek["state"] }): string {
-  return `${weekWord(t, weekNumberOf(w.code))} · ${millioneaWord(t, WEEK_STATE_KEY[w.state])}`;
+/** The week's eyebrow: "WIKI 42 · WAZI" — the word of where the week stands (`millioneaWeekPhase`, S5-FIX-PLAYER P6): its
+ *  state's own, or once its results are in "Objection window", "Settling", "Week is being voided" — never "Results coming
+ *  in" over a week whose every needed result is in. */
+function weekEyebrow(t: Dict, w: MillioneaHubWeek, nowMs: number): string {
+  return `${weekWord(t, weekNumberOf(w.code))} · ${weekPhaseWord(t, w.state, millioneaWeekPhase(w, nowMs))}`;
+}
+
+/** P6 · "Objection window until Tuesday 12:00" while the week's window is open (its end still ahead), else nothing. */
+function objectionsLine(t: Dict, locale: Locale, w: MillioneaHubWeek, nowMs: number): React.ReactNode {
+  const until = millioneaWeekPhase(w, nowMs).objectionsUntil;
+  return until === null ? null : keepFact(locale, fill(t.millionea.checkWindowUntil, { when: eatWeekdayClock(t, until) }));
 }
 
 /**
@@ -79,13 +86,10 @@ function reservesLeftLine(t: Dict, w: MillioneaHubWeek): string {
 }
 
 /** The week's void is already certain (MR-18, the one grader's `weekVoidCertain`): its pool is "being voided", never a
- *  jackpot shared by every 10/10 ticket (the S5 UI review, HIGH 1 and MEDIUM 7). A record the grader refuses is not. */
-function voidingNow(w: MillioneaHubWeek): boolean {
-  try {
-    return w.state !== "OPEN" && weekVoidCertain(gradableOf(w.questions));
-  } catch {
-    return false;
-  }
+ *  jackpot shared by every 10/10 ticket (the S5 UI review, HIGH 1 and MEDIUM 7). A record the grader refuses is not. Read from
+ *  the week's one phase (`millioneaWeekPhase`, S5-FIX-PLAYER P6): the same answer its eyebrow says. */
+function voidingNow(w: MillioneaHubWeek, nowMs: number): boolean {
+  return millioneaWeekPhase(w, nowMs).kind === "voiding";
 }
 
 /**
@@ -235,9 +239,10 @@ function BuyBlock({ t, locale, w, signedIn, nowMs, nextOpen, breakBody }: {
   } else if (w.state !== "OPEN") {
     door = <a href="#mln-questions" className="btn btn-ghost btn-lg w-full border-border-control" data-testid="millionea-hub-follow">{t.millionea.followResults}</a>;
   }
-  // The results so far and the reserves left: a fact line (S5 VIS A1) — no separator at a line's start or end.
+  // The results so far, the reserves left, and while it is open the objection window's end (P6): a fact line (S5 VIS A1) —
+  // no separator at a line's start or end.
   const live = w.state !== "OPEN"
-    ? [keepFact(locale, fill(t.millionea.resultsOut, { n: formatNumber(w.resultsOut) })), keepFact(locale, reservesLeftLine(t, w))]
+    ? [keepFact(locale, fill(t.millionea.resultsOut, { n: formatNumber(w.resultsOut) })), keepFact(locale, reservesLeftLine(t, w)), objectionsLine(t, locale, w, nowMs)]
     : null;
   return (
     <div className="flex flex-col gap-3" data-testid="millionea-hub-buy">
@@ -257,12 +262,13 @@ function BuyBlock({ t, locale, w, signedIn, nowMs, nextOpen, breakBody }: {
   );
 }
 
-/** A second week still being graded while this one sells (MR-3): its line, and the reader's tickets in it. */
-function GradingBlock({ t, locale, w }: { t: Dict; locale: Locale; w: MillioneaHubWeek }) {
+/** A second week still being graded while this one sells (MR-3): where it stands (P6), its results so far — and while it
+ *  is open, its objection window's end — and the reader's tickets in it. */
+function GradingBlock({ t, locale, w, nowMs }: { t: Dict; locale: Locale; w: MillioneaHubWeek; nowMs: number }) {
   return (
-    <section aria-label={weekEyebrow(t, w)} className="mat-flat flex flex-col gap-2 rounded-card p-3">
-      <span className="font-mono text-micro uppercase eyebrow text-text-subtle"><MaswaliFacts facts={factsOf(weekEyebrow(t, w))} /></span>
-      <p className="text-body-sm text-text-muted">{keepFact(locale, fill(t.millionea.resultsOut, { n: formatNumber(w.resultsOut) }))}</p>
+    <section aria-label={weekEyebrow(t, w, nowMs)} className="mat-flat flex flex-col gap-2 rounded-card p-3">
+      <span className="font-mono text-micro uppercase eyebrow text-text-subtle"><MaswaliFacts facts={factsOf(weekEyebrow(t, w, nowMs))} /></span>
+      <p className="text-body-sm text-text-muted"><MaswaliFacts facts={[keepFact(locale, fill(t.millionea.resultsOut, { n: formatNumber(w.resultsOut) })), objectionsLine(t, locale, w, nowMs)]} /></p>
       <MineBlock t={t} locale={locale} w={w} />
     </section>
   );
@@ -287,7 +293,7 @@ export default async function MillioneaHubPage() {
     <PageContainer tier="reading" className="kp-mln-zh">
       <div data-testid="millionea-hub" className="flex flex-col gap-6">
         <RefreshPoller intervalMs={60_000} />
-        <PageHeader eyebrow={w ? weekEyebrow(t, w) : undefined} title={t.millionea.productTitle} />
+        <PageHeader eyebrow={w ? weekEyebrow(t, w, nowMs) : undefined} title={t.millionea.productTitle} />
         {gate.preview && <MillioneaPreviewMark t={t} />}
         <HubNotices notices={notices} renderedAt={hub.asOf} />
         {hub.life === "RETIRED" && hub.lastWeek && (
@@ -314,13 +320,13 @@ export default async function MillioneaHubPage() {
                   initial={w.pool}
                   price={w.ticketPrice}
                   opensAt={w.opensAt}
-                  voiding={voidingNow(w)}
+                  voiding={voidingNow(w, nowMs)}
                   carryFrom={rolloverUnseen && hub.lastWeek ? CARRIED_FIGURE_ID : undefined}
                   carryPlay={rolloverUnseen}
                 />
               ) : null}
               <BuyBlock t={t} locale={locale} w={w} signedIn={!!gate.userId} nowMs={nowMs} nextOpen={nextWeekOpen(hub, millioneaOpenTemplate(), nowMs)} breakBody={breakBody} />
-              {hub.grading && <GradingBlock t={t} locale={locale} w={hub.grading} />}
+              {hub.grading && <GradingBlock t={t} locale={locale} w={hub.grading} nowMs={nowMs} />}
             </aside>
             <div className={cn("xl:col-start-1", phases ? "xl:row-start-2" : "xl:row-start-1")}>
               <WeekQuestions t={t} locale={locale} w={w} />

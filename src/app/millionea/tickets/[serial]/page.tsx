@@ -44,7 +44,7 @@ import { RESERVE_COUNT } from "@/lib/maswali-score";
 import { fill, formatTzs } from "@/lib/utils";
 import type { Dict } from "@/lib/i18n-dict";
 import { MILLIONEA_HREF, MillioneaPreviewMark, signInHref } from "../../millionea-parts";
-import { clausesOf, earnedOf, lineOf, lossPositionsOf, msOf, refundOf, winLinesOf } from "../../millionea-view";
+import { clausesOf, earnedOf, lineOf, lossPositionsOf, millioneaWeekPhase, msOf, refundOf, weekPhaseWord, winLinesOf } from "../../millionea-view";
 import { SealDoor, TicketCancel, TicketSeen } from "./ticket-acts";
 
 export const dynamic = "force-dynamic";
@@ -108,6 +108,9 @@ export default async function MillioneaTicketPage({ params }: { params: Promise<
 
   const weekNumber = weekNumberOf(view.week.code);
   const line = lineOf(view.questions, view.slots, view.week.state);
+  // P6 · where the week stands once its results are in — the hub's own answer (`millioneaWeekPhase`): its word on the week
+  // line, and while the objection window is open its end on the live line.
+  const phase = millioneaWeekPhase({ ...view.week, questions: view.questions }, nowMs);
   const { play, closingRule } = momentsOf(view);
   const running = view.shown === "running";
   const graded = view.week.state === "CLOSED" || view.week.state === "RESOLVING";
@@ -167,6 +170,7 @@ export default async function MillioneaTicketPage({ params }: { params: Promise<
           serial={view.serial}
           week={weekNumber}
           weekState={view.week.state}
+          phaseWord={phase.kind === "state" ? undefined : weekPhaseWord(t, view.week.state, phase)}
           shown={view.shown}
           clauses={clausesOf(t, locale, view.questions, view.slots, view.slipFilled)}
           line={line}
@@ -179,6 +183,7 @@ export default async function MillioneaTicketPage({ params }: { params: Promise<
             // Unclamped: below zero the ticket says so in words (D-20), never "0 of 5" over a week that will void.
             reservesLeft: { valid: RESERVE_COUNT - voidedReserves - voidedMains, of: RESERVE_COUNT },
             nextEventAt: msOf(view.nextResultAt) ?? undefined,
+            objectionsUntil: phase.objectionsUntil ?? undefined,
           } : undefined}
           cannotWin={running && view.cannotWinSoFar}
           seal={paid && view.win && view.win.yourTotal > 0 ? <SealDoor amount={view.win.yourTotal} label={joinList(locale, paidSerials)} /> : undefined}

@@ -1145,6 +1145,68 @@ const iconDefects = (src: string) => {
     oldProgress(filled).mains === 1 && before.mains === 0);
 }
 
+// P6 · where a week stands once its results are in: one phase, every surface
+{
+  const VIEW = req("../src/app/millionea/millionea-view.ts") as {
+    millioneaWeekPhase: (w: Record<string, unknown>, nowMs: number) => { kind: string; objectionsUntil: number | null };
+    weekPhaseWord: (t: unknown, state: string, phase: { kind: string; objectionsUntil: number | null }) => string;
+  };
+  const CLOSE = "2026-12-08T09:00:00.000Z"; // Tuesday 12:00 EAT
+  const qs = (outs: Out[]) => outs.map((o, i) => ({ slot: i + 1, role: i < 10 ? "MAIN" : "RESERVE", outcome: o }));
+  const yes15: Out[] = Array(15).fill("YES");
+  const doomed: Out[] = ["VOID", "VOID", "VOID", "VOID", "VOID", "VOID", "YES", "YES", "YES", "YES", "YES", "YES", "YES", "YES", "YES"];
+  const wk = (state: string, final: boolean, outs: Out[] = yes15) => ({ state, gradedSetFinalAt: final ? "2026-12-07T09:00:00.000Z" : null, objectionsCloseAt: final ? CLOSE : null, questions: qs(outs) });
+  const at = (iso: string) => Date.parse(iso);
+  const cases: Array<[string, Record<string, unknown>, number, string, number | null]> = [
+    ["an open week", wk("OPEN", false), at("2026-12-04T09:00:00.000Z"), "state", null],
+    ["results still coming in (graded set not final)", wk("RESOLVING", false, [...yes15.slice(0, 14), null]), at("2026-12-06T09:00:00.000Z"), "state", null],
+    ["before the window's end", wk("RESOLVING", true), at("2026-12-08T08:59:59.000Z"), "objections", at(CLOSE)],
+    ["at the window's end", wk("RESOLVING", true), at(CLOSE), "settling", null],
+    ["after it, until settled", wk("RESOLVING", true), at("2026-12-08T15:00:00.000Z"), "settling", null],
+    ["a void-certain week inside its window", wk("RESOLVING", true, doomed), at("2026-12-08T08:00:00.000Z"), "voiding", at(CLOSE)],
+    ["a void-certain week after it", wk("RESOLVING", true, doomed), at("2026-12-08T10:00:00.000Z"), "voiding", null],
+    ["a settled week", wk("SETTLED", true), at("2026-12-09T09:00:00.000Z"), "state", null],
+  ];
+  const wrong = cases.flatMap(([name, w, now, kind, until]) => {
+    const p = VIEW.millioneaWeekPhase(w, now);
+    return p.kind === kind && p.objectionsUntil === until ? [] : [`${name}: ${j(p)}`];
+  });
+  ok("5.P6a · ⭐ one phase for every surface (`millioneaWeekPhase`): the state's own word until the graded set is final; then the objection window until its end — at the end and after it, Settling; a void-certain week, being voided; the window's end given only while it is ahead",
+    wrong.length === 0, wrong.join(" | "));
+  const WANT: Record<L3, [string, string, string, string]> = {
+    en: ["Objection window", "Settling", "Week is being voided", "Objection window until Tuesday 12:00"],
+    sw: ["Dirisha la pingamizi", "Inakamilishwa", "Wiki inabatilishwa", "Dirisha la pingamizi hadi Jumanne 12:00"],
+    zh: ["异议窗口", "待结算", "整周作废中", "异议窗口至 周二 12:00"],
+  };
+  const words = LOCALES.filter((l) => {
+    const d = dict[l].millionea;
+    const got = [VIEW.weekPhaseWord(dict[l], "RESOLVING", { kind: "objections", objectionsUntil: 1 }), VIEW.weekPhaseWord(dict[l], "RESOLVING", { kind: "settling", objectionsUntil: null }),
+      VIEW.weekPhaseWord(dict[l], "RESOLVING", { kind: "voiding", objectionsUntil: null }), fill(d.checkWindowUntil, { when: `${d.weekdays[1]} 12:00` })];
+    return j(got) !== j(WANT[l]) || d.regCheck !== WANT[l][0] || VIEW.weekPhaseWord(dict[l], "RESOLVING", { kind: "state", objectionsUntil: null }) !== d.weekStatusResolving;
+  });
+  ok("5.P6b · the phase's words, the platform's one name for the window (the lead's ruling): \"Objection window\" / \"Dirisha la pingamizi\" / \"异议窗口\", \"…until Tuesday 12:00\", \"Settling\" / \"Inakamilishwa\" / \"待结算\", \"Week is being voided\" (zh \"整周作废中\", never 本周 for a week that may not be this one) — the register's regCheck the same",
+    words.length === 0, j(words));
+  const hub = squash(code(read(HUB))), page = squash(code(read(TICKET_PAGE)));
+  const wired = hub.includes("return `${weekWord(t, weekNumberOf(w.code))} · ${weekPhaseWord(t, w.state, millioneaWeekPhase(w, nowMs))}`;")
+    && hub.includes("const until = millioneaWeekPhase(w, nowMs).objectionsUntil;") && count(hub, "objectionsLine(t, locale, w, nowMs)") === 2
+    && hub.includes("return millioneaWeekPhase(w, nowMs).kind === \"voiding\";") && !/WEEK_STATE_KEY\[w\.state\]/.test(hub)
+    && page.includes("const phase = millioneaWeekPhase({ ...view.week, questions: view.questions }, nowMs);")
+    && page.includes("phaseWord={phase.kind === \"state\" ? undefined : weekPhaseWord(t, view.week.state, phase)}") && page.includes("objectionsUntil: phase.objectionsUntil ?? undefined,");
+  ok("5.P6c · every surface asks the one phase: the hub's eyebrow and grading block, its buy block's live line and its voiding pool, the ticket's week line and live line", wired);
+  const { MaswaliTicket } = req("../src/components/maswali/maswali-ticket.tsx") as { MaswaliTicket: (p: Record<string, unknown>) => unknown };
+  const pend = sealLineOf(week(Array(10).fill("YES"), Array(5).fill("YES")), PICKS);
+  const tText = textOf(inApp("en", h(MaswaliTicket as never, { t: en, locale: "en", serverNow: at("2026-12-07T12:00:00.000Z"), serial: "MLN-2026-W49-000041", week: 49,
+    weekState: "RESOLVING", phaseWord: en.millionea.weekStatusCheck, shown: "running", clauses: [], line: pend, stub: { price: 1_000, boughtAt: "2026-12-01T08:13:00Z", questionSetHash: "7f3a…" },
+    live: { resultsIn: 15, reservesLeft: { valid: 5, of: 5 }, objectionsUntil: at(CLOSE) } } as never)));
+  ok("5.P6d · the ticket says it: \"Week 49 · Objection window\" over \"15 of 15 results in · … · Objection window until Tuesday 12:00\" — never \"Results coming in\"",
+    tText.includes("Week 49 · Objection window") && tText.includes("Objection window until Tuesday 12:00") && !tText.includes(en.millionea.weekStatusResolving), tText.slice(0, 200));
+  const oldEyebrow = read(HUB).replace("return `${weekWord(t, weekNumberOf(w.code))} · ${weekPhaseWord(t, w.state, millioneaWeekPhase(w, nowMs))}`;", "return `${weekWord(t, weekNumberOf(w.code))} · ${t.millionea.weekStatusResolving}`;");
+  const blind = (w: Record<string, unknown>, now: number) => ({ kind: "state", objectionsUntil: null as number | null, w, now });
+  ok("5.P6′ PLANT · the old eyebrow (the state's word over a week whose results are in) and a phase that ignores the window are each reported",
+    oldEyebrow !== read(HUB) && !squash(code(oldEyebrow)).includes("weekPhaseWord(t, w.state, millioneaWeekPhase(w, nowMs))")
+      && cases.some(([, w, now, kind]) => blind(w, now).kind !== kind));
+}
+
 // P18 · the slip's two notices are the kit's Callout, never a hand-rolled copy
 const kitNoticeDefects = (src: string) => {
   const s = squash(code(src));
@@ -1175,7 +1237,7 @@ const kitNoticeDefects = (src: string) => {
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI DESIGN: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run prints; VIS-P's fact, example and word plants brought it to 110, and S5-FIX-PLAYER's §5
- *  (P5, P10, P13, P15, P17, P18) to 129. */
-const MIN_ASSERTIONS = 129;
+ *  (P5, P6, P10, P13, P15, P17, P18) to 134. */
+const MIN_ASSERTIONS = 134;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

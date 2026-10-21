@@ -98,9 +98,10 @@ export function ticketRests(shown: TicketShown): boolean {
   }
 }
 
-/** "Wiki 42 · Wazi" — the week and the state it is in (the check window has its own word inside RESOLVING). */
-function weekLine(t: Dict, week: number, state: WeekState, checkWindow: boolean | undefined): string {
-  const word = checkWindow ? t.millionea.weekStatusCheck : millioneaWord(t, WEEK_STATE_KEY[state]);
+/** "Wiki 42 · Wazi" — the week and where it stands: the composer's word for its phase (`phaseWord`: "Objection window",
+ *  "Settling", "Week is being voided" — S5-FIX-PLAYER P6, `millioneaWeekPhase`), else its state's own. */
+function weekLine(t: Dict, week: number, state: WeekState, phaseWord: string | undefined): string {
+  const word = phaseWord ?? millioneaWord(t, WEEK_STATE_KEY[state]);
   return `${weekWord(t, week)} · ${word}`;
 }
 
@@ -188,7 +189,7 @@ function Clause({ t, c, line, inert, press }: { t: Dict; c: TicketClause; line: 
 }
 
 export function MaswaliTicket({
-  t, locale, serverNow, serial, week, weekState, checkWindow, shown, clauses, line, idBase, stub, closedAt,
+  t, locale, serverNow, serial, week, weekState, phaseWord, shown, clauses, line, idBase, stub, closedAt,
   wonAmount, notice, live, cannotWin, seal, cancel, cancelWindowMins, finality, play, className,
 }: {
   t: Dict;
@@ -198,8 +199,9 @@ export function MaswaliTicket({
   serial: string;
   week: number;
   weekState: WeekState;
-  /** RESOLVING, inside the 24-hour check window before payout: the week word says so. */
-  checkWindow?: boolean;
+  /** Where the week stands once its results are in, in the composer's words (S5-FIX-PLAYER P6, `millioneaWeekPhase`):
+   *  "Objection window", "Settling", "Week is being voided"; omitted, the week line says its state's own word. */
+  phaseWord?: string;
   shown: TicketShown;
   /** All fifteen, mains first. */
   clauses: readonly TicketClause[];
@@ -214,9 +216,10 @@ export function MaswaliTicket({
   wonAmount?: number;
   /** One line above the Seal Line — a week voided whole, said in the dictionary's sentence. */
   notice?: ReactNode;
-  /** While the week resolves: how many results are in, the valid reserves left, the next event. `valid` may be below
-   *  zero — the voided mains outnumber the reserves left — and is then said in words, never as a negative (D-20). */
-  live?: { resultsIn: number; reservesLeft?: { valid: number; of: number }; nextEventAt?: number };
+  /** While the week resolves: how many results are in, the valid reserves left, the next event, and while it is open the
+   *  objection window's end (P6). `valid` may be below zero — the voided mains outnumber the reserves left — and is then
+   *  said in words, never as a negative (D-20). */
+  live?: { resultsIn: number; reservesLeft?: { valid: number; of: number }; nextEventAt?: number; objectionsUntil?: number };
   /** On the results so far this ticket cannot win (the composer's verdict; never a score). */
   cannotWin?: boolean;
   /** The door that opens the seal on the player's own tap ("Ona matokeo") — the composer's control. */
@@ -258,6 +261,7 @@ export function MaswaliTicket({
             : fill(t.millionea.reservesLeft, { a: live.reservesLeft.valid, b: live.reservesLeft.of })
           : null,
         live.nextEventAt !== undefined ? fill(t.millionea.nextEvent, { when: eatWeekdayClock(t, live.nextEventAt) }) : null,
+        live.objectionsUntil !== undefined ? fill(t.millionea.checkWindowUntil, { when: eatWeekdayClock(t, live.objectionsUntil) }) : null,
       ].filter((x): x is string => x !== null).map((f) => keepFact(locale, f))
     : null;
   const stampNodes = ended
@@ -280,7 +284,7 @@ export function MaswaliTicket({
             <div className="flex flex-wrap items-center justify-between gap-1.5">
               <Chip metrics="status" variant={millioneaTicketChip(shown)}>{millioneaWord(t, TICKET_SHOWN_KEY[shown])}</Chip>
               {/* `kp-track-end`: the row's last word ends on the card's edge, so its trailing tracking is taken back (r7c 2.1). */}
-              <span className="font-mono text-label uppercase eyebrow text-text-subtle kp-track-end">{keepFact(locale, weekLine(t, week, weekState, checkWindow))}</span>
+              <span className="font-mono text-label uppercase eyebrow text-text-subtle kp-track-end">{keepFact(locale, weekLine(t, week, weekState, phaseWord))}</span>
             </div>
             {/* The page's one heading: the ticket is named by its serial (`test:visual-pass-r7b` 1.6 registers this head,
                 its eyebrow the week line above). */}

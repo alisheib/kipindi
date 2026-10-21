@@ -496,6 +496,21 @@ const { week: B, start: bStart } = await W.openWeek({ weeksAhead: 3 });
 section("§8 · a settled week: the win ledger, the loss line, the register, the seen state, the notices");
 const objectionsDone = await W.closeAndSeal(A, aStart);
 {
+  // S5-FIX-PLAYER P6 · the graded set final and the window stamped: the hub's grading week and the ticket view carry both
+  // instants (ISO), and the one phase reads them — the objection window until its end, then settling.
+  const VIEW: any = await import("../../src/app/millionea/millionea-view.ts");
+  const stored = await dal.weekStore.get(A.id);
+  const hg = (await P.millioneaHub(viewer(P1))).grading;
+  const tv = await P.millioneaTicket(P1, p1Lose.serial);
+  const end = Date.parse(stored.objectionsCloseAt);
+  const phaseAt = (ms: number) => VIEW.millioneaWeekPhase(hg, ms);
+  ok("8.0 · ⭐ P6 · the graded set final: the hub's grading week and the ticket view carry gradedSetFinalAt and objectionsCloseAt as the store stamped them, and the phase is the objection window until its end, then settling",
+    !!stored.gradedSetFinalAt && !!stored.objectionsCloseAt && hg?.id === A.id && hg.gradedSetFinalAt === stored.gradedSetFinalAt && hg.objectionsCloseAt === stored.objectionsCloseAt
+      && tv?.week.gradedSetFinalAt === stored.gradedSetFinalAt && tv.week.objectionsCloseAt === stored.objectionsCloseAt
+      && J(phaseAt(end - 1)) === J({ kind: "objections", objectionsUntil: end }) && J(phaseAt(end)) === J({ kind: "settling", objectionsUntil: null }),
+    J({ stored: [stored.gradedSetFinalAt, stored.objectionsCloseAt], hub: hg && [hg.gradedSetFinalAt, hg.objectionsCloseAt], before: phaseAt(end - 1), at: phaseAt(end) }));
+}
+{
   const lose = await P.millioneaTicket(P1, p1Lose.serial);
   const win = await P.millioneaTicket(P1, p1Win1.serial);
   ok("8.1 · every result out, the record final: the mains matched or missed, the unused reserves closed — still no carry and no score",
