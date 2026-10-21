@@ -248,6 +248,9 @@ const centreOff = (body: string, grid: number, base = 1.9) => { const b = inkBox
     // These four are measured from the shipped Duotone paths, including each secondary-tone shape.
     "comment.duo": [0, 16, PHOSPHOR_PLACED], "gift.duo": [0, -12.01, PHOSPHOR_PLACED],
     "megaphone.duo": [12, -3.98, PHOSPHOR_PLACED], "shieldcheck.duo": [0, 12, PHOSPHOR_PLACED],
+    // PHOSPHOR-MIGRATION release 2c: the category sigils stand on CategoryPlate in Duotone, so politics ships its Duotone —
+    // Phosphor's flag-banner, set by its mass as its Regular and Bold above, measured from the shipped Duotone paths.
+    "politics.duo": [7.99, 12.09, PHOSPHOR_PLACED],
   };
   type Drawn = { key: string; variant: GlyphVariant; body: string | null };
   const census = (list: Drawn[]) => {

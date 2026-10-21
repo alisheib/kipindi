@@ -61,7 +61,9 @@ function audit(input: Sources): Audit {
 
   const labelTable = dictionary(stat, "LABEL");
   const labels = [...labelTable.matchAll(/\b(\w+):\s*"([^"]+)"/g)];
-  if (labels.length !== 8) errors.push(`stat label coverage changed: ${labels.length}/8 rows`);
+  // 9 since PHOSPHOR-MIGRATION release 2c: `activity`, the activity page's long translated money labels beside a plate
+  // (10px on the type ladder, tracked tighter so the whole word fits at 320). Each new row is read here before it counts.
+  if (labels.length !== 9) errors.push(`stat label coverage changed: ${labels.length}/9 rows`);
   for (const m of labels) {
     const sizes = [...m[2].matchAll(/\btext-\[([\d.]+)px\]/g)].map((x) => Number(x[1]));
     if (sizes.length !== 1) errors.push(`stat ${m[1]} label has ${sizes.length} explicit sizes`);
@@ -102,7 +104,7 @@ function ok(name: string, condition: boolean, detail = "") {
 
 const actual = audit(files);
 ok("kit dictionaries and source ladders are fully covered",
-  actual.chipRows === 8 && actual.labelRows === 8 && actual.boxRows === 6,
+  actual.chipRows === 8 && actual.labelRows === 9 && actual.boxRows === 6,
   `${actual.chipRows} chip rows, ${actual.labelRows} labels, ${actual.boxRows} boxes`);
 ok("F38/F39 kit entries resolve to declared type and spacing rungs",
   actual.errors.length === 0, actual.errors.join(" · "));
