@@ -2376,7 +2376,12 @@ stays open as KNOWN-RED TK.2, with MB-23 (OB.0) and MB-74 (RD.5): §6.1 Gate B l
   placed again before any money); the money runs only in a section that reached it inside its share — a release with
   few holds is one section, as before. Guards: `test:maswali-settle` S7F8.0–S7F8.2 on both stores; plants (S7-F8-recheck),
   (S7-F8-yield) and (S7-F8-pay-fresh) in `red:maswali-money-path`; S16's all-held shape judges each section's transaction
-  against the budget.
+  against the budget. **Measured after the fix** (S16 at `66f3af8be`, 43 passed, 0 failed): the all-held week settled
+  once in 15 sections of the lock — 14 of holds at 5.0 s each, the paying one 9.4 s, each inside the budget, 81.6 s in
+  all (about 10.5 ms a hold on a quieter machine): 7,000 payouts, 14,010 ledger lines, the pool at 0, every balance to the
+  shilling, 7,000 wallets held with one audit row each, and a replay paid nothing and held nothing again. The wide week
+  stayed one section (6.7 s). The trial balance (14,808 wallets) and every invariant held. A release refused after it
+  placed thousands of holds still lifts them one at a time — minutes, with the nightly heal behind a stop midway.
 
 #### S8 · Live drive and public launch
 
