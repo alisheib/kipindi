@@ -173,9 +173,10 @@ check("2.3", "H4 · each attested question says how — \"One officer\" (the shi
 });
 
 // ── §3 · R1 · R2 · R8 · the fifteen ─────────────────────────────────────────────────────────────────────────────────
+// ⚠️ RE-PINNED 2026-10-21 (S5-DESIGN-REGISTER, the tile read — §16 says why): the cards stand at the receipt's measure.
 check("3.1", "R1 · L18 · the fifteen are cards below 1024 (`lg:hidden`) and the table from 1024 (`hidden lg:block`) on its glass panel, as /fairness's and the rules pages' tables sit — never the old 768 switch", (w) => {
   const s = code(w, "week");
-  const cards = s.includes('<div className="flex flex-col lg:hidden" data-testid="millionea-register-cards">');
+  const cards = s.includes('<div className="flex max-w-receipt flex-col lg:hidden" data-testid="millionea-register-cards">');
   const table = s.includes('<ScrollX label={heading} className="glass-panel hidden lg:block">');
   const old = /\bmd:hidden\b|\bhidden md:block\b/.test(s);
   return [cards && table && !old, j({ cards, table, old })];
@@ -323,11 +324,12 @@ check("5.2", "R4 · L2 · the state chip wears slate for a settled week — its 
 // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER, the critic's M12 and L15, and the lead's H2 ruling): the commitments
 // were sentences dressed as eyebrows ("SETI YA MASWALI IMECHAPISHWA 23 NOV, 00:01") and no heading. They are a titled section of
 // nouns — the ONE drawing the hub's week section adopts (`WeekCommitments`) — shown the moment each is stamped.
+// ⚠️ RE-PINNED 2026-10-21 (S5-DESIGN-REGISTER, the tile read — §16 says why): the heading balanced; the question set's eyebrow wears the glyph too.
 check("6.1", "M12 · L15 · H2 · the commitments are a titled section of nouns: the question set's hash under \"Question set\" with \"Published {when}\"; the tickets' root under \"Tickets at the close\" with its glyph and \"Fixed {when} · {n} tickets\" (the lead's words) — or when it will be published; one explainer once both exist", (w) => {
   const s = code(w, "week"), p = code(w, "parts");
   const drawn = s.includes("<WeekCommitments t={t} locale={locale} nowMs={nowMs} hash={v.hash} publishedAt={v.publishedAt} root={v.root} closedAt={v.closedAt} tickets={v.tickets} />");
-  const nouns = p.includes('<h2 id="mln-reg-commit" className="font-display text-title-sm font-bold text-text">{t.millionea.commitTitle}</h2>')
-    && p.includes("<span className={EYEBROW}>{t.millionea.stubHash}</span>") && p.includes("<I.commitment s={12} className=\"shrink-0\" /> <span>{t.millionea.commitTicketsAtClose}</span>")
+  const nouns = p.includes('<h2 id="mln-reg-commit" className="font-display text-title-sm font-bold text-text text-balance">{t.millionea.commitTitle}</h2>')
+    && p.includes("<span>{t.millionea.stubHash}</span>") && p.includes("<I.commitment s={12} className=\"shrink-0\" /> <span>{t.millionea.commitTicketsAtClose}</span>")
     && p.includes("counted(tickets, t.millionea.commitFixedOne, t.millionea.commitFixed, { when: fixed })") && p.includes("{t.millionea.commitAtClose}")
     && p.includes("{hash && root && <p className=\"text-body-sm text-text-muted text-pretty\">{t.millionea.commitExplainer}</p>}");
   const words = LOCALES.map((l) => fill(mln(w, l).commitFixed, { when: "27 Nov, 18:00", n: "1,050" }));
@@ -527,19 +529,21 @@ check("9.6", "A1 · L7 · the reserve rule's range keeps its two ends together �
   return [drawn && off.length === 0 && whole, j({ drawn, off, whole })];
 });
 
+// ⚠️ RE-PINNED 2026-10-21 (S5-DESIGN-REGISTER, the tile read — §16 says why): the time drawn through its kept runs.
 check("9.7", "the reserve map's log is in time order with an untimed entry AFTER every timed one, and a voided week's closing line closes it untimed (no instant is stored for it) — never sorted first, never a \"—\" in a time's place (the zh 1024 tile opened on \"— 整周作废\")", (w) => {
   const s = code(w, "week");
   const order = s.includes("const order = (iso: string | null) => msOf(iso) ?? Number.MAX_SAFE_INTEGER;") && s.includes("return [...entries].sort((a, b) => order(a.at) - order(b.at));");
   const last = s.includes('log: inOrder(log).concat(w.state === "VOIDED" ? [{ at: null, text: weekVoidLine(t, rec.voidedMains, rec.usableReserves), time: null }] : []),');
-  const untimed = s.includes('{l.time !== null && <span className="whitespace-nowrap font-mono text-text-subtle">{l.time}</span>}');
+  const untimed = s.includes('{l.time !== null && <span className="font-mono text-text-subtle">{keepFact(locale, l.time, l.runs ?? [l.time])}</span>}');
   const old = s.includes("(msOf(a.at) ?? 0)") || s.includes("logWeekVoid }");
   return [order && last && untimed && !old, j({ order, last, untimed, old })];
 });
 // H1 · L8 · P6 — the log says what happened: each void ("Question 1 voided"), each stand-in, the objection window by its one
 // name with its two ends, and why a voided week voided, with its counts (MR-18).
+// ⚠️ RE-PINNED 2026-10-21 (S5-DESIGN-REGISTER, the tile read — §16 says why): the window carries its two runs.
 check("9.8", "H1 · L8 · P6 · the log names each void and each stand-in, the objection window (\"Objection window\" from → to) on running and final weeks alike, and a voided week's counts — \"Week voided: 6 main questions void, only 4 valid reserves\" — each count form in three languages", (w) => {
   const s = code(w, "week");
-  const windows = count(s, "...windowEntry(t, locale, ") === 2 && s.includes("[{ at: from, text: t.millionea.regCheck, time: `${a} → ${b}` }]");
+  const windows = count(s, "...windowEntry(t, locale, ") === 2 && s.includes("[{ at: from, text: t.millionea.regCheck, time: `${a} → ${b}`, runs: [a, b] }]");
   const forms = LOCALES.map((l) => {
     const m = mln(w, l);
     return [fill(m.logWeekVoidCounts, { mains: 6, reserves: 4 }), fill(m.logWeekVoidOneReserve, { mains: 6 }), fill(m.logWeekVoidNoReserve, { mains: 10 }), m.logWeekVoidNoReserveOne, fill(m.logVoid, { n: 1 })];
@@ -599,11 +603,12 @@ check("13.1", "A2 · no Chinese run in the register's body text is longer than 1
 // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER): the ghosts open on the pages' new bands — the week's chip beside its
 // code with its facts and times under the head (M1), the ledger's card before the commitments' (M4, M12), the table on its
 // panel (L18); the index's intro (M11) and its list's own top edge, the row drawing no rule (L3).
+// ⚠️ RE-PINNED 2026-10-21 (S5-DESIGN-REGISTER, the tile read — §16): the ghost's cards at the receipt's measure, as the page's.
 check("12.1", "the week's ghost opens on the page's bands, in its order: the chip beside the code under the head, then the facts and times; the ledger's card at the receipt's measure; the commitments' card; cards below 1024 and the table on its panel from 1024", (w) => {
   const g = code(w, "weekGhost");
   const chip = g.includes('<MaswaliGhostHead eyebrowWidth="w-[144px]" titleWidth="w-[132px]" /> <div className="flex items-center gap-3" aria-hidden> <GhostBar className="h-[23px] w-[96px] rounded-pill" /> <GhostBar className="h-3 w-[112px]" /> </div>');
   const at = ['<div className="mat-flat flex max-w-receipt flex-col gap-2.5 rounded-card p-3">', '<div className="mat-flat flex max-w-receipt flex-col gap-4 rounded-card p-3">',
-    '<div className="flex flex-col lg:hidden">', '<div className="glass-panel hidden flex-col lg:flex">'].map((x) => g.indexOf(x));
+    '<div className="flex max-w-receipt flex-col lg:hidden">', '<div className="glass-panel hidden flex-col lg:flex">'].map((x) => g.indexOf(x));
   const order = at.every((x, i) => x >= 0 && (i === 0 || x > at[i - 1]));
   return [chip && order, j({ chip, at })];
 });
@@ -641,9 +646,10 @@ check("14.2", "M5 · M4 · the survivor list reserves no right lane either: at t
 });
 // ⭐ H2 · the lead's ruling: a public week's page from its open — commitments, questions, confirmed outcomes — and money only
 // once it is final.
+// ⚠️ RE-PINNED 2026-10-21 (S5-DESIGN-REGISTER, the tile read — §16 says why): the waiting words wrap as the page's prose (`text-pretty`).
 check("14.3", "H2 · a running week's page prints no money: the ledger's place says when the ledger comes, and the running week's view is built with no figure of money in it", (w) => {
   const s = code(w, "week");
-  const later = s.includes("{rec.kind === \"final\" ? <MaswaliLedger rows={registerLedgerRows(t, locale, rec.week)} /> : <p className=\"text-body-sm text-text-muted\">{t.millionea.regLedgerLater}</p>}");
+  const later = s.includes("{rec.kind === \"final\" ? <MaswaliLedger rows={registerLedgerRows(t, locale, rec.week)} /> : <p className=\"text-body-sm text-text-muted text-pretty\">{t.millionea.regLedgerLater}</p>}");
   const live = s.slice(s.indexOf("function liveView("), s.indexOf("function Place("));
   const noMoney = live.length > 0 && !/formatTzs|\.sales|jackpot|\.fee\b|carryIn|carriedForward/.test(live);
   const read = s.includes('const v = rec.kind === "final" ? finalView(t, locale, rec, nowMs) : liveView(t, locale, rec.week, nowMs);');
@@ -728,6 +734,43 @@ check("15.4", "the whole ledger of a won week, in order and to the shilling: sal
   return [j(rows.map((r) => [r.key, r.value])) === j(want) && levies.includes("TZS 13,663") && levies.includes("TZS 6,832"), j({ rows: rows.map((r) => [r.key, r.value]), levies })];
 });
 
+// ── §16 · the tile read of 2026-10-21 (S5-DESIGN-REGISTER) ──────────────────────────────────────────────────────────────
+// Read on the states run's tiles: the zh objection window ran off the 320 page as one run (week-voided/-rolled zh-320-s10:
+// "…11月26日 12" — its ":00" cut at the edge); the table's place number sat 2px above its row's first line (≥1024, sw-1024-s3
+// rows 133–142 vs 135–144); the question set's eyebrow started 20px left of the root's (one glyph of two); the cards ran
+// ~100 characters a line across a 768 page; a heading's last word stood alone (sw-360-s9 "tokeo").
+check("16.1", "a log line's time breaks only between its kept runs — the objection window after its arrow (\"2026年11月25日 02:30 →\" / \"2026年11月26日 12:00\"), never off the page's edge as one run; a single instant stays whole", (w) => {
+  const s = code(w, "week");
+  const runs = s.includes("time: `${a} → ${b}`, runs: [a, b] }]");
+  const drawn = s.includes('{l.time !== null && <span className="font-mono text-text-subtle">{keepFact(locale, l.time, l.runs ?? [l.time])}</span>}');
+  const whole = /whitespace-nowrap font-mono text-text-subtle">\{l\.time\}/.test(s);
+  return [runs && drawn && !whole, j({ runs, drawn, whole })];
+});
+check("16.2", "the table's place number stands on its row's first line: the row's header cell takes a cell's 12px top padding (`!pt-2`, 12px on the scale, over `.admin-tbl th`'s 10px) in a top-aligned row — never 2px above the question", (w) => {
+  const s = code(w, "week");
+  const row = s.includes('<tr key={q.slot} className="align-top" style={q.role === "RESERVE" ? RESERVE_WASH : undefined}>');
+  const head = s.includes('<th scope="row" className="text-left !pt-2"><Place q={q} /></th>');
+  return [row && head, j({ row, head })];
+});
+check("16.3", "both commitments wear the commitment glyph — the question set's eyebrow and the root's share one left edge", (w) => {
+  const p = code(w, "parts");
+  const glyphs = count(p, '<span className={`${EYEBROW} inline-flex items-center gap-1.5`}> <I.commitment s={12} className="shrink-0" /> <span>');
+  const bare = p.includes("<span className={EYEBROW}>{t.millionea.stubHash}</span>");
+  return [glyphs === 2 && !bare, j({ glyphs, bare })];
+});
+check("16.4", "M4 · the question cards stand at the receipt's measure (the ticket's tier, as the ledger's and the commitments' cards) — never ~100 characters a line across a 768 page", (w) => {
+  const s = code(w, "week");
+  const cards = s.includes('<div className="flex max-w-receipt flex-col lg:hidden" data-testid="millionea-register-cards">');
+  return [cards, j({ cards })];
+});
+check("16.5", "the page's headings balance their lines (`text-balance`, the platform's heading wrap) and the ledger's waiting words wrap as the page's prose (`text-pretty`) — no word alone on a last line", (w) => {
+  const s = code(w, "week"), p = code(w, "parts");
+  const h2 = s.includes('const H2 = "font-display text-title-sm font-bold text-text text-balance";')
+    && p.includes('<h2 id="mln-reg-commit" className="font-display text-title-sm font-bold text-text text-balance">{t.millionea.commitTitle}</h2>');
+  const later = s.includes('<p className="text-body-sm text-text-muted text-pretty">{t.millionea.regLedgerLater}</p>');
+  return [h2 && later, j({ h2, later })];
+});
+
 // ── the run ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 function runAll(w: World, quiet: boolean): { pass: number; fail: number; failed: string[] } {
   let pass = 0, fail = 0;
@@ -745,7 +788,7 @@ if (!PROVE_RED) {
   const { pass, fail } = runAll(REAL, false);
   console.log(`\n${"═".repeat(70)}\n  MASWALI REGISTER: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
   /** The floor is the count a green run PRINTS; it only rises, to a printed number. */
-  const MIN_ASSERTIONS = 53; // S5-FIX-PLAYER §15 (P3, P4, P9, P11) added five; S5-DESIGN-REGISTER (3.9, 5.3, 5.4, 7.5, 7.6, 9.8, 14.3) seven
+  const MIN_ASSERTIONS = 58; // S5-FIX-PLAYER §15 (P3, P4, P9, P11) added five; S5-DESIGN-REGISTER (3.9, 5.3, 5.4, 7.5, 7.6, 9.8, 14.3) seven, §16 (the tile read) five
   if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
   process.exit(fail === 0 ? 0 : 1);
 }
@@ -781,7 +824,7 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["H4 undone — every attestation said as one officer (it could never say two)", "2.3", plantSrc("week", '{s === "two" ? t.millionea.signoffTwo : t.millionea.signoffOne}', "{t.millionea.signoffOne}")],
   ["H4 undone — one role line for all fifteen again", "2.3", plantSrc("week", "function Signoff(", 'const role = (q: Q) => (q.sealerRole ? t.millionea.officerRole : "—");\nfunction Signoff(')],
   // §3
-  ["R1 undone — the cards hide from 768 again", "3.1", plantSrc("week", '<div className="flex flex-col lg:hidden" data-testid="millionea-register-cards">', '<div className="flex flex-col md:hidden" data-testid="millionea-register-cards">')],
+  ["R1 undone — the cards hide from 768 again", "3.1", plantSrc("week", '<div className="flex max-w-receipt flex-col lg:hidden" data-testid="millionea-register-cards">', '<div className="flex max-w-receipt flex-col md:hidden" data-testid="millionea-register-cards">')],
   ["R1 undone — the table from 768 again", "3.1", plantSrc("week", '<ScrollX label={heading} className="glass-panel hidden lg:block">', '<ScrollX label={heading} className="glass-panel hidden md:block">')],
   ["L18 undone — the table off its panel", "3.1", plantSrc("week", '<ScrollX label={heading} className="glass-panel hidden lg:block">', '<ScrollX label={heading} className="hidden lg:block">')],
   ["R2 undone — a seventh column back in the head", "3.2", plantSrc("week", '<th scope="col" className="text-left">{t.millionea.regColOutcome}</th>', '<th scope="col" className="text-left">{t.millionea.regColOutcome}</th>\n              <th scope="col" className="text-left">{t.millionea.regColEvent}</th>')],
@@ -849,7 +892,7 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["A1 undone — the reserve rule's range free to part", "9.6", plantSrc("week", "{keepFact(locale, t.millionea.regSubRule)}", "{t.millionea.regSubRule}")],
   ["H1 undone — the reserve rule silent on a week voided whole", "9.6", plantWord("en", "regSubRule", "Reserves A1–A5 count only when a main question voids, in order: the lowest-numbered voided main takes the first unused valid reserve.")],
   ["the log's old order — an untimed entry read as the earliest", "9.7", plantSrc("week", "return [...entries].sort((a, b) => order(a.at) - order(b.at));", "return [...entries].sort((a, b) => (msOf(a.at) ?? 0) - (msOf(b.at) ?? 0));")],
-  ["the log printing a \"—\" where the week's void has no time", "9.7", plantSrc("week", '{l.time !== null && <span className="whitespace-nowrap font-mono text-text-subtle">{l.time}</span>}', '<span className="whitespace-nowrap font-mono text-text-subtle">{l.time ?? "—"}</span>')],
+  ["the log printing a \"—\" where the week's void has no time", "9.7", plantSrc("week", '{l.time !== null && <span className="font-mono text-text-subtle">{keepFact(locale, l.time, l.runs ?? [l.time])}</span>}', '<span className="font-mono text-text-subtle">{l.time ?? "—"}</span>')],
   ["P6 undone — the objection window gone from a final week's log", "9.8", plantSrc("week", "    ...windowEntry(t, locale, rec.objections.from, rec.objections.to, nowMs),\n", "")],
   ["H1 undone — a voided week's line without its counts", "9.8", plantWord("en", "logWeekVoidCounts", "Week voided")],
   ["L8 undone — \"Question 1 void\" beside \"Week voided\"", "9.8", plantWord("sw", "logVoid", "Swali {n} batili")],
@@ -887,6 +930,16 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["P11 undone — the fee unsigned (\"TZS −136,630\")", "15.3", { ...REAL, ledger: (t, l, wk) => registerLedgerRows(t, l, wk).map((r) => (r.key === "fee" && (wk.fee ?? 0) > 0 ? { ...r, value: formatTzs(-(wk.fee ?? 0)) } : r)) }],
   ["the levies dropped from under a won week's fee", "15.4", { ...REAL, ledger: (t, l, wk) => registerLedgerRows(t, l, wk).map((r) => (r.key === "fee" ? { ...r, note: undefined } : r)) }],
   ["P9 undone — the carry's weeks counted from the week's open (47 and 49 across the voided week)", "15.5", { ...REAL, ledger: (t, l, wk) => registerLedgerRows(t, l, { ...wk, carryFromCode: wk.carryFromCode ? "MLN-2026-W47" : null, carryToCode: wk.carryToCode ? "MLN-2026-W49" : null }) }],
+  // §16 — the tile read's fixes undone
+  ["the zh window one unbreakable run again (\":00\" off the 320 page)", "16.1", plantSrc("week", '<span className="font-mono text-text-subtle">{keepFact(locale, l.time, l.runs ?? [l.time])}</span>', '<span className="whitespace-nowrap font-mono text-text-subtle">{l.time}</span>')],
+  ["the window's runs dropped (kept whole by its default run)", "16.1", plantSrc("week", ", runs: [a, b] }]", " }]")],
+  ["the row's header back on `.admin-tbl th`'s 10px (the number 2px high)", "16.2", plantSrc("week", '<th scope="row" className="text-left !pt-2">', '<th scope="row" className="text-left">')],
+  ["the row's header 4px too low (`!pt-3` is 16px on the scale)", "16.2", plantSrc("week", '<th scope="row" className="text-left !pt-2">', '<th scope="row" className="text-left !pt-3">')],
+  ["the row baseline-aligned (the table's cells stay middle: `.admin-tbl td` wins)", "16.2", plantSrc("week", '<tr key={q.slot} className="align-top" style=', '<tr key={q.slot} className="align-baseline" style=')],
+  ["the question set's eyebrow without its glyph (a ragged left edge)", "16.3", plantSrc("parts", '              <I.commitment s={12} className="shrink-0" />\n              <span>{t.millionea.stubHash}</span>', "              <span>{t.millionea.stubHash}</span>")],
+  ["M4 undone — the cards across the whole page from 768", "16.4", plantSrc("week", 'className="flex max-w-receipt flex-col lg:hidden" data-testid="millionea-register-cards"', 'className="flex flex-col lg:hidden" data-testid="millionea-register-cards"')],
+  ["the headings unbalanced again (\"tokeo\" alone)", "16.5", plantSrc("week", 'const H2 = "font-display text-title-sm font-bold text-text text-balance";', 'const H2 = "font-display text-title-sm font-bold text-text";')],
+  ["the waiting words without the prose wrap (\"final.\" alone)", "16.5", plantSrc("week", '<p className="text-body-sm text-text-muted text-pretty">{t.millionea.regLedgerLater}</p>', '<p className="text-body-sm text-text-muted">{t.millionea.regLedgerLater}</p>')],
   ["P9 undone — \"Week 0\" where the chain names none", "15.5", { ...REAL, ledger: (t, l, wk) => registerLedgerRows(t, l, { ...wk, carryFromCode: wk.carryFromCode ?? "MLN-2026-W00", carryToCode: wk.carryToCode ?? "MLN-2026-W00" }) }],
 ];
 let caught = 0;

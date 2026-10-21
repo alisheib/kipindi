@@ -254,11 +254,16 @@ export function WeekCommitments({ t, locale, nowMs, hash, publishedAt, root, clo
     : null;
   return (
     <section aria-labelledby="mln-reg-commit" className="flex flex-col gap-2" data-testid="millionea-commitments">
-      <h2 id="mln-reg-commit" className="font-display text-title-sm font-bold text-text">{t.millionea.commitTitle}</h2>
+      <h2 id="mln-reg-commit" className="font-display text-title-sm font-bold text-text text-balance">{t.millionea.commitTitle}</h2>
       <div className="mat-flat flex max-w-receipt flex-col gap-4 rounded-card p-3">
         {hash && (
           <div className="flex flex-col gap-1">
-            <span className={EYEBROW}>{t.millionea.stubHash}</span>
+            {/* Both commitments wear the commitment glyph — one left edge for the two eyebrows (the tile read of 2026-10-21:
+                the question set's eyebrow started 20px left of the root's). */}
+            <span className={`${EYEBROW} inline-flex items-center gap-1.5`}>
+              <I.commitment s={12} className="shrink-0" />
+              <span>{t.millionea.stubHash}</span>
+            </span>
             <span className="font-mono text-body-sm text-text break-all">{hash}</span>
             {published !== null && <span className="text-body-sm text-text-muted">{keepFact(locale, fill(t.millionea.commitPublished, { when: published }), [published])}</span>}
           </div>

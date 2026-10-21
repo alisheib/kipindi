@@ -109,8 +109,11 @@ type Mark =
   | { kind: "notUsed" }
   | { kind: "awaiting"; certain: boolean };
 
-/** One line of the week's log: what happened, and when — or the words alone when no instant is stored for it. */
-type LogEntry = { at: string | null; text: string; time: string | null };
+/** One line of the week's log: what happened, and when — or the words alone when no instant is stored for it. `runs`: the
+ *  time's unbreakable parts when it has more than one — a window's two ends each kept whole, the line free to break at the
+ *  spaces around its arrow (after it, wherever the first end and the arrow fit), never off the page's edge
+ *  ("2026年11月25日 02:30 → 2026年11月26日 12:00" ran past the 320 gutter as one run: the tile read of 2026-10-21). */
+type LogEntry = { at: string | null; text: string; time: string | null; runs?: readonly string[] };
 
 /** The one shape the page draws, whichever record it read. */
 type View = {
@@ -134,7 +137,7 @@ type View = {
 
 /** The reserves' band: the inset wash every Millionea list gives the five (the hub's, §10 §3.3 item 5). */
 const RESERVE_WASH = { background: "var(--wash-inset)" } as const;
-const H2 = "font-display text-title-sm font-bold text-text";
+const H2 = "font-display text-title-sm font-bold text-text text-balance";
 
 /** A void's reason, in the reader's words (the closed list, `maswali-void-reason.ts`), or "—". */
 function reasonOf(t: Dict, q: Q): string {
@@ -144,7 +147,7 @@ function reasonOf(t: Dict, q: Q): string {
 /** The objection window as a log line: the platform's one name for it (L5) and its two ends (P6), when both are stamped. */
 function windowEntry(t: Dict, locale: Locale, from: string | null, to: string | null, nowMs: number): LogEntry[] {
   const a = registerWhen(t, locale, from, nowMs), b = registerWhen(t, locale, to, nowMs);
-  return a !== null && b !== null ? [{ at: from, text: t.millionea.regCheck, time: `${a} → ${b}` }] : [];
+  return a !== null && b !== null ? [{ at: from, text: t.millionea.regCheck, time: `${a} → ${b}`, runs: [a, b] }] : [];
 }
 
 /** A voided week's last line, untimed — its stamp writes the state alone, so no instant is stored (AGENTS.md §6) — with
@@ -329,7 +332,9 @@ function Questions({ t, locale, v, nowMs }: { t: Dict; locale: Locale; v: View; 
     const mark = v.marks.get(q.slot);
     return (
       <tr key={q.slot} className="align-top" style={q.role === "RESERVE" ? RESERVE_WASH : undefined}>
-        <th scope="row" className="text-left"><Place q={q} /></th>
+        {/* The row's header takes a cell's top padding (12px, the scale's `2`): `.admin-tbl th` pads 10px where `td` pads 12px,
+            so the place number sat 2px above its row's first line (sw-1024-s3, the tile read of 2026-10-21). */}
+        <th scope="row" className="text-left !pt-2"><Place q={q} /></th>
         <td className="min-w-[240px]">
           {/* The question on the row's first line, every cell's first line on one baseline (M2): its criterion and its
               category under it. */}
@@ -366,7 +371,7 @@ function Questions({ t, locale, v, nowMs }: { t: Dict; locale: Locale; v: View; 
   return (
     <section aria-labelledby="mln-reg-q" className="flex flex-col gap-2">
       <h2 id="mln-reg-q" className={H2}>{heading}</h2>
-      <div className="flex flex-col lg:hidden" data-testid="millionea-register-cards">
+      <div className="flex max-w-receipt flex-col lg:hidden" data-testid="millionea-register-cards">
         <ol className="flex flex-col">{mains.map(card)}</ol>
         {reserves.length > 0 && (
           <>
@@ -420,7 +425,7 @@ function ReserveMap({ t, locale, v }: { t: Dict; locale: Locale; v: View }) {
             // words alone, never a "—" standing in a time's place.
             <li key={i} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 py-2 text-body-sm">
               <span className="text-text">{l.text}</span>
-              {l.time !== null && <span className="whitespace-nowrap font-mono text-text-subtle">{l.time}</span>}
+              {l.time !== null && <span className="font-mono text-text-subtle">{keepFact(locale, l.time, l.runs ?? [l.time])}</span>}
             </li>
           ))}
         </ol>
@@ -461,7 +466,7 @@ export default async function MillioneaRegisterWeekPage({ params }: { params: Pr
           <div className="mat-flat flex max-w-receipt flex-col rounded-card p-3">
             {rec.kind === "final"
               ? <MaswaliLedger rows={registerLedgerRows(t, locale, rec.week)} />
-              : <p className="text-body-sm text-text-muted">{t.millionea.regLedgerLater}</p>}
+              : <p className="text-body-sm text-text-muted text-pretty">{t.millionea.regLedgerLater}</p>}
           </div>
         </section>
         <WeekCommitments t={t} locale={locale} nowMs={nowMs} hash={v.hash} publishedAt={v.publishedAt} root={v.root} closedAt={v.closedAt} tickets={v.tickets} />

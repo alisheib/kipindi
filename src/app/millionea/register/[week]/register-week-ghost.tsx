@@ -54,7 +54,7 @@ export function MillioneaRegisterWeekGhost() {
         </div>
         <div className="flex flex-col gap-2" aria-hidden>
           {H2}
-          <div className="flex flex-col lg:hidden">
+          <div className="flex max-w-receipt flex-col lg:hidden">
             {[0, 1, 2].map((i) => (
               <div key={i} className="grid grid-cols-[32px_minmax(0,1fr)] gap-x-2 border-t border-border px-1 py-3">
                 <GhostBar className="h-4 w-4" />
