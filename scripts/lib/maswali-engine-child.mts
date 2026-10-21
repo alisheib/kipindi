@@ -892,16 +892,18 @@ console.log("\n§12 · the Owner's stop: its mark and its audit row land with it
     };
     const stop = () => svc.sunsetMaswali({ weekId: id5, ownerId: OWNER, typed: svc.SUNSET_WORD, reason: "The Owner stops Millionea after this week (engine suite).", now: nowDraft });
     if (STORE === "postgres") {
-      // The fault fires on the first read AFTER the final mark was written.
-      const realGet = weekStore.get, realPatch = weekStore.patch;
+      // The fault fires as the final mark's own write returns: the mark is written, and nothing after it has run. (Not on a
+      // later read: the stop need not read the week again after its mark — claude/maswali-s7's answers without one.)
+      const realPatch = weekStore.patch;
       let marked = false;
-      weekStore.patch = async (...args: Parameters<typeof realPatch>) => { await realPatch.apply(weekStore, args); if ((args[1] as { isFinal?: boolean }).isFinal) marked = true; };
-      weekStore.get = async (...args: Parameters<typeof realGet>) => {
-        if (marked) throw new Error("injected fault: the connection dropped after the final mark");
-        return realGet.apply(weekStore, args);
+      weekStore.patch = async (...args: Parameters<typeof realPatch>) => {
+        await realPatch.apply(weekStore, args);
+        if (!(args[1] as { isFinal?: boolean }).isFinal) return;
+        marked = true;
+        throw new Error("injected fault: the connection dropped after the final mark");
       };
       let thrown = "";
-      try { await stop(); } catch (e) { thrown = String((e as Error).message ?? e); } finally { weekStore.get = realGet; weekStore.patch = realPatch; }
+      try { await stop(); } catch (e) { thrown = String((e as Error).message ?? e); } finally { weekStore.patch = realPatch; }
       ok("12.1 · ⭐ a fault after the final mark was written rolls the stop back — the week is not final, and no audit row orders it",
         thrown.includes("injected fault") && marked && (await weekStore.get(id5))!.isFinal === false && (await orderedRows()) === 0, JSON.stringify({ thrown, marked, rows: await orderedRows() }));
     }
