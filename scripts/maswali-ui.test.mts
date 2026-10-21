@@ -134,7 +134,9 @@ const ghostWordDefects = (readAt: (rel: string) => string) => GHOST_FILES.flatMa
   ok("1.4 · Tiketi zangu's Millionea loading file is synchronous: it asks the server nothing before the tickets' gate answers",
     !/\basync\b|\bawait\b/.test(tl) && tl.includes("export default function MillioneaTicketsLoading() {") && tl.includes("return <MillioneaTicketsGhost />;"));
   const plant = (rel: string, from: string, to: string) => (r: string) => (r === rel ? read(r).replace(from, to) : read(r));
-  const named = ghostWordDefects(plant(`${APP}/hub-ghost.tsx`, '<MaswaliGhostHead eyebrowWidth="w-[128px]" titleWidth="w-[248px]" />', '<MaswaliGhostHead titleWidth="w-[248px]" />{t.millionea.productTitle}'));
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-HUB L7): the hub's ghost draws its head through the kit PageHeader itself
+  // now (its two doors and the game's line as bars); the plant reads the product's name back into that head's title.
+  const named = ghostWordDefects(plant(`${APP}/hub-ghost.tsx`, 'title={<GhostLine className="w-[248px]" />}', "title={t.millionea.productTitle}"));
   ok("1.3′ CONTROL · the product's name read back into the hub's ghost is reported", named.some((x) => x.includes("hub-ghost.tsx") && x.includes("t.millionea")));
   const veiled = ghostWordDefects(plant(`${APP}/slip/slip-ghost.tsx`, '<GhostLine className="w-[264px]" />', "<GhostText>{\"Maswali Millionea\"}</GhostText>"));
   ok("1.3″ CONTROL · words set and not shown, or a string naming the product, in the slip's ghost are reported",

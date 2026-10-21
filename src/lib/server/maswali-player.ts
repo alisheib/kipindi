@@ -1079,7 +1079,8 @@ export function normalizeMillioneaWeekCode(raw: unknown): string | null {
   return /^MLN-\d{4}-W\d{2}$/.test(s) ? s : null;
 }
 
-/** ⭐ ONE WEEK OF THE REGISTER — public, final, with every figure to the shilling; or null. */
+/** ⭐ ONE WEEK OF THE REGISTER — public, final, with every figure to the shilling; or null. ⛔ PUBLIC only: a DRIVE week's
+ *  money is read by its own ticket's holder through the core (`millioneaWeekMoneyRecord`), never here. */
 export async function millioneaRegisterWeek(code: string): Promise<MillioneaRegisterWeek | null> {
   const want = normalizeMillioneaWeekCode(code);
   if (!want) return null;
@@ -1087,7 +1088,6 @@ export async function millioneaRegisterWeek(code: string): Promise<MillioneaRegi
   if (!week || week.visibility !== "PUBLIC" || !TERMINAL.includes(week.state)) return null;
   const rules = frozenRules(week);
   if (!rules) return null;
-  const terms = await termsOf(week);
   const qs = await questionStore.listForWeek(week.id);
   const gq = gradable(qs);
   const rec = recordOf(gq);
@@ -1106,14 +1106,10 @@ export async function millioneaRegisterWeek(code: string): Promise<MillioneaRegi
   const resolution = sealed.length > 0 && sealed.every((q) => q.twoOfficerAtStage1 === true && !!q.stage2By) ? "two" : "single";
 
   let standing: MillioneaRegisterWeek["standing"] = null, scores: number[] | null = null;
-  let basis: MillioneaRegisterWeek["basis"] = null, winningScore: number | null = null;
-  if (settled) {
-    const graded = await ticketStore.listForWeek(week.id, { status: "SETTLED" });
+  const graded = settled ? await ticketStore.listForWeek(week.id, { status: "SETTLED" }) : null;
+  if (graded) {
     scores = Array.from({ length: MAIN_COUNT + 1 }, () => 0);
     for (const t of graded) if (t.score != null && t.score >= 0 && t.score <= MAIN_COUNT) scores[t.score]++;
-    const winning = graded.filter((t) => t.won === true);
-    winningScore = winning.length ? Math.max(...winning.map((t) => t.score ?? 0)) : null;
-    basis = winningScore === null ? null : winningScore < MAIN_COUNT ? "TOP_SCORE" : "TEN_OF_TEN";
     const set = rec.set;
     if (set?.kind === "SET") {
       const outcomeAt = new Map(qs.map((q, i) => [q.slot, gq[i]?.outcome ?? null] as const));
@@ -1125,15 +1121,14 @@ export async function millioneaRegisterWeek(code: string): Promise<MillioneaRegi
       });
     }
   }
+  // The money is the ONE core's (`weekMoneyOf`, S5-DESIGN-REGISTER — the lead's ruling of 2026-10-21), laid back in the
+  // record's own key order, so a public week's projection is the same, byte for byte.
+  const { carryFromCode, carryToCode, ticketPrice, floor, feeRate, traLevy, gbtLevy, toWinners, remainder, basis, winningScore, ...summary } =
+    await weekMoneyOf(week, rules, graded);
   return {
-    ...(await summaryOf(week)),
+    ...summary,
     opensAt: week.opensAt, closesAt: week.closesAt, questionSetHash: week.questionSetHash, ticketMerkleRoot: week.ticketMerkleRoot,
-    carryFromCode: (week.rolloverIn ?? 0) > 0 ? (await prevWeekOf(week))?.code ?? null : null,
-    carryToCode: (await nextWeekOf(week))?.code ?? null,
-    ticketPrice: rules.ticketPriceTzs, floor: rules.floorTzs, feeRate: terms?.feeRate ?? null,
-    traLevy: settled ? week.traLevy : null, gbtLevy: settled ? week.gbtLevy : null,
-    toWinners: settled && week.jackpot != null && (week.winningTickets ?? 0) > 0 ? week.jackpot - (week.fee ?? 0) : null,
-    remainder: settled && week.jackpot != null ? week.jackpot - (week.fee ?? 0) - (week.paidTotal ?? 0) : null,
+    carryFromCode, carryToCode, ticketPrice, floor, feeRate, traLevy, gbtLevy, toWinners, remainder,
     questions, substitutions, basis, winningScore, resolution, standing, scores,
   };
 }
@@ -1387,6 +1382,114 @@ export async function millioneaNotices(userId: string, line: WeekVisibility = "P
   return out;
 }
 
+// ── S5-DESIGN-HUB · THE HUB'S OWN READS (MASWALI-BUILD S5-DESIGN-HUB; the lead's rulings of 2026-10-21) ─────────────────
+// Added at the end, in the hub lane's own block (the design lanes' rule for this shared file): nothing above is changed.
+
+/** M7 · a sales close the officer moved (MB-28, `moveClose`): the close the week had before its latest move, and the one
+ *  it has now — what the hub's notice says, "it is now Friday 16:00 (was 18:00)". */
+export type MillioneaCloseMove = { from: string; to: string };
+
+/**
+ * ⭐ M7 · THE MOVED CLOSE, FROM ITS ONE RECORD. The week stores only its close; the close it had before a move is written
+ * nowhere but the audit entry `moveClose` writes in the same act (`maswali.week.close_moved`, payload `{ code, from, to }`),
+ * so it is read from there — one indexed read of the week's own entries (`@@index([targetType, targetId])`), and only while
+ * the week sells with its close ahead (a moved close is news only until it passes). ⛔ The entry must say the close the
+ * week HAS: an entry whose `to` is not the stored close (a later move, a store that disagrees) says nothing, so the hub
+ * never prints a "was" it cannot stand behind (AGENTS §6). A failed read is no notice, never an error page.
+ */
+export async function millioneaCloseMove(week: Pick<MillioneaHubWeek, "id" | "state" | "opensAt" | "closesAt">, nowMs: number): Promise<MillioneaCloseMove | null> {
+  const closeMs = Date.parse(week.closesAt);
+  if (week.state !== "OPEN" || !Number.isFinite(closeMs) || closeMs <= nowMs) return null;
+  try {
+    const { getAuditForTargetsDurable } = await import("./audit");
+    // Every move of THIS week counts, whenever it was written: an entry carries the wall clock of its write, which says
+    // nothing about the week's own schedule (a week drafted ahead is moved before its scheduled open on a test clock).
+    const since = new Date(0).toISOString();
+    const { entries } = await getAuditForTargetsDurable({ targetType: "MaswaliCycle", targetIds: [week.id], actions: ["maswali.week.close_moved"], sinceIso: since, limit: 5 });
+    const latest = entries[0];
+    const from = typeof latest?.payload?.from === "string" ? latest.payload.from : null;
+    const to = typeof latest?.payload?.to === "string" ? latest.payload.to : null;
+    if (!from || !to || Date.parse(to) !== closeMs || !Number.isFinite(Date.parse(from)) || Date.parse(from) === closeMs) return null;
+    return { from, to };
+  } catch {
+    return null;
+  }
+}
+
+/** L22 · the final week announced ahead (OD-03): its stamped code and its scheduled open. */
+export type MillioneaFinalAhead = { code: string; opensAt: string };
+
+/**
+ * ⭐ L22 · OD-03'S ANNOUNCEMENT — the final week is made final at least a full week before its sales open (`sunsetMaswali`
+ * refuses a drafted week any later), and from that act until it opens the hub says so (the lead's ruling of 2026-10-21: a
+ * calm bar on the hub, while Millionea is ENDING and the week on sale is not the final one). The final week is the
+ * service's own answer (`sunsetState`), read only for the public line (a drive week is never final); null while no final
+ * week waits to open, and on any failed read (an announcement is never a guess).
+ */
+export async function millioneaFinalWeekAhead(line: WeekVisibility): Promise<MillioneaFinalAhead | null> {
+  if (line !== "PUBLIC") return null;
+  try {
+    const life = await sunsetState();
+    if (life.kind !== "ENDING" || life.week.state !== "DRAFT") return null;
+    return { code: life.week.code, opensAt: life.week.opensAt };
+  } catch {
+    return null;
+  }
+}
+
+/** The week's two public commitments (MR-13), as the hub's week section prints them (the lead's ruling on R1-register H2:
+ *  the hash from the open, the root once closed). Each null until it is stamped. */
+export type MillioneaHubCommitments = {
+  /** The question set's hash, published at the open (MR-13), and when — the week's open, the register's own instant. */
+  questionSetHash: string | null;
+  publishedAt: string | null;
+  /** The tickets' commitment, fixed at the close with its count (MR-13). */
+  ticketRoot: string | null;
+  closedAt: string | null;
+  ticketCount: number | null;
+};
+
+/**
+ * ⭐ THE HUB WEEK'S COMMITMENTS (the lead's ruling, 2026-10-21: the data now, the lines drawn in round 2 with the register
+ * lane's words). Read from the week's own stamped columns — nothing derived, nothing before it is stamped: the hash from
+ * the open, the root, its close and its count once the week has closed. A DRAFT has none (it was never published).
+ */
+export async function millioneaHubCommitments(weekId: string): Promise<MillioneaHubCommitments | null> {
+  const w = await weekStore.get(weekId);
+  if (!w || w.state === "DRAFT") return null;
+  const rooted = !!w.ticketMerkleRoot && !!w.closedAt;
+  return {
+    questionSetHash: w.questionSetHash,
+    publishedAt: w.questionSetHash ? w.opensAt : null,
+    ticketRoot: rooted ? w.ticketMerkleRoot : null,
+    closedAt: rooted ? w.closedAt : null,
+    ticketCount: rooted ? w.ticketCount : null,
+  };
+}
+
+/**
+ * L20 · EACH HELD TICKET'S FREE-CANCEL END on the hub (RULES §2.6), by serial — the ticket page's own test (`freeCancelEnd`,
+ * as `millioneaTicket` asks it: the runway against the close the ticket was bought under, the end at the earlier of its
+ * grace and the week's close as it stands now). Only a LIVE ticket of the OPEN week has one; the map names no other. The
+ * data now; the held row draws it once the TICKETS lane's `cancelUntil` lands (the lead's ruling, 2026-10-21).
+ */
+export async function millioneaHubCancelEnds(weekId: string, userId: string, now: Date = new Date()): Promise<Record<string, string>> {
+  const week = await weekStore.get(weekId);
+  if (!week || week.state !== "OPEN") return {};
+  const terms = await termsOf(week);
+  if (!terms) return {};
+  const out: Record<string, string> = {};
+  for (const t of await ticketStore.listForUser(userId, { cycleId: week.id })) {
+    if (t.status !== "LIVE") continue;
+    const position = await positionStore.get(t.positionId);
+    const end = position
+      ? freeCancelEnd(Date.parse(position.placedAt), Date.parse(t.closeAtPurchase), Date.parse(week.closesAt), terms.freeCancelMinutes, now.getTime())
+      : null;
+    if (end) out[t.serial] = end;
+  }
+  return out;
+}
+
 // ── S5-DESIGN-REGISTER (2026-10-21, Ali's 10/10 pass) — THE REGISTER'S OWN READS ──────────────────────────────────────
 // Added at the end of the shared file, as the design lanes' brief asks: no existing helper or field changes. The register
 // critic's H1 (why a week voided: its counts), H2 (the lead's ruling: a public week's page from the moment it opens — its
@@ -1516,4 +1619,48 @@ export async function millioneaRegisterCurrent(): Promise<MillioneaRegisterLiveW
     if (live) out.push(live);
   }
   return out;
+}
+
+/**
+ * ⭐ A FINAL WEEK'S MONEY, ON EITHER LINE — THE ONE CORE (the lead's ruling of 2026-10-21; the TICKETS lane's win ledger
+ * reads it). Every figure the week's ledger prints (`registerLedgerRows`): the summary's — the tickets and the sales at the
+ * close, the carry in, J, F, the top-up, the share, what was paid and what went on — the frozen price and floor, the fee's
+ * rate and its two levies, J − F and the remainder, the carry's two weeks by the line's OWN calendar chain (`prevWeekOf`,
+ * `nextWeekOf`), and how the winners were found (the sunset's top score, MR-30); from a SETTLED or VOIDED week of ANY
+ * visibility. The public register reads it inside its own PUBLIC refusal and its cache (`millioneaRegisterWeek`); a DRIVE
+ * week's (OD-21) is read by its own ticket's holder, on the ticket's page, which has checked the holder first.
+ * ⛔ No visibility filter and no cache HERE, by design — the caller is the gate: never a public route.
+ * ⛔ Money only: no question, no attestation, no standing, no graded table — the register's public facts stay its own.
+ */
+export type MillioneaWeekMoney = Pick<MillioneaRegisterWeek,
+  | keyof MillioneaWeekSummary | "carryFromCode" | "carryToCode" | "ticketPrice" | "floor" | "feeRate" | "traLevy" | "gbtLevy"
+  | "toWinners" | "remainder" | "basis" | "winningScore">;
+
+/** The core itself, on a week already read: `graded` is the week's SETTLED tickets (null for a voided week). */
+async function weekMoneyOf(week: StoredWeek, rules: MaswaliRulesSnapshot, graded: readonly StoredTicket[] | null): Promise<MillioneaWeekMoney> {
+  const settled = week.state === "SETTLED";
+  const terms = await termsOf(week);
+  const winning = settled ? (graded ?? []).filter((t) => t.won === true) : [];
+  const winningScore = winning.length ? Math.max(...winning.map((t) => t.score ?? 0)) : null;
+  return {
+    ...(await summaryOf(week)),
+    carryFromCode: (week.rolloverIn ?? 0) > 0 ? (await prevWeekOf(week))?.code ?? null : null,
+    carryToCode: (await nextWeekOf(week))?.code ?? null,
+    ticketPrice: rules.ticketPriceTzs, floor: rules.floorTzs, feeRate: terms?.feeRate ?? null,
+    traLevy: settled ? week.traLevy : null, gbtLevy: settled ? week.gbtLevy : null,
+    toWinners: settled && week.jackpot != null && (week.winningTickets ?? 0) > 0 ? week.jackpot - (week.fee ?? 0) : null,
+    remainder: settled && week.jackpot != null ? week.jackpot - (week.fee ?? 0) - (week.paidTotal ?? 0) : null,
+    basis: winningScore === null ? null : winningScore < MAIN_COUNT ? "TOP_SCORE" : "TEN_OF_TEN",
+    winningScore,
+  };
+}
+
+/** ⭐ THE CORE, BY THE WEEK'S ID: a final week's money on either line, or null — a week not final yet (money only once
+ *  final), one that does not exist, or one whose frozen rules cannot be read (fail closed, as the register does). */
+export async function millioneaWeekMoneyRecord(weekId: string): Promise<MillioneaWeekMoney | null> {
+  const week = await weekStore.get(weekId);
+  if (!week || !TERMINAL.includes(week.state)) return null;
+  const rules = frozenRules(week);
+  if (!rules) return null;
+  return weekMoneyOf(week, rules, week.state === "SETTLED" ? await ticketStore.listForWeek(week.id, { status: "SETTLED" }) : null);
 }

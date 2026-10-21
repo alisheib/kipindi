@@ -105,7 +105,6 @@ export type MillioneaLedgerRow = {
 };
 
 const money = (n: number) => <span className="amount">{formatTzs(n)}</span>;
-const DASH = "—";
 
 /** Keep a sold count and its translated unit-price phrase as two phone-sized runs ("1,050 tickets" / "at TZS 1,000"). */
 export function ticketSalesRuns(sold: string, price: string): string[] {
@@ -166,7 +165,9 @@ export function millioneaLedgerRows(t: Dict, locale: Locale, f: MillioneaLedgerI
   if (f.kind === "voided" || f.kind === "voiding") {
     // MR-18: no jackpot is struck and the floor never applies — the money goes back, the carry goes on.
     if (f.kind === "voiding") {
-      afterIn.push({ key: "refund", label: keepFact(locale, fill(m.refundEachIfVoid, { price }), [price]), value: DASH, emphasis: "muted" });
+      // A sentence standing alone (the hub critic's L15): no refund exists yet, so no figure (H1) — and no "—" beside it,
+      // which read as a missing figure.
+      afterIn.push({ key: "refund", label: keepFact(locale, fill(m.refundEachIfVoid, { price }), [price]), value: null, emphasis: "muted" });
     } else {
       const refunds = f.refunds ?? { amount: f.sales, landed: false };
       afterIn.push(refunds.landed
@@ -184,8 +185,9 @@ export function millioneaLedgerRows(t: Dict, locale: Locale, f: MillioneaLedgerI
     }
   } else {
     if (f.sunset) {
-      // MR-30: the final week with no 10/10 pays its highest score — no floor and no top-up apply.
-      afterIn.push({ key: "noTopUp", label: factLine(locale, m.noTopUp), value: DASH, emphasis: "muted" });
+      // MR-30: the final week with no 10/10 pays its highest score — no floor and no top-up apply. A sentence standing
+      // alone, as the voiding week's refund line: no "—" beside it.
+      afterIn.push({ key: "noTopUp", label: factLine(locale, m.noTopUp), value: null, emphasis: "muted" });
     } else if (f.floor !== null) {
       // The floor binds only when the house topped the jackpot up to it; otherwise it is a quiet line of the list (H5).
       const binds = f.kind === "live" ? (carryIn?.amount ?? 0) + f.sales <= f.floor : f.topUp > 0;

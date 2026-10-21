@@ -3168,7 +3168,12 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     in the order the money moved (the floor, a quiet line unless it bound; the jackpot; the fee, the platform's signed
     amber figure with its levies as one muted line out of it; "To winners"; "÷ k"; the remainder; what carried forward),
     a hairline only above a total (the withdraw confirm's bottom line), every amount an `.amount` run, and each carry a
-    link to its week's register page.
+    link to its week's register page. A row with no figure is its sentence alone — never beside a "—", which reads as a
+    missing figure (a voiding week's refund-if-it-stands, the sunset's no top-up). ⭐ ONE CORE FOR THE MONEY: a final
+    week's figures come from `millioneaWeekMoneyRecord` (`lib/server/maswali-player.ts`) on either line — the public
+    register reads it inside its own PUBLIC refusal and its cache, a DRIVE week's own ticket reads it after the holder's
+    check — so the two ledgers of one week are the same rows; a DRIVE week's carries name their weeks without a link
+    (`registerLedgerRows(…, { links: false })`), the public register having no page for them.
 
 ---
 

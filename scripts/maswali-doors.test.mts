@@ -160,7 +160,9 @@ const instantDefects = (state: string) => {
   if (run === "") return ["no instant run"];
   const d: string[] = [];
   const monos = [...run.matchAll(/<span class="mono">([^<]*)<\/span>/g)].map((m) => m[1]);
-  if (monos.length === 0 || monos.some((x) => !/^[\d:]+$/.test(x))) d.push(`numerals ${j(monos)}`);
+  // S5 integration (2026-10-21): a count of a total is one numeral run too ("15/15" in HUB's zh resultsOut, as "10/10"),
+  // which keepFact's numeralRuns sets as one `.mono` token — digits, a clock's colon or a count's slash, never a word.
+  if (monos.length === 0 || monos.some((x) => !/^[\d:/]+$/.test(x))) d.push(`numerals ${j(monos)}`);
   if (/\d/.test(textOf(run.replace(/<span class="mono">[^<]*<\/span>/g, "")))) d.push(`a number in the body face: "${textOf(run)}"`);
   return d;
 };

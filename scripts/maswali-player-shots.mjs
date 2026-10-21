@@ -159,8 +159,11 @@ for (const locale of LOCALES) {
       const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       ok(`${name} · ${locale} @${width} · no horizontal overflow`, over <= 1, `overflow=${over}px`);
       if (name === "hub" && width === 360) {
-        const fig = await page.getByTestId("millionea-hub-pool").boundingBox().catch(() => null);
-        ok(`hub · ${locale} @360 · the jackpot figure stands above the fold`, !!fig && fig.y < HEIGHT, JSON.stringify(fig));
+        // S5-DESIGN-HUB H1: the jackpot's figure AND the door to the slip stand on the first screen (the door once sat under
+        // the ledger, below the rail); every hub state is measured in qa:maswali-hub-states.
+        const fig = await page.getByTestId("millionea-hub-jackpot").boundingBox().catch(() => null);
+        const door = await page.getByTestId("millionea-hub-fill").boundingBox().catch(() => null);
+        ok(`hub · ${locale} @360 · the jackpot figure and the door stand above the fold`, !!fig && fig.y < HEIGHT && !!door && door.y + door.height <= HEIGHT, JSON.stringify({ fig, door }));
       }
       if (name === "slip" && width <= 768) {
         const pay = page.locator("button:visible", { hasText: /Continue|Answer all|Endelea|Jibu|继续|回答/ }).last();
