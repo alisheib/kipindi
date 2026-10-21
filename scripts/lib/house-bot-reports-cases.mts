@@ -999,10 +999,13 @@ if (STORE === "memory") {
     // are line-for-line (9/9 and 2/2 against b3fe55dd), and it does not touch maswali-settlement.ts.
     // 2026-10-17 · the open's checklist fix gives maswali-settlement.ts one import line (`formatTzs`): its two sites move
     // 381→382 and 678→679, each nine-line write SHA-256-identical to 1c210f39's (CR stripped). No other site moves.
-    // S5's register-cache import and post-commit invalidation moved the two settlement writes;
-    // their bodies and markers are still checked structurally above and by the money anchors below.
+    // 2026-10-21 · U43 Release B (a12f7b26d … c29cb7526) and its post-commit settlement effects (+2 lines) moved the seven
+    // market-service.ts writes: 1863→1878, 3151→3170, 3628→3661, 4114→4189, 4249→4327, 4397→4476, 5007→5157. Six nine-line
+    // writes are byte-identical to a504ad280's (CR stripped). The seventh, the orphaned-position refund (3170), was rewritten
+    // by c29cb7526 (one refund id, the settlement's own timestamps); it keeps `SEAM:markerOrphan` and its house marker,
+    // which 0.232.1's per-site verdict and the c1/c3/c3b/c4 controls below now read at 3170. The Millionea sites do not move.
     ok("0.232.2 · …and the twelve marked sites are exactly the twelve line numbers this pin was written against — a site that MOVES is reported here (the pin is line-pinned on purpose; the money anchors match by text and cannot rot from a line move)",
-      j(marked) === j(["market-service.ts:1863", "market-service.ts:3151", "market-service.ts:3628", "market-service.ts:4114", "market-service.ts:4249", "market-service.ts:4397", "market-service.ts:5007", "maswali-money-service.ts:449", "maswali-money-service.ts:574", "maswali-settlement.ts:383", "maswali-settlement.ts:681", "maswali-void.ts:140"]), j(marked));
+      j(marked) === j(["market-service.ts:1878", "market-service.ts:3170", "market-service.ts:3661", "market-service.ts:4189", "market-service.ts:4327", "market-service.ts:4476", "market-service.ts:5157", "maswali-money-service.ts:449", "maswali-money-service.ts:574", "maswali-settlement.ts:382", "maswali-settlement.ts:679", "maswali-void.ts:140"]), j(marked));
 
     /**
      * ⛔ **THE ANCHORS FILE IS OPENED, BECAUSE THE LABEL SAID IT WAS AND IT WAS NOT** (C5-7's review, low). 0.232.2
@@ -1061,7 +1064,7 @@ if (STORE === "memory") {
 
     const dropped = scan(ms.replace(SPREAD_2833, ""));
     ok("0.232.c1 · CONTROL · a positioned write whose marker is DELETED is reported, and exactly one site goes red — the plant really changed the file",
-      dropped.length === 1 && dropped[0].at === `${MS}:3151` && /NO marker/.test(dropped[0].why ?? ""), j(dropped));
+      dropped.length === 1 && dropped[0].at === `${MS}:3170` && /NO marker/.test(dropped[0].why ?? ""), j(dropped));
     /* ⭐ THE ACCEPT SIDE, AND IT IS ABOUT A SITE THAT DOES NOT EXIST YET. Putting the deleted spread back would only
        rebuild `ms` and prove nothing, so the control appends a BRAND NEW positioned writer to the same real file: the
        pin must pass it because its marker is right, and refuse the identical writer with the marker removed. Without
@@ -1099,11 +1102,11 @@ async function __c2bBulkWriter(rows: Array<{ q: { id: string; houseBotId: string
     /* ⛔ THE ONE A PRESENCE CHECK CANNOT SEE: the marker is THERE, well-formed, and read from another position. */
     const wrongSource = scan(ms.replace(SPREAD_2833, `      ...(position.houseBotId ? { houseBotId: position.houseBotId } : {}),`));
     ok("0.232.c3 · CONTROL · a marker copied from the WRONG object — present, well-formed, reading another position in scope — is reported, which is the defect a presence-only scan passes",
-      wrongSource.length === 1 && wrongSource[0].at === `${MS}:3151` && /WRONG object/.test(wrongSource[0].why ?? ""), j(wrongSource));
+      wrongSource.length === 1 && wrongSource[0].at === `${MS}:3170` && /WRONG object/.test(wrongSource[0].why ?? ""), j(wrongSource));
     const wrongProp = scan(ms.replace(SPREAD_2833, `      houseBotId: position.houseBotId ?? null,`));
     const rightProp = scan(ms.replace(SPREAD_2833, `      houseBotId: p.houseBotId ?? null,`));
     ok("0.232.c3b · CONTROL · the same defect in the OTHER accepted spelling (houseBotId: <x>.houseBotId ?? null) is reported, and the RIGHT identifier in that spelling is accepted — both directions, so the pin is not just refusing the spelling",
-      wrongProp.length === 1 && wrongProp[0].at === `${MS}:3151` && /WRONG object/.test(wrongProp[0].why ?? "") && rightProp.length === 0, j({ wrongProp, rightProp }));
+      wrongProp.length === 1 && wrongProp[0].at === `${MS}:3170` && /WRONG object/.test(wrongProp[0].why ?? "") && rightProp.length === 0, j({ wrongProp, rightProp }));
     const reformatted = scan(ms.replace(SPREAD_2833, `      ...(p.houseBotId\n        ? { houseBotId: p.houseBotId }\n        : {}),`));
     ok("0.232.c3c · CONTROL · the accept side of the shape: the SAME marker reformatted over three lines is still read — a pin that a line break blinds is one reformat away from passing an unmarked write",
       reformatted.length === 0, j(reformatted));
@@ -1111,7 +1114,7 @@ async function __c2bBulkWriter(rows: Array<{ q: { id: string; houseBotId: string
     /* ⛔ THE STAKE FORM, MOVED OFF ITS POSITION. */
     const movedStakeForm = scan(ms.replace(SPREAD_2833, `      ...(ctx.kind === "house" ? { houseBotId: ctx.botId } : {}),`));
     ok("0.232.c4 · CONTROL · the stake form used where no position with that positionId is marked from the same ctx is reported — the exemption is earned per site, never granted by file or by line number",
-      movedStakeForm.length === 1 && movedStakeForm[0].at === `${MS}:3151` && /stake form/.test(movedStakeForm[0].why ?? ""), j(movedStakeForm));
+      movedStakeForm.length === 1 && movedStakeForm[0].at === `${MS}:3170` && /stake form/.test(movedStakeForm[0].why ?? ""), j(movedStakeForm));
     /* ⚠️ THE PLANT CARRIES NO NEWLINE, and that is not a detail: tracked source is CRLF in this checkout, so a
        `\n` anchor matches nothing and the plant silently plants NOTHING — a control that then reports the file is
        clean, which is exactly the silent pass this checkpoint exists to refuse (it happened here, once, and this
@@ -1120,7 +1123,7 @@ async function __c2bBulkWriter(rows: Array<{ q: { id: string; houseBotId: string
     const c4bPlant = ms.replace("id: positionId,", "id: positionIdOfAnotherBet,");
     const stakeUnmarked = scan(c4bPlant);
     ok("0.232.c4b · CONTROL · …and the REAL stake write goes red the moment the position it is paired with stops being the one it names — so 0.232.1's green on that site is a measurement of the pairing, not a permanent pass",
-      c4bPlant !== ms && stakeUnmarked.length === 1 && stakeUnmarked[0].at === `${MS}:1863` && /stake form/.test(stakeUnmarked[0].why ?? ""), j(stakeUnmarked));
+      c4bPlant !== ms && stakeUnmarked.length === 1 && stakeUnmarked[0].at === `${MS}:1878` && /stake form/.test(stakeUnmarked[0].why ?? ""), j(stakeUnmarked));
 
     /* ⛔ THE BYPASS CONTROLS, AND THEY CALL `bypassIn` — THE CODE THAT SHIPS. The old 0.232.c5 re-implemented the
        walk inline, so the loop that actually produces `bypass` was UNPLANTED: one character (`rel === DAL` →
