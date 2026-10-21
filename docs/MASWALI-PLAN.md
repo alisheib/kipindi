@@ -50,7 +50,14 @@ Every lane committed and pushed at the stop; a commit marked "WIP … not verifi
   D12–D14 not started); `claude/maswali-s5-parity` (`9a0c6b033`, the instrument fixed, --prove-red 299/299).
 - `claude/maswali-s5-fix-player`: P1–P19 code complete (`cdb4bf46e`), its verification round was running — read its head.
 - WIP, not compiling: `claude/maswali-s5-design-hub` (`7fe758046`), `-slip` (`524128dbb`), `-register` (`3bf97ffdf`),
-  `-tickets` (`96e5e9a94`); `-doors`, `claude/maswali-s7`, `mln-s6-notices`: read their heads.
+  `-tickets` (`96e5e9a94`). `claude/maswali-s5-design-doors` (`5bc6e2c57`): H1 and nearly all of R1-doors done and
+  verified (the ghost equals the card: 188/188px at 360, 74/74 at 1280); its last commit (L7 and three small items) is
+  verified by static suites only — the full browser re-run and tile read are owed. `claude/maswali-s7`: read its head.
+- `mln-s6-notices` (`bd74c982c`): round 17 COMPLETE — M5, L1, H2, H3, M3, M4, L2, L3, L4 in 14 commits, both Codex attempts
+  reconciled (their branches archived in `F:\kipindi-archive\codex-s6n-attempts-20261021.bundle` and deleted);
+  maswali-notify 138/0 mem + 144/0 PG, maswali-claims 635/0, red:maswali-claims 29/29, ~60 derived light suites green.
+  Owed at the final head: tsc, the both-store suites, full red:maswali-money-path (plants N6–N12 never run), red:maswali-rbac,
+  red:dal-parity, red:house-bot-money, red:house-bot-c5 --only (24 plants) and the other reds the lane lists in its commits.
 - `main` = `c63c89387` (U43's CI-repair release + docs) — NOT deployed: Railway paused builds platform-wide
   (status.railway.com); production serves `d268ef919`. Pushes during a pause are dropped: re-trigger by hand with the
   hand-over's `tools/railway-deploy-main.mjs` when builds return, then U43's owed read-back (see the README).
