@@ -1,7 +1,24 @@
-/** Only live values may disappear from the classic parity capture. */
-import { createHash } from "node:crypto";
-
-const NL = "\n";
+/**
+ * Only live values may disappear from the classic parity capture.
+ *
+ * ⭐ THE /watchlist CARD'S MOMENT IS STEADIED BEFORE GEOMETRY, NEVER MASKED AFTER IT (MASWALI-BUILD S5-PARITY, 2026-10-21).
+ * A seeded /watchlist card states its row's EAT moment ("14 Oct, 13:43": formatEatDateTime of the row's resolutionAt, so
+ * the seeding moment of the server that drew it). Since U43 B4 (1384383fd) it is the card's top-row time
+ * (`.mcardp-closes`, data-market-part="time", right-aligned by `margin-left: auto` and drawn only while the card takes
+ * bets). The book's eat-dates reads its markup as `~date`, but Inter's digits are not tabular, so the label's width, its
+ * x and its computed auto margin followed the moment's digits: main 4471bb44's null pair (two fresh servers, one commit,
+ * 2026-10-21) differed in 12 of 569 layout lines in each of the four player /watchlist cells, the three open cards'
+ * labels (e.g. 88.5px wide at x 321, margin-left 198.453px, against 91.5px at x 318, margin-left 195.25px) and the live
+ * marks inside them. The harness now writes ONE canonical same-format moment (BOOK_WATCHLIST_DATE in
+ * ../lib/question-time-mask.mjs, the question page's break-end-clock approach) into each label before any box is read,
+ * so the text and the boxes are both the same on every server, and every real change in the row — its font, its
+ * spacing (word-spacing included, which no signature records), its alignment, its live mark — still moves a box.
+ * The compare-time geometry mask that stood here (steadyTimeLeftLayout, which read the label's x, width and auto margin
+ * as "~" while its right edge held) is retired: it matched only the pre-U43 footer label (`.mcardp-timeleft`), so it
+ * matched nothing the product draws now, and wherever it matched it hid a real change of the label's width.
+ * classic-parity-noise.test.mjs holds both halves: the canonical moment gives two servers one row, and a real change of
+ * the row is still seen; its --prove-red shows the retired forms each escape that guard.
+ */
 
 /** The open ticket's ring ticks every 15 seconds. Keep its accessible status words and ink. */
 export const maskPositionCountdown = (html) => String(html).replace(
@@ -13,66 +30,3 @@ export const maskPositionCountdown = (html) => String(html).replace(
       .replace(/(<text\b[^>]*>)(?:\d+[dhm]|·)(<\/text>)/, '$1~$2');
   },
 );
-
-/** Find only book-card labels whose seeded calendar date was already masked in markup. */
-export function timeLeftPaths(html) {
-  const paths = new Map(), stack = [];
-  const voids = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"]);
-  for (const token of String(html ?? "").matchAll(/<\/?([A-Za-z][\w:-]*)\b([^>]*?)>/g)) {
-    const [whole, rawTag, attrs] = token, tag = rawTag.toLowerCase();
-    if (whole.startsWith("</")) {
-      while (stack.length && stack.pop().tag !== tag) { /* malformed ancestors close here too */ }
-      continue;
-    }
-    const parent = stack.at(-1);
-    const path = parent ? `${parent.path}>${tag}${parent.next++}` : tag;
-    const isMeta = /\bclass="[^"]*\bmcardp-meta-right\b/.test(attrs);
-    const isTime = /\bclass="[^"]*\bmcardp-timeleft\b/.test(attrs);
-    const following = String(html).slice(token.index + whole.length);
-    const ownText = following.slice(0, Math.max(0, following.indexOf("<")));
-    if (isTime && parent?.isMeta && ownText.includes("~date")) {
-      paths.set(parent.path, "parent");
-      paths.set(path, "child");
-    }
-    if (!whole.endsWith("/>") && !voids.has(tag)) stack.push({ tag, path, next: 0, isMeta });
-  }
-  return paths;
-}
-
-/**
- * The unmasked calendar date can change a right-aligned label's width and left edge between
- * fresh servers. Its right edge must stay at the card row's right edge. Each coordinate is
- * rounded separately to half a pixel by the capture, so a gap of up to half a pixel is zero;
- * a lost right alignment remains a visible diff. Keep y, height and every other style.
- */
-export function steadyTimeLeftLayout(layout, html, store) {
-  const paths = timeLeftPaths(html);
-  if (!paths.size) return layout;
-  const lines = String(layout).split(NL);
-  const boxes = new Map();
-  for (const line of lines) {
-    const match = /^(\S+) (\S+) [0-9a-f]{12}$/.exec(line);
-    const box = match && /^(-?[\d.]+),(-?[\d.]+),(-?[\d.]+)x(-?[\d.]+)$/.exec(match[2]);
-    if (box) boxes.set(match[1], box);
-  }
-  return lines.map((line) => {
-    const match = /^(\S+) (\S+) ([0-9a-f]{12})$/.exec(line);
-    if (!match || !paths.has(match[1])) return line;
-    const [, path, geo, id] = match;
-    const box = /^(-?[\d.]+),(-?[\d.]+),(-?[\d.]+)x(-?[\d.]+)$/.exec(geo);
-    const sig = store[id];
-    if (!box || !sig) return line;
-    const [, x, y, width, height] = box;
-    const right = Number(x) + Number(width);
-    const rowPath = paths.get(path) === "child" ? path.slice(0, path.lastIndexOf(">")) : path;
-    const anchor = boxes.get(rowPath.slice(0, rowPath.lastIndexOf(">")));
-    const anchorRight = anchor ? Number(anchor[1]) + Number(anchor[3]) : null;
-    const gap = anchorRight === null ? null : Math.round((anchorRight - right) * 2) / 2;
-    const stableGeo = `${gap === null ? `right:${right}` : `right-gap:${Math.abs(gap) <= 0.5 ? 0 : gap}`},${y},~x${height}`;
-    // An auto margin absorbs the date's width. The anchored gap still exposes a lost alignment.
-    const stableSig = paths.get(path) === "child" ? sig : sig.replace(/^margin-left:-?[\d.]+px$/m, "margin-left:~");
-    const stableId = createHash("sha1").update(stableSig).digest("hex").slice(0, 12);
-    store[stableId] = stableSig;
-    return `${path} ${stableGeo} ${stableId}`;
-  }).join(NL);
-}

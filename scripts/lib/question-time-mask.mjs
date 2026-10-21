@@ -48,11 +48,15 @@ export const QUESTION_BREAK_CLOCK = {
   text: "22 Sep, 22:22",
 };
 
-/** Only the classic watchlist card's EAT moment, not a countdown or another card label. */
+/**
+ * Only the classic watchlist card's EAT moment, not a countdown or another card label. Since U43 B4 (1384383fd) a card
+ * states its time in its top row, `.mcardp-closes`, right-aligned by `margin-left: auto` and drawn only while the card
+ * takes bets (market-card.tsx `live`); /watchlist hands it the row's EAT moment. The live mark (a dot and its sr-only
+ * status word) sits inside it, so replace only the one direct date text node.
+ */
 export const BOOK_WATCHLIST_DATE = {
   ...QUESTION_BREAK_CLOCK,
-  selector: '#main-content article.mcardp .mcardp-timeleft[data-market-part="time"]',
-  // LIVE cards keep their How it works button beside the date. Replace only the direct date text node.
+  selector: '#main-content article.mcardp .mcardp-closes[data-market-part="time"]',
   textNode: true,
 };
 
