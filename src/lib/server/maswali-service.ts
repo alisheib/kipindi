@@ -16,6 +16,7 @@
  *
  * Every refusal is a `{ ok: false, error }` in words an officer can act on; nothing here throws at a caller for a rule.
  */
+import { createHash } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { audit } from "./audit";
 import { randomId } from "./crypto";
@@ -174,29 +175,34 @@ function preparedDraftEdit(q: StoredQuestion, changes: Partial<DraftQuestionInpu
   return draftFields(merged, Date.parse(week.finalDeadlineAt), cfg.voidDeadlineHours);
 }
 
-/** Edit a DRAFT question. ⛔ Refused past DRAFT (the DAL also refuses any non-draft column); clears the parity attestation. */
-export async function editDraftQuestion(input: { weekId: string; slot: number; changes: Partial<DraftQuestionInput>; officerId: string }): Promise<Result> {
-  return withLock(MASWALI_CHAIN_LOCK, async () => {
-    const week = await weekStore.get(input.weekId);
-    if (!week) return refuse("No such week.");
-    if (week.state !== "DRAFT") return refuse(`Week ${week.code} is ${week.state}: its questions are frozen (MR-13).`);
-    const q = (await questionStore.listForWeek(week.id)).find((x) => x.slot === input.slot);
-    if (!q) return refuse(`No ${slotLabel(input.slot)} in week ${week.code}.`);
-    const f = preparedDraftEdit(q, input.changes, week);
-    if (typeof f === "string") return refuse(f);
-    const { role: _r, ordinal: _o, slot: _s, ...editable } = f;
-    void _r; void _o; void _s;
-    await questionStore.editDraftQuestion(q.id, editable);
-    if (week.parityAttestedBy) await weekStore.patch(week.id, { parityAttestedBy: null, parityAttestedAt: null });
-    audit({ category: "ADMIN", action: "maswali.week.draft_edited", actorId: input.officerId, targetType: "MaswaliCycle", targetId: week.id,
-      payload: { slot: input.slot, fields: Object.keys(input.changes) } });
-    return { ok: true };
-  });
+/** The fields a draft question's version covers — every one an edit can change — in a fixed order. */
+const DRAFT_VERSION_FIELDS = [
+  "category", "textEn", "textSw", "textZh", "criterionEn", "criterionSw", "criterionZh", "sourceUrl", "fallbackSourceUrl",
+  "readingTolerance", "eventKind", "eventStartsAt", "eventZone", "voidDeadlineAt", "probabilityEstimate", "probabilitySource", "linkedMarketId",
+] as const satisfies ReadonlyArray<keyof DraftQuestionFields>;
+type DraftVersioned = Pick<StoredQuestion, "slot" | (typeof DRAFT_VERSION_FIELDS)[number]>;
+
+/**
+ * ⭐ S5-FIX-SRV A5 · ONE DRAFT QUESTION'S VERSION: a digest of its slot and every field an edit can change, as stored. The
+ * editor draws each row with it and sends it back with that row's change; a save whose row has moved on since — another
+ * officer's save landed in between — is refused whole, never silently overwritten.
+ */
+export function draftRowVersion(q: DraftVersioned): string {
+  return createHash("sha256").update(JSON.stringify([q.slot, ...DRAFT_VERSION_FIELDS.map((k) => q[k] ?? null)])).digest("hex");
 }
 
-/** Save the builder's changed slots together. A later refusal cannot leave an earlier slot saved. */
+/** Edit ONE draft question — the builder's batch save with one slot (`version`: the row as it was read). */
+export async function editDraftQuestion(input: { weekId: string; slot: number; changes: Partial<DraftQuestionInput>; version: string; officerId: string }): Promise<Result<{ recorded: boolean }>> {
+  return editDraftQuestions({ weekId: input.weekId, edits: [{ slot: input.slot, changes: input.changes, version: input.version }], officerId: input.officerId });
+}
+
+/**
+ * Save the builder's changed slots together. A later refusal cannot leave an earlier slot saved. ⛔ Refused past DRAFT (the
+ * DAL also refuses any non-draft column); clears the parity attestation. Each edit names the `version` of the row it was
+ * read from (`draftRowVersion`); one that has changed since refuses the whole save (S5 review A5).
+ */
 export async function editDraftQuestions(input: {
-  weekId: string; edits: Array<{ slot: number; changes: Partial<DraftQuestionInput> }>; officerId: string;
+  weekId: string; edits: Array<{ slot: number; changes: Partial<DraftQuestionInput>; version: string }>; officerId: string;
 }): Promise<Result<{ recorded: boolean }>> {
   const result = await withLock(MASWALI_CHAIN_LOCK, async (tx): Promise<Result> => {
     const week = await weekStore.get(input.weekId);
@@ -216,6 +222,10 @@ export async function editDraftQuestions(input: {
       const q = questions.get(edit.slot);
       if (!q) return refuse(`No ${slotLabel(edit.slot)} in week ${week.code}.`);
       if (!edit.changes || typeof edit.changes !== "object" || Array.isArray(edit.changes)) return refuse(`${slotLabel(edit.slot)}: the change could not be read.`);
+      if (typeof edit.version !== "string" || !edit.version) return refuse(`${slotLabel(edit.slot)}: the save does not say which version of the question it changes. Reload the editor.`);
+      if (draftRowVersion(q) !== edit.version) {
+        return refuse(`${slotLabel(edit.slot)} changed after you opened the editor: another officer saved it. Reload the editor and make your change again — nothing was saved.`);
+      }
       const fields = preparedDraftEdit(q, edit.changes, week);
       if (typeof fields === "string") return refuse(fields);
       const { role: _role, ordinal: _ordinal, slot: _slot, ...editable } = fields;

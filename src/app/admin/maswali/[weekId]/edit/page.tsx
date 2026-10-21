@@ -7,6 +7,7 @@ import { ControlLocked } from "@/components/admin/control-locked";
 import { currentSession } from "@/lib/server/auth-service";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { questionStore, weekStore } from "@/lib/server/maswali-dal";
+import { draftRowVersion } from "@/lib/server/maswali-service";
 import { utcToZonedLocal } from "@/lib/maswali-time";
 import { WeekBuilder, type BuilderRow } from "../../new/week-builder";
 
@@ -44,7 +45,7 @@ async function Content({ params }: Props) {
       <AdminBody>
         {week.state !== "DRAFT"
           ? <p className="text-body-sm text-text-secondary">Week {week.code} is {week.state.toLowerCase()}: its questions froze at the open (MR-13).</p>
-          : canEdit ? <WeekBuilder defaultMonday="" edit={{ weekId: week.id, rows }} />
+          : canEdit ? <WeekBuilder defaultMonday="" edit={{ weekId: week.id, rows, versions: questions.map(draftRowVersion) }} />
           : <ControlLocked what="Edit the draft" need={CONTROL_DOMAIN.editMaswaliQuestion} block />}
       </AdminBody>
     </>

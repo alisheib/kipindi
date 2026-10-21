@@ -72,6 +72,10 @@ function questions(weekStart: number, over: (i: number) => Record<string, unknow
   });
 }
 const allMains = (): number[] => Array.from({ length: 10 }, (_, i) => i + 1);
+/** A draft row's version as an editor loads it (S5-FIX-SRV A5): every edit names the row it read. */
+const versionOf = async (weekId: string, slot: number) => svc.draftRowVersion((await questionStore.listForWeek(weekId)).find((q) => q.slot === slot)!);
+const editSlot = async (e: { weekId: string; slot: number; changes: Record<string, unknown>; officerId: string }) =>
+  svc.editDraftQuestion({ ...e, version: await versionOf(e.weekId, e.slot) });
 
 // ── §1 · drafting ───────────────────────────────────────────────────────────
 console.log("\n§1 · drafting");
@@ -135,20 +139,34 @@ const nowOpen = new Date(W2 + 60_000); // Monday 00:01 EAT
   ok("2.6 · ⛔ an unreadable guarantee → refused", !blind.ok && /could not be read/.test(errOf(blind)));
   // The close guard: one event at 17:59 EAT on Friday, one minute before an 18:00 close.
   const closeMs = eatWeekAt(W2, 5, "18:00");
-  const edit = await svc.editDraftQuestion({ weekId: week.id, slot: 3, changes: { eventLocalStart: utcToZonedLocal(closeMs - 60_000, "Africa/Dar_es_Salaam") }, officerId: DRAFTER });
+  const edit = await editSlot({ weekId: week.id, slot: 3, changes: { eventLocalStart: utcToZonedLocal(closeMs - 60_000, "Africa/Dar_es_Salaam") }, officerId: DRAFTER });
   ok("2.7 · a draft question may be edited while DRAFT", edit.ok, errOf(edit));
   ok("2.8 · …and the edit cleared the parity attestation", (await weekStore.get(week.id))!.parityAttestedBy === null);
+  // ⭐ S5-FIX-SRV A5 · two editors on one draft: the drafter's editor loads M3 and M7, another officer saves M7 first.
+  const loaded = { 3: await versionOf(week.id, 3), 7: await versionOf(week.id, 7) };
+  const theirs = await editSlot({ weekId: week.id, slot: 7, changes: { textEn: "Will event 7 happen this weekend?" }, officerId: OTHER });
+  const textOf = async (slot: number) => (await questionStore.listForWeek(week.id)).find((q) => q.slot === slot)!.textEn;
+  const m3Before = await textOf(3);
+  const staleSave = await svc.editDraftQuestions({ weekId: week.id, officerId: DRAFTER, edits: [
+    { slot: 3, changes: { textEn: "Will event 3 happen on Saturday?" }, version: loaded[3] },
+    { slot: 7, changes: { textEn: "Will event 7 happen on Sunday?" }, version: loaded[7] },
+  ] });
+  ok("2.8a · ⛔ a save from an editor opened before another officer's save is refused WHOLE, naming the slot — nothing overwritten (A5)",
+    theirs.ok && !staleSave.ok && /M7 changed after you opened the editor/.test(errOf(staleSave))
+      && (await textOf(7)) === "Will event 7 happen this weekend?" && (await textOf(3)) === m3Before, errOf(staleSave));
+  const versionless = await svc.editDraftQuestions({ weekId: week.id, officerId: DRAFTER, edits: [{ slot: 3, changes: { textEn: "Will event 3 happen on Saturday?" }, version: "" }] });
+  ok("2.8b · ⛔ a save that names no version of its row is refused", !versionless.ok && /which version/.test(errOf(versionless)) && (await textOf(3)) === m3Before, errOf(versionless));
   await svc.attestParity({ weekId: week.id, officerId: READER });
   const guard = await svc.openWeek({ weekId: week.id, officerId: DRAFTER, guarantee: RICH, now: nowOpen });
   ok("2.9 · ⛔ THE CLOSE GUARD: an event at 17:59 before an 18:00 close is refused (30-minute buffer, OD-15)", !guard.ok && /at least 30 minutes before the first event/.test(errOf(guard)), errOf(guard));
-  const at1729 = await svc.editDraftQuestion({ weekId: week.id, slot: 3, changes: { eventLocalStart: utcToZonedLocal(closeMs + 29 * 60_000, "Africa/Dar_es_Salaam") }, officerId: DRAFTER });
+  const at1729 = await editSlot({ weekId: week.id, slot: 3, changes: { eventLocalStart: utcToZonedLocal(closeMs + 29 * 60_000, "Africa/Dar_es_Salaam") }, officerId: DRAFTER });
   await svc.attestParity({ weekId: week.id, officerId: READER });
   const g29 = await svc.openWeek({ weekId: week.id, officerId: DRAFTER, guarantee: RICH, now: nowOpen });
   ok("2.10 · ⛔ …and at 18:29, one minute inside the buffer, still refused", at1729.ok && !g29.ok && /30 minutes/.test(errOf(g29)));
-  await svc.editDraftQuestion({ weekId: week.id, slot: 3, changes: { eventLocalStart: utcToZonedLocal(closeMs + 30 * 60_000, "Africa/Dar_es_Salaam") }, officerId: DRAFTER });
-  await svc.editDraftQuestion({ weekId: week.id, slot: 4, changes: { probabilityEstimate: 0.9 }, officerId: DRAFTER });
-  await svc.editDraftQuestion({ weekId: week.id, slot: 5, changes: { textEn: "Will the election be won by the incumbent?" }, officerId: DRAFTER });
-  await svc.editDraftQuestion({ weekId: week.id, slot: 6, changes: { sourceUrl: "https://example.org/unknown" }, officerId: DRAFTER });
+  await editSlot({ weekId: week.id, slot: 3, changes: { eventLocalStart: utcToZonedLocal(closeMs + 30 * 60_000, "Africa/Dar_es_Salaam") }, officerId: DRAFTER });
+  await editSlot({ weekId: week.id, slot: 4, changes: { probabilityEstimate: 0.9 }, officerId: DRAFTER });
+  await editSlot({ weekId: week.id, slot: 5, changes: { textEn: "Will the election be won by the incumbent?" }, officerId: DRAFTER });
+  await editSlot({ weekId: week.id, slot: 6, changes: { sourceUrl: "https://example.org/unknown" }, officerId: DRAFTER });
   await svc.attestParity({ weekId: week.id, officerId: READER });
   const many = await svc.openWeek({ weekId: week.id, officerId: DRAFTER, guarantee: RICH, now: nowOpen });
   const e = errOf(many);
@@ -156,9 +174,9 @@ const nowOpen = new Date(W2 + 60_000); // Monday 00:01 EAT
   ok("2.12 · ⛔ a question about an election is refused in English (R-CATEGORIES)", /about politics \("election"\)/.test(e), e);
   ok("2.13 · ⛔ an untrusted source is refused", /not a trusted source/.test(e), e);
   ok("2.14 · …and an event exactly 30 minutes after the close is NOT refused (the buffer is inclusive)", !/30 minutes before the first event/.test(e), e);
-  await svc.editDraftQuestion({ weekId: week.id, slot: 4, changes: { probabilityEstimate: 0.55 }, officerId: DRAFTER });
-  await svc.editDraftQuestion({ weekId: week.id, slot: 5, changes: { textEn: "Will event 5 happen?" }, officerId: DRAFTER });
-  await svc.editDraftQuestion({ weekId: week.id, slot: 6, changes: { sourceUrl: SOURCES[0].url, category: "sports" }, officerId: DRAFTER });
+  await editSlot({ weekId: week.id, slot: 4, changes: { probabilityEstimate: 0.55 }, officerId: DRAFTER });
+  await editSlot({ weekId: week.id, slot: 5, changes: { textEn: "Will event 5 happen?" }, officerId: DRAFTER });
+  await editSlot({ weekId: week.id, slot: 6, changes: { sourceUrl: SOURCES[0].url, category: "sports" }, officerId: DRAFTER });
 }
 
 // ── §3 · the open ───────────────────────────────────────────────────────────
@@ -182,7 +200,7 @@ const w1 = opened.ok ? opened.week : (null as never);
 // ── §4 · the freeze ─────────────────────────────────────────────────────────
 console.log("\n§4 · ⭐ the freeze");
 {
-  ok("4.1 · ⛔ a draft edit past DRAFT is refused", !(await svc.editDraftQuestion({ weekId: w1.id, slot: 1, changes: { textEn: "changed?" }, officerId: DRAFTER })).ok);
+  ok("4.1 · ⛔ a draft edit past DRAFT is refused", !(await editSlot({ weekId: w1.id, slot: 1, changes: { textEn: "changed?" }, officerId: DRAFTER })).ok);
   const q = (await questionStore.listForWeek(w1.id))[0];
   for (const k of ["textEn", "textSw", "textZh", "criterionEn", "criterionSw", "criterionZh", "sourceUrl", "fallbackSourceUrl", "role", "ordinal", "slot", "eventStartsAt", "eventZone", "voidDeadlineAt"]) {
     const err = await throwsAsync(() => questionStore.patch(q.id, { [k]: "x" } as never));

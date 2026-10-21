@@ -323,6 +323,15 @@ export const MUTATIONS = [
     expect: "5.12 · ⭐ a fault after the week's close was moved",
     suite: "engine-pg",
   },
+  // ── S5-FIX-SRV A5 · a stale editor's save never overwrites another officer's ─────────────────────────────────────
+  {
+    name: "(45) a save no longer checks the version of the row it was read from (A5: a silent overwrite)",
+    file: SVC,
+    from: "      if (draftRowVersion(q) !== edit.version) {",
+    to: "      if (false) {",
+    expect: "2.8a · ⛔ a save from an editor opened before another officer's save is refused WHOLE",
+    suite: "engine",
+  },
   {
     name: "(37) the recompute reads the questions outside the transaction, so the tenth main's seal never makes the set final",
     file: SVC,
