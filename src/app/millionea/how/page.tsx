@@ -24,11 +24,10 @@ import { sealLineOf } from "@/components/maswali/maswali-seal-line";
 import { MaswaliFacts, factsOf, keepFact } from "@/components/maswali/maswali-facts";
 import { joinList, reserveLabel } from "@/components/maswali/maswali-format";
 import { millioneaGate } from "@/lib/server/millionea-gate";
-import { millioneaHowTo, type MillioneaExample, type MillioneaHowTo } from "@/lib/server/maswali-player";
+import { millioneaHowTimeline, millioneaHowTo, type MillioneaExample } from "@/lib/server/maswali-player";
 import { getServerT } from "@/lib/i18n-server";
 import { MARKET_CATEGORIES } from "@/lib/markets/categories";
 import { marketCategoryLabel } from "@/lib/localized";
-import { eatWeekAt, eatWeekStartMs } from "@/lib/eat-day";
 import { MAIN_COUNT, RESERVE_COUNT, type GradableQuestion, type MaswaliPick } from "@/lib/maswali-score";
 import { fill, formatNumber, formatTzs, formatTzsSigned, pctNum } from "@/lib/utils";
 import { durationHours } from "@/lib/duration-phrase";
@@ -39,7 +38,6 @@ import { HowExample } from "./how-example";
 
 export const dynamic = "force-dynamic";
 
-const DAY_MS = 86_400_000;
 /** The example's voided main, as §10 §3.4 draws it ("4 → A1"). An illustration's place, not a rule. */
 const EXAMPLE_VOIDED_MAIN = 4;
 
@@ -61,24 +59,6 @@ function exampleLine() {
   ];
   const picks: MaswaliPick[] = Array.from({ length: MAIN_COUNT + RESERVE_COUNT }, () => "YES");
   return sealLineOf(qs, picks, { final: true });
-}
-
-/** The week's three phases from the rules on the page: the template's open and close, the events after the close and its
- *  buffer, the results and the payout after the check window (MR-3, MR-4, MR-16). An illustration of THIS week's shape. */
-function timelineOf(h: MillioneaHowTo, nowMs: number): WeekPhases | null {
-  try {
-    const start = eatWeekStartMs(nowMs);
-    const salesFrom = eatWeekAt(start, h.openWeekday, h.openAt);
-    const salesTo = eatWeekAt(start, h.closeWeekday, h.closeAt);
-    const resultsFrom = start + 7 * DAY_MS;
-    return {
-      salesFrom, salesTo,
-      eventsFrom: salesTo + h.minLockBufferMinutes * 60_000, eventsTo: start + 6 * DAY_MS,
-      resultsFrom, resultsTo: resultsFrom + h.objectionWindowHours * 3_600_000,
-    };
-  } catch {
-    return null;
-  }
 }
 
 /** One worked ledger ("Mfano"), each line the win ledger's own receipt row (D-43): the fee row in its amber. ⭐ Its label
@@ -111,7 +91,9 @@ export default async function MillioneaHowPage() {
   const line = exampleLine();
   const unused = line.annex.filter((r) => r.carriedTo === undefined).map((r) => reserveLabel(r.ordinal));
   const caption = fill(t.millionea.exampleCaption, { n: EXAMPLE_VOIDED_MAIN, r: reserveLabel(1), unused: joinList(locale, unused) });
-  const phases = timelineOf(h, Date.now());
+  // This week's shape on the template, by the hub's own rules (S5-FIX-PLAYER P7: `millioneaHowTimeline` — the results and
+  // payout run to the latest void deadline's objection window, as the hub's strip says of a real week).
+  const phases: WeekPhases | null = millioneaHowTimeline(h, Date.now());
   const sentences = [
     fill(t.millionea.howOne, { price: formatTzs(h.ticketPrice) }),
     t.millionea.howTwo,

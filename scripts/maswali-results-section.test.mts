@@ -60,7 +60,9 @@ function sourceChecks(w: Sources) {
       && !p.slice(p.indexOf("async function ResultsContent(")).includes("millioneaResultsSection"),
     door: s.includes("loadVisibleMillioneaResults(millioneaDoor, millioneaResultsSection)")
       && s.includes("if (!result) return null;") && s.indexOf("if (!result) return null;") < s.indexOf("getServerT()"),
-    readAfterGate: /const access = await door\(\);\s*if \(!access\.visible\) return null;\s*return \{ preview: access\.preview, weeks: await read\(\) \};/.test(a),
+    // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-FIX-PLAYER P19): the read now stands in a try, its failure the `contained` case.
+    readAfterGate: /const access = await door\(\);\s*if \(!access\.visible\) return null;\s*try \{\s*return \{ preview: access\.preview, weeks: await read\(\) \};/.test(a),
+    contained: /try \{\s*return \{ preview: access\.preview, weeks: await read\(\) \};\s*\} catch \(err\) \{[^}]*return null;\s*\}/.test(a),
     publicFinal: d.includes('weekStore.list({ visibility: "PUBLIC", states: TERMINAL })')
       && d.includes("return (await millioneaRegister({ perPage: limit })).rows;"),
     view: v.includes("{preview && <MillioneaPreviewMark t={t} />}")
@@ -137,6 +139,24 @@ const CHECK_NAMES = Object.keys(sourceChecks(real)) as Array<keyof ReturnType<ty
 const base = sourceChecks(real);
 for (const name of CHECK_NAMES) assert(`source ${name}`, base[name]);
 assert("WITHDRAWN, STAFF_PREVIEW and ACTIVE gate the read", (await accessChecks(loadVisibleMillioneaResults)).length === 0);
+/** P19 · a week read that throws, at every state that reads: no section — never an error that reaches results/error.tsx
+ *  and takes the classic archive's place. The gate's own answer is unchanged (a hidden request still reads nothing). */
+async function failureChecks(readVisible: Reader) {
+  const failures: string[] = [];
+  for (const c of [{ state: "STAFF_PREVIEW" as RolloutState, staff: true }, { state: "ACTIVE" as RolloutState, staff: false }]) {
+    const gate = millioneaVisibleFor(c.state, { staff: c.staff, pass: false });
+    let got: unknown = "unset";
+    try { got = await readVisible(async () => gate, async () => { throw new Error("store down"); }); }
+    catch (e) { failures.push(`${c.state}: the read error escaped (${(e as Error).message})`); continue; }
+    if (got !== null) failures.push(`${c.state}: a failed read drew a section (${JSON.stringify(got)})`);
+  }
+  return failures;
+}
+const quiet = console.error;
+console.error = () => {};
+const failed = await failureChecks(loadVisibleMillioneaResults);
+console.error = quiet;
+assert(`a week read that throws draws no section and never escapes to the page's error boundary${failed.length ? ` (${failed.join(", ")})` : ""}`, failed.length === 0);
 const viewFailures = viewChecks();
 assert(`empty, full and preview render in en/sw/zh${viewFailures.length ? ` (${viewFailures.join(", ")})` : ""}`, viewFailures.length === 0);
 const placedFailures = placedChecks(millioneaSectionShown);
@@ -169,6 +189,15 @@ if (process.argv.includes("--prove-red")) {
   assert("eager read turns the runtime gate red", (await accessChecks(eager)).length > 0);
   const silent: Reader = async () => null;
   assert("hidden ACTIVE turns the runtime gate red", (await accessChecks(silent)).length > 0);
+  // P19's plants: the loader as it stood — the read awaited bare, so its error escapes to results/error.tsx — run, and as source.
+  const bare: Reader = async (door, read) => {
+    const access = await door();
+    if (!access.visible) return null;
+    return { preview: access.preview, weeks: await read() };
+  };
+  assert("a read error that escapes the loader turns the failure check red", (await failureChecks(bare)).some((x) => x.includes("escaped")));
+  const sourceBare = { ...real, access: real.access.replace(/try \{\s*(return \{ preview: access\.preview, weeks: await read\(\) \};)\s*\} catch \(err\) \{[^}]*return null;\s*\}/, "$1") };
+  assert("the uncaught loader turns the source check `contained` red", sourceBare.access !== real.access && sourceChecks(sourceBare).contained === false);
 }
 
 console.log(`MASWALI RESULTS SECTION ${process.argv.includes("--prove-red") ? "red proof" : "guard"} passed`);

@@ -3,14 +3,17 @@
  * S-purchase frames; DESIGN_AUTHORITY §M8a, §M3a). The reading tier.
  *
  * The week on sale in the reader's line: its fifteen questions in the reader's language, its close and first event, its
- * frozen price and cap, the reader's MAIN balance and tickets of the cap, and the free cancel a ticket bought now would
- * carry — handed to the slip's composer (`slip-client.tsx`), which keeps the picks in the tab, opens the confirm sheet
- * and makes the purchase. ⛔ No pool figure and no payout here (the handover's WP6): the slip states the rules and the price.
+ * frozen price and cap, the reader's MAIN balance and tickets of the cap, and its frozen free-cancel grace — handed to the
+ * slip's composer (`slip-client.tsx`), which keeps the picks in the tab, opens the confirm sheet (asking, on the
+ * server-aligned clock and on every tick while it is open, which free cancel a ticket cut NOW would carry — S5-FIX-PLAYER
+ * P1) and makes the purchase. ⛔ No pool figure and no payout here (the handover's WP6): the slip states the rules and the price.
  *
  * ⛔ THE GATE FIRST, in the page and in the metadata (MR-2); a signed-out reader is sent to sign in and back here.
  * ⛔ NO DOOR ON A BREAK: the live break notice stands where the slip would (the refusals table, `onBreak`).
- * ⛔ A refusal the slip can already name (closed, paused, a staff account, the cap) is said before any pick is asked:
- *    the registry's sentence in the reader's language, and a way back to the hub — the money path decides again at the buy.
+ * ⛔ A refusal the slip can already name (closed, paused, a staff account, the cap) is said before any pick is asked, with
+ *    a way back to the hub — the money path decides again at the buy: the registry's sentence in the reader's language, or,
+ *    for the cap and a product not yet available, the hub's own words (S5-FIX-PLAYER P13: nothing was tried, so never a
+ *    purchase result's "Nothing was charged." or a next week promised where none can follow).
  * ⭐ The Needle and the chat bubble stand down here for every reader (D-25, `surfaces.ts → isSlipSurface`).
  */
 import type { Metadata } from "next";
@@ -25,14 +28,15 @@ import { BetBreakNotice } from "@/components/rg/bet-break-notice";
 import { weekNumberOf } from "@/components/maswali/maswali-format";
 import { millioneaGate } from "@/lib/server/millionea-gate";
 import { millioneaSlip } from "@/lib/server/maswali-player";
-import { millioneaBreakOf, millioneaDoor } from "@/lib/server/millionea-doors";
+import { millioneaBreakOf, millioneaDoor, millioneaHubNow, millioneaOpenTemplate } from "@/lib/server/millionea-doors";
+import { nextWeekOpen } from "@/components/maswali/maswali-card-model";
 import { getServerT } from "@/lib/i18n-server";
 import { breakSentence } from "@/lib/break-end";
 import { renderFailure } from "@/lib/failure-reasons";
 import { formatTzs, pctNum } from "@/lib/utils";
 import type { Dict } from "@/lib/i18n-dict";
 import { MILLIONEA_HREF, MillioneaPreviewMark, signInHref } from "../millionea-parts";
-import { hiddenSlotsOf, msOf, slipQuestionsOf } from "../millionea-view";
+import { capReachedLine, hiddenSlotsOf, msOf, slipQuestionsOf } from "../millionea-view";
 import { SlipClient } from "./slip-client";
 
 export const dynamic = "force-dynamic";
@@ -82,19 +86,31 @@ export default async function MillioneaSlipPage() {
     );
   }
   // Sales closed is the slip's own state (its band, its resting controls); every other refusal is said instead of a slip.
+  // ⭐ S5-FIX-PLAYER P13 · NOTHING HAS BEEN TRIED YET: a refusal before any pick is said in the words of the page that offers
+  // the slip, never in a purchase result's ("Nothing was charged.", "…you can buy again when next week opens"): the cap as
+  // the hub's buy block says it — the next week named only when one can follow (`nextWeekOpen`: none in a final week or
+  // while Millionea ends) — and "not available" as the hub says no week is on sale. The rest keep the registry's sentence.
   if (slip.refusal && slip.refusal !== "millionea_sales_closed") {
-    const said = renderFailure(
-      { ok: false, error: "", reason: slip.refusal, detail: { ticketCap: slip.ticketCap } },
-      t.error as unknown as Record<string, string>, t.common.couldNotPlace, (n) => formatTzs(n),
-    );
+    let said: { body: string; tone: "neutral" | "info" };
+    if (slip.refusal === "millionea_cap_reached") {
+      const hub = await millioneaHubNow(gate.userId, gate.state);
+      said = { body: capReachedLine(t, slip.ticketCap, hub ? nextWeekOpen(hub, millioneaOpenTemplate(), nowMs) : null), tone: "info" };
+    } else if (slip.refusal === "millionea_not_available") {
+      said = { body: t.millionea.hubNoWeek, tone: "neutral" };
+    } else {
+      const r = renderFailure(
+        { ok: false, error: "", reason: slip.refusal, detail: { ticketCap: slip.ticketCap } },
+        t.error as unknown as Record<string, string>, t.common.couldNotPlace, (n) => formatTzs(n),
+      );
+      said = { body: r.body, tone: r.severity === "error" ? "neutral" : "info" };
+    }
     return (
       <NoSlip t={t} preview={gate.preview}>
-        <Callout tone={said.severity === "error" ? "neutral" : "info"} role="status">{said.body}</Callout>
+        <Callout tone={said.tone} role="status">{said.body}</Callout>
       </NoSlip>
     );
   }
   const closesAt = msOf(slip.week.closesAt) ?? nowMs;
-  const cancelAt = msOf(slip.cancelIfBoughtNow);
   return (
     <PageContainer tier="reading" className="kp-mln-zh">
       {/* The way back to the hub over the slip's head, as the S-slip frames draw it ("‹ MASWALI MILLIONEA"). */}
@@ -113,7 +129,7 @@ export default async function MillioneaSlipPage() {
         cap={slip.ticketCap}
         held={slip.held ?? 0}
         balance={slip.balance}
-        cancelIfBoughtNow={cancelAt}
+        freeCancelMinutes={slip.freeCancelMinutes}
         pct={pctNum(slip.feeRate)}
       />
     </PageContainer>

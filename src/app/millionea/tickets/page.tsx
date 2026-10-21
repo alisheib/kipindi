@@ -32,7 +32,7 @@ import { eatWeekdayClock, weekNumberOf } from "@/components/maswali/maswali-form
 import { TicketsHead } from "@/components/journey/tickets/ticket-switch";
 import { millioneaTicketGate } from "@/lib/server/millionea-gate";
 import { millioneaMyTickets, type MillioneaTicketRow } from "@/lib/server/maswali-player";
-import { millioneaHubNow, millioneaTicketsDoor, millioneaWeekPrices } from "@/lib/server/millionea-doors";
+import { millioneaBreakOf, millioneaHubNow, millioneaTicketsDoor, millioneaWeekPrices } from "@/lib/server/millionea-doors";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { getServerT } from "@/lib/i18n-server";
 import { fill } from "@/lib/utils";
@@ -87,9 +87,12 @@ export default async function MillioneaTicketsPage({ searchParams }: { searchPar
     return price === undefined ? [] : g.tickets.filter((row) => inLens(lens, row.shown)).sort(newestFirst).map((row) => ({ g, row, price }));
   });
   const anyLive = weeks.some((g) => g.tickets.some((row) => row.shown === "running"));
-  // The empty list's one invitation (the T-list frame): the week on sale — read only for a reader who holds no ticket at
-  // all, and only while the product is shown to them (a holder let in at a kill is offered nothing, L5).
-  const hubWeek = total === 0 && gate.visible ? (await millioneaHubNow(gate.userId, gate.state))?.week ?? null : null;
+  // The empty list's one invitation (the T-list frame): the week on sale and the door to the hub — offered only to a reader
+  // who holds no ticket at all, only while the product is shown to them (a holder let in at a kill is offered nothing, L5),
+  // and ⛔ NEVER ON A BREAK (S5-FIX-PLAYER P2): a reader whose cooling-off or self-exclusion runs gets the title alone — no
+  // week to buy into, no door — the home card's own rule (`millioneaCardShown`: shown, and not on a break).
+  const invite = total === 0 && gate.visible && (await millioneaBreakOf(gate.userId)) === null;
+  const hubWeek = invite ? (await millioneaHubNow(gate.userId, gate.state))?.week ?? null : null;
   const selling = hubWeek?.selling ? hubWeek : null;
 
   return (
@@ -109,7 +112,7 @@ export default async function MillioneaTicketsPage({ searchParams }: { searchPar
           body={selling
             ? fill(t.millionea.emptyTicketsNext, { week: weekNumberOf(selling.code), when: eatWeekdayClock(t, msOf(selling.closesAt) ?? 0) })
             : undefined}
-          action={gate.visible ? (
+          action={invite ? (
             <Link href={MILLIONEA_HREF.hub as never} className="btn btn-ghost btn-md border-border-control">{t.millionea.productTitle}</Link>
           ) : undefined}
         />

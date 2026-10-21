@@ -30,12 +30,11 @@ function isFrameFor(weekId: string, visibility: PoolFigure["visibility"], x: unk
  * the carried figure travels once from last week's row (`carry`, the seen state's call).
  * ⛔ No gold here: an unearned surface (`maswali-pool-figure.tsx`).
  */
-export function HubPool({ weekId, initial, price, opensAt, voiding = false, carryFrom, carryPlay }: {
+export function HubPool({ weekId, initial, price, voiding = false, carryFrom, carryPlay }: {
   weekId: string;
   initial: PoolFigure;
   /** The week's frozen ticket price: the block's ticket count is its sales at that price. */
   price: number;
-  opensAt: string;
   /** The week's void is already certain (the page's `weekVoidCertain`): the block draws the "voiding" view. */
   voiding?: boolean;
   /** The id of last week's carried figure (the M7 origin), when it is on the page. */
@@ -69,7 +68,7 @@ export function HubPool({ weekId, initial, price, opensAt, voiding = false, carr
         key={tick}
         t={t}
         locale={locale}
-        view={poolViewOf(fig, price, opensAt, voiding)}
+        view={poolViewOf(fig, price, voiding)}
         pct={pctNum(fig.feeRate)}
         tick={tick > 0}
         carry={carryFrom ? { from: carryFrom, play: !!carryPlay && tick === 0 } : undefined}

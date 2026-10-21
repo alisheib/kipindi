@@ -26,7 +26,7 @@ import {
   questionStore, ticketStore, weekStore, noticeStore,
   type MaswaliNotice, type StoredQuestion, type StoredTicket, type StoredWeek, type WeekVisibility,
 } from "./maswali-dal";
-import { calendarStartMs, carryBlocker, frozenRules, gradable, rolloutSells, sunsetState } from "./maswali-service";
+import { calendarStartMs, carryBlocker, frozenRules, gradable, objectionWindowEnd, rolloutSells, sunsetState } from "./maswali-service";
 import { maswaliAccountBalance } from "./maswali-money-service";
 import { getMaswaliConfig, type MaswaliRulesSnapshot } from "./maswali-config";
 import { getSalesPause } from "./maswali-pause";
@@ -43,8 +43,8 @@ import {
 } from "@/lib/maswali-score";
 import { guaranteeRequirement, settleArithmetic, type WeekArithmetic } from "@/lib/maswali-money";
 import { FORFEITED_SHARE_MARK, ticketShown, type TicketShown, type WeekState } from "@/lib/maswali-week-label";
-import { exitWindowFacts } from "@/lib/exit-window";
-import { eatNextWeekAt } from "@/lib/eat-day";
+import { millioneaFreeCancelEnd } from "@/lib/millionea-free-cancel";
+import { eatNextWeekAt, eatWeekAt, eatWeekStartMs } from "@/lib/eat-day";
 import { normalizeMillioneaSerial } from "@/lib/millionea-serial";
 import { unstable_cache } from "next/cache";
 import { readCachedMillioneaRegisterWeek } from "./maswali-register-cache";
@@ -76,6 +76,20 @@ async function nextWeekOf(week: StoredWeek): Promise<StoredWeek | null> {
   const later = (await weekStore.list({ visibility: week.visibility }))
     .filter((w) => w.state !== "DRAFT" && w.state !== "VOIDED" && calendarStartMs(w) > at);
   return later.sort((a, b) => calendarStartMs(a) - calendarStartMs(b))[0] ?? null;
+}
+
+/**
+ * ⭐ S5-FIX-PLAYER P9 · THE WEEK A WEEK'S CARRY CAME FROM — `nextWeekOf`'s mirror: the newest week of the same line before it
+ * IN THE CALENDAR that opened and did not void — the one whose settlement handed the jackpot on (a voided week hands nothing:
+ * its carry waited untouched for the week after it, MR-18; a DRAFT never sold, R3). Null when no such week exists. ⛔ Never a
+ * week's open minus seven days: across a voided week, a skipped holiday week (OD-27) or an early open that names the wrong
+ * week ("Carried in from Week 47" over Week 46's pool).
+ */
+async function prevWeekOf(week: StoredWeek): Promise<StoredWeek | null> {
+  const at = calendarStartMs(week);
+  const earlier = (await weekStore.list({ visibility: week.visibility }))
+    .filter((w) => w.state !== "DRAFT" && w.state !== "VOIDED" && calendarStartMs(w) < at);
+  return earlier.sort((a, b) => calendarStartMs(b) - calendarStartMs(a))[0] ?? null;
 }
 
 /**
@@ -132,6 +146,27 @@ async function termsOf(week: StoredWeek): Promise<WeekTerms | null> {
   };
 }
 
+/**
+ * ⭐ S5-FIX-PLAYER P7 · WHEN A WEEK'S "RESULTS AND PAYOUT" END — ONE RULE for the hub's strip and How to play's timeline
+ * (they said "Sunday – Monday" and "Monday – Tuesday" for one shape of week): the objection window's own end once the
+ * graded set is final (`objectionsCloseAt`, stamped); before that, the latest void deadline plus the week's frozen window,
+ * never closing before its EAT floor — the service's own `objectionWindowEnd` (MR-16), so the strip promises no end the
+ * window could pass. Null when neither instant can be read.
+ */
+export function millioneaResultsBy(
+  objectionsCloseAt: string | null, lastVoidDeadlineMs: number | null,
+  rules: Pick<MaswaliRulesSnapshot, "objectionWindowHours" | "objectionNotBeforeAt">,
+): number | null {
+  const stamped = objectionsCloseAt ? Date.parse(objectionsCloseAt) : Number.NaN;
+  if (Number.isFinite(stamped)) return stamped;
+  if (lastVoidDeadlineMs === null || !Number.isFinite(lastVoidDeadlineMs)) return null;
+  try {
+    return objectionWindowEnd(lastVoidDeadlineMs, rules.objectionWindowHours, rules.objectionNotBeforeAt);
+  } catch {
+    return null;
+  }
+}
+
 /** The earliest of the fifteen events — "Tukio la kwanza" printed under the close (MR-4). */
 function firstEventOf(qs: readonly Pick<MillioneaQuestion, "eventStartsAt">[]): string | null {
   return qs.map((q) => q.eventStartsAt).sort()[0] ?? null;
@@ -151,6 +186,9 @@ export type MaswaliPoolFigure = {
   carryIn: number | null;
   /** The earlier week whose result R waits on — "plus week N's carry-over once final" — or null. */
   carryPendingCode: string | null;
+  /** P9 · once R is known and above zero, the week it came from by the calendar chain (`prevWeekOf`) — "Carried in from
+   *  Week 46" — or null (then the row names no week). */
+  carryFromCode: string | null;
   /** S: the week's live sales, from its `POOL:` account (a free cancel moves it down a ticket, MR-28). */
   sales: number;
   /** The floor, shown only while the guarantee covers every unsettled week at its own frozen floor; null otherwise. */
@@ -203,8 +241,9 @@ export async function maswaliPoolFigure(weekId: string): Promise<MaswaliPoolFigu
   if (sales === null || !Number.isSafeInteger(sales) || sales < 0) return null;
   const { carryIn, pendingCode } = await carryOf(week);
   const floor = (await floorShown()) ? terms.rules.floorTzs : null;
+  const carryFromCode = carryIn !== null && carryIn > 0 ? (await prevWeekOf(week))?.code ?? null : null;
   return {
-    weekId: week.id, code: week.code, visibility: week.visibility, state: week.state, carryIn, carryPendingCode: pendingCode, sales, floor,
+    weekId: week.id, code: week.code, visibility: week.visibility, state: week.state, carryIn, carryPendingCode: pendingCode, carryFromCode, sales, floor,
     jackpot: Math.max(floor ?? 0, (carryIn ?? 0) + sales), atLeast: carryIn === null, feeRate: terms.feeRate,
   };
 }
@@ -280,15 +319,18 @@ async function hubQuestionsOf(week: StoredWeek) {
     : readHubQuestions(week.id);
 }
 
-/** How far the week's results have come: "Matokeo 6 kati ya 15 yametolewa · linalofuata Jumamosi 16:00" (§10 3.10). */
-function resultsOf(qs: readonly Pick<MillioneaQuestion, "eventStartsAt">[], gq: GradableQuestion[], nowMs: number) {
+/** How far the week's results have come: "Matokeo 6 kati ya 15 yametolewa · linalofuata Jumamosi 16:00" (§10 3.10). Pure;
+ *  exported for its guard (`test:maswali-design` §5 P5). */
+export function resultsOf(qs: readonly Pick<MillioneaQuestion, "eventStartsAt">[], gq: GradableQuestion[], nowMs: number) {
   const waiting = qs.filter((_, i) => gq[i]?.outcome == null).map((q) => q.eventStartsAt).sort();
   return {
     resultsOut: gq.filter((g) => g.outcome !== null).length,
     voidedMains: gq.filter((g) => g.role === "MAIN" && g.outcome === "VOID").length,
     voidedReserves: gq.filter((g) => g.role === "RESERVE" && g.outcome === "VOID").length,
-    /** The next result the week waits on: the first unsealed event still ahead, else the earliest one awaiting its seal. */
-    nextResultAt: waiting.find((at) => Date.parse(at) >= nowMs) ?? waiting[0] ?? null,
+    /** The next event the week's results wait on: the first unsealed event still AHEAD — and null once every unsealed event
+     *  has begun (S5-FIX-PLAYER P5): "next event" is never an instant already past (it fell back to the earliest unsealed
+     *  one, so a ticket said "next event Saturday 09:00" on the Sunday). */
+    nextResultAt: waiting.find((at) => Date.parse(at) >= nowMs) ?? null,
   };
 }
 
@@ -471,6 +513,14 @@ export type MillioneaHubWeek = {
   opensAt: string;
   closesAt: string;
   closedAt: string | null;
+  /** When the week's graded set became final (MR-16: its objection window opens then), or null while it is not. ⭐
+   *  S5-FIX-PLAYER P6: with `objectionsCloseAt`, what `millioneaWeekPhase` says the week's phase from. */
+  gradedSetFinalAt: string | null;
+  /** When the week's objection window closes — stamped with the graded set, never before its EAT floor (MR-16) — or null. */
+  objectionsCloseAt: string | null;
+  /** P7 · when its "results and payout" end (`millioneaResultsBy`): the window's end once known, else the latest void
+   *  deadline plus the frozen window — the strip's end, How to play's own rule. Null when it cannot be read. */
+  resultsBy: string | null;
   firstEventAt: string | null;
   ticketPrice: number;
   ticketCap: number;
@@ -546,6 +596,13 @@ export type MillioneaHub = {
   grading: MillioneaHubWeek | null;
   /** The newest final week of the line in the calendar (R3) — never the last one drafted. */
   lastWeek: MillioneaWeekSummary | null;
+  /**
+   * ⭐ S5-FIX-PLAYER P8 · `lastWeek` IS "LAST WEEK" only when it is the week right before the hub's own in the line's calendar
+   * chain (the newest earlier week that opened — DRAFTs aside, a voided week counted): while a later week is still being
+   * graded between them, the newest final week is two weeks back, and the hub said "Last week: Week 46" under Week 47's
+   * grading. With no week on the hub, it is last week when its calendar week is the one before now's.
+   */
+  lastWeekIsPrevious: boolean;
   /** The sales pause (MB-62). ⛔ A boolean only: the officer's reason is an internal note, never a player's line. */
   paused: boolean;
   /** MR-30 · LIVE; ENDING (a final week runs); RETIRED (Millionea has ended); PASSES_ON (the next week becomes final). */
@@ -572,9 +629,13 @@ async function hubWeekOf(week: StoredWeek, viewer: MillioneaViewer, nowMs: numbe
       tickets: rowsFor(tickets, week, questions, gq, recordOf(gq), await refundsOf(tickets, week)),
     };
   }
+  const deadlines = questions.map((q) => Date.parse(q.voidDeadlineAt)).filter(Number.isFinite);
+  const resultsBy = millioneaResultsBy(week.objectionsCloseAt, deadlines.length > 0 ? Math.max(...deadlines) : null, terms.rules);
   return {
     id: week.id, code: week.code, visibility: week.visibility, state: week.state, isFinal: week.isFinal,
-    opensAt: week.opensAt, closesAt: week.closesAt, closedAt: week.closedAt, firstEventAt: firstEventOf(questions),
+    opensAt: week.opensAt, closesAt: week.closesAt, closedAt: week.closedAt,
+    gradedSetFinalAt: week.gradedSetFinalAt, objectionsCloseAt: week.objectionsCloseAt,
+    resultsBy: resultsBy === null ? null : new Date(resultsBy).toISOString(), firstEventAt: firstEventOf(questions),
     ticketPrice: terms.rules.ticketPriceTzs, ticketCap: terms.rules.ticketCapPerWeek,
     selling: week.state === "OPEN" && Date.parse(week.closesAt) > nowMs && !paused && rolloutSells(viewer.state, week.visibility),
     pool: await maswaliPoolFigure(week.id).catch(() => null),
@@ -607,6 +668,14 @@ export async function millioneaHub(viewer: MillioneaViewer, now: Date = new Date
   const lead = open ?? grading[0] ?? null;
   const other = open ? (grading[0] ?? null) : null;
   const last = newestFirst(await weekStore.list({ visibility: line, states: TERMINAL }))[0] ?? null;
+  let lastWeekIsPrevious = false;
+  if (last && lead) {
+    const at = calendarStartMs(lead);
+    const before = newestFirst((await weekStore.list({ visibility: line })).filter((w) => w.state !== "DRAFT" && calendarStartMs(w) < at))[0] ?? null;
+    lastWeekIsPrevious = before?.id === last.id;
+  } else if (last) {
+    lastWeekIsPrevious = calendarStartMs(last) === eatWeekStartMs(nowMs) - 7 * 86_400_000;
+  }
   const paused = getSalesPause().paused;
   let life: MillioneaHub["life"] = "LIVE";
   try { life = (await sunsetState()).kind; } catch { life = "LIVE"; }
@@ -615,6 +684,7 @@ export async function millioneaHub(viewer: MillioneaViewer, now: Date = new Date
     week: lead ? await hubWeekOf(lead, viewer, nowMs, paused) : null,
     grading: other ? await hubWeekOf(other, viewer, nowMs, paused) : null,
     lastWeek: last ? await summaryOf(last) : null,
+    lastWeekIsPrevious,
     paused, life,
     nextOpensAt: open || life === "ENDING" || life === "RETIRED" ? null : templateNextOpen(nowMs),
     notices: viewer.userId ? await millioneaNotices(viewer.userId, line).catch(() => []) : [],
@@ -637,8 +707,11 @@ export type MillioneaSlip = {
   held: number | null;
   /** The viewer's MAIN balance ("salio kuu"): bonus never buys a ticket (MR-10). Null when signed out or unread. */
   balance: number | null;
-  /** The free cancel a ticket bought NOW would carry (RULES §2.6, measured to the close); null when it has none. */
-  cancelIfBoughtNow: string | null;
+  /** RULES §2.6's free-cancel grace, frozen with the week's market. ⭐ S5-FIX-PLAYER P1: the confirm sheet asks the one rule
+   *  (`millioneaFreeCancelEnd`) with it when it opens and on every tick while it is open, for a ticket cut NOW on the
+   *  server-aligned clock — never a time this read fixed at the page's render, which went stale while the player answered
+   *  and, near the close, promised a cancel the purchase would not carry. */
+  freeCancelMinutes: number;
   /** Why a purchase would be refused before any pick matters — or null. The money path decides again at the buy. */
   refusal: FailureReason | null;
 };
@@ -669,20 +742,19 @@ export async function millioneaSlip(viewer: MillioneaViewer, now: Date = new Dat
     week: { id: week.id, code: week.code, visibility: week.visibility, isFinal: week.isFinal, closesAt: week.closesAt },
     firstEventAt: firstEventOf(qs), questions: questionsOf(qs, gradable(qs)),
     ticketPrice: terms.rules.ticketPriceTzs, ticketCap: terms.rules.ticketCapPerWeek, feeRate: terms.feeRate,
-    held, balance, cancelIfBoughtNow: freeCancelEnd(nowMs, closesMs, closesMs, terms.freeCancelMinutes, nowMs), refusal,
+    held, balance, freeCancelMinutes: terms.freeCancelMinutes, refusal,
   };
 }
 
 /**
- * RULES §2.6's free cancel for a ticket placed at `placedMs` — `cancelMaswaliTicket`'s own test: it exists only with the
- * runway (the grace fitted before the close the ticket was bought under), and it is open while now is before both the
- * grace's end and the week's close as it stands now. Null when it has no window, or the window has passed.
+ * RULES §2.6's free cancel for a ticket placed at `placedMs` — `cancelMaswaliTicket`'s own test, through the one rule the
+ * confirm sheet asks too (`millioneaFreeCancelEnd`): it exists only with the runway (the grace fitted before the close the
+ * ticket was bought under), and it is open while now is before both the grace's end and the week's close as it stands now.
+ * Null when it has no window, or the window has passed.
  */
 function freeCancelEnd(placedMs: number, closeAtPurchaseMs: number, closeNowMs: number, graceMinutes: number, nowMs: number): string | null {
-  const f = exitWindowFacts({ placedAtMs: placedMs, closesAtMs: closeAtPurchaseMs, freeExitGraceMinutes: graceMinutes, paidExitWindowMinutes: 0 });
-  if (!f.hadRunway) return null;
-  const end = Math.min(f.exitCloseAtMs, closeNowMs);
-  return end > nowMs ? new Date(end).toISOString() : null;
+  const end = millioneaFreeCancelEnd(placedMs, closeAtPurchaseMs, closeNowMs, graceMinutes);
+  return end !== null && end > nowMs ? new Date(end).toISOString() : null;
 }
 
 /** The free-cancel end of a purchase that has just landed, as its receipt prints it ("Ghairi hadi 14:07"). */
@@ -753,8 +825,14 @@ export type MillioneaTicketView = MillioneaTicketRow & {
   week: {
     id: string; code: string; visibility: WeekVisibility; state: WeekState; isFinal: boolean;
     opensAt: string; closesAt: string; closedAt: string | null; settledAt: string | null; questionSetHash: string | null;
+    /** P6 · the graded set's finality and the objection window's end, as the hub week carries them (`millioneaWeekPhase`). */
+    gradedSetFinalAt: string | null; objectionsCloseAt: string | null;
   };
   questions: MillioneaQuestion[];
+  /** ⭐ S5-FIX-PLAYER P10 · the slots the slip filled ITSELF (MB-15): questions already sealed VOID — the final record's —
+   *  when this ticket was cut, so asked of nobody. The ticket shows no pick there ("—"), never the slip's fill as the player's
+   *  answer. Empty for a ticket bought before any void. */
+  slipFilled: number[];
   /** The stub (§10 3.8): what was bought, and the commitment to it. The salt is shown to its owner only (MB-32). */
   stub: { price: number; selectionsHash: string; salt: string; rulesVersion: string };
   /** The free cancel's end while it is open; null otherwise (and then no Ghairi control). */
@@ -898,6 +976,14 @@ export async function millioneaTicket(userId: string, serial: string, now: Date 
   const seenMs = t.lastViewedAt ? Date.parse(t.lastViewedAt) : Number.NEGATIVE_INFINITY;
   const unseen = facts.filter((f) => Date.parse(f.at) > seenMs);
   const results = resultsOf(qs, gq, nowMs);
+  // P10 · the slots the slip filled itself: a question whose VOID was final (its seal, or its second officer's confirmation)
+  // at or before the moment this ticket was cut — the slip asked nobody about it (MB-15).
+  const cutMs = Date.parse(t.createdAt);
+  const slipFilled = qs.flatMap((q, i) => {
+    if (gq[i]?.outcome !== "VOID") return [];
+    const finalAt = q.twoOfficerAtStage1 ? q.stage2At : q.sealedAt;
+    return finalAt && Date.parse(finalAt) <= cutMs ? [q.slot] : [];
+  });
 
   return {
     ...row,
@@ -905,8 +991,10 @@ export async function millioneaTicket(userId: string, serial: string, now: Date 
     week: {
       id: week.id, code: week.code, visibility: week.visibility, state: week.state, isFinal: week.isFinal,
       opensAt: week.opensAt, closesAt: week.closesAt, closedAt: week.closedAt, settledAt: week.settledAt, questionSetHash: week.questionSetHash,
+      gradedSetFinalAt: week.gradedSetFinalAt, objectionsCloseAt: week.objectionsCloseAt,
     },
     questions: questionsOf(qs, gq),
+    slipFilled,
     stub: { price: terms.rules.ticketPriceTzs, selectionsHash: t.selectionsHash, salt: t.salt, rulesVersion: t.rulesVersion },
     cancelUntil,
     // Provisional, and only while the week is still being decided: a voided week's ticket waiting on its refund is
@@ -949,6 +1037,11 @@ export type MillioneaRegisterQuestion = MillioneaQuestion & {
 export type MillioneaRegisterWeek = MillioneaWeekSummary & {
   opensAt: string;
   closesAt: string;
+  /** P9 · the week its carry came from (when it carried one in) and the week what it handed on went to, by the calendar
+   *  chain (`prevWeekOf`, `nextWeekOf`: DRAFTs and voided weeks skipped) — never its open ± 7 days. Null when there is no
+   *  such week (yet): the ledger then names none. */
+  carryFromCode: string | null;
+  carryToCode: string | null;
   /** Published at the open: the fifteen questions committed (MR-13). */
   questionSetHash: string | null;
   /** Published at the close: the Merkle root over every live ticket's salted hash (MB-32). */
@@ -958,7 +1051,12 @@ export type MillioneaRegisterWeek = MillioneaWeekSummary & {
   feeRate: number | null;
   traLevy: number | null;
   gbtLevy: number | null;
-  /** The rounding line, (J − F) − k × share; null in a week nobody won. What actually went on is `carriedForward`. */
+  /** J − F, what the equal split divides — "To winners", the win ledger's and How to play's one figure (S5-FIX-PLAYER P3);
+   *  null in a week nobody won and in a voided week. The share and the remainder below reconcile it. */
+  toWinners: number | null;
+  /** The rounding line, (J − F) − k × share; null in a week nobody won. What actually went on is `carriedForward` — and in a
+   *  week the house topped up it carried nothing (MR-25: the top-up already leaves it out), so the page prints it only in a
+   *  week with no top-up. */
   remainder: number | null;
   questions: MillioneaRegisterQuestion[];
   /** The substitution map, from the final record only: each voided main, when it voided, and the reserve that counted. */
@@ -1030,8 +1128,11 @@ export async function millioneaRegisterWeek(code: string): Promise<MillioneaRegi
   return {
     ...(await summaryOf(week)),
     opensAt: week.opensAt, closesAt: week.closesAt, questionSetHash: week.questionSetHash, ticketMerkleRoot: week.ticketMerkleRoot,
+    carryFromCode: (week.rolloverIn ?? 0) > 0 ? (await prevWeekOf(week))?.code ?? null : null,
+    carryToCode: (await nextWeekOf(week))?.code ?? null,
     ticketPrice: rules.ticketPriceTzs, floor: rules.floorTzs, feeRate: terms?.feeRate ?? null,
     traLevy: settled ? week.traLevy : null, gbtLevy: settled ? week.gbtLevy : null,
+    toWinners: settled && week.jackpot != null && (week.winningTickets ?? 0) > 0 ? week.jackpot - (week.fee ?? 0) : null,
     remainder: settled && week.jackpot != null ? week.jackpot - (week.fee ?? 0) - (week.paidTotal ?? 0) : null,
     questions, substitutions, basis, winningScore, resolution, standing, scores,
   };
@@ -1067,6 +1168,9 @@ export type MillioneaHowTo = {
   closeAt: string;
   minLockBufferMinutes: number;
   voidDeadlineHours: number;
+  /** The results week's final deadline, which caps every question's void deadline (MR-15) — the timeline's last void. */
+  finalDeadlineWeekday: number;
+  finalDeadlineAt: string;
   objectionWindowHours: number;
   objectionNotBeforeAt: string;
   freeCancelMinutes: number;
@@ -1093,6 +1197,7 @@ export async function millioneaHowTo(viewer: MillioneaViewer): Promise<Millionea
       source: "WEEK", weekCode: current.code, ticketPrice: r.ticketPriceTzs, floor: r.floorTzs, feeRate: terms.feeRate,
       traRate: terms.traRate, gbtRate: terms.gbtRate, ticketCap: r.ticketCapPerWeek, openWeekday: r.openWeekday, openAt: r.openAt,
       closeWeekday: r.closeWeekday, closeAt: r.closeAt, minLockBufferMinutes: r.minLockBufferMinutes, voidDeadlineHours: r.voidDeadlineHours,
+      finalDeadlineWeekday: r.finalDeadlineWeekday, finalDeadlineAt: r.finalDeadlineAt,
       objectionWindowHours: r.objectionWindowHours, objectionNotBeforeAt: r.objectionNotBeforeAt, freeCancelMinutes: terms.freeCancelMinutes,
     };
   } else {
@@ -1102,11 +1207,38 @@ export async function millioneaHowTo(viewer: MillioneaViewer): Promise<Millionea
       source: "CONFIG", weekCode: null, ticketPrice: c.ticketPriceTzs, floor: c.floorTzs, feeRate: c.jackpotFeeRate,
       traRate: g.traTaxOnCommissionRate, gbtRate: g.gbtLevyOnCommissionRate, ticketCap: c.ticketCapPerWeek, openWeekday: c.openWeekday,
       openAt: c.openAt, closeWeekday: c.closeWeekday, closeAt: c.closeAt, minLockBufferMinutes: c.minLockBufferMinutes,
-      voidDeadlineHours: c.voidDeadlineHours, objectionWindowHours: c.objectionWindowHours, objectionNotBeforeAt: c.objectionNotBeforeAt,
+      voidDeadlineHours: c.voidDeadlineHours, finalDeadlineWeekday: c.finalDeadlineWeekday, finalDeadlineAt: c.finalDeadlineAt,
+      objectionWindowHours: c.objectionWindowHours, objectionNotBeforeAt: c.objectionNotBeforeAt,
       freeCancelMinutes: g.freeExitGraceMinutes,
     };
   }
   return { ...base, examples: millioneaExamplesFor(base) };
+}
+
+/**
+ * ⭐ HOW TO PLAY'S WEEK TIMELINE — this week's shape on the template, every phase by the hub's own rules (S5-FIX-PLAYER P7):
+ * sales from the open to the close; events from the close and its buffer to the weekend's last day (Sunday); results and
+ * payout from that day to `millioneaResultsBy` — the latest void deadline the template allows (an event as late as the end
+ * of Sunday, plus the void hours, capped at the results week's final deadline, MR-15) plus the frozen objection window,
+ * never closing before its EAT floor. The hub's strip says the same of a real week. Instants in ms; null on unreadable rules.
+ */
+export type MillioneaTimeline = { salesFrom: number; salesTo: number; eventsFrom: number; eventsTo: number; resultsFrom: number; resultsTo: number };
+export function millioneaHowTimeline(h: Pick<MillioneaHowTo, "openWeekday" | "openAt" | "closeWeekday" | "closeAt" | "minLockBufferMinutes"
+  | "voidDeadlineHours" | "finalDeadlineWeekday" | "finalDeadlineAt" | "objectionWindowHours" | "objectionNotBeforeAt">, nowMs: number): MillioneaTimeline | null {
+  try {
+    const DAY = 86_400_000;
+    const start = eatWeekStartMs(nowMs);
+    const salesFrom = eatWeekAt(start, h.openWeekday, h.openAt);
+    const salesTo = eatWeekAt(start, h.closeWeekday, h.closeAt);
+    const eventsTo = start + 6 * DAY;
+    const finalDeadline = eatWeekAt(start + 7 * DAY, h.finalDeadlineWeekday, h.finalDeadlineAt);
+    const lastVoid = Math.min(start + 7 * DAY + h.voidDeadlineHours * 3_600_000, finalDeadline);
+    const resultsTo = millioneaResultsBy(null, lastVoid, h);
+    if (resultsTo === null) return null;
+    return { salesFrom, salesTo, eventsFrom: salesTo + h.minLockBufferMinutes * 60_000, eventsTo, resultsFrom: eventsTo, resultsTo };
+  } catch {
+    return null;
+  }
 }
 
 /** The rules a worked example is priced from (the how-to's own figures). */

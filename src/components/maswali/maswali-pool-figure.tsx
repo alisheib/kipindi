@@ -20,7 +20,13 @@ import type { Dict, Locale } from "@/lib/i18n-dict";
  * Every figure is a prop, read by the composer from the ledger (`maswali-money`), and every rate from the week's frozen
  * snapshot (`pct`); nothing here is computed but the words around them.
  */
-export type PoolCarriedIn = { week: number; /** null while that week has not settled: the figure is then "at least" */ amount: number | null };
+export type PoolCarriedIn = {
+  /** The week it came from (or, pending, waits on) — the calendar chain's; null when no such week is known: the row then
+   *  names none (S5-FIX-PLAYER P9), never "Week 0" or a week counted from this one's open. */
+  week: number | null;
+  /** null while that week has not settled: the figure is then "at least" */
+  amount: number | null;
+};
 type Sales = { tickets: number; amount: number };
 
 /**
@@ -68,11 +74,12 @@ export function poolLedgerRows(t: Dict, view: PoolView, pct: number, carry?: { f
 
   if (v.carriedIn) {
     const c = v.carriedIn;
+    const label = c.week === null ? t.millionea.carriedInNoWeek : fill(t.millionea.carriedIn, { week: c.week });
     rows.push(c.amount === null
-      ? { key: "in", label: fill(t.millionea.carriedIn, { week: c.week }), value: t.millionea.carriedInPending, ink: "muted", words: true }
+      ? { key: "in", label, value: t.millionea.carriedInPending, ink: "muted", words: true }
       : {
           key: "in",
-          label: fill(t.millionea.carriedIn, { week: c.week }),
+          label,
           value: carry ? <MaswaliCarry from={carry.from} play={carry.play}>{money(c.amount)}</MaswaliCarry> : money(c.amount),
           ink: "text",
         });
@@ -176,7 +183,7 @@ export function MaswaliPoolFigure({ t, locale, view, pct, carry, tick, className
         <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{t.millionea.jackpot}</span>
         <span className={cn("font-mono text-title-md font-semibold text-text tabular-nums", tick && "m-tick")}>{figure}</span>
         {rule && <span className="text-body-sm text-text-muted">{facts(rule)}</span>}
-        {pending && v.carriedIn && (
+        {pending && v.carriedIn && v.carriedIn.week !== null && (
           <span className="text-body-sm text-text-muted text-pretty">{keepFact(locale, fill(t.millionea.pendingCarry, { week: v.carriedIn.week }))}</span>
         )}
       </div>
@@ -194,7 +201,7 @@ export function MaswaliPoolFigure({ t, locale, view, pct, carry, tick, className
   );
 }
 
-/** "Wiki 41 · hakuna 10/10 · TZS 389,000 imeletwa mbele · ada 0" — last week as one closed ledger row (the hub, §3.3),
+/** "Wiki 41 · hakuna 10/10 · TZS 389,000 imehamishwa · ada 0" — last week as one closed ledger row (the hub, §3.3),
  *  its facts a fact line (A1); the carried figure keeps its id, the origin of this week's M7 carry. */
 export function MaswaliLastWeek({ t, locale, week, carried, id, className }: {
   t: Dict;

@@ -32,24 +32,22 @@ import { MaswaliLastWeek } from "@/components/maswali/maswali-pool-figure";
 import { MaswaliHeldTicketRow } from "@/components/maswali/maswali-ticket";
 import { MaswaliOutcomeStamp } from "@/components/maswali/maswali-outcome-stamp";
 import { MaswaliClosingPill } from "@/components/maswali/maswali-slip";
-import { counted, eatWeekday, eatWeekdayClock, millioneaWord, reserveLabel, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
+import { counted, eatWeekdayClock, reserveLabel, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
 import { millioneaGate } from "@/lib/server/millionea-gate";
 import { millioneaHub, millioneaMyTicketsWeek, type MillioneaHub, type MillioneaHubWeek, type MillioneaNotice, type MillioneaTicketsWeek } from "@/lib/server/maswali-player";
 import { millioneaBreakOf, millioneaDoor, millioneaOpenTemplate } from "@/lib/server/millionea-doors";
 import { nextWeekOpen } from "@/components/maswali/maswali-card-model";
-import { eatIsoWeek } from "@/lib/eat-day";
 import { getServerT } from "@/lib/i18n-server";
 import { breakSentence } from "@/lib/break-end";
-import { WEEK_STATE_KEY } from "@/lib/maswali-week-label";
 import { marketCategoryLabel } from "@/lib/localized";
 import { fillNodes, moneyRuns } from "@/lib/fill-nodes";
 import { cn, fill, formatNumber, formatTzs } from "@/lib/utils";
-import { RESERVE_COUNT, weekVoidCertain } from "@/lib/maswali-score";
+import { RESERVE_COUNT } from "@/lib/maswali-score";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import { HubPool } from "./hub-pool";
 import { HubNotices, type HubNotice } from "./hub-notices";
 import { MILLIONEA_HREF, MillioneaPreviewMark, MillioneaReadingLinks, registerWeekHref, signInHref, ticketPageHref } from "./millionea-parts";
-import { bySlot, gradableOf, lineOf, msOf, ordinalOf, phaseNow, phasesOf, resultDoorSerial, resultLine, textIn } from "./millionea-view";
+import { bySlot, capReachedLine, lineOf, millioneaWeekPhase, msOf, ordinalOf, phaseNow, phasesOf, resultDoorSerial, resultLine, textIn, weekPhaseWord } from "./millionea-view";
 
 export const dynamic = "force-dynamic";
 
@@ -64,9 +62,17 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t.millionea.productTitle };
 }
 
-/** The week's eyebrow: "WIKI 42 · WAZI" (the state's word, through WEEK_STATE_KEY). */
-function weekEyebrow(t: Dict, w: { code: string; state: MillioneaHubWeek["state"] }): string {
-  return `${weekWord(t, weekNumberOf(w.code))} · ${millioneaWord(t, WEEK_STATE_KEY[w.state])}`;
+/** The week's eyebrow: "WIKI 42 · WAZI" — the word of where the week stands (`millioneaWeekPhase`, S5-FIX-PLAYER P6): its
+ *  state's own, or once its results are in "Objection window", "Settling", "Week is being voided" — never "Results coming
+ *  in" over a week whose every needed result is in. */
+function weekEyebrow(t: Dict, w: MillioneaHubWeek, nowMs: number): string {
+  return `${weekWord(t, weekNumberOf(w.code))} · ${weekPhaseWord(t, w.state, millioneaWeekPhase(w, nowMs))}`;
+}
+
+/** P6 · "Objection window until Tuesday 12:00" while the week's window is open (its end still ahead), else nothing. */
+function objectionsLine(t: Dict, locale: Locale, w: MillioneaHubWeek, nowMs: number): React.ReactNode {
+  const until = millioneaWeekPhase(w, nowMs).objectionsUntil;
+  return until === null ? null : keepFact(locale, fill(t.millionea.checkWindowUntil, { when: eatWeekdayClock(t, until) }));
 }
 
 /**
@@ -80,13 +86,10 @@ function reservesLeftLine(t: Dict, w: MillioneaHubWeek): string {
 }
 
 /** The week's void is already certain (MR-18, the one grader's `weekVoidCertain`): its pool is "being voided", never a
- *  jackpot shared by every 10/10 ticket (the S5 UI review, HIGH 1 and MEDIUM 7). A record the grader refuses is not. */
-function voidingNow(w: MillioneaHubWeek): boolean {
-  try {
-    return w.state !== "OPEN" && weekVoidCertain(gradableOf(w.questions));
-  } catch {
-    return false;
-  }
+ *  jackpot shared by every 10/10 ticket (the S5 UI review, HIGH 1 and MEDIUM 7). A record the grader refuses is not. Read from
+ *  the week's one phase (`millioneaWeekPhase`, S5-FIX-PLAYER P6): the same answer its eyebrow says. */
+function voidingNow(w: MillioneaHubWeek, nowMs: number): boolean {
+  return millioneaWeekPhase(w, nowMs).kind === "voiding";
 }
 
 /**
@@ -156,9 +159,12 @@ function QuestionRow({ t, locale, q }: { t: Dict; locale: Locale; q: MillioneaHu
 /** The fifteen, mains first, the reserves under their own head on the inset material (§10 §3.3 item 5). */
 function WeekQuestions({ t, locale, w }: { t: Dict; locale: Locale; w: MillioneaHubWeek }) {
   const qs = bySlot(w.questions);
+  // "This week's questions" for the week on sale alone; a week being graded is named by its number (S5-FIX-PLAYER P8, the
+  // register's own R6: "Week 47's questions" — the hub headed a past week's fifteen "this week's" when none sold).
+  const heading = w.state === "OPEN" ? t.millionea.weekQuestions : fill(t.millionea.regWeekQuestions, { week: weekNumberOf(w.code) });
   return (
     <section id="mln-questions" aria-labelledby="mln-questions-h" className="flex scroll-mt-[96px] flex-col" data-testid="millionea-hub-questions">
-      <h2 id="mln-questions-h" className="pb-2 font-display text-title-sm font-bold text-text">{t.millionea.weekQuestions}</h2>
+      <h2 id="mln-questions-h" className="pb-2 font-display text-title-sm font-bold text-text">{heading}</h2>
       <ol>{qs.filter((q) => q.role === "MAIN").map((q) => <QuestionRow key={q.slot} t={t} locale={locale} q={q} />)}</ol>
       <div className="flex flex-col gap-0.5 border-t border-border px-1 pb-1.5 pt-2" style={{ background: "var(--wash-inset)", boxShadow: "var(--edge-shade)" }}>
         <span className="font-mono text-caption uppercase eyebrow text-text-subtle"><MaswaliFacts facts={factsOf(t.millionea.reservesHead)} /></span>
@@ -169,10 +175,13 @@ function WeekQuestions({ t, locale, w }: { t: Dict; locale: Locale; w: Millionea
   );
 }
 
-/** Last week as one closed row (§10 §3.3 item 6): its carry, its winners, or its void — a door to its register page. */
+/** Last week as one closed row (§10 §3.3 item 6): its carry, its winners, or its void — a door to its register page. ⭐
+ *  S5-FIX-PLAYER P8: only when it IS last week — the week right before the hub's own in the calendar chain
+ *  (`lastWeekIsPrevious`): while a later week is still being graded, the newest final week is not, and the grading block
+ *  stands for the week before. */
 function LastWeekRow({ t, locale, hub }: { t: Dict; locale: Locale; hub: MillioneaHub }) {
   const last = hub.lastWeek;
-  if (!last) return null;
+  if (!last || !hub.lastWeekIsPrevious) return null;
   const week = weekNumberOf(last.code);
   const row = last.state === "SETTLED" && (last.winners ?? 0) === 0
     ? <MaswaliLastWeek t={t} locale={locale} week={week} carried={last.carriedForward ?? 0} id={CARRIED_FIGURE_ID} />
@@ -191,13 +200,17 @@ function LastWeekRow({ t, locale, hub }: { t: Dict; locale: Locale; hub: Million
   );
 }
 
-/** The reader's tickets in a week: "Tiketi zako wiki hii: 2 kati ya 10", then a row per held ticket (D-18). */
+/** The reader's tickets in a week: a row per held ticket (D-18) — under "Tiketi zako wiki hii: 2 kati ya 10" for the week on
+ *  SALE alone (S5-FIX-PLAYER P8): the cap is a selling week's allowance, and a week being graded is not "this week" (its
+ *  block said "Your tickets this week: 2 of 10" under the open week's own line). A week being graded keeps its rows. */
 function MineBlock({ t, locale, w }: { t: Dict; locale: Locale; w: MillioneaHubWeek }) {
   if (!w.mine) return null;
   const held = w.mine.tickets.filter((x) => x.shown !== "cancelled");
+  const onSale = w.state === "OPEN";
+  if (!onSale && held.length === 0) return null;
   return (
     <div className="flex flex-col gap-2" data-testid="millionea-hub-mine">
-      <p className="text-body-sm text-text-muted">{keepFact(locale, fill(t.millionea.yourTicketsThisWeek, { n: formatNumber(w.mine.held), cap: formatNumber(w.mine.cap) }))}</p>
+      {onSale && <p className="text-body-sm text-text-muted">{keepFact(locale, fill(t.millionea.yourTicketsThisWeek, { n: formatNumber(w.mine.held), cap: formatNumber(w.mine.cap) }))}</p>}
       {held.map((row) => (
         <MaswaliHeldTicketRow key={row.serial} href={ticketPageHref(row.serial)} serial={row.serial} line={lineOf(w.questions, row.slots, w.state)} />
       ))}
@@ -213,7 +226,10 @@ function BuyBlock({ t, locale, w, signedIn, nowMs, nextOpen, breakBody }: {
   breakBody: { text: string; keep: readonly string[] } | null;
 }) {
   const closesMs = msOf(w.closesAt) ?? 0;
-  const open = w.state === "OPEN" && closesMs > nowMs;
+  // ⭐ S5-FIX-PLAYER P15 · THE CLOSE AND ITS COUNTDOWN STAND ONLY WHILE THE WEEK SELLS TO THIS READER (`selling`: OPEN, before
+  // its close, not paused, and the rollout sells its line): a paused week, or a public week at STAFF_PREVIEW, has nothing
+  // anyone can buy before that close, so nothing is counted down to it.
+  const open = w.selling;
   const atCap = !!w.mine && w.mine.held >= w.mine.cap;
   let door: React.ReactNode = null;
   if (breakBody) {
@@ -222,13 +238,8 @@ function BuyBlock({ t, locale, w, signedIn, nowMs, nextOpen, breakBody }: {
   } else if (w.selling && !signedIn) {
     door = <Link href={signInHref(MILLIONEA_HREF.slip) as never} className="btn btn-primary btn-lg w-full" data-testid="millionea-hub-signin">{t.millionea.signInToBuy}</Link>;
   } else if (w.selling && atCap) {
-    door = (
-      <Callout tone="info" role="status">
-        {nextOpen === null
-          ? fill(t.millionea.capReachedOnly, { cap: w.ticketCap })
-          : fill(t.millionea.capReachedNote, { cap: w.ticketCap, week: eatIsoWeek(nextOpen).week, day: eatWeekday(t, nextOpen) })}
-      </Callout>
-    );
+    // The cap's one line, the slip's refusal says it too (S5-FIX-PLAYER P13): the next week only when one can follow.
+    door = <Callout tone="info" role="status">{capReachedLine(t, w.ticketCap, nextOpen)}</Callout>;
   } else if (w.selling) {
     door = (
       <Link href={MILLIONEA_HREF.slip as never} className="btn btn-primary btn-lg w-full" data-testid="millionea-hub-fill">
@@ -238,16 +249,19 @@ function BuyBlock({ t, locale, w, signedIn, nowMs, nextOpen, breakBody }: {
   } else if (w.state !== "OPEN") {
     door = <a href="#mln-questions" className="btn btn-ghost btn-lg w-full border-border-control" data-testid="millionea-hub-follow">{t.millionea.followResults}</a>;
   }
-  // The results so far and the reserves left: a fact line (S5 VIS A1) — no separator at a line's start or end.
+  // The results so far, the reserves left, and while it is open the objection window's end (P6): a fact line (S5 VIS A1) —
+  // no separator at a line's start or end.
   const live = w.state !== "OPEN"
-    ? [keepFact(locale, fill(t.millionea.resultsOut, { n: formatNumber(w.resultsOut) })), keepFact(locale, reservesLeftLine(t, w))]
+    ? [keepFact(locale, fill(t.millionea.resultsOut, { n: formatNumber(w.resultsOut) })), keepFact(locale, reservesLeftLine(t, w)), objectionsLine(t, locale, w, nowMs)]
     : null;
   return (
     <div className="flex flex-col gap-3" data-testid="millionea-hub-buy">
       {door}
+      {/* A printed time draws the clock (MASWALI-PLAN §10c: `clock` is "a time or date"); the hourglass is the countdown's
+          own key, worn by the closing pill below (S5-FIX-PLAYER P17). */}
       {open && (
         <p className="flex items-center gap-1.5 text-body-sm text-text-muted">
-          <I.hourglassHalf s={14} className="shrink-0" />
+          <I.clock s={14} className="shrink-0" />
           <span>{fillNodes(t.millionea.salesCloseAt, { when: <span className="whitespace-nowrap font-mono text-text">{eatWeekdayClock(t, closesMs)}</span> })}</span>
         </p>
       )}
@@ -258,12 +272,13 @@ function BuyBlock({ t, locale, w, signedIn, nowMs, nextOpen, breakBody }: {
   );
 }
 
-/** A second week still being graded while this one sells (MR-3): its line, and the reader's tickets in it. */
-function GradingBlock({ t, locale, w }: { t: Dict; locale: Locale; w: MillioneaHubWeek }) {
+/** A second week still being graded while this one sells (MR-3): where it stands (P6), its results so far — and while it
+ *  is open, its objection window's end — and the reader's tickets in it. */
+function GradingBlock({ t, locale, w, nowMs }: { t: Dict; locale: Locale; w: MillioneaHubWeek; nowMs: number }) {
   return (
-    <section aria-label={weekEyebrow(t, w)} className="mat-flat flex flex-col gap-2 rounded-card p-3">
-      <span className="font-mono text-micro uppercase eyebrow text-text-subtle"><MaswaliFacts facts={factsOf(weekEyebrow(t, w))} /></span>
-      <p className="text-body-sm text-text-muted">{keepFact(locale, fill(t.millionea.resultsOut, { n: formatNumber(w.resultsOut) }))}</p>
+    <section aria-label={weekEyebrow(t, w, nowMs)} className="mat-flat flex flex-col gap-2 rounded-card p-3">
+      <span className="font-mono text-micro uppercase eyebrow text-text-subtle"><MaswaliFacts facts={factsOf(weekEyebrow(t, w, nowMs))} /></span>
+      <p className="text-body-sm text-text-muted"><MaswaliFacts facts={[keepFact(locale, fill(t.millionea.resultsOut, { n: formatNumber(w.resultsOut) })), objectionsLine(t, locale, w, nowMs)]} /></p>
       <MineBlock t={t} locale={locale} w={w} />
     </section>
   );
@@ -288,14 +303,16 @@ export default async function MillioneaHubPage() {
     <PageContainer tier="reading" className="kp-mln-zh">
       <div data-testid="millionea-hub" className="flex flex-col gap-6">
         <RefreshPoller intervalMs={60_000} />
-        <PageHeader eyebrow={w ? weekEyebrow(t, w) : undefined} title={t.millionea.productTitle} />
+        <PageHeader eyebrow={w ? weekEyebrow(t, w, nowMs) : undefined} title={t.millionea.productTitle} />
         {gate.preview && <MillioneaPreviewMark t={t} />}
         <HubNotices notices={notices} renderedAt={hub.asOf} />
         {hub.life === "RETIRED" && hub.lastWeek && (
           <Callout tone="neutral" role="status">{fill(t.millionea.stoppedSunset, { week: weekNumberOf(hub.lastWeek.code) })}</Callout>
         )}
         {hub.paused && <Callout tone="neutral" role="status">{t.millionea.paused}</Callout>}
-        {w?.isFinal && <Callout tone="info" glyph="flag" role="status">{t.millionea.finalWeek}</Callout>}
+        {/* The final week's own key (§10c `finalWeek`, flag-checkered, in Fill for a Callout's status): `flag` means
+            "object to a result" (S5-FIX-PLAYER P17). */}
+        {w?.isFinal && <Callout tone="info" glyph="finalWeek" role="status">{t.millionea.finalWeek}</Callout>}
 
         {w ? (
           <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,640px)_400px] xl:gap-8">
@@ -312,14 +329,13 @@ export default async function MillioneaHubPage() {
                   weekId={w.id}
                   initial={w.pool}
                   price={w.ticketPrice}
-                  opensAt={w.opensAt}
-                  voiding={voidingNow(w)}
-                  carryFrom={rolloverUnseen && hub.lastWeek ? CARRIED_FIGURE_ID : undefined}
+                  voiding={voidingNow(w, nowMs)}
+                  carryFrom={rolloverUnseen && hub.lastWeek && hub.lastWeekIsPrevious ? CARRIED_FIGURE_ID : undefined}
                   carryPlay={rolloverUnseen}
                 />
               ) : null}
               <BuyBlock t={t} locale={locale} w={w} signedIn={!!gate.userId} nowMs={nowMs} nextOpen={nextWeekOpen(hub, millioneaOpenTemplate(), nowMs)} breakBody={breakBody} />
-              {hub.grading && <GradingBlock t={t} locale={locale} w={hub.grading} />}
+              {hub.grading && <GradingBlock t={t} locale={locale} w={hub.grading} nowMs={nowMs} />}
             </aside>
             <div className={cn("xl:col-start-1", phases ? "xl:row-start-2" : "xl:row-start-1")}>
               <WeekQuestions t={t} locale={locale} w={w} />
