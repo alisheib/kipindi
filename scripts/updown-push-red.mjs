@@ -28,17 +28,54 @@ const NS = new URL("../src/lib/server/notification-service.ts", import.meta.url)
 const originals = new Map([[MS, readFileSync(MS, "utf8")], [NS, readFileSync(NS, "utf8")]]);
 const restore = () => { for (const [f, src] of originals) writeFileSync(f, src); };
 
+// ⭐ 2026-10-21 · U43 Release B (c29cb7526) queued settlement's four result notices after the commit
+// (`queueSettlementEffect(() => { void notifyUpDownX(p.userId, {…}); })`). Each mutation now also names the assertion that
+// must go red (`expect`, a substring of a `✗` line the suite prints), and the harness first proves the suite GREEN on the
+// untouched tree: a red baseline made every mutation "caught" for free, which is how this twin reported 5/5 while §2 was
+// failing on the clean tree.
 const MUTATIONS = [
   {
     // ⚠️ RETARGETED 2026-08-22 onto the bell-row announcer. The old anchor pointed at the
     // hand-written loss `pushOnly` block, which no longer exists — and the harness said so
     // loudly ("anchor not found") instead of reporting a green, which is the only reason
     // this was caught. ⛔ A mutation that does not apply is a HARNESS ERROR, never a pass.
+    // ⚠️ RE-ANCHORED 2026-10-21 (U43 Release B, c29cb7526) onto the queued statement: the dead-code guard now sits
+    // between the queued arrow and the announcer, the one place a `void 0 &&` can still hide it.
     name: "only-wins-push",
     why: "E-43's exact shape — the win is announced, the LOSS goes silent, so we only reach the player with good news",
     file: MS,
-    from: `          notifyUpDownLoss(p.userId, {`,
-    to: `          void 0 && notifyUpDownLoss(p.userId, {`,
+    from: `          queueSettlementEffect(() => { void notifyUpDownLoss(p.userId, {`,
+    to: `          queueSettlementEffect(() => { void 0 && notifyUpDownLoss(p.userId, {`,
+    expect: "§2 the loss outcome is announced (call site)",
+  },
+  {
+    // ⭐ ADDED 2026-10-21 (U43 Release B): the win's queued statement behind a guard that is never true — the call still
+    // reads as code, it is no longer a statement.
+    name: "win-behind-a-dead-guard",
+    why: "the win's announcement is put behind a condition that never holds, so a winner is never told",
+    file: MS,
+    from: `          queueSettlementEffect(() => { void notifyUpDownWin(p.userId, {`,
+    to: `          if (p.stake < 0) queueSettlementEffect(() => { void notifyUpDownWin(p.userId, {`,
+    expect: "§2 the win outcome is announced (call site)",
+  },
+  {
+    // ⭐ ADDED 2026-10-21 (U43 Release B): the queue drops what it is handed — every queued notice reads as a statement and
+    // none is ever run.
+    name: "queue-drops-its-effects",
+    why: "settlement's notices are queued into nothing, so every Up & Down result goes silent while each call still reads as a statement",
+    file: MS,
+    from: `    afterCommit(lockTx, () => { committedSettlementEffects.push(fn); });`,
+    to: `    afterCommit(lockTx, () => { void fn; });`,
+    expect: "§2 ⭐ the settlement queue reaches its notices",
+  },
+  {
+    // ⭐ ADDED 2026-10-21 (U43 Release B): the queue is filled and never drained.
+    name: "queue-never-drained",
+    why: "the committed settlement's queued notices are never run, so no Up & Down result is announced",
+    file: MS,
+    from: `  if (result.ok) for (const effect of committedSettlementEffects) {`,
+    to: `  if (false) for (const effect of committedSettlementEffects) {`,
+    expect: "§2 ⭐ the settlement queue reaches its notices",
   },
   {
     // ⚠️ RETARGETED 2026-08-22 — the copy moved to `notification-service.ts` with the
@@ -51,6 +88,7 @@ const MUTATIONS = [
     file: NS,
     from: "    bodyEn: `${clipQuote(opts.marketTitle.en, 70)} · the round was voided and your stake came back in full.`,",
     to: "    bodyEn: `${clipQuote(opts.marketTitle.en, 70)} · settled.`,",
+    expect: "§2 the refund outcome has its copy",
   },
   {
     // ⚠️ RETARGETED 2026-08-22 — same structural mutation, re-anchored on the rewritten
@@ -64,6 +102,7 @@ const MUTATIONS = [
     to: `      }
       if (Math.random() < 0) {
         // E-57 · ⛔ THE REFUND IS ANNOUNCED TOO, AND THIS BRANCH IS THE WHOLE POINT OF E-43.`,
+    expect: "§2 ⭐ no suppression gate is missing its push branch",
   },
   {
     name: "results-share-the-bet-tag",
@@ -71,6 +110,7 @@ const MUTATIONS = [
     file: MS,
     from: 'export const updownResultPushTag = (marketId: string) => `updown-result-${marketId}`;',
     to: 'export const updownResultPushTag = (_marketId: string) => "updown-bet";',
+    expect: "§4 the result tag is PER ROUND",
   },
   {
     name: "push-writes-an-inbox-row",
@@ -78,43 +118,68 @@ const MUTATIONS = [
     file: NS,
     from: "      const { sendPushToUser } = await import(\"./push-service\");\n      const user = await db.user.findById(userId);",
     to: "      const { sendPushToUser } = await import(\"./push-service\");\n      await db.notification.create({} as never);\n      const user = await db.user.findById(userId);",
+    expect: "§1 ⭐ it does NOT create a notification row",
   },
 ];
 
 let caught = 0;
 const problems = [];
-
-for (const m of MUTATIONS) {
-  restore();
-  const src = readFileSync(m.file, "utf8");
-
-  const asCRLF = m.from.replace(/\n/g, "\r\n");
-  const anchor = src.includes(m.from) ? m.from : src.includes(asCRLF) ? asCRLF : null;
-  if (anchor === null) {
-    problems.push(`${m.name} — HARNESS ERROR: anchor not found, mutation never applied`);
-    continue;
-  }
-
-  const replacement = anchor === asCRLF ? m.to.replace(/\n/g, "\r\n") : m.to;
-  writeFileSync(m.file, src.replace(anchor, replacement));
-
-  // ⭐ Believe nothing until the anchor is actually gone from what is on disk.
-  if (readFileSync(m.file, "utf8").includes(anchor)) {
-    problems.push(`${m.name} — HARNESS ERROR: anchor still present after write`);
-    continue;
-  }
-
-  let failed = false;
+const SUITE = "npx tsx scripts/updown-push.test.mts";
+const CWD = new URL("..", import.meta.url);
+/** Run the suite; its `✗` lines (stderr) are what a red run is judged by. */
+const runSuite = () => {
   try {
-    execSync("npx tsx scripts/updown-push.test.mts", { cwd: new URL("..", import.meta.url), stdio: "pipe" });
-  } catch { failed = true; }
+    execSync(SUITE, { cwd: CWD, stdio: "pipe" });
+    return { failed: false, out: "" };
+  } catch (e) {
+    return { failed: true, out: `${e.stdout ?? ""}\n${e.stderr ?? ""}` };
+  }
+};
 
-  if (failed) { caught++; console.log(`  ✓ RED  ${m.name} — ${m.why}`); }
-  else problems.push(`${m.name} — GUARD DID NOT CATCH IT (${m.why})`);
+try {
+  // ⭐ THE BASELINE FIRST: a suite that is already red catches every mutation for free.
+  restore();
+  const baseline = runSuite();
+  if (baseline.failed) {
+    problems.push(`HARNESS ERROR: the suite is RED on the untouched tree, so no mutation can be measured —\n${baseline.out.trim()}`);
+  } else {
+    for (const m of MUTATIONS) {
+      restore();
+      const src = readFileSync(m.file, "utf8");
+
+      const asCRLF = m.from.replace(/\n/g, "\r\n");
+      const anchor = src.includes(m.from) ? m.from : src.includes(asCRLF) ? asCRLF : null;
+      if (anchor === null) {
+        problems.push(`${m.name} — HARNESS ERROR: anchor not found, mutation never applied`);
+        continue;
+      }
+      if (src.split(anchor).length !== 2) {
+        problems.push(`${m.name} — HARNESS ERROR: anchor occurs more than once, the mutation is ambiguous`);
+        continue;
+      }
+
+      const replacement = anchor === asCRLF ? m.to.replace(/\n/g, "\r\n") : m.to;
+      writeFileSync(m.file, src.replace(anchor, () => replacement));
+
+      // ⭐ Believe nothing until the anchor is actually gone from what is on disk.
+      if (readFileSync(m.file, "utf8").includes(anchor)) {
+        problems.push(`${m.name} — HARNESS ERROR: anchor still present after write`);
+        continue;
+      }
+
+      const run = runSuite();
+      const own = run.out.split(/\r?\n/).filter((l) => l.trimStart().startsWith("✗") && l.includes(m.expect));
+      if (run.failed && own.length > 0) { caught++; console.log(`  ✓ RED  ${m.name} — ${m.why}\n         ${own[0].trim().slice(0, 200)}`); }
+      else if (run.failed) problems.push(`${m.name} — the suite went red, but NOT on "${m.expect}" (${m.why})`);
+      else problems.push(`${m.name} — GUARD DID NOT CATCH IT (${m.why})`);
+    }
+  }
+} finally {
+  restore();
 }
-
-restore();
-console.log(`\ntree restored · ${caught}/${MUTATIONS.length} defects caught`);
+const restored = [...originals].every(([f, src]) => readFileSync(f, "utf8") === src);
+if (!restored) problems.push("HARNESS ERROR: a target file differs from its original after restore");
+console.log(`\ntree restored: ${restored} · ${caught}/${MUTATIONS.length} defects caught, each on its own assertion`);
 if (problems.length) {
   for (const p of problems) console.error(`  ✗ ${p}`);
   process.exit(1);
