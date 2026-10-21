@@ -43,7 +43,7 @@ import {
 } from "@/lib/maswali-score";
 import { guaranteeRequirement, settleArithmetic, type WeekArithmetic } from "@/lib/maswali-money";
 import { FORFEITED_SHARE_MARK, ticketShown, type TicketShown, type WeekState } from "@/lib/maswali-week-label";
-import { exitWindowFacts } from "@/lib/exit-window";
+import { millioneaFreeCancelEnd } from "@/lib/millionea-free-cancel";
 import { eatNextWeekAt } from "@/lib/eat-day";
 import { normalizeMillioneaSerial } from "@/lib/millionea-serial";
 import { unstable_cache } from "next/cache";
@@ -640,8 +640,11 @@ export type MillioneaSlip = {
   held: number | null;
   /** The viewer's MAIN balance ("salio kuu"): bonus never buys a ticket (MR-10). Null when signed out or unread. */
   balance: number | null;
-  /** The free cancel a ticket bought NOW would carry (RULES §2.6, measured to the close); null when it has none. */
-  cancelIfBoughtNow: string | null;
+  /** RULES §2.6's free-cancel grace, frozen with the week's market. ⭐ S5-FIX-PLAYER P1: the confirm sheet asks the one rule
+   *  (`millioneaFreeCancelEnd`) with it when it opens and on every tick while it is open, for a ticket cut NOW on the
+   *  server-aligned clock — never a time this read fixed at the page's render, which went stale while the player answered
+   *  and, near the close, promised a cancel the purchase would not carry. */
+  freeCancelMinutes: number;
   /** Why a purchase would be refused before any pick matters — or null. The money path decides again at the buy. */
   refusal: FailureReason | null;
 };
@@ -672,20 +675,19 @@ export async function millioneaSlip(viewer: MillioneaViewer, now: Date = new Dat
     week: { id: week.id, code: week.code, visibility: week.visibility, isFinal: week.isFinal, closesAt: week.closesAt },
     firstEventAt: firstEventOf(qs), questions: questionsOf(qs, gradable(qs)),
     ticketPrice: terms.rules.ticketPriceTzs, ticketCap: terms.rules.ticketCapPerWeek, feeRate: terms.feeRate,
-    held, balance, cancelIfBoughtNow: freeCancelEnd(nowMs, closesMs, closesMs, terms.freeCancelMinutes, nowMs), refusal,
+    held, balance, freeCancelMinutes: terms.freeCancelMinutes, refusal,
   };
 }
 
 /**
- * RULES §2.6's free cancel for a ticket placed at `placedMs` — `cancelMaswaliTicket`'s own test: it exists only with the
- * runway (the grace fitted before the close the ticket was bought under), and it is open while now is before both the
- * grace's end and the week's close as it stands now. Null when it has no window, or the window has passed.
+ * RULES §2.6's free cancel for a ticket placed at `placedMs` — `cancelMaswaliTicket`'s own test, through the one rule the
+ * confirm sheet asks too (`millioneaFreeCancelEnd`): it exists only with the runway (the grace fitted before the close the
+ * ticket was bought under), and it is open while now is before both the grace's end and the week's close as it stands now.
+ * Null when it has no window, or the window has passed.
  */
 function freeCancelEnd(placedMs: number, closeAtPurchaseMs: number, closeNowMs: number, graceMinutes: number, nowMs: number): string | null {
-  const f = exitWindowFacts({ placedAtMs: placedMs, closesAtMs: closeAtPurchaseMs, freeExitGraceMinutes: graceMinutes, paidExitWindowMinutes: 0 });
-  if (!f.hadRunway) return null;
-  const end = Math.min(f.exitCloseAtMs, closeNowMs);
-  return end > nowMs ? new Date(end).toISOString() : null;
+  const end = millioneaFreeCancelEnd(placedMs, closeAtPurchaseMs, closeNowMs, graceMinutes);
+  return end !== null && end > nowMs ? new Date(end).toISOString() : null;
 }
 
 /** The free-cancel end of a purchase that has just landed, as its receipt prints it ("Ghairi hadi 14:07"). */

@@ -57,6 +57,7 @@ const { snapshotOrLegacy }: any = await import("../../src/lib/server/market-conf
 const { getMaswaliConfig }: any = await import("../../src/lib/server/maswali-config.ts");
 const { withLock }: any = await import("../../src/lib/server/locks.ts");
 const { readFileSync } = await import("node:fs");
+const FREE_CANCEL: any = await import("../../src/lib/millionea-free-cancel.ts");
 
 process.exitCode = 1;
 let pass = 0, fail = 0;
@@ -215,9 +216,13 @@ section("§4 · the slip");
   ok("4.1 · the slip is the week on sale's fifteen, its price and cap, and the viewer's count", !!s && s.week.id === A.id && s.questions.length === 15
     && s.ticketPrice === price && s.ticketCap === cap && s.held === 3 && s.feeRate === feeRate, J(s && { held: s.held, cap: s.ticketCap }));
   ok("4.2 · the MAIN balance it pays from (bonus never buys a ticket)", s?.balance === (await W.bal(P1)).balance, `${s?.balance}`);
-  const until = s?.cancelIfBoughtNow ? Date.parse(s.cancelIfBoughtNow) : NaN;
-  ok("4.3 · a ticket bought now carries its free cancel: ahead, and inside the grace (RULES §2.6)", until > Date.now() && until <= Date.now() + feesA.freeExitGraceMinutes * 60_000 + 5_000,
-    s?.cancelIfBoughtNow ?? "none");
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-FIX-PLAYER P1): the slip hands the week's frozen grace, and the confirm sheet asks
+  // the one rule of NOW on every tick — never a free cancel fixed at the page's render (`cancelIfBoughtNow` is gone).
+  const nowMs = Date.now(), closeMs = s ? Date.parse(s.week.closesAt) : NaN;
+  const until = s ? FREE_CANCEL.millioneaFreeCancelEnd(nowMs, closeMs, closeMs, s.freeCancelMinutes) : null;
+  ok("4.3 · ⭐ P1 · the slip hands the week's frozen free-cancel grace (RULES §2.6), and a ticket cut now carries its free cancel by the one rule: ahead, and inside the grace — nothing fixed at the render",
+    s?.freeCancelMinutes === feesA.freeExitGraceMinutes && until !== null && until > nowMs && until <= nowMs + feesA.freeExitGraceMinutes * 60_000 && !("cancelIfBoughtNow" in (s ?? {})),
+    J({ grace: s?.freeCancelMinutes, until }));
   ok("4.4 · ⛔ no jackpot, pool or payout figure on the slip, and nothing refuses this viewer", !/jackpot|pool|potentialPayout|payoutIfWin/i.test(J(s)) && s?.refusal === null, J(Object.keys(s ?? {})));
   const staff = await W.user({ balance: 50_000, role: "ADMIN" });
   ok("4.5 · a staff viewer meets the staff refusal before filling fifteen picks", (await P.millioneaSlip(viewer(staff)))?.refusal === "millionea_staff_barred");

@@ -3,9 +3,10 @@
  * S-purchase frames; DESIGN_AUTHORITY §M8a, §M3a). The reading tier.
  *
  * The week on sale in the reader's line: its fifteen questions in the reader's language, its close and first event, its
- * frozen price and cap, the reader's MAIN balance and tickets of the cap, and the free cancel a ticket bought now would
- * carry — handed to the slip's composer (`slip-client.tsx`), which keeps the picks in the tab, opens the confirm sheet
- * and makes the purchase. ⛔ No pool figure and no payout here (the handover's WP6): the slip states the rules and the price.
+ * frozen price and cap, the reader's MAIN balance and tickets of the cap, and its frozen free-cancel grace — handed to the
+ * slip's composer (`slip-client.tsx`), which keeps the picks in the tab, opens the confirm sheet (asking, on the
+ * server-aligned clock and on every tick while it is open, which free cancel a ticket cut NOW would carry — S5-FIX-PLAYER
+ * P1) and makes the purchase. ⛔ No pool figure and no payout here (the handover's WP6): the slip states the rules and the price.
  *
  * ⛔ THE GATE FIRST, in the page and in the metadata (MR-2); a signed-out reader is sent to sign in and back here.
  * ⛔ NO DOOR ON A BREAK: the live break notice stands where the slip would (the refusals table, `onBreak`).
@@ -110,7 +111,6 @@ export default async function MillioneaSlipPage() {
     );
   }
   const closesAt = msOf(slip.week.closesAt) ?? nowMs;
-  const cancelAt = msOf(slip.cancelIfBoughtNow);
   return (
     <PageContainer tier="reading" className="kp-mln-zh">
       {/* The way back to the hub over the slip's head, as the S-slip frames draw it ("‹ MASWALI MILLIONEA"). */}
@@ -129,7 +129,7 @@ export default async function MillioneaSlipPage() {
         cap={slip.ticketCap}
         held={slip.held ?? 0}
         balance={slip.balance}
-        cancelIfBoughtNow={cancelAt}
+        freeCancelMinutes={slip.freeCancelMinutes}
         pct={pctNum(slip.feeRate)}
       />
     </PageContainer>

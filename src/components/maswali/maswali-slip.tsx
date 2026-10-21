@@ -379,7 +379,8 @@ export function MaswaliSlipConfirm({
   balance: number;
   ticketNumber: number;
   cap: number;
-  /** When the free cancel would end (ms), or null when the close is too near for one (MR-12's runway). */
+  /** When the free cancel of a ticket cut NOW would end (ms), or null when the close is too near for one (MR-12's runway) —
+   *  the composer asks it again on every tick while the sheet is open (S5-FIX-PLAYER P1), never a time fixed at the render. */
   cancelUntil: number | null;
   /** The week's fee rate, as a number of percent. */
   pct: number;
