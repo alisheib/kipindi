@@ -1270,6 +1270,21 @@ const weekLabelDefects = (src: string) => {
   ok("5.P8′ PLANT · each old label put back — \"Last week\" for any final week, the cap line under a graded week, \"This week's questions\" over a past week — is reported", plants.every((p) => p.length > 0), j(plants));
 }
 
+// P9 · the pool block's carry names the chain's week, never one counted from the open
+{
+  const VIEW = req("../src/app/millionea/millionea-view.ts") as { poolViewOf: (fig: Record<string, unknown>, price: number, voiding?: boolean) => PoolView };
+  const fig = (over: Record<string, unknown>) => ({ weekId: "w", code: "MLN-2026-W48", visibility: "PUBLIC", state: "OPEN", carryIn: 412_000, carryPendingCode: null,
+    carryFromCode: "MLN-2026-W46", sales: 41_000, floor: 1_000_000, jackpot: 1_000_000, atLeast: false, feeRate: 0.13, ...over });
+  const label = (l: L3, f: Record<string, unknown>) => String(poolLedgerRows(dict[l], VIEW.poolViewOf(f, 1_000), 13).find((r) => r.key === "in")?.label ?? "");
+  const off = LOCALES.filter((l) => label(l, fig({})) !== fill(dict[l].millionea.carriedIn, { week: 46 }) || label(l, fig({ carryFromCode: null })) !== dict[l].millionea.carriedInNoWeek
+    || label(l, fig({ carryIn: null, carryPendingCode: "MLN-2026-W47", carryFromCode: null })) !== fill(dict[l].millionea.carriedIn, { week: 47 }));
+  ok("5.P9 · the pool block's carry row names the calendar chain's week — \"Carried in from Week 46\" across a voided Week 47, the week it waits on while pending — and, with none known, \"Carried in from earlier weeks\" (never a week counted from the open, never \"Week 0\")",
+    off.length === 0, j(LOCALES.map((l) => [label(l, fig({})), label(l, fig({ carryFromCode: null }))])));
+  const viewSrc = squash(code(read("src/app/millionea/millionea-view.ts")));
+  ok("5.P9′ PLANT · the old arithmetic (previousWeekNumber, the open minus seven days) is gone from the joint and the view reads the figure's own week",
+    !/previousWeekNumber|nextWeekNumber|weekAfter\(/.test(viewSrc) && viewSrc.includes("week: fig.carryFromCode ? weekNumberOf(fig.carryFromCode) : null"));
+}
+
 // P18 · the slip's two notices are the kit's Callout, never a hand-rolled copy
 const kitNoticeDefects = (src: string) => {
   const s = squash(code(src));
@@ -1300,7 +1315,7 @@ const kitNoticeDefects = (src: string) => {
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI DESIGN: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run prints; VIS-P's fact, example and word plants brought it to 110, and S5-FIX-PLAYER's §5
- *  (P5, P6, P7, P8, P10, P13, P15, P17, P18) to 139. */
-const MIN_ASSERTIONS = 139;
+ *  (P5, P6, P7, P8, P9, P10, P13, P15, P17, P18) to 141. */
+const MIN_ASSERTIONS = 141;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

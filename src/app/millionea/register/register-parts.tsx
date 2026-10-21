@@ -6,13 +6,12 @@
 import type { ReactNode } from "react";
 import { Chip } from "@/components/ui/chip";
 import { keepConnectives, runAndDashRanges } from "@/components/ui/keep-run";
-import { counted, millioneaWord, weekWord } from "@/components/maswali/maswali-format";
+import { counted, millioneaWord, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
 import { WEEK_STATE_KEY } from "@/lib/maswali-week-label";
 import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 import { fill, formatNumber, formatTzs, formatTzsSigned, pctNum } from "@/lib/utils";
 import type { MillioneaRegisterWeek, MillioneaWeekSummary } from "@/lib/server/maswali-player";
 import type { Dict } from "@/lib/i18n-dict";
-import { nextWeekNumber, previousWeekNumber } from "../millionea-view";
 
 /**
  * A FINAL WEEK'S STATE, AS ITS OWN CHIP (R4: the heading read "Week 48 · Voided" and wrapped at 320 into a line that began
@@ -88,18 +87,22 @@ export type LedgerRow = { key: string; label: ReactNode; value: string; tone?: "
  *     nothing carries) — the win ledger's own rule (`winLinesOf`).
  *   · P11 · a fee taken is the platform's signed figure ("−TZS 136,500", rule A4) — it printed "TZS −136,500"; a week that
  *     took none, "TZS 0".
+ *   · P9 · the weeks a carry came from and went to are the calendar chain's (`carryFromCode`, `carryToCode`: DRAFTs and
+ *     voided weeks skipped) — never the week's open ± 7 days, which named the wrong week across a voided week, a skipped
+ *     holiday week or an early open; with no such week (yet) the label names none.
  */
 export function registerLedgerRows(t: Dict, w: MillioneaRegisterWeek): LedgerRow[] {
   const money = (n: number | null) => (n === null ? "—" : formatTzs(n));
   const fee = (n: number | null) => (n === null ? "—" : n > 0 ? formatTzsSigned(-n) : formatTzs(0));
-  const prev = previousWeekNumber(w.opensAt), next = nextWeekNumber(w.opensAt);
+  const from = w.carryFromCode ? weekNumberOf(w.carryFromCode) : null;
+  const to = w.carryToCode ? weekNumberOf(w.carryToCode) : null;
   const price = formatTzs(w.ticketPrice);
   const sales = w.sales ?? 0, carryIn = w.carryIn ?? 0;
   const pct = w.feeRate !== null ? pctNum(w.feeRate) : null;
-  const carriedOut = kept(fill(t.millionea.carriedOut, { week: next }), [weekWord(t, next)]);
+  const carriedOut: ReactNode = to === null ? t.millionea.carriedOutNoWeek : kept(fill(t.millionea.carriedOut, { week: to }), [weekWord(t, to)]);
   const sold = fill(t.millionea.regTicketsSold, { n: formatNumber(w.tickets), price });
   const rows: LedgerRow[] = [];
-  if (carryIn > 0) rows.push({ key: "in", label: kept(fill(t.millionea.carriedIn, { week: prev }), [weekWord(t, prev)]), value: money(carryIn) });
+  if (carryIn > 0) rows.push({ key: "in", label: from === null ? t.millionea.carriedInNoWeek : kept(fill(t.millionea.carriedIn, { week: from }), [weekWord(t, from)]), value: money(carryIn) });
   // The count and the unit-price phrase each keep their own phone-sized run in every language.
   rows.push({ key: "sold", label: kept(sold, ticketSalesRuns(sold, price)), value: money(sales) });
   rows.push({ key: "pool", label: t.millionea.poolTotal, value: money(carryIn + sales) });

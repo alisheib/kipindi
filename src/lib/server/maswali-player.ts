@@ -79,6 +79,20 @@ async function nextWeekOf(week: StoredWeek): Promise<StoredWeek | null> {
 }
 
 /**
+ * ⭐ S5-FIX-PLAYER P9 · THE WEEK A WEEK'S CARRY CAME FROM — `nextWeekOf`'s mirror: the newest week of the same line before it
+ * IN THE CALENDAR that opened and did not void — the one whose settlement handed the jackpot on (a voided week hands nothing:
+ * its carry waited untouched for the week after it, MR-18; a DRAFT never sold, R3). Null when no such week exists. ⛔ Never a
+ * week's open minus seven days: across a voided week, a skipped holiday week (OD-27) or an early open that names the wrong
+ * week ("Carried in from Week 47" over Week 46's pool).
+ */
+async function prevWeekOf(week: StoredWeek): Promise<StoredWeek | null> {
+  const at = calendarStartMs(week);
+  const earlier = (await weekStore.list({ visibility: week.visibility }))
+    .filter((w) => w.state !== "DRAFT" && w.state !== "VOIDED" && calendarStartMs(w) < at);
+  return earlier.sort((a, b) => calendarStartMs(b) - calendarStartMs(a))[0] ?? null;
+}
+
+/**
  * ⭐ ONE PAGE OF A LIST A PLAYER PAGES THROUGH (`components/ui/pagination.tsx` draws it): the rows of `page`, and the TOTAL
  * — every row is counted, so none falls off the end unseen (never a silent cap, S5 re-review 4). `page` is the one asked,
  * clamped into range as the pager clamps it (the console's week list does the same, `pageConsoleWeeks`); `perPage` is the
@@ -172,6 +186,9 @@ export type MaswaliPoolFigure = {
   carryIn: number | null;
   /** The earlier week whose result R waits on — "plus week N's carry-over once final" — or null. */
   carryPendingCode: string | null;
+  /** P9 · once R is known and above zero, the week it came from by the calendar chain (`prevWeekOf`) — "Carried in from
+   *  Week 46" — or null (then the row names no week). */
+  carryFromCode: string | null;
   /** S: the week's live sales, from its `POOL:` account (a free cancel moves it down a ticket, MR-28). */
   sales: number;
   /** The floor, shown only while the guarantee covers every unsettled week at its own frozen floor; null otherwise. */
@@ -224,8 +241,9 @@ export async function maswaliPoolFigure(weekId: string): Promise<MaswaliPoolFigu
   if (sales === null || !Number.isSafeInteger(sales) || sales < 0) return null;
   const { carryIn, pendingCode } = await carryOf(week);
   const floor = (await floorShown()) ? terms.rules.floorTzs : null;
+  const carryFromCode = carryIn !== null && carryIn > 0 ? (await prevWeekOf(week))?.code ?? null : null;
   return {
-    weekId: week.id, code: week.code, visibility: week.visibility, state: week.state, carryIn, carryPendingCode: pendingCode, sales, floor,
+    weekId: week.id, code: week.code, visibility: week.visibility, state: week.state, carryIn, carryPendingCode: pendingCode, carryFromCode, sales, floor,
     jackpot: Math.max(floor ?? 0, (carryIn ?? 0) + sales), atLeast: carryIn === null, feeRate: terms.feeRate,
   };
 }
@@ -1019,6 +1037,11 @@ export type MillioneaRegisterQuestion = MillioneaQuestion & {
 export type MillioneaRegisterWeek = MillioneaWeekSummary & {
   opensAt: string;
   closesAt: string;
+  /** P9 · the week its carry came from (when it carried one in) and the week what it handed on went to, by the calendar
+   *  chain (`prevWeekOf`, `nextWeekOf`: DRAFTs and voided weeks skipped) — never its open ± 7 days. Null when there is no
+   *  such week (yet): the ledger then names none. */
+  carryFromCode: string | null;
+  carryToCode: string | null;
   /** Published at the open: the fifteen questions committed (MR-13). */
   questionSetHash: string | null;
   /** Published at the close: the Merkle root over every live ticket's salted hash (MB-32). */
@@ -1105,6 +1128,8 @@ export async function millioneaRegisterWeek(code: string): Promise<MillioneaRegi
   return {
     ...(await summaryOf(week)),
     opensAt: week.opensAt, closesAt: week.closesAt, questionSetHash: week.questionSetHash, ticketMerkleRoot: week.ticketMerkleRoot,
+    carryFromCode: (week.rolloverIn ?? 0) > 0 ? (await prevWeekOf(week))?.code ?? null : null,
+    carryToCode: (await nextWeekOf(week))?.code ?? null,
     ticketPrice: rules.ticketPriceTzs, floor: rules.floorTzs, feeRate: terms?.feeRate ?? null,
     traLevy: settled ? week.traLevy : null, gbtLevy: settled ? week.gbtLevy : null,
     toWinners: settled && week.jackpot != null && (week.winningTickets ?? 0) > 0 ? week.jackpot - (week.fee ?? 0) : null,

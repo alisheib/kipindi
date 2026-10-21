@@ -31,8 +31,6 @@ import { eatIsoWeek } from "@/lib/eat-day";
 import { fill, pctNum } from "@/lib/utils";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 
-const DAY_MS = 86_400_000;
-
 /** An instant the read model wrote, in ms, or null when it is not one. */
 export function msOf(iso: string | null | undefined): number | null {
   if (!iso) return null;
@@ -164,34 +162,19 @@ export function clausesOf(
   });
 }
 
-/** The ISO week a week opened in, in EAT, `days` later: the next week's number and its open day (a year's end included). */
-function weekAfter(opensAt: string, days: number): { week: number; atMs: number } | null {
-  const at = msOf(opensAt);
-  if (at === null) return null;
-  const atMs = at + days * DAY_MS;
-  return { week: eatIsoWeek(atMs).week, atMs };
-}
-
-/** The week a carry came from, as the ledger line names it ("Imeletwa mbele (Wiki 41)"): the week before this one. */
-export function previousWeekNumber(opensAt: string): number {
-  return weekAfter(opensAt, -7)?.week ?? 0;
-}
-
-/** The week after this one ("Imeletwa mbele kwenda Wiki 43"). */
-export function nextWeekNumber(opensAt: string): number {
-  return weekAfter(opensAt, 7)?.week ?? 0;
-}
-
 /**
  * ⭐ A WEEK'S POOL BLOCK FROM ITS DERIVED FIGURE (MR-28; `maswaliPoolFigure`, which every `maswali:pool` frame carries too).
  * The ticket count is the sales at the week's one frozen price — every ticket of a week costs the same (MR-11).
  * ⛔ The floor is passed through as the figure states it: null whenever it may not be shown (MB-56), and the block then
  * has no floor line.
+ * ⭐ S5-FIX-PLAYER P9 · the carry's week is the figure's own (`carryPendingCode` while it waits, `carryFromCode` once known,
+ * the calendar chain's) — never this week's open minus seven days, which named the wrong week across a voided week, a
+ * skipped one or an early open. With no such week the row names none.
  */
-export function poolViewOf(fig: MaswaliPoolFigure, price: number, opensAt: string, voiding = false): PoolView {
+export function poolViewOf(fig: MaswaliPoolFigure, price: number, voiding = false): PoolView {
   const carriedIn = fig.carryPendingCode !== null
     ? { week: weekNumberOf(fig.carryPendingCode), amount: null }
-    : (fig.carryIn ?? 0) > 0 ? { week: previousWeekNumber(opensAt), amount: fig.carryIn } : null;
+    : (fig.carryIn ?? 0) > 0 ? { week: fig.carryFromCode ? weekNumberOf(fig.carryFromCode) : null, amount: fig.carryIn } : null;
   const sales = { tickets: price > 0 ? Math.round(fig.sales / price) : 0, amount: fig.sales };
   const pool = (fig.carryIn ?? 0) + fig.sales;
   // A week whose void is already certain prints no jackpot and no "shared by every 10/10" rule: its refund, if the void

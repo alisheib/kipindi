@@ -329,7 +329,6 @@ export default async function MillioneaHubPage() {
                   weekId={w.id}
                   initial={w.pool}
                   price={w.ticketPrice}
-                  opensAt={w.opensAt}
                   voiding={voidingNow(w, nowMs)}
                   carryFrom={rolloverUnseen && hub.lastWeek && hub.lastWeekIsPrevious ? CARRIED_FIGURE_ID : undefined}
                   carryPlay={rolloverUnseen}

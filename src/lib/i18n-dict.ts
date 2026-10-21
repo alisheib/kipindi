@@ -3398,6 +3398,9 @@ export const dict = {
       // S5 tile read P5 (VIS-P): the carry-in row names its week once — "Carried in from Week 47" — and, while that week is
       // unsettled, its value says so in words ("Not yet settled"), never a dash under a second "Week 47".
       carriedIn: "Carried in from Week {week}",
+      // S5-FIX-PLAYER P9: when the calendar chain names no week (none before it carried one in; none after it opened yet).
+      carriedInNoWeek: "Carried in from earlier weeks",
+      carriedOutNoWeek: "Carried forward to the next week",
       carriedInPending: "Not yet settled",
       salesThisWeek: "Sales this week",
       ticketsN: "{n} tickets",
@@ -6273,6 +6276,8 @@ export const dict = {
       atLeast: "angalau {amount}",
       pendingCarry: "pamoja na kiasi kinachohamishwa kutoka Wiki {week} itakapokamilika",
       carriedIn: "Kiasi kutoka Wiki {week}",
+      carriedInNoWeek: "Kiasi kutoka wiki zilizopita",
+      carriedOutNoWeek: "Imehamishiwa wiki inayofuata",
       carriedInPending: "Bado haijakamilika",
       salesThisWeek: "Mauzo wiki hii",
       ticketsN: "tiketi {n}",
@@ -9101,6 +9106,8 @@ export const dict = {
       atLeast: "至少 {amount}",
       pendingCarry: "另加第{week}周结算后的滚存金额",
       carriedIn: "滚存（第{week}周）",
+      carriedInNoWeek: "滚存（往期）",
+      carriedOutNoWeek: "滚存至下周",
       carriedInPending: "尚未结算",
       salesThisWeek: "本周销售",
       ticketsN: "{n} 张",

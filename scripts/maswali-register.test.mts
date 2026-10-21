@@ -339,8 +339,10 @@ check("9.4", "A1 · `kept` draws each run it is given as ONE nowrap span, the wo
 });
 check("9.5", "A1 · every ledger label that carries a week, an amount or a % is drawn through `kept` with that run", (w) => {
   const s = code(w, "parts");
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-FIX-PLAYER P9): the carry's weeks are the calendar chain's (from / to), and a
+  // week-less label when the chain names none.
   const want = [
-    "label: kept(fill(t.millionea.carriedIn, { week: prev }), [weekWord(t, prev)])",
+    "label: from === null ? t.millionea.carriedInNoWeek : kept(fill(t.millionea.carriedIn, { week: from }), [weekWord(t, from)])",
     "label: kept(sold, ticketSalesRuns(sold, price))",
     "label: kept(fill(t.millionea.refundEachPending, { price }), [price])",
     "label: kept(fill(t.millionea.refundEach, { price }), [price])",
@@ -348,7 +350,7 @@ check("9.5", "A1 · every ledger label that carries a week, an amount or a % is 
     "label: kept(perTicket, perTicket.match(/^÷ \\S+/) ?? [])",
   ];
   const missing = want.filter((x) => !s.includes(x));
-  const outs = count(s, "const carriedOut = kept(fill(t.millionea.carriedOut, { week: next }), [weekWord(t, next)]);") + count(s, "label: carriedOut,");
+  const outs = count(s, "const carriedOut: ReactNode = to === null ? t.millionea.carriedOutNoWeek : kept(fill(t.millionea.carriedOut, { week: to }), [weekWord(t, to)]);") + count(s, "label: carriedOut,");
   return [missing.length === 0 && outs === 3, j({ missing, outs })];
 });
 check("9.5s", "R2 · a sold ticket's count and translated unit-price phrase are two separate kept runs at phone width", (w) => {
@@ -497,6 +499,20 @@ check("15.3", "P11 · a fee taken is the platform's signed money, \"−TZS 136,6
   });
   return [off.length === 0, off.join(" | ")];
 });
+check("15.5", "P9 · the carry's weeks are the calendar chain's: Week 48 that carried in Week 46's pool across a voided Week 47 says \"Carried in from Week 46\" and hands on to the chain's next (\"Week 50\"); with no such week (yet), a label that names none — never Week 47 or 49 counted from its open", (w) => {
+  const chain = regWeek({ code: "MLN-2026-W48", carryIn: 412_000, carryFromCode: "MLN-2026-W46", carryToCode: "MLN-2026-W50", winners: 0, jackpot: null, fee: 0, share: null,
+    paid: null, toWinners: null, remainder: null, traLevy: null, gbtLevy: null, topUp: null, carriedForward: 1_462_000 });
+  const none = { ...chain, carryFromCode: null, carryToCode: null };
+  const off = LOCALES.flatMap((l) => {
+    const d = mln(w, l);
+    const a = ledgerOf(w, l, chain), b = ledgerOf(w, l, none);
+    const lbl = (rows: Rendered, key: string) => rows.find((r) => r.key === key)?.label;
+    const ok = lbl(a, "in") === fill(d.carriedIn, { week: 46 }) && lbl(a, "out") === fill(d.carriedOut, { week: 50 })
+      && lbl(b, "in") === d.carriedInNoWeek && lbl(b, "out") === d.carriedOutNoWeek && ![...a, ...b].some((r) => /\b(?:47|49)\b|第4[79]周/.test(r.label));
+    return ok ? [] : [`${l}: ${j([lbl(a, "in"), lbl(a, "out"), lbl(b, "in"), lbl(b, "out")])}`];
+  });
+  return [off.length === 0, off.join(" | ")];
+});
 check("15.4", "the whole ledger of a won week, in order and to the shilling: sold, pool, floor, jackpot, fee, TRA, GBT, to winners, ÷ k, remainder, carried forward", (w) => {
   const rows = ledgerOf(w, "en", LEDGER_CASES.dust);
   const want = [["sold", "TZS 1,051,000"], ["pool", "TZS 1,051,000"], ["floor", "TZS 1,000,000"], ["jackpot", "TZS 1,051,000"], ["fee", "−TZS 136,630"],
@@ -521,7 +537,7 @@ if (!PROVE_RED) {
   const { pass, fail } = runAll(REAL, false);
   console.log(`\n${"═".repeat(70)}\n  MASWALI REGISTER: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
   /** The floor is the count a green run PRINTS; it only rises, to a printed number. */
-  const MIN_ASSERTIONS = 45; // S5-FIX-PLAYER §15 (P3, P4, P11) added four
+  const MIN_ASSERTIONS = 46; // S5-FIX-PLAYER §15 (P3, P4, P9, P11) added five
   if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
   process.exit(fail === 0 ? 0 : 1);
 }
@@ -624,6 +640,8 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["P4 undone — the remainder printed in a topped-up week", "15.2", { ...REAL, ledger: (t, wk) => { const rows = registerLedgerRows(t, wk); if ((wk.topUp ?? 0) > 0 && (wk.remainder ?? 0) > 0) rows.splice(rows.length - 1, 0, { key: "dust", label: t.millionea.remainder, value: formatTzs(wk.remainder ?? 0) }); return rows; } }],
   ["P11 undone — the fee unsigned (\"TZS −136,630\")", "15.3", { ...REAL, ledger: (t, wk) => registerLedgerRows(t, wk).map((r) => (r.key === "fee" && (wk.fee ?? 0) > 0 ? { ...r, value: formatTzs(-(wk.fee ?? 0)) } : r)) }],
   ["the levies dropped from a won week's ledger", "15.4", { ...REAL, ledger: (t, wk) => registerLedgerRows(t, wk).filter((r) => r.key !== "tra" && r.key !== "gbt") }],
+  ["P9 undone — the carry's weeks counted from the week's open (47 and 49 across the voided week)", "15.5", { ...REAL, ledger: (t, wk) => registerLedgerRows(t, { ...wk, carryFromCode: wk.carryFromCode ? "MLN-2026-W47" : null, carryToCode: wk.carryToCode ? "MLN-2026-W49" : null }) }],
+  ["P9 undone — \"Week 0\" where the chain names none", "15.5", { ...REAL, ledger: (t, wk) => registerLedgerRows(t, { ...wk, carryFromCode: wk.carryFromCode ?? "MLN-2026-W00", carryToCode: wk.carryToCode ?? "MLN-2026-W00" }) }],
 ];
 let caught = 0;
 for (const [name, target, world] of PLANTS) {

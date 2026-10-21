@@ -388,7 +388,8 @@ section("§7 · the live frame (maswali:pool) and who hears it; the seen mark; t
   ok("7.2 · ⭐ the frame is the figure derived on the server at its moment — the same as the hub's — never a stored one",
     !!frame && J(frame) === J(await P.maswaliPoolFigure(A.id)), J(frame));
   ok("7.3 · ⛔ the frame carries public figures and its week's line only: no ticket, pick, holder or count of who is still in",
-    !!frame && Object.keys(frame).sort().join(",") === "atLeast,carryIn,carryPendingCode,code,feeRate,floor,jackpot,sales,state,visibility,weekId"
+    // Re-pinned in the open (S5-FIX-PLAYER P9): the figure names the week its carry came from (a public week code).
+    !!frame && Object.keys(frame).sort().join(",") === "atLeast,carryFromCode,carryIn,carryPendingCode,code,feeRate,floor,jackpot,sales,state,visibility,weekId"
       && frame.visibility === "PUBLIC", J(frame && Object.keys(frame)));
   const replay = await W.buy(P5, A.id, [W.LOSE], { key: "player-p5-a-0001" });
   ok("7.4 · a replay moved nothing, so it arms nothing", replay.ok && replay.data.replayed === true && !FEED.__pendingPoolFrames().includes(A.id), J(FEED.__pendingPoolFrames()));
@@ -880,6 +881,12 @@ section("§11 · the exclusions, the wiring, the floor, the seen marks' budget")
 // ── §12 · a won share as Compliance leaves it (M2) ─────────────────────────────────────────────────────────────────
 section("§12 · a won share: held, forfeited, released");
 const { week: H, start: hStart } = await W.openWeek({ weeksAhead: 5 });
+{
+  // S5-FIX-PLAYER P9 · H's carry came from B, across the voided V (MR-18: V handed nothing on): the chain's week, never H − 1.
+  const fH = await P.maswaliPoolFigure(H.id);
+  ok("12.0 · ⭐ P9 · the week after a voided one names its carry's true source: H's pool carried in from B (V, between them, voided)",
+    !!fH && (fH.carryIn ?? 0) > 0 && fH.carryPendingCode === null && fH.carryFromCode === B.code, J(fH && { carryIn: fH.carryIn, from: fH.carryFromCode, B: B.code, V: V.code }));
+}
 const PH = await W.user({ balance: 50_000 });
 const PL = await W.user({ balance: 10_000 });
 const bh = await W.buy(PH, H.id, [W.WIN, W.WIN, W.WIN], { key: "player-ph-h-0001" });
@@ -918,6 +925,14 @@ const release1 = await W.settle.releaseMaswaliShare({ ticketId: h1.id, officerId
     release1.ok && r1?.share === "paid" && r1.paid === shareH && v1.win?.yourWinningTickets === 2 && v1.win.yourTotal === 2 * shareH
       && v1.win.yourHeldTickets === 0 && v1.win.yourForfeitedTickets === 1 && n?.winningTickets === 2 && n.total === 2 * shareH && n.held === 0 && n.forfeited === 1,
     `${why(release1)} · ${J({ share: r1?.share, win: v1.win, n })}`);
+}
+
+{
+  // P9 · the register names the chain's weeks: B's pool went to H (V skipped), V's untouched carry waited for H, H's came from B.
+  const [rB, rV, rH] = await Promise.all([P.millioneaRegisterWeek(B.code), P.millioneaRegisterWeek(V.code), P.millioneaRegisterWeek(H.code)]);
+  ok("12.9 · ⭐ P9 · the register's carry weeks are the calendar chain's: B carried forward to H and V's carry waited for H (never the voided V, never B + 1), and H carried in from B",
+    rB?.carryToCode === H.code && rV?.carryToCode === H.code && rH?.carryFromCode === B.code && (rH?.carryIn ?? 0) > 0,
+    J({ B: rB?.carryToCode, V: rV?.carryToCode, H: rH?.carryFromCode, codes: [B.code, V.code, H.code] }));
 }
 
 // ── §12b · the re-review: the calendar, never the drafting order (RR1); a held or forfeited share is not `won` (RR3);
