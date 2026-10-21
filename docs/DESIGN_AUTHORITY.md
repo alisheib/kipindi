@@ -3165,7 +3165,12 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     in the order the money moved (the floor, a quiet line unless it bound; the jackpot; the fee, the platform's signed
     amber figure with its levies as one muted line out of it; "To winners"; "÷ k"; the remainder; what carried forward),
     a hairline only above a total (the withdraw confirm's bottom line), every amount an `.amount` run, and each carry a
-    link to its week's register page.
+    link to its week's register page. A row with no figure is its sentence alone — never beside a "—", which reads as a
+    missing figure (a voiding week's refund-if-it-stands, the sunset's no top-up). ⭐ ONE CORE FOR THE MONEY: a final
+    week's figures come from `millioneaWeekMoneyRecord` (`lib/server/maswali-player.ts`) on either line — the public
+    register reads it inside its own PUBLIC refusal and its cache, a DRIVE week's own ticket reads it after the holder's
+    check — so the two ledgers of one week are the same rows; a DRIVE week's carries name their weeks without a link
+    (`registerLedgerRows(…, { links: false })`), the public register having no page for them.
 15. **A ticket's moments play where its owner sees them, once (Ali, 2026-10-21 10/10 pass — the R1 tickets critic's M8,
     the motion critic's H3, H4 and L2; `components/maswali/maswali-moment.tsx`).** Item 5 holds, and a ticket page adds
     WHERE: each moment — the cut (N3) and its reverse, a result's press (N2), the stamp line's reveal, the receipt's
@@ -3182,7 +3187,7 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     L13 and the motion critic's seal rows).** Won: paid to the main balance and when, held for review, or forfeited, each
     said on the ticket; a won ticket's receipt is the week's one ledger (item 14) with this player's gold rows — "For
     your ticket", and for more than one "× n" and "Your total" — straight after the share (`winLedgerRows`); a DRIVE week
-    prints no ledger until a money reader of any visibility lands (never a partial MR-26). Lost: the week's line — no
+    prints the same ledger from the one core (item 14), its carries named without a link. Lost: the week's line — no
     10/10 and the week its pool carried to, or how many tickets won. Voided: the refund on its way back until it lands,
     then landed. Cancelled: the price back on the main balance. A reserve whose result is in and did not count wears the
     verdict-free "sealed" mark (`I.attestation`, muted) — never a match, never a miss. The Tiketi zangu switch's Millionea
