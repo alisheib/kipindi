@@ -14,7 +14,7 @@ import { isAdmin, roleLabel } from "@/lib/server/roles";
 import { staffRoleInfos } from "@/lib/server/rbac";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 import { formatDate } from "@/lib/utils";
-import { accountStatusLabel, playerStatusVariant } from "@/components/admin/status-badge";
+import { AccountStatusBadge } from "@/components/admin/status-badge";
 import { AssignRoleForm } from "../staff-forms";
 import { AdminBody } from "@/components/admin/admin-body";
 
@@ -70,7 +70,7 @@ async function StaffDetailContent({ params }: StaffDetailProps) {
             </div>
             <div className="ml-auto flex items-center gap-2">
               <Chip size="sm" variant={u.role === "ADMIN" ? "gold" : "info"}>Current: {roleLabel(u.role)}</Chip>
-              <Chip size="sm" variant={playerStatusVariant(u.status)}>{accountStatusLabel(u.status)}</Chip>
+              <AccountStatusBadge status={u.status} />
             </div>
           </div>
         </AdminCard>

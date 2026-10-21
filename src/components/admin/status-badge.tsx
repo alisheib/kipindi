@@ -83,6 +83,12 @@ const LABEL: Record<MarketStatus, string> = {
 const MARKET_GLYPH: Record<MarketStatus, FillGlyphKey> = {
   DRAFT: "edit", LIVE: "live", CLOSED: "lock", RESOLVED: "resolved", VOIDED: "void",
 };
+/** A resolved market keeps the seal's Line — only a WIN is solid, and the console's RESOLVED chip is gilt, so a Fill
+ *  there drew every resolved row as a celebrated win (DESIGN_AUTHORITY §K3, §M3, §M7). A void is a quiet outcome too:
+ *  its prohibit sign in Line, as the player's chips draw it (`side-label.ts`). Live, closed and draft are states. */
+const MARKET_GLYPH_TIER: Record<MarketStatus, "fill" | "line"> = {
+  DRAFT: "fill", LIVE: "fill", CLOSED: "fill", RESOLVED: "line", VOIDED: "line",
+};
 
 export function MarketStatusBadge({
   status,
@@ -92,7 +98,7 @@ export function MarketStatusBadge({
   size?: "sm" | "md" | "lg";
 }) {
   return (
-    <Chip size={size} variant={VARIANT[status] ?? "neutral"} glyph={MARKET_GLYPH[status]}>
+    <Chip size={size} variant={VARIANT[status] ?? "neutral"} glyph={MARKET_GLYPH[status]} glyphTier={MARKET_GLYPH_TIER[status] ?? "fill"}>
       {LABEL[status] ?? status}
     </Chip>
   );
@@ -142,12 +148,14 @@ export function kycStatusLabel(status: KycStatus, rejectReason?: string | null):
   return L[status] ?? status;
 }
 
-export function KycStatusBadge({ status, rejectReason, size = "sm" }: { status: KycStatus; rejectReason?: string | null; size?: "sm" | "md" | "lg" }) {
+/** `prefix` names the axis where a row of chips mixes several ("KYC · Approved" beside the account's own chip on the
+ *  player header) — the same glyph and word as everywhere else, never a hand-built copy. */
+export function KycStatusBadge({ status, rejectReason, size = "sm", prefix }: { status: KycStatus; rejectReason?: string | null; size?: "sm" | "md" | "lg"; prefix?: string }) {
   const glyph: Record<KycStatus, FillGlyphKey> = {
     NOT_STARTED: "idCard", IN_PROGRESS: "clock", PENDING_REVIEW: "clockPending",
     APPROVED: "checkCircle", REJECTED: "xCircle", ADDITIONAL_INFO_REQUIRED: "alertCircle",
   };
-  return <Chip size={size} variant={kycStatusVariant(status)} glyph={glyph[status]}>{kycStatusLabel(status, rejectReason)}</Chip>;
+  return <Chip size={size} variant={kycStatusVariant(status)} glyph={glyph[status]}>{prefix}{kycStatusLabel(status, rejectReason)}</Chip>;
 }
 
 /* ── KYC STAGE — the roster's DERIVED identity column (2026-09-11) ────────── */
@@ -202,12 +210,20 @@ export function kycStageLabel(cell: KycCell): string {
   return L[cell];
 }
 
-export function KycStageBadge({ cell, size = "sm" }: { cell: KycCell; size?: "sm" | "md" | "lg" }) {
+/** `finalRefusal`: a refusal on a FINAL code reads "Finally refused" (`kycStatusLabel`'s rule), kept on one line, with
+ *  the refused mark of its stage — the roster's most severe identity state, drawn like every other. */
+export function KycStageBadge({ cell, size = "sm", finalRefusal = false }: { cell: KycCell; size?: "sm" | "md" | "lg"; finalRefusal?: boolean }) {
+  // The same stored state draws the same glyph as KycStatusBadge: documents uploaded but not yet sent is IN_PROGRESS,
+  // the player's move (`clock`); with us is PENDING_REVIEW, the queue's (`clockPending`). A stage this console could not
+  // read is `info`, never the "more needed" mark of a real request.
   const glyph: Record<KycCell, FillGlyphKey> = {
-    nothing_yet: "idCard", funded_nothing_yet: "idCard", uploaded: "clockPending",
+    nothing_yet: "idCard", funded_nothing_yet: "idCard", uploaded: "clock",
     with_us: "clockPending", more_needed: "alertCircle", rejected_after_upload: "xCircle",
-    rejected_no_docs: "xCircle", approved: "checkCircle", unreadable: "alertCircle",
+    rejected_no_docs: "xCircle", approved: "checkCircle", unreadable: "info",
   };
+  if (finalRefusal) {
+    return <Chip size={size} variant={kycStageVariant(cell)} glyph="xCircle"><span className="whitespace-nowrap">{REVIEW.kycRefusedFinal.en}</span></Chip>;
+  }
   return <Chip size={size} variant={kycStageVariant(cell)} glyph={glyph[cell]}>{kycStageLabel(cell)}</Chip>;
 }
 
@@ -268,9 +284,8 @@ export function presentedAccountStatus(status: string): string {
   return status === "PENDING_KYC" ? "ACTIVE" : status;
 }
 
-/** Canonical variant per player account status, shared by `players/page` and
- *  `players/[id]`. The two call sites still render their own label (the detail page
- *  prefixes a ● dot), so only the variant map is shared.
+/** Canonical variant per player account status. Every account chip — the roster, the player detail, the cohorts,
+ *  the privacy queue and both staff pages — draws it through `AccountStatusBadge` below (its word and its glyph).
  *
  *  ⛔ `PENDING_KYC` NOW READS AS ACTIVE — GREEN (2026-09-13, `presentedAccountStatus` above).
  *  This comment used to record that it had moved from amber to royal (D4, Ali's ruling
@@ -334,7 +349,13 @@ export function DsarStatusBadge({ status, size = "sm", deletionFailed = false }:
     : status === "PARTIAL" ? (deletionFailed ? REVIEW.dsarPartialDeleteFailed.en : REVIEW.dsarPartial.en)
     : status === "FULFILLED" ? REVIEW.dsarFulfilled.en
     : REVIEW.dsarRejected.en;
-  return <Chip size={size} variant={variant} glyph={status === "FULFILLED" ? "checkCircle" : status === "REJECTED" ? "xCircle" : status === "PARTIAL" && deletionFailed ? "alertCircle" : "clockPending"}>{label}</Chip>;
+  // The glyph follows the same chain as the word, so an unmapped status that reads "Rejected" draws the rejected mark.
+  const glyph: FillGlyphKey =
+    status === "PENDING" ? "clockPending"
+    : status === "PARTIAL" ? (deletionFailed ? "alertCircle" : "clockPending")
+    : status === "FULFILLED" ? "checkCircle"
+    : "xCircle";
+  return <Chip size={size} variant={variant} glyph={glyph}>{label}</Chip>;
 }
 
 /* ── Objection status (F11, Family 5) ────────────────────────────────────── */
@@ -397,8 +418,10 @@ function humanise(token: string): string {
 
 export function AccountStatusBadge({ status, size = "sm" }: { status: string; size?: "sm" | "md" | "lg" }) {
   const presented = presentedAccountStatus(status);
+  // The lexicon's own marks (the sidebar's and the hub's): a self-exclusion is `circleStop`, a cooling-off break `pause`,
+  // a suspension the officer's `lock` — three restrictions, three glyphs, never one lock for two of them.
   const glyph: FillGlyphKey = presented === "ACTIVE" ? "checkCircle"
-    : presented === "COOLED_OFF" ? "clock" : presented === "SUSPENDED" || presented === "SELF_EXCLUDED" ? "lock"
+    : presented === "COOLED_OFF" ? "pause" : presented === "SELF_EXCLUDED" ? "circleStop" : presented === "SUSPENDED" ? "lock"
     : presented === "CLOSED" ? "xCircle" : "info";
   return <Chip size={size} variant={playerStatusVariant(status)} glyph={glyph}>{accountStatusLabel(status)}</Chip>;
 }

@@ -905,18 +905,23 @@ export function StatusPill({
   }[status];
   return (
     <span
+      // An image of the status: its one child is aria-hidden, so the roundel itself carries the word (a role-less span's
+      // aria-label is not announced, and axe's aria-prohibited-attr fails it).
+      role="img"
       aria-label={status === "ok" ? "OK" : status === "warn" ? "Warning" : "Failed"}
       className={[
         // ⛔ LITERALS, NOT `h-8 w-8` — the spacing scale is overridden
-        // (tailwind.config.ts:200-215) and that pair is a 48px disc for a one-character
-        // label, in health rows whose other chips are 40px. 32px is the dense
+        // (tailwind.config.ts:200-215) and that pair is a 48px disc for a status
+        // roundel, in health rows whose other chips are 40px. 32px is the dense
         // mouse-only admin rung (--h-control-xs); this roundel is not a tap target.
         "h-[32px] w-[32px] rounded-pill inline-flex items-center justify-center font-mono font-bold text-body-sm shrink-0",
         cls,
       ].join(" ")}
     >
+      {/* The kit's tones' glyphs (Callout): success the circled check, a warning the warning sign, a failure the
+          circled cross — each in Fill, a status. */}
       {status === "ok" ? <I.checkCircle s={18} tier="fill" aria-hidden="true" />
-        : status === "warn" ? <I.alertCircle s={18} tier="fill" aria-hidden="true" />
+        : status === "warn" ? <I.warning s={18} tier="fill" aria-hidden="true" />
         : <I.xCircle s={18} tier="fill" aria-hidden="true" />}
     </span>
   );

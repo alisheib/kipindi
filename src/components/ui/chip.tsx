@@ -195,6 +195,7 @@ export function Chip({
   selected,
   dot,
   glyph,
+  glyphTier = "fill",
   className,
   children,
   style,
@@ -216,6 +217,9 @@ export function Chip({
   /** A status's family glyph. Callers choose its meaning; this atom supplies the
    * compact Fill treatment beside the word, so colour is never the only cue. */
   glyph?: FillGlyphKey;
+  /** The glyph's tier. Fill is a state that is on or earned (DESIGN_AUTHORITY §K3); a quiet
+   * outcome — a resolved market's seal, a void — keeps its Line, because only a win is solid. */
+  glyphTier?: "fill" | "line";
 }) {
   const sz = sizeStyles[size];
   const tall = metrics ? metrics === "status" : isStatus(variant);
@@ -302,7 +306,7 @@ export function Chip({
       {...rest}
     >
       {dot && <span className="live-dot shrink-0" style={{ width: sz.dot, height: sz.dot }} />}
-      {StatusGlyph && <StatusGlyph s={size === "xs" ? 10 : size === "sm" ? 11 : 13} tier="fill" aria-hidden="true" className="shrink-0" />}
+      {StatusGlyph && <StatusGlyph s={size === "xs" ? 10 : size === "sm" ? 11 : 13} tier={glyphTier === "fill" ? "fill" : undefined} aria-hidden="true" className="shrink-0" />}
       {children}
     </span>
   );

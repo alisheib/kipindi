@@ -527,7 +527,7 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
                   <>
                     <div className="flex items-center gap-2.5">
                       {/* ⚠️ LITERALS — see the pass medallion above. `h-8` is 48px here. */}
-                      <IconPlate size={36} variant="warning" aria-hidden="true"><I.alertCircle s={plateGlyph(36)} tier="fill" /></IconPlate>
+                      <IconPlate size={36} variant="warning" aria-hidden="true"><I.warning s={plateGlyph(36)} tier="fill" /></IconPlate>
                       <div>
                         <p className="font-display text-[15px] font-semibold text-text">Didn&apos;t pass quality checks</p>
                         <p className="font-mono text-[11px] text-warning-fg">Try generating again</p>

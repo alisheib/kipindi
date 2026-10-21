@@ -4,14 +4,12 @@ import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { SortTh } from "@/components/admin/admin-sort";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
-import { AccountStatusBadge, accountStatusLabel, presentedAccountStatus, KycStageBadge, kycStageLabel, kycStageVariant, fundedAxisLabel } from "@/components/admin/status-badge";
+import { AccountStatusBadge, accountStatusLabel, presentedAccountStatus, KycStageBadge, kycStageLabel, fundedAxisLabel } from "@/components/admin/status-badge";
 import {
   kycStage, isKycStage, KYC_STAGES, MONEY_NOT_APPLIED, MONEY_ONLY_STAGES, MONEY_SPLIT_STAGES,
   stageTurnsOnMoney, walletHeldTzs, FUNDED_AXIS, isFundedAxis, fundedAxisOf, isFinalRefusalCell,
   type KycStage, type KycCell, type KycMoney, type FundedAxis,
 } from "@/lib/kyc-stage";
-import { REVIEW } from "@/lib/admin-status-lexicon";
-import { Chip } from "@/components/ui/chip";
 import { Avatar } from "@/components/ui/avatar";
 import { Select } from "@/components/ui/select";
 import { Sensitive } from "@/components/ui/sensitive";
@@ -501,12 +499,11 @@ async function AdminPlayersContent({ searchParams }: { searchParams: Promise<Pla
                           it; the MONEY split is not — see `offeredStages` above. */}
                       {/* ⭐ A FINAL refusal reads "Finally refused" (2026-09-13) — the word /admin/kyc/refused and
                           `kycStatusLabel` use for the same row — never the retryable-sounding "Rejected · after
-                          upload". Same stage (`data-kyc-stage`, filter, tally), same tone via `kycStageVariant`;
-                          only the WORD changes. See `isFinalRefusalCell` for why it is not a ninth stage. */}
+                          upload". Same stage (`data-kyc-stage`, filter, tally), same tone and refused mark through
+                          the shared `KycStageBadge` (`finalRefusal`); only the WORD changes. See `isFinalRefusalCell`
+                          for why it is not a ninth stage. */}
                       <td data-kyc-stage={stageOf(u.id)} data-kyc-refusal={isFinalRefusalCell(stageOf(u.id), factsByUser.get(u.id)?.rejectReason) ? "final" : undefined}>
-                        {isFinalRefusalCell(stageOf(u.id), factsByUser.get(u.id)?.rejectReason)
-                          ? <Chip size="sm" variant={kycStageVariant(stageOf(u.id))}><span className="whitespace-nowrap">{REVIEW.kycRefusedFinal.en}</span></Chip>
-                          : <KycStageBadge cell={stageOf(u.id)} />}
+                        <KycStageBadge cell={stageOf(u.id)} finalRefusal={isFinalRefusalCell(stageOf(u.id), factsByUser.get(u.id)?.rejectReason)} />
                       </td>
                       {/* THE MONEY COLUMN — money-rights viewers only, from the one snapshot.
                           · no money rights           → "—", exactly as before, and nothing was read

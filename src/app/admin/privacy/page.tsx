@@ -17,7 +17,7 @@ import { maskedRosterLabel } from "@/lib/server/affiliate-service";
 import { ExportDsarBundleButton, FulfillDsarButton, FileDsarOnBehalfButton } from "./dsar-controls";
 import { formatDateTime } from "@/lib/utils";
 import { I } from "@/components/ui/glyphs";
-import { DsarStatusBadge, dsarTypeLabel, accountStatusLabel, playerStatusVariant } from "@/components/admin/status-badge";
+import { DsarStatusBadge, dsarTypeLabel, AccountStatusBadge } from "@/components/admin/status-badge";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
 
@@ -271,7 +271,7 @@ async function AdminPrivacyContent({ searchParams }: AdminPrivacyProps) {
                     </td>
                     <td className="py-2 pr-3 font-mono whitespace-nowrap"><Sensitive field="phone" subjectId={u.id} value={u.phoneE164} /></td>
                     <td className="py-2 pr-3">
-                      <Chip size="sm" variant={playerStatusVariant(u.status)}>{accountStatusLabel(u.status)}</Chip>
+                      <AccountStatusBadge status={u.status} />
                     </td>
                     <td className="py-2 pr-3 font-mono whitespace-nowrap">{u.createdAt.slice(0, 10)}</td>
                     <td className="py-2 pl-3">

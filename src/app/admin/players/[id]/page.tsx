@@ -280,11 +280,9 @@ async function AdminPlayerDetailContent({ params, searchParams }: PlayerDetailPr
                 <AccountStatusBadge status={user.status} />
                 {kyc && canSeePII && (
                   <a href={`/admin/players/${id}?tab=kyc`} className="inline-block hover:opacity-80 transition-opacity">
-                    <Chip size="sm" variant={kycStatusVariant(kyc.status)}>
-                      {kyc.status === "APPROVED" ? <I.shieldcheck s={10} className="inline -mt-0.5 mr-0.5" /> : <I.shieldAlert s={10} className="inline -mt-0.5 mr-0.5" />}
-                      {/* rejectReason (2026-09-13): a FINAL refusal reads "Finally refused", never the retryable "Rejected". */}
-                      KYC · {kycStatusLabel(kyc.status, kyc.rejectReason)}
-                    </Chip>
+                    {/* The shared badge, as the KYC tab draws it (its glyph and word); rejectReason (2026-09-13): a FINAL
+                        refusal reads "Finally refused", never the retryable "Rejected". */}
+                    <KycStatusBadge status={kyc.status} rejectReason={kyc.rejectReason} prefix="KYC · " />
                   </a>
                 )}
                 {/* IDENTITY-POLICY.md: format + uniqueness only, NO authority check —
