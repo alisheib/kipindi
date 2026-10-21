@@ -29,22 +29,45 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-20):** S1–S4 are on `main` dark. S5's SSD release branch
-`codex/maswali-coord-20261019` includes the U43 `main` release at `a12f7b26`
-and its live chart/layout/social-mark hotfix at `3ec111a83`.
-The player and admin surfaces, global admin search/filter/sort/paging, bounded integrity
-report coverage, reviewed consequential actions, partial-seal and device-audit feedback,
-multi-ticket slip, separate Results section, public settled-week sitemap and share image,
-and bounded public week and register caches are integrated. Focused guards, mutation proofs,
-two-store action checks and the disposable-PostgreSQL money battery passed; the battery's
-three suites passed 198/198 on the integrated source. The earlier ACTIVE player drive,
-WITHDRAWN-route drive and three-language player tile read passed. Classic parity against
-the then-current `main` passed 67/67, and the results filter's mutation proof was repaired
-and passed after the archive refactor. The final exact-commit browser and tile reads,
-exclusive two-store `test:all`, build and local `qa:live`, deployment and production
-read-back remain open. The U43 task owns the `main` push lock for its live read-back and hotfix;
-S5 owns the shared heavy-job lock and must recheck both locks and remote `main` before release.
-The rollout remains `WITHDRAWN`.
+**State (2026-10-21):** S1–S4 are on `main` dark. S5's release candidate is branch
+`claude/maswali-s5-release` (the same commits are pushed to `codex/maswali-coord-20261019`): Codex's integrated
+S5 (`bd139142`) merged with production `main` `4471bb44` (U43's house-gold restore `dd1386f0` and PHOSPHOR
+release 2b, W6) at `d1c5910f`. That merge took `main`'s copies of the three U43 RED anchor files and
+`u43-chart-direction-red.mjs`, set `test:visual-pass-r5c`'s globals.css gold census to 103 (U43's +24 and S5's
+ruled Millionea ink +7 are independent), and set `PREVIOUS_SPRITES` to the pair `main` serves (`app.76a3696e`,
+`admin.75aeb290`) before re-running `glyphs:gen`. S5 holds the player and admin surfaces, global admin
+search/filter/sort/paging, bounded integrity report coverage, reviewed consequential actions, partial-seal and
+device-audit feedback, versioned seal corrections, the multi-ticket slip, the separate Results section, the public
+settled-week sitemap and share image, and bounded public week and register caches. The rollout stays `WITHDRAWN`.
+
+**⏳ IN FLIGHT (2026-10-21, OMEGA-COMPILE01 — the Claude session asheib-65 took S5 over from Codex on Ali's word):**
+- Running on `d1c5910f`: `test:all` with the database suites in the release tree; the classic-parity calibration on
+  a `main` tree (`--prove-red`, the baseline, a null compare); every `red:*` that reads an S5-changed file in its own
+  tree; four read-only reviews (server and data, player, admin and shared UI, dark-release safety).
+- Found: production `main` is red on `test:house-bot-rules` 11.5 and `test:house-bot-seam` 4.1, 4.2 and 6.g since
+  U43's `c29cb752` (`locks.ts`, `market-service.ts`; S5 touches neither). The U43 lane (Claude asheib-bb) owns that
+  repair and lands it on `main`; S5 then merges `main` again and repeats every gate the merge touches. S5 already
+  carries self-contained fixes for five of U43's reds (`342574e6`, `678314ca`, the watchlist half of `e3cb7acf`,
+  `0823ecc2`, `a075174d`); U43 takes or replaces them so that each red is fixed once.
+- Lanes on OMEGA: Maswali (asheib-65, `F:/kipindi-locks/mln-slot-1..4`), U43 (asheib-bb, slots 5–8), PHOSPHOR
+  (asheib-66, slots 9–12). `main-push.lock` as below; each lane messages the others before taking it.
+
+**Next:** Finish S5's gates on its exact release commit — after U43's repair lands, merge `main` again — every
+changed-file reader and mutation proof, current-`main` classic parity, the admin and player browser drives and
+tile reads (every page to its end, 320–1920 × en/sw/zh), the compiled responsive sweep (the leaderboard empty
+panel), the multi-slip drive, `test:all` with the database suites, typecheck, the exact-commit production build,
+bundle verification and local `qa:live`; fix what any of them or the reviews confirm. Recheck current `main` and
+`main-push.lock` before the push. Deploy S5 dark only after every gate passes, then AGENTS.md §4's three-host,
+health, chunk, live-QA and browser read-back. S7 follows with its wide-winner settlement fix
+(`codex/maswali-s7-integration-20261019` `9277c9ab`) verified on both stores and under the 10,000-ticket load;
+S6 follows in L → D → R → N order. S8 remains at its owner and regulatory gates in §6. Do not flip the rollout as
+part of a dark release.
+
+## §0a · Historical handovers (superseded by §0 above)
+
+**Codex's S5 checkpoints (2026-10-20) — record.** Codex's state line of that day: the earlier ACTIVE player drive,
+WITHDRAWN-route drive and three-language player tile read passed; classic parity against the then-current `main`
+passed 67/67; the disposable-PostgreSQL money battery passed 198/198 on the integrated source.
 
 **Cross-device checkpoint (2026-10-20):** Fetch the remote branch
 `codex/maswali-coord-20261019` and read its HEAD; it merges U43 `a12f7b26`
@@ -91,17 +114,6 @@ wallet-status-writers, red-anchors, watchlist and report-parity. The latter
 five have focused fixes in the coordinator branch; the two house-bot guards
 still need diagnosis. The test process and its disposable PostgreSQL were
 stopped, and the run is not a final suite verdict.
-
-**Next:** Run every remaining changed-file reader and mutation proof, fresh current-`main`
-classic parity, admin and player browser/tile reads, clean-environment two-store `test:all`,
-typecheck, exact-commit production build, bundle verification and local live QA. Recheck
-current `main` and the shared release lock before any push. Deploy S5 dark only after all
-gates pass, then perform AGENTS.md §4's three-host, health, chunk, live-QA and browser
-read-back. S7 follows with its wide-winner transaction-timeout repair on its own branch;
-S6 follows in L → D → R → N order. S8 remains at its owner and regulatory gates in §6.
-Do not flip the rollout as part of a dark release.
-
-## §0a · Historical handovers (superseded by §0 above)
 
 **⏹ STOPPED (2026-10-19, last updated ~13:45 UTC, OMEGA-COMPILE01 — the lead) — RESUME HERE, from any machine (Claude or
 Codex).** Ali, at the second wrap-up: *"push everything you have now live as it is, and give me a prompt for Codex to
