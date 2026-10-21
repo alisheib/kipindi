@@ -1063,8 +1063,31 @@ const receiptGapDefects = (src: string) => {
   ok("13.3 · CONTROL · an unshrinkable label beside the figure is reported", noShrink.includes("normal or fee label cannot shrink to wrap before its value"), noShrink.join(" | "));
 }
 
+// ── §14 · S5-FIX-PLAYER: no invitation on a break ────────────────────────────────────────────────────────────────────
+console.log("\n§14 · S5-FIX-PLAYER P2: Tiketi zangu's empty list invites no reader on a break");
+/** The empty list's invitation — the week on sale (`emptyTicketsNext`) and the door to the hub — asks the break first, the
+ *  home card's rule (`millioneaCardShown`): a reader whose cooling-off or self-exclusion runs gets the title alone. */
+const emptyListDefects = (src: string) => {
+  const s = squash(code(src));
+  const d: string[] = [];
+  if (!s.includes("const invite = total === 0 && gate.visible && (await millioneaBreakOf(gate.userId)) === null;")) d.push("the empty list does not ask the break before it invites");
+  if (!s.includes("const hubWeek = invite ? (await millioneaHubNow(gate.userId, gate.state))?.week ?? null : null;")) d.push("the week on sale is read for a reader the list may not invite");
+  if (!s.includes("body={selling ? fill(t.millionea.emptyTicketsNext,")) d.push("the body is not the week on sale's own line");
+  if (!s.includes("action={invite ? ( <Link href={MILLIONEA_HREF.hub as never}")) d.push("the door to the hub is offered without the invitation's answer");
+  if (/action=\{gate\.visible \?/.test(s)) d.push("the door to the hub is offered on the rollout alone");
+  return d;
+};
+{
+  const d = emptyListDefects(read(`${APP}/tickets/page.tsx`));
+  ok("14.1 · Tiketi zangu's empty list invites (the week on sale, the door to the hub) only a reader shown Millionea and NOT on a break — on a break, the title alone (the home card's rule)", d.length === 0, d.join(" | "));
+  const onRollout = emptyListDefects(read(`${APP}/tickets/page.tsx`).replace("const invite = total === 0 && gate.visible && (await millioneaBreakOf(gate.userId)) === null;", "const invite = total === 0 && gate.visible;"));
+  ok("14.1′ CONTROL · an invitation that forgets the break is reported", onRollout.includes("the empty list does not ask the break before it invites"), onRollout.join(" | "));
+  const oldDoor = emptyListDefects(read(`${APP}/tickets/page.tsx`).replace("action={invite ? (", "action={gate.visible ? ("));
+  ok("14.1″ CONTROL · the old door, offered on the rollout alone, is reported", oldDoor.includes("the door to the hub is offered on the rollout alone"), oldDoor.join(" | "));
+}
+
 console.log(`\n${"═".repeat(70)}\n  MASWALI UI: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run PRINTS; it only rises, to a printed number. §3.1 and §4.3 each run a small case table. */
-const MIN_ASSERTIONS = 143; // 2026-10-19 green run, through §13
+const MIN_ASSERTIONS = 149; // 2026-10-21 green run, through §14 (S5-FIX-PLAYER P2)
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);
