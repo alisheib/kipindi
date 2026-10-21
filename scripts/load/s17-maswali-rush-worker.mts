@@ -27,7 +27,7 @@ import { RUSH_SLIP_SIZES } from "./s17-maswali-rush-target.mts";
 process.env.SESSION_SECRET ??= "maswali-s17-session-secret-0123456789abcdef";
 const job: any = JSON.parse(readFileSync(process.env.RUSH_JOB ?? "", "utf8"));
 
-const { loadMaswaliWorld, DRAFTER } = await import("../lib/maswali-money-world.mts");
+const { loadMaswaliWorld, DRAFTER, READER } = await import("../lib/maswali-money-world.mts");
 const W = await loadMaswaliWorld();
 const scheduler = await import("../../src/lib/server/maswali-scheduler.ts");
 const { merkleRoot } = await import("../../src/lib/maswali-commitment.ts");
@@ -110,8 +110,19 @@ try {
     const round: any = await openRound(chain as never, openIso, obs.id, 2_400);
     if (!round.ok) throw new Error(`the Up & Down round: ${round.error}`);
 
-    // The Millionea week: opened as every suite opens one, then its close brought to the run's instant (MB-28).
-    const { week } = await W.openWeek({ weeksAhead: 2 });
+    // The Millionea week: drafted, attested and opened through the product's doors, then its close brought to the run's
+    // instant (MB-28). ⚠️ S7-F8 · OPENED AT THE REAL CLOCK: the open stamps the instant it happens, and the database holds a
+    // week's close after its open (`MaswaliCycle_close_after_open_check`), so a week opened at its own start two weeks ahead
+    // (the world's `openWeek`) could never have its close brought to now — the prep's first run failed there (2026-10-21).
+    // An ordinary week may open early (MR-30 bars only the final week).
+    const start = W.weekStartAhead(2);
+    const drafted: any = await W.svc.createWeek({ weekStartMs: start, visibility: "PUBLIC", questions: W.questions(start), officerId: DRAFTER, now: new Date() });
+    if (!drafted.ok) throw new Error(`the week could not be drafted: ${drafted.error}`);
+    const attested: any = await W.svc.attestParity({ weekId: drafted.week.id, officerId: READER });
+    if (!attested.ok) throw new Error(`the week could not be attested: ${attested.error}`);
+    const opened: any = await W.svc.openWeek({ weekId: drafted.week.id, officerId: DRAFTER, guarantee: W.money.guaranteeReader, now: new Date() });
+    if (!opened.ok) throw new Error(`the week could not be opened: ${opened.error}`);
+    const week = opened.week;
     const dbNow = await W.money.dbNowMs(null);
     const moved: any = await W.svc.moveClose({ weekId: week.id, toCloseAt: new Date(dbNow + job.closeInSec * 1_000).toISOString(), officerId: DRAFTER, now: new Date() });
     if (!moved.ok) throw new Error(`the week's close could not be brought to the run (MB-28): ${moved.error}`);
