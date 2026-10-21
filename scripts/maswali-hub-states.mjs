@@ -426,7 +426,27 @@ if (RUN === "a") {
       if (locale === "zh") ok(`${label} · L8 zh says the count as 已公布 n/15 个结果`, /已公布 5\/15 个结果/.test(live ?? ""), j(live));
     },
   });
-  await act({ act: "seal", slots: [6, 7, 8, 9, 10, 11, 12, 13, 14, 15], outcome: "YES" });
+  // ── M11 / R1-motion L2 · a result that arrives while the reader looks presses once; the first paint presses nothing ─────
+  // The reader's page stays open while two results are sealed; the page's own refresh (the poller's event) brings them in.
+  const early = want("press") ? [6, 7] : [];
+  if (want("press")) {
+    await setLocale(demoClassic, "en");
+    const page = await demoClassic.newPage();
+    page.on("pageerror", (e) => errs.push(`press: ${e}`));
+    await page.setViewportSize({ width: 1280, height: 1400 });
+    await open(page, "/millionea");
+    const atLoad = await page.locator("[data-pressed]").count();
+    ok("press · classic · en @1280 · M11 opening the hub presses nothing (five results already in)", atLoad === 0, `pressed at load: ${atLoad}`);
+    await act({ act: "seal", slots: early, outcome: "YES" });
+    await page.evaluate(() => window.dispatchEvent(new Event("50pick:refresh")));
+    await page.waitForSelector('[data-slot="7"] [data-pressed]', { timeout: 20_000 }).catch(() => {});
+    const pressed = await page.evaluate(() => [...document.querySelectorAll("[data-pressed]")].map((el) => Number(el.closest("[data-slot]")?.getAttribute("data-slot"))));
+    const steps = await page.evaluate(() => [...document.querySelectorAll("[data-pressed] .maswali-attest")].map((el) => getComputedStyle(el).getPropertyValue("--i").trim()));
+    ok("press · classic · en @1280 · M11 the two results that arrived press, in slot order, and only they", j(pressed) === j(early) && j(steps) === j(["0", "1"]), j({ pressed, steps }));
+    await page.screenshot({ path: `${OUT}/press-classic-en-1280.png` });
+    await page.close();
+  }
+  await act({ act: "seal", slots: [6, 7, 8, 9, 10, 11, 12, 13, 14, 15].filter((s) => !early.includes(s)), outcome: "YES" });
   await shoot("objections", "classic", demoClassic, { check: closedCheck({ en: "Objection window", sw: "Dirisha la pingamizi", zh: "异议窗口" }), matrix: { sw: [320, 360, 1280], en: [360], zh: [360] } });
   await act({ act: "window", open: false });
   await shoot("settling", "classic", demoClassic, { check: closedCheck({ en: "Settling", sw: "Inakamilishwa", zh: "待结算" }), matrix: { sw: [360, 1280], en: [360], zh: [360] } });

@@ -123,6 +123,16 @@ const ledgerDefects = (l: L3, m: string) => {
   ok("1.1′ PLANT · the old home-made <dl> ledger is reported", ledgerDefects("en", oldDl).length > 0);
   const eyebrows = hubLedgerOf("en", figure()).replaceAll('class="min-w-0 text-body-sm text-text"', 'class="min-w-0 font-mono text-micro uppercase eyebrow text-text-subtle"');
   ok("1.1″ PLANT · WIP 1's rows (the confirm's micro capitals for a ledger's nouns) are reported", ledgerDefects("en", eyebrows).some((x) => x.includes("capitals")));
+  // M10 · a carry that came opens its week's register page; one still waiting on its week names the week and links nothing
+  // — the register draws a week once it is final (its live page is the REGISTER lane's, H2), and a door never opens a 404.
+  const { registerWeekHref } = req("../src/app/millionea/millionea-parts.tsx") as typeof import("../src/app/millionea/millionea-parts.tsx");
+  const inRow = (input: ReturnType<typeof HP.ledgerInputOf>) => MLR.millioneaLedgerRows(dict.en as never, "en", input).find((r) => r.key === "in");
+  const waiting = HP.ledgerInputOf(figure() as never, 1_000, false);
+  const came = HP.ledgerInputOf(figure({ carryPendingCode: null, carryIn: 389_000, carryFromCode: "MLN-2026-W47", atLeast: false }) as never, 1_000, false);
+  const linkDefects = (w: typeof waiting) => [...(inRow(w)?.href ? ["the waiting carry links a week the register does not draw yet"] : []), ...(inRow(came)?.href !== registerWeekHref("MLN-2026-W47") ? ["the carry that came links nowhere"] : [])];
+  ok("1.3 · the carry that came opens Week 47's register page; the carry still waiting on Week 47 links nothing", linkDefects(waiting).length === 0, j(linkDefects(waiting)));
+  ok("1.3′ PLANT · a waiting carry linked to its week's page (a 404 until that week is final) is reported",
+    linkDefects({ ...waiting, carryIn: { ...waiting.carryIn!, href: registerWeekHref("MLN-2026-W47") } }).length > 0);
 }
 
 // ── §2 · L10 · the figure holds one line at 320 ──────────────────────────────────────────────────────────────────────────
@@ -380,7 +390,7 @@ console.log("\n§10 · the hub's new and changed words, as decided, in three lan
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI HUB: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run prints (S5-DESIGN-HUB 3: 34; 4, the one ledger and zh's spacing rule: 43; 6, one
- *  carry origin: 45). It only rises. */
-const MIN_ASSERTIONS = 45;
+ *  carry origin: 45; 7, no door to a week the register does not draw yet: 47). It only rises. */
+const MIN_ASSERTIONS = 47;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);
