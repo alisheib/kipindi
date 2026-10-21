@@ -1,5 +1,11 @@
 # MASWALI-BUILD — hand-over of 2026-10-21 (Claude, OMEGA-COMPILE01, the Maswali lead)
 
+> ⏳ **2026-10-21 PM (Ali: "proceed", then "work for 2 hours and push everything and progress … so we continue from another machine").**
+> The lanes were resumed and the S5 release moved on (see `MERGE-NOTES.md` here: every PM ruling, what each lane changed, and
+> what the next integration must do). The final state of this round is written at the top of this file at the round's end
+> (~17:05 UTC); until then, read MASWALI-PLAN §0 on `claude/maswali-s5-release` and each lane branch's head commit.
+
+
 Ali stopped the session ("finish what you're doing … so we proceed on another session with clean pushed"). Codex is out:
 only Claude works 50pick now. Read `docs/MASWALI-PLAN.md` §0 on `claude/maswali-s5-release` first; this folder holds
 what §0 points to.
