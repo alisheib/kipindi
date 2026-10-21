@@ -631,8 +631,8 @@ ok("8.3 · the week settled: two tickets of ten of ten", releasedA.ok && (await 
       && !(await P.millioneaNotices(P1)).some((n: any) => n.notice === "RESULT") && (await P.millioneaNotices(P2)).some((n: any) => n.notice === "RESULT"),
     J([m1, m2, odd, noWeek, ahead, noInstant]));
   const h = await P.millioneaHub(viewer(P1));
-  ok("8.21 · the hub: the week on sale, and the settled week as its 'last week' row", h.week?.id === B.id && h.grading === null && h.lastWeek?.id === A.id
-    && h.lastWeek.winners === 2 && h.lastWeek.share === expectA.share && h.lastWeek.refundsPending === false, J(h.lastWeek));
+  ok("8.21 · the hub: the week on sale, and the settled week as its 'last week' row — the week right before it in the calendar (P8: `lastWeekIsPrevious`)", h.week?.id === B.id && h.grading === null && h.lastWeek?.id === A.id
+    && h.lastWeekIsPrevious === true && h.lastWeek.winners === 2 && h.lastWeek.share === expectA.share && h.lastWeek.refundsPending === false, J(h.lastWeek));
   ok("8.22 · MB-90 · /results' Millionea section is the register's latest final weeks", J(await P.millioneaResultsSection(4)) === J(list.slice(0, 4)));
 }
 
@@ -981,6 +981,8 @@ const atL = await W.closeAndSeal(L, startL);
     J({ lateSeq: lateDraft.seq, earlySeq: earlyDraft.seq }));
   ok("12b.4 · ⭐ RR1 · with two weeks being graded, the hub leads with the newest IN THE CALENDAR and the how-to reads that week's frozen rules — never the one drafted last",
     hub.week?.id === L.id && how.source === "WEEK" && how.weekCode === L.code, J({ hub: hub.week?.code, how: how.weekCode }));
+  ok("12b.4a · ⭐ P8 · the newest final week (H) is NOT \"last week\" while the week right before the hub's own (E) is still being graded",
+    hub.lastWeek?.id === H.id && hub.lastWeekIsPrevious === false, J({ last: hub.lastWeek?.code, previous: hub.lastWeekIsPrevious }));
   const vL = await P.millioneaTicket(PX, (await dal.ticketStore.listForUser(PX, { cycleId: L.id }))[0].serial);
   ok("12b.5 · RR2's control: outside the final week, a ticket with a miss reads 'cannot win on the results so far' (provisional)",
     vL.week.isFinal === false && vL.shown === "running" && vL.cannotWinSoFar === true, J({ isFinal: vL.week.isFinal, cannot: vL.cannotWinSoFar }));

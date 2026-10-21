@@ -159,9 +159,12 @@ function QuestionRow({ t, locale, q }: { t: Dict; locale: Locale; q: MillioneaHu
 /** The fifteen, mains first, the reserves under their own head on the inset material (§10 §3.3 item 5). */
 function WeekQuestions({ t, locale, w }: { t: Dict; locale: Locale; w: MillioneaHubWeek }) {
   const qs = bySlot(w.questions);
+  // "This week's questions" for the week on sale alone; a week being graded is named by its number (S5-FIX-PLAYER P8, the
+  // register's own R6: "Week 47's questions" — the hub headed a past week's fifteen "this week's" when none sold).
+  const heading = w.state === "OPEN" ? t.millionea.weekQuestions : fill(t.millionea.regWeekQuestions, { week: weekNumberOf(w.code) });
   return (
     <section id="mln-questions" aria-labelledby="mln-questions-h" className="flex scroll-mt-[96px] flex-col" data-testid="millionea-hub-questions">
-      <h2 id="mln-questions-h" className="pb-2 font-display text-title-sm font-bold text-text">{t.millionea.weekQuestions}</h2>
+      <h2 id="mln-questions-h" className="pb-2 font-display text-title-sm font-bold text-text">{heading}</h2>
       <ol>{qs.filter((q) => q.role === "MAIN").map((q) => <QuestionRow key={q.slot} t={t} locale={locale} q={q} />)}</ol>
       <div className="flex flex-col gap-0.5 border-t border-border px-1 pb-1.5 pt-2" style={{ background: "var(--wash-inset)", boxShadow: "var(--edge-shade)" }}>
         <span className="font-mono text-caption uppercase eyebrow text-text-subtle"><MaswaliFacts facts={factsOf(t.millionea.reservesHead)} /></span>
@@ -172,10 +175,13 @@ function WeekQuestions({ t, locale, w }: { t: Dict; locale: Locale; w: Millionea
   );
 }
 
-/** Last week as one closed row (§10 §3.3 item 6): its carry, its winners, or its void — a door to its register page. */
+/** Last week as one closed row (§10 §3.3 item 6): its carry, its winners, or its void — a door to its register page. ⭐
+ *  S5-FIX-PLAYER P8: only when it IS last week — the week right before the hub's own in the calendar chain
+ *  (`lastWeekIsPrevious`): while a later week is still being graded, the newest final week is not, and the grading block
+ *  stands for the week before. */
 function LastWeekRow({ t, locale, hub }: { t: Dict; locale: Locale; hub: MillioneaHub }) {
   const last = hub.lastWeek;
-  if (!last) return null;
+  if (!last || !hub.lastWeekIsPrevious) return null;
   const week = weekNumberOf(last.code);
   const row = last.state === "SETTLED" && (last.winners ?? 0) === 0
     ? <MaswaliLastWeek t={t} locale={locale} week={week} carried={last.carriedForward ?? 0} id={CARRIED_FIGURE_ID} />
@@ -194,13 +200,17 @@ function LastWeekRow({ t, locale, hub }: { t: Dict; locale: Locale; hub: Million
   );
 }
 
-/** The reader's tickets in a week: "Tiketi zako wiki hii: 2 kati ya 10", then a row per held ticket (D-18). */
+/** The reader's tickets in a week: a row per held ticket (D-18) — under "Tiketi zako wiki hii: 2 kati ya 10" for the week on
+ *  SALE alone (S5-FIX-PLAYER P8): the cap is a selling week's allowance, and a week being graded is not "this week" (its
+ *  block said "Your tickets this week: 2 of 10" under the open week's own line). A week being graded keeps its rows. */
 function MineBlock({ t, locale, w }: { t: Dict; locale: Locale; w: MillioneaHubWeek }) {
   if (!w.mine) return null;
   const held = w.mine.tickets.filter((x) => x.shown !== "cancelled");
+  const onSale = w.state === "OPEN";
+  if (!onSale && held.length === 0) return null;
   return (
     <div className="flex flex-col gap-2" data-testid="millionea-hub-mine">
-      <p className="text-body-sm text-text-muted">{keepFact(locale, fill(t.millionea.yourTicketsThisWeek, { n: formatNumber(w.mine.held), cap: formatNumber(w.mine.cap) }))}</p>
+      {onSale && <p className="text-body-sm text-text-muted">{keepFact(locale, fill(t.millionea.yourTicketsThisWeek, { n: formatNumber(w.mine.held), cap: formatNumber(w.mine.cap) }))}</p>}
       {held.map((row) => (
         <MaswaliHeldTicketRow key={row.serial} href={ticketPageHref(row.serial)} serial={row.serial} line={lineOf(w.questions, row.slots, w.state)} />
       ))}
@@ -321,7 +331,7 @@ export default async function MillioneaHubPage() {
                   price={w.ticketPrice}
                   opensAt={w.opensAt}
                   voiding={voidingNow(w, nowMs)}
-                  carryFrom={rolloverUnseen && hub.lastWeek ? CARRIED_FIGURE_ID : undefined}
+                  carryFrom={rolloverUnseen && hub.lastWeek && hub.lastWeekIsPrevious ? CARRIED_FIGURE_ID : undefined}
                   carryPlay={rolloverUnseen}
                 />
               ) : null}

@@ -1246,6 +1246,30 @@ const iconDefects = (src: string) => {
     !!oldHub && oldHub.resultsTo === Number(deadline) && oldHub.resultsTo !== how?.resultsTo && oldHowTo !== how?.resultsTo);
 }
 
+// P8 · while a new week sells and the previous one is graded, the hub names each week truly
+const weekLabelDefects = (src: string) => {
+  const s = squash(code(src));
+  const d: string[] = [];
+  if (!s.includes("const heading = w.state === \"OPEN\" ? t.millionea.weekQuestions : fill(t.millionea.regWeekQuestions, { week: weekNumberOf(w.code) });")
+    || !s.includes(">{heading}</h2>")) d.push("a week being graded heads its fifteen \"This week's questions\"");
+  if (!s.includes("if (!last || !hub.lastWeekIsPrevious) return null;")) d.push("\"Last week\" names a week that is not the one before the hub's");
+  if (!s.includes("carryFrom={rolloverUnseen && hub.lastWeek && hub.lastWeekIsPrevious ? CARRIED_FIGURE_ID : undefined}")) d.push("the carry can leave from a row that is not drawn");
+  const mine = s.slice(s.indexOf("function MineBlock("), s.indexOf("function BuyBlock("));
+  if (!mine.includes("const onSale = w.state === \"OPEN\";") || !mine.includes("{onSale && <p className=\"text-body-sm text-text-muted\">{keepFact(locale, fill(t.millionea.yourTicketsThisWeek,")) d.push("a week being graded says \"Your tickets this week: n of cap\"");
+  return d;
+};
+{
+  const d = weekLabelDefects(read(HUB));
+  ok("5.P8 · while a new week sells and the last one is graded the hub names each week truly: no cap line (\"Your tickets this week: 2 of 10\") under a week being graded, its own tickets kept; \"Last week\" only for the week right before the hub's own (the read model's `lastWeekIsPrevious`); a week being graded heads its questions \"Week 47's questions\"",
+    d.length === 0, d.join(" | "));
+  const plants = [
+    weekLabelDefects(read(HUB).replace("if (!last || !hub.lastWeekIsPrevious) return null;", "if (!last) return null;")),
+    weekLabelDefects(read(HUB).replace("{onSale && <p className=\"text-body-sm text-text-muted\">", "{<p className=\"text-body-sm text-text-muted\">")),
+    weekLabelDefects(read(HUB).replace(">{heading}</h2>", ">{t.millionea.weekQuestions}</h2>")),
+  ];
+  ok("5.P8′ PLANT · each old label put back — \"Last week\" for any final week, the cap line under a graded week, \"This week's questions\" over a past week — is reported", plants.every((p) => p.length > 0), j(plants));
+}
+
 // P18 · the slip's two notices are the kit's Callout, never a hand-rolled copy
 const kitNoticeDefects = (src: string) => {
   const s = squash(code(src));
@@ -1276,7 +1300,7 @@ const kitNoticeDefects = (src: string) => {
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI DESIGN: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run prints; VIS-P's fact, example and word plants brought it to 110, and S5-FIX-PLAYER's §5
- *  (P5, P6, P7, P10, P13, P15, P17, P18) to 137. */
-const MIN_ASSERTIONS = 137;
+ *  (P5, P6, P7, P8, P10, P13, P15, P17, P18) to 139. */
+const MIN_ASSERTIONS = 139;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

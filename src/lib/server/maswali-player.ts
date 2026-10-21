@@ -578,6 +578,13 @@ export type MillioneaHub = {
   grading: MillioneaHubWeek | null;
   /** The newest final week of the line in the calendar (R3) — never the last one drafted. */
   lastWeek: MillioneaWeekSummary | null;
+  /**
+   * ⭐ S5-FIX-PLAYER P8 · `lastWeek` IS "LAST WEEK" only when it is the week right before the hub's own in the line's calendar
+   * chain (the newest earlier week that opened — DRAFTs aside, a voided week counted): while a later week is still being
+   * graded between them, the newest final week is two weeks back, and the hub said "Last week: Week 46" under Week 47's
+   * grading. With no week on the hub, it is last week when its calendar week is the one before now's.
+   */
+  lastWeekIsPrevious: boolean;
   /** The sales pause (MB-62). ⛔ A boolean only: the officer's reason is an internal note, never a player's line. */
   paused: boolean;
   /** MR-30 · LIVE; ENDING (a final week runs); RETIRED (Millionea has ended); PASSES_ON (the next week becomes final). */
@@ -643,6 +650,14 @@ export async function millioneaHub(viewer: MillioneaViewer, now: Date = new Date
   const lead = open ?? grading[0] ?? null;
   const other = open ? (grading[0] ?? null) : null;
   const last = newestFirst(await weekStore.list({ visibility: line, states: TERMINAL }))[0] ?? null;
+  let lastWeekIsPrevious = false;
+  if (last && lead) {
+    const at = calendarStartMs(lead);
+    const before = newestFirst((await weekStore.list({ visibility: line })).filter((w) => w.state !== "DRAFT" && calendarStartMs(w) < at))[0] ?? null;
+    lastWeekIsPrevious = before?.id === last.id;
+  } else if (last) {
+    lastWeekIsPrevious = calendarStartMs(last) === eatWeekStartMs(nowMs) - 7 * 86_400_000;
+  }
   const paused = getSalesPause().paused;
   let life: MillioneaHub["life"] = "LIVE";
   try { life = (await sunsetState()).kind; } catch { life = "LIVE"; }
@@ -651,6 +666,7 @@ export async function millioneaHub(viewer: MillioneaViewer, now: Date = new Date
     week: lead ? await hubWeekOf(lead, viewer, nowMs, paused) : null,
     grading: other ? await hubWeekOf(other, viewer, nowMs, paused) : null,
     lastWeek: last ? await summaryOf(last) : null,
+    lastWeekIsPrevious,
     paused, life,
     nextOpensAt: open || life === "ENDING" || life === "RETIRED" ? null : templateNextOpen(nowMs),
     notices: viewer.userId ? await millioneaNotices(viewer.userId, line).catch(() => []) : [],
