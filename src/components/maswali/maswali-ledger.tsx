@@ -91,11 +91,10 @@ export type MillioneaLedgerInput = {
 export type MillioneaLedgerRow = {
   key: string;
   label: ReactNode;
-  /** The row's detail, on its own line under the label. */
+  /** The row's detail, on its own line UNDER the label and the figure, across the row's whole width (the lead's ruling of
+   *  2026-10-21: in the label's column beside a total's figure, Money out's parts wrapped to six short lines at 320 sw and
+   *  tore "imelipwa kwa" from "washindi"). The label and the figure keep their row. */
   note?: ReactNode;
-  /** The note runs the row's whole width, under its figure too — for a line of figures (the fee's levies, Money out's
-   *  parts), which the label's column alone wrapped to six lines at 320 beside a total's figure (the tile read). */
-  wideNote?: boolean;
   value: ReactNode;
   emphasis?: "fee" | "muted" | "total";
   tone?: "warning";
@@ -124,6 +123,13 @@ export function ticketSalesRuns(sold: string, price: string): string[] {
  *  "TRA" from its share at 320). */
 function factLine(locale: Locale, line: string, runs: readonly string[] = []): ReactNode {
   return <MaswaliFacts facts={factsOf(line).map((f) => keepFact(locale, f, runs.filter((r) => f.includes(r))))} />;
+}
+
+/** A note's line of facts: each part ONE unbroken run (the lead's ruling) — at 320 the parts stack whole, wider they flow,
+ *  the platform's separator between them, never opening or ending a line. Every part is narrower than the narrowest note
+ *  line (the card's 264px at 320): "imelipwa kwa washindi TZS 1,740,000" is about 245px. */
+function noteLine(locale: Locale, parts: readonly string[]): ReactNode {
+  return <MaswaliFacts facts={parts.map((p) => keepFact(locale, p, [p]))} />;
 }
 
 /** A carry row's label: the chain's week when it names one, else the label that names none (P9). */
@@ -218,12 +224,13 @@ export function millioneaLedgerRows(t: Dict, locale: Locale, f: MillioneaLedgerI
       const fee = f.fee ?? 0;
       const pct = f.feePct;
       afterIn.push({
-        key: "fee", tone: "warning", emphasis: "fee", wideNote: true,
+        key: "fee", tone: "warning", emphasis: "fee",
         label: pct === null ? m.fee : keepFact(locale, fill(m.feeLine, { pct }), [`${pct}%`]),
-        // The levies are taken OUT OF the fee, never from a player (AGENTS.md §6): one muted line under it, with amounts.
-        note: f.levies && fee > 0 ? factLine(locale, fill(m.ledgerLevies, {
+        // The levies are taken OUT OF the fee, never from a player (AGENTS.md §6): one muted line under it, with amounts —
+        // each levy one run ("TRA 10% TZS 221": the tile read tore "TRA" from its share at 320).
+        note: f.levies && fee > 0 ? noteLine(locale, factsOf(fill(m.ledgerLevies, {
           traPct: f.levies.traPct, tra: formatTzs(f.levies.tra), gbtPct: f.levies.gbtPct, gbt: formatTzs(f.levies.gbt),
-        }), [`TRA ${f.levies.traPct}% ${formatTzs(f.levies.tra)}`, `GBT ${f.levies.gbtPct}% ${formatTzs(f.levies.gbt)}`]) : undefined,
+        }))) : undefined,
         // A fee taken is the platform's signed figure ("−TZS 136,500", A4).
         value: <span className="amount">{fee > 0 ? formatTzsSigned(-fee) : formatTzs(0)}</span>,
       });
@@ -234,7 +241,7 @@ export function millioneaLedgerRows(t: Dict, locale: Locale, f: MillioneaLedgerI
         const perTicket = counted(f.winners, m.perTicketOne, m.perTicket);
         afterIn.push({
           key: "share", label: keepFact(locale, perTicket, perTicket.match(/^÷ \S+/) ?? []), value: money(f.share),
-          note: f.sunset ? factLine(locale, counted(f.sunset.tickets, m.sunsetScoreOne, m.sunsetScore, { score: f.sunset.score })) : undefined,
+          note: f.sunset ? noteLine(locale, factsOf(counted(f.sunset.tickets, m.sunsetScoreOne, m.sunsetScore, { score: f.sunset.score }))) : undefined,
         });
       }
       // MR-25 · the remainder only in a week the house did not top up (P4): a top-up already left it out.
@@ -249,9 +256,9 @@ export function millioneaLedgerRows(t: Dict, locale: Locale, f: MillioneaLedgerI
       // left out, as its row is (the critic's L11: "carried forward TZS 0" read as a third figure).
       const parts = factsOf(fill(m.ledgerOutParts, { fee: formatTzs(fee), paid: formatTzs(paid), carried: formatTzs(carried) }));
       afterIn.push({
-        key: "moneyOut", label: m.ledgerMoneyOut, emphasis: "total", divider: true, wideNote: true,
+        key: "moneyOut", label: m.ledgerMoneyOut, emphasis: "total", divider: true,
         // "To winners" holds the remainder too, so the rows above do not add up to this on their own: say its parts.
-        note: <MaswaliFacts facts={(carried > 0 ? parts : parts.slice(0, 2)).map((p) => keepFact(locale, p))} />,
+        note: noteLine(locale, carried > 0 ? parts : parts.slice(0, 2)),
         value: money(fee + paid + carried),
       });
     }
@@ -264,7 +271,9 @@ export function millioneaLedgerRows(t: Dict, locale: Locale, f: MillioneaLedgerI
  * The rows, drawn: the kit's ReceiptRow in its sentence-case label, a step of space between the groups, a hairline only
  * above a total (the withdraw confirm's bottom line — never a rule under every row, H5). A carry row that names its week
  * opens that week's register page: the whole row is the link (at least `--h-control-md`, 40px), its label in the link
- * ink with the chevron after it, its figure in the column every other figure stands in.
+ * ink with the chevron after it, its figure in the column every other figure stands in. A row's note stands on its own
+ * line under the label AND the figure, across the row's whole width, in the kit row's note face (the lead's ruling of
+ * 2026-10-21) — never squeezed into the label's column beside a figure.
  */
 export function MaswaliLedger({ rows, className }: { rows: readonly MillioneaLedgerRow[]; className?: string }) {
   return (
@@ -279,7 +288,6 @@ export function MaswaliLedger({ rows, className }: { rows: readonly MillioneaLed
                 <I.chevronRight s={14} edge="end" text="body-400" className="shrink-0" />
               </span>
             ) : r.label}
-            note={r.wideNote ? undefined : r.note}
             value={r.value}
             emphasis={r.emphasis}
             tone={r.tone}
@@ -287,8 +295,8 @@ export function MaswaliLedger({ rows, className }: { rows: readonly MillioneaLed
             className={cn(r.gap && "mt-3")}
           />
         );
-        // A wide note: the kit row's own note face, on the row's whole width under its figure.
-        const wide = r.wideNote && r.note !== undefined && r.note !== null
+        // The note: the kit row's own note face, on the row's whole width under its label and its figure.
+        const wide = r.note !== undefined && r.note !== null
           ? <span className="mt-0.5 block text-body-sm text-text-muted">{r.note}</span>
           : null;
         return r.href ? (

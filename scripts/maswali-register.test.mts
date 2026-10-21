@@ -459,8 +459,9 @@ check("9.1", "A1 · no register body joins two facts into one string with \" · 
 check("9.2", "A1 · the ledger's notes stand on their own line (the kit row's `note`), and the levies are one muted line under the fee drawn as facts (`factLine`: no \"·\" opens or closes a line) — never a plain \"TRA … · GBT …\" string", (w) => {
   const s = code(w, "ledger");
   const notes = s.includes("note: m.topUpNote") && s.includes("note: m.remainderNote");
-  const levies = s.includes("note: f.levies && fee > 0 ? factLine(locale, fill(m.ledgerLevies, {")
-    && s.includes("function factLine(locale: Locale, line: string, runs: readonly string[] = []): ReactNode { return <MaswaliFacts facts={factsOf(line).map((f) => keepFact(locale, f, runs.filter((r) => f.includes(r))))} />; }")
+  // ⚠️ RE-PINNED 2026-10-21 (the lead's ruling): a note's line is `noteLine` — its parts as facts, each ONE run.
+  const levies = s.includes("note: f.levies && fee > 0 ? noteLine(locale, factsOf(fill(m.ledgerLevies, {")
+    && s.includes("function noteLine(locale: Locale, parts: readonly string[]): ReactNode { return <MaswaliFacts facts={parts.map((p) => keepFact(locale, p, [p]))} />; }")
     && !s.includes("t.millionea.levies") && !s.includes("m.levies");
   return [notes && levies, j({ notes, levies })];
 });
@@ -838,7 +839,7 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["zh's door and title disagree", "8.1", plantWord("zh", "register", "每周登记册")],
   // §9
   ["A1 undone — a ledger note after a \"·\"", "9.1", plantSrc("ledger", "label: m.topUp, note: m.topUpNote,", "label: `${m.topUp} · ${m.topUpNote}`,")],
-  ["A1 undone — the levies one plain \"·\"-joined string", "9.2", plantSrc("ledger", "return <MaswaliFacts facts={factsOf(line).map((f) => keepFact(locale, f, runs.filter((r) => f.includes(r))))} />;", "return line;")],
+  ["A1 undone — the levies one plain \"·\"-joined string", "9.2", plantSrc("ledger", "return <MaswaliFacts facts={parts.map((p) => keepFact(locale, p, [p]))} />;", 'return parts.join(" · ");')],
   ["A1 undone — the standing's count ungrouped", "9.3", plantSrc("week", "{formatNumber(s.ticketsWithoutAMiss)}", "{s.ticketsWithoutAMiss}")],
   ["a `kept` that keeps nothing", "9.4", { ...REAL, kept: (text) => text }],
   ["A1 undone — the refund's price free to break", "9.5", plantSrc("ledger", "label: keepFact(locale, fill(m.refundEach, { price }), [price])", "label: fill(m.refundEach, { price })")],

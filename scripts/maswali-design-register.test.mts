@@ -410,12 +410,31 @@ check("2.10", "the drawing is the kit's own: every row a sentence-case ReceiptRo
 // The tile read of 2026-10-21 (How, sw 320): Money out's parts wrapped to six lines in the label's column beside the total's
 // figure ("Ada TZS 136,500 / imelipwa kwa / washindi / TZS 913,500 / imehamishwa / TZS 0"); a line of figures runs the row's
 // whole width instead — the fee's levies and Money out's parts — while a label's own detail stays under its label.
-check("2.12", "a line of figures under a row — the fee's levies, Money out's parts — runs the row's whole width, under its figure too (the kit row's note face); a label's own detail (the sales note) stays in the label's column", (w) => {
-  const drawn = inApp("sw", h(w.Ledger as never, { rows: w.ledger(dict.sw as never, "sw", CASES.dust) } as never));
-  const seg = (key: string) => drawn.split('data-ledger-row="').find((s) => s.startsWith(`${key}"`)) ?? "";
+// ⚠️ RE-PINNED 2026-10-21 (the lead's ruling, from TICKETS' tile ticket-wonBig-sw-320-s2): EVERY row's note stands on its own
+// line under the label and the figure, across the row's whole width — never in the label's column beside a figure — and a
+// note's parts are each ONE unbroken run, so at 320 they stack whole and wider they flow (never "imelipwa kwa" / "washindi").
+check("2.12", "every row's note stands on its own line under its label and its figure, across the row's whole width (the kit row's note face, never in the label's column), and each part of a note's line — the fee's levies, Money out's parts, the sunset's top score — is ONE unbroken run, in sw, en and zh", (w) => {
+  const off: string[] = [];
   const WIDE = 'class="mt-0.5 block text-body-sm text-text-muted"';
-  const wide = ["fee", "moneyOut"].every((k) => seg(k).includes(WIDE)) && !seg("sales").includes(WIDE) && seg("sales").includes('class="text-body-sm text-text-muted"');
-  return [wide, j({ fee: seg("fee").includes(WIDE), out: seg("moneyOut").includes(WIDE), sales: seg("sales").includes(WIDE) })];
+  for (const l of LOCALES) {
+    for (const name of ["dust", "topped", "sunset"]) {
+      const f = CASES[name];
+      const rows = w.ledger(dict[l] as never, l, f);
+      const drawn = inApp(l, h(w.Ledger as never, { rows } as never));
+      const seg = (key: string) => drawn.split('data-ledger-row="').find((s) => s.startsWith(`${key}"`)) ?? "";
+      for (const r of rows.filter((x) => x.note !== undefined && x.note !== null)) if (!seg(r.key).includes(WIDE)) off.push(`${l}/${name}/${r.key}: not across the row`);
+      if (drawn.includes('class="text-body-sm text-text-muted"')) off.push(`${l}/${name}: a note in the label's column`);
+      for (const key of ["fee", "moneyOut", "share"]) {
+        const r = rows.find((x) => x.key === key);
+        if (!r?.note) continue;
+        const parts = textOf(inApp(l, h(React.Fragment, null, r.note as never))).split(" · ").map((p) => p.trim()).filter(Boolean);
+        const runs = keptTexts(inApp(l, h(React.Fragment, null, r.note as never)));
+        const torn = parts.filter((p) => !runs.some((x) => x.trim() === p));
+        if (torn.length) off.push(`${l}/${name}/${key}: ${j(torn)}`);
+      }
+    }
+  }
+  return [off.length === 0, off.slice(0, 6).join(" | ")];
 });
 // ⚠️ ADDED 2026-10-21 (the lead, for the HUB lane: R1-hub L15 asks for no dash, H1 forbids a figure there): a sentence with no
 // figure stands alone — the dash beside it read as a missing figure.
@@ -701,12 +720,20 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["the floor at full ink when it did not bind (H5)", "2.3", plantLedger('emphasis: binds ? undefined : "muted"', "emphasis: undefined")],
   ["a hairline under every row again", "2.10", plantLedger('className={cn(r.gap && "mt-3")}', 'className={cn("border-b border-border", r.gap && "mt-3")}')],
   ["the fee unsigned (\"TZS −136,630\")", "2.4", plantLedger("{fee > 0 ? formatTzsSigned(-fee) : formatTzs(0)}", "{formatTzs(-fee)}")],
-  ["the levies dropped from under the fee", "2.4", plantLedger("note: f.levies && fee > 0 ? factLine(", "note: false && f.levies && fee > 0 ? factLine(")],
+  ["the levies dropped from under the fee", "2.4", plantLedger("note: f.levies && fee > 0 ? noteLine(", "note: false && f.levies && fee > 0 ? noteLine(")],
   ["a carry's amount printed outside its money run", "2.5", plantLedger("const money = (n: number) => <span className=\"amount\">{formatTzs(n)}</span>;", "const money = (n: number) => <span>{formatTzs(n)}</span>;")],
-  ["Money out's parts line dropped", "2.6", plantLedger("note: <MaswaliFacts facts={(carried > 0 ? parts : parts.slice(0, 2)).map((p) => keepFact(locale, p))} />,", "note: undefined,")],
-  ["L11 undone — \"carried forward TZS 0\" printed as a part", "2.6", plantLedger("(carried > 0 ? parts : parts.slice(0, 2))", "parts")],
-  ["Money out's parts squeezed into the label's column again", "2.12", plantLedger('key: "moneyOut", label: m.ledgerMoneyOut, emphasis: "total", divider: true, wideNote: true,', 'key: "moneyOut", label: m.ledgerMoneyOut, emphasis: "total", divider: true,')],
-  ["the levies' names torn from their shares again (no runs kept)", "2.4", plantLedger("}), [`TRA ${f.levies.traPct}% ${formatTzs(f.levies.tra)}`, `GBT ${f.levies.gbtPct}% ${formatTzs(f.levies.gbt)}`]) : undefined,", "})) : undefined,")],
+  ["Money out's parts line dropped", "2.6", plantLedger("note: noteLine(locale, carried > 0 ? parts : parts.slice(0, 2)),", "note: undefined,")],
+  ["L11 undone — \"carried forward TZS 0\" printed as a part", "2.6", plantLedger("noteLine(locale, carried > 0 ? parts : parts.slice(0, 2))", "noteLine(locale, parts)")],
+  ["a note's parts free to break inside themselves (\"imelipwa kwa\" / \"washindi\")", "2.12", plantLedger("return <MaswaliFacts facts={parts.map((p) => keepFact(locale, p, [p]))} />;", "return <MaswaliFacts facts={parts.map((p) => keepFact(locale, p))} />;")],
+  ["the note back in the label's column", "2.12", (() => {
+    const s0 = planted("ledger", "            value={r.value}\n            emphasis={r.emphasis}", "            note={r.note}\n            value={r.value}\n            emphasis={r.emphasis}");
+    if (s0 === null) return null;
+    const from = "const wide = r.note !== undefined && r.note !== null";
+    if (s0.split(from).length !== 2) { problems.push("PLANT MISSED: the wide note"); return null; }
+    const mod = compileAt(FILES.ledger, s0.replace(from, "const wide = false && r.note !== undefined && r.note !== null")) as { millioneaLedgerRows: LedgerFn; MaswaliLedger: Row };
+    return { ...REAL, ledger: mod.millioneaLedgerRows, Ledger: mod.MaswaliLedger };
+  })()],
+  ["the levies' names torn from their shares again (no runs kept)", "2.4", plantLedger("return <MaswaliFacts facts={parts.map((p) => keepFact(locale, p, [p]))} />;", "return <MaswaliFacts facts={parts.map((p) => keepFact(locale, p))} />;")],
   ["a carry row no longer a link", "2.7", plantLedger("return r.href ? (\n          <Link", "return false ? (\n          <Link")],
   ["\"every ticket refunded\" before the refunds landed", "2.8", plantLedger("afterIn.push(refunds.landed", "afterIn.push(true")],
   ["the voiding week's refund line beside a dash again", "2.11", plantLedger('[price]), value: null, emphasis: "muted" });', '[price]), value: "—", emphasis: "muted" });')],
