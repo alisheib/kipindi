@@ -8,10 +8,12 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { CloseX, Modal, useExitPhase } from "@/components/ui/modal";
 import { Callout } from "@/components/ui/callout";
+import { ReceiptBox, ReceiptRow } from "@/components/ui/receipt-row";
 import { I } from "@/components/ui/glyphs";
 import { SteppedProgress } from "@/components/markets/stepped-progress";
 import { useTickSeconds } from "@/components/updown/round-countdown";
 import { MaswaliFacts, factsOf, keepFact } from "@/components/maswali/maswali-facts";
+import { keepText } from "@/components/ui/keep-run";
 import { eatClock, eatWeekdayClock, joinList, reserveLabel, sourceLabel, weekWord } from "@/components/maswali/maswali-format";
 import { useT } from "@/lib/i18n";
 import { fillNodes, moneyRuns } from "@/lib/fill-nodes";
@@ -390,16 +392,18 @@ export function MaswaliSlip({
   // ⭐ The price before the first answer, at every width (the slip critic's M7): "TZS 1,000 a ticket · main balance only".
   const priceLine = <MaswaliFacts facts={factLine(locale, fill(t.millionea.priceMainOnly, { price: priceText }))} />;
   // The rules box: the price, and the cap — from 1280 the cap is the summary panel's alone (P7). ⭐ The reserves' rule is
-  // said ONCE, in the reserves' own head where it applies (it stood here too).
-  const rules: ReadonlyArray<{ key: string; node: ReactNode; className?: string }> = [
-    { key: "price", node: priceLine },
+  // said ONCE, in the reserves' own head where it applies (it stood here too). ⭐ From 1280 the price stands in the box ALONE,
+  // and a list of one draws no marker (`soleFromXl`): a lone "·" before it read as a stray dot (tiles empty-*-1280).
+  const rules: ReadonlyArray<{ key: string; node: ReactNode; className?: string; soleFromXl?: boolean }> = [
+    { key: "price", node: priceLine, soleFromXl: true },
     { key: "cap", node: capLine, className: "xl:hidden" },
   ];
-  // The one line that says what is still unanswered, directly above the control it explains (the bet sheet's rule, M2).
+  // The one line that says what is still unanswered, directly above the control it explains (the bet sheet's rule, M2) —
+  // its last words kept together (the platform's keep: "na A5." never alone on a line at 320), its numerals mono.
   const refusalLine = showRefusal && unanswered.length > 0 && (
     <p className="flex items-start gap-1.5 text-body-sm text-text-muted" data-testid="millionea-slip-refusal">
       <I.info s={16} className="mt-px shrink-0 text-text-subtle" />
-      <span className="min-w-0">{monoDigits(refusalBody)}</span>
+      <span className="min-w-0">{monoDigits(keepText(refusalBody))}</span>
     </p>
   );
   const payButton = (size: "md" | "lg") => (
@@ -435,8 +439,8 @@ export function MaswaliSlip({
           {switcher}
           <ul className="mat-inset flex flex-col gap-1.5 rounded-control px-3 py-2">
             {rules.map((r) => (
-              <li key={r.key} className={cn("grid grid-cols-[8px_1fr] gap-1.5 text-body-sm text-text-muted", r.className)}>
-                <span aria-hidden className="text-text-subtle">·</span>
+              <li key={r.key} className={cn("grid grid-cols-[8px_1fr] gap-1.5 text-body-sm text-text-muted", r.soleFromXl && "xl:grid-cols-1", r.className)}>
+                <span aria-hidden className={cn("text-text-subtle", r.soleFromXl && "xl:hidden")}>·</span>
                 <span className="min-w-0">{r.node}</span>
               </li>
             ))}
@@ -660,20 +664,17 @@ export function MaswaliSlipConfirm({
           <Button ref={gotItRef} type="button" variant="ghost" size="xl" fullWidth onClick={onClose}>{t.common.gotIt}</Button>
         ) : (
           <>
-            {/* ⭐ WHAT IT COSTS AND WHERE IT COMES FROM, pinned over the commit (M5): the total in bold mono at title-sm, then
-                the main balance — or, unread, "—" and "Temporarily unavailable" (the bet sheet's BalanceRow). */}
-            <dl className="flex flex-col gap-1" data-testid="millionea-confirm-money">
-              <div className="flex items-baseline justify-between gap-3">
-                <dt className="text-body text-text-muted">{many ? t.millionea.totalRow : t.millionea.price}</dt>
-                <dd className="amount text-title-sm font-bold text-text">{formatTzs(total)}</dd>
-              </div>
-              <div className="flex items-start justify-between gap-3 text-body-sm text-text-muted">
-                <dt>{t.millionea.mainBalanceRow}</dt>
-                {balance === null
-                  ? <dd className="flex flex-col items-end gap-0.5"><span className="amount" aria-hidden>—</span><span>{t.common.temporarilyUnavailable}</span></dd>
-                  : <dd className="amount text-text">{formatTzs(balance)}</dd>}
-              </div>
-            </dl>
+            {/* ⭐ WHAT IT COSTS AND WHERE IT COMES FROM, pinned over the commit (M5) — the platform's money-confirm rows, as the
+                deposit and withdraw confirms draw them (the kit ReceiptBox and ReceiptRow): the price or the total as THE
+                commit figure (`amount`: one size, one weight, mono), then the main balance — or, unread, "—" and
+                "Temporarily unavailable", never TZS 0 (H5; the bet sheet's BalanceRow). */}
+            <div data-testid="millionea-confirm-money"><ReceiptBox>
+              <ReceiptRow emphasis="amount" label={many ? t.millionea.totalRow : t.millionea.price} value={formatTzs(total)} />
+              <ReceiptRow emphasis={balance === null ? "muted" : "row"} label={t.millionea.mainBalanceRow}
+                value={balance === null
+                  ? <span className="flex flex-col items-end gap-0.5 text-right"><span aria-hidden>—</span><span>{t.common.temporarilyUnavailable}</span></span>
+                  : <span className="amount">{formatTzs(balance)}</span>} />
+            </ReceiptBox></div>
             {lowBalance ? deposit : (
               <Button ref={commitRef} type="button" variant="gold" size="lg" fullWidth className="gilt-metal" loading={pending} onClick={onCommit}
                 data-testid="millionea-confirm-commit">

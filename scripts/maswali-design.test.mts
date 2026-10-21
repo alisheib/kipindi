@@ -1044,7 +1044,8 @@ const listDefects = (page: string, ticketSrc: string, bar: string) => {
     ["zh", "stripResults", "结果与派奖 · {range}"], ["zh", "stripEvents", "事件 · {range}"],
     ["zh", "mains", "正选题"], ["zh", "mainsProgress", "正选 {a}/{n}"], ["zh", "eventAt", "事件 {when}"], ["zh", "firstEventAt", "首个事件：{when} EAT"],
     ["zh", "ticketRunning", "待结算"], ["zh", "howThree", "所有 10/10 彩票平分大奖；{pct}% 费用仅在派奖时扣除。"], ["zh", "carriedInPending", "尚未结算"],
-    ["zh", "jumpTo", "前往第{n}题"], ["zh", "capRule", "上限：每周 {cap} 张 · 这是第{n}张"],
+    // (zh "jumpTo" 前往第{n}题 left with its link: the slip's press now takes the reader to the question itself — S5-DESIGN-SLIP.)
+    ["zh", "capRule", "上限：每周 {cap} 张 · 这是第{n}张"],
     ["en", "carriedIn", "Carried in from Week {week}"], ["en", "carriedInPending", "Not yet settled"], ["en", "statRefunded", "Refunded"],
   ];
   const off = D.filter(([l, k, v]) => (dict[l].millionea as Record<string, unknown>)[k] !== v).map(([l, k]) => `${l}.${k}`);

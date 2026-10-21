@@ -3029,6 +3029,19 @@ its branches in the same change or it does not land. The delivery named only the
 gates; this product has three (E-125) — our target device is exactly the one the third
 covers. Guard: `npm run test:reduce-motion`. Maswali Millionea's three motions (N1–N3) obey all three gates: §M8a.
 
+A countdown hairline that a script draws is held to the same clamps as one the stylesheet draws: under either clamp it
+stands FULL for its whole dwell — "still here", true until the timer closes the surface — never draining (E-269, the
+toast's `.toast-countdown`). Since Ali 2026-10-21 10/10 pass (the lead's ruling on the motion critic's L6) that includes
+the result modal's auto-close strip, a rAF loop no clamp reached (`operation-result-modal.tsx`, `stripStill`); the
+`reduced` throttle keeps the drain, as it keeps the toast's. Guard: `test:maswali-slip-design` §1.
+
+**One dim across two dialogs** (Ali 2026-10-21 10/10 pass; the motion critic's H1). A dialog that closes in the same commit
+another opens in its place passes the kit Modal's `handoff` on both — the closing one drops its dim at once while its panel
+plays `.m-out`, the opening one holds the dim from its first frame — and the opening panel waits one exit beat
+(`panelDelay`, `--t-quick`, zeroed by the clamps): the page behind is never seen bare between them and two panels never
+stand at once. Inert unless passed (byte-identical markup for every other caller). First consumer: the Millionea confirm
+sheet into its stamp (`slip-client.tsx`).
+
 ### M7 — Wins get the seal; losses get the receipt
 
 The celebration vocabulary (seal-impress, needle-sweep, mark-flip, gilt strike) is

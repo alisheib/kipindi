@@ -261,6 +261,9 @@ const payOf = (m: string) => [...m.matchAll(/<button[^>]*data-testid="millionea-
   const en = dict.en.millionea;
   ok("3.6 · M7 · the price is said before any answer, at every width: the rules' first line reads \"TZS 1,000 a ticket · main balance only\"",
     textOf(fresh).includes("TZS 1,000 a ticket · main balance only") && !textOf(fresh).includes("Main balance only"));
+  const priceItem = /<li class="([^"]*)"><span aria-hidden="true" class="([^"]*)">·<\/span><span class="min-w-0">(?:(?!<\/li>)[\s\S])*?a ticket/.exec(fresh);
+  ok("3.6′ · from 1280 the price stands in the rules box alone (the cap is the panel's there), and a list of one draws no marker: no lone \"·\" before it (tiles empty-*-1280)",
+    !!priceItem && priceItem[1].includes("xl:grid-cols-1") && priceItem[2].split(" ").includes("xl:hidden"), j(priceItem?.slice(1, 3)));
   ok("3.7 · LOW · the reserves' rule is said ONCE, in the reserves' own head (it stood in the rules box too)",
     textOf(fresh).split(en.reserveRule).length - 1 === 1);
   ok("3.8 · M1 (panel) · the 1280 panel stands under the top bar (`top-[72px]`: the bar's 56 and the market aside's 16)",
@@ -309,9 +312,10 @@ section("§5 · the confirm sheet");
   const back = [...m.slice(footAt).matchAll(/<button[^>]*class="([^"]*)"[^>]*>([^<]*)</g)].find((x) => x[2] === "Back")?.[1] ?? "";
   ok("5.3 · M3 + LOW · the commit and its way back are twins (both `btn-lg`), and the way back says \"Back\" — never \"Cancel\" under \"Free cancel until…\"",
     commit.includes("btn-lg") && back.includes("btn-lg") && !textOf(m.slice(footAt)).includes("Cancel"), j({ commit, back }));
-  const money = /data-testid="millionea-confirm-money">([\s\S]*?)<\/dl>/.exec(m)?.[1] ?? "";
-  ok("5.4 · M5 · the total is a row: \"Price\" and the amount in bold mono at title-sm, then the main balance's row",
-    /<dd class="amount text-title-sm font-bold text-text">TZS 1,000<\/dd>/.test(money) && textOf(money).includes("Main balance") && textOf(money).includes("TZS 50,000"), textOf(money));
+  const money = /data-testid="millionea-confirm-money">([\s\S]*?)<\/div><\/div><\/div>/.exec(m)?.[1] ?? "";
+  ok("5.4 · M5 · the money is the platform's money-confirm rows (the kit ReceiptBox and ReceiptRow, as the deposit and withdraw confirms): \"Price\" with THE commit figure in bold mono (`amount`), then the main balance's row",
+    money.includes("rounded-md border border-border bg-bg-overlay/60 p-3 space-y-1.5") && /<span class="font-mono text-\[16px\] font-bold tabular-nums text-text">TZS 1,000<\/span>/.test(money)
+      && textOf(money).startsWith("Price") && textOf(money).includes("Main balance") && textOf(money).includes("TZS 50,000"), textOf(money));
   ok("5.5 · M5 · each pick is in its side's ink (the bet confirm's sideTone.fg): YES --yes-300, NO --no-300",
     (m.match(/color:var\(--yes-300\)/g) ?? []).length === 8 && (m.match(/color:var\(--no-300\)/g) ?? []).length === 7);
   ok("5.6 · M6 · the rule names its subject: \"Jackpot shared equally by every 10/10 ticket · 13% fee at payout\"",
@@ -324,7 +328,7 @@ section("§5 · the confirm sheet");
   ok("5.8 · the English buy words (the lead's ruling): \"Buy ticket · TZS 1,000\"", textOf(commit ? m.slice(m.indexOf(commit)) : "").startsWith("Buy ticket · TZS 1,000"));
   const unknown = sheet("en", { balance: null });
   ok("5.9 · H5 · an unread balance is never TZS 0: the row reads \"—\" and \"Temporarily unavailable\"",
-    textOf(unknown).includes("Temporarily unavailable") && !textOf(unknown).includes("TZS 0") && /<span class="amount" aria-hidden="true">—<\/span>/.test(unknown));
+    textOf(unknown).includes("Temporarily unavailable") && !textOf(unknown).includes("TZS 0") && /<span aria-hidden="true">—<\/span><span>Temporarily unavailable<\/span>/.test(unknown));
   const low = sheet("en", { balance: 400, lowBalance: true, deposit: h("button", { "data-testid": "door" }, "Deposit TZS 1,000") });
   ok("5.10 · M4 · a short main balance is the bet sheet's low frame: the kit's info notice with its alert glyph and the journey's title, Millionea's words, and the deposit door in the commit's place",
     low.includes("border-info-border bg-info-bg") && textOf(low).includes("Not enough balance") && textOf(low).includes("Main balance TZS 400 is below TZS 1,000. Bonus money does not count here.")
@@ -393,7 +397,10 @@ section("§8 · the words, in three languages");
 {
   const W: Record<string, [string, string, string]> = {
     cutTicket: ["Buy ticket · {price}", "Kata tiketi · {price}", "出票 · {price}"],
-    cutTickets: ["Buy {n} tickets · {price}", "Kata tiketi {n} · {price}", "出票 {n} 张 · {price}"],
+    cutTickets: ["Buy {n} tickets · {price}", "Kata tiketi zote {n} · {price}", "出票 {n} 张 · {price}"],
+    // A Swahili count of tickets says "zote": a bare "tiketi 2" also names the second ticket (the switcher's "Tiketi 2").
+    confirmTickets: ["Confirm {n} tickets", "Thibitisha tiketi zote {n}", "确认 {n} 张彩票"],
+    continueTicketsAt: ["Continue · {n} tickets · {price}", "Endelea · tiketi zote {n} · {price}", "继续 · {n} 张彩票 · {price}"],
     inFlight: ["Buying…", "Inakatwa…", "出票中…"],
     ticketCut: ["Ticket bought", "Tiketi imekatwa", "已出票"],
     ticketsCut: ["{n} tickets bought", "Tiketi {n} zimekatwa", "已出票 {n} 张"],
@@ -415,7 +422,7 @@ section("§8 · the words, in three languages");
   ok("8.2 · every new key exists in en, sw and zh with identical placeholders", holes.length === 0 && drift.length === 0, j({ holes, drift }));
   const zhOrdinals = Object.entries(dict.zh.millionea as unknown as Record<string, unknown>).filter(([, v]) => typeof v === "string" && /第 |\{[a-z]+\} 题。$|第\{[a-z]+\} /.test(v as string)).map(([k]) => k);
   ok("8.3 · zh ordinals unspaced (the lead's 2026-10-19 ruling, \"第{week}周\"): no \"第 \" in any Millionea string", zhOrdinals.length === 0, j(zhOrdinals));
-  const gone = ["mainOnly", "finishTicket", "fromMain", "resultDetails", "resultDetailsNoCancel", "picksSoFar"].filter((k) => LOCALES.some((l) => k in (dict[l].millionea as object)));
+  const gone = ["mainOnly", "finishTicket", "fromMain", "resultDetails", "resultDetailsNoCancel", "picksSoFar", "jumpTo"].filter((k) => LOCALES.some((l) => k in (dict[l].millionea as object)));
   ok("8.4 · the words the slip no longer says left the dictionary (no dead string to drift)", gone.length === 0, j(gone));
   ok("8.5 · the head's times and the free cancel carry their zone in every language",
     LOCALES.every((l) => ["salesCloseColon", "firstEventAt"].every((k) => fill((dict[l].millionea as unknown as Record<string, string>)[k], { when: "X" }).endsWith("X EAT"))));
@@ -464,8 +471,8 @@ section("§10 · each fix undone in memory is caught by its case (the source pla
   const noMark = planted("flagged={showRefusal && !picks[slotOfQ(q) - 1]}", "flagged={false}");
   ok("10.3 PLANT · M2 · the unanswered rows left unmarked is caught", !textOf(drawSlip(noMark, { picks: picksWith(12), refused: true })).includes("Unanswered"));
   // H5 · the fabricated zero put back.
-  const zero = planted("{balance === null\n                  ? <dd className=\"flex flex-col items-end gap-0.5\"><span className=\"amount\" aria-hidden>—</span><span>{t.common.temporarilyUnavailable}</span></dd>\n                  : <dd className=\"amount text-text\">{formatTzs(balance)}</dd>}",
-    "<dd className=\"amount text-text\">{formatTzs(balance ?? 0)}</dd>");
+  const zero = planted("value={balance === null\n                  ? <span className=\"flex flex-col items-end gap-0.5 text-right\"><span aria-hidden>—</span><span>{t.common.temporarilyUnavailable}</span></span>\n                  : <span className=\"amount\">{formatTzs(balance)}</span>} />",
+    "value={<span className=\"amount\">{formatTzs(balance ?? 0)}</span>} />");
   ok("10.4 PLANT · H5 · an unread balance printed as TZS 0 is caught", textOf(drawSheet(zero, { balance: null })).includes("TZS 0"));
   // H6 · the sheet's closed frame undone: a closed week keeps offering the commit.
   const noShut = planted("const shut = !!closed && !pending;", "const shut = false;");
@@ -484,10 +491,14 @@ section("§10 · each fix undone in memory is caught by its case (the source pla
     'const EMPTY_STEP = { background: "var(--border-strong)", boxShadow: "none", transition: STEP_FILL } as const;')) as { SteppedProgress: (p: Record<string, unknown>) => unknown };
   const solidMeter = renderToStaticMarkup(h(solid.SteppedProgress as never, { groups: [{ steps: 10, done: 3 }, { steps: 5, done: 0 }] } as never));
   ok("10.8 PLANT · H1 · VIS-P's solid empty step put back is caught (no hollow ring)", !solidMeter.includes("var(--border-control)") && solidMeter.includes("background:var(--border-strong)"));
+  // The lone marker: the price drawn with its "·" from 1280 again.
+  const lone = planted('{ key: "price", node: priceLine, soleFromXl: true }', '{ key: "price", node: priceLine }');
+  const loneItem = /<li class="([^"]*)"><span aria-hidden="true" class="([^"]*)">·<\/span><span class="min-w-0">(?:(?!<\/li>)[\s\S])*?a ticket/.exec(drawSlip(lone, {}));
+  ok("10.9 PLANT · the price's lone \"·\" from 1280 put back is caught", !!loneItem && !loneItem[2].split(" ").includes("xl:hidden"));
 }
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI SLIP DESIGN: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run printed. */
-const MIN_ASSERTIONS = 70;
+const MIN_ASSERTIONS = 72;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

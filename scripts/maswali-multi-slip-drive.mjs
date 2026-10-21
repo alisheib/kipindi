@@ -118,7 +118,8 @@ try {
   await page.getByTestId("millionea-ticket-remove").click();
   const ask = page.getByRole("alertdialog");
   await ask.waitFor();
-  ok("M9 · removing a ticket with answers asks first (the kit's ConfirmModal)", /Remove ticket 2\?/.test(await ask.innerText()));
+  ok("M9 · removing a ticket with answers asks first (the kit's ConfirmModal), naming the ticket in its body",
+    /Remove this ticket\?/.test(await ask.innerText()) && /Ticket 2 and its answers/.test(await ask.innerText()));
   await ask.getByRole("button", { name: "Keep ticket" }).click();
   await ask.waitFor({ state: "detached" });
   ok("M9 · \"Keep ticket\" keeps both", await complete(page).count() === 2);
@@ -137,7 +138,7 @@ try {
   const dialog = page.getByRole("dialog");
   await dialog.waitFor();
   ok("one Swahili confirmation names two tickets and the TZS 2,000 main-balance charge",
-    await dialog.getByRole("heading", { name: /Thibitisha tiketi 2/ }).count() === 1
+    await dialog.getByRole("heading", { name: /Thibitisha tiketi zote 2/ }).count() === 1
       && (await dialog.innerText()).includes("TZS 2,000")
       && await page.getByRole("dialog").count() === 1);
   ok("the one confirmation can review both sets of fifteen picks", await dialog.locator("details").count() === 2);
@@ -149,7 +150,7 @@ try {
   await dialog.locator("details").nth(1).locator("summary").click();
   await settle(page);
   await page.screenshot({ path: `${OUT}/confirm-sw-360.png`, fullPage: false });
-  await dialog.getByRole("button", { name: /Kata tiketi 2/ }).click();
+  await dialog.getByRole("button", { name: /Kata tiketi zote 2/ }).click();
   const receipt = page.getByRole("dialog");
   await receipt.getByRole("heading", { name: /Tiketi 2 zimekatwa/ }).waitFor({ timeout: 120_000 });
   const serials = (await receipt.locator(".orm-detail").allInnerTexts()).map((row) => row.split("\n").pop()?.trim() ?? "").filter((v) => /^ML[ND]-/.test(v));

@@ -23,7 +23,7 @@ export function MillioneaSlipGhost() {
   return (
     <PageContainer tier="reading">
       <BackLinkGhost />
-      <div className="grid w-full grid-cols-1 items-start gap-7 py-5 xl:grid-cols-[minmax(0,640px)_400px]" aria-busy="true">
+      <div className="grid w-full grid-cols-1 items-start gap-7 py-5 xl:grid-cols-[minmax(0,640px)_400px]" aria-busy="true" data-testid="slip-ghost">
         <div className="flex min-w-0 max-w-[640px] flex-col gap-4" aria-hidden>
           <div className="flex flex-col gap-1.5">
             {/* The title's line box (text-title-lg's 28/34) holding a bar, never words: no display face, so no display stem —

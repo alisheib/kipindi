@@ -483,7 +483,8 @@ export function SlipClient({
         pending={pending}
         onCommit={commit}
       />
-      {/* Removing a ticket that holds answers asks first (the kit's confirm; M9): its answers are discarded. */}
+      {/* Removing a ticket that holds answers asks first (the kit's confirm; M9): its answers are discarded. No money moves,
+          so the dialog's own footprint (`md`) — `lg` is the money commit's (the deposit and withdraw confirms). */}
       <ConfirmModal
         open={removing !== null}
         onClose={() => setRemoving(null)}
@@ -492,11 +493,10 @@ export function SlipClient({
           setRemoving(null);
         }}
         tone="brand"
-        size="lg"
         panelClassName="kp-mln-zh"
         icon={<I.trash s={20} />}
-        title={fill(t.millionea.removeTicketTitle, { n: formatNumber(held + (removing ?? 0) + 1) })}
-        body={t.millionea.removeTicketBody}
+        title={t.millionea.removeTicketTitle}
+        body={fill(t.millionea.removeTicketBody, { n: formatNumber(held + (removing ?? 0) + 1) })}
         confirmLabel={fill(t.millionea.removeTicket, { n: formatNumber(held + (removing ?? 0) + 1) })}
         cancelLabel={t.millionea.keepTicket}
       />
