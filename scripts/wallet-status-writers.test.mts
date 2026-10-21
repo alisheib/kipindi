@@ -17,8 +17,8 @@
  *   · any OTHER `.wallet.<method>(` than the known reads, the patch writes and the deltas (`adjust`, `creditMany`) — an
  *     unknown method is a writer;
  *   · a wallet delegate held under another name (`const w = db.wallet`, `const { wallet } = tx`, `db["wallet"]`).
- * And the DAL surface itself: `db.wallet`'s members in both stores are pinned (§2.9), and `adjust` and `creditMany` may
- * move amounts only (§2.10).
+ * And the DAL surface itself: `db.wallet`'s members in both stores are pinned (§2.9), `adjust` and `creditMany` may
+ * move amounts only (§2.10), and `findByUserIds` may only read (§2.10c).
  * Each site's patch is READ: an object literal directly; an identifier through its object-literal declaration in the
  * same file (and any later `name.status = …` on it); the Prisma `{ where, data }` shape through `data`. A patch that
  * cannot be read — a parameter, a spread, a call — is OPAQUE and counts as a writer.
@@ -209,14 +209,19 @@ const WALLET_TABLE = String.raw`(?:\\?"?public\\?"?\s*\.\s*)?\\?"?Wallet\\?"?`;
 const RAW_SQL = new RegExp(String.raw`\b(?:UPDATE\s+${WALLET_TABLE}\s+SET|(?:INSERT|MERGE)\s+INTO\s+${WALLET_TABLE})(?![\w"])`, "gi");
 /** Every other `.wallet.<m>(` — a DAL method the census does not know is a writer until it is proven otherwise. */
 const ANY_WALLET_CALL = /\.\s*wallet\s*\.\s*([A-Za-z_$][\w$]*)\s*\(/g;
-const WALLET_READS = new Set(["findByUserId", "listAll", "findUnique", "findFirst", "findMany", "count", "aggregate", "groupBy"]);
+/** The reads. `findByUserIds` (MASWALI-BUILD S7, 2026-10-19: the Millionea release's one payee pre-read for every winning
+ *  player) is a DAL member, so §2.10c proves in both stores that it only reads before it is trusted here. */
+const WALLET_READS = new Set(["findByUserId", "findByUserIds", "listAll", "findUnique", "findFirst", "findMany", "count", "aggregate", "groupBy"]);
 const WALLET_PATCH_WRITES = new Set(["update", "create", "upsert", "updateMany", "createMany"]);
 /** `adjust` moves balance / hold / pending by deltas, and `creditMany` (MASWALI-BUILD R1, 2026-10-17: the week void's bulk
  *  refund) adds to many balances at once; §2.10 pins that neither store's delta members write status or reasons. */
 const WALLET_DELTAS = new Set(["adjust", "creditMany"]);
 /** The members of `db.wallet` in both stores, pinned by §2.9: a new member (`setStatus`) is a door around this census. */
-const DAL_MEMBERS = ["adjust", "create", "creditMany", "findByUserId", "listAll", "update"];
+const DAL_MEMBERS = ["adjust", "create", "creditMany", "findByUserId", "findByUserIds", "listAll", "update"];
 const ASSIGNS_STATE = /(?:^|[{,])\s*(?:status|freezeReasons)\s*[:,}]|\.\s*(?:status|freezeReasons)\s*=(?!=)/;
+/** Any write inside a DAL member's body: a delegate write, a delta, the memory map's `set`, raw SQL, or a member assigned
+ *  onto a row. A READ member (§2.10c) carries none of them. */
+const WRITES_ANYTHING = /\.\s*(?:update|create|upsert|updateMany|createMany|delete|deleteMany|adjust|creditMany)\s*\(|\bwallets\s*\.\s*(?:set|delete)\s*\(|\$executeRaw|\$queryRaw|\.\s*[A-Za-z_$][\w$]*\s*[+\-*/]?=(?![=>])/;
 /** A client's wallet delegate held under another name — `const w = db.wallet`, `const { wallet } = tx`, `db["wallet"]` —
  *  whose later `w.update(…)` no `.wallet.<m>(` pattern can see. None exists in src/ today (2026-09-14). */
 const ALIASED_CLIENT = /\b(?:db|tx|prisma|client)\s*\.\s*wallet\b(?!\s*\.\s*[A-Za-z_$])|\bpc\(\)\s*\.\s*wallet\b(?!\s*\.\s*[A-Za-z_$])|\{[^{}]*\bwallet\b[^{}]*\}\s*=\s*(?:db|tx|prisma|client|pc\(\))(?![\w$])|\[\s*["'`]wallet["'`]\s*\]/g;
@@ -440,6 +445,9 @@ section("§2 · nothing outside the allow-list writes a wallet's status or reaso
     const creditMany = m?.bodies.get("creditMany") ?? "";
     ok(`2.10b ⛔ ${p} · wallet.creditMany moves amounts only — it assigns no status and no freezeReasons`,
       creditMany.length > 50 && !ASSIGNS_STATE.test(creditMany), `${creditMany.length} chars read`);
+    const findMany = m?.bodies.get("findByUserIds") ?? "";
+    ok(`2.10c ⛔ ${p} · wallet.findByUserIds only reads — it writes no row, moves no amount and assigns no status or freezeReasons`,
+      findMany.length > 50 && !ASSIGNS_STATE.test(findMany) && !WRITES_ANYTHING.test(findMany), `${findMany.length} chars read`);
   }
 }
 
@@ -517,6 +525,20 @@ section("§3 · CONTROLS: each planted writer is caught, and the harmless shapes
     ok("3.26 ⭐ CONTROL · an `adjust` that assigns a status is caught by 2.10's test",
       ASSIGNS_STATE.test(`    adjust: (id: string) => { const w = store.wallets.get(id)!; store.wallets.set(id, { ...w, status: "ACTIVE" }); },`)
       && ASSIGNS_STATE.test(`    adjust: (id: string) => { const w = store.wallets.get(id)!; w.freezeReasons = []; },`));
+    // S7-F8 · the read member, planted three ways into the REAL store bodies: each is caught by 2.10c's test, and the
+    // unplanted bodies (2.10c above) are not — so 2.10c proves a read, not a name.
+    const prismaRaw = read("src/lib/server/prisma-dal.ts");
+    const memBody = walletMembersOf(storeRaw)?.bodies.get("findByUserIds") ?? "";
+    const pgBody = walletMembersOf(prismaRaw)?.bodies.get("findByUserIds") ?? "";
+    const plants = [
+      memBody.replace("if (wallet) out.push(wallet);", "if (wallet) { store.wallets.set(wallet.id, { ...wallet, balance: 0 }); out.push(wallet); }"),
+      memBody.replace("if (wallet) out.push(wallet);", "if (wallet) { wallet.balance += 1; out.push(wallet); }"),
+      pgBody.replace("for (const row of rows) out.push(toStoredWallet(row));", "await (tx ?? pc()).wallet.updateMany({ where: { userId: { in: unique } }, data: { hold: 0 } });\n        for (const row of rows) out.push(toStoredWallet(row));"),
+    ];
+    ok("3.26b ⭐ CONTROL · a findByUserIds that writes — a memory set, a member assigned, a Prisma updateMany — is caught by 2.10c's test, and the real bodies are not",
+      memBody.length > 50 && pgBody.length > 50 && plants.every((b, k) => b !== (k < 2 ? memBody : pgBody) && WRITES_ANYTHING.test(b))
+        && !WRITES_ANYTHING.test(memBody) && !WRITES_ANYTHING.test(pgBody),
+      `${memBody.length}/${pgBody.length} chars; plants caught ${plants.filter((b) => WRITES_ANYTHING.test(b)).length}/3`);
   }
   ok("3.27 ⭐ CONTROL · a production refusal another condition can switch off (`&& process.env.ALLOW !== \"1\"`) is FLAGGED",
     flagged(F, route(`${refusal.replace('=== "production")', '=== "production" && process.env.ALLOW !== "1")')}\n${create}`)).length === 1);
