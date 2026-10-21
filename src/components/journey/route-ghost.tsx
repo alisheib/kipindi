@@ -35,7 +35,10 @@
  *               `history-ghost.tsx`, here with a journey reader's head, and the deposit's `deposit-ghost.tsx`), so the
  *               root's state and the page's are one drawing. Maswali Millionea's four (MASWALI-BUILD S5): the hub, the
  *               slip, Tiketi zangu's Millionea kind (with Tiketi zangu's head) and a ticket (the second pattern) — each
- *               drawing its words set and not shown, since this state picks by address before any gate has answered.
+ *               drawing its words set and not shown, since this state picks by address before any gate has answered —
+ *               and ONLY while Millionea is visible to this reader (`millionea`, handed in by the root loading file only
+ *               while it is true; S5-FIX-PLATFORM D6): to anyone else a Millionea address is an unknown one, so its ghost
+ *               is the unknown page's, the spinner below, never a Millionea-shaped one before the 404.
  *   any other   the brand's spinner in a block as tall as the classic box, and no frame: a framed box promises a
  *               column, and the pages behind this branch use several; each page's own loading file (if it has one)
  *               draws its column as soon as the page starts to arrive.
@@ -102,12 +105,16 @@ export type JourneyGhostPage = "/positions" | "/updown/history" | "/markets/[id]
 /**
  * ⚠️ `rails` — the rails that pay out, read on the server — is drawn by no page's ghost since WP7: only the shelved landing
  * ghost (`HomeGhost` below) names them. The prop keeps flowing, unchanged, so that ghost's re-mount is the one line at "/".
+ * `millionea` — Millionea is visible to this reader (the rollout's per-request answer, handed in by the root loading file
+ * only while it is true; S5-FIX-PLATFORM D6). Without it, Millionea's addresses draw the unknown page's ghost.
  */
-export function JourneyRouteGhost({ rails, at }: { rails: readonly string[]; at?: JourneyGhostPage }) {
+export function JourneyRouteGhost({ rails, at, millionea = false }: { rails: readonly string[]; at?: JourneyGhostPage; millionea?: boolean }) {
   const { t } = useT();
   const routes = {
     // The journey home's own ghost (WP7, A24 item 2) — the shelved landing's was `<HomeGhost t={t} locale={…} rails={rails} />`.
-    "/": <JourneyHomeGhost t={t} />,
+    // MASWALI-BUILD S5 (the doors lane's H1): it reserves the Millionea card's slot for a reader Millionea is visible to —
+    // the rollout's per-request answer handed in (`millionea`, D6), never a read of its own.
+    "/": <JourneyHomeGhost t={t} millionea={millionea} />,
     "/updown": <UpDownGhost />,
     "/positions": <TicketsGhost t={t} />,
     "/account": <AccountGhost t={t} />,
@@ -117,16 +124,19 @@ export function JourneyRouteGhost({ rails, at }: { rails: readonly string[]; at?
     "/markets/[id]": <QuestionGhost />,
     // MASWALI-BUILD S5 · the Millionea pages the journey's tabs reach (`surfaces.ts` JOURNEY_ROUTE), each its own loading
     // file's drawing, wordless (`maswali-ghost.tsx`); Tiketi zangu's Millionea kind with Tiketi zangu's head, by the address
-    // alone — its own loading file is synchronous and pins nothing (the S5 review of 24ec0d33, HIGH 2).
-    "/millionea": <MillioneaHubGhost />,
-    "/millionea/slip": <MillioneaSlipGhost />,
-    "/millionea/tickets": <MillioneaTicketsGhost journeyHead={<TicketsHeadGhost t={t} />} />,
+    // alone — its own loading file is synchronous and pins nothing (the S5 review of 24ec0d33, HIGH 2). ⛔ Drawn only while
+    // Millionea is visible to this reader (D6): to anyone else these are unknown addresses, and so is their ghost.
+    ...(millionea ? {
+      "/millionea": <MillioneaHubGhost />,
+      "/millionea/slip": <MillioneaSlipGhost />,
+      "/millionea/tickets": <MillioneaTicketsGhost journeyHead={<TicketsHeadGhost t={t} />} />,
+    } : {}),
   };
   if (at) return routes[at];
   return (
     <RoutePick
       routes={routes}
-      patterns={[["^/markets/[^/]+$", <QuestionGhost />], ["^/millionea/tickets/[^/]+$", <MillioneaTicketGhost />]]}
+      patterns={[["^/markets/[^/]+$", <QuestionGhost />], ...(millionea ? [["^/millionea/tickets/[^/]+$", <MillioneaTicketGhost />] as const] : [])]}
       other={<AnyPageGhost />}
     />
   );

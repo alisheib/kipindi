@@ -12,6 +12,9 @@
  *   §4 D5 · the ticket entitlement is loaded late and never throws: a failed read is private absence before admission
  *      and the page's own error path after it (B-1); the real proxy runs the late load for a signed request
  *   §5 D3 · the shell hands the navs `millionea` only while it is true
+ *   §6 D6 · the journey's route ghost draws Millionea's ghosts only for a reader Millionea is visible to (rendered on
+ *      React's server renderer at each address, in sw, en and zh), and the home's ghost holds the Millionea card's slot
+ *      for that reader alone; the root loading file hands the answer only while true
  * Every section carries its PLANT: the check run on a copy with the fix undone, seen to fail.
  * The HTTP proof — `next start`, a dark address beside its unknown twin, status, header set and body — is qa:live's
  * dark section (`scripts/live/millionea-dark.mjs`) and the lane's probe, reported with the commit.
@@ -272,6 +275,45 @@ const shellDefects = (shellSrc: string, navs: Record<string, string>) => {
   ok("5.1 · `millioneaProp` is `{}` while Millionea is hidden and is spread into exactly the four navs, each of which defaults the prop to false", d.length === 0, d.join(" | "));
   const s5 = raw(SHELL).split("{...millioneaProp}").join("millionea={millioneaRow}");
   ok("5.1′ PLANT · the S5 shell (`millionea={millioneaRow}` on each nav) is reported", shellDefects(s5, NAVS).some((x) => x.includes("still handed")));
+}
+
+/* ══ §6 · D6 · THE ROUTE GHOST ════════════════════════════════════════════════════════════════════════════════════════ */
+section("6 · D6 · a Millionea address draws Millionea's ghost only for a reader Millionea is visible to; to anyone else it is the unknown page's");
+{
+  type Locale = "sw" | "en" | "zh";
+  const React = req("react") as typeof import("react");
+  const h = React.createElement;
+  const { renderToStaticMarkup } = req("react-dom/server") as typeof import("react-dom/server");
+  const { AppRouterContext } = req("next/dist/shared/lib/app-router-context.shared-runtime") as { AppRouterContext: import("react").Context<unknown> };
+  const { PathnameContext } = req("next/dist/shared/lib/hooks-client-context.shared-runtime") as { PathnameContext: import("react").Context<string | null> };
+  const { I18nProvider } = req("../src/lib/i18n.tsx") as { I18nProvider: (p: { initial: Locale; children: unknown }) => unknown };
+  const ROUTER = { push() {}, replace() {}, refresh() {}, prefetch() {}, back() {}, forward() {}, hmrRefresh() {} };
+  const GHOST = "src/components/journey/route-ghost.tsx";
+  type Ghost = (p: { rails: readonly string[]; millionea?: boolean }) => unknown;
+  const real = (req(`../${GHOST}`) as { JourneyRouteGhost: Ghost }).JourneyRouteGhost;
+  const at = (G: Ghost, path: string, l: Locale, millionea?: boolean) => renderToStaticMarkup(h(AppRouterContext.Provider, { value: ROUTER },
+    h(PathnameContext.Provider, { value: path }, h(I18nProvider as never, { initial: l }, h(G as never, { rails: [], ...(millionea ? { millionea } : {}) } as never)))));
+  const MLN = ["/millionea", "/millionea/slip", "/millionea/tickets", "/millionea/tickets/MLN-2026-W42-000017"];
+  const LOCALES: Locale[] = ["sw", "en", "zh"];
+  const hiddenDefects = (G: Ghost) => LOCALES.flatMap((l) => MLN.filter((p) => at(G, p, l) !== at(G, "/kpzzzzzzz", l)).map((p) => `${l} ${p}`));
+  const shownDefects = (G: Ghost) => LOCALES.flatMap((l) => MLN.filter((p) => at(G, p, l, true) === at(G, "/kpzzzzzzz", l, true)).map((p) => `${l} ${p}`));
+  ok(`6.1 · Millionea hidden from the reader: each of its ${MLN.length} addresses draws the unknown page's ghost, byte for byte, in sw, en and zh`, hiddenDefects(real).length === 0, j(hiddenDefects(real)));
+  ok("6.2 · Millionea visible to the reader: each draws its own Millionea ghost (the S5 drawings), in sw, en and zh", shownDefects(real).length === 0, j(shownDefects(real)));
+  const ignoring = fromSource<{ JourneyRouteGhost: Ghost }>(GHOST, plant(plant(raw(GHOST), "    ...(millionea ? {\n", "    ...(true ? {\n"),
+    '...(millionea ? [["^/millionea/tickets/[^/]+$", <MillioneaTicketGhost />] as const] : [])', '["^/millionea/tickets/[^/]+$", <MillioneaTicketGhost />] as const')).JourneyRouteGhost;
+  ok("6.1′ PLANT · the S5 ghost (picked by the address alone) is reported: a hidden reader sees Millionea-shaped ghosts", hiddenDefects(ignoring).length === MLN.length * LOCALES.length, j(hiddenDefects(ignoring)));
+  const loading = squash(code("src/app/loading.tsx"));
+  ok("6.3 · the root loading file hands the ghost the rollout's per-request answer, and only while it is true",
+    loading.includes("const millionea = (await resolveMillionea()).visible; return <LazyJourneyRouteGhost rails={heroRailNames(null)} {...(millionea ? { millionea } : {})} />;")
+      && loading.includes('import { resolveMillionea } from "@/lib/server/millionea-preview";'));
+  // The doors lane's H1: the home's ghost keeps the Millionea card's slot for a reader it is visible to, and only for one.
+  const SLOT = 'data-ghost-part="millionea"';
+  const slotDefects = (G: Ghost) => LOCALES.flatMap((l) => [...(at(G, "/", l).includes(SLOT) ? [`${l} hidden reader has the slot`] : []), ...(at(G, "/", l, true).includes(SLOT) ? [] : [`${l} visible reader lacks the slot`])]);
+  ok("6.4 · \"/\": the journey home's ghost holds the Millionea card's slot for a reader Millionea is visible to, and draws none for anyone else (sw, en, zh)",
+    slotDefects(real).length === 0, j(slotDefects(real)));
+  const unhanded = fromSource<{ JourneyRouteGhost: Ghost }>(GHOST, plant(raw(GHOST), '"/": <JourneyHomeGhost t={t} millionea={millionea} />,', '"/": <JourneyHomeGhost t={t} />,')).JourneyRouteGhost;
+  ok("6.4′ PLANT · a home ghost not handed the answer (the slot never held: the card would push the page down as it lands) is reported",
+    slotDefects(unhanded).some((x) => x.includes("lacks")));
 }
 
 console.log(`\nmillionea-dark-edge: ${pass} passed, ${fails.length} failed`);
