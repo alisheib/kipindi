@@ -23,7 +23,7 @@ import type { TicketClause } from "@/components/maswali/maswali-ticket";
 import type { PoolView } from "@/components/maswali/maswali-pool-figure";
 import type { WeekPhases } from "@/components/maswali/maswali-week-strip";
 import type { LossPosition, WinLines } from "@/components/maswali/maswali-win-ledger";
-import { counted, weekNumberOf } from "@/components/maswali/maswali-format";
+import { counted, eatWeekday, weekNumberOf } from "@/components/maswali/maswali-format";
 import { MAIN_COUNT, type GradableQuestion, type MaswaliPick } from "@/lib/maswali-score";
 import type { WeekState } from "@/lib/maswali-week-label";
 import { marketCategoryLabel } from "@/lib/localized";
@@ -175,6 +175,18 @@ export function phaseNow(week: Pick<MillioneaHubWeek, "state">, phases: WeekPhas
   if (week.state === "OPEN" && nowMs < phases.salesTo) return 0;
   if (nowMs < phases.eventsTo) return 1;
   return 2;
+}
+
+/**
+ * ⭐ THE CAP REACHED, SAID ONE WAY (S5-FIX-PLAYER P13): the hub's buy block and the slip's refusal before any pick say the
+ * same line — the reader holds the week's cap, and, ONLY when a next week can follow (`nextWeekOpen`'s answer: none in a
+ * final week or while Millionea ends), which week the template opens next and on what day. Never the purchase result's
+ * "you can buy again when next week opens", which a final week cannot keep.
+ */
+export function capReachedLine(t: Dict, cap: number, nextOpenMs: number | null): string {
+  return nextOpenMs === null
+    ? fill(t.millionea.capReachedOnly, { cap })
+    : fill(t.millionea.capReachedNote, { cap, week: eatIsoWeek(nextOpenMs).week, day: eatWeekday(t, nextOpenMs) });
 }
 
 /** What a ticket was paid, as gold may show it: a won ticket whose share is the player's — PAID — and nothing else

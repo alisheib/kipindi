@@ -32,12 +32,11 @@ import { MaswaliLastWeek } from "@/components/maswali/maswali-pool-figure";
 import { MaswaliHeldTicketRow } from "@/components/maswali/maswali-ticket";
 import { MaswaliOutcomeStamp } from "@/components/maswali/maswali-outcome-stamp";
 import { MaswaliClosingPill } from "@/components/maswali/maswali-slip";
-import { counted, eatWeekday, eatWeekdayClock, millioneaWord, reserveLabel, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
+import { counted, eatWeekdayClock, millioneaWord, reserveLabel, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
 import { millioneaGate } from "@/lib/server/millionea-gate";
 import { millioneaHub, millioneaMyTicketsWeek, type MillioneaHub, type MillioneaHubWeek, type MillioneaNotice, type MillioneaTicketsWeek } from "@/lib/server/maswali-player";
 import { millioneaBreakOf, millioneaDoor, millioneaOpenTemplate } from "@/lib/server/millionea-doors";
 import { nextWeekOpen } from "@/components/maswali/maswali-card-model";
-import { eatIsoWeek } from "@/lib/eat-day";
 import { getServerT } from "@/lib/i18n-server";
 import { breakSentence } from "@/lib/break-end";
 import { WEEK_STATE_KEY } from "@/lib/maswali-week-label";
@@ -49,7 +48,7 @@ import type { Dict, Locale } from "@/lib/i18n-dict";
 import { HubPool } from "./hub-pool";
 import { HubNotices, type HubNotice } from "./hub-notices";
 import { MILLIONEA_HREF, MillioneaPreviewMark, MillioneaReadingLinks, registerWeekHref, signInHref, ticketPageHref } from "./millionea-parts";
-import { bySlot, gradableOf, lineOf, msOf, ordinalOf, phaseNow, phasesOf, resultDoorSerial, resultLine, textIn } from "./millionea-view";
+import { bySlot, capReachedLine, gradableOf, lineOf, msOf, ordinalOf, phaseNow, phasesOf, resultDoorSerial, resultLine, textIn } from "./millionea-view";
 
 export const dynamic = "force-dynamic";
 
@@ -222,13 +221,8 @@ function BuyBlock({ t, locale, w, signedIn, nowMs, nextOpen, breakBody }: {
   } else if (w.selling && !signedIn) {
     door = <Link href={signInHref(MILLIONEA_HREF.slip) as never} className="btn btn-primary btn-lg w-full" data-testid="millionea-hub-signin">{t.millionea.signInToBuy}</Link>;
   } else if (w.selling && atCap) {
-    door = (
-      <Callout tone="info" role="status">
-        {nextOpen === null
-          ? fill(t.millionea.capReachedOnly, { cap: w.ticketCap })
-          : fill(t.millionea.capReachedNote, { cap: w.ticketCap, week: eatIsoWeek(nextOpen).week, day: eatWeekday(t, nextOpen) })}
-      </Callout>
-    );
+    // The cap's one line, the slip's refusal says it too (S5-FIX-PLAYER P13): the next week only when one can follow.
+    door = <Callout tone="info" role="status">{capReachedLine(t, w.ticketCap, nextOpen)}</Callout>;
   } else if (w.selling) {
     door = (
       <Link href={MILLIONEA_HREF.slip as never} className="btn btn-primary btn-lg w-full" data-testid="millionea-hub-fill">

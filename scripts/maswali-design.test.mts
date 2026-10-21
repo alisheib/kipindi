@@ -40,7 +40,7 @@ import { homeCardOf, nextWeekOpen } from "../src/components/maswali/maswali-card
 import { outcomeStampText } from "../src/components/maswali/maswali-outcome-stamp.tsx";
 import { counted, eatWeekday } from "../src/components/maswali/maswali-format.ts";
 import { eatIsoWeek } from "../src/lib/eat-day.ts";
-import { resultDoorSerial, resultLine } from "../src/app/millionea/millionea-view.ts";
+import { capReachedLine, resultDoorSerial, resultLine } from "../src/app/millionea/millionea-view.ts";
 import { TICKET_SHOWN_KEY } from "../src/lib/maswali-week-label.ts";
 import type { MillioneaNotice } from "../src/lib/server/maswali-player.ts";
 import { MILLIONEA_GLYPHS } from "../src/components/maswali/maswali-glyph.tsx";
@@ -459,8 +459,12 @@ const heldGuardDefects = (hubSrc: string) => {
       && door.includes("atLeast={model.atLeast} pendingWeek={model.pendingWeek}"));
   const hubSrc = squash(code(read(HUB)));
   const model = code(read("src/components/maswali/maswali-card-model.ts"));
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-FIX-PLAYER P13): the cap's line is one helper now (`capReachedLine`), which the
+  // slip's refusal says too; §5 P13 checks its words in three languages.
+  const viewSrc = squash(code(read("src/app/millionea/millionea-view.ts")));
   ok("2.R4f · the hub's cap line promises no next week when none follows (`capReachedOnly`), and neither the hub nor the card counts seven days from a week's open",
-    hubSrc.includes("nextOpen === null ? fill(t.millionea.capReachedOnly, { cap: w.ticketCap })")
+    hubSrc.includes("door = <Callout tone=\"info\" role=\"status\">{capReachedLine(t, w.ticketCap, nextOpen)}</Callout>;")
+      && viewSrc.includes("return nextOpenMs === null ? fill(t.millionea.capReachedOnly, { cap })")
       && hubSrc.includes("nextOpen={nextWeekOpen(hub, millioneaOpenTemplate(), nowMs)}")
       && !/7 \* 86_400_000/.test(hubSrc) && !/opened \+ 7 \* DAY_MS/.test(model));
 }
@@ -1015,8 +1019,38 @@ const listDefects = (page: string, ticketSrc: string, bar: string) => {
   ok("4.D′ PLANT · the old Chinese rule (\"由每张 … 支付时收取\") is reported", ("由每张 10/10 彩票平分 · 支付时收取 {pct}% 费用" as string) !== zh.millionea.ruleShared);
 }
 
+// ── §5 · S5-FIX-PLAYER (the independent review of the player surfaces, 2026-10-21) ────────────────────────────────────
+console.log("\n§5 · S5-FIX-PLAYER: each finding a case the old code fails, with its plant");
+
+// P13 · a refusal before any pick says the page's words, never a purchase result's
+const SLIP_PAGE = "src/app/millionea/slip/page.tsx";
+const slipRefusalDefects = (src: string) => {
+  const s = squash(code(src));
+  const d: string[] = [];
+  const at = s.indexOf('if (slip.refusal && slip.refusal !== "millionea_sales_closed") {');
+  const branch = at < 0 ? "" : s.slice(at, s.indexOf("const closesAt = ", at));
+  if (!branch) d.push("no refusal branch before the slip");
+  if (!branch.includes('if (slip.refusal === "millionea_cap_reached") { const hub = await millioneaHubNow(gate.userId, gate.state); said = { body: capReachedLine(t, slip.ticketCap, hub ? nextWeekOpen(hub, millioneaOpenTemplate(), nowMs) : null), tone: "info" };')) d.push("the cap is not the hub's line (its next week only when one can follow)");
+  if (!branch.includes('else if (slip.refusal === "millionea_not_available") { said = { body: t.millionea.hubNoWeek, tone: "neutral" };')) d.push("\"not available\" is not the hub's \"no week on sale\"");
+  if (/failMillioneaCapReached|failMillioneaNotAvailable/.test(s)) d.push("the slip names a purchase result's sentence");
+  return d;
+};
+{
+  const d = slipRefusalDefects(read(SLIP_PAGE));
+  ok("5.P13a · the slip's refusals before any pick: the cap in the hub's own line (the next week named only when one can follow), \"not available\" as the hub's \"No Millionea week is on sale right now.\" — never \"Nothing was charged.\" over nothing tried", d.length === 0, d.join(" | "));
+  const NEXT = Date.parse("2026-10-18T21:00:00.000Z"); // Monday 19 October 2026, 00:00 EAT — ISO week 43
+  const lines = LOCALES.map((l) => [capReachedLine(dict[l], 10, null), capReachedLine(dict[l], 10, NEXT)]);
+  const want = LOCALES.map((l) => [fill(dict[l].millionea.capReachedOnly, { cap: 10 }), fill(dict[l].millionea.capReachedNote, { cap: 10, week: 43, day: dict[l].millionea.weekdays[0] })]);
+  const promise = LOCALES.filter((l) => /next week|wiki ijayo|下周/i.test(capReachedLine(dict[l], 10, null)));
+  ok("5.P13b · the cap's one line, in three languages: \"You have reached 10 tickets this week.\" with no next week to follow, \"… Week 43 opens Monday.\" when one can — and the final week's never promises one",
+    j(lines) === j(want) && lines[0][0] === "You have reached 10 tickets this week." && lines[0][1] === "You have reached 10 tickets this week. Week 43 opens Monday." && promise.length === 0, j({ lines, promise }));
+  const old = read(SLIP_PAGE).replace('said = { body: t.millionea.hubNoWeek, tone: "neutral" };', "said = { body: t.error.failMillioneaNotAvailable, tone: \"neutral\" };");
+  ok("5.P13′ PLANT · the purchase result's \"Nothing was charged.\" put back on the slip is reported", old !== read(SLIP_PAGE) && slipRefusalDefects(old).length > 0);
+}
+
 console.log(`\n${"═".repeat(70)}\n  MASWALI DESIGN: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
-/** The floor is the count a green run prints; VIS-P's fact, example and word plants bring it to 110. */
-const MIN_ASSERTIONS = 110;
+/** The floor is the count a green run prints; VIS-P's fact, example and word plants brought it to 110, and S5-FIX-PLAYER's §5
+ *  (P13) to 117. */
+const MIN_ASSERTIONS = 117;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);
