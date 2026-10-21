@@ -1500,8 +1500,10 @@ them, never dip under.
    `--state-yield-opacity`: floating chrome yielding to the content beneath it; still live, never disabled — the chat
    bubble at rest over a line of text or a figure (globals.css D15; MASWALI-BUILD S5-FIX-PLATFORM D15, lead 2026-10-21,
    the 10/10 pass): a pointer's hover and a keyboard's focus bring it back whole, its taps are kept, and its value is
-   MEASURED, never chosen — the highest opacity at which every figure it covers still meets item 1's minimum for its size,
-   through the real bubble over the real figures (`qa:chat-yield --measure`).
+   MEASURED, never chosen: every figure it covers meets item 1's minimum for its size through the real bubble — its
+   median glyph pixel AND its 10th-percentile one, so the figure reads under the bubble's icon too (the lead's rule,
+   2026-10-21: .50, provided that holds on every covered figure, else the highest value where it does;
+   `qa:chat-yield --measure`).
 2. **Tap targets ≥ `--tap-min` (40px), 44px preferred on mobile.** Money controls are
    never the exception — a stake chip is where a player chooses how much to risk, and it
    was shipped at 26px once (E-112). `--h-input` already sits at 44px.

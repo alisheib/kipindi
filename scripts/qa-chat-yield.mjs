@@ -19,7 +19,8 @@
  * pixels) and with it whole (the bubble's own pixels); every opacity from .30 to .90 composited from the two in
  * gamma-encoded sRGB (DESIGN_AUTHORITY §A1), checked against a real shot at .45, .55 and .60; the figure's contrast is
  * the median over its glyph pixels inside the bubble of (text through the bubble) against (its background through the
- * bubble), against WCAG's minimum for its size (4.5, or 3.0 from 24px, or 18.67px bold). CASES=week,how,wallet.
+ * bubble), against WCAG's minimum for its size (4.5, or 3.0 from 24px, or 18.67px bold) — and, the lead's rule (2026-10-21),
+ * its 10th-percentile glyph pixel too, so the figure reads under the bubble's icon as well. CASES=week,how,wallet.
  */
 import { chromium } from "playwright";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -242,14 +243,14 @@ async function measure(kind, path, w) {
   await page.waitForSelector(".cm-fab .cm-bubble", { state: "attached", timeout: 30_000 }).catch(() => {});
   await page.addStyleTag({ content: ".cm-fab{transition:none!important;transform:none!important} .cm-bubble::after{animation:none!important;opacity:0!important}" });
   for (const fig of await figures(page, kind)) {
-    const at = await underBubble(page, fig.id);
-    if (!at?.overlap) {
-      const why = at?.why ?? `not under it at any scroll (figure x ${Math.round(at?.fig?.left)}–${Math.round(at?.fig?.right)} y ${Math.round(at?.fig?.top)}; bubble x ${Math.round(at?.box?.left)}–${Math.round(at?.box?.right)} y ${Math.round(at?.box?.top)})`;
+    const at0 = await underBubble(page, fig.id);
+    if (!at0?.overlap) {
+      const why = at0?.why ?? `not under it at any scroll (figure x ${Math.round(at0?.fig?.left)}–${Math.round(at0?.fig?.right)} y ${Math.round(at0?.fig?.top)}; bubble x ${Math.round(at0?.box?.left)}–${Math.round(at0?.box?.right)} y ${Math.round(at0?.box?.top)})`;
       table.push({ kind, w, text: fig.text, note: why });
       console.log(`  ${kind} ${w} "${fig.text}" · ${why}`);
       continue;
     }
-    const o = at.overlap;
+    const o = at0.overlap;
     const clip = { x: Math.floor(o.left), y: Math.floor(o.top), width: Math.max(1, Math.ceil(o.right) - Math.floor(o.left)), height: Math.max(1, Math.ceil(o.bottom) - Math.floor(o.top)) };
     const force = async (css) => { await page.evaluate((css) => { let s = document.getElementById("yield-force"); if (!s) { s = document.createElement("style"); s.id = "yield-force"; document.head.append(s); } s.textContent = css; }, css); await page.waitForTimeout(120); };
     await force(".cm-fab{visibility:hidden!important}");
@@ -257,20 +258,20 @@ async function measure(kind, path, w) {
     await force(".cm-fab{opacity:1!important;visibility:visible!important}");
     const B = await shot(page, clip);
     const real = {};
-    for (const a of [0.45, 0.55, 0.6]) { await force(`.cm-fab{opacity:${a}!important;visibility:visible!important}`); real[a] = await shot(page, clip); }
+    for (const a of [0.45, 0.5, 0.55, 0.6]) { await force(`.cm-fab{opacity:${a}!important;visibility:visible!important}`); real[a] = await shot(page, clip); }
     await force("");
     // The circle of the bubble, in clip pixels; the figure's background = the commonest colour of H inside it.
-    const cx = (at.box.left + at.box.right) / 2 - clip.x, cy = (at.box.top + at.box.bottom) / 2 - clip.y, rad = (at.box.right - at.box.left) / 2 - 1.5;
+    const cx = (at0.box.left + at0.box.right) / 2 - clip.x, cy = (at0.box.top + at0.box.bottom) / 2 - clip.y, rad = (at0.box.right - at0.box.left) / 2 - 1.5;
     const inside = [];
     for (let y = 0; y < H.height; y++) for (let x = 0; x < H.width; x++) if ((x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 <= rad * rad) inside.push([x, y]);
     const buckets = new Map();
     for (const [x, y] of inside) { const c = px(H, x, y); const k = c.map((v) => v >> 3).join(","); const e = buckets.get(k) ?? { n: 0, s: [0, 0, 0] }; e.n++; e.s = e.s.map((v, j) => v + c[j]); buckets.set(k, e); }
     const top = [...buckets.values()].sort((a, b) => b.n - a.n)[0];
     const bg = top ? top.s.map((v) => v / top.n) : [0, 0, 0];
-    const text = rgbOf(at.color).slice(0, 3);
+    const text = rgbOf(at0.color).slice(0, 3);
     const d = text.map((v, j) => v - bg[j]); const dd = d.reduce((s, v) => s + v * v, 0) || 1;
     const glyph = inside.filter(([x, y]) => { const c = px(H, x, y); return c.reduce((s, v, j) => s + (v - bg[j]) * d[j], 0) / dd >= 0.5; });
-    const min = at.size >= 24 || (at.size >= 18.66 && at.weight >= 700) ? 3.0 : 4.5;
+    const min = at0.size >= 24 || (at0.size >= 18.66 && at0.weight >= 700) ? 3.0 : 4.5;
     const contrastAt = (a) => {
       const vals = glyph.map(([x, y]) => { const b = px(B, x, y); return ratio(b.map((v, j) => a * v + (1 - a) * text[j]), b.map((v, j) => a * v + (1 - a) * bg[j])); }).sort((p, q) => p - q);
       return vals.length ? { med: vals[Math.floor(vals.length / 2)], p10: vals[Math.floor(vals.length / 10)] } : null;
@@ -280,11 +281,16 @@ async function measure(kind, path, w) {
       return [a, Math.round((s / Math.max(1, inside.length)) * 10) / 10];
     }));
     const sweep = ALPHAS.map((a) => ({ a, ...contrastAt(a) }));
-    const best = [...sweep].reverse().find((s) => s.med >= min)?.a ?? null;
-    const row = { kind, w, text: fig.text, size: at.size, weight: at.weight, min, glyphPx: glyph.length,
-      at45: contrastAt(0.45), at55: contrastAt(0.55), at60: contrastAt(0.6), highestPassing: best, modelVsChromium: drift };
+    // ⛔ THE LEAD'S RULE (2026-10-21): EVERY figure reads, the icon zone included — its 10th-percentile glyph pixel, not
+    // only its median, meets the minimum. The median's own highest is reported beside it.
+    const best = [...sweep].reverse().find((x) => x.p10 >= min)?.a ?? null;
+    const bestMedian = [...sweep].reverse().find((x) => x.med >= min)?.a ?? null;
+    const row = { kind, w, text: fig.text, size: at0.size, weight: at0.weight, min, glyphPx: glyph.length,
+      at45: contrastAt(0.45), at50: contrastAt(0.5), at55: contrastAt(0.55), at60: contrastAt(0.6),
+      highestPassing: best, highestByMedian: bestMedian, modelVsChromium: drift };
     table.push(row);
-    console.log(`  ${kind} ${w} "${fig.text}" ${at.size}px/${at.weight} min ${min} · .45 ${row.at45?.med.toFixed(2)} (p10 ${row.at45?.p10.toFixed(2)}) · .55 ${row.at55?.med.toFixed(2)} (p10 ${row.at55?.p10.toFixed(2)}) · .60 ${row.at60?.med.toFixed(2)} (p10 ${row.at60?.p10.toFixed(2)}) · highest passing ${best} · model vs Chromium |Δ| ${JSON.stringify(drift)}`);
+    const cell = (c) => `${c?.med.toFixed(2)} p10 ${c?.p10.toFixed(2)}`;
+    console.log(`  ${kind} ${w} "${fig.text}" ${at0.size}px/${at0.weight} min ${min} · .45 ${cell(row.at45)} · .50 ${cell(row.at50)} · .55 ${cell(row.at55)} · .60 ${cell(row.at60)} · highest by p10 ${best} · by median ${bestMedian} · model vs Chromium |Δ| ${JSON.stringify(drift)}`);
   }
   await ctx.close();
 }
@@ -317,7 +323,7 @@ if (MEASURE) {
   writeFileSync(join(OUT, "yield-table.json"), JSON.stringify(table, null, 1));
   const measured = table.filter((r) => r.highestPassing !== undefined);
   const floor = measured.length ? Math.min(...measured.map((r) => r.highestPassing ?? 0)) : null;
-  console.log(`\nqa:chat-yield --measure: ${measured.length} figures measured; the highest opacity every one passes at: ${floor} (table in ${OUT})`);
+  console.log(`\nqa:chat-yield --measure: ${measured.length} figures measured; the highest opacity at which every one's 10th-percentile glyph pixel meets its minimum: ${floor} (by the median alone: ${measured.length ? Math.min(...measured.map((r) => r.highestByMedian ?? 0)) : null}) (table in ${OUT})`);
   process.exitCode = measured.length ? 0 : 1;
 } else if (RED) {
   const yields = fails.filter((f) => /yields to --state-yield-opacity|leaving it yields again/.test(f)).length;

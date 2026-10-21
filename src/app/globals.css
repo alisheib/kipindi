@@ -1784,8 +1784,8 @@ html[data-fab-idle] .cm-fab:not(.cm-fab--open):not(:focus-within) {
    page's Money out at 320 and 360, How to play's worked figures, and every classic page's right-aligned figure.
    ChatRoot's census (`lib/chat/fab-census.ts`) marks the wrapper `data-over-content` while a visible line of text or an
    `.amount` lies under the bubble's resting rect (its box and its ring), asked at most once a frame and again whenever D3
-   or D75 hands it back; here it yields to `--state-yield-opacity` (state-tokens.css: still live, never disabled — the
-   highest opacity at which the covered figures still meet their contrast minimum, measured) and returns when the content
+   or D75 hands it back; here it yields to `--state-yield-opacity` (state-tokens.css: still live, never disabled — an
+   opacity at which every covered figure, under the bubble's icon too, still meets its contrast minimum, measured) and returns when the content
    clears. ⛔ No nudge: a support button that moves is disorienting. ⛔ Never "disabled": a pointer's hover and a
    keyboard's focus bring it back whole (an open panel and any focus within keep it whole, as in D3 and D75), it keeps
    `pointer-events`, and a tap works as ever. ⚠️ Lower in the cascade than D3 and D75 (no `html[…]` prefix), so a moving
