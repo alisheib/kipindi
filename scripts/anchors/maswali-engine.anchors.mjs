@@ -757,7 +757,7 @@ export const MUTATIONS = [
     name: "(95) a move writes its audit row under its lock, before its commit",
     file: SVC,
     from: "owed: [{ category: \"ADMIN\", action: \"maswali.week.close_moved\", actorId: input.officerId, targetType: \"MaswaliCycle\", targetId: week.id,\n      payload: { code: week.code, from: week.closesAt, to: new Date(toMs).toISOString() } }] };",
-    to: "owed: void recordOwed([{ category: \"ADMIN\", action: \"maswali.week.close_moved\", actorId: input.officerId, targetType: \"MaswaliCycle\", targetId: week.id,\n      payload: { code: week.code, from: week.closesAt, to: new Date(toMs).toISOString() } }]) };",
+    to: "owed: (void recordOwed([{ category: \"ADMIN\", action: \"maswali.week.close_moved\", actorId: input.officerId, targetType: \"MaswaliCycle\", targetId: week.id,\n      payload: { code: week.code, from: week.closesAt, to: new Date(toMs).toISOString() } }]), []) };",
     expect: "14.3 · ⭐ nothing inside the chain lock writes an audit row or seeds the source registry",
     suite: "engine",
   },
