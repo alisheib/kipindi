@@ -483,7 +483,9 @@ section("5 · the not-found mark (tiles 345–398: the market not-found stood th
   // The three overlays: the stand-down term joined by `&& !notFoundShown`, the mark read once each.
   const TERM = "journeyOn && isJourneySurface(pathname) && !notFoundShown";
   const sites: Array<[string, string, string]> = [
-    ["the Needle", NEEDLE, `const suppressed = hiddenPref || isMoneySurface(pathname) || (${TERM});`],
+    // 2026-10-21 · U43 Release B added its own stand-down term before the journey's (`suppressNeedleOnU43`: the Needle
+    // stays off the U43 choice surfaces it covered). The journey term and its not-found mark are unchanged; pinned whole.
+    ["the Needle", NEEDLE, `const suppressed = hiddenPref || isMoneySurface(pathname) || suppressNeedleOnU43(pathname) || (${TERM});`],
     ["the chat bubble", CHAT, `if (${TERM}) return null;`],
     ["the channels panel", CHANNELS, `const journeyHidden = ${TERM};`],
   ];
