@@ -183,12 +183,20 @@ const nameDefects = (l: L, m: string) => {
   ok("1.13 · L12 · at STAFF_PREVIEW the title row carries the info chip with the eye and \"Preview\" (as every Millionea page is marked); never otherwise", wrong.length === 0, j(wrong));
 }
 
-// P6 · the objection window, while it runs, after "15 of 15 results in"; nothing new while it does not.
+// P6 · where the week stands after its results — the one phase every surface says (`millioneaWeekPhase`): the objection
+// window and its end while it runs, then "Settling"; nothing more while results still come in.
 {
   const when = (l: L) => fill(dict[l].millionea.checkWindowUntil, { when: `${dict[l].millionea.weekdays[4]} 09:00` });
-  const shown = LOCALES.filter((l) => !textOf(stateOf(card(l, "closed · 15"))).includes(when(l)));
-  const none = LOCALES.filter((l) => textOf(stateOf(card(l, "closed · 6"))).includes(dict[l].millionea.checkWindowUntil.split("{when}")[0].trim()));
-  ok("1.14 · P6 · after every result is in, the card names the objection window's end while it runs (the hub's one key, `checkWindowUntil`, S5-FIX-PLAYER's words at the merge) — and a week still taking results shows none", shown.length === 0 && none.length === 0, j({ shown, none }));
+  const window = LOCALES.filter((l) => textOf(stateOf(card(l, "closed · 15 of 15, objection"))) !== `${fill(dict[l].millionea.resultsOut, { n: 15 })} · ${when(l)}`);
+  const settling = LOCALES.filter((l) => textOf(stateOf(card(l, "closed · 15 of 15, settling"))) !== `${fill(dict[l].millionea.resultsOut, { n: 15 })} · ${dict[l].millionea.weekStatusSettling}`);
+  const none = LOCALES.filter((l) => textOf(stateOf(card(l, "closed · 6"))) !== fill(dict[l].millionea.resultsOut, { n: 6 }));
+  const words: Record<L, [string, string]> = { en: ["Objection window until", "Settling"], sw: ["Dirisha la pingamizi hadi", "Inakamilishwa"], zh: ["异议窗口至", "待结算"] };
+  const ruled = LOCALES.filter((l) => !dict[l].millionea.checkWindowUntil.startsWith(words[l][0]) || dict[l].millionea.weekStatusSettling !== words[l][1]);
+  ok("1.14 · P6 · after every result is in, the card says where the week stands — \"Objection window until Friday 09:00\" while it runs, then \"Settling\" (the lead's words; `millioneaWeekPhase`/`weekPhaseWord`, the hub's one answer) — and only the count while results still come in",
+    window.length === 0 && settling.length === 0 && none.length === 0 && ruled.length === 0, j({ window, settling, none, ruled }));
+  // CONTROL: the card as the critic read it — "15 of 15 results in", then nothing — fails the same comparison.
+  const before = stateOf(card("en", "closed · 15 of 15, objection")).replace(/<span class="sr-only"> · <\/span><\/span><span class="kp-mln-fact">[\s\S]*?<\/span><\/span><\/span>$/, "</span></span>");
+  ok("1.14′ PLANT · the closed card's old line (\"15 of 15 results in\" and nothing after it) is reported", textOf(before) === fill(dict.en.millionea.resultsOut, { n: 15 }) && textOf(before) !== `${fill(dict.en.millionea.resultsOut, { n: 15 })} · ${when("en")}`);
 }
 
 // L2 · each host's box; one hover; no gold anywhere.
@@ -307,6 +315,6 @@ console.log("\n§4 · controls — each check fails on a planted copy");
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI DOORS: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run prints. */
-const MIN_ASSERTIONS = 32;
+const MIN_ASSERTIONS = 33;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

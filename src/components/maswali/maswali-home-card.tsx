@@ -47,8 +47,9 @@ export type HomeCardState =
    *  costs (`price`, the week's frozen price); at the cap, when the next week opens — or no next week at all, in a final
    *  week or while Millionea ends (`next` null). */
   | { kind: "open"; closesAt: number; held: number | null; price: number; capFull?: { next: { week: number; opensOn: string } | null } }
-  /** Sales closed, results arriving — and, while the objection window runs, its end (`objectionsUntil`, else null). */
-  | { kind: "closed"; resultsIn: number; objectionsUntil: number | null }
+  /** Sales closed, results arriving — and where the week stands after them (`millioneaWeekPhase`): the objection window
+   *  while it runs (`objectionsUntil`, its end), then settling (`word`, `weekPhaseWord`'s); `state` while results come in. */
+  | { kind: "closed"; resultsIn: number; phase: { kind: "state" | "objections" | "settling"; objectionsUntil: number | null; word: string } }
   /** Settled with winners, or with no 10/10 and the pool carried. */
   | { kind: "settledWon"; winners: number }
   | { kind: "settledRollover"; carried: number }
@@ -131,11 +132,15 @@ export function MaswaliHomeCard({ t, locale, week, jackpot, pct, cap, state, fin
               ? keep(fill(t.millionea.yourTicketsThisWeek, { n: formatNumber(state.held), cap: formatNumber(cap) }))
               : keep(fill(t.millionea.cardPrice, { price: formatTzs(state.price) }))];
       break;
-    case "closed":
-      // P6 on the card: after "15 of 15 results in", the objection window and its end — while it runs, never a guess.
+    case "closed": {
+      // P6 on the card: after "15 of 15 results in", where the week stands — the objection window and its end while it
+      // runs (the hub's line, `checkWindowUntil`), then "Settling" — the one answer every surface says; never a guess.
+      const { kind, objectionsUntil, word } = state.phase;
       meta = [keep(fill(t.millionea.resultsOut, { n: formatNumber(state.resultsIn) })),
-        state.objectionsUntil === null ? null : <span key="objections">{fillNodes(t.millionea.checkWindowUntil, { when: doorTime(t, state.objectionsUntil) })}</span>];
+        kind === "objections" && objectionsUntil !== null ? <span key="objections">{fillNodes(t.millionea.checkWindowUntil, { when: doorTime(t, objectionsUntil) })}</span>
+          : kind === "settling" ? word : null];
       break;
+    }
     case "settledWon":
       // The register's and /results' own words (L9): the title already names the week, so the line never says it twice.
       meta = [keep(counted(state.winners, t.millionea.regWonOne, t.millionea.regWon))];
