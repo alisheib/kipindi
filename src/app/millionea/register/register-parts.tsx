@@ -6,7 +6,7 @@
  * Millionea fact, which the other lanes adopt in round 2: the week's state chip (`WeekStateChip` — the hub), one week's
  * row (`WeekRow` — `/results`' section) and the week's two commitments (`WeekCommitments` — the hub's week section).
  */
-import { Fragment, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
@@ -114,28 +114,27 @@ export function liveWeekFacts(t: Dict, locale: Locale, w: MillioneaRegisterLiveW
 
 /**
  * ⭐ ONE WEEK'S ROW — the index's, and `/results`' section adopts it in round 2 (L3: the row was written twice). Its code,
- * the week with its state chip, then its facts — from 768 on one line between "·" separators that cannot open a line
- * there; below 768 each fact its own line, with no separator at all (A1) — and the chevron of a door to its page.
+ * the week with its state chip, then its facts — a fact list (`MaswaliFacts`, layout `phone`): one fact per line below
+ * 768, from 768 side by side between the platform's own separators, which never open or end a line (A1) — and the chevron
+ * of a door to its page. From 1024 the facts end at the row's end, beside the chevron, wherever the row is drawn (on the
+ * register's reading measure and in /results' board-tier box alike), never ~700px from it after the week's column.
+ * ⛔ THE ROW DRAWS NO RULE OF ITS OWN: the list divides its rows (`divide-y divide-border`) and draws its own top edge, so
+ * a list under a heading and a list inside a box read alike — one rule, no line after the last row.
  */
 export function WeekRow({ t, code, chip, facts }: { t: Dict; code: string; chip: ReactNode; facts: readonly ReactNode[] }) {
   return (
-    <li className="border-b border-border">
+    <li>
       <Link href={registerWeekHref(code) as never} className="flex items-center justify-between gap-3 py-3 text-text" style={{ minHeight: "var(--h-control-lg)" }}>
-        <span className="flex min-w-0 flex-col gap-1">
+        <span className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{code}</span>
           <span className="flex flex-col gap-1 md:flex-row md:items-center md:gap-6">
-            <span className="flex flex-wrap items-center gap-x-2 gap-y-1 md:w-[200px] md:shrink-0">
+            <span className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 md:w-[200px]">
               <span className="text-body font-semibold text-text">{weekWord(t, weekNumberOf(code))}</span>
               {chip}
             </span>
             {facts.length > 0 && (
-              <span className="flex min-w-0 flex-col gap-0.5 text-body-sm text-text-muted md:flex-row md:flex-wrap md:items-baseline md:gap-x-2" data-testid="millionea-week-facts">
-                {facts.map((f, i) => (
-                  <Fragment key={i}>
-                    {i > 0 && <span aria-hidden className="hidden text-text-subtle md:inline">·</span>}
-                    <span>{f}</span>
-                  </Fragment>
-                ))}
+              <span className="min-w-0 text-body-sm text-text-muted lg:ml-auto" data-testid="millionea-week-facts">
+                <MaswaliFacts layout="phone" facts={facts} />
               </span>
             )}
           </span>

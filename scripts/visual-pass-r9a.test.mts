@@ -600,7 +600,10 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/app/millionea/hub-notices.tsx', '<I.chevronRight s={14} edge="end" text="body-400" />', 1, "text", "a hub notice's door: a text link's end after its body/400 words"],
     ['src/app/millionea/millionea-parts.tsx', '<I.chevronRight s={14} edge="end" text="body-400" />', 1, "text", "the reading links' end (how it works, the register, fairness), one mark per link"],
     ['src/app/millionea/register/[week]/page.tsx', '<I.chevronRight s={14} edge="end" text="body-400" />', 1, "text", "the register's audit-chain link's end"],
-    ['src/app/millionea/register/page.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle" />', 1, "row", "a week's row end in the register's list"],
+    // RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER): the week's row is the ONE shared row (`WeekRow`, register-parts:
+    // the register's index, /results' section), and a ledger's carry row is a door to its week (the critic's M10).
+    ['src/app/millionea/register/register-parts.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle" />', 1, "row", "a week's row end in the register's list (and /results' section)"],
+    ['src/components/maswali/maswali-ledger.tsx', '<I.chevronRight s={14} edge="end" text="body-400" className="shrink-0" />', 1, "text", "a ledger carry row's door to its week: the end of its 13px body/400 label"],
     ['src/app/positions/page.tsx', '<I.arrowRight s={14} edge="end" className="shrink-0 text-text-muted" />', 1, "row", "classic /positions' Millionea row: a door's end on its content edge (D-13 (c))"],
   ];
   const MARK = new RegExp("<I[.](?:chevronRight|chevronLeft|chevronsRight|chevronsLeft|arrowRight|ext|externalLink)(?![A-Za-z])(?:[^<>{}]|[{](?:[^{}]|[{][^{}]*[}])*[}])*?/>", "g");
