@@ -37,18 +37,19 @@ today). Before the push, at the exact commit: typecheck 0, `next build` green, l
 at `2919a4ff7`), `e2e:money`, `e2e:fault` and `e2e:card` PASS on their own disposable PostgreSQL databases. Linux CI on
 the candidate failed only `dead-css` (item 3 below), the five Maswali suites, and `updown-push` (fixed in `110587e7e`).
 
-⛔ **PRODUCTION HAS NOT DEPLOYED ANY PUSH SINCE 2026-10-20 16:02Z.** That deployment (`4471bb440`) FAILED inside
-Railway's builder ("railpack prepare exited with an error" pulling `ghcr.io/railwayapp/railpack-builder:latest` — not
-this code), and since then Railway created no deployment for `cffe67cf2`, `5dea3f410` or `110587e7e` — no record of
-any status, not even a skipped one, so the push events are not reaching Railway — although the service's trigger is
-intact (branch `main`, `alisheib/kipindi`, `checkSuites: false`; the repository has no plain webhook, Railway uses its
-GitHub App). Production serves `d268ef919`
-on www, apex and the Railway host, healthy (database reachable and migrated). A manual `serviceInstanceDeploy` of
-`110587e7e` was refused by the session's auto-mode classifier, so **Ali presses Deploy** on the 50pick service in
-Railway (or re-connects its GitHub trigger). There is no migration and no dependency change between `d268ef919` and
-`110587e7e`. **Owed after the deploy:** the AGENTS.md §4 read-back — `?dpl=110587e7e…` on all three hosts,
-`/api/health`, `qa:chunks-prod` on www and apex, production `qa:live` — then this paragraph rewritten as live. The
-⏸ U43 block below lists the rest of what is owed.
+⛔ **PRODUCTION HAS NOT DEPLOYED ANY PUSH SINCE 2026-10-20 16:02Z — A RAILWAY-WIDE OUTAGE, NOT THIS CODE.** That
+deployment (`4471bb440`) FAILED inside Railway's builder ("railpack prepare exited with an error" pulling
+`ghcr.io/railwayapp/railpack-builder:latest`). status.railway.com then reported new builds paused (2026-10-20
+17:03–20:56Z) and, from 2026-10-21 07:24Z, "Dashboard and API unavailable, builds paused" in every region; a push made
+during a pause is DROPPED, not queued, so `cffe67cf2`, `5dea3f410`, `110587e7e` and `2b35d679a` have no deployment
+record at all, and a deploy request is answered "Deploys have been paused temporarily". The service's trigger itself
+is intact (branch `main`, `alisheib/kipindi`, `checkSuites: false`). Production serves `d268ef919` on www, apex and the
+Railway host, healthy (database reachable and migrated). Ali, 2026-10-21: *"keep pushing to github anyways until
+working … no need to check on railway"* — the Maswali session retries a deploy of `main`'s head every 10 minutes and
+stops at the first accepted one. There is no migration and no dependency change between `d268ef919` and `main`.
+**Owed once Railway deploys `main`:** the AGENTS.md §4 read-back — `?dpl=<main's sha>` on all three hosts,
+`/api/health`, `qa:chunks-prod` on www and apex, production `qa:live`; `handover/u43-2026-10-21/u43-readback.sh` on the
+hand-over branch runs all of it — then this paragraph rewritten as live. The ⏸ U43 block below lists the rest.
 
 ### ⛔ IS MOBILE VISUALISATION DONE? **NO.** Read this before telling anyone otherwise.
 
