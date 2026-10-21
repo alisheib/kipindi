@@ -356,7 +356,7 @@ const daDefects = (da: string, navMore: string) => {
   if (!item) d.push("item 11 not found");
   if (/every nav is byte-identical/.test(item)) d.push("item 11 still says every nav is byte-identical while WITHDRAWN");
   if (!item.includes("with one ruled change that every reader gets: the classic bar's More panel is opaque")) d.push("item 11 does not name the ruled classic change where it speaks of WITHDRAWN");
-  if (!item.includes("The bar's panel is opaque for EVERY reader, Millionea shown or not: the one change to the classic chrome this item rules")) d.push("item 11's panel sentence does not say it applies to every reader");
+  if (!item.includes("The bar's panel is opaque for EVERY reader, Millionea shown or not: the first change to the classic chrome this item rules")) d.push("item 11's panel sentence does not say it applies to every reader");
   const bar = squash(decomment(navMore));
   if (!bar.includes('className="absolute right-0 top-[calc(100%+6px)] z-[50] min-w-[190px] rounded-modal border border-border-strong bg-bg-elevated p-1 shadow-overlay"')) d.push("premise: the bar's More panel is not the opaque surface");
   return d;

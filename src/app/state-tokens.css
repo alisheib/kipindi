@@ -24,6 +24,14 @@
      ⭐ `--state-disabled-opacity` STAYS: it has a live reader
      (`updown-board-tabs.tsx`). One survivor of four is the honest count. */
   --state-disabled-opacity: .45;
+  /* ⭐ FLOATING CHROME YIELDING TO THE CONTENT BENEATH IT — STILL LIVE, NEVER DISABLED (MASWALI-BUILD S5-FIX-PLATFORM D15,
+     the lead's ruling 2026-10-21). The chat bubble at rest over a line of text or a figure (globals.css D15) steps back
+     to this, and a pointer's hover or a keyboard's focus brings it back whole; it keeps its taps. ⛔ NOT
+     `--state-disabled-opacity`: that value MEANS "switched off", and a support button must never read so.
+     ⭐ ITS VALUE IS MEASURED, NOT CHOSEN: the HIGHEST opacity at which every figure the bubble covers still meets its
+     contrast minimum for its size (DESIGN_AUTHORITY §A1: the rendered ink, composited in sRGB), measured in Chromium
+     through the real bubble over the real figures — YIELD_TABLE. */
+  --state-yield-opacity: .55;
 }
 /* ⚠️ `.is-interactive` was DELETED 2026-07-29 (design freeze, B10).
    POLISH-BACKLOG §1.3 asked for an audit of it as a suspected duplicate of the

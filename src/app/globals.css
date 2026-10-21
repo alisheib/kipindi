@@ -1777,6 +1777,25 @@ html[data-fab-idle] .cm-fab:not(.cm-fab--open):not(:focus-within) {
   html[data-fab-idle] .cm-fab:not(.cm-fab--open):not(:focus-within) { transform: none; }
   .cm-fab { transition: opacity var(--t-quick) linear; }
 }
+/* ⭐ D15 · AT REST OVER A LINE OF TEXT OR A FIGURE, THE BUBBLE YIELDS: IT FADES, IT NEVER MOVES (MASWALI-BUILD
+   S5-FIX-PLATFORM D15, 2026-10-21; the register critic's M5, ruled by the lead 2026-10-21, the 10/10 pass — the third
+   ruled classic change, DESIGN_AUTHORITY §M8a item 11). D3 and D75 above clear the bubble while the page moves and once
+   the reader has left it alone; between the two it stood at full ink over whatever lay under it — a Millionea week
+   page's Money out at 320 and 360, How to play's worked figures, and every classic page's right-aligned figure.
+   ChatRoot's census (`lib/chat/fab-census.ts`) marks the wrapper `data-over-content` while a visible line of text or an
+   `.amount` lies under the bubble's resting rect (its box and its ring), asked at most once a frame and again whenever D3
+   or D75 hands it back; here it yields to `--state-yield-opacity` (state-tokens.css: still live, never disabled — the
+   highest opacity at which the covered figures still meet their contrast minimum, measured) and returns when the content
+   clears. ⛔ No nudge: a support button that moves is disorienting. ⛔ Never "disabled": a pointer's hover and a
+   keyboard's focus bring it back whole (an open panel and any focus within keep it whole, as in D3 and D75), it keeps
+   `pointer-events`, and a tap works as ever. ⚠️ Lower in the cascade than D3 and D75 (no `html[…]` prefix), so a moving
+   page and an idle reader still clear it whole. Its opacity moves on `.cm-fab`'s own `--t-quick`; the reduced-motion
+   clamps (motion.css) make the switch instant. `test:chat-yield` holds the rules; `qa:chat-yield` drives them at 320 and
+   360 and measures the covered figures through the faded bubble. */
+.cm-fab[data-over-content]:not(.cm-fab--open):not(:focus-within) { opacity: var(--state-yield-opacity); }
+@media (hover: hover) {
+  .cm-fab[data-over-content]:not(.cm-fab--open):hover { opacity: 1; }
+}
 
 /* 🔴 D68 · A CENTRED 80svh BLOCK ON A SHORT SCREEN PUSHES ITS OWN EXIT BELOW THE FOLD.
    `/not-found` (and the market and proposal variants) centre their stack inside `min-h-[80svh]`. At 320×640

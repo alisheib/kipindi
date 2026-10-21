@@ -1495,6 +1495,13 @@ them, never dip under.
    list carrying `cursor-not-allowed` / `pointer-events-none`, a rendered fact, never by a
    filename. A file-scoped allowlist would exempt every future site in the same file, which is
    how `filter-language` §6.7 once convicted an innocent `<input>`.
+   ⭐ **TWO OPACITY TOKENS, TWO MEANINGS — NEVER ONE FOR THE OTHER (`state-tokens.css`).** `--state-disabled-opacity`
+   says *switched off*: a pending board tab, a waiting chip, an inert ticket.
+   `--state-yield-opacity`: floating chrome yielding to the content beneath it; still live, never disabled — the chat
+   bubble at rest over a line of text or a figure (globals.css D15; MASWALI-BUILD S5-FIX-PLATFORM D15, lead 2026-10-21,
+   the 10/10 pass): a pointer's hover and a keyboard's focus bring it back whole, its taps are kept, and its value is
+   MEASURED, never chosen — the highest opacity at which every figure it covers still meets item 1's minimum for its size,
+   through the real bubble over the real figures (`qa:chat-yield --measure`).
 2. **Tap targets ≥ `--tap-min` (40px), 44px preferred on mobile.** Money controls are
    never the exception — a stake chip is where a player chooses how much to risk, and it
    was shipped at 26px once (E-112). `--h-input` already sits at 44px.
@@ -3126,8 +3133,13 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     words at one x (the lead's tile read, 2026-10-19: the row's mark had set its words ~28px right of every other row's).
     More's two panels are opaque, the kit's elevated surface whole (`bg-bg-elevated`, the language menu's): the bar's
     was 95% under a backdrop blur, and at 1280 the page's own words read through it. ⚠️ The bar's panel is opaque for
-    EVERY reader, Millionea shown or not: the one change to the classic chrome this item rules (the lead's tile read,
-    2026-10-19; kept at S5's release review, 2026-10-21). The phone rail's panel was opaque already. This gold is the
+    EVERY reader, Millionea shown or not: the first change to the classic chrome this item rules (the lead's tile read,
+    2026-10-19; kept at S5's release review, 2026-10-21). The phone rail's panel was opaque already. ⚠️ The third
+    ruled classic change (the second is S5-DESIGN-SLIP's modal focus with `preventScroll`), every reader's on every page
+    that shows the chat: the bubble at rest over a line of text or a figure YIELDS — it fades to `--state-yield-opacity`,
+    never moves, stays live (a pointer's hover and a keyboard's focus bring it back whole; its taps are kept) — and is
+    whole again once the content clears (MASWALI-BUILD S5-FIX-PLATFORM D15, the register critic's M5; lead 2026-10-21, the
+    10/10 pass; globals.css D15, `test:chat-yield`, `qa:chat-yield`). This gold is the
     Owner's label for a destination, not money: item 7 is untouched.
     The other doors stand: one card on the journey home after the head (the How-to card and the headline) and before the
     topic chips; on classic, one card at the head of `/markets`; and a third switch in Tiketi zangu. Placing the card
