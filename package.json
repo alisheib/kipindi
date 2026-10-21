@@ -724,6 +724,7 @@
     "red:maswali-tickets": "tsx scripts/maswali-tickets.test.mts --prove-red",
     "qa:maswali-ticket-shots": "node scripts/maswali-ticket-shots.mjs",
     "qa:maswali-ticket-moments": "node scripts/maswali-ticket-moments.mjs",
+    "qa:maswali-ticket-ghosts": "node scripts/maswali-ticket-ghosts.mjs",
     "test:maswali-multi-slip": "tsx scripts/maswali-multi-slip.test.mts",
     "red:maswali-multi-slip": "tsx scripts/maswali-multi-slip.test.mts --prove-red",
     "qa:maswali-multi-slip": "node scripts/maswali-multi-slip-drive.mjs",

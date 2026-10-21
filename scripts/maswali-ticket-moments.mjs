@@ -4,8 +4,9 @@
  *
  *   BASE=http://localhost:3570 node scripts/maswali-ticket-moments.mjs
  *
- * ⚠️ PREMISE: the server `qa:maswali-ticket-shots` seeded (`/api/dev-test/seed-maswali-tickets`, step "weeks"; this drive
- *    reads that chain back with step "info", and buys its own fresh tickets with step "fresh").
+ * ⚠️ PREMISE: a FRESH in-memory `next dev` as `qa:maswali-ticket-shots` asks (FEATURE_MILLIONEA=ACTIVE, the Millionea tick
+ *    off). The drive seeds the chain itself (`/api/dev-test/seed-maswali-tickets`, step "weeks") or, on a server the shots
+ *    already seeded, reads it back (step "info"); it buys its own fresh tickets (step "fresh").
  * Asserted in a real browser, by value:
  *   1 · the cut waits for its stub: on a fresh ticket the stub's moment is unplayed and its animation PAUSED at its first
  *       frame while the stub is below the fold; scrolled into view it plays (`data-mln-played`, running)
@@ -38,7 +39,9 @@ const seed = async (data) => {
   if (!r.ok() || !body?.ok) throw new Error(`seed ${JSON.stringify(data)}: ${r.status()} ${JSON.stringify(body)}`);
   return body;
 };
-const info = await seed({ step: "info" });
+// The chain the shots seeded on this server — or, on a fresh server of its own, the chain seeded now (a held share holds
+// the wallet, so a run after the shots' last state could not buy the fresh tickets this drive needs).
+const info = await seed({ step: "info" }).catch(() => seed({ step: "weeks" }));
 const ctxOf = async (opts = {}) => {
   const ctx = await browser.newContext({ viewport: { width: 360, height: 780 }, ...opts });
   await ctx.addCookies([{ name: LOCALE_COOKIE, value: "sw", url: BASE }, { ...session, url: BASE, domain: undefined, path: undefined }]);

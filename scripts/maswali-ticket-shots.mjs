@@ -13,11 +13,13 @@
  *   ticket-<state>-<locale>-<width>[-sN].png   each ticket state (the classic shell; `-j` the journey's at 360)
  *   list-<lens>-<shell>-<locale>-<width>[-sN].png   the list in each lens, classic and journey; `empty`, `empty-break`
  *   seal-<who>-<digits>-<locale>-<width>.png   the win seal: the platform's own (a market win) and Millionea's, 7 and 4 digits
+ *   seal-door-<state>-<locale>-<width>.png     the seal as a won ticket's owner opens it (its door on the page), at 320/360
  * Asserted, not eyeballed: each page answers 200, draws what it should (the ticket, the list), no horizontal overflow, no
  * page error, `<html lang>` = the cookie; the free-cancel door is on screen inside its window and gone after it.
  *
  * Focus with comma lists: MLN_STATES (ticket states, or "none"), MLN_LISTS (lenses, or "none"), MLN_SEALS=0|1,
- * MLN_LOCALES, MLN_WIDTHS, MLN_SCROLL=0, MLN_JOURNEY=0. A focused run prints its scope first.
+ * MLN_LOCALES, MLN_WIDTHS, MLN_SCROLL=0, MLN_JOURNEY=0; MLN_BEFORE=1 shoots the seals on code from before the seal kept its
+ * amount whole (tiles only, the one-line assertion off). A focused run prints its scope first.
  */
 import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
@@ -38,6 +40,17 @@ const WIDTHS = list("MLN_WIDTHS", [320, 360, 768, 1024, 1280, 1920]).map(Number)
 const SCROLL = process.env.MLN_SCROLL !== "0";
 const JOURNEY = process.env.MLN_JOURNEY !== "0";
 const SEALS = process.env.MLN_SEALS !== "0" && MODE === "main";
+/** MLN_BEFORE=1: a run on the code before the seal kept its amount whole — its tiles are the "before", nothing asserted. */
+const BEFORE = process.env.MLN_BEFORE === "1";
+/** The won tickets whose page opens the seal (`SealDoor`): shot at the phone widths as the player opens it. */
+const SEAL_DOORS = new Set(["wonPaid", "wonTwo", "wonBig", "sunsetTop"]);
+/** One line of the seal's amount: its box no taller than a line of its own type (a wrapped amount is two). */
+const sealAmount = (page) => page.evaluate(() => {
+  const el = document.querySelector('[role="dialog"] [data-seal-amount]');
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  return { h: r.height, lh: parseFloat(getComputedStyle(el).lineHeight), w: r.width, box: el.parentElement?.getBoundingClientRect().width ?? null, text: el.textContent };
+});
 const MAIN_STATES = [
   "cancellable", "cancelled", "closed", "resultsCannotWin", "resultsAlive", "objections", "objectionsLost", "settling", "voiding",
   "wonPaid", "lostWithWinners", "wonTwo", "wonTwoSecond", "forfeited", "wonBig", "lostRollover", "refunded", "refundPending",
@@ -161,6 +174,7 @@ if (SEALS) {
           return { h: r.height, lh: parseFloat(getComputedStyle(el).lineHeight), text: el.textContent };
         });
         if (amount) console.log(`  seal-${who}-${digits} ${locale}@${width}: amount box ${amount.h.toFixed(1)}px, line ${amount.lh.toFixed(1)}px — ${amount.text}`);
+        if (!BEFORE) ok(`seal-${who}-${digits} · ${locale} @${width} · the amount is ONE line, whole`, !!amount && amount.h <= amount.lh * 1.25, JSON.stringify(amount));
         await page.keyboard.press("Escape");
         await page.waitForTimeout(500);
       }
@@ -232,6 +246,23 @@ for (const state of STATES) {
       if (state === "cancellable") ok(`${name} · the free-cancel door is on screen`, (await door.count()) >= 1);
       if (state === "open") ok(`${name} · no free-cancel door after its window`, (await door.count()) === 0);
       await shoot(page, name);
+      // The seal as its owner opens it from the won ticket (`SealDoor`: Millionea's eyebrow and heading, the paid serials
+      // as facts, the amount landed final) — its amount one line, whole, at the phone widths.
+      if (SEAL_DOORS.has(state) && width <= 360) {
+        await page.evaluate(() => window.scrollTo(0, 0));
+        const sealButton = page.getByTestId("millionea-ticket-seal");
+        if ((await sealButton.count()) === 0) { ok(`${name} · the seal's door is drawn`, false); continue; }
+        await sealButton.click();
+        const shown = await page.getByRole("dialog").last().waitFor({ timeout: 10_000 }).then(() => true).catch(() => false);
+        await page.waitForTimeout(1_600);
+        await still(page);
+        await page.screenshot({ path: `${OUT}/seal-door-${state}-${locale}-${width}.png`, fullPage: false });
+        const amount = await sealAmount(page);
+        if (amount) console.log(`  seal-door-${state} ${locale}@${width}: amount box ${amount.h.toFixed(1)}px, line ${amount.lh.toFixed(1)}px, ${amount.w.toFixed(1)} of ${amount.box?.toFixed(1)}px — ${amount.text}`);
+        ok(`${name} · the seal opens from the ticket, its amount ONE line, whole`, shown && !!amount && amount.h <= amount.lh * 1.25 && (amount.box === null || amount.w <= amount.box + 0.5), JSON.stringify(amount));
+        await page.keyboard.press("Escape");
+        await page.waitForTimeout(500);
+      }
     }
     if (JOURNEY && pass_ && LOCALES[0] === locale && WIDTHS.includes(360)) {
       const jctx = await contextWith([session, pass_], locale);

@@ -40,7 +40,7 @@ import { MaswaliTicketCard } from "@/components/maswali/maswali-ticket";
 import { eatWeekdayClock, weekNumberOf } from "@/components/maswali/maswali-format";
 import { TicketsHead } from "@/components/journey/tickets/ticket-switch";
 import { millioneaTicketGate } from "@/lib/server/millionea-gate";
-import { millioneaMyTickets, type MillioneaTicketRow } from "@/lib/server/maswali-player";
+import { millioneaCancelUntil, millioneaMyTickets, type MillioneaTicketRow } from "@/lib/server/maswali-player";
 import { millioneaBreakOf, millioneaHubNow, millioneaTicketsDoor, millioneaWeekPrices } from "@/lib/server/millionea-doors";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { getServerT } from "@/lib/i18n-server";
@@ -108,6 +108,18 @@ export default async function MillioneaTicketsPage({ searchParams }: { searchPar
   });
   const cards = drawable.filter(({ row }) => inLens(lens, row.shown));
   const anyLive = weeks.some((g) => g.tickets.some((row) => row.shown === "running"));
+  // M9 · the free cancel's end of each ticket still inside it, as the receipt of a purchase reads it
+  // (`millioneaCancelUntil`) — its card notes it for the ticket's loading drawing and shows nothing of it. Newest first,
+  // and no further than the first ticket past it: an older ticket's window ended earlier (the same grace, an earlier start).
+  const cancelUntil = new Map<string, number>();
+  for (const g of weeks) {
+    if (g.week.state !== "OPEN") continue;
+    for (const row of g.tickets.filter((r) => r.shown === "running" && r.cancelledAt === null).sort(newestFirst)) {
+      const until = msOf(await millioneaCancelUntil(g.week.id, row.boughtAt, new Date(nowMs)));
+      if (until === null) break;
+      cancelUntil.set(row.serial, until);
+    }
+  }
   // The empty list's one invitation (the T-list frame): the week on sale and the slip — offered only to a reader who holds
   // no ticket at all, only while the product is shown to them (a holder let in at a kill is offered nothing, L5), and
   // ⛔ NEVER ON A BREAK (S5-FIX-PLAYER P2): a reader whose cooling-off or self-exclusion runs gets the title alone — no
@@ -178,6 +190,7 @@ export default async function MillioneaTicketsPage({ searchParams }: { searchPar
                 share={row.share}
                 refundPending={row.refund?.state === "pending"}
                 placedAt={row.boughtAt}
+                cancelUntil={cancelUntil.get(row.serial)}
                 className="w-full"
               />
             </li>

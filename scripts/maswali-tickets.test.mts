@@ -109,6 +109,7 @@ const FILES = {
   bar: "src/app/millionea/tickets/tickets-bar.tsx",
   listGhost: "src/app/millionea/tickets/tickets-ghost.tsx",
   ticketGhost: "src/app/millionea/tickets/[serial]/ticket-ghost.tsx",
+  hint: "src/components/maswali/maswali-ghost-hint.tsx",
   headGhost: "src/components/journey/tickets/tickets-ghost.tsx",
   switch: "src/components/journey/tickets/ticket-switch.tsx",
   tabs: "src/components/ui/tabs.tsx",
@@ -667,6 +668,52 @@ check("22.1", "the hub's held row lifts and presses as the kit's raised card (`m
   return d;
 });
 
+// ── §24 · M9 · the free cancel's band in the ticket's loading drawing ───────────────────────────────────────────────────
+type HintMod = typeof import("../src/components/maswali/maswali-ghost-hint.tsx");
+/** Runs `fn` as the client does: with a `window` (a note is kept, and read, only there). */
+const asClient = <T,>(fn: () => T): T => {
+  const g = globalThis as { window?: unknown };
+  const had = "window" in g;
+  g.window = g;
+  try { return fn(); } finally { if (!had) delete g.window; }
+};
+check("24.1", "M9 · a door's note of the free cancel's end is kept on the client only, for that ticket only, and read as open only before its end; a ticket's address names its serial", (w) => {
+  const d: string[] = [];
+  const hint = (w.src.hint === REAL.src.hint ? req("../src/components/maswali/maswali-ghost-hint.tsx") : compiled(FILES.hint, w.src.hint)) as HintMod;
+  const at = Date.parse("2026-12-02T07:00:00.000Z");
+  hint.noteFreeCancel("MLN-2026-W49-000077", at + 60_000); // on the server: no window, nothing kept
+  need(d, !asClient(() => hint.freeCancelKnownOpen("MLN-2026-W49-000077", at)), "a note written on the server was kept");
+  const [open, edge, past, other, none] = asClient(() => {
+    hint.noteFreeCancel("MLN-2026-W49-000078", at + 60_000);
+    return [hint.freeCancelKnownOpen("MLN-2026-W49-000078", at), hint.freeCancelKnownOpen("MLN-2026-W49-000078", at + 60_000),
+      hint.freeCancelKnownOpen("MLN-2026-W49-000078", at + 61_000), hint.freeCancelKnownOpen("MLN-2026-W49-000079", at), hint.freeCancelKnownOpen(null, at)];
+  });
+  need(d, open && !edge && !past && !other && !none, `open ${open}, at its end ${edge}, past it ${past}, another ticket ${other}, no serial ${none}`);
+  need(d, !hint.freeCancelKnownOpen("MLN-2026-W49-000078", at), "a note was read on the server");
+  const serials = ["/millionea/tickets/MLN-2026-W49-000041", "/millionea/tickets/MLN-2026-W49-000041/", "/millionea/tickets", "/millionea/tickets/a/b", null].map((p) => hint.ticketSerialOf(p));
+  need(d, j(serials) === j(["MLN-2026-W49-000041", "MLN-2026-W49-000041", null, null, null]), `the address's serial: ${j(serials)}`);
+  return d;
+});
+check("24.2", "M9 · the ticket's loading drawing draws the free cancel's band (its clock line, its two-line button, its rule) exactly when its door noted the window open — and the list's card and the hub's held row note it, the list for each ticket still inside its window", (w) => {
+  const d: string[] = [];
+  const { MillioneaTicketGhost } = (w.src.ticketGhost === REAL.src.ticketGhost ? req("../src/app/millionea/tickets/[serial]/ticket-ghost.tsx") : compiled(FILES.ticketGhost, w.src.ticketGhost)) as { MillioneaTicketGhost: unknown };
+  const hint = req("../src/components/maswali/maswali-ghost-hint.tsx") as HintMod;
+  const draw = (path: string) => renderToStaticMarkup(h(AppRouterContext.Provider, { value: ROUTER }, h(PathnameContext.Provider, { value: path }, h(I18nProvider as never, { initial: "en" } as never, h(MillioneaTicketGhost as never)))));
+  const BAND = 'data-ghost-band="free-cancel"';
+  const [open, other, list, past] = asClient(() => {
+    hint.noteFreeCancel("MLN-2026-W49-000088", Date.now() + 600_000);
+    hint.noteFreeCancel("MLN-2026-W49-000089", Date.now() - 1);
+    return [draw("/millionea/tickets/MLN-2026-W49-000088"), draw("/millionea/tickets/MLN-2026-W49-000090"), draw("/millionea/tickets"), draw("/millionea/tickets/MLN-2026-W49-000089")];
+  });
+  const served = draw("/millionea/tickets/MLN-2026-W49-000088");
+  need(d, count(open, BAND) === 1 && /data-ghost-band="free-cancel"><span[^>]*h-\[20px\][^>]*><\/span><span[^>]*h-\[48px\] w-full[^>]*><\/span><span[^>]*h-\[20px\]/.test(open), "the band is not drawn, or not its three parts, when the door noted the window open");
+  need(d, ![other, list, past, served].some((m) => m.includes(BAND)), "the band is drawn for a ticket no door noted, past its window, or on the server's paint");
+  const card = code(w, "ticket"), list2 = code(w, "list");
+  need(d, count(card, "{cancelUntil !== undefined && <MaswaliGhostHint serial={serial} cancelUntil={cancelUntil} />}") === 2, "the card and the held row do not both note the window they are handed");
+  need(d, list2.includes("const until = msOf(await millioneaCancelUntil(g.week.id, row.boughtAt, new Date(nowMs)));") && list2.includes("cancelUntil={cancelUntil.get(row.serial)}"), "the list does not hand each card its window");
+  return d;
+});
+
 /* ── run ─────────────────────────────────────────────────────────────────────────────────────────────────────────── */
 const runAll = (w: World, quiet: boolean) => {
   const failed: string[] = [];
@@ -743,6 +790,10 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["round 2 undone — a drive week's partial ledger", "23.1", plantSrc("page", "              {ledgerRows && (\n", "              {(\n")],
   ["round 2 undone — the head's week as a line again", "23.2", plantSrc("ticket", "<WeekStateChip t={t} state={weekState} phase={phase ?? null} />", "<span>{weekWord(t, week)}</span>")],
   ["held row — no lift", "22.1", plantSrc("ticket", 'className={cn("mat-raised mat-raised-i flex flex-col gap-1.5 rounded-control p-2 text-text", className)}', 'className={cn("mat-raised flex flex-col gap-1.5 rounded-control p-2 text-text", className)}')],
+  ["M9 — a note read as open past its end", "24.1", plantSrc("hint", "return until !== undefined && until > nowMs;", "return until !== undefined;")],
+  ["M9 — a note kept on the server too", "24.1", plantSrc("hint", '  if (typeof window === "undefined" || !Number.isFinite(until)) return;\n', "  if (!Number.isFinite(until)) return;\n")],
+  ["M9 — the ticket's drawing blind to its door", "24.2", plantSrc("ticketGhost", "const cancelOpen = freeCancelKnownOpen(ticketSerialOf(usePathname()), Date.now());", "const cancelOpen = false && freeCancelKnownOpen(ticketSerialOf(usePathname()), Date.now());")],
+  ["M9 — the list hands its cards no window", "24.2", plantSrc("list", "                cancelUntil={cancelUntil.get(row.serial)}\n", "")],
 ];
 let caught = 0;
 for (const [name, target, world] of PLANTS) {

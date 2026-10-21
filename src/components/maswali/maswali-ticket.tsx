@@ -11,6 +11,7 @@ import { MillioneaGlyph } from "@/components/maswali/maswali-glyph";
 import { MaswaliFacts, factsOf, keepFact } from "@/components/maswali/maswali-facts";
 import { MaswaliMoment, MaswaliTick } from "@/components/maswali/maswali-moment";
 import { MaswaliCancelLine } from "@/components/maswali/maswali-ticket-cancel";
+import { MaswaliGhostHint } from "@/components/maswali/maswali-ghost-hint";
 import { eatWeekday, eatWeekdayClock, millioneaWord, reserveLabel, weekWord } from "@/components/maswali/maswali-format";
 import { WeekStateChip } from "@/app/millionea/register/register-parts";
 import type { MillioneaWeekPhase } from "@/app/millionea/millionea-view";
@@ -447,7 +448,7 @@ export function MaswaliTicket({
  * its way reads "Refund · On its way back", never "when the result is in". P11 · a value in words keeps the money figure's
  * own line box (the `xs` rung's), so two cards side by side keep their serial and "Bought" rows on one level.
  */
-export function MaswaliTicketCard({ t, locale, serverNow, href, serial, week, shown, line, price, payout, share, refundPending = false, placedAt, className }: {
+export function MaswaliTicketCard({ t, locale, serverNow, href, serial, week, shown, line, price, payout, share, refundPending = false, placedAt, cancelUntil, className }: {
   t: Dict;
   locale: Locale;
   serverNow: number;
@@ -468,6 +469,8 @@ export function MaswaliTicketCard({ t, locale, serverNow, href, serial, week, sh
   refundPending?: boolean;
   /** When it was bought (ISO). */
   placedAt: string;
+  /** M9 · the free cancel's end (ms) while it is open: noted for the ticket's loading drawing, never shown on the card. */
+  cancelUntil?: number;
   className?: string;
 }) {
   const [boughtBefore, boughtAfter] = t.millionea.boughtAt.split("{date}");
@@ -518,6 +521,8 @@ export function MaswaliTicketCard({ t, locale, serverNow, href, serial, week, sh
           <span>{boughtBefore}<time dateTime={placedAt} className="whitespace-nowrap font-mono tabular-nums">{formatEatDateTime(Date.parse(placedAt), serverNow, t.common.monthsShort, locale)}</time>{boughtAfter}</span>
         </p>
       </div>
+      {/* M9 · this door knows the free cancel is open: the ticket's loading drawing draws its band (`maswali-ghost-hint.tsx`). */}
+      {cancelUntil !== undefined && <MaswaliGhostHint serial={serial} cancelUntil={cancelUntil} />}
     </Link>
   );
 }
@@ -549,6 +554,8 @@ export function MaswaliHeldTicketRow({ t, href, serial, line, cancelUntil, serve
       </span>
       <MaswaliSealLine line={line} size={18} />
       {cancelUntil !== undefined && serverNow !== undefined && <MaswaliCancelLine until={cancelUntil} serverNow={serverNow} />}
+      {/* M9 · the door knew the window: the ticket's loading drawing draws the free cancel's band (`maswali-ghost-hint.tsx`). */}
+      {cancelUntil !== undefined && <MaswaliGhostHint serial={serial} cancelUntil={cancelUntil} />}
     </Link>
   );
 }
