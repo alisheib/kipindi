@@ -352,14 +352,15 @@ const WEEKS = {
 };
 const FACTS: Record<(typeof LOCALES)[number], Record<keyof typeof WEEKS, string[]>> = {
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER, the critic's L1): a week nobody won says "no 10/10" first, as
-  // the hub's last-week line does (`settledRollover` + `feeZero`).
+  // the hub's last-week line does (`settledRollover` + `feeZero`) — each a fact of its own here, so each opens with a capital
+  // (the tile read of 2026-10-21: "no 10/10" and "fee 0" opened their phone lines in lower case beside "Jackpot …").
   en: { pending: ["Refunds on their way"], landed: ["Every ticket refunded"], wonOne: ["1 ticket won", "Jackpot TZS 1,013,000"],
-    wonMany: ["3 tickets won", "Jackpot TZS 1,050,000"], rolled: ["no 10/10", "TZS 412,000 carried forward", "fee 0"] },
+    wonMany: ["3 tickets won", "Jackpot TZS 1,050,000"], rolled: ["No 10/10", "TZS 412,000 carried forward", "Fee 0"] },
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-FIX-PLAYER P14): Swahili says each fact with ONE verb, §D's — a refund
   // "imerejeshwa" (it read "imerejeshewa" here and "imerejeshwa" on the ticket), a carry "imehamishwa" (it read
   // "imeletwa mbele" here and "linahamishiwa" in How to play). `test:maswali-i18n` §7 holds the whole namespace to it.
   sw: { pending: ["Marejesho yanakuja"], landed: ["Kila tiketi imerejeshwa"], wonOne: ["Tiketi 1 ilishinda", "Jackpot TZS 1,013,000"],
-    wonMany: ["Tiketi 3 zilishinda", "Jackpot TZS 1,050,000"], rolled: ["hakuna 10/10", "TZS 412,000 imehamishwa", "ada 0"] },
+    wonMany: ["Tiketi 3 zilishinda", "Jackpot TZS 1,050,000"], rolled: ["Hakuna 10/10", "TZS 412,000 imehamishwa", "Ada 0"] },
   zh: { pending: ["退款处理中"], landed: ["每张彩票已退款"], wonOne: ["1 张彩票中奖", "大奖 TZS 1,013,000"],
     wonMany: ["3 张彩票中奖", "大奖 TZS 1,050,000"], rolled: ["无 10/10", "TZS 412,000 滚存至下周", "费用 0"] },
 };
@@ -453,7 +454,7 @@ check("9.2", "A1 · the ledger's notes stand on their own line (the kit row's `n
   const s = code(w, "ledger");
   const notes = s.includes("note: m.topUpNote") && s.includes("note: m.remainderNote");
   const levies = s.includes("note: f.levies && fee > 0 ? factLine(locale, fill(m.ledgerLevies, {")
-    && s.includes("function factLine(locale: Locale, line: string): ReactNode { return <MaswaliFacts facts={factsOf(line).map((f) => keepFact(locale, f))} />; }")
+    && s.includes("function factLine(locale: Locale, line: string, runs: readonly string[] = []): ReactNode { return <MaswaliFacts facts={factsOf(line).map((f) => keepFact(locale, f, runs.filter((r) => f.includes(r))))} />; }")
     && !s.includes("t.millionea.levies") && !s.includes("m.levies");
   return [notes && levies, j({ notes, levies })];
 });
@@ -593,7 +594,7 @@ check("13.1", "A2 · no Chinese run in the register's body text is longer than 1
 check("12.1", "the week's ghost opens on the page's bands, in its order: the chip beside the code under the head, then the facts and times; the ledger's card at the receipt's measure; the commitments' card; cards below 1024 and the table on its panel from 1024", (w) => {
   const g = code(w, "weekGhost");
   const chip = g.includes('<MaswaliGhostHead eyebrowWidth="w-[144px]" titleWidth="w-[132px]" /> <div className="flex items-center gap-3" aria-hidden> <GhostBar className="h-[23px] w-[96px] rounded-pill" /> <GhostBar className="h-3 w-[112px]" /> </div>');
-  const at = ['<div className="mat-flat flex max-w-receipt flex-col gap-3 rounded-card p-3" aria-hidden>', '<div className="mat-flat flex max-w-receipt flex-col gap-4 rounded-card p-3">',
+  const at = ['<div className="mat-flat flex max-w-receipt flex-col gap-2.5 rounded-card p-3">', '<div className="mat-flat flex max-w-receipt flex-col gap-4 rounded-card p-3">',
     '<div className="flex flex-col lg:hidden">', '<div className="glass-panel hidden flex-col lg:flex">'].map((x) => g.indexOf(x));
   const order = at.every((x, i) => x >= 0 && (i === 0 || x > at[i - 1]));
   return [chip && order, j({ chip, at })];
@@ -613,9 +614,11 @@ check("12.2", "the index's ghost: the intro's lines under the head at the readin
 // 1279. The ledger stands at the receipt's measure (`max-w-receipt`, M4) and draws the ONE ledger's rows.
 check("14.1", "M5 · M4 · the week ledger reserves no right lane (its figures end on its card's edge at every width), stands at the receipt's measure, and draws the shared builder's rows through the one ledger drawing", (w) => {
   const s = code(w, "week");
-  const card = s.includes('<section aria-labelledby="mln-reg-ledger" className="mat-flat flex max-w-receipt flex-col gap-3 rounded-card p-3">');
+  // The section titled as the page's others are: its heading over its card (the commitments' rhythm).
+  const card = s.includes('<section aria-labelledby="mln-reg-ledger" className="flex flex-col gap-2"> <h2 id="mln-reg-ledger" className={H2}>{t.millionea.regLedger}</h2> <div className="mat-flat flex max-w-receipt flex-col rounded-card p-3">');
   const rows = s.includes("<MaswaliLedger rows={registerLedgerRows(t, locale, rec.week)} />");
-  const lane = /pr-\[56px\][^"]*"[^>]*mln-reg-ledger|aria-labelledby="mln-reg-ledger" className="[^"]*pr-/.test(s);
+  const section = s.slice(s.indexOf('<section aria-labelledby="mln-reg-ledger"'), s.indexOf("<WeekCommitments "));
+  const lane = /\bpr-(?:\[|\d)/.test(section);
   return [card && rows && !lane, j({ card, rows, lane })];
 });
 // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER, the critic's M5): the survivor list's 56px lane goes with the
@@ -826,7 +829,7 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["zh's door and title disagree", "8.1", plantWord("zh", "register", "每周登记册")],
   // §9
   ["A1 undone — a ledger note after a \"·\"", "9.1", plantSrc("ledger", "label: m.topUp, note: m.topUpNote,", "label: `${m.topUp} · ${m.topUpNote}`,")],
-  ["A1 undone — the levies one plain \"·\"-joined string", "9.2", plantSrc("ledger", "return <MaswaliFacts facts={factsOf(line).map((f) => keepFact(locale, f))} />;", "return line;")],
+  ["A1 undone — the levies one plain \"·\"-joined string", "9.2", plantSrc("ledger", "return <MaswaliFacts facts={factsOf(line).map((f) => keepFact(locale, f, runs.filter((r) => f.includes(r))))} />;", "return line;")],
   ["A1 undone — the standing's count ungrouped", "9.3", plantSrc("week", "{formatNumber(s.ticketsWithoutAMiss)}", "{s.ticketsWithoutAMiss}")],
   ["a `kept` that keeps nothing", "9.4", { ...REAL, kept: (text) => text }],
   ["A1 undone — the refund's price free to break", "9.5", plantSrc("ledger", "label: keepFact(locale, fill(m.refundEach, { price }), [price])", "label: fill(m.refundEach, { price })")],
@@ -856,15 +859,15 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["L6 undone — two sw nouns for the floor's top-up", "11.1", plantWord("sw", "topUp", "Nyongeza ya dhamana")],
   // §12
   ["the week's ghost without the table's bands from 1024", "12.1", plantSrc("weekGhost", '<div className="glass-panel hidden flex-col lg:flex">', '<div className="hidden">')],
-  ["the week's ghost without the ledger's card", "12.1", plantSrc("weekGhost", '<div className="mat-flat flex max-w-receipt flex-col gap-3 rounded-card p-3" aria-hidden>', '<div className="flex flex-col gap-3" aria-hidden>')],
+  ["the week's ghost without the ledger's card", "12.1", plantSrc("weekGhost", '<div className="mat-flat flex max-w-receipt flex-col gap-2.5 rounded-card p-3">', '<div className="flex flex-col gap-2.5">')],
   ["the index ghost's rows without the chip", "12.2", plantSrc("indexGhost", '<GhostBar className="h-[23px] w-[88px] rounded-pill" />', "")],
   ["the index ghost without the intro", "12.2", plantSrc("indexGhost", '<div className="flex max-w-[68ch] flex-col gap-2" aria-hidden>', '<div className="flex flex-col gap-2" aria-hidden>')],
   // §14
-  ["M5 undone — the ledger's 56px right lane back", "14.1", plantSrc("week", 'className="mat-flat flex max-w-receipt flex-col gap-3 rounded-card p-3"', 'className="mat-flat flex max-w-receipt flex-col gap-3 rounded-card p-3 pr-[56px] xl:pr-3"')],
-  ["M4 undone — the ledger across the whole reading measure", "14.1", plantSrc("week", 'className="mat-flat flex max-w-receipt flex-col gap-3 rounded-card p-3"', 'className="mat-flat flex flex-col gap-3 rounded-card p-3"')],
+  ["M5 undone — the ledger's 56px right lane back", "14.1", plantSrc("week", 'className="mat-flat flex max-w-receipt flex-col rounded-card p-3"', 'className="mat-flat flex max-w-receipt flex-col rounded-card p-3 pr-[56px] xl:pr-3"')],
+  ["M4 undone — the ledger across the whole reading measure", "14.1", plantSrc("week", 'className="mat-flat flex max-w-receipt flex-col rounded-card p-3"', 'className="mat-flat flex flex-col rounded-card p-3"')],
   ["M5 undone — the survivor list's 56px lane back", "14.2", plantSrc("week", '<ol className="flex max-w-receipt flex-col divide-y divide-border border-t border-border">\n              {rec.week.standing', '<ol className="flex max-w-receipt flex-col divide-y divide-border border-t border-border pr-[56px] xl:pr-0">\n              {rec.week.standing')],
   ["the ledger's rows no longer the builder's (the page drawing its own again)", "14.1", plantSrc("week", "<MaswaliLedger rows={registerLedgerRows(t, locale, rec.week)} />", "<MaswaliLedger rows={[]} />")],
-  ["H2 undone — a running week's ledger drawn before it is final", "14.3", plantSrc("week", '{rec.kind === "final"\n            ? <MaswaliLedger', "{true\n            ? <MaswaliLedger")],
+  ["H2 undone — a running week's ledger drawn before it is final", "14.3", plantSrc("week", '{rec.kind === "final"\n              ? <MaswaliLedger', "{true\n              ? <MaswaliLedger")],
   ["H2 undone — a running week's head states money", "14.3", plantSrc("week", "facts: liveWeekFacts(t, locale, w, nowMs), times:", "facts: [formatTzs(0)], times:")],
   // §15 — each fix undone in the builder itself
   ["P3 undone — \"To winners\" prints k × share, after the split", "15.1", { ...REAL, ledger: (t, l, wk) => { const rows = registerLedgerRows(t, l, wk); const i = rows.findIndex((r) => r.key === "winners"); const [row] = rows.splice(i, 1); rows.splice(i + 1, 0, { ...row, value: wk.paid === null ? "—" : formatTzs(wk.paid) }); return rows; } }],

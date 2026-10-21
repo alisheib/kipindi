@@ -19,7 +19,9 @@
  * ⚠️ DECLARED FIXTURES: the "states" scenario lowers the floor for the weeks it opens to TZS 20,000 (`saveMaswaliConfig`,
  *    the rules' own writer) — so a week of a dozen players' tickets can stand above it, which the floor of TZS 1,000,000
  *    never lets a dev store show — and week 5's objection window is moved into the past (`objectionsCloseAt`, as
- *    seed-maswali moves its own). Shoot How to play from a store that did not take the lowered floor.
+ *    seed-maswali moves its own, with its opening a day before). Shoot How to play from a store that did not take the
+ *    lowered floor. In both scenarios a settled week's stamp is moved onto the week's own clock (`settle`): the weeks sit
+ *    ahead of today so they can sell, and the real clock's stamp would read as settled before the sales closed.
  * ⛔ ON A FRESH STORE ONLY, on a server whose rollout sells (FEATURE_MILLIONEA=ACTIVE), and with MASWALI_SCHEDULER=false
  *    and LIFECYCLE_TICKER=false — or the tick voids the certain weeks itself.
  */
@@ -54,9 +56,9 @@ const BANK: Array<{ cat: string; url: string; en: string; sw: string; zh: string
   { cat: "crypto", url: "https://www.coingecko.com/en/coins/bitcoin", en: "Will Bitcoin trade above $120,000 at 23:59 on Sunday?", sw: "Je, bei ya Bitcoin itakuwa juu ya $120,000 Jumapili saa 23:59?", zh: "比特币在周日 23:59 的价格会高于 120,000 美元吗？", cEn: "YES if CoinGecko's BTC-USD price at 23:59 EAT on Sunday is above $120,000.", cSw: "NDIO ikiwa bei ya BTC-USD ya CoinGecko saa 23:59 EAT Jumapili iko juu ya $120,000.", cZh: "若周日 23:59 EAT 时 CoinGecko 的 BTC-USD 价格高于 120,000 美元则为是。" },
   { cat: "weather", url: "https://www.meteo.go.tz/bulletin", en: "Will at least 1 mm of rain fall in Dar es Salaam on Sunday (TMA gauge)?", sw: "Je, mvua ya angalau mm 1 itanyesha Dar es Salaam Jumapili (kipimo cha TMA)?", zh: "周日达累斯萨拉姆的降雨量会达到至少 1 毫米吗（以 TMA 测量为准）？", cEn: "YES if the TMA's daily bulletin records 1 mm or more at Dar es Salaam for Sunday.", cSw: "NDIO ikiwa taarifa ya kila siku ya TMA itaonyesha mm 1 au zaidi Dar es Salaam kwa Jumapili.", cZh: "若 TMA 每日公报记录达累斯萨拉姆周日降雨量达 1 毫米或以上则为是。" },
   { cat: "sports", url: "https://www.tff.or.tz/fixtures", en: "Will Young Africans score 2 or more goals in their match on Saturday?", sw: "Je, Young Africans watafunga magoli 2 au zaidi katika mechi yao ya Jumamosi?", zh: "Young Africans 周六的比赛会打进 2 个或以上的进球吗？", cEn: "YES if Young Africans score 2 or more goals in normal time, per the official result.", cSw: "NDIO ikiwa Young Africans watafunga magoli 2 au zaidi katika muda wa kawaida, kwa matokeo rasmi.", cZh: "若 Young Africans 在常规时间内打进 2 球或以上（以官方结果为准）则为是。" },
-  { cat: "macro", url: "https://www.dse.co.tz/market-statistics", en: "Will the DSE All Share Index close higher on Monday than on Friday?", sw: "Je, faharasa ya DSE (DSEI) itafunga Jumatatu juu kuliko ilivyofunga Ijumaa?", zh: "达累斯萨拉姆证券交易所全股指数周一收盘会高于周五吗？", cEn: "YES if the DSEI's official Monday close is higher than its Friday close.", cSw: "NDIO ikiwa kufunga rasmi kwa DSEI Jumatatu ni juu kuliko kufunga kwake Ijumaa.", cZh: "若 DSEI 周一官方收盘点位高于周五收盘则为是。" },
-  { cat: "culture", url: "https://www.boomplay.com/charts", en: "Will Sunday's number 1 song on Boomplay Tanzania be by a Tanzanian artist?", sw: "Je, wimbo namba 1 kwenye chati ya Boomplay Tanzania Jumapili utakuwa wa msanii wa Tanzania?", zh: "周日 Boomplay 坦桑尼亚榜单第一名的歌曲会出自坦桑尼亚歌手吗？", cEn: "YES if the chart's number 1 at 23:59 EAT on Sunday is by an artist from Tanzania.", cSw: "NDIO ikiwa wimbo namba 1 wa chati saa 23:59 EAT Jumapili ni wa msanii kutoka Tanzania.", cZh: "若周日 23:59 EAT 榜单第一名的歌曲出自坦桑尼亚歌手则为是。" },
-  { cat: "sports", url: "https://www.premierleague.com/results", en: "Will Arsenal and Chelsea draw on Sunday?", sw: "Je, mechi ya Arsenal na Chelsea Jumapili itaisha kwa sare?", zh: "阿森纳与切尔西周日的比赛会以平局收场吗？", cEn: "YES if the match ends level after normal time, per the official result.", cSw: "NDIO ikiwa mechi itaisha kwa sare baada ya muda wa kawaida, kwa matokeo rasmi.", cZh: "若常规时间结束时双方打平（以官方结果为准）则为是。" },
+  { cat: "macro", url: "https://www.bot.go.tz/ExchangeRate", en: "Will the Bank of Tanzania's USD/TZS mean rate published for Monday be below 2,650?", sw: "Je, kiwango cha wastani cha BoT cha dola kwa shilingi kitakachochapishwa kwa Jumatatu kitakuwa chini ya 2,650?", zh: "坦桑尼亚央行公布的周一美元兑先令中间价会低于 2,650 吗？", cEn: "YES if the BoT's published USD/TZS mean rate for Monday is below 2,650.00.", cSw: "NDIO ikiwa kiwango cha wastani cha USD/TZS kilichochapishwa na BoT kwa Jumatatu kiko chini ya 2,650.00.", cZh: "若坦桑尼亚央行公布的周一美元兑先令中间价低于 2,650.00 则为是。" },
+  { cat: "culture", url: "https://www.itv.co.tz/schedule", en: "Will ITV air the Bongo Star Search final at 21:00 on Saturday, as scheduled?", sw: "Je, ITV itarusha fainali ya Bongo Star Search Jumamosi saa 21:00 kama ilivyopangwa?", zh: "ITV 会按计划在周六 21:00 播出《Bongo Star Search》决赛吗？", cEn: "YES if ITV's published schedule shows the final aired from 21:00 EAT on Saturday.", cSw: "NDIO ikiwa ratiba iliyochapishwa na ITV inaonyesha fainali ilirushwa kuanzia saa 21:00 EAT Jumamosi.", cZh: "若 ITV 公布的节目表显示决赛于周六 21:00 EAT 开播则为是。" },
+  { cat: "sports", url: "https://www.nbc.co.tz/results", en: "Will Coastal Union and KMC FC draw on Sunday?", sw: "Je, mechi ya Coastal Union na KMC FC Jumapili itaisha kwa sare?", zh: "Coastal Union 与 KMC FC 周日的比赛会以平局收场吗？", cEn: "YES if the match ends level after normal time, per the league's official result.", cSw: "NDIO ikiwa mechi itaisha kwa sare baada ya muda wa kawaida, kwa matokeo rasmi ya ligi.", cZh: "若常规时间结束时双方打平（以联赛官方结果为准）则为是。" },
   { cat: "weather", url: "https://www.meteo.go.tz/bulletin", en: "Will Arusha's high on Saturday be above 25°C (TMA)?", sw: "Je, joto la juu Arusha Jumamosi litazidi nyuzi 25°C (TMA)?", zh: "阿鲁沙周六的最高气温会超过 25°C 吗（以 TMA 为准）？", cEn: "YES if the TMA's bulletin records a maximum above 25°C at Arusha for Saturday.", cSw: "NDIO ikiwa taarifa ya TMA itaonyesha joto la juu zaidi ya 25°C Arusha kwa Jumamosi.", cZh: "若 TMA 公报记录阿鲁沙周六最高气温超过 25°C 则为是。" },
   { cat: "crypto", url: "https://www.coingecko.com/en/coins/ethereum", en: "Will Ethereum trade higher at 23:59 on Sunday than at 19:30 on Friday?", sw: "Je, bei ya Ethereum Jumapili saa 23:59 itakuwa juu kuliko Ijumaa saa 19:30?", zh: "以太坊周日 23:59 的价格会高于周五 19:30 的价格吗？", cEn: "YES if CoinGecko's ETH-USD price at 23:59 EAT on Sunday is above its price at 19:30 EAT on Friday.", cSw: "NDIO ikiwa bei ya ETH-USD ya CoinGecko saa 23:59 EAT Jumapili iko juu ya bei yake saa 19:30 EAT Ijumaa.", cZh: "若周日 23:59 EAT 时 CoinGecko 的 ETH-USD 价格高于周五 19:30 EAT 时则为是。" },
   { cat: "sports", url: "https://www.tff.or.tz/fixtures", en: "Will the Taifa Stars win or draw their friendly at Benjamin Mkapa Stadium on Sunday evening?", sw: "Je, Taifa Stars watapata ushindi au sare katika mechi yao ya kirafiki itakayochezwa Jumapili jioni kwenye Uwanja wa Benjamin Mkapa?", zh: "坦桑尼亚国家队（Taifa Stars）周日晚在本杰明·姆卡帕体育场的友谊赛会获胜或打平吗？", cEn: "YES if the Taifa Stars win or draw after normal time, per the official result.", cSw: "NDIO ikiwa Taifa Stars watashinda au kutoka sare baada ya muda wa kawaida, kwa matokeo rasmi.", cZh: "若坦桑尼亚国家队在常规时间结束时获胜或打平（以官方结果为准）则为是。" },
@@ -64,7 +66,7 @@ const BANK: Array<{ cat: string; url: string; en: string; sw: string; zh: string
   { cat: "sports", url: "https://www.nbc.co.tz/results", en: "Will Azam FC win their match on Sunday?", sw: "Je, Azam FC itashinda mechi yake ya Jumapili?", zh: "Azam FC 能否赢得周日的比赛？", cEn: "YES if Azam FC win in normal time, per the league's official result.", cSw: "NDIO ikiwa Azam FC itashinda katika muda wa kawaida, kwa matokeo rasmi ya ligi.", cZh: "若 Azam FC 在常规时间内获胜（以联赛官方结果为准）则为是。" },
   { cat: "crypto", url: "https://www.coingecko.com/en/coins/bitcoin", en: "Will Bitcoin trade higher at 23:59 on Sunday than at 19:30 on Friday?", sw: "Je, bei ya Bitcoin Jumapili saa 23:59 itakuwa juu kuliko Ijumaa saa 19:30?", zh: "比特币周日 23:59 的价格会高于周五 19:30 的价格吗？", cEn: "YES if CoinGecko's BTC-USD price at 23:59 EAT on Sunday is above its price at 19:30 EAT on Friday.", cSw: "NDIO ikiwa bei ya BTC-USD ya CoinGecko saa 23:59 EAT Jumapili iko juu ya bei yake saa 19:30 EAT Ijumaa.", cZh: "若周日 23:59 EAT 时 CoinGecko 的 BTC-USD 价格高于周五 19:30 EAT 时则为是。" },
   { cat: "weather", url: "https://www.meteo.go.tz/bulletin", en: "Will at least 1 mm of rain fall in Mwanza on Saturday (TMA gauge)?", sw: "Je, mvua ya angalau mm 1 itanyesha Mwanza Jumamosi (kipimo cha TMA)?", zh: "周六姆万扎的降雨量会达到至少 1 毫米吗（以 TMA 测量为准）？", cEn: "YES if the TMA's daily bulletin records 1 mm or more at Mwanza for Saturday.", cSw: "NDIO ikiwa taarifa ya kila siku ya TMA itaonyesha mm 1 au zaidi Mwanza kwa Jumamosi.", cZh: "若 TMA 每日公报记录姆万扎周六降雨量达 1 毫米或以上则为是。" },
-  { cat: "sports", url: "https://www.laliga.com/en-GB/laliga-easports/results", en: "Will Real Madrid score 3 or more goals on Saturday?", sw: "Je, Real Madrid watafunga magoli 3 au zaidi Jumamosi?", zh: "皇家马德里周六会打进 3 个或以上的进球吗？", cEn: "YES if Real Madrid score 3 or more goals in normal time, per the official result.", cSw: "NDIO ikiwa Real Madrid watafunga magoli 3 au zaidi katika muda wa kawaida, kwa matokeo rasmi.", cZh: "若皇家马德里在常规时间内打进 3 球或以上（以官方结果为准）则为是。" },
+  { cat: "sports", url: "https://www.nbc.co.tz/results", en: "Will Singida Black Stars score 2 or more goals on Saturday?", sw: "Je, Singida Black Stars watafunga magoli 2 au zaidi Jumamosi?", zh: "Singida Black Stars 周六会打进 2 个或以上的进球吗？", cEn: "YES if Singida Black Stars score 2 or more goals in normal time, per the league's official result.", cSw: "NDIO ikiwa Singida Black Stars watafunga magoli 2 au zaidi katika muda wa kawaida, kwa matokeo rasmi ya ligi.", cZh: "若 Singida Black Stars 在常规时间内打进 2 球或以上（以联赛官方结果为准）则为是。" },
   { cat: "macro", url: "https://www.bot.go.tz/ExchangeRate", en: "Will the Bank of Tanzania's USD/TZS mean rate on Monday be higher than on Friday?", sw: "Je, kiwango cha wastani cha BoT cha dola kwa shilingi Jumatatu kitakuwa juu kuliko cha Ijumaa?", zh: "坦桑尼亚央行周一的美元兑先令中间价会高于周五吗？", cEn: "YES if the BoT's published USD/TZS mean rate for Monday is above Friday's.", cSw: "NDIO ikiwa kiwango cha wastani cha USD/TZS kilichochapishwa na BoT kwa Jumatatu kiko juu ya cha Ijumaa.", cZh: "若坦桑尼亚央行公布的周一美元兑先令中间价高于周五则为是。" },
 ];
 
@@ -134,13 +136,17 @@ async function closeAndSeal(week: { id: string; closesAt: string }, ms: number, 
   }
 }
 
-/** Settle at the window's close (the injected clock): the preview's digest, released by the Owner. */
+/** Settle at the window's close (the injected clock): the preview's digest, released by the Owner. ⚠️ DECLARED FIXTURE OF
+ *  TIME: the settlement stamps the real clock, which in this seed lies weeks BEFORE the week's own (its weeks sit ahead of
+ *  today so they can sell), so the stamp is moved to the release's own instant on the week's clock — the register would
+ *  otherwise print a week settled before its sales closed. */
 async function settle(weekId: string) {
   const at = new Date(Date.parse((await weekStore.get(weekId))!.objectionsCloseAt!) + 60_000);
   const p = await previewMaswaliSettlement(weekId, at);
   if (!p.ok) throw new Error(`preview: ${p.error}`);
   const s = await settleMaswaliWeek({ weekId, releasedBy: OWNER, digest: p.preview.digest, now: at });
   if (!s.ok) throw new Error(`settle: ${s.error}`);
+  await weekStore.patch(weekId, { settledAt: at.toISOString() });
 }
 
 async function states(): Promise<Record<string, string>> {
@@ -181,11 +187,14 @@ async function states(): Promise<Record<string, string>> {
   await settle(w4.id);
   ids.won = w4.code;
 
-  // 5 · settling: every result in, its window closed (the declared fixture of time), not yet released.
+  // 5 · settling: every result in, its window closed (the declared fixture of time), not yet released. The whole window is
+  // moved — its opening with its close, a day apart as the rules draw it — so the log never prints a window that closes
+  // before it opens.
   const w5 = await opened(at(5));
   await sell(w5.id, p.slice(0, 5).map((u): [string, MaswaliPick[][]] => [u, times(2, LOSE)]));
   await closeAndSeal(w5, at(5));
-  await weekStore.patch(w5.id, { objectionsCloseAt: new Date(Date.now() - 60_000).toISOString() });
+  const closedAt = Date.now() - 60_000;
+  await weekStore.patch(w5.id, { gradedSetFinalAt: new Date(closedAt - DAY).toISOString(), objectionsCloseAt: new Date(closedAt).toISOString() });
   ids.settling = w5.code;
 
   // 6 · in its objection window: every result in, the window still open.

@@ -451,11 +451,14 @@ export default async function MillioneaRegisterWeekPage({ params }: { params: Pr
         {gate.preview && <MillioneaPreviewMark t={t} />}
         {/* The week's money: the ONE Millionea ledger once the week is final (H5), at the receipt's measure, no right lane
             (M4, M5); until then its place says when it comes — never a figure before it is final (H2). */}
-        <section aria-labelledby="mln-reg-ledger" className="mat-flat flex max-w-receipt flex-col gap-3 rounded-card p-3">
+        {/* Titled as every section of the page is — its heading over its card, as the commitments' (one rhythm). */}
+        <section aria-labelledby="mln-reg-ledger" className="flex flex-col gap-2">
           <h2 id="mln-reg-ledger" className={H2}>{t.millionea.regLedger}</h2>
-          {rec.kind === "final"
-            ? <MaswaliLedger rows={registerLedgerRows(t, locale, rec.week)} />
-            : <p className="text-body-sm text-text-muted">{t.millionea.regLedgerLater}</p>}
+          <div className="mat-flat flex max-w-receipt flex-col rounded-card p-3">
+            {rec.kind === "final"
+              ? <MaswaliLedger rows={registerLedgerRows(t, locale, rec.week)} />
+              : <p className="text-body-sm text-text-muted">{t.millionea.regLedgerLater}</p>}
+          </div>
         </section>
         <WeekCommitments t={t} locale={locale} nowMs={nowMs} hash={v.hash} publishedAt={v.publishedAt} root={v.root} closedAt={v.closedAt} tickets={v.tickets} />
         <Questions t={t} locale={locale} v={v} nowMs={nowMs} />

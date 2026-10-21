@@ -93,7 +93,14 @@ export function weekFacts(t: Dict, w: MillioneaWeekSummary): ReactNode[] {
     return facts;
   }
   const amount = formatTzs(w.carriedForward ?? 0);
-  return [...factsOf(fill(t.millionea.settledRollover, { amount })).map((f) => kept(f, [amount])), t.millionea.feeZero];
+  // The hub's own words (`settledRollover`, `feeZero`), said mid-line there ("Week 45 · no 10/10 · …"); here each is a fact
+  // of its own — a line of its own on a phone — so each opens with a capital, as every other fact of a row does.
+  return [...factsOf(fill(t.millionea.settledRollover, { amount })).map((f) => kept(factCase(f), [amount])), factCase(t.millionea.feeZero)];
+}
+
+/** A fact's first letter as a list item's: a capital (a no-op for a figure or an ideograph). */
+function factCase(s: string): string {
+  return s.charAt(0).toLocaleUpperCase() + s.slice(1);
 }
 
 /**

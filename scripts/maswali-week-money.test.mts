@@ -172,13 +172,12 @@ const MONEY_KEYS = ["id", "code", "state", "isFinal", "closedAt", "settledAt", "
   "toWinners", "remainder", "basis", "winningScore"];
 const pick = (o: any) => Object.fromEntries(MONEY_KEYS.map((k) => [k, o?.[k]]));
 const rowsMarkup = (w: World, l: Locale, rec: any, o?: unknown) => inApp(l, h(MaswaliLedger, { rows: w.parts.registerLedgerRows(dict[l], l, rec, o) }));
-/** A rendered ledger's two totals, as the reader reads them: each total row's figure — the last amount in its row, after any
- *  amounts its note states. */
-const totals = (markup: string) => {
+/** A ledger's two totals, as the reader reads them: each total row's own figure, rendered (never an amount its note states). */
+const totals = (w: World, l: Locale, rec: any, o?: unknown) => {
+  const rows = w.parts.registerLedgerRows(dict[l], l, rec, o) as Array<{ key: string; value: unknown }>;
   const figure = (key: string) => {
-    const row = markup.split('data-ledger-row="').find((s) => s.startsWith(`${key}"`));
-    const amounts = row ? [...row.matchAll(/<span class="amount">([^<]*)<\/span>/g)].map((x) => x[1]) : [];
-    return amounts.length ? amounts[amounts.length - 1] : null;
+    const r = rows.find((x) => x.key === key);
+    return r ? textOf(inApp(l, h(React.Fragment, null, r.value as never))) : null;
   };
   return { moneyIn: figure("moneyIn"), moneyOut: figure("moneyOut") };
 };
@@ -263,7 +262,7 @@ check("3.1", "MR-26 on a DRIVE week's core record: money in (carry in + sales + 
     if (!m) { off.push(`${name}: no record`); continue; }
     const into = (m.carryIn ?? 0) + (m.sales ?? 0) + (m.topUp ?? 0);
     const out = m.state === "VOIDED" ? (m.sales ?? 0) + (m.carryIn ?? 0) : (m.fee ?? 0) + (m.paid ?? 0) + (m.carriedForward ?? 0);
-    const drawn = LOCALES.map((l) => totals(rowsMarkup(w, l, m, { links: false })));
+    const drawn = LOCALES.map((l) => totals(w, l, m, { links: false }));
     if (into !== out || into <= 0 || drawn.some((d) => d.moneyIn === null || d.moneyIn !== d.moneyOut)) off.push(`${name}: ${j({ into, out, drawn })}`);
   }
   return [off.length === 0, off.join(" | ")];

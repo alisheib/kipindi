@@ -18,10 +18,12 @@
  *
  * Each page at each width and language: answered 200, no horizontal overflow, the right page (never the 404), its own
  * test id, no page error, and viewport tiles in `.50pick-shots/maswali-register-shots/<scenario>/` (never a full-page
- * capture). Measured, not eyeballed: a running week's page states no money (H2); on every week page, whether the resting
- * chat bubble or the Needle covers a figure of the ledger in any tile (the motion and register critics' M5) — reported
- * per tile, and a cover is a failure. How to play's example is played and frames are captured at fixed offsets, with the
- * OS's reduced motion and without (`<scenario>/motion/`).
+ * capture). Measured, not eyeballed: a running week's page states no money (H2); on every final week's page and How's
+ * worked weeks, whether the resting chat bubble or the Needle sits over a figure of a ledger in any tile (the register
+ * critic's M5) — every cover printed as a `MEASURE` line with the control's computed opacity, and one that has not faded to
+ * the census's rest (≤ 0.3; the lead's ruling D15 of 2026-10-21: the chat FAB takes the Needle's census rule, fade only) is a
+ * failure. How to play's example is played and frames are captured at fixed offsets, with the OS's reduced motion and
+ * without (`<scenario>/motion/`).
  * A focused re-shoot: MASWALI_SHOTS_PAGES (page names), MASWALI_SHOTS_LOCALES, MASWALI_SHOTS_WIDTHS, MASWALI_SHOTS_SCROLL=0.
  */
 import { chromium } from "playwright";
@@ -96,19 +98,22 @@ async function covered(page) {
       const f = a.getBoundingClientRect();
       if (f.bottom <= 0 || f.top >= innerHeight) continue;
       for (const { name, r, opacity } of boxes) {
-        if (f.left < r.right && f.right > r.left && f.top < r.bottom && f.bottom > r.top) out.push(`${name} (opacity ${opacity}) over "${a.textContent}"`);
+        if (f.left < r.right && f.right > r.left && f.top < r.bottom && f.bottom > r.top) out.push({ name, opacity, text: a.textContent });
       }
     }
     return out;
   });
 }
+/** A cover hides the figure unless the control over it has faded to the census's rest (the lead's ruling D15, 2026-10-21:
+ *  the chat FAB takes the Needle's census rule, fade only) — an opacity above this reads as covering. */
+const COVER_OPACITY = 0.3;
 
 /** The page's lead tile, then one tile per scroll step down to its end (240px of overlap), each checked for a cover. */
 async function shoot(page, name, locale, width, measure) {
   const tag = `${name}-${locale}-${width}`;
   await page.screenshot({ path: `${OUT}/${tag}.png`, fullPage: false });
   const covers = [];
-  if (measure) covers.push(...(await covered(page)).map((c) => `s1 ${c}`));
+  if (measure) covers.push(...(await covered(page)).map((c) => ({ ...c, step: 1 })));
   if (SCROLL) {
     const total = await page.evaluate(() => document.documentElement.scrollHeight);
     let bottom = HEIGHT;
@@ -118,13 +123,18 @@ async function shoot(page, name, locale, width, measure) {
       await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(true)))));
       await page.waitForTimeout(250);
       await page.screenshot({ path: `${OUT}/${tag}-s${n}.png`, fullPage: false });
-      if (measure) covers.push(...(await covered(page)).map((c) => `s${n} ${c}`));
+      if (measure) covers.push(...(await covered(page)).map((c) => ({ ...c, step: n })));
       bottom = (await page.evaluate(() => window.scrollY)) + HEIGHT;
     }
     ok(`${tag} · the whole page is covered by viewport tiles`, bottom >= total - 1, `${bottom} of ${total}`);
     await page.evaluate(() => window.scrollTo(0, 0));
   }
-  if (measure) ok(`${tag} · no resting control covers a figure of the ledger`, covers.length === 0, covers.join(" | "));
+  if (measure) {
+    const said = covers.map((c) => `s${c.step} ${c.name} (opacity ${Number(c.opacity).toFixed(2)}) over "${c.text}"`);
+    if (said.length) console.log(`MEASURE ${tag} · ${said.join(" | ")}`);
+    ok(`${tag} · no resting control hides a figure of the ledger (a control over one has faded to ≤ ${COVER_OPACITY})`,
+      covers.every((c) => c.opacity <= COVER_OPACITY), said.join(" | "));
+  }
 }
 
 // ── the weeks ─────────────────────────────────────────────────────────────────────────────────────────────────────────

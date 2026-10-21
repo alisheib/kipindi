@@ -101,7 +101,9 @@ function viewChecks() {
     const full = markup(t, weeks);
     const marked = markup(t, weeks, true);
     const emptyText = textOf(empty), fullText = textOf(full), markedText = textOf(marked);
-    const facts = [t.millionea.regWonOne, t.millionea.regRefundsPending, t.millionea.feeZero];
+    // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER): the one week row's facts each open with a capital — a fact is a
+    // line of its own on a phone ("Fee 0", "Ada 0"); the hub's mid-line words stay as they are.
+    const facts = [t.millionea.regWonOne, t.millionea.regRefundsPending, t.millionea.feeZero.charAt(0).toLocaleUpperCase() + t.millionea.feeZero.slice(1)];
     if (!emptyText.includes(t.millionea.productTitle) || !emptyText.includes(t.millionea.regEmpty) || emptyText.includes("MLN-2026")) failures.push(`${locale}: empty`);
     if (!fullText.includes(t.millionea.productTitle) || !full.includes('href="/millionea/register/MLN-2026-W45"')
       || !fullText.includes("MLN-2026-W44") || !fullText.includes("MLN-2026-W43")

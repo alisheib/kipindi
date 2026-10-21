@@ -94,6 +94,7 @@ const FILES = {
   css: "src/app/globals.css",
   example: "src/app/millionea/how/how-example.tsx",
   how: "src/app/millionea/how/page.tsx",
+  line: "src/components/maswali/maswali-unbroken-line.tsx",
 } as const;
 type FileKey = keyof typeof FILES;
 
@@ -274,6 +275,20 @@ const CASES: Record<string, Record<string, unknown> & { _in: number; _out: numbe
 };
 const CLOSED_CASES = Object.keys(CASES);
 const tzs = (s: string) => Number(s.replace(/[^\d−-]/g, "").replace("−", "-"));
+/** The text of every `white-space: nowrap` run in a markup, each read to its OWN closing tag (a run may hold spans). */
+const keptTexts = (markup: string): string[] => {
+  const out: string[] = [];
+  const open = '<span class="whitespace-nowrap">';
+  for (let at = markup.indexOf(open); at >= 0; at = markup.indexOf(open, at + 1)) {
+    let depth = 0, i = at;
+    for (; i < markup.length; i++) {
+      if (markup.startsWith("<span", i)) depth++;
+      else if (markup.startsWith("</span>", i) && --depth === 0) break;
+    }
+    out.push(textOf(markup.slice(at, i)));
+  }
+  return out;
+};
 type Rendered = { key: string; label: string; note: string; value: string; markup: string; row: LedgerRow };
 const rowsOf = (w: World, l: Locale, f: Record<string, unknown>): Rendered[] =>
   w.ledger(dict[l] as never, l, f).map((r) => {
@@ -327,7 +342,10 @@ check("2.4", "the fee taken is the platform's signed figure in the receipt's amb
     const ok = fee?.value === formatTzsSigned(-136_630) && fee.row.tone === "warning" && fee.row.emphasis === "fee"
       && levy.includes(formatTzs(13_663)) && levy.includes(formatTzs(6_832)) && levy.includes("TRA") && levy.includes("GBT")
       && !rowsOf(w, l, CASES.dust).some((r) => r.key === "tra" || r.key === "gbt") && rolled?.value === "TZS 0";
-    return ok ? [] : [`${l}: ${j({ fee: fee?.value, levy, rolled: rolled?.value })}`];
+    // Each levy is one run — its name, its share and its amount — so "TRA" is never torn from "10%" at 320 (the tile read).
+    const runs = fee ? keptTexts(inApp(l, h(React.Fragment, null, fee.row.note as never))) : [];
+    const whole = [`TRA 10% ${formatTzs(13_663)}`, `GBT 5% ${formatTzs(6_832)}`].every((x) => runs.some((r) => r.includes(x)));
+    return ok && whole ? [] : [`${l}: ${j({ fee: fee?.value, levy, rolled: rolled?.value, runs })}`];
   });
   return [off.length === 0, off.join(" | ")];
 });
@@ -341,11 +359,15 @@ check("2.5", "every amount the ledger prints — in a value, a label or a note �
   const caps = /class="[^"]*\b(uppercase|eyebrow)\b[^"]*"/.test(drawn.replace(/<span class="[^"]*kp-mln-facts[^"]*"/g, ""));
   return [off.length === 0 && !caps, j({ off: off.slice(0, 4), caps })];
 });
-check("2.6", "\"Money out\" says what it is made of on its own line — fee, paid to winners, carried forward, each amount the arithmetic's — because \"To winners\" holds the remainder too", (w) => {
+check("2.6", "\"Money out\" says what it is made of on its own line — fee, paid to winners, carried forward, each amount the arithmetic's — because \"To winners\" holds the remainder too; a carry of nothing is no part (L11: never \"carried forward TZS 0\")", (w) => {
   const off = LOCALES.flatMap((l) => {
     const out = rowsOf(w, l, CASES.dust).find((r) => r.key === "moneyOut");
     const note = out?.note ?? "";
-    return note.includes(formatTzs(136_630)) && note.includes(formatTzs(914_368)) && note.includes(formatTzs(2)) ? [] : [`${l}: ${note}`];
+    // howShared: 3 winners share J − F exactly — nothing carried on, so the note names two parts.
+    const none = rowsOf(w, l, CASES.howShared).find((r) => r.key === "moneyOut")?.note ?? "";
+    const carry = (dict[l].millionea as Record<string, string>).ledgerOutParts.split(" · ")[2].replace("{carried}", "").trim();
+    return note.includes(formatTzs(136_630)) && note.includes(formatTzs(914_368)) && note.includes(formatTzs(2))
+      && none.length > 0 && !none.includes(carry) && !none.includes(formatTzs(0)) ? [] : [`${l}: ${note} | ${none}`];
   });
   return [off.length === 0, off.join(" | ")];
 });
@@ -384,6 +406,16 @@ check("2.10", "the drawing is the kit's own: every row a sentence-case ReceiptRo
   const rows = count(drawn, "data-ledger-row=");
   const sentence = count(drawn, 'class="min-w-0 text-body-sm');
   return [rows === 10 && sentence >= 10 && !/border-b\b/.test(drawn) && drawn.includes("mt-3"), j({ rows, sentence })];
+});
+// The tile read of 2026-10-21 (How, sw 320): Money out's parts wrapped to six lines in the label's column beside the total's
+// figure ("Ada TZS 136,500 / imelipwa kwa / washindi / TZS 913,500 / imehamishwa / TZS 0"); a line of figures runs the row's
+// whole width instead — the fee's levies and Money out's parts — while a label's own detail stays under its label.
+check("2.12", "a line of figures under a row — the fee's levies, Money out's parts — runs the row's whole width, under its figure too (the kit row's note face); a label's own detail (the sales note) stays in the label's column", (w) => {
+  const drawn = inApp("sw", h(w.Ledger as never, { rows: w.ledger(dict.sw as never, "sw", CASES.dust) } as never));
+  const seg = (key: string) => drawn.split('data-ledger-row="').find((s) => s.startsWith(`${key}"`)) ?? "";
+  const WIDE = 'class="mt-0.5 block text-body-sm text-text-muted"';
+  const wide = ["fee", "moneyOut"].every((k) => seg(k).includes(WIDE)) && !seg("sales").includes(WIDE) && seg("sales").includes('class="text-body-sm text-text-muted"');
+  return [wide, j({ fee: seg("fee").includes(WIDE), out: seg("moneyOut").includes(WIDE), sales: seg("sales").includes(WIDE) })];
 });
 // ⚠️ ADDED 2026-10-21 (the lead, for the HUB lane: R1-hub L15 asks for no dash, H1 forbids a figure there): a sentence with no
 // figure stands alone — the dash beside it read as a missing figure.
@@ -527,6 +559,16 @@ check("4.7", "M7 · M5 · How's example opens on the BEFORE frame — main 4 voi
     && m.includes('<span role="status" class="text-body-sm text-text-subtle"></span>');
   return [frames && machine && opens, j({ frames, machine, opens })];
 });
+// The tile read of 2026-10-21 (How's example, sw 360, its end frame): the drawn Unbroken Line rested broken — sockets 1–4 and
+// 8–10 joined, 4–8 bare. Chromium lays a non-scaling stroke's dash in screen pixels, not in the path's own length, so the
+// draw-on's 100-long dash became a 100px dash and a 100px gap. The line is horizontal in a 1-unit-tall box: its stroke is 1px
+// with or without the vector effect, so the effect goes and the dash is the path's own length again.
+check("4.8", "the Unbroken Line (and the closing rule) draws on in the path's own length and rests whole: no non-scaling stroke beside `pathLength` and the draw-on's dash, which Chromium lays in screen pixels (a 100px dash, a 100px gap)", (w) => {
+  const s = code(w, "line");
+  const own = s.includes("pathLength={100}") && s.includes("strokeDasharray: 100, strokeDashoffset: 100");
+  const screen = /vectorEffect|vector-effect/.test(s);
+  return [own && !screen, j({ own, screen })];
+});
 
 // ── §5 · How to play (the register critic's How rows) ────────────────────────────────────────────────────────────────
 check("5.1", "M6 · H1 · L7 · L5 · L13 · How says what a first visit needs: step 3 the hub's own headline (\"Jackpot at least {floor} · shared equally by every 10/10 ticket · {pct}% fee at payout\"; the rule alone at a floor of 0); the reserve step the slip's own sentence; the rules add a week voided whole, where a win is paid, the objection window by its one name, the cap in the slip's phrase, and that limits, Take a break and Self-exclude cover Millionea — with the footer's own \"Set limits\" door", (w) => {
@@ -661,7 +703,10 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["the fee unsigned (\"TZS −136,630\")", "2.4", plantLedger("{fee > 0 ? formatTzsSigned(-fee) : formatTzs(0)}", "{formatTzs(-fee)}")],
   ["the levies dropped from under the fee", "2.4", plantLedger("note: f.levies && fee > 0 ? factLine(", "note: false && f.levies && fee > 0 ? factLine(")],
   ["a carry's amount printed outside its money run", "2.5", plantLedger("const money = (n: number) => <span className=\"amount\">{formatTzs(n)}</span>;", "const money = (n: number) => <span>{formatTzs(n)}</span>;")],
-  ["Money out's parts line dropped", "2.6", plantLedger("note: factLine(locale, fill(m.ledgerOutParts,", "note: undefined && factLine(locale, fill(m.ledgerOutParts,")],
+  ["Money out's parts line dropped", "2.6", plantLedger("note: <MaswaliFacts facts={(carried > 0 ? parts : parts.slice(0, 2)).map((p) => keepFact(locale, p))} />,", "note: undefined,")],
+  ["L11 undone — \"carried forward TZS 0\" printed as a part", "2.6", plantLedger("(carried > 0 ? parts : parts.slice(0, 2))", "parts")],
+  ["Money out's parts squeezed into the label's column again", "2.12", plantLedger('key: "moneyOut", label: m.ledgerMoneyOut, emphasis: "total", divider: true, wideNote: true,', 'key: "moneyOut", label: m.ledgerMoneyOut, emphasis: "total", divider: true,')],
+  ["the levies' names torn from their shares again (no runs kept)", "2.4", plantLedger("}), [`TRA ${f.levies.traPct}% ${formatTzs(f.levies.tra)}`, `GBT ${f.levies.gbtPct}% ${formatTzs(f.levies.gbt)}`]) : undefined,", "})) : undefined,")],
   ["a carry row no longer a link", "2.7", plantLedger("return r.href ? (\n          <Link", "return false ? (\n          <Link")],
   ["\"every ticket refunded\" before the refunds landed", "2.8", plantLedger("afterIn.push(refunds.landed", "afterIn.push(true")],
   ["the voiding week's refund line beside a dash again", "2.11", plantLedger('[price]), value: null, emphasis: "muted" });', '[price]), value: "—", emphasis: "muted" });')],
@@ -696,6 +741,7 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["M7 undone — the example opens on its end frame (the void invisible)", "4.7", plantExample("const line = run === 0 ? before : ended ? after : { ...after, unbroken: false };", "const line = after;")],
   ["M5 undone — \"Example ended\" at the tap, before the token landed", "4.7", plantExample("const ended = run > 0 && landed === run;", "const ended = run > 0;")],
   ["M5 undone — the Unbroken Line drawn under a token still in flight", "4.7", plantExample("const line = run === 0 ? before : ended ? after : { ...after, unbroken: false };", "const line = run === 0 ? before : after;")],
+  ["the non-scaling stroke back on the drawn line (it rests as dashes)", "4.8", plantSrc("line", "        pathLength={100}\n", '        vectorEffect="non-scaling-stroke"\n        pathLength={100}\n')],
   ["M7 undone — How hands the example its end frame only", "4.7", plantSrc("how", "return { before: sealLineOf(qs, picks), after: sealLineOf(qs, picks, { final: true }) };", "return { before: sealLineOf(qs, picks, { final: true }), after: sealLineOf(qs, picks, { final: true }) };")],
   // §5
   ["M6 undone — step 3 without the floor (the old sentence's place)", "5.1", plantSrc("how", "? fill(t.millionea.ruleWithFigure, { amount: fill(t.millionea.atLeast, { amount: formatTzs(h.floor) }), pct })", "? fill(t.millionea.ruleShared, { pct })")],

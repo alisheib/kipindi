@@ -29,9 +29,9 @@ export function MillioneaRegisterWeekGhost() {
           <GhostBar className="h-4 w-[70%] max-w-[420px]" />
           <GhostBar className="h-3 w-[60%] max-w-[360px]" />
         </div>
-        <div className="mat-flat flex max-w-receipt flex-col gap-3 rounded-card p-3" aria-hidden>
+        <div className="flex flex-col gap-2" aria-hidden>
           {H2}
-          <div className="flex flex-col gap-2.5">
+          <div className="mat-flat flex max-w-receipt flex-col gap-2.5 rounded-card p-3">
             {[0, 1, 2, 3, 4, 5].map((i) => (
               <div key={i} className={i === 2 ? "mt-3 flex items-center justify-between gap-3" : "flex items-center justify-between gap-3"}>
                 <GhostBar className="h-4 w-[45%]" />
