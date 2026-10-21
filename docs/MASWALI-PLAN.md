@@ -52,7 +52,16 @@ Every lane committed and pushed at the stop; a commit marked "WIP … not verifi
 - WIP, not compiling: `claude/maswali-s5-design-hub` (`7fe758046`), `-slip` (`524128dbb`), `-register` (`3bf97ffdf`),
   `-tickets` (`96e5e9a94`). `claude/maswali-s5-design-doors` (`5bc6e2c57`): H1 and nearly all of R1-doors done and
   verified (the ghost equals the card: 188/188px at 360, 74/74 at 1280); its last commit (L7 and three small items) is
-  verified by static suites only — the full browser re-run and tile read are owed. `claude/maswali-s7`: read its head.
+  verified by static suites only — the full browser re-run and tile read are owed.
+- `claude/maswali-s7` (`2cba1f577`, Codex's integration contained in it): S7-F8 1–6. **The money finding (S7-F8 4,
+  `66f3af8be`):** a final week whose ~7,000 winners are all held could never settle — one hold per winner inside the chain
+  lock's single 30 s transaction expired, rolled back, and left wallets frozen; the holds are now placed in 5 s sections of
+  the lock (each re-reads the week), paying only in a section with budget left. Measured on scratch PostgreSQL: S16 43/0,
+  the all-held week settles once in 15 sections (81.6 s), the wide week in one 6.7 s section, exactly once, conservation
+  exact. tsc 0; every two-store suite at or above its floor (settle 102/106, purchase 112/115, house-bot-reports 253/81,
+  adversarial 194/202 …); e2e:maswali-fault 16/0; red:maswali-money-path 73/73, red:dal-parity 285/285. Owed: the S17 rush
+  (no measured rush figures), the S7-F7 6–8 render read, a refused release lifting thousands of holds one by one (minutes);
+  after S5 lands: merge, re-pin D19a, red:house-bot-c5 and red:house-bot-console, test:all and the money battery.
 - `mln-s6-notices` (`bd74c982c`): round 17 COMPLETE — M5, L1, H2, H3, M3, M4, L2, L3, L4 in 14 commits, both Codex attempts
   reconciled (their branches archived in `F:\kipindi-archive\codex-s6n-attempts-20261021.bundle` and deleted);
   maswali-notify 138/0 mem + 144/0 PG, maswali-claims 635/0, red:maswali-claims 29/29, ~60 derived light suites green.
@@ -89,8 +98,8 @@ tile reads (every page to its end, 320–1920 × en/sw/zh), the compiled respons
 panel), the multi-slip drive, `test:all` with the database suites, typecheck, the exact-commit production build,
 bundle verification and local `qa:live`; fix what any of them or the reviews confirm. Recheck current `main` and
 `main-push.lock` before the push. Deploy S5 dark only after every gate passes, then AGENTS.md §4's three-host,
-health, chunk, live-QA and browser read-back. S7 follows with its wide-winner settlement fix
-(`codex/maswali-s7-integration-20261019` `9277c9ab`) verified on both stores and under the 10,000-ticket load;
+health, chunk, live-QA and browser read-back. S7 follows on `claude/maswali-s7` (its held-winner settlement fix
+S7-F8 4 verified on both stores and under the 10,000-ticket load — see the STOPPED block above);
 S6 follows in L → D → R → N order. S8 remains at its owner and regulatory gates in §6. Do not flip the rollout as
 part of a dark release.
 
@@ -742,7 +751,7 @@ never build there. The repository is public: describe anti-abuse controls by wha
 | D3 | Ali's N1–N4 rulings, filed in DESIGN_AUTHORITY and motion.css | ✅ | 2b6bf5bf (2026-10-17): DESIGN_AUTHORITY §M8a, COMPLIANCE-DECISIONS, the manifests, the agency note; the N-block lands in `motion.css` with its first consumer in S5 (`test:dead-css`) |
 | S5 | Player surfaces | 🔨 | integrated on `codex/maswali-coord-20261019`; focused source and two-store action checks, the 198/198 disposable-PostgreSQL money battery, earlier player tiles and classic parity are green; final exact-commit suite, render, build, local live QA, dark deploy and production read-back remain |
 | S6 | Fairness, notices, reports, legal, data | 🔨 | legal + data squash-merged on `mln-s6-int` `81c60f0f`; reports round 15 accepted on `mln-s6-reports` `57624a2f`; notices round 17 in progress on `mln-s6-notices` `d6e4544d` (both BLOCKERs fixed) — §0 ⏹ |
-| S7 | Adversarial hardening | 🔨 | F7 integrated on `codex/maswali-s7-integration-20261019` at `5c0cc5e388`; the S16 10,000-ticket load found a 7,000-winner release timeout with a clean rollback, now being repaired before its two-store and load rerun; lands after S5 |
+| S7 | Adversarial hardening | 🔨 | on `claude/maswali-s7` at `2cba1f577`: F7 integrated, and S7-F8 1–6 — the held-winner release placed in 5 s sections of the lock (a 7,000-held week settles once in 81.6 s), measured on both stores and under the S16 10,000-ticket load; the S17 rush and the F7 6–8 render read are owed; lands after S5 |
 | S8 | Live drive and public launch | ⬜ | never before every §6 line is ticked |
 
 **Status values:** ⬜ not started (cites no commit) · 🔨 in progress · ✅ done (cites a commit that exists) · ⛔ blocked
