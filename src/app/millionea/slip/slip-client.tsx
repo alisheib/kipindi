@@ -8,7 +8,8 @@ import { MaswaliSlip, MaswaliSlipConfirm, slipProgress, type SlipPicks, type Sli
 import { OperationResultModal } from "@/components/markets/operation-result-modal";
 import { exitBeatMs } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
-import { useCountdown } from "@/components/updown/round-countdown";
+import { useCountdown, useServerNow } from "@/components/updown/round-countdown";
+import { millioneaFreeCancelEnd } from "@/lib/millionea-free-cancel";
 import { MaswaliFacts, factsOf, keepFact } from "@/components/maswali/maswali-facts";
 import { eatClock } from "@/components/maswali/maswali-format";
 import { useT } from "@/lib/i18n";
@@ -16,7 +17,7 @@ import { haptics } from "@/lib/haptics";
 import { fillNodes } from "@/lib/fill-nodes";
 import { refusalReason, refusalVariant, renderFailure, type ReasonedFailure } from "@/lib/failure-reasons";
 import { millioneaTicketHref } from "@/lib/position-permalink";
-import { SLOT_COUNT, type MaswaliPick } from "@/lib/maswali-score";
+import type { MaswaliPick } from "@/lib/maswali-score";
 import {
   addSlip, emptySlip, firstIncompleteSlip, newSlipDraft, parseSlipDraft, pickInDraft, removeActiveSlip,
   selectSlip, slipTotal, type MillioneaSlipDraft,
@@ -84,7 +85,7 @@ type Cut = { serials: string[]; firstTicketNumber: number; weekNumber: number; c
  *   · Sales closing while the slip is open: the band reveals on the mark's axis, the controls rest, the rail leaves (M2).
  */
 export function SlipClient({
-  userId, weekId, weekNumber, closesAt, firstEventAt, serverNow, questions, hiddenSlots, price, cap, held, balance, cancelIfBoughtNow,
+  userId, weekId, weekNumber, closesAt, firstEventAt, serverNow, questions, hiddenSlots, price, cap, held, balance, freeCancelMinutes,
   pct,
 }: {
   /** The account this page was drawn for: a page drawn for A never debits B (the action refuses a changed account). */
@@ -100,7 +101,8 @@ export function SlipClient({
   cap: number;
   held: number;
   balance: number | null;
-  cancelIfBoughtNow: number | null;
+  /** RULES §2.6's grace the week froze: what the confirm sheet's free-cancel line is computed from, live (P1 below). */
+  freeCancelMinutes: number;
   pct: number;
 }) {
   const { t, locale } = useT();
@@ -123,6 +125,14 @@ export function SlipClient({
   const left = useCountdown(closesAt, serverNow);
   const closedAtRender = closesAt <= serverNow;
   const closed = closedAtRender || (left !== null && left <= 0);
+  // ⭐ S5-FIX-PLAYER P1 · THE FREE CANCEL A TICKET CUT NOW WOULD CARRY, ASKED AGAIN ON EVERY TICK: the server-aligned instant
+  // (`useServerNow`: the offset to the render's server clock taken once, at mount — the countdown's own anchor) through
+  // `cancelMaswaliTicket`'s one rule (`millioneaFreeCancelEnd`: placed now, the runway against the close, the end at the
+  // earlier of the grace and the close). It was a time fixed at the page's render: a player who answered for twelve minutes
+  // was promised a time already past, and near the close a cancel the purchase would not carry. Null before hydration and
+  // whenever the close is too near for one — then the sheet promises none.
+  const nowAligned = useServerNow(serverNow);
+  const cancelUntil = nowAligned === null ? null : millioneaFreeCancelEnd(nowAligned, closesAt, closesAt, freeCancelMinutes);
 
   // The tab's kept picks for this week come back once the page is in the browser (never in the server's HTML).
   useEffect(() => {
@@ -263,16 +273,17 @@ export function SlipClient({
           </div>
           <div className="flex flex-wrap gap-2" aria-label={t.millionea.draftTickets}>
             {draft.slips.map((slip, i) => {
-              const progress = slipProgress(slip);
+              // Of the questions the slip ASKS (P10): "Ticket 1 · 0/14" when one voided before the close, never "1/15" untapped.
+              const progress = slipProgress(slip, questions);
               return (
                 <Button key={i} type="button" size="md" variant={i === draft.active ? "primary" : "ghost"} aria-current={i === draft.active ? "true" : undefined}
                   onClick={() => updateDraft(selectSlip(draftRef.current, i), false)} className="shrink-0 whitespace-nowrap">
-                  {fill(t.millionea.draftTicket, { n: formatNumber(held + i + 1) })} · {formatNumber(progress.mains + progress.reserves)}/{formatNumber(SLOT_COUNT)}
+                  {fill(t.millionea.draftTicket, { n: formatNumber(held + i + 1) })} · {formatNumber(progress.mains + progress.reserves)}/{formatNumber(progress.mainsOf + progress.reservesOf)}
                 </Button>
               );
             })}
           </div>
-          <p className="text-body-sm text-text-muted">{t.millionea.ticketDraftHint}</p>
+          <p className="text-body-sm text-text-muted">{fill(t.millionea.ticketDraftHint, { n: formatNumber(questions.length) })}</p>
         </section>
       )}
       <MaswaliSlip
@@ -303,7 +314,7 @@ export function SlipClient({
         balance={fundsNow}
         ticketNumber={held + 1}
         cap={cap}
-        cancelUntil={cancelIfBoughtNow}
+        cancelUntil={cancelUntil}
         pct={pct}
         lowBalance={lowBalance}
         depositDoor={depositDoor}

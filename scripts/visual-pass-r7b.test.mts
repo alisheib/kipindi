@@ -172,7 +172,8 @@ const headerCallOk = (file: string, el: string) => {
     // MASWALI-BUILD S5 pages (2026-10-18): a Millionea ticket's page is named by its serial; the week line above it is
     // its eyebrow, in the subtle ink (the v6 delivery's T-ticket frames); it takes back its trailing tracking at the row's
     // end (`kp-track-end`, r7c 2.1, 2026-10-18).
-    "src/components/maswali/maswali-ticket.tsx": { eyebrow: '<span className="font-mono text-label uppercase eyebrow text-text-subtle kp-track-end">{keepFact(locale, weekLine(t, week, weekState, checkWindow))}</span>' },
+    // Re-pinned in the open 2026-10-21 (S5-FIX-PLAYER P6): the week line says the composer's phase word (`phaseWord`).
+    "src/components/maswali/maswali-ticket.tsx": { eyebrow: '<span className="font-mono text-label uppercase eyebrow text-text-subtle kp-track-end">{keepFact(locale, weekLine(t, week, weekState, phaseWord))}</span>' },
     "src/app/profile/invite/page.tsx": { none: "sr-only <h1>; its title row is the name alone" },
     "src/app/profile/invite/agent-dashboard.tsx": { none: "sr-only <h1>; the dashboard's rows" },
     "src/app/agent/apply/page.tsx": { none: "sr-only <h1>; the steps' line is subtle (apply-client)" },

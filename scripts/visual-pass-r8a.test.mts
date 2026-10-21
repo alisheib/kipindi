@@ -344,11 +344,15 @@ const WARN_REGISTRY: Record<string, [number, string]> = {
   "src/app/profile/account/privacy-request-form.tsx": [2, "the erasure request's caution — what an irreversible erasure keeps by law, read before sending"],
   "src/components/rg/limit-usage.tsx": [1, "THE one limit ramp's caution step, 75–90% of a limit the player set — never gilt"],
   // MASWALI-BUILD S5 — Millionea's two ambers, each where somebody must act or money is deducted.
-  "src/components/maswali/maswali-slip.tsx": [3, "the confirm's short main balance — the player deposits before cutting a ticket (its box's frame and wash, its glyph)"],
+  // 3 → 1 on 2026-10-21 (S5-FIX-PLAYER P18): the hand-rolled box (its frame, wash and glyph) is the kit's own Callout now,
+  // which paints the family itself — the slip names only its tone.
+  "src/components/maswali/maswali-slip.tsx": [1, "the confirm's short main balance — the player deposits before cutting a ticket (the kit Callout's warning tone)"],
   "src/components/maswali/maswali-win-ledger.tsx": [1, "the fee row's amber (a deduction), the receipt's own `ReceiptRow` tone"],
   // 2026-10-18 (S5 integration): the same deduction on the two pages that print a week's money as a receipt.
   "src/app/millionea/how/page.tsx": [1, "the worked example's fee row (a deduction), the receipt's own `ReceiptRow` tone — as the win ledger's"],
-  "src/app/millionea/register/[week]/page.tsx": [1, "the week's ledger fee row (a deduction), the receipt's own `ReceiptRow` tone — as the win ledger's"],
+  // 2026-10-21 (S5-FIX-PLAYER P3): the week page's ledger rows are built in register-parts.tsx (`registerLedgerRows`), so
+  // the fee row's tone moved there with them — its row type's member and its one use; the page names none of its own.
+  "src/app/millionea/register/register-parts.tsx": [2, "the week's ledger fee row (a deduction), the receipt's own `ReceiptRow` tone — as the win ledger's (the row type's `tone` and the fee row's)"],
 };
 section("3 · the warning census — every warning paint in the player's code is a §B11 warning, ruled and registered");
 const wcensus = new Map<string, Hit[]>();

@@ -3,7 +3,7 @@
  * delivery's P-register-index frame; D-38). The reading tier.
  *
  * Every final PUBLIC week, newest first — each a door to its own page — and, inside each row, its strata line: a week
- * nobody won says what it carried forward, at fee 0 ("TZS 412,000 imeletwa mbele · ada 0").
+ * nobody won says what it carried forward, at fee 0 ("TZS 412,000 imehamishwa · ada 0").
  * ⭐ ONE ROW, ONE LINE OF INFORMATION (S5 VIS R9, the tile read of 2026-10-19): "Week 48 · Voided" and "Week 45: 1 ticket
  *    won" were two grammars for one kind of line, and at 1280/1920 a row ran ~1,016px with a short label and its chevron
  *    900px away. A row now names its week, its state as the week page's own chip, then its facts — a voided week's refunds,

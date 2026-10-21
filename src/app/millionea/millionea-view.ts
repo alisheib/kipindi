@@ -23,15 +23,13 @@ import type { TicketClause } from "@/components/maswali/maswali-ticket";
 import type { PoolView } from "@/components/maswali/maswali-pool-figure";
 import type { WeekPhases } from "@/components/maswali/maswali-week-strip";
 import type { LossPosition, WinLines } from "@/components/maswali/maswali-win-ledger";
-import { counted, weekNumberOf } from "@/components/maswali/maswali-format";
-import { MAIN_COUNT, type GradableQuestion, type MaswaliPick } from "@/lib/maswali-score";
-import type { WeekState } from "@/lib/maswali-week-label";
+import { counted, eatWeekday, millioneaWord, weekNumberOf } from "@/components/maswali/maswali-format";
+import { MAIN_COUNT, weekVoidCertain, type GradableQuestion, type MaswaliPick } from "@/lib/maswali-score";
+import { WEEK_STATE_KEY, type WeekState } from "@/lib/maswali-week-label";
 import { marketCategoryLabel } from "@/lib/localized";
 import { eatIsoWeek } from "@/lib/eat-day";
 import { fill, pctNum } from "@/lib/utils";
 import type { Dict, Locale } from "@/lib/i18n-dict";
-
-const DAY_MS = 86_400_000;
 
 /** An instant the read model wrote, in ms, or null when it is not one. */
 export function msOf(iso: string | null | undefined): number | null {
@@ -73,6 +71,45 @@ export function lineOf(questions: readonly MillioneaQuestion[], slots: readonly 
   return sealLineOf(gradableOf(questions), picksOf(slots), lineOpts(weekState));
 }
 
+/**
+ * ⭐ S5-FIX-PLAYER P6 · WHERE A WEEK STANDS — ONE ANSWER FOR EVERY SURFACE THAT SAYS IT (the hub's eyebrow and grading
+ * block, the buy block's live line, the ticket's week line and live line; the doors lane's card): the lead's ruling of
+ * 2026-10-21. A week being graded ran "Results coming in" until it settled, after every result it needed was in:
+ *   · `state`      — the week's own word (OPEN, CLOSED, RESOLVING before its graded set is final, SETTLED, VOIDED);
+ *   · `voiding`    — its graded set is final and its void is certain (MR-18): "Week is being voided" — the hub's pool and
+ *                    the card already say so; an objection could still reinstate a question while the window is open;
+ *   · `objections` — its graded set is final, the objection window is open (MR-16), `until` its end: "Objection window",
+ *                    "Objection window until Tuesday 12:00";
+ *   · `settling`   — the window has closed and the week waits for its settlement (a payout's release, or a rollover's):
+ *                    "Settling".
+ * `objectionsUntil` is the window's end while it is still AHEAD — on every kind, the void-certain one included — and never
+ * an instant already past. Pure: every instant is the read model's (`gradedSetFinalAt`, `objectionsCloseAt`, ISO).
+ */
+export type MillioneaWeekPhase = { kind: "state" | "voiding" | "objections" | "settling"; objectionsUntil: number | null };
+export type PhaseWeek = Pick<MillioneaHubWeek, "state" | "gradedSetFinalAt" | "objectionsCloseAt"> & { questions: readonly MillioneaQuestion[] };
+export function millioneaWeekPhase(w: PhaseWeek, nowMs: number): MillioneaWeekPhase {
+  if (w.state !== "CLOSED" && w.state !== "RESOLVING") return { kind: "state", objectionsUntil: null };
+  // The window exists once the graded set is final (both instants are stamped together, MR-16).
+  const end = msOf(w.gradedSetFinalAt) !== null ? msOf(w.objectionsCloseAt) : null;
+  const objectionsUntil = end !== null && end > nowMs ? end : null;
+  // A certain void is said as soon as it is certain, as the hub's pool and the card say it (`weekVoidCertain`, MR-18).
+  let certain = false;
+  try { certain = weekVoidCertain(gradableOf(w.questions)); } catch { certain = false; }
+  if (certain) return { kind: "voiding", objectionsUntil };
+  if (end === null) return { kind: "state", objectionsUntil: null };
+  return { kind: objectionsUntil !== null ? "objections" : "settling", objectionsUntil };
+}
+
+/** The word a week's phase is said with (`millioneaWeekPhase`): the state's own, or the three the ruling names. */
+export function weekPhaseWord(t: Dict, state: WeekState, phase: MillioneaWeekPhase): string {
+  switch (phase.kind) {
+    case "objections": return t.millionea.weekStatusCheck;
+    case "settling": return t.millionea.weekStatusSettling;
+    case "voiding": return t.millionea.weekVoiding;
+    case "state": return millioneaWord(t, WEEK_STATE_KEY[state]);
+  }
+}
+
 /** The line's finality is the WEEK's (the S5 UI review, HIGH 2): final once it SETTLED — after MR-16's objections, never at
  *  the settlement gate alone — and voided whole once the engine stamped it VOIDED. Until then the line is PENDING. */
 function lineOpts(weekState: WeekState): { weekVoid: boolean; final: boolean } {
@@ -106,35 +143,23 @@ export function slipQuestionsOf(t: Dict, locale: Locale, questions: readonly Mil
   }));
 }
 
-/** The ticket's fifteen clauses, mains first, each with this ticket's pick and the sealed outcome. */
-export function clausesOf(t: Dict, locale: Locale, questions: readonly MillioneaQuestion[], slots: readonly MillioneaSlot[]): TicketClause[] {
+/**
+ * The ticket's fifteen clauses, mains first, each with this ticket's pick and the sealed outcome. ⭐ S5-FIX-PLAYER P10: a
+ * slot the slip filled ITSELF (`filled`: the read model's `slipFilled` — a question already VOID when the ticket was cut,
+ * asked of nobody, MB-15) has no pick of the player's: its clause says "—", never the slip's fill as the player's answer.
+ */
+export function clausesOf(
+  t: Dict, locale: Locale, questions: readonly MillioneaQuestion[], slots: readonly MillioneaSlot[], filled: readonly number[] = [],
+): TicketClause[] {
   const pickAt = new Map(slots.map((s) => [s.slot, s.pick] as const));
   return bySlot(questions).flatMap((q) => {
     const pick = pickAt.get(q.slot);
     // Every slot of a ticket carries a pick (`canonicalPicks`); a row without one is not drawn rather than guessed.
     return pick ? [{
       role: q.role, ordinal: ordinalOf(q), category: marketCategoryLabel(t, q.category), text: textIn(locale, q.text),
-      eventAt: msOf(q.eventStartsAt), pick, outcome: q.outcome,
+      eventAt: msOf(q.eventStartsAt), pick: filled.includes(q.slot) ? null : pick, outcome: q.outcome,
     }] : [];
   });
-}
-
-/** The ISO week a week opened in, in EAT, `days` later: the next week's number and its open day (a year's end included). */
-function weekAfter(opensAt: string, days: number): { week: number; atMs: number } | null {
-  const at = msOf(opensAt);
-  if (at === null) return null;
-  const atMs = at + days * DAY_MS;
-  return { week: eatIsoWeek(atMs).week, atMs };
-}
-
-/** The week a carry came from, as the ledger line names it ("Imeletwa mbele (Wiki 41)"): the week before this one. */
-export function previousWeekNumber(opensAt: string): number {
-  return weekAfter(opensAt, -7)?.week ?? 0;
-}
-
-/** The week after this one ("Imeletwa mbele kwenda Wiki 43"). */
-export function nextWeekNumber(opensAt: string): number {
-  return weekAfter(opensAt, 7)?.week ?? 0;
 }
 
 /**
@@ -142,11 +167,14 @@ export function nextWeekNumber(opensAt: string): number {
  * The ticket count is the sales at the week's one frozen price — every ticket of a week costs the same (MR-11).
  * ⛔ The floor is passed through as the figure states it: null whenever it may not be shown (MB-56), and the block then
  * has no floor line.
+ * ⭐ S5-FIX-PLAYER P9 · the carry's week is the figure's own (`carryPendingCode` while it waits, `carryFromCode` once known,
+ * the calendar chain's) — never this week's open minus seven days, which named the wrong week across a voided week, a
+ * skipped one or an early open. With no such week the row names none.
  */
-export function poolViewOf(fig: MaswaliPoolFigure, price: number, opensAt: string, voiding = false): PoolView {
+export function poolViewOf(fig: MaswaliPoolFigure, price: number, voiding = false): PoolView {
   const carriedIn = fig.carryPendingCode !== null
     ? { week: weekNumberOf(fig.carryPendingCode), amount: null }
-    : (fig.carryIn ?? 0) > 0 ? { week: previousWeekNumber(opensAt), amount: fig.carryIn } : null;
+    : (fig.carryIn ?? 0) > 0 ? { week: fig.carryFromCode ? weekNumberOf(fig.carryFromCode) : null, amount: fig.carryIn } : null;
   const sales = { tickets: price > 0 ? Math.round(fig.sales / price) : 0, amount: fig.sales };
   const pool = (fig.carryIn ?? 0) + fig.sales;
   // A week whose void is already certain prints no jackpot and no "shared by every 10/10" rule: its refund, if the void
@@ -156,8 +184,10 @@ export function poolViewOf(fig: MaswaliPoolFigure, price: number, opensAt: strin
 }
 
 /** The three phases of a week, from its own instants: sales from the open to the close; events from the first to the
- *  last; results from the last event to the latest void deadline (MR-16). Nothing is a typed day. */
-export function phasesOf(week: Pick<MillioneaHubWeek, "opensAt" | "closesAt" | "questions">): WeekPhases | null {
+ *  last; results and payout from the last event to `resultsBy` — the objection window's end once known, else the latest
+ *  void deadline plus the frozen window (S5-FIX-PLAYER P7, `millioneaResultsBy`: How to play's own rule; it ended at the
+ *  latest void deadline, a day before the window it ignored). Nothing is a typed day. */
+export function phasesOf(week: Pick<MillioneaHubWeek, "opensAt" | "closesAt" | "questions" | "resultsBy">): WeekPhases | null {
   const open = msOf(week.opensAt), close = msOf(week.closesAt);
   const events = week.questions.map((q) => msOf(q.eventStartsAt)).filter((x): x is number => x !== null).sort((a, b) => a - b);
   const deadlines = week.questions.map((q) => msOf(q.voidDeadlineAt)).filter((x): x is number => x !== null).sort((a, b) => a - b);
@@ -166,7 +196,7 @@ export function phasesOf(week: Pick<MillioneaHubWeek, "opensAt" | "closesAt" | "
   return {
     salesFrom: open, salesTo: close,
     eventsFrom: events[0], eventsTo: lastEvent,
-    resultsFrom: lastEvent, resultsTo: deadlines.length > 0 ? deadlines[deadlines.length - 1] : lastEvent,
+    resultsFrom: lastEvent, resultsTo: msOf(week.resultsBy) ?? (deadlines.length > 0 ? deadlines[deadlines.length - 1] : lastEvent),
   };
 }
 
@@ -175,6 +205,18 @@ export function phaseNow(week: Pick<MillioneaHubWeek, "state">, phases: WeekPhas
   if (week.state === "OPEN" && nowMs < phases.salesTo) return 0;
   if (nowMs < phases.eventsTo) return 1;
   return 2;
+}
+
+/**
+ * ⭐ THE CAP REACHED, SAID ONE WAY (S5-FIX-PLAYER P13): the hub's buy block and the slip's refusal before any pick say the
+ * same line — the reader holds the week's cap, and, ONLY when a next week can follow (`nextWeekOpen`'s answer: none in a
+ * final week or while Millionea ends), which week the template opens next and on what day. Never the purchase result's
+ * "you can buy again when next week opens", which a final week cannot keep.
+ */
+export function capReachedLine(t: Dict, cap: number, nextOpenMs: number | null): string {
+  return nextOpenMs === null
+    ? fill(t.millionea.capReachedOnly, { cap })
+    : fill(t.millionea.capReachedNote, { cap, week: eatIsoWeek(nextOpenMs).week, day: eatWeekday(t, nextOpenMs) });
 }
 
 /** What a ticket was paid, as gold may show it: a won ticket whose share is the player's — PAID — and nothing else

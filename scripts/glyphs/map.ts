@@ -322,6 +322,9 @@ export const FILL_KEYS: readonly string[] = [
   "rotateCcw", "mail", "camera", "flame2", "edit",
   "bell", // a toggle on: "notify me" on a market, and the header bell while its panel is open (CHROME_FILLS)
   "chevronUp", "chevronDown", // the 24h move on every market card: the solid caret is the direction, where ▲▼ were typed
+  // MASWALI-BUILD S5-FIX-PLAYER P17: the hub's final-week notice is a Callout (a status: Fill) and its glyph is the final
+  // week's own key (MASWALI-PLAN §10c `finalWeek`, flag-checkered) — it drew `flag`, which means "object to a result".
+  "finalWeek",
 ];
 /**
  * Release 2 (W5, R-TONE 2B; DESIGN_AUTHORITY §K3 item 3: Duotone is identity on a plate) — the keys that stand on an
