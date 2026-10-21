@@ -43,19 +43,40 @@ const MUTATIONS = [
     to: `    [upY != null ? parseFloat(upY) : null, downY != null ? parseFloat(downY) : null],`,
   },
   {
-    name: "confirmed price painted as UP",
-    from: `  const priceInk = "var(--text)";`,
-    to: `  const priceInk = "var(--yes-300)";`,
+    name: "settlement target tone ignored in favor of opening delta",
+    from: `  const ink = tone
+    ? (tone === "level" ? "var(--text-muted)" : tone === "up" ? "var(--yes-300)" : "var(--no-300)")`,
+    to: `  const ink = null
+    ? (tone === "level" ? "var(--text-muted)" : tone === "up" ? "var(--yes-300)" : "var(--no-300)")`,
   },
   {
-    name: "opening reference painted as winnings",
-    from: `stroke="var(--text-subtle)" strokeWidth="1.25"`,
-    to: `stroke="var(--gilt)" strokeWidth="1.25"`,
+    name: "opening reference line loses its gilt",
+    from: `stroke="var(--gilt)" strokeWidth="1.25"`,
+    to: `stroke="var(--text-subtle)" strokeWidth="1.25"`,
   },
   {
-    name: "observed-price wash painted as UP",
-    from: `<stop offset="0%" stopColor="var(--text-subtle)" stopOpacity="0.10" />`,
-    to: `<stop offset="0%" stopColor="var(--yes-400)" stopOpacity="0.10" />`,
+    name: "opening reference label loses its gilt",
+    from: `fill="var(--gilt)" fontFamily="var(--font-mono)"`,
+    to: `fill="var(--text-subtle)" fontFamily="var(--font-mono)"`,
+  },
+  {
+    name: "upper observed-price wash loses UP paint",
+    from: `<stop offset="0%" stopColor="var(--yes-400)" stopOpacity="0.26" />
+              <stop offset="100%" stopColor="var(--yes-400)" stopOpacity="0.02" />`,
+    to: `<stop offset="0%" stopColor="var(--text-subtle)" stopOpacity="0.26" />
+              <stop offset="100%" stopColor="var(--text-subtle)" stopOpacity="0.02" />`,
+  },
+  {
+    name: "lower observed-price wash loses DOWN paint",
+    from: `<stop offset="0%" stopColor="var(--no-400)" stopOpacity="0.02" />
+              <stop offset="100%" stopColor="var(--no-400)" stopOpacity="0.26" />`,
+    to: `<stop offset="0%" stopColor="var(--text-subtle)" stopOpacity="0.02" />
+              <stop offset="100%" stopColor="var(--text-subtle)" stopOpacity="0.26" />`,
+  },
+  {
+    name: "observed path is painted aqua despite target-side tone",
+    from: `stroke={ink} strokeWidth="2.25"`,
+    to: `stroke="var(--aqua-300)" strokeWidth="2.25"`,
   },
   {
     name: "UP target loses its side colour",

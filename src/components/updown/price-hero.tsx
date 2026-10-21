@@ -84,10 +84,10 @@ export function PriceHero({
   const hasPrice = livePrice != null;
   const isUp = hasPrice && openPrice != null ? livePrice! >= openPrice : true;
   const move = hasPrice && openPrice != null ? livePrice! - openPrice : null;
-  // `tone` retains the settlement-side state for the data attribute; it never colours a
-  // raw price or move. The UP and DOWN target labels below identify the two sides.
   const flat = move === 0;
-  const priceInk = "var(--text)";
+  const ink = tone
+    ? (tone === "level" ? "var(--text-muted)" : tone === "up" ? "var(--yes-300)" : "var(--no-300)")
+    : flat ? "var(--text-muted)" : isUp ? "var(--yes-300)" : "var(--no-300)";
   const movePct = move != null && openPrice ? (move / openPrice) * 100 : null;
   const sgn = (v: number) => (v >= 0 ? "+" : "−");
 
@@ -141,9 +141,9 @@ export function PriceHero({
           <div style={{ marginTop: 5, display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
             {hasPrice ? (
               <>
-                <span className="font-mono font-bold tabular-nums" style={{ fontSize: 26, lineHeight: 1, letterSpacing: "-0.01em", color: priceInk }}>{usd(livePrice)}</span>
+                <span className="font-mono font-bold tabular-nums" style={{ fontSize: 26, lineHeight: 1, letterSpacing: "-0.01em", color: ink }}>{usd(livePrice)}</span>
                 {movePct != null && (
-                  <span className="font-mono font-semibold tabular-nums" style={{ fontSize: 12, color: priceInk }}>{flat ? "0.00%" : `${sgn(movePct)}${Math.abs(movePct).toFixed(2)}%`}</span>
+                  <span className="font-mono font-semibold tabular-nums" style={{ fontSize: 12, color: ink }}>{flat ? "0.00%" : `${sgn(movePct)}${Math.abs(movePct).toFixed(2)}%`}</span>
                 )}
               </>
             ) : (
@@ -195,13 +195,13 @@ export function PriceHero({
       <div style={{ marginTop: 12, position: "relative" }}>
         <svg viewBox="0 0 640 220" width="100%" style={{ display: "block", overflow: "visible" }} role="img" aria-label={copy.chartAlt}>
           <defs>
-            <linearGradient id="udAboveWash" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--text-subtle)" stopOpacity="0.10" />
-              <stop offset="100%" stopColor="var(--text-subtle)" stopOpacity="0.02" />
+            <linearGradient id="udUp" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--yes-400)" stopOpacity="0.26" />
+              <stop offset="100%" stopColor="var(--yes-400)" stopOpacity="0.02" />
             </linearGradient>
-            <linearGradient id="udBelowWash" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--text-subtle)" stopOpacity="0.02" />
-              <stop offset="100%" stopColor="var(--text-subtle)" stopOpacity="0.10" />
+            <linearGradient id="udDown" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--no-400)" stopOpacity="0.02" />
+              <stop offset="100%" stopColor="var(--no-400)" stopOpacity="0.26" />
             </linearGradient>
             <clipPath id="udAbove"><rect x="0" y="0" width="640" height={openY} /></clipPath>
             <clipPath id="udBelow"><rect x="0" y={openY} width="640" height="220" /></clipPath>
@@ -209,20 +209,20 @@ export function PriceHero({
 
           {hasLine && (
             <>
-              <g clipPath="url(#udAbove)"><path d={areaEdge(openY)} fill="url(#udAboveWash)" /></g>
-              <g clipPath="url(#udBelow)"><path d={areaEdge(openY)} fill="url(#udBelowWash)" /></g>
+              <g clipPath="url(#udAbove)"><path d={areaEdge(openY)} fill="url(#udUp)" /></g>
+              <g clipPath="url(#udBelow)"><path d={areaEdge(openY)} fill="url(#udDown)" /></g>
             </>
           )}
 
-          {/* The opening price is a neutral reference. Gold names money already won. */}
+          {/* The opening reference is the gilt line the measured price is compared with. */}
           {/* ⭐ E-263 · every in-svg label wears .ud-svg-label — E-257's hide-below-sm
               remedy, backported to the surface E-198 was originally MEASURED on: these
               four painted ~4.34px at 393 (the measurement lives at the E-198 note above)
               as unreadable ghost text under a header that states all four numbers in
               real HTML. Nothing is lost at <sm: live (:134), open (:149), both targets
               (:168-174) and aboveBelow (:244) are always-visible HTML twins. */}
-          <line x1="0" y1={openY} x2="606" y2={openY} stroke="var(--text-subtle)" strokeWidth="1.25" strokeDasharray="3 4" opacity="0.75" />
-          <text className="ud-svg-label" x="0" y={(parseFloat(openY) - 6).toFixed(1)} fill="var(--text-subtle)" fontFamily="var(--font-mono)" fontSize="9" fontWeight="600" letterSpacing="0.12em" opacity="0.9">
+          <line x1="0" y1={openY} x2="606" y2={openY} stroke="var(--gilt)" strokeWidth="1.25" strokeDasharray="3 4" opacity="0.75" />
+          <text className="ud-svg-label" x="0" y={(parseFloat(openY) - 6).toFixed(1)} fill="var(--gilt)" fontFamily="var(--font-mono)" fontSize="9" fontWeight="600" letterSpacing="0.12em" opacity="0.9">
             {copy.openLabel.toUpperCase()} {usd(openPrice)}
           </text>
 
@@ -247,13 +247,13 @@ export function PriceHero({
             </g>
           )}
 
-          {hasLine && <path d={line} fill="none" stroke={priceInk} strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" />}
+          {hasLine && <path d={line} fill="none" stroke={ink} strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" />}
 
           {hasPrice && hasLine && (
             <g>
-              <circle className="ud-point" cx={lastX} cy={lastY} r="7" fill={priceInk} opacity="0.22" />
-              <circle cx={lastX} cy={lastY} r="3.6" fill={priceInk} />
-              <text className="ud-svg-label" x={tagX} y={tagY} textAnchor="end" fill={priceInk} fontFamily="var(--font-mono)" fontSize="11" fontWeight="700">{usd(livePrice)}</text>
+              <circle className="ud-point" cx={lastX} cy={lastY} r="7" fill={ink} opacity="0.22" />
+              <circle cx={lastX} cy={lastY} r="3.6" fill={ink} />
+              <text className="ud-svg-label" x={tagX} y={tagY} textAnchor="end" fill={ink} fontFamily="var(--font-mono)" fontSize="11" fontWeight="700">{usd(livePrice)}</text>
             </g>
           )}
         </svg>

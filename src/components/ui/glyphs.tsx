@@ -61,8 +61,8 @@ export const GLYPH = {
 /** The glyph that sits centred on an `IconPlate` of the given edge, derived — never hand-picked. Release 2 (W5) put every
  *  plate on the atom, and the sizes it found in use joined the table at the glyphs they already drew: 26 (the invite
  *  page's promises) 14, 32 (a notification) 16, 42 (the Propose promo) 22. */
-export function plateGlyph(plateEdge: 26 | 32 | 36 | 40 | 42 | 44 | 48): number {
-  return { 26: 14, 32: 16, 36: 19, 40: 20, 42: 22, 44: 23, 48: 24 }[plateEdge];
+export function plateGlyph(plateEdge: 26 | 32 | 36 | 40 | 42 | 44 | 48 | 56): number {
+  return { 26: 14, 32: 16, 36: 19, 40: 20, 42: 22, 44: 23, 48: 24, 56: 28 }[plateEdge];
 }
 
 /* ⭐ R9-A4 · THE EDGE RULE — A GLYPH AT A RUN'S START OR END PUTS ITS INK ON THAT EDGE. Every drawing pads itself inside

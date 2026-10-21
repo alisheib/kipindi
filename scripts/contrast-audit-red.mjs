@@ -369,10 +369,17 @@ const MUTATIONS = [
     to: `  opacity: 1;\n  background: oklch(62% 0.12 268);`,
   },
   {
-    name: "U43 B5 · drop the plate's opacity: 1 — .btn:disabled's 0.45 would dim plate and words together, which the gate cannot score",
+    name: "drop the gold commit plate's opacity: 1 — .btn:disabled's 0.45 would dim plate and words together, which the gate cannot score",
     kind: "throw",
-    from: `.kp-bsheet .btn-primary:disabled {\n  opacity: 1;\n`,
-    to: `.kp-bsheet .btn-primary:disabled {\n`,
+    from: `.kp-bsheet .btn-gold:disabled {\n  opacity: 1;\n`,
+    to: `.kp-bsheet .btn-gold:disabled {\n`,
+  },
+  {
+    name: "W6 · darken the empty plate's glyph until it disappears into the plate",
+    kind: "fail",
+    expectName: "R2 · the empty plate's glyph",
+    from: `.kp-plate--empty { position: relative; background: var(--plate-identity); box-shadow: var(--edge-lit); color: var(--text-muted); }`,
+    to: `.kp-plate--empty { position: relative; background: var(--plate-identity); box-shadow: var(--edge-lit); color: var(--bg); }`,
   },
 ];
 
@@ -487,7 +494,7 @@ for (const m of MUTATIONS) {
   const ok =
     exitCode !== 0 &&
     readTheCopy &&
-    (m.kind === "fail" ? Boolean(named) : Boolean(threw) && !named);
+    (m.kind === "fail" ? Boolean(named) && (!m.expectName || named[1].includes(m.expectName)) : Boolean(threw) && !named);
 
   if (ok) {
     caught++;

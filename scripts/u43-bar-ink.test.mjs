@@ -1,4 +1,4 @@
-/** U43: the shared split instrument reads a price, never a payout. */
+/** Ali's restored house gilt on the shared split instrument, distinct from a payout. */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { chromium } from "playwright";
@@ -20,7 +20,7 @@ check("1.1", "both U43 cards use the shared bar", market.includes("<TippingBar "
 check("1.2", "each shared reading token has one definition", ["bar-needle", "bar-needle-glow", "bar-shimmer", "bar-sweep"].every((name) => [...css.matchAll(new RegExp(`^\\s*--${name}\\s*:`, "gm"))].length === 1));
 check("1.3", "the component renders the tested marker and effects", brand.includes('className="tipbar-needle"') && brand.includes('className="tipbar-shimmer"') && brand.includes('className="tipbar-sweep"'));
 check("1.4", "the positions dial can show a zero win rate", positions.includes("const winRate = settledCount > 0 ? Math.round((effWins / settledCount) * 100) : 0;") && positions.includes("<NeedleDial rate={winRate} />"));
-check("1.5", "the win-rate needle and hub consume neutral reading ink", positionDial.includes('stroke="var(--bar-needle)"') && positionDial.includes('fill="var(--bar-needle)"') && !positionDial.includes('var(--gilt)'));
+check("1.5", "the win-rate needle and hub consume the shared gilt instrument token", positionDial.includes('stroke="var(--bar-needle)"') && positionDial.includes('fill="var(--bar-needle)"') && !positionDial.includes('var(--gilt)'));
 
 let browser;
 try {
@@ -34,12 +34,12 @@ try {
   await page.addStyleTag({ content: css });
   const result = await page.evaluate(() => {
     const ref = document.querySelector("#reference");
-    const gold = document.querySelector("#gold-reference");
-    ref.style.cssText = `color:var(--text);box-shadow:0 0 12px color-mix(in oklab, var(--text) 40%, transparent);
-      background-image:linear-gradient(90deg, transparent 0%, color-mix(in oklab, var(--text) 32%, transparent) 50%, transparent 100%)`;
-    gold.style.color = "var(--gilt)";
+    const plain = document.querySelector("#gold-reference");
+    ref.style.cssText = `color:var(--gilt);box-shadow:0 0 12px color-mix(in oklab, var(--gilt) 55%, transparent);
+      background-image:linear-gradient(90deg, transparent 0%, oklch(75% 0.110 84 / 0.5) 50%, transparent 100%)`;
+    plain.style.color = "var(--text)";
     const sweep = document.createElement("div");
-    sweep.style.backgroundImage = "linear-gradient(90deg, transparent 0%, transparent 20%, color-mix(in oklab, var(--text) 65%, transparent) 50%, transparent 80%, transparent 100%)";
+    sweep.style.backgroundImage = "linear-gradient(90deg, transparent 0%, oklch(78% 0.115 84 / 0) 20%, oklch(78% 0.115 84 / 0.90) 50%, oklch(78% 0.115 84 / 0) 80%, transparent 100%)";
     document.body.append(sweep);
     const marker = getComputedStyle(document.querySelector(".tipbar-needle"));
     const expected = getComputedStyle(ref);
@@ -49,22 +49,22 @@ try {
     const no = getComputedStyle(document.querySelector(".tipbar-no"));
     return {
       needle: marker.backgroundColor,
-      neutral: expected.color,
-      gold: getComputedStyle(gold).color,
+      gilt: expected.color,
+      plain: getComputedStyle(plain).color,
       glow: marker.boxShadow,
-      neutralGlow: expected.boxShadow,
+      giltGlow: expected.boxShadow,
       shimmer: shimmer.backgroundImage,
-      neutralShimmer: expected.backgroundImage,
+      giltShimmer: expected.backgroundImage,
       sweep: recast.backgroundImage,
-      neutralSweep: getComputedStyle(sweep).backgroundImage,
+      giltSweep: getComputedStyle(sweep).backgroundImage,
       yes: yes.backgroundImage,
       no: no.backgroundImage,
     };
   });
-  check("2.1", "the rendered needle is neutral and distinct from gilt", result.needle === result.neutral && result.needle !== result.gold && result.needle !== "rgba(0, 0, 0, 0)");
-  check("2.2", "the rendered needle glow follows neutral ink", result.glow === result.neutralGlow && result.glow !== "none");
-  check("2.3", "the settled shimmer is neutral", result.shimmer === result.neutralShimmer && result.shimmer !== "none");
-  check("2.4", "the hover sweep is neutral", result.sweep === result.neutralSweep && result.sweep !== "none");
+  check("2.1", "the rendered needle is gilt and distinct from plain ink", result.needle === result.gilt && result.needle !== result.plain && result.needle !== "rgba(0, 0, 0, 0)");
+  check("2.2", "the rendered needle glow follows gilt ink", result.glow === result.giltGlow && result.glow !== "none");
+  check("2.3", "the settled shimmer is the house gilt", result.shimmer === result.giltShimmer && result.shimmer !== "none");
+  check("2.4", "the hover sweep is the house gilt", result.sweep === result.giltSweep && result.sweep !== "none");
   check("2.5", "YES and NO retain distinct side fills", result.yes !== "none" && result.no !== "none" && result.yes !== result.no);
 } catch (error) {
   check("2.0", `browser style read completed: ${String(error)}`, false);

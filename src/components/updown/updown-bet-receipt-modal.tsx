@@ -12,7 +12,7 @@
  * This is the sibling of `updown-bet-blocked-modal.tsx` (the refusal case) on the same
  * primitive, so the two halves of "what happened to my tap" are one dialect:
  *   · refusal → neutral acknowledgement, stays until dismissed
- *   · placed  → neutral crest, staked side on the strip and brand Continue;
+ *   · placed  → success crest, staked side on the strip and Continue;
  *               auto-dismisses on the shared 5s success timer
  *
  * ⛔ IT DOES NOT GATE REPEAT TAPS. Repeat taps are repeat bets (Ali's standing decision), and
@@ -22,7 +22,7 @@
  *
  * ⛔ THE PROJECTED RETURN IS NEVER GILDED. `stripTone` is the SIDE (`yes`/`no`), which is the
  * modal's own definition of "a side was staked" and buys the `seal-commit` crest. The
- * Continue action uses brand ink. Gold means money that was EARNED (§M3, `test:gold-is-money`); a
+ * Continue action uses the staked side. A projected return is still not a won amount; a
  * projection has not been decided, and `udEstimateNote` — the same qualifier the round page's
  * confirm panel prints under its projection — travels with the figure, so the two commit
  * surfaces cannot drift.
@@ -118,7 +118,6 @@ export function UpDownBetReceiptModal({
     <OperationResultModal
       open
       variant="success"
-      successCrestTone="neutral"
       compactOnPhone
       stripTone={placed.side === "UP" ? "yes" : "no"}
       eyebrow={t.market.udBetPlaced}

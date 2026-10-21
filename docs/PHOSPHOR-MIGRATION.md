@@ -44,8 +44,30 @@ player routes' responsive checks (1,620 passing assertions). The www, apex and R
 health reported the database reachable and migrated, both public chunk checks passed (6/6 routes, 152 GETs each),
 production `qa:live` passed 362/362, and 36 production tiles across three languages and two widths were captured.
 Production player sign-in was not authorized; signed-in states were inspected on a seeded local server.
-**Resume:** ship the test-fixture follow-up, complete the owed release-1 checks, then releases 2b–2d and 3 (§8d and the
-hand-over). W5 is partly landed; its remaining sites belong to release 2c.
+**Release 2a fixture follow-up LIVE at `a504ad280` (2026-10-19):** the stale paid-cashout expectation is corrected;
+its message-title tests and red proof pass in both stores. The exact commit passed typecheck, build and local `qa:live`;
+www, apex and Railway served its SHA, health was reachable and migrated, both public chunk checks passed, and production
+`qa:live` passed. **Resume:** complete the owed release-1 checks, then releases 2b–2d and 3 (§8d and the hand-over).
+W5 is partly landed; its remaining sites belong to release 2c.
+
+✅ **Release 2b (W6) LIVE at `d268ef919` (2026-10-20):** the twelve private empty-state drawings and the bell panel's
+private drawing use family Duotone glyphs on a shared plate; error states use the filled danger glyph. The release
+descends from U43's restored house-gold commit `dd1386f06`; its classic bell keeps its gold marks while its empty art
+comes from the one glyph family. Before the push, `test:visual-pass-r5c` passed 111/111, `test:red-anchors` 7412/7412,
+and the focused glyph-source, U43 palette and Phosphor-plan guards passed. The inherited U43 red harnesses gained
+audited plants at `135ccb2ac`; their three mutation proofs passed. Railway built the pushed commit and reports SUCCESS.
+The www, apex and Railway hosts each served `d268ef919` with HTTP 200; `/api/health` reported the database reachable
+and migrated. Ali explicitly asked to push now and do the remaining W6 release checks on the next machine.
+
+**Resume W6 verification from GitHub:** `codex/phosphor-2b-w6` contains the live release. Run the exact-commit local
+typecheck, build and `qa:live`; the long `red:campaign-visuals` and classic-parity red proof; a fresh classic browser
+comparison; the changed-file readers, database `test:all`, responsive and visual tiles; production `qa:chunks-prod`
+on both public origins, production `qa:live`, and changed-page browser inspection. The earlier same-code classic null
+comparison passed 68/68, and its W6 comparison found only the empty `/positions` card in 24 signed-in cells; its
+generated entries preserve W3's. These earlier measurements do not substitute for the deferred final-commit run.
+Release 2c follows with category plates, money doors and stat tiles. The downstream W5, admin and W7/W8 branches are
+on GitHub but still descend from W6's old pre-rebase commit; restack each branch's own commits onto live `main` before
+its separate release. The next machine can derive the exact old bases from the branch graph in §8d.
 
 ⏳ **Owed — checks not run because Ali asked to ship (2026-10-19); run them on live `main` first (AGENTS.md §4):**
 - before/after tiles of every changed surface (phones at 390px and 2x, desktop at 1280px), read one by one;
@@ -229,8 +251,8 @@ written with `I` today moves to Phosphor automatically at W2, with no edit. From
 | W2 | The swap: the whole platform on Phosphor in one commit | ✅ | 732efbc5 — live 2026-10-17 23:10 UTC: every icon drawn by Phosphor (twelve chrome glyphs inline, the rest one immutable sprite), 6.4 KB gzip lighter per route; production read back |
 | W3 | Selected states: Fill + one indicator; admin sidebar icons | ✅ | ee62451c — live 2026-10-18 11:22 UTC: every bar of destinations marks the current one with its Fill glyph on one opaque royal pill (both tab bars at 24px, both desktop bars, the admin sidebar with 50 new glyphs); production read back |
 | W4 | Outcomes and status: glyph + ink + word | ✅ | 70c069cb — live 2026-10-19 11:51 UTC: release 1 of §8d — status in Fill, outcomes as glyph + ink + word, every notification its glyph, §8b's meanings, the player front's old icons; its remainder, release 1b, live at d6f0b3ec (12:43 UTC): the review's other 17 findings; the stopped checks are §0's Owed |
-| W5 | Plates, money, hub, categories, stats, admin cards | 🔨 | Release 2a part 1 live at `e4b148a05`; part 2 and later W5 releases are in the hand-over and §8d |
-| W6 | Empty states: one family | ⬜ | |
+| W5 | Plates, money, hub, categories, stats, admin cards | 🔨 | Release 2a parts 1 and 2 live at `e4b148a05` and `e30d599cb`; the remainder is release 2c and 2d (§8d) |
+| W6 | Empty states: one family | ✅ | Release 2b live at d268ef919: one shared Duotone plate for the twelve empty kinds and the bell panel; Ali deferred final-commit checks to the next machine (§0) |
 | W7 | Consolidation: inline svgs, text-character icons, PWA, Maswali | ⬜ | |
 | W8 | Motion on the existing primitives | ⬜ | |
 | W9 | Close: adversarial audit, test:all, full tiles, the law final | ⬜ | |
@@ -845,9 +867,15 @@ royal plate on cards, the discovery chips and the journey home chips (the 0.055-
 and stat tiles: the glyph fills its control per `plateGlyph`. Admin stat cards and status chips get icons.
 
 ### W6 — Empty states, one family
-`ui/empty-state.tsx`'s private set (48 sites) and the 8 unused `GL` arts retire: an empty state is a large Duotone glyph
-on a plate. DA §C7's single accent stays as `--metal-gold` (§Q5), never money gold (`test:visual-pass-r5c` §2.9,
+`ui/empty-state.tsx`'s private drawings retire; W2 already retired the unused `GL` art. An empty state is a Duotone
+glyph on the shared plate. DA §C7 owns its size and single `--metal-gold` accent (§Q5), never money gold (`test:visual-pass-r5c` §2.9,
 `test:gold-is-money`). Badge medallions per Ali's W0 answer.
+
+The shared `EmptyState` now maps each kind to one family key and renders that key in Duotone on the
+empty plate. The bell panel uses that same plate. `ErrorState` uses the family's filled circled cross on a danger
+plate. `test:visual-pass-r3c` renders every kind and plants a Line-tier defect; `test:visual-pass-r5c` plants a money-gold
+accent. The screenshot proof pairs the old and new empty positions, empty notifications and open bell panel at phone and
+desktop widths in all three languages.
 
 ### W7 — Consolidation
 The 63 inline `<svg>` → family glyphs, or kept with a recorded reason (charts, brand, spinner). Text-character icons

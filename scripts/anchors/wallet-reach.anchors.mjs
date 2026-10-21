@@ -81,8 +81,8 @@ export const MUTATIONS = [
     why: "⛔ THE CSS TRAP, RESTORED: the Deposit CTA is hidden by classes ON the `.btn` instead of on a wrapper. `.btn { display: inline-flex }` is declared at globals.css:911, AFTER `@tailwind utilities`, so at equal specificity the component class wins and `.hidden` is silently ignored — the control renders at 360 anyway, 33px past the edge, while the class list reads correct",
     file: BAR,
     suite: "wallet-reach",
-    from: `              className="btn btn-primary btn-md btn-pill"`,
-    to: `              className="btn btn-primary btn-md btn-pill hidden sm:inline-flex"`,
+    from: `              className="btn gilt-metal btn-md btn-pill"`,
+    to: `              className="btn gilt-metal btn-md btn-pill hidden sm:inline-flex"`,
     expect: "4: ⛔ and the hide is NOT on the button itself",
   },
   {
@@ -196,12 +196,12 @@ export const MUTATIONS = [
   },
   {
     name: "held-figure-stays-gold",
-    why: "the held figure is painted gold again, even though Ali reserves gold for money a player has won. The available, held and masked balance figures must all stay neutral",
+    why: "the held figure is painted gold, even though held and masked balances must stay plain while the available balance uses the restored gilt treatment",
     file: CSS,
     suite: "wallet-reach",
     from: `.kp-jbal:is([data-held], [data-masked]) .kp-jbal__fig { color: var(--text); }`,
     to: `.kp-jbal[data-held] .kp-jbal__fig { color: var(--gold-300); }`,
-    expect: "8.8 neutral ink on available, held and masked balances",
+    expect: "8.8 available balance is gilt; held and masked balances stay plain",
   },
   {
     name: "flash-ring-goes-inline",

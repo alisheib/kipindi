@@ -1,4 +1,4 @@
-/** U43 B5 mutation proof: each reverted palette choice makes its guard fail. */
+/** Ali's restored house-gold palette: each reverted choice makes its guard fail. */
 import { readFileSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";

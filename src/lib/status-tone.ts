@@ -120,10 +120,8 @@ export const STATUS_TONE = {
   CLOSED:   { player: "royal", admin: "royal" },
   /** Waiting on a queue. Royal for the same reason: waiting is not a warning. */
   PENDING:  { player: "royal", admin: "royal", proposals: "royal" },
-  /** A resolved market is a terminal fact, not a player's earned payout.
-   *  U43 (2026-10-19): Ali reserved gold for money a player has won; WIN below
-   *  keeps gold, while this status is slate on every surface. */
-  RESOLVED: { player: "slate", admin: "slate", proposals: "slate" },
+  /** A settled market uses the earlier struck player seal and quieter console gilt. */
+  RESOLVED: { player: "giltStruck", admin: "gilt", proposals: "giltStruck" },
   /** ⭐ ADDED 2026-08-30 (DG-P-10). The market or round settled to NOTHING and every
    *  stake came back. It was recorded royal as MEASURED (five player surfaces painted it so), and the owner's
    *  2026-09-07 ruling kept the ticket card on that measured royal (PLAYER QUERY §5.3, "the card is the odd one out").

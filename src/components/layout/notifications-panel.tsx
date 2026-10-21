@@ -67,10 +67,10 @@ function pickBody(n: StoredNotification, locale: string): string {
   return readableNotificationBody(n.bodyEn);
 }
 
-/** Both player shells use brand for unread chrome; gold belongs to won money. */
+/** The classic bell keeps its gold unread marks; the journey bell uses brand ink. */
 export function NotificationsPanel({ journey = false }: { journey?: boolean } = {}) {
-  const unreadDot = "brand";
-  const unreadWash = "bg-brand-500/[0.04]";
+  const unreadDot = journey ? "brand" : "gold";
+  const unreadWash = journey ? "bg-brand-500/[0.04]" : "bg-gold-500/[0.04]";
   const countTone = "brand";
   const clearAllHover = "hover:text-text";
   // ⭐ R5-J (the visual pass's round 5, 2026-10-09) — the journey bell says its unread count as every count reads, grouped
@@ -713,22 +713,9 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
               })}
               {items.length === 0 && (
                 <div className="px-4 py-12 text-center">
-                  <svg
-                    aria-hidden
-                    width="48"
-                    height="48"
-                    viewBox="0 0 56 56"
-                    className="mx-auto mb-3 text-brand-300"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={1.5}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M14 38 V24 a14 14 0 0 1 28 0 V38 l4 4 H10 Z" />
-                    <path d="M22 44 a6 6 0 0 0 12 0" />
-                    <circle cx="42" cy="14" r="4" fill="var(--brand-400)" stroke="none" />
-                  </svg>
+                  <IconPlate size={56} variant="empty" className="mx-auto mb-3" aria-hidden>
+                    <I.bell s={plateGlyph(56)} tier="duo" />
+                  </IconPlate>
                   <p className="font-display text-body font-semibold text-text">
                     {t.notif.noNotifications}
                   </p>

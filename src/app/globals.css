@@ -874,7 +874,7 @@
   --hero-no-accent:    var(--no-400);
   --hero-tag-yes:      var(--yes-300);
 
-  /* TippingBar — kit royal track + neutral reading needle.
+  /* TippingBar — kit royal track + gilt signature needle.
      ⚠️ 2026-07-29: this family existed from the start and `brand.tsx` did not use
      ANY of it — the component re-typed `oklch(50% 0.20 268)`, `oklch(58% 0.17 268)`
      and `oklch(86% 0.13 82)` inline, byte-for-byte the values below. The tokens
@@ -883,15 +883,15 @@
      The fills/glows below were the missing half; the bar now consumes all of it. */
   --bar-track:            oklch(50% 0.20 268);
   --bar-track-border:     oklch(58% 0.17 268);
-  --bar-needle:           var(--text);
-  --bar-needle-glow:      color-mix(in oklab, var(--text) 40%, transparent);
+  --bar-needle:           var(--gilt);
+  --bar-needle-glow:      color-mix(in oklab, var(--gilt) 55%, transparent);
   --bar-fill-yes:         linear-gradient(90deg, oklch(50% 0.14 152) 0%, oklch(58% 0.16 152) 100%);
   --bar-fill-no:          linear-gradient(270deg, oklch(52% 0.16 22) 0%, oklch(60% 0.18 22) 100%);
   --bar-glow-yes:         0 0 18px oklch(58% 0.16 152 / 0.35);
   --bar-glow-no:          0 0 18px oklch(60% 0.18 22 / 0.35);
-  /* A settled split and a hover recast reveal the reading without suggesting a payout. */
-  --bar-shimmer:          linear-gradient(90deg, transparent 0%, color-mix(in oklab, var(--text) 32%, transparent) 50%, transparent 100%);
-  --bar-sweep:            linear-gradient(90deg, transparent 0%, transparent 20%, color-mix(in oklab, var(--text) 65%, transparent) 50%, transparent 80%, transparent 100%);
+  /* The resolved shimmer and hover recast use the same house signature gold. */
+  --bar-shimmer:          linear-gradient(90deg, transparent 0%, oklch(75% 0.110 84 / 0.5) 50%, transparent 100%);
+  --bar-sweep:            linear-gradient(90deg, transparent 0%, oklch(78% 0.115 84 / 0) 20%, oklch(78% 0.115 84 / 0.90) 50%, oklch(78% 0.115 84 / 0) 80%, transparent 100%);
   /* Cold-start (Step 2): the neutral "awaiting first bet" track. A dashed rail,
      no split, no needle — an empty market is not a balanced contest.
      ⭐ ONE DASH, LAID WHOLE FROM END TO END (R9-A6, round 9 of the visual pass, 2026-10-11; round 6's read, tile 194). This
@@ -1209,7 +1209,7 @@ body {
 
 .claret-rule {
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--border-strong) 18%, var(--brand-300) 50%, var(--border-strong) 82%, transparent);
+  background: linear-gradient(90deg, transparent, var(--claret-400) 18%, var(--gilt) 50%, var(--claret-400) 82%, transparent);
   margin-block: 16px;
   opacity: 0.95;
 }
@@ -1456,10 +1456,10 @@ body {
 .btn-gold:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 0 0 1px oklch(95% 0.054 84 / 0.55), 0 5px 16px oklch(80% 0.114 84 / 0.5); }
 }
 
-/* U43 B5: the sheet's disabled brand commit is an opaque navy plate with
-   readable words and a quiet edge. Scope it to the sheet; the kit's generic
-   disabled primary treatment remains unchanged elsewhere. */
-.kp-bsheet .btn-primary:disabled {
+/* The sheet's disabled gold commit is an opaque navy plate with readable
+   words and a quiet edge. Scope it to the sheet; other gold controls keep
+   the kit's generic disabled treatment. */
+.kp-bsheet .btn-gold:disabled {
   opacity: 1;
   background: oklch(28% 0.12 268);
   color: var(--text-subtle);
@@ -1896,12 +1896,12 @@ html.kp-reduce-motion .ticker-pause,
 }
 
 /* ---------- "Coming soon" badge ----------
-   A calm informational flag. U43 B5 makes the neutral inset and border the base
-   in both player shells; a feature that has not opened is neither a win nor a side. */
+   Classic shell keeps its older warm house accent; page bodies and Journey
+   use the neutral inset override below. */
 .cs-badge {
   color: var(--text-subtle);
-  background: var(--bg-inset);
-  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--gold-500) 9%, var(--bg-inset));
+  border: 1px solid color-mix(in oklab, var(--gold-500) 22%, var(--border));
 }
 #main-content .cs-badge,
 :root:is([data-shell="journey"], #kp-journey-shell) .cs-badge {
@@ -1925,7 +1925,7 @@ html.kp-reduce-motion .ticker-pause,
    an M1 pass spent real work converting its inset rings to family hues on rules no player has
    ever seen. A recipe nobody renders is still a recipe somebody copies. */
 
-/* ── TippingBar — the signature split rail + neutral needle (DESIGN_AUTHORITY B1a) ──
+/* ── TippingBar — the signature split rail + gilt needle (DESIGN_AUTHORITY B1a) ──
    Every rule here used to be an inline `style={{…}}` object inside brand.tsx —
    21 of them, including the whole colour recipe, both glows, the needle, the
    shimmer, the sweep and a `<style>` tag carrying two @keyframes. The component
@@ -5536,6 +5536,8 @@ html[data-sheet-open] .route-enter { animation: none; }
    · gold     — a win, and nothing else (§Q5: gold is money earned).
    The edge is an inset ring, never a border, so a plate's variant never moves its glyph. */
 .kp-plate--identity { background: var(--plate-identity); box-shadow: var(--edge-lit); color: var(--text-muted); }
+.kp-plate--empty { position: relative; background: var(--plate-identity); box-shadow: var(--edge-lit); color: var(--text-muted); }
+.kp-plate--empty::after { content: ""; position: absolute; top: 7px; right: 7px; width: 4px; height: 4px; border-radius: 50%; background: var(--metal-gold); }
 .kp-plate--quiet { background: var(--bg-overlay); box-shadow: inset 0 0 0 1px var(--border); color: var(--text-muted); }
 .kp-plate--info { background: color-mix(in oklab, var(--info-bg) 30%, transparent); box-shadow: inset 0 0 0 1px var(--info-border); color: var(--info-fg); }
 .kp-plate--success { background: color-mix(in oklab, var(--success-bg) 30%, transparent); box-shadow: inset 0 0 0 1px var(--success-border); color: var(--success-fg); }
@@ -6821,7 +6823,7 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-wsheet__grab { width: 44px; height: 4px; margin: 0 auto; border-radius: var(--r-pill); background: var(--border-strong); }
 .kp-wsheet__label { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-micro); text-transform: uppercase; color: var(--text-subtle); }
 .kp-wsheet__bal { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-top: var(--sp-1); }
-.kp-wsheet__amt { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-h1); line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--text); overflow-wrap: anywhere; }
+.kp-wsheet__amt { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-h1); line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--gold-300); overflow-wrap: anywhere; }
 /* 2026-10-08 (WP12 tiles 088–092) · the journey capsule's Wallet, held or masked, reads its figure in plain ink, as the
    capsule that opened it does (`.kp-jbal:is([data-held], [data-masked])` below; DESIGN_AUTHORITY rule 8a). Only the
    journey's Wallet sets these attributes (wallet-sheet.tsx), so the classic Wallet keeps its gold. */
@@ -6925,8 +6927,8 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    ⚠️ SAID PLAINLY: the 12px figure below 360 is under §T4's 12.5px reading floor. It is design call 10's measured
    exception, the one size that fits every 320 case, and test:type-scale cannot see it, because that gate reads
    class names and not stylesheet rules. Moving the size here is not what made it legal; the ruling is. */
-.kp-jbal { display: inline-flex; flex-shrink: 0; align-items: center; gap: var(--sp-2); height: var(--h-control-md); padding: 0 10px; border-radius: var(--r-pill); background: var(--bg-inset); box-shadow: inset 0 0 0 1px var(--border-control); color: var(--text); cursor: pointer; transition: box-shadow var(--t-base) var(--m-glide); }
-.kp-jbal[data-flash] { box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-300) 22%, transparent), inset 0 0 0 1px var(--brand-300); }
+.kp-jbal { display: inline-flex; flex-shrink: 0; align-items: center; gap: var(--sp-2); height: var(--h-control-md); padding: 0 10px; border-radius: var(--r-pill); background: var(--bg-inset); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--gold-300) 35%, transparent); color: var(--text); cursor: pointer; transition: box-shadow var(--t-base) var(--m-glide); }
+.kp-jbal[data-flash] { box-shadow: 0 0 0 3px color-mix(in oklab, var(--gold-300) 22%, transparent), inset 0 0 0 1px var(--gold-300); }
 /* ⭐ THE HELD CAPSULE CENTRES ITS CONTENTS BY THEIR INK (R9-A4, the edge-icon rule; round 7–8's read R2-F1, tiles 088 089).
    The 16px lock draws its body from x5 of its 24-unit box, its stroke 0.95 beyond — ink from x4.05 — so its ink stood
    2.7px inside the capsule's 10px padding while the caption's last letter ended on the other padding: the contents sat
@@ -6946,11 +6948,11 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    roll — as it never moved flush right; and the ±delta that covers its row is centred like it. Journey-only rules. */
 .kp-jbal__col { position: relative; display: inline-flex; flex-direction: column; align-items: center; gap: 3px; }
 .kp-jbal__cap { font-size: var(--type-micro); line-height: 1; white-space: nowrap; color: var(--text-subtle); }
-.kp-jbal__fig { display: inline-grid; justify-items: center; font-weight: 700; font-size: 12px; line-height: 1.1; color: var(--text); transition: color var(--t-base) var(--m-glide); }
+.kp-jbal__fig { display: inline-grid; justify-items: center; font-weight: 700; font-size: 12px; line-height: 1.1; color: var(--gold-300); transition: color var(--t-base) var(--m-glide); }
 /* Three cells in one: two invisible sizers and the painted value, so the box is the wider of figure and mask (D31). */
 .kp-jbal__fig > span { grid-area: 1 / 1; }
 .kp-jbal__sizer { visibility: hidden; }
-.kp-jbal:hover .kp-jbal__fig { color: var(--brand-200); }
+.kp-jbal:hover .kp-jbal__fig { color: var(--gold-200); }
 /* Held or masked, the figure remains plain ink. */
 .kp-jbal:is([data-held], [data-masked]) .kp-jbal__fig { color: var(--text); }
 /* ⭐ THE ±DELTA TAKES THE CAPTION'S ROW FOR A MOMENT; IT NEVER SHARES IT. The plan set it at the row's left end,
@@ -7561,7 +7563,7 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   width: 5px;
   height: 5px;
   border-radius: var(--r-pill);
-  background: var(--brand-300);
+  background: var(--gilt);
 }
 /* ⭐ MASWALI MILLIONEA'S INK — Ali, 2026-10-19 (DESIGN_AUTHORITY §M8a item 11): "the same tab but with writing in it kind
    of colors … in mixed glowing green red color and gold like 50pick design for uniqueness like kalshi". Millionea's tab
@@ -8211,8 +8213,10 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   height: 52px;
   margin-top: calc(-1 * var(--kp-coin-pull));
   border-radius: var(--r-pill);
-  /* The deposit door is brand; the actual 50pick mark keeps its own artwork. */
-  background: var(--brand-500);
+  /* The coin ring repeats the mark's split, then the gold deposit face sits above it. */
+  background: conic-gradient(from -14deg,
+      var(--kp-coin-red) 0 50%,
+      var(--kp-coin-green) 50% 100%);
   /* The halo separates the coin from page content WITHOUT a notch; the drop shadow lifts it. */
   box-shadow: 0 0 0 4px var(--panel), 0 6px 14px oklch(6% 0.06 268 / 0.45);
   transition: transform var(--t-quick) var(--m-glide);
@@ -8227,25 +8231,27 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   width: 3px;
   height: 62px;
   border-radius: 2px;
-  background: var(--brand-300);
+  background: var(--kp-coin-gold);
   transform: translate(-50%, -50%) rotate(-14deg);
 }
-/* The neutral disc, inset by the ring's 3.5px. */
+/* The struck disc, inset by the ring's 3.5px. */
 .kp-coin__face {
   position: absolute;
   inset: 3.5px;
   display: grid;
   place-items: center;
   border-radius: var(--r-pill);
-  background: var(--bg-elevated);
-  box-shadow: inset 0 0 0 1px var(--border-strong), inset 0 -3px 0 oklch(6% 0.06 268 / 0.18);
-  color: var(--brand-300);
+  background-image: var(--gilt-sheen), var(--gilt-metal);
+  background-size: 250% 100%, 100% 100%;
+  background-position: 200% 0, 0 0;
+  box-shadow: var(--gilt-metal-edge), inset 0 -3px 0 oklch(6% 0.06 268 / 0.18);
+  color: var(--gold-fg);
 }
 /* The deposit arrow (`I.arrowDownToLine`, the lexicon's money-in) is the mark's navy, so the verb is painted in the
    mark's own ink. */
 .kp-coin__verb {
   display: block;
-  color: var(--brand-300);
+  color: var(--kp-coin-pivot);
 }
 /* A HELD wallet gets the mark's HUB instead of the deposit arrow: `/wallet/deposit` refuses a held wallet, so
    the coin stops offering money-in and the slot becomes the Wallet door. Same disc, different
@@ -8254,7 +8260,7 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   width: 14px;
   height: 14px;
   border-radius: var(--r-pill);
-  background: radial-gradient(var(--bg-elevated) 0 28%, var(--brand-300) 31%);
+  background: radial-gradient(var(--kp-coin-pivot) 0 28%, var(--kp-coin-gold) 31%);
 }
 /* Press feedback on the COIN, driven from the slot, because the whole slot is the button. */
 .kp-rail__item--coin:active .kp-coin {
@@ -8272,7 +8278,7 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   /* W3: the label meets the flanking labels' line under the 32px pips (the pull's note above). */
   margin-top: 3.5px;
   font-weight: 800;
-  color: var(--brand-300);
+  color: var(--gilt);
 }
 .kp-rail__item--coin[data-on] .kp-rail__label {
   color: var(--text);
@@ -9022,7 +9028,7 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 /* The deposit amounts: the kit's money-amount pills (AmountField's `amountPillClass`, A25 item 18), three to a row. */
 .kp-bsheet__amounts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); }
 .kp-bsheet__deposit-copy { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; gap: var(--sp-1); text-align: left; white-space: normal; }
-.kp-bsheet__rails { font-size: var(--type-small); font-weight: 500; line-height: 1.5; color: var(--pearl-50); }
+.kp-bsheet__rails { font-size: var(--type-small); font-weight: 500; line-height: 1.5; color: var(--gold-fg); }
 .kp-bsheet__instead { display: flex; flex-direction: column; height: auto; min-height: var(--h-control-xl); gap: var(--sp-1); border: 1px solid var(--border-control); padding-block: var(--sp-2); white-space: normal; }
 .kp-bsheet__instead-estimate { font-size: var(--type-small); font-weight: 400; color: var(--text-muted); }
 .kp-bsheet__link, .kp-bsheet__ticket-link { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); min-height: var(--h-control-md); padding: var(--sp-2); color: var(--brand-300); font-size: var(--type-body); text-decoration: none; }

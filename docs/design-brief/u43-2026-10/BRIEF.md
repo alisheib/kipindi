@@ -41,7 +41,9 @@
 ## 3 · Fixed points (never break)
 
 Up/Down buttons show the side word + arrow only; the after-lock payout rows stay; never a fabricated price, point, time or
-chart history; gold only for EARNED money (§M3); yes/no ink only for the two sides (§B2a); micro charts aqua (§B12.2); the
+chart history; the 2026-10-20 owner amendment restores the named pre-B5 house gold
+on identity, instruments, balances and money controls (§M3a), while struck win
+amounts remain earned-only; yes/no ink only for the two sides (§B2a); micro charts aqua (§B12.2); the
 closed type ladder (§T1); FilterPill 44px (§K6); the motion ladder and its three reduced-motion gates (§B5/§M6); the
 countdown is the only manufactured urgency (§C5); settlement proof, refund-reason copy and the result moment untouched;
 house bots never named publicly; every player string in en, sw AND zh with ONE word per concept; no text character as an
@@ -133,7 +135,8 @@ card's radius and height (`PANEL-SYNTHESIS.md` marketCardSpec).
 `test:spacing-scale`'s ceiling drops); every off-ladder size onto a rung (`test:type-scale`); one inset recipe; motion per
 `PANEL-SYNTHESIS.md` motionSpec (a live dot only on the bettable card, the rollover arrival, the pool needle's travel, every
 rule with its three reduced-motion branches); palette per paletteSpec (LIVE once per screen; `--brand-300` only for links
-and selection; gold only for earned money); copy: "round" = "raundi" = "回合" everywhere (no "mechi"/"match"), ONE name for
+and selection; Ali's 2026-10-20 restoration of the earlier named gold sites supersedes
+the 2026-10-19 earned-only restriction); copy: "round" = "raundi" = "回合" everywhere (no "mechi"/"match"), ONE name for
 the game in each language (today "Juu na Chini" on /updown and "Juu au Chini" on /live — pick one, use it everywhere),
 one pool word, "dakika 5" (numeral after the noun), the receipt's "$2,126.26" grouping and "hh:mm EAT". The stored
 Swahili market titles with errors are CONTENT: list them for Ali; never change data.

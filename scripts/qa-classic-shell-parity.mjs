@@ -164,6 +164,7 @@
  * beside it (`.rejected.json` for a baseline that failed a check, `.current.json` for a compare that found differences).
  */
 import { chromium } from "playwright";
+import { maskPositionCountdown, steadyTimeLeftLayout, timeLeftPaths } from "./qa/classic-parity-noise.mjs";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -1368,7 +1369,7 @@ const SNAPSHOT = ({ crest, props, animated, notFound, pageBody, sell, confirm, t
 };
 
 /** What changes between two servers of the SAME tree and is not the product: React ids, asset hashes, the port, store ids, times. */
-const norm = (s) => String(s)
+const norm = (s) => maskPositionCountdown(s)
   .replace(/_[Rr]_[0-9A-Za-z]+_/g, "_id_")
   .replace(/«[Rr][0-9A-Za-z]*»/g, "_id_")
   .replace(/https?:\/\/localhost(?::\d+)?/g, "http://localhost")
@@ -1546,6 +1547,10 @@ function applyGlyphSwap(field, text, glyphs) {
 /** Every field that differs, split into the named EXPECTED differences and everything else. */
 function diffCells(route, base, cur, baseStore, curStore, list = EXPECTED_DIFFS) {
   const a = fieldsOf(base, baseStore), b = fieldsOf(cur, curStore);
+  if (list === BOOK_EXPECTED_DIFFS && a["regions.main.layout"] && b["regions.main.layout"]) {
+    a["regions.main.layout"] = steadyTimeLeftLayout(a["regions.main.layout"], a["regions.main.html"], baseStore);
+    b["regions.main.layout"] = steadyTimeLeftLayout(b["regions.main.layout"], b["regions.main.html"], curStore);
+  }
   const unexpected = [], expected = [];
   for (const field of [...new Set([...Object.keys(a), ...Object.keys(b)])].sort()) {
     const was = a[field] ?? "(absent)", now = b[field] ?? "(absent)";
@@ -2195,6 +2200,21 @@ async function open(page, route, plant) {
 }
 const localeCookie = (locale) => ({ name: "kp-locale", value: locale, domain: HOST, path: "/" });
 
+/** A dev-server document replacement is one browser interruption, not a page difference. */
+async function evaluateStableSnapshot(page, args, plant) {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try { return await page.evaluate(SNAPSHOT, args); }
+    catch (e) {
+      if (!/Execution context was destroyed/.test(String(e)) || attempt === 3) throw e;
+      await page.waitForLoadState("load", { timeout: 120_000 });
+      await page.locator("main").first().waitFor({ timeout: 120_000 });
+      await hydrated(page);
+      await applyPlant(page, plant);
+      await settleNeedle(page);
+    }
+  }
+}
+
 /** One attempt in a FRESH context — a context carried across cells accumulates visits, and the overlays count visits. */
 async function captureOnce(jar, locale, width, route, plant = null) {
   const ctx = await b.newContext({ viewport: { width, height: HEIGHT } });
@@ -2205,11 +2225,12 @@ async function captureOnce(jar, locale, width, route, plant = null) {
     page.on("pageerror", fileError(pageErrors, devOnly));
     const { status, body, needle } = await open(page, route, plant);
     const args = { crest: CREST, props: PROPS, animated: ANIMATED, notFound: route === "/account" || route === NOT_FOUND, pageBody: jar.length > 0 && route === BODY_ROUTE, trace: TRACE };
-    let snap = await page.evaluate(SNAPSHOT, args);
+    // Turbopack may replace this warmed document. The retry still judges its landed URL and regions.
+    let snap = await evaluateStableSnapshot(page, args, plant);
     let stable = false;
     for (let i = 0; i < 6 && !stable; i++) {
       await page.waitForTimeout(700);
-      const next = await page.evaluate(SNAPSHOT, args);
+      const next = await evaluateStableSnapshot(page, args, plant);
       stable = JSON.stringify(next) === JSON.stringify(snap);
       snap = next;
     }
@@ -2479,7 +2500,7 @@ async function probeBook(jar) {
       await ctx.addCookies([...jar, localeCookie("en")]);
       const page = await ctx.newPage();
       await open(page, route, null);
-      const snap = await page.evaluate(SNAPSHOT, bookArgsOf(route));
+      const snap = await evaluateStableSnapshot(page, bookArgsOf(route), null);
       if (snap.url.split("?")[0] !== route) {
         probe[name] = null;
         probe[`${name}Error`] = `it landed on ${snap.url}`;
@@ -2538,6 +2559,10 @@ async function captureBookCell(jar, locale, width, route, similarId, plant = nul
     const target = route === BOOK.similar ? `/markets/${similarId}` : route;
     const { status, body: sent, needle } = await open(page, target, { css: `${STRIP_STILL}${plant?.css ? `${NL}${plant.css}` : ""}`, js: plant?.js ?? null });
     const body = plant?.bytes && typeof sent === "string" ? plant.bytes(sent) : sent;
+    // PHOSPHOR-MIGRATION owed parity: the null compare of this exact tree moved four
+    // /watchlist number boxes by 5.5px with identical HTML and CSS. Wait for the
+    // actual font before recording book geometry, as the Sell capture already does.
+    await page.evaluate(() => document.fonts.ready.then(() => true));
     const args = bookArgsOf(route);
     const regions = Object.values(args.book.regions);
     let lazy = null;
@@ -3179,6 +3204,24 @@ async function proveRed() {
   const run = (route, a, c, list = EXPECTED_DIFFS) => diffCells(route, a, c, store, store, list);
   const same = run("/", cell(200, "f1"), cell(200, "f1"));
   ok("P.1 identical cells differ in nothing", same.unexpected.length === 0 && same.expected.length === 0);
+  // The new owed-check calibration is narrow: only a masked date's x/width and its resulting auto margin disappear.
+  {
+    const html = '<main><article><span class="mcardp-meta-right"><span class="mcardp-timeleft">~date</span></span></article></main>';
+    const parent = "main>article0>span0", child = `${parent}>span0`;
+    const sample = (x, width, margin, y = 30, colour = "rgb(1, 2, 3)", path = parent) => {
+      const own = {};
+      const sig = `display:flex${NL}margin-left:${margin}px${NL}color:${colour}`;
+      const inner = `display:inline${NL}margin-left:0px${NL}color:rgb(1, 2, 3)`;
+      const id = (s) => { const key = createHash("sha1").update(s).digest("hex").slice(0, 12); own[key] = s; return key; };
+      const layout = `${path} ${x},${y},${width}x17 ${id(sig)}${NL}${child} ${x},${y},${width}x17 ${id(inner)}`;
+      return steadyTimeLeftLayout(layout, html, own);
+    };
+    const was = sample(20, 70, 12), moved = sample(18, 72, 14);
+    ok("P.1c the same masked live date keeps its right edge across fresh servers; a lost alignment, vertical move, colour or path change remains visible",
+      timeLeftPaths(html).size === 2 && was === moved && was !== sample(18, 72, 14, 31)
+      && was !== sample(2, 72, 0)
+      && was !== sample(18, 72, 14, 30, "rgb(9, 2, 3)") && was !== sample(18, 72, 14, 30, "rgb(1, 2, 3)", "main>article0>span9"));
+  }
   // PHOSPHOR-MIGRATION W2 · the sprite name's hash is read as ~, and nothing else in a glyph is: another symbol, another
   // group or another file still differs.
   const glyphAt = (href) => norm(`<svg viewBox="0 0 256 256" width="14" height="14" aria-hidden="true" data-g="clock.bold"><use href="${href}"></use></svg>`);
@@ -3188,6 +3231,31 @@ async function proveRed() {
       && glyphAt("/icons/g/app.304710bb.svg#p-clock-bold") !== glyphAt("/icons/g/app.304710bb.svg#p-clock-regular")
       && glyphAt("/icons/g/app.304710bb.svg#p-clock-bold") !== glyphAt("/icons/g/admin.304710bb.svg#p-clock-bold")
       && glyphAt("/icons/g/app.304710bb.svg#p-clock-bold") !== glyphAt("/icons/g/app.svg#p-clock-bold"));
+  const ring = (dash, word, klass = "shrink-0", label = "Selection closes") => `<svg width="44" height="44" role="img" aria-label="${label}" class="${klass}"><circle cx="22" cy="22" r="19" stroke="var(--bg-overlay)"></circle><circle cx="22" cy="22" r="19" stroke="var(--aqua-400)" stroke-dasharray="119" stroke-dashoffset="${dash}"></circle><text x="50%">${word}</text></svg>`;
+  ok("P.1d the open-ticket countdown's numeric value is masked, while its accessible status, arc ink, shape and another SVG remain compared",
+    norm(ring(12.2, "3d")) === norm(ring(12.6, "2d"))
+      && norm(ring(12.2, "3d")).includes('stroke-dashoffset="~"')
+      && norm(ring(12.2, "3d")).includes('aria-label="Selection closes"')
+      && norm(ring(12.2, "3d")) !== norm(ring(12.6, "2d", "shrink-0", "Selection closed"))
+      && norm(ring(12.2, "3d")) !== norm(ring(12.2, "3d").replace("aqua-400", "no-400"))
+      && norm(ring(12.2, "3d")) !== norm(ring(12.2, "3d").replace('r="19"', 'r="18"'))
+      && norm(ring(12.2, "3d", "other")) !== norm(ring(12.6, "2d", "other")));
+  {
+    let reads = 0, loads = 0, replants = 0;
+    const interrupted = {
+      evaluate: async () => { if (++reads === 1) throw new Error("Execution context was destroyed"); return { landed: true }; },
+      waitForLoadState: async () => { loads++; },
+      locator: () => ({ first: () => ({ waitFor: async () => {} }) }),
+      waitForFunction: async () => true,
+      addStyleTag: async () => { replants++; },
+    };
+    const resumed = await evaluateStableSnapshot(interrupted, {}, { css: "header { color: red; }" });
+    let refused = false;
+    try { await evaluateStableSnapshot({ evaluate: async () => { throw new Error("real snapshot failure"); } }, {}, null); }
+    catch (e) { refused = String(e).includes("real snapshot failure"); }
+    ok("P.1e one document replacement is retried after load, hydration and plant; another snapshot failure is reported",
+      resumed.landed === true && reads === 2 && loads === 1 && replants === 1 && refused);
+  }
   const named = run("/account", cell(404, "f1"), cell(200, "f1"));
   ok("P.2 /account 404 → 200 is the named expected difference, not a failure", named.unexpected.length === 0 && named.expected.map((e) => e.id).join() === "account-streams-200", JSON.stringify(named));
   const wrongTo = run("/account", cell(404, "f1"), cell(500, "f1"));

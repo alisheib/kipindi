@@ -476,10 +476,10 @@ function Item({ href, icon: Ico, en, sw, zh, accent, current, proposalsBadge, jo
         className={cn(
           "flex items-center gap-2.5 px-3 py-2 font-display text-body-sm text-text transition-colors",
           current ? "font-semibold" : "font-medium",
-          accent ? "hover:bg-brand-500/10" : "hover:bg-bg-overlay",
+          accent ? "hover:bg-gold-500/10" : "hover:bg-bg-overlay",
         )}
       >
-        <span className={accent ? "text-brand-300" : "text-text-subtle"}><Ico s={15} /></span>
+        <span className={accent ? "text-gold-300" : "text-text-subtle"}><Ico s={15} /></span>
         {/* The journey's label keeps its last two words together (`keepLastWords`: the widest two-word end is ~88px at
             Sora 13px, inside the label's ~139px beside INAKUJA — visual-pass-r4h §6.6); one span, so the words stay one flex item. */}
         {journey ? <span>{keepLastWords(primary)}</span> : primary}

@@ -55,7 +55,7 @@ import { cn } from "@/lib/utils";
  * typed at its call site again. `bg` / `fg` / `border` stay for a plate that is its own material (the How-to card's
  * royal play plate, `.kp-jhowto__plate`, which is the primary button's).
  */
-export type PlateVariant = "identity" | "quiet" | "info" | "success" | "warning" | "danger" | "gold";
+export type PlateVariant = "identity" | "empty" | "quiet" | "info" | "success" | "warning" | "danger" | "gold";
 
 export function IconPlate({
   size = 40,

@@ -86,8 +86,11 @@
  *
  * Run: npm run test:design-frozen
  */
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, readdirSync, statSync, writeFileSync, unlinkSync } from "node:fs";
 import { join, relative } from "node:path";
+import { tmpdir } from "node:os";
+import { randomUUID } from "node:crypto";
+import { spawnSync } from "node:child_process";
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 const SRC = join(ROOT, "src");
@@ -177,7 +180,7 @@ const FROZEN_RATCHET = new Map<string, number>([
   // glow mixed off `--brand-500` now (§E4) — the file holds no design value of its own.
   ["src/components/ui/toggle.tsx", 2],
   ["src/components/ui/checkbox.tsx", 1],
-  ["src/components/ui/empty-state.tsx", 1],
+  // PHOSPHOR-MIGRATION release 2b: W6 retired the private drawings and their hard-coded gold accent.
   // `tabs.tsx` LEFT THIS LIST on 2026-08-31 (DG-S-02, DESIGN-GATE-2026-08-28 step 5, 43 files /
   // 160 → 159 values). Its one budgeted literal was the `segmented` variant's inline
   // `oklch(40% 0.08 264 / 0.55)` — the FOURTH home of `--pill-active`, and a different chroma,
@@ -479,6 +482,12 @@ function scanCss(src: string): Hit[] {
 
 // ── Run it ───────────────────────────────────────────────────────────────────
 type Report = { over: string[]; stale: string[]; shrunk: string[]; total: number; seen: number };
+// global-error cannot read globals.css or import brand-mark: it is the last-resort
+// boundary if even the root layout fails. The delivered needle is one exact
+// standalone identity literal, exempted only at this line and only at this value.
+const ERROR_NEEDLE = 'const NEEDLE = "oklch(86% 0.13 82)";';
+const ERROR_FILE = "src/app/global-error.tsx";
+let errorNeedleLocated = false;
 function judge(files: string[], ratchet: Map<string, number>, scan: (s: string) => Hit[]): Report {
   const over: string[] = [], stale: string[] = [], shrunk: string[] = [];
   const counts = new Map<string, number>();
@@ -489,7 +498,15 @@ function judge(files: string[], ratchet: Map<string, number>, scan: (s: string) 
     // Satori OG images render in a separate engine with no CSS variables at all —
     // it literally cannot read our tokens, so inline values there are correct.
     if (rel.startsWith("src/app/api/")) continue;
-    const hits = scan(decomment(readFileSync(file, "utf8")));
+    const input = decomment(readFileSync(rel === ERROR_FILE && process.env.DESIGN_FROZEN_ERROR_MUTANT_PATH ? process.env.DESIGN_FROZEN_ERROR_MUTANT_PATH : file, "utf8"));
+    const needleLines = input.split("\n");
+    let hits = scan(input);
+    if (rel === ERROR_FILE && scan === scanTsx) {
+      const exact = needleLines.filter((line) => line.trim() === ERROR_NEEDLE).length === 1;
+      const hit = hits.find((entry) => needleLines[entry.line - 1]?.trim() === ERROR_NEEDLE);
+      errorNeedleLocated = exact && !!hit;
+      if (errorNeedleLocated) hits = hits.filter((entry) => entry !== hit);
+    }
     if (hits.length === 0) continue;
     counts.set(rel, hits.length);
     total += hits.length;
@@ -508,6 +525,7 @@ function judge(files: string[], ratchet: Map<string, number>, scan: (s: string) 
 }
 
 const tsx = judge(walk(SRC, /\.tsx$/), FROZEN_RATCHET, scanTsx);
+check("the standalone error boundary keeps its one exact gilt needle", errorNeedleLocated);
 check("no NEW inline design value beyond the ratchet", tsx.over.length === 0,
   tsx.over.length ? `${tsx.over.filter((l) => !l.startsWith("   ")).length} file(s) over budget` : "");
 for (const l of tsx.over.slice(0, 40)) log(`    ${l}`);
@@ -648,5 +666,19 @@ check("PC14 css: a hand-typed radius is seen",
   scanCss(".cm-bubble { border-radius: 14px; }").length === 1);
 
 log(`\n  (ratchet holds ${FROZEN_RATCHET.size} tsx file(s) / ${tsx.total} value(s), ${CSS_RATCHET.size} stylesheet(s) / ${css.total} value(s) — every number may only shrink)`);
+if (process.argv.includes("--prove-red") && fail === 0) {
+  const original = readFileSync(join(ROOT, ERROR_FILE), "utf8");
+  if (original.split(ERROR_NEEDLE).length !== 2) throw new Error("standalone needle red plant has no unique premise");
+  const mutant = join(tmpdir(), `design-frozen-needle-${randomUUID()}.tsx`);
+  try {
+    writeFileSync(mutant, original.replace(ERROR_NEEDLE, 'const NEEDLE = "oklch(85% 0.13 82)";'), "utf8");
+    const run = spawnSync(process.execPath, ["--import", "tsx", "scripts/design-frozen.test.mts"], {
+      cwd: ROOT, encoding: "utf8", env: { ...process.env, DESIGN_FROZEN_ERROR_MUTANT_PATH: mutant },
+    });
+    if (run.status === 0 || !run.stdout.includes("FAIL the standalone error boundary keeps its one exact gilt needle") || !run.stdout.includes("FAIL no NEW inline design value beyond the ratchet"))
+      throw new Error(`standalone needle physical mutation escaped the ratchet:\n${run.stdout}${run.stderr}`);
+    log("RED standalone error needle exact value and raw-colour ratchet");
+  } finally { unlinkSync(mutant); }
+}
 log(`\n${fail === 0 ? "PASS" : "FAIL"} — design primitives are frozen`);
 process.exit(fail ? 1 : 0);

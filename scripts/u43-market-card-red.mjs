@@ -31,7 +31,9 @@ function mutation(name, file, from, to, expected) {
 try {
   const base = run();
   check("baseline guard is green", base.status === 0, `exit ${base.status}`);
-  for (const item of MUTATIONS) mutation(item.name, join(ROOT, item.file), item.from, item.to, item.expected);
+  const only = process.argv.find((arg) => arg.startsWith("--only="))?.slice("--only=".length);
+  for (const item of MUTATIONS.filter((item) => !only || item.expected === only))
+    mutation(item.name, join(ROOT, item.file), item.from, item.to, item.expected);
 } finally {
   for (const [file, original] of originals) writeFileSync(file, original);
   check("all sources restored byte for byte", [...originals].every(([file, original]) => readFileSync(file, "utf8") === original));

@@ -21,29 +21,22 @@ const run = (chart, card) => {
   });
   return { code: result.status, output: `${result.stdout ?? ""}${result.stderr ?? ""}` };
 };
-const mutations = MUTATIONS.filter((item) => item.file === "src/components/charts/terminal-chart.tsx");
-const [microMutation] = MUTATIONS.filter((item) => item.file === "src/components/charts/round-live-line.tsx");
-if (mutations.length !== 12 || !microMutation) throw new Error("Expected twelve chart and one micro-line plant");
 try {
   const baseline = run(original, micro);
   if (baseline.code !== 0) throw new Error(`baseline guard failed\n${baseline.output}`);
-  for (const { name, from, to, expected } of mutations) {
-    if (original.split(from).length !== 2) throw new Error(`mutation target not unique: ${name}`);
-    const result = run(original.replace(from, to), micro);
+  for (const { name, file, from, to, expected } of MUTATIONS) {
+    const source = file === "src/components/charts/terminal-chart.tsx" ? original : micro;
+    if (source.split(from).length !== 2) throw new Error(`mutation target not unique: ${name}`);
+    const result = file === "src/components/charts/terminal-chart.tsx"
+      ? run(original.replace(from, to), micro)
+      : run(original, micro.replace(from, to));
     if (result.code === 0 || !result.output.includes(`FAIL ${expected}`))
       throw new Error(`red proof missed ${name}\n${result.output}`);
     proved++;
     console.log(`RED ${name}: ${expected}`);
   }
-  if (micro.split(microMutation.from).length !== 2) throw new Error("micro mutation target not unique");
-  const alteredMicro = micro.replace(microMutation.from, microMutation.to);
-  const result = run(original, alteredMicro);
-  if (result.code === 0 || !result.output.includes(`FAIL ${microMutation.expected}`))
-    throw new Error(`red proof missed micro line\n${result.output}`);
-  proved++;
-  console.log("RED micro line: micro line stays aqua");
 } finally {
   unlinkSync(chartCopy);
   unlinkSync(microCopy);
 }
-console.log(`U43 chart direction red: ${proved}/${mutations.length + 1} regressions caught`);
+console.log(`U43 chart direction red: ${proved}/${MUTATIONS.length} regressions caught`);

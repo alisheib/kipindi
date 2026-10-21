@@ -6,7 +6,7 @@
  *  - ZERO new tokens. Everything resolves to globals.css (glass-panel,
  *    gilt-eyebrow, gilt-rule, --gilt, --aqua-300, --no-300, --border …).
  *  - The P&L figure uses gilt only for settled profit; the win-rate Needle
- *    reads in neutral ink. Unrealised value is neutral ink and always labelled
+ *    wears the shared gilt identity. Unrealised value is neutral ink and always labelled
  *    "if settled now" (no payout promises pre-resolution).
  *  - Losses render in --no-300 with calm copy. No emojis; line-art only.
  *  - Every figure is passed in from real server data — nothing is
@@ -121,7 +121,7 @@ function Cell({ label, value, sub, valueClass = "text-text" }: {
 }
 
 /**
- * NeedleDial — the neutral Needle as a conviction dial (brand signature; same
+ * NeedleDial — the gilt Needle as a conviction dial (brand signature; same
  * object as the TippingBar needle). Tilt encodes deviation from 50%:
  * upright at 50, leans right when winning, left when losing. ±26° max.
  * Static SVG — no animation needed, so nothing to gate on reduced motion.

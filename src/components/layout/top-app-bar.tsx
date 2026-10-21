@@ -35,14 +35,14 @@ import type { ProposalsState } from "@/lib/server/proposals-config";
  *
  * `--r-pill` used to mean BOTH "product line" (Up & Down) and "account action" (Sign in / Sign
  * up) — one shape, two kinds. Shape now has exactly one meaning: Up & Down is a destination, so
- * it takes destination geometry, and its distinction moves to a 5px brand dot plus `--brand-300`
+ * it takes destination geometry, and its distinction moves to a 5px gilt dot plus `--brand-300`
  * ink.
  *
  * **Current destination = `--pill-active` + `--text` + weight 600. That is the ONLY active
  * treatment, at every width** — the bottom rail says it the same way. It used to say it with
  * `--aqua-300`, a second active language for one idea.
  *
- * U43 B5 applies Ali's later rule: navigation is brand, while gold marks money won.
+ * The product-line dot is a small gilt identity accent; the active destination still uses brand.
  */
 type NavItem = {
   href: string;
@@ -301,8 +301,7 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
               past the viewport edge. The span is not a `.btn`, so the utility applies to it.
               ⚠️ This is the idiom this file already uses for the same reason. */}
           {user.isAuthed && !user.walletHeld && !pathname.startsWith("/wallet/deposit") && (
-            // U43 B5: Deposit moves money into the wallet; it does not mean the player won it.
-            // The brand button preserves the existing pill geometry and readable label.
+            // The money-in door uses the shared gilt-metal skin and keeps its pill geometry.
             /* 🔴 THE DEPOSIT CTA YIELDS BELOW `lg`, AND THE RULE IS **ONE DEPOSIT PER SCREEN**.
                UPDATE-2026-09-28 §1: below 1024 the bottom rail shows (`lg:hidden`) and its CENTRE
                COIN is the wallet's door, so a second Deposit in this header would be the same
@@ -342,7 +341,7 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
                  visible word (three locales) nor by `href` alone — `cashback-promo.tsx` is a
                  legitimate second /wallet/deposit CTA. The testid is the identity. */
               data-testid="deposit-header"
-              className="btn btn-primary btn-md btn-pill"
+              className="btn gilt-metal btn-md btn-pill"
             >
               <I.arrowDownToLine s={14} />
               {/* ⛔ THE LABEL YIELDS AT THE lg–xl BAND (1024–1279), AND IT IS THE SAME RULE AS
@@ -521,7 +520,7 @@ function NavLink({ it, pathname }: { it: NavItem; pathname: string }) {
         fontWeight: active ? 600 : 500,
       }}
     >
-      {/* The product-line mark: a 5px brand dot. It replaces a glassy indigo pill, a bespoke
+      {/* The product-line mark: a 5px gilt dot. It replaces a glassy indigo pill, a bespoke
           gradient, a brand border, a glow AND a green/rose arrow pair — five distinctions for one
           idea, on an item that is simply another destination. */}
       {accent && (
@@ -529,7 +528,7 @@ function NavLink({ it, pathname }: { it: NavItem; pathname: string }) {
           aria-hidden
           style={{
             flex: "none", width: 5, height: 5,
-            borderRadius: "var(--r-pill)", background: "var(--brand-300)",
+            borderRadius: "var(--r-pill)", background: "var(--gilt)",
           }}
         />
       )}

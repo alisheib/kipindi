@@ -138,7 +138,7 @@ function PanelClass({ className, children }: { className?: string; children: Rea
  * the betting pair is never borrowed for them. The crests were still the YES green and the NO rose — the toast they sit
  * beside moved to `--success` / `--danger` on 2026-08-30 (toast.tsx, D2) and this file kept the betting ramps, so a
  * deposit's tick wore the colour of a YES stake and a refused NO bet's ✗ the colour of its own side. A bet's SIDE stays
- * where it is the side: the strip of a placed bet (`stripTone` yes/no).
+ * where it is the side: the strip and primary action of a placed bet (`stripTone` yes/no).
  */
 const crest = (ramp: string, fg: string) => ({
   fg,
@@ -422,10 +422,10 @@ export function OperationResultModal({
   }, [open, variant, closeMs]);
 
   const tone = variant === "success" && successCrestTone === "neutral" ? TONE.neutral : TONE[variant];
-  // A placed bet keeps the success timer and side strip while its navigation
-  // action, crest and eyebrow use neutral or brand ink. Gold is earned money.
+  // A placed bet keeps the success timer and its side on the strip and action;
+  // gold is selected explicitly for a money result.
   const effectiveBtn = variant === "success"
-    ? (stripTone === "gold" ? "btn-gold" : "btn-primary")
+    ? (stripTone === "gold" ? "btn-gold" : stripTone === "yes" ? "btn-yes" : stripTone === "no" ? "btn-no" : "btn-primary")
     : tone.primaryBtn;
   // The crest that lands as the micro-seal: a staked side (`stripTone` yes/no) or an issued document (`stamp`).
   const sealed = variant === "success" && (stamp === true || stripTone === "yes" || stripTone === "no");

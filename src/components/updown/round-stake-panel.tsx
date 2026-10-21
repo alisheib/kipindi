@@ -290,8 +290,7 @@ export function RoundStakePanel(props: {
         </div>
       )}
 
-      {/* The one money commit on this page uses the brand action: placing a stake
-          has not earned money, so won-money gold cannot mark this button (U43).
+      {/* The one money commit on this page uses the earlier gold action.
           Disabled when the known balance cannot cover the stake (UD-1) or the lock has
           passed (UD-2) — a doomed tap is prevented here, never round-tripped.
           ⭐ UD-8 · and it WORKS while it works: the SubmitButton presentation (spinner +
@@ -303,7 +302,7 @@ export function RoundStakePanel(props: {
         type="button" onClick={() => bet.place(lockedSide)}
         disabled={!bet.stakeReady || bet.pending || bet.insufficient || bet.locallyLocked}
         aria-busy={bet.pending}
-        className="btn btn-primary btn-lg mt-3 w-full justify-center"
+        className="btn btn-gold btn-lg mt-3 w-full justify-center"
         style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
         aria-label={`${t.market.udConfirm} ${pickWord} · ${formatTzs(bet.stake)}`}
       >

@@ -8,15 +8,15 @@
  * shipping the superseded round-1 logo).
  *
  * The mark ("mark-a", delivered 2026-07-09): a circle split YES-emerald LEFT ·
- * NO-rose RIGHT by a diagonal chord, the pearl NEEDLE riding the seam past the
- * rim, over a neutral pearl hub with a navy pivot. No ring, no numerals. The
- * YES/NO halves keep their delivered side colours; Ali's U43 rule reserves gold
- * for won money, so the needle and hub are pearl on player-visible assets.
+ * NO-rose RIGHT by a diagonal chord, the gilt NEEDLE riding the seam past the
+ * rim, over a gilt hub with a navy pivot. No ring, no numerals. Ali restored
+ * the delivered gold centre as a signature of the 50pick mark on 2026-10-20.
  */
 
 export const MARK = {
   green: "#1EA362",
   red: "#B03A3E",
+  gold: "#E3BC66",
   pivot: "#1A2140",
   whiteInk: "#F7F8FC",
   darkInk: "#1A2140",
@@ -43,8 +43,8 @@ export function markColors(variant: FiftyMarkVariant, simple: boolean) {
   return {
     green: mono ? hexA(ink, variant === "white" ? 0.3 : 0.26) : MARK.green,
     red: mono ? hexA(ink, variant === "white" ? 0.14 : 0.11) : MARK.red,
-    needle: mono ? ink : MARK.whiteInk,
-    hub: mono ? ink : MARK.whiteInk,
+    needle: mono ? ink : MARK.gold,
+    hub: mono ? ink : MARK.gold,
     pivot: !simple && !mono ? MARK.pivot : null,
   };
 }

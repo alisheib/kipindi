@@ -29,8 +29,8 @@ export const MUTATIONS = [
        §6.2 fails naming a hand-typed pixel value in whichever axis its alternation reaches. */
     name: "wallet-balance-pill.tsx — revert CashEye to the shipped h-[42px] w-[32px] (BOTH axes: PV-13a's height, D78's width)",
     file: "src/components/layout/wallet-balance-pill.tsx",
-    from: `className="inline-flex h-full w-[var(--tap-min)] shrink-0 items-center justify-center rounded-r-pill text-text-muted transition-colors hover:bg-[color-mix(in_oklab,var(--brand-300)_10%,transparent)] hover:text-brand-200"`,
-    to: `className="inline-flex h-[42px] w-[32px] shrink-0 sm:w-[36px] items-center justify-center rounded-r-pill text-text-muted transition-colors hover:bg-[color-mix(in_oklab,var(--brand-300)_10%,transparent)] hover:text-brand-200"`,
+    from: `className="inline-flex h-full w-[var(--tap-min)] shrink-0 items-center justify-center rounded-r-pill text-[var(--gold-300)] transition-colors hover:bg-[color-mix(in_oklab,var(--gold-300)_10%,transparent)] hover:text-gold-200"`,
+    to: `className="inline-flex h-[42px] w-[32px] shrink-0 sm:w-[36px] items-center justify-center rounded-r-pill text-[var(--gold-300)] transition-colors hover:bg-[color-mix(in_oklab,var(--gold-300)_10%,transparent)] hover:text-gold-200"`,
   },
   {
     name: "globals.css — revert .mcardp-info to the shipped content-box 28px/8px pad (46px total)",

@@ -249,9 +249,9 @@ export default async function NotificationsPage({
          * every other setting and drops only `q`.
          */
         <EmptyState
+          kind="notifications"
           title={q ? `${t.results.noResultsMatch} "${q}"` : empty.title}
           body={q ? t.results.tryDifferentKeywords : empty.body}
-          illustration={<I.bell s={30} />}
           action={
             q ? (
               <Link href={hrefWith({ q: "", page: 1 }) as never} className="btn btn-ghost btn-sm">

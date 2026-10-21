@@ -9,7 +9,7 @@
  *     markets handle quote freshness without faking certainty. 10 s
  *     gives a player time to read the side + stake + payout block
  *     without rushing; 5 s was too tight (Ali's report).
- *   • Kit-faithful (border-border, bg-bg-elevated, brand confirm ramp,
+ *   • Kit-faithful (border-border, bg-bg-elevated, gold confirm ramp,
  *     OKLCH hues, mono numerals).
  *   • A11: the dialog chrome (portal, scrim, Android scroll/zoom lock, focus
  *     trap, focus-return, Esc, kit rise/fade) is the shared <Modal> primitive;
@@ -427,7 +427,7 @@ export function BetConfirmModal({
             type="button"
             onClick={() => { haptics.confirm(); onConfirm(); }}
             disabled={pending || remainingMs <= 0}
-            className="btn btn-primary btn-lg w-full"
+            className="btn btn-gold btn-lg w-full"
           >
             {pending ? t.dialog.placing : `${t.common.confirm} · ${formatTzs(stake)}`}
           </button>
@@ -436,7 +436,7 @@ export function BetConfirmModal({
             type="button"
             onClick={onCancel}
             disabled={pending}
-            /* `btn-lg` matches the brand confirm above, so the escape hatch and the
+            /* `btn-lg` matches the gold confirm above, so the escape hatch and the
                money commit are the same height. This was `btn-md min-h-11`, and
                because the spacing scale is OVERRIDDEN (tailwind.config.ts:200-215)
                `min-h-11` is a 96px floor — cancel shipped at more than twice the

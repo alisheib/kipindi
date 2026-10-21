@@ -183,8 +183,8 @@ export default function GlobalError({
   const TEXT = "oklch(98% 0.012 268)";
   const TEXT_MUTED = "oklch(86% 0.040 268)";
   const TEXT_SUBTLE = "oklch(70% 0.080 268)";
-  // Even this standalone error mark keeps its needle neutral; gold states money won.
-  const NEEDLE = TEXT;
+  // This standalone error mark keeps the brand needle gilt.
+  const NEEDLE = "oklch(86% 0.13 82)";
   // ⛔ R5-C, the second gold audit (2026-10-09): "Try again" was a GOLD button and the RG link gold — neither is money
   // (Q5). The button is the kit's primary royal, written out because this page ships without the app's CSS — flat, at
   // the midpoint of `.btn-primary`'s 53%→48% wash (one value, so `design-frozen`'s budget for this file does not grow) —

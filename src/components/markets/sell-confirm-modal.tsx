@@ -133,8 +133,8 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
       <div
         className="rounded-lg border p-4"
         style={{
-          borderColor: isFree ? "var(--border)" : "color-mix(in oklab, var(--royal-500) 62%, transparent)",
-          background:  isFree ? "var(--bg-elevated)" : "color-mix(in oklab, var(--royal-500) 16%, transparent)",
+          borderColor: isFree ? "color-mix(in oklab, var(--success-500) 62%, transparent)" : "color-mix(in oklab, var(--royal-500) 62%, transparent)",
+          background:  isFree ? "color-mix(in oklab, var(--success-500) 18%, transparent)" : "color-mix(in oklab, var(--royal-500) 16%, transparent)",
         }}
       >
         {/* S6 A8f · the figure is one amount and never splits. When the fee column cannot share its line, the row wraps:
@@ -153,7 +153,7 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
             <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-1 kp-track-end">{t.dialog.earlyExitFee}</p>
             <p
               className="pl-3 font-bold text-title-sm amount leading-none"
-              style={{ color: "var(--text)" }}
+              style={{ color: isFree ? "var(--success-fg)" : "var(--text)" }}
             >
               {isFree ? t.dialog.noFee : `−${formatTzs(fee)}`}
             </p>
@@ -182,7 +182,7 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
           type="button"
           onClick={() => { if (quoteExpired) return; haptics.confirm(); onConfirm(); }}
           disabled={pending || quoteExpired}
-          className="btn btn-primary btn-lg w-full"
+          className="btn btn-gold btn-lg w-full"
         >
           {pending ? t.dialog.selling : `${t.dialog.sellLabel} · ${formatTzs(value)}`}
         </button>
@@ -191,7 +191,7 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
           type="button"
           onClick={onCancel}
           disabled={pending}
-          /* `btn-lg` matches the brand confirm above and the twin control in
+          /* `btn-lg` matches the gold confirm above and the twin control in
              bet-confirm-modal.tsx, so the two core money dialogs read identically.
              It was `btn-md`. ⛔ No per-call height: the --h-control-* token owns it. */
           className="btn btn-ghost btn-lg w-full"
