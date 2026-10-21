@@ -12,7 +12,9 @@
 import type { MillioneaHub } from "@/lib/server/maswali-player";
 import type { HomeCardState } from "@/components/maswali/maswali-home-card";
 import { eatWeekday, weekNumberOf } from "@/components/maswali/maswali-format";
-import { millioneaWeekPhase, weekPhaseWord } from "@/app/millionea/millionea-view";
+// The week's phase from its pure home (`millionea-phase.ts`), never `millionea-view.ts`: that joint reaches the Seal Line's
+// client marks, which would join `/`'s first load (test:journey-home 7.client; test:maswali-doors 3.2).
+import { millioneaWeekPhase, weekPhaseWord } from "@/app/millionea/millionea-phase";
 import { eatDayKey, eatIsoWeek, eatNextWeekAt } from "@/lib/eat-day";
 import { pctNum } from "@/lib/utils";
 import type { Dict } from "@/lib/i18n-dict";

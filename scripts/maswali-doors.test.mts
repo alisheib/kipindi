@@ -20,8 +20,8 @@
  * `qa:maswali-player-shots`' door pages (MASWALI_SHOTS_PAGES=door-states,door-ghosts).
  * Pure: it reads source files and renders components. No server, no database, no network, no file written.
  */
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { dict } from "../src/lib/i18n-dict.ts";
 import { fill, formatTzs } from "../src/lib/utils.ts";
@@ -384,6 +384,37 @@ const cssDefects = (css: string) => {
   const d = cssDefects(CSS);
   ok("3.1 · M1 L1 L2 M5 H1 · the door's one anatomy — a head row of three over a full-width body below 768 (a wrapped fact's continuation hanging one em in), the body under the title from 768, one row from 1280 — each host's box and its host's hover (the How-to card's royal border; the board cards' lift and brand ring), and the ghost's hidden words and marks over line bars", d.length === 0, d.join(" | "));
 }
+// The card's model is CLIENT-FREE (its own doc; `/`'s first load, test:journey-home 7.client): no module it reaches by a
+// static import that is not type-only is a client module. It asked the week's phase of `millionea-view.ts`, whose Seal Line
+// import (`sealLineOf`, a value from the component file) brought GlyphSwap and MaswaliCarry into `/` (commit 2, 03be29842);
+// the phase now has a pure home, `millionea-phase.ts`, which that joint re-exports.
+const resolveSpec = (from: string, spec: string): string | null => {
+  const base = spec.startsWith("@/") ? `src/${spec.slice(2)}` : spec.startsWith(".") ? join(dirname(from), spec).replaceAll("\\", "/") : null;
+  if (base === null) return null;
+  for (const ext of ["", ".ts", ".tsx", "/index.ts", "/index.tsx"]) {
+    const p = base + ext, abs = join(ROOT, p);
+    if (existsSync(abs) && statSync(abs).isFile()) return p;
+  }
+  return null;
+};
+const clientReach = (start: string, source: (rel: string) => string = read) => {
+  const seen = new Set([start]), queue = [start], client: string[] = [];
+  while (queue.length > 0) {
+    const f = queue.shift()!, src = source(f);
+    if (/^(?:\s|\/\/[^\n]*\n|\/\*[\s\S]*?\*\/)*["']use client["']/.test(src)) client.push(f);
+    for (const m of src.matchAll(/^\s*(?:import|export)\s+(?!type\b)[^;]*?\sfrom\s+["']([^"']+)["']/gm)) {
+      const r = resolveSpec(f, m[1]);
+      if (r !== null && !seen.has(r)) { seen.add(r); queue.push(r); }
+    }
+  }
+  return { client, reached: seen.size };
+};
+const MODEL = "src/components/maswali/maswali-card-model.ts";
+{
+  const { client, reached } = clientReach(MODEL);
+  ok(`3.2 · the card's model reaches no client module (${reached} modules by static import, type-only ones aside) — the week's phase from its pure home, \`millionea-phase.ts\`, never \`millionea-view.ts\`, whose Seal Line import carried GlyphSwap and MaswaliCarry into \`/\``,
+    client.length === 0 && reached > 3 && read(MODEL).includes('from "@/app/millionea/millionea-phase"'), j(client));
+}
 
 // ── §4 · controls ─────────────────────────────────────────────────────────────────────────────────────────────────────
 console.log("\n§4 · controls — each check fails on a planted copy");
@@ -417,6 +448,9 @@ console.log("\n§4 · controls — each check fails on a planted copy");
   const fin = card("sw", "open · at the cap in the final");
   ok("4.12 · the final week's line set plain (\"Wiki ya mwisho ya\" / \"Millionea\" free to break) is reported (1.20)",
     fin.includes('<span class="whitespace-nowrap">ya Millionea</span>') && finalDefects("sw", fin.replace('<span class="whitespace-nowrap">ya Millionea</span>', "ya Millionea")).length > 0);
+  const viaView = clientReach(MODEL, (rel) => (rel === MODEL ? read(MODEL).replace('from "@/app/millionea/millionea-phase"', 'from "@/app/millionea/millionea-view"') : read(rel)));
+  ok("4.14 · the card's model asking the phase of `millionea-view.ts` again (commit 2's import) is reported: it reaches the Seal Line's client marks (3.2)",
+    viaView.client.includes("src/components/maswali/maswali-carry.tsx") && viaView.client.includes("src/components/ui/glyph-swap.tsx"));
   ok("4.6′ · the board door without the board's lift (the How-to card's border on both hosts, as first built) is reported (3.1)",
     cssDefects(CSS.replace(".kp-mln-door--board:not(.kp-mln-ghost):hover { translate: 0 var(--m-lift); border-color: var(--brand-500);", ".kp-mln-door--board:not(.kp-mln-ghost):hover { border-color: var(--border-royal);")).some((x) => x.includes("each host's hover")));
   ok("4.6 · the stylesheet without the full-width phone body, with the ghost's words visible, or without the hanging continuation, is reported (3.1)",
@@ -429,6 +463,6 @@ console.log("\n§4 · controls — each check fails on a planted copy");
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI DOORS: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run prints. */
-const MIN_ASSERTIONS = 48;
+const MIN_ASSERTIONS = 50;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);
