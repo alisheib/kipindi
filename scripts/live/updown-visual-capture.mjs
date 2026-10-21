@@ -53,8 +53,11 @@ if (!/HeadlessChrome/.test(UA) || !/HeadlessChrome/.test(UA_DESKTOP)) {
   process.exit(2);
 }
 
-/** Transitions and animations off for a stable frame; the countdown still ticks (it is text, not an animation). */
-const STILL = "*,*::before,*::after{transition:none!important;animation:none!important;caret-color:transparent!important}nextjs-portal{visibility:hidden!important}";
+/** Transitions off and every animation settled at its END state for a stable frame; the countdown still ticks (it is
+ *  text, not an animation). 2026-10-21 · U43: `animation:none` froze draw-in lines (`.mcardp-spark-line`, dashoffset 1)
+ *  at their hidden FIRST frame, so the market card's 7-day line vanished from every review frame while players see it
+ *  drawn. A zero duration with no delay jumps each animation to its resting frame instead. */
+const STILL = "*,*::before,*::after{transition:none!important;animation-delay:0s!important;animation-duration:0s!important;animation-iteration-count:1!important;caret-color:transparent!important}nextjs-portal{visibility:hidden!important}";
 
 /** The visible text and accessible name of every side choice on a page (the YES/NO and Up/Down buttons, the home rows). */
 const CHOICE_TEXTS = () => [...document.querySelectorAll(".btn-yes, .btn-no, .kp-qrow__btn, .kp-jcard__pick")]
