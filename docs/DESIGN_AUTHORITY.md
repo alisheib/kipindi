@@ -1503,7 +1503,10 @@ them, never dip under.
    MEASURED, never chosen: every figure it covers meets item 1's minimum for its size through the real bubble — its
    median glyph pixel AND its 10th-percentile one, so the figure reads under the bubble's icon too (the lead's rule,
    2026-10-21: .50, provided that holds on every covered figure, else the highest value where it does;
-   `qa:chat-yield --measure`).
+   `qa:chat-yield --measure`). **Measured 2026-10-21 → .50**, on the register lane's head (ceb06e8cb), at 320 and 360:
+   32 covered figures, 13–16px mono (4.5:1 each). Median / p10 at .50: the sunset week's ledger 5.34–5.82 / 4.99–5.31,
+   How to play's worked figures 5.39–5.51 / 4.87–5.01, `/wallet`'s right-aligned amounts 5.10–5.11 / 4.58–4.59 (the
+   tightest; at .55 their p10 falls to 3.90). The whole table is the token's note in `state-tokens.css`.
 2. **Tap targets ≥ `--tap-min` (40px), 44px preferred on mobile.** Money controls are
    never the exception — a stake chip is where a player chooses how much to risk, and it
    was shipped at 26px once (E-112). `--h-input` already sits at 44px.
