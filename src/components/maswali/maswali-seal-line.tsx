@@ -182,9 +182,13 @@ const ANNEX: Record<SealLineSize, number> = { 24: 18, 18: 14, 14: 12 };
  *  ⭐ ONE RULE FOR THE ANNEX, AT EVERY SIZE AND WIDTH (S5 VIS P16): the five reserves stand on their own row under the
  *    ten mains, as the ticket itself draws them. The hub's row once set them beside the mains (wrapping under them only
  *    where the row ran out), so the same fifteen read as one row on the hub and as two on the card.
- *  · `idBase` names the annex sockets (`${idBase}-a${n}`), the carry's origins; give it when `play.carry` can be asked.
+ *  · `idBase` names the annex sockets' GLYPH boxes (`${idBase}-a${n}`), the carry's origins — the glyph, never its column
+ *    with the label under it, so the token flies at its true scale (S5-DESIGN-REGISTER, the motion critic's M5); give it
+ *    when `play.carry` can be asked.
  *  · `play` — the moments, each the composer's call from the seen state: `carry` runs N1 on every stood-in socket
- *    (staggered, capped at four steps), `draw` draws the Unbroken Line on. Omitted, the line is its end frame.
+ *    (staggered, capped at four steps), `draw` draws the Unbroken Line on. Omitted, the line is its end frame. `run` is
+ *    the caller's replay counter (the carry re-runs on a new count, nothing remounts); `onCarried` is called when the last
+ *    carry has landed — or at once when none plays (`MaswaliCarry`'s `onEnd`).
  *  · `inert` — a ticket that counts for nothing (cancelled, or refunded with its voided week): every socket RESTS
  *    (`unused`, at the disabled opacity) and nothing is compared — never the open "awaiting" ring of a live ticket (P10).
  */
@@ -193,7 +197,7 @@ export function MaswaliSealLine({ line, size = 24, numbers, idBase, play, inert,
   size?: SealLineSize;
   numbers?: boolean;
   idBase?: string;
-  play?: { carry?: boolean; draw?: boolean };
+  play?: { carry?: boolean; draw?: boolean; run?: number; onCarried?: () => void };
   inert?: boolean;
   className?: string;
 }) {
@@ -201,6 +205,12 @@ export function MaswaliSealLine({ line, size = 24, numbers, idBase, play, inert,
   const fluid = size === 24;
   const markOf = (m: SocketMark): SocketMark => (inert ? "unused" : m);
   const carriedOrder = line.mains.filter((m) => m.standIn).map((m) => m.ordinal);
+  const lastCarried = carriedOrder[carriedOrder.length - 1];
+  // A void main's number is struck in both frames, and — while a reserve may still stand in — keeps the line its reserve's
+  // label takes once it does: the number row never changes height when the week becomes final (How to play's example: the
+  // tap moved the row). A week voided whole keeps none: no reserve will stand in there.
+  const voidCell = (m: MainSocket) => !inert && (!!m.standIn || m.mark === "void");
+  const keepLine = !inert && !line.weekVoid && line.mains.some(voidCell);
   const mainsRow = (
     <span className={cn("relative grid gap-1", fluid ? "grid-cols-10" : "auto-cols-max grid-flow-col")}>
       {line.final && line.unbroken && !inert && fluid && (
@@ -217,7 +227,14 @@ export function MaswaliSealLine({ line, size = 24, numbers, idBase, play, inert,
         return (
           <span key={m.ordinal} className="relative flex justify-center">
             {m.standIn && idBase && !inert ? (
-              <MaswaliCarry from={`${idBase}-a${m.standIn.slice(1)}`} play={play?.carry && line.final} index={carriedOrder.indexOf(m.ordinal)} className="max-w-full">
+              <MaswaliCarry
+                from={`${idBase}-a${m.standIn.slice(1)}`}
+                play={play?.carry && line.final}
+                run={play?.run}
+                index={carriedOrder.indexOf(m.ordinal)}
+                onEnd={m.ordinal === lastCarried ? play?.onCarried : undefined}
+                className="max-w-full"
+              >
                 {glyph}
               </MaswaliCarry>
             ) : glyph}
@@ -226,15 +243,18 @@ export function MaswaliSealLine({ line, size = 24, numbers, idBase, play, inert,
       })}
     </span>
   );
-  // A stood-in main's number is struck, its reserve's label under it (P6): the void shows on the main's own place.
+  // A voided main's number is struck — the strike in the number's own ink (S5-DESIGN-REGISTER M7: the border ink drew it at
+  // ~2.2:1, under §A1's 3:1; the eyebrow's one ink stays the row's, `test:visual-pass-r9c` 3.3) — with its reserve's label
+  // under it once one stands in (P6): the void shows on the main's own place. Before a reserve stands in, that second line
+  // is kept, empty (`keepLine`).
   const mainNumbers = numbers ? (
     <span aria-hidden className="grid grid-cols-10 gap-1">
       {line.mains.map((m) => (
         <span key={m.ordinal} className="flex flex-col items-center text-center font-mono text-micro uppercase eyebrow text-text-subtle tabular-nums">
-          {m.standIn && !inert ? (
+          {voidCell(m) ? (
             <>
-              <s className="decoration-border-strong">{m.ordinal}</s>
-              <span>{m.standIn}</span>
+              <s className="decoration-current">{m.ordinal}</s>
+              {(m.standIn || keepLine) && <span className={m.standIn ? undefined : "invisible"}>{m.standIn ?? reserveLabel(1)}</span>}
             </>
           ) : m.ordinal}
         </span>
@@ -244,15 +264,18 @@ export function MaswaliSealLine({ line, size = 24, numbers, idBase, play, inert,
   const annexRow = (
     <span className={cn("grid gap-1", fluid ? "grid-cols-5" : "auto-cols-max grid-flow-col")}>
       {line.annex.map((r) => (
-        <span key={r.ordinal} id={idBase ? `${idBase}-a${r.ordinal}` : undefined} className="flex flex-col items-center gap-0.5">
-          {r.carriedTo !== undefined && !inert ? (
-            <span className="inline-flex items-center gap-0.5 font-mono text-body-sm leading-none text-text-muted tabular-nums" style={{ height: a }}>
-              <MillioneaGlyph name="standIn" s={a <= 14 ? 12 : 14} />
-              {r.carriedTo}
-            </span>
-          ) : (
-            <SocketGlyph mark={markOf(r.mark)} s={a} />
-          )}
+        <span key={r.ordinal} className="flex flex-col items-center gap-0.5">
+          {/* The glyph box is the carry's origin (`idBase`): its own size is the token's (MaswaliCarry's scale). */}
+          <span id={idBase ? `${idBase}-a${r.ordinal}` : undefined} className="inline-flex">
+            {r.carriedTo !== undefined && !inert ? (
+              <span className="inline-flex items-center gap-0.5 font-mono text-body-sm leading-none text-text-muted tabular-nums" style={{ height: a }}>
+                <MillioneaGlyph name="standIn" s={a <= 14 ? 12 : 14} />
+                {r.carriedTo}
+              </span>
+            ) : (
+              <SocketGlyph mark={markOf(r.mark)} s={a} />
+            )}
+          </span>
           {numbers && <span aria-hidden className="font-mono text-micro uppercase eyebrow text-text-subtle">{reserveLabel(r.ordinal)}</span>}
         </span>
       ))}

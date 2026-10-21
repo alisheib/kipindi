@@ -34,7 +34,7 @@ import { notFound } from "next/navigation";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
 import { BackLink } from "@/components/ui/back-link";
-import { ReceiptRow } from "@/components/ui/receipt-row";
+import { MaswaliLedger } from "@/components/maswali/maswali-ledger";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { I } from "@/components/ui/glyphs";
 import { MaswaliOutcomeStamp } from "@/components/maswali/maswali-outcome-stamp";
@@ -250,20 +250,15 @@ function Substitutions({ t, locale, w, nowMs }: { t: Dict; locale: Locale; w: Mi
   );
 }
 
-/** The week's whole ledger, to the shilling (§10 §3.17; MR-20–MR-25): the rows `registerLedgerRows` builds — each figure the
- *  settlement's own column, in its order (S5-FIX-PLAYER P3, P4, P11) — drawn as the receipt's own rows. */
-function Ledger({ t, w }: { t: Dict; w: MillioneaRegisterWeek }) {
-  const ROW = "gap-3 border-b border-border py-1.5";
-  const rows = registerLedgerRows(t, w);
+/** The week's whole ledger, to the shilling (§10 §3.17; MR-20–MR-26): the shared builder's rows (`registerLedgerRows` →
+ *  `millioneaLedgerRows`) — each figure the settlement's own column, MR-26's identity as two matching totals — drawn by
+ *  the one ledger drawing (`MaswaliLedger`), at the receipt's measure. ⛔ No right lane: the resting Needle and the chat
+ *  control keep clear of the page's text by their own rest rules (the critic's M5), not by a second home here. */
+function Ledger({ t, locale, w }: { t: Dict; locale: Locale; w: MillioneaRegisterWeek }) {
   return (
-    <section aria-labelledby="mln-reg-ledger" className="mat-flat flex flex-col gap-2 rounded-card p-3 pr-[56px] xl:pr-3">
+    <section aria-labelledby="mln-reg-ledger" className="mat-flat flex max-w-receipt flex-col gap-3 rounded-card p-3">
       <h2 id="mln-reg-ledger" className="font-display text-title-sm font-bold text-text">{t.millionea.regLedger}</h2>
-      <div className="flex flex-col border-t border-border">{rows.map((r) => (
-        <div key={r.key}>
-          <ReceiptRow className={ROW} tone={r.tone} emphasis={r.emphasis} label={r.label}
-            value={<span className={r.quiet ? "amount text-text-muted" : "amount"}>{r.value}</span>} />
-        </div>
-      ))}</div>
+      <MaswaliLedger rows={registerLedgerRows(t, locale, w)} />
     </section>
   );
 }
@@ -301,7 +296,7 @@ export default async function MillioneaRegisterWeekPage({ params }: { params: Pr
         </section>
         <Questions t={t} locale={locale} w={w} nowMs={nowMs} />
         <Substitutions t={t} locale={locale} w={w} nowMs={nowMs} />
-        <Ledger t={t} w={w} />
+        <Ledger t={t} locale={locale} w={w} />
         {w.standing && w.standing.length > 0 && (
           <section aria-labelledby="mln-reg-standing" className="flex flex-col gap-2">
             <h2 id="mln-reg-standing" className="font-display text-title-sm font-bold text-text">{t.millionea.regStanding}</h2>
