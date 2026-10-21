@@ -406,7 +406,9 @@ export function MaswaliTicket({
             {notice && <p className="text-body-sm text-text text-pretty">{notice}</p>}
           </div>
           <div className="border-y border-border py-2">
-            {carry || draw ? <MaswaliMoment>{sealLine}</MaswaliMoment> : sealLine}
+            {/* Keyed by the moments it holds: a NEW moment after a refresh mounts a fresh wrapper, held until it is seen —
+                one kept from the moment before it would carry that one's "played" and spend the new one off screen. */}
+            {carry || draw ? <MaswaliMoment key={`seal${carry ? "-carry" : ""}${draw ? "-draw" : ""}`}>{sealLine}</MaswaliMoment> : sealLine}
           </div>
           {/* ONE POLITE REGION, MOUNTED FROM THE FIRST RENDER (the S5 UI review, MEDIUM 6; DESIGN_AUTHORITY §A item 7): a
               region mounted together with its words is often not read, so this one is always there and only its words
@@ -430,8 +432,12 @@ export function MaswaliTicket({
           {reserves.map((c) => <Clause key={`r${c.ordinal}`} t={t} c={c} line={line} inert={inert} press={pressAt(c)} />)}
         </ol>
         {/* The cut and its reverse, the stamp line's reveal and the lock line play when half the stub is in view, never on a
-            mount ~1,700px below the fold (H3). */}
-        {cut || reveal || lock ? <MaswaliMoment>{perforation}{stubBlock}</MaswaliMoment> : <>{perforation}{stubBlock}</>}
+            mount ~1,700px below the fold (H3). Keyed by the moments it holds (H4): the free cancel's reverse cut after the
+            page's refresh is a new moment in a fresh wrapper, held below the fold — never the seen cut's wrapper, which
+            played it at once, off screen (qa:maswali-ticket-moments 3.2). */}
+        {cut || reveal || lock
+          ? <MaswaliMoment key={`stub-${cut ?? "rest"}${reveal ? "-reveal" : ""}${lock ? "-lock" : ""}`}>{perforation}{stubBlock}</MaswaliMoment>
+          : <>{perforation}{stubBlock}</>}
       </article>
     </div>
   );

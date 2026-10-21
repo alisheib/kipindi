@@ -6,6 +6,8 @@ import { BackLinkGhost } from "@/components/ui/back-link";
 import { GhostBar, GhostCard } from "@/components/maswali/maswali-ghost";
 import { freeCancelKnownOpen, ticketSerialOf } from "@/components/maswali/maswali-ghost-hint";
 import { useT } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
+import type { Locale } from "@/lib/i18n-dict";
 
 /** The clauses a phone's first screen holds. */
 const CLAUSES = [0, 1, 2, 3];
@@ -24,8 +26,22 @@ const CLAUSES = [0, 1, 2, 3];
  * ONE DRAWING, TWO READERS: this route's `loading.tsx` and the journey's root loading state. Wordless but for the screen
  * reader's "loading".
  */
+/**
+ * The bands that hold words, at the heights the landed page measured (`qa:maswali-ticket-ghosts`, 2026-10-21; text-body-sm
+ * lines are 18px): the week's live line wraps by language and width — the Swahili facts are the longest — so its bar is
+ * drawn per language, never its words. A running ticket with results in (the drawing's default): Swahili three lines on a
+ * phone and two from `sm`; English and Chinese three at 320, two from 360, one from `sm`. Inside an open week's free cancel:
+ * its two facts, two lines on a phone (Chinese one from 360), one from `sm`; the rule under the button two lines on a phone
+ * in Swahili and English, one in Chinese and from `sm`.
+ */
+const LIVE: Record<"graded" | "open", Record<Locale, string>> = {
+  graded: { sw: "h-[54px] sm:h-[36px]", en: "h-[54px] xs:h-[36px] sm:h-[18px]", zh: "h-[54px] xs:h-[36px] sm:h-[18px]" },
+  open: { sw: "h-[36px] sm:h-[18px]", en: "h-[36px] sm:h-[18px]", zh: "h-[36px] xs:h-[18px]" },
+};
+const RULE: Record<Locale, string> = { sw: "h-[36px] sm:h-[18px]", en: "h-[36px] sm:h-[18px]", zh: "h-[18px]" };
+
 export function MillioneaTicketGhost() {
-  const { t } = useT();
+  const { t, locale } = useT();
   const cancelOpen = freeCancelKnownOpen(ticketSerialOf(usePathname()), Date.now());
   return (
     <PageContainer tier="receipt" className="space-y-5">
@@ -42,20 +58,21 @@ export function MillioneaTicketGhost() {
           </div>
           <GhostBar className="h-[30px] w-[230px] max-w-full" />
         </div>
-        {/* The Seal Line's box: 24px mains, their numbers, the 18px annex and its labels, between its two rules. */}
+        {/* The Seal Line's box: 24px mains, their numbers, the annex and its labels, between its two rules — 108px in an
+            open week, 122px once results are in (a sealed reserve's stamp stands taller than a waiting ring). */}
         <div className="flex flex-col border-y border-border py-2">
           <GhostBar className="h-[24px] w-full" />
           <GhostBar className="mt-0.5 h-[14px] w-full" />
-          <GhostBar className="mt-1.5 h-[18px] w-full" />
+          <GhostBar className={cn("mt-1.5 w-full", cancelOpen ? "h-[18px]" : "h-[32px]")} />
           <GhostBar className="mt-0.5 h-[14px] w-full" />
         </div>
-        <GhostBar className="h-[20px] w-[85%]" />
+        <GhostBar className={cn("w-[85%]", LIVE[cancelOpen ? "open" : "graded"][locale])} />
         {cancelOpen && (
           // The free cancel's door (`MaswaliCancelButton`): its clock line, the button holding its two lines, the rule.
           <div className="flex flex-col gap-1.5" data-ghost-band="free-cancel">
-            <GhostBar className="h-[20px] w-[80%]" />
-            <GhostBar className="h-[48px] w-full rounded-control" />
-            <GhostBar className="h-[20px] w-[70%] self-center" />
+            <GhostBar className="h-[18px] w-[80%]" />
+            <GhostBar className="h-[53px] w-full rounded-control" />
+            <GhostBar className={cn("w-[70%] self-center", RULE[locale])} />
           </div>
         )}
         {CLAUSES.map((i) => (

@@ -998,7 +998,8 @@ const listDefects = (page: string, ticketSrc: string, bar: string) => {
   const placeDefects = (src: string) => {
     const s = squash(code(src));
     const cancelAt = s.indexOf('{cannotWin && <Callout tone="neutral">{t.millionea.cannotWin}</Callout>} {cancel} </div> <ol>'), firstClause = s.indexOf("<Clause ", s.indexOf("return ("));
-    const lineAt = s.indexOf("{carry || draw ? <MaswaliMoment>{sealLine}</MaswaliMoment> : sealLine}");
+    // Re-pinned openly (S5-DESIGN-TICKETS H4): the Seal Line's moment is keyed by the moments it holds.
+    const lineAt = s.indexOf("{carry || draw ? <MaswaliMoment key=");
     return cancelAt > 0 && lineAt > 0 && cancelAt < firstClause && cancelAt > lineAt ? [] : ["the free cancel waits under the fifteen clauses"];
   };
   ok("4.P12 · a pending ticket's free cancel stands in its head, under the Seal Line — on the first screen (the stamp promised \"Free cancel until 11:18\")", placeDefects(read(TICKET)).length === 0);

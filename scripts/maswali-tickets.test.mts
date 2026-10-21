@@ -654,6 +654,12 @@ check("19.1", "a reserve whose result is in, before the week is final, shows the
 });
 
 // ── §20 · L14 ───────────────────────────────────────────────────────────────────────────────────────────────────────
+check("6.4", "H4 · a moment wrapper is keyed by the moments it holds — the stub's (cut, undo, reveal, lock) and the Seal Line's (carry, draw) — so a new moment after a refresh mounts fresh and waits to be seen (qa:maswali-ticket-moments 3.2: the reverse cut once played at once, off screen, in the seen cut's wrapper)", (w) => {
+  const c = code(w, "ticket"), d: string[] = [];
+  need(d, c.includes("<MaswaliMoment key={`stub-${cut ?? \"rest\"}${reveal ? \"-reveal\" : \"\"}${lock ? \"-lock\" : \"\"}`}>{perforation}{stubBlock}</MaswaliMoment>"), "the stub's moment is not keyed by its moments");
+  need(d, c.includes("<MaswaliMoment key={`seal${carry ? \"-carry\" : \"\"}${draw ? \"-draw\" : \"\"}`}>{sealLine}</MaswaliMoment>"), "the Seal Line's moment is not keyed by its moments");
+  return d;
+});
 check("20.1", "L14 · the lock line performs once after the week's RECORDED close: the read model's \"close\" fact (a ticket bought before it and not cancelled by it; none without a recorded close), the page's `lock` from it, `.m-seal` on the stub's lock line inside the stub's moment", (w) => {
   const pl = code(w, "player"), d: string[] = [];
   need(d, pl.includes('if (week.closedAt && Date.parse(t.createdAt) < Date.parse(week.closedAt) && !(t.cancelledAt && Date.parse(t.cancelledAt) <= Date.parse(week.closedAt))) facts.push({ kind: "close", at: week.closedAt });'), "the read model has no close fact on the recorded close");
@@ -673,7 +679,7 @@ check("21.1", "the ghosts stand where the page lands: Tiketi zangu's head draws 
   const boxes = (kinds?: number) => count(renderToStaticMarkup(h(TicketsHeadGhost as never, { t: REAL.dict.en, ...(kinds ? { kinds } : {}) } as never)), "h-[44px] w-[96px]");
   need(d, boxes() === 2 && boxes(2) === 2 && boxes(3) === 3, `boxes: default ${boxes()}, 2 → ${boxes(2)}, 3 → ${boxes(3)}`);
   const g = code(w, "ticketGhost");
-  need(d, g.includes('<div className="flex flex-col border-y border-border py-2"> <GhostBar className="h-[24px] w-full" /> <GhostBar className="mt-0.5 h-[14px] w-full" /> <GhostBar className="mt-1.5 h-[18px] w-full" /> <GhostBar className="mt-0.5 h-[14px] w-full" /> </div>'), "the ticket ghost's Seal Line box is not the real one's bands");
+  need(d, g.includes('<div className="flex flex-col border-y border-border py-2"> <GhostBar className="h-[24px] w-full" /> <GhostBar className="mt-0.5 h-[14px] w-full" /> <GhostBar className={cn("mt-1.5 w-full", cancelOpen ? "h-[18px]" : "h-[32px]")} /> <GhostBar className="mt-0.5 h-[14px] w-full" /> </div>'), "the ticket ghost's Seal Line box is not the real one's bands (108px in an open week, 122px with results in — measured)");
   return d;
 });
 
@@ -733,7 +739,7 @@ check("24.2", "M9 · the ticket's loading drawing draws the free cancel's band (
     return [draw("/millionea/tickets/MLN-2026-W49-000088"), draw("/millionea/tickets/MLN-2026-W49-000090"), draw("/millionea/tickets"), draw("/millionea/tickets/MLN-2026-W49-000089")];
   });
   const served = draw("/millionea/tickets/MLN-2026-W49-000088");
-  need(d, count(open, BAND) === 1 && /data-ghost-band="free-cancel"><span[^>]*h-\[20px\][^>]*><\/span><span[^>]*h-\[48px\] w-full[^>]*><\/span><span[^>]*h-\[20px\]/.test(open), "the band is not drawn, or not its three parts, when the door noted the window open");
+  need(d, count(open, BAND) === 1 && /data-ghost-band="free-cancel"><span[^>]*h-\[18px\][^>]*><\/span><span[^>]*h-\[53px\] w-full[^>]*><\/span><span[^>]*h-\[36px\] sm:h-\[18px\]/.test(open), "the band is not drawn, or not its three parts, when the door noted the window open");
   need(d, ![other, list, past, served].some((m) => m.includes(BAND)), "the band is drawn for a ticket no door noted, past its window, or on the server's paint");
   const card = code(w, "ticket"), list2 = code(w, "list");
   need(d, count(card, "{cancelUntil !== undefined && <MaswaliGhostHint serial={serial} cancelUntil={cancelUntil} />}") === 2, "the card and the held row do not both note the window they are handed");
@@ -781,7 +787,8 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["M10 undone — a danger refusal that fades", "4.2", plantSrc("acts", ', ...(variant === "danger" ? { durationMs: 0 } : null)', "")],
   ["the refusal titled with the button's verb", "4.2", plantSrc("acts", "toast({ title: t.millionea.cancelRefusedTitle,", "toast({ title: t.millionea.confirmCancel,")],
   ["H4 undone — the result back inside the door", "5.1", plantSrc("acts", "      <ConfirmModal\n", "      <OperationResultModal open={false} variant=\"neutral\" title=\"\" onClose={() => {}} />\n      <ConfirmModal\n")],
-  ["H3 undone — the stub unwrapped", "6.1", plantSrc("ticket", "{cut || reveal || lock ? <MaswaliMoment>{perforation}{stubBlock}</MaswaliMoment> : <>{perforation}{stubBlock}</>}", "<>{perforation}{stubBlock}</>")],
+  ["H3 undone — the stub unwrapped", "6.1", plantSrc("ticket", "? <MaswaliMoment key={`stub-${cut ?? \"rest\"}${reveal ? \"-reveal\" : \"\"}${lock ? \"-lock\" : \"\"}`}>{perforation}{stubBlock}</MaswaliMoment>", "? <>{perforation}{stubBlock}</>")],
+  ["H4 — the stub's wrapper kept across a new moment (no key)", "6.4", plantSrc("ticket", "<MaswaliMoment key={`stub-${cut ?? \"rest\"}${reveal ? \"-reveal\" : \"\"}${lock ? \"-lock\" : \"\"}`}>", "<MaswaliMoment>")],
   ["the hold rule gone", "6.2", plantSrc("css", "    animation-play-state: paused;\n", "")],
   ["the mount-time mark back", "6.3", plantSrc("acts", "export function TicketCancel(", "export function TicketSeen() { return null; }\nexport function TicketCancel(")],
   ["L2 undone — the count ticking on its first paint", "7.1", plantSrc("ticket", '<MaswaliTick key="in" value={live.resultsIn}>{keepFact(locale, fill(t.millionea.resultsOut, { n: formatNumber(live.resultsIn) }))}</MaswaliTick>', '<span key="in" className="m-tick">{keepFact(locale, fill(t.millionea.resultsOut, { n: formatNumber(live.resultsIn) }))}</span>')],
@@ -811,9 +818,11 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["L13 undone — a sealed reserve still the open ring", "19.1", plantSrc("seal", 'out === "YES" || out === "NO" ? "sealed" : "standby"', '"standby"')],
   ["L14 undone — no close fact (the lock moment dead again)", "20.1", plantSrc("player", ' facts.push({ kind: "close", at: week.closedAt });', " void 0;")],
   ["L14 — the scheduled close instead of the recorded one", "20.1", plantSrc("player", 'facts.push({ kind: "close", at: week.closedAt });', 'facts.push({ kind: "close", at: week.closesAt });')],
-  ["L14 — the lock line outside the stub's moment", "20.1", plantSrc("ticket", "{cut || reveal || lock ? <MaswaliMoment>", "{cut || reveal ? <MaswaliMoment>")],
+  ["L14 — the lock line outside the stub's moment", "20.1", plantSrc("ticket", "{cut || reveal || lock
+", "{cut || reveal
+")],
   ["M9 undone — the head ghost ignores its kinds", "21.1", plantSrc("headGhost", "        {kinds === 3 && <div className=\"h-[44px] w-[96px] rounded-md bg-bg-overlay kp-shimmer-track\" />}\n", "")],
-  ["M9 undone — the 70px Seal Line ghost", "21.1", plantSrc("ticketGhost", '          <GhostBar className="mt-1.5 h-[18px] w-full" />\n', "")],
+  ["M9 undone — the 70px Seal Line ghost", "21.1", plantSrc("ticketGhost", '          <GhostBar className={cn("mt-1.5 w-full", cancelOpen ? "h-[18px]" : "h-[32px]")} />\n', "")],
   ["round 2 undone — the gold rows after the totals", "23.1", plantSrc("ledger", "  const at = rows.findIndex((r) => r.key === \"share\");", "  const at = rows.length - 1;")],
   ["round 2 undone — a ledger drawn without final money", "23.1", plantSrc("page", "              {ledgerRows && (\n", "              {(\n")],
   ["round 2 — a drive week's carries linked to the public register", "23.1", plantSrc("page", '{ links: view.week.visibility === "PUBLIC" && gate.visible }', "{ links: true }")],

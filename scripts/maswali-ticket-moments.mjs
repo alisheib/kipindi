@@ -135,7 +135,8 @@ const stubState = (page) => page.evaluate(() => {
   const tickedFirst = await page.evaluate(() => !!document.querySelector('[data-testid="millionea-ticket-live"] .m-tick'));
   await seed({ step: "seal", week: info.weeks.results, slot: 5, outcome: "YES" });
   await page.evaluate(() => window.dispatchEvent(new Event("50pick:refresh")));
-  await page.waitForFunction((was) => document.querySelector('[data-testid="millionea-ticket-live"]')?.textContent !== was, first, { timeout: 30_000 }).catch(() => {});
+  // The same reading on both sides (innerText): a textContent read differs from it at once, so "changed" proved nothing.
+  await page.waitForFunction((was) => document.querySelector('[data-testid="millionea-ticket-live"]')?.innerText !== was, first, { timeout: 30_000 }).catch(() => {});
   const second = await live.innerText();
   const ticked = await page.evaluate(() => document.querySelectorAll('[data-testid="millionea-ticket-live"] .m-tick').length);
   ok("4.1 · L2 · the count ticks once when a result arrives, and never on the first paint", !tickedFirst && second !== first && ticked === 1, JSON.stringify({ first, second, ticked, tickedFirst }));

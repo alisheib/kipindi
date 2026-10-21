@@ -54,8 +54,9 @@ export function MillioneaTicketsGhost({ journeyHead }: { journeyHead?: ReactNode
               <GhostBar className="h-[20px] w-[96px]" />
             </div>
             <div className="mt-3 grid grid-cols-[minmax(max-content,2fr)_minmax(0,3fr)] gap-3">
-              <GhostBar className="h-[42px] w-[96px]" />
-              <GhostBar className="h-[42px] w-full" />
+              {/* The price and the payout: a micro label over an xs figure (the Stat's own rung) — 26px, measured. */}
+              <GhostBar className="h-[26px] w-[96px]" />
+              <GhostBar className="h-[26px] w-full" />
             </div>
             <div className="mt-3 flex flex-col gap-1">
               <GhostBar className="h-[20px] w-[172px] max-w-full" />
