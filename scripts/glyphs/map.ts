@@ -349,6 +349,9 @@ export const DUO_KEYS: readonly string[] = [
   "trade", "listChecks", "coins",
   // the KYC page's document plates, the 404's doors
   "camera", "info", "markets",
+  // MASWALI-BUILD S5-DESIGN-DOORS (the critics' R1-doors M4): the Millionea card's identity plate, on the journey home and
+  // the board — the product mark in Duotone there, as every identity plate draws its key (the rail keeps its Bold and Fill).
+  "millionea",
 ];
 
 /**
