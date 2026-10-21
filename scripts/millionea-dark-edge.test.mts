@@ -17,6 +17,7 @@
  *      for that reader alone; the root loading file hands the answer only while true
  *   §7 D7 · the leaderboard makes ONE positions read per row, tickets left out by the read (both stores' behaviour:
  *      `test:maswali-player` §11)
+ *   §8 D8 · the rulebook names the bar's More panel, opaque for every reader, as the one ruled classic change
  * Every section carries its PLANT: the check run on a copy with the fix undone, seen to fail.
  * The HTTP proof — `next start`, a dark address beside its unknown twin, status, header set and body — is qa:live's
  * dark section (`scripts/live/millionea-dark.mjs`) and the lane's probe, reported with the commit.
@@ -343,6 +344,28 @@ const boardDefects = (src: string) => {
     dal.includes("listScoredForUser(userId: string, limit?: number): Promise<StoredPosition[]>;")
       && dal.includes('.filter((p) => p.userId === userId && storedProductLine(markets.get(p.marketId)?.productLine) !== "MASWALI") .sort((a, b) => b.placedAt.localeCompare(a.placedAt)) .slice(0, limit);')
       && dal.includes('where: { userId, market: { productLine: { not: "MASWALI" } } }, orderBy: { placedAt: "desc" }, take: limit,'));
+}
+
+/* ══ §8 · D8 · THE RULEBOOK TELLS THE TRUTH ══════════════════════════════════════════════════════════════════════════ */
+section("8 · D8 · §M8a item 11 names the bar's More panel, opaque for every reader, as the one change it rules for classic chrome");
+const daDefects = (da: string, navMore: string) => {
+  const d: string[] = [];
+  const at = da.indexOf("11. **Placement: Millionea's own tab");
+  const item = squash(at < 0 ? "" : da.slice(at, da.indexOf("12. **Icons are Phosphor", at)));
+  if (!item) d.push("item 11 not found");
+  if (/every nav is byte-identical/.test(item)) d.push("item 11 still says every nav is byte-identical while WITHDRAWN");
+  if (!item.includes("with one ruled change that every reader gets: the classic bar's More panel is opaque")) d.push("item 11 does not name the ruled classic change where it speaks of WITHDRAWN");
+  if (!item.includes("The bar's panel is opaque for EVERY reader, Millionea shown or not: the one change to the classic chrome this item rules")) d.push("item 11's panel sentence does not say it applies to every reader");
+  const bar = squash(decomment(navMore));
+  if (!bar.includes('className="absolute right-0 top-[calc(100%+6px)] z-[50] min-w-[190px] rounded-modal border border-border-strong bg-bg-elevated p-1 shadow-overlay"')) d.push("premise: the bar's More panel is not the opaque surface");
+  return d;
+};
+{
+  const DA = raw("docs/DESIGN_AUTHORITY.md"), NAV = raw("src/components/layout/nav-more.tsx");
+  ok("8.1 · item 11 no longer calls every nav byte-identical; it names the bar's More panel, opaque for every reader, as the ruled classic change (and the panel is opaque)",
+    daDefects(DA, NAV).length === 0, daDefects(DA, NAV).join(" | "));
+  const before = DA.replace("while WITHDRAWN every nav draws what it drew before Millionea, with\n    one ruled change that every reader gets: the classic bar's More panel is opaque, below)", "while WITHDRAWN every nav is byte-identical to before)");
+  ok("8.1′ PLANT · the S5 sentence (\"while WITHDRAWN every nav is byte-identical to before\") is reported", before !== DA && daDefects(before, NAV).some((x) => x.includes("byte-identical")));
 }
 
 console.log(`\nmillionea-dark-edge: ${pass} passed, ${fails.length} failed`);
