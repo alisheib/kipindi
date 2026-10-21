@@ -135,7 +135,8 @@ async function runEngine(engineName, launcher, plant) {
 
     // ── CLASSIC · the top bar's balance capsule (sticky at the top) → the wallet sheet → "Funga" — on the slip's long page
     //    and on a classic page, /markets, when its board is long enough to scroll ───────────────────────────────────────
-    const capsule = page.getByTestId("wallet-balance-capsule");
+    // The opener is the capsule's BUTTON (`aria-haspopup="dialog"`): the test id sits on its wrapper, which takes no focus.
+    const capsule = page.getByTestId("wallet-balance-capsule").locator('button[aria-haspopup="dialog"]');
     const wallet = () => page.locator('[role="dialog"]').filter({ has: page.getByTestId("wallet-sheet") });
     const funga = () => wallet().getByRole("button", { name: "Funga" });
     for (const [where_, path] of [["the slip", null], ["/markets", "/markets"]]) {
@@ -174,15 +175,25 @@ for (const [name, launcher] of ENGINES) {
     if (r.openerHeldFocus) ok(`${name} · ${r.label} · focus is back on the opener`, r.backOnOpener);
   }
   if (PROVE_RED) {
+    // ⚠️ THE JUMP IS AN ENGINE'S. Blink scrolls a focused element that the lock has unstuck into view; WebKit, measured
+    // here 2026-10-21, keeps the page still even with the plant — so WebKit's planted cases are reported, and only an
+    // engine that jumps at all is held to catching every case.
     const red = await runEngine(name, launcher, true);
+    let jumpedHere = 0;
     for (const r of red ?? []) {
-      planted++;
       const jumped = Math.abs(r.after.y - r.before.y) > 1;
-      log(`${name} · PLANT (every focus scrolls) · ${r.label}: scrollY ${r.before.y} → ${r.after.y} · ${jumped ? "CAUGHT" : "not caught"}`);
-      if (jumped) caught++;
+      log(`${name} · PLANT (every focus scrolls) · ${r.label}: scrollY ${r.before.y} → ${r.after.y} · ${jumped ? "CAUGHT" : "no jump in this engine"} · focus back on the opener: ${r.backOnOpener}`);
+      if (jumped) jumpedHere++;
+    }
+    if (jumpedHere > 0) {
+      planted += (red ?? []).length;
+      caught += jumpedHere;
+      ok(`${name} · RED CONTROL · every planted case jumps (${jumpedHere}/${(red ?? []).length})`, jumpedHere === (red ?? []).length);
+    } else {
+      log(`${name} · RED CONTROL · this engine never moves the page on that focus, planted or not: nothing for the plant to show here`);
     }
   }
 }
 
-log(`\nqa:dialog-way-back: ${pass} passed, ${fail} failed${PROVE_RED ? ` · RED CONTROL — ${caught}/${planted} planted cases jumped` : ""}`);
-process.exit(fail === 0 && (!PROVE_RED || caught > 0) ? 0 : 1);
+log(`\nqa:dialog-way-back: ${pass} passed, ${fail} failed${PROVE_RED ? ` · RED CONTROL — ${caught}/${planted} planted cases jumped (in the engines that jump)` : ""}`);
+process.exit(fail === 0 && (!PROVE_RED || (planted > 0 && caught === planted)) ? 0 : 1);
