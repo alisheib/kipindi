@@ -29,10 +29,15 @@ import type { Dict, Locale } from "@/lib/i18n-dict";
  * fit moving whole — never a separator at a line's start or end, never "13% fee" / "at payout".
  * ⭐ ITS HOST'S MATERIAL (L2): on the journey home the How-to card's own flat box and inset (`--journey`: `--bg-elevated`,
  * its border, 12px with 14px at the chevron's side), on the board the market card's raised material and inset (`--board`:
- * `mat-raised`, 12px, 16px across from 640, as `.mcardp`). One hover on both, the How-to card's (M5): the border turns
- * `--border-royal`.
+ * `mat-raised`, 12px, 16px across from 640, as `.mcardp`). Each host's own hover (M5; the motion critic's L5): at home the
+ * How-to card's — the border turns `--border-royal` — and on the board every board card's — lifted `--m-lift` with the
+ * brand ring.
  * ⭐ ITS NAME IS ITS TITLE AND ITS FIGURE (L11): `aria-labelledby` names the title and the figure, `aria-describedby` the
- * rest, so a screen reader hears "Millionea · Week 49, Jackpot at least TZS 1,000,000" and not all forty-five words.
+ * rest, so a screen reader hears "Millionea · Week 49, Jackpot at least TZS 1,000,000" and not all forty-five words. A
+ * figure not read (before sales, while paused) is the house's missing-value mark, drawn as quietly as the hub's pool block
+ * draws it (muted, regular weight) and read with the rest, never as the card's name.
+ * ⭐ EVERY STATE LINE OPENS AS A SENTENCE OPENS (the tile read of 2026-10-21): "No 10/10 · TZS 601,000 carried forward", as
+ * "Week voided · …" and "Sales closed · …" — the hub's lower-case line ("Week 46 · no 10/10 · …") follows its week word.
  * ⛔ AN UNEARNED SURFACE (§M8a item 7): no gold on the figure, the plate or anything else. ⛔ A SERVER COMPONENT WITH NO
  * COUNTDOWN AND NO POLL: its figure is the render's (§3.1), and the close is printed as a time, never counted down (the
  * countdown lives on the slip and the hub's buy block only). ⛔ ON A BREAK (cooling-off or self-exclusion,
@@ -75,6 +80,13 @@ export function doorTime(t: Dict, atMs: number): ReactNode {
   return <span className="whitespace-nowrap">{eatWeekday(t, atMs)} <span className="mono">{eatClock(atMs)}</span></span>;
 }
 
+/** "Monday 23 Nov" / "周一 2026年11月23日": a printed day set as `doorTime` sets a time (§T5, the same ruling) — its words in
+ *  the sentence's face, each number a `.mono` numeral, the whole never parted (the presale's date, L10). */
+export function doorDay(t: Dict, locale: Locale, weekday: string, dayKey: string): ReactNode {
+  const parts = formatEatDay(dayKey, t.common.monthsShort, locale).split(/(\d+)/);
+  return <span className="whitespace-nowrap">{weekday} {parts.map((p, i) => (i % 2 === 1 ? <span key={i} className="mono">{p}</span> : p))}</span>;
+}
+
 export function MaswaliHomeCard({ t, locale, week, jackpot, pct, cap, state, finalWeek, atLeast = false, pendingWeek = null, preview = false, host = "board", href = "/millionea", idBase = "mln-card", className }: {
   t: Dict;
   /** The reader's language: the fact lines keep its phrases whole (`keepFact`), and a date reads its way. */
@@ -103,26 +115,26 @@ export function MaswaliHomeCard({ t, locale, week, jackpot, pct, cap, state, fin
 }) {
   const figure = jackpot === null ? "—" : formatTzs(jackpot);
   // The figure as one unbreakable run in the money face, at the body's large rung at every width (L3); "at least" around it
-  // while the carry is pending (§M8a item 9).
+  // while the carry is pending (§M8a item 9). A figure not read is the house's dash at the same rung (no line moves), in the
+  // muted ink and regular weight the hub's pool block gives it — it said nothing as the line's heaviest mark.
   const amount = (() => {
+    if (jackpot === null) return <span className="amount text-body-lg text-text-muted">{figure}</span>;
     const run = <span className="amount text-body-lg font-semibold text-text">{figure}</span>;
     return jackpot !== null && atLeast ? fillNodes(t.millionea.atLeast, { amount: run }) : run;
   })();
   const pending = jackpot !== null && pendingWeek !== null ? fill(t.millionea.pendingCarry, { week: pendingWeek }) : null;
   // ⛔ A WEEK BEING VOIDED OR VOIDED SHARES NO JACKPOT (the S5 UI review, MEDIUM 7), AND A WEEK NOBODY WON STATES NONE (the
   // critic's M6: "Jackpot —" over the live rule read as a jackpot still to share): no figure and no "shared equally by every
-  // 10/10 ticket" rule — the state's own words alone ("no 10/10 · TZS 601,000 carried forward").
+  // 10/10 ticket" rule — the state's own words alone ("No 10/10 · TZS 601,000 carried forward").
   const noHeadline = state.kind === "voiding" || state.kind === "voided" || state.kind === "settledRollover";
   const keep = (s: string, runs: readonly string[] = []) => keepFact(locale, s, runs);
   /** A dictionary line of facts, each kept whole. */
   const factsIn = (line: string) => factsOf(line).map((f) => keep(f));
   let meta: ReactNode[] = [];
   switch (state.kind) {
-    case "presale": {
-      const day = `${state.opensOn} ${formatEatDay(state.opensDay, t.common.monthsShort, locale)}`;
-      meta = [keep(fill(t.millionea.opensOn, { day }), [day])];
+    case "presale":
+      meta = [<span key="opens">{fillNodes(t.millionea.opensOn, { day: doorDay(t, locale, state.opensOn, state.opensDay) })}</span>];
       break;
-    }
     case "open":
       // "Tiketi zako wiki hii: 10 kati ya 10" — never "Tiketi zako 10/10" under "kila tiketi ya 10/10", which reads as a
       // perfect ticket (the S5 UI review, LOW 12). A reader who holds none is told the price instead (M7).
@@ -152,7 +164,8 @@ export function MaswaliHomeCard({ t, locale, week, jackpot, pct, cap, state, fin
       meta = [keep(counted(state.winners, t.millionea.regWonOne, t.millionea.regWon))];
       break;
     case "settledRollover":
-      meta = factsIn(fill(t.millionea.settledRollover, { amount: formatTzs(state.carried) }));
+      // The hub's words (`settledRollover`, which follows "Week 46 · "), opening the line as a sentence opens.
+      meta = factsIn(fill(t.millionea.weekRolledShort, { amount: formatTzs(state.carried) }));
       break;
     case "paused":
       meta = [t.millionea.pausedShort];
@@ -175,10 +188,13 @@ export function MaswaliHomeCard({ t, locale, week, jackpot, pct, cap, state, fin
     ...rule.slice(at + 1).map((f) => keep(fill(f, { pct }))),
   ];
   const headIds = headline.map((f, i) => (f === null || i === at ? undefined : `${idBase}-h${i}`));
-  // Its name: the title and the figure. Its description: everything else that is drawn, in order.
-  const labelledBy = [`${idBase}-title`, headline.length > 0 ? `${idBase}-figure` : null].filter(Boolean).join(" ");
+  // Its name: the title and the figure. Its description: everything else that is drawn, in order — the dash of a figure not
+  // read among it, never in the name.
+  const named = headline.length > 0 && jackpot !== null;
+  const labelledBy = [`${idBase}-title`, named ? `${idBase}-figure` : null].filter(Boolean).join(" ");
   const describedBy = [preview ? `${idBase}-preview` : null, finalWeek ? `${idBase}-final` : null,
-    ...headIds.filter((id): id is string => id !== undefined), `${idBase}-state`].filter(Boolean).join(" ");
+    ...headIds.map((id, i) => (i === at && headline.length > 0 && !named ? `${idBase}-figure` : id)).filter((id): id is string => id !== undefined),
+    `${idBase}-state`].filter(Boolean).join(" ");
   return (
     <Link
       href={href as never}
@@ -201,7 +217,7 @@ export function MaswaliHomeCard({ t, locale, week, jackpot, pct, cap, state, fin
             </Chip>
           )}
         </span>
-        {finalWeek && <span id={`${idBase}-final`} className="text-body-sm text-text-muted">{t.millionea.finalWeek}</span>}
+        {finalWeek && <span id={`${idBase}-final`} className="text-body-sm text-text-muted">{keep(t.millionea.finalWeek)}</span>}
       </span>
       {headline.length > 0 && (
         <span className="kp-mln-door__rule text-body-sm text-text-muted">

@@ -3475,6 +3475,9 @@ export const dict = {
       settledWon: "Week {week}: {n} tickets won",
       settledWonOne: "Week {week}: 1 ticket won",
       settledRollover: "no 10/10 · {amount} carried forward",
+      // S5-DESIGN-DOORS (Ali 2026-10-21 10/10 pass) · the card's line for a week nobody won: the hub's words above, opening the
+      // card's state line as a sentence opens (the hub's follows "Week 46 · ").
+      weekRolledShort: "No 10/10 · {amount} carried forward",
       sunsetScore: "Highest score this week: {score} of 10 · {n} tickets",
       sunsetScoreOne: "Highest score this week: {score} of 10 · 1 ticket",
       // The slip (/millionea/slip), its confirm and its result.
@@ -6370,6 +6373,7 @@ export const dict = {
       settledWon: "Wiki {week}: tiketi {n} zilishinda",
       settledWonOne: "Wiki {week}: tiketi 1 ilishinda",
       settledRollover: "hakuna 10/10 · {amount} imehamishwa",
+      weekRolledShort: "Hakuna 10/10 · {amount} imehamishwa",
       sunsetScore: "Alama ya juu wiki hii: {score} kati ya 10 · tiketi {n}",
       sunsetScoreOne: "Alama ya juu wiki hii: {score} kati ya 10 · tiketi 1",
       slipTitle: "Jaza tiketi · Wiki {week}",
@@ -9217,6 +9221,7 @@ export const dict = {
       settledWon: "第{week}周：{n} 张彩票中奖",
       settledWonOne: "第{week}周：1 张彩票中奖",
       settledRollover: "无 10/10 · {amount} 滚存至下周",
+      weekRolledShort: "无 10/10 · {amount} 滚存至下周",
       sunsetScore: "本周最高分：10 题中 {score} 题 · {n} 张彩票",
       sunsetScoreOne: "本周最高分：10 题中 {score} 题 · 1 张彩票",
       slipTitle: "填写彩票 · 第{week}周",

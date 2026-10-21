@@ -7,11 +7,13 @@
  *   §1 the card, every state its model draws, in en, sw and zh, on both hosts (the journey home, the classic board) —
  *      rendered by the card itself from the card's own model (`scripts/lib/maswali-door-fixtures.mts`), never re-drawn:
  *      M2 one order · M3 zh tickets · M4 the identity plate · M6 no jackpot after a rollover · M7 the price to a reader
- *      who holds none · L3 the figure's rung · L5 zh headline · L7 a time in the body face · L8 paused words · L9 the
- *      register's won words · L10 the presale's date · L11 its name and description · L12 the preview chip · P6 the
- *      objection window · L2 each host's box
- *   §2 its loading picture (H1): the ghost is the card's anatomy and the common card's words, hidden over bars; the journey
- *      home's ghost and the board's draw it where the card lands, and only when told the card will be offered
+ *      who holds none · L3 the figure's rung · L5 zh headline · L7 a time's numerals `.mono`, its words the body's · L8
+ *      paused words · L9 the register's won words · L10 the presale's date, its numerals `.mono` · L11 its name and
+ *      description · L12 the preview chip · P6 the objection window · L2 each host's box · and the tile read of 2026-10-21:
+ *      every state line opening as a sentence opens, a figure not read drawn as the hub's quiet dash, the final week's line
+ *      never ending on a connective
+ *   §2 its loading picture (H1): the ghost is the card's anatomy and the common card's words, hidden over bars but for its
+ *      name; the journey home's ghost and the board's draw it where the card lands, and only when told the card is offered
  *   §3 the stylesheet: the door's one anatomy per width, its hover, the ghost's hidden words
  *   §4 controls: each check above is shown failing on a planted copy
  * The browser half — the ghost's box against the card's at 320/360/768/1280 in three languages, and every state shot — is
@@ -113,7 +115,7 @@ const plateDefects = (m: string) => {
   const leaked = LOCALES.flatMap((l) => noRule.filter((n) => ruleOf(card(l, n)) !== "" || textOf(card(l, n)).includes(dict[l].millionea.ruleWithFigure.split(" · ")[1])).map((n) => `${l}: ${n}`));
   const carried = LOCALES.filter((l) => !textOf(stateOf(card(l, "settled · no 10/10"))).includes(formatTzs(601_000)));
   const won = LOCALES.filter((l) => ruleOf(card(l, "settled · 3")) === "");
-  ok("1.4 · M6 · a week nobody won draws no \"Jackpot —\" and no live rule — only its own line (\"no 10/10 · TZS 601,000 carried forward\") — nor does a void; CONTROL: a won week keeps its headline",
+  ok("1.4 · M6 · a week nobody won draws no \"Jackpot —\" and no live rule — only its own line (\"No 10/10 · TZS 601,000 carried forward\") — nor does a void; CONTROL: a won week keeps its headline",
     leaked.length === 0 && carried.length === 0 && won.length === 0, j({ leaked, carried, won }));
 }
 
@@ -150,6 +152,18 @@ const timeDefects = (l: L, state: string) => {
   ok("1.8′ PLANT · the old all-mono run, and an all-body-face one, are both reported",
     timeDefects("en", '<span class="whitespace-nowrap font-mono">Friday 18:00</span>').length > 0 && timeDefects("en", '<span class="whitespace-nowrap tabular-nums">Friday 18:00</span>').length > 0);
 }
+/** An instant's run (`doorTime`, `doorDay`): one unparted run whose every number is a `.mono` numeral and whose words are not. */
+const instantDefects = (state: string) => {
+  // the run that holds a numeral (a kept phrase is a nowrap run too: "Matokeo 15 kati ya 15 yametolewa")
+  const at = state.search(/<span class="whitespace-nowrap">[^<]*<span class="mono">/);
+  const run = at < 0 ? "" : elementAt(state.slice(at), 'class="whitespace-nowrap"');
+  if (run === "") return ["no instant run"];
+  const d: string[] = [];
+  const monos = [...run.matchAll(/<span class="mono">([^<]*)<\/span>/g)].map((m) => m[1]);
+  if (monos.length === 0 || monos.some((x) => !/^[\d:]+$/.test(x))) d.push(`numerals ${j(monos)}`);
+  if (/\d/.test(textOf(run.replace(/<span class="mono">[^<]*<\/span>/g, "")))) d.push(`a number in the body face: "${textOf(run)}"`);
+  return d;
+};
 
 // L8 · paused says what is paused; L9 · the register's won words; L10 · the presale's date.
 {
@@ -161,6 +175,9 @@ const timeDefects = (l: L, state: string) => {
   const DATE: Record<L, string> = { en: "Opens Monday 23 Nov", sw: `Inafunguliwa Jumatatu 23 ${dict.sw.common.monthsShort[10]}`, zh: "周一 2026年11月23日开放" };
   const presale = LOCALES.filter((l) => textOf(stateOf(card(l, "presale"))) !== DATE[l]);
   ok("1.11 · L10 · the presale names the day AND its date (the next open is always within seven days: a bare \"Opens Monday\" read on a Monday could mean today)", presale.length === 0, j(LOCALES.map((l) => textOf(stateOf(card(l, "presale"))))));
+  const faces = LOCALES.flatMap((l) => HOSTS.flatMap((h) => ["presale", "open · no ticket", "closed · 15 of 15, objection"].flatMap((n) => instantDefects(stateOf(card(l, n, h))).map((x) => `${l} ${h} ${n}: ${x}`))));
+  ok("1.11′ · L10 · §T5 · every instant the card prints is one unparted run, its numbers `.mono` numerals and its words the sentence's — the presale's date as the close's time (the lead's ruling): \"Monday 23 Nov\" with \"23\" a numeral, zh \"周一 2026年11月23日\" with 2026, 11 and 23",
+    faces.length === 0, faces.slice(0, 3).join(" | "));
 }
 
 // L11 · its name is the title and the figure; its description the rest.
@@ -180,6 +197,15 @@ const nameDefects = (l: L, m: string) => {
   const d = LOCALES.flatMap((l) => nameDefects(l, card(l, "open · no ticket")).map((x) => `${l}: ${x}`));
   const voidName = LOCALES.filter((l) => /aria-labelledby="mln-card-title"/.test(card(l, "voiding")) === false);
   ok("1.12 · L11 · the link's name is its title and its figure (\"Millionea · Week 47 Jackpot TZS 1,000,000\"), its description the rest — every id it names is drawn; a void's name is its title alone", d.length === 0 && voidName.length === 0, d.join(" | "));
+}
+/** A figure not read names nothing: the name is the title alone, the dash read first in the description. */
+const dashNameDefects = (m: string) => {
+  const by = /aria-labelledby="([^"]*)"/.exec(m)?.[1], desc = /aria-describedby="([^"]*)"/.exec(m)?.[1]?.split(" ") ?? [];
+  return by === "mln-card-title" && desc[0] === "mln-card-figure" && desc.includes("mln-card-state") && m.includes('id="mln-card-figure"') ? [] : [`${by} / ${j(desc)}`];
+};
+{
+  const d = LOCALES.flatMap((l) => HOSTS.flatMap((h) => ["presale", "paused"].flatMap((n) => dashNameDefects(card(l, n, h)).map((x) => `${l} ${h} ${n}: ${x}`))));
+  ok("1.12′ · L11 · a figure not read names nothing: before sales and while paused the link's name is its title alone (\"Millionea · Week 48\", never \"… Jackpot —\") and the dash is read first in its description", d.length === 0, d.join(" | "));
 }
 
 // L12 · the preview's chip, only at STAFF_PREVIEW.
@@ -220,10 +246,40 @@ const nameDefects = (l: L, m: string) => {
   ok("1.17 · M1 · one anatomy in every state: one plate, one head, one state list and one chevron — the door's grid places them", anatomy.length === 0, j(anatomy));
 }
 
+// The tile read of 2026-10-21: every state line opens as a sentence opens; a figure not read is the hub's quiet dash; the
+// final week's line never ends on a connective.
+const openingDefects = (l: L, m: string) => {
+  const first = textOf(elementAt(stateOf(m), 'class="kp-mln-fact"')).trim();
+  return l === "zh" || /^[\p{Lu}\d]/u.test(first) ? [] : [`${l}: "${first}"`];
+};
+const dashDefects = (m: string) => {
+  const fig = elementAt(m, 'id="mln-card-figure"');
+  return fig.includes('<span class="amount text-body-lg text-text-muted">—</span>') && !/font-semibold|text-text"/.test(fig) ? [] : [fig.slice(0, 200)];
+};
+const finalDefects = (l: L, m: string) => {
+  const fin = elementAt(headOf(m), 'id="mln-card-final"'), line = dict[l].millionea.finalWeek;
+  const tail = line.split(" ").slice(-2).join(" ");
+  return textOf(fin) === line && (l === "zh" || fin.includes(`<span class="whitespace-nowrap">${tail}</span>`)) ? [] : [`${l}: ${fin.slice(0, 200)}`];
+};
+{
+  const lower = LOCALES.flatMap((l) => HOSTS.flatMap((h) => FX.cards[l][h].flatMap((m, i) => openingDefects(l, m).map((x) => `${h} ${STATES[i].name} ${x}`))));
+  const words = LOCALES.filter((l) => dict[l].millionea.weekRolledShort.toLowerCase() !== dict[l].millionea.settledRollover.toLowerCase()
+    || textOf(stateOf(card(l, "settled · no 10/10"))) !== fill(dict[l].millionea.weekRolledShort, { amount: formatTzs(601_000) }));
+  ok("1.18 · every state line opens as a sentence opens, in every state on both hosts (en, sw): a week nobody won reads \"No 10/10 · TZS 601,000 carried forward\" / \"Hakuna 10/10 · …\" — the hub's own words (\"Week 46 · no 10/10 · …\"), never \"no 10/10\" opening the line",
+    lower.length === 0 && words.length === 0, j({ lower: lower.slice(0, 4), words }));
+  const loud = LOCALES.flatMap((l) => HOSTS.flatMap((h) => ["presale", "paused"].flatMap((n) => dashDefects(card(l, n, h)).map((x) => `${l} ${h} ${n}: ${x}`))));
+  const figures = LOCALES.filter((l) => !elementAt(card(l, "open · no ticket"), 'id="mln-card-figure"').includes('<span class="amount text-body-lg font-semibold text-text">'));
+  ok("1.19 · a figure not read (before sales, while paused) is the house's dash at the figure's rung (no line moves), in the muted ink and regular weight the hub's pool block gives it — never the line's heaviest mark; CONTROL: a figure read keeps its semibold text ink",
+    loud.length === 0 && figures.length === 0, loud.slice(0, 2).join(" | ") + j(figures));
+  const loose = LOCALES.flatMap((l) => HOSTS.flatMap((h) => finalDefects(l, card(l, "open · at the cap in the final", h))));
+  ok("1.20 · the final week's line keeps its last two words together, as every fact on the card is kept (\"Wiki ya mwisho\" / \"ya Millionea\" at 320 — it broke \"Wiki ya mwisho ya\" / \"Millionea\", a line ending on a connective)",
+    loose.length === 0, loose.slice(0, 2).join(" | "));
+}
+
 // ── §2 · the ghost ────────────────────────────────────────────────────────────────────────────────────────────────────
 console.log("\n§2 · the card's loading picture (H1)");
 /** 2.3's check — what a ghost leaves readable — set in §2 and run again by its plant in §4. */
-let hiddenDefects: (g: string) => string[] = () => ["unset"];
+let hiddenDefects: (g: string, l?: L) => string[] = () => ["unset"];
 /** The common card set at the ghost's own sizes — week 49, TZS 1,000,000, 13%, Friday 18:00, TZS 1,000 — for comparison. */
 const req = createRequire(import.meta.url);
 const { MaswaliHomeCard } = req("../src/components/maswali/maswali-home-card.tsx") as { MaswaliHomeCard: (p: Record<string, unknown>) => unknown };
@@ -252,20 +308,22 @@ const skeleton = (m: string) => [...m.replace(/(class="[^"]*kp-mln-door__plate[^
     return g.replace(/span\.(?=\s|$)/g, "") === c.replace(/span\.(?=\s|$)/g, "") ? [] : [`${l} ${h}`];
   }));
   ok("2.2 · H1 · the ghost is the card's anatomy, element for element: the same door grid and host box, the 48px plate's slot, the title's facts, both phone-stacked fact lists, the figure's rung and the 20px chevron", shapes.length === 0, j(shapes));
-  hiddenDefects = (g: string) => {
+  hiddenDefects = (g: string, l: L = "en") => {
     const d: string[] = [];
     if (!/^<div aria-hidden="true" class="kp-mln-zh kp-mln-ghost kp-shimmer-track kp-mln-door kp-mln-door--/.test(g)) d.push("the root is not an aria-hidden ghost of the door");
     if (/\sid="|<a\s/.test(g)) d.push("an id or a link");
-    // every text run sits inside a hidden span: each hidden element removed whole (balanced), nothing readable is left
+    // every text run but the name sits inside a hidden span: each hidden element removed whole (balanced), the name alone is left
     let bare = g;
     for (let hidden = elementAt(bare, 'class="kp-mln-ghost__words"'); hidden !== ""; hidden = elementAt(bare, 'class="kp-mln-ghost__words"')) bare = bare.replace(hidden, "");
     bare = bare.replace(/<span class="sr-only"> · <\/span>/g, "");
-    if (textOf(bare).trim() !== "") d.push(`words not hidden: "${textOf(bare).trim().slice(0, 40)}"`);
+    const shown = textOf(bare).trim();
+    if (shown === "") d.push("the name is not drawn (a ghost draws names in words, as the How-to card's ghost draws its title)");
+    else if (shown !== dict[l].millionea.productLabel) d.push(`words not hidden: "${shown.slice(0, 40)}"`);
     if (!g.includes('data-ghost-part="millionea"')) d.push("no ghost part mark");
     return d;
   };
-  const hidden = LOCALES.flatMap((l) => HOSTS.flatMap((h) => hiddenDefects(FX.ghost[l][h]).map((x) => `${l} ${h}: ${x}`)));
-  ok("2.3 · H1 · every word of the ghost is hidden (`.kp-mln-ghost__words`: nothing to read, find or copy), the root aria-hidden and marked for the drive, no id and no link", hidden.length === 0, hidden.join(" | "));
+  const hidden = LOCALES.flatMap((l) => HOSTS.flatMap((h) => hiddenDefects(FX.ghost[l][h], l).map((x) => `${l} ${h}: ${x}`)));
+  ok("2.3 · H1 · every word of the ghost but its name is hidden (`.kp-mln-ghost__words`: nothing to read, find or copy) — \"Millionea\" drawn in words, as the How-to card's ghost draws its title, the week a bar — the root aria-hidden and marked for the drive, no id and no link", hidden.length === 0, hidden.join(" | "));
   const journey = LOCALES.filter((l) => {
     const s = FX.journeyGhost[l].slot, n = FX.journeyGhost[l].none;
     const at = s.indexOf('data-ghost-part="millionea"'), head = s.indexOf('data-ghost-part="headline"'), chips = s.indexOf('data-ghost-part="chips"');
@@ -320,7 +378,21 @@ console.log("\n§4 · controls — each check fails on a planted copy");
   ok("4.4 · a name that is not the title and the figure is reported (L11)", nameDefects("en", card("en", "open · no ticket").replace('aria-labelledby="mln-card-title mln-card-figure"', 'aria-labelledby="mln-card-title mln-card-state"')).length > 0);
   const g = FX.ghost.en.journey;
   ok("4.5 · a ghost whose words show is reported (H1: 2.3)", g.includes('<span class="kp-mln-ghost__words">')
-    && hiddenDefects(g.replaceAll('<span class="kp-mln-ghost__words">', '<span class="shown">')).some((x) => x.startsWith("words not hidden")));
+    && hiddenDefects(g.replaceAll('<span class="kp-mln-ghost__words">', '<span class="shown">'), "en").some((x) => x.startsWith("words not hidden")));
+  const nameBarred = g.replace(/(<span class="kp-mln-fact">)Millionea/, '$1<span class="kp-mln-ghost__bar"><span class="kp-mln-ghost__words">Millionea</span></span>');
+  ok("4.5′ · a ghost that hides its name too (as first built) is reported (2.3)", nameBarred !== g && hiddenDefects(nameBarred, "en").some((x) => x.startsWith("the name is not drawn")));
+  ok("4.8 · the rollover opening on the hub's lower-case words is reported (1.18)", openingDefects("en", card("en", "settled · no 10/10").replace("No 10/10", "no 10/10")).length > 0
+    && openingDefects("sw", card("sw", "settled · no 10/10").replace("Hakuna 10/10", "hakuna 10/10")).length > 0);
+  ok("4.9 · a figure not read drawn as the figure's white semibold bar is reported (1.19)",
+    dashDefects(card("en", "presale").replace('class="amount text-body-lg text-text-muted"', 'class="amount text-body-lg font-semibold text-text"')).length > 0);
+  ok("4.10 · a presale date in the body face, and a close's clock in it, are reported (1.11′)",
+    instantDefects(stateOf(card("en", "presale")).replace('<span class="mono">23</span>', "23")).length > 0
+      && instantDefects(stateOf(card("zh", "presale")).replace('<span class="mono">2026</span>', "2026")).length > 0
+      && instantDefects(stateOf(card("en", "open · no ticket")).replace('<span class="mono">18:00</span>', "18:00")).length > 0);
+  ok("4.11 · a dash in the name is reported (1.12′)", dashNameDefects(card("en", "presale").replace('aria-labelledby="mln-card-title"', 'aria-labelledby="mln-card-title mln-card-figure"')).length > 0);
+  const fin = card("sw", "open · at the cap in the final");
+  ok("4.12 · the final week's line set plain (\"Wiki ya mwisho ya\" / \"Millionea\" free to break) is reported (1.20)",
+    fin.includes('<span class="whitespace-nowrap">ya Millionea</span>') && finalDefects("sw", fin.replace('<span class="whitespace-nowrap">ya Millionea</span>', "ya Millionea")).length > 0);
   ok("4.6′ · the board door without the board's lift (the How-to card's border on both hosts, as first built) is reported (3.1)",
     cssDefects(CSS.replace(".kp-mln-door--board:not(.kp-mln-ghost):hover { translate: 0 var(--m-lift); border-color: var(--brand-500);", ".kp-mln-door--board:not(.kp-mln-ghost):hover { border-color: var(--border-royal);")).some((x) => x.includes("each host's hover")));
   ok("4.6 · the stylesheet without the full-width phone body, with the ghost's words visible, or without the hanging continuation, is reported (3.1)",
@@ -333,6 +405,6 @@ console.log("\n§4 · controls — each check fails on a planted copy");
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI DOORS: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run prints. */
-const MIN_ASSERTIONS = 35;
+const MIN_ASSERTIONS = 46;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

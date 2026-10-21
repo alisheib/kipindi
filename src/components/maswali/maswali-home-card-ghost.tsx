@@ -22,6 +22,9 @@ import type { Dict, Locale } from "@/lib/i18n-dict";
  * nothing in it can be read, found or copied) inside a bar that follows their lines (`.kp-mln-ghost__bar`: an inline
  * background cloned onto every line, the journey ghost's headline technique), so each bar is as long as the line it stands
  * for and the box is exactly as tall as the card. The figure is a bar like the rest: no number is drawn for a figure not read.
+ * ⭐ ONE WORD IS DRAWN, ITS NAME — "Millionea", as the How-to card's ghost beside it draws its title and the board's ghost its
+ * page's name (journey-home-ghost.tsx: names in words, every other shape a bar). It never changes, so it stands where the
+ * card's own will; the week beside it is a datum, and a bar.
  * ⚠️ WHAT IT CANNOT KNOW: the week's state and the reader's tickets are the hub's read, which the ghost stands in for. A week
  * still waiting on an earlier one's carry, a closed week, a void, a reader at the cap — each a line more or fewer — land at
  * their own height; `qa:maswali-doors` measures the common card exactly and states the rest.
@@ -60,7 +63,7 @@ export function MaswaliHomeCardGhost({ t, locale, host, preview = false, classNa
       <span className="kp-mln-door__head">
         <span className="kp-mln-door__title">
           <span className="font-display text-body-lg font-semibold">
-            <MaswaliFacts facts={[bar(t.millionea.productLabel), keep(weekWord(t, 49))]} />
+            <MaswaliFacts facts={[t.millionea.productLabel, keep(weekWord(t, 49))]} />
           </span>
           {preview && (
             <Chip variant="neutral" size="sm" className="gap-1">
