@@ -280,15 +280,18 @@ async function hubQuestionsOf(week: StoredWeek) {
     : readHubQuestions(week.id);
 }
 
-/** How far the week's results have come: "Matokeo 6 kati ya 15 yametolewa · linalofuata Jumamosi 16:00" (§10 3.10). */
-function resultsOf(qs: readonly Pick<MillioneaQuestion, "eventStartsAt">[], gq: GradableQuestion[], nowMs: number) {
+/** How far the week's results have come: "Matokeo 6 kati ya 15 yametolewa · linalofuata Jumamosi 16:00" (§10 3.10). Pure;
+ *  exported for its guard (`test:maswali-design` §5 P5). */
+export function resultsOf(qs: readonly Pick<MillioneaQuestion, "eventStartsAt">[], gq: GradableQuestion[], nowMs: number) {
   const waiting = qs.filter((_, i) => gq[i]?.outcome == null).map((q) => q.eventStartsAt).sort();
   return {
     resultsOut: gq.filter((g) => g.outcome !== null).length,
     voidedMains: gq.filter((g) => g.role === "MAIN" && g.outcome === "VOID").length,
     voidedReserves: gq.filter((g) => g.role === "RESERVE" && g.outcome === "VOID").length,
-    /** The next result the week waits on: the first unsealed event still ahead, else the earliest one awaiting its seal. */
-    nextResultAt: waiting.find((at) => Date.parse(at) >= nowMs) ?? waiting[0] ?? null,
+    /** The next event the week's results wait on: the first unsealed event still AHEAD — and null once every unsealed event
+     *  has begun (S5-FIX-PLAYER P5): "next event" is never an instant already past (it fell back to the earliest unsealed
+     *  one, so a ticket said "next event Saturday 09:00" on the Sunday). */
+    nextResultAt: waiting.find((at) => Date.parse(at) >= nowMs) ?? null,
   };
 }
 

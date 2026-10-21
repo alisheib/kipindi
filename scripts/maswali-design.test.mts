@@ -1087,6 +1087,30 @@ const iconDefects = (src: string) => {
     caught.some((x) => x.includes("draws `flag`")) && caught.some((x) => x.includes("hourglass")) && caught.some((x) => x.includes("its own key")), j(caught));
 }
 
+// P5 · "next event" is never an instant already past
+{
+  const PLAYER = (await import("../src/lib/server/maswali-player.ts")) as { resultsOf: (qs: Array<{ eventStartsAt: string }>, gq: Array<{ role: "MAIN" | "RESERVE"; ordinal: number; outcome: Out }>, nowMs: number) => { nextResultAt: string | null; resultsOut: number } };
+  const ev = ["2026-12-05T06:00:00.000Z", "2026-12-05T09:00:00.000Z", "2026-12-06T06:00:00.000Z"];
+  const qs = ev.map((e) => ({ eventStartsAt: e }));
+  const gq = (outs: Out[]) => outs.map((o, i) => ({ role: "MAIN" as const, ordinal: i + 1, outcome: o }));
+  const next = (outs: Out[], now: string) => PLAYER.resultsOf(qs, gq(outs), Date.parse(now)).nextResultAt;
+  const cases: Array<[string, string | null, string | null]> = [
+    ["before every event", next([null, null, null], "2026-12-05T05:00:00.000Z"), ev[0]],
+    ["after the first, its result not in", next([null, null, null], "2026-12-05T07:00:00.000Z"), ev[1]],
+    ["the second sealed early: the third", next([null, "YES", null], "2026-12-05T07:00:00.000Z"), ev[2]],
+    ["every unsealed event begun: none", next([null, null, null], "2026-12-06T07:00:00.000Z"), null],
+    ["every result in: none", next(["YES", "NO", "VOID"], "2026-12-04T00:00:00.000Z"), null],
+  ];
+  const wrong = cases.filter(([, got, want]) => got !== want).map(([name, got]) => `${name}: ${got}`);
+  ok("5.P5 · a ticket's \"next event\" is the first unsealed event still AHEAD — and none once every unsealed event has begun (it named the earliest unsealed one, already past: \"next event Saturday 09:00\" on the Sunday)",
+    wrong.length === 0, wrong.join(" | "));
+  const src = squash(code(read("src/lib/server/maswali-player.ts")));
+  const fixed = "nextResultAt: waiting.find((at) => Date.parse(at) >= nowMs) ?? null,";
+  const old = src.replace(fixed, "nextResultAt: waiting.find((at) => Date.parse(at) >= nowMs) ?? waiting[0] ?? null,");
+  ok("5.P5′ PLANT · the read model's line is the fixed one, and the old fallback to the earliest unsealed event is told apart from it",
+    src.includes(fixed) && old !== src && !old.includes(fixed));
+}
+
 // P18 · the slip's two notices are the kit's Callout, never a hand-rolled copy
 const kitNoticeDefects = (src: string) => {
   const s = squash(code(src));
@@ -1117,7 +1141,7 @@ const kitNoticeDefects = (src: string) => {
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI DESIGN: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run prints; VIS-P's fact, example and word plants brought it to 110, and S5-FIX-PLAYER's §5
- *  (P13, P15, P17, P18) to 123. */
-const MIN_ASSERTIONS = 123;
+ *  (P5, P13, P15, P17, P18) to 125. */
+const MIN_ASSERTIONS = 125;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

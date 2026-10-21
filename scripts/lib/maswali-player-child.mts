@@ -475,6 +475,16 @@ const { week: B, start: bStart } = await W.openWeek({ weeksAhead: 3 });
   const h = await P.millioneaHub(viewer(P1));
   ok("7.9 · the hub leads with the week on sale and shows the week still being graded beside it (MR-3)",
     h.week?.id === B.id && h.grading?.id === A.id && h.grading.selling === false && h.grading.mine.held === 3, J({ week: h.week?.code, grading: h.grading?.code }));
+  // S5-FIX-PLAYER P5 · the ticket's "next event" on the closed, unsealed week, at three instants of its own clock.
+  const events = (await dal.questionStore.listForWeek(A.id)).map((q: any) => q.eventStartsAt).sort();
+  const at = (ms: number) => P.millioneaTicket(P1, p1Win1.serial, new Date(ms));
+  const [before, between, after] = await Promise.all([
+    at(Date.parse(events[0]) - 60_000), at(Date.parse(events[0]) + 60_000), at(Date.parse(events[events.length - 1]) + 60_000),
+  ]);
+  ok("7.10 · ⭐ P5 · the ticket's next event is the first unsealed event still AHEAD — and none once every unsealed event has begun, never one already past",
+    before?.nextResultAt === events[0] && between?.nextResultAt === events.find((e: string) => Date.parse(e) >= Date.parse(events[0]) + 60_000)
+      && between.nextResultAt !== events[0] && after?.resultsOut === 0 && after.nextResultAt === null,
+    J({ before: before?.nextResultAt, between: between?.nextResultAt, after: after?.nextResultAt, first: events[0] }));
 }
 
 // ── §8 · a settled week ───────────────────────────────────────────────────────────────────────────────────────────
