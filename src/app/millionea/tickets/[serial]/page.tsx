@@ -43,7 +43,7 @@ import { counted, eatWeekday, weekNumberOf, weekWord } from "@/components/maswal
 import { factsOf, keepFact, MaswaliFacts } from "@/components/maswali/maswali-facts";
 import { noticeBody } from "@/components/ui/empty-state-text";
 import { millioneaTicketGate } from "@/lib/server/millionea-gate";
-import { cachedMillioneaRegisterWeek, millioneaHowTo, millioneaMyTicketsWeek, millioneaTicket, type MillioneaFact, type MillioneaTicketView } from "@/lib/server/maswali-player";
+import { millioneaHowTo, millioneaMyTicketsWeek, millioneaTicket, millioneaWeekMoneyRecord, type MillioneaFact, type MillioneaTicketView } from "@/lib/server/maswali-player";
 import { getServerT } from "@/lib/i18n-server";
 import { millioneaTicketHref } from "@/lib/position-permalink";
 import { RESERVE_COUNT } from "@/lib/maswali-score";
@@ -176,13 +176,14 @@ export default async function MillioneaTicketPage({ params }: { params: Promise<
   const paidSerials = weekPaid.length > 0 ? weekPaid : [view.serial];
   const held = view.win?.yourHeldTickets ?? 0;
   const forfeited = view.win?.yourForfeitedTickets ?? 0;
-  // ⭐ THE WEEK'S ONE LEDGER (S5-DESIGN-REGISTER's shared builder; the lead's round-2 ruling): a PUBLIC final week's ledger is
-  // the register's own rows (`registerLedgerRows`, MR-26 in the same words), this player's gold rows spliced after the share.
-  // ⛔ A DRIVE week has no register record yet: it draws no ledger at all — never a partial MR-26 — until the core reader of
-  // any visibility lands (the lead's ruling, 2026-10-21). For a holder let in at a kill the register is an unknown address,
-  // so a carry row's link to it is dropped there.
-  const regWeek = paid && view.week.visibility === "PUBLIC" ? await cachedMillioneaRegisterWeek(view.week.code) : null;
-  const ledgerRows = regWeek ? registerLedgerRows(t, locale, regWeek).map((r) => (gate.visible ? r : { ...r, href: null })) : null;
+  // ⭐ THE WEEK'S ONE LEDGER, FROM THE ONE CORE (S5-DESIGN-REGISTER's `millioneaWeekMoneyRecord`; the lead's round-2
+  // rulings): a final week's money on either line, so a PUBLIC week's ledger is the register's own rows (MR-26 in the same
+  // words) and a DRIVE week's is its own, the same rows — this player's gold rows spliced after the share. The core answers
+  // only a final week (null otherwise: no ledger, never a partial MR-26). A carry names its week; it opens the week's
+  // register page only on the public line and for a reader the product is shown to — a DRIVE week's chain is private, and
+  // to a holder let in at a kill the register is an unknown address.
+  const money = paid ? await millioneaWeekMoneyRecord(view.week.id) : null;
+  const ledgerRows = money ? registerLedgerRows(t, locale, money, { links: view.week.visibility === "PUBLIC" && gate.visible }) : null;
   // L11 · an open week says where it stands before any result: its close and its first event.
   const firstEvent = view.questions.map((q) => msOf(q.eventStartsAt)).filter((x): x is number => x !== null).sort((a, b) => a - b)[0];
 

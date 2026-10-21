@@ -305,10 +305,12 @@ export function WinCelebrationHost() {
   /* ⭐ THE AMOUNT IS ONE LINE AT EVERY WIDTH (MASWALI-BUILD S5-DESIGN-TICKETS, for every caller — the lead's ruling,
      2026-10-21): a seven-digit win at 38px broke "TZS" / "1,234,500" at 320 and 360 in all three languages (the before
      tiles). The figure is one `.amount` run that never wraps, and its size steps down only as far as its own characters
-     need to fit the seal's column: a mono face advances 0.6em a character, so `100cqi / (chars × 0.62)` is the largest
-     size the final figure fits at, never above the 38px it always had. A count-up is sized for its final figure, so the
-     size never moves while it counts. An engine without container units keeps the 38px. */
-  const amountFit = { "--seal-chars": formatTzs(payload.amount).length, fontSize: "min(38px, calc(100cqi / (var(--seal-chars) * 0.62)))" } as CSSProperties;
+     need to fit the seal's column: the money face (JetBrains Mono, tabular, never letter-spaced — §M4) advances exactly
+     0.6em a character, so `100cqi / (chars × 0.6)` is the largest size the final figure fits at, never above the 38px it
+     always had — so an amount that always fitted keeps its 38px to the pixel ("TZS 4,500" at 320 was 36.9px under a
+     0.62 margin). A count-up is sized for its final figure, so the size never moves while it counts. An engine without
+     container units keeps the 38px. */
+  const amountFit = { "--seal-chars": formatTzs(payload.amount).length, fontSize: "min(38px, calc(100cqi / (var(--seal-chars) * 0.6)))" } as CSSProperties;
 
   /* ⭐ The ✕ stays in Modal's corner, the one ruled exception to F20 (round 6, 2026-10-09, review C9): this dialog opens on
      its seal (80px of air, then the seal), with no title in the band beside the ✕ — `operation-result-modal.tsx` says why

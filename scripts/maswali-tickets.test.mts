@@ -534,7 +534,6 @@ const WORDS: Record<string, Partial<Record<Locale, string>>> = {
     zh: "本周已作废：{voided} 道正选题作废，有效备选题仅 {valid} 道。{price} 已退回主余额。",
   },
   cancelling: { en: "Cancelling…", sw: "Inaghairi…", zh: "正在取消…" },
-  sealEyebrowOne: { en: "Ticket won", sw: "Tiketi imeshinda", zh: "彩票中奖" },
 };
 check("15.1", "the decided words, key for key, in three languages (L2 finality, L4 the stamp, L5 the next event, L6 the reserve standing by, L12 where the money went, M4 the wait)", (w) => {
   const d: string[] = [];
@@ -573,7 +572,15 @@ const LEDGER_ROWS = [
   { key: "winners", label: "To winners", value: "TZS 8,700" }, { key: "share", label: "÷ 2", value: "TZS 4,350" },
   { key: "moneyOut", label: "Money out", value: "TZS 10,000" },
 ];
-check("23.1", "round 2 · the win receipt is the week's ONE ledger (the register's rows, `MaswaliLedger`), this player's gold rows spliced straight after `share`; the page draws it for a PUBLIC week from the register's record and draws NO ledger for a week without one (never a partial MR-26)", (w) => {
+/** A final, won week's money as the one core states it (`MillioneaWeekMoney`): carried in from Week 44; its rounding
+ *  remainder (TZS 1, MR-25) carried on to Week 46 — MR-26: 412,001 + 7,000 in = 54,470 + 364,530 + 1 out. */
+const WEEK_MONEY = {
+  id: "mlw_test", code: "MLN-2026-W45", state: "SETTLED", isFinal: false, closedAt: "2026-11-06T15:01:00.000Z", settledAt: "2026-11-11T09:01:00.000Z",
+  tickets: 7, sales: 7_000, carryIn: 412_001, jackpot: 419_001, winners: 2, share: 182_265, fee: 54_470, topUp: 0, paid: 364_530, carriedForward: 1,
+  refundsPending: false, carryFromCode: "MLN-2026-W44", carryToCode: "MLN-2026-W46", ticketPrice: 1_000, floor: 0, feeRate: 0.13, traLevy: 5_447,
+  gbtLevy: 2_723, toWinners: 364_531, remainder: 1, basis: "TEN_OF_TEN", winningScore: 10,
+} as const;
+check("23.1", "round 2 · the win receipt is the week's ONE ledger, from the ONE core on either line (`millioneaWeekMoneyRecord` → `registerLedgerRows`): this player's gold rows spliced straight after `share`; a PUBLIC week's rows are the register's, link for link; a DRIVE week's the same rows with no link (its carries named); no final money, no ledger (never a partial MR-26)", (w) => {
   const d: string[] = [];
   const mod = (w.src.ledger === REAL.src.ledger ? live.ledger : compiled(FILES.ledger, w.src.ledger)) as LedgerMod & { winLedgerRows: (t: unknown, rows: unknown[], e: unknown) => Array<{ key: string }> };
   const one = mod.winLedgerRows(REAL.dict.en, LEDGER_ROWS, { perTicket: 4_350, yours: 1, yourTotal: 4_350 }).map((r) => r.key);
@@ -582,8 +589,20 @@ check("23.1", "round 2 · the win receipt is the week's ONE ledger (the register
   need(d, j(two) === j(["sales", "moneyIn", "jackpot", "fee", "winners", "share", "yours", "yourTickets", "yourTotal", "moneyOut"]), `two tickets: ${j(two)}`);
   need(d, code(w, "ledger").includes('<MaswaliLedger rows={winLedgerRows(t, rows, earned)} className="border-t border-border pt-3" />'), "the receipt does not draw the one ledger");
   const p = code(w, "page");
-  need(d, p.includes('const regWeek = paid && view.week.visibility === "PUBLIC" ? await cachedMillioneaRegisterWeek(view.week.code) : null;')
-    && p.includes("const ledgerRows = regWeek ? registerLedgerRows(t, locale, regWeek)") && p.includes("{ledgerRows && ( <MaswaliWinLedger"), "the page does not draw the register's rows, or draws a ledger without them");
+  need(d, p.includes("const money = paid ? await millioneaWeekMoneyRecord(view.week.id) : null;")
+    && p.includes('const ledgerRows = money ? registerLedgerRows(t, locale, money, { links: view.week.visibility === "PUBLIC" && gate.visible }) : null;')
+    && p.includes("{ledgerRows && ( <MaswaliWinLedger"), "the page does not draw the one core's rows on both lines, links only on the public line for a reader shown the product, and only for final money");
+  // The rows themselves, drawn (REGISTER's builder and the kit ledger): the ticket's public rows are the register page's
+  // own call, byte for byte; its drive rows are the same rows, every carry named, no row a link.
+  const { registerLedgerRows } = req("../src/app/millionea/register/register-parts.tsx") as { registerLedgerRows: (t: unknown, l: Locale, m: unknown, o?: { links?: boolean }) => Array<{ href?: string | null }> };
+  const { MaswaliLedger } = req("../src/components/maswali/maswali-ledger.tsx") as { MaswaliLedger: unknown };
+  for (const l of LOCALES) {
+    const drawn = (rows: unknown) => inApp(l, h(MaswaliLedger as never, { rows } as never));
+    const register = drawn(registerLedgerRows(REAL.dict[l], l, WEEK_MONEY)), pub = drawn(registerLedgerRows(REAL.dict[l], l, WEEK_MONEY, { links: true }));
+    const driveRows = registerLedgerRows(REAL.dict[l], l, WEEK_MONEY, { links: false }), drive = drawn(driveRows);
+    need(d, pub === register && register.includes('href="/millionea/register/MLN-2026-W44"') && register.includes('href="/millionea/register/MLN-2026-W46"'), `${l}: the public rows are not the register's, link for link`);
+    need(d, !drive.includes("/millionea/register") && driveRows.every((r) => !r.href) && textOf(drive).includes("44") && textOf(drive).includes("46") && textOf(drive) === textOf(register), `${l}: the drive rows link, or lose a carry's week, or differ in words`);
+  }
   return d;
 });
 check("23.2", "round 2 · a ticket's week wears the ONE week chip (`WeekStateChip`, P6's phase words): \"Week 52\" then \"Objection window\" in the head", (w) => {
@@ -604,7 +623,7 @@ check("17.1", "the seal speaks Millionea's words — eyebrow \"Millionea · Week
 check("17.2", "the platform's seal: its words are the payload's when given and its own otherwise; the amount ONE line at every width (nowrap, sized by its final figure to the column, never over 38px); facts one whole line each", (w) => {
   const c = code(w, "celebrate"), d: string[] = [];
   need(d, c.includes("{payload.eyebrow ?? t.common.positionWon}") && c.includes("const heading = payload.heading ?? t.market.wonHeading;"), "the seal's words are not optional");
-  need(d, c.includes('const amountFit = { "--seal-chars": formatTzs(payload.amount).length, fontSize: "min(38px, calc(100cqi / (var(--seal-chars) * 0.62)))" } as CSSProperties;'), "the amount's size is not fitted to its figure");
+  need(d, c.includes('const amountFit = { "--seal-chars": formatTzs(payload.amount).length, fontSize: "min(38px, calc(100cqi / (var(--seal-chars) * 0.6)))" } as CSSProperties;'), "the amount's size is not fitted to its figure");
   need(d, c.includes('<div className="g-settle mt-3 w-full [container-type:inline-size]" style={{ "--i": 2 } as CSSProperties}> <p data-seal-amount="" className={`whitespace-nowrap font-mono text-[38px]'), "the amount is not one line in its column's container");
   need(d, c.includes("style={amountFit}"), "the fitted size is not applied");
   need(d, c.includes('{payload.facts.map((f, i) => ( <span key={i} className="whitespace-nowrap">'), "a fact may break");
@@ -786,6 +805,7 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["L8 undone — the cannot-win box hand-rolled", "16.1", plantSrc("ticket", '{cannotWin && <Callout tone="neutral">{t.millionea.cannotWin}</Callout>}', '{cannotWin && <p className="mat-inset rounded-control px-3 py-2 text-body-sm text-text text-pretty">{t.millionea.cannotWin}</p>}')],
   ["L10 undone — the seal's label the serials alone", "17.1", plantSrc("acts", "eyebrow, heading: t.millionea.wonHeading, facts, roll: false", "label: facts.join(\" · \"), roll: false")],
   ["the 7-digit wrap back", "17.2", plantSrc("celebrate", 'className={`whitespace-nowrap font-mono text-[38px]', 'className={`font-mono text-[38px]')],
+  ["an amount that always fitted shrunk (the 0.62 margin)", "17.2", plantSrc("celebrate", "(var(--seal-chars) * 0.6)))", "(var(--seal-chars) * 0.62)))")],
   ["the seal's eyebrow forced to the platform's", "17.2", plantSrc("celebrate", "{payload.eyebrow ?? t.common.positionWon}", "{t.common.positionWon}")],
   ["L11 undone — an open week's ticket silent", "18.1", plantSrc("ticket", "        live.salesCloseAt !== undefined ? keepFact(locale, fill(t.millionea.salesCloseAt, { when: eatWeekdayClock(t, live.salesCloseAt) })) : null,\n", "")],
   ["L13 undone — a sealed reserve still the open ring", "19.1", plantSrc("seal", 'out === "YES" || out === "NO" ? "sealed" : "standby"', '"standby"')],
@@ -795,7 +815,9 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["M9 undone — the head ghost ignores its kinds", "21.1", plantSrc("headGhost", "        {kinds === 3 && <div className=\"h-[44px] w-[96px] rounded-md bg-bg-overlay kp-shimmer-track\" />}\n", "")],
   ["M9 undone — the 70px Seal Line ghost", "21.1", plantSrc("ticketGhost", '          <GhostBar className="mt-1.5 h-[18px] w-full" />\n', "")],
   ["round 2 undone — the gold rows after the totals", "23.1", plantSrc("ledger", "  const at = rows.findIndex((r) => r.key === \"share\");", "  const at = rows.length - 1;")],
-  ["round 2 undone — a drive week's partial ledger", "23.1", plantSrc("page", "              {ledgerRows && (\n", "              {(\n")],
+  ["round 2 undone — a ledger drawn without final money", "23.1", plantSrc("page", "              {ledgerRows && (\n", "              {(\n")],
+  ["round 2 — a drive week's carries linked to the public register", "23.1", plantSrc("page", '{ links: view.week.visibility === "PUBLIC" && gate.visible }', "{ links: true }")],
+  ["round 2 — the drive week's ledger dropped again", "23.1", plantSrc("page", "const money = paid ? await millioneaWeekMoneyRecord(view.week.id) : null;", 'const money = paid && view.week.visibility === "PUBLIC" ? await millioneaWeekMoneyRecord(view.week.id) : null;')],
   ["round 2 undone — the head's week as a line again", "23.2", plantSrc("ticket", "<WeekStateChip t={t} state={weekState} phase={phase ?? null} />", "<span>{weekWord(t, week)}</span>")],
   ["held row — no lift", "22.1", plantSrc("ticket", 'className={cn("mat-raised mat-raised-i flex flex-col gap-1.5 rounded-control p-2 text-text", className)}', 'className={cn("mat-raised flex flex-col gap-1.5 rounded-control p-2 text-text", className)}')],
   ["M9 — the head's one wrapping row again", "21.2", plantSrc("ticket", '<div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:justify-between">', '<div className="flex flex-wrap items-center justify-between gap-1.5">')],

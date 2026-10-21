@@ -43,7 +43,7 @@ const SEALS = process.env.MLN_SEALS !== "0" && MODE === "main";
 /** MLN_BEFORE=1: a run on the code before the seal kept its amount whole — its tiles are the "before", nothing asserted. */
 const BEFORE = process.env.MLN_BEFORE === "1";
 /** The won tickets whose page opens the seal (`SealDoor`): shot at the phone widths as the player opens it. */
-const SEAL_DOORS = new Set(["wonPaid", "wonTwo", "wonBig", "sunsetTop"]);
+const SEAL_DOORS = new Set(["wonPaid", "wonTwo", "wonBig", "wonDrive", "sunsetTop"]);
 /** One line of the seal's amount: its box no taller than a line of its own type (a wrapped amount is two). */
 const sealAmount = (page) => page.evaluate(() => {
   const el = document.querySelector('[role="dialog"] [data-seal-amount]');
@@ -53,7 +53,7 @@ const sealAmount = (page) => page.evaluate(() => {
 });
 const MAIN_STATES = [
   "cancellable", "cancelled", "closed", "resultsCannotWin", "resultsAlive", "objections", "objectionsLost", "settling", "voiding",
-  "wonPaid", "lostWithWinners", "wonTwo", "wonTwoSecond", "forfeited", "wonBig", "lostRollover", "refunded", "refundPending",
+  "wonPaid", "lostWithWinners", "wonTwo", "wonTwoSecond", "forfeited", "wonBig", "wonDrive", "driveLost", "lostRollover", "refunded", "refundPending",
   // last: the ticket bought at the seed, once its ten minutes have passed; then the held share (it holds the wallet)
   "open", "held", "wonTwoHeld",
 ];
@@ -245,6 +245,16 @@ for (const state of STATES) {
       const door = page.getByRole("button", { name: /Free cancel|Kughairi bila malipo|免费取消|Cancel ticket|Ghairi tiketi|取消彩票/ });
       if (state === "cancellable") ok(`${name} · the free-cancel door is on screen`, (await door.count()) >= 1);
       if (state === "open") ok(`${name} · no free-cancel door after its window`, (await door.count()) === 0);
+      // The won ticket's receipt is the week's ONE ledger, on either line (`millioneaWeekMoneyRecord`): drawn for a DRIVE
+      // week too, and there no row opens the public register (a DRIVE week's chain has no page there).
+      if (state === "wonDrive" || state === "wonPaid") {
+        const ledger = await page.getByTestId("millionea-ledger").count();
+        const links = await page.locator('[data-testid="millionea-ledger"] a[href^="/millionea/register"]').count();
+        const text = ledger === 1 ? await page.getByTestId("millionea-ledger").innerText() : "";
+        const from = state === "wonDrive" && seeded.weeks.driveRolled ? String(Number(seeded.weeks.driveRolled.slice(-2))) : null;
+        ok(`${name} · the win receipt draws the week's one ledger${from ? `, its carry naming drive week ${from} with no row linking the public register` : ""}`,
+          ledger === 1 && (from === null || (links === 0 && text.includes(from))), `ledgers ${ledger}, register links ${links}`);
+      }
       await shoot(page, name);
       // The seal as its owner opens it from the won ticket (`SealDoor`: Millionea's eyebrow and heading, the paid serials
       // as facts, the amount landed final) — its amount one line, whole, at the phone widths.

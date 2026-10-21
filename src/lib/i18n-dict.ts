@@ -3566,7 +3566,7 @@ export const dict = {
       // S5-DESIGN-TICKETS (the R1 tickets critic; Ali 2026-10-21 10/10 pass): the receipt's own heading in Millionea's word
       // (L3); a loss card's week line under its week eyebrow (H1); where the money went, every outcome (L12, the lead's
       // ruling); a voided week's refund said once (L4); the free cancel's refusal and its wait (M4); the card's words as
-      // the stub's (M7, zh 派奖 as §D decided); the seal's own eyebrow (the motion critic's note).
+      // the stub's (M7, zh 派奖 as §D decided).
       wonHeading: "You won",
       lossNoWinner: "No 10/10 ticket",
       paidTo: "Paid to main balance · {when}",
@@ -3576,8 +3576,6 @@ export const dict = {
       boughtAt: "Bought {date}",
       cardPayout: "Payout",
       cardFinalPayout: "Final payout",
-      sealEyebrow: "{n} tickets won",
-      sealEyebrowOne: "Ticket won",
       // My tickets (/millionea/tickets).
       emptyTickets: "No Millionea ticket yet.",
       emptyTicketsNext: "Week {week} is open until {when}.",
@@ -6475,8 +6473,6 @@ export const dict = {
       boughtAt: "Imenunuliwa {date}",
       cardPayout: "Malipo",
       cardFinalPayout: "Malipo ya mwisho",
-      sealEyebrow: "Tiketi {n} zimeshinda",
-      sealEyebrowOne: "Tiketi imeshinda",
       emptyTickets: "Huna tiketi ya Millionea bado.",
       emptyTicketsNext: "Wiki {week} iko wazi hadi {when}.",
       lensNone: "Hakuna tiketi inayolingana na kichujio hiki.",
@@ -9331,8 +9327,6 @@ export const dict = {
       boughtAt: "购买于 {date}",
       cardPayout: "派奖",
       cardFinalPayout: "最终派奖",
-      sealEyebrow: "{n} 张彩票中奖",
-      sealEyebrowOne: "彩票中奖",
       emptyTickets: "尚无 Millionea 彩票。",
       emptyTicketsNext: "第{week}周开放至{when}。",
       lensNone: "没有符合此筛选条件的彩票。",

@@ -28,6 +28,9 @@
  *   wonTwo        the default floor — a top-up: two of the demo player's winning tickets paid (one seal, a total), a third
  *                 held for review (step "hold") and a fourth held and forfeited (OD-07)
  *   wonBig        floor 2,000,000 — one winner, a share of seven digits (the seal's amount kept whole at 320)
+ *   driveRolled   a private DRIVE week (OD-21, its own line's calendar — MR-3 holds per line) nobody won: its pool carried
+ *   wonDrive      to the next drive week, which the demo player won beside another winner: the won ticket's ledger is the
+ *                 one core's, its carry naming the drive week it came from, never a link
  *   rollover      no 10/10: the pool carried forward (the loss line names the week it went to)
  *   refunded      voided whole, its refunds landed (MR-18)
  *   refundPending voided whole, its refunds not landed — ⚠️ A DECLARED FIXTURE OF STATE: the week is stamped VOIDED
@@ -113,12 +116,13 @@ function must(what: string, r: { ok: boolean }): void {
   if (!r.ok) throw new Error(`${what}: ${(r as { error?: string }).error ?? "refused"}`);
 }
 
-/** Drafts and opens a week whose Monday is `ms`, under the floor given (the rules freeze at the open), then puts it back. */
-async function opened(ms: number, floorTzs?: number) {
+/** Drafts and opens a week whose Monday is `ms`, under the floor given (the rules freeze at the open), then puts it back. A
+ *  DRIVE week (OD-21) runs its own chain beside the public one (MR-3 holds per line). */
+async function opened(ms: number, floorTzs?: number, visibility: "PUBLIC" | "DRIVE" = "PUBLIC") {
   const before = getMaswaliConfig().floorTzs;
   if (floorTzs !== undefined && floorTzs !== before) must("floor", await saveMaswaliConfig({ floorTzs }, OWNER));
   try {
-    const c = await createWeek({ weekStartMs: ms, questions: questions(ms), officerId: OWNER, now: new Date(ms - 3 * DAY) });
+    const c = await createWeek({ weekStartMs: ms, visibility, questions: questions(ms), officerId: OWNER, now: new Date(ms - 3 * DAY) });
     if (!c.ok) throw new Error(`draft: ${c.error}`);
     must("attest", await attestParity({ weekId: c.week.id, officerId: "usr_dev_reader" }));
     const o = await openWeek({ weekId: c.week.id, officerId: OWNER, guarantee: guaranteeReader, now: new Date(ms + 60_000) });
@@ -227,6 +231,28 @@ async function seedWeeks() {
     const [win] = await buy(demo, w.id, [WIN]);
     tickets.wonBig = win.serial;
     await buy(others[3], w.id, [LOSE, LOSE]);
+    await close(w); await seal(w.id, at, allYes()); await settle(w.id);
+  }
+  // driveRolled, wonDrive — the private DRIVE line (OD-21) on its own calendar (MR-3 holds per line): a week nobody won,
+  // its pool carried to the next drive week, which the demo player then won beside another winner. The won ticket's
+  // ledger is the one core's (`millioneaWeekMoneyRecord`), and its carry names the drive week it came from, never a link
+  // (the public register has no page for a drive week).
+  {
+    const at = eatWeekStartMs(Date.now()) + 7 * DAY;
+    const w = await opened(at, 0, "DRIVE");
+    weeks.driveRolled = w.code;
+    const [lost] = await buy(demo, w.id, [LOSE]);
+    tickets.driveLost = lost.serial;
+    await buy(others[4], w.id, [LOSE, LOSE]);
+    await close(w); await seal(w.id, at, allYes()); await settle(w.id);
+  }
+  {
+    const at = eatWeekStartMs(Date.now()) + 14 * DAY;
+    const w = await opened(at, 0, "DRIVE");
+    weeks.wonDrive = w.code;
+    const [win] = await buy(demo, w.id, [WIN]);
+    tickets.wonDrive = win.serial;
+    await buy(others[4], w.id, [WIN, LOSE]);
     await close(w); await seal(w.id, at, allYes()); await settle(w.id);
   }
   // rollover — nobody at 10/10: the pool carried forward.
