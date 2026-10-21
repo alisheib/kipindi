@@ -45,17 +45,31 @@ settled-week sitemap and share image, and bounded public week and register cache
   S5-DESIGN-HUB, -SLIP, -TICKETS (plus P6 on a ticket and the tickets ghost's third box), -REGISTER (its shared pieces
   first, merged early for round 2), -DOORS (the owed browser re-run and tile read), S5-FIX-PLATFORM (verify 8–11, then
   D12–D14) and S5-FIX-SRV (finding 2's class in openWeek, closeWeek, voidWeek, claimCarry and sunsetMaswali).
-- Integration branch `claude/maswali-s5-int1` = this release + fix-srv `9935dfd47` + fix-player `54512f311` + parity
-  `9a0c6b033` + fix-platform 1–7 `f74aaa312` + `main` `bfa0b7d57` (merge `b7292198d`: U43 took S5's five red fixes
-  verbatim, and its watchlist repair supersedes S5's interim poll; four conflicts, each explained in the commit). Static
-  readers green (maswali-ui 151, journey-tickets 51, r4j 91, r5g 65); tsc and the two-store suites are running. Next to
-  merge: REGISTER's shared pieces, then each design branch, platform 8–14 and fix-srv's new commits; `glyphs:gen` (with
-  HUB's `salesPaused` Fill) and the D19a re-pin once, at the final merge.
+- This release now holds fix-srv `9935dfd47` + fix-player `54512f311` + parity `9a0c6b033` + fix-platform 1–7 `f74aaa312`
+  + `main` `bfa0b7d57` (merge `b7292198d`: U43 took S5's five red fixes verbatim, and its watchlist repair supersedes S5's
+  interim poll; four conflicts, each explained in the commit) and `b4fcc4e4b`, which deletes `.kp-track-end--10` (no
+  label since U43's `1384383fd`; test:dead-css has been red on `main` since). Green there: tsc 0, test:maswali-player 187
+  per store, house-bot-reports, maswali-fence, watchlist, maswali-ui 151, journey-tickets 51, r4j 91, r5g 65, r5a 97,
+  r7c 65, r5j 62, dead-css; test:house-bot-blob-pin is red only on D19a's dictionary blob (re-pinned once at the final
+  merge). Next to merge: REGISTER's shared pieces (`26503c06c`, adopted by the lanes), each design branch, platform 8–15
+  and fix-srv's new commits; `glyphs:gen` (with HUB's `salesPaused` Fill) and the D19a re-pin once, at the final merge.
 - Railway's builds are still paused (status.railway.com, 12:23Z). A watcher asks Railway every 10 min to deploy `main`'s
   head and stops at the first accepted request; then U43's read-back, which U43 asked the Maswali lead to run.
 - OMEGA: the S6 notices lane's two leftover chains still run its owed checks in `kipindi-mln-not` (slot 4); their summary
-  is `s6n/heavy/summary.txt` in the lead's scratchpad. So far: red:maswali-money-path 41/42 on an earlier head (one plant
-  missed), which the S6 lane reads when it resumes.
+  is `s6n/heavy/summary.txt` in the lead's scratchpad. On `bd74c982c`: tsc 0, maswali-notify 144 and house-bot-reports 81
+  on both stores, maswali-engine 109, red:maswali-rbac 7/7, red:dal-parity 285/285, red:house-bot-money 82/0,
+  red:house-bot-c5 --only 24/24, red:deposit-recheck and red:payment-background green; **red:maswali-money-path 41/42 —
+  plant (6b) "a voided ticket's refund reverses wagering it never accrued" MISSED** (the purchase suite's 7.3b stayed
+  green). The S6 lane owes the cause; the lead re-runs the same proofs on this release to see whether S5 shares it.
+- Slots: U43 (paused) lent `mln-slot-5..8`; the S5 lanes use 1, 2, 3, 5 (`mln-slot-s5x.sh`), S7 uses 6 and 4.
+- S7 resumed (~13:15Z) on `claude/maswali-s7`: the refused release's lift in bounded sections, the S17 rush, the F7 6–8
+  render read, red:house-bot-c5 and red:house-bot-console.
+- The lead's rulings in the 10/10 pass (2026-10-21 PM), recorded with the merge in DESIGN_AUTHORITY §M8a where they set a
+  rule: the ticket's lock moment plays once at the week's RECORDED close (a "close" fact; `.m-seal` stays, Ali's N-block);
+  a paid seal lists its serials as stacked facts; zh puts no space between two Han characters (a space only where a
+  Latin letter or digit meets Han — typography, the ruled words unchanged); ONE ledger builder for the register, the hub
+  and the ticket (MR-26's money in = money out), with a core money record of any visibility for a DRIVE week's ticket and
+  the public register still refusing DRIVE weeks; one week row (`WeekRow`) for the register and /results.
 
 **⏹ STOPPED (2026-10-21 ~10:45 UTC, on Ali's word: "finish … so we proceed on another session with clean pushed").
 The lanes' state at that stop (superseded by IN FLIGHT above where they differ). RESUME HERE, from any machine:** read branch `maswali-handover-20261021`, folder `handover/maswali-2026-10-21/` —
