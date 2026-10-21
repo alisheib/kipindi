@@ -343,10 +343,10 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
      - e. *Board layout:* at 1280 and 1920 the cards leave the right third empty (BRIEF B3: the chart beside the current
        round); at 360 the Swahili first card sits 51px lower than the English one (the title and its two pills wrap);
        the 320 top padding differs from the 360 one.
-  3. **`test:needle-rest`** (a live-server suite) has been red since Release B, reported by the Maswali lane on
-     2026-10-21: 92/0 at `e4b148a05`, 55/35 at `3ec111a83` — the Needle stays parked over a control ("Tafuta soko") and
-     never glides. The Maswali lane is bisecting `1b7a91782`…`1384383fd`; first suspect: Release B's new
-     `suppressNeedleOnU43(pathname)` term in `needle.tsx`. U43's to fix.
+  3. **`test:needle-rest`** (a live-server suite) has been red since Release B — bisected by the Maswali lane on
+     2026-10-21: 92/0 at `1b7a91782`; 89/3 from `1384383fd` (three §9 CONTROL checks: a disc clear of the chat bubble's
+     ink moves 4px); 55/35 from `7e3a06ea0` ("fix(u43): align card states and truthful market evidence") — from there the
+     Needle never glides off a control ("Tafuta soko" stays under it). U43's to fix, starting from `7e3a06ea0`'s diff.
      **`test:dead-css`** still reports `.kp-track-end--10` (`globals.css`), which lost its last consumer in Release B;
      `test:visual-pass-r5a` (the Maswali lane's) still requires the rule, so the Maswali S5 release deletes both in one
      commit (agreed 2026-10-21). Already red before Release B and the Maswali lane's, shipping with its S5 release:
