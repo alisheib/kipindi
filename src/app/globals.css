@@ -1261,7 +1261,14 @@ body {
   -webkit-user-select: none;
   user-select: none;
 }
+/* ⭐ THE LIFT IS A POINTER'S (MASWALI-BUILD S5-FIX-PLATFORM D11, 2026-10-21; the motion critic's M1). On a touch screen
+   `:hover` sticks to the last element tapped, so this lift kept a tapped button raised 2px after the tap (a picked
+   answer stood lifted while the next screen loaded). L17 (2026-09-27, the fills below) gated the fills' hover to
+   pointers that hover, and this rule had stayed outside the gate. A tap keeps its press (`:active`, next); a mouse still
+   lifts. `test:hover-touch` holds the gate; `qa:hover-touch` taps on a touch screen and hovers with a mouse. */
+@media (hover: hover) {
 .btn:hover:not(:disabled)  { transform: translateY(var(--m-lift)); }
+}
 /* Press returns to rest and scales — it never sinks BELOW the resting plane. */
 .btn:active:not(:disabled) { transform: translateY(0) scale(var(--m-press)); filter: brightness(0.93); }
 .btn:focus-visible { outline: 2px solid var(--brand-500); outline-offset: 2px; box-shadow: 0 0 0 4px oklch(63% 0.18 262 / 0.25); }

@@ -496,6 +496,11 @@ html.kp-reduce-motion .toast-countdown,
   transition: transform var(--t-quick) var(--m-glide), box-shadow var(--t-quick) linear,
               filter var(--t-flick) linear;
 }
+/* ⭐ THE SWEEP AND THE LIFT ANSWER A POINTER THAT HOVERS (MASWALI-BUILD S5-FIX-PLATFORM D11, 2026-10-21; the motion
+   critic's L6). On a touch screen `:hover` sticks to the control just tapped, so the once-only sweep played at the
+   PRESS of a money commit and the control stayed lifted after it. The press (`:active`, below) is a tap's own answer;
+   a mouse still lifts and sweeps. L17's gate, as the kit's fills have it (globals.css); `test:hover-touch` holds it. */
+@media (hover: hover) {
 .gilt-metal:hover {
   transform: translateY(var(--m-lift));
   box-shadow: var(--gilt-metal-edge), 0 2px 4px oklch(6% 0.06 268 / 0.55),
@@ -506,6 +511,7 @@ html.kp-reduce-motion .toast-countdown,
      value applies to every layer and this element has two. Measured in a browser
      on a paused timeline, not reasoned. ⛔ Do not "simplify" that keyframe. */
   animation: shimmer-gilt var(--t-stage) var(--m-glide) 1;
+}
 }
 .gilt-metal:active { transform: translateY(0) scale(var(--m-press)); filter: brightness(0.94); transition-duration: var(--t-flick); }
 /* 🔴 THE DELIVERY WROTE `outline: none` HERE AND THAT IS AN ACCESSIBILITY
