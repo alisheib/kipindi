@@ -397,8 +397,18 @@ const LAZY_SETTLE_MS = 10_000;
  * server it can land after the 3 s read, so one capture has it and the next does not. A Sell cell's first paint is the
  * one read it does not precede (servedSellOf opens its page without open()): every script is held there, so no Needle can
  * mount, and that capture reads no overlays.
+ *   · strips-marked  before the Needle's settle, open() waits until every scrolling strip (`[data-strip-autoscroll]`)
+ *                  carries the `data-edges` its own client leaf writes (STRIPS_MARKED), STRIPS_MARK_MS at most; a strip
+ *                  still unmarked by then is a note in the cell, never a hang and never a failure by itself.
+ * The run that showed it: main 4471bb44's --prove-red (OMEGA-COMPILE01, 2026-10-21, the Maswali lane's calibration on a
+ * fresh in-memory server), 251/252, its one failure the player's /results at 1280 in English, whose two clean captures
+ * disagreed in regions.main.html by `data-edges="none"` on the results' chip rail, present in one and absent in the
+ * other. `StripAutoScroll` (ui/strip-autoscroll.tsx) marks a strip from inside it, so the mark lands when that strip's part
+ * of the page hydrates — on a busy dev server after the shell's fiber and the 3 s. An unmarked strip is the strip before
+ * its script (its CSS reads it as "end"), an earlier moment of the same page, not a difference between two trees.
+ * PHOSPHOR-MIGRATION's instrument for its releases; a baseline read under ["needle-rest"] alone is refused (re-capture).
  */
-const SETTLE = ["needle-rest"];
+const SETTLE = ["needle-rest", "strips-marked"];
 
 const BASE = process.env.KP_BASE ?? "http://localhost:3041";
 if (!/^http:\/\/localhost(:\d+)?$/.test(BASE)) {
@@ -2151,9 +2161,27 @@ async function settleNeedle(page) {
   const seen = await page.evaluate(() => ({ mounted: !!window.needle, resting: typeof window.needle?.resting === "function" ? window.needle.resting() : null })).catch(() => null);
   return `the Needle had not come to rest ${secs(NEEDLE_REST_MS)} into the settle (${seen ? `${seen.mounted ? "its engine mounted" : "its engine not mounted"}, resting() ${seen.resting}` : "unread"}), so the page is read as it stands`;
 }
+/**
+ * ⭐ PHOSPHOR-MIGRATION 2026-10-21 · EVERY SCROLLING STRIP MARKED (SETTLE "strips-marked"), read IN THE PAGE: each
+ * `[data-strip-autoscroll]` carries `data-edges` (StripAutoScroll's mark, ui/strip-autoscroll.tsx). A page with no strip
+ * is settled. Self-contained like NEEDLE_AT_REST; --prove-red P.8s hands it synthetic documents as `doc`.
+ */
+const STRIPS_MARKED = (_, doc = document) =>
+  Array.from(doc.querySelectorAll("[data-strip-autoscroll]")).every((el) => el.hasAttribute("data-edges"));
+/** How long open() waits, at most, for its strips' marks: the strip's own chunk of the page, which a dev server may
+ *  compile on first request, hydrating after the shell's. */
+const STRIPS_MARK_MS = 15_000;
+/** Every strip marked (STRIPS_MARKED, read every 100 ms for STRIPS_MARK_MS at most): null once it is, else the note its
+ *  cell carries — never a throw, never a failure by itself; the page is then read as it stands. */
+async function settleStrips(page) {
+  const marked = await page.waitForFunction(STRIPS_MARKED, null, { timeout: STRIPS_MARK_MS, polling: 100 }).then(() => true, () => false);
+  if (marked) return null;
+  const left = await page.evaluate(() => Array.from(document.querySelectorAll("[data-strip-autoscroll]")).filter((el) => !el.hasAttribute("data-edges")).length).catch(() => null);
+  return `${typeof left === "number" ? left : "some"} scrolling strip(s) still had no data-edges ${secs(STRIPS_MARK_MS)} into the settle (their StripAutoScroll had not run), so the page is read as it stands`;
+}
 /** Opens a cell's page: its bytes, hydration, the plant and 3 s (again for a client redirect's second document), and —
- *  calibration 3 — the Needle at rest (SETTLE), so every read of an opened page comes after it. `needle` is the settle's
- *  note, or null. */
+ *  calibration 3 — every scrolling strip marked, then the Needle at rest (SETTLE), so every read of an opened page comes
+ *  after them. `strips` and `needle` are the two settles' notes, each null when it settled. */
 async function open(page, route, plant) {
   const res = await page.goto(BASE + route, { waitUntil: "load", timeout: 180_000 });
   // The bytes the server sent, read before anything replaces the document: hydration removes what streamed first.
@@ -2170,8 +2198,10 @@ async function open(page, route, plant) {
     await applyPlant(page, plant).catch(() => {});
     await page.waitForTimeout(3000);
   }
+  // SETTLE "strips-marked": every scrolling strip's own leaf has run (its fades marked), then the Needle at rest.
+  const strips = await settleStrips(page);
   const needle = await settleNeedle(page);
-  return { status: res ? res.status() : 0, body, needle };
+  return { status: res ? res.status() : 0, body, needle, strips };
 }
 const localeCookie = (locale) => ({ name: "kp-locale", value: locale, domain: HOST, path: "/" });
 
@@ -2198,7 +2228,7 @@ async function captureOnce(jar, locale, width, route, plant = null) {
     await ctx.addCookies([...jar, localeCookie(locale)]);
     const page = await ctx.newPage();
     page.on("pageerror", fileError(pageErrors, devOnly));
-    const { status, body, needle } = await open(page, route, plant);
+    const { status, body, needle, strips } = await open(page, route, plant);
     const args = { crest: CREST, props: PROPS, animated: ANIMATED, notFound: route === "/account" || route === NOT_FOUND, pageBody: jar.length > 0 && route === BODY_ROUTE, trace: TRACE };
     // Turbopack may replace this warmed document. The retry still judges its landed URL and regions.
     let snap = await evaluateStableSnapshot(page, args, plant);
@@ -2216,7 +2246,7 @@ async function captureOnce(jar, locale, width, route, plant = null) {
       snap = { ...snap, notFound: { ...snap.notFound, robots: [...body.matchAll(/<meta name="robots" content="([^"]*)"/g)].map((m) => m[1]).sort() } };
     }
     const pass = (await ctx.cookies(BASE)).some((c) => c.name === "kp_preview");
-    return toCell(snap, { status, stable, pass, raw: rawOf(body), pageErrors: [...new Set(pageErrors)].sort(), devOnly: [...new Set(devOnly)].sort(), ...notesOf([needle]) });
+    return toCell(snap, { status, stable, pass, raw: rawOf(body), pageErrors: [...new Set(pageErrors)].sort(), devOnly: [...new Set(devOnly)].sort(), ...notesOf([strips, needle]) });
   } finally {
     await ctx.close().catch(() => {});
   }
@@ -2363,7 +2393,7 @@ async function captureSellCell(jar, locale, width, place, held, plant = null, wi
     const served = withServed ? await servedSellOf(ctx, routeOfPlace(place, held), args).catch((e) => ({ error: msg(e) })) : undefined;
     const page = await ctx.newPage();
     page.on("pageerror", fileError(pageErrors, devOnly));
-    const { status, body, needle } = await open(page, routeOfPlace(place, held), plant);
+    const { status, body, needle, strips } = await open(page, routeOfPlace(place, held), plant);
     let snap = await page.evaluate(SNAPSHOT, args);
     let stable = false;
     for (let i = 0; i < 6 && !stable; i++) {
@@ -2405,7 +2435,7 @@ async function captureSellCell(jar, locale, width, place, held, plant = null, wi
       ...(served === undefined ? {} : { served }),
       pageErrors: [...new Set(pageErrors)].sort(),
       devOnly: [...new Set(devOnly)].sort(),
-      ...notesOf([needle]),
+      ...notesOf([strips, needle]),
     };
   } catch (e) {
     return { error: msg(e) };
@@ -2532,7 +2562,7 @@ async function captureBookCell(jar, locale, width, route, similarId, plant = nul
     const page = await ctx.newPage();
     page.on("pageerror", fileError(pageErrors, devOnly));
     const target = route === BOOK.similar ? `/markets/${similarId}` : route;
-    const { status, body: sent, needle } = await open(page, target, { css: `${STRIP_STILL}${plant?.css ? `${NL}${plant.css}` : ""}`, js: plant?.js ?? null });
+    const { status, body: sent, needle, strips } = await open(page, target, { css: `${STRIP_STILL}${plant?.css ? `${NL}${plant.css}` : ""}`, js: plant?.js ?? null });
     const body = plant?.bytes && typeof sent === "string" ? plant.bytes(sent) : sent;
     // PHOSPHOR-MIGRATION owed parity: the null compare of this exact tree moved four
     // /watchlist number boxes by 5.5px with identical HTML and CSS. Wait for the
@@ -2575,7 +2605,7 @@ async function captureBookCell(jar, locale, width, route, similarId, plant = nul
       stable = seen(next) === seen(snap);
       snap = next;
     }
-    const cell = toBookCell(snap, { status, stable, homeCloseDates, raw: rawOf(body), pageErrors: [...new Set(pageErrors)].sort(), devOnly: [...new Set(devOnly)].sort(), ...notesOf([needle, lazy]) });
+    const cell = toBookCell(snap, { status, stable, homeCloseDates, raw: rawOf(body), pageErrors: [...new Set(pageErrors)].sort(), devOnly: [...new Set(devOnly)].sort(), ...notesOf([strips, needle, lazy]) });
     if (route === BOOK.similar && similarId) cell.landed = cell.landed.split(similarId).join(":similar");
     if (route === BOOK.head) cell.head = typeof body === "string" ? put(bookNorm(headOf(body))) : null;
     return cell;
@@ -2691,7 +2721,7 @@ async function captureQuestionCell(jar, locale, width, state, ids, plant = null)
     await ctx.addCookies([...jar, localeCookie(locale)]);
     const page = await ctx.newPage();
     page.on("pageerror", fileError(pageErrors, devOnly));
-    const { status, body: sent, needle } = await open(page, routeOfQuestion(state.route, ids), plant);
+    const { status, body: sent, needle, strips } = await open(page, routeOfQuestion(state.route, ids), plant);
     const body = plant?.bytes && typeof sent === "string" ? plant.bytes(sent) : sent;
     const args = questionArgsOf(locale);
     const regions = Object.values(args.book.regions);
@@ -2715,7 +2745,7 @@ async function captureQuestionCell(jar, locale, width, state, ids, plant = null)
       stable = seen(next) === seen(snap);
       snap = next;
     }
-    const cell = toQuestionCell(snap, { status, stable, raw: rawOf(body), pageErrors: [...new Set(pageErrors)].sort(), devOnly: [...new Set(devOnly)].sort(), ...notesOf([needle, lazy]) });
+    const cell = toQuestionCell(snap, { status, stable, raw: rawOf(body), pageErrors: [...new Set(pageErrors)].sort(), devOnly: [...new Set(devOnly)].sort(), ...notesOf([strips, needle, lazy]) });
     for (const [name, id] of Object.entries(ids ?? {})) if (id) cell.landed = cell.landed.split(id).join(`:${name}`);
     return cell;
   } catch (e) {
@@ -3670,7 +3700,7 @@ async function proveRed() {
     const misread = PAGES.filter(([, root, win, want]) => NEEDLE_AT_REST(null, docOf(root), win) !== want).map(([what, , , want]) => `${what} read ${want ? "unsettled" : "at rest"}`);
     ok("P.8r (a) the Needle's rest is read from needle.tsx's probe as the page states it: a page without #needle-root (a guest's) is at rest; a #needle-root whose engine has not mounted is NOT (qa:journey-shell reads that as resting; every signed-in classic page mounts one), nor is an engine without the probe or one whose resting() answers anything but true; resting() true is",
       misread.length === 0, JSON.stringify(misread).slice(0, 400));
-    const pageOf = ({ redirect = false, rests = true } = {}) => {
+    const pageOf = ({ redirect = false, rests = true, marks = true } = {}) => {
       const asked = [];
       let at = null;
       return {
@@ -3678,13 +3708,19 @@ async function proveRed() {
         goto: async (url) => { asked.push("goto"); at = url; return { text: async () => "<main></main>", url: () => url, status: () => 200 }; },
         locator: () => ({ first: () => ({ waitFor: async () => { asked.push("main"); } }) }),
         waitForFunction: async (fn, arg, options) => {
+          if (fn === STRIPS_MARKED) {
+            asked.push(`strips ${options?.timeout} ${options?.polling}`);
+            if (!marks) throw new Error("page.waitForFunction: Timeout exceeded");
+            return true;
+          }
           if (fn !== NEEDLE_AT_REST) { asked.push("hydrated"); return true; }
           asked.push(`needle ${options?.timeout} ${options?.polling}`);
           if (!rests) throw new Error("page.waitForFunction: Timeout exceeded");
           return true;
         },
         addStyleTag: async () => { asked.push("plant"); },
-        evaluate: async () => { asked.push("read"); return { mounted: true, resting: false }; },
+        // A read after a settle timed out: two unmarked strips (P.8s), or a Needle mounted but not resting (P.8r).
+        evaluate: async () => { asked.push("read"); return marks ? { mounted: true, resting: false } : 2; },
         waitForTimeout: async (ms) => { asked.push(`wait ${ms}`); },
         url: () => (redirect && asked.includes("wait 3000") ? `${BASE}/auth/login` : at),
         waitForLoadState: async () => { asked.push("load"); },
@@ -3707,6 +3743,43 @@ async function proveRed() {
     }
     ok(`P.8r (b) open(), the one door every read of a hydrated page goes through (matrix, Sell and book cells), ends with the Needle's settle, once — after hydration, the plant and the 3 s, and after a client redirect's second document too — bounded (${secs(NEEDLE_REST_MS)}, read every 100 ms); a Needle that never comes to rest is a note in what open() returns, never a throw`,
       openFails.length === 0, JSON.stringify(openFails).slice(0, 400));
+    // ②c4 PHOSPHOR-MIGRATION 2026-10-21 · every scrolling strip marked (SETTLE "strips-marked"). (a) STRIPS_MARKED, the
+    // function the page runs, on synthetic documents: no strip is settled, an unmarked strip is not, nor is a page whose
+    // one strip was marked while a later-streamed one was not; every strip marked (any of the four states) is. (b) open()
+    // asks it once — after hydration, the plant and the last document's 3 s — immediately before the Needle's settle,
+    // bounded by STRIPS_MARK_MS and read every 100 ms; (c) a strip never marked is a note in what open() returns, never a throw.
+    const stripDoc = (rails) => ({ querySelectorAll: (sel) => (sel === "[data-strip-autoscroll]"
+      ? rails.map((edges) => ({ hasAttribute: (name) => name === "data-edges" && edges !== null })) : []) });
+    const DOCS = [
+      ["a page without a scrolling strip", [], true],
+      ["one strip its StripAutoScroll has not marked", [null], false],
+      ["two strips, one marked and one that streamed in after the other's leaf ran", ["none", null], false],
+      ["one strip marked none (everything fits)", ["none"], true],
+      ["every strip marked", ["start", "both", "end"], true],
+    ];
+    const stripMisread = DOCS.filter(([, rails, want]) => STRIPS_MARKED(null, stripDoc(rails)) !== want).map(([what, , want]) => `${what} read ${want ? "unsettled" : "settled"}`);
+    ok("P.8s (a) the strips' marks are read as the page states them: a page without a scrolling strip is settled; an unmarked strip is NOT, nor is a page whose later-streamed strip is still unmarked beside a marked one; every strip marked is",
+      stripMisread.length === 0, JSON.stringify(stripMisread).slice(0, 400));
+    const STRIPS_ASK = `strips ${STRIPS_MARK_MS} 100`;
+    const stripFails = [];
+    for (const [what, opts] of [["a page", {}], ["a page the client redirects", { redirect: true }]]) {
+      const page = pageOf(opts);
+      const got = await open(page, "/results", { css: "main { color: red }" }).catch((e) => ({ error: msg(e) }));
+      const s = page.asked.indexOf(STRIPS_ASK), n = page.asked.indexOf(SETTLE_ASK);
+      const after = ["hydrated", "plant", "wait 3000"].every((x) => page.asked.lastIndexOf(x) < s);
+      if (got.error || got.strips !== null || page.asked.filter((x) => x.startsWith("strips")).length !== 1 || s < 0 || s !== n - 1 || !after) {
+        stripFails.push(`${what}: asked ${page.asked.join(", ")} → ${JSON.stringify(got).slice(0, 120)}`);
+      }
+    }
+    {
+      const page = pageOf({ marks: false });
+      const got = await open(page, "/results", null).catch((e) => ({ error: msg(e) }));
+      if (got.error || got.status !== 200 || got.needle !== null || typeof got.strips !== "string" || !got.strips.includes("2 scrolling strip(s) still had no data-edges")) {
+        stripFails.push(`a strip never marked: asked ${page.asked.join(", ")} → ${JSON.stringify(got).slice(0, 160)}`);
+      }
+    }
+    ok(`P.8s (b) open() waits for every scrolling strip's mark once — after hydration, the plant and the last document's 3 s — immediately before the Needle's settle, bounded (${secs(STRIPS_MARK_MS)}, read every 100 ms); (c) a strip never marked is a note in what open() returns, never a throw`,
+      stripFails.length === 0, JSON.stringify(stripFails).slice(0, 400));
   }
   // ②d S7 WP1 · /'s head from the bytes (WP1 steps 3 and 5): the reader takes the canonical link and every og:* meta in
   // order — attributes in any order, a tag streamed into the body — and never twitter:*, a comment or the RSC payload's
