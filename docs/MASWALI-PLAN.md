@@ -40,7 +40,16 @@ search/filter/sort/paging, bounded integrity report coverage, reviewed consequen
 device-audit feedback, versioned seal corrections, the multi-ticket slip, the separate Results section, the public
 settled-week sitemap and share image, and bounded public week and register caches. The rollout stays `WITHDRAWN`.
 
-**⏳ IN FLIGHT (2026-10-21 from ~12:35 UTC, Ali: "proceed") — the Claude session asheib-65 on OMEGA-COMPILE01 leads:**
+**⏹ STOP 2 (2026-10-21 ~17:00 UTC, Ali: "work for 2 hours and push everything and progress … so we continue from another
+machine"). RESUME HERE, from any machine:** branch `maswali-handover-20261021`, `handover/maswali-2026-10-21/README.md`
+(its top section: every branch head and state, the next steps in order) and `MERGE-NOTES.md` beside it (every PM ruling,
+every lane's report, the merge maps and the owed items). In one line: the five S5 design lanes and both fix lanes finished
+their round (DOORS, HUB, SLIP, TICKETS, REGISTER, PLATFORM D1–D15, FIX-SRV); this release (`ff9933e45`) holds FIX-SRV,
+DOORS and HUB with tsc 0 and its suites green; SLIP, TICKETS, REGISTER's latest and PLATFORM 8–23 are pushed on their
+branches and merge next (conflicts mapped), then round 2 (the critics re-score), the gates, and `main` when Railway builds
+again (still paused at 17:00Z). S7 is at `0f0d42fcc` (S17 rush first green); S6-N owes its blind 6b guard.
+
+**⏳ The PM round (2026-10-21 from ~12:35 UTC, Ali: "proceed") — the Claude session asheib-65 on OMEGA-COMPILE01 led:**
 - Lanes resumed with their own context, each on its branch and SSD tree, heavy jobs in Maswali slots 1–3:
   S5-DESIGN-HUB, -SLIP, -TICKETS (plus P6 on a ticket and the tickets ghost's third box), -REGISTER (its shared pieces
   first, merged early for round 2), -DOORS (the owed browser re-run and tile read), S5-FIX-PLATFORM (verify 8–11, then
