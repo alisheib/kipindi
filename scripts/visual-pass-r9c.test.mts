@@ -903,6 +903,84 @@ section("4 · C4 the journey rail stacks from the top only where a label wraps �
   ok("4b.2″ PLANT · centring Swahili before its full name fits is reported", earlySw !== CSS && !railRules5(earlySw).holds);
   const clippedSw = CSS.replace(`${FIVE}:lang(sw) .kp-jtab__label { white-space: normal;`, `${FIVE}:lang(sw) .kp-jtab__label { white-space: nowrap;`);
   ok("4b.2‴ PLANT · making the Swahili name nowrap while its slot is narrow is reported", clippedSw !== CSS && !railRules5(clippedSw).holds);
+
+  // ⭐ §4c · MASWALI-BUILD S5-FIX-PLATFORM D14 (2026-10-21): NO TWO LABELS STAND CLOSER THAN THEIR PIPS. In five equal
+  // tracks English's nine-letter neighbours stood 4.6px apart at 320 (the tile journey-home-en-320 read ~5px). The minimum
+  // is READ: the pips' own gap at the narrowest phone (a fifth of 320, less `.kp-rail__pip`'s width). Every neighbour pair
+  // is measured with §4's model (the rail's 11px mono, 0.6em a letter, 1em a Chinese character), each label as the
+  // stylesheet sets it at that width — its tracking (`letter-spacing`, after every glyph as Chromium draws it) and, where
+  // it may wrap, its lines (greedy, by word, in its track less its padding) — at every width from 320 to 1023 (the rail is
+  // `lg:hidden`), in sw, en and zh.
+  const pipW = Number(/(?:^|[\s;])width: (\d+)px/.exec(pipRule)?.[1] ?? NaN);
+  const MIN_GAP = 320 / 5 - pipW;
+  /** The value a five-tab label's `prop` takes at `w` in `l`: the last rule that reaches it, in source order (mobile-first). */
+  const fiveLabel = (css: string, prop: string, w: number, l: Loc): string | null => {
+    let value: string | null = null;
+    const rx = new RegExp(`(?:@media \\(min-width: ([0-9.]+)px\\) \\{ )?\\.kp-rail--journey\\[data-tabs="5"\\](?::lang\\((\\w+)\\))? \\.kp-jtab__label \\{([^}]*)\\}`, "g");
+    for (const m of css.matchAll(rx)) {
+      const from = m[1] ? Number(m[1]) : 0, lang = m[2];
+      const decl = new RegExp(`(?:^|;)\\s*${prop}: ([^;]+);`).exec(m[3]);
+      if (decl && w >= from && (!lang || lang === l)) value = decl[1].trim();
+    }
+    return value;
+  };
+  const trackPx = (v: string | null) => (v === null || v === "normal" ? 0 : v.endsWith("em") ? parseFloat(v) * micro : parseFloat(v));
+  type Tabs = ReadonlyArray<{ key: string; label: string; railLabel?: string }>;
+  /** Each label's ink width at `w` in `l` under `css`: tracked, and wrapped where its white-space lets it. */
+  const inks = (css: string, w: number, l: Loc, tabs: Tabs = FIVE_TABS) => {
+    const ls = tabs.length === 5 ? trackPx(fiveLabel(css, "letter-spacing", w, l)) : 0;
+    const lineW = (s: string) => [...s].reduce((a, ch) => a + ((ch.codePointAt(0) ?? 0) >= 0x2e80 ? 1 : 0.6) * micro + ls, 0);
+    const room = w / tabs.length - labelPad;
+    // The base rule wraps below 360, the five-tab Swahili rule through 415; anything else is one line (and would ellipsise).
+    const own = tabs.length === 5 ? fiveLabel(css, "white-space", w, l) : null;
+    const wraps = (own ?? (w < 360 ? "normal" : "nowrap")) === "normal";
+    return tabs.map((d) => {
+      const s = TAB.tabLabel(dict[l], d.railLabel ?? d.label);
+      if (!wraps || lineW(s) <= room) return Math.min(lineW(s), room);
+      const lines: string[] = [];
+      for (const part of s.split(" ")) {
+        const last = lines.at(-1);
+        if (last !== undefined && lineW(`${last} ${part}`) <= room) lines[lines.length - 1] = `${last} ${part}`;
+        else lines.push(part);
+      }
+      return Math.max(...lines.map(lineW));
+    });
+  };
+  /** The least gap between two neighbouring labels' ink, over every width, per language (and where it falls). */
+  const leastGap = (css: string, tabs: Tabs = FIVE_TABS) => Object.fromEntries(LOCALES.map((l) => {
+    let least = { gap: Infinity, at: 0 };
+    for (let w = 320; w < 1024; w++) {
+      const ink = inks(css, w, l, tabs), track = w / tabs.length;
+      for (let i = 0; i + 1 < ink.length; i++) {
+        const gap = Number((track - (ink[i] + ink[i + 1]) / 2).toFixed(2));
+        if (gap < least.gap) least = { gap, at: w };
+      }
+    }
+    return [l, least];
+  })) as Record<Loc, { gap: number; at: number }>;
+  const G = leastGap(CSS);
+  ok(`4c.1 · five tabs: no two neighbouring labels stand closer than their pips (${MIN_GAP}px) at any width from 320 — least sw ${G.sw.gap}px (at ${G.sw.at}), en ${G.en.gap}px (at ${G.en.at}), zh ${G.zh.gap}px (at ${G.zh.at})`,
+    pipW === 56 && MIN_GAP === 8 && LOCALES.every((l) => G[l].gap >= MIN_GAP), j(G));
+  const untracked = CSS.replace(/\n\.kp-rail--journey\[data-tabs="5"\]:lang\(en\) \.kp-jtab__label \{ letter-spacing: -0\.04em; \}\n@media \(min-width: 337px\) \{ \.kp-rail--journey\[data-tabs="5"\]:lang\(en\) \.kp-jtab__label \{ letter-spacing: normal; \} \}/, "");
+  const U = leastGap(untracked);
+  ok(`4c.1′ CONTROL + PLANT · without English's tracking the model reads the tile's gap — en ${U.en.gap}px at ${U.en.at} — and the check fails`,
+    untracked !== CSS && U.en.gap === 4.6 && U.en.at === 320 && U.en.gap < MIN_GAP, j(U.en));
+  const early = CSS.replace('@media (min-width: 337px) { .kp-rail--journey[data-tabs="5"]:lang(en) .kp-jtab__label { letter-spacing: normal; } }',
+    '@media (min-width: 330px) { .kp-rail--journey[data-tabs="5"]:lang(en) .kp-jtab__label { letter-spacing: normal; } }');
+  ok("4c.1″ PLANT · the tracking given back at 330, before the pair clears 8px untouched, is reported", early !== CSS && leastGap(early).en.gap < MIN_GAP, j(leastGap(early).en));
+  // The four-tab rail is the answer while Millionea is withdrawn: no rule of this kind reaches it, so it draws as it did.
+  // ⚠️ AND ITS OWN LEAST GAP IS UNDER THE MINIMUM, read here and left as it is: Swahili's "Juu na Chini" | "Tiketi zangu",
+  // both one line from 332.8 (§4.1), stand 83.25 − 79.2 = 4.05px apart at 333 and clear 8px only from ~347. It is the rail
+  // every reader is served while Millionea is withdrawn, which this release may not change (reported to the lead).
+  /** Every rule that tracks a rail label (or anything in the journey rail) without naming the five-tab rail. */
+  const fourReached = (css: string) => [...css.matchAll(/(?:^|\n|\{ )([^{}\n]*(?:kp-jtab__label|kp-rail__label|kp-rail--journey)[^{}\n]*)\{([^}]*)\}/g)]
+    .filter((m) => /letter-spacing/.test(m[2]) && !m[1].includes('[data-tabs="5"]')).map((m) => m[1].trim());
+  const G4 = leastGap(CSS, TAB.JOURNEY_TABS);
+  ok(`4c.2 · the four-tab rail is untouched: no tracking rule reaches it, nor any rail label but the five-tab rail's (its least gap from 320, as it was: sw ${G4.sw.gap}px at ${G4.sw.at}, en ${G4.en.gap}, zh ${G4.zh.gap})`,
+    fourReached(CSS).length === 0 && fourReached(untracked).length === 0, j({ reached: fourReached(CSS), G4 }));
+  const spilled = CSS.replace('.kp-rail--journey[data-tabs="5"]:lang(en) .kp-jtab__label { letter-spacing: -0.04em; }', ".kp-rail--journey:lang(en) .kp-jtab__label { letter-spacing: -0.04em; }");
+  ok("4c.2′ PLANT · the tracking written for every journey rail (the four-tab rail's English changed while Millionea is withdrawn) is reported",
+    spilled !== CSS && fourReached(spilled).length === 1, j(fourReached(spilled)));
 }
 
 /* ══ §5 · C5 · THE STACKED FLAG ON A WHOLE PIXEL ═══════════════════════════════════════════════════════════════════════ */

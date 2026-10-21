@@ -2,75 +2,38 @@
 
 import { usePathname } from "next/navigation";
 import { useRef, useEffect, useLayoutEffect, useState } from "react";
-import { journeyFlagSnapshot } from "@/lib/journey/journey-on";
 
 /**
- * The two CLAMP gates, read live (§M6). A View Transition is started from JS, so
- * this is the only place gate 2 can be applied to one.
+ * Wraps page content with a route-enter animation keyed to pathname: the kit's `m-settle-in` at `--t-move` on this
+ * wrapper (`.route-enter`), restarted on each route change, never at mount, never on a filter or search update.
  *
- * ⚠️ `data-motion="reduced"` is deliberately absent: that tier is a THROTTLE
- * (ambient loops off, full durations), and a 180ms one-shot cross-fade is not an
- * ambient loop — the same reasoning `motionOff()` in
- * `components/markets/win-celebration.tsx` is written against.
+ * ⛔ ONE ENTRANCE PER ARRIVAL (§M2 — "there is no third entrance"), AND IT MOVES THE PAGE, NOT THE CHROME. Every reader,
+ * in every engine, gets this one entrance on this one wrapper; the header and the rail stand outside it and hold still
+ * while a page changes under them.
  *
- * ⚠️ THREE COPIES OF THIS PREDICATE NOW EXIST — here, `win-celebration.tsx`, and
- * `prefersReducedMotion()` in `app/live/featured-contest.tsx` (which also folds
- * in the throttle, correctly, because it drives an auto-advancing carousel).
- * They want one home in `src/lib`; consolidating them touches files this change
- * does not own.
- */
-function motionOff(): boolean {
-  if (typeof window === "undefined") return true;
-  const root = document.documentElement;
-  return (
-    (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false) ||
-    root.classList.contains("kp-reduce-motion") ||
-    root.getAttribute("data-motion") === "minimal"
-  );
-}
-
-/**
- * Wraps page content with a route-enter animation keyed to pathname.
- *
- * When the View Transitions API is available (Chrome 111+, Edge 111+),
- * uses `document.startViewTransition()` for a native cross-fade that the
- * browser can hardware-accelerate. Falls back to the existing `.route-enter`
- * CSS animation (the kit's `m-settle-in` at `--t-move`) on Firefox / Safari /
- * older browsers.
- *
- * Mount-guarded: only fires once per pathname change, never on filter/search updates.
- *
- * ⛔ ONE ENTRANCE PER ARRIVAL (§M2 — "there is no third entrance"). The two
- * mechanisms are ALTERNATIVES, not layers: on Chrome/Edge the browser cross-fades
- * the document and `.route-enter` is NOT re-triggered; everywhere else the CSS
- * entrance is the whole animation. They used to run together — 180ms of
- * cross-fade with 340ms of `m-settle-in` (`--t-move`) stacked on top of it, on
- * the most-travelled path in the product, and only in the one engine that has
- * the API.
- *
- * ⚠️ REDUCED MOTION IS HANDLED HERE IN JS, AND IT HAS TO BE (§M6). The comment
- * this replaced claimed the View Transitions API "handles this natively" — it
- * does not. globals.css carries an explicit `@media (prefers-reduced-motion:
- * reduce)` branch for `::view-transition-old/new(root)`, which covers gate 1 and
- * NOTHING ELSE: a view-transition pseudo-element is not a descendant of `html`,
- * so the universal clamps in motion.css (`html.kp-reduce-motion *`,
- * `[data-motion="minimal"] *`) cannot reach it. Gate 2 — the player's own in-app
- * "Reduce motion" switch — therefore had no effect on route cross-fades at all,
- * on every navigation. JS is the only place that hole can be closed.
- *
- * ⛔ A JOURNEY PAGE NEVER CROSS-FADES THE DOCUMENT (2026-10-09, the Vodacom visual pass round 4, R4-J; E37 and E41,
- * the Slow 3G tap tiles 292 301 306 315 333 338 and the blank 328). The cross-fade is of the ROOT, so it took the
- * header, the preview strip and the rail with it: two snapshots `vt-fade-out`/`vt-fade-in` move 4px apart (−2 and +2 at
- * the midpoint), measured as the capsule figure's "T" spread from 10 rows (y29–38, tile 300) to 15 (y27–41, tile 301)
- * and its gold dimmed from 243,203,122 to 184,152,100. Both snapshots are of the NEW page: the `[pathname]` effect below
- * runs after the router has committed the target, so the "old" image is the new skeleton too, and the transition
- * cross-faded the page with itself. What the old image did keep was the rail's pip mid-way through its own transition,
- * frozen lit on the tab being left while the new tab's label was already bold: two tabs lit at once. And a frame taken
- * while the browser held rendering between the two captures came back as the bare page colour, 280,800 px of 8,0,41
- * (328). The journey's chrome must hold still while a page changes under it, so for a journey reader (the shell's mark,
- * `journeyFlagSnapshot`, read at the moment of the change) the arrival is the CSS entrance on this wrapper alone — the
- * one every other engine already gets — and the header and the rail, outside it, do not move. A classic page is
- * unchanged: it keeps the native cross-fade.
+ * ⭐ NO READER'S ROUTE CHANGE IS A VIEW TRANSITION ANY MORE (MASWALI-BUILD S5-FIX-PLATFORM D10, 2026-10-21; the motion
+ * critic's M7). Until then a classic reader in an engine with the API (Chrome, Edge) moved by
+ * `document.startViewTransition()`, a cross-fade of the ROOT, and the journey had already left it for this wrapper's
+ * entrance (2026-10-09, the Vodacom visual pass round 4, R4-J; E37 and E41) for the reasons the classic reader still had
+ * to live with:
+ *   · the root cross-fade took the header and the rail with the page: two snapshots `vt-fade-out`/`vt-fade-in` 4px
+ *     apart, the chrome dimmed mid-move (R4-J measured the capsule's gold 243,203,122 → 184,152,100; the critic the
+ *     classic rail's luminance 32 → 24.4 at +120 ms), and the rail's pip frozen half-lit on the tab being left;
+ *   · both snapshots were of the NEW page (this effect runs after the router has committed the target), so the
+ *     transition cross-faded the page with itself;
+ *   · the scroll to the top ran in the transition's callback, after the old snapshot was taken and the new page drawn
+ *     at the old scroll: leaving the foot of a long page showed the next page's footer for the length of the fade
+ *     (`qa:route-entrance` 1.2, before: frames of /help drawn at y 435, the scroll /markets was left at);
+ *   · reduced motion had to be re-read here in JS (a view-transition pseudo-element is not a descendant of `html`, so
+ *     the universal clamps of motion.css could not reach it), and an aborted transition (a resize, a hidden tab, a newer
+ *     move) rejected promises that had to be observed (MASWALI-BUILD S5's player drive, 2026-10-19).
+ * Now the classic reader takes the journey's path: the key changes in the layout phase, so the scroll to the top and
+ * the entrance's restart both land before the new route's first paint. With no transition started, the JS gate, the
+ * promise observers and the `::view-transition-*` rules (globals.css) went with it: the entrance is a CSS animation on
+ * an element inside `html`, so the OS preference and both in-app gates clamp it in motion.css (§M6), and there is no
+ * promise left to reject. `qa:route-entrance` drives it in Chromium: no transition, every frame of the new address at
+ * the top, the chrome still, the entrance run, reduced motion clamped both ways, Back keeping its place, no page error
+ * on a resize mid-move.
  */
 export function RouteTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -82,11 +45,6 @@ export function RouteTransition({ children }: { children: React.ReactNode }) {
   // board they had scrolled. A pushed nav still gets the top (deep links must
   // not land mid-scroll); a traversal keeps the position the restorer restores.
   const traversalRef = useRef(false);
-  // TRUE when the key change now committing was made inside a View Transition,
-  // i.e. the browser is already cross-fading the whole document. Read (and
-  // cleared) by the `[key]` effect below so the CSS entrance does not replay on
-  // top of it. A ref, not state: it must not itself cause a render.
-  const viaViewTransitionRef = useRef(false);
   useEffect(() => {
     const onPop = () => { traversalRef.current = true; };
     window.addEventListener("popstate", onPop);
@@ -98,33 +56,11 @@ export function RouteTransition({ children }: { children: React.ReactNode }) {
   // after, none — S\r5h\probe-route-blink.mjs, test:visual-pass-r5h 3.7). A passive effect
   // runs after a transition's paint, so the new route was painted once at full opacity (the wrapper's entrance long
   // finished) before the key changed and the `[key]` effect below made it transparent to fade it in — a blink on every
-  // journey tab tap and every move in a browser without View Transitions. In the layout phase the key changes, and the
-  // entrance restarts, before that paint; a View Transition starts from the same DOM as before.
+  // journey tab tap. In the layout phase the key changes, and the entrance restarts and the page goes to the top, before
+  // that paint (for every reader since D10, above).
   useLayoutEffect(() => {
     if (pathname !== key) {
-      const doc = document as Document & {
-        startViewTransition?: (cb: () => void) => { ready: Promise<void>; finished: Promise<void>; updateCallbackDone: Promise<void> };
-      };
-
-      if (doc.startViewTransition && !motionOff() && !journeyFlagSnapshot()) {
-        // Use the View Transitions API — the browser handles the cross-fade, and
-        // it is then the ONLY entrance this arrival gets.
-        viaViewTransitionRef.current = true;
-        const transition = doc.startViewTransition(() => {
-          setKey(pathname);
-        });
-        // ⭐ AN ABORTED CROSS-FADE IS NOT AN ERROR (found by MASWALI-BUILD S5's player drive, 2026-10-19). The browser
-        // drops a View Transition whose page changes size while it runs (a phone turned, a window resized), goes hidden,
-        // or is overtaken by a newer one, and then REJECTS its promises ("InvalidStateError: Transition was aborted because
-        // of invalid state"). Unobserved, that rejection was an uncaught page error on every such move. The route update
-        // (`setKey`) runs either way — only the animation is dropped — so the rejections are observed here and nothing else.
-        transition.ready.catch(() => {});
-        transition.finished.catch(() => {});
-        transition.updateCallbackDone.catch(() => {});
-      } else {
-        viaViewTransitionRef.current = false;
-        setKey(pathname);
-      }
+      setKey(pathname);
     }
   }, [pathname, key]);
 
@@ -140,13 +76,6 @@ export function RouteTransition({ children }: { children: React.ReactNode }) {
     // the position (B-19).
     if (!traversalRef.current) window.scrollTo(0, 0);
     traversalRef.current = false;
-
-    // ⛔ The CSS entrance is the FALLBACK, not a second layer (§M2). When the
-    // browser ran a View Transition for this arrival it has already animated the
-    // document; re-triggering `.route-enter` here stacked `m-settle-in`
-    // (`--t-move`, 340ms) on the cross-fade's 180ms. Scroll-to-top above still
-    // runs on BOTH paths — that is position, not motion.
-    if (viaViewTransitionRef.current) { viaViewTransitionRef.current = false; return; }
 
     const el = ref.current;
     if (!el) return;

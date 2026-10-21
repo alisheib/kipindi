@@ -1496,6 +1496,18 @@ them, never dip under.
    list carrying `cursor-not-allowed` / `pointer-events-none`, a rendered fact, never by a
    filename. A file-scoped allowlist would exempt every future site in the same file, which is
    how `filter-language` §6.7 once convicted an innocent `<input>`.
+   ⭐ **TWO OPACITY TOKENS, TWO MEANINGS — NEVER ONE FOR THE OTHER (`state-tokens.css`).** `--state-disabled-opacity`
+   says *switched off*: a pending board tab, a waiting chip, an inert ticket.
+   `--state-yield-opacity`: floating chrome yielding to the content beneath it; still live, never disabled — the chat
+   bubble at rest over a line of text or a figure (globals.css D15; MASWALI-BUILD S5-FIX-PLATFORM D15, lead 2026-10-21,
+   the 10/10 pass): a pointer's hover and a keyboard's focus bring it back whole, its taps are kept, and its value is
+   MEASURED, never chosen: every figure it covers meets item 1's minimum for its size through the real bubble — its
+   median glyph pixel AND its 10th-percentile one, so the figure reads under the bubble's icon too (the lead's rule,
+   2026-10-21: .50, provided that holds on every covered figure, else the highest value where it does;
+   `qa:chat-yield --measure`). **Measured 2026-10-21 → .50**, on the register lane's head (ceb06e8cb), at 320 and 360:
+   32 covered figures, 13–16px mono (4.5:1 each). Median / p10 at .50: the sunset week's ledger 5.34–5.82 / 4.99–5.31,
+   How to play's worked figures 5.39–5.51 / 4.87–5.01, `/wallet`'s right-aligned amounts 5.10–5.11 / 4.58–4.59 (the
+   tightest; at .55 their p10 falls to 3.90). The whole table is the token's note in `state-tokens.css`.
 2. **Tap targets ≥ `--tap-min` (40px), 44px preferred on mobile.** Money controls are
    never the exception — a stake chip is where a player chooses how much to risk, and it
    was shipped at 26px once (E-112). `--h-input` already sits at 44px.
@@ -3107,10 +3119,14 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     More's first row, beside Results, which has lived in that More since the coin.
     `/millionea` and its pages light Millionea's tab; `/millionea/tickets` and a ticket light Tiketi zangu. Where the
     four tabs are drawn (Millionea not visible to the reader), Millionea's pages light Maswali, the tab whose home carries
-    its card. While five tabs show, the journey rail's tickets tab says its short rail label — Swahili "Tiketi", English
+    its card. On a break (Millionea visible, its door not drawn) the classic bar and rail light the same destination —
+    Markets, or Positions on Millionea's tickets — one lit item, never none (MASWALI-BUILD S5-FIX-PLATFORM D13,
+    2026-10-21). While five tabs show, the journey rail's tickets tab says its short rail label — Swahili "Tiketi", English
     "Tickets" (the lead's rulings, 2026-10-19: a fifth of a 320 phone holds neither "Tiketi zangu" nor "My tickets" on one
     line; its page, its title and the desktop link keep the full words; Chinese keeps 我的注单). The full Swahili "Juu na
-    Chini" wraps on the five-tab rail below 416 with all pips aligned, then fits one line (§K 8b). From 1024 to 1279,
+    Chini" wraps on the five-tab rail below 416 with all pips aligned, then fits one line (§K 8b). No two of the five
+    labels stand closer than their pips (8px at 320): below 337px English's labels close their tracking by 0.04em
+    (S5-FIX-PLATFORM D14, `test:visual-pass-r9c` §4c). From 1024 to 1279,
     while five destinations show, the journey bar's
     nav gives up its own leading 12px (the Swahili row otherwise ran 5.1px into the page's gutter at 1024 for a signed-in
     player — measured, `qa:journey-header-fit`), and takes it back from 1280.
@@ -3129,8 +3145,13 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     words at one x (the lead's tile read, 2026-10-19: the row's mark had set its words ~28px right of every other row's).
     More's two panels are opaque, the kit's elevated surface whole (`bg-bg-elevated`, the language menu's): the bar's
     was 95% under a backdrop blur, and at 1280 the page's own words read through it. ⚠️ The bar's panel is opaque for
-    EVERY reader, Millionea shown or not: the one change to the classic chrome this item rules (the lead's tile read,
-    2026-10-19; kept at S5's release review, 2026-10-21). The phone rail's panel was opaque already. This gold is the
+    EVERY reader, Millionea shown or not: the first change to the classic chrome this item rules (the lead's tile read,
+    2026-10-19; kept at S5's release review, 2026-10-21). The phone rail's panel was opaque already. ⚠️ The third
+    ruled classic change (the second is S5-DESIGN-SLIP's modal focus with `preventScroll`), every reader's on every page
+    that shows the chat: the bubble at rest over a line of text or a figure YIELDS — it fades to `--state-yield-opacity`,
+    never moves, stays live (a pointer's hover and a keyboard's focus bring it back whole; its taps are kept) — and is
+    whole again once the content clears (MASWALI-BUILD S5-FIX-PLATFORM D15, the register critic's M5; lead 2026-10-21, the
+    10/10 pass; globals.css D15, `test:chat-yield`, `qa:chat-yield`). This gold is the
     Owner's label for a destination, not money: item 7 is untouched.
     The other doors stand: one card on the journey home after the head (the How-to card and the headline) and before the
     topic chips; on classic, one card at the head of `/markets`; and a third switch in Tiketi zangu. Placing the card

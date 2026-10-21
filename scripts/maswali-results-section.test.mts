@@ -139,7 +139,10 @@ function viewChecks() {
       || !fullText.includes("MLN-2026-W44") || !fullText.includes("MLN-2026-W43")
       || !facts.every((word) => fullText.includes(word)) || !fullText.includes("TZS 1,013,000")
       || fullText.includes(t.millionea.regEmpty)) failures.push(`${locale}: full`);
-    if (fullText.includes(t.millionea.previewMark) || !markedText.includes(t.millionea.previewMark)) failures.push(`${locale}: preview`);
+    // ⚠️ RE-PINNED OPENLY (MASWALI-BUILD S5-FIX-PLATFORM D12, 2026-10-21): the preview's mark is the shell's ONE bar above the
+    // page now (`MillioneaPreviewBar`, which stands on /results too), so the section draws it neither way; the view keeps its
+    // call (`source view`), which renders nothing until round 2 removes it. `test:millionea-shell` §1 holds the bar.
+    if (fullText.includes(t.millionea.previewMark) || markedText.includes(t.millionea.previewMark) || marked !== full) failures.push(`${locale}: preview`);
   }
   return failures;
 }

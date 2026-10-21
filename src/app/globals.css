@@ -1261,7 +1261,14 @@ body {
   -webkit-user-select: none;
   user-select: none;
 }
+/* ⭐ THE LIFT IS A POINTER'S (MASWALI-BUILD S5-FIX-PLATFORM D11, 2026-10-21; the motion critic's M1). On a touch screen
+   `:hover` sticks to the last element tapped, so this lift kept a tapped button raised 2px after the tap (a picked
+   answer stood lifted while the next screen loaded). L17 (2026-09-27, the fills below) gated the fills' hover to
+   pointers that hover, and this rule had stayed outside the gate. A tap keeps its press (`:active`, next); a mouse still
+   lifts. `test:hover-touch` holds the gate; `qa:hover-touch` taps on a touch screen and hovers with a mouse. */
+@media (hover: hover) {
 .btn:hover:not(:disabled)  { transform: translateY(var(--m-lift)); }
+}
 /* Press returns to rest and scales — it never sinks BELOW the resting plane. */
 .btn:active:not(:disabled) { transform: translateY(0) scale(var(--m-press)); filter: brightness(0.93); }
 .btn:focus-visible { outline: 2px solid var(--brand-500); outline-offset: 2px; box-shadow: 0 0 0 4px oklch(63% 0.18 262 / 0.25); }
@@ -1769,6 +1776,25 @@ html[data-fab-idle] .cm-fab:not(.cm-fab--open):not(:focus-within) {
   html[data-scrolling] .cm-fab:not(.cm-fab--open):not(:focus-within),
   html[data-fab-idle] .cm-fab:not(.cm-fab--open):not(:focus-within) { transform: none; }
   .cm-fab { transition: opacity var(--t-quick) linear; }
+}
+/* ⭐ D15 · AT REST OVER A LINE OF TEXT OR A FIGURE, THE BUBBLE YIELDS: IT FADES, IT NEVER MOVES (MASWALI-BUILD
+   S5-FIX-PLATFORM D15, 2026-10-21; the register critic's M5, ruled by the lead 2026-10-21, the 10/10 pass — the third
+   ruled classic change, DESIGN_AUTHORITY §M8a item 11). D3 and D75 above clear the bubble while the page moves and once
+   the reader has left it alone; between the two it stood at full ink over whatever lay under it — a Millionea week
+   page's Money out at 320 and 360, How to play's worked figures, and every classic page's right-aligned figure.
+   ChatRoot's census (`lib/chat/fab-census.ts`) marks the wrapper `data-over-content` while a visible line of text or an
+   `.amount` lies under the bubble's resting rect (its box and its ring), asked at most once a frame and again whenever D3
+   or D75 hands it back; here it yields to `--state-yield-opacity` (state-tokens.css: still live, never disabled — an
+   opacity at which every covered figure, under the bubble's icon too, still meets its contrast minimum, measured) and returns when the content
+   clears. ⛔ No nudge: a support button that moves is disorienting. ⛔ Never "disabled": a pointer's hover and a
+   keyboard's focus bring it back whole (an open panel and any focus within keep it whole, as in D3 and D75), it keeps
+   `pointer-events`, and a tap works as ever. ⚠️ Lower in the cascade than D3 and D75 (no `html[…]` prefix), so a moving
+   page and an idle reader still clear it whole. Its opacity moves on `.cm-fab`'s own `--t-quick`; the reduced-motion
+   clamps (motion.css) make the switch instant. `test:chat-yield` holds the rules; `qa:chat-yield` drives them at 320 and
+   360 and measures the covered figures through the faded bubble. */
+.cm-fab[data-over-content]:not(.cm-fab--open):not(:focus-within) { opacity: var(--state-yield-opacity); }
+@media (hover: hover) {
+  .cm-fab[data-over-content]:not(.cm-fab--open):hover { opacity: 1; }
 }
 
 /* 🔴 D68 · A CENTRED 80svh BLOCK ON A SHORT SCREEN PUSHES ITS OWN EXIT BELOW THE FOLD.
@@ -6193,36 +6219,11 @@ textarea::-webkit-resizer {
    actually paint. ⛔ If the tint is ever genuinely wanted on the label, move it ONTO the anchor —
    the th cannot win that cascade. */
 
-/* ===========================================================================
-   View Transitions API — native cross-fade for route changes (Chrome/Edge 111+).
-   Falls back to the existing .route-enter CSS animation on other browsers.
-   =========================================================================== */
-::view-transition-old(root),
-::view-transition-new(root) {
-  /* 180ms → `--t-quick` (140), the rung it sits on. ⚠️ This cross-fade is the
-     NATIVE half of the same route entrance `.route-enter` renders elsewhere, so the
-     two must not drift; both now read tokens rather than one reading a literal. */
-  animation-duration: var(--t-quick);
-  animation-timing-function: var(--m-glide);
-}
-::view-transition-old(root) {
-  animation-name: vt-fade-out;
-}
-::view-transition-new(root) {
-  animation-name: vt-fade-in;
-}
-@keyframes vt-fade-out {
-  from { opacity: 1; transform: none; }
-  to   { opacity: 0; transform: translateY(-4px); }
-}
-@keyframes vt-fade-in {
-  from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: none; }
-}
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(root),
-  ::view-transition-new(root) { animation: none !important; }
-}
+/* ⛔ THE VIEW TRANSITION'S RULES ARE DELETED (MASWALI-BUILD S5-FIX-PLATFORM D10, 2026-10-21). `::view-transition-old/new
+   (root)` and their `vt-fade-out`/`vt-fade-in` keyframes drew a classic reader's route change in Chrome and Edge as a
+   cross-fade of the whole document, the header and the rail with the page. No route change starts a View Transition any
+   more (`route-transition.tsx` says why), so they drew nothing: a route's one entrance is `.route-enter` (`m-settle-in`),
+   on the page alone, for every reader in every engine. */
 
 /* ── Up & Down: the live price point on the D3 round hero ────────────────────
    A slow opacity breath on the current-price dot (D3 round detail), so a still
@@ -7851,6 +7852,17 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 @media (min-width: 317px) { .kp-rail--journey[data-tabs="5"]:lang(sw) .kp-rail__item { justify-content: flex-start; } }
 @media (min-width: 416px) { .kp-rail--journey[data-tabs="5"]:lang(sw) .kp-jtab__label { white-space: nowrap; text-overflow: ellipsis; line-height: 1; } }
 @media (min-width: 416px) { .kp-rail--journey[data-tabs="5"]:lang(sw) .kp-rail__item { justify-content: center; } }
+/* ⭐ …AND NO TWO LABELS STAND CLOSER THAN THEIR PIPS (MASWALI-BUILD S5-FIX-PLATFORM D14, 2026-10-21). In five equal
+   tracks English's three nine-letter neighbours ("Questions", "Up & Down", "Millionea": 9 × 6.6 = 59.4px each) stood
+   4.6px apart at 320 (the tile journey-home-en-320 read ~5px), where the 56px pips above them stand 8px apart. Every
+   label fits its track, so the rail's own answer to a label that does not (a second line, the slots stacked from the
+   top) does not apply: it would break a game name that fits. Below the width where that pair clears 8px untouched
+   (5 × (59.4 + 8) = 337), English's labels close their tracking by 0.04em (9 × 6.16 = 55.4px, 8.6px apart at 320).
+   Swahili (its long name on two lines through 415) and Chinese clear 8px at every width as they are.
+   `test:visual-pass-r9c` §4c measures every neighbour pair in the three languages at every width from 320 with §4's
+   own width model and holds this minimum; the four-tab rail is not touched. */
+.kp-rail--journey[data-tabs="5"]:lang(en) .kp-jtab__label { letter-spacing: -0.04em; }
+@media (min-width: 337px) { .kp-rail--journey[data-tabs="5"]:lang(en) .kp-jtab__label { letter-spacing: normal; } }
 /* ⭐ ONE TAB IS LIT IN EVERY FRAME (2026-10-09, the visual pass round 4, R4-J; E37/E41, tiles 301 306 333). The classic
    slot fades its ink and its pip over --t-quick (`.kp-rail__item`, `.kp-rail__pip`), so for 140ms after the router
    commits the new page the pill is half on the tab being left and half on the new one, beside the new label already bold

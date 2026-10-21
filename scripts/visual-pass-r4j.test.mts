@@ -200,21 +200,31 @@ function bellTwin(bar: string, panel: string, tw: string): { ok: boolean; why: s
 /* ══ §2 · E37 · E41 · A ROUTE CHANGE MOVES ONLY THE PAGE ═══════════════════════════════════════════════════════ */
 section("2 · E37 E41 · no cross-fade of the chrome, one current destination and one lit tab (tiles 292 301 306 315 328 333 338)");
 {
+  // ⚠️ RE-PINNED OPENLY, MASWALI-BUILD S5-FIX-PLATFORM D10 (2026-10-21; the motion critic's M7). R4-J took the journey
+  // reader off the document View Transition and left the classic reader on it; D10 takes the classic reader too, for
+  // R4-J's own reasons (the chrome cross-faded with the page, and the scroll to the top ran after the new page was drawn
+  // at the old scroll). These checks held the classic half (2.1's "everybody else keeps it", 2.1b's observed promises,
+  // 2.2's cross-fade rules); they now hold that no reader's move starts one. `qa:route-entrance` drives it in Chromium.
   const rt = read(RT);
-  const vt = (s: string) => s.includes("if (doc.startViewTransition && !motionOff() && !journeyFlagSnapshot()) {")
-    && /import \{ journeyFlagSnapshot \} from "@\/lib\/journey\/journey-on";/.test(s) && hasDirective(s, "use client");
-  ok("2.1 · a journey reader's route change never starts a document View Transition (the root cross-fade took the header, the strip and the rail, 4px apart and dimmed); everybody else keeps it", vt(rt));
-  ok("2.1′ PLANT · the journey term dropped is reported", !vt(rt.replace(" && !journeyFlagSnapshot()", "")));
-  // ⭐ An aborted cross-fade (a resize, a hidden tab, a newer move) rejects the transition's promises; each is observed, so
-  // a dropped animation is never an uncaught page error (found by MASWALI-BUILD S5's player drive, 2026-10-19).
-  const observed = (s: string) => /const transition = doc\.startViewTransition\(\(\) => \{\s*setKey\(pathname\);\s*\}\);/.test(s)
-    && ["ready", "finished", "updateCallbackDone"].every((p) => s.includes(`transition.${p}.catch(() => {});`));
-  ok("2.1b · the View Transition's promises are kept and observed — an aborted cross-fade is never an uncaught page error", observed(rt));
-  ok("2.1b′ PLANT · the `ready` rejection left unobserved is reported", !observed(rt.replace("transition.ready.catch(() => {});", "")));
-  // The native cross-fade itself is untouched: a classic reader is served it.
-  ok("2.2 · the native cross-fade's rules are unchanged for everybody else (vt-fade-out −4px / vt-fade-in +4px, --t-quick)",
-    /@keyframes vt-fade-out \{\s*from \{ opacity: 1; transform: none; \}\s*to\s+\{ opacity: 0; transform: translateY\(-4px\); \}\s*\}/.test(CSS)
-      && /::view-transition-old\(root\),\s*::view-transition-new\(root\) \{[^}]*animation-duration: var\(--t-quick\);/.test(CSS));
+  const oneEntrance = (s: string) => !s.includes("startViewTransition") && hasDirective(s, "use client")
+    && squash(s).includes("useLayoutEffect(() => { if (pathname !== key) { setKey(pathname); } }, [pathname, key]);");
+  ok("2.1 · no reader's route change starts a document View Transition (the root cross-fade took the header, the strip and the rail, 4px apart and dimmed): the key changes in the layout phase, for every reader", oneEntrance(rt));
+  const classicCrossFade = rt.replace("    if (pathname !== key) {\n      setKey(pathname);\n    }",
+    "    if (pathname !== key) {\n      const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown };\n      if (doc.startViewTransition) doc.startViewTransition(() => setKey(pathname)); else setKey(pathname);\n    }");
+  ok("2.1′ PLANT · the classic cross-fade back (startViewTransition around the key's change) is reported", classicCrossFade !== rt && !oneEntrance(classicCrossFade));
+  // ⭐ AND NOWHERE ELSE: an aborted cross-fade (a resize, a hidden tab, a newer move) rejected the transition's promises,
+  // which route-transition.tsx observed (MASWALI-BUILD S5's player drive, 2026-10-19). With no transition started anywhere
+  // in the app there is no promise to reject — held across every source file, not this one alone.
+  const files: string[] = [];
+  const walk = (d: string) => { for (const n of readdirSync(d)) { const p = join(d, n).replace(/\\/g, "/"); if (statSync(p).isDirectory()) walk(p); else if (/\.(tsx?|mts)$/.test(n)) files.push(p); } };
+  walk("src");
+  const starters = (text: (p: string) => string) => files.filter((p) => /startViewTransition/.test(text(p)));
+  ok(`2.1b · no source file starts a View Transition (${files.length} read), so no aborted cross-fade can reject an unobserved promise`, starters(read).length === 0, JSON.stringify(starters(read)));
+  ok("2.1b′ PLANT · a View Transition started in another file is reported", starters((p) => (p === "src/components/ui/toast.tsx" ? `${read(p)}\nexport const fade = () => document.startViewTransition?.(() => {});` : read(p))).length === 1);
+  // The cross-fade's rules went with it: nothing starts one, so a `::view-transition-*` rule or its keyframe draws nothing.
+  const vtRules = (css: string) => /::view-transition-|@keyframes vt-fade-/.test(css);
+  ok("2.2 · the native cross-fade's rules are gone with it (no `::view-transition-*` rule, no `vt-fade-*` keyframe in globals.css)", !vtRules(CSS));
+  ok("2.2′ PLANT · the old rules back are reported", vtRules(`${CSS}\n::view-transition-old(root) { animation-name: vt-fade-out; }`));
 }
 {
   // ⭐ RE-PINNED OPENLY, PHOSPHOR-MIGRATION W3 (2026-10-18): the current mark was an underline (`::after`, scaling in over
@@ -288,7 +298,8 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
     // RE-PINNED (MASWALI-BUILD S5 pages): Maswali Millionea's four, each its loading file's own drawing.
     ['"/millionea": <MillioneaHubGhost />', 'import { MillioneaHubGhost } from "@/app/millionea/hub-ghost";', "src/app/millionea/loading.tsx", "return <MillioneaHubGhost />;"],
     ['"/millionea/slip": <MillioneaSlipGhost />', 'import { MillioneaSlipGhost } from "@/app/millionea/slip/slip-ghost";', "src/app/millionea/slip/loading.tsx", "return <MillioneaSlipGhost />;"],
-    ['"/millionea/tickets": <MillioneaTicketsGhost journeyHead={<TicketsHeadGhost t={t} />} />', 'import { MillioneaTicketsGhost } from "@/app/millionea/tickets/tickets-ghost";', "src/app/millionea/tickets/loading.tsx", "return <MillioneaTicketsGhost />;"],
+    // RE-PINNED (S5-FIX-PLATFORM, the tickets design lane's M9): its head is handed the page's three kinds.
+    ['"/millionea/tickets": <MillioneaTicketsGhost journeyHead={<TicketsHeadGhost t={t} kinds={3} />} />', 'import { MillioneaTicketsGhost } from "@/app/millionea/tickets/tickets-ghost";', "src/app/millionea/tickets/loading.tsx", "return <MillioneaTicketsGhost />;"],
     ['["^/millionea/tickets/[^/]+$", <MillioneaTicketGhost />]', 'import { MillioneaTicketGhost } from "@/app/millionea/tickets/[serial]/ticket-ghost";', "src/app/millionea/tickets/[serial]/loading.tsx", "return <MillioneaTicketGhost />;"],
   ];
   const oneDrawing = (g: string) => own.filter(([use, imp, file, renders]) => !(g.includes(use) && g.includes(imp) && read(file).includes(renders)));

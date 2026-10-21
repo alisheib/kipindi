@@ -127,10 +127,11 @@ export function JourneyRouteGhost({ rails, at, millionea = false }: { rails: rea
     // file's drawing, wordless (`maswali-ghost.tsx`); Tiketi zangu's Millionea kind with Tiketi zangu's head, by the address
     // alone — its own loading file is synchronous and pins nothing (the S5 review of 24ec0d33, HIGH 2). ⛔ Drawn only while
     // Millionea is visible to this reader (D6): to anyone else these are unknown addresses, and so is their ghost.
+    // Its head is handed `kinds={3}` (the tickets design lane's M9): the Millionea tickets page always draws three kinds.
     ...(millionea ? {
       "/millionea": <MillioneaHubGhost />,
       "/millionea/slip": <MillioneaSlipGhost />,
-      "/millionea/tickets": <MillioneaTicketsGhost journeyHead={<TicketsHeadGhost t={t} />} />,
+      "/millionea/tickets": <MillioneaTicketsGhost journeyHead={<TicketsHeadGhost t={t} kinds={3} />} />,
     } : {}),
   };
   if (at) return routes[at];

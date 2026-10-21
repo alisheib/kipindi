@@ -7,6 +7,7 @@ import { I, type GlyphKey } from "@/components/ui/glyphs";
 import { NavGlyph } from "@/components/ui/nav-glyph";
 import { useT } from "@/lib/i18n";
 import { NavMore } from "@/components/layout/nav-more";
+import { classicMillioneaStandIn } from "@/lib/nav/active-tab";
 import { MARK } from "@/lib/brand-mark";
 import type { ProposalsState } from "@/lib/server/proposals-config";
 
@@ -62,8 +63,10 @@ import type { ProposalsState } from "@/lib/server/proposals-config";
  * no commit ever added it. The rest position is host logic in `needle.tsx` (side rails only, `nearestEdge`;
  * E-413's clear-rest glide), and the rail's centre coin is a `data-needle-keepout` below.
  */
-export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = false, walletHeld = false, millionea = false }: { isAuthed?: boolean; proposalsState: ProposalsState; inviteVisible?: boolean; walletHeld?: boolean; millionea?: boolean }) {
+export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = false, walletHeld = false, millionea = false, millioneaOnBreak = false }: { isAuthed?: boolean; proposalsState: ProposalsState; inviteVisible?: boolean; walletHeld?: boolean; millionea?: boolean; millioneaOnBreak?: boolean }) {
   const pathname = usePathname();
+  /** D13 · on a break, a Millionea page lights the destination the journey's table names (null everywhere else). */
+  const standIn = millioneaOnBreak ? classicMillioneaStandIn(pathname) : null;
   const { t } = useT();
 
   /** The destinations FLANKING the centre — identical for guest and player, because a destination
@@ -166,6 +169,9 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
       ];
 
   const isActive = (href: string) => {
+    // S5-FIX-PLATFORM D13: on a break, a Millionea page lights the slot standing in for its undrawn More row (Markets),
+    // or More itself where the stand-in is one of its rows (Positions, below), as the journey falls back.
+    if (href === standIn) return true;
     if (href === "/markets") return pathname === "/" || pathname.startsWith("/markets");
     if (href === "/updown") return pathname.startsWith("/updown");
     /* ⚠️ THE `/results` BRANCH IS GONE BECAUSE THE SLOT IS. It is `More`'s now, and `moreActive`
@@ -179,7 +185,7 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
   /** `More` reads as current when the page behind it is one of its own — and never while the coin is current. Its Wallet
    *  row (`/wallet`) is a prefix of the coin's `/wallet/deposit`, so on the coin's own page both lit: two "you are here"
    *  marks on one bar, which the opaque pill made plain (PHOSPHOR-MIGRATION W3's tile read; the double-lit was older). */
-  const moreActive = !coinOn && moreItems.some((m) => pathname.startsWith(m.href));
+  const moreActive = !coinOn && moreItems.some((m) => pathname.startsWith(m.href) || m.href === standIn);
 
   return (
     <nav
@@ -262,6 +268,7 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
             label={t.common.more}
             variant="rail"
             active={moreActive}
+            current={standIn}
             cardSpacing
           />
         </li>

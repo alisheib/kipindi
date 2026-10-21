@@ -50,6 +50,7 @@ import { journeyShellShown, resolveSimpleJourney } from "@/lib/server/journey-pr
 import { JOURNEY_SHELL_MARK } from "@/lib/journey/shell-mark";
 import { journeyMarketsTarget } from "@/lib/journey/markets-redirect";
 import { PreviewMarker } from "./preview-marker";
+import { MillioneaPreviewBar } from "./millionea-preview-bar";
 import { FunnelUtm } from "@/components/analytics/funnel-utm";
 import { isStaffRole } from "@/lib/server/roles";
 import { displayLabel, displayInitials } from "@/lib/display-label";
@@ -393,6 +394,15 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
      very payload `main` serves. */
   const millioneaRow = !promoSuppressed && (await resolveMillionea()).visible;
   const millioneaProp: { millionea?: true } = millioneaRow ? { millionea: true } : {};
+  /* ⭐ ON A BREAK, MILLIONEA'S PAGES STILL LIGHT ONE CLASSIC DESTINATION (MASWALI-BUILD S5-FIX-PLATFORM D13, 2026-10-21). A
+     reader on a break is offered no Millionea door (`millioneaRow` above), yet its pages still answer that reader, and the
+     classic bar and rail then lit NOTHING on them, where the journey falls back to Maswali (`TAB_ROUTES`' fallback). The
+     classic navs are handed this second answer — Millionea is visible to the reader, its door is not drawn — and light
+     the destination the journey's own table names (`classicMillioneaStandIn`). Handed ONLY when true, as `millioneaProp`
+     is (D3): no other reader's payload changes, and a dark address (Millionea hidden) lights nothing, as an unknown one. */
+  const millioneaBreakProp: { millioneaOnBreak?: true } = promoSuppressed && (await resolveMillionea()).visible ? { millioneaOnBreak: true } : {};
+  /** D12 · the request sees Millionea as a PREVIEW (STAFF_PREVIEW and a stored staff role): it wears the preview bar. */
+  const millioneaPreview = (await resolveMillionea()).preview;
   /* ⭐ THE SECOND HALF OF THE PAIR, RESOLVED IN THE SAME PLACE AND FOR THE SAME REASON: the menu
      row's WORDS depend on whether the viewer's invite destination pays, and a client component may
      not read the product state to find out.
@@ -503,11 +513,15 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           agent's standing (its invite row says the page's own name) and `journeyKycOffered` (its KYC row only where the hub
           and /profile offer that door); the classic arm's props are today's.
           MASWALI-BUILD S5-TAB (2026-10-19): each arm takes `{...millioneaProp}`, the one answer above, handed only while it
-          is true (D3) — the journey bar draws Millionea's link from it, the classic bar its core link. */}
-      {journeyShown ? <LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} breakEnd={journeyBreak} proposalsState={proposalsState} inviteVisible={inviteVisible} inviteAgent={inviteViewer.agentInGoodStanding} kycOffered={journeyKycOffered} invitePaid={invitePaid} {...millioneaProp} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} {...millioneaProp} />}
+          is true (D3) — the journey bar draws Millionea's link from it, the classic bar its core link; the classic bar also
+          takes `{...millioneaBreakProp}` (D13), the destination it lights on a Millionea page during a break. */}
+      {journeyShown ? <LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} breakEnd={journeyBreak} proposalsState={proposalsState} inviteVisible={inviteVisible} inviteAgent={inviteViewer.agentInGoodStanding} kycOffered={journeyKycOffered} invitePaid={invitePaid} {...millioneaProp} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} {...millioneaProp} {...millioneaBreakProp} />}
       {/* ⭐ THE PREVIEW MARKER — first under the bar, so whoever holds this browser knows at once that they are
           looking at pages players do not see yet, and has the way out on the same line. */}
       {journeyPreview && <PreviewMarker label={t.journey.previewMarker} exit={t.journey.previewExit} />}
+      {/* ⭐ MILLIONEA'S STAFF PREVIEW BAR (S5-FIX-PLATFORM D12) — the same marker, under the journey's when both show, on a
+          Millionea page (and /results' Millionea section), mounted only for a request that sees Millionea as a preview. */}
+      {millioneaPreview && <MillioneaPreviewBar label={t.millionea.previewMark} />}
       <span hidden data-kp-funnel={funnelScopeValue} />
       {/* ⭐ THE JOURNEY FLAG (Vodacom plan S6, WP7) — for a request the resolver shows the journey to, and for no other.
           It renders nothing. While it is mounted the html element carries the journey's attribute, and that is how
@@ -627,8 +641,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           that slot becomes the Wallet door instead. Same input, same rule, two surfaces — read
           from the one place the wallet's status is resolved (`topUser` above). */}
       {/* MASWALI-BUILD S5-TAB: both rails take the one Millionea answer, handed only while it is true (D3) — the journey's
-          draws its fifth tab from it, the classic rail its first More row. */}
-      {journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} {...millioneaProp} /> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} {...millioneaProp} />}
+          draws its fifth tab from it, the classic rail its first More row; the classic rail also takes the break's answer
+          (D13), as the classic bar does. */}
+      {journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} {...millioneaProp} /> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} {...millioneaProp} {...millioneaBreakProp} />}
       <RealityCheckHost enabled={!!session} intervalMin={realityCheckMin} userId={session?.userId ?? null} />
       {/* 🔴 SESSION-GATED, like its neighbours on the lines above and below (audit F-08).
           It was the only one of the three that was not, and the omission had no upper bound.

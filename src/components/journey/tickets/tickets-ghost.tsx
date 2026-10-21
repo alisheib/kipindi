@@ -20,8 +20,10 @@ import type { Dict } from "@/lib/i18n-dict";
 /** The seven lenses, at widths near their labels' (a row of identical boxes reads as a loading bar, not a strip). */
 const LENS_WIDTHS = ["w-[64px]", "w-[64px]", "w-[112px]", "w-[96px]", "w-[112px]", "w-[112px]", "w-[96px]"];
 
-/** The head of Tiketi zangu, on both kinds: the name, then the two kinds' underline rail. */
-export function TicketsHeadGhost({ t }: { t: Dict }) {
+/** The head of Tiketi zangu, on both kinds: the name, then the two kinds' underline rail.
+ *  `kinds` (2 by default) is how many kinds the page's switch draws: the Millionea tickets page always draws three. The
+ *  third box is the tickets design lane's (M9); this optional prop is here only so the route ghost can hand it over. */
+export function TicketsHeadGhost({ t }: { t: Dict; kinds?: 2 | 3 }) {
   return (
     <div className="space-y-4">
       <PageHeader title={t.journey.tabTickets} />

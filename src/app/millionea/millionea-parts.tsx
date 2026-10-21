@@ -1,11 +1,11 @@
 /**
  * /millionea — THE SMALL PARTS EVERY MILLIONEA PAGE SHARES (MASWALI-BUILD S5 composition).
  *
- * The routes' addresses (one spelling each), the staff preview's mark, and the two doors every reading page ends on.
+ * The routes' addresses (one spelling each), the staff preview's mark (drawn by the shell since D12), and the two doors
+ * every reading page ends on.
  * Server-safe, no directive, no read: each page hands in its words.
  */
 import Link from "next/link";
-import { Callout } from "@/components/ui/callout";
 import { I } from "@/components/ui/glyphs";
 import type { Dict } from "@/lib/i18n-dict";
 
@@ -39,15 +39,13 @@ export function signInHref(next: string): string {
 }
 
 /**
- * THE PREVIEW MARK (`millionea-rollout.ts`: STAFF_PREVIEW shows Millionea to staff "under a 'Preview' mark") — drawn only
- * when the gate says the request sees it as a preview; for every other reader it is not in the page at all.
+ * THE PREVIEW MARK (`millionea-rollout.ts`: STAFF_PREVIEW shows Millionea to staff "under a 'Preview' mark").
+ * ⛔ IT DRAWS NOTHING SINCE MASWALI-BUILD S5-FIX-PLATFORM D12 (2026-10-21): the mark is the shell's ONE bar above the page
+ * now (`MillioneaPreviewBar`, mounted by AppShell for a preview request, the platform's preview marker), not a callout
+ * inside each page's column. The pages' calls stay as they are until round 2 removes them, so no page changes here.
  */
-export function MillioneaPreviewMark({ t }: { t: Dict }) {
-  return (
-    <div data-testid="millionea-preview-mark">
-      <Callout tone="info" glyph="eye" role="status">{t.millionea.previewMark}</Callout>
-    </div>
-  );
+export function MillioneaPreviewMark(_props: { t: Dict }): null {
+  return null;
 }
 
 /**

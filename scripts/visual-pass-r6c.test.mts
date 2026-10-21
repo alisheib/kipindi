@@ -371,8 +371,10 @@ const INVITE = "src/app/profile/invite/page.tsx", NAME_HOME = "src/lib/journey/i
   // §10 §3.2) — not a journey door answer; the two this check is about still reach the journey arms alone.
   // ⚠️ RE-PINNED, MASWALI-BUILD S5-TAB (2026-10-19): the journey bar's props gain the same `millionea` (Millionea's own link,
   // DESIGN_AUTHORITY §M8a item 11), the shell's one answer for every nav — still not one of the two door answers.
+  // ⚠️ RE-PINNED, MASWALI-BUILD S5-FIX-PLATFORM D13 (2026-10-21): the classic bar also takes `{...millioneaBreakProp}` (the
+  // destination a Millionea page lights on a break) — not a door answer either.
   ok("5.7 · the shell hands the journey's two door answers to the journey arms alone",
-    has(SHELL, "inviteAgent={inviteViewer.agentInGoodStanding} kycOffered={journeyKycOffered} invitePaid={invitePaid} {...millioneaProp} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} {...millioneaProp} />")
+    has(SHELL, "inviteAgent={inviteViewer.agentInGoodStanding} kycOffered={journeyKycOffered} invitePaid={invitePaid} {...millioneaProp} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} {...millioneaProp} {...millioneaBreakProp} />")
       && has(SHELL, "invitePaid={invitePaid} inviteAgent={inviteViewer.agentInGoodStanding} journeyShown /> : <PublicFooter proposalsState={proposalsState} agentDoorVisible={agentDoorVisible} inviteVisible={inviteVisible} supportEmail={SUPPORT_EMAIL()} supportPhone={SUPPORT_PHONE()} supportPhoneTel={SUPPORT_PHONE_TEL()} />"));
   // Plants: the hub back to "never a paid word"; the menu back to the classic literal for a paid reader.
   const hubOld = (v: ReturnType<typeof member>) => (v.agentInStanding ? "agent.dashTitle" : "profile.inviteFriends");
