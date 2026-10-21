@@ -360,6 +360,12 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
     ["src/components/ui/query-bar.tsx", "<I.arrowUp s={14} />", 1, "alone", "the direction button's arrow, alone in its 44px button; .kp-sortdir turns it for a descending sort (it typed ↑)"],
     ["src/components/ui/select.tsx", '<I.chevronDown s={12} edge="end" className="shrink-0 text-text-subtle" aria-hidden />', 1, "edge", "the Select's field caret, ending the field (it was the field's own hand-drawn caret — §3.4)"],
     ["src/components/ui/date-select.tsx", '<I.chevronDown s={12} edge="end" className="ml-1.5" aria-hidden />', 1, "edge", "DateSelect's month-title caret, ending its centred control (it was the Select's hand-drawn caret — §3.4)"],
+    // PHOSPHOR-MIGRATION release 3. W8: the wallet result's eyebrow leads with the money arrow of its event, at the
+    // eyebrow's JetBrains Mono 700 stem, nudged once when the event is new. W7: the duration input's stepper carets.
+    ["src/app/wallet/wallet-result-modal.tsx", '<I.arrowDownToLine s={14} edge="start" text="mono-700" className={animate ? "g-nudge-down" : undefined} />', 1, "text", "a confirmed deposit's receipt: the one deposit arrow leading its mono eyebrow's words, one downward nudge on the event (W8 .g-nudge-down)"],
+    ["src/app/wallet/wallet-result-modal.tsx", '<I.arrowUpFromLine s={14} edge="start" text="mono-700" className={animate ? "g-nudge-up" : undefined} />', 1, "text", "a requested withdrawal's receipt: the one withdraw arrow leading its eyebrow's words, one upward nudge (W8 .g-nudge-up)"],
+    ["src/components/ui/duration-input.tsx", "<I.chevronUp s={12} aria-hidden />", 1, "alone", "the duration input's raise stepper, alone in its button (it was a hand-drawn 8×5 caret — W7)"],
+    ["src/components/ui/duration-input.tsx", "<I.chevronDown s={12} aria-hidden />", 1, "alone", "the duration input's lower stepper, alone in its button (W7)"],
   ];
   const MARK = new RegExp("<I[.](?:chevronDown|chevronUp|arrowUp|arrowDown|arrowLeft|chevronsUp|chevronsDown|arrowDownToLine|arrowUpFromLine)(?![A-Za-z])(?:[^<>{}]|[{](?:[^{}]|[{][^{}]*[}])*[}])*?/>", "g");
   const seen = new Map<string, number>();

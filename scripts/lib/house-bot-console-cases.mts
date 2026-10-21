@@ -10072,9 +10072,12 @@ try {
           options: Object.values(v.feedSort.columns), rank: "secondary", ...o,
         }));
         /** The chip in force's VISIBLE text — its word and its arrow. The visually hidden direction word (the kit's `sr-only`
-         *  span) is not part of what is SEEN, so it is taken out here and read on its own by `saidOf`. */
+         *  span) is not part of what is SEEN, so it is taken out here and read on its own by `saidOf`. Since PHOSPHOR-MIGRATION
+         *  release 3 (W7) the arrow is the family's glyph (`<svg data-g="arrowUp.bold">`), not a typed ↑ ↓: it is read as the
+         *  arrow it draws, so the word and its direction are still compared as one. */
         const SR_WORD = /<span class="sr-only">([\s\S]*?)<\/span>/g;
-        const chipsOn = (html: string): string[] => [...html.matchAll(/<a\b[^>]*\baria-current="page"[^>]*>([\s\S]*?)<\/a>/g)].map((m) => m[1].replace(SR_WORD, "").replace(/<[^>]*>/g, "").trim());
+        const ARROW_GLYPH = /<svg\b[^>]*\bdata-g="arrow(Up|Down)\.[a-z]+"[^>]*>[\s\S]*?<\/svg>/g;
+        const chipsOn = (html: string): string[] => [...html.matchAll(/<a\b[^>]*\baria-current="page"[^>]*>([\s\S]*?)<\/a>/g)].map((m) => m[1].replace(SR_WORD, "").replace(ARROW_GLYPH, (_, d) => (d === "Up" ? "↑" : "↓")).replace(/<[^>]*>/g, "").trim());
         /** Every chip in order: whether it is the one in force, and the visually hidden words it carries. */
         const saidOf = (html: string): Array<{ on: boolean; said: string[] }> => [...html.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/g)]
           .map((m) => ({ on: /\baria-current="page"/.test(m[1]), said: [...m[2].matchAll(SR_WORD)].map((s) => s[1]) }));

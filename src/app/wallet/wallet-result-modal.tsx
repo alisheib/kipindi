@@ -71,10 +71,11 @@ export function WalletResultModal({
 
   if (!deposited && !withdrawal) return null;
 
+  // The arrow leads the eyebrow's run of words: its ink on the run's start, stroked at the eyebrow's mono 700 (R9-A4).
   const flowGlyph = depositConfirmed
-    ? <I.arrowDownToLine s={14} text="mono-700" className={animate ? "g-nudge-down" : undefined} />
+    ? <I.arrowDownToLine s={14} edge="start" text="mono-700" className={animate ? "g-nudge-down" : undefined} />
     : withdrawalRequested
-      ? <I.arrowUpFromLine s={14} text="mono-700" className={animate ? "g-nudge-up" : undefined} />
+      ? <I.arrowUpFromLine s={14} edge="start" text="mono-700" className={animate ? "g-nudge-up" : undefined} />
       : null;
 
   const close = () => { setOpen(false); router.replace("/wallet"); };
