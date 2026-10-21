@@ -17,7 +17,10 @@ export function receiptFitIssues(receipt, modal, css) {
     && modal.includes('className={`btn ${effectiveBtn} btn-lg w-full`}')
     && modal.includes('className="btn btn-ghost btn-md w-full"'),
     "shared modal opts this receipt into a compact phone rhythm without shrinking buttons");
-  need(/@media \(max-width: 639px\) \{\s*\.orm-phone-compact \{ padding: var\(--sp-4\); \}/.test(css)
+  // 2026-10-21 · u43-hc · the block now opens on its `density: general` reason (test:density-contract §2: a phone-only
+  // rule says why it is not card spacing, as the first node of its block), so the base padding is the first RULE after
+  // that one comment. Same rule, same block; the reason is required too.
+  need(/@media \(max-width: 639px\) \{\s*\/\* density: general — [^*]*\*\/\s*\.orm-phone-compact \{ padding: var\(--sp-4\); \}/.test(css)
     && css.includes('.orm-phone-compact .orm-crest { width: var(--sp-12); height: var(--sp-12); }')
     && css.includes('.orm-phone-compact .orm-eyebrow { margin-top: var(--sp-2); }')
     && css.includes('.orm-phone-compact .orm-details { margin-top: var(--sp-2); gap: var(--sp-1); }')

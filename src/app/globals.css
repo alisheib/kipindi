@@ -3785,6 +3785,8 @@ th .link-pending { --lp-inset: 0px; --lp-bottom: 8px; }
    exists on a short phone. The grid and its loading ghost share `mt-5`, so both
    move together; wider phones and an empty ticker keep the original rhythm. */
 @media (max-width: 359.98px) and (max-height: 700px) {
+  /* density: general — /markets' margin above its grid on a short 320 phone under a live ticker, so the first card's NO
+     clears the rail; page rhythm, not card spacing — both card-spacing settings. */
   .ticker-strip ~ main .market-grid.mt-5 { margin-top: var(--sp-4); }
 }
 
@@ -5547,6 +5549,8 @@ html[data-sheet-open] .route-enter { animation: none; }
 .mcardp-meta { flex-wrap: wrap; }
 .mcardp-meta > .mcardp-foot { margin-left: auto; flex-shrink: 0; }
 @media (max-width: 359px) {
+  /* density: general — the 320 meta line holding its pool whole beside Info and Share at their full hit widths (the
+     featured pool on a line of its own), not card spacing; both card-spacing settings. */
   /* U43 B4: a 320px live pool, Info and Share fit on one line only when
      the Info box gives the Share target its full 40px hit width. The Info
      glyph is centred inside its own 44px box, so zero box gap still reads
@@ -8470,6 +8474,8 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   .ud-card[data-phase="locked"] { justify-content: space-between; }
 }
 @media (max-width: 359px) {
+  /* density: general — the 320 locked card follows its content instead of reserving the live card's footprint, so its
+     footer stays clear of the rail; a height floor released, not card spacing — both card-spacing settings. */
   /* The 320px holder previously had roughly 140px of blank card below its
      next-round sentence; that also placed its source footer under the rail. */
   .ud-card[data-phase="locked"][data-ud-layout="guest"],
@@ -8484,6 +8490,7 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 /* The Up & Down bet receipt keeps every disclosure but compacts its shared
    modal's phone rhythm so both follow-up actions fit a 740px viewport. */
 @media (max-width: 639px) {
+  /* density: general — the Up & Down receipt's own modal rhythm on a phone, not the board's card spacing; both settings. */
   .orm-phone-compact { padding: var(--sp-4); }
   .orm-phone-compact .orm-crest { width: var(--sp-12); height: var(--sp-12); }
   .orm-phone-compact .orm-eyebrow { margin-top: var(--sp-2); }
@@ -8495,6 +8502,8 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    auto-close window. Keep all six rows, full-size actions and 13px body copy;
    remove vertical whitespace only, within this receipt's compact opt-in. */
 @media (max-width: 639px) and (max-height: 679px) {
+  /* density: general — the same receipt on a short phone (its qualifier inside the auto-close window), not the board's
+     card spacing; both settings. */
   .orm-phone-compact { padding-block: var(--sp-2); }
   .orm-phone-compact .orm-crest { width: var(--sp-10); height: var(--sp-10); }
   .orm-phone-compact .orm-eyebrow { margin-top: var(--sp-1); }
@@ -8522,6 +8531,9 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .ud-stake-rail::-webkit-scrollbar { display: none; }
 .ud-stake-chip[aria-checked="true"] { background: var(--pill-active); color: var(--text); outline: 1px solid var(--brand-400); outline-offset: -1px; }
 @media (max-width: 390px) {
+  /* density: general — three lines that repeat what is already on screen leave a phone's board (the tagline, the ready
+     helper, the one-sided caption), so a held player's choices reach above the rail; words, not card spacing — both
+     card-spacing settings. */
   /* The title already names the game. Reclaim one line before the first card
      so held players can reach both full-size choices above the phone rail. */
   .ud-board-page .ud-board-header > p:last-child { display: none; }
@@ -8532,10 +8544,13 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   .ud-card .ud-oneside-caption { display: none; }
 }
 @media (max-width: 359px) {
+  /* density: general — two fits at the smallest width, held in both card-spacing settings: a held card's row gaps give
+     a pixel each so its choices clear the fixed rail (measured at the default spacing), and the plus glyph keeps all
+     five stakes on one row. */
   /* A held player's extra status line previously left the choices 23px above
      the fixed rail. One pixel from each non-money row gap restores clearance. */
   .ud-card[data-ud-layout="held"][data-phase="open"] { gap: 3px; }
-  /* density: general — the smallest width needs the plus glyph to keep all five stakes on one row in either density. */
+  /* The smallest width needs the plus glyph to keep all five stakes on one row in either density. */
   .ud-custom-word { display: none; }
 }
 /* U43 B3: each filter axis remains a single visible row. A genuine overflow also
@@ -8557,6 +8572,8 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .ud-chart-trigger[aria-expanded="true"] > :last-child { transform: rotate(180deg); }
 .ud-chart-slot:not([hidden]) { min-height: 300px; margin-top: var(--sp-3); }
 @media (max-width: 359px) {
+  /* density: general — the Up & Down page's own rhythm above its first card at 320 (header, both filter rows), so the
+     first Up/Down pair clears the fixed rail; page chrome, not card spacing — both card-spacing settings. */
   /* U43 B3: keep both 44px filter rows while the first Up/Down pair clears
      the fixed rail on a 320×640 phone. The tagline restates the h1 here. */
   .ud-board-page { padding-top: var(--sp-1); }
