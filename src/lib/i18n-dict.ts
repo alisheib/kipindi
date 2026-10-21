@@ -9401,7 +9401,7 @@ export const dict = {
       commitAtClose: "销售截止时发布",
       regSalesClosed: "销售截止于 {when}",
       regSettledAt: "结算于 {when}",
-      regIntro: "每个 Maswali Millionea 周自开放之日起在此公示：15 道题目及其来源、锁定题目与彩票的两枚数字指纹，以及每个经认证的结果。该周结果确定后，每一笔资金随之公示——销售、费用、补足、中奖者与滚存。不显示任何玩家。",
+      regIntro: "每个 Maswali Millionea 周​自开放之日起​在此公示：15 道题目​及其来源、锁定题目与彩票的​两枚数字指纹，以及每个​经认证的结果。该周结果确定后，每一笔资金​随之公示——销售、费用、补足、中奖者与滚存。不显示​任何玩家。", // U+200B = phrase breaks (keep-all held whole runs and broke the 320 lines early)
       regEmptyBody: "每周自开放之日起在此公示。",
       regRunning: "进行中",
       regFinal: "已确定的周",

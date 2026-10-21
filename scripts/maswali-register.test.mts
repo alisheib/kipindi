@@ -588,7 +588,8 @@ check("11.1", "§D · L4 · L5 · L8 · L6 · the register's decided words: sw f
 // ── §13 · A2 · a Chinese word is never split ────────────────────────────────────────────────────────────────────────
 /** The register's Chinese body text drawn in a narrow column: the reserve rule, and every void reason (the table's reason
  *  column has a 160px floor; a card's value column at 320 is about as wide). */
-const ZH_BODY = ["regSubRule", "voidNotPlayed", "voidAbandoned", "voidNoSource", "voidSettledBeforeClose", "voidCriterionWrong", "voidCriterionObjection"];
+// S5-DESIGN-REGISTER (2026-10-21): the index intro too — keep-all held its runs whole and broke its 320 lines early.
+const ZH_BODY = ["regSubRule", "regIntro", "voidNotPlayed", "voidAbandoned", "voidNoSource", "voidSettledBeforeClose", "voidCriterionWrong", "voidCriterionObjection"];
 check("13.1", "A2 · no Chinese run in the register's body text is longer than 12 ideographs without a break — keep-all would otherwise split a word (\"备选/题\") at the 160px reason column or a 320 card; U+200B marks the phrase breaks", (w) => {
   const long = ZH_BODY.flatMap((k) => mln(w, "zh")[k].split(/[\s​，。：；、（）()]+/).filter((r) => [...r].length > 12).map((r) => `${k}: ${r}`));
   return [long.length === 0, j(long)];
@@ -854,6 +855,7 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["L8 undone — \"Question 1 void\" beside \"Week voided\"", "9.8", plantWord("sw", "logVoid", "Swali {n} batili")],
   // §13
   ["A2 undone — the reserve rule's Chinese without its phrase breaks", "13.1", plantWord("zh", "regSubRule", "备选规则：编号最小的作废正选题取第一道未使用的有效备选题，按 A1 至 A5 的顺序。")],
+  ["A2 undone — the intro's Chinese without its phrase breaks", "13.1", plantWord("zh", "regIntro", "每个 Maswali Millionea 周自开放之日起在此公示：15 道题目及其来源、锁定题目与彩票的两枚数字指纹，以及每个经认证的结果。该周结果确定后，每一笔资金随之公示——销售、费用、补足、中奖者与滚存。不显示任何玩家。")],
   ["A2 undone — a void reason's Chinese without its phrase breaks", "13.1", plantWord("zh", "voidNoSource", "截止时间前，其来源及指定备用来源均无读数")],
   // §10
   ["A3 undone — the Chinese labels' rule gone", "10.1", plantSrc("css", ".kp-mln-zh:lang(zh) .eyebrow { letter-spacing: 0; }\n", "")],
