@@ -43,6 +43,18 @@ ok("held holder lookup and decision filter act before page", selectHeldShares(he
 ok("held share sort takes the highest payouts from the complete set", selectHeldShares(held, query({ hsort: "share", hdir: "desc" }).held, 20).rows[0]?.weekSeq === 1);
 ok("held decision sort orders the full set", selectHeldShares(held, query({ hsort: "decision", hdir: "desc" }).held, 20).rows.slice(0, 9).every((row) => row.forfeited));
 ok("held empty cause separates inventory from no match", selectHeldShares([], query().held, 20).allTotal === 0 && selectHeldShares(held, query({ hq: "absent" }).held, 20).allTotal === 45 && selectHeldShares(held, query({ hq: "absent" }).held, 20).total === 0);
+// S5-FIX-SRV A8 · a decision waiting on an officer is never paged away: the five pending shares are the OLDEST weeks, so the
+// default newest-week order alone would put them behind twenty forfeited ones.
+const decidedFirst = Array.from({ length: 25 }, (_, i) => {
+  const seq = 25 - i;
+  return { weekCode: `MW-${String(seq).padStart(2, "0")}`, weekSeq: seq, serial: `P-${String(seq).padStart(3, "0")}`, holder: "Amina", payout: 50_000, forfeited: seq > 5 };
+});
+const pendingPage = selectHeldShares(decidedFirst, query().held, 20);
+ok("held pending shares lead the default order, so page one shows every decision still waiting",
+  pendingPage.rows.slice(0, 5).every((row) => !row.forfeited) && pendingPage.rows.filter((row) => !row.forfeited).length === 5
+    && pendingPage.rows[0]?.weekSeq === 5 && pendingPage.rows[5]?.weekSeq === 25 && pendingPage.total === 25);
+ok("held pending-first keeps the chosen order inside each group",
+  selectHeldShares(decidedFirst, query({ hdir: "asc" }).held, 20).rows.slice(0, 6).map((row) => row.weekSeq).join(",") === "1,2,3,4,5,6");
 
 ok("winner search reaches an older ticket before pagination", selectWinnerTickets(winners, query({ wq: "ticket:T-001" }).winners, 20).rows[0]?.seq === 1);
 ok("winner flagged filter counts the whole set", selectWinnerTickets(winners, query({ wreview: "flagged" }).winners, 20).total === 9);
@@ -128,6 +140,19 @@ function warningWired(source: string) {
     && source.includes('c.coverage.limited ? "No group in the checked records." : "No group to look at."');
 }
 ok("Integrity warns separately about incomplete reads and a bounded holder or group result", warningWired(page));
+/**
+ * S5-FIX-SRV A10 · WCAG 2.5.3, label in name: every labelled filter select's accessible name contains the words its
+ * visible label shows (a speech user says what they see). Read from each `<span>Label</span> <Select … ariaLabel="…">` pair.
+ */
+function labelInNameProblems(source: string): string[] {
+  const problems: string[] = [];
+  for (const m of source.matchAll(/<span>([^<]+)<\/span>\s*<Select\b[^>]*?\bariaLabel="([^"]+)"/g)) {
+    if (!m[2].toLowerCase().includes(m[1].trim().toLowerCase())) problems.push(`"${m[2]}" does not contain its visible label "${m[1].trim()}"`);
+  }
+  return problems;
+}
+const labelledFilters = [...page.matchAll(/<span>([^<]+)<\/span>\s*<Select\b/g)].length;
+ok(`every labelled filter's accessible name contains its visible label (${labelledFilters} filters)`, labelledFilters >= 6 && labelInNameProblems(page).length === 0);
 
 function mutatedCoverage(source: string): typeof clusterCoverage {
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
@@ -173,7 +198,14 @@ if (process.argv.includes("--prove-red")) {
   const duplicate = page.replace('<OtherListState params={listParams} list="h" />', '<OtherListState params={listParams} list="h" /><input type="hidden" name="hq" value={query.held.q} />');
   if (duplicate === page) throw new Error("Held duplicate-search plant target missing");
   ok("red: a hidden held query cannot override the typed search", !allSearchFormsWired(duplicate));
-  const unsorted = helper.replace("return pageRows(all, ordered, query.page, perPage);", "return pageRows(all, filtered, query.page, perPage);");
+  const decidedAhead = helper.replace("const waitingFirst = query.sort === \"decision\" ? ordered : [...ordered.filter((row) => !row.forfeited), ...ordered.filter((row) => row.forfeited)];",
+    "const waitingFirst = ordered;");
+  if (decidedAhead === helper) throw new Error("Held pending-first plant target missing");
+  ok("red: held shares ordered by week alone page a waiting decision away", mutated(decidedAhead).selectHeldShares(decidedFirst, query().held, 20).rows[0]?.weekSeq !== 5);
+  const unlabelled = page.replace('ariaLabel="Voidable week sort by"', 'ariaLabel="Voidable week sort"');
+  if (unlabelled === page) throw new Error("Voidable sort label plant target missing");
+  ok("red: a filter whose accessible name drops its visible label fails the label-in-name guard", labelInNameProblems(unlabelled).length > 0);
+  const unsorted = helper.replace("return pageRows(all, waitingFirst, query.page, perPage);", "return pageRows(all, filtered, query.page, perPage);");
   if (unsorted === helper) throw new Error("Held global-sort plant target missing");
   ok("red: a held page sliced without sorting fails the highest-share assertion", mutated(unsorted).selectHeldShares(held, query({ hsort: "share", hdir: "desc" }).held, 20).rows[0]?.weekSeq !== 1);
   const winnerUnsorted = helper.replace(/return pageRows\(all, ordered, query\.page, perPage\);(?=\r?\n}\r?\n\r?\nexport type SealListWeek)/, "return pageRows(all, filtered, query.page, perPage);");

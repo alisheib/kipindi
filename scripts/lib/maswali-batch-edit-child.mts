@@ -48,11 +48,13 @@ const afterDal = await questionStore.listForWeek(weekId);
 ok("store batch raises on a later write failure", dalFailed);
 ok("store batch rolls back its earlier question", afterDal[0]?.textEn === before[0]?.textEn);
 
-const attested = await svc.attestParity({ weekId, officerId: "usr_second_reader" });
+const attested = await svc.attestParity({ weekId, officerId: "usr_second_reader", readVersion: await svc.readDraftVersion(weekId) });
 ok("second reader attests the draft", attested.ok, errorOf(attested));
+// S5-FIX-SRV A5 · every edit names the version of the row the builder loaded.
+const v = (index: number) => svc.draftRowVersion(before[index]!);
 const refused = await svc.editDraftQuestions({ weekId, officerId: "usr_builder", edits: [
-  { slot: 1, changes: { textEn: "Should not save" } },
-  { slot: 2, changes: { eventLocalStart: "not-a-date" } },
+  { slot: 1, changes: { textEn: "Should not save" }, version: v(0) },
+  { slot: 2, changes: { eventLocalStart: "not-a-date" }, version: v(1) },
 ] });
 const afterRefusal = await questionStore.listForWeek(weekId);
 ok("later invalid slot names M2 and refuses whole save", !refused.ok && /M2/.test(errorOf(refused)), errorOf(refused));
@@ -60,7 +62,7 @@ ok("later refusal leaves both question rows unchanged", afterRefusal[0]?.textEn 
 ok("later refusal retains second-reader attestation", (await weekStore.get(weekId))?.parityAttestedBy === "usr_second_reader");
 
 const duplicate = await svc.editDraftQuestions({ weekId, officerId: "usr_builder", edits: [
-  { slot: 1, changes: { textEn: "First" } }, { slot: 1, changes: { textEn: "Second" } },
+  { slot: 1, changes: { textEn: "First" }, version: v(0) }, { slot: 1, changes: { textEn: "Second" }, version: v(0) },
 ] });
 ok("duplicate slot refuses without a write", !duplicate.ok && (await questionStore.listForWeek(weekId))[0]?.textEn === before[0]?.textEn);
 
@@ -70,8 +72,8 @@ if (process.argv.includes("--prove-red")) {
   questionStore.editDraftQuestions = (edits, tx) => originalBatch.call(questionStore, edits.slice(0, 1), tx);
 }
 const saved = await svc.editDraftQuestions({ weekId, officerId: "usr_builder", edits: [
-  { slot: 1, changes: { textEn: "Edited question one" } },
-  { slot: 2, changes: { textEn: "Edited question two" } },
+  { slot: 1, changes: { textEn: "Edited question one" }, version: v(0) },
+  { slot: 2, changes: { textEn: "Edited question two" }, version: v(1) },
 ] });
 questionStore.editDraftQuestions = originalBatch;
 const afterSave = await questionStore.listForWeek(weekId);
@@ -85,7 +87,7 @@ const oldAuditSecret = process.env.AUDIT_CHAIN_SECRET;
 process.env.NODE_ENV = "production";
 delete process.env.AUDIT_CHAIN_SECRET;
 const unrecordedSave = await svc.editDraftQuestions({ weekId, officerId: "usr_builder", edits: [
-  { slot: 3, changes: { textEn: "Saved despite audit refusal" } },
+  { slot: 3, changes: { textEn: "Saved despite audit refusal" }, version: v(2) },
 ] });
 if (oldNodeEnv === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = oldNodeEnv;
 if (oldAuditSecret === undefined) delete process.env.AUDIT_CHAIN_SECRET; else process.env.AUDIT_CHAIN_SECRET = oldAuditSecret;

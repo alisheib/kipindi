@@ -24,7 +24,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/server/store";
 import type { StoredUser, StoredWallet } from "@/lib/server/store";
 import { randomId } from "@/lib/server/crypto";
-import { attestParity, closeWeek, createWeek, openWeek, purchaseMaswaliTickets, rolloutSells, sealQuestion, type DraftQuestionInput } from "@/lib/server/maswali-service";
+import { attestParity, closeWeek, createWeek, openWeek, purchaseMaswaliTickets, readDraftVersion, rolloutSells, sealQuestion, type DraftQuestionInput } from "@/lib/server/maswali-service";
 import { millioneaStateNow } from "@/lib/server/millionea-switch";
 import { weekStore } from "@/lib/server/maswali-dal";
 import { fundMaswaliGuarantee, guaranteeReader, GUARANTEE_FUND_WORD, maswaliAccountBalance } from "@/lib/server/maswali-money-service";
@@ -79,7 +79,7 @@ async function draft(ms: number) {
 }
 async function opened(ms: number) {
   const w = await draft(ms);
-  const a = await attestParity({ weekId: w.id, officerId: "usr_dev_reader" });
+  const a = await attestParity({ weekId: w.id, officerId: "usr_dev_reader", readVersion: await readDraftVersion(w.id) });
   if (!a.ok) throw new Error(`attest: ${a.error}`);
   const o = await openWeek({ weekId: w.id, officerId: OWNER, guarantee: guaranteeReader, now: new Date(ms + 60_000) });
   if (!o.ok) throw new Error(`open: ${o.error}`);

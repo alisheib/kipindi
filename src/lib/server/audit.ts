@@ -1018,18 +1018,30 @@ export async function getAuditForActorDurable(
      * list, never a prefix: `_` is a LIKE wildcard. The caller owns the list; this module names no feature's actions.
      */
     excludeActions?: readonly string[];
+    /**
+     * Only these actions, applied IN THE READ on both branches, before the limit — so `total` is the EXACT count of the
+     * actor's rows of these actions, never a window of their whole history. An exact list, as `excludeActions`.
+     */
+    actions?: readonly string[];
+    /** Only rows from exactly this source — the same ip and the same user agent, null matching null — in the read too. */
+    from?: { ip: string | null; userAgent: string | null };
   } = {},
 ): Promise<{ entries: AuditEntry[]; total: number; truncated: boolean }> {
   const limit = opts.limit ?? 200;
   const excluded = new Set(opts.excludeActions ?? []);
+  const wanted = opts.actions ? new Set(opts.actions) : null;
+  const from = opts.from;
   const db = prisma();
   if (!db) {
     // No database (tests, local no-DB runs) — the ring is all there is. Report honestly rather
     // than implying completeness, exactly as the target-side twin does.
-    const all = [...ring].filter((e) => e.actorId === actorId && !excluded.has(e.action)).reverse();
+    const all = [...ring].filter((e) => e.actorId === actorId && !excluded.has(e.action) && (!wanted || wanted.has(e.action))
+      && (!from || ((e.ip ?? null) === from.ip && (e.userAgent ?? null) === from.userAgent))).reverse();
     return { entries: all.slice(0, limit), total: all.length, truncated: all.length > limit };
   }
-  const where = excluded.size > 0 ? { actorId, NOT: { action: { in: [...excluded] } } } : { actorId };
+  // ONE where for the count and the read: the exclusion, the inclusion and the source, all applied in the read. A null
+  // source value is `IS NULL` here, which is what the ring's `null === null` above matches.
+  const where = { actorId, ...(excluded.size > 0 ? { NOT: { action: { in: [...excluded] } } } : {}), ...(wanted ? { action: { in: [...wanted] } } : {}), ...(from ? { ip: from.ip, userAgent: from.userAgent } : {}) } satisfies Prisma.AuditLogWhereInput;
   const total = await db.auditLog.count({ where });
   const rows = await db.auditLog.findMany({
     where,

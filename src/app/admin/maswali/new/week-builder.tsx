@@ -72,8 +72,12 @@ const toQuestion = (r: Row) => ({
   probabilityEstimate: r.probabilityPct === "" ? null : Number(r.probabilityPct) / 100, probabilitySource: r.probabilitySource || null,
 });
 
-/** `edit` opens a DRAFT: its start and line stay fixed, and the changed slots save as one batch (MB-79). */
-export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { defaultMonday: string; edit?: { weekId: string; rows: Row[] }; suggestions?: DraftSuggestion[] }) {
+/**
+ * `edit` opens a DRAFT: its start and line stay fixed, and the changed slots save as one batch (MB-79). `versions[i]` is
+ * row i's stored version as this editor loaded it: each changed slot sends it, and the service refuses the whole save
+ * when another officer's save changed that slot since (S5 review A5) — never a silent overwrite.
+ */
+export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { defaultMonday: string; edit?: { weekId: string; rows: Row[]; versions: string[] }; suggestions?: DraftSuggestion[] }) {
   const router = useRouter();
   const mayAct = useMayAct();
   const [weekStart, setWeekStart] = useState(defaultMonday);
@@ -101,10 +105,10 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
     if (edit) {
       const changed = rows.map((r, i) => ({ r, i })).filter(({ r, i }) => JSON.stringify(r) !== JSON.stringify(edit.rows[i]));
       if (changed.length === 0) { setError("Nothing changed."); return; }
-      const edits = changed.map(({ r }) => {
+      const edits = changed.map(({ r, i }) => {
         const { role: _role, ordinal: _ordinal, ...changes } = toQuestion(r);
         void _role; void _ordinal;
-        return { slot: r.role === "MAIN" ? r.ordinal : r.ordinal + 10, changes };
+        return { slot: r.role === "MAIN" ? r.ordinal : r.ordinal + 10, changes, version: edit.versions[i] };
       });
       const form = new FormData();
       form.set("weekId", edit.weekId);

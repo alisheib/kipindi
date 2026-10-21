@@ -890,7 +890,7 @@ const startE = W.weekStartAhead(7), startL = W.weekStartAhead(8);
 const draftAttested = async (start: number) => {
   const c = await W.svc.createWeek({ weekStartMs: start, questions: W.questions(start), officerId: DRAFTER, now: new Date(start - 3 * DAY) });
   if (!c.ok) throw new Error(`§12b: the draft was refused: ${c.error}`);
-  const a = await W.svc.attestParity({ weekId: c.week.id, officerId: READER });
+  const a = await W.svc.attestParity({ weekId: c.week.id, officerId: READER, readVersion: await W.svc.readDraftVersion(c.week.id) });
   if (!a.ok) throw new Error(`§12b: the attestation was refused: ${a.error}`);
   return c.week;
 };

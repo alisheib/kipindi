@@ -116,7 +116,9 @@ async function Content({ searchParams }: IntegrityPageProps) {
             : (
               <ul className="space-y-1.5 text-body-sm">
                 {newDevices.map((d, i) => (
-                  <li key={i}><span className="tabular">{fmtEat(d.at)}</span> · officer {d.officerId ?? "?"} · week {d.weekId ?? "?"}{d.firstSeal ? <span className="text-text-tertiary"> · their first seal on the platform</span> : <span className="text-warning"> · not a device they sealed from before</span>}</li>
+                  <li key={i}><span className="tabular">{fmtEat(d.at)}</span> · officer {d.officerId ?? "?"} · week {d.weekId ?? "?"}{d.kind === "unchecked"
+                    ? <span className="text-warning"> · the device could not be checked against their earlier seals</span>
+                    : d.firstSeal ? <span className="text-text-tertiary"> · their first seal on the platform</span> : <span className="text-warning"> · not a device they sealed from before</span>}</li>
                 ))}
               </ul>
             )}
@@ -161,7 +163,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
                   options={[{ value: "", label: "All lines" }, { value: "PUBLIC", label: "Public" }, { value: "DRIVE", label: "Drive" }]} />
               </div>
               <div className="min-w-[130px] flex-1 text-body-sm text-text-secondary"><span>Sort by</span>
-                <Select key={query.voidable.sort} name="vsort" ariaLabel="Voidable week sort" defaultValue={query.voidable.sort} className="mt-1"
+                <Select key={query.voidable.sort} name="vsort" ariaLabel="Voidable week sort by" defaultValue={query.voidable.sort} className="mt-1"
                   options={[{ value: "week", label: "Week" }, { value: "tickets", label: "Tickets to refund" }]} />
               </div>
               <div className="min-w-[130px] flex-1 text-body-sm text-text-secondary"><span>Order</span>

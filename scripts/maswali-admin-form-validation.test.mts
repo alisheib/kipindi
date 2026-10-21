@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import ts from "typescript";
 import { MUTATIONS } from "./anchors/maswali-admin-form-validation.anchors.mjs";
 import { injectDefect } from "./red-anchor.mjs";
 import { guaranteeReviewDraft, licenceReviewDraft, sunsetChoices, sunsetConfirmText, validGuaranteeDraft, validShareDecision } from "../src/lib/maswali-admin-form-validation.ts";
@@ -120,8 +121,97 @@ assert.match(integrity, /if \(!validShareDecision\(reason\)\) \{ setTried\(true\
   "Hold must refuse a blank decision inside the confirmation");
 assert.match(integrity, /if \(!validShareDecision\(text\)\) \{ setTried\(true\); return; \}/,
   "Release and forfeit must refuse a blank decision inside the confirmation");
-assert.match(integrity, /\{!open && error && <span role="alert"/,
-  "Hold failure must have one visible alert inside its open confirmation");
-assert.match(integrity, /\{mode === null && error && <span role="alert"/,
-  "Release or forfeit failure must have one visible alert inside its open confirmation");
+/**
+ * ⭐ S5-FIX-SRV A2 · EVERY CONFIRMATION STATES ITS REFUSAL INSIDE ITSELF, AND NO COPY OF IT SHOWS UNDER THE SCRIM. A refusal
+ * rendered on the page while the dialog is open sits outside the dialog's own tree, behind the scrim, where the officer
+ * cannot read it (F4: every refusal states its reason). Read from the syntax tree of each console file: every
+ * `<ConfirmModal>`'s body carries the `error` alert (`{error && <… role="alert">}` or `<DialogError error={error} />`), and
+ * every `error` alert outside a dialog is gated on each dialog of its component being closed — on the identifier its
+ * `open` reads (a `<Feedback dialogOpen={…}>` names it there, and `Feedback` itself must honour it).
+ */
+function dialogRefusalProblems(file: string, src: string): string[] {
+  const sf = ts.createSourceFile(file, src, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const problems: string[] = [];
+  const tag = (n: ts.Node) => (ts.isJsxSelfClosingElement(n) || ts.isJsxOpeningElement(n) ? n.tagName.getText(sf) : null);
+  const attrOf = (el: ts.JsxSelfClosingElement | ts.JsxOpeningElement, name: string) =>
+    el.attributes.properties.find((p): p is ts.JsxAttribute => ts.isJsxAttribute(p) && p.name.getText(sf) === name);
+  const firstIdentifier = (n: ts.Node): string | null => {
+    if (ts.isIdentifier(n)) return n.text;
+    let found: string | null = null;
+    n.forEachChild((c) => { if (found === null) found = firstIdentifier(c); });
+    return found;
+  };
+  /** `{…gates && error && <x role="alert">…}` → its gate texts; null when the expression is not an error alert. */
+  const andAlertGates = (n: ts.Node): string[] | null => {
+    if (!ts.isJsxExpression(n) || !n.expression) return null;
+    const operands: ts.Expression[] = [];
+    const flatten = (e: ts.Expression) => {
+      if (ts.isBinaryExpression(e) && e.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) { flatten(e.left); flatten(e.right); }
+      else if (ts.isParenthesizedExpression(e)) flatten(e.expression);
+      else operands.push(e);
+    };
+    flatten(n.expression);
+    const last = operands[operands.length - 1];
+    const el = last && (ts.isJsxElement(last) ? last.openingElement : ts.isJsxSelfClosingElement(last) ? last : null);
+    if (!el || attrOf(el, "role")?.initializer?.getText(sf) !== '"alert"') return null;
+    if (!operands.slice(0, -1).some((o) => ts.isIdentifier(o) && o.text === "error")) return null;
+    return operands.slice(0, -1).filter((o) => !(ts.isIdentifier(o) && o.text === "error")).map((o) => o.getText(sf));
+  };
+  const containsErrorAlert = (n: ts.Node): boolean => {
+    if (tag(n) === "DialogError" && attrOf(n as ts.JsxSelfClosingElement, "error")?.initializer?.getText(sf) === "{error}") return true;
+    const gates = andAlertGates(n);
+    if (gates !== null && gates.length === 0) return true;
+    let found = false;
+    n.forEachChild((c) => { if (!found) found = containsErrorAlert(c); });
+    return found;
+  };
+  const mentions = (text: string, id: string) => new RegExp(`\\b${id}\\b`).test(text);
+  for (const fn of sf.statements) {
+    if (!ts.isFunctionDeclaration(fn) && !ts.isVariableStatement(fn)) continue;
+    const name = ts.isFunctionDeclaration(fn) ? fn.name?.text ?? "?" : fn.declarationList.declarations[0]?.name.getText(sf) ?? "?";
+    const modals: ts.JsxSelfClosingElement[] = [];
+    const outside: Array<{ gates: string; at: string }> = [];
+    const walk = (n: ts.Node, inModal: boolean) => {
+      if (ts.isJsxSelfClosingElement(n) && tag(n) === "ConfirmModal") { modals.push(n); n.forEachChild((c) => walk(c, true)); return; }
+      if (!inModal) {
+        const gates = andAlertGates(n);
+        if (gates !== null) outside.push({ gates: gates.join(" && "), at: n.getText(sf).slice(0, 60) });
+        if (ts.isJsxSelfClosingElement(n) && tag(n) === "Feedback" && attrOf(n, "error")) {
+          outside.push({ gates: attrOf(n, "dialogOpen")?.initializer?.getText(sf) ?? "", at: n.getText(sf).slice(0, 60) });
+        }
+      }
+      n.forEachChild((c) => walk(c, inModal));
+    };
+    walk(fn, false);
+    if (name === "Feedback") {
+      for (const o of outside) if (!mentions(o.gates, "dialogOpen")) problems.push(`${file} · Feedback shows the refusal while a dialog is open: ${o.at}`);
+      continue;
+    }
+    if (modals.length === 0) continue;
+    const openIds = modals.map((m) => firstIdentifier(attrOf(m, "open")?.initializer ?? m) ?? "?");
+    for (const m of modals) {
+      const body = attrOf(m, "body")?.initializer;
+      if (!body || !containsErrorAlert(body)) problems.push(`${file} · ${name}: the dialog on "${firstIdentifier(attrOf(m, "open")?.initializer ?? m)}" does not state its refusal inside itself`);
+    }
+    for (const o of outside) {
+      const missing = openIds.filter((id) => !mentions(o.gates, id));
+      if (missing.length) problems.push(`${file} · ${name}: a refusal shows under the scrim while ${missing.join(", ")} is open: ${o.at}`);
+    }
+  }
+  return problems;
+}
+const weekControls = readFileSync(fileURLToPath(new URL("../src/app/admin/maswali/[weekId]/week-controls.tsx", import.meta.url)), "utf8");
+const refusalProblems = [
+  ...dialogRefusalProblems("week-controls.tsx", weekControls),
+  ...dialogRefusalProblems("integrity-controls.tsx", integrity),
+  ...dialogRefusalProblems("pools-controls.tsx", pools),
+];
+const dialogsChecked = [weekControls, integrity, pools].reduce((n, src) => n + (src.match(/<ConfirmModal\b/g)?.length ?? 0), 0);
+assert.ok(dialogsChecked >= 16, `premise: the three console files carry their confirmations (${dialogsChecked} found)`);
+assert.deepEqual(refusalProblems, [],
+  "Every confirmation must state its refusal inside itself, and no copy may show under the scrim");
+// Controls: the reader can fail — an ungated page alert beside a dialog, and a dialog whose body has no alert, are caught.
+assert.equal(dialogRefusalProblems("control.tsx", `function C() { return <>{error && <p role="alert">{error}</p>}<ConfirmModal open={open} body={<p>x</p>} /></>; }`).length, 2,
+  "control: an ungated page alert and an alert-less dialog body are both caught");
+process.stdout.write(`maswali admin form validation: ${dialogsChecked} confirmations state their refusal inside themselves\n`);
 process.stdout.write("maswali admin form validation: behavior and control-wiring assertions PASS\n");

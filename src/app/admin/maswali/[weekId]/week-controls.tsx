@@ -49,13 +49,18 @@ function useAct() {
 
 // ── Attest and open ─────────────────────────────────────────────────────────────────────────────────
 
-export function AttestOpenControls({ weekId, weekCode, attestedBy, canAttest, canOpen, openReady, attestNeed, openNeed }: {
-  weekId: string; weekCode: string; attestedBy: string | null; canAttest: boolean; canOpen: boolean; openReady: boolean; attestNeed: string; openNeed: string;
+/**
+ * `readVersion` is the draft's version this page was drawn from (`draftSetVersion`): the attestation sends it, so an edit
+ * landed since the reader loaded the week refuses it (MB-79, S5 review A4).
+ */
+export function AttestOpenControls({ weekId, weekCode, attestedBy, canAttest, canOpen, openReady, readVersion, attestNeed, openNeed }: {
+  weekId: string; weekCode: string; attestedBy: string | null; canAttest: boolean; canOpen: boolean; openReady: boolean; readVersion: string; attestNeed: string; openNeed: string;
 }) {
   const mayAct = useMayAct();
   const { pending, error, run, setError } = useAct();
   const [confirm, setConfirm] = useState(false);
   const [attestConfirm, setAttestConfirm] = useState(false);
+  const [auditWarning, setAuditWarning] = useState<string | null>(null);
   return (
     <div className="flex items-center gap-3 flex-wrap">
       {attestedBy ? <span className="text-body-sm text-success">The three languages are attested.</span>
@@ -63,17 +68,21 @@ export function AttestOpenControls({ weekId, weekCode, attestedBy, canAttest, ca
         : <ControlLocked what="Attest the languages" need={attestNeed} />}
       {canOpen ? (mayAct ? <Button size="sm" disabled={pending || !openReady} onClick={() => setConfirm(true)}>Open the week</Button> : <ActReadOnly />)
         : <ControlLocked what="Open the week" need={openNeed} />}
-      {!attestConfirm && error && <p role="alert" className="text-body-sm text-danger-fg w-full">{error}</p>}
+      {auditWarning && <p role="alert" className="text-body-sm text-warning w-full">{auditWarning}</p>}
+      {!attestConfirm && !confirm && error && <p role="alert" className="text-body-sm text-danger-fg w-full">{error}</p>}
       <ConfirmModal open={attestConfirm} onClose={() => setAttestConfirm(false)} loading={pending} tone="brand" tier="hard" typedWord="ATTEST"
         title={`Attest ${weekCode}'s three languages?`} confirmLabel="Record the attestation"
         body={<div className="space-y-2">
           <p>Confirm that you personally read {weekCode}&apos;s English, Swahili and Chinese questions and that their meanings agree. This records your signoff; editing a question clears it.</p>
           {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
         </div>}
-        onConfirm={() => run(() => attestMaswaliParityAction(fd({ weekId })), () => setAttestConfirm(false))} />
+        onConfirm={() => run(() => attestMaswaliParityAction(fd({ weekId, readVersion })), () => setAttestConfirm(false), setAuditWarning)} />
       <ConfirmModal open={confirm} onClose={() => setConfirm(false)} loading={pending} tone="brand"
         title="Open the week for sale?" confirmLabel="Open the week"
-        body="The rules, the fifteen questions and their sources freeze now and cannot change afterwards (MR-13). Players can buy as soon as Millionea is visible to them."
+        body={<div className="space-y-2">
+          <p>The rules, the fifteen questions and their sources freeze now and cannot change afterwards (MR-13). Players can buy as soon as Millionea is visible to them.</p>
+          {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
+        </div>}
         onConfirm={() => run(() => openMaswaliWeekAction(fd({ weekId })), () => setConfirm(false))} />
     </div>
   );
@@ -81,7 +90,8 @@ export function AttestOpenControls({ weekId, weekCode, attestedBy, canAttest, ca
 
 // ── Move the close ──────────────────────────────────────────────────────────────────────────────────
 
-export function MoveCloseForm({ weekId, weekCode, currentEat }: { weekId: string; weekCode: string; currentEat: string }) {
+/** `closesAt` is the close this page was drawn with: the move sends it, and the service refuses if another move landed since (A3). */
+export function MoveCloseForm({ weekId, weekCode, currentEat, closesAt }: { weekId: string; weekCode: string; currentEat: string; closesAt: string }) {
   const mayAct = useMayAct();
   const { pending, error, run, setError } = useAct();
   const [date, setDate] = useState("");
@@ -107,7 +117,7 @@ export function MoveCloseForm({ weekId, weekCode, currentEat }: { weekId: string
         </div>}
         onConfirm={() => {
           if (!review) return;
-          run(() => moveMaswaliCloseAction(fd({ weekId, closeAt: review.closeAt })), () => { setReview(null); setDate(""); setTime(""); });
+          run(() => moveMaswaliCloseAction(fd({ weekId, closeAt: review.closeAt, expectedClosesAt: closesAt })), () => { setReview(null); setDate(""); setTime(""); });
         }} />
     </div>
   );
@@ -162,7 +172,7 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
           if (!row?.outcome || !row.sealedAtIso) return;
           const expectedOutcome = row.outcome;
           const expectedSealedAt = row.sealedAtIso;
-          run(() => confirmMaswaliSealAction(fd({ weekId, slot: String(row.slot), expectedOutcome, expectedSealedAt })), () => setConfirmRow(null));
+          run(() => confirmMaswaliSealAction(fd({ weekId, slot: String(row.slot), expectedOutcome, expectedSealedAt })), () => setConfirmRow(null), setSealAuditWarning);
         }} />
       {/* The 1,040px result table stays horizontally scrollable. Paint containment keeps its offscreen columns out of
           the document's own scroll width on narrow screens; the named, focusable ScrollX still reaches every column. */}
@@ -188,7 +198,10 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
                     {r.outcome
                       ? <span>{r.outcome}{r.voidReason ? ` · ${isMaswaliVoidReason(r.voidReason) ? MASWALI_VOID_REASON_LABEL[r.voidReason] : r.voidReason}` : ""}<span className="block text-body-sm text-text-tertiary">{r.sealedAt}{r.awaitingSecond ? " · awaits a second officer" : ""}</span></span>
                       : can.seal && mayAct
-                        ? <Select size="md" className="min-w-[100px]" value={p.outcome} onChange={(v) => setPicks((s) => ({ ...s, [r.slot]: { ...p, outcome: v } }))} ariaLabel={`${r.label} result`}
+                        /* One readable line (admin drive 6.1c): at md the trigger's own chrome takes ~56px, so a column squeezed
+                           to its 100px floor — once "Confirm as second officer" widens the act column — wrapped "Not yet". The
+                           three labels are short and fixed: nowrap sizes the trigger to its label instead (the table scrolls). */
+                        ? <Select size="md" className="min-w-[100px] whitespace-nowrap" value={p.outcome} onChange={(v) => setPicks((s) => ({ ...s, [r.slot]: { ...p, outcome: v } }))} ariaLabel={`${r.label} result`}
                             options={[{ value: "", label: "Not yet" }, { value: "YES", label: "YES" }, { value: "NO", label: "NO" }]} />
                         : "—"}
                   </td>
@@ -216,12 +229,15 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
           : <ActReadOnly />) : <ControlLocked what="Seal results" need={need.seal} />}
         {evidenceMissing && <span className="text-body-sm text-warning">Each seal records its evidence (at least 10 characters).</span>}
         {sealAuditWarning && <p role="alert" className="text-body-sm text-warning w-full">{sealAuditWarning}</p>}
-        {!confirmRow && error && <p role="alert" className="text-body-sm text-danger-fg w-full">{error}</p>}
+        {!confirmRow && !sealOpen && !voidRow && !correctRow && error && <p role="alert" className="text-body-sm text-danger-fg w-full">{error}</p>}
       </div>
 
       <ConfirmModal open={sealOpen} onClose={() => setSealOpen(false)} loading={pending} tone="brand" tier="hard" typedWord="SEAL"
         title={`Seal ${chosen.length} result${chosen.length === 1 ? "" : "s"}?`} confirmLabel="Seal"
-        body={`${chosen.map((c) => `${rows.find((r) => r.slot === c.slot)?.label} ${c.outcome}`).join(" · ")}. A seal is final once its objection window closes; until then only its own correction changes it.`}
+        body={<div className="space-y-2">
+          <p>{`${chosen.map((c) => `${rows.find((r) => r.slot === c.slot)?.label} ${c.outcome}`).join(" · ")}. A seal is final once its objection window closes; until then only its own correction changes it.`}</p>
+          {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
+        </div>}
         onConfirm={() => {
           setError(null);
           setSealAuditWarning(null);
@@ -245,6 +261,7 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
             <p>A voided main is replaced by the next usable reserve; a voided reserve is skipped (MR-17).</p>
             <Field label="Ground" required error={voidTried && !isMaswaliVoidReason(voidReason) ? "Choose a ground from the list." : undefined}><Select size="md" value={voidReason} onChange={setVoidReason} ariaLabel="Void ground" options={[{ value: "", label: "Choose the ground" }, ...voidReasons.map((v) => ({ value: v, label: isMaswaliVoidReason(v) ? MASWALI_VOID_REASON_LABEL[v] : v }))]} /></Field>
             <Field label="Evidence" required error={voidTried && voidEvidence.trim().length < 10 ? "Write at least 10 characters of evidence." : undefined}><Input size="md" value={voidEvidence} onChange={(e) => setVoidEvidence(e.target.value)} placeholder="What happened, as the source records it" /></Field>
+            {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
           </div>
         }
         onConfirm={() => {

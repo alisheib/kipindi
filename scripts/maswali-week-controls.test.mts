@@ -27,7 +27,9 @@ function attestReviewed(source: string) {
   return s.includes("setAttestConfirm(true)") && s.includes("<ConfirmModal open={attestConfirm}")
     && s.includes("title={`Attest ${weekCode}'s three languages?`}")
     && s.includes("typedWord=\"ATTEST\"")
-    && s.includes("onConfirm={() => run(() => attestMaswaliParityAction(fd({ weekId }))");
+    // S5-FIX-SRV A4 · the attestation names the draft's version this page was drawn from.
+    && s.includes("onConfirm={() => run(() => attestMaswaliParityAction(fd({ weekId, readVersion }))")
+    && s.includes("readVersion: string;");
 }
 function moveReviewed(source: string) {
   const s = move(source);
@@ -35,7 +37,8 @@ function moveReviewed(source: string) {
     && s.includes("<ConfirmModal open={review !== null}")
     && s.includes("title={`Move ${weekCode}'s sales close?`}")
     && s.includes("{review?.fromEat} (EAT)") && s.includes("{review?.toEat} (EAT)")
-    && s.includes("moveMaswaliCloseAction(fd({ weekId, closeAt: review.closeAt }))");
+    // S5-FIX-SRV A3 · the move also sends the close this page was drawn with, so a stale page's move is refused.
+    && s.includes("moveMaswaliCloseAction(fd({ weekId, closeAt: review.closeAt, expectedClosesAt: closesAt }))");
 }
 function secondReviewed(source: string) {
   const s = seal(source);
@@ -52,7 +55,7 @@ function evidenceNamed(source: string) {
 }
 function pendingResultReadable(source: string, kit = selectKit) {
   const s = seal(source);
-  return s.includes('<Select size="md" className="min-w-[100px]" value={p.outcome}')
+  return s.includes('<Select size="md" className="min-w-[100px] whitespace-nowrap" value={p.outcome}')
     && kit.includes('const h = size === "xs" ? "min-h-[32px]" : size === "sm" ? "min-h-[36px]" : "min-h-[44px]";')
     && s.includes('ariaLabel={`${r.label} result`}')
     && s.includes('<Button size="sm" variant="ghost" onClick={() => { setVoidRow(r)')
@@ -100,22 +103,32 @@ ok("server page passes week code and raw seal version into the reviews",
   && page.includes("sealedAtIso: q.sealedAt"));
 
 if (process.argv.includes("--prove-red")) {
-  const directAttest = controls.replace("setAttestConfirm(true)", "run(() => attestMaswaliParityAction(fd({ weekId })))");
+  const unreadAttest = controls.replace("attestMaswaliParityAction(fd({ weekId, readVersion }))", "attestMaswaliParityAction(fd({ weekId }))");
+  if (unreadAttest === controls) throw new Error("Attestation read-version plant target missing");
+  ok("red: an attestation that does not name the text it read attests whatever is stored now (A4)", !attestReviewed(unreadAttest));
+  const directAttest = controls.replace("setAttestConfirm(true)", "run(() => attestMaswaliParityAction(fd({ weekId, readVersion })))");
   if (directAttest === controls) throw new Error("Attestation review plant target missing");
   ok("red: direct attestation loses the week review", !attestReviewed(directAttest));
-  const liveClose = controls.replace("moveMaswaliCloseAction(fd({ weekId, closeAt: review.closeAt }))", "moveMaswaliCloseAction(fd({ weekId, closeAt: `${date}T${time}` }))");
+  const liveClose = controls.replace("moveMaswaliCloseAction(fd({ weekId, closeAt: review.closeAt, expectedClosesAt: closesAt }))", "moveMaswaliCloseAction(fd({ weekId, closeAt: `${date}T${time}`, expectedClosesAt: closesAt }))");
   if (liveClose === controls) throw new Error("Close snapshot plant target missing");
   ok("red: live draft values can diverge from the reviewed close", !moveReviewed(liveClose));
+  const unreviewedClose = controls.replace("moveMaswaliCloseAction(fd({ weekId, closeAt: review.closeAt, expectedClosesAt: closesAt }))", "moveMaswaliCloseAction(fd({ weekId, closeAt: review.closeAt }))");
+  if (unreviewedClose === controls) throw new Error("Reviewed-close plant target missing");
+  ok("red: a move that does not send the close it reviewed can move a close another officer moved (A3)", !moveReviewed(unreviewedClose));
   const staleSeal = controls.replace("expectedOutcome, expectedSealedAt }", "expectedOutcome, expectedSealedAt: \"\" }");
   if (staleSeal === controls) throw new Error("Second-officer stale guard plant target missing");
   ok("red: missing seal version permits a stale second-officer signoff", !secondReviewed(staleSeal));
   const nameless = controls.replace('aria-label={`${r.label} seal evidence`}', "");
   if (nameless === controls) throw new Error("Seal evidence name plant target missing");
   ok("red: nameless evidence cannot identify its row to an officer", !evidenceNamed(nameless));
-  const narrowResult = controls.replace('<Select size="md" className="min-w-[100px]" value={p.outcome}', '<Select size="md" value={p.outcome}');
+  const narrowResult = controls.replace('<Select size="md" className="min-w-[100px] whitespace-nowrap" value={p.outcome}', '<Select size="md" value={p.outcome}');
   if (narrowResult === controls) throw new Error("Pending-result width plant target missing");
   ok("red: removing the pending-result width permits vertical wrapping", !pendingResultReadable(narrowResult));
-  const shortResult = controls.replace('<Select size="md" className="min-w-[100px]" value={p.outcome}', '<Select size="xs" className="min-w-[100px]" value={p.outcome}');
+  // S5-FIX-SRV · the drive's 6.1c measured "Not yet" on two lines at md with the 100px floor alone: the floor is not enough.
+  const wrappingResult = controls.replace('<Select size="md" className="min-w-[100px] whitespace-nowrap" value={p.outcome}', '<Select size="md" className="min-w-[100px]" value={p.outcome}');
+  if (wrappingResult === controls) throw new Error("Pending-result one-line plant target missing");
+  ok("red: a pending result allowed to wrap in a squeezed column is reported", !pendingResultReadable(wrappingResult));
+  const shortResult = controls.replace('<Select size="md" className="min-w-[100px] whitespace-nowrap" value={p.outcome}', '<Select size="xs" className="min-w-[100px] whitespace-nowrap" value={p.outcome}');
   if (shortResult === controls) throw new Error("Pending-result height plant target missing");
   ok("red: removing the pending-result height permits a 32px tap target", !pendingResultReadable(shortResult));
   const shortKit = selectKit.replace(': "min-h-[44px]";', ': "min-h-[36px]";');

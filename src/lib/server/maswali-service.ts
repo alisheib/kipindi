@@ -16,7 +16,9 @@
  *
  * Every refusal is a `{ ok: false, error }` in words an officer can act on; nothing here throws at a caller for a rule.
  */
-import { audit } from "./audit";
+import { createHash } from "node:crypto";
+import type { Prisma } from "@prisma/client";
+import { audit, getAuditForTargetDurable } from "./audit";
 import { randomId } from "./crypto";
 import { withLock } from "./locks";
 import { buyPosition, createMarket } from "./market-service";
@@ -26,10 +28,10 @@ import { millioneaStateNow } from "./millionea-switch";
 import type { RolloutState } from "@/lib/millionea-rollout";
 import { marketStore } from "./market-dal";
 import { isSourceTrusted, seedDefaultSources } from "./source-registry";
-import { getRequireTwoOfficerResolution } from "./resolution-policy";
+import { readRequireTwoOfficerResolution } from "./resolution-policy";
 import { getMaswaliConfig, readMaswaliConfigFresh, readMaswaliRulesSnapshot, snapshotMaswaliRules, type MaswaliRulesSnapshot } from "./maswali-config";
 import { licenceBasisAllowsOpen, readLicenceBasisFresh } from "./maswali-licence";
-import { questionStore, ticketStore, weekStore, type DraftQuestionFields, type EventKind, type StoredQuestion, type StoredWeek, type WeekVisibility } from "./maswali-dal";
+import { isEventKind, questionStore, ticketStore, weekStore, type DraftQuestionFields, type EventKind, type StoredQuestion, type StoredWeek, type WeekVisibility } from "./maswali-dal";
 import { MARKET_CATEGORIES, type MarketCategory } from "@/lib/markets/categories";
 import { EAT_OFFSET_MS, eatWeekAt, eatWeekCode, eatWeekStartMs } from "@/lib/eat-day";
 import { zonedToUtcMs } from "@/lib/maswali-time";
@@ -79,10 +81,35 @@ const hostOf = (url: string | null | undefined): string | null => {
   try { return new URL(url).hostname.toLowerCase(); } catch { return null; }
 };
 
+/** The drafted fields that must be text, and the optional ones that may be absent, each named as a refusal names it. */
+const DRAFT_TEXT_FIELDS = {
+  category: "the category", textEn: "the English question", textSw: "the Swahili question", textZh: "the Chinese question",
+  criterionEn: "the English criterion", criterionSw: "the Swahili criterion", criterionZh: "the Chinese criterion",
+  sourceUrl: "the source", eventLocalStart: "the event start", eventZone: "the event's time zone",
+} as const satisfies Partial<Record<keyof DraftQuestionInput, string>>;
+const DRAFT_OPTIONAL_TEXT_FIELDS = {
+  fallbackSourceUrl: "the fallback source", readingTolerance: "the reading tolerance", probabilitySource: "the probability's source",
+  linkedMarketId: "the linked market",
+} as const satisfies Partial<Record<keyof DraftQuestionInput, string>>;
+
 /** A drafted question's stored fields, or the reason it cannot be stored. */
 function draftFields(q: DraftQuestionInput, finalDeadlineMs: number, voidDeadlineHours: number): DraftQuestionFields | string {
   let slot: number;
   try { slot = slotOf(q.role, q.ordinal); } catch (e) { return (e as Error).message; }
+  // ⛔ S5 review 6 · every field's type and range is checked HERE, in the console's own words — never a TypeError, never a
+  //    raw database error, and never a value one store keeps and the other refuses (the stores diverged on eventKind).
+  for (const [k, name] of Object.entries(DRAFT_TEXT_FIELDS)) {
+    if (typeof q[k as keyof DraftQuestionInput] !== "string") return `${slotLabel(slot)}: ${name} must be text.`;
+  }
+  for (const [k, name] of Object.entries(DRAFT_OPTIONAL_TEXT_FIELDS)) {
+    const v = q[k as keyof DraftQuestionInput];
+    if (v != null && typeof v !== "string") return `${slotLabel(slot)}: ${name} must be text.`;
+  }
+  if (!isEventKind(q.eventKind)) return `${slotLabel(slot)}: the event kind must be SPORT, PRICE, WEATHER or ANNOUNCEMENT.`;
+  const chance = q.probabilityEstimate;
+  if (chance != null && (typeof chance !== "number" || !Number.isFinite(chance) || chance < 0 || chance > 1)) {
+    return `${slotLabel(slot)}: the estimated probability must be a number from 0 to 1.`;
+  }
   const start = zonedToUtcMs(q.eventLocalStart, q.eventZone);
   if (!start.ok) {
     const why = { malformed: "is not a date and time (YYYY-MM-DDTHH:MM)", unknown_zone: "names a zone the platform does not know",
@@ -102,7 +129,9 @@ function draftFields(q: DraftQuestionInput, finalDeadlineMs: number, voidDeadlin
     sourceUrl: q.sourceUrl.trim(), sourceDomain, fallbackSourceUrl: q.fallbackSourceUrl?.trim() || null, fallbackSourceDomain: fallbackDomain,
     readingTolerance: q.readingTolerance?.trim() || null, eventKind: q.eventKind,
     eventStartsAt: new Date(start.utcMs).toISOString(), eventZone: q.eventZone, voidDeadlineAt: new Date(voidDeadlineMs).toISOString(),
-    probabilityEstimate: q.probabilityEstimate ?? null, probabilitySource: q.probabilitySource?.trim() || null, linkedMarketId: q.linkedMarketId ?? null,
+    // Held to the column's four decimals (Decimal(5,4)) on both stores: memory keeps exactly what PostgreSQL keeps.
+    probabilityEstimate: chance == null ? null : Math.round(chance * 10_000) / 10_000,
+    probabilitySource: q.probabilitySource?.trim() || null, linkedMarketId: q.linkedMarketId ?? null,
   };
 }
 
@@ -116,7 +145,7 @@ export async function createWeek(input: {
   questions: DraftQuestionInput[];
   officerId: string;
   now?: Date;
-}): Promise<Result<{ week: StoredWeek }>> {
+}): Promise<Result<{ week: StoredWeek; recorded: boolean }>> {
   const nowMs = (input.now ?? new Date()).getTime();
   if (eatWeekStartMs(input.weekStartMs) !== input.weekStartMs) return refuse("A week starts on a Monday at 00:00 East Africa Time.");
   const visibility = input.visibility ?? "PUBLIC";
@@ -136,7 +165,7 @@ export async function createWeek(input: {
   }
   // A DRIVE week has its own code prefix, so it can share an ISO week with the public one.
   const code = eatWeekCode(visibility === "DRIVE" ? "MLD" : "MLN", input.weekStartMs);
-  return withLock(MASWALI_CHAIN_LOCK, async () => {
+  const res = await withLock(MASWALI_CHAIN_LOCK, async (): Promise<Result<{ week: StoredWeek; owed: OwedAudit[] }>> => {
     if (await weekStore.getByCode(code)) return refuse(`Week ${code} already exists.`);
     const nowIso = new Date(nowMs).toISOString();
     const week: StoredWeek = {
@@ -150,10 +179,14 @@ export async function createWeek(input: {
     };
     await weekStore.create(week);
     await questionStore.createMany(week.id, rows);
-    audit({ category: "ADMIN", action: "maswali.week.drafted", actorId: input.officerId, targetType: "MaswaliCycle", targetId: week.id,
-      payload: { code, seq: week.seq, visibility, opensAt: week.opensAt, closesAt: week.closesAt } });
-    return { ok: true, week };
+    // MB-79 · the first text's version as STORED (a store may round a field): the second reader's check finds its author here.
+    const version = draftSetVersion(await questionStore.listForWeek(week.id));
+    return { ok: true, week, owed: [{ category: "ADMIN", action: "maswali.week.drafted", actorId: input.officerId, targetType: "MaswaliCycle", targetId: week.id,
+      payload: { code, seq: week.seq, visibility, opensAt: week.opensAt, closesAt: week.closesAt, version } }] };
   });
+  if (!res.ok) return res;
+  // Written before this returns, so a second reader who attests the moment the draft exists finds who wrote it.
+  return { ok: true, week: res.week, recorded: await recordOwed(res.owed) };
 }
 
 /** Validate one draft edit without writing; the batch must finish every check before its first write. */
@@ -173,31 +206,50 @@ function preparedDraftEdit(q: StoredQuestion, changes: Partial<DraftQuestionInpu
   return draftFields(merged, Date.parse(week.finalDeadlineAt), cfg.voidDeadlineHours);
 }
 
-/** Edit a DRAFT question. ⛔ Refused past DRAFT (the DAL also refuses any non-draft column); clears the parity attestation. */
-export async function editDraftQuestion(input: { weekId: string; slot: number; changes: Partial<DraftQuestionInput>; officerId: string }): Promise<Result> {
-  return withLock(MASWALI_CHAIN_LOCK, async () => {
-    const week = await weekStore.get(input.weekId);
-    if (!week) return refuse("No such week.");
-    if (week.state !== "DRAFT") return refuse(`Week ${week.code} is ${week.state}: its questions are frozen (MR-13).`);
-    const q = (await questionStore.listForWeek(week.id)).find((x) => x.slot === input.slot);
-    if (!q) return refuse(`No ${slotLabel(input.slot)} in week ${week.code}.`);
-    const f = preparedDraftEdit(q, input.changes, week);
-    if (typeof f === "string") return refuse(f);
-    const { role: _r, ordinal: _o, slot: _s, ...editable } = f;
-    void _r; void _o; void _s;
-    await questionStore.editDraftQuestion(q.id, editable);
-    if (week.parityAttestedBy) await weekStore.patch(week.id, { parityAttestedBy: null, parityAttestedAt: null });
-    audit({ category: "ADMIN", action: "maswali.week.draft_edited", actorId: input.officerId, targetType: "MaswaliCycle", targetId: week.id,
-      payload: { slot: input.slot, fields: Object.keys(input.changes) } });
-    return { ok: true };
-  });
+/** The fields a draft question's version covers — every one an edit can change — in a fixed order. */
+const DRAFT_VERSION_FIELDS = [
+  "category", "textEn", "textSw", "textZh", "criterionEn", "criterionSw", "criterionZh", "sourceUrl", "fallbackSourceUrl",
+  "readingTolerance", "eventKind", "eventStartsAt", "eventZone", "voidDeadlineAt", "probabilityEstimate", "probabilitySource", "linkedMarketId",
+] as const satisfies ReadonlyArray<keyof DraftQuestionFields>;
+type DraftVersioned = Pick<StoredQuestion, "slot" | (typeof DRAFT_VERSION_FIELDS)[number]>;
+
+/**
+ * ⭐ S5-FIX-SRV A5 · ONE DRAFT QUESTION'S VERSION: a digest of its slot and every field an edit can change, as stored. The
+ * editor draws each row with it and sends it back with that row's change; a save whose row has moved on since — another
+ * officer's save landed in between — is refused whole, never silently overwritten.
+ */
+export function draftRowVersion(q: DraftVersioned): string {
+  return createHash("sha256").update(JSON.stringify([q.slot, ...DRAFT_VERSION_FIELDS.map((k) => q[k] ?? null)])).digest("hex");
 }
 
-/** Save the builder's changed slots together. A later refusal cannot leave an earlier slot saved. */
+/**
+ * S5-FIX-SRV A4 · THE WHOLE DRAFT'S VERSION: its fifteen row versions in slot order. The week page draws the attestation
+ * with it, the second reader's attestation names it, and every audit row that writes the text (the draft, each edit) carries
+ * the version it left — so the attestation is tied to the text read, and the text to its author.
+ */
+export function draftSetVersion(questions: readonly DraftVersioned[]): string {
+  return createHash("sha256").update([...questions].sort((a, b) => a.slot - b.slot).map(draftRowVersion).join("|")).digest("hex");
+}
+
+/** The stored draft's version now — what a reader who loaded the week this instant would attest. */
+export async function readDraftVersion(weekId: string): Promise<string> {
+  return draftSetVersion(await questionStore.listForWeek(weekId));
+}
+
+/** Edit ONE draft question — the builder's batch save with one slot (`version`: the row as it was read). */
+export async function editDraftQuestion(input: { weekId: string; slot: number; changes: Partial<DraftQuestionInput>; version: string; officerId: string }): Promise<Result<{ recorded: boolean }>> {
+  return editDraftQuestions({ weekId: input.weekId, edits: [{ slot: input.slot, changes: input.changes, version: input.version }], officerId: input.officerId });
+}
+
+/**
+ * Save the builder's changed slots together. A later refusal cannot leave an earlier slot saved. ⛔ Refused past DRAFT (the
+ * DAL also refuses any non-draft column); clears the parity attestation. Each edit names the `version` of the row it was
+ * read from (`draftRowVersion`); one that has changed since refuses the whole save (S5 review A5).
+ */
 export async function editDraftQuestions(input: {
-  weekId: string; edits: Array<{ slot: number; changes: Partial<DraftQuestionInput> }>; officerId: string;
+  weekId: string; edits: Array<{ slot: number; changes: Partial<DraftQuestionInput>; version: string }>; officerId: string;
 }): Promise<Result<{ recorded: boolean }>> {
-  const result = await withLock(MASWALI_CHAIN_LOCK, async (tx): Promise<Result> => {
+  const result = await withLock(MASWALI_CHAIN_LOCK, async (tx): Promise<Result<{ version: string }>> => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
     if (week.state !== "DRAFT") return refuse(`Week ${week.code} is ${week.state}: its questions are frozen (MR-13).`);
@@ -215,6 +267,10 @@ export async function editDraftQuestions(input: {
       const q = questions.get(edit.slot);
       if (!q) return refuse(`No ${slotLabel(edit.slot)} in week ${week.code}.`);
       if (!edit.changes || typeof edit.changes !== "object" || Array.isArray(edit.changes)) return refuse(`${slotLabel(edit.slot)}: the change could not be read.`);
+      if (typeof edit.version !== "string" || !edit.version) return refuse(`${slotLabel(edit.slot)}: the save does not say which version of the question it changes. Reload the editor.`);
+      if (draftRowVersion(q) !== edit.version) {
+        return refuse(`${slotLabel(edit.slot)} changed after you opened the editor: another officer saved it. Reload the editor and make your change again — nothing was saved.`);
+      }
       const fields = preparedDraftEdit(q, edit.changes, week);
       if (typeof fields === "string") return refuse(fields);
       const { role: _role, ordinal: _ordinal, slot: _slot, ...editable } = fields;
@@ -225,13 +281,14 @@ export async function editDraftQuestions(input: {
     // The memory store validates its entire batch before it swaps any question row.
     await questionStore.editDraftQuestions(patches, tx ?? undefined);
     if (week.parityAttestedBy) await weekStore.patch(week.id, { parityAttestedBy: null, parityAttestedAt: null }, tx ?? undefined);
-    return { ok: true };
+    // MB-79 · the version this edit leaves, read through the lock's transaction: the audit row names its author.
+    return { ok: true, version: draftSetVersion(await questionStore.listForWeek(week.id, tx ?? undefined)) };
   });
   if (!result.ok) return result;
   // The questions and attestation have committed. An audit failure cannot roll them back, so report both facts.
-  const recorded = await audit({ category: "ADMIN", action: "maswali.week.draft_edited", actorId: input.officerId, targetType: "MaswaliCycle", targetId: input.weekId,
-    payload: { slots: input.edits.map((edit) => edit.slot), fields: input.edits.map((edit) => Object.keys(edit.changes)) } });
-  return { ok: true, recorded: recorded.recorded };
+  const recorded = await recordOwed([{ category: "ADMIN", action: "maswali.week.draft_edited", actorId: input.officerId, targetType: "MaswaliCycle", targetId: input.weekId,
+    payload: { slots: input.edits.map((edit) => edit.slot), fields: input.edits.map((edit) => Object.keys(edit.changes)), version: result.version } }]);
+  return { ok: true, recorded };
 }
 
 /** The officer's view of a stored start: the local "YYYY-MM-DDTHH:MM" in its own zone. */
@@ -242,18 +299,73 @@ function utcToLocalInput(iso: string, zone: string): string {
   return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
 }
 
-/** MB-79: a second reader confirms the three languages say the same thing. ⛔ Never the officer who drafted the week. */
-export async function attestParity(input: { weekId: string; officerId: string; now?: Date }): Promise<Result> {
-  return withLock(MASWALI_CHAIN_LOCK, async () => {
+/** How many of a draft week's own audit rows the second-reader check reads (newest first) before it must refuse. */
+const DRAFT_HISTORY_LIMIT = 500;
+
+/**
+ * ⭐ MB-79 · WHO WROTE THIS DRAFT, READ FROM THE WEEK'S OWN DURABLE TRAIL (S5-FIX-SRV, review findings 3 and A4) — no new
+ * column. Walking the week's audit rows newest first: every officer who edited it since its last attestation (an edit clears
+ * the attestation), and whether the text stored now — `current` — has a recorded author: the draft's row and each edit's
+ * carry the version they left, so an edit whose row was never written leaves a text nobody is recorded as writing. ⛔ Fails
+ * closed: a history that could not be read, or not far enough, is a refusal sentence — never an empty set of editors.
+ */
+async function draftAuthorship(week: StoredWeek, current: string, injected?: typeof getAuditForTargetDurable): Promise<{ editors: Set<string> } | string> {
+  // A direct call of the audit row reader (the house-bot reports census, 0.260.1, counts calls, not references).
+  const history = await (injected ? injected("MaswaliCycle", week.id, { limit: DRAFT_HISTORY_LIMIT })
+    : getAuditForTargetDurable("MaswaliCycle", week.id, { limit: DRAFT_HISTORY_LIMIT })).catch(() => null);
+  if (!history) return "The draft's history could not be read, so who wrote it cannot be checked. Nothing was attested; try again in a moment.";
+  const editors = new Set<string>();
+  let attestedBefore = false, authorKnown = false;
+  for (const e of history.entries) {
+    if (e.action === "maswali.week.parity_attested") attestedBefore = true;
+    else if (e.action === "maswali.week.draft_edited" && !attestedBefore && e.actorId) editors.add(e.actorId);
+    if ((e.action === "maswali.week.draft_edited" || e.action === "maswali.week.drafted") && (e.payload as { version?: unknown } | undefined)?.version === current) authorKnown = true;
+    if (attestedBefore && authorKnown) break;
+  }
+  if (history.truncated && !(attestedBefore && authorKnown)) {
+    return "The draft's history is longer than one read can check, so who wrote it cannot be established. Nothing was attested; an administrator must review it.";
+  }
+  if (!authorKnown) {
+    return "The draft's current text has no audit record of who wrote it (an edit's record was not written), so no second reader can be established (MB-79). Nothing was attested; an administrator must review the draft's history — a recorded edit restores it.";
+  }
+  return { editors };
+}
+
+/**
+ * MB-79: a second reader confirms the three languages say the same thing. ⛔ Never the officer who drafted the week, and
+ * never one who edited it since its last attestation (`draftAuthorship`): the reader is never the text's author. ⭐ The
+ * attestation is TIED TO THE TEXT READ (S5 review A4): `readVersion` is the draft's version the reader's page was drawn from
+ * (`draftSetVersion`), so an edit landed since refuses it, and an attestation that stands is never overwritten. `recorded`:
+ * its audit row — which carries the version attested — was written after the commit.
+ */
+export async function attestParity(input: {
+  weekId: string; officerId: string; readVersion: string; now?: Date;
+  /** Tests only: the history read (`getAuditForTargetDurable`). */
+  readHistory?: typeof getAuditForTargetDurable;
+}): Promise<Result<{ recorded: boolean }>> {
+  if (typeof input.readVersion !== "string" || !input.readVersion) return refuse("Reload the week and read its questions before attesting them.");
+  const res = await withLock(MASWALI_CHAIN_LOCK, async (tx): Promise<Result<{ owed: OwedAudit[] }>> => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
     if (week.state !== "DRAFT") return refuse(`Week ${week.code} is no longer a draft.`);
     if (week.createdBy === input.officerId) return refuse("The officer who drafted the week cannot attest its translations — a second reader must.");
+    if (week.parityAttestedBy) return refuse(`Week ${week.code}'s three languages are already attested; an edit clears the attestation.`);
+    const current = draftSetVersion(await questionStore.listForWeek(week.id));
+    if (current !== input.readVersion) {
+      return refuse("The questions changed after your page loaded: another officer saved an edit. Reload the week and read all fifteen again before attesting.");
+    }
+    const authorship = await draftAuthorship(week, current, input.readHistory);
+    if (typeof authorship === "string") return refuse(authorship);
+    if (authorship.editors.has(input.officerId)) {
+      return refuse("You edited this draft since its last attestation, so you cannot attest it — a second reader who did not write it must (MB-79).");
+    }
     const at = (input.now ?? new Date()).toISOString();
-    await weekStore.patch(week.id, { parityAttestedBy: input.officerId, parityAttestedAt: at });
-    audit({ category: "COMPLIANCE", action: "maswali.week.parity_attested", actorId: input.officerId, targetType: "MaswaliCycle", targetId: week.id, payload: { code: week.code } });
-    return { ok: true };
+    await weekStore.patch(week.id, { parityAttestedBy: input.officerId, parityAttestedAt: at }, tx ?? undefined);
+    return { ok: true, owed: [{ category: "COMPLIANCE", action: "maswali.week.parity_attested", actorId: input.officerId, targetType: "MaswaliCycle", targetId: week.id,
+      payload: { code: week.code, version: current } }] };
   });
+  if (!res.ok) return res;
+  return { ok: true, recorded: await recordOwed(res.owed) };
 }
 
 // ── OPENING ─────────────────────────────────────────────────────────────────────────────────────────
@@ -463,16 +575,24 @@ export async function purchaseMaswaliTickets(input: {
 
 // ── THE CLOSE ───────────────────────────────────────────────────────────────────────────────────────
 
-/** MB-28 · move the sales close. Earlier: never inside the next `minLead`; later: never past the first event − buffer. */
-export async function moveClose(input: { weekId: string; toCloseAt: string; officerId: string; now?: Date }): Promise<Result<{ week: StoredWeek }>> {
+/**
+ * MB-28 · move the sales close. Earlier: never inside the next `minLead`; later: never past the first event − buffer.
+ * `expectedClosesAt` is the close the officer reviewed (S5 review A3): a page drawn before another officer's move must not
+ * move a close it never saw — 12:00 → 16:00 believed to be 18:00 → 16:00 would re-open sales that move had cut. The two
+ * writes (the week's close, its market's cutoff) take the chain lock's transaction and land together (DATA-LAYER rule 2).
+ */
+export async function moveClose(input: { weekId: string; toCloseAt: string; expectedClosesAt: string; officerId: string; now?: Date }): Promise<Result<{ week: StoredWeek }>> {
   const nowMs = (input.now ?? new Date()).getTime();
   const toMs = Date.parse(input.toCloseAt);
   if (!Number.isFinite(toMs)) return refuse("The new close is not a time.");
-  return withLock(MASWALI_CHAIN_LOCK, async () => {
+  const reviewedMs = typeof input.expectedClosesAt === "string" ? Date.parse(input.expectedClosesAt) : NaN;
+  if (!Number.isFinite(reviewedMs)) return refuse("Reload the week and review its close before moving it.");
+  return withLock(MASWALI_CHAIN_LOCK, async (tx) => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
     if (week.state !== "OPEN") return refuse(`Week ${week.code} is ${week.state}; only an open week's close can move.`);
     const fromMs = Date.parse(week.closesAt);
+    if (fromMs !== reviewedMs) return refuse(`The close changed since you reviewed it: it is now ${week.closesAt}. Reload the week and review it again before moving it.`);
     if (fromMs <= nowMs) return refuse("The close has already passed; it can never move back (MR-13).");
     const rules = frozenRules(week);
     if (!rules) return refuse(`Week ${week.code}'s frozen rules cannot be read.`);
@@ -486,12 +606,12 @@ export async function moveClose(input: { weekId: string; toCloseAt: string; offi
     const earliest = Math.min(...questions.map((q) => Date.parse(q.eventStartsAt)));
     if (toMs > earliest - rules.minLockBufferMinutes * 60_000) return refuse(`The close must stay at least ${rules.minLockBufferMinutes} minutes before the first event.`);
     if (toMs === fromMs) return refuse("That is already the close.");
-    const won = await weekStore.moveClose(week.id, week.closesAt, new Date(toMs).toISOString());
+    const won = await weekStore.moveClose(week.id, week.closesAt, new Date(toMs).toISOString(), tx ?? undefined);
     if (!won) return refuse("The close changed while it was being moved; refresh and try again.");
-    if (week.marketId) await marketStore.stamp(week.marketId, { selectionClosedAt: new Date(toMs).toISOString(), updatedAt: new Date(nowMs).toISOString() } as never);
+    if (week.marketId) await marketStore.stamp(week.marketId, { selectionClosedAt: new Date(toMs).toISOString(), updatedAt: new Date(nowMs).toISOString() } as never, tx ?? undefined);
     audit({ category: "ADMIN", action: "maswali.week.close_moved", actorId: input.officerId, targetType: "MaswaliCycle", targetId: week.id,
       payload: { code: week.code, from: week.closesAt, to: new Date(toMs).toISOString() } });
-    return { ok: true, week: (await weekStore.get(week.id))! };
+    return { ok: true, week: (await weekStore.get(week.id, tx ?? undefined))! };
   });
 }
 
@@ -556,21 +676,55 @@ export function objectionWindowEnd(openedMs: number, hours: number, notBefore: s
 }
 
 /**
+ * ⭐ S5-FIX-SRV 2 · A SEAL, A CONFIRMATION AND A CORRECTION ARE EACH ONE TRANSACTION (DATA-LAYER rules 1 and 2). Every
+ * write takes the chain lock's transaction — the question, the week, and the recompute's objection window — and the
+ * recompute reads through it, so it sees the write it follows. The act's audit rows are OWED, not written, under the lock:
+ * `recordOwed` writes them once the lock has committed, so no row ever describes a write that rolled back, and the act
+ * reports whether every one was recorded. A refusal the recompute could still give after a write (unreadable frozen rules)
+ * is asked BEFORE the first write; should one come anyway, it is thrown, so it escapes the lock and the act rolls back
+ * whole — never a landed seal reported as failed (S5 review 2).
+ */
+type OwedAudit = Parameters<typeof audit>[0];
+type GateNow = { gate: ReturnType<typeof settlementGate>; weekVoidCertain: boolean };
+let owedAuditWriter: (row: OwedAudit) => Promise<{ recorded: boolean }> = audit;
+/** ⚠️ TEST SEAM ONLY: the writer `recordOwed` uses (null restores `audit`). */
+export function __setMaswaliAuditWriterForTests(writer: ((row: OwedAudit) => Promise<{ recorded: boolean }>) | null): void {
+  owedAuditWriter = writer ?? audit;
+}
+
+/** Write the rows an act owes, in order, after its lock committed. True only when every one was recorded; never throws. */
+async function recordOwed(rows: readonly OwedAudit[]): Promise<boolean> {
+  let all = true;
+  for (const row of rows) {
+    const r = await owedAuditWriter(row).catch(() => ({ recorded: false }));
+    if (!r.recorded) all = false;
+  }
+  return all;
+}
+
+/**
  * Seal one question. One officer, with evidence (MR-14). A VOID names its ground from the closed list and only when that
  * ground is available (MR-15). ⛔ An officer holding a ticket in the week may not seal it. YES/NO only after the close; a
- * VOID may come before it (a pre-close void that dooms the week stops sales at once).
+ * VOID may come before it (a pre-close void that dooms the week stops sales at once). `recorded`: its audit rows landed.
  */
 export async function sealQuestion(input: {
   weekId: string; slot: number; outcome: MaswaliOutcome; evidence: string; voidReason?: string | null; officerId: string; now?: Date;
-}): Promise<Result<{ gate: ReturnType<typeof settlementGate>; weekVoidCertain: boolean }>> {
+  /** Tests only: the two-officer setting's read. */
+  twoOfficerNow?: () => Promise<boolean | null>;
+}): Promise<Result<GateNow & { recorded: boolean }>> {
   const nowMs = (input.now ?? new Date()).getTime();
   const evidence = input.evidence.trim();
   if (evidence.length < 10) return refuse("A seal records its evidence (at least 10 characters).");
   if (input.outcome !== "YES" && input.outcome !== "NO" && input.outcome !== "VOID") return refuse("A result is YES, NO or VOID.");
   if (input.outcome === "VOID" && !isMaswaliVoidReason(input.voidReason)) return refuse("A void names its ground from the closed list (MR-15).");
   if (input.outcome !== "VOID" && input.voidReason) return refuse("Only a VOID carries a void ground.");
-  const twoOfficer = await getRequireTwoOfficerResolution().catch(() => false);
-  const res = await withLock(MASWALI_CHAIN_LOCK, async (): Promise<Result<{ gate: ReturnType<typeof settlementGate>; weekVoidCertain: boolean }>> => {
+  // ⛔ S7-F2 · THE TWO-OFFICER SETTING IS READ, OR THE SEAL REFUSES (MR-14; MB-82: its value at stage 1 is the seal's own).
+  //    A read that could not ask answered the code default, one officer, so a seal made while it failed was single-officer
+  //    with the setting ON — fail open. Asked before the lock and before any write, so a refusal leaves nothing behind.
+  //    `confirmSeal` and `correctSeal` read no setting: each reads the seal's own stage-1 marker.
+  const twoOfficer = await (input.twoOfficerNow ?? readRequireTwoOfficerResolution)().catch(() => null);
+  if (twoOfficer === null) return refuse("The two-officer setting could not be read, so nothing was sealed. Try again in a moment.");
+  const res = await withLock(MASWALI_CHAIN_LOCK, async (tx): Promise<Result<GateNow & { owed: OwedAudit[] }>> => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
     if (week.state === "SETTLED" || week.state === "VOIDED" || week.state === "DRAFT") return refuse(`Week ${week.code} is ${week.state}; nothing can be sealed.`);
@@ -584,30 +738,41 @@ export async function sealQuestion(input: {
     }
     const holds = (await ticketStore.listForUser(input.officerId, { cycleId: week.id })).some((t) => t.status !== "CANCELLED");
     if (holds) return refuse("An officer who holds a ticket in this week cannot seal its questions.");
+    // The recompute after the write reads the frozen rules when this seal makes the graded set final: asked first.
+    if (!frozenRules(week)) return refuse(`Week ${week.code}'s frozen rules cannot be read.`);
     const at = new Date(nowMs).toISOString();
     await questionStore.patch(q.id, {
       outcome: input.outcome, voidReason: input.outcome === "VOID" ? (input.voidReason as MaswaliVoidReason) : null,
       evidence, sealedBy: input.officerId, sealedAt: at, twoOfficerAtStage1: twoOfficer,
-    });
-    if (week.state === "CLOSED") await weekStore.patch(week.id, { state: "RESOLVING" });
-    audit({ category: "ADMIN", action: "maswali.question.sealed", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id,
-      payload: { week: week.code, slot: slotLabel(q.slot), outcome: input.outcome, voidReason: input.voidReason ?? null, twoOfficer } });
-    return recomputeGateLocked(week.id, nowMs);
+    }, tx ?? undefined);
+    if (week.state === "CLOSED") await weekStore.patch(week.id, { state: "RESOLVING" }, tx ?? undefined);
+    const g = await recomputeGateLocked(week.id, nowMs, tx ?? undefined);
+    if (!g.ok) throw new Error(g.error);
+    return { ok: true, gate: g.gate, weekVoidCertain: g.weekVoidCertain, owed: [
+      { category: "ADMIN", action: "maswali.question.sealed", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id,
+        payload: { week: week.code, slot: slotLabel(q.slot), outcome: input.outcome, voidReason: input.voidReason ?? null, twoOfficer } },
+      ...g.owed,
+    ] };
   });
-  if (res.ok && res.weekVoidCertain) {
+  if (!res.ok) return res;
+  const recorded = await recordOwed(res.owed);
+  if (res.weekVoidCertain) {
     // A certain week void while selling stops the sales at once (MR-18); the void itself waits for its objection window.
     const w = await weekStore.get(input.weekId);
     if (w?.state === "OPEN") await closeWeek({ weekId: w.id, actorId: SYSTEM, early: true, now: new Date(nowMs) });
   }
-  return res;
+  return { ok: true, gate: res.gate, weekVoidCertain: res.weekVoidCertain, recorded };
 }
 
 /** The second officer's confirmation of a seal made while the two-officer flag was on (MR-14). ⛔ Never the sealer. */
-export async function confirmSeal(input: { weekId: string; slot: number; officerId: string; expectedOutcome: MaswaliOutcome; expectedSealedAt: string; now?: Date }): Promise<Result> {
+export async function confirmSeal(input: { weekId: string; slot: number; officerId: string; expectedOutcome: MaswaliOutcome; expectedSealedAt: string; now?: Date }): Promise<Result<{ recorded: boolean }>> {
   const nowMs = (input.now ?? new Date()).getTime();
-  return withLock(MASWALI_CHAIN_LOCK, async () => {
+  const res = await withLock(MASWALI_CHAIN_LOCK, async (tx): Promise<Result<{ weekVoidCertain: boolean; owed: OwedAudit[] }>> => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
+    // ⛔ S5 review 4 · the second half of a seal is refused once the week's results are final, as a seal and a correction
+    //    are: on a SETTLED or VOIDED week it would rewrite the outcome the public register published.
+    if (week.state !== "OPEN" && week.state !== "CLOSED" && week.state !== "RESOLVING") return refuse(`Week ${week.code} is ${week.state}; its seals are final.`);
     const q = (await questionStore.listForWeek(week.id)).find((x) => x.slot === input.slot);
     if (!q || q.outcome === null) return refuse("Nothing to confirm.");
     if (q.outcome !== input.expectedOutcome || q.sealedAt !== input.expectedSealedAt) {
@@ -619,21 +784,34 @@ export async function confirmSeal(input: { weekId: string; slot: number; officer
     // The graded-set recompute runs after the stamp. Refuse an unreadable frozen snapshot before
     // changing the question, so a known recompute refusal cannot report a landed signoff as failed.
     if (!frozenRules(week)) return refuse(`Week ${week.code}'s frozen rules cannot be read.`);
-    await questionStore.patch(q.id, { stage2By: input.officerId, stage2At: new Date(nowMs).toISOString() });
-    audit({ category: "ADMIN", action: "maswali.question.confirmed", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id, payload: { week: week.code, slot: slotLabel(q.slot) } });
-    const r = await recomputeGateLocked(week.id, nowMs);
-    return r.ok ? { ok: true } : r;
+    await questionStore.patch(q.id, { stage2By: input.officerId, stage2At: new Date(nowMs).toISOString() }, tx ?? undefined);
+    const g = await recomputeGateLocked(week.id, nowMs, tx ?? undefined);
+    if (!g.ok) throw new Error(g.error);
+    return { ok: true, weekVoidCertain: g.weekVoidCertain, owed: [
+      { category: "ADMIN", action: "maswali.question.confirmed", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id, payload: { week: week.code, slot: slotLabel(q.slot) } },
+      ...g.owed,
+    ] };
   });
+  if (!res.ok) return res;
+  const recorded = await recordOwed(res.owed);
+  if (res.weekVoidCertain) {
+    // ⛔ S5 review 5 · with the two-officer rule on, a VOID counts only once confirmed — so the confirmation, not the seal,
+    //    can make the week void certain while it sells. It stops the sales at once, as a seal does (MR-18).
+    const w = await weekStore.get(input.weekId);
+    if (w?.state === "OPEN") await closeWeek({ weekId: w.id, actorId: SYSTEM, early: true, now: new Date(nowMs) });
+  }
+  return { ok: true, recorded };
 }
 
 /**
  * OD-09 · the sealer corrects their OWN seal, before payout, inside the objection window — which restarts once the graded
- * set is final again. ⛔ Never after SETTLED: a paid week is never clawed back.
+ * set is final again. ⛔ Never after SETTLED: a paid week is never clawed back. The corrected result, the restarted window
+ * and the recompute commit together or not at all (S5-FIX-SRV 2): never a corrected result whose window did not restart.
  */
 export async function correctSeal(input: {
   weekId: string; slot: number; outcome: MaswaliOutcome; evidence: string; voidReason?: string | null;
   expectedOutcome: MaswaliOutcome; expectedSealedAt: string; officerId: string; now?: Date;
-}): Promise<Result> {
+}): Promise<Result<{ recorded: boolean }>> {
   const nowMs = (input.now ?? new Date()).getTime();
   const evidence = input.evidence.trim();
   if (evidence.length < 10) return refuse("A seal records its evidence (at least 10 characters).");
@@ -643,7 +821,7 @@ export async function correctSeal(input: {
   if ((input.expectedOutcome !== "YES" && input.expectedOutcome !== "NO" && input.expectedOutcome !== "VOID") || !input.expectedSealedAt) {
     return refuse("Reload the week and review the sealed result before correcting it.");
   }
-  return withLock(MASWALI_CHAIN_LOCK, async () => {
+  const res = await withLock(MASWALI_CHAIN_LOCK, async (tx): Promise<Result<{ code: string; owed: OwedAudit[] }>> => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
     if (week.state !== "RESOLVING" && week.state !== "CLOSED") return refuse(`Week ${week.code} is ${week.state}; its seals are final.`);
@@ -657,43 +835,58 @@ export async function correctSeal(input: {
     if (input.outcome === "VOID" && !voidGroundAvailable(input.voidReason as MaswaliVoidReason, Date.parse(q.voidDeadlineAt), nowMs)) {
       return refuse(`${slotLabel(q.slot)} cannot void on that ground before its void deadline (${q.voidDeadlineAt}).`);
     }
+    // The restarted window is read from the frozen rules after the write: asked first, as `confirmSeal` does.
+    if (!frozenRules(week)) return refuse(`Week ${week.code}'s frozen rules cannot be read.`);
     // Keep the reviewed seal version unique even if two writes share one clock millisecond.
     const revisedAt = new Date(Math.max(nowMs, Date.parse(q.sealedAt!) + 1)).toISOString();
     await questionStore.patch(q.id, {
       outcome: input.outcome, voidReason: input.outcome === "VOID" ? (input.voidReason as MaswaliVoidReason) : null,
       evidence, sealedAt: revisedAt, stage2By: null, stage2At: null,
-    });
+    }, tx ?? undefined);
     // The graded set may have changed: the window restarts from the corrected record (OD-09).
-    await weekStore.patch(week.id, { gradedSetFinalAt: null, objectionsCloseAt: null });
-    invalidateMillioneaRegisterWeek(week.code);
-    audit({ category: "ADMIN", action: "maswali.question.corrected", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id,
-      payload: { week: week.code, slot: slotLabel(q.slot), from: q.outcome, to: input.outcome } });
-    const r = await recomputeGateLocked(week.id, nowMs);
-    return r.ok ? { ok: true } : r;
+    await weekStore.patch(week.id, { gradedSetFinalAt: null, objectionsCloseAt: null }, tx ?? undefined);
+    const g = await recomputeGateLocked(week.id, nowMs, tx ?? undefined);
+    if (!g.ok) throw new Error(g.error);
+    return { ok: true, code: week.code, owed: [
+      { category: "ADMIN", action: "maswali.question.corrected", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id,
+        payload: { week: week.code, slot: slotLabel(q.slot), from: q.outcome, to: input.outcome } },
+      ...g.owed,
+    ] };
   });
+  if (!res.ok) return res;
+  // Committed: the register forgets the week only now, so no reader can re-cache the record as it was before.
+  invalidateMillioneaRegisterWeek(res.code);
+  return { ok: true, recorded: await recordOwed(res.owed) };
 }
 
-/** Re-read the record and stamp the graded set final (and open the objection window) once the gate is ready. Under the lock. */
-async function recomputeGateLocked(weekId: string, nowMs: number): Promise<Result<{ gate: ReturnType<typeof settlementGate>; weekVoidCertain: boolean }>> {
-  const week = await weekStore.get(weekId);
+/**
+ * Re-read the record and stamp the graded set final (and open the objection window) once the gate is ready. Under the lock,
+ * on its transaction (`tx`): the reads see the write this follows, and the stamp commits with it. Its audit row is owed.
+ */
+async function recomputeGateLocked(weekId: string, nowMs: number, tx?: Prisma.TransactionClient): Promise<Result<GateNow & { owed: OwedAudit[] }>> {
+  const week = await weekStore.get(weekId, tx);
   if (!week) return refuse("No such week.");
-  const qs = gradable(await questionStore.listForWeek(week.id));
+  const qs = gradable(await questionStore.listForWeek(week.id, tx));
   const gate = settlementGate(qs);
   const certain = weekVoidCertain(qs);
+  const owed: OwedAudit[] = [];
   if (gate.ready && !week.gradedSetFinalAt && week.state !== "OPEN") {
     const rules = frozenRules(week);
     if (!rules) return refuse(`Week ${week.code}'s frozen rules cannot be read.`);
     const end = objectionWindowEnd(nowMs, rules.objectionWindowHours, rules.objectionNotBeforeAt);
-    await weekStore.patch(week.id, { gradedSetFinalAt: new Date(nowMs).toISOString(), objectionsCloseAt: new Date(end).toISOString() });
-    audit({ category: "ADMIN", action: "maswali.week.graded_set_final", actorId: SYSTEM, targetType: "MaswaliCycle", targetId: week.id,
+    await weekStore.patch(week.id, { gradedSetFinalAt: new Date(nowMs).toISOString(), objectionsCloseAt: new Date(end).toISOString() }, tx);
+    owed.push({ category: "ADMIN", action: "maswali.week.graded_set_final", actorId: SYSTEM, targetType: "MaswaliCycle", targetId: week.id,
       payload: { code: week.code, weekVoid: gate.weekVoid, objectionsCloseAt: new Date(end).toISOString() } });
   }
-  return { ok: true, gate, weekVoidCertain: certain };
+  return { ok: true, gate, weekVoidCertain: certain, owed };
 }
 
 /** The gate, re-read, for a caller outside a seal (the scheduler, the console). */
-export async function recomputeGate(weekId: string, now?: Date): Promise<Result<{ gate: ReturnType<typeof settlementGate>; weekVoidCertain: boolean }>> {
-  return withLock(MASWALI_CHAIN_LOCK, () => recomputeGateLocked(weekId, (now ?? new Date()).getTime()));
+export async function recomputeGate(weekId: string, now?: Date): Promise<Result<GateNow>> {
+  const res = await withLock(MASWALI_CHAIN_LOCK, (tx) => recomputeGateLocked(weekId, (now ?? new Date()).getTime(), tx ?? undefined));
+  if (!res.ok) return res;
+  await recordOwed(res.owed);
+  return { ok: true, gate: res.gate, weekVoidCertain: res.weekVoidCertain };
 }
 
 /** The questions whose void deadline has passed unsealed — the system PROPOSES a void; an officer seals it (MR-15). */
