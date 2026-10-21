@@ -76,8 +76,9 @@ const settle = async (page) => {
   await page.evaluate(() => document.fonts?.ready).catch(() => {});
   await page.waitForTimeout(500);
 };
-/** Rest after a scroll: D3's 250ms, the census's frame, the fade's --t-quick, inside D75's 3s. */
-const rest = (page) => page.waitForTimeout(800);
+/** Rest after a reader's move: a key press rouses the bubble (D75 fades it after 3s untouched; scroll-cast wakes it on
+ *  any key), then D3's 250ms, the census's frame and the fade's --t-quick, well inside D75's 3s. */
+const rest = async (page) => { await page.keyboard.press("Shift"); await page.waitForTimeout(800); };
 
 /** In the page: the bubble's resting rect (its .cm-bubble box less the fade's translate, grown by its ring as
  *  needle-rest.ts `bubbleInk` grows it: (side/2 + 3)·1.08 − side/2 past each edge) and its box. */
@@ -205,6 +206,7 @@ async function guard(kind, path, w) {
   if (!at?.overlap) { await ctx.close(); return; }
   await page.screenshot({ path: join(OUT, `${RED ? "red-" : ""}${kind}-${w}-over.png`), clip: { x: 0, y: Math.max(0, at.box.top - 120), width: w, height: 240 } });
   // A pointer's hover brings it back whole, and leaving yields again.
+  await rest(page);
   await page.mouse.move((at.box.left + at.box.right) / 2, (at.box.top + at.box.bottom) / 2);
   await page.waitForTimeout(400);
   const hovered = await opacityNow(page);
@@ -213,15 +215,17 @@ async function guard(kind, path, w) {
   const left = await opacityNow(page);
   ok(`${tag} · a pointer's hover brings it back whole, and leaving it yields again`, hovered?.o === 1 && Math.abs(left.o - Number(left.token)) < 0.011, `(hover ${hovered?.o}, after ${left?.o})`);
   // A focus within it brings it back whole; a tap still opens the panel.
+  await rest(page);
   await page.evaluate(() => document.querySelector(".cm-fab button, .cm-fab [role=button], .cm-fab a")?.focus());
   await page.waitForTimeout(300);
   const focused = await opacityNow(page);
   await page.evaluate(() => document.activeElement?.blur());
   ok(`${tag} · a focus within it brings it back whole`, focused?.o === 1, `(focused ${focused?.o})`);
-  await page.locator(".cm-fab .cm-bubble").click();
+  await rest(page);
+  const tapped = await page.locator(".cm-fab .cm-bubble").click({ timeout: 10_000 }).then(() => true, () => false);
   await page.waitForTimeout(500);
   const opened = await page.evaluate(() => document.querySelector(".cm-fab")?.classList.contains("cm-fab--open"));
-  ok(`${tag} · a tap on the yielding bubble opens the panel (pointer-events kept)`, opened === true);
+  ok(`${tag} · a tap on the yielding bubble opens the panel (pointer-events kept)`, tapped && opened === true, tapped ? "" : "(the tap never landed)");
   await page.keyboard.press("Escape");
   await page.waitForTimeout(400);
   // Clear: nothing under the resting rect, by this drive's own census.
