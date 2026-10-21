@@ -642,6 +642,13 @@ console.log("\n§9 · the carry, in chain order");
   ok("9.4 · ⭐ exactly once: a second claim returns the first figure", again.ok && again.rolloverIn === 300_000 && again.already === true);
   const late = await svc.sealQuestion({ weekId: w1.id, slot: 12, outcome: "YES", evidence: "Official result for reserve 2", officerId: SEALER, now: afterClose });
   ok("9.6 · ⛔ nothing can be sealed on a SETTLED week (a paid week is final)", !late.ok && /SETTLED/.test(errOf(late)), errOf(late));
+  // ⭐ S5-FIX-SRV 4 · a seal still awaiting its second officer when the week settled cannot be confirmed afterwards: the
+  //    confirmation would change the outcome the register published. (The marker set as a two-officer seal leaves it.)
+  const q13 = (await questionStore.listForWeek(w1.id)).find((q) => q.slot === 13)!;
+  await questionStore.patch(q13.id, { twoOfficerAtStage1: true, stage2By: null, stage2At: null });
+  const settledConfirm = await svc.confirmSeal({ weekId: w1.id, slot: 13, officerId: READER, expectedOutcome: q13.outcome!, expectedSealedAt: q13.sealedAt!, now: afterClose });
+  ok("9.7 · ⛔ a confirmation on a SETTLED week is refused, and the seal's record is unchanged (finding 4)",
+    !settledConfirm.ok && /SETTLED; its seals are final/.test(errOf(settledConfirm)) && (await questionStore.get(q13.id))?.stage2By === null, errOf(settledConfirm));
   const driveWeeks = await weekStore.list({ visibility: "DRIVE" });
   ok("9.5 · the DRIVE chain is its own: the public week never waited on it", driveWeeks.length === 1 && driveWeeks[0].state === "VOIDED");
 }

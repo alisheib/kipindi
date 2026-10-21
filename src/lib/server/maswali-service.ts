@@ -743,6 +743,9 @@ export async function confirmSeal(input: { weekId: string; slot: number; officer
   const res = await withLock(MASWALI_CHAIN_LOCK, async (tx): Promise<Result<{ owed: OwedAudit[] }>> => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
+    // ⛔ S5 review 4 · the second half of a seal is refused once the week's results are final, as a seal and a correction
+    //    are: on a SETTLED or VOIDED week it would rewrite the outcome the public register published.
+    if (week.state !== "OPEN" && week.state !== "CLOSED" && week.state !== "RESOLVING") return refuse(`Week ${week.code} is ${week.state}; its seals are final.`);
     const q = (await questionStore.listForWeek(week.id)).find((x) => x.slot === input.slot);
     if (!q || q.outcome === null) return refuse("Nothing to confirm.");
     if (q.outcome !== input.expectedOutcome || q.sealedAt !== input.expectedSealedAt) {

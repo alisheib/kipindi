@@ -364,6 +364,15 @@ export const MUTATIONS = [
     expect: "2.8h · ⛔ an attestation that stands is never overwritten",
     suite: "engine",
   },
+  // ── S5-FIX-SRV 4 · a confirmation is refused once the week's results are final ────────────────────────────────────
+  {
+    name: "(48) a second officer confirms a seal on a SETTLED week, rewriting the published outcome",
+    file: SVC,
+    from: "    if (week.state !== \"OPEN\" && week.state !== \"CLOSED\" && week.state !== \"RESOLVING\") return refuse(`Week ${week.code} is ${week.state}; its seals are final.`);",
+    to: "",
+    expect: "9.7 · ⛔ a confirmation on a SETTLED week is refused",
+    suite: "engine",
+  },
   // ── S5-FIX-SRV A9 (S7-F2's port) · the two-officer setting is read, or nothing is sealed ──────────────────────────
   {
     name: "(47) an unreadable two-officer setting seals single-officer again (fail open)",
