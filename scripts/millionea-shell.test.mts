@@ -1,5 +1,5 @@
 /**
- * test:millionea-shell — THE SHELL'S MILLIONEA ANSWERS A PAGE CANNOT GIVE ITSELF (MASWALI-BUILD S5-FIX-PLATFORM D12;
+ * test:millionea-shell — THE SHELL'S TWO MILLIONEA ANSWERS A PAGE CANNOT GIVE ITSELF (MASWALI-BUILD S5-FIX-PLATFORM D12, D13;
  * 2026-10-21).
  *
  *   npx tsx scripts/millionea-shell.test.mts     (npm run test:millionea-shell)
@@ -10,6 +10,12 @@
  *    on every Millionea page and on /results (whose section wore the callout) and on no other page, in sw, en and zh, with
  *    no exit (a role, not a pass); AppShell mounts it once, first under the journey's marker, only on the rollout's
  *    `preview` — which is true at STAFF_PREVIEW for stored staff alone (never WITHDRAWN, never ACTIVE, never a player).
+ * §2 D13 · ON A BREAK, A MILLIONEA PAGE LIGHTS ONE CLASSIC DESTINATION, NEVER NONE. A reader on a break is offered no
+ *    Millionea door, yet its pages still answer that reader; the classic bar and rail lit nothing there, where the journey
+ *    falls back to Maswali. The classic navs, handed the break's answer, light what the journey's table names: Markets on
+ *    every Millionea page, Positions on its tickets — exactly one item in the bar and one in the rail; without the answer
+ *    (a dark address) nothing, as on an unknown address; and AppShell hands the answer to the classic navs alone, only
+ *    while Millionea is visible and the reader is on a break.
  * Every check has a plant that must turn it red. The bar's look at 320 and 1280, a staff session on a running server,
  * is the lane's `s5fplt` drive (reported with the commit).
  */
@@ -135,6 +141,66 @@ section("1 · D12 · Millionea's staff preview is one bar above the page, the pl
     if (r.preview !== want) grid.push(`${state} ${signedIn ? who : "guest"}: preview ${r.preview}`);
   }
   ok("1.4 · the rollout's `preview` is true at STAFF_PREVIEW for stored staff alone — never WITHDRAWN, never ACTIVE, never a player, a guest or a closed staff account", grid.length === 0, j(grid));
+}
+
+/* ══ §2 · D13 · ONE LIT CLASSIC DESTINATION ON A BREAK ══════════════════════════════════════════════════════════════════ */
+section("2 · D13 · on a break, a Millionea page lights one classic destination (the journey's fallback), never none");
+{
+  const TAB = req("../src/lib/nav/active-tab.ts") as { classicMillioneaStandIn: (p: string) => string | null };
+  const want: Record<string, string | null> = {
+    "/millionea": "/markets", "/millionea/slip": "/markets", "/millionea/how": "/markets", "/millionea/register": "/markets",
+    "/millionea/register/MLN-2026-W42": "/markets", "/millionea/tickets": "/positions", "/millionea/tickets/MLN-2026-W42-000017": "/positions",
+    "/legal/rules/millionea": null, "/millioneas": null, "/markets": null, "/": null, "/kpzzzzzzz": null,
+  };
+  const got = Object.fromEntries(Object.keys(want).map((p) => [p, TAB.classicMillioneaStandIn(p)]));
+  ok("2.1 · the stand-in is the journey table's answer: Markets on every Millionea page (Maswali's fallback), Positions on its tickets (Tiketi zangu's), nothing off Millionea's pages",
+    j(got) === j(want), j(got));
+
+  type Nav = (p: Record<string, unknown>) => unknown;
+  const BAR = "src/components/layout/top-app-bar.tsx", RAIL = "src/components/layout/bottom-nav.tsx";
+  const realBar = (req(`../${BAR}`) as { TopAppBar: Nav }).TopAppBar, realRail = (req(`../${RAIL}`) as { BottomNav: Nav }).BottomNav;
+  const user = { initials: "DP", name: "Demo Player", phone: "+255•••84", isAuthed: true, balance: 25_000 };
+  /** What each classic nav lights on `path`: the bar's current links, the rail's lit slots (the coin and More included). */
+  const lit = (Bar: Nav, Rail: Nav, path: string, props: Record<string, unknown>, l: Locale = "en") => {
+    const bar = at(h(Bar as never, { user, proposalsState: "DISABLED", ...props } as never), path, l);
+    const rail = at(h(Rail as never, { isAuthed: true, proposalsState: "DISABLED", ...props } as never), path, l);
+    const barLit = [...bar.matchAll(/<a\b[^>]*>/g)].map((m) => m[0]).filter((a) => a.includes('aria-current="page"')).map((a) => /href="([^"]+)"/.exec(a)?.[1] ?? "?");
+    const railLit = [...rail.matchAll(/<(?:a|button)\b[^>]*data-on="1"[^>]*>/g)].map((m) => /href="([^"]+)"/.exec(m[0])?.[1] ?? "More");
+    return { barLit, railLit };
+  };
+  const MLN = Object.keys(want).filter((p) => want[p] !== null);
+  const breakDefects = (Bar: Nav, Rail: Nav) => LOCALES.flatMap((l) => MLN.flatMap((p) => {
+    const { barLit, railLit } = lit(Bar, Rail, p, { millioneaOnBreak: true }, l);
+    const railWant = want[p] === "/markets" ? "/markets" : "More";
+    return [...(j(barLit) === j([want[p]]) ? [] : [`${l} ${p} bar ${j(barLit)}`]), ...(j(railLit) === j([railWant]) ? [] : [`${l} ${p} rail ${j(railLit)}`])];
+  }));
+  ok(`2.2 · on a break, each of ${MLN.length} Millionea pages lights exactly one item in the classic bar (Markets, or Positions on its tickets) and one in the classic rail (Markets, or More, whose Positions row it is), in sw, en and zh`,
+    breakDefects(realBar, realRail).length === 0, j(breakDefects(realBar, realRail)));
+  const darkDefects = (Bar: Nav, Rail: Nav) => [...MLN, "/kpzzzzzzz"].flatMap((p) => {
+    const { barLit, railLit } = lit(Bar, Rail, p, {});
+    return barLit.length + railLit.length === 0 ? [] : [`${p} ${j({ barLit, railLit })}`];
+  });
+  ok("2.3 · without the break's answer (Millionea hidden: a dark address) the classic navs light nothing on a Millionea address, as on an unknown one", darkDefects(realBar, realRail).length === 0, j(darkDefects(realBar, realRail)));
+  const shownDefects = MLN.flatMap((p) => { const { barLit } = lit(realBar, realRail, p, { millionea: true }); return j(barLit) === j(["/millionea"]) ? [] : [`${p} ${j(barLit)}`]; });
+  ok("2.3b · CONTROL · Millionea shown (no break): its own link is the one lit in the bar, as S5 drew it", shownDefects.length === 0, j(shownDefects));
+  const noStandInBar = fromSource<{ TopAppBar: Nav }>(BAR, plant(raw(BAR), "  const lit = active || it.href === standIn;", "  const lit = active;")).TopAppBar;
+  const noStandInRail = fromSource<{ BottomNav: Nav }>(RAIL, plant(raw(RAIL), "    if (href === standIn) return true;\n", "")).BottomNav;
+  ok("2.2′ PLANT · the bar's stand-in dropped (nothing lit on a break, as before) is reported", breakDefects(noStandInBar, realRail).some((d) => d.includes(" bar []")));
+  ok("2.2″ PLANT · the rail's stand-in dropped is reported", breakDefects(realBar, noStandInRail).some((d) => d.includes(" rail []")));
+
+  const SHELL = "src/components/layout/app-shell.tsx";
+  const wiring = (src: string) => {
+    const s = squash(decomment(src));
+    const d: string[] = [];
+    if (count(s, "const millioneaBreakProp: { millioneaOnBreak?: true } = promoSuppressed && (await resolveMillionea()).visible ? { millioneaOnBreak: true } : {};") !== 1)
+      d.push("the break's answer is not Millionea visible AND the reader on a break, handed only while true");
+    if (count(s, "{...millioneaBreakProp}") !== 2 || !/<TopAppBar [^>]*\{\.\.\.millioneaBreakProp\} \/>/.test(s) || !/<BottomNav [^>]*\{\.\.\.millioneaBreakProp\} \/>/.test(s)) d.push("the classic bar and rail are not both handed the answer");
+    if (/<LazyJourney\w+ [^>]*millioneaBreakProp/.test(s)) d.push("a journey nav is handed the classic answer");
+    return d;
+  };
+  ok("2.4 · AppShell hands the answer to the classic bar and rail alone, only while Millionea is visible and the reader is on a break (no other reader's payload changes)", wiring(raw(SHELL)).length === 0, j(wiring(raw(SHELL))));
+  ok("2.4′ PLANT · the answer handed to every reader (a dark address would light Markets) is reported",
+    wiring(plant(raw(SHELL), "promoSuppressed && (await resolveMillionea()).visible ? { millioneaOnBreak: true } : {}", "{ millioneaOnBreak: true }")).length > 0);
 }
 
 console.log(`\nmillionea-shell: ${pass} passed, ${fails.length} failed`);

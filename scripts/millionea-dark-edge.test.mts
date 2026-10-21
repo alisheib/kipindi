@@ -267,9 +267,10 @@ const shellDefects = (shellSrc: string, navs: Record<string, string>) => {
   return d;
 };
 {
+  // The classic two also default D13's break answer to false (`millioneaOnBreak`, handed only while true, as this is).
   const NAVS = {
-    "src/components/layout/top-app-bar.tsx": "invitePaid = false, millionea = false }",
-    "src/components/layout/bottom-nav.tsx": "walletHeld = false, millionea = false }",
+    "src/components/layout/top-app-bar.tsx": "invitePaid = false, millionea = false, millioneaOnBreak = false }",
+    "src/components/layout/bottom-nav.tsx": "walletHeld = false, millionea = false, millioneaOnBreak = false }",
     "src/components/journey/journey-tabs.tsx": "export function JourneyTabs({ userId, millionea = false }",
     "src/components/journey/journey-top-bar.tsx": "millionea = false,",
   };

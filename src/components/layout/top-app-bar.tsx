@@ -13,6 +13,7 @@ import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 import { authDoorHrefs } from "@/lib/auth-landing";
+import { classicMillioneaStandIn } from "@/lib/nav/active-tab";
 import type { ProposalsState } from "@/lib/server/proposals-config";
 
 /**
@@ -86,8 +87,10 @@ export type TopAppBarUser = {
   walletHeld?: boolean;
 };
 
-export function TopAppBar({ user, proposalsState, inviteVisible = false, invitePaid = false, millionea = false }: { user: TopAppBarUser; proposalsState: ProposalsState; inviteVisible?: boolean; invitePaid?: boolean; millionea?: boolean }) {
+export function TopAppBar({ user, proposalsState, inviteVisible = false, invitePaid = false, millionea = false, millioneaOnBreak = false }: { user: TopAppBarUser; proposalsState: ProposalsState; inviteVisible?: boolean; invitePaid?: boolean; millionea?: boolean; millioneaOnBreak?: boolean }) {
   const pathname = usePathname();
+  /** D13 · on a break, a Millionea page lights the destination the journey's table names (null everywhere else). */
+  const standIn = millioneaOnBreak ? classicMillioneaStandIn(pathname) : null;
   const { t } = useT();
   // ⭐ R1 (landing v3, 2026-09-26) · the bar decides with the LIVE balance, so a deposit landing over
   // SSE brings the capsule back and a bet that empties the wallet brings Deposit — no navigation.
@@ -230,7 +233,7 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
             otherwise live in the "More" menu (rendered lg-only). */}
         <nav className="ml-2.5 hidden lg:flex items-center gap-0.5" aria-label={t.nav.primary}>
           {CORE_ITEMS.map((it) => (
-            <NavLink key={it.href} it={it} pathname={pathname} />
+            <NavLink key={it.href} it={it} pathname={pathname} standIn={standIn} />
           ))}
           {/* ⛔ THE OVERFLOW LINKS STAY IN "MORE" AT EVERY WIDTH — Ali, 2026-08-25.
               They used to promote inline at `2xl`, and that is what took the balance
@@ -484,7 +487,7 @@ function GuestAuthDoors() {
  * every other link. Height and padding are now identical across all links; the accent differs only
  * in ink and a dot (identity), never in size or shape.
  */
-function NavLink({ it, pathname }: { it: NavItem; pathname: string }) {
+function NavLink({ it, pathname, standIn }: { it: NavItem; pathname: string; standIn: string | null }) {
   const { t } = useT();
   const active =
     it.href === "/markets" ? pathname === "/" || pathname.startsWith("/markets")
@@ -496,11 +499,13 @@ function NavLink({ it, pathname }: { it: NavItem; pathname: string }) {
     // one below it, never a path that only shares its letters (`/millioneas`).
     : it.href === "/millionea" ? pathname === "/millionea" || pathname.startsWith("/millionea/")
     : pathname === it.href;
+  // S5-FIX-PLATFORM D13: on a break, Millionea's page lights the destination standing in for its undrawn link.
+  const lit = active || it.href === standIn;
   const accent = it.accent === true;
   return (
     <Link
       href={it.href as never}
-      aria-current={active ? "page" : undefined}
+      aria-current={lit ? "page" : undefined}
       // ⛔ DG-P-01 — COLOUR, BACKGROUND AND THE TRANSITION LIVE IN `.kp-navlink` (globals.css), NOT
       // HERE. They were inline, which is why this link had no hover for its whole life: an inline
       // style outranks every selector, so no class could add one, and the `transition` declared
@@ -517,7 +522,7 @@ function NavLink({ it, pathname }: { it: NavItem; pathname: string }) {
         // account action now, so shape carries exactly one meaning.
         borderRadius: "var(--r-sm)",
         fontSize: 13.5,
-        fontWeight: active ? 600 : 500,
+        fontWeight: lit ? 600 : 500,
       }}
     >
       {/* The product-line mark: a 5px gilt dot. It replaces a glassy indigo pill, a bespoke

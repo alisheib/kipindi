@@ -154,6 +154,25 @@ export function activeTabFor(pathname: string | null | undefined, tabs: readonly
   return rowTabIn(tabRouteFor(pathname), tabs);
 }
 
+/** The classic destination of each journey tab a Millionea page can fall to (D13, below). */
+const CLASSIC_STAND_IN: Partial<Record<JourneyTab, "/markets" | "/positions">> = { questions: "/markets", tickets: "/positions" };
+
+/**
+ * ⭐ THE CLASSIC NAVS' DESTINATION ON A MILLIONEA PAGE WHOSE OWN DOOR IS NOT DRAWN (MASWALI-BUILD S5-FIX-PLATFORM D13,
+ * 2026-10-21) — a reader on a break, to whom Millionea is visible but offered nothing (AppShell's `millioneaOnBreak`). The
+ * classic bar and rail lit NOTHING there. The journey lights what this table names among the four tabs it then draws:
+ * Tiketi zangu on Millionea's tickets, Maswali on every other Millionea page (the `/millionea` row's fallback, the tab whose
+ * home carries the card). The classic navs light the same destination: `/positions`, or `/markets`. Null off Millionea's
+ * pages. ⛔ The navs ask only when the shell hands them the break's answer: a dark Millionea address lights nothing, as
+ * an unknown address does.
+ */
+export function classicMillioneaStandIn(pathname: string | null | undefined): "/markets" | "/positions" | null {
+  const row = tabRouteFor(pathname);
+  if (row === null || !routeMatches(row.prefix, { prefix: "/millionea" })) return null;
+  const tab = rowTabIn(row, JOURNEY_TABS);
+  return tab === null ? null : CLASSIC_STAND_IN[tab] ?? null;
+}
+
 /**
  * The tab's `aria-current` (A12), among the drawn `tabs`: "page" only on its own href, "true" when the page belongs to
  * its section, and nothing otherwise.

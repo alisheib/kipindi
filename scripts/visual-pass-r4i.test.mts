@@ -733,9 +733,11 @@ section("10 · the journey Wallet says why there is no Deposit; Pumzika states t
       // `user={journeyUser}` since R4-H (the journey header's copy of the user, its phone masked by maskPhone).
       // ⚠️ RE-PINNED, MASWALI-BUILD S5 (2026-10-17): the classic bar gains `millionea` (Millionea's More row, MASWALI-PLAN
       // §10 §3.2), never the break's end — still the journey bar's alone. ⚠️ RE-PINNED, S5-FIX-PLATFORM D3 (2026-10-21): the
-      // answer is spread, `{...millioneaProp}`, handed only while it is true.
+      // answer is spread, `{...millioneaProp}`, handed only while it is true. ⚠️ RE-PINNED, S5-FIX-PLATFORM D13 (2026-10-21):
+      // the classic bar also takes `{...millioneaBreakProp}` — whether Millionea's pages light a stand-in on a break, never
+      // the break's end, which stays the journey bar's alone.
       && /<LazyJourneyTopBar user=\{journeyUser\} onBreak=\{promoSuppressed\} breakEnd=\{journeyBreak\}/.test(SHELL)
-      && /<TopAppBar user=\{topUser\} proposalsState=\{proposalsState\} inviteVisible=\{inviteVisible\} invitePaid=\{invitePaid\} \{\.\.\.millioneaProp\} \/>/.test(SHELL)
+      && /<TopAppBar user=\{topUser\} proposalsState=\{proposalsState\} inviteVisible=\{inviteVisible\} invitePaid=\{invitePaid\} \{\.\.\.millioneaProp\} \{\.\.\.millioneaBreakProp\} \/>/.test(SHELL)
       && /onBreak=\{onBreak\} breakEnd=\{breakEnd\} \/>/.test(read("src/components/journey/journey-top-bar.tsx")));
   // The hub row, rendered.
   const viewer = {
