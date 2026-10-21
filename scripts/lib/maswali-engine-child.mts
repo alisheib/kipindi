@@ -78,6 +78,37 @@ const editSlot = async (e: { weekId: string; slot: number; changes: Record<strin
   svc.editDraftQuestion({ ...e, version: await versionOf(e.weekId, e.slot) });
 /** An attestation from a page drawn this instant (S5-FIX-SRV A4): it names the draft's version as stored now. */
 const attest = async (weekId: string, officerId: string) => svc.attestParity({ weekId, officerId, readVersion: await svc.readDraftVersion(weekId) });
+/**
+ * ⭐ S5-FIX-SRV (finding 2's class) · WHERE AN ACT'S AUDIT ROWS AND POOL NOTICES ARE WRITTEN. `spied` runs one act with a
+ * writer that notes, for every row the act owes, whether a lock was still held when it was written, then writes it as
+ * `audit` does; and it notes the same for every pool frame the act arms (the feed's own frames are fired first, so the
+ * act's notice arms one). On PostgreSQL a row or a notice made under no lock follows its act's commit (the outermost lock
+ * runs what `afterCommit` queued only once its transaction has resolved); the memory store has no transaction, so there
+ * each is only counted.
+ */
+const { inLock } = await import("../../src/lib/server/locks.ts");
+const poolFeed = await import("../../src/lib/server/maswali-pool-feed.ts");
+let auditSites: Array<{ action: string; targetId: string | null; underLock: boolean }> = [];
+let poolSites: Array<{ weekId: string; underLock: boolean }> = [];
+async function spied<T>(act: () => Promise<T>): Promise<T> {
+  auditSites = [];
+  poolSites = [];
+  await poolFeed.__flushPoolFramesForTests();
+  const frames = (globalThis as { __50PICK_MLN_POOL_FEED?: Map<string, unknown> }).__50PICK_MLN_POOL_FEED!;
+  frames.set = function (this: Map<string, unknown>, weekId: string, timer: unknown) { poolSites.push({ weekId, underLock: inLock() }); return Map.prototype.set.call(this, weekId, timer) as Map<string, unknown>; };
+  svc.__setMaswaliAuditWriterForTests(async (row) => { auditSites.push({ action: row.action, targetId: row.targetId ?? null, underLock: inLock() }); return audit(row); });
+  try { return await act(); } finally { svc.__setMaswaliAuditWriterForTests(null); delete (frames as { set?: unknown }).set; }
+}
+/** The act wrote one `action` row for `targetId`: on PostgreSQL, only once its transaction had committed. */
+const afterItsCommit = (action: string, targetId: string) => {
+  const rows = auditSites.filter((s) => s.action === action && s.targetId === targetId);
+  return rows.length === 1 && (STORE !== "postgres" || !rows[0].underLock);
+};
+/** The act armed one pool frame for `weekId`: on PostgreSQL, only once its transaction had committed. */
+const notedAfterItsCommit = (weekId: string) => {
+  const notes = poolSites.filter((s) => s.weekId === weekId);
+  return notes.length === 1 && (STORE !== "postgres" || !notes[0].underLock);
+};
 
 // ── §1 · drafting ───────────────────────────────────────────────────────────
 console.log("\n§1 · drafting");
@@ -237,10 +268,52 @@ const nowOpen = new Date(W2 + 60_000); // Monday 00:01 EAT
 // ── §3 · the open ───────────────────────────────────────────────────────────
 console.log("\n§3 · ⭐ the open");
 await attest(week.id, READER);
-const opened = await svc.openWeek({ weekId: week.id, officerId: DRAFTER, guarantee: RICH, now: nowOpen });
+// ⭐ S5-FIX-SRV (finding 2's class, in the open) · the open is ONE transaction: the market it makes, its claim and the final
+//    mark commit together or not at all, and its audit rows follow the commit. Proven where a transaction can roll back.
+{
+  const title = `Maswali Millionea · ${week.code}`;
+  const { prisma: pgClient } = await import("../../src/lib/server/prisma.ts");
+  const marketsMade = async () => (STORE === "postgres" ? pgClient()!.predictionMarket.count({ where: { productLine: "MASWALI", titleEn: title } }) : 0);
+  const rowsOf = async (action: string, match: (e: { targetId: string | null; payload?: Record<string, unknown> }) => boolean) => {
+    await auditFlush();
+    return (await getAuditByActionsDurable([action], { limit: 500 })).entries.filter(match).length;
+  };
+  const openedRows = () => rowsOf("maswali.week.opened", (e) => e.targetId === week.id);
+  const createdRows = () => rowsOf("market.created", (e) => e.payload?.titleEn === title);
+  const before = { markets: await marketsMade(), opened: await openedRows(), created: await createdRows() };
+  if (STORE === "postgres") {
+    // The fault fires on the first read AFTER the claim landed: the market and the claim are both written by then.
+    const realGet = weekStore.get, realStamp = weekStore.stampOpen;
+    let claimed = false;
+    weekStore.stampOpen = async (...args: Parameters<typeof realStamp>) => { const won = await realStamp.apply(weekStore, args); claimed = won; return won; };
+    weekStore.get = async (...args: Parameters<typeof realGet>) => {
+      if (claimed) throw new Error("injected fault: the connection dropped after the open's claim");
+      return realGet.apply(weekStore, args);
+    };
+    let thrown = "";
+    try { await svc.openWeek({ weekId: week.id, officerId: DRAFTER, guarantee: RICH, now: nowOpen }); }
+    catch (e) { thrown = String((e as Error).message ?? e); } finally { weekStore.get = realGet; weekStore.stampOpen = realStamp; }
+    const after = (await weekStore.get(week.id))!;
+    ok("3.0 · ⭐ a fault after the open's claim landed rolls the WHOLE open back — the week DRAFT, no market made for it, and no audit row (opened, market.created)",
+      thrown.includes("injected fault") && claimed && after.state === "DRAFT" && after.marketId === null && (await marketsMade()) === before.markets
+        && (await openedRows()) === before.opened && (await createdRows()) === before.created,
+      JSON.stringify({ thrown, claimed, state: after.state, markets: await marketsMade(), opened: await openedRows(), created: await createdRows() }));
+  }
+  // A claim lost after the market was made (another open won the row) answers the refusal — and rolls the market back.
+  const realStampOpen = weekStore.stampOpen;
+  weekStore.stampOpen = async () => false;
+  let lost: Awaited<ReturnType<typeof svc.openWeek>> | null = null, lostThrew = "";
+  try { lost = await svc.openWeek({ weekId: week.id, officerId: DRAFTER, guarantee: RICH, now: nowOpen }); }
+  catch (e) { lostThrew = String((e as Error).message ?? e); } finally { weekStore.stampOpen = realStampOpen; }
+  ok("3.0b · ⛔ a lost claim answers its refusal, and on PostgreSQL the market it made rolls back with it (the memory store has no transaction)",
+    !lostThrew && !!lost && !lost.ok && /changed while it was being opened; nothing was opened/.test(errOf(lost))
+      && (STORE !== "postgres" || ((await marketsMade()) === before.markets && (await createdRows()) === before.created)), lostThrew ? `threw: ${lostThrew}` : errOf(lost ?? { ok: false, error: "no answer" }));
+}
+const opened = await spied(() => svc.openWeek({ weekId: week.id, officerId: DRAFTER, guarantee: RICH, now: nowOpen }));
 const w1 = opened.ok ? opened.week : (null as never);
 {
   ok("3.1 · it opens", opened.ok, errOf(opened));
+  ok("3.1b · ⭐ the open's audit row and its pool notice each come once — on PostgreSQL only after its transaction committed (S5-FIX-SRV)", afterItsCommit("maswali.week.opened", week.id) && notedAfterItsCommit(week.id), JSON.stringify({ auditSites, poolSites }));
   ok("3.2 · OPEN, with a market, the frozen rules and the question-set hash", w1.state === "OPEN" && !!w1.marketId && w1.rulesSnapshot !== null && /^[0-9a-f]{64}$/.test(w1.questionSetHash ?? ""));
   const m = await marketStore.get(w1.marketId!);
   ok("3.3 · the market is MASWALI, LIVE, closing at the week's close", m?.productLine === "MASWALI" && m.status === "LIVE" && m.selectionClosedAt === w1.closesAt, JSON.stringify({ pl: m?.productLine, st: m?.status, sc: m?.selectionClosedAt }));
@@ -308,9 +381,10 @@ console.log("\n§5 · the close");
   const early = await svc.closeWeek({ weekId: w1.id, now: nowOpen });
   ok("5.5 · ⛔ the tick cannot close before the close", !early.ok);
   const at = new Date(closeMs - 2 * 3_600_000);
-  const closed = await svc.closeWeek({ weekId: w1.id, now: at });
+  const closed = await spied(() => svc.closeWeek({ weekId: w1.id, now: at }));
   ok("5.6 · at the close: CLOSED, the empty week's commitment stamped (0 tickets, the empty root)", closed.ok && closed.week.state === "CLOSED" && closed.week.ticketCount === 0
     && closed.week.ticketMerkleRoot === "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" && closed.week.salesAtClose === 0, JSON.stringify(closed.ok ? closed.week : closed));
+  ok("5.6b · ⭐ the close's audit row and its pool notice each come once — on PostgreSQL only after its transaction committed (S5-FIX-SRV)", afterItsCommit("maswali.week.closed", w1.id) && notedAfterItsCommit(w1.id), JSON.stringify({ auditSites, poolSites }));
   const twice = await svc.closeWeek({ weekId: w1.id, now: at });
   ok("5.7 · a second close is a no-op that says so (exactly once)", twice.ok && twice.already === true);
   ok("5.8 · ⛔ the close can never move once passed", !(await svc.moveClose({ weekId: w1.id, toCloseAt: new Date(closeMs).toISOString(), expectedClosesAt: (await weekStore.get(w1.id))!.closesAt, officerId: DRAFTER, now: at })).ok);
@@ -671,8 +745,29 @@ console.log("\n§8 · ⭐ the week void");
   ok("8.6 · the record is final and the objection window is open", !!final.gradedSetFinalAt && !!final.objectionsCloseAt);
   const inWindow = await svc.voidWeek({ weekId: drive.id, now: afterClose });
   ok("8.7 · ⛔ the void waits for the objection window (an objection could reinstate a question)", !inWindow.ok && /objection window/.test(errOf(inWindow)));
-  const v = await svc.voidWeek({ weekId: drive.id, now: new Date(Date.parse(final.objectionsCloseAt!) + 1) });
+  // ⭐ S5-FIX-SRV (finding 2's class, in the week void) · the decision takes the chain lock's transaction: a fault after it is
+  //    stamped rolls it back, and its audit row follows the commit only (PostgreSQL: the memory store cannot roll back).
+  if (STORE === "postgres") {
+    // The fault fires on the first read AFTER the decision was stamped.
+    const realGet = weekStore.get, realStampVoid = weekStore.stampVoid;
+    let decided = false;
+    weekStore.stampVoid = async (...args: Parameters<typeof realStampVoid>) => { const won = await realStampVoid.apply(weekStore, args); decided = won; return won; };
+    weekStore.get = async (...args: Parameters<typeof realGet>) => {
+      if (decided) throw new Error("injected fault: the connection dropped after the void's decision");
+      return realGet.apply(weekStore, args);
+    };
+    let thrown = "";
+    try { await svc.voidWeek({ weekId: drive.id, now: new Date(Date.parse(final.objectionsCloseAt!) + 1) }); }
+    catch (e) { thrown = String((e as Error).message ?? e); } finally { weekStore.get = realGet; weekStore.stampVoid = realStampVoid; }
+    await auditFlush();
+    const voidedRows = (await getAuditByActionsDurable(["maswali.week.voided"], { limit: 500 })).entries.filter((e) => e.targetId === drive.id).length;
+    const kept = (await weekStore.get(drive.id))!;
+    ok("8.7b · ⭐ a fault after the week void's decision was stamped rolls it back — the week is not VOIDED, and no audit row says it was",
+      thrown.includes("injected fault") && decided && kept.state === final.state && voidedRows === 0, JSON.stringify({ thrown, decided, state: kept.state, voidedRows }));
+  }
+  const v = await spied(() => svc.voidWeek({ weekId: drive.id, now: new Date(Date.parse(final.objectionsCloseAt!) + 1) }));
   ok("8.8 · after the window: VOIDED", v.ok && v.week.state === "VOIDED", errOf(v));
+  ok("8.8b · ⭐ the void's audit row is written once — on PostgreSQL only after its decision committed (S5-FIX-SRV)", afterItsCommit("maswali.week.voided", drive.id), JSON.stringify(auditSites));
   const m = await marketStore.get(final.marketId!);
   ok("8.9 · the market is VOIDED with outcome VOID, settled by the week's bulk refund (R1)", m?.status === "VOIDED" && m.resolvedOutcome === "VOID" && !!m.settledAt, JSON.stringify({ s: m?.status, o: m?.resolvedOutcome, at: m?.settledAt }));
 }
@@ -686,8 +781,28 @@ console.log("\n§9 · the carry, in chain order");
   await weekStore.patch(w1.id, { state: "SETTLED", settledAt: afterClose.toISOString() });
   const blind = await svc.claimCarry({ weekId: third.id, readJackpot: async () => null });
   ok("9.2 · ⛔ an unreadable jackpot claims nothing", !blind.ok);
-  const c = await svc.claimCarry({ weekId: third.id, readJackpot: async () => 300_000 });
+  // ⭐ S5-FIX-SRV (finding 2's class, in the carry) · the claim takes the chain lock's transaction: handed it, and rolled back
+  //    with it when a fault follows — no carry and no audit row (PostgreSQL).
+  if (STORE === "postgres") {
+    const realClaim = weekStore.claimCarry;
+    let handedTx = false;
+    weekStore.claimCarry = async (...args: Parameters<typeof realClaim>) => {
+      handedTx = !!args[2];
+      await realClaim.apply(weekStore, args);
+      throw new Error("injected fault: the connection dropped after the carry's claim");
+    };
+    let thrown = "";
+    try { await svc.claimCarry({ weekId: third.id, readJackpot: async () => 300_000 }); }
+    catch (e) { thrown = String((e as Error).message ?? e); } finally { weekStore.claimCarry = realClaim; }
+    await auditFlush();
+    const carryRows = (await getAuditByActionsDurable(["maswali.week.carry_claimed"], { limit: 500 })).entries.filter((e) => e.targetId === third.id).length;
+    ok("9.2b · ⭐ the carry's claim is handed the chain lock's transaction, and a fault after it leaves no carry and no audit row",
+      thrown.includes("injected fault") && handedTx && (await weekStore.get(third.id))!.rolloverIn === null && carryRows === 0,
+      JSON.stringify({ thrown, handedTx, rolloverIn: (await weekStore.get(third.id))!.rolloverIn, carryRows }));
+  }
+  const c = await spied(() => svc.claimCarry({ weekId: third.id, readJackpot: async () => 300_000 }));
   ok("9.3 · once the earlier week is settled, the carry is claimed", c.ok && c.rolloverIn === 300_000 && !c.already);
+  ok("9.3b · ⭐ the carry's audit row is written once — on PostgreSQL only after its claim committed (S5-FIX-SRV)", afterItsCommit("maswali.week.carry_claimed", third.id), JSON.stringify(auditSites));
   const again = await svc.claimCarry({ weekId: third.id, readJackpot: async () => 999_999 });
   ok("9.4 · ⭐ exactly once: a second claim returns the first figure", again.ok && again.rolloverIn === 300_000 && again.already === true);
   const late = await svc.sealQuestion({ weekId: w1.id, slot: 12, outcome: "YES", evidence: "Official result for reserve 2", officerId: SEALER, now: afterClose });
@@ -729,6 +844,28 @@ console.log("\n§11 · a confirmed void stops the sales at once (S5-FIX-SRV 5)")
       const voids = (await questionStore.listForWeek(next.id)).filter((q) => q.slot <= 6);
       for (const q of voids.slice(0, 5)) await svc.confirmSeal({ weekId: next.id, slot: q.slot, officerId: READER, expectedOutcome: q.outcome!, expectedSealedAt: q.sealedAt!, now: nowOpen });
       ok("11.2 · …nor do five confirmed: one void short of certain, the week still sells", (await weekStore.get(next.id))!.state === "OPEN");
+      // ⭐ S5-FIX-SRV (finding 2's class, in the close) · the commitment and the market's cutoff are ONE transaction: a fault
+      //    after the cutoff was stamped rolls both back, so the week sells on, its market's cutoff is unmoved, and no audit
+      //    row says it closed (PostgreSQL).
+      if (STORE === "postgres") {
+        const realStamp = marketStore.stamp, marketId = opened2.week.marketId!;
+        const cutoff = (await marketStore.get(marketId))?.selectionClosedAt;
+        let stamped = false;
+        marketStore.stamp = async (...args: Parameters<typeof realStamp>) => {
+          await realStamp.apply(marketStore, args);
+          stamped = true;
+          throw new Error("injected fault: the connection dropped after the early close's cutoff");
+        };
+        let thrown = "";
+        try { await svc.closeWeek({ weekId: next.id, early: true, now: nowOpen }); }
+        catch (e) { thrown = String((e as Error).message ?? e); } finally { marketStore.stamp = realStamp; }
+        await auditFlush();
+        const closedRows = (await getAuditByActionsDurable(["maswali.week.closed"], { limit: 500 })).entries.filter((e) => e.targetId === next.id).length;
+        const still = (await weekStore.get(next.id))!, cutoffNow = (await marketStore.get(marketId))?.selectionClosedAt;
+        ok("11.2b · ⭐ a fault after the early close's market cutoff rolls the commitment and the cutoff back — the week sells on, its market's cutoff unmoved, and no audit row says it closed",
+          thrown.includes("injected fault") && stamped && still.state === "OPEN" && still.closedAt === null && !!cutoff && cutoffNow === cutoff && cutoff !== nowOpen.toISOString() && closedRows === 0,
+          JSON.stringify({ thrown, stamped, state: still.state, cutoff, cutoffNow, closedRows }));
+      }
       const sixth = voids[5];
       const last = await svc.confirmSeal({ weekId: next.id, slot: sixth.slot, officerId: READER, expectedOutcome: sixth.outcome!, expectedSealedAt: sixth.sealedAt!, now: nowOpen });
       const after = (await weekStore.get(next.id))!;
@@ -738,6 +875,93 @@ console.log("\n§11 · a confirmed void stops the sales at once (S5-FIX-SRV 5)")
     } finally {
       await setRequireTwoOfficerResolution(false, OWNER);
     }
+  }
+}
+
+// ── §12 · the Owner's stop lands whole (S5-FIX-SRV, finding 2's class) ───────────────────────────────────────────────
+console.log("\n§12 · the Owner's stop: its mark and its audit row land with its commit");
+{
+  const W5 = weekStartAhead(5);
+  const drafted5 = await svc.createWeek({ weekStartMs: W5, questions: questions(W5), officerId: DRAFTER, now: nowDraft });
+  ok("12.0 · premise · a public week drafted more than a full week ahead", drafted5.ok, errOf(drafted5));
+  if (drafted5.ok) {
+    const id5 = drafted5.week.id;
+    const orderedRows = async () => {
+      await auditFlush();
+      return (await getAuditByActionsDurable(["maswali.sunset.ordered"], { limit: 500 })).entries.filter((e) => e.targetId === id5).length;
+    };
+    const stop = () => svc.sunsetMaswali({ weekId: id5, ownerId: OWNER, typed: svc.SUNSET_WORD, reason: "The Owner stops Millionea after this week (engine suite).", now: nowDraft });
+    if (STORE === "postgres") {
+      // The fault fires as the final mark's own write returns: the mark is written, and nothing after it has run. (Not on a
+      // later read: the stop need not read the week again after its mark — claude/maswali-s7's answers without one.)
+      const realPatch = weekStore.patch;
+      let marked = false;
+      weekStore.patch = async (...args: Parameters<typeof realPatch>) => {
+        await realPatch.apply(weekStore, args);
+        if (!(args[1] as { isFinal?: boolean }).isFinal) return;
+        marked = true;
+        throw new Error("injected fault: the connection dropped after the final mark");
+      };
+      let thrown = "";
+      try { await stop(); } catch (e) { thrown = String((e as Error).message ?? e); } finally { weekStore.patch = realPatch; }
+      ok("12.1 · ⭐ a fault after the final mark was written rolls the stop back — the week is not final, and no audit row orders it",
+        thrown.includes("injected fault") && marked && (await weekStore.get(id5))!.isFinal === false && (await orderedRows()) === 0, JSON.stringify({ thrown, marked, rows: await orderedRows() }));
+    }
+    const stopped = await spied(stop);
+    ok("12.2 · control · the stop lands: the week is final, and the order is audited once, after its commit",
+      stopped.ok && stopped.week.isFinal === true && (await weekStore.get(id5))!.isFinal === true && (await orderedRows()) === 1, errOf(stopped));
+    ok("12.3 · ⭐ the order's audit row is written once — on PostgreSQL only after the mark committed", afterItsCommit("maswali.sunset.ordered", id5), JSON.stringify(auditSites));
+  }
+}
+
+// ── §13 · the final role passes on inside the next open's transaction (S5-FIX-SRV, finding 2's class) ─────────────────
+console.log("\n§13 · the final role passes on: the next week's open marks it final in the same transaction");
+{
+  // The final week (12.2) opens at its announced open, closes early, and voids — the void stamped by the store itself (a
+  // fixture: this section is about the NEXT open). A final week that voided hands the role on (MR-30, OD-03).
+  const W5 = weekStartAhead(5), W6 = weekStartAhead(6);
+  const final5 = (await weekStore.list({ visibility: "PUBLIC" })).find((w) => w.isFinal);
+  const attested5 = final5 ? await attest(final5.id, READER) : null;
+  const open5 = final5 ? await svc.openWeek({ weekId: final5.id, officerId: DRAFTER, guarantee: RICH, now: new Date(W5 + 60_000) }) : null;
+  const close5 = final5 ? await svc.closeWeek({ weekId: final5.id, early: true, now: new Date(W5 + 120_000) }) : null;
+  const voided5 = final5 ? await weekStore.stampVoid(final5.id) : false;
+  const life = await svc.sunsetState();
+  const drafted6 = await svc.createWeek({ weekStartMs: W6, questions: questions(W6), officerId: DRAFTER, now: nowDraft });
+  const attested6 = drafted6.ok ? await attest(drafted6.week.id, READER) : null;
+  ok("13.0 · premise · the final week opened, closed and voided, so the role passes on; the next public week is drafted and attested",
+    !!final5 && !!attested5?.ok && !!open5?.ok && !!close5?.ok && voided5 && life.kind === "PASSES_ON" && life.week.id === final5.id && drafted6.ok && !!attested6?.ok,
+    JSON.stringify({ final5: final5?.code, attested5: errOf(attested5 ?? { ok: false, error: "none" }), open5: errOf(open5 ?? { ok: false, error: "none" }), close5: errOf(close5 ?? { ok: false, error: "none" }), voided5, life: life.kind, drafted6: errOf(drafted6), attested6: errOf(attested6 ?? { ok: false, error: "none" }) }));
+  if (drafted6.ok && life.kind === "PASSES_ON") {
+    const id6 = drafted6.week.id, title6 = `Maswali Millionea · ${drafted6.week.code}`;
+    const rowsFor6 = async (action: string) => {
+      await auditFlush();
+      return (await getAuditByActionsDurable([action], { limit: 500 })).entries.filter((e) => e.targetId === id6).length;
+    };
+    const { prisma: pgClient } = await import("../../src/lib/server/prisma.ts");
+    const markets6 = async () => (STORE === "postgres" ? pgClient()!.predictionMarket.count({ where: { productLine: "MASWALI", titleEn: title6 } }) : 0);
+    const open6 = () => svc.openWeek({ weekId: id6, officerId: DRAFTER, guarantee: RICH, now: new Date(W6 + 60_000) });
+    if (STORE === "postgres") {
+      // The fault fires on the first read AFTER the open marked the week final.
+      const realGet = weekStore.get, realPatch = weekStore.patch;
+      let marked = false;
+      weekStore.patch = async (...args: Parameters<typeof realPatch>) => { await realPatch.apply(weekStore, args); if ((args[1] as { isFinal?: boolean }).isFinal) marked = true; };
+      weekStore.get = async (...args: Parameters<typeof realGet>) => {
+        if (marked) throw new Error("injected fault: the connection dropped after the open's final mark");
+        return realGet.apply(weekStore, args);
+      };
+      let thrown = "";
+      try { await open6(); } catch (e) { thrown = String((e as Error).message ?? e); } finally { weekStore.get = realGet; weekStore.patch = realPatch; }
+      const kept = (await weekStore.get(id6))!;
+      ok("13.1 · ⭐ a fault after the open marked the week final rolls the WHOLE open back — still a DRAFT, not final, no market, and no audit row passes the role on",
+        thrown.includes("injected fault") && marked && kept.state === "DRAFT" && kept.isFinal === false && kept.marketId === null && (await markets6()) === 0
+          && (await rowsFor6("maswali.sunset.passed_on")) === 0 && (await rowsFor6("maswali.week.opened")) === 0,
+        JSON.stringify({ thrown, marked, state: kept.state, isFinal: kept.isFinal, markets: await markets6(), passed: await rowsFor6("maswali.sunset.passed_on") }));
+    }
+    const passed = await spied(open6);
+    ok("13.2 · control · the open lands and the week is the final week; the role's passing is audited once, after its commit (PostgreSQL: under no lock)",
+      passed.ok && passed.week.state === "OPEN" && passed.week.isFinal === true && (await weekStore.get(id6))!.isFinal === true
+        && afterItsCommit("maswali.sunset.passed_on", id6) && afterItsCommit("maswali.week.opened", id6) && (await rowsFor6("maswali.sunset.passed_on")) === 1,
+      passed.ok ? JSON.stringify(auditSites) : errOf(passed));
   }
 }
 

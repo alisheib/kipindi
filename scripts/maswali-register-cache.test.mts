@@ -35,7 +35,10 @@ function sourceChecks(w: World) {
       && w.cache.includes("!value.refundsPending")
       && w.cache.includes("MAX_ENTRIES = 32"),
     // S5-FIX-SRV 2 · a correction now forgets its week once the correction has COMMITTED (it runs on the lock's transaction).
+    // S5-FIX-SRV (finding 2's class) · so does the week void's decision: queued on its lock's transaction, never called bare.
     invalidate: w.service.includes("invalidateMillioneaRegisterWeek(res.code);\n  return { ok: true, recorded: await recordOwed(res.owed) };")
+      && w.service.includes("afterCommit(lockTx, () => invalidateMillioneaRegisterWeek(week.code));")
+      && count(w.service, "invalidateMillioneaRegisterWeek(week.code);") === 0
       && w.service.includes("invalidateMillioneaRegisterWeek(stamped.week.code);")
       && w.settlement.includes("invalidateMillioneaRegisterWeek(first.code);")
       && w.cache.includes("generationOf(code) !== generation"),
@@ -105,6 +108,7 @@ if (process.argv.includes("--prove-red")) {
     { name: "cache outlives TTL", file: "cache", from: "current.expiresAt > now()", to: "true", fails: "bounded" },
     { name: "pending refunds cached", file: "cache", from: "!value.refundsPending", to: "true", fails: "bounded" },
     { name: "correction does not invalidate", file: "service", from: "invalidateMillioneaRegisterWeek(res.code);\n  return { ok: true, recorded: await recordOwed(res.owed) };", to: "return { ok: true, recorded: await recordOwed(res.owed) };", fails: "invalidate" },
+    { name: "the void forgets its week before its decision commits", file: "service", from: "afterCommit(lockTx, () => invalidateMillioneaRegisterWeek(week.code));", to: "invalidateMillioneaRegisterWeek(week.code);", fails: "invalidate" },
     { name: "settlement does not invalidate", file: "settlement", from: "invalidateMillioneaRegisterWeek(first.code);", to: "", fails: "invalidate" },
     { name: "late in-flight reader repopulates", file: "cache", from: "generationOf(code) !== generation", to: "false", fails: "invalidate" },
   ];
