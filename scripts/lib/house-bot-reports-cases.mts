@@ -2134,6 +2134,10 @@ export const PLAYER_NOTIFIERS = [
   ["src/lib/server/notification-service.ts", "notifyVerdictRecorded"],
   ["src/lib/server/email.ts", "marketCancelledRefundHtml"],
   ["src/lib/server/market-service.ts", "notifyVerdictRecordedForMarket"],
+  /* 2026-10-21 · U43 Release B (c29cb7526) moved the closing sentence of the cancellation notice and of the refund letter
+   * OUT of their bodies into this helper (`destination.en/sw/zh`), so a house word written there would reach both while
+   * neither body's hash or word check saw it. Pinned beside them, by the same measure. */
+  ["src/lib/emergency-refund-destination.ts", "emergencyRefundDestination"],
 ] as const;
 /**
  * The sha256 of each declaration's decommented text (trailing spaces and blank lines dropped), measured at `4c82c99b`
@@ -2170,11 +2174,23 @@ export const PLAYER_NOTIFIER_HASHES: Readonly<Record<string, string>> = {
   // U43 money truth: an emergency void returns a still-held stake to its original
   // main/bonus balances. The three player-notice languages and the refund email
   // now name that split; neither declaration reads or prints house-bot exposure.
-  notifyMarketCancelled: "50b41cc5427eb588a28db42434e673ec000756bd2461da1de2bd4fef3ff0b2fe",
+  // ⭐ RE-MEASURED 2026-10-21, THE CHANGE REVIEWED AS ONE (U43 helper lane u43-ha). c29cb7526 pinned 50b41cc5… and
+  // cff26be2… for a draft of these two bodies that it did not commit: the same measure gives 9dda83ef… and 1ca1a552… for
+  // the bodies c29cb7526 committed, and reproduces the three unchanged pins below byte for byte. What the committed change
+  // is: notifyMarketCancelled takes `bonusStakeTzs` and its three bodies end with `emergencyRefundDestination`'s sentence
+  // (where the refund was credited — main, bonus or both — and that bonus terms may change what can be withdrawn) instead
+  // of "Your full stake has been returned to your wallet."; marketCancelledRefundHtml says the same in its subtitles (a
+  // Chinese line added) and its "Refunded to wallet" row became "Credited to main at refund" / "Credited to bonus at
+  // refund", each shown only when non-zero. Titles unchanged. No house reader, no house word (this assertion's own word
+  // check over both bodies, and over the helper, now pinned with them).
+  //   was · notifyMarketCancelled 50b41cc5… · marketCancelledRefundHtml cff26be2… (never the committed bodies)
+  notifyMarketCancelled: "9dda83ef5b7589c9d5ba4a5f4da486020b7353e93cb96eb694ea39958e7467e8",
   notifyObjectionDecided: "715f4026aa917afa661c735fc0129d51eef99666ce8a843bbe7dec2751f3c9d9",
   notifyVerdictRecorded: "cb4d94a7fcd3d2743bd46624e338bf872b1dcde0cc113d4008c78a4c3fc69e93",
-  marketCancelledRefundHtml: "cff26be2236c6909d0bd5d4538a9e578e95bfd36372684e35155f0001aa2755f",
+  marketCancelledRefundHtml: "1ca1a552afd5781039f4887134581533e7bc5d17490c1fe7eab3a368ae8dc9c7",
   notifyVerdictRecordedForMarket: "abd5e1f6a346fa8c1d5ab9210f6512ac07d78c991da73ed0d3b6f662fc04fa6d",
+  // ⭐ ADDED 2026-10-21 (U43 Release B, c29cb7526): the sentence both cancellation messages end with, measured as committed.
+  emergencyRefundDestination: "50b8bdd84330756fd0a795791fac54e04142f2475d1b53c34a7689f769cc8bbc",
 };
 /** One function declaration's own text (the fnBody of seam 6.h1b, cut by the syntax tree at its closing brace), or "". */
 export function functionDeclarationText(file: string, code: string, name: string): string {
@@ -3109,7 +3125,12 @@ if (STORE === "memory") {
     const sites = fanOutsOf(ms);
     ok("0.m5.1 · ⛔ BOTH officer fan-outs in market-service.ts are addressed to ADMIN, COMPLIANCE and MODERATOR — alertOfficersMarketDue (a market closed by time, awaiting the two-officer ceremony) and the emergency-void confirmation; drop a role from either and a whole officer class silently stops being told, which nothing in this repository measured once ruling 195's house clause was struck and emergency-void.test.mts names COMPLIANCE nowhere at all",
       sites.length === 2 && sites.every((s) => s === M5_ROLES), j({ sites }));
-    const droppedRole = fanOutsOf(plant(ms, `    const officers = await db.user.listByRoles(${M5_ROLES});`, '    const officers = await db.user.listByRoles(["ADMIN", "MODERATOR"]);'));
+    /* 2026-10-21 · U43 Release B (c29cb7526) moved the emergency void's fan-out out of its block to the top of
+     * emergencyVoidMarket, before the market lock: both fan-outs now read `  const officers = …` at two spaces, so the
+     * four-space anchor that named this one site matched nothing. The line above it — the title switch read just before
+     * it — names the emergency void's site alone again. Same plant, same site, same verdict required. */
+    const EV_FANOUT = `  const shortTitles = await shortTitlesInMessagesNow();\n  const officers = await db.user.listByRoles(${M5_ROLES});`;
+    const droppedRole = fanOutsOf(plant(ms, EV_FANOUT, EV_FANOUT.replace(M5_ROLES, '["ADMIN", "MODERATOR"]')));
     const unrelated = fanOutsOf(`${ms}\nasync function plantedSweep() { const auditors = await db.user.listByRoles(["ADMIN"]); return auditors; }`);
     ok("0.m5.c1 · CONTROL · COMPLIANCE dropped from ONE of the two fan-outs is reported — a pin reading only the first site would have passed this — the real module reports two identical triples, and ⭐ THE POSITIVE SIDE: a NEW db.user.listByRoles bound to another name is left alone, so this pin polices the fan-outs and not every role read in the file",
       droppedRole.length === 2 && droppedRole.filter((s) => s === M5_ROLES).length === 1
@@ -3186,7 +3207,12 @@ if (STORE === "memory") {
 
   });
   await guard("0.step4.services", async () => {
-    const REJECT_UPDATE = "  await db.objection.update(objectionId, {\n    status: \"REJECTED\",";
+    /* 2026-10-21 · U43 Release B (c29cb7526) moved rejectObjection's status write INSIDE a market lock (a re-read, then
+     * a conditional write: `tx.objection.update` on PostgreSQL, `db.objection.update` in memory), so the old anchor —
+     * the write at the function's top level — matched nothing. The statement that now stands where the write stood,
+     * right after the separation-of-duties refusal, is the lock that holds it; each plant below lands before it, at
+     * the function's top level as before, so a planted refusal is still the ruling's own refusal. */
+    const REJECT_UPDATE = "  const rejected = await withLock(`market:${o.marketId}`, async (tx) => {";
     const plantedService = plant(objections, REJECT_UPDATE,
       `  const snap = await houseStakeForAudit(o.marketId);\n  const chose = snap?.staffChosen.requestedBy.includes(officerId);\n  if (chose) return { ok: false, error: "You chose a stake on this market.", code: "CONFLICT" };\n${REJECT_UPDATE}`);
     const plantedDirect = "export async function seal(me: string) {\n  const view = await houseStakeByMarket([id]);\n  return view.get(id)!.staffChosen.requestedBy.includes(me) ? { ok: false, code: \"CONFLICT\" } : { ok: true };\n}";
@@ -3393,14 +3419,17 @@ if (STORE === "memory") {
       j({ notifierProblems, adminTwinNames: r2Exports.filter((x) => wordsOf(adminTwin).has(x)), adminTwinWords: words(printedTexts("src/lib/server/notification-service.ts", adminTwin)) }));
     const notif = lf(code5("src/lib/server/notification-service.ts")), email = lf(code5("src/lib/server/email.ts"));
     const CANCEL_TITLE = "    titleEn: `Market cancelled · ${formatTzs(opts.stake)} refunded`,";
-    const REFUND_ROW = "      ...(destination.real > 0 ? [{ label: \"Refunded to main balance\", value: formatTzs(destination.real), tone: \"good\" as const }] : []),";
-    const ADMIN_TWIN_BODY = "    bodySw: `Soko limefutwa kwa dharura. ${formatTzs(opts.refundedTzs)} imerejeshwa.`,";
+    /* 2026-10-21 · U43 Release B (c29cb7526): the refund letter's row is labelled "Credited to main at refund" as committed
+     * — this anchor named "Refunded to main balance", a draft's label the source never carried — and the ADMIN twin's
+     * Swahili body was rewritten (stakes, not players, refunded in full, with the total and the reason). Same plants. */
+    const REFUND_ROW = "      ...(destination.real > 0 ? [{ label: \"Credited to main at refund\", value: formatTzs(destination.real), tone: \"good\" as const }] : []),";
+    const ADMIN_TWIN_BODY = "    bodySw: `\"${clipQuote(opts.title, 60)}\" limefutwa kwa dharura — madau ${opts.refundedCount} yaliyokuwa wazi yamerejeshwa kikamilifu, jumla ${formatTzs(opts.refundedTzs)}. Sababu: ${clipQuote(opts.reason, 100)}`,";
     const plants = {
       reader: playerNotifierProblems("src/lib/server/notification-service.ts", plant(notif, CANCEL_TITLE, `    titleEn: \`Market cancelled · \${formatTzs(opts.stake)} refunded\${(await houseStakeForAudit(opts.marketId))?.yes ?? ""}\`,`), "notifyMarketCancelled", r2Exports, words),
       row: playerNotifierProblems("src/lib/server/email.ts", plant(email, REFUND_ROW, `${REFUND_ROW}\n      { label: "Of which house stakes", value: formatTzs(amount) },`), "marketCancelledRefundHtml", r2Exports, words),
       reworded: playerNotifierProblems("src/lib/server/notification-service.ts", plant(notif, CANCEL_TITLE, "    titleEn: `Market cancelled · ${formatTzs(opts.stake)} returned`,"), "notifyMarketCancelled", r2Exports, words),
       stub: playerNotifierProblems("src/lib/server/notification-service.ts", "export function notifyMarketCancelled() {}", "notifyMarketCancelled", r2Exports, words),
-      twinUntouched: playerNotifierProblems("src/lib/server/notification-service.ts", plant(notif, ADMIN_TWIN_BODY, "    bodySw: `Soko limefutwa kwa dharura. ${formatTzs(opts.refundedTzs)} imerejeshwa kwa wachezaji.`,"), "notifyMarketCancelled", r2Exports, words),
+      twinUntouched: playerNotifierProblems("src/lib/server/notification-service.ts", plant(notif, ADMIN_TWIN_BODY, ADMIN_TWIN_BODY.replace("yamerejeshwa kikamilifu", "yamerejeshwa kikamilifu kwa wachezaji")), "notifyMarketCancelled", r2Exports, words),
     };
     ok("0.198.c2 · CONTROL · an un-built house reader called from the player's cancellation notice (a needle name), a house row planted in the refund letter (a house word), a one-word rewording (the bytes) and a stubbed notifier are each reported; an edit to the ADMIN twin beside it is not",
       plants.reader.some((p) => p.includes("names R2 exports houseStakeForAudit")) && plants.row.some((p) => p.includes("carries house wording")) && plants.reworded.length === 1
@@ -4540,20 +4569,68 @@ await guard("11.247", async () => {
      changed the file" was never checked). Both are fixed: the text is normalised, and the control below
      REQUIRES the plant to have changed the source before it reads its verdict. */
   const boardSrc = decomment(read("src/lib/server/updown-board.ts")).replace(/\r\n/g, "\n");
+  /* 2026-10-21 · U43 Release B (1384383fd … c29cb7526) rewrote the viewer's round reads. `myStakesByMarket` now reads the
+     raw rows itself (`positionStore.listForUserAndMarket`, one indexed read per market) and CARRIES them in its map
+     (`MyMarketStake.positions`); `myPositionFor` — where this literal already stood, reading `listPositionsForMarket` —
+     now projects those carried rows, and its payout is the recorded payout only when `validRealizedPayout` holds, else
+     null. Same six fields, the marker not among them: the literal is re-pointed. And because the raw rows now TRAVEL in a
+     map, the pin follows the map too (11.247.c1c.carry): its rows are read once, by `myPositionFor`; the board reads only
+     its figures; no binding is spread, returned or handed to anything but `toBoardRound`; nothing exports the reader. */
   const ITEM = `    .map((p) => ({
       id: p.id,
       side: (p.side === "YES" ? "UP" : "DOWN") as "UP" | "DOWN",
       stake: p.stake,
-      payout: p.finalPayout,
+      payout: p.status !== "OPEN" && validRealizedPayout({ status: p.status, stake: p.stake, payout: p.finalPayout })
+        ? p.finalPayout : null,
       status: p.status,
       placedAt: p.placedAt,
     }))`;
-  ok("11.247.c1c · the one viewer-facing caller of that raw read PROJECTS: `myStakesByMarket` builds a fixed six-field item from each row, and the marker is not one of the six",
-    boardSrc.includes(ITEM), boardSrc.includes(ITEM) ? "six fields, no marker" : boardSrc.includes("myStakesByMarket") ? "the projection literal has MOVED — re-read it" : "myStakesByMarket is gone");
+  ok("11.247.c1c · the one viewer-facing caller of that raw read PROJECTS: `myPositionFor` builds a fixed six-field item from each row `myStakesByMarket` reads, and the marker is not one of the six",
+    boardSrc.includes(ITEM), boardSrc.includes(ITEM) ? "six fields, no marker" : boardSrc.includes("myPositionFor") ? "the projection literal has MOVED — re-read it" : "myPositionFor is gone");
   const c1cPlant = boardSrc.replace(ITEM, ITEM.replace("      id: p.id,", "      id: p.id,\n      houseBotId: p.houseBotId,"));
   ok("11.247.c1c.control · CONTROL · the plant really CHANGED the source, and the pin then REPORTS it — so c1c's verdict is a measurement of those six fields and not of a string that matches nothing",
     boardSrc.includes(ITEM) && c1cPlant !== boardSrc && !c1cPlant.includes(ITEM),
     `changed=${c1cPlant !== boardSrc}`);
+  /** Every use of a `mine` binding (a MyMarketStake) in updown-board.ts that is not one of the allowed reads. */
+  const ALLOWED_MINE_READS = new Set(["up", "down", "refunded", "result", "results"]);
+  const mineUses = (code: string): { positions: string[]; other: string[] } => {
+    const sf = parse("src/lib/server/updown-board.ts", code);
+    const positions: string[] = [], other: string[] = [];
+    walkTree(sf, (n) => {
+      if (!ts.isIdentifier(n) || n.text !== "mine") return;
+      const p = n.parent;
+      if ((ts.isVariableDeclaration(p) || ts.isParameter(p)) && p.name === n) return;
+      if (ts.isPrefixUnaryExpression(p) && p.operator === ts.SyntaxKind.ExclamationToken) return;
+      if (ts.isPropertyAccessExpression(p) && p.expression === n) {
+        if (ALLOWED_MINE_READS.has(p.name.text)) return;
+        if (p.name.text === "positions") {
+          positions.push(ts.isCallExpression(p.parent) && p.parent.arguments[0] === p ? p.parent.expression.getText(sf) : ts.SyntaxKind[p.parent.kind]);
+          return;
+        }
+      }
+      if (ts.isCallExpression(p) && p.arguments.some((a) => a === n) && p.expression.getText(sf) === "toBoardRound") return;
+      other.push(`${ts.SyntaxKind[p.kind]} at ${sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1}: ${p.getText(sf).slice(0, 60)}`);
+    });
+    return { positions, other };
+  };
+  const mine247 = mineUses(boardSrc);
+  const READER_EXPORTED = /\bexport\s+(?:async\s+)?function\s+myStakesByMarket\b|\bexport\s+type\s+MyMarketStake\b|\bexport\s*\{[^}]*\b(?:myStakesByMarket|MyMarketStake)\b/;
+  ok("11.247.c1c.carry · ⛔ the raw rows `myStakesByMarket` carries reach nothing but that projection: a MyMarketStake's `positions` is read once, as `myPositionFor`'s first argument; the board reads only up, down, refunded, result and results; no binding is spread, returned or handed to anything but toBoardRound; and neither the reader nor its type is exported",
+    j(mine247.positions) === j(["myPositionFor"]) && mine247.other.length === 0 && !READER_EXPORTED.test(boardSrc)
+      && boardSrc.includes("positions: StoredPosition[];") && /\bmyStakesByMarket\(/.test(boardSrc),
+    j({ ...mine247, exported: READER_EXPORTED.test(boardSrc) }));
+  const MY_RESULTS = "    myResults: mine?.results ?? [],";
+  const MY_POSITION = "  const myPosition = myPositionFor(mine?.positions, board.settled);";
+  const carryPlants = {
+    spread: mineUses(plant(boardSrc, MY_RESULTS, `${MY_RESULTS}\n    ...mine,`)),
+    rows: mineUses(plant(boardSrc, MY_RESULTS, `${MY_RESULTS}\n    myRows: mine?.positions ?? [],`)),
+    handed: mineUses(plant(boardSrc, MY_POSITION, `${MY_POSITION}\n  void logStakes(mine);`)),
+    exported: READER_EXPORTED.test(plant(boardSrc, "async function myStakesByMarket(", "export async function myStakesByMarket(")),
+  };
+  ok("11.247.c1c.carry.control · CONTROL · the stake map spread into a board round, its raw rows handed to the board, the map handed to another call and the reader exported are each reported — and the real file reports none of them",
+    carryPlants.spread.other.length === 1 && carryPlants.rows.positions.length === 2 && carryPlants.handed.other.length === 1 && carryPlants.exported
+      && mine247.other.length === 0,
+    j({ spread: carryPlants.spread.other, rows: carryPlants.rows.positions, handed: carryPlants.handed.other, exported: carryPlants.exported }));
 
   /* ⛔ ROW 77 · THE OG HANDLER'S OWN READ LIST, DERIVED RATHER THAN ASSUMED (C5-8 phase 3, 2026-09-20).
      Ruling 247 asks the builder to OPEN `/api/og/market/[id]` and add ITS data reads to this sweep.
