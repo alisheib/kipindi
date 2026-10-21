@@ -474,4 +474,21 @@ export const MUTATIONS = [
     from: `    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">`,
     to: `    <div className="grid grid-cols-3 gap-2">`,
   },
+
+  /* ── MASWALI-BUILD S7-F8 13 · a row's tick box and bulk verdict go with the bar (11.5j): one plant each lets a row draw
+     its part again while the two-officer setting is unread and the bar is withheld. */
+  {
+    name: "S7-F8 · a queue row draws its tick box while the two-officer setting is UNKNOWN (the bar is withheld)",
+    file: PAGE,
+    expect: "11.5j while the setting is unknown no row draws the bar's parts",
+    from: `{canBulk && twoOfficerRead !== null && verdictById.has(m.id) && (\n                      <div className="shrink-0">`,
+    to: `{canBulk && verdictById.has(m.id) && (\n                      <div className="shrink-0">`,
+  },
+  {
+    name: "S7-F8 · a queue row draws its bulk verdict ('…this one will seal') while the two-officer setting is UNKNOWN",
+    file: PAGE,
+    expect: "11.5j while the setting is unknown no row draws the bar's parts",
+    from: `{canBulk && twoOfficerRead !== null && verdictById.has(m.id) && (\n                    <RowVerdict`,
+    to: `{canBulk && verdictById.has(m.id) && (\n                    <RowVerdict`,
+  },
 ];

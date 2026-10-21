@@ -570,6 +570,14 @@ const V = (m: VerdictMarket, over: Partial<Parameters<typeof bulkVerdictFor>[0]>
   const bulkAction = read("src/app/admin/resolver-queue/bulk-resolve-action.ts");
   ok("11.5g while the setting is unknown the queue draws no bulk bar: it says the setting is unreadable instead",
      before(p, "{canBulk ? (", "twoOfficerRead === null ? (") && /twoOfficerRead === null \? \([\s\S]{0,200}could not be read[\s\S]{0,200}<BulkResolveBar\b/.test(p));
+  // ⛔ MASWALI-BUILD S7-F8 13 · the bar was withheld for an unread setting (S7-F6), but every row still drew its tick box and
+  //    its bulk verdict — "Clears the auto-resolve floor — this one will seal" — for a bar that was not there, promising the
+  //    single-officer seal while the ceremony was unknown (S7-F7 6's ruling). Read on S7-F7 6–8's render, 2026-10-21, at
+  //    360, 768, 1280 and 1920. Both are drawn only on a read that answered, each exactly once.
+  ok("11.5j while the setting is unknown no row draws the bar's parts: no tick box and no bulk verdict (they go with the bar)",
+     /\{canBulk && twoOfficerRead !== null && verdictById\.has\(m\.id\) && \(\s*<div className="shrink-0">\s*<RowCheck\b/.test(p)
+       && /\{canBulk && twoOfficerRead !== null && verdictById\.has\(m\.id\) && \(\s*<RowVerdict\b/.test(p)
+       && (p.match(/<RowCheck\s+marketId=/g) ?? []).length === 1 && (p.match(/<RowVerdict\s+marketId=/g) ?? []).length === 1);
   ok("11.5h the bar posts the batch it drew, and the bulk action refuses a missing or changed ceremony BEFORE any market is attempted",
      bulkBar.includes('fd.set("drawnTwoAdmin", requireTwoOfficer ? "1" : "0");')
        && /if \(String\(formData\.get\("drawnTwoAdmin"\) \?\? ""\) !== \(twoOfficerRead \? "1" : "0"\)\) \{/.test(bulkAction)

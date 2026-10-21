@@ -402,8 +402,11 @@ async function ResolverQueueContent({
                         column pushed the whole card past its `lg:grid-cols-2` track. The
                         sentence is now `<RowVerdict>`, full width, in the card body.
                         It sits FIRST so the tick box is the leftmost thing on the card at
-                        every width, which is where a reader looks for one. */}
-                    {canBulk && verdictById.has(m.id) && (
+                        every width, which is where a reader looks for one.
+                        S7-F8 13 · the box and the row's bulk verdict go WITH THE BAR: while the two-officer setting
+                        is unread the bar is withheld, so no row offers a box to tick or a verdict ("…this one will
+                        seal") for a bar that is not there. */}
+                    {canBulk && twoOfficerRead !== null && verdictById.has(m.id) && (
                       <div className="shrink-0">
                         <RowCheck marketId={m.id} title={m.titleEn} />
                       </div>
@@ -449,7 +452,7 @@ async function ResolverQueueContent({
                     </div>
                   </div>
 
-                  {canBulk && verdictById.has(m.id) && (
+                  {canBulk && twoOfficerRead !== null && verdictById.has(m.id) && (
                     <RowVerdict
                       marketId={m.id}
                       verdict={verdictById.get(m.id)!.verdict}
