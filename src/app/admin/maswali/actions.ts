@@ -125,7 +125,8 @@ export async function moveMaswaliCloseAction(formData: FormData): Promise<Action
     const at = str(formData, "closeAt"); // YYYY-MM-DDTHH:MM in EAT
     const ms = Date.parse(`${at}:00+03:00`);
     if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(at) || !Number.isFinite(ms)) return { ok: false, error: "Give the new close as a date and a time (EAT)." };
-    const r = await moveClose({ weekId, toCloseAt: new Date(ms).toISOString(), officerId: session.userId });
+    // A3 · the close the officer reviewed; the service refuses when another move landed since the page was drawn.
+    const r = await moveClose({ weekId, toCloseAt: new Date(ms).toISOString(), expectedClosesAt: str(formData, "expectedClosesAt"), officerId: session.userId });
     if (!r.ok) return { ok: false, error: r.error };
     refresh(weekId);
     return { ok: true, weekId };

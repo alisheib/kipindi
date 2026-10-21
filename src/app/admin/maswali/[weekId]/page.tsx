@@ -93,7 +93,7 @@ async function Content({ params }: Props) {
 
         {week.state === "OPEN" && (
           <AdminCard title="Move the sales close" sw="Badilisha muda wa kufunga" >
-            {canMove ? <MoveCloseForm weekId={week.id} weekCode={week.code} currentEat={fmtEat(week.closesAt)} />
+            {canMove ? <MoveCloseForm weekId={week.id} weekCode={week.code} currentEat={fmtEat(week.closesAt)} closesAt={week.closesAt} />
               : <ControlLocked what="Move the close" need={CONTROL_DOMAIN.moveMaswaliClose} block />}
           </AdminCard>
         )}

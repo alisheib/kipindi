@@ -84,7 +84,8 @@ export function AttestOpenControls({ weekId, weekCode, attestedBy, canAttest, ca
 
 // ── Move the close ──────────────────────────────────────────────────────────────────────────────────
 
-export function MoveCloseForm({ weekId, weekCode, currentEat }: { weekId: string; weekCode: string; currentEat: string }) {
+/** `closesAt` is the close this page was drawn with: the move sends it, and the service refuses if another move landed since (A3). */
+export function MoveCloseForm({ weekId, weekCode, currentEat, closesAt }: { weekId: string; weekCode: string; currentEat: string; closesAt: string }) {
   const mayAct = useMayAct();
   const { pending, error, run, setError } = useAct();
   const [date, setDate] = useState("");
@@ -110,7 +111,7 @@ export function MoveCloseForm({ weekId, weekCode, currentEat }: { weekId: string
         </div>}
         onConfirm={() => {
           if (!review) return;
-          run(() => moveMaswaliCloseAction(fd({ weekId, closeAt: review.closeAt })), () => { setReview(null); setDate(""); setTime(""); });
+          run(() => moveMaswaliCloseAction(fd({ weekId, closeAt: review.closeAt, expectedClosesAt: closesAt })), () => { setReview(null); setDate(""); setTime(""); });
         }} />
     </div>
   );

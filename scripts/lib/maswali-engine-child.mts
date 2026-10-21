@@ -204,13 +204,34 @@ console.log("\n§4 · ⭐ the freeze");
 console.log("\n§5 · the close");
 {
   const closeMs = Date.parse(w1.closesAt);
-  const soon = await svc.moveClose({ weekId: w1.id, toCloseAt: new Date(Date.parse(nowOpen.toISOString()) + 3 * 60_000).toISOString(), officerId: DRAFTER, now: nowOpen });
+  const reviewedClose = w1.closesAt;
+  const soon = await svc.moveClose({ weekId: w1.id, toCloseAt: new Date(Date.parse(nowOpen.toISOString()) + 3 * 60_000).toISOString(), expectedClosesAt: reviewedClose, officerId: DRAFTER, now: nowOpen });
   ok("5.1 · ⛔ an earlier close inside the free-cancel window + 1 min is refused (MB-28)", !soon.ok && /6 minutes/.test(errOf(soon)), errOf(soon));
-  const late = await svc.moveClose({ weekId: w1.id, toCloseAt: new Date(closeMs + 24 * 3_600_000).toISOString(), officerId: DRAFTER, now: nowOpen });
+  const late = await svc.moveClose({ weekId: w1.id, toCloseAt: new Date(closeMs + 24 * 3_600_000).toISOString(), expectedClosesAt: reviewedClose, officerId: DRAFTER, now: nowOpen });
   ok("5.2 · ⛔ a later close past the first event − buffer is refused", !late.ok && /30 minutes before the first event/.test(errOf(late)), errOf(late));
-  const earlier = await svc.moveClose({ weekId: w1.id, toCloseAt: new Date(closeMs - 2 * 3_600_000).toISOString(), officerId: DRAFTER, now: nowOpen });
+  const earlier = await svc.moveClose({ weekId: w1.id, toCloseAt: new Date(closeMs - 2 * 3_600_000).toISOString(), expectedClosesAt: reviewedClose, officerId: DRAFTER, now: nowOpen });
   ok("5.3 · an earlier close two hours sooner is allowed", earlier.ok && Date.parse(earlier.week.closesAt) === closeMs - 2 * 3_600_000, errOf(earlier));
   ok("5.4 · …and the market's own cutoff follows it", (await marketStore.get(w1.marketId!))?.selectionClosedAt === new Date(closeMs - 2 * 3_600_000).toISOString());
+  // ⭐ S5-FIX-SRV A3 · a page drawn before 5.3's move still shows the original close: its move is refused, nothing moves.
+  const moved = new Date(closeMs - 2 * 3_600_000).toISOString();
+  const stale = await svc.moveClose({ weekId: w1.id, toCloseAt: new Date(closeMs - 3 * 3_600_000).toISOString(), expectedClosesAt: reviewedClose, officerId: OTHER, now: nowOpen });
+  ok("5.10 · ⛔ a move reviewed against a close another officer has since moved is refused, and the close stays where that move put it (A3)",
+    !stale.ok && /changed since you reviewed it/.test(errOf(stale)) && (await weekStore.get(w1.id))!.closesAt === moved
+      && (await marketStore.get(w1.marketId!))?.selectionClosedAt === moved, errOf(stale));
+  const unreviewed = await svc.moveClose({ weekId: w1.id, toCloseAt: new Date(closeMs - 3 * 3_600_000).toISOString(), expectedClosesAt: "", officerId: OTHER, now: nowOpen });
+  ok("5.11 · ⛔ a move that names no reviewed close is refused", !unreviewed.ok && /review its close/.test(errOf(unreviewed)) && (await weekStore.get(w1.id))!.closesAt === moved, errOf(unreviewed));
+  // The two writes are one transaction: a fault at the market's cutoff leaves the week's close where it was (Postgres).
+  if (STORE === "postgres") {
+    const realStamp = marketStore.stamp;
+    marketStore.stamp = async () => { throw new Error("injected fault: the connection dropped at the market's cutoff"); };
+    let thrown = "";
+    try {
+      await svc.moveClose({ weekId: w1.id, toCloseAt: new Date(closeMs - 3 * 3_600_000).toISOString(), expectedClosesAt: moved, officerId: DRAFTER, now: nowOpen });
+    } catch (e) { thrown = String((e as Error).message ?? e); } finally { marketStore.stamp = realStamp; }
+    ok("5.12 · ⭐ a fault after the week's close was moved rolls the move back: the close and the market's cutoff agree, unmoved",
+      thrown.includes("injected fault") && (await weekStore.get(w1.id))!.closesAt === moved && (await marketStore.get(w1.marketId!))?.selectionClosedAt === moved,
+      JSON.stringify({ thrown, closesAt: (await weekStore.get(w1.id))!.closesAt }));
+  }
   const early = await svc.closeWeek({ weekId: w1.id, now: nowOpen });
   ok("5.5 · ⛔ the tick cannot close before the close", !early.ok);
   const at = new Date(closeMs - 2 * 3_600_000);
@@ -219,7 +240,7 @@ console.log("\n§5 · the close");
     && closed.week.ticketMerkleRoot === "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" && closed.week.salesAtClose === 0, JSON.stringify(closed.ok ? closed.week : closed));
   const twice = await svc.closeWeek({ weekId: w1.id, now: at });
   ok("5.7 · a second close is a no-op that says so (exactly once)", twice.ok && twice.already === true);
-  ok("5.8 · ⛔ the close can never move once passed", !(await svc.moveClose({ weekId: w1.id, toCloseAt: new Date(closeMs).toISOString(), officerId: DRAFTER, now: at })).ok);
+  ok("5.8 · ⛔ the close can never move once passed", !(await svc.moveClose({ weekId: w1.id, toCloseAt: new Date(closeMs).toISOString(), expectedClosesAt: (await weekStore.get(w1.id))!.closesAt, officerId: DRAFTER, now: at })).ok);
   // The data layer's own claim, beneath the service's state check: a second stamp must lose, or a race could re-commit.
   ok("5.9 · ⛔ a second stampClose loses the claim (exactly once, in the store itself)",
     (await weekStore.stampClose(w1.id, { closedAt: at.toISOString(), ticketCount: 99, salesAtClose: 99_000, ticketMerkleRoot: "f".repeat(64) })) === false

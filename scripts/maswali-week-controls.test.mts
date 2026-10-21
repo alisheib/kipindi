@@ -35,7 +35,8 @@ function moveReviewed(source: string) {
     && s.includes("<ConfirmModal open={review !== null}")
     && s.includes("title={`Move ${weekCode}'s sales close?`}")
     && s.includes("{review?.fromEat} (EAT)") && s.includes("{review?.toEat} (EAT)")
-    && s.includes("moveMaswaliCloseAction(fd({ weekId, closeAt: review.closeAt }))");
+    // S5-FIX-SRV A3 · the move also sends the close this page was drawn with, so a stale page's move is refused.
+    && s.includes("moveMaswaliCloseAction(fd({ weekId, closeAt: review.closeAt, expectedClosesAt: closesAt }))");
 }
 function secondReviewed(source: string) {
   const s = seal(source);
@@ -103,9 +104,12 @@ if (process.argv.includes("--prove-red")) {
   const directAttest = controls.replace("setAttestConfirm(true)", "run(() => attestMaswaliParityAction(fd({ weekId })))");
   if (directAttest === controls) throw new Error("Attestation review plant target missing");
   ok("red: direct attestation loses the week review", !attestReviewed(directAttest));
-  const liveClose = controls.replace("moveMaswaliCloseAction(fd({ weekId, closeAt: review.closeAt }))", "moveMaswaliCloseAction(fd({ weekId, closeAt: `${date}T${time}` }))");
+  const liveClose = controls.replace("moveMaswaliCloseAction(fd({ weekId, closeAt: review.closeAt, expectedClosesAt: closesAt }))", "moveMaswaliCloseAction(fd({ weekId, closeAt: `${date}T${time}`, expectedClosesAt: closesAt }))");
   if (liveClose === controls) throw new Error("Close snapshot plant target missing");
   ok("red: live draft values can diverge from the reviewed close", !moveReviewed(liveClose));
+  const unreviewedClose = controls.replace("moveMaswaliCloseAction(fd({ weekId, closeAt: review.closeAt, expectedClosesAt: closesAt }))", "moveMaswaliCloseAction(fd({ weekId, closeAt: review.closeAt }))");
+  if (unreviewedClose === controls) throw new Error("Reviewed-close plant target missing");
+  ok("red: a move that does not send the close it reviewed can move a close another officer moved (A3)", !moveReviewed(unreviewedClose));
   const staleSeal = controls.replace("expectedOutcome, expectedSealedAt }", "expectedOutcome, expectedSealedAt: \"\" }");
   if (staleSeal === controls) throw new Error("Second-officer stale guard plant target missing");
   ok("red: missing seal version permits a stale second-officer signoff", !secondReviewed(staleSeal));

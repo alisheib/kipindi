@@ -464,16 +464,24 @@ export async function purchaseMaswaliTickets(input: {
 
 // ── THE CLOSE ───────────────────────────────────────────────────────────────────────────────────────
 
-/** MB-28 · move the sales close. Earlier: never inside the next `minLead`; later: never past the first event − buffer. */
-export async function moveClose(input: { weekId: string; toCloseAt: string; officerId: string; now?: Date }): Promise<Result<{ week: StoredWeek }>> {
+/**
+ * MB-28 · move the sales close. Earlier: never inside the next `minLead`; later: never past the first event − buffer.
+ * `expectedClosesAt` is the close the officer reviewed (S5 review A3): a page drawn before another officer's move must not
+ * move a close it never saw — 12:00 → 16:00 believed to be 18:00 → 16:00 would re-open sales that move had cut. The two
+ * writes (the week's close, its market's cutoff) take the chain lock's transaction and land together (DATA-LAYER rule 2).
+ */
+export async function moveClose(input: { weekId: string; toCloseAt: string; expectedClosesAt: string; officerId: string; now?: Date }): Promise<Result<{ week: StoredWeek }>> {
   const nowMs = (input.now ?? new Date()).getTime();
   const toMs = Date.parse(input.toCloseAt);
   if (!Number.isFinite(toMs)) return refuse("The new close is not a time.");
-  return withLock(MASWALI_CHAIN_LOCK, async () => {
+  const reviewedMs = typeof input.expectedClosesAt === "string" ? Date.parse(input.expectedClosesAt) : NaN;
+  if (!Number.isFinite(reviewedMs)) return refuse("Reload the week and review its close before moving it.");
+  return withLock(MASWALI_CHAIN_LOCK, async (tx) => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
     if (week.state !== "OPEN") return refuse(`Week ${week.code} is ${week.state}; only an open week's close can move.`);
     const fromMs = Date.parse(week.closesAt);
+    if (fromMs !== reviewedMs) return refuse(`The close changed since you reviewed it: it is now ${week.closesAt}. Reload the week and review it again before moving it.`);
     if (fromMs <= nowMs) return refuse("The close has already passed; it can never move back (MR-13).");
     const rules = frozenRules(week);
     if (!rules) return refuse(`Week ${week.code}'s frozen rules cannot be read.`);
@@ -487,12 +495,12 @@ export async function moveClose(input: { weekId: string; toCloseAt: string; offi
     const earliest = Math.min(...questions.map((q) => Date.parse(q.eventStartsAt)));
     if (toMs > earliest - rules.minLockBufferMinutes * 60_000) return refuse(`The close must stay at least ${rules.minLockBufferMinutes} minutes before the first event.`);
     if (toMs === fromMs) return refuse("That is already the close.");
-    const won = await weekStore.moveClose(week.id, week.closesAt, new Date(toMs).toISOString());
+    const won = await weekStore.moveClose(week.id, week.closesAt, new Date(toMs).toISOString(), tx ?? undefined);
     if (!won) return refuse("The close changed while it was being moved; refresh and try again.");
-    if (week.marketId) await marketStore.stamp(week.marketId, { selectionClosedAt: new Date(toMs).toISOString(), updatedAt: new Date(nowMs).toISOString() } as never);
+    if (week.marketId) await marketStore.stamp(week.marketId, { selectionClosedAt: new Date(toMs).toISOString(), updatedAt: new Date(nowMs).toISOString() } as never, tx ?? undefined);
     audit({ category: "ADMIN", action: "maswali.week.close_moved", actorId: input.officerId, targetType: "MaswaliCycle", targetId: week.id,
       payload: { code: week.code, from: week.closesAt, to: new Date(toMs).toISOString() } });
-    return { ok: true, week: (await weekStore.get(week.id))! };
+    return { ok: true, week: (await weekStore.get(week.id, tx ?? undefined))! };
   });
 }
 

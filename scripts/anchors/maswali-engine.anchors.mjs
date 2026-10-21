@@ -306,6 +306,23 @@ export const MUTATIONS = [
     expect: "7.24 · successful void, correction and confirmation actions",
     suite: "engine",
   },
+  // ── S5-FIX-SRV A3 · the close an officer moves is the close they reviewed, and the move lands whole ──────────────────
+  {
+    name: "(38) a move reviewed against an older close is no longer refused (A3: 12:00 → 16:00 read as 18:00 → 16:00)",
+    file: SVC,
+    from: "    if (fromMs !== reviewedMs) return refuse(`The close changed since you reviewed it: it is now ${week.closesAt}. Reload the week and review it again before moving it.`);",
+    to: "",
+    expect: "5.10 · ⛔ a move reviewed against a close another officer has since moved",
+    suite: "engine",
+  },
+  {
+    name: "(39) the week's close autocommits outside the chain lock's transaction, apart from its market's cutoff",
+    file: SVC,
+    from: "    const won = await weekStore.moveClose(week.id, week.closesAt, new Date(toMs).toISOString(), tx ?? undefined);",
+    to: "    const won = await weekStore.moveClose(week.id, week.closesAt, new Date(toMs).toISOString());",
+    expect: "5.12 · ⭐ a fault after the week's close was moved",
+    suite: "engine-pg",
+  },
   {
     name: "(37) the recompute reads the questions outside the transaction, so the tenth main's seal never makes the set final",
     file: SVC,
