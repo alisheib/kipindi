@@ -373,6 +373,15 @@ export const MUTATIONS = [
     expect: "9.7 · ⛔ a confirmation on a SETTLED week is refused",
     suite: "engine",
   },
+  // ── S5-FIX-SRV A7 · a failed refresh never reports a committed act as failed ─────────────────────────────────────
+  {
+    name: "(55) the attestation's refresh is bare again: a refresh error reports a landed attestation as failed",
+    file: "src/app/admin/maswali/actions.ts",
+    from: "    try { refresh(weekId); } catch { /* The attestation already landed; the client refreshes too. */ }",
+    to: "    refresh(weekId);",
+    expect: "7.25 · ⛔ every refresh after a committed act sits alone in its own try",
+    suite: "engine",
+  },
   // ── S5-FIX-SRV A6 · a partial seal names its slots as the console does ──────────────────────────────────────────
   {
     name: "(54) the partial-seal refusal names the slot by number again (\"Slot 11: A1 is already sealed…\")",

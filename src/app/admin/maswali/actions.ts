@@ -67,7 +67,7 @@ export async function createMaswaliWeekAction(formData: FormData): Promise<Actio
     const visibility = str(formData, "visibility") === "DRIVE" ? "DRIVE" : "PUBLIC";
     const r = await createWeek({ weekStartMs: ms, visibility, questions, officerId: session.userId });
     if (!r.ok) return { ok: false, error: r.error };
-    refresh(r.week.id);
+    try { refresh(r.week.id); } catch { /* The draft is already stored; the client refreshes too. */ }
     return { ok: true, weekId: r.week.id };
   } catch (err) {
     return { ok: false, error: safeError(err, "The week could not be drafted") };
@@ -87,7 +87,7 @@ export async function editMaswaliQuestionsAction(formData: FormData): Promise<Ac
     }
     const r = await editDraftQuestions({ weekId, edits, officerId: session.userId });
     if (!r.ok) return { ok: false, error: r.error };
-    refresh(weekId);
+    try { refresh(weekId); } catch { /* The questions are already saved; the client refreshes too. */ }
     return { ok: true, weekId, recorded: r.recorded };
   } catch (err) {
     return { ok: false, error: safeError(err, "The questions could not be saved") };
@@ -101,7 +101,7 @@ export async function attestMaswaliParityAction(formData: FormData): Promise<Act
     // A4 · the draft's version the reader's page was drawn from: an edit landed since refuses the attestation.
     const r = await attestParity({ weekId, officerId: session.userId, readVersion: str(formData, "readVersion") });
     if (!r.ok) return { ok: false, error: r.error };
-    refresh(weekId);
+    try { refresh(weekId); } catch { /* The attestation already landed; the client refreshes too. */ }
     return { ok: true, weekId, auditWarning: r.recorded ? null : ATTEST_AUDIT_WARNING };
   } catch (err) {
     return { ok: false, error: safeError(err, "The attestation could not be recorded") };
@@ -114,7 +114,7 @@ export async function openMaswaliWeekAction(formData: FormData): Promise<ActionR
   try {
     const r = await openWeek({ weekId, officerId: session.userId, guarantee: guaranteeReader });
     if (!r.ok) return { ok: false, error: r.error };
-    refresh(weekId);
+    try { refresh(weekId); } catch { /* The week is already open; the client refreshes too. */ }
     return { ok: true, weekId };
   } catch (err) {
     return { ok: false, error: safeError(err, "The week could not be opened") };
@@ -131,7 +131,7 @@ export async function moveMaswaliCloseAction(formData: FormData): Promise<Action
     // A3 · the close the officer reviewed; the service refuses when another move landed since the page was drawn.
     const r = await moveClose({ weekId, toCloseAt: new Date(ms).toISOString(), expectedClosesAt: str(formData, "expectedClosesAt"), officerId: session.userId });
     if (!r.ok) return { ok: false, error: r.error };
-    refresh(weekId);
+    try { refresh(weekId); } catch { /* The close already moved; the client refreshes too. */ }
     return { ok: true, weekId };
   } catch (err) {
     return { ok: false, error: safeError(err, "The close could not be moved") };
@@ -186,7 +186,7 @@ export async function confirmMaswaliSealAction(formData: FormData): Promise<Acti
     }
     const r = await confirmSeal({ weekId, slot: Number(str(formData, "slot")), officerId: session.userId, expectedOutcome, expectedSealedAt });
     if (!r.ok) return { ok: false, error: r.error };
-    refresh(weekId);
+    try { refresh(weekId); } catch { /* The confirmation already landed; the client refreshes too. */ }
     return { ok: true, weekId, auditWarning: r.recorded ? null : CONFIRM_AUDIT_WARNING };
   } catch (err) {
     return { ok: false, error: safeError(err, "The confirmation could not be recorded") };

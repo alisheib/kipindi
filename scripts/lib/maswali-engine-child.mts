@@ -551,6 +551,24 @@ console.log("\n§7 · the two-officer flag");
     typeof parseSealRows('[{"slot":0,"outcome":"YES","evidence":"Official record"}]') === "string"
       && typeof parseSealRows('[{"slot":16,"outcome":"YES","evidence":"Official record"}]') === "string"
       && typeof parseSealRows('[{"slot":1.5,"outcome":"YES","evidence":"Official record"}]') === "string");
+  // ⭐ S5-FIX-SRV A7 · a cache refresh that throws after the commit never reports the committed act as failed. Each action's
+  //    body sits in a try whose catch answers "could not be recorded", so every `refresh(…)` must be the ONLY statement of its
+  //    own try, with an empty catch — read from the syntax tree, every call counted.
+  const tsMod = (await import("typescript")).default;
+  const actionTree = tsMod.createSourceFile("actions.ts", actionSource, tsMod.ScriptTarget.Latest, true);
+  const refreshCalls: Array<{ line: number; guarded: boolean }> = [];
+  const visit = (n: import("typescript").Node) => {
+    if (tsMod.isCallExpression(n) && tsMod.isIdentifier(n.expression) && n.expression.text === "refresh") {
+      const stmt = n.parent, block = stmt?.parent, tryStmt = block?.parent;
+      const guarded = !!stmt && tsMod.isExpressionStatement(stmt) && !!block && tsMod.isBlock(block) && block.statements.length === 1
+        && !!tryStmt && tsMod.isTryStatement(tryStmt) && tryStmt.tryBlock === block && !!tryStmt.catchClause && tryStmt.catchClause.block.statements.length === 0;
+      refreshCalls.push({ line: actionTree.getLineAndCharacterOfPosition(n.getStart()).line + 1, guarded });
+    }
+    n.forEachChild(visit);
+  };
+  visit(actionTree);
+  ok("7.25 · ⛔ every refresh after a committed act sits alone in its own try: a failed refresh never reports the act as failed (A7)",
+    refreshCalls.length >= 9 && refreshCalls.every((c) => c.guarded), JSON.stringify(refreshCalls.filter((c) => !c.guarded)));
   ok("7.17 · ⛔ duplicate slots cannot partially seal the same question twice",
     typeof parseSealRows('[{"slot":1,"outcome":"YES","evidence":"Official record"},{"slot":1,"outcome":"NO","evidence":"Official record"}]') === "string"
       && parseSealRows('[{"slot":11,"outcome":"YES","evidence":"Official record"},{"slot":11,"outcome":"NO","evidence":"Official record"}]') === "A1 appears more than once.");
