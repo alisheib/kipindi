@@ -8,6 +8,36 @@
 
 ---
 
+## 2026-10-21 · Maswali Millionea — staff preview after S5, no separate drive-week buying phase, the ruled words final, Finance confirmed, five days to answer a complaint, "Buy ticket" (owner rulings)
+
+**Authority.** Ali, 2026-10-21, to the Maswali lead (Claude, OMEGA-COMPILE01), choosing among the options put to him and,
+where he wrote them, in his own words:
+1. **Staff preview after S5.** "Right after S5 is live": once S5 is on `main` and read back,
+   `FEATURE_MILLIONEA=STAFF_PREVIEW` on Railway (reversible: `WITHDRAWN` undoes it). Players see nothing.
+2. **R10c — who may buy a DRIVE-week ticket.** *"no need for this phase, it will be live for everyone normally"*: there
+   is no separate staff-only buying phase; Millionea opens to every player (`ACTIVE`) at launch, after its gates. R10c
+   is closed by this ruling; S8's live drive runs on the first public week.
+3. **The tab's ink.** The softer tints as built (the colour tokens' -300 stops, 8.98:1); DESIGN_AUTHORITY §M8a item 11's
+   open choice is closed.
+4. **Native-language review.** "Ship the ruled words as they are": no separate native review of the Swahili and Chinese
+   words; the words decided in MASWALI-PLAN §0a and the S5 visual pass's §D are final. This closes Gate B's language
+   item only.
+5. **Finance (OD-08, MB-77).** *"finance confirmed it"*: Finance's confirmation of the tax report's reconciling lines and
+   of no withholding on winnings is recorded on Ali's word; Gate B's Finance item is closed. Ali adds that 50pick will
+   later levy a tax on amounts players withdraw (he wrote "155"; read as 15%, to be confirmed when it is designed). That
+   is NOT part of this build: when it is built, AGENTS.md §6 ("taxes are levied only on 50pick's commission, never on a
+   player"), RULES.md and every player-facing word about withholding change with it, by a new owner ruling.
+6. **Time to answer a complaint about a result.** Five days — the default on the Owner's rules form, confirmed.
+7. **English buy wording.** "Buy ticket · {price}", "Ticket bought" and "Buying…" replace the calque "Cut ticket";
+   Swahili keeps "Kata tiketi" and Chinese 出票.
+8. **Stale branches.** Delete the old Codex branches proven contained in `main` or in the S5 release (28 deleted the
+   same day; every local Maswali ref is archived in `F:\kipindi-archive\maswali-codex-and-lanes-20261021.bundle`).
+
+**Implementation boundary.** Rulings 1 and 2 change S5's release sequence and S8's plan; 3, 6 and 7 are build details;
+4 and 5 close those two Gate B items and no other.
+
+---
+
 ## 2026-10-20 · U43 Twelve Data use — owner attestation
 
 **Authority.** Ali, in the U43 Release B session, stated that 50pick has a full Twelve Data licence for its use in

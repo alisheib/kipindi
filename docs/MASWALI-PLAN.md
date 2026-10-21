@@ -50,7 +50,15 @@ settled-week sitemap and share image, and bounded public week and register cache
   carries self-contained fixes for five of U43's reds (`342574e6`, `678314ca`, the watchlist half of `e3cb7acf`,
   `0823ecc2`, `a075174d`); U43 takes or replaces them so that each red is fixed once.
 - Lanes on OMEGA: Maswali (asheib-65, `F:/kipindi-locks/mln-slot-1..4`), U43 (asheib-bb, slots 5–8), PHOSPHOR
-  (asheib-66, slots 9–12). `main-push.lock` as below; each lane messages the others before taking it.
+  (asheib-66, slots 9–12). `main-push.lock` as below; each lane messages the others before taking it. Release order
+  agreed: U43's CI repair → PHOSPHOR 2c+2d → S5 → PHOSPHOR 3.
+- **Ali's rulings of 2026-10-21** (COMPLIANCE-DECISIONS § "2026-10-21 · Maswali Millionea — staff preview after S5, no
+  separate drive-week buying phase, …"): STAFF_PREVIEW right after S5 is live; R10c closed — no staff-only buying
+  phase, Millionea opens to everyone at launch; the softer tab ink; the ruled sw/zh words final (no native review);
+  Finance confirmed OD-08 and MB-77; five days to answer a complaint; English "Buy ticket"; the old Codex branches
+  deleted. And his request: every Millionea surface rated 10/10 by a player, a UI/UX engineer and an animation
+  specialist, consistent with 50pick's design, before it ships — round 1 of the critics scored every surface; the fix
+  and design lanes are working from their reports.
 
 **Next:** Finish S5's gates on its exact release commit — after U43's repair lands, merge `main` again — every
 changed-file reader and mutation proof, current-`main` classic parity, the admin and player browser drives and
@@ -1422,7 +1430,7 @@ R-LAUNCH means "launch once built and the drive passes". Real money enters at th
    - `journey-measures-dal.ts` filter live;
    - the launch date marked on the measures view;
    - VODACOM-PLAN §0 notified through the Vodacom lane, not edited by this lane.
-8. ☐ **Tax treatment ruled (OD-08)** and the reconciling lines live. Otherwise the first no-winner week jams locking and filing of the **whole** book. Withholding tax on winnings confirmed by Finance/TRA (MB-77).
+8. ☐ **Tax treatment ruled (OD-08)** and the reconciling lines live. Otherwise the first no-winner week jams locking and filing of the **whole** book. Withholding tax on winnings confirmed by Finance/TRA (MB-77). *(2026-10-21: Finance's confirmation of both is recorded on Ali's word — COMPLIANCE-DECISIONS § "2026-10-21 · Maswali Millionea — …"; the box ticks when S6's reconciling lines are live.)*
 9. ☐ **RULES §5 step 6** verified on production (database and screen). Both PDFs regenerated and rasterised.
 10. ☐ **Agent terms** version bumped per OD-20. Terms and Millionea rules versions effective at ACTIVE.
 11. ☐ **Monitoring and runbook:** alerts proven, operator guide published, support scripts live.
