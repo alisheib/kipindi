@@ -113,7 +113,10 @@ export function selectHeldShares<T extends HeldListRow>(all: readonly T[], query
       case "decision": return row.forfeited;
     }
   }, query.dir);
-  return pageRows(all, ordered, query.page, perPage);
+  // S5 review A8 · a decision waiting on an officer is never paged away: pending shares lead, each group in the chosen order —
+  // unless the officer sorts by the decision itself. The page stays bounded.
+  const waitingFirst = query.sort === "decision" ? ordered : [...ordered.filter((row) => !row.forfeited), ...ordered.filter((row) => row.forfeited)];
+  return pageRows(all, waitingFirst, query.page, perPage);
 }
 
 export type WinnerListTicket = { serial: string; payout: number | null; frozenReason: string | null };
