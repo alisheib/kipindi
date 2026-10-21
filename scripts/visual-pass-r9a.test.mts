@@ -596,7 +596,8 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/components/maswali/maswali-home-card.tsx', '<I.chevronRight s={18} edge="end" className="mt-2 shrink-0 text-text-subtle xl:mt-0" />', 1, "row", "the Millionea card's end (MASWALI-BUILD S5 VIS-P): the card stays stacked until the wide row can hold every fact"],
     ['src/components/maswali/maswali-ticket.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle" />', 1, "row", "a held Millionea ticket's row end in the hub's buy block (MASWALI-BUILD S5)"],
     // MASWALI-BUILD S5 pages (2026-10-18): Millionea's text links end on their words' stroke; its two list rows end on their edge.
-    ['src/components/maswali/maswali-ticket.tsx', '<I.chevronRight s={14} edge="end" text="body-400" className="shrink-0" />', 1, "text", "a ticket row's 'view the ticket' link: its end after the 13px body/400 words"],
+    ['src/components/maswali/maswali-ticket.tsx', '<I.chevronRight s={14} edge="end" text="body-400" className="shrink-0" />', 2, "text", "a ticket card's 'view the ticket' door and the stub's question-set link to the week's register (S5-DESIGN-TICKETS M1, M6): each a text link's end after its 13px body/400 words"],
+    ['src/components/maswali/maswali-win-ledger.tsx', '<I.chevronRight s={14} edge="end" text="body-400" className="shrink-0" />', 1, "text", "a receipt's door to the week's register (S5-DESIGN-TICKETS M6): a text link's end after its body/400 words"],
     ['src/app/millionea/hub-notices.tsx', '<I.chevronRight s={14} edge="end" text="body-400" />', 1, "text", "a hub notice's door: a text link's end after its body/400 words"],
     ['src/app/millionea/millionea-parts.tsx', '<I.chevronRight s={14} edge="end" text="body-400" />', 1, "text", "the reading links' end (how it works, the register, fairness), one mark per link"],
     ['src/app/millionea/register/[week]/page.tsx', '<I.chevronRight s={14} edge="end" text="body-400" />', 1, "text", "the register's audit-chain link's end"],
@@ -707,6 +708,7 @@ section("5 · A5 every pair of buttons stands 12px apart — the card's YES/NO a
     ["src/app/profile/kyc/page.tsx", "rounded-xl border border-success-border bg-bg-elevated p-5 lg:p-6 text-center", "two branches of one condition"],
     ["src/app/profile/security/security-client.tsx", "rounded-xl glass-panel p-5 space-y-4", "a section's stacked rows, not a pair"],
     ["src/app/updown/history/page.tsx", "mt-6", "two branches of one condition"],
+    ["src/app/millionea/tickets/page.tsx", "kp-mln-zh space-y-6", "two branches of one condition (S5-DESIGN-TICKETS M3): the empty list's call and an emptied lens's way out never stand together"],
     ["src/app/watchlist/page.tsx", "space-y-5", "a page's stacked sections, not a pair"],
     ["src/components/journey/bet-sheet/bet-sheet.tsx", "kp-bsheet__footer", "S8's receipt, terminal and editable branches: exactly one Button can render; terminal links are stacked, never a side-by-side button pair"],
     ["src/app/wallet/deposit/journey-deposit-form.tsx", "space-y-5", "the deposit form's field stack: the payment Button and Card link are separate full-width rows after the input fields"],

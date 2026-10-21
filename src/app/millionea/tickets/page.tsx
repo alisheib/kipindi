@@ -3,14 +3,22 @@
  * delivery's T-list frames, D-42). The reading tier, as Tiketi zangu's other two kinds.
  *
  * For a journey reader, Tiketi zangu's own head — its name and the switch, Maswali | Juu/Chini | Millionea, this kind
- * current (`ticket-switch.tsx`) — and for everybody else the page's own name under the product's. Then the four lenses
- * (`tickets-bar.tsx`) and the reader's tickets as the platform's ticket card (`MaswaliTicketCard`: the week and the state
- * word, the Seal Line as its link, the stake and the final payout, the serial and when it was bought), newest week first,
- * one column on a phone and two from 768. Row text is the ticket page's, byte for byte (§3.9).
+ * current (`ticket-switch.tsx`). For everybody else the page's own name — under the way back to the product's hub while
+ * the product is shown to the reader (the R1 tickets critic's L9: Up & Down's classic history opens on its board's way
+ * back; the product named once, by that link, so the title wears no eyebrow), else under the product's eyebrow. Then the
+ * four lenses (`tickets-bar.tsx`, the kit's strip) and the reader's tickets as the platform's ticket card
+ * (`MaswaliTicketCard`: the week and the state, the Seal Line, the price and the payout, the serial and when it was
+ * bought, the whole card the ticket's link), newest week first, one column on a phone and two from 768. Row text is the
+ * ticket page's, byte for byte (§3.9).
  * ⭐ PAGED BY WEEK, ON THE PLATFORM'S PAGER (`millioneaMyTickets`, round 3; S5 re-review 4): every week the account holds a
  *    ticket in is counted, and each week on a page comes whole — never a page of the newest tickets, which a weekly cap of
  *    up to 100 would cut in half. The pager is links (`?page`), so it works without JavaScript; a lens narrows the page it
- *    is on, and a lens that empties a page says so in its own words, never "no ticket yet" over a holder's tickets.
+ *    is on.
+ * ⭐ AN EMPTY LIST IS ITS SIBLINGS' EMPTY STATE (M3): it fills the column for a journey reader as Juu/Chini's does (PV-03:
+ *    the box no longer changes width as the reader switches kinds); a reader with no ticket at all is offered the week on
+ *    sale in a verb, "Fill a ticket", the platform's primary call — ⛔ never on a break (S5-FIX-PLAYER P2: the title alone,
+ *    no week, no door); and a lens that empties says which, in the platform's own words ("Nothing of yours has won yet"),
+ *    with its way out to all the reader's tickets and their count, as Tiketi zangu's other kinds do — never a dead end.
  *
  * ⛔ THE TICKETS' GATE (`millioneaTicketGate`, L5): a kill hides the product, never a player's own tickets — a holder
  *    reaches this list at every rollout state; a signed-out reader is sent to sign in and back here.
@@ -24,6 +32,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
+import { BackLink } from "@/components/ui/back-link";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination, PLAYER_PER_PAGE, buildBaseHref } from "@/components/ui/pagination";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
@@ -35,10 +44,11 @@ import { millioneaMyTickets, type MillioneaTicketRow } from "@/lib/server/maswal
 import { millioneaBreakOf, millioneaHubNow, millioneaTicketsDoor, millioneaWeekPrices } from "@/lib/server/millionea-doors";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { getServerT } from "@/lib/i18n-server";
-import { fill } from "@/lib/utils";
+import { fill, formatNumber } from "@/lib/utils";
+import type { Dict } from "@/lib/i18n-dict";
 import { MILLIONEA_HREF, MillioneaPreviewMark, signInHref, ticketPageHref } from "../millionea-parts";
 import { lineOfSlots, msOf } from "../millionea-view";
-import { inLens, MillioneaTicketsBar, parseMillioneaLens } from "./tickets-bar";
+import { inLens, lensHref, MillioneaTicketsBar, parseMillioneaLens, type MillioneaLens } from "./tickets-bar";
 
 export const dynamic = "force-dynamic";
 
@@ -65,6 +75,16 @@ function payoutOf(row: MillioneaTicketRow, price: number): number | null {
   }
 }
 
+/** The title a lens that empties says, in the platform's own words for Tiketi zangu's lenses (M3). */
+function lensEmptyTitle(t: Dict, lens: MillioneaLens): string {
+  switch (lens) {
+    case "open": return t.journey.ticketsEmptyOpenTitle;
+    case "settled": return t.journey.ticketsEmptySettled;
+    case "won": return t.journey.ticketsEmptyWon;
+    case "all": return t.millionea.lensNone;
+  }
+}
+
 export default async function MillioneaTicketsPage({ searchParams }: { searchParams: Promise<{ lens?: string; page?: string }> }) {
   const gate = await millioneaTicketGate();
   if (!gate.userId) redirect(signInHref(MILLIONEA_HREF.tickets));
@@ -82,47 +102,68 @@ export default async function MillioneaTicketsPage({ searchParams }: { searchPar
   // Newest first, as the list promises: the weeks come newest first, and inside a week its tickets by when they were bought,
   // the latest first (S5 VIS P11: 000041 stood before 000042), the serial deciding a tie.
   const newestFirst = (a: MillioneaTicketRow, b: MillioneaTicketRow) => (Date.parse(b.boughtAt) - Date.parse(a.boughtAt)) || b.serial.localeCompare(a.serial);
-  const cards = weeks.flatMap((g) => {
+  const drawable = weeks.flatMap((g) => {
     const price = prices.get(g.week.id);
-    return price === undefined ? [] : g.tickets.filter((row) => inLens(lens, row.shown)).sort(newestFirst).map((row) => ({ g, row, price }));
+    return price === undefined ? [] : g.tickets.slice().sort(newestFirst).map((row) => ({ g, row, price }));
   });
+  const cards = drawable.filter(({ row }) => inLens(lens, row.shown));
   const anyLive = weeks.some((g) => g.tickets.some((row) => row.shown === "running"));
-  // The empty list's one invitation (the T-list frame): the week on sale and the door to the hub — offered only to a reader
-  // who holds no ticket at all, only while the product is shown to them (a holder let in at a kill is offered nothing, L5),
-  // and ⛔ NEVER ON A BREAK (S5-FIX-PLAYER P2): a reader whose cooling-off or self-exclusion runs gets the title alone — no
+  // The empty list's one invitation (the T-list frame): the week on sale and the slip — offered only to a reader who holds
+  // no ticket at all, only while the product is shown to them (a holder let in at a kill is offered nothing, L5), and
+  // ⛔ NEVER ON A BREAK (S5-FIX-PLAYER P2): a reader whose cooling-off or self-exclusion runs gets the title alone — no
   // week to buy into, no door — the home card's own rule (`millioneaCardShown`: shown, and not on a break).
   const invite = total === 0 && gate.visible && (await millioneaBreakOf(gate.userId)) === null;
   const hubWeek = invite ? (await millioneaHubNow(gate.userId, gate.state))?.week ?? null : null;
   const selling = hubWeek?.selling ? hubWeek : null;
+  // A lens that empties this page: the way out is every ticket on it, counted (Tiketi zangu's exit, `journey.ticketsExitLens`).
+  const exitHref = page > 1 ? `${lensHref("all")}?page=${page}` : lensHref("all");
 
   return (
     <PageContainer tier="reading" className="kp-mln-zh space-y-6">
       <RefreshPoller intervalMs={60_000} enabled={anyLive} />
-      {/* The classic head: the product's name over "Your tickets" — one line at 320 in every language (P11: "Your
-          Millionea tickets" left "tickets" alone there, and a balanced wrap cannot do better than that). */}
+      {/* The classic head: "Your tickets" — one line at 320 in every language (P11: "Your Millionea tickets" left "tickets"
+          alone there) — under the way back to the hub while the product is shown (L9), else under the product's name. */}
       {journey
         ? <TicketsHead current="millionea" millionea t={t} />
-        : <PageHeader eyebrow={t.millionea.productTitle} title={t.millionea.ticketsTitle} />}
+        : gate.visible
+          ? (
+            <div className="space-y-3">
+              <BackLink fallbackHref={MILLIONEA_HREF.hub} label={t.millionea.productTitle} />
+              <PageHeader title={t.millionea.ticketsTitle} />
+            </div>
+          )
+          : <PageHeader eyebrow={t.millionea.productTitle} title={t.millionea.ticketsTitle} />}
       {gate.preview && <MillioneaPreviewMark t={t} />}
       <MillioneaTicketsBar lens={lens} t={t} />
       {total === 0 ? (
         <EmptyState
+          fill={journey}
           kind="positions"
           title={t.millionea.emptyTickets}
           body={selling
             ? fill(t.millionea.emptyTicketsNext, { week: weekNumberOf(selling.code), when: eatWeekdayClock(t, msOf(selling.closesAt) ?? 0) })
             : undefined}
-          action={invite ? (
-            <Link href={MILLIONEA_HREF.hub as never} className="btn btn-ghost btn-md border-border-control">{t.millionea.productTitle}</Link>
+          action={selling ? (
+            <Link href={MILLIONEA_HREF.slip as never} className="btn btn-primary btn-md">{t.millionea.titleSlip}</Link>
           ) : undefined}
         />
       ) : cards.length === 0 ? (
         // The reader holds tickets; this lens leaves none on this page (or, on the one page, none at all).
-        <EmptyState kind="positions" title={total > PLAYER_PER_PAGE ? t.millionea.lensNoneOnPage : t.millionea.lensNone} />
+        <EmptyState
+          fill={journey}
+          kind="positions"
+          title={total > PLAYER_PER_PAGE ? t.millionea.lensNoneOnPage : lensEmptyTitle(t, lens)}
+          body={t.positions.emptyLensBody}
+          action={drawable.length > 0 ? (
+            <Link href={exitHref as never} replace scroll={false} className="btn btn-ghost btn-sm">
+              {`${t.journey.ticketsExitLens} (${formatNumber(drawable.length)})`}
+            </Link>
+          ) : undefined}
+        />
       ) : (
         <ul role="list" className="grid grid-cols-1 gap-3 md:grid-cols-2" data-testid="millionea-tickets">
           {cards.map(({ g, row, price }) => (
-            <li key={row.serial}>
+            <li key={row.serial} className="flex">
               <MaswaliTicketCard
                 t={t}
                 locale={locale}
@@ -137,6 +178,7 @@ export default async function MillioneaTicketsPage({ searchParams }: { searchPar
                 share={row.share}
                 refundPending={row.refund?.state === "pending"}
                 placedAt={row.boughtAt}
+                className="w-full"
               />
             </li>
           ))}

@@ -485,12 +485,14 @@ const doorDefects = (src: (rel: string) => string) => {
       && handsDown(history, '<TicketsHead current="updown" millionea={millionea} t={t} />')
       && handsDown(squash(code(read("src/app/positions/page.tsx"))), "millionea={millionea} />"));
   const switchSrc = squash(code(read("src/components/journey/tickets/ticket-switch.tsx")));
-  const thirdGated = (s: string) => s.includes('...(millionea ? [{ value: "millionea", labelEn: t.millionea.productLabel, href: "/millionea/tickets" }] : []),')
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-TICKETS L1, the lead's ruling): the third kind wears Millionea's ink (§M8a
+  // item 11: every nav that draws Millionea), through the kit Tabs' `ink`.
+  const thirdGated = (s: string) => s.includes('...(millionea ? [{ value: "millionea", labelEn: t.millionea.productLabel, href: "/millionea/tickets", ink: "millionea" as const }] : []),')
     && s.includes("export function TicketSwitch({ current, millionea, t }: { current: TicketKind; millionea: boolean; t: Dict })")
     && !s.includes("millioneaTicketsDoor") && count(s, 'value: "millionea"') === 1;
   ok("5.6 · Tiketi zangu's third kind sits inside its `millionea ? [...] : []` gate, on the answer its page hands down (the switch reads nothing)", thirdGated(switchSrc));
   ok("5.6′ CONTROL · the third kind drawn outside its gate is reported",
-    !thirdGated(switchSrc.replace('...(millionea ? [{ value: "millionea", labelEn: t.millionea.productLabel, href: "/millionea/tickets" }] : []),', '{ value: "millionea", labelEn: t.millionea.productLabel, href: "/millionea/tickets" },')));
+    !thirdGated(switchSrc.replace('...(millionea ? [{ value: "millionea", labelEn: t.millionea.productLabel, href: "/millionea/tickets", ink: "millionea" as const }] : []),', '{ value: "millionea", labelEn: t.millionea.productLabel, href: "/millionea/tickets", ink: "millionea" as const },')));
 }
 
 // ── §5b · S5-TAB: Millionea's ink (Ali, 2026-10-19; DESIGN_AUTHORITY §M8a item 11) ─────────────────────────────────
@@ -745,8 +747,10 @@ const pagedDefects = (readAt: (rel: string) => string) => {
   if (!list.includes('const { rows: weeks, total, page } = await millioneaMyTickets(gate.userId, { page: Number.parseInt(String(sp.page ?? "1"), 10) || 1, perPage: PLAYER_PER_PAGE, });')) d.push("Tiketi zangu does not read one page of WEEKS with their total");
   if (count(list, "millioneaMyTickets(") !== 1) d.push(`Tiketi zangu reads its list ${count(list, "millioneaMyTickets(")} times`);
   if (!list.includes(`{total > PLAYER_PER_PAGE && ( <div className="mt-4 rounded-lg border border-border bg-bg-elevated/40 overflow-hidden"> <Pagination total={total} page={page} perPage={PLAYER_PER_PAGE} baseHref={buildBaseHref(MILLIONEA_HREF.tickets, { lens: lens === "all" ? undefined : lens })} ${LABELS}`)) d.push("Tiketi zangu has no link pager keeping its lens");
-  if (!list.includes('{total === 0 ? ( <EmptyState kind="positions" title={t.millionea.emptyTickets}')) d.push("\"no ticket yet\" is not kept for a reader who holds none");
-  if (!list.includes(') : cards.length === 0 ? ( <EmptyState kind="positions" title={total > PLAYER_PER_PAGE ? t.millionea.lensNoneOnPage : t.millionea.lensNone} /> ) : (')) d.push("a lens that empties a page does not say so in its own words");
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-TICKETS M3): both states fill for a journey reader, as their siblings do;
+  // a lens that empties says which in the platform's own words (one page: the lens's title; several: "on this page").
+  if (!list.includes('{total === 0 ? ( <EmptyState fill={journey} kind="positions" title={t.millionea.emptyTickets}')) d.push("\"no ticket yet\" is not kept for a reader who holds none");
+  if (!list.includes(') : cards.length === 0 ? ( <EmptyState fill={journey} kind="positions" title={total > PLAYER_PER_PAGE ? t.millionea.lensNoneOnPage : lensEmptyTitle(t, lens)}')) d.push("a lens that empties a page does not say so in its own words");
   const register = squash(code(readAt(REGISTER)));
   if (!register.includes('const { rows: weeks, total, page } = await millioneaRegister({ page: Number.parseInt(String(sp.page ?? "1"), 10) || 1, perPage: PLAYER_PER_PAGE, });')) d.push("the register does not read one page with its total");
   if (!register.includes(`{total > PLAYER_PER_PAGE && ( <div className="rounded-lg border border-border bg-bg-elevated/40 overflow-hidden"> <Pagination total={total} page={page} perPage={PLAYER_PER_PAGE} baseHref={MILLIONEA_HREF.register} ${LABELS}`)) d.push("the register has no link pager");
@@ -771,7 +775,8 @@ const cancelDefects = (readAt: (rel: string) => string) => {
   const confirm = acts.slice(Math.max(0, acts.indexOf("const confirm = () => {")));
   const owner = confirm.indexOf('fd.set("expectedOwnerId", ownerId);'), call = confirm.indexOf("cancelMillioneaTicketAction(fd)");
   if (!(owner > 0 && call > owner)) d.push("the cancel does not send the page's account before it acts");
-  if (!acts.includes("export function TicketCancel({ serial, ownerId, until, serverNow, price, cap }: { serial: string; ownerId: string;")) d.push("TicketCancel takes no owner");
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-TICKETS M4): the door also takes the week's window, for the rule under it.
+  if (!acts.includes("export function TicketCancel({ serial, ownerId, until, serverNow, price, cap, windowMins }: { serial: string;")) d.push("TicketCancel takes no owner");
   if (!squash(code(readAt(TICKET_PAGE))).includes("<TicketCancel serial={view.serial} ownerId={gate.userId}")) d.push("the page does not hand the cancel its session's account");
   if (!squash(code(readAt(`${APP}/slip/slip-client.tsx`))).includes('fd.set("expectedOwnerId", userId);')) d.push("(the parity) the slip's buy no longer sends its account");
   return d;
@@ -1073,7 +1078,9 @@ const emptyListDefects = (src: string) => {
   if (!s.includes("const invite = total === 0 && gate.visible && (await millioneaBreakOf(gate.userId)) === null;")) d.push("the empty list does not ask the break before it invites");
   if (!s.includes("const hubWeek = invite ? (await millioneaHubNow(gate.userId, gate.state))?.week ?? null : null;")) d.push("the week on sale is read for a reader the list may not invite");
   if (!s.includes("body={selling ? fill(t.millionea.emptyTicketsNext,")) d.push("the body is not the week on sale's own line");
-  if (!s.includes("action={invite ? ( <Link href={MILLIONEA_HREF.hub as never}")) d.push("the door to the hub is offered without the invitation's answer");
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-TICKETS M3): the call is the platform's primary verb to the slip, "Fill a
+  // ticket", and only for a week on sale — which is read only for a reader the invitation admits (`hubWeek` asks `invite`).
+  if (!s.includes("const selling = hubWeek?.selling ? hubWeek : null;") || !s.includes('action={selling ? ( <Link href={MILLIONEA_HREF.slip as never} className="btn btn-primary btn-md">{t.millionea.titleSlip}</Link> ) : undefined}')) d.push("the door to the hub is offered without the invitation's answer");
   if (/action=\{gate\.visible \?/.test(s)) d.push("the door to the hub is offered on the rollout alone");
   return d;
 };
@@ -1082,7 +1089,7 @@ const emptyListDefects = (src: string) => {
   ok("14.1 · Tiketi zangu's empty list invites (the week on sale, the door to the hub) only a reader shown Millionea and NOT on a break — on a break, the title alone (the home card's rule)", d.length === 0, d.join(" | "));
   const onRollout = emptyListDefects(read(`${APP}/tickets/page.tsx`).replace("const invite = total === 0 && gate.visible && (await millioneaBreakOf(gate.userId)) === null;", "const invite = total === 0 && gate.visible;"));
   ok("14.1′ CONTROL · an invitation that forgets the break is reported", onRollout.includes("the empty list does not ask the break before it invites"), onRollout.join(" | "));
-  const oldDoor = emptyListDefects(read(`${APP}/tickets/page.tsx`).replace("action={invite ? (", "action={gate.visible ? ("));
+  const oldDoor = emptyListDefects(read(`${APP}/tickets/page.tsx`).replace("action={selling ? (", "action={gate.visible ? ("));
   ok("14.1″ CONTROL · the old door, offered on the rollout alone, is reported", oldDoor.includes("the door to the hub is offered on the rollout alone"), oldDoor.join(" | "));
 }
 

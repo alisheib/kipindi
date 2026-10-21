@@ -35,7 +35,8 @@ export function TicketSwitch({ current, millionea, t }: { current: TicketKind; m
       tabs={[
         { value: "questions", labelEn: t.journey.tabQuestions, href: "/positions" },
         { value: "updown", labelEn: t.nav.updown, href: "/updown/history" },
-        ...(millionea ? [{ value: "millionea", labelEn: t.millionea.productLabel, href: "/millionea/tickets" }] : []),
+        // Millionea's word wears its ink, as in every nav that draws Millionea (§M8a item 11; L1, the lead's ruling).
+        ...(millionea ? [{ value: "millionea", labelEn: t.millionea.productLabel, href: "/millionea/tickets", ink: "millionea" as const }] : []),
       ]}
     />
   );

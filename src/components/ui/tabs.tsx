@@ -149,6 +149,14 @@ export type TabItem = {
    * open item rather than settled by a row that was not commissioned to settle it.
    */
   glyph?: React.ReactNode;
+  /**
+   * ⭐ MILLIONEA'S INK (DESIGN_AUTHORITY §M8a item 11: ONE class, `.kp-millionea-ink`, worn by every nav that draws
+   * Millionea; the R1 tickets critic's L1 and the lead's ruling, Ali 2026-10-21 10/10 pass — Tiketi zangu's kind switch is
+   * such a nav). The label is drawn in the ink: the still green-gold-red word, brightened one tint when lit or hovered by
+   * the ink's own rules. Omitted, the label is drawn exactly as before (`test:maswali-tickets` renders every caller both
+   * ways and holds them byte for byte).
+   */
+  ink?: "millionea";
 };
 
 type Variant = "line" | "segmented" | "pill";
@@ -210,7 +218,7 @@ function TabControl({
           ⭐ Its ink on the tab's start padding (round 10, R10-A6 — glyphs.tsx, "A CENTRED CONTROL FRAMES ITS INK"); a glyph
           with no label beside it is alone and keeps its box. */}
       {hasWords(item.labelEn) ? edgeGlyph(item.glyph, "start") : item.glyph}
-      {item.labelEn}
+      {item.ink === "millionea" ? <span className="kp-millionea-ink">{item.labelEn}</span> : item.labelEn}
       {item.count !== undefined && <CountBadge count={item.count} tone="brand" size="sm" />}
       {trailing}
     </>

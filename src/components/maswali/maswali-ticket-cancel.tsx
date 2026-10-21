@@ -1,7 +1,6 @@
 "use client";
 
-import { I } from "@/components/ui/glyphs";
-import { Spinner } from "@/components/ui/spinner";
+import { Button } from "@/components/ui/button";
 import { useTickSeconds } from "@/components/updown/round-countdown";
 import { eatClock } from "@/components/maswali/maswali-format";
 import { useT } from "@/lib/i18n";
@@ -31,6 +30,31 @@ export function freeLeftLabel(seconds: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
+/** The clock line: "Kughairi bila malipo hadi <time>10:21</time> · <timer>9:42</timer>". */
+function CancelClock({ t, until, left }: { t: ReturnType<typeof useT>["t"]; until: number; left: number | null }) {
+  const [freeBefore, freeAfter] = t.millionea.cancelFreeUntil.split("{time}");
+  return (
+    <p className="text-body-sm text-text-muted">
+      {freeBefore}<time dateTime={new Date(until).toISOString()} className="whitespace-nowrap tabular-nums">{eatClock(until)}</time>{freeAfter}
+      {left !== null && (
+        <>
+          {" · "}
+          <span role="timer" className="whitespace-nowrap font-mono font-bold tabular-nums text-text">{freeLeftLabel(left)}</span>
+        </>
+      )}
+    </p>
+  );
+}
+
+/** The free cancel's line alone — the hub's held row (the hub critic's L20): the same words and the same count as the
+ *  ticket's door, gone the moment the window is. */
+export function MaswaliCancelLine({ until, serverNow }: { until: number; serverNow: number }) {
+  const { t } = useT();
+  const left = useTickSeconds(until, serverNow, true, serverNow);
+  if (left !== null && left <= 0) return null;
+  return <CancelClock t={t} until={until} left={left} />;
+}
+
 export function MaswaliCancelButton({ until, serverNow, price, note, onPress, pending }: {
   /** When the free cancel ends (ms, the server's instant). */
   until: number;
@@ -45,32 +69,21 @@ export function MaswaliCancelButton({ until, serverNow, price, note, onPress, pe
   const { t } = useT();
   const left = useTickSeconds(until, serverNow, true, serverNow);
   if (left !== null && left <= 0) return null;
-  // The dictionary marks where the clock time and the amount sit, so each is drawn in its own element.
-  const [freeBefore, freeAfter] = t.millionea.cancelFreeUntil.split("{time}");
+  // The dictionary marks where the amount sits, so the figure is drawn in its own element.
   const [refundBefore, refundAfter] = t.journey.sellFullRefund.split("{amount}");
   return (
     <div data-testid="millionea-ticket-cancel" className="flex flex-col gap-1.5">
-      <p className="text-body-sm text-text-muted">
-        {freeBefore}<time dateTime={new Date(until).toISOString()} className="whitespace-nowrap tabular-nums">{eatClock(until)}</time>{freeAfter}
-        {left !== null && (
-          <>
-            {" · "}
-            <span role="timer" className="whitespace-nowrap font-mono font-bold tabular-nums text-text">{freeLeftLabel(left)}</span>
-          </>
-        )}
-      </p>
-      <button type="button" onClick={onPress} disabled={pending} aria-busy={pending || undefined}
-        className="btn btn-ghost w-full px-2 py-1.5" style={{ borderColor: "var(--border-control)" }}>
-        <span className="flex flex-col items-center text-center">
-          <span className="inline-flex items-center gap-1.5 whitespace-normal text-body">
-            {pending ? <Spinner size={16} /> : <I.rotateCcw s={16} className="shrink-0" />}
-            {pending ? t.millionea.cancelling : t.millionea.confirmCancel}
-          </span>
+      <CancelClock t={t} until={until} left={left} />
+      {/* The kit's button, grown to hold its two lines (`.kp-mln-free-exit`): the outlined edge is the control's only
+          boundary, so it wears the control edge's token, as the journey's free exit does. */}
+      <Button type="button" variant="ghost" size="lg" fullWidth loading={pending} onClick={onPress} className="kp-mln-free-exit border-border-control">
+        <span className="flex min-w-0 flex-col items-center text-center">
+          <span className="whitespace-normal">{pending ? t.millionea.cancelling : t.millionea.confirmCancel}</span>
           <span className="whitespace-normal text-body-sm font-medium text-text-muted">
             {refundBefore}<span className="amount font-semibold text-text">{formatTzs(price)}</span>{refundAfter}
           </span>
         </span>
-      </button>
+      </Button>
       {note && <p className="text-center text-body-sm text-text-subtle text-pretty">{note}</p>}
     </div>
   );

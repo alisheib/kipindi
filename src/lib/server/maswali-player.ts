@@ -816,8 +816,8 @@ async function ticketsWeekOf(userId: string, week: StoredWeek): Promise<Millione
 }
 
 /** A fact that may perform once on the ticket page (§10 2.1): the cut, a result's press, a carry, the cancel, the
- *  refund, the week's result. */
-export type MillioneaFact = { kind: "cut" | "press" | "carry" | "cancel" | "refund" | "result"; at: string; slot?: number };
+ *  refund, the week's sales close (its lock line, S5-DESIGN-TICKETS L14), the week's result. */
+export type MillioneaFact = { kind: "cut" | "press" | "carry" | "cancel" | "refund" | "close" | "result"; at: string; slot?: number };
 
 export type MillioneaTicketView = MillioneaTicketRow & {
   /** The anchor the permalink's fragment names (E-101): the ticket's root carries this id. */
@@ -891,6 +891,9 @@ function factsOf(
     for (const r of rec.map) if (r.state === "REPLACED_BY") facts.push({ kind: "carry", at: week.gradedSetFinalAt, slot: r.slot });
   }
   if (t.cancelledAt) facts.push({ kind: "cancel", at: t.cancelledAt });
+  // L14 (the lead's ruling, 2026-10-21): the week's RECORDED close, for a ticket live at it — bought before it and not cancelled
+  // by then; no recorded close, no fact (never the scheduled close, never now).
+  if (week.closedAt && Date.parse(t.createdAt) < Date.parse(week.closedAt) && !(t.cancelledAt && Date.parse(t.cancelledAt) <= Date.parse(week.closedAt))) facts.push({ kind: "close", at: week.closedAt });
   if (refund?.state === "landed") facts.push({ kind: "refund", at: refund.at });
   if (week.state === "SETTLED" && week.settledAt) facts.push({ kind: "result", at: week.settledAt });
   return facts.sort((a, b) => Date.parse(a.at) - Date.parse(b.at));

@@ -117,11 +117,15 @@ const goldDefects = (readAt: (rel: string) => string) => MLN_FILES.flatMap((f) =
     loss.length > 0 && !/\bscore\b|\/10|matched"\)\.length/.test(loss));
   const projecting = MLN_FILES.filter((f) => /potentialPayout/.test(code(read(f))));
   ok("1.6 · no potential payout anywhere on Millionea (a held ticket never names a share)", projecting.length === 0, projecting.join(" | "));
-  const PILL = /<MaswaliClosingPill\b/, HOOK = /useCountdown\(/;
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-TICKETS M4, the lead's ruling; §3.8 item 5 "Ghairi with a scoped countdown
+  // that is removed when the window expires"): the free cancel now DRAWS its window's own m:ss — the platform's free-exit
+  // look — on the server-seeded tick (`useTickSeconds`); the closing countdown stays the slip's and the buy block's alone.
+  const PILL = /<MaswaliClosingPill\b/, HOOK = /useCountdown\(/, TICK = /useTickSeconds\(/;
   const pills = MLN_FILES.filter((f) => PILL.test(code(read(f))));
   const hooks = MLN_FILES.filter((f) => HOOK.test(code(read(f))));
-  ok("1.7 · a countdown is DRAWN on the slip and the hub's buy block only (§10 §8); the clock hook elsewhere only reads the close (the slip's composer) or expires a control printing a fixed time (the free cancel)",
-    j(pills) === j([HUB, SLIP].sort()) && j(hooks) === j([SLIP_CLIENT, SLIP, "src/components/maswali/maswali-ticket-cancel.tsx"].sort()), j({ pills, hooks }));
+  const ticks = MLN_FILES.filter((f) => TICK.test(code(read(f))));
+  ok("1.7 · a closing countdown is DRAWN on the slip and the hub's buy block only (§10 §8); the clock hook elsewhere only reads the close (the slip's composer); the free cancel draws its own window's scoped count, nowhere else (§3.8 item 5)",
+    j(pills) === j([HUB, SLIP].sort()) && j(hooks) === j([SLIP_CLIENT, SLIP].sort()) && j(ticks) === j(["src/components/maswali/maswali-ticket-cancel.tsx"]), j({ pills, hooks, ticks }));
 }
 
 // ── §2 · the S5 UI review ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -155,8 +159,10 @@ const PICKS = Array.from({ length: 15 }, () => "YES" as const);
   const unconditional = LOCALES.filter((l) => !conditional[l].test(dict[l].millionea.weekVoidingBody));
   ok("2.H1e · the voiding sentence is conditional in every language (a check can still un-void the week)", unconditional.length === 0, j(unconditional));
   const page = squash(code(read(TICKET_PAGE)));
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-TICKETS L4): a landed refund is said once, in the void's own sentence
+  // ending "…returned to main balance" (`ticketVoidedLanded`); before it lands, "on its way back" as before.
   ok("2.H1f · a ticket's void line says \"refunded\" only once ITS refund landed, \"on its way back\" before",
-    page.includes('fill(refund === "pending" ? t.millionea.weekVoidedBodyPending : t.millionea.weekVoidedBody, {'));
+    page.includes('fill(refund === "landed" ? t.millionea.ticketVoidedLanded : t.millionea.weekVoidedBodyPending, {'));
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-FIX-PLAYER P3): the register's ledger rows are built in register-parts.tsx
   // (`registerLedgerRows`, rendered by test:maswali-register §15); the week page draws them.
   const reg = squash(code(read("src/app/millionea/register/register-parts.tsx")));
@@ -242,8 +248,11 @@ const PICKS = Array.from({ length: 15 }, () => "YES" as const);
   const ticket = squash(code(read(TICKET)));
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-19 (S5 VIS P16, P10): the line has one annex rule now (no `annex` prop: under the mains
   // everywhere), and it rests for every ticket that counts for nothing (`ticketRests`: cancelled AND refunded) — §4 holds both.
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-TICKETS M1): the WHOLE card is the link now, named by its visible door and
+  // its serial (`aria-labelledby`), its state its description; the hub's held row keeps the spelled name, given its words.
   ok("2.M4d · the ticket card's one link carries a visible name in words, its accessible name starting with it",
-    ticket.includes("aria-label={`${t.millionea.viewTicket} · ${serial}`}") && /<MaswaliSealLine line=\{line\} size=\{18\} inert=\{ticketRests\(shown\)\} \/> <span[^>]*>\s?\{t\.millionea\.viewTicket\}/.test(ticket));
+    ticket.includes("aria-labelledby={`${id}-door ${id}-serial`}") && ticket.includes("aria-label={t ? `${t.millionea.viewTicket} · ${serial}` : undefined}")
+      && /<MaswaliSealLine line=\{line\} size=\{18\} inert=\{ticketRests\(shown\)\} \/> <span id=\{`\$\{id\}-door`\}[^>]*>\s?\{t\.millionea\.viewTicket\}/.test(ticket));
 }
 
 // M5 · one radio group per question; M6 · polite regions mounted from the first render
@@ -903,7 +912,11 @@ const restDefects = (seal: string, ticketSrc: string, page: string) => {
   if (!squash(code(seal)).includes('mark === "unused" && "kp-mln-rest"')) d.push("an unused socket is not at rest");
   const t2 = squash(code(ticketSrc));
   if (!t2.includes("const inert = ticketRests(shown);")) d.push("the ticket does not rest for every state that counts for nothing");
-  if (!squash(code(page)).includes('fill(t.millionea.cancelModalBody, { price: formatTzs(view.refund?.state === "landed" ? view.refund.amount : view.stub.price) })')) d.push("the ticket page does not say where the money went");
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-TICKETS L4, L12): a cancel says it in the cancel's words; a landed refund in
+  // the void's own sentence ending the same way; a paid share "Paid to main balance · <when>".
+  const p2 = squash(code(page));
+  if (!p2.includes("? fill(t.millionea.cancelModalBody, { price: formatTzs(view.stub.price) })") || !p2.includes("? t.millionea.ticketVoidedLanded :")
+    || !p2.includes("fill(t.millionea.paidTo, { when: whenOf(t, locale, Date.parse(view.week.settledAt), nowMs) })")) d.push("the ticket page does not say where the money went");
   return d;
 };
 {
@@ -937,13 +950,18 @@ const restDefects = (seal: string, ticketSrc: string, page: string) => {
 const listDefects = (page: string, ticketSrc: string, bar: string) => {
   const d: string[] = [];
   const p = squash(code(page));
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-TICKETS M2, M3, L9 — the R1 tickets critic, Ali 2026-10-21 10/10 pass): a
+  // week's tickets are sorted once and then narrowed by the lens (so an emptied lens can count its way out); the classic
+  // title keeps its one line, under the way back while the product is shown; and the four lenses ride the KIT'S STRIP,
+  // exactly as the journey Tiketi zangu bar does — one row at every width, where P11's own wrap left "Ulizoshinda" alone
+  // on a second row and a two-row sticky bar at 320 (the platform's strip, its fade the platform's "more" cue).
   if (!p.includes("const newestFirst = (a: MillioneaTicketRow, b: MillioneaTicketRow) => (Date.parse(b.boughtAt) - Date.parse(a.boughtAt)) || b.serial.localeCompare(a.serial);")
-    || !p.includes(".filter((row) => inLens(lens, row.shown)).sort(newestFirst).map((row) => ({ g, row, price }))")) d.push("a week's tickets are not newest first");
-  if (!p.includes("<PageHeader eyebrow={t.millionea.productTitle} title={t.millionea.ticketsTitle} />")) d.push("the classic title is not the one-line one");
+    || !p.includes("g.tickets.slice().sort(newestFirst).map((row) => ({ g, row, price }))") || !p.includes("const cards = drawable.filter(({ row }) => inLens(lens, row.shown));")) d.push("a week's tickets are not newest first");
+  if (!p.includes("<PageHeader eyebrow={t.millionea.productTitle} title={t.millionea.ticketsTitle} />") || !p.includes("<PageHeader title={t.millionea.ticketsTitle} />")) d.push("the classic title is not the one-line one");
   const t2 = squash(code(ticketSrc));
   if (t2.includes("text-body-sm leading-snug") || count(t2, "valueClassName={WORDS}") !== 3) d.push("a value in words has another line box than the money beside it");
   const b = code(bar);
-  if (/QueryStrip/.test(b) || !squash(b).includes('<nav aria-label={t.journey.ticketsFilterAria} className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1.5">')) d.push("the four lenses scroll under a fade");
+  if (!squash(b).includes("<QueryStrip ariaLabel={t.journey.ticketsFilterAria}>") || /flex-wrap/.test(b)) d.push("the four lenses wrap off the kit's strip");
   if (!squash(b).includes('case "won": return t.millionea.lensWon;')) d.push("the lenses are not Millionea's words");
   return d;
 };
@@ -956,20 +974,23 @@ const listDefects = (page: string, ticketSrc: string, bar: string) => {
   const lens = sw.millionea.lensOpen === "Zinazoendelea" && sw.millionea.lensSettled === "Zilizokamilika" && sw.millionea.lensWon === "Ulizoshinda" && zh.millionea.lensWon === "已中奖";
   ok(`4.P11 · Tiketi zangu's list: each week's tickets newest first (000042 before 000041), the title one line at 320 ("${en.millionea.ticketsTitle}" ${titleW.toFixed(0)}px in ${column}px, where "${en.millionea.myTicketsTitle}" ${oldW.toFixed(0)}px left "tickets" alone), words on the money rung's line box (the two cards' rows level), four lenses that wrap whole in Millionea's own words (§D)`,
     d.length === 0 && titleW <= column && oldW > column && lens, j({ d, titleW, oldW, lens }));
-  ok("4.P11′ PLANT · the list unsorted, and the lenses back in a scrolling strip, are reported",
+  ok("4.P11′ PLANT · the list unsorted, and the lenses back in a wrap of their own, are reported",
     listDefects(read(LIST_SRC).replace(".sort(newestFirst)", ""), read(TICKET), read(BAR)).some((x) => x.includes("newest"))
-      && listDefects(read(LIST_SRC), read(TICKET), read(BAR).replace('<nav aria-label={t.journey.ticketsFilterAria}', "<QueryStrip ariaLabel={t.journey.ticketsFilterAria}><nav")).some((x) => x.includes("scroll")));
+      && listDefects(read(LIST_SRC), read(TICKET), read(BAR).replace("<QueryStrip ariaLabel={t.journey.ticketsFilterAria}>", '<QueryStrip ariaLabel={t.journey.ticketsFilterAria} className="flex-wrap">')).some((x) => x.includes("wrap")));
 }
 
 // P12 · the free cancel on the first screen; P16 · one annex rule; P13 · the empty board's words; A2, A4, §D
 {
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-TICKETS M4): the door brings its own rule (`TicketCancel` draws the clock,
+  // the button and the note), so the head holds the slot alone — still under the Seal Line, above the first clause.
   const placeDefects = (src: string) => {
     const s = squash(code(src));
-    const cancelAt = s.indexOf("{cancel && ( <div className=\"flex flex-col gap-1.5\"> {cancel}"), firstClause = s.indexOf("<Clause ");
-    return cancelAt > 0 && cancelAt < firstClause && cancelAt > s.indexOf("<MaswaliSealLine line={line} size={24}") ? [] : ["the free cancel waits under the fifteen clauses"];
+    const cancelAt = s.indexOf('{cannotWin && <Callout tone="neutral">{t.millionea.cannotWin}</Callout>} {cancel} </div> <ol>'), firstClause = s.indexOf("<Clause ", s.indexOf("return ("));
+    const lineAt = s.indexOf("{carry || draw ? <MaswaliMoment>{sealLine}</MaswaliMoment> : sealLine}");
+    return cancelAt > 0 && lineAt > 0 && cancelAt < firstClause && cancelAt > lineAt ? [] : ["the free cancel waits under the fifteen clauses"];
   };
   ok("4.P12 · a pending ticket's free cancel stands in its head, under the Seal Line — on the first screen (the stamp promised \"Free cancel until 11:18\")", placeDefects(read(TICKET)).length === 0);
-  const below = read(TICKET).replace(/\n          \{cancel && \(\n[\s\S]*?\n          \)\}\n        <\/div>\n        <ol>/, "\n        </div>\n        <ol>").replace("      </article>\n", "      </article>\n      {cancel && (\n        <div className=\"flex flex-col gap-1.5\">\n          {cancel}\n        </div>\n      )}\n");
+  const below = read(TICKET).replace("\n          {cancel}\n        </div>\n        <ol>", "\n        </div>\n        <ol>").replace("      </article>\n", "      </article>\n      {cancel}\n");
   ok("4.P12′ PLANT · the cancel moved back under the ticket is reported", below !== read(TICKET) && placeDefects(below).length > 0);
   const SEAL = "src/components/maswali/maswali-seal-line.tsx";
   const annexDefects = (src: string) => {

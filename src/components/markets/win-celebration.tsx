@@ -57,6 +57,16 @@ export type WinCelebrationPayload = {
    * not count). Omitted, the seal counts up as it always has; nothing else about the seal changes either way.
    */
   roll?: boolean;
+  /**
+   * MASWALI-BUILD S5-DESIGN-TICKETS (the motion critic's note, Ali 2026-10-21 10/10 pass): a seal that is not a bet's says
+   * it in its own words — `eyebrow` over `heading` ("MILLIONEA · WIKI 49" over "Umeshinda", the v6 delivery's
+   * W-seal frames), never the platform's "MADAU YAMEFANIKIWA" (a position won) — and its context as `facts`, a fact line
+   * whose every fact stays whole (a ticket's serial never breaks at its hyphens) and whose separator never opens or ends a
+   * line. Omitted, the seal draws exactly what it always has: the platform's eyebrow, heading and `label`.
+   */
+  eyebrow?: string;
+  heading?: string;
+  facts?: ReadonlyArray<string>;
   /** ⛔ SET BY `dispatchWinCelebration`, NEVER BY A CALLER — see the function below. */
   ack?: { accepted: boolean };
 };
@@ -290,7 +300,15 @@ export function WinCelebrationHost() {
 
   // "Won! · Congratulations" collapsed to ONE headline (spec §3 copy law): mono
   // eyebrow, Sora headline, struck mono amount — three treatments, down from five.
-  const heading = t.market.wonHeading;
+  // A seal that is not a bet's brings its own words (Millionea's, `eyebrow` / `heading`); omitted, the platform's.
+  const heading = payload.heading ?? t.market.wonHeading;
+  /* ⭐ THE AMOUNT IS ONE LINE AT EVERY WIDTH (MASWALI-BUILD S5-DESIGN-TICKETS, for every caller — the lead's ruling,
+     2026-10-21): a seven-digit win at 38px broke "TZS" / "1,234,500" at 320 and 360 in all three languages (the before
+     tiles). The figure is one `.amount` run that never wraps, and its size steps down only as far as its own characters
+     need to fit the seal's column: a mono face advances 0.6em a character, so `100cqi / (chars × 0.62)` is the largest
+     size the final figure fits at, never above the 38px it always had. A count-up is sized for its final figure, so the
+     size never moves while it counts. An engine without container units keeps the 38px. */
+  const amountFit = { "--seal-chars": formatTzs(payload.amount).length, fontSize: "min(38px, calc(100cqi / (var(--seal-chars) * 0.62)))" } as CSSProperties;
 
   /* ⭐ The ✕ stays in Modal's corner, the one ruled exception to F20 (round 6, 2026-10-09, review C9): this dialog opens on
      its seal (80px of air, then the seal), with no title in the band beside the ✕ — `operation-result-modal.tsx` says why
@@ -313,7 +331,7 @@ export function WinCelebrationHost() {
           className="g-settle font-mono text-micro uppercase tracking-[0.2em] font-bold text-gold-300"
           style={{ "--i": 0 } as CSSProperties}
         >
-          {t.common.positionWon}
+          {payload.eyebrow ?? t.common.positionWon}
         </p>
 
         {/* Headline — one line, Sora */}
@@ -327,12 +345,15 @@ export function WinCelebrationHost() {
         {/* The amount — mono, tabular, NEVER letter-spaced (M4); strikes to gilt
             as the count lands. Gold ink before the strike so the roll is already
             an earned-money figure, struck metal once it is final. */}
-        <p
-          className={`g-settle mt-3 font-mono text-[38px] font-bold leading-[1.1] tabular-nums ${struck ? "gilt-ink" : "text-gold-300"}`}
-          style={{ "--i": 2 } as CSSProperties}
-        >
-          <RollingAmount value={payload.amount} onStruck={setStruck} roll={payload.roll !== false} />
-        </p>
+        <div className="g-settle mt-3 w-full [container-type:inline-size]" style={{ "--i": 2 } as CSSProperties}>
+          <p
+            data-seal-amount=""
+            className={`whitespace-nowrap font-mono text-[38px] font-bold leading-[1.1] tabular-nums ${struck ? "gilt-ink" : "text-gold-300"}`}
+            style={amountFit}
+          >
+            <RollingAmount value={payload.amount} onStruck={setStruck} roll={payload.roll !== false} />
+          </p>
+        </div>
 
         {typeof payload.net === "number" && (
           <p
@@ -348,7 +369,22 @@ export function WinCelebrationHost() {
             at two lines, so a long question lost its end on the one screen that says what the player just won: the clamp
             G3 took off the ticket card and C17 off the classic position card — a clamp is for BROWSING cards (Q6), never
             for the player's own money. Set as every market title is (R5-E, F1 F4); the seal's column grows a line. */}
-        {payload.label && (
+        {payload.facts && payload.facts.length > 0 ? (
+          // A seal's own facts (Millionea's: the tickets at 10/10, then each serial): one whole fact per line, centred, so
+          // no separator ever opens or ends a line and a serial never breaks at its hyphens. A screen reader and a copy
+          // read them joined, "1 ticket at 10/10 · MLN-…".
+          <p
+            className="g-settle mt-[10px] flex flex-col items-center text-[13px] text-text-subtle"
+            style={{ "--i": 4 } as CSSProperties}
+          >
+            {payload.facts.map((f, i) => (
+              <span key={i} className="whitespace-nowrap">
+                {i > 0 && <span className="sr-only">{" · "}</span>}
+                {f}
+              </span>
+            ))}
+          </p>
+        ) : payload.label && (
           <p
             className="g-settle mt-2.5 text-[13px] text-text-subtle text-balance"
             style={{ "--i": 4 } as CSSProperties}

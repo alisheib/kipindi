@@ -254,7 +254,7 @@ const BASELINE = new Set<string>([
      inline refusal sit on the flat rung. ⚠️ Each body was read first: `m-axis-reveal` and `m-seal` run on `--t-stage` /
      `--m-settle`, `mat-flat` is the M2 ladder's rung 0 with its `--mat-tint` slot — current recipes, nothing superseded. */
   "m-behind", "m-focusable", "m-needle", "m-press",
-  "m-raise", "m-skeleton", "mat-raised-i", "needle-settle-loss",
+  "m-raise", "m-skeleton", "needle-settle-loss",
   // ── One-off page furniture whose page was rebuilt around it.
   "market-search", "mcardp-q-sw", "tooltip-popover", "value-flash",
   /* ⭐ `value-delta` CAME OFF THIS LIST 2026-10-01 (S6 WP4), the good direction again, like `m-indicator` above:

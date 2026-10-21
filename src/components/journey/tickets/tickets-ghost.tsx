@@ -20,8 +20,11 @@ import type { Dict } from "@/lib/i18n-dict";
 /** The seven lenses, at widths near their labels' (a row of identical boxes reads as a loading bar, not a strip). */
 const LENS_WIDTHS = ["w-[64px]", "w-[64px]", "w-[112px]", "w-[96px]", "w-[112px]", "w-[112px]", "w-[96px]"];
 
-/** The head of Tiketi zangu, on both kinds: the name, then the two kinds' underline rail. */
-export function TicketsHeadGhost({ t }: { t: Dict }) {
+/** The head of Tiketi zangu, on every kind: the name, then the kinds' underline rail.
+ *  `kinds` (2 by default) is how many kinds the page's switch draws: the Millionea tickets page always draws three (the
+ *  route ghost hands it `kinds={3}`), so its ghost draws three boxes and the switch lands where they stood (the R1 tickets
+ *  critic's M9). Omitted, the two boxes it always drew. */
+export function TicketsHeadGhost({ t, kinds = 2 }: { t: Dict; kinds?: 2 | 3 }) {
   return (
     <div className="space-y-4">
       <PageHeader title={t.journey.tabTickets} />
@@ -31,6 +34,7 @@ export function TicketsHeadGhost({ t }: { t: Dict }) {
       <div className="flex items-end gap-1 border-b border-border" data-rail-ghost="" aria-hidden>
         <div className="h-[44px] w-[96px] rounded-md bg-bg-overlay kp-shimmer-track" />
         <div className="h-[44px] w-[96px] rounded-md bg-bg-overlay kp-shimmer-track" />
+        {kinds === 3 && <div className="h-[44px] w-[96px] rounded-md bg-bg-overlay kp-shimmer-track" />}
       </div>
     </div>
   );

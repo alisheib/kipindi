@@ -106,10 +106,10 @@ async function account(balance: number, role: "PLAYER" | "MODERATOR" = "PLAYER",
   return id;
 }
 
-const must = <T>(what: string, r: { ok: true } & T | { ok: false; error: string }): T => {
-  if (!r.ok) throw new Error(`${what}: ${(r as { error: string }).error}`);
-  return r as T;
-};
+/** A service's refusal stops the seed, naming the step and the service's own reason. */
+function must(what: string, r: { ok: boolean }): void {
+  if (!r.ok) throw new Error(`${what}: ${(r as { error?: string }).error ?? "refused"}`);
+}
 
 /** Drafts and opens a week whose Monday is `ms`, under the floor given (the rules freeze at the open), then puts it back. */
 async function opened(ms: number, floorTzs?: number) {

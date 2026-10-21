@@ -548,9 +548,12 @@ ok("8.3 · the week settled: two tickets of ten of ten", releasedA.ok && (await 
       && !/"score"|carried(Out|Forward)":\s*\d/.test(J(l)), J(l.loss));
   // (The presses carry the week's own seal clock, which the money world runs weeks ahead; the result, the real one.)
   const kinds = v.seen.unseen.map((f: any) => f.kind);
-  ok("8.7 · ⭐ a backlog rests: the cut, fifteen presses and the result unseen at once — more than four, so none animates",
-    v.seen.unseen.length === 17 && v.seen.backlogRests === true && kinds.filter((k: string) => k === "press").length === 15
-      && kinds.includes("cut") && kinds.includes("result"), J(kinds));
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-TICKETS L14, the lead's ruling): the week's recorded sales close is a fact
+  // of every ticket live at it ("close", its stub's lock line), so the backlog is eighteen — and the close is one of them.
+  ok("8.7 · ⭐ a backlog rests: the cut, the close, fifteen presses and the result unseen at once — more than four, so none animates",
+    v.seen.unseen.length === 18 && v.seen.backlogRests === true && kinds.filter((k: string) => k === "press").length === 15
+      && kinds.includes("cut") && kinds.includes("close") && kinds.includes("result")
+      && !!v.week.closedAt && v.seen.unseen.find((f: any) => f.kind === "close")?.at === v.week.closedAt, J(kinds));
   const marked = await ACT.markMillioneaTicketSeenFor(P1, p1Win1.serial, v.seen.through);
   const after = await P.millioneaTicket(P1, p1Win1.serial);
   ok("8.8 · seen by its owner through the view's own instant, every fact rests: nothing unseen, and the backlog no longer matters",

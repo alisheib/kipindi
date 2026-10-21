@@ -4746,6 +4746,27 @@ html[data-sheet-open] .route-enter { animation: none; }
    of a cancelled or refunded ticket — the open ring at the disabled control's own opacity, so it never reads as the live
    "awaiting" ring beside it (`maswali-seal-line.tsx`, `SocketGlyph`). */
 .kp-mln-rest { opacity: var(--state-disabled-opacity); }
+/* MASWALI-BUILD S5-DESIGN-TICKETS · A MOMENT WAITS FOR ITS OWNER'S EYES (the R1 tickets critic's M8 and the motion critic's
+   H3, Ali 2026-10-21 10/10 pass; `maswali-moment.tsx` says why). Inside a moment that has not yet come into view
+   (`[data-mln-moment]` without `[data-mln-played]`, which React renders from the observer's state) every N-block animation
+   — and the axis reveal and the line draw a ticket's moments use — holds its FIRST frame, so it starts when the owner can
+   see it and never blinks from its end frame back to its first. ⛔ Scoped off both clamps (the OS preference and the in-app
+   switch, whose `animation: none` IS the end frame) and to an engine running scripts: without JavaScript nothing waits and
+   each moment plays where it stands. The low-end `reduced` tier waits and plays like every other device (§M8a item 5). */
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  html:not(.kp-reduce-motion):not([data-motion="minimal"]) [data-mln-moment]:not([data-mln-played]) :is(.maswali-cut, .maswali-cut-undo, .maswali-attest, .maswali-carry, .m-axis-reveal, .m-draw, .m-seal) {
+    animation-play-state: paused;
+  }
+}
+/* MASWALI-BUILD S5-DESIGN-TICKETS · THE FREE CANCEL'S DOOR (M4, H3): the kit's lg button holding the journey free exit's two
+   lines — "Ghairi tiketi" over "Rudishiwa TZS 1,000 kamili" — at least the lg control's height, its lines free to wrap so a
+   long language never runs past the edge (the clock and the rule sit outside it, on lines of their own). */
+.btn.kp-mln-free-exit {
+  height: auto;
+  min-height: var(--h-control-lg);
+  padding-block: var(--sp-1);
+  white-space: normal;
+}
 /* MASWALI-BUILD S5 · How-to's example Button keeps its full approved Swahili instruction. At 320px
    its unwrapped text ran past the card's right edge (how-sw-320-s2); let this one kit control grow
    to two lines while keeping the md control's minimum tap height and the card's content width. */
