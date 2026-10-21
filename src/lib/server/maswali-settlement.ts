@@ -676,12 +676,14 @@ export async function healStrayMillioneaHolds(): Promise<{ checked: number; lift
  * share behind it has the hold lifted. Each section holds `maswali:chain` (as every hold and lift of this reason does) and
  * works through the accounts in batches: ONE read of the batch's wallets (one without the hold is passed by) and ONE of its
  * held shares (a held share keeps its hold), both under this lock, where no hold, lift or held share can change; then each
- * hold lifted (`removeWalletFreeze`, outside the lock's transaction as `holdWallet` places it; it records each lift once, and
- * a hold already gone writes and records nothing). A section lifts for at most HOLD_SECTION_MS (at least one account), then
- * lets the lock go, and the next reads again. A stop between sections leaves each account lifted (written and recorded) or
- * still held, never half; running it again — the act's next attempt, or the heal — lifts only what is left, each once. A
- * failed read stops the lift with the rest held (the safe side); a failed lift is logged and the next goes on. Returns the
- * accounts it lifted.
+ * hold lifted (`removeWalletFreeze`: it records each lift once, and a hold already gone writes and records nothing). Its
+ * `wallet:` lock JOINS the section's transaction, as the one-account lift always did — no transaction of its own per
+ * account (S16 measured the lift that opened one per account at 44 ms an account behind a release's 7,000 holds), and no
+ * wallet stays locked longer than the section's own HOLD_SECTION_MS. A section lifts for at most that long (at least one
+ * account), then lets the lock go, and the next reads again. A stop between sections leaves each account lifted (written
+ * and recorded) or still held, never half; running it again — the act's next attempt, or the heal — lifts only what is
+ * left, each once. A failed read stops the lift with the rest held (the safe side); a failed lift is logged and the next
+ * goes on. Returns the accounts it lifted.
  */
 async function liftHoldsIfClear(userIds: readonly string[], note: string, actorId: string | null = null): Promise<string[]> {
   const queue = [...new Set(userIds)];
@@ -705,7 +707,7 @@ async function liftHoldsIfClear(userIds: readonly string[], note: string, actorI
             doneHere++;
             if (!carrying.has(userId) || keep.has(userId)) continue;
             try {
-              const r = await runOutsideLock(() => removeWalletFreeze(userId, "MILLIONEA_SHARE", { actorId, note }));
+              const r = await removeWalletFreeze(userId, "MILLIONEA_SHARE", { actorId, note });
               if (r.ok && r.changed) lifted.push(userId);
             } catch (err) {
               // The hold stays — the safe side: the money cannot move. The act's next attempt, or the heal, re-checks it.
