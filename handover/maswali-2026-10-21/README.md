@@ -9,11 +9,11 @@ verified and what is left. The lane agents' memory dies with the OMEGA session; 
 ### Branches at the stop (all pushed)
 | Lane | Branch | Head | State |
 |---|---|---|---|
-| **S5 release** (integration) | `claude/maswali-s5-release` | a118f7545 | holds fix-srv (all of it, 1e88fdb93), fix-player, parity, PLATFORM (all, f2bcba995: D1–D15), main `67e47f8d2`, DOORS (with REGISTER's shared pieces d5446df25 + 26503c06c) and HUB; tsc 0 ; hub-reads 17/17 and player 187 per store, engine 210 PG, doors 53, hub 53 |
+| **S5 release** (integration) | `claude/maswali-s5-release` | 730a8b615 | holds fix-srv (all of it, 1e88fdb93), fix-player, parity, PLATFORM (all, f2bcba995: D1–D15), TICKETS (ae2ce1f0b; its dev seed and the hub's dev route now attest/move with FIX-SRV's API), main `67e47f8d2`, DOORS (with REGISTER's shared pieces d5446df25 + 26503c06c) and HUB; tsc 0 ; hub-reads 17/17 and player 187 per store, engine 210 PG, doors 53, hub 53 |
 | S5-DESIGN-DOORS | `claude/maswali-s5-design-doors` | 8881bd0c4 | DONE (every cell 10), merged |
 | S5-DESIGN-HUB | `claude/maswali-s5-design-hub` | 9776e6c2c | DONE except merge-dependent cells (MERGE-NOTES "HUB"), merged |
 | S5-DESIGN-SLIP | `claude/maswali-s5-design-slip` | 5139fce7d | DONE except the composer pills (ruled (a), MERGE-NOTES); NOT merged yet — dry-run conflicts: DESIGN_AUTHORITY.md, package.json, maswali-design.test.mts, globals.css |
-| S5-DESIGN-TICKETS | `claude/maswali-s5-design-tickets` | ae2ce1f0b | DONE (every row 10; F visual 9 = the ledger note REGISTER fixed); NOT merged yet — dry-run conflict: package.json |
+| S5-DESIGN-TICKETS | `claude/maswali-s5-design-tickets` | ae2ce1f0b | DONE (every row 10; F visual 9 = the ledger note REGISTER fixed), merged (conflicts per HUB's map, explained in 2698b3bb5) |
 | S5-DESIGN-REGISTER | `claude/maswali-s5-design-register` | 33a2b4ea9 | DONE round 1 (every cell 10); its shared pieces partly in the release via DOORS; NOT merged yet (latest) — dry-run conflict: maswali-design.test.mts |
 | S5-FIX-PLATFORM | `claude/maswali-s5-fix-platform` | f2bcba995 | DONE D1–D15 (D15 chat yield .50 measured), merged (r5d 5.1 classifies FIX-SRV's audit-warning reader; tsc 0) |
 | S5-FIX-SRV | `claude/maswali-s5-fix-srv` | 1e88fdb93 | DONE, merged |
@@ -23,7 +23,7 @@ verified and what is left. The lane agents' memory dies with the OMEGA session; 
 | (Codex's S6 L+D prep) | `codex/maswali-s6-ld-prep-20261019` | 44f2cc84f | kept for the S6 lanes |
 
 ### Next, in order
-1. **Finish the S5 integration** on `claude/maswali-s5-release`: merge SLIP, TICKETS and REGISTER (its latest) — conflicts and their resolutions in MERGE-NOTES (the dry-run list, HUB's merge map). Then, once: scripts/glyphs
+1. **Finish the S5 integration** on `claude/maswali-s5-release`: merge SLIP and REGISTER (its latest) — conflicts and their resolutions in MERGE-NOTES (the dry-run list, HUB's merge map). Then, once: scripts/glyphs
    map.ts FILL_KEYS `salesPaused` + `npm run glyphs:gen` with PREVIOUS_SPRITES = the pair production serves at that moment,
    and the hub's paused Callout → `glyph="salesPaused"`; the D19a re-pin (`test:house-bot-blob-pin`); move `sealLineOf`
    out of the "use client" seal-line file into a pure module (millionea-view.ts imports it as a value — the root of
