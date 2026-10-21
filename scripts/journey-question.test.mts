@@ -33,7 +33,14 @@ const questionGhost = read("src/components/journey/question/question-ghost.tsx")
 // only the default export's name changed. Comparing the original bytes keeps future main merges from rebasing proof.
 const CLASSIC_GHOST_BASE = "7624cf8c9db9f6e43d62d3ff03d09364385e96cc";
 const oldBoardGhost = execFileSync("git", ["show", `${CLASSIC_GHOST_BASE}:src/app/markets/loading.tsx`], { encoding: "utf8" }).replace(/\r\n/g, "\n");
-const canonicalBoardGhost = oldBoardGhost.replace("export default function MarketsLoading()", "export default function MarketsGhost()");
+// 2026-10-21 · U43 Release B (1384383fd) changed ONE line of this classic drawing on purpose: the board's card
+// placeholders take the market card's own corner (`.mcardp` is `--r-lg`, 16px) where Tailwind's `rounded-md` drew 8px,
+// so the ghost no longer draws sharper cards than the page it stands in for. That is the U43 card release changing the
+// classic board, not the journey leaking into it; the canonical drawing carries that one line, named, and nothing else.
+const U43_CARD_CORNER = ['className="kp-shimmer-track rounded-md border border-border bg-bg-elevated"',
+  'className="kp-shimmer-track rounded-[var(--r-lg)] border border-border bg-bg-elevated"'] as const;
+const canonicalBoardGhost = oldBoardGhost.replace("export default function MarketsLoading()", "export default function MarketsGhost()")
+  .replace(U43_CARD_CORNER[0], U43_CARD_CORNER[1]);
 const boardGhost = readFileSync(new URL("../src/app/markets/markets-ghost.tsx", import.meta.url), "utf8").replace(/\r\n/g, "\n");
 const decode = (s: string) => s.replaceAll("&quot;", '"').replaceAll("&#x27;", "'").replaceAll("&amp;", "&").replaceAll("&lt;", "<").replaceAll("&gt;", ">");
 const attr = (html: string, name: string) => { const match = new RegExp(` ${name}="([^"]*)"`).exec(html); return match ? decode(match[1]) : null; };
@@ -74,7 +81,8 @@ function checks(w: World): string[] {
     && w.parentLoading.includes('import { headers } from "next/headers";')
     && w.parentLoading.includes('const pathname = (await headers()).get("x-pathname") ?? "";')
     && !w.parentLoading.includes('"use client"') && !w.detailLoading.includes('"use client"'));
-  ok("board-ghost", oldBoardGhost.includes("export default function MarketsLoading()") && w.boardGhost === canonicalBoardGhost);
+  ok("board-ghost", oldBoardGhost.includes("export default function MarketsLoading()") && oldBoardGhost.split(U43_CARD_CORNER[0]).length === 2
+    && w.boardGhost === canonicalBoardGhost);
   ok("ghost-marker", (w.questionGhost.match(/data-testid="journey-question-ghost"/g) ?? []).length === 1
     && /<header data-testid="journey-question-ghost" className="mt-3 mb-5" aria-hidden>/.test(w.questionGhost));
   return failed;
@@ -101,6 +109,7 @@ if (!process.argv.includes("--prove-red")) {
     ["ghost-marker", { ...real, questionGhost: questionGhost.replace('data-testid="journey-question-ghost"', '') }],
     ["board-ghost", { ...real, boardGhost: boardGhost.replace('tier="board"', 'tier="reading"') }],
     ["board-ghost", { ...real, boardGhost: boardGhost.replace('"use client";', '') }],
+    ["board-ghost", { ...real, boardGhost: boardGhost.replace(U43_CARD_CORNER[1], U43_CARD_CORNER[0]) }],
     ["loading", { ...real, parentLoading: parentLoading.replace('"x-pathname"', '"x-wrong-pathname"') }],
     ["loading", { ...real, parentLoading: `"use client";\n${parentLoading}` }],
   ];
