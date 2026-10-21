@@ -13,14 +13,15 @@
  * Postgres can make). It only ever rises: 62/63 → 85/89 with the review's R3, R4c, R6, R8 and R9 cases, → 96/100 with
  * its second round (the calendar chain, the late duplicate, the forfeit's lift, the heal, the counted bulk, B9) (2026-10-17),
  * → 102/106 with S7's §4b (a missing payee refused before the carry, 9277c9ab5) and §S7F8 (the holds in sections of the
- * chain lock, S7-F8 4): what 66f3af8be's run printed (2026-10-21).
+ * chain lock, S7-F8 4): what 66f3af8be's run printed (2026-10-21), → 106/110 with S7F8.3–S7F8.6 (the lifts in sections,
+ * S7-F8 7): what 4699b4898's run printed (2026-10-21).
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({
   suite: "test:maswali-settle",
   casesFile: "scripts/lib/maswali-settle-child.mts",
-  minPass: { memory: 102, postgres: 106 },
+  minPass: { memory: 106, postgres: 110 },
   dbPrefix: "mlw_settle",
   timeoutMs: 30 * 60_000,
 });

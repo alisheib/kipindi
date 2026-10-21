@@ -2380,8 +2380,20 @@ stays open as KNOWN-RED TK.2, with MB-23 (OB.0) and MB-74 (RD.5): §6.1 Gate B l
   once in 15 sections of the lock — 14 of holds at 5.0 s each, the paying one 9.4 s, each inside the budget, 81.6 s in
   all (about 10.5 ms a hold on a quieter machine): 7,000 payouts, 14,010 ledger lines, the pool at 0, every balance to the
   shilling, 7,000 wallets held with one audit row each, and a replay paid nothing and held nothing again. The wide week
-  stayed one section (6.7 s). The trial balance (14,808 wallets) and every invariant held. A release refused after it
-  placed thousands of holds still lifts them one at a time — minutes, with the nightly heal behind a stop midway.
+  stayed one section (6.7 s). The trial balance (14,808 wallets) and every invariant held.
+- **S7 · the lifts, in sections too (S7-F8 7–8, 2026-10-21; S16's refused shape on scratch PostgreSQL).** A release refused
+  after its holds lifted them one chain-lock transaction per account: 7,000 in 134.5 s (none left frozen when nothing
+  stopped it; on a busier machine a stop after 1,214 left 5,785 frozen for the nightly heal). **Now** every lift — a
+  refusal's, a rollback's, an `already`'s, the heal's and a single share's — goes through ONE lifter in sections of the
+  chain lock (`liftHoldsIfClear`): each section reads its accounts' wallets and held shares in batches under the lock, a
+  held share keeps its hold, each lift joins the section's transaction (S16 measured one transaction per lift at 44 ms an
+  account behind a release's holds), a hold already gone writes and records nothing, and a stop between sections leaves
+  each account lifted or held, never half. **Measured** (S16 at `4699b4898`, 41 passed, 0 failed): the 7,000 lifts took
+  56.9 s in 12 sections, none left frozen; a second refused attempt whose process ended after 3 lift sections left 1,633
+  lifted and 5,367 held, each whole, and the heal lifted exactly those 5,367 (60.3 s, 13 sections), none left frozen; each
+  account's trail then read three holds and two lifts, and the week settled once (21 sections, the paying one 15.6 s,
+  every one inside the budget). Guards: `test:maswali-settle` S7F8.3–S7F8.6 on both stores; plants (R6-lift),
+  (S7-F8-lift-held) and (S7-F8-lift-yield) in `red:maswali-money-path`.
 
 #### S8 · Live drive and public launch
 
