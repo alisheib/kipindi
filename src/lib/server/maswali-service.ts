@@ -740,7 +740,7 @@ export async function sealQuestion(input: {
 /** The second officer's confirmation of a seal made while the two-officer flag was on (MR-14). ⛔ Never the sealer. */
 export async function confirmSeal(input: { weekId: string; slot: number; officerId: string; expectedOutcome: MaswaliOutcome; expectedSealedAt: string; now?: Date }): Promise<Result<{ recorded: boolean }>> {
   const nowMs = (input.now ?? new Date()).getTime();
-  const res = await withLock(MASWALI_CHAIN_LOCK, async (tx): Promise<Result<{ owed: OwedAudit[] }>> => {
+  const res = await withLock(MASWALI_CHAIN_LOCK, async (tx): Promise<Result<{ weekVoidCertain: boolean; owed: OwedAudit[] }>> => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
     // ⛔ S5 review 4 · the second half of a seal is refused once the week's results are final, as a seal and a correction
@@ -760,13 +760,20 @@ export async function confirmSeal(input: { weekId: string; slot: number; officer
     await questionStore.patch(q.id, { stage2By: input.officerId, stage2At: new Date(nowMs).toISOString() }, tx ?? undefined);
     const g = await recomputeGateLocked(week.id, nowMs, tx ?? undefined);
     if (!g.ok) throw new Error(g.error);
-    return { ok: true, owed: [
+    return { ok: true, weekVoidCertain: g.weekVoidCertain, owed: [
       { category: "ADMIN", action: "maswali.question.confirmed", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id, payload: { week: week.code, slot: slotLabel(q.slot) } },
       ...g.owed,
     ] };
   });
   if (!res.ok) return res;
-  return { ok: true, recorded: await recordOwed(res.owed) };
+  const recorded = await recordOwed(res.owed);
+  if (res.weekVoidCertain) {
+    // ⛔ S5 review 5 · with the two-officer rule on, a VOID counts only once confirmed — so the confirmation, not the seal,
+    //    can make the week void certain while it sells. It stops the sales at once, as a seal does (MR-18).
+    const w = await weekStore.get(input.weekId);
+    if (w?.state === "OPEN") await closeWeek({ weekId: w.id, actorId: SYSTEM, early: true, now: new Date(nowMs) });
+  }
+  return { ok: true, recorded };
 }
 
 /**

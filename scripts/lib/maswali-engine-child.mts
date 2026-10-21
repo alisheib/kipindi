@@ -661,5 +661,35 @@ console.log("\n§10 · a config change applies from the next week");
   await saveMaswaliConfig({ ticketCapPerWeek: 10 }, DRAFTER);
 }
 
+// ── §11 · under the two-officer rule, the confirmation that makes the void certain stops the sales ─────────────────
+console.log("\n§11 · a confirmed void stops the sales at once (S5-FIX-SRV 5)");
+{
+  // The week 4.5 drafted and attested (a standing attestation is never redone, 2.8h).
+  const next = (await weekStore.list({ visibility: "PUBLIC", states: ["DRAFT"] }))[0];
+  const opened2 = next ? await svc.openWeek({ weekId: next.id, officerId: DRAFTER, guarantee: RICH, now: nowOpen }) : null;
+  ok("11.0 · premise · the next public week, attested in 4.5, is on sale", next?.parityAttestedBy === READER && !!opened2?.ok, errOf(opened2 ?? { ok: false, error: "no draft" }));
+  if (next && opened2?.ok) {
+    await setRequireTwoOfficerResolution(true, OWNER);
+    try {
+      for (let slot = 1; slot <= 6; slot++) {
+        await svc.sealQuestion({ weekId: next.id, slot, outcome: "VOID", voidReason: "criterion_wrong", evidence: `Criterion ${slot} is materially wrong (found before the close)`, officerId: SEALER, now: nowOpen });
+      }
+      ok("11.1 · six VOIDs sealed under the two-officer rule do not count yet: the week still sells",
+        (await weekStore.get(next.id))!.state === "OPEN");
+      const voids = (await questionStore.listForWeek(next.id)).filter((q) => q.slot <= 6);
+      for (const q of voids.slice(0, 5)) await svc.confirmSeal({ weekId: next.id, slot: q.slot, officerId: READER, expectedOutcome: q.outcome!, expectedSealedAt: q.sealedAt!, now: nowOpen });
+      ok("11.2 · …nor do five confirmed: one void short of certain, the week still sells", (await weekStore.get(next.id))!.state === "OPEN");
+      const sixth = voids[5];
+      const last = await svc.confirmSeal({ weekId: next.id, slot: sixth.slot, officerId: READER, expectedOutcome: sixth.outcome!, expectedSealedAt: sixth.sealedAt!, now: nowOpen });
+      const after = (await weekStore.get(next.id))!;
+      ok("11.3 · ⭐ the sixth confirmation makes the week void certain and stops its sales at once, as a seal would (MR-18, finding 5)",
+        last.ok && after.state === "CLOSED" && after.closedAt === nowOpen.toISOString()
+          && (await marketStore.get(after.marketId!))?.selectionClosedAt === nowOpen.toISOString(), JSON.stringify({ last, state: after.state, closedAt: after.closedAt }));
+    } finally {
+      await setRequireTwoOfficerResolution(false, OWNER);
+    }
+  }
+}
+
 console.log(`${String.fromCharCode(10)}@@SUMMARY ${JSON.stringify({ pass, fail, store: STORE })}`);
 process.exit(fail === 0 ? 0 : 1);

@@ -373,6 +373,15 @@ export const MUTATIONS = [
     expect: "9.7 · ⛔ a confirmation on a SETTLED week is refused",
     suite: "engine",
   },
+  // ── S5-FIX-SRV 5 · the confirmation that makes the week void certain stops its sales ─────────────────────────────
+  {
+    name: "(49) a confirmation that makes the week void certain lets it keep selling",
+    file: SVC,
+    from: "    if (w?.state === \"OPEN\") await closeWeek({ weekId: w.id, actorId: SYSTEM, early: true, now: new Date(nowMs) });\n  }\n  return { ok: true, recorded };",
+    to: "  }\n  return { ok: true, recorded };",
+    expect: "11.3 · ⭐ the sixth confirmation makes the week void certain",
+    suite: "engine",
+  },
   // ── S5-FIX-SRV A9 (S7-F2's port) · the two-officer setting is read, or nothing is sealed ──────────────────────────
   {
     name: "(47) an unreadable two-officer setting seals single-officer again (fail open)",
