@@ -878,7 +878,8 @@ const railDefects = (src: string) => {
   const d: string[] = [];
   if (!rail.startsWith('{!closed && ( <div className="sticky bottom-[calc(65px+env(safe-area-inset-bottom,0px))] z-30 flex flex-col gap-2')) d.push("the rail is not a column");
   if (!rail.includes('style={{ background: "var(--panel)" }}> <SteppedProgress groups={groups} /> <div className={cn("flex items-center gap-2", actionLabel && "flex-wrap")}>')) d.push("the meter has not the rail's full width on its own row");
-  if (!s.includes('<span key="mains" className="whitespace-nowrap">{fill(t.millionea.mainsProgress, { a: progress.mains })}</span>') || !s.includes('<span key="reserves" className="whitespace-nowrap">{fill(t.millionea.reservesProgress, { b: progress.reserves })}</span>')) d.push("the two counts are not whole facts");
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-FIX-PLAYER P10): each count carries its total — the questions the slip asks.
+  if (!s.includes('<span key="mains" className="whitespace-nowrap">{fill(t.millionea.mainsProgress, { a: progress.mains, n: progress.mainsOf })}</span>') || !s.includes('<span key="reserves" className="whitespace-nowrap">{fill(t.millionea.reservesProgress, { b: progress.reserves, n: progress.reservesOf })}</span>')) d.push("the two counts are not whole facts");
   if (!s.includes('{ key: "cap", node: capLine, className: "xl:hidden" }') || !s.includes("<span>{capLine}</span>")) d.push("the cap stands twice from 1280");
   if (!s.includes('q.eventAt === null ? null : <span key="event" className="whitespace-nowrap">{fill(t.millionea.eventAt, { when: eatWeekdayClock(t, q.eventAt) })}</span>')) d.push("the event's day and time are not one run");
   return d;
@@ -1005,12 +1006,12 @@ const listDefects = (page: string, ticketSrc: string, bar: string) => {
   const D: Array<[L3, string, string]> = [
     ["sw", "pendingCarry", "pamoja na kiasi kinachohamishwa kutoka Wiki {week} itakapokamilika"],
     ["sw", "howFour", "Hakuna 10/10? Bwawa lote linahamishiwa wiki inayofuata, bila ada."],
-    ["sw", "mainsProgress", "Makuu {a}/10"],
+    ["sw", "mainsProgress", "Makuu {a}/{n}"], // re-pinned (P10): "Makuu" as decided, its total the slip's own
     ["sw", "carriedIn", "Kiasi kutoka Wiki {week}"], ["sw", "carriedInPending", "Bado haijakamilika"],
     ["zh", "ruleShared", "由所有 10/10 彩票平分 · 派奖时扣除 {pct}% 费用"],
     ["zh", "ruleWithFigure", "大奖 {amount} · 由所有 10/10 彩票平分 · 派奖时扣除 {pct}% 费用"],
     ["zh", "stripResults", "结果与派奖 · {range}"], ["zh", "stripEvents", "事件 · {range}"],
-    ["zh", "mains", "正选题"], ["zh", "mainsProgress", "正选 {a}/10"], ["zh", "eventAt", "事件 {when}"], ["zh", "firstEventAt", "首个事件：{when}"],
+    ["zh", "mains", "正选题"], ["zh", "mainsProgress", "正选 {a}/{n}"], ["zh", "eventAt", "事件 {when}"], ["zh", "firstEventAt", "首个事件：{when}"],
     ["zh", "ticketRunning", "待结算"], ["zh", "howThree", "所有 10/10 彩票平分大奖；{pct}% 费用仅在派奖时扣除。"], ["zh", "carriedInPending", "尚未结算"],
     ["zh", "jumpTo", "前往第{n}题"], ["zh", "capRule", "上限：每周 {cap} 张 · 这是第{n}张"],
     ["en", "carriedIn", "Carried in from Week {week}"], ["en", "carriedInPending", "Not yet settled"], ["en", "statRefunded", "Refunded"],
@@ -1111,6 +1112,39 @@ const iconDefects = (src: string) => {
     src.includes(fixed) && old !== src && !old.includes(fixed));
 }
 
+// P10 · a question voided before the close is asked of nobody: no count, no total, no invented pick
+{
+  const SLIPMOD = req("../src/components/maswali/maswali-slip.tsx") as { slipProgress: (p: ReadonlyArray<string | null>, qs: ReadonlyArray<{ role: "MAIN" | "RESERVE"; ordinal: number }>) => { mains: number; reserves: number; mainsOf: number; reservesOf: number; ready: boolean } };
+  const all = [...Array.from({ length: 10 }, (_, i) => ({ role: "MAIN" as const, ordinal: i + 1 })), ...Array.from({ length: 5 }, (_, i) => ({ role: "RESERVE" as const, ordinal: i + 1 }))];
+  const asked = all.filter((q) => !(q.role === "MAIN" && q.ordinal === 3)); // M3 voided before the close: the slip asks 14
+  const filled: Array<string | null> = Array.from({ length: 15 }, (_, i) => (i === 2 ? "YES" : null)); // the slip's own fill at slot 3
+  const before = SLIPMOD.slipProgress(filled, asked);
+  const done = SLIPMOD.slipProgress(filled.map((p, i) => p ?? (i % 2 ? "NO" : "YES")), asked);
+  const plain = SLIPMOD.slipProgress(Array(15).fill(null), all);
+  ok("5.P10a · the slip counts only the questions it asks: one voided before the close, it opens on \"Main 0/9 · Reserve 0/5\" (never \"1/10\" from its own fill) and arms at 9/9 — and with none voided, 0/10 · 0/5",
+    j(before) === j({ mains: 0, reserves: 0, mainsOf: 9, reservesOf: 5, ready: false }) && j(done) === j({ mains: 9, reserves: 5, mainsOf: 9, reservesOf: 5, ready: true })
+      && j(plain) === j({ mains: 0, reserves: 0, mainsOf: 10, reservesOf: 5, ready: false }), j({ before, done, plain }));
+  const words = LOCALES.map((l) => [fill(dict[l].millionea.answerAll, { n: 14 }), fill(dict[l].millionea.mainsProgress, { a: 0, n: 9 }), fill(dict[l].millionea.ticketDraftHint, { n: 14 })]);
+  ok("5.P10b · the words count what is asked: \"Answer all 14\" / \"Jibu maswali 14\" / \"回答全部 14 题\", \"Main 0/9\", and the drafts' hint the same 14 — no fixed 15 or 10 left in them",
+    j(words.map((w) => w.slice(0, 2))) === j([["Answer all 14", "Main 0/9"], ["Jibu maswali 14", "Makuu 0/9"], ["回答全部 14 题", "正选 0/9"]])
+      && words.every((w) => w[2].includes("14") && !w[2].includes("15")) && LOCALES.every((l) => !/\b15\b|\/10\b|\/5\b/.test(`${dict[l].millionea.answerAll} ${dict[l].millionea.mainsProgress} ${dict[l].millionea.reservesProgress} ${dict[l].millionea.ticketDraftHint}`)), j(words));
+  const VIEW = req("../src/app/millionea/millionea-view.ts") as { clausesOf: (t: unknown, l: L3, qs: unknown[], slots: unknown[], filled?: number[]) => Array<{ pick: string | null; ordinal: number; role: string }> };
+  const q = (slot: number) => ({ slot, label: `M${slot}`, role: slot <= 10 ? "MAIN" : "RESERVE", category: "sports", text: { en: `Q${slot}`, sw: `Q${slot}`, zh: `Q${slot}` }, criterion: { en: "", sw: "", zh: "" }, sourceUrl: "", sourceDomain: "x.tz", eventStartsAt: "2026-12-05T06:00:00.000Z", eventZone: "Africa/Dar_es_Salaam", voidDeadlineAt: "2026-12-07T20:59:00.000Z", outcome: slot === 3 ? "VOID" : null });
+  const qs = Array.from({ length: 15 }, (_, i) => q(i + 1));
+  const slots = qs.map((x) => ({ slot: x.slot, label: x.label, role: x.role, pick: "YES", outcome: x.outcome, mark: "awaiting", carried: null, standsInFor: null }));
+  const clauses = VIEW.clausesOf(en, "en", qs, slots, [3]);
+  const { MaswaliTicket } = req("../src/components/maswali/maswali-ticket.tsx") as { MaswaliTicket: (p: Record<string, unknown>) => unknown };
+  const line = sealLineOf(week(["YES", "YES", "VOID", null, null, null, null, null, null, null], [null, null, null, null, null]), PICKS);
+  const ticketText = textOf(inApp("en", h(MaswaliTicket as never, { t: en, locale: "en", serverNow: Date.parse("2026-12-05T09:00:00Z"), serial: "MLN-2026-W49-000041", week: 49,
+    weekState: "OPEN", shown: "running", clauses, line, stub: { price: 1_000, boughtAt: "2026-12-01T08:13:00Z", questionSetHash: "7f3a…" } } as never)));
+  ok("5.P10c · the ticket draws no pick where the slip filled one itself (the read model's `slipFilled`): question 3 reads \"Pick —\", every other question its own pick",
+    clauses.find((c) => c.ordinal === 3 && c.role === "MAIN")?.pick === null && clauses.filter((c) => c.pick === "YES").length === 14
+      && ticketText.includes(`Q3${en.millionea.pick}—`) && ticketText.includes(`Q4${en.millionea.pick}${en.common.yes}`), ticketText.slice(0, 160));
+  const oldProgress = (p: ReadonlyArray<string | null>) => { let m = 0, r = 0; for (let i = 0; i < 15; i++) if (p[i]) { if (i < 10) m++; else r++; } return { mains: m, reserves: r }; };
+  ok("5.P10′ PLANT · the old count over all fifteen slots says \"Main 1/10\" before any tap — told apart from the fixed count",
+    oldProgress(filled).mains === 1 && before.mains === 0);
+}
+
 // P18 · the slip's two notices are the kit's Callout, never a hand-rolled copy
 const kitNoticeDefects = (src: string) => {
   const s = squash(code(src));
@@ -1141,7 +1175,7 @@ const kitNoticeDefects = (src: string) => {
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI DESIGN: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run prints; VIS-P's fact, example and word plants brought it to 110, and S5-FIX-PLAYER's §5
- *  (P5, P13, P15, P17, P18) to 125. */
-const MIN_ASSERTIONS = 125;
+ *  (P5, P10, P13, P15, P17, P18) to 129. */
+const MIN_ASSERTIONS = 129;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

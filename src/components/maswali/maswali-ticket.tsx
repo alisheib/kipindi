@@ -50,7 +50,9 @@ export type TicketClause = {
   text: string;
   /** When its event starts (ms), or null if not published. */
   eventAt: number | null;
-  pick: MaswaliPick;
+  /** The player's pick — or null where the slip filled the slot itself (a question already VOID when the ticket was cut,
+   *  MB-15; S5-FIX-PLAYER P10): drawn "—", never the fill as an answer the player gave. */
+  pick: MaswaliPick | null;
   /** The sealed outcome, or null while unsealed. */
   outcome: MaswaliOutcome | null;
 };
@@ -170,7 +172,7 @@ function Clause({ t, c, line, inert, press }: { t: Dict; c: TicketClause; line: 
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-0.5">
           <span className="inline-flex gap-1.5 text-body-sm text-text-muted">
             {t.millionea.pick}
-            <span className="font-mono font-bold text-text">{sideWord(t, c.pick, "MASWALI")}</span>
+            <span className="font-mono font-bold text-text">{c.pick ? sideWord(t, c.pick, "MASWALI") : "—"}</span>
           </span>
           {c.outcome !== null && <MaswaliOutcomeStamp t={t} outcome={c.outcome} press={press >= 0} index={press} />}
           {socket && (

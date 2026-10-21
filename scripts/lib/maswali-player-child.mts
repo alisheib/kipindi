@@ -1141,6 +1141,23 @@ const bT = await W.buy(PT, F.id, [W.LOSE], { key: "player-pt-f-0001" });
     J({ before: before?.floor, unreadable, blind: blind && { floor: blind.floor, jackpot: blind.jackpot }, after: after?.floor }));
 }
 {
+  // S5-FIX-PLAYER P10 · a question sealed VOID before the close (MB-15) on the selling drive week: a ticket cut BEFORE the void
+  // answered it; one cut AFTER it was filled by the slip, and its owner answered nothing there.
+  const PV1 = await W.user({ balance: 10_000 }), PV2 = await W.user({ balance: 10_000 });
+  const early = await W.buy(PV1, D.id, [W.WIN], { key: "player-pv1-d-0001", state: "STAFF_PREVIEW" });
+  await sleep(5);
+  const voided = await W.svc.sealQuestion({ weekId: D.id, slot: 3, outcome: "VOID", voidReason: "criterion_wrong", evidence: "The criterion named the wrong fixture (player suite, P10)", officerId: SEALER });
+  await sleep(5);
+  const late = await W.buy(PV2, D.id, [W.WIN], { key: "player-pv2-d-0001", state: "STAFF_PREVIEW" });
+  const slip = await P.millioneaSlip(viewer(PV2, "STAFF_PREVIEW"));
+  const vEarly = early.ok ? await P.millioneaTicket(PV1, early.data.maswali.tickets[0].serial) : null;
+  const vLate = late.ok ? await P.millioneaTicket(PV2, late.data.maswali.tickets[0].serial) : null;
+  ok("13.3a · ⭐ P10 · the slip fills a question voided before the close itself (MB-15), so the ticket cut after the void shows no pick there (`slipFilled` [3]); the ticket cut before it answered it and keeps its pick",
+    early.ok && voided.ok && late.ok && slip?.questions.find((q: any) => q.slot === 3)?.outcome === "VOID"
+      && J(vLate?.slipFilled) === J([3]) && J(vEarly?.slipFilled) === J([]) && vLate?.slots.find((x: any) => x.slot === 3)?.pick === "YES",
+    `${why(early)} · ${why(voided)} · ${why(late)} · ${J({ late: vLate?.slipFilled, early: vEarly?.slipFilled })}`);
+}
+{
   const closedF = await W.svc.closeWeek({ weekId: F.id, now: new Date(Date.parse(F.closesAt) + 60_000) });
   const live = await P.millioneaHub(viewer(P3));
   ok("13.4 · L2 · the control: no public week on sale and Millionea LIVE — the hub states when the next week opens",

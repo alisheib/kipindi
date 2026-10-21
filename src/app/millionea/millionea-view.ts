@@ -106,15 +106,21 @@ export function slipQuestionsOf(t: Dict, locale: Locale, questions: readonly Mil
   }));
 }
 
-/** The ticket's fifteen clauses, mains first, each with this ticket's pick and the sealed outcome. */
-export function clausesOf(t: Dict, locale: Locale, questions: readonly MillioneaQuestion[], slots: readonly MillioneaSlot[]): TicketClause[] {
+/**
+ * The ticket's fifteen clauses, mains first, each with this ticket's pick and the sealed outcome. ⭐ S5-FIX-PLAYER P10: a
+ * slot the slip filled ITSELF (`filled`: the read model's `slipFilled` — a question already VOID when the ticket was cut,
+ * asked of nobody, MB-15) has no pick of the player's: its clause says "—", never the slip's fill as the player's answer.
+ */
+export function clausesOf(
+  t: Dict, locale: Locale, questions: readonly MillioneaQuestion[], slots: readonly MillioneaSlot[], filled: readonly number[] = [],
+): TicketClause[] {
   const pickAt = new Map(slots.map((s) => [s.slot, s.pick] as const));
   return bySlot(questions).flatMap((q) => {
     const pick = pickAt.get(q.slot);
     // Every slot of a ticket carries a pick (`canonicalPicks`); a row without one is not drawn rather than guessed.
     return pick ? [{
       role: q.role, ordinal: ordinalOf(q), category: marketCategoryLabel(t, q.category), text: textIn(locale, q.text),
-      eventAt: msOf(q.eventStartsAt), pick, outcome: q.outcome,
+      eventAt: msOf(q.eventStartsAt), pick: filled.includes(q.slot) ? null : pick, outcome: q.outcome,
     }] : [];
   });
 }

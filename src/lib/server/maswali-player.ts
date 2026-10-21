@@ -760,6 +760,10 @@ export type MillioneaTicketView = MillioneaTicketRow & {
     opensAt: string; closesAt: string; closedAt: string | null; settledAt: string | null; questionSetHash: string | null;
   };
   questions: MillioneaQuestion[];
+  /** ⭐ S5-FIX-PLAYER P10 · the slots the slip filled ITSELF (MB-15): questions already sealed VOID — the final record's —
+   *  when this ticket was cut, so asked of nobody. The ticket shows no pick there ("—"), never the slip's fill as the player's
+   *  answer. Empty for a ticket bought before any void. */
+  slipFilled: number[];
   /** The stub (§10 3.8): what was bought, and the commitment to it. The salt is shown to its owner only (MB-32). */
   stub: { price: number; selectionsHash: string; salt: string; rulesVersion: string };
   /** The free cancel's end while it is open; null otherwise (and then no Ghairi control). */
@@ -903,6 +907,14 @@ export async function millioneaTicket(userId: string, serial: string, now: Date 
   const seenMs = t.lastViewedAt ? Date.parse(t.lastViewedAt) : Number.NEGATIVE_INFINITY;
   const unseen = facts.filter((f) => Date.parse(f.at) > seenMs);
   const results = resultsOf(qs, gq, nowMs);
+  // P10 · the slots the slip filled itself: a question whose VOID was final (its seal, or its second officer's confirmation)
+  // at or before the moment this ticket was cut — the slip asked nobody about it (MB-15).
+  const cutMs = Date.parse(t.createdAt);
+  const slipFilled = qs.flatMap((q, i) => {
+    if (gq[i]?.outcome !== "VOID") return [];
+    const finalAt = q.twoOfficerAtStage1 ? q.stage2At : q.sealedAt;
+    return finalAt && Date.parse(finalAt) <= cutMs ? [q.slot] : [];
+  });
 
   return {
     ...row,
@@ -912,6 +924,7 @@ export async function millioneaTicket(userId: string, serial: string, now: Date 
       opensAt: week.opensAt, closesAt: week.closesAt, closedAt: week.closedAt, settledAt: week.settledAt, questionSetHash: week.questionSetHash,
     },
     questions: questionsOf(qs, gq),
+    slipFilled,
     stub: { price: terms.rules.ticketPriceTzs, selectionsHash: t.selectionsHash, salt: t.salt, rulesVersion: t.rulesVersion },
     cancelUntil,
     // Provisional, and only while the week is still being decided: a voided week's ticket waiting on its refund is

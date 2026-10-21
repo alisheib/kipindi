@@ -11,7 +11,7 @@ import { MaswaliFacts, factsOf, keepFact } from "@/components/maswali/maswali-fa
 import { eatClock, eatWeekdayClock, joinList, reserveLabel, sourceLabel, weekWord } from "@/components/maswali/maswali-format";
 import { useT } from "@/lib/i18n";
 import { fillNodes, moneyRuns } from "@/lib/fill-nodes";
-import { MAIN_COUNT, RESERVE_COUNT, SLOT_COUNT, slotOf, type MaswaliPick } from "@/lib/maswali-score";
+import { slotOf, type MaswaliPick } from "@/lib/maswali-score";
 import { sideWord } from "@/lib/side-label";
 import { cn, fill, formatNumber, formatTzs } from "@/lib/utils";
 import { stemOf } from "@/lib/display-stem";
@@ -23,9 +23,10 @@ import { stemOf } from "@/lib/display-stem";
  * 1280, a sticky panel beside the questions from 1280 (L8: one column with the rail below 1280).
  *
  * ⭐ ONE LIT CONTROL PER ROW, and the betting ink only on it: an unanswered or unchosen side is a ghost on the control
- * border; the chosen one takes its side's button with the check (§B2). Fifteen answers arm the rail's "Endelea" in the
- * brand primary — never gilt (§M3a: the gold sits only on the confirm sheet's armed commit). Before fifteen it is a ghost
- * "Jibu maswali 15" that, tapped, answers with an inline refusal naming the unanswered questions and a way to the first.
+ * border; the chosen one takes its side's button with the check (§B2). An answer to every question it asks arms the rail's
+ * "Endelea" in the brand primary — never gilt (§M3a: the gold sits only on the confirm sheet's armed commit). Before that it
+ * is a ghost "Jibu maswali 15" — the number it asks, 14 when a question voided before the close (S5-FIX-PLAYER P10) — that,
+ * tapped, answers with an inline refusal naming the unanswered questions and a way to the first.
  * ⛔ THE COUNTDOWN LIVES HERE AND IN THE HUB'S BUY BLOCK ONLY (§10 §8): `MaswaliClosingPill`, in the last hour, counting
  * minutes as the Yes/No markets do (Q5). The printed close stays in the head at every moment.
  * ⛔ NO FIGURE BUT THE PRICE. No jackpot, no potential payout, no pick aggregate: the slip states the rules and the price.
@@ -53,14 +54,21 @@ export type SlipPicks = readonly (MaswaliPick | null)[];
 const slotOfQ = (q: SlipQuestion) => slotOf(q.role, q.ordinal);
 const labelOf = (q: SlipQuestion) => (q.role === "MAIN" ? String(q.ordinal) : reserveLabel(q.ordinal));
 
-/** How many mains and reserves are answered (the rail's two groups). */
-export function slipProgress(picks: SlipPicks): { mains: number; reserves: number; ready: boolean } {
-  let mains = 0, reserves = 0;
-  for (let slot = 1; slot <= SLOT_COUNT; slot++) {
-    if (!picks[slot - 1]) continue;
-    if (slot <= MAIN_COUNT) mains++; else reserves++;
+/**
+ * How many of the questions the slip ASKS are answered, mains and reserves (the rail's two groups), and of how many. ⭐
+ * S5-FIX-PLAYER P10: a question sealed VOID before the close is filled by the slip itself and asked of nobody (MB-15) — it is
+ * in neither a count nor a total, so a slip with one such question opens on "Main 0/9" and arms at "Main 9/9", never "Main
+ * 1/10" before any tap. `questions` is the slip's own list (the voided one is not in it).
+ */
+export function slipProgress(picks: SlipPicks, questions: readonly SlipQuestion[]): {
+  mains: number; reserves: number; mainsOf: number; reservesOf: number; ready: boolean;
+} {
+  let mains = 0, reserves = 0, mainsOf = 0, reservesOf = 0;
+  for (const q of questions) {
+    const answered = !!picks[slotOfQ(q) - 1];
+    if (q.role === "MAIN") { mainsOf++; if (answered) mains++; } else { reservesOf++; if (answered) reserves++; }
   }
-  return { mains, reserves, ready: mains === MAIN_COUNT && reserves === RESERVE_COUNT };
+  return { mains, reserves, mainsOf, reservesOf, ready: mains === mainsOf && reserves === reservesOf };
 }
 
 /**
@@ -225,7 +233,7 @@ export function MaswaliSlip({
 }) {
   const { t, locale } = useT();
   const [refused, setRefused] = useState(false);
-  const progress = slipProgress(picks);
+  const progress = slipProgress(picks, questions);
   const unanswered = questions.filter((q) => !picks[slotOfQ(q) - 1]);
   const showRefusal = refused && !progress.ready && !closed;
   const mains = questions.filter((q) => q.role === "MAIN");
@@ -233,16 +241,19 @@ export function MaswaliSlip({
   const priceText = formatTzs(price);
   const title = fill(t.millionea.slipTitle, { week });
   // "Main 0/10 · Reserve 0/5": two whole counts — side by side where they fit, stacked without the "·" where they do not
-  // (S5 VIS P7: the rail read "Main 0/10 ·" / "Reserve 0/5" at 320, "Akiba" / "0/5" at sw 360).
+  // (S5 VIS P7: the rail read "Main 0/10 ·" / "Reserve 0/5" at 320, "Akiba" / "0/5" at sw 360) — each of the questions the
+  // slip asks (P10: a question voided before the close is in neither count nor total).
   const progressFacts = [
-    <span key="mains" className="whitespace-nowrap">{fill(t.millionea.mainsProgress, { a: progress.mains })}</span>,
-    <span key="reserves" className="whitespace-nowrap">{fill(t.millionea.reservesProgress, { b: progress.reserves })}</span>,
+    <span key="mains" className="whitespace-nowrap">{fill(t.millionea.mainsProgress, { a: progress.mains, n: progress.mainsOf })}</span>,
+    <span key="reserves" className="whitespace-nowrap">{fill(t.millionea.reservesProgress, { b: progress.reserves, n: progress.reservesOf })}</span>,
   ];
   const refusalBody = unanswered.length === 0 ? ""
     : unanswered.length === 1
       ? fill(t.millionea.refusalIncompleteOne, { list: labelOf(unanswered[0]) })
       : fill(t.millionea.refusalIncompleteBody, { n: formatNumber(unanswered.length), list: joinList(locale, unanswered.map(labelOf)) });
-  const groups = [{ steps: MAIN_COUNT, done: progress.mains }, { steps: RESERVE_COUNT, done: progress.reserves }];
+  const groups = [{ steps: progress.mainsOf, done: progress.mains }, { steps: progress.reservesOf, done: progress.reserves }];
+  // "Answer all 14" when one question voided before the close — the number the slip asks (P10), never a fixed 15.
+  const answerAll = fill(t.millionea.answerAll, { n: formatNumber(questions.length) });
   const press = () => (progress.ready ? onContinue() : setRefused(true));
   const row = (q: SlipQuestion) => (
     <SlipRow key={`${q.role}-${q.ordinal}`} q={q} pick={picks[slotOfQ(q) - 1] ?? null} closed={!!closed}
@@ -329,7 +340,7 @@ export function MaswaliSlip({
               {progress.ready ? (
                 <Button type="button" variant="primary" size="lg" fullWidth onClick={press}>{moneyRuns(actionLabel ?? fill(t.millionea.continueAt, { price: priceText }))}</Button>
               ) : (
-                <Button type="button" variant="ghost" size="lg" fullWidth onClick={press} className="border-border-control">{t.millionea.answerAll}</Button>
+                <Button type="button" variant="ghost" size="lg" fullWidth onClick={press} className="border-border-control">{answerAll}</Button>
               )}
             </div>
           </aside>
@@ -349,7 +360,7 @@ export function MaswaliSlip({
             {progress.ready ? (
               <Button type="button" variant="primary" size="md" onClick={press} className={cn("shrink-0", actionLabel && "w-full")}>{moneyRuns(actionLabel ?? fill(t.millionea.continueAt, { price: priceText }))}</Button>
             ) : (
-              <Button type="button" variant="ghost" size="md" onClick={press} className="shrink-0 border-border-control">{t.millionea.answerAll}</Button>
+              <Button type="button" variant="ghost" size="md" onClick={press} className="shrink-0 border-border-control">{answerAll}</Button>
             )}
           </div>
         </div>

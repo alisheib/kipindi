@@ -168,7 +168,7 @@ export default async function MillioneaTicketPage({ params }: { params: Promise<
           week={weekNumber}
           weekState={view.week.state}
           shown={view.shown}
-          clauses={clausesOf(t, locale, view.questions, view.slots)}
+          clauses={clausesOf(t, locale, view.questions, view.slots, view.slipFilled)}
           line={line}
           stub={{ price: view.stub.price, boughtAt: view.boughtAt, questionSetHash: shortHash(view.week.questionSetHash) }}
           closedAt={view.week.state !== "OPEN" ? (msOf(view.week.closedAt) ?? msOf(view.week.closesAt) ?? undefined) : undefined}
