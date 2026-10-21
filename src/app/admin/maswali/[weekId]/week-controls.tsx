@@ -63,7 +63,7 @@ export function AttestOpenControls({ weekId, weekCode, attestedBy, canAttest, ca
         : <ControlLocked what="Attest the languages" need={attestNeed} />}
       {canOpen ? (mayAct ? <Button size="sm" disabled={pending || !openReady} onClick={() => setConfirm(true)}>Open the week</Button> : <ActReadOnly />)
         : <ControlLocked what="Open the week" need={openNeed} />}
-      {!attestConfirm && error && <p role="alert" className="text-body-sm text-danger-fg w-full">{error}</p>}
+      {!attestConfirm && !confirm && error && <p role="alert" className="text-body-sm text-danger-fg w-full">{error}</p>}
       <ConfirmModal open={attestConfirm} onClose={() => setAttestConfirm(false)} loading={pending} tone="brand" tier="hard" typedWord="ATTEST"
         title={`Attest ${weekCode}'s three languages?`} confirmLabel="Record the attestation"
         body={<div className="space-y-2">
@@ -73,7 +73,10 @@ export function AttestOpenControls({ weekId, weekCode, attestedBy, canAttest, ca
         onConfirm={() => run(() => attestMaswaliParityAction(fd({ weekId })), () => setAttestConfirm(false))} />
       <ConfirmModal open={confirm} onClose={() => setConfirm(false)} loading={pending} tone="brand"
         title="Open the week for sale?" confirmLabel="Open the week"
-        body="The rules, the fifteen questions and their sources freeze now and cannot change afterwards (MR-13). Players can buy as soon as Millionea is visible to them."
+        body={<div className="space-y-2">
+          <p>The rules, the fifteen questions and their sources freeze now and cannot change afterwards (MR-13). Players can buy as soon as Millionea is visible to them.</p>
+          {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
+        </div>}
         onConfirm={() => run(() => openMaswaliWeekAction(fd({ weekId })), () => setConfirm(false))} />
     </div>
   );
@@ -216,12 +219,15 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
           : <ActReadOnly />) : <ControlLocked what="Seal results" need={need.seal} />}
         {evidenceMissing && <span className="text-body-sm text-warning">Each seal records its evidence (at least 10 characters).</span>}
         {sealAuditWarning && <p role="alert" className="text-body-sm text-warning w-full">{sealAuditWarning}</p>}
-        {!confirmRow && error && <p role="alert" className="text-body-sm text-danger-fg w-full">{error}</p>}
+        {!confirmRow && !sealOpen && !voidRow && !correctRow && error && <p role="alert" className="text-body-sm text-danger-fg w-full">{error}</p>}
       </div>
 
       <ConfirmModal open={sealOpen} onClose={() => setSealOpen(false)} loading={pending} tone="brand" tier="hard" typedWord="SEAL"
         title={`Seal ${chosen.length} result${chosen.length === 1 ? "" : "s"}?`} confirmLabel="Seal"
-        body={`${chosen.map((c) => `${rows.find((r) => r.slot === c.slot)?.label} ${c.outcome}`).join(" · ")}. A seal is final once its objection window closes; until then only its own correction changes it.`}
+        body={<div className="space-y-2">
+          <p>{`${chosen.map((c) => `${rows.find((r) => r.slot === c.slot)?.label} ${c.outcome}`).join(" · ")}. A seal is final once its objection window closes; until then only its own correction changes it.`}</p>
+          {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
+        </div>}
         onConfirm={() => {
           setError(null);
           setSealAuditWarning(null);
@@ -245,6 +251,7 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
             <p>A voided main is replaced by the next usable reserve; a voided reserve is skipped (MR-17).</p>
             <Field label="Ground" required error={voidTried && !isMaswaliVoidReason(voidReason) ? "Choose a ground from the list." : undefined}><Select size="md" value={voidReason} onChange={setVoidReason} ariaLabel="Void ground" options={[{ value: "", label: "Choose the ground" }, ...voidReasons.map((v) => ({ value: v, label: isMaswaliVoidReason(v) ? MASWALI_VOID_REASON_LABEL[v] : v }))]} /></Field>
             <Field label="Evidence" required error={voidTried && voidEvidence.trim().length < 10 ? "Write at least 10 characters of evidence." : undefined}><Input size="md" value={voidEvidence} onChange={(e) => setVoidEvidence(e.target.value)} placeholder="What happened, as the source records it" /></Field>
+            {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
           </div>
         }
         onConfirm={() => {

@@ -55,12 +55,15 @@ export function PauseControl({ paused }: { paused: boolean }) {
         <Textarea rows={2} maxLength={MASWALI_REASON_MAX} value={text} onChange={(e) => setText(e.target.value)} />
       </Field>
       <Button size="sm" variant={paused ? "primary" : "claret"} disabled={pending || !(paused ? reasonLengthOk(text) : pauseReasonLengthOk(text))} onClick={() => setOpen(true)}>{paused ? "Resume sales" : "Pause sales"}</Button>
-      {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
+      {!open && error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
       {note && <p role="status" className="text-body-sm text-success">{note}</p>}
       <UnsavedChangesGuard dirty={text.trim() !== ""} body={`A reason to ${paused ? "resume" : "pause"} sales has been typed but not recorded. Leaving now discards it.`} />
       <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone={paused ? "brand" : "claret"} tier="hard" typedWord={paused ? "RESUME" : "PAUSE"}
         title={paused ? "Resume Millionea sales?" : "Pause Millionea sales?"} confirmLabel={paused ? "Resume" : "Pause"}
-        body={paused ? "Players can buy again at once." : "No ticket can be bought until sales resume. Tickets already bought are safe; settlements, refunds and cancels go on."}
+        body={<div className="space-y-2">
+          <p>{paused ? "Players can buy again at once." : "No ticket can be bought until sales resume. Tickets already bought are safe; settlements, refunds and cancels go on."}</p>
+          {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
+        </div>}
         onConfirm={() => run(() => (paused ? resumeMaswaliSalesAction(fd({ note: text })) : pauseMaswaliSalesAction(fd({ reason: text }))), () => { setOpen(false); setText(""); })} />
     </div>
   );
@@ -74,11 +77,14 @@ export function VoidWeekControl({ weekId, code }: { weekId: string; code: string
   return (
     <span className="inline-flex flex-col gap-1">
       <Button size="sm" variant="claret" disabled={pending} onClick={() => setOpen(true)}>Void {code}</Button>
-      {error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
+      {!open && error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
       {note && <span role="status" className="text-body-sm text-success">{note}</span>}
       <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="claret" tier="hard" typedWord="VOID"
         title={`Void ${code} whole?`} confirmLabel="Void and refund"
-        body="Voided mains outnumber the usable reserves on the sealed record (MR-18). Every live ticket is refunded in full; the jackpot carries on untouched."
+        body={<div className="space-y-2">
+          <p>Voided mains outnumber the usable reserves on the sealed record (MR-18). Every live ticket is refunded in full; the jackpot carries on untouched.</p>
+          {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
+        </div>}
         onConfirm={() => run(() => voidMaswaliWeekAction(fd({ weekId })), () => setOpen(false))} />
     </span>
   );

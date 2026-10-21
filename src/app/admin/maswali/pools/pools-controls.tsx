@@ -49,12 +49,18 @@ function useAct() {
   return { pending, error, note, run };
 }
 
-const Feedback = ({ error, note }: { error: string | null; note: string | null }) => (
+/**
+ * The page's answer to the last act. ⛔ While a confirmation is open its refusal shows INSIDE the dialog (`DialogError`),
+ * never a second copy under the scrim, outside the dialog's own tree (S5 review A2: every refusal states its reason where
+ * the officer is reading).
+ */
+const Feedback = ({ error, note, dialogOpen }: { error: string | null; note: string | null; dialogOpen: boolean }) => (
   <>
-    {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
+    {!dialogOpen && error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
     {note && <p role="status" className="text-body-sm text-success">{note}</p>}
   </>
 );
+const DialogError = ({ error }: { error: string | null }) => (error ? <p role="alert" className="text-body-sm text-danger-fg">{error}</p> : null);
 
 export function ReleaseControl({ weekId, code, digest }: { weekId: string; code: string; digest: string }) {
   const mayAct = useMayAct();
@@ -64,10 +70,13 @@ export function ReleaseControl({ weekId, code, digest }: { weekId: string; code:
   return (
     <div className="space-y-1">
       <Button size="sm" disabled={pending} onClick={() => setOpen(true)}>Release {code}</Button>
-      <Feedback error={error} note={note} />
+      <Feedback error={error} note={note} dialogOpen={open} />
       <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="brand" tier="hard" typedWord="RELEASE"
         title={`Release ${code}?`} confirmLabel="Release the settlement"
-        body="The release pays exactly the figures above, in one transaction. If anything changed since they were prepared, it refuses and you read the new figures first."
+        body={<div className="space-y-2">
+          <p>The release pays exactly the figures above, in one transaction. If anything changed since they were prepared, it refuses and you read the new figures first.</p>
+          <DialogError error={error} />
+        </div>}
         onConfirm={() => run(() => releaseMaswaliSettlementAction(fd({ weekId, digest })), () => setOpen(false))} />
     </div>
   );
@@ -92,7 +101,7 @@ export function GuaranteeCeremony({ canFund, canReturn }: { canFund: boolean; ca
         {canFund && <Button size="sm" disabled={pending || !ready} onClick={() => setReview(guaranteeReviewDraft("fund", amount, reference))}>Pay in</Button>}
         {canReturn && <Button size="sm" variant="ghost" disabled={pending || !ready} onClick={() => setReview(guaranteeReviewDraft("return", amount, reference))}>Take back</Button>}
       </div>
-      <Feedback error={error} note={note} />
+      <Feedback error={error} note={note} dialogOpen={review !== null} />
       <UnsavedChangesGuard dirty={amount !== "" || reference.trim() !== ""} body="A guarantee movement has been typed but not recorded. Leaving now discards it." />
       <ConfirmModal open={review !== null} onClose={() => setReview(null)} loading={pending} tone={review?.mode === "return" ? "warning" : "brand"} tier="hard" typedWord={word}
         title={review?.mode === "return" ? "Take guarantee money back?" : "Pay into the guarantee?"} confirmLabel={review?.mode === "return" ? "Take it back" : "Pay it in"}
@@ -102,6 +111,7 @@ export function GuaranteeCeremony({ canFund, canReturn }: { canFund: boolean; ca
           <p>{review?.mode === "return"
             ? "Never below what the unsettled weeks need (OD-02); the service refuses a return that would leave the floor unbacked."
             : "Owner capital paid in to back the floor. It is the owner's money, committed: it never counts as retained earnings."}</p>
+          <DialogError error={error} />
         </div>}
         onConfirm={() => {
           if (!review || !validGuaranteeDraft(review.amount, review.reference)) return;
@@ -129,7 +139,7 @@ export function LicenceCeremony() {
         <Textarea rows={2} maxLength={MASWALI_LICENCE_REF_MAX} value={ref} onChange={(e) => setRef(e.target.value)} />
       </Field>}
       <Button size="sm" disabled={pending || (kind !== "NONE" && !licenceRefLengthOk(ref))} onClick={() => setReview(licenceReviewDraft(kind, ref))}>Record</Button>
-      <Feedback error={error} note={note} />
+      <Feedback error={error} note={note} dialogOpen={review !== null} />
       <UnsavedChangesGuard dirty={kind !== savedKind || ref.trim() !== ""} body="A licence basis has been chosen but not recorded. Leaving now discards it." />
       <ConfirmModal open={review !== null} onClose={() => setReview(null)} loading={pending} tone="brand" tier="hard" typedWord="RECORD"
         title="Record the licence basis?" confirmLabel="Record it"
@@ -137,6 +147,7 @@ export function LicenceCeremony() {
           <p>Basis: <strong>{review?.label}</strong></p>
           {review?.kind !== "NONE" && <p>Where it is kept: <strong className="block break-words">{review?.ref}</strong></p>}
           <p>{review?.kind === "NONE" ? "No week can open while no basis is recorded." : "Weeks can open once this is recorded and the guarantee covers them."}</p>
+          <DialogError error={error} />
         </div>}
         onConfirm={() => {
           if (!review || !licenceReviewDraft(review.kind, review.ref)) return;
@@ -159,11 +170,14 @@ export function RolloutCeremony({ expectSeq, current }: { expectSeq: number; cur
         options={[{ value: "WITHDRAWN", label: "Nobody (withdrawn)" }, { value: "STAFF_PREVIEW", label: "Staff preview" }, { value: "ACTIVE", label: "Everyone" }]} /></Field>
       <Field label="Why" hint={`${MASWALI_REASON_MIN}–${MASWALI_REASON_MAX} characters.`}><Textarea rows={2} maxLength={MASWALI_REASON_MAX} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
       <Button size="sm" disabled={pending || cap === current || !reasonLengthOk(reason)} onClick={() => setOpen(true)}>Move the switch</Button>
-      <Feedback error={error} note={note} />
+      <Feedback error={error} note={note} dialogOpen={open} />
       <UnsavedChangesGuard dirty={cap !== current || reason.trim() !== ""} body="A rollout change has been chosen but not made. Leaving now discards it." />
       <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="warning" tier="hard" typedWord={cap}
         title={`Set Millionea to ${cap}?`} confirmLabel="Move it"
-        body="The environment's ceiling still applies: the effective state is the lower of the two."
+        body={<div className="space-y-2">
+          <p>The environment&apos;s ceiling still applies: the effective state is the lower of the two.</p>
+          <DialogError error={error} />
+        </div>}
         onConfirm={() => run(() => setMillioneaRolloutAction(fd({ cap, reason, expectSeq: String(expectSeq) })), () => { setOpen(false); setReason(""); })} />
     </div>
   );
@@ -196,11 +210,14 @@ export function SunsetCeremony({ weeks }: { weeks: SunsetCandidate[] }) {
         options={choices.rows.map((week) => ({ value: week.id, label: `${week.code} · ${week.state.toLowerCase()}` }))} /></Field>
       <Field label="Why Millionea is stopping" hint={`${MASWALI_REASON_MIN}–${MASWALI_REASON_MAX} characters.`}><Textarea rows={2} maxLength={MASWALI_REASON_MAX} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
       <Button size="sm" variant="claret" disabled={pending || !selected || !reasonLengthOk(reason)} onClick={() => setOpen(true)}>Make it the final week</Button>
-      <Feedback error={error} note={note} />
+      <Feedback error={error} note={note} dialogOpen={open && !!selected} />
       <UnsavedChangesGuard dirty={weekId !== "" || lookup.trim() !== "" || reason.trim() !== ""} body="A final week has been chosen but not recorded. Leaving now discards it." />
       <ConfirmModal open={open && !!selected} onClose={() => setOpen(false)} loading={pending} tone="claret" tier="hard" typedWord={SUNSET_WORD}
         title={review?.title ?? "Choose a final week"} confirmLabel="Make it final"
-        body={review?.body ?? "Choose the exact eligible week before confirming."}
+        body={<div className="space-y-2">
+          <p>{review?.body ?? "Choose the exact eligible week before confirming."}</p>
+          <DialogError error={error} />
+        </div>}
         onConfirm={() => {
           if (!selected || !reasonLengthOk(reason)) return;
           run(() => sunsetMaswaliAction(fd({ weekId: selected.id, reason, typed: SUNSET_WORD })), () => { setOpen(false); setWeekId(""); setLookup(""); setReason(""); });
