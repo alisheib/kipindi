@@ -473,13 +473,24 @@ section("9 · E34 the journey's toaster hangs under its header (tiles 203 218 23
   const base = /:root:is\(\[data-shell="journey"\], #kp-journey-shell\) \[data-toaster\] \{ top: max\(56px, var\(--toast-clear, 0px\)\); \}/.test(CSS);
   const sm = /@media \(min-width: 640px\) \{ :root:is\(\[data-shell="journey"\], #kp-journey-shell\) \[data-toaster\] \{ top: calc\(max\(56px, var\(--toast-clear, 0px\)\) \+ var\(--sp-2\)\); \} \}/.test(CSS);
   const clear = toast.slice(toast.indexOf("function usePreviewClearance"), toast.indexOf("function ToastViewport"));
-  ok("9.4 · A25 item 17: the stack learns where the staff preview bar ends only on a page that wears it, writes it on its own box (never the root) and only when it moved",
-    /document\.querySelector<HTMLElement>\('\[data-testid="journey-preview-marker"\]'\)/.test(clear) && /if \(!shown \|\| !region \|\| !bar\) return;/.test(clear)
-      && /region\.style\.setProperty\("--toast-clear", value\)/.test(clear) && !/documentElement/.test(clear)
-      && /if \(region\.style\.getPropertyValue\("--toast-clear"\) !== value\)/.test(clear) && /usePreviewClearance\(regionRef, !held\);/.test(toast));
+  // ⚠️ RE-PINNED OPENLY, MASWALI-BUILD S5-FIX-PLATFORM D12 (2026-10-21): Millionea's staff preview bar is the same marker,
+  // standing under the journey's when both show and on Millionea's pages only — so the hook asks for both bars, clears the
+  // LOWEST, asks again on every move (the router's address is its dependency) and takes the clearance away on a page with
+  // neither bar. Everything else A25 item 17 holds is held as it was.
+  const bars = /const PREVIEW_BARS = '\[data-testid="journey-preview-marker"\], \[data-testid="millionea-preview-mark"\]';/.test(toast);
+  const clears = (c: string) => bars && /const bars = document\.querySelectorAll<HTMLElement>\(PREVIEW_BARS\);/.test(c)
+    && /const bar = bars\.length > 0 \? bars\[bars\.length - 1\] : null;/.test(c) && /if \(!shown \|\| !region \|\| !bar\) \{/.test(c)
+    && /region\.style\.removeProperty\("--toast-clear"\)/.test(c) && /\}, \[ref, shown, pathname\]\);/.test(c) && /const pathname = usePathname\(\);/.test(c)
+    && /region\.style\.setProperty\("--toast-clear", value\)/.test(c) && !/documentElement/.test(c)
+    && /if \(region\.style\.getPropertyValue\("--toast-clear"\) !== value\)/.test(c) && /usePreviewClearance\(regionRef, !held\);/.test(toast);
+  ok("9.4 · A25 item 17: the stack learns where the LOWEST staff preview bar ends (the journey's, Millionea's under it) only on a page that wears one, asks again on every move, writes it on its own box (never the root) and only when it moved",
+    clears(clear));
   const onRoot = clear.replace('region.style.setProperty("--toast-clear", value)', 'document.documentElement.style.setProperty("--toast-clear", value)');
   ok("9.4′ PLANT · the clearance written on the document root (every element restyled on each scroll) is reported",
     onRoot !== clear && (!/region\.style\.setProperty\("--toast-clear", value\)/.test(onRoot) || /documentElement/.test(onRoot)));
+  const onceOnly = clear.replace("}, [ref, shown, pathname]);", "}, [ref, shown]);");
+  ok("9.4″ PLANT · the bars asked for once, at mount (a move to a Millionea page leaves its bar under the stack), is reported",
+    onceOnly !== clear && !clears(onceOnly));
   const header = Number(/height:\s*(\d+)px/.exec(rule(CSS, ".kp-jhdr"))?.[1] ?? NaN);
   const menuPhone = /top-\[calc\(env\(safe-area-inset-top\)\+(\d+)px\)\]/.exec(read("src/components/layout/avatar-menu.tsx"))?.[1];
   const menuSm = /sm:top-\[(\d+)px\]/.exec(read("src/components/layout/avatar-menu.tsx"))?.[1];

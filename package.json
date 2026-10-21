@@ -721,6 +721,7 @@
     "test:maswali-design": "tsx scripts/maswali-design.test.mts",
     "test:maswali-ui": "tsx scripts/maswali-ui.test.mts",
     "test:millionea-dark-edge": "tsx scripts/millionea-dark-edge.test.mts",
+    "test:millionea-shell": "tsx scripts/millionea-shell.test.mts",
     "test:maswali-multi-slip": "tsx scripts/maswali-multi-slip.test.mts",
     "red:maswali-multi-slip": "tsx scripts/maswali-multi-slip.test.mts --prove-red",
     "qa:maswali-multi-slip": "node scripts/maswali-multi-slip-drive.mjs",

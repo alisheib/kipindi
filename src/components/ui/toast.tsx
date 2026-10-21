@@ -17,6 +17,7 @@
  * - Stack of up to 4 visible at once (oldest dropped on overflow, timer cleared)
  */
 import * as React from "react";
+import { usePathname } from "next/navigation";
 import { I, plateGlyph } from "@/components/ui/glyphs";
 import { IconPlate, type PlateVariant } from "@/components/ui/icon-plate";
 import { cn } from "@/lib/utils";
@@ -595,12 +596,22 @@ const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; 
  * below whichever is lower, the header or the bar — scrolled past the bar, the header again. Written on the stack's own
  * element, never the document root (an inherited property on the root restyles every element), and only when it moved.
  * A page without the bar — every player's — attaches nothing.
+ * ⭐ AND MILLIONEA'S STAFF PREVIEW BAR, THE SAME MARKER (MASWALI-BUILD S5-FIX-PLATFORM D12, 2026-10-21). It stands under the
+ * journey's when both show, so the stack clears the LOWEST bar (the last in the document). It stands on Millionea's pages
+ * only, so a move can bring one or take it away: the bars are asked for again on every move (the journey's marker stands
+ * on every page of a preview pass, so one ask at mount served it), and a page with none takes the clearance away again.
  */
+const PREVIEW_BARS = '[data-testid="journey-preview-marker"], [data-testid="millionea-preview-mark"]';
 function usePreviewClearance(ref: React.RefObject<HTMLDivElement | null>, shown: boolean) {
+  const pathname = usePathname();
   React.useEffect(() => {
     const region = ref.current;
-    const bar = document.querySelector<HTMLElement>('[data-testid="journey-preview-marker"]');
-    if (!shown || !region || !bar) return;
+    const bars = document.querySelectorAll<HTMLElement>(PREVIEW_BARS);
+    const bar = bars.length > 0 ? bars[bars.length - 1] : null;
+    if (!shown || !region || !bar) {
+      if (region?.style.getPropertyValue("--toast-clear")) region.style.removeProperty("--toast-clear");
+      return;
+    }
     let frame = 0;
     const write = () => {
       frame = 0;
@@ -612,7 +623,7 @@ function usePreviewClearance(ref: React.RefObject<HTMLDivElement | null>, shown:
     window.addEventListener("scroll", schedule, { passive: true });
     window.addEventListener("resize", schedule);
     return () => { if (frame) cancelAnimationFrame(frame); window.removeEventListener("scroll", schedule); window.removeEventListener("resize", schedule); };
-  }, [ref, shown]);
+  }, [ref, shown, pathname]);
 }
 
 function ToastViewport({ toasts, exiting, held, onDismiss, onPause, onResume }: { toasts: Toast[]; exiting: string[]; held: boolean; onDismiss: (id: string) => void; onPause: (id: string) => void; onResume: (id: string) => void }) {

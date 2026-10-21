@@ -50,6 +50,7 @@ import { journeyShellShown, resolveSimpleJourney } from "@/lib/server/journey-pr
 import { JOURNEY_SHELL_MARK } from "@/lib/journey/shell-mark";
 import { journeyMarketsTarget } from "@/lib/journey/markets-redirect";
 import { PreviewMarker } from "./preview-marker";
+import { MillioneaPreviewBar } from "./millionea-preview-bar";
 import { FunnelUtm } from "@/components/analytics/funnel-utm";
 import { isStaffRole } from "@/lib/server/roles";
 import { displayLabel, displayInitials } from "@/lib/display-label";
@@ -393,6 +394,8 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
      very payload `main` serves. */
   const millioneaRow = !promoSuppressed && (await resolveMillionea()).visible;
   const millioneaProp: { millionea?: true } = millioneaRow ? { millionea: true } : {};
+  /** D12 · the request sees Millionea as a PREVIEW (STAFF_PREVIEW and a stored staff role): it wears the preview bar. */
+  const millioneaPreview = (await resolveMillionea()).preview;
   /* ⭐ THE SECOND HALF OF THE PAIR, RESOLVED IN THE SAME PLACE AND FOR THE SAME REASON: the menu
      row's WORDS depend on whether the viewer's invite destination pays, and a client component may
      not read the product state to find out.
@@ -508,6 +511,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       {/* ⭐ THE PREVIEW MARKER — first under the bar, so whoever holds this browser knows at once that they are
           looking at pages players do not see yet, and has the way out on the same line. */}
       {journeyPreview && <PreviewMarker label={t.journey.previewMarker} exit={t.journey.previewExit} />}
+      {/* ⭐ MILLIONEA'S STAFF PREVIEW BAR (S5-FIX-PLATFORM D12) — the same marker, under the journey's when both show, on a
+          Millionea page (and /results' Millionea section), mounted only for a request that sees Millionea as a preview. */}
+      {millioneaPreview && <MillioneaPreviewBar label={t.millionea.previewMark} />}
       <span hidden data-kp-funnel={funnelScopeValue} />
       {/* ⭐ THE JOURNEY FLAG (Vodacom plan S6, WP7) — for a request the resolver shows the journey to, and for no other.
           It renders nothing. While it is mounted the html element carries the journey's attribute, and that is how
