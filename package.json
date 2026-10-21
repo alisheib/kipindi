@@ -1186,6 +1186,7 @@
     "test:dead-css": "tsx scripts/dead-css.test.mts",
     "test:hover-touch": "tsx scripts/hover-touch.test.mts",
     "qa:hover-touch": "node scripts/qa-hover-touch.mjs",
+    "qa:route-entrance": "node scripts/qa-route-entrance.mjs",
     "qa:bundle-css": "node scripts/bundle-css-probe.mjs",
     "qa:calm": "node scripts/live-calm-probe.mjs",
     "qa:sse-edge": "node scripts/live/sse-edge-probe.mjs",

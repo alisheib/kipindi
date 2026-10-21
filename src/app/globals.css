@@ -6142,36 +6142,11 @@ textarea::-webkit-resizer {
    actually paint. ⛔ If the tint is ever genuinely wanted on the label, move it ONTO the anchor —
    the th cannot win that cascade. */
 
-/* ===========================================================================
-   View Transitions API — native cross-fade for route changes (Chrome/Edge 111+).
-   Falls back to the existing .route-enter CSS animation on other browsers.
-   =========================================================================== */
-::view-transition-old(root),
-::view-transition-new(root) {
-  /* 180ms → `--t-quick` (140), the rung it sits on. ⚠️ This cross-fade is the
-     NATIVE half of the same route entrance `.route-enter` renders elsewhere, so the
-     two must not drift; both now read tokens rather than one reading a literal. */
-  animation-duration: var(--t-quick);
-  animation-timing-function: var(--m-glide);
-}
-::view-transition-old(root) {
-  animation-name: vt-fade-out;
-}
-::view-transition-new(root) {
-  animation-name: vt-fade-in;
-}
-@keyframes vt-fade-out {
-  from { opacity: 1; transform: none; }
-  to   { opacity: 0; transform: translateY(-4px); }
-}
-@keyframes vt-fade-in {
-  from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: none; }
-}
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(root),
-  ::view-transition-new(root) { animation: none !important; }
-}
+/* ⛔ THE VIEW TRANSITION'S RULES ARE DELETED (MASWALI-BUILD S5-FIX-PLATFORM D10, 2026-10-21). `::view-transition-old/new
+   (root)` and their `vt-fade-out`/`vt-fade-in` keyframes drew a classic reader's route change in Chrome and Edge as a
+   cross-fade of the whole document, the header and the rail with the page. No route change starts a View Transition any
+   more (`route-transition.tsx` says why), so they drew nothing: a route's one entrance is `.route-enter` (`m-settle-in`),
+   on the page alone, for every reader in every engine. */
 
 /* ── Up & Down: the live price point on the D3 round hero ────────────────────
    A slow opacity breath on the current-price dot (D3 round detail), so a still
