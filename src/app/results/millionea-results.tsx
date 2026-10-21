@@ -4,7 +4,7 @@ import { getServerT } from "@/lib/i18n-server";
 import { loadVisibleMillioneaResults } from "./millionea-results-access";
 import { MillioneaResultsView } from "./millionea-results-view";
 
-/** The classic page must stay open while the Millionea rollout is hidden. */
+/** The classic page must stay open while the Millionea rollout is hidden. Where it stands: `millioneaSectionShown`. */
 export async function MillioneaResultsSection() {
   const result = await loadVisibleMillioneaResults(millioneaDoor, millioneaResultsSection);
   if (!result) return null;

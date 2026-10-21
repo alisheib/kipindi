@@ -1,6 +1,8 @@
 /**
  * MB-90: Millionea has its own /results section. Its gate runs before its week read; only public final weeks reach the
  * view, which uses the register's words and facts. The classic archive keeps its own counts, search, and pager.
+ * S5-DESIGN-DOORS (2026-10-21): a week's facts are Millionea's one fact line, at the row's end from 1024 (L14, L15), and the
+ * section stands on the archive's first, unfiltered page alone (L16, `millioneaSectionShown`, run against every axis).
  * --prove-red mutates in-memory sources and a dependency-injected reader; it never changes a worktree file.
  */
 import { readFileSync } from "node:fs";
@@ -12,7 +14,8 @@ import { dict } from "../src/lib/i18n-dict.ts";
 import { millioneaVisibleFor, type RolloutState } from "../src/lib/millionea-rollout.ts";
 import type { MillioneaWeekSummary } from "../src/lib/server/maswali-player.ts";
 import { loadVisibleMillioneaResults } from "../src/app/results/millionea-results-access.ts";
-import { MillioneaResultsView } from "../src/app/results/millionea-results-view.tsx";
+import { MillioneaResultsView, millioneaSectionShown } from "../src/app/results/millionea-results-view.tsx";
+import { ARCHIVE_DEFAULT_STATE } from "../src/lib/results/archive.ts";
 import { decomment } from "./lib/decomment.mts";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
@@ -23,6 +26,8 @@ const real = {
   access: source("src/app/results/millionea-results-access.ts"),
   view: source("src/app/results/millionea-results-view.tsx"),
   data: source("src/lib/server/maswali-player.ts"),
+  // The row /results draws is the register's one row (S5-DESIGN-REGISTER's `WeekRow`, adopted with no fork, 2026-10-21).
+  parts: source("src/app/millionea/register/register-parts.tsx"),
 };
 type Sources = typeof real;
 const assert = (label: string, passes: boolean): void => {
@@ -45,11 +50,13 @@ const weeks = [
 ];
 
 function sourceChecks(w: Sources) {
-  const p = w.page, s = w.server, a = w.access, v = w.view, d = w.data;
+  const p = w.page, s = w.server, a = w.access, v = w.view, d = w.data, pr = w.parts;
   const sectionAt = p.indexOf("<MillioneaResultsSection />");
   const classicAt = p.indexOf("<ResultsContent state={state} searching={searching} pageNum={pageNum} />");
   return {
-    mounted: sectionAt > classicAt && classicAt >= 0 && p.includes("<Suspense fallback={null}>\n          <MillioneaResultsSection />\n        </Suspense>"),
+    // RE-PINNED 2026-10-21 (S5-DESIGN-DOORS L16): mounted on the archive's first, unfiltered page alone (`placed` below).
+    mounted: sectionAt > classicAt && classicAt >= 0
+      && p.includes("{millioneaSectionShown(state, searching, pageNum) && (\n          <Suspense fallback={null}>\n            <MillioneaResultsSection />\n          </Suspense>\n        )}"),
     isolated: p.includes('(await listTerminalMarkets("ALL")).filter((m) => m.productLine !== "MASWALI")')
       && p.indexOf("async function ResultsContent(") > sectionAt
       && !p.slice(p.indexOf("async function ResultsContent(")).includes("millioneaResultsSection"),
@@ -60,16 +67,41 @@ function sourceChecks(w: Sources) {
     contained: /try \{\s*return \{ preview: access\.preview, weeks: await read\(\) \};\s*\} catch \(err\) \{[^}]*return null;\s*\}/.test(a),
     publicFinal: d.includes('weekStore.list({ visibility: "PUBLIC", states: TERMINAL })')
       && d.includes("return (await millioneaRegister({ perPage: limit })).rows;"),
+    // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-DOORS, the lead's instruction): a week's row is the register's one row
+    // (`WeekRow`), handed the week's chip and its facts; the section's own chevron is the register link's alone.
     view: v.includes("{preview && <MillioneaPreviewMark t={t} />}")
       && v.includes("<EmptyState fill title={t.millionea.regEmpty} />")
-      && v.includes("const facts = weekFacts(t, w);")
-      && v.includes("<WeekStateChip t={t} state={w.state} />")
-      && v.includes("registerWeekHref(w.code)")
+      && v.includes("facts={weekFacts(t, w)}")
+      && v.includes("chip={<WeekStateChip t={t} state={w.state} />}")
       && v.includes("href={MILLIONEA_HREF.register}")
       && v.includes("{t.millionea.productTitle}")
       && v.includes("data-testid=\"millionea-results-section\"")
-      && count(v, "<I.chevronRight") === 2,
+      && count(v, "<I.chevronRight") === 1,
+    // S5-DESIGN-DOORS L14 L15, through the one row: /results draws `WeekRow` and no row of its own (no fork — no <li>, no
+    // link of its own, no hand-typed "·"), its list drawing the rules (above the first row and between rows); the row's
+    // facts are Millionea's one fact line, ending at the row's end from 1024 beside the chevron.
+    factLine: v.includes("<WeekRow key={w.id} t={t} code={w.code} chip={<WeekStateChip t={t} state={w.state} />} facts={weekFacts(t, w)} />")
+      && v.includes('<ul role="list" className="flex flex-col divide-y divide-border border-t border-border">')
+      && !/<li\b|registerWeekHref|>·</.test(v)
+      && count(pr, '<MaswaliFacts layout="phone" facts={facts} />') === 1
+      && pr.includes('<span className="min-w-0 text-body-sm text-text-muted lg:ml-auto" data-testid="millionea-week-facts">')
+      && pr.includes('<span className="flex min-w-0 flex-1 flex-col gap-1">'),
   };
+}
+
+/** L16 · the section stands on the archive's first page as it opens, and under no narrowing of it. */
+function placedChecks(shown: typeof millioneaSectionShown): string[] {
+  const base = ARCHIVE_DEFAULT_STATE, failures: string[] = [];
+  if (!shown(base, false, 1)) failures.push("hidden on the archive as it opens");
+  if (!shown({ ...base, sort: "volume", dir: "asc" }, false, 1)) failures.push("hidden under a sort (a sort narrows nothing)");
+  if (!shown({ ...base, product: "all" }, false, 1)) failures.push("hidden on the undivided archive");
+  const narrowed: Array<[string, boolean]> = [
+    ["a search", shown(base, true, 1)], ["page 2", shown(base, false, 2)], ["a topic", shown({ ...base, cat: "sports" }, false, 1)],
+    ["an outcome lens", shown({ ...base, out: "void" }, false, 1)], ["a time window", shown({ ...base, when: "7d" }, false, 1)],
+    ["the Up & Down rounds", shown({ ...base, product: "UPDOWN" }, false, 1)],
+  ];
+  for (const [name, drawn] of narrowed) if (drawn) failures.push(`drawn under ${name}`);
+  return failures;
 }
 
 type Reader = typeof loadVisibleMillioneaResults;
@@ -136,6 +168,8 @@ console.error = quiet;
 assert(`a week read that throws draws no section and never escapes to the page's error boundary${failed.length ? ` (${failed.join(", ")})` : ""}`, failed.length === 0);
 const viewFailures = viewChecks();
 assert(`empty, full and preview render in en/sw/zh${viewFailures.length ? ` (${viewFailures.join(", ")})` : ""}`, viewFailures.length === 0);
+const placedFailures = placedChecks(millioneaSectionShown);
+assert(`L16 · placed on the archive's first page as it opens (a sort or the undivided archive keeps it), never under a search, page 2, a topic, an outcome lens, a time window or the Up & Down rounds alone${placedFailures.length ? ` (${placedFailures.join(", ")})` : ""}`, placedFailures.length === 0);
 
 if (process.argv.includes("--prove-red")) {
   const mutations: Array<{ name: string; file: keyof Sources; from: string; to: string; fails: keyof typeof base }> = [
@@ -146,8 +180,14 @@ if (process.argv.includes("--prove-red")) {
     { name: "drive week reaches results", file: "data", from: 'visibility: "PUBLIC", states: TERMINAL', to: 'visibility: "DRIVE", states: TERMINAL', fails: "publicFinal" },
     { name: "preview mark removed", file: "view", from: "{preview && <MillioneaPreviewMark t={t} />}", to: "", fails: "view" },
     { name: "fake empty result", file: "view", from: "<EmptyState fill title={t.millionea.regEmpty} />", to: "<EmptyState fill title={t.results.noResolvedYet} />", fails: "view" },
-    { name: "week facts removed", file: "view", from: "const facts = weekFacts(t, w);", to: "const facts = [];", fails: "view" },
+    { name: "week facts removed", file: "view", from: "facts={weekFacts(t, w)}", to: "facts={[]}", fails: "view" },
+    { name: "section under every filter again", file: "page", from: "{millioneaSectionShown(state, searching, pageNum) && (", to: "{true && (", fails: "mounted" },
+    { name: "hand-rolled separators back", file: "parts", from: '<MaswaliFacts layout="phone" facts={facts} />', to: "{facts.map((f, i) => <span key={i}>{i > 0 && <span>·</span>}{f}</span>)}", fails: "factLine" },
+    { name: "a forked row back", file: "view", from: "<WeekRow key={w.id} t={t} code={w.code} chip={<WeekStateChip t={t} state={w.state} />} facts={weekFacts(t, w)} />", to: "<li key={w.id}><Link href={registerWeekHref(w.code) as never}>{w.code}</Link></li>", fails: "factLine" },
+    { name: "the facts far from the chevron again", file: "parts", from: 'text-text-muted lg:ml-auto" data-testid="millionea-week-facts"', to: 'text-text-muted" data-testid="millionea-week-facts"', fails: "factLine" },
+    { name: "the list's rules dropped", file: "view", from: "divide-y divide-border border-t border-border", to: "", fails: "factLine" },
   ];
+  assert("L16 · the section drawn under every filter turns the placement red", placedChecks(() => true).length > 0);
   for (const m of mutations) {
     assert(`${m.name} plant is unique`, count(real[m.file], m.from) === 1);
     const altered = { ...real, [m.file]: real[m.file].replace(m.from, m.to) };

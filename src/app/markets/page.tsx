@@ -193,8 +193,9 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
   const openMarkets = topicRows.filter((r) => matchesStatus(r, "open", nowMs));
   const openVolume = openMarkets.reduce((sum, r) => sum + r.pool, 0);
   // MASWALI-BUILD S5 · the Millionea card at the board's head, above the filters, at every width (§10 §3.2 (a), D-13;
-  // DESIGN_AUTHORITY §M8a item 11): for a reader the rollout admits and who is not on a break; nothing otherwise.
-  const millionea = await millioneaHomeCard(t, nowMs, { className: "mb-3" });
+  // DESIGN_AUTHORITY §M8a item 11): for a reader the rollout admits and who is not on a break; nothing otherwise. In the
+  // market cards' raised material; `loading.tsx` holds its slot (MarketsGhost) on the same door's answer.
+  const millionea = await millioneaHomeCard(t, nowMs, { className: "mb-3", host: "board" });
 
   return (
     <PageContainer tier="board">

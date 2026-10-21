@@ -547,7 +547,8 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/app/profile/notifications/page.tsx', '<I.chevronRight s={12} edge="end" text="mono-400" />', 1, "text", "a row cue's end, after its count"],
     ['src/app/profile/page.tsx', '<I.chevronRight s={16} edge="end" />', 2, "row", "the setting rows' and the sign-out row's end"],
     ['src/app/results/millionea-results-view.tsx', '<I.chevronRight s={14} edge="end" text="body-400" />', 1, "text", "the Millionea register link's 14px mark lands after its body text"],
-    ['src/app/results/millionea-results-view.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle" />', 1, "row", "the settled-week row's end mark lands on the row edge"],
+    // RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-DOORS): /results' week rows are the register's one row (`WeekRow`), so their
+    // end mark is register-parts.tsx's entry below; the section draws none of its own.
     ['src/app/proposals/[id]/page.tsx', '<I.arrowRight s={15} text="body-600" />', 1, "button", B],
     ['src/app/proposals/[id]/page.tsx', '<I.chevronLeft s={11} edge="start" text="body-400" />', 1, "text", "the back link's start, centred by its ink — PHOSPHOR W4's review: a typed back arrow, written as an escape"],
     ['src/app/proposals/page.tsx', '<I.arrowRight s={12} edge="end" text="mono-400" />', 1, "text", "a link cue's end"],
@@ -593,15 +594,21 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/components/updown/round-stake-panel.tsx', '<I.arrowRight s={11} text="mono-600" className="text-body-sm text-text-muted" />', 1, "float-text", "it leads the projected return, the figure at the stake row's end (PHOSPHOR W4: it was hand-drawn): no edge to land on, the figure's stroke"],
     ['src/components/updown/updown-card.tsx', '<I.chevronRight s={10} text="mono-600" />', 1, "button", B],
     ['src/components/wallet/receipt-list-row.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle transition-colors duration-quick group-hover:text-text" aria-hidden />', 1, "row", "the receipt row's end"],
-    ['src/components/maswali/maswali-home-card.tsx', '<I.chevronRight s={18} edge="end" className="mt-2 shrink-0 text-text-subtle xl:mt-0" />', 1, "row", "the Millionea card's end (MASWALI-BUILD S5 VIS-P): the card stays stacked until the wide row can hold every fact"],
+    // S5-DESIGN-DOORS (2026-10-21, R1 M1 L1): the card's end is the How-to card's — 20px, on the head row's axis (`.kp-mln-door`).
+    ['src/components/maswali/maswali-home-card.tsx', '<I.chevronRight s={20} edge="end" className="kp-mln-door__chev" />', 1, "row", "the Millionea card's end: the door's head row (plate · title · chevron) on one axis, the How-to card's row"],
+    ['src/components/maswali/maswali-home-card-ghost.tsx', '<I.chevronRight s={20} edge="end" className="kp-mln-door__chev" />', 1, "ghost", "the ghost of the card's end, pulled as the card's is and unpainted (`.kp-mln-ghost`), so the facts' column is the card's"],
     ['src/components/maswali/maswali-ticket.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle" />', 1, "row", "a held Millionea ticket's row end in the hub's buy block (MASWALI-BUILD S5)"],
     // MASWALI-BUILD S5 pages (2026-10-18): Millionea's text links end on their words' stroke; its two list rows end on their edge.
     ['src/components/maswali/maswali-ticket.tsx', '<I.chevronRight s={14} edge="end" text="body-400" className="shrink-0" />', 1, "text", "a ticket row's 'view the ticket' link: its end after the 13px body/400 words"],
     ['src/app/millionea/hub-notices.tsx', '<I.chevronRight s={14} edge="end" text="body-400" />', 1, "text", "a hub notice's door: a text link's end after its body/400 words"],
     ['src/app/millionea/millionea-parts.tsx', '<I.chevronRight s={14} edge="end" text="body-400" />', 1, "text", "the reading links' end (how it works, the register, fairness), one mark per link"],
     ['src/app/millionea/register/[week]/page.tsx', '<I.chevronRight s={14} edge="end" text="body-400" />', 1, "text", "the register's audit-chain link's end"],
-    ['src/app/millionea/register/page.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle" />', 1, "row", "a week's row end in the register's list"],
-    ['src/app/positions/page.tsx', '<I.arrowRight s={14} edge="end" className="shrink-0 text-text-muted" />', 1, "row", "classic /positions' Millionea row: a door's end on its content edge (D-13 (c))"],
+    // RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER): the week's row is the ONE shared row (`WeekRow`, register-parts:
+    // the register's index, /results' section), and a ledger's carry row is a door to its week (the critic's M10).
+    ['src/app/millionea/register/register-parts.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle" />', 1, "row", "a week's row end in the register's list (and /results' section)"],
+    ['src/components/maswali/maswali-ledger.tsx', '<I.chevronRight s={14} edge="end" text="body-400" className="shrink-0" />', 1, "text", "a ledger carry row's door to its week: the end of its 13px body/400 label"],
+    // S5-DESIGN-DOORS (2026-10-21): the /positions door ends as every other Millionea door — it was the only arrow among them.
+    ['src/app/positions/page.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle" />', 1, "row", "classic /positions' Millionea row: a door's end on its content edge (D-13 (c)), the register's and /results' row end"],
   ];
   const MARK = new RegExp("<I[.](?:chevronRight|chevronLeft|chevronsRight|chevronsLeft|arrowRight|ext|externalLink)(?![A-Za-z])(?:[^<>{}]|[{](?:[^{}]|[{][^{}]*[}])*[}])*?/>", "g");
   const marksSeen = (source: (f: string) => string = code) => {

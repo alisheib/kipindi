@@ -372,15 +372,17 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
   // RE-PINNED (MASWALI-BUILD S5 pages, deliberately): the page's fallback holds the Millionea card's slot on the doors' one
   // answer (`millionea={millionea}`). ⚠️ RE-PINNED AGAIN (S5-FIX-PLATFORM D6 with the doors lane's H1, 2026-10-21): the root's
   // picture of "/" is now handed the rollout's per-request answer by the root loading file, and passes it on, so it holds
-  // the slot for a reader Millionea is visible to (no read of its own).
-  const homeEntry = (g: string, p: string) => squash(g).includes('"/": <JourneyHomeGhost t={t} millionea={millionea} />,') && g.includes(HOME_GHOST_IMPORT)
-    && !/"\/": <HomeGhost/.test(squash(g)) && squash(p).includes("<Suspense fallback={<JourneyHomeGhost t={t} millionea={millionea} />}>") && p.includes(HOME_GHOST_IMPORT);
+  // the slot for a reader Millionea is visible to (no read of its own). RE-PINNED (S5 integration, 2026-10-21): the route
+  // ghost hands it the reader's locale as the page's fallback does (S5-DESIGN-DOORS H1: the slot's kept runs wrap by
+  // language), and the page's fallback also hands it the preview answer.
+  const homeEntry = (g: string, p: string) => squash(g).includes('"/": <JourneyHomeGhost t={t} locale={locale} millionea={millionea} />,') && g.includes(HOME_GHOST_IMPORT)
+    && !/"\/": <HomeGhost/.test(squash(g)) && squash(p).includes("<Suspense fallback={<JourneyHomeGhost t={t} locale={locale} millionea={millionea} preview={preview} />}>") && p.includes(HOME_GHOST_IMPORT);
   ok("3.14 · \"/\" draws the journey home's own ghost (journey-home-ghost.tsx), the same drawing app/page.tsx's journey arm stands in its Suspense boundary — the root's picture of the home and the page's own are one; the landing's ghost is shelved, unmounted (3.9 and 3.10 hold it still)",
     homeEntry(ghost, PAGE_FILE));
   ok("3.14′ PLANT · \"/\" back to the landing's ghost is reported",
-    !homeEntry(ghost.replace('"/": <JourneyHomeGhost t={t} millionea={millionea} />,', '"/": <HomeGhost t={t} locale={locale} rails={rails} />,'), PAGE_FILE));
+    !homeEntry(ghost.replace('"/": <JourneyHomeGhost t={t} locale={locale} millionea={millionea} />,', '"/": <HomeGhost t={t} locale={locale} rails={rails} />,'), PAGE_FILE));
   ok("3.14″ PLANT · the page's Suspense fallback drawn as anything but the home's ghost is reported",
-    !homeEntry(ghost, PAGE_FILE.replace("<Suspense fallback={<JourneyHomeGhost t={t} millionea={millionea} />}>", "<Suspense fallback={null}>")));
+    !homeEntry(ghost, PAGE_FILE.replace("<Suspense fallback={<JourneyHomeGhost t={t} locale={locale} millionea={millionea} preview={preview} />}>", "<Suspense fallback={null}>")));
 }
 {
   // /account: the page's own column, h1, identity card, prompt and column cut.

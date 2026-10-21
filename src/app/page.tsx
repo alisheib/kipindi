@@ -7,7 +7,7 @@ import { JourneyHome } from "@/components/journey/home/journey-home";
 import { JourneyHomeGhost } from "@/components/journey/home/journey-home-ghost";
 import { getServerT } from "@/lib/i18n-server";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
-import { millioneaCardShown } from "@/lib/server/millionea-doors";
+import { millioneaCardShown, millioneaDoor } from "@/lib/server/millionea-doors";
 
 export const dynamic = "force-dynamic";
 
@@ -52,13 +52,15 @@ export default async function LandingPage({ searchParams }: {
      every other request takes the one classic return below, today's element after one cached await. The tab's title is
      the one `generateMetadata` gives every reader (Open point 25's decision). MASWALI-BUILD S5: the ghost holds the
      Millionea card's slot when the doors say it will be offered (`millioneaCardShown`, React-cached), so the page lands
-     where its ghost stood. */
+     where its ghost stood — the card's own loading picture in the reader's language, with the preview's chip at
+     STAFF_PREVIEW (S5-DESIGN-DOORS H1; the door's answer is React-cached, so it costs no read). */
   const { journey } = await resolveSimpleJourney();
   if (journey) {
-    const { t } = await getServerT();
+    const { t, locale } = await getServerT();
     const millionea = await millioneaCardShown();
+    const { preview } = await millioneaDoor();
     return (
-      <Suspense fallback={<JourneyHomeGhost t={t} millionea={millionea} />}>
+      <Suspense fallback={<JourneyHomeGhost t={t} locale={locale} millionea={millionea} preview={preview} />}>
         <JourneyHome searchParams={searchParams} />
       </Suspense>
     );

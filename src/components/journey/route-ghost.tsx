@@ -109,12 +109,13 @@ export type JourneyGhostPage = "/positions" | "/updown/history" | "/markets/[id]
  * only while it is true; S5-FIX-PLATFORM D6). Without it, Millionea's addresses draw the unknown page's ghost.
  */
 export function JourneyRouteGhost({ rails, at, millionea = false }: { rails: readonly string[]; at?: JourneyGhostPage; millionea?: boolean }) {
-  const { t } = useT();
+  const { t, locale } = useT();
   const routes = {
     // The journey home's own ghost (WP7, A24 item 2) — the shelved landing's was `<HomeGhost t={t} locale={…} rails={rails} />`.
     // MASWALI-BUILD S5 (the doors lane's H1): it reserves the Millionea card's slot for a reader Millionea is visible to —
-    // the rollout's per-request answer handed in (`millionea`, D6), never a read of its own.
-    "/": <JourneyHomeGhost t={t} millionea={millionea} />,
+    // the rollout's per-request answer handed in (`millionea`, D6), never a read of its own; and the reader's locale, which
+    // the slot's kept runs need (S5-DESIGN-DOORS H1: they wrap by language, so a slot set without it misses ±2px).
+    "/": <JourneyHomeGhost t={t} locale={locale} millionea={millionea} />,
     "/updown": <UpDownGhost />,
     "/positions": <TicketsGhost t={t} />,
     "/account": <AccountGhost t={t} />,

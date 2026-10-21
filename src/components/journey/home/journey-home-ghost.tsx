@@ -22,7 +22,8 @@
  * no other loading file can draw it (a hop to a question page never shows the home's ghost, A19).
  */
 import { PageContainer } from "@/components/layout/page-container";
-import type { Dict } from "@/lib/i18n-dict";
+import { MaswaliHomeCardGhost } from "@/components/maswali/maswali-home-card-ghost";
+import type { Dict, Locale } from "@/lib/i18n-dict";
 import { HomeHeadline } from "./home-headline";
 
 /** The chips' bars, at widths near the first four labels' (a row of identical boxes reads as a loading bar, not a rail) —
@@ -32,12 +33,20 @@ const CHIP_WIDTHS = ["w-[64px]", "w-[96px]", "w-[112px]", "w-[88px]"];
 const CARDS = [0, 1, 2];
 
 /**
- * `millionea` — MASWALI-BUILD S5: the route says the Millionea card will be offered (`app/page.tsx`, from the doors' one
- * answer), so its slot is held between the head and the chips where the card lands (O-7). The root loading's picture of
- * `/` cannot ask, and draws none (`route-ghost.tsx`). The slot is the card's own box: a raised card, the 48px plate, three
- * lines — no word, no figure.
+ * `millionea` — MASWALI-BUILD S5: the route says the Millionea card will be offered (`app/page.tsx` asks the doors' one
+ * answer, `millioneaCardShown`; the root loading's picture of `/` the rollout's cached one — `route-ghost.tsx`), so its slot
+ * is held between the head and the chips where the card lands (O-7). ⭐ S5-DESIGN-DOORS H1: the slot is the card's own
+ * loading picture (`MaswaliHomeCardGhost`) — the door's anatomy in the How-to card's box, the card's words in the reader's
+ * language (`locale`) hidden over bars — so it is as tall as the card it stands for at every width and in every language;
+ * it was a plate and three bars, ~114px, where the card lands 144–287px. `preview` holds the preview chip's place at
+ * STAFF_PREVIEW. ⛔ `locale` is required wherever the slot is drawn: a slot set in another language wraps another way.
  */
-export function JourneyHomeGhost({ t, millionea = false }: { t: Dict; millionea?: boolean }) {
+type JourneyHomeGhostProps =
+  | { t: Dict; locale?: Locale; millionea?: false; preview?: boolean }
+  | { t: Dict; locale: Locale; millionea: true; preview?: boolean };
+
+export function JourneyHomeGhost(props: JourneyHomeGhostProps) {
+  const { t } = props;
   return (
     <PageContainer tier="board">
       <div className="kp-jhome kp-jhome-ghost" data-testid="journey-home-ghost">
@@ -51,16 +60,7 @@ export function JourneyHomeGhost({ t, millionea = false }: { t: Dict; millionea?
           </div>
           <HomeHeadline t={t} ghost />
         </div>
-        {millionea && (
-          <div aria-hidden className="mat-raised flex items-start gap-2 rounded-card p-3" data-ghost-part="millionea">
-            <span className="kp-jhome-ghost__plate kp-shimmer-track" />
-            <span className="flex min-w-0 flex-1 flex-col gap-1.5 pt-1">
-              <span className="kp-jhome-ghost__bar kp-jhome-ghost__bar--where" />
-              <span className="kp-jhome-ghost__line" />
-              <span className="kp-jhome-ghost__bar kp-jhome-ghost__bar--when" />
-            </span>
-          </div>
-        )}
+        {props.millionea && <MaswaliHomeCardGhost t={t} locale={props.locale} host="journey" preview={props.preview} />}
         <div aria-hidden className="kp-strip-fade kp-jhome__chips" data-ghost-part="chips">
           {CHIP_WIDTHS.map((w) => <span key={w} className={`kp-jhome-ghost__chip kp-shimmer-track ${w}`} />)}
         </div>

@@ -1789,7 +1789,9 @@ function homeChecks(w: World, ok: Ok) {
 
   // 6.arm — WP7 step 1; A17 item 2 (the home's ghost in a Suspense boundary of its own; the root loading file as it is).
   // RE-PINNED (MASWALI-BUILD S5 pages, deliberately): the ghost holds the Millionea card's slot on the doors' one answer.
-  const ARM = "const { journey } = await resolveSimpleJourney(); if (journey) { const { t } = await getServerT(); const millionea = await millioneaCardShown(); return ( <Suspense fallback={<JourneyHomeGhost t={t} millionea={millionea} />}> <JourneyHome searchParams={searchParams} /> </Suspense> ); }";
+  // RE-PINNED (S5-DESIGN-DOORS H1, 2026-10-21): the slot is the card's own picture, in the reader's language, its preview chip
+  // held at STAFF_PREVIEW — so the arm hands the ghost the request's locale and the door's cached preview answer.
+  const ARM = "const { journey } = await resolveSimpleJourney(); if (journey) { const { t, locale } = await getServerT(); const millionea = await millioneaCardShown(); const { preview } = await millioneaDoor(); return ( <Suspense fallback={<JourneyHomeGhost t={t} locale={locale} millionea={millionea} preview={preview} />}> <JourneyHome searchParams={searchParams} /> </Suspense> ); }";
   const armAt = flatBody.indexOf(ARM), classicAt = flatBody.indexOf(CLASSIC_RETURN);
   const arm = { armAt, classicAt, homes: count(page, "<JourneyHome "), boundaries: count(page, "<Suspense"), ghosts: count(page, "<JourneyHomeGhost"), async: body.startsWith("export default async function LandingPage(") };
   ok("6.arm · the journey arm comes first, exactly: the resolver's answer, then for a journey request the journey home inside a Suspense boundary of its own whose fallback is the home's ghost (A17 item 2: the root loading file stays as it is) — one of each — and the classic return after it",
@@ -2046,7 +2048,7 @@ function homeDefects(): Array<{ name: string; expect: RegExp; plant: (w: World) 
     { name: "the classic return moved above the journey arm (no journey reader ever reaches the home)", expect: /^6[.]arm /,
       plant: (w) => ({ ...w, page: swap(w.page, ARM_OPEN, "  return <LegacyLanding searchParams={searchParams} />;" + LF + ARM_OPEN) }) },
     { name: "the journey home returned bare, its Suspense boundary dropped (no ghost while the list arrives)", expect: /^6[.]arm /,
-      plant: (w) => ({ ...w, page: swap(w.page, "<Suspense fallback={<JourneyHomeGhost t={t} millionea={millionea} />}>", "<>").replace("</Suspense>", "</>") }) },
+      plant: (w) => ({ ...w, page: swap(w.page, "<Suspense fallback={<JourneyHomeGhost t={t} locale={locale} millionea={millionea} preview={preview} />}>", "<>").replace("</Suspense>", "</>") }) },
     { name: "the classic return changed (searchParams no longer handed on: the board's ?sort= lost)", expect: /^6[.]classic /,
       plant: (w) => ({ ...w, page: swap(w.page, "  return <LegacyLanding searchParams={searchParams} />;", "  return <LegacyLanding searchParams={Promise.resolve({})} />;") }) },
     { name: `generateMetadata branches on the journey ("Maswali" for a journey reader: Open point 25's overrule, unruled)`, expect: /^6[.]meta /,

@@ -229,6 +229,27 @@ export const STATUS_TONE = {
    * Up & Down. Tiketi zangu's switch shows one product at a time, so the two won chips never share a list.
    */
   MILLIONEA_WIN: { player: "green" },
+  /**
+   * ⭐ WHERE A MILLIONEA WEEK STANDS, AS ONE CHIP (S5-DESIGN-REGISTER, 2026-10-21 — Ali's 10/10 pass; the register critic's
+   * L2). The register's rows and week pages, and the hub, say a week's state with one chip (`WeekStateChip`,
+   * `millionea/register/register-parts.tsx`) — its word `millioneaWeekPhase` → `weekPhaseWord`, its tone read HERE, so no
+   * surface hand-types a variant beside the word (§B11). Each tone is the one the platform gives the same state:
+   *   · selling, and every stage on the way to a result — sales closed, results coming in, the objection window, settling,
+   *     being voided — ROYAL: in flight, nothing is wrong (OPEN, CLOSED and PENDING are royal to a player). A week being
+   *     voided is money on its way back, as a voided week's ticket reads "Pending" until its own refund lands;
+   *   · paused — SLATE: an officer's pause is inert to the player, with nothing for them to do (DEACTIVATED's player tone);
+   *   · VOIDED — SLATE, VOID's own player tone: terminal and inert, the money is back;
+   *   · SETTLED — SLATE, and that one is a decision: `STATUS_TONE_EXCEPTIONS.MILLIONEA_WEEK_SETTLED`.
+   */
+  MILLIONEA_WEEK_OPEN:       { player: "royal" },
+  MILLIONEA_WEEK_PAUSED:     { player: "slate" },
+  MILLIONEA_WEEK_CLOSED:     { player: "royal" },
+  MILLIONEA_WEEK_RESOLVING:  { player: "royal" },
+  MILLIONEA_WEEK_OBJECTIONS: { player: "royal" },
+  MILLIONEA_WEEK_SETTLING:   { player: "royal" },
+  MILLIONEA_WEEK_VOIDING:    { player: "royal" },
+  MILLIONEA_WEEK_SETTLED:    { player: "slate" },
+  MILLIONEA_WEEK_VOIDED:     { player: "slate" },
   // ── A PLAYER'S PAYMENT — a deposit or a withdrawal (2026-10-07, the Receipts page) ─────────────
   /**
    * ⭐ THE SEVEN `TxnStatus` WORDS A PLAYER READS ON THEIR OWN MONEY, DECIDED ONCE. Until 2026-10-07 two surfaces
@@ -455,6 +476,16 @@ export const STATUS_TONE_EXCEPTIONS = {
    * about different products and both stand: do not move `WIN` to green, and do not move this row to `WIN`'s ink.
    */
   MILLIONEA_WIN: "Success green on a won Millionea ticket's word (Ali's O-6, §M8a item 8) — the paid amount carries the money ink, the word does not — while WIN keeps its own for Yes/No and Up & Down.",
+  /**
+   * ⭐ ADDED 2026-10-21 (S5-DESIGN-REGISTER; the register critic's L2) — A SETTLED MILLIONEA WEEK IS SLATE, NOT RESOLVED'S
+   * STRUCK SEAL. RESOLVED wears that seal to a player (Ali, 2026-10-20: a market's final state). A Millionea week's
+   * "Settled" ("Imekamilika") heads the public record of a week's money — the jackpot it struck, the fee, the carry — and
+   * none of it is money the reader earned: §M8a item 7 puts the money ink only on the amount a won ticket was paid, and
+   * the register states money, it awards none. So the week's final word is terminal and inert, as VOIDED is.
+   * ⛔ Do not move it to RESOLVED's tone, and do not move RESOLVED here: the two rulings are about different words.
+   * (VOIDED is not an exception: it reads VOID's own player slate.)
+   */
+  MILLIONEA_WEEK_SETTLED: "Slate on a settled Millionea week's word (§M8a item 7: the register states money, it awards none) — RESOLVED keeps its own struck seal for a market's final state.",
   /*
    * ⛔ `CASHED_OUT` USED TO HAVE AN ENTRY HERE AND IT IS GONE ON PURPOSE — answered by Ali
    * 2026-09-09, and the note it replaced carried the instruction followed here verbatim: *"if the

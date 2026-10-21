@@ -318,8 +318,10 @@ function serverOnly(entry: string, text: (p: string) => string = raw): { reached
   // and still takes the rails, which that shelved ghost draws (2.9).
   // ⚠️ MOVED BY MASWALI-BUILD S5-FIX-PLATFORM D6 (2026-10-21): …and `millionea`, the rollout's answer, so a Millionea address
   // draws Millionea's ghost only for a reader it is visible to (`test:millionea-dark-edge` §6).
+  // ⚠️ MOVED BY THE MASWALI-BUILD S5 INTEGRATION (2026-10-21): the binding reads the locale again (`const { t, locale } = useT();`)
+  // — the journey home's ghost holds Millionea's slot, whose kept runs wrap by language (S5-DESIGN-DOORS H1).
   const shape = (s: string) => hasDirective(s, "use client") && s.includes("export function JourneyRouteGhost({ rails, at, millionea = false }: { rails: readonly string[]; at?: JourneyGhostPage; millionea?: boolean }) {")
-    && squash(s).includes("const { t } = useT();") && s.includes('import { useT } from "@/lib/i18n";');
+    && squash(s).includes("const { t, locale } = useT();") && s.includes('import { useT } from "@/lib/i18n";');
   ok("2.1 · route-ghost.tsx is client code: the ghosts take the rails alone and read the words from the client dictionary (`useT`)", shape(ghost));
   ok("2.1′ PLANT · the ghosts drawn by a server component again (the directive gone) is reported", !shape(ghost.replace(/^\s*"use client";/, "")));
   const graph = serverOnly(GHOST_LAZY);

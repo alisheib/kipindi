@@ -26,7 +26,7 @@ export function HowExample({ line, caption, voided, standIn }: {
   const [run, setRun] = useState(0);
   return (
     <div className="flex flex-col gap-3">
-      <MaswaliSealLine key={run} line={line} size={24} numbers idBase="mln-how-example" play={{ carry: run > 0 }} />
+      <MaswaliSealLine line={line} size={24} numbers idBase="mln-how-example" play={{ carry: run > 0, run }} />
       <p className="text-body-sm text-text-muted text-pretty">{caption}</p>
       <div className="flex flex-wrap items-center gap-3">
         <Button type="button" variant="ghost" size="md" className="border-border-control kp-mln-example-button" onClick={() => setRun((n) => n + 1)}>
