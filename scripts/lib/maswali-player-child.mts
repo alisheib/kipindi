@@ -486,6 +486,12 @@ const { week: B, start: bStart } = await W.openWeek({ weeksAhead: 3 });
   const [before, between, after] = await Promise.all([
     at(Date.parse(events[0]) - 60_000), at(Date.parse(events[0]) + 60_000), at(Date.parse(events[events.length - 1]) + 60_000),
   ]);
+  // S5-FIX-PLAYER P7 · the open week's "results and payout" end: its latest void deadline plus its frozen window (no window yet).
+  const qB = await dal.questionStore.listForWeek(B.id);
+  const lastVoid = Math.max(...qB.map((q: any) => Date.parse(q.voidDeadlineAt)));
+  const wantBy = new Date(P.millioneaResultsBy(null, lastVoid, W.svc.frozenRules(B))).toISOString();
+  ok("7.11 · ⭐ P7 · the week on sale's results and payout end at its latest void deadline plus its frozen objection window (never before its EAT floor) — the strip's end, How to play's own rule",
+    h.week?.resultsBy === wantBy && Date.parse(wantBy) > lastVoid, J({ resultsBy: h.week?.resultsBy, want: wantBy }));
   ok("7.10 · ⭐ P5 · the ticket's next event is the first unsealed event still AHEAD — and none once every unsealed event has begun, never one already past",
     before?.nextResultAt === events[0] && between?.nextResultAt === events.find((e: string) => Date.parse(e) >= Date.parse(events[0]) + 60_000)
       && between.nextResultAt !== events[0] && after?.resultsOut === 0 && after.nextResultAt === null,
@@ -507,6 +513,8 @@ const objectionsDone = await W.closeAndSeal(A, aStart);
   ok("8.0 · ⭐ P6 · the graded set final: the hub's grading week and the ticket view carry gradedSetFinalAt and objectionsCloseAt as the store stamped them, and the phase is the objection window until its end, then settling",
     !!stored.gradedSetFinalAt && !!stored.objectionsCloseAt && hg?.id === A.id && hg.gradedSetFinalAt === stored.gradedSetFinalAt && hg.objectionsCloseAt === stored.objectionsCloseAt
       && tv?.week.gradedSetFinalAt === stored.gradedSetFinalAt && tv.week.objectionsCloseAt === stored.objectionsCloseAt
+      // P7 · and once the window is stamped, the week's results and payout end at it
+      && hg.resultsBy === new Date(end).toISOString()
       && J(phaseAt(end - 1)) === J({ kind: "objections", objectionsUntil: end }) && J(phaseAt(end)) === J({ kind: "settling", objectionsUntil: null }),
     J({ stored: [stored.gradedSetFinalAt, stored.objectionsCloseAt], hub: hg && [hg.gradedSetFinalAt, hg.objectionsCloseAt], before: phaseAt(end - 1), at: phaseAt(end) }));
 }

@@ -1207,6 +1207,45 @@ const iconDefects = (src: string) => {
       && cases.some(([, w, now, kind]) => blind(w, now).kind !== kind));
 }
 
+// P7 · "Results and payout" ends at the objection window's end — one rule for the hub's strip and How to play
+{
+  const PL = (await import("../src/lib/server/maswali-player.ts")) as unknown as {
+    millioneaResultsBy: (close: string | null, lastVoid: number | null, rules: { objectionWindowHours: number; objectionNotBeforeAt: string }) => number | null;
+    millioneaHowTimeline: (h: Record<string, unknown>, nowMs: number) => { resultsFrom: number; resultsTo: number; eventsTo: number } | null;
+  };
+  const VIEW = req("../src/app/millionea/millionea-view.ts") as { phasesOf: (w: Record<string, unknown>) => { resultsFrom: number; resultsTo: number } | null };
+  const R = { objectionWindowHours: 24, objectionNotBeforeAt: "12:00" };
+  const eat = (iso: string) => Date.parse(`${iso}+03:00`);
+  const by = [
+    PL.millioneaResultsBy("2026-12-08T11:31:00.000Z", eat("2026-12-07T23:59:00"), R) === Date.parse("2026-12-08T11:31:00.000Z"),
+    PL.millioneaResultsBy(null, eat("2026-12-07T23:59:00"), R) === eat("2026-12-08T23:59:00"),
+    PL.millioneaResultsBy(null, eat("2026-12-07T03:00:00"), R) === eat("2026-12-08T12:00:00"),
+    PL.millioneaResultsBy(null, null, R) === null,
+  ];
+  ok("5.P7a · a week's results and payout end at its objection window's stamped end once known; before, at the latest void deadline plus the frozen window — Monday 23:59 → Tuesday 23:59, Monday 03:00 → never before Tuesday 12:00 (MR-16's floor)",
+    by.every(Boolean), j(by));
+  const H = { openWeekday: 1, openAt: "00:00", closeWeekday: 5, closeAt: "18:00", minLockBufferMinutes: 30, voidDeadlineHours: 48, finalDeadlineWeekday: 1, finalDeadlineAt: "23:59", objectionWindowHours: 24, objectionNotBeforeAt: "12:00" };
+  const NOW = eat("2026-12-02T10:00:00"); // a Wednesday of the week of Monday 30 November
+  const how = PL.millioneaHowTimeline(H, NOW);
+  // A real week of that template, as the hub reads it: last event Sunday 04:00, every void deadline capped at Monday 23:59.
+  const deadline = eat("2026-12-07T23:59:00").toString();
+  const hubWeek = { opensAt: new Date(eat("2026-11-30T00:01:00")).toISOString(), closesAt: new Date(eat("2026-12-04T18:00:00")).toISOString(),
+    questions: [{ eventStartsAt: new Date(eat("2026-12-05T09:00:00")).toISOString(), voidDeadlineAt: new Date(eat("2026-12-07T09:00:00")).toISOString() },
+      { eventStartsAt: new Date(eat("2026-12-06T04:00:00")).toISOString(), voidDeadlineAt: new Date(Number(deadline)).toISOString() }],
+    resultsBy: new Date(PL.millioneaResultsBy(null, Number(deadline), R) ?? 0).toISOString() };
+  const hub = VIEW.phasesOf(hubWeek);
+  const { MaswaliWeekStrip } = req("../src/components/maswali/maswali-week-strip.tsx") as { MaswaliWeekStrip: (p: Record<string, unknown>) => unknown };
+  const resultsWords = (l: L3, phases: unknown) => textOf(inApp(l, h(MaswaliWeekStrip as never, { t: dict[l], phases, current: null } as never))).split(FACTS.factsOf(dict[l].millionea.stripResults)[0] ?? "").pop() ?? "";
+  const same = LOCALES.filter((l) => !how || !hub || resultsWords(l, how) !== resultsWords(l, hub));
+  ok("5.P7b · ⭐ How to play and the hub say ONE range for a week of the template: \"Results and payout · Sunday – Tuesday\" in both (the hub ended at the latest void deadline, \"Sunday – Monday\"; How at Monday plus the window, \"Monday – Tuesday\")",
+    !!how && !!hub && how.resultsTo === eat("2026-12-08T23:59:00") && hub.resultsTo === how.resultsTo && same.length === 0
+      && resultsWords("en", how).replace(/^\s*·\s*/, "").replace(/\s+/g, " ").trim() === "Sunday – Tuesday", j({ how: how && new Date(how.resultsTo).toISOString(), hub: hub && new Date(hub.resultsTo).toISOString(), en: resultsWords("en", how), same }));
+  const oldHub = VIEW.phasesOf({ ...hubWeek, resultsBy: null });
+  const oldHowTo = eat("2026-12-07T00:00:00") + 24 * 3_600_000;
+  ok("5.P7′ PLANT · the old ends — the hub at the latest void deadline (Monday 23:59) and How at Monday plus the window (Tuesday 00:00) — are each told apart from the one rule",
+    !!oldHub && oldHub.resultsTo === Number(deadline) && oldHub.resultsTo !== how?.resultsTo && oldHowTo !== how?.resultsTo);
+}
+
 // P18 · the slip's two notices are the kit's Callout, never a hand-rolled copy
 const kitNoticeDefects = (src: string) => {
   const s = squash(code(src));
@@ -1237,7 +1276,7 @@ const kitNoticeDefects = (src: string) => {
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI DESIGN: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run prints; VIS-P's fact, example and word plants brought it to 110, and S5-FIX-PLAYER's §5
- *  (P5, P6, P10, P13, P15, P17, P18) to 134. */
-const MIN_ASSERTIONS = 134;
+ *  (P5, P6, P7, P10, P13, P15, P17, P18) to 137. */
+const MIN_ASSERTIONS = 137;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

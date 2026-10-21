@@ -26,7 +26,7 @@ import {
   questionStore, ticketStore, weekStore, noticeStore,
   type MaswaliNotice, type StoredQuestion, type StoredTicket, type StoredWeek, type WeekVisibility,
 } from "./maswali-dal";
-import { calendarStartMs, carryBlocker, frozenRules, gradable, rolloutSells, sunsetState } from "./maswali-service";
+import { calendarStartMs, carryBlocker, frozenRules, gradable, objectionWindowEnd, rolloutSells, sunsetState } from "./maswali-service";
 import { maswaliAccountBalance } from "./maswali-money-service";
 import { getMaswaliConfig, type MaswaliRulesSnapshot } from "./maswali-config";
 import { getSalesPause } from "./maswali-pause";
@@ -44,7 +44,7 @@ import {
 import { guaranteeRequirement, settleArithmetic, type WeekArithmetic } from "@/lib/maswali-money";
 import { FORFEITED_SHARE_MARK, ticketShown, type TicketShown, type WeekState } from "@/lib/maswali-week-label";
 import { millioneaFreeCancelEnd } from "@/lib/millionea-free-cancel";
-import { eatNextWeekAt } from "@/lib/eat-day";
+import { eatNextWeekAt, eatWeekAt, eatWeekStartMs } from "@/lib/eat-day";
 import { normalizeMillioneaSerial } from "@/lib/millionea-serial";
 import { unstable_cache } from "next/cache";
 import { readCachedMillioneaRegisterWeek } from "./maswali-register-cache";
@@ -130,6 +130,27 @@ async function termsOf(week: StoredWeek): Promise<WeekTerms | null> {
     rules, feeRate, freeCancelMinutes: fees.freeExitGraceMinutes,
     traRate: fees.traTaxOnCommissionRate, gbtRate: fees.gbtLevyOnCommissionRate,
   };
+}
+
+/**
+ * ⭐ S5-FIX-PLAYER P7 · WHEN A WEEK'S "RESULTS AND PAYOUT" END — ONE RULE for the hub's strip and How to play's timeline
+ * (they said "Sunday – Monday" and "Monday – Tuesday" for one shape of week): the objection window's own end once the
+ * graded set is final (`objectionsCloseAt`, stamped); before that, the latest void deadline plus the week's frozen window,
+ * never closing before its EAT floor — the service's own `objectionWindowEnd` (MR-16), so the strip promises no end the
+ * window could pass. Null when neither instant can be read.
+ */
+export function millioneaResultsBy(
+  objectionsCloseAt: string | null, lastVoidDeadlineMs: number | null,
+  rules: Pick<MaswaliRulesSnapshot, "objectionWindowHours" | "objectionNotBeforeAt">,
+): number | null {
+  const stamped = objectionsCloseAt ? Date.parse(objectionsCloseAt) : Number.NaN;
+  if (Number.isFinite(stamped)) return stamped;
+  if (lastVoidDeadlineMs === null || !Number.isFinite(lastVoidDeadlineMs)) return null;
+  try {
+    return objectionWindowEnd(lastVoidDeadlineMs, rules.objectionWindowHours, rules.objectionNotBeforeAt);
+  } catch {
+    return null;
+  }
 }
 
 /** The earliest of the fifteen events — "Tukio la kwanza" printed under the close (MR-4). */
@@ -479,6 +500,9 @@ export type MillioneaHubWeek = {
   gradedSetFinalAt: string | null;
   /** When the week's objection window closes — stamped with the graded set, never before its EAT floor (MR-16) — or null. */
   objectionsCloseAt: string | null;
+  /** P7 · when its "results and payout" end (`millioneaResultsBy`): the window's end once known, else the latest void
+   *  deadline plus the frozen window — the strip's end, How to play's own rule. Null when it cannot be read. */
+  resultsBy: string | null;
   firstEventAt: string | null;
   ticketPrice: number;
   ticketCap: number;
@@ -580,10 +604,13 @@ async function hubWeekOf(week: StoredWeek, viewer: MillioneaViewer, nowMs: numbe
       tickets: rowsFor(tickets, week, questions, gq, recordOf(gq), await refundsOf(tickets, week)),
     };
   }
+  const deadlines = questions.map((q) => Date.parse(q.voidDeadlineAt)).filter(Number.isFinite);
+  const resultsBy = millioneaResultsBy(week.objectionsCloseAt, deadlines.length > 0 ? Math.max(...deadlines) : null, terms.rules);
   return {
     id: week.id, code: week.code, visibility: week.visibility, state: week.state, isFinal: week.isFinal,
     opensAt: week.opensAt, closesAt: week.closesAt, closedAt: week.closedAt,
-    gradedSetFinalAt: week.gradedSetFinalAt, objectionsCloseAt: week.objectionsCloseAt, firstEventAt: firstEventOf(questions),
+    gradedSetFinalAt: week.gradedSetFinalAt, objectionsCloseAt: week.objectionsCloseAt,
+    resultsBy: resultsBy === null ? null : new Date(resultsBy).toISOString(), firstEventAt: firstEventOf(questions),
     ticketPrice: terms.rules.ticketPriceTzs, ticketCap: terms.rules.ticketCapPerWeek,
     selling: week.state === "OPEN" && Date.parse(week.closesAt) > nowMs && !paused && rolloutSells(viewer.state, week.visibility),
     pool: await maswaliPoolFigure(week.id).catch(() => null),
@@ -1100,6 +1127,9 @@ export type MillioneaHowTo = {
   closeAt: string;
   minLockBufferMinutes: number;
   voidDeadlineHours: number;
+  /** The results week's final deadline, which caps every question's void deadline (MR-15) — the timeline's last void. */
+  finalDeadlineWeekday: number;
+  finalDeadlineAt: string;
   objectionWindowHours: number;
   objectionNotBeforeAt: string;
   freeCancelMinutes: number;
@@ -1126,6 +1156,7 @@ export async function millioneaHowTo(viewer: MillioneaViewer): Promise<Millionea
       source: "WEEK", weekCode: current.code, ticketPrice: r.ticketPriceTzs, floor: r.floorTzs, feeRate: terms.feeRate,
       traRate: terms.traRate, gbtRate: terms.gbtRate, ticketCap: r.ticketCapPerWeek, openWeekday: r.openWeekday, openAt: r.openAt,
       closeWeekday: r.closeWeekday, closeAt: r.closeAt, minLockBufferMinutes: r.minLockBufferMinutes, voidDeadlineHours: r.voidDeadlineHours,
+      finalDeadlineWeekday: r.finalDeadlineWeekday, finalDeadlineAt: r.finalDeadlineAt,
       objectionWindowHours: r.objectionWindowHours, objectionNotBeforeAt: r.objectionNotBeforeAt, freeCancelMinutes: terms.freeCancelMinutes,
     };
   } else {
@@ -1135,11 +1166,38 @@ export async function millioneaHowTo(viewer: MillioneaViewer): Promise<Millionea
       source: "CONFIG", weekCode: null, ticketPrice: c.ticketPriceTzs, floor: c.floorTzs, feeRate: c.jackpotFeeRate,
       traRate: g.traTaxOnCommissionRate, gbtRate: g.gbtLevyOnCommissionRate, ticketCap: c.ticketCapPerWeek, openWeekday: c.openWeekday,
       openAt: c.openAt, closeWeekday: c.closeWeekday, closeAt: c.closeAt, minLockBufferMinutes: c.minLockBufferMinutes,
-      voidDeadlineHours: c.voidDeadlineHours, objectionWindowHours: c.objectionWindowHours, objectionNotBeforeAt: c.objectionNotBeforeAt,
+      voidDeadlineHours: c.voidDeadlineHours, finalDeadlineWeekday: c.finalDeadlineWeekday, finalDeadlineAt: c.finalDeadlineAt,
+      objectionWindowHours: c.objectionWindowHours, objectionNotBeforeAt: c.objectionNotBeforeAt,
       freeCancelMinutes: g.freeExitGraceMinutes,
     };
   }
   return { ...base, examples: millioneaExamplesFor(base) };
+}
+
+/**
+ * ⭐ HOW TO PLAY'S WEEK TIMELINE — this week's shape on the template, every phase by the hub's own rules (S5-FIX-PLAYER P7):
+ * sales from the open to the close; events from the close and its buffer to the weekend's last day (Sunday); results and
+ * payout from that day to `millioneaResultsBy` — the latest void deadline the template allows (an event as late as the end
+ * of Sunday, plus the void hours, capped at the results week's final deadline, MR-15) plus the frozen objection window,
+ * never closing before its EAT floor. The hub's strip says the same of a real week. Instants in ms; null on unreadable rules.
+ */
+export type MillioneaTimeline = { salesFrom: number; salesTo: number; eventsFrom: number; eventsTo: number; resultsFrom: number; resultsTo: number };
+export function millioneaHowTimeline(h: Pick<MillioneaHowTo, "openWeekday" | "openAt" | "closeWeekday" | "closeAt" | "minLockBufferMinutes"
+  | "voidDeadlineHours" | "finalDeadlineWeekday" | "finalDeadlineAt" | "objectionWindowHours" | "objectionNotBeforeAt">, nowMs: number): MillioneaTimeline | null {
+  try {
+    const DAY = 86_400_000;
+    const start = eatWeekStartMs(nowMs);
+    const salesFrom = eatWeekAt(start, h.openWeekday, h.openAt);
+    const salesTo = eatWeekAt(start, h.closeWeekday, h.closeAt);
+    const eventsTo = start + 6 * DAY;
+    const finalDeadline = eatWeekAt(start + 7 * DAY, h.finalDeadlineWeekday, h.finalDeadlineAt);
+    const lastVoid = Math.min(start + 7 * DAY + h.voidDeadlineHours * 3_600_000, finalDeadline);
+    const resultsTo = millioneaResultsBy(null, lastVoid, h);
+    if (resultsTo === null) return null;
+    return { salesFrom, salesTo, eventsFrom: salesTo + h.minLockBufferMinutes * 60_000, eventsTo, resultsFrom: eventsTo, resultsTo };
+  } catch {
+    return null;
+  }
 }
 
 /** The rules a worked example is priced from (the how-to's own figures). */

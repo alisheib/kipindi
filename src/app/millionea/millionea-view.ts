@@ -201,8 +201,10 @@ export function poolViewOf(fig: MaswaliPoolFigure, price: number, opensAt: strin
 }
 
 /** The three phases of a week, from its own instants: sales from the open to the close; events from the first to the
- *  last; results from the last event to the latest void deadline (MR-16). Nothing is a typed day. */
-export function phasesOf(week: Pick<MillioneaHubWeek, "opensAt" | "closesAt" | "questions">): WeekPhases | null {
+ *  last; results and payout from the last event to `resultsBy` — the objection window's end once known, else the latest
+ *  void deadline plus the frozen window (S5-FIX-PLAYER P7, `millioneaResultsBy`: How to play's own rule; it ended at the
+ *  latest void deadline, a day before the window it ignored). Nothing is a typed day. */
+export function phasesOf(week: Pick<MillioneaHubWeek, "opensAt" | "closesAt" | "questions" | "resultsBy">): WeekPhases | null {
   const open = msOf(week.opensAt), close = msOf(week.closesAt);
   const events = week.questions.map((q) => msOf(q.eventStartsAt)).filter((x): x is number => x !== null).sort((a, b) => a - b);
   const deadlines = week.questions.map((q) => msOf(q.voidDeadlineAt)).filter((x): x is number => x !== null).sort((a, b) => a - b);
@@ -211,7 +213,7 @@ export function phasesOf(week: Pick<MillioneaHubWeek, "opensAt" | "closesAt" | "
   return {
     salesFrom: open, salesTo: close,
     eventsFrom: events[0], eventsTo: lastEvent,
-    resultsFrom: lastEvent, resultsTo: deadlines.length > 0 ? deadlines[deadlines.length - 1] : lastEvent,
+    resultsFrom: lastEvent, resultsTo: msOf(week.resultsBy) ?? (deadlines.length > 0 ? deadlines[deadlines.length - 1] : lastEvent),
   };
 }
 
