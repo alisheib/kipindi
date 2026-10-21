@@ -36,6 +36,8 @@ const refresh = (weekId?: string) => {
   revalidatePath("/millionea", "layout");
 };
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
+/** A landed attestation whose audit row was not written (the attestation itself stands on the week). */
+const ATTEST_AUDIT_WARNING = "The attestation landed, but its audit record could not be written. Tell an administrator; do not attest it again.";
 /** MB-94 · where a seal came from, noted after it landed (never blocking it). */
 const noteDevice = async (officerId: string, weekId: string, slots: number[]): Promise<boolean> => {
   try {
@@ -96,10 +98,11 @@ export async function attestMaswaliParityAction(formData: FormData): Promise<Act
   const session = await requireStaff(CONTROL_DOMAIN.attestMaswaliParity, "attestMaswaliParity");
   const weekId = str(formData, "weekId");
   try {
-    const r = await attestParity({ weekId, officerId: session.userId });
+    // A4 · the draft's version the reader's page was drawn from: an edit landed since refuses the attestation.
+    const r = await attestParity({ weekId, officerId: session.userId, readVersion: str(formData, "readVersion") });
     if (!r.ok) return { ok: false, error: r.error };
     refresh(weekId);
-    return { ok: true, weekId };
+    return { ok: true, weekId, auditWarning: r.recorded ? null : ATTEST_AUDIT_WARNING };
   } catch (err) {
     return { ok: false, error: safeError(err, "The attestation could not be recorded") };
   }

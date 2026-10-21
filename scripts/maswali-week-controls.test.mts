@@ -27,7 +27,9 @@ function attestReviewed(source: string) {
   return s.includes("setAttestConfirm(true)") && s.includes("<ConfirmModal open={attestConfirm}")
     && s.includes("title={`Attest ${weekCode}'s three languages?`}")
     && s.includes("typedWord=\"ATTEST\"")
-    && s.includes("onConfirm={() => run(() => attestMaswaliParityAction(fd({ weekId }))");
+    // S5-FIX-SRV A4 · the attestation names the draft's version this page was drawn from.
+    && s.includes("onConfirm={() => run(() => attestMaswaliParityAction(fd({ weekId, readVersion }))")
+    && s.includes("readVersion: string;");
 }
 function moveReviewed(source: string) {
   const s = move(source);
@@ -101,7 +103,10 @@ ok("server page passes week code and raw seal version into the reviews",
   && page.includes("sealedAtIso: q.sealedAt"));
 
 if (process.argv.includes("--prove-red")) {
-  const directAttest = controls.replace("setAttestConfirm(true)", "run(() => attestMaswaliParityAction(fd({ weekId })))");
+  const unreadAttest = controls.replace("attestMaswaliParityAction(fd({ weekId, readVersion }))", "attestMaswaliParityAction(fd({ weekId }))");
+  if (unreadAttest === controls) throw new Error("Attestation read-version plant target missing");
+  ok("red: an attestation that does not name the text it read attests whatever is stored now (A4)", !attestReviewed(unreadAttest));
+  const directAttest = controls.replace("setAttestConfirm(true)", "run(() => attestMaswaliParityAction(fd({ weekId, readVersion })))");
   if (directAttest === controls) throw new Error("Attestation review plant target missing");
   ok("red: direct attestation loses the week review", !attestReviewed(directAttest));
   const liveClose = controls.replace("moveMaswaliCloseAction(fd({ weekId, closeAt: review.closeAt, expectedClosesAt: closesAt }))", "moveMaswaliCloseAction(fd({ weekId, closeAt: `${date}T${time}`, expectedClosesAt: closesAt }))");

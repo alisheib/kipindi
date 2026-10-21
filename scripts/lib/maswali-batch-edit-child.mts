@@ -48,7 +48,7 @@ const afterDal = await questionStore.listForWeek(weekId);
 ok("store batch raises on a later write failure", dalFailed);
 ok("store batch rolls back its earlier question", afterDal[0]?.textEn === before[0]?.textEn);
 
-const attested = await svc.attestParity({ weekId, officerId: "usr_second_reader" });
+const attested = await svc.attestParity({ weekId, officerId: "usr_second_reader", readVersion: await svc.readDraftVersion(weekId) });
 ok("second reader attests the draft", attested.ok, errorOf(attested));
 // S5-FIX-SRV A5 · every edit names the version of the row the builder loaded.
 const v = (index: number) => svc.draftRowVersion(before[index]!);

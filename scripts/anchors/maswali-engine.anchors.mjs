@@ -323,6 +323,47 @@ export const MUTATIONS = [
     expect: "5.12 · ⭐ a fault after the week's close was moved",
     suite: "engine-pg",
   },
+  // ── S5-FIX-SRV 3 + A4 · MB-79's second reader never wrote the text, and attests the text they read ──────────────────
+  {
+    name: "(41) an officer who edited the draft since its last attestation may attest it again (finding 3)",
+    file: SVC,
+    from: "    if (authorship.editors.has(input.officerId)) {",
+    to: "    if (false) {",
+    expect: "2.8c · ⛔ an officer who edited the draft since its last attestation cannot attest it",
+    suite: "engine",
+  },
+  {
+    name: "(42) the attestation no longer names the text it read (A4: a page drawn before another officer's edit attests it)",
+    file: SVC,
+    from: "    if (current !== input.readVersion) {",
+    to: "    if (false) {",
+    expect: "2.8d · ⛔ an attestation from a page drawn before another officer's edit is refused",
+    suite: "engine",
+  },
+  {
+    name: "(43) text with no recorded author can be attested (an unrecorded edit's author goes unbarred)",
+    file: SVC,
+    from: "  if (!authorKnown) {",
+    to: "  if (false) {",
+    expect: "2.8f · ⛔ after an edit whose record was not written",
+    suite: "engine",
+  },
+  {
+    name: "(44) an unreadable draft history reads as no editors — the bar fails open",
+    file: SVC,
+    from: "  if (!history) return \"The draft's history could not be read, so who wrote it cannot be checked. Nothing was attested; try again in a moment.\";",
+    to: "  if (!history) return { editors: new Set<string>() };",
+    expect: "2.8e · ⛔ a draft history that cannot be read refuses the attestation",
+    suite: "engine",
+  },
+  {
+    name: "(46) a standing attestation can be overwritten by another officer's",
+    file: SVC,
+    from: "    if (week.parityAttestedBy) return refuse(`Week ${week.code}'s three languages are already attested; an edit clears the attestation.`);",
+    to: "",
+    expect: "2.8h · ⛔ an attestation that stands is never overwritten",
+    suite: "engine",
+  },
   // ── S5-FIX-SRV A5 · a stale editor's save never overwrites another officer's ─────────────────────────────────────
   {
     name: "(45) a save no longer checks the version of the row it was read from (A5: a silent overwrite)",

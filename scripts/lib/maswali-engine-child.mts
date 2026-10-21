@@ -76,6 +76,8 @@ const allMains = (): number[] => Array.from({ length: 10 }, (_, i) => i + 1);
 const versionOf = async (weekId: string, slot: number) => svc.draftRowVersion((await questionStore.listForWeek(weekId)).find((q) => q.slot === slot)!);
 const editSlot = async (e: { weekId: string; slot: number; changes: Record<string, unknown>; officerId: string }) =>
   svc.editDraftQuestion({ ...e, version: await versionOf(e.weekId, e.slot) });
+/** An attestation from a page drawn this instant (S5-FIX-SRV A4): it names the draft's version as stored now. */
+const attest = async (weekId: string, officerId: string) => svc.attestParity({ weekId, officerId, readVersion: await svc.readDraftVersion(weekId) });
 
 // ── §1 · drafting ───────────────────────────────────────────────────────────
 console.log("\n§1 · drafting");
@@ -131,8 +133,8 @@ const nowOpen = new Date(W2 + 60_000); // Monday 00:01 EAT
     !after.includes(svc.NO_LICENCE_BASIS) && after.some((p) => /^The guarantee holds TZS 0;/.test(p)), JSON.stringify(after));
   const noParity = await svc.openWeek({ weekId: week.id, officerId: DRAFTER, guarantee: RICH, now: nowOpen });
   ok("2.2 · ⛔ no parity attestation → refused (MB-79)", !noParity.ok && /attested/.test(errOf(noParity)), errOf(noParity));
-  ok("2.3 · ⛔ the drafter cannot attest their own translations", !(await svc.attestParity({ weekId: week.id, officerId: DRAFTER })).ok);
-  ok("2.4 · a second reader attests", (await svc.attestParity({ weekId: week.id, officerId: READER })).ok);
+  ok("2.3 · ⛔ the drafter cannot attest their own translations", !(await attest(week.id, DRAFTER)).ok);
+  ok("2.4 · a second reader attests", (await attest(week.id, READER)).ok);
   const poor = await svc.openWeek({ weekId: week.id, officerId: DRAFTER, guarantee: { balance: async () => 999_999 }, now: nowOpen });
   ok("2.5 · ⛔ a guarantee below the floor → refused (OD-02)", !poor.ok && /guarantee holds TZS 999,999/.test(errOf(poor)), errOf(poor));
   const blind = await svc.openWeek({ weekId: week.id, officerId: DRAFTER, guarantee: { balance: async () => null }, now: nowOpen });
@@ -156,18 +158,44 @@ const nowOpen = new Date(W2 + 60_000); // Monday 00:01 EAT
       && (await textOf(7)) === "Will event 7 happen this weekend?" && (await textOf(3)) === m3Before, errOf(staleSave));
   const versionless = await svc.editDraftQuestions({ weekId: week.id, officerId: DRAFTER, edits: [{ slot: 3, changes: { textEn: "Will event 3 happen on Saturday?" }, version: "" }] });
   ok("2.8b · ⛔ a save that names no version of its row is refused", !versionless.ok && /which version/.test(errOf(versionless)) && (await textOf(3)) === m3Before, errOf(versionless));
-  await svc.attestParity({ weekId: week.id, officerId: READER });
+  // ⭐ S5-FIX-SRV 3 + A4 · MB-79's second reader, read from the week's own durable trail and tied to the text read.
+  const otherAttests = await attest(week.id, OTHER);
+  ok("2.8c · ⛔ an officer who edited the draft since its last attestation cannot attest it (finding 3)",
+    !otherAttests.ok && /You edited this draft since its last attestation/.test(errOf(otherAttests)) && (await weekStore.get(week.id))!.parityAttestedBy === null, errOf(otherAttests));
+  const readAt = await svc.readDraftVersion(week.id);
+  const tweak = await editSlot({ weekId: week.id, slot: 7, changes: { textEn: "Will event 7 happen this weekend at all?" }, officerId: DRAFTER });
+  const stalePage = await svc.attestParity({ weekId: week.id, officerId: READER, readVersion: readAt });
+  ok("2.8d · ⛔ an attestation from a page drawn before another officer's edit is refused, and nothing is attested (A4)",
+    tweak.ok && !stalePage.ok && /changed after your page loaded/.test(errOf(stalePage)) && (await weekStore.get(week.id))!.parityAttestedBy === null, errOf(stalePage));
+  const unreadable = await svc.attestParity({ weekId: week.id, officerId: READER, readVersion: await svc.readDraftVersion(week.id),
+    readHistory: async () => { throw new Error("injected history outage"); } });
+  ok("2.8e · ⛔ a draft history that cannot be read refuses the attestation (fail closed)",
+    !unreadable.ok && /history could not be read/.test(errOf(unreadable)) && (await weekStore.get(week.id))!.parityAttestedBy === null, errOf(unreadable));
+  // An edit whose audit row was never written leaves text nobody is recorded as writing: no second reader can be established.
+  svc.__setMaswaliAuditWriterForTests(async (row) => ({ recorded: row.action !== "maswali.week.draft_edited" }));
+  let unrecordedEdit: Awaited<ReturnType<typeof svc.editDraftQuestions>>;
+  try { unrecordedEdit = await editSlot({ weekId: week.id, slot: 8, changes: { textEn: "Will event 8 happen on Sunday?" }, officerId: OTHER }); }
+  finally { svc.__setMaswaliAuditWriterForTests(null); }
+  const authorless = await attest(week.id, READER);
+  ok("2.8f · ⛔ after an edit whose record was not written, the text has no recorded author and nobody can attest it",
+    unrecordedEdit.ok && unrecordedEdit.recorded === false && !authorless.ok && /no audit record of who wrote it/.test(errOf(authorless)), errOf(authorless));
+  const restored = await editSlot({ weekId: week.id, slot: 8, changes: { textEn: "Will event 8 happen?" }, officerId: DRAFTER });
+  const readerAttests = await attest(week.id, READER);
+  ok("2.8g · a recorded edit restores the text's author, and the second reader, who wrote none of it, attests",
+    restored.ok && restored.recorded === true && readerAttests.ok && readerAttests.recorded === true && (await weekStore.get(week.id))!.parityAttestedBy === READER, errOf(readerAttests));
+  const again = await attest(week.id, READER);
+  ok("2.8h · ⛔ an attestation that stands is never overwritten — not even by its own reader", !again.ok && /already attested/.test(errOf(again)), errOf(again));
   const guard = await svc.openWeek({ weekId: week.id, officerId: DRAFTER, guarantee: RICH, now: nowOpen });
   ok("2.9 · ⛔ THE CLOSE GUARD: an event at 17:59 before an 18:00 close is refused (30-minute buffer, OD-15)", !guard.ok && /at least 30 minutes before the first event/.test(errOf(guard)), errOf(guard));
   const at1729 = await editSlot({ weekId: week.id, slot: 3, changes: { eventLocalStart: utcToZonedLocal(closeMs + 29 * 60_000, "Africa/Dar_es_Salaam") }, officerId: DRAFTER });
-  await svc.attestParity({ weekId: week.id, officerId: READER });
+  await attest(week.id, READER);
   const g29 = await svc.openWeek({ weekId: week.id, officerId: DRAFTER, guarantee: RICH, now: nowOpen });
   ok("2.10 · ⛔ …and at 18:29, one minute inside the buffer, still refused", at1729.ok && !g29.ok && /30 minutes/.test(errOf(g29)));
   await editSlot({ weekId: week.id, slot: 3, changes: { eventLocalStart: utcToZonedLocal(closeMs + 30 * 60_000, "Africa/Dar_es_Salaam") }, officerId: DRAFTER });
   await editSlot({ weekId: week.id, slot: 4, changes: { probabilityEstimate: 0.9 }, officerId: DRAFTER });
   await editSlot({ weekId: week.id, slot: 5, changes: { textEn: "Will the election be won by the incumbent?" }, officerId: DRAFTER });
   await editSlot({ weekId: week.id, slot: 6, changes: { sourceUrl: "https://example.org/unknown" }, officerId: DRAFTER });
-  await svc.attestParity({ weekId: week.id, officerId: READER });
+  await attest(week.id, READER);
   const many = await svc.openWeek({ weekId: week.id, officerId: DRAFTER, guarantee: RICH, now: nowOpen });
   const e = errOf(many);
   ok("2.11 · ⛔ a probability outside 30–70% is refused (OD-14)", /outside 30–70%/.test(e), e);
@@ -181,7 +209,7 @@ const nowOpen = new Date(W2 + 60_000); // Monday 00:01 EAT
 
 // ── §3 · the open ───────────────────────────────────────────────────────────
 console.log("\n§3 · ⭐ the open");
-await svc.attestParity({ weekId: week.id, officerId: READER });
+await attest(week.id, READER);
 const opened = await svc.openWeek({ weekId: week.id, officerId: DRAFTER, guarantee: RICH, now: nowOpen });
 const w1 = opened.ok ? opened.week : (null as never);
 {
@@ -213,7 +241,7 @@ console.log("\n§4 · ⭐ the freeze");
   const err = await throwsAsync(() => ticketStore.patch("tk", { selections: [] } as never));
   ok("4.4 · ⛔ ticketStore.patch refuses the picks", err !== null && err.includes("'selections' is not a patchable column"));
   const second = await svc.createWeek({ weekStartMs: weekStartAhead(3), questions: questions(weekStartAhead(3)), officerId: DRAFTER, now: nowDraft });
-  if (second.ok) await svc.attestParity({ weekId: second.week.id, officerId: READER });
+  if (second.ok) await attest(second.week.id, READER);
   const two = second.ok ? await svc.openWeek({ weekId: second.week.id, officerId: DRAFTER, guarantee: RICH, now: nowOpen }) : second;
   ok("4.5 · ⛔ a second PUBLIC week cannot open while one is open (MR-3)", second.ok && !two.ok && /Another public week is open/.test(errOf(two)), errOf(two));
 }
@@ -565,7 +593,7 @@ console.log("\n§8 · ⭐ the week void");
 {
   // The DRIVE week: open it and void six mains before its close — sales must stop at once.
   const drive = (await weekStore.list({ visibility: "DRIVE" }))[0];
-  await svc.attestParity({ weekId: drive.id, officerId: READER });
+  await attest(drive.id, READER);
   const o = await svc.openWeek({ weekId: drive.id, officerId: DRAFTER, guarantee: RICH, now: nowOpen });
   ok("8.1 · a DRIVE week opens beside the public one", o.ok, errOf(o));
   const yes = await svc.sealQuestion({ weekId: drive.id, slot: 1, outcome: "YES", evidence: "too early to know this", officerId: SEALER, now: nowOpen });

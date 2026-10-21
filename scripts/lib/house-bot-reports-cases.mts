@@ -2334,10 +2334,16 @@ export const AUDIT_READERS_OUTSIDE_CONSOLE: Readonly<Record<string, string>> = {
   "src/lib/server/marketing/rg.ts": "the marketing RG standing: one player's two self-exclusion actions (rg.self_exclusion.activated / reopened), read by action and reduced to two instants; no row is handed on",
   /* Classified 2026-10-17 (MASWALI-BUILD S4; 0.260.1 went red on the release gate's test:all, the guard doing its job).
      Three reads: the cluster report folds AuditLog rows into sets of linked account ids; `noteSealDevice` folds an
-     officer's own rows into one yes/no; `recentNewDeviceSeals` hands its own `maswali.seal.new_device` rows (officer,
-     week, instant) to /admin/maswali/integrity. So the module is `handedOn`, and that page decides its audience on the
-     STORED role before it reads (0.434). A desk account never seals, so no row it hands on is a house row. */
-  "src/lib/server/maswali-integrity.ts": "Millionea's integrity page: linked accounts folded from AuditLog into sets of account ids, an officer's own seal history folded into one yes/no, and the new-device seal records (officer, week, instant) handed to /admin/maswali/integrity, which decides its audience on the stored role first (0.434)",
+     officer's own rows into one yes/no; `recentNewDeviceSeals` hands its own `maswali.seal.new_device` and (S5-FIX-SRV 1)
+     `maswali.seal.device_unchecked` rows (officer, week, instant) to /admin/maswali/integrity. So the module is `handedOn`,
+     and that page decides its audience on the STORED role before it reads (0.434). A desk account never seals, so no row
+     it hands on is a house row. */
+  "src/lib/server/maswali-integrity.ts": "Millionea's integrity page: linked accounts folded from AuditLog into sets of account ids, an officer's own seal-device rows counted into one yes/no (S5-FIX-SRV 1: two exact counts, never a window), and the seal-device flags — a new device, or one that could not be checked — (officer, week, instant) handed to /admin/maswali/integrity, which decides its audience on the stored role first (0.434)",
+  /* Classified 2026-10-21 (MASWALI-BUILD S5-FIX-SRV, review findings 3 and A4): MB-79's second reader. `attestParity` reads
+     ONE draft week's own durable rows (target MaswaliCycle) and folds them, inside the module, into the officers who edited
+     it since its last attestation and one yes/no — whether the text now stored has a recorded author. No row, payload or
+     number leaves the module; the act answers only a refusal sentence. */
+  "src/lib/server/maswali-service.ts": "MB-79's second reader: ONE draft week's own rows (target MaswaliCycle) folded into its editors since the last attestation and whether its stored text has a recorded author — no row is handed on",
   // 2026-10-10: a second reader in the same module, the same shape — `runKycPostCheckAlerts` reads one submission's own
   // history to dedupe the officers' post-check bell, as `runKycReviewSlaAlerts` does for the review target.
   "src/lib/server/notification-service.ts": "a KYC case's own history, read to word that case's KYC notice and to send each officer alert (review target, post-check) once",
@@ -2382,6 +2388,7 @@ export const AUDIT_ROW_PAYLOAD: Readonly<Record<string, "handedOn" | "folded" | 
   "src/lib/server/marketing/referee-exclusion.ts": "folded",
   "src/lib/server/marketing/rg.ts": "folded",
   "src/lib/server/maswali-integrity.ts": "handedOn",
+  "src/lib/server/maswali-service.ts": "folded",
   "src/lib/server/notification-service.ts": "folded",
   "src/lib/server/refused-funds.ts": "handedOn",
   "src/lib/server/report-pack.ts": "gated",

@@ -11,6 +11,7 @@ import { ControlLocked } from "@/components/admin/control-locked";
 import { currentSession } from "@/lib/server/auth-service";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { consoleWeekDetail } from "@/lib/server/maswali-console";
+import { draftSetVersion } from "@/lib/server/maswali-service";
 import { MAIN_COUNT, slotLabel } from "@/lib/maswali-score";
 import { MASWALI_VOID_REASONS } from "@/lib/maswali-void-reason";
 import { fmtEat, fmtEatClock, fmtEatDay, fmtInZone, weekStateChip } from "@/lib/maswali-admin-format";
@@ -86,7 +87,7 @@ async function Content({ params }: Props) {
             <p className="mt-3 text-body-sm"><Link href={`/admin/maswali/${week.id}/edit` as Route} className="link inline-flex min-h-[44px] items-center">Edit the questions</Link> <span className="text-text-tertiary">· an edit clears the attestation</span></p>
             <div className="mt-3">
               <AttestOpenControls weekId={week.id} weekCode={week.code} attestedBy={week.parityAttestedBy} canAttest={canAttest} canOpen={canOpen} openReady={!!problems && problems.length === 0}
-                attestNeed={CONTROL_DOMAIN.attestMaswaliParity} openNeed={CONTROL_DOMAIN.openMaswaliWeek} />
+                readVersion={draftSetVersion(questions)} attestNeed={CONTROL_DOMAIN.attestMaswaliParity} openNeed={CONTROL_DOMAIN.openMaswaliWeek} />
             </div>
           </AdminCard>
         )}

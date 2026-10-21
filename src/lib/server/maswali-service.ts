@@ -18,7 +18,7 @@
  */
 import { createHash } from "node:crypto";
 import type { Prisma } from "@prisma/client";
-import { audit } from "./audit";
+import { audit, getAuditForTargetDurable } from "./audit";
 import { randomId } from "./crypto";
 import { withLock } from "./locks";
 import { buyPosition, createMarket } from "./market-service";
@@ -118,7 +118,7 @@ export async function createWeek(input: {
   questions: DraftQuestionInput[];
   officerId: string;
   now?: Date;
-}): Promise<Result<{ week: StoredWeek }>> {
+}): Promise<Result<{ week: StoredWeek; recorded: boolean }>> {
   const nowMs = (input.now ?? new Date()).getTime();
   if (eatWeekStartMs(input.weekStartMs) !== input.weekStartMs) return refuse("A week starts on a Monday at 00:00 East Africa Time.");
   const visibility = input.visibility ?? "PUBLIC";
@@ -138,7 +138,7 @@ export async function createWeek(input: {
   }
   // A DRIVE week has its own code prefix, so it can share an ISO week with the public one.
   const code = eatWeekCode(visibility === "DRIVE" ? "MLD" : "MLN", input.weekStartMs);
-  return withLock(MASWALI_CHAIN_LOCK, async () => {
+  const res = await withLock(MASWALI_CHAIN_LOCK, async (): Promise<Result<{ week: StoredWeek; owed: OwedAudit[] }>> => {
     if (await weekStore.getByCode(code)) return refuse(`Week ${code} already exists.`);
     const nowIso = new Date(nowMs).toISOString();
     const week: StoredWeek = {
@@ -152,10 +152,14 @@ export async function createWeek(input: {
     };
     await weekStore.create(week);
     await questionStore.createMany(week.id, rows);
-    audit({ category: "ADMIN", action: "maswali.week.drafted", actorId: input.officerId, targetType: "MaswaliCycle", targetId: week.id,
-      payload: { code, seq: week.seq, visibility, opensAt: week.opensAt, closesAt: week.closesAt } });
-    return { ok: true, week };
+    // MB-79 · the first text's version as STORED (a store may round a field): the second reader's check finds its author here.
+    const version = draftSetVersion(await questionStore.listForWeek(week.id));
+    return { ok: true, week, owed: [{ category: "ADMIN", action: "maswali.week.drafted", actorId: input.officerId, targetType: "MaswaliCycle", targetId: week.id,
+      payload: { code, seq: week.seq, visibility, opensAt: week.opensAt, closesAt: week.closesAt, version } }] };
   });
+  if (!res.ok) return res;
+  // Written before this returns, so a second reader who attests the moment the draft exists finds who wrote it.
+  return { ok: true, week: res.week, recorded: await recordOwed(res.owed) };
 }
 
 /** Validate one draft edit without writing; the batch must finish every check before its first write. */
@@ -191,6 +195,20 @@ export function draftRowVersion(q: DraftVersioned): string {
   return createHash("sha256").update(JSON.stringify([q.slot, ...DRAFT_VERSION_FIELDS.map((k) => q[k] ?? null)])).digest("hex");
 }
 
+/**
+ * S5-FIX-SRV A4 · THE WHOLE DRAFT'S VERSION: its fifteen row versions in slot order. The week page draws the attestation
+ * with it, the second reader's attestation names it, and every audit row that writes the text (the draft, each edit) carries
+ * the version it left — so the attestation is tied to the text read, and the text to its author.
+ */
+export function draftSetVersion(questions: readonly DraftVersioned[]): string {
+  return createHash("sha256").update([...questions].sort((a, b) => a.slot - b.slot).map(draftRowVersion).join("|")).digest("hex");
+}
+
+/** The stored draft's version now — what a reader who loaded the week this instant would attest. */
+export async function readDraftVersion(weekId: string): Promise<string> {
+  return draftSetVersion(await questionStore.listForWeek(weekId));
+}
+
 /** Edit ONE draft question — the builder's batch save with one slot (`version`: the row as it was read). */
 export async function editDraftQuestion(input: { weekId: string; slot: number; changes: Partial<DraftQuestionInput>; version: string; officerId: string }): Promise<Result<{ recorded: boolean }>> {
   return editDraftQuestions({ weekId: input.weekId, edits: [{ slot: input.slot, changes: input.changes, version: input.version }], officerId: input.officerId });
@@ -204,7 +222,7 @@ export async function editDraftQuestion(input: { weekId: string; slot: number; c
 export async function editDraftQuestions(input: {
   weekId: string; edits: Array<{ slot: number; changes: Partial<DraftQuestionInput>; version: string }>; officerId: string;
 }): Promise<Result<{ recorded: boolean }>> {
-  const result = await withLock(MASWALI_CHAIN_LOCK, async (tx): Promise<Result> => {
+  const result = await withLock(MASWALI_CHAIN_LOCK, async (tx): Promise<Result<{ version: string }>> => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
     if (week.state !== "DRAFT") return refuse(`Week ${week.code} is ${week.state}: its questions are frozen (MR-13).`);
@@ -236,13 +254,14 @@ export async function editDraftQuestions(input: {
     // The memory store validates its entire batch before it swaps any question row.
     await questionStore.editDraftQuestions(patches, tx ?? undefined);
     if (week.parityAttestedBy) await weekStore.patch(week.id, { parityAttestedBy: null, parityAttestedAt: null }, tx ?? undefined);
-    return { ok: true };
+    // MB-79 · the version this edit leaves, read through the lock's transaction: the audit row names its author.
+    return { ok: true, version: draftSetVersion(await questionStore.listForWeek(week.id, tx ?? undefined)) };
   });
   if (!result.ok) return result;
   // The questions and attestation have committed. An audit failure cannot roll them back, so report both facts.
-  const recorded = await audit({ category: "ADMIN", action: "maswali.week.draft_edited", actorId: input.officerId, targetType: "MaswaliCycle", targetId: input.weekId,
-    payload: { slots: input.edits.map((edit) => edit.slot), fields: input.edits.map((edit) => Object.keys(edit.changes)) } });
-  return { ok: true, recorded: recorded.recorded };
+  const recorded = await recordOwed([{ category: "ADMIN", action: "maswali.week.draft_edited", actorId: input.officerId, targetType: "MaswaliCycle", targetId: input.weekId,
+    payload: { slots: input.edits.map((edit) => edit.slot), fields: input.edits.map((edit) => Object.keys(edit.changes)), version: result.version } }]);
+  return { ok: true, recorded };
 }
 
 /** The officer's view of a stored start: the local "YYYY-MM-DDTHH:MM" in its own zone. */
@@ -253,18 +272,73 @@ function utcToLocalInput(iso: string, zone: string): string {
   return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
 }
 
-/** MB-79: a second reader confirms the three languages say the same thing. ⛔ Never the officer who drafted the week. */
-export async function attestParity(input: { weekId: string; officerId: string; now?: Date }): Promise<Result> {
-  return withLock(MASWALI_CHAIN_LOCK, async () => {
+/** How many of a draft week's own audit rows the second-reader check reads (newest first) before it must refuse. */
+const DRAFT_HISTORY_LIMIT = 500;
+
+/**
+ * ⭐ MB-79 · WHO WROTE THIS DRAFT, READ FROM THE WEEK'S OWN DURABLE TRAIL (S5-FIX-SRV, review findings 3 and A4) — no new
+ * column. Walking the week's audit rows newest first: every officer who edited it since its last attestation (an edit clears
+ * the attestation), and whether the text stored now — `current` — has a recorded author: the draft's row and each edit's
+ * carry the version they left, so an edit whose row was never written leaves a text nobody is recorded as writing. ⛔ Fails
+ * closed: a history that could not be read, or not far enough, is a refusal sentence — never an empty set of editors.
+ */
+async function draftAuthorship(week: StoredWeek, current: string, injected?: typeof getAuditForTargetDurable): Promise<{ editors: Set<string> } | string> {
+  // A direct call of the audit row reader (the house-bot reports census, 0.260.1, counts calls, not references).
+  const history = await (injected ? injected("MaswaliCycle", week.id, { limit: DRAFT_HISTORY_LIMIT })
+    : getAuditForTargetDurable("MaswaliCycle", week.id, { limit: DRAFT_HISTORY_LIMIT })).catch(() => null);
+  if (!history) return "The draft's history could not be read, so who wrote it cannot be checked. Nothing was attested; try again in a moment.";
+  const editors = new Set<string>();
+  let attestedBefore = false, authorKnown = false;
+  for (const e of history.entries) {
+    if (e.action === "maswali.week.parity_attested") attestedBefore = true;
+    else if (e.action === "maswali.week.draft_edited" && !attestedBefore && e.actorId) editors.add(e.actorId);
+    if ((e.action === "maswali.week.draft_edited" || e.action === "maswali.week.drafted") && (e.payload as { version?: unknown } | undefined)?.version === current) authorKnown = true;
+    if (attestedBefore && authorKnown) break;
+  }
+  if (history.truncated && !(attestedBefore && authorKnown)) {
+    return "The draft's history is longer than one read can check, so who wrote it cannot be established. Nothing was attested; an administrator must review it.";
+  }
+  if (!authorKnown) {
+    return "The draft's current text has no audit record of who wrote it (an edit's record was not written), so no second reader can be established (MB-79). Nothing was attested; an administrator must review the draft's history — a recorded edit restores it.";
+  }
+  return { editors };
+}
+
+/**
+ * MB-79: a second reader confirms the three languages say the same thing. ⛔ Never the officer who drafted the week, and
+ * never one who edited it since its last attestation (`draftAuthorship`): the reader is never the text's author. ⭐ The
+ * attestation is TIED TO THE TEXT READ (S5 review A4): `readVersion` is the draft's version the reader's page was drawn from
+ * (`draftSetVersion`), so an edit landed since refuses it, and an attestation that stands is never overwritten. `recorded`:
+ * its audit row — which carries the version attested — was written after the commit.
+ */
+export async function attestParity(input: {
+  weekId: string; officerId: string; readVersion: string; now?: Date;
+  /** Tests only: the history read (`getAuditForTargetDurable`). */
+  readHistory?: typeof getAuditForTargetDurable;
+}): Promise<Result<{ recorded: boolean }>> {
+  if (typeof input.readVersion !== "string" || !input.readVersion) return refuse("Reload the week and read its questions before attesting them.");
+  const res = await withLock(MASWALI_CHAIN_LOCK, async (tx): Promise<Result<{ owed: OwedAudit[] }>> => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
     if (week.state !== "DRAFT") return refuse(`Week ${week.code} is no longer a draft.`);
     if (week.createdBy === input.officerId) return refuse("The officer who drafted the week cannot attest its translations — a second reader must.");
+    if (week.parityAttestedBy) return refuse(`Week ${week.code}'s three languages are already attested; an edit clears the attestation.`);
+    const current = draftSetVersion(await questionStore.listForWeek(week.id));
+    if (current !== input.readVersion) {
+      return refuse("The questions changed after your page loaded: another officer saved an edit. Reload the week and read all fifteen again before attesting.");
+    }
+    const authorship = await draftAuthorship(week, current, input.readHistory);
+    if (typeof authorship === "string") return refuse(authorship);
+    if (authorship.editors.has(input.officerId)) {
+      return refuse("You edited this draft since its last attestation, so you cannot attest it — a second reader who did not write it must (MB-79).");
+    }
     const at = (input.now ?? new Date()).toISOString();
-    await weekStore.patch(week.id, { parityAttestedBy: input.officerId, parityAttestedAt: at });
-    audit({ category: "COMPLIANCE", action: "maswali.week.parity_attested", actorId: input.officerId, targetType: "MaswaliCycle", targetId: week.id, payload: { code: week.code } });
-    return { ok: true };
+    await weekStore.patch(week.id, { parityAttestedBy: input.officerId, parityAttestedAt: at }, tx ?? undefined);
+    return { ok: true, owed: [{ category: "COMPLIANCE", action: "maswali.week.parity_attested", actorId: input.officerId, targetType: "MaswaliCycle", targetId: week.id,
+      payload: { code: week.code, version: current } }] };
   });
+  if (!res.ok) return res;
+  return { ok: true, recorded: await recordOwed(res.owed) };
 }
 
 // ── OPENING ─────────────────────────────────────────────────────────────────────────────────────────

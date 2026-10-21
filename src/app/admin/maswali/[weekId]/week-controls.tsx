@@ -49,13 +49,18 @@ function useAct() {
 
 // ── Attest and open ─────────────────────────────────────────────────────────────────────────────────
 
-export function AttestOpenControls({ weekId, weekCode, attestedBy, canAttest, canOpen, openReady, attestNeed, openNeed }: {
-  weekId: string; weekCode: string; attestedBy: string | null; canAttest: boolean; canOpen: boolean; openReady: boolean; attestNeed: string; openNeed: string;
+/**
+ * `readVersion` is the draft's version this page was drawn from (`draftSetVersion`): the attestation sends it, so an edit
+ * landed since the reader loaded the week refuses it (MB-79, S5 review A4).
+ */
+export function AttestOpenControls({ weekId, weekCode, attestedBy, canAttest, canOpen, openReady, readVersion, attestNeed, openNeed }: {
+  weekId: string; weekCode: string; attestedBy: string | null; canAttest: boolean; canOpen: boolean; openReady: boolean; readVersion: string; attestNeed: string; openNeed: string;
 }) {
   const mayAct = useMayAct();
   const { pending, error, run, setError } = useAct();
   const [confirm, setConfirm] = useState(false);
   const [attestConfirm, setAttestConfirm] = useState(false);
+  const [auditWarning, setAuditWarning] = useState<string | null>(null);
   return (
     <div className="flex items-center gap-3 flex-wrap">
       {attestedBy ? <span className="text-body-sm text-success">The three languages are attested.</span>
@@ -63,6 +68,7 @@ export function AttestOpenControls({ weekId, weekCode, attestedBy, canAttest, ca
         : <ControlLocked what="Attest the languages" need={attestNeed} />}
       {canOpen ? (mayAct ? <Button size="sm" disabled={pending || !openReady} onClick={() => setConfirm(true)}>Open the week</Button> : <ActReadOnly />)
         : <ControlLocked what="Open the week" need={openNeed} />}
+      {auditWarning && <p role="alert" className="text-body-sm text-warning w-full">{auditWarning}</p>}
       {!attestConfirm && !confirm && error && <p role="alert" className="text-body-sm text-danger-fg w-full">{error}</p>}
       <ConfirmModal open={attestConfirm} onClose={() => setAttestConfirm(false)} loading={pending} tone="brand" tier="hard" typedWord="ATTEST"
         title={`Attest ${weekCode}'s three languages?`} confirmLabel="Record the attestation"
@@ -70,7 +76,7 @@ export function AttestOpenControls({ weekId, weekCode, attestedBy, canAttest, ca
           <p>Confirm that you personally read {weekCode}&apos;s English, Swahili and Chinese questions and that their meanings agree. This records your signoff; editing a question clears it.</p>
           {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
         </div>}
-        onConfirm={() => run(() => attestMaswaliParityAction(fd({ weekId })), () => setAttestConfirm(false))} />
+        onConfirm={() => run(() => attestMaswaliParityAction(fd({ weekId, readVersion })), () => setAttestConfirm(false), setAuditWarning)} />
       <ConfirmModal open={confirm} onClose={() => setConfirm(false)} loading={pending} tone="brand"
         title="Open the week for sale?" confirmLabel="Open the week"
         body={<div className="space-y-2">

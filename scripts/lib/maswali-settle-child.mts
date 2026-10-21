@@ -328,7 +328,7 @@ console.log("\n§R3 · the carry is claimed strictly in order, with its payout, 
   const drafted = async (start: number) => {
     const c = await W.svc.createWeek({ weekStartMs: start, questions: W.questions(start), officerId: "usr_mln_drafter", now: new Date(start - 3 * DAY) });
     if (!c.ok) throw new Error(`R3: the draft was refused: ${c.error}`);
-    await W.svc.attestParity({ weekId: c.week.id, officerId: "usr_mln_reader" });
+    await W.svc.attestParity({ weekId: c.week.id, officerId: "usr_mln_reader", readVersion: await W.svc.readDraftVersion(c.week.id) });
     return c.week;
   };
   const opens = (week: any, now: number) => W.svc.openWeek({ weekId: week.id, officerId: "usr_mln_drafter", guarantee: money.guaranteeReader, now: new Date(now) });
@@ -640,7 +640,7 @@ console.log("\n§11 · the sunset (MR-30, OD-03)");
   const drafted = async (start: number) => {
     const c = await W.svc.createWeek({ weekStartMs: start, questions: W.questions(start), officerId: "usr_mln_drafter", now: new Date(start - 3 * DAY) });
     if (!c.ok) throw new Error(`§11: the draft was refused: ${c.error}`);
-    await W.svc.attestParity({ weekId: c.week.id, officerId: "usr_mln_reader" });
+    await W.svc.attestParity({ weekId: c.week.id, officerId: "usr_mln_reader", readVersion: await W.svc.readDraftVersion(c.week.id) });
     return c.week;
   };
   const opens = (w: any, now: number) => W.svc.openWeek({ weekId: w.id, officerId: "usr_mln_drafter", guarantee: money.guaranteeReader, now: new Date(now) });
