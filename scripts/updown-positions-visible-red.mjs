@@ -19,8 +19,10 @@ import { execSync } from "node:child_process";
 const HISTORY = "src/app/updown/history/page.tsx";
 const ROUND = "src/app/updown/[roundId]/page.tsx";
 const BOARD = "src/lib/server/updown-board.ts";
+// 2026-10-21 · the viewer filter lives in the read itself since U43 Release B (4e9d9bcbe), so D15–D18 plant leaks there.
+const DAL = "src/lib/server/market-dal.ts";
 
-const FILES = [HISTORY, ROUND, BOARD];
+const FILES = [HISTORY, ROUND, BOARD, DAL];
 const original = new Map(FILES.map((f) => [f, readFileSync(f, "utf8")]));
 
 /** Restore every file to the working-tree text we started from. */
@@ -111,11 +113,13 @@ const cases = [
     },
   },
   {
-    name: "D4 · myPositionFor caps across ALL rounds, then filters to this one",
+    // 2026-10-21 · U43 Release B (4e9d9bcbe) reads the detail's rows at the call site, so the pre-fix read returns there.
+    name: "D4 · the round detail caps across ALL rounds, then filters to this one",
+    expected: "FAIL 4.2",
     apply: () => {
       mutate(BOARD,
-        "  const positions = (await listPositionsForMarket(marketId)).filter((p) => p.userId === userId);",
-        "  const positions = (await listPositionsForUser(userId, 500, \"UPDOWN\").catch(() => [])).filter((p) => p.marketId === marketId);",
+        "  const mine = userId ? (await myStakesByMarket(userId, [r.marketId])).get(r.marketId) : undefined;",
+        "  const mine = userId ? { positions: (await listPositionsForUser(userId, 500, \"UPDOWN\").catch(() => [])).filter((p) => p.marketId === r.marketId) } : undefined;",
         "restore the global-cap-then-filter read");
     },
   },
@@ -138,21 +142,25 @@ const cases = [
       "restore the history's silent-empty fallback"),
   },
   {
+    // 2026-10-21 · U43 Release B (4e9d9bcbe): the detail's own read is its `myStakesByMarket` call; the fallback is
+    // planted there alone (the board's read stays honest), so only the detail's fault assertion can catch it.
     name: "D7 · a failed round position read claims the player never bet",
     suite: "fault",
-    expected: "detail must not turn a failed market-position read into no bet",
+    expected: "detail must not turn failed position read into no stake",
     apply: () => mutate(BOARD,
-      "  const positions = (await listPositionsForMarket(marketId)).filter((p) => p.userId === userId);",
-      "  const positions = (await listPositionsForMarket(marketId).catch(() => [])).filter((p) => p.userId === userId);",
+      "  const mine = userId ? (await myStakesByMarket(userId, [r.marketId])).get(r.marketId) : undefined;",
+      "  const mine = userId ? (await myStakesByMarket(userId, [r.marketId]).catch(() => new Map())).get(r.marketId) : undefined;",
       "restore the round's silent-empty fallback"),
   },
   {
     name: "D8 · a failed asset catalog read claims there are no markets",
     suite: "fault",
     expected: "player board must not turn failed asset catalog read into an empty market",
+    // 2026-10-21 · U43 Release B (c29cb7526) put a dev-only fault probe in front of this read, so the real catalog read
+    // is now the probe's `: …` arm; the fallback is planted on that arm, exactly where a player's request goes.
     apply: () => mutate(BOARD,
-      "    assetStore.list({ enabledOnly: true }),",
-      "    assetStore.list({ enabledOnly: true }).catch(() => [] as StoredAsset[]),",
+      "      : assetStore.list({ enabledOnly: true }),",
+      "      : assetStore.list({ enabledOnly: true }).catch(() => [] as StoredAsset[]),",
       "restore the asset catalog's silent-empty fallback"),
   },
   {
@@ -208,6 +216,58 @@ const cases = [
       "  const pool = siblings ?? await roundStore.list({ chainId: chain.id, limit: 4 });",
       "  const pool = siblings ?? await roundStore.list({ chainId: chain.id, limit: 4 }).catch(() => []);",
       "restore the detail successor's silent-empty fallback"),
+  },
+  // 2026-10-21 · U43 Release B (4e9d9bcbe) moved the viewer filter into the read itself. Each leak below must be seen
+  // by 4.3's source check AND, where the memory store can show it, by the two-player fixture in the fault guard.
+  {
+    name: "D15 · the memory store's own-position read returns every player's rows on the market",
+    expected: "FAIL 4.3",
+    apply: () => mutate(DAL,
+      "    return Array.from(positions.values()).filter((p) => p.userId === userId && p.marketId === marketId);",
+      "    return Array.from(positions.values()).filter((p) => p.marketId === marketId);",
+      "drop the memory store's user key"),
+  },
+  {
+    name: "D16 · …and the two-player fixture sees the other player's row handed to the viewer",
+    suite: "fault",
+    expected: "the indexed own-position read returns the viewer's row and nobody else's",
+    apply: () => mutate(DAL,
+      "    return Array.from(positions.values()).filter((p) => p.userId === userId && p.marketId === marketId);",
+      "    return Array.from(positions.values()).filter((p) => p.marketId === marketId);",
+      "drop the memory store's user key"),
+  },
+  {
+    name: "D17 · the PostgreSQL store's own-position read drops its user key",
+    expected: "FAIL 4.3",
+    apply: () => mutate(DAL,
+      "    const rows = await (tx ?? pc()).position.findMany({ where: { userId, marketId } });",
+      "    const rows = await (tx ?? pc()).position.findMany({ where: { marketId } });",
+      "drop the PostgreSQL store's user key"),
+  },
+  {
+    name: "D18 · a guest reaches the own-position read (PostgreSQL reads `userId: undefined` as every player)",
+    expected: "FAIL 4.3",
+    apply: () => mutate(BOARD,
+      "  if (!userId || marketIds.length === 0) return out;",
+      "  if (marketIds.length === 0) return out;",
+      "remove the guest shortcut"),
+  },
+  {
+    name: "D19 · the board and detail read every player's rows on the market",
+    expected: "FAIL 4.3",
+    apply: () => mutate(BOARD,
+      ".map((marketId) => positionStore.listForUserAndMarket(userId, marketId))",
+      ".map((marketId) => positionStore.listForMarket(marketId))",
+      "read the market-wide list"),
+  },
+  {
+    name: "D20 · …and the two-player fixture sees the other player's stake on the viewer's card",
+    suite: "fault",
+    expected: "board must not show another player's stake as the viewer's",
+    apply: () => mutate(BOARD,
+      ".map((marketId) => positionStore.listForUserAndMarket(userId, marketId))",
+      ".map((marketId) => positionStore.listForMarket(marketId))",
+      "read the market-wide list"),
   },
 ];
 
