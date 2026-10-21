@@ -5,7 +5,9 @@ import { fileURLToPath } from "node:url";
 import { assertMobileActionClearance, localOrigin, selectedCells, syntheticLineFeed } from "./live/u43-synthetic-line-layout.mjs";
 
 const root = new URL("../", import.meta.url);
-const fixture = readFileSync(fileURLToPath(new URL("scripts/live/u43-synthetic-line-layout.mjs", root)), "utf8");
+// Normalised to LF at the door (2026-10-21): a CRLF checkout split the two-line clearance token below, so this guard
+// passed on Linux CI and failed on every Windows tree for line endings alone.
+const fixture = readFileSync(fileURLToPath(new URL("scripts/live/u43-synthetic-line-layout.mjs", root)), "utf8").replace(/\r\n/g, "\n");
 const pkg = JSON.parse(readFileSync(fileURLToPath(new URL("package.json", root)), "utf8"));
 
 function issues(source, scripts) {
