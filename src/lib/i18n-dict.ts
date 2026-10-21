@@ -9205,7 +9205,7 @@ export const dict = {
       lowBalanceBody: "主余额 {balance} 不足 {price}。奖金余额在此不计。",
       ticketCut: "已出票",
       ticketsCut: "已出票 {n} 张",
-      resultDetails: "第{week}周 · {price}（主余额）· 免费取消至 {time}",
+      resultDetails: "第{week}周 · {price}（主余额） · 免费取消至 {time}",
       resultDetailsNoCancel: "第{week}周 · {price}（主余额）",
       viewTicket: "查看彩票",
       viewTickets: "查看彩票",

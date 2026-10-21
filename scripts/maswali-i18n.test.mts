@@ -155,9 +155,28 @@ console.log("\n§5 · no Millionea key shares the away bar's names (test:presenc
   ok("5.1′ CONTROL · an away* name back in the namespace is reported", j(planted) === j(["en.millionea.awayWon"]), j(planted));
 }
 
+// ── §6 · every "·" is the fact separator ────────────────────────────────────────────────────────────────────────────
+console.log("\n§6 · every \"·\" in a Millionea string is the fact separator, spaced on both sides (S5-FIX-PLAYER P12)");
+{
+  /** Each "·" in a value that is not " · ": `factsOf` splits a fact line only at " · ", so an unspaced one stays INSIDE a
+   *  fact, where it can open or end a drawn line (A1) — zh `resultDetails` once read "（主余额）· 免费取消至", one fact. */
+  const unspacedDefects = (nsOf: NsOf) => LOCALES.flatMap((l) => Object.entries(nsOf(l)).flatMap(([k, v]) => {
+    const s = Array.isArray(v) ? v.join(" ") : String(v);
+    return s.split("·").length - 1 === s.split(" · ").length - 1 ? [] : [`${l}.${k}`];
+  }));
+  const d = unspacedDefects(ns);
+  ok("6.1 · no Millionea string holds a \"·\" its fact lines cannot split (one with no space before or after it)", d.length === 0, d.join(", "));
+  const facts = (s: string) => s.split(" · ").filter((x) => x !== "");
+  const stamp = LOCALES.map((l) => facts(String(ns(l).resultDetails).replace("{week}", "49").replace("{price}", "TZS 1,000").replace("{time}", "11:18")));
+  ok("6.2 · the cut's stamp is three facts in every language — the week, the price from the main balance, the free cancel — zh \"（主余额）\" and \"免费取消至 11:18\" two of them",
+    stamp.every((f) => f.length === 3) && j(stamp[2]) === j(["第49周", "TZS 1,000（主余额）", "免费取消至 11:18"]), j(stamp));
+  const planted = unspacedDefects(plantedNs("zh", "resultDetails", "第{week}周 · {price}（主余额）· 免费取消至 {time}"));
+  ok("6.1′ CONTROL · the old zh stamp line (\"（主余额）· 免费取消至\", the \"·\" glued to the bracket) is reported", j(planted) === j(["zh.resultDetails"]), j(planted));
+}
+
 console.log(`\n${"═".repeat(70)}\n  MASWALI I18N: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
-/** The floor is the count a green run PRINTS; it only rises, to a printed number. ⏳ The STATIC count, until the first green
- *  run prints it (the S5 review of 24ec0d33, MEDIUM 8): 16 call sites, none in a loop. */
-const MIN_ASSERTIONS = 16;
+/** The floor is the count a green run PRINTS; it only rises, to a printed number: 19 (S5-FIX-PLAYER P12's §6 added three to
+ *  the 16 static call sites, none in a loop). */
+const MIN_ASSERTIONS = 19;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);
