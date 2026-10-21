@@ -15,6 +15,8 @@
  *   §6 D6 · the journey's route ghost draws Millionea's ghosts only for a reader Millionea is visible to (rendered on
  *      React's server renderer at each address, in sw, en and zh), and the home's ghost holds the Millionea card's slot
  *      for that reader alone; the root loading file hands the answer only while true
+ *   §7 D7 · the leaderboard makes ONE positions read per row, tickets left out by the read (both stores' behaviour:
+ *      `test:maswali-player` §11)
  * Every section carries its PLANT: the check run on a copy with the fix undone, seen to fail.
  * The HTTP proof — `next start`, a dark address beside its unknown twin, status, header set and body — is qa:live's
  * dark section (`scripts/live/millionea-dark.mjs`) and the lane's probe, reported with the commit.
@@ -314,6 +316,33 @@ section("6 · D6 · a Millionea address draws Millionea's ghost only for a reade
   const unhanded = fromSource<{ JourneyRouteGhost: Ghost }>(GHOST, plant(raw(GHOST), '"/": <JourneyHomeGhost t={t} millionea={millionea} />,', '"/": <JourneyHomeGhost t={t} />,')).JourneyRouteGhost;
   ok("6.4′ PLANT · a home ghost not handed the answer (the slot never held: the card would push the page down as it lands) is reported",
     slotDefects(unhanded).some((x) => x.includes("lacks")));
+}
+
+/* ══ §7 · D7 · ONE READ PER ROW ══════════════════════════════════════════════════════════════════════════════════════ */
+section("7 · D7 · the leaderboard decorates each row from ONE bounded read, tickets left out by the read itself");
+const boardDefects = (src: string) => {
+  const s = squash(decomment(src));
+  const d: string[] = [];
+  const READ = "positions: await Promise.resolve(lens === \"ALL\" ? positionStore.listScoredForUser(r.userId, ROW_RECENT) : listPositionsForUser(r.userId, ROW_RECENT, lens)).catch(() => null),";
+  if (count(s, READ) !== 1) d.push("the per-row read is not the one scored read (all) or the lens's line, at ROW_RECENT");
+  if ((s.match(/listScoredForUser\(|listPositionsForUser\(/g) ?? []).length !== 2) d.push("more than one positions read per row");
+  if (/Promise\.all\(\s*lines\.map|SCORED_LINES|scoredPositions\(|"MASWALI"/.test(s)) d.push("a read per scored line (or a ticket read) is back");
+  if (!s.includes("const ROW_RECENT = 200;")) d.push("the bound is not main's 200");
+  if (!s.includes("const positions = detail[i].positions ?? [];")) d.push("a failed read does not leave the row undecorated");
+  return d;
+};
+{
+  const PAGE = "src/app/leaderboard/page.tsx";
+  ok("7.1 · each of the board's rows makes ONE positions read: on \"all\" `listScoredForUser` (every line but Millionea's, excluded in the read, before its bound), on a lens that line — each at main's 200",
+    boardDefects(raw(PAGE)).length === 0, boardDefects(raw(PAGE)).join(" | "));
+  const s5 = plant(raw(PAGE), "positions: await Promise.resolve(lens === \"ALL\" ? positionStore.listScoredForUser(r.userId, ROW_RECENT) : listPositionsForUser(r.userId, ROW_RECENT, lens)).catch(() => null),",
+    "positions: await Promise.all(SCORED_LINES.map((l) => Promise.resolve(listPositionsForUser(r.userId, ROW_RECENT, l)).catch(() => null))),");
+  ok("7.1′ PLANT · the S5 read (one per scored line: up to twice main's rows for every row) is reported", boardDefects(s5).some((x) => x.includes("per scored line")));
+  const dal = squash(decomment(raw("src/lib/server/market-dal.ts")));
+  ok("7.2 · both stores answer it: the memory twin leaves out what `storedProductLine` reads as MASWALI before its slice, the SQL twin `productLine <> 'MASWALI'` before `take`",
+    dal.includes("listScoredForUser(userId: string, limit?: number): Promise<StoredPosition[]>;")
+      && dal.includes('.filter((p) => p.userId === userId && storedProductLine(markets.get(p.marketId)?.productLine) !== "MASWALI") .sort((a, b) => b.placedAt.localeCompare(a.placedAt)) .slice(0, limit);')
+      && dal.includes('where: { userId, market: { productLine: { not: "MASWALI" } } }, orderBy: { placedAt: "desc" }, take: limit,'));
 }
 
 console.log(`\nmillionea-dark-edge: ${pass} passed, ${fails.length} failed`);

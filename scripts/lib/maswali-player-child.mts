@@ -712,10 +712,12 @@ section("§11 · the exclusions, the wiring, the floor, the seen marks' budget")
     J({ lines: SCORED_LINES, scored: scored.map((p: any) => p.id) }));
   const board = readFileSync("src/app/leaderboard/page.tsx", "utf8");
   const shelfSrc = readFileSync("src/lib/server/achievements.ts", "utf8");
-  ok("11.2a · …and that read is what the page hands its streak and its sparkline, and what the shelf counts (the wiring): each scored line at its bound, and ⛔ no ticket read left to subtract",
-    board.includes('const lines: readonly ProductLine[] = lens === "ALL" ? SCORED_LINES : [lens];')
-      && board.includes("positions: await Promise.all(lines.map((l) => Promise.resolve(listPositionsForUser(r.userId, ROW_RECENT, l)).catch(() => null))),")
-      && board.includes("const positions = scoredPositions(detail[i].positions, ROW_RECENT);")
+  // ⚠️ RE-PINNED, MASWALI-BUILD S5-FIX-PLATFORM D7 (2026-10-21): the board makes ONE read per row — on "all" the store's
+  // scored read (`listScoredForUser`: tickets left out by the read, before its bound; 11.2e drives it on this store), on a
+  // lens its one line — where it made one per scored line (up to twice main's rows). The shelf keeps its direct lines.
+  ok("11.2a · …and that read is what the page hands its streak and its sparkline, and what the shelf counts (the wiring): one scored read per board row at its bound, each scored line for the shelf, and ⛔ no ticket read left to subtract",
+    board.includes('positions: await Promise.resolve(lens === "ALL" ? positionStore.listScoredForUser(r.userId, ROW_RECENT) : listPositionsForUser(r.userId, ROW_RECENT, lens)).catch(() => null),')
+      && board.includes("const positions = detail[i].positions ?? [];")
       && board.includes('for (const p of positions.filter((p) => p.status !== "OPEN"))') && board.includes("spark: dailyStakes(positions, 14)")
       && shelfSrc.includes("const positions = scoredPositions(await Promise.all(SCORED_LINES.map((l) => listPositionsForUser(userId, SHELF_RECENT, l))), SHELF_RECENT);")
       && !board.includes('"MASWALI"') && !shelfSrc.includes('"MASWALI"'));
@@ -746,6 +748,18 @@ section("§11 · the exclusions, the wiring, the floor, the seen marks' budget")
   ok("11.2c · ⭐ RR8 · the control: for an account with no tickets the direct read IS its old every-line page, row for row — the board's 200 and the shelf's 500 alike — so its streak, sparkline and badges are byte-identical",
     n1.ok && n2.ok && oldBoard.length === 2 && J(scoredPositions(await readsOf(PN, 200), 200)) === J(oldBoard)
       && J(scoredPositions(await readsOf(PN, 500), 500)) === J(oldShelf), J({ old: oldBoard.map((p: any) => p.id) }));
+  // S5-FIX-PLATFORM D7 · the board's ONE read, on this store: the same answers as the per-line reads above, in one query.
+  {
+    const { positionStore }: any = await import("../../src/lib/server/market-dal.ts");
+    const one6 = await positionStore.listScoredForUser(P6, 200);
+    const oneW = await positionStore.listScoredForUser(PW, 2);
+    const oneN = await positionStore.listScoredForUser(PN, 200);
+    ok("11.2e · ⭐ the store's scored read (the board's one read per row): a bet and a ticket give the bet alone; RR8's newest-tickets account keeps its older poll bet at a bound of two (the tickets are left out BEFORE the bound); an account with no tickets reads its every-line page row for row (main's read) — each equal to the per-line reads it replaces",
+      bet.ok && betW.ok && J(one6.map((p: any) => p.id)) === J([betId]) && J(one6) === J(scored)
+        && J(oneW.map((p: any) => p.id)) === J([betWId]) && J(oneW) === J(directW)
+        && J(oneN) === J(oldBoard),
+      J({ p6: one6.map((p: any) => p.id), pw: oneW.map((p: any) => p.id), pn: oneN.map((p: any) => p.id), old: oldBoard.map((p: any) => p.id) }));
+  }
   const pos = (id: string, ms: number) => ({ id, placedAt: new Date(Date.UTC(2026, 9, 1) + ms).toISOString() });
   ok("11.2d · RR8 · the lines' reads merge newest first and are cut at the bound — the account's newest scored positions across lines",
     J(scoredPositions([[pos("m3", 30), pos("m1", 10)], [pos("u4", 40), pos("u2", 20)]], 3).map((p: any) => p.id)) === J(["u4", "m3", "u2"]));
