@@ -8,6 +8,43 @@
 
 ---
 
+## 2026-10-21 · Harm markers muted for marketing SMS (owner ruling)
+
+**Authority.** Ali, 2026-10-21, in the Claude session on OMEGA-COMPILE01, after the marketing team could not send a
+campaign test: *"remove this flag for everyone … pause it now"*, then *"keep the development but mute it for now for
+everyone, later if needed I tell you to activate it"*, and *"I have full GBT licence"*. Asked about the public page, he
+chose *"code only, leave the page"*.
+
+**Why it came up.** The marketing gate refused an officer's own test number. A read-only production check showed both
+of the officer's ADMIN accounts ACTIVE, 25 or over, with no self-exclusion and no break: the refusal was the automatic
+harm marker `LATE_NIGHT_PLAY` (5 and 9 bets between 00:00 and 06:00 EAT in seven days, from staff testing). The marker
+is not stored — it is recomputed from the account's transactions at every send — so nothing could be removed from the
+database, and nothing was.
+
+**What it rules.** The automatic harm markers (rapid deposits, deposits soon after placing a bet, late-night play) no
+longer stop a marketing SMS, for anyone: `MARKETING_HARM_MARKERS_MUTED = true` in `src/lib/server/marketing/rg.ts`
+makes the gate's default dependency report no harm flag. Everyone the markers were holding is released at the next
+send; there is no per-person state to clear.
+
+**What it does NOT change.** A person's stop, self-exclusion (GN 478T reg 49(3)), a break, under 25 with a
+self-exclusion or a break on record, under 18, an unknown age and the account's status still refuse, exactly as
+before. The detector itself still runs for the Player Safety page and the daily harm count. The harm step's code is
+kept, and `test:rg-doors` still proves it refuses whatever flags it is handed.
+
+**The public page.** `/legal/responsible-gambling` §4 (en/sw/zh), its promise register (`src/lib/legal/kept-promises.ts`,
+`harmSign`) and the `rg.marketing` policy line are unchanged on Ali's instruction. While the markers are muted, the §4
+words "a player showing a sign of harm" describe a protection that is switched off; reactivating the markers makes
+them true again. (`test:rg-policy` reads the refusal's text in `rg.ts`, which stays, so it remains green.)
+
+**Supersedes in part** item 2 of § "2026-10-07 · Marketing SMS go to anyone with a phone — consent is not a condition
+(the owner's FINAL rule), and his approvals given in the session": its "a sign of harm" only, while this ruling stands.
+
+**How to reactivate** (only on Ali's word): set `MARKETING_HARM_MARKERS_MUTED` to `false`; restore the expectations this
+change moved — `test:rg-doors` 8.11b (`rg_harm_marker` again), `test:campaign-audience` (pa10 protected again: will
+receive 4, protected 7, not receiving 17; players 4, 7, 13; `rg_harm_marker` back in its reason set) and the dry-fire
+world's `harm_marker` person (SKIPPED `rg_harm_marker`); and record the reactivation here.
+
+---
 ## 2026-10-20 · U43 Twelve Data use — owner attestation
 
 **Authority.** Ali, in the U43 Release B session, stated that 50pick has a full Twelve Data licence for its use in
@@ -1374,6 +1411,8 @@ item 7. ⛔ Never remove: the self-exclusion, under-18 and responsible-gambling 
 
 
 ## 2026-10-07 · Marketing SMS go to anyone with a phone — consent is not a condition (the owner's FINAL rule), and his approvals given in the session
+
+⟶ superseded in part on 2026-10-21 by § "2026-10-21 · Harm markers muted for marketing SMS (owner ruling)" — item 2's "a sign of harm" only: the automatic harm markers do not stop a marketing SMS while that ruling stands.
 
 ⟶ superseded on 2026-10-09 by § "2026-10-09 · Privacy v2026-10-09 — a marketing SMS is sent exactly as the officer wrote it: no stop link, no 18+, no helpline, no source line (owner ruling)" — in part: no message keeps a stop link (a person's own stop is still honoured), the G5 source line is printed in no message, and Privacy §4's gateway bullet names no company.
 

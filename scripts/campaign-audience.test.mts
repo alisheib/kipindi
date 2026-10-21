@@ -208,7 +208,7 @@ await consenting("pa08", "+255681000008", 8);                                   
 await db.responsible.upsert(rgRow("pa08", iso(T0 + 30 * DAY)));
 await consenting("pa09", "+255681000009", 9, { status: "COOLED_OFF" });                          // on a break
 await db.responsible.upsert(rgRow("pa09", null, { coolingOffUntil: iso(T0 + 2 * DAY) }));
-await consenting("pa10", "+255681000010", 10);                                                   // a harm marker: three deposits inside an hour
+await consenting("pa10", "+255681000010", 10);                                                   // a harm marker: three deposits inside an hour — MUTED for marketing since 2026-10-21, so pa10 RECEIVES
 await db.wallet.create({ id: "wal_pa10", userId: "pa10", balance: 0, pending: 0, hold: 0, currency: "TZS", status: "ACTIVE", createdAt: iso(T0), updatedAt: iso(T0) } as never);
 for (let i = 0; i < 3; i++) {
   await db.txn.create({
@@ -269,14 +269,16 @@ const SEQ_PLAYERS_WINDOW = ["pa01", "pa02", "pa03", "pa04", "pa05"];
 const NEVER = ["cb07", "ps01", "pe01", "pf01"];
 
 type Figures = Pick<AudienceSplit, "matching" | "unsendable" | "reachable" | "willReceive" | "notReceiving" | "unanswered" | "notReceivingTotal" | "unchecked">;
-/* ⭐ U33r · pa18, the promised referee, is the protected line's SEVENTH number — one line for every role, never its own. */
+/* ⭐ U33r · pa18, the promised referee, is the protected line's SIXTH number — one line for every role, never its own.
+   2026-10-21 · the harm markers are MUTED for marketing (Ali; COMPLIANCE-DECISIONS § "2026-10-21 · Harm markers muted for
+   marketing SMS (owner ruling)"): pa10 moves from protected to will receive — 4→5, 7→6, 17→16 (players 4→5, 7→6, 13→12). */
 const EXPECT_BOTH: Figures = {
-  matching: 23, unsendable: 2, reachable: 21, willReceive: 4,
-  notReceiving: { suppressed: 2, no_consent: 3, withdrawn: 3, age_unknown: 2, protected: 7 }, unanswered: 0, notReceivingTotal: 17, unchecked: 0,
+  matching: 23, unsendable: 2, reachable: 21, willReceive: 5,
+  notReceiving: { suppressed: 2, no_consent: 3, withdrawn: 3, age_unknown: 2, protected: 6 }, unanswered: 0, notReceivingTotal: 16, unchecked: 0,
 };
 const EXPECT_PLAYERS: Figures = {
-  matching: 18, unsendable: 1, reachable: 17, willReceive: 4,
-  notReceiving: { suppressed: 1, no_consent: 2, withdrawn: 2, age_unknown: 1, protected: 7 }, unanswered: 0, notReceivingTotal: 13, unchecked: 0,
+  matching: 18, unsendable: 1, reachable: 17, willReceive: 5,
+  notReceiving: { suppressed: 1, no_consent: 2, withdrawn: 2, age_unknown: 1, protected: 6 }, unanswered: 0, notReceivingTotal: 12, unchecked: 0,
 };
 const EXPECT_BOOK: Figures = {
   matching: 6, unsendable: 1, reachable: 5, willReceive: 1,
@@ -290,7 +292,8 @@ const figuresOf = (s: AudienceSplit): Figures => ({
 /** Every reason the gate can give with the record CLOSED — `no_basis` arises only while it is open (licence-basis.mts holds
  *  it there). U33r's `agent_referee` arises in both states, so the fixture holds it (pa18). */
 const ALL_REASONS: MarketingSkipReason[] = [
-  "bad_msisdn", "suppressed", "no_consent", "consent_withdrawn", "rg_self_excluded", "rg_cooling_off", "rg_harm_marker",
+  // 2026-10-21 · `rg_harm_marker` is no longer a reason the gate can give while the harm markers are muted for marketing.
+  "bad_msisdn", "suppressed", "no_consent", "consent_withdrawn", "rg_self_excluded", "rg_cooling_off",
   "rg_under25_history", "age_minor", "age_unknown", "account_status", "agent_referee",
 ];
 
@@ -660,7 +663,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     try { if (both) { assertAudienceSplitAdds(both); adds = true; } } catch { adds = false; }
     const bucketSum = both ? AUDIENCE_BUCKETS.reduce((n, b) => n + both.notReceiving[b], 0) : -1;
     ok(p(L.l42),
-      both !== null && adds && both.notReceivingTotal === bucketSum + both.unanswered && both.notReceivingTotal === 17
+      both !== null && adds && both.notReceivingTotal === bucketSum + both.unanswered && both.notReceivingTotal === 16
         && both.notReceivingTotal !== both.matching - both.willReceive && both.reachable === both.matching - both.unsendable,
       both ? `not receiving ${both.notReceivingTotal} · matching − will receive ${both.matching - both.willReceive}` : "the split threw");
 
@@ -700,7 +703,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const flat = json(both ?? {});
     ok(p(L.l45),
       both !== null && json(Object.keys(both.notReceiving).sort()) === json([...AUDIENCE_BUCKETS].sort())
-        && !/rg_|age_minor|account_status|agent_referee/.test(flat) && both.notReceiving.protected === 7,
+        && !/rg_|age_minor|account_status|agent_referee/.test(flat) && both.notReceiving.protected === 6,
       both ? Object.keys(both.notReceiving).join(",") : "the split threw");
 
     // 4.6 · no per-row read

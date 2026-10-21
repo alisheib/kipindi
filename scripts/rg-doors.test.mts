@@ -815,8 +815,16 @@ console.log("\n§8 · the marketing predicate is a STANDING, never a lockout (ma
       createdAt: new Date(T - (i + 1) * 60_000).toISOString(), updatedAt: now(),
     } as never);
   }
-  await expect("8.11b the DEFAULT dependency is the real detector — three deposits inside an hour refuse through it",
-    marketingRgStanding({ id: "mk_harm_real", status: "ACTIVE" }, idHarmReal, T), "rg_harm_marker");
+  // 2026-10-21 · Ali's ruling: the harm markers are MUTED for marketing SMS (`MARKETING_HARM_MARKERS_MUTED`,
+  // COMPLIANCE-DECISIONS § "2026-10-21 · Harm markers muted for marketing SMS"). The detector still flags this player —
+  // three deposits inside an hour — and the DEFAULT dependency lets them through; 8.11 and 8.12 keep proving that step 3
+  // refuses whatever flags it is handed. Reactivating (the constant `false`) turns this back into `rg_harm_marker`.
+  const { detectHarmMarkers } = await import("../src/lib/server/responsible-gambling.ts");
+  const realFlags = await detectHarmMarkers("mk_harm_real");
+  ok("8.11b′ the detector itself still flags the player: three deposits inside an hour",
+    realFlags.some((f) => f.marker === "RAPID_DEPOSIT_ESCALATION"), JSON.stringify(realFlags.map((f) => f.marker)));
+  await expect("8.11b ⏸ the DEFAULT dependency is MUTED (2026-10-21) — the same flagged player is ALLOWED for marketing",
+    marketingRgStanding({ id: "mk_harm_real", status: "ACTIVE" }, idHarmReal, T), "ALLOWED");
 
   const idHarmDown = await mplayer("mk_harm_down");
   const broken: MarketingRgDeps = { ...NONE, harmFlags: async () => { throw new Error("db down"); } };
