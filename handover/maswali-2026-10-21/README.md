@@ -9,7 +9,7 @@ verified and what is left. The lane agents' memory dies with the OMEGA session; 
 ### Branches at the stop (all pushed)
 | Lane | Branch | Head | State |
 |---|---|---|---|
-| **S5 release** (integration) | `claude/maswali-s5-release` | 730a8b615 | holds fix-srv (all of it, 1e88fdb93), fix-player, parity, PLATFORM (all, f2bcba995: D1–D15), TICKETS (ae2ce1f0b; its dev seed and the hub's dev route now attest/move with FIX-SRV's API), main `67e47f8d2`, DOORS (with REGISTER's shared pieces d5446df25 + 26503c06c) and HUB; tsc 0 ; hub-reads 17/17 and player 187 per store, engine 210 PG, doors 53, hub 53 |
+| **S5 release** (integration) | `claude/maswali-s5-release` | 08228d0c7 | holds fix-srv (all of it, 1e88fdb93), fix-player, parity, PLATFORM (all, f2bcba995: D1–D15), TICKETS (ae2ce1f0b; its dev seed and the hub's dev route now attest/move with FIX-SRV's API), main `67e47f8d2`, DOORS (with REGISTER's shared pieces d5446df25 + 26503c06c) and HUB; tsc 0 ; hub-reads 17/17 and player 187 per store, engine 210 PG, doors 53, hub 53 |
 | S5-DESIGN-DOORS | `claude/maswali-s5-design-doors` | 8881bd0c4 | DONE (every cell 10), merged |
 | S5-DESIGN-HUB | `claude/maswali-s5-design-hub` | 9776e6c2c | DONE except merge-dependent cells (MERGE-NOTES "HUB"), merged |
 | S5-DESIGN-SLIP | `claude/maswali-s5-design-slip` | 5139fce7d | DONE except the composer pills (ruled (a), MERGE-NOTES); NOT merged yet — dry-run conflicts: DESIGN_AUTHORITY.md, package.json, maswali-design.test.mts, globals.css |

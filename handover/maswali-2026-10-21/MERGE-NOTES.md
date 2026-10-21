@@ -62,6 +62,18 @@ Paths under `$S` are the lead's scratchpad on OMEGA; re-point them on another ma
   DESIGN_AUTHORITY §A item 1. Classic case = /wallet (U43 keepout
   hides the bubble on /markets, /, /results, /watchlist, /updown).
 
+## RELEASE at 08228d0c7 (17:00Z): + PLATFORM (a118f7545: r5d 5.1 classifies FIX-SRV's audit-warning reader) + TICKETS
+## (2698b3bb5 per HUB's map; 730a8b615: the tickets seed and the hub's dev route attest/move with FIX-SRV's API). tsc 0;
+## maswali-design 141, tickets 39, hub 53, doors 53, ui 151, register 46, design-register 27, r4j 92, r9a 63, r5d 45,
+## dead-css, chat-yield 28, dark-edge 36, journey-shell 566, player 187 per store, hub-reads 17 per store.
+## LEFT TO MERGE (dry-run vs 08228d0c7): REGISTER 33a2b4ea9 → docs/DESIGN_AUTHORITY.md, package.json,
+## scripts/maswali-design.test.mts; SLIP 5139fce7d → DESIGN_AUTHORITY.md, package.json, maswali-design.test.mts,
+## visual-pass-r8a.test.mts, globals.css. DESIGN_AUTHORITY §M8a numbering: item 11 = PLATFORM's "first change" (the More
+## panel), 13 = SLIP's modal focus (second change), 14 = REGISTER's (row with no figure stands alone + one core),
+## 15/16 = TICKETS', D15 = the third ruled change (PLATFORM's §A item 1 + its §M8a text) — renumber so each item keeps its
+## content and every cross-reference ("item 13", "§M8a item 11") still points at the right one (grep them).
+## After both: a full tsc, the design/hub/tickets/register/doors/slip suites, `test:all` light part, then round 2.
+
 ## TICKETS DONE at ae2ce1f0b (16:49Z): every row 10 except F (won) Visual 9 = the ledger note (REGISTER b05e345ea fixed
 ## it → re-shoot won tiles at the merge). qa:maswali-ticket-shots main 3194/0 + sunset 629/0; moments 8/8; ghosts 12/12
 ## (≤1px); test:maswali-tickets 39 (red 60/60); tsc 0. maswali-player.ts L14 lines: line 818 kind union gains "close";
