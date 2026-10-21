@@ -672,7 +672,9 @@ const slipDefects = (src: string) => {
     const d: string[] = [];
     if (!needle.includes("const standDown = suppressed || (isSlipSurface(pathname) && !notFoundShown); wantSuppressed.current = standDown; apiRef.current?.setSuppressed(standDown);")) d.push("needle: the slip's stand-down is not beside its pinned line, lifted on the not-found page");
     if (!chat.includes("if (journeyOn && isJourneySurface(pathname) && !notFoundShown) return null; if (isSlipSurface(pathname) && !notFoundShown) return null;")) d.push("chat: the slip's stand-down is not straight after the journey's guard, lifted on the not-found page");
-    if (!consent.includes("const overMoney = isCommitSurface(pathname) && !notFoundShown;") || !consent.includes("!gaExcluded(pathname) && !overMoney;")) d.push("consent: the commit-surface rule holds on a not-found page");
+    // S5-FIX-PLATFORM D9: the lift is Millionea's alone — every other commit address's not-found keeps the card off, as
+    // production always has (the S5 lift had been written for any commit address, a classic change nobody ruled).
+    if (!consent.includes("const overMoney = isCommitSurface(pathname) && !(notFoundShown && isMillioneaPath(pathname));") || !consent.includes("!gaExcluded(pathname) && !overMoney;")) d.push("consent: the commit-surface rule holds on a dark Millionea not-found page, or lifts on another commit address's");
     return d;
   };
   const NEEDLE = "src/components/layout/needle.tsx", CHAT = "src/components/chat/ChatRoot.tsx", CONSENT = "src/components/analytics/consent-prompt.tsx";
@@ -681,8 +683,12 @@ const slipDefects = (src: string) => {
     !ov.some((x) => x.startsWith("needle")), ov.join(" | "));
   ok("6.5 · the chat bubble stands down on the slip, straight after the journey's guard, closing and clearing nothing — and comes back on its not-found page",
     !ov.some((x) => x.startsWith("chat")), ov.join(" | "));
-  ok("6.6 · the consent card keeps off a money control, and a not-found page at a commit address carries none: it may ask there",
+  ok("6.6 · the consent card keeps off a money control; a dark Millionea commit address's not-found page carries none and may ask, as an unknown address does — and every other commit address's not-found keeps it off, as production does",
     !ov.some((x) => x.startsWith("consent")), ov.join(" | "));
+  const liftAnywhere = overlayDefects(read(NEEDLE), read(CHAT), read(CONSENT).replace("!(notFoundShown && isMillioneaPath(pathname))", "!notFoundShown"));
+  const neverLift = overlayDefects(read(NEEDLE), read(CHAT), read(CONSENT).replace("!(notFoundShown && isMillioneaPath(pathname))", "true"));
+  ok("6.6′ CONTROL · the S5 lift on ANY commit address's not-found page (a classic change), and no lift at all, are each reported",
+    liftAnywhere.some((x) => x.startsWith("consent")) && neverLift.some((x) => x.startsWith("consent")));
   const stuckNeedle = overlayDefects(read(NEEDLE).replace("(isSlipSurface(pathname) && !notFoundShown)", "isSlipSurface(pathname)"), read(CHAT), read(CONSENT));
   const stuckChat = overlayDefects(read(NEEDLE), read(CHAT).replace("if (isSlipSurface(pathname) && !notFoundShown) return null;", "if (isSlipSurface(pathname)) return null;"), read(CONSENT));
   const goneChat = overlayDefects(read(NEEDLE), read(CHAT).replace("if (isSlipSurface(pathname) && !notFoundShown) return null;", ""), read(CONSENT));
@@ -1093,6 +1099,6 @@ const receiptGapDefects = (src: string) => {
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI UI: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run PRINTS; it only rises, to a printed number. §3.1 and §4.3 each run a small case table. */
-const MIN_ASSERTIONS = 143; // 2026-10-19 green run, through §13
+const MIN_ASSERTIONS = 148; // 2026-10-21 green run (S5-FIX-PLATFORM: 4.10a, 6.6′ added), through §13
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);
