@@ -48,7 +48,11 @@ Every lane committed and pushed at the stop; a commit marked "WIP … not verifi
 - Finished and verified: `claude/maswali-s5-fix-srv` (`9935dfd47`, all 16 server/console findings with guards and plants);
   `claude/maswali-s5-fix-platform` commits 1–7 (D1–D9, r5j 3.7.2; head `c1e3a1b28`: 8–11 written, not fully verified;
   D12–D14 not started); `claude/maswali-s5-parity` (`9a0c6b033`, the instrument fixed, --prove-red 299/299).
-- `claude/maswali-s5-fix-player`: P1–P19 code complete (`cdb4bf46e`), its verification round was running — read its head.
+- `claude/maswali-s5-fix-player` (`54512f311`): P1–P15 and P17–P19 fixed, P16 not reproduced (44px). Verified: tsc 0,
+  test:maswali-player 186/186 on both stores, the 8 Maswali red twins, 129 of 142 reader suites green — the 11 reds are
+  D19a's dictionary pin (re-pinned once at the merge) or pre-existing U43 reds, each proven on 8c468393b; on screen: P1's
+  free-cancel promise moves with the clock on a sheet left open, P7, P8, P10 (slip and ticket), P17, P6 on the hub. NOT
+  verified: P6 on a ticket (the drive's seed held no ticket in a week inside its objection window).
 - WIP, not compiling: `claude/maswali-s5-design-hub` (`7fe758046`), `-slip` (`524128dbb`), `-register` (`3bf97ffdf`),
   `-tickets` (`96e5e9a94`). `claude/maswali-s5-design-doors` (`5bc6e2c57`): H1 and nearly all of R1-doors done and
   verified (the ghost equals the card: 188/188px at 360, 74/74 at 1280); its last commit (L7 and three small items) is
