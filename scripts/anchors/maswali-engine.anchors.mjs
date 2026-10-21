@@ -130,8 +130,8 @@ export const MUTATIONS = [
   {
     name: "(15) bulk input accepts the same slot twice",
     file: BATCH,
-    from: "    if (seen.has(row.slot)) return `Slot ${row.slot} appears more than once.`;",
-    to: "    if (false) return `Slot ${row.slot} appears more than once.`;",
+    from: "    if (seen.has(row.slot)) return `${labelOf(row.slot)} appears more than once.`;",
+    to: "    if (false) return `${labelOf(row.slot)} appears more than once.`;",
     expect: "7.17 · ⛔ duplicate slots cannot partially seal",
     suite: "engine",
   },
@@ -371,6 +371,15 @@ export const MUTATIONS = [
     from: "    if (week.state !== \"OPEN\" && week.state !== \"CLOSED\" && week.state !== \"RESOLVING\") return refuse(`Week ${week.code} is ${week.state}; its seals are final.`);",
     to: "",
     expect: "9.7 · ⛔ a confirmation on a SETTLED week is refused",
+    suite: "engine",
+  },
+  // ── S5-FIX-SRV A6 · a partial seal names its slots as the console does ──────────────────────────────────────────
+  {
+    name: "(54) the partial-seal refusal names the slot by number again (\"Slot 11: A1 is already sealed…\")",
+    file: BATCH,
+    from: "        failure = slotRefusal(row.slot, result.error ?? \"The seal was refused.\");",
+    to: "        failure = `Slot ${row.slot}: ${result.error ?? \"The seal was refused.\"}`;",
+    expect: "7.7 · ⛔ a later service refusal reports exactly the first landed slot",
     suite: "engine",
   },
   // ── S5-FIX-SRV 6 · every drafted field is checked by the server, and the stores keep the same values ─────────────────

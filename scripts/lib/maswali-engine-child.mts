@@ -500,9 +500,9 @@ console.log("\n§7 · the two-officer flag");
     { slot: 11, outcome: "NO" as const, evidence: "Already sealed reserve 1" },
   ], (row) => svc.sealQuestion({ weekId: w1.id, ...row, officerId: SEALER, now: afterClose }),
   (slots) => device(slots, "198.51.100.121"), () => "Unexpected seal error");
-  ok("7.7 · ⛔ a later service refusal reports exactly the first landed slot",
-    !first.ok && first.sealed.length === 1 && first.sealed[0] === 13 && /Slot 11/.test(errOf(first))
-      && (await questionStore.listForWeek(w1.id)).find((x) => x.slot === 13)?.outcome === "YES");
+  ok("7.7 · ⛔ a later service refusal reports exactly the first landed slot, naming the refused one as the console does (A1, never \"Slot 11\")",
+    !first.ok && first.sealed.length === 1 && first.sealed[0] === 13 && /^A1 is already sealed/.test(errOf(first)) && !/Slot 11/.test(errOf(first))
+      && (await questionStore.listForWeek(w1.id)).find((x) => x.slot === 13)?.outcome === "YES", errOf(first));
   await auditFlush();
   const deviceRows = (await recentNewDeviceSeals(200))?.filter((row) => row.officerId === SEALER && row.weekId === w1.id) ?? [];
   const deviceAudit = (await getAuditByActionsDurable([SEAL_DEVICE_ACTION, SEAL_NEW_DEVICE_ACTION], { limit: 200 })).entries
@@ -523,7 +523,7 @@ console.log("\n§7 · the two-officer flag");
     : svc.sealQuestion({ weekId: w1.id, ...row, officerId: SEALER, now: afterClose }),
   (slots) => device(slots, "198.51.100.122"), () => "The second call threw");
   ok("7.10 · ⛔ a throw after one success still reports only the landed slot",
-    !second.ok && second.sealed.length === 1 && second.sealed[0] === 14 && /Slot 15: The second call threw/.test(errOf(second))
+    !second.ok && second.sealed.length === 1 && second.sealed[0] === 14 && /^A5: The second call threw/.test(errOf(second))
       && (await questionStore.listForWeek(w1.id)).find((x) => x.slot === 14)?.outcome === "YES");
   await auditFlush();
   const twoDevices = (await recentNewDeviceSeals(200))?.filter((row) => row.officerId === SEALER && row.weekId === w1.id) ?? [];
@@ -552,7 +552,8 @@ console.log("\n§7 · the two-officer flag");
       && typeof parseSealRows('[{"slot":16,"outcome":"YES","evidence":"Official record"}]') === "string"
       && typeof parseSealRows('[{"slot":1.5,"outcome":"YES","evidence":"Official record"}]') === "string");
   ok("7.17 · ⛔ duplicate slots cannot partially seal the same question twice",
-    typeof parseSealRows('[{"slot":1,"outcome":"YES","evidence":"Official record"},{"slot":1,"outcome":"NO","evidence":"Official record"}]') === "string");
+    typeof parseSealRows('[{"slot":1,"outcome":"YES","evidence":"Official record"},{"slot":1,"outcome":"NO","evidence":"Official record"}]') === "string"
+      && parseSealRows('[{"slot":11,"outcome":"YES","evidence":"Official record"},{"slot":11,"outcome":"NO","evidence":"Official record"}]') === "A1 appears more than once.");
   ok("7.18 · the real admin action validates rows before the first irreversible seal",
     actionSource.includes('const rows = parseSealRows(str(formData, "seals"));')
       && actionSource.indexOf('const rows = parseSealRows(str(formData, "seals"));') < actionSource.indexOf("const result = await applySealBatch(rows,"));

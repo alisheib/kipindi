@@ -3,6 +3,7 @@
  * slot refuses, so the result always names the slots that actually landed and notes their
  * device even on a partial result. The caller refreshes the week after this result.
  */
+import { SLOT_COUNT, slotLabel } from "@/lib/maswali-score";
 export type SealBatchResult =
   | { ok: true; sealed: number[]; auditWarning: string | null }
   | { ok: false; error: string; sealed: number[]; auditWarning: string | null };
@@ -13,6 +14,16 @@ export const SEAL_AUDIT_WARNING = "The seal landed, but its audit record could n
 export const CONFIRM_AUDIT_WARNING = "The confirmation landed, but its audit record could not be fully written. Tell an administrator; do not confirm it again.";
 
 export type SealBatchRow = { slot: number; outcome: "YES" | "NO" | "VOID"; evidence: string };
+
+/** A slot as the console names it — M1…M10, A1…A5 (S5 review A6: never "Slot 11"); a number outside the week as itself. */
+function labelOf(slot: number): string {
+  return Number.isInteger(slot) && slot >= 1 && slot <= SLOT_COUNT ? slotLabel(slot) : `Slot ${slot}`;
+}
+/** A refusal that names its slot: the service's own sentence when it already starts with it, else prefixed with it. */
+function slotRefusal(slot: number, message: string): string {
+  const label = labelOf(slot);
+  return message.startsWith(`${label} `) || message.startsWith(`${label}:`) ? message : `${label}: ${message}`;
+}
 
 /** Reject the whole submitted batch before its first irreversible seal. */
 export function parseSealRows(raw: string): SealBatchRow[] | string {
@@ -28,7 +39,7 @@ export function parseSealRows(raw: string): SealBatchRow[] | string {
         (row.outcome !== "YES" && row.outcome !== "NO" && row.outcome !== "VOID") || typeof row.evidence !== "string") {
       return "Each seal needs a valid question, result and evidence.";
     }
-    if (seen.has(row.slot)) return `Slot ${row.slot} appears more than once.`;
+    if (seen.has(row.slot)) return `${labelOf(row.slot)} appears more than once.`;
     seen.add(row.slot);
     rows.push({ slot: row.slot, outcome: row.outcome, evidence: row.evidence });
   }
@@ -49,13 +60,13 @@ export async function applySealBatch<T extends { slot: number }>(
     try {
       const result = await seal(row);
       if (!result.ok) {
-        failure = `Slot ${row.slot}: ${result.error ?? "The seal was refused."}`;
+        failure = slotRefusal(row.slot, result.error ?? "The seal was refused.");
         break;
       }
       sealed.push(row.slot);
       if (result.recorded === false) sealUnrecorded = true;
     } catch (error) {
-      failure = `Slot ${row.slot}: ${safeFailure(error)}`;
+      failure = slotRefusal(row.slot, safeFailure(error));
       break;
     }
   }
