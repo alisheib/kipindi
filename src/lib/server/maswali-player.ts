@@ -1079,7 +1079,8 @@ export function normalizeMillioneaWeekCode(raw: unknown): string | null {
   return /^MLN-\d{4}-W\d{2}$/.test(s) ? s : null;
 }
 
-/** ⭐ ONE WEEK OF THE REGISTER — public, final, with every figure to the shilling; or null. */
+/** ⭐ ONE WEEK OF THE REGISTER — public, final, with every figure to the shilling; or null. ⛔ PUBLIC only: a DRIVE week's
+ *  money is read by its own ticket's holder through the core (`millioneaWeekMoneyRecord`), never here. */
 export async function millioneaRegisterWeek(code: string): Promise<MillioneaRegisterWeek | null> {
   const want = normalizeMillioneaWeekCode(code);
   if (!want) return null;
@@ -1087,7 +1088,6 @@ export async function millioneaRegisterWeek(code: string): Promise<MillioneaRegi
   if (!week || week.visibility !== "PUBLIC" || !TERMINAL.includes(week.state)) return null;
   const rules = frozenRules(week);
   if (!rules) return null;
-  const terms = await termsOf(week);
   const qs = await questionStore.listForWeek(week.id);
   const gq = gradable(qs);
   const rec = recordOf(gq);
@@ -1106,14 +1106,10 @@ export async function millioneaRegisterWeek(code: string): Promise<MillioneaRegi
   const resolution = sealed.length > 0 && sealed.every((q) => q.twoOfficerAtStage1 === true && !!q.stage2By) ? "two" : "single";
 
   let standing: MillioneaRegisterWeek["standing"] = null, scores: number[] | null = null;
-  let basis: MillioneaRegisterWeek["basis"] = null, winningScore: number | null = null;
-  if (settled) {
-    const graded = await ticketStore.listForWeek(week.id, { status: "SETTLED" });
+  const graded = settled ? await ticketStore.listForWeek(week.id, { status: "SETTLED" }) : null;
+  if (graded) {
     scores = Array.from({ length: MAIN_COUNT + 1 }, () => 0);
     for (const t of graded) if (t.score != null && t.score >= 0 && t.score <= MAIN_COUNT) scores[t.score]++;
-    const winning = graded.filter((t) => t.won === true);
-    winningScore = winning.length ? Math.max(...winning.map((t) => t.score ?? 0)) : null;
-    basis = winningScore === null ? null : winningScore < MAIN_COUNT ? "TOP_SCORE" : "TEN_OF_TEN";
     const set = rec.set;
     if (set?.kind === "SET") {
       const outcomeAt = new Map(qs.map((q, i) => [q.slot, gq[i]?.outcome ?? null] as const));
@@ -1125,15 +1121,14 @@ export async function millioneaRegisterWeek(code: string): Promise<MillioneaRegi
       });
     }
   }
+  // The money is the ONE core's (`weekMoneyOf`, S5-DESIGN-REGISTER — the lead's ruling of 2026-10-21), laid back in the
+  // record's own key order, so a public week's projection is the same, byte for byte.
+  const { carryFromCode, carryToCode, ticketPrice, floor, feeRate, traLevy, gbtLevy, toWinners, remainder, basis, winningScore, ...summary } =
+    await weekMoneyOf(week, rules, graded);
   return {
-    ...(await summaryOf(week)),
+    ...summary,
     opensAt: week.opensAt, closesAt: week.closesAt, questionSetHash: week.questionSetHash, ticketMerkleRoot: week.ticketMerkleRoot,
-    carryFromCode: (week.rolloverIn ?? 0) > 0 ? (await prevWeekOf(week))?.code ?? null : null,
-    carryToCode: (await nextWeekOf(week))?.code ?? null,
-    ticketPrice: rules.ticketPriceTzs, floor: rules.floorTzs, feeRate: terms?.feeRate ?? null,
-    traLevy: settled ? week.traLevy : null, gbtLevy: settled ? week.gbtLevy : null,
-    toWinners: settled && week.jackpot != null && (week.winningTickets ?? 0) > 0 ? week.jackpot - (week.fee ?? 0) : null,
-    remainder: settled && week.jackpot != null ? week.jackpot - (week.fee ?? 0) - (week.paidTotal ?? 0) : null,
+    carryFromCode, carryToCode, ticketPrice, floor, feeRate, traLevy, gbtLevy, toWinners, remainder,
     questions, substitutions, basis, winningScore, resolution, standing, scores,
   };
 }
@@ -1624,4 +1619,48 @@ export async function millioneaRegisterCurrent(): Promise<MillioneaRegisterLiveW
     if (live) out.push(live);
   }
   return out;
+}
+
+/**
+ * ⭐ A FINAL WEEK'S MONEY, ON EITHER LINE — THE ONE CORE (the lead's ruling of 2026-10-21; the TICKETS lane's win ledger
+ * reads it). Every figure the week's ledger prints (`registerLedgerRows`): the summary's — the tickets and the sales at the
+ * close, the carry in, J, F, the top-up, the share, what was paid and what went on — the frozen price and floor, the fee's
+ * rate and its two levies, J − F and the remainder, the carry's two weeks by the line's OWN calendar chain (`prevWeekOf`,
+ * `nextWeekOf`), and how the winners were found (the sunset's top score, MR-30); from a SETTLED or VOIDED week of ANY
+ * visibility. The public register reads it inside its own PUBLIC refusal and its cache (`millioneaRegisterWeek`); a DRIVE
+ * week's (OD-21) is read by its own ticket's holder, on the ticket's page, which has checked the holder first.
+ * ⛔ No visibility filter and no cache HERE, by design — the caller is the gate: never a public route.
+ * ⛔ Money only: no question, no attestation, no standing, no graded table — the register's public facts stay its own.
+ */
+export type MillioneaWeekMoney = Pick<MillioneaRegisterWeek,
+  | keyof MillioneaWeekSummary | "carryFromCode" | "carryToCode" | "ticketPrice" | "floor" | "feeRate" | "traLevy" | "gbtLevy"
+  | "toWinners" | "remainder" | "basis" | "winningScore">;
+
+/** The core itself, on a week already read: `graded` is the week's SETTLED tickets (null for a voided week). */
+async function weekMoneyOf(week: StoredWeek, rules: MaswaliRulesSnapshot, graded: readonly StoredTicket[] | null): Promise<MillioneaWeekMoney> {
+  const settled = week.state === "SETTLED";
+  const terms = await termsOf(week);
+  const winning = settled ? (graded ?? []).filter((t) => t.won === true) : [];
+  const winningScore = winning.length ? Math.max(...winning.map((t) => t.score ?? 0)) : null;
+  return {
+    ...(await summaryOf(week)),
+    carryFromCode: (week.rolloverIn ?? 0) > 0 ? (await prevWeekOf(week))?.code ?? null : null,
+    carryToCode: (await nextWeekOf(week))?.code ?? null,
+    ticketPrice: rules.ticketPriceTzs, floor: rules.floorTzs, feeRate: terms?.feeRate ?? null,
+    traLevy: settled ? week.traLevy : null, gbtLevy: settled ? week.gbtLevy : null,
+    toWinners: settled && week.jackpot != null && (week.winningTickets ?? 0) > 0 ? week.jackpot - (week.fee ?? 0) : null,
+    remainder: settled && week.jackpot != null ? week.jackpot - (week.fee ?? 0) - (week.paidTotal ?? 0) : null,
+    basis: winningScore === null ? null : winningScore < MAIN_COUNT ? "TOP_SCORE" : "TEN_OF_TEN",
+    winningScore,
+  };
+}
+
+/** ⭐ THE CORE, BY THE WEEK'S ID: a final week's money on either line, or null — a week not final yet (money only once
+ *  final), one that does not exist, or one whose frozen rules cannot be read (fail closed, as the register does). */
+export async function millioneaWeekMoneyRecord(weekId: string): Promise<MillioneaWeekMoney | null> {
+  const week = await weekStore.get(weekId);
+  if (!week || !TERMINAL.includes(week.state)) return null;
+  const rules = frozenRules(week);
+  if (!rules) return null;
+  return weekMoneyOf(week, rules, week.state === "SETTLED" ? await ticketStore.listForWeek(week.id, { status: "SETTLED" }) : null);
 }

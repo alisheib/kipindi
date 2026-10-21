@@ -18,7 +18,7 @@ import { playerStatusChip } from "@/lib/status-tone";
 import { formatEatDateTime } from "@/lib/eat-day";
 import { fill, formatNumber, formatTzs, pctNum } from "@/lib/utils";
 import type { WeekState } from "@/lib/maswali-week-label";
-import type { MillioneaRegisterLiveWeek, MillioneaRegisterWeek, MillioneaWeekSummary } from "@/lib/server/maswali-player";
+import type { MillioneaRegisterLiveWeek, MillioneaWeekMoney, MillioneaWeekSummary } from "@/lib/server/maswali-player";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import { millioneaWeekPhase, msOf, weekPhaseWord, type MillioneaWeekPhase } from "../millionea-view";
 import { registerWeekHref } from "../millionea-parts";
@@ -173,11 +173,15 @@ export function weekTimes(t: Dict, locale: Locale, w: { state: WeekState; closed
  *   · P4 · the rounding remainder only in a week the house did not top up (MR-25).
  *   · P11 · a fee taken is the platform's signed figure ("−TZS 136,500", rule A4); a week that took none, "TZS 0".
  *   · P9 · the weeks a carry came from and went to are the calendar chain's (`carryFromCode`, `carryToCode`).
+ * It reads only the week's money (`MillioneaWeekMoney`, the one core — the public register's record carries it, and the
+ * TICKETS lane's win ledger reads a week of either line through `millioneaWeekMoneyRecord`). `links: false` names each
+ * carry's week without opening a page — a DRIVE week's chain is private, and the public register has no page for it.
  */
-export function registerLedgerRows(t: Dict, locale: Locale, w: MillioneaRegisterWeek): MillioneaLedgerRow[] {
+export function registerLedgerRows(t: Dict, locale: Locale, w: MillioneaWeekMoney, { links = true }: { links?: boolean } = {}): MillioneaLedgerRow[] {
   const from = w.carryFromCode, to = w.carryToCode;
+  const pageOf = (code: string | null) => (links && code ? registerWeekHref(code) : null);
   const carryIn = (w.carryIn ?? 0) > 0
-    ? { amount: w.carryIn ?? 0, week: from ? weekNumberOf(from) : null, href: from ? registerWeekHref(from) : null }
+    ? { amount: w.carryIn ?? 0, week: from ? weekNumberOf(from) : null, href: pageOf(from) }
     : null;
   const kind = w.state === "VOIDED" ? "voided" : (w.winners ?? 0) > 0 ? "won" : "rolled";
   // A voided week hands its carry on untouched (MR-18): what it received is what goes on to the chain's next week.
@@ -204,7 +208,7 @@ export function registerLedgerRows(t: Dict, locale: Locale, w: MillioneaRegister
     share: w.share,
     paid: w.paid,
     remainder: w.remainder,
-    carriedForward: out > 0 ? { amount: out, week: to ? weekNumberOf(to) : null, href: to ? registerWeekHref(to) : null } : null,
+    carriedForward: out > 0 ? { amount: out, week: to ? weekNumberOf(to) : null, href: pageOf(to) } : null,
     refunds: kind === "voided" ? { amount: w.sales ?? 0, landed: !w.refundsPending } : null,
     sunset: w.basis === "TOP_SCORE" && w.winningScore !== null ? { score: w.winningScore, tickets: w.winners ?? 0 } : null,
   });

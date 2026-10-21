@@ -14,7 +14,8 @@
  *      to the floor, nobody won, voided with refunds landed or on their way, the sunset's top score) and in How to play's
  *      two examples priced by `settleArithmetic`; the rows in the order the money moved; the floor muted unless it bound;
  *      the fee the platform's signed amber figure with its levies as one muted line; every amount an unbroken `.amount`
- *      run and no label in capitals; a carry linked to its week, and hidden at 0; the live and voiding kinds the hub adopts.
+ *      run and no label in capitals; a carry linked to its week, and hidden at 0; the live and voiding kinds the hub adopts;
+ *      a sentence with no figure (a voiding week's refund-if-it-stands, the sunset's no top-up) standing alone, no dash.
  *   §3 THE ONE WEEK CHIP (`WeekStateChip`): every state a public week can be in — selling, paused, sales closed, results
  *      coming in, the objection window, settling, being voided, settled, voided — its word `weekPhaseWord`'s, its tone
  *      status-tone's Millionea week row (rendered), a settled week slate and never the resolved seal (the exception row
@@ -375,6 +376,25 @@ check("2.10", "the drawing is the kit's own: every row a sentence-case ReceiptRo
   const sentence = count(drawn, 'class="min-w-0 text-body-sm');
   return [rows === 10 && sentence >= 10 && !/border-b\b/.test(drawn) && drawn.includes("mt-3"), j({ rows, sentence })];
 });
+// ⚠️ ADDED 2026-10-21 (the lead, for the HUB lane: R1-hub L15 asks for no dash, H1 forbids a figure there): a sentence with no
+// figure stands alone — the dash beside it read as a missing figure.
+const VOIDING = { kind: "voiding", price: 1_000, tickets: 42, sales: 42_000, carryIn: null, floor: null, topUp: 0, jackpot: null, feePct: 13, fee: null, levies: null, winners: 0, toWinners: null, share: null, paid: null, remainder: null, carriedForward: null, refunds: null, sunset: null };
+check("2.11", "a sentence with no figure stands alone: a voiding week's \"If the void stands, every ticket is refunded TZS 1,000\" and the sunset's \"No top-up to the floor · no 10/10\" print no \"—\" and no figure beside them, rendered in en, sw and zh", (w) => {
+  const off: string[] = [];
+  for (const l of LOCALES) {
+    const m = dict[l].millionea as Record<string, string>;
+    for (const [name, f, key] of [["voiding", VOIDING, "refund"], ["sunset", CASES.sunset, "noTopUp"]] as const) {
+      const r = rowsOf(w, l, f as Record<string, unknown>).find((x) => x.key === key);
+      const drawn = inApp(l, h(w.Ledger as never, { rows: w.ledger(dict[l] as never, l, f as Record<string, unknown>) } as never));
+      const row = drawn.split('data-ledger-row="').find((s) => s.startsWith(`${key}"`)) ?? "";
+      const words = key === "refund" ? r?.label === m.refundEachIfVoid.replace("{price}", "TZS 1,000") : r?.label.replace(/\s+/g, " ").includes(m.noTopUp.split(" · ")[0]);
+      // The sentence's own price is its words (an `.amount` run inside the label); the row holds no figure beyond them.
+      const figures = r ? count(row, 'class="amount"') - count(inApp(l, r.row.label as never), 'class="amount"') : -1;
+      if (!r || !words || r.value !== "" || r.row.value != null || row.includes("—") || figures !== 0) off.push(`${l}/${name}: ${j({ label: r?.label, value: r?.value, dash: row.includes("—"), figures })}`);
+    }
+  }
+  return [off.length === 0, off.join(" | ")];
+});
 
 // ── §3 · the one week chip ────────────────────────────────────────────────────────────────────────────────────────────
 const PHASES: Array<[string, string, { kind: string; objectionsUntil: number | null } | null, boolean, string, string]> = [
@@ -572,6 +592,8 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["Money out's parts line dropped", "2.6", plantLedger("note: factLine(locale, fill(m.ledgerOutParts,", "note: undefined && factLine(locale, fill(m.ledgerOutParts,")],
   ["a carry row no longer a link", "2.7", plantLedger("return r.href ? (\n          <Link", "return false ? (\n          <Link")],
   ["\"every ticket refunded\" before the refunds landed", "2.8", plantLedger("afterIn.push(refunds.landed", "afterIn.push(true")],
+  ["the voiding week's refund line beside a dash again", "2.11", plantLedger('[price]), value: null, emphasis: "muted" });', '[price]), value: "—", emphasis: "muted" });')],
+  ["the sunset's no-top-up line beside a dash again", "2.11", plantLedger('label: factLine(locale, m.noTopUp), value: null,', 'label: factLine(locale, m.noTopUp), value: "—",')],
   ["the live pool said as a figure while its carry waits", "2.9", plantLedger("value: carryIn?.amount === null ? keepFact(locale, fill(m.atLeast, { amount: formatTzs(inTotal) })) : money(inTotal),", "value: money(inTotal),")],
   // §3
   ["a settled week in the resolved seal again", "3.1", plantParts('case "SETTLED": return "MILLIONEA_WEEK_SETTLED";', 'case "SETTLED": return "RESOLVED";')],
