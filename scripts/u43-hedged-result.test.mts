@@ -18,7 +18,10 @@ let admin: pg.Client | null = null;
 if (scratch) {
   if (process.env.NODE_ENV === "production") throw new Error("Hedge fixture refuses production mode");
   const adminUrl = new URL(scratch);
-  if (adminUrl.hostname !== "127.0.0.1" || adminUrl.port !== "5491" || adminUrl.pathname !== "/postgres")
+  // 2026-10-21 · U43: the port is the scratch harness's own (`KP_SCRATCH_PORT`, 5433 by default — CI's), not one
+  // lane's reserved number; the data-directory check below still proves this checkout's own `.pgscratch` cluster.
+  const scratchPort = String(process.env.KP_SCRATCH_PORT || 5433);
+  if (adminUrl.hostname !== "127.0.0.1" || adminUrl.port !== scratchPort || adminUrl.pathname !== "/postgres")
     throw new Error("Hedge fixture requires the reserved loopback scratch database");
   admin = new pg.Client({ connectionString: scratch });
   await admin.connect();
