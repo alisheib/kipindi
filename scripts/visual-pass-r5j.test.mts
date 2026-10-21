@@ -359,16 +359,23 @@ const oldAmounts = (s: string) => s.split(OLD_FIGURE).filter((_, i) => i % 2 ===
     dial.includes('title={resultData.variant === "success" ? `${sideWord(t, resultData.side, "MARKET")} · ${formatTzs(resultData.stake)}`'));
 
   // P2 adds an opt-in mono title and an opt-in panel class for Millionea. Every other result must render the same
-  // bytes as the component before P2, not merely keep a familiar heading class. e984abbe5 is VIS-P's parent; the
-  // blob pin refuses a moving or missing baseline. Both modules use the Modal stand-in installed above and the same
-  // current dependencies, so this comparison isolates OperationResultModal's own rendered markup.
+  // bytes as the component PRODUCTION SERVES, not merely keep a familiar heading class. Both modules use the Modal
+  // stand-in installed above and the same current dependencies, so this comparison isolates OperationResultModal's own
+  // rendered markup.
+  // ⚠️ RE-POINTED (MASWALI-BUILD S5-FIX-PLATFORM, 2026-10-21): the baseline was VIS-P's parent e984abbe5, and production
+  // `main` changed this component after it (U43's board rebuild 1384383f and house-gold restore dd1386f0) — so every case
+  // "differed" from a file production no longer serves, while S5 changes nothing for these callers. The baseline is now
+  // production main's copy as S5 merged it: ONE constant, re-pointed to main's commit at every re-merge of main.
+  const P2_BASELINE_MAIN = "4471bb440";
   const resultPath = "src/components/markets/operation-result-modal.tsx";
-  const beforeRef = `e984abbe5:${resultPath}`;
+  const beforeRef = `${P2_BASELINE_MAIN}:${resultPath}`;
   const beforeBlob = execFileSync("git", ["rev-parse", beforeRef], { encoding: "utf8" }).trim();
   const beforeSource = execFileSync("git", ["show", beforeRef], { encoding: "utf8" }).replace(/\r\n/g, "\n");
-  ok("3.7.0 · P2's before-source is VIS-P parent e984abbe5, at the exact approved component blob",
-    beforeBlob === "de69d620de263fb372d92933d773407a60bc05f7" && beforeSource.includes("export function OperationResultModal(")
-      && !beforeSource.includes("function PanelClass("), beforeBlob);
+  let baselineMerged = false;
+  try { execFileSync("git", ["merge-base", "--is-ancestor", P2_BASELINE_MAIN, "HEAD"], { stdio: "ignore" }); baselineMerged = true; } catch { baselineMerged = false; }
+  ok(`3.7.0 · P2's baseline is production main's component as this branch merged it (${P2_BASELINE_MAIN}, blob ${beforeBlob.slice(0, 12)}): a commit HEAD contains, before P2 (no PanelClass, no titleFace)`,
+    baselineMerged && beforeSource.includes("export function OperationResultModal(")
+      && !beforeSource.includes("function PanelClass(") && !beforeSource.includes("titleFace"), j({ baselineMerged, beforeBlob }));
   const resultModulePath = req.resolve(`../${resultPath}`);
   const liveModule = (req.cache as Record<string, NodeModule>)[resultModulePath];
   const fromSource = (source: string) => {
