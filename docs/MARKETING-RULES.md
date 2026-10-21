@@ -32,10 +32,14 @@
   one typed test only, the officer's 18+ confirmation (§4). [`consent.ts` step 3 · CONTACTS-SCREEN-PLAN §4.3 S15-1]
 - **The one send gate** (`mayReceiveMarketingSms`) is asked for every number just before its message leaves, and it
   always refuses: a number on the stop list or whose holder withdrew · an agent applicant's referee who was promised no
-  marketing · a self-excluded player · a player on a break or showing a sign of harm · a player under 25 with a
+  marketing · a self-excluded player · a player on a break · a player under 25 with a
   self-exclusion or a break on record · anyone under 18 or whose age cannot be confirmed · a suspended or closed account,
   or one whose identity check was finally refused · an erased number. [D-1009a item 2 · D-1007a "What it does NOT
   change" · `consent.ts` · [`dispatch.ts`](../src/lib/server/marketing/dispatch.ts)]
+- **⏸ A sign of harm does NOT refuse while the harm markers are muted** (Ali, 2026-10-21): the automatic markers —
+  rapid deposits, deposits soon after a bet, late-night play — no longer stop a marketing SMS, for anyone, until he
+  reactivates them. [COMPLIANCE-DECISIONS § "2026-10-21 · Harm markers muted for marketing SMS (owner ruling)" ·
+  `MARKETING_HARM_MARKERS_MUTED` in [`rg.ts`](../src/lib/server/marketing/rg.ts)]
 - **An erased person's number stays blocked** until its holder signs up or agrees to offers again; an old spreadsheet
   never brings the name back. [D-1009b item 1 · [`erasure-mark.ts`](../src/lib/marketing/erasure-mark.ts)]
 - **One message per number per campaign**, and no per-person frequency cap — management decides each campaign's
