@@ -350,7 +350,11 @@ try {
     const settled = await runJob({ kind: "release", weekId: wk.weekId, at: wk.releaseAt,
       ...(s.held ? { timeoutMs: Math.min(JOB_TIMEOUT_MS, 10 * 60_000) } : {}) });
     const timing = `the release ${settled?.settleMs} ms, its preparation ${settled?.previewMs} ms`;
-    measured.push(`${label}: ${settled?.ok ? timing : `FAILED — ${settled?.error} (${timing})`} · budget ${SETTLE_BUDGET_MS} ms`);
+    // S7-F8 · the worker's marks, in ms after the preparation: the chain lock's transaction opens, its holds are placed, its
+    // last write is made (the commit follows), the release returns. lastWrite − chainOpens is the transaction's own span.
+    const m = settled?.marks;
+    const span = m && m.chainOpens !== null && m.lastWrite !== null ? `${m.lastWrite - m.chainOpens} ms in the transaction to its last write` : "the transaction's span not reached";
+    measured.push(`${label}: ${settled?.ok ? timing : `FAILED — ${settled?.error} (${timing})`} · ${span} · marks ${J(m ?? null)} · budget ${SETTLE_BUDGET_MS} ms`);
     // A release whose transaction ran past the budget is rolled back by the database client: one that landed fit it, and
     // its time says by how much. The release's time also holds its own re-read before the locks, so it bounds the
     // transaction from above.
@@ -359,6 +363,8 @@ try {
       `${timing}${s.tag === "wide" ? ` (R9 recorded about ${R9_RECORDED_WINNERS.toLocaleString("en")} distinct winning players inside it)` : ""}${settled?.ok ? "" : ` — ${settled?.error}`}`);
     const c6 = await runJob({ kind: "check", weekId: wk.weekId, sumUsers: P[s.winGroup], ...(s.held ? { heldGroup: s.winGroup } : {}) });
     const f6 = expect5b(c6?.week?.rolloverIn ?? NaN, TICKETS * price, s.win, c6?.rates ?? {});
+    measured.push(`  ${s.tag} · rows: ${c6?.payouts} BET_PAYOUT, ${c6?.settleLedgerRows} ledger lines in the group, positions ${J(c6?.positions)}, `
+      + `tickets ${J(c6?.tickets)}, pool ${J(c6?.pool)}, winners' balances ${c6?.sum} (want ${s.win * (BALANCE - price + (f6.share ?? 0))})${s.held ? `, held ${J(c6?.held)}` : ""}`);
     ok(`6.${i + 1}.3 · exactly once: ${s.win} WIN, ${TICKETS - s.win} LOSS, one payout row per winning ticket, the pool at 0, §5b's figures`,
       c6?.positions?.win === s.win && c6.positions.loss === TICKETS - s.win && c6.payouts === s.win && c6.pool.ledger === 0 && same(c6.week.figures, f6),
       J({ positions: c6?.positions, payouts: c6?.payouts, pool: c6?.pool, got: c6?.week?.figures, want: f6 }));

@@ -131,6 +131,8 @@ async function weekFacts(weekId: string) {
     pool: { market: market ? market.yesPool : null, other: market ? market.noPool : null, ledger: week.marketId ? await W.balanceOf(W.acct.pool(week.marketId)) : null },
     payouts: await rows("BET_PAYOUT"),
     refunds: await rows("BET_REFUND"),
+    // S7-F8 · the rows the release's ledger group wrote (one pair per paid ticket and per booked figure).
+    settleLedgerRows: await W.prisma()!.ledgerEntry.count({ where: { groupId: `maswali_settle_${weekId}` } }),
     winnerUsers: job.listWinners ? [...new Set(tickets.filter((t) => t.won === true).map((t) => t.userId as string))].sort() : undefined,
   };
 }
@@ -187,19 +189,37 @@ try {
   } else if (job.kind === "release") {
     // `world.release`, step by step, so the preparation and the release are timed apart: the release's own transaction is
     // what the 30-second budget bounds (a transaction past it is rolled back by the client, so a release that lands fit).
+    // S7-F8 · the release's phases, read through the settlement's own test seams (they refuse to run in production): the
+    // instant before the chain lock's transaction opens, the instant after its holds, and the last statement before its
+    // commit — each in ms after the preparation ended. A thrown release is reported with the marks it reached, never
+    // swallowed into the worker's generic failure.
     const t = await started();
     const now = new Date(job.at);
+    const marks: Record<string, number> = {};
+    W.settle.__setMaswaliSettleSeamsForTests({
+      beforeChain: async () => { marks.chain = Date.now(); },
+      afterHolds: async () => { marks.holds = Date.now(); },
+      beforeCommit: async (act: string) => { if (act === "release") marks.commit = Date.now(); },
+    });
     const p: any = await W.settle.previewMaswaliSettlement(job.weekId, now);
     const tp = Date.now();
-    const r: any = p.ok
-      ? await W.settle.settleMaswaliWeek({ weekId: job.weekId, releasedBy: RELEASER, digest: p.preview.digest, now })
-      : (await W.dal.weekStore.get(job.weekId))?.state === "SETTLED"
-        ? await W.settle.settleMaswaliWeek({ weekId: job.weekId, releasedBy: RELEASER, digest: "", now })
-        : p;
+    let r: any;
+    try {
+      r = p.ok
+        ? await W.settle.settleMaswaliWeek({ weekId: job.weekId, releasedBy: RELEASER, digest: p.preview.digest, now })
+        : (await W.dal.weekStore.get(job.weekId))?.state === "SETTLED"
+          ? await W.settle.settleMaswaliWeek({ weekId: job.weekId, releasedBy: RELEASER, digest: "", now })
+          : p;
+    } catch (e) {
+      r = { ok: false, error: `THREW: ${String((e as Error)?.message ?? e).slice(0, 600)}` };
+    }
+    const end = Date.now();
+    const at = (k: string) => (marks[k] ? marks[k] - tp : null);
     say({
-      ok: r.ok === true, already: r.ok ? r.already === true : false, error: errOf(r), t, ms: Date.now() - t, previewMs: tp - t, settleMs: Date.now() - tp,
+      ok: r.ok === true, already: r.ok ? r.already === true : false, error: errOf(r), t, ms: end - t, previewMs: tp - t, settleMs: end - tp,
       share: r.ok && !r.already && p.ok ? p.preview.arithmetic?.share ?? null : null,
       previewHeld: p.ok ? p.preview.held : null,
+      marks: { chainOpens: at("chain"), holdsDone: at("holds"), lastWrite: at("commit"), returned: end - tp },
     });
   } else if (job.kind === "correct") {
     const t = await started();
