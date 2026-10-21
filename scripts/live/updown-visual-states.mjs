@@ -678,6 +678,10 @@ async function photograph(phase, path = BOARD, filter = () => true) {
   index.phases.push({ phase, path, at: new Date().toISOString(), shots });
   const bad = shots.filter((s) => s.error || s.langOk === false || s.signedInOk === false || s.hydrated === false || s.marksReady === false || s.chartReady === false).length;
   console.log(`  ▸ ${phase}: ${shots.length} cell(s)${bad ? ` · ${bad} problem(s)` : ""}`);
+  // A failed cell's reason is evidence too: print each distinct one, and keep the index on disk after every
+  // phase, so a later premise stop never discards what the earlier phases measured (2026-10-21 · U43).
+  for (const reason of [...new Set(shots.filter((s) => s.error).map((s) => s.error))].slice(0, 4)) console.log(`      ✗ ${reason}`);
+  writeFileSync(join(OUT, "index.partial.json"), JSON.stringify(index, null, 1));
 }
 
 // ── The round, phase by phase ────────────────────────────────────────────────────────────────────────────────
