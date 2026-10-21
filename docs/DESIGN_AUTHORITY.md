@@ -3100,10 +3100,14 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     More's first row, beside Results, which has lived in that More since the coin.
     `/millionea` and its pages light Millionea's tab; `/millionea/tickets` and a ticket light Tiketi zangu. Where the
     four tabs are drawn (Millionea not visible to the reader), Millionea's pages light Maswali, the tab whose home carries
-    its card. While five tabs show, the journey rail's tickets tab says its short rail label — Swahili "Tiketi", English
+    its card. On a break (Millionea visible, its door not drawn) the classic bar and rail light the same destination —
+    Markets, or Positions on Millionea's tickets — one lit item, never none (MASWALI-BUILD S5-FIX-PLATFORM D13,
+    2026-10-21). While five tabs show, the journey rail's tickets tab says its short rail label — Swahili "Tiketi", English
     "Tickets" (the lead's rulings, 2026-10-19: a fifth of a 320 phone holds neither "Tiketi zangu" nor "My tickets" on one
     line; its page, its title and the desktop link keep the full words; Chinese keeps 我的注单). The full Swahili "Juu na
-    Chini" wraps on the five-tab rail below 416 with all pips aligned, then fits one line (§K 8b). From 1024 to 1279,
+    Chini" wraps on the five-tab rail below 416 with all pips aligned, then fits one line (§K 8b). No two of the five
+    labels stand closer than their pips (8px at 320): below 337px English's labels close their tracking by 0.04em
+    (S5-FIX-PLATFORM D14, `test:visual-pass-r9c` §4c). From 1024 to 1279,
     while five destinations show, the journey bar's
     nav gives up its own leading 12px (the Swahili row otherwise ran 5.1px into the page's gutter at 1024 for a signed-in
     player — measured, `qa:journey-header-fit`), and takes it back from 1280.
