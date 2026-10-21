@@ -17,6 +17,7 @@ import { millioneaLedgerRows, ticketSalesRuns, type MillioneaLedgerRow } from "@
 import { playerStatusChip } from "@/lib/status-tone";
 import { formatEatDateTime } from "@/lib/eat-day";
 import { fill, formatNumber, formatTzs, pctNum } from "@/lib/utils";
+import { moneyRuns } from "@/lib/fill-nodes";
 import type { WeekState } from "@/lib/maswali-week-label";
 import type { MillioneaRegisterLiveWeek, MillioneaWeekMoney, MillioneaWeekSummary } from "@/lib/server/maswali-player";
 import type { Dict, Locale } from "@/lib/i18n-dict";
@@ -94,8 +95,11 @@ export function weekFacts(t: Dict, w: MillioneaWeekSummary): ReactNode[] {
   }
   const amount = formatTzs(w.carriedForward ?? 0);
   // The hub's own words (`settledRollover`, `feeZero`), said mid-line there ("Week 45 · no 10/10 · …"); here each is a fact
-  // of its own — a line of its own on a phone — so each opens with a capital, as every other fact of a row does.
-  return [...factsOf(fill(t.millionea.settledRollover, { amount })).map((f) => kept(factCase(f), [amount])), factCase(t.millionea.feeZero)];
+  // of its own — a line of its own on a phone — so each opens with a capital, as every other fact of a row does. Its amount
+  // is drawn as every amount is (`.amount`, the jackpot's face), inside its kept run: the tile read of 2026-10-21 found
+  // "TZS 18,000 carried forward" in the body face beside "Jackpot TZS 50,000" in the figure face.
+  const fact = (f: string) => keepConnectives(f, runAndDashRanges(f, [amount]), (part) => moneyRuns(part));
+  return [...factsOf(fill(t.millionea.settledRollover, { amount })).map((f) => fact(factCase(f))), factCase(t.millionea.feeZero)];
 }
 
 /** A fact's first letter as a list item's: a capital (a no-op for a figure or an ideograph). */

@@ -400,10 +400,13 @@ check("7.3", "R9 · each week's facts, rendered in three languages: refunds on t
   }
   return [off.length === 0, off.join(" | ")];
 });
-check("7.4", "R9 · A1 · every amount in a fact is one unbroken run (the jackpot in `.amount`, the carry a kept run)", (w) => {
+// ⚠️ RE-PINNED 2026-10-21 (S5-DESIGN-REGISTER, the tile read): the carry's amount is an `.amount` too, inside its kept run —
+// "TZS 18,000 carried forward" stood in the body face beside "Jackpot TZS 50,000" in the figure face (index tiles, H3).
+check("7.4", "R9 · A1 · H3 · every amount in a fact is one unbroken `.amount` run — the jackpot's and the carry's alike (the carry inside its kept run), in three languages", (w) => {
   const won = markup(w.weekFacts(w.dict.en as never, WEEKS.wonOne)[1]);
+  const off = LOCALES.filter((l) => !markup(w.weekFacts(w.dict[l] as never, WEEKS.rolled)[1]).includes('<span class="amount">TZS 412,000</span>'));
   const rolled = nowrapRuns(w.weekFacts(w.dict.en as never, WEEKS.rolled)[1]);
-  return [won.includes('<span class="amount">TZS 1,013,000</span>') && rolled.includes("TZS 412,000"), j({ won, rolled })];
+  return [won.includes('<span class="amount">TZS 1,013,000</span>') && rolled.includes("TZS 412,000") && off.length === 0, j({ won, rolled, off })];
 });
 // ⭐ S5-DESIGN-REGISTER (2026-10-21) · the lead's H2 ruling: "the index lists the current week with its chip" — the weeks still
 // running head the first page, each the one row with its phase chip (or the sales pause's) and its own facts: when sales
@@ -871,6 +874,7 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["the row drawing its own rule again", "7.2", plantSrc("parts", "<li>\n      <Link href={registerWeekHref(code) as never}", '<li className="border-b border-border">\n      <Link href={registerWeekHref(code) as never}')],
   ["R9 — a voided week says \"every ticket refunded\" before the refunds landed", "7.3", { ...REAL, weekFacts: (t, w) => (w.state === "VOIDED" ? [t.millionea.regRefunded] : weekFacts(t, w)) }],
   ["R9 — the carry's amount free to break", "7.4", { ...REAL, weekFacts: (t, w) => (w.state === "SETTLED" && (w.winners ?? 0) === 0 ? [...fill(t.millionea.settledRollover, { amount: "TZS 412,000" }).split(" · "), t.millionea.feeZero] : weekFacts(t, w)) }],
+  ["the carry's amount in the body face again (a kept run, no `.amount`)", "7.4", { ...REAL, weekFacts: (t, wk) => { const f = weekFacts(t, wk); if (wk.state !== "SETTLED" || (wk.winners ?? 0) > 0) return f; const amount = formatTzs(wk.carriedForward ?? 0); return f.map((x, i) => (i === 1 ? kept(textOf(x), [amount]) : x)); } }],
   ["L1 undone — a week nobody won says its carry without \"no 10/10\"", "7.3", { ...REAL, weekFacts: (t, w) => (w.state === "SETTLED" && (w.winners ?? 0) === 0 ? weekFacts(t, w).slice(1) : weekFacts(t, w)) }],
   ["a list without its own top edge", "7.2", plantSrc("index", 'const LIST = "flex flex-col divide-y divide-border border-t border-border";', 'const LIST = "flex flex-col divide-y divide-border";')],
   ["H2 undone — the weeks still running left off the index", "7.5", plantSrc("index", "const running = page === 1 ? current : [];", "const running: typeof current = [];")],
