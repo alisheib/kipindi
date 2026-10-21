@@ -181,6 +181,8 @@ export const CENSUS: Readonly<Record<string, { n: number; why: string }>> = {
   "src/app/admin/house/page.tsx": { n: 1, why: "the Up & Down filter pill; the line label is GAME_LINE_LABEL, exhaustive" },
   "src/app/admin/house/[marketId]/page.tsx": { n: 1, why: "the card's label, with an explicit MASWALI arm beside it" },
   "src/app/admin/markets/[id]/page.tsx": { n: 1, why: "the short-title control; a week returned the read-only notice above it" },
+  // 2026-10-21 · U43 Release B (c29cb7526) — classified by the U43 lane, for the Maswali lane's review.
+  "src/app/api/dev-test/u43-failclosed-fixture/route.ts": { n: 1, why: "a local display fixture that refuses any market that is not an Up & Down round, a week included, before it touches a row; unreachable in production, with a database or off-origin" },
   "src/app/live/featured-contest.tsx": { n: 1, why: "fed only by /live's list, which removes every week before any label" },
   "src/app/live/page.tsx": { n: 2, why: "round lookups and the two-valued card map, after the week filter at the read" },
   "src/app/live/pulse-grid.tsx": { n: 1, why: "fed only by /live's list, which removes every week" },
@@ -189,7 +191,9 @@ export const CENSUS: Readonly<Record<string, { n: number; why: string }>> = {
   "src/app/positions/[positionId]/page.tsx": { n: 1, why: "the round lookup only; the line itself flows through positionPermalink, exhaustive" },
   "src/app/results/page.tsx": { n: 1, why: "the archive row map, after the week filter at the read" },
   "src/app/results/results-bar.tsx": { n: 2, why: "the view filter (all · MARKET · UPDOWN), never a row's line" },
-  "src/components/journey/cards/journey-card.tsx": { n: 1, why: "the round link, after the explicit MASWALI arm" },
+  // 2026-10-21 · U43 Release B (1384383fd) added two: the round's display title and its open-link label rename only a
+  // round; their other arm is the title every line had before U43, so a week (never a question card) keeps its stored title.
+  "src/components/journey/cards/journey-card.tsx": { n: 3, why: "the round link, after the explicit MASWALI arm; the round's display title and the open link's label, whose other arm is every other line's own stored title" },
   "src/lib/house-bot/alert-copy.ts": { n: 1, why: "a house alert's side word; MASWALI is denied to house bots and its words are the poll's anyway" },
   "src/lib/house-bot/rules.ts": { n: 1, why: "house-bot scope targets are MARKET or UPDOWN only (DB CHECK)" },
   "src/lib/markets/estimate.ts": { n: 1, why: "returns null for rounds AND weeks, explicitly" },
@@ -204,10 +208,17 @@ export const CENSUS: Readonly<Record<string, { n: number; why: string }>> = {
   "src/lib/server/house-bot/seam.ts": { n: 2, why: "the seam refuses a line not in HOUSE_PRODUCTS" },
   "src/lib/server/house-bot/trigger.ts": { n: 3, why: "after the HOUSE_PRODUCTS check; scopeAlerts skips a denied line" },
   "src/lib/server/market-dal.ts": { n: 1, why: "the leaderboard bucket, after tickets are skipped" },
-  "src/lib/server/market-service.ts": { n: 2, why: "the Up & Down house trigger, with MASWALI handled beside it, and the round's void reason in settleMarket, which a week never reaches (its fence)" },
+  // 2026-10-21 · U43 Release B (c29cb7526) added five, all in emergencyVoidMarket and all below the S0.5 fence that refuses
+  // a week at the top of the same lock (`isFencedMaswali(m)` → MASWALI_FENCE_ERROR): the linked round's read, its
+  // missing-round refusal, the two evidence wordings and the round's VOID stamp.
+  "src/lib/server/market-service.ts": { n: 7, why: "the Up & Down house trigger, with MASWALI handled beside it, and the round's void reason in settleMarket, which a week never reaches (its fence); the emergency void's five linked-round steps, below its own fence" },
+  // 2026-10-21 · U43 Release B (c29cb7526) — classified by the U43 lane, for the Maswali lane's review.
+  "src/lib/server/objections-service.ts": { n: 3, why: "upholdObjection's round correction (the linked round's read, its missing-round refusal, the correction evidence); a week's market row turns RESOLVED or VOIDED only in the write that stamps settledAt (maswali-settlement, maswali-void), so no objection is ever filed on it (ALREADY_SETTLED) and upholding refuses a settled market" },
   "src/lib/server/short-title-service.ts": { n: 1, why: "the round's own refusal, with the week's refusal beside it" },
   "src/lib/side-label.ts": { n: 2, why: "the exhaustive guard and the round arm of positionStatusWord" },
   "src/lib/tax-report.ts": { n: 1, why: "parseProduct: MASWALI is not selectable until S6, by design" },
+  // 2026-10-21 · U43 Release B (1384383fd) — classified by the U43 lane, for the Maswali lane's review.
+  "src/lib/updown-round-name.ts": { n: 1, why: "marketDisplayTitle renames only a stored round title; every other line, a week included, shows its own stored title" },
 };
 
 const SRC = "src";
