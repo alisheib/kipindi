@@ -244,8 +244,8 @@ export function MaswaliSlip({
   // (S5 VIS P7: the rail read "Main 0/10 ·" / "Reserve 0/5" at 320, "Akiba" / "0/5" at sw 360) — each of the questions the
   // slip asks (P10: a question voided before the close is in neither count nor total).
   const progressFacts = [
-    <span key="mains" className="whitespace-nowrap">{fill(t.millionea.mainsProgress, { a: progress.mains, n: progress.mainsOf })}</span>,
-    <span key="reserves" className="whitespace-nowrap">{fill(t.millionea.reservesProgress, { b: progress.reserves, n: progress.reservesOf })}</span>,
+    <span key="mains" className="whitespace-nowrap">{fill(t.millionea.mainsProgress, { a: formatNumber(progress.mains), n: formatNumber(progress.mainsOf) })}</span>,
+    <span key="reserves" className="whitespace-nowrap">{fill(t.millionea.reservesProgress, { b: formatNumber(progress.reserves), n: formatNumber(progress.reservesOf) })}</span>,
   ];
   const refusalBody = unanswered.length === 0 ? ""
     : unanswered.length === 1

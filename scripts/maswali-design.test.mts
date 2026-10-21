@@ -879,7 +879,7 @@ const railDefects = (src: string) => {
   if (!rail.startsWith('{!closed && ( <div className="sticky bottom-[calc(65px+env(safe-area-inset-bottom,0px))] z-30 flex flex-col gap-2')) d.push("the rail is not a column");
   if (!rail.includes('style={{ background: "var(--panel)" }}> <SteppedProgress groups={groups} /> <div className={cn("flex items-center gap-2", actionLabel && "flex-wrap")}>')) d.push("the meter has not the rail's full width on its own row");
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-FIX-PLAYER P10): each count carries its total — the questions the slip asks.
-  if (!s.includes('<span key="mains" className="whitespace-nowrap">{fill(t.millionea.mainsProgress, { a: progress.mains, n: progress.mainsOf })}</span>') || !s.includes('<span key="reserves" className="whitespace-nowrap">{fill(t.millionea.reservesProgress, { b: progress.reserves, n: progress.reservesOf })}</span>')) d.push("the two counts are not whole facts");
+  if (!s.includes('<span key="mains" className="whitespace-nowrap">{fill(t.millionea.mainsProgress, { a: formatNumber(progress.mains), n: formatNumber(progress.mainsOf) })}</span>') || !s.includes('<span key="reserves" className="whitespace-nowrap">{fill(t.millionea.reservesProgress, { b: formatNumber(progress.reserves), n: formatNumber(progress.reservesOf) })}</span>')) d.push("the two counts are not whole facts");
   if (!s.includes('{ key: "cap", node: capLine, className: "xl:hidden" }') || !s.includes("<span>{capLine}</span>")) d.push("the cap stands twice from 1280");
   if (!s.includes('q.eventAt === null ? null : <span key="event" className="whitespace-nowrap">{fill(t.millionea.eventAt, { when: eatWeekdayClock(t, q.eventAt) })}</span>')) d.push("the event's day and time are not one run");
   return d;
