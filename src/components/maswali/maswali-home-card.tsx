@@ -208,7 +208,8 @@ export function MaswaliHomeCard({ t, locale, week, jackpot, pct, cap, state, fin
       <span className="kp-mln-door__head">
         <span className="kp-mln-door__title">
           <span id={`${idBase}-title`} className="font-display text-body-lg font-semibold text-text">
-            <MaswaliFacts facts={[t.millionea.productLabel, keep(weekWord(t, week))]} />
+            {/* A heading in the display face keeps its numerals in its face (§T5's ruling of 2026-10-21 covers fact lines). */}
+            <MaswaliFacts numerals={false} facts={[t.millionea.productLabel, keepFact(locale, weekWord(t, week), [], { numerals: false })]} />
           </span>
           {preview && (
             <Chip id={`${idBase}-preview`} variant="info" size="sm" className="gap-1">

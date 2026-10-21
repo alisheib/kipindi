@@ -63,7 +63,7 @@ export function MaswaliHomeCardGhost({ t, locale, host, preview = false, classNa
       <span className="kp-mln-door__head">
         <span className="kp-mln-door__title">
           <span className="font-display text-body-lg font-semibold">
-            <MaswaliFacts facts={[t.millionea.productLabel, keep(weekWord(t, 49))]} />
+            <MaswaliFacts numerals={false} facts={[t.millionea.productLabel, bar(keepFact(locale, weekWord(t, 49), [], { numerals: false }))]} />
           </span>
           {preview && (
             <Chip variant="neutral" size="sm" className="gap-1">

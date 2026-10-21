@@ -16,8 +16,11 @@
  *                rung (L3), the time's face (L7), the host's inset (L2), the hover (M5), the accessible name (L11).
  *                Tiles: door-ghost-<host>-<locale>-<width>.png (the ghost in place) and door-card-<host>-…png.
  *   door-states  every state the card's model draws, stacked in the card's place with its name above it, shot down to its
- *                end in viewport tiles, and each state's height recorded (door-states-heights.json).
- * A red control proves the H1 guard can fail: a stylesheet plant that grows the ghost's slot by 40px must be reported.
+ *                end in viewport tiles, and each state's height recorded (door-states-heights.json). At 320 and 1280 §T5
+ *                (the lead's ruling of 2026-10-21): every digit in a fact line (the display-face title aside) computes to
+ *                JetBrains Mono with tabular figures — in every state and, on door-results, in /results' week rows.
+ * Red controls prove the guards can fail: a stylesheet plant that grows the ghost's slot by 40px must be reported (H1),
+ * and a fact's numeral unwrapped back to the body face must be reported (§T5).
  */
 import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -62,6 +65,28 @@ const MEASURE = (host) => {
     howtoPlate: box(document.querySelector('[data-testid="journey-howto-card"] .kp-jhowto__plate')),
     overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
   };
+};
+/** In the page: §T5 on Millionea's fact lines under `root` — each text node holding a digit, inside a `.kp-mln-facts` list
+ *  that is not the display-face title, must compute to JetBrains Mono (`--font-mono`'s first family) with tabular figures. */
+const NUMERAL_FACE = (root) => {
+  const scope = document.querySelector(root);
+  const bad = [];
+  let digits = 0;
+  if (!scope) return { digits, bad: [`no ${root}`] };
+  for (const list of scope.querySelectorAll(".kp-mln-facts")) {
+    if (list.closest(".kp-mln-door__title")) continue;
+    const walk = document.createTreeWalker(list, NodeFilter.SHOW_TEXT);
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+      const text = n.nodeValue ?? "";
+      const el = n.parentElement;
+      if (!/\d/.test(text) || !el || el.closest(".sr-only")) continue;
+      digits++;
+      const cs = getComputedStyle(el);
+      const face = cs.fontFamily.split(",")[0].replace(/["']/g, "").trim();
+      if (face !== "JetBrains Mono" || !/tabular-nums/.test(cs.fontVariantNumeric)) bad.push(`"${text.trim().slice(0, 28)}" (${face}; ${cs.fontVariantNumeric})`);
+    }
+  }
+  return { digits, bad };
 };
 const GHOST_MEASURE = (host) => {
   const box = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.left, y: r.top + scrollY, w: r.width, h: r.height }; };
@@ -194,6 +219,22 @@ export async function shootDoors(o) {
             await page.screenshot({ path: `${OUT}/door-states-${host}-${locale}-${width}-s${n}.png`, fullPage: false });
             if (top + HEIGHT >= region.bottom + 40) break;
           }
+          if (width === 320 || width === 1280) {
+            const f = await page.evaluate(NUMERAL_FACE, '[data-testid="millionea-home-card"]');
+            ok(`doors ${tag} · §T5 · every digit in the ${FX.states.length} states' fact lines computes to JetBrains Mono, tabular (${f.digits} digit runs)`,
+              f.digits > FX.states.length && f.bad.length === 0, f.bad.slice(0, 3).join(" | "));
+            // RED CONTROL (after the tiles): the first state's "10/10" unwrapped back into the body face must be reported.
+            if (locale === "sw" && width === 1280 && host === "journey") {
+              const planted = await page.evaluate(() => {
+                const run = [...document.querySelectorAll('[data-door-state="0"] .kp-mln-door__rule .mono')].find((s) => s.textContent === "10/10");
+                if (!run) return false;
+                run.replaceWith(document.createTextNode(run.textContent ?? ""));
+                return true;
+              });
+              const red = await page.evaluate(NUMERAL_FACE, '[data-testid="millionea-home-card"]');
+              ok(`doors · RED CONTROL · §T5 · a fact's "10/10" unwrapped into the body face is reported (${red.bad.slice(0, 1).join("")})`, planted && red.bad.some((b) => b.includes("10/10")));
+            }
+          }
         }
       }
       await ctx.close();
@@ -224,6 +265,10 @@ export async function shootDoors(o) {
             ok(`doors ${tag} · L15 · from 1024 a row is one line, its facts ending beside the chevron (gaps ${gaps.join(", ")}px; they stood ~900px apart)`, geo.length > 0 && gaps.every((g) => g !== null && g >= 0 && g <= 24));
           }
           ok(`doors ${tag} · each row is a ≥ 48px tap target (${geo.map((g) => g.h.toFixed(0)).join(", ")})`, geo.length > 0 && geo.every((g) => g.h >= 48));
+          if (width === 320 || width === 1280) {
+            const f = await page.evaluate(NUMERAL_FACE, '[data-testid="millionea-results-section"]');
+            ok(`doors ${tag} · §T5 · every digit in the week rows' fact lines computes to JetBrains Mono, tabular (${f.digits} digit runs)`, f.digits > 0 && f.bad.length === 0, f.bad.slice(0, 3).join(" | "));
+          }
           await section.scrollIntoViewIfNeeded();
           await page.evaluate(() => window.scrollBy(0, -80));
           await frames(page);

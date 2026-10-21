@@ -66,8 +66,21 @@ const OUTCOMES = ["YES", "NO", "VOID"] as const;
 /** A node as the browser would hold it: its markup, and its text. */
 const markup = (node: ReactNode) => renderToStaticMarkup(createElement(Fragment, null, node));
 const textOf = (node: ReactNode) => markup(node).replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&#x27;/g, "'").replace(/&quot;/g, '"');
-/** The text of each `white-space: nowrap` run in a node's markup (keep-run draws a run as one such span). */
-const nowrapRuns = (node: ReactNode) => [...markup(node).matchAll(/<span class="whitespace-nowrap">(.*?)<\/span>/g)].map((m) => m[1].replace(/<[^>]+>/g, ""));
+/** The text of each `white-space: nowrap` run in a node's markup (keep-run draws a run as one such span).
+ *  ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-DOORS, the lead's §T5 ruling): read BALANCED — a run now holds its
+ *  numerals' own `.mono` spans ("<span class="mono">1,050</span> tickets"), so the first `</span>` no longer ends it. */
+const nowrapRuns = (node: ReactNode) => {
+  const html = markup(node), open = '<span class="whitespace-nowrap">', out: string[] = [];
+  for (let at = html.indexOf(open); at >= 0; at = html.indexOf(open, at + 1)) {
+    let depth = 0, i = at;
+    for (; i < html.length; i++) {
+      if (html.startsWith("<span", i)) depth++;
+      else if (html.startsWith("</span>", i) && --depth === 0) break;
+    }
+    out.push(html.slice(at + open.length, i).replace(/<[^>]+>/g, ""));
+  }
+  return out;
+};
 
 /** The files the checks read, as written (comments are stripped per check, through the one shared scanner). */
 const FILES = {

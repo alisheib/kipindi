@@ -296,6 +296,48 @@ const whenDefects = (l: L, lines: readonly string[]) => {
     printed.length === 0 && filled.length === 0 && window.includes("异议窗口至周五 09:00"), j({ printed: printed.slice(0, 3), filled, window }));
 }
 
+// §T5 (the lead's ruling of 2026-10-21): every numeral in a fact line is set as a numeral — a count, "13%", "10/10", a week's
+// number, a date's, a clock: `.mono`, money `.amount` — none left in the body face, nothing set twice; the display-face title
+// keeps its own face. Set once, in maswali-facts.tsx (`numeralRuns`, `keepFact`, `MaswaliFacts`).
+/** The markup with every `.mono` and `.amount` element taken out whole (balanced). */
+const withoutSetFaces = (m: string) => {
+  let s = m;
+  for (const marker of ['class="mono"', 'class="amount']) for (let e = elementAt(s, marker); e !== ""; e = elementAt(s, marker)) s = s.replace(e, "");
+  return s;
+};
+const numeralDefects = (m: string) => {
+  const d: string[] = [];
+  for (const [name, part] of [["rule", ruleOf(m)], ["state", stateOf(m)]] as const) {
+    const hit = /\S*\d\S*/.exec(textOf(withoutSetFaces(part)));
+    if (hit) d.push(`${name}: "${hit[0]}" in the body face`);
+  }
+  if (/class="mono"/.test(elementAt(m, 'class="kp-mln-door__title"'))) d.push("the display-face title set a numeral .mono");
+  for (const marker of ['class="mono"', 'class="amount']) {
+    let s = m;
+    for (let e = elementAt(s, marker); e !== ""; e = elementAt(s, marker)) {
+      if (/class="(?:mono|amount)/.test(e.slice(e.indexOf(">") + 1))) d.push(`a face set twice: ${e.slice(0, 90)}`);
+      s = s.replace(e, "");
+    }
+  }
+  return d;
+};
+const { numeralRuns } = createRequire(import.meta.url)("../src/components/maswali/maswali-facts.tsx") as { numeralRuns: (s: string) => unknown[] };
+const runsOf = (s: string) => numeralRuns(s).map((n) => {
+  if (typeof n === "string") return n;
+  const p = (n as { props: { className: string; children: string } }).props;
+  return `[${p.className}:${p.children}]`;
+}).join("");
+{
+  const d = LOCALES.flatMap((l) => HOSTS.flatMap((h) => FX.cards[l][h].flatMap((m, i) => numeralDefects(m).map((x) => `${l} ${h} ${STATES[i].name}: ${x}`))));
+  const g = LOCALES.flatMap((l) => HOSTS.flatMap((h) => numeralDefects(FX.ghost[l][h]).map((x) => `ghost ${l} ${h}: ${x}`)));
+  ok("1.22 · §T5 (the lead's ruling) · every numeral in the card's fact lines — every state, both hosts, three languages, and its loading picture — is set as a numeral: \"3 kati ya 10\", \"13%\", \"10/10\", \"Wiki 46\", \"23 Nov\", \"18:00\" `.mono`, money `.amount`; none left in the body face, no face set twice, and the display-face title keeps its own (\"Wiki 47\")",
+    d.length === 0 && g.length === 0, [...d, ...g].slice(0, 4).join(" | "));
+  const SAMPLE = "fifa2026 3x A1–A5 10/10 13% 18:00 第49周 2026年11月23日 1,000. TZS 601,000";
+  const WANT = "fifa2026 3x [mono:A1]–[mono:A5] [mono:10/10] [mono:13%] [mono:18:00] 第[mono:49]周 [mono:2026]年[mono:11]月[mono:23]日 [mono:1,000]. [amount:TZS 601,000]";
+  ok("1.23 · what a numeral is (`numeralRuns`): digits with their own separators (\"10/10\", \"13%\", \"18:00\", \"1,000\") and an identifier's capital (\"A1\") — in Chinese too (第49周, 2026年11月23日) — never digits inside a Latin word (\"fifa2026\", \"3x\"); a money figure `.amount` whole, read first",
+    runsOf(SAMPLE) === WANT, runsOf(SAMPLE));
+}
+
 // ── §2 · the ghost ────────────────────────────────────────────────────────────────────────────────────────────────────
 console.log("\n§2 · the card's loading picture (H1)");
 /** 2.3's check — what a ghost leaves readable — set in §2 and run again by its plant in §4. */
@@ -432,8 +474,16 @@ console.log("\n§4 · controls — each check fails on a planted copy");
     && hiddenDefects(g.replaceAll('<span class="kp-mln-ghost__words">', '<span class="shown">'), "en").some((x) => x.startsWith("words not hidden")));
   const nameBarred = g.replace(/(<span class="kp-mln-fact">)Millionea/, '$1<span class="kp-mln-ghost__bar"><span class="kp-mln-ghost__words">Millionea</span></span>');
   ok("4.5′ · a ghost that hides its name too (as first built) is reported (2.3)", nameBarred !== g && hiddenDefects(nameBarred, "en").some((x) => x.startsWith("the name is not drawn")));
-  ok("4.8 · the rollover opening on the hub's lower-case words is reported (1.18)", openingDefects("en", card("en", "settled · no 10/10").replace("No 10/10", "no 10/10")).length > 0
-    && openingDefects("sw", card("sw", "settled · no 10/10").replace("Hakuna 10/10", "hakuna 10/10")).length > 0);
+  const t5 = card("sw", "open · no ticket");
+  ok("4.15 · §T5 · a fact's numeral left in the body face (\"ada 13%\" as it was), the display-face title's number set .mono, and a numeral set twice are each reported (1.22)",
+    numeralDefects(t5.replace('<span class="mono">13%</span>', "13%")).some((x) => x.includes('"13%" in the body face'))
+      && numeralDefects(t5.replace('<span class="whitespace-nowrap">Wiki 47</span>', '<span class="whitespace-nowrap">Wiki <span class="mono">47</span></span>')).some((x) => x.includes("title"))
+      && numeralDefects(t5.replace('<span class="mono">10/10</span>', '<span class="mono"><span class="mono">10/10</span></span>')).some((x) => x.includes("set twice")));
+  // (the "10/10" is its own `.mono` run since the §T5 ruling, so the word before it is planted, not the phrase)
+  const lowered = (l: L, word: string) => card(l, "settled · no 10/10").replace(`>${word} <`, `>${word.toLowerCase()} <`);
+  ok("4.8 · the rollover opening on the hub's lower-case words is reported (1.18)",
+    lowered("en", "No") !== card("en", "settled · no 10/10") && openingDefects("en", lowered("en", "No")).length > 0
+      && lowered("sw", "Hakuna") !== card("sw", "settled · no 10/10") && openingDefects("sw", lowered("sw", "Hakuna")).length > 0);
   ok("4.9 · a figure not read drawn as the figure's white semibold bar is reported (1.19)",
     dashDefects(card("en", "presale").replace('class="amount text-body-lg text-text-muted"', 'class="amount text-body-lg font-semibold text-text"')).length > 0);
   ok("4.10 · a presale date in the body face, and a close's clock in it, are reported (1.11′)",
@@ -463,6 +513,6 @@ console.log("\n§4 · controls — each check fails on a planted copy");
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI DOORS: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run prints. */
-const MIN_ASSERTIONS = 50;
+const MIN_ASSERTIONS = 53;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

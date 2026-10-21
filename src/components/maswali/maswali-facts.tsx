@@ -1,4 +1,4 @@
-import { isValidElement, type ReactNode } from "react";
+import { Fragment, cloneElement, isValidElement, type ReactNode } from "react";
 import { keepRanges, keptRanges, mergeRanges } from "@/components/ui/keep-run";
 import { moneyRuns } from "@/lib/fill-nodes";
 import { cn } from "@/lib/utils";
@@ -26,13 +26,25 @@ import type { Locale } from "@/lib/i18n-dict";
  * ⛔ The list's text is the same text as before for everything but the eye: each separator is also in the DOM as a
  *    screen-reader-only " · " (`sr-only`), so an accessible name, a copy and a search read "A · B · C" exactly as the old
  *    joined string did; the drawn mark is generated content with empty alternative text, read by nobody twice.
+ * ⭐ EVERY NUMERAL IN A FACT IS SET AS A NUMERAL (DESIGN_AUTHORITY §T5: "every numeral … no exceptions, including numbers
+ *    inside body sentences when they are data"; the lead's ruling of 2026-10-21, after L7 set the card's clock `.mono` and
+ *    left "3 kati ya 10" beside it in the body face): a count ("3 kati ya 10", "15 个"), a percentage ("13%"), the perfect
+ *    ticket's "10/10", a week's number ("Wiki 47", "第49周"), a date's numbers and a clock — each a `.mono` run (JetBrains
+ *    Mono, tabular figures), the words around it in the sentence's face; a money figure `.amount` whole ("TZS 601,000",
+ *    `moneyRuns`), never "TZS" in one face and its digits in another. ONCE, HERE: `keepFact` sets the numerals of its own
+ *    text (`numeralRuns`), and `MaswaliFacts` sets every numeral still bare in a fact however the fact was made (a plain
+ *    string, `fillNodes`, a fragment) — descending only into the page's own markup, never into a component (its children
+ *    are its own contract), and never into a `.mono` or `.amount` already set, so nothing is set twice. The words, the
+ *    kept runs and the spacing are unchanged: a run sits inside its nowrap span, and only the face of its digits moves.
+ *    ⛔ A HEADING IN THE DISPLAY FACE IS NOT A FACT LINE (the ruling's exception): its numerals keep its face —
+ *    `numerals={false}` and `keepFact(…, { numerals: false })` (the home card's title, "Millionea · Wiki 47").
  */
 
 /** How a list lays its facts out: side by side, wrapping whole (`flow`); one per line everywhere (`stack`); one per line
  *  below 768 and side by side from 768 (`phone`). */
 export type FactsLayout = "flow" | "stack" | "phone";
 
-export function MaswaliFacts({ facts, layout = "flow", className, id, ids }: {
+export function MaswaliFacts({ facts, layout = "flow", className, id, ids, numerals = true }: {
   facts: ReadonlyArray<ReactNode>;
   layout?: FactsLayout;
   className?: string;
@@ -40,13 +52,15 @@ export function MaswaliFacts({ facts, layout = "flow", className, id, ids }: {
    *  `aria-labelledby` / `aria-describedby` name (the home card, S5-DESIGN-DOORS L11). Absent, nothing is written. */
   id?: string;
   ids?: ReadonlyArray<string | undefined>;
+  /** Every bare numeral in the facts set `.mono` (§T5) — `false` only for a heading in the display face (its own face). */
+  numerals?: boolean;
 }) {
   const shown = facts.map((f, i) => [f, ids?.[i]] as const).filter(([f]) => f !== null && f !== undefined && f !== false && f !== "");
   return (
     <span id={id} className={cn("kp-mln-facts", layout === "stack" && "kp-mln-facts--stack", layout === "phone" && "kp-mln-facts--phone", className)}>
       {shown.map(([f, factId], i) => (
         <span key={i} id={factId} className="kp-mln-fact">
-          {f}
+          {numerals ? numeralNodes(f) : f}
           {i < shown.length - 1 && <span className="sr-only">{" · "}</span>}
         </span>
       ))}
@@ -108,12 +122,63 @@ function moneyRanges(text: string): Array<[number, number]> {
   return out;
 }
 
+/** A token that holds a digit, with the separators inside it: "10/10", "13%", "18:00", "1,000", "A1", "fifa2026". One plain
+ *  scan, no lookbehind (see above) — whether it is a numeral is `IS_NUMERAL`'s question, asked of the whole token. */
+const NUMERAL_TOKEN = /[A-Za-z0-9]*\d[A-Za-z0-9]*(?:[.,:/][A-Za-z0-9]*\d[A-Za-z0-9]*)*%?/g;
+/** A numeral: digits with their own separators ("10/10", "13%", "18:00", "1,000", "2026"), or an identifier's one capital
+ *  and its digits ("A1", "W48"). Digits inside a Latin word ("fifa2026", "3x") are the word's, and keep its face. */
+const IS_NUMERAL = /^(?:\d+(?:[.,:/]\d+)*%?|[A-Z]\d+)$/;
+
+/** A text's figures and numerals as the platform sets them (§M4, §T5): each money figure `.amount` (`moneyRuns`, first, so
+ *  a figure is never cut), each other numeral `.mono`; the words around them untouched, in the sentence's face. */
+export function numeralRuns(text: string): ReactNode[] {
+  const out: ReactNode[] = [];
+  let k = 0;
+  for (const node of moneyRuns(text)) {
+    if (typeof node !== "string") { out.push(node); continue; }
+    let last = 0;
+    for (const m of node.matchAll(NUMERAL_TOKEN)) {
+      if (!IS_NUMERAL.test(m[0])) continue;
+      const at = m.index ?? 0;
+      if (at > last) out.push(node.slice(last, at));
+      out.push(<span key={`n${k++}`} className="mono">{m[0]}</span>);
+      last = at + m[0].length;
+    }
+    if (last < node.length) out.push(node.slice(last));
+  }
+  return out;
+}
+
+/** A class that already sets its face: a numeral, a money figure — or the screen reader's separator. */
+const FACE_SET = /(?:^|\s)(?:mono|amount|sr-only)(?:\s|$)/;
+/** Every numeral still bare in a fact, set `.mono` (`numeralRuns`) — through the page's own markup (a host element, a
+ *  fragment), never a component's children and never an element whose face is already set. Unchanged, it is the same node. */
+function numeralNodes(node: ReactNode): ReactNode {
+  if (typeof node === "string" || typeof node === "number") {
+    const text = String(node);
+    const runs = numeralRuns(text);
+    return runs.length === 1 && runs[0] === text ? node : runs;
+  }
+  if (Array.isArray(node)) {
+    let changed = false;
+    const out = node.map((n) => { const r = numeralNodes(n as ReactNode); if (r !== n) changed = true; return r; });
+    return changed ? out : node;
+  }
+  if (!isValidElement<{ className?: unknown; children?: ReactNode }>(node)) return node;
+  if (typeof node.type !== "string" && node.type !== Fragment) return node;
+  const { className, children } = node.props;
+  if ((typeof className === "string" && FACE_SET.test(className)) || children === undefined || children === null) return node;
+  const next = numeralNodes(children);
+  return next === children ? node : cloneElement(node, undefined, next);
+}
+
 /**
  * One fact with its phrases kept whole and its figures in the money face: the platform's kept runs (`keptRanges`) and
  * Millionea's (`factRuns`), plus any run the caller names, each a `white-space: nowrap` span; every money figure an
- * `.amount` (`moneyRuns`). The words are never changed.
+ * `.amount` and every other numeral `.mono` (`numeralRuns`, §T5) — but in a heading in the display face (`numerals:
+ * false`), where a numeral keeps the heading's face. The words are never changed.
  */
-export function keepFact(locale: Locale, text: string, runs: readonly string[] = []): ReactNode {
+export function keepFact(locale: Locale, text: string, runs: readonly string[] = [], opts: { numerals?: boolean } = {}): ReactNode {
   const ranges = mergeRanges([...keptRanges(text, [...runs, ...factRuns(locale, text)]), ...moneyRanges(text)]);
-  return keepRanges(text, ranges, (part) => moneyRuns(part));
+  return keepRanges(text, ranges, opts.numerals === false ? (part) => moneyRuns(part) : (part) => numeralRuns(part));
 }
