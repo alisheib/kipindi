@@ -352,7 +352,9 @@ function BuyDoor({ t, w, signedIn, nowMs, nextOpen, breakBody, guest, className 
       </Link>
     );
   } else if (w.state !== "OPEN") {
-    door = <a href="#mln-questions" className="btn btn-ghost btn-lg w-full border-border-control" data-testid="millionea-hub-follow">{t.millionea.followResults}</a>;
+    // L16 · the kit's ghost as it is: a `border-border-control` here drew nothing of its own (the kit's .btn-ghost rule
+    // wins; both measured 1.79:1 on the page's ground) — a ghost border under §A1's 3:1 is the kit's, reported for every page.
+    door = <a href="#mln-questions" className="btn btn-ghost btn-lg w-full" data-testid="millionea-hub-follow">{t.millionea.followResults}</a>;
   }
   if (door === null) return null;
   return (
