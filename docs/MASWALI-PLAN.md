@@ -51,8 +51,19 @@ settled-week sitemap and share image, and bounded public week and register cache
   label since U43's `1384383fd`; test:dead-css has been red on `main` since). Green there: tsc 0, test:maswali-player 187
   per store, house-bot-reports, maswali-fence, watchlist, maswali-ui 151, journey-tickets 51, r4j 91, r5g 65, r5a 97,
   r7c 65, r5j 62, dead-css; test:house-bot-blob-pin is red only on D19a's dictionary blob (re-pinned once at the final
-  merge). Next to merge: REGISTER's shared pieces (`26503c06c`, adopted by the lanes), each design branch, platform 8–15
-  and fix-srv's new commits; `glyphs:gen` (with HUB's `salesPaused` Fill) and the D19a re-pin once, at the final merge.
+  merge). Since then: fix-srv 2b merged (`6e6949a4f`: the open, close, week void, carry and the Owner's stop each commit
+  whole, audits after the commit; engine 189, purchase 102, settle 100, void 57 on PostgreSQL, tsc 0); `main` `8175dbca3`
+  merged (`a413e75be`, the marketing harm-marker mute; rg-doors 130, campaign-audience 42, tsc 0); S5-DESIGN-DOORS merged
+  (`60eb085bc`, the doors at 10/10, with REGISTER's shared pieces; the route ghost hands the home ghost the locale; tsc
+  queued). red:maswali-money-path on this release: 30/30 caught (plant 6b included — S6-N's miss is its own).
+  Next to merge: HUB, SLIP, TICKETS, REGISTER, platform 8–15 and fix-srv's last items; `glyphs:gen` (HUB's `salesPaused`
+  Fill) and the D19a re-pin once, at the final merge. Every PM ruling and merge step: `MERGE-NOTES.md` on branch
+  `maswali-handover-20261021` (`handover/maswali-2026-10-21/`).
+- Classic parity is calibrated on `main` `bfa0b7d57`: baseline 52/52 (224 cells) and null compare 68/68, no flaky cell
+  (the baseline file lives in the OMEGA lead's scratchpad, `s5par/parity-v5-bfa0b7d57.json`; another machine re-captures
+  it with the hand-over's `tools/job-par-base.sh`). The candidate compare runs at the final integrated head.
+- ⏰ Ali (~15:20Z): "work for 2 hours and push everything and progress in case any issue happens so we continue from
+  another machine" — every lane pushes after each commit and stops at 17:05Z with its state in its head commit.
 - Railway's builds are still paused (status.railway.com, 12:23Z). A watcher asks Railway every 10 min to deploy `main`'s
   head and stops at the first accepted request; then U43's read-back, which U43 asked the Maswali lead to run.
 - OMEGA: the S6 notices lane's two leftover chains still run its owed checks in `kipindi-mln-not` (slot 4); their summary
