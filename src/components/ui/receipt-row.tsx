@@ -114,11 +114,13 @@ export function ReceiptRow({
   const toneCls =
     tone === "warning" ? "text-warning-fg" : tone === "no" ? "text-no-300" : tone === "yes" ? "text-yes-300" : null;
   const sentence = labelStyle === "sentence";
-  // When the row carries a tone, the label must NOT re-assert its own ink, or it fights the row colour (see below).
-  const labelCls = sentence
-    ? cn(SENTENCE, !toneCls && (emphasis === "muted" ? "text-text-muted" : "text-text"), emphasis === "total" && "font-semibold")
-    : null;
   const valueCls = sentence && emphasis === "muted" ? SENTENCE_MUTED_VALUE : VALUE[emphasis];
+  // When the row carries a tone, the label must NOT re-assert `text-text-subtle` (or, in a sentence, its own ink) or it
+  // fights the row colour and only half the line reads as one thing. Two elements, never one whose class switches
+  // between the eyebrow and the body face: an eyebrow is always an eyebrow (`test:visual-pass-r8b`'s census reads it).
+  const labelEl = sentence
+    ? <span className={cn(SENTENCE, !toneCls && (emphasis === "muted" ? "text-text-muted" : "text-text"), emphasis === "total" && "font-semibold")}>{typeof label === "string" ? keepConnectives(label) : label}</span>
+    : <span className={toneCls ? "min-w-0 font-mono text-micro uppercase eyebrow" : LABEL}>{typeof label === "string" ? keepConnectives(label) : label}</span>;
   return (
     <div
       className={cn(
@@ -128,14 +130,10 @@ export function ReceiptRow({
         className,
       )}
     >
-      {/* When the row carries a tone, the label must NOT re-assert `text-text-subtle`
-          or it fights the row colour and only half the line reads as one thing. */}
-      {note === undefined || note === null ? (
-        <span className={labelCls ?? (toneCls ? "min-w-0 font-mono text-micro uppercase eyebrow" : LABEL)}>{typeof label === "string" ? keepConnectives(label) : label}</span>
-      ) : (
+      {note === undefined || note === null ? labelEl : (
         // The label and its note as one column, whose first line the figure shares (the row's baseline is the label's).
         <span className="flex min-w-0 flex-col gap-0.5">
-          <span className={labelCls ?? (toneCls ? "min-w-0 font-mono text-micro uppercase eyebrow" : LABEL)}>{typeof label === "string" ? keepConnectives(label) : label}</span>
+          {labelEl}
           <span className={NOTE}>{typeof note === "string" ? keepConnectives(note) : note}</span>
         </span>
       )}

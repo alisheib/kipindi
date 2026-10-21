@@ -540,7 +540,8 @@ royal for its own lifecycle step. `STATUS_TONE.LIVE.player` supplies slate to ev
 status reader; a component does not hand-type another LIVE chip colour.
 
 **The other recorded divergences** — decisions, not drift, each with its reason in
-`STATUS_TONE_EXCEPTIONS` (Maswali Millionea's won word, green with gold only on the amount: §M8a item 8):
+`STATUS_TONE_EXCEPTIONS` (Maswali Millionea's won word, green with gold only on the amount: §M8a item 8; a settled
+Millionea week's word, slate and never RESOLVED's seal: §M8a item 13):
 
 - **REJECTED** is rose in KYC/DSAR (a person was refused), claret on `/proposals` (an
   editorial decline, §B4) and deliberately **slate on the objection queue** — a rejected
@@ -3061,6 +3062,12 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
    sockets. It plays only when all fifteen results are final, never as an un-carry. ⚠️ It stands only if it holds 50fps
    at 360 on a phone with 4 cores or fewer and 4GB or less (measured at S5's acceptance and on a real phone at S8);
    otherwise its fallback ships: `GlyphSwap` in place and the printed "4 → A1".
+   *How it plays (Ali, 2026-10-21 10/10 pass — the motion critic's M5 and H6; `maswali-carry.tsx`):* the token starts at
+   its true size — the scale is the two boxes' HEIGHTS, the annex's 18px glyph into a main's 24px socket (0.75), never a
+   width that counts the label beside a glyph; it plays only when both ends lie wholly inside the viewport (a carry that
+   starts off screen is not seen, and its end frame is the layout); the origin is vacated while the token flies and its
+   own mark ("↪4") settles in (`.g-settle`) on the landing, never before; a caller replays it with a run counter, never
+   by remounting the line (which blanked it for a frame), and hears its end — at once when nothing plays.
 2. **N2 Kugonga Muhuri — the attestation press (O-2: yes).** A result stamp arrives down the needle's line (`--m-tilt`) by
    `--sp-2` with the seal-place press stops (1.02 / 0.98), on `--t-base` / `--m-settle`; the socket beside it swaps by
    `GlyphSwap`. The same press for every outcome, matched or not — never a verdict on the player. Where an engine cannot
@@ -3140,6 +3147,25 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     and coronet are replaced by the Phosphor keys of `docs/MASWALI-PLAN.md` §10c, reached only through `I`. Where the
     delivery's motion notes name `sealCheck` / `sealX` / `sealNil` on a socket, the build shows `checkCircle` / `xCircle`
     / `markPending`.
+13. **One chip says where a week stands (Ali, 2026-10-21 10/10 pass — the register critic's L2).** Every surface that
+    names a week's state draws `WeekStateChip` (`millionea/register/register-parts.tsx`): its word the week's phase
+    (`millioneaWeekPhase` → `weekPhaseWord`, or "Paused for now" while an officer has paused sales), its tone status-tone's
+    Millionea week row (§B11) — royal while the week is on its way to a result (selling, sales closed, results coming in,
+    the objection window, settling, being voided), slate when an officer paused its sales, slate once settled or voided.
+    ⭐ A SETTLED week is slate, never RESOLVED's struck seal: its register states money, it awards none (item 7) — a
+    Millionea-only row in `STATUS_TONE_EXCEPTIONS` with that reason; VOIDED is VOID's own slate and no exception.
+14. **One ledger prints a week's money (Ali, 2026-10-21 10/10 pass — the register critic's H3 and H5).** Every Millionea
+    surface that prints a week's money draws the rows of `millioneaLedgerRows` with `MaswaliLedger`
+    (`components/maswali/maswali-ledger.tsx`): the register's week page and How to play's worked examples now, the win
+    ledger and the hub's pool block as they adopt it. Its labels are the kit `ReceiptRow`'s sentence-case label
+    (`labelStyle="sentence"`, the body face — a ledger's nouns, never eyebrow capitals that letter-space the money inside
+    them, §M4), each row's detail a `note` line under it. It prints MR-26's identity on its face as two matching totals,
+    each from its own components — "Money in" (carried in + ticket sales + the floor's top-up) and "Money out" (fee + paid
+    to winners + carried forward; a voided week, its refunds and the carry handed on) — between them the jackpot's story
+    in the order the money moved (the floor, a quiet line unless it bound; the jackpot; the fee, the platform's signed
+    amber figure with its levies as one muted line out of it; "To winners"; "÷ k"; the remainder; what carried forward),
+    a hairline only above a total (the withdraw confirm's bottom line), every amount an `.amount` run, and each carry a
+    link to its week's register page.
 
 ---
 

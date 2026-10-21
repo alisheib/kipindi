@@ -350,9 +350,10 @@ const WARN_REGISTRY: Record<string, [number, string]> = {
   "src/components/maswali/maswali-win-ledger.tsx": [1, "the fee row's amber (a deduction), the receipt's own `ReceiptRow` tone"],
   // 2026-10-18 (S5 integration): the same deduction on the two pages that print a week's money as a receipt.
   "src/app/millionea/how/page.tsx": [1, "the worked example's fee row (a deduction), the receipt's own `ReceiptRow` tone — as the win ledger's"],
-  // 2026-10-21 (S5-FIX-PLAYER P3): the week page's ledger rows are built in register-parts.tsx (`registerLedgerRows`), so
-  // the fee row's tone moved there with them — its row type's member and its one use; the page names none of its own.
-  "src/app/millionea/register/register-parts.tsx": [2, "the week's ledger fee row (a deduction), the receipt's own `ReceiptRow` tone — as the win ledger's (the row type's `tone` and the fee row's)"],
+  // RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER): the week's ledger rows are the ONE Millionea ledger's now
+  // (`maswali-ledger.tsx`: the register's week page, How to play's examples, the win ledger and the hub in round 2), so the
+  // fee row's tone moved there with them — its row type's member and its one use; register-parts names none of its own.
+  "src/components/maswali/maswali-ledger.tsx": [2, "the ledger's fee row (a deduction), the receipt's own `ReceiptRow` tone — as the win ledger's (the row type's `tone` and the fee row's)"],
 };
 section("3 · the warning census — every warning paint in the player's code is a §B11 warning, ruled and registered");
 const wcensus = new Map<string, Hit[]>();
