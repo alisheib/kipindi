@@ -519,8 +519,9 @@ check("14.2", "the kit Tabs draws every caller that does not ask for the ink byt
 });
 
 // ── §15 · the decided words ─────────────────────────────────────────────────────────────────────────────────────────
-const WORDS: Record<string, Record<Locale, string>> = {
-  nextEvent: { en: "Next event {when}", sw: "Tukio linalofuata {when}", zh: "下一事件 {when}" },
+const WORDS: Record<string, Partial<Record<Locale, string>>> = {
+  // L5 capitalises en and sw; zh's spacing is the lead's zh ruling, DOORS' key (d47b37e90), checked by §15.2's rule instead.
+  nextEvent: { en: "Next event {when}", sw: "Tukio linalofuata {when}" },
   standby: { en: "Standing by", sw: "Iko akiba", zh: "候补中" },
   cancelledLine: { en: "Cancelled · {price}", sw: "Imeghairiwa · {price}", zh: "已取消 · {price}" },
   finality: { en: "Every figure here is final — nothing further is owed.", sw: "Kila takwimu hapa ni ya mwisho — hakuna kinachodaiwa zaidi.", zh: "此处每个数字均为最终结果——不再有任何欠付。" },
@@ -536,17 +537,59 @@ const WORDS: Record<string, Record<Locale, string>> = {
 };
 check("15.1", "the decided words, key for key, in three languages (L2 finality, L4 the stamp, L5 the next event, L6 the reserve standing by, L12 where the money went, M4 the wait)", (w) => {
   const d: string[] = [];
-  for (const [k, want] of Object.entries(WORDS)) for (const l of LOCALES) need(d, mln(w, l)[k] === want[l], `${l}.${k}: "${mln(w, l)[k]}"`);
+  for (const [k, want] of Object.entries(WORDS)) for (const l of LOCALES) if (want[l] !== undefined) need(d, mln(w, l)[k] === want[l], `${l}.${k}: "${mln(w, l)[k]}"`);
+  return d;
+});
+// The lead's zh ruling (2026-10-21; DOORS' d47b37e90): Millionea's Chinese takes a space only where a Latin letter or a digit
+// meets a Han character, never between two Han characters — a weekday-and-clock opens on a Han weekday ("周五 18:00").
+const HAN = "[\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff]";
+const HAN_SPACE_HAN = new RegExp(`${HAN} ${HAN}`);
+check("15.2", "zh: every template of this surface that a weekday-and-clock fills reads with no space between two Han characters — \"第49周开放至周五 18:00。\" — filled as the page fills it", (w) => {
+  const d: string[] = [];
+  const zh = mln(w, "zh"), when = "周五 18:00";
+  for (const k of ["emptyTicketsNext", "lockedAt", "salesCloseAt", "firstEventAt", "paidTo"]) {
+    const filled = String(zh[k]).replace("{week}", "49").replace("{when}", when);
+    need(d, !HAN_SPACE_HAN.test(filled), `zh.${k} → "${filled}"`);
+  }
+  need(d, String(zh.emptyTicketsNext).replace("{week}", "49").replace("{when}", when) === "第49周开放至周五 18:00。", "the empty list's week line is not the ruled one");
+  need(d, code(w, "list").includes("fill(t.millionea.emptyTicketsNext, { week: weekNumberOf(selling.code), when: eatWeekdayClock(t, msOf(selling.closesAt) ?? 0) })"), "the page does not fill it with the weekday-and-clock");
   return d;
 });
 
 // ── §16 · L8 ────────────────────────────────────────────────────────────────────────────────────────────────────────
-check("16.1", "the cannot-win line and the sunset's score are the kit's neutral Callout, never a hand-rolled inset box", (w) => {
+check("16.1", "the cannot-win line is the kit's neutral Callout; the sunset's score is the ONE ledger's own note under the share (round 2) — never a hand-rolled inset box", (w) => {
   const d: string[] = [];
   const m = ticketMarkup(w, "en", { weekState: "RESOLVING", cannotWin: true });
   const cw = mln(w, "en").cannotWin;
   need(d, new RegExp(`<div role="note" class="flex items-start border[^"]*">[\\s\\S]*?${cw.slice(0, 30)}`).test(m) && !m.includes("mat-inset rounded-control"), "the cannot-win line is not the Callout");
-  need(d, code(w, "ledger").includes('<Callout tone="neutral">{counted(sunset.tickets, t.millionea.sunsetScoreOne, t.millionea.sunsetScore, { score: sunset.score })}</Callout>') && !code(w, "ledger").includes("mat-inset rounded-control"), "the sunset line is not the Callout");
+  need(d, !code(w, "ledger").includes("mat-inset rounded-control") && !/sunsetScore/.test(code(w, "ledger")), "the sunset line is drawn by the receipt again, beside the ledger's own");
+  return d;
+});
+// ── §23 · round 2: the ONE ledger and the ONE week chip ──────────────────────────────────────────────────────────────
+const LEDGER_ROWS = [
+  { key: "sales", label: "Ticket sales", value: "TZS 10,000" }, { key: "moneyIn", label: "Money in", value: "TZS 10,000" },
+  { key: "jackpot", label: "Jackpot", value: "TZS 10,000" }, { key: "fee", label: "Fee", value: "−TZS 1,300" },
+  { key: "winners", label: "To winners", value: "TZS 8,700" }, { key: "share", label: "÷ 2", value: "TZS 4,350" },
+  { key: "moneyOut", label: "Money out", value: "TZS 10,000" },
+];
+check("23.1", "round 2 · the win receipt is the week's ONE ledger (the register's rows, `MaswaliLedger`), this player's gold rows spliced straight after `share`; the page draws it for a PUBLIC week from the register's record and draws NO ledger for a week without one (never a partial MR-26)", (w) => {
+  const d: string[] = [];
+  const mod = (w.src.ledger === REAL.src.ledger ? live.ledger : compiled(FILES.ledger, w.src.ledger)) as LedgerMod & { winLedgerRows: (t: unknown, rows: unknown[], e: unknown) => Array<{ key: string }> };
+  const one = mod.winLedgerRows(REAL.dict.en, LEDGER_ROWS, { perTicket: 4_350, yours: 1, yourTotal: 4_350 }).map((r) => r.key);
+  const two = mod.winLedgerRows(REAL.dict.en, LEDGER_ROWS, { perTicket: 4_350, yours: 2, yourTotal: 8_700 }).map((r) => r.key);
+  need(d, j(one) === j(["sales", "moneyIn", "jackpot", "fee", "winners", "share", "yours", "moneyOut"]), `one ticket: ${j(one)}`);
+  need(d, j(two) === j(["sales", "moneyIn", "jackpot", "fee", "winners", "share", "yours", "yourTickets", "yourTotal", "moneyOut"]), `two tickets: ${j(two)}`);
+  need(d, code(w, "ledger").includes('<MaswaliLedger rows={winLedgerRows(t, rows, earned)} className="border-t border-border pt-3" />'), "the receipt does not draw the one ledger");
+  const p = code(w, "page");
+  need(d, p.includes('const regWeek = paid && view.week.visibility === "PUBLIC" ? await cachedMillioneaRegisterWeek(view.week.code) : null;')
+    && p.includes("const ledgerRows = regWeek ? registerLedgerRows(t, locale, regWeek)") && p.includes("{ledgerRows && ( <MaswaliWinLedger"), "the page does not draw the register's rows, or draws a ledger without them");
+  return d;
+});
+check("23.2", "round 2 · a ticket's week wears the ONE week chip (`WeekStateChip`, P6's phase words): \"Week 52\" then \"Objection window\" in the head", (w) => {
+  const d: string[] = [];
+  const m = ticketMarkup(w, "en", { weekState: "RESOLVING", phase: { kind: "objections", objectionsUntil: NOW + 86_400_000 } });
+  need(d, /data-testid="millionea-week-state"[^>]*>Objection window</.test(m) || /data-testid="millionea-week-state"[\s\S]{0,400}?>Objection window</.test(m), "the head does not wear the week chip with its phase");
+  need(d, code(w, "ticket").includes("<WeekStateChip t={t} state={weekState} phase={phase ?? null} />") && code(w, "page").includes("phase={phase}"), "the chip is not handed the week's phase");
   return d;
 });
 
@@ -684,6 +727,7 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["L6 undone — \"Reserve\"", "15.1", plantWord("en", "standby", "Reserve")],
   ["L5 undone — lowercase \"next event\"", "15.1", plantWord("sw", "nextEvent", "tukio linalofuata {when}")],
   ["L2 undone — the zh spaced dash", "15.1", plantWord("zh", "finality", "此处每个数字均为最终结果 — 不再有任何欠付。")],
+  ["zh — the space back between two Han words", "15.2", plantWord("zh", "emptyTicketsNext", "第{week}周开放至 {when}。")],
   ["L8 undone — the cannot-win box hand-rolled", "16.1", plantSrc("ticket", '{cannotWin && <Callout tone="neutral">{t.millionea.cannotWin}</Callout>}', '{cannotWin && <p className="mat-inset rounded-control px-3 py-2 text-body-sm text-text text-pretty">{t.millionea.cannotWin}</p>}')],
   ["L10 undone — the seal's label the serials alone", "17.1", plantSrc("acts", "eyebrow, heading: t.millionea.wonHeading, facts, roll: false", "label: facts.join(\" · \"), roll: false")],
   ["the 7-digit wrap back", "17.2", plantSrc("celebrate", 'className={`whitespace-nowrap font-mono text-[38px]', 'className={`font-mono text-[38px]')],
@@ -695,6 +739,9 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["L14 — the lock line outside the stub's moment", "20.1", plantSrc("ticket", "{cut || reveal || lock ? <MaswaliMoment>", "{cut || reveal ? <MaswaliMoment>")],
   ["M9 undone — the head ghost ignores its kinds", "21.1", plantSrc("headGhost", "        {kinds === 3 && <div className=\"h-[44px] w-[96px] rounded-md bg-bg-overlay kp-shimmer-track\" />}\n", "")],
   ["M9 undone — the 70px Seal Line ghost", "21.1", plantSrc("ticketGhost", '          <GhostBar className="mt-1.5 h-[18px] w-full" />\n', "")],
+  ["round 2 undone — the gold rows after the totals", "23.1", plantSrc("ledger", "  const at = rows.findIndex((r) => r.key === \"share\");", "  const at = rows.length - 1;")],
+  ["round 2 undone — a drive week's partial ledger", "23.1", plantSrc("page", "              {ledgerRows && (\n", "              {(\n")],
+  ["round 2 undone — the head's week as a line again", "23.2", plantSrc("ticket", "<WeekStateChip t={t} state={weekState} phase={phase ?? null} />", "<span>{weekWord(t, week)}</span>")],
   ["held row — no lift", "22.1", plantSrc("ticket", 'className={cn("mat-raised mat-raised-i flex flex-col gap-1.5 rounded-control p-2 text-text", className)}', 'className={cn("mat-raised flex flex-col gap-1.5 rounded-control p-2 text-text", className)}')],
 ];
 let caught = 0;

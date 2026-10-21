@@ -12,7 +12,9 @@ import { MaswaliFacts, factsOf, keepFact } from "@/components/maswali/maswali-fa
 import { MaswaliMoment, MaswaliTick } from "@/components/maswali/maswali-moment";
 import { MaswaliCancelLine } from "@/components/maswali/maswali-ticket-cancel";
 import { eatWeekday, eatWeekdayClock, millioneaWord, reserveLabel, weekWord } from "@/components/maswali/maswali-format";
-import { TICKET_SHOWN_KEY, WEEK_STATE_KEY, type TicketShown, type WeekState } from "@/lib/maswali-week-label";
+import { WeekStateChip } from "@/app/millionea/register/register-parts";
+import type { MillioneaWeekPhase } from "@/app/millionea/millionea-view";
+import { TICKET_SHOWN_KEY, type TicketShown, type WeekState } from "@/lib/maswali-week-label";
 import { playerStatusChip, positionStatusChip, type StatusChipVariant } from "@/lib/status-tone";
 import { positionStatusGlyph, sideWord } from "@/lib/side-label";
 import { formatEatDateTime } from "@/lib/eat-day";
@@ -137,13 +139,6 @@ export function ticketRests(shown: TicketShown): boolean {
   }
 }
 
-/** "Wiki 42 · Wazi" — the week and where it stands: the composer's word for its phase (`phaseWord`: "Objection window",
- *  "Settling", "Week is being voided" — S5-FIX-PLAYER P6, `millioneaWeekPhase`), else its state's own. */
-function weekLine(t: Dict, week: number, state: WeekState, phaseWord: string | undefined): string {
-  const word = phaseWord ?? millioneaWord(t, WEEK_STATE_KEY[state]);
-  return `${weekWord(t, week)} · ${word}`;
-}
-
 /** What one clause's socket says: its mark, and its words (a stood-in reserve and a voided main name each other). */
 function clauseSocket(t: Dict, c: TicketClause, line: SealLine): { mark: SocketMark; words: ReactNode } {
   if (c.role === "MAIN") {
@@ -237,7 +232,7 @@ function StubField({ label, wide, children }: { label: string; wide?: boolean; c
 }
 
 export function MaswaliTicket({
-  t, locale, serverNow, serial, week, weekState, phaseWord, shown, clauses, line, idBase, stub, closedAt,
+  t, locale, serverNow, serial, week, weekState, phase, shown, clauses, line, idBase, stub, closedAt,
   wonAmount, notice, live, cannotWin, cancel, play, className,
 }: {
   t: Dict;
@@ -247,9 +242,10 @@ export function MaswaliTicket({
   serial: string;
   week: number;
   weekState: WeekState;
-  /** Where the week stands once its results are in, in the composer's words (S5-FIX-PLAYER P6, `millioneaWeekPhase`):
-   *  "Objection window", "Settling", "Week is being voided"; omitted, the week line says its state's own word. */
-  phaseWord?: string;
+  /** Where the week stands once its results are in (S5-FIX-PLAYER P6, `millioneaWeekPhase`): the week's chip says it in
+   *  the one chip a Millionea week wears everywhere (`WeekStateChip` — "Objection window", "Settling", "Week is being
+   *  voided"); omitted, its state's own word. */
+  phase?: MillioneaWeekPhase;
   shown: TicketShown;
   /** All fifteen, mains first. */
   clauses: readonly TicketClause[];
@@ -391,8 +387,12 @@ export function MaswaliTicket({
           <div className="flex flex-col gap-1.5">
             <div className="flex flex-wrap items-center justify-between gap-1.5">
               <TicketStateChip t={t} shown={shown} />
-              {/* `kp-track-end`: the row's last word ends on the card's edge, so its trailing tracking is taken back (r7c 2.1). */}
-              <span className="font-mono text-label uppercase eyebrow text-text-subtle kp-track-end">{keepFact(locale, weekLine(t, week, weekState, phaseWord))}</span>
+              {/* The week and where it stands: its number, then the one chip a Millionea week wears on every surface
+                  (`WeekStateChip`, the register's — the lead's round-2 line; its word P6's phase). */}
+              <span className="inline-flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
+                <span className="font-mono text-label uppercase eyebrow text-text-subtle kp-track-end">{weekWord(t, week)}</span>
+                <WeekStateChip t={t} state={weekState} phase={phase ?? null} />
+              </span>
             </div>
             {/* The page's one heading: the ticket is named by its serial (`test:visual-pass-r7b` 1.6 registers this head,
                 its eyebrow the week line above). */}

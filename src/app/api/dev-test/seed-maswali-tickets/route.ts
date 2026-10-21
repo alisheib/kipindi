@@ -6,7 +6,9 @@
  * time it adds is declared where it is made.
  *
  *   POST { step: "weeks" }                → the chain below, the demo player's tickets in it    → { ok, tickets, weeks }
- *   POST { step: "fresh" }                → one more ticket for the demo player in the selling week, bought now, so its
+ *   POST { step: "info" }                 → the same answer again, for a drive that comes after the shots on the same
+ *                                            server (this process's seed only)                   → { ok, tickets, weeks }
+ *   POST { step: "fresh" }              → one more ticket for the demo player in the selling week, bought now, so its
  *                                            free cancel is open for the shot that follows      → { ok, serial }
  *   POST { step: "hold", serial }         → Compliance holds that won share (LAST: a held share holds the wallet)
  *   POST { step: "seal", week, slot, outcome } → seals one more result of a graded week, now (a result arriving while the
@@ -352,7 +354,14 @@ export async function POST(req: Request) {
         if ((await weekStore.list({ visibility: "PUBLIC", limit: 1 })).length > 0) {
           return NextResponse.json({ ok: false, error: "Millionea weeks already exist on this store; restart the dev server to seed again." }, { status: 409 });
         }
-        return NextResponse.json({ ok: true, ...(body.step === "weeks" ? await seedWeeks() : await seedSunset()) });
+        const seeded = body.step === "weeks" ? await seedWeeks() : await seedSunset();
+        // Kept for the drives that come after the shots on the same server (step "info"): this process's store only.
+        (globalThis as { __mlnTicketSeed?: unknown }).__mlnTicketSeed = seeded;
+        return NextResponse.json({ ok: true, ...seeded });
+      }
+      case "info": {
+        const seeded = (globalThis as { __mlnTicketSeed?: { tickets: Record<string, string>; weeks: Record<string, string> } }).__mlnTicketSeed;
+        return seeded ? NextResponse.json({ ok: true, ...seeded }) : NextResponse.json({ ok: false, error: "Nothing seeded on this server yet." }, { status: 409 });
       }
       case "fresh": {
         const demo = await demoId();
@@ -383,7 +392,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true });
       }
       default:
-        return NextResponse.json({ ok: false, error: "step: weeks | fresh | hold | seal | break | sunset" }, { status: 400 });
+        return NextResponse.json({ ok: false, error: "step: weeks | sunset | info | fresh | hold | seal | break" }, { status: 400 });
     }
   } catch (err) {
     return NextResponse.json({ ok: false, error: String((err as Error).message ?? err) }, { status: 500 });

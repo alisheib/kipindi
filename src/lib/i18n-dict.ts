@@ -9334,7 +9334,7 @@ export const dict = {
       sealEyebrow: "{n} 张彩票中奖",
       sealEyebrowOne: "彩票中奖",
       emptyTickets: "尚无 Millionea 彩票。",
-      emptyTicketsNext: "第{week}周开放至 {when}。",
+      emptyTicketsNext: "第{week}周开放至{when}。",
       lensNone: "没有符合此筛选条件的彩票。",
       lensNoneOnPage: "本页没有符合此筛选条件的彩票。",
       guestTickets: "登录以查看您的彩票。",

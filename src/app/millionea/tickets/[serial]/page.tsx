@@ -43,7 +43,7 @@ import { counted, eatWeekday, weekNumberOf, weekWord } from "@/components/maswal
 import { factsOf, keepFact, MaswaliFacts } from "@/components/maswali/maswali-facts";
 import { noticeBody } from "@/components/ui/empty-state-text";
 import { millioneaTicketGate } from "@/lib/server/millionea-gate";
-import { millioneaHowTo, millioneaMyTicketsWeek, millioneaTicket, type MillioneaFact, type MillioneaTicketView } from "@/lib/server/maswali-player";
+import { cachedMillioneaRegisterWeek, millioneaHowTo, millioneaMyTicketsWeek, millioneaTicket, type MillioneaFact, type MillioneaTicketView } from "@/lib/server/maswali-player";
 import { getServerT } from "@/lib/i18n-server";
 import { millioneaTicketHref } from "@/lib/position-permalink";
 import { RESERVE_COUNT } from "@/lib/maswali-score";
@@ -51,7 +51,8 @@ import { formatEatDateTime } from "@/lib/eat-day";
 import { fill, formatTzs } from "@/lib/utils";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import { MILLIONEA_HREF, MillioneaPreviewMark, registerWeekHref, signInHref } from "../../millionea-parts";
-import { clausesOf, earnedOf, lineOf, millioneaWeekPhase, msOf, refundOf, weekPhaseWord, winLinesOf } from "../../millionea-view";
+import { clausesOf, earnedOf, lineOf, millioneaWeekPhase, msOf, refundOf } from "../../millionea-view";
+import { registerLedgerRows } from "../../register/register-parts";
 import { SealDoor, TicketCancel, TicketHost } from "./ticket-acts";
 
 export const dynamic = "force-dynamic";
@@ -175,6 +176,13 @@ export default async function MillioneaTicketPage({ params }: { params: Promise<
   const paidSerials = weekPaid.length > 0 ? weekPaid : [view.serial];
   const held = view.win?.yourHeldTickets ?? 0;
   const forfeited = view.win?.yourForfeitedTickets ?? 0;
+  // ⭐ THE WEEK'S ONE LEDGER (S5-DESIGN-REGISTER's shared builder; the lead's round-2 ruling): a PUBLIC final week's ledger is
+  // the register's own rows (`registerLedgerRows`, MR-26 in the same words), this player's gold rows spliced after the share.
+  // ⛔ A DRIVE week has no register record yet: it draws no ledger at all — never a partial MR-26 — until the core reader of
+  // any visibility lands (the lead's ruling, 2026-10-21). For a holder let in at a kill the register is an unknown address,
+  // so a carry row's link to it is dropped there.
+  const regWeek = paid && view.week.visibility === "PUBLIC" ? await cachedMillioneaRegisterWeek(view.week.code) : null;
+  const ledgerRows = regWeek ? registerLedgerRows(t, locale, regWeek).map((r) => (gate.visible ? r : { ...r, href: null })) : null;
   // L11 · an open week says where it stands before any result: its close and its first event.
   const firstEvent = view.questions.map((q) => msOf(q.eventStartsAt)).filter((x): x is number => x !== null).sort((a, b) => a - b)[0];
 
@@ -188,15 +196,17 @@ export default async function MillioneaTicketPage({ params }: { params: Promise<
           {gate.preview && <MillioneaPreviewMark t={t} />}
           {paid && view.win && (
             <>
-              <MaswaliWinLedger
-                t={t}
-                week={weekNumber}
-                serials={paidSerials}
-                lines={winLinesOf(view.win)}
-                sunset={view.win.basis === "TOP_SCORE" ? { score: view.win.winningScore, tickets: view.win.winners } : undefined}
-                legal={legal}
-                play={{ draw: closingRule }}
-              />
+              {ledgerRows && (
+                <MaswaliWinLedger
+                  t={t}
+                  week={weekNumber}
+                  serials={paidSerials}
+                  rows={ledgerRows}
+                  earned={{ perTicket: view.win.share, yours: view.win.yourWinningTickets, yourTotal: view.win.yourTotal }}
+                  legal={legal}
+                  play={{ draw: closingRule }}
+                />
+              )}
               {view.win.yourTotal > 0 && (
                 <SealDoor
                   amount={view.win.yourTotal}
@@ -234,7 +244,7 @@ export default async function MillioneaTicketPage({ params }: { params: Promise<
               serial={view.serial}
               week={weekNumber}
               weekState={view.week.state}
-              phaseWord={phase.kind === "state" ? undefined : weekPhaseWord(t, view.week.state, phase)}
+              phase={phase}
               shown={view.shown}
               clauses={clausesOf(t, locale, view.questions, view.slots, view.slipFilled)}
               line={line}

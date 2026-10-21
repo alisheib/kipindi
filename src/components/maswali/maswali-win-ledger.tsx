@@ -1,14 +1,13 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Stat } from "@/components/ui/stat";
-import { Callout } from "@/components/ui/callout";
 import { I } from "@/components/ui/glyphs";
-import { ReceiptRow } from "@/components/ui/receipt-row";
 import { MaswaliClosingRule } from "@/components/maswali/maswali-unbroken-line";
 import { MaswaliMoment } from "@/components/maswali/maswali-moment";
+import { MaswaliLedger, type MillioneaLedgerRow } from "@/components/maswali/maswali-ledger";
 import { counted, weekWord } from "@/components/maswali/maswali-format";
 import { MaswaliFacts } from "@/components/maswali/maswali-facts";
-import { cn, fill, formatNumber, formatTzs, formatTzsSigned } from "@/lib/utils";
+import { cn, fill, formatNumber, formatTzs } from "@/lib/utils";
 import type { Dict } from "@/lib/i18n-dict";
 import type { SocketMark } from "@/components/maswali/maswali-seal-line";
 import type { MaswaliOutcome, MaswaliPick } from "@/lib/maswali-score";
@@ -20,8 +19,9 @@ import type { MaswaliOutcome, MaswaliPick } from "@/lib/maswali-score";
  * ⭐ GOLD ON EARNED MONEY ONLY, AND ONLY HERE. "Kwa tiketi yako" and "Jumla yako" wear `.gilt-ink`, and so does the
  * amount a won ticket was paid wherever a ticket shows it (`MaswaliEarnedAmount`, `MaswaliEarnedStat`), so a gold figure
  * on a Millionea surface can only come from this file — the jackpot, the floor, the rollover, the stub and every other
- * line of the ledger stay neutral mono, even on a winning receipt. The fee row is the receipt's amber deduction, as on
- * every receipt (`ReceiptRow`'s `warning`), and a net below zero prints with the real minus (U+2212).
+ * line of the ledger stay neutral mono, even on a winning receipt. ⭐ THE WEEK'S MONEY IS THE ONE MILLIONEA LEDGER
+ * (`maswali-ledger.tsx`, the register's own rows: MR-26 as two matching totals, the fee the receipt's amber deduction);
+ * this file adds only the player's earned rows after the share (`winLedgerRows`).
  * ⛔ No rolling figure (the seal's amount lands final, `roll: false`), no score on a loss (no "9 of 10", no row named as
  * the near miss), and no buy control on a receipt. The one score Millionea ever prints is the sunset's top score, on the
  * sunset settlement only (Q11).
@@ -90,7 +90,9 @@ function ReceiptCard({ t, week, heading, serials, headingLevel, legal, play, chi
   );
 }
 
-/** The earned lines of a winning player-week. Every figure is the settlement's, from the ledger; none is computed here. */
+/** The earned lines of a winning player-week, as `winLinesOf` (millionea-view.ts) reads them from the read model. ⚠️ Since
+ *  the round-2 adoption the receipt draws the ONE ledger (`MaswaliLedger`) and `winLedgerRows` instead; the shape stays for
+ *  that shared helper until the lead retires it. */
 export type WinLines = {
   /** Shown first on a floor week (Timeline C): the pool the week reached and the floor that topped it up. */
   pool?: number;
@@ -117,74 +119,60 @@ export type WinLines = {
   sunsetNoTopUp?: boolean;
 };
 
-const ROW = "border-b border-border py-1.5";
+/** What this player's winning tickets earned in the week — the only gold on a Millionea surface (§M8a item 7). */
+export type WinEarned = {
+  /** The share each winning ticket was paid. */
+  perTicket: number;
+  /** How many of the winning tickets are this player's and paid (one seal per player-week). */
+  yours: number;
+  /** What they were paid together (the ledger's sum, never multiplied here). */
+  yourTotal: number;
+};
 
-export function MaswaliWinLedger({ t, week, serials, lines, sunset, legal, headingLevel = 2, play, className }: {
+/**
+ * ⭐ THE PLAYER'S OWN ROWS, SPLICED INTO THE WEEK'S ONE LEDGER (S5-DESIGN-REGISTER's shared builder, `maswali-ledger.tsx`;
+ * the lead's round-2 line): "For your ticket" — and, for more than one, how many reached 10/10 and "Your total" — straight
+ * after the week's share (`share`), so a ticket's ledger and the register's say MR-26 in the same rows and the same words,
+ * and this player's money is read where the share is. The only gold of the receipt is here.
+ */
+export function winLedgerRows(t: Dict, rows: readonly MillioneaLedgerRow[], earned: WinEarned): MillioneaLedgerRow[] {
+  const many = earned.yours > 1;
+  const gilt = (n: number, large: boolean) => (
+    <span className={cn("amount gilt-ink inline-block font-bold", large ? "text-title-sm" : "text-body-lg")}>{formatTzs(n)}</span>
+  );
+  const mine: MillioneaLedgerRow[] = [
+    { key: "yours", label: t.millionea.forYourTicket, value: gilt(earned.perTicket, !many) },
+    ...(many ? [
+      { key: "yourTickets", label: fill(t.millionea.wonTickets, { n: formatNumber(earned.yours) }), value: <span className="amount">{`× ${formatNumber(earned.yours)}`}</span> },
+      { key: "yourTotal", label: t.millionea.yourTotal, value: gilt(earned.yourTotal, true) },
+    ] : []),
+  ];
+  const at = rows.findIndex((r) => r.key === "share");
+  return at < 0 ? [...rows, ...mine] : [...rows.slice(0, at + 1), ...mine, ...rows.slice(at + 1)];
+}
+
+/**
+ * THE WIN LEDGER (§3.13, W-settlement): the receipt's chrome — the week, "You won", the paid serials — over the week's ONE
+ * ledger (`MaswaliLedger`, MR-26's two matching totals, the shared builder's sentence-case rows), this player's earned rows
+ * spliced after the share (`winLedgerRows`), then the finality, the legal line and the closing rule.
+ */
+export function MaswaliWinLedger({ t, week, serials, rows, earned, legal, headingLevel = 2, play, className }: {
   t: Dict;
   week: number;
   /** The winning tickets' serials, this player's. */
   serials: readonly string[];
-  lines: WinLines;
-  /** The sunset's top score, its only appearance (Q11). */
-  sunset?: { score: number; tickets: number };
+  /** The week's own ledger rows — the register's (`registerLedgerRows`), the shared builder's. */
+  rows: readonly MillioneaLedgerRow[];
+  earned: WinEarned;
   legal: MaswaliLegal | null;
   headingLevel?: 1 | 2;
   /** M6 · the closing rule draws on (the composer's seen state). */
   play?: { draw?: boolean };
   className?: string;
 }) {
-  const L = lines;
-  const money = (n: number) => formatTzs(n);
-  const many = L.yours > 1;
-  // Every figure is one unbreakable run (`.amount`): a receipt row at 320 wraps its label, never "TZS" from its digits.
-  const fig = (n: number) => <span className="amount">{money(n)}</span>;
-  const quiet = (n: number) => <span className="amount text-text-muted">{money(n)}</span>;
-  const gilt = (n: number, large: boolean) => (
-    <span className={cn("amount gilt-ink inline-block font-bold", large ? "text-title-sm" : "text-body-lg")}>{money(n)}</span>
-  );
   return (
     <ReceiptCard t={t} week={week} heading={t.millionea.wonHeading} serials={serials} headingLevel={headingLevel} legal={legal} play={play} className={className}>
-      {sunset && (
-        // The sunset's one score, as the kit says a fact beside a receipt (L8: never a hand-rolled inset box).
-        <Callout tone="neutral">{counted(sunset.tickets, t.millionea.sunsetScoreOne, t.millionea.sunsetScore, { score: sunset.score })}</Callout>
-      )}
-      <div className="flex flex-col border-t border-border">
-        {L.pool !== undefined && <ReceiptRow className={ROW} label={t.millionea.poolTotal} value={fig(L.pool)} />}
-        {L.floor !== undefined && <ReceiptRow className={ROW} label={t.millionea.floor} value={fig(L.floor)} />}
-        {!sunset && <ReceiptRow className={ROW} label={t.millionea.jackpot} value={fig(L.jackpot)} />}
-        {sunset && L.pool === undefined && <ReceiptRow className={ROW} label={t.millionea.poolTotal} value={fig(L.jackpot)} />}
-        <div className={ROW}>
-          {/* A fee taken, and the week's net, are the platform's signed figures ("−TZS 136,500", S5 VIS A4). */}
-          <ReceiptRow tone="warning" emphasis="fee" label={fill(t.millionea.feeLine, { pct: L.pct })} value={<span className="amount">{formatTzsSigned(-L.fee)}</span>} />
-          {L.levies && (
-            <p className="mt-0.5 text-body-sm text-text-subtle">{fill(t.millionea.levies, { tra: L.levies.tra, gbt: L.levies.gbt })}</p>
-          )}
-        </div>
-        <ReceiptRow className={ROW} label={t.millionea.toWinners} value={fig(L.toWinners)} />
-        <ReceiptRow className={ROW} label={counted(L.winningTickets, t.millionea.perTicketOne, t.millionea.perTicket)} value={fig(L.perTicket)} />
-        <ReceiptRow className={ROW} label={t.millionea.forYourTicket} value={gilt(L.perTicket, !many)} />
-        {many && (
-          <>
-            <ReceiptRow className={ROW} label={<MaswaliFacts facts={[`× ${formatNumber(L.yours)}`, fill(t.millionea.wonTickets, { n: formatNumber(L.yours) })]} layout="phone" />} value="" />
-            <ReceiptRow className={ROW} label={t.millionea.yourTotal} value={gilt(L.yourTotal, true)} />
-          </>
-        )}
-        {L.topUp !== undefined && (
-          <ReceiptRow className={cn(ROW, "text-text-muted")} label={<MaswaliFacts facts={[t.millionea.topUp, t.millionea.topUpNote]} layout="phone" />} value={quiet(L.topUp)} />
-        )}
-        {L.remainder !== undefined && (
-          <ReceiptRow className={cn(ROW, "text-text-muted")} label={<MaswaliFacts facts={[t.millionea.remainder, t.millionea.remainderNote]} layout="phone" />} value={quiet(L.remainder)} />
-        )}
-        {L.sunsetNoTopUp && (
-          <ReceiptRow className={ROW} label={t.millionea.noTopUp} value={<span className="text-text-muted">—</span>} />
-        )}
-        {L.spent && (
-          <>
-            <ReceiptRow className={ROW} label={counted(L.spent.tickets, t.millionea.spentThisWeekOne, t.millionea.spentThisWeek)} value={quiet(L.spent.amount)} />
-            <ReceiptRow className={ROW} emphasis="total" label={t.millionea.yourNet} value={<span className="amount">{formatTzsSigned(L.spent.net)}</span>} />
-          </>
-        )}
-      </div>
+      <MaswaliLedger rows={winLedgerRows(t, rows, earned)} className="border-t border-border pt-3" />
     </ReceiptCard>
   );
 }

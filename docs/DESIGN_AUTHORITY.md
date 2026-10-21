@@ -3166,6 +3166,31 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     amber figure with its levies as one muted line out of it; "To winners"; "÷ k"; the remainder; what carried forward),
     a hairline only above a total (the withdraw confirm's bottom line), every amount an `.amount` run, and each carry a
     link to its week's register page.
+15. **A ticket's moments play where its owner sees them, once (Ali, 2026-10-21 10/10 pass — the R1 tickets critic's M8,
+    the motion critic's H3, H4 and L2; `components/maswali/maswali-moment.tsx`).** Item 5 holds, and a ticket page adds
+    WHERE: each moment — the cut (N3) and its reverse, a result's press (N2), the stamp line's reveal, the receipt's
+    closing rule and the stub's lock line — waits at its first frame until half of its part is in view, then plays once
+    (`MaswaliMoment`: the platform's `<Reveal>` observer, its state rendered by React; one hold rule in `globals.css`,
+    scoped off both clamps and off a page without scripting, so nothing waits where nothing would move). The seen mark
+    that puts a fact to rest waits for the moments (`MaswaliMomentsHost`): a view that never reached a moment leaves its
+    facts unseen, and they perform on the next view. The lock line seals (`.m-seal`) once, at the week's RECORDED close
+    (`closedAt` — never the scheduled close, never now), only on a ticket bought before it. The free cancel's result
+    stays up over the page's refresh until its owner closes it, over the ticket now at rest, and the stub's return plays
+    when it comes into view — never under the dialog. A live count ("12 of 15 results in") dips and lands once per
+    change (`.m-tick`, `MaswaliTick`), never on the first paint. Nothing of this shifts the layout.
+16. **A ticket says where its money went, in every state (Ali, 2026-10-21 10/10 pass — the R1 tickets critic's L1, L12,
+    L13 and the motion critic's seal rows).** Won: paid to the main balance and when, held for review, or forfeited, each
+    said on the ticket; a won ticket's receipt is the week's one ledger (item 14) with this player's gold rows — "For
+    your ticket", and for more than one "× n" and "Your total" — straight after the share (`winLedgerRows`); a DRIVE week
+    prints no ledger until a money reader of any visibility lands (never a partial MR-26). Lost: the week's line — no
+    10/10 and the week its pool carried to, or how many tickets won. Voided: the refund on its way back until it lands,
+    then landed. Cancelled: the price back on the main balance. A reserve whose result is in and did not count wears the
+    verdict-free "sealed" mark (`I.attestation`, muted) — never a match, never a miss. The Tiketi zangu switch's Millionea
+    tab wears item 11's ink (the kit `Tabs`' `ink: "millionea"`, its siblings' tab otherwise). The seal (items 6 and 10)
+    opens on Millionea's own eyebrow ("Millionea · Week 49") and lists each paid serial as its own fact; ⚠️ its amount
+    is one unbroken run at every width, fitted to its box by container units, never wrapped — for EVERY caller of
+    `WinCelebration`, the platform's market win included (the one classic-visible change of this item: a caller that
+    passes no eyebrow, heading or facts keeps its own words and layout, and only its amount no longer wraps).
 
 ---
 

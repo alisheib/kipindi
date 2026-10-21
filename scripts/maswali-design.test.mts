@@ -81,6 +81,8 @@ const SLIP = "src/components/maswali/maswali-slip.tsx";
 const SLIP_CLIENT = "src/app/millionea/slip/slip-client.tsx";
 const TICKET = "src/components/maswali/maswali-ticket.tsx";
 const LEDGER = "src/components/maswali/maswali-win-ledger.tsx";
+/** The ONE Millionea ledger (S5-DESIGN-REGISTER's shared builder): since the round-2 adoption the win receipt's money rows. */
+const SHARED_LEDGER = "src/components/maswali/maswali-ledger.tsx";
 const CARD = "src/components/maswali/maswali-home-card.tsx";
 const HUB = "src/app/millionea/page.tsx";
 const TICKET_PAGE = "src/app/millionea/tickets/[serial]/page.tsx";
@@ -661,12 +663,15 @@ const factLineDefects = (m: string, n: number, joined: string) => {
     visit(tree);
     return found;
   };
-  const receiptDots = ledgerLiteralSeparators(read(LEDGER));
-  ok("4.A1e · the win receipt has no literal joined fact: its eyebrow, legal line and three narrow money-row labels draw separate facts",
+  // Since the round-2 adoption (S5-DESIGN-TICKETS) the receipt's money rows are the ONE ledger's (SHARED_LEDGER): the census
+  // reads the receipt's chrome and the ledger it draws, and the plant follows the top-up row to where it is built now (its
+  // label and its note are two facts there, `label` + `note` — the kit row's sentence label over its muted note).
+  const receiptDots = [LEDGER, SHARED_LEDGER].flatMap((f) => ledgerLiteralSeparators(read(f)).map((x) => `${f}:${x}`));
+  ok("4.A1e · the win receipt has no literal joined fact: its eyebrow, legal line and narrow money-row labels draw separate facts — its chrome and the one ledger it draws",
     receiptDots.length === 0, receiptDots.join(" | "));
-  const oldTopUp = read(LEDGER).replace('label={<MaswaliFacts facts={[t.millionea.topUp, t.millionea.topUpNote]} layout="phone" />}', 'label={`${t.millionea.topUp} · ${t.millionea.topUpNote}`}');
+  const oldTopUp = read(SHARED_LEDGER).replace('rows.push({ key: "topup", label: m.topUp, note: m.topUpNote, value: money(f.topUp) });', 'rows.push({ key: "topup", label: `${m.topUp} · ${m.topUpNote}`, value: money(f.topUp) });');
   ok("4.A1e′ PLANT · putting the old top-up template label back is reported",
-    oldTopUp !== read(LEDGER) && ledgerLiteralSeparators(oldTopUp).length > 0);
+    oldTopUp !== read(SHARED_LEDGER) && ledgerLiteralSeparators(oldTopUp).length > 0);
 }
 
 // P1 · the cut: the sheet leaves first, then the stamp
@@ -1025,9 +1030,12 @@ const listDefects = (page: string, ticketSrc: string, bar: string) => {
     zhDefects2(read(SLIP), read(SLIP_CLIENT)).length === 0, zhDefects2(read(SLIP), read(SLIP_CLIENT)).join(" | "));
   ok("4.A2′ PLANT · a confirm sheet without the class is reported", zhDefects2(read(SLIP).replace(' panelClassName="kp-mln-zh">', ">"), read(SLIP_CLIENT)).length > 0);
   const signDefects = (readAt: (rel: string) => string) => MLN_FILES.filter((f) => /formatTzs\(-|money\(-|fig\(-|`−\$\{formatTzs/.test(code(readAt(f))));
-  const signed = ["src/components/maswali/maswali-pool-figure.tsx", "src/app/millionea/how/page.tsx", LEDGER].map((f) => count(code(read(f)), "formatTzsSigned("));
-  ok("4.A4 · every negative figure on Millionea is the platform's signed money (\"−TZS 136,500\"): no hand-built sign, no `formatTzs` of a negative — the pool's two fee rows, How's fee row, the win ledger's fee and net",
-    signDefects(read).length === 0 && j(signed) === j([2, 1, 2]), j({ hand: signDefects(read), signed }));
+  // Re-pinned openly by S5-DESIGN-TICKETS' round-2 adoption: the win receipt's fee is the ONE ledger's fee row now
+  // (SHARED_LEDGER, the register's and the receipt's alike); the old receipt's "Your net" row went with the old ledger —
+  // it was never fed (`winLinesOf` never set `spent`), so nothing a player saw changed.
+  const signed = ["src/components/maswali/maswali-pool-figure.tsx", "src/app/millionea/how/page.tsx", SHARED_LEDGER, LEDGER].map((f) => count(code(read(f)), "formatTzsSigned("));
+  ok("4.A4 · every negative figure on Millionea is the platform's signed money (\"−TZS 136,500\"): no hand-built sign, no `formatTzs` of a negative — the pool's two fee rows, How's fee row, the one ledger's fee (the win receipt's)",
+    signDefects(read).length === 0 && j(signed) === j([2, 1, 1, 0]), j({ hand: signDefects(read), signed }));
   ok("4.A4′ PLANT · How's old fee row (`fig(-f.F)`, \"TZS -136,500\") is reported",
     signDefects(plantIn("src/app/millionea/how/page.tsx", "value={<span className=\"amount\">{formatTzsSigned(-f.F)}</span>}", "value={fig(-f.F)}")).includes("src/app/millionea/how/page.tsx"));
   // §D · the decided words, applied on these pages (en binding; sw and zh for Gate B's native review).
@@ -1219,15 +1227,18 @@ const iconDefects = (src: string) => {
     && hub.includes("const until = millioneaWeekPhase(w, nowMs).objectionsUntil;") && count(hub, "objectionsLine(t, locale, w, nowMs)") === 2
     && hub.includes("return millioneaWeekPhase(w, nowMs).kind === \"voiding\";") && !/WEEK_STATE_KEY\[w\.state\]/.test(hub)
     && page.includes("const phase = millioneaWeekPhase({ ...view.week, questions: view.questions }, nowMs);")
-    && page.includes("phaseWord={phase.kind === \"state\" ? undefined : weekPhaseWord(t, view.week.state, phase)}") && page.includes("objectionsUntil: phase.objectionsUntil ?? undefined,");
-  ok("5.P6c · every surface asks the one phase: the hub's eyebrow and grading block, its buy block's live line and its voiding pool, the ticket's week line and live line", wired);
+    // Re-pinned openly by S5-DESIGN-TICKETS' round-2 adoption: the ticket takes the PHASE itself and wears the week's one
+    // chip (`WeekStateChip`, the register's), whose word is the same `weekPhaseWord`/`weekChipWord` — not a word of its own.
+    && page.includes("phase={phase}") && page.includes("objectionsUntil: phase.objectionsUntil ?? undefined,")
+    && squash(code(read(TICKET))).includes("<WeekStateChip t={t} state={weekState} phase={phase ?? null} />");
+  ok("5.P6c · every surface asks the one phase: the hub's eyebrow and grading block, its buy block's live line and its voiding pool, the ticket's week chip and live line", wired);
   const { MaswaliTicket } = req("../src/components/maswali/maswali-ticket.tsx") as { MaswaliTicket: (p: Record<string, unknown>) => unknown };
   const pend = sealLineOf(week(Array(10).fill("YES"), Array(5).fill("YES")), PICKS);
   const tText = textOf(inApp("en", h(MaswaliTicket as never, { t: en, locale: "en", serverNow: at("2026-12-07T12:00:00.000Z"), serial: "MLN-2026-W49-000041", week: 49,
-    weekState: "RESOLVING", phaseWord: en.millionea.weekStatusCheck, shown: "running", clauses: [], line: pend, stub: { price: 1_000, boughtAt: "2026-12-01T08:13:00Z", questionSetHash: "7f3a…" },
+    weekState: "RESOLVING", phase: { kind: "objections", objectionsUntil: at(CLOSE) }, shown: "running", clauses: [], line: pend, stub: { price: 1_000, boughtAt: "2026-12-01T08:13:00Z", questionSetHash: "7f3a…" },
     live: { resultsIn: 15, reservesLeft: { valid: 5, of: 5 }, objectionsUntil: at(CLOSE) } } as never)));
-  ok("5.P6d · the ticket says it: \"Week 49 · Objection window\" over \"15 of 15 results in · … · Objection window until Tuesday 12:00\" — never \"Results coming in\"",
-    tText.includes("Week 49 · Objection window") && tText.includes("Objection window until Tuesday 12:00") && !tText.includes(en.millionea.weekStatusResolving), tText.slice(0, 200));
+  ok("5.P6d · the ticket says it: \"Week 49\" and its chip \"Objection window\" over \"15 of 15 results in · … · Objection window until Tuesday 12:00\" — never \"Results coming in\"",
+    tText.includes("Week 49Objection window") && tText.includes("Objection window until Tuesday 12:00") && !tText.includes(en.millionea.weekStatusResolving), tText.slice(0, 200));
   const oldEyebrow = read(HUB).replace("return `${weekWord(t, weekNumberOf(w.code))} · ${weekPhaseWord(t, w.state, millioneaWeekPhase(w, nowMs))}`;", "return `${weekWord(t, weekNumberOf(w.code))} · ${t.millionea.weekStatusResolving}`;");
   const blind = (w: Record<string, unknown>, now: number) => ({ kind: "state", objectionsUntil: null as number | null, w, now });
   ok("5.P6′ PLANT · the old eyebrow (the state's word over a week whose results are in) and a phase that ignores the window are each reported",
