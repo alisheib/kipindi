@@ -192,7 +192,10 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
                     {r.outcome
                       ? <span>{r.outcome}{r.voidReason ? ` · ${isMaswaliVoidReason(r.voidReason) ? MASWALI_VOID_REASON_LABEL[r.voidReason] : r.voidReason}` : ""}<span className="block text-body-sm text-text-tertiary">{r.sealedAt}{r.awaitingSecond ? " · awaits a second officer" : ""}</span></span>
                       : can.seal && mayAct
-                        ? <Select size="md" className="min-w-[100px]" value={p.outcome} onChange={(v) => setPicks((s) => ({ ...s, [r.slot]: { ...p, outcome: v } }))} ariaLabel={`${r.label} result`}
+                        /* One readable line (admin drive 6.1c): at md the trigger's own chrome takes ~56px, so a column squeezed
+                           to its 100px floor — once "Confirm as second officer" widens the act column — wrapped "Not yet". The
+                           three labels are short and fixed: nowrap sizes the trigger to its label instead (the table scrolls). */
+                        ? <Select size="md" className="min-w-[100px] whitespace-nowrap" value={p.outcome} onChange={(v) => setPicks((s) => ({ ...s, [r.slot]: { ...p, outcome: v } }))} ariaLabel={`${r.label} result`}
                             options={[{ value: "", label: "Not yet" }, { value: "YES", label: "YES" }, { value: "NO", label: "NO" }]} />
                         : "—"}
                   </td>

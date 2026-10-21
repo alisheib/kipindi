@@ -53,7 +53,7 @@ function evidenceNamed(source: string) {
 }
 function pendingResultReadable(source: string, kit = selectKit) {
   const s = seal(source);
-  return s.includes('<Select size="md" className="min-w-[100px]" value={p.outcome}')
+  return s.includes('<Select size="md" className="min-w-[100px] whitespace-nowrap" value={p.outcome}')
     && kit.includes('const h = size === "xs" ? "min-h-[32px]" : size === "sm" ? "min-h-[36px]" : "min-h-[44px]";')
     && s.includes('ariaLabel={`${r.label} result`}')
     && s.includes('<Button size="sm" variant="ghost" onClick={() => { setVoidRow(r)')
@@ -116,10 +116,14 @@ if (process.argv.includes("--prove-red")) {
   const nameless = controls.replace('aria-label={`${r.label} seal evidence`}', "");
   if (nameless === controls) throw new Error("Seal evidence name plant target missing");
   ok("red: nameless evidence cannot identify its row to an officer", !evidenceNamed(nameless));
-  const narrowResult = controls.replace('<Select size="md" className="min-w-[100px]" value={p.outcome}', '<Select size="md" value={p.outcome}');
+  const narrowResult = controls.replace('<Select size="md" className="min-w-[100px] whitespace-nowrap" value={p.outcome}', '<Select size="md" value={p.outcome}');
   if (narrowResult === controls) throw new Error("Pending-result width plant target missing");
   ok("red: removing the pending-result width permits vertical wrapping", !pendingResultReadable(narrowResult));
-  const shortResult = controls.replace('<Select size="md" className="min-w-[100px]" value={p.outcome}', '<Select size="xs" className="min-w-[100px]" value={p.outcome}');
+  // S5-FIX-SRV · the drive's 6.1c measured "Not yet" on two lines at md with the 100px floor alone: the floor is not enough.
+  const wrappingResult = controls.replace('<Select size="md" className="min-w-[100px] whitespace-nowrap" value={p.outcome}', '<Select size="md" className="min-w-[100px]" value={p.outcome}');
+  if (wrappingResult === controls) throw new Error("Pending-result one-line plant target missing");
+  ok("red: a pending result allowed to wrap in a squeezed column is reported", !pendingResultReadable(wrappingResult));
+  const shortResult = controls.replace('<Select size="md" className="min-w-[100px] whitespace-nowrap" value={p.outcome}', '<Select size="xs" className="min-w-[100px] whitespace-nowrap" value={p.outcome}');
   if (shortResult === controls) throw new Error("Pending-result height plant target missing");
   ok("red: removing the pending-result height permits a 32px tap target", !pendingResultReadable(shortResult));
   const shortKit = selectKit.replace(': "min-h-[44px]";', ': "min-h-[36px]";');
