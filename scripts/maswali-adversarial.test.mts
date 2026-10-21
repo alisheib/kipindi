@@ -38,13 +38,15 @@
  * 190 on memory, 198 on Postgres.
  * ⭐ Rounds 4–6 merged into mln-sf (2026-10-19): the merged tree's green runs printed 194 on memory and 202 on Postgres
  * (at 3f6af84e1, and again at 76a8d4780 after S7-F7 2 made PL.4 record a throw as its own failure) — raised to them.
+ * ⭐ S7-F8 9 (2026-10-21, S5-FIX-SRV's finding 2 in the re-freeze and the stop): DL.7, SU.5a and SU.6a on each store and
+ * DL.6 on Postgres: 197 on memory, 206 on Postgres, what this commit's tree printed.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({
   suite: "test:maswali-adversarial",
   casesFile: "scripts/lib/maswali-adversarial-child.mts",
-  minPass: { memory: 194, postgres: 202 },
+  minPass: { memory: 197, postgres: 206 },
   dbPrefix: "mlw_adv",
   timeoutMs: 45 * 60_000,
 });

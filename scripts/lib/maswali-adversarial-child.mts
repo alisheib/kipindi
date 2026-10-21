@@ -59,7 +59,25 @@ const objections = await import("../../src/lib/server/objections-service.ts");
 const sources = await import("../../src/lib/server/source-registry.ts");
 const holidays = await import("../../src/lib/server/maswali-holidays.ts");
 const { formatTzs } = await import("../../src/lib/utils.ts");
-const { getAuditForTargetDurable, auditFlush } = await import("../../src/lib/server/audit.ts");
+const { getAuditForTargetDurable, auditFlush, audit } = await import("../../src/lib/server/audit.ts");
+const { inLock } = await import("../../src/lib/server/locks.ts");
+/**
+ * S7-F8 · finding 2's writer, spied (as S5-FIX-SRV's engine suite spies it): every owed audit row an act writes, and
+ * whether a lock was held when it was written. On PostgreSQL a row owed to an act is written only after its lock's
+ * transaction committed (`afterCommit` runs what it queued once the outermost lock has resolved), so it is written under
+ * NO lock; the memory store has no transaction, so there it is only counted — through the writer, never past it.
+ */
+type OwedRow = { action: string; targetId: string | null; underLock: boolean };
+async function owedRows<T>(act: () => Promise<T>): Promise<{ result: T; rows: OwedRow[] }> {
+  const rows: OwedRow[] = [];
+  W.svc.__setMaswaliAuditWriterForTests(async (row: any) => { rows.push({ action: row.action, targetId: row.targetId ?? null, underLock: inLock() }); return audit(row); });
+  try { return { result: await act(), rows }; } finally { W.svc.__setMaswaliAuditWriterForTests(null); }
+}
+/** One `action` row for `targetId`, through the owed writer — on PostgreSQL only once its act's transaction had committed. */
+const owedOnceAfterCommit = (rows: OwedRow[], action: string, targetId: string) => {
+  const mine = rows.filter((r) => r.action === action && r.targetId === targetId);
+  return mine.length === 1 && (STORE !== "postgres" || !mine[0].underLock);
+};
 const { trialBalance } = await import("../../src/lib/server/ledger.ts");
 const { setRequireTwoOfficerResolution } = await import("../../src/lib/server/resolution-policy.ts");
 const { houseBotEligibility } = await import("../../src/lib/server/house-bot/eligibility.ts");
@@ -1329,8 +1347,30 @@ if (runs("DL")) {
   const edit = await cfgMod.saveMaswaliConfig({ voidDeadlineHours: 24, finalDeadlineWeekday: 2, finalDeadlineAt: "12:00" }, OWNER);
   if (!edit.ok) throw new Error(`DL: the rules could not be edited: ${edit.error}`);
   let o2: any;
+  let refreezeRows: OwedRow[] = [];
   try {
-    o2 = await opened(d2, s2);
+    if (W.onPostgres) {
+      // ⭐ S7-F8 (finding 2's class, in the re-freeze) · the fault fires as the re-freeze's own write returns: the moved
+      //    deadlines are written on the lock's transaction, and nothing after them has run. The open must roll back whole.
+      const realEdit = dal.questionStore.editDraftQuestions;
+      let wrote = false;
+      dal.questionStore.editDraftQuestions = async (...args: any[]) => {
+        await realEdit.apply(dal.questionStore, args);
+        wrote = true;
+        throw new Error("injected fault: the connection dropped after the re-freeze");
+      };
+      let thrown = "";
+      try { await W.svc.openWeek({ weekId: d2.id, officerId: DRAFTER, guarantee: money.guaranteeReader, now: new Date(s2 + MIN) }); }
+      catch (e) { thrown = String((e as Error)?.message ?? e); } finally { dal.questionStore.editDraftQuestions = realEdit; }
+      const still = await dal.weekStore.get(d2.id);
+      ok("DL.6 · ⭐ (Postgres) a fault after the re-freeze's write rolls the open back whole: the week a draft with no market, every void deadline as drafted, and no re-freeze row",
+        wrote && thrown.includes("injected fault") && still.state === "DRAFT" && still.marketId === null && J(await voidsOf(d2.id)) === J(drafted2)
+          && (await weekAudit(d2.id, "maswali.week.deadlines_refrozen", 5)).length === 0,
+        J({ wrote, thrown, state: still.state, marketId: still.marketId, voids: (await voidsOf(d2.id)).slice(0, 2), drafted: drafted2.slice(0, 2) }));
+    }
+    const spied = await owedRows(() => opened(d2, s2));
+    o2 = spied.result;
+    refreezeRows = spied.rows;
   } finally {
     const back = await cfgMod.saveMaswaliConfig({ voidDeadlineHours: rules0.voidDeadlineHours, finalDeadlineWeekday: rules0.finalDeadlineWeekday, finalDeadlineAt: rules0.finalDeadlineAt }, OWNER);
     if (!back.ok) throw new Error(`DL: the rules could not be put back: ${back.error}`);
@@ -1351,6 +1391,8 @@ if (runs("DL")) {
   ok("DL.5 · the re-freeze is audited, naming what moved: the final deadline and all fifteen void deadlines",
     refrozen.length === 1 && refrozen[0].payload?.finalDeadlineAt?.to === o2.finalDeadlineAt && refrozen[0].payload?.voidDeadlines?.length === 15,
     J(refrozen.map((e: any) => ({ final: e.payload?.finalDeadlineAt, voids: e.payload?.voidDeadlines?.length }))));
+  ok("DL.7 · ⭐ S7-F8 · the re-freeze's row is owed: written once, through finding 2's writer — on PostgreSQL only after the open committed",
+    owedOnceAfterCommit(refreezeRows, "maswali.week.deadlines_refrozen", o2.id), J(refreezeRows));
   await closed(o2.id);
   await sealRest(o2.id, s2, ALL_VOID);
   await voided(o2.id);
@@ -1626,9 +1668,11 @@ if (runs("SU")) {
   ok("SU.4 · ⛔ a later draft inside its week of notice is still refused: only the next week to open may be made final at shorter notice (OD-03)",
     Date.parse(C.opensAt) - midB.getTime() < 7 * DAY && !laterDraft.ok && /full week ahead/.test(errOf(laterDraft)) && errOf(laterDraft).includes(B.code) && !(await isFinal(C.id)),
     errOf(laterDraft));
-  const nextDraft = await stop(B.id, midB);
+  const { result: nextDraft, rows: orderRows } = await owedRows(() => stop(B.id, midB));
   ok("SU.5 · ⭐ …and after the refusals the next week to open is made final inside its week: the Owner's stop takes effect from it",
     nextDraft.ok && nextDraft.week.isFinal === true && (await W.svc.sunsetState()).kind === "ENDING", errOf(nextDraft));
+  ok("SU.5a · ⭐ S7-F8 · the Owner's order is owed: its row written once, through finding 2's writer — on PostgreSQL only after the mark committed",
+    owedOnceAfterCommit(orderRows, "maswali.sunset.ordered", B.id), J(orderRows));
   const ordered = await weekAudit(B.id, "maswali.sunset.ordered");
   ok("SU.5b · …recorded as a compliance row naming its basis: the next week, after a close", ordered.length === 1 && ordered[0].payload?.basis === "NEXT_AFTER_CLOSE",
     J(ordered.map((e: any) => e.payload)));
@@ -1642,8 +1686,10 @@ if (runs("SU")) {
   await dal.weekStore.patch(B.id, { isFinal: false });
   const onSale = await W.svc.openWeek({ weekId: B.id, officerId: DRAFTER, guarantee: money.guaranteeReader, now: new Date(midB.getTime() + MIN) });
   if (!onSale.ok) throw new Error(`SU: week B did not open: ${onSale.error}`);
-  const atOnce = await stop(B.id, new Date(midB.getTime() + 2 * MIN));
+  const { result: atOnce, rows: openOrderRows } = await owedRows(() => stop(B.id, new Date(midB.getTime() + 2 * MIN)));
   ok("SU.6 · control: the week ON SALE, no result known, is made final at once", atOnce.ok && atOnce.week.isFinal === true && atOnce.week.state === "OPEN", errOf(atOnce));
+  ok("SU.6a · ⭐ S7-F8 · …marked under its market's lock, and its order still owed: written once, through the writer — on PostgreSQL after the commit",
+    owedOnceAfterCommit(openOrderRows, "maswali.sunset.ordered", B.id), J(openOrderRows));
   // The books close behind the cases: both weeks sold nothing and void whole, so the line's jackpot is untouched.
   await sealRest(A.id, sA, ALL_VOID);
   await voided(A.id);

@@ -18,7 +18,7 @@
  */
 import { audit } from "./audit";
 import { randomId } from "./crypto";
-import { withLock } from "./locks";
+import { afterCommit, withLock } from "./locks";
 import { buyPosition, createMarket, isFencedMaswali } from "./market-service";
 import { dbNowMs, landedMaswaliAnswer } from "./maswali-money-service";
 import { refundVoidedWeek } from "./maswali-void";
@@ -318,7 +318,7 @@ export async function openWeek(input: { weekId: string; officerId: string; guara
   if (!fresh.ok) return refuse(`The Millionea rules could not be read, so nothing was opened: ${fresh.error}`);
   if (!licence.ok) return refuse("The licence record could not be read, so nothing was opened.");
   if (!licenceBasisAllowsOpen(licence.basis)) return refuse(NO_LICENCE_BASIS);
-  return withLock(MASWALI_CHAIN_LOCK, async () => {
+  return withLock(MASWALI_CHAIN_LOCK, async (lockTx) => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
     if (week.state !== "DRAFT") return refuse(`Week ${week.code} is already ${week.state}.`);
@@ -361,15 +361,19 @@ export async function openWeek(input: { weekId: string; officerId: string; guara
     })));
     // The draft's rows take the deadlines the commitment covers before the market exists — each moved void deadline here
     // (the week is still DRAFT, under the chain lock), the final deadline in the open's one claim — audited when one moved.
+    // S7-F8 · the moved deadlines take the chain lock's transaction (they land with the open or not at all), and the row
+    // that records them is owed, written once that transaction has committed (finding 2's writer).
     const movedVoids = questions.filter((q, i) => q.voidDeadlineAt !== drafted[i].voidDeadlineAt);
-    for (const q of movedVoids) await questionStore.editDraftQuestion(q.id, { voidDeadlineAt: q.voidDeadlineAt });
+    if (movedVoids.length > 0) {
+      await questionStore.editDraftQuestions(movedVoids.map((q) => ({ id: q.id, fields: { voidDeadlineAt: q.voidDeadlineAt } })), lockTx ?? undefined);
+    }
     const finalMoved = due.finalDeadlineAt !== week.finalDeadlineAt;
     if (finalMoved || movedVoids.length > 0) {
-      audit({ category: "ADMIN", action: "maswali.week.deadlines_refrozen", actorId: input.officerId, targetType: "MaswaliCycle", targetId: week.id,
+      afterCommit(lockTx, () => void recordOwed([{ category: "ADMIN", action: "maswali.week.deadlines_refrozen", actorId: input.officerId, targetType: "MaswaliCycle", targetId: week.id,
         payload: {
           code: week.code, finalDeadlineAt: finalMoved ? { from: week.finalDeadlineAt, to: due.finalDeadlineAt } : null,
           voidDeadlines: movedVoids.map((q) => ({ slot: q.slot, from: drafted.find((d) => d.id === q.id)?.voidDeadlineAt ?? null, to: q.voidDeadlineAt })),
-        } });
+        } }]));
     }
     const market = await createMarket({
       titleEn: `Maswali Millionea · ${week.code}`, titleSw: `Maswali Millionea · ${week.code}`, titleZh: `Maswali Millionea · ${week.code}`,
@@ -619,6 +623,28 @@ export function objectionWindowEnd(openedMs: number, hours: number, notBefore: s
   const eat = new Date(end + EAT_OFFSET_MS);
   const floorMs = Date.UTC(eat.getUTCFullYear(), eat.getUTCMonth(), eat.getUTCDate(), h, m) - EAT_OFFSET_MS;
   return Math.max(end, floorMs);
+}
+
+/**
+ * S7-F8 · FINDING 2's WRITER (S5-FIX-SRV's, byte for byte, so the S5 merge keeps one copy): an act's audit rows are OWED,
+ * not written, under the chain lock — `recordOwed` writes them once the lock has committed (`afterCommit`), so no row
+ * ever describes a write that rolled back.
+ */
+type OwedAudit = Parameters<typeof audit>[0];
+let owedAuditWriter: (row: OwedAudit) => Promise<{ recorded: boolean }> = audit;
+/** ⚠️ TEST SEAM ONLY: the writer `recordOwed` uses (null restores `audit`). */
+export function __setMaswaliAuditWriterForTests(writer: ((row: OwedAudit) => Promise<{ recorded: boolean }>) | null): void {
+  owedAuditWriter = writer ?? audit;
+}
+
+/** Write the rows an act owes, in order, after its lock committed. True only when every one was recorded; never throws. */
+async function recordOwed(rows: readonly OwedAudit[]): Promise<boolean> {
+  let all = true;
+  for (const row of rows) {
+    const r = await owedAuditWriter(row).catch(() => ({ recorded: false }));
+    if (!r.recorded) all = false;
+  }
+  return all;
 }
 
 /**
@@ -1013,8 +1039,9 @@ export async function sunsetMaswali(input: { weekId: string; ownerId: string; ty
     const markFinal = async (tx?: Parameters<typeof weekStore.patch>[2] | null) => { await weekStore.patch(week.id, { isFinal: true }, tx ?? undefined); };
     if (week.state === "OPEN" && week.marketId) await withLock(`market:${week.marketId}`, markFinal);
     else await markFinal(lockTx);
-    audit({ category: "COMPLIANCE", action: "maswali.sunset.ordered", actorId: input.ownerId, targetType: "MaswaliCycle", targetId: week.id,
-      payload: { code: week.code, state: week.state, reason, basis } });
+    // S7-F8 · the Owner's order is owed: written once the mark has committed (finding 2's writer), never for a rolled-back one.
+    afterCommit(lockTx, () => void recordOwed([{ category: "COMPLIANCE", action: "maswali.sunset.ordered", actorId: input.ownerId, targetType: "MaswaliCycle", targetId: week.id,
+      payload: { code: week.code, state: week.state, reason, basis } }]));
     return { ok: true, week: { ...week, isFinal: true } };
   });
 }

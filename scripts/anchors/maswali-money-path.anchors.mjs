@@ -505,6 +505,24 @@ export const MUTATIONS = [
     expect: "DL.1 · ⭐",
     suite: "adversarial:DL",
   },
+  // S7-F8 (2026-10-21; the S5-FIX-SRV map, finding 2) · each puts an owed row back INSIDE the chain lock, written at once and
+  // past finding 2's writer — on PostgreSQL before the commit it describes (the open's re-freeze; the Owner's stop).
+  {
+    name: "(S7-F8-refreeze-owed) the re-freeze's row is written inside the lock, before the open commits",
+    file: SVC,
+    from: `      afterCommit(lockTx, () => void recordOwed([{ category: "ADMIN", action: "maswali.week.deadlines_refrozen",`,
+    to: `      void audit(Object.assign({}, ...[{ category: "ADMIN", action: "maswali.week.deadlines_refrozen",`,
+    expect: "DL.7 · ⭐",
+    suite: "adversarial:DL",
+  },
+  {
+    name: "(S7-F8-sunset-owed) the Owner's stop is recorded inside the lock, before its mark commits",
+    file: SVC,
+    from: `    afterCommit(lockTx, () => void recordOwed([{ category: "COMPLIANCE", action: "maswali.sunset.ordered",`,
+    to: `    void audit(Object.assign({}, ...[{ category: "COMPLIANCE", action: "maswali.sunset.ordered",`,
+    expect: "SU.5a · ⭐",
+    suite: "adversarial:SU",
+  },
   /* ── MASWALI-BUILD S7-F2 · the second review's follow-ups (L1, L5, L6 and the sunset's next act), one plant each, caught on
      the plant's own section. ── */
   {
