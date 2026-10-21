@@ -667,9 +667,9 @@ export default async function UpDownRoundPage({
             ) : decided && !round.settled && pendingItems.length > 0 ? (
               <section aria-label={t.market.udYourPick} className="ticket-scope" style={{ ...card, padding: "14px 16px 16px" }}>
                 {myPosition?.ids.map((pid) => (
-                  <span key={pid} id={pid} className="ticket-anchor block scroll-mt-24" aria-hidden="true" />
+                  <span key={pid} id={pid} className="ticket-anchor block scroll-mt-[96px]" aria-hidden="true" />
                 ))}
-                <div className="flex items-center justify-between gap-2.5">
+                <div className="flex items-center justify-between gap-[10px]">
                   <p className={eyebrow}>{t.market.udYourPick}</p>
                   <Chip variant="neutral">{t.market.udSettlementPending}</Chip>
                 </div>

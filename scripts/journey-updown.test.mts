@@ -398,10 +398,13 @@ console.log("\n§6 · the U43 classic source snapshot keeps every intentional bo
   // The 2026-10-14 subsequence baseline was superseded by U43's board, round and
   // card rewrite. Each normalized source is pinned independently in this same
   // release; §6.2 and §6.3 still verify the Journey/classic behavior split.
+  // 2026-10-21 · u43-hc · ROUND and CARD re-pinned for one deliberate change and nothing else: four stock spacing keys
+  // (the pending panel's scroll-mt-24 and gap-2.5, the card's two notes' mt-2.5) became their same-pixel literals
+  // (scroll-mt-[96px], gap-[10px], mt-[10px]) for test:spacing-scale — no other byte of either file moved.
   const U43_CLASSIC = [
     [BOARD, "bbcd4f2a043e1a71287b5950ac3a89ac6ae3a753a04a5029e7e1c6f46284b1fb", "export default async function UpDownPage({"],
-    [ROUND, "648f0bd75ec2a8d2dbaaa7a6327a744bbc32489c34ab88812020a83c9c60ee54", "export default async function UpDownRoundPage({"],
-    [CARD, "9677deadf2a1f9f1cb414ec2f2f8cb06db7620f30c44391bee4444ee13fe2db7", "export function UpDownCard(props: UpDownCardProps) {"],
+    [ROUND, "05d8ef79865916bb2c27f3e65db8d1dc58b9e10c5cfc84440bbdc27acc2eef79", "export default async function UpDownRoundPage({"],
+    [CARD, "602356816a54a0e5a6bd35947e53c1b0270973585c9ff0336c2cb15b416b618a", "export function UpDownCard(props: UpDownCardProps) {"],
     [PANEL, "12f2607f1a08a7c737549daefe9b2da644710fcd9dbffc455a5b8355fc3391bb", "export function RoundStakePanel(props: {"],
     [ACTION, "f8f075998d9f448634dbae66d1f8906630facda10993cc0a14d1aaa962f9bf72", "export function RoundActionPanel(props: {"],
   ] as const;

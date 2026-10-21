@@ -1066,12 +1066,12 @@ export function UpDownCard(props: UpDownCardProps) {
         )}
 
         {settledNow && !settled && (
-          <p role="status" className="mt-2.5 mb-0 text-body-sm leading-[1.45] text-text-muted">
+          <p role="status" className="mt-[10px] mb-0 text-body-sm leading-[1.45] text-text-muted">
             {t.market.udPaymentPending}
           </p>
         )}
         {correctionKind && (
-          <p className="mt-2.5 mb-0 text-body-sm leading-[1.45] text-text-muted">
+          <p className="mt-[10px] mb-0 text-body-sm leading-[1.45] text-text-muted">
             {correctionKind === "objection" ? t.market.resCorrectedOnObjection
               : correctionKind === "operator" ? t.market.udOfficerCancelledAfterPrice
               : t.market.udVerdictChanged}
