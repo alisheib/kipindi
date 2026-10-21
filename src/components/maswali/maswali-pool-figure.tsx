@@ -66,8 +66,8 @@ const DASH = "—";
  * value says so in words ("Not yet settled") — it once read "Carried in (Week 47) · Week 47 not yet settled — –"; and
  * before a payout the fee row's value is the rate and when it is taken ("13% at payout") — its dash read as "no fee"
  * under the rule's "13% fee at payout". A fee taken is the platform's signed figure ("−TZS 136,500", A4).
- * ⭐ S5-DESIGN-HUB L15: a refund row states its figure — the week's sales, what the refunds return in all — never a dash
- * beside a sentence that names an amount ("If the void stands, every ticket is refunded TZS 1,000 … —").
+ * ⭐ S5-DESIGN-HUB L15: a refund that has not landed is a sentence that names its amount and stands alone — no figure
+ * beside it (H1) and no dash ("If the void stands, every ticket is refunded TZS 1,000 … —" read as a missing figure).
  */
 export function poolLedgerRows(t: Dict, view: PoolView, pct: number, carry?: { from: string; play: boolean }): PoolLedgerRow[] {
   const v = view;
@@ -121,13 +121,14 @@ export function poolLedgerRows(t: Dict, view: PoolView, pct: number, carry?: { f
         break;
       case "voiding":
         rows.push({ key: "jackpot", label: t.millionea.jackpot, value: DASH, ink: "muted" });
-        // L15 · what the refunds would return in all: every ticket's price, i.e. the week's sales — conditional, so muted.
-        rows.push({ key: "refund", label: fill(t.millionea.refundEachIfVoid, { price: money(v.price) }), value: money(v.sales.amount), ink: "muted" });
+        // L15 · a sentence that names its amount stands alone — no figure beside it (H1: nothing is refunded yet), and no
+        // dash either, which read as a missing figure beside "TZS 1,000".
+        rows.push({ key: "refund", label: fill(t.millionea.refundEachIfVoid, { price: money(v.price) }), value: null, ink: "muted", words: true });
         break;
       case "voided":
         rows.push(v.refundLanded
           ? { key: "refund", label: fill(t.millionea.refundEach, { price: money(v.price) }), value: money(v.refunded) }
-          : { key: "refund", label: fill(t.millionea.refundEachPending, { price: money(v.price) }), value: money(v.sales.amount), ink: "muted" });
+          : { key: "refund", label: fill(t.millionea.refundEachPending, { price: money(v.price) }), value: null, ink: "muted", words: true });
         rows.push({ key: "again", label: `${t.millionea.carriedForwardAgain} · ${fill(t.millionea.week, { week: v.carriedForward.week })}`, value: money(v.carriedForward.amount), weight: "bold" });
         break;
       case "sunset":
@@ -273,8 +274,9 @@ export function MaswaliPoolLedger({ t, locale, view, pct, carry, ticked, classNa
   );
 }
 
-/** "Wiki 41 · hakuna 10/10 · TZS 389,000 imehamishwa · ada 0" — last week as one closed ledger row (the hub, §3.3),
- *  its facts a fact line (A1); `id` marks the carried figure when a page carries from it. */
+/** "Wiki 41 · hakuna 10/10 · TZS 389,000 imehamishwa · ada 0" — last week's words as one closed ledger row (the hub, §3.3),
+ *  its facts a fact line (A1), the carried figure in the money face; `id` marks that figure when a page carries from it.
+ *  The words alone: the hub's row is the door's own box (S5-DESIGN-HUB, P16's tap floor and end mark). */
 export function MaswaliLastWeek({ t, locale, week, carried, id, className }: {
   t: Dict;
   locale: Locale;
@@ -296,9 +298,5 @@ export function MaswaliLastWeek({ t, locale, week, carried, id, className }: {
       </span>
     );
   };
-  return (
-    <p className={cn("mat-inset rounded-control px-3 py-2 text-body-sm text-text-muted", className)}>
-      <MaswaliFacts facts={factsOf(t.millionea.lastWeekRolled).map(fact)} />
-    </p>
-  );
+  return <MaswaliFacts className={className} facts={factsOf(t.millionea.lastWeekRolled).map(fact)} />;
 }

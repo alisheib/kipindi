@@ -4742,6 +4742,13 @@ html[data-sheet-open] .route-enter { animation: none; }
 }
 /* A stacked list centred (the cut ticket's stamp): a stacked list draws no mark, so its lines may stand in the middle. */
 .kp-mln-facts--center { align-items: center; text-align: center; }
+/* MASWALI-BUILD S5-DESIGN-HUB L1 (Ali 2026-10-21 10/10 pass) · A FACT LINE IN THE NUMERALS' MONO KEEPS A TYPED " · "'S
+   SPACING: its gap is the face's three characters (space, dot, space) — and in a tracked eyebrow their 0.14em tracking
+   too (3 × 0.14em) — so a mono label's separator reads as the page head's " · " beside it (it read 5px a side against
+   the head's 13px). Chinese eyebrows run untracked (the A3 rule below), so theirs is the three characters alone. */
+.font-mono .kp-mln-facts, .kp-mln-facts.font-mono { --mln-sep: 3ch; }
+.eyebrow .kp-mln-facts, .kp-mln-facts.eyebrow { --mln-sep: calc(3ch + 0.42em); }
+.kp-mln-zh:lang(zh) .eyebrow .kp-mln-facts { --mln-sep: 3ch; }
 /* MASWALI-BUILD S5 · VIS-P P10 · A SOCKET AT REST: a reserve the week did not need, a socket of a voided week, every socket
    of a cancelled or refunded ticket — the open ring at the disabled control's own opacity, so it never reads as the live
    "awaiting" ring beside it (`maswali-seal-line.tsx`, `SocketGlyph`). */

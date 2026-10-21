@@ -77,9 +77,17 @@ export function MaswaliWeekStrip({ t, phases, current, className }: {
               now ? "md:border-brand-400" : "md:border-border-strong",
             )}
           >
-            <span aria-hidden className={cn("relative -top-px h-1.5 w-1.5 shrink-0 rounded-full md:hidden", now ? "bg-brand-400" : "bg-border-strong")} />
+            {/* ⭐ S5-DESIGN-HUB L18 (§A4: never colour alone) · the phase the week is in is a FILLED dot, every other one a
+                hollow ring — a shape as well as an ink — at every width (the rule over each column from 768 is the ink's). */}
+            <span
+              aria-hidden
+              className={cn("relative -top-px h-1.5 w-1.5 shrink-0 rounded-full", now ? "bg-brand-400" : "border border-border-strong")}
+              data-phase-mark={now ? "now" : "other"}
+            />
             <span className={cn("min-w-0 text-body-sm", now ? "text-text" : "text-text-muted")}>
-              <MaswaliFacts layout="stack" facts={[<span key="label" className="font-medium">{row.label}</span>, <span key="range">{row.range}</span>]} />
+              {/* L2 (§T5: every numeral is mono, times in a sentence too) · the range in the numerals' mono, as the hub's close
+                  and each event's time are set — the label stays the body's. */}
+              <MaswaliFacts layout="stack" facts={[<span key="label" className="font-medium">{row.label}</span>, <span key="range" className="font-mono tabular-nums">{row.range}</span>]} />
             </span>
           </li>
         );

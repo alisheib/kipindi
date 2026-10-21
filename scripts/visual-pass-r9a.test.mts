@@ -597,7 +597,10 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/components/maswali/maswali-ticket.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle" />', 1, "row", "a held Millionea ticket's row end in the hub's buy block (MASWALI-BUILD S5)"],
     // MASWALI-BUILD S5 pages (2026-10-18): Millionea's text links end on their words' stroke; its two list rows end on their edge.
     ['src/components/maswali/maswali-ticket.tsx', '<I.chevronRight s={14} edge="end" text="body-400" className="shrink-0" />', 1, "text", "a ticket row's 'view the ticket' link: its end after the 13px body/400 words"],
-    ['src/app/millionea/hub-notices.tsx', '<I.chevronRight s={14} edge="end" text="body-400" />', 1, "text", "a hub notice's door: a text link's end after its body/400 words"],
+    // MASWALI-BUILD S5-DESIGN-HUB (2026-10-21): a hub notice's door is the kit NoticeBar's own action now (no mark); the hub
+    // draws last week's row end on its edge (P16) and "See all n tickets" ends on its words' stroke (M8).
+    ['src/app/millionea/page.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle" />', 1, "row", "the hub's last-week row end: the register's own row end (P16)"],
+    ['src/app/millionea/page.tsx', '<I.chevronRight s={14} edge="end" text="body-400" />', 1, "text", "the hub's \"See all n tickets\" link: its end after the 13px body/400 words (M8)"],
     ['src/app/millionea/millionea-parts.tsx', '<I.chevronRight s={14} edge="end" text="body-400" />', 1, "text", "the reading links' end (how it works, the register, fairness), one mark per link"],
     ['src/app/millionea/register/[week]/page.tsx', '<I.chevronRight s={14} edge="end" text="body-400" />', 1, "text", "the register's audit-chain link's end"],
     ['src/app/millionea/register/page.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle" />', 1, "row", "a week's row end in the register's list"],
