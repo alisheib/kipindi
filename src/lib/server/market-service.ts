@@ -3948,7 +3948,9 @@ export async function settleMarket(
 ): Promise<ServiceResult<{ winnersPaid: number; positionsSettled: number }>> {
   // A settlement's money, terminal stamp and outward claims must agree. Queue
   // every outcome's notices, audit, history and proposal work until commit.
-  const committedSettlementEffects: Array<() => void> = [];
+  // An effect may return a promise: the proposer's prize and the watchers' alert
+  // are awaited after commit, as they were awaited before the queue existed.
+  const committedSettlementEffects: Array<() => void | Promise<unknown>> = [];
   const refundedUserIds = new Set<string>();
   // Referral commission — a share of the fee we ACTUALLY KEPT. Applied after
   // the market lock releases, because it takes the REFERRER's wallet lock.
@@ -4026,7 +4028,7 @@ export async function settleMarket(
   const restoreMemory = !lockTx
     ? snapshotEmergencyMemoryRows(m.id, holderIds)
     : null;
-  const queueSettlementEffect = (fn: () => void) => {
+  const queueSettlementEffect = (fn: () => void | Promise<unknown>) => {
     afterCommit(lockTx, () => { committedSettlementEffects.push(fn); });
   };
   try {
@@ -4259,9 +4261,9 @@ export async function settleMarket(
         reason: "One-sided win — all bets on same side, full refund issued at 0% fee",
       },
     }); });
-    queueSettlementEffect(() => { void import("./proposals-service")
+    queueSettlementEffect(() => import("./proposals-service")
       .then(({ onMarketResolved }) => onMarketResolved(m.id, { voided: false }))
-      .catch(() => {}); });
+      .catch(() => { /* proposal prize must never break settlement */ }));
     await persistResolution(); // all one-sided refunds done → now stamp settledAt
     queueSettlementEffect(() => { audit({
       category: "WALLET",
@@ -4668,20 +4670,20 @@ export async function settleMarket(
   // Feature 2 — if this market came from a player proposal, pay the proposer
   // their prize now that it is listed AND resolved. Best-effort; never blocks
   // settlement. VOID outcomes mark the proposal resolved without a prize.
-  queueSettlementEffect(() => { void import("./proposals-service")
+  queueSettlementEffect(() => import("./proposals-service")
     .then(({ onMarketResolved }) => onMarketResolved(m.id, { voided: opts.outcome === "VOID" }))
-    .catch(() => {}); });
+    .catch(() => { /* proposal prize must never break settlement */ }));
 
   await persistResolution(); // all winners paid / refunds issued → now flip status
 
   // F3 — tell WATCHERS the market they follow has settled. Bettors are EXCLUDED:
   // they already receive their own win/loss receipt (which carries the money), so
   // alerting them again would duplicate. Best-effort — never breaks settlement.
-  queueSettlementEffect(() => { void import("./watchlist-service")
+  queueSettlementEffect(() => import("./watchlist-service")
     .then(({ alertWatchersSettled }) => alertWatchersSettled(m.id,
       messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), opts.outcome,
       new Set(allMarketPositions.map((p) => p.userId))))
-    .catch(() => {}); });
+    .catch(() => { /* watcher alerts must never break settlement */ }));
 
   const settledAudit = () => audit({
     category: "WALLET",
@@ -4719,7 +4721,7 @@ export async function settleMarket(
       targetType: "Market", targetId: marketId, payload: { users: paidWallets.size + refundedUserIds.size, error: String(error) } });
   }
   if (result.ok) for (const effect of committedSettlementEffects) {
-    try { effect(); } catch { /* committed money cannot be undone by an outward effect */ }
+    try { await effect(); } catch { /* committed money cannot be undone by an outward effect */ }
   }
 
   // Referral commission, on the fee we ACTUALLY KEPT. Outside the market lock
