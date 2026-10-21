@@ -20,7 +20,7 @@ import { createHash } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { audit, getAuditForTargetDurable } from "./audit";
 import { randomId } from "./crypto";
-import { withLock } from "./locks";
+import { afterCommit, withLock } from "./locks";
 import { buyPosition, createMarket } from "./market-service";
 import { refundVoidedWeek } from "./maswali-void";
 import { invalidateMillioneaRegisterWeek } from "./maswali-register-cache";
@@ -458,7 +458,7 @@ export async function openWeek(input: { weekId: string; officerId: string; guara
   if (!fresh.ok) return refuse(`The Millionea rules could not be read, so nothing was opened: ${fresh.error}`);
   if (!licence.ok) return refuse("The licence record could not be read, so nothing was opened.");
   if (!licenceBasisAllowsOpen(licence.basis)) return refuse(NO_LICENCE_BASIS);
-  return withLock(MASWALI_CHAIN_LOCK, async () => {
+  return withLock(MASWALI_CHAIN_LOCK, async (lockTx): Promise<Result<{ week: StoredWeek }>> => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
     if (week.state !== "DRAFT") return refuse(`Week ${week.code} is already ${week.state}.`);
@@ -502,22 +502,34 @@ export async function openWeek(input: { weekId: string; officerId: string; guara
       productLine: "MASWALI",
       // The week freezes the jackpot model and its rate beside the global levies, and NO paid exit (MB-50).
       rateOverrides: { feeModel: "jackpot-payout", jackpotFeeRate: fresh.config.jackpotFeeRate, paidExitWindowMinutes: 0 },
-    });
-    const won = await weekStore.stampOpen(week.id, { marketId: market.id, rulesSnapshot: rules, questionSetHash: qHash, opensAt: new Date(nowMs).toISOString() });
-    if (!won) return refuse(`Week ${week.code} changed while it was being opened; nothing was opened. Refresh and try again.`);
+    }, lockTx ?? undefined);
+    const won = await weekStore.stampOpen(week.id, { marketId: market.id, rulesSnapshot: rules, questionSetHash: qHash, opensAt: new Date(nowMs).toISOString() }, lockTx ?? undefined);
+    // S5-FIX-SRV · the market, the claim and the final mark are the chain lock's ONE transaction: a lost claim throws, so the
+    // market made above rolls back with it, and the audit rows and the pool notice follow the commit.
+    if (!won) throw new LostClaim(`Week ${week.code} changed while it was being opened; nothing was opened. Refresh and try again.`);
     if (life.kind === "PASSES_ON" && !week.isFinal) {
-      await weekStore.patch(week.id, { isFinal: true });
-      audit({ category: "COMPLIANCE", action: "maswali.sunset.passed_on", actorId: SYSTEM, targetType: "MaswaliCycle", targetId: week.id,
-        payload: { code: week.code, from: life.week.code, fromState: life.week.state } });
+      await weekStore.patch(week.id, { isFinal: true }, lockTx ?? undefined);
+      afterCommit(lockTx, () => void recordOwed([{ category: "COMPLIANCE", action: "maswali.sunset.passed_on", actorId: SYSTEM, targetType: "MaswaliCycle", targetId: week.id,
+        payload: { code: week.code, from: life.week.code, fromState: life.week.state } }]));
     }
-    const opened = (await weekStore.get(week.id))!;
-    audit({ category: "ADMIN", action: "maswali.week.opened", actorId: input.officerId, targetType: "MaswaliCycle", targetId: week.id,
-      payload: { code: week.code, marketId: market.id, questionSetHash: qHash, closesAt: week.closesAt, rules, isFinal: opened.isFinal } });
-    // S5 · a week on sale has a pool figure now (the frame is derived after the open commits).
-    noteMaswaliPoolChanged(week.id);
+    const opened = (await weekStore.get(week.id, lockTx ?? undefined))!;
+    afterCommit(lockTx, () => void recordOwed([{ category: "ADMIN", action: "maswali.week.opened", actorId: input.officerId, targetType: "MaswaliCycle", targetId: week.id,
+      payload: { code: week.code, marketId: market.id, questionSetHash: qHash, closesAt: week.closesAt, rules, isFinal: opened.isFinal } }]));
+    // S5 · a week on sale has a pool figure now — noted once the open has committed.
+    afterCommit(lockTx, () => noteMaswaliPoolChanged(week.id));
     return { ok: true, week: opened };
+  }).catch((e: unknown) => {
+    if (e instanceof LostClaim) return refuse(e.message);
+    throw e;
   });
 }
+
+/**
+ * A claim lost AFTER a write inside the chain lock (S5-FIX-SRV): thrown, so it escapes the lock and the lock's transaction
+ * rolls that write back (DATA-LAYER rule 1: a refusal returned inside a lock commits what came before it), then caught
+ * outside the lock and answered as the refusal it is.
+ */
+class LostClaim extends Error {}
 
 // ── BUYING (MASWALI-BUILD S3) ───────────────────────────────────────────────────────────────────────
 
@@ -627,7 +639,7 @@ export function frozenRules(week: StoredWeek): MaswaliRulesSnapshot | null {
  */
 export async function closeWeek(input: { weekId: string; actorId?: string; early?: boolean; now?: Date }): Promise<Result<{ week: StoredWeek; already?: boolean }>> {
   const nowMs = (input.now ?? new Date()).getTime();
-  return withLock(MASWALI_CHAIN_LOCK, async () => {
+  return withLock(MASWALI_CHAIN_LOCK, async (lockTx) => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
     if (week.state !== "OPEN") return week.closedAt ? { ok: true, week, already: true } : refuse(`Week ${week.code} is ${week.state}.`);
@@ -643,14 +655,16 @@ export async function closeWeek(input: { weekId: string; actorId?: string; early
     const seal = async (): Promise<Result<{ week: StoredWeek; already?: boolean }>> => {
       const live = await ticketStore.listForWeek(week.id, { status: "LIVE" });
       const root = merkleRoot(live.map((t) => ({ ticketId: t.id, leaf: t.selectionsHash })));
-      const won = await weekStore.stampClose(week.id, { closedAt: new Date(nowMs).toISOString(), ticketCount: live.length, salesAtClose: live.length * rules.ticketPriceTzs, ticketMerkleRoot: root });
-      if (!won) return { ok: true, week: (await weekStore.get(week.id))!, already: true };
-      if (week.marketId && input.early) await marketStore.stamp(week.marketId, { selectionClosedAt: new Date(nowMs).toISOString(), updatedAt: new Date(nowMs).toISOString() } as never);
-      audit({ category: "ADMIN", action: "maswali.week.closed", actorId: input.actorId ?? SYSTEM, targetType: "MaswaliCycle", targetId: week.id,
-        payload: { code: week.code, ticketCount: live.length, ticketMerkleRoot: root, early: input.early === true } });
-      // S5 · the sales are final: the hub's figure stops moving with sales from here (the frame is derived after commit).
-      noteMaswaliPoolChanged(week.id);
-      return { ok: true, week: (await weekStore.get(week.id))! };
+      // S5-FIX-SRV · the commitment and the market's cutoff take the chain lock's ONE transaction (the market lock joins it):
+      // they commit together or not at all, and the audit row and the hub's notice follow the commit.
+      const won = await weekStore.stampClose(week.id, { closedAt: new Date(nowMs).toISOString(), ticketCount: live.length, salesAtClose: live.length * rules.ticketPriceTzs, ticketMerkleRoot: root }, lockTx ?? undefined);
+      if (!won) return { ok: true, week: (await weekStore.get(week.id, lockTx ?? undefined))!, already: true };
+      if (week.marketId && input.early) await marketStore.stamp(week.marketId, { selectionClosedAt: new Date(nowMs).toISOString(), updatedAt: new Date(nowMs).toISOString() } as never, lockTx ?? undefined);
+      afterCommit(lockTx, () => void recordOwed([{ category: "ADMIN", action: "maswali.week.closed", actorId: input.actorId ?? SYSTEM, targetType: "MaswaliCycle", targetId: week.id,
+        payload: { code: week.code, ticketCount: live.length, ticketMerkleRoot: root, early: input.early === true } }]));
+      // S5 · the sales are final: the hub's figure stops moving with sales from here (noted once the close has committed).
+      afterCommit(lockTx, () => noteMaswaliPoolChanged(week.id));
+      return { ok: true, week: (await weekStore.get(week.id, lockTx ?? undefined))! };
     };
     return week.marketId ? withLock(`market:${week.marketId}`, seal) : seal();
   });
@@ -911,7 +925,7 @@ export async function proposeVoidsAtDeadline(weekId: string, now?: Date): Promis
  */
 export async function voidWeek(input: { weekId: string; actorId?: string; now?: Date }): Promise<Result<{ week: StoredWeek; already?: boolean; refunded?: number }>> {
   const nowMs = (input.now ?? new Date()).getTime();
-  const stamped = await withLock(MASWALI_CHAIN_LOCK, async (): Promise<Result<{ week: StoredWeek }>> => {
+  const stamped = await withLock(MASWALI_CHAIN_LOCK, async (lockTx): Promise<Result<{ week: StoredWeek }>> => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
     if (week.state === "VOIDED") return { ok: true, week };
@@ -924,12 +938,14 @@ export async function voidWeek(input: { weekId: string; actorId?: string; now?: 
     // HERE now, before the decision is made. Read fail-closed, as the settlement reads it.
     const { countOpenObjections } = await import("./objections-service");
     if ((await countOpenObjections(week.marketId)) > 0) return refuse(`An objection is standing against week ${week.code}; it voids once every objection is decided.`);
-    const won = await weekStore.stampVoid(week.id);
-    const after = (await weekStore.get(week.id))!;
+    // S5-FIX-SRV · the decision takes the chain lock's transaction; the register forgets the week and the audit row is
+    // written once it has committed.
+    const won = await weekStore.stampVoid(week.id, lockTx ?? undefined);
+    const after = (await weekStore.get(week.id, lockTx ?? undefined))!;
     if (!won) return after.state === "VOIDED" ? { ok: true, week: after } : refuse(`Week ${week.code} changed while it was being voided; refresh and try again.`);
-    invalidateMillioneaRegisterWeek(week.code);
-    audit({ category: "ADMIN", action: "maswali.week.voided", actorId: input.actorId ?? SYSTEM, targetType: "MaswaliCycle", targetId: week.id,
-      payload: { code: week.code, marketId: week.marketId, ticketCount: week.ticketCount } });
+    afterCommit(lockTx, () => invalidateMillioneaRegisterWeek(week.code));
+    afterCommit(lockTx, () => void recordOwed([{ category: "ADMIN", action: "maswali.week.voided", actorId: input.actorId ?? SYSTEM, targetType: "MaswaliCycle", targetId: week.id,
+      payload: { code: week.code, marketId: week.marketId, ticketCount: week.ticketCount } }]));
     return { ok: true, week: after };
   });
   if (!stamped.ok) return stamped;
@@ -971,7 +987,7 @@ export async function carryBlocker(week: StoredWeek): Promise<StoredWeek | null>
  * money transaction (R3), so a claim there persists only with its payout.
  */
 export async function claimCarry(input: { weekId: string; readJackpot: () => Promise<number | null> }): Promise<Result<{ rolloverIn: number; already?: boolean }>> {
-  return withLock(MASWALI_CHAIN_LOCK, async () => {
+  return withLock(MASWALI_CHAIN_LOCK, async (lockTx) => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
     if (week.rolloverIn != null) return { ok: true, rolloverIn: week.rolloverIn, already: true };
@@ -979,9 +995,10 @@ export async function claimCarry(input: { weekId: string; readJackpot: () => Pro
     if (blocking) return refuse(`Week ${blocking.code} is not settled yet; the carry is claimed strictly in order (MR-3).`);
     const r = await input.readJackpot().catch(() => null);
     if (r === null || !Number.isSafeInteger(r) || r < 0) return refuse("The jackpot balance could not be read, so no carry was claimed.");
-    const won = await weekStore.claimCarry(week.id, r);
-    if (!won) return { ok: true, rolloverIn: (await weekStore.get(week.id))?.rolloverIn ?? r, already: true };
-    audit({ category: "ADMIN", action: "maswali.week.carry_claimed", actorId: SYSTEM, targetType: "MaswaliCycle", targetId: week.id, payload: { code: week.code, rolloverIn: r } });
+    // S5-FIX-SRV · the claim takes the chain lock's transaction; its audit row is written once that has committed.
+    const won = await weekStore.claimCarry(week.id, r, lockTx ?? undefined);
+    if (!won) return { ok: true, rolloverIn: (await weekStore.get(week.id, lockTx ?? undefined))?.rolloverIn ?? r, already: true };
+    afterCommit(lockTx, () => void recordOwed([{ category: "ADMIN", action: "maswali.week.carry_claimed", actorId: SYSTEM, targetType: "MaswaliCycle", targetId: week.id, payload: { code: week.code, rolloverIn: r } }]));
     return { ok: true, rolloverIn: r };
   });
 }
@@ -1024,7 +1041,7 @@ export async function sunsetMaswali(input: { weekId: string; ownerId: string; ty
   const reason = input.reason.trim();
   if (reason.length < MASWALI_REASON_MIN || reason.length > MASWALI_REASON_MAX) return refuse(`Write why Millionea is being stopped (${MASWALI_REASON_MIN}–${MASWALI_REASON_MAX} characters).`);
   const nowMs = (input.now ?? new Date()).getTime();
-  return withLock(MASWALI_CHAIN_LOCK, async () => {
+  return withLock(MASWALI_CHAIN_LOCK, async (lockTx) => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
     if (week.visibility !== "PUBLIC") return refuse("A drive week is never the final week.");
@@ -1037,9 +1054,10 @@ export async function sunsetMaswali(input: { weekId: string; ownerId: string; ty
     if (life.kind === "ENDING" || life.kind === "RETIRED") return refuse(`Week ${life.week.code} is already the final week.`);
     const later = (await weekStore.list({ visibility: "PUBLIC" })).find((w) => w.state !== "DRAFT" && calendarStartMs(w) > calendarStartMs(week));
     if (later) return refuse(`Week ${later.code} has already opened after week ${week.code}; the final week is the last one to open.`);
-    await weekStore.patch(week.id, { isFinal: true });
-    audit({ category: "COMPLIANCE", action: "maswali.sunset.ordered", actorId: input.ownerId, targetType: "MaswaliCycle", targetId: week.id,
-      payload: { code: week.code, state: week.state, reason } });
-    return { ok: true, week: (await weekStore.get(week.id))! };
+    // S5-FIX-SRV · the mark takes the chain lock's transaction; the Owner's order is audited once it has committed.
+    await weekStore.patch(week.id, { isFinal: true }, lockTx ?? undefined);
+    afterCommit(lockTx, () => void recordOwed([{ category: "COMPLIANCE", action: "maswali.sunset.ordered", actorId: input.ownerId, targetType: "MaswaliCycle", targetId: week.id,
+      payload: { code: week.code, state: week.state, reason } }]));
+    return { ok: true, week: (await weekStore.get(week.id, lockTx ?? undefined))! };
   });
 }

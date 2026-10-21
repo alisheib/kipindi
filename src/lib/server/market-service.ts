@@ -773,7 +773,7 @@ export type CreateMarketInput = {
   rateOverrides?: Partial<RateConfig>;
 };
 
-export async function createMarket(input: CreateMarketInput) {
+export async function createMarket(input: CreateMarketInput, tx?: Parameters<typeof marketStore.set>[1]) {
   const now = new Date().toISOString();
   const nowMs = Date.now();
   const id = `mkt_${randomId(10)}`;
@@ -879,7 +879,7 @@ export async function createMarket(input: CreateMarketInput) {
     createdAt: now,
     updatedAt: now,
   };
-  await marketStore.set(m);
+  await marketStore.set(m, tx); // S5-FIX-SRV · `tx`: a caller's lock transaction (a Millionea open) — the row commits with it, and is announced below once it has.
   // ⭐ NOT WRITTEN FOR AN UP & DOWN ROUND (audit F-10, Ali's decision 2026-08-20:
   // "reduce what Up & Down writes").
   //
@@ -903,7 +903,7 @@ export async function createMarket(input: CreateMarketInput) {
   // trade to make on a licensed operator's tamper-evident chain.
   // A Millionea week is one row a week, so its creation is audited like a poll's (S0.5: said, not defaulted).
   if (switchLine(m.productLine, { MARKET: () => true, UPDOWN: () => false, MASWALI: () => true })) {
-    audit({
+    afterCommit(tx, () => void audit({
       category: "ADMIN",
       action: "market.created",
       actorId: input.proposedBy,
@@ -916,12 +916,12 @@ export async function createMarket(input: CreateMarketInput) {
         // S2: what the card will say, on the record from the first moment (null = the full title).
         shortTitleEn: m.shortTitleEn ?? null, shortTitleSw: m.shortTitleSw ?? null, shortTitleZh: m.shortTitleZh ?? null, competition: m.competition ?? null,
       },
-    });
+    }));
   }
   // Arm this market's per-market timers (closing-soon → selection-closed → resolve).
   // Fire-and-forget: a scheduler hiccup must never fail market creation; the 5-min
   // reconciler heals any market that ends up without a live timer.
-  void armMarketTimer(m.id);
+  afterCommit(tx, () => void armMarketTimer(m.id));
   return m;
 }
 
