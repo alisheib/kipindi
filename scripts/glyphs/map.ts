@@ -366,7 +366,7 @@ export const DUO_KEYS: readonly string[] = [
  * File names inside `public/icons/g/`.
  */
 export const PREVIOUS_SPRITES: readonly string[] = [
-  "app.7fa80f75.svg", "admin.b27adee4.svg",
+  "app.a50a277b.svg", "admin.5c185f72.svg",
 ];
 
 /** Keys that share one Phosphor drawing because they mean the same thing; the swap collapses each pair. */
