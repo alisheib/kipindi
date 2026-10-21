@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { MaswaliFacts, factsOf } from "@/components/maswali/maswali-facts";
 import { eatRange, eatWeekday, eatWeekdayClock } from "@/components/maswali/maswali-format";
+import { numeralFace } from "@/components/maswali/maswali-numerals";
 import type { Dict } from "@/lib/i18n-dict";
 
 /**
@@ -31,18 +32,19 @@ export type WeekPhases = {
 };
 
 /** A phase from its dictionary words ("Mauzo · {range} EAT"): the label, and the range with what follows it ("EAT")
- *  held to the range's end. `ends` is the start and the end — or one day alone. */
+ *  held to the range's end. `ends` is the start and the end — or one day alone. Each clock a `.mono` numeral, each
+ *  weekday the body's (the lead's L7 ruling, §T5). */
 function phaseOf(template: string, ends: readonly string[]): { label: string; range: ReactNode } {
   const [label = "", part = "{range}"] = factsOf(template);
   const [before = "", after = ""] = part.split("{range}");
   const last = `${ends[ends.length - 1] ?? ""}${after}`;
   const range = ends.length < 2
-    ? <span className="whitespace-nowrap">{`${before}${last}`}</span>
+    ? <span className="whitespace-nowrap">{numeralFace(`${before}${last}`)}</span>
     : (
       <>
-        <span className="whitespace-nowrap">{`${before}${ends[0]} –`}</span>
+        <span className="whitespace-nowrap">{numeralFace(`${before}${ends[0]} –`)}</span>
         {" "}
-        <span className="whitespace-nowrap">{last}</span>
+        <span className="whitespace-nowrap">{numeralFace(last)}</span>
       </>
     );
   return { label, range };
@@ -85,9 +87,10 @@ export function MaswaliWeekStrip({ t, phases, current, className }: {
               data-phase-mark={now ? "now" : "other"}
             />
             <span className={cn("min-w-0 text-body-sm", now ? "text-text" : "text-text-muted")}>
-              {/* L2 (§T5: every numeral is mono, times in a sentence too) · the range in the numerals' mono, as the hub's close
-                  and each event's time are set — the label stays the body's. */}
-              <MaswaliFacts layout="stack" facts={[<span key="label" className="font-medium">{row.label}</span>, <span key="range" className="font-mono tabular-nums">{row.range}</span>]} />
+              {/* L2 (§T5: every numeral is mono, times in a sentence too) · the range's clocks are `.mono` numerals and its
+                  weekdays the body's, as the hub's close and each event's time are set (the lead's L7 ruling) — the label
+                  stays the body's. */}
+              <MaswaliFacts layout="stack" facts={[<span key="label" className="font-medium">{row.label}</span>, <span key="range" data-range="">{row.range}</span>]} />
             </span>
           </li>
         );

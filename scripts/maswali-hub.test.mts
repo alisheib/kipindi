@@ -276,11 +276,16 @@ console.log("\n§7 · L2/L18 · the strip's ranges in the numerals' mono; the ph
       if (now !== (x.mark === "now")) d.push(`phase ${i} marked ${x.mark}`);
       if (now ? !/\bbg-brand-400\b/.test(x.cls) : !/\bborder border-border-strong\b/.test(x.cls) || /\bbg-/.test(x.cls)) d.push(`phase ${i}: ${x.cls}`);
     });
-    if (count(m, 'class="font-mono tabular-nums"') !== 3) d.push(`${count(m, 'class="font-mono tabular-nums"')} mono ranges`);
+    // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (the lead's L7 ruling): a range's clocks are `.mono` numerals and its weekdays the
+    // body's ("Jumatatu 00:01 – Ijumaa 18:00 EAT": two clocks; the events' one; the results' none) — never a range set
+    // whole in the mono face.
+    const monos = [...m.matchAll(/<span class="mono">([^<]*)<\/span>/g)].map((x) => x[1]);
+    if (count(m, "data-range") !== 3 || /font-mono/.test(m)) d.push(`${count(m, "data-range")} ranges, a whole range in mono: ${/font-mono/.test(m)}`);
+    if (monos.length !== 3 || monos.some((x) => !/^[\d:.,/]+$/.test(x))) d.push(`mono runs ${JSON.stringify(monos)}`);
     return d;
   };
   const d = LOCALES.flatMap((l) => [0, 1, 2, null].flatMap((c) => stripDefects(inApp(l, h(MaswaliWeekStrip as never, { t: dict[l], phases, current: c } as never)), c).map((x) => `${l}/${c}: ${x}`)));
-  ok("7.1 · in three languages, at every phase and with none (How to play): one filled dot for the phase the week is in (a shape, not only an ink — §A4), hollow rings for the others, and each range in mono (§T5)", d.length === 0, d.slice(0, 6).join(" | "));
+  ok("7.1 · in three languages, at every phase and with none (How to play): one filled dot for the phase the week is in (a shape, not only an ink — §A4), hollow rings for the others, and each range's clocks `.mono` numerals, its weekdays the body's (§T5, the lead's L7 ruling)", d.length === 0, d.slice(0, 6).join(" | "));
   const old = '<span aria-hidden="true" class="relative -top-px h-1.5 w-1.5 shrink-0 rounded-full md:hidden bg-brand-400" data-phase-mark="now"></span><span aria-hidden="true" class="relative -top-px h-1.5 w-1.5 shrink-0 rounded-full md:hidden bg-border-strong" data-phase-mark="other"></span><span aria-hidden="true" class="relative -top-px h-1.5 w-1.5 shrink-0 rounded-full md:hidden bg-border-strong" data-phase-mark="other"></span>';
   ok("7.1′ PLANT · the old dots (every phase a filled dot, told apart by ink alone, gone from 768) are reported", stripDefects(old, 0).length > 0);
 }
@@ -420,10 +425,33 @@ console.log("\n§11 · L14 · last week voided reads as the register reads it: \
   ok("11.1′ PLANT · the card's own words over a past week (zh says 本周, THIS week) would be told apart", dict.zh.millionea.weekVoidedShort.includes("本周") && !say("en", voided(false)).includes(card));
 }
 
+// ── §12 · L7 · a time's face ─────────────────────────────────────────────────────────────────────────────────────────────
+console.log("\n§12 · L7 · a time on the hub: its weekday in the body face, its clock a .mono numeral (the lead's ruling, §T5)");
+{
+  const N = req("../src/components/maswali/maswali-numerals.tsx") as typeof import("../src/components/maswali/maswali-numerals.tsx");
+  const W = req("../src/app/millionea/hub-words.tsx") as typeof import("../src/app/millionea/hub-words.tsx");
+  const FRI_16 = Date.parse("2026-12-04T16:00:00+03:00"), FRI_18 = Date.parse("2026-12-04T18:00:00+03:00");
+  const faceDefects = (m: string) => {
+    const monos = [...m.matchAll(/<span class="mono">([^<]*)<\/span>/g)].map((x) => x[1]);
+    return monos.length > 0 && monos.every((x) => /^[\d:.,/]+$/.test(x)) && !/font-mono/.test(m) ? [] : [m.slice(0, 200)];
+  };
+  const markup = (node: unknown) => renderToStaticMarkup(h("p", null, node as never));
+  const off = LOCALES.flatMap((l) => [
+    markup(N.weekdayClock(dict[l] as never, FRI_18)),
+    markup(W.closeMovedWords(dict[l] as never, FRI_16, FRI_18)),
+    markup(W.voidingWords(dict[l] as never, 3, 2, FRI_18)),
+    markup(W.finalAheadWords(dict[l] as never, l, 52, FRI_18, FRI_16)),
+  ].flatMap(faceDefects).map((x) => `${l}: ${x}`));
+  ok("12.1 · in three languages the close's time, the moved close, the voiding sentence and the final week's date set each numeral `.mono` and nothing else — no time set whole in the mono face", off.length === 0, off.slice(0, 3).join(" | "));
+  const sw = markup(N.weekdayClock(dict.sw as never, FRI_18));
+  ok("12.2 · the weekday stands outside the numeral: \"Ijumaa \" in the body face, \"18:00\" a .mono run, one unbreakable span", /<span class="whitespace-nowrap"><span>Ijumaa <\/span><span class="mono">18:00<\/span><\/span>/.test(sw), sw);
+  ok("12.1′ PLANT · the old all-mono time (\"Ijumaa 18:00\" set whole in font-mono) is reported", faceDefects('<span class="whitespace-nowrap font-mono">Ijumaa 18:00</span>').length > 0);
+}
+
 console.log(`\n${"═".repeat(70)}\n  MASWALI HUB: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run prints (S5-DESIGN-HUB 3: 34; 4, the one ledger and zh's spacing rule: 43; 6, one
  *  carry origin: 45; 7, no door to a week the register does not draw yet: 47; 9, one final-week rule and last week's
- *  words: 50). It only rises. */
-const MIN_ASSERTIONS = 50;
+ *  words: 50; 10, a time's face: 53). It only rises. */
+const MIN_ASSERTIONS = 53;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

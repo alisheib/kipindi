@@ -37,7 +37,8 @@ import { MaswaliFacts, factsOf, keepFact } from "@/components/maswali/maswali-fa
 import { MaswaliHeldTicketRow } from "@/components/maswali/maswali-ticket";
 import { MaswaliClosingPill } from "@/components/maswali/maswali-slip";
 import { MillioneaGlyph } from "@/components/maswali/maswali-glyph";
-import { counted, eatClock, eatWeekday, eatWeekdayClock, reserveLabel, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
+import { counted, eatWeekdayClock, reserveLabel, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
+import { weekdayClock } from "@/components/maswali/maswali-numerals";
 import { millioneaGate } from "@/lib/server/millionea-gate";
 import {
   millioneaCloseMove, millioneaFinalWeekAhead, millioneaHub, millioneaHubCommitments, millioneaMyTicketsWeek,
@@ -107,7 +108,7 @@ function objectionsLine(t: Dict, locale: Locale, w: MillioneaHubWeek, nowMs: num
  *  parted from its time; nothing once every awaited event has begun. */
 function nextEventLine(t: Dict, w: MillioneaHubWeek): ReactNode {
   const at = msOf(w.nextResultAt);
-  return at === null ? null : <span key="next">{fillNodes(t.millionea.nextEvent, { when: <span className="whitespace-nowrap font-mono">{eatWeekdayClock(t, at)}</span> })}</span>;
+  return at === null ? null : <span key="next">{fillNodes(t.millionea.nextEvent, { when: weekdayClock(t, at) })}</span>;
 }
 
 /**
@@ -210,8 +211,9 @@ function QuestionRow({ t, locale, q, voidWords }: { t: Dict; locale: Locale; q: 
         {voidWords && <span className="inline-flex flex-wrap items-center gap-x-1 text-body-sm text-text-muted" data-testid="millionea-hub-void-words">{voidWords}</span>}
       </span>
       <span className="col-start-2 flex flex-wrap items-center gap-2 md:col-start-auto md:flex-col md:items-end md:gap-1.5">
-        {/* "Event Saturday 09:00" is one run: a day never parts from its time (S5 VIS A1). */}
-        {at !== null && <span className="whitespace-nowrap font-mono text-body-sm text-text-subtle">{fill(t.millionea.eventAt, { when: eatWeekdayClock(t, at) })}</span>}
+        {/* "Event Saturday 09:00" is one run: a day never parts from its time (S5 VIS A1) — its words in the body face, its
+            clock a numeral (the lead's L7 ruling, §T5). */}
+        {at !== null && <span className="whitespace-nowrap text-body-sm text-text-subtle">{fillNodes(t.millionea.eventAt, { when: weekdayClock(t, at) })}</span>}
         <HubOutcomeStamp slot={q.slot} outcome={q.outcome} />
       </span>
     </li>
@@ -360,12 +362,13 @@ function BuyDoor({ t, w, signedIn, nowMs, nextOpen, breakBody, guest, className 
           own key, worn by the closing pill. ⭐ R1-motion M8 · the pill stands IN the close's row, the row already at the
           pill's height; and the row makes the pill's room itself (`.kp-mln-close:has(.closing-pill)`, globals.css): in the
           last hour the close is today, so its weekday steps aside — the line never grows a second one (sw 320: 239px of
-          words beside a 76px pill in a 288px column), and nothing under it moves. */}
+          words beside a 76px pill in a 288px column), and nothing under it moves. The weekday in the body face, the clock
+          a `.mono` numeral (the lead's L7 ruling). */}
       {open && buys && (
         <div className="kp-mln-close flex min-h-5 flex-wrap items-center gap-x-2 gap-y-1" data-testid="millionea-hub-close">
           <p className="flex items-center gap-1.5 text-body-sm text-text-muted">
             <I.clock s={14} className="shrink-0" />
-            <span>{fillNodes(t.millionea.salesCloseAt, { when: <span className="whitespace-nowrap font-mono text-text"><span className="kp-mln-close-day">{eatWeekday(t, closesMs)} </span>{eatClock(closesMs)}</span> })}</span>
+            <span>{fillNodes(t.millionea.salesCloseAt, { when: weekdayClock(t, closesMs, { className: "text-text", dayClass: "kp-mln-close-day" }) })}</span>
           </p>
           <MaswaliClosingPill closesAt={closesMs} serverNow={nowMs} compact />
         </div>

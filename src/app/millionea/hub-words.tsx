@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { MaswaliFacts, keepFact } from "@/components/maswali/maswali-facts";
 import { counted, eatClock, eatWeekday, eatWeekdayClock, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
 import { MaswaliLastWeek } from "@/components/maswali/maswali-pool-figure";
+import { numeralFace } from "@/components/maswali/maswali-numerals";
 import { formatEatDate } from "@/lib/eat-day";
 import { fillNodes } from "@/lib/fill-nodes";
 import { fill, formatNumber } from "@/lib/utils";
@@ -11,12 +12,13 @@ import type { MillioneaHub } from "@/lib/server/maswali-player";
 /**
  * THE HUB'S TIMED SENTENCES (MASWALI-BUILD S5-DESIGN-HUB; Ali 2026-10-21 10/10 pass) — each one a dictionary line filled
  * with its EAT instants exactly as the hub prints it, pure, so a suite renders what the page renders (`test:maswali-hub`
- * §10). Every instant is one unbreakable run in the numerals' mono (§T5).
+ * §10). Every instant is one unbreakable run: its weekday or month in the sentence's face, its numerals `.mono` (the
+ * lead's L7 ruling, §T5).
  * ⭐ zh (the lead's ruling, 2026-10-21): Millionea's Chinese takes a space only where a Latin letter or a digit meets a Han
  * character, never between two Han characters. A line filled by a weekday clock ("周五 18:00", a Han weekday first) has
  * no space before it; one filled by a date or a clock alone (a digit first) keeps its space.
  */
-const run = (s: string) => <span className="whitespace-nowrap font-mono">{s}</span>;
+const run = (s: string) => <span className="whitespace-nowrap">{numeralFace(s)}</span>;
 
 const HAN = "[㐀-䶿一-鿿豈-﫿]";
 /**
