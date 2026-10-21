@@ -253,7 +253,10 @@ check("3.8", "M2 · H4 · each card reads as a ticket's clause — category, que
   const outcomeOrder = outcome.every((x, i) => x >= 0 && (i === 0 || x > outcome[i - 1]));
   const list = /<dl\b|<dt\b|<dd\b/.test(card);
   const joined = /\} · \$\{/.test(card);
-  return [inOrder && outcomeOrder && !list && !joined, j({ order, outcome, list, joined })];
+  // The question and its criterion are an officer's prose: they break as Chinese prose does (`break-normal`) in both layouts,
+  // never kept whole by keep-all (the tile read: "若 TMA" left alone on a zh line at 320).
+  const prose = count(s, 'text-pretty break-normal">{textIn(locale, q.text)}</span>') === 2 && count(s, 'text-pretty break-normal">{textIn(locale, q.criterion)}</span>') === 2;
+  return [inOrder && outcomeOrder && !list && !joined && prose, j({ order, outcome, list, joined, prose })];
 });
 // M3 · which ten counted, on the face of each row — from the FINAL record only (an objection can still reinstate a question
 // while the window is open: never an un-carry, §M8a item 1).
@@ -782,8 +785,8 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["R2 undone — a seventh column back in the head", "3.2", plantSrc("week", '<th scope="col" className="text-left">{t.millionea.regColOutcome}</th>', '<th scope="col" className="text-left">{t.millionea.regColOutcome}</th>\n              <th scope="col" className="text-left">{t.millionea.regColEvent}</th>')],
   ["R8 undone — the table's category as a plain column of its own", "3.3", plantSrc("week", '<td className="whitespace-nowrap"><SourceLink q={q} /></td>', '<td className="text-text-muted">{marketCategoryLabel(t, q.category)}</td>\n        <td className="whitespace-nowrap"><SourceLink q={q} /></td>')],
   ["M2 undone — the table's category above its question again (the question on its cell's second line)", "3.3", plantSrc("week",
-    '            <span className="text-text text-pretty">{textIn(locale, q.text)}</span>\n            <span className="text-body-sm text-text-muted text-pretty">{textIn(locale, q.criterion)}</span>\n            <Category t={t} q={q} />',
-    '            <Category t={t} q={q} />\n            <span className="text-text text-pretty">{textIn(locale, q.text)}</span>\n            <span className="text-body-sm text-text-muted text-pretty">{textIn(locale, q.criterion)}</span>')],
+    '            <span className="text-text text-pretty break-normal">{textIn(locale, q.text)}</span>\n            <span className="text-body-sm text-text-muted text-pretty break-normal">{textIn(locale, q.criterion)}</span>\n            <Category t={t} q={q} />',
+    '            <Category t={t} q={q} />\n            <span className="text-text text-pretty break-normal">{textIn(locale, q.text)}</span>\n            <span className="text-body-sm text-text-muted text-pretty break-normal">{textIn(locale, q.criterion)}</span>')],
   ["R2 undone — the event's date free to break", "3.4", plantSrc("week", '<td className="whitespace-nowrap font-mono text-text-muted">{registerWhen(t, locale, q.eventStartsAt, nowMs) ?? "—"}</td>', '<td className="font-mono text-text-muted">{registerWhen(t, locale, q.eventStartsAt, nowMs) ?? "—"}</td>')],
   ["H4 undone — the source plain text again (a result cannot be checked from the page)", "3.7", plantSrc("week", '<a href={q.sourceUrl} target="_blank" rel="noopener noreferrer" className="kp-mln-hit', '<a className="kp-mln-hit')],
   ["R2 undone — the raw domain printed", "3.7", plantSrc("week", "<span>{sourceLabel(q.sourceDomain)}</span>", "<span>{q.sourceDomain}</span>")],
@@ -791,7 +794,8 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["R2 undone — the question's floor gone", "3.5", plantSrc("week", '<td className="min-w-[240px]">', "<td>")],
   ["a sourceLabel that keeps \"www.\"", "3.6", { ...REAL, sourceLabel: (d) => d }],
   ["a sourceLabel that strips any first label", "3.6", { ...REAL, sourceLabel: (d) => d.replace(/^[^.]+\./, "") }],
-  ["H4 undone — a card without its criterion", "3.8", plantSrc("week", '        <span className="text-body-sm text-text-muted text-pretty">{textIn(locale, q.criterion)}</span>\n        <span className="text-body-sm text-text-muted"><MaswaliFacts', '        <span className="text-body-sm text-text-muted"><MaswaliFacts')],
+  ["H4 undone — a card without its criterion", "3.8", plantSrc("week", '        <span className="text-body-sm text-text-muted text-pretty break-normal">{textIn(locale, q.criterion)}</span>\n        <span className="text-body-sm text-text-muted"><MaswaliFacts', '        <span className="text-body-sm text-text-muted"><MaswaliFacts')],
+  ["the card's question kept whole by keep-all again (\"若 TMA\" alone on a line)", "3.8", plantSrc("week", '<span className="text-body-sm text-text text-pretty break-normal">{textIn(locale, q.text)}</span>', '<span className="text-body-sm text-text text-pretty">{textIn(locale, q.text)}</span>')],
   ["M2 undone — a card's event and source joined with \" · \"", "3.8", plantSrc("week", '<MaswaliFacts facts={[event(q), <SourceLink key="src" q={q} />]} />', "{`${event(q)} · ${sourceLabel(q.sourceDomain)}`}")],
   ["M3 undone — a carry drawn before the week settled (an objection could still un-carry it)", "3.9", plantSrc("week", 'if (w.state === "SETTLED") {\n    for (const s of w.substitutions) {', "{\n    for (const s of w.substitutions) {")],
   ["a waiting void's words opening a line in lower case again", "3.9", plantSrc("week", "{words.charAt(0).toLocaleUpperCase() + words.slice(1)}", "{words}")],

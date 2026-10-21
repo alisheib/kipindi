@@ -299,7 +299,10 @@ function OutcomeLines({ t, locale, q, att, mark, nowMs }: { t: Dict; locale: Loc
   );
 }
 
-/** The fifteen: cards below 1024 and a table from 1024 (R1), one source of facts for both. */
+/** The fifteen: cards below 1024 and a table from 1024 (R1), one source of facts for both. A question and its criterion
+ *  are an officer's PROSE, not the product's words: they break as Chinese prose does (`break-normal`), never kept whole by
+ *  `.kp-mln-zh`'s keep-all — which held "每日公报记录达累斯萨拉姆周日降雨量达" whole and left "若 TMA" alone on a line at 320 (the
+ *  tile read of 2026-10-21). The product's own short words keep their phrases (A2). */
 function Questions({ t, locale, v, nowMs }: { t: Dict; locale: Locale; v: View; nowMs: number }) {
   const qs = bySlot(v.questions);
   const mains = qs.filter((q) => q.role === "MAIN"), reserves = qs.filter((q) => q.role === "RESERVE");
@@ -313,8 +316,8 @@ function Questions({ t, locale, v, nowMs }: { t: Dict; locale: Locale; v: View; 
       <Place q={q} />
       <div className="flex min-w-0 flex-col gap-1">
         <Category t={t} q={q} />
-        <span className="text-body-sm text-text text-pretty">{textIn(locale, q.text)}</span>
-        <span className="text-body-sm text-text-muted text-pretty">{textIn(locale, q.criterion)}</span>
+        <span className="text-body-sm text-text text-pretty break-normal">{textIn(locale, q.text)}</span>
+        <span className="text-body-sm text-text-muted text-pretty break-normal">{textIn(locale, q.criterion)}</span>
         <span className="text-body-sm text-text-muted"><MaswaliFacts facts={[event(q), <SourceLink key="src" q={q} />]} /></span>
         <OutcomeLines t={t} locale={locale} q={q} att={v.attested[q.slot]} mark={v.marks.get(q.slot)} nowMs={nowMs} />
       </div>
@@ -331,8 +334,8 @@ function Questions({ t, locale, v, nowMs }: { t: Dict; locale: Locale; v: View; 
           {/* The question on the row's first line, every cell's first line on one baseline (M2): its criterion and its
               category under it. */}
           <span className="flex flex-col gap-1">
-            <span className="text-text text-pretty">{textIn(locale, q.text)}</span>
-            <span className="text-body-sm text-text-muted text-pretty">{textIn(locale, q.criterion)}</span>
+            <span className="text-text text-pretty break-normal">{textIn(locale, q.text)}</span>
+            <span className="text-body-sm text-text-muted text-pretty break-normal">{textIn(locale, q.criterion)}</span>
             <Category t={t} q={q} />
           </span>
         </td>
