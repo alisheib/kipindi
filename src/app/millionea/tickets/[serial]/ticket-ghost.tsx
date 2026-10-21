@@ -56,14 +56,14 @@ export function MillioneaTicketGhost() {
               <GhostBar className="h-[23px] w-[136px] rounded-pill" />
             </span>
           </div>
-          <GhostBar className="h-[30px] w-[230px] max-w-full" />
+          <GhostBar className="h-[28px] w-[230px] max-w-full" />
         </div>
         {/* The Seal Line's box: 24px mains, their numbers, the annex and its labels, between its two rules — 108px in an
-            open week, 122px once results are in (a sealed reserve's stamp stands taller than a waiting ring). */}
+            open week, 122px once results are in (a sealed reserve's stamp stands taller than a waiting ring); 2px less at 320. */}
         <div className="flex flex-col border-y border-border py-2">
           <GhostBar className="h-[24px] w-full" />
           <GhostBar className="mt-0.5 h-[14px] w-full" />
-          <GhostBar className={cn("mt-1.5 w-full", cancelOpen ? "h-[18px]" : "h-[32px]")} />
+          <GhostBar className={cn("mt-1.5 w-full", cancelOpen ? "h-[16px] xs:h-[18px]" : "h-[30px] xs:h-[32px]")} />
           <GhostBar className="mt-0.5 h-[14px] w-full" />
         </div>
         <GhostBar className={cn("w-[85%]", LIVE[cancelOpen ? "open" : "graded"][locale])} />

@@ -679,7 +679,7 @@ check("21.1", "the ghosts stand where the page lands: Tiketi zangu's head draws 
   const boxes = (kinds?: number) => count(renderToStaticMarkup(h(TicketsHeadGhost as never, { t: REAL.dict.en, ...(kinds ? { kinds } : {}) } as never)), "h-[44px] w-[96px]");
   need(d, boxes() === 2 && boxes(2) === 2 && boxes(3) === 3, `boxes: default ${boxes()}, 2 → ${boxes(2)}, 3 → ${boxes(3)}`);
   const g = code(w, "ticketGhost");
-  need(d, g.includes('<div className="flex flex-col border-y border-border py-2"> <GhostBar className="h-[24px] w-full" /> <GhostBar className="mt-0.5 h-[14px] w-full" /> <GhostBar className={cn("mt-1.5 w-full", cancelOpen ? "h-[18px]" : "h-[32px]")} /> <GhostBar className="mt-0.5 h-[14px] w-full" /> </div>'), "the ticket ghost's Seal Line box is not the real one's bands (108px in an open week, 122px with results in — measured)");
+  need(d, g.includes('<div className="flex flex-col border-y border-border py-2"> <GhostBar className="h-[24px] w-full" /> <GhostBar className="mt-0.5 h-[14px] w-full" /> <GhostBar className={cn("mt-1.5 w-full", cancelOpen ? "h-[16px] xs:h-[18px]" : "h-[30px] xs:h-[32px]")} /> <GhostBar className="mt-0.5 h-[14px] w-full" /> </div>'), "the ticket ghost's Seal Line box is not the real one's bands (108px in an open week, 122px with results in, 2px less at 320 — measured)");
   return d;
 });
 
@@ -820,7 +820,7 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["L14 — the scheduled close instead of the recorded one", "20.1", plantSrc("player", 'facts.push({ kind: "close", at: week.closedAt });', 'facts.push({ kind: "close", at: week.closesAt });')],
   ["L14 — the lock line outside the stub's moment", "20.1", plantSrc("ticket", "{cut || reveal || lock\n", "{cut || reveal\n")],
   ["M9 undone — the head ghost ignores its kinds", "21.1", plantSrc("headGhost", "        {kinds === 3 && <div className=\"h-[44px] w-[96px] rounded-md bg-bg-overlay kp-shimmer-track\" />}\n", "")],
-  ["M9 undone — the 70px Seal Line ghost", "21.1", plantSrc("ticketGhost", '          <GhostBar className={cn("mt-1.5 w-full", cancelOpen ? "h-[18px]" : "h-[32px]")} />\n', "")],
+  ["M9 undone — the 70px Seal Line ghost", "21.1", plantSrc("ticketGhost", '          <GhostBar className={cn("mt-1.5 w-full", cancelOpen ? "h-[16px] xs:h-[18px]" : "h-[30px] xs:h-[32px]")} />\n', "")],
   ["round 2 undone — the gold rows after the totals", "23.1", plantSrc("ledger", "  const at = rows.findIndex((r) => r.key === \"share\");", "  const at = rows.length - 1;")],
   ["round 2 undone — a ledger drawn without final money", "23.1", plantSrc("page", "              {ledgerRows && (\n", "              {(\n")],
   ["round 2 — a drive week's carries linked to the public register", "23.1", plantSrc("page", '{ links: view.week.visibility === "PUBLIC" && gate.visible }', "{ links: true }")],
