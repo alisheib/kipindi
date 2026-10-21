@@ -19,7 +19,7 @@ import { audit } from "./audit";
 import { db } from "./store";
 import { isDepositReturnBet } from "@/lib/journey/deposit-state";
 import { randomId } from "./crypto";
-import { withLock, runOutsideLock, afterCommit } from "./locks";
+import { withLock, runOutsideLock, afterCommit, currentLockTx, drainCommitted } from "./locks";
 import { withAdmission, AdmissionBusy, runOutsideAdmission } from "./admission";
 import { withTransientRetry } from "./retry";
 import { emit } from "./event-bus";
@@ -4107,7 +4107,7 @@ export async function settleMarket(
     await marketStore.set(m, lockTx ?? undefined);
     // The chart may only describe a settlement every reader can see. A failed
     // lock transaction rolls its stamp and payouts back, so it drops this too.
-    queueSettlementEffect(() => { void recordSnapshot(m.id, m.yesPool, m.noPool); });
+    queueSettlementEffect(() => recordSnapshot(m.id, m.yesPool, m.noPool));
   };
 
   // THE POLL'S OWN RATES — frozen at creation, not whatever admin has set today.
@@ -4720,9 +4720,9 @@ export async function settleMarket(
     audit({ category: "SYSTEM", action: "market.settlement.balance_emit_failed", actorId: settleOpts.actorId ?? "system",
       targetType: "Market", targetId: marketId, payload: { users: paidWallets.size + refundedUserIds.size, error: String(error) } });
   }
-  if (result.ok) for (const effect of committedSettlementEffects) {
-    try { await effect(); } catch { /* committed money cannot be undone by an outward effect */ }
-  }
+  // Each effect awaited in order; a call that joined an enclosing lock's transaction drains after THAT commit.
+  // Committed money cannot be undone by an outward effect.
+  if (result.ok) await drainCommitted(committedSettlementEffects, currentLockTx());
 
   // Referral commission, on the fee we ACTUALLY KEPT. Outside the market lock
   // for the same reason as the bonus work above: onRecruitSettlement takes the
@@ -5048,8 +5048,8 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
   // docs/COMPLIANCE-DECISIONS.md). The ADMIN/COMPLIANCE
   // role gate + 2FA above still stand.
 
-  // Outward claims are queued only after the complete money transaction commits.
-  const committedNotices: Array<() => void> = [];
+  // Outward claims are queued only after the complete money transaction commits; each is awaited in order.
+  const committedNotices: Array<() => void | Promise<unknown>> = [];
   const refundedUserIds = new Set<string>();
   // S12 WP12 · the title switch, read once for every player notice and letter this cancellation sends — and BEFORE the
   // market lock, so the refunds' transaction never waits on it (`message-titles.ts`). The officers' copies keep the full
@@ -5281,7 +5281,7 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
       }
     }); });
 
-    afterCommit(lockTx, () => { committedNotices.push(() => { void recordSnapshot(m.id, 0, 0); }); });
+    afterCommit(lockTx, () => { committedNotices.push(() => recordSnapshot(m.id, 0, 0)); });
     return { ok: true as const, data: { refundedCount, refundedTzs } };
     } catch (error) {
       if (restoreMemory) await restoreMemory();
@@ -5307,9 +5307,9 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
   // On PostgreSQL this list is populated only after commit. In memory it is
   // populated during the operation but discarded if the scoped rollback throws.
   // Bonus principal already has its final home before any notice is dispatched.
-  for (const notice of committedNotices) {
-    try { notice(); } catch { /* the committed refund cannot be undone by a notice failure */ }
-  }
+  // Each notice awaited in order; a call that joined an enclosing lock's transaction drains after THAT commit.
+  // The committed refund cannot be undone by a notice failure.
+  await drainCommitted(committedNotices, currentLockTx());
   // ⭐ CLAWBACK — the one reversal this platform can actually reach. There is no "un-settle";
   // the void IS the reversal, so any agent commission that accrued against this market is
   // taken back here. Outside the market lock for the same reason as every other wallet

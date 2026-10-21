@@ -56,9 +56,11 @@ const settleFn = fnBody("export async function settleMarket(");
 const emergency = fnBody("export async function emergencyVoidMarket(");
 const snapshotCalls = (body: string) => body.split("recordSnapshot(").length - 1;
 const STAMP_ON_LOCK = "await marketStore.set(m, lockTx ?? undefined);";
-const SETTLE_POINT = "queueSettlementEffect(() => { void recordSnapshot(m.id, m.yesPool, m.noPool); });";
+// 2026-10-21 · U43 CI repair: each queued point RETURNS its promise and both queues await it after commit, so the S.commit /
+// E.commit reads below find the point the moment the money call returns (a `void` point was still being written then).
+const SETTLE_POINT = "queueSettlementEffect(() => recordSnapshot(m.id, m.yesPool, m.noPool));";
 const SETTLE_QUEUE = "const queueSettlementEffect = (fn: () => void | Promise<unknown>) => {\n    afterCommit(lockTx, () => { committedSettlementEffects.push(fn); });\n  };";
-const VOID_POINT = "afterCommit(lockTx, () => { committedNotices.push(() => { void recordSnapshot(m.id, 0, 0); }); });";
+const VOID_POINT = "afterCommit(lockTx, () => { committedNotices.push(() => recordSnapshot(m.id, 0, 0)); });";
 const VOID_RETURN = "return { ok: true as const, data: { refundedCount, refundedTzs } };";
 ok("S.source · settlement snapshot waits for its own lock transaction",
   settlement.includes(STAMP_ON_LOCK) && settlement.indexOf(STAMP_ON_LOCK) < settlement.indexOf(SETTLE_POINT)

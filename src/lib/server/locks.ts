@@ -109,6 +109,26 @@ export function afterCommit(tx: Prisma.TransactionClient | null | undefined, fn:
   runCommitted([fn]);
 }
 
+/**
+ * Run a service's post-commit effects in order, each awaited — the effects that service queued through `afterCommit`
+ * once its own lock's transaction committed (settlement's notices, chart point, prize and watcher alert).
+ *
+ * ⛔ A NESTED CALL IS DIFFERENT (2026-10-21, U43). Called inside an enclosing withLock on PostgreSQL, the service's own
+ * lock JOINED that transaction, so its `afterCommit` pushes have not run yet when it returns: `effects` is still empty,
+ * and draining it now would drop every effect for good. Pass the enclosing transaction (`currentLockTx()` after the
+ * service's lock returned) and the drain is queued behind those pushes on the same commit, in order, unawaited.
+ */
+export async function drainCommitted(effects: ReadonlyArray<() => void | Promise<unknown>>,
+  joinedTx: Prisma.TransactionClient | null): Promise<void> {
+  const drain = async () => {
+    for (const effect of effects) {
+      try { await effect(); } catch { /* an effect of committed money cannot undo it */ }
+    }
+  };
+  if (joinedTx) { afterCommit(joinedTx, () => { void drain(); }); return; }
+  await drain();
+}
+
 /** Each queued callback once, none able to stop the rest — they describe a write that has already committed. */
 function runCommitted(fns: ReadonlyArray<() => void>): void {
   for (const fn of fns) {

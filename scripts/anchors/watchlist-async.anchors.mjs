@@ -5,8 +5,8 @@ export const MUTATIONS = [
   {
     name: "settlement stops awaiting its post-commit effects",
     file: "src/lib/server/market-service.ts",
-    from: "try { await effect(); } catch { /* committed money cannot be undone by an outward effect */ }",
-    to: "try { effect(); } catch { /* committed money cannot be undone by an outward effect */ }",
+    from: "if (result.ok) await drainCommitted(committedSettlementEffects, currentLockTx());",
+    to: "if (result.ok) void drainCommitted(committedSettlementEffects, currentLockTx());",
     expect: "watcher who did NOT bet got a settled alert",
   },
   {
