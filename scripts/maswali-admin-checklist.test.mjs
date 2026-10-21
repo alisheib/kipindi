@@ -17,6 +17,22 @@ const hasFreshRequirementRead = (source) => {
   const back = afterSave.indexOf("await go(page, weekPath);");
   return pools >= 0 && pools < needed && needed < back;
 };
+/**
+ * S5-FIX-SRV · one truth for every act: the open, a move, the week void and the stop each run once with their audit row
+ * LOST (armed through the dev-only fault route), and the drive reads the console's warning for each, whole at 360 and 1280.
+ */
+const hasUnrecordedActs = (source) => {
+  const reads = source.split("async function auditWarningReads(")[1]?.split("async function part(")[0] ?? "";
+  return [
+    ['loseNextAuditRow("maswali.week.opened")', 'await auditWarningReads("4.6", page.locator("main"), UNRECORDED.open,'],
+    ['loseNextAuditRow("maswali.week.close_moved")', 'await auditWarningReads("5.3b", mv, UNRECORDED.move,'],
+    ['loseNextAuditRow("maswali.week.voided")', 'await auditWarningReads("6.4c", vw, UNRECORDED.void,'],
+    ['loseNextAuditRow("maswali.sunset.ordered")', 'await auditWarningReads("6.6b", stop, UNRECORDED.stop,'],
+  ].every(([arm, read]) => source.includes(arm) && source.includes(read) && source.indexOf(arm) < source.indexOf(read))
+    && reads.includes("for (const width of [360, 1280]) {")
+    && reads.includes("fit.left >= 0 && fit.right <= width + 1 && fit.width > 0 && fit.root <= 1")
+    && reads.includes("await shot(page, `${tile}-${width}`);");
+};
 const hasCalendarFixture = (source) => {
   const draft = source.split('await part("3 · draft"')[1]?.split('await part("4 · attest and open"')[0] ?? "";
   const event = draft.indexOf('await go(page, "/admin/events");');
@@ -37,8 +53,10 @@ const hasHardWeekReviews = (source) => {
     && (attest.match(/word: "ATTEST", confirm: "Record the attestation", alert: \(dlg\) => dlg\.getByRole\("alert"\)/g) ?? []).length === 2
     && attest.includes('ownReview.gated && !ownReview.closed') && attest.includes('await ownReview.cancel();')
     && attest.includes('secondReview.gated && !!attested')
-    && (move.match(/confirmDialog\([^,]+, `Move \$\{driveCode\}'s sales close\?`/g) ?? []).length === 2
-    && (move.match(/word: "MOVE CLOSE", confirm: "Move the close", alert: \(dlg\) => dlg\.getByRole\("alert"\)/g) ?? []).length === 2
+    // S5-FIX-SRV · three moves: the refused late one, the earlier one, and one more whose audit row is lost (5.3).
+    && (move.match(/confirmDialog\([^,]+, `Move \$\{driveCode\}'s sales close\?`/g) ?? []).length === 3
+    && (move.match(/word: "MOVE CLOSE", confirm: "Move the close", alert: \(dlg\) => dlg\.getByRole\("alert"\)/g) ?? []).length === 3
+    && move.includes('armedMove && unrecordedMove.gated && !!movedAgain')
     && move.includes('Current close: ${was} (EAT)') && move.includes('New close: ${SAT} 12:00 (EAT)')
     && move.includes('New close: ${THU} 17:00 (EAT)')
     && move.includes('lateReview.gated && !lateReview.closed') && move.includes('await lateReview.cancel();')
@@ -69,6 +87,8 @@ assert.equal(hasFreshRequirementRead(driveSource), true, "drive must reread the 
 assert.equal(hasCalendarFixture(driveSource), true, "drive must add a local fixture through the admin UI, read the suggestion, and edit it before saving");
 assert.equal(hasHardWeekReviews(driveSource), true,
   "drive must gate and read both attestation and close reviews, cancel refused modals, and use the labelled evidence input");
+assert.equal(hasUnrecordedActs(driveSource), true,
+  "drive must lose each reported act's audit row once and read the console's warning for it, whole at 360 and 1280");
 console.log("maswali admin checklist: seeded, fresh, missing and wrong-amount states PASS");
 
 if (process.argv.includes("--prove-red")) {
@@ -104,5 +124,11 @@ if (process.argv.includes("--prove-red")) {
   const noPolicyRestore = driveSource.replace('"Allow single-admin resolution?"', '"No policy restore?"');
   assert.notEqual(noPolicyRestore, driveSource, "policy-restore mutation must plant");
   assert.equal(hasHardWeekReviews(noPolicyRestore), false, "omitting the local policy restore must turn the drive guard red");
+  const voidKeepsItsRow = driveSource.replace('loseNextAuditRow("maswali.week.voided")', "Promise.resolve(true)");
+  assert.notEqual(voidKeepsItsRow, driveSource, "lost-row mutation must plant");
+  assert.equal(hasUnrecordedActs(voidKeepsItsRow), false, "a void that never loses its audit row must turn the drive guard red");
+  const unmeasured = driveSource.replace("fit.left >= 0 && fit.right <= width + 1 && fit.width > 0 && fit.root <= 1", "fit.width >= 0");
+  assert.notEqual(unmeasured, driveSource, "warning-fit mutation must plant");
+  assert.equal(hasUnrecordedActs(unmeasured), false, "a warning no longer measured inside the viewport must turn the drive guard red");
   console.log("maswali admin checklist RED: omitted guarantee, stale requirement, lost dialog gates, second-officer policy restore and evidence label are caught");
 }

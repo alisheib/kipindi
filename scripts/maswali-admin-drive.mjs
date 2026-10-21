@@ -19,10 +19,14 @@
  *       two-officer rule only after seeding, seals M1, has a different MODERATOR confirm its exact review, returns the
  *       local rule to single-admin, then seals the other fourteen; reads the ready week's prepared settlement and releases it (typed
  *       RELEASE); pauses and resumes sales (PAUSE / RESUME); voids the week that voids whole (VOID); holds, releases,
- *       holds again and forfeits a winning share (HOLD, RELEASE, FORFEIT SHARE).
+ *       holds again and forfeits a winning share (HOLD, RELEASE, FORFEIT SHARE); and, last, makes a week the final week
+ *       (typed SUNSET MILLIONEA).
+ * ⭐ S5-FIX-SRV · ONE TRUTH FOR EVERY ACT: the open (4.6), a move of the close (5.3), the week void (6.4c) and the stop
+ *    (6.6) each run once with their audit row LOST (`/api/dev-test/maswali-audit-fault` arms one), and the page must say
+ *    so in the console's own words, readable whole at 360 and at 1280, a tile at each.
  * After each act: what the page SAYS (the outcome sentence and the state chip), no console error since the act before,
  * and a viewport tile (never full-page) in `.50pick-shots/maswali/drive/`.
- * ⛔ The only routes it calls itself are those two dev-only ones; everything else is a click, a key or a typed word.
+ * ⛔ The only routes it calls itself are those three dev-only ones; everything else is a click, a key or a typed word.
  * ⚠️ THE WEEK VOID NEEDS THE TICK OFF (`MASWALI_SCHEDULER=false LIFECYCLE_TICKER=false` on the dev server): the Millionea
  *    tick voids a certain week as soon as its window has closed (`maswali-scheduler.ts`), so with it on, the seeded
  *    week is voided by the system first and 6.4 SKIPs, saying so.
@@ -178,6 +182,14 @@ const RESUME_WHY = "Drive: the fixture is confirmed; sales start again.";
 const HOLD_WHY = "Drive: the deposit that funded this ticket is under review.";
 const RELEASE_WHY = "Drive: the review cleared the deposit; the player keeps the share.";
 const FORFEIT_WHY = "Drive: the deposit was reversed; the share goes back to the jackpot.";
+const STOP_WHY = "Drive: the Owner stops Millionea after this week.";
+/** S5-FIX-SRV · what the console says when an act LANDED but its audit row was lost (the actions' own sentences). */
+const UNRECORDED = {
+  open: "The open landed, but its audit record could not be fully written. Tell an administrator; do not repeat the open.",
+  move: "The move landed, but its audit record could not be fully written. Tell an administrator; do not repeat the move.",
+  void: "The week void landed, but its audit record could not be fully written. Tell an administrator; do not repeat the void.",
+  stop: "The stop landed, but its audit record could not be fully written. Tell an administrator; do not repeat the stop.",
+};
 
 // ── The browser: one context per account ───────────────────────────────────────────────────────────────────────────
 const browser = await chromium.launch();
@@ -283,6 +295,34 @@ async function confirmDialog(p, title, { word, confirm, alert, fields }) {
     await dlg.waitFor({ state: "hidden", timeout: 10_000 }).catch(() => {});
   };
   return { gated, closed: !!end?.closed, refusal: end?.refusal ?? (end ? "" : "the dialog neither closed nor said why"), cancel };
+}
+
+/** S5-FIX-SRV · arm ONE lost audit write: the next row with `action` an act owes is reported unrecorded and not written. */
+async function loseNextAuditRow(action) {
+  const res = await ctx.request.post(`${BASE}/api/dev-test/maswali-audit-fault`, { data: { action } });
+  return res.ok();
+}
+/**
+ * The act's warning, read off the page in the console's own words, then measured where an officer reads it: whole inside
+ * the viewport and no sideways scroll, at 360 and at 1280, with a tile at each width.
+ */
+async function auditWarningReads(tag, scope, words, tile) {
+  const warning = scope.getByRole("alert").filter({ hasText: words });
+  const shown = await until(async () => (await warning.count()) > 0, 30_000);
+  ok(`${tag} the page says the act landed without its audit record, in the console's words`, !!shown, await alertText(scope.getByRole("alert")));
+  if (!shown) return;
+  for (const width of [360, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await warning.first().scrollIntoViewIfNeeded();
+    const fit = await warning.first().evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return { left: r.left, right: r.right, width: r.width, root: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+    });
+    ok(`${tag} …and it reads whole at ${width}px: inside the viewport, with no sideways scroll`,
+      fit.left >= 0 && fit.right <= width + 1 && fit.width > 0 && fit.root <= 1, JSON.stringify(fit));
+    await shot(page, `${tile}-${width}`);
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
 }
 
 /** Run one part; a throw is that part's failure, and the drive goes on to the next part. */
@@ -516,6 +556,9 @@ await part("4 · attest and open", async () => {
       && (await ready.getByText("The three languages are attested.", { exact: true }).count()) > 0, clip(await ready.textContent(), 300));
   await checkpoint(page, "4.3", "07-open-ready");
 
+  // S5-FIX-SRV · this open's own audit row is lost (one armed fault): the week still opens, and the page says so (4.6).
+  const armedOpen = await loseNextAuditRow("maswali.week.opened");
+  ok("4.4a the open's audit row is armed to be lost (the dev-only fault route)", armedOpen);
   await ready.getByRole("button", { name: "Open the week", exact: true }).click();
   const r = await confirmDialog(page, "Open the week for sale?", { confirm: "Open the week", alert: ready.getByRole("alert") });
   opened = r.closed;
@@ -525,6 +568,7 @@ await part("4 · attest and open", async () => {
   const selling = await until(async () => (await chipOf(page)) === "Selling", 60_000);
   ok("4.5 the open shows: the chip reads Selling and the close can be moved", !!selling && (await card(page, "Move the sales close").count()) > 0, await chipOf(page));
   await checkpoint(page, "4.4", "08-opened");
+  await auditWarningReads("4.6", page.locator("main"), UNRECORDED.open, "08b-open-unrecorded");
 });
 
 // ── 5 · move the close ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -567,6 +611,19 @@ await part("5 · move the close", async () => {
     earlyReview.gated && !!moved && (await mv.getByRole("alert").count()) === 0, earlyReview.refusal || `${await nowCloses()} ${await alertText(mv.getByRole("alert"))}`);
   ok("5.2b …and the week still sells", (await chipOf(page)) === "Selling", await chipOf(page));
   await checkpoint(page, "5.2", "10-close-moved");
+
+  // S5-FIX-SRV · one more move, its audit row lost (one armed fault): the close still moves, and the form says so.
+  const armedMove = await loseNextAuditRow("maswali.week.close_moved");
+  const wantAgain = fmtEat(eatMs(THU, "16:00"));
+  await typeDate(mv, THU);
+  await typeTime(time, "16:00");
+  await mv.getByRole("button", { name: "Move the close", exact: true }).click();
+  const unrecordedMove = await confirmDialog(page, `Move ${driveCode}'s sales close?`, { word: "MOVE CLOSE", confirm: "Move the close", alert: (dlg) => dlg.getByRole("alert") });
+  const movedAgain = unrecordedMove.closed && await until(async () => (await nowCloses()) === wantAgain, 30_000);
+  ok(`5.3 a move whose audit row is lost still lands: the page now says it closes ${wantAgain} (EAT)`,
+    armedMove && unrecordedMove.gated && !!movedAgain, unrecordedMove.refusal || `${await nowCloses()}`);
+  await checkpoint(page, "5.3", "10b-close-moved-unrecorded");
+  await auditWarningReads("5.3b", mv, UNRECORDED.move, "10c-move-unrecorded");
 });
 
 // ── 6 · the seeded weeks ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -783,11 +840,15 @@ await part("6.4 · void a week", async () => {
     return;
   }
   const code = clip(await btn.textContent()).replace(/^Void /, "");
+  // S5-FIX-SRV · this void's audit row is lost (one armed fault): the week still voids and refunds, and the card says so.
+  const armedVoid = await loseNextAuditRow("maswali.week.voided");
+  ok("6.4a the void's audit row is armed to be lost (the dev-only fault route)", armedVoid);
   await btn.click();
   const r = await confirmDialog(page, `Void ${code} whole?`, { word: "VOID", confirm: "Void and refund", alert: vw.getByRole("alert") });
   const gone = r.closed && await until(async () => (await vw.getByRole("button", { name: `Void ${code}`, exact: true }).count()) === 0, 60_000);
   ok(`6.4 compliance voids ${code} whole (the confirm armed only on VOID): it leaves the weeks to void`, r.gated && !!gone, r.refusal || clip(await vw.textContent(), 200));
   await checkpoint(page, "6.4", "18-voided");
+  await auditWarningReads("6.4c", vw, UNRECORDED.void, "18b-void-unrecorded");
   await go(page, "/admin/maswali");
   const chip = await listChip(page, code);
   ok(`6.4b the weeks list says ${code} is Voided`, chip === "Voided", chip);
@@ -843,6 +904,31 @@ await part("6.5 · hold, release and forfeit a share", async () => {
   ok(`6.5d compliance forfeits ${B.serial} to the jackpot (the confirm armed only on FORFEIT SHARE): its row reads Forfeited and the winner "forfeited · …"`,
     r2.gated && !!forfeited && said === `forfeited · ${FORFEIT_WHY}`, r2.refusal || said);
   await checkpoint(page, "6.5d", "22-forfeited");
+});
+
+// ── 6.6 · LAST: the Owner stops the product, its audit row lost (S5-FIX-SRV) ─────────────────────────────────────────
+// Last, because a final week changes what may open after it. The week chosen is the one on sale (it becomes final at once)
+// or else a draft a full week out — an earlier week is refused once a later one has opened (MR-30).
+await part("6.6 · stop the product", async () => {
+  await go(page, "/admin/maswali/pools");
+  const stop = page.locator("section").filter({ has: page.getByRole("heading", { name: "Stop the product", exact: true }) });
+  const pick = stop.getByRole("combobox", { name: "Final week", exact: true });
+  if ((await pick.count()) === 0) { skipped("6.6 stop the product", clip(await stop.textContent().catch(() => "no stop section"), 200)); return; }
+  await pick.click();
+  const labels = (await page.getByRole("option").allTextContents()).map((l) => clip(l));
+  const label = labels.find((l) => l.endsWith("· open")) ?? labels.find((l) => l.endsWith("· draft"));
+  if (!label) { await page.keyboard.press("Escape"); skipped("6.6 stop the product", `no week on sale or drafted to make final: ${labels.join(", ")}`); return; }
+  await page.getByRole("option", { name: label, exact: true }).click();
+  const code = label.split(" · ")[0];
+  await stop.getByRole("textbox", { name: "Why Millionea is stopping", exact: true }).fill(STOP_WHY);
+  const armed = await loseNextAuditRow("maswali.sunset.ordered");
+  await stop.getByRole("button", { name: "Make it the final week", exact: true }).click();
+  const r = await confirmDialog(page, `Make ${code} the final week?`, { word: "SUNSET MILLIONEA", confirm: "Make it final", alert: (dlg) => dlg.getByRole("alert") });
+  const named = r.closed && await until(async () => clip(await stop.textContent()).includes(`Week ${code} is the final week.`), 60_000);
+  ok(`6.6 the Owner makes ${code} the final week (the confirm armed only on SUNSET MILLIONEA), its audit row lost: the page names it`,
+    armed && r.gated && !!named, r.refusal || clip(await stop.textContent(), 300));
+  await checkpoint(page, "6.6", "23-stopped");
+  await auditWarningReads("6.6b", stop, UNRECORDED.stop, "23b-stop-unrecorded");
 });
 
 await browser.close();

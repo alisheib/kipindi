@@ -21,6 +21,7 @@ import {
   forfeitMaswaliShareAction, holdMaswaliShareAction, pauseMaswaliSalesAction, releaseMaswaliShareAction, resumeMaswaliSalesAction,
   voidMaswaliWeekAction,
 } from "./actions";
+import { raiseAuditWarning } from "../audit-warning";
 
 const FORFEIT_WORD = "FORFEIT SHARE";
 const fd = (o: Record<string, string>) => { const f = new FormData(); for (const [k, v] of Object.entries(o)) f.set(k, v); return f; };
@@ -30,12 +31,13 @@ function useAct() {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
-  const run = (fn: () => Promise<{ ok: boolean; error?: string; note?: string }>, after?: () => void) => {
+  const run = (fn: () => Promise<{ ok: boolean; error?: string; note?: string; auditWarning?: string | null }>, after?: () => void, onWarning?: (warning: string | null) => void) => {
     setError(null); setNote(null);
     start(async () => {
       const r = await fn();
       if (!r.ok) { setError(r.error ?? "That did not go through."); return; }
       setNote(r.note ?? null);
+      onWarning?.(r.auditWarning ?? null);
       after?.();
       router.refresh();
     });
@@ -85,7 +87,7 @@ export function VoidWeekControl({ weekId, code }: { weekId: string; code: string
           <p>Voided mains outnumber the usable reserves on the sealed record (MR-18). Every live ticket is refunded in full; the jackpot carries on untouched.</p>
           {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
         </div>}
-        onConfirm={() => run(() => voidMaswaliWeekAction(fd({ weekId })), () => setOpen(false))} />
+        onConfirm={() => run(() => voidMaswaliWeekAction(fd({ weekId })), () => setOpen(false), (warning) => raiseAuditWarning("integrity:weekVoid", warning))} />
     </span>
   );
 }

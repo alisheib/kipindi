@@ -18,7 +18,9 @@ import { pauseMaswaliSales, resumeMaswaliSales } from "@/lib/server/maswali-paus
 import { forfeitMaswaliShare, holdMaswaliShare, releaseMaswaliShare } from "@/lib/server/maswali-settlement";
 import { noteMaswaliPoolChanged } from "@/lib/server/maswali-pool-feed";
 
-type ActionResult = { ok: true; note?: string } | { ok: false; error: string };
+type ActionResult = { ok: true; note?: string; auditWarning?: string | null } | { ok: false; error: string };
+/** S5-FIX-SRV · a landed week void whose audit row was not written (the void and its refunds stand). */
+const WEEK_VOID_AUDIT_WARNING = "The week void landed, but its audit record could not be fully written. Tell an administrator; do not repeat the void.";
 
 const refresh = () => {
   revalidatePath("/admin/maswali");
@@ -34,7 +36,7 @@ export async function voidMaswaliWeekAction(formData: FormData): Promise<ActionR
   try {
     const r = await voidWeek({ weekId: str(formData, "weekId"), actorId: session.userId });
     if (!r.ok) return { ok: false, error: r.error };
-    return { ok: true, note: `Week ${r.week.code} is voided; every ticket is refunded in full.` };
+    return { ok: true, note: `Week ${r.week.code} is voided; every ticket is refunded in full.`, auditWarning: r.recorded ? null : WEEK_VOID_AUDIT_WARNING };
   } catch (err) {
     return { ok: false, error: safeError(err, "The week could not be voided") };
   } finally {

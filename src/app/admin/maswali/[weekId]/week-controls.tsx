@@ -27,6 +27,7 @@ import {
   attestMaswaliParityAction, confirmMaswaliSealAction, correctMaswaliSealAction, moveMaswaliCloseAction, openMaswaliWeekAction,
   sealMaswaliQuestionsAction, voidMaswaliQuestionAction,
 } from "../actions";
+import { AuditWarning, raiseAuditWarning } from "../audit-warning";
 
 const fd = (o: Record<string, string>) => { const f = new FormData(); for (const [k, v] of Object.entries(o)) f.set(k, v); return f; };
 
@@ -68,7 +69,7 @@ export function AttestOpenControls({ weekId, weekCode, attestedBy, canAttest, ca
         : <ControlLocked what="Attest the languages" need={attestNeed} />}
       {canOpen ? (mayAct ? <Button size="sm" disabled={pending || !openReady} onClick={() => setConfirm(true)}>Open the week</Button> : <ActReadOnly />)
         : <ControlLocked what="Open the week" need={openNeed} />}
-      {auditWarning && <p role="alert" className="text-body-sm text-warning w-full">{auditWarning}</p>}
+      <AuditWarning text={auditWarning} />
       {!attestConfirm && !confirm && error && <p role="alert" className="text-body-sm text-danger-fg w-full">{error}</p>}
       <ConfirmModal open={attestConfirm} onClose={() => setAttestConfirm(false)} loading={pending} tone="brand" tier="hard" typedWord="ATTEST"
         title={`Attest ${weekCode}'s three languages?`} confirmLabel="Record the attestation"
@@ -83,7 +84,7 @@ export function AttestOpenControls({ weekId, weekCode, attestedBy, canAttest, ca
           <p>The rules, the fifteen questions and their sources freeze now and cannot change afterwards (MR-13). Players can buy as soon as Millionea is visible to them.</p>
           {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
         </div>}
-        onConfirm={() => run(() => openMaswaliWeekAction(fd({ weekId })), () => setConfirm(false))} />
+        onConfirm={() => run(() => openMaswaliWeekAction(fd({ weekId })), () => setConfirm(false), (warning) => raiseAuditWarning(`week:${weekId}`, warning))} />
     </div>
   );
 }
@@ -97,6 +98,7 @@ export function MoveCloseForm({ weekId, weekCode, currentEat, closesAt }: { week
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [review, setReview] = useState<{ fromEat: string; toEat: string; closeAt: string } | null>(null);
+  const [auditWarning, setAuditWarning] = useState<string | null>(null);
   return (
     <div className="space-y-3 max-w-form">
       <p className="text-body-sm text-text-secondary">Now closes {currentEat} (EAT). Earlier, never inside the next notice period; later, never past the first event less its buffer (MB-28).</p>
@@ -106,6 +108,7 @@ export function MoveCloseForm({ weekId, weekCode, currentEat, closesAt }: { week
       </div>
       {mayAct ? <Button size="sm" disabled={pending || !date || !time} onClick={() => { setError(null); setReview({ fromEat: currentEat, toEat: `${date} ${time}`, closeAt: `${date}T${time}` }); }}>Move the close</Button> : <ActReadOnly />}
       {!review && error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
+      <AuditWarning text={auditWarning} />
       <UnsavedChangesGuard dirty={date !== "" || time !== ""} body="A new sales close has been chosen but not moved. Leaving now discards it." />
       <ConfirmModal open={review !== null} onClose={() => setReview(null)} loading={pending} tone="warning" tier="hard" typedWord="MOVE CLOSE"
         title={`Move ${weekCode}'s sales close?`} confirmLabel="Move the close"
@@ -117,7 +120,7 @@ export function MoveCloseForm({ weekId, weekCode, currentEat, closesAt }: { week
         </div>}
         onConfirm={() => {
           if (!review) return;
-          run(() => moveMaswaliCloseAction(fd({ weekId, closeAt: review.closeAt, expectedClosesAt: closesAt })), () => { setReview(null); setDate(""); setTime(""); });
+          run(() => moveMaswaliCloseAction(fd({ weekId, closeAt: review.closeAt, expectedClosesAt: closesAt })), () => { setReview(null); setDate(""); setTime(""); }, setAuditWarning);
         }} />
     </div>
   );
@@ -228,7 +231,7 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
           ? <Button size="sm" disabled={pending || chosen.length === 0 || evidenceMissing} onClick={() => { setError(null); setSealOpen(true); }}>Seal {chosen.length || ""} result{chosen.length === 1 ? "" : "s"}</Button>
           : <ActReadOnly />) : <ControlLocked what="Seal results" need={need.seal} />}
         {evidenceMissing && <span className="text-body-sm text-warning">Each seal records its evidence (at least 10 characters).</span>}
-        {sealAuditWarning && <p role="alert" className="text-body-sm text-warning w-full">{sealAuditWarning}</p>}
+        <AuditWarning text={sealAuditWarning} />
         {!confirmRow && !sealOpen && !voidRow && !correctRow && error && <p role="alert" className="text-body-sm text-danger-fg w-full">{error}</p>}
       </div>
 

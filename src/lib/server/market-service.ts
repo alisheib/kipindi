@@ -773,7 +773,7 @@ export type CreateMarketInput = {
   rateOverrides?: Partial<RateConfig>;
 };
 
-export async function createMarket(input: CreateMarketInput, tx?: Parameters<typeof marketStore.set>[1]) {
+export async function createMarket(input: CreateMarketInput, tx?: Parameters<typeof marketStore.set>[1], owe?: (row: Parameters<typeof audit>[0]) => void) {
   const now = new Date().toISOString();
   const nowMs = Date.now();
   const id = `mkt_${randomId(10)}`;
@@ -879,7 +879,7 @@ export async function createMarket(input: CreateMarketInput, tx?: Parameters<typ
     createdAt: now,
     updatedAt: now,
   };
-  await marketStore.set(m, tx); // S5-FIX-SRV · `tx`: a caller's lock transaction (a Millionea open) — the row commits with it, and is announced below once it has.
+  await marketStore.set(m, tx); // S5-FIX-SRV · `tx`: a caller's lock transaction (a Millionea open) — the row commits with it; `owe` hands its audit row to that caller, who writes it once it has committed.
   // ⭐ NOT WRITTEN FOR AN UP & DOWN ROUND (audit F-10, Ali's decision 2026-08-20:
   // "reduce what Up & Down writes").
   //
@@ -901,9 +901,9 @@ export async function createMarket(input: CreateMarketInput, tx?: Parameters<typ
   //   · `market.settled`             — THE MONEY: winnersPaid, pools, positionsSettled.
   // Cutting any of those would trade audit volume for a compliance record, which is not a
   // trade to make on a licensed operator's tamper-evident chain.
-  // A Millionea week is one row a week, so its creation is audited like a poll's (S0.5: said, not defaulted).
+  const announce = owe ?? ((row: Parameters<typeof audit>[0]) => afterCommit(tx, () => void audit(row))); // A Millionea week is one row a week, so its creation is audited like a poll's (S0.5: said, not defaulted).
   if (switchLine(m.productLine, { MARKET: () => true, UPDOWN: () => false, MASWALI: () => true })) {
-    afterCommit(tx, () => void audit({
+    announce({
       category: "ADMIN",
       action: "market.created",
       actorId: input.proposedBy,
@@ -916,7 +916,7 @@ export async function createMarket(input: CreateMarketInput, tx?: Parameters<typ
         // S2: what the card will say, on the record from the first moment (null = the full title).
         shortTitleEn: m.shortTitleEn ?? null, shortTitleSw: m.shortTitleSw ?? null, shortTitleZh: m.shortTitleZh ?? null, competition: m.competition ?? null,
       },
-    }));
+    });
   }
   // Arm this market's per-market timers (closing-soon → selection-closed → resolve).
   // Fire-and-forget: a scheduler hiccup must never fail market creation; the 5-min

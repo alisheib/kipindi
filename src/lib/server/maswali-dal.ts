@@ -218,7 +218,7 @@ export interface WeekStore {
   openFor(visibility: WeekVisibility): Promise<StoredWeek | null>;
   /** The highest `seq` so far, 0 when there is none. */
   maxSeq(): Promise<number>;
-  create(w: StoredWeek): Promise<void>;
+  create(w: StoredWeek, tx?: Prisma.TransactionClient): Promise<void>;
   patch(id: string, fields: Partial<StoredWeek>, tx?: Prisma.TransactionClient): Promise<void>;
   /** ⭐ The open's one write: market, rules, question-set hash and state, WHERE the week is still DRAFT. */
   stampOpen(id: string, f: { marketId: string; rulesSnapshot: unknown; questionSetHash: string; opensAt: string }, tx?: Prisma.TransactionClient): Promise<boolean>;
@@ -257,7 +257,7 @@ export type WeekSettlementStamp = {
 export interface QuestionStore {
   listForWeek(cycleId: string, tx?: Prisma.TransactionClient): Promise<StoredQuestion[]>;
   get(id: string): Promise<StoredQuestion | null>;
-  createMany(cycleId: string, rows: Array<DraftQuestionFields & { id: string }>): Promise<void>;
+  createMany(cycleId: string, rows: Array<DraftQuestionFields & { id: string }>, tx?: Prisma.TransactionClient): Promise<void>;
   /** A draft's text, only while its week is DRAFT (the caller checks the week; this refuses non-draft columns). */
   editDraftQuestion(id: string, fields: Partial<DraftQuestionFields>): Promise<void>;
   /** One builder save: every changed draft slot lands together, or none does. */
@@ -652,8 +652,8 @@ const prismaWeeks: WeekStore = {
   },
   async openFor(visibility) { const r = await pc().maswaliCycle.findFirst({ where: { state: "OPEN", visibility } }); return r ? toWeek(r) : null; },
   async maxSeq() { const r = await pc().maswaliCycle.aggregate({ _max: { seq: true } }); return r._max.seq ?? 0; },
-  async create(w) {
-    await pc().maswaliCycle.create({
+  async create(w, tx) {
+    await db_(tx).maswaliCycle.create({
       data: {
         id: w.id, marketId: w.marketId, code: w.code, seq: w.seq, visibility: w.visibility, state: w.state,
         opensAt: new Date(w.opensAt), closesAt: new Date(w.closesAt), finalDeadlineAt: new Date(w.finalDeadlineAt),
@@ -721,8 +721,8 @@ const prismaQuestions: QuestionStore = {
     return rows.map(toQuestion);
   },
   async get(id) { const r = await pc().maswaliQuestion.findUnique({ where: { id } }); return r ? toQuestion(r) : null; },
-  async createMany(cycleId, rows) {
-    await pc().maswaliQuestion.createMany({
+  async createMany(cycleId, rows, tx) {
+    await db_(tx).maswaliQuestion.createMany({
       data: rows.map((r) => ({
         id: r.id, cycleId, role: r.role, ordinal: r.ordinal, slot: r.slot, category: r.category,
         textEn: r.textEn, textSw: r.textSw, textZh: r.textZh, criterionEn: r.criterionEn, criterionSw: r.criterionSw, criterionZh: r.criterionZh,

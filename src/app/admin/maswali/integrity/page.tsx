@@ -23,6 +23,7 @@ import { slotLabel } from "@/lib/maswali-score";
 import { adminCount, formatNumber, formatTzs } from "@/lib/utils";
 import { fmtEat } from "@/lib/maswali-admin-format";
 import { HeldShareControls, HoldShareControl, PauseControl, VoidWeekControl } from "./integrity-controls";
+import { StandingAuditWarning } from "../audit-warning";
 
 export const metadata = { title: "Admin · Millionea · Integrity" };
 export const dynamic = "force-dynamic";
@@ -175,6 +176,8 @@ async function Content({ searchParams }: IntegrityPageProps) {
                 && <Link href={clearListHref(listParams, "v") as never} className="btn btn-ghost btn-sm">Clear</Link>}
             </form>
           </div>
+          {/* S5-FIX-SRV · a voided week leaves this list as it lands: its audit warning stands here instead. */}
+          <div className="px-4 pt-3 empty:hidden"><StandingAuditWarning slot="integrity:weekVoid" /></div>
           {v.voidablePage.allTotal === 0 ? <div className="p-4 text-body-sm text-text-secondary">No week is waiting to be voided.</div>
             : v.voidablePage.total === 0 ? <EmptyState title="No voidable weeks match these filters" body="Try another week code or line." /> : (
             <><p className="px-4 pt-3 font-mono text-micro uppercase tracking-widest text-text-subtle">{formatNumber(v.voidablePage.total)} of {adminCount(v.voidablePage.allTotal, "week")} waiting</p>

@@ -131,6 +131,10 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
     start(async () => {
       const r = await createMaswaliWeekAction(fd);
       if (!r.ok) { setError(r.error); return; }
+      // S5-FIX-SRV · a draft whose audit row was not written is said so, as an edit's is (one truth for every act).
+      if (r.recorded === false) {
+        deferToast({ title: "Week drafted, but the audit record was not written", description: "Tell an administrator. The draft is already saved; do not draft it again.", variant: "warning", durationMs: 0 });
+      }
       router.push(`/admin/maswali/${r.weekId}` as Route);
     });
   };

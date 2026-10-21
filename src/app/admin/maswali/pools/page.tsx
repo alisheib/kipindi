@@ -20,6 +20,7 @@ import { formatTzs } from "@/lib/utils";
 import { fmtEat, weekStateChip } from "@/lib/maswali-admin-format";
 import { openState, poolsLine, poolsSearchParams, queryOpenWeeks, queryRolloverTrail, type OpenSort, type TrailSort } from "@/lib/maswali-admin-pools-query";
 import { GuaranteeCeremony, LicenceCeremony, ReleaseControl, RolloutCeremony, SunsetCeremony } from "./pools-controls";
+import { StandingAuditWarning } from "../audit-warning";
 
 export const metadata = { title: "Admin · Millionea · Pools" };
 export const dynamic = "force-dynamic";
@@ -243,6 +244,8 @@ async function Content({ searchParams }: PoolsPageProps) {
             <section className="space-y-2">
               <h3 className="font-semibold text-body">Stop the product</h3>
               <p className="text-body-sm text-text-secondary">{standing?.sunset.kind === "ENDING" ? `Week ${standing.sunset.week.code} is the final week.` : standing?.sunset.kind === "RETIRED" ? "Millionea has ended." : "The final week runs normally; if no ticket gets 10 of 10, the top score shares the jackpot (MR-30)."}</p>
+              {/* S5-FIX-SRV · the stop's form gives way once a final week stands: its audit warning stands here instead. */}
+              <StandingAuditWarning slot="pools:stop" />
               {canSunset ? <SunsetCeremony weeks={sunsetCandidates.map((w) => ({ id: w.id, code: w.code, state: w.state }))} />
                 : <ControlLocked what="Make a week the final week" need={CONTROL_DOMAIN.sunsetMaswali} block />}
             </section>
