@@ -521,6 +521,10 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/components/journey/bet-sheet/bet-sheet.tsx', '<I.chevronRight s={16} edge="end" text="body-400" />', 4, "text", "S8's pending receipt, declaration and limits links, plus the similar-question link: their 15px body/400 words and the same run's end"],
     ['src/components/journey/bet-sheet/bet-sheet.tsx', '<I.chevronRight s={20} text="body-600" />', 1, "button", B],
     ['src/components/journey/bet-sheet/sheet-parts.tsx', '<I.chevronRight s={16} edge="end" text="body-400" />', 1, "text", "S8's receipt ticket link: its 15px body/400 words, centred by the run's ink"],
+    // 2026-10-21 (S5-DESIGN-SLIP, the slip critic's H4/M4): the Millionea confirm's short balance is the bet sheet's own low
+    // frame, drawn with the sheet's own marks — its pending, declaration and limits links, and its deposit door's trailing mark.
+    ['src/app/millionea/slip/slip-client.tsx', '<I.chevronRight s={16} edge="end" text="body-400" />', 3, "text", "the slip's low frame — the bet sheet's pending receipt, declaration and limits links: their 15px body/400 words and the run's end"],
+    ['src/app/millionea/slip/slip-client.tsx', '<I.chevronRight s={20} text="body-600" />', 1, "button", B],
     ['src/app/account/page.tsx', '<I.externalLink s={18} edge="end" className="kp-hub__chev" aria-hidden />', 1, "row", "the hub's staff row end"],
     ['src/app/agent/apply/apply-client.tsx', '<I.arrowRight s={14} text="body-600" />', 1, "button", B],
     ['src/app/agent/apply/loading.tsx', '<I.arrowRight s={14} text="body-600" />', 1, "button", "its ghost's (ButtonGhost): the page's own mark, unpainted, pulled at render as Button pulls it (R10-A6)"],
@@ -697,7 +701,8 @@ section("5 · A5 every pair of buttons stands 12px apart — the card's YES/NO a
   }
   // S12 (WP9): Juu/Chini's journey arm — its column (`.kp-jud`: "Tumia … badala yake" above the commit) and its Up/Down pair
   // (`.kp-jud__sides`) — both on --sp-3, as the card's pair.
-  const CSS_PAIRS: Record<string, string> = { "mcardp-actions": ".mcardp-actions", "kp-qrow__act": ".kp-qrow__act", "kp-wsheet__pair": ".kp-wsheet__pair", "kp-hero__ctas": ".kp-hero__ctas", "kp-jud": ".kp-jud", "kp-jud__sides": ".kp-jud__sides" };
+  // 2026-10-21 (S5-DESIGN-SLIP, the slip critic's M3): the Millionea confirm's pinned foot — its commit over its twin way back.
+  const CSS_PAIRS: Record<string, string> = { "mcardp-actions": ".mcardp-actions", "kp-qrow__act": ".kp-qrow__act", "kp-wsheet__pair": ".kp-wsheet__pair", "kp-hero__ctas": ".kp-hero__ctas", "kp-jud": ".kp-jud", "kp-jud__sides": ".kp-jud__sides", "kp-mln-confirm__foot": ".kp-mln-confirm__foot" };
   const KEEP_PAIR: Array<[string, string, string]> = [
     ["src/app/agent/apply/apply-client.tsx", "flex items-center justify-between", "Back and Next at the row's two ends (`justify-between`): the gap is a floor, not their distance"],
     ["src/components/onboarding/first-visit-primer.tsx", "mt-6 flex items-center justify-between gap-3", "Back and Next at the row's two ends"],
@@ -713,7 +718,11 @@ section("5 · A5 every pair of buttons stands 12px apart — the card's YES/NO a
     ["src/app/wallet/deposit/wait/deposit-waiting-client.tsx", "space-y-5 pb-16", "the receipt page's status sections and conditional full-width actions are stacked as separate rows"],
   ];
   const at12 = (cls: string) => new RegExp("(?:^| )gap(?:-x)?-2(?: |$)").test(cls) || Object.keys(CSS_PAIRS).some((k) => cls.split(" ").includes(k) && rule(CSS_PAIRS[k]).includes("gap: var(--sp-3)"));
-  const slipRail = pairs.find((p) => p.f === "src/components/maswali/maswali-slip.tsx" && p.cls === "flex items-center gap-2");
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-SLIP): the rail's row draws ONE pay control (`payButton`, never swapped
+  // for a second — the motion critic's focus note), so no pair stands in it for the census above; its gap is still read
+  // from inside its cn(), the class the counts and the control share.
+  const railRow = /<div className=\{cn\("flex items-center gap-2", actionLabel && armed && "flex-wrap"\)\}>/.exec(code("src/components/maswali/maswali-slip.tsx"))?.[0] ?? "";
+  const slipRail = railRow ? { cls: classOf(railRow) } : null;
   ok("5.2a · the slip action rail's fixed gap inside cn() is read from its source",
     slipRail?.cls === "flex items-center gap-2" && at12(slipRail.cls), j(slipRail));
   const downgradedRail = classOf(' className={cn("flex items-center gap-1.5", actionLabel && "flex-wrap")}');

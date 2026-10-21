@@ -167,9 +167,14 @@ console.log("\n§6 · every \"·\" in a Millionea string is the fact separator, 
   const d = unspacedDefects(ns);
   ok("6.1 · no Millionea string holds a \"·\" its fact lines cannot split (one with no space before or after it)", d.length === 0, d.join(", "));
   const facts = (s: string) => s.split(" · ").filter((x) => x !== "");
-  const stamp = LOCALES.map((l) => facts(String(ns(l).resultDetails).replace("{week}", "49").replace("{price}", "TZS 1,000").replace("{time}", "11:18")));
-  ok("6.2 · the cut's stamp is three facts in every language — the week, the price from the main balance, the free cancel — zh \"（主余额）\" and \"免费取消至 11:18\" two of them",
-    stamp.every((f) => f.length === 3) && j(stamp[2]) === j(["第49周", "TZS 1,000（主余额）", "免费取消至 11:18"]), j(stamp));
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-SLIP, the slip critic's LOW): the stamp says its facts as the receipt's ROWS
+  // now (\`details\`, as §3.7 and the Up & Down receipt do), so each row's words are ONE fact — a label, and a value — and the
+  // free cancel carries its zone, as the confirm's line does ("Free cancel until 11:18 EAT").
+  const rowWords = LOCALES.map((l) => [ns(l).price, ns(l).totalRow, ns(l).cancelFreeLabel, ns(l).payoutWhenSettled].map(String));
+  const cancelLine = LOCALES.map((l) => facts(String(ns(l).cancelFreeUntil).replace("{time}", "11:18")));
+  ok("6.2 · the cut's stamp words are one fact each in every language — the price or the total, \"free cancel until\", when the payout comes — and the free cancel is one fact that ends on its zone (zh \"免费取消至 11:18 EAT\")",
+    rowWords.every((ws) => ws.every((w) => w !== "undefined" && facts(w).length === 1)) && cancelLine.every((f) => f.length === 1 && f[0].endsWith("11:18 EAT"))
+      && j(cancelLine[2]) === j(["免费取消至 11:18 EAT"]), j({ rowWords, cancelLine }));
   const planted = unspacedDefects(plantedNs("zh", "resultDetails", "第{week}周 · {price}（主余额）· 免费取消至 {time}"));
   ok("6.1′ CONTROL · the old zh stamp line (\"（主余额）· 免费取消至\", the \"·\" glued to the bracket) is reported", j(planted) === j(["zh.resultDetails"]), j(planted));
 }

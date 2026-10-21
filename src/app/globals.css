@@ -4115,9 +4115,10 @@ th .link-pending { --lp-inset: 0px; --lp-bottom: 8px; }
    be called `kp-menu-caret`: `test:filter-language` §5.3 asserts the string `kp-menu` never
    appears in `filter-sheet.tsx`, so that `qa:discovery-board` can keep counting exactly two
    `details.kp-menu` under the bar. Different name, same definition. */
-.kp-menu-caret, .kp-fsheet-caret { transition: transform var(--t-quick) ease-out; }
+.kp-menu-caret, .kp-fsheet-caret, .kp-mln-caret { transition: transform var(--t-quick) ease-out; }
 .kp-menu[open] > summary .kp-menu-caret,
-.kp-fsheet[open] > summary .kp-fsheet-caret { transform: rotate(180deg); }
+.kp-fsheet[open] > summary .kp-fsheet-caret,
+.kp-mln-ticket[open] > summary .kp-mln-caret { transform: rotate(180deg); }
 
 /* 🔴 UD-13e · THE SHEET HAD NO EXIT. It rises on `.m-sheet-in` and used to leave by having
    `display: none` applied in the same frame the `open` attribute went — a considered 240ms
@@ -4770,6 +4771,27 @@ html[data-sheet-open] .route-enter { animation: none; }
    lead's ruling); other languages are untouched, and the platform-wide eyebrow is a separate, later platform question. */
 .kp-mln-zh:lang(zh) .eyebrow { letter-spacing: 0; }
 .kp-mln-zh:lang(zh) .eyebrow:is(.text-micro, .text-caption) { font-size: 12px; line-height: 16px; }
+/* ⭐ MASWALI-BUILD S5 · THE SLIP (Ali 2026-10-21 10/10 pass; the slip critic's report, the motion critic's slip items;
+   `maswali-slip.tsx`). An answer wears the lit side's type in both states — `.btn-yes`/`.btn-no`'s own 700 and 0.06em — so
+   a pick changes its ink and never its width: the word jumped ~9px as the weight and the tracking arrived (motion M1). */
+.btn.kp-mln-answer { font-weight: 700; letter-spacing: 0.06em; }
+/* From 768 the answers stand in one column: the mains take the reserves box's own inset — its 1px edge and the reserve rows'
+   `px-3` (--sp-4) — so YES stands over YES (the slip critic's LOW: the reserves' column sat 17px left of the mains'). */
+@media (min-width: 768px) { .kp-mln-row--main { padding-inline: calc(var(--sp-4) + 1px); } }
+/* The rail's foot (below 1024, where it docks on the tab bar): the classic phone rail's gold Deposit coin rises above its
+   65px row to --rail-h, so the slip's rail keeps that much clear under its controls and the coin rises into empty rail
+   (the slip critic's M2) — never into "Answer all 15". The journey's rail has no coin: its foot is the rail's own --sp-3. */
+@media (max-width: 1023.98px) {
+  .kp-mln-rail > * { padding-bottom: calc(var(--sp-3) + var(--rail-h) - 65px); }
+  :root:is([data-shell="journey"], #kp-journey-shell) .kp-mln-rail > * { padding-bottom: var(--sp-3); }
+}
+/* The confirm sheet, as the bet confirm is built (R4-I; the slip critic's M3): never taller than the screen less 40px, its
+   picks and facts scrolling inside it, its money and its two answers pinned under them on a hairline. */
+.kp-mln-confirm { max-height: calc(100dvh - 40px); overflow: hidden; }
+.kp-mln-confirm__body { display: flex; flex: 1 1 auto; flex-direction: column; gap: var(--sp-3); min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.kp-mln-confirm__foot { display: flex; flex: none; flex-direction: column; gap: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--border); }
+/* A ticket of the purchase, folded in the confirm: its own marker gone for the family caret (`.kp-mln-caret`, above). */
+.kp-mln-ticket > summary::-webkit-details-marker { display: none; }
 .kp-hero__trust-glyph { display: flex; justify-content: center; color: var(--text-subtle); }
 /* The wallet names are the row's emphasis — brand spellings from the payment catalogue, in the
    reader's own list form (`rail-list.ts`); the joiners and the sentence stay muted. */

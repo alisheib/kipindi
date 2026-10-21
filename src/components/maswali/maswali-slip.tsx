@@ -8,7 +8,6 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { CloseX, Modal, useExitPhase } from "@/components/ui/modal";
 import { Callout } from "@/components/ui/callout";
-import { NoticeBar, NoticeBarAction } from "@/components/ui/notice-bar";
 import { I } from "@/components/ui/glyphs";
 import { SteppedProgress } from "@/components/markets/stepped-progress";
 import { useTickSeconds } from "@/components/updown/round-countdown";
@@ -115,7 +114,7 @@ export function focusQuestion(label: string): void {
   const row = document.getElementById(`q-${label}`);
   if (!row) return;
   row.scrollIntoView({ block: "center", behavior: motionStill() ? "auto" : "smooth" });
-  row.querySelector<HTMLButtonElement>('[role="radio"][tabindex="0"]')?.focus({ preventScroll: true });
+  row.querySelector<HTMLButtonElement>('[role=radio][tabindex="0"]')?.focus({ preventScroll: true });
 }
 
 /**
@@ -265,7 +264,7 @@ const SlipRow = memo(function SlipRow({ q, pick, closed, flagged, onPick }: {
       data-flagged={flagged || undefined}
       className={cn(
         "grid scroll-mt-[96px] grid-cols-[28px_1fr] items-start gap-x-2 gap-y-1.5 border-t border-border py-3 md:grid-cols-[28px_1fr_248px]",
-        reserve ? "kp-mln-row--reserve px-3" : "kp-mln-row--main",
+        reserve ? "px-3" : "kp-mln-row--main",
       )}
     >
       <span id={`${rowId}-n`} className={cn("font-mono text-body font-bold tabular-nums", reserve ? "text-text-subtle" : "text-text-muted")}>{labelOf(q)}</span>
@@ -410,7 +409,15 @@ export function MaswaliSlip({
       {payWords}
     </Button>
   );
-  const closedWords = fillNodes(t.millionea.salesClosedAt, { when: strong(`${eatWeekdayClock(t, closesAt)} EAT`) });
+  // ⭐ THE CLOSED STATEMENT, where the pay control stood (rail and panel alike) and with its way on beside it (§F4): the lock
+  // and "Sales closed · Friday 18:00 EAT", read once through the polite region below when it arrives while looking.
+  const closedText = fill(t.millionea.salesClosedAt, { when: `${eatWeekdayClock(t, closesAt)} EAT` });
+  const closedLine = (
+    <p className="flex min-w-0 flex-1 basis-[14rem] items-start gap-2 text-body-sm text-text">
+      <I.lock s={16} tier="fill" className="mt-px shrink-0 text-text-muted" />
+      <span className="min-w-0">{fillNodes(t.millionea.salesClosedAt, { when: strong(`${eatWeekdayClock(t, closesAt)} EAT`) })}</span>
+    </p>
+  );
   // ⭐ THE PAY CONTROL LEAVES BEFORE THE STATEMENT ARRIVES (the motion critic's H5): its own exit beat (`.m-out`, `--t-quick`,
   // nothing under the clamps — Modal's `useExitPhase`), then the closed statement on the mark's axis in the same slot.
   const pay = useExitPhase(!closed, "--t-quick");
@@ -451,7 +458,7 @@ export function MaswaliSlip({
           {/* ONE POLITE REGION, MOUNTED EMPTY FROM THE FIRST RENDER (the S5 UI review, MEDIUM 6; DESIGN_AUTHORITY §A item 7):
               a status mounted together with its words is often not read, so the refusal's words arrive in this one. */}
           <p aria-live="polite" aria-atomic="true" className="sr-only" data-testid="millionea-slip-live">
-            {showRefusal && unanswered.length > 0 ? `${t.millionea.refusalIncomplete}. ${refusalBody}` : ""}
+            {closedJustNow ? closedText : showRefusal && unanswered.length > 0 ? `${t.millionea.refusalIncomplete}. ${refusalBody}` : ""}
           </p>
         </div>
         {/* From 1280: the sticky panel replaces the rail — progress, the picks, the price and the cap, the pay control —
@@ -476,7 +483,7 @@ export function MaswaliSlip({
             </div>
           ) : (
             <div className={cn("flex flex-col gap-2", closedJustNow && "m-axis-reveal")} data-testid="millionea-slip-closed">
-              <Callout tone="info" glyph="lock" role="status">{closedWords}</Callout>
+              {closedLine}
               <Link href={followHref as never} className="btn btn-ghost btn-lg w-full border-border-control">{t.millionea.followResults}</Link>
             </div>
           )}
@@ -502,10 +509,12 @@ export function MaswaliSlip({
             </div>
           </div>
         ) : (
-          <div className={cn("shadow-overlay-up", closedJustNow && "m-axis-reveal")} style={{ background: "var(--panel)" }} data-testid="millionea-slip-closed">
-            <NoticeBar tone="info" glyph="lock" action={<NoticeBarAction href={followHref} tone="info">{t.millionea.followResults}</NoticeBarAction>}>
-              {closedWords}
-            </NoticeBar>
+          <div className={cn("border-t border-border-strong px-3 py-2 shadow-overlay-up lg:px-6", closedJustNow && "m-axis-reveal")} style={{ background: "var(--panel)" }}
+            data-testid="millionea-slip-closed">
+            <div className="flex max-w-[640px] flex-wrap items-center gap-x-3 gap-y-2">
+              {closedLine}
+              <Link href={followHref as never} className="btn btn-ghost btn-md shrink-0 border-border-control">{t.millionea.followResults}</Link>
+            </div>
           </div>
         )}
       </div>
@@ -609,11 +618,12 @@ export function MaswaliSlipConfirm({
         {/* ⭐ THE HEADER ROW'S ✕, as the bet confirm's (the one convention, `CloseX` in modal.tsx; r6c §10 "header-row"):
             this sheet opens on its eyebrow, so the ✕ comes to the TITLE's first line — under the 16px eyebrow line and
             2px, its capitals centre 18 + 28/2 − 0.025 × 22 = 31.45px down; the 48px box centres 24px down, so `mt-[7.5px]`
-            lowers it and `-mb-[7.5px]` gives the room back. 16px inside the panel's edge, as Modal pins every ✕ (the
-            panel's `p-5 lg:p-6`, stepped out 8px / 16px). While the cut is in flight it is WITHHELD (the in-flight rule,
-            r5a 8.13): the way back is disabled then, and its box stays, so the title never moves. */}
+            lowers it and `-mb-[7.5px]` gives the room back. 16px inside the panel's edge, as Modal pins every ✕: the
+            sheet's panel is the platform sheet's (`.kp-wsheet`, --sp-5 inline at every width), so the box steps out 4px
+            (`-mr-1`). While the cut is in flight it is WITHHELD (the in-flight rule, r5a 8.13): the way back is disabled
+            then, and its box stays, so the title never moves. */}
         <CloseX withheld={pending} onClick={() => { if (!pending) onClose(); }} label={t.common.close}
-          className="mt-[7.5px] -mb-[7.5px] -mr-1.5 lg:-mr-3 shrink-0" />
+          className="mt-[7.5px] -mb-[7.5px] -mr-1 shrink-0" />
       </div>
       {shut ? (
         <p role="alert" className="sr-only">{closedLine}</p>
@@ -655,7 +665,7 @@ export function MaswaliSlipConfirm({
             <dl className="flex flex-col gap-1" data-testid="millionea-confirm-money">
               <div className="flex items-baseline justify-between gap-3">
                 <dt className="text-body text-text-muted">{many ? t.millionea.totalRow : t.millionea.price}</dt>
-                <dd className="amount text-title-sm font-bold text-text">{totalText}</dd>
+                <dd className="amount text-title-sm font-bold text-text">{formatTzs(total)}</dd>
               </div>
               <div className="flex items-start justify-between gap-3 text-body-sm text-text-muted">
                 <dt>{t.millionea.mainBalanceRow}</dt>

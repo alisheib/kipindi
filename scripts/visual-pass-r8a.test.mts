@@ -343,10 +343,11 @@ const WARN_REGISTRY: Record<string, [number, string]> = {
   "src/app/auth/forgot-password/page.tsx": [2, "the rate-limit box's frame and wash — a refusal the player clears by waiting, as sign-in's (its words the muted ink)"],
   "src/app/profile/account/privacy-request-form.tsx": [2, "the erasure request's caution — what an irreversible erasure keeps by law, read before sending"],
   "src/components/rg/limit-usage.tsx": [1, "THE one limit ramp's caution step, 75–90% of a limit the player set — never gilt"],
-  // MASWALI-BUILD S5 — Millionea's two ambers, each where somebody must act or money is deducted.
+  // MASWALI-BUILD S5 — Millionea's ambers, each where somebody must act or money is deducted.
   // 3 → 1 on 2026-10-21 (S5-FIX-PLAYER P18): the hand-rolled box (its frame, wash and glyph) is the kit's own Callout now,
-  // which paints the family itself — the slip names only its tone.
-  "src/components/maswali/maswali-slip.tsx": [1, "the confirm's short main balance — the player deposits before cutting a ticket (the kit Callout's warning tone)"],
+  // which paints the family itself — the slip names only its tone. 1 → 0 the same day (S5-DESIGN-SLIP, the slip critic's
+  // M4): the confirm's short main balance is the bet sheet's own low frame, the kit Callout's INFO tone with its alert glyph
+  // — so the slip draws no amber at all, and its entry left the registry (a count above the tree is slack).
   "src/components/maswali/maswali-win-ledger.tsx": [1, "the fee row's amber (a deduction), the receipt's own `ReceiptRow` tone"],
   // 2026-10-18 (S5 integration): the same deduction on the two pages that print a week's money as a receipt.
   "src/app/millionea/how/page.tsx": [1, "the worked example's fee row (a deduction), the receipt's own `ReceiptRow` tone — as the win ledger's"],

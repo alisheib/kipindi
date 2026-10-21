@@ -117,7 +117,10 @@ const goldDefects = (readAt: (rel: string) => string) => MLN_FILES.flatMap((f) =
     loss.length > 0 && !/\bscore\b|\/10|matched"\)\.length/.test(loss));
   const projecting = MLN_FILES.filter((f) => /potentialPayout/.test(code(read(f))));
   ok("1.6 · no potential payout anywhere on Millionea (a held ticket never names a share)", projecting.length === 0, projecting.join(" | "));
-  const PILL = /<MaswaliClosingPill\b/, HOOK = /useCountdown\(/;
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-SLIP, the slip critic's M12 and the motion critic's M8): every clock hook
+  // of the family counts — the pill is seeded from the server (`useTickSeconds`), and the slip's composer and its confirm read
+  // the close and the free cancel through `useServerNowGated` (drawn again only when the answer moves, never each second).
+  const PILL = /<MaswaliClosingPill\b/, HOOK = /useCountdown\(|useTickSeconds\(|useServerNow\(|useServerNowGated\(/;
   const pills = MLN_FILES.filter((f) => PILL.test(code(read(f))));
   const hooks = MLN_FILES.filter((f) => HOOK.test(code(read(f))));
   ok("1.7 · a countdown is DRAWN on the slip and the hub's buy block only (§10 §8); the clock hook elsewhere only reads the close (the slip's composer) or expires a control printing a fixed time (the free cancel)",
@@ -655,36 +658,43 @@ const factLineDefects = (m: string, n: number, joined: string) => {
     oldTopUp !== read(LEDGER) && ledgerLiteralSeparators(oldTopUp).length > 0);
 }
 
-// P1 · the cut: the sheet leaves first, then the stamp
+// P1 · the cut: one panel at a time — and, since S5-DESIGN-SLIP (the motion critic's H1), under ONE dim
+// ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-SLIP): P1's rule stands — the stamp's panel never stands over the leaving
+// sheet's — but it is kept by the kit's hand-off now, not an exit-beat timer: in ONE commit the sheet closes dropping its dim
+// (`handoff` on the sheet), the stamp opens holding the page's dim from its first frame (`handoff`) with its panel a beat late
+// (`panelDelay`), and the slip clears under that dim. The timer's commit let the bare slip show, its pay control live, for
+// ~100ms between the two (frames2/cut-stamp2-sw-360-f05…f09).
 const cutDefects = (src: string) => {
   const s = squash(code(src));
   const d: string[] = [];
   const okAt = s.indexOf("if (r.ok && r.data && r.data.tickets.length === slips.length"), refusal = s.indexOf("const failure = r as ReasonedFailure;");
   const branch = okAt >= 0 && refusal > okAt ? s.slice(okAt, refusal) : "";
-  if (!branch.includes("setLanding({") || !branch.includes("setConfirmOpen(false);")) d.push("the landed cut does not close the sheet and wait for it");
-  if (/setCut\(|setDraft\(/.test(branch)) d.push("the landed cut opens the stamp or clears the slip while the sheet is still on screen");
-  const at = s.indexOf("useEffect(() => { if (landing === null || confirmOpen) return;");
-  const effect = at < 0 ? "" : s.slice(at, s.indexOf("}, [landing, confirmOpen]);", at));
-  if (!effect) d.push("no effect waits for the sheet to have closed");
-  if (!effect.includes('exitBeatMs("--t-quick")') || !effect.includes("setDraft(landing.cleared);") || !effect.includes("setCut(landing.cut);")) d.push("the stamp and the cleared slip do not wait for the sheet's exit beat");
+  if (!branch.includes("setConfirmOpen(false);") || !branch.includes("setCut(landed);")) d.push("the landed cut does not close the sheet and open the stamp in one commit");
+  if (!branch.includes("setHandoffOut(true);") || !s.includes("handoff={handoffOut}")) d.push("the sheet does not hand its dim to the stamp");
+  if (!s.includes("handoff={cut !== null}") || !/panelDelay\s/.test(s)) d.push("the stamp neither holds the dim from its first frame nor rises a beat late: two panels up at once");
+  if (!branch.includes("setDraft(cleared);") || !branch.includes("setRefused(false);")) d.push("the slip is not cleared under the stamp's dim");
+  if (/exitBeatMs\(/.test(s)) d.push("an exit-beat timer still separates the sheet from the stamp");
   return d;
 };
 {
   const d = cutDefects(read(SLIP_CLIENT));
-  ok("4.P1 · a landed cut closes the confirm sheet FIRST; only once its exit beat is over (`exitBeatMs(\"--t-quick\")`, nothing under reduced motion) does the slip clear and the stamp open — the stamp never stands over a leaving sheet whose answers already read \"—\"",
+  ok("4.P1 · a landed cut closes the confirm sheet and opens the stamp in ONE commit under ONE dim — the sheet drops its dim, the stamp holds it from its first frame and its panel rises a beat late, the slip clears under it — so the two panels never stand at once and the bare slip is never seen",
     d.length === 0, d.join(" | "));
-  const old = read(SLIP_CLIENT).replace("          requestId.current = null;", "          setDraft(newSlipDraft(hiddenSlots, VOIDED_ROW_FILL));\n          requestId.current = null;");
-  ok("4.P1′ PLANT · the old order (the slip cleared inside the landed branch, beside the closing sheet) is reported",
-    old !== read(SLIP_CLIENT) && cutDefects(old).some((x) => x.includes("while the sheet is still on screen")));
+  const old = read(SLIP_CLIENT).replace("handoff={handoffOut}", "handoff={false}");
+  ok("4.P1′ PLANT · the sheet keeping its own dim (no hand-off) is reported",
+    old !== read(SLIP_CLIENT) && cutDefects(old).some((x) => x.includes("hand its dim")));
 }
 
 // P2 · the stamp's serial on one line, its facts stacked
 {
   const sc = squash(code(read(SLIP_CLIENT)));
-  ok("4.P2a · a single cut's stamp asks for the mono serial, a batch has a count heading and every serial, both carry Millionea's Chinese rule and stacked centred facts",
-    sc.includes('titleFace={cut?.serials.length === 1 ? "mono" : undefined} className="kp-mln-zh"')
-      && sc.includes('cut.serials.map((serial, i) => ({ label: fill(t.millionea.draftTicket, { n: formatNumber(cut.firstTicketNumber + i) }), value: serial }))')
-      && sc.includes('<MaswaliFacts layout="stack" className="kp-mln-facts--center"'));
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-SLIP, the slip critic's LOW): the stamp's facts are the receipt's rows now
+  // (`details`, as §3.7 and the Up & Down receipt set them) — the price, the free cancel in EAT, when the payout comes — where
+  // they stood as a stacked centred subtitle.
+  ok("4.P2a · a single cut's stamp asks for the mono serial, a batch has a count heading and every serial, both carry Millionea's Chinese rule and the receipt's rows",
+    sc.includes('titleFace={stamp && !many ? "mono" : undefined} className="kp-mln-zh"')
+      && sc.includes('stamp.serials.map((serial, i) => ({ label: fill(t.millionea.draftTicket, { n: formatNumber(stamp.firstTicketNumber + i) }), value: serial }))')
+      && sc.includes("details={stampRows}"));
   const { OperationResultModal } = req("../src/components/markets/operation-result-modal.tsx") as { OperationResultModal: (p: Record<string, unknown>) => unknown };
   const result = (p: Record<string, unknown>) => inApp("en", h(OperationResultModal as never, { open: true, variant: "success", onClose() {}, title: "MLN-2026-W49-000041", ...p } as never));
   const h2Of = (m: string) => /<h2 class="([^"]+)"/.exec(m)?.[1] ?? "";
@@ -863,21 +873,41 @@ const lumOf = (token: string) => {
 };
 const contrast = (a: string, b: string) => { const [x, y] = [lumOf(a), lumOf(b)]; return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
 const STEPPED = "src/components/markets/stepped-progress.tsx";
+// ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-SLIP, the slip critic's H1): VIS-P's empty `--border-strong` and the done
+// `--royal-400` were two saturated blues 1.97:1 apart — a slip at 0/15 read as full. An empty step is the kit ProgressBar's
+// own track now, the sunken well inside a 1px `--border-control` ring (3:1 on the rail, the non-text floor), and a done
+// step solid royal: HOLLOW vs SOLID, the shape and not only the shade. A token aliased to another (`--bg-sunken`) is read
+// through to its value.
+const tokenOf = (t: string): string => {
+  const m = new RegExp(`${t.replace(/[-]/g, "\\-")}:\\s*var\\((--[a-z0-9-]+)\\)`).exec(read("src/app/globals.css"));
+  return m ? tokenOf(m[1]) : t;
+};
 const meterDefects = (src: string) => {
   const s = squash(code(src));
-  const grouped = s.slice(s.indexOf("function GroupedProgress"));
-  const empty = /background: i < g\.done \? "var\(--royal-400\)" : "var\((--[a-z-]+)\)"/.exec(grouped)?.[1] ?? "";
+  // The recipe's own object literal (to its closing brace), never the next one's.
+  const step = (name: string) => {
+    const at = s.indexOf(`const ${name} = {`);
+    const lit = at < 0 ? "" : s.slice(at, s.indexOf("}", at) + 1);
+    return /background: "var\((--[a-z0-9-]+)\)", boxShadow: "inset 0 0 0 1px var\((--[a-z0-9-]+)\)", transition: STEP_FILL/.exec(lit)?.slice(1) ?? [];
+  };
+  const [doneFill, doneRing] = step("DONE_STEP"), [emptyFill, emptyRing] = step("EMPTY_STEP");
   const d: string[] = [];
-  if (!empty) d.push("the grouped meter's fills are not the done royal and one empty token");
-  else if (contrast(empty, "--panel") < 2.3 || contrast("--royal-400", empty) < 1.9) d.push(`the empty track ${empty} reads ${contrast(empty, "--panel").toFixed(2)}:1 on the rail, ${contrast("--royal-400", empty).toFixed(2)}:1 from done`);
+  if (doneFill !== "--royal-400" || doneRing !== "--royal-400") d.push(`a done step is not solid royal (${doneFill} in ${doneRing})`);
+  if (!emptyRing) d.push("an empty step is not hollow: no ring");
+  else if (contrast(emptyRing, "--panel") < 3) d.push(`the empty step's ring ${emptyRing} reads ${contrast(emptyRing, "--panel").toFixed(2)}:1 on the rail, under 3:1`);
+  if (emptyFill && contrast(tokenOf(emptyFill), "--panel") > 1.2) d.push(`the empty step's well ${emptyFill} is a fill, not a well`);
+  if (!s.includes('const STEP_FILL = "background var(--t-quick) linear, box-shadow var(--t-quick) linear";')) d.push("a step does not fill on the control's own beat");
+  if (!s.includes('style={i < g.done ? DONE_STEP : EMPTY_STEP}')) d.push("the steps do not read the two recipes");
   return d;
 };
 const railDefects = (src: string) => {
   const s = squash(code(src));
-  const rail = s.slice(s.indexOf("{!closed && ( <div className=\"sticky bottom-"));
+  const rail = s.slice(s.indexOf('<div className="kp-mln-rail sticky bottom-'));
   const d: string[] = [];
-  if (!rail.startsWith('{!closed && ( <div className="sticky bottom-[calc(65px+env(safe-area-inset-bottom,0px))] z-30 flex flex-col gap-2')) d.push("the rail is not a column");
-  if (!rail.includes('style={{ background: "var(--panel)" }}> <SteppedProgress groups={groups} /> <div className={cn("flex items-center gap-2", actionLabel && "flex-wrap")}>')) d.push("the meter has not the rail's full width on its own row");
+  if (!rail.startsWith('<div className="kp-mln-rail sticky bottom-[calc(65px+env(safe-area-inset-bottom,0px))] z-30')) d.push("the rail is not docked on the tab bar");
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-SLIP): the meter's row also holds the last hour's pill (the motion critic's
+  // M8: its place reserved, so the rail never grows when it arrives); the row is still the rail's full width.
+  if (!rail.includes('<div className="flex max-w-[640px] flex-col gap-2"> <div className="flex h-5 items-center gap-2"> <SteppedProgress groups={groups} className="min-w-0 flex-1" /> <MaswaliClosingPill closesAt={closesAt} serverNow={serverNow} compact className="shrink-0" /> </div>')) d.push("the meter has not the rail's full width on its own row");
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-FIX-PLAYER P10): each count carries its total — the questions the slip asks.
   if (!s.includes('<span key="mains" className="whitespace-nowrap">{fill(t.millionea.mainsProgress, { a: formatNumber(progress.mains), n: formatNumber(progress.mainsOf) })}</span>') || !s.includes('<span key="reserves" className="whitespace-nowrap">{fill(t.millionea.reservesProgress, { b: formatNumber(progress.reserves), n: formatNumber(progress.reservesOf) })}</span>')) d.push("the two counts are not whole facts");
   if (!s.includes('{ key: "cap", node: capLine, className: "xl:hidden" }') || !s.includes("<span>{capLine}</span>")) d.push("the cap stands twice from 1280");
@@ -889,11 +919,11 @@ const railDefects = (src: string) => {
   ok("4.P7a · the slip's rail: the 15-step meter on its own full-width row, then the two counts as whole facts (\"Main 0/10\" · \"Reserve 0/5\", stacked without the \"·\" where they do not fit) beside the pay control; \"Event Saturday 09:00\" one run; from 1280 the cap said once, in the summary panel",
     r.length === 0, r.join(" | "));
   const m = meterDefects(read(STEPPED));
-  ok(`4.P7b · the meter's empty segments are seen: --border-strong reads ${contrast("--border-strong", "--panel").toFixed(2)}:1 on the rail's --panel (the old --bg-inset ${contrast("--bg-inset", "--panel").toFixed(2)}:1), and the done --royal-400 stands ${contrast("--royal-400", "--border-strong").toFixed(2)}:1 apart from it`,
+  ok(`4.P7b · the meter's empty steps are hollow and seen: the --border-control ring reads ${contrast("--border-control", "--panel").toFixed(2)}:1 on the rail's --panel (VIS-P's solid --border-strong ${contrast("--border-strong", "--panel").toFixed(2)}:1 stood ${contrast("--royal-400", "--border-strong").toFixed(2)}:1 from done — 0/15 read as full), round the sunken well; a done step is solid --royal-400, ${contrast("--royal-400", "--panel").toFixed(2)}:1`,
     m.length === 0 && contrast("--bg-inset", "--panel") < 1.1, m.join(" | "));
-  ok("4.P7′ PLANT · the old near-invisible track, and the meter back beside the button, are reported",
-    meterDefects(read(STEPPED).replace(': "var(--border-strong)" }} />', ': "var(--bg-inset)" }} />')).length > 0
-      && railDefects(read(SLIP).replace('style={{ background: "var(--panel)" }}>\n          <SteppedProgress groups={groups} />\n          <div className={cn("flex items-center gap-2", actionLabel && "flex-wrap")}>', 'style={{ background: "var(--panel)" }}>\n          <div className={cn("flex items-center gap-2", actionLabel && "flex-wrap")}>\n          <SteppedProgress groups={groups} />')).some((x) => x.includes("full width")));
+  ok("4.P7′ PLANT · VIS-P's solid empty step, and the meter back beside the button, are reported",
+    meterDefects(read(STEPPED).replace('const EMPTY_STEP = { background: "var(--bg-sunken)", boxShadow: "inset 0 0 0 1px var(--border-control)", transition: STEP_FILL } as const;', 'const EMPTY_STEP = { background: "var(--border-strong)", boxShadow: "none", transition: STEP_FILL } as const;')).some((x) => x.includes("not hollow"))
+      && railDefects(read(SLIP).replace('<div className="flex h-5 items-center gap-2">\n                <SteppedProgress groups={groups} className="min-w-0 flex-1" />', '<div className="flex h-5 items-center gap-2">')).some((x) => x.includes("full width")));
 }
 
 // P10 · money that came back says so; a ticket that counts for nothing rests
@@ -989,13 +1019,14 @@ const listDefects = (page: string, ticketSrc: string, bar: string) => {
     emptyDefects(read(JH).replace("title={millionea ? t.millionea.homeEmptyOther : t.journey.homeEmptyTitle}", "title={t.journey.homeEmptyTitle}")).length > 0);
   const zhDefects2 = (slip: string, client: string) => {
     const d: string[] = [];
-    if (!squash(code(slip)).includes('showClose={false} panelClassName="kp-mln-zh">')) d.push("the confirm sheet is portalled without Millionea's Chinese rule");
+    // RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-SLIP, the slip critic's M3): the sheet's panel is the platform sheet's too.
+    if (!squash(code(slip)).includes('showClose={false} panelClassName="kp-mln-zh kp-wsheet kp-mln-confirm">')) d.push("the confirm sheet is portalled without Millionea's Chinese rule");
     if (!squash(code(client)).includes('className="kp-mln-zh"')) d.push("the stamp is portalled without it");
     return d;
   };
   ok("4.A2 · the two dialogs portalled out of the page's root carry `.kp-mln-zh` themselves — the confirm sheet's panel and the cut's stamp — so their Chinese keeps a word whole (and the one label rule reaches them)",
     zhDefects2(read(SLIP), read(SLIP_CLIENT)).length === 0, zhDefects2(read(SLIP), read(SLIP_CLIENT)).join(" | "));
-  ok("4.A2′ PLANT · a confirm sheet without the class is reported", zhDefects2(read(SLIP).replace(' panelClassName="kp-mln-zh">', ">"), read(SLIP_CLIENT)).length > 0);
+  ok("4.A2′ PLANT · a confirm sheet without the class is reported", zhDefects2(read(SLIP).replace(' panelClassName="kp-mln-zh kp-wsheet kp-mln-confirm">', ' panelClassName="kp-wsheet kp-mln-confirm">'), read(SLIP_CLIENT)).length > 0);
   const signDefects = (readAt: (rel: string) => string) => MLN_FILES.filter((f) => /formatTzs\(-|money\(-|fig\(-|`−\$\{formatTzs/.test(code(readAt(f))));
   const signed = ["src/components/maswali/maswali-pool-figure.tsx", "src/app/millionea/how/page.tsx", LEDGER].map((f) => count(code(read(f)), "formatTzsSigned("));
   ok("4.A4 · every negative figure on Millionea is the platform's signed money (\"−TZS 136,500\"): no hand-built sign, no `formatTzs` of a negative — the pool's two fee rows, How's fee row, the win ledger's fee and net",
@@ -1011,7 +1042,7 @@ const listDefects = (page: string, ticketSrc: string, bar: string) => {
     ["zh", "ruleShared", "由所有 10/10 彩票平分 · 派奖时扣除 {pct}% 费用"],
     ["zh", "ruleWithFigure", "大奖 {amount} · 由所有 10/10 彩票平分 · 派奖时扣除 {pct}% 费用"],
     ["zh", "stripResults", "结果与派奖 · {range}"], ["zh", "stripEvents", "事件 · {range}"],
-    ["zh", "mains", "正选题"], ["zh", "mainsProgress", "正选 {a}/{n}"], ["zh", "eventAt", "事件 {when}"], ["zh", "firstEventAt", "首个事件：{when}"],
+    ["zh", "mains", "正选题"], ["zh", "mainsProgress", "正选 {a}/{n}"], ["zh", "eventAt", "事件 {when}"], ["zh", "firstEventAt", "首个事件：{when} EAT"],
     ["zh", "ticketRunning", "待结算"], ["zh", "howThree", "所有 10/10 彩票平分大奖；{pct}% 费用仅在派奖时扣除。"], ["zh", "carriedInPending", "尚未结算"],
     ["zh", "jumpTo", "前往第{n}题"], ["zh", "capRule", "上限：每周 {cap} 张 · 这是第{n}张"],
     ["en", "carriedIn", "Carried in from Week {week}"], ["en", "carriedInPending", "Not yet settled"], ["en", "statRefunded", "Refunded"],
@@ -1290,8 +1321,13 @@ const kitNoticeDefects = (src: string) => {
   const s = squash(code(src));
   const d: string[] = [];
   if (/border-warning-border|bg-warning-bg|text-warning-fg|<I\.warning\b/.test(s)) d.push("the slip paints its own warning box");
-  if (!s.includes("<Callout tone=\"warning\">{moneyRuns(fill(t.millionea.lowBalanceBody, { balance: balanceText, price: priceText }))}</Callout>")) d.push("the short balance is not the kit's warning Callout");
-  if (!s.includes("<Callout tone=\"neutral\" title={t.millionea.refusalIncomplete}>")) d.push("the incomplete refusal is not the kit's neutral Callout");
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-SLIP, the slip critic's M4 and the motion critic's M2): the short balance is
+  // the bet sheet's own low frame (the kit's info Callout, its alert glyph, the journey's title, Millionea's words); the
+  // incomplete ticket is ONE line directly above the pay control it explains (the bet sheet's rule), in the rail and in the
+  // panel — never a box at the list's end, off screen, that moved the rows and the control when it came and went.
+  if (!s.includes('<Callout tone="info" glyph="alertCircle" title={t.journey.lowTitle}>')) d.push("the short balance is not the bet sheet's low frame");
+  if (/<Callout tone="neutral" title=\{t\.millionea\.refusalIncomplete\}>/.test(s)) d.push("the incomplete refusal is still a box at the list's end");
+  if (!s.includes('data-testid="millionea-slip-refusal"') || count(s, "{refusalLine}") !== 2) d.push("the incomplete refusal is not one line above the control, in the rail and the panel");
   if (/<div className="mat-flat flex gap-2 rounded-control px-3 py-2">/.test(s)) d.push("the old hand-rolled refusal box is back");
   return d;
 };
@@ -1299,17 +1335,19 @@ const kitNoticeDefects = (src: string) => {
   const d = kitNoticeDefects(read(SLIP));
   const { MaswaliSlipConfirm } = req("../src/components/maswali/maswali-slip.tsx") as { MaswaliSlipConfirm: (p: Record<string, unknown>) => unknown };
   const sheet = (l: L3) => inApp(l, h(MaswaliSlipConfirm as never, {
-    open: true, onClose() {}, week: 49, questions: [], picks: [], price: 1_000, balance: 400, ticketNumber: 1, cap: 10, cancelUntil: null, pct: 13,
-    lowBalance: true, depositDoor: null, onCommit() {},
+    open: true, onClose() {}, week: 49, questions: [], picks: [], total: 1_000, balance: 400, ticketNumber: 1, cap: 10,
+    closesAt: Date.parse("2026-12-04T15:00:00.000Z"), serverNow: Date.parse("2026-12-01T09:00:00.000Z"), freeCancelMinutes: 5, pct: 13,
+    lowBalance: true, deposit: null, onCommit() {},
   } as never));
   const drawn = LOCALES.filter((l) => {
     const m = sheet(l);
-    return !(m.includes('role="note"') && m.includes("border-warning-border bg-warning-bg") && textOf(m).includes(fill(dict[l].millionea.lowBalanceBody, { balance: "TZS 400", price: "TZS 1,000" })));
+    return !(m.includes('role="note"') && m.includes("border-info-border bg-info-bg") && textOf(m).includes(dict[l].journey.lowTitle)
+      && textOf(m).includes(fill(dict[l].millionea.lowBalanceBody, { balance: "TZS 400", price: "TZS 1,000" })));
   });
-  ok("5.P18 · the slip's two notices are the kit's own Callout — the confirm's short balance its warning tone (drawn: the kit's note, frame and wash around the words, in three languages), the incomplete ticket its neutral tone — never a hand-rolled copy",
+  ok("5.P18 · the slip's notices are the kit's own — the confirm's short balance the bet sheet's low frame (drawn: the kit's info note, frame and wash, the journey's title and Millionea's words, in three languages), the incomplete ticket one line above the control — never a hand-rolled copy",
     d.length === 0 && drawn.length === 0, j({ d, drawn }));
-  const oldBox = read(SLIP).replace("<Callout tone=\"warning\">{moneyRuns(fill(t.millionea.lowBalanceBody, { balance: balanceText, price: priceText }))}</Callout>",
-    "<div className=\"flex gap-2 rounded-control border border-warning-border bg-warning-bg px-3 py-2\"><I.warning s={18} className=\"mt-px shrink-0 text-warning-fg\" /><p className=\"text-body-sm text-text\">{moneyRuns(fill(t.millionea.lowBalanceBody, { balance: balanceText, price: priceText }))}</p></div>");
+  const oldBox = read(SLIP).replace('<Callout tone="info" glyph="alertCircle" title={t.journey.lowTitle}>',
+    '<div className="flex gap-2 rounded-control border border-warning-border bg-warning-bg px-3 py-2"><I.warning s={18} className="mt-px shrink-0 text-warning-fg" />');
   ok("5.P18′ PLANT · the old hand-rolled short-balance box put back is reported", oldBox !== read(SLIP) && kitNoticeDefects(oldBox).some((x) => x.includes("paints its own")));
 }
 
