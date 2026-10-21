@@ -5502,7 +5502,6 @@ html[data-sheet-open] .route-enter { animation: none; }
 .kp-track-end { margin-inline-end: calc(-1 * var(--track-end, 0.14em)); }
 .tipbar-labels .tb-no { --track-end: 0.05em; }
 .kp-track-end--16 { --track-end: 0.16em; }
-.kp-track-end--10 { --track-end: 0.10em; }
 /* Round 6 (2026-10-09, review C11): the ten right-aligned tracked labels F19 had not reached — the bet confirm's stake
    and the sell confirm's fee, the withdraw screen's balance, the Wallet history's status word, an Up & Down round's net,
    pick, players, open price and clock, and /positions/performance's status words (tracked 0.08em, below) — end on their

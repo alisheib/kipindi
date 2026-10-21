@@ -404,7 +404,8 @@ if (process.env.R7C_LIST) for (const r of [...rows].sort((a, b) => a.kind.locale
   ok(`2.5 · labels that end on a glyph end on that glyph's edge (C11's two and the landing's "see all ›" links): ${j(ruled("GLYPH"))}`,
     j(ruled("GLYPH")) === j(["src/components/home/landing-hero.tsx<Link>", "src/components/home/topic-tiles.tsx<Link>", "src/components/home/trust-band.tsx<Link>", "src/components/markets/conviction-dial.tsx<InfoHint>"]));
   // The step each label takes back is its own tracking.
-  const STEP: Record<string, number> = { "": 0.14, "--16": 0.16, "--12": 0.12, "--10": 0.1, "--08": 0.08, "--06": 0.06, "--05": 0.05 };
+  // MASWALI-BUILD S5 integration (2026-10-21): --10 left the stylesheet with its last label (U43's 1384383fd; test:dead-css).
+  const STEP: Record<string, number> = { "": 0.14, "--16": 0.16, "--12": 0.12, "--08": 0.08, "--06": 0.06, "--05": 0.05 };
   const stepOf = (r: Row): number | null => {
     for (let e: El | null = r.el; e; e = e.parent) {
       if (e.cls.has("kp-track-end")) { const s = [...e.cls].find((c) => /^kp-track-end--\d+$/.test(c)); return STEP[s ? s.slice("kp-track-end".length) : ""] ?? NaN; }
@@ -415,10 +416,10 @@ if (process.env.R7C_LIST) for (const r of [...rows].sort((a, b) => a.kind.locale
     if (d) { const s = [...d.cls].find((c) => /^kp-track-end--\d+$/.test(c)); return STEP[s ? s.slice("kp-track-end".length) : ""] ?? NaN; }
     return null;   // a stylesheet take-back (the caption, the one-sided label, the bar's side, the table head)
   };
-  const mismatched = rows.filter((r) => r.kind === "TAKEN").map((r) => ({ r, s: stepOf(r) })).filter((x) => x.s !== null && Math.abs((x.s as number) - x.r.track) > 1e-9).map((x) => `${show(x.r)} takes back ${x.s}`);
-  ok("2.6 · each label takes back exactly its own tracking (0.14em by default; the --16, --12, --10, --08, --06 and --05 steps)", mismatched.length === 0, j(mismatched));
+  const mismatched = rows.filter((r) => r.kind === "TAKEN").map((r) => ({ r, s: stepOf(r) })).filter((x) => x.s !== null && !(Math.abs((x.s as number) - x.r.track) <= 1e-9)).map((x) => `${show(x.r)} takes back ${x.s}`);
+  ok("2.6 · each label takes back exactly its own tracking (0.14em by default; the --16, --12, --08, --06 and --05 steps; a step the stylesheet does not define is a mismatch)", mismatched.length === 0, j(mismatched));
   const stepCss = Object.entries(STEP).filter(([k]) => k).every(([k, v]) => new RegExp(`\\.kp-track-end${k} \\{ --track-end: ${v.toFixed(2).replace(/0$/, "")}0?em; \\}`).test(CSS));
-  ok("2.7 · the steps are the stylesheet's: --16 0.16em, --12 0.12em, --10 0.10em, --08 0.08em, --06 0.06em, --05 0.05em", stepCss);
+  ok("2.7 · the steps are the stylesheet's: --16 0.16em, --12 0.12em, --08 0.08em, --06 0.06em, --05 0.05em", stepCss);
 }
 {
   // THE TECHNIQUE: the label's own end margin. The empty box after the words took the tracking out of the label's width and
@@ -479,8 +480,8 @@ if (process.env.R7C_LIST) for (const r of [...rows].sort((a, b) => a.kind.locale
   ok("2.6′ CONTROL · a label that ends on a glyph is ruled GLYPH", p6.length === 1 && p6[0].kind === "GLYPH");
   const misPlant = parseTsx("x.tsx", `export const X = () => <p className="ml-auto"><span className="kp-track-end">Two words</span></p>;`).filter((e) => e.cls.has("kp-track-end") && !/^(?:p|div)$/.test(e.tag) && !isFlex(e.parent));
   ok("2.10′ PLANT · `kp-track-end` on a bare inline inside a block that sizes itself to it is reported", misPlant.length === 1);
-  const wrongStep = census([["x.tsx", `export const X = () => <div className="flex justify-between"><b>A</b><span className="tracking-[0.12em] kp-track-end kp-track-end--10">B</span></div>;`]]);
-  ok("2.6″ PLANT · a 0.12em label taking back 0.10em is a mismatch the step check reads", wrongStep.length === 1 && wrongStep[0].track === 0.12);
+  const wrongStep = census([["x.tsx", `export const X = () => <div className="flex justify-between"><b>A</b><span className="tracking-[0.12em] kp-track-end kp-track-end--08">B</span></div>;`]]);
+  ok("2.6″ PLANT · a 0.12em label taking back 0.08em is a mismatch the step check reads", wrongStep.length === 1 && wrongStep[0].track === 0.12);
   const oldRule = CSS.replace(/\.kp-track-end \{ margin-inline-end:[^}]*\}/, '.kp-track-end::after { content: ""; display: inline-block; margin-inline-end: calc(-1 * var(--track-end, 0.14em)); }');
   ok("2.8′ PLANT · the empty box after the words, put back, is reported", /\.kp-track-end::after/.test(oldRule));
 }

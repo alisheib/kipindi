@@ -414,11 +414,12 @@ section("7 · F19 · a right-aligned tracked label ends where its neighbours end
   // Each take-back equals its label's own tracking.
   const eyebrowList = /((?:[^{}\n]+,\s*\n)+)\.mcardp-pctcap \{ letter-spacing: 0\.14em; \}/.exec(CSS)?.[1] ?? "";
   const res = read("src/app/results/page.tsx"), ud = read("src/app/updown/page.tsx");
-  // U43 (2026-10-19): the board's redundant live eyebrow left; keep the edge rule
-  // for other 0.10em labels while proving the removed note stays absent.
-  ok("7.2 · tracked labels end on their edge; the board's duplicate live note stays absent",
+  // U43 (2026-10-19): the board's redundant live eyebrow left. MASWALI-BUILD S5 integration (2026-10-21): the 0.10em step
+  // `.kp-track-end--10` lost its last label in that rebuild (1384383fd) and test:dead-css reports it, so it is deleted — a
+  // 0.10em label that needs its take-back brings the step back with its consumer. The removed note stays absent.
+  ok("7.2 · tracked labels end on their edge; the board's duplicate live note and its orphaned 0.10em step stay absent",
     eyebrowList.includes(".mcardp-oneside,") && /letter-spacing:\s*0\.05em/.test(rule(CSS, ".tipbar-labels")) && /\.tipbar-labels \.tb-no \{ --track-end: 0\.05em; \}/.test(CSS)
-      && /--track-end:\s*0\.16em/.test(rule(CSS, ".kp-track-end--16")) && /--track-end:\s*0\.10em/.test(rule(CSS, ".kp-track-end--10"))
+      && /--track-end:\s*0\.16em/.test(rule(CSS, ".kp-track-end--16")) && !CSS.includes(".kp-track-end--10")
       && res.includes("uppercase tracking-[0.16em] font-bold text-brand-300") /* the ink R5-C's gold audit gave the flag (merged 2026-10-09) */ && res.includes('<I.crown s={13} /> <span className="kp-track-end kp-track-end--16">{t.results.notableResult}</span>')
       && !ud.includes("t.market.udStreaming") && ud.includes('className="ud-board-header"'));
   ok("7.3 · the one-sided label keeps its tracking where it is centred or left-aligned (the market page, /results, Up & Down)",
