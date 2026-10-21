@@ -658,6 +658,14 @@ check("21.1", "the ghosts stand where the page lands: Tiketi zangu's head draws 
   return d;
 });
 
+check("21.2", "M9 · the ticket's head is two rows on a phone (its own chip; then its week and the week's chip) and one row from `sm` — the same rows in every language and state, never a ragged wrap — and its loading drawing draws the same rows", (w) => {
+  const d: string[] = [];
+  const HEAD = '<div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:justify-between">';
+  need(d, code(w, "ticket").includes(`${HEAD} <TicketStateChip t={t} shown={shown} />`), "the page's head is not two rows on a phone and one from sm");
+  need(d, code(w, "ticketGhost").includes(`${HEAD} <GhostBar className="h-[23px] w-[112px] rounded-pill" /> <span className="inline-flex items-center gap-2">`), "the drawing's head is not the page's rows");
+  return d;
+});
+
 // ── §22 · the hub's held row ────────────────────────────────────────────────────────────────────────────────────────
 check("22.1", "the hub's held row lifts and presses as the kit's raised card (`mat-raised-i`); handed the words it is named \"View ticket · MLN-…\"; handed its window it draws the free cancel's line in the ticket page's words, gone at its end; omitted, no line", (w) => {
   const m = modsOf(w), d: string[] = [];
@@ -790,6 +798,8 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["round 2 undone — a drive week's partial ledger", "23.1", plantSrc("page", "              {ledgerRows && (\n", "              {(\n")],
   ["round 2 undone — the head's week as a line again", "23.2", plantSrc("ticket", "<WeekStateChip t={t} state={weekState} phase={phase ?? null} />", "<span>{weekWord(t, week)}</span>")],
   ["held row — no lift", "22.1", plantSrc("ticket", 'className={cn("mat-raised mat-raised-i flex flex-col gap-1.5 rounded-control p-2 text-text", className)}', 'className={cn("mat-raised flex flex-col gap-1.5 rounded-control p-2 text-text", className)}')],
+  ["M9 — the head's one wrapping row again", "21.2", plantSrc("ticket", '<div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:justify-between">', '<div className="flex flex-wrap items-center justify-between gap-1.5">')],
+  ["M9 — the drawing's head one row on a phone", "21.2", plantSrc("ticketGhost", '<div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:justify-between">', '<div className="flex items-center justify-between gap-2">')],
   ["M9 — a note read as open past its end", "24.1", plantSrc("hint", "return until !== undefined && until > nowMs;", "return until !== undefined;")],
   ["M9 — a note kept on the server too", "24.1", plantSrc("hint", '  if (typeof window === "undefined" || !Number.isFinite(until)) return;\n', "  if (!Number.isFinite(until)) return;\n")],
   ["M9 — the ticket's drawing blind to its door", "24.2", plantSrc("ticketGhost", "const cancelOpen = freeCancelKnownOpen(ticketSerialOf(usePathname()), Date.now());", "const cancelOpen = false && freeCancelKnownOpen(ticketSerialOf(usePathname()), Date.now());")],

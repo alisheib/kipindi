@@ -32,9 +32,13 @@ export function MillioneaTicketGhost() {
       <BackLinkGhost />
       <GhostCard className="flex flex-col gap-3 px-3 pb-3 pt-4">
         <div className="flex flex-col gap-1.5">
-          <div className="flex items-center justify-between gap-2">
+          {/* The ticket's chip, then the week and its chip: two rows on a phone, one from `sm` (the page's head). */}
+          <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:justify-between">
             <GhostBar className="h-[23px] w-[112px] rounded-pill" />
-            <GhostBar className="h-3 w-[96px]" />
+            <span className="inline-flex items-center gap-2">
+              <GhostBar className="h-3 w-[56px]" />
+              <GhostBar className="h-[23px] w-[136px] rounded-pill" />
+            </span>
           </div>
           <GhostBar className="h-[30px] w-[230px] max-w-full" />
         </div>

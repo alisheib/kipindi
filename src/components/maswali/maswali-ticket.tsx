@@ -386,11 +386,15 @@ export function MaswaliTicket({
       <article className="mat-raised flex flex-col overflow-hidden rounded-card">
         <div className="flex flex-col gap-3 px-3 pb-3 pt-4">
           <div className="flex flex-col gap-1.5">
-            <div className="flex flex-wrap items-center justify-between gap-1.5">
+            {/* Two rows on a phone — the ticket's own state, then its week and where the week stands — and one row from
+                `sm`: the same rows in every language and every state, so the head never wraps raggedly ("Wiki 49 ·
+                Matokeo yanatolewa" fell under the chip, right-aligned, at 360 in Swahili) and its loading drawing
+                holds its height (M9). */}
+            <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:justify-between">
               <TicketStateChip t={t} shown={shown} />
               {/* The week and where it stands: its number, then the one chip a Millionea week wears on every surface
                   (`WeekStateChip`, the register's — the lead's round-2 line; its word P6's phase). */}
-              <span className="inline-flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
+              <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span className="font-mono text-label uppercase eyebrow text-text-subtle kp-track-end">{weekWord(t, week)}</span>
                 <WeekStateChip t={t} state={weekState} phase={phase ?? null} />
               </span>
