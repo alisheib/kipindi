@@ -3153,6 +3153,18 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     and coronet are replaced by the Phosphor keys of `docs/MASWALI-PLAN.md` §10c, reached only through `I`. Where the
     delivery's motion notes name `sealCheck` / `sealX` / `sealNil` on a socket, the build shows `checkCircle` / `xCircle`
     / `markPending`.
+13. **A dialog's way back never moves the page (lead 2026-10-21, the 10/10 pass; MASWALI-BUILD S5-DESIGN-SLIP).** When a
+    dialog closes, focus returns to the control that opened it WITHOUT scrolling (`modal.tsx` `PAGE.focus`:
+    `focus({ preventScroll: true })`, Safari 15+). Why: while a dialog is open `useModalLock` sets `overflow: hidden` on
+    `<html>` AND `<body>`, which makes the body a scroll box, so a sticky opener stops sticking and stands at its place in
+    the document; the way back focused it there and the browser scrolled the page to it — to the top of the page for the
+    classic bar's balance capsule, ~2,700px down for Millionea's pay rail at 360 (the motion run: the slip's first answer
+    at y −2,248 under the stamp). Once the lock lifts the opener is back in its own place, so nothing needs scrolling.
+    ⚠️ It holds for EVERY reader and every dialog on the kit Modal, Millionea shown or not: the second change to the
+    classic product this rulebook rules (the first: item 11's opaque More panel, S5-FIX-PLATFORM D8). The markup of every
+    dialog is unchanged (`test:maswali-slip-design` §1); `test:enter-where-pressed` 5.8 pins the call with its plant, and
+    `qa:dialog-way-back` drives it at 360 in Chromium and WebKit (scrollY unchanged across the close, focus on the opener,
+    the jump back when `preventScroll` is dropped).
 
 ---
 

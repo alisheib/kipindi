@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -310,6 +310,19 @@ export function SlipClient({
     setConfirmOpen(true);
   };
 
+  /* ⭐ AFTER A PURCHASE, THE TOP OF THE FRESH SLIP (S5-DESIGN-SLIP, deliberate). The slip starts again at its first question,
+     so in the commit the sheet closes into the stamp — under the stamp's dim, before it paints — the page goes to its top,
+     and the stamp leaves it there. Every other way back leaves the page where the player had it: the dialog's way back
+     never scrolls (modal.tsx `PAGE.focus`, the lead's ruling of 2026-10-21 — the motion run had the slip's first answer at
+     y −2,248 under the stamp, the page scrolled to the sticky rail's place in the document). `qa:dialog-way-back` holds
+     both. */
+  const landedRef = useRef(false);
+  useLayoutEffect(() => {
+    if (cut === null || !landedRef.current) return;
+    landedRef.current = false;
+    if (window.scrollY !== 0) window.scrollTo({ top: 0, behavior: "instant" });
+  }, [cut]);
+
   const commit = () => {
     if (firstIncompleteSlip(draftRef.current) >= 0 || draftRef.current.slips.length > allowed || pending || inFlight.current || closed) return;
     const slips = draftRef.current.slips.map((slip) => [...slip]);
@@ -341,6 +354,7 @@ export function SlipClient({
           setRefused(false);
           setHandoffOut(true);
           setShownCut(landed);
+          landedRef.current = true;
           setCut(landed);
           setConfirmOpen(false);
           if (refreshTimer.current !== null) window.clearTimeout(refreshTimer.current);

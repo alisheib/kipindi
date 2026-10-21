@@ -106,7 +106,11 @@ try {
   ok("the first draft retained YES when the second chose NO", await groups.first().getByRole("radio").first().getAttribute("aria-checked") === "true");
   await complete(page).last().click();
   ok("the second draft retained its independent NO", await groups.first().getByRole("radio").nth(1).getAttribute("aria-checked") === "true");
-  ok("H3 · every ticket answered: the control is armed for the whole purchase", await pay(page).getAttribute("data-armed") === "true" && /Continue · 2 tickets · TZS 2,000/.test(await pay(page).innerText()));
+  // The words read as the button's text, spaces collapsed: `innerText` breaks a line between the button's flex items (the
+  // words and the amount's own run), so "…tickets ·\nTZS 2,000" is what it returns for the words drawn on one line.
+  const armedWords = (await pay(page).textContent() ?? "").replace(/\s+/g, " ").trim();
+  ok("H3 · every ticket answered: the control is armed for the whole purchase", await pay(page).getAttribute("data-armed") === "true" && armedWords === "Continue · 2 tickets · TZS 2,000",
+    `${await pay(page).getAttribute("data-armed")} · ${armedWords}`);
   await page.reload({ waitUntil: "load" });
   await hydrated(page);
   await complete(page).last().waitFor();
@@ -119,7 +123,7 @@ try {
   const ask = page.getByRole("alertdialog");
   await ask.waitFor();
   ok("M9 · removing a ticket with answers asks first (the kit's ConfirmModal), naming the ticket in its body",
-    /Remove this ticket\?/.test(await ask.innerText()) && /Ticket 2 and its answers/.test(await ask.innerText()));
+    /Remove this\sticket\?/.test(await ask.innerText()) && /Ticket 2 and its answers/.test(await ask.innerText()));
   await ask.getByRole("button", { name: "Keep ticket" }).click();
   await ask.waitFor({ state: "detached" });
   ok("M9 · \"Keep ticket\" keeps both", await complete(page).count() === 2);

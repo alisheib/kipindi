@@ -3495,7 +3495,7 @@ export const dict = {
       draftTicket: "Ticket {n}",
       addTicket: "Add another ticket",
       removeTicket: "Remove ticket {n}",
-      removeTicketTitle: "Remove this ticket?",
+      removeTicketTitle: "Remove this\u00a0ticket?",
       removeTicketBody: "Ticket {n} and its answers will be removed from this purchase.",
       // The pay control while another ticket of the purchase is still incomplete (the slip critic's H3).
       finishTicketN: "Finish ticket {n}",
@@ -6376,7 +6376,7 @@ export const dict = {
       draftTicket: "Tiketi {n}",
       addTicket: "Ongeza tiketi nyingine",
       removeTicket: "Ondoa tiketi {n}",
-      removeTicketTitle: "Ondoa tiketi hii?",
+      removeTicketTitle: "Ondoa tiketi\u00a0hii?",
       removeTicketBody: "Tiketi {n} na majibu yake vitaondolewa kwenye ununuzi huu.",
       finishTicketN: "Kamilisha tiketi {n}",
       reduceTickets: "Ondoa tiketi kwenye ununuzi huu ili ubaki ndani ya kiwango cha wiki hii.",

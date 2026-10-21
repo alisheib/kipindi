@@ -276,6 +276,12 @@ const payOf = (m: string) => [...m.matchAll(/<button[^>]*data-testid="millionea-
     closedSlot.length === 2 && closedSlot.every((s) => textOf(s).includes("Sales closed · Friday 18:00 EAT") && s.includes('href="/millionea"') && textOf(s).includes("Follow the results"))
       && payOf(closed).length === 0 && [...closed.matchAll(/<button[^>]*>/g)].map((x) => x[0]).filter((b) => b.includes('role="radio"')).filter((b) => b.includes('disabled=""')).length === 30,
     j(closedSlot.map((s) => textOf(s))));
+  // The statement's flex basis is a WIDTH only where it shares a row with its way on (the rail); in the panel's column a
+  // basis is a HEIGHT — 14rem stood between "Sales closed" and "Follow the results" (the motion run's close-rest-en-1280).
+  const statementOf = (s: string) => /<p class="([^"]*)">/.exec(s)?.[1] ?? "";
+  ok("3.10′ · …the panel's statement is a line of its own (no basis in its column); the rail's shares its row with the way on",
+    closedSlot.length === 2 && !statementOf(closedSlot[0]).includes("basis-") && statementOf(closedSlot[1]).includes("basis-[14rem]"),
+    j(closedSlot.map(statementOf)));
   const tail = fresh.slice(fresh.indexOf('data-testid="millionea-slip-live"'));
   ok("3.11 · M2 · no refusal box at the list's end any more (the kit Callout moved the rows and the control when it came and went)",
     !/role="note"/.test(tail.slice(0, tail.indexOf("</aside>"))));
@@ -440,6 +446,15 @@ section("§9 · the batch stamp's dwell lives with every other dwell");
     client.includes("const stamp = shownCut;") && client.includes("onClose={() => setCut(null)}") && !/setShownCut\(null\)/.test(client));
   ok("9.4 · M10 · a block on the money path stays until read (`durationMs: 0` for `danger`)",
     client.includes('...(variant === "danger" ? { durationMs: 0 } : {})'));
+  // The page under the sheet and the stamp. The dialog's way back never scrolls (the kit's `PAGE.focus`, the lead's ruling
+  // of 2026-10-21 — the runtime proof is `qa:dialog-way-back`); the one move the slip makes on purpose is a purchase's:
+  // the top of the fresh slip, in the commit the sheet closes into the stamp.
+  const modal = code("src/components/ui/modal.tsx");
+  ok("9.5 · motion H1 · the page stays where the player left it: the dialog's way back focuses the opener without scrolling (`preventScroll`), and only a purchase moves the page — to the top of the fresh slip, in the landing's own commit",
+    modal.includes("focus: (node) => { if (node instanceof HTMLElement) node.focus({ preventScroll: true }); },")
+      && client.includes("landedRef.current = true;\n          setCut(landed);")
+      && client.includes("if (cut === null || !landedRef.current) return;")
+      && (client.match(/window\.scrollTo\(/g) ?? []).length === 1 && !client.includes("sheetY"));
 }
 
 /* ══ §10 · THE PLANTS ════════════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -499,6 +514,6 @@ section("§10 · each fix undone in memory is caught by its case (the source pla
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI SLIP DESIGN: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run printed. */
-const MIN_ASSERTIONS = 72;
+const MIN_ASSERTIONS = 74;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

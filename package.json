@@ -724,6 +724,8 @@
     "test:maswali-multi-slip": "tsx scripts/maswali-multi-slip.test.mts",
     "red:maswali-multi-slip": "tsx scripts/maswali-multi-slip.test.mts --prove-red",
     "qa:maswali-multi-slip": "node scripts/maswali-multi-slip-drive.mjs",
+    "qa:maswali-slip-shots": "node scripts/maswali-slip-shots.mjs",
+    "qa:dialog-way-back": "node scripts/dialog-way-back-drive.mjs",
     "test:maswali-week-list": "tsx scripts/maswali-week-list.test.mts",
     "red:maswali-week-list": "tsx scripts/maswali-week-list.test.mts --prove-red",
     "test:maswali-integrity-list": "tsx scripts/maswali-integrity-list.test.mts",

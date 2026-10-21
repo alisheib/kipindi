@@ -73,11 +73,17 @@ function openList(node: unknown): boolean {
 /**
  * ⭐ THE PAGE, AS LEAVING A DIALOG READS AND MOVES IT (`leaveLayer`, `modal-stack.ts`). Where focus goes when a dialog
  * closes is decided there, on this page, so `test:enter-where-pressed` runs the very function on stand-ins.
+ * ⭐ THE WAY BACK NEVER MOVES THE PAGE (lead 2026-10-21, the 10/10 pass — a ruled classic change, DESIGN_AUTHORITY §M8a
+ * item 13). While a dialog is open `useModalLock` sets `overflow: hidden` on <html> AND <body>, which makes the body a
+ * scroll box: a sticky opener (the classic bar's balance capsule, the Millionea slip's pay rail) stops sticking and stands
+ * at its place in the document. Focusing it there scrolled the page to that place — to the top for the capsule, ~2,700px
+ * down for the rail at 360. Focus still returns to the opener; once the lock lifts it is back in its own place, so nothing
+ * needs scrolling (`preventScroll`, Safari 15+). Guard: `qa:dialog-way-back` (360, Chromium and WebKit).
  */
 const PAGE: Page = {
   activeElement: () => document.activeElement,
   isNowhere,
-  focus: (node) => { if (node instanceof HTMLElement) node.focus(); },
+  focus: (node) => { if (node instanceof HTMLElement) node.focus({ preventScroll: true }); },
   now: () => performance.now(),
 };
 

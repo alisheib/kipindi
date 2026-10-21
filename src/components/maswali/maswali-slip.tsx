@@ -416,8 +416,11 @@ export function MaswaliSlip({
   // ⭐ THE CLOSED STATEMENT, where the pay control stood (rail and panel alike) and with its way on beside it (§F4): the lock
   // and "Sales closed · Friday 18:00 EAT", read once through the polite region below when it arrives while looking.
   const closedText = fill(t.millionea.salesClosedAt, { when: `${eatWeekdayClock(t, closesAt)} EAT` });
-  const closedLine = (
-    <p className="flex min-w-0 flex-1 basis-[14rem] items-start gap-2 text-body-sm text-text">
+  // In the rail it shares its row with the way on (a WIDTH basis: the two wrap only when they must); in the panel's column
+  // it is a line of its own — a basis there is a HEIGHT, and 14rem stood between it and "Follow the results" (the motion
+  // run's close-rest-en-1280, 2026-10-21).
+  const closedLine = (inRow: boolean) => (
+    <p className={cn("flex min-w-0 items-start gap-2 text-body-sm text-text", inRow && "flex-1 basis-[14rem]")}>
       <I.lock s={16} tier="fill" className="mt-px shrink-0 text-text-muted" />
       <span className="min-w-0">{fillNodes(t.millionea.salesClosedAt, { when: strong(`${eatWeekdayClock(t, closesAt)} EAT`) })}</span>
     </p>
@@ -487,7 +490,7 @@ export function MaswaliSlip({
             </div>
           ) : (
             <div className={cn("flex flex-col gap-2", closedJustNow && "m-axis-reveal")} data-testid="millionea-slip-closed">
-              {closedLine}
+              {closedLine(false)}
               <Link href={followHref as never} className="btn btn-ghost btn-lg w-full border-border-control">{t.millionea.followResults}</Link>
             </div>
           )}
@@ -516,7 +519,7 @@ export function MaswaliSlip({
           <div className={cn("border-t border-border-strong px-3 py-2 shadow-overlay-up lg:px-6", closedJustNow && "m-axis-reveal")} style={{ background: "var(--panel)" }}
             data-testid="millionea-slip-closed">
             <div className="flex max-w-[640px] flex-wrap items-center gap-x-3 gap-y-2">
-              {closedLine}
+              {closedLine(true)}
               <Link href={followHref as never} className="btn btn-ghost btn-md shrink-0 border-border-control">{t.millionea.followResults}</Link>
             </div>
           </div>

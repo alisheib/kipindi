@@ -6,7 +6,8 @@
  *   BASE=http://localhost:<port> node scripts/maswali-slip-shots.mjs
  *
  * ⚠️ PREMISE: a FRESH in-memory `next dev` with FEATURE_MILLIONEA=ACTIVE and DISABLE_ADMIN_TOTP=true (MASWALI_SCHEDULER=false
- *    and LIFECYCLE_TICKER=false keep the seeded weeks still). The run ends on the demo player's break: one run per server.
+ *    and LIFECYCLE_TICKER=false keep the seeded weeks still), FIRST on it: the no-week state is drawn before any week is
+ *    seeded (MASWALI_SLIP_ONLY=noweek draws that state alone). The run ends on the demo player's break: one run per server.
  * The states the critics listed as owed, each set up through the product (the tab's kept draft, the player's own presses,
  * the dev routes' product services): no week · empty (the whole page) · partial · refusal · ready · two tickets · "finish
  * ticket 2" · two tickets armed · the remove confirm · the confirm (single, at 360×640 and 320×568 too, two tickets folded
@@ -79,7 +80,15 @@ async function openSlip(page, draft = null) {
   await open(page, "/millionea/slip");
   await hydrated(page);
   if (draft) {
-    await page.evaluate(([k, v]) => sessionStorage.setItem(k, v), [`kp-millionea-slip:${WEEK}`, JSON.stringify(draft)]);
+    await page.evaluate(([k, v]) => {
+      sessionStorage.setItem(k, v);
+      // The reality check (RG, `reality-check.tsx`) times the session from the browser's clock, which §7 moves weeks on
+      // to the seeded close: its last showing is set past that, or "you've been playing for 63,414 minutes" covers the
+      // slip mid-shot (the motion run's close-rest still). Nothing else reads these keys.
+      for (const key of Object.keys(sessionStorage)) {
+        if (key.startsWith("kp_session_started_at:")) sessionStorage.setItem(key.replace("kp_session_started_at:", "kp_reality_check_last:"), String(Date.now() + 120 * 86_400_000));
+      }
+    }, [`kp-millionea-slip:${WEEK}`, JSON.stringify(draft)]);
     await page.reload({ waitUntil: "load" });
     await hydrated(page);
   } else {
@@ -129,7 +138,8 @@ const each = async (fn) => {
 let WEEK = "";
 let session = await demoSession(browser, BASE, { query: "?deposit=0", balance: 50_000 });
 log("demo session (TZS 50,000)");
-await each(async (locale, width) => {
+// MASWALI_SLIP_SKIP=noweek leaves this state to a run of its own (MASWALI_SLIP_ONLY=noweek) on the same fresh server.
+if (process.env.MASWALI_SLIP_SKIP !== "noweek") await each(async (locale, width) => {
   const ctx = await ctxFor([session], { width, locale });
   const page = await ctx.newPage();
   page.on("pageerror", (e) => errs.push(`noslip ${locale}@${width}: ${e}`));
@@ -139,6 +149,12 @@ await each(async (locale, width) => {
   await shoot(page, "noslip-noweek", locale, width);
   await ctx.close();
 });
+// MASWALI_SLIP_ONLY=noweek stops here, before any week is seeded (a server that ran another drive first has one on sale).
+if (process.env.MASWALI_SLIP_ONLY === "noweek") {
+  await browser.close();
+  console.log(`\nmaswali-slip-shots (no week only): ${pass} passed, ${fail} failed · tiles in ${OUT}/`);
+  process.exit(fail === 0 ? 0 : 1);
+}
 
 // ── the weeks ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 const owner = await browser.newContext();
