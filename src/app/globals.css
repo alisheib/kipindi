@@ -8511,7 +8511,7 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .ud-card-result { font-size: 15px; }
 .ud-beat, .ud-now { min-width: 0; }
 .ud-figure { font-size: 15px; }
-.ud-stats, .ud-split, .ud-prices { margin-top: 0; }
+.ud-stats, .ud-split { margin-top: 0; }
 .ud-act { margin-top: auto; padding-top: 0; }
 .ud-foot { margin-top: 0; padding-top: var(--sp-1); }
 .ud-card-wait, .ud-card-payouts, .ud-card-own-result, .ud-card-refund { display: flex; flex-direction: column; gap: var(--sp-2); }
