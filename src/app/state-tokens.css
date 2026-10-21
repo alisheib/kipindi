@@ -30,7 +30,12 @@
      `--state-disabled-opacity`: that value MEANS "switched off", and a support button must never read so.
      ⭐ ITS VALUE IS MEASURED, NOT CHOSEN: the HIGHEST opacity at which every figure the bubble covers still meets its
      contrast minimum for its size (DESIGN_AUTHORITY §A1: the rendered ink, composited in sRGB), measured in Chromium
-     through the real bubble over the real figures — YIELD_TABLE. */
+     through the real bubble over the real figures (`qa:chat-yield --measure`, 2026-10-21, the register lane's head
+     ceb06e8cb: its sunset week's ledger and How to play's worked weeks at 320 and 360 — 26 covered figures, all 13–16px
+     mono, so 4.5:1; the median over each figure's glyph pixels of text-through-the-bubble against its
+     background-through-the-bubble, the composite matching Chromium's own shots within 0.8/255). At .45 every figure
+     reads 6.28–6.77; at .55, 4.51–4.97 (the least, "TZS 14,790" at 13px/400, 360); at .60, 3.78–4.22 — every one
+     fails. So .55: the highest that holds them all. */
   --state-yield-opacity: .55;
 }
 /* ⚠️ `.is-interactive` was DELETED 2026-07-29 (design freeze, B10).

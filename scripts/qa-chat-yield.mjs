@@ -7,7 +7,8 @@
  *
  * THE GUARD (no flag), at 320 and 360: on a Millionea week page with a ledger (the register lane's `sunset` week when
  * `/api/dev-test/seed-maswali-register` exists, else the first week of the register that draws figures after
- * `/api/dev-test/seed-maswali`; WEEK_PATH chooses one) and on /markets (a card's right-aligned percentage), the drive
+ * `/api/dev-test/seed-maswali`; WEEK_PATH chooses one) and on /wallet (a transaction's right-aligned amount: the bubble
+ * stands down on /, /markets, /watchlist, /results and /updown, U43's keepout, so those pages are never under it), the drive
  * scrolls a right-aligned figure under the bubble's RESTING rect (its box, grown by its ring) and lets the page rest
  * (D3's 250ms, a frame, the fade): the bubble's computed opacity is `--state-yield-opacity`. Scrolled to where no line of
  * text and no `.amount` lies under that rect (found by this drive's own census, not the product's), it is 1. Over the
@@ -18,7 +19,7 @@
  * pixels) and with it whole (the bubble's own pixels); every opacity from .30 to .90 composited from the two in
  * gamma-encoded sRGB (DESIGN_AUTHORITY §A1), checked against a real shot at .45, .55 and .60; the figure's contrast is
  * the median over its glyph pixels inside the bubble of (text through the bubble) against (its background through the
- * bubble), against WCAG's minimum for its size (4.5, or 3.0 from 24px, or 18.67px bold). CASES=week,how,markets.
+ * bubble), against WCAG's minimum for its size (4.5, or 3.0 from 24px, or 18.67px bold). CASES=week,how,wallet.
  */
 import { chromium } from "playwright";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -31,7 +32,7 @@ const RED = process.argv.includes("--prove-red");
 const MEASURE = process.argv.includes("--measure");
 const OUT = resolve(process.argv.slice(2).find((a) => !a.startsWith("--")) ?? join(process.cwd(), ".qa-artifacts", "chat-yield"));
 const WIDTHS = (process.env.WIDTHS || "320,360").split(",").map(Number);
-const CASES = (process.env.CASES || "week,how,markets").split(",");
+const CASES = (process.env.CASES || "week,how,wallet").split(",");
 mkdirSync(OUT, { recursive: true });
 let pass = 0;
 const fails = [];
@@ -130,7 +131,7 @@ const opacityNow = (page) => page.evaluate(() => {
 async function figures(page, kind) {
   return page.evaluate((kind) => {
     let els = [];
-    if (kind === "markets") els = [...document.querySelectorAll("main .mcardp-pct, main .mcardp-pctcap")].slice(0, 2);
+    if (kind === "wallet") els = [...document.querySelectorAll("main .text-right > p.font-mono.tabular-nums")].slice(0, 3);
     else if (kind === "how") els = [...document.querySelectorAll("main .amount")].filter((e) => /1,0[05]0,000/.test(e.textContent || ""));
     else {
       const ledger = document.querySelector('[data-testid="millionea-ledger"]') ?? document.querySelector("main");
@@ -148,7 +149,7 @@ async function underBubble(page, id) {
     const el = document.querySelector(`[data-yield-fig="${id}"]`);
     const fab = document.querySelector(".cm-fab");
     const b = fab?.querySelector(".cm-bubble") ?? fab;
-    if (!el || !b) return null;
+    if (!el || !b) return { why: !el ? "figure gone" : "no chat bubble on the page" };
     const tf = getComputedStyle(fab).transform;
     const dy = tf && tf !== "none" ? new DOMMatrixReadOnly(tf).f : 0;
     const br = b.getBoundingClientRect();
@@ -183,6 +184,7 @@ async function guard(kind, path, w) {
   const page = await ctx.newPage();
   const r = await page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded", timeout: 180_000 });
   await settle(page);
+  await page.waitForSelector(".cm-fab .cm-bubble", { state: "attached", timeout: 30_000 }).catch(() => {});
   const tag = `${kind} ${w}`;
   const figs = await figures(page, kind);
   ok(`PREMISE ${tag} · ${path} answers 200 with a figure to put under the bubble`, r?.status() === 200 && figs.length > 0, `(status ${r?.status()}, ${figs.length} figures)`);
@@ -237,10 +239,16 @@ async function measure(kind, path, w) {
   const page = await ctx.newPage();
   await page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded", timeout: 180_000 });
   await settle(page);
+  await page.waitForSelector(".cm-fab .cm-bubble", { state: "attached", timeout: 30_000 }).catch(() => {});
   await page.addStyleTag({ content: ".cm-fab{transition:none!important;transform:none!important} .cm-bubble::after{animation:none!important;opacity:0!important}" });
   for (const fig of await figures(page, kind)) {
     const at = await underBubble(page, fig.id);
-    if (!at?.overlap) { table.push({ kind, w, text: fig.text, note: "not under the bubble" }); continue; }
+    if (!at?.overlap) {
+      const why = at?.why ?? `not under it at any scroll (figure x ${Math.round(at?.fig?.left)}–${Math.round(at?.fig?.right)} y ${Math.round(at?.fig?.top)}; bubble x ${Math.round(at?.box?.left)}–${Math.round(at?.box?.right)} y ${Math.round(at?.box?.top)})`;
+      table.push({ kind, w, text: fig.text, note: why });
+      console.log(`  ${kind} ${w} "${fig.text}" · ${why}`);
+      continue;
+    }
     const o = at.overlap;
     const clip = { x: Math.floor(o.left), y: Math.floor(o.top), width: Math.max(1, Math.ceil(o.right) - Math.floor(o.left)), height: Math.max(1, Math.ceil(o.bottom) - Math.floor(o.top)) };
     const force = async (css) => { await page.evaluate((css) => { let s = document.getElementById("yield-force"); if (!s) { s = document.createElement("style"); s.id = "yield-force"; document.head.append(s); } s.textContent = css; }, css); await page.waitForTimeout(120); };
@@ -283,7 +291,16 @@ async function measure(kind, path, w) {
 
 try {
   const scout = await browser.newPage();
-  const paths = { week: CASES.includes("week") ? await weekPath(scout) : null, how: "/millionea/how", markets: "/markets" };
+  if (CASES.includes("wallet")) {
+    // The demo player's wallet lists transactions only once it has moved money: markets, then a portfolio placed
+    // through the real service (dev endpoints; the portfolio is the signed-in player's).
+    const seeder = await reader(360);
+    await seeder.request.post(`${BASE}/api/dev-test/seed-markets`, { timeout: 600_000 }).catch(() => null);
+    const folio = await seeder.request.post(`${BASE}/api/dev-test/seed-player-portfolio`, { data: {}, timeout: 600_000 }).catch(() => null);
+    console.log(`wallet fixture: seed-player-portfolio ${folio ? folio.status() : "unreachable"}`);
+    await seeder.close();
+  }
+  const paths = { week: CASES.includes("week") ? await weekPath(scout) : null, how: "/millionea/how", wallet: "/wallet" };
   await scout.close();
   console.log(`pages: ${JSON.stringify(paths)}${RED ? "  (--prove-red: the census switched off)" : ""}${MEASURE ? "  (--measure)" : ""}`);
   for (const kind of CASES) {
