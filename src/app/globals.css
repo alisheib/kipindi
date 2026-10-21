@@ -4753,6 +4753,11 @@ html[data-sheet-open] .route-enter { animation: none; }
    of a cancelled or refunded ticket — the open ring at the disabled control's own opacity, so it never reads as the live
    "awaiting" ring beside it (`maswali-seal-line.tsx`, `SocketGlyph`). */
 .kp-mln-rest { opacity: var(--state-disabled-opacity); }
+/* S5-DESIGN-REGISTER (2026-10-21, the motion critic's M5) · N1'S ORIGIN, VACATED WHILE THE TOKEN IS IN FLIGHT: the reserve's
+   socket has left the annex, so its own mark ("↪4") is not shown until the token lands — then it settles in (`.g-settle`).
+   Set and cleared by `MaswaliCarry` around a run it plays; never under a clamp, where nothing plays (its box keeps its
+   place either way: visibility, not display). */
+.kp-mln-carry-vacated { visibility: hidden; }
 /* MASWALI-BUILD S5 · How-to's example Button keeps its full approved Swahili instruction. At 320px
    its unwrapped text ran past the card's right edge (how-sw-320-s2); let this one kit control grow
    to two lines while keeping the md control's minimum tap height and the card's content width. */

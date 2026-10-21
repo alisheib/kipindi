@@ -46,6 +46,23 @@ export type ReceiptEmphasis = "row" | "amount" | "fee" | "total" | "muted";
 
 const LABEL = "min-w-0 font-mono text-micro uppercase eyebrow text-text-subtle";
 
+/**
+ * ⭐ THE SENTENCE-CASE LABEL (S5-DESIGN-REGISTER, 2026-10-21 — Ali's 10/10 pass; the register critic's H3). A confirm's
+ * few rows read as micro capitals. A LEDGER is a long receipt whose labels are nouns read down a list, and set as capitals
+ * they read as eyebrows and track the money inside them ("TIKETI 1,050 KWA TZS / 1,000" — §M4: money is never
+ * letter-spaced). `labelStyle="sentence"` sets the label in the body face, untracked, in its own case — as the rules
+ * pages' RulesTable rows and the v6 delivery's ledgers read — in the row's ink (a muted row's label muted, a total's
+ * semibold), or in the row's tone when it carries one. A muted sentence row keeps the ledger's figure size (13px) in the
+ * muted ink: it is a quieter line of the same list (a floor that did not bind), not a figure still resolving.
+ * `note` sets the row's detail on its own line under the label, in the muted ink ("1,050 tickets at TZS 1,000" under
+ * "Ticket sales") — never after a "·" on the label's line (S5 VIS A1).
+ * ⛔ EXTEND, NEVER FORK: with neither prop a row renders exactly the bytes it did before (`test:maswali-design-register`
+ *    §1 renders every caller's props against this file at cdb4bf46e and requires identical markup).
+ */
+const SENTENCE = "min-w-0 text-body-sm";
+const SENTENCE_MUTED_VALUE = "font-mono text-[13px] font-semibold text-text-muted";
+const NOTE = "text-body-sm text-text-muted";
+
 const VALUE: Record<ReceiptEmphasis, string> = {
   // The reference/context lines — provider, phone, recipient name.
   // ⚠️ No `tabular-nums`: these are words as often as digits, and tabular figures
@@ -70,6 +87,8 @@ export function ReceiptRow({
   divider,
   money,
   alignEnd,
+  labelStyle = "eyebrow",
+  note,
   className,
 }: {
   label: React.ReactNode;
@@ -86,10 +105,22 @@ export function ReceiptRow({
   money?: boolean;
   /** Let a long figure (a payee's full name) wrap right-aligned instead of clipping. */
   alignEnd?: boolean;
+  /** `eyebrow` (the default): the confirm's micro capitals. `sentence`: a ledger's noun in the body face (see SENTENCE). */
+  labelStyle?: "eyebrow" | "sentence";
+  /** The row's detail, on its own line under the label, in the muted ink. */
+  note?: React.ReactNode;
   className?: string;
 }) {
   const toneCls =
     tone === "warning" ? "text-warning-fg" : tone === "no" ? "text-no-300" : tone === "yes" ? "text-yes-300" : null;
+  const sentence = labelStyle === "sentence";
+  const valueCls = sentence && emphasis === "muted" ? SENTENCE_MUTED_VALUE : VALUE[emphasis];
+  // When the row carries a tone, the label must NOT re-assert `text-text-subtle` (or, in a sentence, its own ink) or it
+  // fights the row colour and only half the line reads as one thing. Two elements, never one whose class switches
+  // between the eyebrow and the body face: an eyebrow is always an eyebrow (`test:visual-pass-r8b`'s census reads it).
+  const labelEl = sentence
+    ? <span className={cn(SENTENCE, !toneCls && (emphasis === "muted" ? "text-text-muted" : "text-text"), emphasis === "total" && "font-semibold")}>{typeof label === "string" ? keepConnectives(label) : label}</span>
+    : <span className={toneCls ? "min-w-0 font-mono text-micro uppercase eyebrow" : LABEL}>{typeof label === "string" ? keepConnectives(label) : label}</span>;
   return (
     <div
       className={cn(
@@ -99,10 +130,14 @@ export function ReceiptRow({
         className,
       )}
     >
-      {/* When the row carries a tone, the label must NOT re-assert `text-text-subtle`
-          or it fights the row colour and only half the line reads as one thing. */}
-      <span className={toneCls ? "min-w-0 font-mono text-micro uppercase eyebrow" : LABEL}>{typeof label === "string" ? keepConnectives(label) : label}</span>
-      <span className={cn(VALUE[emphasis], alignEnd && "text-right")}>
+      {note === undefined || note === null ? labelEl : (
+        // The label and its note as one column, whose first line the figure shares (the row's baseline is the label's).
+        <span className="flex min-w-0 flex-col gap-0.5">
+          {labelEl}
+          <span className={NOTE}>{typeof note === "string" ? keepConnectives(note) : note}</span>
+        </span>
+      )}
+      <span className={cn(valueCls, alignEnd && "text-right")}>
         {money ? <Cash>{value}</Cash> : value}
       </span>
     </div>

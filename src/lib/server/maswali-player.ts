@@ -1471,3 +1471,134 @@ export async function millioneaHubCommitments(weekId: string): Promise<Millionea
     ticketCount: rooted ? w.ticketCount : null,
   };
 }
+
+// ── S5-DESIGN-REGISTER (2026-10-21, Ali's 10/10 pass) — THE REGISTER'S OWN READS ──────────────────────────────────────
+// Added at the end of the shared file, as the design lanes' brief asks: no existing helper or field changes. The register
+// critic's H1 (why a week voided: its counts), H2 (the lead's ruling: a public week's page from the moment it opens — its
+// commitments, its questions and its confirmed outcomes, its money only once final), H4 (how each result was attested).
+
+/** How one result was attested, as the public record states it (H4): when it became final — its seal, or with the
+ *  platform's two-officer flag the second officer's confirmation — and by how many officers; both null while it is not.
+ *  ⛔ Never "automatic": no AI ever seals a Millionea question (MR-14). ⛔ No officer's name or id: a count of officers. */
+export type MillioneaAttestation = { attestedAt: string | null; signoff: "one" | "two" | null };
+
+/** The attestation of each of a week's questions, by slot — from the confirmed record only (`gradable`): a result sealed
+ *  at stage 1 and still waiting for its second officer is not final, and says nothing yet. */
+function attestationsOf(qs: readonly StoredQuestion[], gq: readonly GradableQuestion[]): Record<number, MillioneaAttestation> {
+  const out: Record<number, MillioneaAttestation> = {};
+  qs.forEach((q, i) => {
+    if (gq[i]?.outcome == null) { out[q.slot] = { attestedAt: null, signoff: null }; return; }
+    const two = q.twoOfficerAtStage1 === true && !!q.stage2By && q.stage2By !== q.sealedBy;
+    out[q.slot] = { attestedAt: (q.twoOfficerAtStage1 ? q.stage2At : q.sealedAt) ?? null, signoff: two ? "two" : "one" };
+  });
+  return out;
+}
+
+/** The confirmed record's counts (MR-18): voided mains, and the reserves sealed YES or NO — the ones a void can use. */
+function voidCountsOf(gq: readonly GradableQuestion[]): { voidedMains: number; voidedReserves: number; usableReserves: number } {
+  return {
+    voidedMains: gq.filter((g) => g.role === "MAIN" && g.outcome === "VOID").length,
+    voidedReserves: gq.filter((g) => g.role === "RESERVE" && g.outcome === "VOID").length,
+    usableReserves: gq.filter((g) => g.role === "RESERVE" && (g.outcome === "YES" || g.outcome === "NO")).length,
+  };
+}
+
+/**
+ * ⭐ A PUBLIC WEEK STILL RUNNING, AS THE REGISTER SHOWS IT (H2, the lead's ruling of 2026-10-21): its two commitments the
+ * moment each is stamped — the question set's hash at the open, the tickets' root with its close time and count at the
+ * close (MR-13) — its fifteen questions, and each result once it is confirmed, with how it was attested.
+ * ⛔ NO MONEY until the week is final: no sales, pool, jackpot or fee here (the hub prints the live pool; the register's
+ *    ledger is the settlement's). ⛔ No pick aggregate and no "still without a miss" count before settlement (MB-38, OD-24).
+ *    ⛔ No carry between questions: the reserves' map is drawn from the FINAL record only (`MillioneaRegisterWeek`) — an
+ *    objection can still reinstate a question while the window is open.
+ */
+export type MillioneaRegisterLiveWeek = {
+  id: string;
+  code: string;
+  state: "OPEN" | "CLOSED" | "RESOLVING";
+  isFinal: boolean;
+  opensAt: string;
+  closesAt: string;
+  closedAt: string | null;
+  /** With `objectionsCloseAt`, what `millioneaWeekPhase` reads (S5-FIX-PLAYER P6). */
+  gradedSetFinalAt: string | null;
+  objectionsCloseAt: string | null;
+  questionSetHash: string | null;
+  /** Stamped once at the close (MR-13); null while the week sells. */
+  ticketMerkleRoot: string | null;
+  /** The live tickets at the close, published with the root (MR-13); null while the week sells. */
+  tickets: number | null;
+  /** The sales pause (MB-62) — a boolean only: the officer's reason is an internal note. */
+  paused: boolean;
+  /** The fifteen, each outcome the confirmed one (or null), a void's reason only on a confirmed VOID. */
+  questions: MillioneaRegisterQuestion[];
+  attested: Record<number, MillioneaAttestation>;
+  resultsOut: number;
+  voidedMains: number;
+  voidedReserves: number;
+  usableReserves: number;
+};
+
+async function liveRegisterWeekOf(week: StoredWeek, paused: boolean): Promise<MillioneaRegisterLiveWeek | null> {
+  if (week.visibility !== "PUBLIC" || (week.state !== "OPEN" && week.state !== "CLOSED" && week.state !== "RESOLVING")) return null;
+  const qs = await questionStore.listForWeek(week.id);
+  const gq = gradable(qs);
+  const attested = attestationsOf(qs, gq);
+  const questions = questionsOf(qs, gq).map((q, i): MillioneaRegisterQuestion => ({
+    ...q, voidReason: q.outcome === "VOID" ? qs[i].voidReason : null, sealedAt: attested[q.slot]?.attestedAt ?? null, sealerRole: null,
+  }));
+  const closed = week.state !== "OPEN" && week.closedAt !== null;
+  return {
+    id: week.id, code: week.code, state: week.state, isFinal: week.isFinal,
+    opensAt: week.opensAt, closesAt: week.closesAt, closedAt: week.closedAt,
+    gradedSetFinalAt: week.gradedSetFinalAt, objectionsCloseAt: week.objectionsCloseAt,
+    questionSetHash: week.questionSetHash,
+    ticketMerkleRoot: closed ? week.ticketMerkleRoot : null,
+    tickets: closed ? week.ticketCount : null,
+    paused,
+    questions, attested,
+    resultsOut: gq.filter((g) => g.outcome !== null).length,
+    ...voidCountsOf(gq),
+  };
+}
+
+/**
+ * ⭐ ONE PAGE OF THE REGISTER, BY ITS WEEK CODE — what `/millionea/register/[week]` reads: a FINAL public week with every
+ * figure to the shilling (the cached `MillioneaRegisterWeek`) and, beside it, how each result was attested and the counts
+ * that voided it (H1, H4); or a public week still running, as the lead's H2 ruling allows it; or null — a code that is not
+ * a public week that has opened (a DRAFT, a DRIVE week, nothing), which the page answers as not found.
+ */
+export type MillioneaRegisterRecord =
+  | { kind: "final"; week: MillioneaRegisterWeek; attested: Record<number, MillioneaAttestation>; voidedMains: number; usableReserves: number }
+  | { kind: "live"; week: MillioneaRegisterLiveWeek };
+
+export async function millioneaRegisterRecord(code: string): Promise<MillioneaRegisterRecord | null> {
+  const want = normalizeMillioneaWeekCode(code);
+  if (!want) return null;
+  const head = await weekStore.getByCode(want);
+  if (!head || head.visibility !== "PUBLIC") return null;
+  if (TERMINAL.includes(head.state)) {
+    const week = await cachedMillioneaRegisterWeek(want);
+    if (!week) return null;
+    const qs = await questionStore.listForWeek(week.id);
+    const gq = gradable(qs);
+    const { voidedMains, usableReserves } = voidCountsOf(gq);
+    return { kind: "final", week, attested: attestationsOf(qs, gq), voidedMains, usableReserves };
+  }
+  const live = await liveRegisterWeekOf(head, getSalesPause().paused);
+  return live ? { kind: "live", week: live } : null;
+}
+
+/** ⭐ THE WEEKS STILL RUNNING, for the register's index (H2: "the index lists the current week with its chip"): every
+ *  public week that has opened and is not final, newest first in the calendar (R3). At most the week on sale and the
+ *  weeks being graded (MR-3). */
+export async function millioneaRegisterCurrent(): Promise<MillioneaRegisterLiveWeek[]> {
+  const weeks = newestFirst(await weekStore.list({ visibility: "PUBLIC", states: UNSETTLED }));
+  const paused = getSalesPause().paused;
+  const out: MillioneaRegisterLiveWeek[] = [];
+  for (const w of weeks) {
+    const live = await liveRegisterWeekOf(w, paused);
+    if (live) out.push(live);
+  }
+  return out;
+}

@@ -729,6 +729,8 @@
     "red:maswali-integrity-list": "tsx scripts/maswali-integrity-list.test.mts --prove-red",
     "test:maswali-register": "tsx scripts/maswali-register.test.mts",
     "red:maswali-register": "tsx scripts/maswali-register.test.mts --prove-red",
+    "test:maswali-design-register": "tsx scripts/maswali-design-register.test.mts",
+    "red:maswali-design-register": "tsx scripts/maswali-design-register.test.mts --prove-red",
     "test:maswali-results-section": "tsx scripts/maswali-results-section.test.mts",
     "red:maswali-results-section": "tsx scripts/maswali-results-section.test.mts --prove-red",
     "test:maswali-og-week": "tsx scripts/maswali-og-week.test.mts",
