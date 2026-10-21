@@ -38,11 +38,9 @@ const MEASURE = (host) => {
   const box = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.left, y: r.top + scrollY, w: r.width, h: r.height, cy: r.top + scrollY + r.height / 2 }; };
   const card = document.querySelector('[data-testid="millionea-home-card"] a.kp-mln-door');
   const after = host === "journey" ? document.querySelector('[data-testid="journey-home"] .kp-jhome__chips') : document.querySelector(".kp-markets-search");
-  const probe = document.createElement("span");
-  probe.style.color = "var(--border-royal)";
-  document.body.appendChild(probe);
-  const royal = getComputedStyle(probe).color;
-  probe.remove();
+  // The tokens a hover lands on, read the browser's way (a probe's computed colour, never a regex over oklch).
+  const ink = (token) => { const p = document.createElement("span"); p.style.color = `var(${token})`; document.body.appendChild(p); const c = getComputedStyle(p).color; p.remove(); return c; };
+  const royal = ink("--border-royal"), brand = ink("--brand-500");
   // The platform's numeral face, read the browser's way: a `.mono` probe's computed family.
   const monoProbe = document.createElement("span");
   monoProbe.className = "mono";
@@ -60,7 +58,7 @@ const MEASURE = (host) => {
     runFace: run ? getComputedStyle(run).fontFamily : null, clockFace: clock ? getComputedStyle(clock).fontFamily : null,
     clockNums: clock ? getComputedStyle(clock).fontVariantNumeric : null, monoFace,
     padding: cs ? `${cs.paddingTop} ${cs.paddingRight} ${cs.paddingBottom} ${cs.paddingLeft}` : null,
-    border: cs ? cs.borderTopColor : null, royal,
+    border: cs ? cs.borderTopColor : null, royal, brand, lift: cs ? cs.translate : null,
     howtoPlate: box(document.querySelector('[data-testid="journey-howto-card"] .kp-jhowto__plate')),
     overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
   };
@@ -137,8 +135,16 @@ export async function shootDoors(o) {
             await page.locator('[data-testid="millionea-home-card"] a.kp-mln-door').hover();
             await page.waitForTimeout(400);
             const hovered = await page.evaluate(MEASURE, host);
-            ok(`doors ${tag} · M5 · on hover the border turns --border-royal (${hovered.border} vs ${hovered.royal})`, hovered.border === hovered.royal);
+            if (width === 1280) await page.screenshot({ path: `${OUT}/door-hover-${host}-${locale}-${width}.png`, fullPage: false });
+            if (host === "journey") {
+              ok(`doors ${tag} · M5 · on hover the How-to card's: the border turns --border-royal, no lift (${hovered.border} vs ${hovered.royal}; ${hovered.lift})`, hovered.border === hovered.royal && (hovered.lift === "none" || hovered.lift === "0px 0px"));
+            } else {
+              ok(`doors ${tag} · M5 · motion L5 · on hover every board card's: lifted --m-lift with the brand ring (${hovered.lift}; ${hovered.border} vs ${hovered.brand})`, hovered.lift === "0px -2px" && hovered.border === hovered.brand);
+            }
             await page.mouse.move(1, 1);
+            await page.waitForTimeout(400);
+            const rest = await page.evaluate(MEASURE, host);
+            ok(`doors ${tag} · and at rest again (${rest.lift}; ${rest.border})`, (rest.lift === "none" || rest.lift === "0px 0px") && rest.border !== rest.royal && rest.border !== rest.brand);
           }
           // The ghost, in the page's place: the card's slot and what follows it.
           await page.evaluate(SWAP_COLUMN, [host, (host === "journey" ? FX.journeyGhost : FX.marketsGhost)[locale].slot]);

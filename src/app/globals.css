@@ -4776,11 +4776,12 @@ html[data-sheet-open] .route-enter { animation: none; }
    width (a 9-to-13-line card was a two-line door's column: its facts wrapped in 164px at 320); from 768 it stands under the
    title; from 1280 the card is one row, plate | title | headline | state | chevron, a void state's words at the row's end.
    The body opens 12px under the head row (the card's own inset), the state 4px under the headline (the facts' rhythm).
-   ITS HOST'S BOX: the journey home's How-to card (`--journey`) or the board's market card (`--board`, with `mat-raised`: 12px,
-   16px across from 640, as `.mcardp`). ONE HOVER, THE HOW-TO CARD'S: on a pointer that hovers, the border turns royal.
-   `.kp-mln-ghost` is its loading picture (`maswali-home-card-ghost.tsx`): the same box, its words hidden over bars. */
-.kp-mln-door { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; grid-template-areas: "plate head chev" "rule rule rule" "state state state"; column-gap: 14px; align-items: center; min-width: 0; border-radius: var(--r-lg); color: var(--text); transition: border-color var(--t-quick) linear; }
-@media (hover: hover) { .kp-mln-door:hover { border-color: var(--border-royal); } }
+   ITS HOST'S BOX AND ITS HOST'S HOVER, on a pointer that hovers only: on the journey home the How-to card's (`--journey`: its
+   flat box and inset; its border turns royal), on the board the market cards' (`--board`, with `mat-raised`: 12px, 16px
+   across from 640, as `.mcardp`; it lifts --m-lift with the brand ring over --t-base / --m-glide, as every board card does —
+   the motion critic's L5). `.kp-mln-ghost` is its loading picture (`maswali-home-card-ghost.tsx`): the same box, its words
+   hidden over bars, and no hover. */
+.kp-mln-door { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; grid-template-areas: "plate head chev" "rule rule rule" "state state state"; column-gap: 14px; align-items: center; min-width: 0; border-radius: var(--r-lg); color: var(--text); }
 .kp-mln-door__plate { grid-area: plate; }
 .kp-mln-door__head { grid-area: head; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .kp-mln-door__title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); min-width: 0; }
@@ -4788,16 +4789,19 @@ html[data-sheet-open] .route-enter { animation: none; }
 .kp-mln-door__state { grid-area: state; min-width: 0; margin-top: var(--sp-1); }
 .kp-mln-door__head + .kp-mln-door__state { margin-top: var(--sp-3); }
 .kp-mln-door__chev { grid-area: chev; color: var(--text-subtle); }
-.kp-mln-door--journey { padding: var(--sp-3) 14px var(--sp-3) var(--sp-3); border: 1px solid var(--border); background: var(--bg-elevated); }
-.kp-mln-door--board { padding: var(--sp-3); }
+.kp-mln-door--journey { padding: var(--sp-3) 14px var(--sp-3) var(--sp-3); border: 1px solid var(--border); background: var(--bg-elevated); transition: border-color var(--t-quick) linear; }
+.kp-mln-door--board { padding: var(--sp-3); transition: translate var(--t-base) var(--m-glide), border-color var(--t-base) var(--m-glide), box-shadow var(--t-base) var(--m-glide); }
 @media (min-width: 640px) { .kp-mln-door--board { padding-inline: var(--sp-4); } }
+@media (hover: hover) {
+  .kp-mln-door--journey:not(.kp-mln-ghost):hover { border-color: var(--border-royal); }
+  .kp-mln-door--board:not(.kp-mln-ghost):hover { translate: 0 var(--m-lift); border-color: var(--brand-500); box-shadow: 0 0 0 1px var(--brand-500), var(--elev-raised-hover); }
+}
 @media (min-width: 768px) { .kp-mln-door { grid-template-areas: "plate head chev" ". rule ." ". state ."; } }
 @media (min-width: 1280px) {
   .kp-mln-door { grid-template-columns: 48px max-content minmax(0, 1fr) max-content auto; grid-template-areas: "plate head rule state chev"; }
   .kp-mln-door__rule, .kp-mln-door__state, .kp-mln-door__head + .kp-mln-door__state { margin-top: 0; margin-inline-start: var(--sp-2); }
 }
 .kp-mln-ghost { cursor: default; }
-@media (hover: hover) { .kp-mln-ghost:hover { border-color: var(--border); } }
 .kp-mln-ghost .kp-mln-door__chev { color: transparent; }
 .kp-mln-ghost__bar { border-radius: var(--r-xs); background: var(--bg-overlay); -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 .kp-mln-ghost__words, .kp-mln-ghost .kp-mln-fact::before { visibility: hidden; }

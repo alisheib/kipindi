@@ -293,16 +293,18 @@ const cssDefects = (css: string) => {
   if (!css.includes('.kp-mln-door { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; grid-template-areas: "plate head chev" "rule rule rule" "state state state"; column-gap: 14px; align-items: center;')) d.push("below 768: not the head row of three over the full-width body");
   if (!css.includes('@media (min-width: 768px) { .kp-mln-door { grid-template-areas: "plate head chev" ". rule ." ". state ."; } }')) d.push("from 768: the body does not stand under the title");
   if (!/@media \(min-width: 1280px\) \{ \.kp-mln-door \{ grid-template-columns: 48px max-content minmax\(0, 1fr\) max-content auto; grid-template-areas: "plate head rule state chev"; \}/.test(css)) d.push("from 1280: not one row");
-  if (!css.includes("@media (hover: hover) { .kp-mln-door:hover { border-color: var(--border-royal); } }") || !css.includes("transition: border-color var(--t-quick) linear;")) d.push("no How-to hover (M5)");
-  if (!css.includes(".kp-mln-door--journey { padding: var(--sp-3) 14px var(--sp-3) var(--sp-3); border: 1px solid var(--border); background: var(--bg-elevated); }")) d.push("the journey box is not the How-to card's");
-  if (!css.includes(".kp-mln-door--board { padding: var(--sp-3); } @media (min-width: 640px) { .kp-mln-door--board { padding-inline: var(--sp-4); } }")) d.push("the board box's inset is not the market card's");
+  if (!css.includes(".kp-mln-door--journey { padding: var(--sp-3) 14px var(--sp-3) var(--sp-3); border: 1px solid var(--border); background: var(--bg-elevated); transition: border-color var(--t-quick) linear; }")) d.push("the journey box is not the How-to card's");
+  if (!css.includes(".kp-mln-door--board { padding: var(--sp-3); transition: translate var(--t-base) var(--m-glide), border-color var(--t-base) var(--m-glide), box-shadow var(--t-base) var(--m-glide); } @media (min-width: 640px) { .kp-mln-door--board { padding-inline: var(--sp-4); } }")) d.push("the board box's inset or motion is not the market card's");
+  // M5 + the motion critic's L5: each host's own hover, pointer-only; the ghost never hovers.
+  if (!css.includes("@media (hover: hover) { .kp-mln-door--journey:not(.kp-mln-ghost):hover { border-color: var(--border-royal); } .kp-mln-door--board:not(.kp-mln-ghost):hover { translate: 0 var(--m-lift); border-color: var(--brand-500); box-shadow: 0 0 0 1px var(--brand-500), var(--elev-raised-hover); } }")) d.push("not each host's hover (journey: the How-to card's royal border; board: the market cards' lift and brand ring)");
+  if (!css.includes(".mcardp:hover { translate: 0 var(--m-lift); border-color: var(--brand-500); box-shadow: 0 0 0 1px var(--brand-500), var(--elev-raised-hover); }")) d.push("the board's own card hover moved: re-read it before matching it");
   if (!css.includes(".kp-mln-ghost__words, .kp-mln-ghost .kp-mln-fact::before { visibility: hidden; }") || !css.includes(".kp-mln-ghost__bar { border-radius: var(--r-xs); background: var(--bg-overlay); -webkit-box-decoration-break: clone; box-decoration-break: clone; }")) d.push("the ghost's words and its facts' marks are not hidden over line bars");
   if (!css.includes("@media (max-width: 767.98px) { .kp-mln-door .kp-mln-facts--phone > .kp-mln-fact { padding-inline-start: 1em; text-indent: -1em; } }")) d.push("below 768 a wrapped fact's continuation does not hang (it reads as a fact of its own)");
   return d;
 };
 {
   const d = cssDefects(CSS);
-  ok("3.1 · M1 L1 L2 M5 H1 · the door's one anatomy — a head row of three over a full-width body below 768 (a wrapped fact's continuation hanging one em in), the body under the title from 768, one row from 1280 — each host's box, the How-to card's hover, and the ghost's hidden words and marks over line bars", d.length === 0, d.join(" | "));
+  ok("3.1 · M1 L1 L2 M5 H1 · the door's one anatomy — a head row of three over a full-width body below 768 (a wrapped fact's continuation hanging one em in), the body under the title from 768, one row from 1280 — each host's box and its host's hover (the How-to card's royal border; the board cards' lift and brand ring), and the ghost's hidden words and marks over line bars", d.length === 0, d.join(" | "));
 }
 
 // ── §4 · controls ─────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -319,6 +321,8 @@ console.log("\n§4 · controls — each check fails on a planted copy");
   const g = FX.ghost.en.journey;
   ok("4.5 · a ghost whose words show is reported (H1: 2.3)", g.includes('<span class="kp-mln-ghost__words">')
     && hiddenDefects(g.replaceAll('<span class="kp-mln-ghost__words">', '<span class="shown">')).some((x) => x.startsWith("words not hidden")));
+  ok("4.6′ · the board door without the board's lift (the How-to card's border on both hosts, as first built) is reported (3.1)",
+    cssDefects(CSS.replace(".kp-mln-door--board:not(.kp-mln-ghost):hover { translate: 0 var(--m-lift); border-color: var(--brand-500);", ".kp-mln-door--board:not(.kp-mln-ghost):hover { border-color: var(--border-royal);")).some((x) => x.includes("each host's hover")));
   ok("4.6 · the stylesheet without the full-width phone body, with the ghost's words visible, or without the hanging continuation, is reported (3.1)",
     cssDefects(CSS.replace('"plate head chev" "rule rule rule" "state state state"', '"plate head chev" "plate rule chev" "plate state chev"')).length > 0
       && cssDefects(CSS.replace(".kp-mln-ghost__words, .kp-mln-ghost .kp-mln-fact::before { visibility: hidden; }", ".kp-mln-ghost__words { color: transparent; }")).length > 0
@@ -329,6 +333,6 @@ console.log("\n§4 · controls — each check fails on a planted copy");
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI DOORS: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run prints. */
-const MIN_ASSERTIONS = 34;
+const MIN_ASSERTIONS = 35;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);
