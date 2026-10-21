@@ -189,8 +189,10 @@ export function DayAgoMove({ move, labels, keyed, side }: {
   side: string;
 }) {
   const dir = move > 0 ? "up" : move < 0 ? "down" : "flat";
+  // The points are a count, so they print through the one grouping (G-4, `test:visual-pass-r5j` 1.1). A move is a
+  // difference of two whole prices (1–99), so every reading prints exactly as before.
   const words = fill(dir === "flat" ? labels.flat : Math.abs(move) === 1 ? labels.one : labels.many,
-    { n: Math.abs(move), side });
+    { n: formatNumber(Math.abs(move)), side });
   const prevDirRef = useRef(dir);
   const dirChangedRef = useRef(false);
   if (dir !== prevDirRef.current) { dirChangedRef.current = true; prevDirRef.current = dir; }

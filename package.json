@@ -915,6 +915,7 @@
     "test:visual-pass-r6a": "tsx scripts/visual-pass-r6a.test.mts",
     "test:visual-pass-r6c": "tsx scripts/visual-pass-r6c.test.mts",
     "test:visual-pass-r7a": "tsx scripts/visual-pass-r7a.test.mts",
+    "red:visual-r6a-r7a": "node scripts/visual-r6a-r7a-red.mjs",
     "test:visual-pass-r7b": "tsx scripts/visual-pass-r7b.test.mts",
     "test:visual-pass-r7c": "tsx scripts/visual-pass-r7c.test.mts",
     "test:visual-pass-r8a": "tsx scripts/visual-pass-r8a.test.mts",

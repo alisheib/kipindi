@@ -14,8 +14,10 @@
   pulse moved onto the digits' own span) and A.1 `ee76c9489` (the checks release A turned red; a named one-sided rule in
   `updown-board.ts`; the two capture tools registered). Both read back on production (all three origins, `/api/health`,
   `qa:chunks-prod` on www and apex, production `qa:live` 363/0).
-- **Release B state:** [`MOBILE-VISUAL-PLAN.md` §0](../../MOBILE-VISUAL-PLAN.md) owns the current implementation,
-  evidence and release status. The five area specs are in §5 below.
+- **Release B state:** live — Release B `a12f7b26d`, its hotfix `3ec111a83`, the gold restoration `dd1386f06` and the
+  CI-repair release of 2026-10-21. **⏸ Paused by Ali on 2026-10-21, no after score.**
+  [`MOBILE-VISUAL-PLAN.md` §0](../../MOBILE-VISUAL-PLAN.md) owns the current state and the owed work (its ⏸ U43 block).
+  The five area specs are in §5 below.
 - **The goal (done means):** all 24 cells (8 lenses × 3 surfaces) score 10 in two consecutive independent, adversarially
   verified critic reads of fresh tiles at 320/360/390/768/1024/1280/1920 × sw/en/zh × every state; positional claims
   pixel-measured; zero open findings; every statement true and consistent across the board, round page, history, /live,

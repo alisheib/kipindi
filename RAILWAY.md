@@ -79,6 +79,12 @@ a reader reaches for first and those failures look like a dead token:
 | GraphQL `query { projectToken { … } }` with `Project-Access-Token` | ❌ *"Project Token not found"* — wrong token class |
 | GraphQL `query { project(id: "…") { name id } }` with `Authorization: Bearer` | ✅ **works** |
 
+⚠️ **2026-10-21 (U43 session): the stored `RAILWAY_WORKSPACE_TOKEN` answered "Not Authorized" to that very project query**
+— revoked or expired. Ali issued a new workspace token the same day; it is in `.env.qa.local` under the same name, and the
+project query above answered with project 50pick and its three services. A token can die without notice: if this route
+says "Not Authorized", ask Ali for a new one. Meanwhile the linked CLI session's `railway api` sends read-only GraphQL with
+that session (e.g. a service's `repoTriggers` and `serviceInstances.latestDeployment`).
+
 ```bash
 # endpoint + shape (the token itself lives in .env.qa.local as RAILWAY_WORKSPACE_TOKEN)
 curl -s --request POST --url https://backboard.railway.com/graphql/v2 \

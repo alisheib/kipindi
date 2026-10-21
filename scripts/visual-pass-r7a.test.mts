@@ -546,15 +546,19 @@ section("5 · a label that takes its tracking back is one line, and fits its sit
     podWithoutMobileRow !== podCss && !mobilePod(podWithoutMobileRow));
   const round = widest.filter(roundLabel);
   const roundMax = round.reduce((a, b2) => (b2.w > a.w ? b2 : a));
+  const resultLabel = '{t.market.udYourPick}{result === "WIN" || result === "MIXED" ? ` · ${t.market.udStake}` : ""}</p>';
+  const resultLabelOk = (source: string) => source.includes(resultLabel);
   const roundPremises = {
     gutters: has(RP, '<div className="mx-auto w-full max-w-board px-3 lg:px-6 pt-[22px] pb-14">') && /"3":\s*"16px"/.test(raw("tailwind.config.ts")),
     card: has(RP, 'border: "1px solid var(--border)"') && has(RP, 'padding: "14px 16px 16px"'),
     wrapRow: has(RP, '<div className="mt-3 flex flex-wrap items-end justify-between gap-3">'),
-    label: has(RP, '{t.market.udYourPick} · {t.market.udStake}</p>'),
+    label: resultLabelOk(code(RP)),
   };
   ok(`5.3″ · the round page's result label ("${word(roundMax.l, "market.udYourPick")} · ${word(roundMax.l, "market.udStake")}", ${roundMax.w.toFixed(1)}px, its widest language) fits its site's own measure — 254px at 320, the result card's flex-wrap line`,
     Object.values(roundPremises).every(Boolean) && round.length === LOCALES.length && roundMax.w < 320 - 2 * 16 - 2 * 1 - 2 * 16,
     j({ roundMax, roundPremises }));
+  ok("5.3″ PLANT · dropping the stake word from a winning result fails the fitted label premise",
+    !resultLabelOk(code(RP).replace(resultLabel, '{t.market.udYourPick}</p>')));
   ok("5.3′ · the wallet's money-form ghost keeps the page's label class (one box, one look)", has("src/app/wallet/money-form-ghost.tsx", '<p className="font-mono text-micro uppercase eyebrow kp-track-end">'));
 }
 

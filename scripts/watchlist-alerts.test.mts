@@ -64,18 +64,10 @@ async function mkMarket(id: string, minutes: number): Promise<string> {
 const watchNotes = async (userId: string) =>
   (await listForUser(userId, 50)).filter((n) => n.kind === "WATCHLIST");
 
-// Settlement commits before its best-effort notification effect finishes. Give
-// that local effect a bounded chance to land, while still failing if it never
-// arrives or if a bettor receives an unwanted duplicate.
-async function watchNotesAtLeast(userId: string, count: number, timeoutMs: number) {
-  const until = Date.now() + timeoutMs;
-  let notes = await watchNotes(userId);
-  while (notes.length < count && Date.now() < until) {
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    notes = await watchNotes(userId);
-  }
-  return notes;
-}
+// U43, 2026-10-21: settleMarket runs its outward effects after the money commits
+// and AWAITS each one before it returns, so the watcher's alert is read the moment
+// settlement returns — no polling. A bounded poll (S5's interim version) would
+// pass a fire-and-forget alert that a process exiting after settlement loses.
 
 await mkUser("wl_officer1", 0);
 await mkUser("wl_officer2", 0);
@@ -216,8 +208,8 @@ await mkUser("wl_cooled");
   // the verdict — force it here rather than waiting out the objection window.
   await settleMarket(mkt, { force: true });
 
-  ok("watcher who did NOT bet got a settled alert", (await watchNotesAtLeast("wl_a", aBefore + 1, 2000)).length === aBefore + 1);
-  ok("watcher who DID bet got NO duplicate watchlist alert", (await watchNotesAtLeast("wl_b", bBefore + 1, 1000)).length === bBefore, "bettor gets win/loss instead");
+  ok("watcher who did NOT bet got a settled alert", (await watchNotes("wl_a")).length === aBefore + 1);
+  ok("watcher who DID bet got NO duplicate watchlist alert", (await watchNotes("wl_b")).length === bBefore, "bettor gets win/loss instead");
 }
 
 console.log(`\nwatchlist-alerts: ${pass} passed, ${fail} failed`);

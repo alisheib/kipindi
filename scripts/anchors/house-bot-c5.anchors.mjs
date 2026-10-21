@@ -860,11 +860,15 @@ export const MUTATIONS = [
     suite: "reports-mem",
   },
   {
-    name: "c5-s5:S5-M52 · the objector's notice gains a conditional house-stake clause",
+    // 2026-10-21 · U43: Release B (c29cb7526) rewrote this void note and re-planted it as a bare " · house stake held"
+    // phrase expecting a label no assertion prints ("…must carry no house-stake clause") — measured MISSED by every
+    // check. Restored to the pre-B plant's intent on the new note: the house-stake READER inside a ternary condition
+    // (no `await`: the note sits in a synchronous notices callback), which 0.191.0's D20 scan exists to refuse.
+    name: "c5-s5:S5-M52 · RE-POINTED · the same read inside a TERNARY CONDITION of the void note — 4.196.2 is gone; 0.191.1 names the condition shape by rule and 0.191.0 counts the call",
     file: OBJECTIONS_SERVICE,
     from: "note: `The market was voided. Stakes still held were refunded; earlier cash-outs kept their paid amount. ${reason}` }).catch(() => {});",
-    to: "note: `The market was voided. Stakes still held were refunded; earlier cash-outs kept their paid amount. ${reason}${reason ? \" · house stake held\" : \"\"}` }).catch(() => {});",
-    expect: "0.198.2 · ⛔ the objector's decision notice must carry no house-stake clause",
+    to: "note: `The market was voided. Stakes still held were refunded; earlier cash-outs kept their paid amount. ${reason}${houseStakeForAudit(marketId, \"market.emergency_void\") ? \" · house stake\" : \"\"}` }).catch(() => {});",
+    expect: "0.191.0 · ⛔ D20's un-build, measured: all 21 decision files are read, and NOT ONE names a house-stake reader or carries a single allowed requester occurrence — so every problem the scan can report below is a new one",
     suite: "reports-mem",
   },
   {

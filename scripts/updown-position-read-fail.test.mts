@@ -77,6 +77,21 @@ const bet = await buyPosition(userId, { marketId: round.data.marketId, side: "YE
   idempotencyKey: `prf-${process.pid}` });
 if (!bet.ok) throw new Error(`fixture bet: ${bet.error}`);
 
+// 2026-10-21 · U43 Release B (4e9d9bcbe) builds the board card AND the round detail from one indexed read of the
+// viewer's OWN rows (`myStakesByMarket` → `positionStore.listForUserAndMarket(userId, marketId)`); the detail used to
+// read every player's positions on the round and filter them in the page. A second player on the OTHER side of the same
+// round, with a different stake, proves on both stores that the new read hands the viewer nobody else's money.
+const rivalId = `usr_prf_rival_${process.pid}`;
+await db.user.create({ id: rivalId, phoneE164: `+2557${String(process.pid % 10_000_000).padStart(7, "0")}0`, email: null,
+  passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status: "ACTIVE", locale: "SW",
+  displayName: null, dob: null, region: null, acceptedTermsVersion: null, acceptedTermsAt: null, marketingOptIn: false,
+  twoFactorEnabled: false, avatarDataUrl: null, recruitedBy: null, createdAt: now, updatedAt: now, lastLoginAt: null, closedAt: null } as never);
+await db.wallet.create({ id: `wal_${rivalId}`, userId: rivalId, balance: 20_000, pending: 0, hold: 0, bonusBalance: 0,
+  currency: "TZS", status: "ACTIVE", createdAt: now, updatedAt: now } as never);
+const rivalBet = await buyPosition(rivalId, { marketId: round.data.marketId, side: "NO", stake: 3_000,
+  idempotencyKey: `prf-rival-${process.pid}` });
+if (!rivalBet.ok) throw new Error(`fixture rival bet: ${rivalBet.error}`);
+
 const marketReadForBoard = marketStore.get;
 let boardMarketReads = 0;
 marketStore.get = async (marketId, tx) => {
@@ -88,8 +103,26 @@ try { board = await getBoard({ assetKey: tag, durationMinutes: 5, userId }); }
 finally { marketStore.get = marketReadForBoard; }
 assert.equal(boardMarketReads, 1,
   "the board reuses one market snapshot for selection and viewer hydration");
-assert.equal(board.rounds.find((r) => r.roundId === round.data.id)?.myUpStake, 2_000, "board fixture must show this stake");
 const detail = await getRoundDetail(round.data.id, userId);
+
+// The privacy half of the read (see the rival above), asserted BEFORE the fixture's own figures so a leak is named
+// as a leak. Premise first: both stakes really are on this one round.
+const roundRows = await positionStore.listForMarket(round.data.marketId);
+assert.deepEqual(roundRows.map((p) => p.userId).sort(), [rivalId, userId].sort(),
+  "premise: the viewer and a rival each hold one position on the same round");
+assert.deepEqual((await positionStore.listForUserAndMarket(userId, round.data.marketId)).map((p) => [p.id, p.userId]),
+  [[bet.data.positionId, userId]], "the indexed own-position read returns the viewer's row and nobody else's");
+const viewerCard = board.rounds.find((r) => r.roundId === round.data.id);
+assert.equal(viewerCard?.myDownStake, 0, "board must not show another player's stake as the viewer's");
+assert.deepEqual(detail?.myPosition?.items.map((p) => p.id), [bet.data.positionId],
+  "detail must itemise the viewer's own position and nobody else's");
+assert.deepEqual([detail?.myPosition?.hedged, detail?.round.myDownStake], [false, 0],
+  "detail must not fold another player's opposite stake into the viewer's");
+const rivalDetail = await getRoundDetail(round.data.id, rivalId);
+assert.deepEqual([rivalDetail?.myPosition?.items.map((p) => p.id), rivalDetail?.myPosition?.side, rivalDetail?.myPosition?.stake],
+  [[rivalBet.data.positionId], "DOWN", 3_000], "each player's detail holds exactly their own position");
+
+assert.equal(viewerCard?.myUpStake, 2_000, "board fixture must show this stake");
 assert.equal(detail?.myPosition?.stake, 2_000, "detail fixture must show this stake");
 const history = await getMyUpDownHistory(userId);
 assert.equal(history.some((p) => p.positionId === bet.data.positionId), true, "history fixture must show this position");
@@ -183,19 +216,32 @@ try {
     "history must not turn failed position read into no bets");
 } finally { positionStore.listForUser = userRead; }
 
+// 2026-10-21 · U43 Release B (4e9d9bcbe): the detail no longer reads the round's market-wide list for the viewer. Its
+// position read is the indexed own-row read whose failure is proven above ("detail must not turn failed position read
+// into no stake"), so it can no longer reject with this fault. The fault now proves the stronger fact the move bought:
+// with every player's list failing, the signed-in detail still shows exactly the viewer's own money (it never reads
+// other players' rows to find one player's), and a guest still reads no position at all.
 const marketRead = positionStore.listForMarket;
 const marketFault = new Error("fixture position-by-market read failure");
 positionStore.listForMarket = async () => { throw marketFault; };
 try {
-  await assert.rejects(() => getRoundDetail(round.data.id, userId), (e) => e === marketFault,
-    "detail must not turn a failed market-position read into no bet");
+  const ownOnly = await getRoundDetail(round.data.id, userId);
+  assert.deepEqual([ownOnly?.myPosition?.items.map((p) => p.id), ownOnly?.myPosition?.stake], [[held.id], held.stake],
+    "detail must read only the viewer's own rows, never every player's positions on the round");
   const guestDetail = await getRoundDetail(round.data.id);
   assert.equal(guestDetail?.myPosition, null, "guest detail must skip the market-position read");
 } finally { positionStore.listForMarket = marketRead; }
 
 // A settled round uses the detail-only successor lookup. If that read fails,
 // the detail page must retry instead of announcing no next round.
-await UD.roundStore.patch(round.data.id, { outcome: "UP", resolvedAt: new Date().toISOString() });
+// 2026-10-21 · U43 Release B (4e9d9bcbe) made the MARKET the authority for a round's verdict (`marketOutcomeForRound`):
+// a round whose market is still LIVE reads `open` whatever its own row says. The fixture therefore records the verdict
+// the way `closeRound` does — the market's stamp and the round's outcome — before it asks for the settled path.
+const decidedAt = new Date().toISOString();
+await marketStore.stamp(round.data.marketId, { status: "RESOLVED", resolvedOutcome: "YES",
+  resolutionStage1By: "system_updown", resolutionStage1At: decidedAt, resolutionStage2By: "system_updown", resolutionStage2At: decidedAt,
+  objectionsClosedAt: decidedAt, updatedAt: decidedAt });
+await UD.roundStore.patch(round.data.id, { outcome: "UP", resolvedAt: decidedAt });
 const settledDetail = await getRoundDetail(round.data.id, userId);
 assert.equal(settledDetail?.round.state, "resolved", "successor fixture must use the settled detail path");
 await expectReadFault(UD.roundStore, "list", () => getRoundDetail(round.data.id, userId),

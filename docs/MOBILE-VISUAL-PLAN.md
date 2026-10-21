@@ -24,22 +24,32 @@
 
 ## §0 — RESUME AT
 
-**U43 current release checkpoint, 2026-10-20.** Release B first reached production at
-`a12f7b26d663ebf995088c77aee36e6f711e4db2`. Its desktop chart/layout/social
-hotfix is **LIVE at `3ec111a83e3aecfb96af91ddba38bbd467b5c00b`**: all three
-hosts served that exact SHA, `/api/health` found the database reachable and migrated,
-`qa:chunks-prod` passed 6/6 on www and apex, and signed-out production `qa:live`
-passed 359/0. Real-browser reads at 1280 and 1920 found the collapsed cards beside
-each other without the former empty middle column or horizontal overflow, green/red
-7D candles, and Instagram/WhatsApp brand fills without the grayscale filter. Local
-`qa:live` against `next dev` was interrupted by repeated development navigations,
-so it is not counted as a pass. Ali then directed restoration of the full earlier
-gold treatment, including wallet and deposit controls. The restoration is in this
-branch with its source, brand assets and focused guards; production read-back of
-that change remains a release gate. The required two independent 24-cell 10/10 reviews have
-not been measured, so U43 remains open and has **no after score**. The long Release B
-work log below records earlier checkpoints; its older “not live” statements are
-historical, not the current production state.
+**U43 · ⏸ PAUSED by Ali on 2026-10-21 (other priorities). U43 is NOT done and has no after score.** Live, in order:
+Release A `9393dcb53` + A.1 `ee76c9489` (2026-10-19); Release B `a12f7b26d` + its desktop chart/layout/social hotfix
+`3ec111a83` (2026-10-20, Codex); Ali's house-gold restoration `dd1386f06` (2026-10-20). **On `main`, NOT yet deployed:**
+the **CI-repair release `110587e7e`** (2026-10-21 09:59Z, Claude, asheib-bb). Release B reached `main` with 28 test
+suites red that its own source changes broke. The CI-repair release re-points each guard to the new source shape (a
+dated comment, the property kept, a mutation proof — none weakened) and fixes three real defects those guards exposed:
+`settleMarket` again AWAITS the proposer's prize and the watchers' settled alert after commit (Release B had made both
+fire-and-forget); the settlement and emergency-void chart points are awaited too; and a call that joins an enclosing
+lock's transaction no longer drops every post-commit effect (`drainCommitted` in `locks.ts`; no production caller nests
+today). Before the push, at the exact commit: typecheck 0, `next build` green, local `qa:live` 386/0 (source identical
+at `2919a4ff7`), `e2e:money`, `e2e:fault` and `e2e:card` PASS on their own disposable PostgreSQL databases. Linux CI on
+the candidate failed only `dead-css` (item 3 below), the five Maswali suites, and `updown-push` (fixed in `110587e7e`).
+
+⛔ **PRODUCTION HAS NOT DEPLOYED ANY PUSH SINCE 2026-10-20 16:02Z — A RAILWAY-WIDE OUTAGE, NOT THIS CODE.** That
+deployment (`4471bb440`) FAILED inside Railway's builder ("railpack prepare exited with an error" pulling
+`ghcr.io/railwayapp/railpack-builder:latest`). status.railway.com then reported new builds paused (2026-10-20
+17:03–20:56Z) and, from 2026-10-21 07:24Z, "Dashboard and API unavailable, builds paused" in every region; a push made
+during a pause is DROPPED, not queued, so `cffe67cf2`, `5dea3f410`, `110587e7e` and `2b35d679a` have no deployment
+record at all, and a deploy request is answered "Deploys have been paused temporarily". The service's trigger itself
+is intact (branch `main`, `alisheib/kipindi`, `checkSuites: false`). Production serves `d268ef919` on www, apex and the
+Railway host, healthy (database reachable and migrated). Ali, 2026-10-21: *"keep pushing to github anyways until
+working … no need to check on railway"* — the Maswali session retries a deploy of `main`'s head every 10 minutes and
+stops at the first accepted one. There is no migration and no dependency change between `d268ef919` and `main`.
+**Owed once Railway deploys `main`:** the AGENTS.md §4 read-back — `?dpl=<main's sha>` on all three hosts,
+`/api/health`, `qa:chunks-prod` on www and apex, production `qa:live`; `handover/u43-2026-10-21/u43-readback.sh` on the
+hand-over branch runs all of it — then this paragraph rewritten as live. The ⏸ U43 block below lists the rest.
 
 ### ⛔ IS MOBILE VISUALISATION DONE? **NO.** Read this before telling anyone otherwise.
 
@@ -49,7 +59,7 @@ enforces that these numbers agree with §1 and with `NEXT-PLAN.md`.
 
 | | |
 |---|---|
-| **Units** | **12 of 43 ✅** (U1 U2 U3 U4 U5 U6 U7 U33 U34 U37 U41 U42) · 1 🔵 shipped-not-closed (U25) · **30 not started** (U43 among them, in flight since 2026-10-19 — see ⏳ below) |
+| **Units** | **12 of 43 ✅** (U1 U2 U3 U4 U5 U6 U7 U33 U34 U37 U41 U42) · 1 🔵 shipped-not-closed (U25) · **29 not started** · 1 ⏸ (U43, paused 2026-10-21 — see ⏸ U43 below) |
 | **Defects** | **90 filed, 15 ✅** · the rest are 🔵 live-but-unclosed, ◐ half-done, or ⬜ open |
 | **Closure conditions (§1a)** | **9, of which 4 are partly under way and 5 HAVE NOT BEGUN** |
 
@@ -295,404 +305,60 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
    · **`results/page.tsx:481`** has a `<MarketCard>` call site that rendered zero cards on
      production, so `test:outcome`'s rule 2 may be governing an unreachable site.
 
-⏳ **IN FLIGHT — U43, Ali's 10/10 request (2026-10-19), OMEGA-COMPILE01, Codex Release B:**
-- Worktree `C:\50pick-ssd\kipindi-udv` (its own `npm ci`), branch **`codex/u43-release-b`** from `origin/main`.
-  The three lanes share `globals.css`, `i18n-dict.ts`, `updown-card.tsx` and `market-card.tsx`; U43 edits only its
-  scoped parts and rebases immediately before its locked main push.
-- Done: Round 0 measured on production (§9 U43 holds the scores) and Ali's four rulings taken (COMPLIANCE-DECISIONS,
-  2026-10-19); the capture tools `scripts/live/updown-visual-capture.mjs` (any BASE, read-only) and
-  `scripts/live/updown-visual-states.mjs` (local dev only, every card state) are on the branch.
-- ✅ **Release A — LIVE, `9393dcb53`** (pushed at Ali's instruction, 2026-10-19: *"push live now everything you have done
-  please and proceed tests, if we find anything after pushing we fix"*; §9 U43 "Release A"): no figure on any card choice
-  (ruling 4, both shells), the one-sided lock sentence with its stake-back quote, and the last-30-seconds pulse.
-  - Before the push: its guards and red proofs, a scoped typecheck and a green `next build`.
-  - After the push: all three origins served it within ~3 min; `/api/health` OK (database reachable, migrated);
-    `qa:chunks-prod` green on www and apex; production `qa:live` 363/0 ([E3] not measured, by design). Production tiles at
-    360/1280 × sw/en/zh read 252 side choices, none carrying a figure. Local: `qa:live`, `test:revoked-deadend`,
-    `test:admin-section-gate`, `test:needle-rest`, `test:motion`, `test:responsive`, `qa:landing-v3:rows`, `qa:card360`
-    and the every-state capture are all green. The money e2e trio on a scratch Postgres: `e2e:money` 64/0, `e2e:fault`
-    34/0, `e2e:card` 100/0 (on its own database — run after the other two in one database, its platform total counted
-    their bets).
-  - `test:all` 597/613. Its red, every one accounted for:
-    - mine, fixed in A.1 below: `test:outcome` (the one-sided line, now a named rule), `test:orphans` (the two capture
-      tools, now `qa:u43-capture` / `qa:u43-states`), `test:house-bot-disclosure` 5.1 (the dictionary pin; PHOSPHOR W4's
-      re-point to its own commit covers it);
-    - mine, fixed before the push (the run had started on the older tree): `test:betting-ink`, `test:labels`;
-    - needed a live server, green in the local run: `test:revoked-deadend`, `test:admin-section-gate`,
-      `test:needle-rest`;
-    - not mine, and identical on `adb3551e6` (main before the push), all in Maswali files (handed to asheib-bf):
-      `test:guards-exist`, `test:visual-pass-r5a`/`r5j`/`r6c`/`r7c`/`r5h`, `test:rate-copy`, `test:presence-class`.
-- ✅ **A.1 — LIVE, `ee76c9489`** (on PHOSPHOR W4 + Maswali's platform fix): the fixes above, a fourth hidden-estimate
-  plant in `red:journey-estimate` (no rates), `red:updown-hedge-quote` 13/13, and the capture tools' choice-text and
-  pulse readings. Before the push, at the exact commit: tsc 0 in source, `next build` green, local `qa:live` 386/0;
-  the suites that read its files 45/46 (the 46th, `test:guards-exist`, was Maswali's and is green on main since
-  `baddd8230`). After: all three origins in ~4 min, `/api/health` OK, `qa:chunks-prod` www + apex green, production
-  `qa:live` 363/0.
-- **Release B pre-release work log (historical; live at the SHA in the current checkpoint above).** B1 round card, B2 live line/open-price chart, B3 two visible chip rows and
-  board order, B4 market card, B5 system and copy are in this branch. B2 covers the 72-minute span of a 60-minute
-  choice through one shared vendor read (brief §4 correction). The price on the card and the detail chart is now
-  neutral; the shared pool needle and the separate positions win-rate needle are neutral too. Side outcomes keep their
-  green/red ink, while gold marks earned money. The one-game-name display audit is guarded without changing stored
-  market titles. Focused guards and mutations are being rerun after these changes.
-  The production before-frame capture finished at all seven widths in three languages (72 pages, zero capture errors).
-  The fourth local state run reached all 14 phases with zero capture problems: the tested round settled through the
-  real handover call, its one-sided bet was refunded, and the successor opened. The prior run's 105 false hydration
-  flags were capture-tool premises; the corrected run found none. Frame review found and fixed one real ordering defect:
-  an older confirming round sat between the bettable round and the just-settled round. At 320px in Swahili the duration
-  chips now fit in their visible row, so the duplicate filter sheet disappears and the first card starts 60px higher in
-  the measured frame. The market footer now fits pool, info, Share and Details on one row; its loading skeleton matches
-  the measured card height. A live successor pod no longer shows a blank countdown. Focused guards and deliberate red
-  mutations for these fixes passed and restored their source files. The R5 state capture then completed all 14 phases
-  with zero capture errors; its adversarial frame review set provisional score ceilings rather than awarding 10s. It
-  found that the 320px board's bet buttons sit under the fixed navigation, the locked card collapses vertically, floating
-  Chat/Needle controls cover content, and two action targets miss the 40px floor by half a pixel. The receipt needs grouped
-  dollars and 24-hour EAT time, while the settled detail repeats its next-round message. The Gold test frame also showed
-  overlapping round windows: the local handover fixture rewound chains, and the board did not reject the contradictory
-  pair. The local fixture, board display, layout and words are being corrected with their own guards and red mutations.
-  The `/markets` count now reads the same Open word as its tab in every language; `/live` keeps its separate Live word.
-  The 320px board fold, locked-card height, floating controls and receipt/detail words have focused guards and red
-  proofs. A browser hit test now measures at least 40px live reach for Info, Share and Details on `/markets` and the
-  featured home card at 320/360 in sw/en/zh; the old short reach is caught on both surfaces. The earned-money colour
-  audit also found pre-win gold on classic and Journey commit controls; those have been moved to brand with focused
-  guards and red plants. R6–R8 state drives were discarded: simultaneous development page loads repeatedly cancelled
-  their own chunks, leaving `--:--` clocks and no usable first-state evidence. A production-only immutable cache rule
-  now lets Next revalidate development chunks (guard and red passed); Webpack proved one page can hydrate. The state
-  driver now bounds simultaneous loads, with a guard and red proof. R9 completed 14 phases, including the bet receipt,
-  lock, real one-sided refund and handover, but 12 readiness failures in its cold/open, moved-up and successor frames
-  still invalidate the run. Frame reopening also caught a race: a full frame can show a placeholder clock even if its
-  crop is live. The driver now warms every browser context before opening the timed round and verifies page and card
-  pixels on both sides of each screenshot; its mutation proof passed. At 768px, an explicit
-  shared-card height had still stretched the settled neighbor; its card-specific correction passed guard and red and the
-  measured settled card is now 133px slimmer. R9 review found another B2 gap: when vendor history is unavailable, the
-  round card needs a visible translated explanation; that line now exists and passed its guards and red proofs. R10's
-  warmed quick drive photographed all 14 phases with zero readiness problems through p12; p13's two failures came from
-  a guard incorrectly demanding a live Gold card when the true Gold board was closed. That guard now accepts a
-  real resolved Gold card without inventing a running clock; its focused test and red mutation passed.
-  R11's warmed local drive photographed all 14 phases with **0 capture errors**, including a real signed-in bet,
-  the last 30 seconds, lock, one-sided refund, successor and market cards. The R10 false “Up wins” refund heading
-  and generic missing-line wording are corrected in those frames. Independent reviewers reopened the cited full
-  frames and crops and found six further presentation issues: the 320px held card's helper line met the fixed nav;
-  the desktop chart footer was crowded; the receipt's Continue button wore the UP side green and its second action
-  fell below the 360px first viewport; the closed card and a settled detail pod showed a placeholder dash clock;
-  and the round detail called a returned stake “Paid out.” The six source fixes now pass their focused guards and
-  red mutations. R12 then photographed all 14 phases; its one browser failure measured the held 360px Swahili
-  buttons only 18px above the fixed navigation (24px required), while the new 320px browser guard measured 29px
-  and its red reversal failed. Reopened full frames closed the receipt colour/fit, closed-clock and returned-stake
-  label findings. The 320px ready helper still meets the navigation, the desktop sparse-chart footer remains too
-  dense, a vendor line arriving after load can move live bet buttons, and the settled detail leaves a large empty
-  outlined pod around “NEXT ROUND LIVE.” R13 then photographed all 14 phases with **0 capture errors**: a real bet,
-  receipt, lock, one-sided refund, successor and market cards. A separate real-browser probe measured two 48px bet
-  buttons 47px / 61.5px / 165.5px above the fixed navigation at 320 / 360 / 390; its red reversals caught a duplicate
-  held caption and a 72px late line before the actions. Independent reviewers reopened the cited full frames and crops.
-  They found the refund condition below the first fold on narrow phones, unused space in the equal-height locked card,
-  a still-dense desktop chart footer and a sparse settled-detail handover bar. These are being fixed with guards and
-  red proofs before another capture. R13's local history is confirmed-only, so its honest missing-line state does not
-  prove the live vendor line visually. **No after score has been awarded.** The final state matrix captures a real local
-  bet receipt at every signed-in
-  width. The stored Swahili market-title errors named in the Round 0 register remain content for Ali to correct,
-  not a production-data change in this release. `/updown/history` remains Maswali-owned and still orders Swahili
-  durations as `5 dakika`; U43 board/detail/receipt use `dakika 5`, so cross-surface wording is not yet 10/10.
-  The B1–B5 source and its guards are pushed on the U43 work branch through `be08de2cb`; this is not a live release.
-  A follow-up data audit found that malformed vendor rows with zero or negative OHLC could draw a false price.
-  The parser now discards those rows and leaves a gap; the served-history B2 guard passed 34/34 and its targeted
-  reversal was caught 1/1. The stale-confirming selection guard now runs the real non-overlapping selector with
-  closing times; its five reversals passed. Final post-fix browser frames and full release gates are still owed.
-  R14's local quick capture stopped before any scored frame: the 13 browser contexts timed out during warm-up
-  while shared-machine free memory fell near 1 GB. The dev server was stopped; the retry uses narrower width
-  groups before the full matrix. The `test:updown-match` chart reader was repinned to the separate confirmed-price
-  label while keeping its frozen opening-price check; 122/122 passed with two red reversals caught.
-  A release-rights question is open: the production Twelve Data key's read-only `/api_usage` reports the Grow
-  tier, and [Twelve Data's published terms](https://support.twelvedata.com/en/articles/5332349-commercial-and-personal-usage)
-  say individual tiers exclude commercial display to third parties. No separate display agreement is recorded
-  in this repository. Ali has been asked whether one exists; release B cannot claim this gate closed yet.
-  A B2 phase audit found that the line's visibility predicate also admitted closing and confirming rounds, despite
-  the brief limiting live refreshes to open/locked rounds and a short frozen view after a result. The predicate now
-  excludes both waiting phases and an old locked round past its close; invalid timestamps hide the line too. The focused
-  guard passes 37/37, with named reversals added to the B2 red fleet.
-  Its full red run and post-fix browser read remain due.
-  The price line also refuses a missing asset key, so an incomplete card cannot crash server rendering or request
-  a fictitious feed (`test:updown-pricing` now passes 93/93). An adversarial money-copy read found two further
-  false claims: equal total payout had been called a refund even when a hedged player broke even, and the quick-bet
-  receipt recalculated its projection from a possibly stale board pool. Refund copy now requires a VOID position
-  with its stake actually returned; the receipt uses the projection saved by the accepted bet. Their focused
-  guards pass, with the receipt's ten in-memory reversals caught; the disk refund red fleet is queued.
-  The market card's flat 24-hour move now prints plain zero instead of a text-character icon; the B4 guard and
-  full red fleet pass, with every file restored after mutation. Fresh browser frames remain due for all of these.
-  A player-data audit then found three signed-in reads that hid position-store failures as empty board stakes,
-  round details or history. The read errors now reach each page's retry state; guests still see anonymous empty
-  states. A focused fault fixture passed in memory and on disposable PostgreSQL with the current migration set;
-  the existing visibility guard passed 32/32 and its red fleet caught and restored 7/7 reversals, including all
-  three false-empty fallbacks. No production data was touched. The post-fix focused batch is green for B1/B3/B4/B5,
-  receipt, void copy (55/0), pricing (93/0), positions (32/0) and the one-sided rules; B2 is 37/0.
-  The full B2 red run caught its first 15 reversals, then found a weak invalid-clock test: `NaN` as the current time
-  was already rejected by the active interval check, even without the new finite guard. Its files were restored;
-  the test now also injects invalid opening and closing times so that reversal must fail. The full red rerun is due.
-  That rerun caught the invalid-clock plant, then exposed an obsolete null-feed plant: the earlier asset-key guard
-  already returns before the feed lookup. The redundant lookup edit and its ineffective plant were removed;
-  the missing-key render assertion and the asset-key guard's own reversal remain. The final full B2 red fleet caught
-  **30/30** reversals and restored all eight target files byte-for-byte.
-  The itemized refund-copy red fleet then caught **14/14** reversals and restored all six target files byte-for-byte.
-  The one-sided rule's red fleet caught **31/31** reversals and restored all 17 target files byte-for-byte;
-  `test:red-anchors` passed 6,594/0. The U43 mutation slot is released.
-  A second read-only audit then found remaining board/history metadata reads that still turn store errors into
-  empty round or “Unknown” player views. Board catalog, round and successor errors now reach retry states for all
-  viewers, and signed-in history metadata errors do too. The extended fault guard passed in memory and disposable
-  PostgreSQL with the current migrations; its red fleet caught **14/14** reversals and restored the board source
-  byte-for-byte. The first player-position fix alone was not enough to call this path closed.
-  It also found two B2 truth edges: a handset clock could decide whether a settled vendor line freezes, and a
-  one-bar vendor line could falsely say no newer price despite a later confirmed card read. The freeze now uses the
-  round's close boundary; a one-bar line with a later confirmed read hides behind the translated unavailable line.
-  The next full B2 red run caught **33/33** reversals. A third truth edge appeared in the card's line footer:
-  after two unequal minute bars, it named the later bar's OPEN “Price to beat”, despite the frozen target above.
-  That footer now calls the later figure “Minute open” in English, Swahili and Chinese, using the large chart's
-  existing words. A two-bar, unequal-price guard passed, and the full B2 fleet caught **34/34** reversals,
-  including the old false-target label. The browser read remains due.
-  The bet receipt's saved estimate was computed from a pre-lock pool snapshot; an intervening bet could stale it.
-  The money path now computes the projection from the market row under its lock, before the write, and persists and
-  returns that same figure. A deterministic competing-bet fixture passed in memory and on a disposable PostgreSQL
-  database migrated from the current set, including idempotent replay. Its red reversal caught the stale quote and
-  restored the source. The remaining money suites and browser receipt read are still due.
-  The browser-only synthetic-line probe now also requires the 320px Swahili cell and measures both live button heights
-  and their gap above the fixed navigation after the 56px line arrives. Its focused guard and 21/21 in-memory red
-  reversals passed. A production-like aligned local round is needed for the actual browser measurement; synthetic
-  interior points are visibly marked as layout evidence, never presented as vendor history.
-  A settlement-evidence audit found a target-based void that could falsely claim the close stayed inside its band
-  when the actual reason was a source mismatch. The stored evidence now names the source mismatch first and claims
-  an in-band close only for a true no-move result. Four real close/refund scenarios passed in memory and on disposable
-  PostgreSQL with the current migrations (13 checks in each store); the old false-band reversal failed and the source
-  was restored. Existing Up & Down source, margin, engine, healer and void-copy guards passed.
-  A B3/B4 source read found two further player-view defects. During a BTC 3-minute → Gold switch, the pending
-  asset pill briefly selected Gold beside the still-selected Bitcoin-only 3-minute pill; the board now keeps the
-  old asset and duration together until the new duration arrives, while a shared duration still responds at once.
-  The market-card move said “24h ago” even when its first available baseline was minutes old, and showed a bare
-  figure without percentage-point units. Its three-language line now measures explicitly since the first
-  available reading within 24h; a four-minute flat baseline says only that its two available readings agree.
-  The focused B3/B4 guards and the inherited betting-ink and featured-card readers passed. Their red fleets caught
-  **19/19** and **32/32** reversals respectively and restored every mutated source byte-for-byte. The older B4 footer
-  plant had been invalid JSX, so it failed before §3.15 could inspect the layout; a valid CSS reversal now moves
-  the enclosing footer off its flex row and §3.15 catches it. `test:house-bot-disclosure` §5.1 now pins the exact
-  committed U43 dictionary bytes at `ad2c9f25c`, including the move words; its publication and mutation
-  controls passed 122/122 after the re-pin.
-  The U43 source guards are green, but latest clean `origin/main` itself still fails two Maswali-owned visual readers:
-  `test:visual-pass-r5a` (pending slip close glyph) and `test:visual-pass-r5j` (six unformatted counts). The Maswali
-  plan §0 already records those inherited reds; U43 does not edit that lane. Next: run the final seven-width,
-  three-language state matrix and adversarial frame review twice, then the exact-commit release checks; the
-  production price-feed rights question below still needs a recorded answer. Release B is not on production.
-  R15's 320px Swahili player frames reopened seven concrete visual findings: the card showed an unexplained `±$0.02`
-  beside the price to beat; the classic rail shortened the board's full `Juu na Chini` name; the one-sided refund
-  condition appeared again after the buttons; the held card's buttons cleared the rail by only 23px; the locked
-  holder card had roughly 140px of blank space after its next-round sentence; an active market card clipped the
-  question before the decisive words `kijani kesho?`; and the signed-in Needle could cover market choices. The B1/B5
-  changes remove the unexplained figure, put one side-specific refund condition before the choices, use the full
-  two-line rail name, and let only the 320px locked card follow its content. A local held-state browser check measured
-  the button clearance at **32px**, while its browser reversal restored **20.5px** and failed. The full 320px Swahili
-  guest/player run then captured **14 phases with 0 capture problems**; its locked holder crop shows the next-round
-  sentence, unavailable line and footer flowing together. A focused real-browser 360px comparison measured the guest
-  card **322px open / 329px locked** (7px difference) and held player card **372px open / 381px locked** (9px
-  difference), across seven captured phases with zero capture problems. A second independent critic applied BRIEF B1's
-  literal same-height target and marked both deltas open. CSS now gives each 360px open state the same floor as
-  its locked state; the numeric browser guard requires a difference of at most 1px. The fresh real-browser run passed:
-  **329px open / 329px locked** for a guest, **381px / 381px** for a player holding a stake, across seven phases with
-  zero capture problems. The 48px held buttons remain **38px above** the fixed rail.
-  A separate 360px no-stake player read found **347px** open and locked, short of BRIEF B1's 381px signed-in target.
-  Its open and locked floors now both measure **381px / 381px** in a fresh Swahili, English and Chinese real-browser
-  open→lock run: two phases, six cells, zero capture problems. The choice buttons measure **48px** high and clear the
-  fixed rail by **38px / 89px / 89px** respectively. Reopened locked card crops are legible in all three languages.
-  A browser-only reversal of the old 347px open floor failed at the measured **347px**, and the separate source
-  guard rejects open and locked floor reversals. Evidence: `.qa-shots/u43/r15-no-bet381-trilingual/index.json`.
-  The unlabeled change figure beside
-  the card's confirmed price was also removed, leaving the labelled read
-  and direction arrow. This is not a final visual score. The B4 market-card fix exposes full active and settled
-  questions; its signed-in title/result probe passed **9 width×language cells** (12 active and 3 final cards per cell).
-  A separate **54/54 local layout fixture** checked negative, flat, singular ±1 and large +20 moves in three widths
-  and languages; its visible label marks synthetic geometry, not observed price history. A six-route 320px Swahili browser pass found no Needle over
-  home, the market board, a locally followed watchlist card, market detail or settled `/results`; no choice was
-  covered there. Browser red controls caught the
-  live/result title clamps and a restored nowrap move line (11 measured overflow failures). The evidence is under `.qa-shots/u43/market-choice-clarity`,
-  `.qa-shots/u43/market-move-layout` and `.qa-shots/u43/market-card-routes`. The B4 data guard now withholds the
-  move and mini chart when the latest real snapshot pools differ from the card's current market row; the
-  `Biggest move` sort reuses its board batch, and single-card reads use the same store/window as batch reads.
-  The focused proof passed 12/12 in memory, 12/12 with a database URL and memory selected, and 13/13 on
-  disposable PostgreSQL (including an 801-snapshot baseline case); `red:u43-market-card` caught 47/47 mutations.
-  The
-  settlement and emergency-void history audit found two chart snapshots scheduled before their market transactions
-  committed. Both now wait for commit. A focused rollback/success check passed **16/16** in memory and **16/16** on
-  disposable PostgreSQL; the two precommit reversals failed on PostgreSQL rollback and restored the source byte for
-  byte. No production data was changed. The
-  production price-feed rights blocker remains: official terms were checked, and no commercial agreement has been
-  recorded. The public history API exposes exact vendor bars, and the
-  [vendor's public-display attribution guide](https://support.twelvedata.com/en/articles/12647398-attribution-guidelines-for-using-twelve-data)
-  also requires visible attribution unless a contract waives it; no such waiver is recorded. No U43 closure or
-  live Release B is claimed. The handover brief's older "HOT only rose chip" line was corrected to the
-  neutral/slate HOT rule Ali recorded in DESIGN_AUTHORITY §B2a; the current card already follows that rule.
-  The design-frozen ceiling for U43's edited last-resort error page was lowered from 23 to 22; adding one
-  raw inline colour to a copy failed at 23/22, and the restored guard passed.
-  The post-commit local `qa:u43-capture` wrote **72 page cells across seven widths and three languages**, with
-  no capture problems in its index. The local state driver wrote **14 phases and 125 shot records**, but one
-  320px locked-player cell failed before its screenshot: its spacing assertion looked only for a plotted vendor
-  line, while the local feed can truthfully show an unavailable line or no visible line. The assertion now
-  measures the next visible row (plot, unavailable sentence or footer); its focused guard passed and its
-  targeted red fleet caught **5/5** reversals. The state driver still needs a fresh browser run; its failed
-  cell is not counted as a pass. Production capture and the two full eight-lens reviews are also owed.
-  On 2026-10-20 the rebased Release B worktree was verified at `8090999e9` over `origin/main` `a504ad280`; the
-  remote U43 branch still held its older pre-rebase commit. The unfinished type-only gold exemption was retained.
-  After the Phosphor and Maswali integration, `test:visual-pass-r5c` initially reported 91 passed / 7 failed and
-  `test:visual-pass-r9a` 55 / 3; both were green on clean main. Their scoped repairs now pass 105 / 0 and 61 / 0,
-  with in-process reversals; the dependent R8a reader passes 89 / 0 and spacing 10 / 0. A fresh small-width state
-  batch, `.qa-shots/u43/r16-320/index.json`, captured all 14 phases and six 320px guest/player × language cells
-  with zero capture errors, including real local receipts, a one-sided refund and handover. These are evidence for
-  review, not after scores. Its adversarial read found a resolved zero-bet Gold card falsely saying “Down wins”, a
-  guest one-sided card with no refund explanation, ungrouped four-digit USD moves on the round detail, a fallback
-  line that described a missing minute history as “Round line unavailable” despite a confirmed price, and receipt
-  copy in English and Chinese that promised a result at the closing boundary. Focused source, copy and guard fixes
-  are being verified before the remaining width batches. A browser-only 32px ticker-height simulation on the branch
-  reproduced the first 320px `/markets` NO button touching the raised bottom rail; a real production ticker-on
-  probe also found the live A Chat bubble could briefly intercept its right edge. Release B suppresses Chat on
-  `/markets`. The scoped 320px ticker layout rule now has two in-memory reversals and a real-browser reversal:
-  the old 24px grid gap hits the raised rail; the new 16px gap hits NO, while 360px keeps its 24px gap.
-  The 320px batch alone cannot meet the brief's two independent 24-cell reviews; no after score or Release B
-  production state is claimed. [Twelve Data's published Grow terms](https://support.twelvedata.com/en/articles/5332349-commercial-and-personal-usage)
-  exclude public commercial display, while the current public history API serves its bars; settlement permission is
-  also unconfirmed. [Gold-API.com's public terms](https://gold-api.com/terms) mention commercial website use, but its
-  [published API shape](https://gold-api.com/llms.txt) does not establish the raw-history rights, minute OPEN behaviour,
-  settlement use or source quality needed here. Those have not been verified with a key or agreement; no feed switch
-  follows from that observation.
-  A second 320px local state batch (`.qa-shots/u43/r17-320/index.json`) captured all 14 phases and six guest/player
-  language cells with no capture errors, but it spans source changes and is **not** a valid after-score set. Its review
-  found the receipt's unconditional payout promise, the opening price mislabeled as the winning threshold, and a
-  Swahili receipt qualifier cut off at 320px. The current branch now explains the two-target refund band before a
-  two-sided bet, distinguishes a confirmed open from a failed read, and makes the receipt payout conditional on a
-  win; the shared five-second receipt timer remains the owner-approved rule. Focused guard/red restoration and a
-  source-frozen seven-width state matrix are next. `test:u43-board` is 39/0, `test:u43-system` is 15/0,
-  `test:visual-pass-r5h` is 60/0, and `test:mobile-visual-plan` is 718/0 with 19/19 red plants. No after score is recorded.
-  A second vendor review found no replacement cleared for this public minute-history API and real-money settlement:
-  Gold-API.com's aggregate minute endpoints and public terms leave exact minute OPEN, raw-history redistribution and
-  settlement rights unresolved. No existing round or feed has been changed. Release B remains local and not live.
-  A read-only probe through the existing production Twelve Data key on 2026-10-20 returned HTTP 200 and
-  valid UTC one-minute OHLC rows for BTC/USD and XAU/USD. That confirms the current key works technically;
-  it is not evidence of public display, history redistribution or settlement permission.
-  Ali then attested that 50pick's full Twelve Data licence covers this use in Tanzania and directed the
-  release to keep the feed and mark the rights question done. The owner statement and the limit of what was
-  independently inspected are recorded in [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md)
-  § "2026-10-20 · U43 Twelve Data use — owner attestation". Engineering and visual release gates remain open.
-  The corrected source, guards and copy are committed on `codex/u43-release-b` at `85be2888a`; `main` is unchanged.
-  After that commit, Phosphor readers r9a and r10 pass 61/0 and 90/0, and typecheck passes. The board and system
-  physical mutation proofs caught 57/57 and 18/18 reversals; the feedback-law proof caught 29/29 and restored all
-  files byte for byte. The receipt-fit proof caught 5/5 in-memory reversals; the market-rail source proof caught 2/2
-  and its earlier 320px browser reversal remained valid. The house-bot disclosure guard first found three exact
-  commit-pin failures in the changed dictionary and Rules pages. Its working-tree pin now passes 122/0 and caught
-  the old references in a physical reversal; that pin will be committed after the final rebase so its source SHA
-  exists in a fresh checkout. A fresh state matrix and both independent 24-cell reviews are still owed.
-  An independent vendor search found [TraderMade Enterprise](https://tradermade.com/pricing) documents both
-  [BTC/USD and XAU/USD](https://tradermade.com/historical-currencies-list) and
-  [minute OHLC](https://marketdata.tradermade.com/docs/restful-api), but its
-  [standard terms](https://www.tradermade.com/terms-and-conditions) require prior permission for public display.
-  An agreement would need to name 50pick's public history API, audit retention, and real-money settlement before
-  a key and live minute-open validation could clear this source. A later feed cutover must retain each existing
-  round's captured source; unresolved rounds must drain or read through a provider pinned to that round.
-  No replacement source is authorized yet.
-  A further Release B truth audit found three local issues after `85be2888a`: the receipt called the
-  round's closing boundary an expected result time, the detail page called a two-sided holder a winner
-  when only one leg won, and the board's latest-500-position read could omit an older position on a
-  visible round. The receipt now names the closing boundary in all three languages; its focused guard
-  and 33 in-memory reversals passed. The mixed-result repair was exercised through a real local
-  settlement: TZS 20,000 staked on both sides paid TZS 3,582, with stored WIN and LOSS legs; the
-  detail now uses a neutral mixed headline and the card shows each side. Its guard and physical
-  classifier reversal passed. The board and detail now read every position for their visible markets
-  through the indexed player-and-market lookup, reusing one market snapshot and clock for board
-  selection and viewer hydration. Its in-memory fixture proved that the former cap hid a real
-  TZS 2,000 stake behind 501 newer positions, and both the old-cap and second-market-read physical
-  reversals failed the guard. The same older-position fixture passed on a disposable PostgreSQL,
-  as did the mixed-result settlement; the repairs are committed at `3bcbec37e`. These are local findings
-  and repairs, not a production result or an after score. The source-frozen state matrix remains
-  held while the Maswali lane uses the browser and main-push slot.
-  A subsequent source read found a remaining result-moment gap: both-side holders receive no
-  board or detail announcement because the single-result prop is null; a cashed-out leg can
-  also be omitted from the board's result while detail still includes it. This is under repair
-  with a neutral aggregate and an exact mutation proof. No new capture or after score follows yet.
-  **Earlier branch checkpoint, 2026-10-20:** board and detail now use the same full player-position
-  snapshot and announce one result only after the market's payout transaction commits. Mixed
-  WIN/LOSS or cash-out results state the actual total stake and payout without a winner seal;
-  all-VOID sides state the full returned stake. A decided round with unpaid positions shows
-  pending settlement and the still-OPEN stake/side, keeps a slower payment poll, and cannot
-  claim a refund, paid result or next-round handover. The memory fixture covers a real mixed
-  settlement, cash-out plus win, both-side VOID, and reachable unpaid price, no-price VOID and
-  one-sided states. Its source/fixture guard is green with **23/23** red reversals caught and
-  restored; related board, handover, presence, refresh and result-announcement red fleets
-  caught **57/57, 21/21, 20/20, 10/10 and 8/8** respectively. The exact type-only gold
-  exemption passed `test:visual-pass-r5c` **109/0**, failed under a physical removal, and was
-  restored to **109/0**. Ali's recorded 2026-10-20 Twelve Data licence attestation closes the
-  feed-rights decision for this release; older rights-open paragraphs above are dated audit
-  history. PostgreSQL, full release gates, source-frozen captures, two independent 24-cell
-  reviews and any after score are still outstanding. **Release B is not live.**
-  **Current U43 source state, 2026-10-20:** further local checks found that a cash-out can
-  leave a zero active pool, a VOID or one-sided verdict can be recorded while refunds are
-  held, and malformed historical payout rows can be null, negative or inconsistent with
-  their terminal status. The board, detail and result announcer now fail closed on such
-  payout rows or a still-OPEN position after a market settlement stamp: no partial
-  whole-round amount, WIN seal or full-refund claim. The card and
-  detail retain the itemized position record and label the amount unavailable. The memory
-  fixture covers real cash-out to zero pool followed by both resolved and VOID rounds,
-  mixed outcomes, a decided but unpaid holder, a settled market with an OPEN leg, and
-  malformed terminal payouts. It passed
-  in memory; its result guard caught **63/63** in-memory and physical reversals, including
-  the settled-but-OPEN leg, and restored every planted source file. PostgreSQL replay
-  still awaits the shared heavy-job slot. The round-card guard
-  and its in-memory red passed; the gold-is-money guard passed **60/0** after its
-  earned-WIN predicate was repinned to the validated card row. Related cash-out/VOID copy and generic market panel
-  guards caught **20/20** physical red plants and restored the source; the B2 labelled
-  opening-reference chart caught **48/48** and restored it. Stored round evidence and
-  audit notes now distinguish remaining held stakes from earlier paid cash-outs and
-  describe payment as pending until it commits. Board and detail use the money market's
-  corrected verdict and show an officer correction cue beside unchanged price readings;
-  the officer transaction, healer and their separate money proof remain under test.
-  The history page's decided-but-unpaid chip, VOID wording, terminal-null payout and
-  cash-out P&L handling remain open until the Maswali-owned history files are handed off.
-  The Phosphor r9b dictionary commit pin was committed at `7d4db9095` and passed its
-  guard; a later rebase that changes the dictionary bytes requires a fresh pin. Ali's
-  recorded Twelve Data licence attestation closes this release's feed-rights decision;
-  earlier rights-open notes above are dated history. Source-frozen captures, two
-  independent 24-cell reviews, full money and release gates, and any after score are
-  still outstanding. **Release B is not live.**
-  **Latest local checkpoint, 2026-10-20:** The integrated branch is committed.
-  Winner payout, refund/VOID, officer objection, bonus restitution and
-  terminal-round reconciliation passed focused memory and disposable-PostgreSQL
-  controls. The required money, fault and card E2E suites passed on separate
-  migrated disposable databases; typecheck, house-bot disclosure and the R5c,
-  R9a and R9b visual guards passed after commit. The changed-source red fleet
-  caught and restored every tested reversal, including the PostgreSQL winner
-  plant. A read-only production census found no round verdict mismatch. The
-  first clean-source 320px state sweep stopped before any scored frame: its
-  driver asked for Gold 5-minute rounds that the current movement gate refuses.
-  The corrected Gold 15-minute premise passed its guard and red proof. A later
-  exact-source 320px Swahili diagnostic captured 18 phases but reported six
-  problems: the signed-in open and held choices cleared the fixed rail by only
-  7.5px and 9.5px, the minimal-motion urgency digit still animated, and four
-  resolved/one-sided market cells did not find their settled cards. The
-  minimal-motion and market-fixture repairs passed focused guards and physical
-  red proofs, but the full browser matrix is not recaptured yet. After shortening the truthful
-  no-new-price sentence in three languages, a fresh local browser probe measured
-  two 48px actions with 30px clearance before a bet and 32px after a real bet,
-  above the 24px floor. The complete state matrix must still be recaptured
-  from one committed clean source; this diagnostic provides no after score.
-  A delayed healer had also replaced a recorded source-mismatch VOID reason
-  with an operator reason. Its focused repair passed 74/74 in memory and on
-  disposable PostgreSQL, with 18/18 physical red mutations caught and restored.
-  The Gold weekend closure fixture has a guard and mutation proof, and must be
-  labelled as a QA clock simulation in browser evidence. The Maswali-owned
-  `/updown/history` still needs pending and cash-out money truth after handoff.
-  The full `test:all`, final seven-width state matrix, two independent 24-cell
-  reviews, exact-commit build, local `qa:live` and production read-back have not
-  run. No after score or Release B production state is claimed.
-  ▶ **WORKING BRIEF:**
-  `docs/design-brief/u43-2026-10/BRIEF.md` — where it stands, Ali's rulings, the fixed points, the data facts, five work
-  packages (the round card; the live line and the chart made to agree; the board and the two chip rows; the market card;
-  system, motion, palette and copy), the guards, the tools, the release steps, and the three lanes' push lock
-  (`F:/kipindi-locks/main-push.lock`). Records beside it: `ROUND0-REGISTER.md` (135 measured findings) and
-  `PANEL-SYNTHESIS.md` (the panel's proposal; the rulings win). ⚠️ Found while specifying: the big chart's line plots each
-  minute bar's CLOSE at its label time while settlement reads the OPEN of the bar labelled T (`updown-feed.ts`) — $0.29–$0.87
-  apart on gold — which is why Round 0 saw the chart and the card disagree; release B's line and the fixed chart plot opens.
-- The old `claude/updown-visual-10` branch remains a handover record. This work uses `codex/u43-release-b`.
+⏸ **U43 — PAUSED (Ali, 2026-10-21). Up & Down board, round card and market card, every lens 10/10 (Ali, 2026-10-19).**
+- **Owner and push rule.** From 2026-10-21 only Claude sessions work this programme (Ali: *"from now on claude will
+  proceed only"*). The U43 session pushes its own verified releases (the NEXT-PLAN board's U43 exception): AGENTS.md §4
+  in full, rebased right before, `F:/kipindi-locks/main-push.lock` taken, and the Maswali and PHOSPHOR sessions messaged
+  before and after. Nothing is unpushed: the work branch `u43-seal` is on `main`. The tools used (slot helper, fresh
+  dev-server runner, width-group state matrix, critics brief, reading lists, pin/plant provers) are on branch
+  `u43-handover-20261021`, `handover/u43-2026-10-21/` (README there). Codex's `codex/u43-release-b` is superseded: its one
+  WIP commit is in `u43-seal`, and a verified bundle is at `F:\kipindi-archive\u43-codex-release-b-5f8d500c1-20261021.bundle`.
+- **The goal is unchanged** ([`BRIEF.md`](design-brief/u43-2026-10/BRIEF.md) §1): all 24 cells (8 lenses × board, round
+  card, market card) score 10 in two consecutive independent, adversarially verified reads of fresh tiles at
+  320/360/390/768/1024/1280/1920 × sw/en/zh × every state, positions measured, zero open findings.
+- **Owed, in order:**
+  1. **The review.** Round R1 (a diagnostic eight-lens read of fresh production frames and every state at 360px sw) was
+     launched on 2026-10-21 and stopped when Claude Code subagent access was disabled for the account mid-run: **no
+     scores exist**. Two consecutive 10/10 reads are owed. Capture the state matrix in width groups: one state run
+     cannot photograph 14 cells inside betting's 30-second last call (R21: p6 and p7 failed in all 14 cells), while 2–4
+     cells per run pass (R22: 18 phases, 0 problems). The capture tools now settle animations at their END frame — the
+     old `animation:none` froze draw-in lines at their hidden first frame, so the market card's 7-day line had been
+     missing from every review frame.
+  2. **Known findings to fix first, each with its guard** (the lead's own read of production frames, 2026-10-21):
+     - a. *Logic, high — two prices on one card that can disagree.* The row above the choices is the server's latest
+       confirmed read; the live line below them is the vendor's minute opens fetched in the browser. At 320px sw the row
+       read "Hakuna bei mpya tangu 10:21" while the line plotted minute opens to ~10:24; at 360px en both printed
+       $82,818.45 (one price twice, against ruling 2). Make one statement of the latest timed price — the row takes the
+       line's newest point when it is newer, the line's footer stops repeating it — without moving the Up/Down buttons
+       when the line arrives.
+     - b. *"The next round appears when scheduled."* (`udNextAfterResult`) names no time, while the successor opens at
+       this round's close: "The next round opens at hh:mm EAT." in en, sw and zh.
+     - c. *`/updown/history` money truth* (the Maswali lane handed the page to U43 on 2026-10-21; keep S5's four Tiketi
+       hunks there): a decided round with an unpaid leg reads "In play" (→ `udSettlementPending`); a closed round
+       awaiting its result reads "In play" (→ Confirming price); `returned += payout ?? 0` counts a missing or invalid
+       stored payout as nothing paid (→ `validRealizedPayout`, "payout unavailable", and leave that round out of the P&L
+       strip as open rounds already are); a cash-out-only round still running reads "Confirming price".
+     - d. *Market card copy:* the 24h move line ("YES: same as first available reading (within 24h)") is clumsy; the 7-day
+       line of a market younger than a week starts mid-width (honest — judge it in the review).
+     - e. *Board layout:* at 1280 and 1920 the cards leave the right third empty (BRIEF B3: the chart beside the current
+       round); at 360 the Swahili first card sits 51px lower than the English one (the title and its two pills wrap);
+       the 320 top padding differs from the 360 one.
+  3. **`test:needle-rest`** (a live-server suite) has been red since Release B — bisected by the Maswali lane on
+     2026-10-21: 92/0 at `1b7a91782`; 89/3 from `1384383fd` (three §9 CONTROL checks: a disc clear of the chat bubble's
+     ink moves 4px); 55/35 from `7e3a06ea0` ("fix(u43): align card states and truthful market evidence") — from there the
+     Needle never glides off a control ("Tafuta soko" stays under it). U43's to fix, starting from `7e3a06ea0`'s diff.
+     **`test:dead-css`** still reports `.kp-track-end--10` (`globals.css`), which lost its last consumer in Release B;
+     `test:visual-pass-r5a` (the Maswali lane's) still requires the rule, so the Maswali S5 release deletes both in one
+     commit (agreed 2026-10-21). Already red before Release B and the Maswali lane's, shipping with its S5 release:
+     `test:rate-copy`, `test:visual-pass-r5a`, `r5j` (3.7.2 and the Millionea counts), `r6c`, `r7c`.
+  4. **Stale remote branches** — the auto-mode classifier refused their deletion, so it needs Ali's approval:
+     `codex/u43-release-b`, `claude/updown-visual-10`, `codex/updown-no-odds` (every commit is in `main` or `u43-seal`).
+  5. **A recorded premise** (`test:house-bot-rules` 11.7's comment): the house-bot claim lifetime
+     (180 s ≥ 15 + 4 × (10 + 30) + 5) assumes no holder of a house bot's wallet lock runs past withLock's 30 s default;
+     settlement passes a larger budget only when it holds no wallet locks. Neither proven nor disproven.
+- **Records:** [`BRIEF.md`](design-brief/u43-2026-10/BRIEF.md) (the build brief), `ROUND0-REGISTER.md` (135 findings,
+  2026-10-19), `PANEL-SYNTHESIS.md`, §9 U43. Codex's day-by-day Release B log was removed from this section on
+  2026-10-21; it is in git history (this file at `4471bb440`).
 
 ▶ NEXT: **U35** (13 settled rounds in one run, then close it), then **U11**, **U27**, **U31**, **U9** — money truth first.
   Ranked by (player harm × confidence it is real × cheapness to verify), NOT by unit number.
@@ -1001,7 +667,7 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | U40 Player copy and terminology (EN/SW/ZH) | General | ⬜ | S22 | | | | needs a native reader |
 | U41 /fairness on a phone (D60 · D61) | General | ✅ | S23 | `c9ba60cc` + guard `qa:fairness-phone` | source links outside the scroller **12 of 12 → 0** at 320/360/412; table off-screen **48.8% / 41.7% / 32.4% → 0%** (client==scroll: 286/286, 326/326, 378/378); rows paint **0 identical titles** | yes (`qa:fairness-phone`, `RED_TABLE=1` serves the five-column table back and reproduces THIS UNIT'S OWN RECORDED NUMBERS: client 326 vs scroll **559**, 49%/42%/32% off-screen at 320/360/412, all 12 source links outside — a green RED run exits 2 as a broken harness) | 2026-09-24 — D60 and D61 both closed. ⚠️ The third assertion (no two rows paint identical title text) is DATA-DEPENDENT and did not fire under RED: today's twelve markets clamp to distinguishable text. It is kept because it is the defect that mattered most — two markets painting the same row is worse than a table that scrolls — but a green run of it is evidence about THIS board, not about the layout. |
 | U42 The sign-up funnel on a phone (D69) | General | ✅ | S23 | `ea023299` + guard `qa:signup-funnel` | 7 `/auth/*` routes × 2 widths: **200, `lang=sw`, 0 able to scroll sideways**; DOB accessible names **`Day/Month/Year` → `Siku/Mwezi/Mwaka`** | yes (`qa:signup-funnel`: `RED_WIDE=1` fails all 14 route×width cells, `RED_ARIA=1` fails both widths — each required to break its OWN section; a green RED run exits 2 as a broken harness) | 2026-09-24 — D69 closed. ⚠️ Signed-out and at-rest only: nothing here says the funnel WORKS, only that it does not overflow and speaks Swahili. A keyboard over every field is U30. |
-| U43 Up & Down board, round card and market card — every lens 10/10 (Ali's request) | General | ⬜ | S24 | | | | ⏳ in flight (`codex/u43-release-b`) — Release A is live; Release B is on the work branch. The §0 ⏳ block and §9 U43 hold the state; ⬜ until the full score and release gates pass |
+| U43 Up & Down board, round card and market card — every lens 10/10 (Ali's request) | General | ⏸ | S24 | | | | ⏸ paused by Ali 2026-10-21 (other priorities). Live: Release A, Release B + hotfix, the gold restoration and the CI-repair release; no after score — the §0 ⏸ U43 block lists what is owed |
 
 | Defect | Status | Owning unit |
 |---|---|---|
@@ -3227,8 +2893,13 @@ by U1's driver at the §11 matrix unless a unit says otherwise.
     (`udLockedOneSided`) instead of the two rows. Guard: `test:updown-hedge-quote` §6 (driven to settlement), 12/12 RED.
   - **The last 30 seconds never pulsed** — `ud-count-pulse` lost the cascade to `.m-tick` on the same element; it moves to
     the digits' own span. Guard: `test:journey-updown` §6.1's named swaps; the tiles of the last-30 state.
-- **Coordination:** PHOSPHOR W4 (asheib-26) owns every glyph choice in these files and lands first; Maswali (asheib-bf)
-  owns `/markets/page.tsx` and `/updown/history`; heavy jobs share the `mln-slot` budget as lane `udv`.
+- **Coordination:** PHOSPHOR owns every glyph choice in these files; Maswali owns `/markets/page.tsx`. `/updown/history`
+  is U43's since 2026-10-21 (the Maswali lane handed it over; S5's four Tiketi hunks there stay). Heavy jobs use U43's
+  slots `F:/kipindi-locks/mln-slot-5..8`.
+- **Release B and its repair (2026-10-20/21):** Release B `a12f7b26d` and hotfix `3ec111a83` (Codex) and Ali's gold
+  restoration `dd1386f06` are live; the CI-repair release of 2026-10-21 repaired the 28 suites Release B turned red and
+  three post-commit defects they exposed (§0). **⏸ Paused by Ali on 2026-10-21; no after score** — §0's ⏸ U43 block
+  is the resume point.
 
 ---
 

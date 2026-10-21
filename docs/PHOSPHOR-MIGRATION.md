@@ -11,12 +11,130 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-19):** release 1 of the audit is LIVE and complete — W4 at `70c069cb`, its remainder (release 1b) at
-**`d6f0b3ec`**, both below; W0–W3 before them (W3 at `ee62451c`). Ali asked for the audit that day (*"validate that all old
-icons are replaced across the platform … see where we need filled glyphs and icons and where not"*, then *"nothing
-should be plain … the most small details are the most important to me"*); it is §8. **Start here:** the checks Ali
-stopped twice to ship (⏳ Owed, below), then release 2 (**Next**). A Codex session may take this over (Ali, 2026-10-19):
-everything it needs is this file, AGENTS.md and DESIGN_AUTHORITY §K3.
+**State (2026-10-21):** ⏸ **PAUSED** — Ali: *"push everything you did live and end session so we pause for later, we
+have priorities"*. Live: W0–W4, W6 (release 2b, `d268ef919`) and W5's release 2a (`e4b148a05`, `e30d599cb`, `a504ad280`).
+W5's remainder, W7 and W8 are built and parked on two branches, not live. From 2026-10-21 only Claude works this
+programme (Ali: Codex is out). Everything a fresh session on any machine needs is this §0, AGENTS.md and
+DESIGN_AUTHORITY §K3.
+
+⏸ **Parked on GitHub — resume here (nothing below is on `main`):**
+- **`phosphor-2d-v2` (`81efea4a4`) — W5's remainder as ONE release:** 2c (each category's Duotone sigil on the shared
+  royal plate on cards, the question header, both topic pickers and the journey home's chips; the faint watermarks
+  retired; boxed stats on `StatIcon`; the deposit glyph in the bet sheet and the cashback door; the market card's info
+  control at `plateGlyph(44)` — U43 confirmed 2026-10-21 that 23px stands, keep the 44px control and the card footer's
+  one row at 320/360) and 2d (the console's KPI subject plates, status badges, roundels, restricted view, AI-poll plates).
+  Restacked on main `4471bb440`, its CI census pins fixed (`8e0f20e54`, `235f9b4a8`), the classic-parity strips settle
+  (`0558fc782`, below), and a **WIP commit of review fixes that has not been typechecked or run** (`81efea4a4`).
+- **`phosphor-3-v2` (`940521c23`) — W7 + W8 (release 3)**, restacked on the 2d branch's `235f9b4a8`; rebase it on the
+  final 2d tip. Codex's "deposit shortcut neutral" commit is dropped: U43 confirmed (2026-10-21) that the gold
+  restoration of 2026-10-20 (`dd1386f06`, DESIGN_AUTHORITY §M3a) is final, so the PWA deposit shortcut is gold, as it
+  was before B5. Its `PREVIOUS_SPRITES` names 2d's sprites (`app.a50a277b.svg`, `admin.5c185f72.svg`).
+- **Both batteries ran on GitHub** (`gh workflow run CI --ref <branch>`; it costs this PC nothing): every failing case
+  identical to main `4471bb440`'s 33, except `test:glyph-sync` §1b, which is expected on a branch that keeps its
+  predecessor's sprites and clears once that predecessor is live.
+
+**Resume order** (agreed with the other lanes, 2026-10-21): U43's CI-repair push lands first; then 2c+2d; then Maswali
+S5 (if ready); then release 3; then W9. For each release: fix the checklist below; rebase on live `main`; `glyphs:gen`
+with `PREVIOUS_SPRITES` = the sprites production serves; the changed-file readers (GitHub CI for `test:*`, then every
+`red:*` and `qa:*` that reads a changed file — 2c's 75 light reds ran 73/83 green on 2026-10-21: `red:glyph-map` was blind
+on main too (fixed on `main` today), `density-contract`, `house-bot-chatbot`, `bet-sheet`, `journey-question` and
+`journey-tickets` fail because main's own clean runs are red; `markets-redirect` 29/31, `position-permalink` 10/11,
+`u43-system` 29/30 and `journey-measures` 13/16 — run each on main before blaming the branch); `qa:u43-market-rail`,
+`qa:u43-market-card-routes` and `qa:card-geometry` for 2c; classic parity (a baseline at the new main, the compare, the
+named entries generated); typecheck, `next build` and local `qa:live` at the exact commit; before/after tiles read one
+by one; the push under `F:/kipindi-locks/main-push.lock`; the production read-back.
+
+**The independent reviews of 2026-10-21 — fix before each release** (✔ = in the WIP commit, unverified):
+- 2c, the player plates:
+  - the card's top row grows to the 26px plate (+3–6px; a Swahili tail may wrap): run `qa:u43-market-rail` (U43's
+    320×640 NO-versus-deposit-rail margin is under 8px) and `qa:card-geometry`; keep the row's height if it fails;
+  - the card skeletons' `--mcard-base`, `--mcard-base-closed` and the 175.5px residual (globals.css) were not
+    re-measured (`card-geometry.ts`'s rule); re-measure and re-pin `visual-v2a-card-rhythm`;
+  - the question page's stats: "PREDICTORS" breaks mid-word at 320 in English (a 68px slot for 74px) → `iconAlign="stack"`;
+  - the phone filter sheet's topic chips may overflow their 156px tracks at 360 in Swahili ("Hali ya hewa"): render,
+    then raise the track or let the group wrap;
+  - one category treatment, as DESIGN_AUTHORITY §K3 now promises: /live's dense card (`pulse-grid.tsx`), the /results,
+    /watchlist and /proposals topic bars, the results spotlight chip and proposals' `CategoryIcon` still draw bare glyphs;
+  - the bet sheet's deposit arrow strokes lighter than the chevron beside it: `text="body-600"`, a census kind for a
+    slot-pulled mark with a stem, and `phosphor-w5-controls` re-pinned;
+  - `CategoryPlate` and `StatIcon` repeat `HubPlate`: one shared plate part, one plate-to-word gap (4/8/8/12px today);
+  - guards: `phosphor-category-plates` should count both discovery-bar plates; `visual-pass-r4k` 7.1′ is a tautology;
+  - `agent-dashboard.tsx`'s unused `I`; activity's `min-[360px]` → `xs:`; the type-scale caps sit above what the tree
+    measures (847 against about 833; tracking 235 against about 228): lower them to the measure with a dated note;
+  - stale comments: globals.css's `.mcardp > *` notes, updown-card's z-index note, tailwind's `base` z-index naming
+    `.mcardp-watermark`, stat.tsx's "eight styles", the kit-backlog note, r10 4.3's title, the parity SETTLE refusal;
+  - `break-words` now reaches every Stat label (check the wallet, admin and performance tiles); a category outside the
+    seven draws its own sigil beside the word "Other".
+- 2d, the console:
+  - ✔ RESOLVED drew the solid gold seal (the win) on every list: `Chip` takes `glyphTier`, RESOLVED and VOIDED in Line;
+  - ✔ self-exclusion `circleStop`, cooling-off `pause`, suspension `lock`; KYC `uploaded` `clock`, `unreadable` `info`;
+    the roster's final refusal, the player header's KYC chip and the privacy and staff account chips use the shared
+    badges; DSAR's glyph follows its word; the round roundel takes `role="img"` (axe) and `warning`; the AI-poll warning
+    plate draws `warning`;
+  - `admin-kpi-glyph.ts` gives withdrawals and payouts `cashOut`, breaking the deposit/withdraw pair: withdraw
+    `arrowUpFromLine`, "cash-out fee" `cashOut`, payouts `resolved`/`settlement`, returned balances `refund`; and it
+    borrows meanings (the friends programme `agent`, positions/results/rounds `markets`, the audit log `integrity`, the
+    jackpot and guarantee `coins`, invite campaigns `megaphone`, the RG hand on non-RG figures, AI usage `brain`), has
+    unreachable rules and a provider-dependent glyph → an exact label → subject table (or a required `subject` prop)
+    whose test asserts the meaning (the reviewer's table held 233 labels);
+  - the KPI plate splits captions mid-word in narrow tiles from 640 to about 1440 (/admin/compliance's AML 2×2;
+    approvals, bonuses and AI polls at 1024): stack it by the tile's width (a container query), probe those pages;
+  - the KPI skeleton (`admin-skeletons.tsx`, 46 loading files) has no plate row; the unavailable tile's phone gap;
+    `qa-admin-kpi`'s pulse bound and truncation plant; 19 Duotone variants nothing draws and console-only drawings in
+    the player sprite; the AI-poll empty views' private disc and their 32px empty plate (DA: 56); the type-scale
+    sub-floor lowered with no note; the AI toolkit header plate 40→32; "Coming soon"'s grey plate under a gold band.
+- 3, W7 + W8:
+  - the console's KPI delta and the roles matrix's "Do ⚠" drop their glyph onto a line of its own (preflight's `svg {
+    display: block }` in a block run): `inline-block`; the deltas' ▲▼ become `chevronUp`/`chevronDown` in Fill (a
+    direction that is itself the data, as the card's 24h move), with "sensitive" said to a screen reader;
+  - the watch star blinks: `.g-settle` restarts on the already-visible optimistic Fill; the notify bell runs GlyphSwap
+    and `.g-settle` at once (one primitive); the tax reconciliation's role-less `aria-label`s (`role="img"`);
+  - W7 rewrote path arrows that §8a keeps ("Admin, then System"): restore "→" in a sentence that names a path; the
+    compliance export rows draw the deposit arrow (→ `download`); the affiliate guide's "Zaidi" draws `menu` (→ `more`);
+  - one caution treatment in the console (Fill `warning` in the warning ink + "Warning:" for a screen reader): several
+    ⚠/⛔ became nothing; `notification-arrival.ts`: a restored row rings again and an out-of-order `createdAt` never
+    rings (a bounded seen-ID set per mount, both planted); one-shot classes stay on and replay (clear on `animationend`);
+    DESIGN_AUTHORITY §M5 says a nudge never fires on mount — amend it for the receipt's first showing of its event;
+  - `notify-prompt.tsx`'s `typeof localStorage` outside its try; "notify me" promises a resolution notice that the
+    poller only gives for the viewer's own positions (older than W8); `verify-brand-assets`' mutation control is a
+    tautology; the duration input's 12px carets in its 36px field; the primer's art (§8a still lists it).
+
+**W6's deferred checks, run 2026-10-21 on live `main` `4471bb440`:** typecheck 0 errors, `next build` clean, local `qa:live`
+386/386. Classic parity: a pre-W6 baseline at `dd1386f06` (224 cells, 52/52) and the W6 compare, 67/68 — every W6
+difference is a named entry; the failing check's 5 book cells are one home cell where the BASELINE server threw a
+hydration error and the four `/watchlist` time-label cells of §7 (half-pixel moves, seen at W2 and W3 too).
+`red:campaign-visuals`: its baseline green (63 claims), 151 plants held and none missed before the pause stopped it.
+Before/after tiles of the W6 surfaces: 54 + 54, no overflow, no page error; the empty positions page read (the family's
+ticket in Duotone on the shared plate); the rest not yet read. **The classic-parity instrument** now waits for every
+scrolling strip's `data-edges` before it reads a page (SETTLE `strips-marked`, `0558fc782` on the parked branch: the
+Maswali lane's 251/252 flake on /results); its `--prove-red` (P.8s) has not run.
+**Production, read back 2026-10-21 (Ali approved it by hand):** www, the apex and the Railway host serve `d268ef919` —
+Railway did not redeploy for `4471bb440` or `cffe67cf2`, which change only docs and one test script, so production runs
+`main`'s exact code; `/api/health` is reachable and migrated on all three; `qa:chunks-prod` holds 6/6 routes (154 GETs)
+on both public origins; production `qa:live` passes 360/360 (its signed-in [E3] not measured: no QA sign-in was asked).
+
+⏳ **Owed:**
+- W6: the rest of `red:campaign-visuals`, the tile read, and the parity instrument's null compare and `--prove-red` with
+  the strips settle.
+- Release 1 (2026-10-19): the calibrated classic parity's null compare and `--prove-red`; of 1b's 43 red twins, the 23
+  left (`red:deposit-recheck`, `red:deposit-status-read` among them) and `red:measure`; the server-bound
+  `red:bar-geometry`, `red:count-truth`, `red:journey-header-fit` (alone), `qa:landing-ten`, `qa:journey-header-fit` and
+  `test:motion`. W9 runs the whole battery, parity and tiles on the final `main` and closes these.
+- Main's own failures, not this programme's: `test:visual-pass-r5a` 8.13, `r5j` 1.1, `r6c` 10.1 and 11.2, `r7c` 2.1
+  and 3.9, `test:rate-copy` (and their reds), `red:house-bot-chatbot`, `red:results-filter`'s stale anchor; U43's
+  release B left about 27 more red on main, which U43 is repairing (2026-10-21).
+
+🧹 **Cleaned 2026-10-21 (Ali approved it):** every stale Phosphor worktree on `C:\50pick-ssd` (Codex's twelve and this
+session's six) and every stale Phosphor branch, local and on origin (`codex/phosphor-*`, the old `phosphor-*` wave
+branches, this session's superseded `phosphor-2c`, `-2d`, `-3`), is removed; every commit on them was on `main` or on the
+two parked branches, checked by patch identity first. Their refs are archived, verified, in
+`F:\kipindi-archive\phosphor-stale-20261021.bundle` (31 refs; `git fetch <bundle> 'refs/*:refs/restored/*'` brings any
+of them back). Only `phosphor-2d-v2` and `phosphor-3-v2` remain.
+
+**Next:** W5's remainder — the 2c and 2d checklist above, then its release from `phosphor-2d-v2`; then W7 + W8 from
+`phosphor-3-v2`; then W9.
+
+### Release record
 
 ✅ **Release 2a, part 1 LIVE at `e4b148a05`:** one shared `IconPlate` variant and Duotone identity
 plates on the account hub, notification rows, help, the landing trust band, the chat button, the Needle mark and profile
@@ -57,32 +175,8 @@ comes from the one glyph family. Before the push, `test:visual-pass-r5c` passed 
 and the focused glyph-source, U43 palette and Phosphor-plan guards passed. The inherited U43 red harnesses gained
 audited plants at `135ccb2ac`; their three mutation proofs passed. Railway built the pushed commit and reports SUCCESS.
 The www, apex and Railway hosts each served `d268ef919` with HTTP 200; `/api/health` reported the database reachable
-and migrated. Ali explicitly asked to push now and do the remaining W6 release checks on the next machine.
-
-**Resume W6 verification from GitHub:** `codex/phosphor-2b-w6` contains the live release. Run the exact-commit local
-typecheck, build and `qa:live`; the long `red:campaign-visuals` and classic-parity red proof; a fresh classic browser
-comparison; the changed-file readers, database `test:all`, responsive and visual tiles; production `qa:chunks-prod`
-on both public origins, production `qa:live`, and changed-page browser inspection. The earlier same-code classic null
-comparison passed 68/68, and its W6 comparison found only the empty `/positions` card in 24 signed-in cells; its
-generated entries preserve W3's. These earlier measurements do not substitute for the deferred final-commit run.
-Release 2c follows with category plates, money doors and stat tiles. The downstream W5, admin and W7/W8 branches are
-on GitHub but still descend from W6's old pre-rebase commit; restack each branch's own commits onto live `main` before
-its separate release. The next machine can derive the exact old bases from the branch graph in §8d.
-
-⏳ **Owed — checks not run because Ali asked to ship (2026-10-19); run them on live `main` first (AGENTS.md §4):**
-- before/after tiles of every changed surface (phones at 390px and 2x, desktop at 1280px), read one by one;
-- the classic parity, calibrated: a baseline on a fresh in-memory server of `main`, its null compare (exit 0),
-  `--prove-red`, then W4's and 1b's differences named (`npm run glyphs:parity-entries -- <baseline> <current>
-  --measured <regions> --wave <label>`; the generated entries file still holds W3's);
-- the red twins at the release commit not yet run: of 1b's 43, the 23 left when the runs stopped — the three long
-  in-process ones among them (`red:deposit-recheck`, `red:deposit-status-read`, `red:campaign-visuals`, about an hour
-  each) — and `red:measure` again (its run held the `tier="fill"` misread that 1b fixes; 8/8 on the code before W4);
-- the server-bound ones: `red:bar-geometry` and `red:count-truth` (the server's URL as an argument),
-  `red:journey-header-fit` (alone, under the exclusive lock), `qa:landing-ten`, `qa:journey-header-fit`, and
-  `test:motion` (it needs a server on :3000).
-- Main's own failures, the same lines with or without this programme — do not chase them here:
-  `test:visual-pass-r5a` 8.13, `r5h` 3.5, `r5j` 1.1, `r6c` 10.1 and 11.2, `r7c` 2.1 and 3.9, `test:presence-class`,
-  `test:rate-copy` (and their reds), `red:house-bot-chatbot`, `red:results-filter`'s stale anchor.
+and migrated. Ali explicitly asked to push now and do the remaining W6 release checks on the next machine; they ran on
+2026-10-21 (§0 above).
 
 ✅ **Release 1b (W4's remainder) — LIVE at `d6f0b3ec`**, pushed 12:43 UTC on Ali's *"proceed until fully done and pushed
 live"*, then *"push everything you have now live as it is"* (2026-10-19):
@@ -205,33 +299,23 @@ W3, the selected states, went live at **`ee62451c`**, pushed at
 - **Ali's review page for the wave:** https://claude.ai/artifact/Ar7ABsBuKmuVzVP6G5LX2f. It has 12 before and after
   pairs and two calls: Live's and Up & Down's Fill keep Phosphor's thinner strokes, and More's Fill is a solid tile.
 
-**Next:**
-1. ⏳ Owed (above): the stopped checks on live `main`; fix what they find as its own release. The tiles: phones at 2x,
-   the "Follow 50pick" panel suppressed (`localStorage["50pick-channels-done"] = "1"`), an idle wait of a few seconds
-   (live pages poll and never go idle); Ali's review page from them.
-2. Release 2 = W5 + W6 (§8d): Duotone plates, categories, the one deposit glyph everywhere, stat tiles, admin cards, and
-   the empty states' one family; HelpMark and the Needle drawer's NeedleMark into the family's Duotone (§8a).
-3. Release 3 = the rest of W7 (the console's typed marks, the PWA shortcuts, the Needle's cursor, the primer and
-   self-care art), then W8 and W9.
-4. Still open from the selected states (on the laptop): the clean classic-parity compare with `--prove-red`, and
-   `qa:journey-shell`'s focus and tabs sections. Ali's two calls (the swap's review page,
-   https://claude.ai/artifact/5v3yaDeeZYn7igGoVJVgEo, and the selected states') — §8c answers More's; Live's and
-   Up & Down's Fills are kept (R-ONE-SOURCE rules out a composite).
-
 ### Where the work happens
-- Each wave is built on its own branch cut from `origin/main`: `phosphor-migration` (W0–W1), `phosphor-w2`,
-  `phosphor-w3`, `phosphor-w4` (all merged); release 1's remainder starts from **`phosphor-w4-review`**. On
-  OMEGA-COMPILE01 the W4 worktree was removed at the close: cut a fresh one with its own `npm ci` (a junctioned
-  `node_modules` cannot run Turbopack). On Ali-Blade15 the worktree is `C:\kipindi-phosphor`, with its own real
-  `node_modules` (installed 2026-10-17; the earlier junction was unlinked first, never deleted through).
+- The work resumes from the two parked branches (§0): `git fetch && git worktree add <dir> origin/phosphor-2d-v2`, with
+  the tree's own `npm ci` and `npx prisma generate` (a junctioned `node_modules` cannot run Turbopack). On
+  OMEGA-COMPILE01 the trees live under `C:\50pick-ssd\` (with `TEMP=C:\50pick-ssd\tmp`), heavy jobs take this
+  programme's slots `F:/kipindi-locks/mln-slot-9` to `-12` (Maswali 1–4, U43 5–8), a dev server per tree on its own
+  port, and a push to `main` takes `F:/kipindi-locks/main-push.lock`. A tile shot: phones at 390px and 2x, desktop at
+  1280px, the "Follow 50pick" panel suppressed (`localStorage["50pick-channels-done"] = "1"`), the fonts awaited and an
+  idle wait (live pages poll and never go idle).
+- Still open from W3 (the selected states): `qa:journey-shell`'s focus and tabs sections. Ali's two calls of W2/W3 are
+  answered: §8c answers More's; Live's and Up & Down's Fills are kept (R-ONE-SOURCE rules out a composite).
 - **Who pushes `main` for this programme.** The board's release owner is the OMEGA-COMPILE01 session (Ali, 2026-10-16).
   Asked whether this session should take the Phosphor migration to production itself, Ali answered *"until live"*
   (2026-10-17, to the Ali-Blade15 session) — so this programme's releases are pushed to `main` by the session working it,
   recorded in the board's header. Every release: rebase on `origin/main` immediately before the push, the release
   checklist of AGENTS.md §4 (typecheck, `next build`, local `qa:live`, then the production read-back), and never a push
   while another lane's release is mid-flight (`git log origin/main` first). Between releases, the branch is pushed at
-  every step, so a session on another machine resumes with `git fetch && git worktree add <dir> origin/phosphor-w4-review`
-  (the current work's branch).
+  every step, so a session on another machine resumes from it (§0 names the current branches).
 - Every step, in ONE commit: the work, this §0 rewritten, §1 ticked, the board row's count updated. Then push the
   branch. `npm run test:phosphor-plan` asserts the tracker and the board agree.
 
@@ -251,10 +335,10 @@ written with `I` today moves to Phosphor automatically at W2, with no edit. From
 | W2 | The swap: the whole platform on Phosphor in one commit | ✅ | 732efbc5 — live 2026-10-17 23:10 UTC: every icon drawn by Phosphor (twelve chrome glyphs inline, the rest one immutable sprite), 6.4 KB gzip lighter per route; production read back |
 | W3 | Selected states: Fill + one indicator; admin sidebar icons | ✅ | ee62451c — live 2026-10-18 11:22 UTC: every bar of destinations marks the current one with its Fill glyph on one opaque royal pill (both tab bars at 24px, both desktop bars, the admin sidebar with 50 new glyphs); production read back |
 | W4 | Outcomes and status: glyph + ink + word | ✅ | 70c069cb — live 2026-10-19 11:51 UTC: release 1 of §8d — status in Fill, outcomes as glyph + ink + word, every notification its glyph, §8b's meanings, the player front's old icons; its remainder, release 1b, live at d6f0b3ec (12:43 UTC): the review's other 17 findings; the stopped checks are §0's Owed |
-| W5 | Plates, money, hub, categories, stats, admin cards | 🔨 | Release 2a parts 1 and 2 live at `e4b148a05` and `e30d599cb`; the remainder is release 2c and 2d (§8d) |
+| W5 | Plates, money, hub, categories, stats, admin cards | 🔨 | Release 2a parts 1 and 2 live at `e4b148a05` and `e30d599cb`; the remainder (2c + 2d) is built and parked on `phosphor-2d-v2` with the reviews' fix list (§0) |
 | W6 | Empty states: one family | ✅ | Release 2b live at d268ef919: one shared Duotone plate for the twelve empty kinds and the bell panel; Ali deferred final-commit checks to the next machine (§0) |
-| W7 | Consolidation: inline svgs, text-character icons, PWA, Maswali | ⬜ | |
-| W8 | Motion on the existing primitives | ⬜ | |
+| W7 | Consolidation: inline svgs, text-character icons, PWA, Maswali | 🔨 | Built and parked on `phosphor-3-v2` (release 3, with W8), with the reviews' fix list (§0) |
+| W8 | Motion on the existing primitives | 🔨 | Built and parked on `phosphor-3-v2` (release 3, with W7), with the reviews' fix list (§0) |
 | W9 | Close: adversarial audit, test:all, full tiles, the law final | ⬜ | |
 
 Statuses: ⬜ not started · 🔨 in progress · ✅ done (the note cites its commit) · ⛔ withdrawn (the note cites an R- key

@@ -283,7 +283,12 @@ const BASELINE = new Set<string>([
   "cm-dot", "cm-handoff-meta", "countdown--critical", "countdown--urgent",
   // `m-draw` and `mat-inset` LEFT 2026-10-17 (MASWALI-BUILD S5): Millionea's hairlines draw on (M5, M6, on `--t-max` /
   // `--m-glide`) and its reserves, rules strip and quiet lines sit on the inset rung — both bodies read, both current.
-  "g-swap", "g-swap-out", "m-ambient", "m-aura", "m-live-pip", "m-urgent",
+  // 2026-10-21 · U43 Release B (1384383fd) · `m-urgent` LEFT this list, the good direction: the Up & Down round clock's
+  // last-30 digits (`round-countdown.tsx`, `updown-card.tsx`) wear it now. ⚠️ Its body was read before the entry came
+  // off, as §1.2 demands: `animation: m-breathe 1000ms var(--m-breathe) infinite` — the kit's second unattended loop,
+  // listed in motion.css's loop census beside `.m-live-pip`, on the `--m-breathe` easing, and calm in every gate (the OS
+  // query, `[data-motion="reduced"]` and `"minimal"`, `html.kp-reduce-motion`) — a current recipe, nothing superseded.
+  "g-swap", "g-swap-out", "m-ambient", "m-aura", "m-live-pip",
     // `mat-raised` LEFT THIS LIST on 2026-08-21 — `ui/cashback-promo.tsx` and the wallet
   // bonus card both pick that rung now (D5), so it has real consumers and check 1.2 said so.
   // ⭐ `mat-float` LEFT THIS LIST on 2026-09-12 and the list may only shrink. The channels panel

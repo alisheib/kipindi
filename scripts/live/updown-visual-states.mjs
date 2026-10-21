@@ -63,7 +63,8 @@ mkdirSync(OUT, { recursive: true });
 
 const UA = "Mozilla/5.0 (Linux; Android 13; SM-A145F) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Mobile Safari/537.36";
 const UA_DESKTOP = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36";
-const STILL = "*,*::before,*::after{transition:none!important;animation:none!important;caret-color:transparent!important}nextjs-portal{visibility:hidden!important}";
+// Every animation settled at its END state, never stripped (2026-10-21 · see updown-visual-capture.mjs STILL).
+const STILL = "*,*::before,*::after{transition:none!important;animation-delay:0s!important;animation-duration:0s!important;animation-iteration-count:1!important;caret-color:transparent!important}nextjs-portal{visibility:hidden!important}";
 const HEIGHT_FOR = { 320: 640, 360: 740, 390: 844, 768: 1024, 1024: 768, 1280: 800, 1920: 1080 };
 
 /** The matrix: every signed-in cell in Swahili across the phone widths, the other languages at a phone and a desktop. */
@@ -677,6 +678,10 @@ async function photograph(phase, path = BOARD, filter = () => true) {
   index.phases.push({ phase, path, at: new Date().toISOString(), shots });
   const bad = shots.filter((s) => s.error || s.langOk === false || s.signedInOk === false || s.hydrated === false || s.marksReady === false || s.chartReady === false).length;
   console.log(`  ▸ ${phase}: ${shots.length} cell(s)${bad ? ` · ${bad} problem(s)` : ""}`);
+  // A failed cell's reason is evidence too: print each distinct one, and keep the index on disk after every
+  // phase, so a later premise stop never discards what the earlier phases measured (2026-10-21 · U43).
+  for (const reason of [...new Set(shots.filter((s) => s.error).map((s) => s.error))].slice(0, 4)) console.log(`      ✗ ${reason}`);
+  writeFileSync(join(OUT, "index.partial.json"), JSON.stringify(index, null, 1));
 }
 
 // ── The round, phase by phase ────────────────────────────────────────────────────────────────────────────────

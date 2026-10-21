@@ -282,7 +282,9 @@ console.log("\n§5 · rendered in en/sw/zh: Up and Down only, the chips in full,
     const all = text(html);
     if (/×/.test(all)) d.push(`a "×" is printed: …${(all.match(/.{0,30}×.{0,20}/) ?? [""])[0]}…`);
     if (/≈\s*\d+(?:[.,]\d+)?\s*×|≈\d/.test(all)) d.push("a multiple is printed");
-    const want = sentence(r.loc, A.judEmptySide(r.pricing, r.kind === "confirm" ? r.side! : null));
+    // The card parent prints its brief refund condition before the arm. The
+    // full side-aware explanation belongs to the detail and confirm controls.
+    const want = r.kind === "card" ? null : sentence(r.loc, A.judEmptySide(r.pricing, r.kind === "confirm" ? r.side! : null));
     if (want && !all.includes(want)) d.push(`the empty-side sentence is missing: "${want}"`);
     for (const s of all3(r.loc)) if (s !== want && all.includes(s)) d.push(`a false empty-side sentence: "${s}"`);
     const chips = [...html.matchAll(/<button[^>]*class="[^"]*kp-bsheet__chip[^"]*"[^>]*>([^<]*)<\/button>/g)].map((m) => m[1]);
@@ -313,8 +315,16 @@ console.log("\n§5 · rendered in en/sw/zh: Up and Down only, the chips in full,
     return d;
   }
   const bad = renders.flatMap((r) => defects(r).map((x) => `${r.what}: ${x}`));
-  ok("5.1 every journey render obeys the ruling and the boards: word-only sides, no \"×\", chips in full, the commit and the prompt name the stake, the projection is the pool's with its qualifier, the empty side iff true",
+  ok("5.1 every journey render obeys the ruling and the boards: word-only sides, no \"×\", full chips, a truthful projection and the full empty-side note only on detail or confirm",
     bad.length === 0, bad.slice(0, 5).join(" · "));
+  const cardSource = strip(read(CARD));
+  const briefBeforeCardArm = (source: string) => source.includes("const refundBrief = cardRefundBrief(t, emptySideOf(pricing));")
+    && source.indexOf("{bettable && refundBrief && (") < source.indexOf('<div className="ud-act">')
+    && source.includes("{refundBrief}");
+  ok("5.1a · the card parent states the shorter refund condition before the journey/classic action slot",
+    briefBeforeCardArm(cardSource));
+  ok("5.1a PLANT · removing the card's brief fails its source guard",
+    !briefBeforeCardArm(cardSource.replace("{refundBrief}", "")));
   ok("5.2 CONTROL · the renders cover a projection shown (switch on, two-sided) and withheld (switch off), and a sentence shown and withheld, in every language",
     LOCALES.every((loc) => renders.some((r) => r.loc === loc && r.kind === "confirm" && /data-testid="jud-projection"/.test(r.html))
       && renders.some((r) => r.loc === loc && r.kind === "confirm" && !/data-testid="jud-projection"/.test(r.html))
@@ -388,12 +398,15 @@ console.log("\n§6 · the U43 classic source snapshot keeps every intentional bo
   // The 2026-10-14 subsequence baseline was superseded by U43's board, round and
   // card rewrite. Each normalized source is pinned independently in this same
   // release; §6.2 and §6.3 still verify the Journey/classic behavior split.
+  // 2026-10-21 · u43-hc · ROUND and CARD re-pinned for one deliberate change and nothing else: four stock spacing keys
+  // (the pending panel's scroll-mt-24 and gap-2.5, the card's two notes' mt-2.5) became their same-pixel literals
+  // (scroll-mt-[96px], gap-[10px], mt-[10px]) for test:spacing-scale — no other byte of either file moved.
   const U43_CLASSIC = [
-    [BOARD, "6f95991d0e48a820ef70724073f8a6b90f49b58db0cb8e857e5a3e842c76e190", "export default async function UpDownPage({"],
-    [ROUND, "39ffa4a17c4bae66aaf2d7495c7e759fda6acae756c0c2e21f9a2357db646814", "export default async function UpDownRoundPage({"],
-    [CARD, "2ed6472789706d74f0d00d2cdc8fe9850b65c70331cb9d3d4fad79b63b964cc6", "export function UpDownCard(props: UpDownCardProps) {"],
-    [PANEL, "34f015bc6c69f2ffebcbcd4633cecc1a6040e81b8e9eb0f67ded56d63d6a8e84", "export function RoundStakePanel(props: {"],
-    [ACTION, "fcfb57cfd1614d50ebdff55f1ad82a25bb5eb81816cd359ec4724f5a4656bfea", "export function RoundActionPanel(props: {"],
+    [BOARD, "bbcd4f2a043e1a71287b5950ac3a89ac6ae3a753a04a5029e7e1c6f46284b1fb", "export default async function UpDownPage({"],
+    [ROUND, "05d8ef79865916bb2c27f3e65db8d1dc58b9e10c5cfc84440bbdc27acc2eef79", "export default async function UpDownRoundPage({"],
+    [CARD, "602356816a54a0e5a6bd35947e53c1b0270973585c9ff0336c2cb15b416b618a", "export function UpDownCard(props: UpDownCardProps) {"],
+    [PANEL, "12f2607f1a08a7c737549daefe9b2da644710fcd9dbffc455a5b8355fc3391bb", "export function RoundStakePanel(props: {"],
+    [ACTION, "f8f075998d9f448634dbae66d1f8906630facda10993cc0a14d1aaa962f9bf72", "export function RoundActionPanel(props: {"],
   ] as const;
   const classicFiles = [BOARD, ROUND, CARD, PANEL, ACTION];
   const seenFiles = U43_CLASSIC.map(([file]) => file);
@@ -422,9 +435,22 @@ console.log("\n§6 · the U43 classic source snapshot keeps every intentional bo
       && /lockedSide: judSide \?\? lockedSide,/.test(roundSrc) && /walletBalance: judViewer \? judViewer\.spendable : detail\.walletBalance,/.test(roundSrc)
       && /\{journey \? t\.journey\.ticketsHere : t\.market\.udPositionsOnRound\}/.test(roundSrc)
       && /const judSide: "UP" \| "DOWN" \| null = !judViewer \? null/.test(roundSrc));
-  ok("6.3 the arm stands in the same slot as the classic element on the card and both panel arms (one ternary or early return each)",
+  const sameSlot = (source: string) => {
+    const twoStart = source.indexOf("if (!lockedSide) {");
+    const classicStart = source.indexOf("return (", twoStart);
+    const two = twoStart < 0 || classicStart < 0 ? "" : source.slice(twoStart, classicStart);
+    const confirmStart = source.indexOf("if (jud && props.journey) return <>", classicStart);
+    const confirmEnd = source.indexOf('const isUp = lockedSide === "UP";', confirmStart);
+    const confirm = confirmStart < 0 || confirmEnd < 0 ? "" : source.slice(confirmStart, confirmEnd);
+    return two.includes("if (jud && props.journey) return <>") && two.includes("{bandBeforeBet && <p")
+      && two.includes("<LazyJudTwoWay") && two.includes("</>;")
+      && confirm.includes("{bandBeforeBet && <p") && confirm.includes("<LazyJudConfirm") && confirm.includes("</>;");
+  };
+  ok("6.3 the journey arms stay in the card's and both panel branches' classic slots, after the band notice",
     /\{journey && marketId && serverNowMs != null \? <LazyJudTwoWay[\s\S]*?: \(\n\s*<UpDownStakeControls/.test(card)
-      && /if \(jud && props\.journey\) return <LazyJudTwoWay /.test(panel) && /if \(jud && props\.journey\) return <LazyJudConfirm /.test(panel));
+      && sameSlot(panel));
+  ok("6.3′ PLANT · removing the journey confirm arm fails the slot guard",
+    !sameSlot(panel.replace("<LazyJudConfirm ", "<MissingConfirm ")));
 }
 
 // ── §7 · the flag ─────────────────────────────────────────────────────────────────────────────────────────────────

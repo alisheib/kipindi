@@ -885,9 +885,39 @@ section("§6 · sanctioned changes");
   // A17 and H9: no wagering reversal and no recruiter reward on a marked position.
   {
     const svc = decomment(SVC_SRC);
-    const reversals = [...svc.matchAll(/reverseWagering\(/g)].length;
-    const guarded = [...svc.matchAll(/if \((?:r|p)\.houseBotId == null\) await reverseWagering\(/g)].length;
-    ok("6.g · every reverseWagering call in market-service.ts is guarded by the marker", reversals >= 3 && reversals === guarded, `${guarded} of ${reversals}`);
+    /* 2026-10-21 · U43 Release B (c29cb7526) moved every refund's wagering reversal INSIDE its money transaction: the
+     * post-lock loops `if (r.houseBotId == null) await reverseWagering(r.userId, r.stake)` became per-position
+     * `if (p.houseBotId == null) await reverseWageringLocked(p.userId, p.stake, tx, …)` calls, and the settlement's one
+     * loop became two sites (one-sided, void), so the old scan of `reverseWagering(` found 0 of 0. The scan now counts
+     * BOTH names, the guarded refunds EXACTLY by function, and the one reversal that carries no guard — the cash-out's,
+     * which a house position never reaches: cashOutPosition refuses one first (`SEAM:cashOutPosition`, sanctioned
+     * change (e)), and its `p` is a const. A reversal under either name that is not one of these fails. */
+    const REVERSAL = /\breverseWagering(?:Locked)?\(/g;
+    const GUARDED = /if \((?:\w+ && )?[pr]\.houseBotId == null\) await reverseWagering(?:Locked)?\(/g;
+    const count = (s: string, re: RegExp) => [...s.matchAll(re)].length;
+    const REFUND_SITES: Array<[signature: string, sites: number]> = [
+      ["export async function repairOrphanedPositions(", 1],
+      ["export async function settleMarket(", 2],
+      ["export async function emergencyVoidMarket(", 1],
+    ];
+    const perFn = REFUND_SITES.map(([sig, want]) => {
+      const body = decomment(fnBody(SVC_SRC, sig));
+      return { fn: sig.slice("export async function ".length, -1), want, read: body.length, reversals: count(body, REVERSAL), guarded: count(body, GUARDED) };
+    });
+    const cash = decomment(fnBody(SVC_SRC, "export async function cashOutPosition("));
+    const refuseAt = cash.search(/if \(p\.houseBotId != null\) \{\s*return \{ ok: false/);
+    const cashExempt = count(cash, REVERSAL) === 1 && count(cash, GUARDED) === 0 && refuseAt >= 0 && refuseAt < cash.search(REVERSAL)
+      && count(cash, /\bconst p = /g) === 1 && count(cash, /\bp = /g) === 1;
+    const reversals = count(svc, REVERSAL);
+    const guarded = count(svc, GUARDED);
+    ok("6.g · every wagering reversal in market-service.ts skips a house-marked position — each refund guarded in place (orphan repair 1, settlement 2, emergency void 1), and the cash-out's unreachable for one",
+      perFn.every((f) => f.read > 1_000 && f.reversals === f.want && f.guarded === f.want) && cashExempt && guarded === 4 && reversals === guarded + 1,
+      `${guarded} guarded + 1 cash-out of ${reversals} · ${perFn.map((f) => `${f.fn} ${f.guarded}/${f.reversals}`).join(", ")} · cash-out exempt: ${cashExempt}`);
+    ok("6.g.c1 · CONTROL · an unguarded, a negated and an OR-widened in-lock reversal are counted and NOT guarded; the old post-lock shape still reads as guarded",
+      count("  await reverseWageringLocked(p.userId, p.stake, tx,", REVERSAL) === 1 && count("  await reverseWageringLocked(p.userId, p.stake, tx,", GUARDED) === 0
+        && count("  if (p.houseBotId != null) await reverseWageringLocked(p.userId, p.stake, tx,", GUARDED) === 0
+        && count("  if (accruedTurnover || p.houseBotId == null) await reverseWageringLocked(p.userId, p.stake, tx,", GUARDED) === 0
+        && count("  for (const r of pending) if (r.houseBotId == null) await reverseWagering(r.userId, r.stake);", GUARDED) === 1);
     const guardedFn = decomment(fnBody(SVC_SRC, "async function buyPositionInner("));
     ok("6.g1 · a house stake records no wagering: the only recordWageringLocked call is skipped for house context (H6)",
       [...guardedFn.matchAll(/recordWageringLocked\(/g)].length === 1 && /const wr = opposite \|\| ctx\.kind === "house" \? \{ fulfilled: \[\], creditedToRealTzs: 0 \} : await recordWageringLocked\(/.test(guardedFn));
@@ -960,7 +990,9 @@ console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-seam: ${pas
  * only ever RISES, and only to a number a run printed — never to an arithmetic guess.
  */
 /* N6: 143/0 printed on 2026-10-15 after side, holder, percentage, pool and shared two-sided cap cases. */
-const MIN_ASSERTIONS = 143;
+/* 2026-10-21 · U43 Release B (c29cb7526): 150/0 printed once 6.g was re-pointed to the in-lock reversals and its
+ * control 6.g.c1 added, with the three reversal markers in place. Raised to what this run PRINTED. */
+const MIN_ASSERTIONS = 150;
 if (pass < MIN_ASSERTIONS) {
   console.error(`\n!! FLOOR — test:house-bot-seam ran ${pass} assertion(s), fewer than the ${MIN_ASSERTIONS} a green run printed. Cases that stop running are not cases that pass.`);
   process.exit(4);

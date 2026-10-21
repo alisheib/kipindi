@@ -7,8 +7,21 @@ export function staleConfirmingIssues(board, selectResult = latestNonOverlapping
     issues.push("board no longer imports its non-overlapping result selector");
   }
   const begin = board.indexOf("const current = started[0] ?? null;");
-  const end = board.indexOf("const selected = await withSuccessors(", begin);
+  // 2026-10-21 · U43 Release B (3bcbec37e) attaches the viewer's positions AFTER the selection: the picks become
+  // `selectedBare`, are re-drawn with their indexed money rows (`await myStakesByMarket(…)`, TypeScript casts), and only
+  // that hydrated list reaches `withSuccessors`. The hydration chooses no card and cannot run in `new Function`, so the
+  // evaluated slice now ends where the selection is consumed — the very statements it evaluated before, unchanged — and
+  // the hand-on is pinned instead: the three picks in their order, mapped in that order into what `withSuccessors` gets.
+  const end = board.indexOf("const selectedBare = ", begin);
   if (begin < 0 || end < 0) return ["board round selection missing"];
+  const handOn = board.slice(end, board.indexOf("\n", board.indexOf("const selected = await withSuccessors(", end)));
+  if (!handOn.startsWith("const selectedBare = [current, justClosed, lastDone].filter(Boolean) as BoardRound[];")) {
+    issues.push("board no longer hands on its picks as current, just closed, last result");
+  }
+  if (!/\n\s*const selectedWithMine = \(await Promise\.all\(selectedBare\.map\(async \(round\) => \{/.test(handOn)
+    || !/\n\s*const selected = await withSuccessors\(selectedWithMine, chain, raw\);/.test(handOn)) {
+    issues.push("board hydration no longer hands the selected picks, in order, to its successors");
+  }
   let select;
   try {
     select = new Function("mapped", "started", "latestNonOverlappingResult", `${board.slice(begin, end)}; return { current, justClosed, lastDone };`);
