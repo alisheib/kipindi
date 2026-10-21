@@ -40,8 +40,25 @@ search/filter/sort/paging, bounded integrity report coverage, reviewed consequen
 device-audit feedback, versioned seal corrections, the multi-ticket slip, the separate Results section, the public
 settled-week sitemap and share image, and bounded public week and register caches. The rollout stays `WITHDRAWN`.
 
+**⏳ IN FLIGHT (2026-10-21 from ~12:35 UTC, Ali: "proceed") — the Claude session asheib-65 on OMEGA-COMPILE01 leads:**
+- Lanes resumed with their own context, each on its branch and SSD tree, heavy jobs in Maswali slots 1–3:
+  S5-DESIGN-HUB, -SLIP, -TICKETS (plus P6 on a ticket and the tickets ghost's third box), -REGISTER (its shared pieces
+  first, merged early for round 2), -DOORS (the owed browser re-run and tile read), S5-FIX-PLATFORM (verify 8–11, then
+  D12–D14) and S5-FIX-SRV (finding 2's class in openWeek, closeWeek, voidWeek, claimCarry and sunsetMaswali).
+- Integration branch `claude/maswali-s5-int1` = this release + fix-srv `9935dfd47` + fix-player `54512f311` + parity
+  `9a0c6b033` + fix-platform 1–7 `f74aaa312` + `main` `bfa0b7d57` (merge `b7292198d`: U43 took S5's five red fixes
+  verbatim, and its watchlist repair supersedes S5's interim poll; four conflicts, each explained in the commit). Static
+  readers green (maswali-ui 151, journey-tickets 51, r4j 91, r5g 65); tsc and the two-store suites are running. Next to
+  merge: REGISTER's shared pieces, then each design branch, platform 8–14 and fix-srv's new commits; `glyphs:gen` (with
+  HUB's `salesPaused` Fill) and the D19a re-pin once, at the final merge.
+- Railway's builds are still paused (status.railway.com, 12:23Z). A watcher asks Railway every 10 min to deploy `main`'s
+  head and stops at the first accepted request; then U43's read-back, which U43 asked the Maswali lead to run.
+- OMEGA: the S6 notices lane's two leftover chains still run its owed checks in `kipindi-mln-not` (slot 4); their summary
+  is `s6n/heavy/summary.txt` in the lead's scratchpad. So far: red:maswali-money-path 41/42 on an earlier head (one plant
+  missed), which the S6 lane reads when it resumes.
+
 **⏹ STOPPED (2026-10-21 ~10:45 UTC, on Ali's word: "finish … so we proceed on another session with clean pushed").
-RESUME HERE, from any machine:** read branch `maswali-handover-20261021`, folder `handover/maswali-2026-10-21/` —
+The lanes' state at that stop (superseded by IN FLIGHT above where they differ). RESUME HERE, from any machine:** read branch `maswali-handover-20261021`, folder `handover/maswali-2026-10-21/` —
 README.md (every branch, each lane's state at the stop, the next steps in order), `critics/` (round 1 of Ali's 10/10
 design pass: scores and fixes per surface, the LEAD RULINGS, the design lanes' brief and file ownership) and `tools/`.
 Every lane committed and pushed at the stop; a commit marked "WIP … not verified" does not compile or was not run.
