@@ -1,9 +1,10 @@
-import type { ReactNode } from "react";
+import { isValidElement, type ReactNode } from "react";
 import { MaswaliCarry } from "@/components/maswali/maswali-carry";
-import { MaswaliFacts, factsOf, keepFact } from "@/components/maswali/maswali-facts";
+import { MaswaliFacts, factRuns, factsOf, keepFact } from "@/components/maswali/maswali-facts";
 import { counted } from "@/components/maswali/maswali-format";
 import { ReceiptRow, type ReceiptEmphasis } from "@/components/ui/receipt-row";
-import { fillNodes } from "@/lib/fill-nodes";
+import { keepConnectives, keptRanges, mergeRanges } from "@/components/ui/keep-run";
+import { fillNodes, moneyRuns } from "@/lib/fill-nodes";
 import { cn, fill, formatTzs, formatTzsSigned } from "@/lib/utils";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 
@@ -210,6 +211,32 @@ export function MaswaliPoolHead({ t, locale, view, pct, final = false, tick, lab
   );
 }
 
+/** Each money figure's [start, end) in `text`, read by the platform's one money reader (`moneyRuns`). */
+function figureRanges(text: string): Array<[number, number]> {
+  const out: Array<[number, number]> = [];
+  let at = 0;
+  for (const node of moneyRuns(text)) {
+    if (typeof node === "string") { at += node.length; continue; }
+    const figure = isValidElement<{ children?: unknown }>(node) ? String(node.props.children ?? "") : "";
+    out.push([at, at + figure.length]);
+    at += figure.length;
+  }
+  return out;
+}
+
+/**
+ * A ledger label as the kit's receipt row keeps one (M4): no line ends on a connective (`keepConnectives` — the Swahili
+ * floor read "Kiwango cha" / "chini kilichohakikishwa"), Millionea's runs kept ("tiketi 41", "Wiki 47", `factRuns`), and a
+ * figure inside it whole in the money face ("…kila tiketi itarejeshwa TZS 1,000"). A "·"-joined label is a fact line of
+ * such facts (A1). The words are never changed.
+ */
+function ledgerLabel(locale: Locale, label: ReactNode): ReactNode {
+  if (typeof label !== "string") return label;
+  const kept = (s: string) => keepConnectives(s, mergeRanges([...keptRanges(s, factRuns(locale, s)), ...figureRanges(s)]), (part) => moneyRuns(part));
+  const facts = factsOf(label);
+  return facts.length > 1 ? <MaswaliFacts facts={facts.map(kept)} /> : kept(label);
+}
+
 /** How a ledger row is drawn by the kit's receipt row (M4, as the register's ledger draws its rows): a figure in the
  *  money face, the jackpot the receipt's amount, a fee taken the receipt's fee line, words the receipt's muted words. */
 function receiptOf(r: PoolLedgerRow): { emphasis: ReceiptEmphasis; tone?: "warning"; quiet: boolean } {
@@ -240,9 +267,7 @@ export function MaswaliPoolLedger({ t, locale, view, pct, carry, ticked, classNa
   const v = view;
   const pending = v.carriedIn?.amount === null;
   const rows = poolLedgerRows(t, view, pct, carry);
-  // A figure inside a label ("Kila tiketi imerejeshwa TZS 1,000") is set whole in the money face (§M4, through `keepFact`'s
-  // money reader); a "·"-joined label is a fact line.
-  const label = (l: ReactNode) => (typeof l === "string" ? <MaswaliFacts facts={factsOf(l).map((f) => keepFact(locale, f))} /> : l);
+  const label = (l: ReactNode) => ledgerLabel(locale, l);
   return (
     <div className={cn("mat-flat flex flex-col rounded-card px-3 py-1.5", className)} data-testid="millionea-hub-ledger">
       {rows.map((r, i) => {

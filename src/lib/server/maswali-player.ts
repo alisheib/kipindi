@@ -1407,8 +1407,9 @@ export async function millioneaCloseMove(week: Pick<MillioneaHubWeek, "id" | "st
   if (week.state !== "OPEN" || !Number.isFinite(closeMs) || closeMs <= nowMs) return null;
   try {
     const { getAuditForTargetsDurable } = await import("./audit");
-    // A move is made only after the week opened; a day of margin before its scheduled open covers an early open.
-    const since = new Date(Date.parse(week.opensAt) - 86_400_000).toISOString();
+    // Every move of THIS week counts, whenever it was written: an entry carries the wall clock of its write, which says
+    // nothing about the week's own schedule (a week drafted ahead is moved before its scheduled open on a test clock).
+    const since = new Date(0).toISOString();
     const { entries } = await getAuditForTargetsDurable({ targetType: "MaswaliCycle", targetIds: [week.id], actions: ["maswali.week.close_moved"], sinceIso: since, limit: 5 });
     const latest = entries[0];
     const from = typeof latest?.payload?.from === "string" ? latest.payload.from : null;

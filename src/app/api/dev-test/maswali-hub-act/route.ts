@@ -22,6 +22,7 @@
  *                             week's Sunday (after every event); a VOID on the "abandoned" ground
  *   · window {open}         — the lead week's objection window: its stamped end (open) or a minute ago (closed)
  *   · settle                — the lead week released (its window closed first)
+ *   · catchUp               — every week graded BEFORE the lead, oldest first, sealed, then settled or voided (MR-3's order)
  *   · voidLead              — the lead week voided whole (its window closed first; its void must be certain)
  *   · openNext              — the newest drafted week attested and opened (only once no week sells: MR-3)
  *   · draftNext             — one more week drafted a week after the newest
@@ -38,10 +39,11 @@ import { randomId } from "@/lib/server/crypto";
 import { createSession } from "@/lib/server/session";
 import { coolOff } from "@/lib/server/responsible-gambling";
 import {
-  SUNSET_WORD, attestParity, closeWeek, createWeek, moveClose, openWeek, purchaseMaswaliTickets, sealQuestion, sunsetMaswali, voidWeek,
+  SUNSET_WORD, attestParity, closeWeek, createWeek, gradable, moveClose, openWeek, purchaseMaswaliTickets, sealQuestion, sunsetMaswali, voidWeek,
   type DraftQuestionInput,
 } from "@/lib/server/maswali-service";
-import { weekStore, type StoredWeek } from "@/lib/server/maswali-dal";
+import { questionStore, weekStore, type StoredWeek } from "@/lib/server/maswali-dal";
+import { weekVoidCertain } from "@/lib/maswali-score";
 import { guaranteeReader } from "@/lib/server/maswali-money-service";
 import { previewMaswaliSettlement, settleMaswaliWeek } from "@/lib/server/maswali-settlement";
 import { pauseMaswaliSales, resumeMaswaliSales } from "@/lib/server/maswali-pause";
@@ -175,6 +177,38 @@ export async function POST(req: Request) {
         if (Date.parse(week.objectionsCloseAt) > Date.now()) await weekStore.patch(week.id, { objectionsCloseAt: new Date(Date.now() - 60_000).toISOString() });
         const r = await voidWeek({ weekId: week.id, now: new Date() });
         return r.ok ? NextResponse.json({ ok: true, voided: week.code, refunded: r.refunded ?? null }) : refuse(r.error);
+      }
+      case "catchUp": {
+        // Every week being graded BEFORE the hub's lead, oldest first: its missing results sealed YES, its window closed,
+        // then settled — or voided whole when its void is certain. Settlement runs strictly in order (MR-3), so a week can
+        // settle only once every week before it has.
+        const head = await lead();
+        const behind = (await weekStore.list({ visibility: "PUBLIC", states: ["CLOSED", "RESOLVING"] }))
+          .filter((w) => w.id !== head?.id).sort((a, b2) => Date.parse(a.opensAt) - Date.parse(b2.opensAt));
+        const done: string[] = [];
+        for (const w of behind) {
+          const at = new Date(weekStartOf(w) + 9 * DAY);
+          for (const q of await questionStore.listForWeek(w.id)) {
+            if (q.outcome !== null) continue;
+            const r = await sealQuestion({ weekId: w.id, slot: q.slot, outcome: "YES", voidReason: null, evidence: `Official result for event ${q.slot} (dev drive)`, officerId: SEALER, now: at });
+            if (!r.ok) return refuse(`catch up ${w.code} seal ${q.slot}: ${r.error}`);
+          }
+          const sealed = await weekStore.get(w.id);
+          if (!sealed?.objectionsCloseAt) return refuse(`catch up ${w.code}: its graded set is not final`);
+          if (Date.parse(sealed.objectionsCloseAt) > Date.now()) await weekStore.patch(w.id, { objectionsCloseAt: new Date(Date.now() - 60_000).toISOString() });
+          const certain = weekVoidCertain(gradable(await questionStore.listForWeek(w.id)));
+          if (certain) {
+            const v = await voidWeek({ weekId: w.id, now: new Date() });
+            if (!v.ok) return refuse(`catch up ${w.code} void: ${v.error}`);
+          } else {
+            const p = await previewMaswaliSettlement(w.id, new Date());
+            if (!p.ok) return refuse(`catch up ${w.code} preview: ${p.error}`);
+            const s = await settleMaswaliWeek({ weekId: w.id, releasedBy: OWNER, digest: p.preview.digest, now: new Date() });
+            if (!s.ok) return refuse(`catch up ${w.code} settle: ${s.error}`);
+          }
+          done.push(w.code);
+        }
+        return NextResponse.json({ ok: true, caughtUp: done });
       }
       case "openNext": {
         if (await weekStore.openFor("PUBLIC")) return refuse("A week is already on sale (MR-3).");

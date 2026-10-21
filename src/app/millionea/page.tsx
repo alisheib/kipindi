@@ -341,7 +341,9 @@ function BuyDoor({ t, w, signedIn, nowMs, nextOpen, breakBody, guest, className 
     door = (
       <div className="flex flex-col gap-2" data-testid="millionea-hub-guest">
         <p className="text-body-sm text-text-muted">{t.millionea.signInToBuy}</p>
-        <div className="grid grid-cols-1 gap-2 xs:grid-cols-2">
+        {/* Side by side at every width (the market page stacks them below 360): two short words fit a 320 phone's half
+            column, and stacked they took the pair under the rail there (H1). */}
+        <div className="grid grid-cols-2 gap-2">
           <Link href={guest.signUp as never} className="btn btn-primary btn-md btn-pill" data-testid="millionea-hub-signup">{t.common.signUp}</Link>
           <Link href={guest.signIn as never} className="btn btn-ghost btn-md btn-pill" data-testid="millionea-hub-signin">{t.common.signIn}</Link>
         </div>
@@ -476,17 +478,23 @@ export default async function MillioneaHubPage({ searchParams }: { searchParams:
       aria-labelledby={w.pool ? JACKPOT_LABEL_ID : undefined}
       aria-label={w.pool ? undefined : weekLabelText(t, w, nowMs, hub.paused)}
       className={cn(
-        "grid grid-cols-1 items-start gap-4 lg:col-start-2 lg:row-span-2 lg:flex lg:flex-col lg:gap-4 lg:self-stretch",
+        // `items-start` holds a grid row's items to their own height; from 1024 the column is a flex column, where the same
+        // word would shrink each block to its content's width, so there the blocks stretch to the column again.
+        "grid grid-cols-1 items-start gap-4 lg:col-start-2 lg:row-span-2 lg:flex lg:flex-col lg:items-stretch lg:gap-4 lg:self-stretch",
         w.pool && "md:grid-cols-2 md:gap-x-6",
         phases ? "lg:row-start-2" : "lg:row-start-1",
       )}
       data-testid="millionea-hub-aside"
     >
-      <div className="contents lg:sticky lg:top-[72px] lg:z-10 lg:flex lg:flex-col lg:gap-3 lg:bg-bg-base lg:pb-3" data-testid="millionea-hub-pinned">
+      {/* Pinned from 1024 at the header's foot with 16px of the page's own ground above the head (pt-3, given back by
+          -mt-3 at rest): what reads on in the column passes under the pair and never shows in the gap above it. */}
+      <div className="contents lg:sticky lg:top-[56px] lg:z-10 lg:-mt-3 lg:flex lg:flex-col lg:gap-3 lg:bg-bg-base lg:pb-3 lg:pt-3" data-testid="millionea-hub-pinned">
         {w.pool && <HubPoolHead final={w.isFinal} labelId={JACKPOT_LABEL_ID} className="md:col-start-1 md:row-start-1" />}
+        {/* From 768 to 1023 the door stands beside the jackpot's head, centred on it: the next row (the ledger beside the
+            reader's tickets) then starts level in both columns. */}
         <BuyDoor
           t={t} w={w} signedIn={!!gate.userId} nowMs={nowMs} nextOpen={nextWeekOpen(hub, millioneaOpenTemplate(), nowMs)}
-          breakBody={breakBody} guest={guest} className={w.pool ? "md:col-start-2 md:row-start-1" : undefined}
+          breakBody={breakBody} guest={guest} className={w.pool ? "md:col-start-2 md:row-start-1 md:self-center lg:self-auto" : undefined}
         />
       </div>
       <BuyFacts t={t} locale={locale} w={w} nowMs={nowMs} className={w.pool ? "md:col-start-2 md:row-start-2" : undefined} />

@@ -161,7 +161,11 @@ async function openWeekChecks(page, label, locale, width, { door = "millionea-hu
   if (!d) return;
   if (width <= 767) {
     const rail = await railHeight(page);
-    ok(`${label} · H1 the door stands on the first screen, above the rail (bottom ${Math.round(d.y + d.height)} ≤ ${HEIGHT - rail})`, d.y + d.height <= HEIGHT - rail, j({ d, rail }));
+    // The journey's staff preview bar ("Preview — …", `journey-preview-marker`) is drawn only for a staff pass: a player's
+    // page has no such bar, so the player's first screen is measured without it.
+    const staffBar = await page.getByTestId("journey-preview-marker").first().boundingBox().catch(() => null);
+    const bottom = d.y + d.height - (staffBar?.height ?? 0);
+    ok(`${label} · H1 the door stands on a player's first screen, above the rail (bottom ${Math.round(bottom)} ≤ ${HEIGHT - rail}${staffBar ? `, the staff bar's ${Math.round(staffBar.height)}px aside` : ""})`, bottom <= HEIGHT - rail, j({ d, rail, staffBar }));
   }
   const head = await box(page, "millionea-hub-jackpot");
   if (width >= 768 && width < 1024 && head) {
@@ -170,10 +174,12 @@ async function openWeekChecks(page, label, locale, width, { door = "millionea-hu
   if (width >= 1024 && head) {
     await page.evaluate(() => window.scrollTo(0, 900));
     await page.waitForTimeout(300);
+    const pinnedHead = await box(page, "millionea-hub-jackpot");
     const pinned = await box(page, "millionea-hub-pinned");
     const header = await page.evaluate(() => { const h = document.querySelector("header"); return h ? h.getBoundingClientRect().bottom : 0; });
-    ok(`${label} · H2 scrolled 900px, the head and the door are pinned 72px down, clear of the header (${pinned && Math.round(pinned.y)} vs header ${Math.round(header)})`,
-      !!pinned && Math.abs(pinned.y - 72) <= 1 && pinned.y >= header + 8, j({ pinned, header }));
+    ok(`${label} · H2 scrolled 900px, the jackpot's head stands pinned 72px down, 16px clear of the header (${pinnedHead && Math.round(pinnedHead.y)} vs header ${Math.round(header)})`,
+      !!pinnedHead && Math.abs(pinnedHead.y - 72) <= 1 && pinnedHead.y >= header + 15, j({ pinnedHead, header }));
+    ok(`${label} · H2 the pinned pair's ground reaches the header's foot (nothing reading on shows in the gap above it)`, !!pinned && pinned.y <= header + 1, j({ pinned, header }));
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.waitForTimeout(200);
     const named = await page.evaluate(() => { const a = document.querySelector('[data-testid="millionea-hub-aside"]'); const id = a?.getAttribute("aria-labelledby"); return id ? document.getElementById(id)?.textContent ?? null : null; });
@@ -184,11 +190,13 @@ async function openWeekChecks(page, label, locale, width, { door = "millionea-hu
 async function stateWordChecks(page, label, locale, word) {
   const s = await page.evaluate(() => {
     const w = document.querySelector('header ~ * [data-testid="millionea-week-state"], main [data-testid="millionea-week-state"]');
-    const probe = document.createElement("span"); probe.style.color = "var(--brand-300)"; document.body.appendChild(probe);
-    const royal = getComputedStyle(probe).color; probe.remove();
-    return w ? { text: w.textContent, color: getComputedStyle(w).color, royal } : null;
+    // The royal status ink is status-tone's own class (TONE_INK.royal); the eyebrow's is the subtle ink. Both read back
+    // through the browser, so the comparison is of computed colours in one space, never of a class name.
+    const probe = (cls) => { const p = document.createElement("span"); p.className = cls; document.body.appendChild(p); const c = getComputedStyle(p).color; p.remove(); return c; };
+    const royal = probe("text-brand-300"), subtle = probe("text-text-subtle");
+    return w ? { text: w.textContent, color: getComputedStyle(w).color, royal, subtle } : null;
   });
-  ok(`${label} · M5 the week's state word is in its state's ink (royal)`, !!s && s.color === s.royal, j(s));
+  ok(`${label} · M5 the week's state word is in its state's ink (royal), not the eyebrow's subtle ink`, !!s && s.color === s.royal && s.color !== s.subtle, j(s));
   if (word) ok(`${label} · M5 the state word reads "${word[locale]}"`, s?.text === word[locale], j(s));
 }
 
@@ -282,6 +290,8 @@ if (RUN === "a") {
   }
 
   // ── S7–S10 · the week on sale closes, its results come in, its window opens, it settles ─────────────────────────────────
+  // The seed leaves its earlier weeks graded but unsettled; settlement runs strictly in order (MR-3), so they settle first.
+  await act({ act: "catchUp" });
   await act({ act: "closeOpen" });
   const closedCheck = (word) => async (page, label, locale) => {
     ok(`${label} · after the close the door follows the results`, (await page.getByTestId("millionea-hub-follow").count()) === 1);
@@ -387,6 +397,7 @@ if (RUN === "b") {
   await shoot("final-ahead", "classic", demoClassic, { check: aheadCheck, matrix: { sw: [320, 360, 768, 1280], en: [360, 1280], zh: [360] } });
   await shoot("final-ahead", "journey", demoJourney, { check: aheadCheck, matrix: { sw: [360, 1280] } });
   // ── H3 · the final week itself ────────────────────────────────────────────────────────────────────────────────────────
+  await act({ act: "catchUp" });
   await act({ act: "closeOpen" });
   await act({ act: "seal", slots: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], outcome: "YES" });
   await act({ act: "settle" });

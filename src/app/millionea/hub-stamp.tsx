@@ -10,6 +10,22 @@ const Pressed = createContext<ReadonlyMap<number, number>>(new Map());
 const NONE: ReadonlyMap<number, number> = new Map();
 
 /**
+ * The slots whose outcome ARRIVED between the outcomes a mount last committed (`before`) and this render's: each slot now
+ * holding a result it did not hold — a first seal, or a re-seal — with its step in the cascade, in slot order. Nothing on
+ * a first render (`before` null: an arrival on the page, never a press). Pure, so its rule is read by a suite.
+ */
+export function arrivalsOf(
+  before: Readonly<Record<number, MaswaliOutcome | null>> | null,
+  outcomes: Readonly<Record<number, MaswaliOutcome | null>>,
+): ReadonlyMap<number, number> {
+  if (!before) return NONE;
+  const arrived = Object.keys(outcomes).map(Number)
+    .filter((slot) => outcomes[slot] != null && outcomes[slot] !== before[slot])
+    .sort((a, b) => a - b);
+  return arrived.length === 0 ? NONE : new Map(arrived.map((slot, i) => [slot, i] as const));
+}
+
+/**
  * ⭐ N2 ON THE HUB — THE PRESS ON A RESULT THAT ARRIVES WHILE THE READER LOOKS (R1-hub M11, R1-motion L2; DESIGN_AUTHORITY
  * §M8a item 2; MASWALI-PLAN §10 §2 SM3: "ticket or hub"). The hub's fifteen stamps landed silently: a result the poller
  * brought in simply appeared. This holds the outcomes the page has SEEN and, on a render whose outcomes differ, names the
@@ -26,13 +42,7 @@ export function HubPressGroup({ outcomes, children }: {
 }) {
   const seen = useRef<Readonly<Record<number, MaswaliOutcome | null>> | null>(null);
   const before = seen.current;
-  const pressed = useMemo(() => {
-    if (!before) return NONE;
-    const arrived = Object.keys(outcomes).map(Number)
-      .filter((slot) => outcomes[slot] != null && outcomes[slot] !== before[slot])
-      .sort((a, b) => a - b);
-    return arrived.length === 0 ? NONE : new Map(arrived.map((slot, i) => [slot, i] as const));
-  }, [outcomes, before]);
+  const pressed = useMemo(() => arrivalsOf(before, outcomes), [outcomes, before]);
   useEffect(() => { seen.current = outcomes; }, [outcomes]);
   return <Pressed.Provider value={pressed}>{children}</Pressed.Provider>;
 }
