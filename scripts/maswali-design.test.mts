@@ -159,10 +159,15 @@ const PICKS = Array.from({ length: 15 }, () => "YES" as const);
     page.includes('fill(refund === "pending" ? t.millionea.weekVoidedBodyPending : t.millionea.weekVoidedBody, {'));
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-FIX-PLAYER P3): the register's ledger rows are built in register-parts.tsx
   // (`registerLedgerRows`, rendered by test:maswali-register §15); the week page draws them.
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER): the rows are the ONE Millionea ledger's (`maswali-ledger.tsx`,
+  // rendered — refunds pending and landed, in three languages — by test:maswali-design-register 2.8); register-parts hands it
+  // the read model's `refundsPending`, and the week page draws the rows with `MaswaliLedger`.
   const reg = squash(code(read("src/app/millionea/register/register-parts.tsx")));
+  const ledgerSrc = squash(code(read("src/components/maswali/maswali-ledger.tsx")));
   ok("2.H1g · the register's voided ledger: \"refunded\" only once every refund landed",
-    reg.includes('rows.push(w.refundsPending ? { key: "refund", label: kept(fill(t.millionea.refundEachPending, { price }), [price])')
-      && squash(code(read(REGISTER_WEEK))).includes("const rows = registerLedgerRows(t, w);"));
+    reg.includes("refunds: kind === \"voided\" ? { amount: w.sales ?? 0, landed: !w.refundsPending } : null,")
+      && ledgerSrc.includes("afterIn.push(refunds.landed") && ledgerSrc.includes("label: keepFact(locale, fill(m.refundEachPending, { price }), [price])")
+      && squash(code(read(REGISTER_WEEK))).includes("<MaswaliLedger rows={registerLedgerRows(t, locale, w)} />"));
 }
 
 // H2 · final only on the week's word
@@ -818,7 +823,9 @@ const cardBlockDefects = (src: string) => {
 const exampleDefects = (seal: string, how: string, example: string) => {
   const d: string[] = [];
   const s = squash(code(seal));
-  if (!s.includes('{m.standIn && !inert ? ( <> <s className="decoration-border-strong">{m.ordinal}</s> <span>{m.standIn}</span> </> ) : m.ordinal}')) d.push("a stood-in main's number is not struck with its reserve under it");
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER, the critics' M7): the strike in the number's own ink (the border
+  // ink drew it ~2.2:1), and a void main's second line kept in both frames (test:maswali-design-register 4.6 renders it).
+  if (!s.includes('{voidCell(m) ? ( <> <s className="decoration-current">{m.ordinal}</s> {(m.standIn || keepLine) && <span className={m.standIn ? undefined : "invisible"}>{m.standIn ?? reserveLabel(1)}</span>} </> ) : m.ordinal}')) d.push("a stood-in main's number is not struck with its reserve under it");
   const hw = squash(code(how));
   if (!hw.includes("label={`${t.millionea.exampleLabel} · ${t.millionea.exampleWinnersWeek}`}") || !hw.includes("label={`${t.millionea.exampleLabel} · ${t.millionea.exampleFloorWeek}`}") || /exampleLabel\} · [12]\b/.test(hw)) d.push("a worked ledger's label has no noun");
   if (!squash(code(example)).includes("fill(t.millionea.seeExample, { r: standIn, n: formatNumber(voided) })")) d.push("the button does not say what it plays with a formatted question number");
@@ -832,7 +839,7 @@ const exampleDefects = (seal: string, how: string, example: string) => {
   const d = exampleDefects(read(SEAL), read(HOW), read(EXAMPLE));
   const templated = LOCALES.filter((l) => !dict[l].millionea.seeExample.includes("{r}") || !dict[l].millionea.seeExample.includes("{n}"));
   ok("4.P6a · How's example draws what a real ticket draws: main 4's number struck with \"A1\" under it (the void seen on its own place, the check above it A1's) — the same Seal Line every ticket draws",
-    m.includes('<s class="decoration-border-strong">4</s><span>A1</span>') && count(m, "<s ") === 1 && d.filter((x) => x.includes("struck")).length === 0, d.join(" | "));
+    m.includes('<s class="decoration-current">4</s><span>A1</span>') && count(m, "<s ") === 1 && d.filter((x) => x.includes("struck")).length === 0, d.join(" | "));
   ok("4.P6b · each worked ledger says which week it works through (\"Example · a week with winners\", never \"EXAMPLE · 1\"), and the button says what it plays (\"Show A1 replacing question 4\", in all three languages)",
     d.length === 0 && templated.length === 0 && fill(en.millionea.seeExample, { r: "A1", n: 4 }) === "Show A1 replacing question 4", j({ d, templated }));
   const fitRule = /\.btn\.kp-mln-example-button\s*\{([^}]*)\}/.exec(read("src/app/globals.css"))?.[1] ?? "";
@@ -851,7 +858,7 @@ const exampleDefects = (seal: string, how: string, example: string) => {
     exampleFitDefects(read(EXAMPLE), fitRule.replace("white-space: normal", "white-space: nowrap")).some((x) => x.includes("white-space"))
       && exampleFitDefects(read(EXAMPLE), fitRule.replace("min-height: var(--h-control-md)", "min-height: 0")).some((x) => x.includes("min-height")));
   ok("4.P6′ PLANT · a stood-in number drawn plain, and the old \"Example · 1\" label, are reported",
-    exampleDefects(read(SEAL).replace("{m.standIn && !inert ? (", "{false ? ("), read(HOW), read(EXAMPLE)).some((x) => x.includes("struck"))
+    exampleDefects(read(SEAL).replace("{voidCell(m) ? (", "{false ? ("), read(HOW), read(EXAMPLE)).some((x) => x.includes("struck"))
       && exampleDefects(read(SEAL), read(HOW).replace("label={`${t.millionea.exampleLabel} · ${t.millionea.exampleWinnersWeek}`}", "label={`${t.millionea.exampleLabel} · 1`}"), read(EXAMPLE)).some((x) => x.includes("noun")));
   ok("4.P6″ PLANT · an unformatted example question number is reported",
     exampleDefects(read(SEAL), read(HOW), read(EXAMPLE).replace("n: formatNumber(voided)", "n: voided")).some((x) => x.includes("formatted question number")));
