@@ -140,6 +140,19 @@ function warningWired(source: string) {
     && source.includes('c.coverage.limited ? "No group in the checked records." : "No group to look at."');
 }
 ok("Integrity warns separately about incomplete reads and a bounded holder or group result", warningWired(page));
+/**
+ * S5-FIX-SRV A10 · WCAG 2.5.3, label in name: every labelled filter select's accessible name contains the words its
+ * visible label shows (a speech user says what they see). Read from each `<span>Label</span> <Select … ariaLabel="…">` pair.
+ */
+function labelInNameProblems(source: string): string[] {
+  const problems: string[] = [];
+  for (const m of source.matchAll(/<span>([^<]+)<\/span>\s*<Select\b[^>]*?\bariaLabel="([^"]+)"/g)) {
+    if (!m[2].toLowerCase().includes(m[1].trim().toLowerCase())) problems.push(`"${m[2]}" does not contain its visible label "${m[1].trim()}"`);
+  }
+  return problems;
+}
+const labelledFilters = [...page.matchAll(/<span>([^<]+)<\/span>\s*<Select\b/g)].length;
+ok(`every labelled filter's accessible name contains its visible label (${labelledFilters} filters)`, labelledFilters >= 6 && labelInNameProblems(page).length === 0);
 
 function mutatedCoverage(source: string): typeof clusterCoverage {
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
@@ -189,6 +202,9 @@ if (process.argv.includes("--prove-red")) {
     "const waitingFirst = ordered;");
   if (decidedAhead === helper) throw new Error("Held pending-first plant target missing");
   ok("red: held shares ordered by week alone page a waiting decision away", mutated(decidedAhead).selectHeldShares(decidedFirst, query().held, 20).rows[0]?.weekSeq !== 5);
+  const unlabelled = page.replace('ariaLabel="Voidable week sort by"', 'ariaLabel="Voidable week sort"');
+  if (unlabelled === page) throw new Error("Voidable sort label plant target missing");
+  ok("red: a filter whose accessible name drops its visible label fails the label-in-name guard", labelInNameProblems(unlabelled).length > 0);
   const unsorted = helper.replace("return pageRows(all, waitingFirst, query.page, perPage);", "return pageRows(all, filtered, query.page, perPage);");
   if (unsorted === helper) throw new Error("Held global-sort plant target missing");
   ok("red: a held page sliced without sorting fails the highest-share assertion", mutated(unsorted).selectHeldShares(held, query({ hsort: "share", hdir: "desc" }).held, 20).rows[0]?.weekSeq !== 1);

@@ -163,7 +163,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
                   options={[{ value: "", label: "All lines" }, { value: "PUBLIC", label: "Public" }, { value: "DRIVE", label: "Drive" }]} />
               </div>
               <div className="min-w-[130px] flex-1 text-body-sm text-text-secondary"><span>Sort by</span>
-                <Select key={query.voidable.sort} name="vsort" ariaLabel="Voidable week sort" defaultValue={query.voidable.sort} className="mt-1"
+                <Select key={query.voidable.sort} name="vsort" ariaLabel="Voidable week sort by" defaultValue={query.voidable.sort} className="mt-1"
                   options={[{ value: "week", label: "Week" }, { value: "tickets", label: "Tickets to refund" }]} />
               </div>
               <div className="min-w-[130px] flex-1 text-body-sm text-text-secondary"><span>Order</span>
