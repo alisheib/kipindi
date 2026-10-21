@@ -4204,7 +4204,7 @@ export async function settleMarket(
         await positionStore.set(p, tx);
         if (realPart > 0 || bonusPart > 0) {
           await postLedgerEntries(`refund_${oneSidedTxnId}`, refundEntries({ txnId: oneSidedTxnId, userId: p.userId, marketId: m.id, realPart, bonusPart }), tx);
-        }
+        } // SEAM:reverseWageringOneSided (04 A17) — below: a house stake recorded no turnover, so its refund reverses none.
         if (p.houseBotId == null) await reverseWageringLocked(p.userId, p.stake, tx,
           (fn) => { committedSettlementEffects.push(fn); });
         if (bonusPart > 0) await refundEmergencyBonusLocked(p.userId, p.id, bonusPart, tx,
@@ -4342,7 +4342,7 @@ export async function settleMarket(
         await positionStore.set(p, tx);
         if (realPart > 0 || bonusPart > 0) {
           await postLedgerEntries(`refund_${refundTxnId}`, refundEntries({ txnId: refundTxnId, userId: p.userId, marketId: m.id, realPart, bonusPart }), tx);
-        }
+        } // SEAM:reverseWageringVoid (04 A17) — below: a house stake recorded no turnover, so its refund reverses none.
         const accruedTurnover = switchLine(m.productLine, { MARKET: () => true, UPDOWN: () => true, MASWALI: () => false });
         if (accruedTurnover && p.houseBotId == null) await reverseWageringLocked(p.userId, p.stake, tx,
           (fn) => { committedSettlementEffects.push(fn); });
@@ -5173,7 +5173,7 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
         if (realPart > 0 || bonusPart > 0) {
           await postLedgerEntries(`refund_${emergTxnId}`, refundEntries({ txnId: emergTxnId, userId: p.userId, marketId: m.id, realPart, bonusPart }), tx);
         }
-        // House-marked stakes never accrued player wagering turnover (04 A17).
+        // SEAM:reverseWageringEmergency (04 A17) — house-marked stakes never accrued player wagering turnover.
         if (p.houseBotId == null) await reverseWageringLocked(p.userId, p.stake, tx,
           (fn) => { committedNotices.push(fn); });
         if (bonusPart > 0) await refundEmergencyBonusLocked(p.userId, p.id, bonusPart, tx,
