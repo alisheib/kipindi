@@ -336,7 +336,9 @@ const plants: [string, RegExp, World][] = [
     withSrc("src/app/zz/page.tsx", 'export const P = () => <I.arrowUp s={14} tier="fill" />;')],
   ["a conditional Fill on a key that ships none", /§9c src\/app\/zz\/page\.tsx draws void in Fill, and void ships no Fill/,
     withSrc("src/app/zz/page.tsx", 'export const P = ({ on }: { on: boolean }) => <I.void s={12} tier={on ? "fill" : undefined} />;')],
-  ["a status's Fill leaves FILL_KEYS", /§9c src\/components\/updown\/updown-card\.tsx draws lock in Fill, and lock ships no Fill/, W({ fill: world.fill.filter((k) => k !== "lock") })],
+  // Re-anchored 2026-10-21: U43 release B's card no longer draws its locked chip's lock, so this plant had named a site
+  // that is gone (BLIND on main 4471bb44). The verified-agent chip's shield-check (W4's status in Fill) is the anchor.
+  ["a status's Fill leaves FILL_KEYS", /§9c src\/components\/agent\/verified-agent-badge\.tsx draws shieldcheck in Fill, and shieldcheck ships no Fill/, W({ fill: world.fill.filter((k) => k !== "shieldcheck") })],
   ["the census reads nothing", /§9c the census found 0 literal Fill site/, W({ srcFiles: new Map() })],
   ["a player page draws an admin key", /§10 src\/app\/zz\/page\.tsx draws the admin key brain/, withSrc("src/app/zz/page.tsx", "export const P = () => <I.brain s={14} />;")],
   ["a player table names an admin key", /§10 src\/lib\/zz\.ts draws the admin key dashboard/, withSrc("src/lib/zz.ts", 'export const ROW = { glyph: "dashboard" };')],
