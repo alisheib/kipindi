@@ -79,6 +79,7 @@ Every lane committed and pushed at the stop; a commit marked "WIP … not verifi
 - `main` = `c63c89387` (U43's CI-repair release + docs) — NOT deployed: Railway paused builds platform-wide
   (status.railway.com); production serves `d268ef919`. Pushes during a pause are dropped: re-trigger by hand with the
   hand-over's `tools/railway-deploy-main.mjs` when builds return, then U43's owed read-back (see the README).
+- `test:needle-rest` (server-bound, never run by CI) is red on production since U43 Release B — bisected: 92/0 at `1b7a91782`; 89/3 from `1384383fd` (3 small §9 CONTROL failures); **55/35 from `7e3a06ea0`** ("fix(u43): align card states and truthful market evidence": the Needle never glides off a control). U43's to fix (paused); it rests over Millionea's held-ticket chevron too.
 - The repository was cleaned on Ali's word (stale branches merged or archived in `F:\kipindi-archive\*-20261021.bundle`).
 
 **⏳ The day's record (2026-10-21, OMEGA-COMPILE01 — the Claude session asheib-65 took S5 over from Codex on Ali's word):**
