@@ -16,7 +16,7 @@
  *              self_excluded    a player serving a self-exclusion                        → SKIPPED rg_self_excluded
  *              cooling_off      a player on a break                                      → SKIPPED rg_cooling_off
  *              under25_history  a 22-year-old with a break on record                     → SKIPPED rg_under25_history
- *              harm_marker      a player whose deposits trip the harm detector           → SKIPPED rg_harm_marker
+ *              harm_marker      a player whose deposits trip the harm detector           → SENT (harm markers muted for marketing, 2026-10-21)
  *              minor            an account whose date of birth is under 18               → SKIPPED age_minor
  *              suspended        an account that is not marketable                        → SKIPPED account_status
  *   (⟶ 2026-10-07: these refusals are the CLOSED licence-outreach record's — this harness never opens it. With it open,
@@ -388,7 +388,8 @@ export async function buildWorld(h: Harness, spec: WorldSpec): Promise<World> {
           } as never));
         }
         p.contactId = await contact(key, p.userId, "REGISTRATION");
-        p.expect = { send: false, reason: "rg_harm_marker" };
+        // 2026-10-21 · the harm markers are MUTED for marketing (Ali): this person is now SENT; reactivating makes it SKIPPED again.
+        p.expect = { send: true, origin: "account" };
         break;
       }
       case "minor":

@@ -595,7 +595,8 @@ export const REFEREE_SAYING = "the agent-referee exclusion is NOT judged here: a
 
 /** What the gate asks AFTER consent and basis for an account holder — read at the send, NOT judged by the preflight. */
 export const UNJUDGED_FOR_ACCOUNTS = Object.freeze([
-  "self-exclusion", "cooling-off", "harm markers", "an identity check's final refusal", "under 25 with a break on record",
+  // 2026-10-21 · "harm markers" left this list: they are MUTED for marketing (rg.ts `MARKETING_HARM_MARKERS_MUTED`).
+  "self-exclusion", "cooling-off", "an identity check's final refusal", "under 25 with a break on record",
 ]);
 
 const MARKETABLE_STATUS = new Set(["ACTIVE", "PENDING_KYC"]);
