@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { MaswaliFacts, factsOf, keepFact } from "@/components/maswali/maswali-facts";
+import { MillioneaGlyph } from "@/components/maswali/maswali-glyph";
 import { counted } from "@/components/maswali/maswali-format";
 import { fillNodes } from "@/lib/fill-nodes";
 import { cn, fill, formatTzs } from "@/lib/utils";
@@ -63,8 +64,9 @@ export function poolRule(t: Dict, view: PoolView, pct: number): string | null {
 /**
  * ⭐ S5-DESIGN-HUB H3 · THE FINAL WEEK'S LINE (MR-30, OD-03; RULES §2.12 "the sunset"): in the final week a pool with no
  * 10/10 goes to the week's highest-scoring tickets, shared equally — so under a figure the 10/10 rule alone would
- * overstate, the head says it, in the words How to play's rule says it. None on a void (no pool is shared) and none once
- * the sunset has settled (its own rule line names the top score).
+ * overstate, and the head's rule IS the final week's: the critic's one key, "Final week: if no ticket gets 10/10, the
+ * pool is shared equally by this week's highest-scoring tickets · 13% fee at payout" (the fee its rule's own fact). None
+ * on a void (no pool is shared) and none once the sunset has settled (its own rule line names the top score).
  */
 export function poolFinalLine(t: Dict, view: PoolView, final: boolean): string | null {
   return final && (view.kind === "selling" || view.kind === "presale") ? t.millionea.finalWeekRule : null;
@@ -80,11 +82,15 @@ function headlineOf(t: Dict, v: PoolView): ReactNode {
 }
 
 /**
- * ⭐ THE HEAD — ONE ORDER, THE CARD'S (S5 VIS P3): the label, the figure, the R-HEADLINE's rule, the final week's line,
- * then — while an earlier week is unsettled — the carry's line; the rule's facts are a fact line (`maswali-facts.tsx`,
+ * ⭐ THE HEAD — ONE ORDER, THE CARD'S (S5 VIS P3): the label, the figure, the R-HEADLINE's rule (in Millionea's final week,
+ * the final week's), then — while an earlier week is unsettled — the carry's line; the rule's facts are a fact line (`maswali-facts.tsx`,
  * A1), so no line starts or ends with a separator and no phrase ("Week 47's", "13% fee") is torn.
  * ⭐ L10 · the figure at the title-sm rung below 360 and title-md from 360: "at least TZS 1,000,000" holds one line in
  * the 256px a 320 phone gives it (22px left "at least" alone on a line above the figure).
+ * ⭐ H3 + H1 · IN THE FINAL WEEK ONE RULE, NOT TWO, AND NO BOX ABOVE THE PAGE: the rule line is the final week's, led by the
+ * final week's own mark (`finalWeek`, §10c P17). It was the 10/10 rule, then the final week's line, under a page-wide
+ * "Final week of Millionea" box: three statements of one week, which put the door at y 770 on a 360 phone (958 at 320
+ * under the week's notices). The head says it once, in the critic's words, and the door stays on the first screen.
  * `labelId` names the block's label, so the column that holds it can be named by it (L17).
  */
 export function MaswaliPoolHead({ t, locale, view, pct, final = false, tick, labelId, className }: {
@@ -111,8 +117,12 @@ export function MaswaliPoolHead({ t, locale, view, pct, final = false, tick, lab
     <div className={cn("mat-flat flex flex-col gap-1 rounded-card p-3", className)} data-testid="millionea-hub-jackpot">
       <span id={labelId} className="font-mono text-micro uppercase eyebrow text-text-subtle">{t.millionea.jackpot}</span>
       <span className={cn("font-mono text-title-sm font-semibold text-text tabular-nums xs:text-title-md", tick && "m-tick")} data-testid="millionea-hub-figure">{headlineOf(t, v)}</span>
-      {rule && <span className="text-body-sm text-text-muted">{facts(rule)}</span>}
-      {finalLine && <span className="text-body-sm text-text-muted text-pretty" data-testid="millionea-hub-final-rule">{keepFact(locale, finalLine)}</span>}
+      {finalLine ? (
+        <span className="flex items-baseline gap-1.5 text-body-sm text-text-muted" data-testid="millionea-hub-final-rule">
+          <MillioneaGlyph name="finalWeek" s={14} className="relative top-0.5 shrink-0 text-text-subtle" />
+          <MaswaliFacts facts={[finalLine, ...(rule ? factsOf(rule).slice(1) : [])].map((f) => keepFact(locale, f))} />
+        </span>
+      ) : rule && <span className="text-body-sm text-text-muted">{facts(rule)}</span>}
       {pending && v.carriedIn && v.carriedIn.week !== null && (
         <span className="text-body-sm text-text-muted text-pretty">{keepFact(locale, fill(t.millionea.pendingCarry, { week: v.carriedIn.week }))}</span>
       )}

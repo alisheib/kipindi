@@ -142,8 +142,8 @@ export function HubPoolHead({ final, labelId, className }: { final?: boolean; la
  * `.m-tick` dips and lands it once (motion L1). M7 — when last week rolled over and this reader has not seen it, the
  * carried figure travels once from the rollover notice's own figure (`carryFrom`, R1-hub M10 / R1-motion H6), on the
  * first paint only, and only with both ends in view (`MaswaliCarry`'s rule).
- * ⭐ L15 · BEING VOIDED, the refund sentence names its amount and stands alone: no figure (H1: nothing is refunded yet) and
- * no dash beside it either — the shared row's "—" read as a missing figure beside "TZS 1,000".
+ * ⭐ L15 · BEING VOIDED, the refund sentence names its amount and stands alone — no figure (H1: nothing is refunded yet)
+ * and no dash beside it: the one ledger's own row since REGISTER's c851bc760 (`test:maswali-hub` 4.1 holds it here).
  */
 export function HubPoolLedger({ carryFrom, carryPlay, className }: { carryFrom?: string; carryPlay?: boolean; className?: string }) {
   const live = useContext(LivePool);
@@ -159,8 +159,8 @@ export function HubPoolLedger({ carryFrom, carryPlay, className }: { carryFrom?:
 
 /**
  * The hub's dress on the shared rows — pure, so a suite renders it: each figure a frame moved re-keyed on that frame and
- * ticked (`.m-tick`, motion L1); the carried-in figure wrapped in the carry when one plays from the rollover notice (M7);
- * and, being voided, the refund sentence alone (L15). Every row keeps its key, label and figure as the builder made them.
+ * ticked (`.m-tick`, motion L1), and the carried-in figure wrapped in the carry when one plays from the rollover notice
+ * (M7). Every row keeps its key, label and figure as the builder made them.
  */
 export function dressLedgerRows(
   rows: readonly MillioneaLedgerRow[], input: MillioneaLedgerInput, moved: { n: number; keys: ReadonlySet<string> },
@@ -170,7 +170,6 @@ export function dressLedgerRows(
     const ticks = moved.n > 0 && moved.keys.has(r.key);
     let value: ReactNode = r.value;
     if (r.key === "in" && carry && typeof input.carryIn?.amount === "number") value = <MaswaliCarry from={carry.from} play={carry.play}>{value}</MaswaliCarry>;
-    if (r.key === "refund" && input.kind === "voiding") value = null;
     return { ...r, value: <span key={ticks ? `${r.key}:${moved.n}` : r.key} className={ticks ? "m-tick" : undefined} data-row={r.key}>{value}</span> };
   });
 }

@@ -34,11 +34,10 @@ import { I } from "@/components/ui/glyphs";
 import { BetBreakNotice } from "@/components/rg/bet-break-notice";
 import { MaswaliWeekStrip } from "@/components/maswali/maswali-week-strip";
 import { MaswaliFacts, factsOf, keepFact } from "@/components/maswali/maswali-facts";
-import { MaswaliLastWeek } from "@/components/maswali/maswali-pool-figure";
 import { MaswaliHeldTicketRow } from "@/components/maswali/maswali-ticket";
 import { MaswaliClosingPill } from "@/components/maswali/maswali-slip";
 import { MillioneaGlyph } from "@/components/maswali/maswali-glyph";
-import { counted, eatWeekdayClock, reserveLabel, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
+import { counted, eatClock, eatWeekday, eatWeekdayClock, reserveLabel, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
 import { millioneaGate } from "@/lib/server/millionea-gate";
 import {
   millioneaCloseMove, millioneaFinalWeekAhead, millioneaHub, millioneaHubCommitments, millioneaMyTicketsWeek,
@@ -57,7 +56,7 @@ import type { Dict, Locale } from "@/lib/i18n-dict";
 import { HubPoolHead, HubPoolLedger, HubPoolLive } from "./hub-pool";
 import { HubNotices, type HubNotice } from "./hub-notices";
 import { HubOutcomeStamp, HubPressGroup } from "./hub-stamp";
-import { carryingRollover, closeMovedWords, finalAheadWords, nextOpenWords, voidingWords } from "./hub-words";
+import { carryingRollover, closeMovedWords, finalAheadWords, lastWeekWords, nextOpenWords, voidingWords } from "./hub-words";
 import { MILLIONEA_HREF, MillioneaPreviewMark, MillioneaReadingLinks, registerWeekHref, ticketPageHref } from "./millionea-parts";
 import { WeekCommitments, WeekStateChip, weekChipWord } from "./register/register-parts";
 import { bySlot, capReachedLine, gradableOf, lineOf, millioneaWeekPhase, msOf, ordinalOf, phaseNow, phasesOf, resultDoorSerial, resultLine, textIn } from "./millionea-view";
@@ -259,12 +258,7 @@ function WeekQuestions({ t, locale, w }: { t: Dict; locale: Locale; w: Millionea
 function LastWeekRow({ t, locale, hub, retired = false }: { t: Dict; locale: Locale; hub: MillioneaHub; retired?: boolean }) {
   const last = hub.lastWeek;
   if (!last || (!retired && !hub.lastWeekIsPrevious)) return null;
-  const week = weekNumberOf(last.code);
-  const words = last.state === "SETTLED" && (last.winners ?? 0) === 0
-    ? <MaswaliLastWeek t={t} locale={locale} week={week} carried={last.carriedForward ?? 0} />
-    : last.state === "VOIDED"
-      ? <MaswaliFacts facts={[keepFact(locale, weekWord(t, week)), t.millionea.weekStatusVoided, last.refundsPending ? t.millionea.regRefundsPending : t.millionea.regRefunded]} />
-      : keepFact(locale, counted(last.winners ?? 0, t.millionea.settledWonOne, t.millionea.settledWon, { week }));
+  const words = lastWeekWords(t, locale, last);
   const label = retired ? t.millionea.finalWeek : t.millionea.lastWeek;
   return (
     <section aria-label={label} className="flex flex-col gap-1.5" data-testid="millionea-hub-last-week">
@@ -364,12 +358,14 @@ function BuyDoor({ t, w, signedIn, nowMs, nextOpen, breakBody, guest, className 
       {door}
       {/* A printed time draws the clock (MASWALI-PLAN §10c: `clock` is "a time or date"); the hourglass is the countdown's
           own key, worn by the closing pill. ⭐ R1-motion M8 · the pill stands IN the close's row, the row already at the
-          pill's height, so its arrival in the last hour moves nothing under it wherever the row holds both. */}
+          pill's height; and the row makes the pill's room itself (`.kp-mln-close:has(.closing-pill)`, globals.css): in the
+          last hour the close is today, so its weekday steps aside — the line never grows a second one (sw 320: 239px of
+          words beside a 76px pill in a 288px column), and nothing under it moves. */}
       {open && buys && (
-        <div className="flex min-h-5 flex-wrap items-center gap-x-2 gap-y-1" data-testid="millionea-hub-close">
+        <div className="kp-mln-close flex min-h-5 flex-wrap items-center gap-x-2 gap-y-1" data-testid="millionea-hub-close">
           <p className="flex items-center gap-1.5 text-body-sm text-text-muted">
             <I.clock s={14} className="shrink-0" />
-            <span>{fillNodes(t.millionea.salesCloseAt, { when: <span className="whitespace-nowrap font-mono text-text">{eatWeekdayClock(t, closesMs)}</span> })}</span>
+            <span>{fillNodes(t.millionea.salesCloseAt, { when: <span className="whitespace-nowrap font-mono text-text"><span className="kp-mln-close-day">{eatWeekday(t, closesMs)} </span>{eatClock(closesMs)}</span> })}</span>
           </p>
           <MaswaliClosingPill closesAt={closesMs} serverNow={nowMs} compact />
         </div>
@@ -540,9 +536,10 @@ export default async function MillioneaHubPage({ searchParams }: { searchParams:
           ) : (
             <>
               {hub.paused && <Callout tone="neutral" role="status">{t.millionea.paused}</Callout>}
-              {/* The final week's own key (§10c `finalWeek`, flag-checkered, in Fill for a Callout's status): `flag` means
-                  "object to a result" (S5-FIX-PLAYER P17). The week's rule for a pool with no 10/10 stands under the figure. */}
-              {w?.isFinal && <Callout tone="info" glyph="finalWeek" role="status">{t.millionea.finalWeek}</Callout>}
+              {/* ⭐ H3 + H1 · Millionea's final week is said ONCE, in the jackpot's head: its rule line is the final week's,
+                  led by the week's own mark (§10c `finalWeek`, flag-checkered — `flag` means "object to a result", P17;
+                  `MaswaliPoolHead`). The page-wide "Final week of Millionea" box above it said the week a third time and put
+                  the door under a 360 phone's fold (y 770). A week ahead, the announcement bar says it (L22). */}
               {w && voidingNow(w, nowMs) && <VoidingNotice t={t} w={w} />}
               {w ? (
                 <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">

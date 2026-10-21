@@ -155,35 +155,45 @@ console.log("\n§2 · L10 · \"at least TZS 1,000,000\" holds one line in a 320 
 }
 
 // ── §3 · H3 · the final week's rule under the figure ─────────────────────────────────────────────────────────────────────
-console.log("\n§3 · H3 · in a final week the head says what a pool with no 10/10 does (MR-30)");
+console.log("\n§3 · H3 + H1 · in a final week the head's ONE rule says what a pool with no 10/10 does (MR-30), led by the week's mark");
+// ⭐ The critic's one key, said once: "Final week: if no ticket gets 10/10, the pool is shared equally by this week's
+// highest-scoring tickets · 13% fee at payout" — the head's rule line in the final week (the fee its rule's own fact), led
+// by the final week's mark (`finalWeek`); the 10/10 rule alone is not said beside it, and no page-wide box says the week a
+// third time (it put the door under a 360 phone's fold).
 const finalDefects = (l: L3, m: string, want: boolean) => {
   const t = textOf(m);
   const line = dict[l].millionea.finalWeekRule;
-  const at = t.indexOf(line), rule = t.indexOf(fill(dict[l].millionea.ruleShared, { pct: 13 }).split(" · ")[0] ?? "\u0000"), carry = t.indexOf(fill(dict[l].millionea.pendingCarry, { week: 47 }));
+  const [tenOnly, fee] = fill(dict[l].millionea.ruleShared, { pct: 13 }).split(" · ");
+  const at = t.indexOf(line), ten = t.indexOf(tenOnly ?? "\u0000"), feeAt = t.indexOf(fee ?? "\u0000"), carry = t.indexOf(fill(dict[l].millionea.pendingCarry, { week: 47 }));
+  const mark = /data-testid="millionea-hub-final-rule"><(?:svg|span aria-hidden)/.test(m);
   if (!want) return at >= 0 ? [`${l}: the final week's line where no final week runs`] : [];
-  return at > rule && rule >= 0 && (carry < 0 || at < carry) ? [] : [`${l}: rule@${rule} final@${at} carry@${carry}`];
+  return at >= 0 && ten < 0 && feeAt > at && (carry < 0 || feeAt < carry) && mark ? [] : [`${l}: final@${at} 10/10-only@${ten} fee@${feeAt} carry@${carry} mark ${mark}`];
 };
 {
   const d = LOCALES.flatMap((l) => [...finalDefects(l, headOf(l, SELLING, true), true), ...finalDefects(l, headOf(l, SELLING, false), false), ...finalDefects(l, headOf(l, VOIDING, true), false)]);
-  ok("3.1 · a final week's head: the figure, the 10/10 rule, THEN \"Final week: if no ticket gets 10/10, the pool is shared equally by this week's highest-scoring tickets\", then the carry's line — in three languages; none in a week that is not final, none on a void", d.length === 0, d.join(" | "));
-  const old = headOf("en", SELLING, false); // the head as it was: the 10/10 rule alone under a final week's figure
-  ok("3.1′ PLANT · the old final week (the 10/10 rule alone) is reported", finalDefects("en", old, true).length > 0);
+  ok("3.1 · a final week's head: the figure, then ONE rule — the final week's mark, \"Final week: if no ticket gets 10/10, the pool is shared equally by this week's highest-scoring tickets · 13% fee at payout\" — then the carry's line, in three languages; the 10/10 rule alone not beside it; none in a week that is not final, none on a void", d.length === 0, d.join(" | "));
+  // The heads as they were: the 10/10 rule alone (round 1), and the 10/10 rule with the final week's line under it (WIP 1).
+  const alone = headOf("en", SELLING, false), twice = alone.replace("</div>", `<span>${dict.en.millionea.finalWeekRule}</span></div>`);
+  ok("3.1′ PLANT · the old final weeks (the 10/10 rule alone; the 10/10 rule and the final line both) are each reported", finalDefects("en", alone, true).length > 0 && finalDefects("en", twice, true).length > 0);
+  const unmarked = headOf("en", SELLING, true).replace(/(data-testid="millionea-hub-final-rule">)<(?:svg[\s\S]*?<\/svg>|span aria-hidden[^>]*><\/span>)/, "$1");
+  ok("3.1″ PLANT · a final week's rule without the week's mark is reported", unmarked !== headOf("en", SELLING, true) && finalDefects("en", unmarked, true).length > 0);
 }
 
 // ── §4 · L15 · a conditional refund row ──────────────────────────────────────────────────────────────────────────────────
 console.log("\n§4 · L15 · \"If the void stands, every ticket is refunded TZS 1,000\" stands alone — no figure (H1), no dash; a void strikes no jackpot");
 {
-  const d = LOCALES.flatMap((l) => {
-    const m = hubLedgerOf(l, figure(VOIDING_FIG), true);
+  const refundDefects = (l: L3, m: string) => {
     const refund = innerOf(m, 'data-row="refund"');
     return refund === "" && !m.includes('data-ledger-row="jackpot"') && !m.includes('data-ledger-row="floor"')
       && textOf(m).includes(fill(dict[l].millionea.refundEachIfVoid, { price: formatTzs(1_000) })) ? [] : [`${l}: refund "${refund}"`];
-  });
+  };
+  const d = LOCALES.flatMap((l) => refundDefects(l, hubLedgerOf(l, figure(VOIDING_FIG), true)));
   ok("4.1 · being voided, in three languages: the refund sentence names its amount and its value cell is empty — never \"—\", never a figure; no jackpot and no floor row (a void strikes none, MR-18)", d.length === 0, d.join(" | "));
-  // The shared builder's row as it stands (its "—" beside the sentence) with the hub's dress left off.
-  const rows = MLR.millioneaLedgerRows(dict.en as never, "en", HP.ledgerInputOf(figure(VOIDING_FIG) as never, 1_000, true));
-  const undressed = inApp("en", h(MLR.MaswaliLedger as never, { rows: rows.map((r) => ({ ...r, value: h("span", { "data-row": r.key }, r.value as never) })) } as never));
-  ok("4.1′ PLANT · the refund row undressed (the builder's dash beside the sentence) is reported", innerOf(undressed, 'data-row="refund"') === "—");
+  // PLANT · the row as the one ledger drew it before REGISTER's c851bc760 (the builder's "—" beside the sentence).
+  const rows = MLR.millioneaLedgerRows(dict.en as never, "en", HP.ledgerInputOf(figure(VOIDING_FIG) as never, 1_000, true))
+    .map((r) => ({ ...r, value: h("span", { "data-row": r.key }, (r.key === "refund" ? "—" : r.value) as never) }));
+  const old = inApp("en", h(MLR.MaswaliLedger as never, { rows } as never));
+  ok("4.1′ PLANT · the old row (a dash beside the sentence) is reported", refundDefects("en", old).length > 0, j(refundDefects("en", old)));
 }
 
 // ── §5 · motion L1 · a live frame ticks each value it moved ──────────────────────────────────────────────────────────────
@@ -388,9 +398,32 @@ console.log("\n§10 · the hub's new and changed words, as decided, in three lan
   ok("10.5′ PLANT · the moved close filled with no rule where its fill meets the line (\"原为18:00\") is reported", byHand !== WANT_ZH.sameDay && byHand.includes("原为18:00"), byHand);
 }
 
+// ── §11 · L14 · last week's row, in the register's words ─────────────────────────────────────────────────────────────────
+console.log("\n§11 · L14 · last week voided reads as the register reads it: \"Week 48 · Voided · Every ticket refunded\" (or its refunds on their way)");
+{
+  const W = req("../src/app/millionea/hub-words.tsx") as typeof import("../src/app/millionea/hub-words.tsx");
+  type Last = Parameters<typeof W.lastWeekWords>[2];
+  const voided = (refundsPending: boolean) => ({ id: "w48", code: "MLN-2026-W48", state: "VOIDED", isFinal: false, closedAt: null, settledAt: null, tickets: 9, sales: 9_000, carryIn: 0,
+    jackpot: null, winners: null, share: null, fee: null, topUp: null, paid: null, carriedForward: null, refundsPending }) as unknown as Last;
+  const say = (l: L3, last: Last) => textOf(renderToStaticMarkup(h("p", null, W.lastWeekWords(dict[l] as never, l, last) as never)));
+  const off = LOCALES.flatMap((l) => {
+    const m = dict[l].millionea, week = fill(m.week, { week: 48 });
+    const want = [`${week} · ${m.weekStatusVoided} · ${m.regRefunded}`, `${week} · ${m.weekStatusVoided} · ${m.regRefundsPending}`];
+    // The fact line draws each fact in its own span (the " · " is the separator's, read by a screen reader): the text runs
+    // the facts together, so the comparison is of the facts in order.
+    const got = [say(l, voided(false)), say(l, voided(true))];
+    const facts = (x: string) => x.split(" · ").join("");
+    return got.every((g, i) => g.replace(/\s·\s/g, "") === facts(want[i])) && got.every((g) => !g.includes(m.weekVoidedShort)) ? [] : [`${l}: ${j(got)}`];
+  });
+  ok("11.1 · in three languages a voided last week reads \"Week 48 · Voided · Every ticket refunded\" — \"…Refunds on their way\" until every refund has landed (MR-18) — the register's words, never the card's \"this week is voided\"", off.length === 0, off.join(" | "));
+  const card = dict.en.millionea.weekVoidedShort;
+  ok("11.1′ PLANT · the card's own words over a past week (zh says 本周, THIS week) would be told apart", dict.zh.millionea.weekVoidedShort.includes("本周") && !say("en", voided(false)).includes(card));
+}
+
 console.log(`\n${"═".repeat(70)}\n  MASWALI HUB: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run prints (S5-DESIGN-HUB 3: 34; 4, the one ledger and zh's spacing rule: 43; 6, one
- *  carry origin: 45; 7, no door to a week the register does not draw yet: 47). It only rises. */
-const MIN_ASSERTIONS = 47;
+ *  carry origin: 45; 7, no door to a week the register does not draw yet: 47; 9, one final-week rule and last week's
+ *  words: 50). It only rises. */
+const MIN_ASSERTIONS = 50;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

@@ -165,12 +165,22 @@ async function openWeekChecks(page, label, locale, width, { door = "millionea-hu
     // The journey's staff preview bar ("Preview — …", `journey-preview-marker`) is drawn only for a staff pass: a player's
     // page has no such bar, so the player's first screen is measured without it.
     const staffBar = await page.getByTestId("journey-preview-marker").first().boundingBox().catch(() => null);
-    const bottom = d.y + d.height - (staffBar?.height ?? 0);
-    ok(`${label} · H1 the door stands on a player's first screen, above the rail (bottom ${Math.round(bottom)} ≤ ${HEIGHT - rail}${staffBar ? `, the staff bar's ${Math.round(staffBar.height)}px aside` : ""})`, bottom <= HEIGHT - rail, j({ d, rail, staffBar }));
+    // The calm bars over the page — a once-per-week notice, a moved close, the final week announced — stand above the hub
+    // on the visits that carry them (§F9, the platform's away bar): the door is measured on the visit without them, and
+    // how far the bars push it is printed (they are the page's own first lines, never a door's competitor).
+    const bars = await page.evaluate(() => ["millionea-hub-notices", "millionea-hub-close-moved", "millionea-hub-final-ahead"]
+      .map((id) => document.querySelector(`[data-testid="${id}"]`)?.getBoundingClientRect().height ?? 0).reduce((a, b) => a + b, 0));
+    const bottom = d.y + d.height - (staffBar?.height ?? 0) - bars;
+    ok(`${label} · H1 the door stands on a player's first screen, above the rail (bottom ${Math.round(bottom)} ≤ ${HEIGHT - rail}${staffBar ? `, the staff bar's ${Math.round(staffBar.height)}px aside` : ""}${bars ? `, the page's calm bars' ${Math.round(bars)}px aside: ${Math.round(bottom + bars)} with them` : ""})`,
+      bottom <= HEIGHT - rail, j({ d, rail, staffBar, bars }));
   }
   const head = await box(page, "millionea-hub-jackpot");
   if (width >= 768 && width < 1024 && head) {
-    ok(`${label} · M1 the jackpot's head and the door stand side by side from 768`, Math.abs(head.y - d.y) <= 4 && d.x >= head.x + head.width, j({ head, d }));
+    // Side by side: the door in the column beside the head, standing within the head's height (centred on it, the round-1
+    // fix for the right column's gap at 768 — `md:self-center`), never below it.
+    const centred = Math.abs((d.y + d.height / 2) - (head.y + head.height / 2));
+    ok(`${label} · M1 the jackpot's head and the door stand side by side from 768 (the door ${Math.round(centred)}px off the head's centre, inside its height)`,
+      d.x >= head.x + head.width && d.y >= head.y - 1 && d.y + d.height <= head.y + head.height + 1, j({ head, d }));
   }
   if (width >= 1024 && head) {
     await page.evaluate(() => window.scrollTo(0, 900));
@@ -195,15 +205,16 @@ async function openWeekChecks(page, label, locale, width, { door = "millionea-hu
 async function stateWordChecks(page, label, locale, word, tone = "royal") {
   const s = await page.evaluate(() => {
     const w = document.querySelector('[data-testid="millionea-hub"] [data-testid="millionea-week-state"]');
-    // The tones' inks are status-tone's own (the chip's `pending` and `neutral` faces: --brand-300, --text-muted); they read
-    // back through the browser, so the comparison is of computed colours in one space, never of a class name.
-    const probe = (cls) => { const p = document.createElement("span"); p.className = cls; document.body.appendChild(p); const c = getComputedStyle(p).color; p.remove(); return c; };
+    // The tones' inks are status-tone's own (the chip's `pending` and `neutral` faces: --brand-300, --text-muted), probed the
+    // way the chip sets them (its inline `color: var(--…)`), so both read back in ONE serialisation: a utility class can
+    // serialise the same ink in another space (oklab against the token's lab) and never compare equal.
+    const probe = (token) => { const p = document.createElement("span"); p.style.color = `var(${token})`; document.body.appendChild(p); const c = getComputedStyle(p).color; p.remove(); return c; };
     if (!w) return null;
     const cs = getComputedStyle(w), r = w.getBoundingClientRect();
     const week = w.previousElementSibling?.getBoundingClientRect() ?? null;
     const sameLine = !!week && r.top < week.bottom && week.top < r.bottom;
     return {
-      text: w.textContent, color: cs.color, border: cs.borderTopWidth, royal: probe("text-brand-300"), slate: probe("text-text-muted"), subtle: probe("text-text-subtle"),
+      text: w.textContent, color: cs.color, border: cs.borderTopWidth, royal: probe("--brand-300"), slate: probe("--text-muted"), subtle: probe("--text-subtle"),
       sameLine, centreOff: week && sameLine ? Math.round(((r.top + r.bottom) / 2 - (week.top + week.bottom) / 2) * 10) / 10 : null,
     };
   });
@@ -291,7 +302,8 @@ if (RUN === "a") {
       const cdp = await ctx.newCDPSession(page);
       await cdp.send("Network.enable");
       await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 400, downloadThroughput: 12 * 1024, uploadThroughput: 64 * 1024 });
-      await page.evaluate(() => { const a = [...document.querySelectorAll('a[href="/millionea"]')].find((x) => x.getBoundingClientRect().width > 0); a?.click(); });
+      // The app router's own move (`window.next.router`, what a Link calls): a phone's classic rail has no Millionea tab.
+      await page.evaluate(() => { window.next?.router?.push("/millionea"); });
       const drawn = await page.waitForSelector('[aria-busy="true"] [data-ghost="strip"]', { timeout: 20_000 }).then(() => true).catch(() => false);
       const ghost = drawn ? await page.evaluate(bandsOf, true) : null;
       if (drawn) await page.screenshot({ path: `${OUT}/ghost-${shell}-${locale}-${width}.png` });
@@ -304,9 +316,13 @@ if (RUN === "a") {
       if (ghost && real) {
         const off = Object.fromEntries(Object.keys(real).map((k) => [k, real[k] === null || ghost[k] === null ? null : real[k] - ghost[k]]));
         console.log(`L7 ${label} · page − drawing, px: ${j(off)}`);
-        const first = ["title", "strip", "jackpot", "door"].filter((k) => off[k] !== null && real[k] < HEIGHT);
-        ok(`${label} · L7 the first screen's bands land where they were drawn (±4px: ${first.map((k) => `${k} ${off[k]}`).join(", ")})`,
-          first.length >= 3 && first.every((k) => Math.abs(off[k]) <= 4), j({ ghost, real }));
+        // The fixed bands land within 4px; the door within one body line and the head's gap (18 + 4px): the jackpot's rule and
+        // its carry line run to one or two lines by language and by whether a carry is pending — words a wordless drawing
+        // cannot know (it draws two lines of rule and one of carry).
+        const tol = { title: 4, strip: 4, jackpot: 4, door: 22 };
+        const first = Object.keys(tol).filter((k) => off[k] !== null && real[k] < HEIGHT);
+        ok(`${label} · L7 the first screen's bands land where they were drawn (title/strip/jackpot ±4px, door ±22px: ${first.map((k) => `${k} ${off[k]}`).join(", ")})`,
+          first.length >= 3 && first.every((k) => Math.abs(off[k]) <= tol[k]), j({ ghost, real }));
       }
       await page.close();
     }
@@ -345,9 +361,11 @@ if (RUN === "a") {
   }
 
   // ── S6 · on a break (a new player with two tickets, on a one-hour cooling-off) ─────────────────────────────────────────
+  // Losing slips, as every ticket of this week: the week must roll over for S11's notices and the carry (a 10/10 here
+  // left Week 49 won, and S11 had no rollover to show).
   if (want("break")) {
     const brk = await readerContext([]);
-    await act({ act: "breakPlayer", tickets: 2 }, brk);
+    await act({ act: "breakPlayer", tickets: 2, lose: true }, brk);
     const breakCheck = async (page, label) => {
       ok(`${label} · RG the break notice stands where the door stood, and no door to buy`, (await page.getByTestId("millionea-hub-break").count()) === 1 && (await page.getByTestId("millionea-hub-fill").count()) === 0);
       ok(`${label} · L9 no close line beside the break`, (await page.getByTestId("millionea-hub-close").count()) === 0);
@@ -385,23 +403,39 @@ if (RUN === "a") {
   }
 
   // ── M8 (R1-motion) · the last hour: the countdown pill (the SLIP lane's) stands in the close line, its place reserved
-  // there — beside the close it counts down to, under the door, never above it. Measured once the page has hydrated.
+  // there — beside the close it counts down to, under the door, never above it, and the line never grows a second one.
+  // ⚠️ The seed's weeks are dated ahead of the real clock (a close can never move before its own open), so no real last
+  // hour exists on this store: the pill is drawn by its own recipe (SLIP's compact `MaswaliClosingPill`: the hourglass,
+  // "59" and the language's minute unit — its widest count) into the close line, and the line is measured with it and
+  // without it. The line makes its room by its own rule (`.kp-mln-close:has(.closing-pill)`: the close is today, so its
+  // weekday steps aside while the pill counts down to it).
   if (want("closing")) {
-    await act({ act: "closeSoon", minutes: 40 });
     // A reader the fill door is for (the demo player is at the cap by now): a new player holding one ticket.
     const closer = await readerContext([]);
     await act({ act: "player", tickets: 1, lose: true }, closer);
     const closerJ = await readerContext([...(await closer.cookies(BASE)).filter((c) => c.name === SESSION_COOKIE), pass_]);
-    const closingCheck = async (page, label) => {
-      await page.locator('[data-testid="millionea-hub-close"] .closing-pill').first().waitFor({ timeout: 10_000 }).catch(() => {});
-      const g = await page.evaluate(() => {
+    const UNIT = { en: "Min", sw: "Dak", zh: "分" };
+    const closingCheck = async (page, label, locale) => {
+      const g = await page.evaluate((unit) => {
         const at = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom), left: Math.round(b.left), right: Math.round(b.right) }; };
         const row = document.querySelector('[data-testid="millionea-hub-close"]');
-        return { row: at(row), text: at(row?.querySelector("p")), pill: at(row?.querySelector(".closing-pill")), door: at(document.querySelector('[data-testid="millionea-hub-fill"]')) };
-      });
-      const oneLine = !!g.pill && !!g.text && Math.abs((g.pill.top + g.pill.bottom) / 2 - (g.text.top + g.text.bottom) / 2) <= 3;
-      ok(`${label} · M8 the countdown pill stands in the close line, beside the close (row ${g.row ? g.row.bottom - g.row.top : "?"}px)`, oneLine, j(g));
-      ok(`${label} · M8 the pill is under the door, never above it`, !!g.pill && !!g.door && g.pill.top >= g.door.bottom, j(g));
+        if (!row) return null;
+        const before = at(row), door = at(document.querySelector('[data-testid="millionea-hub-fill"]'));
+        const next = row.parentElement?.nextElementSibling ?? row.closest("[data-testid='millionea-hub-buy']")?.nextElementSibling ?? null;
+        const nextBefore = at(next);
+        const pill = document.createElement("span");
+        pill.className = "closing-pill inline-flex items-center whitespace-nowrap rounded-full border text-body-sm tabular-nums h-5 gap-1 px-1.5";
+        pill.innerHTML = `<svg width="12" height="12" aria-hidden="true" class="shrink-0"></svg>59 ${unit}`;
+        row.appendChild(pill);
+        const after = { row: at(row), text: at(row.querySelector("p")), pill: at(pill), next: at(next) };
+        pill.remove();
+        return { before, door, nextBefore, ...after };
+      }, UNIT[locale]);
+      const oneLine = !!g?.pill && !!g.text && Math.abs((g.pill.top + g.pill.bottom) / 2 - (g.text.top + g.text.bottom) / 2) <= 3;
+      ok(`${label} · M8 the pill stands in the close line, beside the close — the line does not grow (${g?.before ? g.before.bottom - g.before.top : "?"} → ${g?.row ? g.row.bottom - g.row.top : "?"}px)`,
+        oneLine && !!g.before && !!g.row && g.row.bottom - g.row.top === g.before.bottom - g.before.top, j(g));
+      ok(`${label} · M8 nothing under the close line moves when the pill arrives, and the pill stands under the door`,
+        !!g?.pill && !!g.door && g.pill.top >= g.door.bottom && (g.nextBefore === null || g.next === null || g.next.top === g.nextBefore.top), j(g));
     };
     await shoot("closing", "classic", closer, { check: closingCheck });
     await shoot("closing", "journey", closerJ, { check: closingCheck, matrix: { sw: [360, 1280] } });
@@ -528,6 +562,10 @@ if (RUN === "a") {
   await shoot("voiding", "journey", demoJourney, { check: voidingCheck, matrix: { sw: [360, 1280] } });
   await act({ act: "seal", slots: [7, 8, 9, 10, 11, 12, 13, 14, 15], outcome: "YES" });
   await act({ act: "voidLead" });
+  // The next week opens on Monday, as after any week: the hub's own week on sale, last week voided under it (L14) — with no
+  // week on the hub, "last week" is the calendar's, and this store's weeks are dated ahead of the real clock.
+  await act({ act: "draftNext" });
+  await act({ act: "openNext" });
   const voidedCheck = async (page, label, locale) => {
     const row = await page.getByTestId("millionea-hub-last-week").textContent().catch(() => "");
     if (locale === "en") ok(`${label} · L14 last week voided reads the register's words`, /Voided/.test(row ?? "") && /Every ticket refunded|Refunds on their way/.test(row ?? ""), j(row));
@@ -539,13 +577,19 @@ if (RUN === "a") {
     const page = await guestClassic.newPage();
     await open(page, "/millionea");
     const c = await page.evaluate(() => {
-      const lum = (rgb) => { const m = rgb.match(/[\d.]+/g).map(Number); const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(m[0]) + 0.7152 * f(m[1]) + 0.0722 * f(m[2]); };
+      // Each colour as the screen shows it: painted by the browser into one sRGB pixel — the border over the page's ground,
+      // so a lab()/oklch() serialisation or a translucent border reads as the eye sees it (a regex over lab() did not).
+      const cv = document.createElement("canvas"); cv.width = cv.height = 1;
+      const cx = cv.getContext("2d", { willReadFrequently: true });
+      const px = (color, under) => { cx.clearRect(0, 0, 1, 1); if (under) { cx.fillStyle = under; cx.fillRect(0, 0, 1, 1); } cx.fillStyle = color; cx.fillRect(0, 0, 1, 1); return [...cx.getImageData(0, 0, 1, 1).data].slice(0, 3); };
+      const lum = ([r, g, b]) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
       const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
       const probe = (cls) => { const b = document.createElement("a"); b.className = cls; b.textContent = "x"; document.body.appendChild(b); const col = getComputedStyle(b).borderTopColor; b.remove(); return col; };
       const ground = document.createElement("div"); ground.style.background = "var(--bg-base)"; document.body.appendChild(ground);
       const bg = getComputedStyle(ground).backgroundColor; ground.remove();
       const kit = probe("btn btn-ghost btn-lg"), hub = probe("btn btn-ghost btn-lg border-border-control");
-      return { bg, kit, hub, kitRatio: ratio(kit, bg), hubRatio: ratio(hub, bg) };
+      const ground_ = px(bg), kitPx = px(kit, bg), hubPx = px(hub, bg);
+      return { bg, kit, hub, groundPx: ground_, kitPx, hubPx, kitRatio: ratio(kitPx, ground_), hubRatio: ratio(hubPx, ground_) };
     });
     console.log(`L16 · ghost border contrast: kit .btn-ghost ${c.kitRatio.toFixed(2)}:1, the hub's border-border-control ${c.hubRatio.toFixed(2)}:1 (${j(c)})`);
     ok("L16 · the hub's ghost border meets 3:1 (§A1)", c.hubRatio >= 3, j(c));

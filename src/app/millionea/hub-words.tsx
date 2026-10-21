@@ -1,9 +1,12 @@
 import type { ReactNode } from "react";
-import { eatClock, eatWeekday, eatWeekdayClock } from "@/components/maswali/maswali-format";
+import { MaswaliFacts, keepFact } from "@/components/maswali/maswali-facts";
+import { counted, eatClock, eatWeekday, eatWeekdayClock, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
+import { MaswaliLastWeek } from "@/components/maswali/maswali-pool-figure";
 import { formatEatDate } from "@/lib/eat-day";
 import { fillNodes } from "@/lib/fill-nodes";
 import { fill, formatNumber } from "@/lib/utils";
 import type { Dict, Locale } from "@/lib/i18n-dict";
+import type { MillioneaHub } from "@/lib/server/maswali-player";
 
 /**
  * THE HUB'S TIMED SENTENCES (MASWALI-BUILD S5-DESIGN-HUB; Ali 2026-10-21 10/10 pass) — each one a dictionary line filled
@@ -41,6 +44,21 @@ export function closeMovedWords(t: Dict, toMs: number, fromMs: number): ReactNod
  *  objection changes it (`byMs`, the week's "results and payout" end). */
 export function voidingWords(t: Dict, voidedMains: number, validReserves: number, byMs: number): ReactNode {
   return fillNodes(t.millionea.weekVoidingBody, { voided: formatNumber(voidedMains), valid: formatNumber(validReserves), when: run(eatWeekdayClock(t, byMs)) });
+}
+
+/**
+ * L14 · LAST WEEK'S WORDS on the hub's row, one wording with the register's row: a week nobody won ("Week 49 · no 10/10
+ * · TZS 389,000 carried forward · fee 0", `MaswaliLastWeek`), a voided week in the register's own words — "Week 48 ·
+ * Voided · Every ticket refunded", or "Refunds on their way" until every refund has landed (MR-18) — and a won week's
+ * winners. Never the card's "this week is voided" over a week that is past (its zh says 本周, THIS week).
+ */
+export function lastWeekWords(t: Dict, locale: Locale, last: NonNullable<MillioneaHub["lastWeek"]>): ReactNode {
+  const week = weekNumberOf(last.code);
+  if (last.state === "SETTLED" && (last.winners ?? 0) === 0) return <MaswaliLastWeek t={t} locale={locale} week={week} carried={last.carriedForward ?? 0} />;
+  if (last.state === "VOIDED") {
+    return <MaswaliFacts facts={[keepFact(locale, weekWord(t, week)), t.millionea.weekStatusVoided, last.refundsPending ? t.millionea.regRefundsPending : t.millionea.regRefunded]} />;
+  }
+  return keepFact(locale, counted(last.winners ?? 0, t.millionea.settledWonOne, t.millionea.settledWon, { week }));
 }
 
 /** L6/L21 · "The next week opens Monday 00:01." — the empty state's first sentence (a string: the kit's body). */

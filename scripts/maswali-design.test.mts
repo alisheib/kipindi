@@ -1111,15 +1111,21 @@ const sellingDefects = (src: string) => {
   const block = at < 0 ? "" : s.slice(at, s.indexOf("function BuyFacts(", at));
   if (!block.includes("const open = w.selling;")) d.push("the close line and the pill do not ask whether the week sells");
   if (/const open = w\.state === "OPEN"/.test(block)) d.push("the close line asks the state alone (a paused week counts down)");
-  const row = block.indexOf("{open && buys && ( <div className=\"flex min-h-5 flex-wrap items-center gap-x-2 gap-y-1\" data-testid=\"millionea-hub-close\"> <p className=\"flex items-center gap-1.5 text-body-sm text-text-muted\"> <I.clock s={14} className=\"shrink-0\" />");
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-HUB, R1-motion M8): the row is `kp-mln-close`, which makes the pill's room
+  // in the last hour (its weekday steps aside, globals.css) — the row, its clock and its pill are as they were.
+  const row = block.indexOf("{open && buys && ( <div className=\"kp-mln-close flex min-h-5 flex-wrap items-center gap-x-2 gap-y-1\" data-testid=\"millionea-hub-close\"> <p className=\"flex items-center gap-1.5 text-body-sm text-text-muted\"> <I.clock s={14} className=\"shrink-0\" />");
   if (row < 0) d.push("the printed close is not drawn under `open` and a buying door, with the clock");
   if (!(row >= 0 && block.indexOf("<MaswaliClosingPill closesAt={closesMs} serverNow={nowMs} compact />", row) > row)) d.push("the pill is not drawn in the close's row under `open`");
   return d;
 };
-const iconDefects = (src: string) => {
+// ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-HUB H3 + H1): the final week is said once, in the jackpot's head — its
+// rule line led by the week's own mark (`MaswaliPoolHead`); the page-wide box went (it put the door under a 360 phone's
+// fold). The hub's own final-week drawings are the announcement bar a week ahead and that mark; both draw `finalWeek`.
+const POOL_HEAD = "src/components/maswali/maswali-pool-figure.tsx";
+const iconDefects = (src: string, head = read(POOL_HEAD)) => {
   const s = squash(code(src));
   const d: string[] = [];
-  if (!s.includes('{w?.isFinal && <Callout tone="info" glyph="finalWeek" role="status">{t.millionea.finalWeek}</Callout>}')) d.push("the final week's notice does not draw its own key");
+  if (!s.includes('<NoticeBar tone="info" glyph="finalWeek" testId="millionea-hub-final-ahead">') || !squash(code(head)).includes('<MillioneaGlyph name="finalWeek" s={14}')) d.push("the final week's notice does not draw its own key");
   if (/glyph="flag"/.test(s)) d.push("the hub draws `flag` (object to a result) for a fact that is not an objection");
   if (/<I\.hourglassHalf\b/.test(s)) d.push("the hub draws the countdown's hourglass beside a printed time");
   return d;

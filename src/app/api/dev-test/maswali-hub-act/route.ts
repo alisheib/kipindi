@@ -17,7 +17,6 @@
  *   · tickets {n, lose?, user?} — n tickets in the week on sale for the demo player (or `user`), every one 15 YES — or a
  *                             losing slip (`lose`) so a rollover can follow
  *   · moveClose {hours?}    — the week on sale's close moved earlier by `hours` (2), at that week's own clock (MB-28)
- *   · closeSoon {minutes?}  — the week on sale's close moved to `minutes` (40) from now on the real clock: its last hour
  *   · closeOpen             — the week on sale closed at its close
  *   · seal {slots, outcome} — results for the hub's lead week (the week on sale, else the newest being graded), at that
  *                             week's Sunday (after every event); a VOID on the "abandoned" ground
@@ -30,11 +29,16 @@
  *   · sunsetDraft           — the newest drafted week made final, a full week ahead (OD-03); `sunsetOpen` — the week on sale
  *   · player {tickets, lose?} — a new player with `tickets` in the week on sale, signed in in this response's cookie (a
  *                             reader whose once-per-week notices are still unseen, one per language)
- *   · breakPlayer {tickets} — the same, then on the player's own one-hour cooling-off (the hub's break state; the demo
- *                             player stays free to play)
+ *   · breakPlayer {tickets, lose?} — the same, then on the player's own one-hour cooling-off (the hub's break state; the
+ *                             demo player stays free to play)
+ * After every act that answers, the hub's cached public questions expire exactly as the officer's own actions expire
+ * them (`app/admin/maswali/actions.ts`: a blocking miss), so the next page reads the act's result — the first read after
+ * an act was served the copy cached before it for up to two seconds (a drive's first width showed no void, no seal).
  */
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { db } from "@/lib/server/store";
+import { MASWALI_PUBLIC_WEEK_QUESTIONS_TAG } from "@/lib/server/maswali-player";
 import type { StoredUser, StoredWallet } from "@/lib/server/store";
 import { randomId } from "@/lib/server/crypto";
 import { createSession } from "@/lib/server/session";
@@ -59,7 +63,7 @@ const DEMO_PHONE = "+255700000000";
 const YES = Array.from({ length: 15 }, () => "YES" as const);
 const LOSE = Array.from({ length: 15 }, (_, i) => (i === 0 ? "NO" as const : "YES" as const));
 
-type Body = { act?: string; on?: boolean; n?: number; lose?: boolean; user?: string; hours?: number; minutes?: number; slots?: number[]; outcome?: "YES" | "NO" | "VOID"; open?: boolean; tickets?: number };
+type Body = { act?: string; on?: boolean; n?: number; lose?: boolean; user?: string; hours?: number; slots?: number[]; outcome?: "YES" | "NO" | "VOID"; open?: boolean; tickets?: number };
 const refuse = (error: string) => NextResponse.json({ ok: false, error }, { status: 409 });
 
 /** The week on sale, else the newest being graded in the calendar — the hub's own lead (`millioneaHub`). */
@@ -107,6 +111,12 @@ export async function POST(req: Request) {
   if (process.env.NODE_ENV === "production") return NextResponse.json({ ok: false, error: "Not available" }, { status: 404 });
   if (process.env.DATABASE_URL) return refuse("This route writes only to an in-memory dev store; this server has a database configured.");
   const b = ((await req.json().catch(() => null)) ?? {}) as Body;
+  const res = await act(b);
+  if (res.status === 200) revalidateTag(MASWALI_PUBLIC_WEEK_QUESTIONS_TAG, { expire: 0 });
+  return res;
+}
+
+async function act(b: Body): Promise<NextResponse> {
   try {
     switch (b.act) {
       case "pause": {
@@ -129,15 +139,6 @@ export async function POST(req: Request) {
         if (!week) return refuse("No week is on sale.");
         const to = Date.parse(week.closesAt) - Math.max(1, b.hours ?? 2) * 3_600_000;
         const r = await moveClose({ weekId: week.id, toCloseAt: new Date(to).toISOString(), officerId: OWNER, now: new Date(Date.parse(week.opensAt) + DAY) });
-        return r.ok ? NextResponse.json({ ok: true, from: week.closesAt, to: r.week.closesAt }) : refuse(r.error);
-      }
-      case "closeSoon": {
-        // The last hour (M8, the countdown pill): the week on sale's close moved to `minutes` from NOW on the real clock —
-        // the hub reads the real clock; the service still keeps every ticket's free-cancel window and the events' buffer.
-        const week = await weekStore.openFor("PUBLIC");
-        if (!week) return refuse("No week is on sale.");
-        const to = Date.now() + Math.max(20, Math.min(59, b.minutes ?? 40)) * 60_000;
-        const r = await moveClose({ weekId: week.id, toCloseAt: new Date(to).toISOString(), officerId: OWNER, now: new Date() });
         return r.ok ? NextResponse.json({ ok: true, from: week.closesAt, to: r.week.closesAt }) : refuse(r.error);
       }
       case "closeOpen": {
@@ -264,7 +265,7 @@ export async function POST(req: Request) {
         const p = await newPlayer(50_000);
         const n = Math.max(0, Math.min(10, Math.floor(b.tickets ?? 2)));
         if (n > 0) {
-          const r = await purchaseMaswaliTickets({ userId: p.id, weekId: week.id, slips: Array.from({ length: n }, () => YES) });
+          const r = await purchaseMaswaliTickets({ userId: p.id, weekId: week.id, slips: Array.from({ length: n }, () => (b.lose ? LOSE : YES)) });
           if (!r.ok) return refuse(`buy: ${r.error}`);
         }
         await coolOff(p.id, "1h");
