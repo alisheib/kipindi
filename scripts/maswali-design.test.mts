@@ -1026,7 +1026,9 @@ const listDefects = (page: string, ticketSrc: string, bar: string) => {
     ["zh", "ruleShared", "由所有 10/10 彩票平分 · 派奖时扣除 {pct}% 费用"],
     ["zh", "ruleWithFigure", "大奖：{amount} · 由所有 10/10 彩票平分 · 派奖时扣除 {pct}% 费用"], // S5-DESIGN-DOORS L5: "大奖 至少" spaced two Han words
     ["zh", "stripResults", "结果与派奖 · {range}"], ["zh", "stripEvents", "事件 · {range}"],
-    ["zh", "mains", "正选题"], ["zh", "mainsProgress", "正选 {a}/{n}"], ["zh", "eventAt", "事件 {when}"], ["zh", "firstEventAt", "首个事件：{when}"],
+    // RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-DOORS, the lead's zh spacing ruling): no space between 事件 and its {when},
+    // which always opens with a Han weekday ("事件周五 18:00").
+    ["zh", "mains", "正选题"], ["zh", "mainsProgress", "正选 {a}/{n}"], ["zh", "eventAt", "事件{when}"], ["zh", "firstEventAt", "首个事件：{when}"],
     ["zh", "ticketRunning", "待结算"], ["zh", "howThree", "所有 10/10 彩票平分大奖；{pct}% 费用仅在派奖时扣除。"], ["zh", "carriedInPending", "尚未结算"],
     ["zh", "jumpTo", "前往第{n}题"], ["zh", "capRule", "上限：每周 {cap} 张 · 这是第{n}张"],
     ["en", "carriedIn", "Carried in from Week {week}"], ["en", "carriedInPending", "Not yet settled"], ["en", "statRefunded", "Refunded"],
@@ -1191,7 +1193,8 @@ const iconDefects = (src: string) => {
   const WANT: Record<L3, [string, string, string, string]> = {
     en: ["Objection window", "Settling", "Week is being voided", "Objection window until Tuesday 12:00"],
     sw: ["Dirisha la pingamizi", "Inakamilishwa", "Wiki inabatilishwa", "Dirisha la pingamizi hadi Jumanne 12:00"],
-    zh: ["异议窗口", "待结算", "整周作废中", "异议窗口至 周二 12:00"],
+    // RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-DOORS, the lead's zh spacing ruling): "至周二", two Han words unspaced.
+    zh: ["异议窗口", "待结算", "整周作废中", "异议窗口至周二 12:00"],
   };
   const words = LOCALES.filter((l) => {
     const d = dict[l].millionea;

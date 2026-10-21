@@ -276,6 +276,26 @@ const finalDefects = (l: L, m: string) => {
     loose.length === 0, loose.slice(0, 2).join(" | "));
 }
 
+// The lead's zh spacing ruling (2026-10-21): Millionea's zh convention — a space only where a Latin letter or a digit meets a
+// Han character — on everything the card prints, and in the three templates a weekday-and-clock fills (`eatWeekdayClock`
+// opens with a Han weekday in zh): "异议窗口至周五 09:00", never "至 周五", two Han words parted by a space (L5's class).
+const HAN_GAP = /[㐀-䶿一-鿿] [㐀-䶿一-鿿]/u;
+const hanGapDefects = (text: string) => { const hit = HAN_GAP.exec(text); return hit ? [`"…${text.slice(Math.max(0, hit.index - 6), hit.index + 9)}…"`] : []; };
+const WHEN_KEYS = ["checkWindowUntil", "nextEvent", "eventAt"] as const;
+const whenLines = (l: L, m = dict[l].millionea as Record<string, string>) => WHEN_KEYS.map((k) => fill(m[k], { when: `${dict[l].millionea.weekdays[4]} 09:00` }));
+const whenDefects = (l: L, lines: readonly string[]) => {
+  const day = `${dict[l].millionea.weekdays[4]} 09:00`;
+  // zh: the weekday sits against the word before it; en and sw: a word, a space, the weekday — the line's own spacing.
+  return lines.filter((s) => (l === "zh" ? hanGapDefects(s).length > 0 || !s.includes(day) : !s.includes(` ${day}`)));
+};
+{
+  const printed = HOSTS.flatMap((h) => FX.cards.zh[h].flatMap((m, i) => hanGapDefects(textOf(m)).map((x) => `${h} ${STATES[i].name}: ${x}`)));
+  const filled = LOCALES.flatMap((l) => whenDefects(l, whenLines(l)).map((x) => `${l}: ${x}`));
+  const window = textOf(stateOf(card("zh", "closed · 15 of 15, objection")));
+  ok("1.21 · zh spacing (the lead's ruling): nothing the card prints in zh, in any state on either host, parts two Han characters with a space — the objection window reads \"异议窗口至周五 09:00\" — and the three weekday-clock templates filled in all three languages keep their own spacing (zh \"下一事件周五 09:00\", \"事件周五 09:00\"; en \"until Friday 09:00\"; sw \"hadi Ijumaa 09:00\")",
+    printed.length === 0 && filled.length === 0 && window.includes("异议窗口至周五 09:00"), j({ printed: printed.slice(0, 3), filled, window }));
+}
+
 // ── §2 · the ghost ────────────────────────────────────────────────────────────────────────────────────────────────────
 console.log("\n§2 · the card's loading picture (H1)");
 /** 2.3's check — what a ghost leaves readable — set in §2 and run again by its plant in §4. */
@@ -390,6 +410,10 @@ console.log("\n§4 · controls — each check fails on a planted copy");
       && instantDefects(stateOf(card("zh", "presale")).replace('<span class="mono">2026</span>', "2026")).length > 0
       && instantDefects(stateOf(card("en", "open · no ticket")).replace('<span class="mono">18:00</span>', "18:00")).length > 0);
   ok("4.11 · a dash in the name is reported (1.12′)", dashNameDefects(card("en", "presale").replace('aria-labelledby="mln-card-title"', 'aria-labelledby="mln-card-title mln-card-figure"')).length > 0);
+  const spaced = { ...(dict.zh.millionea as Record<string, string>), checkWindowUntil: "异议窗口至 {when}", nextEvent: "下一事件 {when}", eventAt: "事件 {when}" };
+  ok("4.13 · the zh space put back — in the printed objection window and in each template as it was — is reported (1.21)",
+    hanGapDefects(textOf(stateOf(card("zh", "closed · 15 of 15, objection"))).replace("至周五", "至 周五")).length > 0
+      && whenDefects("zh", whenLines("zh", spaced)).length === 3);
   const fin = card("sw", "open · at the cap in the final");
   ok("4.12 · the final week's line set plain (\"Wiki ya mwisho ya\" / \"Millionea\" free to break) is reported (1.20)",
     fin.includes('<span class="whitespace-nowrap">ya Millionea</span>') && finalDefects("sw", fin.replace('<span class="whitespace-nowrap">ya Millionea</span>', "ya Millionea")).length > 0);
@@ -405,6 +429,6 @@ console.log("\n§4 · controls — each check fails on a planted copy");
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI DOORS: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run prints. */
-const MIN_ASSERTIONS = 46;
+const MIN_ASSERTIONS = 48;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

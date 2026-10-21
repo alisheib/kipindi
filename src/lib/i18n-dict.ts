@@ -9191,11 +9191,13 @@ export const dict = {
       reservesLeft: "剩余有效备选题：{a}/{b}",
       reservesShort: "剩余有效备选题不足，无法替换已作废的题目",
       resultsOut: "15 个结果已公布 {n} 个",
-      nextEvent: "下一事件 {when}",
-      checkWindowUntil: "异议窗口至 {when}",
+      // S5-DESIGN-DOORS (the lead's ruling, 2026-10-21): Millionea's zh convention — a space only where a Latin letter or a
+      // digit meets a Han character — so no space before {when}, which is always a weekday and its clock ("周五 18:00").
+      nextEvent: "下一事件{when}",
+      checkWindowUntil: "异议窗口至{when}",
       weekQuestions: "本周题目",
       questionsAtOpen: "15 道题目将在销售开放时发布，并附题目集哈希。",
-      eventAt: "事件 {when}",
+      eventAt: "事件{when}",
       lastWeek: "上周",
       lastWeekRolled: "第{week}周 · 无 10/10 · {amount} 滚存 · 费用 0",
       howToPlay: "玩法说明",
