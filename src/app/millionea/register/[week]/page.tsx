@@ -273,9 +273,10 @@ function MarkWords({ t, mark }: { t: Dict; mark: Mark }) {
   }
   if (mark.kind === "notUsed") return <span className="text-body-sm text-text-muted">{t.millionea.notUsed}</span>;
   // The ticket's own words for a void still waiting — "Void · a reserve will take its place" — after the stamp that already
-  // says "Void": the words that follow its first fact.
-  const words = factsOf(mark.certain ? t.millionea.voidWeekCertain : t.millionea.voidAwaiting).slice(1);
-  return <span className="text-body-sm text-text-muted text-pretty">{words.join(" ")}</span>;
+  // says "Void": the words that follow its first fact, opening with a capital (they often start their own line beside the
+  // stamp — the tile read: "too few reserves: …" opened a line in lower case).
+  const words = factsOf(mark.certain ? t.millionea.voidWeekCertain : t.millionea.voidAwaiting).slice(1).join(" ");
+  return <span className="text-body-sm text-text-muted text-pretty">{words.charAt(0).toLocaleUpperCase() + words.slice(1)}</span>;
 }
 
 /** The outcome as the card states it: the stamp (or "Awaiting"), how it counted, and how and when it was attested; a void's

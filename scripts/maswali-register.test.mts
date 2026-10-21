@@ -267,7 +267,9 @@ check("3.9", "M3 · each question says how it counted on the final record — a 
   const waiting = live.includes('marks.set(q.slot, { kind: "awaiting", certain: phase.kind === "voiding" });') && !/standIn|stoodIn|notUsed/.test(live);
   const words = s.includes('<I.standIn s={12} className="shrink-0" aria-hidden />') && s.includes('<span className="sr-only">{fill(t.millionea.logCarry, { n: mark.main, r: mark.reserve })}</span>')
     && s.includes("{t.millionea.notUsed}");
-  const struck = s.includes('{q.role === "MAIN" && q.outcome === "VOID" ? <s className="decoration-current">{label}</s> : label}');
+  const struck = s.includes('{q.role === "MAIN" && q.outcome === "VOID" ? <s className="decoration-current">{label}</s> : label}')
+    // a void still waiting says the ticket's words after the stamp, opening with a capital (they often start their own line)
+    && s.includes("{words.charAt(0).toLocaleUpperCase() + words.slice(1)}");
   return [settledOnly && waiting && words && struck, j({ settledOnly, waiting, words, struck })];
 });
 
@@ -420,7 +422,8 @@ check("7.5", "H2 · the weeks still running head the index's first page — the 
 });
 check("7.6", "M11 · the index says what it is (an intro at /fairness's reading measure), and launch day is the kit's own empty state — filling its column, the register's glyph, what will appear here, and the way to the hub", (w) => {
   const s = code(w, "index");
-  const intro = s.includes('<p className="max-w-[68ch] text-body text-text-muted text-pretty" data-testid="millionea-register-intro">{t.millionea.regIntro}</p>');
+  // Its phrases kept whole and its dash held to the word before it (the tile read: "— mauzo, ada, …" opened a sw line at 320).
+  const intro = s.includes('<p className="max-w-[68ch] text-body text-text-muted text-pretty" data-testid="millionea-register-intro">{keepFact(locale, t.millionea.regIntro)}</p>');
   const empty = s.includes("<EmptyState fill kind=\"fairness\" title={t.millionea.regEmpty} body={t.millionea.regEmptyBody} action={<EmptyStateLink href={MILLIONEA_HREF.hub}>{t.millionea.productTitle}</EmptyStateLink>} />");
   const words = LOCALES.map((l) => mln(w, l).regEmpty);
   return [intro && empty && j(words) === j(["No week is final yet.", "Bado hakuna wiki iliyokamilika.", "尚无已确定的周。"]), j({ intro, empty, words })];
@@ -791,6 +794,7 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["H4 undone — a card without its criterion", "3.8", plantSrc("week", '        <span className="text-body-sm text-text-muted text-pretty">{textIn(locale, q.criterion)}</span>\n        <span className="text-body-sm text-text-muted"><MaswaliFacts', '        <span className="text-body-sm text-text-muted"><MaswaliFacts')],
   ["M2 undone — a card's event and source joined with \" · \"", "3.8", plantSrc("week", '<MaswaliFacts facts={[event(q), <SourceLink key="src" q={q} />]} />', "{`${event(q)} · ${sourceLabel(q.sourceDomain)}`}")],
   ["M3 undone — a carry drawn before the week settled (an objection could still un-carry it)", "3.9", plantSrc("week", 'if (w.state === "SETTLED") {\n    for (const s of w.substitutions) {', "{\n    for (const s of w.substitutions) {")],
+  ["a waiting void's words opening a line in lower case again", "3.9", plantSrc("week", "{words.charAt(0).toLocaleUpperCase() + words.slice(1)}", "{words}")],
   ["M3 undone — a voided main's number no longer struck", "3.9", plantSrc("week", '{q.role === "MAIN" && q.outcome === "VOID" ? <s className="decoration-current">{label}</s> : label}', "{label}")],
   // §4
   ["R3 undone — the card's stamp says \"Result ·\" again", "4.1", plantSrc("week", '{q.outcome !== null ? <MaswaliOutcomeStamp t={t} outcome={q.outcome} label={false} /> : <span className="text-body-sm text-text-muted">', '{q.outcome !== null ? <MaswaliOutcomeStamp t={t} outcome={q.outcome} /> : <span className="text-body-sm text-text-muted">')],
@@ -823,7 +827,8 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["H2 undone — the weeks still running left off the index", "7.5", plantSrc("index", "const running = page === 1 ? current : [];", "const running: typeof current = [];")],
   ["H2 undone — a running week's row prints its pool", "7.5", { ...REAL, liveFacts: (t, l, w, n) => [...liveWeekFacts(t, l, w, n), "TZS 42,000"] }],
   ["M11 undone — the default empty box under a left heading", "7.6", plantSrc("index", "<EmptyState\n            fill\n            kind=\"fairness\"", "<EmptyState\n            kind=\"fairness\"")],
-  ["M11 undone — the index says nothing of what it is", "7.6", plantSrc("index", "{t.millionea.regIntro}", "{null}")],
+  ["M11 undone — the index says nothing of what it is", "7.6", plantSrc("index", "{keepFact(locale, t.millionea.regIntro)}", "{null}")],
+  ["the intro's dash free to open a line again", "7.6", plantSrc("index", "{keepFact(locale, t.millionea.regIntro)}", "{t.millionea.regIntro}")],
   // §8
   ["R10 undone — \"Week Register\" in title case", "8.1", plantWord("en", "registerTitle", "Week Register")],
   ["zh's door and title disagree", "8.1", plantWord("zh", "register", "每周登记册")],

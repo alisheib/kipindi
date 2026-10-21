@@ -489,7 +489,7 @@ check("3.5", "ONE WEEK ROW (L3, /results adopts it): rendered, its facts are a f
   const m = inApp("sw", h(w.WeekRow as never, { t: dict.sw, code: "MLN-2026-W48", chip: h(w.Chip as never, { t: dict.sw, state: "VOIDED" } as never), facts: ["Kila tiketi imerejeshwa", "ada 0"] } as never));
   const li = /^<li>/.test(m);
   const facts = m.includes('<span class="min-w-0 text-body-sm text-text-muted lg:ml-auto" data-testid="millionea-week-facts"><span class="kp-mln-facts kp-mln-facts--phone">');
-  const content = m.includes('<span class="flex min-w-0 flex-1 flex-col gap-1">') && m.includes('<span class="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 md:w-[200px]">');
+  const content = m.includes('<span class="flex min-w-0 flex-1 flex-col gap-1">') && m.includes('<span class="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 md:w-[280px]">');
   const handDots = (m.replace(/<span class="sr-only"> · <\/span>/g, "").match(/·/g) ?? []).length;
   const link = /<a [^>]*href="\/millionea\/register\/MLN-2026-W48"/.test(m) && m.includes("min-height:var(--h-control-lg)");
   return [li && facts && content && handDots === 0 && link, j({ li, facts, content, handDots, link })];

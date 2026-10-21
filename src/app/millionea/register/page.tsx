@@ -30,6 +30,7 @@ import { millioneaRegister, millioneaRegisterCurrent } from "@/lib/server/maswal
 import { getServerT } from "@/lib/i18n-server";
 import { MILLIONEA_HREF, MillioneaPreviewMark, MillioneaReadingLinks } from "../millionea-parts";
 import { millioneaWeekPhase } from "../millionea-view";
+import { keepFact } from "@/components/maswali/maswali-facts";
 import { liveWeekFacts, WeekRow, WeekStateChip, weekFacts } from "./register-parts";
 
 export const dynamic = "force-dynamic";
@@ -60,7 +61,9 @@ export default async function MillioneaRegisterPage({ searchParams }: { searchPa
       <div className="flex flex-col gap-6" data-testid="millionea-register">
         <div className="flex flex-col gap-3">
           <PageHeader eyebrow={t.millionea.productTitle} title={t.millionea.registerTitle} />
-          <p className="max-w-[68ch] text-body text-text-muted text-pretty" data-testid="millionea-register-intro">{t.millionea.regIntro}</p>
+          {/* Its phrases kept whole, its dash held to the word before it (the tile read: "— mauzo, ada, …" opened a sw line
+              at 320). */}
+          <p className="max-w-[68ch] text-body text-text-muted text-pretty" data-testid="millionea-register-intro">{keepFact(locale, t.millionea.regIntro)}</p>
         </div>
         {gate.preview && <MillioneaPreviewMark t={t} />}
         {current.length === 0 && total === 0 ? (

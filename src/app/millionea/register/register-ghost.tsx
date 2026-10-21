@@ -32,7 +32,7 @@ export function MillioneaRegisterGhost() {
               <div key={i} className="flex flex-col justify-center gap-1 py-3" style={{ minHeight: "var(--h-control-lg)" }}>
                 <GhostBar className="h-3 w-[120px]" />
                 <div className="flex flex-col gap-1 md:flex-row md:items-center md:gap-6">
-                  <div className="flex shrink-0 items-center gap-2 md:w-[200px]">
+                  <div className="flex shrink-0 items-center gap-2 md:w-[280px]">
                     <GhostBar className="h-4 w-[72px]" />
                     <GhostBar className="h-[23px] w-[88px] rounded-pill" />
                   </div>

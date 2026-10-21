@@ -135,7 +135,9 @@ export function WeekRow({ t, code, chip, facts }: { t: Dict; code: string; chip:
         <span className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{code}</span>
           <span className="flex flex-col gap-1 md:flex-row md:items-center md:gap-6">
-            <span className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 md:w-[200px]">
+            {/* From 768 the week's column holds the week and its longest chip on one line ("Wiki 52 · WIKI INABATILISHWA",
+                "Week 52 · WEEK IS BEING VOIDED" — at 200px they broke under the week, so the rows' heights differed). */}
+            <span className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 md:w-[280px]">
               <span className="text-body font-semibold text-text">{weekWord(t, weekNumberOf(code))}</span>
               {chip}
             </span>
