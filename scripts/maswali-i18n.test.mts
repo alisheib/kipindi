@@ -174,6 +174,51 @@ console.log("\n§6 · every \"·\" in a Millionea string is the fact separator, 
   ok("6.1′ CONTROL · the old zh stamp line (\"（主余额）· 免费取消至\", the \"·\" glued to the bracket) is reported", j(planted) === j(["zh.resultDetails"]), j(planted));
 }
 
+// ── §7 · one Swahili verb per fact ──────────────────────────────────────────────────────────────────────────────────
+console.log("\n§7 · Swahili says each fact with ONE verb (S5-FIX-PLAYER P14; S5-VIS-FINDINGS §D)");
+{
+  /**
+   * §D decided the verbs: a carry is KUHAMISHA — "linahamishiwa wiki inayofuata" (moved TO a week: the applicative, the
+   * week right after it, no "kwenye"), "kinachohamishwa kutoka Wiki 47" and "imehamishwa" (moved, no destination named) —
+   * and a refund is KUREJESHA in its plain passive, "Imerejeshwa" ("kila tiketi imerejeshwa", "itarejeshwa"). Each form
+   * agrees with its subject: an amount or a ticket is class 9 (i-), "kiasi" class 7 (ki-), tickets class 10 (zi-).
+   * ⛔ The other verbs the namespace once mixed in are gone: "imeletwa mbele" / "hailetwi mbele" for a carry, and the
+   * applicative "imerejeshewa" / "itarejeshewa" for a refund (a reader met two words for one fact on one page).
+   */
+  const verbDefects = (nsOf: NsOf) => Object.entries(nsOf("sw")).flatMap(([k, v]) => {
+    const s = String(v);
+    return [
+      ...(/le(?:t|tw)[ai] mbele\b/.test(s) ? [`sw.${k}: a carry said with "kuleta mbele"`] : []),
+      ...(/rejeshewa\b/.test(s) ? [`sw.${k}: a refund said with "-rejeshewa"`] : []),
+      ...(/hamishiwa kwenye\b/.test(s) ? [`sw.${k}: "-hamishiwa kwenye" (the applicative takes its week directly)`] : []),
+    ];
+  });
+  const d = verbDefects(ns);
+  ok("7.1 · no Swahili Millionea string carries with \"kuleta mbele\" or refunds with \"-rejeshewa\" — one verb per fact", d.length === 0, d.join(" | "));
+  // The decided forms, each where its fact is said (en binding; these are for Gate B's native review).
+  const WANT: Array<[string, string]> = [
+    ["howFour", "Hakuna 10/10? Bwawa lote linahamishiwa wiki inayofuata, bila ada."],
+    ["pendingCarry", "pamoja na kiasi kinachohamishwa kutoka Wiki {week} itakapokamilika"],
+    ["carriedOut", "Imehamishiwa Wiki {week}"],
+    ["carriedForwardAgain", "Imehamishwa tena kwa ukamilifu"],
+    ["rolloverNotice", "Wiki {prev}: hakuna tiketi ya 10/10. {amount} imehamishiwa Wiki {week}."],
+    ["settledRollover", "hakuna 10/10 · {amount} imehamishwa"],
+    ["lastWeekRolled", "Wiki {week} · hakuna 10/10 · {amount} imehamishwa · ada 0"],
+    ["regCarried", "{amount} imehamishwa"],
+    ["topUpNote", "inalipwa, haihamishwi"],
+    ["statRefunded", "Imerejeshwa"], ["refundedLine", "Imerejeshwa · {price}"],
+    ["refundEach", "Kila tiketi imerejeshwa {price}"], ["regRefunded", "Kila tiketi imerejeshwa"],
+    ["weekVoidedShort", "Wiki imebatilishwa · kila tiketi imerejeshwa"],
+    ["refundEachIfVoid", "Ubatilishaji ukisimama, kila tiketi itarejeshwa {price}"],
+  ];
+  const off = WANT.filter(([k, v]) => ns("sw")[k] !== v).map(([k]) => `sw.${k}=${j(ns("sw")[k])}`);
+  ok(`7.2 · the decided forms where each fact is said (${WANT.length} keys): a carry "linahamishiwa" / "imehamishiwa Wiki {week}" / "imehamishwa", a refund "Imerejeshwa" / "itarejeshwa"`, off.length === 0, off.join(" | "));
+  const carry = verbDefects(plantedNs("sw", "regCarried", "{amount} imeletwa mbele"));
+  const refund = verbDefects(plantedNs("sw", "regRefunded", "Kila tiketi imerejeshewa"));
+  ok("7.1′ CONTROL · the old \"imeletwa mbele\" carry and the old \"imerejeshewa\" refund are each reported",
+    j(carry) === j(['sw.regCarried: a carry said with "kuleta mbele"']) && j(refund) === j(['sw.regRefunded: a refund said with "-rejeshewa"']), j({ carry, refund }));
+}
+
 console.log(`\n${"═".repeat(70)}\n  MASWALI I18N: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run PRINTS; it only rises, to a printed number: 19 (S5-FIX-PLAYER P12's §6 added three to
  *  the 16 static call sites, none in a loop). */

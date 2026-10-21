@@ -259,8 +259,11 @@ const WEEKS = {
 const FACTS: Record<(typeof LOCALES)[number], Record<keyof typeof WEEKS, string[]>> = {
   en: { pending: ["Refunds on their way"], landed: ["Every ticket refunded"], wonOne: ["1 ticket won", "Jackpot TZS 1,013,000"],
     wonMany: ["3 tickets won", "Jackpot TZS 1,050,000"], rolled: ["TZS 412,000 carried forward", "fee 0"] },
-  sw: { pending: ["Marejesho yanakuja"], landed: ["Kila tiketi imerejeshewa"], wonOne: ["Tiketi 1 ilishinda", "Jackpot TZS 1,013,000"],
-    wonMany: ["Tiketi 3 zilishinda", "Jackpot TZS 1,050,000"], rolled: ["TZS 412,000 imeletwa mbele", "ada 0"] },
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-FIX-PLAYER P14): Swahili says each fact with ONE verb, §D's — a refund
+  // "imerejeshwa" (it read "imerejeshewa" here and "imerejeshwa" on the ticket), a carry "imehamishwa" (it read
+  // "imeletwa mbele" here and "linahamishiwa" in How to play). `test:maswali-i18n` §7 holds the whole namespace to it.
+  sw: { pending: ["Marejesho yanakuja"], landed: ["Kila tiketi imerejeshwa"], wonOne: ["Tiketi 1 ilishinda", "Jackpot TZS 1,013,000"],
+    wonMany: ["Tiketi 3 zilishinda", "Jackpot TZS 1,050,000"], rolled: ["TZS 412,000 imehamishwa", "ada 0"] },
   zh: { pending: ["退款处理中"], landed: ["每张彩票已退款"], wonOne: ["1 张彩票中奖", "大奖 TZS 1,013,000"],
     wonMany: ["3 张彩票中奖", "大奖 TZS 1,050,000"], rolled: ["TZS 412,000 滚存", "费用 0"] },
 };

@@ -194,7 +194,7 @@ export function MaswaliPoolFigure({ t, locale, view, pct, carry, tick, className
   );
 }
 
-/** "Wiki 41 · hakuna 10/10 · TZS 389,000 imeletwa mbele · ada 0" — last week as one closed ledger row (the hub, §3.3),
+/** "Wiki 41 · hakuna 10/10 · TZS 389,000 imehamishwa · ada 0" — last week as one closed ledger row (the hub, §3.3),
  *  its facts a fact line (A1); the carried figure keeps its id, the origin of this week's M7 carry. */
 export function MaswaliLastWeek({ t, locale, week, carried, id, className }: {
   t: Dict;
