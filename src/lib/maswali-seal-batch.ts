@@ -7,7 +7,10 @@ export type SealBatchResult =
   | { ok: true; sealed: number[]; auditWarning: string | null }
   | { ok: false; error: string; sealed: number[]; auditWarning: string | null };
 
-export const SEAL_DEVICE_AUDIT_WARNING = "The seal landed, but its device audit could not be fully recorded or checked. Tell an administrator; do not repeat the seal.";
+/** A landed seal, void or correction whose audit rows were not all written, or whose device could not be checked. */
+export const SEAL_AUDIT_WARNING = "The seal landed, but its audit record could not be fully written or its device checked. Tell an administrator; do not repeat the seal.";
+/** A landed second-officer confirmation whose audit rows were not all written. */
+export const CONFIRM_AUDIT_WARNING = "The confirmation landed, but its audit record could not be fully written. Tell an administrator; do not confirm it again.";
 
 export type SealBatchRow = { slot: number; outcome: "YES" | "NO" | "VOID"; evidence: string };
 
@@ -34,12 +37,14 @@ export function parseSealRows(raw: string): SealBatchRow[] | string {
 
 export async function applySealBatch<T extends { slot: number }>(
   rows: readonly T[],
-  seal: (row: T) => Promise<{ ok: boolean; error?: string }>,
+  seal: (row: T) => Promise<{ ok: boolean; error?: string; recorded?: boolean }>,
   noteDevice: (sealed: number[]) => Promise<boolean>,
   safeFailure: (error: unknown) => string,
 ): Promise<SealBatchResult> {
   const sealed: number[] = [];
   let failure: string | null = null;
+  // A landed seal whose own audit rows were not all written (`recorded: false`) still landed: it warns, never fails.
+  let sealUnrecorded = false;
   for (const row of rows) {
     try {
       const result = await seal(row);
@@ -48,6 +53,7 @@ export async function applySealBatch<T extends { slot: number }>(
         break;
       }
       sealed.push(row.slot);
+      if (result.recorded === false) sealUnrecorded = true;
     } catch (error) {
       failure = `Slot ${row.slot}: ${safeFailure(error)}`;
       break;
@@ -58,9 +64,9 @@ export async function applySealBatch<T extends { slot: number }>(
   if (sealed.length) {
     try {
       const audited = await noteDevice([...sealed]);
-      if (!audited) auditWarning = SEAL_DEVICE_AUDIT_WARNING;
+      if (!audited || sealUnrecorded) auditWarning = SEAL_AUDIT_WARNING;
     } catch {
-      auditWarning = SEAL_DEVICE_AUDIT_WARNING;
+      auditWarning = SEAL_AUDIT_WARNING;
     }
   }
   return failure ? { ok: false, error: failure, sealed, auditWarning } : { ok: true, sealed, auditWarning };

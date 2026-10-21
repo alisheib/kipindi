@@ -162,7 +162,7 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
           if (!row?.outcome || !row.sealedAtIso) return;
           const expectedOutcome = row.outcome;
           const expectedSealedAt = row.sealedAtIso;
-          run(() => confirmMaswaliSealAction(fd({ weekId, slot: String(row.slot), expectedOutcome, expectedSealedAt })), () => setConfirmRow(null));
+          run(() => confirmMaswaliSealAction(fd({ weekId, slot: String(row.slot), expectedOutcome, expectedSealedAt })), () => setConfirmRow(null), setSealAuditWarning);
         }} />
       {/* The 1,040px result table stays horizontally scrollable. Paint containment keeps its offscreen columns out of
           the document's own scroll width on narrow screens; the named, focusable ScrollX still reaches every column. */}

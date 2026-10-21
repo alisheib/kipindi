@@ -201,7 +201,8 @@ function refuseUnpatchable(store: string, fields: object, allow: Record<string, 
 // ── THE INTERFACES ──────────────────────────────────────────────────────────────────────────────────
 
 export interface WeekStore {
-  get(id: string): Promise<StoredWeek | null>;
+  /** `tx`: read inside the caller's lock transaction — a read AFTER a write there must see that write (S5-FIX-SRV 2). */
+  get(id: string, tx?: Prisma.TransactionClient): Promise<StoredWeek | null>;
   getByMarketId(marketId: string): Promise<StoredWeek | null>;
   getByCode(code: string): Promise<StoredWeek | null>;
   /** Newest first. */
@@ -627,7 +628,7 @@ function toTicket(r: any): StoredTicket {
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 const prismaWeeks: WeekStore = {
-  async get(id) { const r = await pc().maswaliCycle.findUnique({ where: { id } }); return r ? toWeek(r) : null; },
+  async get(id, tx) { const r = await db_(tx).maswaliCycle.findUnique({ where: { id } }); return r ? toWeek(r) : null; },
   async getByMarketId(marketId) { const r = await pc().maswaliCycle.findUnique({ where: { marketId } }); return r ? toWeek(r) : null; },
   async getByCode(code) { const r = await pc().maswaliCycle.findUnique({ where: { code } }); return r ? toWeek(r) : null; },
   async list(opts) {

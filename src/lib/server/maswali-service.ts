@@ -16,6 +16,7 @@
  *
  * Every refusal is a `{ ok: false, error }` in words an officer can act on; nothing here throws at a caller for a rule.
  */
+import type { Prisma } from "@prisma/client";
 import { audit } from "./audit";
 import { randomId } from "./crypto";
 import { withLock } from "./locks";
@@ -556,13 +557,40 @@ export function objectionWindowEnd(openedMs: number, hours: number, notBefore: s
 }
 
 /**
+ * ⭐ S5-FIX-SRV 2 · A SEAL, A CONFIRMATION AND A CORRECTION ARE EACH ONE TRANSACTION (DATA-LAYER rules 1 and 2). Every
+ * write takes the chain lock's transaction — the question, the week, and the recompute's objection window — and the
+ * recompute reads through it, so it sees the write it follows. The act's audit rows are OWED, not written, under the lock:
+ * `recordOwed` writes them once the lock has committed, so no row ever describes a write that rolled back, and the act
+ * reports whether every one was recorded. A refusal the recompute could still give after a write (unreadable frozen rules)
+ * is asked BEFORE the first write; should one come anyway, it is thrown, so it escapes the lock and the act rolls back
+ * whole — never a landed seal reported as failed (S5 review 2).
+ */
+type OwedAudit = Parameters<typeof audit>[0];
+type GateNow = { gate: ReturnType<typeof settlementGate>; weekVoidCertain: boolean };
+let owedAuditWriter: (row: OwedAudit) => Promise<{ recorded: boolean }> = audit;
+/** ⚠️ TEST SEAM ONLY: the writer `recordOwed` uses (null restores `audit`). */
+export function __setMaswaliAuditWriterForTests(writer: ((row: OwedAudit) => Promise<{ recorded: boolean }>) | null): void {
+  owedAuditWriter = writer ?? audit;
+}
+
+/** Write the rows an act owes, in order, after its lock committed. True only when every one was recorded; never throws. */
+async function recordOwed(rows: readonly OwedAudit[]): Promise<boolean> {
+  let all = true;
+  for (const row of rows) {
+    const r = await owedAuditWriter(row).catch(() => ({ recorded: false }));
+    if (!r.recorded) all = false;
+  }
+  return all;
+}
+
+/**
  * Seal one question. One officer, with evidence (MR-14). A VOID names its ground from the closed list and only when that
  * ground is available (MR-15). ⛔ An officer holding a ticket in the week may not seal it. YES/NO only after the close; a
- * VOID may come before it (a pre-close void that dooms the week stops sales at once).
+ * VOID may come before it (a pre-close void that dooms the week stops sales at once). `recorded`: its audit rows landed.
  */
 export async function sealQuestion(input: {
   weekId: string; slot: number; outcome: MaswaliOutcome; evidence: string; voidReason?: string | null; officerId: string; now?: Date;
-}): Promise<Result<{ gate: ReturnType<typeof settlementGate>; weekVoidCertain: boolean }>> {
+}): Promise<Result<GateNow & { recorded: boolean }>> {
   const nowMs = (input.now ?? new Date()).getTime();
   const evidence = input.evidence.trim();
   if (evidence.length < 10) return refuse("A seal records its evidence (at least 10 characters).");
@@ -570,7 +598,7 @@ export async function sealQuestion(input: {
   if (input.outcome === "VOID" && !isMaswaliVoidReason(input.voidReason)) return refuse("A void names its ground from the closed list (MR-15).");
   if (input.outcome !== "VOID" && input.voidReason) return refuse("Only a VOID carries a void ground.");
   const twoOfficer = await getRequireTwoOfficerResolution().catch(() => false);
-  const res = await withLock(MASWALI_CHAIN_LOCK, async (): Promise<Result<{ gate: ReturnType<typeof settlementGate>; weekVoidCertain: boolean }>> => {
+  const res = await withLock(MASWALI_CHAIN_LOCK, async (tx): Promise<Result<GateNow & { owed: OwedAudit[] }>> => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
     if (week.state === "SETTLED" || week.state === "VOIDED" || week.state === "DRAFT") return refuse(`Week ${week.code} is ${week.state}; nothing can be sealed.`);
@@ -584,28 +612,36 @@ export async function sealQuestion(input: {
     }
     const holds = (await ticketStore.listForUser(input.officerId, { cycleId: week.id })).some((t) => t.status !== "CANCELLED");
     if (holds) return refuse("An officer who holds a ticket in this week cannot seal its questions.");
+    // The recompute after the write reads the frozen rules when this seal makes the graded set final: asked first.
+    if (!frozenRules(week)) return refuse(`Week ${week.code}'s frozen rules cannot be read.`);
     const at = new Date(nowMs).toISOString();
     await questionStore.patch(q.id, {
       outcome: input.outcome, voidReason: input.outcome === "VOID" ? (input.voidReason as MaswaliVoidReason) : null,
       evidence, sealedBy: input.officerId, sealedAt: at, twoOfficerAtStage1: twoOfficer,
-    });
-    if (week.state === "CLOSED") await weekStore.patch(week.id, { state: "RESOLVING" });
-    audit({ category: "ADMIN", action: "maswali.question.sealed", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id,
-      payload: { week: week.code, slot: slotLabel(q.slot), outcome: input.outcome, voidReason: input.voidReason ?? null, twoOfficer } });
-    return recomputeGateLocked(week.id, nowMs);
+    }, tx ?? undefined);
+    if (week.state === "CLOSED") await weekStore.patch(week.id, { state: "RESOLVING" }, tx ?? undefined);
+    const g = await recomputeGateLocked(week.id, nowMs, tx ?? undefined);
+    if (!g.ok) throw new Error(g.error);
+    return { ok: true, gate: g.gate, weekVoidCertain: g.weekVoidCertain, owed: [
+      { category: "ADMIN", action: "maswali.question.sealed", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id,
+        payload: { week: week.code, slot: slotLabel(q.slot), outcome: input.outcome, voidReason: input.voidReason ?? null, twoOfficer } },
+      ...g.owed,
+    ] };
   });
-  if (res.ok && res.weekVoidCertain) {
+  if (!res.ok) return res;
+  const recorded = await recordOwed(res.owed);
+  if (res.weekVoidCertain) {
     // A certain week void while selling stops the sales at once (MR-18); the void itself waits for its objection window.
     const w = await weekStore.get(input.weekId);
     if (w?.state === "OPEN") await closeWeek({ weekId: w.id, actorId: SYSTEM, early: true, now: new Date(nowMs) });
   }
-  return res;
+  return { ok: true, gate: res.gate, weekVoidCertain: res.weekVoidCertain, recorded };
 }
 
 /** The second officer's confirmation of a seal made while the two-officer flag was on (MR-14). ⛔ Never the sealer. */
-export async function confirmSeal(input: { weekId: string; slot: number; officerId: string; expectedOutcome: MaswaliOutcome; expectedSealedAt: string; now?: Date }): Promise<Result> {
+export async function confirmSeal(input: { weekId: string; slot: number; officerId: string; expectedOutcome: MaswaliOutcome; expectedSealedAt: string; now?: Date }): Promise<Result<{ recorded: boolean }>> {
   const nowMs = (input.now ?? new Date()).getTime();
-  return withLock(MASWALI_CHAIN_LOCK, async () => {
+  const res = await withLock(MASWALI_CHAIN_LOCK, async (tx): Promise<Result<{ owed: OwedAudit[] }>> => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
     const q = (await questionStore.listForWeek(week.id)).find((x) => x.slot === input.slot);
@@ -619,21 +655,27 @@ export async function confirmSeal(input: { weekId: string; slot: number; officer
     // The graded-set recompute runs after the stamp. Refuse an unreadable frozen snapshot before
     // changing the question, so a known recompute refusal cannot report a landed signoff as failed.
     if (!frozenRules(week)) return refuse(`Week ${week.code}'s frozen rules cannot be read.`);
-    await questionStore.patch(q.id, { stage2By: input.officerId, stage2At: new Date(nowMs).toISOString() });
-    audit({ category: "ADMIN", action: "maswali.question.confirmed", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id, payload: { week: week.code, slot: slotLabel(q.slot) } });
-    const r = await recomputeGateLocked(week.id, nowMs);
-    return r.ok ? { ok: true } : r;
+    await questionStore.patch(q.id, { stage2By: input.officerId, stage2At: new Date(nowMs).toISOString() }, tx ?? undefined);
+    const g = await recomputeGateLocked(week.id, nowMs, tx ?? undefined);
+    if (!g.ok) throw new Error(g.error);
+    return { ok: true, owed: [
+      { category: "ADMIN", action: "maswali.question.confirmed", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id, payload: { week: week.code, slot: slotLabel(q.slot) } },
+      ...g.owed,
+    ] };
   });
+  if (!res.ok) return res;
+  return { ok: true, recorded: await recordOwed(res.owed) };
 }
 
 /**
  * OD-09 · the sealer corrects their OWN seal, before payout, inside the objection window — which restarts once the graded
- * set is final again. ⛔ Never after SETTLED: a paid week is never clawed back.
+ * set is final again. ⛔ Never after SETTLED: a paid week is never clawed back. The corrected result, the restarted window
+ * and the recompute commit together or not at all (S5-FIX-SRV 2): never a corrected result whose window did not restart.
  */
 export async function correctSeal(input: {
   weekId: string; slot: number; outcome: MaswaliOutcome; evidence: string; voidReason?: string | null;
   expectedOutcome: MaswaliOutcome; expectedSealedAt: string; officerId: string; now?: Date;
-}): Promise<Result> {
+}): Promise<Result<{ recorded: boolean }>> {
   const nowMs = (input.now ?? new Date()).getTime();
   const evidence = input.evidence.trim();
   if (evidence.length < 10) return refuse("A seal records its evidence (at least 10 characters).");
@@ -643,7 +685,7 @@ export async function correctSeal(input: {
   if ((input.expectedOutcome !== "YES" && input.expectedOutcome !== "NO" && input.expectedOutcome !== "VOID") || !input.expectedSealedAt) {
     return refuse("Reload the week and review the sealed result before correcting it.");
   }
-  return withLock(MASWALI_CHAIN_LOCK, async () => {
+  const res = await withLock(MASWALI_CHAIN_LOCK, async (tx): Promise<Result<{ code: string; owed: OwedAudit[] }>> => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
     if (week.state !== "RESOLVING" && week.state !== "CLOSED") return refuse(`Week ${week.code} is ${week.state}; its seals are final.`);
@@ -657,43 +699,58 @@ export async function correctSeal(input: {
     if (input.outcome === "VOID" && !voidGroundAvailable(input.voidReason as MaswaliVoidReason, Date.parse(q.voidDeadlineAt), nowMs)) {
       return refuse(`${slotLabel(q.slot)} cannot void on that ground before its void deadline (${q.voidDeadlineAt}).`);
     }
+    // The restarted window is read from the frozen rules after the write: asked first, as `confirmSeal` does.
+    if (!frozenRules(week)) return refuse(`Week ${week.code}'s frozen rules cannot be read.`);
     // Keep the reviewed seal version unique even if two writes share one clock millisecond.
     const revisedAt = new Date(Math.max(nowMs, Date.parse(q.sealedAt!) + 1)).toISOString();
     await questionStore.patch(q.id, {
       outcome: input.outcome, voidReason: input.outcome === "VOID" ? (input.voidReason as MaswaliVoidReason) : null,
       evidence, sealedAt: revisedAt, stage2By: null, stage2At: null,
-    });
+    }, tx ?? undefined);
     // The graded set may have changed: the window restarts from the corrected record (OD-09).
-    await weekStore.patch(week.id, { gradedSetFinalAt: null, objectionsCloseAt: null });
-    invalidateMillioneaRegisterWeek(week.code);
-    audit({ category: "ADMIN", action: "maswali.question.corrected", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id,
-      payload: { week: week.code, slot: slotLabel(q.slot), from: q.outcome, to: input.outcome } });
-    const r = await recomputeGateLocked(week.id, nowMs);
-    return r.ok ? { ok: true } : r;
+    await weekStore.patch(week.id, { gradedSetFinalAt: null, objectionsCloseAt: null }, tx ?? undefined);
+    const g = await recomputeGateLocked(week.id, nowMs, tx ?? undefined);
+    if (!g.ok) throw new Error(g.error);
+    return { ok: true, code: week.code, owed: [
+      { category: "ADMIN", action: "maswali.question.corrected", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id,
+        payload: { week: week.code, slot: slotLabel(q.slot), from: q.outcome, to: input.outcome } },
+      ...g.owed,
+    ] };
   });
+  if (!res.ok) return res;
+  // Committed: the register forgets the week only now, so no reader can re-cache the record as it was before.
+  invalidateMillioneaRegisterWeek(res.code);
+  return { ok: true, recorded: await recordOwed(res.owed) };
 }
 
-/** Re-read the record and stamp the graded set final (and open the objection window) once the gate is ready. Under the lock. */
-async function recomputeGateLocked(weekId: string, nowMs: number): Promise<Result<{ gate: ReturnType<typeof settlementGate>; weekVoidCertain: boolean }>> {
-  const week = await weekStore.get(weekId);
+/**
+ * Re-read the record and stamp the graded set final (and open the objection window) once the gate is ready. Under the lock,
+ * on its transaction (`tx`): the reads see the write this follows, and the stamp commits with it. Its audit row is owed.
+ */
+async function recomputeGateLocked(weekId: string, nowMs: number, tx?: Prisma.TransactionClient): Promise<Result<GateNow & { owed: OwedAudit[] }>> {
+  const week = await weekStore.get(weekId, tx);
   if (!week) return refuse("No such week.");
-  const qs = gradable(await questionStore.listForWeek(week.id));
+  const qs = gradable(await questionStore.listForWeek(week.id, tx));
   const gate = settlementGate(qs);
   const certain = weekVoidCertain(qs);
+  const owed: OwedAudit[] = [];
   if (gate.ready && !week.gradedSetFinalAt && week.state !== "OPEN") {
     const rules = frozenRules(week);
     if (!rules) return refuse(`Week ${week.code}'s frozen rules cannot be read.`);
     const end = objectionWindowEnd(nowMs, rules.objectionWindowHours, rules.objectionNotBeforeAt);
-    await weekStore.patch(week.id, { gradedSetFinalAt: new Date(nowMs).toISOString(), objectionsCloseAt: new Date(end).toISOString() });
-    audit({ category: "ADMIN", action: "maswali.week.graded_set_final", actorId: SYSTEM, targetType: "MaswaliCycle", targetId: week.id,
+    await weekStore.patch(week.id, { gradedSetFinalAt: new Date(nowMs).toISOString(), objectionsCloseAt: new Date(end).toISOString() }, tx);
+    owed.push({ category: "ADMIN", action: "maswali.week.graded_set_final", actorId: SYSTEM, targetType: "MaswaliCycle", targetId: week.id,
       payload: { code: week.code, weekVoid: gate.weekVoid, objectionsCloseAt: new Date(end).toISOString() } });
   }
-  return { ok: true, gate, weekVoidCertain: certain };
+  return { ok: true, gate, weekVoidCertain: certain, owed };
 }
 
 /** The gate, re-read, for a caller outside a seal (the scheduler, the console). */
-export async function recomputeGate(weekId: string, now?: Date): Promise<Result<{ gate: ReturnType<typeof settlementGate>; weekVoidCertain: boolean }>> {
-  return withLock(MASWALI_CHAIN_LOCK, () => recomputeGateLocked(weekId, (now ?? new Date()).getTime()));
+export async function recomputeGate(weekId: string, now?: Date): Promise<Result<GateNow>> {
+  const res = await withLock(MASWALI_CHAIN_LOCK, (tx) => recomputeGateLocked(weekId, (now ?? new Date()).getTime(), tx ?? undefined));
+  if (!res.ok) return res;
+  await recordOwed(res.owed);
+  return { ok: true, gate: res.gate, weekVoidCertain: res.weekVoidCertain };
 }
 
 /** The questions whose void deadline has passed unsealed — the system PROPOSES a void; an officer seals it (MR-15). */

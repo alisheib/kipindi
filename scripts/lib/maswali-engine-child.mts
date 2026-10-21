@@ -30,7 +30,7 @@ const { saveMaswaliConfig } = await import("../../src/lib/server/maswali-config.
 const { setRequireTwoOfficerResolution } = await import("../../src/lib/server/resolution-policy.ts");
 const { marketStore } = await import("../../src/lib/server/market-dal.ts");
 const consoleRead = await import("../../src/lib/server/maswali-console.ts");
-const { applySealBatch, parseSealRows, withoutSealedPicks } = await import("../../src/lib/maswali-seal-batch.ts");
+const { applySealBatch, parseSealRows, withoutSealedPicks, SEAL_AUDIT_WARNING } = await import("../../src/lib/maswali-seal-batch.ts");
 const { noteSealDevice, recentNewDeviceSeals, SEAL_DEVICE_ACTION, SEAL_NEW_DEVICE_ACTION, SEAL_DEVICE_UNCHECKED_ACTION } = await import("../../src/lib/server/maswali-integrity.ts");
 const { audit, auditFlush, getAuditByActionsDurable } = await import("../../src/lib/server/audit.ts");
 const { readFileSync } = await import("node:fs");
@@ -282,6 +282,10 @@ const afterClose = new Date(Date.parse((await weekStore.get(w1.id))!.closesAt) +
   ok("6.11a · ⛔ concurrent corrections of one reviewed seal land exactly once",
     raced.filter((r) => r.ok).length === 1 && raced.filter((r) => !r.ok).every((r) => /seal changed/.test(errOf(r)))
       && (await questionStore.get(q3.id))?.outcome === reviewed3.expectedOutcome && Date.parse((await questionStore.get(q3.id))?.sealedAt ?? "") > sameSealClock.getTime());
+  const afterRace = (await weekStore.get(w1.id))!;
+  ok("6.11b · ⭐ the landed correction made the graded set final again, in the same commit: its window restarted (OD-09)",
+    !!afterRace.gradedSetFinalAt && !!afterRace.objectionsCloseAt && Date.parse(afterRace.gradedSetFinalAt) === sameSealClock.getTime(),
+    JSON.stringify({ gradedSetFinalAt: afterRace.gradedSetFinalAt, objectionsCloseAt: afterRace.objectionsCloseAt }));
   const fix = await svc.correctSeal({ weekId: w1.id, slot: 2, outcome: "YES", evidence: "Corrected: the source updated its final score", ...reviewed2, officerId: SEALER, now: new Date(afterClose.getTime() + 3_600_000) });
   const w2c = (await weekStore.get(w1.id))!;
   ok("6.12 · the sealer's correction lands inside the window and RESTARTS it", fix.ok && Date.parse(w2c.objectionsCloseAt!) > end, errOf(fix));
@@ -295,6 +299,75 @@ const afterClose = new Date(Date.parse((await weekStore.get(w1.id))!.closesAt) +
     correctedAudit.length === 2 && correctedAudit.every((entry) => entry.actorId === SEALER));
   const corrected2 = (await questionStore.get(q2.id))!;
   ok("6.13 · ⛔ no correction once the window has closed", !(await svc.correctSeal({ weekId: w1.id, slot: 2, outcome: "NO", evidence: "too late for this one", expectedOutcome: corrected2.outcome!, expectedSealedAt: corrected2.sealedAt!, officerId: SEALER, now: new Date(Date.parse(w2c.objectionsCloseAt!) + 1) })).ok);
+
+  // ── S5-FIX-SRV 2 · a seal, a correction: refused before any write, or landed whole ────────────────
+  const inWindow = new Date(afterClose.getTime() + 2 * 3_600_000);
+  const q4 = (await questionStore.listForWeek(w1.id)).find((q) => q.slot === 4)!;
+  const weekBefore = (await weekStore.get(w1.id))!;
+  /** The week's frozen rules made unreadable (a snapshot version this build cannot read), on this store's own row. */
+  const setRulesVersion = async (v: number) => {
+    if (STORE === "memory") {
+      const row = (globalThis as { __50PICK_MLN_WEEKS?: Map<string, { rulesSnapshot: Record<string, unknown> }> }).__50PICK_MLN_WEEKS!.get(w1.id)!;
+      row.rulesSnapshot = { ...row.rulesSnapshot, v };
+    } else {
+      const { prisma } = await import("../../src/lib/server/prisma.ts");
+      await prisma()!.$executeRaw`UPDATE "MaswaliCycle" SET "rulesSnapshot" = jsonb_set("rulesSnapshot", '{v}', to_jsonb(${v}::int)) WHERE "id" = ${w1.id}`;
+    }
+  };
+  /** A call that must REFUSE: a throw is not a refusal (the officer would read "could not be recorded"). */
+  const settled = async (fn: () => Promise<{ ok: boolean; error?: string }>) => { try { return await fn(); } catch (e) { return { ok: true, error: `THREW ${String((e as Error).message ?? e)}` }; } };
+  const correctedRows = async () => { await auditFlush(); return (await getAuditByActionsDurable(["maswali.question.corrected"], { limit: 500 })).entries.filter((entry) => entry.targetId === q4.id).length; };
+  const auditBefore = await correctedRows();
+  await setRulesVersion(99);
+  try {
+    ok("6.14 · premise · the week's frozen rules are now unreadable", svc.frozenRules((await weekStore.get(w1.id))!) === null);
+    const unreadCorrection = await settled(() => svc.correctSeal({ weekId: w1.id, slot: 4, outcome: "YES", evidence: "Corrected: the source revised its result", expectedOutcome: q4.outcome!, expectedSealedAt: q4.sealedAt!, officerId: SEALER, now: inWindow }));
+    const q4After = (await questionStore.get(q4.id))!, weekAfter = (await weekStore.get(w1.id))!;
+    ok("6.14a · ⛔ a correction whose restarted window cannot be read is REFUSED before any write — the result, its window and the audit untouched",
+      !unreadCorrection.ok && /frozen rules cannot be read/.test(unreadCorrection.error ?? "") && q4After.outcome === q4.outcome && q4After.sealedAt === q4.sealedAt
+        && weekAfter.gradedSetFinalAt === weekBefore.gradedSetFinalAt && weekAfter.objectionsCloseAt === weekBefore.objectionsCloseAt && (await correctedRows()) === auditBefore,
+      JSON.stringify({ r: unreadCorrection, outcome: q4After.outcome, window: weekAfter.objectionsCloseAt }));
+    const unreadSeal = await settled(() => svc.sealQuestion({ weekId: w1.id, slot: 12, outcome: "YES", evidence: "Official result for reserve 2", officerId: SEALER, now: inWindow }));
+    ok("6.14b · ⛔ …and so is a seal: nothing is written on a week whose frozen rules cannot be read",
+      !unreadSeal.ok && /frozen rules cannot be read/.test(unreadSeal.error ?? "") && (await questionStore.listForWeek(w1.id)).find((q) => q.slot === 12)?.outcome === null,
+      JSON.stringify(unreadSeal));
+  } finally {
+    await setRulesVersion(1);
+  }
+  ok("6.14c · premise · the rules read again", svc.frozenRules((await weekStore.get(w1.id))!) !== null);
+
+  // ⭐ The behavioural proof of the one transaction needs a real one: the memory store has none to roll back.
+  if (STORE === "postgres") {
+    const realPatch = weekStore.patch;
+    let patches = 0;
+    weekStore.patch = async (...args: Parameters<typeof realPatch>) => {
+      patches++;
+      if (patches === 2) throw new Error("injected fault: the connection dropped at the restarted window's stamp");
+      return realPatch.apply(weekStore, args);
+    };
+    let thrown = "";
+    try {
+      await svc.correctSeal({ weekId: w1.id, slot: 4, outcome: "YES", evidence: "Corrected: the source revised its result", expectedOutcome: q4.outcome!, expectedSealedAt: q4.sealedAt!, officerId: SEALER, now: inWindow });
+    } catch (e) { thrown = String((e as Error).message ?? e); } finally { weekStore.patch = realPatch; }
+    const q4After = (await questionStore.get(q4.id))!, weekAfter = (await weekStore.get(w1.id))!;
+    ok("6.15 · ⭐ a fault after the corrected result and the window reset were written rolls the WHOLE correction back — the result, its window, and no audit row",
+      thrown.includes("injected fault") && patches === 2 && q4After.outcome === q4.outcome && q4After.sealedAt === q4.sealedAt
+        && weekAfter.gradedSetFinalAt === weekBefore.gradedSetFinalAt && weekAfter.objectionsCloseAt === weekBefore.objectionsCloseAt && (await correctedRows()) === auditBefore,
+      JSON.stringify({ thrown, patches, outcome: q4After.outcome, gradedSetFinalAt: weekAfter.gradedSetFinalAt, window: weekAfter.objectionsCloseAt }));
+  }
+
+  // The act's audit rows are written after its commit, and it says whether they landed.
+  svc.__setMaswaliAuditWriterForTests(async (row) => ({ recorded: row.action !== "maswali.question.corrected" }));
+  let unrecordedFix: Awaited<ReturnType<typeof svc.correctSeal>>;
+  try {
+    unrecordedFix = await svc.correctSeal({ weekId: w1.id, slot: 4, outcome: "YES", evidence: "Corrected: the source revised its result", expectedOutcome: q4.outcome!, expectedSealedAt: q4.sealedAt!, officerId: SEALER, now: inWindow });
+  } finally { svc.__setMaswaliAuditWriterForTests(null); }
+  const q4Fixed = (await questionStore.get(q4.id))!, weekFixed = (await weekStore.get(w1.id))!;
+  ok("6.16 · ⭐ a correction whose audit row was not written still landed whole — its window restarted — and says recorded: false",
+    unrecordedFix.ok && unrecordedFix.recorded === false && q4Fixed.outcome === "YES" && !!weekFixed.objectionsCloseAt
+      && Date.parse(weekFixed.objectionsCloseAt!) > Date.parse(weekBefore.objectionsCloseAt!), JSON.stringify({ r: unrecordedFix, window: weekFixed.objectionsCloseAt }));
+  const fixBack = await svc.correctSeal({ weekId: w1.id, slot: 4, outcome: "NO", evidence: "Corrected back: the source's final reading", expectedOutcome: "YES", expectedSealedAt: q4Fixed.sealedAt!, officerId: SEALER, now: new Date(inWindow.getTime() + 60_000) });
+  ok("6.16b · control · with the writer back, a correction says recorded: true", fixBack.ok && fixBack.recorded === true, JSON.stringify(fixBack));
 }
 
 // ── §7 · two officers ───────────────────────────────────────────────────────
@@ -382,6 +455,9 @@ console.log("\n§7 · the two-officer flag");
   const unrecorded = await applySealBatch([{ slot: 100 }], async () => ({ ok: true }), async () => false, () => "Seal failed");
   ok("7.19 · ⛔ a resolved but unrecorded device audit leaves the landed seal successful and warns",
     unrecorded.ok && unrecorded.sealed[0] === 100 && !!unrecorded.auditWarning);
+  const sealUnrecorded = await applySealBatch([{ slot: 101 }], async () => ({ ok: true, recorded: false }), async () => true, () => "Seal failed");
+  ok("7.19b · ⛔ a landed seal whose own audit rows were not all written warns, though its device audit landed (S5-FIX-SRV 2)",
+    sealUnrecorded.ok && sealUnrecorded.sealed[0] === 101 && sealUnrecorded.auditWarning === SEAL_AUDIT_WARNING, JSON.stringify(sealUnrecorded));
   const auditInput = { officerId: SEALER, weekId: w1.id, slots: [13], ip: "198.51.100.222", userAgent: "injected-device" };
   const written: string[] = [];
   const adminFailed = await noteSealDevice(auditInput, {
@@ -437,11 +513,12 @@ console.log("\n§7 · the two-officer flag");
     write: async () => { throw new Error("injected audit outage"); },
   });
   ok("7.23 · an audit write throw is contained after the irreversible seal", !thrownAudit);
-  ok("7.24 · successful void and correction actions return the nonblocking audit warning",
+  ok("7.24 · successful void, correction and confirmation actions return the nonblocking audit warning — the device's and the act's own rows",
     actionSource.includes("return await noteSealDevice({ officerId, weekId, slots, ip: meta.ip, userAgent: meta.ua });")
-      && actionSource.match(/auditWarning: audited \? null : SEAL_DEVICE_AUDIT_WARNING/g)?.length === 2
+      && actionSource.match(/auditWarning: audited && r\.recorded \? null : SEAL_AUDIT_WARNING/g)?.length === 2
+      && actionSource.includes("auditWarning: r.recorded ? null : CONFIRM_AUDIT_WARNING")
       && consoleSource.includes("onWarning?.(r.auditWarning ?? null)")
-      && consoleSource.match(/setVoidRow\(null\), setSealAuditWarning|setCorrectRow\(null\), setSealAuditWarning/g)?.length === 2);
+      && consoleSource.match(/setVoidRow\(null\), setSealAuditWarning|setCorrectRow\(null\), setSealAuditWarning|setConfirmRow\(null\), setSealAuditWarning/g)?.length === 3);
 }
 
 // ── §8 · the week void ──────────────────────────────────────────────────────

@@ -14,6 +14,9 @@
  * mutation, the shared restore guard, and a byte-identical check at the end.
  * ⛔ Run it detached under the heavy-node lock, never piped, and never beside another red drive: it rewrites live files.
  * ⚠️ This file carries no backslash: line breaks are built from their code points.
+ * ⭐ S5-FIX-SRV 2 · `engine-pg` runs the WHOLE two-store suite on a scratch Postgres (`db-scratch --run`, as
+ * `red:house-bot-money`'s `money-pg`): a seal's one transaction is provable only where there is a transaction to roll back.
+ * Each `engine-pg` mutation takes minutes; `--only` re-proves one.
  */
 import { readFileSync, writeFileSync, renameSync, unlinkSync, existsSync } from "node:fs";
 import { execSync } from "node:child_process";
@@ -29,10 +32,12 @@ const ONLY = onlyArg ? onlyArg.split(",").map((x) => x.trim()).filter(Boolean) :
 const DEFECTS = ONLY.length ? MUTATIONS.filter((d) => ONLY.some((o) => d.name.startsWith(o))) : MUTATIONS;
 const SUITES = {
   engine: "npx tsx scripts/lib/maswali-engine-child.mts",
+  "engine-pg": "npx tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-engine.test.mts",
   score: "npx tsx scripts/maswali-score.test.mts",
   money: "npx tsx scripts/maswali-money.test.mts",
 };
 const MEM_ENV = { ...process.env, DATABASE_URL: "", USE_PRISMA_DAL: "false", HB_MONEY_STORE: "memory" };
+const envFor = (suite) => (suite.endsWith("-pg") ? process.env : MEM_ENV);
 const lf = (s) => s.split(CR + LF).join(LF);
 
 const sha = (p) => createHash("sha256").update(readFileSync(p)).digest("hex");
@@ -44,7 +49,7 @@ const write = (p, s) => {
 };
 const run = (suite) => {
   try {
-    const out = execSync(SUITES[suite], { stdio: "pipe", encoding: "utf8", maxBuffer: 256 * 1024 * 1024, env: MEM_ENV, timeout: 10 * 60_000 });
+    const out = execSync(SUITES[suite], { stdio: "pipe", encoding: "utf8", maxBuffer: 256 * 1024 * 1024, env: envFor(suite), timeout: 20 * 60_000 });
     return { red: false, output: out };
   } catch (e) {
     if (isConsoleStop(e)) requestStop("the child exited with STATUS_CONTROL_C_EXIT — a console stop (Ctrl-C / Ctrl-Break) reached this drive");
