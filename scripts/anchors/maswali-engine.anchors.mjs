@@ -373,6 +373,47 @@ export const MUTATIONS = [
     expect: "9.7 · ⛔ a confirmation on a SETTLED week is refused",
     suite: "engine",
   },
+  // ── S5-FIX-SRV 6 · every drafted field is checked by the server, and the stores keep the same values ─────────────────
+  {
+    name: "(50) the server no longer checks the event kind: a raw store error (memory) or the database's CHECK reaches the officer",
+    file: SVC,
+    from: "  if (!isEventKind(q.eventKind)) return `${slotLabel(slot)}: the event kind must be SPORT, PRICE, WEATHER or ANNOUNCEMENT.`;",
+    to: "",
+    expect: "1.5a · ⛔ an event kind outside SPORT, PRICE, WEATHER, ANNOUNCEMENT",
+    suite: "engine",
+  },
+  {
+    name: "(51) the memory store keeps an event kind the database's CHECK refuses (the stores diverge again)",
+    file: DAL,
+    from: "  if (\"eventKind\" in fields && !isEventKind(fields.eventKind)) throw new Error(`MaswaliQuestion_event_kind_check: ${String(fields.eventKind)}`);",
+    to: "",
+    expect: "1.5e · ⛔ the store itself refuses that event kind on BOTH stores",
+    suite: "engine",
+  },
+  {
+    name: "(52) a probability outside 0…1, or not a number, is stored",
+    file: SVC,
+    from: "  if (chance != null && (typeof chance !== \"number\" || !Number.isFinite(chance) || chance < 0 || chance > 1)) {",
+    to: "  if (false) {",
+    expect: "1.5b · ⛔ a probability that is not a number from 0 to 1",
+    suite: "engine",
+  },
+  {
+    name: "(53) a text field that is not text reaches `.trim()` and throws",
+    file: SVC,
+    from: "    if (typeof q[k as keyof DraftQuestionInput] !== \"string\") return `${slotLabel(slot)}: ${name} must be text.`;",
+    to: "    if (false) return `${name}`;",
+    expect: "1.5c · ⛔ a text field that is not text is refused by name",
+    suite: "engine",
+  },
+  {
+    name: "(57) the memory store keeps a probability finer than the column PostgreSQL rounds it to",
+    file: SVC,
+    from: "    probabilityEstimate: chance == null ? null : Math.round(chance * 10_000) / 10_000,",
+    to: "    probabilityEstimate: chance ?? null,",
+    expect: "1.16 · ⛔ a probability of 0.55555 is stored as 0.5556 on both stores",
+    suite: "engine",
+  },
   // ── S5-FIX-SRV 5 · the confirmation that makes the week void certain stops its sales ─────────────────────────────
   {
     name: "(49) a confirmation that makes the week void certain lets it keep selling",

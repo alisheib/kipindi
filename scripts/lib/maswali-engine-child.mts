@@ -95,6 +95,29 @@ const nowDraft = new Date(W2 - 3 * DAY);
   ok("1.4 · ⛔ an event start in a clock change's repeated hour is refused, never guessed", !amb.ok && /happens twice/.test(errOf(amb)), errOf(amb));
   const zone = await svc.createWeek({ weekStartMs: W2, questions: questions(W2, (i) => (i === 0 ? { eventZone: "Mars/Olympus" } : {})), officerId: DRAFTER, now: nowDraft });
   ok("1.5 · ⛔ an unknown zone is refused", !zone.ok && /zone/.test(errOf(zone)));
+  // ⭐ S5-FIX-SRV 6 · the server checks every drafted field itself, in the console's words. A throw is NOT a refusal: the
+  //    officer would read a raw error (or, on PostgreSQL, the CHECK's), and the memory store used to keep it instead.
+  const asRefusal = async (over: (i: number) => Record<string, unknown>) => {
+    try { return await svc.createWeek({ weekStartMs: W2, questions: questions(W2, over) as never, officerId: DRAFTER, now: nowDraft }); }
+    catch (e) { return { ok: true as const, error: `THREW ${String((e as Error).message ?? e)}` }; }
+  };
+  const kind = await asRefusal((i) => (i === 0 ? { eventKind: "OTHER" } : {}));
+  ok("1.5a · ⛔ an event kind outside SPORT, PRICE, WEATHER, ANNOUNCEMENT is the console's refusal, never a database error (finding 6)",
+    !kind.ok && /M1: the event kind must be SPORT, PRICE, WEATHER or ANNOUNCEMENT/.test(errOf(kind)), errOf(kind));
+  const chances = await Promise.all([1.5, -0.1, Number.NaN, "0.5"].map((p) => asRefusal((i) => (i === 1 ? { probabilityEstimate: p } : {}))));
+  ok("1.5b · ⛔ a probability that is not a number from 0 to 1 (1.5, -0.1, NaN, \"0.5\") is refused",
+    chances.every((r) => !r.ok && /M2: the estimated probability must be a number from 0 to 1/.test(errOf(r))), chances.map(errOf).join(" | "));
+  const texts = await Promise.all([{ textEn: 42 }, { criterionSw: null }, { sourceUrl: ["https://x"] }, { fallbackSourceUrl: 7 }].map((o) => asRefusal((i) => (i === 2 ? o : {}))));
+  ok("1.5c · ⛔ a text field that is not text is refused by name, never a TypeError",
+    texts.every((r) => !r.ok && /^M3: the .+ must be text\.$/.test(errOf(r))), texts.map(errOf).join(" | "));
+  ok("1.5d · …and none of them stored a week", (await weekStore.list()).length === 0);
+  const checkRow = { id: "mlq_event_kind_check", role: "MAIN" as const, ordinal: 1, slot: 1, category: "sports", textEn: "x", textSw: "x", textZh: "x",
+    criterionEn: "x", criterionSw: "x", criterionZh: "x", sourceUrl: "https://www.nbc.co.tz/results", sourceDomain: "www.nbc.co.tz", fallbackSourceUrl: null,
+    fallbackSourceDomain: null, readingTolerance: null, eventKind: "OTHER" as never, eventStartsAt: new Date(W2).toISOString(), eventZone: "Africa/Dar_es_Salaam",
+    voidDeadlineAt: new Date(W2).toISOString(), probabilityEstimate: null, probabilitySource: null, linkedMarketId: null };
+  const checkErr = await throwsAsync(() => questionStore.createMany("mlw_no_such_cycle", [checkRow]));
+  ok("1.5e · ⛔ the store itself refuses that event kind on BOTH stores, by the database's own CHECK name (MaswaliQuestion_event_kind_check)",
+    checkErr !== null && checkErr.includes("MaswaliQuestion_event_kind_check"), String(checkErr).slice(0, 200));
   const past = await svc.createWeek({ weekStartMs: W2, questions: questions(W2), officerId: DRAFTER, now: new Date(W2 + 6 * DAY) });
   ok("1.6 · ⛔ a week whose close has passed is refused", !past.ok);
 }
@@ -113,6 +136,10 @@ const week = created.ok ? created.week : (null as never);
   ok("1.14 · ⛔ the same week twice is refused", !again.ok && /already exists/.test(errOf(again)));
   const drive = await svc.createWeek({ weekStartMs: W2, visibility: "DRIVE", questions: questions(W2), officerId: DRAFTER, now: nowDraft });
   ok("1.15 · a DRIVE week shares the ISO week under its own code (MLD-…), next in the chain", drive.ok && /^MLD-/.test(drive.week.code) && drive.week.seq === 2);
+  // S5-FIX-SRV 6 · a probability finer than the column holds is kept to four decimals on BOTH stores (Decimal(5,4)).
+  const fine = await editSlot({ weekId: week.id, slot: 4, changes: { probabilityEstimate: 0.55555 }, officerId: DRAFTER });
+  ok("1.16 · ⛔ a probability of 0.55555 is stored as 0.5556 on both stores — memory keeps exactly what PostgreSQL keeps",
+    fine.ok && (await questionStore.listForWeek(week.id)).find((q) => q.slot === 4)?.probabilityEstimate === 0.5556, errOf(fine));
 }
 
 // ── §2 · the open refuses ───────────────────────────────────────────────────

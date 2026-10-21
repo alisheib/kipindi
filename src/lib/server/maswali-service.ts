@@ -31,7 +31,7 @@ import { isSourceTrusted, seedDefaultSources } from "./source-registry";
 import { readRequireTwoOfficerResolution } from "./resolution-policy";
 import { getMaswaliConfig, readMaswaliConfigFresh, readMaswaliRulesSnapshot, snapshotMaswaliRules, type MaswaliRulesSnapshot } from "./maswali-config";
 import { licenceBasisAllowsOpen, readLicenceBasisFresh } from "./maswali-licence";
-import { questionStore, ticketStore, weekStore, type DraftQuestionFields, type EventKind, type StoredQuestion, type StoredWeek, type WeekVisibility } from "./maswali-dal";
+import { isEventKind, questionStore, ticketStore, weekStore, type DraftQuestionFields, type EventKind, type StoredQuestion, type StoredWeek, type WeekVisibility } from "./maswali-dal";
 import { MARKET_CATEGORIES, type MarketCategory } from "@/lib/markets/categories";
 import { EAT_OFFSET_MS, eatWeekAt, eatWeekCode, eatWeekStartMs } from "@/lib/eat-day";
 import { zonedToUtcMs } from "@/lib/maswali-time";
@@ -81,10 +81,35 @@ const hostOf = (url: string | null | undefined): string | null => {
   try { return new URL(url).hostname.toLowerCase(); } catch { return null; }
 };
 
+/** The drafted fields that must be text, and the optional ones that may be absent, each named as a refusal names it. */
+const DRAFT_TEXT_FIELDS = {
+  category: "the category", textEn: "the English question", textSw: "the Swahili question", textZh: "the Chinese question",
+  criterionEn: "the English criterion", criterionSw: "the Swahili criterion", criterionZh: "the Chinese criterion",
+  sourceUrl: "the source", eventLocalStart: "the event start", eventZone: "the event's time zone",
+} as const satisfies Partial<Record<keyof DraftQuestionInput, string>>;
+const DRAFT_OPTIONAL_TEXT_FIELDS = {
+  fallbackSourceUrl: "the fallback source", readingTolerance: "the reading tolerance", probabilitySource: "the probability's source",
+  linkedMarketId: "the linked market",
+} as const satisfies Partial<Record<keyof DraftQuestionInput, string>>;
+
 /** A drafted question's stored fields, or the reason it cannot be stored. */
 function draftFields(q: DraftQuestionInput, finalDeadlineMs: number, voidDeadlineHours: number): DraftQuestionFields | string {
   let slot: number;
   try { slot = slotOf(q.role, q.ordinal); } catch (e) { return (e as Error).message; }
+  // ⛔ S5 review 6 · every field's type and range is checked HERE, in the console's own words — never a TypeError, never a
+  //    raw database error, and never a value one store keeps and the other refuses (the stores diverged on eventKind).
+  for (const [k, name] of Object.entries(DRAFT_TEXT_FIELDS)) {
+    if (typeof q[k as keyof DraftQuestionInput] !== "string") return `${slotLabel(slot)}: ${name} must be text.`;
+  }
+  for (const [k, name] of Object.entries(DRAFT_OPTIONAL_TEXT_FIELDS)) {
+    const v = q[k as keyof DraftQuestionInput];
+    if (v != null && typeof v !== "string") return `${slotLabel(slot)}: ${name} must be text.`;
+  }
+  if (!isEventKind(q.eventKind)) return `${slotLabel(slot)}: the event kind must be SPORT, PRICE, WEATHER or ANNOUNCEMENT.`;
+  const chance = q.probabilityEstimate;
+  if (chance != null && (typeof chance !== "number" || !Number.isFinite(chance) || chance < 0 || chance > 1)) {
+    return `${slotLabel(slot)}: the estimated probability must be a number from 0 to 1.`;
+  }
   const start = zonedToUtcMs(q.eventLocalStart, q.eventZone);
   if (!start.ok) {
     const why = { malformed: "is not a date and time (YYYY-MM-DDTHH:MM)", unknown_zone: "names a zone the platform does not know",
@@ -104,7 +129,9 @@ function draftFields(q: DraftQuestionInput, finalDeadlineMs: number, voidDeadlin
     sourceUrl: q.sourceUrl.trim(), sourceDomain, fallbackSourceUrl: q.fallbackSourceUrl?.trim() || null, fallbackSourceDomain: fallbackDomain,
     readingTolerance: q.readingTolerance?.trim() || null, eventKind: q.eventKind,
     eventStartsAt: new Date(start.utcMs).toISOString(), eventZone: q.eventZone, voidDeadlineAt: new Date(voidDeadlineMs).toISOString(),
-    probabilityEstimate: q.probabilityEstimate ?? null, probabilitySource: q.probabilitySource?.trim() || null, linkedMarketId: q.linkedMarketId ?? null,
+    // Held to the column's four decimals (Decimal(5,4)) on both stores: memory keeps exactly what PostgreSQL keeps.
+    probabilityEstimate: chance == null ? null : Math.round(chance * 10_000) / 10_000,
+    probabilitySource: q.probabilitySource?.trim() || null, linkedMarketId: q.linkedMarketId ?? null,
   };
 }
 

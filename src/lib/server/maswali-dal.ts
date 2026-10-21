@@ -29,6 +29,13 @@ import type { MaswaliVoidReason } from "@/lib/maswali-void-reason";
 
 export type WeekVisibility = "PUBLIC" | "DRIVE";
 export type EventKind = "SPORT" | "PRICE" | "WEATHER" | "ANNOUNCEMENT";
+/** The kinds the database's `MaswaliQuestion_event_kind_check` allows; the memory store refuses every other the same way. */
+export const EVENT_KINDS: readonly EventKind[] = ["SPORT", "PRICE", "WEATHER", "ANNOUNCEMENT"];
+export const isEventKind = (v: unknown): v is EventKind => typeof v === "string" && (EVENT_KINDS as readonly string[]).includes(v);
+/** The memory twin of `MaswaliQuestion_event_kind_check` (S5 review 6: the stores diverged — memory kept any string). */
+function memEventKindCheck(fields: { eventKind?: unknown }): void {
+  if ("eventKind" in fields && !isEventKind(fields.eventKind)) throw new Error(`MaswaliQuestion_event_kind_check: ${String(fields.eventKind)}`);
+}
 
 export type StoredWeek = {
   id: string;
@@ -433,6 +440,8 @@ const memoryQuestions: QuestionStore = {
   async get(id) { const q = memQuestions.get(id); return q ? copyQuestion(q) : null; },
   async createMany(cycleId, rows) {
     const existing = [...memQuestions.values()].filter((q) => q.cycleId === cycleId);
+    // The database checks a row's CHECKs before its keys: the same order here.
+    for (const r of rows) memEventKindCheck(r);
     for (const r of rows) {
       if (existing.some((q) => q.slot === r.slot) || rows.filter((x) => x.slot === r.slot).length > 1) throw new Error(`MaswaliQuestion_cycleId_slot_key: ${r.slot}`);
       if (r.slot !== (r.role === "MAIN" ? r.ordinal : r.ordinal + 10)) throw new Error("MaswaliQuestion_ordinal_check");
@@ -444,6 +453,7 @@ const memoryQuestions: QuestionStore = {
   },
   async editDraftQuestion(id, fields) {
     for (const k of Object.keys(fields)) if (!DRAFT_EDITABLE.has(k as keyof DraftQuestionFields)) throw new Error(`questionStore.editDraftQuestion: '${k}' is not a draft field`);
+    memEventKindCheck(fields);
     const cur = memQuestions.get(id);
     if (cur) memQuestions.set(id, { ...cur, ...fields });
   },
@@ -451,6 +461,7 @@ const memoryQuestions: QuestionStore = {
     const updated = new Map<string, StoredQuestion>();
     for (const { id, fields } of edits) {
       for (const k of Object.keys(fields)) if (!DRAFT_EDITABLE.has(k as keyof DraftQuestionFields)) throw new Error(`questionStore.editDraftQuestions: '${k}' is not a draft field`);
+      memEventKindCheck(fields);
       if (updated.has(id)) throw new Error(`questionStore.editDraftQuestions: duplicate question ${id}`);
       const cur = memQuestions.get(id);
       if (!cur) throw new Error(`questionStore.editDraftQuestions: missing question ${id}`);
