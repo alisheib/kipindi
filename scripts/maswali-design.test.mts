@@ -1048,9 +1048,37 @@ const slipRefusalDefects = (src: string) => {
   ok("5.P13′ PLANT · the purchase result's \"Nothing was charged.\" put back on the slip is reported", old !== read(SLIP_PAGE) && slipRefusalDefects(old).length > 0);
 }
 
+// P18 · the slip's two notices are the kit's Callout, never a hand-rolled copy
+const kitNoticeDefects = (src: string) => {
+  const s = squash(code(src));
+  const d: string[] = [];
+  if (/border-warning-border|bg-warning-bg|text-warning-fg|<I\.warning\b/.test(s)) d.push("the slip paints its own warning box");
+  if (!s.includes("<Callout tone=\"warning\">{moneyRuns(fill(t.millionea.lowBalanceBody, { balance: balanceText, price: priceText }))}</Callout>")) d.push("the short balance is not the kit's warning Callout");
+  if (!s.includes("<Callout tone=\"neutral\" title={t.millionea.refusalIncomplete}>")) d.push("the incomplete refusal is not the kit's neutral Callout");
+  if (/<div className="mat-flat flex gap-2 rounded-control px-3 py-2">/.test(s)) d.push("the old hand-rolled refusal box is back");
+  return d;
+};
+{
+  const d = kitNoticeDefects(read(SLIP));
+  const { MaswaliSlipConfirm } = req("../src/components/maswali/maswali-slip.tsx") as { MaswaliSlipConfirm: (p: Record<string, unknown>) => unknown };
+  const sheet = (l: L3) => inApp(l, h(MaswaliSlipConfirm as never, {
+    open: true, onClose() {}, week: 49, questions: [], picks: [], price: 1_000, balance: 400, ticketNumber: 1, cap: 10, cancelUntil: null, pct: 13,
+    lowBalance: true, depositDoor: null, onCommit() {},
+  } as never));
+  const drawn = LOCALES.filter((l) => {
+    const m = sheet(l);
+    return !(m.includes('role="note"') && m.includes("border-warning-border bg-warning-bg") && textOf(m).includes(fill(dict[l].millionea.lowBalanceBody, { balance: "TZS 400", price: "TZS 1,000" })));
+  });
+  ok("5.P18 · the slip's two notices are the kit's own Callout — the confirm's short balance its warning tone (drawn: the kit's note, frame and wash around the words, in three languages), the incomplete ticket its neutral tone — never a hand-rolled copy",
+    d.length === 0 && drawn.length === 0, j({ d, drawn }));
+  const oldBox = read(SLIP).replace("<Callout tone=\"warning\">{moneyRuns(fill(t.millionea.lowBalanceBody, { balance: balanceText, price: priceText }))}</Callout>",
+    "<div className=\"flex gap-2 rounded-control border border-warning-border bg-warning-bg px-3 py-2\"><I.warning s={18} className=\"mt-px shrink-0 text-warning-fg\" /><p className=\"text-body-sm text-text\">{moneyRuns(fill(t.millionea.lowBalanceBody, { balance: balanceText, price: priceText }))}</p></div>");
+  ok("5.P18′ PLANT · the old hand-rolled short-balance box put back is reported", oldBox !== read(SLIP) && kitNoticeDefects(oldBox).some((x) => x.includes("paints its own")));
+}
+
 console.log(`\n${"═".repeat(70)}\n  MASWALI DESIGN: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run prints; VIS-P's fact, example and word plants brought it to 110, and S5-FIX-PLAYER's §5
- *  (P13) to 117. */
-const MIN_ASSERTIONS = 117;
+ *  (P13, P18) to 119. */
+const MIN_ASSERTIONS = 119;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

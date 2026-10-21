@@ -3,6 +3,7 @@
 import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { CloseX, Modal } from "@/components/ui/modal";
+import { Callout } from "@/components/ui/callout";
 import { I } from "@/components/ui/glyphs";
 import { SteppedProgress } from "@/components/markets/stepped-progress";
 import { useCountdown } from "@/components/updown/round-countdown";
@@ -298,17 +299,17 @@ export function MaswaliSlip({
           <p aria-live="polite" aria-atomic="true" className="sr-only" data-testid="millionea-slip-live">
             {showRefusal && unanswered.length > 0 ? `${t.millionea.refusalIncomplete}. ${refusalBody}` : ""}
           </p>
+          {/* The refusal's words and the way to the first unanswered question, in the kit's neutral notice (S5-FIX-PLAYER
+              P18: it was a hand-rolled copy of `Callout`). Its words reach a screen reader through the region above. */}
           {showRefusal && unanswered.length > 0 && (
-            <div className="mat-flat flex gap-2 rounded-control px-3 py-2">
-              <I.info s={18} className="mt-px shrink-0 text-text-muted" />
-              <div className="flex flex-col gap-1">
-                <span className="font-display text-body font-semibold text-text">{t.millionea.refusalIncomplete}</span>
-                <span className="text-body-sm text-text-muted">{refusalBody}</span>
-                <a href={`#q-${labelOf(unanswered[0])}`} className="inline-flex items-center self-start text-body-sm text-text-link hover:text-text-linkHover" style={{ minHeight: "var(--h-control-md)" }}>
+            <Callout tone="neutral" title={t.millionea.refusalIncomplete}>
+              <span className="flex flex-col items-start gap-1">
+                <span>{refusalBody}</span>
+                <a href={`#q-${labelOf(unanswered[0])}`} className="inline-flex items-center text-body-sm text-text-link hover:text-text-linkHover" style={{ minHeight: "var(--h-control-md)" }}>
                   {fill(t.millionea.jumpTo, { n: labelOf(unanswered[0]) })}
                 </a>
-              </div>
-            </div>
+              </span>
+            </Callout>
           )}
         </div>
         {/* From 1280: the sticky panel replaces the rail — progress, the picks, the price and the cap, the pay control. */}
@@ -444,10 +445,8 @@ export function MaswaliSlipConfirm({
         </div>
         {lowBalance && (
           <>
-            <div className="flex gap-2 rounded-control border border-warning-border bg-warning-bg px-3 py-2">
-              <I.warning s={18} className="mt-px shrink-0 text-warning-fg" />
-              <p className="text-body-sm text-text">{moneyRuns(fill(t.millionea.lowBalanceBody, { balance: balanceText, price: priceText }))}</p>
-            </div>
+            {/* The kit's warning notice (S5-FIX-PLAYER P18: it was a hand-rolled copy): the player must deposit to go on. */}
+            <Callout tone="warning">{moneyRuns(fill(t.millionea.lowBalanceBody, { balance: balanceText, price: priceText }))}</Callout>
             {depositDoor}
           </>
         )}

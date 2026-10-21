@@ -622,9 +622,11 @@ section("11 · C3 the warning census counts the family in every spelling, and ev
   // the Millionea confirm's short-balance box, its frame and wash (`border-warning-border bg-warning-bg`; its glyph is the
   // ink, `text-warning-fg`) — ruled in r8a §3 = 64. S5 measured 66 with the shared warning plate. Phosphor 2a
   // centralised five caller paints on that plate: agent apply's rejected disc wash and ink (−2), the KYC page's
-  // correction disc wash (−1), and the KYC gate's action and held washes (−2) = 61. R8-A pins each file's exact
-  // count; this plant proves the old `--warning-fg`-only net still misses the family.
-  ok(`11.2 PLANT · the \`--warning-fg\`-only census misses ${old.length} warning paints after the shared plate replaces five caller paints`, old.length === 61, String(old.length));
+  // correction disc wash (−1), and the KYC gate's action and held washes (−2) = 61. S5-FIX-PLAYER P18 (2026-10-21) gave
+  // the Millionea short-balance box back to the kit (`<Callout tone="warning">`, which paints the family itself): its frame
+  // and wash leave the slip (−2) = 59. R8-A pins each file's exact count; this plant proves the old `--warning-fg`-only net
+  // still misses the family.
+  ok(`11.2 PLANT · the \`--warning-fg\`-only census misses ${old.length} warning paints after the shared plate replaces five caller paints`, old.length === 59, String(old.length));
   const NEW = ["src/app/auth/forgot-password/page.tsx", "src/app/profile/account/privacy-request-form.tsx", "src/components/rg/limit-usage.tsx"];
   ok(`11.2 PLANT · the old \`--warning-fg\`-only census misses warning paint in all three named surfaces (${old.length} misses today)`,
     NEW.every((f) => old.some((site) => site.startsWith(`${f}:`))), old.slice(0, 4).join(" | "));
