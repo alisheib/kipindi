@@ -66,6 +66,11 @@ Every lane committed and pushed at the stop; a commit marked "WIP … not verifi
   adversarial 194/202 …); e2e:maswali-fault 16/0; red:maswali-money-path 73/73, red:dal-parity 285/285. Owed: the S17 rush
   (no measured rush figures), the S7-F7 6–8 render read, a refused release lifting thousands of holds one by one (minutes);
   after S5 lands: merge, re-pin D19a, red:house-bot-c5 and red:house-bot-console, test:all and the money battery.
+- ⚠️ OMEGA only: the S6 notices lane's background loops (Git Bash pids 194830, 200821, 194836) survived the stop and were
+  running its red twins in `C:\50pick-ssd\kipindi-mln-not` (slot 4) — the session's classifier refused to kill them, so
+  Ali decides. Before using that tree: `git -C C:/50pick-ssd/kipindi-mln-not status --short` must be clean; if
+  `src/lib/server/maswali-settlement.ts` shows modified, `git checkout -- src/lib/server/maswali-settlement.ts` and delete
+  `scripts/.red-maswali-money-path.lock` (a red twin's plant — never commit it). The pushed branch is clean.
 - `mln-s6-notices` (`bd74c982c`): round 17 COMPLETE — M5, L1, H2, H3, M3, M4, L2, L3, L4 in 14 commits, both Codex attempts
   reconciled (their branches archived in `F:\kipindi-archive\codex-s6n-attempts-20261021.bundle` and deleted);
   maswali-notify 138/0 mem + 144/0 PG, maswali-claims 635/0, red:maswali-claims 29/29, ~60 derived light suites green.
