@@ -362,9 +362,15 @@ function doubtCeiling(src: Sources): { ms: number; parts: Record<string, number>
   const delays = /const DELAYS_MS = \[([^\]]*)\]/.exec(src.retry)?.[1];
   const jitter = /const JITTER = ([\d.]+)/.exec(src.retry)?.[1];
   const pool = /searchParams\.set\("pool_timeout", "(\d+)"\)/.exec(src.prisma)?.[1];
-  const run = /timeout:\s*([\d_]+),\s*\/\/ 30s/.exec(src.locks)?.[1];
   const wait = /maxWait:\s*([\d_]+),\s*\/\/ 10s/.exec(src.locks)?.[1];
   const inner = functionBody(decomment(src.service), "async function buyPositionInner(");
+  // 2026-10-21 · U43 Release B (c29cb7526) made the lock's run budget a per-call option (30 s to 10 min, for the emergency
+  // void's market-wide restitution): the `$transaction` takes `timeout: timeoutMs`, which `withLock` defaults to 30 s. A bet
+  // names no budget of its own — so its run term is that default, read where it is set, and the ceiling refuses to price a
+  // bet path that ever names one (it would then have to be recomputed from that budget).
+  const runDefault = /const timeoutMs = options\?\.timeoutMs \?\? ([\d_]+);/.exec(src.locks)?.[1];
+  const runUsed = /\btimeout: timeoutMs,/.test(src.locks) && /return withAdvisoryLock\(key, fn, timeoutMs\);/.test(src.locks);
+  const run = runUsed && inner && !/\btimeoutMs\b/.test(inner) ? runDefault : undefined;
   if (!admission || !delays || !jitter || !pool || !run || !wait || !inner) return null;
   const n = (s: string) => Number(s.replace(/_/g, ""));
   const beforeLock = inner.slice(0, inner.indexOf("withLock(`wallet:"));
@@ -1397,6 +1403,12 @@ if (!PROVE_RED) {
       impl: withSS({ afterKeyRead: (it, kp, at) => SS.afterKeyRead(it.settledAt === null ? { ...it, settledAt: it.sentAt ?? 0 } : it, kp, at) }) },
     { name: "DOUBT_SETTLE_MS below the pinned ceiling (30 s)", expect: /^3\.ceiling /,
       impl: withSS({ DOUBT_SETTLE_MS: 30_000 } as Partial<typeof SS>) },
+    // 2026-10-21 · the lock's run budget became a per-call option in U43 Release B (c29cb7526); both ways a bet could
+    // outgrow the 30 s it is priced at must break the ceiling.
+    { name: "a bet's wallet lock names its own ten-minute budget", expect: /^3\.ceiling /,
+      impl: withSrc({ service: SOURCES.service.replace("bonusStakeTzs: bonusPart } };\n  });\n  } catch (err) {", "bonusStakeTzs: bonusPart } };\n  }, { timeoutMs: 600_000 });\n  } catch (err) {") }) },
+    { name: "withLock's default run budget raised to ten minutes", expect: /^3\.ceiling /,
+      impl: withSrc({ locks: SOURCES.locks.replace("const timeoutMs = options?.timeoutMs ?? 30000;", "const timeoutMs = options?.timeoutMs ?? 600000;") }) },
     { name: "a keyed reopen that trusts another bet's key (another side)", expect: /^3\.marker /,
       impl: withSS({ markerIntentFor: (raw, b, now) => { const r = SS.markerIntentFor(raw, b, now); if (r) return r; try { const k = (JSON.parse(raw ?? "") as { k?: string }).k; return SS.isIntentKey(k) ? { key: k, stake: 5_000 } : null; } catch { return null; } } }) },
     { name: "the key dropped when the address's stake differs from the marker's (the old full-bet match)", expect: /^3\.marker /,
