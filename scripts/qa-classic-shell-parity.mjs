@@ -164,7 +164,7 @@
  * beside it (`.rejected.json` for a baseline that failed a check, `.current.json` for a compare that found differences).
  */
 import { chromium } from "playwright";
-import { maskPositionCountdown, steadyTimeLeftLayout, timeLeftPaths } from "./qa/classic-parity-noise.mjs";
+import { maskPositionCountdown } from "./qa/classic-parity-noise.mjs";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -374,7 +374,14 @@ const TIED_CARDS = BOOK_NORMALISERS.find((n) => n.id === "tied-cards").hands;
  *   · watchlist-date-leaves  only the seeded player's /watchlist card time leaves' complete locale EAT moments are
  *                  canonicalized before geometry. The 870772af same-head null found their HTML already read as ~date
  *                  under eat-dates, while their digit glyph widths and right-aligned margin still differed in 9–10
- *                  layout lines at en/sw × 360/1280. B.9 requires one validated leaf per captured card, zero elsewhere.
+ *                  layout lines at en/sw × 360/1280. Since U43 B4 (1384383fd) a card states that moment in its top row
+ *                  (`.mcardp-closes`, BOOK_WATCHLIST_DATE), drawn only while the card takes bets, the very predicate of
+ *                  the follow lens "open" (isFollowOpen: LIVE and selection open), and main 4471bb44's null pair saw
+ *                  the same noise there: 12 of 569 layout lines in each player /watchlist cell, the three open
+ *                  labels and their live marks. B.9 requires exactly seed-watchlist's byLens.open (at least one) time
+ *                  leaves in each /watchlist cell, every one canonicalized, and zero elsewhere. No box is masked after
+ *                  the read (classic-parity-noise.mjs retired its right-edge mask): a real change of the row moves a
+ *                  box, which --prove-red's P.1c, P.8y and the served /watchlist plants hold.
  * The pair that showed it is 090bbf76's (BOOK_NORMALISE_ON's eat-dates records it): its ninth differing field, the
  * guest's / at 360 in English (regions.main.layout, 4 of 556 element lines), was the payment rail's four logos
  * (/pay/mpesa.svg, airtel.png, halopesa.png and mixx.png, loading="lazy" at y≈5380 in a 40×40 slot each), 0x0 on the
@@ -1556,11 +1563,9 @@ function applyGlyphSwap(field, text, glyphs) {
 }
 /** Every field that differs, split into the named EXPECTED differences and everything else. */
 function diffCells(route, base, cur, baseStore, curStore, list = EXPECTED_DIFFS) {
+  // No box is masked here: the /watchlist moment is canonical before geometry (BOOK_SETTLE watchlist-date-leaves), and
+  // the retired right-edge mask (steadyTimeLeftLayout) hid a real change of its label's width (classic-parity-noise.mjs).
   const a = fieldsOf(base, baseStore), b = fieldsOf(cur, curStore);
-  if (list === BOOK_EXPECTED_DIFFS && a["regions.main.layout"] && b["regions.main.layout"]) {
-    a["regions.main.layout"] = steadyTimeLeftLayout(a["regions.main.layout"], a["regions.main.html"], baseStore);
-    b["regions.main.layout"] = steadyTimeLeftLayout(b["regions.main.layout"], b["regions.main.html"], curStore);
-  }
   const unexpected = [], expected = [];
   for (const field of [...new Set([...Object.keys(a), ...Object.keys(b)])].sort()) {
     const was = a[field] ?? "(absent)", now = b[field] ?? "(absent)";
@@ -1850,9 +1855,10 @@ function bookChecks(book, seed, store) {
   const tally = cardTally(book);
   const head = (c) => (c.head ? store[c.head] ?? "" : null);
   const headless = (c) => head(c) === null || !/^canonical \S/m.test(head(c)) || !/^og:url \S/m.test(head(c));
-  const watchLens = seed?.watchlist?.reply?.byLens ?? {};
-  const watchSlots = watchLens.all;
-  const watchMoments = watchLens.open + watchLens.progress;
+  // A classic card states its moment only while it takes bets (BOOK_WATCHLIST_DATE), the follow lens "open": one time
+  // leaf per open row, each canonicalized. With no open row there is nothing the canonical moment was proved on.
+  const watchMoments = seed?.watchlist?.reply?.byLens?.open;
+  const watchPremise = Number.isInteger(watchMoments) && watchMoments >= 1;
   return [
     { id: "B.0", name: `the book was seeded through dev-test doors that already exist — seed-markets, seed-player-portfolio { markets: ${BOOK.markets} }, seed-watchlist — and every reply holds what A8 item 1 asks; every book cell was captured (${size})`,
       fails: [...verdict.problems, ...(all.length === size && keys.every(([k]) => k in (book ?? {})) ? [] : [`the book holds ${all.length} cells`]),
@@ -1873,10 +1879,11 @@ function bookChecks(book, seed, store) {
       fails: CARD_STATES.filter((s) => !((tally.get(s) ?? 0) > 0)).map((s) => `no ${CARD_LABELS[s]} card in any book cell`) },
     { id: "B.8", name: "only React's DEV performance-track sentence is ever filed as DEV-only in a book cell — every other page error is compared",
       fails: live.filter(([, c]) => (c.devOnly ?? []).some((x) => !isDevMeasure(x))).map(([k, c]) => `${k} (filed DEV-only: ${c.devOnly.find((x) => !isDevMeasure(x))})`) },
-    { id: "B.9", name: `only complete locale date leaves were canonicalized before geometry: one home featured and ${HOME_BOARD_SIZE} board rows, /watchlist's open and progress moments, zero elsewhere`,
+    { id: "B.9", name: `only complete locale date leaves were canonicalized before geometry: one home featured and ${HOME_BOARD_SIZE} board rows, /watchlist's open rows' moments (seed-watchlist's byLens.open, at least one), zero elsewhere`,
       fails: bad((r, c) => ['featured', 'rows'].some((kind) => c.homeCloseDates?.[kind] !== (r === '/' ? HOME_CLOSE_POPULATION[kind] : 0)
         || c.homeCloseDates?.leaves?.[kind] !== (r === '/' ? HOME_CLOSE_POPULATION[kind] : 0))
-        || c.watchlistDates?.slots !== (r === '/watchlist' ? watchSlots : 0)
+        || (r === '/watchlist' && !watchPremise)
+        || c.watchlistDates?.slots !== (r === '/watchlist' ? watchMoments : 0)
         || c.watchlistDates?.canonicalized !== (r === '/watchlist' ? watchMoments : 0)) },
   ];
 }
@@ -1911,8 +1918,7 @@ function syntheticBook() {
       cards: CARDS[r].map((c) => ({ ...c })),
       ...(r === BOOK.head ? { head: "head" } : {}),
       homeCloseDates: { ...(r === '/' ? HOME_CLOSE_POPULATION : { featured: 0, rows: 0 }), leaves: { ...(r === '/' ? HOME_CLOSE_POPULATION : { featured: 0, rows: 0 }) } },
-      watchlistDates: { slots: r === '/watchlist' ? WATCH_LENS.all : 0,
-        canonicalized: r === '/watchlist' ? WATCH_LENS.open + WATCH_LENS.progress : 0 },
+      watchlistDates: { slots: r === '/watchlist' ? WATCH_LENS.open : 0, canonicalized: r === '/watchlist' ? WATCH_LENS.open : 0 },
     };
   }
   const seed = {
@@ -2613,6 +2619,17 @@ async function captureBookCell(jar, locale, width, route, similarId, plant = nul
       }), {selectors: BOOK_HOME_CLOSE_DATE.selectors, population: HOME_CLOSE_POPULATION}, {timeout: 30_000});
       await page.evaluate(plant.lateHomeJs);
     }
+    // The same seam for /watchlist's moments (--prove-red only): planted once every open card's time leaf has hydrated.
+    // The plant returns how many moments it rewrote, kept on the cell (never compared), so a plant that found none is seen.
+    let lateWatchlist = null;
+    if (plant?.lateWatchlistJs) {
+      if (route !== '/watchlist') throw new Error('late watchlist plant requested outside /watchlist');
+      await page.waitForFunction((selector) => {
+        const leaves = [...document.querySelectorAll(selector)];
+        return leaves.length > 0 && leaves.every((el) => Object.keys(el).some((key) => key.startsWith('__reactFiber$')));
+      }, BOOK_WATCHLIST_DATE.selector, {timeout: 30_000});
+      lateWatchlist = await page.evaluate(plant.lateWatchlistJs);
+    }
     const untie = args.book.tied ? { ...args.book.tied, regions } : null;
     const homeDateMask = route === '/' ? { ...BOOK_HOME_CLOSE_DATE, locale } : null;
     const watchlistDateMask = route === '/watchlist' ? { ...BOOK_WATCHLIST_DATE, locale } : null;
@@ -2638,6 +2655,7 @@ async function captureBookCell(jar, locale, width, route, similarId, plant = nul
       snap = next;
     }
     const cell = toBookCell(snap, { status, stable, homeCloseDates, watchlistDates, raw: rawOf(body), pageErrors: [...new Set(pageErrors)].sort(), devOnly: [...new Set(devOnly)].sort(), ...notesOf([strips, needle, lazy]) });
+    if (lateWatchlist !== null) cell.lateWatchlist = lateWatchlist;
     if (route === BOOK.similar && similarId) cell.landed = cell.landed.split(similarId).join(":similar");
     if (route === BOOK.head) cell.head = typeof body === "string" ? put(bookNorm(headOf(body))) : null;
     return cell;
@@ -3159,25 +3177,40 @@ async function proveHomeDateCalibration() {
   finally { await page.close().catch(() => {}); }
 }
 
-/** The four same-head /watchlist failures: EAT text must be canonical before its right-aligned box is read. */
+/**
+ * The /watchlist moments (BOOK_SETTLE watchlist-date-leaves), rendered: a U43 card's top-row time (`.mcardp-closes`, the
+ * live mark inside it, pushed right by margin-left:auto) is written canonical before its box is read. The page draws
+ * syntheticBook's seed-watchlist: three open cards with a moment, two in progress, three done and one void with a chip
+ * and no time. Each change below is planted beside the canonical moment, never instead of it, so what it moves is its own.
+ */
 async function proveWatchlistDateCalibration() {
   const page = await b.newPage({ viewport: { width: 360, height: HEIGHT } });
   const key = keyOf('book-player', 'en', 360, '/watchlist');
   const zeroHome = { featured: 0, rows: 0, leaves: { featured: 0, rows: 0 } };
   const take = async (locale, o = {}) => {
     const month = locale === 'sw' ? 'Okt' : 'Oct';
-    const date = o.date ?? `14 ${month}, 13:43`;
-    const statuses = ['Voided', 'Resolved YES', 'Resolved NO', 'Resolved YES'];
-    const cards = Array.from({ length: 9 }, (_, i) => {
-      const time = i < statuses.length ? (i === 0 && o.status ? o.status : statuses[i]) : (i === 4 && o.dateOne ? o.dateOne : date);
-      const part = i === 4 && o.wrongSelector ? '' : ' data-market-part="time"';
-      const info = i >= 6 ? `<button type="button" aria-label="${o.buttonLabel ?? 'How it works'}">i</button>` : '';
-      return `<article class="mcardp" data-row-id="mkt_calibration${i}"><a class="mcardp-open" aria-label="Question ${i}"></a><div class="mcardp-meta"><span>Pool TZS 1,234</span><span class="mcardp-meta-right"><span class="mcardp-timeleft"${part}>${time}${info}</span></span></div></article>`;
-    });
+    const moment = o.date ?? `14 ${month}, 13:43`;
+    const time = (i) => {
+      const part = i === 1 && o.wrongSelector ? '' : ' data-market-part="time"';
+      const words = i === 1 && o.dateOne ? o.dateOne : i === 1 && o.besideWords ? `${moment}<!-- -->${o.besideWords}` : moment;
+      return `<span class="mcardp-closes inline-flex items-center gap-1"${part}><span class="mcardp-live-mark"><span class="mcardp-live-dot" aria-hidden="true"></span><span class="sr-only">${o.liveWord ?? 'Live'}</span></span>${words}</span>`;
+    };
+    const tail = (inner) => `<span class="mcardp-tail"><span class="mcardp-catgrp"><span class="mcardp-catico"></span><span class="mcardp-cat">${o.category ?? 'Sports'}</span></span>${inner}</span>`;
+    const card = (i, top) => `<article class="mcardp" data-row-id="mkt_calibration${i}"><a class="mcardp-open" aria-label="Question ${i}"></a><div class="mcardp-top">${top}</div><div class="mcardp-meta"><span>Pool TZS 1,234</span><span class="mcardp-meta-right"><span class="mcardp-timeleft"><button type="button" aria-label="How it works">i</button></span></span></div></article>`;
+    const chips = ['Closed', 'Closed', 'Resolved YES', 'Resolved NO', 'Resolved YES', 'Voided'];
+    const cards = [...[0, 1, 2].map((i) => card(i, tail(time(i)))),
+      ...chips.map((chip, j) => card(3 + j, `<span class="chip">${j === 0 && o.status ? o.status : chip}</span>${tail('')}`))];
     await page.setContent(`<!doctype html><html lang="${locale}"><head><style>
-      article.mcardp{width:300px;margin-bottom:8px;padding:4px} .mcardp-meta{display:flex;width:100%}
-      .mcardp-meta-right{margin-left:auto} .mcardp-timeleft{font:13px Arial;color:rgb(80,80,80)}
-      ${o.css ?? ''}</style></head><body><main id="main-content">${cards.join('')}${o.extra ? cards[4] : ''}
+      article.mcardp{width:300px;margin-bottom:8px;padding:4px;position:relative}
+      .mcardp-top{display:flex;align-items:center;gap:4px;min-height:20px}
+      .mcardp-tail{display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px;flex:1 1 auto;min-width:0}
+      .mcardp-catgrp{display:inline-flex;align-items:center;gap:4px} .mcardp-catico{display:inline-block;width:12px;height:12px}
+      .mcardp-closes{margin-left:auto;font:13px Arial;line-height:1.3;white-space:nowrap;color:rgb(80,80,80);display:inline-flex;align-items:center;gap:4px}
+      .mcardp-live-mark{display:inline-flex;align-items:center;min-width:6px}
+      .mcardp-live-dot{display:block;width:6px;height:6px;border-radius:50%;background:rgb(120,120,120)}
+      .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+      .mcardp-meta{display:flex;width:100%} .mcardp-meta-right{margin-left:auto}
+      ${o.css ?? ''}</style></head><body><main id="main-content">${cards.join('')}${o.extra ? card(9, tail(time(0))) : ''}
       <p class="ordinary">${o.outside ?? 'Other words'}</p></main></body></html>`);
     const mask = { ...BOOK_WATCHLIST_DATE, locale };
     const slots = await page.evaluate((selector) => document.querySelectorAll(selector).length, mask.selector);
@@ -3191,29 +3224,37 @@ async function proveWatchlistDateCalibration() {
   const fields = (a, c) => diffCells('/watchlist', a, c, blobs, blobs, BOOK_EXPECTED_DIFFS).unexpected;
   try {
     for (const locale of ['en', 'sw']) {
+      const month = locale === 'sw' ? 'Okt' : 'Oct';
       const clean = await take(locale);
-      ok(`P.8y ${locale} nine watchlist time slots include exactly five valid open/progress EAT moments under B.9`, b9(clean).length === 0, JSON.stringify(clean.watchlistDates));
-      const shifted = await take(locale, {date: locale === 'sw' ? '23 Okt, 14:44' : '23 Oct, 14:44'});
-      ok(`P.8y ${locale} date glyph and minute changes leave markup and geometry equal after the pre-geometry mask`, fields(clean, shifted).length === 0 && b9(shifted).length === 0);
-      const unmasked = await take(locale, {date: locale === 'sw' ? '23 Okt, 14:44' : '23 Oct, 14:44', skipMask: true});
+      ok(`P.8y ${locale} three open cards draw the only three time leaves, each a valid EAT moment, under the real B.9 verdict`, b9(clean).length === 0, JSON.stringify(clean.watchlistDates));
+      // Another server's seeding moment: another day (one digit, not two) and another minute.
+      const shifted = await take(locale, {date: `4 ${month}, 09:07`});
+      ok(`P.8y ${locale} another seeding moment leaves markup and geometry equal after the pre-geometry canonical moment`, fields(clean, shifted).length === 0 && b9(shifted).length === 0,
+        fields(clean, shifted).map((d) => `${d.field}: ${d.detail}`).join(' | ').slice(0, 300));
+      const unmasked = await take(locale, {date: `4 ${month}, 09:07`, skipMask: true});
       const unmaskedFields = fields(clean, unmasked).map((d) => d.field);
-      ok(`P.8y ${locale} removing the pre-geometry mask changes layout even though eat-dates already masks HTML`,
+      ok(`P.8y ${locale} without the canonical moment, that other moment moves the row's boxes although eat-dates reads both markups as ~date`,
         unmaskedFields.includes('regions.main.layout') && !unmaskedFields.includes('regions.main.html'), unmaskedFields.join(', '));
       for (const [name, change, need] of [
-        ['date ink', {css: '.mcardp-timeleft{color:rgb(255,0,0)}'}, 'regions.main.layout'],
-        ['date font', {css: '.mcardp-timeleft{font-family:monospace}'}, 'regions.main.layout'],
-        ['info button', {buttonLabel: 'Different help'}, 'regions.main.html'],
-        ['settled status', {status: 'Wrong status'}, 'regions.main.html'],
+        ['word spacing (no signature records it: only its boxes move)', {css: '.mcardp-closes{word-spacing:3px}'}, 'regions.main.layout'],
+        ['font size', {css: '.mcardp-closes{font-size:15px}'}, 'regions.main.layout'],
+        ['lost right alignment', {css: '.mcardp-closes{margin-left:0}'}, 'regions.main.layout'],
+        ['live mark size', {css: '.mcardp-live-dot{width:8px;height:8px}'}, 'regions.main.layout'],
+        ['ink', {css: '.mcardp-closes{color:rgb(255,0,0)}'}, 'regions.main.layout'],
+        ['live mark word', {liveWord: 'Open'}, 'regions.main.html'],
+        ['category words', {category: 'Weather'}, 'regions.main.html'],
+        ['status chip words', {status: 'Wrong status'}, 'regions.main.html'],
         ['outside words', {outside: 'Changed outside date'}, 'regions.main.html'],
       ]) {
         const changed = await take(locale, change), diff = fields(clean, changed);
-        ok(`P.8y ${locale} ${name} remains detected (${need})`, diff.some((d) => d.field === need), diff.map((d) => d.field).join(', '));
+        ok(`P.8y ${locale} a real change of the time row, ${name}, is still seen (${need})`, diff.some((d) => d.field === need) && b9(changed).length === 0, diff.map((d) => d.field).join(', '));
       }
       for (const [name, change] of [
-        ['impossible date', {dateOne: '31 Feb, 13:43'}],
-        ['wrong locale month', {dateOne: locale === 'sw' ? '14 Oct, 13:43' : '14 Okt, 13:43'}],
-        ['missing time selector', {wrongSelector: true}],
-        ['extra time slot', {extra: true}],
+        ['an impossible moment', {dateOne: `31 Feb 2027, 13:43`}],
+        ['a moment in the other locale\'s month', {dateOne: `14 ${locale === 'sw' ? 'Oct' : 'Okt'} 2027, 13:43`}],
+        ['a moment beside other words', {besideWords: ' extra words'}],
+        ['an open card whose time lost its data-market-part', {wrongSelector: true}],
+        ['an extra open card', {extra: true}],
       ]) {
         const changed = await take(locale, change);
         ok(`P.8y ${locale} ${name} fails B.9 and stays visible to the book diff`, b9(changed).length > 0 && fields(clean, changed).length > 0, JSON.stringify(changed.watchlistDates));
@@ -3234,23 +3275,27 @@ async function proveRed() {
   const run = (route, a, c, list = EXPECTED_DIFFS) => diffCells(route, a, c, store, store, list);
   const same = run("/", cell(200, "f1"), cell(200, "f1"));
   ok("P.1 identical cells differ in nothing", same.unexpected.length === 0 && same.expected.length === 0);
-  // The new owed-check calibration is narrow: only a masked date's x/width and its resulting auto margin disappear.
+  // MASWALI-BUILD S5-PARITY · the /watchlist time row (BOOK_SETTLE watchlist-date-leaves): its moment is written canonical
+  // before any box is read, and no box is masked after it (classic-parity-noise.mjs retired the right-edge mask), so the
+  // book diff reads the row as recorded. One canonical row from two servers compares equal; the row main 4471bb44's null
+  // pair drew from two seeding moments (the label 3px wider at x 318, its auto margin 3.2px smaller) is reported, and so
+  // is a label that lost its right alignment.
   {
-    const html = '<main><article><span class="mcardp-meta-right"><span class="mcardp-timeleft">~date</span></span></article></main>';
-    const parent = "main>article0>span0", child = `${parent}>span0`;
-    const sample = (x, width, margin, y = 30, colour = "rgb(1, 2, 3)", path = parent) => {
-      const own = {};
-      const sig = `display:flex${NL}margin-left:${margin}px${NL}color:${colour}`;
-      const inner = `display:inline${NL}margin-left:0px${NL}color:rgb(1, 2, 3)`;
-      const id = (s) => { const key = createHash("sha1").update(s).digest("hex").slice(0, 12); own[key] = s; return key; };
-      const layout = `${path} ${x},${y},${width}x17 ${id(sig)}${NL}${child} ${x},${y},${width}x17 ${id(inner)}`;
-      return steadyTimeLeftLayout(layout, html, own);
+    const own = {};
+    const keep = (s) => { const k = createHash("sha1").update(s).digest("hex").slice(0, 12); own[k] = s; return k; };
+    const html = keep('<main id="main-content"><article data-row-id="mkt_~" class="mcardp group"><div class="mcardp-top"><span class="mcardp-tail"><span class="mcardp-catgrp"></span><span class="mcardp-closes inline-flex items-center gap-1" data-market-part="time"><span class="mcardp-live-mark"></span>~date</span></span></div></article></main>');
+    const row = (x, width, margin) => {
+      const cell = structuredClone(syntheticBook().book[keyOf("book-player", "en", 1280, "/watchlist")]);
+      const sig = keep(`display:inline-flex${NL}margin-left:${margin}px${NL}font-size:13px`);
+      cell.regions.main = { count: 1, html, layout: keep(`main>div0>article0>div0>span0>span1 ${x},990.5,${width}x17 ${sig}`) };
+      return cell;
     };
-    const was = sample(20, 70, 12), moved = sample(18, 72, 14);
-    ok("P.1c the same masked live date keeps its right edge across fresh servers; a lost alignment, vertical move, colour or path change remains visible",
-      timeLeftPaths(html).size === 2 && was === moved && was !== sample(18, 72, 14, 31)
-      && was !== sample(2, 72, 0)
-      && was !== sample(18, 72, 14, 30, "rgb(9, 2, 3)") && was !== sample(18, 72, 14, 30, "rgb(1, 2, 3)", "main>article0>span9"));
+    const read = (a, c) => diffCells("/watchlist", a, c, own, own, BOOK_EXPECTED_DIFFS).unexpected.map((d) => d.field).join();
+    const canonicalRow = row(321, 88.5, 198.453);
+    ok("P.1c ⭐ the /watchlist time row is compared as recorded: one canonical row from two servers compares equal; a label 3px wider with its auto margin 3.2px smaller (what main 4471bb44's null pair drew from two seeding moments) and a label that lost its right alignment are each reported in regions.main.layout",
+      read(canonicalRow, row(321, 88.5, 198.453)) === "" && read(canonicalRow, row(318, 91.5, 195.25)) === "regions.main.layout"
+        && read(canonicalRow, row(120, 88.5, 0)) === "regions.main.layout",
+      [read(canonicalRow, row(321, 88.5, 198.453)), read(canonicalRow, row(318, 91.5, 195.25)), read(canonicalRow, row(120, 88.5, 0))].map((x) => x || "(none)").join(" · "));
   }
   // PHOSPHOR-MIGRATION W2 · the sprite name's hash is read as ~, and nothing else in a glyph is: another symbol, another
   // group or another file still differs.
@@ -4056,6 +4101,11 @@ async function proveRed() {
     ["B.9", "a close-date leaf canonicalized outside home", (m) => { atBook(m, "guest", "en", 360, "/markets").homeCloseDates.rows = 1; }],
     ["B.9", "a watchlist moment with an invalid locale date", (m) => { atBook(m, "player", "en", 360, "/watchlist").watchlistDates.canonicalized--; }],
     ["B.9", "an extra watchlist time slot", (m) => { atBook(m, "player", "sw", 1280, "/watchlist").watchlistDates.slots++; }],
+    ["B.9", "an open watchlist card that draws no time leaf", (m) => { const c = atBook(m, "player", "en", 1280, "/watchlist"); c.watchlistDates.slots--; c.watchlistDates.canonicalized--; }],
+    ["B.9", "a seeded watchlist with no open row, so no moment to canonicalize", (m) => {
+      m.seed.watchlist.reply.byLens.open = 0;
+      for (const [k, , , , r] of bookCellKeys()) if (r === "/watchlist") m.book[k].watchlistDates = { slots: 0, canonicalized: 0 };
+    }],
     ["B.9", "a watchlist moment canonicalized outside watchlist", (m) => { atBook(m, "guest", "en", 360, "/markets").watchlistDates.canonicalized = 1; }],
   ];
   for (const [id, what, plant] of BOOK_FLOOR_PLANTS) {
@@ -4316,6 +4366,26 @@ async function proveRed() {
       ] },
       { v: "player", l: "sw", w: 360, r: "/watchlist", plants: [
         { id: "book-card", js: cardIn.main, what: "a class added to one card in /watchlist's body", need: "regions.main.html", within: ["regions.main."] },
+        // MASWALI-BUILD S5-PARITY · the open cards' moments (BOOK_SETTLE watchlist-date-leaves), on the served page.
+        { id: "watchlist-moment", lateWatchlistJs: () => {
+          let moved = 0;
+          for (const el of document.querySelectorAll('#main-content article.mcardp .mcardp-closes[data-market-part="time"]')) {
+            for (const n of el.childNodes) if (n.nodeType === 3 && /^[1-9][0-9]? [A-Z][a-z]{2}(?: [0-9]{4})?, [0-9]{2}:[0-9]{2}$/.test(n.nodeValue)) { n.nodeValue = '3 Okt, 07:11'; moved++; }
+          }
+          return moved;
+        },
+          what: "every open card's moment changed to another server's (another day and minute), canonicalized before geometry", noDiff: true },
+        { id: "watchlist-date-spacing", css: '#main-content .mcardp-closes { word-spacing: 3px !important; }',
+          what: "the open cards' time set 3px wider between words, which no signature records (only boxes can show it)", need: "regions.main.layout", within: ["regions.main."] },
+        { id: "watchlist-date-alignment", css: '#main-content .mcardp-tail > .mcardp-closes { margin-left: 0 !important; }',
+          what: "the open cards' time no longer pushed to the row's right edge", need: "regions.main.layout", within: ["regions.main."] },
+        { id: "watchlist-date-format", lateWatchlistJs: () => {
+          const el = document.querySelector('#main-content article.mcardp .mcardp-closes[data-market-part="time"]');
+          const n = el && [...el.childNodes].find((x) => x.nodeType === 3 && x.nodeValue.trim());
+          const was = n?.nodeValue;
+          if (n) n.nodeValue = n.nodeValue.replace(/^([0-9]+) (\S+), /, '$1, $2 ');
+          return n && n.nodeValue !== was ? 1 : 0;
+        }, what: "one open card's moment written in another format", need: "regions.main.html", within: ["regions.main."], population: true },
       ] },
       { v: "guest", l: "sw", w: 1280, r: "/live", plants: [] },
       { v: "player", l: "en", w: 360, r: BOOK.similar, plants: [
@@ -4338,21 +4408,34 @@ async function proveRed() {
         noise.length === 0 && bodyCount === 1 && stripOk,
         `${noise.length ? noise.slice(0, 3).map((d) => `${d.field}: ${d.detail}`).join(" | ").slice(0, 400)
           : `body ${bodyCount ?? 0} · strip ${BOOK.lobby.includes(r) ? clean.regions.ticker?.count ?? 0 : "-"} · cards ${clean.cards.length}`}${notedIn(clean, again)}`);
+      // B.9 on the served page: /watchlist is judged against this run's own seed-watchlist (its byLens.open), every other
+      // route against the synthetic book's, whose home population is the source's own.
+      const b9Of = (cell) => (r === "/watchlist"
+        ? bookChecks({ [k]: cell }, bookPR, blobs)
+        : (() => { const sample = syntheticBook(); sample.book[k] = cell; return bookChecks(sample.book, sample.seed, {...sample.store, ...blobs}); })()
+      ).find((c) => c.id === "B.9").fails.includes(k);
+      if (r === "/watchlist") {
+        ok(`P.${k} the served /watchlist drew exactly its open rows' time leaves (seed-watchlist's byLens.open ${bookPR?.watchlist?.reply?.byLens?.open}) and canonicalized every one before geometry (B.9)`,
+          !b9Of(clean) && !b9Of(again) && clean.watchlistDates?.slots >= 1, JSON.stringify(clean.watchlistDates));
+      }
       for (const plant of plants) {
         const planted = await captureBookCell(jar, l, w, r, bookV.similarId, plant);
         if (planted.error) { ok(`P.${k} ${plant.id} was captured`, false, planted.error); continue; }
         const seen = diffCells(r, clean, planted, blobs, blobs, BOOK_EXPECTED_DIFFS).unexpected;
         if (plant.noDiff) {
-          ok(`P.${k} ${plant.what} changes no field under the real book diff`, seen.length === 0 && JSON.stringify(clean.homeCloseDates) === JSON.stringify(planted.homeCloseDates), seen.map((d) => d.field).join(', '));
+          const acted = plant.lateWatchlistJs ? planted.lateWatchlist >= 1 && planted.lateWatchlist === clean.watchlistDates?.slots : true;
+          ok(`P.${k} ${plant.what} changes no field under the real book diff`,
+            acted && seen.length === 0 && JSON.stringify(clean.homeCloseDates) === JSON.stringify(planted.homeCloseDates)
+              && JSON.stringify(clean.watchlistDates) === JSON.stringify(planted.watchlistDates),
+            `${seen.map((d) => d.field).join(', ')}${plant.lateWatchlistJs ? ` · rewrote ${planted.lateWatchlist} of ${clean.watchlistDates?.slots} moment(s)` : ''}`);
           continue;
         }
         ok(`P.${k} ⭐ ${plant.what} is reported in ${plant.need}, and nowhere outside ${plant.within.join(" / ")}`,
-          seen.some((d) => inside(d.field, [plant.need])) && seen.every((d) => inside(d.field, plant.within)),
+          (!plant.lateWatchlistJs || planted.lateWatchlist >= 1) && seen.some((d) => inside(d.field, [plant.need])) && seen.every((d) => inside(d.field, plant.within)),
           seen.length ? seen.slice(0, 2).map((d) => `${d.field}: ${d.detail}`).join(" | ").slice(0, 400) : "NOT SEEN — a book compare with this harness proves nothing");
         if (plant.population) {
-          const sample = syntheticBook(); sample.book[k] = planted;
-          const failed = bookChecks(sample.book, sample.seed, {...sample.store, ...blobs}).find((c) => c.id === 'B.9').fails;
-          ok(`P.${k} ${plant.what} also fails the same B.9 exact population verdict`, failed.includes(k), JSON.stringify(planted.homeCloseDates));
+          ok(`P.${k} ${plant.what} also fails the same B.9 exact population verdict`, b9Of(planted) && !b9Of(clean),
+            JSON.stringify(r === "/watchlist" ? planted.watchlistDates : planted.homeCloseDates));
         }
       }
     }
