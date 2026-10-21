@@ -10,6 +10,8 @@
  *      week on sale (the hub then says it in the week's own head).
  *   §3 the hub week's commitments: none for a draft; the question set's hash from the open (published at the week's open);
  *      the tickets' root, its close and its count once closed — each the week's own stamped column.
+ *   §4 L20 · each held ticket's free-cancel end: none without a ticket; each just-bought ticket's own end, the ticket page's
+ *      to the millisecond; none once every window has passed; CONTROL none once the week is no longer on sale.
  * ⛔ Every week, ticket, move and close goes through the product's own services (the money world's doors).
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -97,6 +99,26 @@ console.log("\n§3 · the hub week's two commitments, each the week's own stampe
   const { week: w } = await W.openWeek({ weeksAhead: 2 });
   const s = await W.svc.sunsetMaswali({ weekId: w.id, ownerId: OWNER, typed: W.svc.SUNSET_WORD, reason: "test: the Owner stops Millionea mid-week" });
   ok("2.4 · CONTROL · the final week on sale is no announcement ahead (its own head says it): nothing", s.ok && (await P.millioneaFinalWeekAhead("PUBLIC")) === null, s.ok ? "" : s.error);
+}
+
+// ── §4 · L20 · each held ticket's free-cancel end ─────────────────────────────────────────────────────────────────────
+console.log("\n§4 · L20 · each held ticket's free-cancel end — the ticket page's own (RULES §2.6)");
+{
+  await W.setup({ guarantee: 20_000_000 });
+  const { week: w } = await W.openWeek({ weeksAhead: 2 });
+  const p = await W.user({ balance: 100_000 });
+  ok("4.1 · no ticket held: no end", J(await P.millioneaHubCancelEnds(w.id, p)) === "{}");
+  const b = await W.buy(p, w.id, [W.LOSE, W.WIN]);
+  const ends = await P.millioneaHubCancelEnds(w.id, p);
+  const serials = Object.keys(ends).sort();
+  const pages = await Promise.all(serials.map((s) => P.millioneaTicket(p, s)));
+  ok("4.2 · two tickets just bought: each its own end, the ticket page's to the millisecond, still ahead",
+    b.ok && serials.length === 2 && pages.every((v: any, i: number) => !!v && v.cancelUntil === ends[serials[i]] && Date.parse(ends[serials[i]]) > Date.now()),
+    J({ ends, pages: pages.map((v: any) => v?.cancelUntil ?? null) }));
+  const past = new Date(Math.max(...serials.map((s) => Date.parse(ends[s]))) + 1);
+  ok("4.3 · once every window has passed: none", J(await P.millioneaHubCancelEnds(w.id, p, past)) === "{}");
+  const closed = await W.svc.closeWeek({ weekId: w.id, now: new Date(Date.parse(w.closesAt) + 60_000) });
+  ok("4.4 · CONTROL · a week no longer on sale: none", closed.ok && J(await P.millioneaHubCancelEnds(w.id, p)) === "{}", closed.ok ? "" : closed.error);
 }
 
 console.log(`\n@@SUMMARY ${JSON.stringify({ pass, fail, store: STORE })}`);

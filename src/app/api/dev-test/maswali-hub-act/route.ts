@@ -17,6 +17,7 @@
  *   · tickets {n, lose?, user?} — n tickets in the week on sale for the demo player (or `user`), every one 15 YES — or a
  *                             losing slip (`lose`) so a rollover can follow
  *   · moveClose {hours?}    — the week on sale's close moved earlier by `hours` (2), at that week's own clock (MB-28)
+ *   · closeSoon {minutes?}  — the week on sale's close moved to `minutes` (40) from now on the real clock: its last hour
  *   · closeOpen             — the week on sale closed at its close
  *   · seal {slots, outcome} — results for the hub's lead week (the week on sale, else the newest being graded), at that
  *                             week's Sunday (after every event); a VOID on the "abandoned" ground
@@ -58,7 +59,7 @@ const DEMO_PHONE = "+255700000000";
 const YES = Array.from({ length: 15 }, () => "YES" as const);
 const LOSE = Array.from({ length: 15 }, (_, i) => (i === 0 ? "NO" as const : "YES" as const));
 
-type Body = { act?: string; on?: boolean; n?: number; lose?: boolean; user?: string; hours?: number; slots?: number[]; outcome?: "YES" | "NO" | "VOID"; open?: boolean; tickets?: number };
+type Body = { act?: string; on?: boolean; n?: number; lose?: boolean; user?: string; hours?: number; minutes?: number; slots?: number[]; outcome?: "YES" | "NO" | "VOID"; open?: boolean; tickets?: number };
 const refuse = (error: string) => NextResponse.json({ ok: false, error }, { status: 409 });
 
 /** The week on sale, else the newest being graded in the calendar — the hub's own lead (`millioneaHub`). */
@@ -128,6 +129,15 @@ export async function POST(req: Request) {
         if (!week) return refuse("No week is on sale.");
         const to = Date.parse(week.closesAt) - Math.max(1, b.hours ?? 2) * 3_600_000;
         const r = await moveClose({ weekId: week.id, toCloseAt: new Date(to).toISOString(), officerId: OWNER, now: new Date(Date.parse(week.opensAt) + DAY) });
+        return r.ok ? NextResponse.json({ ok: true, from: week.closesAt, to: r.week.closesAt }) : refuse(r.error);
+      }
+      case "closeSoon": {
+        // The last hour (M8, the countdown pill): the week on sale's close moved to `minutes` from NOW on the real clock —
+        // the hub reads the real clock; the service still keeps every ticket's free-cancel window and the events' buffer.
+        const week = await weekStore.openFor("PUBLIC");
+        if (!week) return refuse("No week is on sale.");
+        const to = Date.now() + Math.max(20, Math.min(59, b.minutes ?? 40)) * 60_000;
+        const r = await moveClose({ weekId: week.id, toCloseAt: new Date(to).toISOString(), officerId: OWNER, now: new Date() });
         return r.ok ? NextResponse.json({ ok: true, from: week.closesAt, to: r.week.closesAt }) : refuse(r.error);
       }
       case "closeOpen": {

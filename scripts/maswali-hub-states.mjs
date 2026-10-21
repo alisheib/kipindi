@@ -335,6 +335,29 @@ if (RUN === "a") {
     await shoot("moved", "journey", guestJourney, { check: movedCheck, matrix: { sw: [360, 1280] } });
   }
 
+  // ── M8 (R1-motion) · the last hour: the countdown pill (the SLIP lane's) stands in the close line, its place reserved
+  // there — beside the close it counts down to, under the door, never above it. Measured once the page has hydrated.
+  if (want("closing")) {
+    await act({ act: "closeSoon", minutes: 40 });
+    // A reader the fill door is for (the demo player is at the cap by now): a new player holding one ticket.
+    const closer = await readerContext([]);
+    await act({ act: "player", tickets: 1, lose: true }, closer);
+    const closerJ = await readerContext([...(await closer.cookies(BASE)).filter((c) => c.name === SESSION_COOKIE), pass_]);
+    const closingCheck = async (page, label) => {
+      await page.locator('[data-testid="millionea-hub-close"] .closing-pill').first().waitFor({ timeout: 10_000 }).catch(() => {});
+      const g = await page.evaluate(() => {
+        const at = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom), left: Math.round(b.left), right: Math.round(b.right) }; };
+        const row = document.querySelector('[data-testid="millionea-hub-close"]');
+        return { row: at(row), text: at(row?.querySelector("p")), pill: at(row?.querySelector(".closing-pill")), door: at(document.querySelector('[data-testid="millionea-hub-fill"]')) };
+      });
+      const oneLine = !!g.pill && !!g.text && Math.abs((g.pill.top + g.pill.bottom) / 2 - (g.text.top + g.text.bottom) / 2) <= 3;
+      ok(`${label} · M8 the countdown pill stands in the close line, beside the close (row ${g.row ? g.row.bottom - g.row.top : "?"}px)`, oneLine, j(g));
+      ok(`${label} · M8 the pill is under the door, never above it`, !!g.pill && !!g.door && g.pill.top >= g.door.bottom, j(g));
+    };
+    await shoot("closing", "classic", closer, { check: closingCheck });
+    await shoot("closing", "journey", closerJ, { check: closingCheck, matrix: { sw: [360, 1280] } });
+  }
+
   // ── S7–S10 · the week on sale closes, its results come in, its window opens, it settles ─────────────────────────────────
   // The seed leaves its earlier weeks graded but unsettled; settlement runs strictly in order (MR-3), so they settle first.
   await act({ act: "catchUp" });

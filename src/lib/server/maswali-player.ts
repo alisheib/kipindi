@@ -1472,6 +1472,29 @@ export async function millioneaHubCommitments(weekId: string): Promise<Millionea
   };
 }
 
+/**
+ * L20 · EACH HELD TICKET'S FREE-CANCEL END on the hub (RULES §2.6), by serial — the ticket page's own test (`freeCancelEnd`,
+ * as `millioneaTicket` asks it: the runway against the close the ticket was bought under, the end at the earlier of its
+ * grace and the week's close as it stands now). Only a LIVE ticket of the OPEN week has one; the map names no other. The
+ * data now; the held row draws it once the TICKETS lane's `cancelUntil` lands (the lead's ruling, 2026-10-21).
+ */
+export async function millioneaHubCancelEnds(weekId: string, userId: string, now: Date = new Date()): Promise<Record<string, string>> {
+  const week = await weekStore.get(weekId);
+  if (!week || week.state !== "OPEN") return {};
+  const terms = await termsOf(week);
+  if (!terms) return {};
+  const out: Record<string, string> = {};
+  for (const t of await ticketStore.listForUser(userId, { cycleId: week.id })) {
+    if (t.status !== "LIVE") continue;
+    const position = await positionStore.get(t.positionId);
+    const end = position
+      ? freeCancelEnd(Date.parse(position.placedAt), Date.parse(t.closeAtPurchase), Date.parse(week.closesAt), terms.freeCancelMinutes, now.getTime())
+      : null;
+    if (end) out[t.serial] = end;
+  }
+  return out;
+}
+
 // ── S5-DESIGN-REGISTER (2026-10-21, Ali's 10/10 pass) — THE REGISTER'S OWN READS ──────────────────────────────────────
 // Added at the end of the shared file, as the design lanes' brief asks: no existing helper or field changes. The register
 // critic's H1 (why a week voided: its counts), H2 (the lead's ruling: a public week's page from the moment it opens — its

@@ -1,7 +1,8 @@
 /**
  * test:maswali-hub-reads — the Millionea hub's own reads on BOTH stores (MASWALI-BUILD S5-DESIGN-HUB): the moved close
- * (R1-hub M7, read from the audit entry `moveClose` writes), the final week announced ahead (L22, OD-03) and the hub week's
- * commitments (the lead's ruling on R1-register H2). The cases: `scripts/lib/maswali-hub-reads-child.mts`.
+ * (R1-hub M7, read from the audit entry `moveClose` writes), the final week announced ahead (L22, OD-03), the hub week's
+ * commitments (the lead's ruling on R1-register H2) and each held ticket's free-cancel end (L20). The cases:
+ * `scripts/lib/maswali-hub-reads-child.mts`.
  *
  *   npm run test:maswali-hub-reads     (boots the on-box Postgres through db-scratch)
  *
@@ -13,6 +14,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:maswali-hub-reads",
   casesFile: "scripts/lib/maswali-hub-reads-child.mts",
-  minPass: { memory: 13, postgres: 13 },
+  minPass: { memory: 17, postgres: 17 },
   dbPrefix: "mlw_hubreads",
 });
