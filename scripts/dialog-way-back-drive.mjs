@@ -176,9 +176,10 @@ for (const [name, launcher] of ENGINES) {
   }
   if (PROVE_RED) {
     // ⚠️ THE JUMP IS BLINK'S. Chromium scrolls a focused element that the lock has unstuck into view, in every case here;
-    // WebKit, measured 2026-10-21, mostly keeps the page still even with the plant (1 of 6 cases jumped: the capsule on
-    // /markets by the keyboard). So Chromium is held to catching every planted case, and WebKit's planted cases are
-    // reported as what that engine does — the fix (`preventScroll`) is held in both by the checks above.
+    // WebKit, measured 2026-10-21, mostly keeps the page still even with the plant (1 of 6 cases jumped in one run — the
+    // capsule on /markets by the keyboard — and 0 of 6 in the next). So Chromium is held to catching every planted case,
+    // and WebKit's planted cases are reported as what that engine does — the fix (`preventScroll`) is held in both by the
+    // checks above. Last run (1ba838d86, 15:52Z): 24 passed, 0 failed; Chromium 6/6 planted cases jumped.
     const red = await runEngine(name, launcher, true);
     let jumpedHere = 0;
     for (const r of red ?? []) {
