@@ -347,7 +347,8 @@ const WARN_REGISTRY: Record<string, [number, string]> = {
   // 3 → 1 on 2026-10-21 (S5-FIX-PLAYER P18): the hand-rolled box (its frame, wash and glyph) is the kit's own Callout now,
   // which paints the family itself — the slip names only its tone.
   "src/components/maswali/maswali-slip.tsx": [1, "the confirm's short main balance — the player deposits before cutting a ticket (the kit Callout's warning tone)"],
-  "src/components/maswali/maswali-win-ledger.tsx": [1, "the fee row's amber (a deduction), the receipt's own `ReceiptRow` tone"],
+  // 1 → gone on 2026-10-21 (S5-DESIGN-TICKETS round 2, in the open): the win receipt draws the ONE ledger now
+  // (`MaswaliLedger`), so its fee row's amber is that file's entry below — the receipt paints none of its own.
   // 2026-10-18 (S5 integration): the same deduction on the two pages that print a week's money as a receipt.
   "src/app/millionea/how/page.tsx": [1, "the worked example's fee row (a deduction), the receipt's own `ReceiptRow` tone — as the win ledger's"],
   // RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER): the week's ledger rows are the ONE Millionea ledger's now

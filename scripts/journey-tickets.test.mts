@@ -477,10 +477,12 @@ function g4Words(W: World, ok: Ok) {
 
 /* ══ §5 · THE SWITCH ═════════════════════════════════════════════════════════════════════════════════════════ */
 /** RE-PINNED (MASWALI-BUILD S5 pages, deliberately): Millionea is the third kind (MASWALI-PLAN §10 §3.9, §M8a item 11),
- *  drawn for a request its door admits (`millionea-doors.ts → millioneaTicketsDoor`) — the two kinds stand as they were. */
+ *  drawn for a request its door admits (`millionea-doors.ts → millioneaTicketsDoor`) — the two kinds stand as they were.
+ *  ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-TICKETS L1, the lead's ruling): its word wears Millionea's ink, as every nav
+ *  that draws Millionea does (§M8a item 11), through the kit Tabs' `ink` — a link like its siblings, nothing else changed. */
 const KINDS = [`{ value: "questions", labelEn: t.journey.tabQuestions, href: "/positions" }`,
   `{ value: "updown", labelEn: t.nav.updown, href: "/updown/history" }`,
-  `{ value: "millionea", labelEn: t.millionea.productLabel, href: "/millionea/tickets" }`];
+  `{ value: "millionea", labelEn: t.millionea.productLabel, href: "/millionea/tickets", ink: "millionea" as const }`];
 /** The wrapper's one element: the kit's underline rail, handed the switch's three props and nothing else. */
 const RAIL_TABS = `<Tabs variant="line" ariaLabel={ariaLabel} value={value} tabs={tabs} />`;
 /**

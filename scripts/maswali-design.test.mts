@@ -100,6 +100,8 @@ const SLIP = "src/components/maswali/maswali-slip.tsx";
 const SLIP_CLIENT = "src/app/millionea/slip/slip-client.tsx";
 const TICKET = "src/components/maswali/maswali-ticket.tsx";
 const LEDGER = "src/components/maswali/maswali-win-ledger.tsx";
+/** The ONE Millionea ledger (S5-DESIGN-REGISTER's shared builder): since the round-2 adoption the win receipt's money rows. */
+const SHARED_LEDGER = "src/components/maswali/maswali-ledger.tsx";
 const CARD = "src/components/maswali/maswali-home-card.tsx";
 const HUB = "src/app/millionea/page.tsx";
 const TICKET_PAGE = "src/app/millionea/tickets/[serial]/page.tsx";
@@ -136,11 +138,15 @@ const goldDefects = (readAt: (rel: string) => string) => MLN_FILES.flatMap((f) =
     loss.length > 0 && !/\bscore\b|\/10|matched"\)\.length/.test(loss));
   const projecting = MLN_FILES.filter((f) => /potentialPayout/.test(code(read(f))));
   ok("1.6 · no potential payout anywhere on Millionea (a held ticket never names a share)", projecting.length === 0, projecting.join(" | "));
-  const PILL = /<MaswaliClosingPill\b/, HOOK = /useCountdown\(/;
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-TICKETS M4, the lead's ruling; §3.8 item 5 "Ghairi with a scoped countdown
+  // that is removed when the window expires"): the free cancel now DRAWS its window's own m:ss — the platform's free-exit
+  // look — on the server-seeded tick (`useTickSeconds`); the closing countdown stays the slip's and the buy block's alone.
+  const PILL = /<MaswaliClosingPill\b/, HOOK = /useCountdown\(/, TICK = /useTickSeconds\(/;
   const pills = MLN_FILES.filter((f) => PILL.test(code(read(f))));
   const hooks = MLN_FILES.filter((f) => HOOK.test(code(read(f))));
-  ok("1.7 · a countdown is DRAWN on the slip and the hub's buy block only (§10 §8); the clock hook elsewhere only reads the close (the slip's composer) or expires a control printing a fixed time (the free cancel)",
-    j(pills) === j([HUB, SLIP].sort()) && j(hooks) === j([SLIP_CLIENT, SLIP, "src/components/maswali/maswali-ticket-cancel.tsx"].sort()), j({ pills, hooks }));
+  const ticks = MLN_FILES.filter((f) => TICK.test(code(read(f))));
+  ok("1.7 · a closing countdown is DRAWN on the slip and the hub's buy block only (§10 §8); the clock hook elsewhere only reads the close (the slip's composer); the free cancel draws its own window's scoped count, nowhere else (§3.8 item 5)",
+    j(pills) === j([HUB, SLIP].sort()) && j(hooks) === j([SLIP_CLIENT, SLIP].sort()) && j(ticks) === j(["src/components/maswali/maswali-ticket-cancel.tsx"]), j({ pills, hooks, ticks }));
 }
 
 // ── §2 · the S5 UI review ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -187,8 +193,10 @@ const PICKS = Array.from({ length: 15 }, () => "YES" as const);
   const unconditional = LOCALES.filter((l) => !conditional[l].test(dict[l].millionea.weekVoidingBody) || /\bcheck\b|[Uu]kaguzi|核查/.test(dict[l].millionea.weekVoidingBody));
   ok("2.H1e · the voiding sentence is conditional in every language (an objection can still un-void the week)", unconditional.length === 0, j(unconditional));
   const page = squash(code(read(TICKET_PAGE)));
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-TICKETS L4): a landed refund is said once, in the void's own sentence
+  // ending "…returned to main balance" (`ticketVoidedLanded`); before it lands, "on its way back" as before.
   ok("2.H1f · a ticket's void line says \"refunded\" only once ITS refund landed, \"on its way back\" before",
-    page.includes('fill(refund === "pending" ? t.millionea.weekVoidedBodyPending : t.millionea.weekVoidedBody, {'));
+    page.includes('fill(refund === "landed" ? t.millionea.ticketVoidedLanded : t.millionea.weekVoidedBodyPending, {'));
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-FIX-PLAYER P3): the register's ledger rows are built in register-parts.tsx
   // (`registerLedgerRows`, rendered by test:maswali-register §15); the week page draws them.
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER): the rows are the ONE Millionea ledger's (`maswali-ledger.tsx`,
@@ -279,8 +287,11 @@ const PICKS = Array.from({ length: 15 }, () => "YES" as const);
   const ticket = squash(code(read(TICKET)));
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-19 (S5 VIS P16, P10): the line has one annex rule now (no `annex` prop: under the mains
   // everywhere), and it rests for every ticket that counts for nothing (`ticketRests`: cancelled AND refunded) — §4 holds both.
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-TICKETS M1): the WHOLE card is the link now, named by its visible door and
+  // its serial (`aria-labelledby`), its state its description; the hub's held row keeps the spelled name, given its words.
   ok("2.M4d · the ticket card's one link carries a visible name in words, its accessible name starting with it",
-    ticket.includes("aria-label={`${t.millionea.viewTicket} · ${serial}`}") && /<MaswaliSealLine line=\{line\} size=\{18\} inert=\{ticketRests\(shown\)\} \/> <span[^>]*>\s?\{t\.millionea\.viewTicket\}/.test(ticket));
+    ticket.includes("aria-labelledby={`${id}-door ${id}-serial`}") && ticket.includes("aria-label={t ? `${t.millionea.viewTicket} · ${serial}` : undefined}")
+      && /<MaswaliSealLine line=\{line\} size=\{18\} inert=\{ticketRests\(shown\)\} \/> <span id=\{`\$\{id\}-door`\}[^>]*>\s?\{t\.millionea\.viewTicket\}/.test(ticket));
 }
 
 // M5 · one radio group per question; M6 · polite regions mounted from the first render
@@ -690,12 +701,15 @@ const factLineDefects = (m: string, n: number, joined: string) => {
     visit(tree);
     return found;
   };
-  const receiptDots = ledgerLiteralSeparators(read(LEDGER));
-  ok("4.A1e · the win receipt has no literal joined fact: its eyebrow, legal line and three narrow money-row labels draw separate facts",
+  // Since the round-2 adoption (S5-DESIGN-TICKETS) the receipt's money rows are the ONE ledger's (SHARED_LEDGER): the census
+  // reads the receipt's chrome and the ledger it draws, and the plant follows the top-up row to where it is built now (its
+  // label and its note are two facts there, `label` + `note` — the kit row's sentence label over its muted note).
+  const receiptDots = [LEDGER, SHARED_LEDGER].flatMap((f) => ledgerLiteralSeparators(read(f)).map((x) => `${f}:${x}`));
+  ok("4.A1e · the win receipt has no literal joined fact: its eyebrow, legal line and narrow money-row labels draw separate facts — its chrome and the one ledger it draws",
     receiptDots.length === 0, receiptDots.join(" | "));
-  const oldTopUp = read(LEDGER).replace('label={<MaswaliFacts facts={[t.millionea.topUp, t.millionea.topUpNote]} layout="phone" />}', 'label={`${t.millionea.topUp} · ${t.millionea.topUpNote}`}');
+  const oldTopUp = read(SHARED_LEDGER).replace('rows.push({ key: "topup", label: m.topUp, note: m.topUpNote, value: money(f.topUp) });', 'rows.push({ key: "topup", label: `${m.topUp} · ${m.topUpNote}`, value: money(f.topUp) });');
   ok("4.A1e′ PLANT · putting the old top-up template label back is reported",
-    oldTopUp !== read(LEDGER) && ledgerLiteralSeparators(oldTopUp).length > 0);
+    oldTopUp !== read(SHARED_LEDGER) && ledgerLiteralSeparators(oldTopUp).length > 0);
 }
 
 // P1 · the cut: the sheet leaves first, then the stamp
@@ -958,7 +972,11 @@ const restDefects = (seal: string, ticketSrc: string, page: string) => {
   if (!squash(code(seal)).includes('mark === "unused" && "kp-mln-rest"')) d.push("an unused socket is not at rest");
   const t2 = squash(code(ticketSrc));
   if (!t2.includes("const inert = ticketRests(shown);")) d.push("the ticket does not rest for every state that counts for nothing");
-  if (!squash(code(page)).includes('fill(t.millionea.cancelModalBody, { price: formatTzs(view.refund?.state === "landed" ? view.refund.amount : view.stub.price) })')) d.push("the ticket page does not say where the money went");
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-TICKETS L4, L12): a cancel says it in the cancel's words; a landed refund in
+  // the void's own sentence ending the same way; a paid share "Paid to main balance · <when>".
+  const p2 = squash(code(page));
+  if (!p2.includes("? fill(t.millionea.cancelModalBody, { price: formatTzs(view.stub.price) })") || !p2.includes("? t.millionea.ticketVoidedLanded :")
+    || !p2.includes("fill(t.millionea.paidTo, { when: whenOf(t, locale, Date.parse(view.week.settledAt), nowMs) })")) d.push("the ticket page does not say where the money went");
   return d;
 };
 {
@@ -992,13 +1010,18 @@ const restDefects = (seal: string, ticketSrc: string, page: string) => {
 const listDefects = (page: string, ticketSrc: string, bar: string) => {
   const d: string[] = [];
   const p = squash(code(page));
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-TICKETS M2, M3, L9 — the R1 tickets critic, Ali 2026-10-21 10/10 pass): a
+  // week's tickets are sorted once and then narrowed by the lens (so an emptied lens can count its way out); the classic
+  // title keeps its one line, under the way back while the product is shown; and the four lenses ride the KIT'S STRIP,
+  // exactly as the journey Tiketi zangu bar does — one row at every width, where P11's own wrap left "Ulizoshinda" alone
+  // on a second row and a two-row sticky bar at 320 (the platform's strip, its fade the platform's "more" cue).
   if (!p.includes("const newestFirst = (a: MillioneaTicketRow, b: MillioneaTicketRow) => (Date.parse(b.boughtAt) - Date.parse(a.boughtAt)) || b.serial.localeCompare(a.serial);")
-    || !p.includes(".filter((row) => inLens(lens, row.shown)).sort(newestFirst).map((row) => ({ g, row, price }))")) d.push("a week's tickets are not newest first");
-  if (!p.includes("<PageHeader eyebrow={t.millionea.productTitle} title={t.millionea.ticketsTitle} />")) d.push("the classic title is not the one-line one");
+    || !p.includes("g.tickets.slice().sort(newestFirst).map((row) => ({ g, row, price }))") || !p.includes("const cards = drawable.filter(({ row }) => inLens(lens, row.shown));")) d.push("a week's tickets are not newest first");
+  if (!p.includes("<PageHeader eyebrow={t.millionea.productTitle} title={t.millionea.ticketsTitle} />") || !p.includes("<PageHeader title={t.millionea.ticketsTitle} />")) d.push("the classic title is not the one-line one");
   const t2 = squash(code(ticketSrc));
   if (t2.includes("text-body-sm leading-snug") || count(t2, "valueClassName={WORDS}") !== 3) d.push("a value in words has another line box than the money beside it");
   const b = code(bar);
-  if (/QueryStrip/.test(b) || !squash(b).includes('<nav aria-label={t.journey.ticketsFilterAria} className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1.5">')) d.push("the four lenses scroll under a fade");
+  if (!squash(b).includes("<QueryStrip ariaLabel={t.journey.ticketsFilterAria}>") || /flex-wrap/.test(b)) d.push("the four lenses wrap off the kit's strip");
   if (!squash(b).includes('case "won": return t.millionea.lensWon;')) d.push("the lenses are not Millionea's words");
   return d;
 };
@@ -1011,20 +1034,24 @@ const listDefects = (page: string, ticketSrc: string, bar: string) => {
   const lens = sw.millionea.lensOpen === "Zinazoendelea" && sw.millionea.lensSettled === "Zilizokamilika" && sw.millionea.lensWon === "Ulizoshinda" && zh.millionea.lensWon === "已中奖";
   ok(`4.P11 · Tiketi zangu's list: each week's tickets newest first (000042 before 000041), the title one line at 320 ("${en.millionea.ticketsTitle}" ${titleW.toFixed(0)}px in ${column}px, where "${en.millionea.myTicketsTitle}" ${oldW.toFixed(0)}px left "tickets" alone), words on the money rung's line box (the two cards' rows level), four lenses that wrap whole in Millionea's own words (§D)`,
     d.length === 0 && titleW <= column && oldW > column && lens, j({ d, titleW, oldW, lens }));
-  ok("4.P11′ PLANT · the list unsorted, and the lenses back in a scrolling strip, are reported",
+  ok("4.P11′ PLANT · the list unsorted, and the lenses back in a wrap of their own, are reported",
     listDefects(read(LIST_SRC).replace(".sort(newestFirst)", ""), read(TICKET), read(BAR)).some((x) => x.includes("newest"))
-      && listDefects(read(LIST_SRC), read(TICKET), read(BAR).replace('<nav aria-label={t.journey.ticketsFilterAria}', "<QueryStrip ariaLabel={t.journey.ticketsFilterAria}><nav")).some((x) => x.includes("scroll")));
+      && listDefects(read(LIST_SRC), read(TICKET), read(BAR).replace("<QueryStrip ariaLabel={t.journey.ticketsFilterAria}>", '<QueryStrip ariaLabel={t.journey.ticketsFilterAria} className="flex-wrap">')).some((x) => x.includes("wrap")));
 }
 
 // P12 · the free cancel on the first screen; P16 · one annex rule; P13 · the empty board's words; A2, A4, §D
 {
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-TICKETS M4): the door brings its own rule (`TicketCancel` draws the clock,
+  // the button and the note), so the head holds the slot alone — still under the Seal Line, above the first clause.
   const placeDefects = (src: string) => {
     const s = squash(code(src));
-    const cancelAt = s.indexOf("{cancel && ( <div className=\"flex flex-col gap-1.5\"> {cancel}"), firstClause = s.indexOf("<Clause ");
-    return cancelAt > 0 && cancelAt < firstClause && cancelAt > s.indexOf("<MaswaliSealLine line={line} size={24}") ? [] : ["the free cancel waits under the fifteen clauses"];
+    const cancelAt = s.indexOf('{cannotWin && <Callout tone="neutral">{t.millionea.cannotWin}</Callout>} {cancel} </div> <ol>'), firstClause = s.indexOf("<Clause ", s.indexOf("return ("));
+    // Re-pinned openly (S5-DESIGN-TICKETS H4): the Seal Line's moment is keyed by the moments it holds.
+    const lineAt = s.indexOf("{carry || draw ? <MaswaliMoment key=");
+    return cancelAt > 0 && lineAt > 0 && cancelAt < firstClause && cancelAt > lineAt ? [] : ["the free cancel waits under the fifteen clauses"];
   };
   ok("4.P12 · a pending ticket's free cancel stands in its head, under the Seal Line — on the first screen (the stamp promised \"Free cancel until 11:18\")", placeDefects(read(TICKET)).length === 0);
-  const below = read(TICKET).replace(/\n          \{cancel && \(\n[\s\S]*?\n          \)\}\n        <\/div>\n        <ol>/, "\n        </div>\n        <ol>").replace("      </article>\n", "      </article>\n      {cancel && (\n        <div className=\"flex flex-col gap-1.5\">\n          {cancel}\n        </div>\n      )}\n");
+  const below = read(TICKET).replace("\n          {cancel}\n        </div>\n        <ol>", "\n        </div>\n        <ol>").replace("      </article>\n", "      </article>\n      {cancel}\n");
   ok("4.P12′ PLANT · the cancel moved back under the ticket is reported", below !== read(TICKET) && placeDefects(below).length > 0);
   const SEAL = "src/components/maswali/maswali-seal-line.tsx";
   const annexDefects = (src: string) => {
@@ -1052,11 +1079,12 @@ const listDefects = (page: string, ticketSrc: string, bar: string) => {
     zhDefects2(read(SLIP), read(SLIP_CLIENT)).length === 0, zhDefects2(read(SLIP), read(SLIP_CLIENT)).join(" | "));
   ok("4.A2′ PLANT · a confirm sheet without the class is reported", zhDefects2(read(SLIP).replace(' panelClassName="kp-mln-zh">', ">"), read(SLIP_CLIENT)).length > 0);
   const signDefects = (readAt: (rel: string) => string) => MLN_FILES.filter((f) => /formatTzs\(-|money\(-|fig\(-|`−\$\{formatTzs/.test(code(readAt(f))));
-  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-HUB, the lead's ruling): the pool's fee rows are the one Millionea ledger's
-  // fee row now (`maswali-ledger.tsx`, the register's and the hub's alike; the sunset's payout is its won branch).
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5 integration of HUB and TICKETS, the lead's ruling): every Millionea fee row is
+  // the ONE ledger's fee row now (`maswali-ledger.tsx`) — the hub's pool (HUB) and the win receipt (TICKETS) alike; How
+  // keeps its own example fee row; the pool's head and the old receipt sign nothing.
   const signed = ["src/components/maswali/maswali-ledger.tsx", "src/components/maswali/maswali-pool-figure.tsx", "src/app/millionea/how/page.tsx", LEDGER].map((f) => count(code(read(f)), "formatTzsSigned("));
-  ok("4.A4 · every negative figure on Millionea is the platform's signed money (\"−TZS 136,500\"): no hand-built sign, no `formatTzs` of a negative — the one ledger's fee row, How's fee row, the win ledger's fee and net; the pool's head signs nothing",
-    signDefects(read).length === 0 && j(signed) === j([1, 0, 1, 2]), j({ hand: signDefects(read), signed }));
+  ok("4.A4 · every negative figure on Millionea is the platform's signed money (\"−TZS 136,500\"): no hand-built sign, no `formatTzs` of a negative — the one ledger's fee row (the register's, the hub's and the win receipt's), How's fee row; the pool's head and the old receipt sign nothing",
+    signDefects(read).length === 0 && j(signed) === j([1, 0, 1, 0]), j({ hand: signDefects(read), signed }));
   ok("4.A4′ PLANT · How's old fee row (`fig(-f.F)`, \"TZS -136,500\") is reported",
     signDefects(plantIn("src/app/millionea/how/page.tsx", "value={<span className=\"amount\">{formatTzsSigned(-f.F)}</span>}", "value={fig(-f.F)}")).includes("src/app/millionea/how/page.tsx"));
   // §D · the decided words, applied on these pages (en binding; sw and zh for Gate B's native review).
@@ -1266,15 +1294,18 @@ const iconDefects = (src: string, head = read(POOL_HEAD)) => {
     && hubSrc.includes("return millioneaWeekPhase(w, nowMs).kind === \"voiding\";") && !/WEEK_STATE_KEY\[w\.state\]/.test(hubSrc);
   const wired = phaseWired(hub)
     && page.includes("const phase = millioneaWeekPhase({ ...view.week, questions: view.questions }, nowMs);")
-    && page.includes("phaseWord={phase.kind === \"state\" ? undefined : weekPhaseWord(t, view.week.state, phase)}") && page.includes("objectionsUntil: phase.objectionsUntil ?? undefined,");
-  ok("5.P6c · every surface asks the one phase: the hub's eyebrow chip and grading block, its buy block's live line and its voiding pool, the ticket's week line and live line", wired);
+    // Re-pinned openly at the S5 integration: the hub's wiring is HUB's (phaseWired), the ticket's TICKETS' round-2
+    // adoption — it takes the PHASE itself and wears the week's one chip (`WeekStateChip`, the register's).
+    && page.includes("phase={phase}") && page.includes("objectionsUntil: phase.objectionsUntil ?? undefined,")
+    && squash(code(read(TICKET))).includes("<WeekStateChip t={t} state={weekState} phase={phase ?? null} />");
+  ok("5.P6c · every surface asks the one phase: the hub's eyebrow chip and grading block, its buy block's live line and its voiding pool, the ticket's week chip and live line", wired);
   const { MaswaliTicket } = req("../src/components/maswali/maswali-ticket.tsx") as { MaswaliTicket: (p: Record<string, unknown>) => unknown };
   const pend = sealLineOf(week(Array(10).fill("YES"), Array(5).fill("YES")), PICKS);
   const tText = textOf(inApp("en", h(MaswaliTicket as never, { t: en, locale: "en", serverNow: at("2026-12-07T12:00:00.000Z"), serial: "MLN-2026-W49-000041", week: 49,
-    weekState: "RESOLVING", phaseWord: en.millionea.weekStatusCheck, shown: "running", clauses: [], line: pend, stub: { price: 1_000, boughtAt: "2026-12-01T08:13:00Z", questionSetHash: "7f3a…" },
+    weekState: "RESOLVING", phase: { kind: "objections", objectionsUntil: at(CLOSE) }, shown: "running", clauses: [], line: pend, stub: { price: 1_000, boughtAt: "2026-12-01T08:13:00Z", questionSetHash: "7f3a…" },
     live: { resultsIn: 15, reservesLeft: { valid: 5, of: 5 }, objectionsUntil: at(CLOSE) } } as never)));
-  ok("5.P6d · the ticket says it: \"Week 49 · Objection window\" over \"15 of 15 results in · … · Objection window until Tuesday 12:00\" — never \"Results coming in\"",
-    tText.includes("Week 49 · Objection window") && tText.includes("Objection window until Tuesday 12:00") && !tText.includes(en.millionea.weekStatusResolving), tText.slice(0, 200));
+  ok("5.P6d · the ticket says it: \"Week 49\" and its chip \"Objection window\" over \"15 of 15 results in · … · Objection window until Tuesday 12:00\" — never \"Results coming in\"",
+    tText.includes("Week 49Objection window") && tText.includes("Objection window until Tuesday 12:00") && !tText.includes(en.millionea.weekStatusResolving), tText.slice(0, 200));
   // The old eyebrow: the chip without the phase — the state's own word ("Results coming in") over a week whose results are in.
   const oldEyebrow = read(HUB).replace(EYEBROW_WORD, "<WeekStateChip t={t} state={w.state} paused={paused} />");
   const blind = (w: Record<string, unknown>, now: number) => ({ kind: "state", objectionsUntil: null as number | null, w, now });

@@ -20,6 +20,11 @@ import type { Dict } from "@/lib/i18n-dict";
  *   missed    `xCircle` · muted                           — it did not (never rose: a miss is not a failure, §C4)
  *   void      `void` · muted                              — the question voided; a main's reserve stands in for it
  *   standby   `markPending` at annex size · muted         — a reserve standing by: it counts only if a main voids
+ *   sealed    `attestation` (a stamp) · muted             — a reserve standing by WHOSE RESULT IS IN, before the week is
+ *                                                           final: verdict-free (no match, no miss — MR-17's "no running
+ *                                                           score"), its word still "Standing by"; so "x of 15 results in"
+ *                                                           and the sockets agree (the R1 tickets critic's L13, the lead's
+ *                                                           ruling, Ali 2026-10-21 10/10 pass)
  *   unused    `markPending` · muted, AT REST              — a reserve the week did not need, a socket of a voided week, or
  *                                                           any socket of a ticket that counts for nothing (cancelled, or
  *                                                           refunded with its week): drawn at the disabled opacity
@@ -31,14 +36,15 @@ import type { Dict } from "@/lib/i18n-dict";
  * the reserve's (S5 VIS P6 — the example once drew main 4 exactly like the other nine, against its own caption).
  *
  * ⛔ ONE GRADER (L9). `sealLineOf` reads `maswali-score.ts` and adds no rule of its own: until the record is final it
- * grades nothing ("no running score" — a sealed main shows matched or missed, a reserve stays "standby" whatever its own
- * event did, MR-17), and the carries, the unused reserves and the Unbroken Line exist only once the CALLER says the week
+ * grades nothing ("no running score" — a sealed main shows matched or missed, a reserve stands by whatever its own event
+ * did, MR-17: "standby", or "sealed" once its result is in, never a verdict), and the carries, the unused reserves and the
+ * Unbroken Line exist only once the CALLER says the week
  * is final (`final`: the week SETTLED). ⛔ NEVER AT THE SETTLEMENT GATE ALONE (the S5 UI review, HIGH 2): a ready gate is
  * still inside MR-16's objection window, where a REVERSE, VOID or REINSTATE can change the graded set — a carry or a
  * line drawn there could be un-drawn, and §M8a item 1 forbids an un-carry ("you won" never before the seal).
  */
 
-export type SocketMark = "awaiting" | "matched" | "missed" | "void" | "standby" | "unused";
+export type SocketMark = "awaiting" | "matched" | "missed" | "void" | "standby" | "sealed" | "unused";
 export type MainSocket = { ordinal: number; mark: SocketMark; /** the reserve that stood in for this voided main ("A1") */ standIn?: string };
 export type AnnexSocket = { ordinal: number; mark: SocketMark; /** the main this reserve carried into */ carriedTo?: number };
 export type SealLine = {
@@ -98,7 +104,12 @@ export function sealLineOf(
       const out = outcomeOf("MAIN", o);
       mains.push({ ordinal: o, mark: out === null ? "awaiting" : out === "VOID" ? "void" : judged(slotOf("MAIN", o), out) });
     }
-    for (let o = 1; o <= RESERVE_COUNT; o++) annex.push({ ordinal: o, mark: outcomeOf("RESERVE", o) === "VOID" ? "void" : "standby" });
+    // A reserve whose result is in still stands by — no verdict until the week is final — but its socket says the result
+    // is in (`sealed`), so the count of results and the sockets agree (L13).
+    for (let o = 1; o <= RESERVE_COUNT; o++) {
+      const out = outcomeOf("RESERVE", o);
+      annex.push({ ordinal: o, mark: out === "VOID" ? "void" : out === "YES" || out === "NO" ? "sealed" : "standby" });
+    }
     return { mains, annex, final: false, weekVoid: false, voidCertain, unbroken: false };
   }
   // Final: the graded set and its pairs (display only; the k-th voided main took the k-th usable reserve).
@@ -132,7 +143,7 @@ export function socketWord(t: Dict, mark: SocketMark): string {
     case "matched": return t.millionea.matched;
     case "missed": return t.millionea.noMatch;
     case "void": return t.millionea.void;
-    case "standby": return t.millionea.standby;
+    case "standby": case "sealed": return t.millionea.standby;
     case "unused": return t.millionea.notUsed;
   }
 }
@@ -154,6 +165,7 @@ export function SocketGlyph({ mark, s, fluid, className }: { mark: SocketMark; s
     case "matched": glyph = <I.checkCircle s={s} className={fit} />; break;
     case "missed": glyph = <I.xCircle s={s} className={fit} />; break;
     case "void": glyph = <I.void s={s} className={fit} />; break;
+    case "sealed": glyph = <I.attestation s={s} className={fit} />; break;
     default: glyph = <MillioneaGlyph name="markPending" s={s} className={fit} />;
   }
   return <GlyphSwap state={mark} className={cn("max-w-full", socketInk(mark), mark === "unused" && "kp-mln-rest", className)}>{glyph}</GlyphSwap>;
