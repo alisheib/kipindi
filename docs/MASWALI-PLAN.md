@@ -44,8 +44,8 @@ settled-week sitemap and share image, and bounded public week and register cache
 machine"). RESUME HERE, from any machine:** branch `maswali-handover-20261021`, `handover/maswali-2026-10-21/README.md`
 (its top section: every branch head and state, the next steps in order) and `MERGE-NOTES.md` beside it (every PM ruling,
 every lane's report, the merge maps and the owed items). In one line: the five S5 design lanes and both fix lanes finished
-their round (DOORS, HUB, SLIP, TICKETS, REGISTER, PLATFORM D1–D15, FIX-SRV); this release (`a118f7545`) holds FIX-SRV,
-PLATFORM (D1–D15), DOORS and HUB with tsc 0 and its suites green; SLIP, TICKETS and REGISTER's latest are pushed on
+their round (DOORS, HUB, SLIP, TICKETS, REGISTER, PLATFORM D1–D15, FIX-SRV); this release (`730a8b615`) holds FIX-SRV,
+PLATFORM (D1–D15), DOORS, HUB and TICKETS with tsc 0 and its suites green; SLIP and REGISTER's latest are pushed on
 their branches and merge next (conflicts mapped), then round 2 (the critics re-score), the gates, and `main` when Railway builds
 again (still paused at 17:00Z). S7 is at `0f0d42fcc` (S17 rush first green); S6-N owes its blind 6b guard.
 
