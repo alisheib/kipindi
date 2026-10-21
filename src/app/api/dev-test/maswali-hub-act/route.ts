@@ -44,7 +44,7 @@ import { randomId } from "@/lib/server/crypto";
 import { createSession } from "@/lib/server/session";
 import { coolOff } from "@/lib/server/responsible-gambling";
 import {
-  SUNSET_WORD, attestParity, closeWeek, createWeek, gradable, moveClose, openWeek, purchaseMaswaliTickets, sealQuestion, sunsetMaswali, voidWeek,
+  SUNSET_WORD, attestParity, closeWeek, createWeek, gradable, moveClose, openWeek, purchaseMaswaliTickets, readDraftVersion, sealQuestion, sunsetMaswali, voidWeek,
   type DraftQuestionInput,
 } from "@/lib/server/maswali-service";
 import { questionStore, weekStore, type StoredWeek } from "@/lib/server/maswali-dal";
@@ -138,7 +138,7 @@ async function act(b: Body): Promise<NextResponse> {
         const week = await weekStore.openFor("PUBLIC");
         if (!week) return refuse("No week is on sale.");
         const to = Date.parse(week.closesAt) - Math.max(1, b.hours ?? 2) * 3_600_000;
-        const r = await moveClose({ weekId: week.id, toCloseAt: new Date(to).toISOString(), officerId: OWNER, now: new Date(Date.parse(week.opensAt) + DAY) });
+        const r = await moveClose({ weekId: week.id, toCloseAt: new Date(to).toISOString(), expectedClosesAt: week.closesAt, officerId: OWNER, now: new Date(Date.parse(week.opensAt) + DAY) });
         return r.ok ? NextResponse.json({ ok: true, from: week.closesAt, to: r.week.closesAt }) : refuse(r.error);
       }
       case "closeOpen": {
@@ -226,7 +226,7 @@ async function act(b: Body): Promise<NextResponse> {
         const drafts = (await weekStore.list({ visibility: "PUBLIC", states: ["DRAFT"] })).sort((a, b2) => Date.parse(a.opensAt) - Date.parse(b2.opensAt));
         const next = drafts[0];
         if (!next) return refuse("No week is drafted.");
-        const a = await attestParity({ weekId: next.id, officerId: "usr_dev_reader" });
+        const a = await attestParity({ weekId: next.id, officerId: "usr_dev_reader", readVersion: await readDraftVersion(next.id) });
         if (!a.ok) return refuse(`attest: ${a.error}`);
         const o = await openWeek({ weekId: next.id, officerId: OWNER, guarantee: guaranteeReader, now: new Date(Date.parse(next.opensAt) + 60_000) });
         return o.ok ? NextResponse.json({ ok: true, opened: o.week.code }) : refuse(`open: ${o.error}`);

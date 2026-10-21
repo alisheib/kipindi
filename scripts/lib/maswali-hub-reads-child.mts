@@ -45,14 +45,14 @@ const { week, start } = await W.openWeek({ weeksAhead: 2 });
   const now = Date.now();
   ok("1.1 · a week whose close never moved announces nothing", (await P.millioneaCloseMove(hubWeek(week), now)) === null);
   const to1 = new Date(Date.parse(week.closesAt) - 2 * 3_600_000).toISOString();
-  const m1 = await W.svc.moveClose({ weekId: week.id, toCloseAt: to1, officerId: OWNER, now: new Date(start + DAY) });
+  const m1 = await W.svc.moveClose({ weekId: week.id, toCloseAt: to1, expectedClosesAt: week.closesAt, officerId: OWNER, now: new Date(start + DAY) });
   await auditFlush();
   const w1 = await W.dal.weekStore.get(week.id);
   const r1 = await P.millioneaCloseMove(hubWeek(w1), now);
   ok("1.2 · moved two hours earlier: the close it HAS and the close it HAD", m1.ok && !!r1 && Date.parse(r1.to) === Date.parse(w1.closesAt)
     && Date.parse(r1.from) === Date.parse(week.closesAt) && Date.parse(w1.closesAt) === Date.parse(to1), J({ m1: m1.ok ? "ok" : m1.error, r1, stored: w1.closesAt }));
   const to2 = new Date(Date.parse(to1) + 3_600_000).toISOString();
-  const m2 = await W.svc.moveClose({ weekId: week.id, toCloseAt: to2, officerId: OWNER, now: new Date(start + DAY + 3_600_000) });
+  const m2 = await W.svc.moveClose({ weekId: week.id, toCloseAt: to2, expectedClosesAt: w1.closesAt, officerId: OWNER, now: new Date(start + DAY + 3_600_000) });
   await auditFlush();
   const w2 = await W.dal.weekStore.get(week.id);
   const r2 = await P.millioneaCloseMove(hubWeek(w2), now);
@@ -117,7 +117,7 @@ console.log("\n§2 · L22 · OD-03's announcement: the final week, a full week a
   ok("3.1 · a draft has no commitment (it was never published)", c.ok && (await P.millioneaHubCommitments(c.week.id)) === null);
   // CONTROL · the same final week, opened (no week sells: §3 and §4 closed theirs): on sale, its own head says it — no
   // announcement ahead any more.
-  const at = c.ok ? await W.svc.attestParity({ weekId: c.week.id, officerId: READER }) : c;
+  const at = c.ok ? await W.svc.attestParity({ weekId: c.week.id, officerId: READER, readVersion: await W.svc.readDraftVersion(c.week.id) }) : c;
   const op = at.ok ? await W.svc.openWeek({ weekId: c.week.id, officerId: DRAFTER, guarantee: W.money.guaranteeReader, now: new Date(ahead + 60_000) }) : at;
   ok("2.4 · CONTROL · once the final week is on sale it is no announcement ahead (its own head says it): nothing",
     op.ok && op.week.state === "OPEN" && (await P.millioneaFinalWeekAhead("PUBLIC")) === null, op.ok ? "" : op.error);
