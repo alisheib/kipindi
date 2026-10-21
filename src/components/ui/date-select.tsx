@@ -421,7 +421,7 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
                ⭐ `.m-dialog-in` is the kit's modal arrival (§M2) — one entrance, already
                branched for all three reduce-motion gates, which a bespoke keyframe here
                would have had to re-earn. */
-            className="m-dialog-in relative w-[calc(100%-24px)] max-w-[320px] rounded-modal border border-border-strong bg-bg-elevated shadow-overlay overflow-hidden"
+            className="m-dialog-in relative w-full max-w-[320px] rounded-modal border border-border-strong bg-bg-elevated shadow-overlay overflow-hidden"
             style={{ marginBottom: "env(safe-area-inset-bottom, 0px)" }}
           >
             <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
@@ -449,43 +449,56 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
               </>)}
             </div>
 
-            {calView === "days" ? (<>
-              <div className="grid grid-cols-7 px-3 pt-2 pb-1">
-                {DAY_LABELS.map((l) => (
-                  <span key={l} className="text-center font-mono text-micro uppercase eyebrow text-text-subtle font-bold">{l}</span>
-                ))}
+            {calView === "days" ? (
+              /* ⭐ S5-FIX-PLATFORM D9 (2026-10-21) · ONE INSET FOR THE WEEKDAYS AND THE DAYS, AND SEVEN 40px COLUMNS AT 320.
+                 S5 raised every day to the 40px tap floor and said seven columns fitted at 320; they did not: in a panel
+                 24px narrower than its dialog each column was 36px wide, and the weekday row kept 16px of side padding over
+                 the days' 4px, so a label stood up to 10px off its column (both measured at 320 and 360). The panel now
+                 spans its dialog's 16px gutters (`w-full`, still at most 320px), and the weekdays and the days share this
+                 one inset: what is left once seven tap-floor columns are placed, up to 11px, the reach of a selected day's
+                 halo (`--glow-selected`: 12px of blur, 1px of spread in). From a 336px screen that halo is drawn whole
+                 inside the panel; at 320 the seven 40px columns leave 3px a side and an edge day's halo meets the panel's
+                 wall, because the tap floor wins. `test:maswali-admin-touch` computes this geometry. */
+              <div className="px-[clamp(0px,calc((100%_-_7_*_var(--tap-min))_/_2),11px)]">
+                <div className="grid grid-cols-7 pt-2 pb-1">
+                  {DAY_LABELS.map((l) => (
+                    <span key={l} className="text-center font-mono text-micro uppercase eyebrow text-text-subtle font-bold">{l}</span>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-0 pb-3">
+                  {grid.map((cell, i) => {
+                    if (!cell) return <span key={`e-${i}`} />;
+                    const isSel = parsed && parsed.y === viewYear && parsed.m === viewMonth && parsed.d === cell.day;
+                    const isToday = viewYear === now.getFullYear() && viewMonth === now.getMonth() + 1 && cell.day === now.getDate();
+                    return (
+                      <button key={cell.day} type="button" disabled={cell.disabled}
+                        onClick={() => pickDay(viewYear, viewMonth, cell.day)}
+                        className={cn(
+                          // The 40px tap floor (the inset above makes each column at least that wide from 320).
+                          // Use the token: this repo's overridden spacing scale makes `h-10` much larger.
+                          "h-[var(--tap-min)] rounded-md font-mono text-[13px] tabular-nums transition-all",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
+                          isSel ? "bg-brand-500 text-white font-bold shadow-glow-selected"
+                            : cell.disabled ? "text-text-subtle/30 cursor-not-allowed"
+                            : "text-text hover:bg-bg-overlay",
+                          isToday && !isSel && "ring-1 ring-brand-500/50",
+                        )}>
+                        {cell.day}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="grid grid-cols-7 gap-0 px-1 pb-3">
-                {grid.map((cell, i) => {
-                  if (!cell) return <span key={`e-${i}`} />;
-                  const isSel = parsed && parsed.y === viewYear && parsed.m === viewMonth && parsed.d === cell.day;
-                  const isToday = viewYear === now.getFullYear() && viewMonth === now.getMonth() + 1 && cell.day === now.getDate();
-                  return (
-                    <button key={cell.day} type="button" disabled={cell.disabled}
-                      onClick={() => pickDay(viewYear, viewMonth, cell.day)}
-                      className={cn(
-                        // The 40px tap floor fits seven columns even at 320px viewport width.
-                        // Use the token: this repo's overridden spacing scale makes `h-10` much larger.
-                        "h-[var(--tap-min)] rounded-md font-mono text-[13px] tabular-nums transition-all",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
-                        isSel ? "bg-brand-500 text-white font-bold shadow-glow-selected"
-                          : cell.disabled ? "text-text-subtle/30 cursor-not-allowed"
-                          : "text-text hover:bg-bg-overlay",
-                        isToday && !isSel && "ring-1 ring-brand-500/50",
-                      )}>
-                      {cell.day}
-                    </button>
-                  );
-                })}
-              </div>
-            </>) : (
+            ) : (
               <YearGrid years={yearGrid} viewYear={viewYear} selectedYear={parsed?.y ?? null}
                 onPick={(y) => { setViewYear(y); setCalView("days"); }} />
             )}
 
             <div className="border-t border-border px-3 py-2.5 flex items-center justify-between">
+              {/* Wide as well as tall (D9): 取消 is a 27px word, so the floor is a minimum width too; the label keeps the
+                  footer's leading edge (its hit box grows toward the end), so every locale's Cancel starts on one line. */}
               <button type="button" onClick={() => setCalOpen(false)}
-                className="min-h-[var(--tap-min)] font-mono text-label uppercase tracking-[0.12em] text-text-subtle hover:text-text transition-colors">
+                className="inline-flex min-h-[var(--tap-min)] min-w-[var(--tap-min)] items-center font-mono text-label uppercase tracking-[0.12em] text-text-subtle hover:text-text transition-colors">
                 {t.common.cancel}
               </button>
               {parsed && (
@@ -513,8 +526,8 @@ function YearGrid({ years, viewYear, selectedYear, onPick }: {
         <button key={y} ref={y === viewYear ? activeRef : undefined} type="button"
           onClick={() => onPick(y)}
           className={cn(
-            // Year choices are touch targets too. The 40px token keeps six rows visible
-            // in the 240px scroller without relying on the overridden spacing scale.
+            // Year choices are touch targets too. The 40px token shows five whole rows
+            // in the 240px scroller (measured, D9) without relying on the overridden spacing scale.
             "h-[var(--tap-min)] rounded-md font-mono text-[13px] tabular-nums transition-all",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
             y === viewYear ? "bg-brand-500 text-white font-bold shadow-glow-selected"

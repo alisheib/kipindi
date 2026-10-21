@@ -52,6 +52,84 @@ const tags = (source: string, names: string) => {
   return result;
 };
 
+/** The repo's own spacing scale (`tailwind.config.ts`, `extend.spacing`: `"3": "16px"`); `0` is Tailwind's 0. */
+const tailwind = read("tailwind.config.ts");
+const spacingBlock = tailwind.slice(tailwind.indexOf("spacing: {"), tailwind.indexOf("}", tailwind.indexOf("spacing: {")));
+const spacing = (key: string) => {
+  if (key === "0") return 0;
+  const match = new RegExp(`"${key.replace(".", "\\.")}":\\s*"(\\d+(?:\\.\\d+)?)px"`).exec(spacingBlock);
+  if (!match) throw new Error(`Missing spacing ${key}; the calendar's geometry cannot be computed`);
+  return Number(match[1]);
+};
+/** How far a selected day's halo reaches past its cell: `--glow-selected`'s blur plus its spread (12px - 1px = 11px). */
+const glow = /--glow-selected:\s*0 0 (\d+)px (-?\d+)px/.exec(css);
+if (!glow) throw new Error("Missing --glow-selected; the calendar's halo room cannot be checked");
+const haloReach = Number(glow[1]) + Number(glow[2]);
+
+/**
+ * THE DAY GRID'S WIDTH, AS THE BROWSER LAYS IT OUT (MASWALI-BUILD S5-FIX-PLATFORM D9, 2026-10-21). This guard used to
+ * hold a class string, and passed while the rendered columns were 36px wide at 320 and the weekday labels stood up to
+ * 10px off their columns (the tiles measured both). So the geometry is computed from the classes themselves: the
+ * dialog's padding, the panel's width rule and border, the one inset the weekdays and the days share, and the grid's
+ * gap give every column's width at 320 and 360, and the room a selected day's halo has from 336 (where seven 40px
+ * columns leave it 11px).
+ */
+function calendarGeometry(popup: string): string[] {
+  const problems: string[] = [];
+  const cls = (text: string | undefined) => /className="([^"]*)"/.exec(text ?? "")?.[1] ?? "";
+  const divs = tags(popup, "div");
+  const dialogCls = cls(divs.find((tag) => tag.text.includes('role="dialog"'))?.text);
+  const panelCls = cls(divs.find((tag) => cls(tag.text).includes("m-dialog-in"))?.text);
+  const pad = /(?:^|\s)p-([\d.]+)(?:\s|$)/.exec(dialogCls)?.[1];
+  const maxW = Number(/(?:^|\s)max-w-\[(\d+)px\](?:\s|$)/.exec(panelCls)?.[1] ?? NaN);
+  const less = /(?:^|\s)w-full(?:\s|$)/.test(panelCls) ? 0 : Number(/(?:^|\s)w-\[calc\(100%-(\d+)px\)\](?:\s|$)/.exec(panelCls)?.[1] ?? NaN);
+  const border = /(?:^|\s)border(?:\s|$)/.test(panelCls) ? 1 : 0;
+  if (pad === undefined || Number.isNaN(maxW) || Number.isNaN(less)) {
+    problems.push(`DateSelect calendar panel's width rule is not one this guard can compute (dialog "${dialogCls}", panel "${panelCls}")`);
+    return problems;
+  }
+  const grids = [...popup.matchAll(/<div className="(grid grid-cols-7[^"]*)">/g)];
+  if (grids.length !== 2) {
+    problems.push(`Expected the weekday row and the day grid; found ${grids.length} seven-column grids`);
+    return problems;
+  }
+  const [labels, days] = grids;
+  // One inset for both: neither grid pads its own sides, the day grid follows the weekday row as its sibling, and the
+  // div both stand in carries the inset.
+  const ownInset = (c: string) => /(?:^|\s)(?:px|pl|pr)-/.test(c);
+  const between = popup.slice(labels.index, days.index);
+  const siblings = (between.match(/<div\b/g) ?? []).length === 1 && (between.match(/<\/div>/g) ?? []).length === 1;
+  const insetCls = /(?:^|\s)(px-\S+)/.exec(/<div className="([^"]*)">\s*$/.exec(popup.slice(0, labels.index))?.[1] ?? "")?.[1];
+  if (ownInset(labels[1]) || ownInset(days[1]) || !siblings || !insetCls)
+    problems.push("DateSelect weekday row and day grid do not share one side inset, so the labels stand off their columns");
+  const insetAt = (content: number) => {
+    if (!insetCls) return ownInset(days[1]) ? spacing(/(?:^|\s)px-([\d.]+)/.exec(days[1])?.[1] ?? "") : 0;
+    const scale = /^px-([\d.]+)$/.exec(insetCls);
+    if (scale) return spacing(scale[1]);
+    const fixed = /^px-\[(\d+(?:\.\d+)?)px\]$/.exec(insetCls);
+    if (fixed) return Number(fixed[1]);
+    // What is left once n tap-floor columns are placed, held between a least and a most.
+    const fit = /^px-\[clamp\((\d+(?:\.\d+)?)px,calc\(\(100%_-_(\d+)_\*_var\(--tap-min\)\)_\/_2\),(\d+(?:\.\d+)?)px\)\]$/.exec(insetCls);
+    if (fit) return Math.min(Math.max(Number(fit[1]), (content - Number(fit[2]) * floor) / 2), Number(fit[3]));
+    return NaN;
+  };
+  const gapKey = /(?:^|\s)gap(?:-x)?-([\d.]+)(?:\s|$)/.exec(days[1])?.[1];
+  const gap = gapKey === undefined ? 0 : spacing(gapKey);
+  const contentAt = (vw: number) => Math.min(vw - 2 * spacing(pad) - less, maxW) - 2 * border;
+  for (const vw of [320, 360]) {
+    const content = contentAt(vw);
+    const column = (content - 2 * insetAt(content) - 6 * gap) / 7;
+    if (!(column >= floor)) problems.push(`DateSelect day grid gives ${column.toFixed(1)}px columns at ${vw}px (the floor is ${floor}px)`);
+  }
+  if (popup.includes("shadow-glow-selected")) {
+    for (const vw of [336, 360, 390]) {
+      const inset = insetAt(contentAt(vw));
+      if (!(inset >= haloReach)) problems.push(`DateSelect selected day's halo is cut at ${vw}px: ${inset}px of inset under its ${haloReach}px reach`);
+    }
+  }
+  return problems;
+}
+
 function audit(routeSources: Sources, detail: string, calendar: string, time: string, sort: string) {
   const problems: string[] = [];
   let controls = 0;
@@ -111,8 +189,9 @@ function audit(routeSources: Sources, detail: string, calendar: string, time: st
   if (navButtons.length !== 3) problems.push(`Expected 3 calendar navigation buttons; found ${navButtons.length}`);
   for (const button of navButtons)
     if (!button.text.includes("w-[var(--tap-min)]")) problems.push("DateSelect calendar navigation button has no 40px width floor");
-  if (!calendar.includes('grid grid-cols-7 gap-0 px-1 pb-3'))
-    problems.push("DateSelect day grid no longer makes seven 40px targets fit at 320px");
+  const cancel = popupButtons.find((button) => button.text.includes("setCalOpen(false)"));
+  if (!cancel?.text.includes("min-w-[var(--tap-min)]")) problems.push("DateSelect calendar Cancel has no 40px width floor");
+  problems.push(...calendarGeometry(popup));
 
   const segment = tags(decomment(time), "input").find((tag) => tag.text.includes("SEG_WIDTH"));
   if (!segment?.text.includes('minWidth: "var(--tap-min)"') || !segment.text.includes('className="h-full'))
@@ -146,6 +225,16 @@ if (process.argv.includes("--prove-red")) {
   const controls = files[5];
   const shrunkSource = sources[controls].replace('className="link inline-flex min-h-[44px] min-w-[44px]', 'className="link inline-flex min-h-[32px] min-w-[32px]');
   const shrunkClose = sources[controls].replace('<DateSelect value={date} onChange={setDate} size="md"', '<DateSelect value={date} onChange={setDate} size="sm"');
+  // D9: the calendar as S5 shipped it, one defect at a time.
+  const plantCal = (name: string, from: string, to: string) => {
+    const planted = dateKit.replace(from, to);
+    if (planted === dateKit) throw new Error(`RED plant "${name}" did not apply: ${from}`);
+    return planted;
+  };
+  const narrowPanel = plantCal("narrow panel", "m-dialog-in relative w-full max-w-[320px]", "m-dialog-in relative w-[calc(100%-24px)] max-w-[320px]");
+  const ownLabelInset = plantCal("own label inset", '<div className="grid grid-cols-7 pt-2 pb-1">', '<div className="grid grid-cols-7 px-3 pt-2 pb-1">');
+  const shortHalo = plantCal("short halo", "_/_2),11px)]", "_/_2),4px)]");
+  const thinCancel = plantCal("thin cancel", "inline-flex min-h-[var(--tap-min)] min-w-[var(--tap-min)] items-center font-mono", "inline-flex min-h-[var(--tap-min)] items-center font-mono");
   const cases = [
     ["route DateSelect", "<DateSelect size=\"sm\">", audit({ ...sources, [builder]: mutatedBuilder }, detailPage, dateKit, timeKit, sortKit)],
     ["calendar day", "DateSelect calendar button", audit(sources, detailPage, mutatedDate, timeKit, sortKit)],
@@ -156,6 +245,10 @@ if (process.argv.includes("--prove-red")) {
     ["draft edit link", "Draft detail edit link", audit(sources, shrunkEdit, dateKit, timeKit, sortKit)],
     ["source link", "Result source link", audit({ ...sources, [controls]: shrunkSource }, detailPage, dateKit, timeKit, sortKit)],
     ["detail close DateSelect", "<DateSelect size=\"sm\">", audit({ ...sources, [controls]: shrunkClose }, detailPage, dateKit, timeKit, sortKit)],
+    ["calendar panel (S5's, 24px inside its dialog)", "DateSelect day grid gives", audit(sources, detailPage, narrowPanel, timeKit, sortKit)],
+    ["weekday row (S5's own 16px inset)", "DateSelect weekday row and day grid do not share", audit(sources, detailPage, ownLabelInset, timeKit, sortKit)],
+    ["day inset (capped under the halo's reach)", "DateSelect selected day's halo is cut", audit(sources, detailPage, shortHalo, timeKit, sortKit)],
+    ["calendar Cancel (no width floor)", "DateSelect calendar Cancel has no 40px width floor", audit(sources, detailPage, thinCancel, timeKit, sortKit)],
   ] as const;
   for (const [name, ownFailure, failures] of cases) {
     const caught = failures.find((failure) => failure.includes(ownFailure));
