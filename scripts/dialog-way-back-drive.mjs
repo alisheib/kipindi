@@ -13,6 +13,8 @@
  * The two openers (both on the kit Modal, both sticky at 360):
  *   · CLASSIC — the top bar's balance capsule (`wallet-balance-capsule`) opens the wallet sheet; closed by ✕.
  *   · MILLIONEA — the slip's pay rail (`millionea-slip-pay`) opens the confirm sheet; closed by "Back".
+ * And the slip's one deliberate move: a purchase made from deep in the slip lands on the top of the fresh slip (under the
+ * stamp), and closing the stamp leaves it there.
  * Each from deep in the page, by a tap and by the keyboard (the opener focused, Enter; closed by Escape) — a tap focuses
  * a button in Chromium but not in WebKit, and the way back can only return to what had focus, so focus is asked of a
  * tap only where the tap gave it.
@@ -35,6 +37,8 @@ if (pre.refuse || pre.health?.millionea?.state !== "ACTIVE") {
 }
 
 let pass = 0, fail = 0, caught = 0, planted = 0;
+/** The slip's deliberate move after a purchase, per engine: scrollY before, under the stamp, after the stamp closed. */
+const purchases = [];
 const ok = (name, cond, detail = "") => { if (cond) pass++; else { fail++; console.log(`FAIL ${name}${detail ? ` — ${detail}` : ""}`); } };
 const log = (...a) => console.log(...a);
 
@@ -133,6 +137,26 @@ async function runEngine(engineName, launcher, plant) {
     await watchFocus(pay);
     results.push(await wayBack(page, "slip pay rail · keyboard · Escape", { opener: pay, atY: deep, keyboard: true, dialog: sheet }));
 
+    // ── MILLIONEA · the slip's one deliberate move: a purchase takes the page to the top of the fresh slip, under the stamp,
+    //    and closing the stamp leaves it there (the way back itself moves nothing) ──────────────────────────────────────
+    if (!plant) {
+      await page.evaluate((y) => window.scrollTo(0, y), deep);
+      await page.waitForTimeout(400);
+      const from = await where(page);
+      await pay.tap();
+      await sheet().waitFor({ timeout: 60_000 });
+      await settle(page, 400);
+      await page.getByTestId("millionea-confirm-commit").tap();
+      const stamp = page.locator('[role="dialog"]').filter({ has: page.locator(".orm-crest") });
+      await stamp.waitFor({ timeout: 120_000 });
+      await page.waitForTimeout(700);
+      const under = await where(page);
+      await stamp.getByRole("button", { name: "Funga" }).first().tap();
+      await page.waitForTimeout(900);
+      const after = await where(page);
+      purchases.push({ engine: engineName, from: from.y, under: under.y, after: after.y });
+    }
+
     // ── CLASSIC · the top bar's balance capsule (sticky at the top) → the wallet sheet → "Funga" — on the slip's long page
     //    and on a classic page, /markets, when its board is long enough to scroll ───────────────────────────────────────
     // The opener is the capsule's BUTTON (`aria-haspopup="dialog"`): the test id sits on its wrapper, which takes no focus.
@@ -168,6 +192,10 @@ const ENGINES = [["chromium", chromium], ["webkit", webkit]];
 for (const [name, launcher] of ENGINES) {
   const results = await runEngine(name, launcher, false);
   if (results === null) continue;
+  for (const p of purchases.filter((x) => x.engine === name)) {
+    log(`${name} · a purchase from deep in the slip: scrollY ${p.from} → ${p.under} under the stamp → ${p.after} after it closed`);
+    ok(`${name} · a purchase takes the page to the top of the fresh slip, and the stamp leaves it there`, p.under === 0 && p.after === 0, JSON.stringify(p));
+  }
   for (const r of results) {
     log(`${name} · ${r.label}: scrollY ${r.before.y} → ${r.after.y} (of ${r.after.max}) · focus back on the opener: ${r.backOnOpener} (the tap focused it: ${r.openerHeldFocus})`);
     ok(`${name} · ${r.label} · the page stands where it stood (scrollY unchanged)`, Math.abs(r.after.y - r.before.y) <= 1, `${r.before.y} → ${r.after.y}`);
