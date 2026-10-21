@@ -440,6 +440,16 @@ const afterClose = new Date(Date.parse((await weekStore.get(w1.id))!.closesAt) +
 // ── §7 · two officers ───────────────────────────────────────────────────────
 console.log("\n§7 · the two-officer flag");
 {
+  // ⭐ S5-FIX-SRV A9 (S7-F2's port) · the setting is read, or the seal refuses — never single-officer by default.
+  const unsealed12 = async () => (await questionStore.listForWeek(w1.id)).find((q) => q.slot === 12)!;
+  const thrownRead = await svc.sealQuestion({ weekId: w1.id, slot: 12, outcome: "YES", evidence: "Official result for reserve 2", officerId: SEALER, now: afterClose,
+    twoOfficerNow: async () => { throw new Error("injected settings outage"); } });
+  ok("7.0a · ⛔ a two-officer setting whose read throws refuses the seal, and nothing is sealed (A9: fail closed)",
+    !thrownRead.ok && /two-officer setting could not be read/.test(errOf(thrownRead)) && (await unsealed12()).outcome === null, errOf(thrownRead));
+  const unansweredRead = await svc.sealQuestion({ weekId: w1.id, slot: 12, outcome: "YES", evidence: "Official result for reserve 2", officerId: SEALER, now: afterClose,
+    twoOfficerNow: async () => null });
+  ok("7.0b · ⛔ …and so does a read that has not answered (null), never the single-officer default",
+    !unansweredRead.ok && /two-officer setting could not be read/.test(errOf(unansweredRead)) && (await unsealed12()).outcome === null, errOf(unansweredRead));
   await setRequireTwoOfficerResolution(true, OWNER);
   const s = await svc.sealQuestion({ weekId: w1.id, slot: 11, outcome: "YES", evidence: "Official result for reserve 1", officerId: SEALER, now: afterClose });
   const q = (await questionStore.listForWeek(w1.id)).find((x) => x.slot === 11)!;

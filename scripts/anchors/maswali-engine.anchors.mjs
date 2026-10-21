@@ -364,6 +364,15 @@ export const MUTATIONS = [
     expect: "2.8h · ⛔ an attestation that stands is never overwritten",
     suite: "engine",
   },
+  // ── S5-FIX-SRV A9 (S7-F2's port) · the two-officer setting is read, or nothing is sealed ──────────────────────────
+  {
+    name: "(47) an unreadable two-officer setting seals single-officer again (fail open)",
+    file: SVC,
+    from: "  const twoOfficer = await (input.twoOfficerNow ?? readRequireTwoOfficerResolution)().catch(() => null);\n  if (twoOfficer === null) return refuse(\"The two-officer setting could not be read, so nothing was sealed. Try again in a moment.\");",
+    to: "  const twoOfficer = (await (input.twoOfficerNow ?? readRequireTwoOfficerResolution)().catch(() => false)) ?? false;",
+    expect: "7.0a · ⛔ a two-officer setting whose read throws refuses the seal",
+    suite: "engine",
+  },
   // ── S5-FIX-SRV A5 · a stale editor's save never overwrites another officer's ─────────────────────────────────────
   {
     name: "(45) a save no longer checks the version of the row it was read from (A5: a silent overwrite)",
