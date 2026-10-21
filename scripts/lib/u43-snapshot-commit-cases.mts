@@ -44,12 +44,32 @@ async function observeExtra(id: string, baseline: number, ms = 3000): Promise<nu
 
 const source = readFileSync(new URL("../../src/lib/server/market-service.ts", import.meta.url), "utf8").replace(/\r\n/g, "\n");
 const settlement = source.slice(source.indexOf("const persistResolution = async () => {"), source.indexOf("const settleCfg = ratesFor(m);"));
-const emergency = source.slice(source.indexOf("export async function emergencyVoidMarket("));
+// 2026-10-21 · U43 Release B (c29cb7526) put both chart points behind the post-commit queues their services drain:
+// settlement's `persistResolution` writes the stamp on `lockTx`, then hands the point to `queueSettlementEffect`, whose
+// only body is `afterCommit(lockTx, …)`; the emergency void registers its point with `afterCommit(lockTx, …)` into
+// `committedNotices` after the refunds, the round and the market row are written on that same transaction (no longer
+// the line after the market write). The point still waits for the lock's own transaction, so the pins follow the queues.
+// Each function body runs to its closing brace at column 0 and holds exactly ONE snapshot call: an eager second one
+// beside the queued one would publish before the money commits.
+const fnBody = (head: string) => { const at = source.indexOf(head); return at < 0 ? "" : source.slice(at, source.indexOf("\n}\n", at)); };
+const settleFn = fnBody("export async function settleMarket(");
+const emergency = fnBody("export async function emergencyVoidMarket(");
+const snapshotCalls = (body: string) => body.split("recordSnapshot(").length - 1;
+const STAMP_ON_LOCK = "await marketStore.set(m, lockTx ?? undefined);";
+const SETTLE_POINT = "queueSettlementEffect(() => { void recordSnapshot(m.id, m.yesPool, m.noPool); });";
+const SETTLE_QUEUE = "const queueSettlementEffect = (fn: () => void | Promise<unknown>) => {\n    afterCommit(lockTx, () => { committedSettlementEffects.push(fn); });\n  };";
+const VOID_POINT = "afterCommit(lockTx, () => { committedNotices.push(() => { void recordSnapshot(m.id, 0, 0); }); });";
+const VOID_RETURN = "return { ok: true as const, data: { refundedCount, refundedTzs } };";
 ok("S.source · settlement snapshot waits for its own lock transaction",
-  settlement.includes("await marketStore.set(m, lockTx ?? undefined);")
-  && settlement.includes("afterCommit(lockTx, () => { void recordSnapshot(m.id, m.yesPool, m.noPool); });"));
+  settlement.includes(STAMP_ON_LOCK) && settlement.indexOf(STAMP_ON_LOCK) < settlement.indexOf(SETTLE_POINT)
+  && settleFn.split(SETTLE_QUEUE).length === 2 && settleFn.indexOf(SETTLE_QUEUE) < settleFn.indexOf(SETTLE_POINT)
+  && snapshotCalls(settleFn) === 1,
+  `point queued ${settlement.includes(SETTLE_POINT)} · queue on lockTx ${settleFn.split(SETTLE_QUEUE).length - 1} · snapshot calls ${snapshotCalls(settleFn)}`);
 ok("E.source · emergency-void snapshot waits for its own lock transaction",
-  emergency.includes("await marketStore.set(m, lockTx ?? undefined);\n    afterCommit(lockTx, () => { void recordSnapshot(m.id, 0, 0); });"));
+  emergency.split(STAMP_ON_LOCK).length === 2 && emergency.split(VOID_POINT).length === 2
+  && emergency.indexOf(STAMP_ON_LOCK) < emergency.indexOf(VOID_POINT) && emergency.indexOf(VOID_POINT) < emergency.indexOf(VOID_RETURN)
+  && snapshotCalls(emergency) === 1,
+  `point on lockTx ${emergency.split(VOID_POINT).length - 1} · snapshot calls ${snapshotCalls(emergency)}`);
 
 let seq = 0;
 const id = (prefix: string) => `u43snap_${prefix}_${process.pid}_${++seq}`;
