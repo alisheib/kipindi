@@ -43,6 +43,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import ts from "typescript";
 import { decomment } from "./lib/decomment.mts";
 import { expectDriftReport, expectDriftControl, type DeclaredMutation } from "./lib/house-bot-expect-drift.mts";
 import { MUTATIONS as CEREMONY_ANCHORS } from "./anchors/house-bot-ceremony.anchors.mjs";
@@ -2016,24 +2017,6 @@ section("§11 · constants");
   ok("11.4 · staleAt offsets: Enter now 15 s, targeted 60 s, Up & Down 30 s, polls 600 s",
     STALE_AFTER_SEC.manual === 15 && STALE_AFTER_SEC.targetedCounter === 60 && STALE_AFTER_SEC.updown === 30 && STALE_AFTER_SEC.polls === 600);
 
-  // CLAIM_TTL_SEC against the literals it depends on — read from source, and an unfound literal is a FAIL.
-  const LOCK_RE = /timeout:\s*([\d_]+)[^\n]*\n\s*maxWait:\s*([\d_]+)/;
-  const ADMISSION_RE = /maxWaitMs:[^\n]*\?\s*w\s*:\s*([\d_]+)/;
-  const num = (s: string) => Number(s.replace(/_/g, ""));
-  const lock = LOCK_RE.exec(decomment(readFileSync(join(ROOT, "src/lib/server/locks.ts"), "utf8")));
-  const admission = ADMISSION_RE.exec(decomment(readFileSync(join(ROOT, "src/lib/server/admission.ts"), "utf8")));
-  ok("11.5 · the lock transaction's timeout and maxWait literals are found in locks.ts", !!lock);
-  ok("11.6 · the admission queue's default wait is found in admission.ts", !!admission);
-  if (lock && admission) {
-    const waitSec = num(admission[1]) / 1_000;
-    const poolSec = num(lock[2]) / 1_000;
-    const txSec = num(lock[1]) / 1_000;
-    const floor = waitSec + 4 * (poolSec + txSec) + 5;
-    ok(`11.7 · CLAIM_TTL_SEC ${CLAIM_TTL_SEC} ≥ ${waitSec} + 4 × (${poolSec} + ${txSec}) + 5 = ${floor}`, CLAIM_TTL_SEC >= floor);
-  }
-  ok("11.c1 · CONTROL · a lock options block with no numeric literal reads as unfound", !LOCK_RE.test("timeout: env.TX_TIMEOUT,\n    maxWait: env.TX_WAIT,"));
-
-  // Every quoted house audit literal under src/ is a HOUSE_AUDIT key.
   const walk = (dir: string, out: string[] = []): string[] => {
     for (const e of readdirSync(dir)) {
       const p = join(dir, e);
@@ -2042,6 +2025,174 @@ section("§11 · constants");
     }
     return out;
   };
+
+  // CLAIM_TTL_SEC against the literals it depends on — read from source, and an unfound literal is a FAIL.
+  /* 2026-10-21 · U43 Release B (c29cb7526) made the lock transaction's budget a PARAMETER: `withLock(key, fn,
+   * { timeoutMs })`, default 30 000 ms, allowed 30 s through 10 min, so a settlement or an emergency void of a market
+   * with many open positions can be given a measured larger budget. The literal `timeout: 30000` MOVED into the two
+   * defaults — withLock's `options?.timeoutMs ?? 30000` and withAdvisoryLock's `timeoutMs = 30000` — and the
+   * `$transaction` options now read `timeout: timeoutMs`. A house stake passes no budget of its own and never runs
+   * inside a lock that was given one (11.7b–11.7e), so the claim must still outlast the DEFAULT, and 11.7 reads that
+   * default. An unfound literal, or two defaults that disagree, is a FAIL. */
+  const LOCK_RE = /timeout:\s*timeoutMs\b[^\n]*\n\s*maxWait:\s*([\d_]+)/;
+  const ADVISORY_DEFAULT_RE = /\bfunction withAdvisoryLock\b[^\n]*\btimeoutMs\s*=\s*([\d_]+)\s*\)/;
+  const WITHLOCK_DEFAULT_RE = /\boptions\?\.timeoutMs\s*\?\?\s*([\d_]+)\s*;/;
+  const ADMISSION_RE = /maxWaitMs:[^\n]*\?\s*w\s*:\s*([\d_]+)/;
+  const num = (s: string) => Number(s.replace(/_/g, ""));
+  const locksSrc = decomment(readFileSync(join(ROOT, "src/lib/server/locks.ts"), "utf8"));
+  const lock = LOCK_RE.exec(locksSrc);
+  const advisoryDefault = ADVISORY_DEFAULT_RE.exec(locksSrc);
+  const withLockDefault = WITHLOCK_DEFAULT_RE.exec(locksSrc);
+  const admission = ADMISSION_RE.exec(decomment(readFileSync(join(ROOT, "src/lib/server/admission.ts"), "utf8")));
+  ok("11.5 · locks.ts: the lock transaction's timeout is its budget parameter, its maxWait is a literal, and withLock's and withAdvisoryLock's default budgets are literals that agree",
+    !!lock && !!advisoryDefault && !!withLockDefault && num(advisoryDefault[1]) === num(withLockDefault[1]),
+    canon({ maxWait: lock?.[1] ?? null, withLockDefault: withLockDefault?.[1] ?? null, advisoryDefault: advisoryDefault?.[1] ?? null }));
+  ok("11.6 · the admission queue's default wait is found in admission.ts", !!admission);
+  if (lock && withLockDefault && admission) {
+    const waitSec = num(admission[1]) / 1_000;
+    const poolSec = num(lock[1]) / 1_000;
+    const txSec = num(withLockDefault[1]) / 1_000;
+    const floor = waitSec + 4 * (poolSec + txSec) + 5;
+    ok(`11.7 · CLAIM_TTL_SEC ${CLAIM_TTL_SEC} ≥ ${waitSec} + 4 × (${poolSec} + ${txSec}) + 5 = ${floor} — ${txSec} s is withLock's DEFAULT budget, the one a house stake's own transaction runs under`, CLAIM_TTL_SEC >= floor);
+  }
+  ok("11.c1 · CONTROL · a lock options block with no numeric literal, a literal timeout, and a default read from the environment all read as unfound",
+    !LOCK_RE.test("timeout: env.TX_TIMEOUT,\n    maxWait: env.TX_WAIT,") && !LOCK_RE.test("timeout: 30000,\n    maxWait: 10000,")
+      && !WITHLOCK_DEFAULT_RE.test("const timeoutMs = options?.timeoutMs ?? env.TX_TIMEOUT;")
+      && !ADVISORY_DEFAULT_RE.test("async function withAdvisoryLock<T>(key: string, fn: F, timeoutMs = env.TX_TIMEOUT): Promise<T> {"));
+
+  /* 2026-10-21 · U43 Release B (c29cb7526) · WHICH BUDGET THE CLAIM MUST OUTLAST. 11.7 holds only while no house stake
+   * runs under a budget above the default. A nested withLock JOINS its parent's transaction (locks.ts, withAdvisoryLock),
+   * so the budget that bounds a stake is the one its OUTERMOST lock was given. The fire is a timer tick (worker.ts
+   * pollerPass → fire.ts fireClaimedIntent → placeHouseBet → buyPositionInner, whose first lock is `wallet:`), and:
+   *   11.7b · every withLock under src/ that passes a budget (a third argument) is classified below, exactly — the
+   *           settlement and the emergency void, sized to the market's open positions;
+   *   11.7c · neither function of the house stake passes one;
+   *   11.7d · no house-bot module names either budgeted function, and neither budgeted function places a stake, so a
+   *           house stake never joins their transaction;
+   *   11.7e · fire.ts and worker.ts take no lock of their own, and fireClaimedIntent throws when it is called inside
+   *           one (MON-13), so the stake's `wallet:` lock is its outermost one.
+   * A new budgeted lock fails 11.7b until it is classified here with its reason; a house stake given a budget fails
+   * 11.7c, and then the floor must be recomputed against that budget.
+   * ⚠️ MEASURED 2026-10-21 on a scratch PostgreSQL 18.3: a lock WAIT is not ended by the waiter's own budget. A default
+   * (30 s) withLock waiting for a key held 50 s under a 90 s budget stayed blocked until the holder let go, then failed
+   * P2028 at 50.6 s with its callback never run. So this floor also assumes that no lock a house stake waits on without
+   * a `lock_timeout` — its `wallet:` lock; the market and control locks carry HOUSE_BET_LOCK_TIMEOUT — is held for
+   * longer than the default. settleMarket and emergencyVoidMarket lock every holder's wallet, house bots' included,
+   * under their larger budget, so that premise is NOT proven here; the fire's FIRE_HEARTBEAT_MS heartbeat, not this
+   * lease, is what keeps a claim through such a wait. */
+  const BUDGETED_LOCKS: Record<string, { count: number; reason: string }> = {
+    "src/lib/server/market-service.ts · settleMarket": { count: 2, reason: "settlement pays every open position inside ONE transaction — the first ordered holder wallet lock, or the market lock when no wallet is held, carries 30 s + 50 ms per open position, capped at 10 min" },
+    "src/lib/server/market-service.ts · emergencyVoidMarket": { count: 2, reason: "the emergency void refunds every open position inside ONE transaction — the same sizing, on the same outermost lock" },
+  };
+  const HOUSE_STAKE_FNS = ["placeHouseBet", "buyPositionInner"];
+  const BUDGETED_FNS = ["settleMarket", "emergencyVoidMarket"];
+  type BudgetedLock = { site: string; fn: string; line: number; arg: string };
+  /** Every `withLock(…)` call in `text` that passes a third argument, with its innermost enclosing named function. */
+  const budgetedLocksIn = (rel: string, text: string): BudgetedLock[] => {
+    const out: BudgetedLock[] = [];
+    const sf = ts.createSourceFile(rel, text, ts.ScriptTarget.Latest, true, rel.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+    const visit = (node: ts.Node, fn: string): void => {
+      const here = (ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node)) && node.name && ts.isIdentifier(node.name) ? node.name.text : fn;
+      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "withLock" && node.arguments.length >= 3) {
+        out.push({ site: `${rel} · ${here}`, fn: here, line: sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1, arg: node.arguments[2].getText(sf) });
+      }
+      ts.forEachChild(node, (c) => visit(c, here));
+    };
+    visit(sf, "(module)");
+    return out;
+  };
+  /** The call names inside the body of the top-level function `name` in `text` (null when there is no such function). */
+  const callsInFunction = (rel: string, text: string, name: string): Set<string> | null => {
+    const sf = ts.createSourceFile(rel, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+    const decl = sf.statements.find((s): s is ts.FunctionDeclaration => ts.isFunctionDeclaration(s) && s.name?.text === name);
+    if (!decl?.body) return null;
+    const calls = new Set<string>();
+    const visit = (node: ts.Node): void => {
+      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) calls.add(node.expression.text);
+      ts.forEachChild(node, visit);
+    };
+    visit(decl.body);
+    return calls;
+  };
+  const srcRel = (p: string) => p.slice(ROOT.length + 1).replace(/\\/g, "/");
+  const budgeted: BudgetedLock[] = [];
+  let aliased: string[] = [];
+  for (const f of walk(join(ROOT, "src"))) {
+    const text = readFileSync(f, "utf8");
+    if (!text.includes("withLock")) continue;
+    budgeted.push(...budgetedLocksIn(srcRel(f), text));
+    if (/\bwithLock\s+as\s+\w+/.test(decomment(text))) aliased = [...aliased, srcRel(f)];
+  }
+  const bySite = new Map<string, number>();
+  for (const b of budgeted) bySite.set(b.site, (bySite.get(b.site) ?? 0) + 1);
+  const censusWrong = [
+    ...[...bySite].filter(([s, n]) => BUDGETED_LOCKS[s]?.count !== n).map(([s, n]) => `${s}: ${n} ≠ ${BUDGETED_LOCKS[s]?.count ?? "unclassified"}`),
+    ...Object.keys(BUDGETED_LOCKS).filter((s) => !bySite.has(s)).map((s) => `${s}: 0 ≠ ${BUDGETED_LOCKS[s].count} (struck? re-classify)`),
+  ];
+  ok("11.7b · every withLock under src/ that passes a transaction budget is classified with its reason, and every count is exact — the settlement and the emergency void only",
+    censusWrong.length === 0 && budgeted.length > 0 && aliased.length === 0,
+    censusWrong.join(" · ") || aliased.map((a) => `withLock aliased in ${a}`).join(" · ") || budgeted.map((b) => `${b.fn}:${b.line} ${b.arg}`).join(" · "));
+  ok("11.7c · ⭐ no function of the house stake (placeHouseBet, buyPositionInner) passes a transaction budget — the stake runs under withLock's default",
+    budgeted.length > 0 && budgeted.filter((b) => HOUSE_STAKE_FNS.includes(b.fn)).length === 0,
+    budgeted.filter((b) => HOUSE_STAKE_FNS.includes(b.fn)).map((b) => `${b.fn}:${b.line} ${b.arg}`).join(" · "));
+  const houseModules = [
+    ...walk(join(ROOT, "src/lib/server/house-bot")), ...walk(join(ROOT, "src/lib/house-bot")),
+    ...readdirSync(join(ROOT, "src/lib/server")).filter((e) => /^house-bot.*\.tsx?$/.test(e)).map((e) => join(ROOT, "src/lib/server", e)),
+  ];
+  const BUDGETED_NAME_RE = new RegExp(`\\b(?:${BUDGETED_FNS.join("|")})\\b`);
+  const houseNaming = houseModules.filter((f) => BUDGETED_NAME_RE.test(decomment(readFileSync(f, "utf8")))).map(srcRel);
+  const msText = readFileSync(join(ROOT, "src/lib/server/market-service.ts"), "utf8");
+  const stakeCalls = BUDGETED_FNS.map((fn) => {
+    const calls = callsInFunction("src/lib/server/market-service.ts", msText, fn);
+    return { fn, found: calls !== null, stakes: calls ? ["placeHouseBet", "buyPositionInner", "buyPosition"].filter((c) => calls.has(c)) : [] };
+  });
+  ok("11.7d · ⭐ no house-bot module names settleMarket or emergencyVoidMarket, and neither of them places a stake — a house stake never joins a budgeted transaction",
+    houseModules.length >= 40 && houseNaming.length === 0 && stakeCalls.every((s) => s.found && s.stakes.length === 0),
+    canon({ houseModules: houseModules.length, houseNaming, stakeCalls }));
+  const fireLocks = ["src/lib/server/house-bot/fire.ts", "src/lib/server/house-bot/worker.ts"].map((rel) => {
+    const sf = ts.createSourceFile(rel, readFileSync(join(ROOT, rel), "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+    let n = 0;
+    const visit = (node: ts.Node): void => {
+      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && /^with(?:Lock|MoneyTx)$/.test(node.expression.text)) n++;
+      ts.forEachChild(node, visit);
+    };
+    visit(sf);
+    return { rel, locks: n };
+  });
+  const fireText = readFileSync(join(ROOT, "src/lib/server/house-bot/fire.ts"), "utf8");
+  /** True when the top-level function `name`'s FIRST statement is `if (…inLock()…currentLockTx()…) throw …` — a refusal to run inside any lock. */
+  const refusesInsideLock = (rel: string, text: string, name: string): boolean => {
+    const sf = ts.createSourceFile(rel, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+    const decl = sf.statements.find((s): s is ts.FunctionDeclaration => ts.isFunctionDeclaration(s) && s.name?.text === name);
+    const first = decl?.body?.statements[0];
+    if (!first || !ts.isIfStatement(first)) return false;
+    const cond = first.expression.getText(sf);
+    const then = ts.isBlock(first.thenStatement) && first.thenStatement.statements.length === 1 ? first.thenStatement.statements[0] : first.thenStatement;
+    return /\binLock\(\)/.test(cond) && /\bcurrentLockTx\(\)/.test(cond) && ts.isThrowStatement(then);
+  };
+  const fireEntry = {
+    refusesInsideLock: refusesInsideLock("src/lib/server/house-bot/fire.ts", fireText, "fireClaimedIntent"),
+    entryCallsFire: !!callsInFunction("src/lib/server/house-bot/fire.ts", fireText, "fireClaimedIntent")?.has("fire"),
+    firePlacesStake: !!callsInFunction("src/lib/server/house-bot/fire.ts", fireText, "fire")?.has("placeHouseBet"),
+  };
+  ok("11.7e · fire.ts and worker.ts open no lock or money transaction of their own, fireClaimedIntent REFUSES to run inside a lock (its first statement, MON-13) and places the stake through fire → placeHouseBet — the stake's own `wallet:` lock is its outermost",
+    fireLocks.every((f) => f.locks === 0) && fireEntry.refusesInsideLock && fireEntry.entryCallsFire && fireEntry.firePlacesStake,
+    canon({ fireLocks, ...fireEntry }));
+  /* ⛔ CONTROLS · the census finds a budget planted inside the house stake and names that function; the reachability
+   * scan finds a house module that imports settleMarket; the call scan finds a stake placed inside a budgeted function. */
+  const plantedStake = budgetedLocksIn("planted.ts", "export async function placeHouseBet() {\n  return withAdmission(() => withLock(`wallet:${u}`, async (tx) => buy(tx), { timeoutMs: 60_000 }));\n}\n");
+  ok("11.7.c1 · CONTROL · a budget planted inside placeHouseBet is found, attributed to placeHouseBet, and would fail 11.7c",
+    plantedStake.length === 1 && plantedStake[0].fn === "placeHouseBet" && HOUSE_STAKE_FNS.includes(plantedStake[0].fn) && plantedStake[0].arg === "{ timeoutMs: 60_000 }");
+  ok("11.7.c2 · CONTROL · a house module importing settleMarket is found, and a stake placed inside emergencyVoidMarket is found",
+    BUDGETED_NAME_RE.test(decomment(`import { placeHouseBet, settleMarket } from "../market-service";`))
+      && !!callsInFunction("planted.ts", "export async function emergencyVoidMarket() {\n  await withLock(`market:${id}`, async () => { await placeHouseBet(bot, opts, house); });\n}\n", "emergencyVoidMarket")?.has("placeHouseBet"));
+  ok("11.7.c3 · CONTROL · a fire entry whose lock refusal is gone, moved below its first statement, or only logs reads as NOT refusing",
+    !refusesInsideLock("planted.ts", "export async function fireClaimedIntent() {\n  const state = engineState();\n  return fire();\n}\n", "fireClaimedIntent")
+      && !refusesInsideLock("planted.ts", "export async function fireClaimedIntent() {\n  const state = engineState();\n  if (inLock() || currentLockTx() != null) throw new Error(\"x\");\n}\n", "fireClaimedIntent")
+      && !refusesInsideLock("planted.ts", "export async function fireClaimedIntent() {\n  if (inLock() || currentLockTx() != null) console.warn(\"x\");\n}\n", "fireClaimedIntent")
+      && refusesInsideLock("planted.ts", "export async function fireClaimedIntent() {\n  if (inLock() || currentLockTx() != null) throw new Error(\"x\");\n}\n", "fireClaimedIntent"));
+
+  // Every quoted house audit literal under src/ is a HOUSE_AUDIT key.
   const LITERAL = /["'`](house_bot\.[a-z_]+)["'`]/g;
   const found = new Set<string>();
   for (const f of walk(join(ROOT, "src"))) for (const m of readFileSync(f, "utf8").matchAll(LITERAL)) found.add(m[1]);
@@ -2519,7 +2670,10 @@ console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-rules: ${pa
  * whenever `total > max` — while a COUNTER only ever answers a stake ALREADY in the pool, so the total is
  * never 0 and every counter was refused for ever. The +3 IS the measurement, never an arithmetic guess. */
 /* N6: 659/0 printed on 2026-10-15 after the pair-only Start and truthful warning cases. */
-const MIN_ASSERTIONS = 659;
+/* ⭐ RAISED 659 → 666 on 2026-10-21 (U43 Release B, c29cb7526), to what this run PRINTED once §11's lock budget was
+ * re-pointed to withLock's default: 11.7b–11.7e and their three controls 11.7.c1–11.7.c3 (+7). The +7 IS the
+ * measurement, never an arithmetic guess. */
+const MIN_ASSERTIONS = 666;
 if (pass < MIN_ASSERTIONS) {
   console.error(`\n!! FLOOR — test:house-bot-rules ran ${pass} assertion(s), fewer than the ${MIN_ASSERTIONS} a green run printed. Cases that stop running are not cases that pass.`);
   process.exit(4);
