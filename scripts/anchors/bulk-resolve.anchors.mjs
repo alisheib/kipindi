@@ -512,7 +512,7 @@ export const MUTATIONS = [
     name: "S7-F8 · the dictionary's staged words say 'will seal' again",
     file: "src/lib/admin-status-lexicon.ts",
     expect: "11.15b an eligible row says what the bar will do",
-    from: `  eligibleStaged:           { en: "Clears the auto-resolve floor — this one will be staged for a second officer" },`,
+    from: `  eligibleStaged:           { en: "Clears the auto-resolve floor — this one will be staged" },`,
     to: `  eligibleStaged:           { en: "Clears the auto-resolve floor — this one will seal" },`,
   },
 ];

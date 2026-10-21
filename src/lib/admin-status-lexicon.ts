@@ -777,8 +777,10 @@ export const PROPOSAL = {
  */
 export const BULK_VERDICT = {
   eligible:                 { en: "Clears the auto-resolve floor — this one will seal" },
-  /** S7-F8 14 · two-admin ON: the bar STAGES (`stage1`) and a different officer seals on the market's own card. */
-  eligibleStaged:           { en: "Clears the auto-resolve floor — this one will be staged for a second officer" },
+  /** S7-F8 14 · two-admin ON: the bar STAGES (`stage1`) and a different officer seals on the market's own card — the
+   *  row's Two-officer rule and the chip's title say who. S7-F8 15 · as short as the words it replaces: "…for a second
+   *  officer" wrapped the chip at 1280, its last word alone on a second line. */
+  eligibleStaged:           { en: "Clears the auto-resolve floor — this one will be staged" },
   eligibleAuto:             { en: "Would auto-seal" },
   alreadyResolved:          { en: "Already resolved — the verdict is sealed" },
   awaitingCountersignature: { en: "Staged already — countersign it on the market's own card, not in bulk" },

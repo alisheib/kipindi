@@ -622,11 +622,16 @@ const V = (m: VerdictMarket, over: Partial<Parameters<typeof bulkVerdictFor>[0]>
      /verdict\.eligible \?/.test(row));
   // ⛔ MASWALI-BUILD S7-F8 14 · with two-admin authorization ON the bar STAGES ("Stage selected"), yet an eligible row said
   //    "…this one will seal" (and its title "the bulk bar will" seal it) — read on S7-F7 6–8's render, 2026-10-21, at every
-  //    width. The row picks its words by the verdict's own `stage`, the field the bar acts on; the staged words never say seal.
-  ok("11.15b an eligible row says what the bar will do: 'will seal' in single-admin, 'staged for a second officer' in two-admin",
+  //    width. The row picks its words by the verdict's own `stage`, the field the bar acts on; the staged words never say seal,
+  //    and the title names the different officer who does. S7-F8 15 · the words stay as short as the ones they replace: at
+  //    1280 the two-column card's chip held "…this one will seal" (50 characters) on one line and wrapped "…will be staged
+  //    for a second officer" (76) with "OFFICER" alone on its second line (S7-F8 14's re-render, 2026-10-21).
+  ok("11.15b an eligible row says what the bar will do: 'will seal' in single-admin, 'will be staged' in two-admin",
      /: verdict\.stage === "stage1" \? BULK_VERDICT\.eligibleStaged\.en : BULK_VERDICT\.eligible\.en\}/.test(row)
-       && /: verdict\.stage === "stage1"\s*\? "This market clears the auto-resolve floor\. Two-admin authorization is on, so the bulk bar stages it/.test(row)
-       && /second officer/.test(BULK_VERDICT.eligibleStaged.en) && !/\bseal/i.test(BULK_VERDICT.eligibleStaged.en));
+       && /: verdict\.stage === "stage1"\s*\? "This market clears the auto-resolve floor\. Two-admin authorization is on, so the bulk bar stages it — a different officer countersigns it/.test(row)
+       && /— this one will be staged$/.test(BULK_VERDICT.eligibleStaged.en) && !/\bseal/i.test(BULK_VERDICT.eligibleStaged.en)
+       && BULK_VERDICT.eligibleStaged.en.length <= BULK_VERDICT.eligible.en.length + 6,
+     `${BULK_VERDICT.eligibleStaged.en.length} vs ${BULK_VERDICT.eligible.en.length} characters`);
   ok("11.16 the tooltip carries EVERY reason, not just the headline", /verdict\.all\.map/.test(row));
   ok("11.17 the tap target is a 44px literal, never an overridden scale class",
      /min-h-\[44px\]/.test(row) && !/\bh-8\b/.test(row) && !/\bh-10\b/.test(row));
