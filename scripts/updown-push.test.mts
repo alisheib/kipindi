@@ -73,7 +73,11 @@ const ok = (name: string, cond: boolean, detail = "") => {
   const PUSH_STATEMENT = /^[ \t]*(pushOnly)\(/gm;
   const announcersIn = (s: string) => [...s.matchAll(PUSH_STATEMENT), ...s.matchAll(BELL_STATEMENT)].map((m) => m[1]);
   const queue = MS.match(/const queueSettlementEffect = \(fn: \(\) => void \| Promise<unknown>\) => \{\s*afterCommit\(lockTx, \(\) => \{ committedSettlementEffects\.push\(fn\); \}\);\s*\};/g) ?? [];
-  const drain = MS.match(/^[ \t]*if \(result\.ok\) for \(const effect of committedSettlementEffects\) \{\s*try \{ await effect\(\); \}/gm) ?? [];
+  // 2026-10-21 · the drain moved into locks.ts `drainCommitted` (it also covers a call that joined an enclosing lock's
+  // transaction): settlement hands it the queue once, and its own loop awaits each effect. Both halves are pinned.
+  const LOCKS = lf(readFileSync(new URL("../src/lib/server/locks.ts", import.meta.url), "utf8"));
+  const drainLoop = /const drain = async \(\) => \{\s*for \(const effect of effects\) \{\s*try \{ await effect\(\); \}/.test(LOCKS);
+  const drain = drainLoop ? MS.match(/^[ \t]*if \(result\.ok\) await drainCommitted\(committedSettlementEffects, currentLockTx\(\)\);/gm) ?? [] : [];
   const emptied = MS.match(/committedSettlementEffects(?:\.length\s*=[^=]|\.splice\(|\.pop\(|\.shift\(|\s*=[^=>])/g) ?? [];
   ok("§2 ⭐ the settlement queue reaches its notices: queueSettlementEffect hands each effect to afterCommit, and after the lock `if (result.ok)` awaits every queued effect — nothing empties the queue in between",
      queue.length === 1 && drain.length === 1 && emptied.length === 0,

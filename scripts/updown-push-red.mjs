@@ -73,8 +73,8 @@ const MUTATIONS = [
     name: "queue-never-drained",
     why: "the committed settlement's queued notices are never run, so no Up & Down result is announced",
     file: MS,
-    from: `  if (result.ok) for (const effect of committedSettlementEffects) {`,
-    to: `  if (false) for (const effect of committedSettlementEffects) {`,
+    from: `  if (result.ok) await drainCommitted(committedSettlementEffects, currentLockTx());`,
+    to: `  if (false) await drainCommitted(committedSettlementEffects, currentLockTx());`,
     expect: "§2 ⭐ the settlement queue reaches its notices",
   },
   {
