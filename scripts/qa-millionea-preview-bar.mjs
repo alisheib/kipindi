@@ -12,11 +12,17 @@
  *    the page's column; /markets and / wear none; a client move /markets → /millionea brings the bar without a reload (the
  *    shell is the root layout's, which a move does not render again) and Back takes it away. Shots of /millionea and
  *    /results at both widths go to outDir (default .qa-artifacts/millionea-preview-bar/).
- * Read-only on the site but for the dev endpoint that seeds the staff account.
+ * 3. A staff session that also holds the journey's preview pass (minted at /admin/journey, `live/journey-pass.mjs`), at
+ *    320 and 1280: on /millionea the journey's shell, its marker first under the header and Millionea's bar directly
+ *    under that, both full width, above <main>; the toast stack (`[data-toaster]`, A25 item 17) hangs below the LOWER bar
+ *    (its `--toast-clear` is Millionea's bar's foot); a client move to the journey's home takes Millionea's bar away and
+ *    the stack's clearance back to the journey marker's foot, and Back brings both again. A shot of each width.
+ * Read-only on the site but for the dev endpoint that seeds the staff accounts and the officer's preview switch.
  */
 import { chromium } from "playwright";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { premise, mintStaffPass } from "./live/journey-pass.mjs";
 
 const BASE = process.env.BASE || "http://localhost:3000";
 const OUT = resolve(process.argv[2] ?? join(process.cwd(), ".qa-artifacts", "millionea-preview-bar"));
@@ -113,6 +119,68 @@ try {
         ok(`2.3 ${l} ${w} · a client move to /millionea brings the bar, and Back takes it away`, inn.n === 1 && out.n === 0, `(in ${inn.n}, back ${out.n})`);
       } else {
         ok(`2.3 ${l} ${w} · a Millionea door to move by`, false, "(no a[href=/millionea] on /markets)");
+      }
+      await ctx.close();
+    }
+  }
+  // ── 3 · a staff session holding the journey's preview pass: two markers, the stack under the lower ──
+  const p = await premise(BASE);
+  ok("PREMISE 3 · a journey preview pass can be minted here (local, in-memory, the journey not withdrawn)", !p.refuse, p.refuse ?? "");
+  if (!p.refuse) {
+    const pass = await mintStaffPass(browser, BASE);
+    /** The two bars, the header, <main> and the toast stack's clearance and top. */
+    const stack = (page) => page.evaluate(() => {
+      const box = (el) => (el ? el.getBoundingClientRect() : null);
+      const jm = document.querySelectorAll('[data-testid="journey-preview-marker"]');
+      const mm = document.querySelectorAll('[data-testid="millionea-preview-mark"]');
+      const header = box(document.querySelector("header[data-testid='journey-top-bar']"));
+      const main = box(document.querySelector("main"));
+      const toaster = document.querySelector("[data-toaster]");
+      const j = box(jm[0]);
+      const m = box(mm[0]);
+      return {
+        journeyHeader: !!header, jn: jm.length, mn: mm.length,
+        headerBottom: header ? Math.round(header.bottom) : null,
+        jTop: j ? Math.round(j.top) : null, jBottom: j ? Math.round(j.bottom) : null, jWidth: j ? Math.round(j.width) : null,
+        mTop: m ? Math.round(m.top) : null, mBottom: m ? Math.round(m.bottom) : null, mWidth: m ? Math.round(m.width) : null,
+        mainTop: main ? Math.round(main.top) : null,
+        clear: toaster ? toaster.style.getPropertyValue("--toast-clear") || null : "no stack",
+        toasterTop: toaster ? Math.round(parseFloat(getComputedStyle(toaster).top)) : null,
+      };
+    });
+    for (const w of [320, 1280]) {
+      const ctx = await browser.newContext({ viewport: { width: w, height: w < 640 ? 780 : 900 } });
+      await ctx.addCookies([{ name: "kp-locale", value: "en", url: BASE }, pass]);
+      const page = await ctx.newPage();
+      const seeded = await page.request.post(`${BASE}/api/dev-test/seed-admin`, { data: {} });
+      ok(`PREMISE 3 ${w} · a staff session (seed-admin) beside the pass`, seeded.ok(), `(${seeded.status()})`);
+      const r = await page.goto(`${BASE}/millionea`, { waitUntil: "domcontentloaded", timeout: 120_000 });
+      await settle(page);
+      const s = await stack(page);
+      rows.push({ section: 3, w, path: "/millionea", status: r?.status(), ...s });
+      ok(`3.1 ${w} /millionea · the journey's shell, its marker under the header, Millionea's bar directly under it, both full width, above the page`,
+        r?.status() === 200 && s.journeyHeader && s.jn === 1 && s.mn === 1 && Math.abs(s.jTop - s.headerBottom) <= 1 && Math.abs(s.mTop - s.jBottom) <= 1 &&
+        s.jWidth === w && s.mWidth === w && s.mainTop !== null && s.mBottom <= s.mainTop + 1, JSON.stringify(s));
+      ok(`3.2 ${w} /millionea · the toast stack hangs below the LOWER bar (Millionea's)`,
+        s.clear === `${s.mBottom}px` && s.toasterTop >= s.mBottom, `(clear ${s.clear}, stack top ${s.toasterTop}, bars' feet ${s.jBottom}/${s.mBottom})`);
+      await page.screenshot({ path: join(OUT, `journey-millionea-en-${w}.png`), clip: { x: 0, y: 0, width: w, height: Math.min(440, (s.mBottom ?? 0) + 240) } });
+      // A client move to the journey's home (its brand link) and Back.
+      const home = page.locator("header[data-testid='journey-top-bar'] a[href='/']").first();
+      if (await home.count()) {
+        await home.click();
+        await page.waitForURL(`${BASE}/`, { timeout: 60_000 });
+        await page.waitForTimeout(600);
+        const out = await stack(page);
+        ok(`3.3 ${w} · a client move to the journey's home takes Millionea's bar away and the stack's clearance back to the journey marker's foot`,
+          out.jn === 1 && out.mn === 0 && out.clear === `${out.jBottom}px`, JSON.stringify(out));
+        await page.goBack();
+        await page.waitForURL(/\/millionea$/, { timeout: 60_000 });
+        await page.waitForTimeout(600);
+        const back = await stack(page);
+        ok(`3.4 ${w} · Back brings Millionea's bar again, under the journey marker, and the stack below it`,
+          back.jn === 1 && back.mn === 1 && Math.abs(back.mTop - back.jBottom) <= 1 && back.clear === `${back.mBottom}px`, JSON.stringify(back));
+      } else {
+        ok(`3.3 ${w} · the journey header's home link to move by`, false, "(no a[href='/'] in the journey header)");
       }
       await ctx.close();
     }
