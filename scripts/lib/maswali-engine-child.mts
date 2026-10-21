@@ -21,7 +21,7 @@
 const STORE = process.env.HB_MONEY_STORE ?? "unknown";
 process.env.SESSION_SECRET ??= "maswali-engine-session-secret-0123456789abcdef";
 
-const { eatWeekStartMs, eatWeekAt } = await import("../../src/lib/eat-day.ts");
+const { eatWeekStartMs, eatWeekAt, eatWeekCode } = await import("../../src/lib/eat-day.ts");
 const { utcToZonedLocal } = await import("../../src/lib/maswali-time.ts");
 const svc = await import("../../src/lib/server/maswali-service.ts");
 const { weekStore, questionStore, ticketStore, __resetMaswaliMemoryStores } = await import("../../src/lib/server/maswali-dal.ts");
@@ -84,20 +84,29 @@ const attest = async (weekId: string, officerId: string) => svc.attestParity({ w
  * `audit` does; and it notes the same for every pool frame the act arms (the feed's own frames are fired first, so the
  * act's notice arms one). On PostgreSQL a row or a notice made under no lock follows its act's commit (the outermost lock
  * runs what `afterCommit` queued only once its transaction has resolved); the memory store has no transaction, so there
- * each is only counted.
+ * each is only counted. `lose` names an action whose row is LOST instead (noted, reported unrecorded, never written): the
+ * act must still land, and say so in its `recorded`.
  */
 const { inLock } = await import("../../src/lib/server/locks.ts");
 const poolFeed = await import("../../src/lib/server/maswali-pool-feed.ts");
 let auditSites: Array<{ action: string; targetId: string | null; underLock: boolean }> = [];
 let poolSites: Array<{ weekId: string; underLock: boolean }> = [];
-async function spied<T>(act: () => Promise<T>): Promise<T> {
+async function spied<T>(act: () => Promise<T>, lose?: string): Promise<T> {
   auditSites = [];
   poolSites = [];
   await poolFeed.__flushPoolFramesForTests();
   const frames = (globalThis as { __50PICK_MLN_POOL_FEED?: Map<string, unknown> }).__50PICK_MLN_POOL_FEED!;
   frames.set = function (this: Map<string, unknown>, weekId: string, timer: unknown) { poolSites.push({ weekId, underLock: inLock() }); return Map.prototype.set.call(this, weekId, timer) as Map<string, unknown>; };
-  svc.__setMaswaliAuditWriterForTests(async (row) => { auditSites.push({ action: row.action, targetId: row.targetId ?? null, underLock: inLock() }); return audit(row); });
+  svc.__setMaswaliAuditWriterForTests(async (row) => {
+    auditSites.push({ action: row.action, targetId: row.targetId ?? null, underLock: inLock() });
+    return row.action === lose ? { recorded: false } : audit(row);
+  });
   try { return await act(); } finally { svc.__setMaswaliAuditWriterForTests(null); delete (frames as { set?: unknown }).set; }
+}
+/** S5-FIX-SRV · run one act with ONE action's rows lost (reported unrecorded, never written); every other row is written. */
+async function losing<T>(action: string, act: () => Promise<T>): Promise<T> {
+  svc.__setMaswaliAuditWriterForTests(async (row) => (row.action === action ? { recorded: false } : audit(row)));
+  try { return await act(); } finally { svc.__setMaswaliAuditWriterForTests(null); }
 }
 /** The act wrote one `action` row for `targetId`: on PostgreSQL, only once its transaction had committed. */
 const afterItsCommit = (action: string, targetId: string) => {
@@ -151,6 +160,28 @@ const nowDraft = new Date(W2 - 3 * DAY);
     checkErr !== null && checkErr.includes("MaswaliQuestion_event_kind_check"), String(checkErr).slice(0, 200));
   const past = await svc.createWeek({ weekStartMs: W2, questions: questions(W2), officerId: DRAFTER, now: new Date(W2 + 6 * DAY) });
   ok("1.6 · ⛔ a week whose close has passed is refused", !past.ok);
+  // ⭐ S5-FIX-SRV (finding 2's class, in the draft) · the week and its fifteen questions are the chain lock's ONE transaction:
+  //    a fault after the questions were written rolls the whole draft back — no week and no audit row (PostgreSQL, where a
+  //    transaction can roll back). No control draft follows: a later section takes the first public draft as its own.
+  if (STORE === "postgres") {
+    const W9 = weekStartAhead(9), code9 = eatWeekCode("MLN", W9);
+    const realMany = questionStore.createMany;
+    let written = false, handed = false;
+    questionStore.createMany = async (...args: Parameters<typeof realMany>) => {
+      handed = !!args[2];
+      await realMany.apply(questionStore, args);
+      written = true;
+      throw new Error("injected fault: the connection dropped after the draft's questions");
+    };
+    let thrown = "";
+    try { await svc.createWeek({ weekStartMs: W9, questions: questions(W9), officerId: DRAFTER, now: nowDraft }); }
+    catch (e) { thrown = String((e as Error).message ?? e); } finally { questionStore.createMany = realMany; }
+    const left = await weekStore.getByCode(code9);
+    await auditFlush();
+    const draftedRows = (await getAuditByActionsDurable(["maswali.week.drafted"], { limit: 500 })).entries.filter((e) => e.payload?.code === code9).length;
+    ok("1.6b · ⭐ a fault after the draft's questions were written rolls the WHOLE draft back — no week, and no audit row says it was drafted",
+      thrown.includes("injected fault") && written && handed && left === null && draftedRows === 0, JSON.stringify({ thrown, written, handed, left: left?.code ?? null, draftedRows }));
+  }
 }
 const created = await svc.createWeek({ weekStartMs: W2, questions: questions(W2), officerId: DRAFTER, now: nowDraft });
 const week = created.ok ? created.week : (null as never);
@@ -314,6 +345,8 @@ const w1 = opened.ok ? opened.week : (null as never);
 {
   ok("3.1 · it opens", opened.ok, errOf(opened));
   ok("3.1b · ⭐ the open's audit row and its pool notice each come once — on PostgreSQL only after its transaction committed (S5-FIX-SRV)", afterItsCommit("maswali.week.opened", week.id) && notedAfterItsCommit(week.id), JSON.stringify({ auditSites, poolSites }));
+  ok("3.1c · the open reports its record whole (`recorded`): every row it owes was written — its market's among them, which the open owes itself",
+    opened.ok && opened.recorded === true && afterItsCommit("market.created", w1.marketId!) && afterItsCommit("maswali.week.opened", week.id), JSON.stringify(auditSites));
   ok("3.2 · OPEN, with a market, the frozen rules and the question-set hash", w1.state === "OPEN" && !!w1.marketId && w1.rulesSnapshot !== null && /^[0-9a-f]{64}$/.test(w1.questionSetHash ?? ""));
   const m = await marketStore.get(w1.marketId!);
   ok("3.3 · the market is MASWALI, LIVE, closing at the week's close", m?.productLine === "MASWALI" && m.status === "LIVE" && m.selectionClosedAt === w1.closesAt, JSON.stringify({ pl: m?.productLine, st: m?.status, sc: m?.selectionClosedAt }));
@@ -378,6 +411,14 @@ console.log("\n§5 · the close");
       thrown.includes("injected fault") && (await weekStore.get(w1.id))!.closesAt === moved && (await marketStore.get(w1.marketId!))?.selectionClosedAt === moved,
       JSON.stringify({ thrown, closesAt: (await weekStore.get(w1.id))!.closesAt }));
   }
+  // ⭐ S5-FIX-SRV · one truth for every act: a move whose audit row is lost still lands, and says so; 5.3's said it was whole.
+  const lostMove = await losing("maswali.week.close_moved", () => svc.moveClose({ weekId: w1.id, toCloseAt: new Date(closeMs - 3 * 3_600_000).toISOString(), expectedClosesAt: moved, officerId: DRAFTER, now: nowOpen }));
+  ok("5.13 · ⭐ a move whose audit row could not be written still lands, and reports it (`recorded` false); 5.3's move reported its record whole",
+    earlier.ok && earlier.recorded === true && lostMove.ok && lostMove.recorded === false
+      && (await weekStore.get(w1.id))!.closesAt === new Date(closeMs - 3 * 3_600_000).toISOString(),
+    JSON.stringify({ earlier: earlier.ok ? earlier.recorded : errOf(earlier), lost: lostMove.ok ? lostMove.recorded : errOf(lostMove) }));
+  const back = await svc.moveClose({ weekId: w1.id, toCloseAt: moved, expectedClosesAt: new Date(closeMs - 3 * 3_600_000).toISOString(), officerId: DRAFTER, now: nowOpen });
+  ok("5.13b · …and the close moves back to where 5.3 put it, its record whole", back.ok && back.recorded === true && (await weekStore.get(w1.id))!.closesAt === moved, errOf(back));
   const early = await svc.closeWeek({ weekId: w1.id, now: nowOpen });
   ok("5.5 · ⛔ the tick cannot close before the close", !early.ok);
   const at = new Date(closeMs - 2 * 3_600_000);
@@ -385,6 +426,7 @@ console.log("\n§5 · the close");
   ok("5.6 · at the close: CLOSED, the empty week's commitment stamped (0 tickets, the empty root)", closed.ok && closed.week.state === "CLOSED" && closed.week.ticketCount === 0
     && closed.week.ticketMerkleRoot === "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" && closed.week.salesAtClose === 0, JSON.stringify(closed.ok ? closed.week : closed));
   ok("5.6b · ⭐ the close's audit row and its pool notice each come once — on PostgreSQL only after its transaction committed (S5-FIX-SRV)", afterItsCommit("maswali.week.closed", w1.id) && notedAfterItsCommit(w1.id), JSON.stringify({ auditSites, poolSites }));
+  ok("5.6c · the close reports its record whole (`recorded`)", closed.ok && closed.recorded === true, JSON.stringify(closed.ok ? closed.recorded : closed));
   const twice = await svc.closeWeek({ weekId: w1.id, now: at });
   ok("5.7 · a second close is a no-op that says so (exactly once)", twice.ok && twice.already === true);
   ok("5.8 · ⛔ the close can never move once passed", !(await svc.moveClose({ weekId: w1.id, toCloseAt: new Date(closeMs).toISOString(), expectedClosesAt: (await weekStore.get(w1.id))!.closesAt, officerId: DRAFTER, now: at })).ok);
@@ -728,16 +770,24 @@ console.log("\n§8 · ⭐ the week void");
   // The DRIVE week: open it and void six mains before its close — sales must stop at once.
   const drive = (await weekStore.list({ visibility: "DRIVE" }))[0];
   await attest(drive.id, READER);
-  const o = await svc.openWeek({ weekId: drive.id, officerId: DRAFTER, guarantee: RICH, now: nowOpen });
+  // S5-FIX-SRV · this open's market row is lost: the market's row is the open's own, so the open must say so (8.1b).
+  const o = await losing("market.created", () => svc.openWeek({ weekId: drive.id, officerId: DRAFTER, guarantee: RICH, now: nowOpen }));
   ok("8.1 · a DRIVE week opens beside the public one", o.ok, errOf(o));
+  ok("8.1b · ⭐ …its market's audit row lost, the open still lands and reports it (`recorded` false): one truth for the act, its market's row included",
+    o.ok && o.recorded === false && (await weekStore.get(drive.id))!.state === "OPEN", JSON.stringify(o.ok ? o.recorded : o));
   const yes = await svc.sealQuestion({ weekId: drive.id, slot: 1, outcome: "YES", evidence: "too early to know this", officerId: SEALER, now: nowOpen });
   ok("8.2 · ⛔ a YES before the close is refused", !yes.ok && /after the sales close/.test(errOf(yes)));
+  let sixthSeal: Awaited<ReturnType<typeof svc.sealQuestion>> | null = null;
   for (let slot = 1; slot <= 6; slot++) {
-    await svc.sealQuestion({ weekId: drive.id, slot, outcome: "VOID", voidReason: "criterion_wrong", evidence: `Criterion ${slot} is materially wrong (found before the close)`, officerId: SEALER, now: nowOpen });
+    const seal = () => svc.sealQuestion({ weekId: drive.id, slot, outcome: "VOID", voidReason: "criterion_wrong", evidence: `Criterion ${slot} is materially wrong (found before the close)`, officerId: SEALER, now: nowOpen });
+    // S5-FIX-SRV · the sixth seal closes the week: on PostgreSQL that close's row is lost, and the seal must say so (8.4b).
+    sixthSeal = slot === 6 && STORE === "postgres" ? await losing("maswali.week.closed", seal) : await seal();
   }
   const after6 = (await weekStore.get(drive.id))!;
   ok("8.3 · ⭐ six voided mains make the week void CERTAIN, and its sales stop at once (MR-18)", after6.state === "CLOSED" && !!after6.closedAt, after6.state);
   ok("8.4 · …the market's cutoff is now", (await marketStore.get(after6.marketId!))?.selectionClosedAt === nowOpen.toISOString());
+  ok("8.4b · ⭐ the seal that closed the week counts that close's audit row as its own: whole on the memory store; on PostgreSQL, where the row is lost, it says so (`recorded`)",
+    !!sixthSeal?.ok && sixthSeal.recorded === (STORE !== "postgres"), JSON.stringify(sixthSeal));
   const tooSoon = await svc.voidWeek({ weekId: drive.id, now: nowOpen });
   ok("8.5 · ⛔ the void waits for the final record (the reserves are not all sealed)", !tooSoon.ok);
   for (let slot = 7; slot <= 15; slot++) await svc.sealQuestion({ weekId: drive.id, slot, outcome: "YES", evidence: `Official result for ${slot}`, officerId: SEALER, now: afterClose });
@@ -765,9 +815,12 @@ console.log("\n§8 · ⭐ the week void");
     ok("8.7b · ⭐ a fault after the week void's decision was stamped rolls it back — the week is not VOIDED, and no audit row says it was",
       thrown.includes("injected fault") && decided && kept.state === final.state && voidedRows === 0, JSON.stringify({ thrown, decided, state: kept.state, voidedRows }));
   }
-  const v = await spied(() => svc.voidWeek({ weekId: drive.id, now: new Date(Date.parse(final.objectionsCloseAt!) + 1) }));
+  // S5-FIX-SRV · this void's row is lost (noted, never written): the void still lands, and says so (8.8c; 13.0c's is whole).
+  const v = await spied(() => svc.voidWeek({ weekId: drive.id, now: new Date(Date.parse(final.objectionsCloseAt!) + 1) }), "maswali.week.voided");
   ok("8.8 · after the window: VOIDED", v.ok && v.week.state === "VOIDED", errOf(v));
   ok("8.8b · ⭐ the void's audit row is written once — on PostgreSQL only after its decision committed (S5-FIX-SRV)", afterItsCommit("maswali.week.voided", drive.id), JSON.stringify(auditSites));
+  ok("8.8c · ⭐ a void whose audit row could not be written still lands and refunds, and reports it (`recorded` false)",
+    v.ok && v.recorded === false && v.week.state === "VOIDED", JSON.stringify(v.ok ? { recorded: v.recorded, refunded: v.refunded } : v));
   const m = await marketStore.get(final.marketId!);
   ok("8.9 · the market is VOIDED with outcome VOID, settled by the week's bulk refund (R1)", m?.status === "VOIDED" && m.resolvedOutcome === "VOID" && !!m.settledAt, JSON.stringify({ s: m?.status, o: m?.resolvedOutcome, at: m?.settledAt }));
 }
@@ -800,9 +853,13 @@ console.log("\n§9 · the carry, in chain order");
       thrown.includes("injected fault") && handedTx && (await weekStore.get(third.id))!.rolloverIn === null && carryRows === 0,
       JSON.stringify({ thrown, handedTx, rolloverIn: (await weekStore.get(third.id))!.rolloverIn, carryRows }));
   }
-  const c = await spied(() => svc.claimCarry({ weekId: third.id, readJackpot: async () => 300_000 }));
+  // S5-FIX-SRV · the carry is claimed once, so each store proves one side of its `recorded`: whole on the memory store, and on
+  // PostgreSQL its row lost (noted, never written) and reported so.
+  const c = await spied(() => svc.claimCarry({ weekId: third.id, readJackpot: async () => 300_000 }), STORE === "postgres" ? "maswali.week.carry_claimed" : undefined);
   ok("9.3 · once the earlier week is settled, the carry is claimed", c.ok && c.rolloverIn === 300_000 && !c.already);
   ok("9.3b · ⭐ the carry's audit row is written once — on PostgreSQL only after its claim committed (S5-FIX-SRV)", afterItsCommit("maswali.week.carry_claimed", third.id), JSON.stringify(auditSites));
+  ok("9.3c · ⭐ the carry reports its record: whole on the memory store; on PostgreSQL, its row lost, `recorded` false — and the claim stands either way",
+    c.ok && c.recorded === (STORE !== "postgres") && (await weekStore.get(third.id))!.rolloverIn === 300_000, JSON.stringify(c.ok ? c.recorded : c));
   const again = await svc.claimCarry({ weekId: third.id, readJackpot: async () => 999_999 });
   ok("9.4 · ⭐ exactly once: a second claim returns the first figure", again.ok && again.rolloverIn === 300_000 && again.already === true);
   const late = await svc.sealQuestion({ weekId: w1.id, slot: 12, outcome: "YES", evidence: "Official result for reserve 2", officerId: SEALER, now: afterClose });
@@ -867,11 +924,15 @@ console.log("\n§11 · a confirmed void stops the sales at once (S5-FIX-SRV 5)")
           JSON.stringify({ thrown, stamped, state: still.state, cutoff, cutoffNow, closedRows }));
       }
       const sixth = voids[5];
-      const last = await svc.confirmSeal({ weekId: next.id, slot: sixth.slot, officerId: READER, expectedOutcome: sixth.outcome!, expectedSealedAt: sixth.sealedAt!, now: nowOpen });
+      const confirmSixth = () => svc.confirmSeal({ weekId: next.id, slot: sixth.slot, officerId: READER, expectedOutcome: sixth.outcome!, expectedSealedAt: sixth.sealedAt!, now: nowOpen });
+      // S5-FIX-SRV · on the memory store the close this confirmation makes loses its row, and the confirmation must say so (11.3b).
+      const last = STORE === "postgres" ? await confirmSixth() : await losing("maswali.week.closed", confirmSixth);
       const after = (await weekStore.get(next.id))!;
       ok("11.3 · ⭐ the sixth confirmation makes the week void certain and stops its sales at once, as a seal would (MR-18, finding 5)",
         last.ok && after.state === "CLOSED" && after.closedAt === nowOpen.toISOString()
           && (await marketStore.get(after.marketId!))?.selectionClosedAt === nowOpen.toISOString(), JSON.stringify({ last, state: after.state, closedAt: after.closedAt }));
+      ok("11.3b · ⭐ the confirmation counts the close it made as its own record: whole on PostgreSQL; on the memory store, where that close's row is lost, it says so (`recorded`)",
+        last.ok && last.recorded === (STORE === "postgres"), JSON.stringify(last));
     } finally {
       await setRequireTwoOfficerResolution(false, OWNER);
     }
@@ -907,30 +968,47 @@ console.log("\n§12 · the Owner's stop: its mark and its audit row land with it
       ok("12.1 · ⭐ a fault after the final mark was written rolls the stop back — the week is not final, and no audit row orders it",
         thrown.includes("injected fault") && marked && (await weekStore.get(id5))!.isFinal === false && (await orderedRows()) === 0, JSON.stringify({ thrown, marked, rows: await orderedRows() }));
     }
-    const stopped = await spied(stop);
-    ok("12.2 · control · the stop lands: the week is final, and the order is audited once, after its commit",
-      stopped.ok && stopped.week.isFinal === true && (await weekStore.get(id5))!.isFinal === true && (await orderedRows()) === 1, errOf(stopped));
+    // S5-FIX-SRV · the stop lands once, so each store proves one side of its `recorded`: whole on the memory store, and on
+    // PostgreSQL its row lost (noted, never written) and reported so (12.4).
+    const stopped = await spied(stop, STORE === "postgres" ? "maswali.sunset.ordered" : undefined);
+    ok("12.2 · control · the stop lands: the week is final, and its order is audited once, after its commit (on PostgreSQL that row is the one lost)",
+      stopped.ok && stopped.week.isFinal === true && (await weekStore.get(id5))!.isFinal === true && (await orderedRows()) === (STORE === "postgres" ? 0 : 1), errOf(stopped));
     ok("12.3 · ⭐ the order's audit row is written once — on PostgreSQL only after the mark committed", afterItsCommit("maswali.sunset.ordered", id5), JSON.stringify(auditSites));
+    ok("12.4 · ⭐ the stop reports its record: whole on the memory store; on PostgreSQL, its row lost, `recorded` false — the final week stands either way",
+      stopped.ok && stopped.recorded === (STORE !== "postgres"), JSON.stringify(stopped.ok ? stopped.recorded : stopped));
   }
 }
 
 // ── §13 · the final role passes on inside the next open's transaction (S5-FIX-SRV, finding 2's class) ─────────────────
 console.log("\n§13 · the final role passes on: the next week's open marks it final in the same transaction");
 {
-  // The final week (12.2) opens at its announced open, closes early, and voids — the void stamped by the store itself (a
-  // fixture: this section is about the NEXT open). A final week that voided hands the role on (MR-30, OD-03).
+  // The final week (12.2) opens at its announced open and closes early — that close's audit row lost (13.0b) — then voids
+  // through the console's own path: six mains voided, the rest sealed, the void once its window has closed, whole this time
+  // (13.0c). A final week that voided hands the role on (MR-30, OD-03).
   const W5 = weekStartAhead(5), W6 = weekStartAhead(6);
   const final5 = (await weekStore.list({ visibility: "PUBLIC" })).find((w) => w.isFinal);
   const attested5 = final5 ? await attest(final5.id, READER) : null;
   const open5 = final5 ? await svc.openWeek({ weekId: final5.id, officerId: DRAFTER, guarantee: RICH, now: new Date(W5 + 60_000) }) : null;
-  const close5 = final5 ? await svc.closeWeek({ weekId: final5.id, early: true, now: new Date(W5 + 120_000) }) : null;
-  const voided5 = final5 ? await weekStore.stampVoid(final5.id) : false;
+  const close5 = final5 ? await losing("maswali.week.closed", () => svc.closeWeek({ weekId: final5.id, early: true, now: new Date(W5 + 120_000) })) : null;
+  if (final5) {
+    for (let slot = 1; slot <= 6; slot++) {
+      await svc.sealQuestion({ weekId: final5.id, slot, outcome: "VOID", voidReason: "criterion_wrong", evidence: `Criterion ${slot} is materially wrong (week five)`, officerId: SEALER, now: new Date(W5 + 180_000) });
+    }
+    for (let slot = 7; slot <= 15; slot++) await svc.sealQuestion({ weekId: final5.id, slot, outcome: "YES", evidence: `Official result for ${slot} (week five)`, officerId: SEALER, now: new Date(W5 + 240_000) });
+  }
+  const sealed5 = final5 ? await weekStore.get(final5.id) : null;
+  const void5 = sealed5?.objectionsCloseAt ? await svc.voidWeek({ weekId: sealed5.id, now: new Date(Date.parse(sealed5.objectionsCloseAt) + 1) }) : null;
   const life = await svc.sunsetState();
   const drafted6 = await svc.createWeek({ weekStartMs: W6, questions: questions(W6), officerId: DRAFTER, now: nowDraft });
   const attested6 = drafted6.ok ? await attest(drafted6.week.id, READER) : null;
-  ok("13.0 · premise · the final week opened, closed and voided, so the role passes on; the next public week is drafted and attested",
-    !!final5 && !!attested5?.ok && !!open5?.ok && !!close5?.ok && voided5 && life.kind === "PASSES_ON" && life.week.id === final5.id && drafted6.ok && !!attested6?.ok,
-    JSON.stringify({ final5: final5?.code, attested5: errOf(attested5 ?? { ok: false, error: "none" }), open5: errOf(open5 ?? { ok: false, error: "none" }), close5: errOf(close5 ?? { ok: false, error: "none" }), voided5, life: life.kind, drafted6: errOf(drafted6), attested6: errOf(attested6 ?? { ok: false, error: "none" }) }));
+  ok("13.0 · premise · the final week opened, closed and voided whole, so the role passes on; the next public week is drafted and attested",
+    !!final5 && !!attested5?.ok && !!open5?.ok && !!close5?.ok && !!void5?.ok && life.kind === "PASSES_ON" && life.week.id === final5.id && drafted6.ok && !!attested6?.ok,
+    JSON.stringify({ final5: final5?.code, attested5: errOf(attested5 ?? { ok: false, error: "none" }), open5: errOf(open5 ?? { ok: false, error: "none" }), close5: errOf(close5 ?? { ok: false, error: "none" }),
+      void5: void5 ? errOf(void5) : `no window (${sealed5?.state})`, life: life.kind, drafted6: errOf(drafted6), attested6: errOf(attested6 ?? { ok: false, error: "none" }) }));
+  ok("13.0b · ⭐ a close whose audit row could not be written still lands, and reports it (`recorded` false); 5.6's close reported its record whole",
+    !!close5?.ok && close5.recorded === false && !!close5.week.closedAt, JSON.stringify(close5));
+  ok("13.0c · the week void reports its record whole (`recorded`), where 8.8 reported its lost row",
+    !!void5?.ok && void5.recorded === true && void5.week.state === "VOIDED", JSON.stringify(void5));
   if (drafted6.ok && life.kind === "PASSES_ON") {
     const id6 = drafted6.week.id, title6 = `Maswali Millionea · ${drafted6.week.code}`;
     const rowsFor6 = async (action: string) => {
@@ -963,6 +1041,112 @@ console.log("\n§13 · the final role passes on: the next week's open marks it f
         && afterItsCommit("maswali.sunset.passed_on", id6) && afterItsCommit("maswali.week.opened", id6) && (await rowsFor6("maswali.sunset.passed_on")) === 1,
       passed.ok ? JSON.stringify(auditSites) : errOf(passed));
   }
+}
+
+// ── §14 · the rule for every write, and one truth for every act, read off the source (S5-FIX-SRV) ─────────────────────
+console.log("\n§14 · inside the chain lock every write takes its transaction; every act reports its record, and the console says so");
+{
+  const { decomment, blankLiterals } = await import("./decomment.mts");
+  const read = (p: string) => readFileSync(p, "utf8").split("\r\n").join("\n");
+  // Literal bodies blanked (same length): no bracket or word inside a string can be read as code.
+  const code = blankLiterals(decomment(read("src/lib/server/maswali-service.ts")));
+  const PAIRS: Record<string, string> = { "(": ")", "[": "]", "{": "}" };
+  /** The index of the bracket closing the one at `open`, or -1. */
+  const closeOf = (s: string, open: number): number => {
+    const want: string[] = [];
+    for (let i = open; i < s.length; i++) {
+      const c = s[i];
+      if (c in PAIRS) want.push(PAIRS[c]);
+      else if (c === ")" || c === "]" || c === "}") { if (want.pop() !== c) return -1; if (want.length === 0) return i; }
+    }
+    return -1;
+  };
+  /** The top-level arguments of the call whose "(" is at `open`. */
+  const argsOf = (s: string, open: number): string[] => {
+    const end = closeOf(s, open), out: string[] = [];
+    let depth = 0, from = open + 1;
+    for (let i = open + 1; i < end; i++) {
+      const c = s[i];
+      if (c in PAIRS) depth++;
+      else if (c === ")" || c === "]" || c === "}") depth--;
+      else if (c === "," && depth === 0) { out.push(s.slice(from, i).trim()); from = i + 1; }
+    }
+    if (s.slice(from, end).trim()) out.push(s.slice(from, end).trim());
+    return out;
+  };
+  // Every chain-lock call, whole, and every `…Locked` helper a lock hands its transaction to.
+  const LOCK = "withLock(MASWALI_CHAIN_LOCK,";
+  const bodies: Array<{ fn: string; text: string }> = [];
+  for (let at = code.indexOf(LOCK); at >= 0; at = code.indexOf(LOCK, at + 1)) {
+    const open = at + "withLock".length, end = closeOf(code, open);
+    const fnAt = code.lastIndexOf("function ", at);
+    bodies.push({ fn: /function (\w+)/.exec(code.slice(fnAt, fnAt + 80))?.[1] ?? "?", text: end > 0 ? code.slice(open, end + 1) : "" });
+  }
+  let helpers = 0;
+  for (const m of code.matchAll(/async function (\w+Locked)\(/g)) {
+    const params = (m.index ?? 0) + m[0].length - 1, bodyAt = code.indexOf(" {" + String.fromCharCode(10), closeOf(code, params));
+    const end = bodyAt > 0 ? closeOf(code, bodyAt + 1) : -1;
+    helpers++;
+    bodies.push({ fn: m[1], text: end > 0 ? code.slice(bodyAt + 1, end + 1) : "" });
+  }
+  const WRITES = new Set(["create", "createMany", "patch", "stampOpen", "moveClose", "stampClose", "claimCarry", "bumpTicketCount", "stampSettlement",
+    "stampVoid", "editDraftQuestion", "editDraftQuestions", "set", "stamp", "setShortTitles"]);
+  const TX = /^(lockTx|tx)( \?\? undefined)?$/;
+  const offTx: string[] = [], written: string[] = [], bare: string[] = [];
+  let writes = 0;
+  for (const b of bodies) {
+    for (const m of b.text.matchAll(/\b(weekStore|questionStore|ticketStore|marketStore)\.(\w+)\(/g)) {
+      if (!WRITES.has(m[2])) continue;
+      writes++;
+      const last = argsOf(b.text, (m.index ?? 0) + m[0].length - 1).at(-1) ?? "";
+      if (!TX.test(last)) offTx.push(`${b.fn}: ${m[1]}.${m[2]}(…, ${last})`);
+    }
+    for (const m of b.text.matchAll(/\bcreateMarket\(/g)) {
+      writes++;
+      const tx = argsOf(b.text, (m.index ?? 0) + m[0].length - 1)[1] ?? "";
+      if (!TX.test(tx)) offTx.push(`${b.fn}: createMarket(…, ${tx || "no transaction"})`);
+    }
+    for (const m of b.text.matchAll(/\b(audit|recordOwed|seedDefaultSources)\(/g)) written.push(`${b.fn}: ${m[1]}(…)`);
+    for (const m of b.text.matchAll(/\b(noteMaswaliPoolChanged|invalidateMillioneaRegisterWeek)\(/g)) {
+      if (!/afterCommit\((lockTx|tx), \(\) => $/.test(b.text.slice(Math.max(0, (m.index ?? 0) - 40), m.index))) bare.push(`${b.fn}: ${m[1]}(…)`);
+    }
+  }
+  ok("14.1 · the population: every chain-lock call and every …Locked helper of maswali-service.ts is read, whole",
+    bodies.length >= 14 && helpers >= 1 && bodies.every((b) => b.text.length > 20) && writes >= 21, JSON.stringify({ bodies: bodies.length, helpers, writes }));
+  ok("14.2 · ⭐ inside the chain lock every write — to a week, a question, a ticket or the market — takes the lock's ONE transaction",
+    offTx.length === 0, offTx.join(" · "));
+  ok("14.3 · ⭐ nothing inside the chain lock writes an audit row or seeds the source registry: the rows are owed and written once it has committed",
+    written.length === 0, written.join(" · "));
+  ok("14.4 · ⭐ every pool notice and every forgetting of the register inside the chain lock waits for its commit (afterCommit)", bare.length === 0, bare.join(" · "));
+  const openAt = code.indexOf("export async function openWeek("), openLock = code.indexOf(LOCK, openAt);
+  ok("14.5 · the open seeds the trusted sources BEFORE its lock, as its own write, so the checks inside find them committed",
+    openAt > 0 && openLock > openAt && code.slice(openAt, openLock).includes("await seedDefaultSources();"));
+
+  // One truth for every act: the actions answer the act's warning, in one wording, and the console shows it in one element.
+  const actions = read("src/app/admin/maswali/actions.ts"), integrityActions = read("src/app/admin/maswali/integrity/actions.ts"), poolsActions = read("src/app/admin/maswali/pools/actions.ts");
+  const said = (act: string, verb: string) => `"The ${act} landed, but its audit record could not be fully written. Tell an administrator; do not repeat the ${verb}."`;
+  ok("14.6 · ⭐ the open, the move, the week void and the stop each answer their act's warning when its record is short — and a draft its `recorded`",
+    actions.includes("auditWarning: r.recorded ? null : OPEN_AUDIT_WARNING") && actions.includes("auditWarning: r.recorded ? null : MOVE_AUDIT_WARNING")
+      && integrityActions.includes("auditWarning: r.recorded ? null : WEEK_VOID_AUDIT_WARNING") && poolsActions.includes("auditWarning: r.recorded ? null : STOP_AUDIT_WARNING")
+      && actions.includes("return { ok: true, weekId: r.week.id, recorded: r.recorded };"));
+  ok("14.7 · …in one wording: \"The … landed, but its audit record could not be fully written. Tell an administrator; do not repeat the ….\"",
+    actions.includes(`const OPEN_AUDIT_WARNING = ${said("open", "open")};`) && actions.includes(`const MOVE_AUDIT_WARNING = ${said("move", "move")};`)
+      && integrityActions.includes(`const WEEK_VOID_AUDIT_WARNING = ${said("week void", "void")};`) && poolsActions.includes(`const STOP_AUDIT_WARNING = ${said("stop", "stop")};`));
+  const shared = read("src/app/admin/maswali/audit-warning.tsx"), controls = read("src/app/admin/maswali/[weekId]/week-controls.tsx");
+  const weekPage = read("src/app/admin/maswali/[weekId]/page.tsx"), integrityPage = read("src/app/admin/maswali/integrity/page.tsx"), poolsPage = read("src/app/admin/maswali/pools/page.tsx");
+  const integrityControls = read("src/app/admin/maswali/integrity/integrity-controls.tsx"), poolsControls = read("src/app/admin/maswali/pools/pools-controls.tsx");
+  const builder = read("src/app/admin/maswali/new/week-builder.tsx");
+  const before = (s: string, a: string, b: string) => s.includes(a) && s.indexOf(a) < s.indexOf(b);
+  ok("14.8 · ⭐ …and the console shows every one in the ONE shared element; an act whose control leaves the page as it lands raises it into a slot the page keeps",
+    shared.includes(`<p role="alert" className="text-body-sm text-warning w-full">{text}</p>`)
+      && !controls.includes("text-warning w-full") && controls.split("<AuditWarning text={auditWarning} />").length === 3 && controls.includes("<AuditWarning text={sealAuditWarning} />")
+      && controls.includes("(warning) => raiseAuditWarning(`week:${weekId}`, warning)") && controls.includes("() => { setReview(null); setDate(\"\"); setTime(\"\"); }, setAuditWarning);")
+      && before(weekPage, "<StandingAuditWarning slot={`week:${week.id}`} />", "{week.state === \"DRAFT\" && (")
+      && integrityControls.includes("onWarning?.(r.auditWarning ?? null);") && integrityControls.includes("(warning) => raiseAuditWarning(\"integrity:weekVoid\", warning)")
+      && before(integrityPage, "<StandingAuditWarning slot=\"integrity:weekVoid\" />", "{v.voidablePage.allTotal === 0 ?")
+      && poolsControls.includes("onWarning?.(r.auditWarning ?? null);") && poolsControls.includes("(warning) => raiseAuditWarning(\"pools:stop\", warning)")
+      && before(poolsPage, "<StandingAuditWarning slot=\"pools:stop\" />", "{canSunset ? <SunsetCeremony")
+      && builder.includes("if (r.recorded === false) {") && builder.includes("title: \"Week drafted, but the audit record was not written\""));
 }
 
 console.log(`${String.fromCharCode(10)}@@SUMMARY ${JSON.stringify({ pass, fail, store: STORE })}`);

@@ -38,6 +38,9 @@ const refresh = (weekId?: string) => {
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 /** A landed attestation whose audit row was not written (the attestation itself stands on the week). */
 const ATTEST_AUDIT_WARNING = "The attestation landed, but its audit record could not be written. Tell an administrator; do not attest it again.";
+/** S5-FIX-SRV · a landed open, or a landed move of the close, whose audit rows were not all written (the act stands). */
+const OPEN_AUDIT_WARNING = "The open landed, but its audit record could not be fully written. Tell an administrator; do not repeat the open.";
+const MOVE_AUDIT_WARNING = "The move landed, but its audit record could not be fully written. Tell an administrator; do not repeat the move.";
 /** MB-94 · where a seal came from, noted after it landed (never blocking it). */
 const noteDevice = async (officerId: string, weekId: string, slots: number[]): Promise<boolean> => {
   try {
@@ -68,7 +71,7 @@ export async function createMaswaliWeekAction(formData: FormData): Promise<Actio
     const r = await createWeek({ weekStartMs: ms, visibility, questions, officerId: session.userId });
     if (!r.ok) return { ok: false, error: r.error };
     try { refresh(r.week.id); } catch { /* The draft is already stored; the client refreshes too. */ }
-    return { ok: true, weekId: r.week.id };
+    return { ok: true, weekId: r.week.id, recorded: r.recorded };
   } catch (err) {
     return { ok: false, error: safeError(err, "The week could not be drafted") };
   }
@@ -115,7 +118,7 @@ export async function openMaswaliWeekAction(formData: FormData): Promise<ActionR
     const r = await openWeek({ weekId, officerId: session.userId, guarantee: guaranteeReader });
     if (!r.ok) return { ok: false, error: r.error };
     try { refresh(weekId); } catch { /* The week is already open; the client refreshes too. */ }
-    return { ok: true, weekId };
+    return { ok: true, weekId, auditWarning: r.recorded ? null : OPEN_AUDIT_WARNING };
   } catch (err) {
     return { ok: false, error: safeError(err, "The week could not be opened") };
   }
@@ -132,7 +135,7 @@ export async function moveMaswaliCloseAction(formData: FormData): Promise<Action
     const r = await moveClose({ weekId, toCloseAt: new Date(ms).toISOString(), expectedClosesAt: str(formData, "expectedClosesAt"), officerId: session.userId });
     if (!r.ok) return { ok: false, error: r.error };
     try { refresh(weekId); } catch { /* The close already moved; the client refreshes too. */ }
-    return { ok: true, weekId };
+    return { ok: true, weekId, auditWarning: r.recorded ? null : MOVE_AUDIT_WARNING };
   } catch (err) {
     return { ok: false, error: safeError(err, "The close could not be moved") };
   }

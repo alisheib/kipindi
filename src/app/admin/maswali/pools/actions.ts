@@ -21,7 +21,9 @@ import { recordLicenceBasis, type LicenceBasisKind } from "@/lib/server/maswali-
 import { runMillioneaRolloutCeremony } from "@/lib/server/millionea-ceremony";
 import { noteMaswaliPoolChanged } from "@/lib/server/maswali-pool-feed";
 
-type ActionResult = { ok: true; note?: string } | { ok: false; error: string; field?: string };
+type ActionResult = { ok: true; note?: string; auditWarning?: string | null } | { ok: false; error: string; field?: string };
+/** S5-FIX-SRV · a landed stop (the final week set) whose audit row was not written (the final week stands). */
+const STOP_AUDIT_WARNING = "The stop landed, but its audit record could not be fully written. Tell an administrator; do not repeat the stop.";
 
 const refresh = () => {
   revalidatePath("/admin/maswali");
@@ -90,7 +92,7 @@ export async function sunsetMaswaliAction(formData: FormData): Promise<ActionRes
     const r = await sunsetMaswali({ weekId: str(formData, "weekId"), ownerId: session.userId, typed: str(formData, "typed"), reason: str(formData, "reason") });
     if (!r.ok) return { ok: false, error: r.error };
     refresh();
-    return { ok: true, note: `Week ${r.week.code} is the final week.` };
+    return { ok: true, note: `Week ${r.week.code} is the final week.`, auditWarning: r.recorded ? null : STOP_AUDIT_WARNING };
   } catch (err) {
     return { ok: false, error: safeError(err, "The final week could not be set") };
   }

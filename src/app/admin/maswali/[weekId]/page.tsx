@@ -16,6 +16,7 @@ import { MAIN_COUNT, slotLabel } from "@/lib/maswali-score";
 import { MASWALI_VOID_REASONS } from "@/lib/maswali-void-reason";
 import { fmtEat, fmtEatClock, fmtEatDay, fmtInZone, weekStateChip } from "@/lib/maswali-admin-format";
 import { AttestOpenControls, MoveCloseForm, SealConsole, type SealRowView } from "./week-controls";
+import { StandingAuditWarning } from "../audit-warning";
 
 export const metadata = { title: "Admin · Millionea · Week" };
 export const dynamic = "force-dynamic";
@@ -76,6 +77,8 @@ async function Content({ params }: Props) {
             note={sealable ? (row.needs.length ? `${mainsSealed} of ${MAIN_COUNT} mains sealed · needs ${row.needs.map(slotLabel).join(", ")}` : week.objectionsCloseAt ? `Objection window to ${fmtEat(week.objectionsCloseAt)}` : undefined) : undefined}
             {...(row.voidCertain ? { tone: "danger" as const } : {})} />
         </KpiGrid>
+        {/* S5-FIX-SRV · the open's controls leave with the DRAFT state as it lands: its audit warning stands here instead. */}
+        <StandingAuditWarning slot={`week:${week.id}`} />
 
         {week.state === "DRAFT" && (
           <AdminCard title="Before it can open" sw="Kabla ya kufunguliwa">

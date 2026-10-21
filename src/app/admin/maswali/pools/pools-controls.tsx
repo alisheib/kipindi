@@ -24,6 +24,7 @@ import {
   fundMaswaliGuaranteeAction, releaseMaswaliSettlementAction, returnMaswaliGuaranteeAction, setMaswaliLicenceBasisAction,
   setMillioneaRolloutAction, sunsetMaswaliAction,
 } from "./actions";
+import { raiseAuditWarning } from "../audit-warning";
 
 const FUND_WORD = "FUND GUARANTEE";
 const RETURN_WORD = "RETURN GUARANTEE";
@@ -36,12 +37,13 @@ function useAct() {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
-  const run = (fn: () => Promise<{ ok: boolean; error?: string; note?: string }>, after?: () => void) => {
+  const run = (fn: () => Promise<{ ok: boolean; error?: string; note?: string; auditWarning?: string | null }>, after?: () => void, onWarning?: (warning: string | null) => void) => {
     setError(null); setNote(null);
     start(async () => {
       const r = await fn();
       if (!r.ok) { setError(r.error ?? "That did not go through."); return; }
       setNote(r.note ?? null);
+      onWarning?.(r.auditWarning ?? null);
       after?.();
       router.refresh();
     });
@@ -220,7 +222,8 @@ export function SunsetCeremony({ weeks }: { weeks: SunsetCandidate[] }) {
         </div>}
         onConfirm={() => {
           if (!selected || !reasonLengthOk(reason)) return;
-          run(() => sunsetMaswaliAction(fd({ weekId: selected.id, reason, typed: SUNSET_WORD })), () => { setOpen(false); setWeekId(""); setLookup(""); setReason(""); });
+          run(() => sunsetMaswaliAction(fd({ weekId: selected.id, reason, typed: SUNSET_WORD })), () => { setOpen(false); setWeekId(""); setLookup(""); setReason(""); },
+            (warning) => raiseAuditWarning("pools:stop", warning));
         }} />
     </div>
   );
