@@ -7775,6 +7775,17 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 @media (min-width: 317px) { .kp-rail--journey[data-tabs="5"]:lang(sw) .kp-rail__item { justify-content: flex-start; } }
 @media (min-width: 416px) { .kp-rail--journey[data-tabs="5"]:lang(sw) .kp-jtab__label { white-space: nowrap; text-overflow: ellipsis; line-height: 1; } }
 @media (min-width: 416px) { .kp-rail--journey[data-tabs="5"]:lang(sw) .kp-rail__item { justify-content: center; } }
+/* ⭐ …AND NO TWO LABELS STAND CLOSER THAN THEIR PIPS (MASWALI-BUILD S5-FIX-PLATFORM D14, 2026-10-21). In five equal
+   tracks English's three nine-letter neighbours ("Questions", "Up & Down", "Millionea": 9 × 6.6 = 59.4px each) stood
+   4.6px apart at 320 (the tile journey-home-en-320 read ~5px), where the 56px pips above them stand 8px apart. Every
+   label fits its track, so the rail's own answer to a label that does not (a second line, the slots stacked from the
+   top) does not apply: it would break a game name that fits. Below the width where that pair clears 8px untouched
+   (5 × (59.4 + 8) = 337), English's labels close their tracking by 0.04em (9 × 6.16 = 55.4px, 8.6px apart at 320).
+   Swahili (its long name on two lines through 415) and Chinese clear 8px at every width as they are.
+   `test:visual-pass-r9c` §4c measures every neighbour pair in the three languages at every width from 320 with §4's
+   own width model and holds this minimum; the four-tab rail is not touched. */
+.kp-rail--journey[data-tabs="5"]:lang(en) .kp-jtab__label { letter-spacing: -0.04em; }
+@media (min-width: 337px) { .kp-rail--journey[data-tabs="5"]:lang(en) .kp-jtab__label { letter-spacing: normal; } }
 /* ⭐ ONE TAB IS LIT IN EVERY FRAME (2026-10-09, the visual pass round 4, R4-J; E37/E41, tiles 301 306 333). The classic
    slot fades its ink and its pip over --t-quick (`.kp-rail__item`, `.kp-rail__pip`), so for 140ms after the router
    commits the new page the pill is half on the tab being left and half on the new one, beside the new label already bold
