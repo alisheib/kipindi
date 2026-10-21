@@ -31,7 +31,9 @@
  *    ⭐ S7-F8 · that lock is a transaction with a 30-second budget, and every hold is its own committed write: S16 measured
  *    7,000 held winners overrunning the budget, so the holds take SECTIONS of the lock (`HOLD_SECTION_MS` each), every
  *    section re-reads the week and the holds the sections before it placed, and the money runs in a section that reached
- *    it inside its share — with few holds, the one section it always was.
+ *    it inside its share — with few holds, the one section it always was. Every lift goes through ONE lifter in the same
+ *    sections (`liftHoldsIfClear`): each re-reads its accounts' holds and held shares under the lock, a hold already gone
+ *    writes nothing, and a lift stopped midway leaves each account lifted or held, for the next attempt or the heal.
  * ⛔ NO NOTICE, EMAIL OR PUSH FROM HERE (S6 writes Millionea's own), and no wagering, recruit or house accrual (OD-20/27).
  */
 import { createHash } from "node:crypto";
@@ -263,8 +265,11 @@ type SettleSeams = {
   afterHolds?: () => Promise<void>;
   /** S7-F8 · a release whose holds outlast a section, after that section let the chain lock go and before it asks again. */
   betweenHoldSections?: (section: number) => Promise<void>;
-  /** S7-F8 · the holds' share of a section, in ms, in place of `HOLD_SECTION_MS` (0: one hold a section, the money in its own). */
+  /** S7-F8 · the holds' share of a section, in ms, in place of `HOLD_SECTION_MS` (0: one hold a section, the money in its own;
+   *  for the lifts, one account a section). */
   holdSectionMs?: number;
+  /** S7-F8 · the lifts (`liftHoldsIfClear`), after a section let the chain lock go with accounts still to re-check. */
+  betweenLiftSections?: (section: number) => Promise<void>;
   /** A forfeit, committed, before its lift. */
   beforeLift?: () => Promise<void>;
   /** The last statement of a release's, a forfeit's or a hold's transaction. */
@@ -608,15 +613,36 @@ function holdWallet(userId: string, meta: Parameters<typeof addWalletFreeze>[2])
  * forfeit, after a settlement or a hold that did not complete, and by the heal. ⛔ R6 · UNDER `maswali:chain` (re-entrant
  * for a caller that holds it): every hold of this reason is placed under that lock and keeps it until its held share
  * commits, so a lift can never read "nothing held" while a held share is landing. It reads COMMITTED tickets, so a caller
- * whose own ticket write is still uncommitted lifts after its commit. True when it lifted a hold.
+ * whose own ticket write is still uncommitted lifts after its commit. True when it lifted a hold. S7-F8 · one account
+ * through the one lifter (`liftHoldsIfClear`), so a single lift and thousands follow the same rule.
  */
 async function liftHoldIfClear(userId: string, actorId: string | null, note: string): Promise<boolean> {
-  return withLock(MASWALI_CHAIN_LOCK, async () => {
-    const still = (await ticketStore.listForUser(userId)).some(isHeld);
-    if (still) return false;
-    const r = await removeWalletFreeze(userId, "MILLIONEA_SHARE", { actorId, note });
-    return r.ok && r.changed;
-  });
+  return (await liftHoldsIfClear([userId], note, actorId)).includes(userId);
+}
+
+/** S7-F8 · accounts the lift reads at a time: ONE wallet read and ONE held-share read for each this many. */
+const LIFT_BATCH = 500;
+
+/**
+ * S7-F8 · of `userIds`, the accounts with a share still held (`isHeld`): one read per 5,000 on Postgres, the same rule as
+ * `isHeld` in SQL (a reason, and not a forfeit's). A read that fails THROWS: a lift that cannot see the held shares lifts
+ * nothing (the safe side).
+ */
+async function heldShareHolders(userIds: readonly string[]): Promise<Set<string>> {
+  const out = new Set<string>();
+  const c = hasDatabase() && process.env.USE_PRISMA_DAL !== "false" ? prisma() : null;
+  if (c) {
+    for (let i = 0; i < userIds.length; i += 5_000) {
+      const rows = await c.maswaliTicket.findMany({
+        where: { userId: { in: userIds.slice(i, i + 5_000) }, frozenReason: { not: null }, NOT: { frozenReason: { startsWith: FORFEITED } } },
+        select: { userId: true }, distinct: ["userId"],
+      });
+      for (const r of rows) out.add(r.userId);
+    }
+    return out;
+  }
+  for (const userId of userIds) if ((await ticketStore.listForUser(userId)).some(isHeld)) out.add(userId);
+  return out;
 }
 
 /** Every account whose wallet carries Millionea's hold — the heal's candidates, read where the hold is stored. */
@@ -628,21 +654,15 @@ async function accountsHeldForMillionea(): Promise<string[]> {
 
 /**
  * ⭐ R6 · THE HEAL FOR A STRAY HOLD: every wallet carrying `MILLIONEA_SHARE` with no held share behind it has the hold lifted
- * — each under the chain lock (`liftHoldIfClear`, recorded as `wallet.freeze_removed`) — and a lift is recorded for the
- * heal as a whole. A stray hold is what a stopped process leaves between a hold and its commit, or between an un-hold and
- * its lift; no Millionea act can lift it, because release and forfeit both need a held ticket. A hold with a held share
- * behind it is never touched, and a wallet it cannot re-check stays held (the safe side) until the next run.
+ * — under the chain lock, in its sections (`liftHoldsIfClear`, each lift recorded as `wallet.freeze_removed`) — and a lift
+ * is recorded for the heal as a whole. A stray hold is what a stopped process leaves between a hold and its commit, between
+ * an un-hold and its lift, or in the middle of a release's lifts; no Millionea act can lift it, because release and forfeit
+ * both need a held ticket. A hold with a held share behind it is never touched, and a wallet it cannot re-check stays held
+ * (the safe side) until the next run.
  */
 export async function healStrayMillioneaHolds(): Promise<{ checked: number; lifted: string[] }> {
   const candidates = await accountsHeldForMillionea();
-  const lifted: string[] = [];
-  for (const userId of candidates) {
-    try {
-      if (await liftHoldIfClear(userId, null, "Millionea · a hold with no held share behind it, lifted by the heal")) lifted.push(userId);
-    } catch (err) {
-      console.error(`[maswali-settlement] the heal could not re-check the Millionea hold on ${userId}: ${(err as Error)?.message ?? err}`);
-    }
-  }
+  const lifted = await liftHoldsIfClear(candidates, "Millionea · a hold with no held share behind it, lifted by the heal");
   if (lifted.length > 0) {
     audit({ category: "COMPLIANCE", action: "maswali.share.stray_holds_lifted", actorId: SYSTEM, targetType: "MaswaliHold", targetId: "stray",
       payload: { checked: candidates.length, lifted } });
@@ -650,16 +670,57 @@ export async function healStrayMillioneaHolds(): Promise<{ checked: number; lift
   return { checked: candidates.length, lifted };
 }
 
-/** R6 · after an act that refused or rolled back: each account it held is lifted again where no held share stands behind it. */
-async function liftHoldsIfClear(userIds: readonly string[], note: string): Promise<void> {
-  for (const userId of new Set(userIds)) {
-    try {
-      await liftHoldIfClear(userId, null, note);
-    } catch (err) {
-      // The hold stays — the safe side: the money cannot move. The act's next attempt re-checks it.
-      console.error(`[maswali-settlement] the Millionea hold on ${userId} could not be re-checked: ${(err as Error)?.message ?? err}`);
+/**
+ * ⭐ R6 · S7-F8 · THE ONE LIFTER, IN SECTIONS OF THE CHAIN LOCK — the holds' twin. After an act that refused or rolled back,
+ * in the heal, and for a single share's act: every account of `userIds` whose wallet carries the Millionea hold with no held
+ * share behind it has the hold lifted. Each section holds `maswali:chain` (as every hold and lift of this reason does) and
+ * works through the accounts in batches: ONE read of the batch's wallets (one without the hold is passed by) and ONE of its
+ * held shares (a held share keeps its hold), both under this lock, where no hold, lift or held share can change; then each
+ * hold lifted (`removeWalletFreeze`, outside the lock's transaction as `holdWallet` places it; it records each lift once, and
+ * a hold already gone writes and records nothing). A section lifts for at most HOLD_SECTION_MS (at least one account), then
+ * lets the lock go, and the next reads again. A stop between sections leaves each account lifted (written and recorded) or
+ * still held, never half; running it again — the act's next attempt, or the heal — lifts only what is left, each once. A
+ * failed read stops the lift with the rest held (the safe side); a failed lift is logged and the next goes on. Returns the
+ * accounts it lifted.
+ */
+async function liftHoldsIfClear(userIds: readonly string[], note: string, actorId: string | null = null): Promise<string[]> {
+  const queue = [...new Set(userIds)];
+  const lifted: string[] = [];
+  let at = 0;
+  try {
+    for (let section = 0; at < queue.length; section++) {
+      if (section > 0) await seams.betweenLiftSections?.(section);
+      const asked = Date.now();
+      await withLock(MASWALI_CHAIN_LOCK, async () => {
+        const share = seams.holdSectionMs ?? HOLD_SECTION_MS;
+        let doneHere = 0;
+        while (at < queue.length) {
+          const batch = queue.slice(at, at + LIFT_BATCH);
+          const carrying = new Set((await db.wallet.findByUserIds(batch))
+            .filter((wallet) => currentFreezeReasons(wallet).includes("MILLIONEA_SHARE")).map((wallet) => wallet.userId));
+          const keep = await heldShareHolders([...carrying]);
+          for (const userId of batch) {
+            if (doneHere > 0 && Date.now() - asked >= share) return;
+            at++;
+            doneHere++;
+            if (!carrying.has(userId) || keep.has(userId)) continue;
+            try {
+              const r = await runOutsideLock(() => removeWalletFreeze(userId, "MILLIONEA_SHARE", { actorId, note }));
+              if (r.ok && r.changed) lifted.push(userId);
+            } catch (err) {
+              // The hold stays — the safe side: the money cannot move. The act's next attempt, or the heal, re-checks it.
+              console.error(`[maswali-settlement] the Millionea hold on ${userId} could not be lifted: ${(err as Error)?.message ?? err}`);
+            }
+          }
+        }
+      });
     }
+  } catch (err) {
+    // A section's reads or its lock failed, or a stop arrived between sections: every hold not yet lifted stays (the safe
+    // side) for the act's next attempt or the heal.
+    console.error(`[maswali-settlement] ${queue.length - at} Millionea hold(s) were not re-checked: ${(err as Error)?.message ?? err}`);
   }
+  return lifted;
 }
 
 /**

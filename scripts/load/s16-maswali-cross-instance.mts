@@ -8,6 +8,7 @@
  *   npm run load:maswali-cross-instance                 (boots the on-box Postgres through db-scratch)
  *   S16_WIDE_WINNERS=9000 npm run load:maswali-cross-instance     (the wide shape's distinct winning players)
  *   S16_SHAPES=held npm run load:maswali-cross-instance            (7,000 winning accounts suspended after purchase)
+ *   S16_SHAPES=refused npm run load:maswali-cross-instance         (the same, its release refused after every hold — S7-F8)
  *   S16_SHAPES=none npm run load:maswali-cross-instance            (§1–§5 and §7 only: minutes, not the 10,000s)
  *
  * Every act is two or three OS processes (`s16-maswali-worker.mts`), each its own Prisma pool, started at one instant by a
@@ -25,15 +26,19 @@
  *      the budget — the release as a whole runs longer;
  *   §7 the identities over everything: the trial balance (no drifting wallet, no unbalanced group), every invariant.
  *
- * Knobs: S16_TICKETS (10000), S16_WIDE_WINNERS (7000), S16_SHAPES ("few,wide" | "few" | "wide" | "held" | "none"),
- * S16_CLOSE_BUYERS (120), S16_CLOSE_DELAY_MS (1500: how long the closers wait behind the buyers' stream), S16_JOB_TIMEOUT_MIN (60).
+ *   ⭐ S7-F8 · the optional refused shape: the same 7,000 held winners, its release made to fail at its last statement so
+ *      it lifts every hold again (the lifts measured: time, sections, wallets left frozen); then a second refused attempt
+ *      whose process ends after S16_LIFT_STOP_AFTER lift sections, the heal finishing the rest, and the week settled once;
+ * Knobs: S16_TICKETS (10000), S16_WIDE_WINNERS (7000), S16_SHAPES ("few,wide" | "few" | "wide" | "held" | "refused" |
+ * "none"), S16_LIFT_STOP_AFTER (3; 0: no stop), S16_CLOSE_BUYERS (120), S16_CLOSE_DELAY_MS (1500: how long the closers wait
+ * behind the buyers' stream), S16_JOB_TIMEOUT_MIN (60).
  * ⛔ Loopback clusters only: the database is created and dropped here. ⛔ A load harness: run it detached under the
  *    heavy-node lock, alone, never in `test:all` or `predeploy` (scripts/load/README.md).
  * ⚠️ This file carries no backslash: line breaks are built from their code points.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { execSync, spawn, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -63,6 +68,9 @@ const CLOSE_DELAY_MS = num("S16_CLOSE_DELAY_MS", 1_500);
 const JOB_TIMEOUT_MS = num("S16_JOB_TIMEOUT_MIN", 60) * 60_000;
 const SHAPES = (process.env.S16_SHAPES ?? "few,wide").split(",").map((s) => s.trim()).filter(Boolean);
 const wantFew = SHAPES.includes("few"), wantWide = SHAPES.includes("wide"), wantHeld = SHAPES.includes("held");
+const wantRefused = SHAPES.includes("refused");
+/** S7-F8 · the refused shape's second attempt ends its process after this many lift sections (0: no stop, no heal act). */
+const LIFT_STOP_AFTER = num("S16_LIFT_STOP_AFTER", 3);
 /** The release's whole transaction must fit the lock's own timeout (`src/lib/server/locks.ts`: `timeout: 30000`). */
 const SETTLE_BUDGET_MS = 30_000;
 /** What R9 recorded (MASWALI-PLAN §0, the S3 review's R9 row): about this many distinct winning players fit the budget. */
@@ -178,6 +186,7 @@ try {
     ...(wantFew ? { fewWin: { count: FEW, balance: BALANCE }, fewLose: { count: Math.ceil((TICKETS - FEW) / 10), balance: BALANCE } } : {}),
     ...(wantWide ? { wideWin: { count: WIDE, balance: BALANCE }, wideLose: { count: Math.ceil((TICKETS - WIDE) / 10), balance: BALANCE } } : {}),
     ...(wantHeld ? { heldWin: { count: WIDE, balance: BALANCE }, heldLose: { count: Math.ceil((TICKETS - WIDE) / 10), balance: BALANCE } } : {}),
+    ...(wantRefused ? { refusedWin: { count: WIDE, balance: BALANCE }, refusedLose: { count: Math.ceil((TICKETS - WIDE) / 10), balance: BALANCE } } : {}),
   };
   const t0 = Date.now();
   const setup = await runJob({ kind: "setup", guarantee: 30_000_000, groups });
@@ -330,12 +339,15 @@ try {
 
   // ── §6 · 10,000 tickets in each selected shape ──────────────────────────────────────────────────────────────────
   const shapes = [
-    ...(wantFew ? [{ tag: "few", win: FEW, winGroup: "fewWin", loseGroup: "fewLose", ahead: 6, held: false }] : []),
-    ...(wantWide ? [{ tag: "wide", win: WIDE, winGroup: "wideWin", loseGroup: "wideLose", ahead: 7, held: false }] : []),
-    ...(wantHeld ? [{ tag: "held", win: WIDE, winGroup: "heldWin", loseGroup: "heldLose", ahead: 8, held: true }] : []),
+    ...(wantFew ? [{ tag: "few", win: FEW, winGroup: "fewWin", loseGroup: "fewLose", ahead: 6, held: false, refused: false }] : []),
+    ...(wantWide ? [{ tag: "wide", win: WIDE, winGroup: "wideWin", loseGroup: "wideLose", ahead: 7, held: false, refused: false }] : []),
+    ...(wantHeld ? [{ tag: "held", win: WIDE, winGroup: "heldWin", loseGroup: "heldLose", ahead: 8, held: true, refused: false }] : []),
+    ...(wantRefused ? [{ tag: "refused", win: WIDE, winGroup: "refusedWin", loseGroup: "refusedLose", ahead: 9, held: true, refused: true }] : []),
   ];
+  /** A hold or lift trail (`check`'s `held.added` / `held.removed`): its rows, its accounts, and the most any one account has. */
+  const trailIs = (t: any, rows: number, users: number, maxPer: number) => t?.rows === rows && t?.users === users && t?.maxPer === maxPer;
   for (const [i, s] of shapes.entries()) {
-    const label = `${TICKETS.toLocaleString("en")} tickets, ${s.win.toLocaleString("en")} distinct winning player(s)${s.held ? ", all held" : ""}`;
+    const label = `${TICKETS.toLocaleString("en")} tickets, ${s.win.toLocaleString("en")} distinct winning player(s)${s.refused ? ", all held, refused before it settles" : s.held ? ", all held" : ""}`;
     console.log(`${NL}§6.${i + 1} · ${label}: sold, sealed and released in one transaction`);
     const wk = await runJob({ kind: "week", weeksAhead: s.ahead, seal: "YES", lots: [
       { group: s.winGroup, tickets: s.win, slip: "WIN", perPlayer: 1 }, { group: s.loseGroup, tickets: TICKETS - s.win, slip: "LOSE", perPlayer: 10 }] });
@@ -346,6 +358,46 @@ try {
       ok(`6.${i + 1}.hold · every winning account suspended AFTER its purchase`, suspended?.ok === true && suspended.confirmed === s.win,
         J({ requested: suspended?.requested, confirmed: suspended?.confirmed }));
       if (!suspended?.ok || suspended.confirmed !== s.win) continue;
+    }
+    if (s.refused) {
+      // ── S7-F8 · THE LIFTS, MEASURED. Attempt 1: every hold placed, then the release fails at its last statement (a
+      //    TEST-FAULT: rolled back, nothing paid) and lifts them all again. Attempt 2 (S16_LIFT_STOP_AFTER > 0): the same,
+      //    but its process ENDS after that many lift sections, and the heal finishes the rest. Then the week settles once.
+      const attempt = async (tag: string, extra: Record<string, unknown>) => {
+        const crashFile = join(TMP, `crash-${tag}.json`);
+        const r = await runJob({ kind: "release", weekId: wk.weekId, at: wk.releaseAt, failAtCommit: true, crashFile,
+          timeoutMs: Math.min(JOB_TIMEOUT_MS, 30 * 60_000), ...extra });
+        const crash = existsSync(crashFile) ? JSON.parse(readFileSync(crashFile, "utf8")) : null;
+        const c = await runJob({ kind: "check", weekId: wk.weekId, sumUsers: P[s.winGroup], heldGroup: s.winGroup });
+        return { r, crash, c };
+      };
+      const untouched = (c: any) => c?.payouts === 0 && c?.week?.state === "RESOLVING" && c?.tickets?.live === TICKETS
+        && c?.pool?.ledger === TICKETS * price && c?.sum === s.win * (BALANCE - price);
+      const a1 = await attempt("a1", {});
+      const ends1: number[] = Array.isArray(a1.r?.liftSectionEnds) ? a1.r.liftSectionEnds : [];
+      measured.push(`  refused · attempt 1 (fails at its last statement): ${a1.r?.error ?? "no result"} · its holds in ${a1.r?.spans?.length ?? "?"} section(s) · `
+        + `the lifts ${a1.r?.liftMs ?? "?"} ms, ${ends1.length ? `${ends1.length + 1} section(s) of the chain lock` : "no lift section marked (one chain-lock transaction per account)"} · `
+        + `left frozen ${a1.c?.held?.frozenWallets}`);
+      ok(`6.${i + 1}.r1 · ⭐ a release refused after its ${s.win.toLocaleString("en")} holds lifts them all again: no wallet left frozen, each hold placed once and lifted once, nothing paid`,
+        a1.r?.ok === false && /TEST-FAULT/.test(String(a1.r?.error)) && a1.c?.held?.frozenWallets === 0
+          && trailIs(a1.c?.held?.added, s.win, s.win, 1) && trailIs(a1.c?.held?.removed, s.win, s.win, 1) && untouched(a1.c),
+        J({ error: a1.r?.error, liftMs: a1.r?.liftMs, liftSections: ends1.length ? ends1.length + 1 : null, held: a1.c?.held, payouts: a1.c?.payouts, pool: a1.c?.pool }));
+      if (LIFT_STOP_AFTER > 0) {
+        const a2 = await attempt("a2", { stopAfterLiftSections: LIFT_STOP_AFTER });
+        const liftedBeforeStop = (a2.c?.held?.removed?.rows ?? 0) - s.win;
+        ok(`6.${i + 1}.r2 · ⭐ a lift whose process ends after ${LIFT_STOP_AFTER} section(s) leaves every account whole — lifted and recorded, or still held`,
+          a2.crash?.crashed === true && a2.crash.stoppedAfterLiftSections === LIFT_STOP_AFTER && a2.c?.held?.frozenWallets > 0 && liftedBeforeStop > 0
+            && a2.c.held.frozenWallets + liftedBeforeStop === s.win && trailIs(a2.c.held.added, 2 * s.win, s.win, 2) && a2.c.held.removed.maxPer <= 2 && untouched(a2.c),
+          J({ crash: a2.crash, held: a2.c?.held }));
+        const healed = await runJob({ kind: "heal" });
+        const c3 = await runJob({ kind: "check", weekId: wk.weekId, sumUsers: P[s.winGroup], heldGroup: s.winGroup });
+        measured.push(`  refused · attempt 2 ended its process after ${LIFT_STOP_AFTER} lift section(s): ${liftedBeforeStop} lifted, ${a2.c?.held?.frozenWallets} left frozen · `
+          + `the heal lifted ${healed?.lifted} in ${healed?.ms} ms, ${healed?.liftSections} section(s) · left frozen ${c3?.held?.frozenWallets}`);
+        ok(`6.${i + 1}.r3 · ⭐ …and the heal lifts exactly the rest: no wallet left frozen, each account's two holds lifted exactly twice`,
+          healed?.ok === true && healed.lifted === a2.c?.held?.frozenWallets && c3?.held?.frozenWallets === 0
+            && trailIs(c3?.held?.added, 2 * s.win, s.win, 2) && trailIs(c3?.held?.removed, 2 * s.win, s.win, 2) && untouched(c3),
+          J({ healed, held: c3?.held }));
+      }
     }
     // The held shape has a thirty-minute process watchdog (S7-F8: its 7,000 holds take sections of the chain lock, each
     // hold its own committed write and audit row — minutes in all). A failed settlement may need to lift its already
@@ -375,7 +427,13 @@ try {
       J({ positions: c6?.positions, payouts: c6?.payouts, pool: c6?.pool, got: c6?.week?.figures, want: f6 }));
     ok(`6.${i + 1}.4 · every winning player was paid one share: their balances sum to what they had, less a ticket, plus a share each`,
       c6?.sum === s.win * (BALANCE - price + (f6.share ?? 0)), `${c6?.sum} against ${s.win * (BALANCE - price + (f6.share ?? 0))}`);
-    if (s.held) {
+    if (s.refused) {
+      const attempts = LIFT_STOP_AFTER > 0 ? 3 : 2, lifted = attempts - 1;
+      ok(`6.${i + 1}.r4 · ⭐ the refused week then settles once: every account held with its share, its ${attempts} holds and ${lifted} lift(s) each exactly`,
+        settled?.ok === true && c6?.held?.frozenWallets === s.win && c6.held.heldTickets === s.win
+          && trailIs(c6.held.added, attempts * s.win, s.win, attempts) && trailIs(c6.held.removed, lifted * s.win, s.win, lifted),
+        J({ held: c6?.held }));
+    } else if (s.held) {
       const problems = heldWideProblems(s.win, settled, c6?.held ?? null);
       ok(`6.${i + 1}.5 · every winning account and ticket is held, with one durable freeze audit per account`, problems.length === 0,
         J({ problems, held: c6?.held, previewHeld: settled?.previewHeld, settleMs: settled?.settleMs }));

@@ -24,6 +24,9 @@
  *             rows, the root over its live tickets), the accounts asked for, and on `ledger` the trial balance and the
  *             Millionea invariants.
  *   suspend — after tickets were bought, fixture-suspend one named group in bounded batches; no wallet is touched.
+ *   heal    — S7-F8: `healStrayMillioneaHolds`, timed with its lift sections (what finishes a lift a stopped process left).
+ *   release — S7-F8 options: `failAtCommit` (a TEST-FAULT at its last statement: rolled back, every hold lifted again) and
+ *             `stopAfterLiftSections` + `crashFile` (the process ENDS between two lift sections — a crash, declared).
  * ⛔ Not run directly. ⛔ The orchestrator refuses any database it did not create.
  * ⚠️ This file carries no backslash: line breaks are built from their code points.
  */
@@ -195,18 +198,35 @@ try {
     // the preparation ended. Each section is its own transaction of the lock: `spans` is each one's length (lock wait
     // included; the last ends at its last write). A thrown release is reported with the marks it reached, never
     // swallowed into the worker's generic failure.
+    // S7-F8 · the refused shape: `failAtCommit` makes the release fail at its last statement (a TEST-FAULT: the transaction
+    // rolls back, nothing paid) so it lifts every hold it placed — `liftEnds` marks each lift section that let the lock
+    // go; `stopAfterLiftSections` ENDS THIS PROCESS between two lift sections (a crash, declared), its record written to
+    // `crashFile` first (a synchronous write: stdout may not flush before the exit).
     const t = await started();
     const now = new Date(job.at);
     const marks: Record<string, number> = {};
     const sectionEnds: number[] = [];
+    const liftEnds: number[] = [];
+    let tp = 0;
     W.settle.__setMaswaliSettleSeamsForTests({
       beforeChain: async () => { marks.chain = Date.now(); },
       betweenHoldSections: async () => { sectionEnds.push(Date.now()); },
       afterHolds: async () => { marks.holds = Date.now(); },
-      beforeCommit: async (act: string) => { if (act === "release") marks.commit = Date.now(); },
+      beforeCommit: async (act: string) => {
+        if (act !== "release") return;
+        marks.commit = Date.now();
+        if (job.failAtCommit) throw new Error("TEST-FAULT · S16 · the release fails at its last statement");
+      },
+      betweenLiftSections: async (n: number) => {
+        liftEnds.push(Date.now());
+        if (Number(job.stopAfterLiftSections) > 0 && n >= Number(job.stopAfterLiftSections)) {
+          writeFileSync(String(job.crashFile), JSON.stringify({ crashed: true, stoppedAfterLiftSections: n, liftEnds: liftEnds.map((x) => x - tp), at: Date.now() }));
+          process.exit(9);
+        }
+      },
     });
     const p: any = await W.settle.previewMaswaliSettlement(job.weekId, now);
-    const tp = Date.now();
+    tp = Date.now();
     let r: any;
     try {
       r = p.ok
@@ -227,7 +247,16 @@ try {
       previewHeld: p.ok ? p.preview.held : null,
       marks: { chainOpens: at("chain"), sectionEnds: sectionEnds.map((x) => x - tp), holdsDone: at("holds"), lastWrite: at("commit"), returned: end - tp },
       spans: opens.map((o, i) => (closes[i] ? (closes[i] as number) - o : null)),
+      // The lifts after a refusal: from the failed last statement to the return, and the sections that let the lock go.
+      liftMs: job.failAtCommit && marks.commit ? end - marks.commit : null, liftSectionEnds: liftEnds.map((x) => x - tp),
     });
+  } else if (job.kind === "heal") {
+    // S7-F8 · the heal — what finishes a lift a stopped process left: timed, with its own lift sections.
+    const ends: number[] = [];
+    W.settle.__setMaswaliSettleSeamsForTests({ betweenLiftSections: async () => { ends.push(Date.now()); } });
+    const t = Date.now();
+    const r: any = await W.settle.healStrayMillioneaHolds();
+    say({ ok: true, checked: r.checked, lifted: r.lifted.length, ms: Date.now() - t, liftSections: r.checked > 0 ? ends.length + 1 : 0 });
   } else if (job.kind === "correct") {
     const t = await started();
     const r: any = await W.svc.correctSeal({ weekId: job.weekId, slot: job.slot, outcome: job.outcome, evidence: job.evidence, officerId: SEALER, now: new Date(job.at) });
@@ -283,6 +312,20 @@ try {
       );
       r.held = { players: ids.length, suspended, frozenWallets, heldTickets,
         auditRows: Number(audits[0]?.rows ?? 0), auditUsers: Number(audits[0]?.users ?? 0) };
+      // S7-F8 · every Millionea hold and lift these accounts were ever given (whatever its note): the rows, the accounts and
+      // the most any ONE account has — rows = attempts × players with that maximum is exactly once per attempt.
+      const trail = async (action: string) => {
+        const t: any[] = await pc.$queryRawUnsafe(
+          `SELECT coalesce(sum(c), 0)::int AS "rows", count(*)::int AS "users", coalesce(max(c), 0)::int AS "maxPer" FROM (
+             SELECT "targetId", count(*)::int AS c FROM "AuditLog"
+              WHERE "action" = $1 AND "targetType" = 'User' AND "targetId" = ANY($2::text[]) AND "payload"->>'reason' = 'MILLIONEA_SHARE'
+              GROUP BY "targetId") s`,
+          action, ids,
+        );
+        return { rows: Number(t[0]?.rows ?? 0), users: Number(t[0]?.users ?? 0), maxPer: Number(t[0]?.maxPer ?? 0) };
+      };
+      r.held.added = await trail("wallet.freeze_added");
+      r.held.removed = await trail("wallet.freeze_removed");
     }
     if (job.ledger) {
       const tb: any = await W.ledger.trialBalance();

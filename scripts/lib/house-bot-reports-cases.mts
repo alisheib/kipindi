@@ -1011,8 +1011,11 @@ if (STORE === "memory") {
     // 2026-10-21 · MASWALI-BUILD S7-F8 4 · the release's holds take sections of the chain lock (the section, its re-read of
     // the holds placed before it, the yield, and the constant above them): maswali-settlement.ts's two sites move 398→445
     // and 693→749, each nine-line write SHA-256-identical (CR stripped) to S7-F8 3's. No other site moves.
+    // 2026-10-21 · MASWALI-BUILD S7-F8 7 · the lifts take sections of the chain lock too (the header's note and the lift
+    // seam above the payout; the one lifter and its held-share read above the forfeit): the two sites move 445→450 and
+    // 749→810, each nine-line write SHA-256-identical (CR stripped) to S7-F8 4's. No other site moves.
     ok("0.232.2 · …and the seven marked sites are exactly the seven line numbers this pin was written against — a site that MOVES is reported here (the pin is line-pinned on purpose; the money anchors match by text and cannot rot from a line move)",
-      j(marked) === j(["market-service.ts:1863", "market-service.ts:3151", "market-service.ts:3628", "market-service.ts:4114", "market-service.ts:4249", "market-service.ts:4397", "market-service.ts:5007", "maswali-money-service.ts:455", "maswali-money-service.ts:580", "maswali-settlement.ts:445", "maswali-settlement.ts:749", "maswali-void.ts:140"]), j(marked));
+      j(marked) === j(["market-service.ts:1863", "market-service.ts:3151", "market-service.ts:3628", "market-service.ts:4114", "market-service.ts:4249", "market-service.ts:4397", "market-service.ts:5007", "maswali-money-service.ts:455", "maswali-money-service.ts:580", "maswali-settlement.ts:450", "maswali-settlement.ts:810", "maswali-void.ts:140"]), j(marked));
 
     /**
      * ⛔ **THE ANCHORS FILE IS OPENED, BECAUSE THE LABEL SAID IT WAS AND IT WAS NOT** (C5-7's review, low). 0.232.2

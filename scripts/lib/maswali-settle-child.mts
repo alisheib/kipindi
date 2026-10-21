@@ -26,7 +26,9 @@
  *   B9  · while a final week is ENDING, an earlier week still runs and a later one is refused (§11, B9.1, B9.2)
  * And S7's own (2026-10-19/21): a missing payee refused before the carry (§4b, 4b.1–4b.3); holds that outlast one section of
  * the chain lock's 30-second transaction yield it between sections, each section re-reading the week and re-placing a hold
- * a lift removed meanwhile (§S7F8, S7F8.0–S7F8.2 — S16's all-held 7,000-winner shape measured on scratch Postgres).
+ * a lift removed meanwhile (§S7F8, S7F8.0–S7F8.2 — S16's all-held 7,000-winner shape measured on scratch Postgres); and the
+ * lifts, their twin: a release refused after its holds lifts them in sections, a lift stopped midway leaves every account
+ * whole and the heal finishes it, each hold lifted exactly once (S7F8.3–S7F8.6).
  */
 const STORE = process.env.HB_MONEY_STORE ?? "unknown";
 process.env.SESSION_SECRET ??= "maswali-settle-session-secret-0123456789abcdef";
@@ -757,6 +759,66 @@ console.log("\n§S7F8 · the holds in sections of the chain lock: each section r
       && H.every((u, i) => (u === liftedByHeal[0] ? trails[i].added === 2 && trails[i].removed === 1 : trails[i].added === 1 && trails[i].removed === 0)),
     J({ healed, trails }));
   for (const u of H) await W.setUserFields(u, { status: "ACTIVE" }); // the accounts' own reviews end
+
+  // ── THE LIFTS IN SECTIONS (the holds' twin): a release refused AFTER its holds lifts them again, section by section of
+  //    the chain lock; a lift that stops midway leaves every account whole, and the heal finishes it, each hold lifted once.
+  //    ⚠️ A FAULT THE PRODUCT CANNOT PRODUCE, DECLARED (as R6.4): the guarantee drained below the week's top-up after the
+  //    preview, so the release refuses in its money — after every hold is placed. One week carries all four acts (MR-3: a
+  //    later week could not even start while this one is unsettled).
+  {
+    const x = await heldWeek();
+    const balances = await Promise.all([...x.H, x.F].map(bal));
+    const g = (await guarantee())!;
+    if (g > 1) await money.postMaswaliLines(`test_drain_s7f8_${x.week.id}`, ledger.maswaliGuaranteeReturnEntries({ amount: g - 1, reference: "TEST-FAULT", actorId: OWNER }), null);
+    const untouched = async () => J(await Promise.all([...x.H, x.F].map(bal))) === J(balances)
+      && (await dal.weekStore.get(x.week.id)).state === "RESOLVING" && (await dal.weekStore.get(x.week.id)).rolloverIn === null;
+    const freed = async () => Promise.all(x.H.map(async (u) => !(await heldOf(u)) && (await W.bal(u)).status === "ACTIVE"));
+
+    const liftSections: number[] = [];
+    settle.__setMaswaliSettleSeamsForTests({ holdSectionMs: 0, betweenLiftSections: async (n: number) => { liftSections.push(n); } });
+    let r1: any;
+    try { r1 = await W.release(x.week.id, x.at); } finally { settle.__setMaswaliSettleSeamsForTests(null); }
+    await auditFlush();
+    const t1 = await Promise.all(x.H.map(trail));
+    ok("S7F8.3 · ⭐ a release refused after its holds lifts them again in sections of the chain lock (one account a section here): every held wallet free, each hold placed once and lifted once, nothing paid",
+      !r1.ok && /guarantee holds less/.test(errOf(r1)) && J(liftSections) === J([1, 2]) && (await freed()).every(Boolean)
+        && t1.every((y) => y.added === 1 && y.removed === 1) && (await untouched()),
+      J({ refusal: errOf(r1), liftSections, trails: t1 }));
+
+    settle.__setMaswaliSettleSeamsForTests({
+      holdSectionMs: 0,
+      betweenLiftSections: async (n: number) => { if (n === 1) throw new Error("TEST-FAULT · the process stops midway through the lifts"); },
+    });
+    let r2: any;
+    try { r2 = await W.release(x.week.id, x.at); } finally { settle.__setMaswaliSettleSeamsForTests(null); }
+    const stopped = await freed();
+    await auditFlush();
+    const t2 = await Promise.all(x.H.map(trail));
+    ok("S7F8.4 · ⭐ a lift that stops after its first section leaves every account whole — lifted and recorded, or still held — never half, and nothing paid",
+      !r2.ok && stopped.filter(Boolean).length === 1
+        && x.H.every((_, i) => t2[i].added === 2 && t2[i].removed === (stopped[i] ? 2 : 1)) && (await untouched()),
+      J({ refusal: errOf(r2), stopped, trails: t2 }));
+
+    const healedNow = await settle.healStrayMillioneaHolds();
+    await auditFlush();
+    const t3 = await Promise.all(x.H.map(trail));
+    const leftHeld = x.H.filter((_, i) => !stopped[i]);
+    ok("S7F8.5 · ⭐ …and the heal lifts exactly the rest: no wallet left frozen, each hold lifted exactly once (two holds, two lifts each)",
+      leftHeld.length === 2 && leftHeld.every((u) => healedNow.lifted.includes(u)) && x.H.filter((_, i) => stopped[i]).every((u) => !healedNow.lifted.includes(u))
+        && (await freed()).every(Boolean) && t3.every((y) => y.added === 2 && y.removed === 2),
+      J({ healed: healedNow.lifted, trails: t3 }));
+
+    const refill = await money.fundMaswaliGuarantee({ amount: FUND * 2, reference: "TEST-RAIL-S7F8", typed: money.GUARANTEE_FUND_WORD, ownerId: OWNER });
+    const r4 = await W.release(x.week.id, x.at);
+    await auditFlush();
+    const t4 = await Promise.all(x.H.map(trail));
+    const o4 = await outcome(x.week.id, x.H, x.F, balances, r4);
+    ok("S7F8.6 · control: refilled, the same week settles once — its held shares landing held, its holds placed a third time, each lifted twice before",
+      refill.ok && o4.settled && o4.sharesHeld && o4.walletsHeld.every(Boolean) && !o4.freeHeld && o4.paidOnce
+        && t4.every((y) => y.added === 3 && y.removed === 2),
+      J({ r4: errOf(r4), o4, trails: t4 }));
+    for (const u of x.H) await W.setUserFields(u, { status: "ACTIVE" });
+  }
 }
 
 // ── §11 · the sunset: the final week's top score shares the whole jackpot ───

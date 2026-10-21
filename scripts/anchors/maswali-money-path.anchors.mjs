@@ -292,11 +292,28 @@ export const MUTATIONS = [
     suite: "settle",
   },
   {
+    // S7-F8 (2026-10-21) · re-anchored: every lift — one account or thousands — goes through the one lifter's sections.
     name: "(R6-lift) the lift takes no chain lock: a forfeit's lift reads \"nothing held\" while a held share is landing",
     file: SETTLE,
-    from: "async function liftHoldIfClear(userId: string, actorId: string | null, note: string): Promise<boolean> {\n  return withLock(MASWALI_CHAIN_LOCK, async () => {",
-    to: "async function liftHoldIfClear(userId: string, actorId: string | null, note: string): Promise<boolean> {\n  return (async (fn: () => Promise<boolean>) => fn())(async () => {",
+    from: `      await withLock(MASWALI_CHAIN_LOCK, async () => {${LF}        const share = seams.holdSectionMs ?? HOLD_SECTION_MS;`,
+    to: `      await (async (fn: () => Promise<void>) => fn())(async () => {${LF}        const share = seams.holdSectionMs ?? HOLD_SECTION_MS;`,
     expect: "R6.2b · ⭐",
+    suite: "settle",
+  },
+  {
+    name: "(S7-F8-lift-held) the lifter never reads the held shares: a hold with a held share behind it is lifted (R6)",
+    file: SETTLE,
+    from: "          const keep = await heldShareHolders([...carrying]);",
+    to: "          const keep = new Set<string>();",
+    expect: "R6.9 · ⭐",
+    suite: "settle",
+  },
+  {
+    name: "(S7-F8-lift-yield) the lifts never let the chain lock go, whatever their count (thousands in one transaction again)",
+    file: SETTLE,
+    from: "            if (doneHere > 0 && Date.now() - asked >= share) return;",
+    to: "            void asked;",
+    expect: "S7F8.3 · ⭐",
     suite: "settle",
   },
   {
