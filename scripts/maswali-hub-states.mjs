@@ -124,6 +124,7 @@ async function shoot(state, shell, ctx, { check, oneView = false, path = "/milli
       const label = `${state} · ${shell} · ${locale} @${width}`;
       await baseChecks(page, label, locale, res);
       if (check) await check(page, label, locale, width);
+      if (locale === "zh") await zhScan(page, label);
       const name = `${state}-${shell}-${locale}-${width}`;
       await page.screenshot({ path: `${OUT}/${name}.png` });
       if (SCROLL_AT.has(width)) await tiles(page, name, width);
@@ -186,26 +187,69 @@ async function openWeekChecks(page, label, locale, width, { door = "millionea-hu
     ok(`${label} · L17 the column is named by the jackpot's label`, !!named && named.length > 0, j(named));
   }
 }
-/** M5: the eyebrow's state word in royal (brand-300), never the eyebrow's subtle ink, and the word the state says. */
-async function stateWordChecks(page, label, locale, word) {
+/**
+ * M5: the week's state is the register's one chip (`WeekStateChip`, the lead's ruling) in the page head's eyebrow, beside
+ * the week it qualifies — its word the state's, its ink its tone's (status-tone: royal while the week runs, slate while
+ * sales are paused), never the eyebrow's subtle ink; on the week word's line wherever the two fit on one.
+ */
+async function stateWordChecks(page, label, locale, word, tone = "royal") {
   const s = await page.evaluate(() => {
-    const w = document.querySelector('header ~ * [data-testid="millionea-week-state"], main [data-testid="millionea-week-state"]');
-    // The royal status ink is status-tone's own class (TONE_INK.royal); the eyebrow's is the subtle ink. Both read back
-    // through the browser, so the comparison is of computed colours in one space, never of a class name.
+    const w = document.querySelector('[data-testid="millionea-hub"] [data-testid="millionea-week-state"]');
+    // The tones' inks are status-tone's own (the chip's `pending` and `neutral` faces: --brand-300, --text-muted); they read
+    // back through the browser, so the comparison is of computed colours in one space, never of a class name.
     const probe = (cls) => { const p = document.createElement("span"); p.className = cls; document.body.appendChild(p); const c = getComputedStyle(p).color; p.remove(); return c; };
-    const royal = probe("text-brand-300"), subtle = probe("text-text-subtle");
-    return w ? { text: w.textContent, color: getComputedStyle(w).color, royal, subtle } : null;
+    if (!w) return null;
+    const cs = getComputedStyle(w), r = w.getBoundingClientRect();
+    const week = w.previousElementSibling?.getBoundingClientRect() ?? null;
+    const sameLine = !!week && r.top < week.bottom && week.top < r.bottom;
+    return {
+      text: w.textContent, color: cs.color, border: cs.borderTopWidth, royal: probe("text-brand-300"), slate: probe("text-text-muted"), subtle: probe("text-text-subtle"),
+      sameLine, centreOff: week && sameLine ? Math.round(((r.top + r.bottom) / 2 - (week.top + week.bottom) / 2) * 10) / 10 : null,
+    };
   });
-  ok(`${label} · M5 the week's state word is in its state's ink (royal), not the eyebrow's subtle ink`, !!s && s.color === s.royal && s.color !== s.subtle, j(s));
+  ok(`${label} · M5 the week's state is the register's chip in its state's ink (${tone}), never the eyebrow's subtle ink`, !!s && s.color === s[tone] && s.color !== s.subtle && parseFloat(s.border) >= 1, j(s));
+  if (s?.sameLine) ok(`${label} · M5 the chip stands centred on the week word's line (${s.centreOff}px)`, Math.abs(s.centreOff ?? 99) <= 1.5, j(s));
   if (word) ok(`${label} · M5 the state word reads "${word[locale]}"`, s?.text === word[locale], j(s));
+}
+
+/** Millionea's zh rule (the lead's ruling, 2026-10-21): a space only where a Latin letter or a digit meets a Han character. */
+const HAN_GAP = /[㐀-䶿一-鿿豈-﫿]\s+[㐀-䶿一-鿿豈-﫿]/;
+/** The hub's own timed lines, in zh: none parts two Han characters with a space. */
+async function zhLineChecks(page, label, locale, testIds) {
+  if (locale !== "zh") return;
+  for (const id of testIds) {
+    const text = await page.getByTestId(id).first().textContent().catch(() => null);
+    ok(`${label} · zh ${id}: no space between two Han characters`, text !== null && !HAN_GAP.test(text), j(text));
+  }
+}
+/** Every other zh line on the page with such a space, for the report (each key's owner fixes their own): not a check. */
+const zhElsewhere = new Map();
+async function zhScan(page, label) {
+  const found = await page.evaluate((src) => {
+    const re = new RegExp(src);
+    const out = [];
+    const walk = document.createTreeWalker(document.querySelector("main") ?? document.body, NodeFilter.SHOW_ELEMENT);
+    for (let el = walk.currentNode; el; el = walk.nextNode()) {
+      if (el.children.length > 0 || !el.textContent) continue;
+      if (re.test(el.textContent)) out.push(`${el.closest("[data-testid]")?.getAttribute("data-testid") ?? "?"}: ${el.textContent.trim().slice(0, 80)}`);
+    }
+    // a line whose Han characters stand in separate elements (a fill's run beside its template)
+    for (const el of document.querySelectorAll("main p, main span, main li, main [role='status']")) {
+      const t = el.textContent ?? "";
+      if (re.test(t) && ![...el.querySelectorAll("*")].some((c) => re.test(c.textContent ?? ""))) out.push(`${el.closest("[data-testid]")?.getAttribute("data-testid") ?? "?"}: ${t.trim().slice(0, 80)}`);
+    }
+    return [...new Set(out)];
+  }, HAN_GAP.source);
+  for (const f of found) if (!zhElsewhere.has(f)) zhElsewhere.set(f, label);
 }
 
 if (RUN === "a") {
   // ── S1 · an open week, signed in, holding a ticket (a losing slip, so the week can roll over later) ────────────────────
   await act({ act: "tickets", n: 1, lose: true });
-  // Two more players, one per other language, with a ticket each: their once-per-week notices are unseen later (S11).
+  // Two more players, one per other language, with a ticket each: their once-per-week notices are unseen later (S11) — and
+  // two for the carry's flight (H6): one read on a phone, one on a tall desktop.
   const players = {};
-  for (const l of ["en", "zh"]) {
+  for (const l of ["en", "zh", "phone", "desk"]) {
     const ctx = await readerContext([]);
     const p = await act({ act: "player", tickets: 1, lose: true }, ctx); // signed in through this context's cookie
     players[l] = { ctx, id: p.userId };
@@ -243,7 +287,7 @@ if (RUN === "a") {
   if (want("paused")) {
     await act({ act: "pause", on: true });
     const pausedCheck = async (page, label, locale) => {
-      await stateWordChecks(page, label, locale, t.pausedShort);
+      await stateWordChecks(page, label, locale, t.pausedShort, "slate");
       ok(`${label} · L9/P15 no close line and no door to buy while paused`, (await page.getByTestId("millionea-hub-close").count()) === 0 && (await page.getByTestId("millionea-hub-fill").count()) === 0);
     };
     await shoot("paused", "classic", demoClassic, { check: pausedCheck });
@@ -280,9 +324,11 @@ if (RUN === "a") {
   // ── S3 · the close moved (M7) ─────────────────────────────────────────────────────────────────────────────────────────
   if (want("moved")) {
     const mv = await act({ act: "moveClose", hours: 2 });
-    const movedCheck = async (page, label) => {
+    const movedCheck = async (page, label, locale) => {
       const bar = await page.getByTestId("millionea-hub-close-moved").textContent().catch(() => null);
       ok(`${label} · M7 the moved close is announced, with the close it was`, !!bar && /16:00/.test(bar) && /18:00/.test(bar), j(bar));
+      await zhLineChecks(page, label, locale, ["millionea-hub-close-moved"]);
+      if (locale === "zh") ok(`${label} · zh the same day's old close stands spaced from its Han ("原为 18:00")`, /原为 18:00/.test(bar ?? ""), j(bar));
     };
     void mv;
     await shoot("moved", "classic", guestClassic, { check: movedCheck });
@@ -320,6 +366,7 @@ if (RUN === "a") {
       && (await page.getByTestId("millionea-hub-no-week").count()) === 1);
     const body = await page.getByTestId("millionea-hub-no-week").textContent().catch(() => "");
     if (locale === "en") ok(`${label} · L21 the next open is promised only while sales run`, paused ? !/The next week opens/.test(body ?? "") : /The next week opens/.test(body ?? ""), j(body));
+    await zhLineChecks(page, label, locale, ["millionea-hub-no-week"]);
   };
   await shoot("noweek", "classic", guestClassic, { check: noWeekCheck(false) });
   await shoot("noweek", "journey", guestJourney, { check: noWeekCheck(false), matrix: { sw: [360, 1280] } });
@@ -344,6 +391,34 @@ if (RUN === "a") {
     await shoot("after", "classic", players.en.ctx, { check: afterCheck, oneView: true, matrix: { en: [360, 1280] } });
     await shoot("after", "journey", (await readerContext([...(await players.zh.ctx.cookies(BASE)).filter((c) => c.name === SESSION_COOKIE), pass_])), { check: afterCheck, oneView: true, matrix: { zh: [360, 1280] } });
   }
+  // ── H6/M7 · the carry plays only with both ends in view (the shared MaswaliCarry): a reader on a phone — the ledger far
+  // below the notice — sees no flight; on a tall desktop both ends stand in view and the figure lands, its origin settling
+  // in once the token has left it. Each reader's first view, the rollover notice unseen. The ends are measured on boxes a
+  // flight never moves (the row's own span, the notice's figure).
+  if (want("after")) {
+    for (const [who, vp] of [["phone", { width: 360, height: HEIGHT }], ["desk", { width: 1920, height: 1440 }]]) {
+      const ctx = players[who].ctx;
+      await setLocale(ctx, "sw");
+      const page = await ctx.newPage();
+      page.on("pageerror", (e) => errs.push(`carry/${who}: ${e}`));
+      await page.setViewportSize(vp);
+      await page.goto(`${BASE}/millionea`, { waitUntil: "load", timeout: 180_000 });
+      const ends = await page.evaluate(() => {
+        const at = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right) }; };
+        const inView = (b) => !!b && b.top >= 0 && b.left >= 0 && b.bottom <= innerHeight && b.right <= innerWidth;
+        const origin = at(document.getElementById("mln-carried-figure")), dest = at(document.querySelector('[data-row="in"]'));
+        return { origin, dest, both: inView(origin) && inView(dest) };
+      });
+      await page.waitForTimeout(1600);
+      const after = await page.evaluate(() => document.getElementById("mln-carried-figure")?.className ?? null);
+      const landed = /\bg-settle\b/.test(after ?? ""), vacated = /\bkp-mln-carry-vacated\b/.test(after ?? "");
+      ok(`after · carry · sw ${vp.width}×${vp.height} · H6 the carry plays exactly when both ends stand in view (${ends.both ? "both in view: it lands" : "an end out of view: no flight"})`,
+        !!ends.origin && !!ends.dest && (ends.both ? landed && !vacated : !landed && !vacated), j({ ends, after }));
+      if (who === "desk") ok(`after · carry · sw ${vp.width}×${vp.height} · H6 a tall desktop holds both ends, so the flight is seen`, ends.both, j(ends));
+      await page.screenshot({ path: `${OUT}/after-carry-sw-${vp.width}.png` });
+      await page.close();
+    }
+  }
 
   // ── S14 · a week being voided (six mains void against five reserves), then voided whole ───────────────────────────────────
   await act({ act: "closeOpen" });
@@ -355,6 +430,7 @@ if (RUN === "a") {
     const refund = await page.locator('[data-row="refund"]').first().textContent().catch(() => null);
     ok(`${label} · L15 the conditional refund row carries no dash and no figure`, refund === "", j(refund));
     await stateWordChecks(page, label, locale, { en: "Week is being voided", sw: "Wiki inabatilishwa", zh: "整周作废中" });
+    await zhLineChecks(page, label, locale, ["millionea-hub-voiding"]);
   };
   await shoot("voiding", "classic", demoClassic, { check: voidingCheck });
   await shoot("voiding", "journey", demoJourney, { check: voidingCheck, matrix: { sw: [360, 1280] } });
@@ -393,6 +469,7 @@ if (RUN === "b") {
     const bar = await page.getByTestId("millionea-hub-final-ahead").textContent().catch(() => null);
     if (locale === "en") ok(`${label} · L22 the final week is announced ahead in the lead's words`, !!bar && /^Week \d+ will be Millionea's final week\. It opens .+\.$/.test(bar.trim()), j(bar));
     ok(`${label} · L22 the announcement is a calm bar`, !!bar);
+    await zhLineChecks(page, label, locale, ["millionea-hub-final-ahead"]);
   };
   await shoot("final-ahead", "classic", demoClassic, { check: aheadCheck, matrix: { sw: [320, 360, 768, 1280], en: [360, 1280], zh: [360] } });
   await shoot("final-ahead", "journey", demoJourney, { check: aheadCheck, matrix: { sw: [360, 1280] } });
@@ -427,6 +504,7 @@ if (RUN === "b") {
 }
 
 ok("no page error on any page", errs.length === 0, errs.slice(0, 3).join(" | "));
+for (const [line, where] of zhElsewhere) console.log(`INFO zh space between two Han characters — ${line}  (first at ${where})`);
 await browser.close();
 console.log(`\nmaswali-hub-states (run ${RUN}): ${pass} passed, ${fail} failed · tiles in ${OUT}/`);
 process.exit(fail === 0 ? 0 : 1);

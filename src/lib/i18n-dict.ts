@@ -9200,17 +9200,20 @@ export const dict = {
       nextWeekOpens: "第{week}周{day}开放",
       finalWeek: "Millionea 最后一周",
       finalWeekRule: "最后一周：若无彩票答对 10/10，奖池由本周得分最高的彩票平分",
-      // {date} is formatEatDate's Chinese day ("2026年11月30日"), which ends on 日: no space before 开放 (digit/Han spacing only).
+      // Millionea's zh rule (the lead's ruling, 2026-10-21): a space only where a Latin letter or a digit meets a Han
+      // character. {date} is formatEatDate's day ("2026年11月30日"): a digit first, 日 last — so a space before it, none after.
       finalWeekAhead: "第{week}周将是 Millionea 的最后一周，于 {date}开放。",
       paused: "Millionea 暂时停售。已购彩票安全无虞。",
       pausedShort: "暂时停售",
       stoppedSunset: "Millionea 已结束。第{week}周为最后一周；最终派奖已完成。",
-      closeMoved: "销售截止时间已更改：现为 {when}（原为 {from}）。所有事件仍在截止之后开始。",
+      // {when} is a weekday clock (a Han weekday first); {from} the clock alone on the same day (a digit first), else a
+      // weekday clock — the hub sets the space where the fill meets the line by the rule (`hub-words.tsx`), never here.
+      closeMoved: "销售截止时间已更改：现为{when}（原为{from}）。所有事件仍在截止之后开始。",
       capReachedNote: "您本周已达 {cap} 张彩票上限。第{week}周{day}开放。",
       capReachedOnly: "您本周已达 {cap} 张彩票上限。",
       rolloverNotice: "第{prev}周：无 10/10 彩票。{amount} 滚存至第{week}周。",
       weekVoiding: "整周作废中",
-      weekVoidingBody: "{voided} 道正选题作废，有效备选题仅 {valid} 道。若至 {when} 无异议改变此结果，整周将作废，每张彩票均将退款。",
+      weekVoidingBody: "{voided} 道正选题作废，有效备选题仅 {valid} 道。若至{when} 无异议改变此结果，整周将作废，每张彩票均将退款。",
       weekVoidedBody: "本周已作废：{voided} 道正选题作废，有效备选题仅 {valid} 道。每张彩票退款 {price}。",
       weekVoidedBodyPending: "本周已作废：{voided} 道正选题作废，有效备选题仅 {valid} 道。每张彩票的 {price} 正在退回。",
       weekVoidingShort: "整周作废中 · 确认后退款",
@@ -9381,7 +9384,7 @@ export const dict = {
       logWeekVoid: "整周作废",
       auditChain: "审计链",
       hubNoWeek: "目前没有开放销售的 Millionea 周。",
-      nextOpensAt: "下一周于 {when} 开放。",
+      nextOpensAt: "下一周于{when} 开放。",
       previewMark: "预览 — Millionea 目前仅对员工可见。",
       cancelWindowClosed: "此彩票的免费取消期已结束。彩票继续有效，可在您的彩票中查看。",
       cancelNotOpen: "此彩票已无法取消：其所属周已进入下一阶段。",

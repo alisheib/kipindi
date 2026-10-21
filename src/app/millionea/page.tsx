@@ -38,10 +38,10 @@ import { MaswaliLastWeek } from "@/components/maswali/maswali-pool-figure";
 import { MaswaliHeldTicketRow } from "@/components/maswali/maswali-ticket";
 import { MaswaliClosingPill } from "@/components/maswali/maswali-slip";
 import { MillioneaGlyph } from "@/components/maswali/maswali-glyph";
-import { counted, eatClock, eatWeekday, eatWeekdayClock, reserveLabel, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
+import { counted, eatWeekdayClock, reserveLabel, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
 import { millioneaGate } from "@/lib/server/millionea-gate";
 import {
-  millioneaCloseMove, millioneaFinalWeekAhead, millioneaHub, millioneaMyTicketsWeek,
+  millioneaCloseMove, millioneaFinalWeekAhead, millioneaHub, millioneaHubCommitments, millioneaMyTicketsWeek,
   type MillioneaHub, type MillioneaHubWeek, type MillioneaNotice, type MillioneaTicketsWeek,
 } from "@/lib/server/maswali-player";
 import { millioneaBreakOf, millioneaDoor, millioneaOpenTemplate } from "@/lib/server/millionea-doors";
@@ -49,9 +49,7 @@ import { nextWeekOpen } from "@/components/maswali/maswali-card-model";
 import { getServerT } from "@/lib/i18n-server";
 import { breakSentence } from "@/lib/break-end";
 import { authDoorHrefs } from "@/lib/auth-landing";
-import { formatEatDate } from "@/lib/eat-day";
 import { marketCategoryLabel } from "@/lib/localized";
-import { STATUS_TONE, TONE_INK } from "@/lib/status-tone";
 import { fillNodes, moneyRuns } from "@/lib/fill-nodes";
 import { cn, fill, formatNumber, formatTzs } from "@/lib/utils";
 import { MAIN_COUNT, RESERVE_COUNT, displayMap, weekVoidCertain } from "@/lib/maswali-score";
@@ -59,8 +57,10 @@ import type { Dict, Locale } from "@/lib/i18n-dict";
 import { HubPoolHead, HubPoolLedger, HubPoolLive } from "./hub-pool";
 import { HubNotices, type HubNotice } from "./hub-notices";
 import { HubOutcomeStamp, HubPressGroup } from "./hub-stamp";
+import { closeMovedWords, finalAheadWords, nextOpenWords, voidingWords } from "./hub-words";
 import { MILLIONEA_HREF, MillioneaPreviewMark, MillioneaReadingLinks, registerWeekHref, ticketPageHref } from "./millionea-parts";
-import { bySlot, capReachedLine, gradableOf, lineOf, millioneaWeekPhase, msOf, ordinalOf, phaseNow, phasesOf, resultDoorSerial, resultLine, textIn, weekPhaseWord } from "./millionea-view";
+import { WeekCommitments, WeekStateChip, weekChipWord } from "./register/register-parts";
+import { bySlot, capReachedLine, gradableOf, lineOf, millioneaWeekPhase, msOf, ordinalOf, phaseNow, phasesOf, resultDoorSerial, resultLine, textIn } from "./millionea-view";
 
 export const dynamic = "force-dynamic";
 
@@ -80,26 +80,22 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /**
- * ⭐ M5 · WHERE A WEEK STANDS, IN ITS STATE'S INK (§T3: "a STATE line keeps its state's ink"; §B11's dictionary,
- * `status-tone.ts`): the one phase word (`millioneaWeekPhase`, S5-FIX-PLAYER P6) — or, while sales are paused, "Paused for
- * now", the card's own word (it said "Open" over a paused week) — royal while the week is live, slate once it is final.
+ * ⭐ M5 · WHERE A WEEK STANDS, AS ITS OWN CHIP (§T3: "a STATE line keeps its state's ink"; §B11's dictionary): the
+ * register's one week chip (`WeekStateChip`, the REGISTER lane's shared drawing) beside the week it qualifies — the one
+ * phase's word (`millioneaWeekPhase`, S5-FIX-PLAYER P6), or "Paused for now" over a paused week (it said "Open"), in
+ * status-tone's own tone for that word. The hub's title is the product and its eyebrow the week, so the chip stands in the
+ * eyebrow's row, beside "WEEK 49"; on the register the week IS the title, and its chip stands under it.
  */
-function weekStateOf(t: Dict, w: MillioneaHubWeek, nowMs: number, paused: boolean): { word: string; ink: string } {
-  const word = paused && w.state === "OPEN" ? t.millionea.pausedShort : weekPhaseWord(t, w.state, millioneaWeekPhase(w, nowMs));
-  const tone = w.state === "SETTLED" || w.state === "VOIDED" ? STATUS_TONE.VOID.player
-    : w.state === "OPEN" ? STATUS_TONE.OPEN.player
-      : w.state === "CLOSED" ? STATUS_TONE.CLOSED.player : STATUS_TONE.PENDING.player;
-  return { word, ink: TONE_INK[tone] };
-}
-
-/** "WIKI 42 · WAZI" — the week, then its state word in the state's ink: a fact line, so the line never starts or ends on
- *  its separator (A1). */
 function WeekLabel({ t, w, nowMs, paused }: { t: Dict; w: MillioneaHubWeek; nowMs: number; paused: boolean }) {
-  const s = weekStateOf(t, w, nowMs, paused);
-  return <MaswaliFacts facts={[weekWord(t, weekNumberOf(w.code)), <span key="state" className={s.ink} data-testid="millionea-week-state">{s.word}</span>]} />;
+  return (
+    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+      <span>{weekWord(t, weekNumberOf(w.code))}</span>
+      <WeekStateChip t={t} state={w.state} phase={millioneaWeekPhase(w, nowMs)} paused={paused} />
+    </span>
+  );
 }
 function weekLabelText(t: Dict, w: MillioneaHubWeek, nowMs: number, paused: boolean): string {
-  return `${weekWord(t, weekNumberOf(w.code))} · ${weekStateOf(t, w, nowMs, paused).word}`;
+  return `${weekWord(t, weekNumberOf(w.code))} · ${weekChipWord(t, w.state, millioneaWeekPhase(w, nowMs), paused)}`;
 }
 
 /** P6 · "Objection window until Tuesday 12:00" while the week's window is open (its end still ahead), else nothing. */
@@ -420,22 +416,9 @@ function VoidingNotice({ t, w }: { t: Dict; w: MillioneaHubWeek }) {
   const valid = RESERVE_COUNT - w.voidedReserves;
   return (
     <div data-testid="millionea-hub-voiding">
-      <Callout tone="neutral" role="status">
-        {fillNodes(t.millionea.weekVoidingBody, {
-          voided: formatNumber(w.voidedMains), valid: formatNumber(valid),
-          when: <span className="whitespace-nowrap font-mono">{eatWeekdayClock(t, by)}</span>,
-        })}
-      </Callout>
+      <Callout tone="neutral" role="status">{voidingWords(t, w.voidedMains, valid, by)}</Callout>
     </div>
   );
-}
-
-/** M7 · "The sales close has moved: it is now Friday 16:00 (was 18:00)" — the old close by its clock alone when it was the
- *  same day, else with its day; each one unbreakable run in the numerals' mono (§T5). */
-function closeMovedWords(t: Dict, toMs: number, fromMs: number): ReactNode {
-  const sameDay = eatWeekday(t, toMs) === eatWeekday(t, fromMs) && Math.abs(toMs - fromMs) < 86_400_000;
-  const run = (s: string) => <span className="whitespace-nowrap font-mono">{s}</span>;
-  return fillNodes(t.millionea.closeMoved, { when: run(eatWeekdayClock(t, toMs)), from: run(sameDay ? eatClock(fromMs) : eatWeekdayClock(t, fromMs)) });
 }
 
 export default async function MillioneaHubPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -452,9 +435,11 @@ export default async function MillioneaHubPage({ searchParams }: { searchParams:
   const w = hub.week;
   const retired = hub.life === "RETIRED";
   // M7 · a moved close, while it is still ahead; L22 · the final week announced ahead, while the week on sale is not it.
-  const [moved, finalAhead] = await Promise.all([
+  // The lead's ruling on R1-register H2: the week's two commitments, printed in its section from the moment each is stamped.
+  const [moved, finalAhead, commitments] = await Promise.all([
     w ? millioneaCloseMove(w, nowMs) : Promise.resolve(null),
     hub.life === "ENDING" && !w?.isFinal ? millioneaFinalWeekAhead(hub.line) : Promise.resolve(null),
+    w ? millioneaHubCommitments(w.id) : Promise.resolve(null),
   ]);
   // M10 · the carry leaves from the rollover notice's own figure — and only when that rollover IS this week's carry in
   // (the figure's own provenance, `carryFromCode`), so it never travels from a week the ledger does not name.
@@ -513,10 +498,7 @@ export default async function MillioneaHubPage({ searchParams }: { searchParams:
       )}
       {finalAhead && finalAheadMs !== null && (
         <NoticeBar tone="info" glyph="finalWeek" testId="millionea-hub-final-ahead">
-          {fillNodes(t.millionea.finalWeekAhead, {
-            week: weekNumberOf(finalAhead.code),
-            date: <span className="whitespace-nowrap font-mono">{formatEatDate(finalAheadMs, nowMs, t.common.monthsShort, locale)}</span>,
-          })}
+          {finalAheadWords(t, locale, weekNumberOf(finalAhead.code), finalAheadMs, nowMs)}
         </NoticeBar>
       )}
       <HubNotices notices={notices} renderedAt={hub.asOf} />
@@ -571,8 +553,16 @@ export default async function MillioneaHubPage({ searchParams }: { searchParams:
                     </div>
                   )}
                   {w.pool ? <HubPoolLive weekId={w.id} initial={w.pool} price={w.ticketPrice} voiding={voidingNow(w, nowMs)}>{aside}</HubPoolLive> : aside}
-                  <div className={cn("lg:col-start-1", phases ? "lg:row-start-2" : "lg:row-start-1")}>
+                  <div className={cn("flex flex-col gap-6 lg:col-start-1", phases ? "lg:row-start-2" : "lg:row-start-1")}>
                     <WeekQuestions t={t} locale={locale} w={w} />
+                    {/* The week's fingerprints, under its fifteen (the register's own drawing, `WeekCommitments`): the
+                        question set's hash from the open, the tickets' root from the close — each only once stamped. */}
+                    {commitments?.questionSetHash && (
+                      <WeekCommitments
+                        t={t} locale={locale} nowMs={nowMs} hash={commitments.questionSetHash} publishedAt={commitments.publishedAt}
+                        root={commitments.ticketRoot} closedAt={commitments.closedAt} tickets={commitments.ticketCount}
+                      />
+                    )}
                   </div>
                   <div className={cn("flex flex-col gap-4 lg:col-start-1", phases ? "lg:row-start-3" : "lg:row-start-2")}>
                     <LastWeekRow t={t} locale={locale} hub={hub} />
@@ -586,7 +576,7 @@ export default async function MillioneaHubPage({ searchParams }: { searchParams:
                   <EmptyState
                     title={t.millionea.hubNoWeek}
                     body={[
-                      msOf(hub.nextOpensAt) !== null && !hub.paused ? fill(t.millionea.nextOpensAt, { when: eatWeekdayClock(t, msOf(hub.nextOpensAt) ?? 0) }) : null,
+                      msOf(hub.nextOpensAt) !== null && !hub.paused ? nextOpenWords(t, msOf(hub.nextOpensAt) ?? 0) : null,
                       t.millionea.questionsAtOpen,
                     ].filter((x): x is string => !!x).join(locale === "zh" ? "" : " ")}
                     fill

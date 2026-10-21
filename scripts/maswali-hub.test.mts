@@ -9,11 +9,12 @@
  * language, a figure's measured width — never the source text. Each section ends with a PLANT: the old drawing (or the
  * defect) the check must catch. The page itself is a server component that reads the store; its boxes, inks and states
  * are measured in a browser by `qa:maswali-hub-states`, and its read model's new reads by `test:maswali-hub-reads`.
- *   §1 M4/H1 the ledger is the kit's receipt row          §2 L10 the figure holds one line at 320
+ *   §1 M4/H1 the pool ledger is the one Millionea ledger  §2 L10 the figure holds one line at 320
  *   §3 H3 the final week's rule under the figure          §4 L15 a conditional refund row: no figure, no dash
- *   §5 motion L1 a live frame ticks each value it moved   §6 M9/M10 the notices are calm bars; the carry's origin
+ *   §5 motion L1 a live frame ticks each value it moved   §6 M9/M10/M7 calm bars; the carry's origin and landing
  *   §7 L2/L18 the strip: mono ranges, a shape for "now"   §8 M2 the kit's header pill and its wrapping row
- *   §9 M11 a result that arrives presses once            §10 the words, as decided, in three languages
+ *   §9 M11 a result that arrives presses once            §10 the words, as decided, in three languages; zh's one
+ *                                                          spacing rule on every timed line the hub fills
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -60,39 +61,68 @@ const tagWith = (m: string, attr: string): string => { const at = m.indexOf(attr
 const innerOf = (m: string, attr: string): string => { const at = m.indexOf(attr); if (at < 0) return "\u0000"; const start = m.indexOf(">", at) + 1; return textOf(m.slice(start, m.indexOf("</span>", start))); };
 
 const POOL = req("../src/components/maswali/maswali-pool-figure.tsx") as typeof import("../src/components/maswali/maswali-pool-figure.tsx");
-const { MaswaliPoolHead, MaswaliPoolLedger } = POOL;
+const { MaswaliPoolHead } = POOL;
+const MLR = req("../src/components/maswali/maswali-ledger.tsx") as typeof import("../src/components/maswali/maswali-ledger.tsx");
+const HP = req("../src/app/millionea/hub-pool.tsx") as typeof import("../src/app/millionea/hub-pool.tsx");
 type View = import("../src/components/maswali/maswali-pool-figure.tsx").PoolView;
 const SELLING: View = { kind: "selling", carriedIn: { week: 47, amount: null }, sales: { tickets: 41, amount: 41_000 }, pool: 41_000, floor: 1_000_000, jackpot: 1_000_000 };
 const VOIDING: View = { kind: "voiding", carriedIn: null, sales: { tickets: 10, amount: 10_000 }, pool: 10_000, floor: 1_000_000, price: 1_000 };
-const ledgerOf = (l: L3, view: View, ticked?: { n: number; keys: ReadonlySet<string> }) => inApp(l, h(MaswaliPoolLedger as never, { t: dict[l], locale: l, view, pct: 13, ticked } as never));
 const headOf = (l: L3, view: View, final = false) => inApp(l, h(MaswaliPoolHead as never, { t: dict[l], locale: l, view, pct: 13, final } as never));
+/** The hub's live figure (a `maswali:pool` frame, `maswali-pool-feed.ts`): Week 49 selling 41 tickets under the floor while
+ *  Week 47's carry is still pending — the figure the head calls "at least". */
+const figure = (over: Record<string, unknown> = {}) => ({ weekId: "w", code: "MLN-2026-W49", visibility: "PUBLIC", state: "OPEN", carryIn: null,
+  carryPendingCode: "MLN-2026-W47", carryFromCode: null, sales: 41_000, floor: 1_000_000, jackpot: 1_000_000, atLeast: true, feeRate: 0.13, ...over });
+/** A week whose void is certain: ten tickets sold, no carry, nothing struck. */
+const VOIDING_FIG = { state: "RESOLVING", carryPendingCode: null, sales: 10_000, jackpot: 0, atLeast: false };
+const NOT_MOVED = { n: 0, keys: new Set<string>() };
+/** The hub's pool ledger exactly as the page draws it: the live island holding the figure, its ledger reading it. */
+const hubLedgerOf = (l: L3, fig: unknown, voiding = false) =>
+  inApp(l, h(HP.HubPoolLive as never, { weekId: "w", initial: fig, price: 1_000, voiding } as never, h(HP.HubPoolLedger as never, {} as never)));
+/** The hub's dress over the one ledger's rows, given a frame's moved rows (the island's state, which no server render holds). */
+const dressedOf = (l: L3, fig: unknown, moved: { n: number; keys: ReadonlySet<string> }, carry: { from: string; play: boolean } | null = null) => {
+  const input = HP.ledgerInputOf(fig as never, 1_000, false);
+  return HP.dressLedgerRows(MLR.millioneaLedgerRows(dict[l], l, input), input, moved, carry);
+};
+const ledgerOf = (l: L3, fig: unknown, moved: { n: number; keys: ReadonlySet<string> }) => inApp(l, h(MLR.MaswaliLedger as never, { rows: dressedOf(l, fig, moved) } as never));
 
-// ── §1 · M4/H1 · the ledger is the kit's receipt row ─────────────────────────────────────────────────────────────────────
-console.log("\n§1 · M4/H1 · the ledger's rows are the kit ReceiptRow (the register's), never a home-made <dl>");
-const RECEIPT_LABEL = 'class="min-w-0 font-mono text-micro uppercase eyebrow text-text-subtle"';
-const receiptDefects = (l: L3, m: string) => {
+// ── §1 · M4/H1 · the pool ledger is the one Millionea ledger ─────────────────────────────────────────────────────────────
+console.log("\n§1 · M4/H1 · the hub's pool ledger IS the one Millionea ledger (the register's): the kit ReceiptRow in its sentence label, never a home-made <dl>");
+// ⭐ The lead's ruling (2026-10-21): every surface that prints a week's money draws REGISTER's `millioneaLedgerRows` +
+// `MaswaliLedger`; the hub's own row building is retired. Its labels are nouns in the body face (H3 of the register critic).
+const SENTENCE_LABEL = /<span class="min-w-0 text-body-sm(?: text-text(?:-muted)?)?(?: font-semibold)?">/g;
+const ledgerDefects = (l: L3, m: string) => {
   const d: string[] = [];
-  const rows = POOL.poolLedgerRows(dict[l], SELLING, 13).length;
+  const keys = MLR.millioneaLedgerRows(dict[l] as never, l, HP.ledgerInputOf(figure() as never, 1_000, false)).map((r) => r.key);
+  const drawn = [...m.matchAll(/data-ledger-row="([^"]+)"/g)].map((x) => x[1]);
+  if (!m.includes('data-testid="millionea-hub-ledger"') || !m.includes('data-testid="millionea-ledger"')) d.push(`${l}: not the one ledger in the hub's box`);
+  if (j(drawn) !== j(keys)) d.push(`${l}: rows ${j(drawn)} for ${j(keys)}`);
   if (/<dl\b|<dt\b|<dd\b/.test(m)) d.push(`${l}: a <dl> ledger`);
-  if (count(m, RECEIPT_LABEL) !== rows) d.push(`${l}: ${count(m, RECEIPT_LABEL)} receipt labels for ${rows} rows`);
-  const jackpot = m.slice(m.lastIndexOf("<span", m.indexOf('data-row="jackpot"') - 1) - 200, m.indexOf('data-row="jackpot"'));
-  if (!/font-mono text-\[16px\] font-bold tabular-nums text-text/.test(jackpot)) d.push(`${l}: the jackpot row is not the receipt's amount`);
-  if (!/class="font-mono text-\[12px\] text-text-subtle"/.test(m)) d.push(`${l}: a row of words is not the receipt's muted words`);
+  const labels = (m.match(SENTENCE_LABEL) ?? []).length;
+  if (labels !== keys.length) d.push(`${l}: ${labels} sentence labels for ${keys.length} rows`);
+  if (/\buppercase eyebrow\b/.test(m)) d.push(`${l}: a label in capitals`);
+  // The pool so far is the ledger's total — the receipt's total figure under its hairline; the fee's words the muted row's.
+  const pool = m.slice(m.indexOf('data-ledger-row="pool"'), m.indexOf('data-row="pool"'));
+  if (!/border-t border-border pt-1\.5/.test(pool) || !/font-mono text-\[16px\] font-bold tabular-nums text-text/.test(pool)) d.push(`${l}: the pool is not the receipt's total`);
+  if (!/class="font-mono text-\[13px\] font-semibold text-text-muted"><span data-row="fee">/.test(m)) d.push(`${l}: the fee's words are not the muted row's`);
   return d;
 };
 {
-  const d = LOCALES.flatMap((l) => receiptDefects(l, ledgerOf(l, SELLING)));
-  ok("1.1 · in three languages every ledger row is a ReceiptRow — its label the receipt's mono micro label, the jackpot the receipt's amount, a value in words the receipt's muted words — and no <dl>", d.length === 0, d.join(" | "));
-  // ⭐ the Swahili floor label keeps its connective with the word after it ("Kiwango cha" / "chini …" ended a line on "cha")
-  const sw = ledgerOf("sw", SELLING);
-  const keptCha = (m: string) => /<span class="whitespace-nowrap">[^<]*\bcha chini\b/.test(m);
-  ok("1.2 · sw \"Kiwango cha chini kilichohakikishwa\" keeps \"cha\" with \"chini\": no line ends on the connective", keptCha(sw), (sw.match(/[^>]{0,40}cha[^<]{0,40}/) ?? [""])[0]);
+  const d = LOCALES.flatMap((l) => ledgerDefects(l, hubLedgerOf(l, figure())));
+  ok("1.1 · in three languages the hub's pool ledger is the one Millionea ledger — the builder's rows in its order, each the kit ReceiptRow in its sentence label (no capitals), the pool the receipt's total under its hairline, the fee's words the muted row's — and no <dl>", d.length === 0, d.join(" | "));
+  // ⭐ the Swahili floor label keeps its connective with the word after it ("Kiwango cha" / "chini …" ended a line on "cha"):
+  // the kit receipt row's own rule (`keepConnectives`, connectives.ts) — the connective and its space one nowrap run, which
+  // no engine breaks after — or a run that holds the pair whole.
+  const sw = hubLedgerOf("sw", figure());
+  const keptCha = (m: string) => /<span class="whitespace-nowrap">(?:[^<]*\s)?cha <\/span>chini\b|<span class="whitespace-nowrap">[^<]*\bcha chini\b/.test(m);
+  ok("1.2 · sw \"Kiwango cha chini kilichohakikishwa\" keeps \"cha\" with \"chini\": no line ends on the connective", keptCha(sw), (sw.match(/.{0,60}cha .{0,30}/) ?? [""])[0]);
   // The label as WIP 1 drew it: a fact line of `keepFact`s, which keeps runs and figures but not a connective.
   const FACTS = req("../src/components/maswali/maswali-facts.tsx") as typeof import("../src/components/maswali/maswali-facts.tsx");
   const factsOnly = inApp("sw", h(FACTS.MaswaliFacts as never, { facts: FACTS.factsOf(dict.sw.millionea.floor).map((f) => FACTS.keepFact("sw", f)) } as never));
   ok("1.2′ PLANT · the label drawn as a bare fact line (its connective free to end a line) is reported", !keptCha(factsOnly), factsOnly.slice(0, 160));
   const oldDl = "<dl><div><dt>Jackpot</dt><dd>TZS 1,000,000</dd></div></dl>";
-  ok("1.1′ PLANT · the old home-made <dl> ledger is reported", receiptDefects("en", oldDl).length > 0);
+  ok("1.1′ PLANT · the old home-made <dl> ledger is reported", ledgerDefects("en", oldDl).length > 0);
+  const eyebrows = hubLedgerOf("en", figure()).replaceAll('class="min-w-0 text-body-sm text-text"', 'class="min-w-0 font-mono text-micro uppercase eyebrow text-text-subtle"');
+  ok("1.1″ PLANT · WIP 1's rows (the confirm's micro capitals for a ledger's nouns) are reported", ledgerDefects("en", eyebrows).some((x) => x.includes("capitals")));
 }
 
 // ── §2 · L10 · the figure holds one line at 320 ──────────────────────────────────────────────────────────────────────────
@@ -131,34 +161,37 @@ const finalDefects = (l: L3, m: string, want: boolean) => {
 }
 
 // ── §4 · L15 · a conditional refund row ──────────────────────────────────────────────────────────────────────────────────
-console.log("\n§4 · L15 · \"If the void stands, every ticket is refunded TZS 1,000\" stands alone — no figure (H1), no dash");
+console.log("\n§4 · L15 · \"If the void stands, every ticket is refunded TZS 1,000\" stands alone — no figure (H1), no dash; a void strikes no jackpot");
 {
   const d = LOCALES.flatMap((l) => {
-    const m = ledgerOf(l, VOIDING);
-    const refund = innerOf(m, 'data-row="refund"'), jackpot = innerOf(m, 'data-row="jackpot"');
-    return refund === "" && jackpot === "—" && textOf(m).includes(fill(dict[l].millionea.refundEachIfVoid, { price: formatTzs(1_000) })) ? [] : [`${l}: refund "${refund}" jackpot "${jackpot}"`];
+    const m = hubLedgerOf(l, figure(VOIDING_FIG), true);
+    const refund = innerOf(m, 'data-row="refund"');
+    return refund === "" && !m.includes('data-ledger-row="jackpot"') && !m.includes('data-ledger-row="floor"')
+      && textOf(m).includes(fill(dict[l].millionea.refundEachIfVoid, { price: formatTzs(1_000) })) ? [] : [`${l}: refund "${refund}"`];
   });
-  ok("4.1 · being voided, in three languages: the refund sentence names its amount and its value cell is empty — never \"—\", never a figure; the jackpot row's dash stays", d.length === 0, d.join(" | "));
-  ok("4.1′ PLANT · the old row (a dash beside the sentence) is reported", innerOf('<span data-row="refund">—</span>', 'data-row="refund"') !== "");
+  ok("4.1 · being voided, in three languages: the refund sentence names its amount and its value cell is empty — never \"—\", never a figure; no jackpot and no floor row (a void strikes none, MR-18)", d.length === 0, d.join(" | "));
+  // The shared builder's row as it stands (its "—" beside the sentence) with the hub's dress left off.
+  const rows = MLR.millioneaLedgerRows(dict.en as never, "en", HP.ledgerInputOf(figure(VOIDING_FIG) as never, 1_000, true));
+  const undressed = inApp("en", h(MLR.MaswaliLedger as never, { rows: rows.map((r) => ({ ...r, value: h("span", { "data-row": r.key }, r.value as never) })) } as never));
+  ok("4.1′ PLANT · the refund row undressed (the builder's dash beside the sentence) is reported", innerOf(undressed, 'data-row="refund"') === "—");
 }
 
 // ── §5 · motion L1 · a live frame ticks each value it moved ──────────────────────────────────────────────────────────────
 console.log("\n§5 · motion L1 · a real sale's frame ticks the values it changed (`.m-tick`, keyed on the frame), nothing on the first paint");
 {
-  const HP = req("../src/app/millionea/hub-pool.tsx") as typeof import("../src/app/millionea/hub-pool.tsx");
-  const VIEW = req("../src/app/millionea/millionea-view.ts") as typeof import("../src/app/millionea/millionea-view.ts");
-  const fig = (sales: number) => ({ weekId: "w", code: "MLN-2026-W49", visibility: "PUBLIC", state: "OPEN", carryIn: null, carryPendingCode: "MLN-2026-W47",
-    carryFromCode: null, sales, floor: 1_000_000, jackpot: 1_000_000, atLeast: true, feeRate: 0.13 }) as never;
-  const vals = (sales: number) => HP.ledgerValues(dict.en, VIEW.poolViewOf(fig(sales), 1_000), 13);
-  const moved = HP.movedRows(vals(41_000), vals(42_000));
+  const vals = (over: Record<string, unknown>) => HP.rowFigures(HP.ledgerInputOf(figure(over) as never, 1_000, false));
+  const moved = HP.movedRows(vals({ sales: 41_000 }), vals({ sales: 42_000 }));
   ok("5.1 · one more ticket (41,000 → 42,000 under the floor): the sales and the pool rows moved — not the floor, the jackpot (the floor's larger) or the fee", j([...moved].sort()) === j(["pool", "sales"]), j([...moved]));
-  const ticked = ledgerOf("en", SELLING, { n: 1, keys: moved });
-  const tickOn = (k: string) => /\bm-tick\b/.test(tagWith(ticked, `data-row="${k}"`));
-  ok("5.2 · the frame's rows take `.m-tick` and no other row does", tickOn("sales") && tickOn("pool") && !tickOn("jackpot") && !tickOn("floor") && !tickOn("in"), j({ sales: tickOn("sales"), pool: tickOn("pool"), jackpot: tickOn("jackpot") }));
-  const first = ledgerOf("en", SELLING, { n: 0, keys: new Set() });
-  ok("5.3 · CONTROL · the first paint ticks nothing (no count-up, no tick on mount, §M8a item 7)", !/\bm-tick\b/.test(first));
-  const planted = ledgerOf("en", SELLING, { n: 1, keys: new Set(["sales", "pool", "floor", "jackpot", "fee", "in"]) });
-  ok("5.1′ PLANT · a frame that ticked every row would be told apart (the jackpot ticks with it)", /\bm-tick\b/.test(tagWith(planted, 'data-row="jackpot"')));
+  const tickOn = (m: string, k: string) => /\bm-tick\b/.test(tagWith(m, `data-row="${k}"`));
+  const ticked = ledgerOf("en", figure({ sales: 42_000 }), { n: 1, keys: moved });
+  ok("5.2 · the frame's rows take `.m-tick` and no other row does", tickOn(ticked, "sales") && tickOn(ticked, "pool") && !tickOn(ticked, "jackpot") && !tickOn(ticked, "floor") && !tickOn(ticked, "in") && !tickOn(ticked, "fee"),
+    j({ sales: tickOn(ticked, "sales"), pool: tickOn(ticked, "pool"), jackpot: tickOn(ticked, "jackpot") }));
+  const first = hubLedgerOf("en", figure());
+  ok("5.3 · CONTROL · the first paint ticks nothing — the hub's ledger as the page draws it (no count-up, no tick on mount, §M8a item 7)", !/\bm-tick\b/.test(first) && first.includes('data-row="sales"'));
+  const settled = HP.movedRows(vals({}), vals({ carryPendingCode: null, carryIn: 389_000, carryFromCode: "MLN-2026-W47", atLeast: false }));
+  ok("5.4 · Week 47 settles and its TZS 389,000 lands: the carried-in row, the pool and the jackpot (its \"at least\" gone) tick — the sales, the floor and the fee do not", j([...settled].sort()) === j(["in", "jackpot", "pool"]), j([...settled]));
+  const planted = ledgerOf("en", figure(), { n: 1, keys: new Set(["sales", "pool", "floor", "jackpot", "fee", "in"]) });
+  ok("5.1′ PLANT · a frame that ticked every row would be told apart (the jackpot ticks with it)", tickOn(planted, "jackpot"));
 }
 
 // ── §6 · M9/M10 · the notices are the calm bar; the carry's origin ───────────────────────────────────────────────────────
@@ -179,6 +212,20 @@ console.log("\n§6 · M9/M10 · a returning notice is the platform's calm bar (N
   ok("6.3 · the rollover's figure is ONE money run carrying the carry's origin id", origin && count(m, 'id="mln-carried-figure"') === 1);
   const none = inApp("en", h(HubNotices as never, { notices: notices(false), renderedAt: "2026-10-21T10:00:00.000Z" } as never));
   ok("6.3′ CONTROL · a rollover that is not this week's carry marks no origin", !none.includes('id="mln-carried-figure"'));
+  // M7 · R1-motion H6 · the carried figure lands on the ledger's carried-in row — the shared carry (`MaswaliCarry`: one
+  // measurement, both ends in view, the origin vacated in flight), from the notice's own figure.
+  const { MaswaliCarry } = req("../src/components/maswali/maswali-carry.tsx") as typeof import("../src/components/maswali/maswali-carry.tsx");
+  type El = { type?: unknown; props?: { from?: string; play?: boolean; children?: El } } | null | undefined;
+  const carryIn = (rows: ReturnType<typeof dressedOf>, key: string) => ((rows.find((r) => r.key === key)?.value as El)?.props?.children ?? null) as El;
+  const landed = figure({ code: "MLN-2026-W48", carryPendingCode: null, carryIn: 389_000, carryFromCode: "MLN-2026-W47", atLeast: false });
+  const rows = dressedOf("en", landed, NOT_MOVED, { from: "mln-carried-figure", play: true });
+  const c = carryIn(rows, "in");
+  ok("6.4 · the ledger's carried-in figure is the carry's landing: the shared MaswaliCarry, from the rollover notice's figure, told to play",
+    c?.type === MaswaliCarry && c.props?.from === "mln-carried-figure" && c.props.play === true, j({ from: c?.props?.from, play: c?.props?.play }));
+  const elsewhere = rows.filter((r) => r.key !== "in").some((r) => carryIn([r], r.key)?.type === MaswaliCarry);
+  const pending = dressedOf("en", figure(), NOT_MOVED, { from: "mln-carried-figure", play: true }).some((r) => carryIn([r], r.key)?.type === MaswaliCarry);
+  const none2 = dressedOf("en", landed, NOT_MOVED, null).some((r) => carryIn([r], r.key)?.type === MaswaliCarry);
+  ok("6.4′ CONTROL · no other row carries; a carry still pending (no figure yet) lands nowhere; and with no notice to carry from, nothing carries", !elsewhere && !pending && !none2, j({ elsewhere, pending, none2 }));
 }
 
 // ── §7 · L2/L18 · the strip ───────────────────────────────────────────────────────────────────────────────────────────
@@ -258,8 +305,10 @@ console.log("\n§10 · the hub's new and changed words, as decided, in three lan
     zh: {
       finalWeekRule: "最后一周：若无彩票答对 10/10，奖池由本周得分最高的彩票平分",
       finalWeekAhead: "第{week}周将是 Millionea 的最后一周，于 {date}开放。",
-      weekVoidingBody: "{voided} 道正选题作废，有效备选题仅 {valid} 道。若至 {when} 无异议改变此结果，整周将作废，每张彩票均将退款。",
+      weekVoidingBody: "{voided} 道正选题作废，有效备选题仅 {valid} 道。若至{when} 无异议改变此结果，整周将作废，每张彩票均将退款。",
       resultsOut: "已公布 {n}/15 个结果",
+      closeMoved: "销售截止时间已更改：现为{when}（原为{from}）。所有事件仍在截止之后开始。",
+      nextOpensAt: "下一周于{when} 开放。",
     },
   };
   const off = LOCALES.flatMap((l) => Object.entries(WANT[l]).filter(([k, v]) => (dict[l].millionea as Record<string, unknown>)[k] !== v).map(([k]) => `${l}.${k}`));
@@ -271,10 +320,56 @@ console.log("\n§10 · the hub's new and changed words, as decided, in three lan
   const zhSpacing = /\d[一-鿿]|[一-鿿]\d/.test(fill(dict.zh.millionea.resultsOut, { n: 5 }).replace(/\/15/, ""));
   ok("10.3 · zh digit/Han spaced in the count (\"已公布 5/15 个结果\"), the ordinal unspaced (第{week}周)", !zhSpacing && dict.zh.millionea.finalWeekAhead.startsWith("第{week}周"));
   ok("10.1′ PLANT · the old zh count (\"15 个结果已公布 {n} 个\") is reported", "15 个结果已公布 {n} 个" !== WANT.zh.resultsOut);
+
+  // ⭐ zh · Millionea's one spacing rule (the lead's ruling, 2026-10-21): a space only where a Latin letter or a digit meets a
+  // Han character, never between two Han characters — rendered through the hub's own fills (`hub-words.tsx`), each line at
+  // the instants it is filled with: a weekday clock opens with a Han weekday, the same day's clock alone and a date with a digit.
+  const W = req("../src/app/millionea/hub-words.tsx") as typeof import("../src/app/millionea/hub-words.tsx");
+  type D = Parameters<typeof W.nextOpenWords>[0];
+  const say = (node: unknown) => textOf(renderToStaticMarkup(h("p", null, node as never)));
+  const EAT = (iso: string) => Date.parse(`${iso}+03:00`);
+  const FRI_16 = EAT("2026-12-04T16:00:00"), FRI_18 = EAT("2026-12-04T18:00:00"), THU_18 = EAT("2026-12-03T18:00:00");
+  const lines = (t: D, l: L3) => ({
+    nextOpen: W.nextOpenWords(t, EAT("2026-12-07T00:01:00")),
+    sameDay: say(W.closeMovedWords(t, FRI_16, FRI_18)),
+    acrossDays: say(W.closeMovedWords(t, FRI_16, THU_18)),
+    voiding: say(W.voidingWords(t, 3, 2, EAT("2026-12-08T12:00:00"))),
+    finalAhead: say(W.finalAheadWords(t, l, 52, EAT("2026-11-30T00:01:00"), EAT("2026-11-20T10:00:00"))),
+  });
+  const HAN_GAP = /[㐀-䶿一-鿿豈-﫿]\s+[㐀-䶿一-鿿豈-﫿]/;
+  const gapsIn = (x: Record<string, string>) => Object.entries(x).filter(([, v]) => HAN_GAP.test(v)).map(([k]) => k);
+  const zh = lines(dict.zh as D, "zh");
+  ok("10.4 · zh: no line the hub fills parts two Han characters with a space — the next open, the moved close (the same day and across days), the voiding sentence, the final week ahead",
+    gapsIn(zh).length === 0, j(zh));
+  const WANT_ZH = {
+    nextOpen: "下一周于周一 00:01 开放。",
+    sameDay: "销售截止时间已更改：现为周五 16:00（原为 18:00）。所有事件仍在截止之后开始。",
+    acrossDays: "销售截止时间已更改：现为周五 16:00（原为周四 18:00）。所有事件仍在截止之后开始。",
+    voiding: "3 道正选题作废，有效备选题仅 2 道。若至周二 12:00 无异议改变此结果，整周将作废，每张彩票均将退款。",
+    finalAhead: "第52周将是 Millionea 的最后一周，于 2026年11月30日开放。",
+  };
+  const off2 = Object.keys(WANT_ZH).filter((k) => zh[k as keyof typeof zh] !== WANT_ZH[k as keyof typeof WANT_ZH]);
+  ok("10.5 · zh: each reads as the rule sets it — a space where a digit meets a Han character (\"原为 18:00\", \"12:00 无异议\", \"于 2026年…\"), none before a Han weekday (\"于周一\", \"现为周五\", \"原为周四\"); the moved close's {from} spaced by the characters that meet, not by its caller",
+    off2.length === 0, j(off2.map((k) => zh[k as keyof typeof zh])));
+  const en = lines(dict.en as D, "en"), sw = lines(dict.sw as D, "sw");
+  ok("10.6 · CONTROL · en and sw keep their own spaces (\"it is now Friday 16:00 (was 18:00)\", \"(was Thursday 18:00)\", \"by Tuesday 12:00,\")",
+    en.sameDay.includes("now Friday 16:00 (was 18:00).") && en.acrossDays.includes("(was Thursday 18:00).") && en.voiding.includes("by Tuesday 12:00, the week")
+      && sw.sameDay.includes("sasa ni Ijumaa 16:00 (awali 18:00).") && sw.acrossDays.includes("(awali Alhamisi 18:00).") && en.nextOpen === "The next week opens Monday 00:01.", j({ en, sw }));
+  // PLANTS · the space put back before each Han-first fill, in each template; and the moved close's line filled by hand,
+  // its {from} run set beside the line with no rule (the same day's "原为18:00": a digit against a Han character).
+  const back = { ...dict.zh, millionea: { ...dict.zh.millionea,
+    nextOpensAt: "下一周于 {when} 开放。",
+    closeMoved: "销售截止时间已更改：现为 {when}（原为 {from}）。所有事件仍在截止之后开始。",
+    weekVoidingBody: "{voided} 道正选题作废，有效备选题仅 {valid} 道。若至 {when} 无异议改变此结果，整周将作废，每张彩票均将退款。" } } as D;
+  const caught = gapsIn(lines(back, "zh"));
+  ok("10.4′ PLANT · the old templates (a space before each Han-first fill) are reported, line by line", j(caught) === j(["nextOpen", "sameDay", "acrossDays", "voiding"]), j(caught));
+  const { fillNodes } = req("../src/lib/fill-nodes.tsx") as typeof import("../src/lib/fill-nodes.tsx");
+  const byHand = say(fillNodes(dict.zh.millionea.closeMoved, { when: "周五 16:00", from: "18:00" }));
+  ok("10.5′ PLANT · the moved close filled with no rule where its fill meets the line (\"原为18:00\") is reported", byHand !== WANT_ZH.sameDay && byHand.includes("原为18:00"), byHand);
 }
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI HUB: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
-/** The floor is the count a green run prints (S5-DESIGN-HUB 3: 34). It only rises. */
-const MIN_ASSERTIONS = 34;
+/** The floor is the count a green run prints (S5-DESIGN-HUB 3: 34; 4, the one ledger and zh's spacing rule: 43). It only rises. */
+const MIN_ASSERTIONS = 43;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);
