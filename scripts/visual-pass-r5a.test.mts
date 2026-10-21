@@ -568,7 +568,8 @@ section("8 · F20 · every close ✕ of a panel, a sheet or a dialog: on its tit
     "src/components/ui/date-select.tsx": [C("row ✕", "back to the calendar")],
     "src/app/admin/invites/invite-admin-client.tsx": [C("row ✕", "removes a staged row")],
     "src/app/admin/approvals/sof-review-client.tsx": [C("glyph", "Reject")],
-    "src/app/admin/ai-polls/poll-actions.tsx": [C("glyph", "a refused medallion"), C("glyph", "an error mark")],
+    // 2026-10-21 (PHOSPHOR-MIGRATION 2d): ai-polls' poll-actions.tsx left this census — its refused medallion and its
+    // error mark are the family's xCircle in Fill on IconPlate's danger plate, a status, not a ✕.
     "src/app/admin/aml/aml-actions-client.tsx": [C("glyph", "Reject")],
     "src/app/admin/agents/[id]/doc-grid.tsx": [C("glyph", "a missing document")],
     // 2026-10-11: the automatic checks' BLOCK mark joined the rail with typed-only identity (2026-10-10) — it closes nothing.

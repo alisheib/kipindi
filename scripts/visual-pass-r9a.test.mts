@@ -251,6 +251,11 @@ const centreOff = (body: string, grid: number, base = 1.9) => { const b = inkBox
     // PHOSPHOR-MIGRATION release 2c: the category sigils stand on CategoryPlate in Duotone, so politics ships its Duotone —
     // Phosphor's flag-banner, set by its mass as its Regular and Bold above, measured from the shipped Duotone paths.
     "politics.duo": [7.99, 12.09, PHOSPHOR_PLACED],
+    // PHOSPHOR-MIGRATION release 2d: the console's KPI cards and restricted views stand their subject on the identity plate
+    // in Duotone, so six keys ship a Duotone, each at its Bold's (and Fill's) offset — the robot's antenna, the gauge's
+    // needle, the two locks' shackles, the lock-key's and the shield's point — measured from the shipped Duotone paths.
+    "bot.duo": [0, -12, PHOSPHOR_PLACED], "gauge.duo": [0, -12, PHOSPHOR_PLACED], "lock.duo": [0, -12, PHOSPHOR_PLACED],
+    "roles.duo": [0, -12, PHOSPHOR_PLACED], "shieldAlert.duo": [0, 12, PHOSPHOR_PLACED], "unlock.duo": [0, -12, PHOSPHOR_PLACED],
   };
   type Drawn = { key: string; variant: GlyphVariant; body: string | null };
   const census = (list: Drawn[]) => {
