@@ -355,7 +355,11 @@ const afterClose = new Date(Date.parse((await weekStore.get(w1.id))!.closesAt) +
   const noCorrectionEvidence = await svc.correctSeal({ weekId: w1.id, slot: 2, outcome: "YES", evidence: "  ", ...reviewed2, officerId: SEALER, now: afterClose });
   ok("6.10a · ⛔ a correction without evidence is refused before touching the seal",
     !noCorrectionEvidence.ok && /evidence/.test(errOf(noCorrectionEvidence)) && (await questionStore.get(q2.id))?.outcome === "NO");
-  const invalidCorrectionOutcome = await svc.correctSeal({ weekId: w1.id, slot: 2, outcome: "MAYBE" as never, evidence: "Official corrected result", ...reviewed2, officerId: SEALER, now: afterClose });
+  // A throw is no refusal: with the closed-list check gone, the grader throws on "MAYBE" inside the correction, and an
+  // uncaught throw here killed the child before this case printed (red-maswali-engine (22) was a WRONG-ASSERTION, on
+  // 8c468393b too). Caught, the case reports the defect itself.
+  const invalidCorrectionOutcome = await svc.correctSeal({ weekId: w1.id, slot: 2, outcome: "MAYBE" as never, evidence: "Official corrected result", ...reviewed2, officerId: SEALER, now: afterClose })
+    .catch((e: unknown) => ({ ok: true as const, error: `THREW ${String((e as Error)?.message ?? e)}` }));
   ok("6.10b · ⛔ an outcome outside YES, NO, VOID cannot be corrected into the record",
     !invalidCorrectionOutcome.ok && /YES, NO or VOID/.test(errOf(invalidCorrectionOutcome)) && (await questionStore.get(q2.id))?.outcome === "NO");
   const prematureCorrectionVoid = await svc.correctSeal({ weekId: w1.id, slot: 2, outcome: "VOID", voidReason: "not_played", evidence: "Official source still awaits the event", ...reviewed2, officerId: SEALER, now: afterClose });
