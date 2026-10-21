@@ -1,10 +1,60 @@
 # MASWALI-BUILD — hand-over of 2026-10-21 (Claude, OMEGA-COMPILE01, the Maswali lead)
 
-> ⏳ **2026-10-21 PM (Ali: "proceed", then "work for 2 hours and push everything and progress … so we continue from another machine").**
-> The lanes were resumed and the S5 release moved on (see `MERGE-NOTES.md` here: every PM ruling, what each lane changed, and
-> what the next integration must do). The final state of this round is written at the top of this file at the round's end
-> (~17:05 UTC); until then, read MASWALI-PLAN §0 on `claude/maswali-s5-release` and each lane branch's head commit.
+## ⏹ STOP 2 — 2026-10-21 ~17:15 UTC (Ali: "work for 2 hours and push everything and progress … so we continue from another machine")
 
+**Read in this order:** this section → `MERGE-NOTES.md` (same folder: every PM ruling, what each lane changed, every
+merge map and owed item) → MASWALI-PLAN §0 on `claude/maswali-s5-release`. Each lane's head commit message says what is
+verified and what is left. The lane agents' memory dies with the OMEGA session; the commits and these notes are the state.
+
+### Branches at the stop (all pushed)
+| Lane | Branch | Head | State |
+|---|---|---|---|
+| **S5 release** (integration) | `claude/maswali-s5-release` | ff9933e45 | holds fix-srv (all of it, 1e88fdb93), fix-player, parity, platform 1–7, main `67e47f8d2`, DOORS (with REGISTER's shared pieces d5446df25 + 26503c06c) and HUB; tsc 0 ; hub-reads 17/17 and player 187 per store, engine 210 PG, doors 53, hub 53 |
+| S5-DESIGN-DOORS | `claude/maswali-s5-design-doors` | 8881bd0c4 | DONE (every cell 10), merged |
+| S5-DESIGN-HUB | `claude/maswali-s5-design-hub` | 9776e6c2c | DONE except merge-dependent cells (MERGE-NOTES "HUB"), merged |
+| S5-DESIGN-SLIP | `claude/maswali-s5-design-slip` | 5139fce7d | DONE except the composer pills (ruled (a), MERGE-NOTES); NOT merged yet — dry-run conflicts: DESIGN_AUTHORITY.md, package.json, maswali-design.test.mts, globals.css |
+| S5-DESIGN-TICKETS | `claude/maswali-s5-design-tickets` | ae2ce1f0b | DONE (every row 10; F visual 9 = the ledger note REGISTER fixed); NOT merged yet — dry-run conflict: package.json |
+| S5-DESIGN-REGISTER | `claude/maswali-s5-design-register` | 33a2b4ea9 | DONE round 1 (every cell 10); its shared pieces partly in the release via DOORS; NOT merged yet (latest) — dry-run conflict: maswali-design.test.mts |
+| S5-FIX-PLATFORM | `claude/maswali-s5-fix-platform` | f2bcba995 | DONE D1–D15 (D15 chat yield .50 measured); NOT merged yet past 1–7 — dry-run clean |
+| S5-FIX-SRV | `claude/maswali-s5-fix-srv` | 1e88fdb93 | DONE, merged |
+| S5-PARITY | `claude/maswali-s5-parity` | 9a0c6b033 | calibrated on main bfa0b7d57 (52/52 + null 68/68); the candidate compare runs at the final head (command in MERGE-NOTES) |
+| S7 | `claude/maswali-s7` | 0f0d42fcc | S7-F8 1–15; S17 rush first green; merge with S5 after S5 lands (26 conflicted files, FIX-SRV's map) |
+| S6 | `mln-s6-notices` bd74c982c · `mln-s6-int` 81c60f0f5 · `mln-s6-reports` 57624a2fa | | notices round 17 complete; **red:maswali-money-path plant (6b) MISSED on S6-N** (the S5 release catches it) — S6 fixes its blind guard first |
+| (Codex's S6 L+D prep) | `codex/maswali-s6-ld-prep-20261019` | 44f2cc84f | kept for the S6 lanes |
+
+### Next, in order
+1. **Finish the S5 integration** on `claude/maswali-s5-release`: merge SLIP, TICKETS, REGISTER (its latest), PLATFORM
+   (8–22) — conflicts and their resolutions in MERGE-NOTES (the dry-run list, HUB's merge map). Then, once: scripts/glyphs
+   map.ts FILL_KEYS `salesPaused` + `npm run glyphs:gen` with PREVIOUS_SPRITES = the pair production serves at that moment,
+   and the hub's paused Callout → `glyph="salesPaused"`; the D19a re-pin (`test:house-bot-blob-pin`); move `sealLineOf`
+   out of the "use client" seal-line file into a pure module (millionea-view.ts imports it as a value — the root of
+   journey-home 7.client); grep the millionea zh templates once more for a space before a Han-initial fill.
+2. **Round 2 of the 10/10 pass:** every lane re-shoots after the §T5 numerals, the zh spacing and the ledger-note change;
+   SLIP's composer pills per ruling (a); HUB's L4/L20 with TICKETS' row and L5 with REGISTER's live register page; decide
+   L16 (the kit ghost border 1.79:1, a classic change); then the critics (R1-*.md + COMMON.md) re-score every cell until 10.
+3. **Gates on the exact commit:** every changed-file reader and red twin, `test:all` with the database suites, the money
+   battery (e2e:money/fault/card), the classic parity candidate compare (re-capture the baseline first if main changed a
+   served page since bfa0b7d57 — `tools/job-par-base.sh`), the render jobs (`tools/render-jobs.sh`), next build, local
+   qa:live.
+4. **Push `main`** under `F:/kipindi-locks/main-push.lock` (OMEGA) — Railway must be building again (below) — then the
+   AGENTS §4 read-back (`tools/readback.sh <sha>`); then STAFF_PREVIEW: `FEATURE_MILLIONEA=STAFF_PREVIEW` on Railway
+   (Ali's ruling; reversible with `WITHDRAWN`).
+5. S7 (merge S5, its left items), S6 (the 6b guard first, then L → D → R → N), S8.
+
+### Facts a fresh machine needs
+- **Railway's builds were still paused at 17:00Z** (status.railway.com "Dashboard and API unavailable, builds paused").
+  The deploy watcher ran on OMEGA inside the lead's session; on another machine re-trigger by hand once builds return:
+  `node tools/railway-deploy-main.mjs <main's full sha>` (token in `.env.qa.local`, never printed). main = `67e47f8d2`
+  carries U43's CI repair and the marketing harm-marker mute (asheib-bb). After it deploys, run `tools/readback.sh` and
+  record U43's part in MOBILE-VISUAL-PLAN §0 (U43 asked the Maswali lead to).
+- OMEGA slots: U43 (paused) lent `mln-slot-5..8` to Maswali; the S6 lane's leftover chains may still run in slot 4.
+- Trees on OMEGA (remove with junctions unlinked first): `kipindi-mln-rb` (read-back, node_modules JUNCTION),
+  `kipindi-mln-pbase` (parity's main tree), `maswali-s7-red-20261021` (S7's red checkout, node_modules JUNCTION), the lane
+  trees `kipindi-mln-*`, `maswali-coord-20261019` (the release), `maswali-s7-integrate-20261019` (S7).
+
+---
+
+## (Earlier the same day — the first stop, ~10:45 UTC)
 
 Ali stopped the session ("finish what you're doing … so we proceed on another session with clean pushed"). Codex is out:
 only Claude works 50pick now. Read `docs/MASWALI-PLAN.md` §0 on `claude/maswali-s5-release` first; this folder holds
