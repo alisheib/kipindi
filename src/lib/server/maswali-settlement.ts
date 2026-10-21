@@ -28,6 +28,10 @@
  *    and the wallet is held for Compliance (`MILLIONEA_SHARE`) BEFORE the credit. Never a re-run, never a smaller share.
  *    ⭐ R6 · every hold and every lift of that reason runs under `maswali:chain`, so a lift can never read "nothing held"
  *    while a held share is landing; a release that does not complete lifts the holds it placed where none is held.
+ *    ⭐ S7-F8 · that lock is a transaction with a 30-second budget, and every hold is its own committed write: S16 measured
+ *    7,000 held winners overrunning the budget, so the holds take SECTIONS of the lock (`HOLD_SECTION_MS` each), every
+ *    section re-reads the week and the holds the sections before it placed, and the money runs in a section that reached
+ *    it inside its share — with few holds, the one section it always was.
  * ⛔ NO NOTICE, EMAIL OR PUSH FROM HERE (S6 writes Millionea's own), and no wagering, recruit or house accrual (OD-20/27).
  */
 import { createHash } from "node:crypto";
@@ -56,6 +60,16 @@ const refuse = (error: string): Refused => ({ ok: false, error });
 const SYSTEM = "system_maswali";
 /** Ledger entries are emitted as balanced pairs; keep each insert bounded inside the one money transaction. */
 const LINES_PER_POST = 2_000;
+/**
+ * ⭐ S7-F8 · THE HOLDS' SHARE OF ONE SECTION OF THE CHAIN LOCK. On Postgres `maswali:chain` is a transaction with the lock's
+ * 30-second budget (`locks.ts`), and every hold is its own committed write with its own audit row (`holdWallet`): S16
+ * measured 7,000 held winners overrunning that budget, so the release rolled back and nothing was paid. A section places
+ * holds for at most this long (and at least one), counted from the moment it asked for the lock, then lets the lock go; the
+ * next re-reads the week and every hold placed so far, and carries on. The money runs only in a section that reached it
+ * inside this share — one whose holds took longer lets the lock go too, and the next, with every hold standing, pays with
+ * the rest of its budget. A release with few holds is one section, exactly as before.
+ */
+const HOLD_SECTION_MS = 5_000;
 
 /** Why a winning share is held for Compliance (MB-43), or null when it is paid free. */
 export type HoldReason = "staff account" | "house desk account" | "desk check unreadable" | "account suspended" | "account closed" | "deposit under review" | "deposit check unreadable";
@@ -247,6 +261,10 @@ type SettleSeams = {
   beforeChain?: () => Promise<void>;
   /** A release, under the chain lock, between its holds and the money transaction. */
   afterHolds?: () => Promise<void>;
+  /** S7-F8 · a release whose holds outlast a section, after that section let the chain lock go and before it asks again. */
+  betweenHoldSections?: (section: number) => Promise<void>;
+  /** S7-F8 · the holds' share of a section, in ms, in place of `HOLD_SECTION_MS` (0: one hold a section, the money in its own). */
+  holdSectionMs?: number;
   /** A forfeit, committed, before its lift. */
   beforeLift?: () => Promise<void>;
   /** The last statement of a release's, a forfeit's or a hold's transaction. */
@@ -281,30 +299,59 @@ export async function settleMaswaliWeek(input: {
   const pre = await computeSettlement(input.weekId, nowMs);
   if (!pre.ok) return pre;
   if (pre.c.preview.digest !== input.digest) return refuse("The settlement changed since it was prepared. Prepare it again and read the new figures.");
-  // R6 · the accounts this release holds: one that does not complete lifts each hold no held share stands behind.
-  const heldAccounts = pre.c.winners.filter((w) => w.hold).map((w) => w.ticket.userId);
+  // R6 · ONE HOLD PER HELD ACCOUNT, named by its first held ticket (a second hold of the same reason writes nothing); and
+  //    the accounts a release that does not complete lifts again, each where no held share stands behind it.
+  const toHold = new Map<string, Winner>();
+  for (const w of pre.c.winners) if (w.hold && !toHold.has(w.ticket.userId)) toHold.set(w.ticket.userId, w);
+  const heldAccounts = [...toHold.keys()];
   await seams.beforeChain?.();
 
+  type Out = { ok: true; week: StoredWeek; already?: boolean } | Refused;
   try {
-    const out = await withLock(MASWALI_CHAIN_LOCK, async (): Promise<{ ok: true; week: StoredWeek; already?: boolean } | Refused> => {
-      // ⛔ R6 · THE WEEK IS RE-READ UNDER THE CHAIN LOCK BEFORE ANY HOLD: a release that waited behind another finds the
-      //    week it read RESOLVING already settled, and answers `already` without placing a hold no share would stand behind.
+    /** The holds still to place, in the winners' order, and the accounts held by a section before this one. */
+    let queue = [...toHold.values()];
+    const placed = new Set<string>();
+    /** One section of `maswali:chain`, `asked` the instant it asked for the lock: "MORE" when it let the lock go with
+     *  holds still to place (S7-F8); otherwise the release's answer, its money included. */
+    const inSection = async (asked: number): Promise<Out | "MORE"> => {
+      // ⛔ R6 · THE WEEK IS RE-READ UNDER THE CHAIN LOCK BEFORE ANY HOLD, in every section: a release that waited behind
+      //    another finds the week it read RESOLVING already settled, and answers `already` without placing a hold no share
+      //    would stand behind.
       const current = await weekStore.get(input.weekId);
       if (current?.state === "SETTLED") return { ok: true, week: current, already: true };
       // MR-3 · strictly in order: a week settles, and claims its carry, only once every earlier week of its line is terminal.
       const blocking = await carryBlocker(first);
       if (blocking) return refuse(`Week ${blocking.code} is not settled yet; the carry is claimed strictly in order (MR-3).`);
+      // ⭐ S7-F8 · THE HOLDS AN EARLIER SECTION PLACED, READ AGAIN UNDER THIS LOCK: while the lock was let go a lift may have
+      //    run (it found no held share — none has landed yet) and lifted one. Each one gone goes back to the queue's front,
+      //    to be held again here, before any money; from here to the commit no lift can run (it needs this lock).
+      if (placed.size > 0) {
+        const standing = new Set((await db.wallet.findByUserIds([...placed]))
+          .filter((wallet) => currentFreezeReasons(wallet).includes("MILLIONEA_SHARE")).map((wallet) => wallet.userId));
+        const lifted = [...placed].filter((userId) => !standing.has(userId));
+        for (const userId of lifted) placed.delete(userId);
+        if (lifted.length > 0) queue = [...lifted.map((userId) => toHold.get(userId)!), ...queue];
+      }
       // ⛔ THE HOLDS COME FIRST (MB-43), before any credit: a held winner's money is never spendable for an instant.
       //    ⭐ R6 · under the chain lock, which every lift of this reason takes too (`liftHoldIfClear`), so no lift can read
       //    "nothing held" between a hold and the commit of its held share; and before `market:`. Each hold commits on its
       //    own (`holdWallet`), so a release that then refuses or rolls back lifts it again (`liftHoldsIfClear`, below).
-      for (const w of pre.c.winners) {
-        if (!w.hold) continue;
+      //    ⭐ S7-F8 · at least one hold a section, then no more once the section's share of the lock's budget is spent; and
+      //    a section that placed holds pays only if it is still inside that share — otherwise the next section pays.
+      const share = seams.holdSectionMs ?? HOLD_SECTION_MS;
+      let heldHere = 0;
+      while (queue.length > 0) {
+        if (heldHere > 0 && Date.now() - asked >= share) return "MORE";
+        const w = queue[0];
         const f = await holdWallet(w.ticket.userId, {
           actorId: null, note: `Millionea ${first.code} · ${w.ticket.serial} · ${w.hold}`, ref: { ticketId: w.ticket.id, weekId: first.id },
         });
         if (!f.ok) return refuse(`A winner's wallet could not be held (${f.error}), so nothing was paid.`);
+        queue.shift();
+        placed.add(w.ticket.userId);
+        heldHere++;
       }
+      if (heldHere > 0 && Date.now() - asked >= share) return "MORE";
       await seams.afterHolds?.();
       return withLock(`market:${marketId}`, async (tx): Promise<{ ok: true; week: StoredWeek; already?: boolean } | Refused> => {
         const again = await weekStore.get(input.weekId);
@@ -445,7 +492,16 @@ export async function settleMaswaliWeek(input: {
         // The week as this transaction wrote it: the stand-in should the read after the commit fail (R4c).
         return { ok: true, week: { ...week, ...stamp, rolloverIn: f.rolloverIn } };
       });
-    });
+    };
+    // ⭐ S7-F8 · section after section until one answers: each its own transaction of the lock, inside its own budget.
+    const out = await (async (): Promise<Out> => {
+      for (let section = 0; ; section++) {
+        if (section > 0) await seams.betweenHoldSections?.(section);
+        const asked = Date.now();
+        const r = await withLock(MASWALI_CHAIN_LOCK, () => inSection(asked));
+        if (r !== "MORE") return r;
+      }
+    })();
     if (!out.ok) {
       await liftHoldsIfClear(heldAccounts, `Millionea ${first.code} · the release did not complete`);
       return out;

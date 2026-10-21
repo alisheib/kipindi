@@ -2365,6 +2365,18 @@ stays open as KNOWN-RED TK.2, with MB-23 (OB.0) and MB-74 (RD.5): §6.1 Gate B l
       own critical alert — so dev and staging, which read no Selcom float, show it on every paying week.
     - The role change moved to `staff-role-change.ts`: an export of a "use server" file is a callable action, and that
       core has no Owner check of its own. PL.3/PL.4/IN.1b now fail on the old code.
+- **S7 · the 10,000-ticket settlement, measured (S7-F8, 2026-10-21; S16 on scratch PostgreSQL 18.3, OMEGA under other
+  lanes' load).** On the batched release (`9277c9ab5`): three winners — the release's transaction 3.3 s to its last
+  write; about 7,000 distinct winners — 14.0 s of the lock's 30-second budget (7,000 BET_PAYOUT rows, 14,008 ledger lines,
+  the pool at 0, every balance to the shilling). The same 7,000 winners all HELD: one hold per winner, each its own
+  committed write and audit row (about 64 ms each there), placed inside that one transaction — it overran the budget, the
+  release rolled back with nothing paid, and its failure path then lifted the holds one at a time. **Fixed:** the holds
+  take sections of the chain lock (`HOLD_SECTION_MS`, 5 s of holds a section, at least one hold); every section re-reads
+  the week (found settled: `already`) and every hold placed before it (one a lift removed while the lock was let go is
+  placed again before any money); the money runs only in a section that reached it inside its share — a release with
+  few holds is one section, as before. Guards: `test:maswali-settle` S7F8.0–S7F8.2 on both stores; plants (S7-F8-recheck),
+  (S7-F8-yield) and (S7-F8-pay-fresh) in `red:maswali-money-path`; S16's all-held shape judges each section's transaction
+  against the budget.
 
 #### S8 · Live drive and public launch
 

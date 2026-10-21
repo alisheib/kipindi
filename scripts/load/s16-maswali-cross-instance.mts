@@ -20,7 +20,9 @@
  *      and the winners are the record's;
  *   §5 a week void sent by two instances, one by `voidWeek` and one by the scheduler's tick: refunded once;
  *   §6 ⭐ 10,000 tickets settled inside the 30-second transaction budget, in the few- and wide-winner shapes; the optional
- *      all-held wide shape suspends the winners after purchase and reads back every freeze, ticket and audit count;
+ *      all-held wide shape suspends the winners after purchase and reads back every freeze, ticket and audit count. Its
+ *      holds take several sections of the chain lock (S7-F8): each section is a transaction, and EACH must close inside
+ *      the budget — the release as a whole runs longer;
  *   §7 the identities over everything: the trial balance (no drifting wallet, no unbalanced group), every invariant.
  *
  * Knobs: S16_TICKETS (10000), S16_WIDE_WINNERS (7000), S16_SHAPES ("few,wide" | "few" | "wide" | "held" | "none"),
@@ -345,22 +347,25 @@ try {
         J({ requested: suspended?.requested, confirmed: suspended?.confirmed }));
       if (!suspended?.ok || suspended.confirmed !== s.win) continue;
     }
-    // The held shape has a ten-minute process watchdog. A timed-out settlement may need to lift its already committed
-    // holds; a missing worker result is a failure, then the independent check names whatever the database retained.
+    // The held shape has a thirty-minute process watchdog (S7-F8: its 7,000 holds take sections of the chain lock, each
+    // hold its own committed write and audit row — minutes in all). A failed settlement may need to lift its already
+    // committed holds; a missing worker result is a failure, then the independent check names whatever the database retained.
     const settled = await runJob({ kind: "release", weekId: wk.weekId, at: wk.releaseAt,
-      ...(s.held ? { timeoutMs: Math.min(JOB_TIMEOUT_MS, 10 * 60_000) } : {}) });
+      ...(s.held ? { timeoutMs: Math.min(JOB_TIMEOUT_MS, 30 * 60_000) } : {}) });
     const timing = `the release ${settled?.settleMs} ms, its preparation ${settled?.previewMs} ms`;
-    // S7-F8 · the worker's marks, in ms after the preparation: the chain lock's transaction opens, its holds are placed, its
-    // last write is made (the commit follows), the release returns. lastWrite − chainOpens is the transaction's own span.
+    // S7-F8 · the worker's marks, in ms after the preparation: the chain lock's first section opens, every section that let
+    // the lock go with holds still to place ends, the last section's holds are placed, its last write is made (the commit
+    // follows), the release returns. `spans` is each section's length — each section is its own transaction of the lock.
     const m = settled?.marks;
-    const span = m && m.chainOpens !== null && m.lastWrite !== null ? `${m.lastWrite - m.chainOpens} ms in the transaction to its last write` : "the transaction's span not reached";
-    measured.push(`${label}: ${settled?.ok ? timing : `FAILED — ${settled?.error} (${timing})`} · ${span} · marks ${J(m ?? null)} · budget ${SETTLE_BUDGET_MS} ms`);
-    // A release whose transaction ran past the budget is rolled back by the database client: one that landed fit it, and
-    // its time says by how much. The release's time also holds its own re-read before the locks, so it bounds the
-    // transaction from above.
-    ok(`6.${i + 1}.2 · ⭐ settled in one transaction, inside the ${SETTLE_BUDGET_MS / 1000}-second budget`,
-      settled?.ok === true && settled.already === false && settled.settleMs < SETTLE_BUDGET_MS,
-      `${timing}${s.tag === "wide" ? ` (R9 recorded about ${R9_RECORDED_WINNERS.toLocaleString("en")} distinct winning players inside it)` : ""}${settled?.ok ? "" : ` — ${settled?.error}`}`);
+    const spans: Array<number | null> = Array.isArray(settled?.spans) ? settled.spans : [];
+    const spanText = spans.length ? `${spans.length} section(s) of the chain lock: ${spans.map((x) => (x === null ? "never closed" : `${x} ms`)).join(", ")}` : "no section measured";
+    measured.push(`${label}: ${settled?.ok ? timing : `FAILED — ${settled?.error} (${timing})`} · ${spanText} · marks ${J(m ?? null)} · budget ${SETTLE_BUDGET_MS} ms a transaction`);
+    // A section whose transaction ran past the budget is rolled back by the database client: one that landed fit it, and
+    // its span says by how much. A release of few holds is ONE section, so its span is the whole transaction.
+    const inBudget = spans.length > 0 && spans.every((x) => typeof x === "number" && x < SETTLE_BUDGET_MS);
+    ok(`6.${i + 1}.2 · ⭐ settled once, every transaction of the release inside the ${SETTLE_BUDGET_MS / 1000}-second budget${s.held ? " (the holds in sections of the chain lock)" : " (one section)"}`,
+      settled?.ok === true && settled.already === false && inBudget && (s.held || spans.length === 1),
+      `${timing} · ${spanText}${s.tag === "wide" ? ` (R9 recorded about ${R9_RECORDED_WINNERS.toLocaleString("en")} distinct winning players inside it)` : ""}${settled?.ok ? "" : ` — ${settled?.error}`}`);
     const c6 = await runJob({ kind: "check", weekId: wk.weekId, sumUsers: P[s.winGroup], ...(s.held ? { heldGroup: s.winGroup } : {}) });
     const f6 = expect5b(c6?.week?.rolloverIn ?? NaN, TICKETS * price, s.win, c6?.rates ?? {});
     measured.push(`  ${s.tag} · rows: ${c6?.payouts} BET_PAYOUT, ${c6?.settleLedgerRows} ledger lines in the group, positions ${J(c6?.positions)}, `

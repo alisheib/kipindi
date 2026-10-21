@@ -24,6 +24,9 @@
  *   R8  · on Postgres, a forfeit or a hold whose commit fails leaves neither half (R8.1, R8.2)
  *   R9  · the final week's wide tie: 300 winners paid in bulk, the shape counted and the time printed (§11, R9.1–R9.6)
  *   B9  · while a final week is ENDING, an earlier week still runs and a later one is refused (§11, B9.1, B9.2)
+ * And S7's own (2026-10-19/21): a missing payee refused before the carry (§4b, 4b.1–4b.3); holds that outlast one section of
+ * the chain lock's 30-second transaction yield it between sections, each section re-reading the week and re-placing a hold
+ * a lift removed meanwhile (§S7F8, S7F8.0–S7F8.2 — S16's all-held 7,000-winner shape measured on scratch Postgres).
  */
 const STORE = process.env.HB_MONEY_STORE ?? "unknown";
 process.env.SESSION_SECRET ??= "maswali-settle-session-secret-0123456789abcdef";
@@ -668,6 +671,92 @@ console.log("\n§R6 · the hold and every lift share one lock (MB-43); R8 · a h
     J({ P: await W.bal(P), P2: await W.bal(P2) }));
   await W.setUserFields(P, { status: "ACTIVE" }); // the accounts' own reviews end
   await W.setUserFields(P2, { status: "ACTIVE" });
+}
+
+// ── S7-F8 · a release whose holds outlast one section of the chain lock (MB-43, R6; the lock's 30-second budget) ────
+// On Postgres every hold is its own committed write placed while the release holds `maswali:chain`, and that lock is a
+// transaction with a 30-second budget: S16 measured a few thousand held winners overrunning it (the release rolled back,
+// nothing paid). So the holds yield the lock between sections, and each section re-reads what the last one held — a lift
+// may run while the lock is let go. `holdSectionMs: 0` makes every section place ONE hold and the money take a section of
+// its own, so three held winners show it here.
+console.log("\n§S7F8 · the holds in sections of the chain lock: each section re-reads the week and the holds before it, and the week pays once");
+{
+  const { getAuditForTargetDurable, auditFlush } = await import("../../src/lib/server/audit.ts");
+  const heldOf = async (u: string) => (((await W.bal(u)).freezeReasons ?? []) as string[]).includes("MILLIONEA_SHARE");
+  /** A week with three winners whose accounts are suspended after their purchase (held) and one free winner. */
+  const heldWeek = async () => {
+    const H = [await W.user({ balance: 200_000 }), await W.user({ balance: 200_000 }), await W.user({ balance: 200_000 })];
+    const F = await W.user({ balance: 200_000 });
+    const { week, start } = await W.openWeek({ weeksAhead: ahead++ });
+    for (const u of [...H, F]) {
+      const b = await W.buy(u, week.id, [W.WIN]);
+      if (!b.ok) throw new Error(`S7F8: a winner's purchase was refused: ${b.error}`);
+    }
+    await W.sell(week.id, 6, W.LOSE, players.slice(140, 150));
+    for (const u of H) await W.setUserFields(u, { status: "SUSPENDED" });
+    return { week, at: await W.closeAndSeal(week, start), H, F };
+  };
+  const outcome = async (weekId: string, H: string[], F: string, before: number[], r: any) => {
+    const tickets = await dal.ticketStore.listForWeek(weekId);
+    const ticketOf = (u: string) => tickets.find((t: any) => t.userId === u && t.won);
+    const share = r.ok && r.preview?.arithmetic?.kind === "PAYOUT" ? r.preview.arithmetic.share : 0;
+    const gained = (await Promise.all([...H, F].map(bal))).map((v, i) => v - before[i]);
+    return {
+      settled: r.ok === true && r.week?.state === "SETTLED" && r.preview?.held === 3 && share > 0,
+      sharesHeld: H.every((u) => ticketOf(u)?.frozenReason === "account suspended") && ticketOf(F)?.frozenReason === null,
+      walletsHeld: await Promise.all(H.map(heldOf)), freeHeld: await heldOf(F),
+      paidOnce: gained.every((g) => g === share), share, gained,
+    };
+  };
+
+  // Control: the same shape on the default section budget — three holds fit one section, as every release so far.
+  {
+    const { week, at, H, F } = await heldWeek();
+    const before = await Promise.all([...H, F].map(bal));
+    const sections: number[] = [];
+    settle.__setMaswaliSettleSeamsForTests({ betweenHoldSections: async (n: number) => { sections.push(n); } });
+    let r: any;
+    try { r = await W.release(week.id, at); } finally { settle.__setMaswaliSettleSeamsForTests(null); }
+    const o = await outcome(week.id, H, F, before, r);
+    ok("S7F8.0 · control: three held winners' holds fit ONE section of the chain lock, and the week pays as it always did",
+      sections.length === 0 && o.settled && o.sharesHeld && o.walletsHeld.every(Boolean) && !o.freeHeld && o.paidOnce, J({ r: errOf(r), sections, o }));
+    for (const u of H) await W.setUserFields(u, { status: "ACTIVE" });
+  }
+
+  const { week, at, H, F } = await heldWeek();
+  const before = await Promise.all([...H, F].map(bal));
+  const sections: number[] = [];
+  const healed: string[][] = [];
+  settle.__setMaswaliSettleSeamsForTests({
+    holdSectionMs: 0,
+    betweenHoldSections: async (n: number) => {
+      sections.push(n);
+      // ⭐ A LIFT WHILE THE LOCK IS LET GO: the heal runs between the first two sections. The first section's hold has no
+      //    held share behind it yet (none has landed), so the heal lifts it — as it must for a real stray.
+      if (n === 1) healed.push((await settle.healStrayMillioneaHolds()).lifted);
+    },
+  });
+  let r: any;
+  try { r = await W.release(week.id, at); } finally { settle.__setMaswaliSettleSeamsForTests(null); }
+  const o = await outcome(week.id, H, F, before, r);
+  // One hold a section, in the week's ticket order: the first (yield 1; the heal lifts it), the same again (yield 2), the
+  // second (yield 3), the third (yield 4), then the money in a section of its own.
+  ok("S7F8.1 · ⭐ holds that outlast a section let the chain lock go between sections, four times, and the week still settles once: every held share landed held, every held wallet held, the free winner paid free",
+    J(sections) === J([1, 2, 3, 4]) && o.settled && o.sharesHeld && o.walletsHeld.every(Boolean) && !o.freeHeld && o.paidOnce,
+    J({ r: errOf(r), sections, o }));
+  await auditFlush();
+  const trail = async (u: string) => {
+    const rows = (await getAuditForTargetDurable("User", u, { limit: 200 })).entries
+      .filter((e: any) => String(e.payload?.reason) === "MILLIONEA_SHARE");
+    return { added: rows.filter((e: any) => e.action === "wallet.freeze_added").length, removed: rows.filter((e: any) => e.action === "wallet.freeze_removed").length };
+  };
+  const trails = await Promise.all(H.map(trail));
+  const liftedByHeal = H.filter((u) => healed[0]?.includes(u));
+  ok("S7F8.2 · ⭐ the hold a lift removed between two sections was read again under the next section's lock and placed again before the money (R6): the lifted winner's trail is two holds and one lift, each other held winner's one hold",
+    healed.length === 1 && liftedByHeal.length === 1
+      && H.every((u, i) => (u === liftedByHeal[0] ? trails[i].added === 2 && trails[i].removed === 1 : trails[i].added === 1 && trails[i].removed === 0)),
+    J({ healed, trails }));
+  for (const u of H) await W.setUserFields(u, { status: "ACTIVE" }); // the accounts' own reviews end
 }
 
 // ── §11 · the sunset: the final week's top score shares the whole jackpot ───

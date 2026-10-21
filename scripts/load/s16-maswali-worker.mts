@@ -190,14 +190,18 @@ try {
     // `world.release`, step by step, so the preparation and the release are timed apart: the release's own transaction is
     // what the 30-second budget bounds (a transaction past it is rolled back by the client, so a release that lands fit).
     // S7-F8 · the release's phases, read through the settlement's own test seams (they refuse to run in production): the
-    // instant before the chain lock's transaction opens, the instant after its holds, and the last statement before its
-    // commit — each in ms after the preparation ended. A thrown release is reported with the marks it reached, never
+    // instant before the chain lock's first section opens, the end of every section that let the lock go with holds still
+    // to place, the instant after the last section's holds, and the last statement before its commit — each in ms after
+    // the preparation ended. Each section is its own transaction of the lock: `spans` is each one's length (lock wait
+    // included; the last ends at its last write). A thrown release is reported with the marks it reached, never
     // swallowed into the worker's generic failure.
     const t = await started();
     const now = new Date(job.at);
     const marks: Record<string, number> = {};
+    const sectionEnds: number[] = [];
     W.settle.__setMaswaliSettleSeamsForTests({
       beforeChain: async () => { marks.chain = Date.now(); },
+      betweenHoldSections: async () => { sectionEnds.push(Date.now()); },
       afterHolds: async () => { marks.holds = Date.now(); },
       beforeCommit: async (act: string) => { if (act === "release") marks.commit = Date.now(); },
     });
@@ -215,11 +219,14 @@ try {
     }
     const end = Date.now();
     const at = (k: string) => (marks[k] ? marks[k] - tp : null);
+    const opens = marks.chain ? [marks.chain, ...sectionEnds] : [];
+    const closes = [...sectionEnds, marks.commit ?? null];
     say({
       ok: r.ok === true, already: r.ok ? r.already === true : false, error: errOf(r), t, ms: end - t, previewMs: tp - t, settleMs: end - tp,
       share: r.ok && !r.already && p.ok ? p.preview.arithmetic?.share ?? null : null,
       previewHeld: p.ok ? p.preview.held : null,
-      marks: { chainOpens: at("chain"), holdsDone: at("holds"), lastWrite: at("commit"), returned: end - tp },
+      marks: { chainOpens: at("chain"), sectionEnds: sectionEnds.map((x) => x - tp), holdsDone: at("holds"), lastWrite: at("commit"), returned: end - tp },
+      spans: opens.map((o, i) => (closes[i] ? (closes[i] as number) - o : null)),
     });
   } else if (job.kind === "correct") {
     const t = await started();

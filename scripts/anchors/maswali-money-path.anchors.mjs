@@ -180,6 +180,32 @@ export const MUTATIONS = [
     expect: "4b.1 · ⛔ a missing payee is refused before the carry",
     suite: "settle",
   },
+  // S7-F8 (2026-10-21) · the holds in sections of the chain lock: S16 measured 7,000 held winners overrunning the lock's
+  // 30-second transaction, so the holds yield the lock between sections. Each plant puts one half of that back.
+  {
+    name: "(S7-F8-recheck) a hold a lift removed while the chain lock was let go is never read again: the share lands held on a wallet that is not",
+    file: SETTLE,
+    from: "      if (placed.size > 0) {",
+    to: "      if (false) {",
+    expect: "S7F8.2 · ⭐",
+    suite: "settle",
+  },
+  {
+    name: "(S7-F8-yield) the holds never let the chain lock go, whatever their count (the 30-second transaction overruns again)",
+    file: SETTLE,
+    from: `        if (heldHere > 0 && Date.now() - asked >= share) return "MORE";`,
+    to: "        void asked;",
+    expect: "S7F8.1 · ⭐",
+    suite: "settle",
+  },
+  {
+    name: "(S7-F8-pay-fresh) a section that spent its share of the budget on holds goes on to pay in what is left of it",
+    file: SETTLE,
+    from: `      if (heldHere > 0 && Date.now() - asked >= share) return "MORE";${LF}      await seams.afterHolds?.();`,
+    to: "      await seams.afterHolds?.();",
+    expect: "S7F8.1 · ⭐",
+    suite: "settle",
+  },
   {
     name: "(R7) a guarantee reference books twice (the booked-reference check answers new for every reference)",
     file: MONEY,
