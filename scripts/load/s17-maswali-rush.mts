@@ -31,6 +31,23 @@
  * its receipt, the trial balance (no drifting wallet, no unbalanced group), every Millionea invariant, and Up & Down's pool
  * against its positions and its bettors' wallets.
  *
+ * ⭐ MB-97 — THE WEEK PAGE IN THE RUSH (MASWALI-PLAN §8 MB-97: rendering per request, the live figure's fan-out to every
+ * viewer, and the cost of the inclusion proofs; "include in the S7 load test"). Beside the purchases each instance also:
+ *   · serves the week page: RUSH_VIEWS_PER_MIN reads between the instances (the purchases' shape: the last minute
+ *     RUSH_LAST_MINUTE_FACTOR times denser), half by guests and half by signed-in players — each the reads `/millionea`
+ *     awaits on every request (it is force-dynamic): `millioneaHub`, then `millioneaCloseMove` and
+ *     `millioneaHubCommitments`, timed; React's render is not in it;
+ *   · holds RUSH_STREAMS live streams between the instances, each a viewer's `/api/events` stream as the route wires it
+ *     (`forwardMillioneaPool`; half guests), on the instance's own bus, so every pool frame the feed publishes there is
+ *     fanned out to them; one more listener on the bus counts what the feed published.
+ * After the close the check times the root over every live ticket (the close's own pass) and RUSH_PROOF_SAMPLE inclusion
+ * proofs spread over the tickets, each verified against the week's committed root, a forged leaf refused.
+ * Judged on every run (the identities, §3–§4): every page read answered and naming the week; every stream given every
+ * frame its bus carried; the frames coalesced (at most one per window of the feed, never one a sale); the live figure
+ * never ahead of the money, and a frame after the close reading the week CLOSED at exactly its POOL; every sampled proof
+ * under the committed root. Printed, TBD-BASELINE: the page read's p95, a frame's reach to its last stream, one proof's p95.
+ * ⛔ A load with RUSH_VIEWS_PER_MIN, RUSH_STREAMS or RUSH_PROOF_SAMPLE at 0 is NOT MEASURED for that part, and says so.
+ *
  * ⏱ TARGETS. Each latency target below is a named constant at TBD-BASELINE: S7's acceptance sets them from the baseline
  * the lead measures with this script, and records them beside their results (MASWALI-PLAN §7b S7). Until a constant is a
  * number its line prints the measurement and judges nothing. ⭐ SET (the lead, 2026-10-22, from the first baseline at
@@ -41,7 +58,9 @@
  * Knobs (environment): RUSH_TEST_REFERENCE_PER_MIN (30 — synthetic test reference, not measured production traffic),
  * RUSH_MULTIPLIER (10), RUSH_MINUTES (10), RUSH_LAST_MINUTE_FACTOR (3), RUSH_AFTER_CLOSE_SEC (60), RUSH_INSTANCES (2),
  * RUSH_POOL (20), RUSH_PLAYERS (sized from the rate), RUSH_UPDOWN_PER_MIN (300), RUSH_UPDOWN_PLAYERS (300),
- * RUSH_RETRIES (3), RUSH_RETRY_SAMPLE (50), RUSH_BOOT_MARGIN_SEC (120).
+ * RUSH_RETRIES (3), RUSH_RETRY_SAMPLE (50), RUSH_BOOT_MARGIN_SEC (120); MB-97's RUSH_VIEWS_PER_MIN (the purchase rate:
+ * one week-page read a planned purchase — a synthetic test input, not a measured audience), RUSH_STREAMS (800, within
+ * the bus's 500 listeners a container per event with two instances) and RUSH_PROOF_SAMPLE (100).
  * ⛔ Loopback clusters only: the database is created and dropped here. ⛔ A load test: run it detached under the
  *    heavy-node lock, alone, never in `test:all` or `predeploy` (scripts/load/README.md).
  * ⚠️ This file carries no backslash: line breaks are built from their code points.
@@ -70,6 +89,15 @@ const TARGET_UPDOWN_P95_MS: Target = "TBD-BASELINE";
 const TARGET_CLOSE_STAMP_LAG_MS: Target = "TBD-BASELINE";
 /** The share of purchases answered BUSY after every retry, in percent. */
 const TARGET_BUSY_PERCENT: Target = 0;
+/** MB-97 · a week-page read (the reads `/millionea` awaits per request) during the rush, at the 95th percentile. */
+const TARGET_WEEK_READ_P95_MS: Target = "TBD-BASELINE";
+/** MB-97 · a pool frame, from the feed's publish to its last live stream, at the 95th percentile. */
+const TARGET_FRAME_REACH_P95_MS: Target = "TBD-BASELINE";
+/** MB-97 · one inclusion proof over the closed week's live tickets, at the 95th percentile. */
+const TARGET_PROOF_P95_MS: Target = "TBD-BASELINE";
+/** The pool feed's window (`maswali-pool-feed.ts` COALESCE_MS): a week's frames are at least this far apart on one
+ *  instance, so a run can hold at most one a window. A platform cadence, read here only to bound the count (§3.3). */
+const FEED_WINDOW_MS = 2_000;
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const WORKER = "scripts/load/s17-maswali-rush-worker.mts";
@@ -100,6 +128,10 @@ const RETRY_SAMPLE = Math.round(num("RUSH_RETRY_SAMPLE", 50));
 const BOOT_MARGIN_SEC = num("RUSH_BOOT_MARGIN_SEC", 120);
 const target = { testReferencePerMin: TEST_REFERENCE_PER_MIN, multiplier: MULTIPLIER, minutes: MINUTES, lastMinuteFactor: LAST_MINUTE_FACTOR, afterCloseSec: AFTER_CLOSE_SEC };
 const { rate: RATE, plannedBefore: PLANNED_BEFORE, plannedAfter: PLANNED_AFTER } = rushShape(target);
+/** MB-97 · the week page's reads a minute between the instances, and the live streams and the proofs sampled. */
+const VIEWS_PER_MIN = num("RUSH_VIEWS_PER_MIN", RATE);
+const STREAMS = Math.round(num("RUSH_STREAMS", 800));
+const PROOF_SAMPLE = Math.round(num("RUSH_PROOF_SAMPLE", 100));
 /** Accounts enough that the cap is never what refuses (about three tickets a purchase, half the cap an account). */
 const PLAYERS = Math.round(num("RUSH_PLAYERS", Math.max(200, Math.ceil(((PLANNED_BEFORE + PLANNED_AFTER) * 3) / 5))));
 const PLAYER_BALANCE = 100_000, BETTOR_BALANCE = 1_000_000;
@@ -185,7 +217,7 @@ function judge(label: string, measured: number | null, target: Target): void {
 
 console.log(`${NL}S17 — the Friday 18:00 rush on ${DB}: ${rushTargetLabel(target)}, `
   + `the last minute ×${LAST_MINUTE_FACTOR}, ${MINUTES} min to the close and ${AFTER_CLOSE_SEC} s after it, ${INSTANCES} instance(s) of pool ${POOL}, `
-  + `Up & Down at ${UPDOWN_PER_MIN}/min`);
+  + `Up & Down at ${UPDOWN_PER_MIN}/min; MB-97: the week page at ${VIEWS_PER_MIN}/min, ${STREAMS} live stream(s), ${PROOF_SAMPLE} proof(s) sampled`);
 const admin = new pg.Client({ connectionString: RAW });
 await admin.connect();
 await admin.query(`DROP DATABASE IF EXISTS "${DB}" WITH (FORCE)`);
@@ -214,6 +246,7 @@ try {
   const kids = Array.from({ length: INSTANCES }, (_, i) => launch({
     role: "instance", index: i, instances: INSTANCES, outFile: join(TMP, `out-${i}.json`), rushStartAt, endAt,
     perMin: RATE / INSTANCES, lastMinuteFactor: LAST_MINUTE_FACTOR, updownPerMin: UPDOWN_PER_MIN / INSTANCES, retries: RETRIES, retrySample: Math.ceil(RETRY_SAMPLE / INSTANCES),
+    viewsPerMin: VIEWS_PER_MIN / INSTANCES, streams: Math.ceil(STREAMS / INSTANCES),
   }, { RUSH_GO: go, PRISMA_CONNECTION_LIMIT: String(POOL), MASWALI_SCHEDULER: "true" }, (MINUTES * 60 + BOOT_MARGIN_SEC + AFTER_CLOSE_SEC + 15 * 60) * 1_000));
   const ready = await Promise.all(kids.map((k) => k.ready));
   ok("1.0 · every instance booted and reached the barrier", ready.every(Boolean), J(ready));
@@ -230,7 +263,7 @@ try {
   const noRoom = outs.reduce((s, o) => s + (o.noRoom ?? 0), 0);
   ok("1.4 · the cap was never what refused: every arrival found an account with room (RUSH_PLAYERS is large enough)", noRoom === 0, `${noRoom} arrival(s) found no account with room`);
 
-  const check = await launch({ role: "check" }, { MASWALI_SCHEDULER: "false", PRISMA_CONNECTION_LIMIT: "10" }, 30 * 60_000).done;
+  const check = await launch({ role: "check", proofSample: PROOF_SAMPLE }, { MASWALI_SCHEDULER: "false", PRISMA_CONNECTION_LIMIT: "10" }, 30 * 60_000).done;
   if (!check?.ok) throw new Error("the check failed");
 
   // ── What it recorded ───────────────────────────────────────────────────────────────────────────────────────────
@@ -273,6 +306,31 @@ try {
   const busy = buys.filter((b) => !b.ok && (b.reason === "BUSY" || b.reason === "system_busy")).length;
   const busyPercent = buys.length ? Math.round((busy / buys.length) * 10_000) / 100 : 0;
 
+  // ── MB-97 · the week page in the rush ──────────────────────────────────────────────────────────────────────────────
+  const views: any[] = outs.flatMap((o) => o.views ?? []);
+  const viewsOk = views.filter((v) => v.ok);
+  console.log(`${NL}MB-97 — THE WEEK PAGE IN THE RUSH: each read is what /millionea awaits per request (millioneaHub, then millioneaCloseMove and millioneaHubCommitments; not React's render)`);
+  console.log(row("week page · every read", dist(viewsOk.map((v) => v.ms))));
+  console.log(row("week page · a guest", dist(viewsOk.filter((v) => v.guest).map((v) => v.ms))));
+  console.log(row("week page · signed in", dist(viewsOk.filter((v) => !v.guest).map((v) => v.ms))));
+  console.log(row("week page · the last minute", dist(viewsOk.filter((v) => v.toClose >= -60_000 && v.toClose < 0).map((v) => v.ms))));
+  console.log(row("week page · after the close", dist(viewsOk.filter((v) => v.toClose >= 0).map((v) => v.ms))));
+  const frameReach: number[] = [];
+  for (const o of outs) {
+    const frames: any[] = o.frames ?? [], counts: number[] = o.streamCounts ?? [];
+    for (const f of frames) if (f.sends > 0 && f.lastMs !== null) frameReach.push(f.lastMs);
+    const sent = frames.filter((f) => f.sends > 0);
+    const perSend = sent.length ? Math.round(sent.reduce((s, f) => s + f.bytes / f.sends, 0) / sent.length) : null;
+    console.log(`  instance ${o.index}: ${(o.buys ?? []).filter((b: any) => b.ok).length} purchases landed and ${frames.length} pool frames published; `
+      + `${counts.length} live streams, each given ${counts.length ? Math.min(...counts) : "—"} to ${counts.length ? Math.max(...counts) : "—"} frames (about ${perSend ?? "—"} bytes a frame a stream)`);
+  }
+  console.log(row("a frame, publish → its last stream", dist(frameReach)));
+  const proofs = check.proofs ?? { n: 0, sample: 0, ms: [], verified: 0, forgedAccepted: 0, rootMs: null };
+  const proofMean = proofs.ms.length ? proofs.ms.reduce((s: number, x: number) => s + x, 0) / proofs.ms.length : null;
+  console.log(row(`one inclusion proof of ${proofs.n} tickets`, dist(proofs.ms)));
+  console.log(`  the root over all ${proofs.n} live tickets (the close's own pass): ${proofs.rootMs ?? "—"} ms; every ticket's proof made on request, one at a time: `
+    + `about ${proofMean === null ? "—" : Math.round((proofMean * proofs.n) / 1_000)} s of one CPU`);
+
   // ── The identities (judged on every run) ───────────────────────────────────────────────────────────────────────
   console.log(`${NL}THE IDENTITIES`);
   // Load may shed anywhere (BUSY moved nothing, the rate limit neither); the close refuses only at or after the close.
@@ -313,6 +371,40 @@ try {
     && check.trialBalance.imbalanced === 0 && check.trialBalance.globalBalanced === true, J(check.trialBalance));
   ok("2.12 · ⭐ every Millionea invariant holds", check.invariants?.ok === true, J(check.invariants?.problems));
 
+  // MB-97 · the week page in the rush: judged wherever it was measured; a part loaded at 0 says NOT MEASURED.
+  if (VIEWS_PER_MIN > 0) {
+    const viewsUnanswered = outs.reduce((s, o) => s + (o.viewsUnanswered ?? 0), 0);
+    const badViews = views.filter((v) => !v.ok || v.code !== st.code);
+    ok("3.1 · MB-97 · every week-page read in the rush was answered, and named the rush's week",
+      views.length > 0 && viewsUnanswered === 0 && badViews.length === 0,
+      `${views.length} read(s), ${viewsUnanswered} unanswered, ${badViews.length} other: ${J(tally(badViews, (v) => (v.ok ? `week ${v.code}` : String(v.error).slice(0, 80))))}`);
+  } else console.log("NOT MEASURED 3.1 · RUSH_VIEWS_PER_MIN is 0: no week-page read was made");
+  if (STREAMS > 0) {
+    const fan = outs.map((o) => {
+      const c: number[] = o.streamCounts ?? [];
+      return { instance: o.index, frames: (o.frames ?? []).length, streams: c.length, fewest: c.length ? Math.min(...c) : null, most: c.length ? Math.max(...c) : null };
+    });
+    ok("3.2 · ⭐ MB-97 · the fan-out reached every live stream: on each instance every stream was given every frame its bus carried, and at least one",
+      fan.every((x) => x.streams > 0 && x.frames > 0 && x.fewest === x.frames && x.most === x.frames), J(fan));
+    const coalesced = outs.map((o) => {
+      const frames: any[] = o.frames ?? [];
+      const lastAt = frames.length ? frames[frames.length - 1].at : rushStartAt;
+      return { instance: o.index, frames: frames.length, atMost: Math.floor((lastAt - rushStartAt) / FEED_WINDOW_MS) + 1, landed: (o.buys ?? []).filter((b: any) => b.ok).length };
+    });
+    ok("3.3 · ⭐ MB-97 · the pool frames were coalesced: on each instance at most one frame a window of the feed, never one a sale",
+      coalesced.every((x) => x.frames <= x.atMost), J(coalesced));
+    const allFrames: any[] = outs.flatMap((o) => o.frames ?? []);
+    const ahead = allFrames.filter((f) => !(f.sales <= check.pool.ledger) || f.sales % price !== 0);
+    const closedTrue = allFrames.some((f) => f.state === "CLOSED" && f.sales === check.pool.ledger);
+    ok("3.4 · ⭐ MB-97 · the live figure never ran ahead of the money: no frame carried more sales than the week's POOL or a part of a ticket, and a frame after the close read the week CLOSED at exactly its POOL",
+      allFrames.length > 0 && ahead.length === 0 && closedTrue, J({ frames: allFrames.length, ahead: ahead.slice(0, 3), pool: check.pool.ledger, closedTrue }));
+  } else console.log("NOT MEASURED 3.2–3.4 · RUSH_STREAMS is 0: no live stream was held");
+  if (PROOF_SAMPLE > 0) {
+    ok("4.1 · ⭐ MB-97 · every sampled inclusion proof puts its ticket under the week's committed root, and a forged leaf is refused (the control)",
+      proofs.sample > 0 && proofs.verified === proofs.sample && proofs.forgedAccepted === 0,
+      J({ tickets: proofs.n, sample: proofs.sample, verified: proofs.verified, forgedAccepted: proofs.forgedAccepted }));
+  } else console.log("NOT MEASURED 4.1 · RUSH_PROOF_SAMPLE is 0: no inclusion proof was made");
+
   // ── The targets (the lead's three judge; the rest print, TBD-BASELINE) ─────────────────────────────────────────
   console.log(`${NL}THE TARGETS`);
   judge("purchase p95 (ms)", pct(landed.map((b) => b.totalMs), 0.95), TARGET_PURCHASE_P95_MS);
@@ -321,8 +413,13 @@ try {
   judge("Up & Down p95 (ms)", pct(bets.map((b) => b.ms), 0.95), TARGET_UPDOWN_P95_MS);
   judge("close stamp lag (ms)", stampLagMs, TARGET_CLOSE_STAMP_LAG_MS);
   judge("BUSY after retries (%)", busyPercent, TARGET_BUSY_PERCENT);
+  judge("MB-97 week-page read p95 (ms)", pct(viewsOk.map((v) => v.ms), 0.95), TARGET_WEEK_READ_P95_MS);
+  judge("MB-97 a frame's reach to its last stream p95 (ms)", pct(frameReach, 0.95), TARGET_FRAME_REACH_P95_MS);
+  judge("MB-97 one inclusion proof p95 (ms)", pct(proofs.ms, 0.95), TARGET_PROOF_P95_MS);
   console.log(`${NL}RECORD — ${buys.length} purchases sent (${landed.length} landed, ${reported.size} tickets), ${bets.length} Up & Down bets (${udLanded} landed), `
-    + `${retries.length} after-close retries; planned ${Math.round(PLANNED_BEFORE)} before the close and ${Math.round(PLANNED_AFTER)} after it`);
+    + `${retries.length} after-close retries; planned ${Math.round(PLANNED_BEFORE)} before the close and ${Math.round(PLANNED_AFTER)} after it; `
+    + `MB-97: ${views.length} week-page reads, ${outs.reduce((s, o) => s + (o.frames ?? []).length, 0)} pool frames to ${outs.reduce((s, o) => s + (o.streamCounts ?? []).length, 0)} live streams, `
+    + `${proofs.sample} inclusion proofs of ${proofs.n} tickets`);
 } catch (e) {
   ok("0.run · the rush completed", false, String((e as Error)?.message ?? e));
 } finally {
