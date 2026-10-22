@@ -46,6 +46,37 @@ world's `harm_marker` person (SKIPPED `rg_harm_marker`); and record the reactiva
 
 ---
 
+## 2026-10-22 · Maswali Millionea — build done, launch later; the live test is the first public week; the classic rail's Millionea track; the landing's Millionea line and Live link (owner rulings)
+
+**Authority.** Ali, 2026-10-22, to the Maswali lead (Claude, OMEGA-COMPILE01), choosing among the options put to him and,
+where he wrote them, in his own words:
+1. **Scope: build done, launch later.** S5, S7 and S6 are finished, each verified and pushed to `main` dark; the staff
+   preview follows S5 (the 2026-10-21 ruling 1); S8 is prepared and waits on his launch-gate items. The programme closes
+   when he says launch.
+2. **The live test is the first public week** (confirming the 2026-10-21 ruling 2). There is no private DRIVE week and no
+   second drive week: approved, non-staff QA accounts buy in week 1, each QA ticket cancelled inside its free-cancel window
+   so no company ticket stays in the draw; the rollback switch stands ready. MASWALI-PLAN §6.1 and §7b S8 carry it; OD-21
+   is superseded for S8 and its DRIVE-week code stays dormant.
+3. **The staff-preview check:** one production sign-in each with the QA staff account and the QA player account.
+4. **The classic phone rail.** Six tracks cannot be made perfect (the centre Deposit coin needs two tracks on each side;
+   Swahili labels do not fit ~53 px), so while Millionea's door is drawn its track takes Live's place — Markets · Up &
+   Down · Deposit · Millionea · More — and Live becomes More's first row; otherwise the rail is unchanged. *"ok replace
+   live please … keep live in more"*, *"make sure it takes the perfect design and the whole navbar is tested, visually
+   and logically still appealing."* The design rule lives in DESIGN_AUTHORITY §M8a item 11.
+5. **The classic landing page** carries a small line inviting to Millionea — *"Be this week's winner?"* with a link, *"same
+   colour as the animation in the Millionea tab"* — shown only when Millionea is offered to the reader, and *"a very
+   brief link for Live … consistent … with the overall landing"*. The design rule lives in DESIGN_AUTHORITY.
+6. **Every change is a final, documented rule:** *"make sure any change is final rule and documented everywhere it should
+   be documented, so nothing is misleading"* — each change records its rule in the owning document in the same commit and
+   corrects every place that stated the old one (AGENTS.md §3).
+
+**Implementation boundary.** 1–3 set the programme's sequence and S8's plan; 4 and 5 are player surfaces drawn only while
+Millionea is offered, except the landing's Live link, which every visitor sees (a classic-visible change named in the
+parity compare); 6 restates AGENTS.md §3 for this programme. The language-change loader's colours (the same day) are
+recorded with their own release in DESIGN_AUTHORITY.
+
+---
+
 ## 2026-10-21 · Maswali Millionea — staff preview after S5, no separate drive-week buying phase, the ruled words final, Finance confirmed, five days to answer a complaint, "Buy ticket" (owner rulings)
 
 **Authority.** Ali, 2026-10-21, to the Maswali lead (Claude, OMEGA-COMPILE01), choosing among the options put to him and,
