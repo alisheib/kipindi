@@ -29,7 +29,7 @@
  * flip offsets in motion.css) — this file only composes classes.
  */
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Modal } from "@/components/ui/modal";
 import { FiftyMark } from "@/components/brand";
 import { haptics } from "@/lib/haptics";
@@ -41,6 +41,22 @@ import { formatNumber, formatTzs } from "@/lib/utils";
 import { keepFigures } from "@/components/ui/keep-words";
 
 const EVENT_NAME = "50pick:celebrate";
+
+/** A seal fact that is one word holding a digit — an identifier, a ticket's serial — is set whole in the numerals' face. */
+const IDENTIFIER = /^\S*\d\S*$/;
+/** A seal fact's numerals ("1 ticket at 10/10"), each a `.mono` run (§T5), its words left in the sentence's face. */
+function monoNumerals(text: string): ReactNode {
+  const out: ReactNode[] = [];
+  let last = 0;
+  for (const m of text.matchAll(/\d+(?:[:.,/]\d+)*/g)) {
+    const at = m.index ?? 0;
+    if (at > last) out.push(text.slice(last, at));
+    out.push(<span key={at} className="mono">{m[0]}</span>);
+    last = at + m[0].length;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
 
 export type WinCelebrationPayload = {
   /** Heading row. Only WIN is used — cash-out doesn't celebrate. */
@@ -380,9 +396,11 @@ export function WinCelebrationHost() {
             style={{ "--i": 4 } as CSSProperties}
           >
             {payload.facts.map((f, i) => (
-              <span key={i} className="whitespace-nowrap">
+              // §T5 (round 2): every numeral is mono — an identifier (one word holding digits: a serial) whole, a sentence's
+              // numerals each a `.mono` run, its words in the body face.
+              <span key={i} className={IDENTIFIER.test(f) ? "whitespace-nowrap font-mono" : "whitespace-nowrap"}>
                 {i > 0 && <span className="sr-only">{" · "}</span>}
-                {f}
+                {IDENTIFIER.test(f) ? f : monoNumerals(f)}
               </span>
             ))}
           </p>

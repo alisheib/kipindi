@@ -628,7 +628,13 @@ check("17.2", "the platform's seal: its words are the payload's when given and i
   need(d, c.includes('const amountFit = { "--seal-chars": formatTzs(payload.amount).length, fontSize: "min(38px, calc(100cqi / (var(--seal-chars) * 0.6)))" } as CSSProperties;'), "the amount's size is not fitted to its figure");
   need(d, c.includes('<div className="g-settle mt-3 w-full [container-type:inline-size]" style={{ "--i": 2 } as CSSProperties}> <p data-seal-amount="" className={`whitespace-nowrap font-mono text-[38px]'), "the amount is not one line in its column's container");
   need(d, c.includes("style={amountFit}"), "the fitted size is not applied");
-  need(d, c.includes('{payload.facts.map((f, i) => ( <span key={i} className="whitespace-nowrap">'), "a fact may break");
+  need(d, c.includes('{payload.facts.map((f, i) => ( <span key={i} className={IDENTIFIER.test(f) ? "whitespace-nowrap font-mono" : "whitespace-nowrap"}>'), "a fact may break");
+  return d;
+});
+check("17.3", "§T5 (round 2) · the seal's facts set every numeral mono: a serial (one word holding digits) whole in the numerals' face, a sentence's numerals (\"1 ticket at 10/10\") each a `.mono` run; the held and forfeited notes' counts too", (w) => {
+  const c = code(w, "celebrate"), p = code(w, "page"), d: string[] = [];
+  need(d, c.includes("const IDENTIFIER = /^\\S*\\d\\S*$/;") && c.includes("{IDENTIFIER.test(f) ? f : monoNumerals(f)}") && c.includes('out.push(<span key={at} className="mono">{m[0]}</span>);'), "the seal's facts are not set by the numerals' rule");
+  need(d, count(p, "{ part: numeralRuns }") === 2, "the held and forfeited notes do not set their counts mono");
   return d;
 });
 
@@ -820,6 +826,8 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["the seal's eyebrow forced to the platform's", "17.2", plantSrc("celebrate", "{payload.eyebrow ?? t.common.positionWon}", "{t.common.positionWon}")],
   ["L11 undone — an open week's ticket silent", "18.1", plantSrc("ticket", "        live.salesCloseAt !== undefined ? keepFact(locale, fill(t.millionea.salesCloseAt, { when: eatWeekdayClock(t, live.salesCloseAt) })) : null,\n", "")],
   ["L13 undone — a sealed reserve still the open ring", "19.1", plantSrc("seal", 'out === "YES" || out === "NO" ? "sealed" : "standby"', '"standby"')],
+  ["§T5 undone — the seal's facts in the body face", "17.3", plantSrc("celebrate", "{IDENTIFIER.test(f) ? f : monoNumerals(f)}", "{f}")],
+  ["§T5 undone — the held note's count in the body face", "17.3", plantSrc("page", "shareHeldNote), { part: numeralRuns })}", "shareHeldNote))}")],
   ["L14 undone — no close fact (the lock moment dead again)", "20.1", plantSrc("player", ' facts.push({ kind: "close", at: week.closedAt });', " void 0;")],
   ["L14 — the scheduled close instead of the recorded one", "20.1", plantSrc("player", 'facts.push({ kind: "close", at: week.closedAt });', 'facts.push({ kind: "close", at: week.closesAt });')],
   ["L14 — the lock line outside the stub's moment", "20.1", plantSrc("ticket", "{cut || reveal || lock\n", "{cut || reveal\n")],

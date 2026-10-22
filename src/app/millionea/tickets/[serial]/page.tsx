@@ -40,7 +40,7 @@ import { Callout } from "@/components/ui/callout";
 import { MaswaliTicket, type TicketMoments } from "@/components/maswali/maswali-ticket";
 import { MaswaliLossReceipt, MaswaliWinLedger, type MaswaliLegal } from "@/components/maswali/maswali-win-ledger";
 import { counted, eatWeekday, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
-import { factsOf, keepFact, MaswaliFacts } from "@/components/maswali/maswali-facts";
+import { factsOf, keepFact, MaswaliFacts, numeralRuns } from "@/components/maswali/maswali-facts";
 import { noticeBody } from "@/components/ui/empty-state-text";
 import { millioneaTicketGate } from "@/lib/server/millionea-gate";
 import { millioneaHowTo, millioneaMyTicketsWeek, millioneaTicket, millioneaWeekMoneyRecord, type MillioneaFact, type MillioneaTicketView } from "@/lib/server/maswali-player";
@@ -219,9 +219,10 @@ export default async function MillioneaTicketPage({ params }: { params: Promise<
           {view.win && (held > 0 || forfeited > 0) && (
             <Callout tone="neutral" role="status">
               <span className="flex flex-col gap-1">
-                {/* Drawn through the notice keep (r10 9.3): "Tiketi zako", "jumla yako" never torn at a line's end. */}
-                {held > 0 && <span>{noticeBody(counted(held, t.millionea.shareHeldNoteOne, t.millionea.shareHeldNote))}</span>}
-                {forfeited > 0 && <span>{noticeBody(counted(forfeited, t.millionea.shareForfeitedNoteOne, t.millionea.shareForfeitedNote))}</span>}
+                {/* Drawn through the notice keep (r10 9.3): "Tiketi zako", "jumla yako" never torn at a line's end; its count a
+                    `.mono` numeral (§T5, round 2). */}
+                {held > 0 && <span>{noticeBody(counted(held, t.millionea.shareHeldNoteOne, t.millionea.shareHeldNote), { part: numeralRuns })}</span>}
+                {forfeited > 0 && <span>{noticeBody(counted(forfeited, t.millionea.shareForfeitedNoteOne, t.millionea.shareForfeitedNote), { part: numeralRuns })}</span>}
               </span>
             </Callout>
           )}
