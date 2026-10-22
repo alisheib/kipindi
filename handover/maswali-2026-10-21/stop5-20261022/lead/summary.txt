@@ -1,0 +1,4 @@
+14:55:33 == S5 gate at b120fcbe0
+14:55:33 lockfile same as the tree's node_modules (7e9a314f0)
+14:58:14 tsc rc=0 errors=0
+15:02:14 next build rc=0 :: ✓ Compiled successfully in 89s ├ ƒ /api/client-error 
