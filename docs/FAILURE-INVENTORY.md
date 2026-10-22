@@ -1347,6 +1347,16 @@ or the week's share, cannot be read from the records gets no money notice at all
 the winner stays on the desk list for a call (`maswali-notify.ts`). Held by `test:maswali-notify` 5.5b on both stores
 and the plant (N15) of `red:maswali-money-path`.
 
+#### ✅ The register's forgetting after a correction — its guard red since S6-INT 14, re-pinned (S6-INT 22)
+
+`test:maswali-register-cache` holds that a seal's correction makes the public register forget its week only once the
+correction has committed (S5-FIX-SRV 2). S6-INT 14's M-3 (the correction's owed records written before its notice) moved
+the line that follows the forgetting, and the guard and its plant still read the old line: the suite was red ("source
+invalidate") on every release head since, unseen because no batch ran it (found by S6-ADMIN 3's light run). THE RULE is
+unchanged (`correctSeal`, `maswali-service.ts`: the forgetting runs after the lock has committed, before the record and
+the notice); the guard and the plant "correction does not invalidate" are re-pinned to the line as it stands. Held by
+`test:maswali-register-cache` (source invalidate) and `red:maswali-register-cache`.
+
 ## §9c · MASWALI MILLIONEA — the admin console, walked and made plain (S6, 2026-10-22)
 
 Ali, 2026-10-22: "admin make sure full control with the right sorting etc. and management", and his admin guide must be
