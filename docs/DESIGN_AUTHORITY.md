@@ -3255,6 +3255,25 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     dialog is unchanged (`test:maswali-slip-design` §1); `test:enter-where-pressed` 5.8 pins the call with its plant, and
     `qa:dialog-way-back` drives it at 360 in Chromium and WebKit (scrollY unchanged across the close, focus on the opener,
     the jump back when `preventScroll` is dropped).
+24. **Facts are drawn whole (the lead's rulings of 2026-10-22, S5 round 2; MASWALI-BUILD S5-FACTS).**
+    - **The fact line** (`MaswaliFacts`, `.kp-mln-facts`). Facts joined by "·" are one flex item each: facts that fit
+      share a line, a fact that does not moves whole to the next, a fact longer than its line wraps inside itself. The
+      separator is each fact's LEADING mark, drawn in the gap before it and cut away where a fact opens a line
+      (`clip-path`), so no line opens or ends on "·"; the DOM carries the " · " a copy and a screen reader read
+      (`sr-only`). The mark stands OUTSIDE the line's flow (absolutely, its fact the containing block): drawn as an
+      inline-block it was a place a line could break, and a fact whose first run did not fit sat a line low under an
+      empty one (HUB, sw 320). `test:maswali-design` 4.A1, `test:maswali-fact-mark` (Chromium, WebKit).
+    - **The kept runs** (`keepFact`). A phrase is one unbreakable run: a week and its number, a clock with its day and
+      zone, a reserve range, a cap's count, a number and its noun, a money figure (`.amount`), and a one-letter word with
+      the word after it ("A ticket", never "A" / "ticket"). Every run fits the narrowest box a fact line is drawn in at
+      320, 180px (`test:maswali-facts`, the census of every Millionea string in sw, en and zh). So a noun before a cap's
+      count stays free ("Matokeo" / "5 kati ya 15 yametolewa"), the digits of a money figure start no number phrase,
+      and a run that would start inside a figure starts after it: a figure is its own run however the jackpot grows.
+      The words are the dictionary's, character for character.
+    - **The week's close is said one way**: `salesCloseColon` ("Sales close: Friday 18:00 EAT", "Mauzo yanafungwa:
+      Ijumaa 18:00 EAT", "销售截止：周五 18:00 EAT"), its zone kept with its clock: the card and its ghost
+      (`test:maswali-doors` 1.1, 1.8), the slip and the ticket. ⚠️ The hub's close row and the register's week row still
+      say `salesCloseAt`, with no zone, until the S5 round-2 merge rules on them.
 
 ---
 

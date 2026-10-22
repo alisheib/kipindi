@@ -4749,7 +4749,8 @@ html[data-sheet-open] .route-enter { animation: none; }
    first line. As an inline-block it was an atomic inline, which a line may always break after, so a fact whose first run
    did not fit its line left the mark alone on an EMPTY first line (cut away by the clip) and its words on the next. Out
    of flow it offers no break: a fact's first run opens its first line. On a line of the list's own height it is drawn
-   pixel for pixel where the inline-block drew it; beside a taller first line it sits at that line's top, not its baseline. */
+   pixel for pixel where the inline-block drew it; beside a taller first line it sits at that line's top, not its baseline.
+   The rule: DESIGN_AUTHORITY §M8a item 24. */
 .kp-mln-facts {
   --mln-sep: 0.9em;
   display: flex;

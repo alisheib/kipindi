@@ -5,7 +5,8 @@ import { cn } from "@/lib/utils";
 import type { Locale } from "@/lib/i18n-dict";
 
 /**
- * MILLIONEA'S FACT LINES — the S5 tile read's A1, built once (MASWALI-BUILD S5 · VIS-P; S5-VIS-FINDINGS §A A1).
+ * MILLIONEA'S FACT LINES — the S5 tile read's A1, built once (MASWALI-BUILD S5 · VIS-P; S5-VIS-FINDINGS §A A1). The rules
+ * are DESIGN_AUTHORITY §M8a item 24's; this comment says how the module keeps them.
  *
  * 🔴 WHAT THE TILES SHOWED: a "·"-joined line that wrapped put its separator at a line's start or end ("…TZS 1,000,000" /
  * "· shared equally…", "Main 0/10 ·" / "Reserve 0/5", the stamp's "…(main balance) ·"), and phrases tore inside —
@@ -24,7 +25,9 @@ import type { Locale } from "@/lib/i18n-dict";
  *   · `keepFact` keeps a fact's phrases whole, the platform's way (keep-run.tsx): each run in a `white-space: nowrap`
  *     span, the words untouched (no no-break space, no word joiner — a copy and a screen reader read the dictionary's
  *     text). Its runs are the platform's (`keptRanges`: a spaced dash held to the word before it, a possessive with its
- *     noun, the last two words) and Millionea's own, below.
+ *     noun, the last two words), Millionea's own (`factRuns`, below), each money figure whole and alone (a run that would
+ *     start inside a figure starts after it), and each one-letter word with the word after it (`oneLetterRanges`). Every
+ *     run fits the narrowest line a fact is drawn in, 180px at 320 (`test:maswali-facts`' census).
  * ⛔ The list's text is the same text as before for everything but the eye: each separator is also in the DOM as a
  *    screen-reader-only " · " (`sr-only`), so an accessible name, a copy and a search read "A · B · C" exactly as the old
  *    joined string did; the drawn mark is generated content with empty alternative text, read by nobody twice.
@@ -126,6 +129,17 @@ export function factRuns(locale: Locale, text: string): string[] {
   return [...all(WEEK), ...all(CLOCK), ...all(RESERVES), ...all(OF_CAP), ...nounNumber];
 }
 
+/**
+ * ⭐ A ONE-LETTER WORD NEVER ENDS A LINE (S5 round 2, the lead's read of the hub's intro at en 360: "…5 reserve. A" /
+ * "ticket is…"): a word of one Latin letter ("A", "a", "I") is one run with the word after it, so a line breaks before
+ * it or after that word, never between them. A letter inside a token is no word ("A1–A5", "player's"); Millionea's Swahili
+ * and Chinese strings hold none (`test:maswali-facts` §5 reads every one, and holds that no sw or zh line moved).
+ */
+const ONE_LETTER = /(^|[\s(“])([A-Za-z])\s+\S+/g;
+function oneLetterRanges(text: string): Array<[number, number]> {
+  return [...text.matchAll(ONE_LETTER)].map((m): [number, number] => [(m.index ?? 0) + m[1].length, (m.index ?? 0) + m[0].length]);
+}
+
 /** Each money figure's [start, end) in `text`, read by the platform's one money reader (`moneyRuns`) — never a second
  *  pattern — so a kept run that touches a figure takes the whole figure and its `.amount` span is never cut. */
 function moneyRanges(text: string): Array<[number, number]> {
@@ -192,7 +206,8 @@ function numeralNodes(node: ReactNode): ReactNode {
 
 /**
  * One fact with its phrases kept whole and its figures in the money face: the platform's kept runs (`keptRanges`) and
- * Millionea's (`factRuns`), plus any run the caller names, each a `white-space: nowrap` span; every money figure an
+ * Millionea's (`factRuns`), plus any run the caller names and each one-letter word with the word after it
+ * (`oneLetterRanges`), each a `white-space: nowrap` span; every money figure an
  * `.amount` and every other numeral `.mono` (`numeralRuns`, §T5) — but in a heading in the display face (`numerals:
  * false`), where a numeral keeps the heading's face. The words are never changed.
  */
@@ -210,6 +225,6 @@ export function keepFact(locale: Locale, text: string, runs: readonly string[] =
     }
     return from < b ? [[from, b]] : [];
   });
-  const ranges = mergeRanges([...kept, ...money]);
+  const ranges = mergeRanges([...kept, ...money, ...oneLetterRanges(text)]);
   return keepRanges(text, ranges, opts.numerals === false ? (part) => moneyRuns(part) : (part) => numeralRuns(part));
 }
