@@ -29,6 +29,17 @@
 
 ## §0 · RESUME AT
 
+**⏳ IN FLIGHT (2026-10-22 PM, OMEGA-COMPILE01, the Claude session asheib-f3 leads; Ali: "proceed until done … pushed live
+and development closed").** Ali's scope (2026-10-22): **build done, launch later** — S5, then S7, then S6, each verified
+(critics 10/10 + every gate) and pushed to `main` DARK; STAFF_PREVIEW right after S5 is live (his 2026-10-21 ruling); S8
+prepared and handed to him (his items listed in this §0 at the close). Running now, each on its own branch (pushed after
+every commit): the six round-2 lanes finish their LEFT lists (code, static checks, targeted proofs — the full render runs
+ONCE on the integrated head, then the independent critics); DOORS fixes the ⛔ dark-safety blocker first (every place a
+`millionea=`/`preview=` prop reaches a client component); S7 merges this release into `claude/maswali-s7-s5` (FIX-SRV's
+map), then builds TK.2 (MB-96) and RD.5 (MB-74); S6 reviews N's round 17 and maps its merge (read-only). OB.0 (MB-23,
+MR-16's objection door) is built on the integrated UI after S5's merge. Lead's working state: this §0 + the hand-over
+branch `maswali-handover-20261021` (a new top section at each milestone).
+
 **State (2026-10-21):** S1–S4 are on `main` dark. S5's release candidate is branch
 `claude/maswali-s5-release` (Codex's mirror `codex/maswali-coord-20261019` retired 2026-10-21 PM): Codex's integrated
 S5 (`bd139142`) merged with production `main` `4471bb44` (U43's house-gold restore `dd1386f0` and PHOSPHOR
