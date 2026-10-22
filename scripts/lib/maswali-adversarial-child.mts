@@ -12,6 +12,8 @@
  *   §2  CH · a six-week chain — week 3 voided, week 4 skipped — each week opening while the last waits (MR-3, MR-21, MB-16)
  *   §3  RP · reserve patterns × late voids × a reinstatement: the money follows the FINAL record (MR-17, MR-19, MB-15)
  *   §4  OB · an objection during settlement (MR-16, MB-23)
+ *   §4b OM · an objection upheld through the Millionea door: the re-grade, the one restart, the money on the final record
+ *          (MR-16, MR-17, MB-23; S7-OB)
  *   §5  SD · a source domain switched off mid-week (MB-22)
  *   §6  GU · an under-funded guarantee at k ≥ 1, to the shilling, and a short float (MR-22, MB-03, MB-11, MB-63)
  *   §7  WF · no winner floor: 950 winners at the floor, each paid below the ticket's price (MR-25, OD-19)
@@ -55,7 +57,6 @@ const { checkMaswaliInvariants } = await import("../../src/lib/server/maswali-in
 const { eatWeekStartMs, eatWeekAt } = await import("../../src/lib/eat-day.ts");
 const { merkleRoot } = await import("../../src/lib/maswali-commitment.ts");
 const { displayMap } = await import("../../src/lib/maswali-score.ts");
-const objections = await import("../../src/lib/server/objections-service.ts");
 const sources = await import("../../src/lib/server/source-registry.ts");
 const holidays = await import("../../src/lib/server/maswali-holidays.ts");
 const { formatTzs } = await import("../../src/lib/utils.ts");
@@ -602,13 +603,22 @@ if (runs("OB")) {
   await W.sell(wk.id, 9, MISS_M1, [filler]);
   await closed(wk.id);
   await sealRest(wk.id, start);
-  // MR-16: any holder may object, per question, inside the week's own window. The platform has one objection door.
-  const filed = await objections.fileObjection(holder, { marketId: wk.marketId, reason: "WRONG_OUTCOME", detail: "M3 was sealed against the result its source published" });
-  knownRed("MB-23", "OB.0 · KNOWN-RED MB-23 · a ticket holder files an objection against one question inside the week's window (MR-16: per question, any holder; REVERSE, VOID or REINSTATE by an officer other than the sealer)",
-    filed.ok, J(filed));
-  if (filed.ok) await W.db.objection.update(filed.data.objectionId, { status: "REJECTED", reviewedBy: OWNER, reviewedAt: new Date().toISOString(), reviewNote: "decided" });
+  // MR-16: any holder may object, per question, inside the week's own window — through the Millionea door (S7-OB), and an
+  // officer other than the sealer rules (here the Owner, rejecting it, so the cases below start from a decided week).
+  const mob = await import("../../src/lib/server/maswali-objections.ts");
+  const ruler = await W.user({ id: `usr_adv_ob_owner_${process.pid}`, role: "ADMIN" });
+  const finalAt = Date.parse((await dal.weekStore.get(wk.id)).gradedSetFinalAt);
+  const filed = await mob.fileMillioneaObjection({ userId: holder, weekId: wk.id, slot: 3, reason: "WRONG_OUTCOME", detail: "M3 was sealed against the result its source published", now: new Date(finalAt + MIN) });
+  const q3 = (await dal.questionStore.listForWeek(wk.id)).find((q: any) => q.slot === 3);
+  const ruled = filed.ok
+    ? await mob.decideMillioneaObjection({ objectionId: filed.objectionId, officerId: ruler, ruling: "REJECT", note: "The official source confirms the seal of M3", expectedOutcome: q3.outcome, expectedSealedAt: q3.sealedAt, now: new Date(finalAt + 2 * MIN) })
+    : filed;
+  ok("OB.0 · ⭐ a ticket holder files an objection against one question inside the week's window, and an officer other than the sealer rules on it (MR-16: per question, any holder; REVERSE, VOID or REINSTATE)",
+    filed.ok && ruled.ok && (await W.db.objection.findById(filed.objectionId))?.questionOrdinal === 3 && (await W.db.objection.findById(filed.objectionId))?.status === "REJECTED",
+    J({ filed, ruled }));
   const at = await afterWindow(wk.id);
-  // ⚠️ A FIXTURE, DECLARED: the OPEN objection a Millionea door would write — none exists yet (OB.0) — as the row itself.
+  // ⚠️ A FIXTURE, DECLARED: an OPEN objection written as the row itself, so each case below sets the instant it lands —
+  //    after the window (OB.1), inside the release's chain lock (OB.3); the door's own filing is OB.0 and §4b's.
   const objection = (id: string) => ({
     id, marketId: wk.marketId, userId: holder, reason: "WRONG_OUTCOME", detail: "M3 sealed against its source (declared fixture)", status: "OPEN",
     createdAt: new Date().toISOString(), reviewedBy: null, reviewedAt: null, reviewNote: null, remedy: null, outcomeAtFiling: null,
@@ -641,6 +651,55 @@ if (runs("OB")) {
   ok("OB.4 · …decided, the same week releases once and pays its winner", r2.ok && r2.week.state === "SETTLED" && (await bal(holder)) > before.bal, errOf(r2));
   const r3 = await W.release(wk.id, at);
   ok("OB.5 · …and a second release pays nothing (already)", r3.ok && r3.already === true);
+}
+
+// ═══ §4b · OM · an objection upheld through the Millionea door ═════════════════════════════════════════════════════════
+if (runs("OM")) section("§4b · OM · an objection upheld through the Millionea door: the question re-graded, the window restarted once, and the money paid on the final record (MR-16, MR-17, MB-23)");
+if (runs("OM")) {
+  const mob = await import("../../src/lib/server/maswali-objections.ts");
+  const owner = await W.user({ id: `usr_adv_om_owner_${process.pid}`, role: "ADMIN" });
+  const start = W.weekStartAhead(ahead++);
+  const wk = await openWeekAt(start);
+  // M4's result decides between the two: `right` says NO, `sealedWinner` says YES; the fillers miss M1.
+  const [right, sealedWinner, filler] = await people(3, 50_000);
+  const [tR] = await bought(right, wk.id, [picks({ 4: "NO" })]);
+  const [tS] = await bought(sealedWinner, wk.id, [ALL_YES]);
+  await W.sell(wk.id, 8, MISS_M1, [filler]);
+  await closed(wk.id);
+  const sealAt = new Date(start + 9 * DAY);
+  await sealRest(wk.id, start, {}, sealAt);
+  const end0 = await windowEndOf(wk.id);
+  const pre = await settle.previewMaswaliSettlement(wk.id, new Date(end0 + MIN));
+  ok("OM.0 · as sealed (M4 YES), one ticket wins: the all-YES one", pre.ok && pre.preview.winners === 1, pre.ok ? `${pre.preview.winners}` : errOf(pre));
+  const filed = await mob.fileMillioneaObjection({ userId: right, weekId: wk.id, slot: 4, reason: "WRONG_OUTCOME", detail: "The official source published NO for event 4", now: new Date(sealAt.getTime() + HOUR) });
+  const held = await W.release(wk.id, new Date(end0 + MIN));
+  ok("OM.1 · ⭐ an objection filed through the door inside the window holds the week: at the window's end the release refuses, and nothing pays",
+    filed.ok && !held.ok && /objection is standing/.test(errOf(held)) && (await dal.weekStore.get(wk.id)).state === "RESOLVING"
+      && (await dal.ticketStore.listForWeek(wk.id)).every((t: any) => t.status === "LIVE"), J({ filed, held: errOf(held) }));
+  const q4 = (await dal.questionStore.listForWeek(wk.id)).find((q: any) => q.slot === 4);
+  const ruleAt = new Date(end0 + 2 * MIN);
+  const upheld = filed.ok
+    ? await mob.decideMillioneaObjection({ objectionId: filed.objectionId, officerId: owner, ruling: "REVERSE", note: "The official source reads NO for event 4", expectedOutcome: q4.outcome, expectedSealedAt: q4.sealedAt, now: ruleAt })
+    : filed;
+  const rules = W.svc.frozenRules(wk);
+  const end1 = await windowEndOf(wk.id);
+  ok("OM.2 · ⭐ the Owner upholds it after the first window ended (a ruling has no window): M4 reverses to NO, the graded set changes, and the window restarts from the ruling — once",
+    upheld.ok && upheld.changed && upheld.restarted && (await dal.questionStore.get(q4.id)).outcome === "NO" && (await dal.weekStore.get(wk.id)).objectionRestarted === true
+      && end1 === W.svc.objectionWindowEnd(ruleAt.getTime(), rules.objectionWindowHours, rules.objectionNotBeforeAt),
+    `${J(upheld)} · ${new Date(end0).toISOString()} → ${new Date(end1).toISOString()}`);
+  const tooSoon = await W.release(wk.id, new Date(ruleAt.getTime() + MIN));
+  ok("OM.3 · ⛔ right after the ruling the week does not settle: the restarted window is open, and nothing pays",
+    !tooSoon.ok && /objection window/.test(errOf(tooSoon)) && (await dal.weekStore.get(wk.id)).state === "RESOLVING", errOf(tooSoon));
+  const before = { right: await bal(right), sealed: await bal(sealedWinner) };
+  const r = await W.release(wk.id, new Date(end1 + MIN));
+  const share = r.ok ? r.week.sharePerTicket : null;
+  ok("OM.4 · ⭐ released on the final record: the M4-NO ticket wins and its holder is paid the share; the ticket that won as sealed is paid nothing",
+    r.ok && J(await winnersOf(wk.id)) === J([tR.ticketId]) && (await dal.ticketStore.get(tS.ticketId)).won === false
+      && (await dal.ticketStore.get(tR.ticketId)).payout === share && (await bal(right)) === before.right + share && (await bal(sealedWinner)) === before.sealed,
+    J({ won: await winnersOf(wk.id), right: tR.ticketId, share, err: errOf(r) }));
+  const late = await mob.fileMillioneaObjection({ userId: sealedWinner, weekId: wk.id, slot: 4, reason: "WRONG_OUTCOME", detail: "The first seal of event 4 was the right one", now: new Date(end1 + 2 * MIN) });
+  ok("OM.5 · a SETTLED week is final: an objection after it is refused (WEEK_FINAL) and writes nothing",
+    !late.ok && late.why === "WEEK_FINAL" && (await W.db.objection.listForMarket(wk.marketId)).length === 1, J(late));
 }
 
 // ═══ §5 · SD · a source domain switched off mid-week ═════════════════════════════════════════════════════════════════

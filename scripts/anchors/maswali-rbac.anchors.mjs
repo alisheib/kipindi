@@ -80,4 +80,21 @@ export const MUTATIONS = [
     expect: "3 · saveMaswaliHolidays is enforced",
     suite: "rbac",
   },
+  /* ── MASWALI-BUILD S7-OB · Compliance's ruling on a player's objection to one question (MR-16), on /integrity. ── */
+  {
+    name: "(S7-OB-rbac-1) the objection ruling is registered as a trading control, so the week's own officer could rule on its seals",
+    file: "src/lib/server/control-gates.ts",
+    from: "  ruleMaswaliObjection: \"compliance\",",
+    to: "  ruleMaswaliObjection: \"trading\",",
+    expect: "2 · ruleMaswaliObjection is registered compliance",
+    suite: "rbac",
+  },
+  {
+    name: "(S7-OB-rbac-2) the objection ruling is enforced as the week void's control instead of its own",
+    file: "src/app/admin/maswali/integrity/actions.ts",
+    from: "requireStaff(CONTROL_DOMAIN.ruleMaswaliObjection, \"ruleMaswaliObjection\")",
+    to: "requireStaff(CONTROL_DOMAIN.voidMaswaliWeek, \"ruleMaswaliObjection\")",
+    expect: "3 · ruleMaswaliObjection is enforced",
+    suite: "rbac",
+  },
 ];

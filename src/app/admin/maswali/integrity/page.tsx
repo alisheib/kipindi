@@ -25,6 +25,7 @@ import { adminCount, formatNumber, formatTzs } from "@/lib/utils";
 import { fmtEat } from "@/lib/maswali-admin-format";
 import { HeldShareControls, HoldShareControl, PauseControl, VoidWeekControl } from "./integrity-controls";
 import { StandingAuditWarning } from "../audit-warning";
+import { MillioneaObjectionQueue } from "./objection-queue";
 
 export const metadata = { title: "Admin · Millionea · Integrity" };
 export const dynamic = "force-dynamic";
@@ -34,6 +35,7 @@ export const dynamic = "force-dynamic";
  * MB-78, OD-07).
  *
  *   · the SALES PAUSE (sales only; never a cancel, a settlement or a refund);
+ *   · the OBJECTIONS to one question (MR-16, MB-23; S7-OB), by week and question, to rule (`objection-queue.tsx`);
  *   · weeks whose whole-week void is certain and whose window has closed, to void;
  *   · HELD SHARES, to release or forfeit to the jackpot; and every winner, to screen and hold;
  *   · the SEAL LOG, shown only for weeks whose results can no longer change (MB-34: the counterfactual is read after
@@ -72,6 +74,8 @@ async function Content({ searchParams }: IntegrityPageProps) {
     ]),
   ]);
   const [canPause, canResume, canVoid, canHold, canRelease, canForfeit] = can;
+  // S7-OB · the objection queue's ruling (MR-16): Compliance's, the Owner the fallback.
+  const canRule = await canUseControl(role, "ruleMaswaliObjection");
   // The cluster report for the latest weeks whose ticket set is fixed (closed, being sealed, or just settled).
   const closed = (await weekStore.list({ states: ["CLOSED", "RESOLVING", "SETTLED"], limit: 3 }).catch(() => []));
   const clusters = await Promise.all(closed.map((w) => clusterReport(w).catch(() => null)));
@@ -97,6 +101,8 @@ async function Content({ searchParams }: IntegrityPageProps) {
             ? <PauseControl paused={!!standing?.pause.paused} />
             : <ControlLocked what={standing?.pause.paused ? "Resume sales" : "Pause sales"} need={CONTROL_DOMAIN.pauseMaswaliSales} block />}
         </AdminCard>
+
+        <MillioneaObjectionQueue viewerId={session?.userId ?? null} viewerIsOwner={role === "ADMIN"} canRule={canRule} />
 
         <AdminCard title="Answers moving while a week sells" sw="Mabadiliko ya majibu">
           {shifts === null ? <p className="text-body-sm text-danger-fg">The pick shifts could not be read.</p>
