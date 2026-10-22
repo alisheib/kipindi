@@ -29,7 +29,7 @@
 
 ## §0 · RESUME AT
 
-**⏹ STOP 4 (2026-10-22 ~12:30 UTC, OMEGA-COMPILE01, the Claude session asheib-f3 led; Ali: "push the progress we reached
+**⏹ STOP 4 (2026-10-22 ~10:45 UTC, OMEGA-COMPILE01, the Claude session asheib-f3 led; Ali: "push the progress we reached
 cleanly and stop the session cleanly so we proceed later on a clean base"). RESUME HERE, from any machine:** the hand-over
 branch `maswali-handover-20261021`, `handover/maswali-2026-10-21/` — README's top section (STOP 4: every branch and head,
 what each lane left, the next steps in order, Ali's answers) and MERGE-NOTES' top section (every lane's final report, every
