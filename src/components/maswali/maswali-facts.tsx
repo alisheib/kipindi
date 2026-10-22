@@ -84,8 +84,9 @@ export function factsOf(line: string): string[] {
  *   · a count of a cap ("1 of 10", "1 kati ya 10");
  *   · a number and its noun — English and Chinese name the unit after the number ("13% fee", "5 reserve", "13% 费用",
  *     "15 题"), Swahili before it ("ada 13%", "akiba 5", "maswali 15").
- * ⚠️ Every run is a few words, narrower than the narrowest line it is drawn in (the home card's text column at 320, about
- * 180px): a kept run cannot break, so a wider one would overflow. `test:maswali-design` §4 holds the rule.
+ * ⚠️ Every run is a few words, narrower than the narrowest line it is drawn in (the census budget, 180px at 320): a kept run
+ * cannot break, so a wider one would overflow. `test:maswali-facts` measures every run of every Millionea line against it;
+ * `test:maswali-design` §4 holds that each phrase above stays whole.
  * ⛔ No lookbehind (Safari before 16.4 cannot parse one) and one plain scan per rule: the server and the browser draw the
  * same spans, so hydration cannot mismatch.
  */
@@ -102,10 +103,25 @@ const NOUN_THEN_NUMBER = new RegExp(`${WORD} ${NUMBER}`, "g");
 
 export function factRuns(locale: Locale, text: string): string[] {
   const all = (re: RegExp) => [...text.matchAll(re)].map((m) => m[0]);
-  return [
-    ...all(WEEK), ...all(CLOCK), ...all(RESERVES), ...all(OF_CAP),
-    ...all(locale === "sw" ? NOUN_THEN_NUMBER : NUMBER_THEN_NOUN),
-  ];
+  // ⭐ A NUMBER BELONGS TO ONE PHRASE, AND A FIGURE'S DIGITS ARE NO COUNT (S5 round 2, HUB's find; the lead's ruling):
+  //   · a count of a cap OPENS on its number ("5 kati ya 15"), so in Swahili, where the noun comes first, "Matokeo 5" took
+  //     that same number — and runs that overlap merge into one (`mergeRanges`): "Matokeo 5 kati ya 15 yametolewa" was ONE
+  //     unbreakable run, ~211px in a 216px row at 320. The noun before a cap's count stays free; the count keeps its own
+  //     phrase ("5 kati ya 15 yametolewa", ~150px);
+  //   · a money figure is the money reader's run, kept whole by itself (`moneyRanges`): a number rule that took its digits
+  //     ("1,000,000 carried", "1,000,000 滚存至") glued the figure to the words after it — a run that grows with the jackpot
+  //     ("TZS 12,345,000 carried forward", ~207px). The digits of a figure start no number phrase.
+  // `test:maswali-facts` measures every run of every Millionea line against the narrowest box that draws one.
+  const money = moneyRanges(text);
+  const inFigure = (at: number) => money.some(([a, b]) => at >= a && at < b);
+  const capOpens = new Set([...text.matchAll(OF_CAP)].map((m) => m.index ?? 0));
+  const nounNumber = locale === "sw"
+    ? [...text.matchAll(NOUN_THEN_NUMBER)].filter((m) => {
+      const at = (m.index ?? 0) + m[0].lastIndexOf(" ") + 1;
+      return !capOpens.has(at) && !inFigure(at);
+    }).map((m) => m[0])
+    : [...text.matchAll(NUMBER_THEN_NOUN)].filter((m) => !inFigure(m.index ?? 0)).map((m) => m[0]);
+  return [...all(WEEK), ...all(CLOCK), ...all(RESERVES), ...all(OF_CAP), ...nounNumber];
 }
 
 /** Each money figure's [start, end) in `text`, read by the platform's one money reader (`moneyRuns`) — never a second
@@ -179,6 +195,19 @@ function numeralNodes(node: ReactNode): ReactNode {
  * false`), where a numeral keeps the heading's face. The words are never changed.
  */
 export function keepFact(locale: Locale, text: string, runs: readonly string[] = [], opts: { numerals?: boolean } = {}): ReactNode {
-  const ranges = mergeRanges([...keptRanges(text, [...runs, ...factRuns(locale, text)]), ...moneyRanges(text)]);
+  const money = moneyRanges(text);
+  // ⭐ A KEPT RUN THAT STARTS INSIDE A FIGURE STARTS AFTER IT (the lead's ruling, S5 round 2): the platform's last two words
+  // read a figure's digits as a word ("1,000,000 imehamishwa"), and merged with the figure's own run they made the figure
+  // and its words one run that grows with the jackpot. The figure stays whole by itself; the words after it keep their run,
+  // so the two share a line wherever they fit and part only after the figure where the box is too narrow.
+  const kept = keptRanges(text, [...runs, ...factRuns(locale, text)]).flatMap(([a, b]): Array<[number, number]> => {
+    let from = a;
+    for (let fig = money.find(([s, e]) => from > s && from < e); fig; fig = money.find(([s, e]) => from > s && from < e)) {
+      from = fig[1];
+      while (from < b && /\s/.test(text[from])) from++;
+    }
+    return from < b ? [[from, b]] : [];
+  });
+  const ranges = mergeRanges([...kept, ...money]);
   return keepRanges(text, ranges, opts.numerals === false ? (part) => moneyRuns(part) : (part) => numeralRuns(part));
 }
