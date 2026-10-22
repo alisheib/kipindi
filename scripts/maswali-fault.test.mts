@@ -43,19 +43,24 @@ const runSync = (env: Record<string, string>, timeoutMs = 30 * 60_000) => {
   if (r.status !== 0) process.stderr.write(`${r.stdout ?? ""}${r.stderr ?? ""}`.slice(-4000));
   return `${r.stdout ?? ""}`;
 };
+// ⛔ POSIX: the child leads its own process group (`detached`), so killTree's group kill reaches npx, tsx and the node that
+//    holds the transaction. Without it `-pid` names no group, the kill throws, and the "killed" release runs on and commits
+//    (seen on Linux CI, 2026-10-22: §1 read a settled week). 1.2 therefore also asks that the release never finished.
 const runAsync = (env: Record<string, string>) => {
-  const child = spawn("npx", ["tsx", CHILD], { cwd: ROOT, env: { ...ENV, ...env }, shell: process.platform === "win32" });
+  const child = spawn("npx", ["tsx", CHILD], { cwd: ROOT, env: { ...ENV, ...env }, shell: process.platform === "win32", detached: process.platform !== "win32" });
   let text = "";
   child.stdout.on("data", (d) => { text += String(d); });
   child.stderr.on("data", (d) => { text += String(d); });
   const done = new Promise<string>((resolve) => child.on("exit", () => resolve(text)));
   return { child, done };
 };
-const killTree = (pid: number) => {
+/** Kills the child's whole tree; false when no kill could be delivered. */
+const killTree = (pid: number): boolean => {
   try {
     if (process.platform === "win32") execSync(`taskkill /PID ${pid} /T /F`, { stdio: "ignore" });
     else process.kill(-pid, "SIGKILL");
-  } catch { /* already gone */ }
+    return true;
+  } catch { return false; }
 };
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -82,16 +87,19 @@ try {
 
   // Start a release, and kill it the moment its backend holds a row lock on "Position" inside its transaction.
   const run = runAsync({ MLN_FAULT_MODE: "settle", ...envWeek });
-  let killedInTx = false;
+  let killedInTx = false, delivered = false;
   for (let i = 0; i < 6_000 && !killedInTx; i++) {
     const r = await watch.query(`SELECT count(*)::int AS n FROM pg_locks l JOIN pg_class c ON c.oid = l.relation
       WHERE c.relname = 'Position' AND l.mode = 'RowExclusiveLock' AND l.granted AND l.pid <> pg_backend_pid()`);
-    if (r.rows[0].n > 0) { killTree(run.child.pid!); killedInTx = true; break; }
+    if (r.rows[0].n > 0) { delivered = killTree(run.child.pid!); killedInTx = true; break; }
     if (run.child.exitCode !== null) break;
     await sleep(15);
   }
-  await run.done;
-  ok("1.2 · the release was killed while its transaction held its row locks", killedInTx, killedInTx ? "" : "the release ended before the lock was seen");
+  // A release the kill missed runs to its end and prints its result: then nothing below would be a fault's aftermath.
+  const ranOn = tag(await run.done, "RESULT");
+  ok("1.2 · the release was killed while its transaction held its row locks, and never finished",
+    killedInTx && delivered && ranOn === null,
+    !killedInTx ? "the release ended before the lock was seen" : !delivered ? "the kill could not be delivered" : ranOn ? `the release ran on: ${J(ranOn)}` : "");
   // The dead client's backend rolls back; wait until no backend but this one is left on the database.
   for (let i = 0; i < 200; i++) {
     const r = await watch.query(`SELECT count(*)::int AS n FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()`, [DB]);

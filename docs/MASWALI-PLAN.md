@@ -29,9 +29,53 @@
 
 ## §0 · RESUME AT
 
+**⏹ STOP 5 (2026-10-22 ~15:05 UTC, OMEGA; Ali: "I'll continue from another machine", the session's tokens ran out).
+RESUME HERE, from any machine — "continue maswali":** the S5 dark push was IN PROGRESS and is NOT done; production still
+serves `da3d32180` (nothing of S5–S8 is live). Its state, to finish first:
+1. This branch's head (the STOP 5 commit) = the gated `b120fcbe0` + three small red fixes, each green: `visual-pass-r7c`
+   1.4 (PLATFORM's re-pin: the hub's calm bars draw through NoticeBar, 66/0), `visual-pass-r5h` 3.5 (PLATFORM's
+   classification of ChatRoot.tsx's mark, 60/0), `ui-consistency` (REGISTER's line: the How-to-play ghost's button at
+   `--h-control-md`, no drift). The release CI run on `ee6075609` failed only on cases this head fixes (guards-exist, the
+   D19a pins, these three); CI run `39799912310` was dispatched on `b120fcbe0`.
+2. Printed at `b120fcbe0`: tsc 0; e2e:maswali-money 3/0. NOT finished when the session stopped: `next build`, the dark
+   checks (qa:live + the WITHDRAWN player drive + door-dark on WITHDRAWN and STAFF_PREVIEW), classic parity against
+   `parity-v5-bfa0b7d57.json`, e2e:money/fault/card and e2e:maswali-fault. Re-run ALL of them at this head (a fresh
+   gate), plus CI on it, then push to `main` under `main-push.lock`, read back (AGENTS §4), switch STAFF_PREVIEW, one QA
+   staff + one QA player sign-in (all pre-approved, COMPLIANCE-DECISIONS § "2026-10-22 · Maswali Millionea — …").
+3. Every lane was told to commit (WIP marked "not verified" where so) and push before the stop: S5 round 2 —
+   `claude/maswali-s5-r2-hub`, `-r2-register`, `-r2-platform` (rail swap `748003c0d`), `claude/maswali-s5-landing-door`
+   (`d75b56704`, done); S7 `claude/maswali-s7-s5` + `claude/maswali-s7-ob` (`1c8b42284`, done; MR-16 as built goes into
+   §3 at its merge); S6 `claude/maswali-s6-release` + `claude/maswali-s6-{notices,lint,money,docs,admin}`. Their briefs,
+   the lead's log and the job scripts are on the hand-over branch `maswali-handover-20261021` (`handover/maswali-2026-10-21/`,
+   STOP 5). The admin guide's DRAFT is on Ali's Desktop on OMEGA; the final comes from S6-DOCS.
+Then continue with the ⏳ block below ("Next").
+
+**⏳ IN FLIGHT — S5 GOES TO `main` DARK (2026-10-22 from ~14:40 UTC; the Claude session asheib-f3 on OMEGA leads).**
+Ali chose "the checked parts now" (COMPLIANCE-DECISIONS § "2026-10-22 · Maswali Millionea — …" items 7–10): the
+language-change loader's colour fix (`fix/lang-switch-color`, merged into this release) rides in the same push; this
+release goes to `main` dark — the rollout stays `WITHDRAWN` in code and players see no Millionea — once its gates pass at the
+exact commit (typecheck, the production build, local `qa:live` with its dark section, classic parity, the CI battery,
+the money suites); the staff preview follows (pre-approved). Every Millionea screen is still scored 10/10 before players
+get it. The admin guide's DRAFT is on his Desktop; the final follows S6. The admin console works whatever the rollout,
+so the Owner's ceremonies (licence basis, guarantee) and week drafts can start on production after this push.
+
+**State (2026-10-22):** S1–S4 are on `main` dark. This release — S5: every player surface, round 1 of Ali's 10/10 pass,
+and round 2 of DOORS, SLIP, TICKETS and FACTS — is the one going live dark now. Not in it, each pushed on its own branch:
+S5 round 2's HUB, REGISTER and PLATFORM (with the phone rail's Millionea track) and TICKETS' landing line and Live link;
+S7 (`claude/maswali-s7-s5`, the objection door on `claude/maswali-s7-ob`); S6 (`claude/maswali-s6-release` and its
+lanes `claude/maswali-s6-{notices,lint,money,docs,admin}`).
+
+**Next:** "continue maswali" resumes here, in order: (1) S5 round 2 — merge HUB, REGISTER, PLATFORM and TICKETS' landing
+door into this branch, run the integrated render, have the independent critics score every cell to 10, push the next S5
+release; (2) S7 — merge the objection door, the reds, the S17 rush and MB-97, the migration proof, push dark; (3) S6 —
+the integrator merges its five lanes, the ADMIN-COMPLETENESS review, push dark, the final admin guide PDF; (4) S8 —
+Ali's launch list in §6.1, then his launch word. §M8a numbers taken: 19–20 S7/S6, 21 TICKETS, 22–23 REGISTER, 24 FACTS
+(in), 25–27 HUB, 28 NOTICES, 29 ADMIN. The lead's log and the lane briefs go to the hand-over branch
+`maswali-handover-20261021` before the session ends.
+
 **⏳ RESUMED (2026-10-22 11:41 UTC, Ali: "proceed"; the same session asheib-f3 leads, every lane resumed with its own
 context):** HUB, TICKETS, REGISTER, PLATFORM and SLIP finish their STOP 4 lists on their r2 branches; S7 its list on
-`claude/maswali-s7-s5` (TK.2 = password writes only; RD.5 = shares from tickets bought at or after the reversed deposit);
+`claude/maswali-s7-s5` (TK.2 = the takeover alert as the lead ruled it — an alert to Compliance, never a hold; RD.5 = shares from tickets bought at or after the reversed deposit);
 S6 the integration on `claude/maswali-s6-release` (R and N next); DOORS (done) now builds the objection door OB.0 on
 `claude/maswali-s7-ob` from `claude/maswali-s7-s5`. main `da3d32180` (docs) deployed SUCCESS while stopped. The STOP 4
 record below still names every head and list.
@@ -52,7 +96,7 @@ is merged with S5 on `claude/maswali-s7-s5` (`be37a9683`, proven on both stores)
 English buy wording in the never-printed privacy paragraph and the player drive) and `edf79c2b0` (red:journey-home's
 anchor). Nothing of S5–S8 is live; production serves `67e47f8d2`.
 
-**State (2026-10-21):** S1–S4 are on `main` dark. S5's release candidate is branch
+**State on 2026-10-21 (record):** S1–S4 are on `main` dark. S5's release candidate is branch
 `claude/maswali-s5-release` (Codex's mirror `codex/maswali-coord-20261019` retired 2026-10-21 PM): Codex's integrated
 S5 (`bd139142`) merged with production `main` `4471bb44` (U43's house-gold restore `dd1386f0` and PHOSPHOR
 release 2b, W6) at `d1c5910f`. That merge took `main`'s copies of the three U43 RED anchor files and
@@ -188,7 +232,7 @@ Every lane committed and pushed at the stop; a commit marked "WIP … not verifi
   specialist, consistent with 50pick's design, before it ships — round 1 of the critics scored every surface; the fix
   and design lanes are working from their reports.
 
-**Next:** Finish S5's gates on its exact release commit — after U43's repair lands, merge `main` again — every
+**Next on 2026-10-21 (record):** Finish S5's gates on its exact release commit — after U43's repair lands, merge `main` again — every
 changed-file reader and mutation proof, current-`main` classic parity, the admin and player browser drives and
 tile reads (every page to its end, 320–1920 × en/sw/zh), the compiled responsive sweep (the leaderboard empty
 panel), the multi-slip drive, `test:all` with the database suites, typecheck, the exact-commit production build,
@@ -200,6 +244,11 @@ S6 follows in L → D → R → N order. S8 remains at its owner and regulatory 
 part of a dark release.
 
 ## §0a · Historical handovers (superseded by §0 above)
+
+> ⚠️ **A record, not the rules in force.** Statements below were true on their date and some are superseded — e.g. R10c is
+> closed (Ali, 2026-10-21 ruling 2: no staff-only buying phase); the live drive is the first public week (2026-10-22, §7b
+> S8); Millionea's tab and the classic rail's Millionea track replace "Millionea under More" (DESIGN_AUTHORITY §M8a item 11).
+> The rules in force are §0, §2, §3, §6, §7b and the owning documents they link.
 
 **Codex's S5 checkpoints (2026-10-20) — record.** Codex's state line of that day: the earlier ACTIVE player drive,
 WITHDRAWN-route drive and three-language player tile read passed; classic parity against the then-current `main`
@@ -848,7 +897,7 @@ never build there. The repository is public: describe anti-abuse controls by wha
 | S5 | Player surfaces | 🔨 | on `claude/maswali-s5-release`, with the fix lanes and `main` `bfa0b7d57` merged (2026-10-21 PM) and the design lanes' 10/10 pass in flight; focused source and two-store action checks, the 198/198 disposable-PostgreSQL money battery, earlier player tiles and classic parity are green; final exact-commit suite, render, build, local live QA, dark deploy and production read-back remain |
 | S6 | Fairness, notices, reports, legal, data | 🔨 | legal + data squash-merged on `mln-s6-int` `81c60f0f`; reports round 15 accepted on `mln-s6-reports` `57624a2f`; notices round 17 complete on `mln-s6-notices` `bd74c982c` (both BLOCKERs fixed; its final-head checks owed) — §0 |
 | S7 | Adversarial hardening | 🔨 | on `claude/maswali-s7` at `2cba1f577`: F7 integrated, and S7-F8 1–6 — the held-winner release placed in 5 s sections of the lock (a 7,000-held week settles once in 81.6 s), measured on both stores and under the S16 10,000-ticket load; the S17 rush and the F7 6–8 render read are owed; lands after S5 |
-| S8 | Live drive and public launch | ⬜ | never before every §6 line is ticked |
+| S8 | Live drive and public launch | ⬜ | starts when every §6 line but "(after ACTIVE)" is ticked; the first public week is the drive (Ali, 2026-10-22); closes on its record |
 
 **Status values:** ⬜ not started (cites no commit) · 🔨 in progress · ✅ done (cites a commit that exists) · ⛔ blocked
 (cites an `OD-nn` from §9 or an `R-` ruling from §2).
@@ -1550,9 +1599,14 @@ POOL ends at 0. If a 10/10 exists in the final week, normal settlement (floor in
 
 ### 6.1 Launch gate: what must be true before the first real ticket
 
-R-LAUNCH means "launch once built and the drive passes". Real money enters at the S8 drive, so **gate A is checked before the drive** and **gate B before ACTIVE**. Each is a `☐` line in §6 that `test:maswali-plan` reads.
+R-LAUNCH means "launch once built and the drive passes". **Since Ali's rulings of 2026-10-21 (ruling 2: no staff-only
+buying phase) and 2026-10-22 (COMPLIANCE-DECISIONS § "2026-10-22 · Maswali Millionea — …"), the live drive IS the first
+public week:** real money enters at ACTIVE, so **gate A and gate B are both checked before ACTIVE**, and line 12 — the
+first public week's acceptance record — is the one line ticked **after** ACTIVE (it carries "(after ACTIVE)"; S8 closes on
+it). Each is a `☐` line in §6 that `test:maswali-plan` reads: S8 may start once every line but the after-ACTIVE one is
+ticked, and is ✅ only when that one is too.
 
-**Gate A, before any real-money ticket (including the drive):**
+**Gate A, before any real-money ticket (the first public week is the drive):**
 
 1. ☐ **Licence basis recorded (OD-01):**
    - Ali chose his own dated ruling (2026-10-16, the COMPLIANCE entry) over a written Gaming Board note, and accepted
@@ -1569,7 +1623,10 @@ R-LAUNCH means "launch once built and the drive passes". Real money enters at th
 
 **Gate B, before rollout ACTIVE:**
 
-6. ☐ **The classic-shell entry point** (OD-23) and the journey entry (home card plus the third Tiketi switch) are live behind the same rollout. They were shot at 320/360/768/1280 in sw, en and zh, and read one by one.
+6. ☐ **The classic-shell entry points** (OD-23, as amended: the bar's Millionea link — DESIGN_AUTHORITY §M8a item 11 —
+   the phone rail's Millionea track in Live's place and the landing's Millionea line, Ali 2026-10-22) and the journey entry
+   (home card plus the third Tiketi switch) are live behind the same rollout. They were shot at 320/360/768/1280 in sw, en
+   and zh, and read one by one.
 7. ☐ **Vodacom S16 baseline note:**
    - a dated COMPLIANCE-DECISIONS ruling amending S16 "in bounds" item 8 (OD-22): the five measures exclude MASWALI, and harm markers are reported for all players and for players without a ticket;
    - `journey-measures-dal.ts` filter live;
@@ -1579,7 +1636,8 @@ R-LAUNCH means "launch once built and the drive passes". Real money enters at th
 9. ☐ **RULES §5 step 6** verified on production (database and screen). Both PDFs regenerated and rasterised.
 10. ☐ **Agent terms** version bumped per OD-20. Terms and Millionea rules versions effective at ACTIVE.
 11. ☐ **Monitoring and runbook:** alerts proven, operator guide published, support scripts live.
-12. ☐ **The S8 drive record** exists, and its numbers equal §5's formulas.
+12. ☐ (after ACTIVE) **The S8 drive record — the first public week's acceptance record** — exists at
+    `docs/qa/millionea-live-drive-2026MMDD.md`, and its numbers equal §5's formulas to the shilling.
 13. ☐ **Rollback is understood:**
     - the Owner switch to WITHDRAWN hides surfaces and never deletes tickets;
     - a sales pause never blocks settlement, refunds or withdrawals;
@@ -2663,7 +2721,10 @@ MB-96 (TK.2, S7-F9 8 and 11), MB-74 (RD.5, S7-F9 9) and MB-23 (OB.0, S7-OB, merg
   and How to play draw (How through `ruleSunset`'s `{rule}`); S7's own purchase line, `finalRule`, is gone; D19a
   re-pinned. DESIGN_AUTHORITY §M8a item 19. Guards: `test:maswali-design` 2.F3a and 2.F3b (with its plant),
   `test:maswali-hub` 3.1 and §10. ⚠️ S6's L lane rewrites `ruleSunset` in all three languages: its merge keeps this key
-  as the rule's one wording.
+  as the rule's one wording. *The law says it the same way* (S7-F9 14): RULES §2.12's sunset paragraph no longer says
+  only that the final week "runs normally" — it states MR-30's rule as players read it (no 10/10: the highest scores
+  share the pool equally, with no floor top-up; J = R + S, the fee and its levies taken), and that a final week which
+  voids or sells nothing passes the role to the next week to open (`sunsetState`, PASSES_ON).
 - **S7 · L22's day only while it is ahead (S7-F9 5; the lead's ruling (b) of 2026-10-22, MR-30, OD-03).** The hub's bar
   says the final week's opening day ("It opens 30 Nov.") only while the open is still to come; a final week still a
   draft once its time has passed, or whose time cannot be read, is announced with S7's reviewed F1 words and no date
@@ -2716,28 +2777,37 @@ MB-96 (TK.2, S7-F9 8 and 11), MB-74 (RD.5, S7-F9 9) and MB-23 (OB.0, S7-OB, merg
 
 #### S8 · Live drive and public launch
 
-**Inputs:** S7 ✅, the §6 launch gate with every line ticked, and OD-01 and OD-21 ruled.
+**Inputs:** S5, S6 and S7 ✅; every §6 line ticked except line 12 "(after ACTIVE)"; OD-01 ruled. *(Ali, 2026-10-21
+ruling 2 and 2026-10-22 — COMPLIANCE-DECISIONS § "2026-10-22 · Maswali Millionea — …": the live drive is the FIRST PUBLIC
+WEEK; there is no private DRIVE week and no second drive week. OD-21's DRIVE-week code stays in the product, dormant.)*
 
 **Work items:**
-1. Set the rollout to **STAFF_PREVIEW**.
-2. Run a **private, unlinked DRIVE week** (`visibility: "DRIVE"`, OD-21) with trivial, quickly-settling questions.
-   - Use non-staff QA personas. Each production sign-in needs Ali's approval: one attempt, never retried.
-   - Engineer the picks so that the drive covers a cancel inside 5 minutes, a cap refusal, a bonus refusal, a staff refusal, one voided main replaced by R1, a winner, the floor top-up, the fee and levies, and the share.
-   - Then run a second drive week with no winner, to prove the rollover.
-   - The drive's unwon money is refunded to the drive accounts and the drive is kept out of every measure (OD-21,
-     accepted), so no drive money reaches public week 1.
-   - The scheduler closes the weeks. One officer seals. Accounting releases.
-3. Read back:
+1. STAFF_PREVIEW has run since S5 went live (Ali, 2026-10-21 ruling 1); staff have looked at every surface.
+2. **Launch** (Ali's word, after Gates A and B): the launch commit sets `MILLIONEA_SHIPPED = "ACTIVE"` and Railway's
+   `FEATURE_MILLIONEA` is set to `ACTIVE` or cleared (the variable overrides the code's ceiling), merged by the release
+   owner. The first PUBLIC week opens on the next Monday at the funded floor with no carry.
+3. **The first public week is the live drive:**
+   - Approved, non-staff QA accounts buy tickets that exercise the forced cases: a cancel inside 5 minutes, a cap refusal,
+     a bonus refusal and a staff refusal. Every QA ticket is cancelled inside its free-cancel window, so no company ticket
+     stays in the draw (the insider bar). Each production sign-in needs Ali's approval: one attempt, never retried.
+   - The cases only real play produces — a voided main replaced by R1, a winner, the floor top-up, the fee and levies,
+     the share — are verified as week 1 (and the first weeks) produce them; the rollover is proven by the first week with
+     no 10/10.
+   - The rollback switch (`WITHDRAWN`) stands ready, with its triggers named in advance: any figure that differs from §5,
+     any refusal not as ruled, any notice not sent exactly once.
+   - The scheduler closes the week. One officer seals. Accounting releases.
+4. Read back:
    - the database (read-only proxy, counts and names only);
    - the ledger's zero-sum group, POOL 0, `trialBalance()` and the Maswali invariants;
    - the tax-report lines;
    - verification of the hash and an inclusion proof;
    - the screens at 360 and 1280 in sw.
-4. RULES §5 step 6, verified on production.
-5. Write the record at `docs/qa/millionea-live-drive-2026MMDD.md`, with a README row.
-6. **Launch:** a one-word commit sets `MILLIONEA_SHIPPED = "ACTIVE"`, merged by the release owner. The first PUBLIC week opens on the next Monday 00:00 EAT at the funded floor with no carry.
+5. RULES §5 step 6, verified on production.
+6. Write the record at `docs/qa/millionea-live-drive-2026MMDD.md` (the first public week's acceptance record), with a
+   README row; tick §6 line 12.
 
-**Acceptance:** the drive record shows every money figure equal to §5's formulas to the shilling, and the public week opens on schedule.
+**Acceptance:** the first public week opens on schedule, and its record shows every money figure equal to §5's formulas
+to the shilling.
 
 **Closes:** MB-45, MB-73 (verified live), MB-39 (gate satisfied).
 
@@ -2816,7 +2886,7 @@ MB-96 (TK.2, S7-F9 8 and 11), MB-74 (RD.5, S7-F9 9) and MB-23 (OB.0, S7-OB, merg
 | MB-42 | M | MASWALI = "denied" for house bots triggers a daily false `PRODUCT_DENIED` alarm in `scopeAlerts`. `predictorExtra` inflates counts players see. | Return early before `scopeAlerts` for MASWALI. Remove MASWALI from INTENT/TARGET lines. The ticket count comes only from the week's own count. File a COMPLIANCE-DECISIONS entry for the denial. | Eng | S1 · ✅ S0.5 `9834aaf0` for the false alarm and the INTENT/TARGET lines; the week's own ticket count (S5) and the COMPLIANCE-DECISIONS entry remain | C7 |
 | MB-43 | H | No rule for a winning ticket disqualified after settlement (under-18, duplicate identity, sanctions, a staff alternate account, cap evasion). Settlement cannot be re-run. | Never reopen a settled week. The share is credited, frozen, and decided by Compliance under Terms §3a. New entry type `MASWALI_FORFEIT_RETURN`. Roles re-checked at settlement. The forfeited share's home: OD-07. | Ali, Eng | S3, S4 | A17, C9 |
 | MB-44 | H | Winners whose account is closed, self-excluded, suspended or cooling off cannot see or withdraw the money. Many journey players have no email. | The closure screen lists open tickets. The `CANNOT_SIGN_IN` letter goes out. No next-jackpot figure appears in any notice. Payment procedure: OD-13. | Ali, Eng | S5, S6 | C11 |
-| MB-45 | M | Under R-LAUNCH the live drive either dilutes a public week or rolls staff money into week 1. | Per OD-21. | Ali | S8 | B30 |
+| MB-45 | M | Under R-LAUNCH the live drive either dilutes a public week or rolls staff money into week 1. | ~~Per OD-21.~~ The drive is the first public week (Ali, 2026-10-22): QA tickets are cancelled inside their free window, so no company ticket and no drive money is in any pool (§7b S8). | Ali | S8 | B30 |
 | MB-46 | H | Launching before S16 skews the sponsor's "in bounds" measures. `journey-measures-dal.ts` has no product-line filter (OPEN-13). | After the widening, exclude MASWALI from the five measures. Report the harm markers twice. Mark the launch date on the measures view. OD-22. | Ali, Eng | S6 | C16 |
 | MB-47 | H | Nothing guards marketing claims. The SMS composer sends text as typed, so "Shinda TZS 1,000,000 kwa TZS 1,000!" is false three ways. OG images and push are unchecked. | • An approved set of wordings that carries the three R-HEADLINE facts, with `{pct}` filled from the snapshot.<br>• A lint in `composeMarketing` (amount, shinda, milioni, uhakika).<br>• `test:millionea-claims` (no gold, no count-up, no "first").<br>• Messages to non-holders pass the marketing consent gate.<br>**As built (S6):** a campaign declares its product by its name (`campaignProductOf`). The composer's one door holds a Millionea campaign to the three facts and no claim (`millionea-claims.ts`), and at a server door to the week's own fee while Millionea is open. A campaign not tagged Millionea meets the untagged rules (its Millionea signals and a Chinese body refused) only where a server door hands them in: they are the server's alone (`millionea-untagged.ts`, S6-LINT 1), never in a browser bundle. Held by `test:maswali-claims` and `red:maswali-claims`. | Eng | S6 | C3 |
 | MB-48 | M | Banned topics go beyond politics: religion, adult, violence, war, and the health or death of an individual. Hand-typed questions bypass the AI filter, and "other" is an escape hatch. | One shared banned-topic screen in `openCycle` over EN and SW text and criteria. Category must be in `MARKET_CATEGORIES`. "Other" needs a compliance note. Red test. | Eng | S4 | B33, C23p |
@@ -3068,10 +3138,16 @@ These are only the items his rulings do not cover, ordered by how much they bloc
 
 27. **OD-21 · Live drive (MB-45).**
     - Rec: a private, unlinked week whose unwon money is refunded and kept out of the measures. Public week 1 starts at the floor with no carry.
+    - **Superseded for S8 (Ali, 2026-10-21 ruling 2 and 2026-10-22):** the live drive is the first public week, with QA
+      tickets cancelled inside their free window (§7b S8). The DRIVE-week code stays in the product, dormant.
 28. **OD-22 · S16 baseline (OPEN-13).**
     - Rec: the five measures exclude Millionea. Harm markers are reported for all players and for players without a ticket, and judged on the latter. Amend item 8 by a dated ruling.
 29. **OD-23 · Classic-shell entry point (OPEN-5).**
     - Rec: Millionea under More at every width, plus one card at the top of the Markets board. The rail does not change. D2 proposes the exact form.
+    - **Superseded:** Millionea has its own tab (Ali, 2026-10-19 — DESIGN_AUTHORITY §M8a item 11); on the classic phone rail
+      its track takes Live's place while its door is drawn, Live moving to More's first row, and the classic landing
+      carries a Millionea line and a Live link (Ali, 2026-10-22 — the same item and COMPLIANCE-DECISIONS § "2026-10-22 ·
+      Maswali Millionea — …").
 
 ## §10 · Design round R2 — "Daftari na Muhuri · The Register and the Seal"
 

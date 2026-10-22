@@ -680,17 +680,22 @@ that voids (on the closed list of grounds) is replaced by the first unused reser
   only and has **no cap**.
 - The winner floor of Invariant 1 does **not** apply: a Millionea share is a share of a jackpot, not a return on a stake.
 
-**The sunset.** The product retires through a final week, in one of three ways: a planned final week, named at least one
-full week before its sales open, announced on the hub and the home card from then on and never opened early; a stop
-ordered while a week is on sale, which makes that week final; or a stop ordered while no week is on sale and a week's
+**The sunset** (MR-30). The product retires through a final week, in one of three ways: a planned final week, named at
+least one full week before its sales open, announced on the hub and the home card from then on and never opened early; a
+stop ordered while a week is on sale, which makes that week final; or a stop ordered while no week is on sale and a week's
 results are being decided (its sales closed, not yet settled), which cannot take that week (it settles under its own
 rules; no 10 of 10 rolls over as always); the refusal names the Owner's next act — make the next week to open (once
 drafted) final, accepted at less than a full week's notice while that week's results are being decided, its buyers told
-at purchase. A stop between weeks takes the planned path (MR-30,
-OD-03; decided by the build lead on delegation, MASWALI-BUILD S6 rounds 2–3; `sunsetMaswali` on mln-s7-fix). The final
-week runs normally and everything the jackpot holds goes into it; after it no public week opens again, and what the
-jackpot account still holds stays there. A regulator-ordered stop refunds the current week (⏳ not built: OD-26's manual Compliance week
-void, before ACTIVE — until then the binding text does not state it). The ceremony is the Owner's alone.
+at purchase. A stop between weeks takes the planned path (OD-03; decided by the build lead on delegation, MASWALI-BUILD S6
+rounds 2–3; `sunsetMaswali`). The final week sells, closes and is graded like any other, and everything the jackpot
+holds goes into it: a 10/10 ticket wins
+it as in any week, the floor included. Without one, it is the one week a score below 10 is paid, by the rule its buyers
+read on the hub, the slip, the confirm sheet and How to play (`finalWeekRule`): "**Final week: if no ticket gets 10/10,
+the pool is shared equally by this week's highest-scoring tickets, with no floor top-up**". The score is a ticket's
+graded correct answers out of 10; J = R + S, and the fee and its levies are taken as above. If the final week voids or
+sells nothing, the next week to open becomes the final week. After it no public week opens again, and what the jackpot
+account still holds stays there. A regulator-ordered stop refunds the current week (⏳ not built: OD-26's manual
+Compliance week void, before ACTIVE — until then the binding text does not state it). The ceremony is the Owner's alone.
 
 **Who may buy.** Real balance only — a purchase that would draw bonus money is refused. Accounts holding a staff role and
 accounts 50pick operates are refused. Every responsible-gambling gate applies (§2.9's refusals), and a ticket bought before a
