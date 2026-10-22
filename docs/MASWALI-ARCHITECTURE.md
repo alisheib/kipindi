@@ -201,6 +201,7 @@ domains are in `ROUTE_DOMAINS` (`src/lib/server/roles.ts`).
   - **zh** — *Maswali Millionea 并非价格竞争市场。Millionea 彩票依其自身具有约束力的规则购买与结算——即
     /legal/rules/millionea 上的《Maswali Millionea 规则》，以彩票上记录的版本为准。本节关于我们的佣金、关于获胜投注
     绝不会低于本金、关于单边市场以及关于兑现的说明不适用于彩票；本条款的其余内容仍然适用。*
-- **The ticket's rules version.** `MaswaliTicket.rulesVersion` is written by the purchase as the week's code and the
-  instant its figures froze; it takes `MILLIONEA_RULES_VERSION` beside them when the purchase is wired to it
-  (`src/lib/millionea-rules-version.ts` says so).
+- **The ticket's rules version (MB-69, OD-18).** `MaswaliTicket.rulesVersion` is written once, by the purchase: the
+  binding rules' version in force at that instant (`MILLIONEA_RULES_VERSION`), then the week's code and the instant its
+  figures froze — `millioneaTicketRulesStamp` in `src/lib/millionea-rules-version.ts`, the one stamp (MASWALI-BUILD
+  S6-MONEY 1; `test:maswali-purchase` 2.14 on both stores).

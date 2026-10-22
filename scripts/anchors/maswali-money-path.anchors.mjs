@@ -887,4 +887,13 @@ export const MUTATIONS = [
     expect: "13.8 · ⭐ round 17 (L1)",
     suite: "notify",
   },
+  /* ── MASWALI-BUILD S6-MONEY · the binding rules' version on each ticket (MB-69) ─────────────────────────────────── */
+  {
+    name: "(SM1) MB-69 · the purchase stamps the week's mark alone: the binding rules' version a ticket was bought under is never recorded (OD-18)",
+    file: MONEY,
+    from: "              rulesVersion: millioneaTicketRulesStamp(week.code, rules.frozenAt), score: null, won: null, payout: null, frozenReason: null,",
+    to: "              rulesVersion: `${week.code}@${rules.frozenAt}`, score: null, won: null, payout: null, frozenReason: null,",
+    expect: "2.14 · ⭐ MB-69",
+    suite: "purchase",
+  },
 ];

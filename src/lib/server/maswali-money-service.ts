@@ -40,6 +40,7 @@ import { leafHash, newSalt, picksKey } from "@/lib/maswali-commitment";
 import { exitWindowFacts } from "@/lib/exit-window";
 import { readSalesPauseFresh } from "./maswali-pause";
 import { millioneaStateNow } from "./millionea-switch";
+import { millioneaTicketRulesStamp } from "@/lib/millionea-rules-version";
 import { formatDateTime, formatTzs } from "@/lib/utils";
 import type { StoredMarket, StoredPosition } from "./market-service";
 import type { ServiceResult } from "./auth-service";
@@ -463,7 +464,8 @@ export async function buyMaswaliTickets(input: {
             await ticketStore.create({
               id: ticketId, positionId, cycleId: week.id, userId, serial, selections: slips[i], salt, selectionsHash: leaf,
               picksKey: picksKey(slips[i]), status: "LIVE", cancelledAt: null, closeAtPurchase: fresh.closesAt,
-              rulesVersion: `${week.code}@${rules.frozenAt}`, score: null, won: null, payout: null, frozenReason: null,
+              // MB-69 · the binding rules' version this ticket is bought under, beside the week's mark (OD-18).
+              rulesVersion: millioneaTicketRulesStamp(week.code, rules.frozenAt), score: null, won: null, payout: null, frozenReason: null,
               lastViewedAt: null, createdAt: placedAt,
             }, tx ?? undefined);
             lines.push(...stakeEntries({ txnId, userId, marketId: market.id, realPart: price, bonusPart: 0 }));

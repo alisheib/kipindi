@@ -1290,3 +1290,15 @@ the settlement (RD.1). Before ACTIVE: the wallet lane's trigger, or the Owner's 
 
 The takeover alert MB-96 asks for is not built. What holds today: the preventive control (E-215, TK.1). Before
 ACTIVE: the alert, or a dated deferral recorded by the Owner.
+
+## §9b · MASWALI MILLIONEA — the money gaps S6 found and closed (2026-10-22, MASWALI-BUILD S6-MONEY)
+
+The S6 review (`MASWALI-PLAN.md` §8, the open items) left four money rows partial. Each is closed here with its guard on
+both stores and its plant in `red:maswali-money-path`; the row in §8 names the commit.
+
+#### ✅ SM.1 · MB-69 · a ticket did not record the rules version it was bought under
+
+OD-18 binds the Millionea rules on purchase, "with the version stamped on each ticket". The purchase wrote only the
+week's code and the instant its figures froze, and the module that holds the version said the stamp was still to be
+wired. Fixed in S6-MONEY 1: every ticket records `MILLIONEA_RULES_VERSION` beside its week's mark, through one function
+(`millioneaTicketRulesStamp`). Guard: `test:maswali-purchase` 2.14 (both stores); plant (SM1).

@@ -4,7 +4,8 @@
  *   npx tsx scripts/maswali-purchase.test.mts     (npm run test:maswali-purchase)
  *
  *   §1 who may buy and when: the rollout, the week, the account (MR-10), the picks (MR-9), the price (MR-8)
- *   §2 ⭐ one purchase of N tickets: one debit, N positions, N transactions, N salted tickets, one ledger group (MB-31)
+ *   §2 ⭐ one purchase of N tickets: one debit, N positions, N transactions, N salted tickets, one ledger group (MB-31),
+ *      each ticket stamped with the binding rules' version it was bought under (MB-69, OD-18; S6-MONEY 1)
  *   §3 the replay: the same key is the same purchase — never twice, never another purchase's receipt
  *   §4 the cap (MR-11), counted inside the wallet lock: concurrent purchases of one account end at exactly the cap
  *   §5 real balance only (MR-10) and the responsible-gambling gates, through the one bet path
@@ -23,6 +24,7 @@ const { svc: market } = W.w;
 const { dal, money, acct } = W;
 const { leafHash } = await import("../../src/lib/maswali-commitment.ts");
 const rg = await import("../../src/lib/server/responsible-gambling.ts");
+const RULES = await import("../../src/lib/millionea-rules-version.ts");
 
 process.exitCode = 1;
 let pass = 0, fail = 0;
@@ -110,6 +112,14 @@ const bought = await W.buy(buyer, week.id, three, { key: "key-three" });
   const m = await market.getMarket(week.marketId);
   ok("2.12 · the market's pool holds all three stakes on one side", m.yesPool === 3 * price && m.noPool === 0, `${m.yesPool}/${m.noPool}`);
   ok("2.13 · ⭐ the week's POOL ledger account holds them too (both stores)", (await W.balanceOf(acct.pool(week.marketId))) === 3 * price, `${await W.balanceOf(acct.pool(week.marketId))}`);
+  // ⭐ MB-69 · OD-18: the binding rules bind on purchase, so each ticket records — as stored, read back through the store —
+  // the version it was bought under (the one constant the rules page prints), then the week's mark: its code and the
+  // instant its figures froze. Written out here, never through the module's own stamp function.
+  const frozenAt = W.svc.frozenRules(week)?.frozenAt;
+  const stamp = `${RULES.MILLIONEA_RULES_VERSION} · ${week.code}@${frozenAt}`;
+  ok("2.14 · ⭐ MB-69 · each ticket records the binding rules' version it was bought under, beside the week's mark (OD-18)",
+    /^\d{4}-\d{2}-\d{2}$/.test(RULES.MILLIONEA_RULES_VERSION) && typeof frozenAt === "string" && rows.length === 3
+      && rows.every((t: any) => t.rulesVersion === stamp), J({ want: stamp, got: rows.map((t: any) => t.rulesVersion) }));
 }
 
 // ── §3 · the replay ─────────────────────────────────────────────────────────

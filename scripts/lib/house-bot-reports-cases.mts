@@ -1053,8 +1053,12 @@ if (STORE === "memory") {
     // maswali-void.ts sit below their writes, and maswali-service.ts carries none.
     // 2026-10-22 · S6-INT 14 (lane N squashed onto the integration): the same two lines move the forfeit 814→816 in this
     // tree — read from the run's printed list (`marked`), never by hand. No other site moves.
+    // 2026-10-22 · MASWALI-BUILD S6-MONEY 1 (MB-69): the purchase's rules-version stamp — its import above the buy and one
+    // comment line inside the ticket's write, below the buy's own transaction row — moves maswali-money-service.ts's two
+    // sites 455→456 and 580→582, read from the run's printed list (`marked`); each nine-line write is SHA-256-identical
+    // (CR stripped) to its line at d97266317. No other site moves.
     ok("0.232.2 · …and the twelve marked sites are exactly the twelve line numbers this pin was written against — a site that MOVES is reported here (the pin is line-pinned on purpose; the money anchors match by text and cannot rot from a line move)",
-      j(marked) === j(["market-service.ts:1878", "market-service.ts:3170", "market-service.ts:3661", "market-service.ts:4189", "market-service.ts:4327", "market-service.ts:4476", "market-service.ts:5157", "maswali-money-service.ts:455", "maswali-money-service.ts:580", "maswali-settlement.ts:451", "maswali-settlement.ts:816", "maswali-void.ts:140"]), j(marked));
+      j(marked) === j(["market-service.ts:1878", "market-service.ts:3170", "market-service.ts:3661", "market-service.ts:4189", "market-service.ts:4327", "market-service.ts:4476", "market-service.ts:5157", "maswali-money-service.ts:456", "maswali-money-service.ts:582", "maswali-settlement.ts:451", "maswali-settlement.ts:816", "maswali-void.ts:140"]), j(marked));
 
     /**
      * ⛔ **THE ANCHORS FILE IS OPENED, BECAUSE THE LABEL SAID IT WAS AND IT WAS NOT** (C5-7's review, low). 0.232.2

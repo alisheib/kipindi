@@ -237,6 +237,10 @@ S8 drive's preview-pass holders, or every player at ACTIVE — `MILLIONEA_RULES_
 then pinned, in one commit; from then on every change of the binding text moves both, as the module says. The version
 stamped on each ticket (MB-69 / OD-18) is Gate B.
 
+⟶ The stamp is built (2026-10-22, MASWALI-BUILD S6-MONEY 1): every ticket records, at its purchase,
+`MILLIONEA_RULES_VERSION` beside its week's mark (`millioneaTicketRulesStamp`; `MASWALI-PLAN.md` §8 MB-69). The
+Terms section MB-69 also asks for is not built yet.
+
 ---
 
 ## 2026-10-18 · Stopping Maswali Millionea — a stop during a week's sales makes that week final; after its close, the next week to open (the build lead, under the owner's delegation, MR-30 / OD-03)
