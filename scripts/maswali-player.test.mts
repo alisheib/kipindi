@@ -25,7 +25,7 @@ await runTwoStores({
   // S5-FIX-PLAYER (2026-10-21): 186 printed on each store — seven new cases (P5 7.10, P7 7.11, P6 8.0, P9 12.0 and 12.9,
   // P8 12b.4a, P10 13.3a; 4.3 and 8.21 re-pinned in the open).
   // S5 integration (2026-10-21, int1): 187 printed on each store — S5-FIX-PLATFORM D7's 11.2e beside the seven above.
-  // S7 × S5 merge (claude/maswali-s7-s5): both sides' cases run; 187 (the higher printed) until the merged run prints its own.
-  minPass: { memory: 187, postgres: 187 },
+  // S7 × S5 merge (claude/maswali-s7-s5): both sides' cases run — 194 printed on each store at dfb438dd2 (2026-10-22).
+  minPass: { memory: 194, postgres: 194 },
   dbPrefix: "mlw_player",
 });
