@@ -129,7 +129,8 @@ re-point its test readers; item 24's note).
   red-anchors 8172/0, admin-plain 29/0 (+red 14/14), rbac 438/0 (+red 28/28), erasure 437/0, admin-shots 133/0, admin-drive
   110/0, PG suites at their floors (engine 220/210 …); 4 REDS to fix on ADMIN: adversarial TK.4b (both stores), objections
   2.1 (+its red: the refusal's new words), house-bot-reports 0.232.2 (line pins moved), red-engine's "13.2" line (read it).
-  red:house-bot-console on 641603e2b (s6-redsb 39827938721) was running. ⛔ LINT's core is NOT done (ruling 6's ACTIVE ceiling,
+  red:house-bot-console on 641603e2b (s6-redsb 39827938721): **502 caught, 0 missed, 0 files dirty** — every red owed
+  through S6-INT 24 is closed with 0 missed. ⛔ LINT's core is NOT done (ruling 6's ACTIVE ceiling,
   the boot write, findings 1–8, 10–13, L-7, L-8) — it blocks any S6 push. Needs the lead: the rules' §6 vs the objection
   door (draft in the S6 lane's scratch, lanes/s6/drafts-for-lead.md — not travelled: re-derive), privacy item 7, campaign
   wordings (n), the legal-review list (o). MONEY and NOTICES (`lanes/s6mn/BRIEF.md`) not started.
