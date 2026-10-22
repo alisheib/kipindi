@@ -195,6 +195,28 @@ async function freshPlayer(onBreak) {
   if (!cookie) throw new Error("fresh-kyc-player set no session");
   return cookie;
 }
+/** §T5 (round 2) on the empty list's body ("Wiki 3 iko wazi hadi Ijumaa 18:00."): each numeral one `.mono` run in the
+ *  numerals' face (JetBrains Mono, tabular), the words in the body's own — read from the computed style, in each language.
+ *  CONTROL in the page: a copy of the first run without `.mono` must read the body's face, or the check could not fail. */
+async function emptyFaces(page, name) {
+  const f = await page.evaluate(() => {
+    const p = document.querySelector("[data-empty-state] p:nth-of-type(2)");
+    if (!p) return null;
+    const cs = (el) => getComputedStyle(el);
+    const runs = [...p.querySelectorAll(".mono")].map((s) => ({ text: s.textContent ?? "", font: cs(s).fontFamily, num: cs(s).fontVariantNumeric }));
+    const first = p.querySelector(".mono");
+    let control = null;
+    if (first) { const c = first.cloneNode(true); c.removeAttribute("class"); first.after(c); control = cs(c).fontFamily; c.remove(); }
+    return { text: p.textContent ?? "", body: cs(p).fontFamily, runs, control };
+  });
+  const digits = f ? f.text.match(/\d+(?:[:.,/]\d+)*/g) ?? [] : [];
+  const mono = (font) => /^["']?JetBrains Mono/.test(font ?? "");
+  if (f) console.log(`  ${name}: "${f.text}" — mono ${f.runs.map((r) => r.text).join(" · ")}`);
+  ok(`${name} · the body's numerals are mono and tabular, its words are not (§T5)`,
+    !!f && digits.length >= 2 && JSON.stringify(f.runs.map((r) => r.text)) === JSON.stringify(digits)
+      && f.runs.every((r) => mono(r.font) && r.num.includes("tabular-nums")) && !mono(f.body) && f.control !== null && !mono(f.control),
+    JSON.stringify(f));
+}
 const emptyCookie = LENSES.includes("empty") ? await freshPlayer(false) : null;
 const breakCookie = LENSES.includes("empty-break") ? await freshPlayer(true) : null;
 for (const locale of LOCALES) {
@@ -210,6 +232,7 @@ for (const locale of LOCALES) {
         const res = await open(page, lens.startsWith("empty") ? "/millionea/tickets" : lensPath(lens));
         await checks(page, name, locale, width, res, lens.startsWith("empty") ? null : null);
         await shoot(page, name);
+        if (lens === "empty") await emptyFaces(page, name);
       }
       await ctx.close();
     }
