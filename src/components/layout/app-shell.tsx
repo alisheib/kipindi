@@ -801,13 +801,13 @@ function OptOutShell({ t, children }: { t: Dict; children: React.ReactNode }) {
             {/* zh keeps its words whole (break-keep); the zh string carries zero-width break hints.
                 ⭐ THE REGULATOR'S NAME IS ONE NAME HERE TOO (R5-G, 2026-10-09, G-5 — R5-A's F18 rule, `keepRegulator` and the
                 `.kp-gbt` size container, as the journey's footer wears them). This line is the row's width less the 18+
-                roundel and its gap (vw − 70 below 1024): "Licensed by the Gaming" / "Board of Tanzania." at en 320–334 and
-                "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania." at sw 333–390 now read "Licensed by the" / "Gaming
-                Board of Tanzania." and, since round 7 (the name carries its "ya": a 277.4px run, held from a 281px line),
-                "Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania." at sw 351–390 (the one-word first line is the owner's
-                question K34), one line from 391 (the sentence is 320.9px); a line narrower than the name (sw under 351)
-                wraps with each connective held: "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania." (round 9, R9-B:
-                this record corrected; nothing it draws changed). `flex-1`: a size container has no width of its own to give a flex row,
+                roundel and its gap (vw − 70 below 1024). en 320–334 read "Licensed by the Gaming" / "Board of Tanzania.";
+                with the name whole, Chromium balances it as "Licensed by" / "the Gaming Board of Tanzania." (measured
+                2026-10-22), then one line. sw: round 7 held the name whole with its "ya" (a 277.4px run, from a 281px line),
+                which drew "Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania." at 351–390 (the owner's question K34).
+                Since MASWALI-BUILD S5 round 2 (2026-10-22, the lead's ruling on K34) the Swahili name is never held whole
+                (globals.css): sw reads "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania." up to 390, each connective
+                held, and one line from 391 (the sentence is 320.9px). `flex-1`: a size container has no width of its own to give a flex row,
                 so the line takes the row's remainder — the width it wrapped in before; left-aligned, no glyph moves. */}
             <p className="kp-gbt flex-1 text-text-muted leading-relaxed text-body-sm text-balance break-keep">{keepRegulator(t.footer.licensedByGbt)}</p>
           </div>

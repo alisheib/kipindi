@@ -129,20 +129,20 @@ export { OFFLINE_GLYPHS };
  * the pattern `keepRegulator` reads), the line is a size container, and the name is `nowrap` only from these widths —
  * globals.css's own for `.kp-gbt` (the name and its full stop in Inter 13px, plus 3px; `test:visual-pass-r5g` §4 holds
  * the two equal).
- * A line narrower than the name (sw under 333 then; under 351 since round 7, below) wraps as before, so it never
- * overflows. CSS only: the document's two
+ * A line narrower than the name wraps as before, so it never overflows. CSS only: the document's two
  * scripts are untouched. The document names Inter first and falls back to the system face; Roboto, Segoe UI, Helvetica
  * and Noto Sans all set Latin narrower than Inter (Next's capsize table: average widths 0.445, 0.443, 0.450, 0.474 of an
  * em against Inter's 0.478), so a width that holds the name in Inter holds it in each of them.
  * ⭐ ROUND 7 (2026-10-10, the owner's item 37 — a line never ends on a connective): the sw name carries the "ya" that
- * introduces it ("Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania.", as `keepRegulator` draws it), so its width is
- * that run's, 277.4px in Inter 13px: 281 with the 3px; and inside the name each connective keeps the space after it
- * (`.kp-nw`), so a line too narrow for the name never ends on "ya" either. On this line (vw − 70) the sw sentence reads
- * "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania." under 351, "Leseni" / "ya Bodi ya Michezo ya Kubahatisha
- * Tanzania." from 351 until the line holds the whole sentence (321–323px in Inter 13px, so from about 391; the one-word
- * first line is the owner's question K34), then one line (round 9, R9-B: this record corrected, nothing it draws changed).
+ * introduces it, as `keepRegulator` draws it, and inside the name each connective keeps the space after it (`.kp-nw`), so no
+ * line ends on "ya". Round 7 also held that run whole from a 281px line (277.4px in Inter 13px, plus 3px), which drew
+ * "Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania." from 351 (the owner's question K34).
+ * ⭐ MASWALI-BUILD S5 round 2 · PLATFORM (2026-10-22, the lead's ruling on K34): the Swahili name is never held whole, as in
+ * globals.css, so sw has no entry below. On this line (vw − 70) the sw sentence reads "Leseni ya Bodi ya Michezo" / "ya
+ * Kubahatisha Tanzania." until the line holds it whole, then one line (in Chromium, in this document's fallback face, from
+ * 364; it read "Leseni" alone above the name at 351–363).
  */
-export const OFFLINE_GBT_FROM: Readonly<Record<Locale, number>> = { en: 168, sw: 281, zh: 120 };
+export const OFFLINE_GBT_FROM: Readonly<Partial<Record<Locale, number>>> = { en: 168, zh: 120 };
 
 const esc =(s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 /** A value for an inline script: JSON, with every `<` escaped so no string can close the element it sits in. */
@@ -216,7 +216,7 @@ function stylesheet(): string {
     `.kp-off__rg p{margin:0;font-size:13px;line-height:18px;letter-spacing:-0.05px;text-wrap:balance;word-break:keep-all}`,
     // The licence line takes the row's remainder (a size container has no width of its own to give a flex row).
     `.kp-off__rg .kp-off__gbt{color:var(--text-muted);line-height:1.625;flex:1 1 0%;min-width:0;container:kp-gbt/inline-size}`,
-    ...OFFLINE_LOCALES.map((l) => `@container kp-gbt (min-width:${OFFLINE_GBT_FROM[l]}px){.kp-gbt-name:lang(${l}){white-space:nowrap}}`),
+    ...OFFLINE_LOCALES.flatMap((l) => (OFFLINE_GBT_FROM[l] === undefined ? [] : [`@container kp-gbt (min-width:${OFFLINE_GBT_FROM[l]}px){.kp-gbt-name:lang(${l}){white-space:nowrap}}`])),
     `.kp-nw{white-space:nowrap}`,
     `.kp-off__lic{font-family:var(--font-mono);font-variant-numeric:tabular-nums;color:var(--text-subtle)}`,
     `.kp-off__stop{font-style:italic;color:var(--text-subtle)}`,

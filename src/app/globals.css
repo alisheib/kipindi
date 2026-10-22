@@ -4911,40 +4911,34 @@ html[data-sheet-open] .route-enter { animation: none; }
    is `nowrap` only where the line is at least as wide as the name, so it can never overflow: each line's box is a size
    container and the condition is the name's own width in Inter 13px (`text-body-sm` and the trust row's
    `--type-small`), from the font — en "Gaming Board of Tanzania." 164.7px, sw "Bodi ya Michezo ya Kubahatisha Tanzania."
-   259.3px, zh 坦桑尼亚博彩委员会 117px — plus 3px. A narrower line wraps the sentence as before (the footer's four-column
-   layout from 1024 cannot hold the Swahili name; its two-column tablet layout can). The journey's footer sentence is
+   259.3px (sw holds no condition since 2026-10-22, below), zh 坦桑尼亚博彩委员会 117px — plus 3px. A narrower line wraps
+   the sentence as before. The journey's footer sentence is
    `.kp-gbt`; the hero's trust row is `.kp-gbt-row`, the ROW being the container because the loading ghost draws the
    words' own span `fit-content`, which size containment would empty — so its widths add the row's 28px roundel and
    12px gap. The classic footer is frozen chrome and wears neither. */
 .kp-gbt { container: kp-gbt / inline-size; }
 @container kp-gbt (min-width: 168px) { .kp-gbt-name:lang(en) { white-space: nowrap; } }
-@container kp-gbt (min-width: 281px) { .kp-gbt-name:lang(sw) { white-space: nowrap; } }
 @container kp-gbt (min-width: 120px) { .kp-gbt-name:lang(zh) { white-space: nowrap; } }
 .kp-hero__trust > li.kp-gbt-row { container: kp-gbt-row / inline-size; }
 @container kp-gbt-row (min-width: 208px) { .kp-gbt-name:lang(en) { white-space: nowrap; } }
-@container kp-gbt-row (min-width: 321px) { .kp-gbt-name:lang(sw) { white-space: nowrap; } }
 @container kp-gbt-row (min-width: 160px) { .kp-gbt-name:lang(zh) { white-space: nowrap; } }
-/* ⭐ ROUND 7 (2026-10-10, the owner's item 37 — a line never ends on a connective): the sw name now carries the "ya" that
-   introduces it ("Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania.", `keepRegulator`), so its condition is that
-   run's width — 277.4px in Inter 13px, plus 3px: 281 (the row: + its 40px roundel and gap, 321). en and zh are as they
-   were. A narrower line wraps the sentence with its connectives held ("Leseni ya Bodi ya Michezo" / "ya Kubahatisha
-   Tanzania."), never after "ya".
-   ⭐ The footer now has two columns from 768 to 1023 and four from 1024. From 768 to 1023 the two columns hold the Swahili name
-   (at 768: (768 - 32px side padding - 32px gap) / 2 = 352px). From 1024, the four columns are (W - 160) / 4,
-   and the 1280px board caps the four columns at 280px; 281 keeps it out by 1px. The sw sentence can therefore wrap
-   "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania." at 1024 and 1280 (round 8's tiles 299 and 301). */
-/* ⭐ …BUT THE JOURNEY FOOTER'S LINE NEVER LEAVES ONE WORD ALONE ABOVE THE NAME (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22,
-   the lead's item from the tickets lane's tiles: Tiketi zangu at sw 320). Its one column (the viewport less 2 × 16px) holds
-   the sw name's 277.4px run from a 313px viewport, but the whole sentence (320.9px) only from 353. So from 313 to 352 the
-   name, held whole, left "Leseni" alone on the first line. The classic footer, frozen, balances the same words there:
-   "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania.". The journey footer's line (`.kp-gbt--even`, its own class)
-   never holds the Swahili name whole: its connectives stay held (`keepRegulator`) and `text-wrap: balance` shares the
-   words, so it reads the classic's two lines and no line ends on a connective. Every other width draws what it drew: one
-   line from 353, and from 1024 the four columns never held the name. en and zh keep their rule: en has three words before
-   the name ("Licensed by the"), and the zh sentence fits every column on one line. The opt-out page's line, the offline
-   document and the hero's trust row keep round 7's rule (K34's default). `test:visual-pass-r9b` 5.4 lays the line out at
-   every width from 320 to 1920. */
-.kp-gbt--even .kp-gbt-name:lang(sw) { white-space: normal; }
+/* ⭐ ROUND 7 (2026-10-10, the owner's item 37 — a line never ends on a connective): the sw name carries the "ya" that
+   introduces it (`keepRegulator`), and each connective inside it is held to the word after it, so a line never ends on
+   "ya". Round 7 also held that run whole wherever its line could (277.4px in Inter 13px: from 281px, the trust row 321),
+   which drew "Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania." — the one-word first line that became the owner's
+   question K34.
+   ⭐ THE SWAHILI NAME IS NEVER HELD WHOLE (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22, the lead's ruling on K34: no
+   word stands alone on a line). One word stands before the name, so a line that held the name but not the sentence could
+   only leave "Leseni" alone above it. Measured in Chromium at every width from 320 to 1920:
+     - the journey footer at 313–352 (the tickets lane's tile, Tiketi zangu at sw 320);
+     - the opt-out page's footer at 351–390;
+     - the hero's trust row at 353–395;
+     - the offline document at 351–363 (in its fallback face).
+   Its connectives stay held and `text-wrap: balance` shares the words: "Leseni ya Bodi ya Michezo" / "ya Kubahatisha
+   Tanzania." — the classic footer's own lines — until the line holds the whole sentence, then one line. So sw has no
+   condition here, nor in the offline document's copy (`OFFLINE_GBT_FROM`). en and zh keep theirs: en has three words before
+   the name ("Licensed by the"), and the zh sentence fits every line it is drawn on. `test:visual-pass-r9b` 5.4 lays the
+   four lines out at every width; r7a 3.11, r5a 6.2 and r5g 4.8 hold that no sw condition comes back. */
 /* ⛔ `.kp-hero__tel` (the helpline link in row 1) was DELETED 2026-10-06 with the helpline itself —
    the owner's ruling took it off every player surface (docs/COMPLIANCE-DECISIONS.md). */
 

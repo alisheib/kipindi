@@ -168,14 +168,15 @@ export function PublicFooter({
           </div>
           {/* zh keeps its words whole (break-keep); the zh string carries zero-width break hints between its words. */}
           {/* ⭐ …AND IN THE JOURNEY THE REGULATOR'S NAME IS ONE NAME (round 5, F18 — tile 307): at en 1024 the line read
-              "Licensed by the Gaming" / "Board of Tanzania."; it now reads "Licensed by the" / "Gaming Board of Tanzania.",
-              the name kept whole wherever the column can hold it (`keepRegulator`, keep-words.tsx; `.kp-gbt`, globals.css).
+              "Licensed by the Gaming" / "Board of Tanzania."; the name is now kept whole wherever the column can hold it
+              (`keepRegulator`, keep-words.tsx; `.kp-gbt`, globals.css). Chromium balances it as "Licensed by" / "the Gaming
+              Board of Tanzania." from 1024 to 1219 and sets it on one line from 1220 (measured 2026-10-22).
               ⛔ The journey's footer only: the classic footer is frozen chrome and keeps main's bytes (`journeyShown`).
-              ⭐ …BUT NEVER WITH ONE WORD ALONE ABOVE IT (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22, the lead's item): at sw
-              320 the Swahili name held whole left "Leseni" alone on the first line. `kp-gbt--even` lets that name wrap at its
-              held connectives, so the balanced lines match the classic footer's ("Leseni ya Bodi ya Michezo" / "ya Kubahatisha
-              Tanzania."). The rule and the widths it reaches are in globals.css. */}
-          <p className={`text-text-muted leading-relaxed text-body-sm text-balance break-keep${journeyShown ? " kp-gbt kp-gbt--even" : ""}`}>
+              ⭐ …BUT NEVER WITH ONE WORD ALONE ABOVE IT (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22, the lead's ruling on
+              K34): at sw 313–352 the Swahili name, held whole, left "Leseni" alone on the first line. The Swahili name is never
+              held whole now: it wraps at its held connectives, and balance gives the classic footer's lines ("Leseni ya Bodi
+              ya Michezo" / "ya Kubahatisha Tanzania."). The record is in globals.css. */}
+          <p className={`text-text-muted leading-relaxed text-body-sm text-balance break-keep${journeyShown ? " kp-gbt" : ""}`}>
             {journeyShown ? keepRegulator(t.footer.licensedByGbt) : t.footer.licensedByGbt}
           </p>
           {/* S12 WP5 (word-ledger row 53): each language's own punctuation and country name, from the dictionary. The

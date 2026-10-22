@@ -677,23 +677,27 @@ const keptIn = (mk: string, open: string) => { const m = new RegExp(`${open}((?:
   const lineAt = (vw: number) => Math.min(vw, 1280) - (vw >= 1024 ? 64 : 32) - roundel - gap;
   const need = (l: Loc) => widthOf(l === "zh" ? KEPT.zh : `${KEPT[l]}.`);
   const from = (l: Loc) => gbtFrom("kp-gbt", l);
-  ok(`4.5 · the line is the row less the roundel (${roundel}px) and its gap (${gap}px) — vw − 70 under 1024 — and the name is kept from globals.css's own widths (en ${from("en")}, sw ${from("sw")}, zh ${from("zh")}: the name and its full stop, ${LOCALES.map((l) => `${l} ${need(l).toFixed(1)}`).join(", ")}px, plus 3)`,
-    roundel === 28 && gap === 10 && lineAt(320) === 250 && LOCALES.every((l) => from(l) >= need(l) + 2 && from(l) <= need(l) + 6));
-  // Where the name was torn and where it is now whole: a 2-line balanced split of the sentence, with and without the name kept.
+  // ⚠️ PINS MOVED 2026-10-22 (MASWALI-BUILD S5 round 2 · PLATFORM, the lead's ruling on K34): the sw name is never held
+  // whole (one word stands before it, so holding it could only leave that word alone: "Leseni" alone above the name at
+  // sw 351–390 on this line, measured in Chromium). sw has no condition; en and zh keep theirs.
+  ok(`4.5 · the line is the row less the roundel (${roundel}px) and its gap (${gap}px) — vw − 70 under 1024 — and the en and zh name is kept from globals.css's own widths (en ${from("en")}, zh ${from("zh")}: the name and its full stop, ${(["en", "zh"] as Loc[]).map((l) => `${l} ${need(l).toFixed(1)}`).join(", ")}px, plus 3); the sw name is held by no width`,
+    roundel === 28 && gap === 10 && lineAt(320) === 250 && (["en", "zh"] as Loc[]).every((l) => from(l) >= need(l) + 2 && from(l) <= need(l) + 6) && Number.isNaN(from("sw")));
+  // Where the sentence wraps: it is wider than the line.
   const sentence = (l: Loc) => word(l, "footer.licensedByGbt");
   const splitsName = (l: Loc, vw: number) => widthOf(sentence(l)) > lineAt(vw) && l !== "zh";
-  // Round 7 (R7-A): the sw run is "ya " + the name (277.4px), held from a 281px line — vw 351 — and under it the sentence
-  // wraps with each connective held ("Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania."), never after "ya".
-  const torn = { en: [320, 334].every((vw) => splitsName("en", vw)) && !splitsName("en", 335), sw: [351, 390].every((vw) => splitsName("sw", vw) && lineAt(vw) >= from("sw")) && !splitsName("sw", 391) };
-  ok(`4.6 · the widths the rule changes: en 320–334 ("Licensed by the Gaming" / "Board of Tanzania." → "Licensed by the" / "Gaming Board of Tanzania.") and sw 351–390 (→ "Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania."); under 351 no Swahili line can hold the run and the sentence wraps with its connectives held; zh is one line from 320`,
-    torn.en && torn.sw && lineAt(350) < from("sw") && widthOf(sentence("zh")) <= lineAt(320), j({ torn, en: widthOf(sentence("en")).toFixed(1), sw: widthOf(sentence("sw")).toFixed(1), zh: widthOf(sentence("zh")).toFixed(1) }));
+  // The sw sentence wraps up to 390, each connective held ("Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania."), and
+  // is one line from 391. The en name is held whole where it wraps; Chromium balances it "Licensed by" / "the Gaming Board
+  // of Tanzania." (measured 2026-10-22; the label used to promise "Licensed by the" / "Gaming Board…").
+  const torn = { en: [320, 334].every((vw) => splitsName("en", vw)) && !splitsName("en", 335), sw: [320, 390].every((vw) => splitsName("sw", vw)) && !splitsName("sw", 391) };
+  ok(`4.6 · the widths where the sentence wraps: en 320–334 (the name whole — Chromium: "Licensed by" / "the Gaming Board of Tanzania."; it read "Licensed by the Gaming" / "Board of Tanzania." before the rule) and sw 320–390 (at its held connectives: "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania."); zh is one line from 320`,
+    torn.en && torn.sw && widthOf(sentence("zh")) <= lineAt(320), j({ torn, en: widthOf(sentence("en")).toFixed(1), sw: widthOf(sentence("sw")).toFixed(1), zh: widthOf(sentence("zh")).toFixed(1) }));
   const collapsed = squash(code("src/components/layout/app-shell.tsx")).replace('className="kp-gbt flex-1 text-text-muted', 'className="kp-gbt text-text-muted');
   ok("4.4′ PLANT · the line made a size container without `flex-1` (a contained line has no width of its own to give its flex row: it would collapse) is reported",
     !/className="kp-gbt flex-1 /.test(collapsed));
 }
 {
   // THE OFFLINE DOCUMENT — RUN: CSS only, the words unchanged, the thresholds globals.css's own.
-  const OD = req("../src/lib/offline-document.ts") as { offlineDocument: (o: { licenceNumber: string }) => string; OFFLINE_GBT_FROM: Record<Loc, number>; OFFLINE_LOCALES: Loc[] };
+  const OD = req("../src/lib/offline-document.ts") as { offlineDocument: (o: { licenceNumber: string }) => string; OFFLINE_GBT_FROM: Partial<Record<Loc, number>>; OFFLINE_LOCALES: Loc[] };
   const doc = OD.offlineDocument({ licenceNumber: "LIC-0001" });
   const css = /<style>([\s\S]*?)<\/style>/.exec(doc)?.[1] ?? "";
   const spans = LOCALES.map((l) => {
@@ -701,13 +705,21 @@ const keptIn = (mk: string, open: string) => { const m = new RegExp(`${open}((?:
     return { l, ok: !!m && unrun(m[2]) === KEPT[l] && m[1] + unrun(m[2]) + m[3] === word(l, "footer.licensedByGbt").replace(/&/g, "&amp;") };
   });
   ok("4.7 · RUN: the offline document's licence line holds each language's name in a `.kp-gbt-name` span, the sentence's characters unchanged", spans.every((s) => s.ok), j(spans));
-  const rules = LOCALES.map((l) => ({ l, doc: Number(new RegExp(`@container kp-gbt \\(min-width:([0-9.]+)px\\)\\{\\.kp-gbt-name:lang\\(${l}\\)\\{white-space:nowrap\\}\\}`).exec(css)?.[1]), app: gbtFrom("kp-gbt", l) }));
-  ok(`4.8 · its line is the row's remainder and a size container (\`.kp-off__gbt\`), and the name is nowrap from globals.css's own widths (${rules.map((r) => `${r.l} ${r.doc}`).join(", ")}) — CSS only, no new script`,
-    /\.kp-off__rg \.kp-off__gbt\{[^}]*flex:1 1 0%;min-width:0;container:kp-gbt\/inline-size\}/.test(css) && rules.every((r) => r.doc === r.app && r.doc === OD.OFFLINE_GBT_FROM[r.l])
+  // ⚠️ PIN MOVED 2026-10-22 (the lead's ruling on K34): no sw condition here or in globals.css — "absent" is compared as a
+  // value, so a sw condition coming back on either side alone, or on both, is reported.
+  const docFrom = (c: string, l: Loc) => Number(new RegExp(`@container kp-gbt \\(min-width:([0-9.]+)px\\)\\{\\.kp-gbt-name:lang\\(${l}\\)\\{white-space:nowrap\\}\\}`).exec(c)?.[1]);
+  const val = (n: number | undefined) => (n === undefined || Number.isNaN(n) ? "none" : String(n));
+  const rules = LOCALES.map((l) => ({ l, doc: val(docFrom(css, l)), app: val(gbtFrom("kp-gbt", l)), table: val(OD.OFFLINE_GBT_FROM[l]) }));
+  const agree = (rs: typeof rules) => rs.every((r) => r.doc === r.app && r.doc === r.table) && rs.find((r) => r.l === "sw")?.doc === "none";
+  ok(`4.8 · its line is the row's remainder and a size container (\`.kp-off__gbt\`), and the name is nowrap from globals.css's own widths (${rules.map((r) => `${r.l} ${r.doc}`).join(", ")}; sw held by none) — CSS only, no new script`,
+    /\.kp-off__rg \.kp-off__gbt\{[^}]*flex:1 1 0%;min-width:0;container:kp-gbt\/inline-size\}/.test(css) && agree(rules)
       && count(doc, "<script>") === 2 && /\.kp-off__rg-row\{display:flex;align-items:center;gap:10px\}/.test(css) && /\.kp-off__18\{flex:none;[^}]*width:28px/.test(css), j(rules));
-  const driftedDoc = css.replace("@container kp-gbt (min-width:281px)", "@container kp-gbt (min-width:240px)");
-  ok("4.8′ PLANT · a Swahili threshold drifted from globals.css (240px: under the run's 277.4px, it would overflow) is reported",
-    Number(/@container kp-gbt \(min-width:([0-9.]+)px\)\{\.kp-gbt-name:lang\(sw\)/.exec(driftedDoc)?.[1]) !== gbtFrom("kp-gbt", "sw"));
+  const driftedDoc = css.replace("@container kp-gbt (min-width:168px)", "@container kp-gbt (min-width:150px)");
+  ok("4.8′ PLANT · an English threshold drifted from globals.css (150px: under the name's width, it would overflow) is reported",
+    driftedDoc !== css && !agree(LOCALES.map((l) => ({ l, doc: val(docFrom(driftedDoc, l)), app: val(gbtFrom("kp-gbt", l)), table: val(OD.OFFLINE_GBT_FROM[l]) }))));
+  const swBack = `${css}@container kp-gbt (min-width:281px){.kp-gbt-name:lang(sw){white-space:nowrap}}`;
+  ok("4.8″ PLANT · round 7's Swahili condition back in the document alone is reported",
+    !agree(LOCALES.map((l) => ({ l, doc: val(docFrom(swBack, l)), app: val(gbtFrom("kp-gbt", l)), table: val(OD.OFFLINE_GBT_FROM[l]) }))));
   // The document's face: Inter first, then the system's. Next's capsize table: every platform face sets Latin narrower than Inter.
   const CAPSIZE = JSON.parse(readFileSync("node_modules/next/dist/server/capsize-font-metrics.json", "utf8")) as Record<string, { xWidthAvg: number; unitsPerEm: number }>;
   const avg = (k: string) => CAPSIZE[k].xWidthAvg / CAPSIZE[k].unitsPerEm;

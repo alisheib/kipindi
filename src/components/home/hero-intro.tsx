@@ -135,13 +135,14 @@ export function TrustLines({ t, locale, rails }: { t: Dict; locale: Locale; rail
     <ul className="kp-hero__trust" role="list">
       {/* ⭐ The Board's name is one name wherever the row can hold it (round 5, F18's rule, as the journey's footer keeps it):
           at sw 360–390 the balanced row read "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania.", the name torn in
-          two. Since round 7 the name carries the "ya" that introduces it (`keepRegulator`, `.kp-gbt-row`: the run is
-          277.4px, held from a 321px row), so the row reads — measured on round 8's tiles 013–020 —
-            sw 320 (a 288px row, under 321): "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania." (the name wraps,
-              each connective held to the word after it);
-            sw 360–390: "Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania." (the one-word first line is the owner's
-              question K34 — this comment records it, it does not change it);
-            sw 412 and wider: one line. */}
+          two. Since round 7 the name carries the "ya" that introduces it, each connective held to the word after it
+          (`keepRegulator`). Round 7 also held that run whole from a 321px row, which drew "Leseni" / "ya Bodi ya Michezo ya
+          Kubahatisha Tanzania." at sw 353–395 (the owner's question K34). Since MASWALI-BUILD S5 round 2 (2026-10-22, the
+          lead's ruling on K34) the Swahili name is never held whole (globals.css), so the row reads — measured in Chromium
+          at every width from 320 to 1920 —
+            sw 320–395: "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania." (each connective held);
+            sw 396 and wider: one line;
+            en 320–338: "Licensed by" / "the Gaming Board of Tanzania.", then one line; zh: one line. */}
       <li className="kp-gbt-row">
         <span className="kp-rg__18">{t.footer.eighteenPlus}</span>
         <span>{keepRegulator(t.footer.licensedByGbt)}</span>
