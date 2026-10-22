@@ -191,9 +191,13 @@ native review at Gate B.
 
 **What §7 says in English, Swahili and Chinese.** While a player fills a Maswali Millionea ticket, the answers picked
 for that week sit in that tab's sessionStorage as `kp-millionea-slip:` followed by the week's identifier, so a reload or
-going to deposit keeps them. The entry holds no identifier of the player, is removed once the ticket is cut or when the
-tab closes, and never buys a ticket unless the player confirms it. §4p checks each language's paragraph and holds the
+going to deposit keeps them. The entry holds no identifier of the player, is removed once the ticket is bought or when
+the tab closes, and never buys a ticket unless the player confirms it. §4p checks each language's paragraph and holds the
 slip (`src/app/millionea/slip/slip-client.tsx`) to exactly that key, in the tab alone.
+*Amended 2026-10-22 (S5 integration):* the English "removed once your ticket is cut" now reads "… is bought", Ali's
+English buy wording (§ "2026-10-21 · Maswali Millionea", ruling 7); Swahili and Chinese keep their ruled verbs. The
+version stays 2026-10-17: this rendering has never printed (it needs an ACTIVE ceiling), and production's notice is
+unchanged (its English hash `bd8dc162cbac` holds).
 
 **Published with the ceiling (the lead's decision of 2026-10-18, under Ali's delegation).** /legal/privacy is live while
 Millionea is dark, and a live notice must not name a product nobody can open. So the paragraph and this version print

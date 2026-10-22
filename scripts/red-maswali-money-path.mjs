@@ -15,7 +15,9 @@
  * final, any draft made final at short notice, a week's deadlines not re-frozen at the open) and S7-F2's (a failed read
  * thrown at the buyer, a close the database's clock refused left to the reconcile, a refused stop naming no next act, a
  * float finding that outlives its top-up or goes silent, the holiday review ending at the open, an unreadable week's
- * floor counted as 0, the rules form storing a percentage as typed) — runs the memory child that mutation names
+ * floor counted as 0, the rules form storing a percentage as typed) and S7-F9's (a winner's account taken over after its
+ * payout seen by no one, a deposit contradicted after its winner was paid leaving the share free, held twice, or held for
+ * money that cannot have bought it, and the shares read before the chain lock) — runs the memory child that mutation names
  * (`test:maswali-purchase`, `test:maswali-settle`, `test:maswali-close-race`, `test:maswali-void` or
  * `test:maswali-adversarial`, the last on the plant's own sections), and requires it to go red ON THAT MUTATION'S OWN
  * ASSERTION. Then it puts every file back byte for byte.

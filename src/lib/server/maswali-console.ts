@@ -24,6 +24,7 @@ import { getMaswaliConfig, snapshotMaswaliRules, unsettledFloors, type MaswaliRu
 import { getLicenceBasis, licenceBasisAllowsOpen, type LicenceBasis } from "./maswali-licence";
 import { holidayOn } from "./maswali-holidays";
 import { getAuditForTargetsDurable } from "./audit";
+import { TAKEOVER_ALERT_MS, takeoverWatch, type TakeoverWatch } from "./maswali-takeover";
 import { getSalesPause, type SalesPause } from "./maswali-pause";
 import { millioneaStateNow } from "./millionea-switch";
 import { acct, maswaliJackpotOf } from "./ledger";
@@ -33,6 +34,7 @@ import { MAIN_COUNT, settlementGate, weekVoidCertain } from "@/lib/maswali-score
 import { guaranteeRequirement } from "@/lib/maswali-money";
 import type { RolloutState } from "@/lib/millionea-rollout";
 import { formatTzs } from "@/lib/utils";
+import { fmtEat } from "@/lib/maswali-admin-format";
 import { parseWeekListQuery, selectWeekPage, type WeekListQuery } from "@/lib/maswali-week-list";
 import { parseIntegrityListQuery, selectHeldShares, selectWinnerTickets, selectSealWeeks, selectVoidableWeeks, type IntegrityListQuery } from "@/lib/maswali-integrity-list";
 
@@ -145,8 +147,11 @@ export async function consoleWeekDetail(weekId: string, now: Date = new Date()):
 /** An operator alert (MASWALI-PLAN §7b S4 item 5). Never a guess: each names the week and the fact behind it. */
 export type ConsoleAlert = { level: "critical" | "warning"; text: string; weekId?: string };
 
-/** `deps.readFloat` reads the payout float (the payments provider's by default; a suite hands its own). */
-export async function consoleAlerts(now: Date = new Date(), deps: { readFloat?: FloatReader } = {}): Promise<ConsoleAlert[]> {
+/** `deps.readFloat` reads the payout float (the payments provider's by default; a suite hands its own); `deps.readTakeover`
+ *  the winners' takeover watch (`maswali-takeover.ts` by default). */
+export async function consoleAlerts(
+  now: Date = new Date(), deps: { readFloat?: FloatReader; readTakeover?: () => Promise<TakeoverWatch> } = {},
+): Promise<ConsoleAlert[]> {
   const nowMs = now.getTime();
   const out: ConsoleAlert[] = [];
   const cfg = getMaswaliConfig();
@@ -190,6 +195,7 @@ export async function consoleAlerts(now: Date = new Date(), deps: { readFloat?: 
     }
   }
   out.push(...await floatShortAlerts(deps.readFloat));
+  out.push(...await takeoverAlerts(nowMs, deps.readTakeover));
   const held = await maswaliAccountBalance(acct.maswaliGuarantee);
   // ⛔ S7-F2 · FAIL CLOSED: a week whose frozen rules cannot be read has an unknown floor, so the guarantee cannot be shown
   //    to cover the unsettled weeks and the alert fires, naming the week. Counted as 0, its floor kept this alert silent.
@@ -206,6 +212,34 @@ export async function consoleAlerts(now: Date = new Date(), deps: { readFloat?: 
     if (!licenceBasisAllowsOpen(getLicenceBasis())) out.push({ level: "warning", text: "No licence basis is recorded; no week can open until the Owner records it (OD-01)." });
     const pause = getSalesPause();
     if (pause.paused) out.push({ level: "warning", text: `Sales are paused: ${pause.reason ?? "no reason recorded"}.` });
+  }
+  return out;
+}
+
+/**
+ * ⭐ MB-96 · A WINNING ACCOUNT THAT MAY HAVE CHANGED HANDS (S7-F9; the watch is `maswali-takeover.ts`). A paying week
+ * with such accounts is named here with HOW MANY — never which (this strip is the trading console's, which carries no
+ * holder: MR-14, MB-34); Compliance reviews the accounts on the integrity page and may hold the share there (OD-07). A
+ * finding stands here for a while after it was last seen, and on the integrity page for the whole watch. ⛔ An alert
+ * only: nothing is held. ⛔ Fail closed: a watch that could not be read says so, never silence. ⛔ The words say what
+ * the control enforces, never what it watches for (the repository is public; the lead's ruling, 2026-10-22).
+ */
+async function takeoverAlerts(nowMs: number, read?: () => Promise<TakeoverWatch>): Promise<ConsoleAlert[]> {
+  const watch = await (read ?? (() => takeoverWatch(new Date(nowMs))))().catch((): TakeoverWatch => ({ readable: false, findings: [] }));
+  const out: ConsoleAlert[] = [];
+  if (!watch.readable) {
+    out.push({ level: "warning", text: "The winners' takeover watch could not be read in full, so a winning account taken over after its payout may go unseen. Compliance reviews the winners on the integrity page (MB-96)." });
+  }
+  const byWeek = new Map<string, { code: string; n: number }>();
+  for (const f of watch.findings) {
+    if (nowMs - Date.parse(f.flaggedAt) > TAKEOVER_ALERT_MS) continue;
+    const x = byWeek.get(f.weekId) ?? { code: f.code, n: 0 };
+    x.n++;
+    byWeek.set(f.weekId, x);
+  }
+  for (const [weekId, { code, n }] of byWeek) {
+    out.push({ level: "critical", weekId,
+      text: `${code}: ${n} winning account${n === 1 ? "" : "s"} may have been taken over since this week's payout. Compliance reviews ${n === 1 ? "it" : "them"} on the integrity page and may hold the share (MB-96).` });
   }
   return out;
 }
@@ -426,7 +460,11 @@ export async function poolsView(now: Date = new Date()): Promise<PoolsView> {
 
 // ── COMPLIANCE (/admin/maswali/integrity) ───────────────────────────────────────────────────────────
 
-export type HeldShare = { ticketId: string; serial: string; weekCode: string; weekSeq: number; userId: string; holder: string; payout: number; reason: string; forfeited: boolean };
+export type HeldShare = {
+  ticketId: string; serial: string; weekCode: string; weekSeq: number; userId: string; holder: string; payout: number; reason: string; forfeited: boolean;
+  /** MB-74 · for a share held for a deposit under review, which deposit the provider contradicted (S7-F9). */
+  provenance?: string | null;
+};
 export type SealLogRow = { weekCode: string; slot: number; outcome: string; voidReason: string | null; sealedBy: string | null; sealedAt: string | null; evidence: string | null; stage2By: string | null };
 export type WinnerRow = { ticketId: string; weekCode: string; serial: string; userId: string; holder: string; role: string; status: string; accountAgeDays: number; payout: number; frozenReason: string | null };
 
@@ -452,6 +490,25 @@ const holderOf = async (userId: string) => {
   try { u = await db.user.findById(userId); } catch { u = null; }
   return { holder: u ? (u.displayName?.trim() || `…${u.phoneE164.slice(-4)}`) : "(closed account)", role: u?.role ?? "?", status: u?.status ?? "?", createdAt: u?.createdAt ?? null };
 };
+
+/**
+ * ⭐ MB-74 · WHERE A SHARE HELD FOR A DEPOSIT UNDER REVIEW CAME FROM (S7-F9; MASWALI-PLAN §8 MB-74: "show the provenance in
+ * the cluster/integrity report"): the account's credited deposit the provider has contradicted, as accounting books it — the
+ * newest, and how many. A read that fails says so, never nothing; a review resolved since the hold says that.
+ */
+async function depositProvenance(userId: string): Promise<string> {
+  try {
+    const { hasDepositStatusReview } = await import("@/lib/wallet/deposit-review");
+    const marked = (await db.txn.findByUserTypes(userId, ["DEPOSIT"], 500)).filter((t) => t.status === "CONFIRMED" && hasDepositStatusReview(t));
+    if (marked.length === 0) return "No deposit of this account is under review now: its review was resolved after the hold.";
+    const d = marked[0];
+    const ref = d.providerRef ? ` (reference …${d.providerRef.slice(-4)})` : "";
+    const lead = marked.length === 1 ? "A deposit" : `${marked.length} deposits are under review; the newest, a deposit`;
+    return `${lead} of ${formatTzs(Math.abs(d.amount))}${d.provider ? ` by ${d.provider}` : ""}${ref}, credited ${fmtEat(d.completedAt ?? d.createdAt)}, which the provider has since contradicted.`;
+  } catch {
+    return "The account's deposits could not be read.";
+  }
+}
 
 /** The console's page size (the platform pager's own, `PER_PAGE`). */
 export const CONSOLE_PER_PAGE = 20;
@@ -488,6 +545,8 @@ export async function integrityView(now: Date = new Date(), pages: { held?: numb
     allHeld.push({ ticketId: t.id, serial: t.serial, weekCode: code, weekSeq: seq, userId: t.userId, holder: h.holder, payout: Math.round(t.payout ?? 0), reason: t.frozenReason, forfeited: t.frozenReason.startsWith("forfeited · ") });
   }
   const selectedHeld = selectHeldShares(allHeld, { ...query.held, page: pages.held ?? query.held.page }, CONSOLE_PER_PAGE);
+  // MB-74 · the provenance of a share held for a deposit under review, on the page shown (S7-F9, RD.5).
+  for (const h of selectedHeld.rows) if (!h.forfeited && h.reason === "deposit under review") h.provenance = await depositProvenance(h.userId);
   const selectedWinners = selectWinnerTickets(won, { ...query.winners, page: pages.winners ?? query.winners.page }, CONSOLE_PER_PAGE);
   const selectedVoidable = selectVoidableWeeks(voidable, { ...query.voidable, page: pages.voidable ?? query.voidable.page }, CONSOLE_PER_PAGE);
   for (const { ticket: t, code } of selectedWinners.rows) {

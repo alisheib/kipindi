@@ -49,8 +49,11 @@ const ROUND_VERSION = "2026-10-15.2";
  * 2026-10-18 (S5 integration): the Swahili re-measured, 2eb3dfe4da7e → 30403f82c027 — "msimbo wa wiki" and "taarifa
  * yoyote inayokutambulisha" replace "kitambulisho" (an identity document's word; `test:kyc-copy-truth` §2 rule 1). The
  * paragraph was never printed: production's ceiling is WITHDRAWN.
+ * 2026-10-22 (S5 integration): the English re-measured, d30f80325746 → 7db9910000f9 — "removed once your ticket is cut"
+ * becomes "… is bought", Ali's English buy wording (COMPLIANCE-DECISIONS 2026-10-21 ruling 7; the Privacy v2026-10-17
+ * entry is amended). Still never printed: the paragraph needs an ACTIVE ceiling.
  */
-const SLIP_NOTICE_HASH: Record<string, string> = { en: "d30f80325746", sw: "30403f82c027", zh: "fc15d478bef9" };
+const SLIP_NOTICE_HASH: Record<string, string> = { en: "7db9910000f9", sw: "30403f82c027", zh: "fc15d478bef9" };
 const SLIP_PARAGRAPH = /<p data-policy-addition="millionea-slip">[\s\S]*?<\/p>/;
 const SLIP_PARAGRAPHS = /<p data-policy-addition="millionea-slip">[\s\S]*?<\/p>/g;
 const WORDING_BLOCK = /\n {8}<MillioneaWording>[\s\S]*?\n {8}<\/MillioneaWording>/g;

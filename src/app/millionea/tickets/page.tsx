@@ -33,10 +33,10 @@ import { redirect } from "next/navigation";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
 import { BackLink } from "@/components/ui/back-link";
-import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination, PLAYER_PER_PAGE, buildBaseHref } from "@/components/ui/pagination";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { MaswaliTicketCard } from "@/components/maswali/maswali-ticket";
+import { MaswaliEmptyState } from "@/components/maswali/maswali-empty-state";
 import { eatWeekdayClock, weekNumberOf } from "@/components/maswali/maswali-format";
 import { TicketsHead } from "@/components/journey/tickets/ticket-switch";
 import { millioneaTicketGate } from "@/lib/server/millionea-gate";
@@ -46,7 +46,7 @@ import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { getServerT } from "@/lib/i18n-server";
 import { fill, formatNumber } from "@/lib/utils";
 import type { Dict } from "@/lib/i18n-dict";
-import { MILLIONEA_HREF, MillioneaPreviewMark, signInHref, ticketPageHref } from "../millionea-parts";
+import { MILLIONEA_HREF, signInHref, ticketPageHref } from "../millionea-parts";
 import { lineOfSlots, msOf } from "../millionea-view";
 import { inLens, lensHref, MillioneaTicketsBar, parseMillioneaLens, type MillioneaLens } from "./tickets-bar";
 
@@ -145,10 +145,9 @@ export default async function MillioneaTicketsPage({ searchParams }: { searchPar
             </div>
           )
           : <PageHeader eyebrow={t.millionea.productTitle} title={t.millionea.ticketsTitle} />}
-      {gate.preview && <MillioneaPreviewMark t={t} />}
       <MillioneaTicketsBar lens={lens} t={t} />
       {total === 0 ? (
-        <EmptyState
+        <MaswaliEmptyState
           fill={journey}
           kind="positions"
           title={t.millionea.emptyTickets}
@@ -161,7 +160,7 @@ export default async function MillioneaTicketsPage({ searchParams }: { searchPar
         />
       ) : cards.length === 0 ? (
         // The reader holds tickets; this lens leaves none on this page (or, on the one page, none at all).
-        <EmptyState
+        <MaswaliEmptyState
           fill={journey}
           kind="positions"
           title={total > PLAYER_PER_PAGE ? t.millionea.lensNoneOnPage : lensEmptyTitle(t, lens)}

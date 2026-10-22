@@ -40,17 +40,20 @@
  * (at 3f6af84e1, and again at 76a8d4780 after S7-F7 2 made PL.4 record a throw as its own failure) — raised to them.
  * ⭐ S7-F8 9 (2026-10-21, S5-FIX-SRV's finding 2 in the re-freeze and the stop): DL.7, SU.5a and SU.6a on each store and
  * DL.6 on Postgres: 197 on memory, 206 on Postgres, what this commit's tree printed.
- * ⭐ S7-OB (2026-10-22, the Millionea objection door): OB.0 struck on each store — a holder files on one question through
- * the door and an officer other than the sealer rules — and §4b OM added, six on each (the filing holds the week, the
- * REVERSE re-grades and restarts the window once, the money follows the final record): 204 on memory, 213 on Postgres,
- * with 2 KNOWN-RED on each (RD.5, TK.2), what this commit's tree printed.
+ * ⭐ S7-F9 (2026-10-22, MB-96): TK.2 struck on both stores — the winner-takeover watch raises its alert — with TK.3,
+ * TK.3a–TK.3c, TK.4, TK.5 and TK.6 beside it on each: 205 on memory, 214 on Postgres, with 2 KNOWN-RED on each (OB.0, RD.5).
+ * ⭐ S7-F9 9 (2026-10-22, MB-74): RD.5 struck on both stores — a deposit contradicted after its winner was paid holds the
+ * share at once — with RD.5b, RD.5c, RD.5d, RD.6–RD.9 and RD.10 (a release in flight) beside it on each: 214 on memory,
+ * 223 on Postgres, with 1 KNOWN-RED on each (OB.0).
+ * ⭐ S7-F9 11 (2026-10-22): TK.4b — the takeover alert and its integrity card in their reviewed words (what the control
+ * enforces, never what it watches for) — on each: 215 on memory, 224 on Postgres.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({
   suite: "test:maswali-adversarial",
   casesFile: "scripts/lib/maswali-adversarial-child.mts",
-  minPass: { memory: 204, postgres: 213 },
+  minPass: { memory: 215, postgres: 224 },
   dbPrefix: "mlw_adv",
   timeoutMs: 45 * 60_000,
 });

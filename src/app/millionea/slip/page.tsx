@@ -36,7 +36,7 @@ import { breakSentence } from "@/lib/break-end";
 import { renderFailure } from "@/lib/failure-reasons";
 import { formatTzs, pctNum } from "@/lib/utils";
 import type { Dict } from "@/lib/i18n-dict";
-import { MILLIONEA_HREF, MillioneaPreviewMark, signInHref } from "../millionea-parts";
+import { MILLIONEA_HREF, signInHref } from "../millionea-parts";
 import { capReachedLine, hiddenSlotsOf, msOf, slipQuestionsOf } from "../millionea-view";
 import { SlipClient } from "./slip-client";
 
@@ -54,15 +54,14 @@ export async function generateMetadata(): Promise<Metadata> {
  * The page when no slip is drawn: the way back to the hub over its head, as the slip itself draws it ("‹ MASWALI
  * MILLIONEA"), its name, and the reason. ⭐ ONE way back, named (Ali 2026-10-21 10/10 pass, the slip critic's LOW): the
  * page's foot once carried a second, a ghost button whose only words were the product's name. The reason stands at the
- * slip's own measure (640px, its question column), never stretched to the page's width from 1280.
+ * slip's own measure (the form tier's `max-w-form`, its question column), never stretched to the page's width from 1280.
  */
-function NoSlip({ t, preview, children }: { t: Dict; preview: boolean; children: React.ReactNode }) {
+function NoSlip({ t, children }: { t: Dict; children: React.ReactNode }) {
   return (
     <PageContainer tier="reading" className="kp-mln-zh">
       <BackLink fallbackHref={MILLIONEA_HREF.hub} label={t.millionea.productTitle} />
-      <div className="flex max-w-[640px] flex-col gap-5 pt-5" data-testid="millionea-slip-none">
+      <div className="flex max-w-form flex-col gap-5 pt-5" data-testid="millionea-slip-none">
         <PageHeader title={t.millionea.titleSlip} />
-        {preview && <MillioneaPreviewMark t={t} />}
         {children}
       </div>
     </PageContainer>
@@ -78,7 +77,7 @@ export default async function MillioneaSlipPage() {
   const brk = await millioneaBreakOf(gate.userId);
   if (brk) {
     return (
-      <NoSlip t={t} preview={gate.preview}>
+      <NoSlip t={t}>
         <BetBreakNotice body={breakSentence(brk.exclusion ? t.rg.exclusionActive : t.rg.breakActive, brk.until, nowMs, t.common.monthsShort, locale)} testId="millionea-slip-break" />
       </NoSlip>
     );
@@ -86,7 +85,7 @@ export default async function MillioneaSlipPage() {
   const slip = await millioneaSlip({ userId: gate.userId, state: gate.state }, now);
   if (!slip) {
     return (
-      <NoSlip t={t} preview={gate.preview}>
+      <NoSlip t={t}>
         <Callout tone="neutral" role="status">{t.millionea.hubNoWeek}</Callout>
       </NoSlip>
     );
@@ -112,7 +111,7 @@ export default async function MillioneaSlipPage() {
       said = { body: r.body, tone: r.severity === "error" ? "neutral" : "info" };
     }
     return (
-      <NoSlip t={t} preview={gate.preview}>
+      <NoSlip t={t}>
         <Callout tone={said.tone} role="status">{said.body}</Callout>
       </NoSlip>
     );
@@ -130,7 +129,6 @@ export default async function MillioneaSlipPage() {
     <PageContainer tier="reading" className="kp-mln-zh">
       {/* The way back to the hub over the slip's head, as the S-slip frames draw it ("‹ MASWALI MILLIONEA"). */}
       <BackLink fallbackHref={MILLIONEA_HREF.hub} label={t.millionea.productTitle} />
-      {gate.preview && <MillioneaPreviewMark t={t} />}
       <SlipClient
         userId={gate.userId}
         weekId={slip.week.id}

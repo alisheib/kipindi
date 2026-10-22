@@ -313,7 +313,9 @@ export function MaswaliTicket({
           : null,
         live.nextEventAt !== undefined ? keepFact(locale, fill(t.millionea.nextEvent, { when: eatWeekdayClock(t, live.nextEventAt) })) : null,
         live.objectionsUntil !== undefined ? keepFact(locale, fill(t.millionea.checkWindowUntil, { when: eatWeekdayClock(t, live.objectionsUntil) })) : null,
-        live.salesCloseAt !== undefined ? keepFact(locale, fill(t.millionea.salesCloseAt, { when: eatWeekdayClock(t, live.salesCloseAt) })) : null,
+        // An open week's two facts in the slip's own words (round 2, SLIP's observation): "Sales close: Friday 18:00 EAT ·
+        // First event: Saturday 09:00 EAT" — one grammar and one zone for the pair, as the ticket was bought under them.
+        live.salesCloseAt !== undefined ? keepFact(locale, fill(t.millionea.salesCloseColon, { when: eatWeekdayClock(t, live.salesCloseAt) })) : null,
         live.firstEventAt !== undefined ? keepFact(locale, fill(t.millionea.firstEventAt, { when: eatWeekdayClock(t, live.firstEventAt) })) : null,
       ].filter((x) => x !== null)
     : null;

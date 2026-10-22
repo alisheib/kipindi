@@ -315,7 +315,8 @@ section("6 · D6 · a Millionea address draws Millionea's ghost only for a reade
   const slotDefects = (G: Ghost) => LOCALES.flatMap((l) => [...(at(G, "/", l).includes(SLOT) ? [`${l} hidden reader has the slot`] : []), ...(at(G, "/", l, true).includes(SLOT) ? [] : [`${l} visible reader lacks the slot`])]);
   ok("6.4 · \"/\": the journey home's ghost holds the Millionea card's slot for a reader Millionea is visible to, and draws none for anyone else (sw, en, zh)",
     slotDefects(real).length === 0, j(slotDefects(real)));
-  const unhanded = fromSource<{ JourneyRouteGhost: Ghost }>(GHOST, plant(raw(GHOST), '"/": <JourneyHomeGhost t={t} locale={locale} millionea={millionea} />,', '"/": <JourneyHomeGhost t={t} />,')).JourneyRouteGhost;
+  // RE-PINNED (MASWALI-BUILD S5-DESIGN-DOORS round 2): "/" hands the answer on only while true, the root loading's shape.
+  const unhanded = fromSource<{ JourneyRouteGhost: Ghost }>(GHOST, plant(raw(GHOST), '"/": <JourneyHomeGhost t={t} locale={locale} {...(millionea ? { millionea: true as const } : {})} />,', '"/": <JourneyHomeGhost t={t} />,')).JourneyRouteGhost;
   ok("6.4′ PLANT · a home ghost not handed the answer (the slot never held: the card would push the page down as it lands) is reported",
     slotDefects(unhanded).some((x) => x.includes("lacks")));
 }

@@ -73,11 +73,14 @@ export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // D19a RE-PINNED (S7-F9, the lead's ruling (b) of 2026-10-22; was 5a95302db): S7's F1 no-date announcement
   // (`finalAhead`) is back in en/sw/zh, byte for byte as S7's reviewed pin (f28803da1) held it, for L22 once a final week's
   // open has passed. No other line changed.
-  // D19a RE-PINNED (S7-OB, the Millionea objection door, 2026-10-22; was 7a9a98ffe): 24 `millionea.obj*` keys in en/sw/zh,
-  // the ticket page's door — its window and the money's rule, the dialog's title, intro, question picker and filed toast,
-  // each refusal in the player's words, and the player's objections in every state with the officer's note. No other line
-  // changed. (S7 re-pins at its own merge: the second merge re-pins, the lead's ruling.)
-  "src/lib/i18n-dict.ts": "f049ab830270827b9bb361eed727b80906cb2228",
+  // D19a RE-PINNED AT S7-MERGE 2 (the S5 release's round 2, e34bcdc95; was 7a9a98ffe): S7's dictionary plus the release's
+  // one addition since 81e312f01 — `draftTicketsNoun` in en/sw/zh ("Tickets" / "Tiketi" / "彩票", SLIP round 2's ruling
+  // (a)). No other line changed.
+  // D19a RE-PINNED (S7-OB, the Millionea objection door, 2026-10-22; was 475f305f6, S7-MERGE 2's): S7's dictionary as pinned
+  // above plus 24 `millionea.obj*` keys in en/sw/zh — the ticket page's door: its window and the money's rule, the dialog's
+  // title, intro, question picker and filed toast, each refusal in the player's words, and the player's objections in every
+  // state with the officer's note. No other line changed.
+  "src/lib/i18n-dict.ts": "fad0139957183720edd91b321b09e77cf72392d1",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
 };
@@ -238,7 +241,10 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     const APPROVED_EXTRA = new Map([
       ["src/app/legal/_components.tsx", PHOS_R2A_PART2],
       ["src/app/legal/rules/page.tsx", PHOS_R2A_PART2],
-      ["src/app/legal/privacy/page.tsx", "8d126b819"],
+      // 2026-10-22: 8d126b819 → c58b316ff — the one reviewed line between them: the never-printed Millionea slip
+      // paragraph's English "removed once your ticket is cut" → "… is bought" (Ali's 2026-10-21 ruling 7; the
+      // Privacy v2026-10-17 entry is amended; production's notice is unchanged).
+      ["src/app/legal/privacy/page.tsx", "c58b316ff2116976f5021ad89b242ce09244953e"],
       ["src/app/legal/responsible-gambling/page.tsx", W4],
     ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };

@@ -37,7 +37,7 @@ import { REFUSED_FUNDS_FORFEIT_DESCRIPTION } from "@/lib/refused-funds-outcomes"
 import type { FailureReason, FailureDetail } from "@/lib/failure-reasons";
 import { paymentMethodName } from "@/lib/payment-providers";
 import { notifyDeposit, notifyWithdraw, notifyAdminsAmlReview, notifyRefusedFundsReturnFailed } from "./notification-service";
-import { afterCommit, currentLockTx, runOutsideLock, withLock } from "./locks";
+import { afterCommit, currentLockTx, inLock, runOutsideLock, withLock } from "./locks";
 import { depositRecheckBinding, isStoredFundingKey, matchesDepositRecheckBinding, parseDepositRecheckBinding, type DepositRecheckBinding } from "@/lib/journey/deposit-recheck-binding";
 import { matchesProcessingProbeBinding, parseProcessingProbeBinding, withdrawalProbeBinding, type ProcessingProbeBinding } from "./payment-probe-binding";
 import { emit } from "./event-bus";
@@ -1121,6 +1121,8 @@ export async function settlePaymentWebhook(
       if (reviewAdded) afterCommit(currentLockTx(), () => notifyDeposit(txn.userId,
         { status: "AML_REVIEW", amount: Math.abs(txn.amount), provider: friendlyProvider(txn.provider), txnId: txn.id,
           savedReturn: !!parseSavedDepositBet(txn.pendingBet) }));
+      // MB-74 · RD.5: a CREDITED deposit now under review may have bought a Millionea share already paid — held, never debited.
+      if (reviewAdded && txn.status === "CONFIRMED") await holdMillioneaSharesOfReviewedDeposit(txn.id);
       audit({ category: "SECURITY", action: "webhook.amount_mismatch", actorId: null, targetType: "Transaction", targetId: txn.id,
         payload: { expected: txn.amount, got: input.amount, providerRef: input.providerRef, was: txn.status } });
       auditNeedsReviewOnce(txn.id, "provider reported a DIFFERENT amount for a terminal deposit — no money changed automatically", {
@@ -1154,6 +1156,8 @@ export async function settlePaymentWebhook(
       if (reviewAdded) afterCommit(currentLockTx(), () => notifyDeposit(txn.userId,
         { status: "AML_REVIEW", amount: Math.abs(txn.amount), provider: friendlyProvider(txn.provider), txnId: txn.id,
           savedReturn: !!parseSavedDepositBet(txn.pendingBet) }));
+      // MB-74 · RD.5: a CREDITED deposit reversed may have bought a Millionea share already paid — held, never debited.
+      if (reviewAdded && txn.status === "CONFIRMED") await holdMillioneaSharesOfReviewedDeposit(txn.id);
       audit({
         category: "SECURITY",
         action: "webhook.terminal_contradicted",
@@ -1244,6 +1248,27 @@ async function markDepositStatusReview(txnId: string, reported: "CONFIRMED" | "F
     if (!saved || !hasDepositStatusReview(saved)) throw new Error("Deposit review signal was not persisted.");
     return true;
   });
+}
+
+/**
+ * ⭐ MB-74 · RD.5 (MASWALI-BUILD S7-F9): a CREDITED deposit just marked for review may have bought a Millionea ticket that
+ * has already won and been paid — `holdSharesForReversedDeposit` holds those shares for Compliance. Never a debit and never
+ * a reversal: the money decision stays an officer's (the rule above). The hold takes `maswali:chain`, which is never taken
+ * under a wallet lock, so from inside a lock it runs once that lock's work has committed, outside every lock; from no lock
+ * it is awaited, so the webhook answers after the hold. A failure is logged and never fails the webhook: the nightly heal
+ * (`healReversedDepositHolds`) places the hold.
+ */
+async function holdMillioneaSharesOfReviewedDeposit(depositTxnId: string): Promise<void> {
+  const hold = async () => {
+    try {
+      const { holdSharesForReversedDeposit } = await import("./maswali-settlement");
+      await holdSharesForReversedDeposit(depositTxnId);
+    } catch (err) {
+      console.error(`[wallet] deposit ${depositTxnId}'s Millionea shares could not be held now; the nightly heal holds them:`, (err as Error)?.message ?? err);
+    }
+  };
+  if (inLock()) afterCommit(currentLockTx(), () => { void runOutsideLock(hold); });
+  else await hold();
 }
 
 /** A pre-lock unique reference may have collided or changed while waiting. Read through the SAME wallet transaction

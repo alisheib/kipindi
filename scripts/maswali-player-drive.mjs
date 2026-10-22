@@ -19,7 +19,7 @@
  *       the hub, and finds "Millionea" as the top bar's core link right after Up & Down, in Millionea's ink (Ali's tab
  *       ruling of 2026-10-19, DESIGN_AUTHORITY §M8a item 11 — it was More's first row in S5), with Results moved into
  *       More's first row at every width while it shows;
- *   3 · THE TICKET: hub → slip → fifteen answers (each a radio group) → the confirm → "Cut ticket" → the stamp → the
+ *   3 · THE TICKET: hub → slip → fifteen answers (each a radio group) → the confirm → "Buy ticket" → the stamp → the
  *       ticket page; the free cancel inside its window → the neutral result → the ticket reads cancelled; then a second
  *       ticket bought the same way;
  *   4 · TIKETI ZANGU: with a staff preview pass beside the player's session, /positions draws Millionea as its third kind
@@ -220,13 +220,14 @@ async function buyOne(label) {
   const proceed = p.locator("button:visible", { hasText: "Continue" }).first();
   ok(`${label}.3 fifteen answers arm "Continue"`, (await proceed.count()) === 1);
   await proceed.click();
-  const commit = p.getByRole("button", { name: /^Cut ticket/ });
+  const commit = p.getByRole("button", { name: /^Buy ticket/ });
   await commit.waitFor({ timeout: 60_000 });
   await tile(p, `${label}-confirm-360`);
   await commit.click();
-  const view = p.getByRole("button", { name: "View ticket" });
+  // The stamp's "View ticket" is the kit's Link since S5-R2-SLIP 13 (OperationResultModal's `primaryHref`).
+  const view = p.getByRole("link", { name: "View ticket" });
   await view.waitFor({ timeout: 120_000 });
-  ok(`${label}.4 the cut ticket's stamp names its serial`, ((await p.getByRole("dialog").first().textContent()) ?? "").includes("Ticket cut"));
+  ok(`${label}.4 the bought ticket's stamp names its serial`, ((await p.getByRole("dialog").first().textContent()) ?? "").includes("Ticket bought"));
   await tile(p, `${label}-stamp-360`);
   await Promise.all([p.waitForURL(/\/millionea\/tickets\/[^/]+$/, { timeout: 120_000 }), view.click()]);
   // The URL changes when the client navigation starts, before the ticket page has rendered (a second OMEGA run counted

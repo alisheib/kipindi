@@ -37,7 +37,7 @@
  * ⛔ NO NOTICE, EMAIL OR PUSH FROM HERE (S6 writes Millionea's own), and no wagering, recruit or house accrual (OD-20/27).
  */
 import { createHash } from "node:crypto";
-import { audit } from "./audit";
+import { audit, getAuditForTargetsDurable } from "./audit";
 import { afterCommit, runOutsideLock, withLock } from "./locks";
 import { invalidateMillioneaRegisterWeek } from "./maswali-register-cache";
 import { acct, maswaliForfeitReturnEntries, maswaliJackpotOf, maswaliRolloverEntries, maswaliSettlementEntries, maswaliSunsetEntries, withMoneyTx, type LedgerLine } from "./ledger";
@@ -273,8 +273,8 @@ type SettleSeams = {
   betweenLiftSections?: (section: number) => Promise<void>;
   /** A forfeit, committed, before its lift. */
   beforeLift?: () => Promise<void>;
-  /** The last statement of a release's, a forfeit's or a hold's transaction. */
-  beforeCommit?: (act: "release" | "forfeit" | "hold") => Promise<void>;
+  /** The last statement of a release's, a forfeit's or a hold's transaction; "money": the FIRST of a release's money one. */
+  beforeCommit?: (act: "release" | "forfeit" | "hold" | "money") => Promise<void>;
 };
 let seams: SettleSeams = {};
 /** ⚠️ TEST SEAM ONLY — never call this from application code. Each seam is awaited at its point; `null` clears them. */
@@ -383,7 +383,7 @@ export async function settleMaswaliWeek(input: {
           carryOut: a.kind === "PAYOUT" ? a.carryOut : f.sales, dustCarried: a.kind === "PAYOUT" ? a.carryOut : 0,
           settlementGroupId: groupId, settledAt, releasedBy: input.releasedBy,
         };
-
+        await seams.beforeCommit?.("money"); // a test seam (S7-F9 · RD.10): past the deposits' last read, before any write
         await withMoneyTx(async (mtx) => {
           // ⛔ R3 · THE JACKPOT COVERS R, read in the transaction before any write: a carry above what the jackpot holds (a
           //    claim gone stale, a ledger fault) is never drawn, and the week pays nothing until the two agree.
@@ -879,4 +879,103 @@ async function depositHolds(userIds: readonly string[]): Promise<(userId: string
     console.error("[maswali-settlement] the winners' deposits could not be checked, so every share is held:", (err as Error)?.message ?? err);
     return () => "deposit check unreadable";
   }
+}
+
+// ── MB-74 · RD.5 · A DEPOSIT CONTRADICTED AFTER ITS WINNER WAS PAID ─────────────────────────────────────
+
+/** A share's hold record — Compliance's and this one's: on a reversal hold its payload names the deposit it holds for. */
+const SHARE_HELD_ACTION = "maswali.share.held";
+const DEPOSIT_HOLD: HoldReason = "deposit under review";
+
+/**
+ * ⭐ MB-74 · RD.5 (MASWALI-BUILD S7-F9; the lead's ruling of 2026-10-22). A credited deposit the provider contradicts AFTER a
+ * week paid its winner: every PAID winning share of that account whose ticket was bought at or after the deposit was
+ * credited — what that money may have bought — and that is not held or forfeited already is HELD for Compliance at once,
+ * in the release's own words ("deposit under review"), as a winner whose deposit was contradicted BEFORE the release is
+ * held there (`depositHolds`). A share whose ticket was bought before the deposit was credited is left alone: that money
+ * cannot have bought it. A credit time that cannot be read holds every paid share (the safe side).
+ * ⭐ The reversal is the trigger: `settlePaymentWebhook` calls this where it first marks a credited deposit for review, and
+ *    the nightly heal (`healReversedDepositHolds`) offers it every marked deposit again, so a stop between the mark and the
+ *    hold is made good. IDEMPOTENT: a held share is passed by, and a share held once FOR THIS DEPOSIT — whatever Compliance
+ *    decided since — is never held for it again. A read of those records that fails or stops short holds anyway (the safe
+ *    side: Compliance releases it again).
+ * ⛔ NOTHING MOVES. The wallet takes the Millionea hold and the ticket its mark; release or forfeit is Compliance's (OD-07),
+ *    and a forfeit is refused where the wallet no longer holds the share — never a negative balance.
+ * ⭐ R6 · under `maswali:chain`, as every hold of this reason: the tickets' marks join the lock's transaction, each hold is
+ *    recorded after the commit with the deposit's id, and a hold placed for marks that did not commit is lifted again where
+ *    no other share is held (R8, as `holdMaswaliShare`). Returns the tickets it held.
+ */
+export async function holdSharesForReversedDeposit(depositTxnId: string): Promise<{ held: string[] }> {
+  const { hasDepositStatusReview } = await import("../wallet/deposit-review");
+  const d = await db.txn.findById(depositTxnId);
+  if (!d || d.type !== "DEPOSIT" || d.status !== "CONFIRMED" || !hasDepositStatusReview(d)) return { held: [] };
+  const credited = Date.parse(d.completedAt ?? d.createdAt);
+  const creditMs = Number.isFinite(credited) ? credited : -Infinity;
+  /** A paid, unheld winning share whose ticket this deposit's money may have bought (a purchase time unread: it may have). */
+  const mayHaveBought = (t: StoredTicket) => t.status === "SETTLED" && t.won === true && (t.payout ?? 0) > 0 && !t.frozenReason
+    && !(Date.parse(t.createdAt) < creditMs);
+  const userId = d.userId;
+  const held: string[] = [];
+  try {
+    // ⛔ THE SHARES ARE READ UNDER THE CHAIN LOCK, never before it: a release in flight either committed before this lock was
+    //    taken — its shares are read here, paid, and held — or runs after it and reads this deposit's mark itself
+    //    (`depositHolds`). Read before the lock, a release landing in between paid the share free and nothing held it.
+    await withLock(MASWALI_CHAIN_LOCK, async (tx) => {
+      const candidates = (await ticketStore.listForUser(userId)).filter(mayHaveBought);
+      if (candidates.length === 0) return;
+      let done = new Set<string>();
+      try {
+        const before = await getAuditForTargetsDurable({ targetType: "MaswaliTicket", targetIds: candidates.map((t) => t.id),
+          actions: [SHARE_HELD_ACTION], sinceIso: new Date(Number.isFinite(creditMs) ? creditMs : 0).toISOString(), limit: 1_000 });
+        if (!before.truncated) {
+          done = new Set(before.entries.filter((e) => (e.payload as { deposit?: unknown } | undefined)?.deposit === depositTxnId)
+            .map((e) => e.targetId ?? ""));
+        }
+      } catch (err) {
+        console.error(`[maswali-settlement] deposit ${depositTxnId}'s earlier holds could not be read, so every share it may have bought is held:`, (err as Error)?.message ?? err);
+      }
+      const todo = candidates.filter((t) => !done.has(t.id));
+      const codes = new Map<string, string>();
+      for (const t of todo) {
+        if (!codes.has(t.cycleId)) codes.set(t.cycleId, (await weekStore.get(t.cycleId))?.code ?? t.cycleId);
+        const code = codes.get(t.cycleId) ?? t.cycleId;
+        const f = await holdWallet(userId, { actorId: SYSTEM, note: `Millionea ${code} · ${t.serial} · ${DEPOSIT_HOLD} (deposit ${depositTxnId}, contradicted after the payout)`, ref: { ticketId: t.id } });
+        if (!f.ok) throw new Error(f.error);
+        await ticketStore.patch(t.id, { frozenReason: DEPOSIT_HOLD }, tx ?? undefined);
+        held.push(t.id);
+        afterCommit(tx, () => {
+          audit({ category: "COMPLIANCE", action: SHARE_HELD_ACTION, actorId: SYSTEM, targetType: "MaswaliTicket", targetId: t.id,
+            payload: { code, serial: t.serial, payout: t.payout, reason: DEPOSIT_HOLD, deposit: depositTxnId, trigger: "deposit contradicted after the payout" } });
+        });
+      }
+      await seams.beforeCommit?.("hold");
+    });
+  } catch (err) {
+    await liftHoldsIfClear([userId], `Millionea · the holds for deposit ${depositTxnId} did not commit`);
+    throw err;
+  }
+  return { held };
+}
+
+/**
+ * ⭐ RD.5's HEAL (S7-F9): every credited deposit marked for review is offered to `holdSharesForReversedDeposit` again — a
+ * share a stopped process left unheld between the mark and its hold is held, once; a share already held for that deposit is
+ * never held again. Nightly, before the stray-hold heal (`lifecycle.ts`). A deposit that fails is logged; the rest go on.
+ */
+export async function healReversedDepositHolds(): Promise<{ deposits: number; held: string[] }> {
+  const { DEPOSIT_STATUS_REVIEW_MARK, hasDepositStatusReview } = await import("../wallet/deposit-review");
+  const c = hasDatabase() && process.env.USE_PRISMA_DAL !== "false" ? prisma() : null;
+  const ids = c
+    ? (await c.transaction.findMany({ where: { type: "DEPOSIT", status: "CONFIRMED", providerStatus: DEPOSIT_STATUS_REVIEW_MARK }, select: { id: true } })).map((r) => r.id)
+    : (await db.txn.listByStatus("CONFIRMED")).filter((t) => t.type === "DEPOSIT" && hasDepositStatusReview(t)).map((t) => t.id);
+  const held: string[] = [];
+  for (const id of ids) {
+    try { held.push(...(await holdSharesForReversedDeposit(id)).held); }
+    catch (err) { console.error(`[maswali-settlement] the heal could not hold deposit ${id}'s shares:`, (err as Error)?.message ?? err); }
+  }
+  if (held.length > 0) {
+    audit({ category: "COMPLIANCE", action: "maswali.share.reversal_holds_healed", actorId: SYSTEM, targetType: "MaswaliHold", targetId: "reversal",
+      payload: { deposits: ids.length, held } });
+  }
+  return { deposits: ids.length, held };
 }

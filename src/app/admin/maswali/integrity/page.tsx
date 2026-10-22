@@ -18,6 +18,7 @@ import { CONSOLE_PER_PAGE, SEAL_WEEKS_PER_PAGE, consoleStanding, integrityView }
 import { parseIntegrityListQuery, integrityListParams } from "@/lib/maswali-integrity-list";
 import { isMaswaliVoidReason, MASWALI_VOID_REASON_LABEL } from "@/lib/maswali-void-reason";
 import { clusterReport, pickShifts, recentNewDeviceSeals } from "@/lib/server/maswali-integrity";
+import { takeoverWatch, type TakeoverWatch } from "@/lib/server/maswali-takeover";
 import { weekStore } from "@/lib/server/maswali-dal";
 import { slotLabel } from "@/lib/maswali-score";
 import { adminCount, formatNumber, formatTzs } from "@/lib/utils";
@@ -80,6 +81,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
   const clusters = await Promise.all(closed.map((w) => clusterReport(w).catch(() => null)));
   const shifts = await pickShifts().catch(() => null);
   const newDevices = await recentNewDeviceSeals().catch(() => null);
+  const takeover = await takeoverWatch().catch((): TakeoverWatch => ({ readable: false, findings: [] }));
   if (!v) return (<><AdminPageHead title="Millionea · Integrity" sw="Uadilifu" /><AdminBody><p className="text-body-sm text-danger-fg">The integrity view could not be read.</p></AdminBody></>);
   const linkQuery = {
     held: { ...query.held, page: v.heldPage.page },
@@ -126,6 +128,25 @@ async function Content({ searchParams }: IntegrityPageProps) {
                   <li key={i}><span className="tabular">{fmtEat(d.at)}</span> · officer {d.officerId ?? "?"} · week {d.weekId ?? "?"}{d.kind === "unchecked"
                     ? <span className="text-warning"> · the device could not be checked against their earlier seals</span>
                     : d.firstSeal ? <span className="text-text-tertiary"> · their first seal on the platform</span> : <span className="text-warning"> · not a device they sealed from before</span>}</li>
+                ))}
+              </ul>
+            )}
+        </AdminCard>
+
+        {/* ⭐ MB-96 · the winners' takeover watch (S7-F9, `maswali-takeover.ts`): an alert, never a hold — a winner's share is
+            held from the winners below (OD-07); nothing else is ever held (2026-10-10). The card says what the control
+            enforces, never what it watches for (the repository is public; the lead's ruling, 2026-10-22). */}
+        <AdminCard title="Possible account takeovers after a payout" sw="Akaunti za washindi za kukagua">
+          {!takeover.readable && <p role="alert" className="text-body-sm text-danger-fg mb-2">The takeover watch could not be read in full; a winning account may be missing from this list.</p>}
+          {takeover.findings.length === 0
+            ? (takeover.readable && <p className="text-body-sm text-text-secondary">No winning account is flagged for review.</p>)
+            : (
+              <ul className="space-y-1.5 text-body-sm">
+                {takeover.findings.map((f) => (
+                  <li key={`${f.userId}-${f.weekId}`}>
+                    <span className="tabular">{f.code}</span> · {f.holder} · flagged <span className="tabular">{fmtEat(f.flaggedAt)}</span>
+                    <span className="text-text-tertiary"> (paid <span className="tabular">{fmtEat(f.creditAt)}</span>). Review the account with its owner before its money leaves; hold the share from Winners below if it is not theirs.</span>
+                  </li>
                 ))}
               </ul>
             )}
@@ -232,7 +253,8 @@ async function Content({ searchParams }: IntegrityPageProps) {
                   {v.held.map((h) => (
                     <tr key={h.ticketId}>
                       <td className="text-left tabular">{h.weekCode}</td><td className="text-left tabular">{h.serial}</td><td className="text-left">{h.holder}</td>
-                      <td className="text-right tabular">{formatTzs(h.payout)}</td><td className="text-left max-w-[280px]">{h.reason}</td>
+                      <td className="text-right tabular">{formatTzs(h.payout)}</td>
+                      <td className="text-left max-w-[280px]">{h.reason}{h.provenance && <span className="block text-body-sm text-text-tertiary">{h.provenance}</span>}</td>
                       <td className="text-left">{h.forfeited ? <Chip variant="danger" size="sm">Forfeited</Chip>
                         : <HeldShareControls ticketId={h.ticketId} serial={h.serial} canRelease={canRelease} canForfeit={canForfeit}
                             releaseNeed={CONTROL_DOMAIN.releaseMaswaliShare} forfeitNeed={CONTROL_DOMAIN.forfeitMaswaliShare} />}</td>

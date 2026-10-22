@@ -1181,28 +1181,43 @@ if (runs("TO")) {
 // ═══ §10 · RD · a reversed deposit funding a winner ═════════════════════════════════════════════════════════════════
 if (runs("RD")) section("§10 · RD · a reversed deposit funding a winner: the ticket stays in the week; its share is paid and held for Compliance (MB-74, OD-07)");
 if (runs("RD")) {
-  const deposited = async (amount: number) => {
-    const u = await W.user({ balance: amount });
+  /** ⚠️ A FIXTURE, DECLARED: the CONFIRMED deposit row behind the world's seeded balance (the wallet and its ledger lines
+   *  already hold the money), credited NOW, so the provider's reversal has a credited deposit to contradict. */
+  const depositFor = async (u: string, amount: number) => {
     const providerRef = ref("DEP");
     const txnId = `txn_adv_${process.pid}_${++serial}`;
     const at = new Date().toISOString();
-    // ⚠️ A FIXTURE, DECLARED: the CONFIRMED deposit row behind the world's seeded balance (the wallet and its ledger lines
-    //    already hold the money), so the provider's reversal has a credited deposit to contradict.
     await W.db.txn.create({
       id: txnId, walletId: `wal_${u}`, userId: u, type: "DEPOSIT", status: "CONFIRMED", amount, fee: 0, taxWithheld: 0, balanceAfter: amount,
       currency: "TZS", provider: "MPESA", providerRef, msisdn: null, description: "Deposit · M-Pesa", positionId: null, amlReason: null,
       createdAt: at, updatedAt: at, completedAt: at,
     });
-    return { u, providerRef, txnId };
+    return { providerRef, txnId };
   };
+  const deposited = async (amount: number) => {
+    const u = await W.user({ balance: amount });
+    return { u, ...(await depositFor(u, amount)) };
+  };
+  /** Each step's audit rows stamped, and a moment more: no two of the case's instants coincide. */
+  const step = async () => { await auditFlush(); await new Promise((res) => setTimeout(res, 25)); };
   const start = W.weekStartAhead(ahead++);
   const wk = await openWeekAt(start);
-  const rev = await deposited(20_000), clean = await deposited(20_000), late = await deposited(20_000);
-  const [filler] = await people(1, 50_000);
+  // ⭐ S7-F9 · RD.5's accounts beside RD.1's: `lost` — a deposit credited before its ticket, whose reversal's hold a stopped
+  //    process will have left unplaced (RD.8); `prior` — a ticket bought BEFORE its account's deposit was credited (RD.7).
+  //    `diff` — a credited deposit the provider re-reports CONFIRMED at ANOTHER amount after the payout (RD.5c).
+  const rev = await deposited(20_000), clean = await deposited(20_000), late = await deposited(20_000), lost = await deposited(20_000);
+  const diff = await deposited(20_000);
+  const [filler, prior] = await people(2, 50_000);
+  await step();
   const [tRev] = await bought(rev.u, wk.id, [ALL_YES]);
   const [tClean] = await bought(clean.u, wk.id, [ALL_YES]);
   const [tLate] = await bought(late.u, wk.id, [ALL_YES]);
-  await W.sell(wk.id, 7, MISS_M1, [filler]);
+  const [tLost] = await bought(lost.u, wk.id, [ALL_YES]);
+  const [tDiff] = await bought(diff.u, wk.id, [ALL_YES]);
+  const [tPrior] = await bought(prior, wk.id, [ALL_YES]);
+  await step();
+  const priorDep = await depositFor(prior, 50_000);
+  await W.sell(wk.id, 4, MISS_M1, [filler]);
   const heard = await wallet.settlePaymentWebhook({ providerRef: rev.providerRef, status: "FAILED" });
   const marked = await W.db.txn.findById(rev.txnId);
   ok("RD.0 · the provider's reversal of a credited deposit is marked for review, and nothing is clawed back by itself (the platform's rule)",
@@ -1221,16 +1236,92 @@ if (runs("RD")) {
   ok("RD.1 · ⭐ the winner whose deposit was reversed is graded and credited the full share, and the share is HELD for Compliance (MB-74, OD-07)",
     tr.won === true && tr.score === 10 && tr.payout === share && tr.frozenReason === "deposit under review" && (await bal(rev.u)) === 19_000 + share && (await heldOf(rev.u)),
     J({ won: tr.won, frozen: tr.frozenReason, held: await heldOf(rev.u) }));
+  const tLost0 = await dal.ticketStore.get(tLost.ticketId), tPrior0 = await dal.ticketStore.get(tPrior.ticketId), tDiff0 = await dal.ticketStore.get(tDiff.ticketId);
   ok("RD.3 · control: the winners whose deposits stand are paid the same share free, nothing held",
-    tc.payout === share && tc.frozenReason === null && !(await heldOf(clean.u)) && tl.payout === share && tl.frozenReason === null && !(await heldOf(late.u)));
+    [tc, tl, tLost0, tPrior0, tDiff0].every((t: any) => t.payout === share && t.frozenReason === null)
+      && !(await heldOf(clean.u)) && !(await heldOf(late.u)) && !(await heldOf(lost.u)) && !(await heldOf(prior)) && !(await heldOf(diff.u)));
   const j0 = await jackpot();
   const f = await settle.forfeitMaswaliShare({ ticketId: tRev.ticketId, officerId: OWNER, typed: settle.FORFEIT_SHARE_WORD, reason: "the funding deposit was reversed" });
   ok("RD.4 · ⭐ Compliance forfeits it: the whole share leaves the wallet for the JACKPOT, never the house (OD-07), and the hold lifts",
     f.ok && (await bal(rev.u)) === 19_000 && (await jackpot()) - j0 === share && !(await heldOf(rev.u)), errOf(f));
+  // ⭐ S7-F9 · RD.5 (the lead's ruling of 2026-10-22): a reversal heard AFTER the payout holds, at once, every paid share of
+  //    the account whose ticket was bought at or after the deposit was credited — the review mark is the trigger.
   await wallet.settlePaymentWebhook({ providerRef: late.providerRef, status: "FAILED" });
   const tl2 = await dal.ticketStore.get(tLate.ticketId);
-  knownRed("MB-74", "RD.5 · KNOWN-RED MB-74 · a reversal arriving AFTER the payout holds the share the reversed money may have bought, at once (the reversal is the trigger)",
-    !!tl2.frozenReason || (await heldOf(late.u)), J({ frozen: tl2.frozenReason, held: await heldOf(late.u) }));
+  ok("RD.5 · ⭐ a reversal arriving AFTER the payout holds the share the reversed money may have bought, at once (the reversal is the trigger; MB-74, OD-07)",
+    tl2.frozenReason === "deposit under review" && (await heldOf(late.u)) && (await bal(late.u)) === 19_000 + share,
+    J({ frozen: tl2.frozenReason, held: await heldOf(late.u), balance: await bal(late.u) }));
+  const lateRows = await auditRows("MaswaliTicket", tLate.ticketId, "maswali.share.held");
+  ok("RD.5b · …recorded once for Compliance, naming the deposit it holds for — and nothing moved: the share is in the wallet, held",
+    lateRows.length === 1 && lateRows[0].payload?.deposit === late.txnId && lateRows[0].payload?.reason === "deposit under review", J(lateRows.map((e: any) => e.payload)));
+  // MB-74 · "show the provenance in the cluster/integrity report": the held share names the deposit behind its hold.
+  const { parseIntegrityListQuery } = await import("../../src/lib/maswali-integrity-list.ts");
+  const iv = await consoleRead.integrityView(new Date(), {}, parseIntegrityListQuery({ hq: wk.code }));
+  const prov = iv.held.find((h: any) => h.ticketId === tLate.ticketId)?.provenance ?? "";
+  ok("RD.5d · the integrity page's held share shows its provenance: the contradicted deposit's amount and reference (MB-74)",
+    prov.includes("TZS 20,000") && prov.includes(late.providerRef.slice(-4)) && /contradicted/.test(prov), prov || J(iv.held.map((h: any) => h.ticketId)));
+  // The provider's other contradiction of a credited deposit: CONFIRMED again, at another amount — marked the same way.
+  const other = await wallet.settlePaymentWebhook({ providerRef: diff.providerRef, status: "CONFIRMED", amount: 15_000 });
+  const td = await dal.ticketStore.get(tDiff.ticketId);
+  ok("RD.5c · ⭐ …and so does a credited deposit re-reported at ANOTHER amount after the payout: marked for review, its share held at once",
+    other.reason === "amount-mismatch" && (await W.db.txn.findById(diff.txnId))?.providerStatus === DEPOSIT_STATUS_REVIEW_MARK
+      && td.frozenReason === "deposit under review" && (await heldOf(diff.u)) && (await bal(diff.u)) === 19_000 + share, J({ other, frozen: td.frozenReason }));
+  await wallet.settlePaymentWebhook({ providerRef: late.providerRef, status: "FAILED" });
+  await step();
+  ok("RD.6 · ⭐ the same reversal heard again holds nothing twice: one record, the share held once (idempotent)",
+    (await auditRows("MaswaliTicket", tLate.ticketId, "maswali.share.held", 3)).length === 1
+      && (await dal.ticketStore.get(tLate.ticketId)).frozenReason === "deposit under review" && (await bal(late.u)) === 19_000 + share);
+  // A deposit credited AFTER the ticket was bought cannot have bought it: its reversal leaves that share free.
+  await wallet.settlePaymentWebhook({ providerRef: priorDep.providerRef, status: "FAILED" });
+  await step();
+  const tp = await dal.ticketStore.get(tPrior.ticketId);
+  ok("RD.7 · control: a reversed deposit credited AFTER the winning ticket was bought holds nothing — that money cannot have bought it",
+    (await W.db.txn.findById(priorDep.txnId))?.providerStatus === DEPOSIT_STATUS_REVIEW_MARK && tp.payout === share && tp.frozenReason === null && !(await heldOf(prior)),
+    J({ frozen: tp.frozenReason, held: await heldOf(prior) }));
+  // Compliance releases the reversal's hold; and a stop between a mark and its hold — a deposit marked with no hold placed,
+  // the process ended in between — is what the heal is for.
+  const rl = await settle.releaseMaswaliShare({ ticketId: tLate.ticketId, officerId: OWNER, note: "the deposit was settled with the provider" });
+  await W.db.txn.update(lost.txnId, { providerStatus: DEPOSIT_STATUS_REVIEW_MARK });
+  const healed = await settle.healReversedDepositHolds();
+  await step();
+  const tl3 = await dal.ticketStore.get(tLate.ticketId), tlost = await dal.ticketStore.get(tLost.ticketId);
+  const lostRows = (await auditRows("MaswaliTicket", tLost.ticketId, "maswali.share.held")).filter((e: any) => e.payload?.deposit === lost.txnId);
+  ok("RD.8 · ⭐ the heal holds the share a stopped process left unheld between the mark and its hold — once, naming its deposit",
+    healed.held.includes(tLost.ticketId) && tlost.frozenReason === "deposit under review" && (await heldOf(lost.u)) && lostRows.length === 1
+      && (await bal(lost.u)) === 19_000 + share, J({ healed, frozen: tlost.frozenReason, rows: lostRows.length }));
+  ok("RD.9 · ⭐ …and never holds again a share Compliance released for the same deposit, nor one its deposit could not have bought",
+    rl.ok && !healed.held.includes(tLate.ticketId) && tl3.frozenReason === null && !(await heldOf(late.u))
+      && !healed.held.includes(tPrior.ticketId) && (await dal.ticketStore.get(tPrior.ticketId)).frozenReason === null, J({ released: rl, frozen: tl3.frozenReason, healed: healed.held }));
+  // ⭐ RD.10 · THE REVERSAL RACING A RELEASE IN FLIGHT, made rather than hoped for: the release has read the deposits for the
+  //    last time (none marked yet: its digest stands) and holds the chain lock, its money not yet written, when the reversal
+  //    lands (the settlement's "money" seam). The hold must wait for the release, then hold the share it paid — read before
+  //    the lock, it found nothing paid, and the share was then paid out free. (A reversal landing before that last read
+  //    makes the release refuse — "changed since it was prepared" — and the next release holds the share itself.) The
+  //    reversal runs outside the release's lock, as a second request would.
+  const { runOutsideLock } = await import("../../src/lib/server/locks.ts");
+  const start2 = W.weekStartAhead(ahead++);
+  const wk2 = await openWeekAt(start2);
+  const racer = await deposited(20_000);
+  const [filler2] = await people(1, 50_000);
+  await step();
+  const [tRacer] = await bought(racer.u, wk2.id, [ALL_YES]);
+  await W.sell(wk2.id, 9, MISS_M1, [filler2]);
+  await closed(wk2.id);
+  await sealRest(wk2.id, start2);
+  let reversal: Promise<unknown> | null = null;
+  settle.__setMaswaliSettleSeamsForTests({ beforeCommit: async (act: string) => {
+    if (act !== "money" || reversal) return;
+    reversal = runOutsideLock(() => wallet.settlePaymentWebhook({ providerRef: racer.providerRef, status: "FAILED" }));
+    await new Promise((res) => setTimeout(res, 150));
+  } });
+  let r2: any = null;
+  try { r2 = await released(wk2.id); } finally { settle.__setMaswaliSettleSeamsForTests(null); }
+  await reversal;
+  await step();
+  const tr2 = await dal.ticketStore.get(tRacer.ticketId);
+  ok("RD.10 · ⭐ a reversal landing while a release is in flight waits for it, then holds the share it paid — never the share paid out free (the shares are read under the chain lock)",
+    !!r2?.ok && !!reversal && tr2.payout === r2.week.sharePerTicket && tr2.frozenReason === "deposit under review" && (await heldOf(racer.u)),
+    J({ released: !!r2?.ok, frozen: tr2.frozenReason, held: await heldOf(racer.u) }));
 }
 
 // ═══ §11 · TK · the winner-takeover pattern ═════════════════════════════════════════════════════════════════════════
@@ -1238,25 +1329,69 @@ if (runs("TK")) section("§11 · TK · the winner-takeover pattern: a winner's m
 if (runs("TK")) {
   const start = W.weekStartAhead(ahead++);
   const wk = await openWeekAt(start);
-  const [winner, filler] = await people(2, 50_000);
-  await bought(winner, wk.id, [ALL_YES]);
+  // ⭐ S7-F9 · MB-96, THE WATCH (`maswali-takeover.ts`; an alert, never a hold). Four winners of one week, each a shape the
+  //    watch must tell apart: `winner` — the pattern after the payout (named); `plain` — half of it (not named); `early` —
+  //    the pattern begun before the payout (not named); `asked` — its acts in the other order (not named).
+  // ⚠️ Every audit row is stamped on its own turn of the queue: each step waits for its rows (`auditFlush`) and a moment
+  //    more, so no two of them share an instant and the order the case makes is the order the records keep.
+  const step = async () => { await auditFlush(); await new Promise((res) => setTimeout(res, 25)); };
+  const takeover = await import("../../src/lib/server/maswali-takeover.ts");
+  const [winner, plain, early, asked, filler] = await people(5, 50_000);
+  for (const u of [winner, plain, early, asked]) await bought(u, wk.id, [ALL_YES]);
   await W.sell(wk.id, 5, MISS_M1, [filler]);
   await closed(wk.id);
   await sealRest(wk.id, start);
+  const actEarly = await changePassword(early, "", "Mlw-adversarial-early-2026");
+  await step();
   await released(wk.id);
+  await step();
   const afterWin = await bal(winner);
-  const mine = String((await W.db.user.findById(winner))?.phoneE164 ?? "");
+  const phoneOf = async (u: string) => String((await W.db.user.findById(u))?.phoneE164 ?? "");
+  const mine = await phoneOf(winner);
   const other = mine.slice(0, -1) + String((Number(mine.slice(-1)) + 1) % 10);
   const away = await wallet.withdraw(winner, { provider: "MPESA", amount: 10_000, msisdn: other });
   ok("TK.1 · ⭐ a winner's withdrawal to a number other than the account's own is refused, and nothing moves (E-215: no payout number is changed at a withdrawal)",
     !away.ok && (away as any).reason === "payout_destination_not_registered" && (await bal(winner)) === afterWin, J(away));
-  const pw = await changePassword(winner, "", "Mlw-adversarial-takeover-2026");
+  for (const u of [plain, early, asked]) await wallet.withdraw(u, { provider: "MPESA", amount: 10_000, msisdn: await phoneOf(u) });
+  await step();
+  const actAsked = await changePassword(asked, "", "Mlw-adversarial-asked-2026");
+  const act = await changePassword(winner, "", "Mlw-adversarial-takeover-2026");
+  await step();
   const home = await wallet.withdraw(winner, { provider: "MPESA", amount: 10_000, msisdn: mine });
+  await step();
   // ⚠️ The payout float's alert (FL) speaks of the winners' withdrawals too, and since S7-F2 this week's own payout, its
   //    float unread here, raises one: it is about the float, never a takeover, so it is not counted as one.
   const alerts = (await consoleRead.consoleAlerts(new Date())).filter((x) => !/payout float/i.test(x.text));
-  knownRed("MB-96", "TK.2 · KNOWN-RED MB-96 · a password changed after a Millionea credit, then a withdrawal attempt, raises a takeover alert for Compliance (an alert only: 2026-10-10 removed withdrawal holds)",
-    pw.ok && alerts.some((x) => /takeover|password|withdraw/i.test(x.text)), J({ password: pw.ok, attempt: home.ok ? "sent" : (home as any).reason ?? home.code, alerts: alerts.length }));
+  const alert = alerts.find((x) => x.weekId === wk.id && /taken over/i.test(x.text));
+  const watch = await takeover.takeoverWatch(new Date());
+  const named = watch.findings.filter((f) => f.weekId === wk.id).map((f) => f.userId);
+  const detail = J({ acts: [act.ok, actEarly.ok, actAsked.ok], last: home.ok ? "sent" : (home as any).reason ?? home.code, alert: alert?.text, readable: watch.readable, named: named.length });
+  ok("TK.2 · ⭐ a winning account that may have been taken over after its payout raises a critical alert for Compliance on the console, naming the week and how many accounts (MB-96; an alert only, never a hold)",
+    act.ok && !!alert && alert.level === "critical" && alert.text.includes(`${wk.code}: 1 winning account `), detail);
+  const f = watch.findings.find((x) => x.userId === winner && x.weekId === wk.id);
+  ok("TK.3 · ⭐ …and the integrity read names that account and its week, flagged after the payout",
+    watch.readable && !!f && f.count === 1 && !f.more
+      && Date.parse(f.creditAt) <= Date.parse(f.startedAt) && Date.parse(f.startedAt) <= Date.parse(f.flaggedAt), J(f ?? watch));
+  ok("TK.3a · control: a winner with half the pattern is not named", !named.includes(plain), detail);
+  ok("TK.3b · control: a winner whose pattern began BEFORE the payout is not named", actEarly.ok && !named.includes(early), detail);
+  ok("TK.3c · control: a winner whose acts came in the other order is not named", actAsked.ok && !named.includes(asked), detail);
+  ok("TK.4 · the console's alert names no account — no id, no name, no number (the trading console carries no holder, MR-14)",
+    !!alert && ![winner, mine, mine.slice(-4)].some((x) => alert.text.includes(x)), alert?.text ?? "no alert");
+  // ⭐ The lead's ruling of 2026-10-22: the repository is public, so what the control prints says what it ENFORCES — a
+  //    possible takeover to review — in its reviewed words, and nothing more. Read on the alert as raised and on the card.
+  const { readFileSync } = await import("node:fs");
+  const page = readFileSync("src/app/admin/maswali/integrity/page.tsx", "utf8");
+  const said = `${wk.code}: 1 winning account may have been taken over since this week's payout. Compliance reviews it on the integrity page and may hold the share (MB-96).`;
+  ok("TK.4b · the alert and the integrity card say what the control enforces, in their reviewed words — a possible account takeover after a payout, to review — and nothing more (the lead's ruling of 2026-10-22)",
+    alert?.text === said && page.includes('title="Possible account takeovers after a payout"') && page.includes("Review the account with its owner before its money leaves"),
+    J({ alert: alert?.text }));
+  const share = (await dal.ticketStore.listForWeek(wk.id, { won: true })).find((t: any) => t.userId === winner);
+  ok("TK.5 · nothing is held: the winner's wallet carries no Millionea hold and its share stands unfrozen (the watch never blocks money)",
+    !(await heldOf(winner)) && !!share && share.frozenReason === null, J({ held: await heldOf(winner), frozen: share?.frozenReason }));
+  /** ⚠️ A FAULT, DECLARED: the watch's read fails, for one read of the console. */
+  const unread = await consoleRead.consoleAlerts(new Date(), { readTakeover: async () => { throw new Error("TK · the watch's read failed (a planted fault)"); } });
+  ok("TK.6 · ⛔ a watch that cannot be read says so on the console — never silence (fail closed)",
+    unread.some((x) => /takeover watch could not be read/.test(x.text)) && !unread.some((x) => x.weekId === wk.id && /taken over/i.test(x.text)), J(unread.map((x) => x.text)));
 }
 
 // ═══ §12 · CC · both clock-change weekends ══════════════════════════════════════════════════════════════════════════

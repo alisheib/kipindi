@@ -15,6 +15,7 @@ import {
   MaswaliSlip, MaswaliSlipConfirm, firstUnansweredLabel, focusQuestion, slipProgress, type SlipQuestion,
 } from "@/components/maswali/maswali-slip";
 import { OperationResultModal, type OperationDetail } from "@/components/markets/operation-result-modal";
+import { MaswaliGhostHint } from "@/components/maswali/maswali-ghost-hint";
 import { MaswaliFacts } from "@/components/maswali/maswali-facts";
 import { eatClock, weekWord } from "@/components/maswali/maswali-format";
 import { useT, type Dict, type Locale } from "@/lib/i18n";
@@ -189,7 +190,8 @@ function DepositOffer({ t, locale, plan, fallback, railNames, amount, onAmount, 
  *     the page reads again once the stamp has landed. Two panels are never up at once, and the slip is never seen bare.
  *     `haptics.confirm()` once. The stamp's serial is mono on one line (P2); its facts are the receipt's rows (§3.7, the
  *     Up & Down receipt's): the price, the free cancel in EAT, the payout "when the week settles"; it keeps its last words
- *     while it leaves (M3), and "View ticket" starts the progress bar before it navigates (M4).
+ *     while it leaves (M3), and "View ticket" is the kit's Link: its press starts the progress bar (M4) and production
+ *     prefetches the ticket's loading drawing while the stamp is up (round 2).
  *   · A refusal: the registry's sentence in the reader's language (never the server's English), the factual toast for a
  *     refusal the player can fix and the danger one — sticky — for a block (§F2, §F8, `refusalVariant`; M10). A short
  *     balance keeps the sheet open on its deposit door instead.
@@ -419,14 +421,20 @@ export function SlipClient({
   const stampEyebrow = stamp ? `${many ? t.millionea.productTitle : t.millionea.ticketCut} · ${weekWord(t, stamp.weekNumber)}` : "";
 
   // ⭐ SEVERAL TICKETS (H2, M9): the kit's pills under the head, only once there are two; the remove action after them.
+  // ⭐ THE NOUN ONCE (the lead's ruling (a), round 2): the group's visible label says it ("TIKETI" / "TICKETS" / 彩票) and
+  // each pill says its number and its progress, "1 · 15/15", one format for every state — so two pills share one row at
+  // 320 in every language (they stacked, "TIKETI 1 · 15/15" ~172px each). Each pill's accessible name keeps the noun and
+  // the count ("Tiketi 1 · 15/15", the kit's `ariaLabel`); the visible label is the group's own name, said once by it.
   const switcher = count > 1 && !closed ? (
     <section aria-label={t.millionea.draftTickets} data-testid="millionea-ticket-drafts" className="flex min-w-0 flex-col gap-2">
+      <span aria-hidden className="font-mono text-caption uppercase eyebrow text-text-subtle">{t.millionea.draftTicketsNoun}</span>
       <Tabs variant="pill" ariaLabel={t.millionea.draftTickets} value={String(draft.active)}
         onChange={(v) => goToTicket(Number(v), false)}
         tabs={draft.slips.map((slip, i) => {
-          // Of the questions the slip ASKS (P10): "Ticket 1 · 0/14" when one voided before the close, never "1/15" untapped.
+          // Of the questions the slip ASKS (P10): "1 · 0/14" when one voided before the close, never "1/15" untapped.
           const p = slipProgress(slip, questions);
-          return { value: String(i), labelEn: `${nameOf(i)} · ${formatNumber(p.mains + p.reserves)}/${formatNumber(p.mainsOf + p.reservesOf)}` };
+          const progress = `${formatNumber(p.mains + p.reserves)}/${formatNumber(p.mainsOf + p.reservesOf)}`;
+          return { value: String(i), labelEn: `${formatNumber(held + i + 1)} · ${progress}`, ariaLabel: `${nameOf(i)} · ${progress}` };
         })} />
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <p className="min-w-0 flex-1 basis-[14rem] text-body-sm text-text-muted">{fill(t.millionea.ticketDraftHint, { n: formatNumber(questions.length) })}</p>
@@ -536,13 +544,17 @@ export function SlipClient({
         details={stampRows}
         autoCloseMs={many ? DWELL_MILLIONEA_BATCH_STAMP_MS : undefined}
         primaryLabel={many ? t.millionea.viewTickets : t.millionea.viewTicket}
-        onPrimary={() => {
-          const c = stamp;
-          setCut(null);
-          if (c) navigate(() => router.push(c.serials.length > 1 ? MILLIONEA_HREF.tickets as never : millioneaTicketHref(c.serials[0]) as never));
-        }}
+        // ⭐ "View ticket" IS THE KIT'S LINK (the lead's ruling, round 2): the press closes the stamp and the Link moves —
+        // NavProgress starts on it as on every internal link (§F10), and production prefetches the ticket's loading drawing
+        // while the stamp is up, so the move shows that drawing at once (it held the bare slip for a round trip).
+        primaryHref={stamp ? (many ? MILLIONEA_HREF.tickets : millioneaTicketHref(stamp.serials[0])) : undefined}
+        onPrimary={() => setCut(null)}
         onClose={() => setCut(null)}
       />
+      {/* ⭐ WHAT THE STAMP KNOWS, FOR THE TICKET'S DRAWING (TICKETS' `maswali-ghost-hint.tsx`, round 2): "View ticket" opens a
+          ticket whose free cancel is open, so its loading drawing holds the cancel's band and the clauses land where it drew
+          them. Renders nothing. */}
+      {cut && cut.cancelUntil !== null ? cut.serials.map((serial) => <MaswaliGhostHint key={serial} serial={serial} cancelUntil={Date.parse(cut.cancelUntil ?? "")} />) : null}
     </div>
   );
 }
