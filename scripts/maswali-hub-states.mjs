@@ -8,7 +8,16 @@
  *    journey previewable (`scripts/live/journey-pass.mjs`). It seeds the weeks (`seed-maswali`), then walks the store FORWARD
  *    through the hub's states with `/api/dev-test/maswali-hub-act` — every act a product service — and at each state reads
  *    the page as a player would: classic and journey (with a staff pass), signed in or a guest, in Swahili first.
- *    Run "a" walks a week from sale to its void; run "b" the sunset: the final week announced, run, and Millionea ended.
+ *    Run "a" walks a week from sale to its void; run "b" the sunset: the final week announced, run, and Millionea ended;
+ *    run "c" the staff preview: the Owner moves the switch to STAFF_PREVIEW through the console's typed ceremony and
+ *    reads the hub as staff (D12's one bar above the page).
+ *
+ * ROUND 2 (2026-10-22, the lanes' common brief): every classic state at 320 · 360 · 768 · 1024 · 1280 · 1920 in sw, en and
+ * zh, each page to its end; and on every view the rulings since round 1 are measured, not assumed — §T5 (every numeral of
+ * the hub's own lines in the numerals' face; another lane's printed for its owner), the one ledger's note line, D15 (on a
+ * phone, before each tile, the chat bubble at rest yields to .50 over what lies under it), zh's spacing (a census of every
+ * line); L4/L20 (a ticket just bought: its row named and lifting, its free cancel said), L5 (each door to the register
+ * answers 200).
  *
  * Each state ASSERTS VALUES on the rendered page (boxes, computed styles, the words in the reader's language), then writes
  * viewport tiles to `.50pick-shots/maswali-hub-states/` (`<state>-<shell>-<locale>-<width>[-sN].png`), read one by one.
@@ -26,11 +35,14 @@ const HEIGHT = 780;
 const OVERLAP = 240;
 const ONLY = (process.env.MLN_HUB_STATES ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 const want = (state) => ONLY.length === 0 || ONLY.includes(state);
-/** Swahili first (the longest), at every platform width; English and Chinese where a layout changes with the language. */
-const CLASSIC = { sw: [320, 360, 768, 1024, 1280, 1920], en: [320, 360, 1280], zh: [360, 1280] };
+/** Round 2 (the lanes' common brief): every platform width in every language, Swahili first (the longest). */
+const WIDTHS = [320, 360, 768, 1024, 1280, 1920];
+const CLASSIC = { sw: WIDTHS, en: WIDTHS, zh: WIDTHS };
 const JOURNEY = { sw: [360, 1024, 1280], en: [360], zh: [360] };
-/** Where a state is shot to its end (scroll tiles): the phone and the desktop column. */
-const SCROLL_AT = new Set([360, 1280]);
+/** Where a state is shot to its end (scroll tiles): at every width (round 2: "every page to its end"). */
+const SCROLL_AT = new Set(WIDTHS);
+/** Where the chat bubble's yield is read before each tile (PLATFORM D15): the phones. */
+const YIELD_AT = 360;
 
 let pass = 0, fail = 0;
 const ok = (n, c, e = "") => { if (c) pass++; else { fail++; console.log(`FAIL ${n}${e ? ` — ${e}` : ""}`); } if (c && process.env.MLN_HUB_VERBOSE) console.log(`PASS ${n}`); };
@@ -39,6 +51,8 @@ const j = (v) => JSON.stringify(v);
 
 const pre = await premise(BASE);
 if (pre.refuse) die(pre.refuse);
+// Every run starts on sale (the seed sells: its ticket arm reads the real rollout); run c then moves the Owner's switch to
+// STAFF_PREVIEW through its typed ceremony and reads the hub as a staff officer (D12's preview bar).
 if (pre.health?.millionea?.state !== "ACTIVE") die(`/api/health says millionea = ${j(pre.health?.millionea)}: start next dev with FEATURE_MILLIONEA=ACTIVE`);
 mkdirSync(OUT, { recursive: true });
 
@@ -64,18 +78,19 @@ async function open(page, path) {
   await page.waitForTimeout(400);
   return res;
 }
-async function tiles(page, name, width) {
+async function tiles(page, name, width, label = name) {
   const total = await page.evaluate(() => document.documentElement.scrollHeight);
   let covered = HEIGHT;
   for (let n = 2; n <= 24 && covered < total - 1; n++) {
     const top = Math.min((n - 1) * (HEIGHT - OVERLAP), Math.max(0, total - HEIGHT));
     await page.evaluate((y) => window.scrollTo(0, y), top);
-    await page.waitForTimeout(250);
+    // On a phone each tile is the page at rest, as a reader stops on it: the chat bubble back and its yield read (D15).
+    if (width <= YIELD_AT) await yieldCheck(page, `${label} · s${n}`);
+    else await page.waitForTimeout(250);
     await page.screenshot({ path: `${OUT}/${name}-s${n}.png` });
     covered = (await page.evaluate(() => window.scrollY)) + HEIGHT;
   }
   await page.evaluate(() => window.scrollTo(0, 0));
-  void width;
 }
 
 /** One dev act, through the product's services (`/api/dev-test/maswali-hub-act`), on `ctx`'s cookies when given. */
@@ -125,21 +140,24 @@ async function shoot(state, shell, ctx, { check, oneView = false, path = "/milli
       await baseChecks(page, label, locale, res);
       if (check) await check(page, label, locale, width);
       if (locale === "zh") await zhScan(page, label);
+      await t5Checks(page, label);
+      await noteChecks(page, label);
+      if (width <= YIELD_AT) await yieldCheck(page, `${label} · s1`);
       const name = `${state}-${shell}-${locale}-${width}`;
       await page.screenshot({ path: `${OUT}/${name}.png` });
-      if (SCROLL_AT.has(width)) await tiles(page, name, width);
+      if (SCROLL_AT.has(width)) await tiles(page, name, width, label);
     }
   }
   await page.close();
 }
 
 // ── the seed ───────────────────────────────────────────────────────────────────────────────────────────────────────────
+// The Owner, signed in in this context (`seed-admin`): who seeds, and in run c who moves the switch and reads the preview.
+const owner = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 {
-  const owner = await browser.newContext();
   await owner.request.post(`${BASE}/api/dev-test/seed-admin`, { data: { phone: "+255700000091", name: "Millionea Owner" }, timeout: 240_000 });
   const seed = await owner.request.post(`${BASE}/api/dev-test/seed-maswali`, { data: {}, timeout: 300_000 });
   ok("the weeks are seeded on a fresh store", seed.ok(), `${seed.status()} ${await seed.text().catch(() => "")}`);
-  await owner.close();
 }
 const pass_ = await mintStaffPass(browser, BASE);
 const demo = await demoSession(browser, BASE, { query: "?deposit=0", balance: 50_000 });
@@ -168,7 +186,7 @@ async function openWeekChecks(page, label, locale, width, { door = "millionea-hu
     // The calm bars over the page — a once-per-week notice, a moved close, the final week announced — stand above the hub
     // on the visits that carry them (§F9, the platform's away bar): the door is measured on the visit without them, and
     // how far the bars push it is printed (they are the page's own first lines, never a door's competitor).
-    const bars = await page.evaluate(() => ["millionea-hub-notices", "millionea-hub-close-moved", "millionea-hub-final-ahead"]
+    const bars = await page.evaluate(() => ["millionea-preview-mark", "millionea-hub-notices", "millionea-hub-close-moved", "millionea-hub-final-ahead"]
       .map((id) => document.querySelector(`[data-testid="${id}"]`)?.getBoundingClientRect().height ?? 0).reduce((a, b) => a + b, 0));
     const bottom = d.y + d.height - (staffBar?.height ?? 0) - bars;
     ok(`${label} · H1 the door stands on a player's first screen, above the rail (bottom ${Math.round(bottom)} ≤ ${HEIGHT - rail}${staffBar ? `, the staff bar's ${Math.round(staffBar.height)}px aside` : ""}${bars ? `, the page's calm bars' ${Math.round(bars)}px aside: ${Math.round(bottom + bars)} with them` : ""})`,
@@ -254,6 +272,117 @@ async function zhScan(page, label) {
   for (const f of found) if (!zhElsewhere.has(f)) zhElsewhere.set(f, label);
 }
 
+/**
+ * §T5 (the lead's round-2 ruling): every numeral in a Millionea fact line is a `.mono` numeral — a money figure an
+ * `.amount` whole, a time's clock a `.mono` numeral beside its weekday in the body face (L7). The census reads every visible
+ * text node holding a digit in the hub and its calm bars and asks its face (the numerals' family, `--font-mono`, which
+ * `.mono` and `.amount` both set). Not a fact line, so never counted: a heading in the display face (the ruling's own
+ * exception) and a question's own words (the officer's text, the question as written). What another lane draws inside
+ * the hub is printed for its owner, never asserted here.
+ */
+const T5_THEIRS = [
+  ['a[href^="/millionea/tickets/"]', "TICKETS (the held row)"],
+  ['[data-testid="millionea-hub-ledger"]', "REGISTER (the one ledger's rows)"],
+  ['[data-testid="millionea-hub-break"]', "PLATFORM (the break notice)"],
+  ['[data-testid="millionea-week-state"]', "REGISTER (the week chip)"],
+];
+const t5Elsewhere = new Map();
+async function t5Checks(page, label) {
+  const found = await page.evaluate((theirs) => {
+    const probe = document.createElement("span");
+    probe.className = "mono";
+    document.body.appendChild(probe);
+    const mono = getComputedStyle(probe).fontFamily;
+    probe.remove();
+    const roots = ["millionea-hub", "millionea-hub-notices", "millionea-hub-close-moved", "millionea-hub-final-ahead", "millionea-preview-mark"]
+      .map((id) => document.querySelector(`[data-testid="${id}"]`)).filter(Boolean);
+    const out = [];
+    for (const root of roots) {
+      const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+        if (!/\d/.test(n.textContent ?? "")) continue;
+        const el = n.parentElement;
+        if (!el || el.closest(".sr-only") || !el.checkVisibility({ visibilityProperty: true })) continue;
+        if (getComputedStyle(el).fontFamily === mono) continue;
+        if (el.closest("h1, h2, h3") || el.closest("li[data-slot] .text-pretty")) continue;
+        const owner = theirs.find(([sel]) => el.closest(sel))?.[1] ?? null;
+        out.push({ owner, where: el.closest("[data-testid]")?.getAttribute("data-testid") ?? "?", text: (n.textContent ?? "").trim().slice(0, 60), line: (el.textContent ?? "").trim().slice(0, 90) });
+      }
+    }
+    return out;
+  }, T5_THEIRS);
+  const mine = found.filter((f) => !f.owner);
+  ok(`${label} · §T5 every numeral of the hub's own lines is set in the numerals' face (${mine.length} bare)`, mine.length === 0, j(mine.slice(0, 4)));
+  for (const f of found.filter((x) => x.owner)) {
+    const k = `${f.owner} · ${f.where}: "${f.text}" in "${f.line}"`;
+    if (!t5Elsewhere.has(k)) t5Elsewhere.set(k, label);
+  }
+}
+
+/** The one ledger (REGISTER's `MaswaliLedger`, the lead's ruling): a row's note on its own full-width line, under its
+ *  label and its figure. Read wherever the hub draws its ledger; the rows that carry a note are printed. */
+const notesSeen = new Map();
+async function noteChecks(page, label) {
+  const rows = await page.evaluate(() => [...document.querySelectorAll('[data-testid="millionea-hub-ledger"] [data-ledger-row]')].map((r) => {
+    const b = (el) => { const x = el.getBoundingClientRect(); return { left: Math.round(x.left), right: Math.round(x.right), top: Math.round(x.top), bottom: Math.round(x.bottom) }; };
+    const head = r.firstElementChild ? b(r.firstElementChild) : null;
+    const note = r.children.length > 1 ? b(r.lastElementChild) : null;
+    return { key: r.getAttribute("data-ledger-row"), head, note, words: r.children.length > 1 ? (r.lastElementChild.textContent ?? "").trim().slice(0, 70) : null };
+  }));
+  const noted = rows.filter((r) => r.note && r.head);
+  for (const r of noted) if (!notesSeen.has(r.key)) notesSeen.set(r.key, `${label}: "${r.words}"`);
+  if (noted.length === 0) return;
+  ok(`${label} · the one ledger: each row's note stands on its own line, the row's whole width, under its label and its figure (${noted.map((r) => r.key).join(", ")})`,
+    noted.every((r) => Math.abs(r.note.left - r.head.left) <= 1 && Math.abs(r.note.right - r.head.right) <= 1 && r.note.top >= r.head.bottom - 1), j(noted));
+}
+
+/**
+ * PLATFORM D15 (the lead's ruling): at rest over a line of text or a figure, the chat bubble yields to
+ * `--state-yield-opacity` (.50) — still live, never moved. On a phone, before each tile, the bubble is woken (a scroll: D3
+ * and D75's own wake) and the page let rest; then this drive's own census — not the product's — asks what lies under the
+ * bubble's resting ink (its box, its ring at its widest), and the bubble must stand at .50 over it, whole over nothing.
+ */
+const yieldSeen = [];
+async function yieldCheck(page, label) {
+  await page.evaluate(() => window.dispatchEvent(new Event("scroll")));
+  await page.waitForTimeout(700);
+  const y = await page.evaluate(() => {
+    const fab = document.querySelector(".cm-fab");
+    if (!fab) return null;
+    const root = document.documentElement;
+    const away = root.hasAttribute("data-scrolling") || root.hasAttribute("data-fab-idle") || fab.classList.contains("cm-fab--open");
+    const b = (fab.querySelector(".cm-bubble") ?? fab).getBoundingClientRect();
+    const tf = getComputedStyle(fab).transform;
+    const m = tf && tf !== "none" ? new DOMMatrixReadOnly(tf) : null;
+    const dx = m ? m.e : 0, dy = m ? m.f : 0;
+    const past = (side) => (side / 2 + 3) * 1.08 - side / 2;
+    const ink = { left: b.left - dx - past(b.width), right: b.right - dx + past(b.width), top: b.top - dy - past(b.height), bottom: b.bottom - dy + past(b.height) };
+    const meets = (r) => r.left < ink.right && r.right > ink.left && r.top < ink.bottom && r.bottom > ink.top;
+    const under = [];
+    const skip = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "IFRAME", "SELECT", "TEXTAREA", "INPUT"]);
+    const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const range = document.createRange();
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+      const el = n.parentElement;
+      if (!el || !(n.textContent ?? "").trim() || fab.contains(el) || el.closest("#needle-root") || skip.has(el.tagName)) continue;
+      range.selectNodeContents(n);
+      if (![...range.getClientRects()].some((r) => r.width > 1 && r.height > 1 && meets(r))) continue;
+      if (!el.checkVisibility({ visibilityProperty: true, opacityProperty: true })) continue;
+      under.push({ text: (n.textContent ?? "").trim().slice(0, 40), figure: !!el.closest(".amount, .mono"), where: el.closest("[data-testid]")?.getAttribute("data-testid") ?? "?" });
+    }
+    return { away, marked: fab.hasAttribute("data-over-content"), opacity: Number(getComputedStyle(fab).opacity), ink: { top: Math.round(ink.top), left: Math.round(ink.left) }, under };
+  });
+  if (!y) return;
+  if (y.away) { console.log(`INFO D15 ${label} · the bubble is away (moving or idle): nothing to yield`); return; }
+  if (y.under.length > 0) {
+    ok(`${label} · D15 the chat bubble yields to .50 over what lies under it`, y.marked && Math.abs(y.opacity - 0.5) < 0.02, j(y));
+    const figures = y.under.filter((u) => u.figure).map((u) => `${u.where}: ${u.text}`);
+    yieldSeen.push(`${label} — ${figures.length ? `figures ${figures.join(" | ")}` : `text "${y.under[0].text}"`} (opacity ${y.opacity})`);
+  } else {
+    ok(`${label} · D15 over nothing the chat bubble stands whole`, !y.marked && y.opacity === 1, j(y));
+  }
+}
+
 if (RUN === "a") {
   // ── S1 · an open week, signed in, holding a ticket (a losing slip, so the week can roll over later) ────────────────────
   await act({ act: "tickets", n: 1, lose: true });
@@ -265,14 +394,65 @@ if (RUN === "a") {
     const p = await act({ act: "player", tickets: 1, lose: true }, ctx); // signed in through this context's cookie
     players[l] = { ctx, id: p.userId };
   }
+  // L5 (round 2) · the doors to the register — the grading week's facts and the ledger's carry, the one still waiting on its
+  // week too — each open a page that answers: REGISTER's H2 draws a public week from the moment it opens. Asked once per
+  // address (a page answers the same at every width).
+  const answered = new Map();
+  const doorsAnswer = async (page, label) => {
+    const hrefs = await page.evaluate(() => [
+      ["grading", document.querySelector('[data-testid="millionea-hub-grading-door"]')?.getAttribute("href") ?? null],
+      ["carry", document.querySelector('[data-testid="millionea-hub-ledger"] a[data-ledger-row="in"]')?.getAttribute("href") ?? null],
+    ]);
+    for (const [what, href] of hrefs) {
+      if (!href) continue;
+      if (!answered.has(href)) answered.set(href, (await page.request.get(`${BASE}${href}`, { timeout: 120_000 })).status());
+      ok(`${label} · L5 the ${what === "grading" ? "grading week's door" : "ledger's carry"} opens its register page (${href} answers ${answered.get(href)})`,
+        /^\/millionea\/register\/MLN-/.test(href) && answered.get(href) === 200, `${href} ${answered.get(href)}`);
+    }
+    return hrefs;
+  };
   const openCheck = async (page, label, locale, width) => {
     await openWeekChecks(page, label, locale, width);
     await stateWordChecks(page, label, locale, t.open);
     ok(`${label} · the reader's ticket row is drawn`, (await page.getByTestId("millionea-hub-mine").count()) === 1);
     ok(`${label} · M2 the head's two doors are drawn`, (await page.getByTestId("millionea-hub-doors").locator("a").count()) === 2);
+    const hrefs = await doorsAnswer(page, label);
+    ok(`${label} · L5 the week being graded beside this one has its register door`, !!hrefs[0][1], j(hrefs));
   };
   await shoot("open", "classic", demoClassic, { check: openCheck });
   await shoot("open", "journey", demoJourney, { check: openCheck });
+
+  // ── L4 + L20 (round 2) · a ticket just bought: its row named for what it opens, lifting as the kit's raised card, and its
+  // free cancel said while the window is open (TICKETS' row; the window is five minutes, so each view is a fresh page).
+  if (want("cancel")) {
+    const buyer = await readerContext([]);
+    await act({ act: "player", tickets: 1, lose: true }, buyer);
+    for (const [locale, width] of [["sw", 320], ["sw", 360], ["en", 360], ["zh", 360], ["sw", 1280]]) {
+      const label = `cancel · classic · ${locale} @${width}`;
+      await setLocale(buyer, locale);
+      const page = await buyer.newPage();
+      page.on("pageerror", (e) => errs.push(`${label}: ${e}`));
+      await page.setViewportSize({ width, height: HEIGHT });
+      const res = await open(page, "/millionea");
+      await baseChecks(page, label, locale, res);
+      await t5Checks(page, label);
+      if (locale === "zh") await zhScan(page, label);
+      const row = await page.evaluate(() => {
+        const a = document.querySelector('[data-testid="millionea-hub-mine"] a[href^="/millionea/tickets/"]');
+        if (!a) return null;
+        const serial = a.querySelector(".font-mono")?.textContent ?? "";
+        return { label: a.getAttribute("aria-label"), serial, href: a.getAttribute("href"), cls: a.className, timer: a.querySelector('[role="timer"]')?.textContent ?? null, line: a.querySelector("time")?.parentElement?.textContent ?? null };
+      });
+      ok(`${label} · L4 the held row is named for what it opens ("${row?.label}") and lifts as the kit's raised card`,
+        !!row?.label && !!row.serial && row.label.endsWith(` · ${row.serial}`) && row.label.length > row.serial.length + 3 && /\bmat-raised-i\b/.test(row.cls), j(row));
+      ok(`${label} · L20 inside its free-cancel window the row says so, with its count ("${row?.line}")`, !!row?.timer && /^\d+:\d{2}$/.test(row.timer), j(row));
+      await page.evaluate(() => document.querySelector('[data-testid="millionea-hub-mine"]')?.scrollIntoView({ block: "center" }));
+      if (width <= YIELD_AT) await yieldCheck(page, label);
+      else await page.waitForTimeout(250);
+      await page.screenshot({ path: `${OUT}/cancel-classic-${locale}-${width}.png` });
+      await page.close();
+    }
+  }
 
   // ── L7 · the loading drawing stands where the page lands ──────────────────────────────────────────────────────────────
   // A move to the hub from How to play, its answer slowed (the network throttled, so the route's loading drawing paints
@@ -481,9 +661,9 @@ if (RUN === "a") {
     await page.close();
   }
   await act({ act: "seal", slots: [6, 7, 8, 9, 10, 11, 12, 13, 14, 15].filter((s) => !early.includes(s)), outcome: "YES" });
-  await shoot("objections", "classic", demoClassic, { check: closedCheck({ en: "Objection window", sw: "Dirisha la pingamizi", zh: "异议窗口" }), matrix: { sw: [320, 360, 1280], en: [360], zh: [360] } });
+  await shoot("objections", "classic", demoClassic, { check: closedCheck({ en: "Objection window", sw: "Dirisha la pingamizi", zh: "异议窗口" }) });
   await act({ act: "window", open: false });
-  await shoot("settling", "classic", demoClassic, { check: closedCheck({ en: "Settling", sw: "Inakamilishwa", zh: "待结算" }), matrix: { sw: [360, 1280], en: [360], zh: [360] } });
+  await shoot("settling", "classic", demoClassic, { check: closedCheck({ en: "Settling", sw: "Inakamilishwa", zh: "待结算" }) });
   await act({ act: "settle" });
 
   // ── S12 · no week on sale (as a guest: a signed-in view would mark the week's notices seen) — and paused (L21) ───────────
@@ -498,7 +678,7 @@ if (RUN === "a") {
   await shoot("noweek", "journey", guestJourney, { check: noWeekCheck(false), matrix: { sw: [360, 1280] } });
   if (want("noweek-paused")) {
     await act({ act: "pause", on: true });
-    await shoot("noweek-paused", "classic", guestClassic, { check: noWeekCheck(true), matrix: { sw: [360], en: [360] } });
+    await shoot("noweek-paused", "classic", guestClassic, { check: noWeekCheck(true) });
     await act({ act: "pause", on: false });
   }
 
@@ -513,9 +693,9 @@ if (RUN === "a") {
     void locale;
   };
   if (want("after")) {
-    await shoot("after", "classic", demoClassic, { check: afterCheck, oneView: true, matrix: { sw: [320, 360, 768, 1024, 1280, 1920] } });
-    await shoot("after", "classic", players.en.ctx, { check: afterCheck, oneView: true, matrix: { en: [360, 1280] } });
-    await shoot("after", "journey", (await readerContext([...(await players.zh.ctx.cookies(BASE)).filter((c) => c.name === SESSION_COOKIE), pass_])), { check: afterCheck, oneView: true, matrix: { zh: [360, 1280] } });
+    await shoot("after", "classic", demoClassic, { check: afterCheck, oneView: true, matrix: { sw: WIDTHS } });
+    await shoot("after", "classic", players.en.ctx, { check: afterCheck, oneView: true, matrix: { en: WIDTHS } });
+    await shoot("after", "journey", (await readerContext([...(await players.zh.ctx.cookies(BASE)).filter((c) => c.name === SESSION_COOKIE), pass_])), { check: afterCheck, oneView: true, matrix: { zh: WIDTHS } });
   }
   // ── H6/M7 · the carry plays only with both ends in view (the shared MaswaliCarry): a reader on a phone — the ledger far
   // below the notice — sees no flight; on a tall desktop both ends stand in view and the figure lands, its origin settling
@@ -570,7 +750,7 @@ if (RUN === "a") {
     const row = await page.getByTestId("millionea-hub-last-week").textContent().catch(() => "");
     if (locale === "en") ok(`${label} · L14 last week voided reads the register's words`, /Voided/.test(row ?? "") && /Every ticket refunded|Refunds on their way/.test(row ?? ""), j(row));
   };
-  if (want("voided")) await shoot("voided", "classic", demoClassic, { check: voidedCheck, oneView: true, matrix: { sw: [360, 1280], en: [360] } });
+  if (want("voided")) await shoot("voided", "classic", demoClassic, { check: voidedCheck, oneView: true });
 
   // ── L16 · the ghost button's border against the page, and the kit ghost's own ────────────────────────────────────────────
   {
@@ -613,7 +793,7 @@ if (RUN === "b") {
     ok(`${label} · L22 the announcement is a calm bar`, !!bar);
     await zhLineChecks(page, label, locale, ["millionea-hub-final-ahead"]);
   };
-  await shoot("final-ahead", "classic", demoClassic, { check: aheadCheck, matrix: { sw: [320, 360, 768, 1280], en: [360, 1280], zh: [360] } });
+  await shoot("final-ahead", "classic", demoClassic, { check: aheadCheck });
   await shoot("final-ahead", "journey", demoJourney, { check: aheadCheck, matrix: { sw: [360, 1280] } });
   // ── H3 · the final week itself ────────────────────────────────────────────────────────────────────────────────────────
   await act({ act: "catchUp" });
@@ -646,8 +826,67 @@ if (RUN === "b") {
   await shoot("retired", "journey", guestJourney, { check: retiredCheck, matrix: { sw: [360, 1280] } });
 }
 
+if (RUN === "c") {
+  // ── D12 · THE HUB AT STAFF_PREVIEW, AS A STAFF OFFICER READS IT: the platform's ONE preview bar above the page (AppShell's
+  // `MillioneaPreviewBar`), nothing of the hub's own in its column (its `MillioneaPreviewMark` call is gone), and nothing
+  // to buy (P15: a public week sells to no one at a preview). The switch is moved as an Owner moves it — the console's
+  // typed ceremony — under the ACTIVE ceiling the seed needed; the effective state is the lower of the two.
+  const ownerPage = await owner.newPage();
+  ownerPage.setDefaultTimeout(60_000);
+  await open(ownerPage, "/admin/maswali/pools");
+  await ownerPage.getByRole("combobox", { name: "Rollout" }).click();
+  await ownerPage.getByRole("option", { name: "Staff preview", exact: true }).click();
+  await ownerPage.getByLabel("Why", { exact: true }).fill("Hub states drive: the staff preview, shot");
+  await ownerPage.getByRole("button", { name: "Move the switch", exact: true }).click();
+  const confirm = ownerPage.getByRole("alertdialog").or(ownerPage.getByRole("dialog")).filter({ hasText: "Set Millionea to STAFF_PREVIEW?" });
+  await confirm.getByPlaceholder("STAFF_PREVIEW", { exact: true }).fill("STAFF_PREVIEW");
+  await confirm.getByRole("button", { name: "Move it", exact: true }).click();
+  await confirm.waitFor({ state: "hidden", timeout: 120_000 });
+  await ownerPage.close();
+  const health = await fetch(`${BASE}/api/health`).then((r) => r.json()).catch(() => null);
+  ok("preview · the Owner's typed ceremony moves the switch to STAFF_PREVIEW", health?.millionea?.state === "STAFF_PREVIEW", j(health?.millionea));
+  // The switch is read through a ≤ 10 s snapshot (millionea-switch.ts): every reader sees the move within that.
+  await new Promise((done) => setTimeout(done, 11_000));
+  const previewCheck = async (page, label) => {
+    const g = await page.evaluate(() => {
+      const at = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right) }; };
+      const bars = [...document.querySelectorAll('[data-testid="millionea-preview-mark"]')];
+      const hub = document.querySelector('[data-testid="millionea-hub"]');
+      return {
+        n: bars.length, bar: at(bars[0]), text: bars[0]?.textContent?.trim() ?? null, inHub: bars.some((b) => !!hub?.contains(b)),
+        hub: at(hub), title: at(hub?.querySelector("h1")), header: at(document.querySelector("header")),
+        journeyBar: at(document.querySelector('[data-testid="journey-preview-marker"]')),
+      };
+    });
+    ok(`${label} · D12 the staff preview is marked ONCE, by the platform's bar, above the hub and never in its column ("${g.text}")`,
+      g.n === 1 && !g.inHub && !!g.bar && !!g.title && g.bar.bottom <= g.title.top, j(g));
+    ok(`${label} · D12 the bar stands under the header`, !!g.bar && !!g.header && g.bar.top >= g.header.bottom - 1, j(g));
+    ok(`${label} · P15 nothing sells at a preview: no door to buy, no close line, no countdown`,
+      (await page.getByTestId("millionea-hub-fill").count()) === 0 && (await page.getByTestId("millionea-hub-close").count()) === 0 && (await page.locator(".closing-pill").count()) === 0);
+    if (g.journeyBar) console.log(`INFO D12 ${label} · beside the journey's own preview bar: ${j({ journey: g.journeyBar, millionea: g.bar })}`);
+  };
+  await shoot("preview", "classic", owner, { check: previewCheck });
+  const ownerJ = await readerContext([...(await owner.cookies(BASE)).filter((c) => c.name === SESSION_COOKIE), pass_]);
+  await shoot("preview", "journey", ownerJ, { check: previewCheck, matrix: { sw: [360, 1280] } });
+  // The bar stands on every Millionea page and /results, and on no other page (D12's own reach), read at a phone.
+  if (want("preview")) {
+    const page = await owner.newPage();
+    await setLocale(owner, "sw");
+    await page.setViewportSize({ width: 360, height: HEIGHT });
+    for (const [path, shown] of [["/millionea/how", true], ["/millionea/register", true], ["/results", true], ["/markets", false], ["/wallet", false]]) {
+      await open(page, path);
+      const n = await page.getByTestId("millionea-preview-mark").count();
+      ok(`preview · sw @360 · D12 the bar ${shown ? "stands" : "is absent"} on ${path}`, n === (shown ? 1 : 0), `${n}`);
+    }
+    await page.close();
+  }
+}
+
 ok("no page error on any page", errs.length === 0, errs.slice(0, 3).join(" | "));
 for (const [line, where] of zhElsewhere) console.log(`INFO zh space between two Han characters — ${line}  (first at ${where})`);
+for (const [line, where] of t5Elsewhere) console.log(`INFO §T5 a numeral in the body face, another lane's — ${line}  (first at ${where})`);
+for (const [key, where] of notesSeen) console.log(`INFO the one ledger · a note on row "${key}" — first at ${where}`);
+for (const line of yieldSeen) console.log(`INFO D15 the bubble yielded — ${line}`);
 await browser.close();
 console.log(`\nmaswali-hub-states (run ${RUN}): ${pass} passed, ${fail} failed · tiles in ${OUT}/`);
 process.exit(fail === 0 ? 0 : 1);
