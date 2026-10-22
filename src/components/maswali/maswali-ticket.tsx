@@ -15,7 +15,7 @@ import { MaswaliGhostHint } from "@/components/maswali/maswali-ghost-hint";
 import { MaswaliStrike } from "@/components/maswali/maswali-strike";
 import { eatWeekday, eatWeekdayClock, millioneaWord, reserveLabel, weekWord } from "@/components/maswali/maswali-format";
 import { WeekStateChip } from "@/app/millionea/register/register-parts";
-import type { MillioneaWeekPhase } from "@/app/millionea/millionea-view";
+import { reserveRuleAfterHead, type MillioneaWeekPhase } from "@/app/millionea/millionea-view";
 import { TICKET_SHOWN_KEY, type TicketShown, type WeekState } from "@/lib/maswali-week-label";
 import { playerStatusChip, positionStatusChip, type StatusChipVariant } from "@/lib/status-tone";
 import { positionStatusGlyph, sideWord } from "@/lib/side-label";
@@ -430,7 +430,7 @@ export function MaswaliTicket({
         </ol>
         <div className="flex flex-col gap-0.5 border-t border-border px-3 pb-1.5 pt-2" style={{ background: "var(--wash-inset)", boxShadow: "var(--edge-shade)" }}>
           <span className="font-mono text-caption uppercase eyebrow text-text-subtle"><MaswaliFacts facts={factsOf(t.millionea.reservesHead)} /></span>
-          <span className="text-body-sm text-text-muted text-pretty">{keepFact(locale, t.millionea.reserveRule)}</span>
+          <span className="text-body-sm text-text-muted text-pretty">{keepFact(locale, reserveRuleAfterHead(t))}</span>
         </div>
         <ol>
           {reserves.map((c) => <Clause key={`r${c.ordinal}`} t={t} c={c} line={line} inert={inert} press={pressAt(c)} />)}

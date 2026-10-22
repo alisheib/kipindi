@@ -3291,13 +3291,14 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
       The words are the dictionary's, character for character.
     - **The week's close is said one way**: `salesCloseColon` ("Sales close: Friday 18:00 EAT", "Mauzo yanafungwa:
       Ijumaa 18:00 EAT", "销售截止：周五 18:00 EAT"), its zone kept with its clock: the card and its ghost
-      (`test:maswali-doors` 1.1, 1.8), the slip and the ticket. ⚠️ The hub's close row and the register's week row still
-      say `salesCloseAt`, with no zone, until the S5 round-2 merge rules on them.
+      (`test:maswali-doors` 1.1, 1.8), the slip, the ticket and the hub's close row (item 26; `test:maswali-hub` 18.1).
+      ⚠️ The register's week row still says `salesCloseAt`, with no zone, until the S5 round-2 merge rules on it.
     - **A struck question** (`MaswaliStrike`, `.kp-mln-strike-end`). The strike is the strong border ink and ends at the
       ink of the text's last full-width mark, cut back by the platform's measured trims (`cjk-marks.tsx`: 0.65em, ？
-      0.5em) with a `clip-path` that moves nothing; a plain strike ran half an em past "？" ("…吗？-"). The ticket draws it;
-      ⚠️ the hub's question rows adopt it at the S5 round-2 merge. `test:maswali-strike` (the browser's strike against
-      the ink, Chromium and WebKit).
+      0.5em) with a `clip-path` that moves nothing; a plain strike ran half an em past "？" ("…吗？-"). The ticket and the
+      hub's question rows draw it (the hub's adopted with the merge's wiring, MASWALI-BUILD S5-R2-HUB 6): no Millionea file
+      strikes text of its own. `test:maswali-strike` (the browser's strike against the ink, Chromium and WebKit;
+      `qa:maswali-hub-states`' voiding state reads the hub's struck rows).
     - **A seeded week keeps the product's clock (dev only).** The dev seeds (`src/app/api/dev-test/**`) open a week at its
       drafted open and close it at its drafted close, the config's own times, so a tile never draws a time the product
       would not: opened and closed a minute late, the tiles read "Jumatatu 00:01" beside the template's "Jumatatu 00:00",
@@ -3330,10 +3331,16 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
       "… · ada TZS 0" (`lastWeekRolled`'s `{fee}`).
     - A line under its head never repeats the head. Under "Reserves · A1–A5" the decided rule is said without the head's
       words, "Count only when a main question voids, in order". ONE shared helper does it, `reserveRuleAfterHead(t)` in
-      `src/app/millionea/millionea-view.ts`, for every place that draws the pair. A language whose sentence ever stops
-      opening with its head keeps the whole sentence.
+      `src/app/millionea/millionea-view.ts`, for every place that draws the pair: the hub's questions, the slip's reserve
+      step and the ticket's reserves (`test:maswali-hub` 20.3, `test:maswali-slip-design` 3.7, `test:maswali-tickets`
+      26.1). A language whose sentence ever stops opening with its head keeps the whole sentence.
     - A voided main question's words follow its stamp, which already says "Void": the sentence's second fact, opening with
-      a capital ("Too few reserves: the week is due to be voided"), as the register's week page draws the same row.
+      a capital ("Too few reserves: the week is due to be voided"), as the register's week page draws the same row. The
+      words are ONE wrap unit in the row's flex box (the keeper's runs inside one element): handed over as the keeper's
+      pieces, each stood as a flex item of its own and a sentence wider than its line broke into a block above its kept run.
+    - No week on sale: the empty state's numerals — the next open's clock, the questions' count — are numerals (§T5), as
+      Tiketi zangu's empty states set theirs: the hub draws Millionea's own empty state (`MaswaliEmptyState`, the kit's
+      opt-in numeral part), never the kit's plain body.
     - The week's voiding notice is kept as every Millionea line is: its last two words, a count with its noun ("5 道"),
       its day with its clock.
 27. **The hub's buy column (MASWALI-BUILD S5-R2-HUB, the tile readers).**
@@ -3342,6 +3349,11 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     - From 1024 the pinned head and door stand on the page's own ground, whose foot fades, so nothing passes under them
       cut flat. At rest the block under them stands the column's own gap below.
     - A closed week's held rows stand under "Your tickets", the tickets page's own title.
+    - The carried figure's flight into the ledger (item 1's N1, from the rollover notice's own figure) is kept by the
+      ledger for its life and plays once: a render while the token flies never cuts it. A returning player's hub
+      re-renders moments after it opens — the rollover's seen mark is a server action, which re-signs a session last seen
+      five minutes or more before, and that re-renders the route without the (now seen) rollover. The ledger dropped its
+      carry with that render and the token stopped half-way, the origin never settling (the drive's red at sw 1920×1440).
 
 ---
 

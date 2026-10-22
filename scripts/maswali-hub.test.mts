@@ -17,9 +17,11 @@
  *                                                          spacing rule on every timed line the hub fills
  *   §11 L14 last week's row in the register's words      §12 L7/§T5 a time's face, every numeral .mono
  *   §13 L7 (round 2) the loading drawing composes the page's frame: the reader's block last, a guest by the shell's mark,
- *       every block sweeping                              §14 L6/L21 the no-week body keeps its day with its clock
+ *       every block sweeping                              §14 L6/L21 the no-week body keeps its day with its clock, its
+ *                                                          numerals in their face (Millionea's empty state, §T5)
  *   §15 the segment's loading state draws the page being opened (a census of every Millionea page)
- *   §16 L13 a voided main's words in the register's form; the paused notice's and the voiding notice's last pairs
+ *   §16 L13 a voided main's words in the register's form, one wrap unit; the paused notice's and the voiding notice's
+ *       last pairs
  *   §17 7b the head's absent figure is the platform's empty slot
  *   §18 the close line in the one wording (salesCloseColon)  §19 the frame's line boxes, pills and the head's card order
  *   §20 the lead's rulings 2a-2c: the result notices in the page form, last week's fee an amount, the reserves' rule
@@ -574,6 +576,26 @@ console.log("\n§14 · L6/L21 · the no-week empty state's body: the next open's
   const swBody = W.noWeekBody(dict.sw as never, "sw", MON);
   const clockOnly = drawn({ text: swBody.text, keep: [N.eatWeekdayClock(dict.sw as never, MON)] });
   ok("14.1″ PLANT · the body keeping its clock alone (\"Maswali\" / \"15\" free to part) is reported", looseOf("sw", swBody.text, clockOnly).length > 0, clockOnly.slice(0, 200));
+  // ⭐ S5-R2-HUB 6 (the merge's wiring) · §T5: the hub draws the no-week state as Millionea's own empty state
+  // (`MaswaliEmptyState`, TICKETS' round 2: the kit's opt-in numeral part), so its clock and its count are numerals — and
+  // nothing but their face changes from the kit's own drawing. The page's numerals are censused on the rendered page too
+  // (`qa:maswali-hub-states`' §T5 check: the no-week body is the hub's own line since this commit).
+  const { MaswaliEmptyState } = req("../src/components/maswali/maswali-empty-state.tsx") as typeof import("../src/components/maswali/maswali-empty-state.tsx");
+  const { EmptyState } = req("../src/components/ui/empty-state.tsx") as typeof import("../src/components/ui/empty-state.tsx");
+  const faceless = (m: string) => m.replace(/<span class="mono">([^<]*)<\/span>/g, "$1");
+  const bareDigits = (m: string) => textOf(m.replace(/<span class="mono">[^<]*<\/span>/g, "")).match(/\d+/g) ?? [];
+  const asHub = (l: L3, Kind: unknown) => inApp(l, h(Kind as never, { title: dict[l].millionea.hubNoWeek, body: W.noWeekBody(dict[l] as never, l, MON), fill: true } as never));
+  const t5 = LOCALES.flatMap((l) => {
+    const m = asHub(l, MaswaliEmptyState), plainKit = asHub(l, EmptyState);
+    const d: string[] = [];
+    if (bareDigits(m).length > 0) d.push(`${l}: bare ${j(bareDigits(m))}`);
+    if (!m.includes('<span class="mono">00:01</span>') || !m.includes('<span class="mono">15</span>')) d.push(`${l}: the clock or the count is not a numeral`);
+    if (faceless(m) !== plainKit) d.push(`${l}: more than the numerals' face changed`);
+    return d;
+  });
+  ok("14.2 · §T5 in three languages the hub's no-week body, drawn as the hub draws it (Millionea's empty state), sets the next open's clock and the questions' count as numerals, and nothing but their face differs from the kit's own drawing", t5.length === 0, t5.join(" | "));
+  const kitOnly = asHub("sw", EmptyState);
+  ok("14.2′ PLANT · round 1's call (the kit's EmptyState, no numeral part: \"00:01\" and \"15\" in the body face) is reported", bareDigits(kitOnly).length >= 2, j(bareDigits(kitOnly)));
 }
 
 // ── §16 · L13 · a voided main's words, after its stamp ────────────────────────────────────────────────────────────────
@@ -609,6 +631,25 @@ console.log("\n§16 · L13 · a voided main's words after its stamp are the regi
   const asFacts = inApp("en", h(FACTS.MaswaliFacts as never, { facts: FACTS.factsOf(dict.en.millionea.voidWeekCertain).map((f) => FACTS.keepFact("en", f)) } as never));
   ok("16.1′ PLANT · round 2's fact line (\"Void\" alone on a first line) and round 1's plain sentence (\"voided\" alone on a last) are each reported",
     voidDefects("en", "voidWeekCertain", asFacts).length > 0 && voidDefects("en", "voidWeekCertain", inApp("en", dict.en.millionea.voidWeekCertain)).length > 0);
+  // ⭐ S5-R2-HUB 6 · ONE WRAP UNIT: the words box is an inline flex row, so what it holds at its top level is what the browser
+  // lays out as flex items — the words must be ONE node there (the keeper's runs inside it), never the keeper's pieces as
+  // they come, each its own item (a sentence wider than its line then broke into a block above its kept run).
+  const topNodes = (m: string) => {
+    let depth = 0, n = 0;
+    for (const tok of m.split(/(<[^>]+>)/).filter(Boolean)) {
+      if (tok.startsWith("<!--")) continue;
+      if (tok.startsWith("</")) { depth--; continue; }
+      if (tok.startsWith("<")) { if (depth === 0) n++; if (!tok.endsWith("/>")) depth++; continue; }
+      if (depth === 0 && tok.trim()) n++;
+    }
+    return n;
+  };
+  const flat = (node: unknown) => renderToStaticMarkup(h(React.Fragment, null, node as never));
+  const units = LOCALES.flatMap((l) => (["voidAwaiting", "voidWeekCertain"] as const).map((k) => [`${l} ${k}`, topNodes(flat(W.voidWords(l, dict[l].millionea[k])))] as const));
+  ok("16.4 · in three languages the void words are ONE node in the row's flex box — one wrap unit, the kept runs inside it", units.every(([, n]) => n === 1), j(units));
+  const certainRest = FACTS.factsOf(dict.en.millionea.voidWeekCertain).slice(1).join(" ");
+  const pieces = topNodes(flat(FACTS.keepFact("en", certainRest.charAt(0).toUpperCase() + certainRest.slice(1))));
+  ok(`16.4′ PLANT · the keeper's pieces handed to the flex box as they come (${pieces} flex items: the round-2 drawing) are reported`, pieces > 1, `${pieces}`);
   // The paused notice is Millionea's own sentence, kept as every Millionea line is (`pausedWords`, keepFact): its last two
   // words one kept run ("salama." stood alone at sw 320), its numerals a numeral should a wording ever hold one.
   const pausedDefects = (l: L3, m: string) => {
@@ -805,7 +846,8 @@ console.log(`\n${"═".repeat(70)}\n  MASWALI HUB: ${pass} passed, ${fail} faile
  *  words: 50; 10, a time's face: 53; round 2, every numeral of the timed sentences: 55; S5-R2-HUB, the rule's balance, the
  *  drawing's frame, the no-week body and the segment's pick: 70; the void words' fact lines, the head's empty slot and
  *  the no-week body's kept phrases: 75; the paused notice's pair, the close line's one wording, the frame's line boxes,
- *  pills and the head's card order: 90; the void words in the register's form, the voiding notice kept, the lead's rulings 2a-2c and the drawing's ledger and held block: 100). It only rises. */
-const MIN_ASSERTIONS = 100;
+ *  pills and the head's card order: 90; the void words in the register's form, the voiding notice kept, the lead's rulings 2a-2c and the drawing's ledger and held block: 100;
+ *  S5-R2-HUB 6, the no-week body's numerals in Millionea's empty state and the void words one wrap unit: 104). It only rises. */
+const MIN_ASSERTIONS = 104;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

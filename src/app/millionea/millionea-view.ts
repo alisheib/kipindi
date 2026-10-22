@@ -261,7 +261,8 @@ export function lossPositionsOf(locale: Locale, questions: readonly MillioneaQue
  * "Zinahesabiwa tu swali kuu likibatilishwa, kwa mpangilio", "仅在正选题作废时按顺序计入" — so it never repeats the head right
  * above it (the zh reader: "备选题 · A1–A5" over "备选题 A1–A5 仅在…"). A language whose sentence ever stops opening with its
  * head's words keeps the whole sentence: never a sentence cut wrong. ONE helper for every place that draws the pair — the
- * hub's questions now; the slip's reserve step and the ticket's reserves at the merge. The meaning is the decided one.
+ * hub's questions, the slip's reserve step and the ticket's reserves (S5-R2-HUB 6 swapped the two at the merge's wiring).
+ * The meaning is the decided one.
  */
 export function reserveRuleAfterHead(t: Dict): string {
   const head = factsOf(t.millionea.reservesHead).join(" ");

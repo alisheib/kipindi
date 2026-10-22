@@ -311,8 +311,13 @@ const payOf = (m: string) => [...m.matchAll(/<button[^>]*data-testid="millionea-
   const priceItem = /<li class="([^"]*)"><span aria-hidden="true" class="([^"]*)">·<\/span><span class="min-w-0">(?:(?!<\/li>)[\s\S])*?a ticket/.exec(fresh);
   ok("3.6′ · from 1280 the price stands in the rules box alone (the cap is the panel's there), and a list of one draws no marker: no lone \"·\" before it (tiles empty-*-1280)",
     !!priceItem && priceItem[1].includes("xl:grid-cols-1") && priceItem[2].split(" ").includes("xl:hidden"), j(priceItem?.slice(1, 3)));
-  ok("3.7 · LOW · the reserves' rule is said ONCE, in the reserves' own head (it stood in the rules box too)",
-    textOf(fresh).split(en.reserveRule).length - 1 === 1);
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-HUB 6, the lead's ruling 2c at the merge's wiring): under its head
+  // ("Reserves · A1–A5") the rule is said AFTER the head's own words — the one shared helper, `reserveRuleAfterHead`
+  // ("Count only when a main question voids, in order") — so the whole sentence, which opens with the head, is said nowhere.
+  const { reserveRuleAfterHead } = req("../src/app/millionea/millionea-view.ts") as typeof import("../src/app/millionea/millionea-view.ts");
+  const ruleOnce = (m: string, l: L3) => textOf(m).split(reserveRuleAfterHead(dict[l] as never)).length - 1 === 1 && !textOf(m).includes(dict[l].millionea.reserveRule);
+  ok("3.7 · LOW · the reserves' rule is said ONCE, in the reserves' own head (it stood in the rules box too), after the head's words — never the whole sentence repeating the head — in sw, en and zh",
+    LOCALES.every((l) => ruleOnce(l === "en" ? fresh : slipOf(l), l)), j(LOCALES.map((l) => ruleOnce(l === "en" ? fresh : slipOf(l), l))));
   ok("3.8 · M1 (panel) · the 1280 panel stands under the top bar (`top-[72px]`: the bar's 56 and the market aside's 16)",
     /<aside class="[^"]*sticky top-\[72px\][^"]*xl:flex"/.test(fresh));
   ok("3.9 · LOW · the head's times carry their zone: \"Sales close: Friday 18:00 EAT\", \"First event: Saturday 09:00 EAT\"",
@@ -605,6 +610,11 @@ section("§10 · each fix undone in memory is caught by its case (the source pla
   const lone = planted('{ key: "price", node: priceLine, soleFromXl: true }', '{ key: "price", node: priceLine }');
   const loneItem = /<li class="([^"]*)"><span aria-hidden="true" class="([^"]*)">·<\/span><span class="min-w-0">(?:(?!<\/li>)[\s\S])*?a ticket/.exec(drawSlip(lone, {}));
   ok("10.9 PLANT · the price's lone \"·\" from 1280 put back is caught", !!loneItem && !loneItem[2].split(" ").includes("xl:hidden"));
+  // S5-R2-HUB 6 · the whole rule under its head again (the release's line, which repeated "Reserves A1–A5" under its head).
+  const { reserveRuleAfterHead } = req("../src/app/millionea/millionea-view.ts") as typeof import("../src/app/millionea/millionea-view.ts");
+  const wholeRule = textOf(drawSlip(planted("{keepFact(locale, reserveRuleAfterHead(t))}", "{keepFact(locale, t.millionea.reserveRule)}"), {}));
+  ok("10.10 PLANT · the reserves' whole rule back under its head (the head's words said twice) is caught",
+    wholeRule.includes(dict.en.millionea.reserveRule) && !wholeRule.includes(reserveRuleAfterHead(dict.en as never)));
 }
 
 /* ══ §11 · ROUND 2 · THE COMPOSER'S PILLS (the lead's ruling (a)) ══════════════════════════════════════════════════════════ */

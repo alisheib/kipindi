@@ -32,7 +32,6 @@ import Link from "next/link";
 import { PageContainer } from "@/components/layout/page-container";
 import { PAGE_HEADER_PILL, PageHeader } from "@/components/ui/page-header";
 import { Callout } from "@/components/ui/callout";
-import { EmptyState } from "@/components/ui/empty-state";
 import { NoticeBar } from "@/components/ui/notice-bar";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { I } from "@/components/ui/glyphs";
@@ -41,6 +40,8 @@ import { MaswaliWeekStrip } from "@/components/maswali/maswali-week-strip";
 import { MaswaliFacts, factsOf, keepFact } from "@/components/maswali/maswali-facts";
 import { MaswaliHeldTicketRow } from "@/components/maswali/maswali-ticket";
 import { MaswaliClosingPill } from "@/components/maswali/maswali-slip";
+import { MaswaliStrike } from "@/components/maswali/maswali-strike";
+import { MaswaliEmptyState } from "@/components/maswali/maswali-empty-state";
 import { MillioneaGlyph } from "@/components/maswali/maswali-glyph";
 import { counted, eatWeekdayClock, reserveLabel, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
 import { weekdayClock } from "@/components/maswali/maswali-numerals";
@@ -201,7 +202,9 @@ function voidWordsOf(t: Dict, locale: Locale, q: MillioneaHubWeek["questions"][n
  * One public question: its number, its category, its words, its event's time, and once attested the world's result.
  * ⭐ M1 · from 768 a table row — number, category, words, then the time with the result stamp under it (M12: side by side
  * at 1280 they left the question ~120px); a phone keeps the stacked row. A voided question's words are struck in the
- * muted ink, as the ticket strikes them (L13). ⭐ M11 · the stamp presses when its result arrives while the reader looks.
+ * muted ink, as the ticket strikes them (L13) — through the one strike, which ends at the last mark's ink (`MaswaliStrike`,
+ * DESIGN_AUTHORITY §M8a item 24: a plain strike ran half an em past a Chinese "？"). ⭐ M11 · the stamp presses when its
+ * result arrives while the reader looks.
  */
 function QuestionRow({ t, locale, q, voidWords }: { t: Dict; locale: Locale; q: MillioneaHubWeek["questions"][number]; voidWords: ReactNode }) {
   const at = msOf(q.eventStartsAt);
@@ -216,7 +219,7 @@ function QuestionRow({ t, locale, q, voidWords }: { t: Dict; locale: Locale; q: 
         {marketCategoryLabel(t, q.category)}
       </span>
       <span className={HUB_QUESTIONS.words}>
-        <span className={cn(HUB_QUESTIONS.text, voided ? "text-text-muted line-through decoration-border-strong" : "text-text")}>{textIn(locale, q.text)}</span>
+        <span className={cn(HUB_QUESTIONS.text, voided ? "text-text-muted" : "text-text")}>{voided ? <MaswaliStrike text={textIn(locale, q.text)} /> : textIn(locale, q.text)}</span>
         {voidWords && <span className="inline-flex flex-wrap items-center gap-x-1 text-body-sm text-text-muted text-pretty" data-testid="millionea-hub-void-words">{voidWords}</span>}
       </span>
       <span className={HUB_QUESTIONS.when}>
@@ -620,9 +623,10 @@ export default async function MillioneaHubPage({ searchParams }: { searchParams:
               ) : (
                 // ⭐ L6 · no week on sale is the platform's empty state, as the register's and the tickets' are; L21 · while
                 // sales are paused it promises no next open. The next open's day never parts from its clock (A1): the kit's
-                // kept run (`EmptyStateBody`'s `keep`).
+                // kept run (`EmptyStateBody`'s `keep`). §T5 · its numerals in the numerals' face, as Tiketi zangu's empty
+                // states set theirs: Millionea's own empty state (`MaswaliEmptyState`, the kit's opt-in numeral part).
                 <div className="flex flex-col gap-4" data-testid="millionea-hub-no-week">
-                  <EmptyState title={t.millionea.hubNoWeek} body={noWeekBody(t, locale, hub.paused ? null : msOf(hub.nextOpensAt))} fill />
+                  <MaswaliEmptyState title={t.millionea.hubNoWeek} body={noWeekBody(t, locale, hub.paused ? null : msOf(hub.nextOpensAt))} fill />
                   <LastWeekRow t={t} locale={locale} hub={hub} />
                   <MillioneaReadingLinks t={t} />
                 </div>

@@ -102,8 +102,8 @@ export function nextOpenWords(t: Dict, atMs: number): string {
  * while sales are paused (`atMs` null) — then "The 15 questions are published when sales open, …". The next open's day and
  * its clock are one kept run (A1: a day never parts from its time — the kit's own `keep`, a nowrap span), and so is every
  * other phrase Millionea keeps whole (`factRuns`: a number and its noun — "Maswali 15", which broke "Maswali" / "15" at sw
- * 360); Chinese joins its two sentences with no space between them. (§T5's numeral face for its clock and its count
- * arrives with the kit's opt-in `bodyPart`, TICKETS' round 2 — the lead wires it at the merge.)
+ * 360); Chinese joins its two sentences with no space between them. §T5's numeral face for its clock and its count is
+ * joined by Millionea's own empty state, which the hub draws it in (`MaswaliEmptyState`: the kit's opt-in `bodyPart`).
  */
 export function noWeekBody(t: Dict, locale: Locale, atMs: number | null): KeptBody {
   const first = atMs === null ? null : nextOpenWords(t, atMs);
@@ -118,10 +118,14 @@ export function noWeekBody(t: Dict, locale: Locale, atMs: number | null): KeptBo
  * as every Millionea line is (`keepFact`: its last two words one run, so "voided" never stands alone at en 1280/1920) and
  * pretty-wrapped by its row. As a fact line (S5-R2-HUB 2) the long second fact moved whole to the next line and left
  * "Void" / "Batili" alone on a first line at every width but 768, in all three languages (the tile readers).
+ * ⭐ ONE WRAP UNIT (S5-R2-HUB 6): the row's words box is an inline flex row (the stand-in's "Void ↪ A1" is three items
+ * centred on one line), so each piece the keeper hands back — a run of words, a kept run — stood as a flex item of its own,
+ * and a sentence wider than its line broke into a block of its own above its kept run instead of wrapping as one sentence
+ * (latent: at en 320 "…the week is due to" filled its line exactly). The words are one element, the keeper's runs inside it.
  */
 export function voidWords(locale: Locale, line: string): ReactNode {
   const rest = factsOf(line).slice(1).join(" ");
-  return keepFact(locale, rest.charAt(0).toLocaleUpperCase() + rest.slice(1));
+  return <span>{keepFact(locale, rest.charAt(0).toLocaleUpperCase() + rest.slice(1))}</span>;
 }
 
 /**

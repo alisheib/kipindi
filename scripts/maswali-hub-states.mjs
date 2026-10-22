@@ -59,9 +59,29 @@ mkdirSync(OUT, { recursive: true });
 const browser = await chromium.launch();
 const errs = [];
 
+/**
+ * ⚠️ PREMISE — A DESKTOP'S MOTION TIER (S5-R2-HUB 6, on GitHub's 4-CPU runners). The platform throttles its motion on a
+ * low-end device (`theme-provider.tsx`: four cores or fewer, or 4 GB or less, sets `data-motion="reduced"`, which stops every
+ * loading shimmer by design — globals.css §6). A runner reports its own four cores, so every page here would read the
+ * low-end tier and the drawing's shimmer checks would measure a machine, not the hub. The drive reads the full tier, as a
+ * desktop or a phone above the line does: each reader's browser reports eight cores. What the machine itself reports is
+ * printed; the reduced-motion end state is still read through the OS setting (the "ghost" state's reduced view).
+ */
+const DESKTOP_CORES = 8;
+{
+  const probe = await browser.newPage();
+  const raw = await probe.evaluate(() => ({ cores: navigator.hardwareConcurrency, memory: navigator.deviceMemory ?? null }));
+  await probe.close();
+  console.log(`INFO premise · this machine's browser reports ${raw.cores} cores and ${raw.memory} GB; each reader's reports ${DESKTOP_CORES} cores (the full motion tier)`);
+}
+async function desktopTier(ctx) {
+  await ctx.addInitScript((cores) => { Object.defineProperty(Navigator.prototype, "hardwareConcurrency", { get: () => cores, configurable: true }); }, DESKTOP_CORES);
+  return ctx;
+}
+
 /** A context for one reader: its cookies (a session, a staff pass) and the language; a guest has none. */
 async function readerContext(cookies) {
-  const ctx = await browser.newContext({ viewport: { width: 360, height: HEIGHT } });
+  const ctx = await desktopTier(await browser.newContext({ viewport: { width: 360, height: HEIGHT } }));
   if (cookies.length) await ctx.addCookies(cookies.map((c) => ({ ...c, url: BASE, domain: undefined, path: undefined })));
   return ctx;
 }
@@ -157,7 +177,7 @@ async function shoot(state, shell, ctx, { check, oneView = false, path = "/milli
 
 // ── the seed ───────────────────────────────────────────────────────────────────────────────────────────────────────────
 // The Owner, signed in in this context (`seed-admin`): who seeds, and in run c who moves the switch and reads the preview.
-const owner = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+const owner = await desktopTier(await browser.newContext({ viewport: { width: 1280, height: 900 } }));
 {
   await owner.request.post(`${BASE}/api/dev-test/seed-admin`, { data: { phone: "+255700000091", name: "Millionea Owner" }, timeout: 240_000 });
   const seed = await owner.request.post(`${BASE}/api/dev-test/seed-maswali`, { data: {}, timeout: 300_000 });
@@ -417,9 +437,8 @@ const T5_THEIRS = [
   ['[data-testid="millionea-hub-ledger"]', "REGISTER (the one ledger's rows)"],
   ['[data-testid="millionea-hub-break"]', "PLATFORM (the break notice)"],
   ['[data-testid="millionea-week-state"]', "REGISTER (the week chip)"],
-  // The kit EmptyState's body is a string by contract: its numerals take the numerals' face through the kit's opt-in
-  // `bodyPart` (TICKETS' round 2), which the lead wires into the hub's no-week state at the merge (HUB's item 3).
-  ['[data-testid="millionea-hub-no-week"] p.leading-relaxed', "KIT (the EmptyState body: the opt-in bodyPart, wired at the merge)"],
+  // ⚠️ The no-week empty state's body left this list with S5-R2-HUB 6 (the merge's wiring): the hub draws it as Millionea's
+  // own empty state (`MaswaliEmptyState`, the kit's opt-in numeral part), so its numerals are the hub's own line's.
 ];
 const t5Elsewhere = new Map();
 async function t5Checks(page, label) {
@@ -526,12 +545,13 @@ if (RUN === "a") {
   // ── S1 · an open week, signed in, holding a ticket (a losing slip, so the week can roll over later) ────────────────────
   await act({ act: "tickets", n: 1, lose: true });
   // Two more players, one per other language, with a ticket each: their once-per-week notices are unseen later (S11) — and
-  // two for the carry's flight (H6): one read on a phone, one on a tall desktop.
+  // three for the carry's flight (H6): one read on a phone, one on a tall desktop, and one whose flight a render meets
+  // mid-air (S5-R2-HUB 6). `at`: when each was signed in — a returning player's session was last seen ≥ 5 minutes before.
   const players = {};
-  for (const l of ["en", "zh", "phone", "desk"]) {
+  for (const l of ["en", "zh", "phone", "desk", "flight"]) {
     const ctx = await readerContext([]);
     const p = await act({ act: "player", tickets: 1, lose: true }, ctx); // signed in through this context's cookie
-    players[l] = { ctx, id: p.userId };
+    players[l] = { ctx, id: p.userId, at: Date.now() };
   }
   // L7 (round 2) · the drawing's three readers (the lead's three states): holding no ticket, one, and five (three rows and
   // "See all"), bought now so each row is past its free cancel (five minutes) when the drawing is measured.
@@ -613,20 +633,32 @@ if (RUN === "a") {
     // 1px a row down the list: 15px by the fifteenth, the tile read at 1280).
     const span = (el) => { const r = el.getBoundingClientRect(); return { left: Math.round(r.left), width: Math.round(r.width) }; };
     const tops = (els) => els.slice(0, 10).map((el) => Math.round(el.getBoundingClientRect().top + window.scrollY));
+    // S5-R2-HUB · G2 · the eyebrow's week word and its state chip (the chip's whole box), and the questions' heading — on the
+    // page its words' own extent (a Range: the heading is a block across the column), in the drawing its bar.
+    const chipBox = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return { left: Math.round(r.left), top: Math.round(r.top + window.scrollY), width: Math.round(r.width), height: Math.round(r.height) }; };
+    const eyebrowOf = (word, chip) => (word && chip ? { word: span(word), chip: chipBox(chip) } : null);
+    const wordsOf = (el) => { if (!el) return null; const r = document.createRange(); r.selectNodeContents(el); const b = r.getBoundingClientRect(); return { left: Math.round(b.left), width: Math.round(b.width) }; };
     if (ghost) {
       const g = document.querySelector('[aria-busy="true"]');
       if (!g) return null;
       const q = (n) => g.querySelector(`[data-ghost="${n}"]`);
       const rowEls = [...(q("questions")?.lastElementChild?.children ?? [])];
+      // The eyebrow's row: the head's eyebrow line (the element before the title), its first item the word, its last the chip.
+      const row = g.querySelector("h1")?.previousElementSibling?.lastElementChild ?? null;
+      const headingBar = q("questions")?.firstElementChild?.firstElementChild ?? null;
       return { title: box(g.querySelector("h1")), strip: box(q("strip")), jackpot: box(q("jackpot")), door: box(q("door")), ledger: box(q("ledger")), mine: box(q("mine")), questions: box(q("questions")),
-        rows: rowEls.slice(0, 3).map(box), rowTops: tops(rowEls), doors: [...(q("doors")?.children ?? [])].map(span) };
+        rows: rowEls.slice(0, 3).map(box), rowTops: tops(rowEls), doors: [...(q("doors")?.children ?? [])].map(span),
+        eyebrow: eyebrowOf(row?.firstElementChild ?? null, row && row.children.length > 1 ? row.lastElementChild : null), heading: headingBar ? span(headingBar) : null };
     }
     const h = document.querySelector('[data-testid="millionea-hub"]');
     const q = (n) => document.querySelector(`[data-testid="${n}"]`);
     const rowEls = [...document.querySelectorAll('[data-testid="millionea-hub-questions"] li[data-slot]')];
+    // The head's chip is the page's first (the graded week's own chip stands in the buy column, after the head).
+    const chip = h?.querySelector('[data-testid="millionea-week-state"]') ?? null;
     return { title: box(h?.querySelector("h1")), strip: box(q("millionea-week-strip")), jackpot: box(q("millionea-hub-jackpot")), door: box(q("millionea-hub-buy")),
       ledger: box(q("millionea-hub-ledger")), mine: box(q("millionea-hub-mine")), questions: box(q("millionea-hub-questions")),
-      rows: rowEls.slice(0, 3).map(box), rowTops: tops(rowEls), doors: [...document.querySelectorAll('[data-testid="millionea-hub-doors"] a')].map(span) };
+      rows: rowEls.slice(0, 3).map(box), rowTops: tops(rowEls), doors: [...document.querySelectorAll('[data-testid="millionea-hub-doors"] a')].map(span),
+      eyebrow: eyebrowOf(chip?.previousElementSibling ?? null, chip), heading: wordsOf(document.getElementById("mln-questions-h")) };
   };
   /** How many lines the page's wrapping bands take (the drawing's table, `hub-ghost.tsx` WRAPS, is held to these), and the
    *  width of each kept run of the strip's ranges (the drawing's RANGES, which wrap where the page's do). */
@@ -649,6 +681,14 @@ if (RUN === "a") {
         if (text) range.selectNodeContents(text);
         return { word: w(word), chip: w(chip), chipH: chip ? Math.round(chip.getBoundingClientRect().height * 100) / 100 : null, label: text ? Math.round(range.getBoundingClientRect().width * 100) / 100 : null };
       })(),
+      // The questions' heading: its words' own width (the drawing's per-language bar is held to it, G2).
+      heading: (() => {
+        const el = document.getElementById("mln-questions-h");
+        if (!el) return null;
+        const r = document.createRange();
+        r.selectNodeContents(el);
+        return { text: el.textContent, width: Math.round(r.getBoundingClientRect().width * 100) / 100 };
+      })(),
     };
   };
   /** The drawing's motion: each of its blocks wears the platform's skeleton sweep (`.kp-shimmer-track::after`). */
@@ -666,6 +706,10 @@ if (RUN === "a") {
     // The tenth row's top: what each row's height carries down the list.
     ["row10", r.rowTops[9] !== undefined && g.rowTops[9] !== undefined ? r.rowTops[9] - g.rowTops[9] : null],
     ["doors", r.doors.map((x, i) => (g.doors[i] ? { left: x.left - g.doors[i].left, width: x.width - g.doors[i].width } : null))],
+    // G2 · the eyebrow (the week's word, the chip's box) and the questions' heading (its left and its width).
+    ["eyebrow", g.eyebrow && r.eyebrow ? { word: r.eyebrow.word.width - g.eyebrow.word.width, chipLeft: r.eyebrow.chip.left - g.eyebrow.chip.left,
+      chipTop: r.eyebrow.chip.top - g.eyebrow.chip.top, chipWidth: r.eyebrow.chip.width - g.eyebrow.chip.width, chipHeight: r.eyebrow.chip.height - g.eyebrow.chip.height } : null],
+    ["heading", g.heading && r.heading ? { left: r.heading.left - g.heading.left, width: r.heading.width - g.heading.width } : null],
   ]));
   async function ghostSwap(ctx, locale, width, name, { reduced = false } = {}) {
     await setLocale(ctx, locale);
@@ -855,6 +899,12 @@ if (RUN === "a") {
       // S5-R2-HUB · the head's two pills, each as wide as its label (`DOOR_LABELS`): the second jumped 31px at sw 360.
       ok(`${label} · L7 the head's two doors stand where they were drawn (±1px: ${j(off.doors)})`,
         off.doors.length === 2 && off.doors.every((d) => !!d && Math.abs(d.left) <= 1 && Math.abs(d.width) <= 1), j({ ghost: m.ghost.doors, real: m.real.doors }));
+      // S5-R2-HUB · G2 (the tile readers: on landing the state's chip jumped ~23px left in zh, 4–6px in en/sw; the questions'
+      // heading was one English bar in every language, ~60px past "Maswali ya wiki", ~130px past "本周题目").
+      ok(`${label} · G2 the eyebrow lands where it was drawn — the week's word as wide as its bar, the chip's box where its bar stood (±1px: ${j(off.eyebrow)})`,
+        !!off.eyebrow && Object.values(off.eyebrow).every((x) => Math.abs(x) <= 1), j({ ghost: m.ghost.eyebrow, real: m.real.eyebrow }));
+      ok(`${label} · G2 the questions' heading lands where it was drawn — its words as wide as their bar (±1px: ${j(off.heading)})`,
+        !!off.heading && Math.abs(off.heading.left) <= 1 && Math.abs(off.heading.width) <= 1, j({ ghost: m.ghost.heading, real: m.real.heading }));
       if (reader === "guest") {
         if (guestUnmarked) console.log(`INFO L7 ${label} · the classic shell marks no guest: the guest's door stands ${off.doorH}px taller than the player's door it was drawn as, and the ledger lands ${off.ledger}px lower`);
         else ok(`${label} · L7 a marked guest is drawn no block of tickets, as the page draws none`, m.ghost.mine === null && m.real.mine === null, j({ ghost: m.ghost.mine, real: m.real.mine }));
@@ -958,12 +1008,64 @@ if (RUN === "a") {
   // in once the token has left it. Each reader's first view, the rollover notice unseen. The ends are measured on boxes a
   // flight never moves (the row's own span, the notice's figure).
   if (want("after")) {
+    // ⭐ S5-R2-HUB 6 · WHY THE CARRY ONCE ENDED UNSETTLED (heavy-c5's red at sw 1920×1440: both ends in view, and 1600ms after
+    // load the origin read "amount" — no flight in the air, no settle). Each reader here is a RETURNING player, as every
+    // reader of a settled week's rollover is: their session last seen ≥ 5 minutes before, so the rollover notice's seen mark
+    // (a server action) re-signs the session cookie (`session.ts`, at most every five minutes) — and a cookie set by a server
+    // action re-renders the route. That render no longer carries the rollover (it is seen), and the ledger used to drop its
+    // carry with it: a flight still in the air was rested half-way, the origin's settle never played. A race between the
+    // action's round trip and the 340ms flight — green in heavy-c4, red in heavy-c5. Each view prints its timeline (INFO H6):
+    // the hydration, the flight's start and end, the origin's classes, every server action (`x-action-revalidated`: did it
+    // re-render?) and every route render.
+    const STALE_MS = 5 * 60_000 + 15_000;
+    const returning = async (who) => {
+      const left = players[who].at + STALE_MS - Date.now();
+      if (left > 0) { console.log(`INFO H6 · waiting ${Math.round(left / 1000)}s: ${who}'s session last seen ≥ 5 min ago, a returning player's`); await new Promise((r) => setTimeout(r, left)); }
+    };
+    /** In the page, from its first script: the carry's marks, the hydration of the carried-in row (and the two ends then). */
+    const CARRY_LOG = () => {
+      const log = [];
+      window.__mlnCarryLog = log;
+      const push = (e) => log.push({ t: Date.now(), ...e });
+      new MutationObserver((ms) => {
+        for (const m of ms) {
+          const el = m.target;
+          if (el.id === "mln-carried-figure") push({ origin: el.className });
+          else if ((m.oldValue ?? "").includes("maswali-carry") !== el.classList.contains("maswali-carry")) push({ flight: el.classList.contains("maswali-carry") ? "start" : "end" });
+        }
+      }).observe(document, { subtree: true, attributes: true, attributeFilter: ["class"], attributeOldValue: true });
+      const probe = setInterval(() => {
+        const row = document.querySelector('[data-row="in"]');
+        if (!row || !Object.keys(row).some((k) => k.startsWith("__reactFiber"))) return;
+        clearInterval(probe);
+        const b = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return [Math.round(r.top), Math.round(r.bottom)]; };
+        push({ hydrated: true, origin: b(document.getElementById("mln-carried-figure")), dest: b(row), vh: innerHeight });
+      }, 20);
+    };
+    /** The page's server actions and route renders, as the network saw them. */
+    /** A route render of the hub itself (an RSC fetch of /millionea that is not a prefetch). */
+    const isRender = (r) => {
+      const q = r.request().headers();
+      return r.request().method() === "GET" && q.rsc === "1" && !q["next-router-prefetch"] && new URL(r.url()).pathname === "/millionea";
+    };
+    const netLog = (page, out) => page.on("response", (r) => {
+      const q = r.request().headers();
+      if (q["next-action"]) out.push({ t: Date.now(), action: r.status(), revalidated: r.headers()["x-action-revalidated"] ?? null });
+      else if (isRender(r)) out.push({ t: Date.now(), render: r.status() });
+    });
+    const timeline = async (page, net, t0) => [...(await page.evaluate(() => window.__mlnCarryLog ?? [])), ...net]
+      .sort((a, b) => a.t - b.t).map((e) => ({ ...e, t: e.t - t0 }));
     for (const [who, vp] of [["phone", { width: 360, height: HEIGHT }], ["desk", { width: 1920, height: 1440 }]]) {
+      await returning(who);
       const ctx = players[who].ctx;
       await setLocale(ctx, "sw");
       const page = await ctx.newPage();
       page.on("pageerror", (e) => errs.push(`carry/${who}: ${e}`));
       await page.setViewportSize(vp);
+      await page.addInitScript(CARRY_LOG);
+      const net = [];
+      netLog(page, net);
+      const t0 = Date.now();
       await page.goto(`${BASE}/millionea`, { waitUntil: "load", timeout: 180_000 });
       const ends = await page.evaluate(() => {
         const at = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right) }; };
@@ -971,13 +1073,61 @@ if (RUN === "a") {
         const origin = at(document.getElementById("mln-carried-figure")), dest = at(document.querySelector('[data-row="in"]'));
         return { origin, dest, both: inView(origin) && inView(dest) };
       });
-      await page.waitForTimeout(1600);
+      // Read once the page is React's and the 340ms flight has had its time — never at a guessed instant after load.
+      const hydrated = await page.waitForFunction(() => (window.__mlnCarryLog ?? []).some((e) => e.hydrated), null, { timeout: 30_000 }).then(() => true).catch(() => false);
+      await page.waitForTimeout(1200);
       const after = await page.evaluate(() => document.getElementById("mln-carried-figure")?.className ?? null);
       const landed = /\bg-settle\b/.test(after ?? ""), vacated = /\bkp-mln-carry-vacated\b/.test(after ?? "");
+      console.log(`INFO H6 after · carry · sw ${vp.width}×${vp.height} · timeline (ms from the navigation): ${j(await timeline(page, net, t0))}`);
       ok(`after · carry · sw ${vp.width}×${vp.height} · H6 the carry plays exactly when both ends stand in view (${ends.both ? "both in view: it lands" : "an end out of view: no flight"})`,
-        !!ends.origin && !!ends.dest && (ends.both ? landed && !vacated : !landed && !vacated), j({ ends, after }));
+        hydrated && !!ends.origin && !!ends.dest && (ends.both ? landed && !vacated : !landed && !vacated), j({ hydrated, ends, after }));
       if (who === "desk") ok(`after · carry · sw ${vp.width}×${vp.height} · H6 a tall desktop holds both ends, so the flight is seen`, ends.both, j(ends));
       await page.screenshot({ path: `${OUT}/after-carry-sw-${vp.width}.png` });
+      await page.close();
+    }
+    // ⭐ A RENDER MID-FLIGHT NEVER CUTS THE CARRY (S5-R2-HUB 6): the race made certain. The flight is stretched to six seconds
+    // by this drive's own stylesheet (the product's motion untouched); the rollover's seen mark answers; then the route
+    // re-renders while the token is in the air — `router.refresh()`, the same server render the re-signed cookie asks for —
+    // and the render no longer carries the rollover. The token must still land, and the origin settle.
+    {
+      const label = "after · carry · sw 1920×1440 · H6 a render while the token flies";
+      await returning("flight");
+      const ctx = players.flight.ctx;
+      await setLocale(ctx, "sw");
+      const page = await ctx.newPage();
+      page.on("pageerror", (e) => errs.push(`carry/flight: ${e}`));
+      await page.setViewportSize({ width: 1920, height: 1440 });
+      // An adopted sheet: in place before the page's first script, whether or not its <html> exists yet.
+      await page.addInitScript(() => {
+        const sheet = new CSSStyleSheet();
+        sheet.replaceSync(".maswali-carry { animation-duration: 6000ms !important; }");
+        document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+      });
+      await page.addInitScript(CARRY_LOG);
+      const net = [];
+      netLog(page, net);
+      const seen = page.waitForResponse((r) => r.request().method() === "POST" && !!r.request().headers()["next-action"], { timeout: 30_000 }).catch(() => null);
+      const t0 = Date.now();
+      await page.goto(`${BASE}/millionea`, { waitUntil: "load", timeout: 180_000 });
+      const flying = await page.waitForFunction(() => /kp-mln-carry-vacated/.test(document.getElementById("mln-carried-figure")?.className ?? ""), null, { timeout: 30_000 }).then(() => true).catch(() => false);
+      const mark = await seen;
+      const rendered = page.waitForResponse(isRender, { timeout: 30_000 }).catch(() => null);
+      await page.evaluate(() => window.next?.router?.refresh());
+      const render = await rendered;
+      await page.waitForTimeout(600);
+      const inAir = await page.evaluate(() => document.getElementById("mln-carried-figure")?.className ?? null);
+      await page.waitForFunction(() => /\bg-settle\b/.test(document.getElementById("mln-carried-figure")?.className ?? ""), null, { timeout: 15_000 }).catch(() => {});
+      const end = await page.evaluate(() => document.getElementById("mln-carried-figure")?.className ?? null);
+      const log = await timeline(page, net, t0);
+      console.log(`INFO H6 ${label} · timeline (ms from the navigation): ${j(log)}`);
+      ok(`${label} · the token was in the air when the seen mark answered and the route re-rendered (${mark ? `mark ${mark.status()}` : "no mark"}, ${render ? `render ${render.status()}` : "no render"})`,
+        flying && !!mark && !!render && /kp-mln-carry-vacated/.test(inAir ?? ""), j({ flying, inAir, log }));
+      // The flight's own end after the render (dev's StrictMode runs a mount's effect twice, so ends are not counted): the
+      // origin's settle — the landing's mark — comes after the render landed.
+      const renderAt = log.find((e) => e.render)?.t ?? null;
+      const settleAt = log.find((e) => typeof e.origin === "string" && /\bg-settle\b/.test(e.origin))?.t ?? null;
+      ok(`${label} · the render did not cut it: the token landed after the render, and the origin settled (render +${renderAt}ms, settle +${settleAt}ms: "${end}")`,
+        /\bg-settle\b/.test(end ?? "") && !/kp-mln-carry-vacated/.test(end ?? "") && renderAt !== null && settleAt !== null && settleAt > renderAt, j({ end, log }));
       await page.close();
     }
   }
@@ -1007,6 +1157,25 @@ if (RUN === "a") {
     });
     ok(`${label} · 7b the head's absent figure is the platform's empty slot (the faint em-dash, hidden from the screen reader)`,
       !!slot && slot.text === "—" && slot.hidden === "true" && slot.color === slot.faint, j(slot));
+    // §M8a item 24 (S5-R2-HUB 6, the merge's wiring) · each voided main's words are struck through the ONE strike
+    // (`MaswaliStrike`): the words whole in one struck span inside the row's own unstruck box, and where they end on a
+    // full-width mark — Chinese "？" or "。" — that mark alone cut back to its ink (`.kp-mln-strike-end`, `--q` for "？"):
+    // a plain strike ran half an em past "？". Latin text is drawn as it came.
+    const struck = await page.evaluate(() => [...document.querySelectorAll('[data-testid="millionea-hub-questions"] li[data-slot]')].flatMap((li) => {
+      const s = li.querySelector(".line-through");
+      if (!s) return [];
+      const box = s.parentElement, text = (s.textContent ?? "").trim(), last = s.lastElementChild;
+      const mark = /[。，、；：！？]$/.test(text);
+      return [{
+        slot: li.getAttribute("data-slot"), whole: text === (box?.textContent ?? "").trim() && text.length > 0,
+        boxStruck: box ? getComputedStyle(box).textDecorationLine.includes("line-through") : true,
+        strike: getComputedStyle(s).textDecorationLine, end: last ? last.className : null, endText: last?.textContent ?? null, mark, q: text.endsWith("？"),
+      }];
+    }));
+    const strikeRight = (x) => x.whole && !x.boxStruck && x.strike.includes("line-through")
+      && (x.mark ? x.end === (x.q ? "kp-mln-strike-end kp-mln-strike-end--q" : "kp-mln-strike-end") && x.endText?.length === 1 : x.end === null);
+    ok(`${label} · item 24 each voided main is struck through the one strike: its words whole in one struck span, a closing full-width mark alone cut to its ink (${struck.length} struck: ${j(struck.map((x) => x.end))})`,
+      struck.length === 6 && struck.every(strikeRight), j(struck));
     await stateWordChecks(page, label, locale, { en: "Week is being voided", sw: "Wiki inabatilishwa", zh: "整周作废中" });
     await zhLineChecks(page, label, locale, ["millionea-hub-voiding"]);
   };

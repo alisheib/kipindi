@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { MaswaliPoolHead, type PoolView } from "@/components/maswali/maswali-pool-figure";
 import { MaswaliLedger, millioneaLedgerRows, type MillioneaLedgerInput, type MillioneaLedgerRow } from "@/components/maswali/maswali-ledger";
 import { MaswaliCarry } from "@/components/maswali/maswali-carry";
@@ -145,17 +145,27 @@ export function HubPoolHead({ final, labelId, className }: { final?: boolean; la
  * `.m-tick` dips and lands it once (motion L1). M7 — when last week rolled over and this reader has not seen it, the
  * carried figure travels once from the rollover notice's own figure (`carryFrom`, R1-hub M10 / R1-motion H6), on the
  * first paint only, and only with both ends in view (`MaswaliCarry`'s rule).
+ * ⭐ S5-R2-HUB · THE CARRY THIS ISLAND WAS FIRST HANDED IS KEPT, AND PLAYS ONCE (R1-motion H6; the drive's red at sw
+ * 1920×1440): the hub as `HubNotices` keeps its notices. The page re-renders while the token flies — the rollover notice's
+ * own seen mark is a server action, and for a returning player it re-signs the session cookie (`session.ts`: at most every
+ * five minutes), which re-renders the route; that render no longer carries the rollover (seen), so the ledger dropped its
+ * carry and `MaswaliCarry` rested the flight half-way (no settle: the figure snapped home). So the island holds the carry
+ * it mounted with — a later render, a pool frame or the poller's refresh never takes it away in flight — and once the
+ * token has landed (or nothing played: an end out of view, a clamp) it is spent, so a row re-keyed by a frame later draws
+ * the end frame and never flies again.
  * ⭐ L15 · BEING VOIDED, the refund sentence names its amount and stands alone — no figure (H1: nothing is refunded yet)
  * and no dash beside it: the one ledger's own row since REGISTER's c851bc760 (`test:maswali-hub` 4.1 holds it here).
  */
 export function HubPoolLedger({ carryFrom, carryPlay, className }: { carryFrom?: string; carryPlay?: boolean; className?: string }) {
   const live = useContext(LivePool);
   const { t, locale } = useT();
+  // The first paint's carry (the island mounts before any frame or tick), kept for the island's life.
+  const [carry, setCarry] = useState<{ from: string; play: boolean } | null>(() => (carryFrom ? { from: carryFrom, play: !!carryPlay } : null));
+  const spent = useCallback(() => setCarry((c) => (c?.play ? { ...c, play: false } : c)), []);
   if (!live) return null;
-  const firstPaint = live.tick === 0 && live.moved.n === 0;
   return (
     <div className={cn(HUB_LEDGER, className)} data-testid="millionea-hub-ledger">
-      <MaswaliLedger rows={dressLedgerRows(millioneaLedgerRows(t, locale, live.input), live.input, live.moved, carryFrom ? { from: carryFrom, play: !!carryPlay && firstPaint } : null)} />
+      <MaswaliLedger rows={dressLedgerRows(millioneaLedgerRows(t, locale, live.input), live.input, live.moved, carry, spent)} />
     </div>
   );
 }
@@ -168,11 +178,13 @@ export function HubPoolLedger({ carryFrom, carryPlay, className }: { carryFrom?:
 export function dressLedgerRows(
   rows: readonly MillioneaLedgerRow[], input: MillioneaLedgerInput, moved: { n: number; keys: ReadonlySet<string> },
   carry: { from: string; play: boolean } | null,
+  /** Called once the carry has landed, or at once when nothing plays (`MaswaliCarry`'s `onEnd`): the flight is spent. */
+  onCarryEnd?: () => void,
 ): MillioneaLedgerRow[] {
   return rows.map((r) => {
     const ticks = moved.n > 0 && moved.keys.has(r.key);
     let value: ReactNode = r.value;
-    if (r.key === "in" && carry && typeof input.carryIn?.amount === "number") value = <MaswaliCarry from={carry.from} play={carry.play}>{value}</MaswaliCarry>;
+    if (r.key === "in" && carry && typeof input.carryIn?.amount === "number") value = <MaswaliCarry from={carry.from} play={carry.play} onEnd={onCarryEnd}>{value}</MaswaliCarry>;
     return { ...r, value: <span key={ticks ? `${r.key}:${moved.n}` : r.key} className={ticks ? "m-tick" : undefined} data-row={r.key}>{value}</span> };
   });
 }
