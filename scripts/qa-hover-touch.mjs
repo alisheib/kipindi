@@ -16,6 +16,13 @@
  * ⭐ ROUND 2 (2026-10-22): the same for the three tints D11 had left out — a `.btn-ghost`, a `.btn-claret` and a
  * `.btn-aqua-ghost`: on touch a tapped one keeps the face it has at rest (its fill, edge, glow and filter), with a mouse
  * a hover still tints it, and the ghost's tint written as it stood is seen on a tap (so the touch check can fail).
+ * ⭐ ROUND 3 (MASWALI-BUILD S5-R3-FIX F3, 2026-10-22): A TAP IS JUDGED IN THE STATE A PHONE LEAVES IT — `:hover` HELD. A
+ * phone's browser keeps `:hover` on the element last tapped; that sticky hover is what D11 gates. Chromium on the Windows
+ * machine set it from the tap itself, but headless Chromium on the Linux runner (where the drives run, the lead's ruling of
+ * 2026-10-22) sets none, so there 1.1–1.3 judged a state no phone is in and both plants went unseen (3.1 and 3.2 failed:
+ * the control could not fail). So every touch tap is `tapHold`: the tap, then the page's own pointer rested on the control
+ * — the hover a phone's tap leaves — and a PREMISE requires `:hover` to hold on each tapped control, so no touch check can
+ * pass on a state it never saw. The checks are the round-2 checks, judged in that state; the plants are seen everywhere.
  * Read-only: it changes nothing on the site; the controls live in that page alone.
  */
 import { chromium } from "playwright";
@@ -60,6 +67,15 @@ const faceOf = (page, id) => page.evaluate((sel) => {
   return { bg: cs.backgroundColor, border: cs.borderTopColor, shadow: cs.boxShadow, filter: cs.filter };
 }, id);
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+/** A tap as a phone leaves it: the touch's own tap, then the page's pointer rested on the control — the sticky `:hover` a
+ *  phone keeps on the element it tapped (headless Chromium on Linux sets none from the tap itself). Answers whether `:hover`
+ *  holds on the control afterwards. */
+async function tapHold(page, id) {
+  await page.tap(`#${id}`);
+  const box = await page.locator(`#${id}`).boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  return page.evaluate((sel) => document.getElementById(sel).matches(":hover"), id);
+}
 
 const browser = await chromium.launch();
 try {
@@ -72,8 +88,9 @@ try {
   ok("PREMISE · the touch page reports no hover-capable pointer", hoverMedia === false, `(hover: hover) = ${hoverMedia}`);
   await placeControls(tp);
   const touchSeen = {};
+  const held = {};
   for (const id of ["kp-qa-btn", "kp-qa-gilt"]) {
-    await tp.tap(`#${id}`);
+    held[id] = await tapHold(tp, id);
     await settle(tp, 60);
     const early = await stateOf(tp, id);
     await settle(tp, 400);
@@ -85,28 +102,31 @@ try {
     && !touchSeen["kp-qa-gilt"].early.sheen && !touchSeen["kp-qa-gilt"].late.sheen, JSON.stringify(touchSeen["kp-qa-gilt"]));
   for (const id of TINTS) {
     const rest = await faceOf(tp, id);
-    await tp.tap(`#${id}`);
+    held[id] = await tapHold(tp, id);
     await settle(tp, 400);
     const after = await faceOf(tp, id);
     ok(`1.3 · a tapped ${id.replace("kp-qa-", "")} button keeps its face at rest: no fill, edge or glow sticks to it`, same(rest, after), JSON.stringify({ rest, after }));
   }
+  ok("PREMISE · each tapped control holds :hover, as a phone leaves it — 1.1–1.3 judged the sticky state, not a tap that left none",
+    Object.keys(held).length === 5 && Object.values(held).every(Boolean), JSON.stringify(held));
   // ── 3 · plant: the lift as it stood ──
   await tp.addStyleTag({ content: ".btn:hover:not(:disabled) { transform: translateY(var(--m-lift)); }" });
-  await tp.tap("#kp-qa-gilt"); // move the sticky hover away, then back
-  await tp.tap("#kp-qa-btn");
+  await tapHold(tp, "kp-qa-gilt"); // move the sticky hover away, then back
+  const heldBtn = await tapHold(tp, "kp-qa-btn");
   await settle(tp, 400);
   const planted = await stateOf(tp, "kp-qa-btn");
-  ok("3.1 · PLANT · the ungated lift injected, the tap's lift is seen (so 1.1 can fail)", planted.lifted, JSON.stringify(planted));
+  ok("3.1 · PLANT · the ungated lift injected, the tap's lift is seen (so 1.1 can fail)", heldBtn && planted.lifted, JSON.stringify({ held: heldBtn, ...planted }));
   {
-    await tp.tap("#kp-qa-btn"); // the sticky hover off the ghost first
+    await tapHold(tp, "kp-qa-btn"); // the sticky hover off the ghost first
     await settle(tp, 300);
     const rest = await faceOf(tp, "kp-qa-ghost");
     await tp.addStyleTag({ content: ".btn-ghost:hover:not(:disabled) { background: oklch(40% 0.07 264 / 0.35); border-color: var(--border-strong); }" });
-    await tp.tap("#kp-qa-ghost");
+    const heldGhost = await tapHold(tp, "kp-qa-ghost");
     await settle(tp, 400);
     const after = await faceOf(tp, "kp-qa-ghost");
-    ok("3.2 · PLANT · the ghost's tint injected as it stood, a tap leaves the fill on it (so 1.3 can fail)", !same(rest, after), JSON.stringify({ rest, after }));
+    ok("3.2 · PLANT · the ghost's tint injected as it stood, a tap leaves the fill on it (so 1.3 can fail)", heldGhost && !same(rest, after), JSON.stringify({ held: heldGhost, rest, after }));
   }
+  ok("PREMISE · the touch page still reports no hover-capable pointer after the taps", await tp.evaluate(() => matchMedia("(hover: hover)").matches) === false);
   await touch.close();
 
   // ── 2 · mouse ──
