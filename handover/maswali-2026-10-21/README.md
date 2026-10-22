@@ -64,6 +64,10 @@ machine re-captures the baseline with `tools/job-par-base.sh`). Nothing went liv
 7. **S8 prepared** + Ali's list (MERGE-NOTES "ALI'S LIST FOR S8").
 
 ### Facts a fresh machine needs
+- **main `da3d32180` (docs only: this STOP 4 pointer) was QUEUED in Railway's build backlog at the stop** (a Railway
+  incident: deployments queued with long waits; "do not trigger the same deployment more than once"). Production serves
+  `67e47f8d2` (identical code) and was read back green at 11:23Z: `/api/health` ok, qa:chunks-prod 6/6 on www and apex,
+  production qa:live 365/0. Confirm `dpl=da3d32180` on the three hosts later; never re-trigger it while Railway says so.
 - Railway: the CLI login on OMEGA expired; the workspace token in `.env.qa.local` works for GraphQL (`tools/railway-read.mjs`,
   `railway-deploy-main.mjs`). Railway had a security incident on 2026-10-21 — rolling its variables is Ali's.
 - The machine's free RAM (~15 GB with Ali's apps open) limits heavy jobs to ~3–4 at once; `test:harm-watch`'s test:all crash
