@@ -70,7 +70,10 @@ export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // D19a RE-PINNED (S7-F9, the lead's ruling (a) of 2026-10-22; was 6c1d110fa): ONE wording for the final week's rule —
   // `finalWeekRule` gains MR-30's floor clause in en/sw/zh (the lead's words), S7's `finalRule` is removed in all three,
   // and `ruleSunset` keeps its first clause and fills the rule as {rule}. No other line changed.
-  "src/lib/i18n-dict.ts": "5a95302db692f35d11b2181fe0c3a7ac9cfc83fb",
+  // D19a RE-PINNED (S7-F9, the lead's ruling (b) of 2026-10-22; was 5a95302db): S7's F1 no-date announcement
+  // (`finalAhead`) is back in en/sw/zh, byte for byte as S7's reviewed pin (f28803da1) held it, for L22 once a final week's
+  // open has passed. No other line changed.
+  "src/lib/i18n-dict.ts": "7a9a98ffe077539630c112992c1074a3015ed57d",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
 };

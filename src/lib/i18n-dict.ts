@@ -3474,6 +3474,9 @@ export const dict = {
       // {rule}); S7's own purchase line (`finalRule`) left with it.
       finalWeekRule: "Final week: if no ticket gets 10/10, the pool is shared equally by this week's highest-scoring tickets, with no floor top-up",
       finalWeekAhead: "Week {week} will be Millionea's final week. It opens {date}.",
+      // The lead's ruling (b) of 2026-10-22: L22 says its date only while the open is still ahead; a final week still a
+      // draft once its time has passed is announced without one — S7's F1 words, as reviewed (MR-30, OD-03).
+      finalAhead: "Millionea is coming to an end. Week {week} will be the final week.",
       paused: "Millionea is paused for now. Tickets already bought are safe.",
       pausedShort: "Sales paused for now",
       stoppedSunset: "Millionea has closed. Week {week} was the final week; the final payout is complete.",
@@ -6414,6 +6417,7 @@ export const dict = {
       finalAheadShort: "Wiki {week} ni wiki ya mwisho",
       finalWeekRule: "Wiki ya mwisho: ikiwa hakuna tiketi itakayopata 10/10, bwawa litagawanywa sawa kwa tiketi zenye alama za juu zaidi wiki hii, bila nyongeza hadi kiwango cha chini",
       finalWeekAhead: "Wiki {week} itakuwa wiki ya mwisho ya Millionea. Itafunguliwa {date}.",
+      finalAhead: "Millionea inakaribia kufikia mwisho. Wiki {week} itakuwa wiki ya mwisho.",
       paused: "Millionea imesimamishwa kwa muda. Tiketi zilizonunuliwa ziko salama.",
       pausedShort: "Mauzo yamesimamishwa kwa muda",
       stoppedSunset: "Millionea imefungwa. Wiki {week} ilikuwa wiki ya mwisho; malipo ya mwisho yamekamilika.",
@@ -9294,6 +9298,7 @@ export const dict = {
       // Millionea's zh rule (the lead's ruling, 2026-10-21): a space only where a Latin letter or a digit meets a Han
       // character. {date} is formatEatDate's day ("2026年11月30日"): a digit first, 日 last — so a space before it, none after.
       finalWeekAhead: "第{week}周将是 Millionea 的最后一周，于 {date}开放。",
+      finalAhead: "Millionea 即将结束。第{week}周将为最后一周。",
       paused: "Millionea 暂时停售。已购彩票安全无虞。",
       pausedShort: "暂时停售",
       stoppedSunset: "Millionea 已结束。第{week}周为最后一周；最终派奖已完成。",

@@ -3264,6 +3264,13 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     truth (S7's purchase line `finalRule` beside the hub's key), and the hub's and How's sentence left out the floor
     clause, which is material — a final week with no 10/10 is never topped up to the floor. Guards:
     `test:maswali-design` 2.F3a and 2.F3b (with its plant), `test:maswali-hub` 3.1 and §10.
+20. **The final week announced ahead names its day only while that day is ahead (the lead's ruling (b), 2026-10-22;
+    MR-30, OD-03).** The hub's L22 bar says "Week 52 will be Millionea's final week. It opens 30 Nov." while the open is
+    still to come. A final week still a draft once its time has passed — or whose time cannot be read — is announced
+    without a date, in S7's reviewed F1 words: "Millionea is coming to an end. Week 52 will be the final week." (sw
+    "Millionea inakaribia kufikia mwisho. Wiki 52 itakuwa wiki ya mwisho.", zh "Millionea 即将结束。第52周将为最后一周。").
+    Why: "It opens 30 Nov." read on 30 Nov at 09:00, of a week no one has opened, promises a moment already gone. Guards:
+    `test:maswali-hub` §13 (with its plant) and `test:maswali-design` 2.F1d.
 
 ---
 

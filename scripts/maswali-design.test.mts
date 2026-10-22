@@ -546,14 +546,18 @@ const heldGuardDefects = (hubSrc: string) => {
   // ⚠️ RE-PINNED AT THE S7 × S5 MERGE (2026-10-22): the card is the release's door (S5-DESIGN-DOORS), whose head holds the
   // final week's own line; the announced final week stands in that slot (the two never stand together), read by the card's
   // description (4.F1e renders it). The hub announces it ONCE: the release's L22 bar (the lead's words), which reads the
-  // same answer as `finalAhead` — S7's own hub callout and the two words only it used left with the merge.
-  ok("2.F1d · the card draws the announcement in the final week's own head slot (its description reads it), the door hands it the model's, and the hub announces it once — the L22 bar — never a second line",
+  // same answer as `finalAhead` — S7's own hub callout and its dated word (`finalAheadAt`) left with the merge.
+  // ⚠️ RE-PINNED (S7-F9, the lead's ruling (b) of 2026-10-22): the bar stands for every announced final week — its date
+  // only while the open is ahead, S7's F1 no-date words (`finalAhead`, back) once its time has passed or cannot be read
+  // (`finalAheadWords`; `test:maswali-hub` §13 renders it), so the bar is no longer hidden behind a readable time.
+  ok("2.F1d · the card draws the announcement in the final week's own head slot (its description reads it), the door hands it the model's, and the hub announces it once — the L22 bar, for every announced final week — never a second line",
     cardF.includes('{!finalWeek && finalAhead !== null && <span id={`${idBase}-final`} className="text-body-sm text-text-muted">{keep(fill(t.millionea.finalAheadShort, { week: finalAhead }))}</span>}')
       && cardF.includes("finalWeek || finalAhead !== null ? `${idBase}-final` : null")
       && doorF.includes("finalAhead={model.finalAhead}")
-      && hubSrc.includes('<NoticeBar tone="info" glyph="finalWeek" testId="millionea-hub-final-ahead"> {finalAheadWords(t, locale, weekNumberOf(finalAhead.code), finalAheadMs, nowMs)} </NoticeBar>')
-      && !hubSrc.includes("hub.finalAhead &&") && !/millionea\.finalAhead\b|finalAheadAt/.test(hubSrc)
-      && LOCALES.every((l) => /\{week\}/.test(dict[l].millionea.finalAheadShort) && !("finalAheadAt" in dict[l].millionea) && !("finalAhead" in dict[l].millionea)));
+      && hubSrc.includes('{finalAhead && ( <NoticeBar tone="info" glyph="finalWeek" testId="millionea-hub-final-ahead"> {finalAheadWords(t, locale, weekNumberOf(finalAhead.code), finalAheadMs, nowMs)} </NoticeBar>')
+      && !hubSrc.includes("hub.finalAhead &&") && !hubSrc.includes("finalAheadMs !== null &&") && !/millionea\.finalAhead\b|finalAheadAt/.test(hubSrc)
+      && LOCALES.every((l) => /\{week\}/.test(dict[l].millionea.finalAheadShort) && !("finalAheadAt" in dict[l].millionea)
+        && /\{week\}/.test(dict[l].millionea.finalAhead) && !/\{(?:date|when)\}/.test(dict[l].millionea.finalAhead)));
 
   // F3 · MR-30 · the buyer of a final week is told its rule at purchase: on the slip, first, and on the confirm sheet.
   // ⚠️ RE-PINNED AT THE S7 × S5 MERGE (2026-10-22): the slip is the release's (the price leads its rules box; the reserves'

@@ -2625,6 +2625,11 @@ stays open as KNOWN-RED TK.2, with MB-23 (OB.0) and MB-74 (RD.5): §6.1 Gate B l
   re-pinned. DESIGN_AUTHORITY §M8a item 19. Guards: `test:maswali-design` 2.F3a and 2.F3b (with its plant),
   `test:maswali-hub` 3.1 and §10. ⚠️ S6's L lane rewrites `ruleSunset` in all three languages: its merge keeps this key
   as the rule's one wording.
+- **S7 · L22's day only while it is ahead (S7-F9 5; the lead's ruling (b) of 2026-10-22, MR-30, OD-03).** The hub's bar
+  says the final week's opening day ("It opens 30 Nov.") only while the open is still to come; a final week still a
+  draft once its time has passed, or whose time cannot be read, is announced with S7's reviewed F1 words and no date
+  (`finalAhead`, back in en/sw/zh; D19a re-pinned). DESIGN_AUTHORITY §M8a item 20. Guards: `test:maswali-hub` §13 (with
+  its plant) and `test:maswali-design` 2.F1d.
 
 #### S8 · Live drive and public launch
 
