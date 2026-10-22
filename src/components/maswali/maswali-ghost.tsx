@@ -29,11 +29,14 @@ export function GhostTextLine({ text = "", width, className }: { text?: string; 
   return <span className={cn("block", text, className)}><GhostLine className={width} /></span>;
 }
 
-/** A page's head, as `PageHeader` draws it — its eyebrow and its title as bars of the given widths, never their words. */
+/** A page's head, as `PageHeader` draws it — its eyebrow and its title as bars of the given widths, never their words.
+ *  The eyebrow's bar stands in its own line box (`GhostTextLine`): PageHeader's eyebrow is a flex row, where a bare bar was
+ *  a flex item of its own 0.85em (9.35px) against the page's 15px line (16px in Millionea's Chinese) — every drawing under
+ *  this head stood 6px high (measured by `qa:maswali-register-shots`' how-ghost hop, S5-R2-REGISTER 20). */
 export function MaswaliGhostHead({ eyebrowWidth, titleWidth }: { eyebrowWidth?: string; titleWidth: string }) {
   return (
     <div aria-hidden>
-      <PageHeader eyebrow={eyebrowWidth ? <GhostLine className={eyebrowWidth} /> : undefined} title={<GhostLine className={titleWidth} />} />
+      <PageHeader eyebrow={eyebrowWidth ? <GhostTextLine width={eyebrowWidth} /> : undefined} title={<GhostLine className={titleWidth} />} />
     </div>
   );
 }
