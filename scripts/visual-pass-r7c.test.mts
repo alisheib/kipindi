@@ -97,10 +97,17 @@ section("1 · R8-4 every notice band draws its words on the page's edge — 16px
     below === 16 && 390 - below === 374 && 390 - tw("4") - 1 === 369 && tw("4") + 1 === 21);
   ok("1.3′ PLANT · the row as it was (`px-4`) is reported", j(pxOf(row.replace("px-3", "px-4"))) !== j(pxOf(pageX)));
   // Every band of the kind renders through the one component.
-  const users = PLAYER_TSX.filter((f) => /<NoticeBar\b/.test(code(f)) && f !== NB).sort();
+  const usersOf = (text: (f: string) => string) => PLAYER_TSX.filter((f) => /<NoticeBar\b/.test(text(f)) && f !== NB).sort();
+  const users = usersOf(code);
   // RE-PINNED (MASWALI-BUILD S5-FIX-PLATFORM D12, 2026-10-21): Millionea's staff preview bar is the same marker, one more file.
-  ok(`1.4 · the session-ended notice, the offline notice, the announcement and maintenance bars, the away summary and both preview markers (the journey's, Millionea's) all draw through it (${users.length} files)`,
-    j(users) === j(["src/components/layout/announcement-banner.tsx", "src/components/layout/app-shell.tsx", "src/components/layout/away-summary-bar.tsx", "src/components/layout/millionea-preview-bar.tsx", "src/components/layout/preview-marker.tsx", "src/components/ui/offline-banner.tsx"]), j(users));
+  // RE-PINNED (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22): the Millionea hub's calm bars (S5-DESIGN-HUB M9, §F9 and
+  // §M8a item 10 — the moved close, the final week ahead and the once-a-week notices) are the away bar's kit, under the
+  // header across the page, two more files; they were boxed Callouts in the column.
+  const BANDS = ["src/app/millionea/hub-notices.tsx", "src/app/millionea/page.tsx", "src/components/layout/announcement-banner.tsx", "src/components/layout/app-shell.tsx", "src/components/layout/away-summary-bar.tsx", "src/components/layout/millionea-preview-bar.tsx", "src/components/layout/preview-marker.tsx", "src/components/ui/offline-banner.tsx"];
+  ok(`1.4 · the session-ended notice, the offline notice, the announcement and maintenance bars, the away summary, both preview markers (the journey's, Millionea's) and the Millionea hub's calm bars all draw through it (${users.length} files)`,
+    j(users) === j(BANDS), j(users));
+  const handRolled = usersOf((f) => (f === "src/components/layout/millionea-preview-bar.tsx" ? code(f).replace(/<NoticeBar\b/g, "<Callout").replace(/<\/NoticeBar>/g, "</Callout>") : code(f)));
+  ok("1.4′ PLANT · Millionea's staff preview bar drawn as its own box again (a Callout, as S5 first drew it) is reported", j(handRolled) !== j(BANDS), j(handRolled));
   // The census of full-bleed rows: every `max-w-board` row in player code pads as the page does, or is ruled.
   const RULED: Record<string, string> = {
     "src/components/layout/top-app-bar.tsx": "the classic header — frozen chrome until the flip (12px below 640, 24px from it)",

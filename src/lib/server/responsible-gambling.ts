@@ -745,6 +745,15 @@ const flag = (
   detail,
 });
 
+/**
+ * ⭐ THE DETECTORS' OWN WINDOWS, exported once (MASWALI-BUILD S6-DOCS): the recent-activity markers read
+ * `RECENT_ACTIVITY_MS` back, and the deposit escalation reads its prior period `DEPOSIT_ESCALATION_LOOKBACK_MS` back.
+ * The harm watch reads its candidates from the larger of the two (`harm-watch.ts`, `HARM_WATCH_CANDIDATE_DAYS`), so a
+ * change to either window moves the watch with it, and no account a marker can be raised on is ever left out.
+ */
+export const RECENT_ACTIVITY_MS = 7 * 24 * 3600_000;
+export const DEPOSIT_ESCALATION_LOOKBACK_MS = 8 * 24 * 3600_000;
+
 const DETECTORS: Detector[] = [
   // 1. Rapid deposit escalation — 3+ deposits in 60 min OR 24h sum >
   //    2× prior-7d daily-avg AND > TZS 50,000.
@@ -757,7 +766,7 @@ const DETECTORS: Detector[] = [
     const dep24h = deposits.filter((t) => ctx.now - new Date(t.createdAt).getTime() < 24 * 3600_000);
     const depPrior7d = deposits.filter((t) => {
       const at = new Date(t.createdAt).getTime();
-      return at >= ctx.now - 8 * 24 * 3600_000 && at < ctx.now - 24 * 3600_000;
+      return at >= ctx.now - DEPOSIT_ESCALATION_LOOKBACK_MS && at < ctx.now - 24 * 3600_000;
     });
     const priorDailyAvg =
       depPrior7d.length > 0 ? depPrior7d.reduce((s, t) => s + t.amount, 0) / 7 : 0;
@@ -805,7 +814,7 @@ const DETECTORS: Detector[] = [
   // and on the Board-facing RG report". NOTHING persists a harm flag — no table, no `db.*`
   // namespace, no audit action, nothing in `reports/catalogue.ts`. Every flag is recomputed on
   // each call and `detectedAt` is the time of the computation, so a marker lasts exactly as
-  // long as its detector's window (≤ 8 days). `marketing/rg.ts` states that limit rather than
+  // long as its detector's window (`DEPOSIT_ESCALATION_LOOKBACK_MS` at most). `marketing/rg.ts` states that limit rather than
   // pretending the refusal it builds on these flags is standing.
   (ctx) => {
     const betsPlaced = ctx.recent7d.filter((t) => t.type === "BET_PLACED" && t.status === "CONFIRMED");
@@ -887,7 +896,7 @@ export async function detectHarmMarkers(
     userId,
     now,
     txns,
-    recent7d: txns.filter((t) => now - new Date(t.createdAt).getTime() < 7 * 24 * 3600_000),
+    recent7d: txns.filter((t) => now - new Date(t.createdAt).getTime() < RECENT_ACTIVITY_MS),
     opts,
   };
   const flags: HarmFlag[] = [];

@@ -15,14 +15,21 @@
  */
 import { I } from "@/components/ui/glyphs";
 
-const NEED_LABEL: Record<string, string> = {
-  compliance: "an Admin or Compliance officer",
-  trading: "an Admin or Trading officer",
-  accounting: "an Admin or Finance officer",
-  growth: "an Admin or Growth officer",
-  support: "an Admin or Support officer",
-  ops: "the Owner",
-  overview: "an Admin",
+/**
+ * ⭐ WHO WORKS A CONTROL, IN THE ROLES' OWN NAMES (MASWALI-BUILD S6-ADMIN, the lead's ruling G8; DESIGN_AUTHORITY §M8a item 29):
+ * the chip names the domain by the officers whose role acts on it (`DEFAULT_GRANTS`), and its tooltip whom to ask —
+ * as `ROLE_LABEL` names every role (ADMIN is "the Owner", never "an Admin"), never the domain's code ("accounting").
+ * ⛔ Literal on purpose: client controls import this chip, so it reads no server module; `test:maswali-admin-plain`
+ * holds every word to `ROLE_LABEL`. A platform component: the classic console reads the same words.
+ */
+export const CONTROL_WHO: Record<string, { only: string; ask: string }> = {
+  compliance: { only: "Compliance officers only", ask: "the Owner or a Compliance officer" },
+  trading: { only: "Trading officers only", ask: "the Owner or a Trading officer" },
+  accounting: { only: "Finance officers only", ask: "the Owner or a Finance officer" },
+  growth: { only: "Growth officers only", ask: "the Owner or a Growth officer" },
+  support: { only: "Support officers only", ask: "the Owner or a Support officer" },
+  ops: { only: "The Owner only", ask: "the Owner" },
+  overview: { only: "The Owner only", ask: "the Owner" },
 };
 
 export function ControlLocked({
@@ -37,10 +44,10 @@ export function ControlLocked({
   /** Full-width block (in a card body) vs an inline chip (in a header). */
   block?: boolean;
 }) {
-  const who = NEED_LABEL[need] ?? "an Admin";
+  const who = CONTROL_WHO[need] ?? CONTROL_WHO.overview;
   return (
     <div
-      title={`${what} — this is a ${need} decision. Ask ${who}.`}
+      title={`${what} — ${who.only}. Ask ${who.ask}.`}
       className={`inline-flex items-center gap-1.5 rounded-md border border-border bg-bg-inset px-2.5 font-mono text-micro uppercase tracking-[0.10em] text-text-subtle ${
         // ⛔ BOTH BRANCHES ARE LITERALS ON PURPOSE — the spacing scale is overridden
         // (tailwind.config.ts:200-215), so the inline branch's old `h-8` was 48px: one
@@ -52,7 +59,7 @@ export function ControlLocked({
       <I.lock s={12} aria-hidden />
       <span>{what}</span>
       <span className="text-border" aria-hidden>·</span>
-      <span className="text-text-tertiary">{need} only</span>
+      <span className="text-text-tertiary">{who.only}</span>
     </div>
   );
 }

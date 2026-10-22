@@ -113,8 +113,9 @@ export type MarketingCompose = {
  * message and a recipient sent another — `test:campaign-compose` §16.1 holds the population.
  *
  * ⭐ HIGH 1 (MASWALI-BUILD S6) · `millionea` is the campaign's DECLARED product and, where a server door read the week, its
- * facts (`millionea-claims.ts`); every other campaign's is `UNTAGGED_CAMPAIGN`, so a caller that names none is held to
- * the untagged rule — never let through.
+ * facts (`millionea-claims.ts`); for any other campaign, the untagged rules where a server door handed them in (S6-LINT 1:
+ * the server's alone, `lib/server/marketing/millionea-untagged.ts`). A caller that names none (`UNTAGGED_CAMPAIGN`, the
+ * composer's live counter) meets no Millionea rule: its problems are exactly what they were.
  */
 export function composeMarketing(
   body: string,
@@ -154,10 +155,11 @@ export function composeMarketing(
     );
   }
   // ⭐ MB-47 · HIGH 1 (MASWALI-BUILD S6) · Millionea's claims rules, by the campaign's DECLARED product (`millionea-claims.ts`):
-  // an untagged campaign that speaks Millionea's words is refused in words; a Millionea campaign carries the headline's three
-  // facts, claims nothing else and — where its door read the week — states the week's own fee while Millionea is open.
+  // a Millionea campaign carries the headline's three facts, claims nothing else and — where its door read the week — states
+  // the week's own fee while Millionea is open; any other campaign meets the untagged rules where a server door handed them
+  // in (S6-LINT 1), and no rule at all where none did.
   // ⭐ The rules judge the TEMPLATE (`millionea.judged`: the body with the counter's reserved name), never a recipient's own
-  // name. An untagged text with no Millionea signal is not read, so its problems are exactly what they were
+  // name. An untagged text with no Millionea signal is refused nothing, so its problems are exactly what they were
   // (`test:maswali-claims`' control corpus).
   problems.push(...millioneaCampaignProblems((millionea.judged ?? trimmed).trim(), millionea));
 

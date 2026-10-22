@@ -348,11 +348,23 @@ export async function runHarmCases(ok: Ok, impl: HarmImpl, HW: Any): Promise<{ o
   const LITERAL = new RegExp(String.raw`\b\d[\d_]{3,}\b|\b${FIGURE}[eE]\d+\b|\b${FIGURE}\s*\*\s*${UNIT_CONST}\b|\b${UNIT_CONST}\s*\*\s*${FIGURE}\b|\b${FIGURE}\s*\*\s*${FIGURE}\b`);
   const strayOf = (s: string) => s.split(/\r?\n/).map((l) => CONST_LINE.exec(l)).filter((m): m is RegExpExecArray => !!m && !OWN.includes(m[1]) && /\d/.test(m[2])).length;
   ok("H.10 · the count runs Player Safety's own detector, imported — no duration or amount of its own (CONTROLS: a made-up literal, a product led by a unit constant and a new constant carrying a figure are found)",
-    /import \{ detectHarmMarkers \} from "\.\/responsible-gambling";/.test(src) && /detectHarmMarkers\(id\)/.test(src)
+    /import \{ DEPOSIT_ESCALATION_LOOKBACK_MS, RECENT_ACTIVITY_MS, detectHarmMarkers \} from "\.\/responsible-gambling";/.test(src) && /detectHarmMarkers\(id\)/.test(src)
       && strayConsts.length === 0 && !LITERAL.test(code) && !/\brole\b|houseBot/i.test(src)
       && LITERAL.test("const sinceThen = Date.now() - 4_321;") && LITERAL.test(["const span = ", "DAY_MS", " * ", String(13), ";"].join(""))
       && strayOf(["const ", "SPAN_", "LIMIT", " = ", String(17), ";"].join("")) === 1,
     String(code.match(LITERAL)?.[0] ?? strayConsts.join(", ")));
+  // ⭐ S6-DOCS · the candidate window is the detectors' own: derived from the windows they export, never typed —
+  // by value (the module's constant equals the larger window in whole days) and in source (its derivation line).
+  {
+    const rg = await import("../../src/lib/server/responsible-gambling.ts");
+    const DERIVED = /export const HARM_WATCH_CANDIDATE_DAYS = Math\.ceil\(Math\.max\(RECENT_ACTIVITY_MS, DEPOSIT_ESCALATION_LOOKBACK_MS\) \/ DAY_MS\);/;
+    const derived = (s: string) => DERIVED.test(s);
+    ok("H.10f · ⭐ the candidates' window is derived from the detectors' own exported windows, never typed",
+      derived(impl.source) && HW.HARM_WATCH_CANDIDATE_DAYS === Math.ceil(Math.max(rg.RECENT_ACTIVITY_MS, rg.DEPOSIT_ESCALATION_LOOKBACK_MS) / DAY),
+      String(HW.HARM_WATCH_CANDIDATE_DAYS));
+    const typed = impl.source.replace(DERIVED, ["export const HARM_WATCH_CANDIDATE_DAYS = ", String(9), ";"].join(""));
+    ok("H.10f · control · a typed window in its place is caught", typed !== impl.source && !derived(typed));
+  }
   const life = impl.lifecycle;
   ok("H.10b · the lifecycle counts once a day on its own catch, before the holder sweep",
     life.lastIndexOf("await maybeCountHarmWatch()") > 0 && life.lastIndexOf("await maybeRunHolderSweep()") > life.lastIndexOf("await maybeCountHarmWatch()")

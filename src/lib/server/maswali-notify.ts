@@ -34,7 +34,8 @@
  *      officer — never searched for, never resent (one the provider definitely refused is sent as before). After a
  *      rotation, an officer checks that card and records each check, which closes those letters (round 17, M5);
  *    · the winner's SMS rides its own target (`MaswaliWinner`, `maswali-winner-sms.ts`) — never the bell's: a bell already
- *      written, or one whose write failed, never stops it, and a target that has a message is never sent again.
+ *      written, or one whose write failed, never stops it, and a target that has a message is never sent again — one that
+ *      did not go included (M-1, the lead's ruling 1: counted `notResent`, the run complete, the desk list calls them).
  *    Winners go first, each SMS right after its winner, and a result or refund run that stopped part-way (a deploy, a
  *    failed write, a held batch) is finished by the reconcile (`reconcileMillioneaNotices`, the tick and the heal): it
  *    re-runs a recently terminal week whose last record is not complete, and only what is missing goes. A refusal that can
@@ -102,8 +103,10 @@ export type WinnerSmsTally = {
   sent: number;
   /** A winner whose target already had a message: never sent again. */
   already: number;
-  /** Winners whose message failed in a way the next run may clear (retried by the reconcile). */
-  failed: number;
+  /** ⭐ M-1 (the lead's ruling 1, 2026-10-22) · winners whose one message did not go — refused by the gateway, or lost in
+   *  transport: counted, never sent again (once per player-week). The run is complete, and the desk list names them for
+   *  a call (no DELIVERED receipt). */
+  notResent: number;
   /** Winners whose message was held, by why (a credit that would go below the codes' credit, an unread read, …). */
   held: Partial<Record<Extract<WinnerSmsOutcome, { kind: "held" }>["reason"], number>>;
   /** Winners whose message can never go as things stand, by why (`PERMANENT_SMS`): counted, and the run is complete. */
@@ -590,9 +593,9 @@ async function sendLetter(r: NoticeRun, userId: string, job: LetterJob): Promise
 
 /** ⚠️ FOR THE SUITES: the winners' SMS of these outcomes, tallied as a run tallies them, and whether that leaves the SMS done. */
 export function millioneaSmsTally(outcomes: readonly WinnerSmsOutcome[]): { tally: WinnerSmsTally; done: boolean } {
-  const t: WinnerSmsTally = { sent: 0, already: 0, failed: 0, held: {}, permanent: {}, none: 0 };
+  const t: WinnerSmsTally = { sent: 0, already: 0, notResent: 0, held: {}, permanent: {}, none: 0 };
   for (const o of outcomes) tally(t, o);
-  return { tally: t, done: t.failed === 0 && Object.keys(t.held).length === 0 };
+  return { tally: t, done: Object.keys(t.held).length === 0 };
 }
 
 /** Count one winner's SMS outcome into the run's tally: a refusal that can never clear is counted apart (`PERMANENT_SMS`). */
@@ -605,10 +608,12 @@ function tally(t: WinnerSmsTally, o: WinnerSmsOutcome): void {
   }
   t.sent += o.accepted;
   t.already += o.alreadySent;
+  t.notResent += o.notResent;
   for (const [code, n] of Object.entries(o.codes)) {
     if (!n) continue;
     if (PERMANENT_SMS.has(code)) t.permanent[code] = (t.permanent[code] ?? 0) + n;
-    else t.failed += n;
+    // ⭐ M-1 · any other failure of this batch is the message's one attempt: not resent, the desk calls.
+    else t.notResent += n;
   }
 }
 
@@ -677,13 +682,13 @@ async function nextWeekOf(week: StoredWeek): Promise<StoredWeek | null> {
 }
 
 /**
- * Every holder of the run told, no write failed, no letter definitely refused, and (a result) no winner's SMS held or failed
- * in a way a later run may clear: nothing left to send. A permanent refusal leaves it complete, with its reason counted —
+ * Every holder of the run told, no write failed, no letter definitely refused, and (a result) no winner's SMS held in a way
+ * a later run may clear: nothing left to send. A winner's SMS that did not go is final (M-1: not resent; the desk calls). A permanent refusal leaves it complete, with its reason counted —
  * and a letter that may have been delivered is done (round 4, M6). A holder whose letter records could not be read leaves
  * it NOT complete (round 17, B2), so the reconcile comes back to that letter.
  */
 function complete(r: NoticeRun): boolean {
-  const smsDone = r.sms === null || (r.sms.failed === 0 && Object.keys(r.sms.held).length === 0);
+  const smsDone = r.sms === null || Object.keys(r.sms.held).length === 0;
   return r.failed === 0 && (r.letters.failed ?? 0) === 0 && (r.letters.unresolved ?? 0) === 0 && (r.letters.unread ?? 0) === 0
     && r.sent + r.alreadySent === r.recipients && smsDone;
 }
@@ -1067,7 +1072,7 @@ export function noticeWeekSettled(weekId: string, opts: { first?: () => Promise<
     const read = await letterRecords(week.id, "result", holders.map(([userId]) => userId));
     const winners = holders.filter(([, mine]) => mine.some((t) => t.won === true));
     const losers = holders.filter(([, mine]) => !mine.some((t) => t.won === true));
-    const sms: WinnerSmsTally = { sent: 0, already: 0, failed: 0, held: {}, permanent: {}, none: 0 };
+    const sms: WinnerSmsTally = { sent: 0, already: 0, notResent: 0, held: {}, permanent: {}, none: 0 };
     r.sms = sms;
     for (const [userId, mine] of winners) {
       if (!(await keep())) return;

@@ -33,7 +33,10 @@ export const ADMIN_ROUTES = [
   // Maswali Millionea's static console doors: every design-gate reader of
   // ADMIN_ROUTES must measure these too. Week detail/edit need fixture ids and
   // remain in the dedicated Maswali browser drive, not this static population.
+  // MASWALI-BUILD S6-ADMIN 1 · the evidence pack (MB-92) and the desk's ticket lookup (MB-64) joined with their pages:
+  // `test:maswali-admin-route-population` derives the census from the page.tsx files and found both missing here.
   "/admin/maswali", "/admin/maswali/new", "/admin/maswali/pools", "/admin/maswali/integrity",
+  "/admin/maswali/evidence", "/admin/maswali/lookup",
 ];
 
 /** Public player routes — reachable signed OUT, which is how they are driven while the

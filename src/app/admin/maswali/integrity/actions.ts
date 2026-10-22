@@ -8,6 +8,8 @@
  *   · holdMaswaliShare / releaseMaswaliShare / forfeitMaswaliShare — Compliance decides a winning share under review;
  *   · markMillioneaWinnerReached — S6 · the desk records that a winner no notice reached was reached by phone (MB-93).
  *   · clearUnresolvedLetter — S6 · an officer records that a week's letters not known to have gone were checked.
+ *   · ruleMaswaliObjection — Compliance rules on a player's objection to one question (MR-16; S7-OB): REJECT, or uphold
+ *     with REVERSE, VOID or REINSTATE, by an officer other than the question's sealer (the service refuses the rest).
  *   · payLockedWinnerShare — S6-MONEY · OD-13: one payment of a winning share whose holder's account cannot sign in, to
  *     the registered number at the holder's request (`maswali-share-payout.ts`); its record read back (`recorded`).
  * Three acts are kept apart on purpose (MB-78): the pause (sales only), the week void (refund, carry untouched) and the
@@ -22,6 +24,7 @@ import { pauseMaswaliSales, resumeMaswaliSales } from "@/lib/server/maswali-paus
 import { forfeitMaswaliShare, holdMaswaliShare, releaseMaswaliShare } from "@/lib/server/maswali-settlement";
 import { noteMaswaliPoolChanged } from "@/lib/server/maswali-pool-feed";
 import { clearUnresolvedLetter, recordMillioneaWinnerReached } from "@/lib/server/maswali-console";
+import { decideMillioneaObjection, MILLIONEA_OBJECTION_REMEDIES, type MillioneaRuling } from "@/lib/server/maswali-objections";
 import { payLockedWinnerShare } from "@/lib/server/maswali-share-payout";
 
 type ActionResult = { ok: true; note?: string; auditWarning?: string | null } | { ok: false; error: string };
@@ -152,6 +155,37 @@ export async function payLockedWinnerShareAction(formData: FormData): Promise<Ac
     return { ok: true, note: r.note, auditWarning: unrecorded };
   } catch (err) {
     return { ok: false, error: safeError(err, "The share could not be paid") };
+  }
+}
+
+/** S7-OB · a ruling that landed whose audit row was not written (the ruling stands). */
+const RULING_AUDIT_WARNING = "The ruling landed, but its audit record could not be fully written. Tell an administrator; do not rule again.";
+const RULINGS: readonly string[] = ["REJECT", ...MILLIONEA_OBJECTION_REMEDIES];
+const RULED_NOTE: Record<MillioneaRuling, string> = {
+  REJECT: "Rejected: the result stands.", REVERSE: "Upheld: the result is reversed.", VOID: "Upheld: the question is void.", REINSTATE: "Upheld: the question is reinstated.",
+};
+
+export async function ruleMaswaliObjectionAction(formData: FormData): Promise<ActionResult> {
+  const session = await requireStaff(CONTROL_DOMAIN.ruleMaswaliObjection, "ruleMaswaliObjection");
+  try {
+    const ruling = str(formData, "ruling");
+    if (!RULINGS.includes(ruling)) return { ok: false, error: "Choose a ruling: reject, reverse, void or reinstate." };
+    // The typed confirmation is the ruling's own word (the kit dialog), asked again here for a form posted without it.
+    if (str(formData, "typed").toUpperCase() !== ruling) return { ok: false, error: `Type ${ruling} to confirm the ruling.` };
+    const outcome = str(formData, "outcome");
+    const r = await decideMillioneaObjection({
+      objectionId: str(formData, "objectionId"), officerId: session.userId, ruling: ruling as MillioneaRuling, note: str(formData, "note"),
+      outcome: outcome === "YES" || outcome === "NO" ? outcome : null, voidReason: str(formData, "voidReason") || null,
+      expectedOutcome: str(formData, "expectedOutcome") as "YES" | "NO" | "VOID", expectedSealedAt: str(formData, "expectedSealedAt"),
+    });
+    if (!r.ok) return { ok: false, error: r.error };
+    const window = r.restarted ? " The week's objection window restarted from now." : r.changed ? " The week is graded again; its objection window stays as it was." : "";
+    return { ok: true, note: `${RULED_NOTE[ruling as MillioneaRuling]}${window}`, auditWarning: r.recorded ? null : RULING_AUDIT_WARNING };
+  } catch (err) {
+    return { ok: false, error: safeError(err, "The ruling could not be recorded") };
+  } finally {
+    // An upheld ruling re-grades the week and may restart its window: the console, the hub and the register re-read.
+    refresh();
   }
 }
 

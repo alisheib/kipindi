@@ -23,8 +23,10 @@ import { readMaswaliHolidaysFresh } from "@/lib/server/maswali-holidays";
 import { acct } from "@/lib/server/ledger";
 import { formatTzs } from "@/lib/utils";
 import { fmtEat, weekStateChip } from "@/lib/maswali-admin-format";
-import { GUARANTEE_POLICY_LABEL, RULES_FIELDS, RULES_GROUPS, rulesFormValues, rulesValueText, type RulesFormValues } from "./rules-form";
+import { GUARANTEE_POLICY_LABEL, rulesFormValues } from "./rules-form";
+import { RulesRead } from "./rules-read";
 import { HolidayList, HolidaysForm, RulesForm } from "./rules-controls";
+import { StandingAuditWarning } from "./audit-warning";
 
 export const metadata = { title: "Admin · Millionea" };
 export const dynamic = "force-dynamic";
@@ -98,6 +100,8 @@ async function AdminMaswaliContent({ searchParams }: MaswaliPageProps) {
             )}
         </AdminCard>
 
+        {/* S6-ADMIN · G5 · a discard lands from the week's own page, which is gone once it does: its audit warning stands here. */}
+        <StandingAuditWarning slot="weeks:discard" />
         <AdminCard title="Weeks" sw="Wiki" padding="p-0">
           <div className="border-b border-border-subtle p-4">
             <span className="mb-1 block text-body-sm text-text-secondary">Week code</span>
@@ -106,7 +110,7 @@ async function AdminMaswaliContent({ searchParams }: MaswaliPageProps) {
           <form id="maswali-week-filters" method="get" action="/admin/maswali" className="flex flex-wrap items-end gap-3 border-b border-border-subtle p-4">
             <div className="min-w-[145px] flex-1 text-body-sm text-text-secondary">
               <span id="maswali-week-state-label">State</span>
-              <Select key={query.state} name="state" ariaLabel="Week state" defaultValue={query.state} className="mt-1" options={[{ value: "", label: "All states" }, ...WEEK_STATES.map((state) => ({ value: state, label: state }))]} />
+              <Select key={query.state} name="state" ariaLabel="Week state" defaultValue={query.state} className="mt-1" options={[{ value: "", label: "All states" }, ...WEEK_STATES.map((state) => ({ value: state, label: weekStateChip(state).label }))]} />
             </div>
             <div className="min-w-[145px] flex-1 text-body-sm text-text-secondary">
               <span id="maswali-week-line-label">Line</span>
@@ -147,18 +151,20 @@ async function AdminMaswaliContent({ searchParams }: MaswaliPageProps) {
         </AdminCard>
 
         <AdminCard title="Rules for the next week" sw="Kanuni za wiki ijayo">
-          <p className="mb-3 text-body-sm text-text-secondary">A change applies from the next week to open, never to a running one: each week runs on the rules it froze when it opened (MB-75). The one exception is the support desk&rsquo;s complaint answer target: a promise, not a week&rsquo;s rule, it applies at once (MB-91). The licence basis is the Owner&rsquo;s own record, on Pools.</p>
+          {/* MB-75 · each week runs on the rules it froze · MB-91 · the complaint answer target applies at once. */}
+          <p className="mb-3 text-body-sm text-text-secondary">A change applies from the next week to open, never to a running one: each week runs on the rules it froze when it opened. The one exception is the support desk&rsquo;s complaint answer target: a promise, not a week&rsquo;s rule, it applies at once. The licence basis is the Owner&rsquo;s own record, on Pools.</p>
           {rules?.problem && <p className="mb-3 text-body-sm text-danger-fg">The stored rules do not validate, so no week can open until they are corrected: {rules.problem}</p>}
           {rules === null ? <p className="text-body-sm text-danger-fg">The Millionea rules could not be read, so they cannot be shown or changed now.</p>
             : canRules ? <RulesForm initial={rules.values} policies={policies} />
             : (<>
-              <RulesReadOnly values={rules.values} policies={policies} />
+              <RulesRead values={rules.values} policies={policies} />
               <div className="mt-3"><ControlLocked what="Change the rules" need={CONTROL_DOMAIN.saveMaswaliConfig} block /></div>
             </>)}
         </AdminCard>
 
         <AdminCard title="Public holidays" sw="Sikukuu">
-          <p className="mb-3 text-body-sm text-text-secondary">The holiday review names a listed holiday a week&rsquo;s sales close falls on, while the close can still move: a warning, never a refusal (MB-85, OD-27).</p>
+          {/* MB-85 · OD-27 · the holiday review warns; it never refuses. */}
+          <p className="mb-3 text-body-sm text-text-secondary">The holiday review names a listed holiday a week&rsquo;s sales close falls on, while the close can still move: a warning, never a refusal.</p>
           {holidays === null ? <p className="text-body-sm text-danger-fg">The holiday list could not be read, so it cannot be shown or changed now.</p>
             : canHolidays ? <HolidaysForm dates={holidays} />
             : (<>
@@ -168,27 +174,6 @@ async function AdminMaswaliContent({ searchParams }: MaswaliPageProps) {
         </AdminCard>
       </AdminBody>
     </>
-  );
-}
-
-/** The rules as a role that may not change them reads them: every field, in the form's own groups and words. */
-function RulesReadOnly({ values, policies }: { values: RulesFormValues; policies: Array<{ value: string; label: string }> }) {
-  return (
-    <div className="space-y-3">
-      {RULES_GROUPS.map((g) => (
-        <section key={g.id} className="space-y-2">
-          <h3 className="font-semibold text-body">{g.title}</h3>
-          <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {RULES_FIELDS.filter((f) => f.group === g.id).map((f) => (
-              <div key={f.key}>
-                <dt className="text-body-sm text-text-secondary">{f.label}</dt>
-                <dd className="text-body tabular">{rulesValueText(f.key, values[f.key], policies)}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-      ))}
-    </div>
   );
 }
 

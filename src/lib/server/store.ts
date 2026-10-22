@@ -2073,8 +2073,10 @@ export type ObjectionReason =
 export type ObjectionStatus = "OPEN" | "UPHELD" | "REJECTED";
 
 /** What the officer did about an upheld objection. Only reachable while the
- *  market is unsettled — which is the entire reason settlement is gated. */
-export type ObjectionRemedy = "VOID" | "REVERSE";
+ *  market is unsettled — which is the entire reason settlement is gated.
+ *  REINSTATE is a Maswali Millionea question's alone (MR-16: an upheld objection can bring a voided question back); a
+ *  Yes/No market's ruling stays VOID or REVERSE (`upholdObjection` refuses anything else). */
+export type ObjectionRemedy = "VOID" | "REVERSE" | "REINSTATE";
 
 /**
  * A player's formal objection to a market's verdict, filed inside the objection
@@ -2098,8 +2100,10 @@ export type StoredObjection = {
   /** The verdict at the time of filing, so the audit trail shows what was
    *  actually being disputed even after a remedy changes the market. */
   outcomeAtFiling: string | null;
-  /** Maswali Millionea only (S6 review R2-11): the question objected to, as its canonical slot 1..15; null on every other
-   *  product. Kept by BOTH stores, so the week's evidence pack says which question an objection was about. */
+  /** Maswali Millionea only (MR-16, MB-23): the question objected to, as its canonical slot 1..15 (M1..M10 = 1..10,
+   *  A1..A5 = 11..15, the reserves — the plan's R1..R5). Absent or null on every other product. One per (market, question, player), open or decided — the
+   *  partial unique index `Objection_maswali_question_player_key`. Kept by BOTH stores (S6 review R2-11, null when it
+   *  names none), so the week's evidence pack says which question an objection was about. */
   questionOrdinal?: number | null;
 };
 
@@ -3627,9 +3631,27 @@ const memoryDb = {
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
   },
   objection: {
-    // R2-11 · the question an objection names is kept, null when it names none — the Postgres twin's shape exactly.
-    create: (o: StoredObjection): StoredObjection => { const row = { ...o, questionOrdinal: o.questionOrdinal ?? null }; store.objections.set(o.id, row); return row; },
+    /** ⭐ A Millionea objection is one per (market, question, player), open or decided: the database's partial unique
+     *  index `Objection_maswali_question_player_key`, held here too — refused with the code Prisma gives (P2002), so the
+     *  objection door answers both stores the same way. `_tx` is the Prisma twin's (the lock's transaction).
+     *  R2-11 · the question an objection names is kept, null when it names none — the Postgres twin's shape exactly. */
+    create: (o: StoredObjection, _tx?: unknown): StoredObjection => {
+      if (o.questionOrdinal != null && (Array.from(store.objections.values()) as StoredObjection[])
+        .some((x) => x.marketId === o.marketId && x.questionOrdinal === o.questionOrdinal && x.userId === o.userId)) {
+        throw Object.assign(new Error("Unique constraint failed on Objection_maswali_question_player_key"), { code: "P2002" });
+      }
+      const row = { ...o, questionOrdinal: o.questionOrdinal ?? null };
+      store.objections.set(o.id, row);
+      return row;
+    },
     findById: (id: string): StoredObjection | null => store.objections.get(id) ?? null,
+    /** Rule on an objection only while it is OPEN — the Prisma twin's conditional update. True when this call decided it. */
+    decideOpen: (id: string, patch: Pick<StoredObjection, "status" | "reviewedBy" | "reviewedAt" | "reviewNote" | "remedy">, _tx?: unknown): boolean => {
+      const o = store.objections.get(id);
+      if (!o || o.status !== "OPEN") return false;
+      store.objections.set(id, { ...o, ...patch });
+      return true;
+    },
     update: (id: string, patch: Partial<StoredObjection>): StoredObjection | null => {
       const o = store.objections.get(id);
       if (!o) return null;
@@ -3650,10 +3672,11 @@ const memoryDb = {
       (Array.from(store.objections.values()) as StoredObjection[])
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         .slice(0, limit),
-    /** Every objection UPHELD with a remedy that changed the verdict (REVERSE or VOID). */
+    /** Every objection UPHELD with a remedy that changed the verdict (REVERSE or VOID). A Millionea ruling changes one
+     *  question's result, never its market's verdict, so it is no row of a market's sign-off. */
     listUpheldRulings: (): Array<{ marketId: string; remedy: string; reviewedBy: string | null; reviewedAt: string | null }> =>
       (Array.from(store.objections.values()) as StoredObjection[])
-        .filter((o) => o.status === "UPHELD" && (o.remedy === "REVERSE" || o.remedy === "VOID"))
+        .filter((o) => o.status === "UPHELD" && (o.remedy === "REVERSE" || o.remedy === "VOID") && o.questionOrdinal == null)
         .map((o) => ({ marketId: o.marketId, remedy: o.remedy ?? "", reviewedBy: o.reviewedBy ?? null, reviewedAt: o.reviewedAt ?? null })),
   },
   proposalVote: {

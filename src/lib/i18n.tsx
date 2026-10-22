@@ -152,8 +152,10 @@ export function useT() {
  * Each glyph scales up and glows as it passes the "front" position (bottom),
  * creating a carousel effect where the scripts visually blend.
  *
- * Glyphs: Hi / Go (EN), Habari / Sawa (SW), and the Chinese characters
- * for "language" and "hello".
+ * Glyphs: Hi, Ha, Sw and En (a greeting's first letters and two language
+ * codes), and the Chinese characters 语 ("language") and 好 (of 你好, "hello"),
+ * alternating the YES green and the NO red (GLYPHS, below) around the
+ * brand-blue pulse.
  *
  * ⚠️ EVERY ANIMATION HERE IS DECLARED ON A CLASS, NOT IN A style ATTRIBUTE, and
  * that is a motion-gate requirement rather than a preference (§M6). Both loops
@@ -164,16 +166,23 @@ export function useT() {
  * `lcl-orbit` and `lcl-pulse` were both reported as names with NO CONSUMER —
  * which is to say, as safe to delete.
  */
-/* ⭐ THE BRAND FAMILY, NOT THE BETTING PAIR (R5-I, the visual pass's round 5, 2026-10-09). The glyphs alternated the YES
-   green and the NO rose — a decoration in the two sides' inks while a language changes (DESIGN_AUTHORITY §B2a); they
-   alternate the brand family's two text steps now, the one non-money accent (R5-C), around the brand pulse at the centre. */
+/* ⭐ ITS GREEN AND RED — THE OWNER'S RULING, 2026-10-22 (DESIGN_AUTHORITY §B2a, "the owner's exception"). The ring was born
+   alternating the YES green and the NO red. R5-I (2026-10-09) moved it to the brand family's two pale steps, and on the
+   screen that was a blue-grey ring: inks rgb(153,196,255) / rgb(183,216,255) at 0.4–1 opacity on the dark scrim, ink
+   chroma 0.08 against the old ring's 0.12. Ali: "on change language the colored animation is still on grey scale — give
+   it back its color", then "its green and red". So the glyphs alternate the pair again, from Hi, around the brand pulse.
+   ⛔ THE PAIR'S TOKENS, NEVER THE OLD LITERALS: the old `oklch(78% 0.16 …)` were hand-typed, and this file is off
+   `test:design-frozen`'s list. ⭐ THE -400 STEP, NOT -300, AND IT WAS MEASURED: on one frozen frame of this ring, -300
+   (80% 0.14) drew 0.87× the old ring's ink chroma, and -400 (72% 0.16 / 0.18) draws 1.13–1.15× it at the same lightness
+   on screen — "as far from grey as before" is the bar. `qa:locale-loader` measures it on every run;
+   `test:betting-ink` §7i and `test:visual-pass-r5i` §2.15⁗ hold the source to exactly this ring. */
 const GLYPHS = [
-  { char: "Hi",  color: "var(--brand-300)" },
-  { char: "\u8BED", color: "var(--brand-200)" },  // 语
-  { char: "Ha",  color: "var(--brand-300)" },
-  { char: "\u597D", color: "var(--brand-200)" },  // 好
-  { char: "Sw",  color: "var(--brand-300)" },
-  { char: "En",  color: "var(--brand-200)" },
+  { char: "Hi",  color: "var(--yes-400)" },
+  { char: "\u8BED", color: "var(--no-400)" },  // 语
+  { char: "Ha",  color: "var(--yes-400)" },
+  { char: "\u597D", color: "var(--no-400)" },  // 好
+  { char: "Sw",  color: "var(--yes-400)" },
+  { char: "En",  color: "var(--no-400)" },
 ] as const;
 
 export function LocaleChangeOverlay() {
@@ -226,7 +235,7 @@ export function LocaleChangeOverlay() {
               {g.char}
             </span>
           ))}
-          {/* Centre dot — a soft gold pulse */}
+          {/* Centre dot — a soft brand-blue pulse (it left gold on 2026-07-09: gold means earned, §M3) */}
           <span
             className="lcl-dot absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
             style={{

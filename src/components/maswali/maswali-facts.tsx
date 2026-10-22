@@ -5,7 +5,8 @@ import { cn } from "@/lib/utils";
 import type { Locale } from "@/lib/i18n-dict";
 
 /**
- * MILLIONEA'S FACT LINES — the S5 tile read's A1, built once (MASWALI-BUILD S5 · VIS-P; S5-VIS-FINDINGS §A A1).
+ * MILLIONEA'S FACT LINES — the S5 tile read's A1, built once (MASWALI-BUILD S5 · VIS-P; S5-VIS-FINDINGS §A A1). The rules
+ * are DESIGN_AUTHORITY §M8a item 24's; this comment says how the module keeps them.
  *
  * 🔴 WHAT THE TILES SHOWED: a "·"-joined line that wrapped put its separator at a line's start or end ("…TZS 1,000,000" /
  * "· shared equally…", "Main 0/10 ·" / "Reserve 0/5", the stamp's "…(main balance) ·"), and phrases tore inside —
@@ -17,12 +18,16 @@ import type { Locale } from "@/lib/i18n-dict";
  *     its line wraps inside itself between its words, so nothing can overflow at 320. The separator is each fact's own
  *     leading mark in the gap before it (`.kp-mln-fact::before`); the list is pulled back by that gap and clipped there, so
  *     the mark of every fact that opens a line falls outside the clip — no line starts with "·" — and since a mark always
- *     LEADS its fact, none ever ends one. `stack` sets one fact per line at every width (the stamp's centred lines),
+ *     LEADS its fact, none ever ends one. Drawn outside the line's flow, a mark offers no break either: a fact's first run
+ *     opens its first line, never a line below an empty one (`test:maswali-fact-mark`). `stack` sets one fact per line at
+ *     every width (the stamp's centred lines),
  *     `phone` below 768 (the card's "one fact per line at phone widths", P3). The rules are `.kp-mln-facts` in globals.css.
  *   · `keepFact` keeps a fact's phrases whole, the platform's way (keep-run.tsx): each run in a `white-space: nowrap`
  *     span, the words untouched (no no-break space, no word joiner — a copy and a screen reader read the dictionary's
  *     text). Its runs are the platform's (`keptRanges`: a spaced dash held to the word before it, a possessive with its
- *     noun, the last two words) and Millionea's own, below.
+ *     noun, the last two words), Millionea's own (`factRuns`, below), each money figure whole and alone (a run that would
+ *     start inside a figure starts after it), and each one-letter word with the word after it (`oneLetterRanges`). Every
+ *     run fits the narrowest line a fact is drawn in, 180px at 320 (`test:maswali-facts`' census).
  * ⛔ The list's text is the same text as before for everything but the eye: each separator is also in the DOM as a
  *    screen-reader-only " · " (`sr-only`), so an accessible name, a copy and a search read "A · B · C" exactly as the old
  *    joined string did; the drawn mark is generated content with empty alternative text, read by nobody twice.
@@ -84,8 +89,9 @@ export function factsOf(line: string): string[] {
  *   · a count of a cap ("1 of 10", "1 kati ya 10");
  *   · a number and its noun — English and Chinese name the unit after the number ("13% fee", "5 reserve", "13% 费用",
  *     "15 题"), Swahili before it ("ada 13%", "akiba 5", "maswali 15").
- * ⚠️ Every run is a few words, narrower than the narrowest line it is drawn in (the home card's text column at 320, about
- * 180px): a kept run cannot break, so a wider one would overflow. `test:maswali-design` §4 holds the rule.
+ * ⚠️ Every run is a few words, narrower than the narrowest line it is drawn in (the census budget, 180px at 320): a kept run
+ * cannot break, so a wider one would overflow. `test:maswali-facts` measures every run of every Millionea line against it;
+ * `test:maswali-design` §4 holds that each phrase above stays whole.
  * ⛔ No lookbehind (Safari before 16.4 cannot parse one) and one plain scan per rule: the server and the browser draw the
  * same spans, so hydration cannot mismatch.
  */
@@ -102,10 +108,36 @@ const NOUN_THEN_NUMBER = new RegExp(`${WORD} ${NUMBER}`, "g");
 
 export function factRuns(locale: Locale, text: string): string[] {
   const all = (re: RegExp) => [...text.matchAll(re)].map((m) => m[0]);
-  return [
-    ...all(WEEK), ...all(CLOCK), ...all(RESERVES), ...all(OF_CAP),
-    ...all(locale === "sw" ? NOUN_THEN_NUMBER : NUMBER_THEN_NOUN),
-  ];
+  // ⭐ A NUMBER BELONGS TO ONE PHRASE, AND A FIGURE'S DIGITS ARE NO COUNT (S5 round 2, HUB's find; the lead's ruling):
+  //   · a count of a cap OPENS on its number ("5 kati ya 15"), so in Swahili, where the noun comes first, "Matokeo 5" took
+  //     that same number — and runs that overlap merge into one (`mergeRanges`): "Matokeo 5 kati ya 15 yametolewa" was ONE
+  //     unbreakable run, ~211px in a 216px row at 320. The noun before a cap's count stays free; the count keeps its own
+  //     phrase ("5 kati ya 15 yametolewa", ~150px);
+  //   · a money figure is the money reader's run, kept whole by itself (`moneyRanges`): a number rule that took its digits
+  //     ("1,000,000 carried", "1,000,000 滚存至") glued the figure to the words after it — a run that grows with the jackpot
+  //     ("TZS 12,345,000 carried forward", ~207px). The digits of a figure start no number phrase.
+  // `test:maswali-facts` measures every run of every Millionea line against the narrowest box that draws one.
+  const money = moneyRanges(text);
+  const inFigure = (at: number) => money.some(([a, b]) => at >= a && at < b);
+  const capOpens = new Set([...text.matchAll(OF_CAP)].map((m) => m.index ?? 0));
+  const nounNumber = locale === "sw"
+    ? [...text.matchAll(NOUN_THEN_NUMBER)].filter((m) => {
+      const at = (m.index ?? 0) + m[0].lastIndexOf(" ") + 1;
+      return !capOpens.has(at) && !inFigure(at);
+    }).map((m) => m[0])
+    : [...text.matchAll(NUMBER_THEN_NOUN)].filter((m) => !inFigure(m.index ?? 0)).map((m) => m[0]);
+  return [...all(WEEK), ...all(CLOCK), ...all(RESERVES), ...all(OF_CAP), ...nounNumber];
+}
+
+/**
+ * ⭐ A ONE-LETTER WORD NEVER ENDS A LINE (S5 round 2, the lead's read of the hub's intro at en 360: "…5 reserve. A" /
+ * "ticket is…"): a word of one Latin letter ("A", "a", "I") is one run with the word after it, so a line breaks before
+ * it or after that word, never between them. A letter inside a token is no word ("A1–A5", "player's"); Millionea's Swahili
+ * and Chinese strings hold none (`test:maswali-facts` §5 reads every one, and holds that no sw or zh line moved).
+ */
+const ONE_LETTER = /(^|[\s(“])([A-Za-z])\s+\S+/g;
+function oneLetterRanges(text: string): Array<[number, number]> {
+  return [...text.matchAll(ONE_LETTER)].map((m): [number, number] => [(m.index ?? 0) + m[1].length, (m.index ?? 0) + m[0].length]);
 }
 
 /** Each money figure's [start, end) in `text`, read by the platform's one money reader (`moneyRuns`) — never a second
@@ -174,11 +206,25 @@ function numeralNodes(node: ReactNode): ReactNode {
 
 /**
  * One fact with its phrases kept whole and its figures in the money face: the platform's kept runs (`keptRanges`) and
- * Millionea's (`factRuns`), plus any run the caller names, each a `white-space: nowrap` span; every money figure an
+ * Millionea's (`factRuns`), plus any run the caller names and each one-letter word with the word after it
+ * (`oneLetterRanges`), each a `white-space: nowrap` span; every money figure an
  * `.amount` and every other numeral `.mono` (`numeralRuns`, §T5) — but in a heading in the display face (`numerals:
  * false`), where a numeral keeps the heading's face. The words are never changed.
  */
 export function keepFact(locale: Locale, text: string, runs: readonly string[] = [], opts: { numerals?: boolean } = {}): ReactNode {
-  const ranges = mergeRanges([...keptRanges(text, [...runs, ...factRuns(locale, text)]), ...moneyRanges(text)]);
+  const money = moneyRanges(text);
+  // ⭐ A KEPT RUN THAT STARTS INSIDE A FIGURE STARTS AFTER IT (the lead's ruling, S5 round 2): the platform's last two words
+  // read a figure's digits as a word ("1,000,000 imehamishwa"), and merged with the figure's own run they made the figure
+  // and its words one run that grows with the jackpot. The figure stays whole by itself; the words after it keep their run,
+  // so the two share a line wherever they fit and part only after the figure where the box is too narrow.
+  const kept = keptRanges(text, [...runs, ...factRuns(locale, text)]).flatMap(([a, b]): Array<[number, number]> => {
+    let from = a;
+    for (let fig = money.find(([s, e]) => from > s && from < e); fig; fig = money.find(([s, e]) => from > s && from < e)) {
+      from = fig[1];
+      while (from < b && /\s/.test(text[from])) from++;
+    }
+    return from < b ? [[from, b]] : [];
+  });
+  const ranges = mergeRanges([...kept, ...money, ...oneLetterRanges(text)]);
   return keepRanges(text, ranges, opts.numerals === false ? (part) => moneyRuns(part) : (part) => numeralRuns(part));
 }

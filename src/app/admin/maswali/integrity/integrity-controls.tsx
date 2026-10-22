@@ -99,7 +99,7 @@ export function VoidWeekControl({ weekId, code }: { weekId: string; code: string
       <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="claret" tier="hard" typedWord="VOID"
         title={`Void ${code} whole?`} confirmLabel="Void and refund"
         body={<div className="space-y-2">
-          <p>Voided mains outnumber the usable reserves on the sealed record (MR-18). Every live ticket is refunded in full; the jackpot carries on untouched.</p>
+          <p>Voided mains outnumber the usable reserves on the sealed record. Every live ticket is refunded in full; the jackpot carries on untouched.{/* MR-18 */}</p>
           {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
         </div>}
         onConfirm={() => run(() => voidMaswaliWeekAction(fd({ weekId })), () => setOpen(false), (warning) => raiseAuditWarning("integrity:weekVoid", warning))} />
@@ -114,14 +114,19 @@ export function MarkReachedControl({ weekId, userId, holder }: { weekId: string;
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
   if (!mayAct) return <ActReadOnly />;
+  // S6-ADMIN 1 · the 40px floor (sm, never xs: test:maswali-admin-touch), and the refusal stated inside the dialog while it
+  // is open — never a copy under the scrim (F4; test:maswali-admin-form-validation's dialog reader).
   return (
     <span className="inline-flex flex-col gap-1">
-      <Button size="xs" variant="ghost" disabled={pending} onClick={() => setOpen(true)}>Reached by phone…</Button>
-      {error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
+      <Button size="sm" variant="ghost" disabled={pending} onClick={() => setOpen(true)}>Reached by phone…</Button>
+      {!open && error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
       {note && <span role="status" className="text-body-sm text-success">{note}</span>}
       <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="brand" tier="hard" typedWord={REACHED_WORD}
         title={`Record that ${holder} was reached?`} confirmLabel="Record the call"
-        body={<Field label="How they were reached (the number called, what they were told)"><Textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} /></Field>}
+        body={<div className="space-y-2">
+          <Field label="How they were reached (the number called, what they were told)"><Textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} /></Field>
+          {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
+        </div>}
         onConfirm={() => run(() => markMillioneaWinnerReachedAction(fd({ weekId, userId, typed: REACHED_WORD, note: text })), () => { setOpen(false); setText(""); })} />
     </span>
   );
@@ -134,14 +139,18 @@ export function ClearLettersControl({ weekId, notice, code }: { weekId: string; 
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
   if (!mayAct) return <ActReadOnly />;
+  // S6-ADMIN 1 · as MarkReachedControl: the 40px floor, and the refusal inside the dialog while it is open.
   return (
     <span className="inline-flex flex-col gap-1">
-      <Button size="xs" variant="ghost" disabled={pending} onClick={() => setOpen(true)}>Checked…</Button>
-      {error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
+      <Button size="sm" variant="ghost" disabled={pending} onClick={() => setOpen(true)}>Checked…</Button>
+      {!open && error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
       {note && <span role="status" className="text-body-sm text-success">{note}</span>}
       <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="brand" tier="hard" typedWord={CHECKED_WORD}
         title={`Record that ${code}'s letters were checked?`} confirmLabel="Record the check"
-        body={<Field label="What was checked (the provider's activity, what the holder was told)"><Textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} /></Field>}
+        body={<div className="space-y-2">
+          <Field label="What was checked (the provider's activity, what the holder was told)"><Textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} /></Field>
+          {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
+        </div>}
         onConfirm={() => run(() => clearUnresolvedLetterAction(fd({ weekId, notice, typed: CHECKED_WORD, note: text })), () => { setOpen(false); setText(""); })} />
     </span>
   );
@@ -251,7 +260,8 @@ export function HeldShareControls({ ticketId, serial, canRelease, canForfeit, re
         title={mode === "forfeit" ? `Forfeit the share on ${serial}?` : `Release the share on ${serial}?`} confirmLabel={mode === "forfeit" ? "Forfeit to the jackpot" : "Release it"}
         body={
           <div className="space-y-2 text-left">
-            <p>{mode === "forfeit" ? "The whole share leaves the wallet and goes back to the jackpot, for the next winning week — never to the house (OD-07)." : "The player keeps the share; the wallet's hold lifts once no other share is held."}</p>
+            {/* OD-07 · a forfeited share goes back to the jackpot, never to the house. */}
+            <p>{mode === "forfeit" ? "The whole share leaves the wallet and goes back to the jackpot, for the next winning week — never to the house." : "The player keeps the share; the wallet's hold lifts once no other share is held."}</p>
             <Field label="The decision" required hint="5–300 characters"
               error={tried && !validShareDecision(text) ? "Write the decision (5–300 characters)." : undefined}>
               <Textarea rows={2} maxLength={300} value={text} onChange={(e) => setText(e.target.value)} /></Field>

@@ -105,9 +105,11 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     // it imports only sms-compose, which imports nothing (app-url and support-config went with `shortDomain` and the
     // helpline's read after that ruling), and millionea-claims (below), and must stay that way.
     "lib/marketing/footer.ts",
-    // ⭐ ADDED 2026-10-18 (MASWALI-BUILD S6, MB-47). The Millionea claims lint the composer's one door runs, in the
-    // browser's live counter as on the server's save and send; it imports nothing. Its server half (the week's fee
-    // that fills `{pct}`) lives in lib/server/maswali-marketing.ts and must stay there.
+    // ⭐ ADDED 2026-10-18 (MASWALI-BUILD S6, MB-47). The Millionea claims lint's tagged rules and the composer's one door
+    // they run in — the browser's live counter, as the server's save and send; it imports nothing. Its server halves live
+    // on the server and must stay there: the week's fee that fills `{pct}` (lib/server/maswali-marketing.ts) and the
+    // untagged rules (lib/server/marketing/millionea-untagged.ts, S6-LINT 1 — `test:maswali-claims` §9 holds every client
+    // module's graph clear of it).
     "lib/marketing/millionea-claims.ts",
     // ⭐ ADDED 2026-09-30 (Vodacom plan S2). The short-title rules and the competition list lead the same double life:
     // the admin edit and the journey card (S7) render them in the browser, while `createMarket`, the narrow writer and

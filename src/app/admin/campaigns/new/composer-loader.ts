@@ -56,6 +56,7 @@ import type { CampaignDraftFields, CampaignTemplate } from "@/lib/marketing/camp
 import { CAMPAIGN_SCREEN_ROUTES, campaignDraftHref } from "@/lib/marketing/campaign-status";
 import { footerMeasurementToken } from "@/lib/marketing/footer";
 import { campaignProductOf, millioneaFactsFrom, type MillioneaComposeFacts } from "@/lib/marketing/millionea-claims";
+import { untaggedRulesFor } from "@/lib/server/marketing/millionea-untagged";
 import { maskPhone } from "@/lib/phone-normalize";
 import { parseTzNumber } from "@/lib/tz-msisdn";
 import { railProblemNote, smsProviderLabel } from "@/app/admin/system/sms-credit-tile";
@@ -204,6 +205,8 @@ function templateOf(c: StoredSmsCampaign): CampaignTemplate {
     bodySw: f.bodySw, bodyEn: f.bodyEn, nameFallbackSw: f.nameFallbackSw, nameFallbackEn: f.nameFallbackEn, sourcePhrase: c.sourcePhrase ?? "",
     // ⭐ HIGH 1 · the product the stored name declares, as the test send and the engine read it.
     product: campaignProductOf(c.name),
+    // ⭐ S6-LINT 1 · a campaign not tagged Millionea meets the untagged rules on this server door (`millionea-untagged.ts`).
+    untaggedRules: untaggedRulesFor(c.name),
   };
 }
 

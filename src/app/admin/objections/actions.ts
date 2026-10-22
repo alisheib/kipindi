@@ -34,7 +34,8 @@ export async function upholdObjectionAction(formData: FormData): Promise<{ ok: t
   await requireAdminTotp(session.userId, session.sessionId);
 
   const objectionId = String(formData.get("objectionId") ?? "");
-  const remedy = String(formData.get("remedy") ?? "") as ObjectionRemedy;
+  // A Yes/No verdict's remedies; `upholdObjection` refuses anything else the form posts (REINSTATE is Millionea's alone).
+  const remedy = String(formData.get("remedy") ?? "") as Exclude<ObjectionRemedy, "REINSTATE">;
   const note = String(formData.get("note") ?? "");
 
   if (!objectionId) return { ok: false, error: "Missing objection id." };

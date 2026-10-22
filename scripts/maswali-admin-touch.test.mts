@@ -17,6 +17,8 @@ const files = [
   "src/app/admin/maswali/pools/pools-controls.tsx",
   "src/app/admin/maswali/integrity/integrity-controls.tsx",
   "src/app/admin/maswali/[weekId]/week-controls.tsx",
+  // S7-OB · Compliance's ruling on an objection (appended: the audit below addresses files by position).
+  "src/app/admin/maswali/integrity/objection-controls.tsx",
 ] as const;
 const sources = Object.fromEntries(files.map((path) => [path, read(path)]));
 const detailPage = read("src/app/admin/maswali/[weekId]/page.tsx");

@@ -56,5 +56,9 @@ export function millioneaTicketRulesStamp(weekCode: string, frozenAt: string): s
 //   d5a5e9e3e680 · 2026-10-22, MASWALI-BUILD S6-INT 11 (the lead's ruling D2): the Chinese text names an event 事件, the
 //                  decided word, in three places; the English and the Swahili are unchanged. Recorded in
 //                  COMPLIANCE-DECISIONS § "2026-10-22 · The Maswali Millionea rules' Chinese text names an event 事件 …".
+//   46f7b1b18732 · 2026-10-22, MASWALI-BUILD S6-DOCS 8 (the S6-DOCS brief's open list): §11 states the stale-form rule —
+//                  once a week is final, a ticket cannot be bought from a form opened before — in the decided words
+//                  `ruleSunset` carries in en/sw/zh. Recorded in COMPLIANCE-DECISIONS § "2026-10-22 · The Maswali
+//                  Millionea rules' §11 states the stale-form rule …".
 // (`b0bf9a6fa080`, named here for a while, was never held by a commit: a working copy between the first two.)
-export const MILLIONEA_RULES_TEXT_SHA = "d5a5e9e3e680";
+export const MILLIONEA_RULES_TEXT_SHA = "46f7b1b18732";

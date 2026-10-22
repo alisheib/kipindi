@@ -12,6 +12,7 @@ import { MaswaliFacts, factsOf, keepFact } from "@/components/maswali/maswali-fa
 import { MaswaliMoment, MaswaliTick } from "@/components/maswali/maswali-moment";
 import { MaswaliCancelLine } from "@/components/maswali/maswali-ticket-cancel";
 import { MaswaliGhostHint } from "@/components/maswali/maswali-ghost-hint";
+import { MaswaliStrike } from "@/components/maswali/maswali-strike";
 import { eatWeekday, eatWeekdayClock, millioneaWord, reserveLabel, weekWord } from "@/components/maswali/maswali-format";
 import { WeekStateChip } from "@/app/millionea/register/register-parts";
 import type { MillioneaWeekPhase } from "@/app/millionea/millionea-view";
@@ -202,7 +203,8 @@ function Clause({ t, c, line, inert, press }: { t: Dict; c: TicketClause; line: 
           {/* The category and its event's day and time: a fact line, the day never parted from its time (A1). */}
           <MaswaliFacts facts={[c.category, c.eventAt === null ? null : <span key="at" className="whitespace-nowrap">{eatWeekdayClock(t, c.eventAt)}</span>]} />
         </span>
-        <p className={cn("text-body-sm text-pretty", voided ? "text-text-muted line-through decoration-border-strong" : inert ? "text-text-muted" : "text-text")}>{c.text}</p>
+        {/* A voided question drawn through the one strike, which ends at the last mark's ink (`MaswaliStrike`). */}
+        <p className={cn("text-body-sm text-pretty", voided || inert ? "text-text-muted" : "text-text")}>{voided ? <MaswaliStrike text={c.text} /> : c.text}</p>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-0.5">
           <span className="inline-flex gap-1.5 text-body-sm text-text-muted">
             {t.millionea.pick}

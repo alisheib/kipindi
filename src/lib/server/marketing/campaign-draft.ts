@@ -42,6 +42,9 @@
  * open to everyone, every fee a body states the week's own (`millioneaFactsProblems`) — is judged here, after it, on the
  * week the save reads itself (`deps.millioneaFacts`, lazily: no Millionea module loads for any other campaign). A read
  * that fails refuses the save. Any other campaign reads nothing more.
+ * ⭐ S6-LINT 1 · A CAMPAIGN NOT TAGGED MILLIONEA MEETS THE UNTAGGED RULES HERE: the save hands them to the ONE verdict
+ * (`untaggedRulesFor`), so what the screen's live verdict does not judge — they are the server's alone — is refused at the
+ * save, in their words, on the field that holds it.
  *
  * `marketing.campaign_created` is written once, when the draft is born. Owed: U50 registers it.
  *
@@ -65,6 +68,7 @@ import { SMS_CAMPAIGN_VALUE } from "@/lib/server/marketing/campaign-model";
 import { formatClock } from "@/lib/utils";
 import { campaignProductOf, millioneaFactsFrom, millioneaFactsProblems, type MillioneaFacts } from "@/lib/marketing/millionea-claims";
 import { millioneaLintEpoch } from "@/lib/server/marketing/millionea-lint-epoch";
+import { untaggedRulesFor } from "@/lib/server/marketing/millionea-untagged";
 
 /* ══ THE SENTENCES — the server's, shown as they are ═══════════════════════════════════════════════════════════════ */
 
@@ -317,8 +321,8 @@ export async function saveCampaignDraft(
   if (!audience.ok) problems.audience = [audience.reason];
   // ⛔ No source line is handed to the verdict (the owner's ruling of 2026-10-09): nothing is appended, so the message
   // priced is the message sent. ⭐ The ONE verdict refuses a name holding a phone number too, exactly as the screen did
-  // before Save was pressed.
-  const verdict = deps.validate(fields, "");
+  // before Save was pressed. ⭐ S6-LINT 1 · and a campaign not tagged Millionea meets the untagged rules here (the header).
+  const verdict = deps.validate(fields, "", { untagged: untaggedRulesFor(fields.name) });
   Object.assign(problems, verdict.problems);
   // ⭐ HIGH 1 · a Millionea campaign meets the week here, on the server (the header): each body it holds is refused while
   // the facts cannot be read, while Millionea is not open to everyone, or while a fee it states is not the week's.
