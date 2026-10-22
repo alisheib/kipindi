@@ -330,14 +330,30 @@ if (SCENARIO !== "states" && wantPage("how")) {
   }
 }
 
-// ── How to play's loading drawing, caught on the way in (S5-R2-REGISTER 15, the release's ui-consistency red) ─────────
+// ── How to play's loading drawing, caught on the way in (S5-R2-REGISTER 15 and 18) ──────────────────────────────────────
 // A route's loading file paints only on a CLIENT move (`ghost-landing.mjs`' rule), so the drive leaves the register for How
-// through the app router (what a Link calls) on a throttled network, reads the drawing while it holds the screen, then the
-// landed page: the swap card's button bar (the drawing's last) must stand at the example button's height. A pass where
-// no drawing was caught proved nothing and fails as such.
+// through the app router (what a Link calls) on a throttled network, reads How's own drawing (`[data-ghost="steps"]`) while
+// it holds the screen, then the landed page — band by band, each where the page puts it and as tall, within 1px: the steps,
+// the timeline, the examples' top, the swap card, its seal line and its button (the kit's control height; the CONTROL reads
+// the same bar at the numeric utility's 80px and requires the judge to report it). The drawing's lines are the page's as
+// measured per language (`how-ghost.tsx`), so the drive reads all three, at a width of each of its tiers: below 360, from
+// 360, from 768 (and the board width). A pass where no drawing was caught proved nothing and fails as such.
+/** How's bands, off its drawing or off the landed page: document y and height. */
+const HOW_BANDS = (drawing) => {
+  const box = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return { y: Math.round(r.top + scrollY), h: Math.round(r.height * 10) / 10 }; };
+  if (drawing) {
+    const g = document.querySelector('[aria-busy="true"]:has([data-ghost="steps"])');
+    const q = (n) => g?.querySelector(`[data-ghost="${n}"]`) ?? null;
+    return { steps: box(q("steps")), timeline: box(q("timeline")), examples: box(q("examples")), swap: box(q("examples")?.querySelector(".max-w-receipt") ?? null),
+      seal: box(q("seal")), button: box(q("button")?.firstElementChild ?? null) };
+  }
+  const swap = document.querySelector('article[aria-labelledby="mln-how-ex-swap"]');
+  return { steps: box(document.querySelector('[data-testid="millionea-how"] > ol')), timeline: box(document.querySelector('section[aria-labelledby="mln-how-timeline"]')),
+    examples: box(document.querySelector('section[aria-labelledby="mln-how-examples"]')), swap: box(swap), seal: box(swap?.querySelector(":scope > div > div:first-child") ?? null),
+    button: box(document.querySelector('[data-testid="millionea-how-example-play"]')) };
+};
 if (SCENARIO !== "states" && wantPage("how-ghost")) {
-  // The drawing is wordless, so its bars do not change with the language: the phone and the desktop column cover it.
-  const ghostWidths = WIDTHS.filter((w) => w === 360 || w === 1280);
+  const ghostWidths = WIDTHS.filter((w) => [320, 360, 768, 1280].includes(w));
   for (const locale of LOCALES) {
     for (const width of ghostWidths.length ? ghostWidths : WIDTHS) {
       const tag = `how-ghost-${locale}-${width}`;
@@ -350,38 +366,36 @@ if (SCENARIO !== "states" && wantPage("how-ghost")) {
       await cdp.send("Network.enable");
       await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 400, downloadThroughput: 12 * 1024, uploadThroughput: 64 * 1024 });
       await page.evaluate(() => { window.next?.router?.push("/millionea/how"); });
-      const drawing = '[aria-busy="true"] .max-w-receipt';
-      const drawn = await page.waitForSelector(drawing, { timeout: 20_000 }).then(() => true).catch(() => false);
-      const ghost = drawn ? await page.evaluate((sel) => {
-        const card = document.querySelector(sel);
-        const bar = card?.lastElementChild;
-        if (!card || !(bar instanceof HTMLElement)) return null;
-        const box = (el) => { const r = el.getBoundingClientRect(); return { y: Math.round(r.top + scrollY), h: Math.round(r.height * 10) / 10, w: Math.round(r.width * 10) / 10 }; };
-        const read = { card: box(card), button: box(bar) };
-        // CONTROL: the same bar at the numeric utility's height (`h-10` = 80px on the overridden scale), read in place.
+      // How's own drawing, which until the hub's loading file picks by address comes only after the hub's drawing gives way
+      // (`qa:millionea-ghost-hops` judges WHICH drawing is up; this hop measures How's own).
+      const drawing = '[aria-busy="true"] [data-ghost="steps"]';
+      const drawn = await page.waitForSelector(drawing, { timeout: 60_000 }).then(() => true).catch(() => false);
+      const ghost = drawn ? await page.evaluate(HOW_BANDS, true) : null;
+      // CONTROL: the drawing's button bar at the numeric utility's height (`h-10` = 80px on the overridden scale), read in place.
+      const planted = drawn ? await page.evaluate(() => {
+        const bar = document.querySelector('[aria-busy="true"] [data-ghost="button"] > *');
+        if (!(bar instanceof HTMLElement)) return null;
         bar.style.height = "80px";
-        const planted = box(bar).h;
+        const h = bar.getBoundingClientRect().height;
         bar.style.height = "";
-        return { ...read, planted };
-      }, drawing) : null;
-      if (drawn) await page.locator(drawing).screenshot({ path: `${OUT}/${tag}-drawing.png` }).catch(() => {});
+        return h;
+      }) : null;
+      if (drawn) await page.screenshot({ path: `${OUT}/${tag}-drawing.png` }).catch(() => {});
       await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
       await page.waitForSelector('[data-testid="millionea-how-example-play"]', { timeout: 60_000 }).catch(() => {});
       await settle(page);
-      const real = await page.evaluate(() => {
-        const card = document.querySelector('article[aria-labelledby="mln-how-ex-swap"]');
-        const button = document.querySelector('[data-testid="millionea-how-example-play"]');
-        if (!card || !button) return null;
-        const box = (el) => { const r = el.getBoundingClientRect(); return { y: Math.round(r.top + scrollY), h: Math.round(r.height * 10) / 10, w: Math.round(r.width * 10) / 10 }; };
-        return { card: box(card), button: box(button) };
-      });
-      await page.locator('article[aria-labelledby="mln-how-ex-swap"]').screenshot({ path: `${OUT}/${tag}-page.png` }).catch(() => {});
-      ok(`${tag} · How's loading drawing is shown on the way in`, drawn && !!ghost);
-      ok(`${tag} · How lands with its example's button`, !!real);
+      const real = await page.evaluate(HOW_BANDS, false);
+      await page.screenshot({ path: `${OUT}/${tag}-page.png` }).catch(() => {});
+      ok(`${tag} · How's own loading drawing is shown on the way in`, drawn && !!ghost);
       if (ghost && real) {
-        console.log(`GHOST ${tag} · button: drawing ${ghost.button.h}×${ghost.button.w}px, page ${real.button.h}×${real.button.w}px · swap card: drawing y${ghost.card.y} h${ghost.card.h}, page y${real.card.y} h${real.card.h}`);
-        ok(`${tag} · the drawing's button stands at the page button's height (within 1px)`, Math.abs(ghost.button.h - real.button.h) <= 1, `${ghost.button.h} vs ${real.button.h}`);
-        ok(`${tag} · CONTROL · the bar at the numeric utility's 80px is reported by the same judge`, Math.abs(ghost.planted - real.button.h) > 1, `${ghost.planted} vs ${real.button.h}`);
+        const off = Object.keys(real).map((k) => [k, real[k] && ghost[k] ? { dy: real[k].y - ghost[k].y, dh: Math.round((real[k].h - ghost[k].h) * 10) / 10 } : null]);
+        console.log(`GHOST ${tag} · page − drawing, px: ${off.map(([k, o]) => (o ? `${k} y${o.dy} h${o.dh}` : `${k} —`)).join(" · ")}`);
+        // Every band lands where it was drawn and as tall — but the examples' section, whose drawing holds the swap's card
+        // alone (the worked weeks below it are past the first screens): its top only.
+        const bad = off.filter(([k, o]) => !o || Math.abs(o.dy) > 1 || (k !== "examples" && Math.abs(o.dh) > 1));
+        ok(`${tag} · every band of How lands where its drawing stood and as tall (within 1px): steps, timeline, examples' top, swap card, seal line, button`,
+          bad.length === 0, JSON.stringify({ bad, ghost, real }));
+        ok(`${tag} · CONTROL · the button bar at the numeric utility's 80px is reported by the same judge`, planted !== null && real.button !== null && Math.abs(planted - real.button.h) > 1, `${planted} vs ${real.button?.h}`);
       }
       await ctx.close();
     }

@@ -667,16 +667,16 @@ check("5.6", "How's loading drawing draws the example's button at the height the
   const before = L.seal.sealLineOf(exampleQs, picks), after = L.seal.sealLineOf(exampleQs, picks, { final: true });
   const out = LOCALES.map((l) => {
     const g = inApp(l, h(w.Ghost as never, {} as never));
-    const at = g.lastIndexOf("max-w-receipt");
-    const card = at < 0 ? "" : g.slice(at, g.indexOf("</div>", at));
-    const bars = [...card.matchAll(/<span aria-hidden="true" class="([^"]+)"><\/span>/g)].map((m) => m[1]);
+    // The drawing's button: the one bar in the swap card's button row (`data-ghost="button"`).
+    const at = g.indexOf('data-ghost="button"');
+    const bar = at < 0 ? null : /<span aria-hidden="true" class="([^"]+)"><\/span>/.exec(g.slice(at))?.[1] ?? null;
     const page = inApp(l, h(w.Example as never, { before, after, caption: "c" } as never));
     const tag = /<button[^>]*data-testid="millionea-how-example-play"[^>]*>/.exec(page)?.[0] ?? "";
     const button = /class="([^"]+)"/.exec(tag)?.[1] ?? "";
-    return { l, bars: bars.length, ghost: bars.length ? heightPx(css, bars[bars.length - 1]) : null, page: heightPx(css, button) };
+    return { l, ghost: bar === null ? null : heightPx(css, bar), page: heightPx(css, button) };
   });
   const scale = SPACING.get("10") === 80 && SPACING.get("3") === 16;
-  return [scale && out.every((o) => o.bars === 6 && o.ghost !== null && o.ghost === o.page), j({ scale, out })];
+  return [scale && out.every((o) => o.ghost !== null && o.ghost === o.page), j({ scale, out })];
 });
 
 // ── the run ─────────────────────────────────────────────────────────────────────────────────────────────────────────
