@@ -794,9 +794,10 @@ const cardBlockDefects = (src: string) => {
     const d = dict[l].millionea;
     const head = FACTS.factsOf(d.ruleWithFigure);
     // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-DOORS M2): the carry stands right after the figure it adds to — it hung
-    // after the fee and read as adding to the fee.
+    // after the fee and read as adding to the fee. ⚠️ RE-PINNED 2026-10-22 (S5-FACTS, ONE wording for the close): the card's
+    // close is `salesCloseColon` now, read by its words before {when}.
     const marks = [d.productLabel, (head[0] ?? "").replace("{amount}", "").trim(), fill(d.pendingCarry, { week: 47 }), fill(head[1] ?? "", { pct: 13 }),
-      fill(head[2] ?? "", { pct: 13 }), d.salesCloseAt.replace("{when}", "").trim(), fill(d.yourTicketsThisWeek, { n: 1, cap: 10 })];
+      fill(head[2] ?? "", { pct: 13 }), d.salesCloseColon.split("{when}")[0].trim(), fill(d.yourTicketsThisWeek, { n: 1, cap: 10 })];
     const text = cardOf(l);
     const at = marks.map((m) => text.indexOf(m));
     return at.some((x, i) => x < 0 || (i > 0 && x <= at[i - 1])) ? [`${l}: ${j(at)} in "${text}"`] : [];
