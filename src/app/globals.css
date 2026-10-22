@@ -4814,7 +4814,9 @@ html[data-sheet-open] .route-enter { animation: none; }
 /* S5-DESIGN-REGISTER (2026-10-21, the register critic's H4) · A SOURCE LINK INSIDE A LINE OF TEXT REACHES THE 40px FLOOR
    WITHOUT MOVING A PIXEL OF PAINT — the kit switch's own recipe (DG-A-02, `.toggle-switch::after` above): an out-of-flow
    box exactly `--tap-min` tall, centred on the link, no wider than it (a horizontal bleed could take a neighbour's tap).
-   (The example button's override, `.btn.kp-mln-example-button`, is gone with its two-line label — L10.) */
+   The ledger's carry rows take it too (S5-R2-REGISTER, 2026-10-22): a row as tall as its line, its target the floor —
+   DESIGN_AUTHORITY §M8a item 14. (The example button's override, `.btn.kp-mln-example-button`, is gone with its two-line
+   label — L10.) */
 .kp-mln-hit { position: relative; }
 .kp-mln-hit::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: var(--tap-min); transform: translateY(-50%); }
 /* MASWALI-BUILD S5 · MILLIONEA'S CHINESE, AS THE PLATFORM SETS IT (the S5 review of 24ec0d33, LOW 14): every Millionea page

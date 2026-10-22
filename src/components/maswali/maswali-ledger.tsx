@@ -294,14 +294,17 @@ export function millioneaLedgerRows(t: Dict, locale: Locale, f: MillioneaLedgerI
 /**
  * The rows, drawn: the kit's ReceiptRow in its sentence-case label, a hairline only above a total (the withdraw confirm's
  * bottom line — never a rule under every row, H5). A carry row that names its week opens that week's register page: the
- * whole row is the link (at least `--h-control-md`, 44px), its label in the link ink with the chevron after it, its figure
- * in the column every other figure stands in. A row's note stands on its own line under the label AND the figure, across
- * the row's whole width, in the kit row's note face (the lead's ruling of 2026-10-21) — never squeezed into the label's
- * column beside a figure.
- * ⭐ ONE RHYTHM, ONE EDGE (the lead's ruling of 2026-10-22, from HUB's sw readers of the hub's pool card): every row stands
- * the list's one gap apart — a total is set apart by its hairline alone; the step of space round 1 put after it stood ~46px
- * under "Jumla ya bwawa" against the rows' 26px pitch (320/360/768). And every figure keeps the figures' edge: a value that
- * wraps ends each line there (the kit row's `alignEnd`) — "angalau / TZS 51,000" sat ~56px short of it, left-aligned.
+ * whole row is the link, its label in the link ink with the chevron after it, its figure in the column every other figure
+ * stands in. A row's note stands on its own line under the label AND the figure, across the row's whole width, in the kit
+ * row's note face (the lead's ruling of 2026-10-21) — never squeezed into the label's column beside a figure.
+ * ⭐ ONE RHYTHM, ONE EDGE (the lead's rulings of 2026-10-22, recorded in DESIGN_AUTHORITY §M8a item 14; from HUB's sw/en/zh
+ * readers of the hub's pool card): every row
+ * stands the list's one gap apart — a total is set apart by its hairline alone; the step of space round 1 put after it
+ * stood ~46px under "Jumla ya bwawa" against the rows' 26px pitch (320/360/768). A carry's link row is as tall as its line,
+ * as every row is: drawn as a 44px box (`--h-control-md`), its one line stood centred in it — ~30px of air above the
+ * card's first row against ~20px under its last. Its TARGET reaches the tap floor instead, out of flow (`.kp-mln-hit`: a
+ * `--tap-min` box centred on the row, the source links' recipe), so no row moves. And every figure keeps the figures'
+ * edge: a value that wraps ends each line there (the kit row's `alignEnd`) — "angalau / TZS 51,000" sat ~56px short of it.
  */
 export function MaswaliLedger({ rows, className }: { rows: readonly MillioneaLedgerRow[]; className?: string }) {
   return (
@@ -328,7 +331,7 @@ export function MaswaliLedger({ rows, className }: { rows: readonly MillioneaLed
           ? <span className="mt-0.5 block text-body-sm text-text-muted">{r.note}</span>
           : null;
         return r.href ? (
-          <Link key={r.key} href={r.href as never} className="flex flex-col justify-center rounded-control" style={{ minHeight: "var(--h-control-md)" }} data-ledger-row={r.key}>
+          <Link key={r.key} href={r.href as never} className="kp-mln-hit flex flex-col rounded-control" data-ledger-row={r.key}>
             {row}
             {wide}
           </Link>

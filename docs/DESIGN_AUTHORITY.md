@@ -3215,9 +3215,12 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     counts one ticket in the singular ("1 ticket at TZS 1,000", `regTicketsSoldOne`); a carry still waiting on its week
     has no figure: its state is the row's note, on its own line under the label ("Not yet settled"). ONE RHYTHM: every
     row stands the list's one gap apart, a total set apart by its hairline alone — no step of space after it (round 1's
-    stood ~46px under "Jumla ya bwawa" against the rows' 26px pitch). ONE EDGE: every value is right-aligned (the kit
-    row's `alignEnd`), so a value that wraps ends each line at the figures' edge. Guards: `test:maswali-design-register`
-    2.13–2.19, each with its plant.
+    stood ~46px under "Jumla ya bwawa" against the rows' 26px pitch) — and a carry's link row is as tall as its line, as
+    every row is: its TARGET reaches the tap floor out of flow (`.kp-mln-hit`, a `--tap-min` box centred on the row, the
+    register's recipe for its source links), never a 44px box with its line centred in it (~30px of air over the hub
+    card's first row against ~20px under its last). ONE EDGE: every value is right-aligned (the kit row's `alignEnd`), so
+    a value that wraps ends each line at the figures' edge. Guards: `test:maswali-design-register` 2.13–2.20, each with its
+    plant.
 15. **A ticket's moments play where its owner sees them, once (Ali, 2026-10-21 10/10 pass — the R1 tickets critic's M8,
     the motion critic's H3, H4 and L2; `components/maswali/maswali-moment.tsx`).** Item 5 holds, and a ticket page adds
     WHERE: each moment — the cut (N3) and its reverse, a result's press (N2), the stamp line's reveal, the receipt's
@@ -3275,7 +3278,7 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     dialog is unchanged (`test:maswali-slip-design` §1); `test:enter-where-pressed` 5.8 pins the call with its plant, and
     `qa:dialog-way-back` drives it at 360 in Chromium and WebKit (scrollY unchanged across the close, focus on the opener,
     the jump back when `preventScroll` is dropped).
-19. **A loading picture is the page being opened (the lead's ruling of 2026-10-22; MASWALI-BUILD S5-R2-REGISTER, the
+22. **A loading picture is the page being opened (the lead's ruling of 2026-10-22; MASWALI-BUILD S5-R2-REGISTER, the
     hub's and the tickets' segments alike).** Next wraps every page under a segment in that segment's `loading.tsx`, so a
     hop from the register to a week drew the register's index, and a hop into any Millionea page the hub's. A segment
     with pages under it picks the DESTINATION's own drawing by its path (`RoutePick`) inside ONE client component
@@ -3287,7 +3290,7 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     words is the kit's bar inside the very line box those words fill (`GhostTextLine`, the hub's L7 rule), its lines per
     language from the page's measured tables — and lands where the page puts each band (`qa:maswali-register-shots`'
     how-ghost and register-ghosts hops, within 1px).
-20. **A fact list spaces its marks as a typed " · " does (the lead's SEP ruling, 2026-10-22 — measured, no CSS change).**
+23. **A fact list spaces its marks as a typed " · " does (the lead's SEP ruling, 2026-10-22 — measured, no CSS change).**
     `MaswaliFacts` draws each fact as one wrap unit, its separators never opening or ending a line, at `--mln-sep`: 0.9em
     in the body face; inside a tracked mono eyebrow `calc(3ch + 0.42em)`, 3ch in Chinese (the hub's L1 rule,
     `globals.css`). Measured on the register at 320–1280 in three languages, every eyebrow list equals the same words

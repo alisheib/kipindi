@@ -22,12 +22,20 @@ import type { Locale } from "@/lib/i18n-dict";
 
 /** How many lines a paragraph's words take below 360, from 360 and from 768. */
 type Tiers = readonly [below360: number, from360: number, from768: number];
-/** The head's facts and times, and the commitments' closing sentence, in each language, as a rolled week's are measured. */
+/** The head's facts and times, and the commitments' closing sentence, in each language, as a rolled week's are measured.
+ *  The facts ("No 10/10 · TZS 18,000 carried forward · Fee TZS 0") take a second line from 360 in English and below 360 in
+ *  Chinese since the fee says its currency (S5-R2-REGISTER 28; the register-ghosts hop: the head 20px taller on one). */
 const HEAD_LINES: Record<Locale, { facts: Tiers; times: Tiers; explainer: Tiers }> = {
-  en: { facts: [2, 1, 1], times: [2, 1, 1], explainer: [3, 3, 2] },
+  en: { facts: [2, 2, 1], times: [2, 1, 1], explainer: [3, 3, 2] },
   sw: { facts: [2, 2, 1], times: [2, 2, 1], explainer: [3, 3, 2] },
-  zh: { facts: [1, 1, 1], times: [2, 2, 1], explainer: [3, 3, 1] },
+  zh: { facts: [2, 1, 1], times: [2, 2, 1], explainer: [3, 3, 1] },
 };
+/** The ledger's floor label at the receipt's measure ("Guaranteed floor" / "Kiwango cha chini kilichohakikishwa" / "保底金额"):
+ *  the Swahili takes two lines below 768 (the register-ghosts hop: the card 16.5px taller at 320 and 360 on one line). */
+const FLOOR_LINES: Record<Locale, Tiers> = { en: [1, 1, 1], sw: [2, 2, 1], zh: [1, 1, 1] };
+/** The carry's link row's label with its chevron ("Carried forward to Week 48 ›" / "Imehamishiwa Wiki 48 ›" / "滚存至第48周 ›"),
+ *  beside its figure: the English takes two lines below 360 (the r2e tiles: "Carried forward to / Week 48" at 320). */
+const CARRY_LINES: Record<Locale, Tiers> = { en: [2, 1, 1], sw: [1, 1, 1], zh: [1, 1, 1] };
 
 /** A line in the numerals' mono face (§T5) — its line box stands a pixel taller than a body line: an empty run of that face
  *  gives the drawn line the same box. */
@@ -51,18 +59,20 @@ function Wrapped({ text, lines: [below360, from360, from768], last, mono = false
 }
 
 /** One ledger row in the kit's own row (`ReceiptRow`, the sentence label), its words and figure as bars — no step of space
- *  above any row: the ledger keeps one rhythm (the lead's ruling of 2026-10-22). */
-function LedgerRow({ label, emphasis, divider, note }: { label: string; emphasis?: "total" | "muted"; divider?: boolean; note?: boolean }) {
+ *  above any row: the ledger keeps one rhythm (the lead's ruling of 2026-10-22). A label that wraps in the reader's language
+ *  draws its lines (`lines`), the last as wide as `label`. */
+function LedgerRow({ label, lines, emphasis, divider, note }: { label: string; lines?: Tiers; emphasis?: "total" | "muted"; divider?: boolean; note?: boolean }) {
   return (
     <div>
-      <ReceiptRow labelStyle="sentence" label={<GhostLine className={label} />} value={<GhostLine className="w-[88px]" />} emphasis={emphasis} divider={divider} />
+      <ReceiptRow labelStyle="sentence" label={lines ? <Wrapped text="" lines={lines} last={label} /> : <GhostLine className={label} />} value={<GhostLine className="w-[88px]" />} emphasis={emphasis} divider={divider} />
       {note && <span className="mt-0.5 block text-body-sm"><MonoLine width="w-[200px] max-w-full" /></span>}
     </div>
   );
 }
 
-/** One of the two commitments: its eyebrow, its fingerprint (two lines on a phone's card, one from 768), its time line. */
-function Commitment() {
+/** One of the two commitments: its eyebrow, its fingerprint (two lines on a phone's card, one from 768), its time line — as
+ *  many lines as it takes in the reader's language (`time`). */
+function Commitment({ time = [1, 1, 1] }: { time?: Tiers }) {
   return (
     <div className="flex flex-col gap-1">
       <GhostTextLine text="font-mono text-micro uppercase eyebrow" width="w-[140px]" />
@@ -70,10 +80,13 @@ function Commitment() {
         <span className="block md:hidden"><GhostTextLine width="w-full" /><GhostTextLine width="w-[70%]" /></span>
         <span className="hidden md:block"><GhostTextLine width="w-full" /></span>
       </span>
-      <span className="block text-body-sm"><MonoLine width="w-[55%]" /></span>
+      <Wrapped text="text-body-sm" lines={time} last="w-[55%]" mono />
     </div>
   );
 }
+/** The tickets' root's time line ("Fixed 13 Nov, 18:01 · 18 tickets" / "锁定于 2026年11月13日 18:01 · 18 张彩票"): the Chinese
+ *  takes two lines below 360 (the register-ghosts hop: the commitments 19px taller at 320 on one). */
+const ROOT_LINES: Record<Locale, Tiers> = { en: [1, 1, 1], sw: [1, 1, 1], zh: [2, 1, 1] };
 
 export function MillioneaRegisterWeekGhost() {
   const { t, locale } = useT();
@@ -97,16 +110,15 @@ export function MillioneaRegisterWeekGhost() {
         <div className="flex flex-col gap-2" aria-hidden data-ghost="ledger">
           {H2}
           <div className="mat-flat flex max-w-receipt flex-col rounded-card p-3">
-            {/* A rolled week's rows (`millioneaLedgerRows`): the sales over their note; Money in; the floor (the second
-                group, at the list's one gap); the fee; the carry's link row (`--h-control-md`); Money out. */}
+            {/* A rolled week's rows (`millioneaLedgerRows`), every one at the list's one gap: the sales over their note;
+                Money in; the floor; the fee; the carry's link row (as tall as its line — its target reaches the tap floor
+                out of flow, `.kp-mln-hit`); Money out. */}
             <div className="flex flex-col gap-1.5">
               <LedgerRow label="w-[96px]" note />
               <LedgerRow label="w-[88px]" emphasis="total" divider />
-              <LedgerRow label="w-[120px]" emphasis="muted" />
+              <LedgerRow label="w-[120px]" lines={FLOOR_LINES[locale]} emphasis="muted" />
               <LedgerRow label="w-[48px]" />
-              <div className="flex flex-col justify-center" style={{ minHeight: "var(--h-control-md)" }}>
-                <ReceiptRow labelStyle="sentence" label={<GhostLine className="w-[160px]" />} value={<GhostLine className="w-[88px]" />} />
-              </div>
+              <LedgerRow label="w-[160px]" lines={CARRY_LINES[locale]} />
               <LedgerRow label="w-[96px]" emphasis="total" divider />
             </div>
           </div>
@@ -115,7 +127,7 @@ export function MillioneaRegisterWeekGhost() {
           {H2}
           <div className="mat-flat flex max-w-receipt flex-col gap-4 rounded-card p-3">
             <Commitment />
-            <Commitment />
+            <Commitment time={ROOT_LINES[locale]} />
             <Wrapped text="text-body-sm" lines={lines.explainer} last="w-[60%]" />
           </div>
         </div>

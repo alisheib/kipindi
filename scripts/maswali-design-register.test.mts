@@ -379,11 +379,13 @@ check("2.6", "\"Money out\" says what it is made of on its own line — fee, pai
   });
   return [off.length === 0, off.join(" | ")];
 });
-check("2.7", "a carry names the chain's week and opens its register page (M10) — the whole row the link, at least 40px tall — and a week that carried nothing in prints no carry row (hidden at 0)", (w) => {
+// ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-REGISTER, the lead's ruling from HUB's readers): the row's TARGET reaches the
+// tap floor out of flow (`.kp-mln-hit`), no longer the row's own 44px box (2.20 holds why and how).
+check("2.7", "a carry names the chain's week and opens its register page (M10) — the whole row the link, its target the tap floor (`.kp-mln-hit`) — and a week that carried nothing in prints no carry row (hidden at 0)", (w) => {
   const rows = rowsOf(w, "en", CASES.plain);
   const into = rows.find((r) => r.key === "in");
   const drawn = inApp("en", h(w.Ledger as never, { rows: w.ledger(dict.en as never, "en", CASES.plain) } as never));
-  const link = [...drawn.matchAll(/<a [^>]*>/g)].some((m) => m[0].includes('href="/millionea/register/MLN-2026-W46"') && m[0].includes("min-height:var(--h-control-md)"));
+  const link = [...drawn.matchAll(/<a [^>]*>/g)].some((m) => m[0].includes('href="/millionea/register/MLN-2026-W46"') && m[0].includes('class="kp-mln-hit '));
   const none = !rowsOf(w, "en", CASES.dust).some((r) => r.key === "in");
   return [into?.label === "Carried in from Week 46" && into.row.href === "/millionea/register/MLN-2026-W46" && link && none, j({ label: into?.label, link, none })];
 });
@@ -546,6 +548,18 @@ check("2.19", "ONE rhythm: every row of the ledger stands the rows' one gap apar
     return list === "flex flex-col gap-1.5" && steps.length === 0 && flagged.length === 0 ? [] : [`${name}: ${j({ list, steps, flagged })}`];
   });
   return [off.length === 0, off.join(" | ")];
+});
+check("2.20", "ONE rhythm at the card's edges: a carry's link row is as tall as its line, as every row is — no min-height, no line centred in a box (as a 44px box it put ~30px of air over the hub card's first row against ~20px under its last) — and its target reaches the tap floor out of flow (`.kp-mln-hit`: a `--tap-min` box centred on the row, no wider than it), in every week that draws a carry", (w) => {
+  const off = (["plain", "rolled", "voided"] as const).flatMap((name) => {
+    const drawn = inApp("en", h(w.Ledger as never, { rows: w.ledger(dict.en as never, "en", CASES[name]) } as never));
+    const links = [...drawn.matchAll(/<a [^>]*data-ledger-row="[^"]+"[^>]*>/g)].map((m) => m[0]);
+    const bad = links.filter((a) => !/class="kp-mln-hit flex flex-col rounded-control"/.test(a) || /min-height|justify-center/.test(a));
+    return links.length > 0 && bad.length === 0 ? [] : [`${name}: ${j({ links: links.length, bad })}`];
+  });
+  const css = squash(decommentCss(w.src.css));
+  const rule = css.includes(".kp-mln-hit { position: relative; }")
+    && css.includes('.kp-mln-hit::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: var(--tap-min); transform: translateY(-50%); }');
+  return [off.length === 0 && rule, j({ off, rule })];
 });
 
 // ── §3 · the one week chip ────────────────────────────────────────────────────────────────────────────────────────────
@@ -901,6 +915,8 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["the register's week page letting its commitments run the page's width", "2.17", plantSrc("weekPage", '<WeekCommitments className="max-w-receipt" ', "<WeekCommitments ")],
   ["a wrapped value left-aligned short of the figures' edge again (no `alignEnd`)", "2.18", plantLedger("            divider={r.divider}\n            alignEnd\n", "            divider={r.divider}\n")],
   ["the step of space after a total back (the builder's `gap` and the drawing's `mt-3`)", "2.19", plantStep()],
+  ["a carry's link row a 44px box again, its line centred in it", "2.20", plantLedger('className="kp-mln-hit flex flex-col rounded-control" data-ledger-row={r.key}>', 'className="flex flex-col justify-center rounded-control" style={{ minHeight: "var(--h-control-md)" }} data-ledger-row={r.key}>')],
+  ["the tap floor's out-of-flow target gone from the stylesheet", "2.20", plantSrc("css", ".kp-mln-hit::after { content: \"\"; position: absolute; left: 0; right: 0; top: 50%; height: var(--tap-min); transform: translateY(-50%); }", ".kp-mln-hit::after { content: none; }")],
   // §3
   ["a settled week in the resolved seal again", "3.1", plantParts('case "SETTLED": return "MILLIONEA_WEEK_SETTLED";', 'case "SETTLED": return "RESOLVED";')],
   ["a paused week royal, as if it sold", "3.1", plantParts('case "OPEN": return paused ? "MILLIONEA_WEEK_PAUSED" : "MILLIONEA_WEEK_OPEN";', 'case "OPEN": return "MILLIONEA_WEEK_OPEN";')],
