@@ -281,6 +281,8 @@ export const ADMIN_KEYS: readonly string[] = [
   "dashboard", "journey", "insights", "settlement", "finance", "house", "desk", "reports", "tax", "aiUsage",
   "roster", "cohorts", "sources", "rounds", "weeks", "pools", "integrity", "contacts", "invites", "traffic",
   "privacy", "audit", "approvals", "staff", "roles",
+  // MASWALI-BUILD S6 (2026-10-19): Millionea's evidence pack, a console destination of its own.
+  "evidence",
 ];
 
 /**
@@ -311,7 +313,11 @@ export const FILL_KEYS: readonly string[] = [
   // own keys ship it in the admin sprite; a reused player key ships it in its own group's file.
   "dashboard", "journey", "insights", "settlement", "finance", "house", "desk", "reports", "tax", "mobileMoney",
   "receipt", "roster", "cohorts", "calendar", "bot", "brain", "idea", "resolved", "sources", "percent", "sparkle",
-  "rounds", "weeks", "pools", "integrity", "users", "gift", "contacts", "invites", "megaphone", "traffic", "agent",
+  "rounds", "weeks", "pools", "integrity",
+  // MASWALI-BUILD S6 (2026-10-19): Millionea's Evidence (its own key) and Ticket lookup (search, a player key: its Fill
+  // ships in the app sprite).
+  "evidence", "search",
+  "users", "gift", "contacts", "invites", "megaphone", "traffic", "agent",
   "tippingScales", "idCard", "flag", "comment", "shieldAlert", "circleStop", "privacy", "archive", "audit", "server",
   "aiUsage", "approvals", "keyRound", "staff", "roles",
   // W4 (docs/PHOSPHOR-MIGRATION.md §8c: Fill means a state) — `idCard`, `resolved`, `live` and `pause` ship it above.
@@ -434,6 +440,9 @@ export const NEW_KEYS: Record<string, MapEntry> = {
   weeks: { ph: "list-numbers" }, // Millionea's weeks, each fifteen numbered questions
   pools: { ph: "treasure-chest" }, // Millionea's prize pools and the jackpot
   integrity: { ph: "gavel" }, // Millionea's integrity rulings: the sales pause, voids, held shares, winners screened
+  // MASWALI-BUILD S6 (2026-10-19): Millionea's per-week evidence pack (MB-92) — one final week's record, examined and
+  // handed to the regulator: a document under the magnifier. (Its neighbour Ticket lookup wears `search`, the lookup's own.)
+  evidence: { ph: "file-magnifying-glass" },
   contacts: { ph: "address-book" }, // the marketing contact book
   invites: { ph: "paper-plane-tilt" }, // invitations sent (the invite campaigns)
   traffic: { ph: "chart-line" }, // the site's traffic over time

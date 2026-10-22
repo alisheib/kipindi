@@ -48,9 +48,10 @@ const REGISTER = "docs/COMPLIANCE-DECISIONS.md";
 const SUPPORT = "src/lib/server/support-config.ts";
 const LEXICON = "scripts/lib/house-bot-assurances.mjs";
 const DEFERRED = "plans/house-bots/DEFERRED-TESTS.md";
-/** The D19a chat pin's label as `house-bot-chatbot-cases.mts` 6.6 prints it (S5's f5a11a06a: the pinned baseline is the
- *  approved S11 checkpoint 8ce376ca0 in the suite, the shadow's own origin/main in the red drive). ONE constant, every case. */
-const D19A_CHECKPOINT = "byte-identical to the pinned baseline";
+/** The D19a chat pin's label as `house-bot-chatbot-cases.mts` 6.6 prints it (S5's f5a11a06a: the suite measures it against
+ *  the approved prompt checkpoint `CHAT_PROMPT_PIN`, the red drive against the shadow's own origin/main; MASWALI-BUILD S6-INT
+ *  keeps the label's head, which both name). ONE constant, every case. */
+const D19A_CHECKPOINT = "src/app/_actions/chat.ts is byte-identical to";
 
 /**
  * ⛔ THE PLANTED SENTENCES ARE NOT RESPELLED HERE. They are the same strings the suite's own §6c controls
@@ -60,6 +61,13 @@ const D19A_CHECKPOINT = "byte-identical to the pinned baseline";
 const P = /** @type {Record<string, string>} */ (D19D_PLANTS);
 
 /** @typedef {{ name: string, file: string, suite: string, from: string, to: string, expect: string, why: string, stillGreen?: string[], alsoRed?: string[] }} RedMutation */
+
+/**
+ * ⚠️ 2026-10-18 (MASWALI-BUILD S6) · THE 6.6 NEEDLE. Every chat.ts case named 6.6 as "byte-identical to origin/main", and
+ * since the S8–S12 rebaseline (da31a161) 6.6 says "byte-identical to the approved … checkpoint", so §2 could find no
+ * label for the comment case and every `alsoRed` matched nothing. The needle is now the part of 6.6's label that names
+ * the file and the measure, whichever checkpoint it is pinned to.
+ */
 
 /** @type {RedMutation[]} */
 export const MUTATIONS = [
@@ -167,8 +175,8 @@ export const MUTATIONS = [
     file: CHAT,
     expect: "what the model is told is the player's own conversation",
     why: "the other half of the same door, and the cheaper one to write: leave the prompt alone and append retrieved context to it at the call site. 6.4 cannot see this — the template never changed — which is why 6.5b pins the call's own shape",
-    from: '      system: systemPrompt(locale, (await getGlobalConfig()).objectionWindowHours, (await simpleJourneyStateNow()) === "ACTIVE"),',
-    to: '      system: systemPrompt(locale, (await getGlobalConfig()).objectionWindowHours, (await simpleJourneyStateNow()) === "ACTIVE") + (await buildAccountContext(session.userId)),',
+    from: '      system: systemPrompt(locale, (await getGlobalConfig()).objectionWindowHours, (await simpleJourneyStateNow()) === "ACTIVE", await millioneaChatFacts()),',
+    to: '      system: systemPrompt(locale, (await getGlobalConfig()).objectionWindowHours, (await simpleJourneyStateNow()) === "ACTIVE", await millioneaChatFacts()) + (await buildAccountContext(session.userId)),',
     alsoRed: [D19A_CHECKPOINT],
   },
   {
@@ -176,15 +184,24 @@ export const MUTATIONS = [
     file: CHAT,
     expect: "what the model is told is the player's own conversation",
     why: "S11 WP6: the prompt's third input is the GLOBAL rollout's state. Keyed on the reader instead — the session, or a preview pass — the vendor would learn who is previewing, which the privacy notice's §4 premise forbids; 6.5b pins the call's shape exactly",
-    from: '      system: systemPrompt(locale, (await getGlobalConfig()).objectionWindowHours, (await simpleJourneyStateNow()) === "ACTIVE"),',
-    to: '      system: systemPrompt(locale, (await getGlobalConfig()).objectionWindowHours, Boolean(session.userId)),',
+    from: '      system: systemPrompt(locale, (await getGlobalConfig()).objectionWindowHours, (await simpleJourneyStateNow()) === "ACTIVE", await millioneaChatFacts()),',
+    to: '      system: systemPrompt(locale, (await getGlobalConfig()).objectionWindowHours, Boolean(session.userId), await millioneaChatFacts()),',
+    alsoRed: [D19A_CHECKPOINT],
+  },
+  {
+    name: "the-millionea-facts-follow-the-reader",
+    file: CHAT,
+    expect: "what the model is told is the player's own conversation",
+    why: "MASWALI-BUILD S6: the prompt's fourth input is Millionea's GLOBAL rollout's facts, read with no user. Read for the reader instead — their account, or a preview of theirs — the vendor would learn who is previewing Millionea, which the privacy notice's §4 premise forbids; 6.5b pins the call's shape exactly",
+    from: '      system: systemPrompt(locale, (await getGlobalConfig()).objectionWindowHours, (await simpleJourneyStateNow()) === "ACTIVE", await millioneaChatFacts()),',
+    to: '      system: systemPrompt(locale, (await getGlobalConfig()).objectionWindowHours, (await simpleJourneyStateNow()) === "ACTIVE", await millioneaChatFacts(session.userId)),',
     alsoRed: [D19A_CHECKPOINT],
   },
   {
     name: "a-comment-is-added-to-chat-ts",
     file: CHAT,
     expect: D19A_CHECKPOINT,
-    why: "⭐ THE CASE WITH THE NARROWEST BLAST RADIUS, AND THAT IS ITS POINT. A comment changes no player-read word, so every other assertion in §6 stays green — only the D19a byte-identity pin moves. If 6.6 could not see this, it could not see anything, and its claim that the chatbot keeps the approved checkpoint's words would rest on nothing",
+    why: "⭐ THE CASE WITH THE NARROWEST BLAST RADIUS, AND THAT IS ITS POINT. A comment changes no player-read word, so every other assertion in §6 stays green — only the D19a byte-identity pin moves. If 6.6 could not see this, it could not see anything, and its claim that 'the chatbot keeps main's words' would rest on nothing",
     from: "      // The window the assistant quotes is the one in force, read at answer time.",
     to: "      // The window the assistant quotes is the one in force, read at answer time.\n      // (clarified while reading this file — no behaviour change)",
   },

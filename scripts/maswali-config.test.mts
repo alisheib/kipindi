@@ -55,6 +55,8 @@ console.log("\n§1 · the ruled defaults validate, and are the numbers the law s
     && /\| \*\*Millionea floor\*\* \| A winning week's jackpot is \*\*at least TZS 1,000,000\*\*/.test(rules)
     && /\| \*\*Millionea cap\*\* \| \*\*10 tickets per account per week\*\*/.test(rules));
   ok("1.9 · the sync read starts from the defaults", JSON.stringify(getMaswaliConfig()) === JSON.stringify(MASWALI_DEFAULTS));
+  ok("1.10 · S6 review R2-7 · the desk's complaint answer target is a setting, 5 working days by default (MB-91; owed the Owner's confirmation)",
+    d.complaintAnswerDays === 5);
 }
 
 // ── §2 · every field refuses what it must ───────────────────────────────────
@@ -83,6 +85,9 @@ console.log("\n§2 · every field refuses what it must");
     ["per-competition 0", { questionCaps: { probabilityMin: 0.3, probabilityMax: 0.7, maxPerCompetition: 0, minReserveSources: 3 } }, /per competition/],
     ["unknown guarantee policy", { guaranteeReservePolicy: "PAY_FROM_HOUSE_CASH" as never }, /guarantee policy/],
     ["a paid exit window", { paidExitWindowMinutes: 5 as never }, /no paid early exit/],
+    // S6 review R2-7 · the desk's complaint answer target (MB-91).
+    ["a complaint answer target of 0 days", { complaintAnswerDays: 0 }, /complaint answer target/],
+    ["a complaint answer target that is not whole", { complaintAnswerDays: 2.5 }, /complaint answer target/],
   ];
   for (const [name, over, re] of bad) {
     const why = maswaliConfigProblem(with_(over));
@@ -105,6 +110,11 @@ console.log("\n§3 · the write is verified; a refused save changes nothing");
   ok("3.5 · the other fields kept their values (a shallow merge, not a reset)", fresh.ok && fresh.config.floorTzs === 1_000_000 && fresh.config.jackpotFeeRate === 0.13);
   const back = await saveMaswaliConfig({ ticketCapPerWeek: 10, closeAt: "18:00" }, "usr_officer");
   ok("3.6 · and back to the ruled values", back.ok && JSON.stringify(getMaswaliConfig()) === JSON.stringify(MASWALI_DEFAULTS));
+  const desk = await saveMaswaliConfig({ complaintAnswerDays: 7 }, "usr_officer");
+  ok("3.7 · R2-7 · the complaint answer target saves like every rule — verified, and read back by the next read",
+    desk.ok && desk.config.complaintAnswerDays === 7 && getMaswaliConfig().complaintAnswerDays === 7, JSON.stringify(desk).slice(0, 160));
+  const deskBack = await saveMaswaliConfig({ complaintAnswerDays: MASWALI_DEFAULTS.complaintAnswerDays }, "usr_officer");
+  ok("3.8 · and back to the default", deskBack.ok && JSON.stringify(getMaswaliConfig()) === JSON.stringify(MASWALI_DEFAULTS));
 }
 
 // ── §4 · the week's snapshot ────────────────────────────────────────────────
@@ -114,7 +124,9 @@ console.log("\n§4 · the week's frozen rules");
   const snap = snapshotMaswaliRules(MASWALI_DEFAULTS, at);
   ok("4.1 · version 1 with its freeze time", snap.v === 1 && snap.frozenAt === at.toISOString());
   ok("4.2 · ⛔ the fee is NOT in the rules snapshot — it has one home, the week's feeSnapshot", !("jackpotFeeRate" in snap));
-  const fields = Object.keys(MASWALI_DEFAULTS).filter((k) => k !== "jackpotFeeRate");
+  ok("4.2b · ⛔ R2-7 · nor is the desk's complaint answer target — a support promise, never a week's rule, quoted as it stands",
+    !("complaintAnswerDays" in snap));
+  const fields = Object.keys(MASWALI_DEFAULTS).filter((k) => k !== "jackpotFeeRate" && k !== "complaintAnswerDays");
   ok("4.3 · every other field is frozen", fields.every((k) => JSON.stringify((snap as Record<string, unknown>)[k]) === JSON.stringify((MASWALI_DEFAULTS as Record<string, unknown>)[k])), fields.join(","));
   ok("4.4 · the nested caps are a COPY (editing the config cannot reach a frozen week)", snap.questionCaps !== MASWALI_DEFAULTS.questionCaps);
   ok("4.5 · freezing an invalid config throws", throws(() => snapshotMaswaliRules(with_({ ticketCapPerWeek: 0 }), at)) !== null);

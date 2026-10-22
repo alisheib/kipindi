@@ -85,6 +85,12 @@ export type MaswaliConfig = {
   releaseAlertHours: number;
   /** MB-50: a Millionea ticket has no paid early exit. Pinned at 0 and frozen, so a week can never sell one. */
   paidExitWindowMinutes: 0;
+  /**
+   * MB-91 (S6 review R2-7): how many working days Compliance takes, usually, to answer a written Millionea complaint — the
+   * support desk's scripts quote it (`maswali-support.ts`). ⛔ A support promise, not a week's rule: NO week freezes it
+   * (`snapshotMaswaliRules` leaves it out, as it leaves the fee), so the desk always quotes the promise as it stands.
+   */
+  complaintAnswerDays: number;
 };
 
 /** The ruled values (Ali 2026-10-16 and the accepted batch, MASWALI-PLAN §9). */
@@ -107,6 +113,9 @@ export const MASWALI_DEFAULTS: MaswaliConfig = {
   guaranteeReservePolicy: "FLOOR_LESS_CARRY_PER_OPEN_WEEK",
   releaseAlertHours: 4,
   paidExitWindowMinutes: 0,
+  // ⚠️ Decided under the Owner's delegation (S6, 2026-10-18) and owed his confirmation: the platform's one review promise
+  // counted in days is the agent programme's (RULES §2.10). A value, not a pin — admins change it here.
+  complaintAnswerDays: 5,
 };
 
 /** RULES §2.3: the platform's stake range, which a ticket price must sit inside. */
@@ -156,6 +165,7 @@ export function maswaliConfigProblem(c: MaswaliConfig): string | null {
   if (!(GUARANTEE_RESERVE_POLICIES as readonly unknown[]).includes(c.guaranteeReservePolicy)) return "The guarantee policy is not one the platform knows.";
   if (!isWhole(c.releaseAlertHours, 1, 72)) return "The release alert must be a whole number of hours from 1 to 72.";
   if (c.paidExitWindowMinutes !== 0) return "A Millionea ticket has no paid early exit (MB-50); the window stays 0.";
+  if (!isWhole(c.complaintAnswerDays, 1, 30)) return "The complaint answer target must be a whole number of working days from 1 to 30.";
   return null;
 }
 
@@ -168,7 +178,7 @@ const migrate = (p: Record<string, unknown>): Partial<MaswaliConfig> => {
   const num = (k: keyof MaswaliConfig) => { if (typeof p[k] === "number") (out as Record<string, unknown>)[k] = p[k]; };
   const str = (k: keyof MaswaliConfig) => { if (typeof p[k] === "string") (out as Record<string, unknown>)[k] = p[k]; };
   for (const k of ["ticketPriceTzs", "floorTzs", "jackpotFeeRate", "ticketCapPerWeek", "openWeekday", "closeWeekday",
-    "minLockBufferMinutes", "voidDeadlineHours", "finalDeadlineWeekday", "objectionWindowHours", "releaseAlertHours"] as const) num(k);
+    "minLockBufferMinutes", "voidDeadlineHours", "finalDeadlineWeekday", "objectionWindowHours", "releaseAlertHours", "complaintAnswerDays"] as const) num(k);
   for (const k of ["openAt", "closeAt", "finalDeadlineAt", "objectionNotBeforeAt", "guaranteeReservePolicy"] as const) str(k);
   if (!capsProblem(p.questionCaps)) {
     const q = p.questionCaps as MaswaliQuestionCaps;
@@ -230,8 +240,12 @@ export async function saveMaswaliConfig(
   return cfg.setVerified(updates, officerId);
 }
 
-/** The week's frozen rules: every field of `maswali.config` as it stood at the open, with the version of this shape. */
-export type MaswaliRulesSnapshot = Omit<MaswaliConfig, "jackpotFeeRate"> & {
+/**
+ * The week's frozen rules: every field of `maswali.config` as it stood at the open — but the fee (its home is the
+ * market's `feeSnapshot`) and the desk's complaint answer target (a support promise, read live) — with the version of
+ * this shape.
+ */
+export type MaswaliRulesSnapshot = Omit<MaswaliConfig, "jackpotFeeRate" | "complaintAnswerDays"> & {
   /** The shape's version. A reader refuses a version it does not know rather than guess at its fields. */
   v: 1;
   /** When the week froze it (ISO 8601). */
@@ -240,13 +254,15 @@ export type MaswaliRulesSnapshot = Omit<MaswaliConfig, "jackpotFeeRate"> & {
 
 /**
  * ⭐ FREEZE THE RULES FOR ONE WEEK — called once, by the week's open, inside its transaction. Refuses a config that does
- * not validate. `jackpotFeeRate` is deliberately absent: it freezes into the market's `feeSnapshot` (header).
+ * not validate. `jackpotFeeRate` is deliberately absent: it freezes into the market's `feeSnapshot` (header); and so is
+ * `complaintAnswerDays`, which no week freezes (R2-7).
  */
 export function snapshotMaswaliRules(c: MaswaliConfig, frozenAt: Date): MaswaliRulesSnapshot {
   const why = maswaliConfigProblem(c);
   if (why) throw new Error(`[maswali-config] refusing to freeze rules that do not validate: ${why}`);
-  const { jackpotFeeRate: _fee, ...rest } = c;
+  const { jackpotFeeRate: _fee, complaintAnswerDays: _desk, ...rest } = c;
   void _fee;
+  void _desk;
   return { ...rest, questionCaps: { ...c.questionCaps }, v: 1, frozenAt: frozenAt.toISOString() };
 }
 

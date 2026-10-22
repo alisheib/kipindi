@@ -12,6 +12,9 @@ import { PLATFORM_MIN_STAKE, PLATFORM_MAX_STAKE } from "@/lib/payout";
 import { formatTzs } from "@/lib/utils";
 // The journey's words follow the GLOBAL rollout (S11 WP6): the effective state, never the reader's pass.
 import { simpleJourneyStateNow } from "@/lib/server/simple-journey-switch";
+// Millionea's passage follows ITS global rollout (MASWALI-BUILD S6, MB-71). The type only: the reader is loaded inside the
+// action, so the prompt builders below still import nothing but text and settings.
+import type { MillioneaChatFacts } from "@/lib/server/millionea-chat";
 
 /**
  * 50pick AI Help — live Claude (Haiku 4.5) server action.
@@ -163,6 +166,85 @@ function journeyPrompt(prompt: string): string {
   }
   return out;
 }
+
+/**
+ * ⭐ MASWALI MILLIONEA'S PASSAGE IS THIS PROMPT WITH ITS MONEY FACTS SCOPED, AND ONE SECTION ADDED — never a second copy
+ * (MASWALI-BUILD S6 item 10; MASWALI-PLAN §8 MB-71, MR-25). The template's market facts are true of YES/NO markets and
+ * Up & Down and false of a weekly jackpot ticket — "the same rule applies to both games", "a winning bet is never paid
+ * less than its stake … impossible", "one-sided means refunded", the payout frozen at the close, the objection window —
+ * so each line is named, in its own words, as being about those two (review #11: never by the section's blanket clause
+ * alone), and a section of Millionea's own facts, every figure read (`millionea-chat.ts`), goes in before KEY PAGES.
+ * ⛔ WHO GETS IT IS MILLIONEA'S GLOBAL ROLLOUT, NEVER THE READER: `chatWithClaude` passes `millioneaChatFacts()`, which is
+ *    null below ACTIVE, and with null the prompt is today's, byte for byte (`test:maswali-fairness` §C builds both).
+ * ⛔ APPLIED BEFORE THE JOURNEY'S SWAPS, AND NONE OF THEM IS TOUCHED: this changes no passage a journey swap names, and the
+ *    section adds no line opening with "KEY PAGES:", so both readers' prompts take it the same way. A phrase is swapped
+ *    only where it is found exactly once, and the section goes in only where KEY PAGES is found exactly once — a later
+ *    edit of the template that loses one is caught by `test:maswali-fairness` §C before a player reads it.
+ */
+type MillioneaSwap = { phrase: string; to: string };
+const MILLIONEA_SWAPS: readonly MillioneaSwap[] = [
+  {
+    phrase: "50pick is a Tanzania-licensed YES/NO prediction-market platform.",
+    to: "50pick is a Tanzania-licensed prediction platform with three products: YES/NO prediction markets, Up & Down rounds, and Maswali Millionea, a weekly ticket (its own section below).",
+  },
+  { phrase: "proposals, market resolution, fees, and navigating the app.", to: "proposals, market resolution, Maswali Millionea, fees, and navigating the app." },
+  {
+    phrase: "The same rule applies to both games — long-form markets and Up & Down.",
+    to: "The same rule applies to both of those games — long-form markets and Up & Down. Maswali Millionea is charged differently (its own section below).",
+  },
+  {
+    phrase: "BECAUSE THE FEE COMES ONLY OUT OF THE LOSING SIDE, A WINNING BET IS NEVER PAID LESS THAN ITS STAKE.",
+    to: "ON YES/NO MARKETS AND UP & DOWN, BECAUSE THE FEE COMES ONLY OUT OF THE LOSING SIDE, A WINNING BET IS NEVER PAID LESS THAN ITS STAKE.",
+  },
+  { phrase: "Never tell a player they might be paid below their stake.", to: "Never tell a player that a YES/NO or Up & Down bet might be paid below its stake." },
+  {
+    phrase: "If nobody bets the other side, the poll is one-sided: everyone is refunded in full, at zero fee.",
+    to: "If nobody bets the other side of a YES/NO market or an Up & Down round, it is one-sided: everyone is refunded in full, at zero fee. A Millionea ticket has no sides.",
+  },
+  {
+    phrase: 'If a player asks "can I win and still lose money?", the answer is NO — that is impossible.',
+    to: 'If a player asks "can I win and still lose money?" about a YES/NO market or Up & Down, the answer is NO — that is impossible there; a Maswali Millionea share can be smaller than the ticket price.',
+  },
+  {
+    phrase: "The moment betting CLOSES the pools freeze",
+    to: "On a YES/NO market or an Up & Down round, the moment betting CLOSES the pools freeze",
+  },
+  { phrase: "- Resolution: an officer seals the outcome", to: "- Resolution of a YES/NO market: an officer seals the outcome" },
+];
+
+/** Millionea's own section, every figure from its rules (the week on sale's frozen ones, or the next week's). */
+function millioneaSection(m: MillioneaChatFacts): string[] {
+  // A final week with no 10 of 10 pays its top scores with no floor (maswali-settlement.ts), so the floor is a 10 of 10 week's.
+  const floor = m.floor ? `, and in a week with a 10 of 10 ticket it is never less than ${m.floor}: 50pick tops it up to that floor` : "";
+  return [
+    "MASWALI MILLIONEA — THE THIRD PRODUCT, A WEEKLY TICKET. It is not a YES/NO market and not Up & Down, and no market rule above applies to it unless this section says so:",
+    `- A ticket costs ${m.price}, paid from the main balance only — bonus money never buys one. Before paying, the player answers all 15 questions YES or NO: 10 main questions and 5 reserves (A1–A5). At most ${m.cap} tickets per account per week.`,
+    `- By default a week's sales open ${m.openDay} ${m.openAt} and close ${m.closeDay} ${m.closeAt} EAT, and the week's own page shows its actual close; every event starts after the close. After the close a ticket can be neither bought nor cancelled.`,
+    "- A ticket wins only with all 10 counted questions right (10 of 10). When a main question is voided, the first unused valid reserve counts instead, in order from A1 to A5. If more main questions are voided than there are valid reserves, the whole week is voided and every ticket is refunded in full. The one exception to the 10 of 10: in the final week before Millionea is retired, if no ticket gets 10 of 10, the tickets with the highest score share the jackpot.",
+    `- The jackpot is the week's ticket sales plus what earlier weeks carried forward${floor}. Every 10 of 10 ticket gets an equal share. The fee is ${m.feePct}% of the jackpot, taken ONLY in a week with at least one winning ticket; a week with no winner is charged nothing, and its whole pool carries forward to the next week's jackpot (except the final week, as above).`,
+    "- A MILLIONEA SHARE IS NOT A RETURN ON A STAKE: it is known only once the week's results are final, and when many tickets win, one ticket's share can be smaller than its price. Never tell a player that a winning ticket always pays more than it cost — the never-paid-less-than-its-stake rule above is about YES/NO markets and Up & Down only.",
+    `- A ticket can be cancelled for a full refund within ${m.freeCancelMinutes} minutes of buying it, and only if at least ${m.freeCancelMinutes} minutes of sales remained when it was bought. There is no other way to sell a ticket back.`,
+    `- Results: an officer records each question's result against its named source, and a ${m.checkWindowHours}-hour check window runs once the results are final, before the payout. A player who believes a result is wrong raises it with support during that window.`,
+    "- Fairness: the questions' hash is published when sales open and one root over every ticket when they close, both on /fairness; a player's own ticket page shows their salt and the proof that their ticket is inside that root.",
+    "- Millionea pages: /millionea (this week), /millionea/how (How to play), /millionea/tickets (the player's own tickets), /millionea/register (every week's record), /legal/rules/millionea (the binding rules).",
+    "- NEVER suggest answers to any Millionea question, never say which answers are more likely, never estimate a question's chances, and never suggest how many tickets to buy. You may explain HOW questions are graded and paid, never WHAT to pick.",
+  ];
+}
+
+/** Today's prompt with Millionea's passage in — or the prompt untouched when its rollout gave no facts (`null`). */
+function millioneaPrompt(prompt: string, m: MillioneaChatFacts | null): string {
+  if (!m) return prompt;
+  let out = prompt;
+  for (const swap of MILLIONEA_SWAPS) {
+    if (out.split(swap.phrase).length === 2) out = out.replace(swap.phrase, () => swap.to);
+  }
+  const lines = out.split("\n");
+  const at = lines.flatMap((l, i) => (l.startsWith("KEY PAGES:") ? [i] : []));
+  if (at.length !== 1) return out;
+  lines.splice(at[0], 0, ...millioneaSection(m), "");
+  return lines.join("\n");
+}
+
 /**
  * ⛔ `objectionHours` IS A PARAMETER, AND THE MISS IT FIXES WAS THE WORST IN THE SWEEP.
  *
@@ -248,9 +330,11 @@ RULES:
  * WHAT THE MODEL IS SENT (S11 WP6): today's prompt, or — once the rollout is ACTIVE for everyone, at the S15 flip — the
  * journey's, which is today's with `JOURNEY_SWAPS` applied. `buildSystemPrompt` above is untouched, so its template stays the
  * one artefact `test:house-bot-disclosure` §6 reads; `journey` is the global rollout's state, never the reader (§2c).
+ * MASWALI-BUILD S6 (2026-10-18): `millionea` is the fourth input, and it is a setting too — Millionea's GLOBAL rollout's
+ * facts (`millioneaChatFacts`, null below ACTIVE) — so the prompt is still built from the locale and global settings alone.
  */
-function systemPrompt(locale: string, objectionHours: number, journey: boolean): string {
-  const prompt = buildSystemPrompt(locale, objectionHours);
+function systemPrompt(locale: string, objectionHours: number, journey: boolean, millionea: MillioneaChatFacts | null = null): string {
+  const prompt = millioneaPrompt(buildSystemPrompt(locale, objectionHours), millionea);
   return journey ? journeyPrompt(prompt) : prompt;
 }
 
@@ -300,6 +384,9 @@ export async function chatWithClaude(
 
   try {
     const { default: Anthropic } = await import("@anthropic-ai/sdk");
+    // Millionea's facts reader, loaded here as the SDK is, so the builders above take nothing but text and settings. A
+    // reader that fails to load costs nobody their answer: no facts, and the prompt is today's.
+    const millioneaChatFacts = await import("@/lib/server/millionea-chat").then((m) => m.millioneaChatFacts, () => async () => null);
     const client = new Anthropic();
     const messages = [
       ...history.slice(-10),
@@ -311,7 +398,8 @@ export async function chatWithClaude(
       max_tokens: 350,
       // The window the assistant quotes is the one in force, read at answer time.
       // The journey's words are the rollout's (S11 WP6): ACTIVE for everyone at the flip, today's prompt until then.
-      system: systemPrompt(locale, (await getGlobalConfig()).objectionWindowHours, (await simpleJourneyStateNow()) === "ACTIVE"),
+      // Millionea's passage is ITS rollout's (MASWALI-BUILD S6, MB-71): its facts at ACTIVE for everyone, null until then.
+      system: systemPrompt(locale, (await getGlobalConfig()).objectionWindowHours, (await simpleJourneyStateNow()) === "ACTIVE", await millioneaChatFacts()),
       messages,
     }, { timeout: 15_000 }); // user-facing: don't let a hung API call block the request
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

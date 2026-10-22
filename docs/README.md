@@ -181,6 +181,13 @@ to teal and resurrects the killed light theme.
 | `scripts/ops-updown-reset-games.mts` | 🟢 LAW | Clears chains, rounds, markets and observations so operators start from a clean board. **Dry run by default; refuses outright while any round is unresolved or any position is OPEN, and there is no `--force`.** Assets are never touched. |
 | `scripts/ops-updown-retire-asset.mts` | 🟢 LAW | Removes an asset row that should not exist. **Dry run by default; refuses anything still ENABLED or still referenced by a chain or an observation**, and writes a `updown.asset.retired` compliance row per removal. Used 2026-08-05 to retire `GOLD` (a duplicate of `XAU`), `SNP500` (unquotable symbol, pointed at kitco.com) and `BNB` (stored as `macro`, which would shut a 24/7 coin at weekends). |
 
+## Maswali Millionea — the third product (⏳ decided, not selling)
+
+| Doc | | |
+|---|---|---|
+| [`MASWALI-ARCHITECTURE.md`](MASWALI-ARCHITECTURE.md) | 🟢 LAW — AS BUILT | Owns **HOW** Maswali Millionea is built: who sees it (the rollout, answered once per request), the data, the money path, the file map, the tests, the permissions and the one home of each control. §9 holds the launch commit's Terms sentence, in all three languages, until S8 lands it. The rules are `RULES.md` §2.12; the programme is [`MASWALI-PLAN.md`](MASWALI-PLAN.md). |
+| [`maswali-operator-guide.html`](maswali-operator-guide.html) → [`50pick-maswali-operator-guide.pdf`](50pick-maswali-operator-guide.pdf) | 🟢 **LAW — THE OPERATOR CONTRACT** (⏳ not on sale) | ⭐ **The document the Millionea staff are handed**, in the Up & Down guide's format: the operating rules, the console's pages and who may do what, every typed confirmation, the weekly runbook, drafting a week and the open's checks, sealing and the six void grounds, paying out, Compliance, the Owner's ceremonies, **what to say to players**, troubleshooting and terms. ⛔ Edit the **HTML**, then regenerate with `node scripts/generate-pdfs.mjs`, then **verify by rasterising** (`scripts/rasterise-pdf.mjs`) — never by trusting the render. ⚠️ No screenshots yet: the console is shot once it runs on a served build. |
+
 ## AI
 
 | Doc | | |
@@ -235,7 +242,7 @@ to teal and resurrects the killed light theme.
 | [`FEE-DOCX-SUPERSEDED.md`](FEE-DOCX-SUPERSEDED.md) | ⚪ RECORD | The banner for two `.docx` hand-outs that state **retired** rates. A binary cannot carry its own warning, so it lives here. ⛔ Regenerate from `RULES.md` before either is handed to anyone. |
 | [`FINDING-SCHEDULER-BUSY-WAIT.md`](FINDING-SCHEDULER-BUSY-WAIT.md) | ⚪ RECORD | A single filed finding, kept as its own file because it predates the register. |
 | [`HANDOVER-E166-NEXT-SESSION.md`](HANDOVER-E166-NEXT-SESSION.md) | ⚫ HISTORICAL | A single session's handover for `E-166`, which has since shipped. It was the only file in `docs/` this index never listed — which is exactly how a spent artifact gets mistaken for live instruction. ⛔ Not a plan: [`NEXT-PLAN.md`](NEXT-PLAN.md) is the only live one. |
-| [`rates-for-admins.html`](rates-for-admins.html) · [`rates-decisions-needed.html`](rates-decisions-needed.html) | ⚪ RECORD | Two generated hand-outs from the 2026-08-14 rates programme. Snapshots — `RULES.md` is the truth. |
+| [`rates-for-admins.html`](rates-for-admins.html) · [`rates-decisions-needed.html`](rates-decisions-needed.html) | ⚪ RECORD | Two generated hand-outs from the 2026-08-14 rates programme — the sources of `50pick-rates-for-admins.pdf` and `50pick-betting-rules-final.pdf` (`scripts/generate-rates-pdf.mjs`). Amended 2026-10-18 with Maswali Millionea, decided 2026-10-16 and ⏳ not on sale: its own section, rates and worked weeks in each. Snapshots — `RULES.md` is the truth. |
 
 ## Rules for this directory
 

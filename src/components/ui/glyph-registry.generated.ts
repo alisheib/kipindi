@@ -4,7 +4,7 @@
  * scripts/glyphs/extras.ts. PHOSPHOR-MIGRATION: what every glyph of the family `I` draws, and where its drawings live.
  */
 export const GLYPH_SOURCE = { package: "@phosphor-icons/core", version: "2.1.1" } as const;
-export const GLYPH_SPRITES = { app: "/icons/g/app.b899eae1.svg", admin: "/icons/g/admin.75aeb290.svg" } as const;
+export const GLYPH_SPRITES = { app: "/icons/g/app.378cc33b.svg", admin: "/icons/g/admin.216a71c9.svg" } as const;
 export type GlyphVariant = "regular" | "bold" | "fill" | "duo";
 export type GlyphInk = readonly [x0: number, x1: number];
 /**
@@ -77,6 +77,7 @@ export const GLYPH_REGISTRY = {
   "economy": { s: "p-chart-line-up", g: "app", i: { regular: [24, 232], bold: [20, 236] } },
   "edit": { s: "p-pencil-simple", g: "app", i: { bold: [28, 236], fill: [32, 232] } },
   "entertainment": { s: "p-film-slate", g: "app", i: { regular: [23.99, 224], bold: [20, 228] } },
+  "evidence": { s: "p-file-magnifying-glass", g: "admin", i: { bold: [36, 220], fill: [40, 216] } },
   "ext": { s: "p-arrow-square-out", g: "app", i: { bold: [28, 228] }, m: { d: "M216 104V40H152M216 40L136 120M120 72H48a8 8 0 0 0-8 8V208a8 8 0 0 0 8 8H176a8 8 0 0 0 8-8V136", x: [40, 216] } },
   "externalLink": { s: "p-arrow-square-out", g: "app", i: { bold: [28, 228] }, m: { d: "M216 104V40H152M216 40L136 120M120 72H48a8 8 0 0 0-8 8V208a8 8 0 0 0 8 8H176a8 8 0 0 0 8-8V136", x: [40, 216] } },
   "eye": { s: "p-eye", g: "shell", fa: 1, i: { bold: [3.97, 252.01], fill: [8, 248] } },
@@ -156,7 +157,7 @@ export const GLYPH_REGISTRY = {
   "salesPaused": { s: "p-pause-circle", g: "app", i: { bold: [20, 236], fill: [24, 232] } },
   "scrollText": { s: "p-scroll", g: "app", i: { bold: [4, 236], duo: [8, 232] } },
   "sealCheck": { s: "p-seal-check", g: "app", i: { bold: [12, 244] } },
-  "search": { s: "p-magnifying-glass", g: "app", i: { bold: [19.8, 236.05], duo: [23.64, 232] } },
+  "search": { s: "p-magnifying-glass", g: "app", i: { bold: [19.8, 236.05], fill: [24, 232.01], duo: [23.64, 232] } },
   "send": { s: "p-paper-plane-right", g: "app", i: { bold: [36.02, 244.05] } },
   "server": { s: "p-hard-drives", g: "app", i: { bold: [28, 228], fill: [32, 224] } },
   "settings": { s: "p-gear-six", g: "app", i: { bold: [12.03, 243.99] } },

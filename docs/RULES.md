@@ -670,15 +670,27 @@ that voids (on the closed list of grounds) is replaced by the first unused reser
 - **J = max(floor, R + S)**, with the floor (**TZS 1,000,000**) counted **before** the fee.
 - **F = round(13% × J)**, taken **only when k ≥ 1**. A no-winner week takes **no fee**.
 - **The levies come out of F**, exactly as §2.2: TRA and GBT of our fee, never of a player's payout.
-- **Each winning ticket's share = ⌊(J − F) / k⌋**, equal for every winner. The rounding remainder (under k shillings) goes to
-  the jackpot, never to the house.
+- **Each winning ticket's share = ⌊(J − F) / k⌋**, equal for every winner. The rounding remainder J − F − k·share (under k
+  shillings) carries as **carryOut = R + S + U − F − k·share**: the remainder itself when J = R + S, only the week's own
+  money left (R + S − F − k·share) when the floor raised J without a top-up, and nothing when U > 0 — U covers only F
+  and k·share, so the rest of the remainder stays in the guarantee, 50pick's own money (MR-25; the register still
+  prints the remainder). In the final week what carries stays in the jackpot account: no public week follows.
 - **The top-up U = max(0, F + k·share − (R + S))** comes from the guarantee, **only when k ≥ 1**, and is never rolled.
 - **No winner (k = 0): the whole of S rolls to the jackpot**, R stays carried, nothing is charged. The rollover is real money
   only and has **no cap**.
 - The winner floor of Invariant 1 does **not** apply: a Millionea share is a share of a jackpot, not a return on a stake.
 
-**The sunset.** Retiring the product is announced at least one full week ahead; the final week runs normally and everything
-the jackpot holds goes into it. A regulator-ordered stop refunds the current week. The ceremony is the Owner's alone.
+**The sunset.** The product retires through a final week, in one of three ways: a planned final week, named at least one
+full week before its sales open, announced on the hub and the home card from then on and never opened early; a stop
+ordered while a week is on sale, which makes that week final; or a stop ordered while no week is on sale and a week's
+results are being decided (its sales closed, not yet settled), which cannot take that week (it settles under its own
+rules; no 10 of 10 rolls over as always); the refusal names the Owner's next act — make the next week to open (once
+drafted) final, accepted at less than a full week's notice while that week's results are being decided, its buyers told
+at purchase. A stop between weeks takes the planned path (MR-30,
+OD-03; decided by the build lead on delegation, MASWALI-BUILD S6 rounds 2–3; `sunsetMaswali` on mln-s7-fix). The final
+week runs normally and everything the jackpot holds goes into it; after it no public week opens again, and what the
+jackpot account still holds stays there. A regulator-ordered stop refunds the current week (⏳ not built: OD-26's manual Compliance week
+void, before ACTIVE — until then the binding text does not state it). The ceremony is the Owner's alone.
 
 **Who may buy.** Real balance only — a purchase that would draw bonus money is refused. Accounts holding a staff role and
 accounts 50pick operates are refused. Every responsible-gambling gate applies (§2.9's refusals), and a ticket bought before a
@@ -692,8 +704,8 @@ cancelled inside the window for a full refund, and leaves the count, the commitm
 | **Decided** | Ali, 2026-10-16 — `docs/COMPLIANCE-DECISIONS.md` § "2026-10-16 · Maswali Millionea"; the rule set and its corrections are `docs/MASWALI-PLAN.md` §2 (MR-1…MR-32) and §9 |
 | **Enforced** | ⏳ in code from S3 (MASWALI-BUILD): `maswali-money.ts` computes the week (S2); `ledger.ts → maswaliSettlementEntries` refuses any group whose pool does not end at exactly 0 or whose winners differ (S1); `payout.ts` refuses to price a `jackpot-payout` week as a pool fee (S1) |
 | **Configured** | `maswali.config` (`src/lib/server/maswali-config.ts`, S1) — price, floor, fee, cap, open, close, buffer, void deadline, objection window, question rules; the Owner-only `maswali.licenceBasis` (`maswali-licence.ts`) gates any week opening |
-| **Stated** | ⏳ `/legal/rules/millionea` (S5, binding, its own version), the slip and the week page — every figure read from the week's snapshot. `/legal/terms` gains its Millionea sentence at launch (S8; OD-18: existing terms do not change) |
-| **Guarded by** | `npm run test:maswali-law` (+ `red:maswali-law`) · `npm run test:maswali-config` · `npm run test:maswali-ledger` · `npm run test:maswali-fence` · `npm run test:house-solvency` §3b · `npm run test:fee-model` |
+| **Stated** | ⏳ `/legal/rules/millionea` (S6 — binding, in en/sw/zh, its version and the hash of its text in `src/lib/millionea-rules-version.ts`), the slip and the week page, `/help`'s Millionea block, the help assistant's Millionea section (at the global ACTIVE only) and `/fairness`'s commitments — every figure read from the week's frozen rules, or the config's for the week to come. `/legal/terms` gains its Millionea sentence at launch (S8; OD-18: existing terms do not change) — drafted in all three languages in `docs/MASWALI-ARCHITECTURE.md` §9 |
+| **Guarded by** | `npm run test:maswali-law` (+ `red:maswali-law`) · `npm run test:maswali-config` · `npm run test:maswali-ledger` · `npm run test:maswali-fence` · `npm run test:house-solvency` §3b · `npm run test:fee-model` · `npm run test:maswali-fairness` (the binding text's version, hash and figures; the assistant's passage) · `npm run test:terms-cancellation` §4 |
 
 ---
 

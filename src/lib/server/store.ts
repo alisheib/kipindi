@@ -2080,6 +2080,9 @@ export type StoredObjection = {
   /** The verdict at the time of filing, so the audit trail shows what was
    *  actually being disputed even after a remedy changes the market. */
   outcomeAtFiling: string | null;
+  /** Maswali Millionea only (S6 review R2-11): the question objected to, as its canonical slot 1..15; null on every other
+   *  product. Kept by BOTH stores, so the week's evidence pack says which question an objection was about. */
+  questionOrdinal?: number | null;
 };
 
 /** F3 — a player's star on a market. Composite id `${marketId}:${userId}`. */
@@ -3606,7 +3609,8 @@ const memoryDb = {
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
   },
   objection: {
-    create: (o: StoredObjection): StoredObjection => { store.objections.set(o.id, o); return o; },
+    // R2-11 · the question an objection names is kept, null when it names none — the Postgres twin's shape exactly.
+    create: (o: StoredObjection): StoredObjection => { const row = { ...o, questionOrdinal: o.questionOrdinal ?? null }; store.objections.set(o.id, row); return row; },
     findById: (id: string): StoredObjection | null => store.objections.get(id) ?? null,
     update: (id: string, patch: Partial<StoredObjection>): StoredObjection | null => {
       const o = store.objections.get(id);

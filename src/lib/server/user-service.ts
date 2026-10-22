@@ -13,7 +13,7 @@
 import { runOutsideLock } from "./locks";
 import { audit, getAuditForActorDurable, type AuditEntry } from "./audit";
 import { db } from "./store";
-import { dsarKycView, dsarTxnView, dsarUserView } from "./privacy";
+import { dsarKycView, dsarTxnView, dsarUserView, maswaliDsarSection } from "./privacy";
 import { marketingDsarView } from "./marketing/dsar";
 import { destroySession } from "./session";
 import { revokeUserSessions } from "./session-registry";
@@ -83,9 +83,14 @@ function withoutHouseAuditKeys<T extends { entries: AuditEntry[] }>(page: T): T 
  * player page reads only the money rows, so it never runs the campaign read (up to 5,001 rows per number, one campaign
  * read each) and a failure in that read can never blank its money figures. ⛔ Both access doors — the player's own
  * download and the officer's DSAR bundle — take the default, the whole section.
+ * MASWALI-BUILD S6 · `millionea: false` leaves the ticket read out for the same caller and the same reason.
  */
-export async function exportUserData(userId: string, opts: { marketing?: boolean } = {}) {
+export async function exportUserData(userId: string, opts: { marketing?: boolean; millionea?: boolean } = {}) {
   const user = await db.user.findById(userId);
+  // MB-67 · the holder's tickets through the ONE ticket allowlist the officer's bundle uses too; this door is the owner's,
+  // so it carries each ticket's salt (MB-32). Null for a person with no Millionea row at all (no ticket, no seen mark),
+  // and then the key is left out.
+  const millionea = opts.millionea === false ? null : await maswaliDsarSection(userId, "owner");
   return {
     generatedAt: new Date().toISOString(),
     user: user ? dsarUserView(user) : null,
@@ -99,6 +104,7 @@ export async function exportUserData(userId: string, opts: { marketing?: boolean
     // house stake's rows among them exactly like their own bets, through the ONE allowlist both releasable doors share —
     // never the raw row (whose `houseBotId` key names the feature) and never a house exclusion (which would leave gaps).
     transactions: (await db.txn.findByUser(userId, 1000)).map(dsarTxnView),
+    ...(millionea ? { millionea } : {}),
     // U18b · the consent ledger, the stop list and the contact book — the SAME allowlist the officer's bundle uses.
     marketing: user && opts.marketing !== false ? await marketingDsarView(user) : null,
     /**

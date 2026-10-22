@@ -40,7 +40,7 @@ import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { injectDefect } from "./red-anchor.mjs";
 import { MUTATIONS } from "./anchors/house-bot-chatbot.anchors.mjs";
-import { runChatbotCases } from "./lib/house-bot-chatbot-cases.mts";
+import { runChatbotCases, CHAT_PROMPT_PIN } from "./lib/house-bot-chatbot-cases.mts";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -129,19 +129,19 @@ try {
      * for the other diff controls. A shadow with no refs would make 6.6 say NOT MEASURED, and chat.ts
      * mutations would then appear red for the wrong reason.
      */
-    // The suite measures §6.6 against the approved S11 checkpoint (8ce376ca0); this red drive hands it the shadow's own
-    // origin/main — the pristine copy — as its baseline (`runAgainst`, S5's f5a11a06a), so a mutated chat.ts differs for
-    // exactly the reason the assertion names. The shadow also carries that real checkpoint's chat blob under its ref
-    // (S7's 5c0cc5e38, 0.2), so it holds both baselines and neither is ever missing: a missing ref would leave the pristine
-    // positive control red and every chat mutation caught for the wrong reason.
+    // The suite measures §6.6 against the approved prompt checkpoint (`CHAT_PROMPT_PIN`, MASWALI-BUILD S6); this red drive
+    // hands it the shadow's own origin/main — the pristine copy — as its baseline (`runAgainst`, S5's f5a11a06a), so a
+    // mutated chat.ts differs for exactly the reason the assertion names. The shadow also carries that real checkpoint's chat
+    // blob under its ref (S7's 5c0cc5e38, 0.2), so it holds both baselines and neither is ever missing: a missing ref would
+    // leave the pristine positive control red and every chat mutation caught for the wrong reason.
     const chatPath = join(template, "src/app/_actions/chat.ts");
     const liveChat = readFileSync(chatPath);
-    const approvedChat = execFileSync("git", ["-C", ROOT, "show", "8ce376ca0:src/app/_actions/chat.ts"]);
+    const approvedChat = execFileSync("git", ["-C", ROOT, "show", `${CHAT_PROMPT_PIN}:src/app/_actions/chat.ts`]);
     git(template, ["init", "-q"]);
     writeFileSync(chatPath, approvedChat);
     git(template, ["add", "-A", "-f"]);
     git(template, ["-c", "user.email=red@local", "-c", "user.name=red", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "approved chat checkpoint"]);
-    git(template, ["update-ref", "refs/heads/8ce376ca0", "HEAD"]);
+    git(template, ["update-ref", `refs/heads/${CHAT_PROMPT_PIN}`, "HEAD"]);
     writeFileSync(chatPath, liveChat);
     git(template, ["add", "-A", "-f"]);
     git(template, ["-c", "user.email=red@local", "-c", "user.name=red", "-c", "commit.gpgsign=false", "commit", "--allow-empty", "-q", "-m", "pristine"]);
@@ -149,8 +149,8 @@ try {
     ok("0.1 · the shadow carries every file §6 reads, committed as its own origin/main",
        SHADOW_READS.every((rel) => existsSync(join(template, rel))) && git(template, ["rev-parse", "--short", "origin/main"]).trim().length >= 7,
        `${SHADOW_READS.length} file(s) · scratch origin/main ${git(template, ["rev-parse", "--short", "origin/main"]).trim()} · ${parent}`);
-    ok("0.2 · the shadow carries the real S11 chat checkpoint for §6.6",
-       execFileSync("git", ["-C", template, "show", "8ce376ca0:src/app/_actions/chat.ts"]).equals(approvedChat),
+    ok(`0.2 · the shadow carries the approved prompt checkpoint ${CHAT_PROMPT_PIN} for §6.6`,
+       execFileSync("git", ["-C", template, "show", `${CHAT_PROMPT_PIN}:src/app/_actions/chat.ts`]).equals(approvedChat),
        "the checkpoint ref resolves and contains the approved chat blob");
     ok("0.3 · the pristine shadow's chat.ts is byte-identical to the live source before any mutation",
        readFileSync(chatPath).equals(liveChat) &&

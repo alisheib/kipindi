@@ -382,6 +382,9 @@ console.log("Chain purge\n");
     houseBotRuntime: delegate("houseBotRuntime"), houseBotAlertOnce: delegate("houseBotAlertOnce"),
     houseBotEvent: delegate("houseBotEvent"), houseBotIntent: delegate("houseBotIntent"),
     houseBotTarget: delegate("houseBotTarget"), houseBotPress: delegate("houseBotPress"),
+    // MASWALI-BUILD S6 · Millionea's record (MB-67)
+    maswaliCycle: delegate("maswaliCycle"), maswaliQuestion: delegate("maswaliQuestion"),
+    maswaliTicket: delegate("maswaliTicket"), maswaliNoticeSeen: delegate("maswaliNoticeSeen"),
     // the purge's own targets
     comment: delegate("comment"), watchlist: delegate("watchlist"),
     marketSnapshot: delegate("marketSnapshot"), upDownRound: delegate("upDownRound"),
@@ -417,6 +420,8 @@ console.log("Chain purge\n");
     "position", "transaction", "ledgerEntry", "housePoolLedger", "auditLog", "upDownObservation",
     "houseBot", "houseBotControl", "houseBotRuntime", "houseBotAlertOnce",
     "houseBotEvent", "houseBotIntent", "houseBotTarget", "houseBotPress",
+    // MASWALI-BUILD S6 · MB-67 · Millionea's 7-year record — named here, never read out of the guard's own floor.
+    "maswaliCycle", "maswaliQuestion", "maswaliTicket", "maswaliNoticeSeen",
   ];
   for (const model of PROTECTED) {
     const missed = REQUIRED_MUTATORS.filter(
@@ -580,6 +585,33 @@ console.log("Chain purge\n");
   for (const m of STATUTORY_MODELS) {
     ok(`10: 🔴 the statutory singleton ${m} is protected`, isProtectedModel(m));
   }
+
+  /* ⭐ MASWALI-BUILD S6 · MB-67 · MILLIONEA'S FAMILY, read from the schema by its own rule. The week, its questions and the
+     seen marks hang off no money table, so the house rule could not see them (the ticket it could, through its Position).
+     Every table the schema puts in the family is protected, the floor is a subset of it, and the rule is driven on a
+     fixture: a table that OWNS a relation into the family is caught at any depth; the market a week points at is not. */
+  {
+    const { deriveMaswaliFamily, MASWALI_FAMILY_FLOOR } = await import("../src/lib/server/purge-protected.ts");
+    const mln = deriveMaswaliFamily(models);
+    const mlnEscaped = mln.filter((m) => !isProtectedModel(m));
+    ok("10: 🔴 MILLIONEA · every Millionea table the SCHEMA declares is protected — the week, its questions, its tickets and the seen marks",
+       mln.length >= 4 && mlnEscaped.length === 0, mlnEscaped.length ? `not protected: ${mlnEscaped.join(", ")}` : mln.join(", "));
+    const mlnFloorStale = (MASWALI_FAMILY_FLOOR as readonly string[]).filter((m) => !mln.includes(m));
+    ok("10: ⭐ MILLIONEA · …and its pinned FLOOR is a subset of what the schema derives", mlnFloorStale.length === 0, mlnFloorStale.join(", "));
+    const mf = deriveMaswaliFamily([
+      { name: "MaswaliCycle", fields: [{ name: "market", type: "PredictionMarket", ownsRelation: true }] },
+      { name: "PredictionMarket", fields: [{ name: "maswaliCycle", type: "MaswaliCycle" }] },
+      { name: "WeekEvidenceNote", fields: [{ name: "cycle", type: "MaswaliCycle", ownsRelation: true }] },
+      { name: "NoteAttachment", fields: [{ name: "note", type: "WeekEvidenceNote", ownsRelation: true }] },
+      { name: "Comment", fields: [{ name: "marketId", type: "String" }] },
+    ]);
+    ok("10: ⭐ MILLIONEA · the rule catches a table not named Maswali*, by a relation it OWNS into the family, at any depth",
+       mf.includes("WeekEvidenceNote") && mf.includes("NoteAttachment"), mf.join(", "));
+    ok("10: 🔴 MILLIONEA · CONTROL — the market a week points at stays OUT (a back-relation is not ownership), so the purge can still redact it",
+       !mf.includes("PredictionMarket") && !mf.includes("Comment") && !isProtectedModel("predictionMarket"), mf.join(", "));
+    ok("10: ⭐ MILLIONEA · CONTROL — `WeekEvidenceNote` is not protected TODAY, so the schema escape check above is live",
+       !isProtectedModel("WeekEvidenceNote"));
+  }
 }
 
 // ── 11 · THE LIVE-INTENT PRECONDITION — 04 A16, driven ──────────────────────
@@ -676,8 +708,10 @@ console.log("Chain purge\n");
      enforced.every((m) => documented.includes(m)),
      `guarded but undocumented: ${enforced.filter((m) => !documented.includes(m)).join(", ")}`);
   // 14 → 15 (MASWALI-BUILD S1): MaswaliTicket hangs off Position (rule ③), so a chain purge may never delete a ticket.
-  ok("12: ⭐ CONTROL — and there are really 15 of them, so neither side is empty",
-     documented.length === 15 && enforced.length === 15, `${documented.length} documented / ${enforced.length} enforced`);
+  // 15 → 18 (2026-10-18, MASWALI-BUILD S6, MB-67): Millionea's record is a family of its own (`deriveMaswaliFamily`) —
+  // MaswaliCycle, MaswaliQuestion and MaswaliNoticeSeen join MaswaliTicket, and the docblock names all four.
+  ok("12: ⭐ CONTROL — and there are really 18 of them, so neither side is empty",
+     documented.length === 18 && enforced.length === 18, `${documented.length} documented / ${enforced.length} enforced`);
   ok("12: the docblock states WHAT ENFORCES the list, not only what it is",
      /guardProtectedModels/.test(src) && /purge-protected\.ts/.test(src));
   ok("12: …and states that retention still deletes HouseBotAlertOnce, so the two facts do not read as a bug",

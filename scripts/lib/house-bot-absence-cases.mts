@@ -230,6 +230,13 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
       ["src/app/legal/rules/page.tsx", PHOS_R2A_PART2],
       ["src/app/legal/privacy/page.tsx", "8d126b819"],
       ["src/app/legal/responsible-gambling/page.tsx", W4],
+      // MASWALI-BUILD S6 lane L (2026-10-18) publishes the Maswali Millionea rules: the binding text in three languages
+      // (`_content-millionea.tsx`, its hash pinned with its version in `millionea-rules-version.ts`) and its route (gated: a
+      // hidden product's address answers as the 404). Pinned at 902afae56, the lane's squash commit, merged with its history
+      // into claude/maswali-s6-release (S6-INT 1), whose blobs are the two files as they stand. The rules page's third door
+      // (the chooser) and the dictionary are re-pinned at that merge in the follow-up commit.
+      ["src/app/legal/rules/_content-millionea.tsx", "902afae56"],
+      ["src/app/legal/rules/millionea/page.tsx", "902afae56"],
     ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };
     const extraBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_EXTRA.get(rel)}:${rel}`)); } catch { return null; } };

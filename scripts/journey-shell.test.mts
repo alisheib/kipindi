@@ -508,6 +508,9 @@ const EXPECTED: Record<string, Expect> = {
   "/notifications": A, "/results": A, "/live": A, "/leaderboard": A, "/fairness": A, "/help": A, "/watchlist": A,
   "/legal/agent-terms": A, "/legal/aml": A, "/legal/privacy": A, "/legal/responsible-gambling": A, "/legal/rules": A,
   "/legal/rules/up-down": A, "/legal/rules/yes-no": A, "/legal/terms": A,
+  // MASWALI-BUILD S6 (decided with the pages, as 1.census asks): Maswali Millionea's binding rules and a ticket's inclusion
+  // proof stand with the other rules and /fairness, in Akaunti — `/legal` and `/fairness` light it by prefix.
+  "/legal/rules/millionea": A, "/fairness/millionea/[serial]": A,
   "/proposals": A, "/proposals/[id]": A, "/proposals/new": A,
   "/agent": A, "/agent/apply": A, "/agent/invite/[token]": A, "/agent/status": A,
   "/auth/2fa": AUTH, "/auth/admin": AUTH, "/auth/forgot-password": AUTH, "/auth/login": AUTH, "/auth/otp": AUTH,
@@ -2238,6 +2241,9 @@ const EXTERNAL: ReadonlyArray<{ route: string; file: string; cite: string; why: 
   { route: "/auth/verify-email", file: "src/lib/server/email-verification.ts", cite: "/auth/verify-email?token=", why: "the confirmation link, sent by email" },
   { route: "/s", file: "src/lib/marketing/footer.ts", cite: 'OPTOUT_PATH = "/s/"', why: "a marketing SMS's opt-out link that lost its token" },
   { route: "/s/[token]", file: "src/lib/marketing/footer.ts", cite: 'OPTOUT_PATH = "/s/"', why: "the opt-out link in every marketing SMS" },
+  // MASWALI-BUILD S6 (2026-10-18): the ticket page links its proof through this helper (a `.ts` link is no edge), and the
+  // proof is its owner's alone — no door could name it for a reader the census walks.
+  { route: "/fairness/millionea/[serial]", file: "src/lib/server/maswali-fairness.ts", cite: "/fairness/millionea/${encodeURIComponent(serial)}", why: "a Millionea ticket's inclusion proof, linked from its owner's ticket through `millioneaProofHref`" },
   // (`/offline` left with its census entry, 2026-10-09: a route handler's document, not a page — see EXPECTED.)
 ];
 /**
