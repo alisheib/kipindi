@@ -25,47 +25,52 @@ const LENS_WIDTHS = ["w-[64px]", "w-[112px]", "w-[120px]", "w-[104px]"];
 export function MillioneaTicketsGhost({ journeyHead }: { journeyHead?: ReactNode }) {
   const { t } = useT();
   return (
-    <PageContainer tier="reading" className="space-y-6">
-      {journeyHead ?? (
-        <div className="space-y-3" aria-hidden>
-          <BackLinkGhost />
-          <PageHeader title={<GhostLine className="w-[160px]" />} />
-        </div>
-      )}
-      <div className={QUERY_BAR_CLASS} aria-hidden>
-        <div className={QUERY_BAR_ROW1_ALONE_CLASS}>
-          <div className={QUERY_STRIP_CLASS}>
-            {LENS_WIDTHS.map((w, i) => <div key={i} className={`h-[44px] ${w} shrink-0 rounded-pill bg-bg-overlay`} />)}
+    <PageContainer tier="reading">
+      {/* The page this drawing stands for, for the hop drive (`qa:millionea-ghost-hops` names a bar by its nearest marked
+          ancestor): one box-less wrapper (`contents`) around the whole drawing, carrying the drawing's rhythm — the
+          container spaces only its own children — so not a band moves. */}
+      <div className="contents space-y-6" data-ghost-page="tickets">
+        {journeyHead ?? (
+          <div className="space-y-3" aria-hidden>
+            <BackLinkGhost />
+            <PageHeader title={<GhostLine className="w-[160px]" />} />
+          </div>
+        )}
+        <div className={QUERY_BAR_CLASS} aria-hidden>
+          <div className={QUERY_BAR_ROW1_ALONE_CLASS}>
+            <div className={QUERY_STRIP_CLASS}>
+              {LENS_WIDTHS.map((w, i) => <div key={i} className={`h-[44px] ${w} shrink-0 rounded-pill bg-bg-overlay`} />)}
+            </div>
           </div>
         </div>
-      </div>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2" aria-hidden>
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="flex min-w-0 flex-col rounded-xl border border-border bg-bg-elevated p-4 kp-shimmer-track">
-            <div className="flex items-center justify-between gap-2">
-              <GhostBar className="h-[18px] w-[64px] rounded-pill" />
-              <GhostBar className="h-[18px] w-[96px] rounded-pill" />
-            </div>
-            <div className="mt-3 flex flex-col gap-1">
-              <div className="flex flex-col gap-1.5">
-                <GhostBar className="h-[18px] w-[220px] max-w-full" />
-                <GhostBar className="h-[14px] w-[86px]" />
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2" aria-hidden>
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="flex min-w-0 flex-col rounded-xl border border-border bg-bg-elevated p-4 kp-shimmer-track">
+              <div className="flex items-center justify-between gap-2">
+                <GhostBar className="h-[18px] w-[64px] rounded-pill" />
+                <GhostBar className="h-[18px] w-[96px] rounded-pill" />
               </div>
-              <GhostBar className="h-[20px] w-[96px]" />
+              <div className="mt-3 flex flex-col gap-1">
+                <div className="flex flex-col gap-1.5">
+                  <GhostBar className="h-[18px] w-[220px] max-w-full" />
+                  <GhostBar className="h-[14px] w-[86px]" />
+                </div>
+                <GhostBar className="h-[20px] w-[96px]" />
+              </div>
+              <div className="mt-3 grid grid-cols-[minmax(max-content,2fr)_minmax(0,3fr)] gap-3">
+                {/* The price and the payout: a micro label over an xs figure (the Stat's own rung) — 26px, measured. */}
+                <GhostBar className="h-[26px] w-[96px]" />
+                <GhostBar className="h-[26px] w-full" />
+              </div>
+              <div className="mt-3 flex flex-col gap-1">
+                <GhostBar className="h-[20px] w-[172px] max-w-full" />
+                <GhostBar className="h-[20px] w-[150px] max-w-full" />
+              </div>
             </div>
-            <div className="mt-3 grid grid-cols-[minmax(max-content,2fr)_minmax(0,3fr)] gap-3">
-              {/* The price and the payout: a micro label over an xs figure (the Stat's own rung) — 26px, measured. */}
-              <GhostBar className="h-[26px] w-[96px]" />
-              <GhostBar className="h-[26px] w-full" />
-            </div>
-            <div className="mt-3 flex flex-col gap-1">
-              <GhostBar className="h-[20px] w-[172px] max-w-full" />
-              <GhostBar className="h-[20px] w-[150px] max-w-full" />
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
+        <span className="sr-only">{t.common.loading}</span>
       </div>
-      <span className="sr-only">{t.common.loading}</span>
     </PageContainer>
   );
 }

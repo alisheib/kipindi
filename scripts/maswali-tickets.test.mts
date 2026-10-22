@@ -30,6 +30,8 @@
  *   §20 L14  no dead lock moment
  *   §21 M9   the ghosts: three kinds where three are drawn; one strip row; the ticket's 108px Seal Line box
  *   §22      the hub's held row (the hub critic's L4 + L20, the lead's lines)
+ *   §25      the hop: the list's loading state draws the DESTINATION's drawing (a ticket's own on a ticket); each drawing
+ *            names its page (`data-ghost-page`) on one box-less wrapper around it, which moves nothing; the kit untouched
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect in an IN-MEMORY copy — a source string, a dictionary value,
  *    or a component COMPILED from a planted copy of its own source — and requires the check it targets to fail; a plant whose
@@ -114,6 +116,8 @@ const FILES = {
   emptyText: "src/components/ui/empty-state-text.ts",
   empty: "src/components/ui/empty-state.tsx",
   mlnEmpty: "src/components/maswali/maswali-empty-state.tsx",
+  listLoading: "src/app/millionea/tickets/loading.tsx",
+  pageContainer: "src/components/layout/page-container.tsx",
   headGhost: "src/components/journey/tickets/tickets-ghost.tsx",
   switch: "src/components/journey/tickets/ticket-switch.tsx",
   tabs: "src/components/ui/tabs.tsx",
@@ -576,18 +580,18 @@ check("11.2", `§T5 · the kit EmptyState WITHOUT a part (every caller but Milli
   return d;
 });
 
-/** Every `<EmptyState …>` element in a TSX source: its line, and whether it asks for a part or spreads its props (a spread
- *  could carry one). A parse, not a pattern: an attribute is an attribute wherever it sits. */
-type EmptyCall = { file: string; line: number; part: boolean; spread: boolean };
-const emptyCallsIn = (file: string, source: string): EmptyCall[] => {
+/** Every `<tag …>` element in a TSX source: its line, and whether it passes `attr` or spreads its props (a spread could
+ *  carry it). A parse, not a pattern: an attribute is an attribute wherever it sits. */
+type JsxCall = { file: string; line: number; attr: boolean; spread: boolean };
+const jsxCallsIn = (file: string, source: string, tag: string, attr: string): JsxCall[] => {
   const sf = ts.createSourceFile(file, source, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TSX);
-  const out: EmptyCall[] = [];
+  const out: JsxCall[] = [];
   const visit = (n: ts.Node) => {
-    if ((ts.isJsxSelfClosingElement(n) || ts.isJsxOpeningElement(n)) && n.tagName.getText(sf) === "EmptyState") {
+    if ((ts.isJsxSelfClosingElement(n) || ts.isJsxOpeningElement(n)) && n.tagName.getText(sf) === tag) {
       const props = n.attributes.properties;
       out.push({
         file, line: sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1,
-        part: props.some((a) => ts.isJsxAttribute(a) && a.name.getText(sf) === "bodyPart"),
+        attr: props.some((a) => ts.isJsxAttribute(a) && a.name.getText(sf) === attr),
         spread: props.some((a) => ts.isJsxSpreadAttribute(a)),
       });
     }
@@ -596,6 +600,7 @@ const emptyCallsIn = (file: string, source: string): EmptyCall[] => {
   visit(sf);
   return out;
 };
+const emptyCallsIn = (file: string, source: string) => jsxCallsIn(file, source, "EmptyState", "bodyPart");
 const SRC_TSX = (() => {
   const out: string[] = [];
   const walk = (dir: string) => {
@@ -615,8 +620,8 @@ check("11.3", `the census: of every <EmptyState> the app draws (${REAL_EMPTY_CAL
   const d: string[] = [];
   const calls = emptyCallsOf(w);
   need(d, calls.length >= 60, `only ${calls.length} calls read`);
-  const asking = calls.filter((c) => c.part || c.spread);
-  need(d, asking.length === 1 && asking[0].file === FILES.mlnEmpty && asking[0].part, `a part or a spread at ${j(asking.map((c) => `${c.file}:${c.line}`))}`);
+  const asking = calls.filter((c) => c.attr || c.spread);
+  need(d, asking.length === 1 && asking[0].file === FILES.mlnEmpty && asking[0].attr, `a part or a spread at ${j(asking.map((c) => `${c.file}:${c.line}`))}`);
   const users = [...DISK_MLN_EMPTY_USERS, ...WORLD_TSX.filter((k) => DRAWS_MLN_EMPTY.test(decomment(w.src[k]))).map((k) => FILES[k])];
   need(d, users.length > 0 && users.every((f) => f.startsWith("src/app/millionea/")), `Millionea's empty state is drawn outside Millionea: ${j(users)}`);
   const list = code(w, "list");
@@ -982,6 +987,76 @@ check("24.2", "M9 · the ticket's loading drawing draws the free cancel's band (
   return d;
 });
 
+// ── §25 · the hop: the destination's own drawing (the lead's round-2 item, 2026-10-22; REGISTER measured the shape) ──────
+/** A drawing at an address, as the router draws it there — during a move `usePathname()` already names the destination. */
+const atPath = (l: Locale, path: string, el: unknown) =>
+  renderToStaticMarkup(h(AppRouterContext.Provider, { value: ROUTER }, h(PathnameContext.Provider, { value: path }, h(I18nProvider as never, { initial: l } as never, el as never))));
+type ListGhostMod = { MillioneaTicketsGhost: unknown };
+type TicketGhostMod = { MillioneaTicketGhost: unknown };
+/** The two drawings as the world writes them, and as 7e9a314f0 drew them. */
+const listGhostOf = (w: World) => (w.src.listGhost === REAL.src.listGhost ? req("../src/app/millionea/tickets/tickets-ghost.tsx") : compiled(FILES.listGhost, w.src.listGhost)) as ListGhostMod;
+const ticketGhostOf = (w: World) => (w.src.ticketGhost === REAL.src.ticketGhost ? req("../src/app/millionea/tickets/[serial]/ticket-ghost.tsx") : compiled(FILES.ticketGhost, w.src.ticketGhost)) as TicketGhostMod;
+const listGhostOld = compiled<ListGhostMod>(FILES.listGhost, atRelease(FILES.listGhost));
+const ticketGhostOld = compiled<TicketGhostMod>(FILES.ticketGhost, atRelease(FILES.ticketGhost));
+const HOPS: ReadonlyArray<readonly [string, "tickets" | "ticket"]> = [
+  ["/millionea/tickets", "tickets"], [`/millionea/tickets/${SERIAL}`, "ticket"], [`/millionea/tickets/${SERIAL}/more`, "tickets"],
+];
+check("25.1", "the hop: Tiketi zangu's loading state draws the DESTINATION's own drawing, picked by the address being moved to (the platform's `RoutePick`) — the list's bands on /millionea/tickets, the ticket's own on /millionea/tickets/<serial> (never the list's bands over a ticket), the list's on anything deeper — in sw/en/zh; synchronous, it asks the server nothing", (w) => {
+  const d: string[] = [];
+  const loading = (w.src.listLoading === REAL.src.listLoading ? req("../src/app/millionea/tickets/loading.tsx") : compiled(FILES.listLoading, w.src.listLoading)) as { default: unknown };
+  const { MillioneaTicketsGhost } = listGhostOf(REAL), { MillioneaTicketGhost } = ticketGhostOf(REAL);
+  for (const l of LOCALES) for (const [path, want] of HOPS) {
+    const got = atPath(l, path, h(loading.default as never));
+    const own = atPath(l, path, h((want === "ticket" ? MillioneaTicketGhost : MillioneaTicketsGhost) as never));
+    if (got !== own && d.length < 3) d.push(`${l} ${path}: the loading state draws the "${/data-ghost-page="([^"]*)"/.exec(got)?.[1] ?? "?"}" drawing, not the ${want}'s`);
+  }
+  need(d, !/\basync\b|\bawait\b|@\/lib\/server|getServerT|\bcookies\(|\bheaders\(/.test(code(w, "listLoading")) && !/^\s*["']use client["']/.test(w.src.listLoading), "the loading file asks the server, or became a client module");
+  return d;
+});
+check("25.2", "each drawing names the page it stands for (`data-ghost-page` = \"tickets\" / \"ticket\": a value, not a word) on ONE box-less wrapper (`contents`), the container's first child, for the hop drive (it names a bar by its nearest marked ancestor); and stays wordless — in sw/en/zh its one text is the screen reader's \"loading\"", (w) => {
+  const d: string[] = [];
+  const { MillioneaTicketsGhost } = listGhostOf(w), { MillioneaTicketGhost } = ticketGhostOf(w);
+  for (const l of LOCALES) {
+    const loadingWord = String((w.dict[l].common as Record<string, unknown>).loading);
+    for (const [name, Ghost, path] of [["tickets", MillioneaTicketsGhost, "/millionea/tickets"], ["ticket", MillioneaTicketGhost, `/millionea/tickets/${SERIAL}`]] as const) {
+      const m = atPath(l, path, h(Ghost as never));
+      need(d, new RegExp(`^<div data-measure="[a-z]+" class="[^"]*"><div class="contents space-y-\\d+" data-ghost-page="${name}">`).test(m) && count(m, "data-ghost-page=") === 1, `${l}: the ${name} drawing does not name its page on one wrapper around it (${m.slice(0, 120)})`);
+      need(d, textOf(m) === loadingWord, `${l}: the ${name} drawing says "${textOf(m)}"`);
+    }
+  }
+  return d;
+});
+/** 7e9a314f0's drawing with the mark put in: the container's rhythm moved onto a box-less wrapper that holds the whole
+ *  drawing, the container keeping its tier and padding — nothing else. */
+const markedAsRelease = (old: string, name: string) => old
+  .replace(/^<div data-measure="([a-z]+)" class="([^"]*) (space-y-\d+)">/, (_m, tier: string, base: string, rhythm: string) => `<div data-measure="${tier}" class="${base}"><div class="contents ${rhythm}" data-ghost-page="${name}">`)
+  .replace(/<\/div>$/, "</div></div>");
+check("25.3", "the mark moves nothing: inside its box-less wrapper each drawing is byte for byte 7e9a314f0's — the wrapper carries the drawing's rhythm (the container spaces only its own children), the container keeps its tier and padding — in sw/en/zh, with the journey's head and with the free cancel's band; the kit PageContainer is untouched", (w) => {
+  const d: string[] = [];
+  need(d, w.src.pageContainer === atRelease(FILES.pageContainer), "the kit PageContainer changed");
+  const { MillioneaTicketsGhost } = listGhostOf(w), { MillioneaTicketGhost } = ticketGhostOf(w);
+  const hint = req("../src/components/maswali/maswali-ghost-hint.tsx") as HintMod;
+  const head = h("div", { "data-head": "" });
+  for (const l of LOCALES) {
+    const cases: Array<[string, unknown, unknown, string, Record<string, unknown>]> = [
+      ["tickets", listGhostOld.MillioneaTicketsGhost, MillioneaTicketsGhost, "/millionea/tickets", {}],
+      ["tickets", listGhostOld.MillioneaTicketsGhost, MillioneaTicketsGhost, "/millionea/tickets", { journeyHead: head }],
+      ["ticket", ticketGhostOld.MillioneaTicketGhost, MillioneaTicketGhost, `/millionea/tickets/${SERIAL}`, {}],
+      ["ticket", ticketGhostOld.MillioneaTicketGhost, MillioneaTicketGhost, "/millionea/tickets/MLN-2026-W49-000091", {}],
+    ];
+    const drawn = asClient(() => {
+      hint.noteFreeCancel("MLN-2026-W49-000091", Date.now() + 600_000); // the last case draws the free cancel's band
+      return cases.map(([, Old, Now, path, props]) => [atPath(l, path, h(Old as never, props as never)), atPath(l, path, h(Now as never, props as never))]);
+    });
+    need(d, drawn[3][1].includes('data-ghost-band="free-cancel"'), `${l}: the band case drew no band`);
+    cases.forEach(([name], i) => {
+      const [old, now] = drawn[i];
+      need(d, now !== old && now === markedAsRelease(old, name), `${l} ${name} #${i}: not 7e9a314f0's drawing with the mark put in (${now.slice(0, 140)})`);
+    });
+  }
+  return d;
+});
+
 /* ── run ─────────────────────────────────────────────────────────────────────────────────────────────────────────── */
 const runAll = (w: World, quiet: boolean) => {
   const failed: string[] = [];
@@ -1082,6 +1157,15 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["M9 — a note kept on the server too", "24.1", plantSrc("hint", '  if (typeof window === "undefined" || !Number.isFinite(until)) return;\n', "  if (!Number.isFinite(until)) return;\n")],
   ["M9 — the ticket's drawing blind to its door", "24.2", plantSrc("ticketGhost", "const cancelOpen = freeCancelKnownOpen(ticketSerialOf(usePathname()), Date.now());", "const cancelOpen = false && freeCancelKnownOpen(ticketSerialOf(usePathname()), Date.now());")],
   ["M9 — the list hands its cards no window", "24.2", plantSrc("list", "                cancelUntil={cancelUntil.get(row.serial)}\n", "")],
+  ["the hop undone — the list's bands over a ticket (one drawing for every address)", "25.1", plantSrc("listLoading", "      patterns={[[`^${LIST}/[^/]+$`, <MillioneaTicketGhost />]]}\n", "")],
+  ["the ticket's pattern a prefix (a deeper address takes the ticket's drawing)", "25.1", plantSrc("listLoading", "`^${LIST}/[^/]+$`", "`^${LIST}/`")],
+  ["the loading file asks the server (an async read before the gate)", "25.1", plantSrc("listLoading", "export default function MillioneaTicketsLoading() {", "export default async function MillioneaTicketsLoading() {")],
+  ["the list's drawing names no page", "25.2", plantSrc("listGhost", ' data-ghost-page="tickets"', "")],
+  ["the ticket's mark on an inner element, not around the drawing", "25.2", plantSrc("ticketGhost", '<div className="contents space-y-5" data-ghost-page="ticket">\n        <BackLinkGhost />', '<div className="contents space-y-5">\n        <BackLinkGhost />\n        <div data-ghost-page="ticket" />')],
+  ["a word drawn in a loading drawing", "25.2", plantSrc("ticketGhost", "        <BackLinkGhost />\n        <GhostCard", "        <BackLinkGhost />\n        <p>Tiketi</p>\n        <GhostCard")],
+  ["the mark's wrapper given a box (no `contents`)", "25.3", plantSrc("listGhost", '<div className="contents space-y-6" data-ghost-page="tickets">', '<div className="space-y-6" data-ghost-page="tickets">')],
+  ["the rhythm left behind (the wrapper's bands lose their spacing)", "25.3", plantSrc("ticketGhost", '<div className="contents space-y-5" data-ghost-page="ticket">', '<div className="contents" data-ghost-page="ticket">')],
+  ["the kit changed for the mark", "25.3", plantSrc("pageContainer", "      data-empty-state-owner={emptyStateOwner}\n", "      data-empty-state-owner={emptyStateOwner}\n      data-ghost-page={id}\n")],
 ];
 let caught = 0;
 for (const [name, target, world] of PLANTS) {
