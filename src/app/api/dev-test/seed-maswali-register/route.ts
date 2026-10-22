@@ -30,7 +30,7 @@ import { db } from "@/lib/server/store";
 import type { StoredUser, StoredWallet } from "@/lib/server/store";
 import { randomId } from "@/lib/server/crypto";
 import {
-  attestParity, closeWeek, createWeek, openWeek, purchaseMaswaliTickets, rolloutSells, sealQuestion, sunsetMaswali, SUNSET_WORD, voidWeek,
+  attestParity, closeWeek, createWeek, openWeek, purchaseMaswaliTickets, readDraftVersion, rolloutSells, sealQuestion, sunsetMaswali, SUNSET_WORD, voidWeek,
   type DraftQuestionInput,
 } from "@/lib/server/maswali-service";
 import { millioneaStateNow } from "@/lib/server/millionea-switch";
@@ -101,7 +101,7 @@ async function player(balance: number, role: "PLAYER" | "MODERATOR" = "PLAYER", 
 async function opened(ms: number) {
   const c = await createWeek({ weekStartMs: ms, questions: questions(ms), officerId: OWNER, now: new Date(ms - 3 * DAY) });
   if (!c.ok) throw new Error(`draft: ${c.error}`);
-  const a = await attestParity({ weekId: c.week.id, officerId: "usr_dev_reader" });
+  const a = await attestParity({ weekId: c.week.id, officerId: "usr_dev_reader", readVersion: await readDraftVersion(c.week.id) });
   if (!a.ok) throw new Error(`attest: ${a.error}`);
   const o = await openWeek({ weekId: c.week.id, officerId: OWNER, guarantee: guaranteeReader, now: new Date(ms + 60_000) });
   if (!o.ok) throw new Error(`open: ${o.error}`);
