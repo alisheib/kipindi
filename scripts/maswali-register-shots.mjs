@@ -24,10 +24,13 @@
  * chat bubble its D15 yield (PLATFORM, merged: at rest over a line of text or a figure it fades to the platform's
  * `--state-yield-opacity`, read from the page — .50, at which a covered figure still meets its contrast minimum), the Needle
  * its census rest (≤ 0.3). A control above its rest is a failure. Every tile waits until the bubble's opacity has stopped
- * moving (its yield runs on `--t-quick`), so a tile never catches it mid-fade. On every page, the fact separator inside a
- * tracked mono eyebrow ("Reserves · A1–A5") is measured against the same words typed with " · " in the same eyebrow (a
- * `SEP` line; within 1px). How to play's example is played and frames are captured at fixed offsets, with the OS's reduced motion and
- * without (`<scenario>/motion/`).
+ * moving (its yield runs on `--t-quick`), so a tile never catches it mid-fade. On every page, each fact list's separator
+ * is measured against the same words typed with " · " in the same place (a `SEP` line): inside a tracked mono eyebrow
+ * ("Reserves · A1–A5") or the numerals' mono it must match within 1px, and a control undoes the eyebrow rule in the page
+ * (the round-1 0.9em) for the same judge to catch (`SEP′`); a list in the body face is printed for the record. How to
+ * play's example is played and frames are captured at fixed offsets, with the OS's reduced motion and without
+ * (`<scenario>/motion/`); and its loading drawing is caught on the way in from the register (a throttled client move): the
+ * swap card's button bar stands at the landed button's height (a `GHOST` line; page name `how-ghost`).
  * A focused re-shoot: MASWALI_SHOTS_PAGES (page names), MASWALI_SHOTS_LOCALES, MASWALI_SHOTS_WIDTHS, MASWALI_SHOTS_SCROLL=0.
  */
 import { chromium } from "playwright";
@@ -129,46 +132,63 @@ async function still(page) {
   }
 }
 
-/** The lead's round-2 item 3: every fact list inside a tracked mono eyebrow ("Reserves · A1–A5", the fact list's separator
- *  under HUB's L1 rule `.eyebrow .kp-mln-facts { --mln-sep: … }`) measured against the same two facts TYPED with " · " in a
- *  copy of the same eyebrow: the gap from the first fact's last glyph to the second's first glyph, in px. */
-async function separators(page) {
-  return page.evaluate(() => {
-    const textNodes = (el) => {
-      const out = [];
-      const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (n.parentElement?.closest(".sr-only") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) });
-      for (let n = walk.nextNode(); n; n = walk.nextNode()) if (n.textContent.trim()) out.push(n);
-      return out;
-    };
-    const edge = (nodes, side) => {
-      const xs = nodes.flatMap((n) => { const r = document.createRange(); r.selectNodeContents(n); return [...r.getClientRects()].filter((q) => q.width > 0).map((q) => q[side]); });
-      return side === "right" ? Math.max(...xs) : Math.min(...xs);
-    };
-    const out = [];
-    for (const list of document.querySelectorAll(".eyebrow .kp-mln-facts")) {
-      if (list.getClientRects().length === 0) continue;
-      const facts = [...list.children].filter((c) => c.classList.contains("kp-mln-fact"));
-      if (facts.length < 2) continue;
-      const a = textNodes(facts[0]), b = textNodes(facts[1]);
-      if (!a.length || !b.length) continue;
-      const one = a.map((n) => n.textContent).join(""), two = b.map((n) => n.textContent).join("");
-      const gap = edge(b, "left") - edge(a, "right");
-      // The same words typed beside the list, inside the same eyebrow (its face, size, case and tracking inherited): the
-      // gap " · " leaves between them.
-      const host = list.parentElement;
-      const typed = document.createElement("span");
-      typed.style.cssText = "position:absolute;visibility:hidden;white-space:nowrap;left:0;top:0";
-      typed.textContent = `${one} · ${two}`;
-      host.appendChild(typed);
-      const t = typed.firstChild;
-      const r1 = document.createRange(); r1.setStart(t, 0); r1.setEnd(t, one.length);
-      const r2 = document.createRange(); r2.setStart(t, one.length + 3); r2.setEnd(t, one.length + 3 + two.length);
-      const typedGap = r2.getBoundingClientRect().left - r1.getBoundingClientRect().right;
-      typed.remove();
-      out.push({ words: `${one} · ${two}`, gap: Math.round(gap * 10) / 10, typed: Math.round(typedGap * 10) / 10 });
+/** The lead's round-2 item 3 — the routed `--mln-sep` question (round 1 read "AKIBA·A1–A5" with no room either side of its
+ *  dot, at the fact list's 0.9em). Every fact list that draws its marks inline, its first two facts on one line, measured
+ *  against the same two facts TYPED with " · " in a copy beside it (the list's own face, size, case and tracking inherited):
+ *  the gap from the first fact's last glyph to the second's first glyph, in px. A list in a tracked mono eyebrow ("Reserves
+ *  · A1–A5") or in the numerals' mono must space them as the typed " · " does (HUB's L1 rule, `--mln-sep: calc(3ch +
+ *  0.42em)` / `3ch`); a list in the body face is printed for the record (the base 0.9em). With `plant`, the eyebrow rule
+ *  is undone in the page first — the round-1 0.9em restored, Chinese too — the control the same judge must catch. */
+async function separators(page, plant = false) {
+  return page.evaluate((plant) => {
+    let undo = null;
+    if (plant) {
+      undo = document.createElement("style");
+      undo.textContent = ".eyebrow .kp-mln-facts, .kp-mln-facts.eyebrow { --mln-sep: 0.9em !important; }";
+      document.head.appendChild(undo);
     }
-    return out;
-  });
+    try {
+      const textNodes = (el) => {
+        const out = [];
+        const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (n.parentElement?.closest(".sr-only") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) });
+        for (let n = walk.nextNode(); n; n = walk.nextNode()) if (n.textContent.trim()) out.push(n);
+        return out;
+      };
+      /** The first fact's last line box and the second's first, from their own text (a fact may wrap inside itself). */
+      const rectAt = (node, last) => { const r = document.createRange(); r.selectNodeContents(node); const q = [...r.getClientRects()].filter((x) => x.width > 0); return last ? q[q.length - 1] : q[0]; };
+      const out = [];
+      for (const list of document.querySelectorAll(".kp-mln-facts")) {
+        if (list.getClientRects().length === 0 || getComputedStyle(list).flexDirection === "column") continue;
+        const facts = [...list.children].filter((c) => c.classList.contains("kp-mln-fact"));
+        if (facts.length < 2) continue;
+        const a = textNodes(facts[0]), b = textNodes(facts[1]);
+        if (!a.length || !b.length) continue;
+        const end = rectAt(a[a.length - 1], true), start = rectAt(b[0], false);
+        // Two facts on two lines have no separator between them to measure.
+        if (!end || !start || Math.abs(end.top - start.top) > end.height / 2) continue;
+        // The facts' own words (a space between two runs is a text node of its own), as a reader and the typed copy read them.
+        const words = (fact) => [...fact.childNodes].map((n) => (n instanceof Element && n.classList.contains("sr-only") ? "" : n.textContent)).join("").replace(/\s+/g, " ").trim();
+        const one = words(facts[0]), two = words(facts[1]);
+        const host = list.parentElement;
+        const typed = document.createElement("span");
+        typed.style.cssText = "position:absolute;visibility:hidden;white-space:nowrap;left:0;top:0";
+        typed.textContent = `${one} · ${two}`;
+        host.appendChild(typed);
+        const t = typed.firstChild;
+        const r1 = document.createRange(); r1.setStart(t, 0); r1.setEnd(t, one.length);
+        const r2 = document.createRange(); r2.setStart(t, one.length + 3); r2.setEnd(t, one.length + 3 + two.length);
+        const typedGap = r2.getBoundingClientRect().left - r1.getBoundingClientRect().right;
+        typed.remove();
+        const cs = getComputedStyle(facts[1]);
+        const kind = list.matches(".eyebrow .kp-mln-facts, .kp-mln-facts.eyebrow") ? "eyebrow" : list.matches(".font-mono .kp-mln-facts, .kp-mln-facts.font-mono") ? "mono" : "body";
+        out.push({ kind, words: `${one} · ${two}`, gap: Math.round((start.left - end.right) * 10) / 10, typed: Math.round(typedGap * 10) / 10,
+          size: cs.fontSize, tracking: cs.letterSpacing, face: cs.fontFamily.split(",")[0].trim() });
+      }
+      return out;
+    } finally {
+      undo?.remove();
+    }
+  }, plant);
 }
 
 /** The page's lead tile, then one tile per scroll step down to its end (240px of overlap), each checked for a cover. */
@@ -244,9 +264,17 @@ async function pass1(label, pages) {
           const money = await page.locator('[data-testid="millionea-register-week"] .amount').count();
           ok(`${tag} · a running week's page states no money`, money === 0, `${money} figures`);
         }
-        for (const s of await separators(page)) {
-          console.log(`SEP ${tag} · "${s.words}" · fact list ${s.gap}px · typed ${s.typed}px`);
-          ok(`${tag} · the eyebrow's fact separator spaces "${s.words}" as the typed " · " does (within 1px)`, Math.abs(s.gap - s.typed) <= 1, `${s.gap} vs ${s.typed}`);
+        const seps = await separators(page);
+        for (const s of seps) {
+          console.log(`SEP ${tag} · ${s.kind} (${s.face} ${s.size}, tracking ${s.tracking}) · "${s.words}" · fact list ${s.gap}px · typed ${s.typed}px`);
+          if (s.kind !== "body") ok(`${tag} · the ${s.kind} fact list spaces "${s.words}" as the typed " · " does (within 1px)`, Math.abs(s.gap - s.typed) <= 1, `${s.gap} vs ${s.typed}`);
+        }
+        const eyebrows = seps.filter((s) => s.kind === "eyebrow").length;
+        if (eyebrows > 0) {
+          const red = (await separators(page, true)).filter((s) => s.kind === "eyebrow");
+          console.log(`SEP′ ${tag} · CONTROL (the eyebrow rule undone: 0.9em) · ${red.map((s) => `"${s.words}" ${s.gap}px vs typed ${s.typed}px`).join(" | ")}`);
+          ok(`${tag} · CONTROL · with the eyebrow rule undone in the page (the round-1 0.9em), the same judge reports each of the ${eyebrows} eyebrow lists`,
+            red.length === eyebrows && red.every((s) => Math.abs(s.gap - s.typed) > 1), JSON.stringify(red));
         }
         // A ledger is drawn on a final week's page and in How's worked weeks: there, a resting control must clear its figures.
         await shoot(page, `${label === "main" ? "" : `${label}-`}${name}`, locale, width, name === "how" || (!!kind && !RUNNING.has(kind)));
@@ -297,6 +325,64 @@ if (SCENARIO !== "states" && wantPage("how")) {
       await card.screenshot({ path: `${OUT}/motion/${tag}-f99-end.png` });
       ok(`${tag} · the button keeps its box across the swap`, !!before && !!after && Math.abs(before.width - after.width) < 1 && Math.abs(before.height - after.height) < 1, JSON.stringify({ before, after }));
       ok(`${tag} · the example says it ended once the token landed`, (status ?? "").trim().length > 0, JSON.stringify(status));
+      await ctx.close();
+    }
+  }
+}
+
+// ── How to play's loading drawing, caught on the way in (S5-R2-REGISTER 15, the release's ui-consistency red) ─────────
+// A route's loading file paints only on a CLIENT move (`ghost-landing.mjs`' rule), so the drive leaves the register for How
+// through the app router (what a Link calls) on a throttled network, reads the drawing while it holds the screen, then the
+// landed page: the swap card's button bar (the drawing's last) must stand at the example button's height. A pass where
+// no drawing was caught proved nothing and fails as such.
+if (SCENARIO !== "states" && wantPage("how-ghost")) {
+  // The drawing is wordless, so its bars do not change with the language: the phone and the desktop column cover it.
+  const ghostWidths = WIDTHS.filter((w) => w === 360 || w === 1280);
+  for (const locale of LOCALES) {
+    for (const width of ghostWidths.length ? ghostWidths : WIDTHS) {
+      const tag = `how-ghost-${locale}-${width}`;
+      const ctx = await contextWith([await demoSession(browser, BASE)], locale);
+      const page = await ctx.newPage();
+      page.on("pageerror", (e) => errs.push(`${tag}: ${e}`));
+      await page.setViewportSize({ width, height: HEIGHT });
+      await open(page, "/millionea/register");
+      const cdp = await ctx.newCDPSession(page);
+      await cdp.send("Network.enable");
+      await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 400, downloadThroughput: 12 * 1024, uploadThroughput: 64 * 1024 });
+      await page.evaluate(() => { window.next?.router?.push("/millionea/how"); });
+      const drawing = '[aria-busy="true"] .max-w-receipt';
+      const drawn = await page.waitForSelector(drawing, { timeout: 20_000 }).then(() => true).catch(() => false);
+      const ghost = drawn ? await page.evaluate((sel) => {
+        const card = document.querySelector(sel);
+        const bar = card?.lastElementChild;
+        if (!card || !(bar instanceof HTMLElement)) return null;
+        const box = (el) => { const r = el.getBoundingClientRect(); return { y: Math.round(r.top + scrollY), h: Math.round(r.height * 10) / 10, w: Math.round(r.width * 10) / 10 }; };
+        const read = { card: box(card), button: box(bar) };
+        // CONTROL: the same bar at the numeric utility's height (`h-10` = 80px on the overridden scale), read in place.
+        bar.style.height = "80px";
+        const planted = box(bar).h;
+        bar.style.height = "";
+        return { ...read, planted };
+      }, drawing) : null;
+      if (drawn) await page.locator(drawing).screenshot({ path: `${OUT}/${tag}-drawing.png` }).catch(() => {});
+      await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+      await page.waitForSelector('[data-testid="millionea-how-example-play"]', { timeout: 60_000 }).catch(() => {});
+      await settle(page);
+      const real = await page.evaluate(() => {
+        const card = document.querySelector('article[aria-labelledby="mln-how-ex-swap"]');
+        const button = document.querySelector('[data-testid="millionea-how-example-play"]');
+        if (!card || !button) return null;
+        const box = (el) => { const r = el.getBoundingClientRect(); return { y: Math.round(r.top + scrollY), h: Math.round(r.height * 10) / 10, w: Math.round(r.width * 10) / 10 }; };
+        return { card: box(card), button: box(button) };
+      });
+      await page.locator('article[aria-labelledby="mln-how-ex-swap"]').screenshot({ path: `${OUT}/${tag}-page.png` }).catch(() => {});
+      ok(`${tag} · How's loading drawing is shown on the way in`, drawn && !!ghost);
+      ok(`${tag} · How lands with its example's button`, !!real);
+      if (ghost && real) {
+        console.log(`GHOST ${tag} · button: drawing ${ghost.button.h}×${ghost.button.w}px, page ${real.button.h}×${real.button.w}px · swap card: drawing y${ghost.card.y} h${ghost.card.h}, page y${real.card.y} h${real.card.h}`);
+        ok(`${tag} · the drawing's button stands at the page button's height (within 1px)`, Math.abs(ghost.button.h - real.button.h) <= 1, `${ghost.button.h} vs ${real.button.h}`);
+        ok(`${tag} · CONTROL · the bar at the numeric utility's 80px is reported by the same judge`, Math.abs(ghost.planted - real.button.h) > 1, `${ghost.planted} vs ${real.button.h}`);
+      }
       await ctx.close();
     }
   }
