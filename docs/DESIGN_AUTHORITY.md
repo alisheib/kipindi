@@ -3359,11 +3359,14 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     - From 1024 the pinned head and door stand on the page's own ground, whose foot fades, so nothing passes under them
       cut flat. At rest the block under them stands the column's own gap below.
     - A closed week's held rows stand under "Your tickets", the tickets page's own title.
-    - The carried figure's flight into the ledger (item 1's N1, from the rollover notice's own figure) is kept by the
-      ledger for its life and plays once: a render while the token flies never cuts it. A returning player's hub
-      re-renders moments after it opens — the rollover's seen mark is a server action, which re-signs a session last seen
-      five minutes or more before, and that re-renders the route without the (now seen) rollover. The ledger dropped its
-      carry with that render and the token stopped half-way, the origin never settling (the drive's red at sw 1920×1440).
+    - The carried figure's flight into the ledger (item 1's N1, from the rollover notice's own figure) lands on a box of
+      the row's line: the carry's wrapper is an inline block, so the frame's numeral rule (a figure's line height 0,
+      item 25) never leaves it an empty box. As an inline flex box it was 0px tall, the carry's one measurement refused
+      it, and the flight never played (the drive's red at sw 1920×1440).
+    - The ledger keeps the carry it was handed for its life and plays it once: a render while the token flies never cuts
+      it. A server action that re-signs a returning player's session (last seen five minutes or more before) re-renders
+      the route, the rollover's own seen mark among them, and so do the poller and a pool frame; a render made after the
+      seen mark no longer carries the rollover.
 
 ---
 

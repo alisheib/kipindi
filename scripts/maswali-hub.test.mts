@@ -11,7 +11,8 @@
  * are measured in a browser by `qa:maswali-hub-states`, and its read model's new reads by `test:maswali-hub-reads`.
  *   §1 M4/H1 the pool ledger is the one Millionea ledger  §2 L10 the figure holds one line at 320
  *   §3 H3 the final week's rule under the figure          §4 L15 a conditional refund row: no figure, no dash
- *   §5 motion L1 a live frame ticks each value it moved   §6 M9/M10/M7 calm bars; the carry's origin and landing
+ *   §5 motion L1 a live frame ticks each value it moved   §6 M9/M10/M7 calm bars; the carry's origin and landing (its
+ *                                                          destination a box of the row's line, H6)
  *   §7 L2/L18 the strip: mono ranges, a shape for "now"   §8 M2 the kit's header pill and its wrapping row
  *   §9 M11 a result that arrives presses once            §10 the words, as decided, in three languages; zh's one
  *                                                          spacing rule on every timed line the hub fills
@@ -277,6 +278,18 @@ console.log("\n§6 · M9/M10 · a returning notice is the platform's calm bar (N
   const pending = dressedOf("en", figure(), NOT_MOVED, { from: "mln-carried-figure", play: true }).some((r) => carryIn([r], r.key)?.type === MaswaliCarry);
   const none2 = dressedOf("en", landed, NOT_MOVED, null).some((r) => carryIn([r], r.key)?.type === MaswaliCarry);
   ok("6.4′ CONTROL · no other row carries; a carry still pending (no figure yet) lands nowhere; and with no notice to carry from, nothing carries", !elsewhere && !pending && !none2, j({ elsewhere, pending, none2 }));
+  // ⭐ S5-R2-HUB 9 · the carry's destination is a box of the row's line: the frame sets the ledger's figures to line-height 0
+  // (hub-frame.ts NUMERALS), and the carry's own inline FLEX wrapper around that one figure was 0px tall — an empty box the
+  // carry's one measurement refuses, so it never played (the drive recorded [1371, 679, 80, 0]). Rendered through the hub's
+  // own ledger island, as the page draws it: the wrapper is an inline block, which takes the row's own line box.
+  const rendered = inApp("en", h(HP.HubPoolLive as never, { weekId: "w", initial: landed, price: 1_000 } as never,
+    h(HP.HubPoolLedger as never, { carryFrom: "mln-carried-figure", carryPlay: true } as never)));
+  const wrapper = (m: string) => /<span data-row="in"><span class="([^"]*)">/.exec(m)?.[1] ?? null;
+  ok(`6.6 · the carried figure's wrapper is an inline block, a box of the row's line under the frame's numeral rule ("${wrapper(rendered)}")`,
+    wrapper(rendered) === "inline-block", rendered.slice(rendered.indexOf('data-row="in"') - 20, rendered.indexOf('data-row="in"') + 120));
+  const flex = inApp("en", h(MLR.MaswaliLedger as never, { rows: dressedOf("en", landed, NOT_MOVED, null).map((r) => (r.key === "in"
+    ? { ...r, value: h("span", { "data-row": "in" }, h(MaswaliCarry as never, { from: "mln-carried-figure", play: true } as never, (r.value as { props: { children: unknown } }).props.children as never)) } : r)) } as never));
+  ok(`6.6′ PLANT · round 2's wrapper (the carry's own inline flex box: 0px tall under the numeral rule) is reported ("${wrapper(flex)}")`, wrapper(flex) !== null && wrapper(flex) !== "inline-block");
   // M10 · ONE origin: of two unseen rollovers (a reader away for two weeks), only the week this week's figure carries in
   // from — its own `carryFromCode` — marks the id; none while that carry waits on its week, none from a week it does not name.
   const { carryingRollover } = req("../src/app/millionea/hub-words.tsx") as typeof import("../src/app/millionea/hub-words.tsx");
@@ -907,7 +920,7 @@ console.log(`\n${"═".repeat(70)}\n  MASWALI HUB: ${pass} passed, ${fail} faile
  *  the no-week body's kept phrases: 75; the paused notice's pair, the close line's one wording, the frame's line boxes,
  *  pills and the head's card order: 90; the void words in the register's form, the voiding notice kept, the lead's rulings 2a-2c and the drawing's ledger and held block: 100;
  *  S5-R2-HUB 6, the no-week body's numerals in Millionea's empty state and the void words one wrap unit: 104;
- *  S5-R2-HUB 7, G2's eyebrow and heading: 108). It only rises. */
-const MIN_ASSERTIONS = 108;
+ *  S5-R2-HUB 7, G2's eyebrow and heading: 108; S5-R2-HUB 9, the carry's destination a box of its line: 110). It only rises. */
+const MIN_ASSERTIONS = 110;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

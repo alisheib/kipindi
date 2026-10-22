@@ -1023,15 +1023,17 @@ if (RUN === "a") {
   // in once the token has left it. Each reader's first view, the rollover notice unseen. The ends are measured on boxes a
   // flight never moves (the row's own span, the notice's figure).
   if (want("after")) {
-    // ⭐ S5-R2-HUB 6 · WHY THE CARRY ONCE ENDED UNSETTLED (heavy-c5's red at sw 1920×1440: both ends in view, and 1600ms after
-    // load the origin read "amount" — no flight in the air, no settle). Each reader here is a RETURNING player, as every
-    // reader of a settled week's rollover is: their session last seen ≥ 5 minutes before, so the rollover notice's seen mark
-    // (a server action) re-signs the session cookie (`session.ts`, at most every five minutes) — and a cookie set by a server
-    // action re-renders the route. That render no longer carries the rollover (it is seen), and the ledger used to drop its
-    // carry with it: a flight still in the air was rested half-way, the origin's settle never played. A race between the
-    // action's round trip and the 340ms flight — green in heavy-c4, red in heavy-c5. Each view prints its timeline (INFO H6):
-    // the hydration, the flight's start and end, the origin's classes, every server action (`x-action-revalidated`: did it
-    // re-render?) and every route render.
+    // ⭐ S5-R2-HUB 6–9 · WHY THE CARRY NEVER PLAYED (heavy-c5's red at sw 1920×1440, and every run on GitHub's runner: both
+    // ends in view, and after load the origin read "amount" — no flight, no settle). MEASURED (S5-R2-HUB 8's record of the
+    // carry's own measurement): the destination box was [1371, 679, 80, 0] — 0px tall. The frame sets the ledger's figures
+    // to line-height 0 (hub-frame.ts NUMERALS, S5-R2-HUB 3: a numeral never grows its line), and MaswaliCarry's inline flex
+    // wrapper around that one figure collapsed with it; the carry's one measurement refuses an empty box. Fixed by S5-R2-HUB 9
+    // (the wrapper an inline block: the row's own line box). The race S5-R2-HUB 6 guards is real but was not this red: a
+    // render while the token flies (a server action that re-signs a returning player's session re-renders the route — here
+    // the header's notifications read, before the page was React's — and so do the poller and a pool frame) dropped the
+    // carry once the rollover was seen. Each reader here is a RETURNING player (session last seen ≥ 5 minutes before), and
+    // each view prints its timeline (INFO H6): the hydration, what the carry measured, the flight's start and end, the
+    // origin's classes, every server action by its arguments with its x-action-revalidated, and every route render.
     const STALE_MS = 5 * 60_000 + 15_000;
     const returning = async (who) => {
       const left = players[who].at + STALE_MS - Date.now();
@@ -1112,7 +1114,13 @@ if (RUN === "a") {
       await page.waitForTimeout(1200);
       const after = await page.evaluate(() => document.querySelector("#mln-carried-figure")?.className ?? null);
       const landed = /\bg-settle\b/.test(after ?? ""), vacated = /\bkp-mln-carry-vacated\b/.test(after ?? "");
-      console.log(`INFO H6 after · carry · sw ${vp.width}×${vp.height} · timeline (ms from the navigation): ${j(await timeline(page, net, t0))}`);
+      const log = await timeline(page, net, t0);
+      console.log(`INFO H6 after · carry · sw ${vp.width}×${vp.height} · timeline (ms from the navigation): ${j(log)}`);
+      // S5-R2-HUB 9 · what the carry measured (its own one measurement, recorded as it asked for its origin): a destination
+      // box of the row's line, never the empty box the frame's numeral rule had made of its wrapper (0px tall: no flight).
+      const asked = log.find((e) => e.asked);
+      ok(`after · carry · sw ${vp.width}×${vp.height} · H6 the carry measured its destination as a box of its line (${asked?.dest ? `${asked.dest[2]}×${asked.dest[3]}px` : "never asked"})`,
+        !!asked?.dest && asked.dest[2] > 0 && asked.dest[3] > 0 && asked.wrapper === true, j(asked));
       ok(`after · carry · sw ${vp.width}×${vp.height} · H6 the carry plays exactly when both ends stand in view (${ends.both ? "both in view: it lands" : "an end out of view: no flight"})`,
         hydrated && !!ends.origin && !!ends.dest && (ends.both ? landed && !vacated : !landed && !vacated), j({ hydrated, ends, after }));
       if (who === "desk") ok(`after · carry · sw ${vp.width}×${vp.height} · H6 a tall desktop holds both ends, so the flight is seen`, ends.both, j(ends));

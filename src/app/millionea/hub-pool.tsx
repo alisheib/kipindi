@@ -145,14 +145,14 @@ export function HubPoolHead({ final, labelId, className }: { final?: boolean; la
  * `.m-tick` dips and lands it once (motion L1). M7 — when last week rolled over and this reader has not seen it, the
  * carried figure travels once from the rollover notice's own figure (`carryFrom`, R1-hub M10 / R1-motion H6), on the
  * first paint only, and only with both ends in view (`MaswaliCarry`'s rule).
- * ⭐ S5-R2-HUB · THE CARRY THIS ISLAND WAS FIRST HANDED IS KEPT, AND PLAYS ONCE (R1-motion H6; the drive's red at sw
- * 1920×1440): the hub as `HubNotices` keeps its notices. The page re-renders while the token flies — the rollover notice's
- * own seen mark is a server action, and for a returning player it re-signs the session cookie (`session.ts`: at most every
- * five minutes), which re-renders the route; that render no longer carries the rollover (seen), so the ledger dropped its
- * carry and `MaswaliCarry` rested the flight half-way (no settle: the figure snapped home). So the island holds the carry
- * it mounted with — a later render, a pool frame or the poller's refresh never takes it away in flight — and once the
- * token has landed (or nothing played: an end out of view, a clamp) it is spent, so a row re-keyed by a frame later draws
- * the end frame and never flies again.
+ * ⭐ S5-R2-HUB · THE CARRY THIS ISLAND WAS FIRST HANDED IS KEPT, AND PLAYS ONCE (R1-motion H6): the hub as `HubNotices`
+ * keeps its notices. A render can come while the token flies — a server action that re-signs a returning player's session
+ * cookie re-renders the route (`session.ts`: at most every five minutes; the rollover's own seen mark is one), as do the
+ * poller's refresh and a pool frame — and a render made after the seen mark no longer carries the rollover, so the ledger
+ * dropped its carry and `MaswaliCarry` rested the flight half-way (no settle: the figure snapped home). So the island
+ * holds the carry it mounted with, and once the token has landed (or nothing played: an end out of view, a clamp) it is
+ * spent, so a row re-keyed by a frame later draws the end frame and never flies again (`qa:maswali-hub-states`: a render
+ * while a stretched flight is in the air).
  * ⭐ L15 · BEING VOIDED, the refund sentence names its amount and stands alone — no figure (H1: nothing is refunded yet)
  * and no dash beside it: the one ledger's own row since REGISTER's c851bc760 (`test:maswali-hub` 4.1 holds it here).
  */
@@ -174,6 +174,12 @@ export function HubPoolLedger({ carryFrom, carryPlay, className }: { carryFrom?:
  * The hub's dress on the shared rows — pure, so a suite renders it: each figure a frame moved re-keyed on that frame and
  * ticked (`.m-tick`, motion L1), and the carried-in figure wrapped in the carry when one plays from the rollover notice
  * (M7). Every row keeps its key, label and figure as the builder made them.
+ * ⭐ S5-R2-HUB 9 · THE CARRY'S DESTINATION IS A BOX OF THE ROW'S LINE (`inline-block`; the drive's H6 red at sw 1920×1440,
+ * heavy-c5 and on GitHub's runner): the frame sets every ledger figure's line height to 0, so a numeral never grows its
+ * line (`hub-frame.ts` NUMERALS, S5-R2-HUB 3) — and `MaswaliCarry`'s own wrapper, an inline flex box around that one
+ * figure, was 0px tall, which the carry's one measurement refuses as an empty box: it never played (the drive recorded
+ * its destination at [1371, 679, 80, 0]). An inline block takes its line box from the row's own strut, so it is the
+ * line's height while the figure inside keeps the frame's rule; nothing grows.
  */
 export function dressLedgerRows(
   rows: readonly MillioneaLedgerRow[], input: MillioneaLedgerInput, moved: { n: number; keys: ReadonlySet<string> },
@@ -184,7 +190,7 @@ export function dressLedgerRows(
   return rows.map((r) => {
     const ticks = moved.n > 0 && moved.keys.has(r.key);
     let value: ReactNode = r.value;
-    if (r.key === "in" && carry && typeof input.carryIn?.amount === "number") value = <MaswaliCarry from={carry.from} play={carry.play} onEnd={onCarryEnd}>{value}</MaswaliCarry>;
+    if (r.key === "in" && carry && typeof input.carryIn?.amount === "number") value = <MaswaliCarry from={carry.from} play={carry.play} onEnd={onCarryEnd} className="inline-block">{value}</MaswaliCarry>;
     return { ...r, value: <span key={ticks ? `${r.key}:${moved.n}` : r.key} className={ticks ? "m-tick" : undefined} data-row={r.key}>{value}</span> };
   });
 }
