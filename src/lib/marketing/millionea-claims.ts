@@ -403,9 +403,16 @@ export function holdsHanScript(text: string): boolean {
  * 500 ms; 8,000 digit groups, 735 ms), and a server door holds a classic campaign to them too (S6-LINT 1). One oversized
  * save or composer body (the save action has no cap of its own) could hold the server's one process for minutes. So a
  * body past this is read by no rule: its length is its refusal (`test:maswali-claims` §8; recorded in
- * docs/FAILURE-INVENTORY.md §9b).
+ * docs/FAILURE-INVENTORY.md §9b). ⭐ S6-LINT 4 · it guards three places, each first: this door (every rule), and on the
+ * server, where the untagged rules moved, their path (`untaggedCampaignProblems`) and their quadratic signal reader
+ * itself (`millioneaSignals`), so neither depends on a caller to guard it.
  */
 export const CLAIMS_MAX_CHARS = 640;
+
+/** ⭐ Finding 9 · a body past one SMS (`CLAIMS_MAX_CHARS`): read by no claims rule. */
+export function pastOneSms(text: string): boolean {
+  return (text ?? "").length > CLAIMS_MAX_CHARS;
+}
 
 /**
  * ⭐ THE ONE POLICY, for the composer's one door: a Millionea campaign is held to the whole lint, a body in Chinese characters

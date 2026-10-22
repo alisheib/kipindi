@@ -12,11 +12,14 @@
  *    door (`footer.ts`) in the campaign's context (`MillioneaComposeContext.untagged`, `CampaignTemplate.untaggedRules`).
  *    The composer's live counter runs the tagged rules alone, so a body these rules refuse is refused at the save, in their
  *    words. `test:maswali-claims` §9 holds every client module's import graph clear of this file.
+ * ⭐ FINDING 9 (S6-LINT 4). The signal reader's cost grows with the square of a long run, so a body past one SMS
+ *    (`CLAIMS_MAX_CHARS`) is read here by nothing: the untagged path and the reader each refuse it first, whoever calls
+ *    them (`test:maswali-claims` §8).
  * Pure: no database, no I/O. ⛔ No client module imports it, ever.
  */
 import {
-  CAMPAIGN_HAN_SCRIPT, CURRENCY, CURRENCY_SIGN, GET_BEFORE, LOOK_ALIKE_DIGITS, baseForm, campaignProductOf, foldWords,
-  foldedForm, holdsHanScript, normalizeClaimText, tenOfTen, type UntaggedCampaignRules,
+  CAMPAIGN_HAN_SCRIPT, CLAIMS_MAX_CHARS, CURRENCY, CURRENCY_SIGN, GET_BEFORE, LOOK_ALIKE_DIGITS, baseForm, campaignProductOf,
+  foldWords, foldedForm, holdsHanScript, normalizeClaimText, pastOneSms, tenOfTen, type UntaggedCampaignRules,
 } from "@/lib/marketing/millionea-claims";
 
 /* ══ THE REFUSAL ═════════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -411,9 +414,12 @@ function squeezedWords(text: string): string[] {
 
 /**
  * The Millionea signals a text carries, as words a human can read — a figure is named "a figure of a million or more",
- * never repeated (§5.14). Empty: none.
+ * never repeated (§5.14). Empty: none — and for a body past one SMS, which it never reads (finding 9).
  */
 export function millioneaSignals(text: string): string[] {
+  // ⭐ Finding 9 (S6-LINT 4) · the reader's own guard: its cost grows with the square of a long run, so past one SMS
+  // (`CLAIMS_MAX_CHARS`) no signal is read, whoever calls it.
+  if ((text ?? "").length > CLAIMS_MAX_CHARS) return [];
   const n = normalizeClaimText(text);
   const folded = foldedForm(text);
   const out = new Set<string>();
@@ -434,11 +440,6 @@ export function millioneaSignals(text: string): string[] {
   return [...out];
 }
 
-/** True when the text carries a Millionea signal. */
-export function namesMillionea(text: string): boolean {
-  return millioneaSignals(text).length > 0;
-}
-
 /** The refusal an untagged campaign gets, naming what it said. */
 export function millioneaUntaggedProblem(signals: readonly string[]): string {
   const said = signals.map((s) => (s.startsWith("a figure") ? s : `“${s}”`)).join(", ");
@@ -450,9 +451,12 @@ export function millioneaUntaggedProblem(signals: readonly string[]): string {
 
 /**
  * ⭐ THE UNTAGGED RULES — every problem a campaign not tagged Millionea has under them, one sentence each: its Millionea
- * signals, refused in words (`millioneaUntaggedProblem`), and a body in Chinese characters (`CAMPAIGN_HAN_SCRIPT`).
+ * signals, refused in words (`millioneaUntaggedProblem`), and a body in Chinese characters (`CAMPAIGN_HAN_SCRIPT`). A body
+ * past one SMS is read by none of them (finding 9).
  */
 export const untaggedCampaignProblems: UntaggedCampaignRules = (text: string): string[] => {
+  // ⭐ Finding 9 (S6-LINT 4) · the server door's untagged path guards itself, first: past one SMS its length is its refusal.
+  if (pastOneSms(text)) return [];
   const signals = millioneaSignals(text);
   return [...(signals.length > 0 ? [millioneaUntaggedProblem(signals)] : []), ...(holdsHanScript(text) ? [CAMPAIGN_HAN_SCRIPT] : [])];
 };

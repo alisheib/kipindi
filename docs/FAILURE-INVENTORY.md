@@ -1296,15 +1296,19 @@ ACTIVE: the alert, or a dated deferral recorded by the Owner.
 Each entry is the rule as it stands, where it is enforced, and the case and the plant that hold it (MASWALI-BUILD S6-INT,
 branch `claude/maswali-s6-release`).
 
-#### ✅ Lint finding 9 · an oversized body cost the server time that grew with its square (S6-INT 16)
+#### ✅ Lint finding 9 · an oversized body cost the server time that grew with its square (S6-INT 16; S6-LINT 4)
 
 The claims lint (`src/lib/marketing/millionea-claims.ts`) read a body of any length on the composer's one door, which
 every campaign meets (a classic one too), and its signal patterns cost time that grows with the square of a long run: one
 save or composer request (the save action has no length cap of its own) could hold the server's one process for minutes.
 THE RULE: a body longer than `CLAIMS_MAX_CHARS` (640 characters) is read by no claims rule — nothing that long can be sent
-(one SMS at most), and the composer's length rule refuses it in its own sentence. Held by `test:maswali-claims` §8 (the
-review's 1 MB body answered in under 50 ms; a claim padded to the limit still refused) and the plant (C27) of
-`red:maswali-claims`.
+(one SMS at most), and the composer's length rule refuses it in its own sentence. WHERE IT IS ENFORCED (S6-LINT 4, after
+S6-LINT 1 moved the untagged rules to the server): three guards, each the first line of its function and each needed on
+its own — the composer's one door (`millioneaCampaignProblems`, every rule), and in
+`src/lib/server/marketing/millionea-untagged.ts` the server's untagged path (`untaggedCampaignProblems`) and the
+quadratic signal reader itself (`millioneaSignals`), whoever calls them. Held by `test:maswali-claims` §8 (the review's
+1 MB body answered in under 50 ms; a claim padded to the limit still refused; past it, nothing read) and the plants of
+`red:maswali-claims`: (C27) the reader's guard (8.1), (C35) the path's (8.6b), (C36) the door's (8.6).
 
 #### ✅ M-1 · a winner SMS that did not go was counted as sent by the next run (the lead's ruling 1; S6-INT 17)
 

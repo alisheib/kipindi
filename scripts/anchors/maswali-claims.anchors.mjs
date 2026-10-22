@@ -226,8 +226,10 @@ export const MUTATIONS = [
   },
   /* ── Finding 9 (the lint review after round 17) · an oversized body is read by no rule ── */
   {
-    name: "(C27) finding 9 · the composer's door reads a body past one SMS: its time grows with the square of a long run",
-    file: LINT,
+    // S6-LINT 4 · re-aimed (the integrator's point after S6-LINT 1): the quadratic reader moved to the server module, and
+    // this is the guard that protects it there.
+    name: "(C27) finding 9 · the untagged signal reader reads a body past one SMS: its time grows with the square of a long run",
+    file: UNTAGGED,
     from: "  if ((text ?? \"\").length > CLAIMS_MAX_CHARS) return [];",
     to: "  if (false) return [];",
     expect: "8.1 · ⭐ finding 9",
@@ -267,5 +269,20 @@ export const MUTATIONS = [
     from: "    untaggedRules: untaggedRulesFor(c.name),",
     to: "    untaggedRules: undefined,",
     expect: "9.3b · S6-LINT 1",
+  },
+  /* ── S6-LINT 4 · finding 9's two other guards, each on its own ── */
+  {
+    name: "(C35) S6-LINT 4 · finding 9 · the server's untagged path reads a body past one SMS",
+    file: UNTAGGED,
+    from: "  if (pastOneSms(text)) return [];",
+    to: "  if (false) return [];",
+    expect: "8.6b · ⭐ finding 9",
+  },
+  {
+    name: "(C36) S6-LINT 4 · finding 9 · the composer's door hands a body past one SMS to its rules",
+    file: LINT,
+    from: "  if ((text ?? \"\").length > CLAIMS_MAX_CHARS) return [];",
+    to: "  if (false) return [];",
+    expect: "8.6 · ⭐ finding 9",
   },
 ];

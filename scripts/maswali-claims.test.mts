@@ -50,7 +50,8 @@
  *      7.2 H3 an account fact stated, never a lure · 7.3 M3 MB-47's stake against a prize, the winnings words, a question of
  *      any length · 7.4 M4 a deposit in any form, a third person's wait, "mfuko" as a fund · 7.5 L2 the comments · 7.6 L3 a
  *      look-alike leading one · 7.7 L4 a body in Chinese characters (OD42)
- *   §8 ⭐ finding 9 (S6-INT 16): a body past one SMS is read by no rule — the oversized bodies answered in under 50 ms
+ *   §8 ⭐ finding 9 (S6-INT 16): a body past one SMS is read by no rule — the oversized bodies answered in under 50 ms by
+ *      the server's untagged path, its signal reader and the composer's door, and each of the three guards alone (S6-LINT 4)
  *   §9 ⭐ S6-LINT: 9.1 the untagged rules are the server's alone — neither the composer's client graph nor any other client
  *      module's reaches them · 9.2 the live counter judges a campaign not tagged Millionea exactly as before, the save holds
  *      it to them · 9.3 the wiring (every server door hands them in)
@@ -1654,16 +1655,17 @@ const passAll = (tag: string, list: readonly string[]) => list.forEach((text, i)
 console.log(`${LF}§8 · finding 9 — a body past one SMS is refused by its length, and no rule reads it`);
 {
   const timed = (f: () => unknown): number => { const t0 = performance.now(); f(); return performance.now() - t0; };
-  // The composer's one door (the save, the test send and a slice judge a body through it too), untagged and tagged — the
-  // untagged one with the untagged rules handed in, as a server door hands them (S6-LINT 1: they are the server's alone).
-  const door = (text: string) => { claims.millioneaCampaignProblems(text, SERVER_UNTAGGED); claims.millioneaCampaignProblems(text, TAGGED); };
+  // ⭐ S6-LINT 4 · the doors a body meets: since S6-LINT 1 the untagged rules are the server's, so they are timed where they
+  // live — their path as every server door hands it in (`untaggedCampaignProblems`: the save, the test send, the slice) and
+  // their quadratic signal reader itself (`millioneaSignals`) — beside the tagged rules through the composer's one door.
+  const door = (text: string) => { UNT.untaggedCampaignProblems(text); UNT.millioneaSignals(text); claims.millioneaCampaignProblems(text, TAGGED); };
   // Measured before the fix: 16,000 spaces after a tax word took 500 ms and 8,000 digit groups 735 ms on the untagged path
   // (every campaign's), each growing with the square of the run — over budget without the limit, so its plant is caught in
   // about a second; the review's 1 MB body (minutes without it) runs only once these are in budget.
   const spaces = `50pick: ada${" ".repeat(16_000)}# 5,000,000`;
   const groups = `50pick: ${"000 ".repeat(8_000)}# 5,000,000`;
   const smallMs = Math.max(timed(() => door(spaces)), timed(() => door(groups)));
-  ok("8.1 · ⭐ finding 9 · 16,000 spaces after a tax word, and 8,000 digit groups, are each answered in under 50 ms by the composer's door (untagged and tagged)",
+  ok("8.1 · ⭐ finding 9 · 16,000 spaces after a tax word, and 8,000 digit groups, are each answered in under 50 ms by the server's untagged path, its signal reader and the composer's door (tagged)",
     smallMs < 50, `${smallMs.toFixed(1)} ms`);
   const huge = `50pick: ada${" ".repeat(1_000_000)}# 5,000,000`;
   const hugeMs = smallMs < 50 ? timed(() => door(huge)) : Number.POSITIVE_INFINITY;
@@ -1676,11 +1678,26 @@ console.log(`${LF}§8 · finding 9 — a body past one SMS is refused by its len
     hugeVerdict === null ? "not run" : J(hugeVerdict.problems.map((p) => p.slice(0, 60))));
   const claim = "50pick: Shinda TZS 50,000,000 Ijumaa hii!";
   const atLimit = claim + " ".repeat(claims.CLAIMS_MAX_CHARS - claim.length);
-  ok("8.4 · control · a claim padded to exactly the limit is still read: refused untagged and as a Millionea campaign",
-    atLimit.length === claims.CLAIMS_MAX_CHARS && claims.millioneaCampaignProblems(atLimit, SERVER_UNTAGGED).length > 0 && claims.millioneaCampaignProblems(atLimit, TAGGED).length > 0,
+  ok("8.4 · control · a claim padded to exactly the limit is still read: refused untagged (through the door and on the server's own path) and as a Millionea campaign",
+    atLimit.length === claims.CLAIMS_MAX_CHARS && claims.millioneaCampaignProblems(atLimit, SERVER_UNTAGGED).length > 0
+      && UNT.untaggedCampaignProblems(atLimit).length > 0 && UNT.millioneaSignals(atLimit).length > 0 && claims.millioneaCampaignProblems(atLimit, TAGGED).length > 0,
     J({ len: atLimit.length }));
   ok("8.5 · control · the limit lies past anything one SMS carries: a body one character over it is several messages",
     sizeSms(`${atLimit} `).segments > 1, J(sizeSms(`${atLimit} `).segments));
+  // ⭐ S6-LINT 4 · each guard on its own, one character past the limit: the composer's door reads no rule (a tagged claim,
+  // and an untagged one through it), and the server's untagged path reads none either — a Chinese body there, whose rule
+  // costs nothing, so only the path's own guard can refuse to read it (the reader's guard covers the signals).
+  const over = `${atLimit} `;
+  ok("8.6 · ⭐ finding 9 · the composer's door reads no rule past the limit: a claim one character over it is answered by nothing, tagged or untagged",
+    over.length === claims.CLAIMS_MAX_CHARS + 1 && claims.millioneaCampaignProblems(over, TAGGED).length === 0
+      && claims.millioneaCampaignProblems(over, SERVER_UNTAGGED).length === 0,
+    J({ tagged: claims.millioneaCampaignProblems(over, TAGGED), untagged: claims.millioneaCampaignProblems(over, SERVER_UNTAGGED) }));
+  const hanAt = `50pick: ${cc(0x4F60, 0x597D)}`.padEnd(claims.CLAIMS_MAX_CHARS, " ");
+  const hanOver = `${hanAt} `;
+  ok("8.6b · ⭐ finding 9 · the server's untagged path reads nothing past the limit: a Chinese body one character over it gets no rule's sentence, one at the limit does",
+    hanAt.length === claims.CLAIMS_MAX_CHARS && UNT.untaggedCampaignProblems(hanAt).includes(claims.CAMPAIGN_HAN_SCRIPT)
+      && UNT.untaggedCampaignProblems(hanOver).length === 0,
+    J({ at: UNT.untaggedCampaignProblems(hanAt), over: UNT.untaggedCampaignProblems(hanOver) }));
 }
 
 // ── §9 · S6-LINT — the claims lint while Millionea is dark (the lead's ruling 6) and the lint round's findings ───────────
@@ -1831,9 +1848,9 @@ const COMPOSER_ROOT = ABS("src/app/admin/campaigns/new/composer-client.tsx");
  * (L4), 626; with §7.3d–e (M3, a tax heading "malipo"), 629; with §7.3f–g (M3, a getting verb's other shapes), 634;
  * with §8 (finding 9, S6-INT 16), 639.
  * ⭐ S6-LINT · re-pinned the same way: with §9.0–9.3b (S6-LINT 1, the untagged rules the server's alone), 643; with §8
- * merged in beside it (S6-INT 16), 648.
+ * merged in beside it (S6-INT 16), 648; with §8.6–8.6b (S6-LINT 4, finding 9's guards each on its own), 650.
  */
-const FLOOR = 648;
+const FLOOR = 650;
 ok(`floor · at least ${FLOOR} checks ran before this one (a suite that goes blind prints fewer)`, pass + fail >= FLOOR, `${pass + fail} ran`);
 console.log(`${LF}test:maswali-claims: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);
