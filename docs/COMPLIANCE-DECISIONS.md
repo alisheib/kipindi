@@ -46,7 +46,7 @@ world's `harm_marker` person (SKIPPED `rg_harm_marker`); and record the reactiva
 
 ---
 
-## 2026-10-22 · Maswali Millionea — build done, launch later; the live test is the first public week; the classic rail's Millionea track; the landing's Millionea line and Live link (owner rulings)
+## 2026-10-22 · Maswali Millionea — build done, launch later; the live test is the first public week; the classic rail's Millionea track; the landing's Millionea line and Live link; the checked parts pushed dark now, 10/10 before players (owner rulings)
 
 **Authority.** Ali, 2026-10-22, to the Maswali lead (Claude, OMEGA-COMPILE01), choosing among the options put to him and,
 where he wrote them, in his own words:
@@ -69,11 +69,24 @@ where he wrote them, in his own words:
 6. **Every change is a final, documented rule:** *"make sure any change is final rule and documented everywhere it should
    be documented, so nothing is misleading"* — each change records its rule in the owning document in the same commit and
    corrects every place that stated the old one (AGENTS.md §3).
+7. **The checked parts go live now (~14:40 UTC).** He asked *"can we push now maswali live for players?"*; shown what is
+   not finished (S5's last design polish, S7 and S6, his launch items), he chose "Checked parts now": the
+   language-change loader's colour fix and S5 together, to `main` dark once its gates pass at the
+   exact commit (typecheck, the production build, the dark check, classic parity, the CI battery, the money suites); the
+   polish not yet merged follows in later pushes; the staff preview right after (the 2026-10-21 ruling 1). *"push it
+   perfectly live now. keep the pending so after this session I say continue maswali and we continue until done."*
+8. **10/10 before players:** every Millionea screen is still scored 10/10 by the independent critics before the rollout
+   reaches players ("Keep 10/10").
+9. **The admin guide:** a draft on his Desktop now, marked DRAFT; the final after S6 ("Draft now, final later" —
+   *"give us the pdf and my admins start making it work"*).
+10. **The payout float:** *"the amount is there … in Selcom, we have lots of money, so don't worry about this"* — the
+    Owner's statement for MASWALI-PLAN §6.1 line 3 (Finance's confirmation of the float); the line is ticked once the
+    low-float alert (MB-11, S6) is wired.
 
 **Implementation boundary.** 1–3 set the programme's sequence and S8's plan; 4 and 5 are player surfaces drawn only while
 Millionea is offered, except the landing's Live link, which every visitor sees (a classic-visible change named in the
-parity compare); 6 restates AGENTS.md §3 for this programme. The language-change loader's colours (the same day) are
-recorded with their own release in DESIGN_AUTHORITY.
+parity compare); 6 restates AGENTS.md §3 for this programme; 7–10 set this afternoon's push and its record. The
+language-change loader's colours (the same day) are recorded with their own release in DESIGN_AUTHORITY.
 
 ---
 

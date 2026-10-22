@@ -29,6 +29,29 @@
 
 ## §0 · RESUME AT
 
+**⏳ IN FLIGHT — S5 GOES TO `main` DARK (2026-10-22 from ~14:40 UTC; the Claude session asheib-f3 on OMEGA leads).**
+Ali chose "the checked parts now" (COMPLIANCE-DECISIONS § "2026-10-22 · Maswali Millionea — …" items 7–10): the
+language-change loader's colour fix (`fix/lang-switch-color`, merged into this release) rides in the same push; this
+release goes to `main` dark — the rollout stays `WITHDRAWN` in code and players see no Millionea — once its gates pass at the
+exact commit (typecheck, the production build, local `qa:live` with its dark section, classic parity, the CI battery,
+the money suites); the staff preview follows (pre-approved). Every Millionea screen is still scored 10/10 before players
+get it. The admin guide's DRAFT is on his Desktop; the final follows S6. The admin console works whatever the rollout,
+so the Owner's ceremonies (licence basis, guarantee) and week drafts can start on production after this push.
+
+**State (2026-10-22):** S1–S4 are on `main` dark. This release — S5: every player surface, round 1 of Ali's 10/10 pass,
+and round 2 of DOORS, SLIP, TICKETS and FACTS — is the one going live dark now. Not in it, each pushed on its own branch:
+S5 round 2's HUB, REGISTER and PLATFORM (with the phone rail's Millionea track) and TICKETS' landing line and Live link;
+S7 (`claude/maswali-s7-s5`, the objection door on `claude/maswali-s7-ob`); S6 (`claude/maswali-s6-release` and its
+lanes `claude/maswali-s6-{notices,lint,money,docs,admin}`).
+
+**Next:** "continue maswali" resumes here, in order: (1) S5 round 2 — merge HUB, REGISTER, PLATFORM and TICKETS' landing
+door into this branch, run the integrated render, have the independent critics score every cell to 10, push the next S5
+release; (2) S7 — merge the objection door, the reds, the S17 rush and MB-97, the migration proof, push dark; (3) S6 —
+the integrator merges its five lanes, the ADMIN-COMPLETENESS review, push dark, the final admin guide PDF; (4) S8 —
+Ali's launch list in §6.1, then his launch word. §M8a numbers taken: 19–20 S7/S6, 21 TICKETS, 22–23 REGISTER, 24 FACTS
+(in), 25–27 HUB, 28 NOTICES, 29 ADMIN. The lead's log and the lane briefs go to the hand-over branch
+`maswali-handover-20261021` before the session ends.
+
 **⏳ RESUMED (2026-10-22 11:41 UTC, Ali: "proceed"; the same session asheib-f3 leads, every lane resumed with its own
 context):** HUB, TICKETS, REGISTER, PLATFORM and SLIP finish their STOP 4 lists on their r2 branches; S7 its list on
 `claude/maswali-s7-s5` (TK.2 = password writes only; RD.5 = shares from tickets bought at or after the reversed deposit);
@@ -52,7 +75,7 @@ is merged with S5 on `claude/maswali-s7-s5` (`be37a9683`, proven on both stores)
 English buy wording in the never-printed privacy paragraph and the player drive) and `edf79c2b0` (red:journey-home's
 anchor). Nothing of S5–S8 is live; production serves `67e47f8d2`.
 
-**State (2026-10-21):** S1–S4 are on `main` dark. S5's release candidate is branch
+**State on 2026-10-21 (record):** S1–S4 are on `main` dark. S5's release candidate is branch
 `claude/maswali-s5-release` (Codex's mirror `codex/maswali-coord-20261019` retired 2026-10-21 PM): Codex's integrated
 S5 (`bd139142`) merged with production `main` `4471bb44` (U43's house-gold restore `dd1386f0` and PHOSPHOR
 release 2b, W6) at `d1c5910f`. That merge took `main`'s copies of the three U43 RED anchor files and
@@ -188,7 +211,7 @@ Every lane committed and pushed at the stop; a commit marked "WIP … not verifi
   specialist, consistent with 50pick's design, before it ships — round 1 of the critics scored every surface; the fix
   and design lanes are working from their reports.
 
-**Next:** Finish S5's gates on its exact release commit — after U43's repair lands, merge `main` again — every
+**Next on 2026-10-21 (record):** Finish S5's gates on its exact release commit — after U43's repair lands, merge `main` again — every
 changed-file reader and mutation proof, current-`main` classic parity, the admin and player browser drives and
 tile reads (every page to its end, 320–1920 × en/sw/zh), the compiled responsive sweep (the leaderboard empty
 panel), the multi-slip drive, `test:all` with the database suites, typecheck, the exact-commit production build,
