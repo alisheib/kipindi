@@ -40,7 +40,15 @@ search/filter/sort/paging, bounded integrity report coverage, reviewed consequen
 device-audit feedback, versioned seal corrections, the multi-ticket slip, the separate Results section, the public
 settled-week sitemap and share image, and bounded public week and register caches. The rollout stays `WITHDRAWN`.
 
-**⏳ IN FLIGHT (2026-10-22 from ~07:00 UTC, Ali: "proceed … until done") — the Claude session asheib-65 on OMEGA leads.**
+**⏹ STOP 3 (2026-10-22 ~08:10 UTC, Ali: "finish here on a clean level … then continue Maswali from a new prompt"; only
+verified work goes live). RESUME HERE:** hand-over branch `maswali-handover-20261021`, `handover/maswali-2026-10-21/`
+README's top section (STOP 3: the six round-2 branches and heads, what each left, the next steps in order) and
+MERGE-NOTES.md (today's part first: the round-2 reports, test:all's real reds by owner, and ⛔ the dark-safety blocker —
+`src/app/markets/loading.tsx` hands the client MarketsGhost `millionea={false}`, so /markets' payload carries the prop and
+qa:live's dark rule fails; fix before S5 deploys). Round 2 stopped clean on `claude/maswali-s5-r2-{hub,slip,tickets,
+register,doors,platform}`; none merged yet; S5 is not live.
+
+**The 2026-10-22 morning (from ~07:00 UTC, Ali: "proceed … until done") — the Claude session asheib-65 on OMEGA led.**
 EVERY S5 lane is merged into this release (`7e9a314f0`: FIX-SRV, PLATFORM D1–D15, DOORS, HUB, TICKETS, REGISTER, SLIP; the
 salesPaused Fill with one glyphs:gen, app sprite `app.b899eae1.svg`); tsc 0 and every Maswali suite green; each merge's
 resolutions are in its commit (the old-shape moveClose/attestParity calls in three dev routes and one suite now use
