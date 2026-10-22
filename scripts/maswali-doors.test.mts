@@ -405,6 +405,12 @@ const skeleton = (m: string) => [...m.replace(/(class="[^"]*kp-mln-door__plate[^
     && page.includes("const millionea = await millioneaCardShown(); const { preview } = await millioneaDoor();")
     && squash(code("src/lib/server/millionea-doors.ts")).includes("export const millioneaCardShown = cache(async (): Promise<boolean> => { const door = await millioneaDoor(); if (!door.visible) return false;");
   ok("2.6 · H1 · the slot is drawn on the door's own answer — the card is offered (`millioneaCardShown`: visible to the reader and no break) — by /markets' loading and `/`'s fallback, so a hidden Millionea (WITHDRAWN) holds no slot", gate);
+  // Round 2: the root loading's picture of "/" (`app/loading.tsx` → `JourneyRouteGhost`, D6) is the journey home's ghost
+  // itself — with the reader's locale (`useT`), so its slot's kept runs wrap as the card's — told or not told Millionea.
+  const route = LOCALES.filter((l) => FX.routeGhost[l].slot !== FX.journeyGhost[l].slot || FX.routeGhost[l].none !== FX.journeyGhost[l].none);
+  const boardPreview = LOCALES.filter((l) => count(FX.marketsGhost[l].preview, 'data-kit-chip=""') !== 1 || count(FX.marketsGhost[l].slot, 'data-kit-chip=""') !== 0);
+  ok("2.7 · H1 · D6's path: the root loading's \"/\" (the route ghost) draws, byte for byte, the journey home's ghost in the reader's language — its slot when told Millionea is visible, none when not; and the board's ghost holds the preview chip's place at STAFF_PREVIEW only",
+    route.length === 0 && boardPreview.length === 0, j({ route, boardPreview }));
 }
 
 // ── §3 · the stylesheet ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -422,6 +428,8 @@ const cssDefects = (css: string) => {
   if (!css.includes(".mcardp:hover { translate: 0 var(--m-lift); border-color: var(--brand-500); box-shadow: 0 0 0 1px var(--brand-500), var(--elev-raised-hover); }")) d.push("the board's own card hover moved: re-read it before matching it");
   if (!css.includes(".kp-mln-ghost__words, .kp-mln-ghost .kp-mln-fact::before { visibility: hidden; }") || !css.includes(".kp-mln-ghost__bar { border-radius: var(--r-xs); background: var(--bg-overlay); -webkit-box-decoration-break: clone; box-decoration-break: clone; }")) d.push("the ghost's words and its facts' marks are not hidden over line bars");
   if (!css.includes("@media (max-width: 767.98px) { .kp-mln-door .kp-mln-facts--phone > .kp-mln-fact { padding-inline-start: 1em; text-indent: -1em; } }")) d.push("below 768 a wrapped fact's continuation does not hang (it reads as a fact of its own)");
+  // Round 2: the preview chip under the title at every width, so it never widens the one-row card's title column.
+  if (!css.includes(".kp-mln-door__title { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-1); min-width: 0; }")) d.push("the preview chip does not stand under the title (beside it, the one-row card's headline took a third line)");
   return d;
 };
 {
@@ -509,12 +517,16 @@ console.log("\n§4 · controls — each check fails on a planted copy");
     cssDefects(CSS.replace('"plate head chev" "rule rule rule" "state state state"', '"plate head chev" "plate rule chev" "plate state chev"')).length > 0
       && cssDefects(CSS.replace(".kp-mln-ghost__words, .kp-mln-ghost .kp-mln-fact::before { visibility: hidden; }", ".kp-mln-ghost__words { color: transparent; }")).length > 0
       && cssDefects(CSS.replace("padding-inline-start: 1em; text-indent: -1em;", "padding-inline-start: 0;")).length > 0);
+  ok("4.16 · the preview chip back beside the title (round 1's flex-wrap row) is reported (3.1)",
+    cssDefects(CSS.replace(".kp-mln-door__title { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-1); min-width: 0; }", ".kp-mln-door__title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); min-width: 0; }")).some((x) => x.includes("under the title")));
+  const routeOff = { ...FX.routeGhost.en, slot: FX.routeGhost.en.slot.replace(/<div aria-hidden="true" class="kp-mln-zh kp-mln-ghost[\s\S]*?data-ghost-part="millionea">/, '<div data-ghost-part="other">') };
+  ok("4.17 · a root loading \"/\" that differs from the journey home's ghost (its slot dropped) is reported (2.7)", routeOff.slot !== FX.journeyGhost.en.slot);
   const twinOff = skeleton(FX.ghost.en.board.replace("kp-mln-door__rule", "kp-mln-door__body"));
   ok("4.7 · a ghost whose anatomy drifts from the card's is reported (2.2)", twinOff.replace(/span\.(?=\s|$)/g, "") !== skeleton(twin("en", "board")).replace(/span\.(?=\s|$)/g, ""));
 }
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI DOORS: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run prints. */
-const MIN_ASSERTIONS = 53;
+const MIN_ASSERTIONS = 56;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

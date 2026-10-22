@@ -182,6 +182,18 @@ export async function shootDoors(o) {
               Math.abs(dh) <= TOL && Math.abs(dy) <= TOL && Math.abs(da) <= TOL && g.slots === 1);
             (heights[`${host}|${locale}|${width}`] ??= {}).ghost = +g.slot.h.toFixed(1);
           } else if (guard) ok(`doors ${tag} · H1 · the card and its ghost were both measured`, false, JSON.stringify({ card: m.card, slot: g.slot }));
+          if (guard && host === "journey" && m.card) {
+            // H1 THROUGH D6'S PATH (round 2): the root loading's picture of "/" — `JourneyRouteGhost`, its words and locale the
+            // client dictionary's (`useT`) — set in the page's place, measured as the page's own ghost is.
+            await open(page, path);
+            await page.evaluate(SWAP_COLUMN, [host, FX.routeGhost[locale].slot]);
+            await frames(page);
+            const r = await page.evaluate(GHOST_MEASURE, host);
+            const dh = r.slot ? r.slot.h - m.card.h : NaN, dy = r.slot ? r.slot.y - m.card.y : NaN, da = r.after && m.after ? r.after.y - m.after.y : NaN;
+            ok(`doors ${tag} · H1 · the root loading's "/" (D6's route ghost, with the reader's locale) holds the card's box: ${r.slot?.h?.toFixed(1)} for ${m.card.h.toFixed(1)} (Δ ${dh.toFixed(1)}), at its y (Δ ${dy.toFixed(1)}), what follows Δ ${da.toFixed(1)}`,
+              Math.abs(dh) <= TOL && Math.abs(dy) <= TOL && Math.abs(da) <= TOL && r.slots === 1);
+            await page.screenshot({ path: `${OUT}/door-route-ghost-${locale}-${width}.png`, fullPage: false });
+          }
           if (guard) {
             // Told "no card": no slot, and what follows lands where a card-less page puts it.
             await open(page, path);
@@ -210,6 +222,10 @@ export async function shootDoors(o) {
           (heights[`${host}|${locale}|${width}`] ??= {}).states = hs;
           const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
           ok(`doors ${tag} · every state drawn (${hs.length} of ${FX.states.length}), no horizontal overflow (${over}px)`, hs.length === FX.states.length && over <= 1);
+          // A staff preview card is the common card's height (the chip under the title, round 2): no loading picture of it —
+          // the page's, which draws the chip's place, or the root loading's "/", which knows no preview — moves the page.
+          const pi = FX.states.indexOf("open · staff preview");
+          ok(`doors ${tag} · the staff preview card is the common card's height (${hs[pi]} vs ${hs[0]})`, pi > 0 && Math.abs(hs[pi] - hs[0]) <= 0.5);
           const region = await page.evaluate(() => { const r = document.querySelector('[data-testid="millionea-home-card"]').getBoundingClientRect(); return { top: r.top + scrollY, bottom: r.bottom + scrollY }; });
           // 260px of overlap between tiles: the fixed bars (a phone's header ~56px and tab rail ~75px) hide ~131px of each.
           let n = 1;
@@ -312,5 +328,91 @@ export async function shootDoors(o) {
     const g = await page.evaluate(GHOST_MEASURE, "board");
     ok(`doors · RED CONTROL · a ghost slot grown by 40px is reported off (Δ ${(g.slot && m.card ? g.slot.h - m.card.h : NaN).toFixed(1)}px)`, !!g.slot && !!m.card && Math.abs(g.slot.h - m.card.h) > TOL);
     await ctx.close();
+  }
+}
+
+/**
+ * ⭐ THE DOORS AT STAFF_PREVIEW (round 2, 2026-10-22; S5-FIX-PLATFORM D12's bar) — `qa:maswali-door-preview` on a server
+ * started with FEATURE_MILLIONEA=STAFF_PREVIEW, signed in as staff (`/api/dev-test/seed-admin`), the journey's own pass
+ * beside it on "/" (as the doors' drive holds it):
+ *   · on "/" and /markets the REAL card wears its preview chip (L12) and the shell draws no bar there (D12 stands on
+ *     Millionea's pages and /results only); a tile of each;
+ *   · H1 at STAFF_PREVIEW: the preview card (the fixture's, the common card's words) set in its place against every loading
+ *     picture of it — the page's own ghost (it draws the chip's place), the board's, and the root loading's "/" (D6's route
+ *     ghost, which knows no preview) — box, y and what follows each within ±2px;
+ *   · /results: D12's ONE bar, the Millionea section drawn and no mark of its own in it, §T5 in its week rows; a tile.
+ * @param {object} o — browser, BASE, OUT, WIDTHS, LOCALES, HEIGHT, ok, open, contextWith, mintStaffPass, staffCookies.
+ */
+export async function shootDoorPreview(o) {
+  const { browser, BASE, OUT, WIDTHS, LOCALES, HEIGHT, ok, open, contextWith, mintStaffPass, staffCookies } = o;
+  const FX = loadFixtures(OUT);
+  const pass = await mintStaffPass(browser, BASE);
+  const pi = FX.states.indexOf("open · staff preview");
+  for (const locale of LOCALES) {
+    const staff = await staffCookies();
+    const ctxs = { journey: await contextWith([...staff, pass], locale), board: await contextWith(staff, locale) };
+    const pages = { journey: await ctxs.journey.newPage(), board: await ctxs.board.newPage() };
+    for (const width of WIDTHS) {
+      for (const [host, path] of [["journey", "/"], ["board", "/markets"]]) {
+        const page = pages[host];
+        await page.setViewportSize({ width, height: HEIGHT });
+        const tag = `preview · ${host} · ${locale} @${width}`;
+        await open(page, path);
+        const real = await page.evaluate(() => {
+          const wrap = document.querySelector('[data-testid="millionea-home-card"]');
+          const chip = wrap?.querySelector('a.kp-mln-door [id$="-preview"]');
+          return {
+            card: !!wrap?.querySelector("a.kp-mln-door"), chip: !!chip?.querySelector('[data-g^="eye."]'),
+            bars: document.querySelectorAll('[data-testid="millionea-preview-mark"]').length,
+            overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          };
+        });
+        ok(`doors ${tag} · the real card wears its preview chip with the eye (L12), and the shell draws no bar here (D12 stands on Millionea's pages and /results)`,
+          real.card && real.chip && real.bars === 0 && real.overflow <= 1, JSON.stringify(real));
+        await page.screenshot({ path: `${OUT}/door-preview-${host}-${locale}-${width}.png`, fullPage: false });
+        if (!GUARD_WIDTHS.includes(width) || pi < 0) continue;
+        await page.evaluate(SET_CARD, FX.cards[locale][host][pi]);
+        await frames(page);
+        const m = await page.evaluate(MEASURE, host);
+        const pictures = host === "journey"
+          ? [["the page's ghost", FX.journeyGhost[locale].preview], ["the root loading's \"/\" (no preview)", FX.routeGhost[locale].slot]]
+          : [["the board's ghost", FX.marketsGhost[locale].preview]];
+        for (const [name, html] of pictures) {
+          await open(page, path);
+          await page.evaluate(SWAP_COLUMN, [host, html]);
+          await frames(page);
+          const g = await page.evaluate(GHOST_MEASURE, host);
+          const dh = g.slot && m.card ? g.slot.h - m.card.h : NaN, dy = g.slot && m.card ? g.slot.y - m.card.y : NaN, da = g.after && m.after ? g.after.y - m.after.y : NaN;
+          ok(`doors ${tag} · H1 at STAFF_PREVIEW · ${name} holds the preview card's box: ${g.slot?.h?.toFixed(1)} for ${m.card?.h?.toFixed(1)} (Δ ${dh.toFixed(1)}), y Δ ${dy.toFixed(1)}, what follows Δ ${da.toFixed(1)}`,
+            Math.abs(dh) <= TOL && Math.abs(dy) <= TOL && Math.abs(da) <= TOL && g.slots === 1);
+        }
+      }
+      // /results at STAFF_PREVIEW: D12's one bar; the section, with no mark of its own; §T5 in its rows.
+      const page = pages.board;
+      const tag = `preview · results · ${locale} @${width}`;
+      await open(page, "/results");
+      const r = await page.evaluate(() => {
+        const section = document.querySelector('[data-testid="millionea-results-section"]');
+        return {
+          bars: document.querySelectorAll('[data-testid="millionea-preview-mark"]').length,
+          section: !!section, inSection: section ? section.querySelectorAll('[data-testid="millionea-preview-mark"]').length : -1,
+          overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        };
+      });
+      ok(`doors ${tag} · D12's one bar above the page, the Millionea section drawn and no mark of its own in it`, r.bars === 1 && r.section && r.inSection === 0 && r.overflow <= 1, JSON.stringify(r));
+      await page.screenshot({ path: `${OUT}/door-preview-results-top-${locale}-${width}.png`, fullPage: false });
+      if (r.section) {
+        if (width === 320 || width === 1280) {
+          const f = await page.evaluate(NUMERAL_FACE, '[data-testid="millionea-results-section"]');
+          ok(`doors ${tag} · §T5 · every digit in the week rows computes to JetBrains Mono, tabular (${f.digits} digit runs)`, f.digits > 0 && f.bad.length === 0, f.bad.slice(0, 3).join(" | "));
+        }
+        await page.getByTestId("millionea-results-section").scrollIntoViewIfNeeded();
+        await page.evaluate(() => window.scrollBy(0, -80));
+        await frames(page);
+        await page.screenshot({ path: `${OUT}/door-preview-results-${locale}-${width}.png`, fullPage: false });
+      }
+    }
+    await ctxs.journey.close();
+    await ctxs.board.close();
   }
 }

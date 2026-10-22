@@ -771,6 +771,7 @@
     "test:maswali-admin-touch": "tsx scripts/maswali-admin-touch.test.mts",
     "red:maswali-admin-touch": "tsx scripts/maswali-admin-touch.test.mts --prove-red",
     "qa:maswali-player-shots": "node scripts/maswali-player-shots.mjs",
+    "qa:maswali-door-preview": "node scripts/maswali-door-preview-shots.mjs",
     "qa:maswali-hub-states": "node scripts/maswali-hub-states.mjs",
     "test:maswali-hub": "tsx scripts/maswali-hub.test.mts",
     "test:maswali-hub-reads": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-hub-reads.test.mts",
