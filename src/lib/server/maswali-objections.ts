@@ -11,7 +11,7 @@
  *     closing before 12:00 EAT (`objectionWindowEnd` → `week.objectionsCloseAt`), never the platform's live setting.
  *   · THE RULING — REJECT, or uphold with REVERSE (the other side won), VOID (on a ground from the closed list, MR-15) or
  *     REINSTATE (a voided question comes back with its result), by an officer other than the one who sealed the question
- *     or confirmed its seal; ADMIN — the Owner — is the fallback (the platform's ruling gate: ADMIN or COMPLIANCE). An
+ *     or confirmed its seal, and other than the one whose upheld ruling set its present result; ADMIN — the Owner — is the fallback (the platform's ruling gate: ADMIN or COMPLIANCE). An
  *     upheld change that changes the graded set re-runs MR-17 and restarts the window ONCE (`week.objectionRestarted`).
  *   · THE MONEY — an OPEN objection freezes the week: its settlement and its week void both refuse (`countOpenObjections`,
  *     OB.1–OB.5). A filing takes the chain lock every settlement section and every seal takes, so a filing and a release
@@ -182,11 +182,20 @@ export function gradedSetSignature(questions: readonly GradableQuestion[]): stri
 
 export type MillioneaRuled = { ok: true; changed: boolean; restarted: boolean; recorded: boolean };
 
+/** The officer whose upheld ruling last changed this question's result — the present result's author — or null. */
+function lastUpheld(rows: readonly StoredObjection[], slot: number): StoredObjection | null {
+  return rows.filter((x) => x.questionOrdinal === slot && x.status === "UPHELD" && x.reviewedAt)
+    .sort((a, b) => (b.reviewedAt as string).localeCompare(a.reviewedAt as string))[0] ?? null;
+}
+const lastUpheldRuler = (rows: readonly StoredObjection[], slot: number): string | null => lastUpheld(rows, slot)?.reviewedBy ?? null;
+const lastUpheldAt = (rows: readonly StoredObjection[], slot: number): string | null => lastUpheld(rows, slot)?.reviewedAt ?? null;
+
 /**
  * Rule on one OPEN Millionea objection (MR-16). `expectedOutcome` / `expectedSealedAt` are the seal the officer reviewed,
  * as a correction names it: a ruling on a result that changed since is refused, so two rulings on one question can never
  * stack (two REVERSEs flipping it back). Separation of duties: never the objector, never the question's sealer or the
- * officer who confirmed its seal, never an officer holding a live ticket in the week (MR-14); ADMIN or COMPLIANCE, ADMIN —
+ * officer who confirmed its seal, never the officer whose upheld ruling set its present result, never an officer holding
+ * a live ticket in the week (MR-14); ADMIN or COMPLIANCE, ADMIN —
  * the Owner — being the fallback when every other officer sealed. A REJECT changes nothing but the case; an upheld remedy
  * re-seals the question (`sealedAt` moves, so every reviewed form refreshes) and, when the graded set changed, re-runs
  * MR-17 and restarts the window once. `changed`: the graded set changed; `restarted`: the window restarts (now, or at the
@@ -238,6 +247,14 @@ export async function decideMillioneaObjection(input: {
       audit({ category: "COMPLIANCE", action: "maswali.objection.sealer_blocked", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id,
         payload: { week: week.code, slot: slotLabel(q.slot), objectionId: o.id } });
       return refuse(`You sealed ${slotLabel(q.slot)} or confirmed its seal: another officer rules on its objections — the Owner (ADMIN) is the fallback.`);
+    }
+    // ⭐ MR-16, HELD ABSOLUTE: the officer whose upheld ruling set the question's present result is its author now, so the
+    //    objections to it go to another officer, as the sealer's do (rulings serialize on this lock: the last one is read
+    //    committed).
+    if (lastUpheldRuler(await db.objection.listForMarket(o.marketId), q.slot) === input.officerId) {
+      audit({ category: "COMPLIANCE", action: "maswali.objection.author_blocked", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id,
+        payload: { week: week.code, slot: slotLabel(q.slot), objectionId: o.id } });
+      return refuse(`You set ${slotLabel(q.slot)}'s present result on an earlier objection: another officer rules on its objections — the Owner (ADMIN) is the fallback.`);
     }
     if ((await ticketStore.countLiveForUser(week.id, input.officerId, tx ?? undefined)) > 0) {
       return refuse("An officer who holds a ticket in this week cannot rule on its objections.");
@@ -345,6 +362,8 @@ export type MillioneaQueueQuestion = {
   sealedBy: string | null; stage2By: string | null; sealedAt: string | null;
   /** The seal's officers as the console names staff (`displayLabel`). */
   sealer: string; confirmer: string | null;
+  /** The officer whose upheld ruling set the present result (the service bars them from its next objections), and when. */
+  authorId: string | null; author: string | null; authoredAt: string | null;
   objections: Array<MillioneaObjectionRow & { userId: string; filer: string; reviewer: string | null }>;
 };
 /** One week of the officer queue. `viewerHoldsTicket`: the officer reading it holds a live ticket in the week, so the
@@ -380,10 +399,12 @@ export async function millioneaObjectionQueue(viewerId: string | null, nowMs = D
       viewerHoldsTicket: viewerId ? (await ticketStore.countLiveForUser(week.id, viewerId)) > 0 : false,
       questions: [...bySlot.keys()].sort((a, b) => a - b).map((slot) => {
         const q = questions.find((x) => x.slot === slot);
+        const authorId = lastUpheldRuler(rows, slot);
         return {
           slot, label: slotLabel(slot), textEn: q?.textEn ?? "", outcome: q?.outcome ?? null, voidReason: q?.voidReason ?? null, evidence: q?.evidence ?? null,
           sealedBy: q?.sealedBy ?? null, stage2By: q?.stage2By ?? null, sealedAt: q?.sealedAt ?? null,
           sealer: q?.sealedBy ? label(q.sealedBy) : "—", confirmer: q?.stage2By ? label(q.stage2By) : null,
+          authorId, author: authorId ? label(authorId) : null, authoredAt: authorId ? lastUpheldAt(rows, slot) : null,
           objections: bySlot.get(slot)!.map((o) => ({ ...rowOf(o), userId: o.userId, filer: label(o.userId), reviewer: o.reviewedBy ? label(o.reviewedBy) : null })),
         };
       }),

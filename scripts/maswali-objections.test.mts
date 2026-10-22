@@ -10,13 +10,13 @@
  * store's own one-per-key and rule-while-OPEN — every one on memory AND on a fresh PostgreSQL, because the memory twin
  * proving a rule the database breaks is the failure this repository has paid for.
  * ⛔ NO POSTGRES IS A FAILURE, NOT A SKIP (exit 3, NOT MEASURED).
- * The floor is per store, measured from the first printed run (44 on memory, 44 on PostgreSQL); it only ever rises.
+ * The floor is per store, measured from the first printed run (45 on memory, 45 on PostgreSQL); it only ever rises.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({
   suite: "test:maswali-objections",
   casesFile: "scripts/lib/maswali-objections-child.mts",
-  minPass: { memory: 44, postgres: 44 },
+  minPass: { memory: 45, postgres: 45 },
   dbPrefix: "mlw_objections",
 });

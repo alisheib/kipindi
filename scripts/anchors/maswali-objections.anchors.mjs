@@ -84,6 +84,13 @@ export const MUTATIONS = [
     expect: "2.15 ·",
   },
   {
+    name: "(22) the officer whose upheld ruling set a question's present result rules on its next objection",
+    file: DOOR,
+    from: "    if (lastUpheldRuler(await db.objection.listForMarket(o.marketId), q.slot) === input.officerId) {",
+    to: "    if (false) {",
+    expect: "2.17 ·",
+  },
+  {
     name: "(10) the result reviewed is not the result ruled (a stale ruling lands, two REVERSEs can stack)",
     file: DOOR,
     from: "    if (q.outcome !== input.expectedOutcome || q.sealedAt !== input.expectedSealedAt) {",

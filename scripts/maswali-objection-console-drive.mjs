@@ -18,6 +18,8 @@
  *   6 · every state at 360 / 768 / 1280 / 1920: no horizontal overflow, no console error, a viewport tile each.
  * ⛔ The only routes it calls itself are the two dev-only seeds; everything else is a click, a key or a typed word.
  * ⛔ Localhost and the in-memory store only. Tiles in `.50pick-shots/maswali/objections/`, never full-page captures.
+ * ⚠️ A chip, a status badge and a locked control paint their words in capitals (CSS), and `innerText` reads them as
+ *    painted: their words are matched without regard to case.
  * ⚠️ No backslash escape for a slash, a word boundary or a control character anywhere in this file (`test:source-bytes`).
  */
 import { chromium } from "playwright";
@@ -71,7 +73,7 @@ async function open(o) {
   const res = await o.page.goto(`${BASE}${PAGE}`, { waitUntil: "domcontentloaded" });
   await o.page.waitForLoadState("networkidle").catch(() => {});
   ok(`${o.name} · ${PAGE} answers 200`, res?.status() === 200, `${res?.status()}`);
-  await until(() => o.page.getByRole("heading", { name: "Objections" }).count());
+  await until(() => o.page.locator("[data-section-heading]", { hasText: "Objections" }).count());
 }
 /** The objection's own row: the list item that carries its filer's words. */
 const row = (o, detail) => o.page.locator("li").filter({ hasText: detail });
@@ -102,7 +104,7 @@ const owner = await officer("+255700000001", "ADMIN", "Ali Admin");
 await open(owner);
 ok("1 · with no week being decided, the card says there is nothing to rule",
   (await owner.page.getByText("No objection to rule").count()) > 0);
-await tiles(owner, "empty", () => owner.page.getByRole("heading", { name: "Objections" }));
+await tiles(owner, "empty", () => owner.page.locator("[data-section-heading]", { hasText: "Objections" }));
 noErrors(owner, "1 · the empty queue");
 
 // ── 2 · the seed ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -121,8 +123,8 @@ ok("3.1 · both weeks are in the queue, the earlier first", (await openWeek.coun
     const s = [...document.querySelectorAll("section[aria-label]")].map((x) => x.getAttribute("aria-label"));
     return s.indexOf(`${a} objections`) < s.indexOf(`${b} objections`);
   }, [W.closed, W.open]));
-ok("3.2 · the open week says its window is open and that four objections wait", /Check window open until/.test(await openWeek.innerText()) && /4 to rule/.test(await openWeek.innerText()), clip(await openWeek.innerText(), 200));
-ok("3.3 · the closed week says its window closed and the week waits for the ruling", /Check window closed .*the week settles once every objection here is ruled/.test(await closedWeek.innerText()) && /1 to rule/.test(await closedWeek.innerText()), clip(await closedWeek.innerText(), 200));
+ok("3.2 · the open week says its window is open and that four objections wait", /Check window open until/.test(await openWeek.innerText()) && /4 to rule/i.test(await openWeek.innerText()), clip(await openWeek.innerText(), 200));
+ok("3.3 · the closed week says its window closed and the week waits for the ruling", /Check window closed .*the week settles once every objection here is ruled/.test(await closedWeek.innerText()) && /1 to rule/i.test(await closedWeek.innerText()), clip(await closedWeek.innerText(), 200));
 ok("3.4 · M3's seal is shown with its officer: sealed YES by the Owner", /M3 · Will event 3 happen this weekend[?]/.test(await openWeek.innerText()) && /Sealed YES by Ali Admin on/.test(await openWeek.innerText()));
 ok("3.5 · M5's seal is a void with its ground, as words", /Sealed void [(]Abandoned, no official result[)] by Ali Admin/.test(await openWeek.innerText()));
 ok("3.6 · each objection shows its filer, the reason in words and the filer's own text",
@@ -145,7 +147,7 @@ await open(auditor);
 const lockedRow = row(auditor, DETAIL.m7);
 ok("4.1 · an AUDITOR sees every objection, each ruling locked with who can rule — never a button that bounces",
   (await lockedRow.count()) === 1 && (await lockedRow.getByRole("button", { name: /Reject|Reverse|Void|Reinstate/ }).count()) === 0
-    && /Rule on this objection/.test(await lockedRow.innerText()), clip(await lockedRow.innerText().catch(() => ""), 300));
+    && /Rule on this objection/i.test(await lockedRow.innerText()), clip(await lockedRow.innerText().catch(() => ""), 300));
 await tiles(auditor, "auditor-locked", () => row(auditor, DETAIL.m7));
 noErrors(auditor, "4 · the auditor's queue");
 
@@ -159,9 +161,21 @@ ok("5.0 · a void question is offered Reject and Reinstate only; a YES question 
 await tiles(comp, "compliance-queue", () => row(comp, DETAIL.m3a));
 
 // 5.1 · REVERSE on M3's first objection, through the typed confirmation.
-await row(comp, DETAIL.m3a).getByRole("button", { name: "Reverse…" }).click();
 const dialog = comp.page.getByRole("alertdialog");
-await until(() => dialog.count());
+/** Open a ruling's dialog from a row, once any dialog before it has gone. */
+async function openRuling(o, detail, button) {
+  await until(async () => (await o.page.getByRole("alertdialog").count()) === 0, 30_000);
+  await row(o, detail).getByRole("button", { name: button }).click();
+  await until(() => o.page.getByRole("alertdialog").count(), 30_000);
+  return o.page.getByRole("alertdialog");
+}
+/** Confirm, then wait for the dialog to go and for the row to read `decided`. */
+async function landed(o, d, confirmName, detail, decided) {
+  await d.getByRole("button", { name: confirmName }).click();
+  const gone = await until(async () => (await o.page.getByRole("alertdialog").count()) === 0, 60_000);
+  return !!gone && !!(await until(async () => decided.test(await row(o, detail).innerText()), 60_000));
+}
+await openRuling(comp, DETAIL.m3a, "Reverse…");
 ok("5.1 · the dialog names the ruling and the question, and says what it does before anything is typed",
   /Reverse the result · .* M3/.test(await dialog.innerText()) && /M3's result changes from YES to NO and the week is graded again[.]/.test(await dialog.innerText())
     && /the check window restarts once, from now/.test(await dialog.innerText()), clip(await dialog.innerText(), 400));
@@ -174,51 +188,60 @@ ok("5.3 · the ruling's own word arms it", await confirm.isEnabled());
 await tiles(comp, "dialog-reverse", () => dialog);
 await confirm.click();
 ok("5.4 · ⭐ with no note the ruling is refused at its field, the dialog stays open, and nothing is recorded",
-  (await until(() => dialog.getByText(/Write what you checked and what it showed/).count(), 5_000)) !== null && (await dialog.count()) === 1);
+  (await until(() => dialog.getByText(/Write what you checked and what it showed/).count(), 10_000)) !== null && (await dialog.count()) === 1
+    && (await row(comp, DETAIL.m3a).getByRole("button", { name: "Reverse…" }).count()) === 1);
 await dialog.locator("textarea").fill("The federation's published match report lists event 3 as not held; the result is NO.");
 await gate.fill("REVERSE");
-await confirm.click();
-const landed = await until(() => comp.page.getByText("Upheld: the result is reversed. The week's check window restarted from now.").count(), 30_000);
-ok("5.5 · ⭐ the REVERSE lands: the console says so, and that the window restarted from now (a toast: the decided case replaces its control)", !!landed);
-await comp.page.waitForLoadState("networkidle").catch(() => {});
-const afterReverse = await row(comp, DETAIL.m3a).innerText();
+const toast = until(() => comp.page.getByText("Upheld: the result is reversed. The week's check window restarted from now.").count(), 60_000);
+const reversed = await landed(comp, dialog, "Reverse the result", DETAIL.m3a, /Upheld · result reversed by Amina Compliance on .*: The federation's published match report/);
+ok("5.5 · ⭐ the REVERSE lands: the console says so, and that the window restarted from now (a toast: the decided case replaces its control)", !!(await toast));
 ok("5.6 · the ruled objection reads as decided — upheld, the result reversed, by whom and why — with no ruling button",
-  /Upheld · result reversed by Amina Compliance on .*: The federation's published match report/.test(afterReverse) && (await row(comp, DETAIL.m3a).getByRole("button").count()) === 0, clip(afterReverse, 300));
+  reversed && (await row(comp, DETAIL.m3a).getByRole("button").count()) === 0, clip(await row(comp, DETAIL.m3a).innerText(), 300));
 const compOpen = comp.page.locator(`section[aria-label="${W.open} objections"]`);
-ok("5.7 · M3's seal now reads NO, and the week says its window restarted once", /Sealed NO by Ali Admin/.test(await compOpen.innerText())
-  && /It has restarted once; a further change does not restart it[.]/.test(await compOpen.innerText()) && /3 to rule/.test(await compOpen.innerText()), clip(await compOpen.innerText(), 300));
-await tiles(comp, "after-reverse", () => row(comp, DETAIL.m3a));
+const restartedLine = await until(async () => {
+  const text = await compOpen.innerText();
+  return /Now NO, on an objection upheld by Amina Compliance on .*[.] Sealed by Ali Admin[.]/.test(text)
+    && /It has restarted once; a further change does not restart it[.]/.test(text) && /3 to rule/i.test(text);
+}, 60_000);
+ok("5.7 · M3 now reads NO on the objection Amina upheld, its seal still Ali's, and the week says its window restarted once", !!restartedLine, clip(await compOpen.innerText(), 400));
+ok("5.8 · ⭐ MR-16 held absolute: on M3's next objection the officer who set its present result reads that another officer rules — no button",
+  /You set M3's present result on an earlier objection, so another officer rules on its objections — the Owner, if no other compliance officer can[.]/.test(await row(comp, DETAIL.m3b).innerText())
+    && (await row(comp, DETAIL.m3b).getByRole("button").count()) === 0, clip(await row(comp, DETAIL.m3b).innerText(), 300));
+await tiles(comp, "after-reverse", () => row(comp, DETAIL.m3b));
 
-// 5.8 · REJECT on M3's second objection: the seal it reviews is the new one.
-await row(comp, DETAIL.m3b).getByRole("button", { name: "Reject…" }).click();
-await until(() => dialog.count());
-ok("5.8 · the second case on M3 is reviewed against the result as it now stands (NO)", /M3 keeps its result [(]NO[)]/.test(await dialog.innerText()), clip(await dialog.innerText(), 300));
-await dialog.locator("textarea").fill("Already reversed on the first objection; the source reads NO.");
-await dialog.getByPlaceholder("REJECT").fill("REJECT");
-await dialog.getByRole("button", { name: "Reject · the result stands" }).click();
-ok("5.9 · the REJECT lands and the case reads as rejected", !!(await until(async () => /Rejected by Amina Compliance on/.test(await row(comp, DETAIL.m3b).innerText()), 30_000)));
+// 5.9 · a second COMPLIANCE officer rejects M3's second objection, reviewing the result as it now stands.
+const comp2 = await officer("+255700000014", "COMPLIANCE", "Kassim Compliance");
+await open(comp2);
+const d2 = await openRuling(comp2, DETAIL.m3b, "Reject…");
+ok("5.9 · the second case on M3 is reviewed against the result as it now stands (NO), by an officer who neither sealed nor changed it",
+  /M3 keeps its result [(]NO[)]/.test(await d2.innerText()), clip(await d2.innerText(), 300));
+await d2.locator("textarea").fill("Already reversed on the first objection; the source reads NO.");
+await d2.getByPlaceholder("REJECT").fill("REJECT");
+ok("5.10 · the REJECT lands and the case reads as rejected, by Kassim",
+  await landed(comp2, d2, "Reject · the result stands", DETAIL.m3b, /Rejected by Kassim Compliance on .*: Already reversed on the first objection/));
+noErrors(comp2, "5.9–5.10 · the second officer's ruling");
 
-// 5.10 · REINSTATE M5 with its result: the window does not restart a second time.
-await row(comp, DETAIL.m5).getByRole("button", { name: "Reinstate…" }).click();
-await until(() => dialog.count());
-ok("5.10 · the reinstatement says the window has already restarted once", /has already restarted once, so it does not restart again/.test(await dialog.innerText()), clip(await dialog.innerText(), 300));
-await dialog.getByRole("combobox", { name: "Reinstated result" }).click().catch(() => {});
+// 5.11 · REINSTATE M5 with its result: the window does not restart a second time.
+await open(comp);
+const d3 = await openRuling(comp, DETAIL.m5, "Reinstate…");
+ok("5.11 · the reinstatement says the window has already restarted once", /has already restarted once, so it does not restart again/.test(await d3.innerText()), clip(await d3.innerText(), 300));
+await d3.getByRole("combobox", { name: "Reinstated result" }).click();
 await comp.page.getByRole("option", { name: "YES" }).click();
-await dialog.locator("textarea").fill("The source published event 5's result; it was played in full.");
-await dialog.getByPlaceholder("REINSTATE").fill("REINSTATE");
-await dialog.getByRole("button", { name: "Reinstate it" }).click();
-ok("5.11 · ⭐ the REINSTATE lands, re-grades the week and keeps its window", !!(await until(() =>
-  comp.page.getByText("Upheld: the question is reinstated. The week is graded again; its check window stays as it was.").count(), 30_000)));
-ok("5.12 · M5's seal now reads YES", /Sealed YES by Ali Admin/.test(await comp.page.locator(`section[aria-label="${W.open} objections"] div`).filter({ hasText: "M5 ·" }).first().innerText()));
+await d3.locator("textarea").fill("The source published event 5's result; it was played in full.");
+await d3.getByPlaceholder("REINSTATE").fill("REINSTATE");
+const toast2 = until(() => comp.page.getByText("Upheld: the question is reinstated. The week is graded again; its check window stays as it was.").count(), 60_000);
+const reinstated = await landed(comp, d3, "Reinstate it", DETAIL.m5, /Upheld · question reinstated by Amina Compliance on/);
+ok("5.12 · ⭐ the REINSTATE lands, re-grades the week and keeps its window", reinstated && !!(await toast2));
+ok("5.13 · M5 now reads YES on the objection Amina upheld", !!(await until(async () =>
+  /Now YES, on an objection upheld by Amina Compliance on/.test(await compOpen.locator("div").filter({ hasText: "M5 ·" }).first().innerText()), 60_000)));
 
-// 5.13 · REJECT the closed week's objection.
-await row(comp, DETAIL.closed).getByRole("button", { name: "Reject…" }).click();
-await until(() => dialog.count());
-await dialog.locator("textarea").fill("The federation lists event 9 as played on Saturday; the seal stands.");
-await dialog.getByPlaceholder("REJECT").fill("REJECT");
-await dialog.getByRole("button", { name: "Reject · the result stands" }).click();
-ok("5.13 · the closed week's last objection is ruled: its week says all ruled", !!(await until(async () =>
-  /All ruled/.test(await comp.page.locator(`section[aria-label="${W.closed} objections"]`).innerText()), 30_000)));
+// 5.14 · REJECT the closed week's objection.
+const d4 = await openRuling(comp, DETAIL.closed, "Reject…");
+await d4.locator("textarea").fill("The federation lists event 9 as played on Saturday; the seal stands.");
+await d4.getByPlaceholder("REJECT").fill("REJECT");
+const closedRuled = await landed(comp, d4, "Reject · the result stands", DETAIL.closed, /Rejected by Amina Compliance on/);
+ok("5.14 · the closed week's last objection is ruled: its week says all ruled", closedRuled && !!(await until(async () =>
+  /All ruled/i.test(await comp.page.locator(`section[aria-label="${W.closed} objections"]`).innerText()), 60_000)));
 await tiles(comp, "after-rulings", () => comp.page.locator(`section[aria-label="${W.closed} objections"]`));
 noErrors(comp, "5 · the compliance officer's rulings");
 

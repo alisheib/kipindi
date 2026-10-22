@@ -259,6 +259,16 @@ ok("2.15 · ⭐ an officer holding a live ticket in the week never rules on its 
 const okB = fb2.ok ? await rule(fb2.objectionId, COMP_A, "REJECT", B.wk.id, 2, inB, { note: "Both signatures read the same source" }) : fb2;
 await rule((fbI as any).objectionId, COMP_A, "REJECT", B.wk.id, 9, inB, { note: "Question 9 stands as sealed" });
 ok("2.16 · …a third officer rules (COMPLIANCE, neither sealer nor confirmer nor holder)", okB.ok, errOf(okB));
+// ⭐ MR-16, held absolute: the officer whose upheld ruling set a question's present result is its author now — the next
+// objection to that result goes to another officer, as the sealer's do.
+const fa5 = await file(P1, B.wk.id, 5, inB, { detail: "The source published NO for event 5 on the day" });
+const fb5 = await file(I1, B.wk.id, 5, inB, { detail: "The federation decided event 5 as NO" });
+const rev5B = fa5.ok ? await rule(fa5.objectionId, COMP_A, "REVERSE", B.wk.id, 5, inB, { note: "The federation's sheet reads NO for event 5" }) : fa5;
+const byAuthor = fb5.ok ? await rule(fb5.objectionId, COMP_A, "REJECT", B.wk.id, 5, inB, { note: "Already reversed on the first case" }) : fb5;
+const byOther = fb5.ok ? await rule(fb5.objectionId, COMP_B, "REJECT", B.wk.id, 5, inB, { note: "Already reversed on the first case" }) : fb5;
+ok("2.17 · ⭐ the officer whose upheld ruling set a question's present result never rules on its next objection — another officer does (MR-16)",
+  rev5B.ok && !byAuthor.ok && /present result on an earlier objection/.test(errOf(byAuthor)) && byOther.ok
+    && (await objectionRow((fb5 as any).objectionId))?.reviewedBy === COMP_B, J({ rev5B, byAuthor, byOther }));
 
 // ═══ §3 · VOID AND REINSTATE ════════════════════════════════════════════════════════════════════════════════════════
 console.log(`${LF}§3 · void and reinstate (MR-16, MR-17)`);
@@ -321,12 +331,14 @@ const orow = await objectionRow((fr as any).objectionId);
 ok("5.1 · ⭐ two officers ruling on ONE case at once: exactly one ruling lands, and the case records that one",
   fr.ok && [ra, rb].filter((r: any) => r.ok).length === 1 && orow.status !== "OPEN"
     && (orow.status === "UPHELD" ? (await question(Rw.wk.id, 8)).outcome === "NO" : (await question(Rw.wk.id, 8)).outcome === "YES"), J({ ra, rb, status: orow.status }));
-// Two cases on one question, each upheld with REVERSE on the result both officers reviewed: never flipped twice.
+// Two cases on one question, each upheld with REVERSE on the result both officers reviewed: never flipped twice. Two
+// officers neither of whom set M8's present result in 5.1 (MR-16 bars that one), so the race is the reviewed seal's alone.
 const v2 = await reviewed(Rw.wk.id, 8);
 const fr3 = await file(R3, Rw.wk.id, 8, inR);
+const COMP_C = await W.user({ id: `usr_ob_comp_c_${pid}`, role: "COMPLIANCE" });
 const [rc, rd] = await Promise.all([
-  rule((fr2 as any).objectionId, COMP_A, "REVERSE", Rw.wk.id, 8, inR, { review: v2 }),
-  rule((fr3 as any).objectionId, COMP_B, "REVERSE", Rw.wk.id, 8, inR, { review: v2 }),
+  rule((fr2 as any).objectionId, OWNER, "REVERSE", Rw.wk.id, 8, inR, { review: v2 }),
+  rule((fr3 as any).objectionId, COMP_C, "REVERSE", Rw.wk.id, 8, inR, { review: v2 }),
 ]);
 ok("5.2 · ⭐ two cases on ONE question ruled at once on the same reviewed result: one lands, the other is refused as stale — the result is flipped once, never back",
   fr2.ok && fr3.ok && [rc, rd].filter((r: any) => r.ok).length === 1 && [rc, rd].some((r: any) => !r.ok && /changed since you reviewed/.test(errOf(r)))
