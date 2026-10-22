@@ -15,7 +15,16 @@ Every heavy check ran on GitHub's machines (public repo: free Linux runners, 16 
 - Lanes worked as subagents with `lanes/LANE-COMMON-BLADE.md` (+ a BRIEF.md each); they write in worktrees, run nothing
   locally, and push their branches.
 
-## 1 · FINISH FIRST: the S5 dark push (pre-approved by Ali; everything but parity is green at the exact commit)
+## ✅ UPDATE 19:09 UTC — S5 PUSHED TO MAIN (dark): `main` da3d32180 → **2ed817395** (fast-forward)
+Parity (run 39827559671) came back: baseline 52/52 (224 cells); null compare 2 **68/68** (the earlier flake did not
+recur); release compare **66/67** — the ONE difference, NAMED: S5's Millionea results section adds an empty, already-
+resolved Suspense boundary to `/results` (`<!--$--><!--/$-->`, two HTML comments, no element, no box — every layout region
+equal) in 8 book cells (guest/player × en/sw × 360/1280); it renders nothing while the rollout is WITHDRAWN (door census
+and qa:live hold /results free of every Millionea trace). Production read-back: run **39837626118**
+(`tools/jobs/prod-readback.sh`: dpl=2ed817395 on the three hosts, /api/health, qa:chunks-prod ×2, production qa:live) —
+READ IT FIRST; then STAFF_PREVIEW (Railway login) and record the push in §0 + the board row ▶ 0i (S5 live dark).
+
+## 1 · (as at the stop) the S5 dark push (pre-approved by Ali; everything but parity is green at the exact commit)
 Release `claude/maswali-s5-release` = **`2ed817395`** (cc0db75c1 + the e2e:maswali-fault harness fix). At 2ed817395:
 - CI (39816221418): typecheck, integrity, **702/702** in-memory suites, build, first-load ✓; browser gates responsive
   7641/0, motion 43/0, revoked-deadend 46/0, admin-section-gate 21/0; **needle-rest RED = production's own**: identical
