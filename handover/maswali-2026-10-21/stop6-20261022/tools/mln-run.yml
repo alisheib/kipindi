@@ -66,3 +66,4 @@ jobs:
             ${{ runner.temp }}/out
             .50pick-shots
           if-no-files-found: ignore
+          include-hidden-files: true
