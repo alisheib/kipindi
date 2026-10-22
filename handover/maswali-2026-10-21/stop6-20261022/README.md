@@ -23,6 +23,11 @@ equal) in 8 book cells (guest/player × en/sw × 360/1280); it renders nothing w
 and qa:live hold /results free of every Millionea trace). Production read-back: run **39837626118**
 (`tools/jobs/prod-readback.sh`: dpl=2ed817395 on the three hosts, /api/health, qa:chunks-prod ×2, production qa:live) —
 READ IT FIRST; then STAFF_PREVIEW (Railway login) and record the push in §0 + the board row ▶ 0i (S5 live dark).
+Parity instrument follow-up: across THREE null compares of live main on the runner, TWO flagged the same cell —
+`question-{guest,player}|en|1280|/markets/:selection-closed`, the bet panel 210 ↔ 228px between two servers of the SAME
+tree (gate 1 and gate 2's null compares; the dedicated run's null2 was 68/68). An instrument flake (likely time-dependent
+text in the selection-closed panel): stabilise the seed's clock or normalise that line in qa-classic-shell-parity, with a
+--prove-red plant, so a null compare is clean every time.
 ⚠️ BEFORE STAFF_PREVIEW: the product's own drive (`scripts/maswali-player-drive.mjs` with FEATURE_MILLIONEA=ACTIVE and
 FEATURE_SIMPLEJOURNEY=STAFF_PREVIEW, steps 1–6) HUNG on the Linux runner: gate 1's dark job hit its 180-minute limit inside
 it (cancelled, so its log and tiles were lost); gate 2's (39816308706) was in the same step. Re-run it ALONE through
