@@ -646,11 +646,12 @@ if (STORE === "memory") {
     const VOID: any = await import("../../src/lib/maswali-void-reason.ts");
     const { settleArithmetic }: any = await import("../../src/lib/maswali-money.ts");
     const words = (k: string) => LOCS.map((l) => dict[l].millionea[VOID.MASWALI_VOID_REASON_KEY[k]] as string);
+    // S6-INT 10 · the zh ground names its event 事件, the lead's zh word for a Millionea event (test:maswali-design 4.D).
     const [sbcEn, sbcSw, sbcZh] = words("settled_before_close"), [objEn, objSw, objZh] = words("criterion_objection");
     const guide = read("docs/maswali-operator-guide.html");
     const g62 = guide.slice(guide.indexOf("<h3>6.2 · An event moved earlier</h3>"), guide.indexOf("<h3>6.3 · Pausing sales</h3>"));
     ok("L.15 · ⛔ round 3, M2 · MR-5's case has a ground whose words are true: MR-15's own (\"settled before the close (MR-5)\") now names an event that had begun, on the console and on the register in three languages, and guide §6.2 sends officers to it; the after-close ground no longer claims a player's objection that no path files",
-      /begun/.test(VOID.MASWALI_VOID_REASON_LABEL.settled_before_close) && /begun/.test(sbcEn) && /lilianza/.test(sbcSw) && /赛事已开始/.test(sbcZh)
+      /begun/.test(VOID.MASWALI_VOID_REASON_LABEL.settled_before_close) && /begun/.test(sbcEn) && /lilianza/.test(sbcSw) && /事件已开始/.test(sbcZh)
         && !/objection/i.test(VOID.MASWALI_VOID_REASON_LABEL.criterion_objection) && !/objection/i.test(objEn) && !/pingamizi/i.test(objSw) && !/异议/.test(objZh)
         && /after the close/.test(objEn) && g62.includes(`<i>${VOID.MASWALI_VOID_REASON_LABEL.settled_before_close}</i>`) && !g62.includes("Objection to the criterion upheld")
         && VOID.MASWALI_VOID_REASONS.length === 6,

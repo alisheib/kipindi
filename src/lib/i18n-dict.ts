@@ -9334,7 +9334,7 @@ export const dict = {
       voidNotPlayed: "截止时间前​未进行或未完成",
       voidAbandoned: "已中止，无官方结果",
       voidNoSource: "截止时间前，其来源及​指定备用来源​均无读数",
-      voidSettledBeforeClose: "销售截止前​结果已公开，或赛事已开始",
+      voidSettledBeforeClose: "销售截止前​结果已公开，或事件已开始",
       voidCriterionWrong: "题目有误或​两种语言表述不一致，于截止前发现",
       voidCriterionObjection: "题目有误或​两种语言表述不一致，于截止后发现",
       jackpot: "大奖",
