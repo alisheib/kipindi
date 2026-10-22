@@ -28,6 +28,9 @@ import type { SmsStatus } from "@/lib/server/store";
 import { slotLabel } from "@/lib/maswali-score";
 import { adminCount, formatNumber, formatTzs } from "@/lib/utils";
 import { fmtEat } from "@/lib/maswali-admin-format";
+import { displayLabel } from "@/lib/display-label";
+import { roleLabel } from "@/lib/server/roles";
+import { accountStatusLabel } from "@/components/admin/status-badge";
 import { HeldShareControls, HoldShareControl, MarkReachedControl, PauseControl, VoidWeekControl, ClearLettersControl } from "./integrity-controls";
 import { StandingAuditWarning } from "../audit-warning";
 import { MillioneaObjectionQueue } from "./objection-queue";
@@ -161,7 +164,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
             : (
               <ul className="space-y-1.5 text-body-sm">
                 {newDevices.map((d, i) => (
-                  <li key={i}><span className="tabular">{fmtEat(d.at)}</span> · officer {d.officerId ?? "?"} · week {d.weekId ?? "?"}{d.kind === "unchecked"
+                  <li key={i}><span className="tabular">{fmtEat(d.at)}</span> · officer {d.officer ?? "not on record"} · week {d.weekCode ?? "not on record"}{d.kind === "unchecked"
                     ? <span className="text-warning"> · the device could not be checked against their earlier seals</span>
                     : d.firstSeal ? <span className="text-text-tertiary"> · their first seal on the platform</span> : <span className="text-warning"> · not a device they sealed from before</span>}</li>
                 ))}
@@ -385,7 +388,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
                   {v.winners.map((w) => (
                     <tr key={w.serial}>
                       <td className="text-left tabular">{w.weekCode}</td><td className="text-left tabular">{w.serial}</td><td className="text-left">{w.holder}</td>
-                      <td className="text-left">{w.role} · {w.status}</td><td className="text-right tabular">{w.accountAgeDays} d</td>
+                      <td className="text-left">{roleLabel(w.role)} · {accountStatusLabel(w.status)}{/* G8 · the role's and the account's words, never their enums */}</td><td className="text-right tabular">{w.accountAgeDays} d</td>
                       <td className="text-right tabular">{w.payout === null ? "Not on record" : formatTzs(w.payout)}</td>
                       <td className="text-left">{w.frozenReason ? <span className="text-body-sm">{consoleShareNoteOf(w.frozenReason)}</span>
                         : canHold ? <HoldShareControl ticketId={w.ticketId} serial={w.serial} />
@@ -419,7 +422,8 @@ async function Content({ searchParams }: IntegrityPageProps) {
               {(query.seals.q || query.seals.state) && <Link href={clearListHref(listParams, "s") as never} className="btn btn-ghost btn-sm">Clear</Link>}
             </form>
           </div>
-          {v.sealWeeks.allTotal === 0 ? <EmptyState title="Nothing to show yet" body="A week's seals appear here once its results can no longer change (MB-34)." />
+          {/* MB-34 · the seal log is read after the fact, never while an officer could still be steered. */}
+          {v.sealWeeks.allTotal === 0 ? <EmptyState title="Nothing to show yet" body="A week's seals appear here once its results can no longer change." />
             : v.sealWeeks.total === 0 ? <EmptyState title="No sealed weeks match these filters" body="Try another week code or state." /> : (
             <>
             <p className="px-4 pt-3 font-mono text-micro uppercase tracking-widest text-text-subtle">{formatNumber(v.sealWeeks.total)} of {adminCount(v.sealWeeks.allTotal, "sealed week")}</p>
@@ -434,8 +438,8 @@ async function Content({ searchParams }: IntegrityPageProps) {
                   {v.sealLog.map((s, i) => (
                     <tr key={i}>
                       <td className="text-left tabular">{s.weekCode}</td><td className="text-left tabular">{slotLabel(s.slot)}</td>
-                      <td className="text-left">{s.outcome}{s.voidReason ? ` · ${isMaswaliVoidReason(s.voidReason) ? MASWALI_VOID_REASON_LABEL[s.voidReason] : s.voidReason}` : ""}</td><td className="text-left">{s.sealedBy ?? "—"}</td>
-                      <td className="text-left tabular">{fmtEat(s.sealedAt)}</td><td className="text-left">{s.stage2By ?? "—"}</td>
+                      <td className="text-left">{s.outcome}{s.voidReason ? ` · ${isMaswaliVoidReason(s.voidReason) ? MASWALI_VOID_REASON_LABEL[s.voidReason] : s.voidReason}` : ""}</td><td className="text-left">{s.sealer ?? "—"}</td>
+                      <td className="text-left tabular">{fmtEat(s.sealedAt)}</td><td className="text-left">{s.secondOfficer ?? "—"}</td>
                       <td className="text-left max-w-[320px]">{s.evidence ?? "—"}</td>
                     </tr>
                   ))}
@@ -458,7 +462,8 @@ async function Content({ searchParams }: IntegrityPageProps) {
             <>
               <p className="text-body-sm text-text-secondary mb-3">
                 {wordings.facts.live ? null : <span className="text-warning">Millionea is not public yet, so no campaign may be about it. </span>}
-                A Millionea campaign is one whose name begins with &ldquo;Millionea&rdquo;: it carries its headline&apos;s three facts and the week&apos;s own fee, and the composer refuses an amount, a win or a winner, a sum, an income, a guarantee, a rank or a chance (MB-47); any other campaign that uses Millionea&apos;s words is refused until it is tagged or reworded, and no wording names a winner (OD-30).
+                {/* MB-47 · the campaign lint · OD-30 · no wording names a winner. */}
+                A Millionea campaign is one whose name begins with &ldquo;Millionea&rdquo;: it carries its headline&apos;s three facts and the week&apos;s own fee, and the composer refuses an amount, a win or a winner, a sum, an income, a guarantee, a rank or a chance; any other campaign that uses Millionea&apos;s words is refused until it is tagged or reworded, and no wording names a winner.
                 {" "}The fee below is {wordings.facts.source === "WEEK" ? `${wordings.facts.weekCode ?? "this week"}'s own` : "the one the next week will freeze"}.
               </p>
               <ul className="space-y-2">
@@ -565,7 +570,8 @@ async function ConnectedAccounts({ clusters, query }: { clusters: Array<ClusterR
                   {openAccounts.map((a) => (
                     <tr key={a.userId}>
                       <td className="text-left">{a.holder}</td>
-                      <td className="text-left font-mono break-all">{a.userId}</td>
+                      {/* S6-ADMIN · G3 · the account's stable handle (`displayLabel`'s "Player #…"), never its raw id. */}
+                      <td className="text-left tabular">{displayLabel({ id: a.userId, displayName: null })}</td>
                       <td className="text-right tabular">{a.tickets.toLocaleString("en")}</td>
                     </tr>
                   ))}

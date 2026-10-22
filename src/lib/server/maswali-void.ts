@@ -162,7 +162,8 @@ export async function refundVoidedWeek(weekId: string): Promise<VoidRefund> {
           status: "VOIDED", resolvedOutcome: "VOID",
           resolutionStage1By: market.resolutionStage1By ?? SYSTEM, resolutionStage1At: market.resolutionStage1At ?? at,
           resolutionStage2By: market.resolutionStage2By ?? SYSTEM, resolutionStage2At: market.resolutionStage2At ?? at,
-          resolutionEvidence: market.resolutionEvidence ?? `Maswali Millionea week ${week.code} voided whole (MR-18): voided main questions outnumbered the usable reserves. Every ticket is refunded in full.`,
+          // MR-18 · the market's evidence is read on the console: words, never the code (S6-ADMIN, §M8a item 29).
+          resolutionEvidence: market.resolutionEvidence ?? `Maswali Millionea week ${week.code} voided whole: voided main questions outnumbered the usable reserves. Every ticket is refunded in full.`,
           objectionsClosedAt: market.objectionsClosedAt ?? at, resolutionNotifiedAt: market.resolutionNotifiedAt ?? at,
           settledAt: at, updatedAt: at,
         }, lockTx);

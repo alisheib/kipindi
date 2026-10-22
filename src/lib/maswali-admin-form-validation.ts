@@ -53,7 +53,8 @@ export function sunsetConfirmText(week: SunsetCandidate): { title: string; body:
   return {
     title: `Make ${week.code} the final week?`,
     body: week.state === "DRAFT"
-      ? `${week.code} is a draft. The service requires a full week's notice before it opens — or, while a closed week's results are being decided and no week is on sale, less if it is the next week to open (OD-03). Once this final week runs, no later week can open; if no ticket gets 10 of 10, the top score shares the jackpot.`
+      // OD-03 · a final week is announced a full week before it opens. ⛔ Words, never the code (S6-ADMIN, §M8a item 29).
+      ? `${week.code} is a draft. The service requires a full week's notice before it opens — or, while a closed week's results are being decided and no week is on sale, less if it is the next week to open. Once this final week runs, no later week can open; if no ticket gets 10 of 10, the top score shares the jackpot.`
       : `${week.code} becomes final at once. Once this final week runs, no later week can open; if no ticket gets 10 of 10, the top score shares the jackpot.`,
   };
 }

@@ -3325,6 +3325,35 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
       drafted open and close it at its drafted close, the config's own times, so a tile never draws a time the product
       would not: opened and closed a minute late, the tiles read "Jumatatu 00:01" beside the template's "Jumatatu 00:00",
       and a close at 18:01. `test:maswali-seed-clock`.
+29. **An admin reads plain words (Ali, 2026-10-22: his admin guide must be "clear, perfect … no unneeded wording"; the
+    lead's rulings G1–G8 on the S6-DOCS lane's walk of `/admin/maswali`; MASWALI-BUILD S6-ADMIN).** Every word the
+    Millionea console draws — page text, labels, hints, chips, refusals, the open's checklist, the alerts, and the
+    services' and the settlement's answers it prints — says what a rule is in plain words. ⛔ **Never a programme code**
+    (`MB-nn`, `OD-nn`, `MR-nn`, `OPEN-nn`, `R-…`): a code stays in a comment beside the words that replaced it, and the
+    words carry the rule itself — the week builder's chance hint states the band the rules allow ("The rules allow
+    30–70%"), and the move of a sales close states its latest allowed close as an EAT time ("no later than Sat 07 Nov,
+    09:30 (EAT), 30 minutes before the first event"). The evidence pack an auditor downloads reads the same way. Guard:
+    `test:maswali-admin-words` §1 — a census over every Millionea source an admin's screen can be drawn from, derived
+    from the folders (the console, its download route, every Millionea service and shared module, the lock chip) — with
+    `red:maswali-admin-words`; the desk scripts (`maswali-support-scripts.ts`) wait, named in the census, for the S6-DOCS
+    lane's item 9, and the census fails once they hold no code until their exclusion is deleted.
+    ⭐ **And the rest of plain (the lead's rulings G2–G8, S6-ADMIN 6).** **Names, never ids** — an officer by their name
+    (`consoleOfficerName`: the display name, else the stable handle "Officer #A3F2K8"), a week by its code, an account
+    by its handle ("Player #…"); no console page prints an id field as text. **Every time in a sentence is EAT, as the
+    console writes it** — "Fri 23 Oct, 18:00 (EAT)" (`eatInText`): the open's checklist, every refusal and every alert.
+    **Labels, never enums** — a state in the console's state words (`weekStateChip`), a role as `ROLE_LABEL` names it, an
+    account status as the status lexicon words it, a builder's category and kind as words (`CATEGORY_LABEL`,
+    `EVENT_KIND_LABEL`); the stored value stays the code. **The lock chip names who works a control in the roles' own
+    words** — "Release · Finance officers only", tooltip "Ask the Owner or a Finance officer." (`CONTROL_WHO`; the Owner
+    is never "an Admin") — a platform component, so the classic console reads the same words. **A week's own rules are
+    readable where it runs** — its page carries "Rules this week froze" (a draft: "Rules if it opened now") in the
+    Owner's form's own labels and units, its fee from its market's snapshot, "Cannot be read" when it cannot be; Pools
+    carries each open week's fee for Finance. **Every list a console page draws has a code search, filters, sort and a
+    pager on the week list's own URL parameters** (the evidence archive too). **A draft that never opened can be
+    discarded** (the draft's own control, typed `DISCARD`, audited); a week that opened, or the announced final week,
+    never. Guards: `test:maswali-admin-plain` §2–§8 (rendered strings, the id and raw-time censuses, the wiring) with its
+    14 disk plants (`red:maswali-admin-plain`), `test:maswali-engine` §15 (the discard on both stores; plants
+    (110)–(112)), `qa:maswali-admin-drive` 3.3g, 4.2c and 6.5g (the rendered words, the discard, the archive's filter).
 
 ---
 

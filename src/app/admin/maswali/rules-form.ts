@@ -7,7 +7,7 @@
  * in its own words. The one refusal of its own is an emptied field — a box cleared by accident is never stored as 0.
  * ⛔ Client-safe: the server module is reached by `import type` alone (erased at build; `test:client-graph-safe`).
  */
-import type { GuaranteeReservePolicy, IsoWeekday, MaswaliConfig } from "@/lib/server/maswali-config";
+import type { GuaranteeReservePolicy, IsoWeekday, MaswaliConfig, MaswaliRulesSnapshot } from "@/lib/server/maswali-config";
 
 /** What one field holds, which decides the control that draws it and how it is read back. */
 export type RulesFieldKind = "tzs" | "whole" | "percent" | "weekday" | "clock" | "policy";
@@ -65,6 +65,14 @@ export const GUARANTEE_POLICY_LABEL: Readonly<Record<string, string>> = {
 
 /** A rate as the percentage the form shows ("0.13" → "13"), kept to two decimals of a percent. */
 const asPercent = (rate: number) => String(Math.round(rate * 10_000) / 100);
+
+/**
+ * The chance of YES a question may carry under these rules (OD-14, `questionCaps`), in percents to two decimals — what the
+ * week builder's hint states (S6-ADMIN: the officer reads the band, never the rule's code).
+ */
+export function chanceBand(c: Pick<MaswaliConfig, "questionCaps">): { min: number; max: number } {
+  return { min: Number(asPercent(c.questionCaps.probabilityMin)), max: Number(asPercent(c.questionCaps.probabilityMax)) };
+}
 /** A percentage as the rate the config stores ("13" → 0.13). Not a number stays not a number: the validator says so. */
 const asRate = (text: string) => Math.round(Number(text) * 100) / 10_000;
 /** Digits as a number; the thousands groups a box may show are dropped first. */
@@ -93,6 +101,23 @@ export function rulesFormValues(c: MaswaliConfig): RulesFormValues {
     maxPerCompetition: String(c.questionCaps.maxPerCompetition), minReserveSources: String(c.questionCaps.minReserveSources),
     complaintAnswerDays: String(c.complaintAnswerDays),
   };
+}
+
+/** The groups a week freezes: every group but the support desk's, whose one field no week freezes (R2-7). */
+export const FROZEN_RULES_GROUPS = RULES_GROUPS.filter((g) => g.id !== "desk");
+
+/** A week's frozen rules as the form's fields show them: every field but the desk's complaint answer target. */
+export type FrozenRulesValues = Omit<RulesFormValues, "complaintAnswerDays">;
+
+/**
+ * ⭐ S6-ADMIN · G2 · THE RULES A WEEK FROZE, in the form's own fields and words (`RULES_FIELDS`), so the week's page and
+ * the Owner's form never name one rule two ways. The fee is the week's own, handed in (its market's snapshot, the fee's
+ * one home per week); null when it cannot be read, which the reader prints as missing — never 0.
+ */
+export function frozenRulesFormValues(s: MaswaliRulesSnapshot, feeRate: number | null): FrozenRulesValues {
+  const { complaintAnswerDays: _desk, ...values } = rulesFormValues({ ...s, jackpotFeeRate: feeRate ?? 0, complaintAnswerDays: 1 });
+  void _desk;
+  return { ...values, jackpotFeeRate: feeRate === null ? "" : values.jackpotFeeRate };
 }
 
 /**

@@ -8,7 +8,9 @@ import { currentSession } from "@/lib/server/auth-service";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { questionStore, weekStore } from "@/lib/server/maswali-dal";
 import { draftRowVersion } from "@/lib/server/maswali-service";
+import { readMaswaliConfigFresh } from "@/lib/server/maswali-config";
 import { utcToZonedLocal } from "@/lib/maswali-time";
+import { chanceBand } from "../../rules-form";
 import { WeekBuilder, type BuilderRow } from "../../new/week-builder";
 
 export const metadata = { title: "Admin · Millionea · Edit a draft" };
@@ -16,7 +18,10 @@ export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ weekId: string }> };
 
-/** /admin/maswali/[weekId]/edit — the builder on an existing DRAFT (MASWALI-BUILD S4). Past DRAFT the questions are frozen (MR-13). */
+/**
+ * /admin/maswali/[weekId]/edit — the builder on an existing DRAFT (MASWALI-BUILD S4). Past DRAFT the questions are frozen (MR-13).
+ * ⛔ S6-ADMIN · the officer reads words, never the programme's codes (DESIGN_AUTHORITY §M8a item 29): a code stays in a comment.
+ */
 export default async function AdminMaswaliEditPage(props: Props) {
   return <AdminPageGate title="Edit a draft"><Content {...props} /></AdminPageGate>;
 }
@@ -38,14 +43,17 @@ async function Content({ params }: Props) {
       probabilityPct: q.probabilityEstimate == null ? "" : String(Math.round(q.probabilityEstimate * 100)), probabilitySource: q.probabilitySource ?? "",
     };
   });
+  // S6-ADMIN · the chance band the rules allow (as on /new): the builder's hint states it.
+  const rules = week.state === "DRAFT" && canEdit ? await readMaswaliConfigFresh().catch(() => null) : null;
+  const band = rules?.ok ? chanceBand(rules.config) : null;
   return (
     <>
       <AdminCrumbLabel segment={week.id} label={week.code} />
       <AdminPageHead title={`Edit ${week.code}`} sw="Hariri rasimu" />
       <AdminBody>
         {week.state !== "DRAFT"
-          ? <p className="text-body-sm text-text-secondary">Week {week.code} is {week.state.toLowerCase()}: its questions froze at the open (MR-13).</p>
-          : canEdit ? <WeekBuilder defaultMonday="" edit={{ weekId: week.id, rows, versions: questions.map(draftRowVersion) }} />
+          ? <p className="text-body-sm text-text-secondary">Week {week.code} is {week.state.toLowerCase()}: its questions froze at the open.{/* MR-13 */}</p>
+          : canEdit ? <WeekBuilder defaultMonday="" edit={{ weekId: week.id, rows, versions: questions.map(draftRowVersion) }} band={band} />
           : <ControlLocked what="Edit the draft" need={CONTROL_DOMAIN.editMaswaliQuestion} block />}
       </AdminBody>
     </>

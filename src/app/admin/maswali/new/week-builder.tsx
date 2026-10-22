@@ -27,6 +27,9 @@ import { useDeferredToast } from "@/components/ui/toast";
 import { utcToZonedLocal } from "@/lib/maswali-time";
 import type { DraftSuggestion } from "@/lib/server/maswali-console";
 import { createMaswaliWeekAction, editMaswaliQuestionsAction } from "../actions";
+// S6-ADMIN · G6 · the options read as words, never codes: the console's category table (the events console's too) and kinds.
+import { CATEGORY_LABEL } from "@/lib/ai/poll-vocabulary";
+import { EVENT_KIND_LABEL } from "@/lib/maswali-admin-format";
 
 const CATEGORIES = ["sports", "macro", "weather", "crypto", "culture", "tech", "other"] as const;
 const KINDS = ["SPORT", "PRICE", "WEATHER", "ANNOUNCEMENT"] as const;
@@ -77,7 +80,12 @@ const toQuestion = (r: Row) => ({
  * row i's stored version as this editor loaded it: each changed slot sends it, and the service refuses the whole save
  * when another officer's save changed that slot since (S5 review A5) — never a silent overwrite.
  */
-export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { defaultMonday: string; edit?: { weekId: string; rows: Row[]; versions: string[] }; suggestions?: DraftSuggestion[] }) {
+/**
+ * `band` is the chance of YES the rules allow each question, in whole percents (OD-14: `questionCaps`), read by the page from
+ * the rules a draft would freeze if it opened now; the field's hint states it, never the rule's code (S6-ADMIN). Null when
+ * the rules cannot be read.
+ */
+export function WeekBuilder({ defaultMonday, edit, suggestions = [], band = null }: { defaultMonday: string; edit?: { weekId: string; rows: Row[]; versions: string[] }; suggestions?: DraftSuggestion[]; band?: { min: number; max: number } | null }) {
   const router = useRouter();
   const mayAct = useMayAct();
   const [weekStart, setWeekStart] = useState(defaultMonday);
@@ -147,7 +155,11 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
           <Field label="The Monday the week starts" hint="Sales open and close on the rules' template days, in East Africa Time.">
             <DateSelect value={weekStart} onChange={setWeekStart} size="md" />
           </Field>
-          <Field label="Line" hint="A drive week is private and never seeds a public week (OD-21).">
+          {/* OD-21's private drive line stays DORMANT, never deleted: Ali's rulings (COMPLIANCE-DECISIONS 2026-10-21 ruling 2 and
+              2026-10-22 item 2) run the live test on the first public week, with no private drive week. The option stays for the
+              admin drive's seed (the lead, 2026-10-22); it cannot sell to anyone (staff are refused at purchase), and its hint
+              never invites one. */}
+          <Field label="Line" hint="Use Public. The private drive line is not in use: the live test runs on the first public week.">
             <Select size="md" value={visibility} onChange={(v) => setVisibility(v === "DRIVE" ? "DRIVE" : "PUBLIC")} ariaLabel="Line"
               options={[{ value: "PUBLIC", label: "Public" }, { value: "DRIVE", label: "Drive (private)" }]} />
           </Field>
@@ -162,7 +174,7 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
             {suggestions.map((sg) => (
               <li key={`${sg.kind}-${sg.id}`} className="flex items-center gap-3 flex-wrap text-body-sm">
                 <span className="text-body-sm text-text-tertiary tabular min-w-[120px]">{utcToZonedLocal(Date.parse(sg.startsAt), "Africa/Dar_es_Salaam").replace("T", " ")} EAT</span>
-                <span className="text-body-sm text-text-tertiary">{sg.kind === "ai" ? "AI draft" : "Fixture"} · {sg.category}</span>
+                <span className="text-body-sm text-text-tertiary">{sg.kind === "ai" ? "AI draft" : "Fixture"} · {CATEGORY_LABEL[sg.category] ?? sg.category}</span>
                 <span className="min-w-0 flex-1">{sg.textEn}</span>
                 <Select size="md" value="" ariaLabel={`Fill a slot with ${sg.textEn}`} onChange={(v) => { if (v !== "") fillFrom(Number(v), sg); }}
                   options={[{ value: "", label: "Fill slot…" }, ...rows.map((r, j) => ({ value: String(j), label: label(r) }))]} />
@@ -178,8 +190,8 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
             <h2 className="font-display font-semibold text-title-sm">{label(r)} <span className="text-text-tertiary text-body-sm">{r.role === "MAIN" ? "main" : "reserve · Akiba"}</span></h2>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Category"><Select size="md" value={r.category} onChange={(v) => set(i, { category: v })} ariaLabel={`${label(r)} category`} options={CATEGORIES.map((c) => ({ value: c, label: c }))} /></Field>
-            <Field label="Kind of event"><Select size="md" value={r.eventKind} onChange={(v) => set(i, { eventKind: v })} ariaLabel={`${label(r)} kind`} options={KINDS.map((k) => ({ value: k, label: k.toLowerCase() }))} /></Field>
+            <Field label="Category"><Select size="md" value={r.category} onChange={(v) => set(i, { category: v })} ariaLabel={`${label(r)} category`} options={CATEGORIES.map((c) => ({ value: c, label: CATEGORY_LABEL[c] ?? c }))} /></Field>
+            <Field label="Kind of event"><Select size="md" value={r.eventKind} onChange={(v) => set(i, { eventKind: v })} ariaLabel={`${label(r)} kind`} options={KINDS.map((k) => ({ value: k, label: EVENT_KIND_LABEL[k] ?? k }))} /></Field>
           </div>
           {([["textEn", "Question · English"], ["textSw", "Question · Kiswahili"], ["textZh", "Question · 中文"]] as const).map(([k, l]) => (
             <Field key={k} label={l} hint={`${r[k].length} / ${TEXT_GUIDE}${r[k].length > TEXT_GUIDE ? " · long for the slip" : ""}`}>
@@ -187,7 +199,7 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
             </Field>
           ))}
           <div className="flex items-center gap-2 flex-wrap">
-            <Button size="sm" variant="ghost" onClick={() => set(i, { criterionEn: CRITERION_TEMPLATES[r.eventKind] ?? CRITERION_TEMPLATES.ANNOUNCEMENT })}>Use the {r.eventKind.toLowerCase()} template</Button>
+            <Button size="sm" variant="ghost" onClick={() => set(i, { criterionEn: CRITERION_TEMPLATES[r.eventKind] ?? CRITERION_TEMPLATES.ANNOUNCEMENT })}>Use the {(EVENT_KIND_LABEL[r.eventKind] ?? EVENT_KIND_LABEL.ANNOUNCEMENT).toLowerCase()} template</Button>
             {/[{}]/.test(r.criterionEn) && <span className="text-body-sm text-warning">Fill every {"{…}"} before saving.</span>}
           </div>
           {([["criterionEn", "How it resolves · English"], ["criterionSw", "How it resolves · Kiswahili"], ["criterionZh", "How it resolves · 中文"]] as const).map(([k, l]) => (
@@ -205,7 +217,8 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
             <Field label="Fallback source" optional><Input size="md" value={r.fallbackSourceUrl} onChange={(e) => set(i, { fallbackSourceUrl: e.target.value })} placeholder="https://" /></Field>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
-            <Field label="Estimated chance of YES (%)" hint="OD-14: inside the rules' band">
+            {/* OD-14 · each question's estimated chance sits inside the rules' band. */}
+            <Field label="Estimated chance of YES (%)" hint={band ? `The rules allow ${band.min}–${band.max}%` : "Inside the band the rules allow"}>
               <Input size="md" inputMode="numeric" value={r.probabilityPct} onChange={(e) => set(i, { probabilityPct: e.target.value.replace(/[^0-9]/g, "").slice(0, 2) })} />
             </Field>
             <Field label="Where the estimate comes from" className="sm:col-span-2"><Input size="md" value={r.probabilitySource} onChange={(e) => set(i, { probabilitySource: e.target.value })} /></Field>

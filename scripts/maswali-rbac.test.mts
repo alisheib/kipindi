@@ -136,7 +136,7 @@ for (const c of CONTROLS) {
     ok(`6 · …and its locked alternative names ${id}'s own domain`, page.includes(`need={CONTROL_DOMAIN.${id}}`));
   }
   ok("6 · a role that may not change them still reads every rule and the holiday list (MB-75, MB-85)",
-    page.includes("<RulesReadOnly ") && page.includes("<HolidayList "));
+    page.includes("<RulesRead values={rules.values} policies={policies} />") && page.includes("<HolidayList "));
   ok("6 · the rules card says a change applies from the next week to open, never to a running one (MB-75)",
     page.includes("A change applies from the next week to open, never to a running one"));
   ok("6 · ⛔ the licence basis is not on this form: no licence control on the trading page", !page.includes("setMaswaliLicenceBasis") && !page.includes("LicenceCeremony"));
