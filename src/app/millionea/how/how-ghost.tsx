@@ -9,6 +9,8 @@ import { useT } from "@/lib/i18n";
  * four numbered steps at /fairness's reading measure; the week's timeline under its heading; the examples' heading and
  * the swap's card at the receipt's measure (its title, the line of sockets, the caption, the button). Wordless but for the
  * screen reader's "loading" (`maswali-ghost.tsx` says why).
+ * The button's bar stands at the kit's own control height — `--h-control-md`, the one the example's `<Button size="md">`
+ * resolves to (44px) — never a numeric utility: the product's spacing scale is overridden, and `h-10` drew it at 80px.
  */
 export function MillioneaHowGhost() {
   const { t } = useT();
@@ -40,7 +42,7 @@ export function MillioneaHowGhost() {
             <GhostBar className="h-4 w-[60%]" />
             <GhostBar className="h-3 w-full" />
             <GhostBar className="h-3 w-[80%]" />
-            <GhostBar className="h-10 w-[160px] rounded-control" />
+            <GhostBar className="h-[var(--h-control-md)] w-[160px] rounded-control" />
           </GhostCard>
         </div>
         <span className="sr-only">{t.common.loading}</span>

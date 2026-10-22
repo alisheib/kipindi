@@ -29,7 +29,8 @@
  *   §5 HOW TO PLAY (the register critic's How rows): step 3 the hub's headline, the slip's reserve sentence, the rules a
  *      first visit needs (a week voided whole, where a win is paid, the objection window, the cap, responsible play with
  *      its door); the page's order and measures, ending on the hub and the register; the worked weeks the one ledger's
- *      rows from the settlement's arithmetic; Millionea's spaced Chinese in the window's duration.
+ *      rows from the settlement's arithmetic; Millionea's spaced Chinese in the window's duration; its loading drawing's
+ *      button at the height the page's own Button resolves to.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect in an IN-MEMORY copy (a compiled source, a helper, a
  *    word) and requires the check it targets to fail; a plant whose text is not in its file exactly once is INCONCLUSIVE.
@@ -95,6 +96,7 @@ const FILES = {
   example: "src/app/millionea/how/how-example.tsx",
   how: "src/app/millionea/how/page.tsx",
   line: "src/components/maswali/maswali-unbroken-line.tsx",
+  ghost: "src/app/millionea/how/how-ghost.tsx",
 } as const;
 type FileKey = keyof typeof FILES;
 
@@ -123,6 +125,7 @@ const L = {
   carry: req(`../${FILES.carry}`) as { carryGeometry: Geometry },
   seal: req(`../${FILES.seal}`) as { MaswaliSealLine: Row; sealLineOf: (q: unknown[], picks: unknown, o?: unknown) => unknown },
   example: req(`../${FILES.example}`) as { HowExample: Row },
+  ghost: req(`../${FILES.ghost}`) as { MillioneaHowGhost: Row },
   tone: req(`../${FILES.tone}`) as { STATUS_TONE: Record<string, Record<string, string>>; STATUS_TONE_EXCEPTIONS: Record<string, string>; TONE_CHIP: Record<string, string>; playerStatusChip: (w: string) => string | null },
   view: req("../src/app/millionea/millionea-view.ts") as { weekPhaseWord: (t: unknown, s: string, p: unknown) => string },
   money: req("../src/lib/maswali-money.ts") as { settleArithmetic: (i: Record<string, unknown>) => Record<string, number> & { kind: string } },
@@ -145,6 +148,7 @@ type World = {
   geometry: Geometry;
   Seal: Row;
   Example: Row;
+  Ghost: Row;
 };
 const REAL: World = {
   src: Object.fromEntries(Object.entries(FILES).map(([k, f]) => [k, raw(f)])) as Record<FileKey, string>,
@@ -159,6 +163,7 @@ const REAL: World = {
   geometry: L.carry.carryGeometry,
   Seal: L.seal.MaswaliSealLine,
   Example: L.example.HowExample,
+  Ghost: L.ghost.MillioneaHowGhost,
 };
 const code = (w: World, k: FileKey) => squash(decomment(w.src[k]));
 
@@ -639,6 +644,41 @@ check("5.5", "How's headings balance their lines — its section headings (H2) a
   return [h2 && h3, j({ h2, h3 })];
 });
 
+// Round 2 (2026-10-22, the release's test:ui-consistency red): How's loading drawing drew the example's button with `h-10`,
+// which the product's overridden spacing scale makes 80px — the page's Button is the kit's md rung, 44px.
+/** The product's spacing scale as `tailwind.config.ts` overrides it (the parse `spacing-scale.test.mts` uses). */
+const SPACING = new Map([...(/spacing:\s*\{([\s\S]*?)\n\s{6}\},/.exec(raw("tailwind.config.ts"))?.[1] ?? "").matchAll(/"([\d.]+)":\s*"(\d+)px"/g)].map((m) => [m[1], Number(m[2])]));
+/** The px height a rendered class list asks for — a kit button's rung (`.btn-md` → its `--h-control-*` token), a token, a
+ *  px literal, or a key of the overridden scale — resolved through `globals.css` and `tailwind.config.ts`; null when none. */
+const heightPx = (css: string, cls: string): number | null => {
+  const token = (name: string) => { const m = new RegExp(`--${name}:\\s*(\\d+(?:\\.\\d+)?)px;`).exec(css); return m ? Number(m[1]) : null; };
+  let px: number | null = null;
+  for (const c of cls.split(/\s+/)) {
+    let m: RegExpExecArray | null;
+    if ((m = /^btn-(xs|sm|md|lg|xl)$/.exec(c))) { const r = new RegExp(`\\.btn-${m[1]}\\s*\\{\\s*height:\\s*var\\(--([\\w-]+)\\)`).exec(css); px = r ? token(r[1]) : null; }
+    else if ((m = /^h-\[var\(--([\w-]+)\)\]$/.exec(c))) px = token(m[1]);
+    else if ((m = /^h-\[(\d+(?:\.\d+)?)px\]$/.exec(c))) px = Number(m[1]);
+    else if ((m = /^h-([\d.]+)$/.exec(c))) px = SPACING.get(m[1]) ?? null;
+  }
+  return px;
+};
+check("5.6", "How's loading drawing draws the example's button at the height the page's own Button resolves to — both read off their RENDERED class lists and resolved to px through the kit's tokens and the overridden spacing scale (a numeric utility like `h-10` is 80px here; the kit's md rung is 44px), in en, sw and zh", (w) => {
+  const css = decommentCss(w.src.css);
+  const before = L.seal.sealLineOf(exampleQs, picks), after = L.seal.sealLineOf(exampleQs, picks, { final: true });
+  const out = LOCALES.map((l) => {
+    const g = inApp(l, h(w.Ghost as never, {} as never));
+    const at = g.lastIndexOf("max-w-receipt");
+    const card = at < 0 ? "" : g.slice(at, g.indexOf("</div>", at));
+    const bars = [...card.matchAll(/<span aria-hidden="true" class="([^"]+)"><\/span>/g)].map((m) => m[1]);
+    const page = inApp(l, h(w.Example as never, { before, after, caption: "c" } as never));
+    const tag = /<button[^>]*data-testid="millionea-how-example-play"[^>]*>/.exec(page)?.[0] ?? "";
+    const button = /class="([^"]+)"/.exec(tag)?.[1] ?? "";
+    return { l, bars: bars.length, ghost: bars.length ? heightPx(css, bars[bars.length - 1]) : null, page: heightPx(css, button) };
+  });
+  const scale = SPACING.get("10") === 80 && SPACING.get("3") === 16;
+  return [scale && out.every((o) => o.bars === 6 && o.ghost !== null && o.ghost === o.page), j({ scale, out })];
+});
+
 // ── the run ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 function runAll(w: World, quiet: boolean): { pass: number; fail: number; failed: string[] } {
   let pass = 0, fail = 0;
@@ -696,6 +736,11 @@ const plantSeal = (from: string, to: string): World | null => {
 const plantExample = (from: string, to: string): World | null => {
   const s = planted("example", from, to);
   return s === null ? null : { ...REAL, src: { ...REAL.src, example: s }, Example: compileAt(FILES.example, s).HowExample as Row };
+};
+/** A world whose How loading drawing is compiled from a planted copy of its source. */
+const plantGhost = (from: string, to: string): World | null => {
+  const s = planted("ghost", from, to);
+  return s === null ? null : { ...REAL, src: { ...REAL.src, ghost: s }, Ghost: compileAt(FILES.ghost, s).MillioneaHowGhost as Row };
 };
 /** A world with one Millionea word changed in one language. */
 const plantWord = (l: Locale, key: string, value: string): World =>
@@ -792,6 +837,8 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["How's card title unbalanced (a heading wrap of its own)", "5.5", plantSrc("how", '            <h3 id="mln-how-ex-swap" className="font-display text-body-lg font-semibold text-text text-balance">', '            <h3 id="mln-how-ex-swap" className="font-display text-body-lg font-semibold text-text">')],
   ["How's section headings unbalanced", "5.5", plantSrc("how", 'const H2 = "font-display text-title-sm font-bold text-text text-balance";', 'const H2 = "font-display text-title-sm font-bold text-text";')],
   ["L9 undone — the window's Chinese duration glued again (\"24小时\")", "5.4", plantSrc("how", "hours: spacedDuration(locale, h.objectionWindowHours)", "hours: durationHours(locale, h.objectionWindowHours)")],
+  ["the drawing's button back on the numeric utility (`h-10`: 80px on the overridden scale)", "5.6", plantGhost("h-[var(--h-control-md)] w-[160px] rounded-control", "h-10 w-[160px] rounded-control")],
+  ["the page's button a rung up (lg) while its drawing stays at md", "5.6", plantExample('size="md"', 'size="lg"')],
 ];
 let caught = 0;
 for (const [name, target, world] of PLANTS) {
