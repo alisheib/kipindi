@@ -53,7 +53,7 @@ import { outcomeWord } from "../src/lib/side-label.ts";
 import { outcomeStampText } from "../src/components/maswali/maswali-outcome-stamp.tsx";
 import { sourceLabel } from "../src/components/maswali/maswali-format.ts";
 import { keepFact } from "../src/components/maswali/maswali-facts.tsx";
-import { kept, liveWeekFacts, registerLedgerRows, ticketSalesRuns, weekFacts } from "../src/app/millionea/register/register-parts.tsx";
+import { kept, liveWeekFacts, registerEventAt, registerLedgerRows, registerWhen, ticketSalesRuns, weekFacts } from "../src/app/millionea/register/register-parts.tsx";
 import { STATUS_TONE, TONE_CHIP } from "../src/lib/status-tone.ts";
 import { DEFAULT_GRANTS } from "../src/lib/server/roles.ts";
 import type { MillioneaRegisterLiveWeek, MillioneaRegisterWeek, MillioneaWeekSummary } from "../src/lib/server/maswali-player.ts";
@@ -115,6 +115,7 @@ type World = {
   liveFacts: typeof liveWeekFacts;
   kept: typeof kept;
   ledger: typeof registerLedgerRows;
+  eventAt: typeof registerEventAt;
   weekChip: string;
 };
 const REAL: World = {
@@ -127,6 +128,7 @@ const REAL: World = {
   liveFacts: liveWeekFacts,
   kept,
   ledger: registerLedgerRows,
+  eventAt: registerEventAt,
   // S5-DESIGN-REGISTER (L2): a settled week's chip reads its own Millionea row in status-tone (slate, an exception to
   // RESOLVED's seal written with its reason) — not VOID's ink borrowed for it.
   weekChip: TONE_CHIP[STATUS_TONE.MILLIONEA_WEEK_SETTLED.player],
@@ -288,6 +290,19 @@ check("3.9", "M3 · each question says how it counted on the final record — a 
     // a void still waiting says the ticket's words after the stamp, opening with a capital (they often start their own line)
     && s.includes("{words.charAt(0).toLocaleUpperCase() + words.slice(1)}");
   return [settledOnly && waiting && words && struck, j({ settledOnly, waiting, words, struck })];
+});
+// Round 2 (2026-10-22, the targeted drive's zh read): the shared "事件{when}" lost its space for the hub's and the slip's
+// weekday fill (S5-DESIGN-DOORS 8, the lead's zh ruling), and the register's date opens on its year — "事件2026年11月7日".
+check("3.10", "the zh ruling at the event line's edge: a card's event reads \"事件 2026年11月27日 09:00\" — a space where the shared word's Han meets the date's digit, never between two Han characters, exactly one space even if the shared word kept its own — and en/sw keep their words (\"Event 27 Nov, 09:00\", \"Tukio 27 Nov, 09:00\"); the week page's cards draw it", (w) => {
+  const iso = "2026-11-27T06:00:00.000Z", now = Date.parse("2026-11-20T09:00:00.000Z");
+  const said = Object.fromEntries(LOCALES.map((l) => [l, textOf(w.eventAt(w.dict[l] as never, l, iso, now))]));
+  const want = { en: "Event 27 Nov, 09:00", sw: "Tukio 27 Nov, 09:00", zh: "事件 2026年11月27日 09:00" };
+  // The shared word with its old space back: still one space at the edge, never two.
+  const spaced = { ...w.dict.zh, millionea: { ...w.dict.zh.millionea, eventAt: "事件 {when}" } };
+  const once = textOf(w.eventAt(spaced as never, "zh", iso, now)) === want.zh;
+  const none = w.eventAt(w.dict.en as never, "en", null, now) === null;
+  const page = code(w, "week").includes("const event = (q: Q) => registerEventAt(t, locale, q.eventStartsAt, nowMs);");
+  return [j(said) === j(want) && once && none && page, j({ said, once, none, page })];
 });
 
 // ── §4 · R3 · the register's stamp ──────────────────────────────────────────────────────────────────────────────────
@@ -806,7 +821,7 @@ if (!PROVE_RED) {
   const { pass, fail } = runAll(REAL, false);
   console.log(`\n${"═".repeat(70)}\n  MASWALI REGISTER: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
   /** The floor is the count a green run PRINTS; it only rises, to a printed number. */
-  const MIN_ASSERTIONS = 58; // S5-FIX-PLAYER §15 (P3, P4, P9, P11) added five; S5-DESIGN-REGISTER (3.9, 5.3, 5.4, 7.5, 7.6, 9.8, 14.3) seven, §16 (the tile read) five
+  const MIN_ASSERTIONS = 59; // S5-FIX-PLAYER §15 (P3, P4, P9, P11) added five; S5-DESIGN-REGISTER (3.9, 5.3, 5.4, 7.5, 7.6, 9.8, 14.3) seven, §16 (the tile read) five; S5-R2-REGISTER (3.10) one
   if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
   process.exit(fail === 0 ? 0 : 1);
 }
@@ -863,6 +878,9 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["M3 undone — a carry drawn before the week settled (an objection could still un-carry it)", "3.9", plantSrc("week", 'if (w.state === "SETTLED") {\n    for (const s of w.substitutions) {', "{\n    for (const s of w.substitutions) {")],
   ["a waiting void's words opening a line in lower case again", "3.9", plantSrc("week", "{words.charAt(0).toLocaleUpperCase() + words.slice(1)}", "{words}")],
   ["M3 undone — a voided main's number no longer struck", "3.9", plantSrc("week", '{q.role === "MAIN" && q.outcome === "VOID" ? <s className="decoration-current">{label}</s> : label}', "{label}")],
+  ["the zh edge undone — the date glued to the shared word (\"事件2026年…\")", "3.10", { ...REAL, eventAt: (t, l, iso, n) => { const when = registerWhen(t, l, iso, n); return when === null ? null : keepFact(l, fill(t.millionea.eventAt, { when }), [when]); } }],
+  ["the edge spaced blind — two spaces once the shared word keeps its own", "3.10", { ...REAL, eventAt: (t, l, iso, n) => { const when = registerWhen(t, l, iso, n); return when === null ? null : keepFact(l, fill(t.millionea.eventAt, { when: l === "zh" ? ` ${when}` : when }), [when]); } }],
+  ["the week page's cards back on the bare fill", "3.10", plantSrc("week", "const event = (q: Q) => registerEventAt(t, locale, q.eventStartsAt, nowMs);", 'const event = (q: Q) => keepFact(locale, fill(t.millionea.eventAt, { when: registerWhen(t, locale, q.eventStartsAt, nowMs) ?? "" }), []);')],
   // §4
   ["R3 undone — the card's stamp says \"Result ·\" again", "4.1", plantSrc("week", '{q.outcome !== null ? <MaswaliOutcomeStamp t={t} outcome={q.outcome} label={false} /> : <span className="text-body-sm text-text-muted">', '{q.outcome !== null ? <MaswaliOutcomeStamp t={t} outcome={q.outcome} /> : <span className="text-body-sm text-text-muted">')],
   // §5

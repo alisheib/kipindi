@@ -58,7 +58,7 @@ import type { WeekState } from "@/lib/maswali-week-label";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import { MILLIONEA_HREF, MillioneaReadingLinks } from "../../millionea-parts";
 import { bySlot, millioneaWeekPhase, msOf, ordinalOf, textIn, type MillioneaWeekPhase } from "../../millionea-view";
-import { liveWeekFacts, registerLedgerRows, registerWhen, WeekCommitments, weekFacts, WeekStateChip, weekTimes } from "../register-parts";
+import { liveWeekFacts, registerEventAt, registerLedgerRows, registerWhen, WeekCommitments, weekFacts, WeekStateChip, weekTimes } from "../register-parts";
 import { ROOT_OPEN_GRAPH } from "@/app/layout";
 import { weekStore } from "@/lib/server/maswali-dal";
 import { loadPublishedOgWeek } from "@/lib/server/millionea-og-week";
@@ -310,10 +310,8 @@ function Questions({ t, locale, v, nowMs }: { t: Dict; locale: Locale; v: View; 
   const qs = bySlot(v.questions);
   const mains = qs.filter((q) => q.role === "MAIN"), reserves = qs.filter((q) => q.role === "RESERVE");
   const heading = fill(t.millionea.regWeekQuestions, { week: weekNumberOf(v.code) });
-  const event = (q: Q) => {
-    const w = registerWhen(t, locale, q.eventStartsAt, nowMs);
-    return w === null ? null : keepFact(locale, fill(t.millionea.eventAt, { when: w }), [w]);
-  };
+  // The event's line, its Chinese edge set by the date that meets it ("事件 2026年11月27日 09:00", `registerEventAt`).
+  const event = (q: Q) => registerEventAt(t, locale, q.eventStartsAt, nowMs);
   const card = (q: Q) => (
     <li key={q.slot} className="grid grid-cols-[32px_minmax(0,1fr)] gap-x-2 border-t border-border px-1 py-3" style={q.role === "RESERVE" ? RESERVE_WASH : undefined}>
       <Place q={q} />

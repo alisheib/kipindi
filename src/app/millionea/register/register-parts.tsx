@@ -164,6 +164,24 @@ export function registerWhen(t: Dict, locale: Locale, iso: string | null, nowMs:
   return ms === null ? null : formatEatDateTime(ms, nowMs, t.common.monthsShort, locale);
 }
 
+/** Han, by the ranges Millionea's Chinese rules read (How to play's `spacedDuration`). */
+const HAN = /[㐀-䶿一-鿿豈-﫿]/;
+
+/**
+ * A QUESTION'S EVENT, AS THE REGISTER PRINTS IT — "Event 27 Nov, 09:00", its date one kept run. ⭐ Millionea's Chinese at
+ * the fill's edge (the lead's zh ruling, 2026-10-21: a space where a Han character meets a digit or a Latin letter, never
+ * between two Han characters): the shared "事件{when}" is written for the hub's and the slip's weekday ("事件周五 09:00",
+ * S5-DESIGN-DOORS 8), and the register's date opens on its year — so here the edge takes the space, "事件 2026年11月27日
+ * 09:00", never "事件2026年…". The words are the shared key's; the edge is set by what meets it.
+ */
+export function registerEventAt(t: Dict, locale: Locale, iso: string | null, nowMs: number): ReactNode | null {
+  const when = registerWhen(t, locale, iso, nowMs);
+  if (when === null) return null;
+  const at = t.millionea.eventAt.indexOf("{when}");
+  const edge = locale === "zh" && at > 0 && HAN.test(t.millionea.eventAt[at - 1]) && /^[0-9A-Za-z]/.test(when) ? " " : "";
+  return keepFact(locale, fill(t.millionea.eventAt, { when: `${edge}${when}` }), [when]);
+}
+
 /**
  * THE WEEK'S TIMES, UNDER ITS FACTS (the critic's M1: `closedAt` and `settledAt` were in the read model and never
  * printed) — "Sales closed 27 Nov, 18:00 · Settled 2 Dec, 12:00". ⛔ A voided week prints no void instant: its stamp writes
