@@ -15,6 +15,18 @@ Every heavy check ran on GitHub's machines (public repo: free Linux runners, 16 
 - Lanes worked as subagents with `lanes/LANE-COMMON-BLADE.md` (+ a BRIEF.md each); they write in worktrees, run nothing
   locally, and push their branches.
 
+## 🔴 UPDATE 19:52 UTC — RAILWAY'S BUILD OF 2ed817395 FAILED; PRODUCTION STILL SERVES da3d32180 (healthy)
+The read-back (run 39837626118) waited 40 minutes: all three hosts still serve dpl=da3d32180. GitHub's deployment record
+(id 7261165807, by railway-app[bot]): in_progress 19:09:32Z → **failure 19:11:55Z** (no description; ~2.5 min = an early
+build failure). /api/health at 19:51Z: ok, database reachable + migrated, uptime 30,147 s (the old container). The same
+commit built clean on GitHub (`next build` ✓ in CI and in the gate), so suspect Railway's builder first — the known
+transient is next/font/google's fetch at build time (memory: reference-railway-build-font-fetch). ⛔ A failed build blocks
+every later push's deploy. NEEDS RAILWAY ACCESS: `railway login` (Ali), then from a SCRATCH dir: `railway link --project
+50pick --environment production --service 50pick`, `railway deployment list`, `railway logs <id> --build --lines 400`
+(grep Build error|Module not found|font), then `railway redeploy --from-source --yes --service 50pick` (same commit — within
+the push authorisation); or Ali clicks Redeploy on the failed deployment in the dashboard (project
+https://railway.com/project/5e87353c-1d59-433d-a683-a32b9149f74c). Then re-run `tools/jobs/prod-readback.sh` via ci-run.
+
 ## ✅ UPDATE 19:09 UTC — S5 PUSHED TO MAIN (dark): `main` da3d32180 → **2ed817395** (fast-forward)
 Parity (run 39827559671) came back: baseline 52/52 (224 cells); null compare 2 **68/68** (the earlier flake did not
 recur); release compare **66/67** — the ONE difference, NAMED: S5's Millionea results section adds an empty, already-
