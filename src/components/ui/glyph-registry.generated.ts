@@ -4,7 +4,7 @@
  * scripts/glyphs/extras.ts. PHOSPHOR-MIGRATION: what every glyph of the family `I` draws, and where its drawings live.
  */
 export const GLYPH_SOURCE = { package: "@phosphor-icons/core", version: "2.1.1" } as const;
-export const GLYPH_SPRITES = { app: "/icons/g/app.1bde11dd.svg", admin: "/icons/g/admin.75aeb290.svg" } as const;
+export const GLYPH_SPRITES = { app: "/icons/g/app.b899eae1.svg", admin: "/icons/g/admin.75aeb290.svg" } as const;
 export type GlyphVariant = "regular" | "bold" | "fill" | "duo";
 export type GlyphInk = readonly [x0: number, x1: number];
 /**
@@ -153,7 +153,7 @@ export const GLYPH_REGISTRY = {
   "roster": { s: "p-user-list", g: "admin", i: { bold: [4, 256], fill: [8, 256] } },
   "rotateCcw": { s: "p-arrow-counter-clockwise", g: "app", i: { bold: [12, 228], fill: [16, 224] } },
   "rounds": { s: "p-timer", g: "admin", i: { bold: [32, 224], fill: [32, 224] } },
-  "salesPaused": { s: "p-pause-circle", g: "app", i: { bold: [20, 236] } },
+  "salesPaused": { s: "p-pause-circle", g: "app", i: { bold: [20, 236], fill: [24, 232] } },
   "scrollText": { s: "p-scroll", g: "app", i: { bold: [4, 236], duo: [8, 232] } },
   "sealCheck": { s: "p-seal-check", g: "app", i: { bold: [12, 244] } },
   "search": { s: "p-magnifying-glass", g: "app", i: { bold: [19.8, 236.05], duo: [23.64, 232] } },

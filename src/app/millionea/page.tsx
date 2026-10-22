@@ -540,7 +540,7 @@ export default async function MillioneaHubPage({ searchParams }: { searchParams:
             </div>
           ) : (
             <>
-              {hub.paused && <Callout tone="neutral" role="status">{t.millionea.paused}</Callout>}
+              {hub.paused && <Callout tone="neutral" glyph="salesPaused" role="status">{t.millionea.paused}</Callout>}
               {/* ⭐ H3 + H1 · Millionea's final week is said ONCE, in the jackpot's head: its rule line is the final week's,
                   led by the week's own mark (§10c `finalWeek`, flag-checkered — `flag` means "object to a result", P17;
                   `MaswaliPoolHead`). The page-wide "Final week of Millionea" box above it said the week a third time and put
