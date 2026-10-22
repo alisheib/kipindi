@@ -289,8 +289,18 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
       // S6-DOCS 9 · re-pinned at S6-DOCS 8, whose blob is the file as it stands: §11 states the stale-form rule in the
       // decided words `ruleSunset` carries (MILLIONEA_RULES_TEXT_SHA 46f7b1b18732; COMPLIANCE § "2026-10-22 · The Maswali
       // Millionea rules' §11 states the stale-form rule …"). Nothing else in the file moved.
-      ["src/app/legal/rules/_content-millionea.tsx", "e613003fd2bd1bfdd07a3716d89a7c76ddd39941"],
+      // S6-INT 31 · re-pinned at S6-INT 30, whose blob is the file as it stands: the rules published as v2026-10-23 — §6 the
+      // objection door as built, §12 the reversed-payment hold and the disputes line, §11 the final week's rule in its one
+      // wording (the lead's order of 2026-10-23; MILLIONEA_RULES_TEXT_SHA 8375d7809e2f; COMPLIANCE § "2026-10-23 · The Maswali
+      // Millionea rules are published as version 2026-10-23 …").
+      ["src/app/legal/rules/_content-millionea.tsx", "7422553402f76402e87c183f2c8fe5f7171d8c3a"],
       ["src/app/legal/rules/millionea/page.tsx", "902afae56"],
+      // S6-INT 31 · the Terms at S6-INT 30, whose blobs are the two files as they stand: §4's Maswali Millionea paragraph
+      // (OD-18) inside MillioneaWording, printed with TERMS_VERSION_WITH_MILLIONEA only above the ceiling, the version the
+      // page prints and registration stamps read from the ceiling (termsVersionFor). Below the ceiling the page prints
+      // v2026-10-14's words, byte for byte (TERMS_TEXT_SHA unchanged). COMPLIANCE § "2026-10-23 · Terms v2026-10-23 …".
+      ["src/app/legal/terms/page.tsx", "7422553402f76402e87c183f2c8fe5f7171d8c3a"],
+      ["src/lib/terms-version.ts", "7422553402f76402e87c183f2c8fe5f7171d8c3a"],
     ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };
     const extraBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_EXTRA.get(rel)}:${rel}`)); } catch { return null; } };
