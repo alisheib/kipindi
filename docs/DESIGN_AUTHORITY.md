@@ -2750,15 +2750,21 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
      commit — `test:journey-shell` 8.label.measure says so.
    - ⭐ **With five tabs the tickets tab says its short rail label** (`journey.tabTicketsShort`: Swahili "Tiketi",
      English "Tickets"; Chinese keeps 我的注单, which fits), the lead's rulings of 2026-10-19: a fifth of a 320 phone is
-     64px, and "Tiketi zangu" needs 83.2, "My tickets" 70; their pages, titles and desktop links keep the full words.
-     U43's `nav.updown` is the game's full name in Swahili too: "Juu na Chini" needs 83.2px. The five-tab rail wraps it
-     below 416 and top-aligns all pips; at 416 it fits one line and the slots centre. English and Chinese centre from
-     317 (`test:visual-pass-r9c` §4b, `test:journey-shell` 8.label.measure.five and 8.align.five).
+     64px, and "Tiketi zangu" needs 88px in Chromium (83.2 in WebKit), "My tickets" 74 (70); their pages, titles and
+     desktop links keep the full words. ⭐ **Widths are the phones' two engines'** (§M4a rule 5, S5-R3-FIX F2, 2026-10-23:
+     round 1's 83.2, 416 and 317 were the Windows machine's reading of Chromium): every label of the five closes its
+     tracking by D14's 0.04em below 335 (a nine-letter label is 67px untracked in Chromium); U43's `nav.updown`, the
+     game's full name, wraps — Swahili's "Juu na Chini" (88px) below 440 and English's "Up & Down" below 336, each held to
+     its words by a measure in letters (`10ch`, `6ch`) so both engines wrap it at the same width — and while it wraps the
+     slots stack from the top. Chinese centres from 317, English from 336, Swahili from 440 (`test:visual-pass-r9c` §4b,
+     `test:journey-shell` 8.label.measure.five and 8.align.five, `qa:journey-rail-gaps` in both engines).
    - The page clears the rail with `--rail-h`, the one name for its reserve (WP11) — ⛔ never a second literal for the
      page's reserve. The chat bubble's 80 and the install card's 148 stay literal because gates pin them
      (`test:stacking`'s chat-fab locator, `test:install-invite` 5.4), each naming `--rail-h` as its source.
    - Guards: `test:journey-shell` §1 and §8, `red:journey-shell`, `test:visual-pass-r9c` §4 and §4b,
-     `qa:journey-header-fit` (the rail's labels below 1024), `qa:footer-reachable` with `--journey`.
+     `qa:journey-rail-gaps` (Chromium and WebKit at 320–460: every label whole, no two closer than 8px, every pip on one
+     line, centred where nothing wraps), `qa:journey-header-fit` (the rail's labels below 1024), `qa:footer-reachable`
+     with `--journey`.
 
    ### 8c — The hub rows (SJ-17)
 
@@ -3025,8 +3031,10 @@ the corrections are recorded here rather than tidied away.
    Chromium at every pixel ratio** (1, 1.5, 2, 2.625 and 3 — "Up & Down" 63.000px each time: every advance rounded to
    the pixel) and **6.6px in WebKit** at every ratio (59.406px, unrounded), where the Windows machine had read Chromium
    at 6.6. So the two engines bracket the phones, and a rule that holds in both holds on a phone; the wider, Chromium,
-   binds a fit and a gap. The weight does not move it: 600 and 700 measure the same in both engines (`fonts.css`
-   declares the face at 400–600, and a 700 request draws that face at the same advance).
+   binds a fit and a gap. The weight does not move it: 600, 700 and 800 measure the same width in both engines
+   (`fonts.css` declares the face at 400–600). They do not draw alike: Chromium draws a 700 or 800 request with the 600
+   face, pixel for pixel — a lit label's weight step does not show there — and WebKit draws it heavier (run 39868451121;
+   500 against 600, the control, differs in both).
    ⛔ **A Chinese reading without the CJK face is VOID.** Without it the runner draws Chinese as empty boxes ("市场"
    17px, where the face draws 22px), so every zh geometry read there before 2026-10-23 is withdrawn.
    - **Its first application, the classic phone rail at 320** (S5-R3-FIX F1 + F5): its nine-letter labels — "Up & Down",
@@ -3210,12 +3218,17 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     2026-10-21). While five tabs show, the journey rail's tickets tab says its short rail label — Swahili "Tiketi", English
     "Tickets" (the lead's rulings, 2026-10-19: a fifth of a 320 phone holds neither "Tiketi zangu" nor "My tickets" on one
     line; its page, its title and the desktop link keep the full words; Chinese keeps 我的注单). The full Swahili "Juu na
-    Chini" wraps on the five-tab rail below 416 with all pips aligned, then fits one line (§K 8b). No two of the five
-    labels stand closer than their pips (8px at 320): below 337px English's labels close their tracking by 0.04em
-    (S5-FIX-PLATFORM D14, `test:visual-pass-r9c` §4c). Nor do two of the four, the rail every reader is served while
-    Millionea does not show: from 332.8px, where Swahili's "Juu na Chini" and "Tiketi zangu" first fit one line, to 348.8px,
-    where they clear 8px untouched, those labels close their tracking by the same 0.04em (they stood 4.0px apart at 333;
-    S5 round 2 · PLATFORM, 2026-10-22 — a change every Swahili journey reader sees at those widths). From 1024 to 1279,
+    Chini" wraps on the five-tab rail below 440 with all pips aligned, then fits one line (§K 8b). No two of the five
+    labels stand closer than their pips (8px at 320), in either of the phones' engines (§M4a rule 5; S5-R3-FIX F2,
+    2026-10-23, which replaced round 1's and round 2's Windows widths): below 335px every label of the five closes its
+    tracking by 0.04em (S5-FIX-PLATFORM D14's value), English's to 355; and below 336px English's game name takes two
+    lines, "Up &" | "Down", as Swahili's does — its tracked nine-letter neighbours stood 4.95px apart at 320 in Chromium,
+    and a tracking that closed them to 8px would set WebKit's letters touching. Nor do two of the four, the rail every
+    reader is served while Millionea does not show: below 347px Swahili's "Juu na Chini" and "Tiketi zangu" take two lines
+    in both engines (held to ten letters — WebKit fits them on one line from 332.8, 4px apart), from 347 they stand on one
+    line tracked by 0.04em (8.02px apart in Chromium), and untracked from 368 (round 2's 332.8–348.8 left them 4.0–7.9px
+    apart in Chromium and wrapped them under centred slots at 349–351 — `qa:journey-rail-gaps` on the runner; a change
+    every Swahili journey reader sees at 333–367). `test:visual-pass-r9c` §4 holds both rails in both engines. From 1024 to 1279,
     while five destinations show, the journey bar's
     nav gives up its own leading 12px (the Swahili row otherwise ran 5.1px into the page's gutter at 1024 for a signed-in
     player — measured, `qa:journey-header-fit`), and takes it back from 1280.

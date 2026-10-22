@@ -351,6 +351,9 @@ async function geometry(drawn) {
       for (const dsf of RATIOS) {
         for (const l of LOCALES) {
           const ctx = await b.newContext({ viewport: { width: GEO_WIDTHS[0], height: 780 }, deviceScaleFactor: dsf, isMobile: true, hasTouch: true });
+          // A returning visitor: WebKit's automated user agent is not the primer's to recognise, and a first visit's primer
+          // covers the rail's tiles (the rail's own boxes are read either way).
+          await ctx.addInitScript(() => { try { localStorage.setItem("50pick-primer-seen", "1"); localStorage.setItem("50pick-howto-seen", "1"); } catch {} });
           await ctx.addCookies([{ name: LOCALE_COOKIE, value: l, url: BASE }]);
           const page = await ctx.newPage();
           await page.goto(`${BASE}/markets`, { waitUntil: "domcontentloaded", timeout: 180_000 });

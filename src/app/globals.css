@@ -7897,11 +7897,12 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    1px above the top. On the lit pill the same ring cuts it out of the pill as well. */
 .kp-rail__badge { position: absolute; top: -1px; right: 10px; box-shadow: 0 0 0 2px var(--panel); }
 /* ⚠️ THE ONE LABEL THAT DOES NOT FIT, MEASURED RATHER THAN GUESSED (A17). The classic label ellipsises. A quarter of a
-   320 phone is 80px, and "Tiketi zangu" at the rail's 11px mono (0.6em a glyph) needs 12 × 6.6 + 4 = 83.2px, so it
-   would read "Tiketi zan…" there; `test:journey-shell` §8 measures every tab label in sw, en and zh at 320 and 360.
-   Below 360 a label may take a second, centred line; from 360 every label fits on one and the classic rule stands.
-   ⚠️ The measure is a font model until WP6b's 320 drive sees it (A17 asks for the drive). If a copy change ever lets
-   every label fit at 320, §8 says so: delete this wrap and the slot alignment below, in the same commit. */
+   320 phone is 80px, and "Tiketi zangu" at the rail's 11px mono needs 12 × 7 + 4 = 88px in Chromium (each letter 7px,
+   the advance rounded to the pixel) and 12 × 6.6 + 4 = 83.2px in WebKit — the phones' two engines, measured on the runner
+   (DESIGN_AUTHORITY §M4a rule 5) — so it would read "Tiketi zan…" there; `test:journey-shell` §8 models every tab label
+   in sw, en and zh at 320 and 360 in both engines. Below 360 a label may take a second, centred line; from 360 every
+   label fits on one and the classic rule stands. If a copy change ever lets every label fit at 320, §8 says so: delete
+   this wrap and the slot alignment below, in the same commit. */
 .kp-jtab__label { white-space: normal; text-overflow: clip; text-align: center; line-height: 1.15; }
 @media (min-width: 360px) { .kp-jtab__label { white-space: nowrap; text-overflow: ellipsis; line-height: 1; } }
 /* ⚠️ …AND A TWO-LINE LABEL MUST NOT LIFT ITS PIP. The classic slot centres its content, and the grid stretches every
@@ -7911,54 +7912,69 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    stack from the top and every pip sits on the slot's padding. `.kp-rail__item` itself is not edited.
    ⭐ …ONLY WHERE A LABEL WRAPS (round 9 of the visual pass, R9-C, 2026-10-11; R3-D1 and R6-D1, two readers, tiles 243
    246 302). Below 360 every language stacked from the top, though only Swahili wraps: in English and Chinese at 320 the
-   items stood 6px under the rail's edge and 15 over its foot, where at 390 they centre 11.5 | 11.5. A label wraps where
-   it needs more than its quarter of the phone: its words in the rail's 11px mono (0.6em a letter, 1em a Chinese
-   character — `test:journey-shell` §8's measure) and the label's 2 × 2px of padding. Each language's longest label sets
-   the width from which its slots centre: Swahili "Tiketi zangu" 79.2 + 4 = 83.2px × 4 = 332.8, English "My tickets"
-   66 + 4 = 70px × 4 = 280, Chinese 我的注单 44 + 4 = 48px × 4 = 192. `:lang()` reads the `lang` the server writes on
-   <html> (the client's language switch rewrites it), so the first frame is already right; mobile-first, as the shell's
-   every rule (`test:journey-shell` §7.first). `test:visual-pass-r9c` §4 derives the three widths from the dictionary
-   and holds these rules to them, so a copy change that moves a label moves its width or fails. */
+   items stood 6px under the rail's edge and 15 over its foot, where at 390 they centre 11.5 | 11.5. So each language's
+   slots centre from the width where its labels stand on one line in BOTH engines (`test:journey-shell` §8's model of
+   the rail's 11px mono: 7px a letter in Chromium, 6.6 in WebKit, a full em a Chinese character, and the label's 2 × 2px
+   of padding): English "My tickets" 7 × 10 + 4 = 74px × 4 = 296 (WebKit 280; both under every phone's 320), Chinese
+   我的注单 44 + 4 = 48px × 4 = 192, and Swahili from 347 — the width the next rule holds its two long labels to.
+   `:lang()` reads the `lang` the server writes on <html> (the client's language switch rewrites it), so the first frame
+   is already right; mobile-first, as the shell's every rule (`test:journey-shell` §7.first). `test:visual-pass-r9c` §4
+   derives the widths from the dictionary and holds these rules to them, so a copy change that moves a label moves its
+   width or fails. */
 .kp-rail--journey .kp-rail__item { justify-content: flex-start; }
 @media (min-width: 192px) { .kp-rail--journey:lang(zh) .kp-rail__item { justify-content: center; } }
-@media (min-width: 280px) { .kp-rail--journey:lang(en) .kp-rail__item { justify-content: center; } }
-@media (min-width: 332.8px) { .kp-rail--journey:lang(sw) .kp-rail__item { justify-content: center; } }
+@media (min-width: 296px) { .kp-rail--journey:lang(en) .kp-rail__item { justify-content: center; } }
+@media (min-width: 347px) { .kp-rail--journey:lang(sw) .kp-rail__item { justify-content: center; } }
 @media (min-width: 360px) { .kp-rail--journey .kp-rail__item { justify-content: center; } }
+/* ⭐ THE FOUR-TAB SWAHILI RAIL: NEVER CLOSER THAN THE PIPS, IN EITHER ENGINE (MASWALI-BUILD S5-R3-FIX F2, 2026-10-23;
+   D14's minimum, first given this rail by S5 round 2 · PLATFORM on Windows widths). "Juu na Chini" and "Tiketi zangu" are
+   one line 84px wide in Chromium, 79.2 in WebKit; tracked by D14's 0.04em, 78.73 and 73.9. In Chromium the round-2 rule
+   (tracked 332.8–348.8) left them 4.5–7.9px apart at 333–346, wrapped them under centred slots at 349–351 (a lifted
+   pip) and 4.0–7.9px apart at 352–367 (`qa:journey-rail-gaps` on the runner). Now:
+     - below 347 both long labels take two lines in BOTH engines ("Juu na" | "Chini", "Tiketi" | "zangu"): the label's
+       measure is held to ten letters (`10ch` and its padding — wider than any one-line label here, narrower than either
+       long one in both engines), so WebKit, where they would fit one line from 332.8 and stand 4–8px apart, wraps them
+       where Chromium does; the slots stack from the top (the rule above centres from 347);
+     - from 347 to 368 they stand on one line, tracked by 0.04em: 86.75 − 78.73 = 8.02px apart at 347 in Chromium;
+     - from 368, 4 × (84 + 8), untouched (8px at 368).
+   English (least 13.5px) and Chinese (47px) clear 8px at every width as they are. `test:visual-pass-r9c` §4c models both
+   engines; `qa:journey-rail-gaps` reads both on the runner (every label whole, the least gap, every pip on one line). */
+.kp-rail--journey:not([data-tabs]):lang(sw) .kp-jtab__label { max-width: min(100%, calc(10ch + 4px)); }
+@media (min-width: 347px) { .kp-rail--journey:not([data-tabs]):lang(sw) .kp-jtab__label { max-width: 100%; letter-spacing: -0.04em; } }
+@media (min-width: 368px) { .kp-rail--journey:not([data-tabs]):lang(sw) .kp-jtab__label { letter-spacing: normal; } }
 /* ⭐ FIVE TABS WHILE MASWALI MILLIONEA SHOWS (Ali, 2026-10-19; DESIGN_AUTHORITY §M8a item 11). Millionea follows
    Juu na Chini (`journeyTabsFor`): five equal tracks on the list. The four-track rules above remain the answer while
-   Millionea is withdrawn. The short tickets rail label fits in all languages at 320. U43 gives the game its full
-   Swahili name, "Juu na Chini", here too. Its measured 83.2px needs 416px across five tracks, so that label wraps and
-   all five pips remain top-aligned below 416. English and Chinese fit one line from 317 and centre there. At 416 the
-   Swahili label returns to one line and its five slots centre. `test:visual-pass-r9c` §4b derives both widths. */
+   Millionea is withdrawn. Measured in both engines on the runner (S5-R3-FIX F2, 2026-10-23; they replace round 1's
+   Windows widths, 317 and 416):
+     - EVERY LABEL WHOLE: a nine-letter label ("Questions", "Up & Down", "Millionea") is 9 × 7 + 4 = 67px in Chromium, over
+       a fifth of a 320 phone (64px) — "Millionea" was cut there in Swahili and Chinese — so below 335 (5 × 67) every
+       label of the five, in every language, closes its tracking by D14's 0.04em (63.05px; WebKit 59.45);
+     - THE GAME'S NAME WRAPS WHERE ITS NEIGHBOURS WOULD CROWD IT: English's three nine-letter neighbours stand only
+       64 − 59.05 = 4.95px apart at 320 in Chromium even tracked (D14's 0.04em reached 8px only on Windows widths), and a
+       tracking that closed them to 8px (0.08em) would set WebKit's letters 5.7px apart, touching. So below 336 English's
+       "Up & Down" takes two lines, "Up &" | "Down", as Swahili's "Juu na Chini" does (21.4px from each neighbour at 320):
+       its measure is held to six letters in both engines (`6ch` and its padding), and English's slots stack from the top;
+       from 336 it is one line, tracked (8.16px at 336), and untracked from 355 = 5 × (63 + 8);
+     - Swahili's "Juu na Chini" is 88px in Chromium, so it wraps below 440 = 5 × 88 (round 1's 416 put it on one line,
+       cut, at 416–439), held to ten letters (`10ch`) so WebKit wraps it there too; its slots centre from 440;
+     - Chinese stands on one line from 317 and centres there.
+   `test:visual-pass-r9c` §4b and §4c model both engines; `qa:journey-rail-gaps` reads them on the runner. */
 .kp-rail--journey[data-tabs="5"] > ul { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .kp-rail--journey[data-tabs="5"] .kp-rail__item { justify-content: flex-start; }
-@media (min-width: 317px) { .kp-rail--journey[data-tabs="5"] .kp-rail__item { justify-content: center; } }
-/* The four-tab label rule makes every label nowrap from 360. The full Swahili game name needs two lines through 415. */
+@media (min-width: 317px) { .kp-rail--journey[data-tabs="5"]:lang(zh) .kp-rail__item { justify-content: center; } }
+@media (min-width: 336px) { .kp-rail--journey[data-tabs="5"]:lang(en) .kp-rail__item { justify-content: center; } }
+@media (min-width: 440px) { .kp-rail--journey[data-tabs="5"]:lang(sw) .kp-rail__item { justify-content: center; } }
+.kp-rail--journey[data-tabs="5"] .kp-jtab__label { letter-spacing: -0.04em; }
+@media (min-width: 335px) { .kp-rail--journey[data-tabs="5"]:lang(sw) .kp-jtab__label { letter-spacing: normal; } }
+@media (min-width: 335px) { .kp-rail--journey[data-tabs="5"]:lang(zh) .kp-jtab__label { letter-spacing: normal; } }
+@media (min-width: 355px) { .kp-rail--journey[data-tabs="5"]:lang(en) .kp-jtab__label { letter-spacing: normal; } }
+.kp-rail--journey[data-tabs="5"]:lang(en) .kp-rail__item[href="/updown"] .kp-jtab__label { max-width: min(100%, calc(6ch + 4px)); }
+@media (min-width: 336px) { .kp-rail--journey[data-tabs="5"]:lang(en) .kp-rail__item[href="/updown"] .kp-jtab__label { max-width: 100%; } }
+/* The four-tab label rule makes every label nowrap from 360. The full Swahili game name needs two lines through 439. */
 .kp-rail--journey[data-tabs="5"]:lang(sw) .kp-jtab__label { white-space: normal; text-overflow: clip; line-height: 1.15; }
-@media (min-width: 317px) { .kp-rail--journey[data-tabs="5"]:lang(sw) .kp-rail__item { justify-content: flex-start; } }
-@media (min-width: 416px) { .kp-rail--journey[data-tabs="5"]:lang(sw) .kp-jtab__label { white-space: nowrap; text-overflow: ellipsis; line-height: 1; } }
-@media (min-width: 416px) { .kp-rail--journey[data-tabs="5"]:lang(sw) .kp-rail__item { justify-content: center; } }
-/* ⭐ …AND NO TWO LABELS STAND CLOSER THAN THEIR PIPS (MASWALI-BUILD S5-FIX-PLATFORM D14, 2026-10-21). In five equal
-   tracks English's three nine-letter neighbours ("Questions", "Up & Down", "Millionea": 9 × 6.6 = 59.4px each) stood
-   4.6px apart at 320 (the tile journey-home-en-320 read ~5px), where the 56px pips above them stand 8px apart. Every
-   label fits its track, so the rail's own answer to a label that does not (a second line, the slots stacked from the
-   top) does not apply: it would break a game name that fits. Below the width where that pair clears 8px untouched
-   (5 × (59.4 + 8) = 337), English's labels close their tracking by 0.04em (9 × 6.16 = 55.4px, 8.6px apart at 320).
-   Swahili (its long name on two lines through 415) and Chinese clear 8px at every width as they are.
-   `test:visual-pass-r9c` §4c measures every neighbour pair in the three languages at every width from 320 with §4's
-   own width model and holds this minimum; the four-tab rail's own answer follows. */
-.kp-rail--journey[data-tabs="5"]:lang(en) .kp-jtab__label { letter-spacing: -0.04em; }
-@media (min-width: 337px) { .kp-rail--journey[data-tabs="5"]:lang(en) .kp-jtab__label { letter-spacing: normal; } }
-/* ⭐ …AND ON THE FOUR-TAB RAIL TOO (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22: D14's minimum on the rail every reader
-   is served while Millionea does not show; `data-tabs` is absent there). Swahili's "Juu na Chini" and "Tiketi zangu"
-   (12 × 6.6 = 79.2px each) both fit one line from 332.8 (the rule above that centres Swahili's slots), and there they stood
-   83.25 − 79.2 = 4.05px apart at 333; untouched they clear 8px only from 4 × (79.2 + 8) = 348.8. Between the two widths
-   they close their tracking by D14's 0.04em (12 × 6.16 = 73.9px, 9.3px apart at 332.8). Below 332.8 they wrap (two short
-   lines, more than 40px apart) and are not touched; from 348.8 they are as before. English (least 17.3px) and Chinese (47)
-   clear 8px at every width as they are. `test:visual-pass-r9c` §4c measures both rails; `qa:journey-rail-gaps` reads them
-   in Chromium. */
-@media (min-width: 332.8px) { .kp-rail--journey:not([data-tabs]):lang(sw) .kp-jtab__label { letter-spacing: -0.04em; } }
-@media (min-width: 348.8px) { .kp-rail--journey:not([data-tabs]):lang(sw) .kp-jtab__label { letter-spacing: normal; } }
+.kp-rail--journey[data-tabs="5"]:lang(sw) .kp-rail__item[href="/updown"] .kp-jtab__label { max-width: min(100%, calc(10ch + 4px)); }
+@media (min-width: 440px) { .kp-rail--journey[data-tabs="5"]:lang(sw) .kp-jtab__label { white-space: nowrap; text-overflow: ellipsis; line-height: 1; } }
+@media (min-width: 440px) { .kp-rail--journey[data-tabs="5"]:lang(sw) .kp-rail__item[href="/updown"] .kp-jtab__label { max-width: 100%; } }
 /* ⭐ ONE TAB IS LIT IN EVERY FRAME (2026-10-09, the visual pass round 4, R4-J; E37/E41, tiles 301 306 333). The classic
    slot fades its ink and its pip over --t-quick (`.kp-rail__item`, `.kp-rail__pip`), so for 140ms after the router
    commits the new page the pill is half on the tab being left and half on the new one, beside the new label already bold
