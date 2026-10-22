@@ -17,6 +17,8 @@
  *   EAT, the en buy words) · §6 the deposit offer from the shortfall plan (H4) · §7 the ghost (M13, motion M6) ·
  *   §8 the decided words in three languages (the lead's rulings: the en buy words; zh ordinals unspaced) · §9 the batch
  *   stamp's dwell lives in `feedback-timing.ts`.
+ *   ROUND 2: §11 the composer's pills (ruling (a)) · §12 the stamp's note of each free cancel for the ticket's drawing, and
+ *   TICKETS' cancel confirm handing its dim to its result.
  * ⛔ It READS, compiles and renders in memory; it writes nothing.
  */
 import { readFileSync } from "node:fs";
@@ -597,8 +599,117 @@ section("§11 · round 2 · the composer says the noun once, as the switcher's l
     (lostBox.match(/aria-pressed="/g) ?? []).length === 2 && pillsOf(lostHtml).pills.length === 0);
 }
 
+/* ══ §12 · ROUND 2 · THE WIRING ROUND 2 ADDED (S5-R2-SLIP 2 and 3) ═══════════════════════════════════════════════════════ */
+section("§12 · round 2 · the stamp notes each ticket's free cancel for its drawing; TICKETS' cancel confirm hands its dim to its result");
+{
+  // 12.1 · "View ticket" opens a ticket whose free cancel is open: the stamp notes the window (TICKETS' `MaswaliGhostHint`)
+  // for every serial of the purchase while the window is known, so the ticket's loading drawing holds the cancel's band and
+  // the clauses land where it drew them. Drawn by the server with a landed cut in its state (one substitution, found once),
+  // the hint stubbed to draw what it is handed.
+  const CLIENT = "src/app/millionea/slip/slip-client.tsx";
+  const CUT_FROM = "const [cut, setCut] = useState<Cut | null>(null);";
+  const withCut = (src: string) => {
+    if (src.split(CUT_FROM).length - 1 !== 1) throw new Error("PREMISE ABSENT — the stamp's cut");
+    return src.replace(CUT_FROM, "const [cut, setCut] = useState<Cut | null>(() => (globalThis as { __cut?: Cut }).__cut ?? null);");
+  };
+  const STUBS = {
+    "../actions": { buyMillioneaTicketsAction: async () => ({ ok: false, error: "stub" }) },
+    "@/components/maswali/maswali-ghost-hint": {
+      MaswaliGhostHint: (p: { serial: string; cancelUntil: number }) => h("i", { "data-hint": p.serial, "data-until": String(p.cancelUntil) }),
+    },
+  };
+  const stampOf = (src: string) => compileAt(CLIENT, withCut(src), STUBS).SlipClient;
+  const drawWith = (component: unknown, cut: unknown) => {
+    (globalThis as { __cut?: unknown }).__cut = cut;
+    try {
+      return inApp("sw", h(component as never, {
+        userId: "u1", weekId: "w1", weekNumber: 49, closesAt: CLOSE, firstEventAt: EVENT, serverNow: NOW, questions: QS, hiddenSlots: [],
+        price: 1_000, cap: 10, held: 0, balance: 50_000, freeCancelMinutes: 5, pct: 13, depositFacts: null,
+      } as never));
+    } finally { delete (globalThis as { __cut?: unknown }).__cut; }
+  };
+  const hints = (m: string) => [...m.matchAll(/<i data-hint="([^"]*)" data-until="([^"]*)"><\/i>/g)].map((x) => ({ serial: x[1], until: Number(x[2]) }));
+  const UNTIL = "2026-12-01T09:05:00.000Z";
+  const two = { serials: ["MLN-2026-W49-000041", "MLN-2026-W49-000042"], firstTicketNumber: 1, weekNumber: 49, cancelUntil: UNTIL, total: 2_000 };
+  const stamp = stampOf(raw(CLIENT));
+  const open2 = hints(drawWith(stamp, two)), unknown = hints(drawWith(stamp, { ...two, cancelUntil: null })), none = hints(drawWith(stamp, null));
+  ok("12.1 · the stamp notes the free cancel of every ticket it names, at the window's own end — so \"View ticket\" lands on a drawing that holds the cancel's band — and notes nothing when the window is not known, nor with no stamp up",
+    j(open2) === j(two.serials.map((serial) => ({ serial, until: Date.parse(UNTIL) }))) && unknown.length === 0 && none.length === 0, j({ open2, unknown, none }));
+  const HINT_LINE = '{cut && cut.cancelUntil !== null ? cut.serials.map((serial) => <MaswaliGhostHint key={serial} serial={serial} cancelUntil={Date.parse(cut.cancelUntil ?? "")} />) : null}';
+  const noHint = raw(CLIENT).replace(HINT_LINE, "{null}");
+  ok("12.1′ PLANT · the stamp's note taken out is caught (the ticket's drawing would hold no band, and the clauses land a band lower than drawn)",
+    noHint !== raw(CLIENT) && hints(drawWith(stampOf(noHint), two)).length === 0);
+
+  // 12.2 · TICKETS' free cancel wears the slip's kit options (round 2, agreed with TICKETS): the confirm Millionea's panel class
+  // (kp-mln-zh) and the hand-off's closing edge, the result the opening edge (`handoff={open}`) with its panel a beat late
+  // (`panelDelay`). Drawn by the server with the two dialogs stubbed to draw what they are handed, and the two states the
+  // page reaches by a press seeded (one substitution each, found once): the result up, the confirm closing into it.
+  const ACTS = "src/app/millionea/tickets/[serial]/ticket-acts.tsx";
+  const HOST_OPEN = "  const [open, setOpen] = useState(false);\n  const [shown, setShown] = useState(0);";
+  const OUT_FROM = "const [handoffOut, setHandoffOut] = useState(false);";
+  const seededActs = (src: string) => {
+    for (const a of [HOST_OPEN, OUT_FROM]) if (src.split(a).length - 1 !== 1) throw new Error(`PREMISE ABSENT — ticket-acts: "${a.trim().slice(0, 40)}…"`);
+    return src
+      .replace(HOST_OPEN, "  const [open, setOpen] = useState(() => (globalThis as { __hostOpen?: boolean }).__hostOpen === true);\n  const [shown, setShown] = useState(0);")
+      .replace(OUT_FROM, "const [handoffOut, setHandoffOut] = useState(() => (globalThis as { __handoffOut?: boolean }).__handoffOut === true);");
+  };
+  const handed = (p: Record<string, unknown>) => ({ "data-open": String(p.open), "data-panel": String(p.panelClassName ?? ""), "data-handoff": String(p.handoff), "data-delay": String(p.panelDelay) });
+  const ACT_STUBS = {
+    "../../actions": { cancelMillioneaTicketAction: async () => ({ ok: false, error: "stub" }), markMillioneaTicketSeenAction: async () => undefined },
+    "@/components/ui/modal": { ConfirmModal: (p: Record<string, unknown>) => h("i", { "data-dialog": "confirm", ...handed(p) }) },
+    "@/components/markets/operation-result-modal": { OperationResultModal: (p: Record<string, unknown>) => h("i", { "data-dialog": "result", ...handed(p) }) },
+    "@/components/maswali/maswali-ticket-cancel": { MaswaliCancelButton: () => null },
+    "@/components/maswali/maswali-moment": { MaswaliMomentsHost: (p: { children: unknown }) => p.children },
+    "@/components/markets/win-celebration": { dispatchWinCelebration() {} },
+    "@/components/ui/toast": { useToast: () => ({ toast() {} }) },
+  };
+  const actsOf = (src: string) => compileAt(ACTS, seededActs(src), ACT_STUBS) as { TicketHost: unknown; TicketCancel: unknown };
+  const SERIAL = "MLN-2026-W49-000041";
+  const drawActs = (A: { TicketHost: unknown; TicketCancel: unknown }, hostOpen: boolean, handoffOut: boolean) => {
+    const g = globalThis as { __hostOpen?: boolean; __handoffOut?: boolean };
+    g.__hostOpen = hostOpen; g.__handoffOut = handoffOut;
+    try {
+      const m = inApp("sw", h(A.TicketHost as never, { serial: SERIAL, through: "2026-12-01T09:00:00.000Z" } as never,
+        h(A.TicketCancel as never, { serial: SERIAL, ownerId: "u1", until: NOW + 5 * 60_000, serverNow: NOW, price: 1_000, cap: 10, windowMins: 5 } as never)));
+      const read = (kind: string) => {
+        const tag = new RegExp(`<i data-dialog="${kind}"([^>]*)><\\/i>`).exec(m)?.[1] ?? "";
+        return Object.fromEntries([...tag.matchAll(/data-([a-z]+)="([^"]*)"/g)].map((x) => [x[1], x[2]]));
+      };
+      return { confirm: read("confirm"), result: read("result") };
+    } finally { delete g.__hostOpen; delete g.__handoffOut; }
+  };
+  const acts = actsOf(raw(ACTS));
+  const atRest = drawActs(acts, false, false), resultUp = drawActs(acts, true, false), closingInto = drawActs(acts, false, true);
+  ok("12.2 · TICKETS' cancel confirm wears Millionea's panel (kp-mln-zh) and hands its dim on exactly when its state says (false at rest, true closing into the result); the result holds the dim from its first frame exactly while it is up (`handoff` = `open`) and always rises a beat late",
+    [atRest, resultUp, closingInto].every((s) => s.confirm.panel === "kp-mln-zh" && s.result.delay === "true" && s.result.handoff === s.result.open)
+      && atRest.confirm.handoff === "false" && closingInto.confirm.handoff === "true" && atRest.result.open === "false" && resultUp.result.open === "true",
+    j({ atRest, resultUp, closingInto }));
+  // PLANTS: the confirm keeping its own dim (no hand-off), and the result fading a new dim in (no hand-off on its side).
+  const ownDim = actsOf(raw(ACTS).replace("handoff={handoffOut}", "handoff={false}"));
+  const fadeIn = actsOf(raw(ACTS).replace("handoff={open}", "handoff={false}"));
+  ok("12.2′ PLANT · the confirm keeping its own dim, or the result fading a new dim in, is caught (the dim would lift between the two)",
+    drawActs(ownDim, false, true).confirm.handoff === "false" && drawActs(fadeIn, true, false).result.handoff === "false");
+  // 12.3 · the order the dim needs (as 4.P1 holds the slip's): a landed cancel sets the hand-off and closes the confirm in the
+  // same continuation that opens the result — one commit, so the dim never lifts between them — and the door re-arms it to
+  // false each time it opens the confirm (a refused cancel closes with its own dim, the toast over the page).
+  const cancelDefects = (src: string) => {
+    const s = decomment(src).replace(/\s+/g, " ");
+    const d: string[] = [];
+    const landed = s.indexOf("const r = await cancelMillioneaTicketAction(fd);"), refusal = s.indexOf("const failure = r as ReasonedFailure;");
+    const branch = landed >= 0 && refusal > landed ? s.slice(landed, refusal) : "";
+    const set = branch.indexOf("setHandoffOut(r.ok && !!r.data);"), close = branch.indexOf("setOpen(false);"), show = branch.indexOf("showResult?.(r.data.refunded);");
+    if (!(set >= 0 && close > set && show > close)) d.push("a landed cancel does not hand its dim on, close the confirm and open the result in one continuation");
+    if (!s.includes("onPress={() => { setHandoffOut(false); setOpen(true); }}")) d.push("the door does not re-arm the hand-off when it opens the confirm");
+    return d;
+  };
+  const cd = cancelDefects(raw(ACTS));
+  ok("12.3 · a landed cancel hands the dim on and closes its confirm in the continuation that opens the result (one commit); the door re-arms the hand-off each time it opens the confirm", cd.length === 0, cd.join(" | "));
+  const late = raw(ACTS).replace("      setHandoffOut(r.ok && !!r.data);\n      setOpen(false);", "      setOpen(false);\n      await Promise.resolve();\n      setHandoffOut(r.ok && !!r.data);");
+  ok("12.3′ PLANT · the hand-off set after the confirm closed (a later continuation) is caught", late !== raw(ACTS) && cancelDefects(late).length > 0);
+}
+
 console.log(`\n${"═".repeat(70)}\n  MASWALI SLIP DESIGN: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run printed. */
-const MIN_ASSERTIONS = 80;
+const MIN_ASSERTIONS = 86;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);
