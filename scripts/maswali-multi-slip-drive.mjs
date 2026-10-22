@@ -93,12 +93,17 @@ try {
     await switcher(page).getByRole("group").count() === 1 && await switcher(page).locator('button[aria-pressed="true"]').count() === 1);
   // H3 · ticket 2 half answered, then back to the complete ticket 1: the control reads "Finish ticket 2", never armed.
   for (let i = 0; i < 7; i++) await groups.nth(i).getByRole("radio").nth(1).click();
-  await switcher(page).getByRole("button").filter({ hasText: /^Ticket 1 · /i }).click();
+  // The pills say "1 · 15/15" under the group's "TICKETS"; each is NAMED with the noun (the lead's ruling (a), round 2).
+  await switcher(page).getByRole("button", { name: /^Ticket 1 · / }).click();
   ok("H3 · ticket 1 complete, ticket 2 not: the pay control reads \"Finish ticket 2\" and is not armed",
     /Finish ticket 2/.test(await pay(page).innerText()) && await pay(page).getAttribute("data-armed") === null, await pay(page).innerText());
   ok("H3 · the counts lead with the ticket being answered", (await page.locator(".kp-mln-rail").innerText()).includes("Ticket 1"));
   await pay(page).click();
-  ok("H3 · \"Finish ticket 2\" opens ticket 2", await switcher(page).locator('button[aria-pressed="true"]').filter({ hasText: /^Ticket 2 · 7\/15$/i }).count() === 1);
+  ok("H3 · \"Finish ticket 2\" opens ticket 2", await switcher(page).locator('button[aria-pressed="true"][aria-label="Ticket 2 · 7/15"]').count() === 1);
+  ok("round 2 · ruling (a) · the pills say the number and the progress, the group's label says the noun once — and two pills share ONE row at 320",
+    await switcher(page).locator('button[aria-pressed="true"]').innerText() === "2 · 7/15"
+      && /^tickets$/i.test(await switcher(page).locator("span[aria-hidden]").first().innerText())
+      && await switcher(page).getByRole("button", { name: /^Ticket \d · / }).evaluateAll((els) => new Set(els.map((e) => Math.round(e.getBoundingClientRect().top))).size === 1));
   ok("M8 · …and the first unanswered question holds the focus", await page.evaluate(() => document.activeElement?.closest("li")?.id) === "q-8",
     await page.evaluate(() => String(document.activeElement?.closest("li")?.id)));
   for (let i = 7; i < 15; i++) await groups.nth(i).getByRole("radio").nth(1).click();
