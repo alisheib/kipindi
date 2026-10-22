@@ -38,6 +38,7 @@ import { EAT_OFFSET_MS, eatWeekAt, eatWeekCode, eatWeekStartMs } from "@/lib/eat
 import { zonedToUtcMs } from "@/lib/maswali-time";
 import { bannedTopicHits } from "@/lib/maswali-topics";
 import { MAIN_COUNT, RESERVE_COUNT, settlementGate, slotLabel, slotOf, weekVoidCertain, type GradableQuestion, type MaswaliOutcome, type MaswaliPick } from "@/lib/maswali-score";
+import { eatInText } from "@/lib/maswali-admin-format";
 import { guaranteeRequirement } from "@/lib/maswali-money";
 import { DEFAULT_FREE_EXIT_GRACE_MINUTES } from "@/lib/payout";
 import { merkleRoot, questionSetHash, type FrozenQuestion } from "@/lib/maswali-commitment";
@@ -189,6 +190,31 @@ export async function createWeek(input: {
   if (!res.ok) return res;
   // Written before this returns, so a second reader who attests the moment the draft exists finds who wrote it.
   return { ok: true, week: res.week, recorded: await recordOwed(res.owed) };
+}
+
+/**
+ * ⭐ S6-ADMIN · G5 · DISCARD A DRAFT (the lead's ruling G5). A week that never opened — no market, no ticket — and is not
+ * the week the Owner made the final one leaves whole, with its fifteen questions, and frees its Monday and its line for a
+ * new draft ("Week … already exists" no longer blocks it). Behind the draft's own control (`createMaswaliWeek`), on the
+ * console's typed confirmation, audited (`maswali.week.discarded`, owed until the delete has committed). ⛔ A week that
+ * opened is never discarded: its record is what was sold (MR-13). The audit rows of the draft's life stay.
+ */
+export async function discardDraftWeek(input: { weekId: string; officerId: string }): Promise<Result<{ code: string; recorded: boolean }>> {
+  const res = await withLock(MASWALI_CHAIN_LOCK, async (lockTx): Promise<Result<{ code: string; owed: OwedAudit[] }>> => {
+    const week = await weekStore.get(input.weekId, lockTx ?? undefined);
+    if (!week) return refuse("No such week.");
+    if (week.state !== "DRAFT" || week.marketId !== null) {
+      return refuse(`Week ${week.code} has opened, so it is never discarded: its record is what was sold.`); // MR-13
+    }
+    if (week.isFinal) return refuse(`Week ${week.code} is the announced final week, so it cannot be discarded.`); // MR-30
+    if (!(await weekStore.discardDraft(week.id, lockTx ?? undefined))) {
+      return refuse(`Week ${week.code} changed while it was being discarded. Reload the week.`);
+    }
+    return { ok: true, code: week.code, owed: [{ category: "ADMIN", action: "maswali.week.discarded", actorId: input.officerId, targetType: "MaswaliCycle",
+      targetId: week.id, payload: { code: week.code, seq: week.seq, visibility: week.visibility, opensAt: week.opensAt, closesAt: week.closesAt } }] };
+  });
+  if (!res.ok) return res;
+  return { ok: true, code: res.code, recorded: await recordOwed(res.owed) };
 }
 
 /** Validate one draft edit without writing; the batch must finish every check before its first write. */
@@ -412,7 +438,7 @@ export async function openProblems(week: StoredWeek, questions: StoredQuestion[]
   if (!(closeMs > nowMs)) p.push("The sales close has already passed.");
   const earliest = Math.min(...questions.map((q) => Date.parse(q.eventStartsAt)));
   if (closeMs > earliest - rules.minLockBufferMinutes * 60_000) {
-    p.push(`Sales must close at least ${rules.minLockBufferMinutes} minutes before the first event (${new Date(earliest).toISOString()}).`);
+    p.push(`Sales must close at least ${rules.minLockBufferMinutes} minutes before the first event, which starts ${eatInText(earliest)}.`);
   }
   const finalMs = Date.parse(week.finalDeadlineAt);
   const perCompetition = new Map<string, number>();
@@ -511,7 +537,7 @@ export async function openWeek(input: { weekId: string; officerId: string; guara
     //    open, from the moment it is made final: that is the time its buyers were told, and an early press would cut the
     //    notice the rules promise (the S6 legal review, round 2). An ordinary week may still open early.
     if (week.isFinal && nowMs < Date.parse(week.opensAt)) {
-      return refuse(`Week ${week.code} is the final week, announced to open at ${week.opensAt}; it cannot open before then.`);
+      return refuse(`Week ${week.code} is the final week, announced to open ${eatInText(week.opensAt)}; it cannot open before then.`);
     }
     const rules = snapshotMaswaliRules(fresh.config, new Date(nowMs));
     // ⭐ S7 · the week runs on its frozen rules' deadlines: every check, the commitment and the market below read them.
@@ -711,7 +737,7 @@ export async function moveClose(input: { weekId: string; toCloseAt: string; expe
     if (!week) return refuse("No such week.");
     if (week.state !== "OPEN") return refuse(`Week ${week.code} is ${week.state}; only an open week's close can move.`);
     const fromMs = Date.parse(week.closesAt);
-    if (fromMs !== reviewedMs) return refuse(`The close changed since you reviewed it: it is now ${week.closesAt}. Reload the week and review it again before moving it.`);
+    if (fromMs !== reviewedMs) return refuse(`The close changed since you reviewed it: it is now ${eatInText(week.closesAt)}. Reload the week and review it again before moving it.`);
     // ⛔ S7 · THE CLOSE HAS PASSED ONCE EITHER CLOCK SAYS SO (MB-84: the close is the database's instant). A purchase and a
     //    cancel stop on the database clock, so a container whose own clock runs slow still read the week as before its
     //    close, moved it later and reopened sales the database had already closed. The later of the two clocks decides,
@@ -732,7 +758,7 @@ export async function moveClose(input: { weekId: string; toCloseAt: string; expe
     const first = questions.reduce((a, q) => (Date.parse(q.eventStartsAt) < Date.parse(a.eventStartsAt) ? q : a));
     const earliest = Date.parse(first.eventStartsAt);
     if (toMs > earliest - rules.minLockBufferMinutes * 60_000) {
-      return refuse(`The close must stay at least ${rules.minLockBufferMinutes} minutes before the first event. ${slotLabel(first.slot)} starts at ${first.eventStartsAt}.`);
+      return refuse(`The close must stay at least ${rules.minLockBufferMinutes} minutes before the first event. ${slotLabel(first.slot)} starts at ${eatInText(first.eventStartsAt)}.`);
     }
     if (toMs === fromMs) return refuse("That is already the close.");
     const won = await weekStore.moveClose(week.id, week.closesAt, new Date(toMs).toISOString(), tx ?? undefined);
@@ -907,7 +933,7 @@ export async function sealQuestion(input: {
     if (!q) return refuse(`No ${slotLabel(input.slot)} in week ${week.code}.`);
     if (q.outcome !== null) return refuse(`${slotLabel(q.slot)} is already sealed; correct it through its own correction.`); // OD-09
     if (input.outcome === "VOID" && !voidGroundAvailable(input.voidReason as MaswaliVoidReason, Date.parse(q.voidDeadlineAt), nowMs)) {
-      return refuse(`${slotLabel(q.slot)} cannot void on that ground before its void deadline (${q.voidDeadlineAt}).`);
+      return refuse(`${slotLabel(q.slot)} cannot void on that ground before its void deadline, ${eatInText(q.voidDeadlineAt)}.`);
     }
     // ⛔ MR-15 · MR-16 · an objection is upheld only after the sales close, so its ground cannot be sealed on a week still on
     //    sale: there, a criterion found wrong voids on `criterion_wrong` (the closed list's own definitions).
@@ -1033,7 +1059,7 @@ export async function correctSeal(input: {
       return refuse("The seal changed; reload the week and review it again before correcting it.");
     }
     if (input.outcome === "VOID" && !voidGroundAvailable(input.voidReason as MaswaliVoidReason, Date.parse(q.voidDeadlineAt), nowMs)) {
-      return refuse(`${slotLabel(q.slot)} cannot void on that ground before its void deadline (${q.voidDeadlineAt}).`);
+      return refuse(`${slotLabel(q.slot)} cannot void on that ground before its void deadline, ${eatInText(q.voidDeadlineAt)}.`);
     }
     // The restarted window is read from the frozen rules after the write: asked first, as `confirmSeal` does.
     if (!frozenRules(week)) return refuse(`Week ${week.code}'s frozen rules cannot be read.`);

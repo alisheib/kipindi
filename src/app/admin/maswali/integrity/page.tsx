@@ -28,6 +28,9 @@ import type { SmsStatus } from "@/lib/server/store";
 import { slotLabel } from "@/lib/maswali-score";
 import { adminCount, formatNumber, formatTzs } from "@/lib/utils";
 import { fmtEat } from "@/lib/maswali-admin-format";
+import { displayLabel } from "@/lib/display-label";
+import { roleLabel } from "@/lib/server/roles";
+import { accountStatusLabel } from "@/components/admin/status-badge";
 import { HeldShareControls, HoldShareControl, MarkReachedControl, PauseControl, VoidWeekControl, ClearLettersControl } from "./integrity-controls";
 import { StandingAuditWarning } from "../audit-warning";
 import { MillioneaObjectionQueue } from "./objection-queue";
@@ -161,7 +164,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
             : (
               <ul className="space-y-1.5 text-body-sm">
                 {newDevices.map((d, i) => (
-                  <li key={i}><span className="tabular">{fmtEat(d.at)}</span> · officer {d.officerId ?? "?"} · week {d.weekId ?? "?"}{d.kind === "unchecked"
+                  <li key={i}><span className="tabular">{fmtEat(d.at)}</span> · officer {d.officer ?? "not on record"} · week {d.weekCode ?? "not on record"}{d.kind === "unchecked"
                     ? <span className="text-warning"> · the device could not be checked against their earlier seals</span>
                     : d.firstSeal ? <span className="text-text-tertiary"> · their first seal on the platform</span> : <span className="text-warning"> · not a device they sealed from before</span>}</li>
                 ))}
@@ -385,7 +388,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
                   {v.winners.map((w) => (
                     <tr key={w.serial}>
                       <td className="text-left tabular">{w.weekCode}</td><td className="text-left tabular">{w.serial}</td><td className="text-left">{w.holder}</td>
-                      <td className="text-left">{w.role} · {w.status}</td><td className="text-right tabular">{w.accountAgeDays} d</td>
+                      <td className="text-left">{roleLabel(w.role)} · {accountStatusLabel(w.status)}{/* G8 · the role's and the account's words, never their enums */}</td><td className="text-right tabular">{w.accountAgeDays} d</td>
                       <td className="text-right tabular">{w.payout === null ? "Not on record" : formatTzs(w.payout)}</td>
                       <td className="text-left">{w.frozenReason ? <span className="text-body-sm">{consoleShareNoteOf(w.frozenReason)}</span>
                         : canHold ? <HoldShareControl ticketId={w.ticketId} serial={w.serial} />
@@ -435,8 +438,8 @@ async function Content({ searchParams }: IntegrityPageProps) {
                   {v.sealLog.map((s, i) => (
                     <tr key={i}>
                       <td className="text-left tabular">{s.weekCode}</td><td className="text-left tabular">{slotLabel(s.slot)}</td>
-                      <td className="text-left">{s.outcome}{s.voidReason ? ` · ${isMaswaliVoidReason(s.voidReason) ? MASWALI_VOID_REASON_LABEL[s.voidReason] : s.voidReason}` : ""}</td><td className="text-left">{s.sealedBy ?? "—"}</td>
-                      <td className="text-left tabular">{fmtEat(s.sealedAt)}</td><td className="text-left">{s.stage2By ?? "—"}</td>
+                      <td className="text-left">{s.outcome}{s.voidReason ? ` · ${isMaswaliVoidReason(s.voidReason) ? MASWALI_VOID_REASON_LABEL[s.voidReason] : s.voidReason}` : ""}</td><td className="text-left">{s.sealer ?? "—"}</td>
+                      <td className="text-left tabular">{fmtEat(s.sealedAt)}</td><td className="text-left">{s.secondOfficer ?? "—"}</td>
                       <td className="text-left max-w-[320px]">{s.evidence ?? "—"}</td>
                     </tr>
                   ))}
@@ -567,7 +570,8 @@ async function ConnectedAccounts({ clusters, query }: { clusters: Array<ClusterR
                   {openAccounts.map((a) => (
                     <tr key={a.userId}>
                       <td className="text-left">{a.holder}</td>
-                      <td className="text-left font-mono break-all">{a.userId}</td>
+                      {/* S6-ADMIN · G3 · the account's stable handle (`displayLabel`'s "Player #…"), never its raw id. */}
+                      <td className="text-left tabular">{displayLabel({ id: a.userId, displayName: null })}</td>
                       <td className="text-right tabular">{a.tickets.toLocaleString("en")}</td>
                     </tr>
                   ))}

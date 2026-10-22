@@ -314,7 +314,7 @@ export const MUTATIONS = [
   {
     name: "(38) a move reviewed against an older close is no longer refused (A3: 12:00 → 16:00 read as 18:00 → 16:00)",
     file: SVC,
-    from: "    if (fromMs !== reviewedMs) return refuse(`The close changed since you reviewed it: it is now ${week.closesAt}. Reload the week and review it again before moving it.`);",
+    from: "    if (fromMs !== reviewedMs) return refuse(`The close changed since you reviewed it: it is now ${eatInText(week.closesAt)}. Reload the week and review it again before moving it.`);",
     to: "",
     expect: "5.10 · ⛔ a move reviewed against a close another officer has since moved",
     suite: "engine",
@@ -881,6 +881,31 @@ export const MUTATIONS = [
     from: "  return text ? <p role=\"alert\" className=\"text-body-sm text-warning w-full\">{text}</p> : null;",
     to: "  return text ? <p className=\"text-body-sm text-warning w-full\">{text}</p> : null;",
     expect: "14.8 · ⭐ …and the console shows every one in the ONE shared element",
+    suite: "engine",
+  },
+  // ── S6-ADMIN · G5 · a draft that never opened is discarded whole; nothing that opened ever is ──────────────────────────
+  {
+    name: "(110) a week that opened reaches the discard: the service no longer refuses it by its state",
+    file: SVC,
+    from: '    if (week.state !== "DRAFT" || week.marketId !== null) {',
+    to: "    if (false) {",
+    expect: "15.5 · ⛔ a week that opened is never discarded",
+    suite: "engine",
+  },
+  {
+    name: "(111) the store deletes a week that opened: its discard is no longer conditional on a draft",
+    file: DAL,
+    from: '    if (!cur || cur.state !== "DRAFT" || cur.marketId !== null || cur.ticketCount !== 0 || cur.isFinal) return false;',
+    to: "    if (!cur) return false;",
+    expect: "15.5b · ⛔ …and the store itself refuses it",
+    suite: "engine",
+  },
+  {
+    name: "(112) a discard is never audited: the owed record is dropped and the console is told it was recorded",
+    file: SVC,
+    from: "  return { ok: true, code: res.code, recorded: await recordOwed(res.owed) };",
+    to: "  return { ok: true, code: res.code, recorded: true };",
+    expect: "15.2 · ⭐ the discard is audited once",
     suite: "engine",
   },
 ];

@@ -15,7 +15,7 @@ import { safeError } from "@/lib/server/safe-error";
 import { requireStaff } from "@/lib/server/rbac-guard";
 import { CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import {
-  attestParity, confirmSeal, correctSeal, createWeek, editDraftQuestions, moveClose, openWeek, sealQuestion,
+  attestParity, confirmSeal, correctSeal, createWeek, discardDraftWeek, editDraftQuestions, moveClose, openWeek, sealQuestion,
   type DraftQuestionInput,
 } from "@/lib/server/maswali-service";
 import { guaranteeReader } from "@/lib/server/maswali-money-service";
@@ -78,6 +78,26 @@ export async function createMaswaliWeekAction(formData: FormData): Promise<Actio
     return { ok: true, weekId: r.week.id, recorded: r.recorded };
   } catch (err) {
     return { ok: false, error: safeError(err, "The week could not be drafted") };
+  }
+}
+
+/** S6-ADMIN · G5 · a landed discard whose audit row was not written (the draft is gone), in the console's one wording. */
+const DISCARD_AUDIT_WARNING = "The discard landed, but its audit record could not be fully written. Tell an administrator; do not repeat the discard.";
+
+/**
+ * ⭐ S6-ADMIN · G5 · discard a draft that never opened — behind the draft's own control (`createMaswaliWeek`): whoever may
+ * draft a week may take back a draft. The service refuses a week that opened, and the announced final week.
+ */
+export async function discardMaswaliDraftAction(formData: FormData): Promise<ActionResult> {
+  const session = await requireStaff(CONTROL_DOMAIN.createMaswaliWeek, "discardMaswaliDraft");
+  const weekId = str(formData, "weekId");
+  try {
+    const r = await discardDraftWeek({ weekId, officerId: session.userId });
+    if (!r.ok) return { ok: false, error: r.error };
+    try { refresh(); } catch { /* The draft is already gone; the client navigates away. */ }
+    return { ok: true, recorded: r.recorded, auditWarning: r.recorded ? null : DISCARD_AUDIT_WARNING };
+  } catch (err) {
+    return { ok: false, error: safeError(err, "The draft could not be discarded") };
   }
 }
 

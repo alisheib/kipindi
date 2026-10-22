@@ -34,11 +34,13 @@ import { millioneaStateNow } from "./millionea-switch";
 import { acct, maswaliJackpotOf } from "./ledger";
 import { db, type SmsStatus } from "./store";
 import { marketStore } from "./market-dal";
+import { consoleOfficerName } from "./maswali-integrity";
+import { snapshotOrLegacy } from "./market-config";
 import { MAIN_COUNT, settlementGate, weekVoidCertain } from "@/lib/maswali-score";
 import { guaranteeRequirement } from "@/lib/maswali-money";
 import type { RolloutState } from "@/lib/millionea-rollout";
 import { formatTzs } from "@/lib/utils";
-import { fmtEat } from "@/lib/maswali-admin-format";
+import { eatInText, fmtEat } from "@/lib/maswali-admin-format";
 import { parseWeekListQuery, selectWeekPage, type WeekListQuery } from "@/lib/maswali-week-list";
 import { parseIntegrityListQuery, selectHeldShares, selectWinnerTickets, selectSealWeeks, selectVoidableWeeks, type IntegrityListQuery } from "@/lib/maswali-integrity-list";
 
@@ -99,6 +101,12 @@ export type ConsoleWeekDetail = {
   questions: StoredQuestion[];
   /** The rules the week froze, or — while DRAFT — the rules it would freeze if opened now. */
   rules: MaswaliRulesSnapshot | null;
+  /**
+   * ⭐ S6-ADMIN · G2 · the fee the week takes at payout, as a rate (0.13 = 13% of the jackpot): the fee its market froze
+   * (`weekFeeRate`), or — while DRAFT — the fee it would freeze if opened now. Null when it cannot be read: the page says
+   * so, never 0.
+   */
+  feeRate: number | null;
   /** DRAFT only: every reason the open would refuse, in words; empty when it would open. */
   problems: string[] | null;
   /**
@@ -147,7 +155,26 @@ export async function consoleWeekDetail(weekId: string, now: Date = new Date()):
         : `The sales close falls on ${holiday}, a public holiday on the Owner's list. Bring the close forward while it is still ahead.`);
     }
   }
-  return { week, row: await rowOf(week), questions, rules, problems, warnings, proposedVoids: await proposeVoidsAtDeadline(week.id, now) };
+  // G2 · a DRAFT's fee is the one the rules it would freeze carry (the same read as `rules` above, so the two agree);
+  // a frozen week's is its market's own.
+  const feeRate = week.state === "DRAFT" ? (rules ? getMaswaliConfig().jackpotFeeRate : null) : await weekFeeRate(week);
+  return { week, row: await rowOf(week), questions, rules, feeRate, problems, warnings, proposedVoids: await proposeVoidsAtDeadline(week.id, now) };
+}
+
+/**
+ * ⭐ S6-ADMIN · G2 · THE FEE A FROZEN WEEK TAKES AT PAYOUT, as the console reads it: its market's `feeSnapshot` — the fee's
+ * one home per week (`maswali-config.ts`'s header; the player pages read the same field) — when that snapshot is the
+ * jackpot-payout model with a finite rate. Null for a week with no market, a market that cannot be read, or a snapshot of
+ * another model: unknown, never 0.
+ */
+export async function weekFeeRate(week: Pick<StoredWeek, "marketId">): Promise<number | null> {
+  if (!week.marketId) return null;
+  let market: Awaited<ReturnType<typeof marketStore.get>> | null = null;
+  try { market = await marketStore.get(week.marketId); } catch { market = null; }
+  if (!market) return null;
+  const fees = snapshotOrLegacy(market.feeSnapshot);
+  const rate = fees.jackpotFeeRate;
+  return fees.feeModel === "jackpot-payout" && typeof rate === "number" && Number.isFinite(rate) ? rate : null;
 }
 
 /** An operator alert (MASWALI-PLAN §7b S4 item 5). Never a guess: each names the week and the fact behind it. */
@@ -168,7 +195,7 @@ export async function consoleAlerts(
     .sort((a, b) => b.seq - a.seq);
   for (const w of weeks) {
     if (w.state === "OPEN" && Date.parse(w.closesAt) + 5 * 60_000 < nowMs) {
-      out.push({ level: "critical", weekId: w.id, text: `${w.code}: sales should have closed at ${w.closesAt}, and the close is not stamped.` });
+      out.push({ level: "critical", weekId: w.id, text: `${w.code}: sales should have closed at ${eatInText(w.closesAt)}, and the close is not stamped.` });
     }
     // R1 · a VOIDED week is here only while it is owed: the void is decided, and the money is not back until its market
     // carries the settled stamp, written with the refunds.
@@ -687,6 +714,9 @@ export type PoolsWeek = {
    * (S7-F3's rule too).
    */
   worstTopUp: number | null;
+  /** ⭐ S6-ADMIN · G2 · the fee the week froze, taken at payout (`weekFeeRate`): Finance reads it here, beside the week's
+   *  money, since it cannot open the week's own page. Null when it cannot be read — never 0. */
+  feeRate: number | null;
   /** A settlement ready to release (results final, window closed): its prepared figures, or why not. */
   preview: MaswaliSettlementPreview | null;
   previewRefusal: string | null;
@@ -748,7 +778,7 @@ export async function poolsView(now: Date = new Date()): Promise<PoolsView> {
       if (p.ok) { preview = p.preview; if (p.preview.arithmetic.kind === "PAYOUT") pendingPayout += p.preview.arithmetic.paid; }
       else previewRefusal = p.error;
     }
-    out.push({ row: await rowOf(w), sales, rolloverIn: w.rolloverIn, coverage: combos.size / 2 ** MAIN_COUNT, distinctCombos: combos.size, worstTopUp, preview, previewRefusal });
+    out.push({ row: await rowOf(w), sales, rolloverIn: w.rolloverIn, coverage: combos.size / 2 ** MAIN_COUNT, distinctCombos: combos.size, worstTopUp, feeRate: await weekFeeRate(w), preview, previewRefusal });
   }
   const { getFloatBalance } = await import("./payments");
   const float = await getFloatBalance().then((f) => f?.balance ?? null).catch(() => null);
@@ -779,7 +809,8 @@ export type HeldShare = {
   /** MB-74 · for a share held for a deposit under review, which deposit the provider contradicted (S7-F9). */
   provenance?: string | null;
 };
-export type SealLogRow = { weekCode: string; slot: number; outcome: string; voidReason: string | null; sealedBy: string | null; sealedAt: string | null; evidence: string | null; stage2By: string | null };
+/** ⭐ S6-ADMIN · G3 · `sealer` and `secondOfficer` are the officers' NAMES (`consoleOfficerName`), never their ids. */
+export type SealLogRow = { weekCode: string; slot: number; outcome: string; voidReason: string | null; sealer: string | null; sealedAt: string | null; evidence: string | null; secondOfficer: string | null };
 export type WinnerRow = { ticketId: string; weekCode: string; serial: string; userId: string; holder: string; role: string; status: string; accountAgeDays: number; payout: number | null; frozenReason: string | null };
 /** A paid ticket's share as its record holds it: null when the record lacks it (never `?? 0`). */
 const shareOf = (t: StoredTicket): number | null => (t.payout === null ? null : Math.round(t.payout));
@@ -881,9 +912,12 @@ export async function integrityView(now: Date = new Date(), pages: { held?: numb
   }
   const sealed = weeks.filter((w) => w.state === "SETTLED" || w.state === "VOIDED");
   const selectedSeals = selectSealWeeks(sealed, { ...query.seals, page: pages.sealWeeks ?? query.seals.page }, SEAL_WEEKS_PER_PAGE);
+  // G3 · each officer named once per view, never printed by id.
+  const officerNames = new Map<string, Promise<string | null>>();
+  const officerName = (id: string | null) => (id ? (officerNames.get(id) ?? officerNames.set(id, consoleOfficerName(id)).get(id)!) : Promise.resolve(null));
   for (const w of selectedSeals.rows) {
     for (const q of await questionStore.listForWeek(w.id)) {
-      sealLog.push({ weekCode: w.code, slot: q.slot, outcome: q.outcome ?? "—", voidReason: q.voidReason, sealedBy: q.sealedBy, sealedAt: q.sealedAt, evidence: q.evidence, stage2By: q.stage2By });
+      sealLog.push({ weekCode: w.code, slot: q.slot, outcome: q.outcome ?? "—", voidReason: q.voidReason, sealer: await officerName(q.sealedBy), sealedAt: q.sealedAt, evidence: q.evidence, secondOfficer: await officerName(q.stage2By) });
     }
   }
   const unreached = await unreachedWinners(now).catch((err: unknown) => {

@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { CONSOLE_PER_PAGE, consoleStanding, poolsView } from "@/lib/server/maswali-console";
 import { readMillioneaSwitchFresh } from "@/lib/server/millionea-switch";
 import { weekStore } from "@/lib/server/maswali-dal";
-import { formatTzs } from "@/lib/utils";
+import { fmtRate, formatTzs } from "@/lib/utils";
 import { fmtEat, weekStateChip } from "@/lib/maswali-admin-format";
 import { openState, poolsLine, poolsSearchParams, queryOpenWeeks, queryRolloverTrail, type OpenSort, type TrailSort } from "@/lib/maswali-admin-pools-query";
 import { lacksText } from "@/lib/server/maswali-week-record";
@@ -139,6 +139,8 @@ async function Content({ searchParams }: PoolsPageProps) {
                     <SortTh field="state" label="State" current={openSort.sort} dir={openSort.dir} sp={sp} baseHref="/admin/maswali/pools" prefix="o" />
                     <SortTh field="sales" label="Sales" current={openSort.sort} dir={openSort.dir} sp={sp} baseHref="/admin/maswali/pools" prefix="o" align="right" />
                     <th className="text-right">Carry in</th>
+                    {/* S6-ADMIN · G2 · the fee each week froze: Finance reads it here, since it cannot open the week's own page. */}
+                    <th className="text-right">Fee at payout</th>
                     <SortTh field="coverage" label="Coverage" current={openSort.sort} dir={openSort.dir} sp={sp} baseHref="/admin/maswali/pools" prefix="o" align="right" />
                     <SortTh field="topUp" label="Worst top-up" current={openSort.sort} dir={openSort.dir} sp={sp} baseHref="/admin/maswali/pools" prefix="o" align="right" />
                     <th className="text-left">Settlement</th>
@@ -153,6 +155,7 @@ async function Content({ searchParams }: PoolsPageProps) {
                           <td className="text-left"><Chip variant={chip.variant} size="sm">{chip.label}</Chip></td>
                           <td className="text-right tabular">{money(w.sales)}</td>
                           <td className="text-right tabular">{w.rolloverIn === null ? "Not yet" : formatTzs(w.rolloverIn)}</td>
+                          <td className="text-right tabular" data-fee-rate={w.row.code}>{w.feeRate === null ? CANNOT_BE_READ : fmtRate(w.feeRate)}</td>
                           <td className="text-right tabular">{w.distinctCombos.toLocaleString("en")} of 1,024 · {(w.coverage * 100).toFixed(1)}%</td>
                           <td className="text-right tabular">{money(w.worstTopUp)}</td>
                           <td className="text-left align-top min-w-[280px]">

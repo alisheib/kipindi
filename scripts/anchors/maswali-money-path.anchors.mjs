@@ -359,7 +359,7 @@ export const MUTATIONS = [
   {
     name: "(S7-move-names) a close moved past the first event is refused without naming the question (MR-4)",
     file: SVC,
-    from: "      return refuse(`The close must stay at least ${rules.minLockBufferMinutes} minutes before the first event. ${slotLabel(first.slot)} starts at ${first.eventStartsAt}.`);",
+    from: "      return refuse(`The close must stay at least ${rules.minLockBufferMinutes} minutes before the first event. ${slotLabel(first.slot)} starts at ${eatInText(first.eventStartsAt)}.`);",
     to: "      return refuse(`The close must stay at least ${rules.minLockBufferMinutes} minutes before the first event.`);",
     expect: "HF.4",
     suite: "adversarial:HF",

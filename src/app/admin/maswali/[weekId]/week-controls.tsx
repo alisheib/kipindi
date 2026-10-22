@@ -10,6 +10,7 @@
  * ⛔ No ticket data reaches this component (MR-14, MB-34): the rows carry the question, its source and its seal only.
  */
 import { useState, useTransition } from "react";
+import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input, Field } from "@/components/ui/input";
@@ -24,7 +25,7 @@ import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 import { isMaswaliVoidReason, MASWALI_VOID_REASON_LABEL } from "@/lib/maswali-void-reason";
 import { withoutSealedPicks } from "@/lib/maswali-seal-batch";
 import {
-  attestMaswaliParityAction, confirmMaswaliSealAction, correctMaswaliSealAction, moveMaswaliCloseAction, openMaswaliWeekAction,
+  attestMaswaliParityAction, confirmMaswaliSealAction, correctMaswaliSealAction, discardMaswaliDraftAction, moveMaswaliCloseAction, openMaswaliWeekAction,
   sealMaswaliQuestionsAction, voidMaswaliQuestionAction,
 } from "../actions";
 import { AuditWarning, raiseAuditWarning } from "../audit-warning";
@@ -46,6 +47,48 @@ function useAct() {
     });
   };
   return { pending, error, run, setError, start };
+}
+
+// ── Discard a draft (S6-ADMIN · G5) ───────────────────────────────────────────────────────────────────────
+
+/** The typed word the discard asks for. */
+const DISCARD_WORD = "DISCARD";
+
+/**
+ * ⭐ S6-ADMIN · G5 · DISCARD A DRAFT that never opened: a typed confirmation, then the list of weeks. The service refuses a
+ * week that opened and the announced final week, in its own words, inside the dialog. A discard whose audit record was
+ * not written raises its warning into the list's standing slot (`weeks:discard`): this page is gone once it lands.
+ */
+export function DiscardDraftControl({ weekId, weekCode }: { weekId: string; weekCode: string }) {
+  const mayAct = useMayAct();
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (!mayAct) return <ActReadOnly />;
+  const discard = () => {
+    setError(null);
+    start(async () => {
+      const r = await discardMaswaliDraftAction(fd({ weekId }));
+      if (!r.ok) { setError(r.error ?? "That did not go through."); return; }
+      raiseAuditWarning("weeks:discard", r.auditWarning ?? null);
+      setOpen(false);
+      router.push("/admin/maswali" as Route);
+    });
+  };
+  return (
+    <span className="inline-flex flex-col gap-1">
+      <Button size="sm" variant="claret" disabled={pending} onClick={() => { setError(null); setOpen(true); }}>Discard draft</Button>
+      {!open && error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
+      <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="claret" tier="hard" typedWord={DISCARD_WORD}
+        title={`Discard ${weekCode}?`} confirmLabel="Discard the draft"
+        body={<div className="space-y-2">
+          <p>The draft and its fifteen questions are deleted, and its Monday is free for a new draft. Nothing was sold: a week that opened is never discarded.</p>
+          {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
+        </div>}
+        onConfirm={discard} />
+    </span>
+  );
 }
 
 // ── Attest and open ─────────────────────────────────────────────────────────────────────────────────

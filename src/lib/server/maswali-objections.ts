@@ -34,6 +34,7 @@ import { MASWALI_CHAIN_LOCK, frozenRules, gradable, recomputeGateLocked, recordO
 import { questionStore, ticketStore, weekStore, type StoredQuestion, type StoredWeek } from "./maswali-dal";
 import { invalidateMillioneaRegisterWeek } from "./maswali-register-cache";
 import { gradedSet, slotLabel, slotOf, SLOT_COUNT, type GradableQuestion, type MaswaliOutcome } from "@/lib/maswali-score";
+import { eatInText } from "@/lib/maswali-admin-format";
 import { isMaswaliVoidReason, voidGroundAvailable, type MaswaliVoidReason } from "@/lib/maswali-void-reason";
 import { displayLabel } from "@/lib/display-label";
 
@@ -223,7 +224,7 @@ export async function decideMillioneaObjection(input: {
   if (input.ruling === "VOID" && !isMaswaliVoidReason(voidReason)) return refuse("A void names its ground from the closed list."); // MR-15
   if (!input.expectedSealedAt) return refuse("Reload the week and review the question's result before ruling.");
   if (!(await requireRulingOfficer(input.officerId, "maswali.objection.rule"))) {
-    return refuse("Forbidden: an ADMIN or COMPLIANCE officer rules on an objection.");
+    return refuse("Only the Owner or a Compliance officer rules on an objection.");
   }
 
   type Out = { ok: true; changed: boolean; restarted: boolean; code: string; owed: OwedAudit[] } | Refused;
@@ -269,7 +270,7 @@ export async function decideMillioneaObjection(input: {
     } else if (input.ruling === "VOID") {
       if (q.outcome === "VOID") return refuse(`${slotLabel(q.slot)} is already void.`);
       if (!voidGroundAvailable(voidReason as MaswaliVoidReason, Date.parse(q.voidDeadlineAt), nowMs)) {
-        return refuse(`${slotLabel(q.slot)} cannot void on that ground before its void deadline (${q.voidDeadlineAt}).`);
+        return refuse(`${slotLabel(q.slot)} cannot void on that ground before its void deadline, ${eatInText(q.voidDeadlineAt)}.`);
       }
       next = "VOID";
     } else if (input.ruling === "REINSTATE") {

@@ -15,8 +15,11 @@ import { draftSetVersion } from "@/lib/server/maswali-service";
 import { MAIN_COUNT, slotLabel } from "@/lib/maswali-score";
 import { MASWALI_VOID_REASONS } from "@/lib/maswali-void-reason";
 import { fmtEat, fmtEatClock, fmtEatDay, fmtInZone, weekStateChip } from "@/lib/maswali-admin-format";
-import { AttestOpenControls, MoveCloseForm, SealConsole, type SealRowView } from "./week-controls";
+import { AttestOpenControls, DiscardDraftControl, MoveCloseForm, SealConsole, type SealRowView } from "./week-controls";
 import { StandingAuditWarning } from "../audit-warning";
+import { FROZEN_RULES_GROUPS, GUARANTEE_POLICY_LABEL, frozenRulesFormValues } from "../rules-form";
+import { RulesRead, RULE_CANNOT_BE_READ } from "../rules-read";
+import { GUARANTEE_RESERVE_POLICIES } from "@/lib/server/maswali-config";
 
 export const metadata = { title: "Admin · Millionea · Week" };
 export const dynamic = "force-dynamic";
@@ -43,11 +46,13 @@ async function Content({ params }: Props) {
   if (!d) notFound();
   const { week, row, questions, problems, warnings, proposedVoids } = d;
   const session = await currentSession();
-  const [canAttest, canOpen, canMove, canSeal, canVoid, canCorrect, canConfirm] = await Promise.all([
+  const [canAttest, canOpen, canMove, canSeal, canVoid, canCorrect, canConfirm, canDraft] = await Promise.all([
     canUseControl(session?.role, "attestMaswaliParity"), canUseControl(session?.role, "openMaswaliWeek"),
     canUseControl(session?.role, "moveMaswaliClose"), canUseControl(session?.role, "sealMaswaliQuestion"),
     canUseControl(session?.role, "voidMaswaliQuestion"), canUseControl(session?.role, "correctMaswaliSeal"),
     canUseControl(session?.role, "confirmMaswaliSeal"),
+    // S6-ADMIN · G5 · the discard sits behind the draft's own control: whoever may draft a week may take a draft back.
+    canUseControl(session?.role, "createMaswaliWeek"),
   ]);
   const chip = weekStateChip(week.state);
   const sealable = week.state === "CLOSED" || week.state === "RESOLVING";
@@ -61,6 +66,7 @@ async function Content({ params }: Props) {
     aiSuggestion: typeof q.aiSuggestion === "object" && q.aiSuggestion ? JSON.stringify(q.aiSuggestion).slice(0, 160) : null,
   }));
   const mainsSealed = questions.filter((q) => q.slot <= MAIN_COUNT && q.outcome !== null).length;
+  const policies = GUARANTEE_RESERVE_POLICIES.map((p) => ({ value: p, label: GUARANTEE_POLICY_LABEL[p] ?? p }));
   // S6-ADMIN · the latest close the week's frozen rules allow (MB-28: the first event less the rules' minutes before it), in
   // EAT: the move's form states its bound as a time. Null when the rules or the events cannot be read.
   const firstEventMs = Math.min(...questions.map((q) => Date.parse(q.eventStartsAt)));
@@ -99,6 +105,12 @@ async function Content({ params }: Props) {
             <div className="mt-3">
               <AttestOpenControls weekId={week.id} weekCode={week.code} attestedBy={week.parityAttestedBy} canAttest={canAttest} canOpen={canOpen} openReady={!!problems && problems.length === 0}
                 readVersion={draftSetVersion(questions)} attestNeed={CONTROL_DOMAIN.attestMaswaliParity} openNeed={CONTROL_DOMAIN.openMaswaliWeek} />
+            </div>
+            {/* S6-ADMIN · G5 · a draft made for the wrong Monday or line is taken back here; the announced final week never is. */}
+            <div className="mt-4 border-t border-border-subtle pt-3">
+              {week.isFinal ? <p className="text-body-sm text-text-secondary">The announced final week cannot be discarded.</p>
+                : canDraft ? <DiscardDraftControl weekId={week.id} weekCode={week.code} />
+                : <ControlLocked what="Discard draft" need={CONTROL_DOMAIN.createMaswaliWeek} />}
             </div>
           </AdminCard>
         )}
@@ -142,6 +154,18 @@ async function Content({ params }: Props) {
             </ScrollX>
           </AdminCard>
         )}
+
+        {/* S6-ADMIN · G2 · the rules this week runs on, read-only, in the Owner's form's own words: an officer asked "what fee
+            does this running week take?" answers it here. A DRAFT shows what its open would freeze now. */}
+        <AdminCard title={week.state === "DRAFT" ? "Rules if it opened now" : "Rules this week froze"} sw={week.state === "DRAFT" ? "Kanuni ikifunguliwa sasa" : "Kanuni za wiki hii"}>
+          {d.rules ? (<>
+            <p className="mb-3 text-body-sm text-text-secondary">{week.state === "DRAFT"
+              ? "The rules for the next week, as the open would freeze them now. A change the Owner saves before the open applies to this week; once it opens, it keeps what it froze."
+              : `Frozen when the week opened, ${fmtEat(d.rules.frozenAt)} (EAT). They never change; a change the Owner saves applies from the next week to open.`}</p>
+            <RulesRead values={frozenRulesFormValues(d.rules, d.feeRate)} policies={policies} groups={FROZEN_RULES_GROUPS} />
+            <p className="mt-3 text-body-sm text-text-secondary">A Millionea ticket has no paid early exit.</p>
+          </>) : <p className="text-body-sm text-danger-fg">{week.state === "DRAFT" ? "The rules for the next week do not validate, so there is nothing the open would freeze." : `This week's frozen rules: ${RULE_CANNOT_BE_READ}.`}</p>}
+        </AdminCard>
       </AdminBody>
     </>
   );
