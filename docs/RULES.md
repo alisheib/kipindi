@@ -699,13 +699,32 @@ self-exclusion still settles. **10 tickets per account per week** (§2.4's excep
 **Cancelling.** §2.6's free cancellation applies unchanged: a ticket bought with the runway still ahead of it may be
 cancelled inside the window for a full refund, and leaves the count, the commitment and the grading. There is no paid exit.
 
+**Objections** (MR-16, as built — S7-OB, 2026-10-22). A Millionea objection disputes the result of **one question** of a
+week, never the week as a whole:
+- **Who:** any holder of a live (not cancelled) ticket in the week, **once per question** — open or decided, keyed (week,
+  question, player) — with a reason from the platform's list and their own words (10–1,000 characters), from the ticket's
+  page.
+- **When:** only while the week's own **objection window** is open — **24 hours from the moment its graded set becomes
+  final, never closing before 12:00 EAT**, frozen in the week's rules at its open (never the platform's live setting) —
+  and only on a question that has a result.
+- **Who rules:** a Compliance officer, the Owner the fallback — never the officer who sealed the question or confirmed its
+  seal, never the officer whose upheld ruling set its present result, never the objector, never an officer holding a
+  live ticket in the week. The ruling is a typed confirmation on the result the officer reviewed (a result changed since
+  is refused), with a note the player reads.
+- **Remedies:** **REJECT** (the result stands), or uphold with **REVERSE** (the other result), **VOID** (on a ground from
+  the closed list — by default "objection to the criterion upheld") or **REINSTATE** (a voided question back, with its
+  result).
+- **The money:** while any objection is **OPEN**, the week neither settles nor voids. An upheld ruling re-grades the week
+  (MR-17); when that changes the graded set, the window **restarts once** per week, from the ruling — a later change
+  re-grades but keeps the window. A **SETTLED** or **VOIDED** week is final: no objection is filed or ruled on it.
+
 | | |
 |---|---|
 | **Decided** | Ali, 2026-10-16 — `docs/COMPLIANCE-DECISIONS.md` § "2026-10-16 · Maswali Millionea"; the rule set and its corrections are `docs/MASWALI-PLAN.md` §2 (MR-1…MR-32) and §9 |
-| **Enforced** | ⏳ in code from S3 (MASWALI-BUILD): `maswali-money.ts` computes the week (S2); `ledger.ts → maswaliSettlementEntries` refuses any group whose pool does not end at exactly 0 or whose winners differ (S1); `payout.ts` refuses to price a `jackpot-payout` week as a pool fee (S1) |
+| **Enforced** | ⏳ in code from S3 (MASWALI-BUILD): `maswali-money.ts` computes the week (S2); `ledger.ts → maswaliSettlementEntries` refuses any group whose pool does not end at exactly 0 or whose winners differ (S1); `payout.ts` refuses to price a `jackpot-payout` week as a pool fee (S1); objections: `maswali-objections.ts` (S7-OB) — the filing, the ruling and its separation of duties, the re-grade and the one restart, each under the chain lock |
 | **Configured** | `maswali.config` (`src/lib/server/maswali-config.ts`, S1) — price, floor, fee, cap, open, close, buffer, void deadline, objection window, question rules; the Owner-only `maswali.licenceBasis` (`maswali-licence.ts`) gates any week opening |
-| **Stated** | ⏳ `/legal/rules/millionea` (S6 — binding, in en/sw/zh, its version and the hash of its text in `src/lib/millionea-rules-version.ts`), the slip and the week page, `/help`'s Millionea block, the help assistant's Millionea section (at the global ACTIVE only) and `/fairness`'s commitments — every figure read from the week's frozen rules, or the config's for the week to come. `/legal/terms` gains its Millionea sentence at launch (S8; OD-18: existing terms do not change) — drafted in all three languages in `docs/MASWALI-ARCHITECTURE.md` §9 |
-| **Guarded by** | `npm run test:maswali-law` (+ `red:maswali-law`) · `npm run test:maswali-config` · `npm run test:maswali-ledger` · `npm run test:maswali-fence` · `npm run test:house-solvency` §3b · `npm run test:fee-model` · `npm run test:maswali-fairness` (the binding text's version, hash and figures; the assistant's passage) · `npm run test:terms-cancellation` §4 |
+| **Stated** | ⏳ `/legal/rules/millionea` (S6 — binding, in en/sw/zh, its version and the hash of its text in `src/lib/millionea-rules-version.ts`), the slip and the week page, `/help`'s Millionea block, the help assistant's Millionea section (at the global ACTIVE only) and `/fairness`'s commitments — every figure read from the week's frozen rules, or the config's for the week to come. `/legal/terms` gains its Millionea sentence at launch (S8; OD-18: existing terms do not change) — drafted in all three languages in `docs/MASWALI-ARCHITECTURE.md` §9. The objection door: the ticket's page (the player's) and `/admin/maswali/integrity` (Compliance's rulings) |
+| **Guarded by** | `npm run test:maswali-law` (+ `red:maswali-law`) · `npm run test:maswali-config` · `npm run test:maswali-ledger` · `npm run test:maswali-fence` · `npm run test:house-solvency` §3b · `npm run test:fee-model` · `npm run test:maswali-fairness` (the binding text's version, hash and figures; the assistant's passage) · `npm run test:terms-cancellation` §4 · `npm run test:maswali-objections` (+ `red:maswali-objections`) · `npm run load:maswali-objection-cross-instance` |
 
 ---
 

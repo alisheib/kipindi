@@ -237,29 +237,29 @@ export async function consoleAlerts(
 }
 
 /**
- * ⭐ MB-96 · A WINNER'S ACCOUNT CHANGING HANDS (S7-F9; the watch is `maswali-takeover.ts`). A paying week whose winners
- * include an account whose password was written after the payout and which then asked to withdraw is named here with HOW
- * MANY such accounts — never which (this strip is the trading console's, which carries no holder: MR-14, MB-34);
- * Compliance reads the accounts on the integrity page and may hold the share there (OD-07). A finding stands here for a
- * while after its newest attempt, and on the integrity page for the whole watch. ⛔ An alert only: nothing is held.
- * ⛔ Fail closed: a watch that could not be read says so, never silence.
+ * ⭐ MB-96 · A WINNING ACCOUNT THAT MAY HAVE CHANGED HANDS (S7-F9; the watch is `maswali-takeover.ts`). A paying week
+ * with such accounts is named here with HOW MANY — never which (this strip is the trading console's, which carries no
+ * holder: MR-14, MB-34); Compliance reviews the accounts on the integrity page and may hold the share there (OD-07). A
+ * finding stands here for a while after it was last seen, and on the integrity page for the whole watch. ⛔ An alert
+ * only: nothing is held. ⛔ Fail closed: a watch that could not be read says so, never silence. ⛔ The words say what
+ * the control enforces, never what it watches for (the repository is public; the lead's ruling, 2026-10-22).
  */
 async function takeoverAlerts(nowMs: number, read?: () => Promise<TakeoverWatch>): Promise<ConsoleAlert[]> {
   const watch = await (read ?? (() => takeoverWatch(new Date(nowMs))))().catch((): TakeoverWatch => ({ readable: false, findings: [] }));
   const out: ConsoleAlert[] = [];
   if (!watch.readable) {
-    out.push({ level: "warning", text: "The winners' takeover watch could not be read in full, so a winning account may have changed hands unseen. Compliance checks the winners on the integrity page." });
+    out.push({ level: "warning", text: "The winners' takeover watch could not be read in full, so a winning account taken over after its payout may go unseen. Compliance reviews the winners on the integrity page." }); // MB-96
   }
   const byWeek = new Map<string, { code: string; n: number }>();
   for (const f of watch.findings) {
-    if (nowMs - Date.parse(f.attemptAt) > TAKEOVER_ALERT_MS) continue;
+    if (nowMs - Date.parse(f.flaggedAt) > TAKEOVER_ALERT_MS) continue;
     const x = byWeek.get(f.weekId) ?? { code: f.code, n: 0 };
     x.n++;
     byWeek.set(f.weekId, x);
   }
   for (const [weekId, { code, n }] of byWeek) {
     out.push({ level: "critical", weekId,
-      text: `${code}: ${n} winning account${n === 1 ? "" : "s"} had ${n === 1 ? "its" : "their"} password changed after this week's payout and then asked to withdraw — the shape of an account takeover. Compliance checks ${n === 1 ? "it" : "them"} on the integrity page.` });
+      text: `${code}: ${n} winning account${n === 1 ? "" : "s"} may have been taken over since this week's payout. Compliance reviews ${n === 1 ? "it" : "them"} on the integrity page and may hold the share.` }); // MB-96
   }
   return out;
 }
@@ -299,8 +299,9 @@ export type UnreachedWinner = {
   hoursSince: number;
   /** The win's bell row was written (its key, `millioneaNoticeHref`, under any of the holder's winning tickets). */
   bell: boolean;
-  /** Where the letter could go: a confirmed address, one never confirmed (sent only if the account cannot sign in), none. */
-  email: "confirmed" | "unconfirmed" | "none";
+  /** Where the letter could go: a confirmed address, one never confirmed (sent only if the account cannot sign in), none.
+   *  ⛔ A state, never the address: no player's contact reaches the console (read-tiers §7; S6-INT 23). */
+  emailState: "confirmed" | "unconfirmed" | "none";
   /** The winner SMS's own record (`MaswaliWinner`) — its status and receipt — or null when none was sent. */
   sms: { status: SmsStatus; dlr: string | null } | null;
   /** Why the week's winner SMS batch was held, when it was (`maswali-winner-sms.ts`): no credit to spare for codes, etc. */
@@ -369,7 +370,7 @@ export async function unreachedWinners(now: Date = new Date()): Promise<Unreache
         paidTzs: paid.some((t) => shareOf(t) === null) ? null : paid.reduce((s, t) => s + (shareOf(t) ?? 0), 0), held: paid.length === 0 && !forfeited, forfeited, settledAt,
         hoursSince: Math.max(0, Math.floor((now.getTime() - Date.parse(settledAt)) / HOUR)),
         bell,
-        email: h.email,
+        emailState: h.emailState,
         sms: record, smsHeld: record ? null : held,
       });
     }
@@ -527,11 +528,16 @@ const FLOAT_UNREAD_ACTION = "maswali.settlement.float_unread";
  * MB-11) less the withdrawals that winner COMPLETED since the payout, drawn on the share first, never below 0. A
  * withdrawal still in flight has not yet drawn on the float, so it is not counted; a sum that cannot be read counts the
  * whole share (fail closed).
+ * ⛔ S7-F9 · A SHARE ITS RECORD LACKS IS OWED, NEVER 0 (S6-R's rule: a figure a record lacks is "not on record", never
+ *    0). The week's own share per ticket stands in for it; with that not on record too, what the winners can still
+ *    withdraw is unknown — null — and the float check says so as its own alert, never judging the float against less.
  */
-async function sharesNotWithdrawn(week: StoredWeek): Promise<number> {
+async function sharesNotWithdrawn(week: StoredWeek): Promise<number | null> {
   const shares = new Map<string, number>();
   for (const t of await ticketStore.listForWeek(week.id, { won: true })) {
-    if ((t.payout ?? 0) > 0) shares.set(t.userId, (shares.get(t.userId) ?? 0) + (t.payout ?? 0));
+    const share = Number.isFinite(t.payout) ? (t.payout as number) : week.sharePerTicket;
+    if (share == null || !Number.isFinite(share)) return null;
+    if (share > 0) shares.set(t.userId, (shares.get(t.userId) ?? 0) + share);
   }
   const sinceMs = Date.parse(week.settledAt ?? "");
   let left = 0;
@@ -578,14 +584,19 @@ async function floatShortAlerts(readFloat?: FloatReader): Promise<ConsoleAlert[]
   const rows = await getAuditForTargetsDurable({ targetType: "MaswaliCycle", targetIds: payouts.map((w) => w.id),
     actions: [FLOAT_LOW_ACTION, FLOAT_UNREAD_ACTION], sinceIso: new Date(0).toISOString(), limit: 50 });
   const owed: Array<{ w: StoredWeek; left: number }> = [];
+  const out: ConsoleAlert[] = [];
   for (const w of payouts.filter((x) => rows.entries.some((e) => e.targetId === x.id))) {
     const left = await sharesNotWithdrawn(w);
+    // S7-F9 · fail closed: shares not on record are their own critical alert, never a float judged against less.
+    if (left === null) {
+      out.push({ level: "critical", weekId: w.id, text: `${w.code}: a winner's share of what it paid is not on record, nor is the week's share per ticket, so what its winners can still withdraw is unknown and the payout float cannot be judged against it. Finance checks the float before the winners withdraw.` }); // MB-11
+      continue;
+    }
     if (left > 0) owed.push({ w, left });
   }
-  if (owed.length === 0) return [];
+  if (owed.length === 0) return out;
   const read: FloatReader = readFloat ?? (async () => (await import("./payments")).getFloatBalance());
   const float = await read().then((f) => (f && Number.isFinite(f.balance) ? f.balance : null)).catch(() => null);
-  const out: ConsoleAlert[] = [];
   for (const { w, left } of owed) {
     if (float === null) {
       out.push({ level: "critical", weekId: w.id, text: `${w.code}: its winners can still withdraw ${formatTzs(left)} of what it paid, and the payout float cannot be read now. Finance checks the float before the winners withdraw.` });
@@ -801,8 +812,8 @@ const holderOf = async (userId: string) => {
   // ⚠️ The memory store answers synchronously: never `.catch` the call itself, catch the awaited read.
   let u: Awaited<ReturnType<typeof db.user.findById>> | null = null;
   try { u = await db.user.findById(userId); } catch { u = null; }
-  const email: UnreachedWinner["email"] = u?.email ? (u.emailVerifiedAt ? "confirmed" : "unconfirmed") : "none";
-  return { holder: u ? (u.displayName?.trim() || `…${u.phoneE164.slice(-4)}`) : "(closed account)", role: u?.role ?? "?", status: u?.status ?? "?", createdAt: u?.createdAt ?? null, email };
+  const emailState: UnreachedWinner["emailState"] = u?.email ? (u.emailVerifiedAt ? "confirmed" : "unconfirmed") : "none";
+  return { holder: u ? (u.displayName?.trim() || `…${u.phoneE164.slice(-4)}`) : "(closed account)", role: u?.role ?? "?", status: u?.status ?? "?", createdAt: u?.createdAt ?? null, emailState };
 };
 
 /**

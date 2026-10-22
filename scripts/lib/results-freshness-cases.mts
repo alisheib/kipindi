@@ -615,8 +615,12 @@ function method(obj: string, name: string): string {
     txCalls >= 4 && foreign.length === 0, `${txCalls} call(s) with a transaction${foreign.length ? ` · foreign: ${foreign.join(" | ")}` : ""}`);
 }
 {
-  const files = SRC.filter(({ s }) => /db\.objection\.(create|update)\(/.test(s)).map(({ f }) => f);
-  ok("C.5 · objection rows are written in exactly one file, objections-service.ts", sameSet(files, ["src/lib/server/objections-service.ts"]), files.join(", "));
+  // ⭐ S7-OB: a Millionea objection (one question of a week) is written by its own door, `maswali-objections.ts` — rows
+  // `listUpheldRulings` never returns (they carry a question; test:maswali-objections 6.3, on both stores), so they move
+  // no rulings memo and owe no `noteObjectionWrite`. C.5b holds every write of the Yes/No door to its note.
+  const files = SRC.filter(({ s }) => /db\.objection\.(create|update|decideOpen)\(/.test(s)).map(({ f }) => f);
+  ok("C.5 · objection rows are written in exactly two files: objections-service.ts (a market's) and maswali-objections.ts (a Millionea question's, never a ruling the memo reads)",
+    sameSet(files, ["src/lib/server/objections-service.ts", "src/lib/server/maswali-objections.ts"]), files.join(", "));
   const objectionNotes = (source: string) => {
     const os = decomment(source);
     const names = ["fileObjection", "closeObjectionsForVoidedMarket", "holdSettlementAsOfficer", "rejectObjection", "upholdObjection"];
