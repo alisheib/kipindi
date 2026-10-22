@@ -47,13 +47,16 @@
  * 223 on Postgres, with 1 KNOWN-RED on each (OB.0).
  * ⭐ S7-F9 11 (2026-10-22): TK.4b — the takeover alert and its integrity card in their reviewed words (what the control
  * enforces, never what it watches for) — on each: 215 on memory, 224 on Postgres.
+ * ⭐ S7-F9 13 (2026-10-22, the S6 review: a figure a record lacks is never 0): FL.4j–FL.4m, RD.11, RD.11b and TK.7 on
+ * each — a winner's share not on record is owed, held, released, never forfeited as 0, and watched: 222 on memory, 231 on
+ * Postgres, with 1 KNOWN-RED on each (OB.0), what this commit's tree printed.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({
   suite: "test:maswali-adversarial",
   casesFile: "scripts/lib/maswali-adversarial-child.mts",
-  minPass: { memory: 215, postgres: 224 },
+  minPass: { memory: 222, postgres: 231 },
   dbPrefix: "mlw_adv",
   timeoutMs: 45 * 60_000,
 });

@@ -67,9 +67,10 @@ export async function takeoverWatch(now: Date = new Date()): Promise<TakeoverWat
     const credits = new Map<string, Array<{ weekId: string; code: string; at: number }>>();
     for (const w of await weekStore.list({ states: ["SETTLED"] })) {
       const at = Date.parse(w.settledAt ?? "");
-      if (!Number.isFinite(at) || at > nowMs || nowMs - at > WATCH_MS || !((w.paidTotal ?? 0) > 0)) continue;
+      // ⛔ S7-F9 · a paid figure its record lacks is watched, never read as 0: only a record of 0 paid is passed over.
+      if (!Number.isFinite(at) || at > nowMs || nowMs - at > WATCH_MS || (Number.isFinite(w.paidTotal) && (w.paidTotal as number) <= 0)) continue;
       for (const t of await ticketStore.listForWeek(w.id, { won: true })) {
-        if (!((t.payout ?? 0) > 0)) continue;
+        if (Number.isFinite(t.payout) && (t.payout as number) <= 0) continue;
         const list = credits.get(t.userId) ?? [];
         if (!list.some((c) => c.weekId === w.id)) list.push({ weekId: w.id, code: w.code, at });
         credits.set(t.userId, list);

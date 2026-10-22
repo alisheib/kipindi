@@ -2666,13 +2666,30 @@ stays open as KNOWN-RED TK.2, with MB-23 (OB.0) and MB-74 (RD.5): §6.1 Gate B l
   whatever Compliance decided. Under the chain lock, as every hold of this reason (R6, R8); from inside a wallet lock the
   hold runs once that lock has committed, outside every lock. The nightly heal (`healReversedDepositHolds`, before the
   stray-hold heal) places a hold a stopped process left unplaced. The integrity page's held shares show the deposit's
-  provenance (MB-74). Guards: `test:maswali-adversarial` RD.5–RD.9 on both stores (RD.5c the amount contradiction, RD.5d
-  the provenance, RD.7 a share bought before the credit stays free, RD.8 the heal, RD.9 never a second hold); S16 §6b
-  across instances (a reversal heard by two instances at once holds each share once; a reversal racing the release holds
-  it once, by either); plants (S7-F9-rd5-trigger), (S7-F9-rd5-trigger-amount), (S7-F9-rd5-bought-after),
-  (S7-F9-rd5-once-per-deposit), (S7-F9-rd5-heal) and (S7-F9-rd5-provenance) in `red:maswali-money-path`. The rules'
-  reversal clause is the S6 legal lane's to carry (the Yes/No "payment reversals … forfeiture" clause; not on
-  `mln-s6-int` at 81c60f0f5).
+  provenance (MB-74). The shares are read under the chain lock, never before it: a reversal landing while a release is
+  in flight waits for it, then holds the share it paid. Guards: `test:maswali-adversarial` RD.5–RD.10 on both stores
+  (RD.5c the amount contradiction, RD.5d the provenance, RD.7 a share bought before the credit stays free, RD.8 the
+  heal, RD.9 never a second hold, RD.10 the release in flight, made at the settlement's "money" seam); S16 §6b across
+  instances (a reversal heard by two instances at once holds each share once; a reversal racing the release holds it
+  once, by either); plants (S7-F9-rd5-trigger), (S7-F9-rd5-trigger-amount), (S7-F9-rd5-bought-after),
+  (S7-F9-rd5-once-per-deposit), (S7-F9-rd5-heal), (S7-F9-rd5-provenance) and (S7-F9-rd5-read-in-lock) in
+  `red:maswali-money-path`. The rules' reversal clause is the S6 legal lane's to carry (the Yes/No "payment reversals …
+  forfeiture" clause; not on `mln-s6-int` at 81c60f0f5).
+- **S7 · a figure a record lacks is never read as 0 on the money path (S7-F9 13; S6-R's rule, the lead's word of
+  2026-10-22).** A winning ticket whose stored payout is not on record is a PAID share wherever S7's code reads it. The
+  short-float alert (MB-11) counts it as still owed, at the week's own share per ticket; when the week's share is not on
+  record either, what the winners can still withdraw is unknown, and that is its own critical alert — never the float
+  judged against less. RD.5's hold (MB-74) holds it. TK.2's watch (MB-96) watches it, and a week whose paid total is not
+  on record: only a record of 0 paid is passed over. Compliance can hold and release it; a forfeit refuses it ("…'s share
+  is not on record; nothing was forfeited") — never a share forfeited as 0. (How the integrity page prints such a share
+  is S6-R's: "Not on record".) Guards: `test:maswali-adversarial` FL.4j–FL.4m, RD.11, RD.11b and TK.7 on both stores (a
+  declared fixture writes the stored payout, and the week's share or paid total, as null, and puts each back); plants
+  (S7-F9-float-share-zero), (S7-F9-float-unknown-silent), (S7-F9-forfeit-zero), (S7-F9-winning-share-unread),
+  (S7-F9-rd5-share-unread), (S7-F9-tk-share-unread) and (S7-F9-tk-total-unread) in `red:maswali-money-path`.
+- **S7 · the staff-role notice where it is sent (S7-F9 13; the S6 review's finding).** S7-F2 moved the Owner's role
+  change, and the notice it sends, into `staff-role-change.ts`; the e-mail registry (`comms-registry.ts`) now names that
+  file as the notice's trigger, so `test:cert-c1`'s two `staffRoleChangedHtml` checks read where the act lives. Proven by
+  two plants, each caught: the notice dropped from the send, and the registry pointed back at the actions file.
 
 #### S8 · Live drive and public launch
 

@@ -1290,14 +1290,16 @@ before the reversal lands. **Closed** (the lead's ruling of 2026-10-22): the mom
 reversed, or re-reported at another amount — the webhook that marks it for review also holds, at once, every paid
 winning Millionea share of that account whose ticket was bought at or after the deposit was credited, for Compliance to
 release or forfeit (OD-07). Nothing is debited, a share held once for a deposit is never held for it again, a nightly
-heal places a hold a stopped process left unplaced, and the integrity page shows the deposit behind each such hold.
-Proven on both stores (`test:maswali-adversarial` RD.5–RD.10, a release in flight included) and across instances
-(S16 §6b), with red plants in `red:maswali-money-path`. The rules' reversal clause is the S6 legal lane's to carry.
+heal places a hold a stopped process left unplaced, and the integrity page shows the deposit behind each such hold. A
+share whose record lacks its payout counts as paid, never as 0 (S7-F9 13). Proven on both stores
+(`test:maswali-adversarial` RD.5–RD.11, a release in flight included) and across instances (S16 §6b), with red plants
+in `red:maswali-money-path`. The rules' reversal clause is the S6 legal lane's to carry.
 
 #### ✅ TK.2 · MB-96 · account-takeover alerting — closed (S7-F9 8 and 11, `32b7f7992` and `8194bf3e3`, 2026-10-22)
 
 The takeover alert MB-96 asks for was not built. **Closed** (the lead's rulings of 2026-10-22: an alert only): a winning
 account that may have been taken over since its payout raises a critical alert on the console — a count per week, never
 an account — and is named on the integrity page for Compliance to review, where the share can be held; nothing blocks
-money (2026-10-10). The preventive control (E-215, TK.1) still holds. Proven on both stores (`test:maswali-adversarial`
-TK.2–TK.6), with red plants in `red:maswali-money-path`.
+money (2026-10-10). The preventive control (E-215, TK.1) still holds. A winner whose share, or whose week's paid total,
+the records lack is watched all the same, never passed over as 0 (S7-F9 13). Proven on both stores
+(`test:maswali-adversarial` TK.2–TK.7), with red plants in `red:maswali-money-path`.

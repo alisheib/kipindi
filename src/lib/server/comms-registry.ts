@@ -157,7 +157,9 @@ export const EMAIL_TEMPLATES: readonly EmailSpec[] = [
   { template: "passwordResetHtml",         trigger: "src/lib/server/password-reset.ts",    audience: "player",  chrome: "royal", money: false },
   { template: "passwordChangedHtml",       trigger: "src/lib/server/password-reset.ts",    audience: "player",  chrome: "royal", money: false },
   { template: "accountClosedHtml",         trigger: "src/lib/server/user-service.ts",      audience: "player",  chrome: "royal", money: false },
-  { template: "staffRoleChangedHtml",      trigger: "src/app/admin/staff/actions.ts",      audience: "officer", chrome: "royal", money: false },
+  // MASWALI-BUILD S7-F2 moved the act that changes a role — and the notice it sends — into `staff-role-change.ts` (an
+  // export of a "use server" file is a callable action, and the core has no Owner check of its own); actions.ts calls it.
+  { template: "staffRoleChangedHtml",      trigger: "src/lib/server/staff-role-change.ts", audience: "officer", chrome: "royal", money: false },
   // ── Player proposals ──────────────────────────────────────────────────────
   { template: "proposalSubmittedHtml",     trigger: "src/lib/server/proposals-service.ts", audience: "player",  chrome: "royal", money: false },
   { template: "proposalSubmittedAdminHtml", trigger: "src/lib/server/proposals-service.ts", audience: "officer", chrome: "royal", money: false },

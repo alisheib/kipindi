@@ -588,11 +588,11 @@ export const FORFEIT_SHARE_WORD = "FORFEIT SHARE";
 const FORFEITED = "forfeited · ";
 const isHeld = (t: StoredTicket) => t.frozenReason != null && !t.frozenReason.startsWith(FORFEITED);
 
-/** A settled winning ticket, or the reason the act cannot apply to it. */
+/** A settled winning ticket, or the reason the act cannot apply to it. S7-F9 · one whose share its record lacks is still PAID. */
 async function winningTicket(ticketId: string): Promise<{ ok: true; ticket: StoredTicket; week: StoredWeek } | Refused> {
   const ticket = await ticketStore.get(ticketId);
   if (!ticket) return refuse("No such ticket.");
-  if (ticket.status !== "SETTLED" || ticket.won !== true || !(ticket.payout && ticket.payout > 0)) return refuse(`Ticket ${ticket.serial} is not a paid winning ticket.`);
+  if (ticket.status !== "SETTLED" || ticket.won !== true || (Number.isFinite(ticket.payout) && !((ticket.payout as number) > 0))) return refuse(`Ticket ${ticket.serial} is not a paid winning ticket.`);
   const week = await weekStore.get(ticket.cycleId);
   if (!week) return refuse("The ticket's week is missing.");
   return { ok: true, ticket, week };
@@ -785,9 +785,9 @@ export async function releaseMaswaliShare(input: { ticketId: string; officerId: 
  * ⭐ Compliance FORFEITS a held share (OD-07): the whole share leaves the player's wallet and goes back to the JACKPOT,
  * for the players of the next winning week — ⛔ never to the house; the fee and levies stay as booked; no other winner is
  * re-paid. One transaction: the debit, its ADJUSTMENT_DEBIT row, the ledger group and the ticket's forfeited mark (R8: a
- * failed commit leaves neither half). Refused when the wallet no longer holds the share (it was held too late): that is a
- * recovery for Compliance outside this act, never a negative balance. Under `maswali:chain` (the jackpot moves, so no
- * carry is claimed mid-forfeit) and then `wallet:<id>`; the hold is lifted after the commit, under the chain lock again.
+ * failed commit leaves neither half). Refused when the share is not on record (S7-F9: never as 0), or when the wallet no
+ * longer holds it (held too late: Compliance's recovery outside this act, never a negative balance). Under `maswali:chain`
+ * (the jackpot moves, so no carry is claimed mid-forfeit), then `wallet:<id>`; the hold lifts after the commit, chain-locked.
  */
 export async function forfeitMaswaliShare(input: { ticketId: string; officerId: string; typed: string; reason: string }): Promise<{ ok: true } | Refused> {
   if (input.typed.trim() !== FORFEIT_SHARE_WORD) return refuse(`Type ${FORFEIT_SHARE_WORD} to forfeit the share.`);
@@ -800,9 +800,9 @@ export async function forfeitMaswaliShare(input: { ticketId: string; officerId: 
     const w = await winningTicket(input.ticketId);
     if (!w.ok) return w;
     if (!isHeld(w.ticket)) return refuse(`Ticket ${w.ticket.serial} is not held; only a held share is forfeited.`);
-    const amount = Math.round(w.ticket.payout ?? 0);
-    const p = (await positionStore.getMany([w.ticket.positionId]))[0];
-    const wallet = await db.wallet.findByUserId(userId);
+    const amount = Number.isFinite(w.ticket.payout) ? Math.round(w.ticket.payout as number) : null; // S7-F9 · never read as 0
+    if (amount === null) return refuse(`Ticket ${w.ticket.serial}'s share is not on record; nothing was forfeited.`);
+    const [p, wallet] = [(await positionStore.getMany([w.ticket.positionId]))[0], await db.wallet.findByUserId(userId)];
     if (!p || !wallet) return refuse("The ticket's position or wallet is missing.");
     if (wallet.balance < amount) return refuse(`The wallet holds ${formatTzs(wallet.balance)}, less than the share; nothing was forfeited.`);
     const txnId = `txn_${randomId(12)}`;
@@ -911,8 +911,10 @@ export async function holdSharesForReversedDeposit(depositTxnId: string): Promis
   if (!d || d.type !== "DEPOSIT" || d.status !== "CONFIRMED" || !hasDepositStatusReview(d)) return { held: [] };
   const credited = Date.parse(d.completedAt ?? d.createdAt);
   const creditMs = Number.isFinite(credited) ? credited : -Infinity;
-  /** A paid, unheld winning share whose ticket this deposit's money may have bought (a purchase time unread: it may have). */
-  const mayHaveBought = (t: StoredTicket) => t.status === "SETTLED" && t.won === true && (t.payout ?? 0) > 0 && !t.frozenReason
+  /** A paid, unheld winning share whose ticket this deposit's money may have bought (a purchase time unread: it may have).
+   *  ⛔ S7-F9 · a share its record lacks counts as paid — held, never passed over as 0; only a record of 0 paid is passed. */
+  const mayHaveBought = (t: StoredTicket) => t.status === "SETTLED" && t.won === true && !t.frozenReason
+    && !(Number.isFinite(t.payout) && (t.payout as number) <= 0)
     && !(Date.parse(t.createdAt) < creditMs);
   const userId = d.userId;
   const held: string[] = [];

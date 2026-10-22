@@ -253,11 +253,16 @@ const FLOAT_UNREAD_ACTION = "maswali.settlement.float_unread";
  * MB-11) less the withdrawals that winner COMPLETED since the payout, drawn on the share first, never below 0. A
  * withdrawal still in flight has not yet drawn on the float, so it is not counted; a sum that cannot be read counts the
  * whole share (fail closed).
+ * ⛔ S7-F9 · A SHARE ITS RECORD LACKS IS OWED, NEVER 0 (S6-R's rule: a figure a record lacks is "not on record", never
+ *    0). The week's own share per ticket stands in for it; with that not on record too, what the winners can still
+ *    withdraw is unknown — null — and the float check says so as its own alert, never judging the float against less.
  */
-async function sharesNotWithdrawn(week: StoredWeek): Promise<number> {
+async function sharesNotWithdrawn(week: StoredWeek): Promise<number | null> {
   const shares = new Map<string, number>();
   for (const t of await ticketStore.listForWeek(week.id, { won: true })) {
-    if ((t.payout ?? 0) > 0) shares.set(t.userId, (shares.get(t.userId) ?? 0) + (t.payout ?? 0));
+    const share = Number.isFinite(t.payout) ? (t.payout as number) : week.sharePerTicket;
+    if (share == null || !Number.isFinite(share)) return null;
+    if (share > 0) shares.set(t.userId, (shares.get(t.userId) ?? 0) + share);
   }
   const sinceMs = Date.parse(week.settledAt ?? "");
   let left = 0;
@@ -304,14 +309,19 @@ async function floatShortAlerts(readFloat?: FloatReader): Promise<ConsoleAlert[]
   const rows = await getAuditForTargetsDurable({ targetType: "MaswaliCycle", targetIds: payouts.map((w) => w.id),
     actions: [FLOAT_LOW_ACTION, FLOAT_UNREAD_ACTION], sinceIso: new Date(0).toISOString(), limit: 50 });
   const owed: Array<{ w: StoredWeek; left: number }> = [];
+  const out: ConsoleAlert[] = [];
   for (const w of payouts.filter((x) => rows.entries.some((e) => e.targetId === x.id))) {
     const left = await sharesNotWithdrawn(w);
+    // S7-F9 · fail closed: shares not on record are their own critical alert, never a float judged against less.
+    if (left === null) {
+      out.push({ level: "critical", weekId: w.id, text: `${w.code}: a winner's share of what it paid is not on record, nor is the week's share per ticket, so what its winners can still withdraw is unknown and the payout float cannot be judged against it. Finance checks the float before the winners withdraw (MB-11).` });
+      continue;
+    }
     if (left > 0) owed.push({ w, left });
   }
-  if (owed.length === 0) return [];
+  if (owed.length === 0) return out;
   const read: FloatReader = readFloat ?? (async () => (await import("./payments")).getFloatBalance());
   const float = await read().then((f) => (f && Number.isFinite(f.balance) ? f.balance : null)).catch(() => null);
-  const out: ConsoleAlert[] = [];
   for (const { w, left } of owed) {
     if (float === null) {
       out.push({ level: "critical", weekId: w.id, text: `${w.code}: its winners can still withdraw ${formatTzs(left)} of what it paid, and the payout float cannot be read now. Finance checks the float before the winners withdraw (MB-11).` });

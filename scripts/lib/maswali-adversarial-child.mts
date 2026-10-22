@@ -131,6 +131,12 @@ const guarantee = async () => (await W.balanceOf(acct.maswaliGuarantee)) as numb
 const pool = async (marketId: string) => (await W.balanceOf(acct.pool(marketId))) as number;
 const commission = async () => (W.onPostgres ? ((await W.balanceOf(acct.commission)) as number) : null);
 const heldOf = async (u: string) => (((await W.bal(u)).freezeReasons ?? []) as string[]).includes("MILLIONEA_SHARE");
+/** ⚠️ A FIXTURE, DECLARED (S7-F9): a ticket's stored payout written as `v` — null, as a record that lacks it would hold it —
+ *  on the store the suite runs; each case puts the value back after. It moves no money, ledger or wallet. */
+const fixturePayout = async (ticketId: string, v: number | null) => {
+  if (W.onPostgres) await W.prisma()!.maswaliTicket.update({ where: { id: ticketId }, data: { payout: v } });
+  else { const row = ((globalThis as any).__50PICK_MLN_TICKETS as Map<string, any>).get(ticketId); if (row) row.payout = v; }
+};
 /** Each section's buyers buy on purpose; the platform's per-account bet bucket is a separate suite's subject. */
 const section = (title: string) => {
   (globalThis as any).__50PICK_RL_RESET_HOOK?.();
@@ -809,6 +815,34 @@ if (runs("GU")) {
   const byOthers = await floatAlertFor(b.id, atB, 0);
   ok("FL.4i · ⭐ S7-F4 · …but once other withdrawals drain the shared float, the alert returns: the held share is still owed, and nothing covers it — critical, below what is owed",
     !!byOthers && byOthers.level === "critical" && byOthers.text.includes(formatTzs(shareB)) && /short of the payout/.test(byOthers.text), J(byOthers ?? "no float alert"));
+  // ⭐ S7-F9 · A FIGURE NOT ON RECORD IS NEVER 0 (S6-R's rule; the lead's word of 2026-10-22). ⚠️ A FIXTURE, DECLARED:
+  //    the held winner's stored payout set to null, as a record that lacks it would hold it — then the week's own share
+  //    too — and both put back after; the fixture itself moves no money, ledger or wallet.
+  const heldB = (await dal.ticketStore.listForWeek(b.id, { won: true })).find((t: any) => t.userId === wB[0]);
+  const payout0 = heldB?.payout ?? null, share0 = (await dal.weekStore.get(b.id)).sharePerTicket;
+  const setPayout = async (v: number | null) => { if (heldB) await fixturePayout(heldB.id, v); };
+  await setPayout(null);
+  const unreadPayout = await floatAlertFor(b.id, atB, 0);
+  ok("FL.4j · ⭐ S7-F9 · a winner's share its record lacks is still OWED — counted at the week's own share, never as 0: the alert stands, critical, naming the held share",
+    !!heldB && !!unreadPayout && unreadPayout.level === "critical" && unreadPayout.text.includes(formatTzs(shareB)) && /short of the payout/.test(unreadPayout.text),
+    J(unreadPayout ?? "no float alert"));
+  const balHeld = await bal(wB[0]), jackHeld = await jackpot();
+  const ff = await settle.forfeitMaswaliShare({ ticketId: heldB?.id ?? "", officerId: OWNER, typed: settle.FORFEIT_SHARE_WORD, reason: "FL.4l: the share is not on record" })
+    .catch((e: unknown) => ({ ok: false as const, error: `threw: ${(e as Error)?.message ?? e}` }));
+  const heldAfter = heldB ? await dal.ticketStore.get(heldB.id) : null;
+  ok("FL.4l · ⭐ S7-F9 · …and that share is never forfeited as 0: the forfeit is refused, nothing moves, and the share stays held for Compliance",
+    !ff.ok && /not on record/.test(errOf(ff)) && (await bal(wB[0])) === balHeld && (await jackpot()) === jackHeld
+      && !!heldAfter?.frozenReason && !heldAfter.frozenReason.startsWith("forfeited · ") && (await heldOf(wB[0])),
+    J({ refused: errOf(ff), frozen: heldAfter?.frozenReason }));
+  await dal.weekStore.patch(b.id, { sharePerTicket: null });
+  const unknownOwed = await floatAlertFor(b.id, atB, 0);
+  ok("FL.4k · ⭐ S7-F9 · …and with the week's own share not on record too, what is owed is unknown: its own critical alert — never a float judged against less, never silence (fail closed)",
+    !!unknownOwed && unknownOwed.level === "critical" && /not on record/.test(unknownOwed.text) && !/short of the payout/.test(unknownOwed.text), J(unknownOwed ?? "no float alert"));
+  await dal.weekStore.patch(b.id, { sharePerTicket: share0 });
+  await setPayout(payout0);
+  ok("FL.4m · control: the fixture put back — the week's share and the held winner's payout read as they did, and the alert is FL.4i's again",
+    (await dal.weekStore.get(b.id)).sharePerTicket === share0 && (heldB ? (await dal.ticketStore.get(heldB.id))?.payout : undefined) === payout0 && payout0 === shareB
+      && J(await floatAlertFor(b.id, atB, 0)) === J(byOthers), J({ share0, payout0 }));
   for (const id of outs) await W.db.txn.update(id, { status: "FAILED" });
   const rC = pc.ok ? await settle.settleMaswaliWeek({ weekId: c.id, releasedBy: RELEASER, digest: pc.preview.digest, now: atC }) : pc;
   ok("GU.7 · ⭐ …and the second, one shilling short, refuses whole: nothing paid, no carry claimed, the guarantee untouched",
@@ -1242,10 +1276,11 @@ if (runs("RD")) {
   const { runOutsideLock } = await import("../../src/lib/server/locks.ts");
   const start2 = W.weekStartAhead(ahead++);
   const wk2 = await openWeekAt(start2);
-  const racer = await deposited(20_000);
+  const racer = await deposited(20_000), blank = await deposited(20_000);
   const [filler2] = await people(1, 50_000);
   await step();
   const [tRacer] = await bought(racer.u, wk2.id, [ALL_YES]);
+  const [tBlank] = await bought(blank.u, wk2.id, [ALL_YES]);
   await W.sell(wk2.id, 9, MISS_M1, [filler2]);
   await closed(wk2.id);
   await sealRest(wk2.id, start2);
@@ -1263,6 +1298,21 @@ if (runs("RD")) {
   ok("RD.10 · ⭐ a reversal landing while a release is in flight waits for it, then holds the share it paid — never the share paid out free (the shares are read under the chain lock)",
     !!r2?.ok && !!reversal && tr2.payout === r2.week.sharePerTicket && tr2.frozenReason === "deposit under review" && (await heldOf(racer.u)),
     J({ released: !!r2?.ok, frozen: tr2.frozenReason, held: await heldOf(racer.u) }));
+  // ⭐ S7-F9 · A SHARE ITS RECORD LACKS IS STILL A PAID SHARE (S6-R's rule; the lead's word of 2026-10-22): `blank`'s paid
+  //    winning ticket has its payout written as null (the fixture above); its deposit, credited before the ticket, is then
+  //    reversed. The hold must take it all the same — never pass it over as a share of 0 — and the value is put back after.
+  const blank0 = (await dal.ticketStore.get(tBlank.ticketId))?.payout ?? null;
+  await fixturePayout(tBlank.ticketId, null);
+  await wallet.settlePaymentWebhook({ providerRef: blank.providerRef, status: "FAILED" });
+  await step();
+  const tb = await dal.ticketStore.get(tBlank.ticketId);
+  ok("RD.11 · ⭐ S7-F9 · a paid share whose record lacks its payout is held all the same when its deposit is reversed — never passed over as a share of 0",
+    blank0 !== null && blank0 === r2?.week.sharePerTicket && tb.frozenReason === "deposit under review" && (await heldOf(blank.u)),
+    J({ payout: blank0, frozen: tb.frozenReason, held: await heldOf(blank.u) }));
+  const rb = await settle.releaseMaswaliShare({ ticketId: tBlank.ticketId, officerId: OWNER, note: "RD.11b: the deposit was settled with the provider" });
+  ok("RD.11b · ⭐ S7-F9 · …and Compliance can release that share: to its acts too a share its record lacks is a paid share — never one the console can no longer decide",
+    rb.ok && (await dal.ticketStore.get(tBlank.ticketId)).frozenReason === null && !(await heldOf(blank.u)), errOf(rb));
+  await fixturePayout(tBlank.ticketId, blank0);
 }
 
 // ═══ §11 · TK · the winner-takeover pattern ═════════════════════════════════════════════════════════════════════════
@@ -1333,6 +1383,18 @@ if (runs("TK")) {
   const unread = await consoleRead.consoleAlerts(new Date(), { readTakeover: async () => { throw new Error("TK · the watch's read failed (a planted fault)"); } });
   ok("TK.6 · ⛔ a watch that cannot be read says so on the console — never silence (fail closed)",
     unread.some((x) => /takeover watch could not be read/.test(x.text)) && !unread.some((x) => x.weekId === wk.id && /taken over/i.test(x.text)), J(unread.map((x) => x.text)));
+  // ⭐ S7-F9 · A SHARE ITS RECORD LACKS IS STILL WATCHED (S6-R's rule; the lead's word of 2026-10-22). ⚠️ A FIXTURE, DECLARED:
+  //    the named winner's payout and the week's paid total written as null (`fixturePayout`, the week store's own patch),
+  //    as records that lack them would hold them, and both put back after.
+  const paid0 = share?.payout ?? null, total0 = (await dal.weekStore.get(wk.id)).paidTotal;
+  if (share) await fixturePayout(share.id, null);
+  await dal.weekStore.patch(wk.id, { paidTotal: null });
+  const blind = await takeover.takeoverWatch(new Date());
+  await dal.weekStore.patch(wk.id, { paidTotal: total0 });
+  if (share) await fixturePayout(share.id, paid0);
+  ok("TK.7 · ⭐ S7-F9 · a winner whose share — and whose week's paid total — the records lack is watched all the same: still named, never passed over as 0",
+    !!share && paid0 !== null && total0 !== null && blind.readable && blind.findings.some((x) => x.userId === winner && x.weekId === wk.id),
+    J({ paid0, total0, named: blind.findings.filter((x) => x.weekId === wk.id).length }));
 }
 
 // ═══ §12 · CC · both clock-change weekends ══════════════════════════════════════════════════════════════════════════
