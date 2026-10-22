@@ -3255,7 +3255,8 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     dialog is unchanged (`test:maswali-slip-design` §1); `test:enter-where-pressed` 5.8 pins the call with its plant, and
     `qa:dialog-way-back` drives it at 360 in Chromium and WebKit (scrollY unchanged across the close, focus on the opener,
     the jump back when `preventScroll` is dropped).
-24. **Facts are drawn whole (the lead's rulings of 2026-10-22, S5 round 2; MASWALI-BUILD S5-FACTS).**
+24. **Facts are drawn whole and struck to their ink (the lead's rulings of 2026-10-22, S5 round 2; MASWALI-BUILD
+    S5-FACTS).**
     - **The fact line** (`MaswaliFacts`, `.kp-mln-facts`). Facts joined by "·" are one flex item each: facts that fit
       share a line, a fact that does not moves whole to the next, a fact longer than its line wraps inside itself. The
       separator is each fact's LEADING mark, drawn in the gap before it and cut away where a fact opens a line
@@ -3274,6 +3275,11 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
       Ijumaa 18:00 EAT", "销售截止：周五 18:00 EAT"), its zone kept with its clock: the card and its ghost
       (`test:maswali-doors` 1.1, 1.8), the slip and the ticket. ⚠️ The hub's close row and the register's week row still
       say `salesCloseAt`, with no zone, until the S5 round-2 merge rules on them.
+    - **A struck question** (`MaswaliStrike`, `.kp-mln-strike-end`). The strike is the strong border ink and ends at the
+      ink of the text's last full-width mark, cut back by the platform's measured trims (`cjk-marks.tsx`: 0.65em, ？
+      0.5em) with a `clip-path` that moves nothing; a plain strike ran half an em past "？" ("…吗？-"). The ticket draws it;
+      ⚠️ the hub's question rows adopt it at the S5 round-2 merge. `test:maswali-strike` (the browser's strike against
+      the ink, Chromium and WebKit).
 
 ---
 
