@@ -29,6 +29,27 @@
 
 ## §0 · RESUME AT
 
+**⏹ STOP 5 (2026-10-22 ~15:05 UTC, OMEGA; Ali: "I'll continue from another machine", the session's tokens ran out).
+RESUME HERE, from any machine — "continue maswali":** the S5 dark push was IN PROGRESS and is NOT done; production still
+serves `da3d32180` (nothing of S5–S8 is live). Its state, to finish first:
+1. This branch's head (the STOP 5 commit) = the gated `b120fcbe0` + three small red fixes, each green: `visual-pass-r7c`
+   1.4 (PLATFORM's re-pin: the hub's calm bars draw through NoticeBar, 66/0), `visual-pass-r5h` 3.5 (PLATFORM's
+   classification of ChatRoot.tsx's mark, 60/0), `ui-consistency` (REGISTER's line: the How-to-play ghost's button at
+   `--h-control-md`, no drift). The release CI run on `ee6075609` failed only on cases this head fixes (guards-exist, the
+   D19a pins, these three); CI run `39799912310` was dispatched on `b120fcbe0`.
+2. Printed at `b120fcbe0`: tsc 0; e2e:maswali-money 3/0. NOT finished when the session stopped: `next build`, the dark
+   checks (qa:live + the WITHDRAWN player drive + door-dark on WITHDRAWN and STAFF_PREVIEW), classic parity against
+   `parity-v5-bfa0b7d57.json`, e2e:money/fault/card and e2e:maswali-fault. Re-run ALL of them at this head (a fresh
+   gate), plus CI on it, then push to `main` under `main-push.lock`, read back (AGENTS §4), switch STAFF_PREVIEW, one QA
+   staff + one QA player sign-in (all pre-approved, COMPLIANCE-DECISIONS § "2026-10-22 · Maswali Millionea — …").
+3. Every lane was told to commit (WIP marked "not verified" where so) and push before the stop: S5 round 2 —
+   `claude/maswali-s5-r2-hub`, `-r2-register`, `-r2-platform` (rail swap `748003c0d`), `claude/maswali-s5-landing-door`
+   (`d75b56704`, done); S7 `claude/maswali-s7-s5` + `claude/maswali-s7-ob` (`1c8b42284`, done; MR-16 as built goes into
+   §3 at its merge); S6 `claude/maswali-s6-release` + `claude/maswali-s6-{notices,lint,money,docs,admin}`. Their briefs,
+   the lead's log and the job scripts are on the hand-over branch `maswali-handover-20261021` (`handover/maswali-2026-10-21/`,
+   STOP 5). The admin guide's DRAFT is on Ali's Desktop on OMEGA; the final comes from S6-DOCS.
+Then continue with the ⏳ block below ("Next").
+
 **⏳ IN FLIGHT — S5 GOES TO `main` DARK (2026-10-22 from ~14:40 UTC; the Claude session asheib-f3 on OMEGA leads).**
 Ali chose "the checked parts now" (COMPLIANCE-DECISIONS § "2026-10-22 · Maswali Millionea — …" items 7–10): the
 language-change loader's colour fix (`fix/lang-switch-color`, merged into this release) rides in the same push; this
