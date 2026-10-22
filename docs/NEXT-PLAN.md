@@ -166,7 +166,7 @@ against each other within a daily budget, may fetch their own price, and the ros
 | **Where** | Release and live readback: [`docs/HOUSE-BOTS.md`](HOUSE-BOTS.md) §§12.20–12.21; current programme status: [`plans/house-bots/RESUME-HERE.md`](../plans/house-bots/RESUME-HERE.md) §0e; management and admin instructions: `docs/50pick-house-bots-desk-guide.pdf`. |
 | **Next** | Read [`plans/house-bots/RESUME-HERE.md`](../plans/house-bots/RESUME-HERE.md) §0e — never this cell |
 
-## ▶ 0i · MASWALI MILLIONEA — the third product, a weekly jackpot — `MASWALI-BUILD` · 🔨 **RE-PLANNED 2026-10-16; S0.5 ✅ `9834aaf0` and D3 ✅ `2b6bf5bf`; S1–S4 and S5’s foundations on `main` dark; S5 next (the tab done, the tile read’s fixes in progress), then S7, then S6 (notices not merge-ready); nothing switched on (WITHDRAWN). ▶ Resume: MASWALI-PLAN §0 ⏹ STOPPED (2026-10-19, OMEGA)** · 5/13 sessions ✅
+## ▶ 0i · MASWALI MILLIONEA — the third product, a weekly jackpot — `MASWALI-BUILD` · 🔨 **RE-PLANNED 2026-10-16; S0.5 ✅ `9834aaf0` and D3 ✅ `2b6bf5bf`; S1–S4 and S5’s foundations on `main` dark; S5 integrated on its release branch with round 2 of Ali's 10/10 design pass in flight, S7 merged with S5 on its own branch, S6's integration started; Ali's scope 2026-10-22: build done, launch later; nothing switched on (WITHDRAWN). ▶ Resume: MASWALI-PLAN §0 ⏹ STOP 4 (2026-10-22, OMEGA) → hand-over branch `maswali-handover-20261021`, README top section** · 5/13 sessions ✅
 
 Ali, 2026-10-16: *"disregard any august rulgint he enw paln is final ruling"* · *"th enew pd is rveewd by management and
 update dlatly so any old ruels repalc ehtem if lost y those fomr the new pdf"* · *"we need to be very creative in how we

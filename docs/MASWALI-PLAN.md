@@ -29,6 +29,14 @@
 
 ## §0 · RESUME AT
 
+**⏹ STOP 4 (2026-10-22 ~10:45 UTC, OMEGA-COMPILE01, the Claude session asheib-f3 led) — RESUME HERE, from any machine.**
+This programme's live tracker is this §0 on branch `claude/maswali-s5-release` (the S5 release; it lands on `main` with S5)
+and the hand-over branch `maswali-handover-20261021`, folder `handover/maswali-2026-10-21/`: README's top section (STOP 4 —
+every branch and head, what each lane left, the next steps in order) and MERGE-NOTES' top section (every lead ruling and
+merge note of 2026-10-22). Ali's scope (2026-10-22): **build done, launch later** — S5, then S7, then S6, each verified
+(critics 10/10 and every gate) and pushed to `main` dark; STAFF_PREVIEW right after S5 is live; S8 prepared and handed to
+him with his list. Nothing of S5–S8 is live: production serves `67e47f8d2`. Everything below is an older record.
+
 **⏹ STOPPED (2026-10-19, last updated ~13:45 UTC, OMEGA-COMPILE01 — the lead) — RESUME HERE, from any machine (Claude or
 Codex).** Ali, at the second wrap-up: *"push everything you have now live as it is, and give me a prompt for Codex to
 proceed after you."* This block supersedes the LIVE STATE below wherever they differ. Every branch named here is on origin
