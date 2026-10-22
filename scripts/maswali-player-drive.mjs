@@ -224,7 +224,8 @@ async function buyOne(label) {
   await commit.waitFor({ timeout: 60_000 });
   await tile(p, `${label}-confirm-360`);
   await commit.click();
-  const view = p.getByRole("button", { name: "View ticket" });
+  // The stamp's "View ticket" is the kit's Link since S5-R2-SLIP 13 (OperationResultModal's `primaryHref`).
+  const view = p.getByRole("link", { name: "View ticket" });
   await view.waitFor({ timeout: 120_000 });
   ok(`${label}.4 the bought ticket's stamp names its serial`, ((await p.getByRole("dialog").first().textContent()) ?? "").includes("Ticket bought"));
   await tile(p, `${label}-stamp-360`);
