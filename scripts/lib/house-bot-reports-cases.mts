@@ -2384,6 +2384,8 @@ export const AUDIT_READERS_OUTSIDE_CONSOLE: Readonly<Record<string, string>> = {
      payout and its headroom), and still reduces to one yes/no per week. */
   /* S7-F4 (2026-10-18): the latch is gone — a finding is judged on each read against the week's shares not yet withdrawn —
      so the read is the settlement's two rows again, still reduced to one yes/no per week. */
+  /* S7-F9 (2026-10-22): the strip also folds the winners' takeover watch into one count per paying week — that module
+     (`maswali-takeover.ts`, classified below) calls the readers, and no account or row reaches the console. */
   "src/lib/server/maswali-console.ts": "Millionea's console alerts: the settlement's own float-check rows (maswali.settlement.float_low / float_unread) of each line's newest paying week, read by action and reduced to whether a finding stands — never a row or its payload handed on",
   /* Classified 2026-10-17 (MASWALI-BUILD S4; 0.260.1 went red on the release gate's test:all, the guard doing its job).
      Three reads: the cluster report folds AuditLog rows into sets of linked account ids; `noteSealDevice` folds an
@@ -2397,6 +2399,14 @@ export const AUDIT_READERS_OUTSIDE_CONSOLE: Readonly<Record<string, string>> = {
      it since its last attestation and one yes/no — whether the text now stored has a recorded author. No row, payload or
      number leaves the module; the act answers only a refusal sentence. */
   "src/lib/server/maswali-service.ts": "MB-79's second reader: ONE draft week's own rows (target MaswaliCycle) folded into its editors since the last attestation and whether its stored text has a recorded author — no row is handed on",
+  /* Classified 2026-10-22 (MASWALI-BUILD S7-F9, MB-96 / TK.2), read from the source (`takeoverWatch`). Two reads: the
+     recent winners' own password writes (target User, by the three password actions) and, for only the winners whose
+     password changed after their credit, their own withdrawal requests (by actor, by four withdraw actions). Each is
+     reduced to instants, how the password was written and a count per account; no row or payload leaves the module.
+     Those values reach /admin/maswali/integrity, which decides its audience on the STORED role before it reads (0.434),
+     so the module is `handedOn`; the console's alert strip (`maswali-console.ts`) folds them into one count per paying
+     week, never an account. A desk account's password and withdrawal rows are its holder's own, never a house action. */
+  "src/lib/server/maswali-takeover.ts": "MB-96's winner-takeover watch: the recent winners' own password writes (target User, by action) and those winners' own withdrawal requests (by actor, by action), reduced to instants, how the password was written and a count per account — handed to /admin/maswali/integrity, which decides its audience on the stored role first (0.434)",
   // 2026-10-10: a second reader in the same module, the same shape — `runKycPostCheckAlerts` reads one submission's own
   // history to dedupe the officers' post-check bell, as `runKycReviewSlaAlerts` does for the review target.
   "src/lib/server/notification-service.ts": "a KYC case's own history, read to word that case's KYC notice and to send each officer alert (review target, post-check) once",
@@ -2443,6 +2453,7 @@ export const AUDIT_ROW_PAYLOAD: Readonly<Record<string, "handedOn" | "folded" | 
   "src/lib/server/maswali-console.ts": "folded",
   "src/lib/server/maswali-integrity.ts": "handedOn",
   "src/lib/server/maswali-service.ts": "folded",
+  "src/lib/server/maswali-takeover.ts": "handedOn",
   "src/lib/server/notification-service.ts": "folded",
   "src/lib/server/refused-funds.ts": "handedOn",
   "src/lib/server/report-pack.ts": "gated",

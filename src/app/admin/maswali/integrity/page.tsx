@@ -18,6 +18,7 @@ import { CONSOLE_PER_PAGE, SEAL_WEEKS_PER_PAGE, consoleStanding, integrityView }
 import { parseIntegrityListQuery, integrityListParams } from "@/lib/maswali-integrity-list";
 import { isMaswaliVoidReason, MASWALI_VOID_REASON_LABEL } from "@/lib/maswali-void-reason";
 import { clusterReport, pickShifts, recentNewDeviceSeals } from "@/lib/server/maswali-integrity";
+import { takeoverWatch, type TakeoverWatch } from "@/lib/server/maswali-takeover";
 import { weekStore } from "@/lib/server/maswali-dal";
 import { slotLabel } from "@/lib/maswali-score";
 import { adminCount, formatNumber, formatTzs } from "@/lib/utils";
@@ -76,6 +77,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
   const clusters = await Promise.all(closed.map((w) => clusterReport(w).catch(() => null)));
   const shifts = await pickShifts().catch(() => null);
   const newDevices = await recentNewDeviceSeals().catch(() => null);
+  const takeover = await takeoverWatch().catch((): TakeoverWatch => ({ readable: false, findings: [] }));
   if (!v) return (<><AdminPageHead title="Millionea · Integrity" sw="Uadilifu" /><AdminBody><p className="text-body-sm text-danger-fg">The integrity view could not be read.</p></AdminBody></>);
   const linkQuery = {
     held: { ...query.held, page: v.heldPage.page },
@@ -120,6 +122,25 @@ async function Content({ searchParams }: IntegrityPageProps) {
                   <li key={i}><span className="tabular">{fmtEat(d.at)}</span> · officer {d.officerId ?? "?"} · week {d.weekId ?? "?"}{d.kind === "unchecked"
                     ? <span className="text-warning"> · the device could not be checked against their earlier seals</span>
                     : d.firstSeal ? <span className="text-text-tertiary"> · their first seal on the platform</span> : <span className="text-warning"> · not a device they sealed from before</span>}</li>
+                ))}
+              </ul>
+            )}
+        </AdminCard>
+
+        {/* ⭐ MB-96 · the winners' takeover watch (S7-F9, `maswali-takeover.ts`): an alert, never a hold — a winner's share is
+            held from the winners below (OD-07), and no withdrawal is ever held (2026-10-10). */}
+        <AdminCard title="Winners' accounts to check" sw="Akaunti za washindi za kukagua">
+          {!takeover.readable && <p role="alert" className="text-body-sm text-danger-fg mb-2">The takeover watch could not be read in full; a winning account may be missing from this list.</p>}
+          {takeover.findings.length === 0
+            ? (takeover.readable && <p className="text-body-sm text-text-secondary">No recent winner's password changed after their payout and was followed by a withdrawal request.</p>)
+            : (
+              <ul className="space-y-1.5 text-body-sm">
+                {takeover.findings.map((f) => (
+                  <li key={`${f.userId}-${f.weekId}`}>
+                    <span className="tabular">{f.code}</span> · {f.holder} · password {f.passwordHow} <span className="tabular">{fmtEat(f.passwordAt)}</span>,
+                    {" "}then {f.attempts}{f.more ? "+" : ""} withdrawal request{f.attempts === 1 && !f.more ? "" : "s"}, the latest <span className="tabular">{fmtEat(f.attemptAt)}</span>.
+                    <span className="text-text-tertiary"> Paid <span className="tabular">{fmtEat(f.creditAt)}</span>. Confirm the owner before the money leaves; hold the share from Winners below if it is not theirs.</span>
+                  </li>
                 ))}
               </ul>
             )}

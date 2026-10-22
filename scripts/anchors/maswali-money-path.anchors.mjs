@@ -683,4 +683,37 @@ export const MUTATIONS = [
     expect: "SF.7 · ⛔",
     suite: "purchase",
   },
+  // ── S7-F9 · TK.2 / MB-96 — the winner-takeover watch (`maswali-takeover.ts`; an alert, never a hold) ─────────────────
+  {
+    name: "(S7-F9-tk-alert) the console never raises the watch's findings: a takeover after a payout is seen by no one (MB-96)",
+    file: "src/lib/server/maswali-console.ts",
+    from: "  out.push(...await takeoverAlerts(nowMs, deps.readTakeover));",
+    to: "",
+    expect: "TK.2 · ⭐",
+    suite: "adversarial:TK",
+  },
+  {
+    name: "(S7-F9-tk-credit-order) a password written BEFORE the payout counts as one after it (MB-96: the credit comes first)",
+    file: "src/lib/server/maswali-takeover.ts",
+    from: "        const credit = mine.filter((c) => c.at <= x.at).sort((a, b) => b.at - a.at)[0];",
+    to: "        const credit = mine.filter(() => true).sort((a, b) => b.at - a.at)[0];",
+    expect: "TK.3b · control",
+    suite: "adversarial:TK",
+  },
+  {
+    name: "(S7-F9-tk-attempt-order) a withdrawal asked BEFORE the password changed counts as one after it (MB-96: the request follows the write)",
+    file: "src/lib/server/maswali-takeover.ts",
+    from: "      const after = asked.entries.filter((e) => Date.parse(e.createdAt) >= writeAt);",
+    to: "      const after = asked.entries.filter(() => true);",
+    expect: "TK.3c · control",
+    suite: "adversarial:TK",
+  },
+  {
+    name: "(S7-F9-tk-fail-closed) a watch that cannot be read is silent on the console (fail open)",
+    file: "src/lib/server/maswali-console.ts",
+    from: "  if (!watch.readable) {",
+    to: "  if (false) {",
+    expect: "TK.6 · ⛔",
+    suite: "adversarial:TK",
+  },
 ];

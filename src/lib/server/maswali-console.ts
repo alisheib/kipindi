@@ -24,6 +24,7 @@ import { getMaswaliConfig, snapshotMaswaliRules, unsettledFloors, type MaswaliRu
 import { getLicenceBasis, licenceBasisAllowsOpen, type LicenceBasis } from "./maswali-licence";
 import { holidayOn } from "./maswali-holidays";
 import { getAuditForTargetsDurable } from "./audit";
+import { TAKEOVER_ALERT_MS, takeoverWatch, type TakeoverWatch } from "./maswali-takeover";
 import { getSalesPause, type SalesPause } from "./maswali-pause";
 import { millioneaStateNow } from "./millionea-switch";
 import { acct, maswaliJackpotOf } from "./ledger";
@@ -145,8 +146,11 @@ export async function consoleWeekDetail(weekId: string, now: Date = new Date()):
 /** An operator alert (MASWALI-PLAN §7b S4 item 5). Never a guess: each names the week and the fact behind it. */
 export type ConsoleAlert = { level: "critical" | "warning"; text: string; weekId?: string };
 
-/** `deps.readFloat` reads the payout float (the payments provider's by default; a suite hands its own). */
-export async function consoleAlerts(now: Date = new Date(), deps: { readFloat?: FloatReader } = {}): Promise<ConsoleAlert[]> {
+/** `deps.readFloat` reads the payout float (the payments provider's by default; a suite hands its own); `deps.readTakeover`
+ *  the winners' takeover watch (`maswali-takeover.ts` by default). */
+export async function consoleAlerts(
+  now: Date = new Date(), deps: { readFloat?: FloatReader; readTakeover?: () => Promise<TakeoverWatch> } = {},
+): Promise<ConsoleAlert[]> {
   const nowMs = now.getTime();
   const out: ConsoleAlert[] = [];
   const cfg = getMaswaliConfig();
@@ -190,6 +194,7 @@ export async function consoleAlerts(now: Date = new Date(), deps: { readFloat?: 
     }
   }
   out.push(...await floatShortAlerts(deps.readFloat));
+  out.push(...await takeoverAlerts(nowMs, deps.readTakeover));
   const held = await maswaliAccountBalance(acct.maswaliGuarantee);
   // ⛔ S7-F2 · FAIL CLOSED: a week whose frozen rules cannot be read has an unknown floor, so the guarantee cannot be shown
   //    to cover the unsettled weeks and the alert fires, naming the week. Counted as 0, its floor kept this alert silent.
@@ -206,6 +211,34 @@ export async function consoleAlerts(now: Date = new Date(), deps: { readFloat?: 
     if (!licenceBasisAllowsOpen(getLicenceBasis())) out.push({ level: "warning", text: "No licence basis is recorded; no week can open until the Owner records it (OD-01)." });
     const pause = getSalesPause();
     if (pause.paused) out.push({ level: "warning", text: `Sales are paused: ${pause.reason ?? "no reason recorded"}.` });
+  }
+  return out;
+}
+
+/**
+ * ⭐ MB-96 · A WINNER'S ACCOUNT CHANGING HANDS (S7-F9; the watch is `maswali-takeover.ts`). A paying week whose winners
+ * include an account whose password was written after the payout and which then asked to withdraw is named here with HOW
+ * MANY such accounts — never which (this strip is the trading console's, which carries no holder: MR-14, MB-34);
+ * Compliance reads the accounts on the integrity page and may hold the share there (OD-07). A finding stands here for a
+ * while after its newest attempt, and on the integrity page for the whole watch. ⛔ An alert only: nothing is held.
+ * ⛔ Fail closed: a watch that could not be read says so, never silence.
+ */
+async function takeoverAlerts(nowMs: number, read?: () => Promise<TakeoverWatch>): Promise<ConsoleAlert[]> {
+  const watch = await (read ?? (() => takeoverWatch(new Date(nowMs))))().catch((): TakeoverWatch => ({ readable: false, findings: [] }));
+  const out: ConsoleAlert[] = [];
+  if (!watch.readable) {
+    out.push({ level: "warning", text: "The winners' takeover watch could not be read in full, so a winning account may have changed hands unseen. Compliance checks the winners on the integrity page (MB-96)." });
+  }
+  const byWeek = new Map<string, { code: string; n: number }>();
+  for (const f of watch.findings) {
+    if (nowMs - Date.parse(f.attemptAt) > TAKEOVER_ALERT_MS) continue;
+    const x = byWeek.get(f.weekId) ?? { code: f.code, n: 0 };
+    x.n++;
+    byWeek.set(f.weekId, x);
+  }
+  for (const [weekId, { code, n }] of byWeek) {
+    out.push({ level: "critical", weekId,
+      text: `${code}: ${n} winning account${n === 1 ? "" : "s"} had ${n === 1 ? "its" : "their"} password changed after this week's payout and then asked to withdraw — the shape of an account takeover. Compliance checks ${n === 1 ? "it" : "them"} on the integrity page (MB-96).` });
   }
   return out;
 }

@@ -2634,6 +2634,16 @@ stays open as KNOWN-RED TK.2, with MB-23 (OB.0) and MB-74 (RD.5): §6.1 Gate B l
   draft once its time has passed, or whose time cannot be read, is announced with S7's reviewed F1 words and no date
   (`finalAhead`, back in en/sw/zh; D19a re-pinned). DESIGN_AUTHORITY §M8a item 20. Guards: `test:maswali-hub` §13 (with
   its plant) and `test:maswali-design` 2.F1d.
+- **S7 · the winner-takeover watch (S7-F9 8; MB-96, TK.2; the lead's ruling of 2026-10-22: password writes only).**
+  After a Millionea credit, the account's password being written — by the player, by a reset link, or by support — and
+  then a withdrawal being asked for is raised for Compliance (`maswali-takeover.ts`): on the console's alert strip as a
+  count per paying week, never an account (MR-14, MB-34), and by account on the integrity page, where Compliance can
+  hold the share (OD-07). An alert only: no withdrawal is held (2026-10-10), and the withdrawal path is untouched. A
+  watch that cannot be read says so on the strip (fail closed). A number change has no flow (E-215, TK.1); a new-device
+  signal waits for a device identity. Guards: `test:maswali-adversarial` TK.2–TK.6 on both stores, with controls for a
+  withdrawal without a password change, a password changed before the payout, and a request made before the change;
+  plants (S7-F9-tk-alert), (S7-F9-tk-credit-order), (S7-F9-tk-attempt-order) and (S7-F9-tk-fail-closed) in
+  `red:maswali-money-path`.
 
 #### S8 · Live drive and public launch
 
