@@ -3255,6 +3255,15 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     dialog is unchanged (`test:maswali-slip-design` §1); `test:enter-where-pressed` 5.8 pins the call with its plant, and
     `qa:dialog-way-back` drives it at 360 in Chromium and WebKit (scrollY unchanged across the close, focus on the opener,
     the jump back when `preventScroll` is dropped).
+19. **The final week's rule has one wording, wherever it is told (the lead's ruling, 2026-10-22; MR-30, the S6 legal
+    review).** One dictionary key, `finalWeekRule`, with MR-30's floor clause last: en "Final week: if no ticket gets
+    10/10, the pool is shared equally by this week's highest-scoring tickets, with no floor top-up"; sw the same sentence
+    ending ", bila nyongeza hadi kiwango cha chini"; zh ending "，不进行保底补足". The hub draws it under the jackpot in a
+    final week, the slip as its first rule, the confirm sheet beside the fee rule, and How to play inside its stop rule
+    (`ruleSunset`, which keeps only its own first clause and fills the rule as `{rule}`). Why: two sentences said one
+    truth (S7's purchase line `finalRule` beside the hub's key), and the hub's and How's sentence left out the floor
+    clause, which is material — a final week with no 10/10 is never topped up to the floor. Guards:
+    `test:maswali-design` 2.F3a and 2.F3b (with its plant), `test:maswali-hub` 3.1 and §10.
 
 ---
 

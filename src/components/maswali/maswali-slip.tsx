@@ -398,10 +398,11 @@ export function MaswaliSlip({
   // The rules box: the price, and the cap — from 1280 the cap is the summary panel's alone (P7). ⭐ The reserves' rule is
   // said ONCE, in the reserves' own head where it applies (it stood here too). ⭐ From 1280 the price stands in the box ALONE,
   // and a list of one draws no marker (`soleFromXl`): a lone "·" before it read as a stray dot (tiles empty-*-1280).
-  // ⛔ S7 F3 · a final week's different payout rule is the first thing its buyer reads (MR-30) — and then the price is not
-  //    alone from 1280, so it keeps its marker as the rule above it does.
+  // ⛔ S7 F3 · a final week's different payout rule is the first thing its buyer reads (MR-30), in the one wording the hub
+  //    and How say it in (`finalWeekRule`, the lead's ruling of 2026-10-22) — and then the price is not alone from 1280, so
+  //    it keeps its marker as the rule above it does.
   const rules: ReadonlyArray<{ key: string; node: ReactNode; className?: string; soleFromXl?: boolean }> = [
-    ...(finalWeek ? [{ key: "final", node: keepFact(locale, t.millionea.finalRule) }] : []),
+    ...(finalWeek ? [{ key: "final", node: keepFact(locale, t.millionea.finalWeekRule) }] : []),
     { key: "price", node: priceLine, soleFromXl: !finalWeek },
     { key: "cap", node: capLine, className: "xl:hidden" },
   ];
@@ -611,7 +612,7 @@ export function MaswaliSlipConfirm({
       : fill(t.millionea.ticketNofCap, { n: formatNumber(ticketNumber), cap: formatNumber(cap) }),
     cancelUntil === null ? null : fill(t.millionea.cancelFreeUntil, { time: eatClock(cancelUntil) }),
     fill(t.millionea.ruleSharedJackpot, { pct }),
-    finalWeek ? t.millionea.finalRule : null,
+    finalWeek ? t.millionea.finalWeekRule : null,
   ].filter((l): l is string => l !== null);
   const closedLine = fill(t.millionea.salesClosedAt, { when: `${eatWeekdayClock(t, closesAt)} EAT` });
   return (

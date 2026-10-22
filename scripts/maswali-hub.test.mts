@@ -157,9 +157,10 @@ console.log("\n§2 · L10 · \"at least TZS 1,000,000\" holds one line in a 320 
 // ── §3 · H3 · the final week's rule under the figure ─────────────────────────────────────────────────────────────────────
 console.log("\n§3 · H3 + H1 · in a final week the head's ONE rule says what a pool with no 10/10 does (MR-30), led by the week's mark");
 // ⭐ The critic's one key, said once: "Final week: if no ticket gets 10/10, the pool is shared equally by this week's
-// highest-scoring tickets · 13% fee at payout" — the head's rule line in the final week (the fee its rule's own fact), led
-// by the final week's mark (`finalWeek`); the 10/10 rule alone is not said beside it, and no page-wide box says the week a
-// third time (it put the door under a 360 phone's fold).
+// highest-scoring tickets, with no floor top-up · 13% fee at payout" — the head's rule line in the final week (the fee its
+// rule's own fact), led by the final week's mark (`finalWeek`); the 10/10 rule alone is not said beside it, and no page-wide
+// box says the week a third time (it put the door under a 360 phone's fold). The floor clause is MR-30's, in the one wording
+// the slip, the confirm sheet and How say too (the lead's ruling, 2026-10-22).
 const finalDefects = (l: L3, m: string, want: boolean) => {
   const t = textOf(m);
   const line = dict[l].millionea.finalWeekRule;
@@ -171,7 +172,7 @@ const finalDefects = (l: L3, m: string, want: boolean) => {
 };
 {
   const d = LOCALES.flatMap((l) => [...finalDefects(l, headOf(l, SELLING, true), true), ...finalDefects(l, headOf(l, SELLING, false), false), ...finalDefects(l, headOf(l, VOIDING, true), false)]);
-  ok("3.1 · a final week's head: the figure, then ONE rule — the final week's mark, \"Final week: if no ticket gets 10/10, the pool is shared equally by this week's highest-scoring tickets · 13% fee at payout\" — then the carry's line, in three languages; the 10/10 rule alone not beside it; none in a week that is not final, none on a void", d.length === 0, d.join(" | "));
+  ok("3.1 · a final week's head: the figure, then ONE rule — the final week's mark, \"Final week: if no ticket gets 10/10, the pool is shared equally by this week's highest-scoring tickets, with no floor top-up · 13% fee at payout\" — then the carry's line, in three languages; the 10/10 rule alone not beside it; none in a week that is not final, none on a void", d.length === 0, d.join(" | "));
   // The heads as they were: the 10/10 rule alone (round 1), and the 10/10 rule with the final week's line under it (WIP 1).
   const alone = headOf("en", SELLING, false), twice = alone.replace("</div>", `<span>${dict.en.millionea.finalWeekRule}</span></div>`);
   ok("3.1′ PLANT · the old final weeks (the 10/10 rule alone; the 10/10 rule and the final line both) are each reported", finalDefects("en", alone, true).length > 0 && finalDefects("en", twice, true).length > 0);
@@ -328,17 +329,18 @@ console.log("\n§10 · the hub's new and changed words, as decided, in three lan
 {
   const WANT: Record<L3, Record<string, string>> = {
     en: {
-      finalWeekRule: "Final week: if no ticket gets 10/10, the pool is shared equally by this week's highest-scoring tickets",
+      // The lead's ruling of 2026-10-22: the release's sentence with MR-30's floor clause, the one wording everywhere.
+      finalWeekRule: "Final week: if no ticket gets 10/10, the pool is shared equally by this week's highest-scoring tickets, with no floor top-up",
       finalWeekAhead: "Week {week} will be Millionea's final week. It opens {date}.",
       weekVoidingBody: "{voided} main questions void, only {valid} valid reserves. If no objection changes this by {when}, the week is voided and every ticket refunded.",
     },
     sw: {
-      finalWeekRule: "Wiki ya mwisho: ikiwa hakuna tiketi itakayopata 10/10, bwawa litagawanywa sawa kwa tiketi zenye alama za juu zaidi wiki hii",
+      finalWeekRule: "Wiki ya mwisho: ikiwa hakuna tiketi itakayopata 10/10, bwawa litagawanywa sawa kwa tiketi zenye alama za juu zaidi wiki hii, bila nyongeza hadi kiwango cha chini",
       finalWeekAhead: "Wiki {week} itakuwa wiki ya mwisho ya Millionea. Itafunguliwa {date}.",
       weekVoidingBody: "Maswali makuu {voided} batili, akiba halali {valid} tu. Ikiwa hakuna pingamizi litakalobadilisha hili kufikia {when}, wiki itabatilishwa na kila tiketi itarejeshwa.",
     },
     zh: {
-      finalWeekRule: "最后一周：若无彩票答对 10/10，奖池由本周得分最高的彩票平分",
+      finalWeekRule: "最后一周：若无彩票答对 10/10，奖池由本周得分最高的彩票平分，不进行保底补足",
       finalWeekAhead: "第{week}周将是 Millionea 的最后一周，于 {date}开放。",
       weekVoidingBody: "{voided} 道正选题作废，有效备选题仅 {valid} 道。若至{when} 无异议改变此结果，整周将作废，每张彩票均将退款。",
       resultsOut: "已公布 {n}/15 个结果",

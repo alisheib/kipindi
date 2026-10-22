@@ -67,7 +67,10 @@ export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // (failMillioneaWeekFinal), F4's remainder notes and the final week's carry row, the card's finalAheadShort and the
   // purchase's finalRule, in en/sw/zh — less S7's two hub-only announcement words (finalAheadAt, finalAhead), which left
   // with the hub callout the release's L22 bar replaced. Every other line is the release's; the merge commit lists the diff.
-  "src/lib/i18n-dict.ts": "6c1d110fa15ccc0f642f49ede42c9808d64ad7a0",
+  // D19a RE-PINNED (S7-F9, the lead's ruling (a) of 2026-10-22; was 6c1d110fa): ONE wording for the final week's rule —
+  // `finalWeekRule` gains MR-30's floor clause in en/sw/zh (the lead's words), S7's `finalRule` is removed in all three,
+  // and `ruleSunset` keeps its first clause and fills the rule as {rule}. No other line changed.
+  "src/lib/i18n-dict.ts": "5a95302db692f35d11b2181fe0c3a7ac9cfc83fb",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
 };
