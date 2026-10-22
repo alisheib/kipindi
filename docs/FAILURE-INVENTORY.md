@@ -1273,6 +1273,9 @@ KNOWN-RED cases in `test:maswali-adversarial` (a case that reports, never fails 
 stand on the launch gate as Gate B line 14 (`MASWALI-PLAN.md` §6.1). None blocks the S8 drive; each blocks rollout
 ACTIVE until it is closed, or accepted in writing as that line says. Millionea is dark on production (`WITHDRAWN`).
 
+2026-10-22 (MASWALI-BUILD S7-F9): RD.5 and TK.2 are closed below, each with its commits; OB.0 stays open — its door is
+another lane's.
+
 #### ⏳ OB.0 · MB-23 · a player cannot object to one question
 
 MR-16 promises a per-question objection in Millionea's own window, and no objection door exists for a Millionea week
@@ -1280,13 +1283,21 @@ yet. What holds today: the settlement refuses to release while any objection is 
 the sealing officer may correct a seal while the window is open. Before ACTIVE: the objection door (MB-23), or the
 rules' promise withdrawn by a dated ruling.
 
-#### ⏳ RD.5 · MB-74 · a deposit reversed after its winner was paid
+#### ✅ RD.5 · MB-74 · a deposit reversed after its winner was paid — closed (S7-F9 9, `378b842d0`, 2026-10-22)
 
-A deposit the provider reverses after the week has paid its winner can leave a share, already paid free, withdrawable
-before the reversal lands. What holds today: a winner whose deposit the provider has already contradicted is held at
-the settlement (RD.1). Before ACTIVE: the wallet lane's trigger, or the Owner's recorded acceptance of the risk.
+A deposit the provider reverses after the week has paid its winner could leave a share, already paid free, withdrawable
+before the reversal lands. **Closed** (the lead's ruling of 2026-10-22): the moment a credited deposit is contradicted —
+reversed, or re-reported at another amount — the webhook that marks it for review also holds, at once, every paid
+winning Millionea share of that account whose ticket was bought at or after the deposit was credited, for Compliance to
+release or forfeit (OD-07). Nothing is debited, a share held once for a deposit is never held for it again, a nightly
+heal places a hold a stopped process left unplaced, and the integrity page shows the deposit behind each such hold.
+Proven on both stores (`test:maswali-adversarial` RD.5–RD.10, a release in flight included) and across instances
+(S16 §6b), with red plants in `red:maswali-money-path`. The rules' reversal clause is the S6 legal lane's to carry.
 
-#### ⏳ TK.2 · MB-96 · account-takeover alerting
+#### ✅ TK.2 · MB-96 · account-takeover alerting — closed (S7-F9 8 and 11, `32b7f7992` and `8194bf3e3`, 2026-10-22)
 
-The takeover alert MB-96 asks for is not built. What holds today: the preventive control (E-215, TK.1). Before
-ACTIVE: the alert, or a dated deferral recorded by the Owner.
+The takeover alert MB-96 asks for was not built. **Closed** (the lead's rulings of 2026-10-22: an alert only): a winning
+account that may have been taken over since its payout raises a critical alert on the console — a count per week, never
+an account — and is named on the integrity page for Compliance to review, where the share can be held; nothing blocks
+money (2026-10-10). The preventive control (E-215, TK.1) still holds. Proven on both stores (`test:maswali-adversarial`
+TK.2–TK.6), with red plants in `red:maswali-money-path`.
