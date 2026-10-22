@@ -3038,7 +3038,15 @@ this law governs motion, it does not demand it. Guard: `npm run test:glyph-motio
 
 Every `.mat-*`/`.g-*`/`.seal-*`/`.crest-*` state has written branches for the two clamps:
 end frames render, nothing invisible, the bloom rests at 0.35. A new animation lands with
-its branches in the same change or it does not land. The delivery named only the first two
+its branches in the same change or it does not land. So does every entrance of the kit's motion vocabulary (`motion.css`:
+`.m-in`, `.m-dialog-in`, `.m-sheet-in`, `.m-scrim`, `.m-seal`, `.m-axis-reveal`, `.m-draw` and the rest), every one a
+Millionea surface wears, and the route entrance (`.route-enter`): the clamp zeroes time, not the first frame, so a clamped
+entrance without its branch paints its first keyframe once — measured 2026-10-22: a seal, a reveal and a drawn line, every
+dialog, sheet and menu invisible for a frame, and every route change's first frame blank. With its branch
+(`animation: none`; a keyframe that names no first frame also writes its last) the end frame is the first one painted.
+An exit is not branched: it opens on the surface as it stands, and the kit unmounts a leaving surface at once under both
+clamps (`exitBeatMs`). `test:reduce-motion` rule 3 derives the set from the keyframes (MASWALI-BUILD S5 round 2 ·
+PLATFORM, the motion critic's "Reduced-motion parity" row; every reader who asked for reduced motion, on every page). The delivery named only the first two
 gates; this product has three (E-125) — our target device is exactly the one the third
 covers. Guard: `npm run test:reduce-motion`. Maswali Millionea's three motions (N1–N3) obey all three gates: §M8a.
 
