@@ -48,9 +48,10 @@ export const OBJECTION_REASONS: ObjectionReason[] = [
   "OTHER",
 ];
 
-/** ⛔ A Millionea objection (one question of a week, MR-16) is ruled in `/admin/maswali` — by an officer other than the
- *  question's sealer, re-grading the week (`maswali-objections.ts`). These Yes/No rulings would rule the week's market. */
-const MILLIONEA_RULED_ELSEWHERE = "This is a Millionea objection to one question: it is ruled in /admin/maswali, never here.";
+/** ⛔ A Millionea objection (one question of a week, MR-16) is ruled on `/admin/maswali/integrity` — by an officer other than the
+ *  question's sealer, re-grading the week (`maswali-objections.ts`; the rule: `docs/RULES.md` §2.12 "Objections"). These
+ *  Yes/No rulings would rule the week's market. */
+const MILLIONEA_RULED_ELSEWHERE = "This is a Millionea objection to one question: it is ruled on /admin/maswali/integrity, never here.";
 
 /**
  * Ruling on an objection is a MONEY act — upholding VOIDs a market (refunding

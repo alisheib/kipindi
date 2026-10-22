@@ -2083,7 +2083,7 @@ export type StoredObjection = {
    *  actually being disputed even after a remedy changes the market. */
   outcomeAtFiling: string | null;
   /** Maswali Millionea only (MR-16, MB-23): the question objected to, as its canonical slot 1..15 (M1..M10 = 1..10,
-   *  R1..R5 = 11..15). Absent or null on every other product. One per (market, question, player), open or decided — the
+   *  A1..A5 = 11..15, the reserves — the plan's R1..R5). Absent or null on every other product. One per (market, question, player), open or decided — the
    *  partial unique index `Objection_maswali_question_player_key`. */
   questionOrdinal?: number | null;
 };

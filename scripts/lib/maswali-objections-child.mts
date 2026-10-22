@@ -343,9 +343,12 @@ const [rc, rd] = await Promise.all([
 ok("5.2 · ⭐ two cases on ONE question ruled at once on the same reviewed result: one lands, the other is refused as stale — the result is flipped once, never back",
   fr2.ok && fr3.ok && [rc, rd].filter((r: any) => r.ok).length === 1 && [rc, rd].some((r: any) => !r.ok && /changed since you reviewed/.test(errOf(r)))
     && (await question(Rw.wk.id, 8)).outcome === (v2.expectedOutcome === "YES" ? "NO" : "YES"), J({ rc, rd }));
-// Every case decided, then a filing landing INSIDE the release (after its holds, before its money): nothing pays.
+// Every case decided, then a filing landing INSIDE the release (after its holds, before its money): nothing pays. The cases
+// left are ruled by the officer whose REVERSE did NOT land in 5.2 — the one that did set M8's present result, so MR-16 bars
+// it from M8's later objections (2.17), and which one wins the race is the store's.
+const cleaner = (rc as any).ok ? COMP_C : OWNER;
 for (const o of (await W.db.objection.listForMarket((await weekNow(Rw.wk.id)).marketId)).filter((x: any) => x.status === "OPEN")) {
-  const r = await rule(o.id, OWNER, "REJECT", Rw.wk.id, o.questionOrdinal, inR, { note: "Decided before the release" });
+  const r = await rule(o.id, cleaner, "REJECT", Rw.wk.id, o.questionOrdinal, inR, { note: "Decided before the release" });
   if (!r.ok) throw new Error(`decide ${o.id}: ${errOf(r)}`);
 }
 const wR = await weekNow(Rw.wk.id);
@@ -386,7 +389,7 @@ const fe = await file(P2, E.wk.id, 1, new Date(sealE.getTime() + HOUR));
 const cRej = fe.ok ? await classic.rejectObjection(fe.objectionId, COMP_A, "rejected through the Yes/No door") : fe;
 const cUp = fe.ok ? await classic.upholdObjection(fe.objectionId, COMP_A, { remedy: "REVERSE", note: "reversed through the Yes/No door" }) : fe;
 ok("6.2 · ⭐ the Yes/No rulings refuse a Millionea case — neither rejects it nor flips the week's market — and it stays OPEN",
-  fe.ok && !cRej.ok && /ruled in .admin.maswali/.test(errOf(cRej)) && !cUp.ok && /ruled in .admin.maswali/.test(errOf(cUp)) && (await objectionRow((fe as any).objectionId)).status === "OPEN", J({ cRej, cUp }));
+  fe.ok && !cRej.ok && /ruled on .admin.maswali.integrity/.test(errOf(cRej)) && !cUp.ok && /ruled on .admin.maswali.integrity/.test(errOf(cUp)) && (await objectionRow((fe as any).objectionId)).status === "OPEN", J({ cRej, cUp }));
 const rulings = await W.db.objection.listUpheldRulings();
 ok("6.3 · a Millionea ruling is no row of a market's sign-off (`listUpheldRulings`): §2's REVERSEs changed questions, never a verdict",
   !rulings.some((r: any) => r.marketId === wA.marketId), J(rulings.filter((r: any) => r.marketId === wA.marketId)));

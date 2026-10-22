@@ -47,13 +47,17 @@
  * 223 on Postgres, with 1 KNOWN-RED on each (OB.0).
  * ⭐ S7-F9 11 (2026-10-22): TK.4b — the takeover alert and its integrity card in their reviewed words (what the control
  * enforces, never what it watches for) — on each: 215 on memory, 224 on Postgres.
+ * ⭐ S7-OB (2026-10-22, the Millionea objection door; merged over S7 at b6eac4034): OB.0 struck on each store — a holder
+ * files on one question through the door and an officer other than the sealer rules — and §4b OM added, six on each (the
+ * filing holds the week, the REVERSE re-grades and restarts the window once, the money follows the final record): 222 on
+ * memory, 231 on Postgres, with no KNOWN-RED left, what the merged tree printed.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({
   suite: "test:maswali-adversarial",
   casesFile: "scripts/lib/maswali-adversarial-child.mts",
-  minPass: { memory: 215, postgres: 224 },
+  minPass: { memory: 222, postgres: 231 },
   dbPrefix: "mlw_adv",
   timeoutMs: 45 * 60_000,
 });
