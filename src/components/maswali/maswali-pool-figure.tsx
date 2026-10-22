@@ -5,6 +5,7 @@ import { counted } from "@/components/maswali/maswali-format";
 import { fillNodes } from "@/lib/fill-nodes";
 import { cn, fill, formatTzs } from "@/lib/utils";
 import type { Dict, Locale } from "@/lib/i18n-dict";
+import { HUB_POOL_HEAD } from "@/app/millionea/hub-frame";
 
 /**
  * THE POOL FIGURE — the week's jackpot headline and its rule (MASWALI-BUILD S5; MASWALI-PLAN §10 §3.3, §10 §6 "an UNEARNED
@@ -112,19 +113,21 @@ export function MaswaliPoolHead({ t, locale, view, pct, final = false, tick, lab
   const pending = v.carriedIn?.amount === null;
   const rule = poolRule(t, view, pct);
   const finalLine = poolFinalLine(t, view, final);
-  const facts = (line: string) => <MaswaliFacts facts={factsOf(line).map((f) => keepFact(locale, f))} />;
+  const facts = (line: string) => <MaswaliFacts facts={factsOf(line).map((f) => keepFact(locale, f))} className={HUB_POOL_HEAD.facts} />;
+  // ⭐ ONE FRAME FOR THE HEAD AND ITS DRAWING (S5-R2-HUB): every class here is `hub-frame.ts`'s, which the hub's loading
+  // drawing composes too — so the drawn head is this head's height, line box by line box.
   return (
-    <div className={cn("mat-flat flex flex-col gap-1 rounded-card p-3", className)} data-testid="millionea-hub-jackpot">
-      <span id={labelId} className="font-mono text-micro uppercase eyebrow text-text-subtle">{t.millionea.jackpot}</span>
-      <span className={cn("font-mono text-title-sm font-semibold text-text tabular-nums xs:text-title-md", tick && "m-tick")} data-testid="millionea-hub-figure">{headlineOf(t, v)}</span>
+    <div className={cn(HUB_POOL_HEAD.box, className)} data-testid="millionea-hub-jackpot">
+      <span id={labelId} className={HUB_POOL_HEAD.label}>{t.millionea.jackpot}</span>
+      <span className={cn(HUB_POOL_HEAD.figure, tick && "m-tick")} data-testid="millionea-hub-figure">{headlineOf(t, v)}</span>
       {finalLine ? (
-        <span className="flex items-baseline gap-1.5 text-body-sm text-text-muted" data-testid="millionea-hub-final-rule">
+        <span className={HUB_POOL_HEAD.finalRule} data-testid="millionea-hub-final-rule">
           <MillioneaGlyph name="finalWeek" s={14} className="relative top-0.5 shrink-0 text-text-subtle" />
-          <MaswaliFacts facts={[finalLine, ...(rule ? factsOf(rule).slice(1) : [])].map((f) => keepFact(locale, f))} />
+          <MaswaliFacts facts={[finalLine, ...(rule ? factsOf(rule).slice(1) : [])].map((f) => keepFact(locale, f))} className={HUB_POOL_HEAD.facts} />
         </span>
-      ) : rule && <span className="text-body-sm text-text-muted">{facts(rule)}</span>}
+      ) : rule && <span className={HUB_POOL_HEAD.rule}>{facts(rule)}</span>}
       {pending && v.carriedIn && v.carriedIn.week !== null && (
-        <span className="text-body-sm text-text-muted text-pretty">{keepFact(locale, fill(t.millionea.pendingCarry, { week: v.carriedIn.week }))}</span>
+        <span className={HUB_POOL_HEAD.carry}>{keepFact(locale, fill(t.millionea.pendingCarry, { week: v.carriedIn.week }))}</span>
       )}
     </div>
   );

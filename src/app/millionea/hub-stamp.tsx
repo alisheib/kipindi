@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode }
 import { MaswaliOutcomeStamp } from "@/components/maswali/maswali-outcome-stamp";
 import { useT } from "@/lib/i18n";
 import type { MaswaliOutcome } from "@/lib/maswali-score";
+import { HUB_QUESTIONS } from "./hub-frame";
 
 /** The slots whose result arrived in this commit, each with its step in the cascade (slot order). */
 const Pressed = createContext<ReadonlyMap<number, number>>(new Map());
@@ -68,7 +69,7 @@ export function HubOutcomeStamp({ slot, outcome }: { slot: number; outcome: Masw
   const step = useContext(Pressed).get(slot);
   const press = step !== undefined && inView.current;
   return (
-    <span ref={holder} className="inline-flex" data-pressed={press ? "" : undefined}>
+    <span ref={holder} className={HUB_QUESTIONS.stamp} data-pressed={press ? "" : undefined}>
       {outcome !== null && <MaswaliOutcomeStamp t={t} outcome={outcome} press={press} index={press ? step : 0} />}
     </span>
   );

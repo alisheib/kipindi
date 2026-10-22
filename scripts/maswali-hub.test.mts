@@ -15,8 +15,12 @@
  *   §7 L2/L18 the strip: mono ranges, a shape for "now"   §8 M2 the kit's header pill and its wrapping row
  *   §9 M11 a result that arrives presses once            §10 the words, as decided, in three languages; zh's one
  *                                                          spacing rule on every timed line the hub fills
+ *   §11 L14 last week's row in the register's words      §12 L7/§T5 a time's face, every numeral .mono
+ *   §13 L7 (round 2) the loading drawing composes the page's frame: the reader's block last, a guest by the shell's mark,
+ *       every block sweeping                              §14 L6/L21 the no-week body keeps its day with its clock
+ *   §15 the segment's loading state draws the page being opened (a census of every Millionea page)
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
@@ -64,6 +68,10 @@ const POOL = req("../src/components/maswali/maswali-pool-figure.tsx") as typeof 
 const { MaswaliPoolHead } = POOL;
 const MLR = req("../src/components/maswali/maswali-ledger.tsx") as typeof import("../src/components/maswali/maswali-ledger.tsx");
 const HP = req("../src/app/millionea/hub-pool.tsx") as typeof import("../src/app/millionea/hub-pool.tsx");
+const GH = req("../src/app/millionea/hub-ghost.tsx") as typeof import("../src/app/millionea/hub-ghost.tsx");
+const FRAME = req("../src/app/millionea/hub-frame.ts") as typeof import("../src/app/millionea/hub-frame.ts");
+/** An attribute's value as react-dom/server writes it (its five escaped characters). */
+const escAttr = (s: string) => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 type View = import("../src/components/maswali/maswali-pool-figure.tsx").PoolView;
 const SELLING: View = { kind: "selling", carriedIn: { week: 47, amount: null }, sales: { tickets: 41, amount: 41_000 }, pool: 41_000, floor: 1_000_000, jackpot: 1_000_000 };
 const VOIDING: View = { kind: "voiding", carriedIn: null, sales: { tickets: 10, amount: 10_000 }, pool: 10_000, floor: 1_000_000, price: 1_000 };
@@ -182,6 +190,15 @@ const finalDefects = (l: L3, m: string, want: boolean) => {
   ok("3.1′ PLANT · the old final weeks (the 10/10 rule alone; the 10/10 rule and the final line both) are each reported", finalDefects("en", alone, true).length > 0 && finalDefects("en", twice, true).length > 0);
   const unmarked = headOf("en", SELLING, true).replace(/(data-testid="millionea-hub-final-rule">)<(?:svg[\s\S]*?<\/svg>|span aria-hidden[^>]*><\/span>)/, "$1");
   ok("3.1″ PLANT · a final week's rule without the week's mark is reported", unmarked !== headOf("en", SELLING, true) && finalDefects("en", unmarked, true).length > 0);
+  // ⭐ S5-R2-HUB · each fact list of the head's rule balances a fact that wraps inside itself (`HUB_POOL_HEAD.facts`): at 320
+  // Swahili's first fact broke greedily and stranded its kept run on a line of its own ("Inagawanywa sawa kwa kila tiketi" /
+  // "ya 10/10", open-classic-sw-320 of round 2's run a). The lines themselves are measured in a browser
+  // (`qa:maswali-hub-states`' open state); here, the class on the rule's list, in every head a week can draw.
+  const balanced = (m: string) => count(m, `class="kp-mln-facts ${escAttr(FRAME.HUB_POOL_HEAD.facts)}"`);
+  const heads = LOCALES.flatMap((l) => [["selling", headOf(l, SELLING, false)], ["final", headOf(l, SELLING, true)]].map(([k, m]) => [`${l} ${k}`, balanced(m)] as const));
+  ok("3.2 · in three languages, the selling week's and the final week's rule each draw ONE fact list that balances a fact wrapping inside itself", heads.every(([, n]) => n === 1), j(heads));
+  const greedy = headOf("sw", SELLING, false).replace(` ${escAttr(FRAME.HUB_POOL_HEAD.facts)}"`, '"');
+  ok("3.2′ PLANT · the round-1 rule (its facts wrapping greedily) is reported", balanced(greedy) === 0);
 }
 
 // ── §4 · L15 · a conditional refund row ──────────────────────────────────────────────────────────────────────────────────
@@ -471,10 +488,120 @@ console.log("\n§12 · L7 · a time on the hub: its weekday in the body face, it
   ok("12.3′ PLANT · the round-1 fills (the counts and the week's number bare) are reported", old.every((m) => bare(m).length > 0), j(old.map(bare)));
 }
 
+// ── §13 · L7 (round 2) · the loading drawing is the hub's frame ──────────────────────────────────────────────────────────
+console.log("\n§13 · L7 (round 2) · the hub's loading drawing composes the page's own frame (hub-frame.ts): the reader's block last in the buy column, a guest's door by the shell's mark, every block sweeping");
+// ⭐ The lead's round-2 ruling on R1-hub's loading row: the drawing is the hub's invariant frame, so the swap to the page
+// moves nothing in the common states. Here, what it is made of, in three languages; the swap itself is measured in a
+// browser (`qa:maswali-hub-states`' "ghost" state: every band's box, drawn and landed, for a reader holding none, one, many).
+const ghostOf = (l: L3) => inApp(l, h(GH.MillioneaHubGhost as never, {} as never));
+{
+  const ORDER = ["strip", "jackpot", "door", "ledger", "mine", "questions"];
+  const MEMBER = escAttr("[[data-viewer=guest]_&]:hidden"), GUEST = escAttr("hidden [[data-viewer=guest]_&]:block");
+  const frameDefects = (l: L3, m: string) => {
+    const d: string[] = [];
+    const bands = [...m.matchAll(/data-ghost="([a-z]+)"/g)].map((x) => x[1]);
+    if (j(bands) !== j(ORDER)) d.push(`${l}: bands ${j(bands)}`);
+    for (const [name, cls] of [["grid", FRAME.HUB_GRID], ["buy column", FRAME.hubAside(true, true)], ["pinned pair", FRAME.HUB_PINNED]] as const) {
+      if (count(m, `class="${escAttr(cls)}"`) !== 1) d.push(`${l}: the ${name} is not the frame's`);
+    }
+    const mine = tagWith(m, 'data-ghost="mine"'), ledger = tagWith(m, 'data-ghost="ledger"');
+    if (!mine.includes(escAttr(FRAME.hubCell(true, "mine") ?? "\u0000")) || !ledger.includes(escAttr(FRAME.hubCell(true, "ledger") ?? "\u0000"))) d.push(`${l}: the ledger and the reader's block are not in the frame's cells`);
+    if (count(m, `class="${escAttr(FRAME.HUB_QUESTIONS.row)} kp-shimmer-track"`) !== 10) d.push(`${l}: the question rows are not the page's rows`);
+    if (!/aria-busy="true" data-ghost-page="hub"/.test(m)) d.push(`${l}: no data-ghost-page="hub" on the drawing's root`);
+    return d;
+  };
+  const guestDefects = (l: L3, m: string) => {
+    const d: string[] = [];
+    if (!tagWith(m, 'data-ghost="mine"').includes(MEMBER)) d.push(`${l}: the reader's block is drawn for a guest`);
+    if (count(m, `class="${MEMBER}"`) !== 1 || count(m, `class="${GUEST}"`) !== 1) d.push(`${l}: no player's door beside one guest's door (${count(m, `class="${MEMBER}"`)}/${count(m, `class="${GUEST}"`)})`);
+    return d;
+  };
+  const sweepDefects = (l: L3, m: string) => {
+    const d: string[] = [];
+    for (const b of ["jackpot", "ledger"]) if (!/\bkp-shimmer-track\b/.test(tagWith(m, `data-ghost="${b}"`))) d.push(`${l}: the ${b} does not sweep`);
+    if (!/class="mat-raised flex flex-col gap-1\.5 rounded-control p-2 kp-shimmer-track"/.test(m)) d.push(`${l}: the held ticket's block does not sweep`);
+    return d;
+  };
+  const all = LOCALES.flatMap((l) => { const m = ghostOf(l); return [...frameDefects(l, m), ...guestDefects(l, m), ...sweepDefects(l, m)]; });
+  ok("13.1 · in three languages the drawing's bands stand in the page's order — strip, jackpot, door, ledger, the reader's block LAST in the buy column, then the questions — in the frame's own grid, column, pinned pair and cells, with the page's ten question rows, marked data-ghost-page=\"hub\"", all.filter((x) => !/guest|sweep/.test(x)).length === 0, all.join(" | "));
+  ok("13.2 · a guest's door is drawn beside the player's, each shown by the shell's mark (main[data-viewer=\"guest\"]), and no block of tickets for a guest", all.filter((x) => /guest/.test(x)).length === 0, all.join(" | "));
+  ok("13.3 · every block sweeps with the platform's skeleton shimmer (the jackpot, the ledger, the held ticket's block)", all.filter((x) => /sweep/.test(x)).length === 0, all.join(" | "));
+  const en = ghostOf("en");
+  // PLANTS: the round-1 drawing (no reader's block: the ledger straight after the door), its column (no `lg:items-stretch`:
+  // the blocks drawn ~250px wide in the 360px column), and a block that stands still.
+  const noMine = en.replace(/<div class="[^"]*" data-ghost="mine">[\s\S]*?<\/div><\/div><\/div>/, "");
+  ok("13.1′ PLANT · the round-1 drawing (the ledger straight after the door, no reader's block) is reported", noMine !== en && frameDefects("en", noMine).some((x) => x.includes("bands")), frameDefects("en", noMine).join(" | "));
+  const narrow = en.replace(escAttr(FRAME.hubAside(true, true)), escAttr(FRAME.hubAside(true, true).replace(" lg:items-stretch", "")));
+  ok("13.2′ PLANT · round 1's column (its blocks not stretched from 1024) is reported", narrow !== en && frameDefects("en", narrow).some((x) => x.includes("buy column")));
+  const still = en.replace(/(class="[^"]*?) kp-shimmer-track([^"]*" data-ghost="ledger")/, "$1$2");
+  ok("13.3′ PLANT · a ledger block that stands still is reported", still !== en && sweepDefects("en", still).some((x) => x.includes("ledger")));
+}
+
+// ── §14 · L6/L21 · the no-week body ─────────────────────────────────────────────────────────────────────────────────────
+console.log("\n§14 · L6/L21 · the no-week empty state's body: the next open's day kept with its clock (A1), none while paused, zh's two sentences joined with no space");
+{
+  const W = req("../src/app/millionea/hub-words.tsx") as typeof import("../src/app/millionea/hub-words.tsx");
+  const N = req("../src/components/maswali/maswali-format.ts") as typeof import("../src/components/maswali/maswali-format.ts");
+  const ES = req("../src/components/ui/empty-state-text.ts") as typeof import("../src/components/ui/empty-state-text.ts");
+  const MON = Date.parse("2026-12-07T00:01:00+03:00");
+  const drawn = (body: import("../src/components/ui/empty-state-text.ts").EmptyStateBody) => renderToStaticMarkup(h("p", null, ES.emptyStateBody(body) as never));
+  const kept = (l: L3, m: string) => { const when = N.eatWeekdayClock(dict[l] as never, MON); return [...m.matchAll(/<span class="whitespace-nowrap">([\s\S]*?)<\/span>/g)].some((x) => textOf(x[1]).includes(when)); };
+  const off = LOCALES.flatMap((l) => {
+    const d: string[] = [];
+    const body = W.noWeekBody(dict[l] as never, l, MON);
+    const want = [fill(dict[l].millionea.nextOpensAt, { when: N.eatWeekdayClock(dict[l] as never, MON) }), dict[l].millionea.questionsAtOpen].join(l === "zh" ? "" : " ");
+    if (body.text !== want) d.push(`${l}: "${body.text}"`);
+    if (!kept(l, drawn(body))) d.push(`${l}: the day parts from its clock`);
+    const paused = W.noWeekBody(dict[l] as never, l, null);
+    if (paused.text !== dict[l].millionea.questionsAtOpen || paused.keep.length !== 0) d.push(`${l}: paused says "${paused.text}"`);
+    return d;
+  });
+  ok("14.1 · in three languages the body is the next open's sentence then the questions' (zh joined with no space), the next open's day and clock one kept run, and while paused only the questions' sentence", off.length === 0, off.join(" | "));
+  const plain = drawn(W.noWeekBody(dict.sw as never, "sw", MON).text);
+  ok("14.1′ PLANT · round 1's body (one plain string: nothing kept) is reported", !kept("sw", plain), plain.slice(0, 200));
+}
+
+// ── §15 · the segment's loading state draws the page being opened ────────────────────────────────────────────────────
+console.log("\n§15 · Millionea's segment loading state (millionea/loading.tsx wraps every Millionea page) draws the page being opened: each page's own drawing by its address, the hub's for the hub; a census of every page");
+// ⭐ The lead's item (REGISTER's measure, 2026-10-22: on a throttled hop between Millionea pages the HUB's drawing stood
+// 14–22 s before How to play or the register landed). The pick (`MillioneaGhostPick`, the platform's `RoutePick`) is
+// rendered at each page's address and must draw exactly what that page's own loading file draws.
+{
+  const atPath = (path: string, el: unknown, l: L3 = "sw") =>
+    renderToStaticMarkup(h(AppRouterContext.Provider, { value: ROUTER }, h(PathnameContext.Provider, { value: path }, h(I18nProvider as never, { initial: l } as never, el as never))));
+  const pages = (readdirSync(join(ROOT, "src/app/millionea"), { recursive: true }) as string[])
+    .map((p) => p.replace(/\\/g, "/")).filter((p) => p === "page.tsx" || p.endsWith("/page.tsx"));
+  const addressOf = (p: string) => `/millionea${p === "page.tsx" ? "" : `/${p.replace(/\/page\.tsx$/, "")}`}`.replace(/\[[^\]]+\]/g, "MLN-2026-W49-000041");
+  const picked = (address: string) => (GH.MILLIONEA_GHOST_ROUTES as readonly string[]).includes(address) || GH.MILLIONEA_GHOST_PATTERNS.some((s) => new RegExp(s).test(address));
+  const unpicked = (list: string[]) => list.map(addressOf).filter((a) => !picked(a));
+  ok(`15.1 · the census: every Millionea page (${pages.length}: ${pages.map(addressOf).join(", ")}) is named by the pick — an address or a pattern`, pages.length >= 7 && unpicked(pages).length === 0, j(unpicked(pages)));
+  ok("15.1′ PLANT · a new Millionea page with no pick is reported", unpicked([...pages, "archive/page.tsx"]).includes("/millionea/archive"));
+  // Each page's drawing, at its address: the pick draws what the page's own loading file draws, in three languages; the hub
+  // its own drawing; an address with no page of its own, the hub's.
+  const own = (p: string) => (req(join(ROOT, "src/app/millionea", p.replace(/page\.tsx$/, "loading.tsx"))) as { default: () => unknown }).default;
+  const differs = LOCALES.flatMap((l) => pages.flatMap((p) => {
+    const a = addressOf(p);
+    const want = p === "page.tsx" ? atPath(a, h(GH.MillioneaHubGhost as never), l) : atPath(a, h(own(p) as never), l);
+    return atPath(a, h(GH.MillioneaGhostPick as never), l) === want ? [] : [`${l} ${a}`];
+  }));
+  const elsewhere = atPath("/millionea/elsewhere", h(GH.MillioneaGhostPick as never)) === atPath("/millionea/elsewhere", h(GH.MillioneaHubGhost as never));
+  ok("15.2 · in three languages, at each page's address the pick draws exactly what that page's own loading file draws (the hub its own drawing); an address with no page, the hub's", differs.length === 0 && elsewhere, j(differs));
+  // A journey reader's Tiketi zangu (its Millionea kind under the journey's own head) is the journey's route ghost, handed in;
+  // every other page stays one drawing for both shells.
+  const J = h("i", { "data-journey-route": "" });
+  const journeyAt = (a: string) => atPath(a, h(GH.MillioneaGhostPick as never, { journey: J } as never));
+  ok("15.3 · for a journey reader the tickets page is the journey's own route ghost; How to play and the hub are the same drawings as for a classic reader",
+    journeyAt("/millionea/tickets").includes("data-journey-route") && journeyAt("/millionea/how") === atPath("/millionea/how", h(GH.MillioneaGhostPick as never)) && !journeyAt("/millionea").includes("data-journey-route"));
+  // PLANT · the loading file as it was: the hub's drawing whatever the page being opened.
+  const howOwn = atPath("/millionea/how", h(own("how/page.tsx") as never));
+  ok("15.2′ PLANT · the old loading state (the hub's drawing on the way to How to play) is reported", atPath("/millionea/how", h(GH.MillioneaHubGhost as never)) !== howOwn);
+}
+
 console.log(`\n${"═".repeat(70)}\n  MASWALI HUB: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run prints (S5-DESIGN-HUB 3: 34; 4, the one ledger and zh's spacing rule: 43; 6, one
  *  carry origin: 45; 7, no door to a week the register does not draw yet: 47; 9, one final-week rule and last week's
- *  words: 50; 10, a time's face: 53; round 2, every numeral of the timed sentences: 55). It only rises. */
-const MIN_ASSERTIONS = 55;
+ *  words: 50; 10, a time's face: 53; round 2, every numeral of the timed sentences: 55; S5-R2-HUB, the rule's balance, the
+ *  drawing's frame, the no-week body and the segment's pick: 70). It only rises. */
+const MIN_ASSERTIONS = 70;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

@@ -142,6 +142,7 @@ async function shoot(state, shell, ctx, { check, oneView = false, path = "/milli
       if (locale === "zh") await zhScan(page, label);
       await t5Checks(page, label);
       await noteChecks(page, label);
+      await ruleChecks(page, label);
       if (width <= YIELD_AT) await yieldCheck(page, `${label} · s1`);
       const name = `${state}-${shell}-${locale}-${width}`;
       await page.screenshot({ path: `${OUT}/${name}.png` });
@@ -166,7 +167,8 @@ const demoJourney = await readerContext([demo, pass_]);
 const guestClassic = await readerContext([]);
 const guestJourney = await readerContext([pass_]);
 const t = { // the words a check reads, per language (the dictionary's, via the rendered page's own <html lang>)
-  pausedShort: { en: "Paused for now", sw: "Imesimamishwa kwa muda", zh: "暂时停售" },
+  // The dictionary's `pausedShort` since DOORS' ebb6caa5f (one wording with the card): "Sales paused for now".
+  pausedShort: { en: "Sales paused for now", sw: "Mauzo yamesimamishwa kwa muda", zh: "暂时停售" },
   open: { en: "Open", sw: "Wazi", zh: "开放" },
 };
 
@@ -215,6 +217,48 @@ async function openWeekChecks(page, label, locale, width, { door = "millionea-hu
     ok(`${label} · L17 the column is named by the jackpot's label`, !!named && named.length > 0, j(named));
   }
 }
+/**
+ * The jackpot's rule (S5-R2-HUB): each fact that wraps inside itself is balanced — no line of it under half the width of
+ * its longest (`HUB_POOL_HEAD.facts`, text-wrap: balance). At 320 Swahili's first fact broke greedily and stranded its
+ * kept run alone ("Inagawanywa sawa kwa kila tiketi" / "ya 10/10": a quarter of the line above). Lines are found from the
+ * glyphs' own boxes (each character's rect, grouped by its line's centre).
+ */
+async function ruleChecks(page, label) {
+  const facts = await page.evaluate(() => {
+    const rule = document.querySelector('[data-testid="millionea-hub-jackpot"]')?.children[2];
+    if (!rule) return null;
+    const out = [];
+    for (const fact of rule.querySelectorAll(".kp-mln-fact")) {
+      const glyphs = [];
+      const walk = document.createTreeWalker(fact, NodeFilter.SHOW_TEXT);
+      const range = document.createRange();
+      for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+        if (n.parentElement?.closest(".sr-only")) continue;
+        const text = n.textContent ?? "";
+        for (let i = 0; i < text.length; i++) {
+          if (/\s/.test(text[i])) continue;
+          range.setStart(n, i); range.setEnd(n, i + 1);
+          const r = range.getClientRects()[0];
+          if (r && r.width > 0) glyphs.push({ ch: text[i], left: r.left, right: r.right, mid: (r.top + r.bottom) / 2 });
+        }
+      }
+      const lines = [];
+      for (const g of glyphs.sort((a, b) => a.mid - b.mid)) {
+        const line = lines.find((l) => Math.abs(l.mid - g.mid) < 6);
+        if (line) { line.left = Math.min(line.left, g.left); line.right = Math.max(line.right, g.right); }
+        else lines.push({ mid: g.mid, left: g.left, right: g.right });
+      }
+      if (lines.length < 2) continue;
+      const widths = lines.map((l) => Math.round(l.right - l.left));
+      out.push({ widths, ratio: Math.min(...widths) / Math.max(...widths) });
+    }
+    return out;
+  });
+  if (!facts || facts.length === 0) return;
+  ok(`${label} · the jackpot's rule: each fact that wraps inside itself is balanced, no line under half its longest (${facts.map((f) => j(f.widths)).join(" ")})`,
+    facts.every((f) => f.ratio >= 0.5), j(facts));
+}
+
 /**
  * M5: the week's state is the register's one chip (`WeekStateChip`, the lead's ruling) in the page head's eyebrow, beside
  * the week it qualifies — its word the state's, its ink its tone's (status-tone: royal while the week runs, slate while
@@ -285,14 +329,21 @@ const T5_THEIRS = [
   ['[data-testid="millionea-hub-ledger"]', "REGISTER (the one ledger's rows)"],
   ['[data-testid="millionea-hub-break"]', "PLATFORM (the break notice)"],
   ['[data-testid="millionea-week-state"]', "REGISTER (the week chip)"],
+  // The kit EmptyState's body is a string by contract: its numerals take the numerals' face through the kit's opt-in
+  // `bodyPart` (TICKETS' round 2), which the lead wires into the hub's no-week state at the merge (HUB's item 3).
+  ['[data-testid="millionea-hub-no-week"] p.leading-relaxed', "KIT (the EmptyState body: the opt-in bodyPart, wired at the merge)"],
 ];
 const t5Elsewhere = new Map();
 async function t5Checks(page, label) {
   const found = await page.evaluate((theirs) => {
+    // The FACE a numeral is drawn in is the first family of its computed list: `.mono` (var(--font-mono)) and Tailwind's
+    // `font-mono` (var(--font-mono) and the same face's fallbacks after it) both draw JetBrains Mono, but their lists are
+    // spelled differently — compared whole, every `font-mono` eyebrow and row number read as "bare" (run a, 2026-10-22).
+    const face = (el) => (getComputedStyle(el).fontFamily.split(",")[0] ?? "").trim().replace(/^["']|["']$/g, "");
     const probe = document.createElement("span");
     probe.className = "mono";
     document.body.appendChild(probe);
-    const mono = getComputedStyle(probe).fontFamily;
+    const mono = face(probe);
     probe.remove();
     const roots = ["millionea-hub", "millionea-hub-notices", "millionea-hub-close-moved", "millionea-hub-final-ahead", "millionea-preview-mark"]
       .map((id) => document.querySelector(`[data-testid="${id}"]`)).filter(Boolean);
@@ -303,7 +354,7 @@ async function t5Checks(page, label) {
         if (!/\d/.test(n.textContent ?? "")) continue;
         const el = n.parentElement;
         if (!el || el.closest(".sr-only") || !el.checkVisibility({ visibilityProperty: true })) continue;
-        if (getComputedStyle(el).fontFamily === mono) continue;
+        if (face(el) === mono) continue;
         if (el.closest("h1, h2, h3") || el.closest("li[data-slot] .text-pretty")) continue;
         const owner = theirs.find(([sel]) => el.closest(sel))?.[1] ?? null;
         out.push({ owner, where: el.closest("[data-testid]")?.getAttribute("data-testid") ?? "?", text: (n.textContent ?? "").trim().slice(0, 60), line: (el.textContent ?? "").trim().slice(0, 90) });
@@ -394,6 +445,14 @@ if (RUN === "a") {
     const p = await act({ act: "player", tickets: 1, lose: true }, ctx); // signed in through this context's cookie
     players[l] = { ctx, id: p.userId };
   }
+  // L7 (round 2) · the drawing's three readers (the lead's three states): holding no ticket, one, and five (three rows and
+  // "See all"), bought now so each row is past its free cancel (five minutes) when the drawing is measured.
+  const holders = {};
+  for (const [k, n] of [["none", 0], ["one", 1], ["many", 5]]) {
+    const ctx = await readerContext([]);
+    await act({ act: "player", tickets: n, lose: true }, ctx);
+    holders[k] = ctx;
+  }
   // L5 (round 2) · the doors to the register — the grading week's facts and the ledger's carry, the one still waiting on its
   // week too — each open a page that answers: REGISTER's H2 draws a public week from the moment it opens. Asked once per
   // address (a page answers the same at every width).
@@ -454,57 +513,88 @@ if (RUN === "a") {
     }
   }
 
-  // ── L7 · the loading drawing stands where the page lands ──────────────────────────────────────────────────────────────
-  // A move to the hub from How to play, its answer slowed (the network throttled, so the route's loading drawing paints
-  // while the page streams): each band's top in the drawing, then in the page — the head's title, the strip, the
-  // jackpot's head, the door, the ledger and the questions. The first screen's bands must land where they were drawn.
-  if (want("ghost")) {
-    const bandsOf = (ghost) => {
-      const top = (el) => (el ? Math.round(el.getBoundingClientRect().top + window.scrollY) : null);
-      if (ghost) {
-        const g = document.querySelector('[aria-busy="true"]');
-        if (!g) return null;
-        const q = (n) => g.querySelector(`[data-ghost="${n}"]`);
-        return { title: top(g.querySelector("h1")), strip: top(q("strip")), jackpot: top(q("jackpot")), door: top(q("door")), ledger: top(q("ledger")), questions: top(q("questions")) };
-      }
-      const h = document.querySelector('[data-testid="millionea-hub"]');
-      const q = (n) => document.querySelector(`[data-testid="${n}"]`);
-      return { title: top(h?.querySelector("h1")), strip: top(q("millionea-week-strip")), jackpot: top(q("millionea-hub-jackpot")), door: top(q("millionea-hub-fill") ?? q("millionea-hub-guest")),
-        ledger: top(q("millionea-hub-ledger")), questions: top(q("millionea-hub-questions")) };
+  // ── L7 · THE LOADING DRAWING IS THE HUB'S INVARIANT FRAME (round 2: the lead's ruling on R1-hub's loading row) ──────────
+  // A move to the hub from How to play, its answer slowed (the network throttled, so the route's drawing paints while the
+  // page streams): each band's box in the drawing, then in the page — the head's title, the strip, the jackpot's head, the
+  // door's block, the pool's ledger, the reader's own block, the questions and their first three rows (`ghostSwap`). Both
+  // compose one frame (`hub-frame.ts`), so above and beside the reader's own block nothing may move; that block — last in
+  // the buy column, its height the reader's — starts where it was drawn and is replaced in place.
+  const BANDS = (ghost) => {
+    const box = (el) => { if (!el || el.getClientRects().length === 0) return null; const r = el.getBoundingClientRect(); return { top: Math.round(r.top + window.scrollY), height: Math.round(r.height) }; };
+    if (ghost) {
+      const g = document.querySelector('[aria-busy="true"]');
+      if (!g) return null;
+      const q = (n) => g.querySelector(`[data-ghost="${n}"]`);
+      const rows = [...(q("questions")?.lastElementChild?.children ?? [])].slice(0, 3).map(box);
+      return { title: box(g.querySelector("h1")), strip: box(q("strip")), jackpot: box(q("jackpot")), door: box(q("door")), ledger: box(q("ledger")), mine: box(q("mine")), questions: box(q("questions")), rows };
+    }
+    const h = document.querySelector('[data-testid="millionea-hub"]');
+    const q = (n) => document.querySelector(`[data-testid="${n}"]`);
+    const rows = [...document.querySelectorAll('[data-testid="millionea-hub-questions"] li[data-slot]')].slice(0, 3).map(box);
+    return { title: box(h?.querySelector("h1")), strip: box(q("millionea-week-strip")), jackpot: box(q("millionea-hub-jackpot")), door: box(q("millionea-hub-buy")),
+      ledger: box(q("millionea-hub-ledger")), mine: box(q("millionea-hub-mine")), questions: box(q("millionea-hub-questions")), rows };
+  };
+  /** How many lines the page's wrapping bands take (the drawing's table, `hub-ghost.tsx` WRAPS, is held to these). */
+  const LINES = () => {
+    const lines = (el) => { if (!el) return null; const cs = getComputedStyle(el); const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2; return Math.round(el.getBoundingClientRect().height / lh); };
+    const head = document.querySelector('[data-testid="millionea-hub-jackpot"]');
+    return {
+      subtitle: lines(document.querySelector('[data-testid="millionea-hub"] p.italic')),
+      rule: lines(head?.children[2] ?? null), carry: lines(head?.children[3] ?? null),
+      floor: lines(document.querySelector('[data-testid="millionea-hub-ledger"] [data-ledger-row="floor"] span.min-w-0')),
     };
-    for (const [ctx, shell, locale, width] of [[demoClassic, "classic", "sw", 360], [demoClassic, "classic", "sw", 1280], [demoClassic, "classic", "en", 360], [demoClassic, "classic", "zh", 360], [demoJourney, "journey", "sw", 360]]) {
-      const label = `ghost · ${shell} · ${locale} @${width}`;
-      await setLocale(ctx, locale);
-      const page = await ctx.newPage();
-      page.on("pageerror", (e) => errs.push(`${label}: ${e}`));
-      await page.setViewportSize({ width, height: HEIGHT });
-      await open(page, "/millionea/how");
-      const cdp = await ctx.newCDPSession(page);
-      await cdp.send("Network.enable");
-      await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 400, downloadThroughput: 12 * 1024, uploadThroughput: 64 * 1024 });
-      // The app router's own move (`window.next.router`, what a Link calls): a phone's classic rail has no Millionea tab.
-      await page.evaluate(() => { window.next?.router?.push("/millionea"); });
-      const drawn = await page.waitForSelector('[aria-busy="true"] [data-ghost="strip"]', { timeout: 20_000 }).then(() => true).catch(() => false);
-      const ghost = drawn ? await page.evaluate(bandsOf, true) : null;
-      if (drawn) await page.screenshot({ path: `${OUT}/ghost-${shell}-${locale}-${width}.png` });
-      await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
-      await page.waitForSelector('[data-testid="millionea-hub"]', { timeout: 60_000 }).catch(() => {});
-      await page.waitForTimeout(800);
-      const real = await page.evaluate(bandsOf, false);
-      await page.screenshot({ path: `${OUT}/ghost-landed-${shell}-${locale}-${width}.png` });
-      ok(`${label} · L7 the route's loading drawing is shown on the way in`, drawn && !!ghost);
-      if (ghost && real) {
-        const off = Object.fromEntries(Object.keys(real).map((k) => [k, real[k] === null || ghost[k] === null ? null : real[k] - ghost[k]]));
-        console.log(`L7 ${label} · page − drawing, px: ${j(off)}`);
-        // The fixed bands land within 4px; the door within one body line and the head's gap (18 + 4px): the jackpot's rule and
-        // its carry line run to one or two lines by language and by whether a carry is pending — words a wordless drawing
-        // cannot know (it draws two lines of rule and one of carry).
-        const tol = { title: 4, strip: 4, jackpot: 4, door: 22 };
-        const first = Object.keys(tol).filter((k) => off[k] !== null && real[k] < HEIGHT);
-        ok(`${label} · L7 the first screen's bands land where they were drawn (title/strip/jackpot ±4px, door ±22px: ${first.map((k) => `${k} ${off[k]}`).join(", ")})`,
-          first.length >= 3 && first.every((k) => Math.abs(off[k]) <= tol[k]), j({ ghost, real }));
+  };
+  /** The drawing's motion: each of its blocks wears the platform's skeleton sweep (`.kp-shimmer-track::after`). */
+  const SWEEPS = () => {
+    const g = document.querySelector('[aria-busy="true"]');
+    if (!g) return null;
+    const blocks = [...g.querySelectorAll(".kp-shimmer-track")].filter((el) => el.getClientRects().length > 0);
+    const name = (el) => (el ? getComputedStyle(el, "::after").animationName : null);
+    return { count: blocks.length, names: [...new Set(blocks.map(name))], bands: ["jackpot", "ledger"].map((n) => name(g.querySelector(`[data-ghost="${n}"]`))) };
+  };
+  const deltas = (g, r) => Object.fromEntries(["title", "strip", "jackpot", "door", "ledger", "mine", "questions"].flatMap((k) => [
+    [k, g[k] && r[k] ? r[k].top - g[k].top : null], [`${k}H`, g[k] && r[k] ? r[k].height - g[k].height : null],
+  ]).concat([["rowsH", r.rows.map((x, i) => (x && g.rows[i] ? x.height - g.rows[i].height : null))]]));
+  async function ghostSwap(ctx, locale, width, name, { reduced = false } = {}) {
+    await setLocale(ctx, locale);
+    const page = await ctx.newPage();
+    page.on("pageerror", (e) => errs.push(`${name}: ${e}`));
+    await page.setViewportSize({ width, height: HEIGHT });
+    if (reduced) await page.emulateMedia({ reducedMotion: "reduce" });
+    await open(page, "/millionea/how");
+    const cdp = await ctx.newCDPSession(page);
+    await cdp.send("Network.enable");
+    await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 400, downloadThroughput: 12 * 1024, uploadThroughput: 64 * 1024 });
+    // The app router's own move (`window.next.router`, what a Link calls): a phone's classic rail has no Millionea tab.
+    await page.evaluate(() => { window.next?.router?.push("/millionea"); });
+    const drawn = await page.waitForSelector('[aria-busy="true"] [data-ghost="strip"]', { timeout: 20_000 }).then(() => true).catch(() => false);
+    const ghost = drawn ? await page.evaluate(BANDS, true) : null;
+    const sweep = drawn ? await page.evaluate(SWEEPS) : null;
+    if (drawn) await page.screenshot({ path: `${OUT}/${name}.png` });
+    await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+    await page.waitForSelector('[data-testid="millionea-hub"]', { timeout: 60_000 }).catch(() => {});
+    await page.waitForTimeout(800);
+    const real = await page.evaluate(BANDS, false);
+    const lines = await page.evaluate(LINES);
+    const viewer = await page.evaluate(() => document.getElementById("main-content")?.getAttribute("data-viewer") ?? null);
+    await page.screenshot({ path: `${OUT}/${name.replace(/^ghost-/, "ghost-landed-")}.png` });
+    await page.close();
+    return { drawn, ghost, real, lines, sweep, viewer };
+  }
+  // While last week's carry is still pending (the seed's week at this point), the jackpot's head says so in one more line
+  // ("plus Week 47's carry-over once it is final", §M8a item 9) — a week's state the wordless drawing does not know: it
+  // draws the common week, its carry landed. Printed, with the bands above the head held exact.
+  if (want("ghost")) {
+    for (const width of [360, 1280]) {
+      const label = `ghost · carry pending · one ticket · classic · sw @${width}`;
+      const m = await ghostSwap(holders.one, "sw", width, `ghost-pending-classic-sw-${width}`);
+      ok(`${label} · L7 the route's loading drawing is shown on the way in`, m.drawn && !!m.ghost && !!m.real);
+      if (m.ghost && m.real) {
+        const off = deltas(m.ghost, m.real);
+        console.log(`INFO L7 ${label} · page − drawing, px: ${j(off)} · the page's lines ${j(m.lines)}`);
+        ok(`${label} · the bands above the jackpot's head land where drawn (±1px: title ${off.title}, strip ${off.strip}, jackpot ${off.jackpot})`,
+          ["title", "strip", "jackpot"].every((k) => Math.abs(off[k] ?? 99) <= 1), j(off));
       }
-      await page.close();
     }
   }
 
@@ -601,7 +691,9 @@ if (RUN === "a") {
         const row = document.querySelector('[data-testid="millionea-hub-close"]');
         if (!row) return null;
         const before = at(row), door = at(document.querySelector('[data-testid="millionea-hub-fill"]'));
-        const next = row.parentElement?.nextElementSibling ?? row.closest("[data-testid='millionea-hub-buy']")?.nextElementSibling ?? null;
+        // What stands under the buy block: the block after the pinned pair (below 1024 the pair's wrapper is `contents`, so the
+        // buy block, its last child, has no sibling of its own — the ledger reads on after the wrapper).
+        const next = document.querySelector("[data-testid='millionea-hub-pinned']")?.nextElementSibling ?? null;
         const nextBefore = at(next);
         const pill = document.createElement("span");
         pill.className = "closing-pill inline-flex items-center whitespace-nowrap rounded-full border text-body-sm tabular-nums h-5 gap-1 px-1.5";
@@ -624,6 +716,48 @@ if (RUN === "a") {
   // ── S7–S10 · the week on sale closes, its results come in, its window opens, it settles ─────────────────────────────────
   // The seed leaves its earlier weeks graded but unsettled; settlement runs strictly in order (MR-3), so they settle first.
   await act({ act: "catchUp" });
+
+  // ── L7 · THE SWAP, IN THE WEEK'S COMMON SHAPE (its earlier weeks settled: the carry landed, no week being graded) ─────────
+  // The lead's three states — a reader holding no ticket, one, many — at 360 and 1280, and the one-ticket reader at every
+  // width in every language (the drawing's per-language line table). Above and beside the reader's own block every band
+  // lands exactly where it was drawn (top and height ±1px), from 1024 the questions' column too; the reader's block starts
+  // where it was drawn. A guest is drawn a guest's door where the shell marks one (`main[data-viewer="guest"]`, the
+  // journey's); the classic shell marks no guest, so there a guest's door is printed beside the player's it was drawn as.
+  if (want("ghost")) {
+    const oneJ = await readerContext([...(await holders.one.cookies(BASE)).filter((c) => c.name === SESSION_COOKIE), pass_]);
+    const views = [
+      ...["sw", "en", "zh"].flatMap((locale) => WIDTHS.map((width) => ["one", holders.one, "classic", locale, width])),
+      ...[360, 1280].flatMap((width) => [["none", holders.none, "classic", "sw", width], ["many", holders.many, "classic", "sw", width], ["guest", guestClassic, "classic", "sw", width]]),
+      ["one", oneJ, "journey", "sw", 360], ["guest", guestJourney, "journey", "sw", 360], ["one", holders.one, "classic", "sw", 360, true],
+    ];
+    for (const [reader, ctx, shell, locale, width, reduced = false] of views) {
+      const label = `ghost · ${reader} · ${shell} · ${locale} @${width}${reduced ? " · reduced motion" : ""}`;
+      const m = await ghostSwap(ctx, locale, width, `ghost-${reader}-${shell}-${locale}-${width}${reduced ? "-rm" : ""}`, { reduced });
+      ok(`${label} · L7 the route's loading drawing is shown on the way in`, m.drawn && !!m.ghost && !!m.real);
+      if (!m.ghost || !m.real) continue;
+      const off = deltas(m.ghost, m.real);
+      console.log(`INFO L7 ${label} · page − drawing, px: ${j(off)} · the page's lines ${j(m.lines)} · viewer ${m.viewer}`);
+      const guestUnmarked = reader === "guest" && m.viewer !== "guest";
+      const frame = guestUnmarked ? ["title", "strip", "jackpot", "jackpotH"] : ["title", "strip", "jackpot", "jackpotH", "door", "doorH", "ledger", "ledgerH"];
+      ok(`${label} · L7 the frame lands where it was drawn (±1px: ${frame.map((k) => `${k} ${off[k]}`).join(", ")})`, frame.every((k) => off[k] !== null && Math.abs(off[k]) <= 1), j({ off, ghost: m.ghost, real: m.real }));
+      if (reader === "guest") {
+        if (guestUnmarked) console.log(`INFO L7 ${label} · the classic shell marks no guest: the guest's door stands ${off.doorH}px taller than the player's door it was drawn as, and the ledger lands ${off.ledger}px lower`);
+        else ok(`${label} · L7 a marked guest is drawn no block of tickets, as the page draws none`, m.ghost.mine === null && m.real.mine === null, j({ ghost: m.ghost.mine, real: m.real.mine }));
+      } else {
+        ok(`${label} · L7 the reader's own block starts where it was drawn, last in the buy column (${off.mine}px)`, off.mine !== null && Math.abs(off.mine) <= 1, j({ ghost: m.ghost.mine, real: m.real.mine, ledger: m.real.ledger }));
+      }
+      if (width >= 1024) {
+        ok(`${label} · L7 the questions' column stands where it was drawn, its rows as tall (top ${off.questions}, rows ${j(off.rowsH)})`,
+          off.questions !== null && Math.abs(off.questions) <= 1 && off.rowsH.length === 3 && off.rowsH.every((x) => x !== null && Math.abs(x) <= 1), j({ ghost: m.ghost.rows, real: m.real.rows }));
+      }
+      // MOTION: every block of the drawing sweeps with the platform's skeleton shimmer; under reduced motion none moves (the
+      // still bar is the end state).
+      const still = reduced ? "none" : "kp-shimmer";
+      ok(`${label} · L7 every block of the drawing ${reduced ? "stands still" : "sweeps with the platform's shimmer"} (${m.sweep?.count} blocks: ${j(m.sweep?.names)})`,
+        !!m.sweep && m.sweep.count >= 10 && j(m.sweep.names) === j([still]) && m.sweep.bands.every((n) => n === still), j(m.sweep));
+    }
+  }
+
   await act({ act: "closeOpen" });
   const closedCheck = (word) => async (page, label, locale) => {
     ok(`${label} · after the close the door follows the results`, (await page.getByTestId("millionea-hub-follow").count()) === 1);
@@ -636,7 +770,8 @@ if (RUN === "a") {
     check: async (page, label, locale) => {
       await closedCheck(null)(page, label, locale);
       const live = await page.getByTestId("millionea-hub-facts").textContent().catch(() => "");
-      if (locale === "en") ok(`${label} · L12 the next event is said after the results count`, /5 of 15 results in/.test(live ?? "") && /next event/.test(live ?? ""), j(live));
+      // Each fact of the line opens in its own capital since TICKETS' 96e5e9a94 ("… · Next event Saturday 14:00").
+      if (locale === "en") ok(`${label} · L12 the next event is said after the results count`, /5 of 15 results in · .*\bnext event\b/i.test(live ?? ""), j(live));
       if (locale === "zh") ok(`${label} · L8 zh says the count as 已公布 n/15 个结果`, /已公布 5\/15 个结果/.test(live ?? ""), j(live));
     },
   });

@@ -8,6 +8,7 @@ import { fillNodes } from "@/lib/fill-nodes";
 import { fill, formatNumber } from "@/lib/utils";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import type { MillioneaHub } from "@/lib/server/maswali-player";
+import type { KeptBody } from "@/components/ui/empty-state-text";
 
 /**
  * THE HUB'S TIMED SENTENCES (MASWALI-BUILD S5-DESIGN-HUB; Ali 2026-10-21 10/10 pass) — each one a dictionary line filled
@@ -66,6 +67,21 @@ export function lastWeekWords(t: Dict, locale: Locale, last: NonNullable<Million
 /** L6/L21 · "The next week opens Monday 00:01." — the empty state's first sentence (a string: the kit's body). */
 export function nextOpenWords(t: Dict, atMs: number): string {
   return fill(t.millionea.nextOpensAt, { when: eatWeekdayClock(t, atMs) });
+}
+
+/**
+ * L6/L21 · THE NO-WEEK EMPTY STATE'S BODY, as the kit takes it (`EmptyStateBody`): the next open while one is due — none
+ * while sales are paused (`atMs` null) — then "The 15 questions are published when sales open, …". The next open's day and
+ * its clock are one kept run (A1: a day never parts from its time — the kit's own `keep`, a nowrap span); Chinese joins
+ * its two sentences with no space between them. (§T5's numeral face for its clock and its count arrives with the kit's
+ * opt-in `bodyPart`, TICKETS' round 2 — the lead wires it at the merge.)
+ */
+export function noWeekBody(t: Dict, locale: Locale, atMs: number | null): KeptBody {
+  const first = atMs === null ? null : nextOpenWords(t, atMs);
+  return {
+    text: [first, t.millionea.questionsAtOpen].filter((x): x is string => !!x).join(locale === "zh" ? "" : " "),
+    keep: atMs === null ? [] : [eatWeekdayClock(t, atMs)],
+  };
 }
 
 /**

@@ -10,6 +10,7 @@ import { useT } from "@/lib/i18n";
 import { cn, pctNum } from "@/lib/utils";
 import { poolViewOf } from "./millionea-view";
 import { registerWeekHref } from "./millionea-parts";
+import { HUB_LEDGER } from "./hub-frame";
 
 /** The window event `useEventStream` raises for a `maswali:pool` frame (`use-event-stream.ts`'s EVENT_MAP). */
 const POOL_EVENT = "50pick:sse:maswali-pool";
@@ -153,7 +154,7 @@ export function HubPoolLedger({ carryFrom, carryPlay, className }: { carryFrom?:
   if (!live) return null;
   const firstPaint = live.tick === 0 && live.moved.n === 0;
   return (
-    <div className={cn("mat-flat rounded-card p-3", className)} data-testid="millionea-hub-ledger">
+    <div className={cn(HUB_LEDGER, className)} data-testid="millionea-hub-ledger">
       <MaswaliLedger rows={dressLedgerRows(millioneaLedgerRows(t, locale, live.input), live.input, live.moved, carryFrom ? { from: carryFrom, play: !!carryPlay && firstPaint } : null)} />
     </div>
   );
