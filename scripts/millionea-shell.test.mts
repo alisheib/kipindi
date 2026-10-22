@@ -296,8 +296,25 @@ section("4 · the main landmark's guest switch marks every signed-out reader; ev
   ok(`4.0 PREMISE · the census reads ${CSS_FILES.length} stylesheets and ${CODE_FILES.length} code files and finds the rules keyed on data-viewer (${rules.length}: ${[...new Set(rules.flatMap((r) => r.subject))].join(" ")})`,
     rules.length >= 6 && rules.some((r) => r.subject.includes("kp-hubghost--member")) && rules.some((r) => r.subject.includes("kp-qghost__member")), j(rules.map((r) => r.sel)));
   ok("4.2 · every rule keyed on data-viewer reaches only the journey's ghosts or Millionea's pages — no rule a classic page draws changes for a classic guest", leaks.length === 0, j(leaks));
-  const readers = CODE_FILES.filter((f) => f !== SHELL && /getAttribute\(\s*["']data-viewer["']\)|dataset\.viewer|\[data-viewer/.test(codeText.get(f)!));
-  ok("4.3 · no script reads data-viewer (the shell writes it; stylesheets alone read it)", readers.length === 0, j(readers));
+  // A class written in a component keys on it too: a Tailwind arbitrary variant (`[[data-viewer=guest]_&]:hidden`, the hub
+  // lane's guest door) compiles to a rule whose subject is the element wearing the class — so its FILE must be one of the
+  // allowed drawings.
+  const VARIANT = /\[\[data-viewer[^\]]*\][^\s"'`]*/g;
+  const variantsIn = (text: string) => [...text.matchAll(VARIANT)].map((m) => m[0]);
+  const variantLeaks = (text: (f: string) => string) => CODE_FILES.filter((f) => !ALLOWED(f) && variantsIn(text(f)).length > 0);
+  ok(`4.2b · every class keyed on data-viewer in a component (a Tailwind variant) is drawn only by the journey's ghosts or Millionea's pages (${CODE_FILES.filter((f) => variantsIn(codeText.get(f)!).length > 0).length} file(s) wear one today)`,
+    variantLeaks((f) => codeText.get(f)!).length === 0, j(variantLeaks((f) => codeText.get(f)!)));
+  /** A SCRIPT read of the attribute — never the class-string variants above. */
+  const READ = /getAttribute\(\s*["']data-viewer["']\)|dataset\.viewer|(?:querySelector(?:All)?|closest|matches)\(\s*["'`][^"'`]*data-viewer/;
+  const readers = CODE_FILES.filter((f) => f !== SHELL && READ.test(codeText.get(f)!));
+  ok("4.3 · no script reads data-viewer (the shell writes it; stylesheets and class variants alone read it)", readers.length === 0, j(readers));
+  const HUB_LIKE = 'const MEMBER = "[[data-viewer=guest]_&]:hidden";';
+  const inMillionea = variantLeaks((f) => (f === "src/app/millionea/hub-ghost.tsx" ? `${codeText.get(f)}\n${HUB_LIKE}` : codeText.get(f)!));
+  const inClassic = variantLeaks((f) => (f === "src/components/layout/top-app-bar.tsx" ? `${codeText.get(f)}\n${HUB_LIKE}` : codeText.get(f)!));
+  ok("4.2b′ CONTROL + PLANT · the hub lane's variant in the hub's own drawing is allowed; the same variant in the classic bar is reported",
+    inMillionea.length === 0 && j(inClassic) === j(["src/components/layout/top-app-bar.tsx"]), j({ inMillionea, inClassic }));
+  const scriptRead = CODE_FILES.filter((f) => f !== SHELL && READ.test(f === "src/components/layout/nav-more.tsx" ? `${codeText.get(f)}\nconst g = document.querySelector('main[data-viewer="guest"]');` : codeText.get(f)!));
+  ok("4.3′ PLANT · a script that reads the switch (a querySelector on it in classic chrome) is reported", j(scriptRead) === j(["src/components/layout/nav-more.tsx"]), j(scriptRead));
   const btnLeak = keyed(':root [data-viewer="guest"] .btn-ghost { opacity: 0.5; }').filter(reachesClassic);
   const bareLeak = keyed('main[data-viewer="guest"] { padding-top: 24px; }').filter(reachesClassic);
   ok("4.2′ PLANT · a rule keyed on the switch that reaches a classic class (the kit's ghost button) or the landmark itself is reported", btnLeak.length === 1 && bareLeak.length === 1, j({ btnLeak, bareLeak }));
