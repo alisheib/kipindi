@@ -3735,6 +3735,7 @@ export const dict = {
       ruleWinPaid: "A win is paid into your main balance when the week settles",
       ruleRg: "Your limits, Take a break and Self-exclude cover Millionea too",
       regLedgerLater: "The ledger is published once the week is final.",
+      landingInvite: "Be this week's winner?",
     },
   },
 
@@ -6627,6 +6628,7 @@ export const dict = {
       ruleWinPaid: "Ushindi unalipwa kwenye salio kuu wiki ikikamilika",
       ruleRg: "Mipaka yako, Pumzika na Jizuie zinahusu Millionea pia",
       regLedgerLater: "Leja inachapishwa wiki ikishakamilika.",
+      landingInvite: "Kuwa mshindi wa wiki hii?",
     },
   },
 
@@ -9500,6 +9502,7 @@ export const dict = {
       ruleWinPaid: "中奖金额在当周结算时计入主余额",
       ruleRg: "您的限额、休息一下与自我排除同样适用于 Millionea",
       regLedgerLater: "该周结果确定后公布账目。",
+      landingInvite: "成为本周赢家？",
     },
   },
 } as const;

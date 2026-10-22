@@ -31,6 +31,13 @@ starting any of them**, or both lanes will build the same thing twice in the sam
 
 ## §0 · RESUME AT — the v3 build (rewritten 2026-09-28)
 
+> ⭐ **2026-10-22 · R19 — THE HERO'S DOOR ROW** (Ali; MASWALI-BUILD S5 landing door). Under the hero's own actions — a
+> visitor's two CTAs, a player's block — one row of the hero's quiet links for every classic reader: **Live** (the nav's
+> own word after the family's live glyph: a change every classic reader sees), then **Millionea's line** only while a week
+> is on sale to the reader. The ruling is [INHERIT-MANIFEST §2 R19](design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md);
+> Millionea's door is [DESIGN_AUTHORITY §M8a item 21](DESIGN_AUTHORITY.md). Guards `test:landing-doors` / `red:landing-doors`;
+> drive `qa:landing-doors` (dark and drawn, 320–1920 × sw/en/zh); LANDING-TEN's gate reads the row as it reads every link.
+
 **⚠️ THE MACHINE CHANGED.** The session that ran this programme worked on **ALI-BLADE15**, with worktrees
 at `C:\kipindi-hero`, `C:\kipindi-c1`, `C:\kipindi-wp34`, `C:\kipindi-f1` and a `~/heavy-node-lock.sh`.
 That session ended. This one is **OMEGA-COMPILE01**, checkout `F:\kipindi-main` — those paths and that

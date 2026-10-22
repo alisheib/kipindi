@@ -25,6 +25,10 @@
  *   · WITHDRAWN with DOOR_DARK_PLANT=1: round 1's line is written back into `src/app/markets/loading.tsx` on this running
  *     dev server; the signed-out board must then hand `{"millionea":false,"preview":false}` and trip the matcher — caught —
  *     and the file is restored byte for byte (also on an interrupt) and the board seen clean again.
+ *   · THE LANDING'S LINE (MASWALI-BUILD S5 landing door): every hidden reader's / above carries none of it (its test id and
+ *     its link are the matcher's traces); with the plant, its answer is planted open in `millionea-doors.ts` — the signed-out
+ *     / then draws it and is caught — and restored the same way; at STAFF_PREVIEW, staff (Millionea visible to them) are
+ *     drawn no line while no week is sold to them.
  * ⛔ LOCAL ONLY: an in-memory http://localhost server (`premise`). It writes nothing but the dev endpoints' fixtures (the
  *    demo and staff accounts, the market catalogue's seed) and, with the plant, the one source file it restores.
  */
@@ -81,7 +85,11 @@ function hiddenDefects(read, { board }) {
 
 const browser = await chromium.launch();
 const restore = { file: "src/app/markets/loading.tsx", original: null };
-const putBack = () => { if (restore.original !== null) { writeFileSync(restore.file, restore.original); restore.original = null; } };
+// MASWALI-BUILD S5 landing door: the landing line's answer, planted open (`DOOR_DARK_PLANT=1`) and restored the same way.
+const restoreLanding = { file: "src/lib/server/millionea-doors.ts", original: null };
+const putBack = () => {
+  for (const r of [restore, restoreLanding]) if (r.original !== null) { writeFileSync(r.file, r.original); r.original = null; }
+};
 for (const sig of ["SIGINT", "SIGTERM"]) process.on(sig, () => { putBack(); process.exit(130); });
 try {
   // ── the readers ──────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -153,6 +161,15 @@ try {
       ok(`CONTROL · STAFF_PREVIEW · staff · /markets (${form}) · the board's drawing (${BOARD_DRAWING}) is handed {"millionea":true,"preview":true} and the navs "millionea":true — the reader sees the answers where they are handed (${drawing.join(" ")}; millionea:true on ${navs.join(", ")}; matcher ${traces.length} traces)`,
         read.status === 200 && drawing.length > 0 && drawing.every((t) => t === '{"millionea":true,"preview":true}') && navs.length >= 2 && traces.some((t) => t.startsWith("prop:")));
     }
+    // MASWALI-BUILD S5 landing door: the landing's line is an INVITATION, so even staff, to whom Millionea is visible here,
+    // are drawn none while no week is sold to them (at STAFF_PREVIEW only a staff drive week sells; this server has none).
+    for (const form of ["document", "flight"]) {
+      const read = await readPage("/", staff, form);
+      const navs = clientElements(read.flight).filter((e) => e.props && e.props.millionea === true).map(nameOf);
+      const lines = (read.body.match(/millionea-landing-line/g) ?? []).length + (read.flight.match(/millionea-landing-line/g) ?? []).length;
+      ok(`CONTROL · STAFF_PREVIEW · staff · / (${form}) · Millionea is visible to them (the navs handed "millionea":true: ${navs.join(", ") || "none"}) yet no landing line is drawn — no week is sold to them`,
+        read.status === 200 && navs.length >= 1 && lines === 0, `lines ${lines}`);
+    }
   }
 
   // ── PLANT (WITHDRAWN, DOOR_DARK_PLANT=1): round 1's line back in the running server's source ─────────────────────────────
@@ -185,6 +202,35 @@ try {
         if (!clean) await new Promise((done) => setTimeout(done, 3_000));
       }
       ok("PLANT · restored, the signed-out board is clean again (its drawing handed {})", clean);
+    }
+    // MASWALI-BUILD S5 landing door: the line's answer planted open — the signed-out landing must then carry the line's
+    // traces (its test id, its link into /millionea) and be caught by qa:live's matcher; restored, it is clean again.
+    const OFFER = "  if (!(await millioneaCardShown())) return false;\n  const door = await millioneaDoor();\n  return (await millioneaHubNow(door.userId, door.state))?.week?.selling === true;";
+    const dsrc = readFileSync(restoreLanding.file, "utf8");
+    const deol = dsrc.includes("\r\n") ? "\r\n" : "\n";
+    const offerAnchor = OFFER.replaceAll("\n", deol);
+    ok("PLANT · the landing line's answer stands once in millionea-doors.ts", dsrc.split(offerAnchor).length === 2);
+    if (dsrc.split(offerAnchor).length === 2) {
+      restoreLanding.original = dsrc;
+      writeFileSync(restoreLanding.file, dsrc.replace(offerAnchor, "  return true;"));
+      let seen = null;
+      for (let i = 0; i < 40 && seen === null; i++) {
+        const read = await readPage("/", [], "document");
+        const traces = millioneaTracesIn(read.body);
+        if (traces.some((t) => t === "testid:millionea-landing-line")) seen = traces;
+        else await new Promise((done) => setTimeout(done, 3_000));
+      }
+      ok(`PLANT · the landing line's answer planted open: a signed-out / draws the line and is caught by qa:live's matcher (${seen ? seen.join(", ") : "no change seen"})`,
+        !!seen && seen.includes("testid:millionea-landing-line") && seen.some((t) => t.startsWith("href:/millionea")));
+      putBack();
+      ok("PLANT · millionea-doors.ts restored byte for byte", readFileSync(restoreLanding.file, "utf8") === dsrc);
+      let clean = false;
+      for (let i = 0; i < 40 && !clean; i++) {
+        const read = await readPage("/", [], "document");
+        clean = read.status === 200 && millioneaTracesIn(read.body).length === 0;
+        if (!clean) await new Promise((done) => setTimeout(done, 3_000));
+      }
+      ok("PLANT · restored, the signed-out landing carries no Millionea trace again", clean);
     }
   }
 } finally {
