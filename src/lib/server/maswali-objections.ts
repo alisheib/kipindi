@@ -338,3 +338,56 @@ export async function millioneaObjectionsOf(userId: string, weekId: string): Pro
   }
   return out;
 }
+
+/** One question of the officer queue: the seal under dispute and every objection on it, oldest first. */
+export type MillioneaQueueQuestion = {
+  slot: number; label: string; textEn: string; outcome: MaswaliOutcome | null; voidReason: string | null; evidence: string | null;
+  sealedBy: string | null; stage2By: string | null; sealedAt: string | null;
+  /** The seal's officers as the console names staff (`displayLabel`). */
+  sealer: string; confirmer: string | null;
+  objections: Array<MillioneaObjectionRow & { userId: string; filer: string; reviewer: string | null }>;
+};
+/** One week of the officer queue. `viewerHoldsTicket`: the officer reading it holds a live ticket in the week, so the
+ *  service would refuse them its rulings (MR-14's bar, held on an objection). */
+export type MillioneaQueueWeek = {
+  weekId: string; code: string; window: MillioneaObjectionWindow; restartSpent: boolean; open: number; viewerHoldsTicket: boolean;
+  questions: MillioneaQueueQuestion[];
+};
+
+/**
+ * The officer queue (/admin/maswali/integrity): every week whose results are being decided that has a Millionea
+ * objection, oldest week first, and in it each question with an objection, by slot. Read-only; the rulings re-read
+ * everything under the chain lock.
+ */
+export async function millioneaObjectionQueue(viewerId: string | null, nowMs = Date.now()): Promise<MillioneaQueueWeek[]> {
+  const weeks = (await weekStore.list({ states: ["RESOLVING"], limit: 52 })).filter((w) => !!w.marketId);
+  const out: MillioneaQueueWeek[] = [];
+  for (const week of weeks.sort((a, b) => a.opensAt.localeCompare(b.opensAt))) {
+    const rows = (await db.objection.listForMarket(week.marketId!)).filter((o) => o.questionOrdinal != null);
+    if (rows.length === 0) continue;
+    const questions = await questionStore.listForWeek(week.id);
+    const people = new Set<string>(rows.flatMap((o) => [o.userId, ...(o.reviewedBy ? [o.reviewedBy] : [])]));
+    for (const q of questions) for (const id of [q.sealedBy, q.stage2By]) if (id) people.add(id);
+    const users = new Map((await db.user.findByIds([...people])).map((u) => [u.id, u]));
+    const label = (id: string) => displayLabel(users.get(id) ?? { id, displayName: null });
+    const bySlot = new Map<number, StoredObjection[]>();
+    for (const o of rows.sort((a, b) => a.createdAt.localeCompare(b.createdAt))) {
+      bySlot.set(o.questionOrdinal as number, [...(bySlot.get(o.questionOrdinal as number) ?? []), o]);
+    }
+    out.push({
+      weekId: week.id, code: week.code, window: millioneaObjectionWindow(week, nowMs), restartSpent: week.objectionRestarted === true,
+      open: rows.filter((o) => o.status === "OPEN").length,
+      viewerHoldsTicket: viewerId ? (await ticketStore.countLiveForUser(week.id, viewerId)) > 0 : false,
+      questions: [...bySlot.keys()].sort((a, b) => a - b).map((slot) => {
+        const q = questions.find((x) => x.slot === slot);
+        return {
+          slot, label: slotLabel(slot), textEn: q?.textEn ?? "", outcome: q?.outcome ?? null, voidReason: q?.voidReason ?? null, evidence: q?.evidence ?? null,
+          sealedBy: q?.sealedBy ?? null, stage2By: q?.stage2By ?? null, sealedAt: q?.sealedAt ?? null,
+          sealer: q?.sealedBy ? label(q.sealedBy) : "—", confirmer: q?.stage2By ? label(q.stage2By) : null,
+          objections: bySlot.get(slot)!.map((o) => ({ ...rowOf(o), userId: o.userId, filer: label(o.userId), reviewer: o.reviewedBy ? label(o.reviewedBy) : null })),
+        };
+      }),
+    });
+  }
+  return out;
+}

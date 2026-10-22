@@ -43,7 +43,7 @@ const CONTROLS: Array<{ id: ControlId; domain: string; route: keyof typeof ROUTE
   ...(["createMaswaliWeek", "editMaswaliQuestion", "attestMaswaliParity", "openMaswaliWeek", "moveMaswaliClose", "sealMaswaliQuestion",
     "voidMaswaliQuestion", "confirmMaswaliSeal", "correctMaswaliSeal"] as const).map((id) => ({ id, domain: "trading", route: "week" as const })),
   { id: "releaseMaswaliSettlement", domain: "accounting", route: "pools" },
-  ...(["voidMaswaliWeek", "pauseMaswaliSales", "resumeMaswaliSales", "holdMaswaliShare", "releaseMaswaliShare", "forfeitMaswaliShare"] as const)
+  ...(["voidMaswaliWeek", "pauseMaswaliSales", "resumeMaswaliSales", "holdMaswaliShare", "releaseMaswaliShare", "forfeitMaswaliShare", "ruleMaswaliObjection"] as const)
     .map((id) => ({ id, domain: "compliance", route: "integrity" as const })),
   ...(["fundMaswaliGuarantee", "returnMaswaliGuarantee", "sunsetMaswali", "setMaswaliLicenceBasis", "setMillioneaRollout"] as const)
     .map((id) => ({ id, domain: "ops", route: "pools" as const })),
@@ -61,7 +61,7 @@ for (const [name, r] of Object.entries(ROUTES)) {
 }
 
 // ── §2 · every role × every control ─────────────────────────────────────────
-ok("2 · there are 23 Millionea controls, each registered", CONTROLS.length === 23 && CONTROLS.every((c) => c.id in CONTROL_DOMAIN), `${CONTROLS.length}`);
+ok("2 · there are 24 Millionea controls, each registered", CONTROLS.length === 24 && CONTROLS.every((c) => c.id in CONTROL_DOMAIN), `${CONTROLS.length}`);
 for (const c of CONTROLS) {
   ok(`2 · ${c.id} is registered ${c.domain}`, CONTROL_DOMAIN[c.id] === c.domain, `registered ${CONTROL_DOMAIN[c.id]}`);
   for (const role of ROLES) {

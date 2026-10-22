@@ -773,6 +773,7 @@
     "test:maswali-week-controls": "tsx scripts/maswali-week-controls.test.mts",
     "red:maswali-week-controls": "tsx scripts/maswali-week-controls.test.mts --prove-red",
     "qa:maswali-admin-drive": "node scripts/maswali-admin-drive.mjs",
+    "qa:maswali-objection-console": "node scripts/maswali-objection-console-drive.mjs",
     "test:maswali-admin-checklist": "node scripts/maswali-admin-checklist.test.mjs",
     "red:maswali-admin-checklist": "node scripts/maswali-admin-checklist.test.mjs --prove-red",
     "test:maswali-admin-question-fields": "node scripts/maswali-admin-question-fields.test.mjs",
