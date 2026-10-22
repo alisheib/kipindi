@@ -23,10 +23,10 @@
  * one that never lands (60s more) fails.
  * Each state's first frame is a tile (`.50pick-shots/millionea-ghost-hops/`).
  *
- * --prove-red. Plants the defect this drive exists for — the register's loading file drawing the index for every page
- * under it, as it did — runs the index → week hop, and requires the drive to report the index's drawing there; the file is
- * put back (`armRestoreGuard`: on every exit, and on a stop), and the run refuses to START while that file differs from
- * the commit (a plant must never land on uncommitted work).
+ * --prove-red. Plants the defect this drive exists for — the register segment's pick undone (`MillioneaRegisterGhostPick`,
+ * `register-ghost.tsx`), so its loading draws the index for every page under it, as it did — runs the index → week hop,
+ * and requires the drive to report the index's drawing there; the file is put back (`armRestoreGuard`: on every exit, and
+ * on a stop), and the run refuses to START while that file differs from the commit (a plant never lands on uncommitted work).
  *
  * ⚠️ PREMISE: a FRESH in-memory `next dev` (FEATURE_MILLIONEA=ACTIVE, MASWALI_SCHEDULER=false, LIFECYCLE_TICKER=false). The
  *    drive signs the demo reader in (`/auth/demo`, a local server only) and seeds the tickets chain
@@ -55,9 +55,10 @@ const ok = (n, c, e = "") => { if (c) { pass++; console.log(`PASS ${n}`); } else
 const die = (why) => { console.error(`\nPREMISE ABSENT — ${why}\n`); process.exit(2); };
 
 // ── the plant (before any server read, so a refusal costs nothing) ───────────────────────────────────────────────────
-const PLANT_FILE = "src/app/millionea/register/loading.tsx";
-const PLANT_FROM = /return \(\s*<RoutePick[\s\S]*?\/>\s*\);/;
-const PLANT_TO = "return <MillioneaRegisterGhost />;";
+// The register segment's pick, undone: its loading draws the index for every page under it, as it did.
+const PLANT_FILE = "src/app/millionea/register/register-ghost.tsx";
+const PLANT_FROM = "return <RoutePick routes={{ [MILLIONEA_HREF.register]: index }} patterns={[[WEEK_PAGE, <MillioneaRegisterWeekGhost />]]} other={index} />;";
+const PLANT_TO = "return index;";
 let restore = null;
 if (PROVE_RED) {
   const dirty = execFileSync("git", ["status", "--porcelain", "--", PLANT_FILE], { cwd: ROOT, encoding: "utf8" }).trim();
@@ -166,8 +167,8 @@ const strangers = (frames, own) => [...new Set(frames.flatMap((f) => f.state.rep
 if (PROVE_RED) {
   const abs = join(ROOT, PLANT_FILE);
   const original = readFileSync(abs, "utf8");
+  if (original.split(PLANT_FROM).length !== 2) die(`the plant does not apply to ${PLANT_FILE} (its RoutePick return is not there exactly once)`);
   const planted = original.replace(PLANT_FROM, PLANT_TO);
-  if (planted === original || (original.match(new RegExp(PLANT_FROM.source, "g")) ?? []).length !== 1) die(`the plant does not apply to ${PLANT_FILE} (its RoutePick return is not there exactly once)`);
   restore = armRestoreGuard({ original: new Map([[abs, original]]), write: (p, s) => writeFileSync(p, s), releaseLock: () => {}, label: "qa:millionea-ghost-hops --prove-red" });
   writeFileSync(abs, planted);
   console.log(`PLANTED ${PLANT_FILE}: the register's loading draws the index for every page under it (its pick undone)`);

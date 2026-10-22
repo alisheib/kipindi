@@ -1,8 +1,11 @@
 "use client";
 
 import { PageContainer } from "@/components/layout/page-container";
+import { RoutePick } from "@/components/ui/route-pick";
 import { GhostBar, GhostLine, MaswaliGhostHead } from "@/components/maswali/maswali-ghost";
 import { useT } from "@/lib/i18n";
+import { MILLIONEA_HREF } from "../millionea-parts";
+import { MillioneaRegisterWeekGhost } from "./[week]/register-week-ghost";
 
 /**
  * /millionea/register loading skeleton — the index's own bands (`page.tsx`): its head and the intro under it (the critic's
@@ -47,4 +50,21 @@ export function MillioneaRegisterGhost() {
       </div>
     </PageContainer>
   );
+}
+
+/** A week's page under the register, as `RoutePick` reads an address: anchored, the product's own constant. */
+const WEEK_PAGE = "^" + MILLIONEA_HREF.register + "/[^/]+$";
+
+/**
+ * THE REGISTER SEGMENT'S LOADING STATE: THE DRAWING OF THE PAGE BEING OPENED (S5-R2-REGISTER 18, the lead's ruling). The
+ * register's loading file wraps the week pages too, so on a client move from the index to a week it is the boundary that
+ * paints — it drew the INDEX's drawing there for seconds and the week's own never (measured on a throttled hop;
+ * `qa:millionea-ghost-hops` holds every Millionea hop to it). The platform's `RoutePick` (`usePathname()` names the page
+ * being moved to) picks the index's drawing or a week's — built here, in the browser, as the hub's `MillioneaGhostPick` is,
+ * so the loading file hands one client reference (`test:visual-pass-r5h` 1.2/1.3: a loading element is client references,
+ * under 128 B, and a loading file imports no server module).
+ */
+export function MillioneaRegisterGhostPick() {
+  const index = <MillioneaRegisterGhost />;
+  return <RoutePick routes={{ [MILLIONEA_HREF.register]: index }} patterns={[[WEEK_PAGE, <MillioneaRegisterWeekGhost />]]} other={index} />;
 }
