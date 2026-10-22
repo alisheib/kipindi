@@ -6,10 +6,34 @@ import { BackLinkGhost } from "@/components/ui/back-link";
 import { GhostBar, GhostLine } from "@/components/maswali/maswali-ghost";
 import { PageHeader } from "@/components/ui/page-header";
 import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_ALONE_CLASS, QUERY_STRIP_CLASS } from "@/components/ui/query-bar";
+import { RoutePick } from "@/components/ui/route-pick";
 import { useT } from "@/lib/i18n";
+import { MILLIONEA_HREF } from "../millionea-parts";
+import { MillioneaTicketGhost } from "./[serial]/ticket-ghost";
 
 /** The four lenses, at widths near their labels'. */
 const LENS_WIDTHS = ["w-[64px]", "w-[112px]", "w-[120px]", "w-[104px]"];
+
+/** Tiketi zangu's own address; a ticket's is one segment under it (the journey's root loading state's whole-path pattern).
+ *  Addresses are code here, never a string beside a drawing (`test:maswali-ui` 1.3 holds every drawing file wordless). */
+const LIST = MILLIONEA_HREF.tickets;
+const TICKET = `^${LIST}/[^/]+$`;
+
+/**
+ * TIKETI ZANGU'S SEGMENT LOADING STATE: THE DRAWING OF THE PAGE BEING OPENED (the lead's round-2 item, 2026-10-22; REGISTER
+ * measured the shape on the register). A segment's loading state wraps its child segments too, so on a client hop from the
+ * list to a ticket this segment's drawing painted — the LIST's bands — for as long as the ticket took, and every band moved
+ * when it landed. The pick is the browser's, as the journey's root loading state's (`route-ghost.tsx`) and the hub's
+ * (`MillioneaGhostPick`) are: during a move `usePathname()` already names the destination, so the list is drawn by its
+ * drawing and a ticket by its own (`[serial]/ticket-ghost.tsx`); anything else below the segment by the list's. Held here,
+ * in the client's code, the addresses never ride the loading element's payload (`test:visual-pass-r5h` 1.2), and the
+ * loading file asks the server nothing (1.3).
+ */
+export function MillioneaTicketsGhostPick() {
+  const list = <MillioneaTicketsGhost />;
+  const ticket = <MillioneaTicketGhost />;
+  return <RoutePick routes={{ [LIST]: list }} patterns={[[TICKET, ticket]]} other={list} />;
+}
 
 /**
  * /millionea/tickets loading skeleton — the list's own bands (`page.tsx`), at the page's own heights, so nothing moves when

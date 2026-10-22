@@ -991,7 +991,7 @@ check("24.2", "M9 · the ticket's loading drawing draws the free cancel's band (
 /** A drawing at an address, as the router draws it there — during a move `usePathname()` already names the destination. */
 const atPath = (l: Locale, path: string, el: unknown) =>
   renderToStaticMarkup(h(AppRouterContext.Provider, { value: ROUTER }, h(PathnameContext.Provider, { value: path }, h(I18nProvider as never, { initial: l } as never, el as never))));
-type ListGhostMod = { MillioneaTicketsGhost: unknown };
+type ListGhostMod = { MillioneaTicketsGhost: unknown; MillioneaTicketsGhostPick: unknown };
 type TicketGhostMod = { MillioneaTicketGhost: unknown };
 /** The two drawings as the world writes them, and as 7e9a314f0 drew them. */
 const listGhostOf = (w: World) => (w.src.listGhost === REAL.src.listGhost ? req("../src/app/millionea/tickets/tickets-ghost.tsx") : compiled(FILES.listGhost, w.src.listGhost)) as ListGhostMod;
@@ -1001,16 +1001,20 @@ const ticketGhostOld = compiled<TicketGhostMod>(FILES.ticketGhost, atRelease(FIL
 const HOPS: ReadonlyArray<readonly [string, "tickets" | "ticket"]> = [
   ["/millionea/tickets", "tickets"], [`/millionea/tickets/${SERIAL}`, "ticket"], [`/millionea/tickets/${SERIAL}/more`, "tickets"],
 ];
-check("25.1", "the hop: Tiketi zangu's loading state draws the DESTINATION's own drawing, picked by the address being moved to (the platform's `RoutePick`) — the list's bands on /millionea/tickets, the ticket's own on /millionea/tickets/<serial> (never the list's bands over a ticket), the list's on anything deeper — in sw/en/zh; synchronous, it asks the server nothing", (w) => {
+check("25.1", "the hop: Tiketi zangu's loading state draws the DESTINATION's own drawing, picked in the browser by the address being moved to (`MillioneaTicketsGhostPick`, the platform's `RoutePick`) — the list's bands on /millionea/tickets, the ticket's own on /millionea/tickets/<serial> (never the list's bands over a ticket), the list's on anything deeper — in sw/en/zh; the loading file is one synchronous line rendering that pick, importing nothing else", (w) => {
   const d: string[] = [];
+  const { MillioneaTicketsGhostPick } = listGhostOf(w);
+  const { MillioneaTicketsGhost, MillioneaTicketsGhostPick: livePick } = listGhostOf(REAL), { MillioneaTicketGhost } = ticketGhostOf(REAL);
   const loading = (w.src.listLoading === REAL.src.listLoading ? req("../src/app/millionea/tickets/loading.tsx") : compiled(FILES.listLoading, w.src.listLoading)) as { default: unknown };
-  const { MillioneaTicketsGhost } = listGhostOf(REAL), { MillioneaTicketGhost } = ticketGhostOf(REAL);
   for (const l of LOCALES) for (const [path, want] of HOPS) {
-    const got = atPath(l, path, h(loading.default as never));
+    const got = atPath(l, path, h(MillioneaTicketsGhostPick as never));
     const own = atPath(l, path, h((want === "ticket" ? MillioneaTicketGhost : MillioneaTicketsGhost) as never));
-    if (got !== own && d.length < 3) d.push(`${l} ${path}: the loading state draws the "${/data-ghost-page="([^"]*)"/.exec(got)?.[1] ?? "?"}" drawing, not the ${want}'s`);
+    if (got !== own && d.length < 3) d.push(`${l} ${path}: the pick draws the "${/data-ghost-page="([^"]*)"/.exec(got)?.[1] ?? "?"}" drawing, not the ${want}'s`);
+    if (atPath(l, path, h(loading.default as never)) !== atPath(l, path, h(livePick as never)) && d.length < 3) d.push(`${l} ${path}: the loading file does not draw the pick`);
   }
-  need(d, !/\basync\b|\bawait\b|@\/lib\/server|getServerT|\bcookies\(|\bheaders\(/.test(code(w, "listLoading")) && !/^\s*["']use client["']/.test(w.src.listLoading), "the loading file asks the server, or became a client module");
+  const src = code(w, "listLoading");
+  need(d, src.includes("export default function MillioneaTicketsLoading() { return <MillioneaTicketsGhostPick />; }") && j([...src.matchAll(/\bfrom\s+"([^"]+)"/g)].map((m) => m[1])) === j(["./tickets-ghost"])
+    && !/\basync\b|\bawait\b/.test(src) && !/^\s*["']use client["']/.test(w.src.listLoading), "the loading file is not one synchronous line rendering the pick, importing nothing else");
   return d;
 });
 check("25.2", "each drawing names the page it stands for (`data-ghost-page` = \"tickets\" / \"ticket\": a value, not a word) on ONE box-less wrapper (`contents`), the container's first child, for the hop drive (it names a bar by its nearest marked ancestor); and stays wordless — in sw/en/zh its one text is the screen reader's \"loading\"", (w) => {
@@ -1080,6 +1084,9 @@ if (!PROVE_RED) {
 }
 const plantSrc = (k: FileKey, from: string, to: string, w: World = REAL): World | null =>
   count(w.src[k], from) === 1 ? { ...w, src: { ...w.src, [k]: w.src[k].replace(from, to) } } : null;
+/** Several replacements in one file, each held to "exactly once" as `plantSrc` holds one. */
+const plantSrcs = (k: FileKey, pairs: ReadonlyArray<readonly [string, string]>): World | null =>
+  pairs.reduce<World | null>((w, [from, to]) => (w ? plantSrc(k, from, to, w) : null), REAL);
 const plantWord = (l: Locale, key: string, value: string): World =>
   ({ ...REAL, dict: { ...REAL.dict, [l]: { ...REAL.dict[l], millionea: { ...REAL.dict[l].millionea, [key]: value } } } });
 const PLANTS: Array<[string, string, World | null]> = [
@@ -1157,8 +1164,9 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["M9 — a note kept on the server too", "24.1", plantSrc("hint", '  if (typeof window === "undefined" || !Number.isFinite(until)) return;\n', "  if (!Number.isFinite(until)) return;\n")],
   ["M9 — the ticket's drawing blind to its door", "24.2", plantSrc("ticketGhost", "const cancelOpen = freeCancelKnownOpen(ticketSerialOf(usePathname()), Date.now());", "const cancelOpen = false && freeCancelKnownOpen(ticketSerialOf(usePathname()), Date.now());")],
   ["M9 — the list hands its cards no window", "24.2", plantSrc("list", "                cancelUntil={cancelUntil.get(row.serial)}\n", "")],
-  ["the hop undone — the list's bands over a ticket (one drawing for every address)", "25.1", plantSrc("listLoading", "      patterns={[[`^${LIST}/[^/]+$`, <MillioneaTicketGhost />]]}\n", "")],
-  ["the ticket's pattern a prefix (a deeper address takes the ticket's drawing)", "25.1", plantSrc("listLoading", "`^${LIST}/[^/]+$`", "`^${LIST}/`")],
+  ["the hop undone — the pick draws the list's bands over a ticket (no ticket pattern)", "25.1", plantSrc("listGhost", " patterns={[[TICKET, ticket]]}", "")],
+  ["the ticket's pattern a prefix (a deeper address takes the ticket's drawing)", "25.1", plantSrc("listGhost", "const TICKET = `^${LIST}/[^/]+$`;", "const TICKET = `^${LIST}/`;")],
+  ["the loading file draws the list's drawing for every address again (the state before the fix)", "25.1", plantSrcs("listLoading", [['import { MillioneaTicketsGhostPick } from "./tickets-ghost";', 'import { MillioneaTicketsGhost } from "./tickets-ghost";'], ["return <MillioneaTicketsGhostPick />;", "return <MillioneaTicketsGhost />;"]])],
   ["the loading file asks the server (an async read before the gate)", "25.1", plantSrc("listLoading", "export default function MillioneaTicketsLoading() {", "export default async function MillioneaTicketsLoading() {")],
   ["the list's drawing names no page", "25.2", plantSrc("listGhost", ' data-ghost-page="tickets"', "")],
   ["the ticket's mark on an inner element, not around the drawing", "25.2", plantSrc("ticketGhost", '<div className="contents space-y-5" data-ghost-page="ticket">\n        <BackLinkGhost />', '<div className="contents space-y-5">\n        <BackLinkGhost />\n        <div data-ghost-page="ticket" />')],

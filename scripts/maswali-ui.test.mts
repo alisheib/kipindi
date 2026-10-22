@@ -131,11 +131,10 @@ const ghostWordDefects = (readAt: (rel: string) => string) => GHOST_FILES.flatMa
   ok(`1.3 · every Millionea loading drawing is WORDLESS — bars and shapes, the screen reader's "loading" alone: no t.millionea key, no string or text naming Millionea, no words set and not shown (${GHOST_FILES.length} files)`,
     GHOST_FILES.length >= 15 && d.length === 0, d.join(" | "));
   const tl = code(read(`${APP}/tickets/loading.tsx`));
-  // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-TICKETS, the lead's hop item): still synchronous and wordless, it now draws
-  // the DESTINATION's drawing by the address being moved to — the list's, or a ticket's own (test:maswali-tickets 25.1).
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-TICKETS, the lead's hop item): still synchronous and wordless, it renders the
+  // browser's pick of the DESTINATION's drawing — the list's, or a ticket's own (test:maswali-tickets 25.1).
   ok("1.4 · Tiketi zangu's Millionea loading file is synchronous: it asks the server nothing before the tickets' gate answers",
-    !/\basync\b|\bawait\b/.test(tl) && tl.includes("export default function MillioneaTicketsLoading() {")
-      && tl.replace(/\s+/g, " ").includes("return ( <RoutePick routes={{ [LIST]: <MillioneaTicketsGhost /> }} patterns={[[`^${LIST}/[^/]+$`, <MillioneaTicketGhost />]]} other={<MillioneaTicketsGhost />} /> );"));
+    !/\basync\b|\bawait\b/.test(tl) && tl.includes("export default function MillioneaTicketsLoading() {") && tl.includes("return <MillioneaTicketsGhostPick />;"));
   const plant = (rel: string, from: string, to: string) => (r: string) => (r === rel ? read(r).replace(from, to) : read(r));
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-HUB L7): the hub's ghost draws its head through the kit PageHeader itself
   // now (its two doors and the game's line as bars); the plant reads the product's name back into that head's title.
