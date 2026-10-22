@@ -23,6 +23,12 @@ equal) in 8 book cells (guest/player × en/sw × 360/1280); it renders nothing w
 and qa:live hold /results free of every Millionea trace). Production read-back: run **39837626118**
 (`tools/jobs/prod-readback.sh`: dpl=2ed817395 on the three hosts, /api/health, qa:chunks-prod ×2, production qa:live) —
 READ IT FIRST; then STAFF_PREVIEW (Railway login) and record the push in §0 + the board row ▶ 0i (S5 live dark).
+⚠️ BEFORE STAFF_PREVIEW: the product's own drive (`scripts/maswali-player-drive.mjs` with FEATURE_MILLIONEA=ACTIVE and
+FEATURE_SIMPLEJOURNEY=STAFF_PREVIEW, steps 1–6) HUNG on the Linux runner: gate 1's dark job hit its 180-minute limit inside
+it (cancelled, so its log and tiles were lost); gate 2's (39816308706) was in the same step. Re-run it ALONE through
+`ci-run.sh` with `timeout 3600` around the node command, its output written under `$OUT` as it goes, `fonts-noto-cjk`
+installed and `include-hidden-files: true` (tiles) — find the step it waits on (the dark step W passed 15/0; DOORS' ACTIVE
+door drive was 513/0 on OMEGA).
 
 ## 1 · (as at the stop) the S5 dark push (pre-approved by Ali; everything but parity is green at the exact commit)
 Release `claude/maswali-s5-release` = **`2ed817395`** (cc0db75c1 + the e2e:maswali-fault harness fix). At 2ed817395:
