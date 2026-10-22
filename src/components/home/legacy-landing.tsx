@@ -30,6 +30,7 @@ import { isLockedOut } from "@/lib/server/responsible-gambling";
 import { breakStateOf, formatBreakEnd } from "@/lib/break-end";
 import { getKillSwitches } from "@/lib/server/payment-ops";
 import { heroRailNames, heroRails } from "@/lib/server/payout-rails";
+import { millioneaLandingOffered } from "@/lib/server/millionea-doors";
 import type { LandingMine } from "@/components/home/landing-hero";
 
 /**
@@ -96,7 +97,7 @@ export async function LegacyLanding({ searchParams }: {
    */
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const [{ t, locale }, liveRaw, updownLiveRaw, session, stats, rules, railPauses, sources, sp] = await Promise.all([
+  const [{ t, locale }, liveRaw, updownLiveRaw, session, stats, rules, railPauses, sources, sp, millionea] = await Promise.all([
     getServerT(),
     listMarkets({ status: "LIVE" }).catch(() => [] as Awaited<ReturnType<typeof listMarkets>>),
     // The fast game is its own product line, so it never appears in the poll list above.
@@ -119,6 +120,10 @@ export async function LegacyLanding({ searchParams }: {
     // ⭐ Awaited BESIDE the reads, not before them: it depends on nothing they return, and awaiting it
     // first would make every database read wait on a value that was already in hand.
     searchParams,
+    // MASWALI-BUILD S5 landing door (Ali, 2026-10-22): is Millionea's line offered under the hero's actions — the doors'
+    // one answer (the card's, and the hub's week on sale to this reader), React-cached and never throwing. At WITHDRAWN it
+    // reads the rollout alone.
+    millioneaLandingOffered(),
   ]);
   const nowMs = Date.now();
   const rawSort = Array.isArray(sp.sort) ? sp.sort[0] : sp.sort;
@@ -266,6 +271,9 @@ export async function LegacyLanding({ searchParams }: {
         mine={mine}
         rails={heroRailNames(railPauses)}
         journey={journey}
+        // Handed only while true (D3's shape, `test:maswali-doors` §5's census): the hero is server code, so nothing of the
+        // answer is written into the page, and a reader it is not offered to gets the hero exactly as before.
+        {...(millionea ? { millionea: true as const } : {})}
       />
 
       {/* ── §1a′ THE PROOF — the three figures, the whole board's conviction, the closing-soonest

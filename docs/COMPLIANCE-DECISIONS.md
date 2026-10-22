@@ -47,7 +47,9 @@ where he wrote them, in his own words:
    and logically still appealing."* The design rule lives in DESIGN_AUTHORITY §M8a item 11.
 5. **The classic landing page** carries a small line inviting to Millionea — *"Be this week's winner?"* with a link, *"same
    colour as the animation in the Millionea tab"* — shown only when Millionea is offered to the reader, and *"a very
-   brief link for Live … consistent … with the overall landing"*. The design rule lives in DESIGN_AUTHORITY.
+   brief link for Live … consistent … with the overall landing"*. The design rule lives in DESIGN_AUTHORITY §M8a item 21
+   (the line) and the landing's ruling R19 (`design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md` §2: the door row
+   and its Live door).
 6. **Every change is a final, documented rule:** *"make sure any change is final rule and documented everywhere it should
    be documented, so nothing is misleading"* — each change records its rule in the owning document in the same commit and
    corrects every place that stated the old one (AGENTS.md §3).

@@ -31,6 +31,13 @@ starting any of them**, or both lanes will build the same thing twice in the sam
 
 ## §0 · RESUME AT — the v3 build (rewritten 2026-09-28)
 
+> ⭐ **2026-10-22 · R19 — THE HERO'S DOOR ROW** (Ali; MASWALI-BUILD S5 landing door). Under the hero's own actions — a
+> visitor's two CTAs, a player's block — one row of the hero's quiet links for every classic reader: **Live** (the nav's
+> own word after the family's live glyph: a change every classic reader sees), then **Millionea's line** only while a week
+> is on sale to the reader. The ruling is [INHERIT-MANIFEST §2 R19](design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md);
+> Millionea's door is [DESIGN_AUTHORITY §M8a item 21](DESIGN_AUTHORITY.md). Guards `test:landing-doors` / `red:landing-doors`;
+> drive `qa:landing-doors` (dark and drawn, 320–1920 × sw/en/zh); LANDING-TEN's gate reads the row as it reads every link.
+
 **⚠️ THE MACHINE CHANGED.** The session that ran this programme worked on **ALI-BLADE15**, with worktrees
 at `C:\kipindi-hero`, `C:\kipindi-c1`, `C:\kipindi-wp34`, `C:\kipindi-f1` and a `~/heavy-node-lock.sh`.
 That session ended. This one is **OMEGA-COMPILE01**, checkout `F:\kipindi-main` — those paths and that
@@ -369,8 +376,9 @@ feature (a plant against a feature that does not exist yet cannot prove anything
   live until it is merged, rendered and measured). This note describes the v3 hero. The first build (`54f8199b`,
   measured on production 2026-09-26) had an English `<h1 lang="en">` over a sw/zh sub-line and its trust lines
   after the card; both are gone.
-- **One DOM, source order = screen order: claim → h1 → lede → trust rows → featured card → CTAs → sign-off.**
-  From 1024 the intro (claim, h1, lede, trust rows) and the act (CTAs, sign-off) share the left column and the
+- **One DOM, source order = screen order: claim → h1 → lede → trust rows → featured card → CTAs → door row →
+  sign-off** (the door row since R19, 2026-10-22: Live, then Millionea's line while it is offered — §0's note).
+  From 1024 the intro (claim, h1, lede, trust rows) and the act (CTAs, door row, sign-off) share the left column and the
   card takes the right, by grid areas — never a second DOM, never a CSS `order` (keyboard order = screen order).
 - **Claim** — `p.kp-hero__claim`, a class of its own (the shared eyebrow also dresses the section labels):
   `FiftyWordmark` 15 + a 1px `--border-strong` rule below 1280, then the text in JetBrains Mono 600, 13px,
@@ -393,9 +401,10 @@ feature (a plant against a feature that does not exist yet cannot prove anything
   less any paused rail; R8(6)). Today: M-Pesa, Airtel Money, HaloPesa, Mixx by Yas. No rails → no row.
   ⛔ Not in the hero any more: the RG sentence (R7(2) — the footer keeps it on every page) and "named sources"
   (the card names its own source).
-- **Act** — visitor: `home.heroStart` + arrow · `home.heroBrowseAll`, then the sign-off `p.kp-hero__signoff`
+- **Act** — visitor: `home.heroStart` + arrow · `home.heroBrowseAll`, then the door row (R19: `nav.live` after the
+  live glyph; Millionea's line while it is offered), then the sign-off `p.kp-hero__signoff`
   (`FiftyMark` 20 simplified, aria-hidden, + `home.heroHeadline` inked, `lang="en"` — the hero's only `lang`).
-  Player: `SignedInAct`, unchanged.
+  Player: `SignedInAct`, unchanged, then the same door row (its Millionea line never to a frozen wallet).
 - **Keys:** NEW `home.heroClaim`, `heroClaimFirst`, `heroAsk`, `heroLedeAct`, `heroLedePay`, `heroRails`,
   `heroStart`. DELETED `home.heroLocation`, `heroEst`, `heroHeadlineSub`, `heroBody` (the hero was their only
   reader). `home.heroHeadline` keeps its value and becomes the sign-off. sw `footer.licensedByGbt` and

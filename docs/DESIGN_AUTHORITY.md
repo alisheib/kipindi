@@ -3185,7 +3185,8 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     10/10 pass; globals.css D15, `test:chat-yield`, `qa:chat-yield`). This gold is the
     Owner's label for a destination, not money: item 7 is untouched.
     The other doors stand: one card on the journey home after the head (the How-to card and the headline) and before the
-    topic chips; on classic, one card at the head of `/markets`; and a third switch in Tiketi zangu. Placing the card
+    topic chips; on classic, one card at the head of `/markets` and, while a week is on sale to the reader, the landing
+    hero's line (item 21); and a third switch in Tiketi zangu. Placing the card
     there deviates from the sponsor deck's home (recorded in `docs/COMPLIANCE-DECISIONS.md`, 2026-10-17).
     ~~"Millionea takes no rail slot … the first row of More", never an inline link~~ (O-7, 2026-10-17): struck on
     2026-10-19 by the ruling above.
@@ -3298,6 +3299,26 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     dialog is unchanged (`test:maswali-slip-design` §1); `test:enter-where-pressed` 5.8 pins the call with its plant, and
     `qa:dialog-way-back` drives it at 360 in Chromium and WebKit (scrollY unchanged across the close, focus on the opener,
     the jump back when `preventScroll` is dropped).
+<!-- Items 19 and 20 (the final week's wording; the final week announced ahead) are S6's and S7's, and join this list when
+     those branches merge — numbered there first, so this item is 21 (the lead's numbering, 2026-10-22). -->
+21. **The classic landing's line (Ali, 2026-10-22 — MASWALI-BUILD S5 landing door).** *Ali: "a small line … 'Be this week's
+    winner?' — with a clickable link to Millionea, the same colour as the animation in the Millionea tab; make it perfect
+    visually and logically".* **Where:** the second door of the classic landing hero's door row, after Live — under a
+    visitor's two CTAs, under a player's block. The row and its first door are the landing's own (its ruling R19,
+    `docs/design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md` §2: Live, which every classic reader sees). **Words:**
+    "Kuwa mshindi wa wiki hii?" · "Be this week's winner?" · "成为本周赢家？" (`millionea.landingInvite`), then the product's
+    name as every nav draws it (`t.millionea.productLabel`), then the family's chevron — the words one run of text (a space
+    in Swahili and English, none after the full-width ？), the whole line ONE link to the hub (`/millionea`); ⛔ no figure (a
+    jackpot here would go stale between renders and owe the headline's facts — the hub states it). **Ink:** the name wears
+    item 11's ink, `.kp-millionea-ink` itself — its gradient, halo, one-tint lift on the link's hover and forced-colours
+    fallback, never moving; the question and the chevron are the hero's quiet link (`.kp-mine__limits`: the link blue of
+    §B4c, its dim underline, a 44px box at the 13px type). One line at 320 in every language. **Visibility:** drawn only
+    while `millioneaLandingOffered` (`lib/server/millionea-doors.ts`) answers true — the card's own answer (the product
+    visible to the request, the reader on no break) AND the hub's own week on sale to this reader (`week.selling`: at
+    STAFF_PREVIEW only a staff drive week sells) — and, to a player, never with a frozen wallet. Otherwise NOTHING is drawn:
+    no slot, no link, no word, and nothing written into the page (the server hero is handed the answer only while true —
+    `maswali-doors` §5's census; `qa:maswali-door-dark` plants it open at WITHDRAWN and catches it). Guards:
+    `test:landing-doors` and `red:landing-doors`, `qa:landing-doors`.
 22. **A loading picture is the page being opened (the lead's ruling of 2026-10-22; MASWALI-BUILD S5-R2-REGISTER, the
     hub's and the tickets' segments alike).** Next wraps every page under a segment in that segment's `loading.tsx`, so a
     hop from the register to a week drew the register's index, and a hop into any Millionea page the hub's. A segment

@@ -7286,7 +7286,10 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    ⚠️ WHAT LEFT THIS BLOCK WITH R17: `.kp-mine__wallet`, `__bal`, `__amt`, `__pair`, `__act` and `__empty`
    — the balance box and the gilt Deposit/Withdraw pair. The header capsule states the balance at every
    value (R10) and the rail's coin is money-in; the hero states the player's POSITION and owns no money
-   control. Deleted rather than left unused: an unreferenced rule is a rule the next reader restores. */
+   control. Deleted rather than left unused: an unreferenced rule is a rule the next reader restores.
+   ⭐ R19 (2026-10-22) · THE HERO'S DOOR ROW wears this row and `.kp-mine__limits` as well (`HeroDoors`, landing-hero.tsx:
+   Live, then Millionea's line while it is offered; under a visitor's CTAs, under a player's block) — one idiom for the
+   hero's quiet doors. It wraps only BETWEEN its doors (each door one line at 320 in every language). */
 .kp-mine__links { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-5); }
 
 /* ⚠️ minmax(0, 1fr), NOT 1fr: a bare 1fr is minmax(auto, 1fr), so a column grows to fit its label and the pair
