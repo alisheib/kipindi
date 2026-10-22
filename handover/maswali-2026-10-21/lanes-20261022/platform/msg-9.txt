@@ -1,0 +1,9 @@
+MASWALI-BUILD S5-R2-PLATFORM 9: DESIGN_AUTHORITY §M6 — the kit entrances' rule stands as its own paragraph, the law's text as it was
+
+Commit 7 inserted the rule for the kit's entrances in the middle of §M6's paragraph. That left "The delivery named
+only the first two gates…" trailing the new text. The original paragraph is now restored word for word. The kit
+entrances' rule follows it as its own paragraph ("The same holds for every entrance of the kit's motion
+vocabulary…"), with the same words otherwise.
+VERIFIED: test:docs (every reference resolves), test:design-one-door, test:reduce-motion (all checks).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

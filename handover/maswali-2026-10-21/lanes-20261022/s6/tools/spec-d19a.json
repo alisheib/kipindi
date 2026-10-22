@@ -1,0 +1,12 @@
+[
+  {
+    "from": "  // with the hub callout the release's L22 bar replaced. Every other line is the release's; the merge commit lists the diff.\n  \"src/lib/i18n-dict.ts\": \"6c1d110fa15ccc0f642f49ede42c9808d64ad7a0\",",
+    "to": "  // with the hub callout the release's L22 bar replaced. Every other line is the release's; the merge commit lists the diff.\n  // D19a RE-PINNED AT THE S6 INTEGRATION'S MERGE OF mln-s6-int (8620862fc, S6-INT 1; was 6c1d110fa, the S7 × S5 merge's): the\n  // legal lane's `millioneaFairness` namespace (/fairness, the proof route, /help) and How to play's sunset line as built\n  // (test:maswali-fairness H.12 pins its fragments), and the zh void grounds in the lane's meaning with S5's U+200B breaks\n  // — sw and zh for native review at Gate B; no versioned policy string moves. The merge commit lists every resolution.\n  \"src/lib/i18n-dict.ts\": \"f88a4470d76fde02a66ab8c06cfe2e489a708cb6\",",
+    "count": 1
+  },
+  {
+    "from": "      [\"src/app/legal/rules/page.tsx\", PHOS_R2A_PART2],",
+    "to": "      // S6-INT 2 · the chooser's third door (the legal lane's ThreeDoors, drawn on release 2a part 2's RuleCard) at the merge\n      // that joined them (8620862fc), whose blob is the page as it stands; the two doors' arm is release 2a part 2's, unchanged.\n      [\"src/app/legal/rules/page.tsx\", \"8620862fc\"],",
+    "count": 1
+  }
+]

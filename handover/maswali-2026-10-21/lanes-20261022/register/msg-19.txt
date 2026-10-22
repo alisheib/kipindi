@@ -1,0 +1,27 @@
+MASWALI-BUILD S5-R2-REGISTER 19: How's loading drawing in the page's own type — every band where the page puts it, in each language
+
+Measured this round (the shot script's how-ghost hop, commit 17): How's drawing put the swap card 36px above the page's at
+en 360 and drew it 52px short — its text was bars of guessed heights with gaps between them (a 32px bar for the seal line
+the page draws 96px tall; the caption as three spaced bars), the pre-L7 drawing. The page's bands, measured at 320, 360,
+390, 768, 1024, 1280 and 1920 in en/sw/zh: the head 54px (55 in zh, its 12px eyebrow); the steps 268 / 168px in en, 248 /
+148 in sw, 208 / 128 in zh (360 / from 768); the timeline 170 / 83; the seal line 96 (93.8 at 320: fluid sockets; 102 in
+zh); the caption 4 / 2 lines in en, 4 / 3 in sw, 3 / 2 in zh.
+The drawing now follows the hub's rule (S5-DESIGN-HUB L7): a line of words is the kit's bar inside the very line box those
+words fill, so each band is the page's height:
+- the kit gains that line as a shared part, `GhostTextLine` (maswali-ghost.tsx, additive — the hub's drawing has the same
+  drawing as its own local `Line` and can adopt it: the lead routes it);
+- the four steps and the caption are drawn as many lines as the page's words take in the READER's language — the drawing
+  knows the language, never a word of it — at three tiers (below 360, from 360, from 768), from the measured table above;
+- the timeline is the strip as the hub's drawing draws it, with the sales' and the events' ranges a pixel taller (their
+  clocks are mono numerals, §T5: an empty run of that face gives the drawn line the same box);
+- the swap card is its real parts: the title's line, the seal line's three rows (ten sockets at their own fluid size, the
+  numbers with the voided main's kept second line, five reserves over their labels — the micro labels `eyebrow`, so
+  Millionea's zh 12px rule sets them as on the page), the caption's lines, the button at --h-control-md;
+- the drawing sits in `kp-mln-zh` as the page does, and names its page (`data-ghost-page="how"`, for qa:millionea-ghost-hops).
+Guards: qa:maswali-register-shots' how-ghost hop now waits for How's OWN drawing (`[data-ghost="steps"]`) and requires every
+band — steps, timeline, the examples' top, the swap card, the seal line, the button — where the page puts it and as tall,
+within 1px, at 320/360/768/1280 in en/sw/zh, with its control (the button bar at 80px reported). test:maswali-design-register
+5.6 finds the drawing's button by its row (`data-ghost="button"`). Static: maswali-ui 151/0 (1.3: wordless, 15 files), maswali-tickets 39/0 (red 60/60: it reads the kit file),
+design-register 36/0, ui-consistency ALL PASS, tsc 0.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

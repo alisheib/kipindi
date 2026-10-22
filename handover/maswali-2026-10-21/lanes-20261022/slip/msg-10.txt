@@ -1,0 +1,13 @@
+MASWALI-BUILD S5-R2-SLIP 10: the multi-slip drive measures ruling (a) — two pills on ONE row at 320 and 360, in English and Swahili — and the WIP's pill checks, run
+
+LEFT item 4, the composer's half. scripts/maswali-multi-slip-drive.mjs (qa:maswali-multi-slip):
+- commit 5's WIP (find the pills by their names; the pressed pill reads "2 · 7/15" under the noun; one row at 320) is
+  now RUN, on this branch's server.
+- NEW: after "Keep ticket", both tickets complete ("n · 15/15", the longest pill), the slip is opened at 320 and 360
+  in en and sw. The drive reads the boxes the browser laid out: the group's label is the noun (TICKETS / TIKETI), the
+  two pills share one top, each stands whole inside the viewport, none is clipped (scrollWidth), each is 40px tall.
+  It keeps pills-<l>-<w>.png (the composer) and composer-<l>-<w>.png (the first screen) as tiles to read.
+
+__RESULTS__
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

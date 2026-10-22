@@ -1,0 +1,53 @@
+MASWALI-BUILD S5-R2-DOORS 4: the dark-safety blocker — a Millionea answer crosses into client code only while it is true
+
+THE BLOCKER (found by S5-FIX-PLATFORM): src/app/markets/loading.tsx (round 1, ebb6caa5f) ALWAYS handed its client drawing
+`millionea={millionea}` and `preview={...}`. Next writes every prop handed to client code into the payload, so every
+visitor's /markets — and every page under it (the /markets segment's loading element rides each payload) — carried
+`"millionea":false,"preview":false`: the trace qa:live's dark section refuses at every rollout below ACTIVE, production's
+WITHDRAWN included.
+
+THE FIX (the root loading file's shape, D3's rule):
+- markets/loading.tsx hands the answers only while true:
+  `{...(millionea ? { millionea: true as const, ...(preview ? { preview: true as const } : {}) } : {})}` — a reader the
+  card is not offered to (WITHDRAWN, a STAFF_PREVIEW player, a reader on a break) is handed `<MarketsGhost />`, the
+  element main serves.
+- MarketsGhost's props are typed `millionea?: true; preview?: true`: a `false` handed to it no longer type-checks.
+- route-ghost.tsx "/" (PLATFORM's D6 line, at the lead's instruction) hands the answer on the same way. That hand-off is
+  INSIDE client code, so it was never written into a payload (the boundary is the root loading file, already correct);
+  changed so the answer travels one way end to end.
+- Every other `millionea=` / `preview=` site is a server component handed by a server component — never written (the
+  server runs it and writes what it returns); the census below proves which is which.
+
+GUARD — test:maswali-doors §5 (new), 63/0 (floor 56 -> 63):
+- 5.1 RUN as the server runs it (request, journey and door answers stubbed, r5h's way): /markets' loading hands
+  MarketsGhost (a "use client" export: its props ARE the payload's) `{}` for 4 hidden readers (classic and journey, the
+  board and a question under it), `{"millionea":true}` when offered, `{"millionea":true,"preview":true}` to staff at
+  STAFF_PREVIEW; the journey's question picture `{"rails":[],"at":"/markets/[id]"}`.
+- 5.2 the root loading file: `{"rails":[...]}` hidden, `+"millionea":true` visible, the box for a classic reader.
+- 5.3 the census of every place in src that hands a Millionea answer (`millionea`, `millioneaOnBreak`, `preview`;
+  Millionea's own pages and the console aside): 20 sites in 508 door files — 8 cross into client code (the root
+  loading, the board's loading, the shell's six nav spreads), each ONLY WHILE TRUE; 10 server->server (page.tsx's home
+  ghost, positions' TicketsView, updown/history's TicketsHead, the home view, the tickets switch, the results view, the
+  card door, the home ghost's card ghost); 2 inside client code (the route ghost's "/", the board ghost's card ghost).
+- Plants: 5.1' the round-1 line -> `{"millionea":false,"preview":false}` reported; 5.3' the same line caught by the
+  census; 5.3'' a nav handed `millionea={millioneaRow}` (D3's defect); 5.3''' a spread whose other branch carries the key.
+- Type-level mutation proof: a temporary file handing MarketsGhost `millionea={false}` / `preview={false}` -> tsc
+  TS2322 on both lines (file removed).
+
+RE-PINS (the line moved): test:maswali-doors 2.6, journey-question "loading" + its byte-exact board-ghost proof (the
+reviewed edit recorded in SLOT_EDITS), visual-pass-r5h withoutQuestionPathRead, millionea-dark-edge 6.4' (plant anchor),
+visual-pass-r4j 3.14 + 3.14'. Door fixtures: the board ghost's "none" is drawn with `{}`, as the loading file hands it.
+
+CHECKS: tsc --noEmit 0 (slot); maswali-doors 63/0; journey-question all passed + red 18/18; millionea-dark-edge 36/0;
+r4j 92/0; board-discovery all passed + red 8/8 (files restored); journey-home all passed; journey-shell 566/0 + red 230/230;
+journey-tickets 51/0 + red 118/118; question-ghost + red green; r4c 41, r5a 97, r5d 45, r5g 65, r5k 57, r5l 57, r7b 50,
+r8b 39, r9a 63 (all /0); guards-exist 9/0; dead-css green; maswali-design 141/0; i18n 3141 keys.
+REDS THAT PREDATE THIS BRANCH (the release's test:all at 7e9a314f0 shows each): visual-pass-r5h 3.5 59/1 (DOM-mark
+writers ChatRoot.tsx, operation-result-modal.tsx, maswali-slip.tsx — PLATFORM/SLIP to classify); ui-consistency
+(REGISTER's how-ghost.tsx L43 h-10); red:journey-home 254/255 (its "steps region no longer scrolls" plant anchor
+`overflow-y: auto; overscroll-behavior: contain; }` resolves twice since SLIP's 477dbdc82 added .kp-mln-confirm__body —
+1 occurrence on main, 2 on the release).
+The real bytes (qa:live's dark section on a WITHDRAWN and a STAFF_PREVIEW server, the door drive's payloads) follow in
+the next commit.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

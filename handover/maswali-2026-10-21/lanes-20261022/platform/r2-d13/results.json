@@ -1,0 +1,67 @@
+[
+ {
+  "w": 1280,
+  "path": "/millionea",
+  "status": 200,
+  "bar": [
+   "/markets"
+  ],
+  "railLit": [
+   "/markets"
+  ],
+  "milLink": false,
+  "journey": false
+ },
+ {
+  "w": 1280,
+  "path": "/millionea/how",
+  "status": 200,
+  "bar": [
+   "/markets"
+  ],
+  "railLit": [
+   "/markets"
+  ],
+  "milLink": false,
+  "journey": false
+ },
+ {
+  "w": 1280,
+  "path": "/millionea/tickets",
+  "status": 200,
+  "bar": [
+   "/positions"
+  ],
+  "railLit": [
+   "More"
+  ],
+  "milLink": false,
+  "journey": false
+ },
+ {
+  "w": 360,
+  "path": "/millionea",
+  "status": 200,
+  "bar": [
+   "/markets"
+  ],
+  "railLit": [
+   "/markets"
+  ],
+  "milLink": false,
+  "journey": false
+ },
+ {
+  "w": 360,
+  "path": "/millionea/tickets",
+  "status": 200,
+  "bar": [
+   "/positions"
+  ],
+  "railLit": [
+   "More"
+  ],
+  "milLink": false,
+  "journey": false
+ }
+]

@@ -1,0 +1,32 @@
+MASWALI-BUILD S5-R2-HUB 2: the hub's loading drawing is the page's own frame; the reader's tickets stand last in the buy column
+
+Round 1 left the loading row at 9 (UI/UX and Motion): the drawing's ledger landed 135-170px lower whenever the reader
+held a ticket. The lead did not accept "the drawing cannot know the held rows" and asked for the platform's answer: the
+hub's invariant frame, with the held-ticket region a neutral block the real rows replace in place.
+
+- One frame for the page and its drawing (src/app/millionea/hub-frame.ts): the grid, the strip, the buy column (two-up
+  from 768, the head and the door pinned from 1024), each block's cell, the questions' rows and the jackpot head's
+  classes. page.tsx, hub-pool.tsx, hub-stamp.tsx, maswali-pool-figure.tsx and hub-ghost.tsx all compose it, so the
+  drawing follows the page by construction (the platform's MARKET-CARD RHYTHM rule). The old copy had drifted: its
+  column lacked lg:items-stretch (blocks about 250px wide in the 360px column), and its question rows stood 53px apart
+  where the page's stand 60px.
+- The reader's own tickets now stand LAST in the buy column, after the pool's ledger (MASWALI-PLAN 10 3.3: "the pool
+  block, the buy block and my tickets"; the v6 frames). It is the one band whose height belongs to the reader, so nothing
+  above or beside it moves with it. A closed week's results line is the door's own status line, where the close line
+  stands beside a door that buys.
+- The drawing draws that band as the kit's raised block: the count line over one held ticket's row, which the real rows
+  replace in place. Each band's lines come per language from a table the drive checks. A guest is drawn a guest's door
+  and no ticket block, chosen by the shell's own mark (main[data-viewer="guest"], as the account hub drawing chooses).
+  Every block sweeps with the platform's kp-shimmer-track, and stands still under reduced motion.
+- The jackpot's rule balances a fact that wraps inside itself. At 320 Swahili stranded "ya 10/10" on a line of its own.
+- Guards: test:maswali-hub 3.2 and section 13 (the drawing's bands in the page's order in the frame's own cells, the
+  guest's door, the sweep; plants: the round-1 drawing, its unstretched column, a still block). qa:maswali-hub-states'
+  "ghost" state measures every band's box drawn and landed: the three readers at 360 and 1280, the one-ticket reader at
+  every width in three languages, a guest, the journey and reduced motion. Each fact of the rule must be balanced in
+  every view. Drive corrections: the T5 census compares the face actually drawn (a font-mono numeral had been read as
+  bare), the paused chip's words follow DOORS' ebb6caa5f, and L12 reads the sentence-case fact.
+- Re-pinned: maswali-ui 1.3' (the drawing's title line).
+
+PROOF_PLACEHOLDER
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

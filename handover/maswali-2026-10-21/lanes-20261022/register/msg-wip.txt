@@ -1,0 +1,38 @@
+MASWALI-BUILD S5-R2-REGISTER WIP 20: two drive scripts' changes, written and syntax-checked, NOT run — stopped at the lead's hard stop (Ali)
+
+VERIFIED (committed before this, with their runs in their messages): 15 how-ghost button at --h-control-md (ui-consistency
+red), 16 the zh event edge, 17 SEP measured and settled + its guard, 18 the register's loading pick + qa:millionea-ghost-hops,
+19 How's drawing in the page's own type.
+Runs at 9cfdead12 (this branch, fresh in-memory next dev each):
+- qa:maswali-register-shots (sunset; week-beforeFinal + how-ghost; 320/360/768/1280 × en/sw/zh; no scroll): 122 passed,
+  12 failed — the 12 = How's band checks, every band's HEIGHT exact (0px) and every band 6px high: the kit's
+  MaswaliGhostHead hands PageHeader's flex eyebrow a bare GhostLine (a 9.35px flex item where the page's words fill a 15px
+  line box; 16px in zh). SEP all within 0.1px; every SEP′ control and every button control caught.
+- qa:millionea-ghost-hops (12 of 17 hops before the stop; 24 passed, 12 failed): register→week shows the WEEK's own drawing
+  (5.96s on; before commit 18 it showed the index's) and week→register the index's own — this lane's hops pass; hub→how,
+  hub→register, how→register, register→how, hub→slip, hub→tickets show the HUB's drawing first (HUB's pick pending);
+  how→hub, register→hub, slip→hub, tickets→hub pass; six "landed within 90s" fail on heavy pages at 12 KB/s (slip, tickets,
+  hub, How, a week); UNMARKED = the slip's rail (outside its aria-busy root) and the tickets list's drawing (no marker yet).
+  Not run: week→how, slip→tickets, tickets→slip, tickets→ticket, ticket→tickets; --prove-red never started (no plant made).
+
+NOT VERIFIED (this commit, `node --check` only):
+- scripts/qa-millionea-ghost-hops.mjs: a hop not landed after 90s at 12 KB/s gets the network released and its frames are
+  still read until it lands (60s more); only a page that never lands fails. TIMELINE prints the release instant.
+- scripts/maswali-register-shots.mjs: the hop and the band judge factored into `hopBands` / `judgeBands` (How's hop now uses
+  them), and a new `register-ghosts` page (states scenario): the index's drawing from How and a rolled week's from the index,
+  band by band. It needs the index's and the week's drawings' hooks (data-ghost "head", "running", "final"; "head",
+  "ledger", "commitments") that the redesign below adds — until then it fails as "no band".
+
+LEFT, in order:
+1. src/components/maswali/maswali-ghost.tsx:36 — MaswaliGhostHead's eyebrow `<GhostLine className={eyebrowWidth} />` →
+   `<GhostTextLine width={eyebrowWidth} />` (only this lane's three drawings use it); re-run MASWALI_REGISTER_SCENARIO=sunset
+   MASWALI_SHOTS_PAGES=how-ghost (expect every band 0px), commit (message drafted: $F/register/msg-20.txt).
+2. Re-run qa:millionea-ghost-hops (this commit's release) and `-- --prove-red` (register/loading.tsx is committed).
+3. The index's and the week's drawings in the page's own type, as How's (drafts: $F/register/draft-register-ghost.tsx,
+   draft-reg-ghost-hops.mjs; data probe $F/register/reg-bands.mjs, NOT run): measure, redraw with the hooks, re-pin
+   test:maswali-register §12 in the open, run MASWALI_REGISTER_SCENARIO=states MASWALI_SHOTS_PAGES=register-ghosts; tsc.
+4. The full drive passes once HUB (millionea/loading.tsx pick), TICKETS (tickets/loading.tsx pick) and the
+   data-ghost-page markers on the hub, slip (wrapping its rail), tickets and ticket drawings land (the lead routed them).
+($F = C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/64715c03-3769-4117-831c-ea7bd3a8e838/scratchpad)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

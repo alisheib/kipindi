@@ -1,0 +1,9 @@
+[
+  { "name": "the name back on the busy root alone (the rail and the back link unnamed)", "file": "src/app/millionea/slip/slip-ghost.tsx",
+    "from": "      <div className=\"contents\" data-ghost-page=\"slip\">\n", "to": "      <div className=\"contents\">\n",
+    "suite": "scripts/maswali-slip-design.test.mts", "expect": ["7.3 ·"] },
+  { "name": "the docked rail moved out of the named wrapper", "file": "src/app/millionea/slip/slip-ghost.tsx",
+    "from": "        <span className=\"sr-only\">{t.common.loading}</span>\n      </div>\n    </PageContainer>",
+    "to": "        <span className=\"sr-only\">{t.common.loading}</span>\n      </div>\n      <div className=\"kp-mln-rail\" aria-hidden />\n    </PageContainer>",
+    "suite": "scripts/maswali-slip-design.test.mts", "expect": ["7.3 ·"] }
+]

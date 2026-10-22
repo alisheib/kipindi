@@ -1,0 +1,44 @@
+MASWALI-BUILD S5-R2-TICKETS WIP 6: the tickets loading state picks the destination's drawing; the drawings carry the hop marks - stopped at the lead's hard stop, 3 reds open
+
+The lead's round-2 items (2026-10-22): a segment's loading.tsx wraps its child segments, so on a client hop list -> ticket
+the LIST's drawing painted until the ticket landed; and REGISTER's hop drive (qa:millionea-ghost-hops) tells drawings
+apart by data-ghost-page.
+IN THIS COMMIT
+- src/app/millionea/tickets/loading.tsx: RoutePick by the address being moved to - /millionea/tickets -> the list's
+  drawing, ^/millionea/tickets/[^/]+$ -> the ticket's own (MillioneaTicketGhost), else the list's. Keys built from
+  MILLIONEA_HREF.tickets (no string naming the product in a loading file: maswali-ui 1.3).
+- tickets-ghost.tsx / [serial]/ticket-ghost.tsx: data-ghost-page="tickets" / "ticket" on ONE box-less wrapper
+  (`contents`) around the whole drawing inside PageContainer, the drawing's rhythm (space-y-6 / space-y-5) moved onto the
+  wrapper (PageContainer spaces only its own children) - the lead's preferred shape (REGISTER's); the kit untouched (a
+  PageContainer `ghostPage` prop tried first was reverted before any commit). [serial]/loading.tsx: comment only.
+- scripts/maswali-tickets.test.mts §25: 25.1 the pick per address in sw/en/zh (+ synchronous, no server read); 25.2 the
+  mark on one wrapper, the container's first child, and wordless (its one text the screen reader's "loading"); 25.3 each
+  drawing byte for byte 7e9a314f0's with the mark put in (with the journey's head, with the free-cancel band), the kit
+  untouched. 9 plants. jsxCallsIn generalized from 11.3's census (same result).
+- scripts/maswali-ui.test.mts 1.4 re-pinned in the open to the RoutePick body (still synchronous, no await).
+- scripts/maswali-ticket-shots.mjs: the list-empty body's faces read from the computed style (numerals JetBrains Mono +
+  tabular, words not; an in-page control) - NOT RUN.
+VERIFIED (light, 10:26-10:30Z): test:maswali-tickets 46/46 (floor 43 -> 46), red 83/83; maswali-ui 151/0;
+journey-tickets 51 + red 118/118; visual-pass r4c 41/0, r5d 45/0, r6c 90/0; millionea-dark-edge 36/0; dead-css green;
+maswali-design 141/0; millionea-shell 18/0; journey-shell 566.
+RED, CAUSED BY THIS WIP (the loading file, not the marks) - OPEN:
+- visual-pass-r4j 3.4 (+ its plant 3.4'): "each ghost is its page's own ... the one its loading file renders - imported,
+  never redrawn - [src/app/millionea/tickets/loading.tsx]" (90/2).
+- visual-pass-r5h 1.2: the loading element's Flight JSON is 162 B (tickets/loading.tsx, sw, journey: RoutePick's routes
+  and patterns props) over the 128 B budget.
+- visual-pass-r5h 1.3: a server loading file may import only journey-preview, payout-rails, feature-state,
+  millionea-doors; this one imports ../millionea-parts (MILLIONEA_HREF).
+  FIX DIRECTION (not done): the pick as a small CLIENT drawing (as route-ghost.tsx is a client chunk) - e.g.
+  MillioneaTicketsLoadingGhost ("use client", tickets folder) returning RoutePick with the two drawings and the address
+  pattern held in client JS; loading.tsx back to `return <MillioneaTicketsLoadingGhost />;` (no props: tiny Flight, no
+  server import, one imported drawing); then r4j 3.4/3.4', r5h 1.2/1.3, maswali-ui 1.3/1.4, tickets 25.x again.
+NOT RUN since 15212eeaf: tsc --noEmit; the targeted list-empty-* shots (320/360/1280 x sw/en/zh) and their face check;
+red:deposit-status-read to completion (stopped at 31/45 caught earlier; its plants are deposit files only).
+NOT MINE (inputs untouched, as at 15212eeaf): ui-consistency (how-ghost.tsx h-10), measure (SLIP's max-w-[640px] in
+slip/page.tsx, slip-ghost.tsx, maswali-slip.tsx), r5h 3.5 (ChatRoot, operation-result-modal, maswali-slip), r7c 1.4,
+r10 1.4/3.1.
+LEFT, in order: (1) the client pick above + its re-checks + tsc; (2) the list-empty shots (job:
+scratchpad/tickets/job-empty-shots.sh, port 3570) and read every tile; (3) red:deposit-status-read to the end;
+(4) re-score the table on the integrated render; final report.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

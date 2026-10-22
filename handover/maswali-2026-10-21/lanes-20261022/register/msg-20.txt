@@ -1,0 +1,12 @@
+MASWALI-BUILD S5-R2-REGISTER 20: the drawings' heads stand as tall as the pages' — the eyebrow's bar in its own line box
+
+Measured by the how-ghost band hop (commit 19), 12 hops (320/360/768/1280 × en/sw/zh): every band of How's drawing was
+exactly as tall as the page's — steps, timeline, swap card, seal line, button: 0px — and every one stood 6px high. The cause
+is above them, in the kit's `MaswaliGhostHead` (used by this lane's three drawings only: How, the register's index, a
+week): it handed PageHeader's eyebrow a bare `GhostLine`, and that eyebrow is a flex row (`flex items-center gap-2`), so
+the bar became a flex item of its own 0.85em (9.35px; 10.2 in zh) where the page's words fill a 15px line box (16px in
+Chinese, Millionea's eyebrow rule) — a head 6px short. The eyebrow's bar now stands in its own line box (`GhostTextLine`).
+Run (sunset; week-beforeFinal + how-ghost; 320/360/768/1280 × en/sw/zh): before this commit 122 passed, 12 failed — the
+twelve band checks, each "steps y6 h0 · timeline y6 h0 · swap y6 h0 · seal y6 h0 · button y6 h0"; after: see below.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

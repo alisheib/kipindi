@@ -1,0 +1,15 @@
+MASWALI-BUILD S6-INT 2: D19a re-pinned at the merge of the legal and data lanes (8620862fc) — the dictionary and the rules page
+
+scripts/lib/house-bot-absence-cases.mts, as the practice is (a pin always names a commit on the integration branch,
+never a lane commit): U43_REVIEWED_BLOBS' dictionary entry moves 6c1d110fa → f88a4470d (src/lib/i18n-dict.ts at
+8620862fc: the legal lane's millioneaFairness namespace and How to play's sunset line, the zh void grounds with S5's
+U+200B breaks; no versioned policy string moves), and APPROVED_EXTRA's src/app/legal/rules/page.tsx moves
+PHOS_R2A_PART2 → 8620862fc (the chooser's third door on release 2a part 2's RuleCard). _content-millionea.tsx and
+rules/millionea/page.tsx stay at 902afae56: their blobs at 8620862fc are byte-identical to it (ffa3e7a5d, 7188375d3).
+
+Printed: test:house-bot-disclosure "ALL PASS — house-bot-disclosure: 123 passed, 0 failed"; test:house-bot-blob-pin
+"8 passed, 0 failed"; test:visual-pass-r10 "88 passed, 2 failed" — 11.1 (the dictionary is the commit's own) now passes;
+1.4 and 3.1 stay red on files the S6 merge leaves byte-identical to dfb438dd2 (maswali-slip.tsx's caret), as S6-INT 1
+says. Not run: red:house-bot-console (D19a's red twin), the rest of S6-INT 1's owed list.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

@@ -1,0 +1,63 @@
+MASWALI-BUILD S5-R2-PLATFORM 7: under either reduced-motion clamp an entrance's first frame is its end frame (the kit's entrances and the route's)
+
+The motion critic's "Reduced-motion parity" row (7) had no owner until the lead's round 2. Its findings were a
+hand-off flash and a line blank, which the slip and register lanes fixed on their own surfaces. Looking at the
+platform level found the cause they share.
+
+The universal clamp in motion.css zeroes an animation's time, not its first frame. A run it shortens to .01ms still
+opens on its first keyframe, and Chromium paints that frame once before the run is over.
+MEASURED (a scratch probe of motion.css in Chromium): each class was mounted with its element, and also restarted on
+a standing element as RouteTransition does, under the OS preference and under the in-app switch. The first animation
+frame showed:
+  - `.m-seal` at opacity 0, scale .9;
+  - `.m-axis-reveal` clipped away;
+  - `.m-draw` undrawn (the dash still the path's length);
+  - `.m-in`, `.m-in-lift`, `.m-dialog-in`, `.m-float-in` and `.m-scrim` at opacity 0;
+  - `.m-sheet-in` a whole panel below its place;
+  - `.route-enter` (the content wrapper, `m-settle-in`) at opacity 0.
+That is 40 clamped first frames that hid or moved an entrance, on motion.css as it stood. The N-block and `.g-*`
+started no run at all, because their branches are written. The control (no clamp) showed the first frames as designed.
+So under either clamp, these stood invisible for a frame before their end frame:
+  - a ticket's lock line, stamp line and perforation;
+  - the unbroken line and the closing rule;
+  - the slip's closed band;
+  - every kit dialog, sheet and menu.
+And every route change painted the new page's first frame blank: a blink between two pages, for the reader who asked
+for no motion.
+  - motion.css: their end frames, written for both clamps. Under `@media (prefers-reduced-motion: reduce)` and under
+    `html.kp-reduce-motion` each takes `animation: none`, so the layout's own frame is the first one painted. Each
+    keyframe ends exactly on the layout.
+      - `.m-draw` alone ends on a value its layout does not hold (its caller sets the dash inline), so its branch draws
+        the line whole (`stroke-dashoffset: 0`, important over the inline style).
+      - Exits are not branched. They open on the surface as it stands, and the kit unmounts a leaving surface at once
+        under both clamps (exitBeatMs).
+      - `.m-tick` and `.m-aura` are not branched either: each opens on the frame it ends on.
+      - The `reduced` throttle tier is untouched; every entrance still plays there in full.
+    The same probe on the new motion.css: 0 of 40.
+  - test:reduce-motion rule 3. The set is DERIVED from the keyframes: every class rule of motion.css, every class a
+    Millionea surface wears that names a one-shot animation, and the route entrance. A class is an ENTRANCE when its
+    keyframe opens on another frame than its last, or names no first frame.
+      - 3.0 premise: 76 keyframes read, 24 entrances derived, the dialog, the route entrance and Millionea's reveal and
+        draw among them.
+      - 3.1: both branches with `animation: none`.
+      - 3.2: a keyframe with no first frame writes its last frame into both branches.
+    red:reduce-motion gains three mutations: .m-seal out of the OS branch (3.1), the route entrance's in-app mirror
+    pointed elsewhere (3.1), and the draw-on branch without its dash (3.2). 15/15 caught (was 12/12); src/ untouched.
+  - qa:route-entrance 2.1 (the next server run): under both clamps, no frame at the new address paints the page below
+    full opacity. 2′ plants the clamped run back and must see the blank frame.
+  - DESIGN_AUTHORITY §M6 extends the law from mat/g/seal/crest to the kit's entrances, Millionea's and the route's,
+    with the measurement.
+WHAT EVERY READER WHO ASKED FOR REDUCED MOTION SEES, ON EVERY PAGE (named for the parity compare, which runs full
+motion): every kit dialog, sheet, scrim and menu, the route entrance, and the seal, reveal and draw-on lines appear on
+their first frame instead of their second. The classic users of these classes include the kit Modal, select.tsx,
+the avatar menu, notifications, channels, reward-burst, the Up & Down round page and handover, and the admin mobile nav.
+VERIFIED:
+  - test:reduce-motion all checks (rule 3 incl.) and red:reduce-motion 15/15;
+  - the readers of motion.css: test:contrast, css-vars-defined 330/0, dead-css, enter-where-pressed, glyph-motion 28/0,
+    gold-is-money 61/0, hover-touch 13/0, keyframes, maswali-hub 53/0, motion-ladder 12/0, presence-class 90/0,
+    root-has, sell-grace-truth 49/0, tokens, u43-motion-contract 6/0, visual-pass-r5a 97/0, r5c 111/0, r8a 89/0,
+    design-frozen, docs, design-one-door;
+  - test:red-anchors 7720/0;
+  - updown-filter-sheet 57/1, the same red as on the release base (SLIP's).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

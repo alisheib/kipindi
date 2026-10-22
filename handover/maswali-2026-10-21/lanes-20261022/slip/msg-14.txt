@@ -1,0 +1,52 @@
+MASWALI-BUILD S5-R2-SLIP 13: the stamp's "View ticket" is the kit's Link — OperationResultModal gains an opt-in primaryHref (byte-identical without it); the cancel's one dim and the band's landing proven in a browser
+
+The lead's ruling. After "View ticket" the bare slip stood for one round trip before any drawing (frames
+a-view-ticket-*-c-SHEET: about 0.8s at 400ms latency). Dev never prefetches and the product has no programmatic
+router.prefetch, so the stamp's primary becomes the kit's Link. As every Link is, production prefetches its loading
+boundary while it is on screen.
+- src/components/markets/operation-result-modal.tsx (kit, opt-in like handoff and panelDelay): primaryHref?: string.
+  When given, the primary is next/link's <Link> with the button's own classes and label. Its click is
+  (onPrimary ?? onClose)(), the button's rule spelled once more, so the button's lines and every pin and plant on
+  them stay untouched. Its own ref takes the opening focus: initialFocus={primaryHref ? primaryLinkRef : primaryRef}.
+  Omitted, the button exactly as before.
+- src/app/millionea/slip/slip-client.tsx: the stamp passes primaryHref: the ticket for a single cut, the list for a
+  batch. onPrimary only closes the stamp (setCut(null)); the Link moves. NavProgress starts on its press through its
+  own capture listener on internal links (§F10). navigate() stays for the deposit door. The header's M4 line is updated.
+- scripts/maswali-slip-design.test.mts (floor 88 → 92):
+  1.11 asked for, primaryHref draws the primary, and only it, as an <a href> with the button's classes and label; the
+  rest of the result is byte for byte the same. 1.11' PLANT: a Link drawn for every caller breaks the parity. 1.6
+  (every caller without it byte-identical to the base) holds.
+  9.2 re-pinned in the open: the stamp hands the kit the address; NavProgress's own internal-link listener is the
+  progress; the deposit door still raises 50pick:navigating.
+  12.4 with the result modal stubbed: the stamp hands primaryHref /millionea/tickets/<serial> (a batch:
+  /millionea/tickets), and its press pushes nothing itself. 12.4' PLANT: the stamp as it was (no address; the press
+  raised the event and pushed) is caught.
+- scripts/enter-where-pressed.test.mts 2.2 re-pinned in the open: the result's primary may be the Link. The dialog
+  opens on whichever primary is drawn, and each form's click is the act. New plants: the Link form opened without focus,
+  and the Link's click dropping onPrimary.
+- scripts/maswali-multi-slip-drive.mjs: the batch stamp's door is found as a link (href /millionea/tickets), never as a
+  button.
+
+Checks on this exact tree (OMEGA, 2026-10-22; logs in scratchpad 64715c03/slip/logs/p10, p11, tsc-2.log, r2c):
+- tsc --noEmit: rc=0.
+- maswali-slip-design 92/0; enter-where-pressed all checks passed; red:enter-where-pressed RED CONTROL 123/123
+  caught (both new plants PROVED).
+- Every static reader of the two src files: betting-ink 64, contrast-audit rc 0, design-frozen PASS, feedback-law
+  160, keyframe-registry pass, maswali-design 141, motion-ladder 12, popup-fit 12, reduce-motion pass, root-has rc 0,
+  sell-grace-truth 49, stacking-contract 144, u43-earned-palette rc 0, u43-receipt-fit pass, r4i 131, r5c 111, r5i
+  121, r5j 62 (3.7's parity against main's blob holds), r6c 90, r8a 89, r8b 39, multi-slip 16, ui 151, privacy 135,
+  r5g 65, r9a 63, red-anchors 7722. All 0 failed, except r5h 59/1: 3.5 names only PLATFORM's ChatRoot.tsx, green on
+  the PLATFORM x SLIP merged tree (60/0).
+- Browser, run r2c (fresh in-memory next dev :3560, Chromium):
+  - qa:dialog-way-back 25/0.
+  - qa:maswali-multi-slip 47/0.
+  - The scratch proof r2-proof.mjs 31/0, at sw-360, en-1280 and reduced-motion sw-360. "View ticket" is <a
+    href="/millionea/tickets/<serial>">; against a twin <button> of the same classes it shows 0 computed-style
+    differences over 26 properties (box, padding, border, radius, background, colour, font, tracking, line-height,
+    decoration, alignment, shadow, cursor, opacity). It holds the stamp's opening focus; en-1280 pressed it with Enter.
+    It opens the ticket. The ticket's drawing holds the free-cancel band (TICKETS' note from commit 2), and the page's
+    band lands on it: sw-360 Δ [0,2,0,0.5], en-1280 Δ [0,1,0,0.5] (x, y, w, h px).
+  - The free cancel's confirm closes into its result under ONE dim (commit 3): in every sampled frame (146 / 57 / 155)
+    a scrim stands at full strength; the result's dim is held from its first frame; panel overlap 0.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

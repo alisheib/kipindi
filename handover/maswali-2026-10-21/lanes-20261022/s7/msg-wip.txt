@@ -1,0 +1,81 @@
+MASWALI-BUILD S7-F9 0 (WIP, no file changes): the lead's hard stop at dfb438dd2 — verified, not run, left in order
+
+Stopped on the lead's HARD STOP (Ali, 2026-10-22: push the progress reached cleanly, stop cleanly). This commit
+changes NO file: the tree held no unverified work (the merge dfb438dd2 is committed and pushed; nothing after it was
+started in the tree). It carries the branch's status for the next session.
+
+VERIFIED at dfb438dd2 (the S7 x S5-release merge), printed counts:
+  - tsc --noEmit: exit 0.
+  - Both-store suites (slot 6, scratch PG on 5476): engine mem 202/0, PG 210/0 · purchase mem 113/0 (floor 112),
+    PG 116/0 (floor 115) · settle mem 106/0, PG 110/0 · void mem 52/0, PG 57/0 · close-race 13/0 both ·
+    shared-paths mem 15/0, PG 16/0 · integrity 11/0 both · player 194/0 both (floor 187) · adversarial mem 197/0,
+    PG 206/0 (3 KNOWN-RED each: OB.0/MB-23, RD.5/MB-74, TK.2/MB-96) · fence PG 29/0.
+  - Memory/static: house-bot-reports memory child 255/0 · house-bot-disclosure 123/0 · test:red-anchors 7863/0 ·
+    red register twin 111/111 caught · design 150/0 · register 60/0 · ui 151/0 · money 410/0 · hub 53/0 ·
+    design-register 34/0 · admin-form-validation exit 0.
+  - red:maswali-money-path, PARTIAL: every baseline green (purchase, settle, void, close-race, 14 adversarial
+    sections); 35 of 77 plants CAUGHT, (1) through (S7-F8-lift-yield) in file order, (6b) included; 0 missed,
+    0 stale, 0 wrong-assertion. Stopped by the hard stop during plant 36 (R9); the planted
+    src/lib/server/maswali-settlement.ts was restored with git checkout and the drive's lock file deleted
+    (tree == HEAD afterwards).
+
+KNOWN RED, not this lane's: fence memory 5.1 — DOORS' unclassified "UPDOWN" branch in
+src/app/results/millionea-results-view.tsx (no census entry), inherited from the release 81e312f01 and absent from
+S7's 0f0d42fcc; it also blocks red:maswali-fence's baseline.
+
+NOT RUN: plants 36-77 of red:maswali-money-path ((R9) ... (F4-stale-open-only), including the merge-repointed
+(S7-move-clock), (S7-correct-ground), (S7-F8-refreeze-owed), (S7-F8-sunset-owed)); red:dal-parity; and the brief's
+"not now" list (red:house-bot-c5, red:house-bot-console, S17 + MB-97, F8-15 re-render read, test:all, money battery,
+parity, build).
+
+FINDING for the lead (brief item 5): S6's Millionea rules on mln-s6-int (81c60f0f5,
+src/app/legal/rules/_content-millionea.tsx) carry NO payment-reversal clause; the Yes/No rules do
+(_content-yes-no.tsx:225, "Fraudulent deposits, payment reversals after settlement, and misuse of the payment
+integration lead to suspension and forfeiture of winnings."). Not duplicated here: S6's legal lane carries it.
+Observation (lead ruling (d), no change): classic polls' AI auto path stamps both stages as system_auto_resolver even
+with two-admin on — the 2026-07-24 ruling (AI auto-resolution is its own axis) stands. Millionea is never AI-sealed:
+resolveDueMarket skips a fenced Millionea market (isFencedMaswali), and only officer actions seal it.
+
+LEFT, in order:
+  1. Floors to the printed counts: test:maswali-purchase memory 112 -> 113, PG 115 -> 116; test:maswali-player
+     187 -> 194 on both stores.
+  2. Item 3's guard: fence cases for "a Millionea question is never AI-sealed" (the fence removed -> 2.4 red; the
+     fence narrowed to non-auto -> new case red), proven by plants (red:maswali-fence is blocked by DOORS' 5.1).
+  3. Lead ruling (a), ONE wording: finalWeekRule = the release's sentence + the floor clause —
+     en "Final week: if no ticket gets 10/10, the pool is shared equally by this week's highest-scoring tickets,
+     with no floor top-up"; sw the release's sentence + ", bila nyongeza hadi kiwango cha chini"; zh the release's
+     sentence + "，不进行保底补足". One key drawn by the slip's rules row and confirm line (maswali-slip.tsx), the hub
+     (maswali-pool-figure.tsx) and How (how/page.tsx, ruleSunset reusing it); finalRule removed in en/sw/zh; tests
+     maswali-design 2.F3a and maswali-hub 3.1/§10 re-pinned; D19a re-pinned (house-bot-absence-cases.mts); recorded
+     as a lead ruling in DESIGN_AUTHORITY §M8a and the plan's §7b S7 text (MR-30, the S6 legal review), never §0/§1.
+     Note: S6's L lane rewrites ruleSunset x3, so the S6 merge reconciles that key with this ruling.
+  4. Lead ruling (b): L22 (finalAheadWords, hub-words.tsx) prints "It opens {date}" only while the open is ahead;
+     once passed, S7's reviewed F1 no-date words, key finalAhead restored: en "Millionea is coming to an end. Week
+     {week} will be the final week.", sw "Millionea inakaribia kufikia mwisho. Wiki {week} itakuwa wiki ya
+     mwisho.", zh "Millionea 即将结束。第{week}周将为最后一周。"; maswali-design 2.F1d updated; guard + plant (a draft final
+     week past its date); D19a re-pinned.
+  5. TK.2 / MB-96, the takeover ALERT (no hold, no change to the withdrawal path). Design reached: a compliance
+     read over the winners of recently settled paying weeks — a password write after the credit (password.changed,
+     password_reset.completed, player.password_reset_by_officer) followed by a withdrawal attempt by the account
+     (withdraw.initiated or a gate's refusal row); consoleAlerts gains a count-only alert (MR-14, MB-34) and the
+     integrity page a card naming the accounts; both stores via the durable audit readers; the adversarial TK.2
+     awaits auditFlush() before its read (audit rows are queued). For the lead: "new device" — the platform has no
+     device identity (sign-in rows carry IP and user agent; mobile IPs churn), so the recommendation is password
+     writes now and a new-device signal once a device identity exists; a number change has no flow (E-215, TK.1).
+  6. RD.5 / MB-74, a reversal after the payout (MONEY). Design reached: where settlePaymentWebhook first marks a
+     CONFIRMED deposit for review (reviewAdded), hold the account's paid, un-held winning shares whose tickets were
+     bought at or after that deposit's credit ("deposit under review", the release's own reason) under
+     maswali:chain — awaited when not in a lock, else after commit outside the lock (deposit-recheck runs under
+     wallet:<id>; the order is chain -> wallet); idempotent (the mark is placed once; held tickets skipped);
+     audited with the deposit's id; a heal keyed on that id for a stop between the mark and the hold, never
+     re-holding a share Compliance released. Proofs: adversarial RD.5 real on both stores + an idempotency case + a
+     control (a share bought before the deposit stays free), an S16 act across instances, a money-path plant. For
+     the lead (money policy): which shares — "bought at or after the deposit's credit".
+  7. docs/FAILURE-INVENTORY.md §9: close TK.2 and RD.5 with their commits; OB.0 stays open.
+  8. §7b S7 targets: S17's constants TARGET_PURCHASE_P95_MS = 1000, TARGET_PURCHASE_P99_MS = 2000,
+     TARGET_BUSY_PERCENT = 0 (scripts/load/s17-maswali-rush.mts) and the plan's §7b S7 text (from the measured
+     699 / 1,425 ms); the rush re-runs on the final head.
+  9. Then the full red:maswali-money-path and red:dal-parity on the new head, and the lead's next merge of the
+     release's round-2 UI delta.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

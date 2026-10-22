@@ -1,0 +1,20 @@
+[
+  { "name": "ghost column back to a hand-typed 640px", "file": "src/app/millionea/slip/slip-ghost.tsx",
+    "from": "flex min-w-0 max-w-form flex-col gap-4", "to": "flex min-w-0 max-w-[640px] flex-col gap-4",
+    "suite": "scripts/maswali-slip-design.test.mts", "expect": ["7.2 ·"] },
+  { "name": "ghost column back to a hand-typed 640px", "file": "src/app/millionea/slip/slip-ghost.tsx",
+    "from": "flex min-w-0 max-w-form flex-col gap-4", "to": "flex min-w-0 max-w-[640px] flex-col gap-4",
+    "suite": "scripts/measure-system.test.mts", "expect": ["no NEW hand-typed page width"] },
+  { "name": "the page's grid track back to a typed 640px (page and ghost disagree on the source)", "file": "src/components/maswali/maswali-slip.tsx",
+    "from": "xl:grid-cols-[minmax(0,var(--w-form))_400px]", "to": "xl:grid-cols-[minmax(0,640px)_400px]",
+    "suite": "scripts/maswali-slip-design.test.mts", "expect": ["7.2 ·"] },
+  { "name": "the rail column back to a hand-typed 640px", "file": "src/components/maswali/maswali-slip.tsx",
+    "from": "<div className=\"flex max-w-form flex-col gap-2\">", "to": "<div className=\"flex max-w-[640px] flex-col gap-2\">",
+    "suite": "scripts/maswali-design.test.mts", "expect": ["4.P7a"] },
+  { "name": "the rail column back to a hand-typed 640px", "file": "src/components/maswali/maswali-slip.tsx",
+    "from": "<div className=\"flex max-w-form flex-col gap-2\">", "to": "<div className=\"flex max-w-[640px] flex-col gap-2\">",
+    "suite": "scripts/measure-system.test.mts", "expect": ["no NEW hand-typed page width"] },
+  { "name": "NoSlip's column back to a hand-typed 640px", "file": "src/app/millionea/slip/page.tsx",
+    "from": "flex max-w-form flex-col gap-5 pt-5", "to": "flex max-w-[640px] flex-col gap-5 pt-5",
+    "suite": "scripts/measure-system.test.mts", "expect": ["no NEW hand-typed page width"] }
+]

@@ -1,0 +1,34 @@
+MASWALI-BUILD S5-R2-SLIP 6: the caret's turn is read inside the shared caret list — r10 1.4 and updown-filter-sheet 7 re-pinned in the open, r10 3.1 classifies the slip's caret
+
+LEFT item 1 (the lead's ruling). globals.css keeps ONE pair of declarations for every caret, as a selector list.
+Round 1 added Maswali's folded ticket (.kp-mln-ticket[open] > summary .kp-mln-caret, the multi-ticket confirm) to
+that list AFTER the filter sheet's selector. Two guards read the sheet's selector glued to the rule's "{", so they
+stopped matching a rule that still turns the caret. They were red on the release 7e9a314f0 and green on main.
+
+- scripts/visual-pass-r10.test.mts 1.4: a reader (no backslash, over the decommented CSS) lists every member of
+  every rule whose body holds transform: rotate(180deg), split at top-level commas. 1.4 requires the EXACT selector
+  ".kp-fsheet[open] > summary .kp-fsheet-caret", and no other member naming the open sheet. A wrapper turned too
+  would turn the caret twice or about the wrapper's centre.
+  1.4' PLANT: the turn moved onto the wrapper (the summary) is reported.
+  1.4'' PLANT: the wrapper turned beside the caret is reported.
+  1.4''' CONTROL: main's two-member list reads as exactly its two carets and passes.
+- r10 3.1: SITES gains the slip's caret, kind "edge":
+  <I.chevronDown s={14} edge="end" aria-hidden className="kp-mln-caret shrink-0 opacity-70" />. It ends the
+  folded ticket's summary row, pulled by its edge as the sheet's caret is. 3.2 holds for it (edge=, no text=).
+- scripts/updown-filter-sheet.test.mts 7: the selector may now be followed by more members of its own list, matched
+  as (?:,[^{};]*)?. That part takes no brace and no semicolon, so it cannot run into another rule.
+  New "7: CONTROL": main's list still reads.
+- scripts/anchors/updown-filter-sheet.anchors.mjs: red case "caret-turns-its-wrapper" plants the turn on the
+  summary. Expected to fail on 7.
+
+Checks on this exact tree (OMEGA, 2026-10-22; logs in scratchpad 64715c03/slip/logs/base and p1):
+- visual-pass-r10: 93 passed, 0 failed. Before: 88 passed, 2 failed (1.4, 3.1).
+- updown-filter-sheet: 59 passed, 0 failed. Before: 57 passed, 1 failed (7).
+- visual-pass-r9a: 63 passed, 0 failed.
+- red-anchors: 7722 passed, 0 failed. The new anchor resolves exactly once.
+- red:updown-filter-sheet: 20/20 caught, including caret-turns-its-wrapper on 7. Files restored, green after.
+- On-disk plants in globals.css (scratch plant-r10.mjs): the turn moved onto the wrapper, and the wrapper beside the
+  caret. Each is caught by FAIL 1.4. Restored byte for byte; r10 93/0 after.
+- tsc: these are .mts/.mjs files, outside tsconfig's include (scripts/**/*.ts). It runs with the next src batch.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

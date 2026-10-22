@@ -1,0 +1,29 @@
+MASWALI-BUILD S5-R2-REGISTER 18: the register's loading draws the page being opened — a week's own drawing, never the index's — and qa:millionea-ghost-hops holds every Millionea hop to it
+
+FOUND by this lane's targeted drives (the lead's ruling of 2026-10-22, relayed to HUB and TICKETS): a segment's loading.tsx
+wraps its page AND its child routes, so on a client move the first loading boundary under the shared segment is the
+PARENT's. Measured on throttled hops (latency 400ms, 12 KB/s, 360 en, every animation frame): register → How showed the
+HUB's drawing 1.4s → 21.7s and How's own never (30s cap); How → register the hub's, then the index's; hub → How the hub's
+for 22s; and — this lane's file — the register INDEX → a week showed the index's drawing from 6.1s and the week's own never.
+
+- src/app/millionea/register/loading.tsx draws the page being opened, picked by its address (`RoutePick`, the platform's
+  own: during a move `usePathname()` already names the destination): the index's drawing for the index, the week's for
+  /millionea/register/<code>. The addresses are the product's constants (`MILLIONEA_HREF`) — maswali-ui 1.3 forbids a
+  string naming the product in a loading file.
+- Each of this lane's drawings names its page on its root: `data-ghost-page` "register", "week" (and "how", next commit).
+  The other lanes' drawings take the same attribute (the lead routes it: hub, slip, tickets, ticket).
+- NEW scripts/qa-millionea-ghost-hops.mjs (`npm run qa:millionea-ghost-hops`): 17 app-router hops among hub, How, the
+  register, a week, the slip, Tiketi zangu and a ticket, throttled as measured; every frame until the destination lands,
+  every loading drawing on screen is read by the page it names; a frame passes only when each is the destination's own; a
+  drawing that names no page (an aria-busy or a .kp-shimmer-track outside a named root) is UNMARKED and fails; the source
+  page's nodes and the landed page's are not the move's. `--prove-red` plants this commit's defect back (the register's
+  loading drawing the index for every page under it), runs index → week and requires the report; the file goes back
+  through the shared restore guard (scripts/lib/red-restore-guard.mjs), and the run refuses to start on an uncommitted file.
+  It passes in full only once HUB's and TICKETS' loading files pick too; on this branch the register's own hops pass.
+Static (every reader, git grep): maswali-ui 151/0 (1.1 the loading file draws, 1.3 wordless), maswali-register 59/0,
+visual-pass-r4j 92/0 and r5d 45/0 (RoutePick's own guards), red-anchors 7720/0, scenario-coverage 19/0, journey-shell
+566/0, maswali-design 141/0, ui-consistency ALL PASS, tsc 0; guards-exist 8/1 — its one failure is DOORS' known phantom
+(qa:maswali-doors in maswali-home-card-ghost.tsx, fixed on DOORS' r2 branch); this commit's citations resolve. The drive's
+own runs (the full set and --prove-red, which needs this commit) follow on this commit and are in the lane's report.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

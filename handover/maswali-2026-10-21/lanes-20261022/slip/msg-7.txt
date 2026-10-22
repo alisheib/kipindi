@@ -1,0 +1,33 @@
+MASWALI-BUILD S5-R2-SLIP 7: the slip's measure is the kit's form tier — max-w-form and the track var(--w-form), never a hand-typed 640px (test:measure's release red)
+
+LEFT item 2a. test:measure §2 was red on the release 7e9a314f0. It found NEW hand-typed page widths max-w-[640px] in
+three slip files that round 1 wrote. The kit's measure has the tier: --w-form 640px, the Tailwind maxWidth "form"
+(var(--w-form)). The not-found view and the admin Maswali forms already cap an inner column with max-w-form. So no
+ratchet entry is added; the list stays at 5 and may only shrink. Computed widths are unchanged: the same 640px, now
+from the token.
+
+- src/components/maswali/maswali-slip.tsx: the question column, the rail's column and the closed statement now use
+  max-w-form. The grid's first track is minmax(0,var(--w-form)), so the column and its track read one source.
+  The header comment says so.
+- src/app/millionea/slip/slip-ghost.tsx: the same three spellings, so the drawing and the page share one measure.
+- src/app/millionea/slip/page.tsx: NoSlip's column uses max-w-form.
+- scripts/maswali-slip-design.test.mts 7.2: re-pinned in the open. It reads the rendered ghost AND the rendered page
+  for both spellings, and reads --w-form = 640px from globals.css. The ghost carries no max-w-[Npx]. The floor stays
+  80.
+- scripts/maswali-design.test.mts 4.P7a: the rail's pinned column is now max-w-form.
+
+Checks on this exact tree (OMEGA, 2026-10-22; logs in scratchpad 64715c03/slip/logs/p2base, p2, p2r):
+- measure-system: ALL PASS, 862 tsx files. Before: 1 FAILURE naming exactly these three files.
+- red:measure: 8/8 proven, 0 missed, 0 broken harness.
+- maswali-slip-design 80/0 and maswali-design 141/0.
+- On-disk plants (scratch plant.mjs + spec-measure.json), all caught, restored byte for byte, green after:
+  - the ghost's column back to max-w-[640px]: caught by 7.2 and by measure.
+  - the page's track back to minmax(0,640px): caught by 7.2.
+  - the rail's column back to max-w-[640px]: caught by 4.P7a and by measure.
+  - NoSlip's column back to max-w-[640px]: caught by measure.
+- Every static reader of the three files (git grep): campaign-gates 65, journey-shell 566, maswali-multi-slip 16,
+  maswali-register 58, maswali-ui 151, millionea-dark-edge 36, millionea-shell 18, popup-fit 12, privacy-notice
+  135, r4j 92, r5c 111, r5g 65, r5i 121, r6c 90, r7b 50, r9a 63. All 0 failed.
+- tsc: not run yet on this commit. It changes only class strings and comments. The next src batch runs it.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

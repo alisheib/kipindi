@@ -1,0 +1,7 @@
+[
+  {
+    "from": "    combos: report.combos, coverage: report.coverage, resultsFinal: report.resultsFinal, groupsWithWinner: report.groupsWithWinner,",
+    "to": "    // S6-INT · the pack's `coverage` stays the board share it always printed (`boardCoverage`); the report's read disclosure\n    // (`report.coverage`, S5's object) says nothing is left out of a report built whole, so the pack does not repeat it.\n    combos: report.combos, coverage: report.boardCoverage, resultsFinal: report.resultsFinal, groupsWithWinner: report.groupsWithWinner,",
+    "count": 1
+  }
+]

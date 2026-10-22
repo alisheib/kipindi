@@ -1,0 +1,23 @@
+MASWALI-BUILD S5-R2-SLIP 8: r5h 3.5's DOM-mark census classifies the slip's and the result modal's motion reads — each reads §M6's clamps and writes no mark
+
+LEFT item 2b. visual-pass-r5h 3.5 was red on the release 7e9a314f0. Its census pattern matches any
+document.documentElement.classList access. Round 1 added two readers of §M6's three motion clamps. Each reads the
+in-app class with classList.contains("kp-reduce-motion") and writes no mark. The census classifies win-celebration's
+identical read the same way ("reads the motion class; writes no mark").
+- src/components/markets/operation-result-modal.tsx stripStill(): E-269's rule. Under a clamp the auto-close strip
+  holds full instead of draining on its own rAF loop.
+- src/components/maswali/maswali-slip.tsx motionStill(): a jump to a question scrolls its row into view at once
+  instead of smoothly under a clamp.
+Neither file is rewritten to dodge the pattern. Each is named in the census with what it does.
+
+Still red here, and not this lane's file: src/components/chat/ChatRoot.tsx (PLATFORM D15's bubble yield, a real
+writer of data-over-content). PLATFORM's r2 branch classifies it (origin/claude/maswali-s5-r2-platform, its entry
+after scroll-cast's). That hunk does not touch this one (mine follows the last maswali-carry entry), so the two
+merge cleanly and 3.5 goes green at the merge.
+
+Checks on this exact tree (OMEGA, 2026-10-22; logs in scratchpad 64715c03/slip/logs/p2base and p2):
+- visual-pass-r5h: 59 passed, 1 failed. 3.5 lists only ChatRoot.tsx. Before: the same failure listed ChatRoot.tsx,
+  operation-result-modal.tsx and maswali-slip.tsx.
+- Its in-suite plants 3.5' (a new writer reported) and 3.5'' (a stale caller or helper registration) pass.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

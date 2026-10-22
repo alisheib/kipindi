@@ -1,0 +1,27 @@
+[
+  {
+    "from": "      // The week register (/millionea/register and /[week]): public, no personal data.\n      regHash: \"Question set\",\n      regPublished: \"published {when}\",\n      regColCategory: \"Category\",\n",
+    "to": "      // The week register (/millionea/register and /[week]): public, no personal data. Its heads and its card labels are\n      // one set of words (S5 VIS); a past week's questions are named by their week, never \"this week\" (R6).\n      regWeekQuestions: \"Week {week}'s questions\",\n",
+    "count": 1
+  },
+  {
+    "from": "      regHash: \"Seti ya maswali\",\n      regPublished: \"imechapishwa {when}\",\n      regColCategory: \"Aina\",\n",
+    "to": "      regWeekQuestions: \"Maswali ya Wiki {week}\",\n",
+    "count": 1
+  },
+  {
+    "from": "      regHash: \"题目集\",\n      regPublished: \"发布于 {when}\",\n      regColCategory: \"类别\",\n",
+    "to": "      regWeekQuestions: \"第{week}周题目\",\n",
+    "count": 1
+  },
+  {
+    "from": "      voidSettledBeforeClose: \"销售截止前​结果已公开\",\n",
+    "to": "      voidSettledBeforeClose: \"销售截止前​结果已公开，或赛事已开始\",\n",
+    "count": 1
+  },
+  {
+    "from": "      voidCriterionObjection: \"题目有误，经玩家异议后确认\",\n",
+    "to": "      voidCriterionObjection: \"题目有误或​两种语言表述不一致，于截止后发现\",\n",
+    "count": 1
+  }
+]

@@ -1,0 +1,465 @@
+diff --git a/src/lib/server/notification-service.ts b/src/lib/server/notification-service.ts
+index 6a86e4046..ef16c0388 100644
+--- a/src/lib/server/notification-service.ts
++++ b/src/lib/server/notification-service.ts
+@@ -44,7 +44,13 @@ import { EDITABLE_ROLES, domainForPath, isOwnerOnlyPath } from "./roles";
+ // R4-I (2026-10-09): a break's or an exclusion's end, said the one way every screen says it (see `breakEndIn` below).
+ import { formatBreakEnd } from "@/lib/break-end";
+ // R5-B (2026-10-09): every other moment a notice states, in the reader's month words on the East Africa clock (`instantIn`).
+-import { formatEatDate, formatEatDateTime } from "@/lib/eat-day";
++import { eatWeekNumberOf, formatEatDate, formatEatDateTime } from "@/lib/eat-day";
++// MASWALI-BUILD S6 · a Millionea notice names its week as the S5 hub does ("Millionea Week 44"), opens the ticket's own page
++// (`millioneaTicketHref`, MB-95), says a void's ground in the closed list's own words (MASWALI_VOID_REASON_KEY), and prices a
++// win's withdrawal example with the fee's one function (`computeWithdrawalFee`, RULES §2.7).
++import { millioneaTicketHref } from "@/lib/position-permalink";
++import { MASWALI_VOID_REASON_KEY, type MaswaliVoidReason } from "@/lib/maswali-void-reason";
++import { computeWithdrawalFee } from "@/lib/payout";
+ 
+ export type NotifyInput = Omit<StoredNotification, "id" | "userId" | "readAt" | "dismissedAt" | "createdAt"> & {
+   userId: string;
+@@ -82,7 +88,8 @@ const DEDUPE_WINDOW_MS = 90_000;
+  * `updownResultPushTag` in `market-service.ts`, which is where the reasoning lives.
+  */
+ export type NotifyOptions = {
+-  pushTag?: string;
++  /** Null or absent: the kind (`n.kind`). A Millionea row passes its own link, which a row may lack (`href` is nullable). */
++  pushTag?: string | null;
+   /**
+    * `false` skips the 90-second duplicate check. Only for a notice sent once per COMMITTED state change under a lock,
+    * whose fixed wording would otherwise swallow a real second transition (house-bot admin alerts, 02:429).
+@@ -2607,6 +2614,435 @@ export async function runKycPostCheckAlerts(opts: { nowMs?: number; maxAlerts?:
+   return run;
+ }
+ 
++/* ═══════════════════════════════════════════════════════════════════════════════════════════════════
++ * MASWALI MILLIONEA — A WEEK'S NOTICES IN THE BELL (MASWALI-BUILD S6; MASWALI-PLAN §7b S6 item 2, MB-68, OD-25)
++ *
++ * The registered set (`MILLIONEA_NOTICES`, comms-registry.ts): the receipt and the free cancel; the close, to holders; a
++ * question voided; the week's result — a win, or no win (a rollover when no ticket reached 10 of 10); and the week void's
++ * refund. `maswali-notify.ts` decides who is told and sends each once, after the money commits; these emitters only say
++ * it, in the facts and the words of the S5 hub's own notices ("Millionea Week 44: your ticket won").
++ * ⛔ NO YES/NO WORD REACHES A TICKET (MB-52, MB-68): no side, no "Bet placed", no payout before the result. The poll's
++ *    emitters are never called on a Millionea path (S3); these name a week, a ticket and its money only.
++ * ⛔ THE LINK IS THE NOTICE'S KEY (`millioneaNoticeHref`, the Up & Down digest's rule): `existsWithHref` reads it, so each
++ *    notice has one spelling per player and a second send finds the first.
++ * ⛔ A WIN STATES THE WITHDRAWAL LADDER (MB-11) — and no review, and no figure for any later week (MB-44).
++ * ⛔ A HELD WIN IS NOT PAID MONEY: it is a VERDICT, never a WIN, so no bell paints it gold (`notifyMillioneaWonHeld`).
++ * ⭐ EVERY ROW CARRIES ITS LINK AS ITS PUSH TAG (`millioneaNotify`): another product's WIN never replaces a Millionea notice
++ *    on the lock screen, and two Millionea notices never replace each other.
++ * ⭐ A CORRECTION AND A MOVED CLOSE ARE TOLD TOO (MB-24, MB-28): each its own link, so each correction is told once.
++ * ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
++
++/** The player's Millionea tickets — a notice about a week, not one ticket, opens the list. */
++const MILLIONEA_TICKETS = "/millionea/tickets";
++
++/** Which notice a link keys: a ticket's own (receipt, cancel, a win), or a week's (the close, a void, the result, a refund). */
++export type MillioneaNoticeKey =
++  | { notice: "receipt"; serial: string; positionId: string }
++  | { notice: "cancel"; serial: string }
++  | { notice: "closed"; weekCode: string }
++  | { notice: "void"; weekCode: string; slot: number; sealedAt: string }
++  | { notice: "correction"; weekCode: string; slot: number; sealedAt: string }
++  | { notice: "closeMoved"; weekCode: string; move: number }
++  | { notice: "result"; weekCode: string; winningSerial: string | null }
++  | { notice: "refund"; weekCode: string };
++
++/** An instant as a key's digits (its milliseconds); 0 for an instant that does not parse. */
++const instantKey = (iso: string): number => {
++  const ms = Date.parse(iso);
++  return Number.isFinite(ms) ? ms : 0;
++};
++
++/**
++ * ⭐ EACH MILLIONEA NOTICE'S LINK, AND SO ITS KEY. A ticket's notices open its own page — the receipt at its anchor (the
++ * ticket page renders `id={positionId}`), a win where the seal plays; a week's open the tickets list. ⛔ Every shape is
++ * distinct for one player, and `maswali-notify.ts` asks `existsWithHref` with exactly this string before it sends — so
++ * changing a shape sends every notice of that kind again (the Up & Down digest's warning, `digestHref`).
++ */
++export function millioneaNoticeHref(k: MillioneaNoticeKey): string {
++  if (k.notice === "receipt") return `${millioneaTicketHref(k.serial)}#${k.positionId}`;
++  if (k.notice === "cancel") return `${millioneaTicketHref(k.serial)}#cancelled`;
++  if (k.notice === "result") return k.winningSerial ? `${millioneaTicketHref(k.winningSerial)}#won` : `${MILLIONEA_TICKETS}#${k.weekCode}-result`;
++  if (k.notice === "closed") return `${MILLIONEA_TICKETS}#${k.weekCode}-closed`;
++  // A seal's own instant is in its key: a question voided, reinstated and voided again is told each time, once.
++  if (k.notice === "void") return `${MILLIONEA_TICKETS}#${k.weekCode}-void-${k.slot}-${instantKey(k.sealedAt)}`;
++  if (k.notice === "correction") return `${MILLIONEA_TICKETS}#${k.weekCode}-corrected-${k.slot}-${instantKey(k.sealedAt)}`;
++  // ⭐ A moved close by its place among the week's moves (round 3, A7): keyed by its instant, B→A→B never told the second B.
++  if (k.notice === "closeMoved") return `${MILLIONEA_TICKETS}#${k.weekCode}-close-${k.move}`;
++  return `${MILLIONEA_TICKETS}#${k.weekCode}-refund`;
++}
++
++/** Every Millionea row goes through here: its link is its push tag (the header), so no other notice replaces it. */
++function millioneaNotify(input: NotifyInput) {
++  return notify(input, { pushTag: input.href });
++}
++
++/** "Week 44" in each language — the S5 hub's own word (`millionea.week`), from the week's stamped code. */
++function millioneaWeekWord(weekCode: string): LocalizedText {
++  const n = eatWeekNumberOf(weekCode);
++  return { en: `Week ${n}`, sw: `Wiki ${n}`, zh: `第${n}周` };
++}
++
++/** "Millionea Week 44" — the S5 away line's head ("Millionea Week {week}: …"), the product's name in Latin script. */
++function millioneaWeekIn(weekCode: string): LocalizedText {
++  const w = millioneaWeekWord(weekCode);
++  return { en: `Millionea ${w.en}`, sw: `Millionea ${w.sw}`, zh: `Millionea ${w.zh}` };
++}
++
++/**
++ * A void's ground in each language — the closed list's own sentence (`millionea.void*` through MASWALI_VOID_REASON_KEY),
++ * never a second copy. Read when asked, as `instantIn` reads the month words; a dictionary that cannot be read gives the
++ * ground's code in every language rather than lose the notice.
++ */
++async function voidGroundIn(ground: MaswaliVoidReason): Promise<LocalizedText> {
++  const key = MASWALI_VOID_REASON_KEY[ground];
++  try {
++    const { dict } = await import("@/lib/i18n-dict");
++    const say = (l: "en" | "sw" | "zh"): string => {
++      const v = (dict[l].millionea as unknown as Record<string, unknown>)[key];
++      return typeof v === "string" && v.trim() !== "" ? v : ground;
++    };
++    return { en: say("en"), sw: say("sw"), zh: say("zh") };
++  } catch {
++    return { en: ground, sw: ground, zh: ground };
++  }
++}
++
++/**
++ * The receipt of one purchase (MB-52: no side, no payout) — ONE notice for the whole purchase, which is one act and one
++ * debit: the S5 slip's own result ("Ticket cut", "{price} (main balance) · Free cancel until {time}").
++ */
++export async function notifyMillioneaTicketsCut(userId: string, opts: {
++  weekCode: string;
++  /** The purchase's serials, in sale order (one or more). */
++  serials: readonly string[];
++  /** The first ticket's position — the receipt's anchor and its key. */
++  firstPositionId: string;
++  /** What the purchase cost: the week's frozen price times the tickets. */
++  totalTzs: number;
++  /** The free cancel's end (ISO, `millioneaCancelUntil`) — null when the purchase had no free window (MR-12's runway). */
++  freeCancelUntil: string | null;
++}) {
++  const w = millioneaWeekIn(opts.weekCode);
++  const n = opts.serials.length;
++  const first = opts.serials[0] ?? "";
++  const money = formatTzs(opts.totalTzs);
++  const what = n === 1 ? { en: first, sw: first, zh: first } : { en: `${n} tickets`, sw: `Tiketi ${n}`, zh: `${n} 张彩票` };
++  const until = opts.freeCancelUntil ? await instantIn(opts.freeCancelUntil, formatEatDateTime, "—") : null;
++  return millioneaNotify({
++    userId,
++    kind: "BET_PLACED",
++    titleEn: n === 1 ? `${w.en} · Ticket cut` : `${w.en} · ${n} tickets cut`,
++    titleSw: n === 1 ? `${w.sw} · Tiketi imekatwa` : `${w.sw} · Tiketi ${n} zimekatwa`,
++    titleZh: n === 1 ? `${w.zh} · 已出票` : `${w.zh} · 已出票 ${n} 张`,
++    bodyEn: `${what.en} · ${money} (main balance)${until ? ` · Free cancel until ${until.en}` : ""}.`,
++    bodySw: `${what.sw} · ${money} (salio kuu)${until ? ` · Kughairi bila malipo hadi ${until.sw}` : ""}.`,
++    bodyZh: `${what.zh} · ${money}（主余额）${until ? ` · 免费取消至 ${until.zh}` : ""}。`,
++    href: millioneaNoticeHref({ notice: "receipt", serial: first, positionId: opts.firstPositionId }),
++  });
++}
++
++/** A free cancel (MR-12), in the S5 ticket's own words ("Ticket cancelled", "{price} returned to main balance"). */
++export function notifyMillioneaTicketCancelled(userId: string, opts: { weekCode: string; serial: string; refundedTzs: number }) {
++  const w = millioneaWeekIn(opts.weekCode);
++  const money = formatTzs(opts.refundedTzs);
++  return millioneaNotify({
++    userId,
++    kind: "DEPOSIT", // money back in the wallet, as every refund here is filed (comms-registry's note on the WIN misfiling)
++    titleEn: `${w.en} · Ticket cancelled`,
++    titleSw: `${w.sw} · Tiketi imeghairiwa`,
++    titleZh: `${w.zh} · 彩票已取消`,
++    bodyEn: `${opts.serial} · ${money} returned to main balance.`,
++    bodySw: `${opts.serial} · ${money} imerudi kwenye salio kuu.`,
++    bodyZh: `${opts.serial} · ${money} 已退回主余额。`,
++    href: millioneaNoticeHref({ notice: "cancel", serial: opts.serial }),
++  });
++}
++
++/**
++ * The sales close, to each holder (MB-68): the week's tickets are fixed and committed (MR-13). ⛔ No payout figure — the
++ * poll's "the exact amount you receive" is a Yes/No fact a ticket does not have (MB-52).
++ */
++export async function notifyMillioneaSalesClosed(userId: string, opts: { weekCode: string; tickets: number; closedAt: string }) {
++  const w = millioneaWeekIn(opts.weekCode);
++  const at = await instantIn(opts.closedAt, formatEatDateTime, "—");
++  const n = opts.tickets;
++  return millioneaNotify({
++    userId,
++    kind: "SELECTION_CLOSED",
++    titleEn: `${w.en} · Sales closed`,
++    titleSw: `${w.sw} · Mauzo yamefungwa`,
++    titleZh: `${w.zh} · 销售已截止`,
++    bodyEn: `Sales closed ${at.en}. ${n === 1 ? "Your ticket is" : `Your ${n} tickets are`} locked in.`,
++    bodySw: `Mauzo yamefungwa ${at.sw}. ${n === 1 ? "Tiketi yako imefungwa" : `Tiketi zako ${n} zimefungwa`}.`,
++    bodyZh: `销售已于 ${at.zh} 截止。您的 ${n} 张彩票已锁定。`,
++    href: millioneaNoticeHref({ notice: "closed", weekCode: opts.weekCode }),
++  });
++}
++
++/**
++ * A question voided (MR-15), to each holder: its ground in the closed list's words, and the reserve rule. ⛔ It never names
++ * WHICH reserve takes the place: the mapping is final only on the final record (MB-14), so the notice states the rule.
++ */
++export async function notifyMillioneaQuestionVoided(userId: string, opts: {
++  weekCode: string; role: "MAIN" | "RESERVE"; ordinal: number; slot: number; ground: MaswaliVoidReason;
++  /** The void's own seal instant — its key, so a void sealed again after a correction is told again. */
++  sealedAt: string;
++}) {
++  const w = millioneaWeekIn(opts.weekCode);
++  const g = await voidGroundIn(opts.ground);
++  const main = opts.role === "MAIN";
++  const n = opts.ordinal;
++  return millioneaNotify({
++    userId,
++    kind: "VERDICT",
++    titleEn: main ? `${w.en} · Question ${n} voided` : `${w.en} · Reserve A${n} voided`,
++    titleSw: main ? `${w.sw} · Swali ${n} limebatilishwa` : `${w.sw} · Akiba A${n} imebatilishwa`,
++    titleZh: main ? `${w.zh} · 第 ${n} 题作废` : `${w.zh} · 备选题 A${n} 作废`,
++    bodyEn: main
++      ? `${g.en}. A reserve will take its place, in order from A1 to A5.`
++      : `${g.en}. A voided reserve is skipped: the next valid reserve counts if a main question voids.`,
++    bodySw: main
++      ? `${g.sw}. Akiba itachukua nafasi yake, kwa mpangilio kuanzia A1 hadi A5.`
++      : `${g.sw}. Akiba batili inarukwa: akiba halali inayofuata ndiyo inahesabiwa swali kuu likibatilishwa.`,
++    bodyZh: main
++      ? `${g.zh}。将由备选题替补，按 A1 至 A5 的顺序。`
++      : `${g.zh}。作废的备选题跳过：若有主题作废，由下一道有效备选题计入。`,
++    href: millioneaNoticeHref({ notice: "void", weekCode: opts.weekCode, slot: opts.slot, sealedAt: opts.sealedAt }),
++  });
++}
++
++/**
++ * A sealed question corrected by its sealer (OD-09, MB-24), to each holder: which question changed and — for a void
++ * corrected to a result — that it counts again. ⛔ It never states the answer (MB-52's rule for a ticket's notices): the
++ * ticket page shows the corrected record, and the objection window runs from it.
++ */
++export function notifyMillioneaQuestionCorrected(userId: string, opts: {
++  weekCode: string; role: "MAIN" | "RESERVE"; ordinal: number; slot: number;
++  /** The correction's own instant (the corrected seal) — its key. */
++  sealedAt: string;
++  /** The question was void and now has a result. */
++  reinstated: boolean;
++}) {
++  const w = millioneaWeekIn(opts.weekCode);
++  const main = opts.role === "MAIN";
++  const n = opts.ordinal;
++  return millioneaNotify({
++    userId,
++    kind: "VERDICT",
++    titleEn: main ? `${w.en} · Question ${n} corrected` : `${w.en} · Reserve A${n} corrected`,
++    titleSw: main ? `${w.sw} · Swali ${n} limesahihishwa` : `${w.sw} · Akiba A${n} imesahihishwa`,
++    titleZh: main ? `${w.zh} · 第 ${n} 题已更正` : `${w.zh} · 备选题 A${n} 已更正`,
++    bodyEn: opts.reinstated
++      ? "It is no longer void: the correction gave it a result. Your ticket shows it, and the objection window runs from the corrected record."
++      : "Its sealed result was corrected. Your ticket shows the new result, and the objection window runs from the corrected record.",
++    bodySw: opts.reinstated
++      ? "Si batili tena: marekebisho yameipa matokeo. Tiketi yako inaonyesha, na muda wa pingamizi unahesabiwa kuanzia rekodi iliyosahihishwa."
++      : "Matokeo yake yaliyowekwa muhuri yamesahihishwa. Tiketi yako inaonyesha matokeo mapya, na muda wa pingamizi unahesabiwa kuanzia rekodi iliyosahihishwa.",
++    bodyZh: opts.reinstated
++      ? "该题不再作废：更正后已有结果。您的彩票会显示，异议期自更正后的记录起算。"
++      : "该题的封存结果已更正。您的彩票显示新结果，异议期自更正后的记录起算。",
++    href: millioneaNoticeHref({ notice: "correction", weekCode: opts.weekCode, slot: opts.slot, sealedAt: opts.sealedAt }),
++  });
++}
++
++/** The sales close moved (MB-28), to each holder of a live ticket: the new close, in the reader's own words. */
++export async function notifyMillioneaCloseMoved(userId: string, opts: { weekCode: string; tickets: number; closesAt: string; move: number }) {
++  const w = millioneaWeekIn(opts.weekCode);
++  const at = await instantIn(opts.closesAt, formatEatDateTime, "—");
++  const n = opts.tickets;
++  return millioneaNotify({
++    userId,
++    kind: "SELECTION_CLOSED",
++    titleEn: `${w.en} · Sales close moved`,
++    titleSw: `${w.sw} · Muda wa kufunga mauzo umebadilika`,
++    titleZh: `${w.zh} · 销售截止时间已调整`,
++    bodyEn: `Sales now close ${at.en}. ${n === 1 ? "Your ticket stands" : `Your ${n} tickets stand`} as bought.`,
++    bodySw: `Mauzo sasa yanafungwa ${at.sw}. ${n === 1 ? "Tiketi yako inabaki" : `Tiketi zako ${n} zinabaki`} kama ulivyonunua.`,
++    bodyZh: `销售现于 ${at.zh} 截止。您的 ${n} 张彩票保持不变。`,
++    href: millioneaNoticeHref({ notice: "closeMoved", weekCode: opts.weekCode, move: opts.move }),
++  });
++}
++
++/** A week's winning tickets for one player, as the settlement left them (MB-43): paid to them, or credited and held. */
++export type MillioneaWinShares = {
++  weekCode: string;
++  /** The first winning ticket's serial — the notice opens it (the S5 seal plays there). */
++  winningSerial: string;
++  /** Winning tickets whose share is the player's, and the sum paid into the main balance. */
++  paidTickets: number;
++  paidTzs: number;
++  /** Winning tickets credited and held for Compliance — a count only: a held share prints no paid figure (S5). */
++  heldTickets: number;
++  /** One ticket's share: every winning ticket's is equal (MR-24). */
++  shareTzs: number;
++  /** The winning score: 10, or the final week's highest when no ticket reached 10 (MR-30). */
++  score: number;
++  /** The withdrawal ladder as it stands at send time (MB-11): the most per withdrawal and the fee's live rate. */
++  maxPerWithdrawalTzs: number;
++  withdrawalFeeRate: number;
++  /** The account cannot sign in (self-excluded, closed, suspended): the share is paid at the holder's request (OD-13). */
++  cannotSignIn: boolean;
++};
++
++/** "Fee 1.5%": a rate as the reader reads it — at most two decimals, never a rounding to the wrong figure. */
++const pctOf = (rate: number): number => +(rate * 100).toFixed(2);
++
++/** The winning tickets in one line: at 10/10, or at the final week's highest score (MR-30). */
++function millioneaWinTickets(won: number, score: number): LocalizedText {
++  const top = score < 10;
++  return {
++    en: top ? `${won === 1 ? "1 ticket" : `${won} tickets`} at the week's highest score, ${score} of 10.` : `${won === 1 ? "1 ticket" : `${won} tickets`} at 10/10.`,
++    sw: top ? `${won === 1 ? "Tiketi 1 yenye" : `Tiketi ${won} zenye`} alama ya juu wiki hii, ${score} kati ya 10.` : `${won === 1 ? "Tiketi 1 ya 10/10" : `Tiketi ${won} za 10/10`}.`,
++    zh: top ? `${won} 张彩票获本周最高分，10 题中 ${score} 题。` : `${won} 张 10/10 彩票。`,
++  };
++}
++
++/**
++ * ⭐ A WIN (MB-11, OD-25) — the week, the winning tickets and the money, and how a paid share becomes cash: a confirmed
++ * email and the typed identity details, at most the per-withdrawal cap to the registered number, the RULES §2.7 fee with
++ * this win's own example (the fee's one function). ⛔ No review and no AML word (MB-11), no later week's figure (MB-44). A
++ * held share is told it is held, with no figure and no reason — Compliance writes to the holder. A locked account is told
++ * the team pays at its request (OD-13): it cannot sign in to withdraw.
++ * ⭐ The ladder is the one identity sentence a money notice carries — by MB-11's ruling (2026-10-16), the quiet rule's one
++ * exception (comms-registry.ts, beside the rule).
++ */
++export function notifyMillioneaWon(userId: string, opts: MillioneaWinShares) {
++  // ⛔ A win with no share paid is no money in the balance: it is told as a VERDICT, never a gold WIN (the header).
++  if (opts.paidTickets === 0) return notifyMillioneaWonHeld(userId, opts);
++  const w = millioneaWeekIn(opts.weekCode);
++  const won = opts.paidTickets + opts.heldTickets;
++  const paid = formatTzs(opts.paidTzs);
++  const share = formatTzs(opts.shareTzs);
++  const x = Math.min(opts.paidTzs, opts.maxPerWithdrawalTzs);
++  const arrives = formatTzs(x - computeWithdrawalFee(x, opts.withdrawalFeeRate));
++  const max = formatTzs(opts.maxPerWithdrawalTzs);
++  const pct = pctOf(opts.withdrawalFeeRate);
++  const tickets = millioneaWinTickets(won, opts.score);
++  const paidLine = opts.paidTickets === 0 ? { en: "", sw: "", zh: "" } : {
++    en: ` ${paid} paid to your main balance (${share} a ticket).`,
++    sw: ` ${paid} imelipwa kwenye salio kuu (${share} kwa tiketi).`,
++    zh: `${paid} 已支付至您的主余额（每张 ${share}）。`,
++  };
++  const ladder = opts.paidTickets === 0 ? { en: "", sw: "", zh: "" } : opts.cannotSignIn ? {
++    en: " Our team pays it to your registered number when you ask.",
++    sw: " Timu yetu itazilipa kwa namba yako iliyosajiliwa ukiomba.",
++    zh: "我们的团队将应您的请求支付至您的注册号码。",
++  } : {
++    en: ` To withdraw: a confirmed email and your typed identity details; at most ${max} per withdrawal, to your registered number; fee ${pct}% (${formatTzs(x)} arrives as ${arrives}).`,
++    sw: ` Ili kutoa: barua pepe iliyothibitishwa na taarifa zako za utambulisho ulizoandika; hadi ${max} kwa kila utoaji, kwa namba yako iliyosajiliwa; ada ${pct}% (${formatTzs(x)} inafika kama ${arrives}).`,
++    zh: `提现需要：已验证的邮箱及您填写的身份信息；每次提现最多 ${max}，转至您的注册号码；手续费 ${pct}%（${formatTzs(x)} 到账 ${arrives}）。`,
++  };
++  const heldLine = opts.heldTickets === 0 ? { en: "", sw: "", zh: "" } : {
++    en: ` The share for ${opts.heldTickets === 1 ? "1 ticket" : `${opts.heldTickets} tickets`} is held for now; our team will contact you.`,
++    sw: ` Zawadi ya tiketi ${opts.heldTickets} imeshikiliwa kwa sasa; timu yetu itawasiliana nawe.`,
++    zh: `${opts.heldTickets} 张彩票的奖金暂时保留；我们的团队会联系您。`,
++  };
++  return millioneaNotify({
++    userId,
++    kind: "WIN",
++    titleEn: opts.paidTickets > 0 ? `${w.en} · You won ${paid}` : `${w.en} · ${won === 1 ? "Your ticket won" : `${won} of your tickets won`}`,
++    titleSw: opts.paidTickets > 0 ? `${w.sw} · Umeshinda ${paid}` : `${w.sw} · ${won === 1 ? "Tiketi yako imeshinda" : `Tiketi zako ${won} zimeshinda`}`,
++    titleZh: opts.paidTickets > 0 ? `${w.zh} · 您赢得 ${paid}` : `${w.zh} · ${won === 1 ? "您的彩票中奖" : `您有 ${won} 张彩票中奖`}`,
++    bodyEn: `${tickets.en}${paidLine.en}${ladder.en}${heldLine.en}`,
++    bodySw: `${tickets.sw}${paidLine.sw}${ladder.sw}${heldLine.sw}`,
++    bodyZh: `${tickets.zh}${paidLine.zh}${ladder.zh}${heldLine.zh}`,
++    href: millioneaNoticeHref({ notice: "result", weekCode: opts.weekCode, winningSerial: opts.winningSerial }),
++  });
++}
++
++/**
++ * A win whose every share is held for Compliance (MB-43) — a VERDICT, never a WIN: no share was paid, so the bell does not
++ * paint it gold, exactly as its letter wears royal. The tickets and the hold only: no figure, no reason (Compliance writes
++ * to the holder), no withdrawal ladder. Its link is the win's own key, so a holder is told once either way.
++ */
++export function notifyMillioneaWonHeld(userId: string, opts: MillioneaWinShares) {
++  const w = millioneaWeekIn(opts.weekCode);
++  const won = opts.paidTickets + opts.heldTickets;
++  const tickets = millioneaWinTickets(won, opts.score);
++  const held = {
++    en: ` The share for ${won === 1 ? "1 ticket" : `${won} tickets`} is held for now; our team will contact you.`,
++    sw: ` Zawadi ya tiketi ${won} imeshikiliwa kwa sasa; timu yetu itawasiliana nawe.`,
++    zh: `${won} 张彩票的奖金暂时保留；我们的团队会联系您。`,
++  };
++  return millioneaNotify({
++    userId,
++    kind: "VERDICT",
++    titleEn: `${w.en} · ${won === 1 ? "Your ticket won" : `${won} of your tickets won`}`,
++    titleSw: `${w.sw} · ${won === 1 ? "Tiketi yako imeshinda" : `Tiketi zako ${won} zimeshinda`}`,
++    titleZh: `${w.zh} · ${won === 1 ? "您的彩票中奖" : `您有 ${won} 张彩票中奖`}`,
++    bodyEn: `${tickets.en}${held.en}`,
++    bodySw: `${tickets.sw}${held.sw}`,
++    bodyZh: `${tickets.zh}${held.zh}`,
++    href: millioneaNoticeHref({ notice: "result", weekCode: opts.weekCode, winningSerial: opts.winningSerial }),
++  });
++}
++
++/**
++ * A week settled and none of this player's tickets won (MB-68), in the S5 hub's words ("your ticket did not win"): the
++ * loss named, with what the week cost them (LCCP: a loss is said plainly, with its amount). In a week no ticket won, the
++ * rollover — its pool carried forward with no fee (S5's `rolloverNotice`) — is told to holders only (OD-25).
++ * ⛔ `carried` is null on a break (R8-D): the line that would draw a player back is left out, never reworded.
++ */
++export function notifyMillioneaNotWon(userId: string, opts: {
++  weekCode: string;
++  tickets: number;
++  spentTzs: number;
++  /** The tickets that won this week: at 10 of 10, or at the final week's highest score. 0: nobody won, the pool carried. */
++  winningTickets: number;
++  /** The winning score (10, or the final week's highest, MR-30); null when nobody won. */
++  winningScore: number | null;
++  /** A no-winner week's carry and the week it carries into (null: not opened yet) — or null, as above. */
++  carried: { amountTzs: number; intoWeekCode: string | null } | null;
++}) {
++  const w = millioneaWeekIn(opts.weekCode);
++  const n = opts.tickets;
++  const k = opts.winningTickets;
++  const spent = formatTzs(opts.spentTzs);
++  const into = opts.carried?.intoWeekCode ? millioneaWeekWord(opts.carried.intoWeekCode) : null;
++  const carried = opts.carried ? formatTzs(opts.carried.amountTzs) : "";
++  const top = opts.winningScore !== null && opts.winningScore < 10;
++  const week = k > 0 ? {
++    en: top ? `${k === 1 ? "1 ticket" : `${k} tickets`} reached the week's highest score, ${opts.winningScore} of 10.`
++      : `${k === 1 ? "1 ticket" : `${k} tickets`} reached 10/10 this week.`,
++    sw: top ? `${k === 1 ? "Tiketi 1 ilifikia" : `Tiketi ${k} zilifikia`} alama ya juu wiki hii, ${opts.winningScore} kati ya 10.`
++      : `${k === 1 ? "Tiketi 1 ilifikia" : `Tiketi ${k} zilifikia`} 10/10 wiki hii.`,
++    zh: top ? `本周有 ${k} 张彩票获最高分（10 题中 ${opts.winningScore} 题）。` : `本周有 ${k} 张彩票达到 10/10。`,
++  } : opts.carried ? {
++    en: `No ticket reached 10/10: ${carried} carried forward ${into ? `into ${into.en}` : "to the next week"}, with no fee.`,
++    sw: `Hakuna tiketi ya 10/10: ${carried} imeletwa mbele ${into ? `kwenye ${into.sw}` : "kwenye wiki inayofuata"}, bila ada.`,
++    zh: `无 10/10 彩票：${carried} 滚存至${into ? into.zh : "下周"}，不收费用。`,
++  } : { en: "No ticket reached 10/10.", sw: "Hakuna tiketi ya 10/10.", zh: "无 10/10 彩票。" };
++  return millioneaNotify({
++    userId,
++    kind: "LOSS",
++    titleEn: `${w.en} · ${n === 1 ? "Your ticket did not win" : `Your ${n} tickets did not win`}`,
++    titleSw: `${w.sw} · ${n === 1 ? "Tiketi yako haikushinda" : `Tiketi zako ${n} hazikushinda`}`,
++    titleZh: `${w.zh} · ${n === 1 ? "您的彩票未中奖" : `您的 ${n} 张彩票未中奖`}`,
++    bodyEn: `${week.en} Spent this week · ${n === 1 ? "1 ticket" : `${n} tickets`} · ${spent}.`,
++    bodySw: `${week.sw} Ulichotumia wiki hii · tiketi ${n} · ${spent}.`,
++    bodyZh: `${week.zh}本周支出 · ${n} 张 · ${spent}。`,
++    href: millioneaNoticeHref({ notice: "result", weekCode: opts.weekCode, winningSerial: null }),
++  });
++}
++
++/** A week voided whole (MR-18) and every ticket refunded: the S5 notice's own words ("Your {n} tickets refunded · …"). */
++export function notifyMillioneaWeekRefunded(userId: string, opts: { weekCode: string; tickets: number; refundedTzs: number }) {
++  const w = millioneaWeekIn(opts.weekCode);
++  const n = opts.tickets;
++  const money = formatTzs(opts.refundedTzs);
++  return millioneaNotify({
++    userId,
++    kind: "DEPOSIT", // money back in the wallet
++    titleEn: `${w.en} voided`,
++    titleSw: `${w.sw} imebatilishwa`,
++    titleZh: `${w.zh}已作废`,
++    bodyEn: `More main questions voided than there were valid reserves. ${n === 1 ? "Your ticket refunded" : `Your ${n} tickets refunded`} · ${money} returned to main balance.`,
++    bodySw: `Maswali makuu batili yalizidi akiba halali. ${n === 1 ? "Tiketi yako imerejeshwa" : `Tiketi zako ${n} zimerejeshwa`} · ${money} imerudi kwenye salio kuu.`,
++    bodyZh: `作废的主题多于有效备选题。${n === 1 ? "您的彩票已退款" : `您的 ${n} 张彩票已退款`} · ${money} 已退回主余额。`,
++    href: millioneaNoticeHref({ notice: "refund", weekCode: opts.weekCode }),
++  });
++}
++
+ /* ---- House bots (build commit 3) ---- */
+ 
+ /**

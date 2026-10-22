@@ -1,0 +1,133 @@
+MASWALI-BUILD S7-MERGE 1: S7 (0f0d42fcc) × the S5 release (81e312f01) — every conflicted hunk resolved from both sides' intent
+
+Merges origin/claude/maswali-s5-release (81e312f01: S5 rounds 1–2 and FIX-SRV 2b/2d) into claude/maswali-s7 (0f0d42fcc:
+S7 through S7-F8 15). Merge base bd715cf6a. 30 files conflicted (about 92 hunks); none was taken wholesale from one side
+without reading the other. FIX-SRV's merge map (the hand-over's MERGE-NOTES, "FIX-SRV 2b" and "S7 at 0f0d42fcc") followed.
+
+THE CONFLICTED FILES AND THEIR RESOLUTIONS
+- src/lib/server/maswali-service.ts (22 hunks — the money path):
+  · imports: the union (S7's isFencedMaswali, dbNowMs, landedMaswaliAnswer, unsettledFloors; both sides already moved to
+    afterCommit and readRequireTwoOfficerResolution).
+  · openWeek: FIX-SRV's shape — the sources seeded BEFORE the lock (census 14.5), one transaction, LostClaim, every audit
+    row owed and reported (`recorded`) — plus S7's deadline re-freeze: deadlinesUnderRules → `due`, the moved void
+    deadlines written on the lock's transaction, and the re-freeze's row now OWED with the open's other rows (it was
+    afterCommit(recordOwed), which census 14.3 reads as an audit inside the lock and which `recorded` never counted).
+    S7's finalDeadlineAt rides stampOpen (placed before opensAt, so plant (61) keeps its line) and the opened row.
+  · moveClose: FIX-SRV's reviewed-close check (expectedClosesAt) first, then S7's later-of-two-clocks rule (MB-84),
+    dbNowMs on the lock's `tx`.
+  · closeWeek: FIX-SRV's result (`recorded`, the owed row, writes on lockTx, the notice after commit) + S7's CloseNotYet
+    and closedAt at the database's instant (`atMs`).
+  · finding 2's writer (OwedAudit, recordOwed, __setMaswaliAuditWriterForTests): ONE copy — the release's (it refuses a
+    test writer in production and reaches the dev fault route through globalThis); S7's was a byte copy of an older one.
+  · sealQuestion: the release's result and one-transaction body; the A9 lines are byte-identical on both sides
+    (5fbdb2eaa = b00c3a70d, checked line by line).
+  · confirmSeal: S7's ticket-holder bar (MR-14) inside the release's one-transaction body.
+  · correctSeal: both sides added the same two checks — ONE evidence check (S7's words "A correction records its
+    evidence", at the release's place, first) and ONE void-ground check (the release's place, after the reviewed-seal
+    check); S7's explanation moved into the function's doc.
+  · sunsetMaswali: S7's whole rule set (a standing final week first, the later clock, the closed-week refusal, the notice
+    basis, the next act, the mark under the market lock on the lock's transaction) + FIX-SRV's owed order row (its
+    payload keeps S7's `basis`) and `recorded` (engine 12.4).
+- src/lib/server/maswali-dal.ts: the memory editDraftQuestions takes the release's memEventKindCheck (S7's copy lacked
+  only that line); one copy of every DAL method.
+- src/lib/server/maswali-player.ts: the hub's read model returns both S7's finalAhead (F1) and the release's
+  lastWeekIsPrevious.
+- scripts/lib/maswali-purchase-child.mts §7 (the 6b fix, made on both sides): ONE kept — the release's 3bf81c285 form
+  (7.0a the grant landed, 7.0c 95,000 of turnover left: each premise named on its own line; the form the lead's gate saw
+  (6b) caught on) with S7 76a8d4780's explanation of why the bonus switch is set; S7's combined 7.0a dropped.
+- scripts/maswali-money.test.mts: S7's form (8bcb151af) — both sides fixed "a throw ends the suite"; S7's settle() helper
+  protects §1–§3 (the release's inline catches left §3 able to end the run), a throwing §2 week fails alone while the
+  later weeks still print, and its printed floor (410) stands. Checked out whole from 0f0d42fcc.
+- src/app/admin/maswali/actions.ts: imports and ActionResult the union (S7's rule and holiday savers and `field`; the
+  release's seal batch, `recorded` and `auditWarning`).
+- src/app/admin/maswali/page.tsx: S7's Owner forms (the fresh rules and holiday reads) with the release's typed page and
+  list query.
+- src/app/admin/maswali/[weekId]/page.tsx: S7's holiday-review warnings (draft and open) beside the release's 44px edit
+  link and its MoveCloseForm (weekCode, the reviewed close).
+- src/app/admin/maswali/pools/page.tsx: the release's open-week and trail filters, sort and paging + S7's unknown
+  requirement (never "covered" on an unread one); the stop's audit-warning slot + S7's `nextAct`.
+- src/app/admin/maswali/pools/pools-controls.tsx: the release's stop form (code lookup, per-week confirm, audit warning) +
+  S7's next act when no week can be offered. src/lib/maswali-admin-form-validation.ts (not conflicted): the draft's confirm
+  sentence now states S7's rule — a full week's notice, or less for the next week while a closed week is decided.
+- src/app/api/dev-test/seed-maswali/route.ts: imports the union (S7's close-clock seam + the release's readDraftVersion).
+- src/app/millionea/millionea-view.ts: imports the union (S7's remainderFate + the release's eatWeekday, weekVoidCertain).
+- src/app/millionea/page.tsx (the hub): the release's redesigned page. The final week announced ahead is drawn ONCE — the
+  release's L22 bar (the lead's ruling of 2026-10-21; `millioneaFinalWeekAhead` reads the same answer as S7's
+  `finalAhead`: the public line, ENDING, the final week still a draft). S7's F1 Callout and its helper drew the same
+  announcement a second time: dropped, with the two words only they used.
+- src/components/maswali/maswali-card-model.ts: S7's F1 (the announced final week named on every other card; the final
+  week's own presale) + the release's dated presale: S7's final-week presale carries its date too (`opensDay`, L10).
+- src/components/maswali/maswali-home-card.tsx: the release's door (host, preview, idBase, doorTime/doorDay) + S7's
+  `finalAhead` line, in the final week's own head slot (the two never stand together), its style and id, read by the
+  card's description. src/components/maswali/maswali-home-card-door.tsx hands both sides' props.
+- src/lib/i18n-dict.ts (en/sw/zh): S7's finalAheadShort (the card, F1) and finalRule (the slip and the confirm sheet, F3)
+  beside the release's finalWeekRule (the hub's pool line) and finalWeekAhead (L22); S7's hub-only finalAheadAt and
+  finalAhead removed with the Callout; sw: S7's F4 remainder notes + the release's revised noTopUp.
+- src/app/millionea/slip/slip-client.tsx: the release's multi-ticket composer + S7's finalWeek (to the slip and the
+  confirm sheet) and the `shownFinal` the stale-slip refusal reads (MR-30); a refusal still refreshes, so the slip redraws
+  with the rule.
+- src/components/maswali/maswali-slip.tsx: the release's slip (the price leads the rules box; the reserves' rule in its own
+  head) + S7's F3 — the final week's rule first in the rules box (the price then keeps its marker from 1280: soleFromXl
+  only while it truly stands alone) and beside the fee rule (ruleSharedJackpot) on the confirm sheet.
+- src/app/millionea/register/[week]/page.tsx, src/app/millionea/tickets/[serial]/page.tsx,
+  src/components/maswali/maswali-win-ledger.tsx: the release's form — the register and the win receipt draw ONE shared
+  ledger (REGISTER × TICKETS) — so S7's F4 and its final-week carry row are PORTED into that builder rather than kept as
+  per-page copies: src/components/maswali/maswali-ledger.tsx says the remainder's fate from the week's own figures
+  (carried / part / kept; a final week's stays in the jackpot account), and a final week that PAID labels its carry "Kept
+  in the jackpot account (the final week)", unlinked; register-parts.tsx hands `finalWeek: w.isFinal`. Narrowed to S7's
+  own rationale (48ddb855b: "a final week that paid has no next week"): a final week that sold nothing passes the role on
+  and the next week claims its carry, so that row still names the week.
+- src/components/ui/receipt-row.tsx: the release's (it already carries 7aec02bfd's min-w-0 and gap-x-2).
+- scripts/maswali-design.test.mts: the release's 4.A1e (it censuses the shared ledger) and floor 141 (the higher printed);
+  S7's 2.F1d, 2.F3a, 2.F4b, 2.F4c re-pinned to the merged card, hub, slip and ledger; NEW 4.F1e renders the announced final
+  week in the card's head and description (en/sw/zh, with controls).
+- scripts/maswali-register.test.mts: the release's checks on the ONE ledger; 9.2 and 9.5 re-pinned to the ported lines;
+  S7's 9.2 plant re-pointed there and a 9.5 plant added; NEW rendered cases 15.F4a (carried vs part) and 15.F4b (a final
+  week's carry row and note, unlinked; CONTROL: not final, it names Week 49), each with a builder-level plant.
+- scripts/maswali-player.test.mts, scripts/maswali-ui.test.mts: the release's floors (the higher printed; the ui side
+  already holds S7's §13 verbatim); raised to the merged run's prints in a following commit.
+- scripts/anchors/house-bot-chatbot.anchors.mjs (13 hunks): S7's one constant for every case, holding the label the merged
+  suite prints — the release's "byte-identical to the pinned baseline" (f5a11a06a changed the printed label).
+  scripts/house-bot-chatbot-red.mts (merged clean): the release's origin/main baseline in the red drive and S7's real
+  checkpoint ref in the shadow both stand; S7's comment rewritten to say so.
+- scripts/lib/house-bot-absence-cases.mts (D19a): the release's legal pins (S7 changed no legal file) and its blob pin;
+  the dictionary RE-PINNED ONCE to the merged blob 6c1d110fa — proven: the merged dictionary is the release's plus S7's 30
+  reviewed lines (byte for byte as S7's f28803da1 pin held them), less S7's two hub-only keys in three languages; every one
+  of the release's 563 changed lines kept.
+- scripts/lib/house-bot-reports-cases.mts (0.232.2): both sides' dated notes + a merge note; the twelve lines re-derived
+  from the merged tree, each nine-line write SHA-256-identical (CR stripped) to the side it came from.
+
+WHAT ELSE THE MERGE NEEDED (no textual conflict)
+- The plants that pin moved lines: maswali-engine.anchors (21) the correction's words, (64) the opened row's payload,
+  (76)/(77) re-pointed to S7's sunset (`markFinal`; the order row with `basis`); maswali-money-path.anchors (S7-move-clock)
+  `tx`, (S7-correct-ground) after the reviewed-seal check, (S7-F8-refreeze-owed) the owed push, (S7-F8-sunset-owed) the owed
+  return. test:red-anchors: 7863 passed, 0 failed.
+- Callers of APIs the release changed, in S7's harnesses (untyped handles, so tsc could not see them): the adversarial
+  child's 21 calls get the reviewed seal, close, row version or read version (as the console reads them); the player
+  child's attestation; the S16 worker's correction; the S17 worker's attestation and move.
+- Callers of an API S7 changed, in the release's dev routes: maswali-hub-act, seed-maswali-register and seed-maswali-tickets
+  close weeks on their week clock, which S7's database-clock close (MB-84) refuses — each sets S7's close-clock seam for its
+  request and restores it, as seed-maswali does.
+- src/app/admin/maswali/actions.ts: S7's two Owner saves put their refresh in its own try — the release's A7 rule, found
+  red by engine 7.25 on the merged tree.
+- docs/MASWALI-PLAN.md: §0/§1 are the release's verbatim (the lead's; three lines S7 had edited there are restored and
+  reported); everything else holds both sides' changes (S7's 112 lines, the release's 37).
+- src/lib/server/maswali-settlement.ts: logic-checked — the release's register invalidation lands after the paying
+  section's transaction has committed, outside any lock, once; S7's market-service change is line-neutral.
+
+CHECKS ON THIS TREE BEFORE THE COMMIT
+- npx tsc --noEmit (slot 6): exit 0, no error.
+- test:red-anchors: 7863 passed, 0 failed (every plant of every anchors file resolves exactly once).
+- memory children (DATABASE_URL="" USE_PRISMA_DAL=false HB_MONEY_STORE=memory): engine 202/0 (after the actions.ts
+  fix; 201/1 before it, 7.25), purchase 113/0, settle 106/0, void 52/0, close-race 13/0, shared-paths 15/0, integrity 11/0,
+  player 194/0, adversarial 197/0 with its 3 booked KNOWN-RED (OB.0, RD.5, TK.2); fence 35/1 — 5.1, the release's own red
+  (DOORS' unclassified !== "UPDOWN" branch in src/app/results/millionea-results-view.tsx: the same file, one branch, no
+  census entry at 81e312f01; the file is absent from S7's tree).
+- light suites: maswali-design 150/0, maswali-register 60/0 and --prove-red 111/111 caught, maswali-ui 151/0,
+  maswali-money 410/0, maswali-hub 53/0, maswali-design-register 34/0, maswali-admin-form-validation PASS.
+- source mutation proofs (each file restored byte-identical): the ledger port (F4-note → 9.2, 15.F4a; F4-final → 9.5,
+  15.F4b; F4-flag → 15.F4b) and the card line (F1-card, F1-describe → 2.F1d, 4.F1e): 5 caught of 5.
+- house-bot-disclosure 119/4 before this commit: 5.0.u43, 5.1, 5.1.c1, 5.1.c3 read HEAD's blobs, which this commit
+  moves (re-run after it). The reports memory child and the database suites run next, on this commit.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

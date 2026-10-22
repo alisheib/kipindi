@@ -1,0 +1,32 @@
+MASWALI-BUILD S5-R2-PLATFORM 6: on the four-tab rail no two labels stand closer than their pips either (Swahili, 332.8–348.8)
+
+Round 1 (D14) measured the four-tab journey rail and left it alone. That is the rail every reader is served while
+Millionea does not show, which D14 was not to change. Its Swahili "Juu na Chini" | "Tiketi zangu" (12 × 6.6 =
+79.2px each) both fit one line from 332.8, where they stood 4.05px apart at 333. Chromium read the same (round 1's
+four-tab cells): 4.0px at 333, 5.8 at 340, 7.5 at 347, 10.8 at 360. Untouched they clear the rail's 8px only from
+4 × (79.2 + 8) = 348.8. The lead's round 2 assigned it.
+  - globals.css: D14's own answer on that rail, Swahili alone, between the two widths. From 332.8 to 348.8 the labels
+    of `.kp-rail--journey:not([data-tabs])` (data-tabs is absent for four tabs) close their tracking by D14's 0.04em:
+    12 × 6.16 = 73.9px, 9.3px apart at 332.8.
+      - Below 332.8 the labels wrap into two short lines, more than 40px apart, and are not touched.
+      - From 348.8 they are as before.
+      - English (least 17.3px) and Chinese (47) clear 8px at every width as they are.
+      - D14's comment no longer says the four-tab rail is untouched.
+  - test:visual-pass-r9c §4c, re-pinned openly. The width model reads the four-tab rail's tracking the way it reads
+    the five-tab rail's. 4c.2 now holds the minimum on four tabs at every width from 320, in sw/en/zh: least sw
+    8.05px at 349, en 17.3, zh 47. It also holds that Swahili's rule is the only tracking that reaches that rail, from
+    §4.1's 332.8 to the dictionary-derived 348.8. Plants:
+      - 4c.2″ CONTROL + PLANT: the rule removed. The model reads round 1's 4.05px at 333 and the check fails.
+      - 4c.2‴: the tracking given back at 345 fails.
+      - 4c.2⁗: the tracking reaching below 332.8 fails, because the tracked labels would fit one line 6px apart at 320.
+      - 4c.2′: kept (the five-tab tracking spilled onto every journey rail).
+    80 passed, 0 failed (was 77).
+  - qa:journey-rail-gaps now fails a four-tab cell under 8px too, and its default widths add 332, 333, 340, 347, 348
+    and 349.
+  - DESIGN_AUTHORITY §M8a item 11 records the four-tab rule beside D14's. It is a change every Swahili journey reader
+    sees at 333–348px. The journey shell is not the classic one; it is named for the parity compare anyway.
+VERIFIED: test:visual-pass-r9c 80/0, test:journey-shell 566/0, test:visual-pass-r4i 131/0, test:visual-pass-r6c 90/0,
+test:simple-journey-flag 135/0, test:docs, test:css-vars-defined 330/0, test:tokens, test:design-one-door.
+LEFT: qa:journey-rail-gaps four-tab cells in Chromium (the targeted re-shoot).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

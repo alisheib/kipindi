@@ -1,0 +1,9 @@
+[
+  {
+    "from": "/** The D19a chat pin's label as `house-bot-chatbot-cases.mts` 6.6 prints it (S5's f5a11a06a: the pinned baseline is the\n *  approved S11 checkpoint 8ce376ca0 in the suite, the shadow's own origin/main in the red drive). ONE constant, every case. */\nconst D19A_CHECKPOINT = \"byte-identical to the pinned baseline\";",
+    "to": "/** The D19a chat pin's label as `house-bot-chatbot-cases.mts` 6.6 prints it (S5's f5a11a06a: the suite measures it against\n *  the approved prompt checkpoint `CHAT_PROMPT_PIN`, the red drive against the shadow's own origin/main; MASWALI-BUILD S6-INT\n *  keeps the label's head, which both name). ONE constant, every case. */\nconst D19A_CHECKPOINT = \"src/app/_actions/chat.ts is byte-identical to\";",
+    "count": 1
+  },
+  { "from": "    alsoRed: [\"src/app/_actions/chat.ts is byte-identical to\"],", "to": "    alsoRed: [D19A_CHECKPOINT],", "count": 13 },
+  { "from": "    expect: \"src/app/_actions/chat.ts is byte-identical to\",", "to": "    expect: D19A_CHECKPOINT,", "count": 1 }
+]

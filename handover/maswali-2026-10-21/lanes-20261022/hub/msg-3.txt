@@ -1,0 +1,15 @@
+MASWALI-BUILD S5-R2-HUB 3: the no-week empty state keeps the next open's day with its clock
+
+L6/L21: the hub's no-week body was one plain string, so "Monday 00:01" could part at a line's end (A1: a day never
+parts from its time).
+- noWeekBody (hub-words.tsx, pure): the kit's own kept body. The next open's sentence, while one is due and never while
+  sales are paused, then the questions' sentence; zh joins the two with no space. The next open's day and clock are one
+  kept run (EmptyStateBody's keep, a nowrap span).
+- test:maswali-hub section 14: in sw, en and zh the body's words, the kept run, and the paused body (plant: the round-1
+  plain string).
+- The section T5 face of its numerals ("00:01", "15") arrives with the kit's opt-in bodyPart (TICKETS' round 2). The lead
+  wires it at the merge (HUB's item 3). Until then the drive prints them for that owner.
+
+PROOF_PLACEHOLDER
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

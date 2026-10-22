@@ -1,0 +1,26 @@
+MASWALI-BUILD S5-R2-SLIP 11: the slip drawing's name wraps ALL of it — data-ghost-page="slip" on a box-less wrapper round the back link, the busy root and the docked rail (the lead's correction to 10)
+
+The lead found that 768bc3fa2 named only the busy root. The drawing's back link (BackLinkGhost) and its docked rail
+(.kp-mln-rail) stand outside that root, so REGISTER's qa:millionea-ghost-hops reported the rail's bars as UNMARKED on
+the hub to slip hop.
+- src/app/millionea/slip/slip-ghost.tsx: everything inside PageContainer is now wrapped in
+  <div className="contents" data-ghost-page="slip">: the back link, the grid and the rail. The sr-only "loading" span
+  moves inside it too. The busy root keeps aria-busy and data-testid="slip-ghost" and loses the name; the drawing is
+  named once. display: contents gives the wrapper no box, so the layout and the rail's sticky containing block stay the
+  page container's. No stylesheet rule selects the container's direct children; the hub and its drawing already use
+  such wrappers. The body is re-indented one level; git diff -w is the 3-line logical change.
+- scripts/maswali-slip-design.test.mts 7.3 reads the rendered drawing, walking its div tags. The page container's first
+  child is the named wrapper; the wrapper's matching close is the container's last content; it holds the busy root
+  (testid kept) and the rail; and the drawing carries exactly one data-ghost-page.
+  7.3' PLANT: the name back on the busy root alone (the rail and the back link unnamed) is caught.
+  The count stays 88.
+
+Checks on this exact tree (OMEGA, 2026-10-22; logs in scratchpad 64715c03/slip/logs/p9):
+- maswali-slip-design: 88 passed, 0 failed.
+- On-disk plants (scratch plant.mjs + spec-ghostwrap.json), 2/2 caught by 7.3, restored byte for byte, 88/0 after:
+  the name back on the busy root alone, and the docked rail moved out of the wrapper.
+- The drawing's readers: maswali-ui 151/0, visual-pass-r4j 92/0, journey-shell 566/566, measure ALL PASS (862 tsx),
+  millionea-dark-edge 36/0, visual-pass-r5d 45/0.
+- tsc: a JSX wrapper only. It runs with this branch's last src batch.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

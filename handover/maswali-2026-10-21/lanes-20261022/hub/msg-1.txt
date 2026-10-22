@@ -1,0 +1,21 @@
+MASWALI-BUILD S5-R2-HUB 1: Millionea's segment loading draws the page being opened, not the hub's drawing
+
+On a client hop between Millionea pages, src/app/millionea/loading.tsx (it wraps every Millionea page) painted the
+HUB's drawing until the page landed. REGISTER measured it under 400 ms / 12 KB/s: register -> How 1.4 -> 21.7 s,
+hub -> How 1.5 -> 22.4 s, How -> register 1.4 -> 14.4 s (the lead's item).
+
+- The loading file now draws the page being opened, picked in the browser by its address (the platform's RoutePick:
+  usePathname() names the destination during a move). /millionea draws the hub's drawing; /millionea/how, /register,
+  /slip and /tickets, a week (^/millionea/register/[^/]+$) and a ticket (^/millionea/tickets/[^/]+$) each draw their
+  own; any other address draws the hub's.
+- A journey reader is handed the journey's own route ghost (R5-D's binding, and only while Millionea is visible to the
+  reader, D6). It draws Tiketi zangu's Millionea kind under the journey's own head. Every other page is one drawing for
+  both shells. The loading element stays client references only (r5h 1.2).
+- data-ghost-page="hub" on the drawing's busy root: the one marker the hop drive (qa:millionea-ghost-hops) reads.
+- test:maswali-hub section 15: a census (every Millionea page.tsx is named by the pick; plant: a new page with none),
+  and at each page's address in sw, en and zh the pick draws exactly what that page's own loading file draws (plant:
+  the old file's hub drawing). For a journey reader, the tickets page is the journey's route ghost.
+
+PROOF_PLACEHOLDER
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

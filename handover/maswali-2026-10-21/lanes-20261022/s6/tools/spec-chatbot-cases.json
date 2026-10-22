@@ -1,0 +1,12 @@
+[
+  {
+    "from": "export async function runChatbotCases(ok: Ok, section: Section, ROOT: string, baselineRef = \"8ce376ca0\"): Promise<void> {",
+    "to": "export async function runChatbotCases(ok: Ok, section: Section, ROOT: string, baselineRef: string = CHAT_PROMPT_PIN): Promise<void> {",
+    "count": 1
+  },
+  {
+    "from": "  const diff = trunkDiff(ROOT, [CHAT_TS], CHAT_PROMPT_PIN);\n  ok(\n    `6.6 · D19a · src/app/_actions/chat.ts is byte-identical to the approved prompt checkpoint ${CHAT_PROMPT_PIN} (MASWALI-BUILD S6) — today's template, the journey's fixed swaps and Millionea's passage stay pinned without editing or importing the action`,\n    diff.measured && diff.clean,\n    diff.measured ? `clean against ${CHAT_PROMPT_PIN} (${diff.sha}) · ${diff.files} file(s) compared` : `⛔ NOT MEASURED — ${diff.why}`,",
+    "to": "  // The suite measures it against the approved prompt checkpoint (`CHAT_PROMPT_PIN`); the red drive hands its shadow's own\n  // origin/main — the pristine copy — so a mutated chat.ts differs for exactly the reason the label names (S5's f5a11a06a).\n  const diff = trunkDiff(ROOT, [CHAT_TS], baselineRef);\n  ok(\n    `6.6 · D19a · src/app/_actions/chat.ts is byte-identical to the approved prompt checkpoint ${baselineRef} (MASWALI-BUILD S6) — today's template, the journey's fixed swaps and Millionea's passage stay pinned without editing or importing the action`,\n    diff.measured && diff.clean,\n    diff.measured ? `clean against ${baselineRef} (${diff.sha}) · ${diff.files} file(s) compared` : `⛔ NOT MEASURED against ${baselineRef} — ${diff.why}`,",
+    "count": 1
+  }
+]

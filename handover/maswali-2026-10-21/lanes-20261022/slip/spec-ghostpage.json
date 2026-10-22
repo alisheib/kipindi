@@ -1,0 +1,8 @@
+[
+  { "name": "the slip drawing's page name taken off", "file": "src/app/millionea/slip/slip-ghost.tsx",
+    "from": " data-testid=\"slip-ghost\" data-ghost-page=\"slip\">", "to": " data-testid=\"slip-ghost\">",
+    "suite": "scripts/maswali-slip-design.test.mts", "expect": ["7.3 ·"] },
+  { "name": "the name moved off the busy root onto the page container", "file": "src/app/millionea/slip/slip-ghost.tsx",
+    "from": " data-testid=\"slip-ghost\" data-ghost-page=\"slip\">", "to": " data-testid=\"slip-ghost\"><span data-ghost-page=\"slip\" hidden />",
+    "suite": "scripts/maswali-slip-design.test.mts", "expect": ["7.3 ·"] }
+]

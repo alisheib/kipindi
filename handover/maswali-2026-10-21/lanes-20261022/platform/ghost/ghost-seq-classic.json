@@ -1,0 +1,51 @@
+[
+ {
+  "pass": "first",
+  "shell": "classic",
+  "move": "/millionea → /millionea/how",
+  "seq": [
+   "/millionea page:hub [+0…+230ms, 15 fr]",
+   "/millionea/how page:how [+285…+11989ms, 704 fr]"
+  ]
+ },
+ {
+  "pass": "first",
+  "shell": "classic",
+  "move": "/millionea/how → /millionea/register",
+  "seq": [
+   "/millionea/how page:how [+0…+1469ms, 89 fr]",
+   "/millionea/register page:register [+1498…+11998ms, 632 fr]"
+  ]
+ },
+ {
+  "pass": "first",
+  "shell": "classic",
+  "move": "/millionea → /millionea/slip",
+  "note": "no link a[href=\"/millionea/slip\"]"
+ },
+ {
+  "pass": "warm",
+  "shell": "classic",
+  "move": "/millionea → /millionea/how",
+  "seq": [
+   "/millionea page:hub [+0…+345ms, 20 fr]",
+   "/millionea/how page:how [+391…+11998ms, 699 fr]"
+  ]
+ },
+ {
+  "pass": "warm",
+  "shell": "classic",
+  "move": "/millionea/how → /millionea/register",
+  "seq": [
+   "/millionea/how page:how [+0…+636ms, 39 fr]",
+   "/millionea/register ghost:hub [+669…+678ms, 2 fr]",
+   "/millionea/register page:register [+708…+11999ms, 680 fr]"
+  ]
+ },
+ {
+  "pass": "warm",
+  "shell": "classic",
+  "move": "/millionea → /millionea/slip",
+  "note": "no link a[href=\"/millionea/slip\"]"
+ }
+]

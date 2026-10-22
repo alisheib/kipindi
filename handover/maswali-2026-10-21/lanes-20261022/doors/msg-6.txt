@@ -1,0 +1,35 @@
+MASWALI-BUILD S5-R2-DOORS 6: qa:maswali-door-dark — the dark payload on real bytes, every door page, every hidden reader
+
+ITEM 1's real-bytes half (its source half is test:maswali-doors §5, 0c746829b): a new drive, qa:maswali-door-dark
+(scripts/maswali-door-dark.mjs), on a fresh in-memory `next dev` at WITHDRAWN or STAFF_PREVIEW. Every page a door's code
+renders on, read the two ways its payload reaches a browser — the document (its inline Flight, decoded as the browser
+decodes it) and a soft navigation's flight (`RSC: 1`, the 307 to its cache-busting address followed) — for each reader
+Millionea is hidden from: signed out (/, /markets, a question under it, /results, /updown, /live), the demo player on the
+classic shell (/, /markets, the question, /results, /positions, /updown/history) and the same player on the journey (the
+JOURNEY's staff preview pass beside the session). Each read: qa:live's own matcher (`millioneaTracesIn`) finds nothing,
+and no client element in the payload is handed `millionea` / `millioneaOnBreak` (the board's drawing no `preview`) — every
+client element's props read out of the Flight rows by scripts/lib/flight-elements.mjs (React 19.2 writes a repeated string
+once, as its own row, and a reference row names its module and export through it — so markets-ghost.tsx#default, the
+board's loading picture, is told from #MarketsBoardGhost, the page's own fallback).
+Controls: every read is a real page (200, Flight in it); a classic reader's board and question carry the board's loading
+picture handed `{}` (the element main serves) and every journey payload the root loading's route ghost handed no
+`millionea`; at STAFF_PREVIEW a staff session's board DOES hand `{"millionea":true,"preview":true}` and its navs
+`"millionea":true`; at WITHDRAWN with DOOR_DARK_PLANT=1 round 1's line is written back into markets/loading.tsx on the
+running server — the signed-out board then hands `{"millionea":false,"preview":false}`, caught by the matcher
+(`prop:"millionea":`) and by the element check — and restored byte for byte (also on an interrupt), the board clean again.
+A question to read comes from the catalogue's own dev seed (`/api/dev-test/seed-markets`): a fresh server lists none for
+its first minutes.
+
+RESULTS (fresh servers on this tree, the final script):
+- WITHDRAWN, DOOR_DARK_PLANT=1: maswali-door-dark 44 passed, 0 failed (36 page reads, 4 premises, the plant's 4).
+- STAFF_PREVIEW: maswali-door-dark 43 passed, 0 failed (36 page reads, 5 premises, the staff control on document + flight).
+- qa:live's dark section, locally (QA_LIVE_ROLLOUT_ONLY=1, at 0c746829b's code): WITHDRAWN ALL PASS 116/0, STAFF_PREVIEW
+  ALL PASS 116/0 — "/markets carries no Millionea entry, and no Millionea prop in its payload, for a signed-out visitor"
+  green at both.
+- The tree clean after every run (the plant restored; `git status` read after each).
+
+Also: the preview drive's header says what its seed does on a STAFF_PREVIEW server (409: drawn with no week), as its own
+inline note already did; test:maswali-doors' header names the new drive. test:orphans green (the drive is a gate's),
+test:guards-exist 9/0, test:maswali-doors 63/0.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

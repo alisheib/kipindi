@@ -1,0 +1,1815 @@
+[
+ {
+  "gate": "none",
+  "cls": "m-seal",
+  "sync": {
+   "o": "0",
+   "tf": "matrix(0.9, 0, 0, 0.9, 0, 0)",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "0",
+    "tf": "matrix(0.9, 0, 0, 0.9, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "0.280399",
+    "tf": "matrix(0.931405, 0, 0, 0.931405, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "0.502512",
+    "tf": "matrix(0.956281, 0, 0, 0.956281, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-seal",
+    "state": "running"
+   }
+  ]
+ },
+ {
+  "gate": "none",
+  "cls": "m-axis-reveal",
+  "sync": {
+   "o": "1",
+   "tf": "none",
+   "tr": "none",
+   "sc": "none",
+   "clip": "polygon(-30% 0px, -6% 0px, -30% 100%, -54% 100%)",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "polygon(-30% 0px, -6% 0px, -30% 100%, -54% 100%)",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "polygon(-30% 0px, 22.8135% 0px, -1.18651% 100%, -54% 100%)",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "polygon(-30% 0px, 48.883% 0px, 24.883% 100%, -54% 100%)",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-axis-reveal",
+    "state": "running"
+   }
+  ]
+ },
+ {
+  "gate": "none",
+  "cls": "m-draw",
+  "sync": {
+   "o": "1",
+   "tf": "none",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "200px"
+  },
+  "frames": [
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "200px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "187.369px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "173.63px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-draw",
+    "state": "running"
+   }
+  ]
+ },
+ {
+  "gate": "none",
+  "cls": "m-tick",
+  "sync": {
+   "o": "1",
+   "tf": "none",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "0.336285",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "0.259655",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-tick",
+    "state": "running"
+   }
+  ]
+ },
+ {
+  "gate": "none",
+  "cls": "m-in",
+  "sync": {
+   "o": "0",
+   "tf": "matrix(1, 0, 0, 1, 0, 10)",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "0",
+    "tf": "matrix(1, 0, 0, 1, 0, 10)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "0.260745",
+    "tf": "matrix(1, 0, 0, 1, 0, 7.39255)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "0.470931",
+    "tf": "matrix(1, 0, 0, 1, 0, 5.29069)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-settle-in",
+    "state": "running"
+   }
+  ]
+ },
+ {
+  "gate": "none",
+  "cls": "m-in-lift",
+  "sync": {
+   "o": "0",
+   "tf": "matrix(0.975, 0, 0, 0.975, 0, 14)",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "0",
+    "tf": "matrix(0.975, 0, 0, 0.975, 0, 14)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "0.25934",
+    "tf": "matrix(0.981484, 0, 0, 0.981484, 0, 10.3692)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "0.470953",
+    "tf": "matrix(0.986774, 0, 0, 0.986774, 0, 7.40665)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-settle-lift",
+    "state": "running"
+   }
+  ]
+ },
+ {
+  "gate": "none",
+  "cls": "m-dialog-in",
+  "sync": {
+   "o": "0",
+   "tf": "matrix(0.975, 0, 0, 0.975, 0, 14)",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "0",
+    "tf": "matrix(0.975, 0, 0, 0.975, 0, 14)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "0.259369",
+    "tf": "matrix(0.981484, 0, 0, 0.981484, 0, 10.3688)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "0.470975",
+    "tf": "matrix(0.986774, 0, 0, 0.986774, 0, 7.40635)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-settle-lift",
+    "state": "running"
+   }
+  ]
+ },
+ {
+  "gate": "none",
+  "cls": "m-sheet-in",
+  "sync": {
+   "o": "1",
+   "tf": "matrix(1, 0, 0, 1, 0, 40)",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 40)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 29.5667)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 21.1601)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-sheet-rise",
+    "state": "running"
+   }
+  ]
+ },
+ {
+  "gate": "none",
+  "cls": "m-scrim",
+  "sync": {
+   "o": "0",
+   "tf": "none",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "0",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "0.0760773",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "0.151532",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-scrim-in",
+    "state": "running"
+   }
+  ]
+ },
+ {
+  "gate": "none",
+  "cls": "m-float-in",
+  "sync": {
+   "o": "0",
+   "tf": "matrix(1, 0, 0, 0.96, 0, -6)",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "0",
+    "tf": "matrix(1, 0, 0, 0.96, 0, -6)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "0.542881",
+    "tf": "matrix(1, 0, 0, 0.981715, 0, -2.74272)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "0.79609",
+    "tf": "matrix(1, 0, 0, 0.991844, 0, -1.22346)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-settle-menu",
+    "state": "running"
+   }
+  ]
+ },
+ {
+  "gate": "none",
+  "cls": "m-out",
+  "sync": {
+   "o": "1",
+   "tf": "matrix(1, 0, 0, 1, 0, 0)",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "0.994958",
+    "tf": "matrix(1, 0, 0, 1, 0, 0.0302515)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "0.977996",
+    "tf": "matrix(1, 0, 0, 1, 0, 0.132025)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-leave-out",
+    "state": "running"
+   }
+  ]
+ },
+ {
+  "gate": "none",
+  "cls": "g-settle",
+  "sync": {
+   "o": "1",
+   "tf": "none",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": []
+ },
+ {
+  "gate": "none",
+  "cls": "maswali-attest",
+  "sync": {
+   "o": "0",
+   "tf": "none",
+   "tr": "0px",
+   "sc": "1.02",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "0",
+    "tf": "none",
+    "tr": "0px",
+    "sc": "1.02",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "0.567831",
+    "tf": "none",
+    "tr": "0px",
+    "sc": "0.997287",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "0.814267",
+    "tf": "none",
+    "tr": "0px",
+    "sc": "0.987429",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "maswali-attest",
+    "state": "running"
+   }
+  ]
+ },
+ {
+  "gate": "none",
+  "cls": "maswali-cut",
+  "sync": {
+   "o": "1",
+   "tf": "none",
+   "tr": "0px",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "0px",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "0px",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "0px",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "maswali-cut",
+    "state": "running"
+   }
+  ]
+ },
+ {
+  "gate": "os",
+  "cls": "m-seal",
+  "sync": {
+   "o": "0",
+   "tf": "matrix(0.9, 0, 0, 0.9, 0, 0)",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "0",
+    "tf": "matrix(0.9, 0, 0, 0.9, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-seal",
+    "state": "finished"
+   }
+  ]
+ },
+ {
+  "gate": "os",
+  "cls": "m-axis-reveal",
+  "sync": {
+   "o": "1",
+   "tf": "none",
+   "tr": "none",
+   "sc": "none",
+   "clip": "polygon(-30% 0px, -6% 0px, -30% 100%, -54% 100%)",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "polygon(-30% 0px, -6% 0px, -30% 100%, -54% 100%)",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "polygon(-30% 0px, 160% 0px, 136% 100%, -54% 100%)",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "polygon(-30% 0px, 160% 0px, 136% 100%, -54% 100%)",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-axis-reveal",
+    "state": "finished"
+   }
+  ]
+ },
+ {
+  "gate": "os",
+  "cls": "m-draw",
+  "sync": {
+   "o": "1",
+   "tf": "none",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "200px"
+  },
+  "frames": [
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "200px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-draw",
+    "state": "finished"
+   }
+  ]
+ },
+ {
+  "gate": "os",
+  "cls": "m-tick",
+  "sync": {
+   "o": "1",
+   "tf": "none",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-tick",
+    "state": "finished"
+   }
+  ]
+ },
+ {
+  "gate": "os",
+  "cls": "m-in",
+  "sync": {
+   "o": "0",
+   "tf": "matrix(1, 0, 0, 1, 0, 10)",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "0",
+    "tf": "matrix(1, 0, 0, 1, 0, 10)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-settle-in",
+    "state": "finished"
+   }
+  ]
+ },
+ {
+  "gate": "os",
+  "cls": "m-in-lift",
+  "sync": {
+   "o": "0",
+   "tf": "matrix(0.975, 0, 0, 0.975, 0, 14)",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "0",
+    "tf": "matrix(0.975, 0, 0, 0.975, 0, 14)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-settle-lift",
+    "state": "finished"
+   }
+  ]
+ },
+ {
+  "gate": "os",
+  "cls": "m-dialog-in",
+  "sync": {
+   "o": "0",
+   "tf": "matrix(0.975, 0, 0, 0.975, 0, 14)",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "0",
+    "tf": "matrix(0.975, 0, 0, 0.975, 0, 14)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-settle-lift",
+    "state": "finished"
+   }
+  ]
+ },
+ {
+  "gate": "os",
+  "cls": "m-sheet-in",
+  "sync": {
+   "o": "1",
+   "tf": "matrix(1, 0, 0, 1, 0, 40)",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 40)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-sheet-rise",
+    "state": "finished"
+   }
+  ]
+ },
+ {
+  "gate": "os",
+  "cls": "m-scrim",
+  "sync": {
+   "o": "0",
+   "tf": "none",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "0",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-scrim-in",
+    "state": "finished"
+   }
+  ]
+ },
+ {
+  "gate": "os",
+  "cls": "m-float-in",
+  "sync": {
+   "o": "0",
+   "tf": "matrix(1, 0, 0, 0.96, 0, -6)",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "0",
+    "tf": "matrix(1, 0, 0, 0.96, 0, -6)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-settle-menu",
+    "state": "finished"
+   }
+  ]
+ },
+ {
+  "gate": "os",
+  "cls": "m-out",
+  "sync": {
+   "o": "1",
+   "tf": "matrix(1, 0, 0, 1, 0, 0)",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "0",
+    "tf": "matrix(1, 0, 0, 1, 0, 6)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "0",
+    "tf": "matrix(1, 0, 0, 1, 0, 6)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-leave-out",
+    "state": "finished"
+   }
+  ]
+ },
+ {
+  "gate": "os",
+  "cls": "g-settle",
+  "sync": {
+   "o": "1",
+   "tf": "none",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": []
+ },
+ {
+  "gate": "os",
+  "cls": "maswali-attest",
+  "sync": {
+   "o": "1",
+   "tf": "none",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": []
+ },
+ {
+  "gate": "os",
+  "cls": "maswali-cut",
+  "sync": {
+   "o": "1",
+   "tf": "none",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": []
+ },
+ {
+  "gate": "class",
+  "cls": "m-seal",
+  "sync": {
+   "o": "0",
+   "tf": "matrix(0.9, 0, 0, 0.9, 0, 0)",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "0",
+    "tf": "matrix(0.9, 0, 0, 0.9, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-seal",
+    "state": "finished"
+   }
+  ]
+ },
+ {
+  "gate": "class",
+  "cls": "m-axis-reveal",
+  "sync": {
+   "o": "1",
+   "tf": "none",
+   "tr": "none",
+   "sc": "none",
+   "clip": "polygon(-30% 0px, -6% 0px, -30% 100%, -54% 100%)",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "polygon(-30% 0px, -6% 0px, -30% 100%, -54% 100%)",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "polygon(-30% 0px, 160% 0px, 136% 100%, -54% 100%)",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "polygon(-30% 0px, 160% 0px, 136% 100%, -54% 100%)",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-axis-reveal",
+    "state": "finished"
+   }
+  ]
+ },
+ {
+  "gate": "class",
+  "cls": "m-draw",
+  "sync": {
+   "o": "1",
+   "tf": "none",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "200px"
+  },
+  "frames": [
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "200px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-draw",
+    "state": "finished"
+   }
+  ]
+ },
+ {
+  "gate": "class",
+  "cls": "m-tick",
+  "sync": {
+   "o": "1",
+   "tf": "none",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-tick",
+    "state": "finished"
+   }
+  ]
+ },
+ {
+  "gate": "class",
+  "cls": "m-in",
+  "sync": {
+   "o": "0",
+   "tf": "matrix(1, 0, 0, 1, 0, 10)",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "0",
+    "tf": "matrix(1, 0, 0, 1, 0, 10)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-settle-in",
+    "state": "finished"
+   }
+  ]
+ },
+ {
+  "gate": "class",
+  "cls": "m-in-lift",
+  "sync": {
+   "o": "0",
+   "tf": "matrix(0.975, 0, 0, 0.975, 0, 14)",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "0",
+    "tf": "matrix(0.975, 0, 0, 0.975, 0, 14)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-settle-lift",
+    "state": "finished"
+   }
+  ]
+ },
+ {
+  "gate": "class",
+  "cls": "m-dialog-in",
+  "sync": {
+   "o": "0",
+   "tf": "matrix(0.975, 0, 0, 0.975, 0, 14)",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "0",
+    "tf": "matrix(0.975, 0, 0, 0.975, 0, 14)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-settle-lift",
+    "state": "finished"
+   }
+  ]
+ },
+ {
+  "gate": "class",
+  "cls": "m-sheet-in",
+  "sync": {
+   "o": "1",
+   "tf": "matrix(1, 0, 0, 1, 0, 40)",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 40)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-sheet-rise",
+    "state": "finished"
+   }
+  ]
+ },
+ {
+  "gate": "class",
+  "cls": "m-scrim",
+  "sync": {
+   "o": "0",
+   "tf": "none",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "0",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-scrim-in",
+    "state": "finished"
+   }
+  ]
+ },
+ {
+  "gate": "class",
+  "cls": "m-float-in",
+  "sync": {
+   "o": "0",
+   "tf": "matrix(1, 0, 0, 0.96, 0, -6)",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "0",
+    "tf": "matrix(1, 0, 0, 0.96, 0, -6)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-settle-menu",
+    "state": "finished"
+   }
+  ]
+ },
+ {
+  "gate": "class",
+  "cls": "m-out",
+  "sync": {
+   "o": "1",
+   "tf": "matrix(1, 0, 0, 1, 0, 0)",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "1",
+    "tf": "matrix(1, 0, 0, 1, 0, 0)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "0",
+    "tf": "matrix(1, 0, 0, 1, 0, 6)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "0",
+    "tf": "matrix(1, 0, 0, 1, 0, 6)",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": [
+   {
+    "name": "m-leave-out",
+    "state": "finished"
+   }
+  ]
+ },
+ {
+  "gate": "class",
+  "cls": "g-settle",
+  "sync": {
+   "o": "1",
+   "tf": "none",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": []
+ },
+ {
+  "gate": "class",
+  "cls": "maswali-attest",
+  "sync": {
+   "o": "1",
+   "tf": "none",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": []
+ },
+ {
+  "gate": "class",
+  "cls": "maswali-cut",
+  "sync": {
+   "o": "1",
+   "tf": "none",
+   "tr": "none",
+   "sc": "none",
+   "clip": "none",
+   "dash": "0px"
+  },
+  "frames": [
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   },
+   {
+    "o": "1",
+    "tf": "none",
+    "tr": "none",
+    "sc": "none",
+    "clip": "none",
+    "dash": "0px"
+   }
+  ],
+  "anims": []
+ }
+]

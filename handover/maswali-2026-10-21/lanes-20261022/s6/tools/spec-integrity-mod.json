@@ -1,0 +1,17 @@
+[
+  {
+    "from": "import { shareStateOf } from \"@/lib/maswali-share-note\";\n",
+    "to": "import { shareStateOf } from \"@/lib/maswali-share-note\";\nimport { wholeReadCoverage, type ClusterCoverage } from \"@/lib/maswali-cluster-coverage\";\n",
+    "count": 1
+  },
+  {
+    "from": "  /** R2-9 · MB-35's weekly figure: the distinct ways the week's tickets answer the ten mains, and that share of `BOARD`. */\n  combos: number;\n  coverage: number;\n",
+    "to": "  /** R2-9 · MB-35's weekly figure: the distinct ways the week's tickets answer the ten mains, and that share of `BOARD`. */\n  combos: number;\n  boardCoverage: number;\n  /** S5 (ad96345b6) · how much of the record the report considered and showed — the integrity page's one disclosure. This\n   *  report reads every holder and carries every line, so it says so (`wholeReadCoverage`; S6-INT, the lead's ruling). */\n  coverage: ClusterCoverage;\n",
+    "count": 1
+  },
+  {
+    "from": "    window: span, combos: weekCombos, coverage: weekCombos / BOARD,\n",
+    "to": "    window: span, combos: weekCombos, boardCoverage: weekCombos / BOARD, coverage: wholeReadCoverage(userIds.length, lines.length),\n",
+    "count": 1
+  }
+]

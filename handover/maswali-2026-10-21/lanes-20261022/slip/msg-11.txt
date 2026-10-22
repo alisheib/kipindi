@@ -1,0 +1,19 @@
+MASWALI-BUILD S5-R2-SLIP 10: the slip's loading drawing names its page — data-ghost-page="slip" on its busy root (for REGISTER's qa:millionea-ghost-hops)
+
+The lead's request: REGISTER's new hop drive tells loading drawings apart by the page each one names. A drawing
+that names no page counts as UNMARKED. Until now the drive knew the slip's drawing only by data-testid="slip-ghost".
+- src/app/millionea/slip/slip-ghost.tsx: a one-line hunk adding data-ghost-page="slip" on the drawing's
+  aria-busy="true" root, beside its test id. It is a value, never a product word.
+- scripts/maswali-slip-design.test.mts 7.3: in the rendered drawing the busy root carries data-ghost-page="slip", and
+  it is the drawing's only name. 7.3' PLANT: the name compiled off is caught. MIN_ASSERTIONS 86 → 88 (the printed
+  count).
+
+Checks on this exact tree (OMEGA, 2026-10-22; logs in scratchpad 64715c03/slip/logs/p5, p5r):
+- maswali-slip-design: 88 passed, 0 failed.
+- On-disk plants (scratch plant.mjs + spec-ghostpage.json), 2/2 caught by 7.3, restored byte for byte, 88/0 after:
+  the name taken off, and the name moved off the busy root.
+- The drawing's readers: maswali-ui 151/0 (a drawing says no Millionea word), visual-pass-r4j 92/0, journey-shell
+  566/566, measure ALL PASS, millionea-dark-edge 36/0, visual-pass-r5d 45/0.
+- tsc: a JSX attribute string only. It runs with this branch's last src batch.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

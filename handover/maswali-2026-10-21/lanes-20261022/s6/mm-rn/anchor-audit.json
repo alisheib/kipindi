@@ -1,0 +1,571 @@
+[
+ {
+  "anchor": "house-book.anchors.mjs",
+  "name": "house-book.ts — subtract the gateway share that was never in the fee (the header's own ba",
+  "file": "src/lib/house-book.ts",
+  "final": 1,
+  "base": 0,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "house-book.anchors.mjs",
+  "name": "house-book.ts — stop subtracting agent commission (the programme reads as free)\"",
+  "file": "src/lib/house-book.ts",
+  "final": 1,
+  "base": 0,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "house-book.anchors.mjs",
+  "name": "house-book.ts — the waterfall forgets the jackpot guarantee paid (the fee on the house's ",
+  "file": "src/lib/house-book.ts",
+  "final": 1,
+  "base": 0,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "house-book.anchors.mjs",
+  "name": "house-book.ts — ignore the bonus refund leg (a voided bonus market never closes)\"",
+  "file": "src/lib/house-book.ts",
+  "final": 1,
+  "base": 0,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "house-book.anchors.mjs",
+  "name": "house-book.ts — a Millionea week's own legs left out of its identity (every correct week ",
+  "file": "src/lib/house-book.ts",
+  "final": 1,
+  "base": 0,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "house-book.anchors.mjs",
+  "name": "house-book.ts — a week's net retained ignores the house's floor top-up (a losing floor we",
+  "file": "src/lib/house-book.ts",
+  "final": 1,
+  "base": 0,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "house-bot-console.anchors.mjs",
+  "name": "235-winner-sms-decides · Millionea's winner SMS decides the channel itself instead of ask",
+  "file": "src/lib/server/maswali-winner-sms.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C1) H2 · a payment by 50pick is no claim at all: the parties' reading is dropped\"",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C2) H2 · any tax, fee or levy word in the sentence lifts a payout again — a denied one (",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C3) H2 · the i- forms of -lipa are no longer the platform's where 50pick is named\"",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C4) H3 · any account word lifts the reader rule again ('in your wallet' as a lure)\"",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C5) H3 · a hypothetical no longer undoes an account fact ('Your wallet could hold …')\"",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C6) H3 · the joined question is not handed to the reader rule\"",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C7) M3 · only a question of seven words or fewer joins the figure's sentence again\"",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C8) M3 · a payout or the winnings heading the figure's phrase is no claim\"",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C9) M3 · 'took home' and 'amechukua' are no getting verbs\"",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C10) M3 · a shot or a chance at the figure is no claim\"",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C11) M3 · the next sentence putting the reader next is not read\"",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C12) M3 · a smaller money figure beside a prize is no stake\"",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C13) M3 · a third party's own sums are read as a stake against a prize\"",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C14) M3 · money asked about in the joined question is no claim\"",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C15) M3 · a market question about someone else joins a figure its own words read as a pr",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C16) M3 · a currency that heads the next number makes a till number money (a stake besid",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C27) M3 · a payment whose own object is a tax heads a prize again ('Malipo ya kodi ya …'",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C28) M3 · 'took … home' around the figure is no getting verb\"",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C29) M3 · 'walk away with' and 'went home with' are no getting verbs\"",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C17) M4 · the limit words lose the Swahili verb's prefixes and the English past\"",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C18) M4 · a third person's wait frames a figure again ('Mashabiki wanasubiri …')\"",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C19) M4 · 'mfuko' is a prize word in any sense again (a fund for education, a hospital's",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C20) M4 · the figure itself waiting ('TZS 50,000,000 awaits!') is no claim\"",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C21) M4 · a deposit's own noun, 'amana', heads no limit: a deposit bonus reads as a stak",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C22) M4 · any 'await' is a prize word again ('Fans await the derby …')\"",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C23) L2 · a round-15 comment that reads as a way out is back\"",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C24) L3 · a leading l, I or | is not read as a figure's one\"",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C25) L3 · a leading look-alike is found but left unread\"",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-claims.anchors.mjs",
+  "name": "(C26) L4 · a body in Chinese characters is admitted unread\"",
+  "file": "src/lib/marketing/millionea-claims.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-engine.anchors.mjs",
+  "name": "(21) a correction records blank evidence\"",
+  "file": "src/lib/server/maswali-service.ts",
+  "final": 0,
+  "base": 0,
+  "conflictsInFile": 29
+ },
+ {
+  "anchor": "maswali-engine.anchors.mjs",
+  "name": "(33) the correction's audit row is written inside the lock again, before its commit\"",
+  "file": "src/lib/server/maswali-service.ts",
+  "final": 0,
+  "base": 1,
+  "conflictsInFile": 29
+ },
+ {
+  "anchor": "maswali-money-path.anchors.mjs",
+  "name": "(S7-F8-pay-fresh) a section that spent its share of the budget on holds goes on to pay in",
+  "file": "src/lib/server/maswali-settlement.ts",
+  "final": "UNPARSED(template-interp)",
+  "base": null,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-money-path.anchors.mjs",
+  "name": "(R6-lift) the lift takes no chain lock: a forfeit's lift reads \\\"nothing held\\\" while a h",
+  "file": "src/lib/server/maswali-settlement.ts",
+  "final": "UNPARSED(template-interp)",
+  "base": null,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-money-path.anchors.mjs",
+  "name": "(S7-correct-ground) a correction voids on 'not played' before the void deadline a seal re",
+  "file": "src/lib/server/maswali-service.ts",
+  "final": 0,
+  "base": 0,
+  "conflictsInFile": 29
+ },
+ {
+  "anchor": "maswali-money-path.anchors.mjs",
+  "name": "(N1) the close's notice is launched INSIDE the close's own lock and transaction — the wit",
+  "file": "src/lib/server/maswali-service.ts",
+  "final": 1,
+  "base": 0,
+  "conflictsInFile": 29
+ },
+ {
+  "anchor": "maswali-money-path.anchors.mjs",
+  "name": "(N3) round 3 · ONLY `afterCommit(` is taken away: the hook runs inline inside the close's",
+  "file": "src/lib/server/maswali-service.ts",
+  "final": 1,
+  "base": 0,
+  "conflictsInFile": 29
+ },
+ {
+  "anchor": "maswali-money-path.anchors.mjs",
+  "name": "(N2) a notice's own key is not asked: a second run outside notify()'s 90-second window se",
+  "file": "src/lib/server/maswali-notify.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-money-path.anchors.mjs",
+  "name": "(N4) round 17 (B1) · the notices' running jobs share the data layer's global name again: ",
+  "file": "src/lib/server/maswali-notify.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-money-path.anchors.mjs",
+  "name": "(N5) round 17 (B2) · a holder whose letter records cannot be read is not counted: the run",
+  "file": "src/lib/server/maswali-notify.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-money-path.anchors.mjs",
+  "name": "(N6) round 17 (M5) · the officer's check writes no closing record: the letter it listed s",
+  "file": "src/lib/server/maswali-notify.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-money-path.anchors.mjs",
+  "name": "(N7) round 17 (M5) · a check is let in beside the week's own run in this process: it clos",
+  "file": "src/lib/server/maswali-notify.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-money-path.anchors.mjs",
+  "name": "(N8) round 17 (M5) · a launch while the check holds the week runs anyway, beside the chec",
+  "file": "src/lib/server/maswali-notify.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-money-path.anchors.mjs",
+  "name": "(N9) round 17 (M5) · the week is let go before the officer's record is written: a run bet",
+  "file": "src/lib/server/maswali-notify.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-money-path.anchors.mjs",
+  "name": "(N10) round 17 (M5) · the check takes the week's lease without a strict read and write: a",
+  "file": "src/lib/server/maswali-notify.ts",
+  "final": 1,
+  "base": -1,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-money-path.anchors.mjs",
+  "name": "(N11) round 17 (M5) · the integrity card says again that a listed letter is never sent ag",
+  "file": "src/app/admin/maswali/integrity/page.tsx",
+  "final": 1,
+  "base": 0,
+  "conflictsInFile": 12
+ },
+ {
+  "anchor": "maswali-money-path.anchors.mjs",
+  "name": "(N12) round 17 (L1) · the provider metadata's doc says again that a money letter carries ",
+  "file": "src/lib/server/email.ts",
+  "final": 1,
+  "base": 0,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "maswali-rbac.anchors.mjs",
+  "name": "(7) round 17 (M1) · the integrity page draws the letters' check from a pending answer (ev",
+  "file": "src/app/admin/maswali/integrity/page.tsx",
+  "final": 1,
+  "base": 0,
+  "conflictsInFile": 12
+ },
+ {
+  "anchor": "tax-report.anchors.mjs",
+  "name": "tax-report.ts — the check forgets Millionea's three reconciling lines (a no-winner week j",
+  "file": "src/lib/tax-report.ts",
+  "final": 1,
+  "base": 0,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "tax-report.anchors.mjs",
+  "name": "tax-report-data.ts — a no-winner week's claimed carry counted as money into its pool (it ",
+  "file": "src/lib/server/tax-report-data.ts",
+  "final": 1,
+  "base": 0,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "tax-report.anchors.mjs",
+  "name": "tax-report-data.ts — a Millionea share taxed as Payout (13% of 0.87 of the jackpot, besid",
+  "file": "src/lib/server/tax-report-data.ts",
+  "final": 1,
+  "base": 0,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "tax-report.anchors.mjs",
+  "name": "tax-report.ts — Report 2 drops the fee the weeks booked (Millionea filed at zero commissi",
+  "file": "src/lib/tax-report.ts",
+  "final": 1,
+  "base": 0,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "tax-report.anchors.mjs",
+  "name": "tax-report-data.ts — Millionea left out of the products (Polls + Up & Down + Millionea no",
+  "file": "src/lib/server/tax-report-data.ts",
+  "final": 1,
+  "base": 0,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "tax-report.anchors.mjs",
+  "name": "tax-report-data.ts — Millionea's lines printed on every view (a period with no week no lo",
+  "file": "src/lib/server/tax-report-data.ts",
+  "final": 1,
+  "base": 0,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "tax-report.anchors.mjs",
+  "name": "tax-report-data.ts — the week's fee kept copied from its booked column (a fee off its own",
+  "file": "src/lib/server/tax-report-data.ts",
+  "final": 1,
+  "base": 0,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "tax-report.anchors.mjs",
+  "name": "tax-report-data.ts — a settled week whose record lacks its fee filed at a booked fee of 0",
+  "file": "src/lib/server/tax-report-data.ts",
+  "final": 1,
+  "base": 0,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "tax-report.anchors.mjs",
+  "name": "tax-report-doc.ts — Report 1 prints Millionea's carried line as 0 (the printed lines stop",
+  "file": "src/lib/server/tax-report-doc.ts",
+  "final": 1,
+  "base": 0,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "tax-report.anchors.mjs",
+  "name": "tax-report-view.ts — a locked Millionea filing stays silent when its carried line moves\"",
+  "file": "src/lib/server/tax-report-view.ts",
+  "final": 1,
+  "base": 0,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "tax-report.anchors.mjs",
+  "name": "payout.ts — a week's fee is not its settlement's (13% of the winners' share instead of ro",
+  "file": "src/lib/payout.ts",
+  "final": 1,
+  "base": 0,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "tax-report.anchors.mjs",
+  "name": "tax-report-doc.ts — the Millionea view's Commission described as the report's rate on Pay",
+  "file": "src/lib/server/tax-report-doc.ts",
+  "final": 1,
+  "base": 0,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "tax-report.anchors.mjs",
+  "name": "tax-report.ts — parseProduct drops the Millionea pill (its link opens All products)\"",
+  "file": "src/lib/tax-report.ts",
+  "final": 1,
+  "base": 0,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "tax-report.anchors.mjs",
+  "name": "tax-report-view.ts — the Millionea pill offered on a period that holds no week\"",
+  "file": "src/lib/server/tax-report-view.ts",
+  "final": 1,
+  "base": 0,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "withdraw-email-gate.anchors.mjs",
+  "name": "money-mail-to-unconfirmed\"",
+  "file": "src/lib/server/email.ts",
+  "final": 1,
+  "base": 0,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "withdraw-email-gate.anchors.mjs",
+  "name": "locked-out-player-silenced\"",
+  "file": "src/lib/server/email.ts",
+  "final": 1,
+  "base": 0,
+  "conflictsInFile": 0
+ },
+ {
+  "anchor": "withdraw-email-gate.anchors.mjs",
+  "name": "phone-map-for-money-mail\"",
+  "file": "src/lib/server/email.ts",
+  "final": 1,
+  "base": 0,
+  "conflictsInFile": 0
+ }
+]
+checked anchors in 169 files; 71 need a look

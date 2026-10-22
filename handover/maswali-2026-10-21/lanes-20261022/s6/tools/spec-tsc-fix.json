@@ -1,0 +1,14 @@
+{
+  "src/app/help/millionea-help.tsx": [
+    { "from": " * ⭐ THE SAME FACTS IN THE SAME WORDS: How to play's sentences and rules (`millionea.howOne…howFour`, `ruleCancel`), filled", "to": " * ⭐ THE SAME FACTS IN THE SAME WORDS: How to play's sentences and rules (`millionea.howOne`, `howTwo`, the jackpot's own\n *    rule `ruleSharedJackpot` — S5's one wording since `howThree` left — `howFour`, `ruleCancel`), filled", "count": 1 },
+    { "from": " * ⛔ AND THE ONE EXCEPTION THEY LEAVE OUT (round 3): `howThree` and `howFour` say every 10/10 ticket shares and a week", "to": " * ⛔ AND THE ONE EXCEPTION THEY LEAVE OUT (round 3): the jackpot rule and `howFour` say every 10/10 ticket shares and a week", "count": 1 },
+    { "from": "m.howTwo, fill(m.howThree, { pct }), m.howFour, f.helpFinalWeek]", "to": "m.howTwo, fill(m.ruleSharedJackpot, { pct }), m.howFour, f.helpFinalWeek]", "count": 1 }
+  ],
+  "src/app/admin/maswali/integrity/page.tsx": [
+    { "from": "  const sp = await searchParams;\n  const query = parseIntegrityListQuery(sp);\n", "to": "  const sp = await searchParams;\n  const query = parseIntegrityListQuery(sp);\n  // S6-INT · the cluster report's own parameters (cpage, cgroup, gpage) read one value each, as every list here does.\n  const clusterQuery = Object.fromEntries(Object.entries(sp).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v])) as Readonly<Record<string, string | undefined>>;\n", "count": 1 },
+    { "from": "            <ConnectedAccounts clusters={clusters} query={sp} />", "to": "            <ConnectedAccounts clusters={clusters} query={clusterQuery} />", "count": 1 }
+  ],
+  "src/lib/server/maswali-evidence.ts": [
+    { "from": "  clusters: Omit<ClusterReport, \"groups\" | \"crowded\" | \"lines\" | \"weekState\" | \"undecidedShares\"> & {\n", "to": "  clusters: Omit<ClusterReport, \"groups\" | \"crowded\" | \"lines\" | \"weekState\" | \"undecidedShares\" | \"coverage\" | \"boardCoverage\"> & {\n    /** The week's board share (the report's `boardCoverage`), under the name the pack has always printed (S6-INT). */\n    coverage: number;\n", "count": 1 }
+  ]
+}

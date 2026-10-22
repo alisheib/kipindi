@@ -1,0 +1,7 @@
+[
+  {
+    "from": "        <span className={LABEL}>{`${t.millionea.regHash} · ${fill(t.millionea.regPublished, { when: at(t, locale, w.hashPublishedAt, nowMs) })}`}</span>",
+    "to": "        <span className={LABEL}>{`${t.millionea.stubHash} · ${fill(t.millionea.commitPublished, { when: at(t, locale, w.hashPublishedAt, nowMs) })}`}</span>",
+    "count": 1
+  }
+]

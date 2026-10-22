@@ -1,0 +1,27 @@
+MASWALI-BUILD S5-R2-SLIP 12: the multi-slip drive owns its premise and measures ruling (a) — two pills on ONE row at 320 and 360, in English and Swahili (commit 5's WIP, run)
+
+LEFT item 4, the composer's half. scripts/maswali-multi-slip-drive.mjs (qa:maswali-multi-slip):
+- ITS OWN PREMISE. The first run (job r2, after qa:dialog-way-back on the same server) stopped at commit 5's new lookup
+  getByRole("button", { name: /^Ticket 1 · / }). The way-back drive leaves the demo player holding one ticket per engine,
+  so the pills numbered from 3. Round 1's run in the same order passed only because its drive found pills by text. Now,
+  after signing the player in, the drive cancels the player's live tickets for the week through the product's own free
+  cancel (the dev route's cancelFor, as qa:dialog-way-back does at its start). If that is refused it stops with
+  PREMISE ABSENT and an INFO line says how many were cancelled.
+- RULING (a), MEASURED. After "Keep ticket", both tickets complete ("n · 15/15", the longest pill), the slip is opened
+  at 320 and 360 in en and sw. From the boxes the browser laid out: the group's label is the noun (TICKETS / TIKETI),
+  the two pills share one top, both stand inside the viewport, neither is clipped (scrollWidth), both are 40px tall.
+  It keeps pills-<l>-<w>.png and composer-<l>-<w>.png to read.
+- Commit 5's WIP checks (the pills found by their names, "2 · 7/15" pressed under the noun, one row at 320) now run.
+
+Runs (OMEGA, a fresh in-memory next dev on :3560 with FEATURE_MILLIONEA=ACTIVE, MASWALI_SCHEDULER=false,
+LIFECYCLE_TICKER=false; logs in scratchpad 64715c03/slip/logs):
+- r2: qa:dialog-way-back then the drive (commit 5's lookup, no premise). It stopped at the "Ticket 1" lookup, a
+  TimeoutError; that order and that cause are what this commit fixes.
+- r2b, this drive first on a fresh server: 47 passed, 0 failed. "INFO premise: 0 live ticket(s) … cancelled first".
+  INFO ruling (a): en 320, en 360, sw 320 and sw 360 each have both pills at top 285, x 16–125.9 and x 133.9–243.8,
+  40px tall, unclipped, under "TICKETS" / "TIKETI".
+- r2c, the order that failed (qa:dialog-way-back first, 25 passed, 0 failed), then the drive, run in the tree with
+  commit 13's Link door: "INFO premise: 2 live ticket(s) the demo player held this week cancelled first"; 47 passed,
+  0 failed; the same pill boxes in all four cells.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

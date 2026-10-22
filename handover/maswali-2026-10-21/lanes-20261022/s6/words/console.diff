@@ -1,0 +1,360 @@
+diff --git a/src/lib/server/maswali-console.ts b/src/lib/server/maswali-console.ts
+index 80cd93155..861019b60 100644
+--- a/src/lib/server/maswali-console.ts
++++ b/src/lib/server/maswali-console.ts
+@@ -13,7 +13,11 @@
+  *    serials or the exposure — what a week would cost the house is accounting's, and who holds what is compliance's.
+  * ⛔ A BALANCE THAT COULD NOT BE READ IS `null`, NEVER 0: the page says it could not be read.
+  */
+-import { questionStore, ticketStore, weekStore, type StoredQuestion, type StoredTicket, type StoredWeek } from "./maswali-dal";
++import { noticeStore, questionStore, ticketStore, weekStore, type StoredQuestion, type StoredTicket, type StoredWeek } from "./maswali-dal";
++import { audit, getAuditForTargetsDurable } from "./audit";
++import { withLock } from "./locks";
++import { millioneaNoticeHref } from "./notification-service";
++import { winnerSmsRecords, winnerSmsTargetId } from "./maswali-winner-sms";
+ import { frozenRules, gradable, guaranteeProblem, NO_LICENCE_BASIS, openProblems, proposeVoidsAtDeadline, sunsetState } from "./maswali-service";
+ import { guaranteeReader, maswaliAccountBalance } from "./maswali-money-service";
+ import { previewMaswaliSettlement, type MaswaliSettlementPreview } from "./maswali-settlement";
+@@ -23,7 +27,7 @@ import { getLicenceBasis, licenceBasisAllowsOpen, type LicenceBasis } from "./ma
+ import { getSalesPause, type SalesPause } from "./maswali-pause";
+ import { millioneaStateNow } from "./millionea-switch";
+ import { acct, maswaliJackpotOf } from "./ledger";
+-import { db } from "./store";
++import { db, type SmsStatus } from "./store";
+ import { marketStore } from "./market-dal";
+ import { MAIN_COUNT, settlementGate, weekVoidCertain } from "@/lib/maswali-score";
+ import { guaranteeRequirement } from "@/lib/maswali-money";
+@@ -170,10 +174,274 @@ export async function consoleAlerts(now: Date = new Date()): Promise<ConsoleAler
+     if (!licenceBasisAllowsOpen(getLicenceBasis())) out.push({ level: "warning", text: "No licence basis is recorded; no week can open until the Owner records it (OD-01)." });
+     const pause = getSalesPause();
+     if (pause.paused) out.push({ level: "warning", text: `Sales are paused: ${pause.reason ?? "no reason recorded"}.` });
++    // S6 · MB-93 · a winner nothing has reached a day after the settlement: the desk calls them (the integrity page lists
++    // who, with what was sent). Silent before the first winner, as every line in this block is before the first week.
++    const unreached = await unreachedWinners(now).catch(() => null);
++    if (unreached === null) out.push({ level: "warning", text: "Whether every Millionea winner has been reached could not be read." });
++    else {
++      const late = new Map<string, UnreachedWinner[]>();
++      for (const u of unreached) if (u.hoursSince >= UNREACHED_ALERT_HOURS) late.set(u.weekId, [...(late.get(u.weekId) ?? []), u]);
++      for (const [weekId, rows] of late) {
++        out.push({ level: "warning", weekId, text: `${rows[0].weekCode}: ${rows.length === 1 ? "a winner has" : `${rows.length} winners have`} had no notice reach them in ${UNREACHED_ALERT_HOURS} hours since the settlement. The integrity page lists them for a call.` });
++      }
++    }
+   }
+   return out;
+ }
+ 
++// ── WINNERS NOT YET REACHED (S6; MB-93, MB-11) ──────────────────────────────────────────────────────
++
++/** How long a winner may go unreached after the settlement before the desk is alerted (MB-93: "no notice for 24h"). */
++export const UNREACHED_ALERT_HOURS = 24;
++
++/**
++ * The desk list reads the weeks SETTLED in this window, never every settled week on every console load (the review's
++ * MEDIUM 7): a day-old alert concerns a recent week, and the card says the window aloud. A winner past it is still the
++ * support desk's, through the per-ticket lookup.
++ */
++export const UNREACHED_RECENT_DAYS = 28;
++
++/** The desk's own record that a winner was reached by phone (`recordMillioneaWinnerReached`, Compliance, typed). */
++export const WINNER_REACHED_ACTION = "maswali.winner.reached";
++/** The word an officer types to record it. */
++export const WINNER_REACHED_WORD = "REACHED";
++
++/** A winning player of a settled week whom no notice is KNOWN to have reached — the desk's list to call (MB-93). */
++export type UnreachedWinner = {
++  weekId: string;
++  weekCode: string;
++  userId: string;
++  holder: string;
++  serials: string[];
++  /** The paid shares' sum — 0 when every share is held for Compliance, or forfeited to the jackpot. */
++  paidTzs: number;
++  /** Every share is held for a Compliance decision (MB-43). */
++  held: boolean;
++  /** Every share was forfeited to the jackpot (OD-07): nothing is the holder's, and the card says so — never "held". */
++  forfeited: boolean;
++  settledAt: string;
++  hoursSince: number;
++  /** The win's bell row was written (its key, `millioneaNoticeHref`, under any of the holder's winning tickets). */
++  bell: boolean;
++  /** Where the letter could go: a confirmed address, one never confirmed (sent only if the account cannot sign in), none. */
++  email: "confirmed" | "unconfirmed" | "none";
++  /** The winner SMS's own record (`MaswaliWinner`) — its status and receipt — or null when none was sent. */
++  sms: { status: SmsStatus; dlr: string | null } | null;
++  /** Why the week's winner SMS batch was held, when it was (`maswali-winner-sms.ts`): no credit to spare for codes, etc. */
++  smsHeld: string | null;
++};
++
++/**
++ * Why the week's winner SMS was held, from the newest result run (`maswali.notices.sent`), whose tally counts each winner's
++ * own outcome (`maswali-notify.ts` `WinnerSmsTally`) — the first reason it held any winner for, or null.
++ */
++async function smsHoldOf(weekId: string): Promise<string | null> {
++  const rows = await getAuditForTargetsDurable({ targetType: "MaswaliCycle", targetIds: [weekId], actions: ["maswali.notices.sent"], sinceIso: "1970-01-01T00:00:00.000Z", limit: 50 });
++  const run = rows.entries.find((e) => e.payload?.notice === "result" && e.payload?.sms != null);
++  // A hold the next run may clear first, then a refusal that never will (round 3: counted apart, the run complete).
++  const sms = run?.payload?.sms as { held?: Record<string, unknown>; permanent?: Record<string, unknown> } | null | undefined;
++  for (const reasons of [sms?.held, sms?.permanent]) {
++    if (!reasons || typeof reasons !== "object") continue;
++    const k = Object.keys(reasons).find((x) => typeof reasons[x] === "number" && (reasons[x] as number) > 0);
++    if (k) return k;
++  }
++  return null;
++}
++
++/** The winners of one week the desk recorded as reached by phone — its own records, reduced to their accounts. */
++async function reachedByDeskOf(weekId: string): Promise<Set<string>> {
++  const rows = await getAuditForTargetsDurable({ targetType: "MaswaliCycle", targetIds: [weekId], actions: [WINNER_REACHED_ACTION], sinceIso: "1970-01-01T00:00:00.000Z", limit: 500 });
++  return new Set(rows.entries.map((e) => e.payload?.userId).filter((u): u is string => typeof u === "string"));
++}
++
++/**
++ * ⭐ THE DESK'S LIST (MB-93): every winning player of a week settled in the last `UNREACHED_RECENT_DAYS` whom no notice is
++ * KNOWN to have reached. Reached means proof the player has it: they opened the week's result in the app (its seen mark,
++ * MB-38's own record) or a winning ticket's page after the settlement, their winner SMS has a DELIVERED receipt, or the desk
++ * recorded a call (`recordMillioneaWinnerReached`). A letter is not proof — a mailbox says nothing back — and the bell is not
++ * either until it is opened. Each row says what WAS sent, so the desk knows what to say. Winners are read at the query.
++ */
++export async function unreachedWinners(now: Date = new Date()): Promise<UnreachedWinner[]> {
++  const out: UnreachedWinner[] = [];
++  const since = now.getTime() - UNREACHED_RECENT_DAYS * 24 * HOUR;
++  for (const w of await weekStore.list({ states: ["SETTLED"] })) {
++    const settledAt = w.settledAt;
++    if (!settledAt || Date.parse(settledAt) < since) continue;
++    const won = await ticketStore.listForWeek(w.id, { status: "SETTLED", won: true });
++    if (won.length === 0) continue;
++    const players = new Map<string, StoredTicket[]>();
++    for (const t of [...won].sort((a, b) => a.serial.localeCompare(b.serial))) players.set(t.userId, [...(players.get(t.userId) ?? []), t]);
++    const sms = await winnerSmsRecords([...players.keys()].map((u) => winnerSmsTargetId(w.id, u)));
++    const held = await smsHoldOf(w.id).catch(() => null);
++    const byDesk = await reachedByDeskOf(w.id);
++    for (const [userId, mine] of players) {
++      if (byDesk.has(userId)) continue;
++      const record = sms.get(winnerSmsTargetId(w.id, userId)) ?? null;
++      if (record?.status === "DELIVERED") continue;
++      if (mine.some((t) => t.lastViewedAt != null && Date.parse(t.lastViewedAt) >= Date.parse(settledAt))) continue;
++      if ((await noticeStore.seenFor(userId, [w.id])).some((n) => n.notice === "RESULT")) continue;
++      const paid = mine.filter((t) => t.frozenReason == null);
++      const forfeited = mine.every((t) => (t.frozenReason ?? "").startsWith("forfeited · "));
++      const h = await holderOf(userId);
++      // The bell under any of the holder's winning tickets: a share forfeited after the notice changes which one leads.
++      let bell = false;
++      for (const t of mine) {
++        if (await db.notification.existsWithHref(userId, millioneaNoticeHref({ notice: "result", weekCode: w.code, winningSerial: t.serial }))) { bell = true; break; }
++      }
++      out.push({
++        weekId: w.id, weekCode: w.code, userId, holder: h.holder, serials: mine.map((t) => t.serial),
++        paidTzs: paid.reduce((s, t) => s + Math.round(t.payout ?? 0), 0), held: paid.length === 0 && !forfeited, forfeited, settledAt,
++        hoursSince: Math.max(0, Math.floor((now.getTime() - Date.parse(settledAt)) / HOUR)),
++        bell,
++        email: h.email,
++        sms: record, smsHeld: record ? null : held,
++      });
++    }
++  }
++  return out.sort((a, b) => Date.parse(a.settledAt) - Date.parse(b.settledAt));
++}
++
++/**
++ * ⭐ THE DESK'S CALL, RECORDED (MB-93, the review's LOW 8): Compliance reached a winner by phone, and says how. One COMPLIANCE
++ * record per winner and week — the desk list and its 24-hour alert read it, so the row and the alert clear. Typed
++ * (`WINNER_REACHED_WORD`), never for a holder who did not win the week, and once: a second record of the same call is
++ * answered `already` and writes nothing.
++ */
++export async function recordMillioneaWinnerReached(
++  input: { weekId: string; userId: string; officerId: string; typed: string; note: string },
++  deps: WinnerReachedDeps = { audit },
++): Promise<{ ok: true; already: boolean } | { ok: false; error: string }> {
++  if (input.typed !== WINNER_REACHED_WORD) return { ok: false, error: `Type ${WINNER_REACHED_WORD} to record the call.` };
++  const note = input.note.trim();
++  if (note.length < 5) return { ok: false, error: "Say how the winner was reached (the number called, what they were told)." };
++  if (note.length > 500) return { ok: false, error: "Keep the note under 500 characters." };
++  const week = await weekStore.get(input.weekId);
++  if (!week) return { ok: false, error: "No such week." };
++  if (week.state !== "SETTLED") return { ok: false, error: `Week ${week.code} is ${week.state}; only a settled week's winners are reached.` };
++  const won = await ticketStore.listForWeek(week.id, { status: "SETTLED", won: true });
++  if (!won.some((t) => t.userId === input.userId)) return { ok: false, error: `That account holds no winning ticket of ${week.code}.` };
++  // ⭐ ONCE PER WINNER AND WEEK (round 3, A10): the check and the record under a lock of their own, so a double submit
++  // writes one record — and the record is READ: one that did not land says so, and the winner stays on the list.
++  return withLock(`maswali:winner-reached:${week.id}:${input.userId}`, async (): Promise<{ ok: true; already: boolean } | { ok: false; error: string }> => {
++    if ((await reachedByDeskOf(week.id)).has(input.userId)) return { ok: true, already: true };
++    const rec = await deps.audit({
++      category: "COMPLIANCE", action: WINNER_REACHED_ACTION, actorId: input.officerId, targetType: "MaswaliCycle", targetId: week.id,
++      payload: { code: week.code, userId: input.userId, channel: "phone", note },
++    });
++    // The record is landed — or not — once `audit` answers (round 4, L6: no flush of every other writer's rows here).
++    if (!rec.recorded) return { ok: false, error: WINNER_REACHED_UNRECORDED };
++    return { ok: true, already: false };
++  });
++}
++
++/** The desk's record's one write, injectable for the suites (a record that does not land must say so). */
++export type WinnerReachedDeps = { audit: typeof audit };
++
++/** A call recorded only in part — the record did not land: the officer is told, and the winner stays listed. */
++export const WINNER_REACHED_UNRECORDED = "The call could not be recorded, so the winner stays on the list. Try again.";
++
++// ── REFUNDS OWED (R1; the integrity page's own rows) ────────────────────────────────────────────────
++
++/** A voided week whose refunds have not landed — R1's one truth (`unrefundedVoids`), a row of its own until they land. */
++export type OwedRefund = { weekId: string; code: string; ticketCount: number; voidedAt: string | null };
++
++/** When a week was voided: its decision's own record (`maswali.week.voided`), else the row's last write — or null. */
++async function voidedAtOf(w: StoredWeek): Promise<string | null> {
++  try {
++    const rows = await getAuditForTargetsDurable({ targetType: "MaswaliCycle", targetIds: [w.id], actions: ["maswali.week.voided"], sinceIso: "1970-01-01T00:00:00.000Z", limit: 5 });
++    return rows.entries[0]?.createdAt ?? w.updatedAt ?? null;
++  } catch {
++    return w.updatedAt ?? null;
++  }
++}
++
++/** Every voided week still owed its refunds, oldest first. The row is gone once the refunds land: the same one truth. */
++export async function owedRefunds(): Promise<OwedRefund[]> {
++  const out: OwedRefund[] = [];
++  for (const w of await unrefundedVoids()) out.push({ weekId: w.id, code: w.code, ticketCount: w.ticketCount, voidedAt: await voidedAtOf(w) });
++  const at = (r: OwedRefund) => (r.voidedAt ? Date.parse(r.voidedAt) : 0) || 0;
++  return out.sort((a, b) => at(a) - at(b));
++}
++
++// ── LETTERS NOT KNOWN TO HAVE GONE (S6, the lane-N review's round 7, M2; the integrity page's own rows) ──────────────
++
++/** A week whose newest money-notice run left letters the provider may have taken, and its search could not say — an
++ *  officer's call: a later run asks the search again (an "absent" then sends the letter once more) until the officer's
++ *  recorded check closes them (round 17, M5). Counts only: no holder is named. */
++export type UnresolvedLetters = { weekId: string; code: string; notice: "result" | "refund"; letters: number };
++
++/** An officer's record that a week's letters not known to have gone were checked (round 10, L4): the row leaves the card
++ *  until a later run of that notice lists it again. */
++export const LETTERS_CLEARED_ACTION = "maswali.letters.cleared";
++/** The word an officer types to record the check. */
++export const LETTERS_CLEARED_WORD = "CHECKED";
++
++/** ⭐ Round 10 (L4) · an officer records that one week's notice's unresolved letters were checked — a COMPLIANCE record,
++ *  read back: one that did not land says so, and the row stays. ⭐ Round 17 (M5, the lead's ruling) · the check first
++ *  CLOSES those letters, each on its holder's own record (`closeUnresolvedLetters`): never searched for, never sent again —
++ *  and the officer's record is written while the week is still held. Refused while the week's letters are being sent. */
++export async function clearUnresolvedLetter(
++  input: { weekId: string; notice: string; officerId: string; typed: string; note: string },
++  deps: { audit: typeof audit } = { audit },
++): Promise<{ ok: true; closed: number } | { ok: false; error: string }> {
++  if (input.typed !== LETTERS_CLEARED_WORD) return { ok: false, error: `Type ${LETTERS_CLEARED_WORD} to record the check.` };
++  const notice = input.notice;
++  if (notice !== "result" && notice !== "refund") return { ok: false, error: "No such notice." };
++  const note = input.note.trim();
++  if (note.length < 5) return { ok: false, error: "Say what was checked (the provider's activity, what the holder was told)." };
++  if (note.length > 500) return { ok: false, error: "Keep the note under 500 characters." };
++  const week = await weekStore.get(input.weekId);
++  if (!week) return { ok: false, error: "No such week." };
++  // The notices module loads only when a check is recorded, as it loads for the money files only when they fire.
++  const { closeUnresolvedLetters } = await import("./maswali-notify");
++  return closeUnresolvedLetters(week.id, notice, input.officerId, async (closed) => (await deps.audit({
++    category: "COMPLIANCE", action: LETTERS_CLEARED_ACTION, actorId: input.officerId, targetType: "MaswaliCycle", targetId: week.id,
++    payload: { code: week.code, notice, note, closed },
++  })).recorded);
++}
++
++/** How many of the newest settled or voided weeks the read covers (round 9, L4). */
++export const UNRESOLVED_LETTER_WEEKS = 26;
++
++/** When a week ended: its settlement, else (a voided week) its row's last write. */
++function endedAt(w: Pick<StoredWeek, "settledAt" | "updatedAt">): number {
++  return Date.parse(w.settledAt ?? w.updatedAt) || 0;
++}
++
++/** Weeks newest-ended first, whatever their line: a drive week never waits behind public ones (round 12). */
++export function newestEndedFirst<T extends Pick<StoredWeek, "settledAt" | "updatedAt" | "code">>(weeks: T[]): T[] {
++  return [...weeks].sort((a, b) => endedAt(b) - endedAt(a) || b.code.localeCompare(a.code));
++}
++
++/** The read: its rows, whether older weeks were left unread, and whether a week's own records outran its read (the page
++ *  says each). */
++export type UnresolvedLettersRead = { rows: UnresolvedLetters[]; truncated: boolean; partial: boolean };
++
++/** The newest `UNRESOLVED_LETTER_WEEKS` settled or voided weeks whose newest result or refund run record counts letters
++ *  unresolved, one row a notice — and whether there were older weeks it did not read (round 9, L4). */
++export async function unresolvedLetters(): Promise<UnresolvedLettersRead> {
++  const weeks = newestEndedFirst((await weekStore.list({})).filter((w) => w.state === "SETTLED" || w.state === "VOIDED"));
++  const rows: UnresolvedLetters[] = [];
++  let partial = false;
++  for (const w of weeks.slice(0, UNRESOLVED_LETTER_WEEKS)) {
++    const read = await getAuditForTargetsDurable({
++      targetType: "MaswaliCycle", targetIds: [w.id], actions: ["maswali.notices.sent", LETTERS_CLEARED_ACTION], sinceIso: "1970-01-01T00:00:00.000Z", limit: 50,
++    });
++    for (const notice of ["result", "refund"] as const) {
++      const run = read.entries.find((e) => e.action === "maswali.notices.sent" && e.payload?.notice === notice);
++      const cleared = read.entries.find((e) => e.action === LETTERS_CLEARED_ACTION && e.payload?.notice === notice);
++      // ⭐ Round 12 (b) · the read is newest first: a notice whose newest run lies past a cut read is not known, and the page
++      // says so. A check past the cut is older than the run it found, so it never takes a row off.
++      if (!run && read.truncated) partial = true;
++      // ⭐ Round 10 (L4) · a check recorded after the newest run leaves the row out; a later run lists it again.
++      if (run && cleared && read.entries.indexOf(cleared) < read.entries.indexOf(run)) continue;
++      const n = (run?.payload?.letters as { unresolved?: unknown } | null | undefined)?.unresolved;
++      if (typeof n === "number" && Number.isSafeInteger(n) && n > 0) rows.push({ weekId: w.id, code: w.code, notice, letters: n });
++    }
++  }
++  return { rows, truncated: weeks.length > UNRESOLVED_LETTER_WEEKS, partial };
++}
++
+ /** OD-02 over a set of unsettled weeks, each at its own frozen floor. */
+ function requirementOf(weeks: StoredWeek[]): number {
+   return guaranteeRequirement(weeks.map((w) => ({ floor: frozenRules(w)?.floorTzs ?? 0, confirmedCarryIn: w.rolloverIn })));
+@@ -309,13 +577,22 @@ export type IntegrityView = {
+   winnersPage: { total: number; page: number };
+   /** Weeks a compliance officer may void whole (MR-18): the void is certain and the window has closed. */
+   voidable: ConsoleWeekRow[];
++  /** S6 · voided weeks whose refunds have not landed — each its own row until they do (R1's one truth); null: unread. */
++  owedRefunds: OwedRefund[] | null;
++  /** S6 (round 7, M2) · weeks with win or refund letters not known to have gone — an officer's call; null: unread. */
++  unresolvedLetters: UnresolvedLettersRead | null;
++  /** S6 · MB-93 · one page of the winners no notice is known to have reached — the desk's list to call — counted in full;
++   *  null when the read failed (its own card says so, and nothing else on the page goes with it). */
++  unreached: UnreachedWinner[] | null;
++  unreachedPage: { total: number; page: number } | null;
+ };
+ 
+ const holderOf = async (userId: string) => {
+   // ⚠️ The memory store answers synchronously: never `.catch` the call itself, catch the awaited read.
+   let u: Awaited<ReturnType<typeof db.user.findById>> | null = null;
+   try { u = await db.user.findById(userId); } catch { u = null; }
+-  return { holder: u ? (u.displayName?.trim() || `…${u.phoneE164.slice(-4)}`) : "(closed account)", role: u?.role ?? "?", status: u?.status ?? "?", createdAt: u?.createdAt ?? null };
++  const email: UnreachedWinner["email"] = u?.email ? (u.emailVerifiedAt ? "confirmed" : "unconfirmed") : "none";
++  return { holder: u ? (u.displayName?.trim() || `…${u.phoneE164.slice(-4)}`) : "(closed account)", role: u?.role ?? "?", status: u?.status ?? "?", createdAt: u?.createdAt ?? null, email };
+ };
+ 
+ /** The console's page size (the platform pager's own, `PER_PAGE`). */
+@@ -328,7 +605,7 @@ export const SEAL_WEEKS_PER_PAGE = 4;
+  * page an officer decides it on). Every week is read; the paid tickets are read at the query (`won`), never every ticket;
+  * every held share is listed whole; the winners and the seal log come a page at a time, counted in full.
+  */
+-export async function integrityView(now: Date = new Date(), pages: { winners?: number; sealWeeks?: number } = {}): Promise<IntegrityView> {
++export async function integrityView(now: Date = new Date(), pages: { winners?: number; sealWeeks?: number; unreached?: number } = {}): Promise<IntegrityView> {
+   const weeks = await weekStore.list({});
+   const held: HeldShare[] = [], winners: WinnerRow[] = [], sealLog: SealLogRow[] = [], voidable: ConsoleWeekRow[] = [];
+   const won: Array<{ ticket: StoredTicket; code: string }> = [];
+@@ -359,5 +636,24 @@ export async function integrityView(now: Date = new Date(), pages: { winners?: n
+       sealLog.push({ weekCode: w.code, slot: q.slot, outcome: q.outcome ?? "—", voidReason: q.voidReason, sealedBy: q.sealedBy, sealedAt: q.sealedAt, evidence: q.evidence, stage2By: q.stage2By });
+     }
+   }
+-  return { held, sealLog, sealWeeks: { total: sealed.length, page: sealAt }, winners, winnersPage: { total: won.length, page: winnersAt }, voidable };
++  const unreached = await unreachedWinners(now).catch((err: unknown) => {
++    console.error("[maswali-console] the winners not yet reached could not be read:", (err as Error)?.message ?? err);
++    return null;
++  });
++  const unreachedAt = unreached ? clampPage(pages.unreached ?? 1, unreached.length, CONSOLE_PER_PAGE) : 1;
++  const owed = await owedRefunds().catch((err: unknown) => {
++    console.error("[maswali-console] the owed refunds could not be read:", (err as Error)?.message ?? err);
++    return null;
++  });
++  const unresolved = await unresolvedLetters().catch((err: unknown) => {
++    console.error("[maswali-console] the letters not known to have gone could not be read:", (err as Error)?.message ?? err);
++    return null;
++  });
++  return {
++    held, sealLog, sealWeeks: { total: sealed.length, page: sealAt }, winners, winnersPage: { total: won.length, page: winnersAt }, voidable,
++    owedRefunds: owed,
++    unresolvedLetters: unresolved,
++    unreached: unreached ? unreached.slice((unreachedAt - 1) * CONSOLE_PER_PAGE, unreachedAt * CONSOLE_PER_PAGE) : null,
++    unreachedPage: unreached ? { total: unreached.length, page: unreachedAt } : null,
++  };
+ }

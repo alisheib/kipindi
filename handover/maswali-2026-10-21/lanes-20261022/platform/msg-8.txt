@@ -1,0 +1,21 @@
+MASWALI-BUILD S5-R2-PLATFORM 8: every programmatic move on a Millionea surface starts the platform's progress bar first (the F10 census)
+
+The motion critic's "Perceived performance" row (7) had no owner until the lead's round 2. Its one negative finding
+was M4: "View ticket" gave no feedback. The stamp's router.push never told NavProgress, so the bare slip stood about
+1.2s with nothing moving. The slip lane fixed its two moves with a `navigate` helper, and test:maswali-slip-design 9.2
+holds the stamp's. DESIGN_AUTHORITY §F10 is the platform's rule: a link's click starts the bar by itself, and a
+programmatic router.push must dispatch `50pick:navigating` first.
+  - test:millionea-shell §3 holds that rule for every Millionea file: the hub, the slip, the tickets, How, the
+    register, /results' section and the shared parts (66 files). Every `router.push(` / `router.replace(` must be one
+    of two things:
+      - the body of a `navigate(() => …)` whose helper dispatches the event before it pushes;
+      - a call that stands right after that dispatch.
+    `router.refresh()` moves no page and is not counted.
+  - 3.0 premise: 66 files read, 2 moves found (slip-client ×2, "View ticket" among them).
+  - 3.1: none is silent.
+  - Plants:
+      - 3.1′: the stamp's push made bare again (the critic's M4) is reported;
+      - 3.1″: the helper without its dispatch is reported for both moves.
+VERIFIED: test:millionea-shell 22/0 (was 18).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

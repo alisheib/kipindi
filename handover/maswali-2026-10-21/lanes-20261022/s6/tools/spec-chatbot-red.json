@@ -1,0 +1,27 @@
+[
+  {
+    "from": "    // The suite measures §6.6 against the approved S11 checkpoint (8ce376ca0); this red drive hands it the shadow's own\n    // origin/main — the pristine copy — as its baseline (`runAgainst`, S5's f5a11a06a), so a mutated chat.ts differs for\n    // exactly the reason the assertion names. The shadow also carries that real checkpoint's chat blob under its ref\n    // (S7's 5c0cc5e38, 0.2), so it holds both baselines and neither is ever missing: a missing ref would leave the pristine\n    // positive control red and every chat mutation caught for the wrong reason.",
+    "to": "    // The suite measures §6.6 against the approved prompt checkpoint (`CHAT_PROMPT_PIN`, MASWALI-BUILD S6); this red drive\n    // hands it the shadow's own origin/main — the pristine copy — as its baseline (`runAgainst`, S5's f5a11a06a), so a\n    // mutated chat.ts differs for exactly the reason the assertion names. The shadow also carries that real checkpoint's chat\n    // blob under its ref (S7's 5c0cc5e38, 0.2), so it holds both baselines and neither is ever missing: a missing ref would\n    // leave the pristine positive control red and every chat mutation caught for the wrong reason.",
+    "count": 1
+  },
+  {
+    "from": "    const approvedChat = execFileSync(\"git\", [\"-C\", ROOT, \"show\", \"8ce376ca0:src/app/_actions/chat.ts\"]);",
+    "to": "    const approvedChat = execFileSync(\"git\", [\"-C\", ROOT, \"show\", `${CHAT_PROMPT_PIN}:src/app/_actions/chat.ts`]);",
+    "count": 1
+  },
+  {
+    "from": "    git(template, [\"update-ref\", \"refs/heads/8ce376ca0\", \"HEAD\"]);",
+    "to": "    git(template, [\"update-ref\", `refs/heads/${CHAT_PROMPT_PIN}`, \"HEAD\"]);",
+    "count": 1
+  },
+  {
+    "from": "    // 6.6 holds chat.ts to an approved checkpoint of THIS repository, a sha the scratch repository cannot resolve — so the\n    // pristine copy is named by it too (a tag of that name), and a mutated chat.ts differs from it for the reason 6.6\n    // names (2026-10-18; until then every shadow run reported 6.6 NOT MEASURED, and §1.2 could not pass).\n    git(template, [\"tag\", CHAT_PROMPT_PIN, \"HEAD\"]);\n",
+    "to": "",
+    "count": 1
+  },
+  {
+    "from": "    ok(\"0.2 · the shadow carries the real S11 chat checkpoint for §6.6\",\n       execFileSync(\"git\", [\"-C\", template, \"show\", \"8ce376ca0:src/app/_actions/chat.ts\"]).equals(approvedChat),",
+    "to": "    ok(`0.2 · the shadow carries the approved prompt checkpoint ${CHAT_PROMPT_PIN} for §6.6`,\n       execFileSync(\"git\", [\"-C\", template, \"show\", `${CHAT_PROMPT_PIN}:src/app/_actions/chat.ts`]).equals(approvedChat),",
+    "count": 1
+  }
+]

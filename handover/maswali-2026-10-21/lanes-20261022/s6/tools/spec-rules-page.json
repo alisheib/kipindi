@@ -1,0 +1,8 @@
+[
+  { "from": "import { I } from \"@/components/ui/glyphs\";\nimport { I, plateGlyph, type DuoGlyphKey } from \"@/components/ui/glyphs\";\n", "to": "import { I, plateGlyph, type DuoGlyphKey } from \"@/components/ui/glyphs\";\n", "count": 1 },
+  {
+    "from": "      <RuleCard href=\"/legal/rules/yes-no\" icon={<I.listChecks s={20} />} title={c.yesNo[0]} sub={c.yesNo[1]} tone=\"info\" />\n      <RuleCard href=\"/legal/rules/up-down\" icon={<I.trendingUp s={20} />} title={c.upDown[0]} sub={c.upDown[1]} tone=\"aqua\" />\n      <RuleCard\n        href=\"/legal/rules/millionea\"\n        icon={<I.millionea s={20} />}\n        title={MILLIONEA_CARD[locale][0]}\n        sub={MILLIONEA_CARD[locale][1]}\n        tone=\"brand\"\n      />",
+    "to": "      <RuleCard href=\"/legal/rules/yes-no\" glyph=\"listChecks\" title={c.yesNo[0]} sub={c.yesNo[1]} />\n      <RuleCard href=\"/legal/rules/up-down\" glyph=\"trade\" title={c.upDown[0]} sub={c.upDown[1]} />\n      {/* S6-INT · the three doors draw the two doors' own identity plates (PHOSPHOR release 2a part 2), Millionea's its own. */}\n      <RuleCard\n        href=\"/legal/rules/millionea\"\n        glyph=\"millionea\"\n        title={MILLIONEA_CARD[locale][0]}\n        sub={MILLIONEA_CARD[locale][1]}\n      />",
+    "count": 1
+  }
+]

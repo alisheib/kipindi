@@ -1,0 +1,866 @@
+[
+ {
+  "l": "en",
+  "w": 320,
+  "tabs": "4",
+  "least": 17.3,
+  "gaps": [
+   20.6,
+   17.3,
+   23.9
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "Questions",
+   "Up & Down",
+   "My tickets",
+   "Account"
+  ],
+  "problems": []
+ },
+ {
+  "l": "en",
+  "w": 332,
+  "tabs": "4",
+  "least": 20.3,
+  "gaps": [
+   23.6,
+   20.3,
+   26.9
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "Questions",
+   "Up & Down",
+   "My tickets",
+   "Account"
+  ],
+  "problems": []
+ },
+ {
+  "l": "en",
+  "w": 333,
+  "tabs": "4",
+  "least": 20.5,
+  "gaps": [
+   23.8,
+   20.5,
+   27.1
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "Questions",
+   "Up & Down",
+   "My tickets",
+   "Account"
+  ],
+  "problems": []
+ },
+ {
+  "l": "en",
+  "w": 336,
+  "tabs": "4",
+  "least": 21.3,
+  "gaps": [
+   24.6,
+   21.3,
+   27.9
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "Questions",
+   "Up & Down",
+   "My tickets",
+   "Account"
+  ],
+  "problems": []
+ },
+ {
+  "l": "en",
+  "w": 337,
+  "tabs": "4",
+  "least": 21.5,
+  "gaps": [
+   24.8,
+   21.5,
+   28.1
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "Questions",
+   "Up & Down",
+   "My tickets",
+   "Account"
+  ],
+  "problems": []
+ },
+ {
+  "l": "en",
+  "w": 340,
+  "tabs": "4",
+  "least": 22.3,
+  "gaps": [
+   25.6,
+   22.3,
+   28.9
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "Questions",
+   "Up & Down",
+   "My tickets",
+   "Account"
+  ],
+  "problems": []
+ },
+ {
+  "l": "en",
+  "w": 347,
+  "tabs": "4",
+  "least": 24,
+  "gaps": [
+   27.3,
+   24,
+   30.6
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "Questions",
+   "Up & Down",
+   "My tickets",
+   "Account"
+  ],
+  "problems": []
+ },
+ {
+  "l": "en",
+  "w": 348,
+  "tabs": "4",
+  "least": 24.3,
+  "gaps": [
+   27.6,
+   24.3,
+   30.9
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "Questions",
+   "Up & Down",
+   "My tickets",
+   "Account"
+  ],
+  "problems": []
+ },
+ {
+  "l": "en",
+  "w": 349,
+  "tabs": "4",
+  "least": 24.5,
+  "gaps": [
+   27.8,
+   24.5,
+   31.1
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "Questions",
+   "Up & Down",
+   "My tickets",
+   "Account"
+  ],
+  "problems": []
+ },
+ {
+  "l": "en",
+  "w": 360,
+  "tabs": "4",
+  "least": 27.3,
+  "gaps": [
+   30.6,
+   27.3,
+   33.9
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "Questions",
+   "Up & Down",
+   "My tickets",
+   "Account"
+  ],
+  "problems": []
+ },
+ {
+  "l": "en",
+  "w": 390,
+  "tabs": "4",
+  "least": 34.8,
+  "gaps": [
+   38.1,
+   34.8,
+   41.4
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "Questions",
+   "Up & Down",
+   "My tickets",
+   "Account"
+  ],
+  "problems": []
+ },
+ {
+  "l": "en",
+  "w": 412,
+  "tabs": "4",
+  "least": 40.3,
+  "gaps": [
+   43.6,
+   40.3,
+   46.9
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "Questions",
+   "Up & Down",
+   "My tickets",
+   "Account"
+  ],
+  "problems": []
+ },
+ {
+  "l": "sw",
+  "w": 320,
+  "tabs": "4",
+  "least": 37.1,
+  "gaps": [
+   37.1,
+   40.4,
+   37.1
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "Maswali",
+   "Juu na Chini (2 lines)",
+   "Tiketi zangu (2 lines)",
+   "Akaunti"
+  ],
+  "problems": []
+ },
+ {
+  "l": "sw",
+  "w": 332,
+  "tabs": "4",
+  "least": 40.1,
+  "gaps": [
+   40.1,
+   43.4,
+   40.1
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "Maswali",
+   "Juu na Chini (2 lines)",
+   "Tiketi zangu (2 lines)",
+   "Akaunti"
+  ],
+  "problems": []
+ },
+ {
+  "l": "sw",
+  "w": 333,
+  "tabs": "4",
+  "least": 9.3,
+  "gaps": [
+   24.7,
+   9.3,
+   24.7
+  ],
+  "ls": [
+   "-0.44px",
+   "-0.44px",
+   "-0.44px",
+   "-0.44px"
+  ],
+  "words": [
+   "Maswali",
+   "Juu na Chini",
+   "Tiketi zangu",
+   "Akaunti"
+  ],
+  "problems": []
+ },
+ {
+  "l": "sw",
+  "w": 336,
+  "tabs": "4",
+  "least": 10.1,
+  "gaps": [
+   25.5,
+   10.1,
+   25.5
+  ],
+  "ls": [
+   "-0.44px",
+   "-0.44px",
+   "-0.44px",
+   "-0.44px"
+  ],
+  "words": [
+   "Maswali",
+   "Juu na Chini",
+   "Tiketi zangu",
+   "Akaunti"
+  ],
+  "problems": []
+ },
+ {
+  "l": "sw",
+  "w": 337,
+  "tabs": "4",
+  "least": 10.3,
+  "gaps": [
+   25.7,
+   10.3,
+   25.7
+  ],
+  "ls": [
+   "-0.44px",
+   "-0.44px",
+   "-0.44px",
+   "-0.44px"
+  ],
+  "words": [
+   "Maswali",
+   "Juu na Chini",
+   "Tiketi zangu",
+   "Akaunti"
+  ],
+  "problems": []
+ },
+ {
+  "l": "sw",
+  "w": 340,
+  "tabs": "4",
+  "least": 11.1,
+  "gaps": [
+   26.5,
+   11.1,
+   26.5
+  ],
+  "ls": [
+   "-0.44px",
+   "-0.44px",
+   "-0.44px",
+   "-0.44px"
+  ],
+  "words": [
+   "Maswali",
+   "Juu na Chini",
+   "Tiketi zangu",
+   "Akaunti"
+  ],
+  "problems": []
+ },
+ {
+  "l": "sw",
+  "w": 347,
+  "tabs": "4",
+  "least": 12.8,
+  "gaps": [
+   28.2,
+   12.8,
+   28.2
+  ],
+  "ls": [
+   "-0.44px",
+   "-0.44px",
+   "-0.44px",
+   "-0.44px"
+  ],
+  "words": [
+   "Maswali",
+   "Juu na Chini",
+   "Tiketi zangu",
+   "Akaunti"
+  ],
+  "problems": []
+ },
+ {
+  "l": "sw",
+  "w": 348,
+  "tabs": "4",
+  "least": 13.1,
+  "gaps": [
+   28.5,
+   13.1,
+   28.5
+  ],
+  "ls": [
+   "-0.44px",
+   "-0.44px",
+   "-0.44px",
+   "-0.44px"
+  ],
+  "words": [
+   "Maswali",
+   "Juu na Chini",
+   "Tiketi zangu",
+   "Akaunti"
+  ],
+  "problems": []
+ },
+ {
+  "l": "sw",
+  "w": 349,
+  "tabs": "4",
+  "least": 8,
+  "gaps": [
+   24.5,
+   8,
+   24.5
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "Maswali",
+   "Juu na Chini",
+   "Tiketi zangu",
+   "Akaunti"
+  ],
+  "problems": []
+ },
+ {
+  "l": "sw",
+  "w": 360,
+  "tabs": "4",
+  "least": 10.8,
+  "gaps": [
+   27.3,
+   10.8,
+   27.3
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "Maswali",
+   "Juu na Chini",
+   "Tiketi zangu",
+   "Akaunti"
+  ],
+  "problems": []
+ },
+ {
+  "l": "sw",
+  "w": 390,
+  "tabs": "4",
+  "least": 18.3,
+  "gaps": [
+   34.8,
+   18.3,
+   34.8
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "Maswali",
+   "Juu na Chini",
+   "Tiketi zangu",
+   "Akaunti"
+  ],
+  "problems": []
+ },
+ {
+  "l": "sw",
+  "w": 412,
+  "tabs": "4",
+  "least": 23.8,
+  "gaps": [
+   40.3,
+   23.8,
+   40.3
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "Maswali",
+   "Juu na Chini",
+   "Tiketi zangu",
+   "Akaunti"
+  ],
+  "problems": []
+ },
+ {
+  "l": "zh",
+  "w": 320,
+  "tabs": "4",
+  "least": 47,
+  "gaps": [
+   58,
+   47,
+   47
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "问题",
+   "涨跌",
+   "我的注单",
+   "账户"
+  ],
+  "problems": []
+ },
+ {
+  "l": "zh",
+  "w": 332,
+  "tabs": "4",
+  "least": 50,
+  "gaps": [
+   61,
+   50,
+   50
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "问题",
+   "涨跌",
+   "我的注单",
+   "账户"
+  ],
+  "problems": []
+ },
+ {
+  "l": "zh",
+  "w": 333,
+  "tabs": "4",
+  "least": 50.3,
+  "gaps": [
+   61.3,
+   50.3,
+   50.3
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "问题",
+   "涨跌",
+   "我的注单",
+   "账户"
+  ],
+  "problems": []
+ },
+ {
+  "l": "zh",
+  "w": 336,
+  "tabs": "4",
+  "least": 51,
+  "gaps": [
+   62,
+   51,
+   51
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "问题",
+   "涨跌",
+   "我的注单",
+   "账户"
+  ],
+  "problems": []
+ },
+ {
+  "l": "zh",
+  "w": 337,
+  "tabs": "4",
+  "least": 51.3,
+  "gaps": [
+   62.3,
+   51.3,
+   51.3
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "问题",
+   "涨跌",
+   "我的注单",
+   "账户"
+  ],
+  "problems": []
+ },
+ {
+  "l": "zh",
+  "w": 340,
+  "tabs": "4",
+  "least": 52,
+  "gaps": [
+   63,
+   52,
+   52
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "问题",
+   "涨跌",
+   "我的注单",
+   "账户"
+  ],
+  "problems": []
+ },
+ {
+  "l": "zh",
+  "w": 347,
+  "tabs": "4",
+  "least": 53.8,
+  "gaps": [
+   64.8,
+   53.8,
+   53.8
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "问题",
+   "涨跌",
+   "我的注单",
+   "账户"
+  ],
+  "problems": []
+ },
+ {
+  "l": "zh",
+  "w": 348,
+  "tabs": "4",
+  "least": 54,
+  "gaps": [
+   65,
+   54,
+   54
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "问题",
+   "涨跌",
+   "我的注单",
+   "账户"
+  ],
+  "problems": []
+ },
+ {
+  "l": "zh",
+  "w": 349,
+  "tabs": "4",
+  "least": 54.3,
+  "gaps": [
+   65.3,
+   54.3,
+   54.3
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "问题",
+   "涨跌",
+   "我的注单",
+   "账户"
+  ],
+  "problems": []
+ },
+ {
+  "l": "zh",
+  "w": 360,
+  "tabs": "4",
+  "least": 57,
+  "gaps": [
+   68,
+   57,
+   57
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "问题",
+   "涨跌",
+   "我的注单",
+   "账户"
+  ],
+  "problems": []
+ },
+ {
+  "l": "zh",
+  "w": 390,
+  "tabs": "4",
+  "least": 64.5,
+  "gaps": [
+   75.5,
+   64.5,
+   64.5
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "问题",
+   "涨跌",
+   "我的注单",
+   "账户"
+  ],
+  "problems": []
+ },
+ {
+  "l": "zh",
+  "w": 412,
+  "tabs": "4",
+  "least": 70,
+  "gaps": [
+   81,
+   70,
+   70
+  ],
+  "ls": [
+   "normal",
+   "normal",
+   "normal",
+   "normal"
+  ],
+  "words": [
+   "问题",
+   "涨跌",
+   "我的注单",
+   "账户"
+  ],
+  "problems": []
+ }
+]

@@ -1,0 +1,7 @@
+[
+  {
+    "from": "    rep.combos === 12 && rep.coverage === 12 / 1024, J({ combos: rep.combos, coverage: rep.coverage }));",
+    "to": "    rep.combos === 12 && rep.boardCoverage === 12 / 1024 && !rep.coverage.limited, J({ combos: rep.combos, boardCoverage: rep.boardCoverage, coverage: rep.coverage }));",
+    "count": 1
+  }
+]

@@ -1,0 +1,63 @@
+MASWALI-BUILD S5-R2-PLATFORM 10 (WIP): the hub lane's two items — the journey's root ghost draws How, the register and a week; the shell's guest switch marks every signed-out reader
+
+WIP at the lead's HARD STOP (Ali: "push the progress we reached cleanly and stop the session cleanly"). Statically
+verified with guards and plants; tsc and the browser checks NOT run (no new heavy job after the stop).
+
+ITEM 1 (the lead's message, HUB's finding). src/components/journey/route-ghost.tsx: inside the same only-when-true
+block, "/millionea/how": <MillioneaHowGhost />, "/millionea/register": <MillioneaRegisterGhost /> and the pattern
+["^/millionea/register/[^/]+$", <MillioneaRegisterWeekGhost />]. Each is the page's own wordless client drawing, the one
+its loading file renders. Line "/" (DOORS') is untouched. A journey reader moving into How, the register or a week met
+the unknown page's spinner (AnyPageGhost) there.
+  - test:millionea-dark-edge §6 re-pinned openly. The addresses are DERIVED from every src/app/millionea/**/loading.tsx
+    (6.0 premise: 7 pages).
+      - 6.1: hidden reader, the unknown page's ghost byte for byte.
+      - 6.2: visible reader, its own drawing.
+      - 6.1′: plant re-aimed.
+      - 6.2′ (new): How's entry and the week pattern taken out are reported in sw/en/zh.
+    38/0 (was 36).
+  - test:visual-pass-r4j 3.3 re-pinned. The key set is the tabs, the journey's surfaces, and Millionea's reading pages
+    (/millionea/how, /millionea/register), which stay OFF surfaces.ts because a reading page keeps every overlay. There
+    are three patterns. 3.4's `own` list gains the three entries (use + import + the loading file renders it). 92/0.
+ITEM 2 (the lead's message, HUB's finding). src/components/layout/app-shell.tsx: `<MainLandmark viewer={!session ?
+"guest" : undefined}>` (was journeyShown && !session). Every signed-out reader is marked, classic too, so the
+Millionea hub's guest door can read it in either shell. A journey reader is marked exactly as before.
+  - CENSUS: the only readers of data-viewer are 6 CSS rules, whose subjects are .kp-hubghost--* (the /account ghost)
+    and .kp-qghost__* (the question ghost).
+      - Both are drawn only by the journey's root ghost: markets/[id]/loading.tsx hands a classic reader
+        MarketDetailGhost, and the root's classic arm is SectionLoader.
+      - No script reads it.
+      - So a classic guest's new attribute matches no rule any classic page draws.
+    CLASSIC DOM CHANGE for the parity compare: <main data-viewer="guest"> for a classic guest, no pixel difference
+    expected.
+  - test:millionea-shell §4 (new):
+      - 4.1 + plant (the journey-only condition back);
+      - 4.0 premise (6 rules found);
+      - 4.2: every rule keyed on data-viewer reaches only the journey's ghosts or Millionea's files (by subject class
+        or attribute); plant: a rule on .btn-ghost or on the landmark itself;
+      - 4.3: no script reads it.
+    28/0 (was 22).
+  - Re-pinned in the open:
+      - root-has 3.guest-switch + its plant (test 12/0, red:root-has 19 controls 0 failures);
+      - r4j 3.12 + 3.12′;
+      - question-ghost F41.viewer (6/6, red 6/6);
+      - journey-home's STRIP_MAIN anchor for red:journey-home's two slot plants.
+  - globals.css: the /account ghost's comment says who carries the switch now.
+CHECKS RUN (printed): test:millionea-shell 28/0, millionea-dark-edge 38/0, visual-pass-r4j 92/0, root-has 12 checks
+0 failures, question-ghost 6 ok + red 6/6, journey-home all checks passed, journey-shell 566, journey-tickets 51,
+visual-pass-r5a 97/0, r5d 45/0, r5g 65/0, r5k 57/0, r5l 57/0, r7b 50/0, simple-journey-flag 135/0, dead-css, red-anchors.
+Base reds as on 7e9a314f0: visual-pass-r5h 59/1 (SLIP's two writers) and measure (SLIP's widths).
+red:journey-home 254/255. The miss is "the steps region no longer scrolls — the plant's anchor resolves 2 times". The
+second `overflow-y: auto; overscroll-behavior: contain; }` is SLIP's .kp-mln-confirm__body (477dbdc82), present on
+the release base 7e9a314f0 too (2 occurrences there). It is not this change; the anchor needs the .kp-howto__scroll
+context.
+NOT VERIFIED / LEFT, in order:
+  1. tsc on this head.
+  2. Browser: a journey reader moving from / into /millionea/how, /millionea/register and a week draws that page's
+     ghost, never the spinner.
+  3. Browser: a classic guest's <main data-viewer="guest">, and 0 elements matching any [data-viewer] rule on classic
+     pages; HUB's hub guest door then lands on its place in classic.
+  4. The rest of the platform lane's batch 2: every red twin of the reader list serially, the DB/browser suites,
+     red:journey-header-fit --alone.
+  5. Re-anchor red:journey-home's steps plant (SLIP's duplicate line).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

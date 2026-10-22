@@ -1,0 +1,51 @@
+MASWALI-BUILD S5-R2-TICKETS 5: the kit EmptyState's opt-in numeral part, finished - zh too, one Millionea door, every caller proven; the seal's facts set by Millionea
+
+Finishes WIP 4 (the lead's ruling (a): EmptyState's body takes an OPT-IN numeral part, §T5).
+- FIX (zh): the part never reached a Chinese body. `hangCjkMarks` hands a piece back as a FRAGMENT when a mark hangs, and
+  `throughPart` only walked strings and arrays, so "第3周开放至周五 18:00。" kept "3" and "18:00" in the body face (and the
+  hub's "…开放。15 道题目…" its "15"). It now walks the fragment's plain runs; the marks' own spans stay.
+- ONE MILLIONEA DOOR: the wrapper is `MaswaliEmptyState` (src/components/maswali/maswali-empty-state.tsx, client), replacing
+  the tickets-only `tickets-empty.tsx`. A server page cannot hand a function to the client kit (React refuses a function
+  prop from a server component), so the hub's no-week state adopts this same wrapper at the merge - a tag swap, no second
+  wrapper, nothing passed through `bodyPart` by the page.
+- The classic seal (src/components/markets/win-celebration.tsx, round 2's hunk made minimal): its facts are drawn as the
+  caller hands them (`facts?: ReadonlyArray<ReactNode>`); the Millionea-only parsing (an identifier test and a third
+  copy of the numeral rule) left the classic file. Millionea's door sets them itself (`sealFacts` in ticket-acts.tsx:
+  the count line through `numeralRuns`, each serial one `.mono` run); the page hands the door `line` and `serials`.
+  A classic seal passes no facts, so it draws exactly what it drew.
+
+Guards (test:maswali-tickets 41 -> 43 checks):
+- 11.2 WITHOUT a part, byte for byte as 7e9a314f0 drew: 12126 bodies in sw/en/zh (every string the dictionary writes, each
+  template filled and kept, 121 generated hard cases) through the body AND the notice rules; the component compiled from
+  7e9a314f0 bound to 7e9a314f0's own text module, against the head's, in 1302 drawings (12 kinds x fill unset/true/boxed
+  x no body/sentence/kept x action x alone/in a section x 3 languages, + ErrorState).
+- 11.3 the census, a TSX parse of every file under src/: 63 <EmptyState> calls in 45 files; only the wrapper asks for a
+  part or spreads props; the wrapper is drawn only under src/app/millionea/.
+- 11.4 WITH the part: the tickets' empty body as the page fills it sets the week and the clock mono in sw, en AND zh; a
+  numeral after a hung mark too; for all 12126 bodies (2521 with a numeral set) the markup less its numeral runs IS the
+  markup without the part (only the face changes).
+- 17.3 is now a value check: what Millionea hands the seal, rendered in sw/en/zh (numerals mono, words not, serial whole).
+Plants (red:maswali-tickets 65 -> 74 caught): the face forced on every caller; a default part in the kit; the notice rules
+moved; a second caller asking; a caller spreading props; the wrapper drawn by a classic file; the wrapper without its part;
+the zh fragment passed over (the WIP's bug); a part inserting a character; the classic seal parsing facts again; the seal's
+facts handed in the body face; a serial set in pieces.
+Re-pins (open): maswali-ui (the list's two states are MaswaliEmptyState); r3c 2.4 / r4k 4.x comments name the wrapper.
+
+Checks: tsc --noEmit 0 errors (slot); test:maswali-tickets 43/43, red 74/74; maswali-ui 151/0; maswali-design 141/0;
+maswali-hub 53/0; journey-tickets 51; millionea-shell 18/0; journey-shell 566; howto, journey-home, filter-language green;
+gold-is-money 61/0; enter-where-pressed green; feedback-law 160/0; market-result-announce 26/0; updown-result-announce 39/0;
+millionea-dark-edge 36/0; motion-ladder 12/0; popup-fit 12/0; presence-class 90/0; stacking 144/0; updown-handover 118/0;
+type-scale green; visual-pass r3c 70, r4d 65, r4e 68, r4h 84, r4i 131, r4j 92, r4k 77, r5c 111, r5e 63, r5f 81, r5j 62,
+r6a 43, r6c 90, r7a 49, r8b 39, r8d 76, r9a 63, r9b 52, r9c 77 (all 0 failed); deposit-status-read memory 186/186.
+Red twins: maswali-tickets 74/74, journey-tickets 118/118, journey-shell 230/230, howto 48/48, enter-where-pressed
+121/121, visual-pass-r4k 17/17 (10 files restored byte-identical).
+NOT MINE (inputs untouched since 7e9a314f0, proof in each): ui-consistency 1 drift (src/app/millionea/how/how-ghost.tsx
+L43 h-10, REGISTER's); visual-pass-r10 88/2 (1.4 caret, 3.1 arrow census - Phosphor/SLIP; every §9 notice-body check
+green); visual-pass-r5h 59/1 (3.5: ChatRoot.tsx, operation-result-modal.tsx, maswali-slip.tsx); visual-pass-r7c 64/1
+(1.4: <NoticeBar> in hub-notices.tsx + millionea/page.tsx, the same 8 files at 7e9a314f0) - and r7c 2.1, red on main's CI
+(maswali-ticket.tsx:249 on main), is GREEN here (45 take it back, 0 loose: S5's restructure, 35ff078c9);
+red:journey-home 254/255 (the "steps region" plant's CSS anchor occurs twice since SLIP's 477dbdc82 added
+.kp-mln-confirm__body {... overflow-y: auto; overscroll-behavior: contain; } - 2 at 7e9a314f0, 1 on main).
+red:deposit-status-read: stopped at 31/45 caught (its plants are deposit files only) - re-run owed.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

@@ -1,4 +1,77 @@
-# MASWALI-BUILD — hand-over of 2026-10-21 (Claude, OMEGA-COMPILE01, the Maswali lead)
+# MASWALI-BUILD — hand-over (Claude, OMEGA-COMPILE01, the Maswali lead)
+
+## ⏹ STOP 4 — 2026-10-22 ~12:30 UTC (Ali: "push the progress we reached cleanly and stop the session cleanly so we proceed later on a clean base"; then "finalize conflicts then push")
+
+**Session asheib-f3.** Read in this order: this section → `MERGE-NOTES.md`'s top section ("2026-10-22 PM — asheib-f3, STOP 4":
+every lane's final state, every lead ruling, the merge-time wiring) → MASWALI-PLAN §0 on `claude/maswali-s5-release`. This
+session's lane briefs: `briefs-20261022/` (LANE-COMMON, S5-R2-COMMON, one per lane, OB.md = the objection door's draft brief,
+AGENTS-20261022.md = the lane ids); the round-2 critic brief: `critics/COMMON-R2.md`; new tools: `tools/job-responsive.sh`,
+`tools/slip-hash.mjs`. The previous lead's toolbox (`$S` scripts, briefs, R1 critic reports, the parity baseline) is still on
+OMEGA at `C:\Users\asheib\AppData\Local\Temp\claude\C--Users-asheib\408dbc60-fcd0-43af-899c-8602858935b5\scratchpad` (another
+machine re-captures the baseline with `tools/job-par-base.sh`). Nothing went live this session: production is still `main`
+`67e47f8d2` (read back green 08:12:48Z).
+
+### Ali's scope and answers (2026-10-22 — never re-ask)
+- **Scope: build done, launch later.** S5 → S7 → S6, each verified (critics 10/10 + every gate) and pushed to `main` DARK;
+  STAFF_PREVIEW right after S5 is live; S8 prepared and handed to him with his list. The programme closes when he says launch.
+- **Pre-approved:** push each release as soon as it is verified (the Railway key rotation runs in parallel on his side);
+  the read-only production read-backs; setting `FEATURE_MILLIONEA=STAFF_PREVIEW` on Railway after S5 is live; ONE read-only
+  "SmsMessage" size/count before S6's migration; deleting the old Maswali branches/worktrees at the very end (after a verified
+  bundle). Staff-preview check = ONE sign-in each with the QA staff and the QA player accounts. If the auto-mode classifier
+  still blocks one of these, ask him once to switch to manual approval and click Allow.
+- **S8's live test = the FIRST PUBLIC WEEK** (his 2026-10-21 ruling stands): approved QA accounts buy in week 1 (they cancel
+  inside the free window so no company ticket stays in the draw), a rollback switch stands ready; rewrite S8's work order,
+  OD-21 and §6 line 12 (+ `maswali-plan.test.mts:114` and its plant :196) to match; OD-21's drive code stays dormant.
+
+### Branches at the stop (all pushed; every OMEGA tree clean)
+| Lane | Branch | Head | State |
+|---|---|---|---|
+| S5 release (lead) | `claude/maswali-s5-release` | 4d13fa6f0 | + 81e312f01 §0, 41e61987c three ratchets, c58b316ff English buy wording (privacy + drive), 87f19f3a9 D19a privacy pin, edf79c2b0 journey-home anchor, 4d13fa6f0 §0 STOP 4 |
+| DOORS | `claude/maswali-s5-r2-doors` | 13d8ca918 | ✅ DONE, all verified — the ⛔ dark-safety blocker FIXED and proven on real bytes (qa:maswali-door-dark WITHDRAWN+plant 44/0, STAFF_PREVIEW 43/0; qa:live dark 116/0 both) |
+| SLIP | `claude/maswali-s5-r2-slip` | d5f24f569 | ✅ all verified (no WIP); every R1-slip cell 10; left: read the rest of its tiles |
+| HUB | `claude/maswali-s5-r2-hub` | a76e03f96 | WIP: the hub loading pick (client) + `hub-frame.ts`; tsc/hop probe/plants not run |
+| TICKETS | `claude/maswali-s5-r2-tickets` | fdbeae5a4 | WIP 6: tickets/loading.tsx pick has 3 reds (r4j 3.4, r5h 1.2/1.3) → make it a CLIENT pick |
+| REGISTER | `claude/maswali-s5-r2-register` | 926ebc6c1 | WIP 20 (two script changes, unrun); How ghost bands 6 px high; index/week drawings to redraw |
+| PLATFORM | `claude/maswali-s5-r2-platform` | 04d3e3d93 | WIP 10: route-ghost How/register/week + classic guest mark; tsc + browser proofs owed |
+| S7 × S5 | `claude/maswali-s7-s5` | be37a9683 | S7-MERGE 1 dfb438dd2 proven on both stores (money-path red 35/77 caught, 0 missed — rest not run); be37a9683 = empty WIP listing what is left |
+| S6 integration | `claude/maswali-s6-release` | 272658bbf | on M1 = dfb438dd2: 8620862fc S6-INT 1 = the int merge (L + D; 13 conflicts + sprites resolved; tsc 0), 272658bbf D19a re-pinned; maswali-integrity-list 35/2 to adapt (ruling c); R and N not started |
+
+### Next, in order
+1. **Finish each S5 lane's LEFT list** (exact lists in MERGE-NOTES' STOP 4 section): HUB (re-pin maswali-design 4.P4b/5.P15/5.P8,
+   tsc, heavy-c1 hop probe, heavy-c2 plants + drive), TICKETS (client pick, r4j/r5h/ui/tickets re-pins, shots,
+   red:deposit-status-read), REGISTER (GhostTextLine fix, hop drive + `--prove-red`, redraw the index/week drawings — and check
+   register/loading.tsx against r5h 1.2/1.3 + r4j 3.4 like TICKETS'), PLATFORM (tsc, commit 10's browser proofs, chat-yield
+   week-320, `$F/platform/batch2.sh` reds, `batch3.sh` perceived performance), SLIP (read its remaining tiles).
+2. **Integrate** the six r2 branches into the release (dry runs: only `scripts/millionea-shell.test.mts` conflicts → "no call
+   left"), then the merge-time wiring list (hub no-week → `MaswaliEmptyState`; the two drives' "View ticket" → link; delete
+   `MillioneaPreviewMark` per PLATFORM's map; the stray branch `claude/maswali-s5-release-merge-20261022`: apply e70672fe0,
+   re-derive a995dd936's pointers by hand, then bundle + delete; number D11 in §M8a item 11; the zh template grep in both
+   directions; D19a once after the last dictionary change).
+3. **One integrated render** (each lane fast-forwards to the integrated head and runs its full state shots; render-jobs
+   `player`; `qa:millionea-ghost-hops` in full; `qa:maswali-door-dark`), then the critics on `critics/COMMON-R2.md` (≤ 60 files
+   per reader; bounded rounds: two, then a recorded ruling).
+4. **S5 gates** (test:all + CI dispatch vs main's run 39625785032; reader sweep incl. red/qa/e2e; render jobs + test:responsive
+   (`tools/job-responsive.sh`); money battery; parity vs `parity-v5-bfa0b7d57.json` with every classic change named — the
+   lanes' lists are in MERGE-NOTES; build; local qa:live dark; Vodacom `git merge-tree` vs d5aa8bc02) → **push S5 dark** under
+   main-push.lock → read-back → **STAFF_PREVIEW** → QA staff + player sign-in once each.
+5. **S7**: its LEFT list on `claude/maswali-s7-s5` (floors; item 3's guard; ruling (a) one finalWeekRule + floor clause;
+   ruling (b); TK.2 alert = password writes only; RD.5 hold scope = shares from tickets bought at/after the reversed deposit;
+   FAILURE-INVENTORY §9; §7b targets; full money-path + dal-parity), merge the release's round-2 delta, the objection door
+   (OB.0, `briefs-20261022/OB.md`), gates incl. the fence migration's production-order proof and the backup round trip → push.
+6. **S6**: finish the integration on `claude/maswali-s6-release` (M2 int → D19a → R squash → N squash with M-3 and the old-API
+   calls), the lead's rulings a–q + 1–8, then the build split (NOTICES, LINT with finding 9 first, LEGAL+DOCS, MONEY with OD-13)
+   and the UI lane (MB-33, MB-70, L17) → gates → push.
+7. **S8 prepared** + Ali's list (MERGE-NOTES "ALI'S LIST FOR S8").
+
+### Facts a fresh machine needs
+- Railway: the CLI login on OMEGA expired; the workspace token in `.env.qa.local` works for GraphQL (`tools/railway-read.mjs`,
+  `railway-deploy-main.mjs`). Railway had a security incident on 2026-10-21 — rolling its variables is Ali's.
+- The machine's free RAM (~15 GB with Ali's apps open) limits heavy jobs to ~3–4 at once; `test:harm-watch`'s test:all crash
+  (0xC0000142) was load, not a defect (15/15 alone).
+
+---
+
+## (The earlier stops of this hand-over — 2026-10-21/22, the previous lead)
 
 ## ⏹ STOP 3 — 2026-10-22 ~08:10 UTC (Ali: "finish here on a clean level … then continue Maswali from a new prompt")
 

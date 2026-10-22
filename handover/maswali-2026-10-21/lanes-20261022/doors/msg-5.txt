@@ -1,0 +1,17 @@
+MASWALI-BUILD S5-R2-DOORS 5: the fence's census classifies /results' Up & Down view branch (test:maswali-fence 5.1)
+
+The release-only red the doors own: test:maswali-fence 5.1 ("every \"UPDOWN\" branch in src/ is in the census, with its
+reason") listed src/app/results/millionea-results-view.tsx (1) — `state.product !== "UPDOWN"` in
+`millioneaSectionShown` (S5-DESIGN-DOORS L16, ebb6caa5f).
+
+The branch is needed and is not a two-way line read: it compares the archive's VIEW filter (all · MARKET · UPDOWN — the
+archive opens on MARKET), never a row's line. The Millionea section stands on the archive as it opens and on the
+undivided view, not on the Up & Down rounds alone (L16; test:maswali-results-section's placedChecks pins all three), and
+its weeks come from Millionea's own read, never the archive's rows. The same class as results-bar.tsx's entry ("the view
+filter (all · MARKET · UPDOWN), never a row's line"). Classified with that reason, dated, in the census's own order.
+
+Proof: the census's own functions (`censusCounts`, `CENSUS`) run alone from the tree — before: 5.1 unlisted
+"src/app/results/millionea-results-view.tsx (1)", 5.2 moved none; after: 5.1 unlisted none, 5.2 moved none (33 files with
+a branch, 34 entries — product-line.ts holds n: 0). The two-store suite and its red twin run next, through the slot.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

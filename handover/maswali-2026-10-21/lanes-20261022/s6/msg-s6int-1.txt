@@ -1,0 +1,74 @@
+MASWALI-BUILD S6-INT 1: merge mln-s6-int (81c60f0f5: the S6 legal and data lanes) onto the S7×S5 merge (dfb438dd2)
+
+M2 of the S6 integration (claude/maswali-s6-release): `git merge --no-ff mln-s6-int`, so the lanes' squash commits
+(902afae56 legal, 521e8314f data) stay reachable for every pin and record that names them. Merge base 3f6af84e1.
+13 content conflicts and one sprite rename/rename, each resolved from both sides' intent:
+
+1. docs/COMPLIANCE-DECISIONS.md — both sides' entries, newest first: M1's five (2026-10-21 x2, 2026-10-20, 2026-10-19,
+   2026-10-18 "Counts as"), then the legal lane's three of 2026-10-18.
+2. package.json — the union: M1's S5 Millionea scripts, then test:maswali-fairness.
+3. scripts/anchors/house-bot-chatbot.anchors.mjs (13 hunks) — the S6 needle in every case, kept as M1's ONE constant:
+   D19A_CHECKPOINT = "src/app/_actions/chat.ts is byte-identical to" (the head both labels print).
+4. scripts/lib/house-bot-chatbot-cases.mts — 6.6 measures `baselineRef`, which now defaults to CHAT_PROMPT_PIN
+   (902afae56, whose chat.ts blob e04f339b3 is the merged file's); the red drive still hands it the shadow's origin/main
+   (S5's f5a11a06a). scripts/house-bot-chatbot-red.mts (merged cleanly with three overlapping fixes) now carries the
+   approved checkpoint under CHAT_PROMPT_PIN's own ref, 0.2 names it, and the separate tag is dropped.
+5. scripts/glyphs/map.ts — PREVIOUS_SPRITES kept at production's pair (app.76a3696e, admin.75aeb290); the data lane's
+   `evidence` key and FILL additions merged cleanly. ONE `npm run glyphs:gen` on the merged map: GLYPH_SPRITES
+   app.378cc33b / admin.216a71c9 (352 symbols), `search` gains its fill; app.b899eae1, app.3c0dfa68 and admin.8f678a55
+   leave; app.76a3696e.svg is production's bytes (blob 41815a95e, restored after the rename/rename). The registry was
+   never hand-merged.
+6. scripts/lib/house-bot-absence-cases.mts (D19a) — M1's scheme (W4, PHOS_R2A_PART2, the U43 reviewed blobs) plus the
+   legal lane's two new files pinned at 902afae56 (_content-millionea.tsx, rules/millionea/page.tsx). The rules page's
+   row and the dictionary's reviewed blob are re-pinned at THIS merge in the next commit (S6-INT 2): until then D19a is
+   red on those two paths, by design.
+7. scripts/maswali-integrity.test.mts — the data lane's floor and history (50); S5's case 1.6 is now counted too, so the
+   floor is re-taken at the first green run.
+8. scripts/visual-pass-r10.test.mts — M1's two W4 activity rows plus the /help Millionea caret row.
+9. src/app/admin/maswali/integrity/page.tsx — the data lane's ConnectedAccounts (three tiers, paged, stable ids); M1's
+   held columns with the share note through consoleShareNoteOf (rbac 9.1); one `import Link`; the cluster line's
+   holders page on their own `gpage` (S5's held shares page on `hpage` on the same page — the collision the map found);
+   each week's line prints the board share as `boardCoverage` and keeps S5's bounded-read disclosure (`coverage`).
+   scripts/maswali-rbac.test.mts 9.2 now reads `param="gpage"` and its parsePage.
+10. src/app/legal/rules/page.tsx — imports united; M1's RuleCard (Duotone identity plate, `glyph: DuoGlyphKey`);
+    ThreeDoors rewritten on it: listChecks, trade, millionea (all DUO_KEYS) — `I.trendingUp` is retired and the
+    tone/tint props are gone.
+11. src/lib/i18n-dict.ts — the legal lane's ruleSunset in en/sw/zh (test:maswali-fairness H.12 pins it), followed by
+    M1's regWeekQuestions; the base's regHash / regPublished / regColCategory stay removed (S5-VIS), and
+    src/app/fairness/millionea-section.tsx reads S5's stubHash / commitPublished instead. zh void lines: the lane's
+    meaning (as en/sw merged) with M1's U+200B breaks — voidSettledBeforeClose "销售截止前​结果已公开，或赛事已开始",
+    voidCriterionObjection "题目有误或​两种语言表述不一致，于截止后发现" (test:maswali-register 13.1's run rule).
+12. src/lib/server/maswali-integrity.ts — the data lane's report (whole read, crowded places, stable ids, three tiers)
+    in all eight hunks; M1's MB-94 seal-device section kept as it merged. Lead's ruling (c): ClusterReport.coverage is
+    S5's ClusterCoverage object — the report now returns `coverage: wholeReadCoverage(holders, lines)` (new in
+    src/lib/maswali-cluster-coverage.ts: every holder read, every line carried, so nothing is "limited") and its board
+    share as `boardCoverage`; src/lib/server/maswali-evidence.ts keeps printing the pack's `coverage` from
+    `boardCoverage`; scripts/lib/maswali-integrity-child.mts 5.5 reads `boardCoverage` and asserts the read is whole.
+
+13. Found by the type check and fixed here: the integrity page hands the cluster report one value per parameter
+    (`clusterQuery`; S5's searchParams allow arrays); /help's Millionea answer reads S5's `ruleSharedJackpot` where the
+    legal lane read `howThree`, which S5's register round removed (src/app/help/millionea-help.tsx, its header too);
+    the evidence pack's `clusters` type keeps its own `coverage: number` (the board share) beside the report's new
+    object. And src/lib/maswali-support-scripts.ts (the data lane's desk scripts) names its console breadcrumbs in words
+    ("the Integrity page: Winners, Hold the share") instead of six typed "→" (test:glyph-source §7: the file was unlisted).
+
+Verified at this commit (printed): no conflict marker in any changed file (scanned); `npx tsc --noEmit` in slot s6:
+first run 3 errors (the three of item 13), after their fix rc=0, 0 errors; test:maswali-rbac "390 passed, 0 failed";
+test:maswali-register "60 passed, 0 failed" (13.1 included); test:admin-nav "29 passed, 0 failed"; test:glyph-map and
+test:glyph-sync rc=0. RED, with what is known:
+· test:glyph-source — one failure: "§7 the console types 129 icon character(s), more than its 128". The same scan
+  (glyph-source's regex over decommented src/app/admin + src/components/admin) counts 129 at dfb438dd2 too, and every
+  file this merge adds there types 0: it predates this merge (the S7×S5 merge's own), not fixed here.
+· test:visual-pass-r10 — 87 passed, 3 failed: 1.4 (the caret's drawing) and 3.1 (an unlisted chevronDown in
+  src/components/maswali/maswali-slip.tsx) read files this merge leaves byte-identical to dfb438dd2 — not yet proven
+  red on dfb438dd2 itself; 11.1 ("src/lib/i18n-dict.ts is the commit's own") was red only because the merge was
+  uncommitted — re-run after this commit.
+· test:maswali-integrity-list — 35 passed, 2 failed: S5's reportWired / warningWired source pins (and its three red
+  plants) read S5's bounded read, which the data lane's whole read replaces — the cases adapt per ruling (c).
+NOT run (owed, in order): test:house-bot-disclosure (D19a: red on the rules page and the dictionary until S6-INT 2 re-pins
+them at this merge, by design); test:maswali-integrity, -evidence and -fairness on both stores (floors from their
+printed counts); red:maswali-rbac; red:house-bot-chatbot; test:maswali-fairness's static L/H sections (L.10–L.11 read
+the rules page's third door); the lookup form's type-scale / admin-act-gate / unsaved-changes census decisions; renders
+of /legal/rules (two and three doors), /fairness, /help, /admin/maswali/{integrity,evidence,lookup}.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

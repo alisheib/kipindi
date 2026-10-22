@@ -1,0 +1,24 @@
+MASWALI-BUILD S5-R2-PLATFORM 5: two release-only reds of the platform's own, classified (r5h 3.5 the chat bubble's yield mark; r7c 1.4 the hub's calm bars)
+
+The release's test:all map (2026-10-22) named two reds for the platform lane. Both were censuses that met a new
+member; neither was a defect in the page.
+  - test:visual-pass-r5h 3.5, the census of every file that writes a DOM mark, found ChatRoot.tsx (D15). It is now
+    classified: the bubble's yield (data-over-content, on the bubble's own wrapper) is written in an animation frame
+    that a scroll, a resize, a new page, the body's growth, the fonts' arrival or the bubble's hand-back asks for, at
+    most once a frame and only when the answer changes. It fades floating chrome and moves no box, so the frame it
+    lands in shows the same page; only the bubble's own opacity rule reads it.
+    The census still names two files: operation-result-modal.tsx and maswali-slip.tsx. They are SLIP's, so SLIP
+    classifies them.
+  - test:visual-pass-r7c 1.4, the census of every NoticeBar user, found the Millionea hub's two files
+    (hub-notices.tsx, millionea/page.tsx). Those are S5-DESIGN-HUB M9's calm bars (§F9, §M8a item 10): the moved
+    close, the final week ahead and the once-a-week notices. They are the away bar's kit, drawn under the header
+    across the page, where they used to be boxed Callouts in the column. They are re-pinned as members (8 files).
+    D12's staff preview bar still draws through the kit, and a new plant 1.4' holds it there.
+Proof:
+  - r5h before this change: 3.5 listed ChatRoot.tsx, operation-result-modal.tsx and maswali-slip.tsx (59/1).
+    After: only SLIP's two (59/1).
+  - r7c before: 64 passed, 1 failed. After: 66 passed, 0 failed. 1.4' fails the census when the preview bar draws
+    a Callout of its own.
+VERIFIED: test:visual-pass-r5h 59/1 (the one is SLIP's two writers), test:visual-pass-r7c 66/0.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

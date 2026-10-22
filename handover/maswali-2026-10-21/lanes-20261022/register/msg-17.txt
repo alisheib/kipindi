@@ -1,0 +1,33 @@
+MASWALI-BUILD S5-R2-REGISTER 17: the fact separator measured and settled — every eyebrow's list spaces as a typed " · " does; the shot script holds it with its own control
+
+THE ROUTED QUESTION (round 1, MERGE-NOTES "ROUTED TO LEAD"): the fact list's `--mln-sep: 0.9em` (VIS-P) looked tight inside
+a tracked mono eyebrow — "AKIBA·A1–A5", 5–6px either side of the dot (batchE-crops/band-sw1280.png). The lead's brief:
+measure it TARGETED, decide, implement with its guard.
+
+MEASURED on this branch (the integrated release + round 2; qa:maswali-register-shots, sunset scenario, the week page with
+its reserves band — cards at 360, the table's row-group head at 1280 — in en/sw/zh; log $F/register/sep.log):
+- every eyebrow list equals the same words typed with " · " in the same eyebrow, to the tenth of a pixel: en/sw
+  "Reserves · A1–A5" / "Akiba · A1–A5" (JetBrains Mono 11px, tracking 1.54px = 0.14em) 24.4px = 24.4px; zh "备选题 · A1–A5"
+  (12px, untracked) 21.6px = 21.6px — in both layouts;
+- the control (the eyebrow rule undone in the page, the round-1 0.9em restored, Chinese too): 9.9px vs 24.4px (en/sw),
+  10.8px vs 21.6px (zh) — the round-1 defect, and the judge reports it;
+- the body face (Inter, the base 0.9em), for the record: 11.7px vs a typed 10.9px at 13px, 12.6px vs 11.7px at 14px —
+  0.8–0.9px roomier than a typed " · ", within 1px and never tighter.
+DECISION: no CSS change. HUB's L1 rule (merged in the release: `.eyebrow .kp-mln-facts { --mln-sep: calc(3ch + 0.42em) }`,
+`3ch` for the numerals' mono and for Chinese eyebrows) already makes the separator in a tracked mono eyebrow exactly a
+typed " · " — three of the face's characters plus their tracking — at every rung (ch and em scale with the size), and the
+body face's 0.9em stays (it reads as a typed " · " within a pixel). The question is closed by measurement, and guarded.
+
+THE GUARD (scripts/maswali-register-shots.mjs, `separators`): every fact list that draws its marks inline, its first two
+facts on one line (stacked and wrapped pairs are skipped — they have no separator between them), is measured against the
+same words typed with " · " beside it; a list in a tracked mono eyebrow or in the numerals' mono must match within 1px
+(SEP), a body-face list is printed for the record; on every page with an eyebrow list the CONTROL undoes the eyebrow rule
+in the page and requires the same judge to report every one (SEP′) — each run proves its own judge. The printed words are
+the facts' real text (a space between two runs is its own text node — "TZS 12,000 carried forward").
+Also here: How to play's loading drawing caught on the way in from the register (a throttled client move, the hub drive's
+technique): the swap card's button bar stands at the landed button's height (GHOST; commit 15's change, measured: 44 =
+44px in en/sw/zh at 360 and 1280, its control at 80px reported). Page name `how-ghost`; by default at 360 and 1280.
+Run: MASWALI_REGISTER_SCENARIO=sunset, pages week-beforeFinal + how-ghost, 360/1280 × en/sw/zh, no scroll tiles: 74 passed,
+0 failed (the words' label fix after it is cosmetic and re-runs with the next commit's drive).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

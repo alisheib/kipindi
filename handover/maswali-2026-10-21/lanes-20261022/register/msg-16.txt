@@ -1,0 +1,28 @@
+MASWALI-BUILD S5-R2-REGISTER 16: the week page's event line keeps Millionea's Chinese at its edge — "事件 2026年11月7日 09:00"
+
+Found by this lane's targeted drive (the SEP read prints every fact list's words): on a week's page in Chinese every
+question's event read "事件2026年11月7日 09:00" — a Han character glued to a digit, against the lead's zh ruling of
+2026-10-21 (a space only where a Latin letter or a digit meets a Han character, never between two Han characters).
+Cause: S5-DESIGN-DOORS 8 (d47b37e90) took the space out of the shared zh `eventAt` ("事件 {when}" → "事件{when}") for the
+hub's and the slip's fill, a weekday ("事件周五 09:00"), and traced those two callers; the register fills a DATE, which in
+Chinese opens on its year (`formatEatDateTime`: "2026年11月7日 09:00").
+The fix is the register's, not the shared word's: `registerEventAt` (register-parts.tsx, additive — no existing part
+changes) prints the card's event and sets the edge by what meets it — a space where the word's last Han character meets
+the date's first digit or Latin letter, none otherwise — so "事件 2026年11月7日 09:00", and exactly one space even if the
+shared word kept its own. en/sw unchanged ("Event 7 Nov, 09:00", "Tukio 7 Nov, 09:00"). The week page's cards call it.
+The table's Event column prints the date alone (no word), unchanged. The other zh templates the lane's pages fill with a
+placeholder touching Han were read (a scratch scan of every t.millionea key the register, How and the ledger use):
+checkWindowUntil and ruleCheck meet Han on both sides; logCarry, logVoid, regWeekQuestions and exampleCaption are
+ordinals ("第{n}题", unspaced by the 2026-10-19 ruling) — only eventAt was wrong.
+
+Guard: test:maswali-register 3.10 (rendered, en/sw/zh: the three exact strings; the shared word with its old space back
+still gives one space; null for no instant; the week page's cards call the part) + three plants caught: the edge undone
+("事件2026年…"), the edge spaced blind (two spaces once the word keeps its own), the page back on the bare fill.
+Runs: maswali-register 59/0 (floor 58 → 59, the printed count), red 111/111 · every reader of register-parts.tsx and of
+the week page (git grep): design-register 36/0 (red 61/61), maswali-design 141/0, results-section pass (red pass),
+tickets 39/0 (red 60/60), week-money 10/0 (red 13/13), r5e 63/0, r8a 89/0, r9a 63/0, glyph-source 0 failures (3,726
+files), grid-paging 41/0, journey-shell 566/0, og-week pass, register-cache pass, maswali-ui 151/0, millionea-shell 19/0,
+r5j 62/0, ui-consistency ALL PASS; visual-pass-r10 88/2 — 1.4/3.1 are the slip's caret (maswali-slip.tsx), SLIP's known
+release red from the lead's test:all on 7e9a314f0, not a file this commit touches.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

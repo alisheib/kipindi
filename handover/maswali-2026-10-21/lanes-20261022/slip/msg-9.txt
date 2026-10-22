@@ -1,0 +1,30 @@
+MASWALI-BUILD S5-R2-SLIP 9: round 2's two wirings get their own guard — the stamp's free-cancel note per ticket, and TICKETS' cancel confirm handing its dim to its result (maswali-slip-design §12, floor 80 → 86)
+
+Commits 2 (723f41ea9) and 3 (151208cce) shipped without a guard of their own: undoing either left every suite green.
+This adds one for each, in the slip's own suite, read from what the components render.
+
+scripts/maswali-slip-design.test.mts §12:
+- 12.1 slip-client.tsx is compiled with a landed cut seeded into its state (one substitution, found once) and TICKETS'
+  MaswaliGhostHint stubbed to draw what it is handed. With a two-ticket cut whose free cancel is known, it draws one
+  note per serial, each at Date.parse(cancelUntil). It draws none when the window is not known, and none with no stamp.
+- 12.1' PLANT: the note line taken out draws no note.
+- 12.2 ticket-acts.tsx is compiled with ConfirmModal and OperationResultModal stubbed to draw the props they receive,
+  and the two pressed states seeded: the result up, and the confirm closing into it. The confirm always carries
+  panelClassName kp-mln-zh. Its handoff is false at rest and true while it closes into the result. The result's handoff
+  equals its open, and its panelDelay is always on.
+- 12.2' PLANT: handoff={false} on either side is caught.
+- 12.3 the order the dim needs, held as 4.P1 holds the slip's: in the landed branch setHandoffOut precedes
+  setOpen(false), which precedes showResult (one continuation, one commit). The door re-arms the hand-off to false each
+  time it opens the confirm.
+- 12.3' PLANT: the hand-off set in a later continuation is caught.
+- Header lists §11 and §12. MIN_ASSERTIONS 80 → 86, the count this green run printed.
+
+Checks on this exact tree (OMEGA, 2026-10-22; logs in scratchpad 64715c03/slip/logs/p4):
+- maswali-slip-design: 86 passed, 0 failed.
+- On-disk plants (scratch plant.mjs + spec-wiring.json), 8/8 caught, restored byte for byte, 86/0 after. They were:
+  the stamp's note taken out; the note for the first serial only; the confirm keeping its own dim; the result's
+  handoff={open} removed; the result's panelDelay removed; the confirm's kp-mln-zh removed; the hand-off set after the
+  close; the door not re-arming it.
+- The browser proof of both, the band landing and the one dim, is the next step (LEFT item 4).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

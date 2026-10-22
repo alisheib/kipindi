@@ -1,0 +1,338 @@
+diff --git a/src/app/admin/maswali/integrity/actions.ts b/src/app/admin/maswali/integrity/actions.ts
+index 30905a9ba..f6acfaac4 100644
+--- a/src/app/admin/maswali/integrity/actions.ts
++++ b/src/app/admin/maswali/integrity/actions.ts
+@@ -5,7 +5,9 @@
+  *
+  *   · voidMaswaliWeek — refund a week whose whole-week void is certain on its sealed record, once its window closed;
+  *   · pauseMaswaliSales / resumeMaswaliSales — stop and restart SALES only (never a cancel, a settlement or a refund);
+- *   · holdMaswaliShare / releaseMaswaliShare / forfeitMaswaliShare — Compliance decides a winning share under review.
++ *   · holdMaswaliShare / releaseMaswaliShare / forfeitMaswaliShare — Compliance decides a winning share under review;
++ *   · markMillioneaWinnerReached — S6 · the desk records that a winner no notice reached was reached by phone (MB-93).
++ *   · clearUnresolvedLetter — S6 · an officer records that a week's letters not known to have gone were checked.
+  * Three acts are kept apart on purpose (MB-78): the pause (sales only), the week void (refund, carry untouched) and the
+  * product stop (the Owner's sunset, on the pools page).
+  */
+@@ -17,6 +19,7 @@ import { voidWeek } from "@/lib/server/maswali-service";
+ import { pauseMaswaliSales, resumeMaswaliSales } from "@/lib/server/maswali-pause";
+ import { forfeitMaswaliShare, holdMaswaliShare, releaseMaswaliShare } from "@/lib/server/maswali-settlement";
+ import { noteMaswaliPoolChanged } from "@/lib/server/maswali-pool-feed";
++import { clearUnresolvedLetter, recordMillioneaWinnerReached } from "@/lib/server/maswali-console";
+ 
+ type ActionResult = { ok: true; note?: string } | { ok: false; error: string };
+ 
+@@ -68,6 +71,35 @@ export async function resumeMaswaliSalesAction(formData: FormData): Promise<Acti
+   }
+ }
+ 
++export async function markMillioneaWinnerReachedAction(formData: FormData): Promise<ActionResult> {
++  const session = await requireStaff(CONTROL_DOMAIN.markMillioneaWinnerReached, "markMillioneaWinnerReached");
++  try {
++    const r = await recordMillioneaWinnerReached({
++      weekId: str(formData, "weekId"), userId: str(formData, "userId"), officerId: session.userId, typed: str(formData, "typed"), note: str(formData, "note"),
++    });
++    if (!r.ok) return { ok: false, error: r.error };
++    revalidatePath("/admin/maswali/integrity");
++    revalidatePath("/admin");
++    return { ok: true, note: r.already ? "That call was already recorded." : "Recorded: the winner was reached by phone." };
++  } catch (err) {
++    return { ok: false, error: safeError(err, "The call could not be recorded") };
++  }
++}
++
++export async function clearUnresolvedLetterAction(formData: FormData): Promise<ActionResult> {
++  const session = await requireStaff(CONTROL_DOMAIN.clearUnresolvedLetter, "clearUnresolvedLetter");
++  try {
++    const r = await clearUnresolvedLetter({
++      weekId: str(formData, "weekId"), notice: str(formData, "notice"), officerId: session.userId, typed: str(formData, "typed"), note: str(formData, "note"),
++    });
++    if (!r.ok) return { ok: false, error: r.error };
++    revalidatePath("/admin/maswali/integrity");
++    return { ok: true, note: "Recorded: the letters were checked." };
++  } catch (err) {
++    return { ok: false, error: safeError(err, "The check could not be recorded") };
++  }
++}
++
+ export async function holdMaswaliShareAction(formData: FormData): Promise<ActionResult> {
+   const session = await requireStaff(CONTROL_DOMAIN.holdMaswaliShare, "holdMaswaliShare");
+   try {
+diff --git a/src/app/admin/maswali/integrity/integrity-controls.tsx b/src/app/admin/maswali/integrity/integrity-controls.tsx
+index cf31cc797..1e2abbbf3 100644
+--- a/src/app/admin/maswali/integrity/integrity-controls.tsx
++++ b/src/app/admin/maswali/integrity/integrity-controls.tsx
+@@ -16,11 +16,15 @@ import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
+ import { ControlLocked } from "@/components/admin/control-locked";
+ import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
+ import {
+-  forfeitMaswaliShareAction, holdMaswaliShareAction, pauseMaswaliSalesAction, releaseMaswaliShareAction, resumeMaswaliSalesAction,
+-  voidMaswaliWeekAction,
++  clearUnresolvedLetterAction, forfeitMaswaliShareAction, holdMaswaliShareAction, markMillioneaWinnerReachedAction, pauseMaswaliSalesAction,
++  releaseMaswaliShareAction, resumeMaswaliSalesAction, voidMaswaliWeekAction,
+ } from "./actions";
+ 
+ const FORFEIT_WORD = "FORFEIT SHARE";
++/** The server's `WINNER_REACHED_WORD` (maswali-console.ts), restated here: this client file imports no server module. */
++const REACHED_WORD = "REACHED";
++/** The server's `LETTERS_CLEARED_WORD` (maswali-console.ts), restated here for the same reason. */
++const CHECKED_WORD = "CHECKED";
+ const fd = (o: Record<string, string>) => { const f = new FormData(); for (const [k, v] of Object.entries(o)) f.set(k, v); return f; };
+ 
+ function useAct() {
+@@ -80,6 +84,46 @@ export function VoidWeekControl({ weekId, code }: { weekId: string; code: string
+   );
+ }
+ 
++/** S6 · MB-93 · the desk records a call that reached a winner no notice is known to have reached: the row and its alert clear. */
++export function MarkReachedControl({ weekId, userId, holder }: { weekId: string; userId: string; holder: string }) {
++  const mayAct = useMayAct();
++  const { pending, error, note, run } = useAct();
++  const [text, setText] = useState("");
++  const [open, setOpen] = useState(false);
++  if (!mayAct) return <ActReadOnly />;
++  return (
++    <span className="inline-flex flex-col gap-1">
++      <Button size="xs" variant="ghost" disabled={pending} onClick={() => setOpen(true)}>Reached by phone…</Button>
++      {error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
++      {note && <span role="status" className="text-body-sm text-success">{note}</span>}
++      <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="brand" tier="hard" typedWord={REACHED_WORD}
++        title={`Record that ${holder} was reached?`} confirmLabel="Record the call"
++        body={<Field label="How they were reached (the number called, what they were told)"><Textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} /></Field>}
++        onConfirm={() => run(() => markMillioneaWinnerReachedAction(fd({ weekId, userId, typed: REACHED_WORD, note: text })), () => { setOpen(false); setText(""); })} />
++    </span>
++  );
++}
++
++/** S6 · an officer records that a week's letters not known to have gone were checked: the row leaves the card. */
++export function ClearLettersControl({ weekId, notice, code }: { weekId: string; notice: string; code: string }) {
++  const mayAct = useMayAct();
++  const { pending, error, note, run } = useAct();
++  const [text, setText] = useState("");
++  const [open, setOpen] = useState(false);
++  if (!mayAct) return <ActReadOnly />;
++  return (
++    <span className="inline-flex flex-col gap-1">
++      <Button size="xs" variant="ghost" disabled={pending} onClick={() => setOpen(true)}>Checked…</Button>
++      {error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
++      {note && <span role="status" className="text-body-sm text-success">{note}</span>}
++      <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="brand" tier="hard" typedWord={CHECKED_WORD}
++        title={`Record that ${code}'s letters were checked?`} confirmLabel="Record the check"
++        body={<Field label="What was checked (the provider's activity, what the holder was told)"><Textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} /></Field>}
++        onConfirm={() => run(() => clearUnresolvedLetterAction(fd({ weekId, notice, typed: CHECKED_WORD, note: text })), () => { setOpen(false); setText(""); })} />
++    </span>
++  );
++}
++
+ export function HoldShareControl({ ticketId, serial }: { ticketId: string; serial: string }) {
+   const mayAct = useMayAct();
+   const { pending, error, note, run } = useAct();
+diff --git a/src/app/admin/maswali/integrity/page.tsx b/src/app/admin/maswali/integrity/page.tsx
+index 78a98e7ac..eceb6b76d 100644
+--- a/src/app/admin/maswali/integrity/page.tsx
++++ b/src/app/admin/maswali/integrity/page.tsx
+@@ -9,29 +9,55 @@ import { currentSession } from "@/lib/server/auth-service";
+ import { houseConsoleAudience } from "@/lib/server/house-console-read";
+ import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
+ import { AdminPagination, buildBaseHref } from "@/components/admin/admin-pagination";
+-import { CONSOLE_PER_PAGE, SEAL_WEEKS_PER_PAGE, consoleStanding, integrityView } from "@/lib/server/maswali-console";
++import { CONSOLE_PER_PAGE, SEAL_WEEKS_PER_PAGE, UNREACHED_ALERT_HOURS, UNREACHED_RECENT_DAYS, consoleStanding, integrityView } from "@/lib/server/maswali-console";
+ import { isMaswaliVoidReason, MASWALI_VOID_REASON_LABEL } from "@/lib/maswali-void-reason";
+ import { clusterReport, pickShifts, recentNewDeviceSeals } from "@/lib/server/maswali-integrity";
++import { millioneaApprovedWordings } from "@/lib/server/maswali-marketing";
+ import { weekStore } from "@/lib/server/maswali-dal";
++import type { SmsStatus } from "@/lib/server/store";
+ import { slotLabel } from "@/lib/maswali-score";
+ import { formatTzs } from "@/lib/utils";
+ import { fmtEat } from "@/lib/maswali-admin-format";
+-import { HeldShareControls, HoldShareControl, PauseControl, VoidWeekControl } from "./integrity-controls";
++import { HeldShareControls, HoldShareControl, MarkReachedControl, PauseControl, VoidWeekControl, ClearLettersControl } from "./integrity-controls";
+ 
+ export const metadata = { title: "Admin · Millionea · Integrity" };
+ export const dynamic = "force-dynamic";
+ 
++/** S6 · a winner SMS's own record, in the campaign page's words (OD41: handed over is not delivered). A full Record, so a
++ *  status added to the store is a compile error here. DELIVERED never reaches this list: a delivered winner is reached. */
++const SMS_STATE: Readonly<Record<SmsStatus, string>> = {
++  QUEUED: "Waiting", ACCEPTED: "Handed over · no receipt yet", DELIVERED: "Delivered", FAILED: "Failed", UNKNOWN: "No answer",
++};
++/** S6 · why a week's winner SMS batch was held (`maswali-winner-sms.ts`), in the desk's words. */
++const SMS_HELD: Record<string, string> = {
++  credit_low: "Held · it would spend the credit kept for codes",
++  credit_unreadable: "Held · the SMS credit could not be read",
++  settings_unreadable: "Held · the SMS settings could not be read",
++  targets_unreadable: "Held · earlier sends could not be read",
++  channel_closed: "Not sent · the channel policy refuses it",
++  BAD_MSISDN: "Not sent · the number on file cannot be dialled",
++  NOT_CONFIGURED: "Not sent · no SMS provider is configured",
++  PROVIDER_UNRECOGNISED: "Not sent · the SMS provider is not one this build knows",
++};
++
+ /**
+  * /admin/maswali/integrity — COMPLIANCE's page (MASWALI-BUILD S4; MASWALI-PLAN §7b S4 item 1, MB-34, MB-43, MB-62,
+  * MB-78, OD-07).
+  *
+  *   · the SALES PAUSE (sales only; never a cancel, a settlement or a refund);
+  *   · weeks whose whole-week void is certain and whose window has closed, to void;
++ *   · S6 · each VOIDED week still owed its refunds, a row of its own until they land (R1's one truth, `unrefundedVoids`);
++ *   · S6 · the WINNERS NOT YET REACHED (MB-93), among the weeks settled in the last `UNREACHED_RECENT_DAYS`: no seen mark,
++ *     no ticket opened since the settlement, no delivered SMS, no call recorded — with what was sent, for the desk to call
++ *     and then record (`MarkReachedControl`, typed); past `UNREACHED_ALERT_HOURS` the console raises it too;
++ *   ⛔ THE SALES PAUSE ALWAYS RENDERS. Each card reads on its own and says when its read failed; a failure of the integrity
++ *     view takes its own cards, never the pause (the review's MEDIUM 7).
+  *   · HELD SHARES, to release or forfeit to the jackpot; and every winner, to screen and hold;
+  *   · the SEAL LOG, shown only for weeks whose results can no longer change (MB-34: the counterfactual is read after
+- *     the fact, never while an officer could still be steered).
++ *     the fact, never while an officer could still be steered);
++ *   · S6 · the approved MARKETING WORDINGS, with the public week's fee filled in (MB-47): what a campaign may say.
+  */
+-type IntegrityPageProps = { searchParams: Promise<{ wpage?: string; spage?: string }> };
++type IntegrityPageProps = { searchParams: Promise<{ wpage?: string; spage?: string; npage?: string }> };
+ 
+ export default async function AdminMaswaliIntegrityPage(props: IntegrityPageProps) {
+   return <AdminPageGate title="Millionea · Integrity"><Content {...props} /></AdminPageGate>;
+@@ -45,20 +71,21 @@ async function Content({ searchParams }: IntegrityPageProps) {
+   if (!(await houseConsoleAudience(session?.userId ?? null, "/admin/maswali/integrity"))) return null;
+   const role = session?.role;
+   const [v, standing, can] = await Promise.all([
+-    integrityView(new Date(), { winners: Number(sp.wpage ?? "1"), sealWeeks: Number(sp.spage ?? "1") }).catch(() => null),
++    integrityView(new Date(), { winners: Number(sp.wpage ?? "1"), sealWeeks: Number(sp.spage ?? "1"), unreached: Number(sp.npage ?? "1") }).catch(() => null),
+     consoleStanding().catch(() => null),
+     Promise.all([
+       canUseControl(role, "pauseMaswaliSales"), canUseControl(role, "resumeMaswaliSales"), canUseControl(role, "voidMaswaliWeek"),
+       canUseControl(role, "holdMaswaliShare"), canUseControl(role, "releaseMaswaliShare"), canUseControl(role, "forfeitMaswaliShare"),
++      canUseControl(role, "markMillioneaWinnerReached"), canUseControl(role, "clearUnresolvedLetter"),
+     ]),
+   ]);
+-  const [canPause, canResume, canVoid, canHold, canRelease, canForfeit] = can;
++  const [canPause, canResume, canVoid, canHold, canRelease, canForfeit, canReach, canClearLetters] = can;
+   // The cluster report for the latest weeks whose ticket set is fixed (closed, being sealed, or just settled).
+   const closed = (await weekStore.list({ states: ["CLOSED", "RESOLVING", "SETTLED"], limit: 3 }).catch(() => []));
+   const clusters = await Promise.all(closed.map((w) => clusterReport(w).catch(() => null)));
+   const shifts = await pickShifts().catch(() => null);
+   const newDevices = await recentNewDeviceSeals().catch(() => null);
+-  if (!v) return (<><AdminPageHead title="Millionea · Integrity" sw="Uadilifu" /><AdminBody><p className="text-body-sm text-danger-fg">The integrity view could not be read.</p></AdminBody></>);
++  const wordings = await millioneaApprovedWordings().catch(() => null);
+ 
+   return (
+     <>
+@@ -120,6 +147,11 @@ async function Content({ searchParams }: IntegrityPageProps) {
+           )}
+         </AdminCard>
+ 
++        {!v ? (
++          <AdminCard title="Weeks, shares and seals" sw="Wiki, zawadi na mihuri">
++            <p className="text-body-sm text-danger-fg">The integrity view could not be read. The sales pause above still works.</p>
++          </AdminCard>
++        ) : (<>
+         <AdminCard title="Weeks that void whole" sw="Wiki zinazobatilishwa">
+           {v.voidable.length === 0 ? <p className="text-body-sm text-text-secondary">No week is waiting to be voided.</p> : (
+             <ul className="space-y-2">
+@@ -133,6 +165,71 @@ async function Content({ searchParams }: IntegrityPageProps) {
+           )}
+         </AdminCard>
+ 
++        <AdminCard title="Refunds owed" sw="Marejesho yanayodaiwa">
++          {v.owedRefunds === null ? <p className="text-body-sm text-danger-fg">The owed refunds could not be read.</p>
++            : v.owedRefunds.length === 0 ? <p className="text-body-sm text-text-secondary">No voided week is waiting for its refunds.</p> : (
++            <ul className="space-y-2">
++              {v.owedRefunds.map((r) => (
++                <li key={r.weekId} className="text-body-sm">
++                  <span className="tabular">{r.code}</span> · {r.ticketCount.toLocaleString("en")} {r.ticketCount === 1 ? "ticket" : "tickets"} · voided {fmtEat(r.voidedAt)}
++                  <span className="block text-text-tertiary">Its refunds have not landed. The tick retries them; the heal runs them now.</span>
++                </li>
++              ))}
++            </ul>
++          )}
++        </AdminCard>
++
++        <AdminCard title="Letters not known to have gone" sw="Barua zisizojulikana kama zimefika">
++          {v.unresolvedLetters?.truncated ? <p className="text-caption text-text-tertiary">Only the newest weeks were read; older weeks are not shown here.</p> : null}
++          {v.unresolvedLetters?.partial ? <p className="text-caption text-text-tertiary">Some weeks hold more records than one read covers, so a letter of theirs may be missing here; the week&apos;s audit trail has the rest.</p> : null}
++          {v.unresolvedLetters === null ? <p className="text-body-sm text-danger-fg">The letters not known to have gone could not be read.</p>
++            : v.unresolvedLetters.rows.length === 0 ? <p className="text-body-sm text-text-secondary">{v.unresolvedLetters.partial ? "No letter is listed from the records read." : "Every win and refund letter is known to have gone or to need nothing."}</p> : (
++            <ul className="space-y-2">
++              {v.unresolvedLetters.rows.map((l) => (
++                <li key={`${l.weekId}-${l.notice}`} className="text-body-sm">
++                  <span className="tabular">{l.code}</span> · {l.letters.toLocaleString("en")} {l.notice === "refund" ? "refund" : "win"} {l.letters === 1 ? "letter" : "letters"}
++                  <span className="block text-text-tertiary">The email provider may have taken {l.letters === 1 ? "it" : "them"}, and its own search could not say. Until the check is recorded, a later search that finds no such message may send {l.letters === 1 ? "it" : "any of them"} once more; the recorded check closes {l.letters === 1 ? "it" : "them"} for good. Check the provider&apos;s activity, and record the check before anyone writes to the holder.</span>
++                  {canClearLetters ? <ClearLettersControl weekId={l.weekId} notice={l.notice} code={l.code} />
++                    : <ControlLocked what="Record the check" need={CONTROL_DOMAIN.clearUnresolvedLetter} />}
++                </li>
++              ))}
++            </ul>
++          )}
++        </AdminCard>
++
++        <AdminCard title={v.unreachedPage ? `Winners not yet reached · ${v.unreachedPage.total.toLocaleString("en")}` : "Winners not yet reached"} sw="Washindi ambao hawajafikiwa" padding="p-0">
++          <p className="px-4 pb-2 text-caption text-text-tertiary">Weeks settled in the last {UNREACHED_RECENT_DAYS} days.</p>
++          {v.unreached === null ? <p className="px-4 pb-4 text-body-sm text-danger-fg">The winners not yet reached could not be read.</p>
++            : v.unreached.length === 0 ? <EmptyState title="Every winner has been reached" body="A winner is listed here until they open their result in the app, their SMS is delivered, or the desk records a call. A letter or an unopened bell is not proof." /> : (
++            <ScrollX label="Millionea winners not yet reached">
++              <table className="admin-tbl min-w-[1180px]">
++                <thead><tr><th className="text-left">Week</th><th className="text-left">Holder</th><th className="text-left">Tickets</th><th className="text-right">Paid</th><th className="text-left">Settled (EAT)</th><th className="text-left">Bell</th><th className="text-left">Email</th><th className="text-left">SMS</th><th className="text-left">Desk</th></tr></thead>
++                <tbody>
++                  {v.unreached.map((u) => (
++                    <tr key={`${u.weekId}-${u.userId}`}>
++                      <td className="text-left tabular">{u.weekCode}</td><td className="text-left">{u.holder}</td>
++                      <td className="text-left tabular max-w-[240px]">{u.serials.join(", ")}</td>
++                      <td className="text-right tabular">{u.forfeited ? "Forfeited" : u.held ? "Held" : formatTzs(u.paidTzs)}</td>
++                      <td className="text-left tabular">{fmtEat(u.settledAt)} · {u.hoursSince} h{u.hoursSince >= UNREACHED_ALERT_HOURS ? <span className="text-warning"> · past {UNREACHED_ALERT_HOURS} h</span> : null}</td>
++                      <td className="text-left">{u.bell ? "Written · not opened" : "Not written"}</td>
++                      <td className="text-left">{u.email === "confirmed" ? "Confirmed address" : u.email === "unconfirmed" ? "Unconfirmed address" : "No address"}</td>
++                      <td className="text-left">{u.sms ? SMS_STATE[u.sms.status] : u.smsHeld ? (SMS_HELD[u.smsHeld] ?? "Held") : "Not sent"}</td>
++                      <td className="text-left">{canReach ? <MarkReachedControl weekId={u.weekId} userId={u.userId} holder={u.holder} />
++                        : <ControlLocked what="Record a call" need={CONTROL_DOMAIN.markMillioneaWinnerReached} />}</td>
++                    </tr>
++                  ))}
++                </tbody>
++              </table>
++            </ScrollX>
++          )}
++          {v.unreachedPage && v.unreachedPage.total > CONSOLE_PER_PAGE && (
++            <div className="border-t border-border-subtle px-4 py-2">
++              <AdminPagination page={v.unreachedPage.page} total={v.unreachedPage.total} perPage={CONSOLE_PER_PAGE}
++                baseHref={buildBaseHref("/admin/maswali/integrity", { wpage: sp.wpage, spage: sp.spage, npage: sp.npage }, "npage")} param="npage" />
++            </div>
++          )}
++        </AdminCard>
++
+         <AdminCard title="Held shares" sw="Zawadi zilizozuiliwa" padding="p-0">
+           {v.held.length === 0 ? <EmptyState title="No share is held" body="A winner whose account changed, or one found later, is held here for a decision." /> : (
+             <ScrollX label="Millionea held shares">
+@@ -177,7 +274,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
+           {v.winnersPage.total > CONSOLE_PER_PAGE && (
+             <div className="border-t border-border-subtle px-4 py-2">
+               <AdminPagination page={v.winnersPage.page} total={v.winnersPage.total} perPage={CONSOLE_PER_PAGE}
+-                baseHref={buildBaseHref("/admin/maswali/integrity", { wpage: sp.wpage, spage: sp.spage }, "wpage")} param="wpage" />
++                baseHref={buildBaseHref("/admin/maswali/integrity", { wpage: sp.wpage, spage: sp.spage, npage: sp.npage }, "wpage")} param="wpage" />
+             </div>
+           )}
+         </AdminCard>
+@@ -203,10 +300,26 @@ async function Content({ searchParams }: IntegrityPageProps) {
+           {v.sealWeeks.total > SEAL_WEEKS_PER_PAGE && (
+             <div className="border-t border-border-subtle px-4 py-2">
+               <AdminPagination page={v.sealWeeks.page} total={v.sealWeeks.total} perPage={SEAL_WEEKS_PER_PAGE}
+-                baseHref={buildBaseHref("/admin/maswali/integrity", { wpage: sp.wpage, spage: sp.spage }, "spage")} param="spage" />
++                baseHref={buildBaseHref("/admin/maswali/integrity", { wpage: sp.wpage, spage: sp.spage, npage: sp.npage }, "spage")} param="spage" />
+             </div>
+           )}
+         </AdminCard>
++        </>)}
++
++        <AdminCard title="Marketing wordings" sw="Maneno ya matangazo">
++          {!wordings ? <p className="text-body-sm text-text-secondary">The approved wordings could not be read: the week&apos;s fee at payout could not be read.</p> : (
++            <>
++              <p className="text-body-sm text-text-secondary mb-3">
++                {wordings.facts.live ? null : <span className="text-warning">Millionea is not public yet, so no campaign may be about it. </span>}
++                A Millionea campaign is one whose name begins with &ldquo;Millionea&rdquo;: it carries its headline&apos;s three facts and the week&apos;s own fee, and the composer refuses an amount, a win or a winner, a sum, an income, a guarantee, a rank or a chance (MB-47); any other campaign that uses Millionea&apos;s words is refused until it is tagged or reworded, and no wording names a winner (OD-30).
++                {" "}The fee below is {wordings.facts.source === "WEEK" ? `${wordings.facts.weekCode ?? "this week"}'s own` : "the one the next week will freeze"}.
++              </p>
++              <ul className="space-y-2">
++                {[...wordings.SW, ...wordings.EN].map((w) => <li key={w} className="text-body-sm">{w}</li>)}
++              </ul>
++            </>
++          )}
++        </AdminCard>
+       </AdminBody>
+     </>
+   );
