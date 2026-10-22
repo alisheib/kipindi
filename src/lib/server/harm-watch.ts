@@ -39,7 +39,7 @@ import { eatDayKey, EAT_OFFSET_MS } from "@/lib/eat-day";
 import { createConfigIfAbsent, loadConfigResult, replaceConfigIfValue } from "./config-store";
 import { hasDatabase, prisma } from "./prisma";
 import { db } from "./store";
-import { detectHarmMarkers } from "./responsible-gambling";
+import { DEPOSIT_ESCALATION_LOOKBACK_MS, RECENT_ACTIVITY_MS, detectHarmMarkers } from "./responsible-gambling";
 import { millioneaOpenings, ticketHolders } from "./journey-measures-dal";
 
 export const HARM_WATCH_KEY = "journey.harm.daily";
@@ -47,12 +47,16 @@ export const HARM_WATCH_KEY = "journey.harm.daily";
 export const HARM_WATCH_NO_TICKET_KEY = "journey.harm.noTicket.daily";
 export const HARM_WATCH_VERSION = 1;
 /** Days kept — the counters' own period. */
+const DAY_MS = 86_400_000;
 export const HARM_WATCH_MAX_DAYS = 400;
 /**
  * The candidates: accounts with a confirmed deposit created this many days back — a window that holds every deposit the
  * markers are raised on, so no account that can carry one is left out (`test:harm-watch` H.2 proves it on fixtures).
+ * ⭐ S6-DOCS · DERIVED, never typed: the larger of the detectors' own windows (`RECENT_ACTIVITY_MS`,
+ * `DEPOSIT_ESCALATION_LOOKBACK_MS`, exported by `responsible-gambling.ts`), in whole days — a detector's window moved
+ * there moves this with it.
  */
-export const HARM_WATCH_CANDIDATE_DAYS = 8;
+export const HARM_WATCH_CANDIDATE_DAYS = Math.ceil(Math.max(RECENT_ACTIVITY_MS, DEPOSIT_ESCALATION_LOOKBACK_MS) / DAY_MS);
 /** The count is taken once an EAT day, from this hour. */
 export const HARM_WATCH_FROM_EAT_HOUR = 3;
 /**
@@ -62,7 +66,6 @@ export const HARM_WATCH_FROM_EAT_HOUR = 3;
  */
 export const HARM_WATCH_CEILING_MS = 30_000;
 const BATCH = 10;
-const DAY_MS = 86_400_000;
 const SECOND_MS = 1_000;
 
 export type HarmDay =

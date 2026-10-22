@@ -1407,6 +1407,16 @@ result"), and one who cannot is taken down word for word and passed to Complianc
 record the result rules on it (MR-16 as built, S7-OB). Held by `test:maswali-admin-words` §1 once this file joins its
 census (the S6-ADMIN merge deletes its waiting exclusion).
 
+#### ✅ Item 6 · the harm watch's candidate window was typed beside the detectors it serves (S6-DOCS 6)
+
+The harm watch reads its candidates — the accounts a player-safety marker can be raised on — from a window that must
+hold every deposit the detectors read, and that window was a number typed in `harm-watch.ts`: a detector's window moved
+in `responsible-gambling.ts` would have left accounts out of the count in silence. THE RULE: the detectors export their
+own windows (`RECENT_ACTIVITY_MS`, `DEPOSIT_ESCALATION_LOOKBACK_MS`, read by the detectors themselves) and the watch
+derives its window from the larger, in whole days (`HARM_WATCH_CANDIDATE_DAYS`); no document or comment states either
+value (the public-repository rule). Held by `test:harm-watch` H.10f (the derivation by value and in source, with a
+planted typed window caught), H.2 (the count equals Player Safety's full walk, both stores) and H.10e.
+
 ## §9c · MASWALI MILLIONEA — the admin console, walked and made plain (S6, 2026-10-22)
 
 Ali, 2026-10-22: "admin make sure full control with the right sorting etc. and management", and his admin guide must be
