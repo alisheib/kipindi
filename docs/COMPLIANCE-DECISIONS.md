@@ -8,6 +8,26 @@
 
 ---
 
+## 2026-10-22 · The language-change loader wears its green and red again (owner ruling)
+
+**Authority.** Ali, 2026-10-22, relayed by the MASWALI-BUILD lead session on OMEGA-COMPILE01: *"on change language the
+colored animation is still on grey scale — give it back its color"*; asked which colours, he chose *"its green and red"*.
+
+**What it rules.** The ring of six glyphs that orbits while the site changes language (`LocaleChangeOverlay`,
+`src/lib/i18n.tsx`) alternates the YES and NO inks again, `--yes-400` / `--no-400`; the brand-blue centre dot is unchanged.
+It is the one owner's exception to DESIGN_AUTHORITY §B2a's U43 amendment ("green and red name only the two betting sides
+and their outcomes"): a decoration that names no side and no state. The rule, and the measurements that chose the `-400`
+step, are in DESIGN_AUTHORITY §B2a, "The owner's exception: the language-change loader".
+
+**Why it is logged here.** §B2a keeps the betting pair for the sides of a stake, so that green and red always mean money
+(D2). Lending the pair to the loader is deliberate; no later pass may "restore" the brand-blue ring that R5-I
+(`42a2003d6`, 2026-10-09) gave it and that this ruling reverses.
+
+**Guards.** `test:betting-ink` §7i (its file carries exactly that ring and no other betting ink) · `test:visual-pass-r5i`
+§1, §2.15⁗ and §5 · `qa:locale-loader` (measured on screen against the ring as it was before R5-I) · `red:locale-loader`.
+
+---
+
 ## 2026-10-21 · Harm markers muted for marketing SMS (owner ruling)
 
 **Authority.** Ali, 2026-10-21, in the Claude session on OMEGA-COMPILE01, after the marketing team could not send a
