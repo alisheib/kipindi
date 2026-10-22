@@ -126,7 +126,7 @@ ok("3.1 · both weeks are in the queue, the earlier first", (await openWeek.coun
 ok("3.2 · the open week says its window is open and that four objections wait", /Check window open until/.test(await openWeek.innerText()) && /4 to rule/i.test(await openWeek.innerText()), clip(await openWeek.innerText(), 200));
 ok("3.3 · the closed week says its window closed and the week waits for the ruling", /Check window closed .*the week settles once every objection here is ruled/.test(await closedWeek.innerText()) && /1 to rule/i.test(await closedWeek.innerText()), clip(await closedWeek.innerText(), 200));
 ok("3.4 · M3's seal is shown with its officer: sealed YES by the Owner", /M3 · Will event 3 happen this weekend[?]/.test(await openWeek.innerText()) && /Sealed YES by Ali Admin on/.test(await openWeek.innerText()));
-ok("3.5 · M5's seal is a void with its ground, as words", /Sealed void [(]Abandoned, no official result[)] by Ali Admin/.test(await openWeek.innerText()));
+ok("3.5 · M5's seal is a void with its ground, as words", /Sealed VOID [(]Abandoned, no official result[)] by Ali Admin/.test(await openWeek.innerText()));
 ok("3.6 · each objection shows its filer, the reason in words and the filer's own text",
   /Neema Mushi/.test(await row(owner, DETAIL.m3a).innerText()) && /Result is wrong/.test(await row(owner, DETAIL.m3a).innerText())
     && /Baraka Kweka/.test(await row(owner, DETAIL.m3b).innerText()) && /Source contradicts the verdict/.test(await row(owner, DETAIL.m3b).innerText())

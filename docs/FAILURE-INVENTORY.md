@@ -1268,17 +1268,31 @@ re-reads. It is the write-once guarantee working, logged by Prisma rather than b
 
 ## §9 · MASWALI MILLIONEA — what S7 left open, recorded (2026-10-18)
 
-S7's acceptance (`docs/MASWALI-PLAN.md` §7b S7): every finding is fixed or recorded here. These three are booked as
+S7's acceptance (`docs/MASWALI-PLAN.md` §7b S7): every finding is fixed or recorded here. These three were booked as
 KNOWN-RED cases in `test:maswali-adversarial` (a case that reports, never fails the suite, until the work lands) and
-stand on the launch gate as Gate B line 14 (`MASWALI-PLAN.md` §6.1). None blocks the S8 drive; each blocks rollout
+stand on the launch gate as Gate B line 14 (`MASWALI-PLAN.md` §6.1). OB.0 is closed (S7-OB, 2026-10-22): its case passes;
+RD.5 and TK.2 remain KNOWN-RED. None blocks the S8 drive; each blocks rollout
 ACTIVE until it is closed, or accepted in writing as that line says. Millionea is dark on production (`WITHDRAWN`).
 
-#### ⏳ OB.0 · MB-23 · a player cannot object to one question
+#### ✅ OB.0 · MB-23 · a player objects to one question — CLOSED (S7-OB, 2026-10-22)
 
-MR-16 promises a per-question objection in Millionea's own window, and no objection door exists for a Millionea week
-yet. What holds today: the settlement refuses to release while any objection is open, failing closed (OB.1–OB.5), and
-the sealing officer may correct a seal while the window is open. Before ACTIVE: the objection door (MB-23), or the
-rules' promise withdrawn by a dated ruling.
+MR-16's per-question objection door exists, on both stores and across instances:
+- **The player** objects from the ticket page while the week's own window is open (24 hours from the graded set's
+  finality, never closing before 12:00 EAT, frozen in the week's rules): one question at a time, once per question,
+  only while holding a live ticket in the week; the ticket then shows each of their objections in every state, with
+  the officer's note once ruled.
+- **Compliance** rules on `/admin/maswali/integrity` — REJECT, or uphold with REVERSE, VOID or REINSTATE — through the
+  kit's typed confirmation, never the question's sealer or confirmer, never the officer whose upheld ruling set its
+  present result, never the objector or an officer holding a ticket in the week; the Owner is the fallback.
+- **The money:** an OPEN objection holds the week's settlement and its week void; an upheld change re-grades the week
+  (MR-17) and restarts the window once; a SETTLED week is final. Filing, ruling and release serialize on the chain lock.
+Proof: `test:maswali-objections` (both stores) and its red twin `red:maswali-objections`; `test:maswali-adversarial`
+OB.0 (now a passing case) and §4b OM with the money-path plants (S7-OB-…); `load:maswali-objection-cross-instance`
+(S18, two processes per race on one PostgreSQL); `qa:maswali-objection-console` and `qa:maswali-objection-door`.
+Notices (an objection received, an objection decided) arrive with S6-N's registry.
+
+*Recorded 2026-10-18:* MR-16 promised a per-question objection in Millionea's own window, and no objection door existed for a
+Millionea week; the settlement's refusal while any objection was open (OB.1–OB.5) and the sealer's own correction held.
 
 #### ⏳ RD.5 · MB-74 · a deposit reversed after its winner was paid
 

@@ -2,7 +2,7 @@ import type { Dict, Locale } from "@/lib/i18n-dict";
 import { millioneaObjectionDoor, type MillioneaObjectionRow } from "@/lib/server/maswali-objections";
 import type { MillioneaQuestion } from "@/lib/server/maswali-player";
 import { outcomeWord } from "@/lib/side-label";
-import { formatEatDateTime } from "@/lib/eat-day";
+import { eatWeekdayClock } from "./maswali-format";
 import { fill } from "@/lib/utils";
 import { noticeBody } from "@/components/ui/empty-state-text";
 import { I } from "@/components/ui/glyphs";
@@ -34,7 +34,9 @@ export async function MaswaliObjectionDoor({ t, locale, userId, week, questions,
   // A failed read draws no door: the ticket and its results stand on their own, and the next render asks again.
   const door = await millioneaObjectionDoor(userId, week.id, nowMs).catch(() => null);
   if (!door) return null;
-  const when = (iso: string) => formatEatDateTime(Date.parse(iso), nowMs, t.common.monthsShort, locale);
+  // An instant as the ticket's own live line says one ("Objection window until Ijumaa 18:00"): its weekday and EAT clock,
+  // held together on one line (a no-break space between them), never "Ijumaa" at a line's end and its clock on the next.
+  const when = (iso: string) => eatWeekdayClock(t, Date.parse(iso)).split(" ").join(String.fromCharCode(160));
   const label = (slot: number) => questions.find((q) => q.slot === slot)?.label ?? String(slot);
   const textOf = (q: MillioneaQuestion) => q.text[locale] ?? q.text.en;
   const taken = new Set(door.mine.map((o) => o.slot));
@@ -67,6 +69,10 @@ export async function MaswaliObjectionDoor({ t, locale, userId, week, questions,
       )}
       {closedLine && <p className="text-body-sm leading-relaxed text-text-muted">{noticeBody(closedLine)}</p>}
       {canFile && objectable.length > 0 && <div><MaswaliObjectionDialog weekId={week.id} questions={objectable} /></div>}
+      {door.mine.length > 0 && canFile && (
+        // Under the invitation, the reader's objections are named as theirs (the heading names them when it cannot file).
+        <p className="font-mono text-label uppercase eyebrow text-text-subtle">{t.millionea.objMineTitle}</p>
+      )}
       {door.mine.length > 0 && (
         <ul className="space-y-2" aria-label={t.millionea.objMineTitle}>
           {door.mine.map((o) => (
