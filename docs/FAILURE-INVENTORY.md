@@ -1357,6 +1357,17 @@ unchanged (`correctSeal`, `maswali-service.ts`: the forgetting runs after the lo
 the notice); the guard and the plant "correction does not invalidate" are re-pinned to the line as it stands. Held by
 `test:maswali-register-cache` (source invalidate) and `red:maswali-register-cache`.
 
+#### ✅ The desk list's address column read as a player's contact — `test:read-tiers` 7.1 red since S6-INT 14 (S6-INT 23)
+
+The integrity page's "Winners not yet reached" (MB-93) says where a winner's letter could go — a confirmed address, one
+never confirmed, or none — from a field the console named `email`, so the read-tiers ratchet (every player's contact on
+an admin surface is wired through `<Sensitive>` or reviewed) counted the column as a contact reaching a reader: 7.1 was
+red on every release head since S6-INT 14 (proven red on the runner at S6-INT 21; found by S6-DOCS 2's light run). The
+column never held an address. THE RULE: the console hands the desk list a state, never the address, under a name that
+says so — `UnreachedWinner.emailState` (`maswali-console.ts`, read by `/admin/maswali/integrity`); no reviewed exception
+was added, so the ratchet's lists did not grow. Held by `test:read-tiers` 7.1 and `test:maswali-notify` (the desk list's
+rows, both stores).
+
 ## §9c · MASWALI MILLIONEA — the admin console, walked and made plain (S6, 2026-10-22)
 
 Ali, 2026-10-22: "admin make sure full control with the right sorting etc. and management", and his admin guide must be

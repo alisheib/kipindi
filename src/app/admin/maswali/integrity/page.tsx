@@ -286,7 +286,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
                       <td className="text-right tabular">{u.forfeited ? "Forfeited" : u.held ? "Held" : u.paidTzs === null ? "Not on record" : formatTzs(u.paidTzs)}</td>
                       <td className="text-left tabular">{fmtEat(u.settledAt)} · {u.hoursSince} h{u.hoursSince >= UNREACHED_ALERT_HOURS ? <span className="text-warning"> · past {UNREACHED_ALERT_HOURS} h</span> : null}</td>
                       <td className="text-left">{u.bell ? "Written · not opened" : "Not written"}</td>
-                      <td className="text-left">{u.email === "confirmed" ? "Confirmed address" : u.email === "unconfirmed" ? "Unconfirmed address" : "No address"}</td>
+                      <td className="text-left">{u.emailState === "confirmed" ? "Confirmed address" : u.emailState === "unconfirmed" ? "Unconfirmed address" : "No address"}</td>
                       <td className="text-left">{u.sms ? SMS_STATE[u.sms.status] : u.smsHeld ? (SMS_HELD[u.smsHeld] ?? "Held") : "Not sent"}</td>
                       <td className="text-left">{canReach ? <MarkReachedControl weekId={u.weekId} userId={u.userId} holder={u.holder} />
                         : <ControlLocked what="Record a call" need={CONTROL_DOMAIN.markMillioneaWinnerReached} />}</td>

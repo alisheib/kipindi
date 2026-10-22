@@ -294,8 +294,9 @@ export type UnreachedWinner = {
   hoursSince: number;
   /** The win's bell row was written (its key, `millioneaNoticeHref`, under any of the holder's winning tickets). */
   bell: boolean;
-  /** Where the letter could go: a confirmed address, one never confirmed (sent only if the account cannot sign in), none. */
-  email: "confirmed" | "unconfirmed" | "none";
+  /** Where the letter could go: a confirmed address, one never confirmed (sent only if the account cannot sign in), none.
+   *  ⛔ A state, never the address: no player's contact reaches the console (read-tiers §7; S6-INT 23). */
+  emailState: "confirmed" | "unconfirmed" | "none";
   /** The winner SMS's own record (`MaswaliWinner`) — its status and receipt — or null when none was sent. */
   sms: { status: SmsStatus; dlr: string | null } | null;
   /** Why the week's winner SMS batch was held, when it was (`maswali-winner-sms.ts`): no credit to spare for codes, etc. */
@@ -364,7 +365,7 @@ export async function unreachedWinners(now: Date = new Date()): Promise<Unreache
         paidTzs: paid.some((t) => shareOf(t) === null) ? null : paid.reduce((s, t) => s + (shareOf(t) ?? 0), 0), held: paid.length === 0 && !forfeited, forfeited, settledAt,
         hoursSince: Math.max(0, Math.floor((now.getTime() - Date.parse(settledAt)) / HOUR)),
         bell,
-        email: h.email,
+        emailState: h.emailState,
         sms: record, smsHeld: record ? null : held,
       });
     }
@@ -806,8 +807,8 @@ const holderOf = async (userId: string) => {
   // ⚠️ The memory store answers synchronously: never `.catch` the call itself, catch the awaited read.
   let u: Awaited<ReturnType<typeof db.user.findById>> | null = null;
   try { u = await db.user.findById(userId); } catch { u = null; }
-  const email: UnreachedWinner["email"] = u?.email ? (u.emailVerifiedAt ? "confirmed" : "unconfirmed") : "none";
-  return { holder: u ? (u.displayName?.trim() || `…${u.phoneE164.slice(-4)}`) : "(closed account)", role: u?.role ?? "?", status: u?.status ?? "?", createdAt: u?.createdAt ?? null, email };
+  const emailState: UnreachedWinner["emailState"] = u?.email ? (u.emailVerifiedAt ? "confirmed" : "unconfirmed") : "none";
+  return { holder: u ? (u.displayName?.trim() || `…${u.phoneE164.slice(-4)}`) : "(closed account)", role: u?.role ?? "?", status: u?.status ?? "?", createdAt: u?.createdAt ?? null, emailState };
 };
 
 /**
