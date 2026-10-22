@@ -630,6 +630,15 @@ check("5.4", "L9 · Millionea's Chinese sets a digit apart from an ideograph in 
   return [fn && zh === "派奖前设有 24 小时的异议窗口", j({ fn, zh })];
 });
 
+// Round 2 (2026-10-22): one heading wrap on the register's pages — How's section headings and its cards' titles balance their
+// lines (`text-balance`, the platform's heading wrap), as the week page's and the index's do (test:maswali-register 16.5).
+check("5.5", "How's headings balance their lines — its section headings (H2) and its three cards' titles (H3) — as every heading of the register's pages does", (w) => {
+  const s = code(w, "how");
+  const h2 = s.includes('const H2 = "font-display text-title-sm font-bold text-text text-balance";');
+  const h3 = count(s, 'className="font-display text-body-lg font-semibold text-text text-balance"') === 2 && !s.includes('className="font-display text-body-lg font-semibold text-text"');
+  return [h2 && h3, j({ h2, h3 })];
+});
+
 // ── the run ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 function runAll(w: World, quiet: boolean): { pass: number; fail: number; failed: string[] } {
   let pass = 0, fail = 0;
@@ -780,6 +789,8 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["M8 undone — How ends on one link again", "5.2", plantSrc("how", "<MillioneaReadingLinks t={t} how={false} hub />", "<MillioneaReadingLinks t={t} how={false} />")],
   ["M4 undone — the swap's card across the whole reading measure", "5.2", plantSrc("how", 'className="mat-raised flex max-w-receipt flex-col gap-3 rounded-card p-3"', 'className="mat-raised flex flex-col gap-3 rounded-card p-3"')],
   ["H3 undone — a worked week's fee made on the page", "5.3", plantSrc("how", "jackpot: f.J, feePct: pctNum(h.feeRate), fee: f.F,", "jackpot: f.J, feePct: pctNum(h.feeRate), fee: Math.round(f.J * h.feeRate),")],
+  ["How's card title unbalanced (a heading wrap of its own)", "5.5", plantSrc("how", '            <h3 id="mln-how-ex-swap" className="font-display text-body-lg font-semibold text-text text-balance">', '            <h3 id="mln-how-ex-swap" className="font-display text-body-lg font-semibold text-text">')],
+  ["How's section headings unbalanced", "5.5", plantSrc("how", 'const H2 = "font-display text-title-sm font-bold text-text text-balance";', 'const H2 = "font-display text-title-sm font-bold text-text";')],
   ["L9 undone — the window's Chinese duration glued again (\"24小时\")", "5.4", plantSrc("how", "hours: spacedDuration(locale, h.objectionWindowHours)", "hours: durationHours(locale, h.objectionWindowHours)")],
 ];
 let caught = 0;

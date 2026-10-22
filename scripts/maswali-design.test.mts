@@ -900,8 +900,10 @@ const exampleDefects = (seal: string, how: string, example: string) => {
   const hw = squash(code(how));
   if (!hw.includes('<WorkedWeek t={t} locale={locale} id="mln-how-ex-shared" title={t.millionea.exampleWinnersTitle} h={h} ex={h.examples.shared} />')
     || !hw.includes('<WorkedWeek t={t} locale={locale} id="mln-how-ex-floor" title={t.millionea.exampleFloorTitle} h={h} ex={h.examples.floorWeek} />')
-    || !hw.includes('<h3 id={id} className="font-display text-body-lg font-semibold text-text">{title}</h3>')) d.push("a worked ledger's label has no noun");
-  if (!hw.includes('<h3 id="mln-how-ex-swap" className="font-display text-body-lg font-semibold text-text">{t.millionea.exampleSwapTitle}</h3>')) d.push("the swap's card has no heading that names it");
+    // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-DESIGN-REGISTER, round 2): How's card titles balance their lines, as every
+    // heading of the register's pages does (`text-balance`; test:maswali-design-register 5.5).
+    || !hw.includes('<h3 id={id} className="font-display text-body-lg font-semibold text-text text-balance">{title}</h3>')) d.push("a worked ledger's label has no noun");
+  if (!hw.includes('<h3 id="mln-how-ex-swap" className="font-display text-body-lg font-semibold text-text text-balance">{t.millionea.exampleSwapTitle}</h3>')) d.push("the swap's card has no heading that names it");
   const ex = squash(code(example));
   if (!ex.includes("{t.millionea.seeExample}") || /seeExample, \{/.test(ex)) d.push("the button's label is not the short one");
   return d;

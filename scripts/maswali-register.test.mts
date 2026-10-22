@@ -784,7 +784,9 @@ check("16.5", "the page's headings balance their lines (`text-balance`, the plat
   const h2 = s.includes('const H2 = "font-display text-title-sm font-bold text-text text-balance";')
     && p.includes('<h2 id="mln-reg-commit" className="font-display text-title-sm font-bold text-text text-balance">{t.millionea.commitTitle}</h2>');
   const later = s.includes('<p className="text-body-sm text-text-muted text-pretty">{t.millionea.regLedgerLater}</p>');
-  return [h2 && later, j({ h2, later })];
+  // Round 2 (2026-10-22): the index's headings too — one heading wrap on the register's pages.
+  const index = code(w, "index").includes('const H2 = "font-display text-title-sm font-bold text-text text-balance";');
+  return [h2 && later && index, j({ h2, later, index })];
 });
 
 // ── the run ─────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -956,6 +958,7 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["the question set's eyebrow without its glyph (a ragged left edge)", "16.3", plantSrc("parts", '              <I.commitment s={12} className="shrink-0" />\n              <span>{t.millionea.stubHash}</span>', "              <span>{t.millionea.stubHash}</span>")],
   ["M4 undone — the cards across the whole page from 768", "16.4", plantSrc("week", 'className="flex max-w-receipt flex-col lg:hidden" data-testid="millionea-register-cards"', 'className="flex flex-col lg:hidden" data-testid="millionea-register-cards"')],
   ["the headings unbalanced again (\"tokeo\" alone)", "16.5", plantSrc("week", 'const H2 = "font-display text-title-sm font-bold text-text text-balance";', 'const H2 = "font-display text-title-sm font-bold text-text";')],
+  ["the index's headings unbalanced (one heading wrap broken across the register's pages)", "16.5", plantSrc("index", 'const H2 = "font-display text-title-sm font-bold text-text text-balance";', 'const H2 = "font-display text-title-sm font-bold text-text";')],
   ["the waiting words without the prose wrap (\"final.\" alone)", "16.5", plantSrc("week", '<p className="text-body-sm text-text-muted text-pretty">{t.millionea.regLedgerLater}</p>', '<p className="text-body-sm text-text-muted">{t.millionea.regLedgerLater}</p>')],
   ["P9 undone — \"Week 0\" where the chain names none", "15.5", { ...REAL, ledger: (t, l, wk) => registerLedgerRows(t, l, { ...wk, carryFromCode: wk.carryFromCode ?? "MLN-2026-W00", carryToCode: wk.carryToCode ?? "MLN-2026-W00" }) }],
 ];

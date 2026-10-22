@@ -54,7 +54,7 @@ export default async function MillioneaRegisterPage({ searchParams }: { searchPa
     millioneaRegister({ page: Number.parseInt(String(sp.page ?? "1"), 10) || 1, perPage: PLAYER_PER_PAGE }),
   ]);
   const running = page === 1 ? current : [];
-  const H2 = "font-display text-title-sm font-bold text-text";
+  const H2 = "font-display text-title-sm font-bold text-text text-balance";
   // The shared row (L3); a list divides its rows and draws its own top edge — the row draws no rule.
   const LIST = "flex flex-col divide-y divide-border border-t border-border";
   return (
