@@ -163,6 +163,10 @@ domains are in `ROUTE_DOMAINS` (`src/lib/server/roles.ts`).
 
 - By default trading is the Trading role, accounting Finance, compliance Compliance, and `ops` the Owner alone (no
   default role acts there); the Auditor reads accounting and compliance. The Owner edits every grant on `/admin/roles`.
+- ⭐ MB-92 · the console's ONE route exception: the Auditor also reads the trading pages under `/admin/maswali` (the week
+  list, each week page, its edit page and the draft builder) — so it reads every Millionea console page but the desk's
+  ticket lookup — while it holds its compliance view grant (`auditorReadsPath` in `roles.ts`, asked by `canViewPath`,
+  the page gate and the nav). It acts on none, and opens no other trading page (`test:maswali-rbac` §7).
 - The officer who drafted a week can never attest it. Only the officer who sealed a question may correct it.
 - ⛔ The integrity page decides its audience on the STORED role before it reads anything, because it renders records
   read from the audit log.

@@ -230,4 +230,30 @@ export const MUTATIONS = [
     expect: "10 · /admin/maswali/integrity draws the letters' check",
     suite: "rbac",
   },
+  // 2026-10-22 · S6-DOCS · MB-92 as built (the lead's ruling (m)): the Auditor reads the Millionea console, read-only, and
+  // nothing beyond it.
+  {
+    name: "(27) MB-92 · the Auditor's route exception widens past the Millionea console (every console page opens to it)",
+    file: "src/lib/server/roles.ts",
+    from: "export const AUDITOR_CONSOLE_PREFIX = \"/admin/maswali\";",
+    to: "export const AUDITOR_CONSOLE_PREFIX = \"/admin\";",
+    expect: "7 · ⛔ the Auditor opens no other trading page",
+    suite: "rbac",
+  },
+  {
+    name: "(28) MB-92 · the Auditor is handed an act (its compliance grant arms every Compliance control)",
+    file: "src/lib/server/roles.ts",
+    from: "    compliance: { canView: true, canAct: false },",
+    to: "    compliance: { canView: true, canAct: true },",
+    expect: "7 · ⛔ …and acts on NONE",
+    suite: "rbac",
+  },
+  {
+    name: "(29) MB-92 · the page gate stops asking the path (the Auditor is refused the week list its nav offers)",
+    file: "src/components/admin/admin-section-gate.tsx",
+    from: "  const viewBlocked = ownerOnly ? !isAdmin(role) : !(await canViewPath(role, path));",
+    to: "  const viewBlocked = ownerOnly ? !isAdmin(role) : !(await canView(role, domain));",
+    expect: "7 · the page gate asks canViewPath",
+    suite: "rbac",
+  },
 ];

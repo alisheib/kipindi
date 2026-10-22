@@ -333,6 +333,29 @@ export function domainForPath(path: string): AdminDomain {
   return "ops";
 }
 
+/**
+ * ⭐ MB-92 · THE AUDITOR READS THE MILLIONEA CONSOLE — the one ROUTE exception to the domain-per-route view gate (the
+ * MASWALI-BUILD lead's ruling (m), 2026-10-22: "/admin/maswali" in MB-92 means the Millionea console).
+ * The AUDITOR opens every page under `/admin/maswali` — the week list, each week page and its edit page (`trading`, which
+ * the Auditor holds no grant for), beside the pools, the integrity page and the evidence it reads by its own grants — and
+ * never the support desk's ticket lookup (player data, `support`).
+ * ⛔ VIEW ONLY. Nothing here reaches `canAct`: every Millionea control stays locked for the Auditor, and every action
+ *    refuses it (`requireStaff` asks the control's domain).
+ * ⛔ THIS PREFIX ONLY. Every other trading page keeps refusing the Auditor; `test:maswali-rbac` §7 holds both, and its red
+ *    twin plants the prefix widened.
+ * ⭐ IT STANDS ON THE AUDITOR'S COMPLIANCE VIEW GRANT (the evidence pack's domain): `canViewPath` (rbac.ts) and the nav ask
+ *    both, so the Owner closes the exception on /admin/roles by revoking that grant, and /admin/staff says it is open.
+ * Asked through `canViewPath` by the page gate and `viewerMayOpen`, and handed to the nav as its `alsoVisible` predicate.
+ * The house console's audience (`houseConsoleAudience`) keeps its domain-only answer: no Millionea page under the trading
+ * domain asks it (`test:maswali-rbac` §7 holds that), so the narrower answer can never refuse what this gate admits.
+ */
+export const AUDITOR_CONSOLE_PREFIX = "/admin/maswali";
+const AUDITOR_CONSOLE_EXCLUDED: readonly string[] = ["/admin/maswali/lookup"];
+const isUnder = (path: string, prefix: string) => path === prefix || path.startsWith(prefix + "/");
+export function auditorReadsPath(role: string | null | undefined, path: string): boolean {
+  return role === "AUDITOR" && isUnder(path, AUDITOR_CONSOLE_PREFIX) && !AUDITOR_CONSOLE_EXCLUDED.some((x) => isUnder(path, x));
+}
+
 /** True if a prefix is explicitly listed in ROUTE_DOMAINS (or is the /admin root). */
 function isExplicitlyMapped(path: string): boolean {
   if (path === "/admin") return true;
