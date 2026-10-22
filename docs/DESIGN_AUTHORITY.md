@@ -3220,6 +3220,16 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     is one unbroken run at every width, fitted to its box by container units, never wrapped — for EVERY caller of
     `WinCelebration`, the platform's market win included (the one classic-visible change of this item: a caller that
     passes no eyebrow, heading or facts keeps its own words and layout, and only its amount no longer wraps).
+17. **The register shows a public week from its open, and its money once final (Ali, 2026-10-21 10/10 pass — the
+    register critic's H2 and the lead's ruling).** `/millionea/register/[week]` serves an OPEN, CLOSED or RESOLVING public
+    week (`millioneaRegisterRecord`): its two commitments the moment each is stamped — the question set's hash at the
+    open; the tickets' root at the close with its time and count, "Fixed {when} · {n} tickets" (MR-13) — under a titled
+    section of nouns (`WeekCommitments`, the hub's too); its fifteen questions, each with its criterion, its event and its
+    source as /fairness links it; and each CONFIRMED outcome with how it was attested (one officer or two, never a name).
+    ⛔ No money before the week is final: the ledger's place says when the ledger comes; the index lists the weeks still
+    running first, each the one row with its phase chip and no figure. ⛔ How a question counted ("↪ A1", "↪ 4", "Not
+    used") is drawn from the FINAL record only — an objection can still reinstate a question while its window is open
+    (item 1: never an un-carry); before that a voided main says it waits for its reserve, or that the week is due to void.
 
 ---
 

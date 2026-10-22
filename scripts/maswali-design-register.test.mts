@@ -24,7 +24,12 @@
  *      heights (the annex glyph's 18px into a main's 24px: 0.75), its offset centre to centre — that plays only with both
  *      ends wholly in the viewport; a run counter instead of a remount; the origin vacated while the token flies and its
  *      mark settled in on landing; `onEnd` on landing or at once when nothing plays; the seal line names the annex GLYPH
- *      box as the origin, strikes a void main's number in the muted ink, and keeps its second line in both frames.
+ *      box as the origin, strikes a void main's number in the muted ink, and keeps its second line in both frames; How
+ *      to play's example opens on its before frame and says "ended" only once the token has landed.
+ *   §5 HOW TO PLAY (the register critic's How rows): step 3 the hub's headline, the slip's reserve sentence, the rules a
+ *      first visit needs (a week voided whole, where a win is paid, the objection window, the cap, responsible play with
+ *      its door); the page's order and measures, ending on the hub and the register; the worked weeks the one ledger's
+ *      rows from the settlement's arithmetic; Millionea's spaced Chinese in the window's duration.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect in an IN-MEMORY copy (a compiled source, a helper, a
  *    word) and requires the check it targets to fail; a plant whose text is not in its file exactly once is INCONCLUSIVE.
@@ -88,6 +93,8 @@ const FILES = {
   tone: "src/lib/status-tone.ts",
   css: "src/app/globals.css",
   example: "src/app/millionea/how/how-example.tsx",
+  how: "src/app/millionea/how/page.tsx",
+  line: "src/components/maswali/maswali-unbroken-line.tsx",
 } as const;
 type FileKey = keyof typeof FILES;
 
@@ -115,12 +122,13 @@ const L = {
   parts: req(`../${FILES.parts}`) as { WeekStateChip: Row; WeekRow: Row; weekChipKey: (s: string, p: unknown, paused?: boolean) => string; weekChipWord: (t: unknown, s: string, p: unknown, paused?: boolean) => string },
   carry: req(`../${FILES.carry}`) as { carryGeometry: Geometry },
   seal: req(`../${FILES.seal}`) as { MaswaliSealLine: Row; sealLineOf: (q: unknown[], picks: unknown, o?: unknown) => unknown },
+  example: req(`../${FILES.example}`) as { HowExample: Row },
   tone: req(`../${FILES.tone}`) as { STATUS_TONE: Record<string, Record<string, string>>; STATUS_TONE_EXCEPTIONS: Record<string, string>; TONE_CHIP: Record<string, string>; playerStatusChip: (w: string) => string | null },
   view: req("../src/app/millionea/millionea-view.ts") as { weekPhaseWord: (t: unknown, s: string, p: unknown) => string },
   money: req("../src/lib/maswali-money.ts") as { settleArithmetic: (i: Record<string, unknown>) => Record<string, number> & { kind: string } },
-  utils: req("../src/lib/utils.ts") as { formatTzs: (n: number) => string; formatTzsSigned: (n: number) => string },
+  utils: req("../src/lib/utils.ts") as { formatTzs: (n: number) => string; formatTzsSigned: (n: number) => string; fill: (s: string, v: Record<string, unknown>) => string },
 };
-const { formatTzs, formatTzsSigned } = L.utils;
+const { formatTzs, formatTzsSigned, fill } = L.utils;
 
 /** Everything a check may look at — the real one, or a copy with one defect planted. */
 type World = {
@@ -136,6 +144,7 @@ type World = {
   chipKey: (s: string, p: unknown, paused?: boolean) => string;
   geometry: Geometry;
   Seal: Row;
+  Example: Row;
 };
 const REAL: World = {
   src: Object.fromEntries(Object.entries(FILES).map(([k, f]) => [k, raw(f)])) as Record<FileKey, string>,
@@ -149,6 +158,7 @@ const REAL: World = {
   chipKey: L.parts.weekChipKey,
   geometry: L.carry.carryGeometry,
   Seal: L.seal.MaswaliSealLine,
+  Example: L.example.HowExample,
 };
 const code = (w: World, k: FileKey) => squash(decomment(w.src[k]));
 
@@ -265,6 +275,20 @@ const CASES: Record<string, Record<string, unknown> & { _in: number; _out: numbe
 };
 const CLOSED_CASES = Object.keys(CASES);
 const tzs = (s: string) => Number(s.replace(/[^\d−-]/g, "").replace("−", "-"));
+/** The text of every `white-space: nowrap` run in a markup, each read to its OWN closing tag (a run may hold spans). */
+const keptTexts = (markup: string): string[] => {
+  const out: string[] = [];
+  const open = '<span class="whitespace-nowrap">';
+  for (let at = markup.indexOf(open); at >= 0; at = markup.indexOf(open, at + 1)) {
+    let depth = 0, i = at;
+    for (; i < markup.length; i++) {
+      if (markup.startsWith("<span", i)) depth++;
+      else if (markup.startsWith("</span>", i) && --depth === 0) break;
+    }
+    out.push(textOf(markup.slice(at, i)));
+  }
+  return out;
+};
 type Rendered = { key: string; label: string; note: string; value: string; markup: string; row: LedgerRow };
 const rowsOf = (w: World, l: Locale, f: Record<string, unknown>): Rendered[] =>
   w.ledger(dict[l] as never, l, f).map((r) => {
@@ -318,7 +342,10 @@ check("2.4", "the fee taken is the platform's signed figure in the receipt's amb
     const ok = fee?.value === formatTzsSigned(-136_630) && fee.row.tone === "warning" && fee.row.emphasis === "fee"
       && levy.includes(formatTzs(13_663)) && levy.includes(formatTzs(6_832)) && levy.includes("TRA") && levy.includes("GBT")
       && !rowsOf(w, l, CASES.dust).some((r) => r.key === "tra" || r.key === "gbt") && rolled?.value === "TZS 0";
-    return ok ? [] : [`${l}: ${j({ fee: fee?.value, levy, rolled: rolled?.value })}`];
+    // Each levy is one run — its name, its share and its amount — so "TRA" is never torn from "10%" at 320 (the tile read).
+    const runs = fee ? keptTexts(inApp(l, h(React.Fragment, null, fee.row.note as never))) : [];
+    const whole = [`TRA 10% ${formatTzs(13_663)}`, `GBT 5% ${formatTzs(6_832)}`].every((x) => runs.some((r) => r.includes(x)));
+    return ok && whole ? [] : [`${l}: ${j({ fee: fee?.value, levy, rolled: rolled?.value, runs })}`];
   });
   return [off.length === 0, off.join(" | ")];
 });
@@ -332,11 +359,15 @@ check("2.5", "every amount the ledger prints — in a value, a label or a note �
   const caps = /class="[^"]*\b(uppercase|eyebrow)\b[^"]*"/.test(drawn.replace(/<span class="[^"]*kp-mln-facts[^"]*"/g, ""));
   return [off.length === 0 && !caps, j({ off: off.slice(0, 4), caps })];
 });
-check("2.6", "\"Money out\" says what it is made of on its own line — fee, paid to winners, carried forward, each amount the arithmetic's — because \"To winners\" holds the remainder too", (w) => {
+check("2.6", "\"Money out\" says what it is made of on its own line — fee, paid to winners, carried forward, each amount the arithmetic's — because \"To winners\" holds the remainder too; a carry of nothing is no part (L11: never \"carried forward TZS 0\")", (w) => {
   const off = LOCALES.flatMap((l) => {
     const out = rowsOf(w, l, CASES.dust).find((r) => r.key === "moneyOut");
     const note = out?.note ?? "";
-    return note.includes(formatTzs(136_630)) && note.includes(formatTzs(914_368)) && note.includes(formatTzs(2)) ? [] : [`${l}: ${note}`];
+    // howShared: 3 winners share J − F exactly — nothing carried on, so the note names two parts.
+    const none = rowsOf(w, l, CASES.howShared).find((r) => r.key === "moneyOut")?.note ?? "";
+    const carry = (dict[l].millionea as Record<string, string>).ledgerOutParts.split(" · ")[2].replace("{carried}", "").trim();
+    return note.includes(formatTzs(136_630)) && note.includes(formatTzs(914_368)) && note.includes(formatTzs(2))
+      && none.length > 0 && !none.includes(carry) && !none.includes(formatTzs(0)) ? [] : [`${l}: ${note} | ${none}`];
   });
   return [off.length === 0, off.join(" | ")];
 });
@@ -375,6 +406,35 @@ check("2.10", "the drawing is the kit's own: every row a sentence-case ReceiptRo
   const rows = count(drawn, "data-ledger-row=");
   const sentence = count(drawn, 'class="min-w-0 text-body-sm');
   return [rows === 10 && sentence >= 10 && !/border-b\b/.test(drawn) && drawn.includes("mt-3"), j({ rows, sentence })];
+});
+// The tile read of 2026-10-21 (How, sw 320): Money out's parts wrapped to six lines in the label's column beside the total's
+// figure ("Ada TZS 136,500 / imelipwa kwa / washindi / TZS 913,500 / imehamishwa / TZS 0"); a line of figures runs the row's
+// whole width instead — the fee's levies and Money out's parts — while a label's own detail stays under its label.
+// ⚠️ RE-PINNED 2026-10-21 (the lead's ruling, from TICKETS' tile ticket-wonBig-sw-320-s2): EVERY row's note stands on its own
+// line under the label and the figure, across the row's whole width — never in the label's column beside a figure — and a
+// note's parts are each ONE unbroken run, so at 320 they stack whole and wider they flow (never "imelipwa kwa" / "washindi").
+check("2.12", "every row's note stands on its own line under its label and its figure, across the row's whole width (the kit row's note face, never in the label's column), and each part of a note's line — the fee's levies, Money out's parts, the sunset's top score — is ONE unbroken run, in sw, en and zh", (w) => {
+  const off: string[] = [];
+  const WIDE = 'class="mt-0.5 block text-body-sm text-text-muted"';
+  for (const l of LOCALES) {
+    for (const name of ["dust", "topped", "sunset"]) {
+      const f = CASES[name];
+      const rows = w.ledger(dict[l] as never, l, f);
+      const drawn = inApp(l, h(w.Ledger as never, { rows } as never));
+      const seg = (key: string) => drawn.split('data-ledger-row="').find((s) => s.startsWith(`${key}"`)) ?? "";
+      for (const r of rows.filter((x) => x.note !== undefined && x.note !== null)) if (!seg(r.key).includes(WIDE)) off.push(`${l}/${name}/${r.key}: not across the row`);
+      if (drawn.includes('class="text-body-sm text-text-muted"')) off.push(`${l}/${name}: a note in the label's column`);
+      for (const key of ["fee", "moneyOut", "share"]) {
+        const r = rows.find((x) => x.key === key);
+        if (!r?.note) continue;
+        const parts = textOf(inApp(l, h(React.Fragment, null, r.note as never))).split(" · ").map((p) => p.trim()).filter(Boolean);
+        const runs = keptTexts(inApp(l, h(React.Fragment, null, r.note as never)));
+        const torn = parts.filter((p) => !runs.some((x) => x.trim() === p));
+        if (torn.length) off.push(`${l}/${name}/${key}: ${j(torn)}`);
+      }
+    }
+  }
+  return [off.length === 0, off.slice(0, 6).join(" | ")];
 });
 // ⚠️ ADDED 2026-10-21 (the lead, for the HUB lane: R1-hub L15 asks for no dash, H1 forbids a figure there): a sentence with no
 // figure stands alone — the dash beside it read as a missing figure.
@@ -448,7 +508,7 @@ check("3.5", "ONE WEEK ROW (L3, /results adopts it): rendered, its facts are a f
   const m = inApp("sw", h(w.WeekRow as never, { t: dict.sw, code: "MLN-2026-W48", chip: h(w.Chip as never, { t: dict.sw, state: "VOIDED" } as never), facts: ["Kila tiketi imerejeshwa", "ada 0"] } as never));
   const li = /^<li>/.test(m);
   const facts = m.includes('<span class="min-w-0 text-body-sm text-text-muted lg:ml-auto" data-testid="millionea-week-facts"><span class="kp-mln-facts kp-mln-facts--phone">');
-  const content = m.includes('<span class="flex min-w-0 flex-1 flex-col gap-1">') && m.includes('<span class="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 md:w-[200px]">');
+  const content = m.includes('<span class="flex min-w-0 flex-1 flex-col gap-1">') && m.includes('<span class="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 md:w-[280px]">');
   const handDots = (m.replace(/<span class="sr-only"> · <\/span>/g, "").match(/·/g) ?? []).length;
   const link = /<a [^>]*href="\/millionea\/register\/MLN-2026-W48"/.test(m) && m.includes("min-height:var(--h-control-lg)");
   return [li && facts && content && handDots === 0 && link, j({ li, facts, content, handDots, link })];
@@ -504,6 +564,71 @@ check("4.6", "a voided main's number is struck, the strike in the number's own i
     && voidWeek.includes(strike) && !voidWeek.includes('class="invisible"') && !before.includes("decoration-border-strong");
   return [ok, j({ before: before.includes(strike), after: after.includes(`${strike}<span>A1</span>`) })];
 });
+// M7 (the register critic) · M5 (the motion critic): the example teaches with the motion or without it.
+check("4.7", "M7 · M5 · How's example opens on the BEFORE frame — main 4 void with its number struck, A1–A5 standing by, no reserve carried, no Unbroken Line — and the tap draws the after frame in place; \"↪4\", the Unbroken Line, \"Replay\" and \"Example ended\" come only once the token has landed (at once under a clamp); the button keeps one width for both labels", (w) => {
+  const ex = code(w, "example"), how = code(w, "how");
+  const frames = how.includes("return { before: sealLineOf(qs, picks), after: sealLineOf(qs, picks, { final: true }) };") && how.includes("<HowExample before={before} after={after} caption={caption} />");
+  const machine = ex.includes("const ended = run > 0 && landed === run;") && ex.includes("const line = run === 0 ? before : ended ? after : { ...after, unbroken: false };")
+    && ex.includes("play={{ carry: run > 0, run, draw: ended, onCarried: () => setLanded(run) }}") && ex.includes("const label = landed > 0 ? t.millionea.replay : t.millionea.seeExample;")
+    && ex.includes('<span role="status" className="text-body-sm text-text-subtle">{ended ? t.millionea.exampleEnded : ""}</span>')
+    && count(ex, 'className={cn("col-start-1 row-start-1", label !== t.millionea.') === 2;
+  const before = L.seal.sealLineOf(exampleQs, picks), after = L.seal.sealLineOf(exampleQs, picks, { final: true });
+  const m = inApp("en", h(w.Example as never, { before, after, caption: "c" } as never));
+  const opens = m.includes('<s class="decoration-current">4</s><span class="invisible">A1</span>') && !m.includes("leading-none text-text-muted tabular-nums")
+    && m.includes('<span role="status" class="text-body-sm text-text-subtle"></span>');
+  return [frames && machine && opens, j({ frames, machine, opens })];
+});
+// The tile read of 2026-10-21 (How's example, sw 360, its end frame): the drawn Unbroken Line rested broken — sockets 1–4 and
+// 8–10 joined, 4–8 bare. Chromium lays a non-scaling stroke's dash in screen pixels, not in the path's own length, so the
+// draw-on's 100-long dash became a 100px dash and a 100px gap. The line is horizontal in a 1-unit-tall box: its stroke is 1px
+// with or without the vector effect, so the effect goes and the dash is the path's own length again.
+check("4.8", "the Unbroken Line (and the closing rule) draws on in the path's own length and rests whole: no non-scaling stroke beside `pathLength` and the draw-on's dash, which Chromium lays in screen pixels (a 100px dash, a 100px gap)", (w) => {
+  const s = code(w, "line");
+  const own = s.includes("pathLength={100}") && s.includes("strokeDasharray: 100, strokeDashoffset: 100");
+  const screen = /vectorEffect|vector-effect/.test(s);
+  return [own && !screen, j({ own, screen })];
+});
+
+// ── §5 · How to play (the register critic's How rows) ────────────────────────────────────────────────────────────────
+check("5.1", "M6 · H1 · L7 · L5 · L13 · How says what a first visit needs: step 3 the hub's own headline (\"Jackpot at least {floor} · shared equally by every 10/10 ticket · {pct}% fee at payout\"; the rule alone at a floor of 0); the reserve step the slip's own sentence; the rules add a week voided whole, where a win is paid, the objection window by its one name, the cap in the slip's phrase, and that limits, Take a break and Self-exclude cover Millionea — with the footer's own \"Set limits\" door", (w) => {
+  const s = code(w, "how");
+  const headline = s.includes("? fill(t.millionea.ruleWithFigure, { amount: fill(t.millionea.atLeast, { amount: formatTzs(h.floor) }), pct }) : fill(t.millionea.ruleShared, { pct });")
+    && s.includes('<MaswaliFacts key="headline" facts={factsOf(headline).map((f) => keepFact(locale, f))} />') && !s.includes("howThree");
+  const rules = ["keepFact(locale, fill(t.millionea.ruleVoidWeek, { price: formatTzs(h.ticketPrice) }))", "keepFact(locale, t.millionea.ruleWinPaid)",
+    "keepFact(locale, fill(t.millionea.ruleCheck, { hours: spacedDuration(locale, h.objectionWindowHours) }))", "keepFact(locale, fill(t.millionea.ruleCap, { cap: h.ticketCap }))",
+    "<span>{keepFact(locale, t.millionea.ruleRg)}</span>", "{t.footer.setLimits}", 'const LIMITS_HREF = "/profile/responsible-gambling";'].filter((x) => !s.includes(x));
+  const m = (l: Locale) => w.dict[l].millionea as Record<string, string>;
+  const slip = LOCALES.filter((l) => !m(l).howTwo.startsWith(m(l).reserveRule) || !m(l).capRule.startsWith(m(l).ruleCap));
+  const words = [m("en").ruleVoidWeek, m("sw").ruleWinPaid, m("zh").ruleCheck, m("en").ruleRg];
+  const want = ["More main questions void than valid reserves? The whole week is void and every ticket is refunded {price}, with no fee",
+    "Ushindi unalipwa kwenye salio kuu wiki ikikamilika", "派奖前设有 {hours}的异议窗口", "Your limits, Take a break and Self-exclude cover Millionea too"];
+  return [headline && rules.length === 0 && slip.length === 0 && j(words) === j(want), j({ headline, rules, slip, words })];
+});
+check("5.2", "L12 · L15 · M4 · M8 · the page reads in order — the four steps, the week's timeline right after them, the titled examples, the categories, the rules — prose at /fairness's reading measure, the example cards at the receipt's, and it ends on the hub and the register", (w) => {
+  const s = code(w, "how");
+  const at = ['<ol className="flex max-w-[68ch] flex-col gap-3">', '<section aria-labelledby="mln-how-timeline"', '<section aria-labelledby="mln-how-examples"',
+    '<section aria-labelledby="mln-how-categories"', '<section aria-labelledby="mln-how-rules"', "<MillioneaReadingLinks t={t} how={false} hub />"].map((x) => s.indexOf(x));
+  const order = at.every((x, i) => x >= 0 && (i === 0 || x > at[i - 1]));
+  const heads = ["mln-how-timeline", "mln-how-examples", "mln-how-categories", "mln-how-rules"].every((id) => s.includes(`<h2 id="${id}" className={H2}>`));
+  const measure = s.includes('<article aria-labelledby="mln-how-ex-swap" className="mat-raised flex max-w-receipt flex-col gap-3 rounded-card p-3">')
+    && s.includes('<article aria-labelledby={id} className="mat-flat flex max-w-receipt flex-col gap-3 rounded-card p-3">')
+    && s.includes('<ul className="flex max-w-[68ch] flex-col divide-y divide-border border-t border-border">');
+  return [order && heads && measure, j({ at, heads, measure })];
+});
+check("5.3", "H3 · H5 · How's two worked weeks are the ONE Millionea ledger's rows, every figure the settlement's own arithmetic from the frozen rules (`millioneaExamplesFor`) — no figure made on the page", (w) => {
+  const s = code(w, "how");
+  const rows = s.includes('const rows = millioneaLedgerRows(t, locale, { kind: "won", price: h.ticketPrice, tickets: ex.tickets, sales: ex.sales, carryIn: null, floor: h.floor, topUp: f.U, jackpot: f.J, feePct: pctNum(h.feeRate), fee: f.F, levies: { tra: f.tra, gbt: f.gbt, traPct: pctNum(h.traRate), gbtPct: pctNum(h.gbtRate) }, winners: ex.winners, toWinners: f.J - f.F, share: f.share, paid: f.paid, remainder: f.dust, carriedForward: f.carryOut > 0 ? { amount: f.carryOut, week: null } : null, refunds: null, sunset: null, });')
+    && s.includes("<MaswaliLedger rows={rows} />");
+  const fn = s.slice(s.indexOf("function WorkedWeek("), s.indexOf("export default async function"));
+  const made = /formatTzs|formatTzsSigned|ReceiptRow|\* h\.|Math\./.test(fn);
+  return [rows && !made, j({ rows, made })];
+});
+check("5.4", "L9 · Millionea's Chinese sets a digit apart from an ideograph in the window's duration (\"派奖前设有 24 小时的异议窗口\"; the platform's duration word glues them) — other languages untouched", (w) => {
+  const s = code(w, "how");
+  const fn = s.includes('return locale === "zh" ? s.replace(/(\\d)(?=[㐀-䶿一-鿿豈-﫿])/g, "$1 ") : s;') && s.includes("hours: spacedDuration(locale, h.objectionWindowHours)");
+  const zh = fill(w.dict.zh.millionea.ruleCheck as string, { hours: "24 小时" });
+  return [fn && zh === "派奖前设有 24 小时的异议窗口", j({ fn, zh })];
+});
 
 // ── the run ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 function runAll(w: World, quiet: boolean): { pass: number; fail: number; failed: string[] } {
@@ -558,6 +683,14 @@ const plantSeal = (from: string, to: string): World | null => {
   const s = planted("seal", from, to);
   return s === null ? null : { ...REAL, Seal: compileAt(FILES.seal, s).MaswaliSealLine as Row };
 };
+/** A world whose How example is compiled from a planted copy of its source (its source pinned, its first frame rendered). */
+const plantExample = (from: string, to: string): World | null => {
+  const s = planted("example", from, to);
+  return s === null ? null : { ...REAL, src: { ...REAL.src, example: s }, Example: compileAt(FILES.example, s).HowExample as Row };
+};
+/** A world with one Millionea word changed in one language. */
+const plantWord = (l: Locale, key: string, value: string): World =>
+  ({ ...REAL, dict: { ...dict, [l]: { ...dict[l], millionea: { ...dict[l].millionea, [key]: value } } } as typeof dict });
 /** A world whose register parts (the chip) are compiled from a planted copy of their source. */
 const plantParts = (from: string, to: string): World | null => {
   const s = planted("parts", from, to);
@@ -587,9 +720,20 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["the floor at full ink when it did not bind (H5)", "2.3", plantLedger('emphasis: binds ? undefined : "muted"', "emphasis: undefined")],
   ["a hairline under every row again", "2.10", plantLedger('className={cn(r.gap && "mt-3")}', 'className={cn("border-b border-border", r.gap && "mt-3")}')],
   ["the fee unsigned (\"TZS −136,630\")", "2.4", plantLedger("{fee > 0 ? formatTzsSigned(-fee) : formatTzs(0)}", "{formatTzs(-fee)}")],
-  ["the levies dropped from under the fee", "2.4", plantLedger("note: f.levies && fee > 0 ? factLine(", "note: false && f.levies && fee > 0 ? factLine(")],
+  ["the levies dropped from under the fee", "2.4", plantLedger("note: f.levies && fee > 0 ? noteLine(", "note: false && f.levies && fee > 0 ? noteLine(")],
   ["a carry's amount printed outside its money run", "2.5", plantLedger("const money = (n: number) => <span className=\"amount\">{formatTzs(n)}</span>;", "const money = (n: number) => <span>{formatTzs(n)}</span>;")],
-  ["Money out's parts line dropped", "2.6", plantLedger("note: factLine(locale, fill(m.ledgerOutParts,", "note: undefined && factLine(locale, fill(m.ledgerOutParts,")],
+  ["Money out's parts line dropped", "2.6", plantLedger("note: noteLine(locale, carried > 0 ? parts : parts.slice(0, 2)),", "note: undefined,")],
+  ["L11 undone — \"carried forward TZS 0\" printed as a part", "2.6", plantLedger("noteLine(locale, carried > 0 ? parts : parts.slice(0, 2))", "noteLine(locale, parts)")],
+  ["a note's parts free to break inside themselves (\"imelipwa kwa\" / \"washindi\")", "2.12", plantLedger("return <MaswaliFacts facts={parts.map((p) => keepFact(locale, p, [p]))} />;", "return <MaswaliFacts facts={parts.map((p) => keepFact(locale, p))} />;")],
+  ["the note back in the label's column", "2.12", (() => {
+    const s0 = planted("ledger", "            value={r.value}\n            emphasis={r.emphasis}", "            note={r.note}\n            value={r.value}\n            emphasis={r.emphasis}");
+    if (s0 === null) return null;
+    const from = "const wide = r.note !== undefined && r.note !== null";
+    if (s0.split(from).length !== 2) { problems.push("PLANT MISSED: the wide note"); return null; }
+    const mod = compileAt(FILES.ledger, s0.replace(from, "const wide = false && r.note !== undefined && r.note !== null")) as { millioneaLedgerRows: LedgerFn; MaswaliLedger: Row };
+    return { ...REAL, ledger: mod.millioneaLedgerRows, Ledger: mod.MaswaliLedger };
+  })()],
+  ["the levies' names torn from their shares again (no runs kept)", "2.4", plantLedger("return <MaswaliFacts facts={parts.map((p) => keepFact(locale, p, [p]))} />;", "return <MaswaliFacts facts={parts.map((p) => keepFact(locale, p))} />;")],
   ["a carry row no longer a link", "2.7", plantLedger("return r.href ? (\n          <Link", "return false ? (\n          <Link")],
   ["\"every ticket refunded\" before the refunds landed", "2.8", plantLedger("afterIn.push(refunds.landed", "afterIn.push(true")],
   ["the voiding week's refund line beside a dash again", "2.11", plantLedger('[price]), value: null, emphasis: "muted" });', '[price]), value: "—", emphasis: "muted" });')],
@@ -609,7 +753,7 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["the scale measured by width again (the token twice its size)", "4.1", { ...REAL, geometry: (o, d, v) => { const g = L.carry.carryGeometry(o, d, v); return g && { ...g, s: o.width / d.width }; } }],
   ["a carry that plays with an end off screen (H6)", "4.2", { ...REAL, geometry: (o, d) => ({ dx: o.left - d.left, dy: o.top - d.top, s: o.height / d.height }) }],
   ["the run counter dropped from the effect", "4.3", plantSrc("carry", "}, [from, play, index, run]);", "}, [from, play, index]);")],
-  ["How's line keyed on the run again (it blanks)", "4.3", plantSrc("example", "<MaswaliSealLine line={line}", "<MaswaliSealLine key={run} line={line}")],
+  ["How's line keyed on the run again (it blanks)", "4.3", plantSrc("example", "<MaswaliSealLine\n        line={line}", "<MaswaliSealLine\n        key={run}\n        line={line}")],
   ["the origin left showing while the token flies", "4.4", plantSrc("carry", "    origin.classList.add(VACATED);\n", "")],
   ["the vacated rule removed from the stylesheet", "4.4", plantSrc("css", ".kp-mln-carry-vacated { visibility: hidden; }", "")],
   ["the origin id back on the annex column", "4.5", (() => {
@@ -621,6 +765,22 @@ const PLANTS: Array<[string, string, World | null]> = [
   })()],
   ["the strike back in the border ink", "4.6", plantSeal('<s className="decoration-current">', '<s className="decoration-border-strong">')],
   ["the void cell's second line dropped before the swap", "4.6", plantSeal("{(m.standIn || keepLine) && <span", "{m.standIn && <span")],
+  ["M7 undone — the example opens on its end frame (the void invisible)", "4.7", plantExample("const line = run === 0 ? before : ended ? after : { ...after, unbroken: false };", "const line = after;")],
+  ["M5 undone — \"Example ended\" at the tap, before the token landed", "4.7", plantExample("const ended = run > 0 && landed === run;", "const ended = run > 0;")],
+  ["M5 undone — the Unbroken Line drawn under a token still in flight", "4.7", plantExample("const line = run === 0 ? before : ended ? after : { ...after, unbroken: false };", "const line = run === 0 ? before : after;")],
+  ["the non-scaling stroke back on the drawn line (it rests as dashes)", "4.8", plantSrc("line", "        pathLength={100}\n", '        vectorEffect="non-scaling-stroke"\n        pathLength={100}\n')],
+  ["M7 undone — How hands the example its end frame only", "4.7", plantSrc("how", "return { before: sealLineOf(qs, picks), after: sealLineOf(qs, picks, { final: true }) };", "return { before: sealLineOf(qs, picks, { final: true }), after: sealLineOf(qs, picks, { final: true }) };")],
+  // §5
+  ["M6 undone — step 3 without the floor (the old sentence's place)", "5.1", plantSrc("how", "? fill(t.millionea.ruleWithFigure, { amount: fill(t.millionea.atLeast, { amount: formatTzs(h.floor) }), pct })", "? fill(t.millionea.ruleShared, { pct })")],
+  ["M6 undone — where a win is paid left unsaid", "5.1", plantSrc("how", "    keepFact(locale, t.millionea.ruleWinPaid),\n", "")],
+  ["H1 undone — a week voided whole left unsaid", "5.1", plantSrc("how", "    keepFact(locale, fill(t.millionea.ruleVoidWeek, { price: formatTzs(h.ticketPrice) })),\n", "")],
+  ["L13 undone — no responsible-play line", "5.1", plantSrc("how", "<span>{keepFact(locale, t.millionea.ruleRg)}</span>", "<span />")],
+  ["L7 undone — How's reserve step worded apart from the slip's", "5.1", plantWord("sw", "howTwo", "Akiba inahesabiwa tu swali kuu likibatilishwa, kwa mpangilio kuanzia A1 hadi A5; akiba batili inarukwa.")],
+  ["L12 undone — the timeline after the examples again", "5.2", plantSrc("how", '<section aria-labelledby="mln-how-timeline"', '<section aria-label="timeline"')],
+  ["M8 undone — How ends on one link again", "5.2", plantSrc("how", "<MillioneaReadingLinks t={t} how={false} hub />", "<MillioneaReadingLinks t={t} how={false} />")],
+  ["M4 undone — the swap's card across the whole reading measure", "5.2", plantSrc("how", 'className="mat-raised flex max-w-receipt flex-col gap-3 rounded-card p-3"', 'className="mat-raised flex flex-col gap-3 rounded-card p-3"')],
+  ["H3 undone — a worked week's fee made on the page", "5.3", plantSrc("how", "jackpot: f.J, feePct: pctNum(h.feeRate), fee: f.F,", "jackpot: f.J, feePct: pctNum(h.feeRate), fee: Math.round(f.J * h.feeRate),")],
+  ["L9 undone — the window's Chinese duration glued again (\"24小时\")", "5.4", plantSrc("how", "hours: spacedDuration(locale, h.objectionWindowHours)", "hours: durationHours(locale, h.objectionWindowHours)")],
 ];
 let caught = 0;
 for (const [name, target, world] of PLANTS) {

@@ -17,6 +17,7 @@ import { millioneaLedgerRows, ticketSalesRuns, type MillioneaLedgerRow } from "@
 import { playerStatusChip } from "@/lib/status-tone";
 import { formatEatDateTime } from "@/lib/eat-day";
 import { fill, formatNumber, formatTzs, pctNum } from "@/lib/utils";
+import { moneyRuns } from "@/lib/fill-nodes";
 import type { WeekState } from "@/lib/maswali-week-label";
 import type { MillioneaRegisterLiveWeek, MillioneaWeekMoney, MillioneaWeekSummary } from "@/lib/server/maswali-player";
 import type { Dict, Locale } from "@/lib/i18n-dict";
@@ -93,7 +94,17 @@ export function weekFacts(t: Dict, w: MillioneaWeekSummary): ReactNode[] {
     return facts;
   }
   const amount = formatTzs(w.carriedForward ?? 0);
-  return [...factsOf(fill(t.millionea.settledRollover, { amount })).map((f) => kept(f, [amount])), t.millionea.feeZero];
+  // The hub's own words (`settledRollover`, `feeZero`), said mid-line there ("Week 45 · no 10/10 · …"); here each is a fact
+  // of its own — a line of its own on a phone — so each opens with a capital, as every other fact of a row does. Its amount
+  // is drawn as every amount is (`.amount`, the jackpot's face), inside its kept run: the tile read of 2026-10-21 found
+  // "TZS 18,000 carried forward" in the body face beside "Jackpot TZS 50,000" in the figure face.
+  const fact = (f: string) => keepConnectives(f, runAndDashRanges(f, [amount]), (part) => moneyRuns(part));
+  return [...factsOf(fill(t.millionea.settledRollover, { amount })).map((f) => fact(factCase(f))), factCase(t.millionea.feeZero)];
+}
+
+/** A fact's first letter as a list item's: a capital (a no-op for a figure or an ideograph). */
+function factCase(s: string): string {
+  return s.charAt(0).toLocaleUpperCase() + s.slice(1);
 }
 
 /**
@@ -128,7 +139,9 @@ export function WeekRow({ t, code, chip, facts }: { t: Dict; code: string; chip:
         <span className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{code}</span>
           <span className="flex flex-col gap-1 md:flex-row md:items-center md:gap-6">
-            <span className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 md:w-[200px]">
+            {/* From 768 the week's column holds the week and its longest chip on one line ("Wiki 52 · WIKI INABATILISHWA",
+                "Week 52 · WEEK IS BEING VOIDED" — at 200px they broke under the week, so the rows' heights differed). */}
+            <span className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 md:w-[280px]">
               <span className="text-body font-semibold text-text">{weekWord(t, weekNumberOf(code))}</span>
               {chip}
             </span>
@@ -245,11 +258,16 @@ export function WeekCommitments({ t, locale, nowMs, hash, publishedAt, root, clo
     : null;
   return (
     <section aria-labelledby="mln-reg-commit" className="flex flex-col gap-2" data-testid="millionea-commitments">
-      <h2 id="mln-reg-commit" className="font-display text-title-sm font-bold text-text">{t.millionea.commitTitle}</h2>
+      <h2 id="mln-reg-commit" className="font-display text-title-sm font-bold text-text text-balance">{t.millionea.commitTitle}</h2>
       <div className="mat-flat flex max-w-receipt flex-col gap-4 rounded-card p-3">
         {hash && (
           <div className="flex flex-col gap-1">
-            <span className={EYEBROW}>{t.millionea.stubHash}</span>
+            {/* Both commitments wear the commitment glyph — one left edge for the two eyebrows (the tile read of 2026-10-21:
+                the question set's eyebrow started 20px left of the root's). */}
+            <span className={`${EYEBROW} inline-flex items-center gap-1.5`}>
+              <I.commitment s={12} className="shrink-0" />
+              <span>{t.millionea.stubHash}</span>
+            </span>
             <span className="font-mono text-body-sm text-text break-all">{hash}</span>
             {published !== null && <span className="text-body-sm text-text-muted">{keepFact(locale, fill(t.millionea.commitPublished, { when: published }), [published])}</span>}
           </div>

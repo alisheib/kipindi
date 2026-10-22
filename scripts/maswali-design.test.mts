@@ -48,7 +48,7 @@ import type { MillioneaNotice } from "../src/lib/server/maswali-player.ts";
 import { MILLIONEA_GLYPHS } from "../src/components/maswali/maswali-glyph.tsx";
 import { I } from "../src/components/ui/glyphs.tsx";
 import { FILL_KEYS, GLYPH_MAP, NEW_KEYS } from "./glyphs/map.ts";
-import { decomment } from "./lib/decomment.mts";
+import { decomment, decommentCss } from "./lib/decomment.mts";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const read = (rel: string) => (existsSync(join(ROOT, rel)) ? readFileSync(join(ROOT, rel), "utf8").replace(/\r\n/g, "\n") : "");
@@ -207,7 +207,7 @@ const PICKS = Array.from({ length: 15 }, () => "YES" as const);
   ok("2.H1g · the register's voided ledger: \"refunded\" only once every refund landed",
     reg.includes("refunds: kind === \"voided\" ? { amount: w.sales ?? 0, landed: !w.refundsPending } : null,")
       && ledgerSrc.includes("afterIn.push(refunds.landed") && ledgerSrc.includes("label: keepFact(locale, fill(m.refundEachPending, { price }), [price])")
-      && squash(code(read(REGISTER_WEEK))).includes("<MaswaliLedger rows={registerLedgerRows(t, locale, w)} />"));
+      && squash(code(read(REGISTER_WEEK))).includes("<MaswaliLedger rows={registerLedgerRows(t, locale, rec.week)} />"));
 }
 
 // H2 · final only on the week's word
@@ -662,25 +662,29 @@ const factLineDefects = (m: string, n: number, joined: string) => {
     ["sw", FACTS.factsOf(fill(sw.millionea.ruleShared, { pct: 13 }))[1] ?? "", "ada 13%"],
     ["zh", FACTS.factsOf(fill(zh.millionea.ruleShared, { pct: 13 }))[1] ?? "", "13% 费用"],
     ["en", en.millionea.reserveRule, "A1–A5"],
-    ["sw", sw.millionea.howTwo, "A1 hadi A5"],
-    ["zh", zh.millionea.howTwo, "A1 至 A5"],
+    // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER, the critic's L7): How's reserve step opens with the slip's own
+    // sentence — its range is the slip's "A1–A5" in every language now.
+    ["sw", sw.millionea.howTwo, "A1–A5"],
+    ["zh", zh.millionea.howTwo, "A1–A5"],
     ["en", fill(en.millionea.yourTicketsThisWeek, { n: 1, cap: 10 }), "1 of 10"],
     ["sw", fill(sw.millionea.yourTicketsThisWeek, { n: 1, cap: 10 }), "1 kati ya 10"],
     ["en", fill(en.millionea.howOne, { price: formatTzs(1_000) }), "5 reserve"],
     ["en", fill(en.millionea.howOne, { price: formatTzs(1_000) }), "TZS 1,000"],
-    ["zh", fill(zh.millionea.howThree, { pct: 13 }), "13% 费用"],
+    // How's step 3 is the hub's headline now (the critic's M6): "Jackpot at least TZS 1,000,000 · … · 13% fee at payout".
+    ["zh", FACTS.factsOf(fill(zh.millionea.ruleWithFigure, { amount: fill(zh.millionea.atLeast, { amount: formatTzs(1_000_000) }), pct: 13 }))[2] ?? "", "13% 费用"],
+    ["en", FACTS.factsOf(fill(en.millionea.ruleWithFigure, { amount: fill(en.millionea.atLeast, { amount: formatTzs(1_000_000) }), pct: 13 }))[0] ?? "", "TZS 1,000,000"],
     ["en", fill(en.millionea.salesCloseAt, { when: "Friday 18:00" }), "Friday 18:00"],
     ["zh", fill(zh.millionea.eventAt, { when: "周六 09:00" }), "周六 09:00"],
     ["en", fill(en.millionea.lockedAt, { when: "Friday 18:00" }), "Friday 18:00 EAT"],
   ];
   const torn = CASES.filter(([l, text, phrase]) => !runsOf(l, text).some((r) => r.includes(phrase))).map(([l, text, phrase]) => `${l} "${phrase}" in "${text}": ${j(runsOf(l, text))}`);
-  ok(`4.A1c · every phrase A1 names stays one unbreakable run as the dictionary draws it — "Week 47's", "13% fee" / "ada 13%" / "13% 费用", "A1–A5", "A1 hadi A5", "A1 至 A5", "1 of 10", "5 reserve", "TZS 1,000", "Friday 18:00 EAT", "周六 09:00" (${CASES.length} cases)`,
+  ok(`4.A1c · every phrase A1 names stays one unbreakable run as the dictionary draws it — "Week 47's", "13% fee" / "ada 13%" / "13% 费用", "A1–A5" (the slip's range, on How too), "1 of 10", "5 reserve", "TZS 1,000", "Friday 18:00 EAT", "周六 09:00" (${CASES.length} cases)`,
     torn.length === 0, torn.join(" | "));
   const keepRun = req("../src/components/ui/keep-run.tsx") as typeof import("../src/components/ui/keep-run.tsx");
   const platformOnly = (text: string) => keptRuns(renderToStaticMarkup(h("p", null, keepRun.keepRanges(text, keepRun.keptRanges(text)) as never)));
-  ok("4.A1c′ PLANT · the platform's kept runs alone (no Millionea runs) leave \"13% fee\" and \"A1 hadi A5\" free to tear",
+  ok("4.A1c′ PLANT · the platform's kept runs alone (no Millionea runs) leave \"13% fee\" and \"ada 13%\" free to tear",
     !platformOnly(FACTS.factsOf(fill(en.millionea.ruleShared, { pct: 13 }))[1] ?? "").some((r) => r.includes("13% fee"))
-      && !platformOnly(sw.millionea.howTwo).some((r) => r.includes("A1 hadi A5")));
+      && !platformOnly(FACTS.factsOf(fill(sw.millionea.ruleShared, { pct: 13 }))[1] ?? "").some((r) => r.includes("ada 13%")));
   const joinDefects = (readAt: (rel: string) => string) => MLN_FILES.filter((f) => code(readAt(f)).includes('.join(" · ")'));
   const joins = joinDefects(read);
   ok("4.A1d · no Millionea drawing joins visible facts into one string with \" · \" any more — every such line is a fact line", joins.length === 0, joins.join(" | "));
@@ -874,6 +878,11 @@ const cardBlockDefects = (src: string) => {
 }
 
 // P6 · the example draws what a real ticket draws, and says what it is
+// ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER — the critic's L15, L10 and M7, the motion critic's M5): How's
+// examples are a titled section; each card is titled by what it shows (the swap: "A reserve stands in"; the worked weeks: "A
+// week with winners", "A week topped up to the floor"), so the button's label is short — it held two lines at 360 in Swahili
+// through an override that forked the kit Button ("Show A1 replacing question 4"), now "Show the swap", one line at 320, the
+// kit's own md ghost Button with no override.
 const exampleDefects = (seal: string, how: string, example: string) => {
   const d: string[] = [];
   const s = squash(code(seal));
@@ -881,8 +890,12 @@ const exampleDefects = (seal: string, how: string, example: string) => {
   // ink drew it ~2.2:1), and a void main's second line kept in both frames (test:maswali-design-register 4.6 renders it).
   if (!s.includes('{voidCell(m) ? ( <> <s className="decoration-current">{m.ordinal}</s> {(m.standIn || keepLine) && <span className={m.standIn ? undefined : "invisible"}>{m.standIn ?? reserveLabel(1)}</span>} </> ) : m.ordinal}')) d.push("a stood-in main's number is not struck with its reserve under it");
   const hw = squash(code(how));
-  if (!hw.includes("label={`${t.millionea.exampleLabel} · ${t.millionea.exampleWinnersWeek}`}") || !hw.includes("label={`${t.millionea.exampleLabel} · ${t.millionea.exampleFloorWeek}`}") || /exampleLabel\} · [12]\b/.test(hw)) d.push("a worked ledger's label has no noun");
-  if (!squash(code(example)).includes("fill(t.millionea.seeExample, { r: standIn, n: formatNumber(voided) })")) d.push("the button does not say what it plays with a formatted question number");
+  if (!hw.includes('<WorkedWeek t={t} locale={locale} id="mln-how-ex-shared" title={t.millionea.exampleWinnersTitle} h={h} ex={h.examples.shared} />')
+    || !hw.includes('<WorkedWeek t={t} locale={locale} id="mln-how-ex-floor" title={t.millionea.exampleFloorTitle} h={h} ex={h.examples.floorWeek} />')
+    || !hw.includes('<h3 id={id} className="font-display text-body-lg font-semibold text-text">{title}</h3>')) d.push("a worked ledger's label has no noun");
+  if (!hw.includes('<h3 id="mln-how-ex-swap" className="font-display text-body-lg font-semibold text-text">{t.millionea.exampleSwapTitle}</h3>')) d.push("the swap's card has no heading that names it");
+  const ex = squash(code(example));
+  if (!ex.includes("{t.millionea.seeExample}") || /seeExample, \{/.test(ex)) d.push("the button's label is not the short one");
   return d;
 };
 {
@@ -891,31 +904,28 @@ const exampleDefects = (seal: string, how: string, example: string) => {
   const example = sealLineOf(week(["YES", "YES", "YES", "VOID", "YES", "YES", "YES", "YES", "YES", "YES"], ["YES", "YES", "YES", "YES", "YES"]), PICKS, { final: true });
   const m = renderToStaticMarkup(h(MaswaliSealLine as never, { line: example, size: 24, numbers: true } as never));
   const d = exampleDefects(read(SEAL), read(HOW), read(EXAMPLE));
-  const templated = LOCALES.filter((l) => !dict[l].millionea.seeExample.includes("{r}") || !dict[l].millionea.seeExample.includes("{n}"));
+  const long = LOCALES.filter((l) => /\{/.test(dict[l].millionea.seeExample) || [...dict[l].millionea.seeExample].length > 24);
   ok("4.P6a · How's example draws what a real ticket draws: main 4's number struck with \"A1\" under it (the void seen on its own place, the check above it A1's) — the same Seal Line every ticket draws",
     m.includes('<s class="decoration-current">4</s><span>A1</span>') && count(m, "<s ") === 1 && d.filter((x) => x.includes("struck")).length === 0, d.join(" | "));
-  ok("4.P6b · each worked ledger says which week it works through (\"Example · a week with winners\", never \"EXAMPLE · 1\"), and the button says what it plays (\"Show A1 replacing question 4\", in all three languages)",
-    d.length === 0 && templated.length === 0 && fill(en.millionea.seeExample, { r: "A1", n: 4 }) === "Show A1 replacing question 4", j({ d, templated }));
-  const fitRule = /\.btn\.kp-mln-example-button\s*\{([^}]*)\}/.exec(read("src/app/globals.css"))?.[1] ?? "";
-  const exampleFitDefects = (button: string, rule: string) => {
+  ok("4.P6b · each example is a card titled by what it shows (\"A reserve stands in\", \"A week with winners\", \"A week topped up to the floor\" — never \"EXAMPLE · 1\"), and the button's label is short (\"Show the swap\", in all three languages — the card's heading names the swap)",
+    d.length === 0 && long.length === 0 && en.millionea.seeExample === "Show the swap", j({ d, long }));
+  const exampleFitDefects = (button: string, css: string) => {
     const problems: string[] = [];
-    if (!squash(code(button)).includes('className="border-border-control kp-mln-example-button"')) problems.push("the kit Button lacks its scoped fit class");
-    for (const [name, value] of [["max-width", "100%"], ["min-width", "0"], ["height", "auto"],
-      ["min-height", "var(--h-control-md)"], ["padding-block", "var(--sp-2)"], ["white-space", "normal"]] as const) {
-      if (!rule.split(";").some((line) => line.trim() === `${name}: ${value}`)) problems.push(`${name} is not ${value}`);
-    }
+    const b = squash(code(button));
+    if (/kp-mln-example-button/.test(b) || /kp-mln-example-button/.test(decommentCss(css))) problems.push("the kit Button is forked by an override");
+    if (!b.includes('<Button type="button" variant="ghost" size="md" className="border-border-control" onClick={() => setRun((n) => n + 1)} data-testid="millionea-how-example-play">')) problems.push("the kit Button is not the md ghost button with the control's border");
     return problems;
   };
-  ok("4.P6c · How's example keeps the approved Swahili wording inside its 320px card and a md-height kit Button",
-    exampleFitDefects(read(EXAMPLE), fitRule).length === 0, j(exampleFitDefects(read(EXAMPLE), fitRule)));
-  ok("4.P6c′ PLANT · the old nowrap and a removed md-height floor both fail the same fit guard",
-    exampleFitDefects(read(EXAMPLE), fitRule.replace("white-space: normal", "white-space: nowrap")).some((x) => x.includes("white-space"))
-      && exampleFitDefects(read(EXAMPLE), fitRule.replace("min-height: var(--h-control-md)", "min-height: 0")).some((x) => x.includes("min-height")));
-  ok("4.P6′ PLANT · a stood-in number drawn plain, and the old \"Example · 1\" label, are reported",
+  ok("4.P6c · How's example button is the kit's own md ghost Button — no override class, no fit rule in the stylesheet (L10) — its short label holding one line at 320",
+    exampleFitDefects(read(EXAMPLE), read("src/app/globals.css")).length === 0, j(exampleFitDefects(read(EXAMPLE), read("src/app/globals.css"))));
+  ok("4.P6c′ PLANT · the override class put back on the button, or its fit rule back in the stylesheet, is reported",
+    exampleFitDefects(read(EXAMPLE).replace('className="border-border-control"', 'className="border-border-control kp-mln-example-button"'), read("src/app/globals.css")).some((x) => x.includes("override"))
+      && exampleFitDefects(read(EXAMPLE), `${read("src/app/globals.css")}\n.btn.kp-mln-example-button { white-space: normal; }`).some((x) => x.includes("override")));
+  ok("4.P6′ PLANT · a stood-in number drawn plain, and a worked week titled \"1\", are reported",
     exampleDefects(read(SEAL).replace("{voidCell(m) ? (", "{false ? ("), read(HOW), read(EXAMPLE)).some((x) => x.includes("struck"))
-      && exampleDefects(read(SEAL), read(HOW).replace("label={`${t.millionea.exampleLabel} · ${t.millionea.exampleWinnersWeek}`}", "label={`${t.millionea.exampleLabel} · 1`}"), read(EXAMPLE)).some((x) => x.includes("noun")));
-  ok("4.P6″ PLANT · an unformatted example question number is reported",
-    exampleDefects(read(SEAL), read(HOW), read(EXAMPLE).replace("n: formatNumber(voided)", "n: voided")).some((x) => x.includes("formatted question number")));
+      && exampleDefects(read(SEAL), read(HOW).replace("title={t.millionea.exampleWinnersTitle}", 'title="1"'), read(EXAMPLE)).some((x) => x.includes("noun")));
+  ok("4.P6″ PLANT · the long templated label put back on the button is reported",
+    exampleDefects(read(SEAL), read(HOW), read(EXAMPLE).replace("{t.millionea.seeExample}", '{fill(t.millionea.seeExample, { r: "A1", n: 4 })}')).some((x) => x.includes("short")));
 }
 
 // P7 · the slip's rail, its meter and its words
@@ -1079,14 +1089,14 @@ const listDefects = (page: string, ticketSrc: string, bar: string) => {
     zhDefects2(read(SLIP), read(SLIP_CLIENT)).length === 0, zhDefects2(read(SLIP), read(SLIP_CLIENT)).join(" | "));
   ok("4.A2′ PLANT · a confirm sheet without the class is reported", zhDefects2(read(SLIP).replace(' panelClassName="kp-mln-zh">', ">"), read(SLIP_CLIENT)).length > 0);
   const signDefects = (readAt: (rel: string) => string) => MLN_FILES.filter((f) => /formatTzs\(-|money\(-|fig\(-|`−\$\{formatTzs/.test(code(readAt(f))));
-  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5 integration of HUB and TICKETS, the lead's ruling): every Millionea fee row is
-  // the ONE ledger's fee row now (`maswali-ledger.tsx`) — the hub's pool (HUB) and the win receipt (TICKETS) alike; How
-  // keeps its own example fee row; the pool's head and the old receipt sign nothing.
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5 integration of HUB, TICKETS and REGISTER, the lead's ruling): every Millionea
+  // fee row is the ONE ledger's fee row now (`maswali-ledger.tsx`) — the hub's pool (HUB), the win receipt (TICKETS) and
+  // How's worked weeks (REGISTER) alike; the pool's head, How's page and the old receipt sign nothing of their own.
   const signed = ["src/components/maswali/maswali-ledger.tsx", "src/components/maswali/maswali-pool-figure.tsx", "src/app/millionea/how/page.tsx", LEDGER].map((f) => count(code(read(f)), "formatTzsSigned("));
-  ok("4.A4 · every negative figure on Millionea is the platform's signed money (\"−TZS 136,500\"): no hand-built sign, no `formatTzs` of a negative — the one ledger's fee row (the register's, the hub's and the win receipt's), How's fee row; the pool's head and the old receipt sign nothing",
-    signDefects(read).length === 0 && j(signed) === j([1, 0, 1, 0]), j({ hand: signDefects(read), signed }));
-  ok("4.A4′ PLANT · How's old fee row (`fig(-f.F)`, \"TZS -136,500\") is reported",
-    signDefects(plantIn("src/app/millionea/how/page.tsx", "value={<span className=\"amount\">{formatTzsSigned(-f.F)}</span>}", "value={fig(-f.F)}")).includes("src/app/millionea/how/page.tsx"));
+  ok("4.A4 · every negative figure on Millionea is the platform's signed money (\"−TZS 136,500\"): no hand-built sign, no `formatTzs` of a negative — the one ledger's fee row (the register's, How's, the hub's and the win receipt's); nothing else signs a figure of its own",
+    signDefects(read).length === 0 && j(signed) === j([1, 0, 0, 0]), j({ hand: signDefects(read), signed }));
+  ok("4.A4′ PLANT · the one ledger's fee row unsigned (`formatTzs(-fee)`, \"TZS -136,500\") is reported",
+    signDefects(plantIn("src/components/maswali/maswali-ledger.tsx", "{fee > 0 ? formatTzsSigned(-fee) : formatTzs(0)}", "{fee > 0 ? formatTzs(-fee) : formatTzs(0)}")).includes("src/components/maswali/maswali-ledger.tsx"));
   // §D · the decided words, applied on these pages (en binding; sw and zh for Gate B's native review).
   const D: Array<[L3, string, string]> = [
     ["sw", "pendingCarry", "pamoja na kiasi kinachohamishwa kutoka Wiki {week} itakapokamilika"],
@@ -1099,7 +1109,9 @@ const listDefects = (page: string, ticketSrc: string, bar: string) => {
     // RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-DOORS, the lead's zh spacing ruling): no space between 事件 and its {when},
     // which always opens with a Han weekday ("事件周五 18:00").
     ["zh", "mains", "正选题"], ["zh", "mainsProgress", "正选 {a}/{n}"], ["zh", "eventAt", "事件{when}"], ["zh", "firstEventAt", "首个事件：{when}"],
-    ["zh", "ticketRunning", "待结算"], ["zh", "howThree", "所有 10/10 彩票平分大奖；{pct}% 费用仅在派奖时扣除。"], ["zh", "carriedInPending", "尚未结算"],
+    ["zh", "ticketRunning", "待结算"], ["zh", "carriedInPending", "尚未结算"],
+    // How's step 3 is the hub's own headline now (ruleWithFigure, above); its rules say the window by its one name (L5).
+    ["zh", "ruleCheck", "派奖前设有 {hours}的异议窗口"], ["sw", "ruleCheck", "Dirisha la pingamizi la {hours} kabla ya malipo"],
     ["zh", "jumpTo", "前往第{n}题"], ["zh", "capRule", "上限：每周 {cap} 张 · 这是第{n}张"],
     ["en", "carriedIn", "Carried in from Week {week}"], ["en", "carriedInPending", "Not yet settled"], ["en", "statRefunded", "Refunded"],
   ];

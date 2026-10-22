@@ -606,7 +606,11 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/app/millionea/page.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle" />', 1, "row", "the hub's last-week row end: the register's own row end (P16)"],
     ['src/app/millionea/page.tsx', '<I.chevronRight s={14} edge="end" text="body-400" />', 1, "text", "the hub's \"See all n tickets\" link: its end after the 13px body/400 words (M8)"],
     ['src/app/millionea/millionea-parts.tsx', '<I.chevronRight s={14} edge="end" text="body-400" />', 1, "text", "the reading links' end (how it works, the register, fairness), one mark per link"],
-    ['src/app/millionea/register/[week]/page.tsx', '<I.chevronRight s={14} edge="end" text="body-400" />', 1, "text", "the register's audit-chain link's end"],
+    // RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER): the week page's "Audit chain" link is gone (the lead's H2 ruling:
+    // /fairness's Millionea rows are S6's); each question's source is /fairness's own link now, its external mark after the
+    // domain (the critic's H4); How's responsible-play rule opens the player's limits (L13).
+    ['src/app/millionea/register/[week]/page.tsx', '<I.ext s={12} edge="end" text="body-400" className="shrink-0" />', 1, "text", "a question's source link: /fairness's external mark at the end of its body/400 domain"],
+    ['src/app/millionea/how/page.tsx', '<I.chevronRight s={14} edge="end" text="body-400" />', 1, "text", "How's responsible-play rule's door to the player's limits: a text link's end after its body/400 words"],
     // RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER): the week's row is the ONE shared row (`WeekRow`, register-parts:
     // the register's index, /results' section), and a ledger's carry row is a door to its week (the critic's M10).
     ['src/app/millionea/register/register-parts.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle" />', 1, "row", "a week's row end in the register's list (and /results' section)"],

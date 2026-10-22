@@ -119,7 +119,9 @@ const TEMPLATE_COMMENT = "inside a CSS comment in a template literal (the commen
 const CONSOLE_TEXT = "the console's own text (its typed marks go in release 3)";
 const TEXT_ICONS: Record<string, [count: number, why: string]> = {
   "src/app/_actions/chat.ts": [3, "the support chatbot's instructions to the model — not an interface"],
-  "src/app/millionea/how/page.tsx": [1, `${TYPOGRAPHY} (the example's voided question → standing reserve)`],
+  // RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER): How's "4 → A1" eyebrow is gone (the critic's L16: the reserve's own
+  // glyph says it); the register's week log prints its objection window's two ends (P6).
+  "src/app/millionea/register/[week]/page.tsx": [1, `${TYPOGRAPHY} (the objection window's two ends in the week's log: from → to)`],
   "src/app/legal/privacy/page.tsx": [3, TYPOGRAPHY],
   "src/app/s/optout-refusal.tsx": [1, TYPOGRAPHY],
   "src/app/updown/history/page.tsx": [3, TYPOGRAPHY],
@@ -320,11 +322,11 @@ const plants: [string, RegExp, World][] = [
     withFile("src/components/zz.tsx", 'export const HOT = "\u{1F525} hot";\n')],
   ["a named file types one more", new RegExp("§7 src/app/updown/history/page[.]tsx types 4 icon character[(]s[)], more than its 3"),
     edit("src/app/updown/history/page.tsx", (t) => t + '\nexport const Z = "↑";\n')],
-  ["the Millionea example gains a second typed arrow", new RegExp("§7 src/app/millionea/how/page[.]tsx types 2 icon character[(]s[)], more than its 1"),
-    edit("src/app/millionea/how/page.tsx", (t) => {
-      const site = '${EXAMPLE_VOIDED_MAIN} → ${reserveLabel(1)}';
-      if (t.split(site).length !== 2) throw new Error("The Millionea example's one arrow site is absent or duplicated");
-      return t.replace(site, '${EXAMPLE_VOIDED_MAIN} → ${reserveLabel(1)} →');
+  ["the register's week log gains a second typed arrow", new RegExp("§7 src/app/millionea/register/\\[week\\]/page[.]tsx types 2 icon character[(]s[)], more than its 1"),
+    edit("src/app/millionea/register/[week]/page.tsx", (t) => {
+      const site = "time: `${a} → ${b}`";
+      if (t.split(site).length !== 2) throw new Error("The week log's one arrow site is absent or duplicated");
+      return t.replace(site, "time: `${a} → ${b} →`");
     })],
   ["a named file reaches zero and stays named", new RegExp("§7 src/app/s/optout-refusal[.]tsx no longer types an icon character"),
     edit("src/app/s/optout-refusal.tsx", (t) => t.split("→").join("-"))],

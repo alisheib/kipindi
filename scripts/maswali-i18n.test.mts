@@ -204,7 +204,11 @@ console.log("\n§7 · Swahili says each fact with ONE verb (S5-FIX-PLAYER P14; S
     ["rolloverNotice", "Wiki {prev}: hakuna tiketi ya 10/10. {amount} imehamishiwa Wiki {week}."],
     ["settledRollover", "hakuna 10/10 · {amount} imehamishwa"],
     ["lastWeekRolled", "Wiki {week} · hakuna 10/10 · {amount} imehamishwa · ada 0"],
-    ["regCarried", "{amount} imehamishwa"],
+    // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER): `regCarried` is gone (the one ledger names each carry by its
+    // week); the ledger's own carry lines and How to play's void rule say the same two verbs.
+    ["carriedOutAgain", "Imehamishiwa tena kwa ukamilifu Wiki {week}"],
+    ["ledgerOutParts", "Ada {fee} · imelipwa kwa washindi {paid} · imehamishwa {carried}"],
+    ["ruleVoidWeek", "Maswali makuu batili yakizidi akiba halali, wiki nzima inabatilishwa na kila tiketi inarejeshwa {price}, bila ada"],
     ["topUpNote", "inalipwa, haihamishwi"],
     ["statRefunded", "Imerejeshwa"], ["refundedLine", "Imerejeshwa · {price}"],
     ["refundEach", "Kila tiketi imerejeshwa {price}"], ["regRefunded", "Kila tiketi imerejeshwa"],
@@ -213,10 +217,10 @@ console.log("\n§7 · Swahili says each fact with ONE verb (S5-FIX-PLAYER P14; S
   ];
   const off = WANT.filter(([k, v]) => ns("sw")[k] !== v).map(([k]) => `sw.${k}=${j(ns("sw")[k])}`);
   ok(`7.2 · the decided forms where each fact is said (${WANT.length} keys): a carry "linahamishiwa" / "imehamishiwa Wiki {week}" / "imehamishwa", a refund "Imerejeshwa" / "itarejeshwa"`, off.length === 0, off.join(" | "));
-  const carry = verbDefects(plantedNs("sw", "regCarried", "{amount} imeletwa mbele"));
+  const carry = verbDefects(plantedNs("sw", "settledRollover", "hakuna 10/10 · {amount} imeletwa mbele"));
   const refund = verbDefects(plantedNs("sw", "regRefunded", "Kila tiketi imerejeshewa"));
   ok("7.1′ CONTROL · the old \"imeletwa mbele\" carry and the old \"imerejeshewa\" refund are each reported",
-    j(carry) === j(['sw.regCarried: a carry said with "kuleta mbele"']) && j(refund) === j(['sw.regRefunded: a refund said with "-rejeshewa"']), j({ carry, refund }));
+    j(carry) === j(['sw.settledRollover: a carry said with "kuleta mbele"']) && j(refund) === j(['sw.regRefunded: a refund said with "-rejeshewa"']), j({ carry, refund }));
 }
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI I18N: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);

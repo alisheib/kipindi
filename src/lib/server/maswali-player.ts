@@ -1590,7 +1590,11 @@ async function liveRegisterWeekOf(week: StoredWeek, paused: boolean): Promise<Mi
  * a public week that has opened (a DRAFT, a DRIVE week, nothing), which the page answers as not found.
  */
 export type MillioneaRegisterRecord =
-  | { kind: "final"; week: MillioneaRegisterWeek; attested: Record<number, MillioneaAttestation>; voidedMains: number; usableReserves: number }
+  | {
+      kind: "final"; week: MillioneaRegisterWeek; attested: Record<number, MillioneaAttestation>; voidedMains: number; usableReserves: number;
+      /** The week's objection window as it was stamped (MR-16: opened when the graded set became final), for the log. */
+      objections: { from: string | null; to: string | null };
+    }
   | { kind: "live"; week: MillioneaRegisterLiveWeek };
 
 export async function millioneaRegisterRecord(code: string): Promise<MillioneaRegisterRecord | null> {
@@ -1604,7 +1608,10 @@ export async function millioneaRegisterRecord(code: string): Promise<MillioneaRe
     const qs = await questionStore.listForWeek(week.id);
     const gq = gradable(qs);
     const { voidedMains, usableReserves } = voidCountsOf(gq);
-    return { kind: "final", week, attested: attestationsOf(qs, gq), voidedMains, usableReserves };
+    return {
+      kind: "final", week, attested: attestationsOf(qs, gq), voidedMains, usableReserves,
+      objections: { from: head.gradedSetFinalAt, to: head.objectionsCloseAt },
+    };
   }
   const live = await liveRegisterWeekOf(head, getSalesPause().paused);
   return live ? { kind: "live", week: live } : null;

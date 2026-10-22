@@ -788,9 +788,12 @@ const pagedDefects = (readAt: (rel: string) => string) => {
   if (!list.includes('{total === 0 ? ( <EmptyState fill={journey} kind="positions" title={t.millionea.emptyTickets}')) d.push("\"no ticket yet\" is not kept for a reader who holds none");
   if (!list.includes(') : cards.length === 0 ? ( <EmptyState fill={journey} kind="positions" title={total > PLAYER_PER_PAGE ? t.millionea.lensNoneOnPage : lensEmptyTitle(t, lens)}')) d.push("a lens that empties a page does not say so in its own words");
   const register = squash(code(readAt(REGISTER)));
-  if (!register.includes('const { rows: weeks, total, page } = await millioneaRegister({ page: Number.parseInt(String(sp.page ?? "1"), 10) || 1, perPage: PLAYER_PER_PAGE, });')) d.push("the register does not read one page with its total");
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER, the lead's H2 ruling and the critic's M11): the index reads the
+  // weeks still running beside its one page of final weeks with their total, and its launch-day empty state is the kit's own,
+  // filling its column — asked only when neither exists; a page of final weeks with none says so in a line.
+  if (!register.includes('const [current, { rows: weeks, total, page }] = await Promise.all([ millioneaRegisterCurrent(), millioneaRegister({ page: Number.parseInt(String(sp.page ?? "1"), 10) || 1, perPage: PLAYER_PER_PAGE }), ]);')) d.push("the register does not read one page with its total");
   if (!register.includes(`{total > PLAYER_PER_PAGE && ( <div className="rounded-lg border border-border bg-bg-elevated/40 overflow-hidden"> <Pagination total={total} page={page} perPage={PLAYER_PER_PAGE} baseHref={MILLIONEA_HREF.register} ${LABELS}`)) d.push("the register has no link pager");
-  if (!register.includes("{total === 0 ? ( <EmptyState title={t.millionea.regEmpty} />")) d.push("the register's empty state does not ask the total");
+  if (!register.includes('{current.length === 0 && total === 0 ? ( <EmptyState fill kind="fairness" title={t.millionea.regEmpty}')) d.push("the register's empty state does not ask the total");
   if (list.includes("onNavigate")) d.push("Tiketi zangu's pager is driven by script (a link pager works without JavaScript)");
   if (register.includes("onNavigate")) d.push("the register's pager is driven by script (a link pager works without JavaScript)");
   return d;

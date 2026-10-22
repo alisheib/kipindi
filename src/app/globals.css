@@ -4812,18 +4812,12 @@ html[data-sheet-open] .route-enter { animation: none; }
    Set and cleared by `MaswaliCarry` around a run it plays; never under a clamp, where nothing plays (its box keeps its
    place either way: visibility, not display). */
 .kp-mln-carry-vacated { visibility: hidden; }
-/* MASWALI-BUILD S5 · How-to's example Button keeps its full approved Swahili instruction. At 320px
-   its unwrapped text ran past the card's right edge (how-sw-320-s2); let this one kit control grow
-   to two lines while keeping the md control's minimum tap height and the card's content width. */
-.btn.kp-mln-example-button {
-  max-width: 100%;
-  min-width: 0;
-  height: auto;
-  min-height: var(--h-control-md);
-  padding-block: var(--sp-2);
-  white-space: normal;
-  text-align: center;
-}
+/* S5-DESIGN-REGISTER (2026-10-21, the register critic's H4) · A SOURCE LINK INSIDE A LINE OF TEXT REACHES THE 40px FLOOR
+   WITHOUT MOVING A PIXEL OF PAINT — the kit switch's own recipe (DG-A-02, `.toggle-switch::after` above): an out-of-flow
+   box exactly `--tap-min` tall, centred on the link, no wider than it (a horizontal bleed could take a neighbour's tap).
+   (The example button's override, `.btn.kp-mln-example-button`, is gone with its two-line label — L10.) */
+.kp-mln-hit { position: relative; }
+.kp-mln-hit::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: var(--tap-min); transform: translateY(-50%); }
 /* MASWALI-BUILD S5 · MILLIONEA'S CHINESE, AS THE PLATFORM SETS IT (the S5 review of 24ec0d33, LOW 14): every Millionea page
    root and each Millionea part drawn on another page (the home card, the /positions row) carries `.kp-mln-zh`, so its
    Chinese runs break only at their spaces and punctuation — a word kept whole — and a run longer than its line still

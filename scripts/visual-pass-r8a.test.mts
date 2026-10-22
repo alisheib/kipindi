@@ -350,7 +350,8 @@ const WARN_REGISTRY: Record<string, [number, string]> = {
   // 1 → gone on 2026-10-21 (S5-DESIGN-TICKETS round 2, in the open): the win receipt draws the ONE ledger now
   // (`MaswaliLedger`), so its fee row's amber is that file's entry below — the receipt paints none of its own.
   // 2026-10-18 (S5 integration): the same deduction on the two pages that print a week's money as a receipt.
-  "src/app/millionea/how/page.tsx": [1, "the worked example's fee row (a deduction), the receipt's own `ReceiptRow` tone — as the win ledger's"],
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER): How's worked weeks are the one ledger's rows now, so How names
+  // no warning tone of its own (its fee row's tone is `maswali-ledger.tsx`'s, counted below).
   // RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER): the week's ledger rows are the ONE Millionea ledger's now
   // (`maswali-ledger.tsx`: the register's week page, How to play's examples, the win ledger and the hub in round 2), so the
   // fee row's tone moved there with them — its row type's member and its one use; register-parts names none of its own.

@@ -23,7 +23,10 @@ function Hairline({ draw, behind }: { draw?: boolean; behind?: boolean }) {
         fill="none"
         stroke="currentColor"
         strokeWidth="1"
-        vectorEffect="non-scaling-stroke"
+        // ⛔ No `vector-effect: non-scaling-stroke` (S5-DESIGN-REGISTER, the tile read of 2026-10-21): with it Chromium lays
+        // the dash in SCREEN pixels, not in the path's own length, so a drawn line rested as a 100px dash, a 100px gap and a
+        // dash again — How's example ended on a broken "Unbroken" Line (sockets 4–8 bare at 360). The line is horizontal in
+        // a 1-unit-tall box, so its stroke is 1px either way; only the dash's frame changes, back to `pathLength`'s.
         pathLength={100}
         className={draw ? "m-draw" : undefined}
         style={draw ? { strokeDasharray: 100, strokeDashoffset: 100, ...(behind ? { animationDelay: "var(--t-quick)" } : null) } : undefined}
