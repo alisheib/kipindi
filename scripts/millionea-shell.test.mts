@@ -20,7 +20,7 @@
  * is the lane's `s5fplt` drive (reported with the commit).
  */
 import "next/dist/server/node-environment.js";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { createRequire, Module as NodeModule } from "node:module";
 import { join } from "node:path";
 import ts from "typescript";
@@ -201,6 +201,47 @@ section("2 · D13 · on a break, a Millionea page lights one classic destination
   ok("2.4 · AppShell hands the answer to the classic bar and rail alone, only while Millionea is visible and the reader is on a break (no other reader's payload changes)", wiring(raw(SHELL)).length === 0, j(wiring(raw(SHELL))));
   ok("2.4′ PLANT · the answer handed to every reader (a dark address would light Markets) is reported",
     wiring(plant(raw(SHELL), "promoSuppressed && (await resolveMillionea()).visible ? { millioneaOnBreak: true } : {}", "{ millioneaOnBreak: true }")).length > 0);
+}
+
+/* ══ §3 · F10 · EVERY MILLIONEA MOVE ANSWERS AT ONCE ═════════════════════════════════════════════════════════════════════
+   MASWALI-BUILD S5 round 2 · PLATFORM (2026-10-22; the motion critic's "Perceived performance" row, unowned until the lead's
+   round 2, and its M4: "View ticket" gave no feedback — the stamp's router.push never told NavProgress, so the bare slip
+   stood ~1.2s with nothing moving). DESIGN_AUTHORITY §F10: a link's click starts the platform's progress bar by itself, and
+   a programmatic `router.push` must dispatch `50pick:navigating` first to get it. The slip lane fixed its two moves with a
+   `navigate` helper (test:maswali-slip-design 9.2 holds the stamp's); this census holds EVERY programmatic move in every
+   Millionea file — the hub, the slip, the tickets, How, the register, /results' section, the shared parts — so the next
+   one cannot ship silent: each `router.push(` / `router.replace(` is the body of a `navigate(() => …)` whose helper
+   dispatches the event before it pushes, or stands right after that dispatch. (`router.refresh()` stays where it is: it
+   moves no page.) */
+section("3 · F10 · every programmatic move on a Millionea surface starts the platform's progress bar first");
+{
+  const walkTs = (dir: string): string[] => readdirSync(join(ROOT, dir), { withFileTypes: true })
+    .flatMap((d) => (d.isDirectory() ? walkTs(`${dir}/${d.name}`) : /\.tsx?$/.test(d.name) ? [`${dir}/${d.name}`] : []));
+  const MLN = walkTs("src/app/millionea").concat(walkTs("src/components/maswali"), walkTs("src/app/results").filter((f) => /\/millionea/.test(f))).sort();
+  const DISPATCH = 'window.dispatchEvent(new Event("50pick:navigating"));';
+  /** Every programmatic move in a file's code (comments out), and whether each starts the bar first. */
+  const movesOf = (text: string) => {
+    const s = decomment(text);
+    const helper = /function navigate\(push: \(\) => void\): void \{\s*([^}]*)\}/.exec(s)?.[1] ?? "";
+    const helperStarts = squash(helper).trim().startsWith(DISPATCH) && /push\(\);/.test(helper);
+    return [...s.matchAll(/\brouter\.(?:push|replace)\(/g)].map((m) => {
+      const before = s.slice(Math.max(0, m.index! - 240), m.index!);
+      const viaHelper = /\bnavigate\(\(\) => $/.test(before) && helperStarts;
+      const afterDispatch = squash(before).trimEnd().endsWith(DISPATCH);
+      return { at: s.slice(0, m.index!).split("\n").length, ok: viaHelper || afterDispatch };
+    });
+  };
+  const census = MLN.map((f) => ({ f, moves: movesOf(raw(f)) })).filter((x) => x.moves.length > 0);
+  const silent = census.flatMap((x) => x.moves.filter((m) => !m.ok).map((m) => `${x.f}:${m.at}`));
+  const total = census.reduce((n, x) => n + x.moves.length, 0);
+  ok(`3.0 PREMISE · the census reads ${MLN.length} Millionea files and finds their programmatic moves (${total}: ${census.map((x) => `${x.f.split("/").slice(-2).join("/")} ×${x.moves.length}`).join(", ")}), the stamp's "View ticket" among them`,
+    MLN.length >= 40 && census.some((x) => x.f === "src/app/millionea/slip/slip-client.tsx" && x.moves.length >= 2), j(census.map((x) => x.f)));
+  ok("3.1 · every one dispatches `50pick:navigating` before it pushes (§F10) — no Millionea move waits on a silent screen", silent.length === 0, j(silent));
+  const SLIP = "src/app/millionea/slip/slip-client.tsx";
+  const bare = movesOf(plant(raw(SLIP), "if (c) navigate(() => router.push(", "if (c) (() => router.push("));
+  ok("3.1′ PLANT · the stamp's \"View ticket\" pushed bare again (the critic's M4) is reported", bare.some((m) => !m.ok));
+  const mute = movesOf(plant(raw(SLIP), `  ${DISPATCH}\n  push();`, "  push();"));
+  ok("3.1″ PLANT · the helper that no longer dispatches first (every move through it silent) is reported", mute.length >= 2 && mute.every((m) => !m.ok));
 }
 
 console.log(`\nmillionea-shell: ${pass} passed, ${fails.length} failed`);
