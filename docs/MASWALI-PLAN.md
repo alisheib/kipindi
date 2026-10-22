@@ -2714,7 +2714,10 @@ MB-96 (TK.2, S7-F9 8 and 11), MB-74 (RD.5, S7-F9 9) and MB-23 (OB.0, S7-OB, merg
   and How to play draw (How through `ruleSunset`'s `{rule}`); S7's own purchase line, `finalRule`, is gone; D19a
   re-pinned. DESIGN_AUTHORITY §M8a item 19. Guards: `test:maswali-design` 2.F3a and 2.F3b (with its plant),
   `test:maswali-hub` 3.1 and §10. ⚠️ S6's L lane rewrites `ruleSunset` in all three languages: its merge keeps this key
-  as the rule's one wording.
+  as the rule's one wording. *The law says it the same way* (S7-F9 14): RULES §2.12's sunset paragraph no longer says
+  only that the final week "runs normally" — it states MR-30's rule as players read it (no 10/10: the highest scores
+  share the pool equally, with no floor top-up; J = R + S, the fee and its levies taken), and that a final week which
+  voids or sells nothing passes the role to the next week to open (`sunsetState`, PASSES_ON).
 - **S7 · L22's day only while it is ahead (S7-F9 5; the lead's ruling (b) of 2026-10-22, MR-30, OD-03).** The hub's bar
   says the final week's opening day ("It opens 30 Nov.") only while the open is still to come; a final week still a
   draft once its time has passed, or whose time cannot be read, is announced with S7's reviewed F1 words and no date

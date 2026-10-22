@@ -3280,8 +3280,9 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     final week, the slip as its first rule, the confirm sheet beside the fee rule, and How to play inside its stop rule
     (`ruleSunset`, which keeps only its own first clause and fills the rule as `{rule}`). Why: two sentences said one
     truth (S7's purchase line `finalRule` beside the hub's key), and the hub's and How's sentence left out the floor
-    clause, which is material — a final week with no 10/10 is never topped up to the floor. Guards:
-    `test:maswali-design` 2.F3a and 2.F3b (with its plant), `test:maswali-hub` 3.1 and §10.
+    clause, which is material — a final week with no 10/10 is never topped up to the floor. The law states the same rule
+    in the same terms: RULES §2.12's sunset paragraph (S7-F9 14), so no player reads one rule on a screen and another in
+    the rules. Guards: `test:maswali-design` 2.F3a and 2.F3b (with its plant), `test:maswali-hub` 3.1 and §10.
 20. **The final week announced ahead names its day only while that day is ahead (the lead's ruling (b), 2026-10-22;
     MR-30, OD-03).** The hub's L22 bar says "Week 52 will be Millionea's final week. It opens 30 Nov." while the open is
     still to come. A final week still a draft once its time has passed — or whose time cannot be read — is announced

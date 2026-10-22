@@ -677,8 +677,14 @@ that voids (on the closed list of grounds) is replaced by the first unused reser
   only and has **no cap**.
 - The winner floor of Invariant 1 does **not** apply: a Millionea share is a share of a jackpot, not a return on a stake.
 
-**The sunset.** Retiring the product is announced at least one full week ahead; the final week runs normally and everything
-the jackpot holds goes into it. A regulator-ordered stop refunds the current week. The ceremony is the Owner's alone.
+**The sunset** (MR-30). Retiring the product is announced at least one full week before the final week's sales open. The
+final week sells, closes and is graded like any other, and everything the jackpot holds goes into it: a 10/10 ticket wins
+it as in any week, the floor included. Without one, it is the one week a score below 10 is paid, by the rule its buyers
+read on the hub, the slip, the confirm sheet and How to play (`finalWeekRule`): "**Final week: if no ticket gets 10/10,
+the pool is shared equally by this week's highest-scoring tickets, with no floor top-up**". The score is a ticket's
+graded correct answers out of 10; J = R + S, and the fee and its levies are taken as above. If the final week voids or
+sells nothing, the next week to open becomes the final week. A regulator-ordered stop refunds the current week. The
+ceremony is the Owner's alone.
 
 **Who may buy.** Real balance only — a purchase that would draw bonus money is refused. Accounts holding a staff role and
 accounts 50pick operates are refused. Every responsible-gambling gate applies (§2.9's refusals), and a ticket bought before a
