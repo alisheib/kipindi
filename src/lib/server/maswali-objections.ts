@@ -20,6 +20,8 @@
  * Every act is ONE transaction under `maswali:chain` (DATA-LAYER rules 1, 2): the filing's row; the ruling's conditional
  * decision (its first write — a lost race writes nothing), the question's new result, the restarted window and the
  * recompute, all or none. Their audit rows are owed and written once the lock has committed (`recordOwed`).
+ * Its rows are never a market ruling: `listUpheldRulings` reads only rows without a question (both stores), so a filing or
+ * a ruling here moves no rulings memo (`reversals.ts`) and calls no `noteObjectionWrite`.
  * ⏳ Notices (the officer's "a week is frozen", the player's "your objection was decided") are S6-N's registry's; the
  *    platform's own two notices name a market and link to the Yes/No queue, so this door sends neither yet.
  */
@@ -28,7 +30,6 @@ import { randomId } from "./crypto";
 import { afterCommit, withLock } from "./locks";
 import { db, type ObjectionReason, type StoredObjection } from "./store";
 import { DETAIL_MAX, DETAIL_MIN, OBJECTION_REASONS, requireRulingOfficer } from "./objections-service";
-import { noteObjectionWrite } from "./reversals";
 import { MASWALI_CHAIN_LOCK, frozenRules, gradable, recomputeGateLocked, recordOwed, type OwedAudit } from "./maswali-service";
 import { questionStore, ticketStore, weekStore, type StoredQuestion, type StoredWeek } from "./maswali-dal";
 import { invalidateMillioneaRegisterWeek } from "./maswali-register-cache";
@@ -154,7 +155,6 @@ export async function fileMillioneaObjection(input: {
         outcomeAtFiling: q.outcome, questionOrdinal: input.slot,
       };
       await db.objection.create(objection, tx ?? undefined);
-      afterCommit(tx, () => noteObjectionWrite());
       return { ok: true, objectionId: objection.id, owed: [{
         category: "COMPLIANCE", action: "maswali.objection.filed", actorId: input.userId, targetType: "MaswaliQuestion", targetId: q.id,
         payload: { objectionId: objection.id, week: week.code, slot: slotLabel(q.slot), reason: input.reason, outcomeAtFiling: q.outcome,
@@ -270,7 +270,6 @@ export async function decideMillioneaObjection(input: {
       remedy: input.ruling === "REJECT" ? null : input.ruling,
     }, tx ?? undefined);
     if (!won) return refuse("This objection was decided a moment ago by another officer.");
-    afterCommit(tx, () => noteObjectionWrite());
     if (next === null) {
       return { ok: true, changed: false, restarted: false, code: week.code, owed: [{
         category: "COMPLIANCE", action: "maswali.objection.rejected", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id,

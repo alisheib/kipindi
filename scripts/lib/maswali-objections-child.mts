@@ -398,9 +398,18 @@ const once2 = await W.db.objection.decideOpen((fe as any).objectionId, { status:
 const oe = await objectionRow((fe as any).objectionId);
 ok("6.6 · ⭐ the store rules only while OPEN (a conditional update): a second decision writes nothing",
   once1 === true && once2 === false && oe.status === "REJECTED" && oe.reviewNote === "first", J({ once1, once2, status: oe.status }));
-const cBad = await classic.upholdObjection("obj_none", COMP_A, { remedy: "REINSTATE" as any, note: "no such remedy here" });
-ok("6.7 · the Yes/No ruling refuses a remedy other than VOID or REVERSE, whatever a form posts (it was flipped as a REVERSE)",
-  !cBad.ok && /VOID or REVERSE/.test(errOf(cBad)), errOf(cBad));
+// ⚠️ A FIXTURE, DECLARED: a Yes/No poll whose verdict reads YES (stamped as a resolution leaves it) and one OPEN objection
+// to it, written as the row itself — the ruling's own refusal is the subject here, not how a poll reaches its verdict.
+const poll = await W.w.poll({ title: `Objection remedy poll ${pid}` });
+await W.mdal.marketStore.stamp(poll.id, { status: "RESOLVED", resolvedOutcome: "YES", updatedAt: new Date().toISOString() });
+const pollCase = { id: `obj_ob_poll_${pid}`, marketId: poll.id, userId: H, reason: "WRONG_OUTCOME", detail: "The source published NO for this poll", status: "OPEN",
+  createdAt: new Date().toISOString(), reviewedBy: null, reviewedAt: null, reviewNote: null, remedy: null, outcomeAtFiling: "YES" };
+await W.db.objection.create(pollCase);
+const cBad = await classic.upholdObjection(pollCase.id, COMP_A, { remedy: "REINSTATE" as any, note: "no such remedy for a Yes/No verdict" });
+const pollAfter = await W.mdal.marketStore.get(poll.id);
+ok("6.7 · the Yes/No ruling refuses a remedy other than VOID or REVERSE, whatever a form posts: the poll keeps its verdict and the case stays OPEN (unread, it was flipped as a REVERSE)",
+  !cBad.ok && /VOID or REVERSE/.test(errOf(cBad)) && pollAfter?.resolvedOutcome === "YES" && (await objectionRow(pollCase.id))?.status === "OPEN",
+  J({ cBad, verdict: pollAfter?.resolvedOutcome }));
 
 // ═══ §7 · THE RECORD ════════════════════════════════════════════════════════════════════════════════════════════════
 console.log(`${LF}§7 · the record`);

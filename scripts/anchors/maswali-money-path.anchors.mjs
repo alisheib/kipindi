@@ -683,4 +683,29 @@ export const MUTATIONS = [
     expect: "SF.7 · ⛔",
     suite: "purchase",
   },
+  // ── S7-OB · the Millionea objection door (MR-16, MB-23): what an objection does to the week's money ──────────────────
+  {
+    name: "(S7-OB-hold) a filing lands on another market than its week's: the release never sees it, and pays while it stands (MR-16)",
+    file: "src/lib/server/maswali-objections.ts",
+    from: "        id: `obj_${randomId(12)}`, marketId: week.marketId, userId: input.userId, reason: input.reason as ObjectionReason, detail,",
+    to: "        id: `obj_${randomId(12)}`, marketId: `${week.marketId}_elsewhere`, userId: input.userId, reason: input.reason as ObjectionReason, detail,",
+    expect: "OM.1 · ⭐",
+    suite: "adversarial:OM",
+  },
+  {
+    name: "(S7-OB-regrade) an upheld REVERSE is recorded but the question keeps its result: the money follows the record as sealed (MR-16, MR-17)",
+    file: "src/lib/server/maswali-objections.ts",
+    from: "      outcome: next, voidReason: next === \"VOID\" ? (voidReason as MaswaliVoidReason) : null,",
+    to: "      outcome: q.outcome, voidReason: q.voidReason,",
+    expect: "OM.4 · ⭐",
+    suite: "adversarial:OM",
+  },
+  {
+    name: "(S7-OB-restart) an upheld change never restarts the window: the week settles at once on a result nobody could object to (MR-16)",
+    file: "src/lib/server/maswali-objections.ts",
+    from: "    const restarted = changed && !week.objectionRestarted;",
+    to: "    const restarted = false;",
+    expect: "OM.3 · ⛔",
+    suite: "adversarial:OM",
+  },
 ];
