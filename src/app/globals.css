@@ -4749,7 +4749,8 @@ html[data-sheet-open] .route-enter { animation: none; }
    first line. As an inline-block it was an atomic inline, which a line may always break after, so a fact whose first run
    did not fit its line left the mark alone on an EMPTY first line (cut away by the clip) and its words on the next. Out
    of flow it offers no break: a fact's first run opens its first line. On a line of the list's own height it is drawn
-   pixel for pixel where the inline-block drew it; beside a taller first line it sits at that line's top, not its baseline. */
+   pixel for pixel where the inline-block drew it; beside a taller first line it sits at that line's top, not its baseline.
+   The rule: DESIGN_AUTHORITY §M8a item 24. */
 .kp-mln-facts {
   --mln-sep: 0.9em;
   display: flex;
@@ -4792,6 +4793,11 @@ html[data-sheet-open] .route-enter { animation: none; }
    of a cancelled or refunded ticket — the open ring at the disabled control's own opacity, so it never reads as the live
    "awaiting" ring beside it (`maswali-seal-line.tsx`, `SocketGlyph`). */
 .kp-mln-rest { opacity: var(--state-disabled-opacity); }
+/* MASWALI-BUILD S5 round 2 · A STRUCK QUESTION'S STRIKE ENDS AT ITS INK (the lead's read of the zh tiles: "…吗？-"; the
+   rule: DESIGN_AUTHORITY §M8a item 24; `maswali-strike.tsx` says why). The last full-width mark's empty part is clipped
+   by the platform's own measured trim (cjk-marks.tsx: 0.65em, ？ 0.5em), its strike with it; nothing moves. */
+.kp-mln-strike-end { clip-path: inset(0 0.65em 0 0); }
+.kp-mln-strike-end--q { clip-path: inset(0 0.5em 0 0); }
 /* MASWALI-BUILD S5-DESIGN-TICKETS · A MOMENT WAITS FOR ITS OWNER'S EYES (the R1 tickets critic's M8 and the motion critic's
    H3, Ali 2026-10-21 10/10 pass; `maswali-moment.tsx` says why). Inside a moment that has not yet come into view
    (`[data-mln-moment]` without `[data-mln-played]`, which React renders from the observer's state) every N-block animation

@@ -23,11 +23,15 @@
  *      180px keeps a margin under every measured box). Each figure rule read directly: no number phrase offered from a
  *      figure's digits (2.2), no kept run running on past a figure's end into its words (2.3).
  *   §3 NOTHING ELSE MOVED: against the keeper at the release this branch started from (`BASE`), every fact of every string
- *      keeps the same runs, except where one of the rules applies — a Swahili fact with a cap's count, or a fact with a
- *      money figure — and each such fact still keeps every run the base kept that overlaps no figure and does not open on
- *      a cap's noun. (`test:maswali-design` 4.A1c holds the A1 phrases themselves.)
+ *      keeps the same runs, except where one of the rules applies — a Swahili fact with a cap's count, a fact with a money
+ *      figure, or a fact with a one-letter word (§5) — and each such fact still keeps every run the base kept that overlaps
+ *      no figure and does not open on a cap's noun. (`test:maswali-design` 4.A1c holds the A1 phrases themselves.)
  *   §4 PLANTS, each compiled into the keeper: the old Swahili take of a cap's opener (§1, §2.1), a number rule taking a
  *      figure's digits (§2.2), a kept run left starting inside a figure (§2.3, §2.1), and both figure rules out (§2.1).
+ *   §5 A ONE-LETTER WORD NEVER ENDS A LINE (the lead's read of the hub's intro at en 360, "…5 reserve. A" / "ticket is…"):
+ *      every one-letter word of every line is one run with the word after it (5.1), the hub's intro among them (5.3);
+ *      Swahili and Chinese lines are untouched by the rule, and an English line moves only where such a word stands (5.2);
+ *      the rule taken out is caught (5.4).
  * ⛔ It READS, compiles and renders in memory; it writes nothing.
  */
 import { readFileSync } from "node:fs";
@@ -233,13 +237,17 @@ ok(`2.3′ CONTROL · at the base both happened: "12,345,000 carried" offered, a
 section("§3 · against the base keeper, a fact's runs change only where a rule applies — and keep every run the rules leave alone");
 const FIGURE = /TZS\s?[\d,]+/;
 const CAP_COUNT = /\b\d+ (?:of|kati ya) \d+\b/;
+/** A one-letter word and the word after it, as a line holds it (§5): the letter alone between white space (or a line's
+ *  start, or an opening bracket or quote), then the next word. */
+const ONE_LETTER = /(^|[\s(“])([A-Za-z])\s+(\S+)/g;
+const hasOneLetter = (fact: string) => [...fact.matchAll(ONE_LETTER)].length > 0;
 const changed: string[] = [], unexplained: string[] = [], lost: string[] = [];
 for (const l of LOCALES) for (const { key, fact } of FACT_SET[l]) {
   const b = kept(base, l, fact).map(textOf), n = kept(now, l, fact).map(textOf);
   if (j(b) === j(n)) continue;
   changed.push(`${l} ${key}`);
   const money = FIGURE.test(fact), cap = l === "sw" && CAP_COUNT.test(fact);
-  if (!money && !cap) { unexplained.push(`${l} millionea.${key} "${fact}": ${j(b)} → ${j(n)}`); continue; }
+  if (!money && !cap && !hasOneLetter(fact)) { unexplained.push(`${l} millionea.${key} "${fact}": ${j(b)} → ${j(n)}`); continue; }
   // Every base run that overlaps no money figure and does not open on a noun before a cap's count is still kept, inside
   // some run now. (A run is a stretch of its fact: it is found where it stands, and a figure where the money reads it.)
   const figures = figuresIn(fact);
@@ -251,7 +259,7 @@ for (const l of LOCALES) for (const { key, fact } of FACT_SET[l]) {
   }
 }
 console.log(`  ${changed.length} facts changed: ${changed.join(", ")}`);
-ok("3.1 · every fact whose runs changed holds a money figure, or is a Swahili fact with a cap's count — no other line moved", unexplained.length === 0 && changed.length > 0, unexplained.join(" | "));
+ok("3.1 · every fact whose runs changed holds a money figure or a one-letter word, or is a Swahili fact with a cap's count — no other line moved", unexplained.length === 0 && changed.length > 0, unexplained.join(" | "));
 ok("3.2 · …and each keeps every run the base kept that the rules do not touch (no phrase lost in sw, en or zh)", lost.length === 0, lost.join(" | "));
 
 /* ══ §4 · PLANTS ═══════════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -271,8 +279,50 @@ const bothOut = compileAt(FACTS_REL, SRC.replace(": [...text.matchAll(NUMBER_THE
 ok("4.4 PLANT · both figure rules out (the base's two bridges): en's \"TZS 12,345,000 carried forward\" one run over budget again — the census finds it",
   measure(bothOut).over.some((x) => x.startsWith("en ") && x.includes("TZS 12,345,000 carried forward")));
 
+/* ══ §5 · A ONE-LETTER WORD NEVER ENDS A LINE ══════════════════════════════════════════════════════════════════════════ */
+section("§5 · a one-letter word never ends a line: it is one run with the word after it");
+/** Every one-letter word of every line the keeper draws loose — not inside one kept run with the word after it. */
+const looseLetters = (k: Keeper) => {
+  const found: string[] = [], loose: string[] = [];
+  for (const l of LOCALES) for (const { key, fact } of FACT_SET[l]) {
+    const runs = kept(k, l, fact).map(textOf);
+    for (const m of fact.matchAll(ONE_LETTER)) {
+      const phrase = m[0].slice(m[1].length);
+      found.push(`${l} ${key}: "${phrase}"`);
+      if (!runs.some((r) => r.includes(phrase))) loose.push(`${l} millionea.${key}: "${phrase}" in "${fact}" — runs ${j(runs)}`);
+    }
+  }
+  return { found, loose };
+};
+const letters = looseLetters(now);
+const byLocale = (l: L3) => letters.found.filter((x) => x.startsWith(`${l} `)).length;
+console.log(`  one-letter words: en ${byLocale("en")}, sw ${byLocale("sw")}, zh ${byLocale("zh")} — ${letters.found.filter((x) => x.startsWith("en ")).slice(0, 8).join(" · ")} …`);
+ok(`5.1 · every one-letter word of every line is one run with the word after it (${letters.found.length} in the census: en ${byLocale("en")}, sw ${byLocale("sw")}, zh ${byLocale("zh")})`,
+  byLocale("en") > 10 && letters.loose.length === 0, letters.loose.join(" | "));
+// The keeper without the rule: what §5.2 compares against, and §5.4's plant.
+const noLetter = planted("const ranges = mergeRanges([...kept, ...money, ...oneLetterRanges(text)]);", "const ranges = mergeRanges([...kept, ...money]);");
+const swzhMoved: string[] = [], enMoved: string[] = [];
+let enChanged = 0;
+for (const l of LOCALES) for (const { key, fact } of FACT_SET[l]) {
+  const was = j(kept(noLetter, l, fact).map(textOf)), is = j(kept(now, l, fact).map(textOf));
+  if (was === is) continue;
+  if (l !== "en") swzhMoved.push(`${l} millionea.${key}: ${was} → ${is}`);
+  else if (!hasOneLetter(fact)) enMoved.push(`en millionea.${key}: ${was} → ${is}`);
+  else enChanged++;
+}
+ok(`5.2 · Swahili and Chinese are untouched — every sw and zh line keeps exactly the runs it kept without the rule — and an English line moves only where a one-letter word stands (${enChanged} en facts)`,
+  swzhMoved.length === 0 && enMoved.length === 0 && enChanged > 0, [...swzhMoved, ...enMoved].join(" | "));
+const howOne = fill(T.en.millionea.howOne, { price: formatTzs(1_000) });
+const howRuns = kept(now, "en", howOne).map((r) => ({ run: textOf(r), w: +widthOf(r).toFixed(1) }));
+console.log(`  the hub's intro (howOne, en): ${j(howRuns)}`);
+ok(`5.3 · the hub's intro holds "A ticket" as one run ("…5 reserve. A" / "ticket is…" can no longer be drawn), ${howRuns.find((r) => r.run.includes("A ticket"))?.w}px`,
+  howRuns.some((r) => r.run === "A ticket"), j(howRuns));
+const loosePlanted = looseLetters(noLetter).loose;
+ok(`5.4 PLANT · the rule taken out of the keeper: 5.1 reads ${loosePlanted.length} loose letters again (the rest the platform's last two words hold), the hub's "A ticket" among them`,
+  loosePlanted.some((x) => x.startsWith("en millionea.howOne:") && x.includes('"A ticket"')), loosePlanted.join(" | "));
+
 console.log(`\n${"═".repeat(70)}\n  MASWALI FACTS: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
-/** The floor is the count a green run printed. */
-const MIN_ASSERTIONS = 12;
+/** The floor is the count a green run printed (12; §5 brought it to 16). */
+const MIN_ASSERTIONS = 16;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);
