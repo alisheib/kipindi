@@ -506,6 +506,8 @@ const phasesOf = (t: (p: string) => string) => ({
     "src/lib/use-modal-lock.ts": "the page's scroll lock under a dialog (body overflow, with the scrollbar's width padded back in the same write): a lock, not a picture — the frame it lands in shows the same page",
     "src/components/ui/unsaved-changes.tsx": "the save bar's room at the page's end (body padding): written on the reader's edit (typing — discrete updates, before the paint)",
     "src/components/layout/scroll-cast.tsx": "the scroll state (data-scrolled, data-scrolling, data-fab-idle): written from scroll events, never by a first paint",
+    // MASWALI-BUILD S5-FIX-PLATFORM D15 (2026-10-21), classified in round 2: the chat bubble yields over text and figures.
+    "src/components/chat/ChatRoot.tsx": "the chat bubble's yield (data-over-content, on the bubble's own wrapper): written in an animation frame that a scroll, a resize, a new page, the body's growth, the fonts' arrival or the bubble's hand-back (data-scrolling / data-fab-idle leaving) asks for, at most once a frame and only when the answer changes; it fades floating chrome to --state-yield-opacity and moves no box, so the frame it lands in shows the same page, and only the bubble's own opacity rule reads it (D15)",
     "src/components/updown/use-quick-bet.ts": "a request in flight (body data-ud-busy): a gate the handover reads, not a picture",
     "src/components/updown/updown-handover.tsx": "reads the busy gate and the scroll lock; writes no mark",
     "src/components/markets/win-celebration.tsx": "reads the motion class; writes no mark",
