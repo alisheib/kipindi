@@ -311,7 +311,10 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
     ['["^/millionea/tickets/[^/]+$", <MillioneaTicketGhost />]', 'import { MillioneaTicketGhost } from "@/app/millionea/tickets/[serial]/ticket-ghost";', "src/app/millionea/tickets/[serial]/loading.tsx", "return <MillioneaTicketGhost />;"],
     // RE-PINNED (S5 round 2 · PLATFORM, 2026-10-22): Millionea's reading pages, each its loading file's own drawing.
     ['"/millionea/how": <MillioneaHowGhost />', 'import { MillioneaHowGhost } from "@/app/millionea/how/how-ghost";', "src/app/millionea/how/loading.tsx", "return <MillioneaHowGhost />;"],
-    ['"/millionea/register": <MillioneaRegisterGhost />', 'import { MillioneaRegisterGhost } from "@/app/millionea/register/register-ghost";', "src/app/millionea/register/loading.tsx", "return <MillioneaRegisterGhost />;"],
+    // RE-PINNED (S5 round 2 integration — REGISTER × PLATFORM, 2026-10-22): the register's segment loading file draws the
+    // page being opened (`MillioneaRegisterGhostPick`, beside the index's drawing in register-ghost.tsx; DESIGN_AUTHORITY
+    // §M8a item 22) — on the index the index's drawing, a week's own on a week, as Tiketi zangu's above.
+    ['"/millionea/register": <MillioneaRegisterGhost />', 'import { MillioneaRegisterGhost } from "@/app/millionea/register/register-ghost";', "src/app/millionea/register/loading.tsx", "return <MillioneaRegisterGhostPick />;"],
     ['["^/millionea/register/[^/]+$", <MillioneaRegisterWeekGhost />]', 'import { MillioneaRegisterWeekGhost } from "@/app/millionea/register/[week]/register-week-ghost";', "src/app/millionea/register/[week]/loading.tsx", "return <MillioneaRegisterWeekGhost />;"],
   ];
   const oneDrawing = (g: string) => own.filter(([use, imp, file, renders]) => !(g.includes(use) && g.includes(imp) && read(file).includes(renders)));

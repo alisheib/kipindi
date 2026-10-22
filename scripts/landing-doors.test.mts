@@ -262,8 +262,11 @@ check("3.1", "LIVE · in EVERY reader's hero — a visitor, a player, a frozen w
     need(d, live?.[2] === `${LIVE_GLYPH}${navLive(w, l)}`, `${where}: Live is not the live glyph, then the nav's own words "${navLive(w, l)}" and nothing else (${(live?.[2] ?? "").replace(/<svg[\s\S]*?<\/svg>/g, "<svg/>").slice(0, 120)})`);
     need(d, count(row, 'href="/live"') === 1, `${where}: Live is drawn more than once`);
   }
-  // The classic phone rail names /live with the same key and glyph (the premise: one wording, one glyph).
-  need(d, squash(decomment(raw("src/components/layout/bottom-nav.tsx"))).includes('{ href: "/live", glyph: "live" as const, label: t.nav.live }'), "the phone rail no longer names /live `t.nav.live` with the `live` glyph (the premise moved)");
+  // The classic phone rail names /live with the same key and glyph (the premise: one wording, one glyph) — its fourth track,
+  // and, while Millionea's door holds that track (S5-R2-PLATFORM 17, DESIGN_AUTHORITY §M8a item 11), More's first row in
+  // the same words. Re-pinned at the round-2 integration: the rail's track entry no longer carries `as const`.
+  const rail = squash(decomment(raw("src/components/layout/bottom-nav.tsx")));
+  need(d, rail.includes('{ href: "/live", glyph: "live", label: t.nav.live }') && rail.includes('[{ href: "/live", label: t.nav.live }]'), "the phone rail no longer names /live `t.nav.live` with the `live` glyph, track and More row (the premise moved)");
   return d;
 });
 

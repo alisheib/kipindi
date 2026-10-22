@@ -251,14 +251,19 @@ section("3 · F10 · every programmatic move on a Millionea surface starts the p
   const census = MLN.map((f) => ({ f, moves: movesOf(raw(f)) })).filter((x) => x.moves.length > 0);
   const silent = census.flatMap((x) => x.moves.filter((m) => !m.ok).map((m) => `${x.f}:${m.at}`));
   const total = census.reduce((n, x) => n + x.moves.length, 0);
-  ok(`3.0 PREMISE · the census reads ${MLN.length} Millionea files and finds their programmatic moves (${total}: ${census.map((x) => `${x.f.split("/").slice(-2).join("/")} ×${x.moves.length}`).join(", ")}), the stamp's "View ticket" among them`,
-    MLN.length >= 40 && census.some((x) => x.f === "src/app/millionea/slip/slip-client.tsx" && x.moves.length >= 2), j(census.map((x) => x.f)));
-  ok("3.1 · every one dispatches `50pick:navigating` before it pushes (§F10) — no Millionea move waits on a silent screen", silent.length === 0, j(silent));
+  // RE-PINNED AT THE S5 ROUND-2 INTEGRATION (SLIP × PLATFORM, 2026-10-22): S5-R2-SLIP 13 made the stamp's "View ticket" the
+  // kit's Link (OperationResultModal's `primaryHref`), so it is no programmatic move: NavProgress starts on it as on every
+  // internal link. The slip's one move left is its deposit door (`onDeposit`), and the census and its plants hold that one.
   const SLIP = "src/app/millionea/slip/slip-client.tsx";
-  const bare = movesOf(plant(raw(SLIP), "if (c) navigate(() => router.push(", "if (c) (() => router.push("));
-  ok("3.1′ PLANT · the stamp's \"View ticket\" pushed bare again (the critic's M4) is reported", bare.some((m) => !m.ok));
+  ok(`3.0 PREMISE · the census reads ${MLN.length} Millionea files and finds their programmatic moves (${total}: ${census.map((x) => `${x.f.split("/").slice(-2).join("/")} ×${x.moves.length}`).join(", ")}), the slip's deposit door among them`,
+    MLN.length >= 40 && census.some((x) => x.f === SLIP && x.moves.length >= 1), j(census.map((x) => x.f)));
+  ok("3.0b · the stamp's \"View ticket\" is the kit's Link (the slip hands the stamp its address, never a push)",
+    squash(decomment(raw(SLIP))).includes("primaryHref={stamp ?") && !/onPrimary=\{[^}]*router\.push/.test(squash(decomment(raw(SLIP)))));
+  ok("3.1 · every one dispatches `50pick:navigating` before it pushes (§F10) — no Millionea move waits on a silent screen", silent.length === 0, j(silent));
+  const bare = movesOf(plant(raw(SLIP), "onDeposit={(amount) => navigate(() => router.push(", "onDeposit={(amount) => (() => router.push("));
+  ok("3.1′ PLANT · the slip's deposit door pushed bare (no bar first) is reported", bare.some((m) => !m.ok));
   const mute = movesOf(plant(raw(SLIP), `  ${DISPATCH}\n  push();`, "  push();"));
-  ok("3.1″ PLANT · the helper that no longer dispatches first (every move through it silent) is reported", mute.length >= 2 && mute.every((m) => !m.ok));
+  ok("3.1″ PLANT · the helper that no longer dispatches first (every move through it silent) is reported", mute.length >= 1 && mute.every((m) => !m.ok));
 }
 
 /* ══ §4 · THE MAIN LANDMARK'S GUEST SWITCH, FOR EVERY SIGNED-OUT READER ═══════════════════════════════════════════════════
