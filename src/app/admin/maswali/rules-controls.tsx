@@ -15,6 +15,7 @@ import { Select } from "@/components/ui/select";
 import { DateSelect } from "@/components/ui/date-select";
 import { TimeSelect } from "@/components/ui/time-select";
 import { ConfirmModal } from "@/components/ui/modal";
+import { I } from "@/components/ui/glyphs";
 import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 import { RULES_FIELDS, RULES_GROUPS, WEEKDAY_OPTIONS, rulesValueText, type RulesFieldKey, type RulesFormValues } from "./rules-form";
@@ -83,8 +84,14 @@ export function RulesForm({ initial, policies }: { initial: RulesFormValues; pol
         body={
           <div className="space-y-2 text-left">
             <ul className="space-y-1">
+              {/* The change's arrow is the family's (AGENTS.md §7, R-ONE-SOURCE: no typed mark draws an icon); a reader hears
+                  "to" where the eye sees it. */}
               {changed.map((f) => (
-                <li key={f.key} className="text-body-sm">{f.label}: {rulesValueText(f.key, initial[f.key], policies)} → {rulesValueText(f.key, values[f.key], policies)}</li>
+                <li key={f.key} className="text-body-sm">
+                  {f.label}: {rulesValueText(f.key, initial[f.key], policies)}{" "}
+                  <I.arrowRight s={12} text="body-400" className="inline align-[-1px]" /><span className="sr-only">to</span>{" "}
+                  {rulesValueText(f.key, values[f.key], policies)}
+                </li>
               ))}
             </ul>
             <p className="text-body-sm">The next week to open freezes the rules as they stand then. A week already open keeps the rules it froze (MB-75).</p>
