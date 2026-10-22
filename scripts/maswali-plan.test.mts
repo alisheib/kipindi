@@ -10,7 +10,9 @@
  *   §2 status discipline: ✅ cites a commit that exists · ⬜ cites none · ⛔ cites an OD-nn that §9 defines or an R- key
  *      that §2 defines
  *   §3 §0 has a dated State line and a **Next:** line, and Next names no finished (✅/⛔) session
- *   §4 the ordering law: D1 needs S0 ✅ · S1, S2 and S3 need S0.5 ✅ · S5 needs D3 ✅ · S8 needs §6 with no unticked ☐
+ *   §4 the ordering law: D1 needs S0 ✅ · S1, S2 and S3 need S0.5 ✅ · S5 needs D3 ✅ · S8 starts once §6 holds no
+ *      unticked ☐ but its "(after ACTIVE)" line, and is ✅ only with every ☐ ticked (Ali, 2026-10-22: the first public
+ *      week is the drive, so the drive record can only be ticked after ACTIVE)
  *   §5 docs/NEXT-PLAN.md carries exactly one live ▶ row for `MASWALI-BUILD`; it links the tracker and its
  *      "N/M sessions ✅" equals §1; any other heading carrying the key is struck
  *   §6 AGENTS.md points at the tracker and carries the phrase "proceed with Maswali plan"
@@ -111,7 +113,11 @@ function check(w: World): string[] {
   if (started("S5") && status("D3") !== "✅") f.push("§4 S5 has started before D3 (Ali's motion rulings) is ✅");
   const gate = section(w.doc, "## §6 ·");
   if (!gate.includes("☑") && !gate.includes("☐")) f.push("§4 §6 carries no launch-gate lines (☐ / ☑)");
-  if (started("S8") && gate.includes("☐")) f.push("§4 S8 has started while §6 still holds an unticked ☐");
+  // The first public week is the S8 drive (Ali, 2026-10-22): the "(after ACTIVE)" line — the drive's record — can only
+  // be ticked once ACTIVE has run, so it does not hold S8 back from starting; every other ☐ does, and S8 ✅ needs all.
+  const beforeActive = gate.split("\n").filter((l) => l.includes("☐") && !l.includes("(after ACTIVE)"));
+  if (started("S8") && beforeActive.length) f.push("§4 S8 has started while §6 still holds an unticked ☐ before ACTIVE");
+  if (status("S8") === "✅" && gate.includes("☐")) f.push("§4 S8 is ✅ while §6 still holds an unticked ☐");
 
   // §5 — the board row and the tracker agree.
   const lines = w.board.split("\n");
@@ -175,6 +181,12 @@ const swapRow = (doc: string, id: string, fn: (c: string[]) => string[]) =>
 const headSha = execFileSync("git", ["rev-parse", "--short=8", "HEAD"], { cwd: ROOT }).toString().trim();
 const mark = (id: string, s: string, note: string) => (doc: string) => swapRow(doc, id, (c) => [c[0], c[1], s, note]);
 const D = (fn: (d: string) => string): World => ({ ...world, doc: fn(world.doc) });
+// §6 with every ☐ ticked but the "(after ACTIVE)" one — the state on the eve of the first public week.
+const onlyAfterActive = (d: string) => {
+  const g = section(d, "## §6 ·");
+  const ticked = g.split("\n").map((l) => (l.includes("(after ACTIVE)") ? l : l.split("☐").join("☑"))).join("\n");
+  return d.replace(g, () => ticked);
+};
 
 const plants: [string, RegExp, World][] = [
   ["a row vanishes", /§1 row S4 is missing/, D((d) => d.split("\n").filter((l) => !l.startsWith("| S4 |")).join("\n"))],
@@ -194,6 +206,7 @@ const plants: [string, RegExp, World][] = [
   ["S2 before the fence", /§4 S2 has started before S0\.5/, D((d) => mark("S2", "🔨", "engine")(mark("S0.5", "⬜", "")(d)))],
   ["S5 before Ali's motion rulings", /§4 S5 has started before D3/, D((d) => mark("S5", "🔨", "surfaces")(mark("D3", "⬜", "")(d)))],
   ["S8 with the gate unticked", /§4 S8 has started while §6/, D((d) => mark("S8", "🔨", "drive")(d).replace(/(## §6 ·[^\n]*\n)/, "$1\n☐ planted\n"))],
+  ["S8 ✅ with only the after-ACTIVE line unticked", /§4 S8 is ✅ while §6/, D((d) => mark("S8", "✅", headSha)(onlyAfterActive(d)))],
   ["the ▶ row disagrees", /§5 ▶ row says 99 ✅/, { ...world, board: world.board.replace(/(## ▶[^\n]*`MASWALI-BUILD`[^\n]*?)\d+\/(\d+) sessions ✅/, "$199/$2 sessions ✅") }],
   ["the ▶ row stops linking the plan", /never links MASWALI-PLAN\.md/, { ...world, board: world.board.split("(MASWALI-PLAN.md)").join("(elsewhere.md)") }],
   ["a second live ▶ row", /has 2 live ▶ rows/, { ...world, board: world.board + "\n## ▶ 9 · again — `MASWALI-BUILD` · 0/13 sessions ✅\n" }],
@@ -216,5 +229,9 @@ for (const [name, want, w] of plants) {
   if (planted && fired) proved++;
   console.log(`${(!planted ? "INCONCLUSIVE (plant did not apply)" : fired ? "PROVED" : "BLIND").padEnd(36)} ${name}`);
 }
-console.log(`\n${proved}/${plants.length} caught`);
-process.exit(proved === plants.length ? 0 : 1);
+// The control: on the eve of the first public week S8 may run — the after-ACTIVE line alone must not hold it back.
+const eve = D((d) => mark("S8", "🔨", "drive")(onlyAfterActive(d)));
+const eveFired = eve.doc === world.doc ? ["(plant did not apply)"] : check(eve).filter((x) => x.startsWith("§4 S8"));
+console.log(`${(eveFired.length ? `FALSE ALARM ${eveFired[0]}` : "QUIET").padEnd(36)} control: S8 runs with only the after-ACTIVE line unticked`);
+console.log(`\n${proved}/${plants.length} caught · control ${eveFired.length ? "failed" : "held"}`);
+process.exit(proved === plants.length && !eveFired.length ? 0 : 1);

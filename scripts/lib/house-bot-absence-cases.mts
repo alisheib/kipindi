@@ -83,6 +83,14 @@ export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // D19a RE-PINNED AT S7-MERGE 3 (the objection lane merged over S7-F9 13, 2026-10-22; was fad013995, S7-OB's): one comment
   // line, the {hours} placeholder's note naming the window by its one name — "objection window", the lead's P6 ruling.
   // No published word changed.
+  // THE RELEASE'S OWN RE-PIN, kept as its record (the S5 dark release, 2026-10-22: e634e4dc7 → e851d5fa5). Reviewed by the
+  // lead: OUTSIDE the three `millionea` blocks (en/sw/zh) the two blobs are byte-identical (a brace-matched strip of each
+  // block, with a positive control that a planted classic edit is reported); inside them only S5 round 2's ruled player
+  // words moved — "Objection window" for the check window (MR-16), the one sales-close wording with its zone, "Buy
+  // ticket"/"Ticket bought" (Ali's 2026-10-21 ruling 7), the slip's counted asks, the final week's rule (MR-30) — no policy
+  // string, no classic word. e851d5fa5 is the release's dictionary at e34bcdc95, which S7-MERGE 2 merged.
+  // NOT RE-PINNED AT S7-MERGE 4 (the release at 2ed817395, 2026-10-22): the release has not touched the dictionary since
+  // e34bcdc95, so the merged dictionary is S7's, byte for byte, and the pin stays S7's.
   "src/lib/i18n-dict.ts": "bd4addcfcf51ba0158ef75bdb3761c4bee89e26d",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
