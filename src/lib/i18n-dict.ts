@@ -3466,13 +3466,17 @@ export const dict = {
       opensOn: "Opens {day}",
       nextWeekOpens: "Week {week} opens {day}",
       finalWeek: "Final week of Millionea",
-      // MR-30 · OD-03 (S7 F1, F3) · the final week still to open, named on the home card; and its rule told at purchase.
+      // MR-30 · OD-03 (S7 F1) · the final week still to open, named on the home card.
       finalAheadShort: "Week {week} is the final week",
-      finalRule: "Final week: with no 10/10, the highest-scoring tickets share the pool equally, with no floor top-up",
       // S5-DESIGN-HUB H3 (MR-30, RULES §2.12): the final week's rule under the jackpot; L22 (OD-03, the lead's words): the
-      // final week announced ahead.
-      finalWeekRule: "Final week: if no ticket gets 10/10, the pool is shared equally by this week's highest-scoring tickets",
+      // final week announced ahead. ⭐ The lead's ruling of 2026-10-22: ONE wording for the final week's rule, with MR-30's
+      // floor clause — this key, drawn by the hub, the slip (its first rule), the confirm sheet and How (`ruleSunset`'s
+      // {rule}); S7's own purchase line (`finalRule`) left with it.
+      finalWeekRule: "Final week: if no ticket gets 10/10, the pool is shared equally by this week's highest-scoring tickets, with no floor top-up",
       finalWeekAhead: "Week {week} will be Millionea's final week. It opens {date}.",
+      // The lead's ruling (b) of 2026-10-22: L22 says its date only while the open is still ahead; a final week still a
+      // draft once its time has passed is announced without one — S7's F1 words, as reviewed (MR-30, OD-03).
+      finalAhead: "Millionea is coming to an end. Week {week} will be the final week.",
       paused: "Millionea is paused for now. Tickets already bought are safe.",
       pausedShort: "Sales paused for now",
       stoppedSunset: "Millionea has closed. Week {week} was the final week; the final payout is complete.",
@@ -3659,7 +3663,10 @@ export const dict = {
       ruleEvents: "Every event starts after sales close",
       ruleCheck: "An objection window of {hours} before payout",
       ruleInsider: "Accounts with a staff role cannot buy",
-      ruleSunset: "If Millionea is ever stopped for good, it ends with a final week: the week on sale when the stop is ordered; or, if the stop comes while no week is on sale and a week's results are being decided, the next week to open, even at less than a week's notice; or, at any time, a week named a full week ahead. A final week never opens before its announced time; once a week is final, the Millionea page and every ticket form opened from then on say so, and a ticket cannot be bought from a form opened before; and if no ticket gets 10/10 the unwon pool goes to its highest-scoring tickets",
+      // The final week's clause is `finalWeekRule` itself, filled in as {rule} (the lead's ruling, 2026-10-22: one wording
+      // for the one rule, everywhere it is told). The stop's own clauses before it stay the legal lane's, as built
+      // (test:maswali-fairness H.12): a week on sale can be made final at once.
+      ruleSunset: "If Millionea is ever stopped for good, it ends with a final week: the week on sale when the stop is ordered; or, if the stop comes while no week is on sale and a week's results are being decided, the next week to open, even at less than a week's notice; or, at any time, a week named a full week ahead. A final week never opens before its announced time; once a week is final, the Millionea page and every ticket form opened from then on say so, and a ticket cannot be bought from a form opened before. {rule}",
       // The week register (/millionea/register and /[week]): public, no personal data. Its heads and its card labels are
       // one set of words (S5 VIS); a past week's questions are named by their week, never "this week" (R6).
       regWeekQuestions: "Week {week}'s questions",
@@ -6466,9 +6473,9 @@ export const dict = {
       nextWeekOpens: "Wiki {week} inafunguliwa {day}",
       finalWeek: "Wiki ya mwisho ya Millionea",
       finalAheadShort: "Wiki {week} ni wiki ya mwisho",
-      finalRule: "Wiki ya mwisho: bila tiketi ya 10/10, tiketi zenye alama za juu zaidi zinagawana bwawa sawa, bila nyongeza ya dhamana",
-      finalWeekRule: "Wiki ya mwisho: ikiwa hakuna tiketi itakayopata 10/10, bwawa litagawanywa sawa kwa tiketi zenye alama za juu zaidi wiki hii",
+      finalWeekRule: "Wiki ya mwisho: ikiwa hakuna tiketi itakayopata 10/10, bwawa litagawanywa sawa kwa tiketi zenye alama za juu zaidi wiki hii, bila nyongeza hadi kiwango cha chini",
       finalWeekAhead: "Wiki {week} itakuwa wiki ya mwisho ya Millionea. Itafunguliwa {date}.",
+      finalAhead: "Millionea inakaribia kufikia mwisho. Wiki {week} itakuwa wiki ya mwisho.",
       paused: "Millionea imesimamishwa kwa muda. Tiketi zilizonunuliwa ziko salama.",
       pausedShort: "Mauzo yamesimamishwa kwa muda",
       stoppedSunset: "Millionea imefungwa. Wiki {week} ilikuwa wiki ya mwisho; malipo ya mwisho yamekamilika.",
@@ -6628,7 +6635,7 @@ export const dict = {
       ruleEvents: "Kila tukio linaanza baada ya mauzo kufungwa",
       ruleCheck: "Dirisha la pingamizi la {hours} kabla ya malipo",
       ruleInsider: "Akaunti zenye nafasi ya mtumishi haziwezi kununua",
-      ruleSunset: "Ikiwa Millionea itafungwa kabisa, inamalizika kwa wiki ya mwisho: wiki inayouzwa wakati usimamishaji unapoamriwa; au, usimamishaji ukija wakati hakuna wiki inayouzwa na matokeo ya wiki yanaamuliwa, wiki inayofuata kufunguliwa, hata kwa notisi ya chini ya wiki moja; au, wakati wowote, wiki inayotajwa wiki nzima kabla. Wiki ya mwisho haifunguliwi kabla ya muda wake uliotangazwa; wiki ikishakuwa ya mwisho, ukurasa wa Millionea na kila fomu ya kujaza tiketi inayofunguliwa baada ya hapo husema hivyo, na tiketi haiwezi kununuliwa kupitia fomu iliyofunguliwa kabla ya hapo; na hakuna tiketi ikipata 10/10 bwawa ambalo halijashindwa linakwenda kwa tiketi zake zenye alama za juu zaidi",
+      ruleSunset: "Ikiwa Millionea itafungwa kabisa, inamalizika kwa wiki ya mwisho: wiki inayouzwa wakati usimamishaji unapoamriwa; au, usimamishaji ukija wakati hakuna wiki inayouzwa na matokeo ya wiki yanaamuliwa, wiki inayofuata kufunguliwa, hata kwa notisi ya chini ya wiki moja; au, wakati wowote, wiki inayotajwa wiki nzima kabla. Wiki ya mwisho haifunguliwi kabla ya muda wake uliotangazwa; wiki ikishakuwa ya mwisho, ukurasa wa Millionea na kila fomu ya kujaza tiketi inayofunguliwa baada ya hapo husema hivyo, na tiketi haiwezi kununuliwa kupitia fomu iliyofunguliwa kabla ya hapo. {rule}",
       regWeekQuestions: "Maswali ya Wiki {week}",
       regColQuestion: "Swali",
       regColSource: "Chanzo",
@@ -9399,11 +9406,11 @@ export const dict = {
       nextWeekOpens: "第{week}周{day}开放",
       finalWeek: "Millionea 最后一周",
       finalAheadShort: "第{week}周为最后一周",
-      finalRule: "最后一周：若无 10/10 彩票，由得分最高的彩票平分奖池，不进行保底补足",
-      finalWeekRule: "最后一周：若无彩票答对 10/10，奖池由本周得分最高的彩票平分",
+      finalWeekRule: "最后一周：若无彩票答对 10/10，奖池由本周得分最高的彩票平分，不进行保底补足",
       // Millionea's zh rule (the lead's ruling, 2026-10-21): a space only where a Latin letter or a digit meets a Han
       // character. {date} is formatEatDate's day ("2026年11月30日"): a digit first, 日 last — so a space before it, none after.
       finalWeekAhead: "第{week}周将是 Millionea 的最后一周，于 {date}开放。",
+      finalAhead: "Millionea 即将结束。第{week}周将为最后一周。",
       paused: "Millionea 暂时停售。已购彩票安全无虞。",
       pausedShort: "暂时停售",
       stoppedSunset: "Millionea 已结束。第{week}周为最后一周；最终派奖已完成。",
@@ -9562,7 +9569,7 @@ export const dict = {
       ruleEvents: "所有事件在销售截止后开始",
       ruleCheck: "派奖前设有 {hours}的异议窗口",
       ruleInsider: "持有员工角色的账户不能购买",
-      ruleSunset: "若 Millionea 永久停办，将以最后一周结束：下令停办时正在销售的一周；若在无周正在销售、且某周结果正在确定期间下令停办，则为下一个开放的周，即使通知不足一周；或随时提前一整周指定的一周。最后一周绝不早于其公布的时间开放；一周一旦成为最后一周，Millionea 页面及此后打开的每个填写彩票页面都会注明，且不能通过此前打开的填写彩票页面购票；若无彩票达到 10/10，未中奖的奖池归该周得分最高的彩票",
+      ruleSunset: "若 Millionea 永久停办，将以最后一周结束：下令停办时正在销售的一周；若在无周正在销售、且某周结果正在确定期间下令停办，则为下一个开放的周，即使通知不足一周；或随时提前一整周指定的一周。最后一周绝不早于其公布的时间开放；一周一旦成为最后一周，Millionea 页面及此后打开的每个填写彩票页面都会注明，且不能通过此前打开的填写彩票页面购票。{rule}",
       regWeekQuestions: "第{week}周题目",
       regColQuestion: "题目",
       regColSource: "来源",

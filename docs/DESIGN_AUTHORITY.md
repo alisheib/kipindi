@@ -3255,6 +3255,22 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     dialog is unchanged (`test:maswali-slip-design` §1); `test:enter-where-pressed` 5.8 pins the call with its plant, and
     `qa:dialog-way-back` drives it at 360 in Chromium and WebKit (scrollY unchanged across the close, focus on the opener,
     the jump back when `preventScroll` is dropped).
+19. **The final week's rule has one wording, wherever it is told (the lead's ruling, 2026-10-22; MR-30, the S6 legal
+    review).** One dictionary key, `finalWeekRule`, with MR-30's floor clause last: en "Final week: if no ticket gets
+    10/10, the pool is shared equally by this week's highest-scoring tickets, with no floor top-up"; sw the same sentence
+    ending ", bila nyongeza hadi kiwango cha chini"; zh ending "，不进行保底补足". The hub draws it under the jackpot in a
+    final week, the slip as its first rule, the confirm sheet beside the fee rule, and How to play inside its stop rule
+    (`ruleSunset`, which keeps only its own first clause and fills the rule as `{rule}`). Why: two sentences said one
+    truth (S7's purchase line `finalRule` beside the hub's key), and the hub's and How's sentence left out the floor
+    clause, which is material — a final week with no 10/10 is never topped up to the floor. Guards:
+    `test:maswali-design` 2.F3a and 2.F3b (with its plant), `test:maswali-hub` 3.1 and §10.
+20. **The final week announced ahead names its day only while that day is ahead (the lead's ruling (b), 2026-10-22;
+    MR-30, OD-03).** The hub's L22 bar says "Week 52 will be Millionea's final week. It opens 30 Nov." while the open is
+    still to come. A final week still a draft once its time has passed — or whose time cannot be read — is announced
+    without a date, in S7's reviewed F1 words: "Millionea is coming to an end. Week 52 will be the final week." (sw
+    "Millionea inakaribia kufikia mwisho. Wiki 52 itakuwa wiki ya mwisho.", zh "Millionea 即将结束。第52周将为最后一周。").
+    Why: "It opens 30 Nov." read on 30 Nov at 09:00, of a week no one has opened, promises a moment already gone. Guards:
+    `test:maswali-hub` §13 (with its plant) and `test:maswali-design` 2.F1d.
 
 ---
 

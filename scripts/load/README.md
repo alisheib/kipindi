@@ -71,7 +71,9 @@ npm run load:maswali-rush             # S17 (MB-31): the Friday 18:00 rush at 10
 ```
 
 S17's latency targets are named constants at `TBD-BASELINE`: the lead sets them from the first measured
-baseline (S7's acceptance) and records them beside their results.
+baseline (S7's acceptance) and records them beside their results. Set on 2026-10-22: a landed purchase at most
+1,000 ms at p95 and 2,000 ms at p99, and no purchase answered BUSY after its retries (`docs/MASWALI-PLAN.md` §7b S7);
+the refusal, Up & Down and close-stamp targets still print without a verdict.
 The purchase-rate reference is a disposable load target chosen in `docs/MASWALI-PLAN.md` §7b S7, not a measured
 production peak. S17 fails if the planned arrival load does not reach the purchase and Up & Down paths.
 

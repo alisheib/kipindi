@@ -497,7 +497,8 @@ export default async function MillioneaHubPage({ searchParams }: { searchParams:
           {closeMovedWords(t, msOf(moved.to) ?? 0, msOf(moved.from) ?? 0)}
         </NoticeBar>
       )}
-      {finalAhead && finalAheadMs !== null && (
+      {/* L22 · its date only while the open is ahead; a time passed or unread says the week alone (the lead's ruling (b)). */}
+      {finalAhead && (
         <NoticeBar tone="info" glyph="finalWeek" testId="millionea-hub-final-ahead">
           {finalAheadWords(t, locale, weekNumberOf(finalAhead.code), finalAheadMs, nowMs)}
         </NoticeBar>

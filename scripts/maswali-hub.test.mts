@@ -157,9 +157,10 @@ console.log("\n§2 · L10 · \"at least TZS 1,000,000\" holds one line in a 320 
 // ── §3 · H3 · the final week's rule under the figure ─────────────────────────────────────────────────────────────────────
 console.log("\n§3 · H3 + H1 · in a final week the head's ONE rule says what a pool with no 10/10 does (MR-30), led by the week's mark");
 // ⭐ The critic's one key, said once: "Final week: if no ticket gets 10/10, the pool is shared equally by this week's
-// highest-scoring tickets · 13% fee at payout" — the head's rule line in the final week (the fee its rule's own fact), led
-// by the final week's mark (`finalWeek`); the 10/10 rule alone is not said beside it, and no page-wide box says the week a
-// third time (it put the door under a 360 phone's fold).
+// highest-scoring tickets, with no floor top-up · 13% fee at payout" — the head's rule line in the final week (the fee its
+// rule's own fact), led by the final week's mark (`finalWeek`); the 10/10 rule alone is not said beside it, and no page-wide
+// box says the week a third time (it put the door under a 360 phone's fold). The floor clause is MR-30's, in the one wording
+// the slip, the confirm sheet and How say too (the lead's ruling, 2026-10-22).
 const finalDefects = (l: L3, m: string, want: boolean) => {
   const t = textOf(m);
   const line = dict[l].millionea.finalWeekRule;
@@ -171,7 +172,7 @@ const finalDefects = (l: L3, m: string, want: boolean) => {
 };
 {
   const d = LOCALES.flatMap((l) => [...finalDefects(l, headOf(l, SELLING, true), true), ...finalDefects(l, headOf(l, SELLING, false), false), ...finalDefects(l, headOf(l, VOIDING, true), false)]);
-  ok("3.1 · a final week's head: the figure, then ONE rule — the final week's mark, \"Final week: if no ticket gets 10/10, the pool is shared equally by this week's highest-scoring tickets · 13% fee at payout\" — then the carry's line, in three languages; the 10/10 rule alone not beside it; none in a week that is not final, none on a void", d.length === 0, d.join(" | "));
+  ok("3.1 · a final week's head: the figure, then ONE rule — the final week's mark, \"Final week: if no ticket gets 10/10, the pool is shared equally by this week's highest-scoring tickets, with no floor top-up · 13% fee at payout\" — then the carry's line, in three languages; the 10/10 rule alone not beside it; none in a week that is not final, none on a void", d.length === 0, d.join(" | "));
   // The heads as they were: the 10/10 rule alone (round 1), and the 10/10 rule with the final week's line under it (WIP 1).
   const alone = headOf("en", SELLING, false), twice = alone.replace("</div>", `<span>${dict.en.millionea.finalWeekRule}</span></div>`);
   ok("3.1′ PLANT · the old final weeks (the 10/10 rule alone; the 10/10 rule and the final line both) are each reported", finalDefects("en", alone, true).length > 0 && finalDefects("en", twice, true).length > 0);
@@ -328,18 +329,23 @@ console.log("\n§10 · the hub's new and changed words, as decided, in three lan
 {
   const WANT: Record<L3, Record<string, string>> = {
     en: {
-      finalWeekRule: "Final week: if no ticket gets 10/10, the pool is shared equally by this week's highest-scoring tickets",
+      // The lead's ruling of 2026-10-22: the release's sentence with MR-30's floor clause, the one wording everywhere.
+      finalWeekRule: "Final week: if no ticket gets 10/10, the pool is shared equally by this week's highest-scoring tickets, with no floor top-up",
       finalWeekAhead: "Week {week} will be Millionea's final week. It opens {date}.",
+      // The lead's ruling (b) of 2026-10-22: L22 with no date once the open's time has passed — S7's F1 words, as reviewed.
+      finalAhead: "Millionea is coming to an end. Week {week} will be the final week.",
       weekVoidingBody: "{voided} main questions void, only {valid} valid reserves. If no objection changes this by {when}, the week is voided and every ticket refunded.",
     },
     sw: {
-      finalWeekRule: "Wiki ya mwisho: ikiwa hakuna tiketi itakayopata 10/10, bwawa litagawanywa sawa kwa tiketi zenye alama za juu zaidi wiki hii",
+      finalWeekRule: "Wiki ya mwisho: ikiwa hakuna tiketi itakayopata 10/10, bwawa litagawanywa sawa kwa tiketi zenye alama za juu zaidi wiki hii, bila nyongeza hadi kiwango cha chini",
       finalWeekAhead: "Wiki {week} itakuwa wiki ya mwisho ya Millionea. Itafunguliwa {date}.",
+      finalAhead: "Millionea inakaribia kufikia mwisho. Wiki {week} itakuwa wiki ya mwisho.",
       weekVoidingBody: "Maswali makuu {voided} batili, akiba halali {valid} tu. Ikiwa hakuna pingamizi litakalobadilisha hili kufikia {when}, wiki itabatilishwa na kila tiketi itarejeshwa.",
     },
     zh: {
-      finalWeekRule: "最后一周：若无彩票答对 10/10，奖池由本周得分最高的彩票平分",
+      finalWeekRule: "最后一周：若无彩票答对 10/10，奖池由本周得分最高的彩票平分，不进行保底补足",
       finalWeekAhead: "第{week}周将是 Millionea 的最后一周，于 {date}开放。",
+      finalAhead: "Millionea 即将结束。第{week}周将为最后一周。",
       weekVoidingBody: "{voided} 道正选题作废，有效备选题仅 {valid} 道。若至{when} 无异议改变此结果，整周将作废，每张彩票均将退款。",
       resultsOut: "已公布 {n}/15 个结果",
       closeMoved: "销售截止时间已更改：现为{when}（原为{from}）。所有事件仍在截止之后开始。",
@@ -349,7 +355,7 @@ console.log("\n§10 · the hub's new and changed words, as decided, in three lan
   const off = LOCALES.flatMap((l) => Object.entries(WANT[l]).filter(([k, v]) => (dict[l].millionea as Record<string, unknown>)[k] !== v).map(([k]) => `${l}.${k}`));
   ok("10.1 · the decided words stand in the dictionary (H3, L22 — the lead's words — M6's objection wording, L8's zh count)", off.length === 0, j(off));
   const holes = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((x) => x[1]).sort().join(",");
-  const keys = ["finalWeekRule", "finalWeekAhead", "weekVoidingBody", "resultsOut", "closeMoved", "seeAllTickets"];
+  const keys = ["finalWeekRule", "finalWeekAhead", "finalAhead", "weekVoidingBody", "resultsOut", "closeMoved", "seeAllTickets"];
   const mism = keys.filter((k) => new Set(LOCALES.map((l) => holes(String((dict[l].millionea as Record<string, unknown>)[k])))).size !== 1);
   ok("10.2 · every one of them carries the same placeholders in every language", mism.length === 0, j(mism));
   const zhSpacing = /\d[一-鿿]|[一-鿿]\d/.test(fill(dict.zh.millionea.resultsOut, { n: 5 }).replace(/\/15/, ""));
@@ -448,10 +454,44 @@ console.log("\n§12 · L7 · a time on the hub: its weekday in the body face, it
   ok("12.1′ PLANT · the old all-mono time (\"Ijumaa 18:00\" set whole in font-mono) is reported", faceDefects('<span class="whitespace-nowrap font-mono">Ijumaa 18:00</span>').length > 0);
 }
 
+// ── §13 · L22 · the final week's date only while it is ahead ─────────────────────────────────────────────────────────────
+console.log("\n§13 · L22 · the final week announced: \"It opens {date}\" only while the open is ahead; past it, or unread, the week alone (the lead's ruling (b))");
+{
+  // ⭐ The lead's ruling (b) of 2026-10-22: the bar says the day the final week opens only while that is still ahead. A
+  // final week still a draft once its time has come (the Owner has not opened it yet) — or whose time cannot be read — is
+  // announced with S7's F1 words, as reviewed: "Millionea is coming to an end. Week 52 will be the final week." Never
+  // "It opens 30 Nov." on 30 Nov at 09:00, a promise about a moment already gone.
+  const W = req("../src/app/millionea/hub-words.tsx") as typeof import("../src/app/millionea/hub-words.tsx");
+  const say = (node: unknown) => textOf(renderToStaticMarkup(h("p", null, node as never)));
+  const EAT = (iso: string) => Date.parse(`${iso}+03:00`);
+  const OPENS = EAT("2026-11-30T00:01:00"), BEFORE = EAT("2026-11-20T10:00:00"), AFTER = EAT("2026-11-30T09:00:00");
+  type Read = { ahead: string; passed: string; atOpen: string; unread: string };
+  const readsOf = (l: L3): Read => ({
+    ahead: say(W.finalAheadWords(dict[l] as never, l, 52, OPENS, BEFORE)),
+    passed: say(W.finalAheadWords(dict[l] as never, l, 52, OPENS, AFTER)),
+    atOpen: say(W.finalAheadWords(dict[l] as never, l, 52, OPENS, OPENS)),
+    unread: say(W.finalAheadWords(dict[l] as never, l, 52, null, AFTER)),
+  });
+  const dateDefects = (l: L3, r: Read) => {
+    const alone = fill(dict[l].millionea.finalAhead, { week: 52 });
+    const out: string[] = [];
+    if (!(r.ahead.includes("52") && r.ahead.includes("30") && r.ahead !== alone)) out.push(`${l} ahead: ${r.ahead}`);
+    for (const k of ["passed", "atOpen", "unread"] as const) if (r[k] !== alone) out.push(`${l} ${k}: ${r[k]}`);
+    return out;
+  };
+  const off = LOCALES.flatMap((l) => dateDefects(l, readsOf(l)));
+  ok("13.1 · in three languages a final week whose open is ahead reads the lead's sentence with its day (\"…It opens 30 Nov.\"), and once its time has passed, at the very instant, or with no time to read, S7's F1 words with no date (\"Millionea is coming to an end. Week 52 will be the final week.\")",
+    off.length === 0, off.join(" | "));
+  // The bar as it was: the lead's dated sentence whatever the hour — on 30 Nov at 09:00 still "It opens 30 Nov.".
+  const { fillNodes } = req("../src/lib/fill-nodes.tsx") as typeof import("../src/lib/fill-nodes.tsx");
+  const before = readsOf("en"), stale = say(fillNodes(dict.en.millionea.finalWeekAhead, { week: 52, date: "30 Nov" }));
+  ok("13.1′ PLANT · the old always-dated bar (\"It opens 30 Nov.\" after the open's time) is reported", dateDefects("en", { ...before, passed: stale }).length > 0, stale);
+}
+
 console.log(`\n${"═".repeat(70)}\n  MASWALI HUB: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run prints (S5-DESIGN-HUB 3: 34; 4, the one ledger and zh's spacing rule: 43; 6, one
  *  carry origin: 45; 7, no door to a week the register does not draw yet: 47; 9, one final-week rule and last week's
- *  words: 50; 10, a time's face: 53). It only rises. */
-const MIN_ASSERTIONS = 53;
+ *  words: 50; 10, a time's face: 53; S7-F9, L22's date only while ahead, the lead's ruling (b): 55). It only rises. */
+const MIN_ASSERTIONS = 55;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

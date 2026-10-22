@@ -720,20 +720,23 @@ if (STORE === "memory") {
     const sunset: Record<string, string[]> = {
       en: ["the week on sale when the stop is ordered", "while no week is on sale and a week's results are being decided",
         "the next week to open, even at less than a week's notice", "a week named a full week ahead", "A final week never opens before its announced time",
-        "once a week is final, the Millionea page and every ticket form opened from then on say so", "and a ticket cannot be bought from a form opened before;",
+        "once a week is final, the Millionea page and every ticket form opened from then on say so", "and a ticket cannot be bought from a form opened before.",
         "highest-scoring tickets"],
       sw: ["wiki inayouzwa wakati usimamishaji unapoamriwa", "wakati hakuna wiki inayouzwa na matokeo ya wiki yanaamuliwa", "hata kwa notisi ya chini ya wiki moja",
         "au, wakati wowote, wiki inayotajwa wiki nzima kabla", "haifunguliwi kabla ya muda wake uliotangazwa",
         "wiki ikishakuwa ya mwisho, ukurasa wa Millionea na kila fomu ya kujaza tiketi inayofunguliwa baada ya hapo husema hivyo",
-        "na tiketi haiwezi kununuliwa kupitia fomu iliyofunguliwa kabla ya hapo;", "tiketi zake zenye alama za juu zaidi"],
+        "na tiketi haiwezi kununuliwa kupitia fomu iliyofunguliwa kabla ya hapo.", "tiketi zenye alama za juu zaidi"],
       zh: ["下令停办时正在销售的一周", "若在无周正在销售、且某周结果正在确定期间下令停办", "即使通知不足一周", "或随时提前一整周指定的一周", "绝不早于其公布的时间开放",
-        "一周一旦成为最后一周，Millionea 页面及此后打开的每个填写彩票页面都会注明", "且不能通过此前打开的填写彩票页面购票；", "该周得分最高的彩票"],
+        "一周一旦成为最后一周，Millionea 页面及此后打开的每个填写彩票页面都会注明", "且不能通过此前打开的填写彩票页面购票。", "本周得分最高的彩票"],
     };
-    const sunsetOff = LOCS.flatMap((l) => sunset[l].filter((s) => !dict[l].millionea.ruleSunset.includes(s)).map((s) => `${l}: ${s.slice(0, 30)}`));
+    // S6-INT 9 · the lead ruling of 2026-10-22 (S7-F9 3): ONE wording for the final week's rule. The stop line ends in {rule},
+    // which How to play fills with `finalWeekRule`, so the line is read as it is drawn; its stop clauses stay these.
+    const sunsetLine = Object.fromEntries(LOCS.map((l) => [l, Utils.fill(dict[l].millionea.ruleSunset, { rule: dict[l].millionea.finalWeekRule }) as string])) as Record<string, string>;
+    const sunsetOff = LOCS.flatMap((l) => sunset[l].filter((s) => !sunsetLine[l].includes(s)).map((s) => `${l}: ${s.slice(0, 30)}`));
     // Round 6 · the old promises refused: an announcement "in advance", round 4's "or else" (the full-notice path is open
     // at any time), and "its buyers are told" (a week made final on sale tells only the forms opened from then on).
     const SUNSET_OLD = /announced in advance|inatangazwa mapema|将提前公布|house|nyumba|平台|or else a week|au vinginevyo|否则为|its buyers are told|wanunuzi wake wanaambiwa|其购买者会被告知/i;
-    const sunsetOld = LOCS.filter((l) => SUNSET_OLD.test(dict[l].millionea.ruleSunset));
+    const sunsetOld = LOCS.filter((l) => SUNSET_OLD.test(sunsetLine[l]));
     // Round 8 · the pattern's own control: mln-sf's three old sunset lines, each of which it must catch.
     const OLD_SUNSET = ["If Millionea is ever stopped for good, its final week is announced in advance, and the unwon pool goes to that week's highest-scoring tickets",
       "Ikiwa Millionea itafungwa kabisa, wiki yake ya mwisho inatangazwa mapema, na bwawa ambalo halijashindwa linakwenda kwa tiketi zenye alama za juu za wiki hiyo",
@@ -743,7 +746,7 @@ if (STORE === "memory") {
     const HOUSE_RULE = /house|nyumba|平台/i;
     const insiderHouse = LOCS.filter((l) => HOUSE_RULE.test(dict[l].millionea.ruleInsider));
     const OLD_INSIDER = ["Staff and house accounts cannot buy", "Watumishi na akaunti za nyumba hawawezi kununua", "员工与平台账户不能购买"];
-    ok("H.12 · ⛔ rounds 4 to 8, and S7 round 3's stale-form refusal at the merge · How to play's sunset line says what is built — the week on sale made final at once; while no week is on sale and one is being decided, the next week, even at short notice; at any time a full week ahead; never opened before its announced time; once final, the page and every ticket form opened from then on say so, and a ticket cannot be bought from a form opened before; and if no ticket gets 10/10, the unwon pool goes to that week's highest-scoring tickets — with none of the old promises, and neither it nor the insider line beside it names the house, in any language (the old sunset and insider strings, each caught, are the controls)",
+    ok("H.12 · ⛔ rounds 4 to 8, and S7 round 3's stale-form refusal at the merge · How to play's sunset line says what is built — the week on sale made final at once; while no week is on sale and one is being decided, the next week, even at short notice; at any time a full week ahead; never opened before its announced time; once final, the page and every ticket form opened from then on say so, and a ticket cannot be bought from a form opened before; and the final week's rule in its one wording (`finalWeekRule`, filled in as {rule}): if no ticket gets 10/10, the pool is shared by that week's highest-scoring tickets — with none of the old promises, and neither it nor the insider line beside it names the house, in any language (the old sunset and insider strings, each caught, are the controls)",
       sunsetOff.length === 0 && sunsetOld.length === 0 && insiderHouse.length === 0 && OLD_INSIDER.every((s) => HOUSE_RULE.test(s))
         && OLD_SUNSET.every((s) => SUNSET_OLD.test(s)) && /at any time, a week named a full week ahead/.test(dict.en.millionea.ruleSunset),
       [...sunsetOff, ...sunsetOld, ...insiderHouse.map((l) => `${l}: ruleInsider names the house`)].join(" · "));

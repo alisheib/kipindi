@@ -2610,9 +2610,47 @@ stays open as KNOWN-RED TK.2, with MB-23 (OB.0) and MB-74 (RD.5): §6.1 Gate B l
   the week closed once, the commitment counts exactly the 10,012 live tickets, the pool agrees three ways
   (10,012,000), no account above the cap, every account paid for exactly what it was told it has, all 50 retries after
   the close answered with their receipts, Up & Down's books whole, the trial balance (2,640 wallets) and every invariant.
-  The latency targets stay TBD-BASELINE (S17's constants): these are the first baseline; the lead sets them.
+  These are the first baseline. **The targets, set by the lead (2026-10-22, S7-F9 6) from it:** a landed purchase p95
+  ≤ 1,000 ms and p99 ≤ 2,000 ms (measured 699 / 1,425), and 0 BUSY after retries — S17's constants
+  (`TARGET_PURCHASE_P95_MS`, `TARGET_PURCHASE_P99_MS`, `TARGET_BUSY_PERCENT`), each now a verdict; the refusal,
+  Up & Down and close-stamp targets stay TBD-BASELINE (printed, not judged). The rush runs again on the final merged
+  head.
   ⚠️ The prep had never run green: it opened its week two weeks ahead and could not move the close to the run against
   `MaswaliCycle_close_after_open_check` — fixed in the harness (S7-F8 11: the week opens at the real clock).
+- **S7 · the automatic resolver against two-admin authorization (S7-F9 2, 2026-10-22).** The question: can the AI seal a
+  Millionea question alone while two-admin authorization is on? It cannot. A question is sealed only by `sealQuestion`,
+  `confirmSeal` and `correctSeal`, and only officer actions call them. The automatic seal (`resolveDueMarket`) stamps
+  both stages as `system_auto_resolver` and never reads the two-admin setting (the 2026-07-24 ruling: automatic
+  resolution is its own axis), and its door skips a week (`isFencedMaswali`) before any claim, verdict or stamp; the
+  scheduler arms no deadline for a week and the sentinel answers nothing for one. **Guards:** `test:maswali-fence`
+  2.4b–2.4d on both stores — two-admin ON, the week in automatic mode, a confident verdict citing its own source:
+  skipped, nothing stamped; the operator's re-check of a closed week records nothing; CONTROL: the same verdict seals a
+  poll.
+  Plants (18) and (19) in `red:maswali-fence` (the door's fence removed; the fence narrowed to calls with no verdict),
+  each caught on its own case. *Recorded, no change* (the lead's ruling): on a classic poll the automatic seal still
+  stamps both stages with two-admin on.
+- **S7 · the final week's rule in one wording (S7-F9 3; the lead's ruling of 2026-10-22, citing MR-30 and the S6 legal
+  review).** `finalWeekRule` — the release's sentence with MR-30's floor clause last (en "…, with no floor top-up"; sw
+  "…, bila nyongeza hadi kiwango cha chini"; zh "…，不进行保底补足") — is the one key the hub, the slip, the confirm sheet
+  and How to play draw (How through `ruleSunset`'s `{rule}`); S7's own purchase line, `finalRule`, is gone; D19a
+  re-pinned. DESIGN_AUTHORITY §M8a item 19. Guards: `test:maswali-design` 2.F3a and 2.F3b (with its plant),
+  `test:maswali-hub` 3.1 and §10. ⚠️ S6's L lane rewrites `ruleSunset` in all three languages: its merge keeps this key
+  as the rule's one wording.
+- **S7 · L22's day only while it is ahead (S7-F9 5; the lead's ruling (b) of 2026-10-22, MR-30, OD-03).** The hub's bar
+  says the final week's opening day ("It opens 30 Nov.") only while the open is still to come; a final week still a
+  draft once its time has passed, or whose time cannot be read, is announced with S7's reviewed F1 words and no date
+  (`finalAhead`, back in en/sw/zh; D19a re-pinned). DESIGN_AUTHORITY §M8a item 20. Guards: `test:maswali-hub` §13 (with
+  its plant) and `test:maswali-design` 2.F1d.
+- **S7 · the winner-takeover watch (S7-F9 8; MB-96, TK.2; the lead's ruling of 2026-10-22: password writes only).**
+  After a Millionea credit, the account's password being written — by the player, by a reset link, or by support — and
+  then a withdrawal being asked for is raised for Compliance (`maswali-takeover.ts`): on the console's alert strip as a
+  count per paying week, never an account (MR-14, MB-34), and by account on the integrity page, where Compliance can
+  hold the share (OD-07). An alert only: no withdrawal is held (2026-10-10), and the withdrawal path is untouched. A
+  watch that cannot be read says so on the strip (fail closed). A number change has no flow (E-215, TK.1); a new-device
+  signal waits for a device identity. Guards: `test:maswali-adversarial` TK.2–TK.6 on both stores, with controls for a
+  withdrawal without a password change, a password changed before the payout, and a request made before the change;
+  plants (S7-F9-tk-alert), (S7-F9-tk-credit-order), (S7-F9-tk-attempt-order) and (S7-F9-tk-fail-closed) in
+  `red:maswali-money-path`.
 
 #### S8 · Live drive and public launch
 

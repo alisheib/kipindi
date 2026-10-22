@@ -71,7 +71,16 @@ export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // legal lane's `millioneaFairness` namespace (/fairness, the proof route, /help) and How to play's sunset line as built
   // (test:maswali-fairness H.12 pins its fragments), and the zh void grounds in the lane's meaning with S5's U+200B breaks
   // — sw and zh for native review at Gate B; no versioned policy string moves. The merge commit lists every resolution.
-  "src/lib/i18n-dict.ts": "f88a4470d76fde02a66ab8c06cfe2e489a708cb6",
+  // D19a RE-PINNED (S7-F9, the lead's ruling (a) of 2026-10-22; was 6c1d110fa): ONE wording for the final week's rule —
+  // `finalWeekRule` gains MR-30's floor clause in en/sw/zh (the lead's words), S7's `finalRule` is removed in all three,
+  // and `ruleSunset` keeps its first clause and fills the rule as {rule}. No other line changed.
+  // D19a RE-PINNED (S7-F9, the lead's ruling (b) of 2026-10-22; was 5a95302db): S7's F1 no-date announcement
+  // (`finalAhead`) is back in en/sw/zh, byte for byte as S7's reviewed pin (f28803da1) held it, for L22 once a final week's
+  // open has passed. No other line changed.
+  // D19a RE-PINNED AT S6-INT 9 (the S6 integration's merge of S7-F9 2-8; was f88a4470d, S6-INT 1's, and 7a9a98ffe,
+  // S7-F9's): both sides' lines, and `ruleSunset` in the one wording — the legal lane's stop clauses (H.12), then {rule},
+  // the lead's `finalWeekRule`, in place of their own pool clause, in en/sw/zh. No other line changed.
+  "src/lib/i18n-dict.ts": "b84814a4a776d446a17aff921ea34709dc907c2f",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
 };
