@@ -48,6 +48,8 @@ const SUITES = {
   adversarial: "npx tsx scripts/lib/maswali-adversarial-child.mts",
   // MASWALI-BUILD S6 (lane N, review round 2): the notices' witness and their own key.
   notify: "npx tsx scripts/lib/maswali-notify-child.mts",
+  // MASWALI-BUILD S6-MONEY · OD-13: a share paid by an officer to a winner whose account cannot sign in.
+  sharepay: "npx tsx scripts/lib/maswali-share-payout-child.mts",
 };
 /**
  * A mutation's suite, as a command. `<suite>:<ids>` runs that child on those sections alone (`--only <ids>`, which the

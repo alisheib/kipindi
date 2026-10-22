@@ -15,7 +15,8 @@
  *      the money waits for the Millionea chain lock (the platform's order)
  *   §C ⭐ a share above the per-withdrawal maximum is paid in equal parts that sum to it; a payment the rail refused gives
  *      its money back and is retried under the next key, never while one is in flight; a closed account's released share
- *      leaves through its closed wallet, which stays closed
+ *      leaves through its closed wallet, which stays closed; the holder's own withdrawal attempts, used up, neither refuse
+ *      nor count against the officer's payment (C.4)
  *
  * ⛔ Every week, ticket, hold, release and forfeit goes through the product's own doors (`maswali-money-world.mts`);
  *    a self-exclusion through `selfExclude`. ⚠️ FIXTURES, DECLARED: identity approval is written as the KYC row an
@@ -43,6 +44,7 @@ const { getEffectiveConfig } = await import("../../src/lib/server/market-config.
 const { WITHDRAW_MAX_TZS } = await import("../../src/lib/server/validators.ts");
 const { normalizeTzLocalDigits } = await import("../../src/lib/phone-normalize.ts");
 const cfgMod = await import("../../src/lib/server/maswali-config.ts");
+const { rateCheckAsync } = await import("../../src/lib/server/rate-limit.ts");
 
 process.exitCode = 1;
 let pass = 0, fail = 0;
@@ -300,7 +302,7 @@ console.log("\n§B · two officers at once, a held share, a forfeited one, a sha
 }
 
 // ═══ §C · a share above the maximum, a refused payment retried, a closed account ═════════════════════════════════
-console.log("\n§C · equal parts above the per-withdrawal maximum; a refused payment retried under the next key; a closed account");
+console.log("\n§C · equal parts above the per-withdrawal maximum; a refused payment retried under the next key; a closed account; the holder's own attempts");
 {
   // C.1 · a floor of 10,000,000 for one week (the Owner's rules, saved through the form's own door, then put back).
   const floor0 = cfgMod.getMaswaliConfig().floorTzs;
@@ -370,6 +372,21 @@ console.log("\n§C · equal parts above the per-withdrawal maximum; a refused pa
     heldAtSettle && released.ok && c0.status === "CLOSED" && paidClosed.ok && paidClosed.status === "CONFIRMED" && paidClosed.amount === share3
       && c1.status === "CLOSED" && c1.balance === c0.balance - share3 && (await withdrawalsOf(C)).length === 1,
     J({ heldAtSettle, released: errOf(released), c0: { status: c0.status, balance: c0.balance }, paid: { ok: paidClosed.ok, status: paidClosed.status, err: errOf(paidClosed) }, c1: { status: c1.status, balance: c1.balance } }));
+
+  // C.4 · the officer's payment is the officer's act: the holder's own withdrawal attempts neither refuse nor count it.
+  const B = await holder();
+  const { week: w4 } = await settledWeek([B], selfExclude);
+  const t4 = await winningTicket(w4.id, B);
+  const share4 = w4.sharePerTicket as number;
+  let spent = 0;
+  for (; spent < 200 && (await rateCheckAsync(B, "wallet.withdraw")).allowed; spent++) { /* the holder's own attempts, used up */ }
+  const own4 = await walletSvc.withdraw(B, { provider: "MPESA", amount: 20_000, msisdn: normalizeTzLocalDigits(await phoneOf(B)) });
+  const b0 = (await bal(B)).balance;
+  const paidB: any = await act(t4.id);
+  ok("C.4 · ⭐ the holder's own withdrawal attempts, used up, neither refuse nor count against the officer's payment: the share paid to the shilling",
+    spent > 0 && spent < 200 && !own4.ok && /Too many withdrawal attempts/.test(errOf(own4)) && paidB.ok && paidB.status === "CONFIRMED"
+      && paidB.amount === share4 && (await bal(B)).balance === b0 - share4 && (await withdrawalsOf(B)).length === 1,
+    J({ spent: spent > 0 && spent < 200, own: errOf(own4), paid: { ok: paidB.ok, status: paidB.status, err: errOf(paidB) } }));
 }
 
 console.log(`${String.fromCharCode(10)}@@SUMMARY ${JSON.stringify({ pass, fail, store: STORE })}`);

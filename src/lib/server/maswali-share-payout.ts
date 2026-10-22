@@ -121,7 +121,7 @@ function shareRefusal(ticket: StoredTicket, user: StoredUser | null): string | n
   }
   if (!user) return "The holder's account cannot be read. Nothing was paid.";
   if (!CANNOT_SIGN_IN.has(String(user.status))) {
-    return "The holder's account can sign in, so they withdraw the share themselves. This act is for an account that cannot sign in (OD-13). Nothing was paid.";
+    return "The holder's account can sign in, so they withdraw the share themselves. This act is for an account that cannot sign in. Nothing was paid.";
   }
   return null;
 }
@@ -183,8 +183,8 @@ export async function lockedWinnerShares(deps: { payoutStatus?: () => Promise<Pa
       : !wallet ? "This holder has no wallet."
       : otherHolds.length > 0 ? `The wallet is also held for: ${otherHolds.map((r) => FREEZE_REASON_LABEL[r]).join(", ")}. Nothing can be paid until that hold is decided on its own control.`
       : !identity ? "The holder's identity record cannot be read."
-      : !identity.eligible ? "The holder's identity has never been verified. The withdrawal rules are unchanged (OD-13): they verify it before this share can be paid."
-      : !user.emailVerifiedAt ? "The holder has no confirmed email address. The withdrawal rules are unchanged (OD-13): they confirm one before this share can be paid."
+      : !identity.eligible ? "The holder's identity has never been verified. The withdrawal rules are unchanged: they verify it before this share can be paid."
+      : !user.emailVerifiedAt ? "The holder has no confirmed email address. The withdrawal rules are unchanged: they confirm one before this share can be paid."
       : !payoutsAcceptingRequests(rail) ? "The payout rail is not accepting requests right now, so nothing can be sent."
       : next - fee < PROVIDER_MIN_PAYOUT_TZS ? `${formatTzs(next)} is below the smallest amount the payout rail can send after its fee.`
       : wallet.balance < next ? `The wallet holds ${formatTzs(wallet.balance)}, less than this payment of ${formatTzs(next)}.`
@@ -318,7 +318,7 @@ export async function payLockedWinnerShare(input: {
     payload: {
       code: week.code, serial: ticket.serial, share, paidBefore: before.taken, amount, attempt, txnId: d.txnId, status: d.status,
       fee: d.fee, net: d.net, left: leftAfter, provider, standing: holder.status, request, railAnswer: r.ok ? null : r.error,
-      instruction: "OD-13 (accepted 2026-10-16) · a Compliance officer pays a winner whose account cannot sign in to the registered number, at the holder's request; identity and email rules are unchanged",
+      instruction: "Owner decision accepted 2026-10-16 · a Compliance officer pays a winner whose account cannot sign in to the registered number, at the holder's request; identity and email rules are unchanged",
     },
   }).then((x) => x.recorded, () => false);
   const sent = `${formatTzs(amount)} to the number ending ${last4} on ${network}: ${formatTzs(d.net)} arrives after the ${formatTzs(d.fee)} withdrawal fee`;

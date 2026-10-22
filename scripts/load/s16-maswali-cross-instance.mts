@@ -9,7 +9,7 @@
  *   S16_WIDE_WINNERS=9000 npm run load:maswali-cross-instance     (the wide shape's distinct winning players)
  *   S16_SHAPES=held npm run load:maswali-cross-instance            (7,000 winning accounts suspended after purchase)
  *   S16_SHAPES=refused npm run load:maswali-cross-instance         (the same, its release refused after every hold — S7-F8)
- *   S16_SHAPES=none npm run load:maswali-cross-instance            (§1–§5, §6b and §7 only: minutes, not the 10,000s)
+ *   S16_SHAPES=none npm run load:maswali-cross-instance            (§1–§5, §6b, §6c and §7 only: minutes, not the 10,000s)
  *
  * Every act is two or three OS processes (`s16-maswali-worker.mts`), each its own Prisma pool, started at one instant by a
  * barrier, on ONE scratch database:
@@ -27,6 +27,9 @@
  *   §6b S7-F9 · RD.5 (MB-74): deposits reversed after their winners were paid — each reversal heard by two instances at
  *      once holds each share exactly once, nothing moving; then a reversal racing the release: held exactly once, by the
  *      release or by the reversal, never paid out free;
+ *   §6c S6-MONEY · OD-13: a share owed to a winner whose account cannot sign in, paid by two Compliance officers on two
+ *      instances at the same instant — paid once, to the shilling; then a payment racing Compliance's hold of the same share
+ *      on another instance — the share leaves once or is held, never both paid and held free;
  *   §7 the identities over everything: the trial balance (no drifting wallet, no unbalanced group), every invariant.
  *
  *   ⭐ S7-F8 · the optional refused shape: the same 7,000 held winners, its release made to fail at its last statement so
@@ -68,6 +71,8 @@ const WIDE = num("S16_WIDE_WINNERS", 7_000);
 const FEW = 3;
 /** S7-F9 · RD.5 (§6b): the winners of each reversal week. */
 const RD_WIN = 3;
+/** S6-MONEY · OD-13 (§6c): the self-excluded winners of the locked-share week. */
+const LOCK_WIN = 2;
 const CLOSE_BUYERS = num("S16_CLOSE_BUYERS", 120);
 const CLOSE_DELAY_MS = num("S16_CLOSE_DELAY_MS", 1_500);
 const JOB_TIMEOUT_MS = num("S16_JOB_TIMEOUT_MIN", 60) * 60_000;
@@ -190,6 +195,8 @@ try {
     w3win: { count: 5, balance: BALANCE }, w3lose: { count: 15, balance: BALANCE }, w4: { count: 10, balance: BALANCE },
     // S7-F9 · RD.5 (§6b): the winners whose deposits are reversed after the payout, and the week's losers.
     rdA: { count: RD_WIN, balance: BALANCE }, rdB: { count: RD_WIN, balance: BALANCE }, rdLose: { count: 7, balance: BALANCE },
+    // S6-MONEY · OD-13 (§6c): the winners who self-exclude after the payout, and the week's losers.
+    lockWin: { count: LOCK_WIN, balance: BALANCE }, lockLose: { count: 10 - LOCK_WIN, balance: BALANCE },
     ...(wantFew ? { fewWin: { count: FEW, balance: BALANCE }, fewLose: { count: Math.ceil((TICKETS - FEW) / 10), balance: BALANCE } } : {}),
     ...(wantWide ? { wideWin: { count: WIDE, balance: BALANCE }, wideLose: { count: Math.ceil((TICKETS - WIDE) / 10), balance: BALANCE } } : {}),
     ...(wantHeld ? { heldWin: { count: WIDE, balance: BALANCE }, heldLose: { count: Math.ceil((TICKETS - WIDE) / 10), balance: BALANCE } } : {}),
@@ -511,6 +518,53 @@ try {
   ok("6b.5 · and the money is the payout's alone: each winner holds its balance less a ticket plus one share, the pool at 0",
     h6?.wallets?.every((w: any) => w.balance === BALANCE - w6.price + (c6b?.week?.figures?.share ?? NaN)) && c6b?.pool?.ledger === 0,
     J({ wallets: h6?.wallets, share: c6b?.week?.figures?.share, pool: c6b?.pool }));
+
+  // ── §6c · OD-13 — a share owed to a winner who cannot sign in, paid across instances (S6-MONEY) ─────────────────────
+  console.log(`${NL}§6c · OD-13 · a locked winner's share paid by two officers on two instances at once; then a payment racing a hold`);
+  const w7 = await runJob({ kind: "week", weeksAhead: 12, seal: "YES", lots: [
+    { group: "lockWin", tickets: LOCK_WIN, slip: "WIN", perPlayer: 1 }, { group: "lockLose", tickets: 10 - LOCK_WIN, slip: "LOSE", perPlayer: 1 }] });
+  if (!w7?.ok) throw new Error("the OD-13 week could not be prepared");
+  const rel7 = await runJob({ kind: "release", weekId: w7.weekId, at: w7.releaseAt });
+  const prep7 = await runJob({ kind: "lockprep", weekId: w7.weekId, group: "lockWin" });
+  const c7w = await runJob({ kind: "check", weekId: w7.weekId });
+  const share7: number = c7w?.week?.figures?.share ?? NaN;
+  ok("6c.1 · the week paid its winners, each then self-excluded with its identity and email in order: each share stranded in a wallet the self-exclusion froze",
+    rel7?.ok === true && prep7?.tickets?.length === LOCK_WIN && prep7.tickets.every((t: any) => t.payout === share7 && t.frozenReason === null)
+      && prep7.wallets.every((w: any) => w.status === "FROZEN" && J(w.reasons) === J(["SELF_EXCLUSION"]) && w.balance === BALANCE - w7.price + share7),
+    J({ rel7: rel7?.error ?? rel7?.ok, share7, tickets: prep7?.tickets, wallets: prep7?.wallets }));
+  const [tkA, tkB] = (prep7?.tickets ?? []) as any[];
+  if (!tkA || !tkB) throw new Error("the OD-13 week has no two winning tickets");
+  const [pa, pb] = await race([
+    { kind: "paylocked", ticketId: tkA.id, officerId: `usr_s16_od13_a_${process.pid}` },
+    { kind: "paylocked", ticketId: tkA.id, officerId: `usr_s16_od13_b_${process.pid}` }]);
+  const afterA = await runJob({ kind: "paidlocked", ticketId: tkA.id, userId: tkA.userId });
+  ok("6c.2 · ⭐ two officers on two instances at the same instant pay ONE share once: one withdrawal of exactly the share, one record — the other officer told nothing was paid again",
+    [pa, pb].filter((r) => r?.ok === true && r.status === "CONFIRMED" && !r.replayed && !r.already).length === 1
+      && [pa, pb].filter((r) => r?.ok === true && (r.replayed || r.already)).length === 1
+      && afterA?.payments?.length === 1 && afterA.payments[0].status === "CONFIRMED" && afterA.payments[0].amount === -share7
+      && afterA.withdrawals === 1 && afterA.records?.length === 1,
+    J({ pa, pb, payments: afterA?.payments, withdrawals: afterA?.withdrawals, records: afterA?.records }));
+  ok("6c.3 · the wallet is down by exactly the share, and stays frozen by the self-exclusion alone",
+    afterA?.wallet?.balance === BALANCE - w7.price && afterA.wallet.status === "FROZEN" && J(afterA.wallet.reasons) === J(["SELF_EXCLUSION"]),
+    J(afterA?.wallet));
+  // A payment racing Compliance's hold of the same share: whichever takes the Millionea chain lock first decides. The hold
+  // first: the payment is refused inside the locks and nothing leaves. The payment first: the share leaves once, and the
+  // later hold marks a share already paid (its forfeit then refuses: the wallet no longer holds it) — never both free.
+  const [pc7, hc7] = await race([
+    { kind: "paylocked", ticketId: tkB.id, officerId: `usr_s16_od13_c_${process.pid}` },
+    { kind: "holdshare", ticketId: tkB.id, officerId: `usr_s16_od13_d_${process.pid}` }]);
+  const afterB = await runJob({ kind: "paidlocked", ticketId: tkB.id, userId: tkB.userId });
+  const paidFirst = pc7?.ok === true && pc7.status === "CONFIRMED";
+  // The hold first: the act refuses on the held share, on the wallet's new hold, or inside withdraw's own gate.
+  const heldFirst = pc7?.ok === false && !/^THREW/.test(String(pc7?.error)) && /held|Wallet frozen/.test(String(pc7?.error));
+  ok("6c.4 · ⭐ a payment racing a hold on another instance: the hold landed and nothing left, or the share left once — the wallet holds exactly what that outcome leaves",
+    hc7?.ok === true && /^compliance · /.test(String(afterB?.ticket?.frozenReason)) && (paidFirst !== heldFirst)
+      && (paidFirst
+        ? afterB?.payments?.length === 1 && afterB.payments[0].amount === -share7 && afterB.withdrawals === 1 && afterB.records?.length === 1
+          && afterB.wallet?.balance === BALANCE - w7.price
+        : afterB?.payments?.length === 0 && afterB.withdrawals === 0 && afterB.records?.length === 0 && afterB.wallet?.balance === BALANCE - w7.price + share7),
+    J({ pay: pc7, hold: hc7, paidFirst, heldFirst, payments: afterB?.payments, wallet: afterB?.wallet, ticket: afterB?.ticket }));
+  measured.push(`  §6c · the payment-against-hold race: ${paidFirst ? "the payment took the chain lock first" : heldFirst ? "the hold took the chain lock first" : "neither outcome was read"}`);
 
   // ── §7 · the identities ────────────────────────────────────────────────────────────────────────────────────────
   console.log(`${NL}§7 · the identities over everything above`);

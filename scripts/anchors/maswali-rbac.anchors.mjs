@@ -273,4 +273,29 @@ export const MUTATIONS = [
     expect: "3 · ruleMaswaliObjection is enforced",
     suite: "rbac",
   },
+  /* ── MASWALI-BUILD S6-MONEY · OD-13 · Compliance pays a share owed to a winner whose account cannot sign in, on /integrity. ── */
+  {
+    name: "(SM-rbac-1) the payment of a locked winner's share is registered as an accounting control, so a role other than Compliance could pay through a self-exclusion",
+    file: "src/lib/server/control-gates.ts",
+    from: "  payLockedWinnerShare: \"compliance\",",
+    to: "  payLockedWinnerShare: \"accounting\",",
+    expect: "2 · payLockedWinnerShare is registered compliance",
+    suite: "rbac",
+  },
+  {
+    name: "(SM-rbac-2) the payment of a locked winner's share is enforced as the share hold's control instead of its own",
+    file: "src/app/admin/maswali/integrity/actions.ts",
+    from: "requireStaff(CONTROL_DOMAIN.payLockedWinnerShare, \"payLockedWinnerShare\")",
+    to: "requireStaff(CONTROL_DOMAIN.holdMaswaliShare, \"payLockedWinnerShare\")",
+    expect: "3 · payLockedWinnerShare is enforced",
+    suite: "rbac",
+  },
+  {
+    name: "(SM-rbac-3) the integrity page draws the payment to every role that opens it (no awaited answer, no lock)",
+    file: "src/app/admin/maswali/integrity/page.tsx",
+    from: ": canPayLocked ? <PayLockedShareControl ",
+    to: ": true ? <PayLockedShareControl ",
+    expect: "10 · /admin/maswali/integrity draws the payment of a locked winner's share",
+    suite: "rbac",
+  },
 ];

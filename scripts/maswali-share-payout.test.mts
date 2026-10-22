@@ -10,8 +10,9 @@
  * imitate: two officers' payments ordered by real advisory locks, and the payment's ledger group balancing (A.10; the
  * memory store keeps no ledger, so its A.10m holds the payment's own arithmetic instead).
  * ⛔ NO POSTGRES IS A FAILURE, NOT A SKIP (exit 3, NOT MEASURED).
- * Its plants are in `red:maswali-money-path` ((SM2)…(SM10)). The floor is what the lane's first green run printed and only
- * ever rises.
+ * Its plants are in `red:maswali-money-path` ((SM2)…(SM13), suite `sharepay`); the race across two processes is S16 §6c
+ * (`load:maswali-cross-instance`: two officers on two instances pay one share once; a payment racing a hold). The floor is
+ * what a green run printed and only ever rises.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 

@@ -65,8 +65,9 @@ const CONTROLS: Array<{ id: ControlId; domain: string; route: keyof typeof ROUTE
   { id: "releaseMaswaliSettlement", domain: "accounting", route: "pools" },
   // S6 (2026-10-18): the desk's record of a call that reached a winner (MB-93) joins Compliance's acts on /integrity.
   // S7-OB: the ruling on a player's objection to one question (MR-16) joins them too.
+  // S6-MONEY: OD-13's payment of a share owed to a winner whose account cannot sign in joins them as well.
   ...(["voidMaswaliWeek", "pauseMaswaliSales", "resumeMaswaliSales", "holdMaswaliShare", "releaseMaswaliShare", "forfeitMaswaliShare",
-    "markMillioneaWinnerReached", "clearUnresolvedLetter", "ruleMaswaliObjection"] as const)
+    "markMillioneaWinnerReached", "clearUnresolvedLetter", "ruleMaswaliObjection", "payLockedWinnerShare"] as const)
     .map((id) => ({ id, domain: "compliance", route: "integrity" as const })),
   ...(["fundMaswaliGuarantee", "returnMaswaliGuarantee", "sunsetMaswali", "setMaswaliLicenceBasis", "setMillioneaRollout"] as const)
     .map((id) => ({ id, domain: "ops", route: "pools" as const })),
@@ -87,7 +88,8 @@ for (const [name, r] of Object.entries(ROUTES)) {
 // S6-INT 14 · 25 at the N squash: 21 before S7, S7-F2's two (saveMaswaliConfig, saveMaswaliHolidays) and the notices' two
 // (markMillioneaWinnerReached, clearUnresolvedLetter, Compliance on /integrity) — the count this suite printed.
 // S6-INT 21 · 26 with S7-OB's objection ruling (ruleMaswaliObjection, Compliance on /integrity) merged in.
-ok("2 · there are 26 Millionea controls, each registered", CONTROLS.length === 26 && CONTROLS.every((c) => c.id in CONTROL_DOMAIN), `${CONTROLS.length}`);
+// S6-MONEY · 27 with OD-13's payment of a locked winner's share (payLockedWinnerShare, Compliance on /integrity).
+ok("2 · there are 27 Millionea controls, each registered", CONTROLS.length === 27 && CONTROLS.every((c) => c.id in CONTROL_DOMAIN), `${CONTROLS.length}`);
 for (const c of CONTROLS) {
   ok(`2 · ${c.id} is registered ${c.domain}`, CONTROL_DOMAIN[c.id] === c.domain, `registered ${CONTROL_DOMAIN[c.id]}`);
   for (const role of ROLES) {
@@ -380,6 +382,21 @@ const WRITES = /\.(create|createMany|createManyAndReturn|update|updateMany|upser
     ok(`6 · ${role} opens /admin/maswali/integrity without clearUnresolvedLetter and is drawn the lock, never the control`, drawn);
   }
   ok("10 · at least one role opens the integrity page without the letters' control (the population the lock is for)", locked.length >= 1, locked.join(","));
+  // S6-MONEY · OD-13 · the payment of a locked winner's share is drawn the same way: from its awaited answer, the control,
+  // else its lock — never the control to a role the server refuses (`requireStaff(CONTROL_DOMAIN.payLockedWinnerShare, …)`).
+  const payName = names[ids.indexOf("payLockedWinnerShare")];
+  const payDrawn = ids.length > 0 && ids.length === names.length && !!payName && integrity.includes(`: ${payName} ? <PayLockedShareControl `)
+    && integrity.includes(`: <ControlLocked what="Pay the share" need={CONTROL_DOMAIN.payLockedWinnerShare} />`);
+  ok("10 · /admin/maswali/integrity draws the payment of a locked winner's share from its awaited answer: the control, else its lock",
+    payDrawn, `${ids.length} checks · ${names.length} answers · condition ${payName ?? "none"}`);
+  const payLocked: string[] = [];
+  for (const role of ROLES) {
+    if (!(await canView(role, domainForPath(ROUTES.integrity.path)))) continue;
+    if (await canUseControl(role, "payLockedWinnerShare")) continue;
+    payLocked.push(role);
+    ok(`10 · ${role} opens /admin/maswali/integrity without payLockedWinnerShare and is drawn the lock, never the control`, payDrawn);
+  }
+  ok("10 · at least one role opens the integrity page without the payment's control (the population its lock is for)", payLocked.length >= 1, payLocked.join(","));
 }
 
 console.log(`\nmaswali-rbac: ${pass} passed, ${fail} failed`);
