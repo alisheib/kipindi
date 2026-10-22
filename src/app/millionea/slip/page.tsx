@@ -54,13 +54,13 @@ export async function generateMetadata(): Promise<Metadata> {
  * The page when no slip is drawn: the way back to the hub over its head, as the slip itself draws it ("‹ MASWALI
  * MILLIONEA"), its name, and the reason. ⭐ ONE way back, named (Ali 2026-10-21 10/10 pass, the slip critic's LOW): the
  * page's foot once carried a second, a ghost button whose only words were the product's name. The reason stands at the
- * slip's own measure (640px, its question column), never stretched to the page's width from 1280.
+ * slip's own measure (the form tier's `max-w-form`, its question column), never stretched to the page's width from 1280.
  */
 function NoSlip({ t, children }: { t: Dict; children: React.ReactNode }) {
   return (
     <PageContainer tier="reading" className="kp-mln-zh">
       <BackLink fallbackHref={MILLIONEA_HREF.hub} label={t.millionea.productTitle} />
-      <div className="flex max-w-[640px] flex-col gap-5 pt-5" data-testid="millionea-slip-none">
+      <div className="flex max-w-form flex-col gap-5 pt-5" data-testid="millionea-slip-none">
         <PageHeader title={t.millionea.titleSlip} />
         {children}
       </div>

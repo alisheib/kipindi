@@ -9,7 +9,8 @@ import { useT } from "@/lib/i18n";
 const ROWS = [0, 1, 2, 3];
 
 /**
- * /millionea/slip loading skeleton — the slip's own bands (`maswali-slip.tsx`), at the slip's own measure (640px): its head
+ * /millionea/slip loading skeleton — the slip's own bands (`maswali-slip.tsx`), at the slip's own measure (the form tier's
+ * `max-w-form`, and its grid track `var(--w-form)`, as the page's): its head
  * (the title and the two times), the rules strip (the price, the cap), the question rows with their two 44px controls on
  * the controls' own radius (`rounded-control`, never a pill), and the pay control's place — the rail docked full-bleed on
  * the tab bar below 1280 (its meter row, the counts and the control), the panel beside the questions from 1280, standing
@@ -23,8 +24,8 @@ export function MillioneaSlipGhost() {
   return (
     <PageContainer tier="reading">
       <BackLinkGhost />
-      <div className="grid w-full grid-cols-1 items-start gap-7 py-5 xl:grid-cols-[minmax(0,640px)_400px]" aria-busy="true" data-testid="slip-ghost">
-        <div className="flex min-w-0 max-w-[640px] flex-col gap-4" aria-hidden>
+      <div className="grid w-full grid-cols-1 items-start gap-7 py-5 xl:grid-cols-[minmax(0,var(--w-form))_400px]" aria-busy="true" data-testid="slip-ghost">
+        <div className="flex min-w-0 max-w-form flex-col gap-4" aria-hidden>
           <div className="flex flex-col gap-1.5">
             {/* The title's line box (text-title-lg's 28/34) holding a bar, never words: no display face, so no display stem —
                 the stem corrects a first glyph's ink (r7c 3.9), and a drawing reads no Millionea word at all (maswali-ui 1.3). */}
@@ -57,7 +58,7 @@ export function MillioneaSlipGhost() {
       {/* The rail's place below 1280, docked where the page's docks (`.kp-mln-rail`), so nothing rises when it arrives. */}
       <div className="kp-mln-rail sticky bottom-[calc(65px+env(safe-area-inset-bottom,0px))] z-30 -mx-3 lg:-mx-6 lg:bottom-0 xl:hidden" aria-hidden>
         <div className="border-t border-border-strong px-3 py-2 shadow-overlay-up lg:px-6" style={{ background: "var(--panel)" }}>
-          <div className="flex max-w-[640px] flex-col gap-2">
+          <div className="flex max-w-form flex-col gap-2">
             <div className="flex h-5 items-center"><GhostBar className="h-[6px] w-full" /></div>
             <div className="flex items-center gap-2">
               <GhostBar className="h-4 min-w-0 flex-1" />

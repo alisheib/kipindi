@@ -423,8 +423,15 @@ section("§7 · the loading ghost draws the page it stands for");
   ok("7.1 · M13 + motion M6 · the ghost draws the rail below 1280 (docked where the page's docks), the panel under the top bar from 1280, and controls on the controls' radius — never pills",
     g.includes("kp-mln-rail sticky bottom-[calc(65px+env(safe-area-inset-bottom,0px))]") && /sticky top-\[72px\][^"]*xl:block/.test(g)
       && (g.match(/h-\[var\(--h-control-md\)\][^"]*rounded-control/g) ?? []).length >= 9 && !/h-\[var\(--h-control-md\)\][^"]*rounded-pill/.test(g));
-  ok("7.2 · …at the slip's own measure (640px) and with no switcher box (the page draws one only for a second ticket)",
-    g.includes("max-w-[640px]") && !g.includes("millionea-ticket-drafts"));
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-SLIP, `test:measure`'s release red): the measure is the kit's form tier, never
+  // a hand-typed 640px — the column `max-w-form` and its grid track `var(--w-form)`, read in the ghost AND the page it stands
+  // for (one measure, so nothing moves when the page lands), and the token's value read from the stylesheet.
+  const page = slipOf("sw");
+  const MEASURE = ["xl:grid-cols-[minmax(0,var(--w-form))_400px]", "flex min-w-0 max-w-form flex-col gap-4"];
+  const wForm = /--w-form:\s*([0-9]+)px;/.exec(css)?.[1];
+  ok("7.2 · …at the slip's own measure — the form tier (column `max-w-form`, grid track `var(--w-form)`, 640px), the page's own — with no hand-typed width, and with no switcher box (the page draws one only for a second ticket)",
+    MEASURE.every((c) => g.includes(c) && page.includes(c)) && wForm === "640" && !/max-w-\[[0-9]+px\]/.test(g) && !g.includes("millionea-ticket-drafts"),
+    j({ wForm, ghost: MEASURE.map((c) => g.includes(c)), page: MEASURE.map((c) => page.includes(c)) }));
 }
 
 /* ══ §8 · THE DECIDED WORDS ══════════════════════════════════════════════════════════════════════════════════════════════════ */
