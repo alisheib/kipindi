@@ -16,7 +16,8 @@ export function MillioneaRegisterGhost() {
   const { t } = useT();
   return (
     <PageContainer tier="reading">
-      <div className="flex flex-col gap-6" aria-busy="true">
+      {/* `data-ghost-page`: which page's drawing this is, for `qa:millionea-ghost-hops` (a hop shows only its own). */}
+      <div className="flex flex-col gap-6" aria-busy="true" data-ghost-page="register">
         <div className="flex flex-col gap-3">
           <MaswaliGhostHead eyebrowWidth="w-[144px]" titleWidth="w-[208px]" />
           <div className="flex max-w-[68ch] flex-col gap-2" aria-hidden>

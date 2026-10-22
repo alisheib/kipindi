@@ -18,7 +18,8 @@ export function MillioneaRegisterWeekGhost() {
   const H2 = <span className="font-display text-title-sm font-bold"><GhostLine className="w-[160px]" /></span>;
   return (
     <PageContainer tier="reading">
-      <div className="flex flex-col gap-6" aria-busy="true">
+      {/* `data-ghost-page`: which page's drawing this is, for `qa:millionea-ghost-hops` (a hop shows only its own). */}
+      <div className="flex flex-col gap-6" aria-busy="true" data-ghost-page="week">
         <BackLinkGhost />
         <div className="flex flex-col gap-2">
           <MaswaliGhostHead eyebrowWidth="w-[144px]" titleWidth="w-[132px]" />
