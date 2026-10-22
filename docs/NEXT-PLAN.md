@@ -166,7 +166,7 @@ against each other within a daily budget, may fetch their own price, and the ros
 | **Where** | Release and live readback: [`docs/HOUSE-BOTS.md`](HOUSE-BOTS.md) §§12.20–12.21; current programme status: [`plans/house-bots/RESUME-HERE.md`](../plans/house-bots/RESUME-HERE.md) §0e; management and admin instructions: `docs/50pick-house-bots-desk-guide.pdf`. |
 | **Next** | Read [`plans/house-bots/RESUME-HERE.md`](../plans/house-bots/RESUME-HERE.md) §0e — never this cell |
 
-## ▶ 0i · MASWALI MILLIONEA — the third product, a weekly jackpot — `MASWALI-BUILD` · 🔨 **S1–S4 closed by the milestone battery; S5 final dark-release checks on its own branch; S7's wide-winner load blocker next, then S6 in L → D → R → N order; rollout WITHDRAWN. ▶ Resume: MASWALI-PLAN §0** · 9/13 sessions ✅
+## ▶ 0i · MASWALI MILLIONEA — the third product, a weekly jackpot — `MASWALI-BUILD` · 🔨 **S1–S4 closed by the milestone battery; S5 in round 2 of Ali's 10/10 design pass on its release branch; S7 merged with S5 on its own branch; S6 integrating in four lanes; Ali's scope 2026-10-22: build done, launch later, and S8's live test is the first public week; rollout WITHDRAWN. ▶ Resume: MASWALI-PLAN §0** · 9/13 sessions ✅
 
 Ali, 2026-10-16: *"disregard any august rulgint he enw paln is final ruling"* · *"th enew pd is rveewd by management and
 update dlatly so any old ruels repalc ehtem if lost y those fomr the new pdf"* · *"we need to be very creative in how we
