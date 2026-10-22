@@ -56,7 +56,7 @@ import { MAIN_COUNT } from "@/lib/maswali-score";
 import { fill, formatNumber, formatTzs } from "@/lib/utils";
 import type { WeekState } from "@/lib/maswali-week-label";
 import type { Dict, Locale } from "@/lib/i18n-dict";
-import { MILLIONEA_HREF, MillioneaPreviewMark, MillioneaReadingLinks } from "../../millionea-parts";
+import { MILLIONEA_HREF, MillioneaReadingLinks } from "../../millionea-parts";
 import { bySlot, millioneaWeekPhase, msOf, ordinalOf, textIn, type MillioneaWeekPhase } from "../../millionea-view";
 import { liveWeekFacts, registerLedgerRows, registerWhen, WeekCommitments, weekFacts, WeekStateChip, weekTimes } from "../register-parts";
 import { ROOT_OPEN_GRAPH } from "@/app/layout";
@@ -435,7 +435,8 @@ function ReserveMap({ t, locale, v }: { t: Dict; locale: Locale; v: View }) {
 }
 
 export default async function MillioneaRegisterWeekPage({ params }: { params: Promise<{ week: string }> }) {
-  const gate = await millioneaGate();
+  // The staff preview is marked once, above the page, by the shell's bar (PLATFORM D12) — never in the page's column.
+  await millioneaGate();
   const { week: code } = await params;
   const { t, locale } = await getServerT();
   const rec = await millioneaRegisterRecord(code);
@@ -457,7 +458,6 @@ export default async function MillioneaRegisterWeekPage({ params }: { params: Pr
           {v.facts.length > 0 && <p className="text-body text-text" data-testid="millionea-week-head-facts"><MaswaliFacts facts={v.facts} /></p>}
           {v.times.length > 0 && <p className="text-body-sm text-text-muted"><MaswaliFacts facts={v.times} /></p>}
         </div>
-        {gate.preview && <MillioneaPreviewMark t={t} />}
         {/* The week's money: the ONE Millionea ledger once the week is final (H5), at the receipt's measure, no right lane
             (M4, M5); until then its place says when it comes — never a figure before it is final (H2). */}
         {/* Titled as every section of the page is — its heading over its card, as the commitments' (one rhythm). */}

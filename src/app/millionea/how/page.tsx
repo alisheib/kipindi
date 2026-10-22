@@ -47,7 +47,7 @@ import { fill, formatTzs, pctNum } from "@/lib/utils";
 import { durationHours } from "@/lib/duration-phrase";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import type { WeekPhases } from "@/components/maswali/maswali-week-strip";
-import { MillioneaPreviewMark, MillioneaReadingLinks } from "../millionea-parts";
+import { MillioneaReadingLinks } from "../millionea-parts";
 import { HowExample } from "./how-example";
 
 export const dynamic = "force-dynamic";
@@ -148,7 +148,7 @@ export default async function MillioneaHowPage() {
     <PageContainer tier="reading" className="kp-mln-zh">
       <div className="flex flex-col gap-6" data-testid="millionea-how">
         <PageHeader eyebrow={t.millionea.productTitle} title={t.millionea.howToPlay} />
-        {gate.preview && <MillioneaPreviewMark t={t} />}
+        {/* The staff preview is marked once, above the page, by the shell's bar (PLATFORM D12) — never in the page's column. */}
         {/* Each step keeps its phrases whole (S5 VIS P6, A1): "5 reserve", "A1–A5", "13% fee" never torn at a line's end. */}
         <ol className="flex max-w-[68ch] flex-col gap-3">
           {steps.map((s, i) => (

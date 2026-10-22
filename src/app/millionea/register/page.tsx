@@ -28,7 +28,7 @@ import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { millioneaGate } from "@/lib/server/millionea-gate";
 import { millioneaRegister, millioneaRegisterCurrent } from "@/lib/server/maswali-player";
 import { getServerT } from "@/lib/i18n-server";
-import { MILLIONEA_HREF, MillioneaPreviewMark, MillioneaReadingLinks } from "../millionea-parts";
+import { MILLIONEA_HREF, MillioneaReadingLinks } from "../millionea-parts";
 import { millioneaWeekPhase } from "../millionea-view";
 import { keepFact } from "@/components/maswali/maswali-facts";
 import { liveWeekFacts, WeekRow, WeekStateChip, weekFacts } from "./register-parts";
@@ -44,7 +44,8 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function MillioneaRegisterPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
-  const gate = await millioneaGate();
+  // The staff preview is marked once, above the page, by the shell's bar (PLATFORM D12) — never in the page's column.
+  await millioneaGate();
   const [{ t, locale }, sp] = await Promise.all([getServerT(), searchParams]);
   const nowMs = Date.now();
   // The read clamps the page asked into range and answers the page it drew, which the pager then marks.
@@ -65,7 +66,6 @@ export default async function MillioneaRegisterPage({ searchParams }: { searchPa
               at 320). */}
           <p className="max-w-[68ch] text-body text-text-muted text-pretty" data-testid="millionea-register-intro">{keepFact(locale, t.millionea.regIntro)}</p>
         </div>
-        {gate.preview && <MillioneaPreviewMark t={t} />}
         {current.length === 0 && total === 0 ? (
           <EmptyState
             fill
