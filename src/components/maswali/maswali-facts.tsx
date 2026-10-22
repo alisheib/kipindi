@@ -17,7 +17,9 @@ import type { Locale } from "@/lib/i18n-dict";
  *     its line wraps inside itself between its words, so nothing can overflow at 320. The separator is each fact's own
  *     leading mark in the gap before it (`.kp-mln-fact::before`); the list is pulled back by that gap and clipped there, so
  *     the mark of every fact that opens a line falls outside the clip — no line starts with "·" — and since a mark always
- *     LEADS its fact, none ever ends one. `stack` sets one fact per line at every width (the stamp's centred lines),
+ *     LEADS its fact, none ever ends one. Drawn outside the line's flow, a mark offers no break either: a fact's first run
+ *     opens its first line, never a line below an empty one (`test:maswali-fact-mark`). `stack` sets one fact per line at
+ *     every width (the stamp's centred lines),
  *     `phone` below 768 (the card's "one fact per line at phone widths", P3). The rules are `.kp-mln-facts` in globals.css.
  *   · `keepFact` keeps a fact's phrases whole, the platform's way (keep-run.tsx): each run in a `white-space: nowrap`
  *     span, the words untouched (no no-break space, no word joiner — a copy and a screen reader read the dictionary's
