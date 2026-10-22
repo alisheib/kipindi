@@ -29,16 +29,21 @@
 
 ## §0 · RESUME AT
 
-**⏳ IN FLIGHT (2026-10-22 PM, OMEGA-COMPILE01, the Claude session asheib-f3 leads; Ali: "proceed until done … pushed live
-and development closed").** Ali's scope (2026-10-22): **build done, launch later** — S5, then S7, then S6, each verified
-(critics 10/10 + every gate) and pushed to `main` DARK; STAFF_PREVIEW right after S5 is live (his 2026-10-21 ruling); S8
-prepared and handed to him (his items listed in this §0 at the close). Running now, each on its own branch (pushed after
-every commit): the six round-2 lanes finish their LEFT lists (code, static checks, targeted proofs — the full render runs
-ONCE on the integrated head, then the independent critics); DOORS fixes the ⛔ dark-safety blocker first (every place a
-`millionea=`/`preview=` prop reaches a client component); S7 merges this release into `claude/maswali-s7-s5` (FIX-SRV's
-map), then builds TK.2 (MB-96) and RD.5 (MB-74); S6 reviews N's round 17 and maps its merge (read-only). OB.0 (MB-23,
-MR-16's objection door) is built on the integrated UI after S5's merge. Lead's working state: this §0 + the hand-over
-branch `maswali-handover-20261021` (a new top section at each milestone).
+**⏹ STOP 4 (2026-10-22 ~12:30 UTC, OMEGA-COMPILE01, the Claude session asheib-f3 led; Ali: "push the progress we reached
+cleanly and stop the session cleanly so we proceed later on a clean base"). RESUME HERE, from any machine:** the hand-over
+branch `maswali-handover-20261021`, `handover/maswali-2026-10-21/` — README's top section (STOP 4: every branch and head,
+what each lane left, the next steps in order, Ali's answers) and MERGE-NOTES' top section (every lane's final report, every
+lead ruling, the merge-time wiring, the reader findings). Ali's scope (2026-10-22, never re-ask): **build done, launch
+later** — S5, then S7, then S6, each verified (critics 10/10 + every gate) and pushed to `main` DARK; STAFF_PREVIEW right
+after S5 is live; S8 prepared and handed to him. Pre-approved by him: each verified push, the production read-backs, the
+STAFF_PREVIEW switch, one read-only "SmsMessage" count, branch deletes at the very end; QA staff + QA player sign-in once
+each for the staff check; **S8's live test is the first public week** (rewrite S8, OD-21 and §6 line 12 to match). At the
+stop: DOORS ✅ (the ⛔ dark-safety blocker fixed and proven on real bytes, `13d8ca918`) and SLIP ✅ (`d5f24f569`) are done;
+HUB `a76e03f96`, TICKETS `fdbeae5a4`, REGISTER `926ebc6c1` and PLATFORM `04d3e3d93` hold WIP tops with exact lists left; S7
+is merged with S5 on `claude/maswali-s7-s5` (`be37a9683`, proven on both stores); S6's integration is on
+`claude/maswali-s6-release`. This release gained the lead's `41e61987c` (three ratchets), `c58b316ff` + `87f19f3a9` (Ali's
+English buy wording in the never-printed privacy paragraph and the player drive) and `edf79c2b0` (red:journey-home's
+anchor). Nothing of S5–S8 is live; production serves `67e47f8d2`.
 
 **State (2026-10-21):** S1–S4 are on `main` dark. S5's release candidate is branch
 `claude/maswali-s5-release` (Codex's mirror `codex/maswali-coord-20261019` retired 2026-10-21 PM): Codex's integrated
