@@ -467,6 +467,23 @@ check("7.6", "M11 · the index says what it is (an intro at /fairness's reading 
   const words = LOCALES.map((l) => mln(w, l).regEmpty);
   return [intro && empty && j(words) === j(["No week is final yet.", "Bado hakuna wiki iliyokamilika.", "尚无已确定的周。"]), j({ intro, empty, words })];
 });
+// ⭐ S5-R2-REGISTER (2026-10-22) · the lead's ruling: ONE wording for a week's sales close everywhere — `salesCloseColon`, the
+// words the slip and the ticket draw, with its zone. The register's running row and a selling week's head said "Sales close
+// Friday 18:00" (`salesCloseAt`, no zone): the same moment spelled twice. The clock a `.mono` numeral (§T5); the weekday, the
+// clock and the zone one kept run — both `keepFact`'s own.
+check("7.7", "the lead's ruling · ONE wording for a selling week's close: `salesCloseColon` — \"Sales close: Friday 18:00 EAT\" / \"Mauzo yanafungwa: Ijumaa 18:00 EAT\" / \"销售截止：周五 18:00 EAT\", the slip's words — never `salesCloseAt`; its clock a `.mono` numeral (§T5) and \"Friday 18:00 EAT\" one kept run", (w) => {
+  const s = code(w, "parts");
+  const src = s.includes("[keepFact(locale, fill(t.millionea.salesCloseColon, { when: eatWeekdayClock(t, closes) }))]") && !s.includes("t.millionea.salesCloseAt");
+  const nowMs = Date.parse("2026-12-01T12:00:00+03:00");
+  const want = ["Sales close: Friday 18:00 EAT", "Mauzo yanafungwa: Ijumaa 18:00 EAT", "销售截止：周五 18:00 EAT"];
+  const whole = ["Friday 18:00 EAT", "Ijumaa 18:00 EAT", "周五 18:00 EAT"];
+  const said = LOCALES.map((l) => {
+    const facts = w.liveFacts(w.dict[l] as never, l, liveWeek({}), nowMs);
+    return { text: facts.map(textOf).join(" | "), mono: facts.some((f) => markup(f).includes('<span class="mono">18:00</span>')), runs: facts.flatMap(nowrapRuns) };
+  });
+  const off = said.filter((x, i) => x.text !== want[i] || !x.mono || !x.runs.includes(whole[i]));
+  return [src && off.length === 0, j({ src, said })];
+});
 
 // ── §8 · R10 · the register's name ──────────────────────────────────────────────────────────────────────────────────
 check("8.1", "R10 · \"Week register\" in sentence case, and the page's title and its door (`register`) are the same words in every language (zh \"每周公示\")", (w) => {
@@ -835,7 +852,7 @@ if (!PROVE_RED) {
   const { pass, fail } = runAll(REAL, false);
   console.log(`\n${"═".repeat(70)}\n  MASWALI REGISTER: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
   /** The floor is the count a green run PRINTS; it only rises, to a printed number. */
-  const MIN_ASSERTIONS = 59; // S5-FIX-PLAYER §15 (P3, P4, P9, P11) added five; S5-DESIGN-REGISTER (3.9, 5.3, 5.4, 7.5, 7.6, 9.8, 14.3) seven, §16 (the tile read) five; S5-R2-REGISTER (3.10) one
+  const MIN_ASSERTIONS = 60; // S5-FIX-PLAYER §15 (P3, P4, P9, P11) added five; S5-DESIGN-REGISTER (3.9, 5.3, 5.4, 7.5, 7.6, 9.8, 14.3) seven, §16 (the tile read) five; S5-R2-REGISTER (3.10, 7.7) two
   if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
   process.exit(fail === 0 ? 0 : 1);
 }
@@ -929,6 +946,9 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["M11 undone — the default empty box under a left heading", "7.6", plantSrc("index", "<EmptyState\n            fill\n            kind=\"fairness\"", "<EmptyState\n            kind=\"fairness\"")],
   ["M11 undone — the index says nothing of what it is", "7.6", plantSrc("index", "{keepFact(locale, t.millionea.regIntro)}", "{null}")],
   ["the intro's dash free to open a line again", "7.6", plantSrc("index", "{keepFact(locale, t.millionea.regIntro)}", "{t.millionea.regIntro}")],
+  ["the second spelling of the close back (\"Sales close Friday 18:00\", no zone)", "7.7", plantSrc("parts", "fill(t.millionea.salesCloseColon, { when: eatWeekdayClock(t, closes) })", "fill(t.millionea.salesCloseAt, { when: eatWeekdayClock(t, closes) })")],
+  ["the close said without its zone in Swahili", "7.7", plantWord("sw", "salesCloseColon", "Mauzo yanafungwa: {when}")],
+  ["the close's clock in the sentence's face (no `.mono`)", "7.7", { ...REAL, liveFacts: (t, l, wk, n) => liveWeekFacts(t, l, wk, n).map((f) => keepFact(l, textOf(f), [], { numerals: false })) }],
   // §8
   ["R10 undone — \"Week Register\" in title case", "8.1", plantWord("en", "registerTitle", "Week Register")],
   ["zh's door and title disagree", "8.1", plantWord("zh", "register", "每周登记册")],

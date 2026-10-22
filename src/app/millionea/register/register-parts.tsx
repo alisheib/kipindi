@@ -109,13 +109,16 @@ function factCase(s: string): string {
 
 /**
  * A RUNNING WEEK'S FACTS, AFTER ITS CHIP (H2) — the hub's own lines, so the two say a week one way: a selling week's close
- * ("Sales close Friday 18:00"; nothing while its sales are paused — the chip says so, and nothing can be bought before
+ * ("Sales close: Friday 18:00 EAT"; nothing while its sales are paused — the chip says so, and nothing can be bought before
  * that close); a week being graded, its results so far and, while it is open, its objection window's end.
+ * ⭐ ONE WORDING FOR THE SALES CLOSE (the lead's ruling, 2026-10-22): `salesCloseColon`, the words the slip and the ticket
+ * draw, with its zone — never a second spelling of the same moment. Its clock is a `.mono` numeral (§T5) and the weekday,
+ * the clock and the zone one kept run ("Ijumaa 18:00 EAT"), both `keepFact`'s own (`numeralRuns`, the CLOCK run).
  */
 export function liveWeekFacts(t: Dict, locale: Locale, w: MillioneaRegisterLiveWeek, nowMs: number): ReactNode[] {
   if (w.state === "OPEN") {
     const closes = msOf(w.closesAt);
-    return w.paused || closes === null ? [] : [keepFact(locale, fill(t.millionea.salesCloseAt, { when: eatWeekdayClock(t, closes) }))];
+    return w.paused || closes === null ? [] : [keepFact(locale, fill(t.millionea.salesCloseColon, { when: eatWeekdayClock(t, closes) }))];
   }
   const facts: ReactNode[] = [keepFact(locale, fill(t.millionea.resultsOut, { n: formatNumber(w.resultsOut) }))];
   const until = millioneaWeekPhase(w, nowMs).objectionsUntil;
