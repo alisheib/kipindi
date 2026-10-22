@@ -3220,7 +3220,9 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     register's recipe for its source links), never a 44px box with its line centred in it (~30px of air over the hub
     card's first row against ~20px under its last). ONE EDGE: every value is right-aligned (the kit row's `alignEnd`), so
     a value that wraps ends each line at the figures' edge. Guards: `test:maswali-design-register` 2.13–2.20, each with its
-    plant.
+    plant; in the browser, `qa:maswali-register-shots`' LEDGER judge on every page that draws a ledger (a final week's
+    page, How's worked weeks) — no row steps, every figure's lines end at the edge, every carry row answers a tap 19.5px
+    above and below its middle (hit-tested) — each with its in-page control.
 15. **A ticket's moments play where its owner sees them, once (Ali, 2026-10-21 10/10 pass — the R1 tickets critic's M8,
     the motion critic's H3, H4 and L2; `components/maswali/maswali-moment.tsx`).** Item 5 holds, and a ticket page adds
     WHERE: each moment — the cut (N3) and its reverse, a result's press (N2), the stamp line's reveal, the receipt's
@@ -3289,7 +3291,8 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     `--prove-red` undoes the register's pick and must catch it. A drawing is drawn in the page's own type — a line of
     words is the kit's bar inside the very line box those words fill (`GhostTextLine`, the hub's L7 rule), its lines per
     language from the page's measured tables — and lands where the page puts each band (`qa:maswali-register-shots`'
-    how-ghost and register-ghosts hops, within 1px).
+    how-ghost and register-ghosts hops, within 1px, each drawing read once the route's entrance — `.route-enter`, 10px
+    rising over `--t-move` — has settled).
 23. **A fact list spaces its marks as a typed " · " does (the lead's SEP ruling, 2026-10-22 — measured, no CSS change).**
     `MaswaliFacts` draws each fact as one wrap unit, its separators never opening or ending a line, at `--mln-sep`: 0.9em
     in the body face; inside a tracked mono eyebrow `calc(3ch + 0.42em)`, 3ch in Chinese (the hub's L1 rule,

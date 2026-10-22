@@ -121,8 +121,13 @@ const NEEDLE_REST = 0.3;
 const REST_SLACK = 0.005;
 
 /** Waits until the chat bubble's opacity has stopped moving — its D15 yield and its D3/D75 clears run on `--t-quick` — so a
- *  tile and its cover census never catch it mid-fade: two reads 60ms apart agree (at most 1.2s). */
+ *  tile and its cover census never catch it mid-fade: two reads 60ms apart agree (at most 1.2s). The bubble mounts after
+ *  the page hydrates and asks its census on its first frame: it is waited for (at most 3s) and given two frames first — read
+ *  before its census had run, it stood at full ink over a figure it yields to every time (week-rolled-sw-360, 2026-10-22;
+ *  20 fresh opens of that page, nothing planted: yielded in all 20 by 2.5s). */
 async function still(page) {
+  await page.waitForSelector(".cm-fab", { state: "attached", timeout: 3_000 }).catch(() => {});
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(true)))));
   let last = null;
   for (let i = 0; i < 20; i++) {
     const now = await page.evaluate(() => { const el = document.querySelector(".cm-fab"); return el ? getComputedStyle(el).opacity : "none"; });
@@ -188,6 +193,85 @@ async function separators(page, plant = false) {
     } finally {
       undo?.remove();
     }
+  }, plant);
+}
+
+/** Every finite animation on the page at its end (an infinite one — a shimmer, a pulse — never ends: left out), or `cap` ms. */
+async function motionDone(page, cap = 3_000) {
+  await page.evaluate((cap) => Promise.race([
+    Promise.all(document.getAnimations().filter((a) => a.effect?.getTiming().iterations !== Infinity).map((a) => a.finished.catch(() => {}))),
+    new Promise((r) => setTimeout(r, cap)),
+  ]), cap);
+}
+
+/**
+ * THE LEDGER'S RHYTHM, ITS FIGURES' EDGE AND ITS CARRY'S TARGET, as the page draws them (the lead's rulings of 2026-10-22,
+ * from HUB's sw/en/zh readers of the hub's pool card): every row the list's one gap apart and its own drawing at its top —
+ * no step under a total (round 1's stood 46px against the rows' 26px pitch), and no carry link row centring its line in a
+ * 44px box (~30px of air over the card's first row against ~20px under its last); every figure, each line of a wrapped one,
+ * at its row's right edge (a wrapped "angalau / TZS 51,000" sat ~56px short of it); and every carry link row still a
+ * `--tap-min` target, out of flow (`.kp-mln-hit`) — hit-tested 19.5px above and below the row's middle, which the link must
+ * answer (a bounding box cannot show it): the row scrolled to the viewport's middle for that, after every row is measured,
+ * and the page put back where it was. `plant` first puts defects in the page, and takes them out before it returns:
+ * "rhythm" — a 16px step under the first total, one figure 24px short of the edge, a carry row drawn as its old 44px
+ * centring box; "tap" — a carry row without its target. The same judge must report each.
+ */
+async function ledgerJudge(page, plant = null) {
+  return page.evaluate((plant) => {
+    const out = { lists: 0, rows: 0, links: 0, steps: [], short: [], taps: [] };
+    const kit = (r) => r.firstElementChild; // the kit's ReceiptRow, first in its row (a note follows it)
+    const undo = [];
+    const links = [];
+    const y0 = scrollY;
+    for (const list of document.querySelectorAll('[data-testid="millionea-ledger"]')) {
+      out.lists++;
+      const rows = [...list.children];
+      const link = rows.find((r) => r.tagName === "A");
+      if (plant === "rhythm") {
+        const total = rows.findIndex((r) => kit(r)?.classList.contains("border-t"));
+        const after = total < 0 ? null : rows.slice(total + 1).find((r) => r.tagName !== "A");
+        if (after) { kit(after).style.marginTop = "16px"; undo.push(() => { kit(after).style.marginTop = ""; }); }
+        const v = rows.map((r) => kit(r)?.lastElementChild).find((x) => x && x.textContent.trim() !== "");
+        if (v) { v.style.marginRight = "24px"; undo.push(() => { v.style.marginRight = ""; }); }
+        // The old drawing: a box 24px taller than its line, the line centred in it (12px over it, as a one-line row stood in 44px).
+        if (link) { link.style.minHeight = `${link.getBoundingClientRect().height + 24}px`; link.style.justifyContent = "center"; undo.push(() => { link.style.minHeight = ""; link.style.justifyContent = ""; }); }
+      }
+      if (plant === "tap" && link) { link.classList.remove("kp-mln-hit"); undo.push(() => { link.classList.add("kp-mln-hit"); }); }
+      const gap = parseFloat(getComputedStyle(list).rowGap) || 0;
+      let prev = null;
+      for (const r of rows) {
+        out.rows++;
+        const key = r.getAttribute("data-ledger-row");
+        const box = r.getBoundingClientRect(), k = kit(r)?.getBoundingClientRect();
+        if (prev !== null && Math.abs(box.top - prev - gap) > 0.5) out.steps.push([key, "row gap", Math.round((box.top - prev) * 10) / 10]);
+        if (k && Math.abs(k.top - box.top) > 0.5) out.steps.push([key, "step inside the row", Math.round((k.top - box.top) * 10) / 10]);
+        prev = box.bottom;
+        if (r.tagName === "A") links.push(r);
+        const v = kit(r)?.lastElementChild;
+        if (!v || !k || v.textContent.trim() === "") continue;
+        // Each LINE's right edge (the rightmost box on it), against the row's.
+        const range = document.createRange();
+        range.selectNodeContents(v);
+        const lines = [];
+        for (const x of range.getClientRects()) {
+          if (x.width <= 0.5) continue;
+          const mid = x.top + x.height / 2, line = lines.find((l) => Math.abs(l.mid - mid) <= 6);
+          if (line) line.right = Math.max(line.right, x.right); else lines.push({ mid, right: x.right });
+        }
+        for (const l of lines) if (Math.abs(l.right - k.right) > 1) out.short.push([key, `${lines.length} line(s)`, Math.round((k.right - l.right) * 10) / 10]);
+      }
+    }
+    // Every carry link row's target, hit-tested where the reader's thumb lands.
+    for (const r of links) {
+      out.links++;
+      r.scrollIntoView({ block: "center" });
+      const b = r.getBoundingClientRect(), x = b.left + b.width / 2, mid = b.top + b.height / 2;
+      const miss = [-19.5, 19.5].filter((dy) => document.elementFromPoint(x, mid + dy)?.closest("a") !== r);
+      if (miss.length) out.taps.push([r.getAttribute("data-ledger-row"), Math.round(b.height * 10) / 10, miss]);
+    }
+    for (const u of undo) u();
+    window.scrollTo(0, y0);
+    return out;
   }, plant);
 }
 
@@ -276,8 +360,28 @@ async function pass1(label, pages) {
           ok(`${tag} · CONTROL · with the eyebrow rule undone in the page (the round-1 0.9em), the same judge reports each of the ${eyebrows} eyebrow lists`,
             red.length === eyebrows && red.every((s) => Math.abs(s.gap - s.typed) > 1), JSON.stringify(red));
         }
-        // A ledger is drawn on a final week's page and in How's worked weeks: there, a resting control must clear its figures.
-        await shoot(page, `${label === "main" ? "" : `${label}-`}${name}`, locale, width, name === "how" || (!!kind && !RUNNING.has(kind)));
+        // A ledger is drawn on a final week's page and in How's worked weeks: there a resting control must clear its figures
+        // (the tile first, at the top) — and the ledger keeps one rhythm, every figure at its row's edge, every carry row a
+        // tap-floor target (the lead's rulings of 2026-10-22); the same judge, each defect planted in the page, reports it.
+        const ledgered = name === "how" || (!!kind && !RUNNING.has(kind));
+        await shoot(page, `${label === "main" ? "" : `${label}-`}${name}`, locale, width, ledgered);
+        if (ledgered) {
+          // Every finite animation at its end first (How's worked week plays its rows in): a row mid-flight is not the rhythm.
+          await motionDone(page);
+          const lj = await ledgerJudge(page);
+          console.log(`LEDGER ${tag} · ${lj.lists} list(s), ${lj.rows} rows, ${lj.links} carry link(s) · steps ${JSON.stringify(lj.steps)} · short ${JSON.stringify(lj.short)} · taps ${JSON.stringify(lj.taps)}`);
+          ok(`${tag} · the ledger keeps one rhythm: every row the list's one gap apart and its drawing at its top — no step under a total, no carry row centred in a box (${lj.rows} rows)`, lj.lists > 0 && lj.steps.length === 0, JSON.stringify(lj.steps));
+          ok(`${tag} · every figure of the ledger ends at its row's right edge, each line of a wrapped one too`, lj.lists > 0 && lj.short.length === 0, JSON.stringify(lj.short));
+          ok(`${tag} · every carry row of the ledger answers a tap 19.5px above and below its middle (${lj.links} link(s))`, lj.taps.length === 0, JSON.stringify(lj.taps));
+          const red = await ledgerJudge(page, "rhythm");
+          ok(`${tag} · CONTROL · a 16px step under the first total, a figure 24px short${lj.links ? " and a carry row centred in its old 44px box" : ""}, planted in the page, are each reported`,
+            red.steps.some(([, what, px]) => what === "step inside the row" && Math.abs(px - 16) <= 0.5) && red.short.some(([, , px]) => Math.abs(px - 24) <= 1)
+              && (lj.links === 0 || red.steps.some(([, what, px]) => what === "step inside the row" && Math.abs(px - 12) <= 0.5)), JSON.stringify(red));
+          if (lj.links) {
+            const tap = await ledgerJudge(page, "tap");
+            ok(`${tag} · CONTROL · a carry row without its out-of-flow target, planted in the page, is reported`, tap.taps.length > 0, JSON.stringify(tap.taps));
+          }
+        }
       }
     }
     await ctx.close();
@@ -358,6 +462,9 @@ async function hopBands({ tag, locale, width, from, to, drawingSel, readySel, ba
   await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 400, downloadThroughput: 12 * 1024, uploadThroughput: 64 * 1024 });
   await page.evaluate((path) => { window.next?.router?.push(path); }, to);
   const drawn = await page.waitForSelector(drawingSel, { timeout: 60_000 }).then(() => true).catch(() => false);
+  // The route's entrance at its end first (`.route-enter`: m-settle-in, 10px → 0 over --t-move, restarted by the hop): read
+  // mid-rise, every band of a drawing stood 1–10px low (week-ghost-en-320 7px, -768 10px, -zh-1280 5px; 2026-10-22).
+  if (drawn) await motionDone(page, 1_500);
   const ghost = drawn ? await page.evaluate(bands, true) : null;
   const planted = drawn && control ? await page.evaluate(control) : null;
   if (drawn) await page.screenshot({ path: `${OUT}/${tag}-drawing.png` }).catch(() => {});
@@ -369,12 +476,13 @@ async function hopBands({ tag, locale, width, from, to, drawingSel, readySel, ba
   await ctx.close();
   return { drawn, ghost, real, planted };
 }
-/** Every band where the page puts it and as tall, within 1px — `topOnly` bands by their top alone, `info` bands printed and
- *  not judged (what the drawing cannot know: how many rows a section holds) — and the whole comparison printed. */
-function judgeBands(tag, label, ghost, real, { topOnly = [], info = [] } = {}) {
+/** Every band where the page puts it and as tall, within 1px — `topOnly` bands by their top alone, `heightOnly` bands by their
+ *  height alone (a band under a section whose rows the drawing cannot know: where it starts moves with them, how tall it
+ *  is does not), `info` bands printed and not judged — and the whole comparison printed. */
+function judgeBands(tag, label, ghost, real, { topOnly = [], heightOnly = [], info = [] } = {}) {
   const off = Object.keys(real).map((k) => [k, real[k] && ghost[k] ? { dy: real[k].y - ghost[k].y, dh: Math.round((real[k].h - ghost[k].h) * 10) / 10 } : null]);
   console.log(`GHOST ${tag} · page − drawing, px: ${off.map(([k, o]) => (o ? `${k} y${o.dy} h${o.dh}` : `${k} —`)).join(" · ")}`);
-  const bad = off.filter(([k, o]) => !info.includes(k) && (!o || Math.abs(o.dy) > 1 || (!topOnly.includes(k) && Math.abs(o.dh) > 1)));
+  const bad = off.filter(([k, o]) => !info.includes(k) && (!o || (!heightOnly.includes(k) && Math.abs(o.dy) > 1) || (!topOnly.includes(k) && Math.abs(o.dh) > 1)));
   ok(`${tag} · ${label}`, bad.length === 0, JSON.stringify({ bad, ghost, real }));
 }
 /** The widths a drawing's tiers turn at (below 360, from 360, from 768) and the board's. */
@@ -426,12 +534,16 @@ const WEEK_BANDS = (drawing) => {
   if (drawing) {
     const g = document.querySelector('[aria-busy="true"][data-ghost-page="week"]');
     const q = (n) => g?.querySelector(`[data-ghost="${n}"]`) ?? null;
-    return { back: box(g?.firstElementChild ?? null), head: box(q("head")), ledger: box(q("ledger")), card: box(q("ledger")?.lastElementChild ?? null), commitments: box(q("commitments")) };
+    const commit = q("commitments")?.lastElementChild ?? null;
+    return { back: box(g?.firstElementChild ?? null), head: box(q("head")), ledger: box(q("ledger")), card: box(q("ledger")?.lastElementChild ?? null), commitments: box(q("commitments")),
+      commitCard: box(commit), explainer: box(commit?.lastElementChild ?? null) };
   }
   const p = document.querySelector('[data-testid="millionea-register-week"]');
   const ledger = document.querySelector('section[aria-labelledby="mln-reg-ledger"]');
+  const commitments = document.querySelector('[data-testid="millionea-commitments"]');
+  const commit = commitments?.querySelector(":scope > div") ?? null;
   return { back: box(p?.firstElementChild ?? null), head: box(p?.children[1] ?? null), ledger: box(ledger), card: box(ledger?.lastElementChild ?? null),
-    commitments: box(document.querySelector('[data-testid="millionea-commitments"]')) };
+    commitments: box(commitments), commitCard: box(commit), explainer: box(commit?.querySelector(":scope > p") ?? null) };
 };
 if (SCENARIO === "states" && wantPage("register-ghosts")) {
   for (const locale of LOCALES) {
@@ -446,8 +558,10 @@ if (SCENARIO === "states" && wantPage("register-ghosts")) {
       const w = await hopBands({ tag: wtag, locale, width, from: "/millionea/register", to: `/millionea/register/${encodeURIComponent(weeks.rolled)}`,
         drawingSel: '[aria-busy="true"][data-ghost-page="week"]', readySel: '[data-testid="millionea-register-week"]', bands: WEEK_BANDS });
       ok(`${wtag} · the week's own loading drawing is shown on the way in`, w.drawn && !!w.ghost);
-      // The card's height is the week's own rows (a carry in or not, winners or not) — past the first screen on a phone.
-      if (w.ghost && w.real) judgeBands(wtag, "a rolled week lands where its drawing stood (within 1px): the back link, the head, the ledger's heading and its card's top", w.ghost, w.real, { topOnly: ["ledger", "card"], info: ["commitments"] });
+      // The drawing is a rolled week's (the common weekly case), and the hop opens one: its ledger card row for row in the
+      // reader's language (a wrapped label drawn as its lines) and the commitments under it, every band where the page puts
+      // it and as tall. (A week of another kind holds other rows: its card's height, and what follows, are its own.)
+      if (w.ghost && w.real) judgeBands(wtag, "a rolled week lands where its drawing stood (within 1px): the back link, the head, the ledger (its heading and its card, row for row) and the commitments (their card and its closing sentence)", w.ghost, w.real);
     }
   }
 }
