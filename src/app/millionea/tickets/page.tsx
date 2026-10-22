@@ -46,7 +46,7 @@ import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { getServerT } from "@/lib/i18n-server";
 import { fill, formatNumber } from "@/lib/utils";
 import type { Dict } from "@/lib/i18n-dict";
-import { MILLIONEA_HREF, MillioneaPreviewMark, signInHref, ticketPageHref } from "../millionea-parts";
+import { MILLIONEA_HREF, signInHref, ticketPageHref } from "../millionea-parts";
 import { lineOfSlots, msOf } from "../millionea-view";
 import { inLens, lensHref, MillioneaTicketsBar, parseMillioneaLens, type MillioneaLens } from "./tickets-bar";
 
@@ -145,7 +145,6 @@ export default async function MillioneaTicketsPage({ searchParams }: { searchPar
             </div>
           )
           : <PageHeader eyebrow={t.millionea.productTitle} title={t.millionea.ticketsTitle} />}
-      {gate.preview && <MillioneaPreviewMark t={t} />}
       <MillioneaTicketsBar lens={lens} t={t} />
       {total === 0 ? (
         <EmptyState

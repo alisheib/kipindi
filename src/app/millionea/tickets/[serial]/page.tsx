@@ -50,7 +50,7 @@ import { RESERVE_COUNT } from "@/lib/maswali-score";
 import { formatEatDateTime } from "@/lib/eat-day";
 import { fill, formatTzs } from "@/lib/utils";
 import type { Dict, Locale } from "@/lib/i18n-dict";
-import { MILLIONEA_HREF, MillioneaPreviewMark, registerWeekHref, signInHref } from "../../millionea-parts";
+import { MILLIONEA_HREF, registerWeekHref, signInHref } from "../../millionea-parts";
 import { clausesOf, earnedOf, lineOf, millioneaWeekPhase, msOf, refundOf } from "../../millionea-view";
 import { registerLedgerRows } from "../../register/register-parts";
 import { SealDoor, TicketCancel, TicketHost } from "./ticket-acts";
@@ -194,7 +194,6 @@ export default async function MillioneaTicketPage({ params }: { params: Promise<
       <TicketHost serial={view.serial} through={view.seen.through}>
         <div className="space-y-5">
           <BackLink fallbackHref={MILLIONEA_HREF.tickets} label={t.millionea.myTicketsTitle} />
-          {gate.preview && <MillioneaPreviewMark t={t} />}
           {paid && view.win && (
             <>
               {ledgerRows && (
