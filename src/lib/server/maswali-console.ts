@@ -217,29 +217,29 @@ export async function consoleAlerts(
 }
 
 /**
- * ⭐ MB-96 · A WINNER'S ACCOUNT CHANGING HANDS (S7-F9; the watch is `maswali-takeover.ts`). A paying week whose winners
- * include an account whose password was written after the payout and which then asked to withdraw is named here with HOW
- * MANY such accounts — never which (this strip is the trading console's, which carries no holder: MR-14, MB-34);
- * Compliance reads the accounts on the integrity page and may hold the share there (OD-07). A finding stands here for a
- * while after its newest attempt, and on the integrity page for the whole watch. ⛔ An alert only: nothing is held.
- * ⛔ Fail closed: a watch that could not be read says so, never silence.
+ * ⭐ MB-96 · A WINNING ACCOUNT THAT MAY HAVE CHANGED HANDS (S7-F9; the watch is `maswali-takeover.ts`). A paying week
+ * with such accounts is named here with HOW MANY — never which (this strip is the trading console's, which carries no
+ * holder: MR-14, MB-34); Compliance reviews the accounts on the integrity page and may hold the share there (OD-07). A
+ * finding stands here for a while after it was last seen, and on the integrity page for the whole watch. ⛔ An alert
+ * only: nothing is held. ⛔ Fail closed: a watch that could not be read says so, never silence. ⛔ The words say what
+ * the control enforces, never what it watches for (the repository is public; the lead's ruling, 2026-10-22).
  */
 async function takeoverAlerts(nowMs: number, read?: () => Promise<TakeoverWatch>): Promise<ConsoleAlert[]> {
   const watch = await (read ?? (() => takeoverWatch(new Date(nowMs))))().catch((): TakeoverWatch => ({ readable: false, findings: [] }));
   const out: ConsoleAlert[] = [];
   if (!watch.readable) {
-    out.push({ level: "warning", text: "The winners' takeover watch could not be read in full, so a winning account may have changed hands unseen. Compliance checks the winners on the integrity page (MB-96)." });
+    out.push({ level: "warning", text: "The winners' takeover watch could not be read in full, so a winning account taken over after its payout may go unseen. Compliance reviews the winners on the integrity page (MB-96)." });
   }
   const byWeek = new Map<string, { code: string; n: number }>();
   for (const f of watch.findings) {
-    if (nowMs - Date.parse(f.attemptAt) > TAKEOVER_ALERT_MS) continue;
+    if (nowMs - Date.parse(f.flaggedAt) > TAKEOVER_ALERT_MS) continue;
     const x = byWeek.get(f.weekId) ?? { code: f.code, n: 0 };
     x.n++;
     byWeek.set(f.weekId, x);
   }
   for (const [weekId, { code, n }] of byWeek) {
     out.push({ level: "critical", weekId,
-      text: `${code}: ${n} winning account${n === 1 ? "" : "s"} had ${n === 1 ? "its" : "their"} password changed after this week's payout and then asked to withdraw — the shape of an account takeover. Compliance checks ${n === 1 ? "it" : "them"} on the integrity page (MB-96).` });
+      text: `${code}: ${n} winning account${n === 1 ? "" : "s"} may have been taken over since this week's payout. Compliance reviews ${n === 1 ? "it" : "them"} on the integrity page and may hold the share (MB-96).` });
   }
   return out;
 }

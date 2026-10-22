@@ -45,13 +45,15 @@
  * ⭐ S7-F9 9 (2026-10-22, MB-74): RD.5 struck on both stores — a deposit contradicted after its winner was paid holds the
  * share at once — with RD.5b, RD.5c, RD.5d, RD.6–RD.9 and RD.10 (a release in flight) beside it on each: 214 on memory,
  * 223 on Postgres, with 1 KNOWN-RED on each (OB.0).
+ * ⭐ S7-F9 11 (2026-10-22): TK.4b — the takeover alert and its integrity card in their reviewed words (what the control
+ * enforces, never what it watches for) — on each: 215 on memory, 224 on Postgres.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({
   suite: "test:maswali-adversarial",
   casesFile: "scripts/lib/maswali-adversarial-child.mts",
-  minPass: { memory: 214, postgres: 223 },
+  minPass: { memory: 215, postgres: 224 },
   dbPrefix: "mlw_adv",
   timeoutMs: 45 * 60_000,
 });

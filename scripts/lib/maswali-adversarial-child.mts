@@ -1270,10 +1270,9 @@ if (runs("TK")) section("§11 · TK · the winner-takeover pattern: a winner's m
 if (runs("TK")) {
   const start = W.weekStartAhead(ahead++);
   const wk = await openWeekAt(start);
-  // ⭐ S7-F9 · MB-96, THE WATCH (`maswali-takeover.ts`; the lead's ruling of 2026-10-22: password writes only). Four winners
-  //    of one week, each a shape the watch must tell apart: `winner` — the password changed after the payout, then a
-  //    withdrawal asked (the takeover); `plain` — a withdrawal with no password change; `early` — the password changed
-  //    BEFORE the payout, then a withdrawal; `asked` — a withdrawal, THEN the password changed, nothing asked after.
+  // ⭐ S7-F9 · MB-96, THE WATCH (`maswali-takeover.ts`; an alert, never a hold). Four winners of one week, each a shape the
+  //    watch must tell apart: `winner` — the pattern after the payout (named); `plain` — half of it (not named); `early` —
+  //    the pattern begun before the payout (not named); `asked` — its acts in the other order (not named).
   // ⚠️ Every audit row is stamped on its own turn of the queue: each step waits for its rows (`auditFlush`) and a moment
   //    more, so no two of them share an instant and the order the case makes is the order the records keep.
   const step = async () => { await auditFlush(); await new Promise((res) => setTimeout(res, 25)); };
@@ -1283,7 +1282,7 @@ if (runs("TK")) {
   await W.sell(wk.id, 5, MISS_M1, [filler]);
   await closed(wk.id);
   await sealRest(wk.id, start);
-  const pwEarly = await changePassword(early, "", "Mlw-adversarial-early-2026");
+  const actEarly = await changePassword(early, "", "Mlw-adversarial-early-2026");
   await step();
   await released(wk.id);
   await step();
@@ -1296,36 +1295,44 @@ if (runs("TK")) {
     !away.ok && (away as any).reason === "payout_destination_not_registered" && (await bal(winner)) === afterWin, J(away));
   for (const u of [plain, early, asked]) await wallet.withdraw(u, { provider: "MPESA", amount: 10_000, msisdn: await phoneOf(u) });
   await step();
-  const pwAsked = await changePassword(asked, "", "Mlw-adversarial-asked-2026");
-  const pw = await changePassword(winner, "", "Mlw-adversarial-takeover-2026");
+  const actAsked = await changePassword(asked, "", "Mlw-adversarial-asked-2026");
+  const act = await changePassword(winner, "", "Mlw-adversarial-takeover-2026");
   await step();
   const home = await wallet.withdraw(winner, { provider: "MPESA", amount: 10_000, msisdn: mine });
   await step();
   // ⚠️ The payout float's alert (FL) speaks of the winners' withdrawals too, and since S7-F2 this week's own payout, its
   //    float unread here, raises one: it is about the float, never a takeover, so it is not counted as one.
   const alerts = (await consoleRead.consoleAlerts(new Date())).filter((x) => !/payout float/i.test(x.text));
-  const alert = alerts.find((x) => x.weekId === wk.id && /takeover/i.test(x.text));
+  const alert = alerts.find((x) => x.weekId === wk.id && /taken over/i.test(x.text));
   const watch = await takeover.takeoverWatch(new Date());
   const named = watch.findings.filter((f) => f.weekId === wk.id).map((f) => f.userId);
-  const detail = J({ passwords: [pw.ok, pwEarly.ok, pwAsked.ok], attempt: home.ok ? "sent" : (home as any).reason ?? home.code, alert: alert?.text, readable: watch.readable, named: named.length });
-  ok("TK.2 · ⭐ a password changed after a Millionea credit, then a withdrawal asked for, raises a takeover alert for Compliance — critical, on the console, naming the week and how many (MB-96; an alert only: 2026-10-10 removed withdrawal holds)",
-    pw.ok && !!alert && alert.level === "critical" && alert.text.includes(`${wk.code}: 1 winning account `), detail);
+  const detail = J({ acts: [act.ok, actEarly.ok, actAsked.ok], last: home.ok ? "sent" : (home as any).reason ?? home.code, alert: alert?.text, readable: watch.readable, named: named.length });
+  ok("TK.2 · ⭐ a winning account that may have been taken over after its payout raises a critical alert for Compliance on the console, naming the week and how many accounts (MB-96; an alert only, never a hold)",
+    act.ok && !!alert && alert.level === "critical" && alert.text.includes(`${wk.code}: 1 winning account `), detail);
   const f = watch.findings.find((x) => x.userId === winner && x.weekId === wk.id);
-  ok("TK.3 · ⭐ …and the integrity read names that account: its week, its password written by the player after the payout, and the request after it",
-    watch.readable && !!f && f.passwordHow === "changed by the player" && f.attempts === 1 && !f.more
-      && Date.parse(f.creditAt) <= Date.parse(f.passwordAt) && Date.parse(f.passwordAt) <= Date.parse(f.attemptAt), J(f ?? watch));
-  ok("TK.3a · control: a winner who asked to withdraw with no password change is not named", pwEarly.ok && !named.includes(plain), detail);
-  ok("TK.3b · control: a winner whose password changed BEFORE the payout is not named, though it asked after", pwEarly.ok && !named.includes(early), detail);
-  ok("TK.3c · control: a winner who asked before its password changed, and nothing after, is not named", pwAsked.ok && !named.includes(asked), detail);
+  ok("TK.3 · ⭐ …and the integrity read names that account and its week, flagged after the payout",
+    watch.readable && !!f && f.count === 1 && !f.more
+      && Date.parse(f.creditAt) <= Date.parse(f.startedAt) && Date.parse(f.startedAt) <= Date.parse(f.flaggedAt), J(f ?? watch));
+  ok("TK.3a · control: a winner with half the pattern is not named", !named.includes(plain), detail);
+  ok("TK.3b · control: a winner whose pattern began BEFORE the payout is not named", actEarly.ok && !named.includes(early), detail);
+  ok("TK.3c · control: a winner whose acts came in the other order is not named", actAsked.ok && !named.includes(asked), detail);
   ok("TK.4 · the console's alert names no account — no id, no name, no number (the trading console carries no holder, MR-14)",
     !!alert && ![winner, mine, mine.slice(-4)].some((x) => alert.text.includes(x)), alert?.text ?? "no alert");
+  // ⭐ The lead's ruling of 2026-10-22: the repository is public, so what the control prints says what it ENFORCES — a
+  //    possible takeover to review — in its reviewed words, and nothing more. Read on the alert as raised and on the card.
+  const { readFileSync } = await import("node:fs");
+  const page = readFileSync("src/app/admin/maswali/integrity/page.tsx", "utf8");
+  const said = `${wk.code}: 1 winning account may have been taken over since this week's payout. Compliance reviews it on the integrity page and may hold the share (MB-96).`;
+  ok("TK.4b · the alert and the integrity card say what the control enforces, in their reviewed words — a possible account takeover after a payout, to review — and nothing more (the lead's ruling of 2026-10-22)",
+    alert?.text === said && page.includes('title="Possible account takeovers after a payout"') && page.includes("Review the account with its owner before its money leaves"),
+    J({ alert: alert?.text }));
   const share = (await dal.ticketStore.listForWeek(wk.id, { won: true })).find((t: any) => t.userId === winner);
   ok("TK.5 · nothing is held: the winner's wallet carries no Millionea hold and its share stands unfrozen (the watch never blocks money)",
     !(await heldOf(winner)) && !!share && share.frozenReason === null, J({ held: await heldOf(winner), frozen: share?.frozenReason }));
   /** ⚠️ A FAULT, DECLARED: the watch's read fails, for one read of the console. */
   const unread = await consoleRead.consoleAlerts(new Date(), { readTakeover: async () => { throw new Error("TK · the watch's read failed (a planted fault)"); } });
   ok("TK.6 · ⛔ a watch that cannot be read says so on the console — never silence (fail closed)",
-    unread.some((x) => /takeover watch could not be read/.test(x.text)) && !unread.some((x) => x.weekId === wk.id && /takeover/i.test(x.text)), J(unread.map((x) => x.text)));
+    unread.some((x) => /takeover watch could not be read/.test(x.text)) && !unread.some((x) => x.weekId === wk.id && /taken over/i.test(x.text)), J(unread.map((x) => x.text)));
 }
 
 // ═══ §12 · CC · both clock-change weekends ══════════════════════════════════════════════════════════════════════════

@@ -128,18 +128,18 @@ async function Content({ searchParams }: IntegrityPageProps) {
         </AdminCard>
 
         {/* ⭐ MB-96 · the winners' takeover watch (S7-F9, `maswali-takeover.ts`): an alert, never a hold — a winner's share is
-            held from the winners below (OD-07), and no withdrawal is ever held (2026-10-10). */}
-        <AdminCard title="Winners' accounts to check" sw="Akaunti za washindi za kukagua">
+            held from the winners below (OD-07); nothing else is ever held (2026-10-10). The card says what the control
+            enforces, never what it watches for (the repository is public; the lead's ruling, 2026-10-22). */}
+        <AdminCard title="Possible account takeovers after a payout" sw="Akaunti za washindi za kukagua">
           {!takeover.readable && <p role="alert" className="text-body-sm text-danger-fg mb-2">The takeover watch could not be read in full; a winning account may be missing from this list.</p>}
           {takeover.findings.length === 0
-            ? (takeover.readable && <p className="text-body-sm text-text-secondary">No recent winner's password changed after their payout and was followed by a withdrawal request.</p>)
+            ? (takeover.readable && <p className="text-body-sm text-text-secondary">No winning account is flagged for review.</p>)
             : (
               <ul className="space-y-1.5 text-body-sm">
                 {takeover.findings.map((f) => (
                   <li key={`${f.userId}-${f.weekId}`}>
-                    <span className="tabular">{f.code}</span> · {f.holder} · password {f.passwordHow} <span className="tabular">{fmtEat(f.passwordAt)}</span>,
-                    {" "}then {f.attempts}{f.more ? "+" : ""} withdrawal request{f.attempts === 1 && !f.more ? "" : "s"}, the latest <span className="tabular">{fmtEat(f.attemptAt)}</span>.
-                    <span className="text-text-tertiary"> Paid <span className="tabular">{fmtEat(f.creditAt)}</span>. Confirm the owner before the money leaves; hold the share from Winners below if it is not theirs.</span>
+                    <span className="tabular">{f.code}</span> · {f.holder} · flagged <span className="tabular">{fmtEat(f.flaggedAt)}</span>
+                    <span className="text-text-tertiary"> (paid <span className="tabular">{fmtEat(f.creditAt)}</span>). Review the account with its owner before its money leaves; hold the share from Winners below if it is not theirs.</span>
                   </li>
                 ))}
               </ul>

@@ -685,7 +685,7 @@ export const MUTATIONS = [
   },
   // ── S7-F9 · TK.2 / MB-96 — the winner-takeover watch (`maswali-takeover.ts`; an alert, never a hold) ─────────────────
   {
-    name: "(S7-F9-tk-alert) the console never raises the watch's findings: a takeover after a payout is seen by no one (MB-96)",
+    name: "(S7-F9-tk-alert) the console never raises the watch's findings: an account taken over after its payout is seen by no one (MB-96)",
     file: "src/lib/server/maswali-console.ts",
     from: "  out.push(...await takeoverAlerts(nowMs, deps.readTakeover));",
     to: "",
@@ -693,19 +693,28 @@ export const MUTATIONS = [
     suite: "adversarial:TK",
   },
   {
-    name: "(S7-F9-tk-credit-order) a password written BEFORE the payout counts as one after it (MB-96: the credit comes first)",
+    name: "(S7-F9-tk-credit-order) the pattern counts though it began before the payout (MB-96: the credit comes first)",
     file: "src/lib/server/maswali-takeover.ts",
-    from: "        const credit = mine.filter((c) => c.at <= x.at).sort((a, b) => b.at - a.at)[0];",
+    from: "        const credit = mine.filter((c) => c.at <= at).sort((a, b) => b.at - a.at)[0];",
     to: "        const credit = mine.filter(() => true).sort((a, b) => b.at - a.at)[0];",
     expect: "TK.3b · control",
     suite: "adversarial:TK",
   },
   {
-    name: "(S7-F9-tk-attempt-order) a withdrawal asked BEFORE the password changed counts as one after it (MB-96: the request follows the write)",
+    name: "(S7-F9-tk-order) the pattern counts though its acts came in the other order (MB-96)",
     file: "src/lib/server/maswali-takeover.ts",
-    from: "      const after = asked.entries.filter((e) => Date.parse(e.createdAt) >= writeAt);",
-    to: "      const after = asked.entries.filter(() => true);",
+    from: "      const after = later.entries.filter((e) => Date.parse(e.createdAt) >= startAt);",
+    to: "      const after = later.entries.filter(() => true);",
     expect: "TK.3c · control",
+    suite: "adversarial:TK",
+  },
+  {
+    // The lead's ruling of 2026-10-22: the public words say what the control enforces, in their reviewed form.
+    name: "(S7-F9-tk-words) the alert loses its reviewed words: a possible takeover no longer said as one to review (MB-96)",
+    file: "src/lib/server/maswali-console.ts",
+    from: "may have been taken over since this week's payout. Compliance reviews",
+    to: "need a look since this week's payout. Compliance reviews",
+    expect: "TK.4b · ",
     suite: "adversarial:TK",
   },
   {
