@@ -92,8 +92,22 @@ re-point its test readers; item 24's note).
   of its own, with the browser gates' zh results re-read.)
 
 ## 3 · S7 and S6
-- S7 (`claude/maswali-s7-s5`, lane brief `lanes/s7/BRIEF.md`): S7-MERGE 4 (the release merged in) and its list 1–7 — read
-  its last commit for where it stopped.
+- S7 (`claude/maswali-s7-s5` = `7d44b5628`, an empty "WIP: not verified" stop marker; brief `lanes/s7/BRIEF.md`):
+  S7-MERGE 4 merged the release 2ed817395 (a41a2ed9e); S7-F9 14 RULES §2.12 quotes finalWeekRule; 15–16 the merged tree's
+  reds (facts census samples {result} {note} {rule}; slip-design §10.9's plant re-pinned — PROVEN to predate the merge at
+  a7feccbef); 17 MB-97 into the S17 rush (written from the work order — the OMEGA draft never reached git); 18 the S17
+  worker waits for its pipe to drain (Linux drops async pipe writes at process.exit). PROVEN on the runner at a41a2ed9e:
+  tsc 0; every two-store suite at/above its floor (engine 202/210, purchase 113/116, settle 106/110, void 52/57, adversarial
+  229/238, player 194/194, objections 49/49 …); e2e:maswali-fault 16/0; objection console 69/0, door 131/0; maswali-law
+  9/0 (+red 14/14), rules-copy 71/0, maswali-config 77/0. REDS ALL CAUGHT: red:maswali-money-path 99/99 (two parallel
+  halves), red:dal-parity 285/285, red:maswali-fence 19/19, red:maswali-objections 23/23. Floor: maswali-design 152→153.
+  LEFT: (1) read the rush run 39824076563 (baseline + head on one machine + 5 MB-97 plants), then record MB-97 in §7b S7
+  from `lanes/s7/mb97-draft.md` with both runs' numbers and the machine; judge p95 ≤ 1,000 / p99 ≤ 2,000 ms / 0 BUSY against
+  that baseline; (2) read run 39826182902 (red:house-bot-console 0–124 + red:house-bot-c5 0:50), then `lanes/s7/jobs/
+  hb2.sh`–`hb4.sh` for the rest, two at a time; (3) merge the release again after round 2, re-run tsc + the two-store
+  battery + statics. ⚠️ test:maswali-strike §5's browser half refuses on the runner (the "？" ink width premise) — part of
+  the CJK-font decision above. Item 7's texts (§8 MB-74 and MB-96 rows; MR-16 "M1–M10 and R1–R5, shown as A1–A5") are in
+  its report; §0's TK.2 line is already right.
 - S6 (`claude/maswali-s6-release` = `085c68445`, a "WIP: not verified" marker on S6-INT 25–27): S7 merged (66ec6e9be),
   ADMIN merged (71ded2939: G1–G8; branch head fbf5f1077), DOCS merged (ac566f6ad: the admin guide follows ADMIN as built;
   branch head 8b00c8e57). Nothing after 641603e2b verified at an integrated head. ADMIN's run s6-admc (39826898317): tsc 0,
