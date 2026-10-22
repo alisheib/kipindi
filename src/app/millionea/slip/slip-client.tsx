@@ -15,6 +15,7 @@ import {
   MaswaliSlip, MaswaliSlipConfirm, firstUnansweredLabel, focusQuestion, slipProgress, type SlipQuestion,
 } from "@/components/maswali/maswali-slip";
 import { OperationResultModal, type OperationDetail } from "@/components/markets/operation-result-modal";
+import { MaswaliGhostHint } from "@/components/maswali/maswali-ghost-hint";
 import { MaswaliFacts } from "@/components/maswali/maswali-facts";
 import { eatClock, weekWord } from "@/components/maswali/maswali-format";
 import { useT, type Dict, type Locale } from "@/lib/i18n";
@@ -542,6 +543,10 @@ export function SlipClient({
         }}
         onClose={() => setCut(null)}
       />
+      {/* ⭐ WHAT THE STAMP KNOWS, FOR THE TICKET'S DRAWING (TICKETS' `maswali-ghost-hint.tsx`, round 2): "View ticket" opens a
+          ticket whose free cancel is open, so its loading drawing holds the cancel's band and the clauses land where it drew
+          them. Renders nothing. */}
+      {cut && cut.cancelUntil !== null ? cut.serials.map((serial) => <MaswaliGhostHint key={serial} serial={serial} cancelUntil={Date.parse(cut.cancelUntil ?? "")} />) : null}
     </div>
   );
 }
