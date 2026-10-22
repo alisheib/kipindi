@@ -4933,6 +4933,18 @@ html[data-sheet-open] .route-enter { animation: none; }
    (at 768: (768 - 32px side padding - 32px gap) / 2 = 352px). From 1024, the four columns are (W - 160) / 4,
    and the 1280px board caps the four columns at 280px; 281 keeps it out by 1px. The sw sentence can therefore wrap
    "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania." at 1024 and 1280 (round 8's tiles 299 and 301). */
+/* ⭐ …BUT THE JOURNEY FOOTER'S LINE NEVER LEAVES ONE WORD ALONE ABOVE THE NAME (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22,
+   the lead's item from the tickets lane's tiles: Tiketi zangu at sw 320). Its one column (the viewport less 2 × 16px) holds
+   the sw name's 277.4px run from a 313px viewport, but the whole sentence (320.9px) only from 353. So from 313 to 352 the
+   name, held whole, left "Leseni" alone on the first line. The classic footer, frozen, balances the same words there:
+   "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania.". The journey footer's line (`.kp-gbt--even`, its own class)
+   never holds the Swahili name whole: its connectives stay held (`keepRegulator`) and `text-wrap: balance` shares the
+   words, so it reads the classic's two lines and no line ends on a connective. Every other width draws what it drew: one
+   line from 353, and from 1024 the four columns never held the name. en and zh keep their rule: en has three words before
+   the name ("Licensed by the"), and the zh sentence fits every column on one line. The opt-out page's line, the offline
+   document and the hero's trust row keep round 7's rule (K34's default). `test:visual-pass-r9b` 5.4 lays the line out at
+   every width from 320 to 1920. */
+.kp-gbt--even .kp-gbt-name:lang(sw) { white-space: normal; }
 /* ⛔ `.kp-hero__tel` (the helpline link in row 1) was DELETED 2026-10-06 with the helpline itself —
    the owner's ruling took it off every player surface (docs/COMPLIANCE-DECISIONS.md). */
 

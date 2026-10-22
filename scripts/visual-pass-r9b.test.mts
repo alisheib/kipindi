@@ -628,7 +628,7 @@ section("5 · B5 the comments that quoted the Board's old lines say what renders
   const swNeed = pxOf(/@container kp-gbt \(min-width: (\d+)px\) \{ \.kp-gbt-name:lang\(sw\)/, cssCode);
   const footer = "src/components/layout/public-footer.tsx";
   const gridOk = has(footer, 'className="mx-auto max-w-board px-3 lg:px-6 pt-2 pb-7 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-[12px]"')
-    && !/col-span/.test(code(footer)) && code(footer).includes('${journeyShown ? " kp-gbt" : ""}');
+    && !/col-span/.test(code(footer)) && code(footer).includes('${journeyShown ? " kp-gbt kp-gbt--even" : ""}');
   const col = (W: number) => {
     const n = W >= 1024 ? 4 : 2;
     return (Math.min(W, board) - 2 * (W >= 1024 ? s6 : s3) - (n - 1) * s6) / n;
@@ -639,6 +639,64 @@ section("5 · B5 the comments that quoted the Board's old lines say what renders
   ok("5.3 · globals.css's F18 record says what renders: tablet columns hold the Swahili name; four-column widths stay below its 281px no-wrap condition",
     swNeed > 0 && col(768) >= swNeed && widestFour < swNeed && cssRaw.includes("From 768 to 1023 the two columns hold the Swahili name")
       && cssRaw.includes(`caps the four columns at ${widestFour}px; ${swNeed} keeps it out by ${swNeed - widestFour}px`), j({ widestFour, swNeed }));
+
+  // 5.4 — MASWALI-BUILD S5 round 2 · PLATFORM (2026-10-22, the lead's item; the tickets lane's tile, Tiketi zangu at sw 320):
+  // the journey footer's licence line never leaves one word alone above the Board's name. It is laid out at every viewport
+  // from 320 to 1920 with Chromium's balance (R7-A's port, above), as the footer draws it: `keepRegulator`, with the name's
+  // nowrap decided by globals.css's container conditions and by the journey line's own `.kp-gbt--even` exception, both read
+  // from source. The classic footer's plain sentence is laid out beside it, in the same column.
+  const kw = req("../src/components/ui/keep-words.tsx") as typeof import("../src/components/ui/keep-words.tsx");
+  const needOf = (l: Loc) => pxOf(new RegExp(`@container kp-gbt \\(min-width: (\\d+)px\\) \\{ \\.kp-gbt-name:lang\\(${l}\\) \\{ white-space: nowrap; \\} \\}`), cssCode);
+  const EVEN_RULE = /\.kp-gbt--even \.kp-gbt-name:lang\(sw\) \{ white-space: normal; \}/;
+  const WEARS = '${journeyShown ? " kp-gbt kp-gbt--even" : ""}';
+  const column = (W: number) => (W < 768 ? Math.min(W, board) - 2 * s3 : col(W));
+  type Rules = { even: boolean };
+  const live: Rules = { even: EVEN_RULE.test(cssCode) && code(footer).includes(WEARS) };
+  const journeyLine = (l: Loc, W: number, r: Rules) => {
+    const held = column(W) >= needOf(l) && !(l === "sw" && r.even);
+    const node = kw.keepRegulator(word(l, "footer.licensedByGbt"));
+    const parts = (Array.isArray(node) ? node : [node]).map((n) => {
+      const el = n as { props?: { className?: string } } | null;
+      return held && el?.props?.className === "kp-gbt-name" ? React.cloneElement(n as React.ReactElement<{ className?: string }>, { className: "kp-gbt-name whitespace-nowrap" }) : n;
+    });
+    return layout(parts, BODY_TY, column(W), "balance", true).lines;
+  };
+  const classicLine = (l: Loc, W: number) => layout(word(l, "footer.licensedByGbt"), BODY_TY, column(W), "balance", true).lines;
+  const stub = (ls: string[]) => ls.length > 1 && !/\s/.test(ls[0]);
+  const VIEWPORTS = Array.from({ length: 1920 - 320 + 1 }, (_, i) => 320 + i);
+  const oddLines = (r: Rules) => VIEWPORTS.flatMap((W) => (["sw", "en"] as Loc[]).flatMap((l) => {
+    const ls = journeyLine(l, W, r);
+    return stub(ls) || endsOnConnective(ls) ? [`${l} ${W}: ${show(ls)}`] : [];
+  }));
+  const zhWraps = VIEWPORTS.filter((W) => journeyLine("zh", W, live).length > 1);
+  const before = VIEWPORTS.filter((W) => stub(journeyLine("sw", W, { even: false })));
+  const span = before.length ? [before[0], before[before.length - 1]] : [];
+  const swChanged = VIEWPORTS.filter((W) => show(journeyLine("sw", W, { even: false })) !== show(journeyLine("sw", W, live)));
+  ok(`5.4 CONTROL · round 7's rule reproduces the tile: at sw 320 the journey's line read "${show(journeyLine("sw", 320, { even: false }))}", the classic's "${show(classicLine("sw", 320))}"; in the model the stub stood at every viewport from ${span[0]} to ${span[1]} (${before.length} widths) and nowhere else`,
+    show(journeyLine("sw", 320, { even: false })) === "Leseni / ya Bodi ya Michezo ya Kubahatisha Tanzania." && show(classicLine("sw", 320)) === "Leseni ya Bodi ya Michezo / ya Kubahatisha Tanzania."
+      && before.length === span[1] - span[0] + 1, j({ span, n: before.length }));
+  ok("5.4 · the journey footer wears its own exception (the class on its line, the rule in globals.css), and the classic footer's line is untouched",
+    live.even && has(footer, "{journeyShown ? keepRegulator(t.footer.licensedByGbt) : t.footer.licensedByGbt}"), j(live));
+  ok("5.4.1 · at every viewport from 320 to 1920, in sw and en, the journey's line is one line or its first line holds two words or more, and no line ends on a connective; zh is one line at every width",
+    oddLines(live).length === 0 && zhWraps.length === 0, j({ odd: oddLines(live).slice(0, 4), zhWraps: zhWraps.slice(0, 4) }));
+  ok(`5.4.2 · at sw 320 the journey's line reads the classic's two lines: "${show(journeyLine("sw", 320, live))}"`,
+    show(journeyLine("sw", 320, live)) === show(classicLine("sw", 320)));
+  ok(`5.4.3 · only the stub's widths changed (${swChanged.length} viewports, ${swChanged[0]}–${swChanged[swChanged.length - 1]}); en and zh draw what they drew`,
+    show(swChanged.map(String)) === show(before.map(String)) && VIEWPORTS.every((W) => (["en", "zh"] as Loc[]).every((l) => show(journeyLine(l, W, live)) === show(journeyLine(l, W, { even: false })))),
+    j({ changed: [swChanged[0], swChanged[swChanged.length - 1]], span }));
+  // The record's bounds, as Chromium sets the words: Inter 13px WITH kerning (the measure R7-A's 3.11 took the 281 in); the
+  // model above runs over unkerned advances, about 2px wider on this sentence, so its stub ends a little later.
+  const kerned = (s: string) => (INTER as unknown as { layout: (x: string) => { positions: { xAdvance: number }[] } }).layout(s).positions.reduce((w, p) => w + p.xAdvance, 0) / INTER.unitsPerEm * 13 - 0.05 * Array.from(s).length;
+  const swSentence = word("sw", "footer.licensedByGbt"), swRun = swSentence.slice(swSentence.indexOf(" ") + 1);
+  const lo = needOf("sw") + 2 * s3, hi = Math.ceil(kerned(swSentence)) + 2 * s3 - 1;
+  ok(`5.4.4 · globals.css's record names the bounds as Chromium sets the words (kerned Inter 13px): the name's run ${kerned(swRun).toFixed(1)}px held from a ${lo}px viewport, the sentence ${kerned(swSentence).toFixed(1)}px on one line from ${hi + 1}: the stub stood from ${lo} to ${hi}`,
+    kerned(swRun).toFixed(1) === "277.4" && kerned(swSentence).toFixed(1) === "320.9"
+      && squash(cssRaw).includes(squash(`holds the sw name's 277.4px run from a ${lo}px viewport, but the whole sentence (320.9px) only from ${hi + 1}. So from ${lo} to ${hi} the`)),
+    j({ run: kerned(swRun), sentence: kerned(swSentence), lo, hi }));
+  const noRule: Rules = { even: EVEN_RULE.test(cssCode.replace(EVEN_RULE, "")) && code(footer).includes(WEARS) };
+  const noClass: Rules = { even: EVEN_RULE.test(cssCode) && code(footer).replace(WEARS, '${journeyShown ? " kp-gbt" : ""}').includes(WEARS) };
+  ok("5.4′ PLANT · the rule taken out of globals.css: 5.4.1 sees \"Leseni\" alone again at sw 320", !noRule.even && oddLines(noRule).some((s) => s.startsWith("sw 320: Leseni / ")));
+  ok("5.4″ PLANT · the class taken off the journey's line: 5.4.1 sees it too", !noClass.even && oddLines(noClass).some((s) => s.startsWith("sw 320: Leseni / ")));
 }
 
 /* ══ §6 · THE WORDS ══════════════════════════════════════════════════════════════════════════════════════════════════ */

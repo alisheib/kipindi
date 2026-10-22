@@ -170,8 +170,12 @@ export function PublicFooter({
           {/* ⭐ …AND IN THE JOURNEY THE REGULATOR'S NAME IS ONE NAME (round 5, F18 — tile 307): at en 1024 the line read
               "Licensed by the Gaming" / "Board of Tanzania."; it now reads "Licensed by the" / "Gaming Board of Tanzania.",
               the name kept whole wherever the column can hold it (`keepRegulator`, keep-words.tsx; `.kp-gbt`, globals.css).
-              ⛔ The journey's footer only: the classic footer is frozen chrome and keeps main's bytes (`journeyShown`). */}
-          <p className={`text-text-muted leading-relaxed text-body-sm text-balance break-keep${journeyShown ? " kp-gbt" : ""}`}>
+              ⛔ The journey's footer only: the classic footer is frozen chrome and keeps main's bytes (`journeyShown`).
+              ⭐ …BUT NEVER WITH ONE WORD ALONE ABOVE IT (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22, the lead's item): at sw
+              320 the Swahili name held whole left "Leseni" alone on the first line. `kp-gbt--even` lets that name wrap at its
+              held connectives, so the balanced lines match the classic footer's ("Leseni ya Bodi ya Michezo" / "ya Kubahatisha
+              Tanzania."). The rule and the widths it reaches are in globals.css. */}
+          <p className={`text-text-muted leading-relaxed text-body-sm text-balance break-keep${journeyShown ? " kp-gbt kp-gbt--even" : ""}`}>
             {journeyShown ? keepRegulator(t.footer.licensedByGbt) : t.footer.licensedByGbt}
           </p>
           {/* S12 WP5 (word-ledger row 53): each language's own punctuation and country name, from the dictionary. The
