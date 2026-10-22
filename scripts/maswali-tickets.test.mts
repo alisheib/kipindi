@@ -752,7 +752,7 @@ const HAN_SPACE_HAN = new RegExp(`${HAN} ${HAN}`);
 check("15.2", "zh: every template of this surface that a weekday-and-clock fills reads with no space between two Han characters — \"第49周开放至周五 18:00。\" — filled as the page fills it", (w) => {
   const d: string[] = [];
   const zh = mln(w, "zh"), when = "周五 18:00";
-  for (const k of ["emptyTicketsNext", "lockedAt", "salesCloseAt", "firstEventAt", "paidTo"]) {
+  for (const k of ["emptyTicketsNext", "lockedAt", "salesCloseColon", "firstEventAt", "paidTo"]) {
     const filled = String(zh[k]).replace("{week}", "49").replace("{when}", when);
     need(d, !HAN_SPACE_HAN.test(filled), `zh.${k} → "${filled}"`);
   }
@@ -870,11 +870,18 @@ check("17.3", "§T5 (round 2) · Millionea hands the seal its facts in the numer
 });
 
 // ── §18 · L11 ───────────────────────────────────────────────────────────────────────────────────────────────────────
-check("18.1", "an open week's ticket says where its week stands before any result: its sales close and its first event", (w) => {
-  const m = ticketMarkup(w, "en", { live: { salesCloseAt: Date.parse("2026-12-04T15:00:00.000Z"), firstEventAt: Date.parse("2026-12-05T06:00:00.000Z") } });
-  const live = textOf(/data-testid="millionea-ticket-live"[^>]*>([\s\S]*?)<\/p>/.exec(m)?.[1] ?? "");
+check("18.1", "an open week's ticket says where its week stands before any result: its sales close and its first event — in the slip's own words, one grammar and one zone for the pair (\"Sales close: Friday 18:00 EAT · First event: Saturday 09:00 EAT\"), each clock a `.mono` numeral (§T5, L7), in sw/en/zh", (w) => {
   const d: string[] = [];
-  need(d, live.includes("Sales close Friday 18:00") && live.includes("First event: Saturday 09:00"), `the live line reads "${live}"`);
+  const close = Date.parse("2026-12-04T15:00:00.000Z"), first = Date.parse("2026-12-05T06:00:00.000Z");
+  const { eatWeekdayClock } = req("../src/components/maswali/maswali-format.ts") as { eatWeekdayClock: (t: unknown, ms: number) => string };
+  for (const l of LOCALES) {
+    const M = mln(w, l), t = w.dict[l];
+    const m = ticketMarkup(w, l, { live: { salesCloseAt: close, firstEventAt: first } });
+    const html = /data-testid="millionea-ticket-live"[^>]*>([\s\S]*?)<\/p>/.exec(m)?.[1] ?? "", live = textOf(html);
+    const want = [String(M.salesCloseColon).replace("{when}", eatWeekdayClock(t, close)), String(M.firstEventAt).replace("{when}", eatWeekdayClock(t, first))];
+    need(d, want.every((x) => live.includes(x)) && count(live, "EAT") === 2, `${l}: the live line reads "${live}"`);
+    need(d, html.includes('<span class="mono">18:00</span>') && html.includes('<span class="mono">09:00</span>'), `${l}: a clock is not mono`);
+  }
   need(d, code(w, "page").includes('} : running && view.week.state === "OPEN" ? { salesCloseAt: msOf(view.week.closesAt) ?? undefined, firstEventAt: firstEvent, } : undefined}'), "the page does not hand an open week's facts");
   return d;
 });
@@ -1142,7 +1149,12 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["the 7-digit wrap back", "17.2", plantSrc("celebrate", 'className={`whitespace-nowrap font-mono text-[38px]', 'className={`font-mono text-[38px]')],
   ["an amount that always fitted shrunk (the 0.62 margin)", "17.2", plantSrc("celebrate", "(var(--seal-chars) * 0.6)))", "(var(--seal-chars) * 0.62)))")],
   ["the seal's eyebrow forced to the platform's", "17.2", plantSrc("celebrate", "{payload.eyebrow ?? t.common.positionWon}", "{t.common.positionWon}")],
-  ["L11 undone — an open week's ticket silent", "18.1", plantSrc("ticket", "        live.salesCloseAt !== undefined ? keepFact(locale, fill(t.millionea.salesCloseAt, { when: eatWeekdayClock(t, live.salesCloseAt) })) : null,\n", "")],
+  ["L11 undone — an open week's ticket silent", "18.1", plantSrc("ticket", "        live.salesCloseAt !== undefined ? keepFact(locale, fill(t.millionea.salesCloseColon, { when: eatWeekdayClock(t, live.salesCloseAt) })) : null,\n", "")],
+  ["round 2 undone — the sales close in another grammar and without its zone (salesCloseAt)", "18.1", plantSrc("ticket", "fill(t.millionea.salesCloseColon, { when: eatWeekdayClock(t, live.salesCloseAt) })", "fill(t.millionea.salesCloseAt, { when: eatWeekdayClock(t, live.salesCloseAt) })")],
+  ["§T5 undone — the first event's clock in the body face (the fact's numerals and the fact line's both off)", "18.1", plantSrcs("ticket", [
+    ["fill(t.millionea.firstEventAt, { when: eatWeekdayClock(t, live.firstEventAt) }))", "fill(t.millionea.firstEventAt, { when: eatWeekdayClock(t, live.firstEventAt) }), [], { numerals: false })"],
+    ["{shownLive && <MaswaliFacts facts={shownLive} />}", "{shownLive && <MaswaliFacts facts={shownLive} numerals={false} />}"],
+  ])],
   ["L13 undone — a sealed reserve still the open ring", "19.1", plantSrc("seal", 'out === "YES" || out === "NO" ? "sealed" : "standby"', '"standby"')],
   ["§T5 undone — the seal's facts handed in the body face", "17.3", plantSrc("acts", "return [<Fragment key=\"line\">{numeralRuns(line)}</Fragment>, ...serials.map((s) => <span key={s} className=\"mono\">{s}</span>)];", "return [line, ...serials];")],
   ["§T5 — a serial set in pieces (the fact-line rule run over it)", "17.3", plantSrc("acts", "...serials.map((s) => <span key={s} className=\"mono\">{s}</span>)", "...serials.map((s) => <Fragment key={s}>{numeralRuns(s)}</Fragment>)")],
