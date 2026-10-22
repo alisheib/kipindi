@@ -23,7 +23,9 @@ import { MillioneaRegisterWeekGhost } from "./[week]/register-week-ghost";
 
 /** How many lines a paragraph's words take below 360, from 360 and from 768. */
 type Tiers = readonly [below360: number, from360: number, from768: number];
-/** The intro's lines in each language, as the page's are measured (the band probe of 2026-10-22). */
+/** The intro's lines in each language, as the page's are measured (the band probe of 2026-10-22; re-read on the runner in
+ *  the phones' engines with their Chinese face, S5-R3-FIX F6, 2026-10-23 — unchanged: round 2's Chinese offsets there were
+ *  the runner drawing Chinese without its face). */
 const INTRO_LINES: Record<Locale, Tiers> = { en: [8, 7, 4], sw: [9, 8, 4], zh: [6, 5, 3] };
 /** The sections as the index most often opens — the week on sale (its one fact), then final weeks (two facts a row). */
 const SECTIONS: ReadonlyArray<readonly number[]> = [[1], [2, 2, 2, 2]];

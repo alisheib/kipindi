@@ -69,8 +69,22 @@ mkdirSync(`${OUT}/motion`, { recursive: true });
 
 const browser = await chromium.launch();
 const errs = [];
+/**
+ * ⚠️ PREMISE — THE FULL MOTION TIER (MASWALI-BUILD S5-R3-FIX, the lead's ruling of 2026-10-23, as HUB's drive does). The
+ * platform throttles its motion on a device that reports four cores or fewer (`theme-provider.tsx` sets the low-end tier),
+ * and GitHub's runners report four, so a ghost or a motion read there would measure the machine's tier, not the page's.
+ * Each reader's browser reports eight cores, as a desktop or a phone above the line does; the machine's own are printed.
+ */
+const FULL_TIER_CORES = 8;
+{
+  const probe = await browser.newPage();
+  const raw = await probe.evaluate(() => ({ cores: navigator.hardwareConcurrency, memory: navigator.deviceMemory ?? null }));
+  await probe.close();
+  console.log(`INFO premise · this machine's browser reports ${raw.cores} cores and ${raw.memory} GB; each reader's reports ${FULL_TIER_CORES} cores (the full motion tier)`);
+}
 async function contextWith(cookies, locale, extra = {}) {
   const ctx = await browser.newContext({ viewport: { width: 360, height: HEIGHT }, ...extra });
+  await ctx.addInitScript((cores) => { Object.defineProperty(Navigator.prototype, "hardwareConcurrency", { get: () => cores, configurable: true }); }, FULL_TIER_CORES);
   await ctx.addCookies([{ name: LOCALE_COOKIE, value: locale, url: BASE }, ...cookies.map((c) => ({ ...c, url: BASE, domain: undefined, path: undefined }))]);
   return ctx;
 }
@@ -451,7 +465,33 @@ const HOW_BANDS = (drawing) => {
  *  parent's loading file picks by address, a parent's drawing may come first: `qa:millionea-ghost-hops` judges WHICH drawing
  *  is up, this reads the destination's own), its bands read (`bands(true)`), then the landed page's (`bands(false)`), and
  *  `control` run on the drawing in place. Tiles of both. */
-async function hopBands({ tag, locale, width, from, to, drawingSel, readySel, bands, control = null }) {
+/** The lines each paragraph a drawing models takes on the landed page (S5-R3-FIX F6): a drawing's tables are corrected from
+ *  these, read in the engine that drew the page — printed as a `LINES` line beside each `GHOST` line. */
+const PAGE_LINES = (what) => {
+  const L = (el) => {
+    if (!el) return "-";
+    const rects = [];
+    const tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (n.parentElement && n.parentElement.closest(".sr-only") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) });
+    for (let n = tw.nextNode(); n; n = tw.nextNode()) {
+      if (!n.textContent.trim()) continue;
+      const r = document.createRange();
+      r.selectNodeContents(n);
+      for (const x of r.getClientRects()) if (x.width > 0.5 && x.height > 0) rects.push(x);
+    }
+    const mids = [];
+    for (const x of rects.sort((a, b) => a.top - b.top)) { const m = x.top + x.height / 2; if (!mids.some((y) => Math.abs(y - m) < 5)) mids.push(m); }
+    return String(mids.length);
+  };
+  const q = (s) => document.querySelector(s);
+  if (what === "how") return `steps ${[...document.querySelectorAll('[data-testid="millionea-how"] > ol > li')].map((li) => L(li.lastElementChild)).join(",")} · caption ${L(q('article[aria-labelledby="mln-how-ex-swap"] p'))}`;
+  if (what === "index") return `intro ${L(q('[data-testid="millionea-register-intro"]'))}`;
+  const facts = q('[data-testid="millionea-week-head-facts"]');
+  const commit = q('[data-testid="millionea-commitments"] > div');
+  const cols = commit ? [...commit.querySelectorAll(":scope > div")] : [];
+  const rows = [...document.querySelectorAll('[data-testid="millionea-ledger"] > [data-ledger-row]')].map((row) => `${row.getAttribute("data-ledger-row")} ${L(row.firstElementChild?.firstElementChild ?? null)}`);
+  return `facts ${L(facts)} · times ${L(facts ? facts.nextElementSibling : null)} · ledger ${rows.join(",")} · fingerprints ${cols.map((c) => L(c.children[1] ?? null)).join(",")} · commitment times ${cols.map((c) => L(c.children[2] ?? null)).join(",")} · explainer ${L(commit ? commit.querySelector(":scope > p") : null)}`;
+};
+async function hopBands({ tag, locale, width, from, to, drawingSel, readySel, bands, control = null, linesOf = null }) {
   const ctx = await contextWith([await demoSession(browser, BASE)], locale);
   const page = await ctx.newPage();
   page.on("pageerror", (e) => errs.push(`${tag}: ${e}`));
@@ -472,6 +512,7 @@ async function hopBands({ tag, locale, width, from, to, drawingSel, readySel, ba
   await page.waitForSelector(readySel, { timeout: 60_000 }).catch(() => {});
   await settle(page);
   const real = await page.evaluate(bands, false);
+  if (linesOf) console.log(`LINES ${tag} · ${await page.evaluate(PAGE_LINES, linesOf)}`);
   await page.screenshot({ path: `${OUT}/${tag}-page.png` }).catch(() => {});
   await ctx.close();
   return { drawn, ghost, real, planted };
@@ -492,7 +533,7 @@ if (SCENARIO !== "states" && wantPage("how-ghost")) {
     for (const width of GHOST_WIDTHS.length ? GHOST_WIDTHS : WIDTHS) {
       const tag = `how-ghost-${locale}-${width}`;
       const r = await hopBands({ tag, locale, width, from: "/millionea/register", to: "/millionea/how", drawingSel: '[aria-busy="true"] [data-ghost="steps"]',
-        readySel: '[data-testid="millionea-how-example-play"]', bands: HOW_BANDS,
+        readySel: '[data-testid="millionea-how-example-play"]', bands: HOW_BANDS, linesOf: "how",
         // CONTROL: the drawing's button bar at the numeric utility's height (`h-10` = 80px on the overridden scale), read in place.
         control: () => {
           const bar = document.querySelector('[aria-busy="true"] [data-ghost="button"] > *');
@@ -550,13 +591,13 @@ if (SCENARIO === "states" && wantPage("register-ghosts")) {
     for (const width of GHOST_WIDTHS.length ? GHOST_WIDTHS : WIDTHS) {
       const itag = `index-ghost-${locale}-${width}`;
       const i = await hopBands({ tag: itag, locale, width, from: "/millionea/how", to: "/millionea/register", drawingSel: '[aria-busy="true"][data-ghost-page="register"]',
-        readySel: '[data-testid="millionea-register"]', bands: INDEX_BANDS });
+        readySel: '[data-testid="millionea-register"]', bands: INDEX_BANDS, linesOf: "index" });
       ok(`${itag} · the index's own loading drawing is shown on the way in`, i.drawn && !!i.ghost);
       if (i.ghost && i.real) judgeBands(itag, "the index lands where its drawing stood (within 1px): the head with its intro, the running section's top, its first row", i.ghost, i.real, { topOnly: ["running"], info: ["final"] });
       if (!weeks.rolled) continue;
       const wtag = `week-ghost-${locale}-${width}`;
       const w = await hopBands({ tag: wtag, locale, width, from: "/millionea/register", to: `/millionea/register/${encodeURIComponent(weeks.rolled)}`,
-        drawingSel: '[aria-busy="true"][data-ghost-page="week"]', readySel: '[data-testid="millionea-register-week"]', bands: WEEK_BANDS });
+        drawingSel: '[aria-busy="true"][data-ghost-page="week"]', readySel: '[data-testid="millionea-register-week"]', bands: WEEK_BANDS, linesOf: "week" });
       ok(`${wtag} · the week's own loading drawing is shown on the way in`, w.drawn && !!w.ghost);
       // The drawing is a rolled week's (the common weekly case), and the hop opens one: its ledger card row for row in the
       // reader's language (a wrapped label drawn as its lines) and the commitments under it, every band where the page puts

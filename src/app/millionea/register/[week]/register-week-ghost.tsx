@@ -26,10 +26,15 @@ type Tiers = readonly [below360: number, from360: number, from768: number];
  *  The facts ("No 10/10 · TZS 18,000 carried forward · Fee TZS 0") take a second line from 360 in English and below 360 in
  *  Chinese since the fee says its currency (S5-R2-REGISTER 28; the register-ghosts hop: the head 20px taller on one). */
 const HEAD_LINES: Record<Locale, { facts: Tiers; times: Tiers; explainer: Tiers }> = {
-  en: { facts: [2, 2, 1], times: [2, 1, 1], explainer: [3, 3, 2] },
-  sw: { facts: [2, 2, 1], times: [2, 2, 1], explainer: [3, 3, 2] },
+  en: { facts: [2, 2, 1], times: [2, 1, 1], explainer: [4, 3, 2] },
+  sw: { facts: [2, 2, 1], times: [2, 2, 1], explainer: [4, 3, 2] },
   zh: { facts: [2, 1, 1], times: [2, 2, 1], explainer: [3, 3, 1] },
 };
+/** A commitment's fingerprint: 64 hex characters in the numerals' mono, wrapped by character (`break-all`). Measured on the
+ *  runner (DESIGN_AUTHORITY §M4a rule 5; S5-R3-FIX F6, 2026-10-23): three lines at 320 in every language, two from 360,
+ *  one from 768 — the Windows reading had held two below 768, and the commitments' card stood 36px taller than its drawing
+ *  at 320 (the commitments' closing sentence a line taller still in English and Swahili, `explainer` above). */
+const FINGERPRINT_LINES: Tiers = [3, 2, 1];
 /** The ledger's floor label at the receipt's measure ("Guaranteed floor" / "Kiwango cha chini kilichohakikishwa" / "保底金额"):
  *  the Swahili takes two lines below 768 (the register-ghosts hop: the card 16.5px taller at 320 and 360 on one line). */
 const FLOOR_LINES: Record<Locale, Tiers> = { en: [1, 1, 1], sw: [2, 2, 1], zh: [1, 1, 1] };
@@ -70,15 +75,21 @@ function LedgerRow({ label, lines, emphasis, divider, note }: { label: string; l
   );
 }
 
-/** One of the two commitments: its eyebrow, its fingerprint (two lines on a phone's card, one from 768), its time line — as
- *  many lines as it takes in the reader's language (`time`). */
+/** A fingerprint's lines in one tier: full lines, the last one short where it wraps. */
+function FingerprintLines({ n }: { n: number }) {
+  return <>{Array.from({ length: n }, (_, i) => <GhostTextLine key={i} width={n > 1 && i === n - 1 ? "w-[70%]" : "w-full"} />)}</>;
+}
+
+/** One of the two commitments: its eyebrow, its fingerprint (`FINGERPRINT_LINES`: three lines below 360, two from 360, one
+ *  from 768), its time line — as many lines as it takes in the reader's language (`time`). */
 function Commitment({ time = [1, 1, 1] }: { time?: Tiers }) {
   return (
     <div className="flex flex-col gap-1">
       <GhostTextLine text="font-mono text-micro uppercase eyebrow" width="w-[140px]" />
       <span className="block font-mono text-body-sm">
-        <span className="block md:hidden"><GhostTextLine width="w-full" /><GhostTextLine width="w-[70%]" /></span>
-        <span className="hidden md:block"><GhostTextLine width="w-full" /></span>
+        <span className="block xs:hidden"><FingerprintLines n={FINGERPRINT_LINES[0]} /></span>
+        <span className="hidden xs:block md:hidden"><FingerprintLines n={FINGERPRINT_LINES[1]} /></span>
+        <span className="hidden md:block"><FingerprintLines n={FINGERPRINT_LINES[2]} /></span>
       </span>
       <Wrapped text="text-body-sm" lines={time} last="w-[55%]" mono />
     </div>
