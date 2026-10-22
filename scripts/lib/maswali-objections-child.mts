@@ -423,6 +423,26 @@ ok("6.7 · the Yes/No ruling refuses a remedy other than VOID or REVERSE, whatev
   !cBad.ok && /VOID or REVERSE/.test(errOf(cBad)) && pollAfter?.resolvedOutcome === "YES" && (await objectionRow(pollCase.id))?.status === "OPEN",
   J({ cBad, verdict: pollAfter?.resolvedOutcome }));
 
+// ═══ §8 · THE PLAYER'S DOOR ═══════════════════════════════════════════════════════════════════════════════════════════
+console.log(`${LF}§8 · the player's door (the ticket page reads it; the dialog posts the form)`);
+const [DH, DN] = [await W.user({ balance: 50_000 }), await W.user({ balance: 50_000 })];
+const DoorW = await weekWith([[DH, [picks()]], [DN, [picks()]]], [DN]);
+const sealDoor = new Date(DoorW.start + 9 * DAY);
+await seal(DoorW.wk.id, SLOTS(1, 15), sealDoor);
+const inDoor = new Date(sealDoor.getTime() + HOUR);
+const door0 = await ob.millioneaObjectionDoor(DH, DoorW.wk.id, inDoor.getTime());
+const formOf = (o: Record<string, string>) => { const f = new FormData(); for (const [k, v] of Object.entries(o)) f.set(k, v); return f; };
+const viaForm = await ob.fileMillioneaObjectionFromForm(DH, formOf({ weekId: DoorW.wk.id, slot: "6", reason: "WRONG_OUTCOME", detail: "The source lists event 6 as postponed" }), inDoor);
+const formNoSlot = await ob.fileMillioneaObjectionFromForm(DH, formOf({ weekId: DoorW.wk.id, slot: "", reason: "WRONG_OUTCOME", detail: "No question is named in this form" }), inDoor);
+const door1 = await ob.millioneaObjectionDoor(DH, DoorW.wk.id, inDoor.getTime());
+const doorN = await ob.millioneaObjectionDoor(DN, DoorW.wk.id, inDoor.getTime());
+ok("8.1 · the door reads the open window, the reader's standing and nothing objected to yet",
+  door0?.window.state === "OPEN" && door0.holds === true && door0.mine.length === 0, J(door0));
+ok("8.2 · ⭐ the form's filing answers the code alone — never the server's sentence — and the door then lists it OPEN on its question",
+  J(viaForm) === J({ ok: true }) && J(formNoSlot) === J({ ok: false, why: "NO_QUESTION" }) && door1?.mine.length === 1 && door1.mine[0].slot === 6 && door1.mine[0].status === "OPEN",
+  J({ viaForm, formNoSlot, mine: door1?.mine }));
+ok("8.3 · a player whose only ticket was cancelled has no standing at the door", doorN?.holds === false && doorN.window.state === "OPEN", J(doorN));
+
 // ═══ §7 · THE RECORD ════════════════════════════════════════════════════════════════════════════════════════════════
 console.log(`${LF}§7 · the record`);
 ok("7.1 · every act records itself once its lock committed: the filing (maswali.objection.filed), the rejection and the upheld ruling",

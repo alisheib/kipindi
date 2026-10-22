@@ -73,7 +73,11 @@ export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // D19a RE-PINNED (S7-F9, the lead's ruling (b) of 2026-10-22; was 5a95302db): S7's F1 no-date announcement
   // (`finalAhead`) is back in en/sw/zh, byte for byte as S7's reviewed pin (f28803da1) held it, for L22 once a final week's
   // open has passed. No other line changed.
-  "src/lib/i18n-dict.ts": "7a9a98ffe077539630c112992c1074a3015ed57d",
+  // D19a RE-PINNED (S7-OB, the Millionea objection door, 2026-10-22; was 7a9a98ffe): 24 `millionea.obj*` keys in en/sw/zh,
+  // the ticket page's door — its window and the money's rule, the dialog's title, intro, question picker and filed toast,
+  // each refusal in the player's words, and the player's objections in every state with the officer's note. No other line
+  // changed. (S7 re-pins at its own merge: the second merge re-pins, the lead's ruling.)
+  "src/lib/i18n-dict.ts": "f049ab830270827b9bb361eed727b80906cb2228",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
 };

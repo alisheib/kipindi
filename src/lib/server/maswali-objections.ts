@@ -412,3 +412,26 @@ export async function millioneaObjectionQueue(viewerId: string | null, nowMs = D
   }
   return out;
 }
+
+// ── THE PLAYER'S DOOR ──────────────────────────────────────────────────────────────────────────────────────────────
+
+/** The ticket page's door (`components/maswali/maswali-objection-door.tsx`): where the week's objection window stands,
+ *  whether the reader holds a live ticket in the week (standing), and the reader's own objections in it, by slot. */
+export type MillioneaDoorView = { window: MillioneaObjectionWindow; holds: boolean; mine: MillioneaObjectionRow[] };
+
+export async function millioneaObjectionDoor(userId: string, weekId: string, nowMs = Date.now()): Promise<MillioneaDoorView | null> {
+  const week = await weekStore.get(weekId);
+  if (!week || !week.marketId) return null;
+  const [mine, live] = await Promise.all([millioneaObjectionsOf(userId, weekId), ticketStore.countLiveForUser(week.id, userId)]);
+  return { window: millioneaObjectionWindow(week, nowMs), holds: live > 0, mine: [...mine.values()].sort((a, b) => a.slot - b.slot) };
+}
+
+/** The player's filing as the door posts it (`fileMillioneaObjectionAction`): the refusal's code only — the door says it in
+ *  the player's language, never the server's sentence. */
+export async function fileMillioneaObjectionFromForm(userId: string, form: FormData, now = new Date()): Promise<{ ok: true } | { ok: false; why: MillioneaFilingRefused["why"] }> {
+  const r = await fileMillioneaObjection({
+    userId, weekId: String(form.get("weekId") ?? ""), slot: Number(form.get("slot") ?? ""),
+    reason: String(form.get("reason") ?? ""), detail: String(form.get("detail") ?? ""), now,
+  });
+  return r.ok ? { ok: true } : { ok: false, why: r.why };
+}

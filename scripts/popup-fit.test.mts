@@ -322,6 +322,7 @@ const REVIEWED: readonly string[] = [
   "src/components/markets/share-button.tsx",
   "src/components/markets/win-celebration.tsx",
   "src/components/maswali/maswali-slip.tsx",   // reviewed 2026-10-17 (MASWALI-BUILD S5) — the confirm sheet: no truncate, no clamp, no max-h; the picks wrap in two columns, the lines are `text-pretty`, and Modal scrolls
+  "src/components/maswali/maswali-objection-dialog.tsx",   // reviewed 2026-10-22 (MASWALI-BUILD S7-OB) — the dispute dialog for one question: no truncate, no clamp, no nowrap, no max-h; the title, the callout, the labels and the picked question's words are blocks that wrap, the count is the hint's one shrink-0 run, and Modal scrolls
   "src/app/millionea/slip/slip-client.tsx",   // reviewed 2026-10-18 (MASWALI-BUILD S5) — the cut's result: the kit OperationResultModal with props only (no class of its own); the serial title breaks at its hyphens, the subtitle wraps, the Modal scrolls
   "src/app/millionea/tickets/[serial]/ticket-acts.tsx",   // reviewed 2026-10-18 (MASWALI-BUILD S5) — the free cancel: the kit ConfirmModal (loading while in flight) and OperationResultModal, props only; title, body and labels are blocks that wrap
   "src/components/onboarding/first-visit-primer.tsx",

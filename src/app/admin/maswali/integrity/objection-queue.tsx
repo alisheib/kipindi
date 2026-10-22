@@ -23,13 +23,16 @@ import { StandingAuditWarning } from "../audit-warning";
  *    upheld ruling set the present result, a ticket holder in the week — the refusal in words, never a button that bounces.
  * ⛔ The filer is shown as the console shows a player (`displayLabel`), never a phone number, and nothing of any ticket.
  */
-function windowLine(w: MillioneaQueueWeek): string {
+/** An instant as the console prints it (`fmtEat`), kept on one line: a date is never split across two. */
+const When = ({ iso }: { iso: string | null }) => <span className="whitespace-nowrap">{fmtEat(iso)}</span>;
+
+function WindowLine({ w }: { w: MillioneaQueueWeek }) {
   const restart = w.restartSpent ? " It has restarted once; a further change does not restart it." : "";
   switch (w.window.state) {
-    case "OPEN": return `Check window open until ${fmtEat(w.window.closesAt)}.${restart}`;
-    case "CLOSED": return `Check window closed ${fmtEat(w.window.closesAt)}: the week settles once every objection here is ruled.${restart}`;
-    case "NOT_YET": return `The check window opens again once the graded set is final.${restart}`;
-    case "FINAL": return "The week's results are final.";
+    case "OPEN": return <>Check window open until <When iso={w.window.closesAt} />.{restart}</>;
+    case "CLOSED": return <>Check window closed <When iso={w.window.closesAt} />: the week settles once every objection here is ruled.{restart}</>;
+    case "NOT_YET": return <>The check window opens again once the graded set is final.{restart}</>;
+    case "FINAL": return <>The week's results are final.</>;
   }
 }
 
@@ -54,7 +57,7 @@ export async function MillioneaObjectionQueue({ viewerId, viewerIsOwner, canRule
                     <span>{w.code}</span>
                     {w.open > 0 ? <Chip variant="objection">{w.open === 1 ? "1 to rule" : `${w.open} to rule`}</Chip> : <Chip variant="neutral">All ruled</Chip>}
                   </h3>
-                  <p className="text-body-sm text-text-secondary">{windowLine(w)}</p>
+                  <p className="text-body-sm text-text-secondary"><WindowLine w={w} /></p>
                 </div>
                 {w.questions.map((q) => (
                   <div key={q.slot} className="space-y-2">
@@ -64,13 +67,13 @@ export async function MillioneaObjectionQueue({ viewerId, viewerIsOwner, canRule
                       <p className="text-body-sm text-text-secondary">
                         Now <span className="font-semibold text-text">{outcomeLabel(q.outcome)}</span>
                         {q.outcome === "VOID" && isMaswaliVoidReason(q.voidReason) ? ` (${MASWALI_VOID_REASON_LABEL[q.voidReason]})` : ""}
-                        {`, on an objection upheld by ${q.author} on ${fmtEat(q.authoredAt)}. Sealed by ${q.sealer}`}{q.confirmer ? `, confirmed by ${q.confirmer}` : ""}.
+                        {`, on an objection upheld by ${q.author} on `}<When iso={q.authoredAt} />{`. Sealed by ${q.sealer}`}{q.confirmer ? `, confirmed by ${q.confirmer}` : ""}.
                       </p>
                     ) : (
                       <p className="text-body-sm text-text-secondary">
                         Sealed <span className="font-semibold text-text">{outcomeLabel(q.outcome)}</span>
                         {q.outcome === "VOID" && isMaswaliVoidReason(q.voidReason) ? ` (${MASWALI_VOID_REASON_LABEL[q.voidReason]})` : ""}
-                        {` by ${q.sealer} on ${fmtEat(q.sealedAt)}`}{q.confirmer ? `, confirmed by ${q.confirmer}` : ""}.
+                        {` by ${q.sealer} on `}<When iso={q.sealedAt} />{q.confirmer ? `, confirmed by ${q.confirmer}` : ""}.
                       </p>
                     )}
                     {q.evidence && <p className="text-body-sm text-text-tertiary break-words">{q.evidence}</p>}
@@ -85,12 +88,14 @@ export async function MillioneaObjectionQueue({ viewerId, viewerIsOwner, canRule
                               : w.viewerHoldsTicket ? `You hold a ticket in ${w.code}, so another officer rules on its objections${fallback}.` : null;
                         return (
                           <li key={o.id} className="rounded-md border border-border-subtle p-3 space-y-2">
-                            <div className="flex flex-wrap items-center gap-2 text-body-sm">
-                              <ObjectionStatusBadge status={o.status} />
+                            <div><ObjectionStatusBadge status={o.status} /></div>
+                            {/* One run of words, so a narrow line wraps between them — never a separator left at a line's start. */}
+                            <p className="text-body-sm">
                               <span className="font-semibold">{o.filer}</span>
-                              <span className="text-text-secondary">· {REASON_LABEL[o.reason] ?? o.reason} · filed {fmtEat(o.createdAt)}</span>
-                            </div>
-                            <p className="text-body-sm text-text-secondary whitespace-pre-wrap break-words">{o.detail}</p>
+                              <span className="text-text-secondary">{` · ${REASON_LABEL[o.reason] ?? o.reason} · filed `}<When iso={o.createdAt} /></span>
+                            </p>
+                            {/* The filer's own words, set off as theirs. */}
+                            <blockquote className="border-l-2 border-border pl-3 text-body-sm text-text-secondary whitespace-pre-wrap break-words">{o.detail}</blockquote>
                             {o.status === "OPEN"
                               ? (canRule
                                 ? (q.outcome && q.sealedAt
@@ -101,7 +106,7 @@ export async function MillioneaObjectionQueue({ viewerId, viewerIsOwner, canRule
                               : (
                                 <p className="text-body-sm text-text-secondary break-words">
                                   {o.status === "UPHELD" ? `Upheld · ${REMEDY_LABEL[o.remedy ?? ""] ?? "—"}` : "Rejected"}
-                                  {` by ${o.reviewer ?? "—"} on ${fmtEat(o.reviewedAt)}`}{o.reviewNote ? `: ${o.reviewNote}` : "."}
+                                  {` by ${o.reviewer ?? "—"} on `}<When iso={o.reviewedAt} />{o.reviewNote ? `: ${o.reviewNote}` : "."}
                                 </p>
                               )}
                           </li>

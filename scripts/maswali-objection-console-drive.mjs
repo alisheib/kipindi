@@ -177,7 +177,7 @@ async function landed(o, d, confirmName, detail, decided) {
 }
 await openRuling(comp, DETAIL.m3a, "Reverse…");
 ok("5.1 · the dialog names the ruling and the question, and says what it does before anything is typed",
-  /Reverse the result · .* M3/.test(await dialog.innerText()) && /M3's result changes from YES to NO and the week is graded again[.]/.test(await dialog.innerText())
+  /MLN-[0-9]{4}-W[0-9]{2} · M3/.test(await dialog.innerText()) && /Reverse the result/.test(await dialog.innerText()) && /M3's result changes from YES to NO and the week is graded again[.]/.test(await dialog.innerText())
     && /the check window restarts once, from now/.test(await dialog.innerText()), clip(await dialog.innerText(), 400));
 const confirm = dialog.getByRole("button", { name: "Reverse the result" });
 const gate = dialog.getByPlaceholder("REVERSE");

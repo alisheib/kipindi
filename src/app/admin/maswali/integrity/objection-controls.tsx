@@ -23,6 +23,7 @@ import { ConfirmModal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
+import { I } from "@/components/ui/glyphs";
 import { isMaswaliVoidReason, MASWALI_VOID_REASONS, MASWALI_VOID_REASON_LABEL } from "@/lib/maswali-void-reason";
 import { ruleMaswaliObjectionAction } from "./actions";
 import { outcomeLabel } from "./objection-words";
@@ -66,7 +67,8 @@ export function MillioneaRulingControl({ objectionId, weekCode, slotLabel, outco
   const [tried, setTried] = useState(false);
   const [error, setError] = useState<string | null>(null);
   if (!mayAct) return <ActReadOnly />;
-  if (blocked) return <p className="text-body-sm text-text-secondary">{blocked}</p>;
+  // The service's refusal said before any button, with the lock every locked control wears (`ControlLocked`).
+  if (blocked) return <p className="flex items-start gap-1.5 text-body-sm text-text-tertiary"><I.lock s={12} aria-hidden className="mt-[4px] shrink-0" /><span>{blocked}</span></p>;
 
   const offered: Ruling[] = outcome === "VOID" ? ["REJECT", "REINSTATE"] : ["REJECT", "REVERSE", "VOID"];
   const noteOk = note.trim().length >= RULING_NOTE_MIN;
@@ -103,7 +105,7 @@ export function MillioneaRulingControl({ objectionId, weekCode, slotLabel, outco
       {ruling === null && error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
       <UnsavedChangesGuard dirty={note.trim() !== ""} body={`A ruling note on ${weekCode} ${slotLabel} has been typed but not recorded. Leaving now discards it.`} />
       <ConfirmModal open={ruling !== null} onClose={close} loading={pending} tone={ruling === "REJECT" ? "brand" : "claret"} tier="hard" typedWord={ruling ?? "REJECT"}
-        title={ruling ? `${TITLE[ruling]} · ${weekCode} ${slotLabel}` : ""} confirmLabel={ruling ? CONFIRM[ruling] : ""} maxWidth={480}
+        eyebrow={`${weekCode} · ${slotLabel}`} title={ruling ? TITLE[ruling] : ""} confirmLabel={ruling ? CONFIRM[ruling] : ""} maxWidth={480}
         body={ruling && (
           <div className="space-y-3 text-left">
             <p>{effectOf(ruling, { label: slotLabel, outcome }, restartSpent)}</p>

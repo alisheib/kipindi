@@ -5,8 +5,8 @@
  */
 import { OBJECTION } from "@/lib/admin-status-lexicon";
 
-/** A question's result as the console's sentences say it: the two results as the seal console prints them, a void as a word. */
-const RESULT_WORD = { YES: "YES", NO: "NO", VOID: "void" } as const;
+/** A question's result in the console's sentences, as the seal console prints each: YES, NO, VOID. */
+const RESULT_WORD = { YES: "YES", NO: "NO", VOID: "VOID" } as const;
 export function outcomeLabel(outcome: string | null | undefined): string {
   return outcome === "YES" || outcome === "NO" || outcome === "VOID" ? RESULT_WORD[outcome] : "—";
 }
