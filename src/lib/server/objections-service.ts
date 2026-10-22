@@ -26,7 +26,7 @@ import { db, type StoredObjection, type ObjectionReason, type ObjectionRemedy } 
 import { audit } from "./audit";
 import { randomId } from "./crypto";
 import { afterCommit, withLock } from "./locks";
-import { getMarket, listPositionsForMarket, type StoredMarket } from "./market-service";
+import { getMarket, isFencedMaswali, listPositionsForMarket, MASWALI_FENCE_ERROR, type StoredMarket } from "./market-service";
 import { roundStore, type VoidReason } from "./updown-dal";
 import { getEffectiveConfig } from "./market-config";
 import { notifyAdminObjectionFiled, notifyObjectionDecided } from "./notification-service";
@@ -35,9 +35,10 @@ import { noteObjectionWrite } from "./reversals";
 import { MONEY_ROLES, type Role } from "./roles";
 import type { ServiceResult } from "./auth-service";
 
-/** The player's case, capped so a huge paste can't be used as a storage attack. */
+/** The player's case, capped so a huge paste can't be used as a storage attack. Shared with the Millionea objection door
+ *  (`maswali-objections.ts`, MR-16), which files through this service's reasons and bounds. */
 export const DETAIL_MAX = 1000;
-const DETAIL_MIN = 10;
+export const DETAIL_MIN = 10;
 
 export const OBJECTION_REASONS: ObjectionReason[] = [
   "WRONG_OUTCOME",
@@ -46,6 +47,10 @@ export const OBJECTION_REASONS: ObjectionReason[] = [
   "RESOLVED_EARLY",
   "OTHER",
 ];
+
+/** ⛔ A Millionea objection (one question of a week, MR-16) is ruled in `/admin/maswali` — by an officer other than the
+ *  question's sealer, re-grading the week (`maswali-objections.ts`). These Yes/No rulings would rule the week's market. */
+const MILLIONEA_RULED_ELSEWHERE = "This is a Millionea objection to one question: it is ruled in /admin/maswali, never here.";
 
 /**
  * Ruling on an objection is a MONEY act — upholding VOIDs a market (refunding
@@ -57,8 +62,9 @@ export const OBJECTION_REASONS: ObjectionReason[] = [
  * and audited the attempt: a route guard alone protects one door, while the
  * service guard protects the act. MODERATOR is deliberately excluded — the same
  * tier that may not emergency-void a market may not reverse one either.
+ * ⭐ A Millionea question's ruling is the same act (`maswali-objections.ts`, MR-16) and asks this same gate.
  */
-async function requireRulingOfficer(officerId: string, action: string): Promise<boolean> {
+export async function requireRulingOfficer(officerId: string, action: string): Promise<boolean> {
   const u = await db.user.findById(officerId);
   if (u && MONEY_ROLES.has(u.role as Role)) return true;
   audit({
@@ -81,9 +87,11 @@ export async function listObjectionsForUser(userId: string): Promise<StoredObjec
   return db.objection.listForUser(userId);
 }
 
-/** The officer queue: OPEN first (they hold money), then most recent. */
+/** The officer queue: OPEN first (they hold money), then most recent. ⛔ A Millionea objection (one question of a week,
+ *  MR-16) is not this queue's: it is ruled per question in `/admin/maswali` — its controls here would rule a week's market
+ *  as a Yes/No verdict, so it is never listed here. */
 export async function listObjections(filter?: { status?: StoredObjection["status"] }): Promise<StoredObjection[]> {
-  const all = await db.objection.list();
+  const all = (await db.objection.list()).filter((o) => o.questionOrdinal == null);
   const rows = filter?.status ? all.filter((o) => o.status === filter.status) : all;
   return rows.sort((a, b) => {
     if (a.status === "OPEN" && b.status !== "OPEN") return -1;
@@ -101,7 +109,8 @@ export async function objectionEligibility(
   marketId: string,
 ): Promise<{ eligible: true; closesAt: string | null } | { eligible: false; why: "NOT_ADJUDICATED" | "ALREADY_SETTLED" | "WINDOW_CLOSED" | "NO_POSITION" | "HOUSE_STAKE_ONLY" | "ALREADY_OBJECTED" | "ALREADY_DECIDED" }> {
   const m = await getMarket(marketId);
-  if (!m || (m.status !== "RESOLVED" && m.status !== "VOIDED")) return { eligible: false, why: "NOT_ADJUDICATED" };
+  // ⛔ A Millionea week has no Yes/No verdict to dispute: its questions are objected to one by one (`maswali-objections.ts`).
+  if (!m || isFencedMaswali(m) || (m.status !== "RESOLVED" && m.status !== "VOIDED")) return { eligible: false, why: "NOT_ADJUDICATED" };
   // The money is gone — an objection here could not change it, so we do not
   // offer one. Support is the honest route at that point.
   if (m.settledAt) return { eligible: false, why: "ALREADY_SETTLED" };
@@ -376,6 +385,8 @@ export async function holdSettlementAsOfficer(
   return withLock(`market:${input.marketId}`, async (): Promise<ServiceResult<{ objectionId: string }>> => {
     const m = await getMarket(input.marketId);
     if (!m) return { ok: false, error: "Market not found.", code: "NOT_FOUND" };
+    // ⛔ The action refuses a Millionea week (`test:maswali-fence` 5.4); the act refuses it too, whoever calls it.
+    if (isFencedMaswali(m)) return { ok: false, error: MASWALI_FENCE_ERROR, code: "INVALID" };
     if (m.status !== "RESOLVED" && m.status !== "VOIDED") {
       return { ok: false, error: "Only a market with a recorded verdict can have its payout held.", code: "INVALID" };
     }
@@ -459,6 +470,7 @@ export async function rejectObjection(
   }
   const o = await db.objection.findById(objectionId);
   if (!o) return { ok: false, error: "Objection not found.", code: "NOT_FOUND" };
+  if (o.questionOrdinal != null) return { ok: false, error: MILLIONEA_RULED_ELSEWHERE, code: "INVALID" };
   if (o.status !== "OPEN") return { ok: false, error: "This objection has already been decided.", code: "INVALID" };
   // Separation of duties — an officer cannot rule on their own objection.
   if (o.userId === officerId) {
@@ -547,17 +559,23 @@ export async function rejectObjection(
 export async function upholdObjection(
   objectionId: string,
   officerId: string,
-  input: { remedy: ObjectionRemedy; note: string },
+  input: { remedy: Exclude<ObjectionRemedy, "REINSTATE">; note: string },
 ): Promise<ServiceResult<{ newOutcome: string }>> {
   const reviewNote = (input.note ?? "").trim().slice(0, 1000);
   if (reviewNote.length < 5) {
     return { ok: false, error: "Record why the objection is upheld (5+ characters).", code: "INVALID" };
+  }
+  // A Yes/No market's verdict is voided or reversed — nothing else, whatever a form posts (REINSTATE is a Millionea
+  // question's remedy alone; anything unread here was flipped as a REVERSE).
+  if (input.remedy !== "VOID" && input.remedy !== "REVERSE") {
+    return { ok: false, error: "Choose VOID or REVERSE.", code: "INVALID" };
   }
   if (!(await requireRulingOfficer(officerId, "objection.uphold"))) {
     return { ok: false, error: "Forbidden: ADMIN or COMPLIANCE role required to rule on an objection.", code: "INVALID" };
   }
   const o = await db.objection.findById(objectionId);
   if (!o) return { ok: false, error: "Objection not found.", code: "NOT_FOUND" };
+  if (o.questionOrdinal != null) return { ok: false, error: MILLIONEA_RULED_ELSEWHERE, code: "INVALID" };
   if (o.status !== "OPEN") return { ok: false, error: "This objection has already been decided.", code: "INVALID" };
   if (o.userId === officerId) {
     audit({

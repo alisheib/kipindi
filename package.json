@@ -691,6 +691,7 @@
     "red:maswali-plan": "tsx scripts/maswali-plan.test.mts --prove-red",
     "test:maswali-fence": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-fence.test.mts",
     "red:maswali-fence": "node scripts/red-maswali-fence.mjs",
+    "test:maswali-objections": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-objections.test.mts",
     "test:maswali-config": "tsx scripts/maswali-config.test.mts",
     "test:maswali-ledger": "tsx scripts/maswali-ledger.test.mts",
     "test:maswali-rollout": "tsx scripts/maswali-rollout.test.mts",
