@@ -7,7 +7,7 @@ import ts from "typescript";
 import * as search from "../src/lib/search/index.ts";
 import { adminCount } from "../src/lib/utils.ts";
 import { integrityListParams, parseIntegrityListQuery, selectHeldShares, selectSealWeeks, selectVoidableWeeks, selectWinnerTickets } from "../src/lib/maswali-integrity-list.ts";
-import { clusterCoverage } from "../src/lib/maswali-cluster-coverage.ts";
+import { clusterCoverage, wholeReadCoverage } from "../src/lib/maswali-cluster-coverage.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const helper = readFileSync(join(root, "src/lib/maswali-integrity-list.ts"), "utf8");
@@ -125,19 +125,29 @@ function groupBoundary(cover: typeof clusterCoverage) {
 }
 ok("⛔ the 50-group boundary reports found versus shown without hiding the 51st", groupBoundary(clusterCoverage));
 ok("a reached connection-source cap is marked limited even with every holder in scope", clusterCoverage(10, 0, true).limited);
-function reportWired(source: string) {
-  return source.includes("connectedGroups(userIds.slice(0, CLUSTER_HOLDER_SCAN_LIMIT))")
-    && source.includes("const coverage = clusterCoverage(userIds.length, groups.length, connected?.sourceLimitReached ?? false);")
-    && source.includes("groups: groups.slice(0, coverage.groupsShown)")
-    && source.includes("a.length > CLUSTER_SOURCE_GROUP_LIMIT || b.length > CLUSTER_SOURCE_GROUP_LIMIT");
+/**
+ * MASWALI-BUILD S6-INT (the lead's ruling c): the S6 data lane's report replaced S5's bounded read — it reads EVERY holder
+ * (`connectedGroups` over the week's whole `byUser`) and carries EVERY line (a long line pages from its row) — and S5's
+ * disclosure object survives: the report states its coverage as it is, through `wholeReadCoverage`, never a cap it does not
+ * apply. A whole read of 5,001 holders and 51 lines is reported as whole, by value.
+ */
+function wholeIsWhole(cover: typeof wholeReadCoverage) {
+  const w = cover(5_001, 51);
+  return w.holdersTotal === 5_001 && w.connectedHoldersChecked === 5_001 && w.groupsFound === 51 && w.groupsShown === 51
+    && !w.connectionSourceLimitReached && !w.limited;
 }
-ok("the report uses its measured holder and group coverage to bound the real result", reportWired(reportSource));
+function reportWired(source: string) {
+  return source.includes("const connected = await connectedGroups(week.id, byUser, winning, span, whole);")
+    && source.includes("coverage: wholeReadCoverage(userIds.length, lines.length)")
+    && !source.includes("CLUSTER_HOLDER_SCAN_LIMIT") && !/\blines:\s*lines\.slice\(/.test(source);
+}
+ok("the report reads every holder and carries every line, and its coverage object says so (ruling c)", reportWired(reportSource) && wholeIsWhole(wholeReadCoverage));
 function warningWired(source: string) {
   return source.includes("c.coverage.limited && <p role=\"alert\"")
     && source.includes("c.coverage.connectedHoldersChecked.toLocaleString")
     && source.includes("c.coverage.groupsShown < c.coverage.groupsFound")
-    && source.includes("!c.readable && <p role=\"alert\"")
-    && source.includes('c.coverage.limited ? "No group in the checked records." : "No group to look at."');
+    && source.includes('c.readable ? "" : " · the records could not all be read"')
+    && source.includes("No group to look at.");
 }
 ok("Integrity warns separately about incomplete reads and a bounded holder or group result", warningWired(page));
 /**
@@ -154,11 +164,14 @@ function labelInNameProblems(source: string): string[] {
 const labelledFilters = [...page.matchAll(/<span>([^<]+)<\/span>\s*<Select\b/g)].length;
 ok(`every labelled filter's accessible name contains its visible label (${labelledFilters} filters)`, labelledFilters >= 6 && labelInNameProblems(page).length === 0);
 
-function mutatedCoverage(source: string): typeof clusterCoverage {
+function mutatedCoverageModule(source: string): { clusterCoverage: typeof clusterCoverage; wholeReadCoverage: typeof wholeReadCoverage } {
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const mod = { exports: {} as Record<string, unknown> };
   runInNewContext(compiled, { module: mod, exports: mod.exports });
-  return mod.exports.clusterCoverage as typeof clusterCoverage;
+  return mod.exports as { clusterCoverage: typeof clusterCoverage; wholeReadCoverage: typeof wholeReadCoverage };
+}
+function mutatedCoverage(source: string): typeof clusterCoverage {
+  return mutatedCoverageModule(source).clusterCoverage;
 }
 
 function mutated(source: string) {
@@ -183,12 +196,15 @@ if (process.argv.includes("--prove-red")) {
   const hiddenWarning = page.replace("c.coverage.limited && <p role=\"alert\"", "false && <p role=\"alert\"");
   if (hiddenWarning === page) throw new Error("Limited-report warning plant target missing");
   ok("red: removing the warning fails the page wiring guard", !warningWired(hiddenWarning));
-  const unboundedReport = reportSource.replace("connectedGroups(userIds.slice(0, CLUSTER_HOLDER_SCAN_LIMIT))", "connectedGroups(userIds)");
-  if (unboundedReport === reportSource) throw new Error("Connected-holder scope plant target missing");
-  ok("red: a report that bypasses the measured holder scope fails the source guard", !reportWired(unboundedReport));
-  const unboundedDisplay = reportSource.replace("groups: groups.slice(0, coverage.groupsShown)", "groups");
-  if (unboundedDisplay === reportSource) throw new Error("Group-display scope plant target missing");
-  ok("red: a report that bypasses the measured group scope fails the source guard", !reportWired(unboundedDisplay));
+  const cappedRead = reportSource.replace("const connected = await connectedGroups(week.id, byUser, winning, span, whole);", "const connected = await connectedGroups(week.id, new Map([...byUser].slice(0, 5_000)), winning, span, whole);");
+  if (cappedRead === reportSource) throw new Error("Whole-read plant target missing");
+  ok("red: a report that reads only some holders fails the whole-read guard", !reportWired(cappedRead));
+  const understated = reportSource.replace("coverage: wholeReadCoverage(userIds.length, lines.length)", "coverage: wholeReadCoverage(Math.min(userIds.length, 5_000), lines.length)");
+  if (understated === reportSource) throw new Error("Coverage-statement plant target missing");
+  ok("red: a report whose coverage is not the read it made fails the whole-read guard", !reportWired(understated));
+  const cappedWhole = coverageSource.replace("connectedHoldersChecked: holdersTotal, connectionSourceLimitReached: false,", "connectedHoldersChecked: Math.min(holdersTotal, CLUSTER_HOLDER_SCAN_LIMIT), connectionSourceLimitReached: false,");
+  if (cappedWhole === coverageSource) throw new Error("Whole-read coverage plant target missing");
+  ok("red: a whole read reported as capped fails the whole-read value check", !wholeIsWhole(mutatedCoverageModule(cappedWhole).wholeReadCoverage));
   const brokenCount = page.replace('adminCount(v.voidablePage.allTotal, "week")', 'v.voidablePage.allTotal');
   if (brokenCount === page) throw new Error("Integrity singular count plant target missing");
   ok("red: a raw voidable count loses the singular count guard", !countLabelsAreSingularSafe(brokenCount));
