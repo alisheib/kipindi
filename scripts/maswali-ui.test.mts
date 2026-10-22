@@ -131,8 +131,10 @@ const ghostWordDefects = (readAt: (rel: string) => string) => GHOST_FILES.flatMa
   ok(`1.3 · every Millionea loading drawing is WORDLESS — bars and shapes, the screen reader's "loading" alone: no t.millionea key, no string or text naming Millionea, no words set and not shown (${GHOST_FILES.length} files)`,
     GHOST_FILES.length >= 15 && d.length === 0, d.join(" | "));
   const tl = code(read(`${APP}/tickets/loading.tsx`));
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-TICKETS, the lead's hop item): still synchronous and wordless, it renders the
+  // browser's pick of the DESTINATION's drawing — the list's, or a ticket's own (test:maswali-tickets 25.1).
   ok("1.4 · Tiketi zangu's Millionea loading file is synchronous: it asks the server nothing before the tickets' gate answers",
-    !/\basync\b|\bawait\b/.test(tl) && tl.includes("export default function MillioneaTicketsLoading() {") && tl.includes("return <MillioneaTicketsGhost />;"));
+    !/\basync\b|\bawait\b/.test(tl) && tl.includes("export default function MillioneaTicketsLoading() {") && tl.includes("return <MillioneaTicketsGhostPick />;"));
   const plant = (rel: string, from: string, to: string) => (r: string) => (r === rel ? read(r).replace(from, to) : read(r));
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-HUB L7): the hub's ghost draws its head through the kit PageHeader itself
   // now (its two doors and the game's line as bars); the plant reads the product's name back into that head's title.
@@ -791,8 +793,10 @@ const pagedDefects = (readAt: (rel: string) => string) => {
   if (!list.includes(`{total > PLAYER_PER_PAGE && ( <div className="mt-4 rounded-lg border border-border bg-bg-elevated/40 overflow-hidden"> <Pagination total={total} page={page} perPage={PLAYER_PER_PAGE} baseHref={buildBaseHref(MILLIONEA_HREF.tickets, { lens: lens === "all" ? undefined : lens })} ${LABELS}`)) d.push("Tiketi zangu has no link pager keeping its lens");
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-TICKETS M3): both states fill for a journey reader, as their siblings do;
   // a lens that empties says which in the platform's own words (one page: the lens's title; several: "on this page").
-  if (!list.includes('{total === 0 ? ( <EmptyState fill={journey} kind="positions" title={t.millionea.emptyTickets}')) d.push("\"no ticket yet\" is not kept for a reader who holds none");
-  if (!list.includes(') : cards.length === 0 ? ( <EmptyState fill={journey} kind="positions" title={total > PLAYER_PER_PAGE ? t.millionea.lensNoneOnPage : lensEmptyTitle(t, lens)}')) d.push("a lens that empties a page does not say so in its own words");
+  // RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-TICKETS, §T5): the two are the kit's EmptyState through Millionea's one client
+  // wrapper (`MaswaliEmptyState`), which joins the numeral face to the body (test:maswali-tickets 11.2–11.4).
+  if (!list.includes('{total === 0 ? ( <MaswaliEmptyState fill={journey} kind="positions" title={t.millionea.emptyTickets}')) d.push("\"no ticket yet\" is not kept for a reader who holds none");
+  if (!list.includes(') : cards.length === 0 ? ( <MaswaliEmptyState fill={journey} kind="positions" title={total > PLAYER_PER_PAGE ? t.millionea.lensNoneOnPage : lensEmptyTitle(t, lens)}')) d.push("a lens that empties a page does not say so in its own words");
   const register = squash(code(readAt(REGISTER)));
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER, the lead's H2 ruling and the critic's M11): the index reads the
   // weeks still running beside its one page of final weeks with their total, and its launch-day empty state is the kit's own,

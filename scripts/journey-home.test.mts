@@ -1483,7 +1483,10 @@ function howToDefects(): HtPlant[] {
     { name: "min-height: 0 dropped from .kp-howto__sheet (the sheet keeps its content's height and runs out of the capped panel)", expect: /^5[.]cap /,
       plant: htCss(".kp-howto__sheet { display: flex; flex-direction: column; gap: var(--sp-4); min-height: 0; }", ".kp-howto__sheet { display: flex; flex-direction: column; gap: var(--sp-4); }") },
     { name: "the steps region no longer scrolls", expect: /^5[.]cap /,
-      plant: htCss("overflow-y: auto; overscroll-behavior: contain; }", "overscroll-behavior: contain; }") },
+      // Anchored on the whole .kp-howto__scroll rule: since S5-DESIGN-SLIP's 477dbdc82 the bare `overflow-y: auto;
+      // overscroll-behavior: contain; }` also ends .kp-mln-confirm__body, so the old anchor resolved twice and htSwap refused it.
+      plant: htCss(".kp-howto__scroll { display: flex; flex-direction: column; gap: var(--sp-4); flex-shrink: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }",
+        ".kp-howto__scroll { display: flex; flex-direction: column; gap: var(--sp-4); flex-shrink: 1; min-height: 0; overscroll-behavior: contain; }") },
     { name: "a fade drawn on every region, whether it hides anything or not", expect: /^5[.]cap /,
       plant: htCss(".kp-howto__scroll { display: flex;", ".kp-howto__scroll { mask-image: linear-gradient(to bottom, #000 80%, transparent); display: flex;") },
     { name: "MFANO a hand-rolled box instead of the kit Callout", expect: /^5[.]mfano /,

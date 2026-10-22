@@ -48,6 +48,7 @@
  */
 
 import { useCallback, useEffect, useId, useRef, type ReactNode } from "react";
+import Link from "next/link";
 import { Modal } from "@/components/ui/modal";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
@@ -122,6 +123,11 @@ type Props = {
   /** Modal's `panelDelay` (…H1): the panel rises one exit beat (`--t-quick`) late, once the dialog it replaces has left;
    *  both clamps zero the wait. Omitted: exactly as before. */
   panelDelay?: boolean;
+  /** The primary as the kit's Link to this address, styled as the button (MASWALI-BUILD S5-R2-SLIP, the lead's ruling):
+   *  pressed, it runs `onPrimary` (or closes) and the router moves there — and, as every Link does, production prefetches
+   *  the destination's loading drawing while it is on screen, so the move shows that drawing at once. Omitted: the button,
+   *  exactly as before. */
+  primaryHref?: string;
 };
 
 /**
@@ -241,11 +247,13 @@ const STRIP_GRADIENTS: Record<string, string> = {
 export function OperationResultModal({
   open, variant, eyebrow, title, subtitle, details, footnote, compactOnPhone = false,
   primaryLabel, secondaryLabel, onPrimary, onSecondary, onClose,
-  autoCloseMs, stripTone = "brand", successCrestTone, stamp, titleFace, className, handoff, panelDelay,
+  autoCloseMs, stripTone = "brand", successCrestTone, stamp, titleFace, className, handoff, panelDelay, primaryHref,
 }: Props) {
   const { t } = useT();
   const closeRef = useRef(onClose);
   const primaryRef = useRef<HTMLButtonElement>(null);
+  // The primary drawn as a link (`primaryHref`) takes the opening focus the button takes.
+  const primaryLinkRef = useRef<HTMLAnchorElement>(null);
   const subtitleId = useId();
   useEffect(() => { closeRef.current = onClose; }, [onClose]);
 
@@ -471,7 +479,7 @@ export function OperationResultModal({
       ariaLabel={title}
       describedBy={subtitle ? subtitleId : undefined}
       maxWidth={460}
-      initialFocus={primaryRef}
+      initialFocus={primaryHref ? primaryLinkRef : primaryRef}
       handoff={handoff}
       panelDelay={panelDelay}
       panelClassName="overflow-hidden !p-0"
@@ -608,6 +616,18 @@ export function OperationResultModal({
         )}
 
         <div className="orm-actions mt-5 flex flex-col gap-2">
+          {primaryHref ? (
+            // The same primary as a Link (`primaryHref`): the same press (its caller's `onPrimary`, else the close — the
+            // button's own rule, below), then the router's move — prefetched while on screen, as every Link is.
+            <Link
+              ref={primaryLinkRef}
+              href={primaryHref as never}
+              onClick={() => (onPrimary ?? onClose)()}
+              className={`btn ${effectiveBtn} btn-lg w-full`}
+            >
+              {primaryLabel ?? t.common.doneSawa}
+            </Link>
+          ) : (
           <button
             ref={primaryRef}
             type="button"
@@ -622,6 +642,7 @@ export function OperationResultModal({
           >
             {primaryLabel ?? t.common.doneSawa}
           </button>
+          )}
           {secondaryLabel && (
             <button
               type="button"

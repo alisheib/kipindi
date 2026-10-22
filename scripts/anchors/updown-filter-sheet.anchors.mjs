@@ -167,6 +167,16 @@ export const MUTATIONS = [
     expect: "2: the accessible name interpolates both axes too",
   },
   {
+    // §7, re-pinned 2026-10-22 (MASWALI-BUILD S5-R2-SLIP): the caret's turn, read inside the shared caret list.
+    name: "caret-turns-its-wrapper",
+    why: "the turn moves from the caret onto its wrapper, the open sheet's summary: the whole trigger flips upside down while the caret — the live affordance §7 exists for — never turns on its own, and the shared caret list still reads as a rule that rotates something",
+    file: CSS,
+    suite: "updown-filter-sheet",
+    from: `.kp-fsheet[open] > summary .kp-fsheet-caret,`,
+    to: `.kp-fsheet[open] > summary,`,
+    expect: "7: …and it rotates when the sheet opens, so the caret is live and not an ornament",
+  },
+  {
     name: "sheet-back-under-the-nav",
     why: "\u2b50 THE LATENT DEFECT THIS UNIT EXPOSED, restored: the sheet stops lifting itself and goes back to relying on `.kp-discovery-bar` — which the Up & Down board is not inside. It then opens at `z-index: 2` beneath a `z-40` bottom nav, VISIBLE and correctly laid out and correctly translated, with its dismiss button unpressable. \u26d4 Byte-identical geometry to the working surface, so only `elementFromPoint` can tell them apart",
     file: CSS,

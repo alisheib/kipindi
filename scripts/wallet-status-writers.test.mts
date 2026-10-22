@@ -424,7 +424,11 @@ const FILE_FLOOR = 800;
 // `updateMany` of `balance: { increment }` per distinct amount — a balance-only write in the transport; its memory twin
 // credits through `adjust`, so it adds no site. Its callers are skipped as deltas, as `adjust`'s are.
 // 39 since the standalone bonus-refund memory fault rollback restores its same-user wallet snapshot under the wallet lock.
-const SITE_COUNT = 39;
+// 42 since 2026-10-22 (MASWALI-BUILD S5): three more Millionea drive fixtures create their players ACTIVE, as every
+// dev-test seeder does — `dev-test/maswali-hub-act/route.ts` (newPlayer), `dev-test/seed-maswali-register/route.ts`
+// (player) and `dev-test/seed-maswali-tickets/route.ts` (account). Each is judged `fixture` and proven dev-only by §2.7;
+// the production writers stay exactly 3 (§2.5). §1's list was read before the pin moved.
+const SITE_COUNT = 42;
 ok(`1.1 the walk read every .ts/.tsx under src/`, files.length >= FILE_FLOOR, `${files.length} files (floor ${FILE_FLOOR})`);
 ok(`1.2 ⛔ RATCHET · the census found exactly the wallet write sites measured`, all.length === SITE_COUNT,
   `${all.length} sites (pinned ${SITE_COUNT} — a changed count is a changed population: read §1's list, then move the pin)`);

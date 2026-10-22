@@ -17,7 +17,8 @@
  *   §8  M1   the card: the journey card's shell, the whole card the link (named "View ticket MLN-…"), the chip's glyph
  *   §9  M7   one fact, one wording: "Price", "Bought {date}", zh 派奖
  *   §10 M2   the lenses on the kit's strip, one row
- *   §11 M3   the empty and lens-empty states: fill, the verb call, the platform's lens words, the way out
+ *   §11 M3   the empty and lens-empty states: fill, the verb call, the platform's lens words, the way out; §T5 their numerals
+ *            mono through the kit EmptyState's OPT-IN part — every other caller byte for byte as before (a census of all)
  *   §12 M5 L7 the stub: the serial whole on its own row, the purchase time breaking only after its weekday, the week number
  *   §13 M6 L3 the legal line follows the resolution mode and opens the week's register; the stub's hash too
  *   §14 L1   the kind switch wears Millionea's ink; the kit Tabs byte-identical for every caller without it
@@ -29,6 +30,8 @@
  *   §20 L14  no dead lock moment
  *   §21 M9   the ghosts: three kinds where three are drawn; one strip row; the ticket's 108px Seal Line box
  *   §22      the hub's held row (the hub critic's L4 + L20, the lead's lines)
+ *   §25      the hop: the list's loading state draws the DESTINATION's drawing (a ticket's own on a ticket); each drawing
+ *            names its page (`data-ghost-page`) on one box-less wrapper around it, which moves nothing; the kit untouched
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect in an IN-MEMORY copy — a source string, a dictionary value,
  *    or a component COMPILED from a planted copy of its own source — and requires the check it targets to fail; a plant whose
@@ -110,6 +113,11 @@ const FILES = {
   listGhost: "src/app/millionea/tickets/tickets-ghost.tsx",
   ticketGhost: "src/app/millionea/tickets/[serial]/ticket-ghost.tsx",
   hint: "src/components/maswali/maswali-ghost-hint.tsx",
+  emptyText: "src/components/ui/empty-state-text.ts",
+  empty: "src/components/ui/empty-state.tsx",
+  mlnEmpty: "src/components/maswali/maswali-empty-state.tsx",
+  listLoading: "src/app/millionea/tickets/loading.tsx",
+  pageContainer: "src/components/layout/page-container.tsx",
   headGhost: "src/components/journey/tickets/tickets-ghost.tsx",
   switch: "src/components/journey/tickets/ticket-switch.tsx",
   tabs: "src/components/ui/tabs.tsx",
@@ -275,6 +283,8 @@ check("3.1", "the free cancel is the platform's free exit: a clock line (the tim
     const [before] = String(M.cancelFreeUntil).split("{time}");
     const clock = /<p class="text-body-sm text-text-muted">([\s\S]*?)<\/p>/.exec(m)?.[1] ?? "";
     need(d, textOf(clock).startsWith(before.trim()) && /<time date[Tt]ime="[^"]+"[^>]*>10:09<\/time>/.test(clock) && /role="timer"[^>]*>9:42</.test(clock), `${l}: the clock line is not "${before.trim()} 10:09 · 9:42" (${textOf(clock)})`);
+    // §T5 (round 2): the clock is a `.mono` numeral, as every digit run of a Millionea fact line; the timer is mono too.
+    need(d, /<time date[Tt]ime="[^"]+" class="mono whitespace-nowrap">10:09<\/time>/.test(clock) && /role="timer" class="[^"]*font-mono[^"]*">9:42</.test(clock), `${l}: the clock or the timer is not a mono numeral (§T5)`);
     const btn = /<button[^>]*>([\s\S]*?)<\/button>/.exec(m)?.[1] ?? "";
     const [rb, ra] = J.sellFullRefund.split("{amount}");
     need(d, textOf(btn).includes(M.confirmCancel) && /<span class="amount[^"]*">TZS 1,000<\/span>/.test(btn) && textOf(btn).includes(`${rb}TZS 1,000${ra}`.trim()), `${l}: the button is not "${M.confirmCancel}" over the full refund (${textOf(btn)})`);
@@ -445,6 +455,201 @@ check("11.1", "the empty states are their siblings': they fill for a journey rea
   return d;
 });
 
+// ── §11.2–11.4 · §T5 · the kit EmptyState's OPT-IN numeral part (the lead's ruling, 2026-10-22) ─────────────────────
+// The kit EmptyState is SHARED by the whole app, so the change is proven from both sides. WITHOUT a part — every caller but
+// Millionea's one wrapper — the body and the component draw byte for byte what 7e9a314f0 drew: every string the dictionary
+// writes in each language, each template filled as a page fills it (and again with its fill kept whole), a generated set
+// of hard cases (Chinese marks mid-text and before a closer, a dash, a YES/NO pair, a possessive, a figure, a clock, a
+// serial); the notice rules that share the module too; and the component bound to 7e9a314f0's own text rules, across every
+// kind, width rule, body shape and action. WITH Millionea's part, only the numerals' face changes: for every one of those
+// bodies, the markup less its `.mono` / `.amount` runs is the markup without the part. A parse of every TSX file under
+// src/ finds each `<EmptyState>` the app draws and who asks for a part.
+type EmptyTextMod = { emptyStateBody: (b: unknown, part?: unknown) => unknown; noticeBody: (b: unknown, o?: unknown) => unknown };
+type EmptyMod = { EmptyState: unknown; EmptyStateSection: unknown; ErrorState: unknown };
+const atRelease = (rel: string) => execFileSync("git", ["show", `7e9a314f0:${rel}`], { cwd: ROOT, encoding: "utf8" }).replace(/\r\n/g, "\n");
+/** `rel` compiled from `source` while `dep`'s module is `depExports` — so 7e9a314f0's component draws with 7e9a314f0's text
+ *  rules, and a planted text module reaches the component compiled beside it. */
+function compiledWith<T>(rel: string, source: string, dep: string, depExports: unknown): T {
+  req(`../${rel}`); // the live module first, bound to the live dependency, before the swap
+  const at = req.resolve(`../${dep}`), cache = req.cache as Record<string, NodeModule>, live = cache[at];
+  const stub = new NodeModule(at);
+  stub.filename = at; stub.loaded = true; stub.exports = depExports;
+  cache[at] = stub;
+  try { return compiled<T>(rel, source); } finally { cache[at] = live; }
+}
+const emptyTextOld = compiled<EmptyTextMod>(FILES.emptyText, atRelease(FILES.emptyText));
+const emptyOld = compiledWith<EmptyMod>(FILES.empty, atRelease(FILES.empty), FILES.emptyText, emptyTextOld);
+const emptyTextOf = (w: World) => (w.src.emptyText === REAL.src.emptyText ? req("../src/components/ui/empty-state-text.ts") : compiled(FILES.emptyText, w.src.emptyText)) as EmptyTextMod;
+const emptyOf = (w: World) => (w.src.empty === REAL.src.empty && w.src.emptyText === REAL.src.emptyText
+  ? req("../src/components/ui/empty-state.tsx")
+  : compiledWith(FILES.empty, w.src.empty, FILES.emptyText, emptyTextOf(w))) as EmptyMod;
+const mlnEmptyOf = (w: World) => (w.src.mlnEmpty === REAL.src.mlnEmpty ? req("../src/components/maswali/maswali-empty-state.tsx") : compiled(FILES.mlnEmpty, w.src.mlnEmpty)) as { MaswaliEmptyState: unknown };
+const { numeralRuns } = req("../src/components/maswali/maswali-facts.tsx") as { numeralRuns: (s: string) => unknown };
+const P = (node: unknown) => renderToStaticMarkup(h("p", null, node as never));
+/** The markup less the numerals' face: each `.mono` / `.amount` run its bare text again. */
+const faceless = (m: string) => m.replace(/<span class="(?:mono|amount)">([^<]*)<\/span>/g, "$1");
+
+/** The bodies: every string the dictionary writes in a language; each template filled as a page fills one (a count, a
+ *  clock, a figure, a serial, a date — the runs a part and a keep act on), and again with its fill kept whole (`keep`, as
+ *  a caller's `breakSentence` hands it); and the generated hard cases, each alone and joined to each other. */
+type Body = string | { text: string; keep: string[] };
+const FILLS = ["3", "18:00", "TZS 1,000", "MLN-2026-W49-000041", "21 Oct"];
+const stringsIn = (v: unknown, out: string[] = []): string[] => {
+  if (typeof v === "string") out.push(v);
+  else if (v && typeof v === "object") for (const x of Object.values(v)) stringsIn(x, out);
+  return out;
+};
+const HARD = [
+  "选择一个问题，点击“是”或“否”——您的注单会显示在这里。", "第3周开放至周五 18:00。开放时公布 15 道问题。", "还剩 2 张？好！", "“你好，”他说：“第 49 周。”",
+  "（第 49 周）已结束；共 10/10。", "Pick YES or NO — your ticket shows up here.", "Chagua NDIO au HAPANA — tiketi yako itaonekana hapa.",
+  "Week 49 — 3 of 15 results in", "TZS 1,000 returned to your main balance.", "Wiki ya 49: tiketi 2 zimeshinda 10/10.", "A or B or C",
+];
+const HARD_CASES = HARD.flatMap((a, i) => HARD.map((b, k) => (i === k ? a : `${a}${["", " ", "，", " — "][(i + k) % 4]}${b}`)));
+const CORPUS = Object.fromEntries(LOCALES.map((l) => {
+  const strings = stringsIn(dict[l]);
+  const filled = strings.filter((s) => /\{\w+\}/.test(s)).flatMap((s, i): Body[] => {
+    const v = FILLS[i % FILLS.length], text = s.replace(/\{\w+\}/g, v);
+    return [text, { text, keep: [v] }];
+  });
+  return [l, [...strings, ...filled, ...HARD_CASES]];
+})) as Record<Locale, Body[]>;
+const CORPUS_SIZE = LOCALES.reduce((n, l) => n + CORPUS[l].length, 0);
+const bodyText = (b: Body) => (typeof b === "string" ? b : b.text).slice(0, 40);
+
+/** The text rules over the corpus, once per text module (a plant that leaves the module alone reads the same pass). */
+const textPasses = new Map<string, { identity: string[]; faces: string[]; mono: number }>();
+const textPassOf = (w: World) => {
+  const hit = textPasses.get(w.src.emptyText);
+  if (hit) return hit;
+  const now = emptyTextOf(w), identity: string[] = [], faces: string[] = [];
+  let mono = 0;
+  for (const l of LOCALES) for (const body of CORPUS[l]) {
+    const without = P(now.emptyStateBody(body));
+    if (identity.length < 3 && P(emptyTextOld.emptyStateBody(body)) !== without) identity.push(`${l} body ${j(bodyText(body))}`);
+    if (identity.length < 3 && typeof body === "string") {
+      for (const o of [undefined, { centred: true }]) {
+        if (P(emptyTextOld.noticeBody(body, o)) !== P(now.noticeBody(body, o))) identity.push(`${l} notice${o ? " (centred)" : ""} ${j(bodyText(body))}`);
+      }
+    }
+    const withPart = P(now.emptyStateBody(body, numeralRuns));
+    if (withPart.includes('<span class="mono">')) mono++;
+    if (faces.length < 3 && faceless(withPart) !== without) faces.push(`${l} ${j(bodyText(body))}`);
+  }
+  const pass = { identity, faces, mono };
+  textPasses.set(w.src.emptyText, pass);
+  return pass;
+};
+/** The component, 7e9a314f0's against the world's, once per pair of sources: every kind × the width rules (unset, fill,
+ *  boxed with a class) × no body, a sentence (zh with its marks and numerals), a kept body × with and without an action ×
+ *  alone and inside a titled section, in three languages; and the error state beside it. */
+const EMPTY_KINDS = ["markets", "positions", "leaderboard", "notifications", "audit", "sources", "proposals", "kyc", "fairness", "rg", "admin", "default"];
+const componentPasses = new Map<string, { defects: string[]; n: number }>();
+const componentPassOf = (w: World) => {
+  const key = `${w.src.empty}\u0000${w.src.emptyText}`;
+  const hit = componentPasses.get(key);
+  if (hit) return hit;
+  const now = emptyOf(w), defects: string[] = [];
+  let n = 0;
+  const differ = (what: string, a: string, b: string) => { n++; if (a !== b && defects.length < 3) defects.push(`${what}: differs at byte ${[...a].findIndex((ch, i) => ch !== b[i])}`); };
+  const action = h("a", { href: "/x", className: "btn btn-primary btn-md" }, "Go");
+  for (const l of LOCALES) {
+    const sentence = l === "zh" ? "第3周开放至周五 18:00。开放时公布 15 道问题。" : l === "sw" ? "Wiki 3 iko wazi hadi Ijumaa 18:00." : "Pick YES or NO — your ticket shows up here.";
+    const bodies: Array<Body | undefined> = [undefined, sentence, { text: "Pick YES or NO — then 10/10 on 21 Oct", keep: ["21 Oct"] }];
+    for (const kind of EMPTY_KINDS) for (const fill of [undefined, true, false]) for (const body of bodies) for (const act of [undefined, action]) {
+      const props = { kind, title: l === "zh" ? "暂无。" : "Nothing here yet — 3 of 15.", body, fill, action: act, className: fill === false ? "mt-3" : undefined };
+      for (const section of [false, true]) {
+        const draw = (m: EmptyMod) => inApp(l, section ? h(m.EmptyStateSection as never, null, h(m.EmptyState as never, props as never)) : h(m.EmptyState as never, props as never));
+        differ(`${l}/${kind}/fill=${String(fill)}/${body === undefined ? "no body" : typeof body === "string" ? "sentence" : "kept"}${act ? "/action" : ""}${section ? "/section" : ""}`, draw(emptyOld), draw(now));
+      }
+    }
+    for (const props of [{}, { title: "x", detail: "MLN-2026-W49-000041", action }]) {
+      differ(`${l}/ErrorState`, inApp(l, h(emptyOld.ErrorState as never, props as never)), inApp(l, h(now.ErrorState as never, props as never)));
+    }
+  }
+  const pass = { defects, n };
+  componentPasses.set(key, pass);
+  return pass;
+};
+const REAL_TEXT_PASS = textPassOf(REAL), REAL_COMPONENT_PASS = componentPassOf(REAL);
+check("11.2", `§T5 · the kit EmptyState WITHOUT a part (every caller but Millionea's one wrapper) draws byte for byte what 7e9a314f0 drew: ${CORPUS_SIZE} bodies in sw/en/zh (every string the dictionary writes, each template filled and kept, the generated hard cases) through the body and the notice rules, and the component bound to 7e9a314f0's own text rules in ${REAL_COMPONENT_PASS.n} drawings (every kind, width rule, body shape and action, alone and in a section; the error state)`, (w) => {
+  const d: string[] = [];
+  const text = textPassOf(w), comp = componentPassOf(w);
+  for (const x of text.identity) d.push(`draws differently without a part — ${x}`);
+  d.push(...comp.defects);
+  need(d, CORPUS_SIZE > 10_000 && comp.n > 1_000, `only ${CORPUS_SIZE} bodies and ${comp.n} component drawings read`);
+  return d;
+});
+
+/** Every `<tag …>` element in a TSX source: its line, and whether it passes `attr` or spreads its props (a spread could
+ *  carry it). A parse, not a pattern: an attribute is an attribute wherever it sits. */
+type JsxCall = { file: string; line: number; attr: boolean; spread: boolean };
+const jsxCallsIn = (file: string, source: string, tag: string, attr: string): JsxCall[] => {
+  const sf = ts.createSourceFile(file, source, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TSX);
+  const out: JsxCall[] = [];
+  const visit = (n: ts.Node) => {
+    if ((ts.isJsxSelfClosingElement(n) || ts.isJsxOpeningElement(n)) && n.tagName.getText(sf) === tag) {
+      const props = n.attributes.properties;
+      out.push({
+        file, line: sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1,
+        attr: props.some((a) => ts.isJsxAttribute(a) && a.name.getText(sf) === attr),
+        spread: props.some((a) => ts.isJsxSpreadAttribute(a)),
+      });
+    }
+    ts.forEachChild(n, visit);
+  };
+  visit(sf);
+  return out;
+};
+const emptyCallsIn = (file: string, source: string) => jsxCallsIn(file, source, "EmptyState", "bodyPart");
+const SRC_TSX = (() => {
+  const out: string[] = [];
+  const walk = (dir: string) => {
+    for (const x of readdirSync(join(ROOT, dir))) { const q = posix.join(dir, x); if (statSync(join(ROOT, q)).isDirectory()) walk(q); else if (q.endsWith(".tsx")) out.push(q); }
+  };
+  walk("src");
+  return out;
+})();
+const IN_WORLD = new Set<string>(Object.values(FILES));
+const WORLD_TSX = (Object.keys(FILES) as FileKey[]).filter((k) => FILES[k].endsWith(".tsx"));
+const DISK_EMPTY_CALLS = SRC_TSX.filter((f) => !IN_WORLD.has(f)).flatMap((f) => emptyCallsIn(f, raw(f)));
+const DRAWS_MLN_EMPTY = /from\s+"@\/components\/maswali\/maswali-empty-state"/;
+const DISK_MLN_EMPTY_USERS = SRC_TSX.filter((f) => !IN_WORLD.has(f) && DRAWS_MLN_EMPTY.test(decomment(raw(f))));
+const emptyCallsOf = (w: World) => [...DISK_EMPTY_CALLS, ...WORLD_TSX.flatMap((k) => emptyCallsIn(FILES[k], w.src[k]))];
+const REAL_EMPTY_CALLS = emptyCallsOf(REAL);
+check("11.3", `the census: of every <EmptyState> the app draws (${REAL_EMPTY_CALLS.length} in ${new Set(REAL_EMPTY_CALLS.map((c) => c.file)).size} files, a TSX parse of src/), only Millionea's one wrapper asks for a part or spreads its props; the wrapper is drawn only by Millionea's pages — Tiketi zangu's two empty states`, (w) => {
+  const d: string[] = [];
+  const calls = emptyCallsOf(w);
+  need(d, calls.length >= 60, `only ${calls.length} calls read`);
+  const asking = calls.filter((c) => c.attr || c.spread);
+  need(d, asking.length === 1 && asking[0].file === FILES.mlnEmpty && asking[0].attr, `a part or a spread at ${j(asking.map((c) => `${c.file}:${c.line}`))}`);
+  const users = [...DISK_MLN_EMPTY_USERS, ...WORLD_TSX.filter((k) => DRAWS_MLN_EMPTY.test(decomment(w.src[k]))).map((k) => FILES[k])];
+  need(d, users.length > 0 && users.every((f) => f.startsWith("src/app/millionea/")), `Millionea's empty state is drawn outside Millionea: ${j(users)}`);
+  const list = code(w, "list");
+  need(d, count(list, "<MaswaliEmptyState ") === 2 && list.includes('<MaswaliEmptyState fill={journey} kind="positions" title={t.millionea.emptyTickets}'), "the list's two empty states are not Millionea's");
+  return d;
+});
+
+const FRIDAY_1800 = Date.parse("2026-12-04T15:00:00.000Z"); // Friday 18:00 EAT
+check("11.4", `§T5 · WITH Millionea's part the numerals take their face and nothing else changes: Tiketi zangu's empty body, filled as the page fills it, sets the week and the clock \`.mono\` in sw, en and zh — the Chinese body too, whose hung mark comes back in a fragment — and a numeral after a hung mark mid-text; for every body of 11.2 (${REAL_TEXT_PASS.mono} of them with a numeral set) the markup less its numeral runs is the markup without the part`, (w) => {
+  const d: string[] = [];
+  const { MaswaliEmptyState } = mlnEmptyOf(w), { EmptyState } = emptyOf(w);
+  const { eatWeekdayClock } = req("../src/components/maswali/maswali-format.ts") as { eatWeekdayClock: (t: unknown, ms: number) => string };
+  const { fill } = req("../src/lib/utils.ts") as { fill: (s: string, v: Record<string, string | number>) => string };
+  for (const l of LOCALES) {
+    const M = mln(w, l);
+    const props = { fill: true, kind: "positions", title: M.emptyTickets, body: fill(M.emptyTicketsNext, { week: 3, when: eatWeekdayClock(w.dict[l], FRIDAY_1800) }) };
+    const m = inApp(l, h(MaswaliEmptyState as never, props as never)), plain = inApp(l, h(EmptyState as never, props as never));
+    need(d, m.includes('<span class="mono">3</span>') && m.includes('<span class="mono">18:00</span>'), `${l}: the week and the clock are not mono ("${textOf(m).slice(textOf(m).indexOf(M.emptyTickets) + M.emptyTickets.length)}")`);
+    need(d, faceless(m) === plain, `${l}: more than the numerals' face changed`);
+  }
+  const zh = P(emptyTextOf(w).emptyStateBody("第3周开放至周五 18:00。开放时公布 15 道问题。", numeralRuns));
+  need(d, zh.includes('<span class="mono">18:00</span>') && zh.includes('<span class="mono">15</span>') && count(zh, 'class="kp-cjk-mark"') === 2, `zh: a numeral after a hung mark is not mono, or a mark no longer hangs (${zh})`);
+  const text = textPassOf(w);
+  for (const x of text.faces) d.push(`more than the face changed — ${x}`);
+  need(d, text.mono > 1_000, `the part set the numerals of only ${text.mono} bodies`);
+  return d;
+});
+
 // ── §12 · M5 · L7 ───────────────────────────────────────────────────────────────────────────────────────────────────
 check("12.1", "the stub: the serial whole on its own row; the purchase time one run after its weekday (\"Jumatano\" / \"2 Des, 10:18\"), on a row of its own; the week its number alone", (w) => {
   const m = ticketMarkup(w, "sw"), d: string[] = [];
@@ -547,7 +752,7 @@ const HAN_SPACE_HAN = new RegExp(`${HAN} ${HAN}`);
 check("15.2", "zh: every template of this surface that a weekday-and-clock fills reads with no space between two Han characters — \"第49周开放至周五 18:00。\" — filled as the page fills it", (w) => {
   const d: string[] = [];
   const zh = mln(w, "zh"), when = "周五 18:00";
-  for (const k of ["emptyTicketsNext", "lockedAt", "salesCloseAt", "firstEventAt", "paidTo"]) {
+  for (const k of ["emptyTicketsNext", "lockedAt", "salesCloseColon", "firstEventAt", "paidTo"]) {
     const filled = String(zh[k]).replace("{week}", "49").replace("{when}", when);
     need(d, !HAN_SPACE_HAN.test(filled), `zh.${k} → "${filled}"`);
   }
@@ -616,8 +821,8 @@ check("23.2", "round 2 · a ticket's week wears the ONE week chip (`WeekStateChi
 // ── §17 · L10 + the seal (the platform's) ───────────────────────────────────────────────────────────────────────────
 check("17.1", "the seal speaks Millionea's words — eyebrow \"Millionea · Week 49\", heading \"You won\", facts the tickets at 10/10 then each serial — and lands final", (w) => {
   const a = code(w, "acts"), p = code(w, "page"), d: string[] = [];
-  need(d, a.includes('dispatchWinCelebration({ kind: "WIN", amount, eyebrow, heading: t.millionea.wonHeading, facts, roll: false })'), "the door does not hand the seal its words");
-  need(d, p.includes("eyebrow={`${t.millionea.productLabel} · ${weekWord(t, weekNumber)}`}") && p.includes("facts={[counted(paidSerials.length, t.millionea.wonTicketsOne, t.millionea.wonTickets), ...paidSerials]}"), "the page does not name the week and the serials");
+  need(d, a.includes('dispatchWinCelebration({ kind: "WIN", amount, eyebrow, heading: t.millionea.wonHeading, facts: sealFacts(line, serials), roll: false })'), "the door does not hand the seal its words");
+  need(d, p.includes("eyebrow={`${t.millionea.productLabel} · ${weekWord(t, weekNumber)}`}") && p.includes("line={counted(paidSerials.length, t.millionea.wonTicketsOne, t.millionea.wonTickets)} serials={paidSerials}"), "the page does not name the week and the serials");
   return d;
 });
 check("17.2", "the platform's seal: its words are the payload's when given and its own otherwise; the amount ONE line at every width (nowrap, sized by its final figure to the column, never over 38px); facts one whole line each", (w) => {
@@ -626,16 +831,57 @@ check("17.2", "the platform's seal: its words are the payload's when given and i
   need(d, c.includes('const amountFit = { "--seal-chars": formatTzs(payload.amount).length, fontSize: "min(38px, calc(100cqi / (var(--seal-chars) * 0.6)))" } as CSSProperties;'), "the amount's size is not fitted to its figure");
   need(d, c.includes('<div className="g-settle mt-3 w-full [container-type:inline-size]" style={{ "--i": 2 } as CSSProperties}> <p data-seal-amount="" className={`whitespace-nowrap font-mono text-[38px]'), "the amount is not one line in its column's container");
   need(d, c.includes("style={amountFit}"), "the fitted size is not applied");
-  need(d, c.includes('{payload.facts.map((f, i) => ( <span key={i} className="whitespace-nowrap">'), "a fact may break");
+  // RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-TICKETS): back to round 1's drawing — each fact whole on its line, drawn as its
+  // caller hands it (Millionea sets its own numerals' face, 17.3); a classic seal passes no facts.
+  need(d, c.includes('{payload.facts.map((f, i) => ( <span key={i} className="whitespace-nowrap"> {i > 0 && <span className="sr-only">{" · "}</span>} {f} </span> ))}'), "a fact may break, or is not drawn as handed");
+  return d;
+});
+/** The ticket's acts as the world writes them — their two server actions stood in (a static render reaches no server). */
+{
+  const at = req.resolve("../src/app/millionea/actions.ts");
+  const stub = new NodeModule(at);
+  stub.filename = at; stub.loaded = true;
+  stub.exports = { cancelMillioneaTicketAction: async () => ({}), markMillioneaTicketSeenAction: async () => ({ ok: true }) };
+  (req.cache as Record<string, unknown>)[at] = stub;
+}
+type ActsMod = { sealFacts: (line: string, serials: readonly string[]) => unknown[] };
+const actsOf = (w: World) => (w.src.acts === REAL.src.acts ? req("../src/app/millionea/tickets/[serial]/ticket-acts.tsx") : compiled(FILES.acts, w.src.acts)) as ActsMod;
+check("17.3", "§T5 (round 2) · Millionea hands the seal its facts in the numerals' face, in sw/en/zh: the count line's numerals each a `.mono` run and its words in the body face, every serial whole in one `.mono` run, the words the dictionary's (the seal draws each fact as handed, 17.2); the held and forfeited notes' counts mono too", (w) => {
+  const { sealFacts } = actsOf(w), d: string[] = [];
+  const { counted } = req("../src/components/maswali/maswali-format.ts") as { counted: (n: number, one: string, many: string) => string };
+  for (const l of LOCALES) {
+    const M = mln(w, l);
+    for (const n of [1, 3]) {
+      const line = counted(n, M.wonTicketsOne, M.wonTickets), serials = Array.from({ length: n }, (_, i) => `MLN-2026-W49-00004${i + 1}`);
+      const m = P(sealFacts(line, serials).map((f, i) => h("span", { key: i }, f as never)));
+      const numerals = line.match(/\d+(?:\/\d+)?/g) ?? [];
+      need(d, numerals.length === 2 && numerals.every((x) => m.includes(`<span class="mono">${x}</span>`)), `${l}/${n}: the line's numerals are not each a mono run (${m})`);
+      need(d, !/<span class="mono">[^<]*[^\d/<][^<]*<\/span>/.test(m.replace(/<span class="mono">MLN-[^<]*<\/span>/g, "")), `${l}/${n}: a word is set in the numerals' face (${m})`);
+      need(d, serials.every((s) => m.includes(`<span class="mono">${s}</span>`)), `${l}/${n}: a serial is not whole in one mono run (${m})`);
+      need(d, textOf(m) === line + serials.join(""), `${l}/${n}: the words changed (${textOf(m)})`);
+    }
+    for (const [one, many] of [[M.shareHeldNoteOne, M.shareHeldNote], [M.shareForfeitedNoteOne, M.shareForfeitedNote]]) {
+      const note = P(emptyTextOf(w).noticeBody(counted(2, one, many), { part: numeralRuns }));
+      need(d, note.includes('<span class="mono">2</span>'), `${l}: a held or forfeited note's count is not mono (${textOf(note)})`);
+    }
+  }
+  need(d, count(code(w, "page"), "{ part: numeralRuns }") === 2, "the held and forfeited notes do not set their counts mono");
   return d;
 });
 
 // ── §18 · L11 ───────────────────────────────────────────────────────────────────────────────────────────────────────
-check("18.1", "an open week's ticket says where its week stands before any result: its sales close and its first event", (w) => {
-  const m = ticketMarkup(w, "en", { live: { salesCloseAt: Date.parse("2026-12-04T15:00:00.000Z"), firstEventAt: Date.parse("2026-12-05T06:00:00.000Z") } });
-  const live = textOf(/data-testid="millionea-ticket-live"[^>]*>([\s\S]*?)<\/p>/.exec(m)?.[1] ?? "");
+check("18.1", "an open week's ticket says where its week stands before any result: its sales close and its first event — in the slip's own words, one grammar and one zone for the pair (\"Sales close: Friday 18:00 EAT · First event: Saturday 09:00 EAT\"), each clock a `.mono` numeral (§T5, L7), in sw/en/zh", (w) => {
   const d: string[] = [];
-  need(d, live.includes("Sales close Friday 18:00") && live.includes("First event: Saturday 09:00"), `the live line reads "${live}"`);
+  const close = Date.parse("2026-12-04T15:00:00.000Z"), first = Date.parse("2026-12-05T06:00:00.000Z");
+  const { eatWeekdayClock } = req("../src/components/maswali/maswali-format.ts") as { eatWeekdayClock: (t: unknown, ms: number) => string };
+  for (const l of LOCALES) {
+    const M = mln(w, l), t = w.dict[l];
+    const m = ticketMarkup(w, l, { live: { salesCloseAt: close, firstEventAt: first } });
+    const html = /data-testid="millionea-ticket-live"[^>]*>([\s\S]*?)<\/p>/.exec(m)?.[1] ?? "", live = textOf(html);
+    const want = [String(M.salesCloseColon).replace("{when}", eatWeekdayClock(t, close)), String(M.firstEventAt).replace("{when}", eatWeekdayClock(t, first))];
+    need(d, want.every((x) => live.includes(x)) && count(live, "EAT") === 2, `${l}: the live line reads "${live}"`);
+    need(d, html.includes('<span class="mono">18:00</span>') && html.includes('<span class="mono">09:00</span>'), `${l}: a clock is not mono`);
+  }
   need(d, code(w, "page").includes('} : running && view.week.state === "OPEN" ? { salesCloseAt: msOf(view.week.closesAt) ?? undefined, firstEventAt: firstEvent, } : undefined}'), "the page does not hand an open week's facts");
   return d;
 });
@@ -748,6 +994,80 @@ check("24.2", "M9 · the ticket's loading drawing draws the free cancel's band (
   return d;
 });
 
+// ── §25 · the hop: the destination's own drawing (the lead's round-2 item, 2026-10-22; REGISTER measured the shape) ──────
+/** A drawing at an address, as the router draws it there — during a move `usePathname()` already names the destination. */
+const atPath = (l: Locale, path: string, el: unknown) =>
+  renderToStaticMarkup(h(AppRouterContext.Provider, { value: ROUTER }, h(PathnameContext.Provider, { value: path }, h(I18nProvider as never, { initial: l } as never, el as never))));
+type ListGhostMod = { MillioneaTicketsGhost: unknown; MillioneaTicketsGhostPick: unknown };
+type TicketGhostMod = { MillioneaTicketGhost: unknown };
+/** The two drawings as the world writes them, and as 7e9a314f0 drew them. */
+const listGhostOf = (w: World) => (w.src.listGhost === REAL.src.listGhost ? req("../src/app/millionea/tickets/tickets-ghost.tsx") : compiled(FILES.listGhost, w.src.listGhost)) as ListGhostMod;
+const ticketGhostOf = (w: World) => (w.src.ticketGhost === REAL.src.ticketGhost ? req("../src/app/millionea/tickets/[serial]/ticket-ghost.tsx") : compiled(FILES.ticketGhost, w.src.ticketGhost)) as TicketGhostMod;
+const listGhostOld = compiled<ListGhostMod>(FILES.listGhost, atRelease(FILES.listGhost));
+const ticketGhostOld = compiled<TicketGhostMod>(FILES.ticketGhost, atRelease(FILES.ticketGhost));
+const HOPS: ReadonlyArray<readonly [string, "tickets" | "ticket"]> = [
+  ["/millionea/tickets", "tickets"], [`/millionea/tickets/${SERIAL}`, "ticket"], [`/millionea/tickets/${SERIAL}/more`, "tickets"],
+];
+check("25.1", "the hop: Tiketi zangu's loading state draws the DESTINATION's own drawing, picked in the browser by the address being moved to (`MillioneaTicketsGhostPick`, the platform's `RoutePick`) — the list's bands on /millionea/tickets, the ticket's own on /millionea/tickets/<serial> (never the list's bands over a ticket), the list's on anything deeper — in sw/en/zh; the loading file is one synchronous line rendering that pick, importing nothing else", (w) => {
+  const d: string[] = [];
+  const { MillioneaTicketsGhostPick } = listGhostOf(w);
+  const { MillioneaTicketsGhost, MillioneaTicketsGhostPick: livePick } = listGhostOf(REAL), { MillioneaTicketGhost } = ticketGhostOf(REAL);
+  const loading = (w.src.listLoading === REAL.src.listLoading ? req("../src/app/millionea/tickets/loading.tsx") : compiled(FILES.listLoading, w.src.listLoading)) as { default: unknown };
+  for (const l of LOCALES) for (const [path, want] of HOPS) {
+    const got = atPath(l, path, h(MillioneaTicketsGhostPick as never));
+    const own = atPath(l, path, h((want === "ticket" ? MillioneaTicketGhost : MillioneaTicketsGhost) as never));
+    if (got !== own && d.length < 3) d.push(`${l} ${path}: the pick draws the "${/data-ghost-page="([^"]*)"/.exec(got)?.[1] ?? "?"}" drawing, not the ${want}'s`);
+    if (atPath(l, path, h(loading.default as never)) !== atPath(l, path, h(livePick as never)) && d.length < 3) d.push(`${l} ${path}: the loading file does not draw the pick`);
+  }
+  const src = code(w, "listLoading");
+  need(d, src.includes("export default function MillioneaTicketsLoading() { return <MillioneaTicketsGhostPick />; }") && j([...src.matchAll(/\bfrom\s+"([^"]+)"/g)].map((m) => m[1])) === j(["./tickets-ghost"])
+    && !/\basync\b|\bawait\b/.test(src) && !/^\s*["']use client["']/.test(w.src.listLoading), "the loading file is not one synchronous line rendering the pick, importing nothing else");
+  return d;
+});
+check("25.2", "each drawing names the page it stands for (`data-ghost-page` = \"tickets\" / \"ticket\": a value, not a word) on ONE box-less wrapper (`contents`), the container's first child, for the hop drive (it names a bar by its nearest marked ancestor); and stays wordless — in sw/en/zh its one text is the screen reader's \"loading\"", (w) => {
+  const d: string[] = [];
+  const { MillioneaTicketsGhost } = listGhostOf(w), { MillioneaTicketGhost } = ticketGhostOf(w);
+  for (const l of LOCALES) {
+    const loadingWord = String((w.dict[l].common as Record<string, unknown>).loading);
+    for (const [name, Ghost, path] of [["tickets", MillioneaTicketsGhost, "/millionea/tickets"], ["ticket", MillioneaTicketGhost, `/millionea/tickets/${SERIAL}`]] as const) {
+      const m = atPath(l, path, h(Ghost as never));
+      need(d, new RegExp(`^<div data-measure="[a-z]+" class="[^"]*"><div class="contents space-y-\\d+" data-ghost-page="${name}">`).test(m) && count(m, "data-ghost-page=") === 1, `${l}: the ${name} drawing does not name its page on one wrapper around it (${m.slice(0, 120)})`);
+      need(d, textOf(m) === loadingWord, `${l}: the ${name} drawing says "${textOf(m)}"`);
+    }
+  }
+  return d;
+});
+/** 7e9a314f0's drawing with the mark put in: the container's rhythm moved onto a box-less wrapper that holds the whole
+ *  drawing, the container keeping its tier and padding — nothing else. */
+const markedAsRelease = (old: string, name: string) => old
+  .replace(/^<div data-measure="([a-z]+)" class="([^"]*) (space-y-\d+)">/, (_m, tier: string, base: string, rhythm: string) => `<div data-measure="${tier}" class="${base}"><div class="contents ${rhythm}" data-ghost-page="${name}">`)
+  .replace(/<\/div>$/, "</div></div>");
+check("25.3", "the mark moves nothing: inside its box-less wrapper each drawing is byte for byte 7e9a314f0's — the wrapper carries the drawing's rhythm (the container spaces only its own children), the container keeps its tier and padding — in sw/en/zh, with the journey's head and with the free cancel's band; the kit PageContainer is untouched", (w) => {
+  const d: string[] = [];
+  need(d, w.src.pageContainer === atRelease(FILES.pageContainer), "the kit PageContainer changed");
+  const { MillioneaTicketsGhost } = listGhostOf(w), { MillioneaTicketGhost } = ticketGhostOf(w);
+  const hint = req("../src/components/maswali/maswali-ghost-hint.tsx") as HintMod;
+  const head = h("div", { "data-head": "" });
+  for (const l of LOCALES) {
+    const cases: Array<[string, unknown, unknown, string, Record<string, unknown>]> = [
+      ["tickets", listGhostOld.MillioneaTicketsGhost, MillioneaTicketsGhost, "/millionea/tickets", {}],
+      ["tickets", listGhostOld.MillioneaTicketsGhost, MillioneaTicketsGhost, "/millionea/tickets", { journeyHead: head }],
+      ["ticket", ticketGhostOld.MillioneaTicketGhost, MillioneaTicketGhost, `/millionea/tickets/${SERIAL}`, {}],
+      ["ticket", ticketGhostOld.MillioneaTicketGhost, MillioneaTicketGhost, "/millionea/tickets/MLN-2026-W49-000091", {}],
+    ];
+    const drawn = asClient(() => {
+      hint.noteFreeCancel("MLN-2026-W49-000091", Date.now() + 600_000); // the last case draws the free cancel's band
+      return cases.map(([, Old, Now, path, props]) => [atPath(l, path, h(Old as never, props as never)), atPath(l, path, h(Now as never, props as never))]);
+    });
+    need(d, drawn[3][1].includes('data-ghost-band="free-cancel"'), `${l}: the band case drew no band`);
+    cases.forEach(([name], i) => {
+      const [old, now] = drawn[i];
+      need(d, now !== old && now === markedAsRelease(old, name), `${l} ${name} #${i}: not 7e9a314f0's drawing with the mark put in (${now.slice(0, 140)})`);
+    });
+  }
+  return d;
+});
+
 /* ── run ─────────────────────────────────────────────────────────────────────────────────────────────────────────── */
 const runAll = (w: World, quiet: boolean) => {
   const failed: string[] = [];
@@ -771,6 +1091,9 @@ if (!PROVE_RED) {
 }
 const plantSrc = (k: FileKey, from: string, to: string, w: World = REAL): World | null =>
   count(w.src[k], from) === 1 ? { ...w, src: { ...w.src, [k]: w.src[k].replace(from, to) } } : null;
+/** Several replacements in one file, each held to "exactly once" as `plantSrc` holds one. */
+const plantSrcs = (k: FileKey, pairs: ReadonlyArray<readonly [string, string]>): World | null =>
+  pairs.reduce<World | null>((w, [from, to]) => (w ? plantSrc(k, from, to, w) : null), REAL);
 const plantWord = (l: Locale, key: string, value: string): World =>
   ({ ...REAL, dict: { ...REAL.dict, [l]: { ...REAL.dict[l], millionea: { ...REAL.dict[l].millionea, [key]: value } } } });
 const PLANTS: Array<[string, string, World | null]> = [
@@ -779,7 +1102,17 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["H1 undone — the positions back on the loss card", "1.2", plantSrc("ledger", "      </p>\n    </ReceiptCard>", "      </p>\n      <ol><li>{t.millionea.pick}</li></ol>\n    </ReceiptCard>")],
   ["H2 undone — an at-rest clause at the disabled opacity", "2.1", plantSrc("ticket", 'style={reserve ? { background: "var(--wash-inset)" } : undefined}', 'style={{ ...(reserve ? { background: "var(--wash-inset)" } : null), ...(inert ? { opacity: "var(--state-disabled-opacity)" } : null) }}')],
   ["H2 — the muted ink dimmed under the floor", "2.2", (() => { const w = plantSrc("css", "  --text-muted:    oklch(86% 0.040 268);", "  --text-muted:    oklch(40% 0.040 268);"); return w; })()],
+  ["§T5 — the numeral face forced on every caller (not opt-in)", "11.2", plantSrc("emptyText", "part ? (p, following) => throughPart(hangCjkMarks(p, following), part) : hangCjkMarks", "(p, following) => throughPart(hangCjkMarks(p, following), part ?? ((x: string) => x.split(/(\d+)/).map((s, i) => (i % 2 ? createElement(\"span\", { key: i, className: \"mono\" }, s) : s))))")],
+  ["the kit hands every caller a part (a default numeral face)", "11.2", plantSrc("empty", "  bodyPart,\n  action,", "  bodyPart = (s: string) => s.split(/(\\d+)/).map((x, i) => (i % 2 ? <span key={i} className=\"mono\">{x}</span> : x)),\n  action,")],
+  ["the notice rules moved with the module (a centred notice's marks no longer hang)", "11.2", plantSrc("emptyText", "  if (opts.centred) return keepRanges(text, ranges, hangCjkMarks);", "  if (opts.centred) return keepRanges(text, ranges);")],
+  ["a second caller asks for the part", "11.3", plantSrc("list", "      <MillioneaTicketsBar lens={lens} t={t} />\n", "      {false && <EmptyState title=\"\" bodyPart={numeralRuns} />}\n      <MillioneaTicketsBar lens={lens} t={t} />\n")],
+  ["a caller spreads its props into the kit", "11.3", plantSrc("list", "      <MillioneaTicketsBar lens={lens} t={t} />\n", "      {false && <EmptyState title=\"\" {...{}} />}\n      <MillioneaTicketsBar lens={lens} t={t} />\n")],
+  ["Millionea's empty state drawn by a classic file", "11.3", plantSrc("switch", 'import { PageHeader } from "@/components/ui/page-header";\n', 'import { PageHeader } from "@/components/ui/page-header";\nimport { MaswaliEmptyState } from "@/components/maswali/maswali-empty-state";\n')],
+  ["§T5 undone — Millionea's empty state without the numeral part", "11.4", plantSrc("mlnEmpty", "<EmptyState {...props} bodyPart={numeralRuns} />", "<EmptyState {...props} />")],
+  ["§T5 — a Chinese body's numerals skipped (the fragment its hung mark comes in passed over)", "11.4", plantSrc("emptyText", "  if (!isValidElement<{ children?: ReactNode }>(node) || node.type !== Fragment) return node;\n", "  return node;\n")],
+  ["the part inserts a character (a no-break space for each space)", "11.4", plantSrc("emptyText", "  if (typeof node === \"string\") return part(node);", "  if (typeof node === \"string\") return part(node.replace(/ /g, \"\\u00a0\"));")],
   ["M4 undone — the clause back on the button", "3.1", plantSrc("cancel", "{pending ? t.millionea.cancelling : t.millionea.confirmCancel}", "{pending ? t.millionea.cancelling : t.millionea.cancelFreeUntil.replace(\"{time}\", \"10:09\")}")],
+  ["§T5 undone — the free cancel's clock in the body face", "3.1", plantSrc("cancel", 'className="mono whitespace-nowrap">{eatClock(until)}</time>', 'className="whitespace-nowrap tabular-nums">{eatClock(until)}</time>')],
   ["M4 undone — no timer on the clock line", "3.1", plantSrc("cancel", '<span role="timer" className="whitespace-nowrap font-mono font-bold tabular-nums text-text">{freeLeftLabel(left)}</span>', "")],
   ["H3 — a button label too long for 320", "3.2", plantWord("sw", "confirmCancel", "Kughairi bila malipo hadi 10:21")],
   ["a door outliving its window", "3.3", plantSrc("cancel", "  const left = useTickSeconds(until, serverNow, true, serverNow);\n  if (left !== null && left <= 0) return null;\n  // The dictionary marks where the amount sits", "  const left = useTickSeconds(until, serverNow, true, serverNow);\n  // The dictionary marks where the amount sits")],
@@ -811,12 +1144,21 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["L2 undone — the zh spaced dash", "15.1", plantWord("zh", "finality", "此处每个数字均为最终结果 — 不再有任何欠付。")],
   ["zh — the space back between two Han words", "15.2", plantWord("zh", "emptyTicketsNext", "第{week}周开放至 {when}。")],
   ["L8 undone — the cannot-win box hand-rolled", "16.1", plantSrc("ticket", '{cannotWin && <Callout tone="neutral">{t.millionea.cannotWin}</Callout>}', '{cannotWin && <p className="mat-inset rounded-control px-3 py-2 text-body-sm text-text text-pretty">{t.millionea.cannotWin}</p>}')],
-  ["L10 undone — the seal's label the serials alone", "17.1", plantSrc("acts", "eyebrow, heading: t.millionea.wonHeading, facts, roll: false", "label: facts.join(\" · \"), roll: false")],
+  ["L10 undone — the seal's label the serials alone", "17.1", plantSrc("acts", "eyebrow, heading: t.millionea.wonHeading, facts: sealFacts(line, serials), roll: false", "label: serials.join(\" · \"), roll: false")],
+  ["a fact drawn in the seal's own face again (the classic seal parsing Millionea's facts)", "17.2", plantSrc("celebrate", "                {f}\n              </span>\n            ))}", "                {typeof f === \"string\" ? <span className=\"font-mono\">{f}</span> : f}\n              </span>\n            ))}")],
   ["the 7-digit wrap back", "17.2", plantSrc("celebrate", 'className={`whitespace-nowrap font-mono text-[38px]', 'className={`font-mono text-[38px]')],
   ["an amount that always fitted shrunk (the 0.62 margin)", "17.2", plantSrc("celebrate", "(var(--seal-chars) * 0.6)))", "(var(--seal-chars) * 0.62)))")],
   ["the seal's eyebrow forced to the platform's", "17.2", plantSrc("celebrate", "{payload.eyebrow ?? t.common.positionWon}", "{t.common.positionWon}")],
-  ["L11 undone — an open week's ticket silent", "18.1", plantSrc("ticket", "        live.salesCloseAt !== undefined ? keepFact(locale, fill(t.millionea.salesCloseAt, { when: eatWeekdayClock(t, live.salesCloseAt) })) : null,\n", "")],
+  ["L11 undone — an open week's ticket silent", "18.1", plantSrc("ticket", "        live.salesCloseAt !== undefined ? keepFact(locale, fill(t.millionea.salesCloseColon, { when: eatWeekdayClock(t, live.salesCloseAt) })) : null,\n", "")],
+  ["round 2 undone — the sales close in another grammar and without its zone (salesCloseAt)", "18.1", plantSrc("ticket", "fill(t.millionea.salesCloseColon, { when: eatWeekdayClock(t, live.salesCloseAt) })", "fill(t.millionea.salesCloseAt, { when: eatWeekdayClock(t, live.salesCloseAt) })")],
+  ["§T5 undone — the first event's clock in the body face (the fact's numerals and the fact line's both off)", "18.1", plantSrcs("ticket", [
+    ["fill(t.millionea.firstEventAt, { when: eatWeekdayClock(t, live.firstEventAt) }))", "fill(t.millionea.firstEventAt, { when: eatWeekdayClock(t, live.firstEventAt) }), [], { numerals: false })"],
+    ["{shownLive && <MaswaliFacts facts={shownLive} />}", "{shownLive && <MaswaliFacts facts={shownLive} numerals={false} />}"],
+  ])],
   ["L13 undone — a sealed reserve still the open ring", "19.1", plantSrc("seal", 'out === "YES" || out === "NO" ? "sealed" : "standby"', '"standby"')],
+  ["§T5 undone — the seal's facts handed in the body face", "17.3", plantSrc("acts", "return [<Fragment key=\"line\">{numeralRuns(line)}</Fragment>, ...serials.map((s) => <span key={s} className=\"mono\">{s}</span>)];", "return [line, ...serials];")],
+  ["§T5 — a serial set in pieces (the fact-line rule run over it)", "17.3", plantSrc("acts", "...serials.map((s) => <span key={s} className=\"mono\">{s}</span>)", "...serials.map((s) => <Fragment key={s}>{numeralRuns(s)}</Fragment>)")],
+  ["§T5 undone — the held note's count in the body face", "17.3", plantSrc("page", "shareHeldNote), { part: numeralRuns })}", "shareHeldNote))}")],
   ["L14 undone — no close fact (the lock moment dead again)", "20.1", plantSrc("player", ' facts.push({ kind: "close", at: week.closedAt });', " void 0;")],
   ["L14 — the scheduled close instead of the recorded one", "20.1", plantSrc("player", 'facts.push({ kind: "close", at: week.closedAt });', 'facts.push({ kind: "close", at: week.closesAt });')],
   ["L14 — the lock line outside the stub's moment", "20.1", plantSrc("ticket", "{cut || reveal || lock\n", "{cut || reveal\n")],
@@ -834,6 +1176,16 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["M9 — a note kept on the server too", "24.1", plantSrc("hint", '  if (typeof window === "undefined" || !Number.isFinite(until)) return;\n', "  if (!Number.isFinite(until)) return;\n")],
   ["M9 — the ticket's drawing blind to its door", "24.2", plantSrc("ticketGhost", "const cancelOpen = freeCancelKnownOpen(ticketSerialOf(usePathname()), Date.now());", "const cancelOpen = false && freeCancelKnownOpen(ticketSerialOf(usePathname()), Date.now());")],
   ["M9 — the list hands its cards no window", "24.2", plantSrc("list", "                cancelUntil={cancelUntil.get(row.serial)}\n", "")],
+  ["the hop undone — the pick draws the list's bands over a ticket (no ticket pattern)", "25.1", plantSrc("listGhost", " patterns={[[TICKET, ticket]]}", "")],
+  ["the ticket's pattern a prefix (a deeper address takes the ticket's drawing)", "25.1", plantSrc("listGhost", "const TICKET = `^${LIST}/[^/]+$`;", "const TICKET = `^${LIST}/`;")],
+  ["the loading file draws the list's drawing for every address again (the state before the fix)", "25.1", plantSrcs("listLoading", [['import { MillioneaTicketsGhostPick } from "./tickets-ghost";', 'import { MillioneaTicketsGhost } from "./tickets-ghost";'], ["return <MillioneaTicketsGhostPick />;", "return <MillioneaTicketsGhost />;"]])],
+  ["the loading file asks the server (an async read before the gate)", "25.1", plantSrc("listLoading", "export default function MillioneaTicketsLoading() {", "export default async function MillioneaTicketsLoading() {")],
+  ["the list's drawing names no page", "25.2", plantSrc("listGhost", ' data-ghost-page="tickets"', "")],
+  ["the ticket's mark on an inner element, not around the drawing", "25.2", plantSrc("ticketGhost", '<div className="contents space-y-5" data-ghost-page="ticket">\n        <BackLinkGhost />', '<div className="contents space-y-5">\n        <BackLinkGhost />\n        <div data-ghost-page="ticket" />')],
+  ["a word drawn in a loading drawing", "25.2", plantSrc("ticketGhost", "        <BackLinkGhost />\n        <GhostCard", "        <BackLinkGhost />\n        <p>Tiketi</p>\n        <GhostCard")],
+  ["the mark's wrapper given a box (no `contents`)", "25.3", plantSrc("listGhost", '<div className="contents space-y-6" data-ghost-page="tickets">', '<div className="space-y-6" data-ghost-page="tickets">')],
+  ["the rhythm left behind (the wrapper's bands lose their spacing)", "25.3", plantSrc("ticketGhost", '<div className="contents space-y-5" data-ghost-page="ticket">', '<div className="contents" data-ghost-page="ticket">')],
+  ["the kit changed for the mark", "25.3", plantSrc("pageContainer", "      data-empty-state-owner={emptyStateOwner}\n", "      data-empty-state-owner={emptyStateOwner}\n      data-ghost-page={id}\n")],
 ];
 let caught = 0;
 for (const [name, target, world] of PLANTS) {

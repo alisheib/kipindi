@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useState, useTransition, type ReactNode } from "react";
+import { createContext, Fragment, useCallback, useContext, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/modal";
@@ -10,6 +10,7 @@ import { OperationResultModal } from "@/components/markets/operation-result-moda
 import { dispatchWinCelebration } from "@/components/markets/win-celebration";
 import { MaswaliCancelButton } from "@/components/maswali/maswali-ticket-cancel";
 import { MaswaliMomentsHost } from "@/components/maswali/maswali-moment";
+import { numeralRuns } from "@/components/maswali/maswali-facts";
 import { useT } from "@/lib/i18n";
 import { haptics } from "@/lib/haptics";
 import { moneyRuns } from "@/lib/fill-nodes";
@@ -49,6 +50,8 @@ export function TicketHost({ serial, through, children }: { serial: string; thro
       </MaswaliMomentsHost>
       <OperationResultModal
         open={open}
+        handoff={open}
+        panelDelay
         variant="neutral"
         title={t.millionea.cancelModalTitle}
         subtitle={fill(t.millionea.cancelModalBody, { price: formatTzs(shown) })}
@@ -92,6 +95,8 @@ export function TicketCancel({ serial, ownerId, until, serverNow, price, cap, wi
   const { toast } = useToast();
   const showResult = useContext(CancelResultContext);
   const [open, setOpen] = useState(false);
+  // A landed cancel closes INTO its result under one dim (the kit's `handoff`, as the slip's confirm closes into its stamp).
+  const [handoffOut, setHandoffOut] = useState(false);
   const [pending, start] = useTransition();
   const confirm = () => {
     const fd = new FormData();
@@ -99,6 +104,7 @@ export function TicketCancel({ serial, ownerId, until, serverNow, price, cap, wi
     fd.set("serial", serial);
     start(async () => {
       const r = await cancelMillioneaTicketAction(fd);
+      setHandoffOut(r.ok && !!r.data);
       setOpen(false);
       if (r.ok && r.data) {
         haptics.confirm();
@@ -123,7 +129,7 @@ export function TicketCancel({ serial, ownerId, until, serverNow, price, cap, wi
         serverNow={serverNow}
         price={price}
         note={fill(t.millionea.cancelNote, { mins: windowMins })}
-        onPress={() => setOpen(true)}
+        onPress={() => { setHandoffOut(false); setOpen(true); }}
         pending={pending}
       />
       <ConfirmModal
@@ -132,6 +138,8 @@ export function TicketCancel({ serial, ownerId, until, serverNow, price, cap, wi
         onConfirm={confirm}
         tone="brand"
         size="lg"
+        panelClassName="kp-mln-zh"
+        handoff={handoffOut}
         loading={pending}
         icon={<I.rotateCcw s={plateGlyph(36)} />}
         title={t.millionea.cancelConfirmTitle}
@@ -156,12 +164,19 @@ export function TicketCancel({ serial, ownerId, until, serverNow, price, cap, wi
  *    eyebrow is the product and the week ("MILLIONEA · WIKI 49", never the platform's "MADAU YAMEFANIKIWA" for a bet), its
  *    heading Millionea's own ("Umeshinda"), and its facts how many tickets reached 10/10 and each serial, whole, one a line.
  */
-export function SealDoor({ amount, eyebrow, facts }: { amount: number; eyebrow: string; facts: readonly string[] }) {
+export function SealDoor({ amount, eyebrow, line, serials }: { amount: number; eyebrow: string; line: string; serials: readonly string[] }) {
   const { t } = useT();
   return (
     <Button type="button" variant="primary" size="lg" fullWidth data-testid="millionea-ticket-seal"
-      onClick={() => { dispatchWinCelebration({ kind: "WIN", amount, eyebrow, heading: t.millionea.wonHeading, facts, roll: false }); }}>
+      onClick={() => { dispatchWinCelebration({ kind: "WIN", amount, eyebrow, heading: t.millionea.wonHeading, facts: sealFacts(line, serials), roll: false }); }}>
       {t.notif.awayView}
     </Button>
   );
+}
+
+/** The seal's facts as Millionea sets them (§T5, round 2: every numeral in the numerals' face): the count line's numerals
+ *  each a `.mono` run, its words in the body face (`numeralRuns`, the fact lines' own rule); each serial whole, one `.mono`
+ *  run. The platform's seal draws each fact whole on its own line, as it is handed. */
+export function sealFacts(line: string, serials: readonly string[]): ReactNode[] {
+  return [<Fragment key="line">{numeralRuns(line)}</Fragment>, ...serials.map((s) => <span key={s} className="mono">{s}</span>)];
 }

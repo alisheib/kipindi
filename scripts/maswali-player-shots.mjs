@@ -123,8 +123,10 @@ if (!serial) {
   const groups = sp.getByRole("radiogroup");
   for (let i = 0; i < (await groups.count()); i++) await groups.nth(i).getByRole("radio").first().click();
   await sp.locator("button:visible", { hasText: "Continue" }).first().click();
-  await sp.getByRole("button", { name: /^Cut ticket/ }).click();
-  const view = sp.getByRole("button", { name: "View ticket" });
+  // The slip's buy button reads "Buy ticket · TZS 1,000" since S5-DESIGN-SLIP (the lead's ruling: English says "Buy ticket").
+  await sp.getByRole("button", { name: /^Buy ticket/ }).click();
+  // The stamp's "View ticket" is the kit's Link since S5-R2-SLIP 13 (OperationResultModal's `primaryHref`).
+  const view = sp.getByRole("link", { name: "View ticket" });
   await view.waitFor({ timeout: 120_000 });
   await Promise.all([sp.waitForURL(/\/millionea\/tickets\/[^/]+$/, { timeout: 120_000 }), view.click()]);
   serial = decodeURIComponent(sp.url().split("/").pop() ?? "");

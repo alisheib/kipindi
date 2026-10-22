@@ -3516,6 +3516,8 @@ export const dict = {
       continueAt: "Continue · {price}",
       continueTicketsAt: "Continue · {n} tickets · {price}",
       draftTickets: "Tickets in this purchase",
+      // The noun once, as the switcher's visible label over its pills "1 · 15/15" (the lead's ruling (a), round 2).
+      draftTicketsNoun: "Tickets",
       draftTicket: "Ticket {n}",
       addTicket: "Add another ticket",
       removeTicket: "Remove ticket {n}",
@@ -6454,6 +6456,7 @@ export const dict = {
       // "Tiketi 1" and "Tiketi 2" read as "confirm ticket 2". "tiketi zote 2" can only be both of them.
       continueTicketsAt: "Endelea · tiketi zote {n} · {price}",
       draftTickets: "Tiketi katika ununuzi huu",
+      draftTicketsNoun: "Tiketi",
       draftTicket: "Tiketi {n}",
       addTicket: "Ongeza tiketi nyingine",
       removeTicket: "Ondoa tiketi {n}",
@@ -9334,6 +9337,7 @@ export const dict = {
       continueAt: "继续 · {price}",
       continueTicketsAt: "继续 · {n} 张彩票 · {price}",
       draftTickets: "本次购买的彩票",
+      draftTicketsNoun: "彩票",
       draftTicket: "彩票 {n}",
       addTicket: "再添加一张彩票",
       removeTicket: "移除彩票 {n}",
