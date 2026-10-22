@@ -3036,7 +3036,8 @@ the corrections are recorded here rather than tidied away.
    face, pixel for pixel — a lit label's weight step does not show there — and WebKit draws it heavier (run 39868451121;
    500 against 600, the control, differs in both).
    ⛔ **A Chinese reading without the CJK face is VOID.** Without it the runner draws Chinese as empty boxes ("市场"
-   17px, where the face draws 22px), so every zh geometry read there before 2026-10-23 is withdrawn.
+   17px, where the face draws 22px), so every zh geometry read there before 2026-10-23 is withdrawn. The repo's CI
+   installs the face before its browser gates (`.github/workflows/ci.yml`, the Chromium step).
    - **Its first application, the classic phone rail at 320** (S5-R3-FIX F1 + F5): its nine-letter labels — "Up & Down",
      "Mubashara", and "Millionea" while its track is drawn — are 67px in Chromium in a 64px fifth of a 320 phone, so they
      were cut ("Up & Do…", on production). Below 335px, where every label fits untouched, all five labels close their
