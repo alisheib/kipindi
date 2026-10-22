@@ -26,7 +26,7 @@
 // The Node environment Next's own server sets up before any of its modules run (AsyncLocalStorage on globalThis among
 // it), as `test:bet-sheet-host` boots it: the proxy and Next's matchers below run as the server runs them.
 import "next/dist/server/node-environment.js";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { createRequire } from "node:module";
 import NodeModule from "node:module";
@@ -297,15 +297,31 @@ section("6 · D6 · a Millionea address draws Millionea's ghost only for a reade
   const real = (req(`../${GHOST}`) as { JourneyRouteGhost: Ghost }).JourneyRouteGhost;
   const at = (G: Ghost, path: string, l: Locale, millionea?: boolean) => renderToStaticMarkup(h(AppRouterContext.Provider, { value: ROUTER },
     h(PathnameContext.Provider, { value: path }, h(I18nProvider as never, { initial: l }, h(G as never, { rails: [], ...(millionea ? { millionea } : {}) } as never)))));
-  const MLN = ["/millionea", "/millionea/slip", "/millionea/tickets", "/millionea/tickets/MLN-2026-W42-000017"];
+  // RE-PINNED (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22, the lead's item from the hub lane's finding): the addresses
+  // are DERIVED from every Millionea loading file, so each page with a loading drawing must have its root-ghost entry (6.2) —
+  // How to play, the register and a week had none, and a journey reader moving in from another page met the unknown page's
+  // spinner — and none of them a Millionea-shaped one for a reader Millionea is hidden from (6.1). A dynamic segment is
+  // drawn at a sample value.
+  const SAMPLE: Record<string, string> = { week: "MLN-2026-W42", serial: "MLN-2026-W42-000017" };
+  const loadings = (dir: string): string[] => readdirSync(dir, { withFileTypes: true })
+    .flatMap((d) => (d.isDirectory() ? loadings(`${dir}/${d.name}`) : d.name === "loading.tsx" ? [`${dir}/${d.name}`] : []));
+  const MLN = loadings("src/app/millionea").map((f) => f.replace(/^src\/app/, "").replace(/\/loading\.tsx$/, "")
+    .replace(/\[(\w+)\]/g, (_m, k: string) => SAMPLE[k] ?? "x")).sort();
   const LOCALES: Locale[] = ["sw", "en", "zh"];
   const hiddenDefects = (G: Ghost) => LOCALES.flatMap((l) => MLN.filter((p) => at(G, p, l) !== at(G, "/kpzzzzzzz", l)).map((p) => `${l} ${p}`));
   const shownDefects = (G: Ghost) => LOCALES.flatMap((l) => MLN.filter((p) => at(G, p, l, true) === at(G, "/kpzzzzzzz", l, true)).map((p) => `${l} ${p}`));
+  ok(`6.0 PREMISE · the Millionea pages with a loading drawing are read from their loading files (${MLN.length}: ${MLN.join(" ")})`,
+    ["/millionea", "/millionea/slip", "/millionea/how", "/millionea/register", "/millionea/register/MLN-2026-W42", "/millionea/tickets", "/millionea/tickets/MLN-2026-W42-000017"].every((p) => MLN.includes(p)), j(MLN));
   ok(`6.1 · Millionea hidden from the reader: each of its ${MLN.length} addresses draws the unknown page's ghost, byte for byte, in sw, en and zh`, hiddenDefects(real).length === 0, j(hiddenDefects(real)));
-  ok("6.2 · Millionea visible to the reader: each draws its own Millionea ghost (the S5 drawings), in sw, en and zh", shownDefects(real).length === 0, j(shownDefects(real)));
+  ok(`6.2 · Millionea visible to the reader: each of the ${MLN.length} draws its own Millionea ghost (its loading file's drawing), in sw, en and zh`, shownDefects(real).length === 0, j(shownDefects(real)));
   const ignoring = fromSource<{ JourneyRouteGhost: Ghost }>(GHOST, plant(plant(raw(GHOST), "    ...(millionea ? {\n", "    ...(true ? {\n"),
-    '...(millionea ? [["^/millionea/tickets/[^/]+$", <MillioneaTicketGhost />] as const] : [])', '["^/millionea/tickets/[^/]+$", <MillioneaTicketGhost />] as const')).JourneyRouteGhost;
+    '...(millionea ? [["^/millionea/tickets/[^/]+$", <MillioneaTicketGhost />] as const, ["^/millionea/register/[^/]+$", <MillioneaRegisterWeekGhost />] as const] : [])',
+    '["^/millionea/tickets/[^/]+$", <MillioneaTicketGhost />] as const, ["^/millionea/register/[^/]+$", <MillioneaRegisterWeekGhost />] as const')).JourneyRouteGhost;
   ok("6.1′ PLANT · the S5 ghost (picked by the address alone) is reported: a hidden reader sees Millionea-shaped ghosts", hiddenDefects(ignoring).length === MLN.length * LOCALES.length, j(hiddenDefects(ignoring)));
+  const noHow = fromSource<{ JourneyRouteGhost: Ghost }>(GHOST, plant(plant(raw(GHOST), '      "/millionea/how": <MillioneaHowGhost />,\n', ""),
+    ', ["^/millionea/register/[^/]+$", <MillioneaRegisterWeekGhost />] as const] : [])', "] : [])")).JourneyRouteGhost;
+  ok("6.2′ PLANT · How to play's entry and a week's pattern taken out (the spinner a reader met before round 2) are reported, in every language",
+    j(shownDefects(noHow).sort()) === j(LOCALES.flatMap((l) => [`${l} /millionea/how`, `${l} /millionea/register/MLN-2026-W42`]).sort()), j(shownDefects(noHow)));
   const loading = squash(code("src/app/loading.tsx"));
   ok("6.3 · the root loading file hands the ghost the rollout's per-request answer, and only while it is true",
     loading.includes("const millionea = (await resolveMillionea()).visible; return <LazyJourneyRouteGhost rails={heroRailNames(null)} {...(millionea ? { millionea } : {})} />;")

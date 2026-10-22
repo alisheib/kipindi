@@ -129,8 +129,10 @@ function checks(w: World, script: string): Check[] {
     { ids: shellIds.length, attrs: shellAttrs.length, odd: [...shellIds, ...shellAttrs].filter((s) => s !== CARRIER).slice(0, 3) });
 
   // §3
-  ok("3.guest-switch · #main-content carries data-viewer=\"guest\" exactly when the journey header shows its sign-in pills; the hub ghost reads it at the old rule's weight",
-    shell.includes('<MainLandmark viewer={journeyShown && !session ? "guest" : undefined}>') && shell.includes('<main id="main-content" className="flex-1" data-viewer={viewer}>')
+  // RE-PINNED (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22): every signed-out reader, classic too (the Millionea hub's
+  // guest door reads it in either shell); a journey reader is marked exactly when its header shows the pills, as before.
+  ok("3.guest-switch · #main-content carries data-viewer=\"guest\" for every signed-out reader — a journey reader exactly when its header shows the sign-in pills; the hub ghost reads it at the old rule's weight",
+    shell.includes('<MainLandmark viewer={!session ? "guest" : undefined}>') && shell.includes('<main id="main-content" className="flex-1" data-viewer={viewer}>')
       && f("src/lib/journey/header-state.ts").includes("authPills: !i.isAuthed")
       && globals.includes(':root [data-viewer="guest"] .kp-hubghost--member { display: none; }')
       && globals.includes(':root [data-viewer="guest"] p.kp-hubghost--guest { display: block; }')
@@ -191,7 +193,7 @@ if (process.argv.includes("--prove-red")) {
     { name: "the switch shows the journey on the console", check: "2.shell-switch", world: file("src/lib/server/journey-preview.ts", `if (path.startsWith("/admin") || isOptOutPath(path)) return false;`, "if (isOptOutPath(path)) return false;") },
     { name: "a journey rule loses the old ID weight", check: "2.shell-weight", world: css(':root:is([data-shell="journey"], #kp-journey-shell) .ticker-item {', ':root[data-shell="journey"] .ticker-item {') },
     { name: "the main landmark drops the guest switch", check: "3.guest-switch", world: file("src/components/layout/app-shell.tsx", " data-viewer={viewer}", "") },
-    { name: "the guest switch written for a signed-in reader", check: "3.guest-switch", world: file("src/components/layout/app-shell.tsx", 'journeyShown && !session ? "guest"', 'journeyShown && session ? "guest"') },
+    { name: "the guest switch written for a signed-in reader", check: "3.guest-switch", world: file("src/components/layout/app-shell.tsx", '<MainLandmark viewer={!session ? "guest"', '<MainLandmark viewer={session ? "guest"') },
     { name: "the sort menu stops raising its flag", check: "4.sort-flag", world: file("src/components/ui/query-bar.tsx", 'openFlag="data-sort-open"', "") },
     { name: "the menu watches the wrong attribute", check: "4.sort-flag", world: file("src/components/markets/menu-shell.tsx", 'attributeFilter: ["open"]', 'attributeFilter: ["class"]') },
     { name: "the menu leaves its flag up when it goes", check: "4.sort-flag", world: file("src/components/markets/menu-shell.tsx", "watch.disconnect(); root.removeAttribute(openFlag);", "watch.disconnect();") },

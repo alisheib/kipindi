@@ -16,6 +16,9 @@
  *    every Millionea page, Positions on its tickets — exactly one item in the bar and one in the rail; without the answer
  *    (a dark address) nothing, as on an unknown address; and AppShell hands the answer to the classic navs alone, only
  *    while Millionea is visible and the reader is on a break.
+ * §3 (S5 round 2) F10 · every programmatic move on a Millionea surface starts the platform's progress bar first.
+ * §4 (S5 round 2) the main landmark's guest switch marks every signed-out reader, classic too; every rule keyed on it
+ *    reaches only the journey's ghosts or Millionea's pages, so no classic page's rule changes.
  * Every check has a plant that must turn it red. The bar's look at 320 and 1280, a staff session on a running server,
  * is the lane's `s5fplt` drive (reported with the commit).
  */
@@ -242,6 +245,60 @@ section("3 · F10 · every programmatic move on a Millionea surface starts the p
   ok("3.1′ PLANT · the stamp's \"View ticket\" pushed bare again (the critic's M4) is reported", bare.some((m) => !m.ok));
   const mute = movesOf(plant(raw(SLIP), `  ${DISPATCH}\n  push();`, "  push();"));
   ok("3.1″ PLANT · the helper that no longer dispatches first (every move through it silent) is reported", mute.length >= 2 && mute.every((m) => !m.ok));
+}
+
+/* ══ §4 · THE MAIN LANDMARK'S GUEST SWITCH, FOR EVERY SIGNED-OUT READER ═══════════════════════════════════════════════════
+   MASWALI-BUILD S5 round 2 · PLATFORM (2026-10-22; the lead's item from the hub lane's finding). `data-viewer="guest"` on
+   #main-content marked a signed-out JOURNEY reader alone (A21's switch for the journey's ghosts); the Millionea hub draws a
+   guest's door from it in either shell, and in classic a guest's swap landed 24px off. It now marks every signed-out reader.
+   A classic DOM attribute may widen only while no rule a classic page draws keys on it: this census reads every stylesheet
+   rule and every script that reads `data-viewer`, and holds each rule's subject to a class drawn only by the journey's own
+   ghosts (`route-ghost.tsx`, `question-ghost.tsx` — a classic reader's loading state is the classic box) or by Millionea's
+   own pages and parts — so a classic reader's new attribute changes no rule any classic page draws (the parity compare's
+   expected answer: no pixel difference). */
+section("4 · the main landmark's guest switch marks every signed-out reader; every rule keyed on it reaches only the journey's ghosts or Millionea's pages");
+{
+  const SHELL = "src/components/layout/app-shell.tsx";
+  const marksAll = (s: string) => squash(decomment(s)).includes('<MainLandmark viewer={!session ? "guest" : undefined}>');
+  ok("4.1 · AppShell writes data-viewer=\"guest\" on #main-content for every signed-out reader, in either shell (a journey reader exactly as before)", marksAll(raw(SHELL)));
+  ok("4.1′ PLANT · the journey-only condition back (a classic guest unmarked: the hub's guest door drawn off its place) is reported",
+    !marksAll(plant(raw(SHELL), '<MainLandmark viewer={!session ? "guest"', '<MainLandmark viewer={journeyShown && !session ? "guest"')));
+  const walkAll = (dir: string, re: RegExp): string[] => readdirSync(join(ROOT, dir), { withFileTypes: true })
+    .flatMap((d) => (d.isDirectory() ? walkAll(`${dir}/${d.name}`, re) : re.test(d.name) ? [`${dir}/${d.name}`] : []));
+  const CSS_FILES = walkAll("src", /\.css$/);
+  const CODE_FILES = walkAll("src", /\.tsx?$/);
+  const ALLOWED = (f: string) => /^src\/(?:app\/millionea\/|components\/maswali\/)/.test(f)
+    || f === "src/components/journey/route-ghost.tsx" || f === "src/components/journey/question/question-ghost.tsx";
+  const codeText = new Map(CODE_FILES.map((f) => [f, decomment(raw(f))]));
+  const usersOf = (cls: string) => {
+    const word = new RegExp(`(?<![\\w-])${cls.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w-])`);
+    return CODE_FILES.filter((f) => word.test(codeText.get(f)!));
+  };
+  /** Every selector (comma part) keyed on data-viewer in a stylesheet text, with its subject's tokens (the last compound's
+   *  classes and attribute names — a subject keyed on an attribute is held as a class is; `data-viewer` itself is not one). */
+  const keyed = (css: string) => [...css.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{[^{}]*\}/g)]
+    .flatMap((m) => m[1].split(",").map((p) => p.trim()).filter((p) => p.includes("[data-viewer")))
+    .map((sel) => {
+      const last = sel.split(/\s+|>|\+|~/).filter(Boolean).at(-1) ?? "";
+      const classes = [...last.matchAll(/\.([\w-]+)/g)].map((x) => x[1]);
+      const attrs = [...last.matchAll(/\[([\w-]+)/g)].map((x) => x[1]).filter((a) => a !== "data-viewer");
+      return { sel, subject: [...classes, ...attrs] };
+    });
+  /** A rule reaches a classic page unless one of its subject's tokens is drawn only in allowed files. */
+  const reachesClassic = (r: { sel: string; subject: string[] }) => r.subject.length === 0 || !r.subject.some((c) => {
+    const users = usersOf(c);
+    return users.length > 0 && users.every(ALLOWED);
+  });
+  const rules = CSS_FILES.flatMap((f) => keyed(raw(f)).map((r) => ({ ...r, f })));
+  const leaks = rules.filter(reachesClassic);
+  ok(`4.0 PREMISE · the census reads ${CSS_FILES.length} stylesheets and ${CODE_FILES.length} code files and finds the rules keyed on data-viewer (${rules.length}: ${[...new Set(rules.flatMap((r) => r.subject))].join(" ")})`,
+    rules.length >= 6 && rules.some((r) => r.subject.includes("kp-hubghost--member")) && rules.some((r) => r.subject.includes("kp-qghost__member")), j(rules.map((r) => r.sel)));
+  ok("4.2 · every rule keyed on data-viewer reaches only the journey's ghosts or Millionea's pages — no rule a classic page draws changes for a classic guest", leaks.length === 0, j(leaks));
+  const readers = CODE_FILES.filter((f) => f !== SHELL && /getAttribute\(\s*["']data-viewer["']\)|dataset\.viewer|\[data-viewer/.test(codeText.get(f)!));
+  ok("4.3 · no script reads data-viewer (the shell writes it; stylesheets alone read it)", readers.length === 0, j(readers));
+  const btnLeak = keyed(':root [data-viewer="guest"] .btn-ghost { opacity: 0.5; }').filter(reachesClassic);
+  const bareLeak = keyed('main[data-viewer="guest"] { padding-top: 24px; }').filter(reachesClassic);
+  ok("4.2′ PLANT · a rule keyed on the switch that reaches a classic class (the kit's ghost button) or the landmark itself is reported", btnLeak.length === 1 && bareLeak.length === 1, j({ btnLeak, bareLeak }));
 }
 
 console.log(`\nmillionea-shell: ${pass} passed, ${fails.length} failed`);

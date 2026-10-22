@@ -33,8 +33,11 @@
  *               return — each the drawing its own loading file renders (the file itself, client code, where it needs no
  *               server answer: the question's and the return's; else the drawing beside it: the list's
  *               `history-ghost.tsx`, here with a journey reader's head, and the deposit's `deposit-ghost.tsx`), so the
- *               root's state and the page's are one drawing. Maswali Millionea's four (MASWALI-BUILD S5): the hub, the
- *               slip, Tiketi zangu's Millionea kind (with Tiketi zangu's head) and a ticket (the second pattern) — each
+ *               root's state and the page's are one drawing. Maswali Millionea's pages (MASWALI-BUILD S5): the hub, the
+ *               slip, Tiketi zangu's Millionea kind (with Tiketi zangu's head) and a ticket (a pattern) — and since round
+ *               2 (2026-10-22, the lead's item from the hub lane's finding) How to play, the register and a week (a
+ *               pattern), which a journey reader moving in from another page met as the unknown page's spinner: every
+ *               Millionea page with a loading drawing has its entry (`test:millionea-dark-edge` §6 derives them) — each
  *               drawing its words set and not shown, since this state picks by address before any gate has answered —
  *               and ONLY while Millionea is visible to this reader (`millionea`, handed in by the root loading file only
  *               while it is true; S5-FIX-PLATFORM D6): to anyone else a Millionea address is an unknown one, so its ghost
@@ -94,6 +97,9 @@ import { MillioneaHubGhost } from "@/app/millionea/hub-ghost";
 import { MillioneaSlipGhost } from "@/app/millionea/slip/slip-ghost";
 import { MillioneaTicketsGhost } from "@/app/millionea/tickets/tickets-ghost";
 import { MillioneaTicketGhost } from "@/app/millionea/tickets/[serial]/ticket-ghost";
+import { MillioneaHowGhost } from "@/app/millionea/how/how-ghost";
+import { MillioneaRegisterGhost } from "@/app/millionea/register/register-ghost";
+import { MillioneaRegisterWeekGhost } from "@/app/millionea/register/[week]/register-week-ghost";
 import { hubColumnCut, hubRowsFor, wideRowCount, type HubGroup, type HubMember, type HubRow } from "@/components/journey/account/hub-rows";
 import { useT } from "@/lib/i18n";
 import { stemOf } from "@/lib/display-stem";
@@ -128,17 +134,21 @@ export function JourneyRouteGhost({ rails, at, millionea = false }: { rails: rea
     // alone — its own loading file is synchronous and pins nothing (the S5 review of 24ec0d33, HIGH 2). ⛔ Drawn only while
     // Millionea is visible to this reader (D6): to anyone else these are unknown addresses, and so is their ghost.
     // Its head is handed `kinds={3}` (the tickets design lane's M9): the Millionea tickets page always draws three kinds.
+    // Round 2 (2026-10-22): How to play and the register too (a week is the pattern below), each its own loading file's
+    // wordless drawing — a reader moving in from another page met the unknown page's spinner there.
     ...(millionea ? {
       "/millionea": <MillioneaHubGhost />,
       "/millionea/slip": <MillioneaSlipGhost />,
       "/millionea/tickets": <MillioneaTicketsGhost journeyHead={<TicketsHeadGhost t={t} kinds={3} />} />,
+      "/millionea/how": <MillioneaHowGhost />,
+      "/millionea/register": <MillioneaRegisterGhost />,
     } : {}),
   };
   if (at) return routes[at];
   return (
     <RoutePick
       routes={routes}
-      patterns={[["^/markets/[^/]+$", <QuestionGhost />], ...(millionea ? [["^/millionea/tickets/[^/]+$", <MillioneaTicketGhost />] as const] : [])]}
+      patterns={[["^/markets/[^/]+$", <QuestionGhost />], ...(millionea ? [["^/millionea/tickets/[^/]+$", <MillioneaTicketGhost />] as const, ["^/millionea/register/[^/]+$", <MillioneaRegisterWeekGhost />] as const] : [])]}
       other={<AnyPageGhost />}
     />
   );

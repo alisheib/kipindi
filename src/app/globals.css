@@ -8433,8 +8433,9 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-hghost__act { width: min(100%, 320px); height: var(--h-control-xl); border-radius: var(--r-pill); background: var(--bg-elevated); }
 /* `/account`. The identity card and every row are the hub's own boxes (the 52px ring, the 56px row), their words bars.
    A guest is drawn the prompt and a guest's cards, chosen by the shell's own answer: `#main-content` carries
-   `data-viewer="guest"` exactly when the journey header shows its sign-in pills (`journeyHeaderState` `authPills`;
-   app-shell.tsx `MainLandmark`), and both are in the page's first HTML. ⭐ A21, 2026-10-14: it read
+   `data-viewer="guest"` for a signed-out reader — for a journey reader exactly when the journey header shows its sign-in
+   pills (`journeyHeaderState` `authPills`; app-shell.tsx `MainLandmark`; every signed-out reader since S5 round 2, this
+   ghost being the journey's alone) — and both are in the page's first HTML. ⭐ A21, 2026-10-14: it read
    `:root:has(.kp-jhdr__auth)` before, a root `:has()` (see the note at `.ticker-label`); `:root [data-viewer]` keeps that
    rule's specificity. */
 .kp-hubghost--guest { display: none; }

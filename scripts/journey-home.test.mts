@@ -2989,8 +2989,9 @@ const STRIP_SLOT = `{journeyShown ? ${STRIP_JOURNEY} : ${STRIP_TODAY}}`;
 const STRIP_SIGNATURE = "export function LiveTicker({ events, journey = false }: { events: TickerEvent[]; journey?: boolean }) {";
 /** AppShell's main landmark, as written (OptOutShell writes its own on one line): the plants' anchor below the slot.
  *  ⚠️ Re-pinned 2026-10-15 (S10 WP0): A21 (`63704243c`) gave AppShell's landmark its `viewer` prop, so the bare
- *  `<MainLandmark>` this anchor named resolved 0 times and red:journey-home missed two plants. */
-const STRIP_MAIN = [`<MainLandmark viewer={journeyShown && !session ? "guest" : undefined}>`, "        <RouteTransition>{children}</RouteTransition>", "      </MainLandmark>"].join(LF);
+ *  `<MainLandmark>` this anchor named resolved 0 times and red:journey-home missed two plants.
+ *  ⚠️ Re-pinned 2026-10-22 (MASWALI-BUILD S5 round 2 · PLATFORM): the switch marks every signed-out reader now. */
+const STRIP_MAIN = [`<MainLandmark viewer={!session ? "guest" : undefined}>`, "        <RouteTransition>{children}</RouteTransition>", "      </MainLandmark>"].join(LF);
 /** The client's own import line, as written: the anchor beside which a plant adds the hook's import. */
 const STRIP_TICKER_IMPORT = 'import { tickerShowsOn } from "@/lib/markets/ticker";';
 /**

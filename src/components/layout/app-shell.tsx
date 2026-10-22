@@ -621,7 +621,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           ⭐ 2026-09-14 — main GROWS (the shell is a flex column), so on a page shorter than the window
           the footer sits at the window's bottom edge instead of leaving a bare darker band under it
           (/wallet/deposit/return at 1280). Same pattern as admin/layout.tsx. */}
-      <MainLandmark viewer={journeyShown && !session ? "guest" : undefined}>
+      <MainLandmark viewer={!session ? "guest" : undefined}>
         <RouteTransition>{children}</RouteTransition>
       </MainLandmark>
       {/* `supportEmail` is resolved HERE for the third time on this line's own logic (E-226):
@@ -743,6 +743,11 @@ function SkipToContent({ label }: { label: string }) {
  * Ingia/Jisajili (`header-state.ts` `authPills`). The hub's loading ghost (`route-ghost.tsx`) picks its guest or member
  * drawing from it in CSS. It asked `:root:has(.kp-jhdr__auth)` before, which made `<html>` a `:has()` subject (see
  * `journeyShellShown`); the shell that draws the header draws this landmark, so the two change together.
+ * ⭐ …AND EVERY SIGNED-OUT READER, CLASSIC TOO (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22, the lead's item from the
+ * hub lane's finding): the Millionea hub draws a guest's door from it in CSS for either shell, and in classic a guest's
+ * swap landed 24px off. A journey reader is marked exactly as before (signed out ⇔ the header's pills). Every rule that
+ * reads it reaches only the journey's ghosts or Millionea's pages — `test:millionea-shell` §4 holds that census, so the
+ * classic reader's new attribute changes no rule a classic page draws.
  */
 function MainLandmark({ children, viewer }: { children: React.ReactNode; viewer?: "guest" }) {
   return <main id="main-content" className="flex-1" data-viewer={viewer}>{children}</main>;
