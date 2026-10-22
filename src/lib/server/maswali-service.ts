@@ -1051,11 +1051,14 @@ export async function correctSeal(input: {
   // Committed: the register forgets the week only now, so no reader can re-cache the record as it was before.
   invalidateMillioneaRegisterWeek(res.code);
   const recorded = await recordOwed(res.owed);
-  // S6 · MB-24 · a correction is told once it has committed and its record has landed (M-3: the notice reads the question's
-  // own records): to a void as that void, a void to a result as reinstated, YES↔NO as corrected; and every void muted while
-  // the week's void was certain is caught up. Its own seal instant keys it, so each is told once — after the lock, outside
-  // every lock. A void re-grounded (VOID to VOID) changes nothing a holder was told, and is not told.
-  if (res.from !== input.outcome) void import("./maswali-notify").then((m) => m.noticeQuestionCorrected(input.weekId, input.slot, res.from)).catch(() => {});
+  // S6 · MB-24 · a correction is told once it has committed and its record has landed (M-3): to a void as that void, a void
+  // to a result as reinstated, YES↔NO as corrected; and every void muted while the week's void was certain is caught up.
+  // Its own seal instant keys it, so each is told once — after the lock, outside every lock. A void re-grounded (VOID to
+  // VOID) changes nothing a holder was told, and is not told. ⛔ No `from` is handed over: the record has landed, so the
+  // question's own records say what the holders last had as FINAL (`lastFinalBefore`). A caller's `from` would be the
+  // outcome before the correction even when holders were never told it — a two-officer seal corrected before its
+  // confirmation, whose confirmation may land before this notice runs (test:maswali-notify 8.2b).
+  if (res.from !== input.outcome) void import("./maswali-notify").then((m) => m.noticeQuestionCorrected(input.weekId, input.slot)).catch(() => {});
   return { ok: true, recorded };
 }
 
