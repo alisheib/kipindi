@@ -285,15 +285,6 @@ async function pass1(label, pages) {
 }
 await pass1("main", PAGES);
 
-// The sales paused: the selling week's chip ("Paused for now") on its row and its page.
-if (SCENARIO === "states" && weeks.selling) {
-  const ctx = await browser.newContext();
-  const r = await ctx.request.post(`${BASE}/api/dev-test/seed-maswali-register`, { data: { pause: true } });
-  ok("the sales are paused", r.ok(), `${r.status()}`);
-  await ctx.close();
-  await pass1("paused", [["index", "/millionea/register", null], ["week-selling", `/millionea/register/${encodeURIComponent(weeks.selling)}`, "selling"]].filter(([name]) => wantPage(name)));
-}
-
 // ── How to play's example, played (the motion critic's M5; the register critic's M7) ──────────────────────────────────
 if (SCENARIO !== "states" && wantPage("how")) {
   for (const [mode, extra] of [["motion", {}], ["reduced", { reducedMotion: "reduce" }]]) {
@@ -459,6 +450,18 @@ if (SCENARIO === "states" && wantPage("register-ghosts")) {
       if (w.ghost && w.real) judgeBands(wtag, "a rolled week lands where its drawing stood (within 1px): the back link, the head, the ledger's heading and its card's top", w.ghost, w.real, { topOnly: ["ledger", "card"], info: ["commitments"] });
     }
   }
+}
+
+// The sales paused: the selling week's chip ("Paused for now") on its row and its page. LAST, after every other read: the
+// pause changes the store — the week on sale loses its close's fact — so a section read after it would read a paused
+// week (the register-ghosts hop did: the index's first row 73px, not the week on sale's 96).
+const PAUSED = [["index", "/millionea/register", null], ["week-selling", `/millionea/register/${encodeURIComponent(weeks.selling ?? "")}`, "selling"]].filter(([name]) => wantPage(name));
+if (SCENARIO === "states" && weeks.selling && PAUSED.length > 0) {
+  const ctx = await browser.newContext();
+  const r = await ctx.request.post(`${BASE}/api/dev-test/seed-maswali-register`, { data: { pause: true } });
+  ok("the sales are paused", r.ok(), `${r.status()}`);
+  await ctx.close();
+  await pass1("paused", PAUSED);
 }
 
 ok("no page error on any page", errs.length === 0, errs.slice(0, 3).join(" | "));
