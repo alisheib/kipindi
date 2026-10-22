@@ -49,7 +49,7 @@ process.env.MASWALI_SCHEDULER = "false";
 const { loadMaswaliWorld, SEALER } = await import("./maswali-money-world.mts");
 const W = await loadMaswaliWorld();
 const { maswaliEvidencePack, EVIDENCE_TICKET_COLUMNS } = await import("../../src/lib/server/maswali-evidence.ts");
-const { auditFlush } = await import("../../src/lib/server/audit.ts");
+const { audit, auditFlush } = await import("../../src/lib/server/audit.ts");
 const { createHash } = await import("node:crypto");
 
 process.exitCode = 1;
@@ -141,6 +141,14 @@ ok("1.7 · ⭐ the week's audit record: drafted, attested, opened, closed, its g
   ["maswali.week.drafted", "maswali.week.parity_attested", "maswali.week.opened", "maswali.week.closed", "maswali.week.graded_set_final", "maswali.week.settled"].every((a) => actions.includes(a))
     && actions.filter((a) => a === "maswali.question.sealed").length === 15 && pack?.audit.complete === true,
   J(actions));
+// S6-DOCS (item 8) · the float check's fail-closed finding is part of the week's record: a payout made with the float unread.
+audit({ category: "COMPLIANCE", action: "maswali.settlement.float_unread", actorId: "system", targetType: "MaswaliCycle", targetId: week.id,
+  payload: { code: week.code, paid: 1, float: null, buffer: 0 } });
+await auditFlush();
+const withUnread = await maswaliEvidencePack(week.id);
+ok("1.7b · ⭐ item 8 · the pack carries the float check's finding that the payout float could not be read (float_unread)",
+  withUnread.ok && withUnread.pack.audit.rows.some((x: Any) => x.action === "maswali.settlement.float_unread"),
+  J(withUnread.ok ? withUnread.pack.audit.rows.map((x: Any) => x.action).filter((a: string) => a.startsWith("maswali.settlement")) : withUnread));
 ok("1.8 · ⛔ …and no purchase row (the CSV is the purchases), and no row carries its IP or device",
   actions.length > 0 && !actions.includes("maswali.tickets.bought") && pack.audit.rows.every((x: Any) => !("ip" in x) && !("userAgent" in x)));
 if (W.onPostgres) {

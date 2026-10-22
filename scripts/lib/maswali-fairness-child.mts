@@ -780,14 +780,21 @@ if (STORE === "memory") {
     const dir = "src/app/fairness/millionea/[serial]";
     const page = decomment(read(`${dir}/page.tsx`));
     const at = (s: string) => page.indexOf(s);
-    // The page asks the product's gate or the tickets' gate (L5: a kill hides the product, never a holder's own tickets —
-    // the ticket page's own); its metadata asks that gate inside a try, or S5's tickets door, as the ticket page does.
-    const metaFn = page.slice(page.indexOf("export async function generateMetadata"), page.indexOf("export default async function"));
-    const metaGate = /try \{\s*await millionea(?:Ticket)?Gate\(\);\s*\} catch \{\s*return notFoundMetadata\(\);\s*\}|if \(!\(await millioneaTicketsDoor\(\)\)\) return notFoundMetadata\(\);/.exec(metaFn);
+    // ⭐ S6-DOCS (item 1) · the page asks the TICKETS' gate (L5: a kill hides the product, never a holder's own tickets —
+    // the ticket page's own; it asked the product's gate, the review's finding), and its title S5's tickets door, as the
+    // ticket page does. A predicate, so the control below can plant the product's gate back and see it caught.
+    const proofGateOk = (src: string) => {
+      const fn = src.slice(src.indexOf("export async function generateMetadata"), src.indexOf("export default async function"));
+      const door = /if \(!\(await millioneaTicketsDoor\(\)\)\) return notFoundMetadata\(\);/.exec(fn);
+      return (src.match(/const gate = await millioneaTicketGate\(\);/g) ?? []).length === 1 && !/millioneaGate\(/.test(src)
+        && !!door && door.index < fn.indexOf("getServerT()");
+    };
     ok("H.6 · ⛔ the proof route: the gate in the page and its metadata, sign-in for every signed-out reader before anything is read, and the one 404 for every other serial",
-      (page.match(/const gate = await millionea(?:Ticket)?Gate\(\);/g) ?? []).length === 1 && !!metaGate && metaGate.index < metaFn.indexOf("getServerT()")
+      proofGateOk(page)
         && at("if (!gate.userId) redirect(") > 0 && at("if (!gate.userId) redirect(") < at("await millioneaTicketProof(gate.userId, serial)")
         && page.includes("if (!p) notFound();") && page.includes("return { title: `${t.millioneaFairness.proofTitle} · ${t.millionea.productLabel}` };"));
+    ok("H.6c · control · the page planted back on the product's gate (a holder's proof hidden at a kill) is caught",
+      !proofGateOk(page.replace("const gate = await millioneaTicketGate();", "const gate = await millioneaGate();")));
     // ⛔ Read as what each file PRINTS — its string literals, template parts and JSX text, the platform's one print measure
     // (`player-surface-text.mts`) — never the span between two literals: a quote-to-quote pattern ran from the last import's
     // closing quote across the component's own name (`MillioneaProofLoading`) to the next literal, and failed both files at
