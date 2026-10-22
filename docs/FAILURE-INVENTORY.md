@@ -1290,3 +1290,23 @@ the settlement (RD.1). Before ACTIVE: the wallet lane's trigger, or the Owner's 
 
 The takeover alert MB-96 asks for is not built. What holds today: the preventive control (E-215, TK.1). Before
 ACTIVE: the alert, or a dated deferral recorded by the Owner.
+
+## §9b · MASWALI MILLIONEA — the admin console, walked and made plain (S6, 2026-10-22)
+
+Ali, 2026-10-22: "admin make sure full control with the right sorting etc. and management", and his admin guide must be
+"clear, perfect … no unneeded wording". The S6-DOCS lane walked `/admin/maswali` on `d97266317` for that guide and found
+the gaps G1–G9 below; the S6-ADMIN lane's baseline on the same head found three console suites already red (AD.0). Each
+entry names the commit that closed it.
+
+#### ✅ AD.0 · three console suites red on the release head — fixed by S6-ADMIN 1
+
+Found by S6-ADMIN's baseline run on `d97266317`, before any change of its own:
+- `test:maswali-admin-form-validation` — the desk's two typed records on the integrity page (`MarkReachedControl`,
+  "Reached by phone…", and `ClearLettersControl`, "Checked…") showed their refusal on the page, under the scrim, while
+  their dialog was open, and never inside the dialog (§F4: a refusal is stated where the officer is reading).
+- `test:maswali-admin-touch` — the same two buttons were the kit's `xs` rung, a 32px target under the 40px floor (§A).
+- `test:maswali-admin-route-population` — `/admin/maswali/evidence` and `/admin/maswali/lookup` were missing from the
+  design-gate population (`scripts/design-gate/routes.mjs`), so no design instrument measured either page.
+
+Fixed: each refusal inside its dialog and gated off the page while the dialog is open, both buttons on the `sm` rung
+(40px), both routes in the population. The three suites are the cases; the base run is the undone state, red as above.
