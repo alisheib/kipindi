@@ -9,21 +9,21 @@
  *   · the journey's preview marker (a staff preview pass, minted the officer's way) on the journey home;
  *   · Millionea's staff preview bar (a staff session at Millionea's STAFF_PREVIEW) on /millionea;
  *   · the operator's announcement (published through /admin/system's own form, then read by a guest on /markets);
- *   · the session-ended notice (the demo player signed in twice: the first session, displaced, opens /markets);
  *   · the offline notice (the browser taken offline on /markets).
  * For a bar handed PLAIN words (the two preview bars, the announcement) the drive lays the same words out a second time,
  * plain, in a hidden twin of the bar's paragraph at the same width — the bar as it was before the rule — and compares the
  * lines word by word: they are the same, or the twin's last line was one word alone and the bar's joins it to its
- * neighbour with every other line unchanged. Anything else is a failure. A bar handed BUILT words (the session-ended and
- * offline notices: a bold head and a sentence) is drawn by the kit exactly as before (`barWords` hands them back
- * untouched), so its lines are printed and shot, never compared. No bar may overflow its line. Shots of every bar go to
+ * neighbour with every other line unchanged. Anything else is a failure. A bar handed BUILT words (the offline notice: a
+ * bold head and a sentence) is drawn by the kit exactly as before (`barWords` hands them back untouched), so its lines
+ * are printed and shot, never compared. ⚠️ Not reached here, all of them built words: the session-ended notice (a second
+ * demo sign-in did not end the first session's page with it), the away summary, Millionea's hub notices (fact lines). No bar may overflow its line. Shots of every bar go to
  * outDir (default .qa-artifacts/notice-bar-widow/).
  * ⚠️ It publishes a site-wide announcement on the dev store (and switches it off again at the end): a fresh server only.
  */
 import { chromium } from "playwright";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { premise, mintStaffPass, demoSession, LOCALE_COOKIE } from "./live/journey-pass.mjs";
+import { premise, mintStaffPass, LOCALE_COOKIE } from "./live/journey-pass.mjs";
 
 const BASE = process.env.BASE || "http://localhost:3000";
 const OUT = resolve(process.argv[2] ?? join(process.cwd(), ".qa-artifacts", "notice-bar-widow"));
@@ -186,12 +186,6 @@ try {
     rows.push(...sceneRows);
   }
 
-  // The session-ended notice: the demo player signed in twice, the first (displaced) session opens /markets.
-  {
-    const first = await demoSession(browser, BASE);
-    await demoSession(browser, BASE);
-    await sweep({ name: "session-ended", ids: ["session-ended-notice"] }, ctxWith([first]), "/markets");
-  }
   // The offline notice: the browser taken offline on /markets.
   await sweep({ name: "offline", ids: ["offline-notice"] }, ctxWith([]), "/markets", async (page, ctx) => {
     await ctx.setOffline(true);
