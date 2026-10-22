@@ -447,6 +447,22 @@ console.log(`${LF}§5 · MB-93 — the winners not yet reached, the 24-hour aler
     (await consoleRead.unreachedWinners(at((consoleRead.UNREACHED_RECENT_DAYS + 1) * 24))).filter((u: any) => u.weekId === w1.id).length === 0);
   const view = await consoleRead.integrityView(at(25));
   ok("5.5 · the integrity view lists them, counted in full", !!view.unreachedPage && view.unreachedPage.total >= 2 && !!view.unreached?.some((u: any) => u.userId === A && u.weekId === w1.id), J(view.unreachedPage));
+  // ⭐ S16 (S6-INT 14; lane R's round-6 rule carried to the notices) · a winner whose paid share is missing from its record is
+  // never told TZS 0: the desk list says it is not on record, and a result run sends that winner no money notice at all.
+  // A ticket's payout is no patchable column (the store refuses it), so the read itself answers the record as it would be:
+  // the week's tickets as the notices and the desk list read them, A's winning ticket with no payout on record.
+  const aWin = (await dal.ticketStore.listForWeek(w1.id, { status: "SETTLED", won: true })).find((t: any) => t.userId === A);
+  const readTickets = dal.ticketStore.listForWeek;
+  dal.ticketStore.listForWeek = async (...args: any[]) => (await readTickets.apply(dal.ticketStore, args as any)).map((t: any) => (t.id === aWin.id ? { ...t, payout: null } : t));
+  try {
+    const rowNull = (await mine(25)).find((u: any) => u.userId === A);
+    const unread = await notify.noticeWeekSettled(w1.id);
+    await settleAll();
+    ok("5.5b · ⭐ S16 · a winner whose paid share is missing from its record: the desk list says it is not on record (null, never 0), and a result run tells them nothing about money — counted share_unread, the run still complete",
+      rowNull?.paidTzs === null && unread.permanent?.share_unread === 1 && notify.millioneaRunComplete(unread), J({ paid: rowNull?.paidTzs, permanent: unread.permanent, letters: unread.letters }));
+  } finally {
+    dal.ticketStore.listForWeek = readTickets;
+  }
   await dal.noticeStore.markSeen(C, w1.id, "RESULT", iso());
   const afterSeen = await mine(25);
   ok("5.6 · a winner who opened the result in the app is reached: off the list", afterSeen.length === 1 && afterSeen[0].userId === A, J(afterSeen.map((u: any) => u.userId)));
@@ -548,7 +564,7 @@ console.log(`${LF}§6 · MB-93 — the SMS credit before every winner's SMS; MB-
   const deps = (o: Partial<Record<string, unknown>> = {}) => ({
     credit: async () => ({ kind: "live", tzs: 1_000_000, at: Date.now() }),
     settings: async () => ({ pricePerSegmentTzs: 6, codesReserveTzs: 20_000 }),
-    sentTargets: async () => new Set<string>(),
+    sentTargets: async () => new Map<string, string>(),
     send: async (m: any[]) => { sent.push(...m); return { results: m.map((x) => ({ ok: true, reference: `ref_${x.targetId}`, to: x.to, targetType: x.targetType, targetId: x.targetId })), refused: null }; },
     ...o,
   }) as any;
@@ -569,22 +585,27 @@ console.log(`${LF}§6 · MB-93 — the SMS credit before every winner's SMS; MB-
   const enough = await winnerSms.sendMillioneaWinnerSms(two, deps({ credit: async () => ({ kind: "live", tzs: 20_012, at: Date.now() }) }));
   ok("6.10 · control · a credit that leaves exactly the codes' credit sends", enough.kind === "sent" && enough.accepted === 2, J(enough));
   sent.length = 0;
-  const done = await winnerSms.sendMillioneaWinnerSms(two, deps({ sentTargets: async (ids: string[]) => new Set(ids) }));
+  const done = await winnerSms.sendMillioneaWinnerSms(two, deps({ sentTargets: async (ids: string[]) => new Map(ids.map((id) => [id, "ACCEPTED"])) }));
   const none = await winnerSms.sendMillioneaWinnerSms([line("u3", { phone: null })], deps());
   ok("6.11 · a winner already sent is never sent again, and a winner with no number is no send at all",
-    done.kind === "sent" && done.accepted === 0 && done.alreadySent === 2 && sent.length === 0 && none.kind === "none", J([done, none]));
+    done.kind === "sent" && done.accepted === 0 && done.alreadySent === 2 && done.notResent === 0 && sent.length === 0 && none.kind === "none", J([done, none]));
+  // ⭐ M-1 (the lead's ruling 1) · a winner whose one message did not go — the gateway refused it (FAILED), or it was lost in
+  // transport (UNKNOWN) — is never sent again: counted not resent, never as a message that went.
+  const didNotGo = await winnerSms.sendMillioneaWinnerSms(two, deps({ sentTargets: async (ids: string[]) => new Map(ids.map((id, i) => [id, i === 0 ? "FAILED" : "UNKNOWN"])) }));
+  ok("6.11d · ⭐ M-1 · a winner whose one message did not go (refused, or lost in transport) is never sent again, and is counted not resent — never as sent",
+    didNotGo.kind === "sent" && didNotGo.accepted === 0 && didNotGo.notResent === 2 && didNotGo.alreadySent === 0 && sent.length === 0, J(didNotGo));
   // Round 4 (L5) · a batch that THREW: only a write refused because another process's row landed first makes a row there
   // another process's message. A throw after the batch's own rows were written leaves its own row — its own failure.
   let readsA = 0;
   const ownRows = await winnerSms.sendMillioneaWinnerSms([line("u5")], deps({
-    sentTargets: async (ids: string[]) => (readsA++ === 0 ? new Set<string>() : new Set(ids)),
+    sentTargets: async (ids: string[]) => (readsA++ === 0 ? new Map<string, string>() : new Map(ids.map((id) => [id, "QUEUED"]))),
     send: async () => { throw new Error("the request failed after the rows were written (fixture)"); },
   }));
   ok("6.11b · ⭐ round 4 (L5) · a batch that threw after writing its own rows counts its winner as its own failure — never as another process's message",
     ownRows.kind === "sent" && ownRows.failed === 1 && ownRows.alreadySent === 0, J(ownRows));
   let readsB = 0;
   const theirs = await winnerSms.sendMillioneaWinnerSms([line("u6")], deps({
-    sentTargets: async (ids: string[]) => (readsB++ === 0 ? new Set<string>() : new Set(ids)),
+    sentTargets: async (ids: string[]) => (readsB++ === 0 ? new Map<string, string>() : new Map(ids.map((id) => [id, "QUEUED"]))),
     send: async () => { throw new SmsTargetTakenError(winnerSms.WINNER_SMS_TARGET); },
   }));
   ok("6.11c · control · a batch whose write was refused because another process's row landed first counts that message as already sent",
@@ -1088,14 +1109,17 @@ console.log(`${LF}§9 · accounts that cannot sign in (OD-13) — a paid winner,
     J(runs5[0]));
   // Round 4 (A12) · the other two refusals that can never clear, as a run tallies them: the SMS channel closed, and no rail.
   const closedCh = notify.millioneaSmsTally([{ kind: "held", reason: "channel_closed", winners: 1, costTzs: null }]);
-  const noRail = notify.millioneaSmsTally([{ kind: "sent", accepted: 0, failed: 1, refused: "NOT_CONFIGURED", alreadySent: 0, codes: { NOT_CONFIGURED: 1 } }]);
+  const noRail = notify.millioneaSmsTally([{ kind: "sent", accepted: 0, failed: 1, refused: "NOT_CONFIGURED", alreadySent: 0, notResent: 0, codes: { NOT_CONFIGURED: 1 } }]);
   ok("9.8 · ⭐ round 4 (A12) · the channel closed and NOT_CONFIGURED are refusals that can never clear: each counted with its reason, and the SMS is done",
-    closedCh.done && closedCh.tally.permanent.channel_closed === 1 && noRail.done && noRail.tally.permanent.NOT_CONFIGURED === 1 && noRail.tally.failed === 0,
+    closedCh.done && closedCh.tally.permanent.channel_closed === 1 && noRail.done && noRail.tally.permanent.NOT_CONFIGURED === 1 && noRail.tally.notResent === 0,
     J({ closedCh, noRail }));
   const lowCredit = notify.millioneaSmsTally([{ kind: "held", reason: "credit_low", winners: 1, costTzs: 6 }]);
-  const unknown = notify.millioneaSmsTally([{ kind: "sent", accepted: 0, failed: 1, refused: "UNKNOWN", alreadySent: 0, codes: { UNKNOWN: 1 } }]);
-  ok("9.8b · control · a credit too low, and a failure the next run may clear, leave the SMS owed",
-    !lowCredit.done && lowCredit.tally.held.credit_low === 1 && !unknown.done && unknown.tally.failed === 1, J({ lowCredit, unknown }));
+  const unknown = notify.millioneaSmsTally([{ kind: "sent", accepted: 0, failed: 1, refused: "UNKNOWN", alreadySent: 0, notResent: 0, codes: { UNKNOWN: 1 } }]);
+  const rejected = notify.millioneaSmsTally([{ kind: "sent", accepted: 0, failed: 1, refused: "REJECTED", alreadySent: 0, notResent: 0, codes: { REJECTED: 1 } }]);
+  const later = notify.millioneaSmsTally([{ kind: "sent", accepted: 0, failed: 0, refused: null, alreadySent: 0, notResent: 1, codes: {} }]);
+  ok("9.8b · control · a credit too low leaves the SMS owed — ⭐ M-1 · a message lost in transport, or refused, is final: counted not resent, and the SMS is done; a later run counts it the same way, never as sent",
+    !lowCredit.done && lowCredit.tally.held.credit_low === 1 && unknown.done && unknown.tally.notResent === 1 && rejected.done && rejected.tally.notResent === 1
+      && later.done && later.tally.notResent === 1 && later.tally.already === 0, J({ lowCredit, unknown, rejected, later }));
 }
 
 // ── §10 · the control: a poll bet ─────────────────────────────────────────────────────────────────────
@@ -1421,7 +1445,7 @@ console.log(`${LF}§12 · the final week (MR-30) — the highest score shares th
   ok("12.2 · …and the loss names the winning score the same way", lossC.length === 1 && String(lossC[0].bodyEn).includes("reached the week's highest score, 9 of 10"), lossC[0]?.bodyEn);
   const runsF = await resultRuns(opened.week.id);
   ok("12.3 · ⭐ round 5 (A12, beyond the unit) · the winner's SMS on a rail that is not configured is refused for good: counted NOT_CONFIGURED, no SMS row, the run complete",
-    rel.ok && runsF.length >= 1 && runsF[0]?.complete === true && runsF[0]?.sms?.permanent?.NOT_CONFIGURED === 1 && !runsF[0]?.sms?.failed
+    rel.ok && runsF.length >= 1 && runsF[0]?.complete === true && runsF[0]?.sms?.permanent?.NOT_CONFIGURED === 1 && !runsF[0]?.sms?.notResent
       && (await winnerTargets(opened.week.id)).length === 0 && process.env.SMS_PROVIDER === railEnv.provider, J(runsF[0]));
 }
 

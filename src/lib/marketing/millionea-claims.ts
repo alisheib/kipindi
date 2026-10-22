@@ -397,14 +397,27 @@ export function holdsHanScript(text: string): boolean {
 }
 
 /**
+ * ⭐ FINDING 9 (the lint review after round 17) · the longest body the composer's one door reads. Nothing longer can be sent
+ * — one SMS at most (`SMS_MAX_SEGMENTS`), and the composer's length rule refuses it in its own sentence — while the
+ * untagged rules' patterns cost time that grows with the square of a long run (measured: 16,000 spaces after a tax word,
+ * 500 ms; 8,000 digit groups, 735 ms), and a server door holds a classic campaign to them too (S6-LINT 1). One oversized
+ * save or composer body (the save action has no cap of its own) could hold the server's one process for minutes. So a
+ * body past this is read by no rule: its length is its refusal (`test:maswali-claims` §8; recorded in
+ * docs/FAILURE-INVENTORY.md §9b).
+ */
+export const CLAIMS_MAX_CHARS = 640;
+
+/**
  * ⭐ THE ONE POLICY, for the composer's one door: a Millionea campaign is held to the whole lint, a body in Chinese characters
  * included (round 17, L4 — OD42: Swahili, and an optional English body, the two languages these rules read), and, where
  * its door read the week, to the server's part; any other campaign to the untagged rules its server door handed in
  * (S6-LINT 1), and to nothing where none were (the composer's live counter: its problems stay what they were). The one
- * exemption reports instead of refusing.
+ * exemption reports instead of refusing; a body past one SMS is read by no rule (finding 9).
  */
 export function millioneaCampaignProblems(text: string, ctx: MillioneaComposeContext = UNTAGGED_CAMPAIGN): string[] {
   if (ctx.exempt === true) return [];
+  // ⭐ Finding 9 · past one SMS no rule reads the body: the length rule is its refusal (`CLAIMS_MAX_CHARS`).
+  if ((text ?? "").length > CLAIMS_MAX_CHARS) return [];
   if (ctx.product !== "MILLIONEA") return ctx.untagged ? ctx.untagged(text) : [];
   const script = holdsHanScript(text) ? [CAMPAIGN_HAN_SCRIPT] : [];
   const server = ctx.facts === undefined ? [] : millioneaFactsProblems(text, ctx.facts);
