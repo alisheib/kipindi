@@ -1050,7 +1050,9 @@ if (RUN === "a") {
       Document.prototype.getElementById = function (id) {
         const el = byId.call(this, id);
         if (id === "mln-carried-figure" && !window.__mlnDriveAsks) {
-          const wrap = document.querySelector('[data-row="in"] > span.inline-flex');
+          // MaswaliCarry's wrapper around the carried figure: an inline block since S5-R2-HUB 9 (its own inline flex box
+          // before it, which the frame's numeral rule left 0px tall).
+          const wrap = document.querySelector('[data-row="in"] > span.inline-block, [data-row="in"] > span.inline-flex');
           const r = (x) => { if (!x) return null; const b = x.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)]; };
           push({ asked: true, origin: r(el), dest: r(wrap ?? document.querySelector('[data-row="in"]')), wrapper: !!wrap, vw: innerWidth, vh: innerHeight,
             motion: document.documentElement.getAttribute("data-motion"), reduce: matchMedia("(prefers-reduced-motion: reduce)").matches,
