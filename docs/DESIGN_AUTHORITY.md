@@ -3310,8 +3310,18 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     - The drawing stands in the page root's class (`kp-mln-zh`).
     - It draws the head's two pills at their labels' lengths: a table of character counts held to the dictionary, never
       words.
-    - It draws the strip's ranges as their two kept runs, so a range wraps where the page's does.
-    - Its ledger keeps item 14's one rhythm (MASWALI-BUILD S5-R2-REGISTER 27): no step of space after the total.
+    - It draws the head's eyebrow in the page's own row (`HUB_EYEBROW`, the frame's): the week's word at its length in
+      the eyebrow's units (each Latin character one `ch` and the eyebrow's tracking, each ideograph one em, Chinese
+      untracked; a table held to the dictionary's two-digit week), then the week's chip as every Millionea drawing draws
+      the register's chip — a `GhostBar` pill of the chip's 23px — as wide as the page's chip for a week on sale, measured
+      per language. And the questions' heading as wide as its words, measured per language. One 56px word, one 72px chip
+      and one English heading bar in every language had made the chip jump about 23px on landing in zh (4–6px in en and
+      sw) and the heading bar stand about 60px past "Maswali ya wiki" and 130px past "本周题目".
+    - It draws the strip's ranges as their two kept runs, so a range wraps where the page's does. The week opens at
+      midnight (the config's `openAt`), so the sales range opens on its weekday alone ("Jumatatu –"); the runs are
+      measured on that template.
+    - Its ledger keeps item 14's one rhythm (MASWALI-BUILD S5-R2-REGISTER 27): no step of space after the total, and the
+      carry's row as tall as its line (REGISTER's row; the page's tap target stands out of its flow).
     - On the held ticket's raised card its bars are that card's own (`bg-bg-elevated`, as the kit's `GhostCard` holds
       its `GhostBar`). The page's darker bar read there as a hole.
     - The reader's own block stands LAST in the buy column, the one band whose height is the reader's.

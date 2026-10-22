@@ -23,7 +23,8 @@
  *   §16 L13 a voided main's words in the register's form, one wrap unit; the paused notice's and the voiding notice's
  *       last pairs
  *   §17 7b the head's absent figure is the platform's empty slot
- *   §18 the close line in the one wording (salesCloseColon)  §19 the frame's line boxes, pills and the head's card order
+ *   §18 the close line in the one wording (salesCloseColon)  §19 the frame's line boxes, pills and the head's card order;
+ *       G2: the drawing's eyebrow (the frame's row, the week's word, the chip) and the questions' heading
  *   §20 the lead's rulings 2a-2c: the result notices in the page form, last week's fee an amount, the reserves' rule
  *       after its head (the shared `reserveRuleAfterHead`)
  */
@@ -797,6 +798,64 @@ console.log("\n§19 · L7 (round 2) · the drawing's lines are the page's line b
   ok("19.4 · in three languages the head draws the figure, then the carry's line that adds to it, then the rule (the card's order)", heads.every(([, at]) => inOrder(at)), j(heads));
   ok("19.4′ PLANT · the head's old order (the rule, then the carry's line) is reported",
     !inOrder(orderOf('<span data-testid="millionea-hub-figure"></span><span data-head="rule"></span><span data-head="carry"></span>')));
+
+  // ⭐ G2 (S5-R2-HUB 7) · THE HEAD'S EYEBROW AND THE QUESTIONS' HEADING, drawn as the page sets them (the tile readers: on
+  // landing the state's chip jumped ~23px left in zh and 4–6px in en/sw; the heading was one English bar in every language,
+  // ~60px past "Maswali ya wiki", ~130px past "本周题目"). The drive holds each against the page ±1px in every ghost view;
+  // here, the drawing's tables against the dictionary and the faces' own metrics.
+  const fontkit = req("fontkit") as { openSync: (p: string) => { unitsPerEm: number; layout: (s: string) => { advanceWidth: number } } };
+  const face = (f: string) => fontkit.openSync(join(ROOT, "src/lib/server/reports/fonts", f));
+  const INTER_BOLD = face("Inter-Bold.ttf"), SORA_BOLD = face("Sora-Bold.ttf");
+  const isWide = (x: string) => /[　-鿿豈-﫿＀-￯]/.test(x);
+  /** A line's width: its Latin run in `font`, each ideograph one em, the tracking after every character. */
+  const lineWidth = (font: typeof INTER_BOLD, text: string, size: number, tracking: number) => {
+    const c = [...text], latin = c.filter((x) => !isWide(x)).join(""), wide = c.filter(isWide).length;
+    return (font.layout(latin).advanceWidth / font.unitsPerEm) * size + wide * size + c.length * tracking;
+  };
+  const pxOf = (cls: string) => Number(/^w-\[(\d+(?:\.\d+)?)px\]$/.exec(cls)?.[1] ?? NaN);
+  const { weekWord: wordOf } = req("../src/components/maswali/maswali-format.ts") as typeof import("../src/components/maswali/maswali-format.ts");
+  const { weekChipWord } = req("../src/app/millionea/register/register-parts.tsx") as typeof import("../src/app/millionea/register/register-parts.tsx");
+  // The week's word ("Wiki 49", the dictionary's two-digit week) in the eyebrow's type: the monospaced face at the caption
+  // rung (11px), each character 0.6em and the eyebrow's 0.14em tracking; Chinese at its label rung (12px), untracked, each
+  // ideograph one em (globals.css `.eyebrow.eyebrow`, `.kp-mln-zh:lang(zh) .eyebrow`).
+  const wordOfType = (l: L3) => {
+    const [latin, wide] = units(wordOf(dict[l] as never, 49));
+    const size = l === "zh" ? 12 : 11, tracking = l === "zh" ? 0 : 0.14;
+    return latin * (0.6 + tracking) * size + wide * (1 + tracking) * size;
+  };
+  // The chip (chip.tsx, `md` at the status metrics): Inter Bold 11px in capitals, 0.06em tracking, 9px padding and a 1px
+  // border each side — for a week on sale, the word "Wazi" / "Open" / "开放".
+  const chipOf = (l: L3) => lineWidth(INTER_BOLD, weekChipWord(dict[l] as never, "OPEN", null, false).toUpperCase(), 11, 0.06 * 11) + 2 * 9 + 2;
+  const within = (drawn: number, want: number) => Math.abs(drawn - want) / want <= 0.1;
+  const eyebrowDefects = (x: typeof GH.EYEBROW) => LOCALES.flatMap((l) => {
+    const d: string[] = [];
+    if (!within(pxOf(x[l].word), wordOfType(l))) d.push(`${l}: the week's word drawn ${pxOf(x[l].word)}px for "${wordOf(dict[l] as never, 49)}" ${wordOfType(l).toFixed(1)}px`);
+    if (!within(pxOf(x[l].chip), chipOf(l))) d.push(`${l}: the chip drawn ${pxOf(x[l].chip)}px for the chip's own ${chipOf(l).toFixed(1)}px`);
+    return d;
+  });
+  const rowDefects = LOCALES.flatMap((l) => {
+    const m = ghostOf(l);
+    const at = m.indexOf(`<span class="${escAttr(FRAME.HUB_EYEBROW)}">`);
+    const row = at < 0 ? "" : m.slice(at, m.indexOf("</h1>", at));
+    return at >= 0 && row.includes(GH.EYEBROW[l].word) && row.includes(`h-[23px] shrink-0 self-start rounded-pill ${GH.EYEBROW[l].chip}`) ? [] : [`${l}: the drawing's eyebrow is not the frame's row, its word's bar and the chip's pill`];
+  });
+  const pageRow = readFileSync(join(ROOT, "src/app/millionea/page.tsx"), "utf8").includes("<span className={HUB_EYEBROW}>");
+  ok(`19.5 · in three languages the eyebrow is the frame's one row in the page and the drawing; the drawing's week word (${LOCALES.map((l) => `${l} ${pxOf(GH.EYEBROW[l].word)} vs ${wordOfType(l).toFixed(1)}px`).join(", ")}) and its 23px chip pill (${LOCALES.map((l) => `${l} ${pxOf(GH.EYEBROW[l].chip)} vs ${chipOf(l).toFixed(1)}px`).join(", ")}) each within 10% of the dictionary's word in its own type`,
+    pageRow && rowDefects.length === 0 && eyebrowDefects(GH.EYEBROW).length === 0, [...rowDefects, ...eyebrowDefects(GH.EYEBROW)].join(" | "));
+  const roundOne = eyebrowDefects({ sw: { word: "w-[56px]", chip: "w-[72px]" }, en: { word: "w-[56px]", chip: "w-[72px]" }, zh: { word: "w-[56px]", chip: "w-[72px]" } });
+  ok("19.5′ PLANT · round 1's eyebrow (one 56px word and one 72px chip in every language) is reported", roundOne.length >= 4, j(roundOne));
+  // The heading (`HUB_QUESTIONS.heading`: Sora Bold at title-sm, its tracking) as wide as a week on sale's words.
+  const twCfg = ((m: { default?: unknown }) => (m.default ?? m) as { theme: { extend: { fontSize: Record<string, [string, { letterSpacing: string }]> } } })(req("../tailwind.config.ts"));
+  const [titleSize, { letterSpacing }] = twCfg.theme.extend.fontSize["title-sm"];
+  const headingOf = (l: L3) => lineWidth(SORA_BOLD, dict[l].millionea.weekQuestions, parseFloat(titleSize), parseFloat(letterSpacing));
+  const headingDefects = (table: typeof GH.QUESTIONS_HEADING) => LOCALES.flatMap((l) => {
+    const drawn = pxOf(table[l]), words = headingOf(l);
+    return Math.abs(drawn - words) / words <= 0.15 ? [] : [`${l}: drawn ${drawn}px for "${dict[l].millionea.weekQuestions}" ${words.toFixed(1)}px`];
+  });
+  ok(`19.6 · in three languages the drawing's questions' heading is as wide as its words within 15% (${LOCALES.map((l) => `${l} ${pxOf(GH.QUESTIONS_HEADING[l])} vs ${headingOf(l).toFixed(1)}px`).join(", ")})`,
+    headingDefects(GH.QUESTIONS_HEADING).length === 0, headingDefects(GH.QUESTIONS_HEADING).join(" | "));
+  const english = headingDefects({ sw: "w-[200px]", en: "w-[200px]", zh: "w-[200px]" });
+  ok("19.6′ PLANT · round 1's one English bar in every language (w-[200px]) is reported", english.length >= 2, j(english));
 }
 
 // ── §20 · the lead's rulings 2a-2c ────────────────────────────────────────────────────────────────────────────────────
@@ -847,7 +906,8 @@ console.log(`\n${"═".repeat(70)}\n  MASWALI HUB: ${pass} passed, ${fail} faile
  *  drawing's frame, the no-week body and the segment's pick: 70; the void words' fact lines, the head's empty slot and
  *  the no-week body's kept phrases: 75; the paused notice's pair, the close line's one wording, the frame's line boxes,
  *  pills and the head's card order: 90; the void words in the register's form, the voiding notice kept, the lead's rulings 2a-2c and the drawing's ledger and held block: 100;
- *  S5-R2-HUB 6, the no-week body's numerals in Millionea's empty state and the void words one wrap unit: 104). It only rises. */
-const MIN_ASSERTIONS = 104;
+ *  S5-R2-HUB 6, the no-week body's numerals in Millionea's empty state and the void words one wrap unit: 104;
+ *  S5-R2-HUB 7, G2's eyebrow and heading: 108). It only rises. */
+const MIN_ASSERTIONS = 108;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

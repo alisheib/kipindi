@@ -32,6 +32,10 @@ import { cn } from "@/lib/utils";
  */
 const NUMERALS = "[&_.mono]:leading-[0] [&_.amount]:leading-[0]";
 
+/** The head's eyebrow row: the week's word, then its state chip (`WeekStateChip`), wrapping the chip under the word where
+ *  the two do not fit — the page's `WeekLabel` and the drawing's eyebrow both stand in it (G2, S5-R2-HUB 7). */
+export const HUB_EYEBROW = "inline-flex flex-wrap items-center gap-x-2 gap-y-1";
+
 /** The page's grid: one column, two from 1024 — the reading column and the 360px buy column (the market page's). */
 export const HUB_GRID = "grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]";
 

@@ -648,7 +648,9 @@ if (RUN === "a") {
       const headingBar = q("questions")?.firstElementChild?.firstElementChild ?? null;
       return { title: box(g.querySelector("h1")), strip: box(q("strip")), jackpot: box(q("jackpot")), door: box(q("door")), ledger: box(q("ledger")), mine: box(q("mine")), questions: box(q("questions")),
         rows: rowEls.slice(0, 3).map(box), rowTops: tops(rowEls), doors: [...(q("doors")?.children ?? [])].map(span),
-        eyebrow: eyebrowOf(row?.firstElementChild ?? null, row && row.children.length > 1 ? row.lastElementChild : null), heading: headingBar ? span(headingBar) : null };
+        eyebrow: eyebrowOf(row?.firstElementChild ?? null, row && row.children.length > 1 ? row.lastElementChild : null), heading: headingBar ? span(headingBar) : null,
+        // Each ledger row's height (the drawing's rows in the list's order, as the page's `[data-ledger-row]`s).
+        ledgerRows: [...(q("ledger")?.firstElementChild?.children ?? [])].map((el) => Math.round(el.getBoundingClientRect().height)) };
     }
     const h = document.querySelector('[data-testid="millionea-hub"]');
     const q = (n) => document.querySelector(`[data-testid="${n}"]`);
@@ -658,7 +660,8 @@ if (RUN === "a") {
     return { title: box(h?.querySelector("h1")), strip: box(q("millionea-week-strip")), jackpot: box(q("millionea-hub-jackpot")), door: box(q("millionea-hub-buy")),
       ledger: box(q("millionea-hub-ledger")), mine: box(q("millionea-hub-mine")), questions: box(q("millionea-hub-questions")),
       rows: rowEls.slice(0, 3).map(box), rowTops: tops(rowEls), doors: [...document.querySelectorAll('[data-testid="millionea-hub-doors"] a')].map(span),
-      eyebrow: eyebrowOf(chip?.previousElementSibling ?? null, chip), heading: wordsOf(document.getElementById("mln-questions-h")) };
+      eyebrow: eyebrowOf(chip?.previousElementSibling ?? null, chip), heading: wordsOf(document.getElementById("mln-questions-h")),
+      ledgerRows: [...document.querySelectorAll('[data-testid="millionea-hub-ledger"] [data-ledger-row]')].map((el) => Math.round(el.getBoundingClientRect().height)) };
   };
   /** How many lines the page's wrapping bands take (the drawing's table, `hub-ghost.tsx` WRAPS, is held to these), and the
    *  width of each kept run of the strip's ranges (the drawing's RANGES, which wrap where the page's do). */
@@ -679,7 +682,17 @@ if (RUN === "a") {
         const range = document.createRange();
         const text = chip ? [...chip.childNodes].find((n) => n.nodeType === 3 || n.nodeType === 1) : null;
         if (text) range.selectNodeContents(text);
-        return { word: w(word), chip: w(chip), chipH: chip ? Math.round(chip.getBoundingClientRect().height * 100) / 100 : null, label: text ? Math.round(range.getBoundingClientRect().width * 100) / 100 : null };
+        const cs = word ? getComputedStyle(word) : null;
+        return { word: w(word), chip: w(chip), chipH: chip ? Math.round(chip.getBoundingClientRect().height * 100) / 100 : null, label: text ? Math.round(range.getBoundingClientRect().width * 100) / 100 : null,
+          type: cs ? [cs.fontSize, cs.letterSpacing, cs.fontWeight, cs.fontFamily.split(",")[0]] : null };
+      })(),
+      // The carried-in row (the ledger's door to its week): its height, its label's width (words and chevron) and its
+      // value's — where it wraps is the drawing's to follow.
+      carryRow: (() => {
+        const row = document.querySelector('[data-testid="millionea-hub-ledger"] [data-ledger-row="in"]');
+        if (!row) return null;
+        const w = (el) => (el ? Math.round(el.getBoundingClientRect().width * 10) / 10 : null);
+        return { h: Math.round(row.getBoundingClientRect().height), label: w(row.querySelector(".text-text-link")), value: w(row.querySelector('[data-row="in"]')) };
       })(),
       // The questions' heading: its words' own width (the drawing's per-language bar is held to it, G2).
       heading: (() => {
@@ -710,6 +723,8 @@ if (RUN === "a") {
     ["eyebrow", g.eyebrow && r.eyebrow ? { word: r.eyebrow.word.width - g.eyebrow.word.width, chipLeft: r.eyebrow.chip.left - g.eyebrow.chip.left,
       chipTop: r.eyebrow.chip.top - g.eyebrow.chip.top, chipWidth: r.eyebrow.chip.width - g.eyebrow.chip.width, chipHeight: r.eyebrow.chip.height - g.eyebrow.chip.height } : null],
     ["heading", g.heading && r.heading ? { left: r.heading.left - g.heading.left, width: r.heading.width - g.heading.width } : null],
+    // Each ledger row's height, page − drawing (printed: where a ledger difference comes from).
+    ["ledgerRowsH", r.ledgerRows.map((x, i) => (g.ledgerRows[i] !== undefined ? x - g.ledgerRows[i] : null))],
   ]));
   async function ghostSwap(ctx, locale, width, name, { reduced = false } = {}) {
     await setLocale(ctx, locale);

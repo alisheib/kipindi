@@ -6,12 +6,12 @@ import { PAGE_HEADER_PILL, PageHeader } from "@/components/ui/page-header";
 import { ReceiptRow } from "@/components/ui/receipt-row";
 import { RoutePick } from "@/components/ui/route-pick";
 import { I } from "@/components/ui/glyphs";
-import { GhostLine } from "@/components/maswali/maswali-ghost";
+import { GhostBar, GhostLine } from "@/components/maswali/maswali-ghost";
 import { MillioneaGlyph } from "@/components/maswali/maswali-glyph";
 import { useT } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n-dict";
 import { cn } from "@/lib/utils";
-import { HUB_DOOR, HUB_GRID, HUB_LEDGER, HUB_MINE, HUB_PINNED, HUB_POOL_HEAD, HUB_QUESTIONS, HUB_STRIP, hubAside, hubCell, hubMain } from "./hub-frame";
+import { HUB_DOOR, HUB_EYEBROW, HUB_GRID, HUB_LEDGER, HUB_MINE, HUB_PINNED, HUB_POOL_HEAD, HUB_QUESTIONS, HUB_STRIP, hubAside, hubCell, hubMain } from "./hub-frame";
 import { MillioneaHowGhost } from "./how/how-ghost";
 import { MillioneaRegisterGhost } from "./register/register-ghost";
 import { MillioneaRegisterWeekGhost } from "./register/[week]/register-week-ghost";
@@ -36,10 +36,12 @@ const GUEST = "hidden [[data-viewer=guest]_&]:block";
  * one drifts (a word changed in one language moves its count).
  */
 type Wrap = readonly [narrow: number, phone: number, wide: number];
-const WRAPS: Record<Locale, { subtitle: Wrap; rule: Wrap; floor: Wrap }> = {
-  sw: { subtitle: [2, 2, 1], rule: [3, 2, 2], floor: [2, 2, 2] },
-  en: { subtitle: [3, 2, 1], rule: [2, 2, 2], floor: [1, 1, 1] },
-  zh: { subtitle: [2, 2, 1], rule: [2, 1, 1], floor: [1, 1, 1] },
+/** `carry`: the ledger's carried-in row (S5-R2-HUB 7, against REGISTER's row as tall as its line): its label shrinks
+ *  beside its figure and breaks its own words — "Carried in from" / "Week 48 ›" below 360 in English. */
+const WRAPS: Record<Locale, { subtitle: Wrap; rule: Wrap; floor: Wrap; carry: Wrap }> = {
+  sw: { subtitle: [2, 2, 1], rule: [3, 2, 2], floor: [2, 2, 2], carry: [1, 1, 1] },
+  en: { subtitle: [3, 2, 1], rule: [2, 2, 2], floor: [1, 1, 1], carry: [2, 1, 1] },
+  zh: { subtitle: [2, 2, 1], rule: [2, 1, 1], floor: [1, 1, 1], carry: [1, 1, 1] },
 };
 /** Each line's place in each band: drawn where the band has that many lines, gone where it has fewer — and the band's last
  *  line at each width drawn short, as a sentence's last line is (a one-line subtitle at 1280 was a bar across the whole
@@ -70,17 +72,39 @@ export const DOOR_LABELS: Record<Locale, readonly [how: Label, tickets: Label]> 
 const labelWidth = ([latin, wide]: Label) => `calc(${latin}ch + ${wide}em + ${((latin + wide) * 0.2).toFixed(1)}px)`;
 
 /**
- * THE STRIP'S RANGES as the page sets them (`maswali-week-strip.tsx`): each its two kept runs — "Jumatatu 00:01 –" and
+ * THE STRIP'S RANGES as the page sets them (`maswali-week-strip.tsx`): each its two kept runs — "Jumatatu –" and
  * "Ijumaa 18:00 EAT" — with the one space between them where the line may break, so a range wraps in the drawing exactly
- * where the page's does (Swahili's sales range takes two lines in a third of the measure, from 768 to ~800 — and stood
- * 20px taller than its drawing). The week's template in each language, each run's width (bars, never words); the drive
- * prints the page's runs and holds the strip's band to them.
+ * where the page's does. The week's template in each language, each run's width (bars, never words); the drive prints the
+ * page's runs (INFO L7 … ranges) and holds the strip's band to them.
+ * ⚠️ RE-MEASURED (S5-R2-HUB 7) on the drive's runner, which sets text as a phone's Chrome does: the template opens at
+ * midnight (the config's `openAt` "00:00"), and a range opening at midnight says its weekday alone ("Jumatatu –", `eatRange`).
+ * The table had been measured on a week the dev seed opened a minute late ("Jumatatu 00:01 –", 41px wider): at sw 768 the
+ * drawing's sales range took two lines where the page's takes one, and the strip stood 18px taller than the page's.
  */
 const RANGES: Record<Locale, readonly (readonly [string, string])[]> = {
-  sw: [["w-[109.4px]", "w-[109.9px]"], ["w-[115px]", "w-[50.8px]"], ["w-[60.9px]", "w-[56.4px]"]],
-  en: [["w-[101.7px]", "w-[107.4px]"], ["w-[106.7px]", "w-[45.8px]"], ["w-[55.8px]", "w-[51.6px]"]],
-  zh: [["w-[78.3px]", "w-[95.8px]"], ["w-[78.3px]", "w-[25.9px]"], ["w-[36px]", "w-[25.9px]"]],
+  sw: [["w-[68.5px]", "w-[112.2px]"], ["w-[117.2px]", "w-[50.6px]"], ["w-[61.5px]", "w-[57.7px]"]],
+  en: [["w-[60.6px]", "w-[109.2px]"], ["w-[110.2px]", "w-[46.7px]"], ["w-[57.6px]", "w-[53.7px]"]],
+  zh: [["w-[36.8px]", "w-[97.4px]"], ["w-[80.5px]", "w-[25.9px]"], ["w-[36.8px]", "w-[25.9px]"]],
 };
+
+/**
+ * THE HEAD'S EYEBROW AS THE PAGE SETS IT (G2, S5-R2-HUB 7; the tile readers: on landing the state's chip jumped ~23px left
+ * in zh and 4–6px in en/sw — the word was one 56px bar and the chip one 72px pill in every language). In the frame's row
+ * (`HUB_EYEBROW`, the page's `WeekLabel`'s): the week's word ("WIKI 49" / "WEEK 49" / "第49周", `weekWord` of a two-digit
+ * week) as a bar of its width, then the week's chip as every Millionea drawing draws the register's chip — a `GhostBar`
+ * pill of the chip's 23px — as wide as the page's chip for a week on sale ("Wazi" / "Open" / "开放"). Each width measured
+ * on the page by `qa:maswali-hub-states` (INFO L7 … eyebrow); `test:maswali-hub` 19.5 holds each to the dictionary's word
+ * in the eyebrow's and the chip's own type. Numbers, never words.
+ */
+export const EYEBROW: Record<Locale, { word: string; chip: string }> = {
+  sw: { word: "w-[59.8px]", chip: "w-[51.6px]" },
+  en: { word: "w-[59.8px]", chip: "w-[55.6px]" },
+  zh: { word: "w-[38px]", chip: "w-[43.3px]" },
+};
+/** The questions' heading of a week on sale ("Maswali ya wiki", "This week's questions", "本周题目") as wide as its words,
+ *  measured on the page (INFO L7 … heading); `test:maswali-hub` 19.6 holds each to its words in the display face. It was
+ *  one English bar (200px) in every language: ~60px past the Swahili, ~130px past the Chinese. */
+export const QUESTIONS_HEADING: Record<Locale, string> = { sw: "w-[139.6px]", en: "w-[197.5px]", zh: "w-[70.6px]" };
 
 /**
  * A line of words in the page's own type: the drawing's bar inside the very line box those words fill (`text` names their
@@ -103,27 +127,28 @@ function Lines({ n, text, className, sweep = false }: { n: Wrap; text: string; c
 }
 
 /** The ledger's rows as the one Millionea ledger draws a selling week's (`millioneaLedgerRows` → `MaswaliLedger`): the
- *  carry it received (a door to its week: the row is the link, at least `--h-control-md`), the sales over their note, the
- *  pool so far under its hairline, then the floor, the jackpot and the fee — every row the list's one gap apart (the
- *  ledger's one rhythm, REGISTER's S5-R2 27: a total is set apart by its hairline alone, no step of space after it). */
+ *  carry it received (a door to its week: the row is the link, as tall as its line — REGISTER's S5-R2 row, its tap target
+ *  out of flow, `.kp-mln-hit`; it stood on the 44px control floor and the drawing's ledger 24px taller than the page's),
+ *  the sales over their note, the pool so far under its hairline, then the floor, the jackpot and the fee — every row the
+ *  list's one gap apart (the ledger's one rhythm, REGISTER's S5-R2 27: a total is set apart by its hairline alone, no
+ *  step of space after it). */
 type GhostRow = { link?: boolean; note?: boolean; total?: boolean; floor?: boolean; muted?: boolean };
 const LEDGER: GhostRow[] = [{ link: true }, { note: true }, { total: true }, { floor: true }, {}, { muted: true }];
 
 /** One ledger row in the kit's own row (`ReceiptRow`, its sentence label), so its line boxes are the page's. */
-function LedgerRow({ r, floorLines }: { r: GhostRow; floorLines: Wrap }) {
+function LedgerRow({ r, floorLines, carryLines }: { r: GhostRow; floorLines: Wrap; carryLines: Wrap }) {
+  const wraps = r.floor ? floorLines : r.link ? carryLines : null;
   const row = (
     <ReceiptRow
       labelStyle="sentence"
-      label={r.floor ? <Lines n={floorLines} text="" className="w-[150px] max-w-full" /> : <GhostLine className="w-[112px]" />}
+      label={wraps ? <Lines n={wraps} text="" className="w-[150px] max-w-full" /> : <GhostLine className="w-[112px]" />}
       value={<GhostLine className="w-[84px]" />}
       emphasis={r.total ? "total" : r.muted ? "muted" : undefined}
       divider={r.total}
     />
   );
   const note = r.note ? <span className="mt-0.5 block text-body-sm"><GhostLine className="w-[132px]" /></span> : null;
-  return r.link
-    ? <div className="flex flex-col justify-center rounded-control" style={{ minHeight: "var(--h-control-md)" }}>{row}{note}</div>
-    : <div>{row}{note}</div>;
+  return r.link ? <div className="flex flex-col rounded-control">{row}{note}</div> : <div>{row}{note}</div>;
 }
 
 /**
@@ -185,10 +210,11 @@ export function MillioneaHubGhost() {
         <div aria-hidden>
           <PageHeader
             eyebrow={(
-              // The week and its state — the register's chip (`WeekStateChip`, 23px tall): the page's eyebrow row, its height.
-              <span className="inline-flex items-center gap-2">
-                <GhostLine className={cn("w-[56px]", SWEEP)} />
-                <span className={cn("inline-block h-[23px] w-[72px] rounded-pill bg-bg-overlay", SWEEP)} />
+              // The week and its state in the frame's row (`EYEBROW`, G2): the word's bar in its own line box, then the
+              // register's chip (`WeekStateChip`, 23px tall) as every Millionea drawing draws it.
+              <span className={HUB_EYEBROW}>
+                <span className="shrink-0"><GhostLine className={cn(EYEBROW[locale].word, SWEEP)} /></span>
+                <GhostBar className={cn("h-[23px] shrink-0 self-start rounded-pill", EYEBROW[locale].chip)} />
               </span>
             )}
             title={<GhostLine className={cn("w-[248px]", SWEEP)} />}
@@ -230,7 +256,7 @@ export function MillioneaHubGhost() {
             </div>
             <div className={cn(HUB_LEDGER, SWEEP, hubCell(true, "ledger"))} data-ghost="ledger">
               <div className="flex flex-col gap-1.5">
-                {LEDGER.map((r, i) => <LedgerRow key={i} r={r} floorLines={wraps.floor} />)}
+                {LEDGER.map((r, i) => <LedgerRow key={i} r={r} floorLines={wraps.floor} carryLines={wraps.carry} />)}
               </div>
             </div>
             {/* The reader's own block, last: the count line over one held ticket's row (the kit's raised block — the row's
@@ -252,7 +278,7 @@ export function MillioneaHubGhost() {
           </div>
           <div className={hubMain(true)}>
             <div className={HUB_QUESTIONS.section} data-ghost="questions">
-              <Line text={HUB_QUESTIONS.heading} width="w-[200px]" sweep />
+              <Line text={HUB_QUESTIONS.heading} width={QUESTIONS_HEADING[locale]} sweep />
               <div>
                 {Array.from({ length: 10 }, (_, i) => (
                   <div key={i} className={cn(HUB_QUESTIONS.row, SWEEP)}>
