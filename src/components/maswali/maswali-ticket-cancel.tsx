@@ -35,7 +35,9 @@ function CancelClock({ t, until, left }: { t: ReturnType<typeof useT>["t"]; unti
   const [freeBefore, freeAfter] = t.millionea.cancelFreeUntil.split("{time}");
   return (
     <p className="text-body-sm text-text-muted">
-      {freeBefore}<time dateTime={new Date(until).toISOString()} className="whitespace-nowrap tabular-nums">{eatClock(until)}</time>{freeAfter}
+      {/* §T5 (round 2): the clock is a `.mono` numeral, as every digit run in a Millionea fact line — the words around it
+          stay in the body face. */}
+      {freeBefore}<time dateTime={new Date(until).toISOString()} className="mono whitespace-nowrap">{eatClock(until)}</time>{freeAfter}
       {left !== null && (
         <>
           {" · "}

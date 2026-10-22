@@ -1099,7 +1099,9 @@ const railDefects = (src: string) => {
   if (!rail.startsWith('<div className="kp-mln-rail sticky bottom-[calc(65px+env(safe-area-inset-bottom,0px))] z-30')) d.push("the rail is not docked on the tab bar");
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-SLIP): the meter's row also holds the last hour's pill (the motion critic's
   // M8: its place reserved, so the rail never grows when it arrives); the row is still the rail's full width.
-  if (!rail.includes('<div className="flex max-w-[640px] flex-col gap-2"> <div className="flex h-5 items-center gap-2"> <SteppedProgress groups={groups} className="min-w-0 flex-1" /> <MaswaliClosingPill closesAt={closesAt} serverNow={serverNow} compact className="shrink-0" /> </div>')) d.push("the meter has not the rail's full width on its own row");
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-SLIP, `test:measure`): the rail's column is the kit's form tier (`max-w-form`,
+  // 640px), no longer a hand-typed `max-w-[640px]` — the same width from the token.
+  if (!rail.includes('<div className="flex max-w-form flex-col gap-2"> <div className="flex h-5 items-center gap-2"> <SteppedProgress groups={groups} className="min-w-0 flex-1" /> <MaswaliClosingPill closesAt={closesAt} serverNow={serverNow} compact className="shrink-0" /> </div>')) d.push("the meter has not the rail's full width on its own row");
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-FIX-PLAYER P10): each count carries its total — the questions the slip asks.
   if (!s.includes('<span key="mains" className="whitespace-nowrap">{fill(t.millionea.mainsProgress, { a: formatNumber(progress.mains), n: formatNumber(progress.mainsOf) })}</span>') || !s.includes('<span key="reserves" className="whitespace-nowrap">{fill(t.millionea.reservesProgress, { b: formatNumber(progress.reserves), n: formatNumber(progress.reservesOf) })}</span>')) d.push("the two counts are not whole facts");
   if (!s.includes('{ key: "cap", node: capLine, className: "xl:hidden" }') || !s.includes("<span>{capLine}</span>")) d.push("the cap stands twice from 1280");

@@ -9,7 +9,7 @@
  *   S16_WIDE_WINNERS=9000 npm run load:maswali-cross-instance     (the wide shape's distinct winning players)
  *   S16_SHAPES=held npm run load:maswali-cross-instance            (7,000 winning accounts suspended after purchase)
  *   S16_SHAPES=refused npm run load:maswali-cross-instance         (the same, its release refused after every hold — S7-F8)
- *   S16_SHAPES=none npm run load:maswali-cross-instance            (§1–§5 and §7 only: minutes, not the 10,000s)
+ *   S16_SHAPES=none npm run load:maswali-cross-instance            (§1–§5, §6b and §7 only: minutes, not the 10,000s)
  *
  * Every act is two or three OS processes (`s16-maswali-worker.mts`), each its own Prisma pool, started at one instant by a
  * barrier, on ONE scratch database:
@@ -24,6 +24,9 @@
  *      all-held wide shape suspends the winners after purchase and reads back every freeze, ticket and audit count. Its
  *      holds take several sections of the chain lock (S7-F8): each section is a transaction, and EACH must close inside
  *      the budget — the release as a whole runs longer;
+ *   §6b S7-F9 · RD.5 (MB-74): deposits reversed after their winners were paid — each reversal heard by two instances at
+ *      once holds each share exactly once, nothing moving; then a reversal racing the release: held exactly once, by the
+ *      release or by the reversal, never paid out free;
  *   §7 the identities over everything: the trial balance (no drifting wallet, no unbalanced group), every invariant.
  *
  *   ⭐ S7-F8 · the optional refused shape: the same 7,000 held winners, its release made to fail at its last statement so
@@ -63,6 +66,8 @@ const num = (name: string, dflt: number): number => {
 const TICKETS = num("S16_TICKETS", 10_000);
 const WIDE = num("S16_WIDE_WINNERS", 7_000);
 const FEW = 3;
+/** S7-F9 · RD.5 (§6b): the winners of each reversal week. */
+const RD_WIN = 3;
 const CLOSE_BUYERS = num("S16_CLOSE_BUYERS", 120);
 const CLOSE_DELAY_MS = num("S16_CLOSE_DELAY_MS", 1_500);
 const JOB_TIMEOUT_MS = num("S16_JOB_TIMEOUT_MIN", 60) * 60_000;
@@ -183,6 +188,8 @@ try {
     cap: { count: 1, balance: 100_000 }, key: { count: 1, balance: 100_000 }, close: { count: CLOSE_BUYERS, balance: BALANCE },
     w2win: { count: 40, balance: BALANCE }, w2lose: { count: 16, balance: BALANCE },
     w3win: { count: 5, balance: BALANCE }, w3lose: { count: 15, balance: BALANCE }, w4: { count: 10, balance: BALANCE },
+    // S7-F9 · RD.5 (§6b): the winners whose deposits are reversed after the payout, and the week's losers.
+    rdA: { count: RD_WIN, balance: BALANCE }, rdB: { count: RD_WIN, balance: BALANCE }, rdLose: { count: 7, balance: BALANCE },
     ...(wantFew ? { fewWin: { count: FEW, balance: BALANCE }, fewLose: { count: Math.ceil((TICKETS - FEW) / 10), balance: BALANCE } } : {}),
     ...(wantWide ? { wideWin: { count: WIDE, balance: BALANCE }, wideLose: { count: Math.ceil((TICKETS - WIDE) / 10), balance: BALANCE } } : {}),
     ...(wantHeld ? { heldWin: { count: WIDE, balance: BALANCE }, heldLose: { count: Math.ceil((TICKETS - WIDE) / 10), balance: BALANCE } } : {}),
@@ -453,6 +460,57 @@ try {
       }
     }
   }
+
+  // ── §6b · RD.5 — deposits reversed after their winners were paid, across instances (S7-F9, MB-74) ─────────────────
+  console.log(`${NL}§6b · RD.5 · deposits reversed after their winners were paid: each reversal heard by two instances at once; then a reversal racing the release`);
+  const MARK = "deposit-terminal-review:v1";
+  const DEPOSIT_HOLD = "deposit under review";
+  /** One hold record per share at most, each naming its own winner's deposit; `exactly` asks for one on every share. */
+  const recordsOk = (h: any, refs: Record<string, { txnId: string }>, exactly: boolean) => (h?.tickets ?? []).every((t: any) => {
+    const mine = (h.records ?? []).filter((r: any) => r.ticketId === t.id);
+    return (exactly ? mine.length === 1 : mine.length <= 1) && mine.every((r: any) => r.deposit === refs[t.userId]?.txnId);
+  });
+  const depA = await runJob({ kind: "deposit", group: "rdA", amount: BALANCE });
+  const w5 = await runJob({ kind: "week", weeksAhead: 10, seal: "YES", lots: [
+    { group: "rdA", tickets: RD_WIN, slip: "WIN", perPlayer: 1 }, { group: "rdLose", tickets: 7, slip: "LOSE", perPlayer: 1 }] });
+  if (!depA?.ok || !w5?.ok) throw new Error("the first RD.5 week could not be prepared");
+  const txA = P.rdA.map((u) => depA.refs[u].txnId), refA = P.rdA.map((u) => depA.refs[u].providerRef);
+  const rel5 = await runJob({ kind: "release", weekId: w5.weekId, at: w5.releaseAt });
+  const paid5 = await runJob({ kind: "reversal", weekId: w5.weekId, group: "rdA", txnIds: txA });
+  ok("6b.1 · the week paid its winners free first: no deposit was contradicted at its release",
+    rel5?.ok === true && paid5?.tickets?.length === RD_WIN && paid5.tickets.every((t: any) => t.won === true && t.payout > 0 && t.frozenReason === null)
+      && paid5.wallets.every((w: any) => !w.held), J({ rel5: rel5?.error ?? rel5?.ok, tickets: paid5?.tickets }));
+  const [ra, rb] = await race([{ kind: "reverse", refs: refA }, { kind: "reverse", refs: refA }]);
+  const h5 = await runJob({ kind: "reversal", weekId: w5.weekId, group: "rdA", txnIds: txA });
+  ok("6b.2 · ⭐ each reversal, heard by two instances at the same instant, marked its deposit once and held its winner's paid share exactly once, in the release's words — one hold record per share, naming that winner's own deposit (MB-74)",
+    h5?.deposits?.length === RD_WIN && h5.deposits.every((d: any) => d.status === "CONFIRMED" && d.providerStatus === MARK)
+      && h5.tickets.every((t: any) => t.frozenReason === DEPOSIT_HOLD) && recordsOk(h5, depA.refs, true) && h5.wallets.every((w: any) => w.held),
+    J({ answers: [ra?.answers, rb?.answers], tickets: h5?.tickets?.map((t: any) => t.frozenReason), records: h5?.records }));
+  ok("6b.3 · nothing moved: every winner's balance is what its payout left",
+    h5?.wallets?.every((w: any) => w.balance === paid5?.wallets?.find((x: any) => x.userId === w.userId)?.balance), J({ before: paid5?.wallets, after: h5?.wallets }));
+  // The reversal against the release: the mark lands before the release reads the deposits (the release holds the share) or
+  // after it paid (the reversal does). Either way the share ends held exactly once, never paid out free.
+  const depB = await runJob({ kind: "deposit", group: "rdB", amount: BALANCE });
+  const w6 = await runJob({ kind: "week", weeksAhead: 11, seal: "YES", lots: [
+    { group: "rdB", tickets: RD_WIN, slip: "WIN", perPlayer: 1 }, { group: "rdLose", tickets: 7, slip: "LOSE", perPlayer: 1 }] });
+  if (!depB?.ok || !w6?.ok) throw new Error("the second RD.5 week could not be prepared");
+  const txB = P.rdB.map((u) => depB.refs[u].txnId), refB = P.rdB.map((u) => depB.refs[u].providerRef);
+  const [relB, revB] = await race([{ kind: "release", weekId: w6.weekId, at: w6.releaseAt }, { kind: "reverse", refs: refB }]);
+  // A mark landing between the release's preparation and its last read of the deposits refuses that release ("changed
+  // since it was prepared") — nothing paid; the officer prepares again, and that release holds the share itself.
+  const refusedB = relB?.ok !== true && /changed since it was prepared/.test(String(relB?.error));
+  const relB2 = refusedB ? await runJob({ kind: "release", weekId: w6.weekId, at: w6.releaseAt }) : relB;
+  const h6 = await runJob({ kind: "reversal", weekId: w6.weekId, group: "rdB", txnIds: txB });
+  const c6b = await runJob({ kind: "check", weekId: w6.weekId });
+  ok("6b.4 · ⭐ a reversal racing the release: the week settled once, and every winner's share ended HELD exactly once — by the release (the mark first) or by the reversal (the payout first) — never paid out free, never held twice",
+    relB2?.ok === true && c6b?.week?.state === "SETTLED" && h6?.tickets?.length === RD_WIN
+      && h6.tickets.every((t: any) => t.won === true && t.payout > 0 && t.frozenReason === DEPOSIT_HOLD) && recordsOk(h6, depB.refs, false)
+      && h6.wallets.every((w: any) => w.held) && h6.deposits.every((d: any) => d.providerStatus === MARK),
+    J({ relB: relB?.error ?? relB?.ok, preparedAgain: refusedB ? (relB2?.error ?? relB2?.ok) : null, revB: revB?.answers,
+      tickets: h6?.tickets?.map((t: any) => t.frozenReason), records: h6?.records }));
+  ok("6b.5 · and the money is the payout's alone: each winner holds its balance less a ticket plus one share, the pool at 0",
+    h6?.wallets?.every((w: any) => w.balance === BALANCE - w6.price + (c6b?.week?.figures?.share ?? NaN)) && c6b?.pool?.ledger === 0,
+    J({ wallets: h6?.wallets, share: c6b?.week?.figures?.share, pool: c6b?.pool }));
 
   // ── §7 · the identities ────────────────────────────────────────────────────────────────────────────────────────
   console.log(`${NL}§7 · the identities over everything above`);

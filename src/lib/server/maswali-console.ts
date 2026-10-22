@@ -35,6 +35,7 @@ import { MAIN_COUNT, settlementGate, weekVoidCertain } from "@/lib/maswali-score
 import { guaranteeRequirement } from "@/lib/maswali-money";
 import type { RolloutState } from "@/lib/millionea-rollout";
 import { formatTzs } from "@/lib/utils";
+import { fmtEat } from "@/lib/maswali-admin-format";
 import { parseWeekListQuery, selectWeekPage, type WeekListQuery } from "@/lib/maswali-week-list";
 import { parseIntegrityListQuery, selectHeldShares, selectWinnerTickets, selectSealWeeks, selectVoidableWeeks, type IntegrityListQuery } from "@/lib/maswali-integrity-list";
 
@@ -489,7 +490,11 @@ export async function poolsView(now: Date = new Date()): Promise<PoolsView> {
 // ── COMPLIANCE (/admin/maswali/integrity) ───────────────────────────────────────────────────────────
 
 /** ⛔ S6 round 6 · `payout` null: the ticket's record lacks its share — said "Not on record", never printed as 0 TZS. */
-export type HeldShare = { ticketId: string; serial: string; weekCode: string; weekSeq: number; userId: string; holder: string; payout: number | null; reason: string; forfeited: boolean };
+export type HeldShare = {
+  ticketId: string; serial: string; weekCode: string; weekSeq: number; userId: string; holder: string; payout: number | null; reason: string; forfeited: boolean;
+  /** MB-74 · for a share held for a deposit under review, which deposit the provider contradicted (S7-F9). */
+  provenance?: string | null;
+};
 export type SealLogRow = { weekCode: string; slot: number; outcome: string; voidReason: string | null; sealedBy: string | null; sealedAt: string | null; evidence: string | null; stage2By: string | null };
 export type WinnerRow = { ticketId: string; weekCode: string; serial: string; userId: string; holder: string; role: string; status: string; accountAgeDays: number; payout: number | null; frozenReason: string | null };
 /** A paid ticket's share as its record holds it: null when the record lacks it (never `?? 0`). */
@@ -517,6 +522,25 @@ const holderOf = async (userId: string) => {
   try { u = await db.user.findById(userId); } catch { u = null; }
   return { holder: u ? (u.displayName?.trim() || `…${u.phoneE164.slice(-4)}`) : "(closed account)", role: u?.role ?? "?", status: u?.status ?? "?", createdAt: u?.createdAt ?? null };
 };
+
+/**
+ * ⭐ MB-74 · WHERE A SHARE HELD FOR A DEPOSIT UNDER REVIEW CAME FROM (S7-F9; MASWALI-PLAN §8 MB-74: "show the provenance in
+ * the cluster/integrity report"): the account's credited deposit the provider has contradicted, as accounting books it — the
+ * newest, and how many. A read that fails says so, never nothing; a review resolved since the hold says that.
+ */
+async function depositProvenance(userId: string): Promise<string> {
+  try {
+    const { hasDepositStatusReview } = await import("@/lib/wallet/deposit-review");
+    const marked = (await db.txn.findByUserTypes(userId, ["DEPOSIT"], 500)).filter((t) => t.status === "CONFIRMED" && hasDepositStatusReview(t));
+    if (marked.length === 0) return "No deposit of this account is under review now: its review was resolved after the hold.";
+    const d = marked[0];
+    const ref = d.providerRef ? ` (reference …${d.providerRef.slice(-4)})` : "";
+    const lead = marked.length === 1 ? "A deposit" : `${marked.length} deposits are under review; the newest, a deposit`;
+    return `${lead} of ${formatTzs(Math.abs(d.amount))}${d.provider ? ` by ${d.provider}` : ""}${ref}, credited ${fmtEat(d.completedAt ?? d.createdAt)}, which the provider has since contradicted.`;
+  } catch {
+    return "The account's deposits could not be read.";
+  }
+}
 
 /** The console's page size (the platform pager's own, `PER_PAGE`). */
 export const CONSOLE_PER_PAGE = 20;
@@ -553,6 +577,8 @@ export async function integrityView(now: Date = new Date(), pages: { held?: numb
     allHeld.push({ ticketId: t.id, serial: t.serial, weekCode: code, weekSeq: seq, userId: t.userId, holder: h.holder, payout: shareOf(t), reason: t.frozenReason, forfeited: t.frozenReason.startsWith("forfeited · ") });
   }
   const selectedHeld = selectHeldShares(allHeld, { ...query.held, page: pages.held ?? query.held.page }, CONSOLE_PER_PAGE);
+  // MB-74 · the provenance of a share held for a deposit under review, on the page shown (S7-F9, RD.5).
+  for (const h of selectedHeld.rows) if (!h.forfeited && h.reason === "deposit under review") h.provenance = await depositProvenance(h.userId);
   const selectedWinners = selectWinnerTickets(won, { ...query.winners, page: pages.winners ?? query.winners.page }, CONSOLE_PER_PAGE);
   const selectedVoidable = selectVoidableWeeks(voidable, { ...query.voidable, page: pages.voidable ?? query.voidable.page }, CONSOLE_PER_PAGE);
   for (const { ticket: t, code } of selectedWinners.rows) {

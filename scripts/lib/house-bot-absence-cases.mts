@@ -84,7 +84,10 @@ export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // lead's zh word for a Millionea event (test:maswali-design 4.D), where S6-INT 1 had taken 赛事. No other line changed.
   // D19a RE-PINNED AT S6-INT 11 (was f11aa8c51, S6-INT 10's): `millioneaFairness.helpFinalWeek` is removed in en/sw/zh —
   // /help draws `finalWeekRule`, the one wording (the lead's ruling (a) of 2026-10-22). No other line changed.
-  "src/lib/i18n-dict.ts": "24f9c840726ba56b5e13950fdf3d22866f94c568",
+  // D19a RE-PINNED AT S6-INT 13 (the merge of S7-MERGE 2, which carries S5's round 2; was 24f9c8407, S6-INT 11's):
+  // S5-R2-SLIP's `draftTicketsNoun` (the noun once over the switcher's pills, the lead's ruling (a) of round 2) in
+  // en/sw/zh. No other line changed.
+  "src/lib/i18n-dict.ts": "28a7cf95115bd761b85cda8158d0aa04ab07be42",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
 };
@@ -247,7 +250,10 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
       // S6-INT 2 · the chooser's third door (the legal lane's ThreeDoors, drawn on release 2a part 2's RuleCard) at the merge
       // that joined them (8620862fc), whose blob is the page as it stands; the two doors' arm is release 2a part 2's, unchanged.
       ["src/app/legal/rules/page.tsx", "8620862fc"],
-      ["src/app/legal/privacy/page.tsx", "8d126b819"],
+      // 2026-10-22: 8d126b819 → c58b316ff — the one reviewed line between them: the never-printed Millionea slip
+      // paragraph's English "removed once your ticket is cut" → "… is bought" (Ali's 2026-10-21 ruling 7; the
+      // Privacy v2026-10-17 entry is amended; production's notice is unchanged).
+      ["src/app/legal/privacy/page.tsx", "c58b316ff2116976f5021ad89b242ce09244953e"],
       ["src/app/legal/responsible-gambling/page.tsx", W4],
       // MASWALI-BUILD S6 lane L (2026-10-18) publishes the Maswali Millionea rules: the binding text in three languages
       // (`_content-millionea.tsx`, its hash pinned with its version in `millionea-rules-version.ts`) and its route (gated: a

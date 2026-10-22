@@ -29,16 +29,28 @@
 
 ## §0 · RESUME AT
 
-**⏳ IN FLIGHT (2026-10-22 PM, OMEGA-COMPILE01, the Claude session asheib-f3 leads; Ali: "proceed until done … pushed live
-and development closed").** Ali's scope (2026-10-22): **build done, launch later** — S5, then S7, then S6, each verified
-(critics 10/10 + every gate) and pushed to `main` DARK; STAFF_PREVIEW right after S5 is live (his 2026-10-21 ruling); S8
-prepared and handed to him (his items listed in this §0 at the close). Running now, each on its own branch (pushed after
-every commit): the six round-2 lanes finish their LEFT lists (code, static checks, targeted proofs — the full render runs
-ONCE on the integrated head, then the independent critics); DOORS fixes the ⛔ dark-safety blocker first (every place a
-`millionea=`/`preview=` prop reaches a client component); S7 merges this release into `claude/maswali-s7-s5` (FIX-SRV's
-map), then builds TK.2 (MB-96) and RD.5 (MB-74); S6 reviews N's round 17 and maps its merge (read-only). OB.0 (MB-23,
-MR-16's objection door) is built on the integrated UI after S5's merge. Lead's working state: this §0 + the hand-over
-branch `maswali-handover-20261021` (a new top section at each milestone).
+**⏳ RESUMED (2026-10-22 11:41 UTC, Ali: "proceed"; the same session asheib-f3 leads, every lane resumed with its own
+context):** HUB, TICKETS, REGISTER, PLATFORM and SLIP finish their STOP 4 lists on their r2 branches; S7 its list on
+`claude/maswali-s7-s5` (TK.2 = password writes only; RD.5 = shares from tickets bought at or after the reversed deposit);
+S6 the integration on `claude/maswali-s6-release` (R and N next); DOORS (done) now builds the objection door OB.0 on
+`claude/maswali-s7-ob` from `claude/maswali-s7-s5`. main `da3d32180` (docs) deployed SUCCESS while stopped. The STOP 4
+record below still names every head and list.
+
+**⏹ STOP 4 (2026-10-22 ~10:45 UTC, OMEGA-COMPILE01, the Claude session asheib-f3 led; Ali: "push the progress we reached
+cleanly and stop the session cleanly so we proceed later on a clean base"). RESUME HERE, from any machine:** the hand-over
+branch `maswali-handover-20261021`, `handover/maswali-2026-10-21/` — README's top section (STOP 4: every branch and head,
+what each lane left, the next steps in order, Ali's answers) and MERGE-NOTES' top section (every lane's final report, every
+lead ruling, the merge-time wiring, the reader findings). Ali's scope (2026-10-22, never re-ask): **build done, launch
+later** — S5, then S7, then S6, each verified (critics 10/10 + every gate) and pushed to `main` DARK; STAFF_PREVIEW right
+after S5 is live; S8 prepared and handed to him. Pre-approved by him: each verified push, the production read-backs, the
+STAFF_PREVIEW switch, one read-only "SmsMessage" count, branch deletes at the very end; QA staff + QA player sign-in once
+each for the staff check; **S8's live test is the first public week** (rewrite S8, OD-21 and §6 line 12 to match). At the
+stop: DOORS ✅ (the ⛔ dark-safety blocker fixed and proven on real bytes, `13d8ca918`) and SLIP ✅ (`d5f24f569`) are done;
+HUB `a76e03f96`, TICKETS `fdbeae5a4`, REGISTER `926ebc6c1` and PLATFORM `04d3e3d93` hold WIP tops with exact lists left; S7
+is merged with S5 on `claude/maswali-s7-s5` (`be37a9683`, proven on both stores); S6's integration is on
+`claude/maswali-s6-release`. This release gained the lead's `41e61987c` (three ratchets), `c58b316ff` + `87f19f3a9` (Ali's
+English buy wording in the never-printed privacy paragraph and the player drive) and `edf79c2b0` (red:journey-home's
+anchor). Nothing of S5–S8 is live; production serves `67e47f8d2`.
 
 **State (2026-10-21):** S1–S4 are on `main` dark. S5's release candidate is branch
 `claude/maswali-s5-release` (Codex's mirror `codex/maswali-coord-20261019` retired 2026-10-21 PM): Codex's integrated
@@ -2651,6 +2663,24 @@ stays open as KNOWN-RED TK.2, with MB-23 (OB.0) and MB-74 (RD.5): §6.1 Gate B l
   withdrawal without a password change, a password changed before the payout, and a request made before the change;
   plants (S7-F9-tk-alert), (S7-F9-tk-credit-order), (S7-F9-tk-attempt-order) and (S7-F9-tk-fail-closed) in
   `red:maswali-money-path`.
+- **S7 · a deposit contradicted after its winner was paid (S7-F9 9; MB-74, RD.5; the lead's ruling of 2026-10-22).**
+  When the provider contradicts a CREDITED deposit — a reversal, or the same deposit re-reported at another amount — the
+  webhook marks it for review (the platform's rule: nothing is clawed back) and at once holds every PAID winning
+  Millionea share of that account whose ticket was bought at or after the deposit was credited and that is not held
+  already (`holdSharesForReversedDeposit`): in the release's own words ("deposit under review"), with the wallet's
+  Millionea hold and a COMPLIANCE record naming the deposit; Compliance releases or forfeits it to the jackpot (OD-07).
+  A share whose ticket was bought before the deposit was credited is left free — that money cannot have bought it.
+  Nothing moves. Idempotent: the mark is placed once, and a share held once for a deposit is never held for it again,
+  whatever Compliance decided. Under the chain lock, as every hold of this reason (R6, R8); from inside a wallet lock the
+  hold runs once that lock has committed, outside every lock. The nightly heal (`healReversedDepositHolds`, before the
+  stray-hold heal) places a hold a stopped process left unplaced. The integrity page's held shares show the deposit's
+  provenance (MB-74). Guards: `test:maswali-adversarial` RD.5–RD.9 on both stores (RD.5c the amount contradiction, RD.5d
+  the provenance, RD.7 a share bought before the credit stays free, RD.8 the heal, RD.9 never a second hold); S16 §6b
+  across instances (a reversal heard by two instances at once holds each share once; a reversal racing the release holds
+  it once, by either); plants (S7-F9-rd5-trigger), (S7-F9-rd5-trigger-amount), (S7-F9-rd5-bought-after),
+  (S7-F9-rd5-once-per-deposit), (S7-F9-rd5-heal) and (S7-F9-rd5-provenance) in `red:maswali-money-path`. The rules'
+  reversal clause is the S6 legal lane's to carry (the Yes/No "payment reversals … forfeiture" clause; not on
+  `mln-s6-int` at 81c60f0f5).
 
 #### S8 · Live drive and public launch
 

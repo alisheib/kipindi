@@ -25,6 +25,9 @@
  *             Millionea invariants.
  *   suspend — after tickets were bought, fixture-suspend one named group in bounded batches; no wallet is touched.
  *   heal    — S7-F8: `healStrayMillioneaHolds`, timed with its lift sections (what finishes a lift a stopped process left).
+ *   deposit — S7-F9 · RD.5: the CONFIRMED deposit row behind each account of `group` (a fixture, declared; no money moves);
+ *   reverse — the provider's reversal (FAILED) of each of `refs`, through `settlePaymentWebhook`;
+ *   reversal — a week's group as the reversals left it: shares and marks, wallets and holds, hold records, deposit marks.
  *   release — S7-F8 options: `failAtCommit` (a TEST-FAULT at its last statement: rolled back, every hold lifted again) and
  *             `stopAfterLiftSections` + `crashFile` (the process ENDS between two lift sections — a crash, declared).
  * ⛔ Not run directly. ⛔ The orchestrator refuses any database it did not create.
@@ -337,6 +340,48 @@ try {
       r.invariants = await checkMaswaliInvariants();
     }
     say(r);
+  } else if (job.kind === "deposit") {
+    // S7-F9 · RD.5 · ⚠️ A FIXTURE, DECLARED: the CONFIRMED deposit row behind each named account's seeded balance (the wallet
+    // and its ledger lines already hold the money), credited now, so a provider's reversal has a credited deposit to
+    // contradict. No balance moves.
+    const refs: Record<string, { txnId: string; providerRef: string }> = {};
+    for (const [i, u] of (players[String(job.group)] ?? []).entries()) {
+      const wallet: any = await W.db.wallet.findByUserId(u);
+      if (!wallet) throw new Error(`deposit: no wallet for ${u}`);
+      const txnId = `txn_s16rd_${process.pid}_${i}_${u.slice(-6)}`;
+      const providerRef = `S16-RD-${process.pid}-${i}-${u.slice(-6)}`;
+      const at = new Date().toISOString();
+      await W.db.txn.create({
+        id: txnId, walletId: wallet.id, userId: u, type: "DEPOSIT", status: "CONFIRMED", amount: Number(job.amount), fee: 0, taxWithheld: 0,
+        balanceAfter: Number(job.amount), currency: "TZS", provider: "MPESA", providerRef, msisdn: null, description: "Deposit · M-Pesa",
+        positionId: null, amlReason: null, createdAt: at, updatedAt: at, completedAt: at,
+      } as any);
+      refs[u] = { txnId, providerRef };
+    }
+    say({ ok: true, refs });
+  } else if (job.kind === "reverse") {
+    // S7-F9 · RD.5 · the provider's reversal of each named deposit (FAILED for a CONFIRMED credit), through the one webhook door.
+    const { settlePaymentWebhook } = await import("../../src/lib/server/wallet-service.ts");
+    const t = await started();
+    const answers: string[] = [];
+    for (const ref of job.refs as string[]) answers.push((await settlePaymentWebhook({ providerRef: ref, status: "FAILED" })).reason);
+    say({ ok: true, answers, t, ms: Date.now() - t });
+  } else if (job.kind === "reversal") {
+    // S7-F9 · RD.5 · what the reversals left on a week's group: each ticket's share and mark, each wallet's balance and hold,
+    // every hold record of those tickets (with the deposit it names), and each deposit's status and review mark.
+    const pc = W.prisma()!;
+    const users = players[String(job.group)] ?? [];
+    const tickets = await pc.maswaliTicket.findMany({ where: { cycleId: job.weekId, userId: { in: users } }, select: { id: true, userId: true, won: true, payout: true, frozenReason: true } });
+    const wallets = await pc.wallet.findMany({ where: { userId: { in: users } }, select: { userId: true, balance: true, freezeReasons: true } });
+    const records = await pc.auditLog.findMany({ where: { action: "maswali.share.held", targetType: "MaswaliTicket", targetId: { in: tickets.map((x: any) => x.id) } }, select: { targetId: true, payload: true } });
+    const deposits = await pc.transaction.findMany({ where: { id: { in: job.txnIds as string[] } }, select: { id: true, userId: true, status: true, providerStatus: true } });
+    say({
+      ok: true,
+      tickets: tickets.map((x: any) => ({ id: x.id, userId: x.userId, won: x.won, payout: x.payout === null ? null : Number(x.payout), frozenReason: x.frozenReason })),
+      wallets: wallets.map((x: any) => ({ userId: x.userId, balance: Number(x.balance), held: ((x.freezeReasons ?? []) as string[]).includes("MILLIONEA_SHARE") })),
+      records: records.map((x: any) => ({ ticketId: x.targetId, deposit: x.payload?.deposit ?? null })),
+      deposits,
+    });
   } else {
     say({ ok: false, threw: `unknown job kind "${job.kind}"` });
     process.exitCode = 2;

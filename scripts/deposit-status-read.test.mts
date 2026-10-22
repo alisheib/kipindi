@@ -141,9 +141,12 @@ function system(src = sources, data = db) {
     if (id === "./journey-funnel") return { countDepositFunnel: () => { seen.funnels++; } };
     if (id === "./house-bot/money-hook") return { onHolderMoneyEvent: () => {} };
     if (id === "./affiliate-service") return { onRecruitDeposit: async () => {} };
+    // MASWALI-BUILD S7-F9 · RD.5: a credited deposit marked for review holds the Millionea shares it may have bought — that
+    // hold is Millionea's own suite's (`test:maswali-adversarial` §10 RD); here it is the side-effect module it is.
+    if (id === "./maswali-settlement") return { holdSharesForReversedDeposit: async () => ({ held: [] }) };
     throw new Error(`Unexpected dynamic side-effect module ${id}`);
   };
-  const deps = { db: data, withLock, runOutsideLock, currentLockTx, afterCommit, withMoneyTx: L.withMoneyTx,
+  const deps = { db: data, withLock, runOutsideLock, currentLockTx, afterCommit, inLock, withMoneyTx: L.withMoneyTx,
     onReviewAttempt: () => { seen.reviewAttempts++; },
     postLedgerEntries: async (id: string, lines: any, tx: any) => { seen.groups.push(id); return L.postLedgerEntries(id, lines, tx); },
     depositEntries: L.depositEntries, rgSuspenseEntries: L.rgSuspenseEntries,
@@ -171,7 +174,7 @@ function system(src = sources, data = db) {
     sendEmailToUser: async () => {}, depositConfirmedHtml: () => "", depositReversedHtml: () => "", depositFailedHtml: () => "",
     require: requireFixture,
   };
-  const names = ["deposit", "isFastDepositCandidate", "creditConfirmedDeposits", "settleConfirmedWithdrawals", "isFastPayoutCandidate", "reconcileStalePayments", "clearNeedsReview", "settleDepositFromReturn", "settleDepositConfirmed", "settleDepositFailed", "settleWithdrawalConfirmed", "settleWithdrawalFailed", "settlePaymentWebhook", "markDepositStatusReview", "assertUniquePaymentReference", "refundAmlRejection", "friendlyProvider", "friendlyDepositReason", "friendlyFailureReason", "auditNeedsReviewOnce"];
+  const names = ["deposit", "isFastDepositCandidate", "creditConfirmedDeposits", "settleConfirmedWithdrawals", "isFastPayoutCandidate", "reconcileStalePayments", "clearNeedsReview", "settleDepositFromReturn", "settleDepositConfirmed", "settleDepositFailed", "settleWithdrawalConfirmed", "settleWithdrawalFailed", "settlePaymentWebhook", "markDepositStatusReview", "holdMillioneaSharesOfReviewedDeposit", "assertUniquePaymentReference", "refundAmlRejection", "friendlyProvider", "friendlyDepositReason", "friendlyFailureReason", "auditNeedsReviewOnce"];
   const walletText = "const NEEDS_REVIEW_SEEN = new Set(); const NEEDS_REVIEW_CAP = 5000;\n" + names.map(name => fn(src[files[1]], name)).join("\n");
   const code = ts.transpileModule(walletText, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
   // Wrap only the entry counter; the compiled marker's actual source body and all real DAL/lock work stay intact.

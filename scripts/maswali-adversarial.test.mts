@@ -42,13 +42,16 @@
  * DL.6 on Postgres: 197 on memory, 206 on Postgres, what this commit's tree printed.
  * ⭐ S7-F9 (2026-10-22, MB-96): TK.2 struck on both stores — the winner-takeover watch raises its alert — with TK.3,
  * TK.3a–TK.3c, TK.4, TK.5 and TK.6 beside it on each: 205 on memory, 214 on Postgres, with 2 KNOWN-RED on each (OB.0, RD.5).
+ * ⭐ S7-F9 9 (2026-10-22, MB-74): RD.5 struck on both stores — a deposit contradicted after its winner was paid holds the
+ * share at once — with RD.5b, RD.5c, RD.5d, RD.6–RD.9 and RD.10 (a release in flight) beside it on each: 214 on memory,
+ * 223 on Postgres, with 1 KNOWN-RED on each (OB.0).
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({
   suite: "test:maswali-adversarial",
   casesFile: "scripts/lib/maswali-adversarial-child.mts",
-  minPass: { memory: 205, postgres: 214 },
+  minPass: { memory: 214, postgres: 223 },
   dbPrefix: "mlw_adv",
   timeoutMs: 45 * 60_000,
 });

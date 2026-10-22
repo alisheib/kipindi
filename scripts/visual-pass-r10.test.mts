@@ -242,10 +242,48 @@ section("1 · A1 the filter field's sliders and caret stand on its edges (tile 1
     marginOf(render(h(I.sliders, { s: 15 }))) === null && !has(FS, '<I.sliders s={15} aria-hidden className="shrink-0 opacity-80" />'));
   // The caret turns 180° about its own box when open; its drawing is symmetric about the box's centre, so turned it still
   // ends on the edge. The rotation rule is on the caret itself (`.kp-fsheet-caret`), never a wrapper.
+  // ⭐ RE-PINNED IN THE OPEN 2026-10-22 (MASWALI-BUILD S5-R2-SLIP, the lead's ruling). The stylesheet keeps ONE pair of
+  // declarations for every caret, as a selector list ("never a second `-caret` class with its own copy"), and Maswali's
+  // folded ticket (`.kp-mln-ticket[open] > summary .kp-mln-caret`, the multi-ticket confirm) joined that list AFTER the
+  // sheet's selector. The old pin read the sheet's selector glued to the rule's body, so it stopped matching a rule that
+  // still turns the caret. It now reads the list: among the members of every rule that turns its box 180°, the sheet's
+  // EXACT selector (it ends on the caret's class), and no other member naming the open sheet (a wrapper turned too would
+  // turn the caret twice, or about the wrapper's centre). 1.4′ and 1.4″ plant the two defects; 1.4‴ reads main's list.
+  /** Every selector of every rule that turns its box 180°, whitespace squashed — read over decommented CSS. */
+  const turned = (css: string): string[] => {
+    const out: string[] = [];
+    for (let at = css.indexOf("rotate(180deg)"); at >= 0; at = css.indexOf("rotate(180deg)", at + 1)) {
+      const open = css.lastIndexOf("{", at), close = css.indexOf("}", at);
+      if (open < 0 || close < 0 || css.lastIndexOf("}", at) > open) continue;
+      if (!squash(css.slice(open + 1, close)).includes("transform: rotate(180deg)")) continue;
+      const sel = css.slice(Math.max(css.lastIndexOf("}", open), css.lastIndexOf("{", open - 1), css.lastIndexOf(";", open)) + 1, open);
+      let depth = 0, from = 0;
+      for (let i = 0; i <= sel.length; i++) {
+        const ch = i < sel.length ? sel[i] : ",";
+        if (ch === "(" || ch === "[") depth++;
+        else if (ch === ")" || ch === "]") depth--;
+        else if (ch === "," && depth === 0) { const m = squash(sel.slice(from, i)); if (m) out.push(m); from = i + 1; }
+      }
+      at = close;
+    }
+    return out;
+  };
+  const FS_TURN = ".kp-fsheet[open] > summary .kp-fsheet-caret";
+  /** The open sheet turns its caret and nothing else: the exact selector is a member, and it is the only one naming it. */
+  const caretTurns = (css: string) => { const ms = turned(css); return ms.includes(FS_TURN) && ms.every((m) => !m.includes(".kp-fsheet[open]") || m === FS_TURN); };
   const cb = partsOf("chevronDown", 14);
   const cbX0 = Math.min(...cb.map((q) => q.x0 - q.w / 2)), cbX1 = Math.max(...cb.map((q) => q.x1 + q.w / 2));
   ok(`1.4 · the caret turns about its own box and its drawing is symmetric about it — Phosphor's caret-down (Bold at 14px) inks x${cbX0.toFixed(2)}–${cbX1.toFixed(2)} of 256, centred on x${((cbX0 + cbX1) / 2).toFixed(3)} (the hand-drawn one x6–18 of 24) — so open it ends on the same edge`,
-    cb.length > 0 && Math.abs((cbX0 + cbX1) / 2 - GRID / 2) <= 0.1 && CSS.includes(".kp-fsheet[open] > summary .kp-fsheet-caret { transform: rotate(180deg); }"), j({ cbX0, cbX1 }));
+    cb.length > 0 && Math.abs((cbX0 + cbX1) / 2 - GRID / 2) <= 0.1 && caretTurns(CSS), j({ cbX0, cbX1, turned: turned(CSS).filter((m) => m.includes("caret")) }));
+  const wrapper = ".kp-fsheet[open] > summary";
+  const moved = CSS.split(FS_TURN).join(wrapper), twice = CSS.split(FS_TURN).join(`${FS_TURN}, ${wrapper}`);
+  ok("1.4′ PLANT · the turn moved from the caret onto its wrapper (the summary) is reported — the caret would turn about the wrapper's centre",
+    moved !== CSS && turned(moved).includes(wrapper) && !caretTurns(moved));
+  ok("1.4″ PLANT · the wrapper turned beside the caret is reported too — the caret would turn twice and point down while open",
+    twice !== CSS && turned(twice).includes(FS_TURN) && turned(twice).includes(wrapper) && !caretTurns(twice));
+  const MAIN_RULE = [".kp-menu[open] > summary .kp-menu-caret,", `${FS_TURN} { transform: rotate(180deg); }`].join(NL);
+  ok("1.4‴ CONTROL · main's two-member list (the sheet's selector last, as the old pin read it) reads as exactly its two carets, and passes",
+    j(turned(MAIN_RULE)) === j([".kp-menu[open] > summary .kp-menu-caret", FS_TURN]) && caretTurns(MAIN_RULE), j(turned(MAIN_RULE)));
   // /markets' compact phone bar folds the label and the caret away: with no count the sliders stands ALONE in the pill.
   const cancel = 'html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) .kp-fsheet-trigger:not([data-on]) > .kp-fsheet-glyph { margin-inline-start: 0 !important; }';
   ok("1.5 · alone in /markets' compact pill (label and caret folded, no count) the sliders keeps its box — its pull undone by the compact rule; with a count it leads [sliders][count] and keeps it",
@@ -327,6 +365,8 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
     ["src/components/layout/wallet-balance-pill.tsx", "<I.chevronDown s={12} />", 1, "frozen", "the classic capsule's caret, typed -ml-1 (r7c §6.2 holds the classic capsule byte for byte) — named for the integrator"],
     ["src/components/markets/filter-sheet.tsx", '<I.chevronDown s={14} edge="end" aria-hidden className="kp-fsheet-caret shrink-0 opacity-70" />', 1, "edge", "the filter trigger's end (§1)"],
     ["src/components/markets/menu-shell.tsx", '<I.chevronDown s={14} edge="end" aria-hidden className="kp-menu-caret shrink-0 opacity-70" />', 1, "edge", "the sort/topic menu's end: a centred control (§6)"],
+    // MASWALI-BUILD S5 (the slip's round 1, R1-slip M9: the family caret on the multi confirm's folded tickets).
+    ["src/components/maswali/maswali-slip.tsx", '<I.chevronDown s={14} edge="end" aria-hidden className="kp-mln-caret shrink-0 opacity-70" />', 1, "edge", "the multi-ticket confirm's folded ticket: the family caret ending its summary row, pulled by its edge as the sheet's is, turned by the one caret rule (1.4)"],
     ["src/components/journey/show-more.tsx", '<I.chevronDown s={18} edge="end" />', 1, "edge", "the journey's one “Onyesha zaidi” (the home's and journey /live's; the Vodacom plan S7, WP7 and WP10's review): the canvas's caret, ending a centred kit control (§6.6), more below"],
     ["src/components/proposals/vote-control.tsx", '<I.chevronDown s={18} tier={vote === dir ? "fill" : undefined} />', 1, "alone", "alone in its 36×34 vote button; solid while it is the vote cast (a toggle that is on, §8c)"],
     ["src/components/proposals/vote-control.tsx", '<I.chevronUp s={18} tier={vote === dir ? "fill" : undefined} />', 1, "alone", "alone in its 36×34 vote button; solid while it is the vote cast"],

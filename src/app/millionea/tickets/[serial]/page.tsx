@@ -40,7 +40,7 @@ import { Callout } from "@/components/ui/callout";
 import { MaswaliTicket, type TicketMoments } from "@/components/maswali/maswali-ticket";
 import { MaswaliLossReceipt, MaswaliWinLedger, type MaswaliLegal } from "@/components/maswali/maswali-win-ledger";
 import { counted, eatWeekday, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
-import { factsOf, keepFact, MaswaliFacts } from "@/components/maswali/maswali-facts";
+import { factsOf, keepFact, MaswaliFacts, numeralRuns } from "@/components/maswali/maswali-facts";
 import { noticeBody } from "@/components/ui/empty-state-text";
 import { millioneaTicketGate } from "@/lib/server/millionea-gate";
 import { millioneaHowTo, millioneaMyTicketsWeek, millioneaTicket, millioneaWeekMoneyRecord, type MillioneaFact, type MillioneaTicketView } from "@/lib/server/maswali-player";
@@ -50,7 +50,7 @@ import { RESERVE_COUNT } from "@/lib/maswali-score";
 import { formatEatDateTime } from "@/lib/eat-day";
 import { fill, formatTzs } from "@/lib/utils";
 import type { Dict, Locale } from "@/lib/i18n-dict";
-import { MILLIONEA_HREF, MillioneaPreviewMark, registerWeekHref, signInHref } from "../../millionea-parts";
+import { MILLIONEA_HREF, registerWeekHref, signInHref } from "../../millionea-parts";
 import { clausesOf, earnedOf, lineOf, millioneaWeekPhase, msOf, refundOf } from "../../millionea-view";
 import { registerLedgerRows } from "../../register/register-parts";
 import { SealDoor, TicketCancel, TicketHost } from "./ticket-acts";
@@ -194,7 +194,6 @@ export default async function MillioneaTicketPage({ params }: { params: Promise<
       <TicketHost serial={view.serial} through={view.seen.through}>
         <div className="space-y-5">
           <BackLink fallbackHref={MILLIONEA_HREF.tickets} label={t.millionea.myTicketsTitle} />
-          {gate.preview && <MillioneaPreviewMark t={t} />}
           {paid && view.win && (
             <>
               {ledgerRows && (
@@ -212,7 +211,8 @@ export default async function MillioneaTicketPage({ params }: { params: Promise<
                 <SealDoor
                   amount={view.win.yourTotal}
                   eyebrow={`${t.millionea.productLabel} · ${weekWord(t, weekNumber)}`}
-                  facts={[counted(paidSerials.length, t.millionea.wonTicketsOne, t.millionea.wonTickets), ...paidSerials]}
+                  line={counted(paidSerials.length, t.millionea.wonTicketsOne, t.millionea.wonTickets)}
+                  serials={paidSerials}
                 />
               )}
             </>
@@ -220,9 +220,10 @@ export default async function MillioneaTicketPage({ params }: { params: Promise<
           {view.win && (held > 0 || forfeited > 0) && (
             <Callout tone="neutral" role="status">
               <span className="flex flex-col gap-1">
-                {/* Drawn through the notice keep (r10 9.3): "Tiketi zako", "jumla yako" never torn at a line's end. */}
-                {held > 0 && <span>{noticeBody(counted(held, t.millionea.shareHeldNoteOne, t.millionea.shareHeldNote))}</span>}
-                {forfeited > 0 && <span>{noticeBody(counted(forfeited, t.millionea.shareForfeitedNoteOne, t.millionea.shareForfeitedNote))}</span>}
+                {/* Drawn through the notice keep (r10 9.3): "Tiketi zako", "jumla yako" never torn at a line's end; its count a
+                    `.mono` numeral (§T5, round 2). */}
+                {held > 0 && <span>{noticeBody(counted(held, t.millionea.shareHeldNoteOne, t.millionea.shareHeldNote), { part: numeralRuns })}</span>}
+                {forfeited > 0 && <span>{noticeBody(counted(forfeited, t.millionea.shareForfeitedNoteOne, t.millionea.shareForfeitedNote), { part: numeralRuns })}</span>}
               </span>
             </Callout>
           )}

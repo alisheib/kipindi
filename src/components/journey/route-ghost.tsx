@@ -115,7 +115,10 @@ export function JourneyRouteGhost({ rails, at, millionea = false }: { rails: rea
     // MASWALI-BUILD S5 (the doors lane's H1): it reserves the Millionea card's slot for a reader Millionea is visible to —
     // the rollout's per-request answer handed in (`millionea`, D6), never a read of its own; and the reader's locale, which
     // the slot's kept runs need (S5-DESIGN-DOORS H1: they wrap by language, so a slot set without it misses ±2px).
-    "/": <JourneyHomeGhost t={t} locale={locale} millionea={millionea} />,
+    // Handed on only while true, the shape the root loading file hands it in (S5-DESIGN-DOORS round 2): the answer travels
+    // one way end to end. (This hand-off is inside client code, so it was never written into a payload — the boundary is
+    // the root loading file's; `test:maswali-doors` §5 classifies every site.)
+    "/": <JourneyHomeGhost t={t} locale={locale} {...(millionea ? { millionea: true as const } : {})} />,
     "/updown": <UpDownGhost />,
     "/positions": <TicketsGhost t={t} />,
     "/account": <AccountGhost t={t} />,

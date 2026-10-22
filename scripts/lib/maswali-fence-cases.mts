@@ -227,6 +227,8 @@ export const CENSUS: Readonly<Record<string, { n: number; why: string }>> = {
   "src/app/markets/[id]/page.tsx": { n: 1, why: "the round redirect; a week is notFound() on the line above" },
   "src/app/positions/performance/page.tsx": { n: 1, why: "the round title lookup; the population is each scored line read directly, so no ticket is in it" },
   "src/app/positions/[positionId]/page.tsx": { n: 1, why: "the round lookup only; the line itself flows through positionPermalink, exhaustive" },
+  // 2026-10-21 · S5-DESIGN-DOORS L16 (ebb6caa5f) — classified by the doors lane in its round 2.
+  "src/app/results/millionea-results-view.tsx": { n: 1, why: "the archive's VIEW filter (all · MARKET · UPDOWN), never a row's line: the Millionea section stands on the archive as it opens and on the undivided view, not on the Up & Down rounds alone (L16); its weeks come from Millionea's own read, never the archive's rows" },
   "src/app/results/page.tsx": { n: 1, why: "the archive row map, after the week filter at the read" },
   "src/app/results/results-bar.tsx": { n: 2, why: "the view filter (all · MARKET · UPDOWN), never a row's line" },
   // 2026-10-21 · U43 Release B (1384383fd) added two: the round's display title and its open-link label rename only a

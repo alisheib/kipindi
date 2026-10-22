@@ -17,6 +17,8 @@
  *   EAT, the en buy words) · §6 the deposit offer from the shortfall plan (H4) · §7 the ghost (M13, motion M6) ·
  *   §8 the decided words in three languages (the lead's rulings: the en buy words; zh ordinals unspaced) · §9 the batch
  *   stamp's dwell lives in `feedback-timing.ts`.
+ *   ROUND 2: §11 the composer's pills (ruling (a)) · §12 the stamp's note of each free cancel for the ticket's drawing, and
+ *   TICKETS' cancel confirm handing its dim to its result.
  * ⛔ It READS, compiles and renders in memory; it writes nothing.
  */
 import { readFileSync } from "node:fs";
@@ -174,6 +176,51 @@ const parity = (A: unknown, B: unknown, cases: Array<[string, Record<string, unk
   const gates = /function stripStill\(\): boolean \{([\s\S]*?)\n\}/.exec(ormSrc)?.[1] ?? "";
   ok("1.8 · …and the still-flag reads the three gates of §M6 (the OS preference, the in-app switch, the `minimal` tier) — never the `reduced` throttle",
     gates.includes('"(prefers-reduced-motion: reduce)"') && gates.includes('classList.contains("kp-reduce-motion")') && gates.includes('getAttribute("data-motion") === "minimal"') && !gates.includes('"reduced"'));
+  // Round 2 (the lead's ruling): the primary as the kit's Link (`primaryHref`). Omitted, 1.6 holds every caller byte for byte;
+  // asked for, the primary — and only it — is drawn as a link to the address, with the button's own classes and label.
+  const STAMP = { open: true, onClose() {}, variant: "success", stamp: true, title: "MLN-2026-W49-000041", primaryLabel: "View ticket" };
+  const HREF = "/millionea/tickets/MLN-2026-W49-000041";
+  const asLink = draw(nowResult, "en", { ...STAMP, primaryHref: HREF }), asButton = draw(nowResult, "en", STAMP);
+  const primaryOf = (m: string) => /<div class="orm-actions[^"]*">(<(a|button)\b[^>]*>[^<]*<\/(?:a|button)>)/.exec(m);
+  const classOf = (tag: string) => /class="([^"]*)"/.exec(tag)?.[1] ?? "";
+  const pl = primaryOf(asLink), pb = primaryOf(asButton);
+  ok("1.11 · asked for, `primaryHref` draws the primary — and only it — as the kit's Link to that address, with the button's own classes and label; the rest of the result is byte for byte the same",
+    !!pl && !!pb && pl[2] === "a" && pb[2] === "button" && classOf(pl[1]) === classOf(pb[1]) && pl[1].includes(`href="${HREF}"`) && pl[1].endsWith(">View ticket</a>")
+      && asLink.replace(pl[1], "") === asButton.replace(pb[1], ""), j({ link: pl?.[1], button: pb?.[1] }));
+  // PLANT: the Link drawn for every caller (the option no longer asked for) breaks the parity of each.
+  const alwaysLink = compileAt(ORM, raw(ORM).replace("{primaryHref ? (", "{true ? (").replace("href={primaryHref as never}", 'href={(primaryHref ?? "/") as never}'),
+    { "@/components/ui/modal": nowModal }).OperationResultModal;
+  ok("1.11′ PLANT · a primary drawn as a link for every caller (asked for or not) breaks the parity",
+    raw(ORM).includes("{primaryHref ? (") && parity(baseResult, alwaysLink, RESULT_CASES.slice(0, 1), { variant: "success" }).length > 0);
+}
+// Round 2 (the lead's ruling (a)): the kit Tabs gains an option's own accessible name, `TabItem.ariaLabel`. Omitted, every
+// current caller's markup is the round-2 base's (7e9a314f0), byte for byte: line, segmented and pill, buttons and links,
+// with a glyph, a count and Millionea's ink.
+const R2_BASE = "7e9a314f0", TABS = "src/components/ui/tabs.tsx";
+const atR2Base = (rel: string) => execFileSync("git", ["show", `${R2_BASE}:${rel}`], { cwd: ROOT, encoding: "utf8" }).replace(/\r\n/g, "\n");
+const baseTabs = compileAt(TABS, atR2Base(TABS)).Tabs;
+const nowTabsSrc = raw(TABS);
+const nowTabs = compileAt(TABS, nowTabsSrc).Tabs;
+const tabsOf = (...labels: string[]) => labels.map((labelEn, i) => ({ value: String(i), labelEn }));
+const TAB_CASES: Array<[string, Record<string, unknown>]> = [
+  ["a section rail of buttons, a count", { tabs: [{ value: "a", labelEn: "Alpha" }, { value: "b", labelEn: "Beta", count: 3 }], value: "a", onChange() {}, ariaLabel: "Sections" }],
+  ["a section rail of links, a glyph", { tabs: [{ value: "a", labelEn: "Alpha", href: "/a" }, { value: "b", labelEn: "Beta", href: "/b", glyph: h("svg", { "aria-hidden": "true" }) }], value: "b", ariaLabel: "Pages" }],
+  ["segmented", { variant: "segmented", tabs: tabsOf("Day", "Week", "Month"), value: "1", onChange() {}, ariaLabel: "Range" }],
+  ["pills of buttons", { variant: "pill", tabs: tabsOf("Ticket 1 · 15/15", "Ticket 2 · 7/15"), value: "0", onChange() {}, ariaLabel: "Tickets" }],
+  ["pills of links, Millionea's ink", { variant: "pill", tabs: [{ value: "m", labelEn: "Millionea", href: "/millionea/tickets", ink: "millionea" }, { value: "p", labelEn: "Markets", href: "/positions" }], value: "m", ariaLabel: "Kinds" }],
+];
+{
+  const diffs = LOCALES.flatMap((l) => TAB_CASES.flatMap(([name, p]) => {
+    const a = inApp(l, h(baseTabs as never, p as never)), b = inApp(l, h(nowTabs as never, p as never));
+    return a === b ? [] : [`${l}/${name}: first differing byte ${[...a].findIndex((ch, i) => ch !== b[i])}`];
+  }));
+  ok(`1.9 · round 2 · the kit Tabs: ${TAB_CASES.length} callers' shapes × sw/en/zh render byte-identically to ${R2_BASE} when \`ariaLabel\` is not passed`, diffs.length === 0, j(diffs));
+  const named = inApp("en", h(nowTabs as never, { variant: "pill", tabs: [{ value: "0", labelEn: "1 · 15/15", ariaLabel: "Ticket 1 · 15/15" }], value: "0", onChange() {}, ariaLabel: "Tickets" } as never));
+  ok("1.10 · …and passed, it names the option and nothing else moves (the label still drawn)",
+    named.includes('aria-pressed="true" aria-label="Ticket 1 · 15/15"') && textOf(named) === "1 · 15/15", named.slice(0, 240));
+  const always = compileAt(TABS, nowTabsSrc.replace('aria-pressed={active} aria-label={item.ariaLabel}', 'aria-pressed={active} aria-label={item.ariaLabel ?? item.labelEn}')).Tabs;
+  ok("1.9′ PLANT · a name written for every caller (`?? labelEn`) breaks the parity",
+    inApp("en", h(baseTabs as never, TAB_CASES[0][1] as never)) !== inApp("en", h(always as never, TAB_CASES[0][1] as never)));
 }
 
 /* ══ §2 · THE METER (H1) ════════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -394,8 +441,50 @@ section("§7 · the loading ghost draws the page it stands for");
   ok("7.1 · M13 + motion M6 · the ghost draws the rail below 1280 (docked where the page's docks), the panel under the top bar from 1280, and controls on the controls' radius — never pills",
     g.includes("kp-mln-rail sticky bottom-[calc(65px+env(safe-area-inset-bottom,0px))]") && /sticky top-\[72px\][^"]*xl:block/.test(g)
       && (g.match(/h-\[var\(--h-control-md\)\][^"]*rounded-control/g) ?? []).length >= 9 && !/h-\[var\(--h-control-md\)\][^"]*rounded-pill/.test(g));
-  ok("7.2 · …at the slip's own measure (640px) and with no switcher box (the page draws one only for a second ticket)",
-    g.includes("max-w-[640px]") && !g.includes("millionea-ticket-drafts"));
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-SLIP, `test:measure`'s release red): the measure is the kit's form tier, never
+  // a hand-typed 640px — the column `max-w-form` and its grid track `var(--w-form)`, read in the ghost AND the page it stands
+  // for (one measure, so nothing moves when the page lands), and the token's value read from the stylesheet.
+  const page = slipOf("sw");
+  const MEASURE = ["xl:grid-cols-[minmax(0,var(--w-form))_400px]", "flex min-w-0 max-w-form flex-col gap-4"];
+  const wForm = /--w-form:\s*([0-9]+)px;/.exec(css)?.[1];
+  ok("7.2 · …at the slip's own measure — the form tier (column `max-w-form`, grid track `var(--w-form)`, 640px), the page's own — with no hand-typed width, and with no switcher box (the page draws one only for a second ticket)",
+    MEASURE.every((c) => g.includes(c) && page.includes(c)) && wForm === "640" && !/max-w-\[[0-9]+px\]/.test(g) && !g.includes("millionea-ticket-drafts"),
+    j({ wForm, ghost: MEASURE.map((c) => g.includes(c)), page: MEASURE.map((c) => page.includes(c)) }));
+  // 7.3 · round 2 (the lead, for REGISTER's `qa:millionea-ghost-hops`, which tells loading drawings apart by the page each
+  // names and reports any bar outside a named root as UNMARKED): the drawing names its page — a value, never a product word —
+  // on ONE box-less wrapper (`contents`) that is the page container's whole content: the back link, the busy root (its test
+  // id kept) and the docked rail, which stand outside the busy root, all inside it.
+  const GHOST = "src/app/millionea/slip/slip-ghost.tsx";
+  /** The index just past the `</div>` that closes the `<div` opening at `at` (divs counted, the markup React writes). */
+  const closeOf = (m: string, at: number) => {
+    let depth = 0;
+    for (const t of m.slice(at).matchAll(/<div\b|<\/div>/g)) {
+      depth += t[0] === "</div>" ? -1 : 1;
+      if (depth === 0) return at + (t.index ?? 0) + t[0].length;
+    }
+    return -1;
+  };
+  const namedWhole = (m: string) => {
+    const pc = /<div data-measure="reading"[^>]*>/.exec(m);
+    const wrap = '<div class="contents" data-ghost-page="slip">';
+    if (!pc) return { ok: false, why: "no page container" };
+    const at = (pc.index ?? 0) + pc[0].length;
+    if (!m.startsWith(wrap, at)) return { ok: false, why: "the container's first child is not the named wrapper" };
+    const end = closeOf(m, at), inner = m.slice(at, end);
+    const whole = end > 0 && m.startsWith("</div>", end) && closeOf(m, pc.index ?? 0) === end + "</div>".length;
+    const holds = inner.includes('data-testid="slip-ghost"') && inner.includes("kp-mln-rail") && /aria-busy="true"/.test(inner);
+    const names = (m.match(/data-ghost-page="/g) ?? []).length;
+    return { ok: whole && holds && names === 1, why: JSON.stringify({ whole, holds, names }) };
+  };
+  const named = namedWhole(g);
+  ok("7.3 · the drawing names its page once, on a box-less wrapper (`contents`, data-ghost-page=\"slip\") that is the page container's whole content — back link, busy root and docked rail inside it — so no bar of it is unnamed in a hop",
+    named.ok, named.why);
+  // PLANT: the name back on the busy root alone (the rail and the back link outside it, unnamed — the defect the lead found).
+  const busyOnly = compileAt(GHOST, raw(GHOST).replace('<div className="contents" data-ghost-page="slip">', '<div className="contents">')
+    .replace(' data-testid="slip-ghost">', ' data-testid="slip-ghost" data-ghost-page="slip">')) as { MillioneaSlipGhost: () => unknown };
+  const bo = namedWhole(inApp("sw", h(busyOnly.MillioneaSlipGhost as never)));
+  ok("7.3′ PLANT · the name on the busy root alone (the docked rail and the back link outside any named root) is caught",
+    raw(GHOST).includes('<div className="contents" data-ghost-page="slip">') && !bo.ok, bo.why);
 }
 
 /* ══ §8 · THE DECIDED WORDS ══════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -440,8 +529,14 @@ section("§9 · the batch stamp's dwell lives with every other dwell");
   const timing = code("src/lib/feedback-timing.ts"), client = code("src/app/millionea/slip/slip-client.tsx");
   ok("9.1 · LOW · `DWELL_MILLIONEA_BATCH_STAMP_MS` is 60s in feedback-timing.ts (§F8: values live there and nowhere else), and the composer reads it — no literal at the call site",
     /export const DWELL_MILLIONEA_BATCH_STAMP_MS = 60_000;/.test(timing) && client.includes("autoCloseMs={many ? DWELL_MILLIONEA_BATCH_STAMP_MS : undefined}") && !/60_?000/.test(client));
-  ok("9.2 · motion M4 · \"View ticket\" starts the progress bar before it navigates (§F10's `50pick:navigating`)",
-    /onPrimary=\{\(\) => \{[\s\S]*?navigate\(\(\) => router\.push\(/.test(client) && client.includes('window.dispatchEvent(new Event("50pick:navigating"));'));
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-SLIP, the lead's ruling): "View ticket" is the kit's Link (`primaryHref`; the
+  // values in §1.11 and §12.4), and NavProgress starts on its press as on every internal link (its own capture-phase listener,
+  // §F10) — so the stamp no longer raises `50pick:navigating` itself. The slip's one programmatic move, the deposit door, does.
+  const nav = code("src/components/ui/nav-progress.tsx");
+  ok("9.2 · motion M4 · \"View ticket\" starts the progress bar on its press — it is the kit's Link, which NavProgress's own listener starts on (§F10) — and the deposit door, a programmatic move, still raises `50pick:navigating`",
+    client.includes("primaryHref={stamp ? (many ? MILLIONEA_HREF.tickets : millioneaTicketHref(stamp.serials[0])) : undefined}")
+      && nav.includes('document.addEventListener("click", onClick, { capture: true });') && nav.includes('closest("a[href]")')
+      && /onDeposit=\{\(amount\) => navigate\(\(\) => router\.push\(/.test(client) && client.includes('window.dispatchEvent(new Event("50pick:navigating"));'));
   ok("9.3 · motion M3 · the stamp keeps its words through its exit: its content is the last cut shown (`shownCut`), and closing clears only `cut`",
     client.includes("const stamp = shownCut;") && client.includes("onClose={() => setCut(null)}") && !/setShownCut\(null\)/.test(client));
   ok("9.4 · M10 · a block on the money path stays until read (`durationMs: 0` for `danger`)",
@@ -512,8 +607,195 @@ section("§10 · each fix undone in memory is caught by its case (the source pla
   ok("10.9 PLANT · the price's lone \"·\" from 1280 put back is caught", !!loneItem && !loneItem[2].split(" ").includes("xl:hidden"));
 }
 
+/* ══ §11 · ROUND 2 · THE COMPOSER'S PILLS (the lead's ruling (a)) ══════════════════════════════════════════════════════════ */
+section("§11 · round 2 · the composer says the noun once, as the switcher's label; each pill its number and progress, named with the noun");
+{
+  // The composer drawn by the server with two tickets in its draft (the tab's kept draft arrives after hydration, so the
+  // render is handed it the way `useExitPhase` is forced above: one mechanical substitution, found exactly once), its
+  // server action answered by a stub.
+  const CLIENT = "src/app/millionea/slip/slip-client.tsx";
+  const SEED_FROM = "useState<MillioneaSlipDraft>(() => newSlipDraft(hiddenSlots, VOIDED_ROW_FILL))";
+  const seeded = (src: string) => {
+    if (src.split(SEED_FROM).length - 1 !== 1) throw new Error("PREMISE ABSENT — the composer's draft seed");
+    return src.replace(SEED_FROM, "useState<MillioneaSlipDraft>(() => (globalThis as { __draft?: MillioneaSlipDraft }).__draft ?? newSlipDraft(hiddenSlots, VOIDED_ROW_FILL))");
+  };
+  const ACTIONS = { "../actions": { buyMillioneaTicketsAction: async () => ({ ok: false, error: "stub" }) } };
+  const composerOf = (src: string) => compileAt(CLIENT, seeded(src), ACTIONS).SlipClient;
+  const ALL = Array.from({ length: 15 }, () => "YES" as const);
+  const SEVEN = ALL.map((p, i) => (i < 7 ? p : null));
+  const drawComposer = (component: unknown, l: L3) => {
+    (globalThis as { __draft?: unknown }).__draft = { v: 2, active: 1, slips: [ALL, SEVEN] };
+    try {
+      return inApp(l, h(component as never, {
+        userId: "u1", weekId: "w1", weekNumber: 49, closesAt: CLOSE, firstEventAt: EVENT, serverNow: NOW, questions: QS, hiddenSlots: [],
+        price: 1_000, cap: 10, held: 0, balance: 50_000, freeCancelMinutes: 5, pct: 13, depositFacts: null,
+      } as never));
+    } finally { delete (globalThis as { __draft?: unknown }).__draft; }
+  };
+  const pillsOf = (m: string) => {
+    const box = /data-testid="millionea-ticket-drafts"[^>]*>([\s\S]*?)<\/section>/.exec(m)?.[1] ?? "";
+    return {
+      label: textOf(/<span aria-hidden="true" class="[^"]*eyebrow[^"]*">([^<]*)<\/span>/.exec(box)?.[1] ?? ""),
+      pills: [...box.matchAll(/<button type="button" aria-pressed="(true|false)" aria-label="([^"]*)"[^>]*>([\s\S]*?)<\/button>/g)].map((x) => ({ pressed: x[1], name: textOf(x[2]), text: textOf(x[3]) })),
+    };
+  };
+  const composer = composerOf(raw(CLIENT));
+  const seen = LOCALES.map((l) => ({ l, ...pillsOf(drawComposer(composer, l)) }));
+  const want = (l: L3, n: number, p: string) => `${fill(dict[l].millionea.draftTicket, { n })} · ${p}`;
+  ok("11.1 · ruling (a) · the switcher's visible label is the noun, once (\"Tiketi\" / \"Tickets\" / 彩票), and each pill says only its number and progress — \"1 · 15/15\", \"2 · 7/15\" — in sw, en and zh",
+    seen.every(({ l, label, pills }) => label === dict[l].millionea.draftTicketsNoun && pills.length === 2 && pills[0].text === "1 · 15/15" && pills[1].text === "2 · 7/15"),
+    j(seen.map(({ l, label, pills }) => ({ l, label, texts: pills.map((p) => p.text) }))));
+  ok("11.2 · …and each pill is NAMED with the noun and the count — \"Tiketi 1 · 15/15\", \"Ticket 2 · 7/15\", \"彩票 1 · 15/15\" — the pressed one the ticket being answered",
+    seen.every(({ l, pills }) => pills.length === 2 && pills[0].name === want(l, 1, "15/15") && pills[1].name === want(l, 2, "7/15") && pills[1].pressed === "true"),
+    j(seen.map(({ l, pills }) => ({ l, names: pills.map((p) => p.name) }))));
+  // PLANT: the name left off the pills — a reader hears "1 · 15/15" and no ticket.
+  const unnamed = composerOf(raw(CLIENT).replace(", ariaLabel: `${nameOf(i)} · ${progress}` };", " };"));
+  const lostHtml = drawComposer(unnamed, "sw");
+  const lostBox = /data-testid="millionea-ticket-drafts"[^>]*>([\s\S]*?)<\/section>/.exec(lostHtml)?.[1] ?? "";
+  ok("11.2′ PLANT · pills drawn without their names are caught (both pills still there, the noun gone from what a reader hears)",
+    (lostBox.match(/aria-pressed="/g) ?? []).length === 2 && pillsOf(lostHtml).pills.length === 0);
+}
+
+/* ══ §12 · ROUND 2 · THE WIRING ROUND 2 ADDED (S5-R2-SLIP 2 and 3) ═══════════════════════════════════════════════════════ */
+section("§12 · round 2 · the stamp notes each ticket's free cancel for its drawing; TICKETS' cancel confirm hands its dim to its result");
+{
+  // 12.1 · "View ticket" opens a ticket whose free cancel is open: the stamp notes the window (TICKETS' `MaswaliGhostHint`)
+  // for every serial of the purchase while the window is known, so the ticket's loading drawing holds the cancel's band and
+  // the clauses land where it drew them. Drawn by the server with a landed cut in its state (one substitution, found once),
+  // the hint stubbed to draw what it is handed.
+  const CLIENT = "src/app/millionea/slip/slip-client.tsx";
+  // The landing sets both: `cut` (the stamp is up) and `shownCut` (the words it shows, kept through its exit — M3).
+  const CUT_FROM = "const [cut, setCut] = useState<Cut | null>(null);", SHOWN_FROM = "const [shownCut, setShownCut] = useState<Cut | null>(null);";
+  const withCut = (src: string) => {
+    for (const a of [CUT_FROM, SHOWN_FROM]) if (src.split(a).length - 1 !== 1) throw new Error(`PREMISE ABSENT — the stamp's "${a.slice(0, 30)}…"`);
+    return src.replace(CUT_FROM, "const [cut, setCut] = useState<Cut | null>(() => (globalThis as { __cut?: Cut }).__cut ?? null);")
+      .replace(SHOWN_FROM, "const [shownCut, setShownCut] = useState<Cut | null>(() => (globalThis as { __cut?: Cut }).__cut ?? null);");
+  };
+  const STUBS = {
+    "../actions": { buyMillioneaTicketsAction: async () => ({ ok: false, error: "stub" }) },
+    "@/components/maswali/maswali-ghost-hint": {
+      MaswaliGhostHint: (p: { serial: string; cancelUntil: number }) => h("i", { "data-hint": p.serial, "data-until": String(p.cancelUntil) }),
+    },
+  };
+  const stampOf = (src: string) => compileAt(CLIENT, withCut(src), STUBS).SlipClient;
+  const drawWith = (component: unknown, cut: unknown) => {
+    (globalThis as { __cut?: unknown }).__cut = cut;
+    try {
+      return inApp("sw", h(component as never, {
+        userId: "u1", weekId: "w1", weekNumber: 49, closesAt: CLOSE, firstEventAt: EVENT, serverNow: NOW, questions: QS, hiddenSlots: [],
+        price: 1_000, cap: 10, held: 0, balance: 50_000, freeCancelMinutes: 5, pct: 13, depositFacts: null,
+      } as never));
+    } finally { delete (globalThis as { __cut?: unknown }).__cut; }
+  };
+  const hints = (m: string) => [...m.matchAll(/<i data-hint="([^"]*)" data-until="([^"]*)"><\/i>/g)].map((x) => ({ serial: x[1], until: Number(x[2]) }));
+  const UNTIL = "2026-12-01T09:05:00.000Z";
+  const two = { serials: ["MLN-2026-W49-000041", "MLN-2026-W49-000042"], firstTicketNumber: 1, weekNumber: 49, cancelUntil: UNTIL, total: 2_000 };
+  const stamp = stampOf(raw(CLIENT));
+  const open2 = hints(drawWith(stamp, two)), unknown = hints(drawWith(stamp, { ...two, cancelUntil: null })), none = hints(drawWith(stamp, null));
+  ok("12.1 · the stamp notes the free cancel of every ticket it names, at the window's own end — so \"View ticket\" lands on a drawing that holds the cancel's band — and notes nothing when the window is not known, nor with no stamp up",
+    j(open2) === j(two.serials.map((serial) => ({ serial, until: Date.parse(UNTIL) }))) && unknown.length === 0 && none.length === 0, j({ open2, unknown, none }));
+  const HINT_LINE = '{cut && cut.cancelUntil !== null ? cut.serials.map((serial) => <MaswaliGhostHint key={serial} serial={serial} cancelUntil={Date.parse(cut.cancelUntil ?? "")} />) : null}';
+  const noHint = raw(CLIENT).replace(HINT_LINE, "{null}");
+  ok("12.1′ PLANT · the stamp's note taken out is caught (the ticket's drawing would hold no band, and the clauses land a band lower than drawn)",
+    noHint !== raw(CLIENT) && hints(drawWith(stampOf(noHint), two)).length === 0);
+
+  // 12.4 · "View ticket" is the kit's Link (the lead's ruling): the stamp hands the kit the ticket's address — a batch, the
+  // list's — and its press only closes the stamp: the Link moves (production prefetches the ticket's loading drawing while the
+  // stamp is up), so the press pushes nothing itself. The result modal stubbed to keep what it is handed; the router's push
+  // counted. (A press after the server's render is a no-op state update; the old press raised a window event and pushed.)
+  const stampProps: Record<string, unknown>[] = [];
+  const RESULT_STUB = { ...STUBS, "@/components/markets/operation-result-modal": { OperationResultModal: (p: Record<string, unknown>) => { stampProps.push(p); return null; } } };
+  const linkOf = (src: string, cut: unknown) => {
+    stampProps.length = 0;
+    drawWith(compileAt(CLIENT, withCut(src), RESULT_STUB).SlipClient, cut);
+    const p = stampProps.at(-1) ?? {};
+    let pushes = 0, threw = "";
+    const push = ROUTER.push;
+    ROUTER.push = () => { pushes++; };
+    try { (p.onPrimary as (() => void) | undefined)?.(); } catch (e) { threw = String(e).slice(0, 80); } finally { ROUTER.push = push; }
+    return { href: p.primaryHref, pushes, threw };
+  };
+  const one = { ...two, serials: [two.serials[0]] };
+  const single = linkOf(raw(CLIENT), one), batch = linkOf(raw(CLIENT), two);
+  ok("12.4 · the stamp's \"View ticket\" is the kit's Link to the ticket (a batch's: to the list), and its press only closes the stamp — it pushes nothing itself",
+    single.href === `/millionea/tickets/${one.serials[0]}` && batch.href === "/millionea/tickets" && single.pushes === 0 && batch.pushes === 0 && !single.threw && !batch.threw,
+    j({ single, batch }));
+  const OLD_PRESS = 'onPrimary={() => {\n          const c = stamp;\n          setCut(null);\n          if (c) navigate(() => router.push(c.serials.length > 1 ? MILLIONEA_HREF.tickets as never : millioneaTicketHref(c.serials[0]) as never));\n        }}';
+  const oldPress = raw(CLIENT).replace(/\n {8}primaryHref=\{[^\n]*\n/, "\n").replace("onPrimary={() => setCut(null)}", OLD_PRESS);
+  const was = linkOf(oldPress, one);
+  ok("12.4′ PLANT · the stamp as it was (a button whose press raised the progress event and pushed) is caught — no address handed, a push or a throw on press",
+    oldPress !== raw(CLIENT) && was.href === undefined && (was.pushes > 0 || was.threw !== ""), j(was));
+
+  // 12.2 · TICKETS' free cancel wears the slip's kit options (round 2, agreed with TICKETS): the confirm Millionea's panel class
+  // (kp-mln-zh) and the hand-off's closing edge, the result the opening edge (`handoff={open}`) with its panel a beat late
+  // (`panelDelay`). Drawn by the server with the two dialogs stubbed to draw what they are handed, and the two states the
+  // page reaches by a press seeded (one substitution each, found once): the result up, the confirm closing into it.
+  const ACTS = "src/app/millionea/tickets/[serial]/ticket-acts.tsx";
+  const HOST_OPEN = "  const [open, setOpen] = useState(false);\n  const [shown, setShown] = useState(0);";
+  const OUT_FROM = "const [handoffOut, setHandoffOut] = useState(false);";
+  const seededActs = (src: string) => {
+    for (const a of [HOST_OPEN, OUT_FROM]) if (src.split(a).length - 1 !== 1) throw new Error(`PREMISE ABSENT — ticket-acts: "${a.trim().slice(0, 40)}…"`);
+    return src
+      .replace(HOST_OPEN, "  const [open, setOpen] = useState(() => (globalThis as { __hostOpen?: boolean }).__hostOpen === true);\n  const [shown, setShown] = useState(0);")
+      .replace(OUT_FROM, "const [handoffOut, setHandoffOut] = useState(() => (globalThis as { __handoffOut?: boolean }).__handoffOut === true);");
+  };
+  const handed = (p: Record<string, unknown>) => ({ "data-open": String(p.open), "data-panel": String(p.panelClassName ?? ""), "data-handoff": String(p.handoff), "data-delay": String(p.panelDelay) });
+  const ACT_STUBS = {
+    "../../actions": { cancelMillioneaTicketAction: async () => ({ ok: false, error: "stub" }), markMillioneaTicketSeenAction: async () => undefined },
+    "@/components/ui/modal": { ConfirmModal: (p: Record<string, unknown>) => h("i", { "data-dialog": "confirm", ...handed(p) }) },
+    "@/components/markets/operation-result-modal": { OperationResultModal: (p: Record<string, unknown>) => h("i", { "data-dialog": "result", ...handed(p) }) },
+    "@/components/maswali/maswali-ticket-cancel": { MaswaliCancelButton: () => null },
+    "@/components/maswali/maswali-moment": { MaswaliMomentsHost: (p: { children: unknown }) => p.children },
+    "@/components/markets/win-celebration": { dispatchWinCelebration() {} },
+    "@/components/ui/toast": { useToast: () => ({ toast() {} }) },
+  };
+  const actsOf = (src: string) => compileAt(ACTS, seededActs(src), ACT_STUBS) as { TicketHost: unknown; TicketCancel: unknown };
+  const SERIAL = "MLN-2026-W49-000041";
+  const drawActs = (A: { TicketHost: unknown; TicketCancel: unknown }, hostOpen: boolean, handoffOut: boolean) => {
+    const g = globalThis as { __hostOpen?: boolean; __handoffOut?: boolean };
+    g.__hostOpen = hostOpen; g.__handoffOut = handoffOut;
+    try {
+      const m = inApp("sw", h(A.TicketHost as never, { serial: SERIAL, through: "2026-12-01T09:00:00.000Z" } as never,
+        h(A.TicketCancel as never, { serial: SERIAL, ownerId: "u1", until: NOW + 5 * 60_000, serverNow: NOW, price: 1_000, cap: 10, windowMins: 5 } as never)));
+      const read = (kind: string) => {
+        const tag = new RegExp(`<i data-dialog="${kind}"([^>]*)><\\/i>`).exec(m)?.[1] ?? "";
+        return Object.fromEntries([...tag.matchAll(/data-([a-z]+)="([^"]*)"/g)].map((x) => [x[1], x[2]]));
+      };
+      return { confirm: read("confirm"), result: read("result") };
+    } finally { delete g.__hostOpen; delete g.__handoffOut; }
+  };
+  const acts = actsOf(raw(ACTS));
+  const atRest = drawActs(acts, false, false), resultUp = drawActs(acts, true, false), closingInto = drawActs(acts, false, true);
+  ok("12.2 · TICKETS' cancel confirm wears Millionea's panel (kp-mln-zh) and hands its dim on exactly when its state says (false at rest, true closing into the result); the result holds the dim from its first frame exactly while it is up (`handoff` = `open`) and always rises a beat late",
+    [atRest, resultUp, closingInto].every((s) => s.confirm.panel === "kp-mln-zh" && s.result.delay === "true" && s.result.handoff === s.result.open)
+      && atRest.confirm.handoff === "false" && closingInto.confirm.handoff === "true" && atRest.result.open === "false" && resultUp.result.open === "true",
+    j({ atRest, resultUp, closingInto }));
+  // PLANTS: the confirm keeping its own dim (no hand-off), and the result fading a new dim in (no hand-off on its side).
+  const ownDim = actsOf(raw(ACTS).replace("handoff={handoffOut}", "handoff={false}"));
+  const fadeIn = actsOf(raw(ACTS).replace("handoff={open}", "handoff={false}"));
+  ok("12.2′ PLANT · the confirm keeping its own dim, or the result fading a new dim in, is caught (the dim would lift between the two)",
+    drawActs(ownDim, false, true).confirm.handoff === "false" && drawActs(fadeIn, true, false).result.handoff === "false");
+  // 12.3 · the order the dim needs (as 4.P1 holds the slip's): a landed cancel sets the hand-off and closes the confirm in the
+  // same continuation that opens the result — one commit, so the dim never lifts between them — and the door re-arms it to
+  // false each time it opens the confirm (a refused cancel closes with its own dim, the toast over the page).
+  const cancelDefects = (src: string) => {
+    const s = decomment(src).replace(/\s+/g, " ");
+    const d: string[] = [];
+    const landed = s.indexOf("const r = await cancelMillioneaTicketAction(fd);"), refusal = s.indexOf("const failure = r as ReasonedFailure;");
+    const branch = landed >= 0 && refusal > landed ? s.slice(landed, refusal) : "";
+    const set = branch.indexOf("setHandoffOut(r.ok && !!r.data);"), close = branch.indexOf("setOpen(false);"), show = branch.indexOf("showResult?.(r.data.refunded);");
+    if (!(set >= 0 && close > set && show > close)) d.push("a landed cancel does not hand its dim on, close the confirm and open the result in one continuation");
+    if (!s.includes("onPress={() => { setHandoffOut(false); setOpen(true); }}")) d.push("the door does not re-arm the hand-off when it opens the confirm");
+    return d;
+  };
+  const cd = cancelDefects(raw(ACTS));
+  ok("12.3 · a landed cancel hands the dim on and closes its confirm in the continuation that opens the result (one commit); the door re-arms the hand-off each time it opens the confirm", cd.length === 0, cd.join(" | "));
+  const late = raw(ACTS).replace("      setHandoffOut(r.ok && !!r.data);\n      setOpen(false);", "      setOpen(false);\n      await Promise.resolve();\n      setHandoffOut(r.ok && !!r.data);");
+  ok("12.3′ PLANT · the hand-off set after the confirm closed (a later continuation) is caught", late !== raw(ACTS) && cancelDefects(late).length > 0);
+}
+
 console.log(`\n${"═".repeat(70)}\n  MASWALI SLIP DESIGN: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run printed. */
-const MIN_ASSERTIONS = 74;
+const MIN_ASSERTIONS = 92;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);
