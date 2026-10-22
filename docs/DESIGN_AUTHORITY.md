@@ -3011,6 +3011,32 @@ the corrections are recorded here rather than tidied away.
    `/admin/compliance` truncated their primary content with no affordance (**33px box, 486px of
    content**).
 
+**And one rule over every rule above and below it that depends on how wide text draws (2026-10-23):**
+
+5. ⭐ **TEXT GEOMETRY IS HELD ON THE PHONES' TWO ENGINES, MEASURED (the lead's ruling of 2026-10-22, corrected
+   2026-10-23 from the measured advance table; MASWALI-BUILD S5-R3-FIX).** A label that must fit its slot, a loading
+   drawing's per-language line table that must land within 1px, a rail's least gap: each is MEASURED and GUARDED in a
+   browser on the Linux runner, in **Chromium AND WebKit**, at a phone's device pixel ratio (**2.625 and 3**), with the
+   phones' Chinese face installed (`fonts-noto-cjk`: the Noto Sans CJK that `--font-cjk` names for Android); and "never
+   clipped, never overflowing" is checked at ratio **1** too. A width read on another machine is a record, never the
+   truth: round 2's widths and tables were read on Windows, and every rule derived from them is re-derived in the two
+   engines (the classic rail below; the journey rail, §K 8b and §M8a item 11; the loading drawings, §M8a item 22).
+   *Why, measured (the runner, 2026-10-22, run 39830221442):* the rail's 11px JetBrains Mono draws **7.0px a letter in
+   Chromium at every pixel ratio** (1, 1.5, 2, 2.625 and 3 — "Up & Down" 63.000px each time: every advance rounded to
+   the pixel) and **6.6px in WebKit** at every ratio (59.406px, unrounded), where the Windows machine had read Chromium
+   at 6.6. So the two engines bracket the phones, and a rule that holds in both holds on a phone; the wider, Chromium,
+   binds a fit and a gap. The weight does not move it: 600 and 700 measure the same in both engines (`fonts.css`
+   declares the face at 400–600, and a 700 request draws that face at the same advance).
+   ⛔ **A Chinese reading without the CJK face is VOID.** Without it the runner draws Chinese as empty boxes ("市场"
+   17px, where the face draws 22px), so every zh geometry read there before 2026-10-23 is withdrawn.
+   - **Its first application, the classic phone rail at 320** (S5-R3-FIX F1 + F5): its nine-letter labels — "Up & Down",
+     "Mubashara", and "Millionea" while its track is drawn — are 67px in Chromium in a 64px fifth of a 320 phone, so they
+     were cut ("Up & Do…", on production). Below 335px, where every label fits untouched, all five labels close their
+     tracking by D14's 0.04em (63.05px in Chromium, 59.45px in WebKit), in every language: the track stays its siblings'
+     own, and nothing else moves. ⚠️ A change every classic reader sees at 320–334px. Guard: `qa:classic-rail` (each
+     label's natural width against its box, and no two labels' ink closer than 8px, at 320–340, 360 and 412 in both
+     engines and at ratios 2.625, 3 and 1; dark and drawn).
+
 ⚠️ **THE INSTRUMENT NEEDED TWO CORRECTIONS BEFORE IT MEASURED ANYTHING REAL,** and both were
 false POSITIVES that would have "fixed" correct code: it first reported every cell of tables
 inside `overflow-x:auto` wrappers — this repo's own rule for wide content, so the sweep was
@@ -3370,7 +3396,8 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     holds every Millionea hop to it on a throttled network — only the destination's own drawing, or none, is ever up; its
     `--prove-red` undoes the register's pick and must catch it. A drawing is drawn in the page's own type — a line of
     words is the kit's bar inside the very line box those words fill (`GhostTextLine`, the hub's L7 rule), its lines per
-    language from the page's measured tables — and lands where the page puts each band (`qa:maswali-register-shots`'
+    language from the page's measured tables (measured in the phones' two engines, §M4a rule 5 — never on another
+    machine) — and lands where the page puts each band (`qa:maswali-register-shots`'
     how-ghost and register-ghosts hops, within 1px, each drawing read once the route's entrance — `.route-enter`, 10px
     rising over `--t-move` — has settled).
 23. **A fact list spaces its marks as a typed " · " does (the lead's SEP ruling, 2026-10-22 — measured, no CSS change).**

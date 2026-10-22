@@ -990,9 +990,12 @@ section("4 · C4 the journey rail stacks from the top only where a label wraps �
   // first fit one line (§4.1) to the width they clear the minimum untouched — both derived here from the dictionary.
   /** The one selector a four-tab tracking rule may name: Swahili's labels on the rail that carries no `data-tabs`. */
   const FOUR_SW = `${FOUR}:lang(sw) .kp-jtab__label`;
-  /** Every rule that tracks a rail label (or anything in the journey rail) without naming the five-tab rail. */
+  /** Every rule that tracks a rail label (or anything in the journey rail) without naming the five-tab rail.
+   *  RE-PINNED OPENLY (MASWALI-BUILD S5-R3-FIX F1, 2026-10-23): a rule written for the classic rail alone — its selector
+   *  excludes the journey rail, `:not(.kp-rail--journey)` — cannot reach the journey rail, so it is left out of this count
+   *  (the classic rail's labels close their tracking below 335px, DESIGN_AUTHORITY §M4a rule 5). */
   const fourReached = (css: string) => [...css.matchAll(/(?:^|\n|\{ )([^{}\n]*(?:kp-jtab__label|kp-rail__label|kp-rail--journey)[^{}\n]*)\{([^}]*)\}/g)]
-    .filter((m) => /letter-spacing/.test(m[2]) && !m[1].includes('[data-tabs="5"]')).map((m) => m[1].trim());
+    .filter((m) => /letter-spacing/.test(m[2]) && !m[1].includes('[data-tabs="5"]') && !m[1].includes(":not(.kp-rail--journey)")).map((m) => m[1].trim());
   const clear4 = Number((4 * (Math.max(...TAB.JOURNEY_TABS.map((d) => mono(TAB.tabLabel(dict.sw, d.label)))) + MIN_GAP)).toFixed(1));
   const fourRule = (px: number, v: string) => `@media (min-width: ${px}px) { ${FOUR_SW} { letter-spacing: ${v}; } }`;
   const G4 = leastGap(CSS, TAB.JOURNEY_TABS);

@@ -7686,6 +7686,17 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   text-overflow: clip;
   text-align: center;
 }
+/* ⭐ EVERY LABEL WHOLE AT 320, IN BOTH OF THE PHONES' ENGINES (MASWALI-BUILD S5-R3-FIX F1 + F5, 2026-10-23; DESIGN_AUTHORITY
+   §M4a rule 5: text geometry is measured in Chromium and WebKit on the runner). The rail's nine-letter labels — English
+   "Up & Down", Swahili "Mubashara", and "Millionea" in all three languages while its track is drawn — were cut at 320 in
+   Chromium ("Up & Do…", on production too): Chromium draws the 11px mono 7px a letter at every pixel ratio, so such a
+   label is 9 × 7 + 4 = 67px in a fifth of a 320 phone, 64px (WebKit draws 6.6px a letter: 63.4px, whole). Below 335px
+   (5 × 67), where every label fits untouched, the rail's labels close their tracking by D14's 0.04em — 9 × 6.56 + 4 =
+   63.05px in Chromium, 59.45px in WebKit — all five, in every language, so the track stays its siblings' own. The slots,
+   the pips, the taps and the words are untouched. `qa:classic-rail` reads every label whole (its natural width against its
+   box) and no two labels' ink closer than 8px, at 320–340, 360 and 412 in both engines (dark and drawn). */
+.kp-rail:not(.kp-rail--journey) .kp-rail__label { letter-spacing: -0.04em; }
+@media (min-width: 335px) { .kp-rail:not(.kp-rail--journey) .kp-rail__label { letter-spacing: normal; } }
 /* The product-line dot — the same 5px brand mark the desktop nav carries, on the pip's corner.
    ⭐ W3: it keeps its place beside the glyph — 2px right of the glyph's box and 2px above it, as on the 44×26 pip — so
    on the 56×32 pip around a 24px glyph it stands 9px from the right and 2px from the top, inside the lit pill's curve. */

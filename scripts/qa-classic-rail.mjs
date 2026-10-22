@@ -25,9 +25,16 @@
  * the top bar's Millionea link there exactly when the door is drawn). WITHDRAWN: no Millionea trace in any page read
  * (qa:live's matcher). Safe-area insets: Playwright reports every inset as 0 (globals.css D54), so the rail's inset rules
  * are read from the stylesheet, not seen.
+ * ⭐ THE PHONES' TWO ENGINES (MASWALI-BUILD S5-R3-FIX F1 + F5, 2026-10-23; DESIGN_AUTHORITY §M4a rule 5): first, for a guest
+ * (the widest coin label), the rail's TEXT GEOMETRY in Chromium AND WebKit (ENGINES) at a phone's pixel ratio (2.625, 3)
+ * and at 1, at every width from 320 to 340 (the labels' 335px tracking threshold among them), 360 and 412, in sw · en ·
+ * zh: every label WHOLE at every ratio — its natural width (a copy, unconstrained: one line, or its longest word where it
+ * may wrap) against its own box, to the hundredth of a pixel (the box's integer scroll width hid a 0.4px cut at 333) —
+ * and, at a phone's ratio, no two labels' ink closer than 8px. Tiles of both engines at 320, 334, 340 and 360 (ratio 3).
+ * Every cell below also requires its labels whole by that measure.
  * ⚠️ RAIL=drawn takes a real one-hour break on the dev store's demo account: run it on a fresh in-memory server.
  */
-import { chromium } from "playwright";
+import { chromium, webkit } from "playwright";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { premise, demoSession, LOCALE_COOKIE } from "./live/journey-pass.mjs";
@@ -39,6 +46,10 @@ const OUT = resolve(process.argv[2] ?? join(process.cwd(), ".qa-artifacts", "cla
 const LOCALES = (process.env.LOCALES || "sw,en,zh").split(",");
 const PORTRAIT = (process.env.WIDTHS || "320,360,412,768").split(",").map(Number);
 const LANDSCAPE = { width: 740, height: 360 };
+const ENGINES = (process.env.ENGINES || "chromium,webkit").split(",");
+const GEO_WIDTHS = (process.env.GEO_WIDTHS || "320,321,322,323,324,325,326,327,328,329,330,331,332,333,334,335,336,337,338,339,340,360,412").split(",").map(Number);
+/** A phone's pixel ratios, then 1 (where only "never cut" is held). */
+const RATIOS = [2.625, 3, 1];
 mkdirSync(OUT, { recursive: true });
 let pass = 0;
 const fails = [];
@@ -81,6 +92,16 @@ const READ_RAIL = () => {
       }
     }
     const lcs = label ? getComputedStyle(label) : null;
+    // WHOLE, TO THE HUNDREDTH OF A PIXEL: a copy of the label, unconstrained (one line where the label is one line, its
+    // longest word where it may wrap), against the label's own box. Positive = the label is cut by that much.
+    let cut = null;
+    if (label && lcs) {
+      const copy = label.cloneNode(true);
+      copy.style.cssText = `position:absolute;left:0;top:0;visibility:hidden;max-width:none;width:${lcs.whiteSpace === "nowrap" ? "max-content" : "min-content"}`;
+      label.parentElement.appendChild(copy);
+      cut = +(copy.getBoundingClientRect().width - label.getBoundingClientRect().width).toFixed(2);
+      copy.remove();
+    }
     const dot = el?.querySelector(".kp-rail__dot");
     const pr = R(pip), dr = R(dot);
     return {
@@ -89,7 +110,7 @@ const READ_RAIL = () => {
       box: R(el), pip: pr, glyph: R(glyph), label: R(label),
       lines: new Set(rects.map((x) => Math.round(x.top))).size,
       inkL: rects.length ? Math.min(...rects.map((x) => x.left)) : null, inkR: rects.length ? Math.max(...rects.map((x) => x.right)) : null,
-      clipped: label ? label.scrollWidth > label.clientWidth + 0.5 : null,
+      clipped: label ? label.scrollWidth > label.clientWidth + 0.5 : null, cut,
       font: lcs ? [lcs.fontFamily.split(",")[0], lcs.fontSize, lcs.fontWeight, lcs.letterSpacing, lcs.lineHeight].join(" ") : null,
       ink: !!label?.querySelector(".kp-millionea-ink"), gold: !!el?.querySelector(".kp-millionea-glyph"),
       glyphColor: pip ? getComputedStyle(pip).color : null, labelColor: label ? getComputedStyle(label).color : null,
@@ -148,7 +169,7 @@ async function composition(name, cookies, drawn, opts = {}) {
       if (coin?.box && (await page.locator('[data-testid="deposit-rail"]').getAttribute("href")) !== coinWant) problems.push(`coin → ${await page.locator('[data-testid="deposit-rail"]').getAttribute("href")}`);
       for (const s of m.slots) {
         if (!(s.box.w >= 40 && s.box.h >= 40)) problems.push(`${s.slot} tap ${s.box.w}×${s.box.h}`);
-        if (s.clipped) problems.push(`${s.slot} label cut ("${s.text}")`);
+        if (s.clipped || s.cut > 0.01) problems.push(`${s.slot} label cut ("${s.text}", ${s.cut}px)`);
         const wraps = l === "sw" && s.slot === "/updown";
         if (!wraps && s.lines !== 1) problems.push(`${s.slot} label on ${s.lines} lines`);
       }
@@ -318,7 +339,56 @@ async function perReader(name, cookies, drawn, l, opts) {
   }
 }
 
+/** THE PHONES' TWO ENGINES (DESIGN_AUTHORITY §M4a rule 5): a guest's rail on /markets — the widest coin label, Deposit — in
+ *  each engine at each ratio and language, across GEO_WIDTHS by resizing one page: every label whole (`cut`), and at a
+ *  phone's ratio no two labels' ink closer than 8px. One check per engine × ratio × language, its worst cells printed. */
+async function geometry(drawn) {
+  const fourth = drawn ? "/millionea" : "/live";
+  const frames = (page) => page.evaluate(() => new Promise((d) => requestAnimationFrame(() => requestAnimationFrame(() => d(true)))));
+  for (const engine of ENGINES) {
+    const b = await (engine === "webkit" ? webkit : chromium).launch();
+    try {
+      for (const dsf of RATIOS) {
+        for (const l of LOCALES) {
+          const ctx = await b.newContext({ viewport: { width: GEO_WIDTHS[0], height: 780 }, deviceScaleFactor: dsf, isMobile: true, hasTouch: true });
+          await ctx.addCookies([{ name: LOCALE_COOKIE, value: l, url: BASE }]);
+          const page = await ctx.newPage();
+          await page.goto(`${BASE}/markets`, { waitUntil: "domcontentloaded", timeout: 180_000 });
+          await settle(page);
+          const bad = [];
+          let least = Infinity, leastAt = null, worst = -Infinity, worstAt = null;
+          for (const w of GEO_WIDTHS) {
+            await page.setViewportSize({ width: w, height: 780 });
+            await frames(page);
+            await page.waitForTimeout(30);
+            const m = await page.evaluate(READ_RAIL);
+            if (!m?.shown) { bad.push(`${w}: no rail`); continue; }
+            if (m.slots[3]?.slot !== fourth) bad.push(`${w}: fourth slot ${m.slots[3]?.slot}`);
+            for (const s of m.slots) {
+              if (s.cut !== null && s.cut > worst) { worst = s.cut; worstAt = `${w} "${s.text}"`; }
+              if (s.cut > 0.01) bad.push(`${w}: "${s.text}" cut ${s.cut}px`);
+            }
+            const g = Math.min(...m.slots.slice(1).map((s, i) => +(s.inkL - m.slots[i].inkR).toFixed(2)));
+            if (g < least) { least = g; leastAt = w; }
+            if (dsf !== 1 && !(g >= 8 - 0.05)) bad.push(`${w}: labels ${g}px apart`);
+            if (dsf === 3 && [320, 334, 340, 360].includes(w)) {
+              const box = await page.locator("nav.kp-rail").first().boundingBox();
+              await page.screenshot({ path: join(OUT, `geometry-${engine}-${l}-${w}.png`), clip: { x: 0, y: Math.max(0, box.y - 4), width: w, height: box.height + 4 } });
+            }
+          }
+          ok(`GEOMETRY · ${engine} @${dsf} · ${l} · ${GEO_WIDTHS[0]}–${GEO_WIDTHS.at(-1)}px: every label whole (the closest, ${worst}px at ${worstAt})${dsf === 1 ? "" : `; no two labels closer than 8px (least ${least}px at ${leastAt})`}`,
+            bad.length === 0, bad.slice(0, 6).join("; "));
+          await ctx.close();
+        }
+      }
+    } finally {
+      await b.close();
+    }
+  }
+}
+
 try {
+  await geometry(MODE === "drawn");
   // The stylesheet's inset rules (Playwright reports every inset as 0, so they are read, not seen).
   const probe = await browser.newContext({ viewport: { width: 360, height: 780 } });
   const pp = await probe.newPage();
