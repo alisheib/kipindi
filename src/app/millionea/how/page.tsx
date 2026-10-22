@@ -141,7 +141,9 @@ export default async function MillioneaHowPage() {
         <I.chevronRight s={14} edge="end" text="body-400" />
       </Link>
     </span>,
-    keepFact(locale, t.millionea.ruleSunset),
+    // MR-30 · the final week's rule in its one wording (the lead's ruling, 2026-10-22): the hub's, the slip's and the
+    // confirm sheet's own key, after the stop's announcement.
+    keepFact(locale, fill(t.millionea.ruleSunset, { rule: t.millionea.finalWeekRule })),
   ];
   const H2 = "font-display text-title-sm font-bold text-text";
   return (

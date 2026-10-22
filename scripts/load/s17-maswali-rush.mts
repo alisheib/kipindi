@@ -33,7 +33,10 @@
  *
  * ⏱ TARGETS. Each latency target below is a named constant at TBD-BASELINE: S7's acceptance sets them from the baseline
  * the lead measures with this script, and records them beside their results (MASWALI-PLAN §7b S7). Until a constant is a
- * number its line prints the measurement and judges nothing.
+ * number its line prints the measurement and judges nothing. ⭐ SET (the lead, 2026-10-22, from the first baseline at
+ * dd9bea8f6 — a landed purchase p95 699 ms, p99 1,425 ms, no BUSY): a landed purchase p95 at most 1,000 ms and p99 at
+ * most 2,000 ms, and no purchase answered BUSY after its retries; the refusal, Up & Down and close-stamp targets stay
+ * TBD-BASELINE. The rush runs again on the final merged head.
  *
  * Knobs (environment): RUSH_TEST_REFERENCE_PER_MIN (30 — synthetic test reference, not measured production traffic),
  * RUSH_MULTIPLIER (10), RUSH_MINUTES (10), RUSH_LAST_MINUTE_FACTOR (3), RUSH_AFTER_CLOSE_SEC (60), RUSH_INSTANCES (2),
@@ -53,11 +56,12 @@ import pg from "pg";
 import { arrivalFloor, DEFAULT_RUSH, rushShape, rushTargetLabel } from "./s17-maswali-rush-target.mts";
 
 // ⏱ THE TARGETS — TBD-BASELINE until the lead's measured baseline sets them (S7 acceptance). Lower is better for each.
+// The lead set three on 2026-10-22 (MASWALI-PLAN §7b S7): the purchase's p95 and p99, and no BUSY.
 type Target = number | "TBD-BASELINE";
 /** A purchase that landed, from the first send to its answer (BUSY retries included), at the 95th percentile. */
-const TARGET_PURCHASE_P95_MS: Target = "TBD-BASELINE";
+const TARGET_PURCHASE_P95_MS: Target = 1_000;
 /** …at the 99th percentile. */
-const TARGET_PURCHASE_P99_MS: Target = "TBD-BASELINE";
+const TARGET_PURCHASE_P99_MS: Target = 2_000;
 /** A refusal, at the 95th percentile (a refusal is an answer too: a slow "closed" is a slip that hangs at 18:00). */
 const TARGET_REFUSAL_P95_MS: Target = "TBD-BASELINE";
 /** An Up & Down bet during the rush, at the 95th percentile. */
@@ -65,7 +69,7 @@ const TARGET_UPDOWN_P95_MS: Target = "TBD-BASELINE";
 /** From the close to the close's audit row: how long the commitment waited behind the purchases in flight. */
 const TARGET_CLOSE_STAMP_LAG_MS: Target = "TBD-BASELINE";
 /** The share of purchases answered BUSY after every retry, in percent. */
-const TARGET_BUSY_PERCENT: Target = "TBD-BASELINE";
+const TARGET_BUSY_PERCENT: Target = 0;
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const WORKER = "scripts/load/s17-maswali-rush-worker.mts";
@@ -309,7 +313,7 @@ try {
     && check.trialBalance.imbalanced === 0 && check.trialBalance.globalBalanced === true, J(check.trialBalance));
   ok("2.12 · ⭐ every Millionea invariant holds", check.invariants?.ok === true, J(check.invariants?.problems));
 
-  // ── The targets (TBD-BASELINE until the baseline sets them) ────────────────────────────────────────────────────
+  // ── The targets (the lead's three judge; the rest print, TBD-BASELINE) ─────────────────────────────────────────
   console.log(`${NL}THE TARGETS`);
   judge("purchase p95 (ms)", pct(landed.map((b) => b.totalMs), 0.95), TARGET_PURCHASE_P95_MS);
   judge("purchase p99 (ms)", pct(landed.map((b) => b.totalMs), 0.99), TARGET_PURCHASE_P99_MS);
