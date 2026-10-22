@@ -223,7 +223,10 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     const APPROVED_EXTRA = new Map([
       ["src/app/legal/_components.tsx", PHOS_R2A_PART2],
       ["src/app/legal/rules/page.tsx", PHOS_R2A_PART2],
-      ["src/app/legal/privacy/page.tsx", "8d126b819"],
+      // 2026-10-22: 8d126b819 → c58b316ff — the one reviewed line between them: the never-printed Millionea slip
+      // paragraph's English "removed once your ticket is cut" → "… is bought" (Ali's 2026-10-21 ruling 7; the
+      // Privacy v2026-10-17 entry is amended; production's notice is unchanged).
+      ["src/app/legal/privacy/page.tsx", "c58b316ff2116976f5021ad89b242ce09244953e"],
       ["src/app/legal/responsible-gambling/page.tsx", W4],
     ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };
