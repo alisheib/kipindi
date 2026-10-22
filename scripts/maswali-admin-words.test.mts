@@ -16,9 +16,9 @@
  *      modules (`src/lib/maswali-*`, `millionea-*`), and the lock chip every console control draws. A code is kept in a
  *      comment beside the words that replaced it; a comment is never printed.
  *      ⛔ The population is DERIVED from the folders, never listed: a new console file is in it the day it exists.
- *      ⏳ ONE file waits, named with its reason: the desk scripts (`maswali-support-scripts.ts`) are the S6-DOCS lane's,
- *      stripped in its item 9 (the lead's ruling G1). The exclusion is a ratchet: once that file holds no code, this
- *      suite FAILS until the exclusion is deleted, so it cannot outlive its reason.
+ *      The desk scripts (`maswali-support-scripts.ts`) waited outside the census, named with their reason, until the
+ *      S6-DOCS lane's item 9 stripped their codes (S6-DOCS 4); the exclusion was deleted then (S6-DOCS 12), so nothing
+ *      an admin's screen draws waits outside it. The premise (1.0) names the desk scripts.
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -63,29 +63,20 @@ const population = [
   join(ROOT, "src/components/admin/control-locked.tsx"),
 ].filter((p) => SOURCE.test(p)).map(rel).sort();
 
-/** ⏳ The one file that waits, and why. Deleted once the file holds no code (§1.3 fails until then). */
-const WAITING: Record<string, string> = {
-  "src/lib/maswali-support-scripts.ts": "the S6-DOCS lane strips the desk scripts' codes in its item 9 (the lead's G1 ruling)",
-};
-
 console.log("\n§1 · G1 · no programme code outside a comment in any Millionea source an admin reads");
-// The premise: the walk found the console, its services and the lock chip — a census over nothing passes anything.
+// The premise: the walk found the console, its services, the desk scripts and the lock chip — a census over nothing passes anything.
 const must = [
   "src/app/admin/maswali/page.tsx", "src/app/admin/maswali/[weekId]/week-controls.tsx", "src/app/admin/maswali/pools/page.tsx",
   "src/app/admin/maswali/integrity/page.tsx", "src/app/admin/maswali/new/week-builder.tsx", "src/lib/server/maswali-console.ts",
   "src/lib/server/maswali-service.ts", "src/lib/server/maswali-settlement.ts", "src/components/admin/control-locked.tsx",
+  "src/lib/maswali-support-scripts.ts",
 ];
-ok("1.0 · premise: the derived population holds the console's pages, its controls, its services and the lock chip",
+ok("1.0 · premise: the derived population holds the console's pages, its controls, its services, the desk scripts and the lock chip",
   must.every((p) => population.includes(p)) && population.length >= 60, `${population.length} files`);
-const hits = population.filter((p) => !(p in WAITING)).flatMap((p) => codesOutsideComments(read(p)).map((h) => ({ file: p, ...h })));
-ok("1.1 · ⭐ no programme code stands outside a comment in the console, its services or the lock chip", hits.length === 0,
+const hits = population.flatMap((p) => codesOutsideComments(read(p)).map((h) => ({ file: p, ...h })));
+ok("1.1 · ⭐ no programme code stands outside a comment in the console, its services, the desk scripts or the lock chip", hits.length === 0,
   hits.length ? `${hits.length}: ${hits.slice(0, 12).map((h) => `${h.file}:${h.line} ${h.code}`).join(" · ")}` : "");
 for (const h of hits) console.log(`     ${h.file}:${h.line} ${h.code} :: ${h.text}`);
-for (const [file, why] of Object.entries(WAITING)) {
-  ok(`1.2 · the waiting file is still in the population: ${file}`, population.includes(file));
-  const left = codesOutsideComments(read(file)).length;
-  ok(`1.3 · ⏳ ${file} still waits (${why}) — delete its exclusion once it holds no code`, left > 0, `${left} code(s) left`);
-}
 
 if (RED) {
   console.log("\n§R · the plants, in memory — each must be caught (and the comment control must not be)");

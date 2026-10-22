@@ -20,6 +20,8 @@ await runTwoStores({
   // answers and the CSV on its own (5.10-5.12), the pack's bounded reads and its one order (7.3, 7.4) five (59 → 64, 61 → 66).
   // Round 6 · the statements counted (7.3b, one per store) and a failed read stated (7.5) two (64 → 66, 66 → 68).
   // Round 7 · a settled week's held share counted undecided until decided (6.1b) one (66 → 67, 68 → 69).
-  minPass: { memory: 67, postgres: 69 },
+  // S6-DOCS 4 · the float check's unread finding in the pack (1.7b): 67 → 68, 69 → 70, the counts the run on a8b43c946
+  // printed (run 39825278061).
+  minPass: { memory: 68, postgres: 70 },
   dbPrefix: "mlw_evidence",
 });

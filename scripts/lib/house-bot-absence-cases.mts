@@ -286,7 +286,10 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
       // (the chooser) and the dictionary are re-pinned at that merge in the follow-up commit.
       // S6-INT 12 · the binding text re-pinned at 3ea9f088f (S6-INT 11), whose blob is the file as it stands: its Chinese
       // names an event 事件 (the lead's ruling D2; MILLIONEA_RULES_TEXT_SHA d5a5e9e3e680). The route stays at 902afae56.
-      ["src/app/legal/rules/_content-millionea.tsx", "3ea9f088f"],
+      // S6-DOCS 9 · re-pinned at S6-DOCS 8, whose blob is the file as it stands: §11 states the stale-form rule in the
+      // decided words `ruleSunset` carries (MILLIONEA_RULES_TEXT_SHA 46f7b1b18732; COMPLIANCE § "2026-10-22 · The Maswali
+      // Millionea rules' §11 states the stale-form rule …"). Nothing else in the file moved.
+      ["src/app/legal/rules/_content-millionea.tsx", "e613003fd2bd1bfdd07a3716d89a7c76ddd39941"],
       ["src/app/legal/rules/millionea/page.tsx", "902afae56"],
     ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };

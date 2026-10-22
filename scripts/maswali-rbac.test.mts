@@ -15,9 +15,10 @@
  *   §5 the nav: one Millionea group, each item in its page's own domain.
  *   §6 S7-F2 · the Owner's two forms on the trading page (the rules of the next week, the holiday list): each rendered
  *      behind its own flag, with a locked alternative naming its own control — and the values read by every viewer.
- *   §7 (S6, MB-92) the Auditor READS every Millionea record outside the trading console and acts on none; the sealing
- *      officer never opens the evidence; and the evidence module, its page and its download write nothing but the
- *      download's own record.
+ *   §7 (S6, MB-92) the Auditor READS every Millionea console screen but the desk's lookup — the trading pages through the
+ *      console's one route exception (the lead's ruling (m), 2026-10-22), on its compliance view grant — opens no other
+ *      trading page, and acts on none; the nav and the page gate agree; the sealing officer never opens the evidence; and
+ *      the evidence module, its page and its download write nothing but the download's own record.
  *   §8 (S6, MB-64) the support desk's lookup: the support domain's page, never the sealer's; a read in no control table;
  *      its module, page, form and scripts write nothing; its action asks the page's own domain; it records itself
  *      before it answers and answers nothing when the record failed; and a ticket's answers only once its week is final.
@@ -31,13 +32,13 @@
  *      check (a pending promise in a condition is always true), and a role that may open the integrity page but not
  *      record the letters' check is drawn its lock — red plant (7).
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { decomment } from "./lib/decomment.mts";
 import { CONTROL_DOMAIN, canUseControl, type ControlId } from "../src/lib/server/control-gates.ts";
-import { canView } from "../src/lib/server/rbac.ts";
-import { domainForPath, type Role } from "../src/lib/server/roles.ts";
-import { NAV_GROUPS } from "../src/components/admin/admin-nav-groups.ts";
+import { canView, canViewPath, viewableDomains, setRoleGrant, resetRoleGrantsToDefaults, staffRoleInfos } from "../src/lib/server/rbac.ts";
+import { domainForPath, auditorReadsPath, ROUTE_DOMAINS, type Role } from "../src/lib/server/roles.ts";
+import { NAV_GROUPS, filterNavGroups } from "../src/components/admin/admin-nav-groups.ts";
 
 let pass = 0, fail = 0;
 const ok = (label: string, cond: boolean, extra = "") => {
@@ -151,28 +152,87 @@ const WRITES = /\.(create|createMany|createManyAndReturn|update|updateMany|upser
 
 // ── §7 · S6 · the Auditor reads, nothing writes (MB-92) ─────────────────────
 {
-  // Written out, never derived from the grant table under test: who may open each Millionea page, by default.
+  // Written out, never derived from the grant table under test: who may open each Millionea page, by default — through
+  // `canViewPath`, the page gate's own question. ⭐ MB-92 as built (the lead's ruling (m), 2026-10-22): the Auditor opens
+  // every Millionea console screen but the desk's lookup — the week list, a week page, its edit page and the draft builder
+  // included — read-only.
   const OPENS: Record<string, Role[]> = {
-    "/admin/maswali": ["ADMIN", "MODERATOR"],
-    "/admin/maswali/mlw_example": ["ADMIN", "MODERATOR"],
+    "/admin/maswali": ["ADMIN", "MODERATOR", "AUDITOR"],
+    "/admin/maswali/new": ["ADMIN", "MODERATOR", "AUDITOR"],
+    "/admin/maswali/mlw_example": ["ADMIN", "MODERATOR", "AUDITOR"],
+    "/admin/maswali/mlw_example/edit": ["ADMIN", "MODERATOR", "AUDITOR"],
     "/admin/maswali/pools": ["ADMIN", "COMPLIANCE", "FINANCE", "AUDITOR"],
     "/admin/maswali/integrity": ["ADMIN", "COMPLIANCE", "AUDITOR"],
     "/admin/maswali/evidence": ["ADMIN", "COMPLIANCE", "AUDITOR"],
-    // S6 · MB-64 · the support domain: the desk, Compliance (view) and the Owner.
+    // S6 · MB-64 · the support domain: the desk, Compliance (view) and the Owner — never the Auditor (player data).
     "/admin/maswali/lookup": ["ADMIN", "COMPLIANCE", "SUPPORT"],
   };
   const STAFF: Role[] = ["ADMIN", "MODERATOR", "COMPLIANCE", "FINANCE", "GROWTH", "SUPPORT", "AUDITOR"] as Role[];
   for (const [path, who] of Object.entries(OPENS)) {
     for (const role of STAFF) {
       const want = who.includes(role);
-      const got = role === "ADMIN" ? true : await canView(role, domainForPath(path));
+      const got = await canViewPath(role, path);
       ok(`7 · ${role} ${want ? "opens" : "does not open"} ${path}`, got === want, got === want ? "" : `got ${got}`);
     }
   }
-  ok("7 · ⭐ the Auditor reads the pools, the integrity page and the evidence — every Millionea record outside the trading console",
-    (await Promise.all(["/admin/maswali/pools", "/admin/maswali/integrity", "/admin/maswali/evidence"].map((p) => canView("AUDITOR" as Role, domainForPath(p))))).every(Boolean));
+  ok("7 · ⭐ the Auditor reads every Millionea console screen but the desk's lookup — the week list, a week, its edit page, the pools, the integrity page, the evidence",
+    (await Promise.all(Object.keys(OPENS).filter((p) => p !== "/admin/maswali/lookup").map((p) => canViewPath("AUDITOR" as Role, p)))).every(Boolean)
+      && (await canViewPath("AUDITOR" as Role, "/admin/maswali/lookup")) === false);
+  // ⛔ THE PREFIX ONLY: every other trading page — and every page of a domain the Auditor holds no grant for — refuses it.
+  const elsewhere = ROUTE_DOMAINS.filter(([prefix, d]) => !prefix.startsWith("/admin/maswali") && !(d === "overview" || d === "accounting" || d === "compliance"))
+    .map(([prefix]) => prefix);
+  const opened = [];
+  for (const p of [...elsewhere, ...elsewhere.map((x) => `${x}/x_example`), "/admin/maswali-other", "/admin/markets/mkt_example"]) if (await canViewPath("AUDITOR" as Role, p)) opened.push(p);
+  ok("7 · ⛔ the Auditor opens no other trading page, and no page of a domain it holds no grant for — the exception is the Millionea prefix alone",
+    elsewhere.length >= 10 && elsewhere.some((p) => p === "/admin/markets") && opened.length === 0, opened.join(", ") || `${elsewhere.length} prefixes`);
+  ok("7 · ⛔ …and AUDITOR does not open /admin/markets", (await canViewPath("AUDITOR" as Role, "/admin/markets")) === false);
+  ok("7 · the exception is the Auditor's alone: no other role opens a page by it",
+    (["COMPLIANCE", "FINANCE", "GROWTH", "SUPPORT", "MODERATOR", "PLAYER", "AGENT"] as Role[]).every((r) => !auditorReadsPath(r, "/admin/maswali")) && auditorReadsPath("AUDITOR", "/admin/maswali"));
+  // ⭐ It stands on the Auditor's compliance VIEW grant: the Owner closes it on /admin/roles by revoking that grant.
+  await setRoleGrant("AUDITOR" as Role, "compliance", false, false, "maswali-rbac");
+  const closed = !(await canViewPath("AUDITOR" as Role, "/admin/maswali")) && !(await canViewPath("AUDITOR" as Role, "/admin/maswali/mlw_example"));
+  const revoked = await viewableDomains("AUDITOR" as Role);
+  const closedNav = !revoked.has("compliance") && !filterNavGroups(revoked, false,
+    (href) => auditorReadsPath("AUDITOR", href) && revoked.has("compliance")).some((g) => g.items.some((i) => i.key === "maswali"));
+  await resetRoleGrantsToDefaults();
+  ok("7 · the exception stands on the Auditor's compliance view grant: revoked, the week list and a week page refuse it", closed && closedNav);
   ok(`7 · ⛔ …and acts on NONE of the ${CONTROLS.length} Millionea controls`,
     (await Promise.all(CONTROLS.map((c) => canUseControl("AUDITOR" as Role, c.id)))).every((x) => x === false));
+  // The nav shows what the gate opens: the shell hands the exception to the filter, on the stored role.
+  {
+    const vd = await viewableDomains("AUDITOR" as Role);
+    const keys = new Set(filterNavGroups(vd, false, (href) => auditorReadsPath("AUDITOR", href) && vd.has("compliance")).flatMap((g) => g.items.map((i) => i.key)));
+    const plain = new Set(filterNavGroups(vd, false).flatMap((g) => g.items.map((i) => i.key)));
+    ok("7 · the Auditor's nav shows every Millionea screen it opens (Weeks, Pools, Integrity, Evidence), never Ticket lookup, and no other trading item",
+      ["maswali", "maswali-pools", "maswali-integrity", "maswali-evidence"].every((k) => keys.has(k)) && !keys.has("maswali-lookup")
+        && !keys.has("markets") && !keys.has("resolver") && !plain.has("maswali"), [...keys].filter((k) => k.startsWith("maswali")).join(","));
+    const shell = decomment(read("src/components/admin/admin-shell.tsx"));
+    const layout = decomment(read("src/app/admin/layout.tsx"));
+    ok("7 · the sidebar and the top bar each hand the filter the exception on the viewer's stored role, and the layout passes that role to both",
+      (shell.match(/filterNavGroups\(viewDomains, isOwner, \(href\) => auditorReadsPath\(role, href\) && viewDomains\.includes\("compliance"\)\)/g) ?? []).length === 2
+        && (layout.match(/role=\{viewerRole\}/g) ?? []).length === 2);
+  }
+  // The page gate asks the PATH for the view and the DOMAIN for the act: an exception that opened a page never arms a control.
+  {
+    const gate = decomment(read("src/components/admin/admin-section-gate.tsx"));
+    ok("7 · the page gate asks canViewPath for the view (and viewerMayOpen too), and still the domain's canAct for the act",
+      gate.includes("const viewBlocked = ownerOnly ? !isAdmin(role) : !(await canViewPath(role, path));")
+        && gate.includes("await canViewPath(user.role, path)") && gate.includes("const mayAct = ownerOnly ? isAdmin(role) : await canAct(role, domain);")
+        && !/canView\(/.test(gate));
+  }
+  // The house console's audience keeps its domain-only answer: no Millionea page of the trading domain asks it, so its
+  // narrower answer can never refuse what the gate admits.
+  {
+    const walk = (dir: string): string[] => readdirSync(join(process.cwd(), dir), { withFileTypes: true })
+      .flatMap((e) => (e.isDirectory() ? walk(`${dir}/${e.name}`) : /\.tsx?$/.test(e.name) ? [`${dir}/${e.name}`] : []));
+    const pages = walk("src/app/admin/maswali").filter((f) => f.endsWith("/page.tsx"));
+    const routeOf = (f: string) => f.replace(/^src\/app/, "").replace(/\/page\.tsx$/, "").replace(/\[weekId\]/, "mlw_example");
+    const asking = pages.filter((f) => /houseConsoleAudience\(/.test(decomment(read(f))));
+    ok("7 · no trading page of the Millionea console asks the house console's audience (only pages the Auditor's grants already open do)",
+      pages.length >= 8 && asking.length > 0 && asking.every((f) => domainForPath(routeOf(f)) !== "trading"), asking.join(", "));
+  }
+  ok("7 · /admin/staff tells the Owner the Auditor reads the Millionea console",
+    (await staffRoleInfos()).AUDITOR.view.includes("Millionea console (read-only)"));
   ok("7 · ⛔ MB-34 · the trading officer who seals cannot open the evidence (it carries every ticket's answers)",
     (await canView("MODERATOR" as Role, domainForPath("/admin/maswali/evidence"))) === false);
 

@@ -320,10 +320,14 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
 export function filterNavGroups(
   viewDomains: ReadonlySet<AdminDomain> | readonly AdminDomain[],
   isOwner: boolean,
+  /** The console's one route exception, asked of an item its domain would hide (MB-92: the Auditor reads the Millionea
+   *  console — `auditorReadsPath` in roles.ts, handed in by the server shell, so this client-imported module imports no
+   *  value from a server one). Never consulted for an `ownerOnly` item. */
+  alsoVisible?: (href: string) => boolean,
 ): NavGroup[] {
   const set = viewDomains instanceof Set ? viewDomains : new Set(viewDomains);
   const visible = (it: NavItem) =>
-    !!it.allStaff || (it.ownerOnly ? isOwner : set.has(it.domain));
+    !!it.allStaff || (it.ownerOnly ? isOwner : set.has(it.domain) || !!alsoVisible?.(it.href));
   return NAV_GROUPS
     .map((g) => ({ ...g, items: g.items.filter(visible) }))
     .filter((g) => g.items.length > 0);

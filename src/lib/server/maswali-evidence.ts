@@ -44,13 +44,15 @@ import { canonicalSelections, leafHash, merkleRoot, questionSetHash, type Frozen
 import { toCsv } from "@/lib/contacts/csv-write";
 import { shareNoteOf, shareStateOf } from "@/lib/maswali-share-note";
 
-/** The week's own audit actions the pack carries — its life, never the purchases (the ticket CSV is those). */
+/** The week's own audit actions the pack carries — its life, never the purchases (the ticket CSV is those). S6-DOCS (item 8):
+ *  the float check's two findings both — the float short (`float_low`) and the float that could not be read
+ *  (`float_unread`, S7-F2's fail-closed row) — so an auditor reads every payout made without a float on record. */
 export const EVIDENCE_WEEK_ACTIONS = [
   "maswali.week.drafted", "maswali.week.draft_edited", "maswali.week.parity_attested", "maswali.week.opened",
   "maswali.week.close_moved", "maswali.week.closed", "maswali.week.graded_set_final", "maswali.week.voided",
   "maswali.week.refunded", "maswali.week.carry_claimed", "maswali.week.settled", "maswali.sunset.ordered",
   "maswali.sunset.passed_on", "maswali.settlement.guarantee_short", "maswali.settlement.jackpot_short",
-  "maswali.settlement.float_low", "maswali.seal.new_device", "maswali.scheduler.step_failed",
+  "maswali.settlement.float_low", "maswali.settlement.float_unread", "maswali.seal.new_device", "maswali.scheduler.step_failed",
 ] as const;
 /** Every act on one of the fifteen questions. */
 export const EVIDENCE_QUESTION_ACTIONS = ["maswali.question.sealed", "maswali.question.confirmed", "maswali.question.corrected", "maswali.question.void_proposed"] as const;

@@ -55,7 +55,7 @@ console.log("\n§1 · the ruled defaults validate, and are the numbers the law s
     && /\| \*\*Millionea floor\*\* \| A winning week's jackpot is \*\*at least TZS 1,000,000\*\*/.test(rules)
     && /\| \*\*Millionea cap\*\* \| \*\*10 tickets per account per week\*\*/.test(rules));
   ok("1.9 · the sync read starts from the defaults", JSON.stringify(getMaswaliConfig()) === JSON.stringify(MASWALI_DEFAULTS));
-  ok("1.10 · S6 review R2-7 · the desk's complaint answer target is a setting, 5 working days by default (MB-91; owed the Owner's confirmation)",
+  ok("1.10 · S6 review R2-7 · the desk's complaint answer target is a setting, 5 working days by default (MB-91; Ali confirmed five days on 2026-10-21, COMPLIANCE-DECISIONS item 6)",
     d.complaintAnswerDays === 5);
 }
 
