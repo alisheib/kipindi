@@ -254,7 +254,9 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
       // hidden product's address answers as the 404). Pinned at 902afae56, the lane's squash commit, merged with its history
       // into claude/maswali-s6-release (S6-INT 1), whose blobs are the two files as they stand. The rules page's third door
       // (the chooser) and the dictionary are re-pinned at that merge in the follow-up commit.
-      ["src/app/legal/rules/_content-millionea.tsx", "902afae56"],
+      // S6-INT 12 · the binding text re-pinned at 3ea9f088f (S6-INT 11), whose blob is the file as it stands: its Chinese
+      // names an event 事件 (the lead's ruling D2; MILLIONEA_RULES_TEXT_SHA d5a5e9e3e680). The route stays at 902afae56.
+      ["src/app/legal/rules/_content-millionea.tsx", "3ea9f088f"],
       ["src/app/legal/rules/millionea/page.tsx", "902afae56"],
     ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };
