@@ -49,6 +49,8 @@ export function TicketHost({ serial, through, children }: { serial: string; thro
       </MaswaliMomentsHost>
       <OperationResultModal
         open={open}
+        handoff={open}
+        panelDelay
         variant="neutral"
         title={t.millionea.cancelModalTitle}
         subtitle={fill(t.millionea.cancelModalBody, { price: formatTzs(shown) })}
@@ -92,6 +94,8 @@ export function TicketCancel({ serial, ownerId, until, serverNow, price, cap, wi
   const { toast } = useToast();
   const showResult = useContext(CancelResultContext);
   const [open, setOpen] = useState(false);
+  // A landed cancel closes INTO its result under one dim (the kit's `handoff`, as the slip's confirm closes into its stamp).
+  const [handoffOut, setHandoffOut] = useState(false);
   const [pending, start] = useTransition();
   const confirm = () => {
     const fd = new FormData();
@@ -99,6 +103,7 @@ export function TicketCancel({ serial, ownerId, until, serverNow, price, cap, wi
     fd.set("serial", serial);
     start(async () => {
       const r = await cancelMillioneaTicketAction(fd);
+      setHandoffOut(r.ok && !!r.data);
       setOpen(false);
       if (r.ok && r.data) {
         haptics.confirm();
@@ -123,7 +128,7 @@ export function TicketCancel({ serial, ownerId, until, serverNow, price, cap, wi
         serverNow={serverNow}
         price={price}
         note={fill(t.millionea.cancelNote, { mins: windowMins })}
-        onPress={() => setOpen(true)}
+        onPress={() => { setHandoffOut(false); setOpen(true); }}
         pending={pending}
       />
       <ConfirmModal
@@ -132,6 +137,8 @@ export function TicketCancel({ serial, ownerId, until, serverNow, price, cap, wi
         onConfirm={confirm}
         tone="brand"
         size="lg"
+        panelClassName="kp-mln-zh"
+        handoff={handoffOut}
         loading={pending}
         icon={<I.rotateCcw s={plateGlyph(36)} />}
         title={t.millionea.cancelConfirmTitle}

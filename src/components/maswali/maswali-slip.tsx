@@ -28,7 +28,8 @@ import type { Locale } from "@/lib/i18n-dict";
 /**
  * THE SLIP — fill a ticket (MASWALI-BUILD S5; MASWALI-PLAN §10 §3.5–§3.6; the v6 delivery's S-purchase frames; the
  * design pass of Ali 2026-10-21, "10/10": the slip critic's report and the motion critic's slip items).
- * `/millionea/slip`, the reading tier, on ONE measure at every width (640px, the summary panel's own column): the head (the
+ * `/millionea/slip`, the reading tier, on ONE measure at every width (the form tier, `max-w-form` = `--w-form`, 640px — the
+ * question column beside the summary panel, its grid track the same token; `test:measure`): the head (the
  * title, the close and the first event, each with its zone), the ticket switcher when the purchase holds several, the
  * rules (the price before the first answer, the cap), fifteen rows built from the platform's own pick controls, the
  * reserves on ONE inset surface whose head carries their rule, and the pay control — a rail docked full-bleed on the tabs
@@ -430,8 +431,8 @@ export function MaswaliSlip({
   const pay = useExitPhase(!closed, "--t-quick");
   return (
     <div className={cn("flex flex-col", className)}>
-      <div className="grid w-full grid-cols-1 items-start gap-7 py-5 xl:grid-cols-[minmax(0,640px)_400px]">
-        <div className="flex min-w-0 max-w-[640px] flex-col gap-4">
+      <div className="grid w-full grid-cols-1 items-start gap-7 py-5 xl:grid-cols-[minmax(0,var(--w-form))_400px]">
+        <div className="flex min-w-0 max-w-form flex-col gap-4">
           <header className="flex flex-col gap-1.5">
             <h1 data-stem={stemOf(title)} className="font-display text-title-lg font-bold text-text">{title}</h1>
             <div className="flex flex-col gap-0.5 text-body-sm text-text-muted">
@@ -503,7 +504,7 @@ export function MaswaliSlip({
       <div className="kp-mln-rail sticky bottom-[calc(65px+env(safe-area-inset-bottom,0px))] z-30 -mx-3 lg:-mx-6 lg:bottom-0 xl:hidden" data-closed={closed || undefined}>
         {pay.present ? (
           <div className={cn("border-t border-border-strong px-3 py-2 shadow-overlay-up lg:px-6", pay.exiting && "m-out")} style={{ background: "var(--panel)" }}>
-            <div className="flex max-w-[640px] flex-col gap-2">
+            <div className="flex max-w-form flex-col gap-2">
               <div className="flex h-5 items-center gap-2">
                 <SteppedProgress groups={groups} className="min-w-0 flex-1" />
                 <MaswaliClosingPill closesAt={closesAt} serverNow={serverNow} compact className="shrink-0" />
@@ -518,7 +519,7 @@ export function MaswaliSlip({
         ) : (
           <div className={cn("border-t border-border-strong px-3 py-2 shadow-overlay-up lg:px-6", closedJustNow && "m-axis-reveal")} style={{ background: "var(--panel)" }}
             data-testid="millionea-slip-closed">
-            <div className="flex max-w-[640px] flex-wrap items-center gap-x-3 gap-y-2">
+            <div className="flex max-w-form flex-wrap items-center gap-x-3 gap-y-2">
               {closedLine(true)}
               <Link href={followHref as never} className="btn btn-ghost btn-md shrink-0 border-border-control">{t.millionea.followResults}</Link>
             </div>

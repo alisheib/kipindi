@@ -3,6 +3,8 @@
  * slip's design pass (Ali 2026-10-21 10/10; the slip critic's H2, H3, M9), the composer's own rules: no switcher for one
  * ticket, "Add another ticket" after the reserves, the pay control armed only when EVERY ticket is answered (else "Finish
  * ticket n", which opens it), a ticket holding answers removed only after the kit's confirm, the stamp's serials as rows.
+ * Round 2 (the lead's ruling (a)): the pills say "n · 15/15" under the group's one noun, each named with the noun — found
+ * by those names — and two pills share ONE row, measured at 320 and 360 in English and Swahili.
  *
  *   BASE=http://localhost:<port> node scripts/maswali-multi-slip-drive.mjs
  *
@@ -14,7 +16,7 @@
  */
 import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
-import { premise, demoSession, LOCALE_COOKIE } from "./live/journey-pass.mjs";
+import { premise, demoSession, DEMO_PHONE, LOCALE_COOKIE } from "./live/journey-pass.mjs";
 
 const BASE = process.env.BASE || "http://localhost:3421";
 const OUT = ".50pick-shots/maswali-multi-slip";
@@ -74,9 +76,16 @@ try {
   await owner.request.post(`${BASE}/api/dev-test/seed-admin`, { data: { phone: "+255700000091", name: "Millionea Owner" }, timeout: 240_000 });
   const seed = await owner.request.post(`${BASE}/api/dev-test/seed-maswali`, { data: {}, timeout: 300_000 });
   ok("a fresh local week is seeded", seed.ok() || seed.status() === 409, String(seed.status()));
+  const session = await demoSession(browser, BASE, { query: "?deposit=0", balance: 50_000 });
+  // ⭐ ITS OWN PREMISE (round 2): the demo player starts the week holding no live ticket, so the pills are numbered from 1.
+  // A drive run before this one on the same server leaves tickets behind (qa:dialog-way-back buys one per engine), and the
+  // pills then read from 3. They are cancelled first through the product's own free cancel (the dev route, as
+  // qa:dialog-way-back does at its start). If that is refused, the premise is absent and the drive stops.
+  const reset = await (await owner.request.post(`${BASE}/api/dev-test/seed-maswali-slip`, { data: { cancelFor: DEMO_PHONE }, timeout: 120_000 })).json().catch(() => ({}));
+  if (reset.ok !== true) throw new Error(`PREMISE ABSENT — the demo player's live tickets could not be cancelled: ${JSON.stringify(reset)}`);
+  console.log(`INFO premise: ${reset.cancelled} live ticket(s) the demo player held this week cancelled first`);
   await owner.close();
 
-  const session = await demoSession(browser, BASE, { query: "?deposit=0", balance: 50_000 });
   const ctx = await browser.newContext({ viewport: { width: 320, height: 780 } });
   await ctx.addCookies([{ name: LOCALE_COOKIE, value: "en", url: BASE }, { ...session, url: BASE, domain: undefined, path: undefined }]);
   const page = await ctx.newPage();
@@ -93,12 +102,17 @@ try {
     await switcher(page).getByRole("group").count() === 1 && await switcher(page).locator('button[aria-pressed="true"]').count() === 1);
   // H3 · ticket 2 half answered, then back to the complete ticket 1: the control reads "Finish ticket 2", never armed.
   for (let i = 0; i < 7; i++) await groups.nth(i).getByRole("radio").nth(1).click();
-  await switcher(page).getByRole("button").filter({ hasText: /^Ticket 1 · /i }).click();
+  // The pills say "1 · 15/15" under the group's "TICKETS"; each is NAMED with the noun (the lead's ruling (a), round 2).
+  await switcher(page).getByRole("button", { name: /^Ticket 1 · / }).click();
   ok("H3 · ticket 1 complete, ticket 2 not: the pay control reads \"Finish ticket 2\" and is not armed",
     /Finish ticket 2/.test(await pay(page).innerText()) && await pay(page).getAttribute("data-armed") === null, await pay(page).innerText());
   ok("H3 · the counts lead with the ticket being answered", (await page.locator(".kp-mln-rail").innerText()).includes("Ticket 1"));
   await pay(page).click();
-  ok("H3 · \"Finish ticket 2\" opens ticket 2", await switcher(page).locator('button[aria-pressed="true"]').filter({ hasText: /^Ticket 2 · 7\/15$/i }).count() === 1);
+  ok("H3 · \"Finish ticket 2\" opens ticket 2", await switcher(page).locator('button[aria-pressed="true"][aria-label="Ticket 2 · 7/15"]').count() === 1);
+  ok("round 2 · ruling (a) · the pills say the number and the progress, the group's label says the noun once — and two pills share ONE row at 320",
+    await switcher(page).locator('button[aria-pressed="true"]').innerText() === "2 · 7/15"
+      && /^tickets$/i.test(await switcher(page).locator("span[aria-hidden]").first().innerText())
+      && await switcher(page).getByRole("button", { name: /^Ticket \d · / }).evaluateAll((els) => new Set(els.map((e) => Math.round(e.getBoundingClientRect().top))).size === 1));
   ok("M8 · …and the first unanswered question holds the focus", await page.evaluate(() => document.activeElement?.closest("li")?.id) === "q-8",
     await page.evaluate(() => String(document.activeElement?.closest("li")?.id)));
   for (let i = 7; i < 15; i++) await groups.nth(i).getByRole("radio").nth(1).click();
@@ -127,6 +141,29 @@ try {
   await ask.getByRole("button", { name: "Keep ticket" }).click();
   await ask.waitFor({ state: "detached" });
   ok("M9 · \"Keep ticket\" keeps both", await complete(page).count() === 2);
+  // ⭐ ROUND 2 · RULING (a), MEASURED (S5-R2-SLIP): at 320 and 360, in English and in Swahili (the longest language), the two
+  // pills stand on ONE row, whole inside the viewport, unclipped and at least 40px tall — read from the boxes the browser laid
+  // out, under the group's one noun. Each composer is kept as a tile (`pills-*`, `composer-*`) to read.
+  const NOUN = { en: /^tickets$/i, sw: /^tiketi$/i };
+  for (const [locale, width] of [["en", 320], ["en", 360], ["sw", 320], ["sw", 360]]) {
+    await openSlip(ctx, page, locale, width);
+    await complete(page).first().waitFor();
+    await switcher(page).scrollIntoViewIfNeeded();
+    await settle(page);
+    const pills = await switcher(page).locator("button[aria-pressed]").evaluateAll((els) => els.map((e) => {
+      const r = e.getBoundingClientRect();
+      return { text: (e.textContent ?? "").replace(/\s+/g, " ").trim(), top: Math.round(r.top), left: Math.round(r.left * 10) / 10,
+        right: Math.round(r.right * 10) / 10, height: Math.round(r.height), clipped: e.scrollWidth > e.clientWidth + 1 };
+    }));
+    const vw = await page.evaluate(() => document.documentElement.clientWidth);
+    const noun = await switcher(page).locator("span[aria-hidden]").first().innerText();
+    console.log(`INFO ruling (a) ${locale} @${width}: noun "${noun}" · viewport ${vw} · pills ${JSON.stringify(pills)}`);
+    ok(`round 2 · ruling (a) · ${locale} @${width}: the label is the noun once, and the two pills ("n · 15/15") share ONE row, whole inside the viewport, unclipped, 40px tall`,
+      NOUN[locale].test(noun) && pills.length === 2 && pills.every((p) => /^\d+ · 15\/15$/.test(p.text)) && new Set(pills.map((p) => p.top)).size === 1
+        && pills.every((p) => p.left >= 0 && p.right <= vw && !p.clipped && p.height >= 40), JSON.stringify({ noun, vw, pills }));
+    await switcher(page).screenshot({ path: `${OUT}/pills-${locale}-${width}.png` });
+    await page.screenshot({ path: `${OUT}/composer-${locale}-${width}.png`, fullPage: false });
+  }
   await openSlip(ctx, page, "zh", 320);
   await complete(page).first().waitFor();
   ok("Chinese 320 keeps two complete tickets", await complete(page).count() === 2);
@@ -160,12 +197,16 @@ try {
   const serials = (await receipt.locator(".orm-detail").allInnerTexts()).map((row) => row.split("\n").pop()?.trim() ?? "").filter((v) => /^ML[ND]-/.test(v));
   ok("one Swahili receipt lists two distinct returned serials, each in its own row", serials.length === 2 && serials[0] !== serials[1], JSON.stringify(serials));
   ok("the receipt names its week in its eyebrow (M9) and when the payout comes", /MASWALI MILLIONEA · WIKI \d+/i.test(await receipt.innerText()) && (await receipt.innerText()).includes("Wiki itakapokamilika"));
-  ok("the receipt has one door to the player's ticket list", await receipt.getByRole("button", { name: "Tazama tiketi" }).count() === 1);
+  // Round 2 (the lead's ruling): the door is the kit's Link to the list (`primaryHref`), so it is found as a link — with the
+  // list's own address — and never as a button.
+  ok("the receipt has one door to the player's ticket list — a link to it",
+    await receipt.getByRole("link", { name: "Tazama tiketi" }).count() === 1 && await receipt.getByRole("button", { name: "Tazama tiketi" }).count() === 0
+      && await receipt.getByRole("link", { name: "Tazama tiketi" }).getAttribute("href") === "/millionea/tickets");
   ok("H2 · the cleared slip owes no refusal: no row is marked and no line says one is unanswered",
     await page.locator("li[data-flagged]").count() === 0 && await page.getByTestId("millionea-slip-refusal").count() === 0);
   await settle(page);
   await page.screenshot({ path: `${OUT}/receipt-sw-360.png`, fullPage: false });
-  await receipt.getByRole("button", { name: "Tazama tiketi" }).click();
+  await receipt.getByRole("link", { name: "Tazama tiketi" }).click();
   await page.waitForURL(`${BASE}/millionea/tickets`, { timeout: 120_000 });
   const list = page.getByTestId("millionea-tickets");
   await list.waitFor();
