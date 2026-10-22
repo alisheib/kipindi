@@ -562,12 +562,19 @@ export const BROADER_LISTS: ReadonlyArray<readonly [file: string, extensions: nu
  * stakes, and it is a bell", describing a compensating surface owner ruling D19 does not allow and this programme
  * never built. A docstring that promises a surface is how the next session learns the wrong law, so the sentence
  * is gone and a control plants it back to prove the pin can see it return.
+ *
+ * ⛔ A SECOND KNOWN CALLER (MASWALI-BUILD S6 round 17, the lead's ruling M2). Millionea's winner service SMS
+ * (`maswali-winner-sms.ts`) asks the policy whether a win may use SMS and acts on that answer alone — it never decides
+ * the channel itself — so it is admitted BY NAME, beside the Up & Down digest. The census stays a population read from
+ * the tree: exactly these two known callers, and any third surface (plain or through an aliased import) is still found.
  */
 if (STORE === "memory") {
-  section("§0 · rulings 235 and 149 · F6's helper has exactly one production caller, and its docstring promises no surface");
+  section("§0 · rulings 235 and 149 · F6's helper has exactly two known production callers, and its docstring promises no surface");
   await guard("0.235", () => {
     const REG = "src/lib/server/comms-registry.ts";
     const DIGEST = "src/lib/server/updown-digest.ts";
+    // Round 17 (M2) · the second known caller: the Millionea winner's service SMS, which only asks the policy.
+    const WINNER_SMS = "src/lib/server/maswali-winner-sms.ts";
     /**
      * Every `channelAllowed(` CALL under src/, from the tree, excluding the module that defines it.
      *
@@ -608,8 +615,15 @@ if (STORE === "memory") {
       return out;
     };
     const callers = callersOf();
-    ok("0.235.1 · ⛔ RULING 235 · 04 F6's helper has EXACTLY ONE production caller and it is the Up & Down digest — before this checkpoint it had none, so the rule it encodes had never once run",
-      callers.length === 1 && callers[0].startsWith(`${DIGEST}:`), `${callers.length} caller(s): ${j(callers)}`);
+    ok("0.235.1 · ⛔ RULING 235 · 04 F6's helper has EXACTLY TWO production callers, both known — the Up & Down digest and (round 17, M2) Millionea's winner SMS — before this checkpoint it had none, so the rule it encodes had never once run",
+      callers.length === 2 && callers.filter((c) => c.startsWith(`${DIGEST}:`)).length === 1 && callers.filter((c) => c.startsWith(`${WINNER_SMS}:`)).length === 1,
+      `${callers.length} caller(s): ${j(callers)}`);
+    // Round 17 (M2) · the winner SMS is admitted because it ASKS: a win's SMS goes only when the policy says SMS, and its
+    // answer is the whole decision — held as "channel_closed" otherwise, with no channel rule of the file's own.
+    const winnerCode = decomment(read(WINNER_SMS));
+    const ASK_LINE = `if (!channelAllowed("WIN").sms) return hold("channel_closed", null);`;
+    ok("0.235.1b · ⛔ round 17 (M2) · the winner SMS asks the policy for a win's SMS and acts on its answer alone — its one call, held as channel_closed when the policy says no",
+      winnerCode.includes(ASK_LINE) && (winnerCode.match(/channelAllowed\(/g) ?? []).length === 1, `asks=${winnerCode.includes(ASK_LINE)}`);
 
     const digestCode = decomment(read(DIGEST));
     /* ⚠️ A PLAIN SUBSTRING, NOT A REGEX, and deliberately: ruling 175 forbids this file declaring a pattern that
@@ -628,14 +642,15 @@ if (STORE === "memory") {
       regRaw.replace("never goes to a phone and never becomes a letter.", `never becomes a letter — ${STRUCK}.`).includes(STRUCK), "planted");
 
     const planted = callersOf({ file: "src/app/planted/route.ts", code: `import { channelAllowed } from "@/lib/server/comms-registry";\nexport function GET() { return channelAllowed("WIN", { houseOnly: true }); }\n` });
-    ok("0.235.c2 · CONTROL · a SECOND caller planted in a file of its own is found — so 0.235.1's count is a population read from the tree and would report the day another surface starts making F6's decision for itself",
-      planted.length === 2 && planted.some((c) => c.startsWith("src/app/planted/route.ts:")), j(planted));
+    // Round 17 (M2) · re-pinned openly: the known population is two, so a planted surface is the THIRD caller.
+    ok("0.235.c2 · CONTROL · a THIRD caller planted in a file of its own is found — so 0.235.1's count is a population read from the tree and would report the day another surface starts making F6's decision for itself",
+      planted.length === 3 && planted.some((c) => c.startsWith("src/app/planted/route.ts:")), j(planted));
     const aliased = callersOf({ file: "src/app/planted/aliased.ts", code: `import { channelAllowed as allowed } from "@/lib/server/comms-registry";\nexport function GET() { return allowed("WIN", { houseOnly: true }); }\n` });
-    ok("0.235.c2b · CONTROL · a second caller reached through an ALIASED import is found too — the matcher reads each file's import clause for the local name `channelAllowed` is bound to, so a rename at the import cannot hide a surface that makes F6's decision",
-      aliased.length === 2 && aliased.some((c) => c.startsWith("src/app/planted/aliased.ts:")), j(aliased));
+    ok("0.235.c2b · CONTROL · a third caller reached through an ALIASED import is found too — the matcher reads each file's import clause for the local name `channelAllowed` is bound to, so a rename at the import cannot hide a surface that makes F6's decision",
+      aliased.length === 3 && aliased.some((c) => c.startsWith("src/app/planted/aliased.ts:")), j(aliased));
     const blinded = callersOf({ file: DIGEST, code: digestCode.replace("channelAllowed(", "channelNotAllowed(") });
-    ok("0.235.c3 · CONTROL · …and with the digest's own call renamed away the count falls to ZERO, which is the state this ruling found the platform in",
-      blinded.length === 0, j(blinded));
+    ok("0.235.c3 · CONTROL · …and with the digest's own call renamed away the count falls to the winner SMS alone, which 0.235.1 refuses",
+      blinded.length === 1 && blinded[0].startsWith(`${WINNER_SMS}:`), j(blinded));
   });
 }
 
@@ -1032,8 +1047,14 @@ if (STORE === "memory") {
     // maswali-settlement.ts takes S7's two sites plus the release's two lines above them: 450→451 (the payout's
     // `db.txn.createMany(`) and 812→814 (the forfeit); maswali-void.ts stays 140. Every nine-line write is SHA-256-identical,
     // CR stripped, to the side it came from (the release's for market-service and the void, S7's 0f0d42fcc for the rest).
+    // 2026-10-18 · MASWALI-BUILD S6 (notices, branch mln-s6-notices) adds the result notice's two lines after the settlement's
+    // commit in `settleMaswaliWeek`, above the forfeit: its site moves 679→681, the nine-line write SHA-256-identical to
+    // b495ede2's (CR stripped). Every other site keeps its line: the notice calls in maswali-money-service.ts and
+    // maswali-void.ts sit below their writes, and maswali-service.ts carries none.
+    // 2026-10-22 · S6-INT 14 (lane N squashed onto the integration): the same two lines move the forfeit 814→816 in this
+    // tree — read from the run's printed list (`marked`), never by hand. No other site moves.
     ok("0.232.2 · …and the twelve marked sites are exactly the twelve line numbers this pin was written against — a site that MOVES is reported here (the pin is line-pinned on purpose; the money anchors match by text and cannot rot from a line move)",
-      j(marked) === j(["market-service.ts:1878", "market-service.ts:3170", "market-service.ts:3661", "market-service.ts:4189", "market-service.ts:4327", "market-service.ts:4476", "market-service.ts:5157", "maswali-money-service.ts:455", "maswali-money-service.ts:580", "maswali-settlement.ts:451", "maswali-settlement.ts:814", "maswali-void.ts:140"]), j(marked));
+      j(marked) === j(["market-service.ts:1878", "market-service.ts:3170", "market-service.ts:3661", "market-service.ts:4189", "market-service.ts:4327", "market-service.ts:4476", "market-service.ts:5157", "maswali-money-service.ts:455", "maswali-money-service.ts:580", "maswali-settlement.ts:451", "maswali-settlement.ts:816", "maswali-void.ts:140"]), j(marked));
 
     /**
      * ⛔ **THE ANCHORS FILE IS OPENED, BECAUSE THE LABEL SAID IT WAS AND IT WAS NOT** (C5-7's review, low). 0.232.2
@@ -2373,7 +2394,10 @@ export const AUDIT_READERS_OUTSIDE_CONSOLE: Readonly<Record<string, string>> = {
   "src/lib/server/kyc-service.ts": "the typed identity decision's AML fact: ONE player's own durable rows (target User), searched for a kyc.escalated_to_aml newer than the last decision on the identity and reduced to ONE yes/no (amlEscalationOpen) inside the module — no row, payload or house action is handed on",
   /* Classified 2026-10-08, read from the source (`actsOn` → `actorOfAct`): the marketing lane's STEP 52 (the engine,
      U47b-1) added the reader and 0.260.1 went red on `main` — caught by STEP 53's lock turn, the guard doing its job. */
-  "src/lib/server/marketing/campaign-live.ts": "the live campaign page's \"Paused by … / Stopped by …\": ONE campaign's own rows (target SmsCampaign), the officer's act found by action at or after the act's instant and reduced to that officer's display name — no row, payload or house action is handed on",
+  /* Re-read 2026-10-18 (MASWALI-BUILD S6, lane N round 5, LOW 13), from the source (`preRulesFlagOf`): the status card of a
+     campaign sending since before Millionea's claims rules hands on the engine's flag row's `payload.detail` — the rules'
+     own sentence, which never repeats a figure. */
+  "src/lib/server/marketing/campaign-live.ts": "the live campaign page's \"Paused by … / Stopped by …\" and its pre-rules flag: ONE campaign's own rows (target SmsCampaign) — the officer's act found by action at or after the act's instant and reduced to that officer's display name, and the engine's SYSTEM `marketing.campaign_flagged` row of this run whose `payload.detail` (the claims rules' own sentence) the status card prints — no other row, payload or house action is handed on",
   /* Classified 2026-10-08, read from the source (`handledContacts`): the final-rule gate U33r added the reader. */
   "src/lib/server/marketing/referee-exclusion.ts": "the referee-key census's hand steps: the COMPLIANCE rows of the `key` / `reviewed` steps for the applications it is given (target AgentApplication, by action), reduced to a set of (application, referee place) keys inside the module — no row, payload or number is handed on",
   /* Classified 2026-09-26, read from the source (`readExclusionRecord`): the marketing lane's `f1ad4417` added the
@@ -2388,7 +2412,9 @@ export const AUDIT_READERS_OUTSIDE_CONSOLE: Readonly<Record<string, string>> = {
      so the read is the settlement's two rows again, still reduced to one yes/no per week. */
   /* S7-F9 (2026-10-22): the strip also folds the winners' takeover watch into one count per paying week — that module
      (`maswali-takeover.ts`, classified below) calls the readers, and no account or row reaches the console. */
-  "src/lib/server/maswali-console.ts": "Millionea's console alerts: the settlement's own float-check rows (maswali.settlement.float_low / float_unread) of each line's newest paying week, read by action and reduced to whether a finding stands — never a row or its payload handed on",
+  /* Classified 2026-10-18 (MASWALI-BUILD S6, lane N), read from the source (`smsHoldOf`, `voidedAtOf`): the desk list of
+     winners not yet reached and the owed-refund rows added the reader. */
+  "src/lib/server/maswali-console.ts": "Millionea's console: its alerts read the settlement's own float-check rows (maswali.settlement.float_low / float_unread) of each line's newest paying week, by action, reduced to whether a finding stands; and its read model (S6 lane N) reads ONE week's own SYSTEM `maswali.notices.sent` run records (target MaswaliCycle), reduced to the winner SMS's hold reason (a code word the module names) and to its letters left unresolved (a count, round 7), with an officer's COMPLIANCE `maswali.letters.cleared` check reduced to its instant (round 10); ONE week's `maswali.week.voided` record reduced to its instant; and ONE week's COMPLIANCE `maswali.winner.reached` records reduced to the set of accounts the desk reached — no row, payload, note or actor is handed on",
   /* Classified 2026-10-17 (MASWALI-BUILD S4; 0.260.1 went red on the release gate's test:all, the guard doing its job).
      Three reads: the cluster report folds AuditLog rows into sets of linked account ids; `noteSealDevice` folds an
      officer's own rows into one yes/no; `recentNewDeviceSeals` hands its own `maswali.seal.new_device` and (S5-FIX-SRV 1)
@@ -2415,6 +2441,12 @@ export const AUDIT_READERS_OUTSIDE_CONSOLE: Readonly<Record<string, string>> = {
      so the module is `handedOn`; the console's alert strip (`maswali-console.ts`) folds them into one count per paying
      week, never an account. A desk account's password and withdrawal rows are its holder's own, never a house action. */
   "src/lib/server/maswali-takeover.ts": "MB-96's winner-takeover watch: the recent winners' own password writes (target User, by action) and those winners' own withdrawal requests (by actor, by action), reduced to instants, how the password was written and a count per account — handed to /admin/maswali/integrity, which decides its audience on the stored role first (0.434)",
+  /* Classified 2026-10-18 (MASWALI-BUILD S6, lane N rounds 2 to 4), read from the source (`lastRunRecord`, `lettersDone`,
+     `letterOwed`, `sealSteps`, `closeMoves`): the reconcile, the letters' own records, the correction notice and the moved
+     close. Round 4 moved each letter record onto its holder's own target (round 13: the week and the account, never peppered), and reads the moves' newest close.
+     Re-read 2026-10-21 (round 17, M5): an officer's check reads the same letter records, reduced to the holders whose letter
+     is still uncertain, and closes each with one COMPLIANCE record by that officer — the read's output stays inside. */
+  "src/lib/server/maswali-notify.ts": "Millionea's notices: ONE week's own SYSTEM `maswali.notices.sent` run records reduced to the last run's yes/no (complete) inside the module; the run's own holders' `maswali.notice.letter` records (SYSTEM, and an officer's COMPLIANCE closing record; each on its holder's own target, the week and the account, MaswaliLetter) reduced to done or not, and for an officer's check to the holders whose letter is still uncertain; ONE question's own seal, correction and confirmation records reduced to outcomes and instants; and ONE week's `maswali.week.close_moved` records counted, with the close the newest one set — no row, payload or actor is handed on",
   // 2026-10-10: a second reader in the same module, the same shape — `runKycPostCheckAlerts` reads one submission's own
   // history to dedupe the officers' post-check bell, as `runKycReviewSlaAlerts` does for the review target.
   "src/lib/server/notification-service.ts": "a KYC case's own history, read to word that case's KYC notice and to send each officer alert (review target, post-check) once",
@@ -2467,6 +2499,7 @@ export const AUDIT_ROW_PAYLOAD: Readonly<Record<string, "handedOn" | "folded" | 
   "src/lib/server/maswali-service.ts": "folded",
   "src/lib/server/maswali-settlement.ts": "folded",
   "src/lib/server/maswali-takeover.ts": "handedOn",
+  "src/lib/server/maswali-notify.ts": "folded",
   "src/lib/server/notification-service.ts": "folded",
   "src/lib/server/refused-funds.ts": "handedOn",
   "src/lib/server/report-pack.ts": "gated",

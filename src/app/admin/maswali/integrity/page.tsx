@@ -17,20 +17,39 @@ import { houseConsoleAudience } from "@/lib/server/house-console-read";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { AdminPagination, buildBaseHref } from "@/components/admin/admin-pagination";
 import { SortTh } from "@/components/admin/admin-sort";
-import { CONSOLE_PER_PAGE, SEAL_WEEKS_PER_PAGE, consoleStanding, integrityView } from "@/lib/server/maswali-console";
+import { CONSOLE_PER_PAGE, SEAL_WEEKS_PER_PAGE, UNREACHED_ALERT_HOURS, UNREACHED_RECENT_DAYS, consoleStanding, integrityView } from "@/lib/server/maswali-console";
 import { parseIntegrityListQuery, integrityListParams } from "@/lib/maswali-integrity-list";
 import { isMaswaliVoidReason, MASWALI_VOID_REASON_LABEL } from "@/lib/maswali-void-reason";
 import { CLUSTER_LINE_PREVIEW, clusterReport, clusterRows, crowdedLineHolders, pickShifts, recentNewDeviceSeals } from "@/lib/server/maswali-integrity";
 import { takeoverWatch, type TakeoverWatch } from "@/lib/server/maswali-takeover";
+import { millioneaApprovedWordings } from "@/lib/server/maswali-marketing";
 import { weekStore } from "@/lib/server/maswali-dal";
+import type { SmsStatus } from "@/lib/server/store";
 import { slotLabel } from "@/lib/maswali-score";
 import { adminCount, formatNumber, formatTzs } from "@/lib/utils";
 import { fmtEat } from "@/lib/maswali-admin-format";
-import { HeldShareControls, HoldShareControl, PauseControl, VoidWeekControl } from "./integrity-controls";
+import { HeldShareControls, HoldShareControl, MarkReachedControl, PauseControl, VoidWeekControl, ClearLettersControl } from "./integrity-controls";
 import { StandingAuditWarning } from "../audit-warning";
 
 export const metadata = { title: "Admin · Millionea · Integrity" };
 export const dynamic = "force-dynamic";
+
+/** S6 · a winner SMS's own record, in the campaign page's words (OD41: handed over is not delivered). A full Record, so a
+ *  status added to the store is a compile error here. DELIVERED never reaches this list: a delivered winner is reached. */
+const SMS_STATE: Readonly<Record<SmsStatus, string>> = {
+  QUEUED: "Waiting", ACCEPTED: "Handed over · no receipt yet", DELIVERED: "Delivered", FAILED: "Failed", UNKNOWN: "No answer",
+};
+/** S6 · why a week's winner SMS batch was held (`maswali-winner-sms.ts`), in the desk's words. */
+const SMS_HELD: Record<string, string> = {
+  credit_low: "Held · it would spend the credit kept for codes",
+  credit_unreadable: "Held · the SMS credit could not be read",
+  settings_unreadable: "Held · the SMS settings could not be read",
+  targets_unreadable: "Held · earlier sends could not be read",
+  channel_closed: "Not sent · the channel policy refuses it",
+  BAD_MSISDN: "Not sent · the number on file cannot be dialled",
+  NOT_CONFIGURED: "Not sent · no SMS provider is configured",
+  PROVIDER_UNRECOGNISED: "Not sent · the SMS provider is not one this build knows",
+};
 
 /**
  * /admin/maswali/integrity — COMPLIANCE's page (MASWALI-BUILD S4; MASWALI-PLAN §7b S4 item 1, MB-34, MB-43, MB-62,
@@ -38,9 +57,16 @@ export const dynamic = "force-dynamic";
  *
  *   · the SALES PAUSE (sales only; never a cancel, a settlement or a refund);
  *   · weeks whose whole-week void is certain and whose window has closed, to void;
+ *   · S6 · each VOIDED week still owed its refunds, a row of its own until they land (R1's one truth, `unrefundedVoids`);
+ *   · S6 · the WINNERS NOT YET REACHED (MB-93), among the weeks settled in the last `UNREACHED_RECENT_DAYS`: no seen mark,
+ *     no ticket opened since the settlement, no delivered SMS, no call recorded — with what was sent, for the desk to call
+ *     and then record (`MarkReachedControl`, typed); past `UNREACHED_ALERT_HOURS` the console raises it too;
+ *   ⛔ THE SALES PAUSE ALWAYS RENDERS. Each card reads on its own and says when its read failed; a failure of the integrity
+ *     view takes its own cards, never the pause (the review's MEDIUM 7).
  *   · HELD SHARES, to release or forfeit to the jackpot; and every winner, to screen and hold;
  *   · the SEAL LOG, shown only for weeks whose results can no longer change (MB-34: the counterfactual is read after
- *     the fact, never while an officer could still be steered).
+ *     the fact, never while an officer could still be steered);
+ *   · S6 · the approved MARKETING WORDINGS, with the public week's fee filled in (MB-47): what a campaign may say.
  */
 type IntegrityPageProps = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 const INTEGRITY_HREF = "/admin/maswali/integrity";
@@ -74,22 +100,26 @@ async function Content({ searchParams }: IntegrityPageProps) {
     Promise.all([
       canUseControl(role, "pauseMaswaliSales"), canUseControl(role, "resumeMaswaliSales"), canUseControl(role, "voidMaswaliWeek"),
       canUseControl(role, "holdMaswaliShare"), canUseControl(role, "releaseMaswaliShare"), canUseControl(role, "forfeitMaswaliShare"),
+      canUseControl(role, "markMillioneaWinnerReached"), canUseControl(role, "clearUnresolvedLetter"),
     ]),
   ]);
-  const [canPause, canResume, canVoid, canHold, canRelease, canForfeit] = can;
+  const [canPause, canResume, canVoid, canHold, canRelease, canForfeit, canReach, canClearLetters] = can;
   // The cluster report for the latest weeks whose ticket set is fixed (closed, being sealed, or just settled).
   const closed = (await weekStore.list({ states: ["CLOSED", "RESOLVING", "SETTLED"], limit: 3 }).catch(() => []));
   const clusters = await Promise.all(closed.map((w) => clusterReport(w).catch(() => null)));
   const shifts = await pickShifts().catch(() => null);
   const newDevices = await recentNewDeviceSeals().catch(() => null);
   const takeover = await takeoverWatch().catch((): TakeoverWatch => ({ readable: false, findings: [] }));
-  if (!v) return (<><AdminPageHead title="Millionea · Integrity" sw="Uadilifu" /><AdminBody><p className="text-body-sm text-danger-fg">The integrity view could not be read.</p></AdminBody></>);
+  const wordings = await millioneaApprovedWordings().catch(() => null);
+  // ⛔ THE SALES PAUSE ALWAYS RENDERS (lane N's MEDIUM 7): a view that could not be read takes its own cards, never the
+  // page. The lists' links then keep the pages the query asked for.
   const linkQuery = {
-    held: { ...query.held, page: v.heldPage.page },
-    winners: { ...query.winners, page: v.winnersPage.page },
-    seals: { ...query.seals, page: v.sealWeeks.page },
-    voidable: { ...query.voidable, page: v.voidablePage.page },
+    held: { ...query.held, page: v?.heldPage.page ?? query.held.page },
+    winners: { ...query.winners, page: v?.winnersPage.page ?? query.winners.page },
+    seals: { ...query.seals, page: v?.sealWeeks.page ?? query.seals.page },
+    voidable: { ...query.voidable, page: v?.voidablePage.page ?? query.voidable.page },
     cluster: query.cluster,
+    unreached: { page: v?.unreachedPage?.page ?? query.unreached.page },
   };
   const listParams = integrityListParams(linkQuery);
 
@@ -158,6 +188,11 @@ async function Content({ searchParams }: IntegrityPageProps) {
           )}
         </AdminCard>
 
+        {!v ? (
+          <AdminCard title="Weeks, shares and seals" sw="Wiki, zawadi na mihuri">
+            <p className="text-body-sm text-danger-fg">The integrity view could not be read. The sales pause above still works.</p>
+          </AdminCard>
+        ) : (<>
         <AdminCard title="Weeks that void whole" sw="Wiki zinazobatilishwa" padding="p-0">
           <div className="border-b border-border-subtle p-4">
             <SearchBox mode="form" formId="maswali-voidable-filters" param="vq" pageParam="vpage" placeholder="Search week code" ariaLabel="Search weeks waiting to be voided" helpFields={["week"]} />
@@ -196,6 +231,71 @@ async function Content({ searchParams }: IntegrityPageProps) {
           )}
           {v.voidablePage.total > CONSOLE_PER_PAGE && <AdminPagination page={v.voidablePage.page} total={v.voidablePage.total} perPage={CONSOLE_PER_PAGE}
             baseHref={buildBaseHref(INTEGRITY_HREF, listParams, "vpage")} param="vpage" />}
+        </AdminCard>
+
+        <AdminCard title="Refunds owed" sw="Marejesho yanayodaiwa">
+          {v.owedRefunds === null ? <p className="text-body-sm text-danger-fg">The owed refunds could not be read.</p>
+            : v.owedRefunds.length === 0 ? <p className="text-body-sm text-text-secondary">No voided week is waiting for its refunds.</p> : (
+            <ul className="space-y-2">
+              {v.owedRefunds.map((r) => (
+                <li key={r.weekId} className="text-body-sm">
+                  <span className="tabular">{r.code}</span> · {r.ticketCount.toLocaleString("en")} {r.ticketCount === 1 ? "ticket" : "tickets"} · voided {fmtEat(r.voidedAt)}
+                  <span className="block text-text-tertiary">Its refunds have not landed. The tick retries them; the heal runs them now.</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </AdminCard>
+
+        <AdminCard title="Letters not known to have gone" sw="Barua zisizojulikana kama zimefika">
+          {v.unresolvedLetters?.truncated ? <p className="text-body-sm text-text-tertiary">Only the newest weeks were read; older weeks are not shown here.</p> : null}
+          {v.unresolvedLetters?.partial ? <p className="text-body-sm text-text-tertiary">Some weeks hold more records than one read covers, so a letter of theirs may be missing here; the week&apos;s audit trail has the rest.</p> : null}
+          {v.unresolvedLetters === null ? <p className="text-body-sm text-danger-fg">The letters not known to have gone could not be read.</p>
+            : v.unresolvedLetters.rows.length === 0 ? <p className="text-body-sm text-text-secondary">{v.unresolvedLetters.partial ? "No letter is listed from the records read." : "Every win and refund letter is known to have gone or to need nothing."}</p> : (
+            <ul className="space-y-2">
+              {v.unresolvedLetters.rows.map((l) => (
+                <li key={`${l.weekId}-${l.notice}`} className="text-body-sm">
+                  <span className="tabular">{l.code}</span> · {l.letters.toLocaleString("en")} {l.notice === "refund" ? "refund" : "win"} {l.letters === 1 ? "letter" : "letters"}
+                  <span className="block text-text-tertiary">The email provider may have taken {l.letters === 1 ? "it" : "them"}, and its own search could not say. Until the check is recorded, a later search that finds no such message may send {l.letters === 1 ? "it" : "any of them"} once more; the recorded check closes {l.letters === 1 ? "it" : "them"} for good. Check the provider&apos;s activity, and record the check before anyone writes to the holder.</span>
+                  {canClearLetters ? <ClearLettersControl weekId={l.weekId} notice={l.notice} code={l.code} />
+                    : <ControlLocked what="Record the check" need={CONTROL_DOMAIN.clearUnresolvedLetter} />}
+                </li>
+              ))}
+            </ul>
+          )}
+        </AdminCard>
+
+        <AdminCard title={v.unreachedPage ? `Winners not yet reached · ${v.unreachedPage.total.toLocaleString("en")}` : "Winners not yet reached"} sw="Washindi ambao hawajafikiwa" padding="p-0">
+          <p className="px-4 pb-2 text-body-sm text-text-tertiary">Weeks settled in the last {UNREACHED_RECENT_DAYS} days.</p>
+          {v.unreached === null ? <p className="px-4 pb-4 text-body-sm text-danger-fg">The winners not yet reached could not be read.</p>
+            : v.unreached.length === 0 ? <EmptyState title="Every winner has been reached" body="A winner is listed here until they open their result in the app, their SMS is delivered, or the desk records a call. A letter or an unopened bell is not proof." /> : (
+            <ScrollX label="Millionea winners not yet reached">
+              <table className="admin-tbl min-w-[1180px]">
+                <thead><tr><th className="text-left">Week</th><th className="text-left">Holder</th><th className="text-left">Tickets</th><th className="text-right">Paid</th><th className="text-left">Settled (EAT)</th><th className="text-left">Bell</th><th className="text-left">Email</th><th className="text-left">SMS</th><th className="text-left">Desk</th></tr></thead>
+                <tbody>
+                  {v.unreached.map((u) => (
+                    <tr key={`${u.weekId}-${u.userId}`}>
+                      <td className="text-left tabular">{u.weekCode}</td><td className="text-left">{u.holder}</td>
+                      <td className="text-left tabular max-w-[240px]">{u.serials.join(", ")}</td>
+                      <td className="text-right tabular">{u.forfeited ? "Forfeited" : u.held ? "Held" : u.paidTzs === null ? "Not on record" : formatTzs(u.paidTzs)}</td>
+                      <td className="text-left tabular">{fmtEat(u.settledAt)} · {u.hoursSince} h{u.hoursSince >= UNREACHED_ALERT_HOURS ? <span className="text-warning"> · past {UNREACHED_ALERT_HOURS} h</span> : null}</td>
+                      <td className="text-left">{u.bell ? "Written · not opened" : "Not written"}</td>
+                      <td className="text-left">{u.email === "confirmed" ? "Confirmed address" : u.email === "unconfirmed" ? "Unconfirmed address" : "No address"}</td>
+                      <td className="text-left">{u.sms ? SMS_STATE[u.sms.status] : u.smsHeld ? (SMS_HELD[u.smsHeld] ?? "Held") : "Not sent"}</td>
+                      <td className="text-left">{canReach ? <MarkReachedControl weekId={u.weekId} userId={u.userId} holder={u.holder} />
+                        : <ControlLocked what="Record a call" need={CONTROL_DOMAIN.markMillioneaWinnerReached} />}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </ScrollX>
+          )}
+          {v.unreachedPage && v.unreachedPage.total > CONSOLE_PER_PAGE && (
+            <div className="border-t border-border-subtle px-4 py-2">
+              <AdminPagination page={v.unreachedPage.page} total={v.unreachedPage.total} perPage={CONSOLE_PER_PAGE}
+                baseHref={buildBaseHref(INTEGRITY_HREF, listParams, "npage")} param="npage" />
+            </div>
+          )}
         </AdminCard>
 
         <AdminCard title="Held shares" sw="Zawadi zilizozuiliwa" padding="p-0">
@@ -343,6 +443,22 @@ async function Content({ searchParams }: IntegrityPageProps) {
               <AdminPagination page={v.sealWeeks.page} total={v.sealWeeks.total} perPage={SEAL_WEEKS_PER_PAGE}
                 baseHref={buildBaseHref(INTEGRITY_HREF, listParams, "spage")} param="spage" />
             </div>
+          )}
+        </AdminCard>
+        </>)}
+
+        <AdminCard title="Marketing wordings" sw="Maneno ya matangazo">
+          {!wordings ? <p className="text-body-sm text-text-secondary">The approved wordings could not be read: the week&apos;s fee at payout could not be read.</p> : (
+            <>
+              <p className="text-body-sm text-text-secondary mb-3">
+                {wordings.facts.live ? null : <span className="text-warning">Millionea is not public yet, so no campaign may be about it. </span>}
+                A Millionea campaign is one whose name begins with &ldquo;Millionea&rdquo;: it carries its headline&apos;s three facts and the week&apos;s own fee, and the composer refuses an amount, a win or a winner, a sum, an income, a guarantee, a rank or a chance (MB-47); any other campaign that uses Millionea&apos;s words is refused until it is tagged or reworded, and no wording names a winner (OD-30).
+                {" "}The fee below is {wordings.facts.source === "WEEK" ? `${wordings.facts.weekCode ?? "this week"}'s own` : "the one the next week will freeze"}.
+              </p>
+              <ul className="space-y-2">
+                {[...wordings.SW, ...wordings.EN].map((w) => <li key={w} className="text-body-sm">{w}</li>)}
+              </ul>
+            </>
           )}
         </AdminCard>
       </AdminBody>

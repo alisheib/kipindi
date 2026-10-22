@@ -7,6 +7,7 @@
  *   · void     — `test:maswali-void`     (`scripts/lib/maswali-void-child.mts`, MASWALI-BUILD R1)
  *   · adversarial — `test:maswali-adversarial` (`scripts/lib/maswali-adversarial-child.mts`, MASWALI-BUILD S7), named
  *     `adversarial:<ids>` so the drive runs only the plant's own sections (`--only <ids>`)
+ *   · notify   — `test:maswali-notify`   (`scripts/lib/maswali-notify-child.mts`, MASWALI-BUILD S6 lane N round 2)
  * DATA, so `test:red-anchors` can audit that every `from` still resolves exactly once without running the harness.
  *
  * `expect` is the start of (or a phrase in) the case's own label: any other red is WRONG-ASSERTION.
@@ -18,6 +19,9 @@ const SVC = "src/lib/server/maswali-service.ts";
 const VOID = "src/lib/server/maswali-void.ts";
 /** A line break, built from its code point: an anchor spanning two lines joins them with it (the resolver matches either ending). */
 const LF = String.fromCharCode(10);
+const NOTIFY = "src/lib/server/maswali-notify.ts";
+/** The close's one notice hook (S6 lane N, round 3), which (N1) and (N3) each rewrite. */
+const CLOSE_HOOK = '      afterCommit(currentLockTx(), () => { const at = hookContext(); runOutsideLock(() => { void import("./maswali-notify").then((m) => m.noticeSalesClosed(week.id, at)).catch(() => {}); }); });';
 /** The week void's one post-commit line (R10d's push), which (6), (6b) and (14) each rewrite. */
 const VOID_PUSH = "  if (out.ok && !out.already) await emitWalletBalances(credited.map((c) => c.userId));";
 
@@ -774,5 +778,113 @@ export const MUTATIONS = [
     to: "    const early = (await ticketStore.listForUser(userId)).filter(mayHaveBought);" + LF + "    await withLock(MASWALI_CHAIN_LOCK, async (tx) => {" + LF + "      const candidates = early;",
     expect: "RD.10 · ⭐",
     suite: "adversarial:RD",
+  },
+  /* MASWALI-BUILD S6 (lane N, review rounds 2 and 3) · the notices' own guards, each put back where it really runs. */
+  {
+    name: "(N1) the close's notice is launched INSIDE the close's own lock and transaction — the witness read at each run's launch must see it",
+    file: SVC,
+    from: CLOSE_HOOK,
+    to: '      await import("./maswali-notify").then((m) => m.noticeSalesClosed(week.id)).catch(() => {});',
+    expect: "11.1 · ⭐ MEDIUM 3",
+    suite: "notify",
+  },
+  {
+    name: "(N3) round 3 · ONLY `afterCommit(` is taken away: the hook runs inline inside the close's lock and still escapes every lock before its run — the witness read in the hook must see it",
+    file: SVC,
+    from: CLOSE_HOOK,
+    to: CLOSE_HOOK.replace("afterCommit(currentLockTx(), ", "((_tx: unknown, hook: () => void) => hook())(currentLockTx(), "),
+    expect: "11.1 · ⭐ MEDIUM 3",
+    suite: "notify",
+  },
+  {
+    name: "(N2) a notice's own key is not asked: a second run outside notify()'s 90-second window sends every notice again",
+    file: NOTIFY,
+    from: "    seen = await db.notification.existsWithHref(userId, millioneaNoticeHref(key));",
+    to: "    seen = false;",
+    expect: "2.2 · a second run",
+    suite: "notify",
+  },
+  /* MASWALI-BUILD S6 (lane N, round 17) · the review of rounds 13–16: a week's letters once, and a letter never lost. */
+  {
+    name: "(N4) round 17 (B1) · the notices' running jobs share the data layer's global name again: no launch can record its run, so a week's letters go once per launch",
+    file: NOTIFY,
+    from: "const inflight = (globalThis.__50PICK_MLN_NOTICE_INFLIGHT ??= new Set<Promise<NoticeRun>>());",
+    to: "const inflight = (globalThis.__50PICK_MLN_NOTICES ??= new Set<Promise<NoticeRun>>());",
+    expect: "1.0 · ⭐ round 17 (B1)",
+    suite: "notify",
+  },
+  {
+    name: "(N5) round 17 (B2) · a holder whose letter records cannot be read is not counted: the run is recorded complete and the letter is never sent",
+    file: NOTIFY,
+    from: "  if (records === null) { r.letters.unread = (r.letters.unread ?? 0) + 1; return; }",
+    to: "  if (records === null) return;",
+    expect: "11c.1 · ⭐ round 17 (B2)",
+    suite: "notify",
+  },
+  /* MASWALI-BUILD S6 (lane N, round 17, M5 — the lead's ruling) · an officer's check closes the letters it lists. */
+  {
+    name: "(N6) round 17 (M5) · the officer's check writes no closing record: the letter it listed stays open, so a later 'absent' sends it once more",
+    file: NOTIFY,
+    from: "    for (const userId of open) {",
+    to: "    for (const userId of open.slice(open.length)) {",
+    expect: "8.11g2 · ⭐ round 17 (M5)",
+    suite: "notify",
+  },
+  {
+    name: "(N7) round 17 (M5) · a check is let in beside the week's own run in this process: it closes letters the run is still deciding",
+    file: NOTIFY,
+    from: "  if (running().has(key) || checks().has(key)) return { ok: false, error: LETTERS_BUSY };",
+    to: "  if (checks().has(key)) return { ok: false, error: LETTERS_BUSY };",
+    expect: "11d.1 · ⭐ round 17 (M5)",
+    suite: "notify",
+  },
+  {
+    name: "(N8) round 17 (M5) · a launch while the check holds the week runs anyway, beside the check",
+    file: NOTIFY,
+    from: '  if (checks().has(key)) return launch(notice, weekId, async (r) => { r.skipped = "lease"; });',
+    to: '  if (false) return launch(notice, weekId, async (r) => { r.skipped = "lease"; });',
+    expect: "11d.2 · ⭐ round 17 (M5)",
+    suite: "notify",
+  },
+  {
+    name: "(N9) round 17 (M5) · the week is let go before the officer's record is written: a run between them could list a letter that record then hides",
+    file: NOTIFY,
+    from: [
+      "    if (!(await keep())) return lost;",
+      '    if (!(await record(open.length))) return { ok: false, error: "The check could not be recorded, so the row stays. Try again." };',
+    ].join(String.fromCharCode(10)),
+    to: [
+      "    if (!(await keep())) return lost;",
+      "    if (held) { held = false; await releaseLeadership(task); }",
+      "    checks().delete(key);",
+      '    if (!(await record(open.length))) return { ok: false, error: "The check could not be recorded, so the row stays. Try again." };',
+    ].join(String.fromCharCode(10)),
+    expect: "11d.2 · ⭐ round 17 (M5)",
+    suite: "notify",
+  },
+  {
+    name: "(N10) round 17 (M5) · the check takes the week's lease without a strict read and write: a lease it could not read is taken",
+    file: NOTIFY,
+    from: "  const lease = { leaseMs: NOTICE_LEASE_MS, strictWrite: true, strictRead: true };",
+    to: "  const lease = { leaseMs: NOTICE_LEASE_MS };",
+    expect: "13.7 · ⭐ round 4 (L3)",
+    suite: "notify",
+  },
+  {
+    name: "(N11) round 17 (M5) · the integrity card says again that a listed letter is never sent again by itself",
+    file: "src/app/admin/maswali/integrity/page.tsx",
+    from: 'Until the check is recorded, a later search that finds no such message may send {l.letters === 1 ? "it" : "any of them"} once more; the recorded check closes {l.letters === 1 ? "it" : "them"} for good. Check the provider&apos;s activity, and record the check before anyone writes to the holder.',
+    to: '{l.letters === 1 ? "It is" : "They are"} never sent again by themselves: check the provider&apos;s activity before anyone writes to the holder.',
+    expect: "13.9 · ⭐ round 17 (M5)",
+    suite: "notify",
+  },
+  /* MASWALI-BUILD S6 (lane N, round 17, L1) · the provider metadata's doc names what leaves: the digest. */
+  {
+    name: "(N12) round 17 (L1) · the provider metadata's doc says again that a money letter carries its record's target",
+    file: "src/lib/server/email.ts",
+    from: "  /** The provider's own metadata on the message — a money letter carries a one-way digest of its letter's target (`letter`),",
+    to: "  /** The provider's own metadata on the message — a money letter carries its record's target (`letter`),",
+    expect: "13.8 · ⭐ round 17 (L1)",
+    suite: "notify",
   },
 ];

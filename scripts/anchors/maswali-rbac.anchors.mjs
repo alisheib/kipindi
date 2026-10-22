@@ -222,4 +222,12 @@ export const MUTATIONS = [
     expect: "9.8 · ⭐ R4",
     suite: "rbac",
   },
+  {
+    name: "(26) round 17 (M1) · the integrity page draws the letters' check from a pending answer (every role that opens it gets the control)",
+    file: "src/app/admin/maswali/integrity/page.tsx",
+    from: "{canClearLetters ? <ClearLettersControl ",
+    to: "{canUseControl(role, \"clearUnresolvedLetter\") ? <ClearLettersControl ",
+    expect: "10 · /admin/maswali/integrity draws the letters' check",
+    suite: "rbac",
+  },
 ];

@@ -46,6 +46,8 @@ const SUITES = {
   closerace: "npx tsx scripts/lib/maswali-close-race-child.mts",
   void: "npx tsx scripts/lib/maswali-void-child.mts",
   adversarial: "npx tsx scripts/lib/maswali-adversarial-child.mts",
+  // MASWALI-BUILD S6 (lane N, review round 2): the notices' witness and their own key.
+  notify: "npx tsx scripts/lib/maswali-notify-child.mts",
 };
 /**
  * A mutation's suite, as a command. `<suite>:<ids>` runs that child on those sections alone (`--only <ids>`, which the

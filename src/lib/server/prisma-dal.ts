@@ -65,6 +65,8 @@ import { parseQuery, queryToWhere, fieldNames, NOTIFICATION_SEARCH, CONTACT_SEAR
 import { FINAL_REFUSAL_CODES } from "@/lib/kyc-refusal";
 // 2026-10-10 (review R5.1) · the post-check list's statuses — the memory half (store.ts) reads the same list.
 import { POST_CHECK_LIST_STATUSES } from "@/lib/kyc-approval";
+// MASWALI-BUILD S6 round 3 (A5) · the targets whose one message is reserved by its row — the memory half reads the same list.
+import { isExclusiveSmsTarget } from "@/lib/sms-targets";
 import type {
   StoredUser,
   StoredKyc,
@@ -4203,19 +4205,24 @@ export const prismaDb = {
       // `createMany` cannot return rows, and these are written BEFORE the HTTP call so a
       // crash mid-send still leaves a row for a receipt to land on. The input IS the row.
       if (ms.length === 0) return [];
-      await pc().smsMessage.createMany({
-        data: ms.map((m) => ({
-          reference: m.reference, msisdn: m.msisdn, purpose: m.purpose, provider: m.provider,
-          senderId: m.senderId, bodyLen: m.bodyLen, status: m.status, providerMsg: m.providerMsg,
-          dlrStatus: m.dlrStatus, dlrDesc: m.dlrDesc, balanceTzs: m.balanceTzs,
-          attempts: m.attempts, targetType: m.targetType, targetId: m.targetId,
-          createdAt: new Date(m.createdAt),
-          sentAt: m.sentAt ? new Date(m.sentAt) : null,
-          deliveredAt: m.deliveredAt ? new Date(m.deliveredAt) : null,
-          failedAt: m.failedAt ? new Date(m.failedAt) : null,
-        })),
-        skipDuplicates: true,
-      });
+      const data = (rows: StoredSmsMessage[]) => rows.map((m) => ({
+        reference: m.reference, msisdn: m.msisdn, purpose: m.purpose, provider: m.provider,
+        senderId: m.senderId, bodyLen: m.bodyLen, status: m.status, providerMsg: m.providerMsg,
+        dlrStatus: m.dlrStatus, dlrDesc: m.dlrDesc, balanceTzs: m.balanceTzs,
+        attempts: m.attempts, targetType: m.targetType, targetId: m.targetId,
+        createdAt: new Date(m.createdAt),
+        sentAt: m.sentAt ? new Date(m.sentAt) : null,
+        deliveredAt: m.deliveredAt ? new Date(m.deliveredAt) : null,
+        failedAt: m.failedAt ? new Date(m.failedAt) : null,
+      }));
+      // ⭐ MASWALI-BUILD S6 round 3 (A5) · an exclusive target's row is its message's RESERVATION (`@/lib/sms-targets`, the
+      // unique partial index of 20261018120000_maswali_winner_sms_once): a plain INSERT, so a second process's row for the
+      // same target FAILS and its batch sends nothing. ⛔ Never `skipDuplicates` for it: that drops the row silently, and the
+      // message would still go. Every other row keeps the batch's own rule.
+      const exclusive = ms.filter((m) => isExclusiveSmsTarget(m.targetType));
+      const rest = exclusive.length === 0 ? ms : ms.filter((m) => !isExclusiveSmsTarget(m.targetType));
+      if (exclusive.length > 0) await pc().smsMessage.createMany({ data: data(exclusive) });
+      if (rest.length > 0) await pc().smsMessage.createMany({ data: data(rest), skipDuplicates: true });
       return ms;
     },
     findByReference: async (reference: string): Promise<StoredSmsMessage | null> => {

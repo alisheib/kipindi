@@ -37,6 +37,12 @@
  * the screen refuses it before Save is pressed; a campaign row is never deleted); a body's `{jina}` fallback stored ONLY
  * while that body uses `{jina}` — a hidden, unchecked word is never kept.
  *
+ * ⭐ HIGH 1 (MASWALI-BUILD S6) · A MILLIONEA CAMPAIGN MEETS THE WEEK HERE. The ONE verdict judges Millionea's claims rules by
+ * the product the name declares (`campaignProductOf`); what only the server can judge — the week's facts read, Millionea
+ * open to everyone, every fee a body states the week's own (`millioneaFactsProblems`) — is judged here, after it, on the
+ * week the save reads itself (`deps.millioneaFacts`, lazily: no Millionea module loads for any other campaign). A read
+ * that fails refuses the save. Any other campaign reads nothing more.
+ *
  * `marketing.campaign_created` is written once, when the draft is born. Owed: U50 registers it.
  *
  * Guard: `npm run test:campaign-compose` §17 (no source line stamped or read: §17.13–§17.20).
@@ -57,6 +63,8 @@ import type { ContactAudienceFilter } from "@/lib/server/marketing/audience";
 import { holdsPhoneRun } from "@/lib/contacts/contact-fields";
 import { SMS_CAMPAIGN_VALUE } from "@/lib/server/marketing/campaign-model";
 import { formatClock } from "@/lib/utils";
+import { campaignProductOf, millioneaFactsFrom, millioneaFactsProblems, type MillioneaFacts } from "@/lib/marketing/millionea-claims";
+import { millioneaLintEpoch } from "@/lib/server/marketing/millionea-lint-epoch";
 
 /* ══ THE SENTENCES — the server's, shown as they are ═══════════════════════════════════════════════════════════════ */
 
@@ -130,6 +138,13 @@ export type CampaignDraftDeps = {
     update: (id: string, patch: SmsCampaignDraftPatch, guard: SmsCampaignDraftGuard, at: string) => Promise<StoredSmsCampaign | null>;
   };
   validate: typeof validateCampaignTemplate;
+  /** ⭐ HIGH 1 · the week's facts a Millionea campaign is held to (`millioneaMarketingFacts`, read lazily). Optional, so a
+   *  dependency set written before it still type-checks; production's sets it, and a set without it reads none — a
+   *  Millionea campaign is then refused as unread, never saved unchecked. */
+  millioneaFacts?: () => Promise<MillioneaFacts | null>;
+  /** ⭐ Round 4, rule 6 · the stamp of the instant Millionea's claims rules first ran (`millioneaLintEpoch`): a save is one of
+   *  the doors that stamps it. Optional; it never refuses a save. */
+  millioneaLintEpoch?: (clock: Date) => Promise<string | null>;
   /** OD55's rule (`wholeNumberAudienceProblem`). */
   audienceRule: (f: ContactAudienceFilter) => string | null;
   audit: (entry: Parameters<typeof audit>[0]) => unknown;
@@ -255,6 +270,8 @@ export const CAMPAIGN_DRAFT_DEPS: CampaignDraftDeps = {
     update: (id, patch, guard, at) => db.smsCampaign.update(id, patch, guard, at),
   },
   validate: validateCampaignTemplate,
+  millioneaFacts: () => import("@/lib/server/maswali-marketing").then((m) => m.millioneaMarketingFacts()),
+  millioneaLintEpoch: (clock: Date) => millioneaLintEpoch({ clock }),
   audienceRule: wholeNumberAudienceProblem,
   audit,
   now: () => new Date(),
@@ -293,6 +310,8 @@ export async function saveCampaignDraft(
   }
 
   // ── the audience, and the template — the server's verdict on both ──
+  // ⭐ Round 4, rule 6 · the rules' first run is stamped by the first door that judges a campaign (it never refuses one).
+  await deps.millioneaLintEpoch?.(deps.now()).catch(() => null);
   const problems: Partial<Record<CampaignDraftField, string[]>> = {};
   const audience = audienceOf(input?.audience ?? null, current, options.viewerReads, deps.audienceRule);
   if (!audience.ok) problems.audience = [audience.reason];
@@ -301,6 +320,15 @@ export async function saveCampaignDraft(
   // before Save was pressed.
   const verdict = deps.validate(fields, "");
   Object.assign(problems, verdict.problems);
+  // ⭐ HIGH 1 · a Millionea campaign meets the week here, on the server (the header): each body it holds is refused while
+  // the facts cannot be read, while Millionea is not open to everyone, or while a fee it states is not the week's.
+  if (campaignProductOf(fields.name) === "MILLIONEA") {
+    const facts = await millioneaFactsFrom(deps.millioneaFacts);
+    for (const k of ["bodySw", "bodyEn"] as const) {
+      const said = fields[k] === "" ? [] : millioneaFactsProblems(fields[k], facts);
+      if (said.length > 0) problems[k] = [...new Set([...(problems[k] ?? []), ...said])];
+    }
+  }
   if (!audience.ok || !verdict.ok || Object.keys(problems).length > 0) {
     return { ok: false, reason: "invalid", error: firstProblem(problems), problems };
   }

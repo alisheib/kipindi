@@ -60,8 +60,9 @@
  * then the status's, then Start's switch and OD66, Make a copy's audience.
  *
  * ⛔ IT READS AND WRITES NOTHING ELSE: no transition, no audit row, no claim. A read that FAILS throws (the page says it
- * could not load; the driver stops) — except the switch (unreadable = closed), the window (unreadable = closed) and the
- * names of the officers who acted (unread = "an officer").
+ * could not load; the driver stops) — except the switch (unreadable = closed), the window (unreadable = closed), the
+ * names of the officers who acted (unread = "an officer") and a sending campaign's pre-rules flag (MASWALI-BUILD S6 round 4,
+ * rule 6: the engine's row for a campaign that began before Millionea's claims rules — unread = none).
  *
  * Guard: `npm run test:campaign-visuals` §svc (V2 · V3 · S1–S9 · W1 · P1) · Red: `npm run red:campaign-visuals` (in memory).
  */
@@ -91,6 +92,7 @@ import type { AudienceBucket } from "@/lib/server/marketing/audience-split";
 import type { MarketingSkipReason } from "@/lib/server/marketing/consent";
 import { resumeOutstanding } from "@/lib/server/marketing/start-check";
 import { RESULTS_DEPS, campaignResults } from "@/lib/server/marketing/campaign-results";
+import { CAMPAIGN_FLAGGED_ACTION } from "@/lib/server/marketing/millionea-lint-epoch";
 import type { ResultsDeps } from "@/lib/server/marketing/campaign-results";
 import {
   CAMPAIGN_STATUS_VIEW, MASKED_BREAKDOWN_MIN, campaignProgress, outcomeStatusCounts, outstandingRows, recipientRows,
@@ -104,7 +106,7 @@ import {
 import {
   FLOOR_SAFE_STOP_REASONS, LIVE_DISABLED, LIVE_FLOOR, LIVE_HEADLINE, LIVE_PAUSED_HIDDEN, LIVE_PAUSED_HIDDEN_VIEW, LIVE_SOMEBODY, NOT_SENT_EXTRA,
   RECIPIENT_STATUS_LABEL, START_AUDIENCE_REFUSED, copyCantTravelSentence, eatClock, officerPausedSentence, pausedReasonSentence,
-  preparingHeadline, sendingHeadline, startDialog, stopDialog, stoppedHeadline,
+  preRulesFlagSentence, preparingHeadline, sendingHeadline, startDialog, stopDialog, stoppedHeadline,
 } from "@/app/admin/campaigns/[id]/live-copy";
 import type { LiveReach } from "@/app/admin/campaigns/[id]/live-copy";
 
@@ -173,6 +175,10 @@ export type CampaignLiveView = {
   headline: string;
   /** Why it is paused or stopped: an officer's act with who and when (from its audit row), else the engine's reason. */
   stopSentence: string | null;
+  /** ⭐ MASWALI-BUILD S6 (round 4, rule 6) · a campaign SENDING since before Millionea's claims rules first ran: what they
+   *  would refuse, said on its status card while it sends (the engine's flag of this run); null otherwise. Optional, so a
+   *  view built before it still type-checks. */
+  lintFlag?: string | null;
   /** The stored audience in words — or that this viewer's role may not see it, or that it cannot be read. */
   audienceLines: string[];
   confirmed: { count: number; at: string; byName: string | null } | null;
@@ -418,6 +424,20 @@ async function actorOfAct(campaignId: string, action: string, deps: LiveViewDeps
   }
 }
 
+/**
+ * ⭐ MASWALI-BUILD S6 (round 4, rule 6) · the newest pre-rules flag the engine wrote in this run of the campaign — at or after
+ * its row's `updatedAt`, the instant the run began — as the status card says it; null when there is none. Pure: the acts are
+ * read by the caller.
+ */
+export function preRulesFlagOf(acts: readonly AuditEntry[], c: Pick<StoredSmsCampaign, "updatedAt">): string | null {
+  const sinceMs = Date.parse(c?.updatedAt ?? "");
+  if (!Number.isFinite(sinceMs)) return null;
+  const flag = acts.find((e) => e.action === CAMPAIGN_FLAGGED_ACTION && Number.isFinite(Date.parse(e.createdAt))
+    && Date.parse(e.createdAt) >= sinceMs - ACT_GRACE_MS);
+  const detail = flag?.payload?.detail;
+  return typeof detail === "string" && detail.trim() !== "" ? preRulesFlagSentence(detail) : null;
+}
+
 /** The stored audience in words, as this viewer may read it — through the list's ONE role-shaped describer
  *  (`campaignRowAudience`: the composer's own reading — A1.1, X25, OD66) and the list's words, so a campaign never reads
  *  one way on the list and another on its own page. */
@@ -480,6 +500,7 @@ export async function campaignLiveView(id: string, viewer: LiveViewer, deps: Liv
   // ── the headline and why it stopped ──
   let headline: string;
   let stopSentence: string | null = null;
+  let lintFlag: string | null = null;
   const reasonKey = typeof c.stopReason === "string" ? c.stopReason.trim() : "";
   switch (status) {
     case "DRAFT":
@@ -497,6 +518,9 @@ export async function campaignLiveView(id: string, viewer: LiveViewer, deps: Liv
     }
     case "RUNNING":
       headline = sendingHeadline(progress);
+      // ⭐ Round 4, rule 6 · a campaign sending since before the claims rules: their flag, said while it sends (an unread act
+      // is no flag — it never stops the view).
+      lintFlag = preRulesFlagOf(await deps.actsOn(c.id).catch(() => []), c);
       break;
     case "PAUSED":
       headline = LIVE_HEADLINE.PAUSED;
@@ -577,6 +601,7 @@ export async function campaignLiveView(id: string, viewer: LiveViewer, deps: Liv
     chip: view?.chip ?? "neutral",
     headline,
     stopSentence,
+    lintFlag,
     audienceLines: audienceLinesOf(c, reads),
     confirmed,
     progress,

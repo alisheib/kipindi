@@ -529,7 +529,9 @@ export async function settleMaswaliWeek(input: {
     } catch (err) {
       console.error(`[maswali-settlement] week ${first.code} settled, but its row could not be re-read: ${(err as Error)?.message ?? err}`);
     }
-    void floatCheck({ weekId: first.id, code: first.code, paid: out.week.paidTotal ?? 0 }, input.readFloat);
+    void floatCheck({ weekId: first.id, code: first.code, paid: out.week.paidTotal ?? 0 }, input.readFloat).catch(() => {})
+      // S6 · MB-11 · the float is compared BEFORE any winner is told; then the result reaches every holder (MB-68), after commit.
+      .then(() => import("./maswali-notify")).then((m) => m.noticeWeekSettled(first.id)).catch(() => {});
     return { ok: true, week: settled };
   } catch (err) {
     // R6 · rolled back, and the holds above committed on their own: each is lifted where no held share stands behind it.
@@ -568,7 +570,7 @@ export const FLOAT_ALERT_BUFFER_TZS = 500_000;
  * buffer, and ⭐ S7-F2 its own when the float cannot be read (fail closed: never silence; the console raises both).
  * ⭐ R4c · `paid` is the total the settlement committed, handed over after the commit — never a row read in the lock.
  */
-async function floatCheck(week: { weekId: string; code: string; paid: number }, readFloat?: () => Promise<{ balance: number } | null>): Promise<void> {
+export async function floatCheck(week: { weekId: string; code: string; paid: number }, readFloat?: () => Promise<{ balance: number } | null>): Promise<void> {
   try {
     const paid = week.paid;
     if (paid <= 0) return;

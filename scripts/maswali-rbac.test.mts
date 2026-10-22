@@ -27,6 +27,9 @@
  *      neither; and each cluster line is keyed by its stable id. Round 4: the allowlist is typed by the settlement's own
  *      hold reasons; the table lists every line in the report's one order (R5's rule, across the weeks shown); and an
  *      opened crowded line is named as a place and read a page at a time.
+ *   §10 ⭐ round 17 (M1) · what a role without a control is drawn: every console page decides each control from an AWAITED
+ *      check (a pending promise in a condition is always true), and a role that may open the integrity page but not
+ *      record the letters' check is drawn its lock — red plant (7).
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -59,7 +62,9 @@ const CONTROLS: Array<{ id: ControlId; domain: string; route: keyof typeof ROUTE
   ...(["createMaswaliWeek", "editMaswaliQuestion", "attestMaswaliParity", "openMaswaliWeek", "moveMaswaliClose", "sealMaswaliQuestion",
     "voidMaswaliQuestion", "confirmMaswaliSeal", "correctMaswaliSeal"] as const).map((id) => ({ id, domain: "trading", route: "week" as const })),
   { id: "releaseMaswaliSettlement", domain: "accounting", route: "pools" },
-  ...(["voidMaswaliWeek", "pauseMaswaliSales", "resumeMaswaliSales", "holdMaswaliShare", "releaseMaswaliShare", "forfeitMaswaliShare"] as const)
+  // S6 (2026-10-18): the desk's record of a call that reached a winner (MB-93) joins Compliance's acts on /integrity.
+  ...(["voidMaswaliWeek", "pauseMaswaliSales", "resumeMaswaliSales", "holdMaswaliShare", "releaseMaswaliShare", "forfeitMaswaliShare",
+    "markMillioneaWinnerReached", "clearUnresolvedLetter"] as const)
     .map((id) => ({ id, domain: "compliance", route: "integrity" as const })),
   ...(["fundMaswaliGuarantee", "returnMaswaliGuarantee", "sunsetMaswali", "setMaswaliLicenceBasis", "setMillioneaRollout"] as const)
     .map((id) => ({ id, domain: "ops", route: "pools" as const })),
@@ -77,7 +82,9 @@ for (const [name, r] of Object.entries(ROUTES)) {
 }
 
 // ── §2 · every role × every control ─────────────────────────────────────────
-ok("2 · there are 23 Millionea controls, each registered", CONTROLS.length === 23 && CONTROLS.every((c) => c.id in CONTROL_DOMAIN), `${CONTROLS.length}`);
+// S6-INT 14 · 25 at the N squash: 21 before S7, S7-F2's two (saveMaswaliConfig, saveMaswaliHolidays) and the notices' two
+// (markMillioneaWinnerReached, clearUnresolvedLetter, Compliance on /integrity) — the count this suite printed.
+ok("2 · there are 25 Millionea controls, each registered", CONTROLS.length === 25 && CONTROLS.every((c) => c.id in CONTROL_DOMAIN), `${CONTROLS.length}`);
 for (const c of CONTROLS) {
   ok(`2 · ${c.id} is registered ${c.domain}`, CONTROL_DOMAIN[c.id] === c.domain, `registered ${CONTROL_DOMAIN[c.id]}`);
   for (const role of ROLES) {
@@ -263,6 +270,54 @@ const WRITES = /\.(create|createMany|createManyAndReturn|update|updateMany|upser
       && integritySrc.includes(".values()].sort(clusterLineOrder);"));
   ok("9.9 · R4 · an opened crowded line is named as a place its holders share — never one group's accounts — and its holders are read a page at a time",
     page.includes("holders on one crowded place") && page.includes("crowdedLineHolders(open.c.weekId, open.g.id, hpage, CONSOLE_PER_PAGE)"));
+}
+
+// ── §10 · what a role without a control is drawn (round 17, M1) ──────────────
+// `canUseControl` answers a promise, and a pending promise in a condition is always true: a page draws a control from the
+// AWAITED answer only, so a role that may open the page but not act is drawn the lock.
+{
+  const PAGES = ["src/app/admin/maswali/page.tsx", "src/app/admin/maswali/new/page.tsx", "src/app/admin/maswali/[weekId]/page.tsx",
+    "src/app/admin/maswali/[weekId]/edit/page.tsx", "src/app/admin/maswali/pools/page.tsx", "src/app/admin/maswali/integrity/page.tsx"];
+  /** The span of each `await Promise.all(` call's own parentheses. */
+  const awaitedSpans = (src: string): Array<[number, number]> => {
+    const spans: Array<[number, number]> = [];
+    for (const m of src.matchAll(/await\s+Promise\.all\(/g)) {
+      const open = (m.index ?? 0) + m[0].length - 1;
+      let depth = 0;
+      for (let i = open; i < src.length; i++) {
+        if (src[i] === "(") depth++;
+        else if (src[i] === ")" && --depth === 0) { spans.push([open, i]); break; }
+      }
+    }
+    return spans;
+  };
+  for (const page of PAGES) {
+    const src = read(page);
+    const spans = awaitedSpans(src);
+    const calls = [...src.matchAll(/canUseControl\(/g)].map((m) => m.index ?? 0);
+    const pending = calls.filter((at) => !/await\s+$/.test(src.slice(Math.max(0, at - 12), at)) && !spans.some(([a, b]) => at > a && at < b));
+    ok(`6 · ${page} decides each of its ${calls.length} control checks from an awaited answer`, calls.length > 0 && pending.length === 0,
+      pending.map((at) => src.slice(at, at + 60)).join(" | "));
+  }
+  // The integrity page's check of the letters' control is awaited with the others, and its answer — taken by its place in
+  // that list — is the condition that draws the control, else the lock.
+  const integrity = read(ROUTES.integrity.file.replace("actions.ts", "page.tsx"));
+  const inner = integrity.match(/Promise\.all\(\[\s*(canUseControl\(role, "[a-zA-Z]+"\)[\s\S]*?)\]\)/)?.[1] ?? "";
+  const ids = [...inner.matchAll(/canUseControl\(role, "([a-zA-Z]+)"\)/g)].map((m) => m[1]);
+  const names = (integrity.match(/const \[([^\]]+)\] = can;/)?.[1] ?? "").split(",").map((s) => s.trim()).filter((s) => s !== "");
+  const name = names[ids.indexOf("clearUnresolvedLetter")];
+  const drawn = ids.length > 0 && ids.length === names.length && !!name && integrity.includes(`{${name} ? <ClearLettersControl `)
+    && integrity.includes(`: <ControlLocked what="Record the check" need={CONTROL_DOMAIN.clearUnresolvedLetter} />`);
+  ok("10 · /admin/maswali/integrity draws the letters' check from its awaited answer: the control, else its lock",
+    drawn, `${ids.length} checks · ${names.length} answers · condition ${name ?? "none"}`);
+  const locked: string[] = [];
+  for (const role of ROLES) {
+    if (!(await canView(role, domainForPath(ROUTES.integrity.path)))) continue;
+    if (await canUseControl(role, "clearUnresolvedLetter")) continue;
+    locked.push(role);
+    ok(`6 · ${role} opens /admin/maswali/integrity without clearUnresolvedLetter and is drawn the lock, never the control`, drawn);
+  }
+  ok("10 · at least one role opens the integrity page without the letters' control (the population the lock is for)", locked.length >= 1, locked.join(","));
 }
 
 console.log(`\nmaswali-rbac: ${pass} passed, ${fail} failed`);

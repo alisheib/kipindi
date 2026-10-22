@@ -103,8 +103,12 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     "lib/feature-state.ts",
     // The marketing footer the composer screen sizes the body through (empty since the owner's ruling of 2026-10-09);
     // it imports only sms-compose, which imports nothing (app-url and support-config went with `shortDomain` and the
-    // helpline's read after that ruling), and must stay that way.
+    // helpline's read after that ruling), and millionea-claims (below), and must stay that way.
     "lib/marketing/footer.ts",
+    // ⭐ ADDED 2026-10-18 (MASWALI-BUILD S6, MB-47). The Millionea claims lint the composer's one door runs, in the
+    // browser's live counter as on the server's save and send; it imports nothing. Its server half (the week's fee
+    // that fills `{pct}`) lives in lib/server/maswali-marketing.ts and must stay there.
+    "lib/marketing/millionea-claims.ts",
     // ⭐ ADDED 2026-09-30 (Vodacom plan S2). The short-title rules and the competition list lead the same double life:
     // the admin edit and the journey card (S7) render them in the browser, while `createMarket`, the narrow writer and
     // the AI generator read them on the server. `short-title.ts` imports only `localized.ts` and `sms-compose.ts`;

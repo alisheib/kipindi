@@ -183,5 +183,7 @@ export async function refundVoidedWeek(weekId: string): Promise<VoidRefund> {
   }
   // R10d · every refunded player's new balance reaches their open page, once the refunds have committed.
   if (out.ok && !out.already) await emitWalletBalances(credited.map((c) => c.userId));
+  // S6 · the week void's notice, to every holder, once every refund has landed in that one commit (MB-68) — loaded on use.
+  if (out.ok && !out.already) void import("./maswali-notify").then((m) => m.noticeWeekRefunded(weekId)).catch(() => {});
   return out;
 }

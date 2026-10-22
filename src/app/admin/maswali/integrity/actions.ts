@@ -5,7 +5,9 @@
  *
  *   · voidMaswaliWeek — refund a week whose whole-week void is certain on its sealed record, once its window closed;
  *   · pauseMaswaliSales / resumeMaswaliSales — stop and restart SALES only (never a cancel, a settlement or a refund);
- *   · holdMaswaliShare / releaseMaswaliShare / forfeitMaswaliShare — Compliance decides a winning share under review.
+ *   · holdMaswaliShare / releaseMaswaliShare / forfeitMaswaliShare — Compliance decides a winning share under review;
+ *   · markMillioneaWinnerReached — S6 · the desk records that a winner no notice reached was reached by phone (MB-93).
+ *   · clearUnresolvedLetter — S6 · an officer records that a week's letters not known to have gone were checked.
  * Three acts are kept apart on purpose (MB-78): the pause (sales only), the week void (refund, carry untouched) and the
  * product stop (the Owner's sunset, on the pools page).
  */
@@ -17,6 +19,7 @@ import { voidWeek } from "@/lib/server/maswali-service";
 import { pauseMaswaliSales, resumeMaswaliSales } from "@/lib/server/maswali-pause";
 import { forfeitMaswaliShare, holdMaswaliShare, releaseMaswaliShare } from "@/lib/server/maswali-settlement";
 import { noteMaswaliPoolChanged } from "@/lib/server/maswali-pool-feed";
+import { clearUnresolvedLetter, recordMillioneaWinnerReached } from "@/lib/server/maswali-console";
 
 type ActionResult = { ok: true; note?: string; auditWarning?: string | null } | { ok: false; error: string };
 /** S5-FIX-SRV · a landed week void whose audit row was not written (the void and its refunds stand). */
@@ -67,6 +70,35 @@ export async function resumeMaswaliSalesAction(formData: FormData): Promise<Acti
     return { ok: true };
   } catch (err) {
     return { ok: false, error: safeError(err, "Sales could not be resumed") };
+  }
+}
+
+export async function markMillioneaWinnerReachedAction(formData: FormData): Promise<ActionResult> {
+  const session = await requireStaff(CONTROL_DOMAIN.markMillioneaWinnerReached, "markMillioneaWinnerReached");
+  try {
+    const r = await recordMillioneaWinnerReached({
+      weekId: str(formData, "weekId"), userId: str(formData, "userId"), officerId: session.userId, typed: str(formData, "typed"), note: str(formData, "note"),
+    });
+    if (!r.ok) return { ok: false, error: r.error };
+    revalidatePath("/admin/maswali/integrity");
+    revalidatePath("/admin");
+    return { ok: true, note: r.already ? "That call was already recorded." : "Recorded: the winner was reached by phone." };
+  } catch (err) {
+    return { ok: false, error: safeError(err, "The call could not be recorded") };
+  }
+}
+
+export async function clearUnresolvedLetterAction(formData: FormData): Promise<ActionResult> {
+  const session = await requireStaff(CONTROL_DOMAIN.clearUnresolvedLetter, "clearUnresolvedLetter");
+  try {
+    const r = await clearUnresolvedLetter({
+      weekId: str(formData, "weekId"), notice: str(formData, "notice"), officerId: session.userId, typed: str(formData, "typed"), note: str(formData, "note"),
+    });
+    if (!r.ok) return { ok: false, error: r.error };
+    revalidatePath("/admin/maswali/integrity");
+    return { ok: true, note: "Recorded: the letters were checked." };
+  } catch (err) {
+    return { ok: false, error: safeError(err, "The check could not be recorded") };
   }
 }
 

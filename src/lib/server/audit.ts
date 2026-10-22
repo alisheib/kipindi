@@ -955,7 +955,9 @@ export async function getAuditForTargetsDurable(input: {
   }
   const rows = await db.auditLog.findMany({
     where: { targetType: input.targetType, targetId: { in: ids }, action: { in: actions }, createdAt: { gte: since } },
-    orderBy: { createdAt: "desc" },
+    // MASWALI-BUILD S6 (round 6, L2) · two rows can share an instant: the insertion order breaks the tie, newest first, as
+    // the memory store's ring reads them.
+    orderBy: [{ createdAt: "desc" }, { seq: "desc" }],
     take: limit + 1,
     select: {
       id: true, category: true, action: true, actorId: true, targetType: true,

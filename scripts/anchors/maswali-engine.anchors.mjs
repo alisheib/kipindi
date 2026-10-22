@@ -439,8 +439,10 @@ export const MUTATIONS = [
   {
     name: "(49) a confirmation that makes the week void certain lets it keep selling",
     file: SVC,
-    from: "    if (w?.state === \"OPEN\") {\n      const closed = await closeWeek({ weekId: w.id, actorId: SYSTEM, early: true, now: new Date(nowMs) });\n      if (closed.ok && !closed.recorded) recorded = false; // S5-FIX-SRV · the close this confirmation made is part of its record\n    }\n  }\n  return { ok: true, recorded };",
-    to: "  }\n  return { ok: true, recorded };",
+    // Re-pinned at the S6 integration's N squash (S6-INT 14): the confirmation's notice is launched between the close and
+    // the return (M-3), so the anchor ends on the notice's first comment line.
+    from: "    if (w?.state === \"OPEN\") {\n      const closed = await closeWeek({ weekId: w.id, actorId: SYSTEM, early: true, now: new Date(nowMs) });\n      if (closed.ok && !closed.recorded) recorded = false; // S5-FIX-SRV · the close this confirmation made is part of its record\n    }\n  }\n  // S6 · a seal made while two officers were required is final only now: a void, or a correction (its own record says what",
+    to: "  }\n  // S6 · a seal made while two officers were required is final only now: a void, or a correction (its own record says what",
     expect: "11.3 · ⭐ the sixth confirmation makes the week void certain",
     suite: "engine",
   },
@@ -690,8 +692,9 @@ export const MUTATIONS = [
   {
     name: "(86) a move reports its record whole whatever was written",
     file: SVC,
-    from: "  // S5-FIX-SRV · the move's audit row is owed, written once the move has committed (finding 2): `recorded` says it landed.\n  return { ok: true, week: res.week, recorded: await recordOwed(res.owed) };",
-    to: "  // S5-FIX-SRV · the move's audit row is owed, written once the move has committed (finding 2): `recorded` says it landed.\n  return { ok: true, week: res.week, recorded: (await recordOwed(res.owed), true) };",
+    // Re-pinned at the S6 integration's N squash (S6-INT 14): the move keeps `recorded` for its notice (M-3) before returning it.
+    from: "  // S5-FIX-SRV · the move's audit row is owed, written once the move has committed (finding 2): `recorded` says it landed.\n  const recorded = await recordOwed(res.owed);",
+    to: "  // S5-FIX-SRV · the move's audit row is owed, written once the move has committed (finding 2): `recorded` says it landed.\n  const recorded = (await recordOwed(res.owed), true);",
     expect: "5.13 · ⭐ a move whose audit row could not be written still lands",
     suite: "engine",
   },

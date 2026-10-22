@@ -35,7 +35,13 @@ const why = (r: { ok: boolean; reason?: string; error?: string }) => (r.ok ? "ok
 /** One player's positions on one week's market, their transactions, their notices — read through the stores. */
 const positionsOn = async (u: string, marketId: string) => ((await market.listPositionsForMarket(marketId)) as any[]).filter((x) => x.userId === u);
 const txnsOf = async (u: string) => (await W.db.txn.findByUser(u, 500)) as any[];
-const noticesOf = async (u: string) => ((await W.db.notification.findByUser(u, 500)) as any[] | null) ?? [];
+/**
+ * ⭐ MASWALI-BUILD S6 (2026-10-18): the player's bell rows that are NOT Millionea's own. A week now writes its own notices
+ * (`maswali-notify.ts`, held by `test:maswali-notify`), so 7.5 counts the rest: a poll's or Up & Down's notice on a ticket
+ * is still the defect, and a planted one (`red:maswali-money-path` (6)) links to `/markets/…`, never `/millionea`.
+ */
+const noticesOf = async (u: string) => (((await W.db.notification.findByUser(u, 500)) as any[] | null) ?? [])
+  .filter((n) => !String(n.href ?? "").startsWith("/millionea"));
 const settleDust = () => new Promise((r) => setTimeout(r, 400)); // a notice is written after its money commits
 
 await W.setup({ guarantee: 20_000_000 });

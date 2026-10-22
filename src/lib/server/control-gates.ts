@@ -231,6 +231,9 @@ export const CONTROL_DOMAIN = {
   holdMaswaliShare: "compliance",
   releaseMaswaliShare: "compliance",
   forfeitMaswaliShare: "compliance",
+  /** S6 · MB-93 · the desk records a call that reached a winner (on /integrity, typed). */
+  markMillioneaWinnerReached: "compliance",
+  clearUnresolvedLetter: "compliance",
   fundMaswaliGuarantee: "ops",
   returnMaswaliGuarantee: "ops",
   sunsetMaswali: "ops",

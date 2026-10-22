@@ -52,7 +52,16 @@
  * ⛔ A Unicode body is told so in ONE sentence that names what to replace, and never quotes a negative room (one pasted
  * curly quote used to say "you have -10 characters before the required footer").
  *
- * Guard: `npm run test:campaign-compose` §15–§16. Red: `npm run red:campaign-compose`.
+ * ── MILLIONEA'S CLAIMS RULES (MASWALI-BUILD S6, HIGH 1) ─────────────────────
+ * ⭐ A campaign DECLARES its product by its staff-only name (`campaignProductOf`: a name that begins with "Millionea"), and
+ * every verdict here is asked with it: the counter and the save (`validateCampaignTemplate`, the product read from the
+ * name), and every send (`renderForRecipient`, the product a door's `templateOf` read from the stored name). ⛔ A Millionea
+ * template is SENT only with the week's facts its server door attached (`withMillioneaFacts`): one rendered without them is
+ * refused as unread, so no door can send one unchecked. The rules judge the template's bodies, both of them, with the
+ * counter's reserved name — never a recipient's own name — and say their reason FIRST, so a test send's refusal and an
+ * engine's pause carry the rule's own words. A campaign with no Millionea signal and no tag is judged exactly as before.
+ *
+ * Guard: `npm run test:campaign-compose` §15–§16 · `npm run test:maswali-claims` §4. Red: `npm run red:campaign-compose`.
  */
 import {
   composeMarketing, marketingFooter, footerMeasurementToken,
@@ -60,6 +69,10 @@ import {
 } from "@/lib/marketing/footer";
 import { encodingFor, foldToGsm7, offendingChars, unitsIn, GSM7_BASIC, type SmsEncoding } from "@/lib/sms-compose";
 import { charCount, cleanDisplayName, phoneNumberIn } from "@/lib/contacts/contact-fields";
+import {
+  campaignProductOf, millioneaCampaignProblems, millioneaFactsFrom, MILLIONEA_EXEMPT, UNTAGGED_CAMPAIGN,
+  type CampaignProduct, type MillioneaComposeContext, type MillioneaComposeFacts, type MillioneaFacts,
+} from "@/lib/marketing/millionea-claims";
 
 /* ══ THE SHAPES ══════════════════════════════════════════════════════════════ */
 
@@ -104,7 +117,21 @@ export type CampaignDraftFields = {
 export type CampaignTemplate = Omit<CampaignDraftFields, "name"> & {
   /** M5 · OQ3's phrase, as stored — printed for no recipient since 2026-10-09 (blank on every draft saved since). */
   sourcePhrase: string;
+  /** ⭐ HIGH 1 · the campaign's declared product, read from its stored name (`campaignProductOf`). Absent: none. */
+  product?: CampaignProduct | null;
+  /** ⭐ HIGH 1 · for a Millionea campaign, the week's facts its server door read (`withMillioneaFacts`; null: unreadable).
+   *  ⛔ A Millionea template rendered without them is refused as unread. */
+  millioneaFacts?: MillioneaComposeFacts;
+  /** ⭐ Round 4, rule 6 · `"flag"`: a classic campaign SENDING since before Millionea's claims rules first ran
+   *  (`millionea-lint-epoch.ts`) — what they would refuse is carried as `flagged`, never as a refusal, until a restart binds
+   *  it. Absent: they refuse, as for every other template. ⛔ Only the engine's slice sets it, and a template whose campaign
+   *  is named as Millionea's is judged in full whatever it carries (round 5, HIGH 3). */
+  millioneaLint?: "flag";
 };
+
+/** A recipient's message as the ONE renderer makes it: the composer's verdict, and — for a template marked `"flag"` only —
+ *  what Millionea's claims rules would refuse (round 4, rule 6). */
+export type RenderedMessage = MarketingCompose & { flagged?: string[] };
 
 /**
  * Where a recipient's number came from. `account` = the player's own account (their own name may print); `book` = the
@@ -376,19 +403,29 @@ export type VariantCounter = {
  * 2026-10-09), so the message priced is the message sent. `sourcePhrase` is still taken, so every caller keeps one
  * signature; it is no longer printed or priced.
  */
-export function counterFor(body: string, variant: CampaignVariant, fallback: string, sourcePhrase: string): VariantCounter {
+export function counterFor(
+  body: string,
+  variant: CampaignVariant,
+  fallback: string,
+  sourcePhrase: string,
+  millionea: MillioneaComposeContext = UNTAGGED_CAMPAIGN,
+): VariantCounter {
   const v: CampaignVariant = variant === "EN" ? "EN" : "SW";
   const raw = body ?? "";
   void sourcePhrase;
   const scan = scanPlaceholders(raw);
   const rendered = renderBody(raw, worstCaseJina());
   const token = footerMeasurementToken();
-  const composed = composeMarketing(rendered, token, v);
+  // ⭐ HIGH 1 · the campaign's product (and, on a server door, its week's facts) — Millionea's rules judge this worst case.
+  const composed = composeMarketing(rendered, token, v, "", millionea);
   const encoding = composed.size.encoding;
   const bodyUnits = unitsIn(rendered.trim(), encoding);
   const checks = templateChecks(raw, fallback);
   const offenders = describeOffenders(composed.text);
   const problems = [...counterProblems(composed, offenders), ...checks.body];
+  // ⭐ Round 3 (B2) · THE OFFICER'S WORD FOR `{jina}` IS A MESSAGE TOO: a book contact and a player with no usable name are
+  // sent the body with it, so Millionea's rules judge that message as well — said beside the word's own field.
+  const fallbackClaims = millioneaFallbackProblems(raw, fallback, millionea).filter((p) => !problems.includes(p));
   return {
     variant: v,
     empty: raw.trim().length === 0,
@@ -403,9 +440,16 @@ export function counterFor(body: string, variant: CampaignVariant, fallback: str
     jinaReserve: scan.jina * unitsIn(worstCaseJina(), encoding),
     offenders,
     problems,
-    fallbackProblems: checks.fallback,
-    ok: problems.length === 0 && checks.fallback.length === 0,
+    fallbackProblems: [...checks.fallback, ...fallbackClaims],
+    ok: problems.length === 0 && checks.fallback.length === 0 && fallbackClaims.length === 0,
   };
+}
+
+/** Millionea's rules on the body as a book contact gets it — with the officer's own word for `{jina}` — when it uses one. */
+function millioneaFallbackProblems(body: string, fallback: string, ctx: MillioneaComposeContext): string[] {
+  const word = (fallback ?? "").trim();
+  if (word.length === 0 || scanPlaceholders(body ?? "").jina === 0) return [];
+  return millioneaCampaignProblems(renderBody(body ?? "", word).trim(), ctx);
 }
 
 /* ══ THE CAMPAIGN'S NAME ═════════════════════════════════════════════════════ */
@@ -438,7 +482,7 @@ export type TemplateVerdict = {
  * shows it on the screen and on save, and `renderForRecipient` re-runs it, whole, on the stored row — so the verdict an
  * officer saved and the verdict a send obeys cannot disagree.
  */
-function templateFieldVerdict(t: CampaignTemplate): Pick<TemplateVerdict, "problems" | "counters"> {
+function templateFieldVerdict(t: CampaignTemplate, millionea: MillioneaComposeContext): Pick<TemplateVerdict, "problems" | "counters"> {
   const problems: TemplateVerdict["problems"] = {};
   const add = (k: TemplateField, list: string[]) => {
     if (list.length > 0) problems[k] = [...(problems[k] ?? []), ...list];
@@ -447,14 +491,14 @@ function templateFieldVerdict(t: CampaignTemplate): Pick<TemplateVerdict, "probl
   // The source phrase is no longer printed (the owner's ruling of 2026-10-09), so it no longer judges the template.
   const phrase = t.sourcePhrase ?? "";
 
-  const sw = counterFor(t.bodySw ?? "", "SW", t.nameFallbackSw ?? "", phrase);
+  const sw = counterFor(t.bodySw ?? "", "SW", t.nameFallbackSw ?? "", phrase, millionea);
   if (sw.empty) add("bodySw", ["The Swahili message is required — it is the one every recipient can be sent."]);
   else {
     add("bodySw", sw.problems);
     add("nameFallbackSw", sw.fallbackProblems);
   }
 
-  const en = (t.bodyEn ?? "").trim().length === 0 ? null : counterFor(t.bodyEn, "EN", t.nameFallbackEn ?? "", phrase);
+  const en = (t.bodyEn ?? "").trim().length === 0 ? null : counterFor(t.bodyEn, "EN", t.nameFallbackEn ?? "", phrase, millionea);
   if (en) {
     add("bodyEn", en.problems);
     add("nameFallbackEn", en.fallbackProblems);
@@ -486,9 +530,11 @@ export function validateCampaignTemplate(f: CampaignDraftFields, sourcePhrase: s
     if (said.length > 0) problems.name = said;
   }
 
+  // ⭐ HIGH 1 · the product the campaign's name declares — the screen and the save judge Millionea's rules by it (the save
+  // then holds a Millionea campaign to the week's facts it reads on the server, `campaign-draft.ts`).
   const template = templateFieldVerdict({
     bodySw: f.bodySw, bodyEn: f.bodyEn, nameFallbackSw: f.nameFallbackSw, nameFallbackEn: f.nameFallbackEn, sourcePhrase,
-  });
+  }, { product: campaignProductOf(name) });
   Object.assign(problems, template.problems);
 
   return { ok: Object.keys(problems).length === 0, problems, counters: template.counters };
@@ -553,7 +599,7 @@ function staleTemplateProblems(stale: TemplateVerdict["problems"]): string[] {
  * ⛔ Since the owner's ruling of 2026-10-09 nothing is appended: no source phrase is printed and none is required, for
  * any origin. A book contact still gets the fallback word for `{jina}`, never a name.
  */
-export function renderForRecipient(t: CampaignTemplate, r: CampaignRecipient): MarketingCompose {
+export function renderForRecipient(t: CampaignTemplate, r: CampaignRecipient): RenderedMessage {
   const english = r?.variant === "EN" && (t.bodyEn ?? "").trim().length > 0;
   const variant: CampaignVariant = english ? "EN" : "SW";
   const body = (english ? t.bodyEn : t.bodySw) ?? "";
@@ -562,11 +608,58 @@ export function renderForRecipient(t: CampaignTemplate, r: CampaignRecipient): M
   // ⛔ ONLY exactly "account" counts as the person's own: anything else is treated as a book contact.
   const fromAccount = r?.origin === "account";
   const jina = fromAccount ? jinaFor(r.name, fallback) : fallback;
-  const composed = composeMarketing(renderBody(body, jina), r?.token ?? "", variant);
-  // The template's whole verdict first (the cause), then this message's own — each sentence once.
+  // ⭐ HIGH 1 · Millionea's rules as a SEND reads them: the template's product, the week's facts its door attached, and the
+  // template's body with the counter's reserved name — never this recipient's own name.
+  const millionea = millioneaContextOf(t);
+  // ⭐ Round 4, rule 6 · a classic campaign sending since before the rules first ran: they are read, and REPORTED — never a
+  // refusal. ⛔ Round 5, HIGH 3 · never a campaign named as Millionea's.
+  const flag = t.millioneaLint === "flag" && millionea.product !== "MILLIONEA";
+  const lint = millioneaTemplateProblems(t, millionea);
+  const composed = composeMarketing(renderBody(body, jina), r?.token ?? "", variant, "",
+    flag ? MILLIONEA_EXEMPT : { ...millionea, judged: renderBody(body, worstCaseJina()) });
+  // Millionea's rules first, in their own words (both bodies: one campaign, one verdict); then the template's whole verdict
+  // (the cause), then this message's own — each sentence once.
   const problems: string[] = [];
-  for (const p of [...staleTemplateProblems(templateFieldVerdict(t).problems), ...composed.problems]) {
+  for (const p of [
+    ...(flag ? [] : lint),
+    ...staleTemplateProblems(templateFieldVerdict(t, flag ? MILLIONEA_EXEMPT : { product: millionea.product }).problems),
+    ...composed.problems,
+  ]) {
     if (!problems.includes(p)) problems.push(p);
   }
-  return { ...composed, problems, ok: problems.length === 0 };
+  return { ...composed, problems, ok: problems.length === 0, ...(flag && lint.length > 0 ? { flagged: lint } : {}) };
+}
+
+/* ══ MILLIONEA'S CLAIMS RULES, AT THE SEND (MASWALI-BUILD S6, HIGH 1) ══════════════════════════════════════════ */
+
+/** ⛔ A Millionea template's facts as a send reads them: the ones its door attached — and none attached is unread (null). */
+function millioneaContextOf(t: CampaignTemplate): MillioneaComposeContext {
+  if (t.product !== "MILLIONEA") return { product: null };
+  return { product: "MILLIONEA", facts: t.millioneaFacts === undefined ? null : t.millioneaFacts };
+}
+
+/** ⭐ ONE CAMPAIGN, ONE VERDICT for Millionea's rules: both bodies, each with the counter's reserved name AND with its own word
+ *  for `{jina}` (round 3, B2: what a book contact is sent), so a fault in either refuses every recipient, whatever their
+ *  language or name. */
+function millioneaTemplateProblems(t: CampaignTemplate, ctx: MillioneaComposeContext): string[] {
+  const out: string[] = [];
+  for (const [body, fallback] of [[t.bodySw ?? "", t.nameFallbackSw ?? ""], [t.bodyEn ?? "", t.nameFallbackEn ?? ""]] as const) {
+    if (body.trim().length === 0) continue;
+    const said = [...millioneaCampaignProblems(renderBody(body, worstCaseJina()).trim(), ctx), ...millioneaFallbackProblems(body, fallback, ctx)];
+    for (const p of said) if (!out.includes(p)) out.push(p);
+  }
+  return out;
+}
+
+/**
+ * ⭐ HIGH 1 · A MILLIONEA CAMPAIGN'S TEMPLATE AS A SERVER DOOR SENDS IT — with the week's facts its door read attached
+ * (`read`: the test send's and the engine's own reader). Any other campaign is returned as it is and nothing is read. A
+ * reader that is absent, fails or answers nothing leaves the facts unread (null), and the renderer refuses the campaign.
+ */
+export async function withMillioneaFacts(
+  t: CampaignTemplate,
+  read: (() => Promise<MillioneaFacts | null>) | undefined,
+): Promise<CampaignTemplate> {
+  if (t.product !== "MILLIONEA") return t;
+  return { ...t, millioneaFacts: await millioneaFactsFrom(read) };
 }

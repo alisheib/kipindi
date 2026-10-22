@@ -121,6 +121,9 @@ export function runMaswaliTick(now: Date = new Date()): Promise<TickReport> {
           payload: { code: w.code, state: w.state, error: String((e as Error)?.message ?? e).slice(0, 300) } });
       }
     }
+    // S6 · MB-93 · a week's notices a stopped run left part-sent are finished by the reconcile — launched after this tick's
+    // own work and never waited on here, so no close or void waits behind a letter or an SMS (`maswali-notify.ts`).
+    void import("./maswali-notify").then((m) => m.reconcileMillioneaNotices(now)).catch(() => {});
     return report;
   })().finally(() => { if (globalThis.__50PICK_MLN_TICKING === run) globalThis.__50PICK_MLN_TICKING = undefined; });
   globalThis.__50PICK_MLN_TICKING = run;

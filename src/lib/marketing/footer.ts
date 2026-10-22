@@ -49,6 +49,7 @@
  * Guard: `npm run test:campaign-compose`.
  */
 import { sizeSms, unitsIn, capUnits, SMS_MAX_SEGMENTS, type SmsEncoding, type SmsSize } from "@/lib/sms-compose";
+import { millioneaCampaignProblems, UNTAGGED_CAMPAIGN, type MillioneaComposeContext } from "@/lib/marketing/millionea-claims";
 
 /** The opt-out path's token length. ⛔ The route itself is plan U8; this is the length it must mint. */
 export const OPTOUT_TOKEN_CHARS = 8;
@@ -110,12 +111,17 @@ export type MarketingCompose = {
  * ⛔ ONE CALLER IN `src/` (U37a): `lib/marketing/campaign-template.ts`, the renderer the counter, the test send and
  * the real send all go through. A screen or an engine composing here on its own is how the officer is shown one
  * message and a recipient sent another — `test:campaign-compose` §16.1 holds the population.
+ *
+ * ⭐ HIGH 1 (MASWALI-BUILD S6) · `millionea` is the campaign's DECLARED product and, where a server door read the week, its
+ * facts (`millionea-claims.ts`); every other campaign's is `UNTAGGED_CAMPAIGN`, so a caller that names none is held to
+ * the untagged rule — never let through.
  */
 export function composeMarketing(
   body: string,
   token: string,
   locale: MarketingLocale = "SW",
   sourcePhrase = "",
+  millionea: MillioneaComposeContext = UNTAGGED_CAMPAIGN,
 ): MarketingCompose {
   const trimmed = (body ?? "").trim();
   // ⛔ The owner's ruling of 2026-10-09: the text sent IS the officer's text. The footer is empty, so neither the token
@@ -147,6 +153,13 @@ export function composeMarketing(
         `which cuts a message from 160 characters to 70. Replacing it is usually enough.`,
     );
   }
+  // ⭐ MB-47 · HIGH 1 (MASWALI-BUILD S6) · Millionea's claims rules, by the campaign's DECLARED product (`millionea-claims.ts`):
+  // an untagged campaign that speaks Millionea's words is refused in words; a Millionea campaign carries the headline's three
+  // facts, claims nothing else and — where its door read the week — states the week's own fee while Millionea is open.
+  // ⭐ The rules judge the TEMPLATE (`millionea.judged`: the body with the counter's reserved name), never a recipient's own
+  // name. An untagged text with no Millionea signal is not read, so its problems are exactly what they were
+  // (`test:maswali-claims`' control corpus).
+  problems.push(...millioneaCampaignProblems((millionea.judged ?? trimmed).trim(), millionea));
 
   return { text, size, budget, problems, ok: problems.length === 0 };
 }

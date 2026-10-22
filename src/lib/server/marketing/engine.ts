@@ -18,6 +18,9 @@
  *       d  E12 · money first (`money-busy.ts`) → WAIT `money_busy`;
  *       e  E12 · a login or withdrawal code failed or went unknown in the last `OTP_FAILURE_WAIT_MS` → WAIT `otp_failing`;
  *       f  the template's own verdict (a dry render per variant with the measurement token) → pause `template_invalid`;
+ *          ⭐ HIGH 1 (MASWALI-BUILD S6) · a Millionea campaign is judged with the week's facts, read once for the slice
+ *          (`deps.millioneaFacts`): while Millionea is not open to everyone, its fee is not the week's or the facts cannot
+ *          be read, it pauses here in the rule's own words — and every recipient's render carries the same facts;
  *       g  E16 · the credit kept for codes, for THIS slice (`creditVerdict`, read at most a minute old) → pause, each cause
  *          in its own words (the words Resume refuses with): `settings_unreadable` · `sizes_unreadable` · `price_unknown` ·
  *          `credit_unreadable` (fail closed) · `marketing_floor`. ⭐ The console stub has no credit and spends none.
@@ -116,9 +119,11 @@ import { creditVerdict } from "@/lib/marketing/credit-guard";
 import { campaignEstimate, savedVariantSizes } from "@/lib/marketing/campaign-estimate";
 import type { BalanceFigure, VariantSize } from "@/lib/marketing/campaign-estimate";
 import { currentOptOutToken, ensureOptOutToken } from "@/lib/server/marketing/optout-service";
-import { firstNameFor, renderForRecipient, variantFor } from "@/lib/marketing/campaign-template";
+import { firstNameFor, renderForRecipient, variantFor, withMillioneaFacts } from "@/lib/marketing/campaign-template";
 import type { CampaignTemplate, CampaignVariant, RecipientOrigin } from "@/lib/marketing/campaign-template";
 import { footerMeasurementToken } from "@/lib/marketing/footer";
+import { campaignProductOf, type MillioneaFacts } from "@/lib/marketing/millionea-claims";
+import { CAMPAIGN_FLAGGED_ACTION, millioneaLintEpoch, sendingSincePreLint } from "@/lib/server/marketing/millionea-lint-epoch";
 import { ledgerStamp } from "@/lib/server/marketing/ledger-stamp";
 import { assertSettle, fillRecipientCounts } from "@/lib/server/marketing/campaign-model";
 import { recipientRows, zeroRecipientStatusCounts } from "@/lib/marketing/campaign-status";
@@ -210,6 +215,9 @@ export type EngineProcessState = {
   /** By campaign: the `pausedAt` the two streaks above were counted under (the re-review of round 2) — a new one, an
    *  officer's Pause and Resume between two slices, starts them over. Optional, as `tooSlow`. */
   runMark?: Record<string, string>;
+  /** ⭐ Round 4, rule 6 · by campaign: the run (its row's `updatedAt`) whose pre-rules flag this process has written — once a
+   *  run. Optional, as `tooSlow`. */
+  lintFlagged?: Record<string, string>;
 };
 
 declare global {
@@ -270,6 +278,14 @@ export type EngineDeps = {
   tokenOf?: (key: string) => Promise<string | null>;
   /** THE ONE renderer (`renderForRecipient`). */
   render: typeof renderForRecipient;
+  /** ⭐ HIGH 1 · the week's facts a Millionea campaign is rendered with (`millioneaMarketingFacts`, read lazily, once per
+   *  slice). Optional, so a dependency set written before it still type-checks; production's sets it, and a set without it
+   *  reads none — a Millionea campaign then pauses `template_invalid` as unread, never sends unchecked. */
+  millioneaFacts?: () => Promise<MillioneaFacts | null>;
+  /** ⭐ Round 4, rule 6 · the instant Millionea's claims rules first ran (`millioneaLintEpoch`, stamped once, on the slice's
+   *  own clock). Optional, so a dependency set written before it still type-checks; a set without it holds every campaign
+   *  to the rules, and an instant that cannot be read grandfathers none (round 5, MEDIUM 4b: such a slice waits). */
+  millioneaLintEpoch?: (clock: Date) => Promise<string | null>;
   /** THE ONE loop (`dispatchSlice`) — called, never rewritten. */
   dispatch: typeof dispatchSlice;
   /** Undefined = THE ONE gate (`dispatchSlice`'s own default, `mayReceiveMarketingSms`). A suite may hand its own. */
@@ -345,6 +361,8 @@ export const ENGINE_DEPS: Readonly<EngineDeps> = Object.freeze({
   ensureToken: (key: string) => ensureOptOutToken(key),
   tokenOf: currentOptOutToken,
   render: renderForRecipient,
+  millioneaFacts: () => import("@/lib/server/maswali-marketing").then((m) => m.millioneaMarketingFacts()),
+  millioneaLintEpoch: (clock: Date) => millioneaLintEpoch({ clock }),
   dispatch: dispatchSlice,
   gate: undefined,
   send: engineSend,
@@ -377,7 +395,8 @@ async function countsOf(campaignId: string, deps: EngineDeps): Promise<SmsCampai
   return out;
 }
 
-/** The stored row as the renderer reads it (U35's nullable columns as blank text) — the test send's own reading. */
+/** The stored row as the renderer reads it (U35's nullable columns as blank text) — the test send's own reading, and the
+ *  product its name declares. */
 function templateOf(c: StoredSmsCampaign): CampaignTemplate {
   return {
     bodySw: c.bodySw ?? "",
@@ -385,7 +404,20 @@ function templateOf(c: StoredSmsCampaign): CampaignTemplate {
     nameFallbackSw: c.nameFallbackSw ?? "",
     nameFallbackEn: c.nameFallbackEn ?? "",
     sourcePhrase: c.sourcePhrase ?? "",
+    product: campaignProductOf(c.name),
   };
+}
+
+/** ⭐ Round 4, rule 6 · what Millionea's claims rules would refuse in a campaign sending since before they first ran — ONE
+ *  SYSTEM row a run in this process (`CAMPAIGN_FLAGGED_ACTION`), which the campaign's page says on its status card. */
+async function flagOnce(c: StoredSmsCampaign, detail: string, state: EngineProcessState, deps: EngineDeps): Promise<void> {
+  const flags = (state.lintFlagged ??= {});
+  if (flags[c.id] === c.updatedAt) return;
+  flags[c.id] = c.updatedAt;
+  await record(deps, {
+    category: "SYSTEM", action: CAMPAIGN_FLAGGED_ACTION, actorId: null, targetType: "SmsCampaign", targetId: c.id,
+    payload: { detail: cleanText(detail, AUDIT_DETAIL_MAX) },
+  });
 }
 
 /** A conditional write that found the campaign gone from RUNNING: say where it is now. */
@@ -734,12 +766,27 @@ async function sliceStep(campaignId: string, state: EngineProcessState, deps: En
     return { kind: "waiting", reason: "otp_failing", until: iso(lastOtp + OTP_FAILURE_WAIT_MS) };
   }
 
-  // ④f the template's own verdict — a dry render per variant with the measurement token, origin account
-  const template = templateOf(c);
+  // ④f the template's own verdict — a dry render per variant with the measurement token, origin account. ⭐ HIGH 1 · a
+  // Millionea campaign carries the week's facts, read once here: the dry render and every recipient's render judge with them.
+  // ⭐ Round 4, rule 6 · a classic campaign SENDING since before Millionea's claims rules first ran is not paused by them:
+  // what they would refuse is said on its page, once a run, and it keeps sending — a restart binds it.
+  const epoch = deps.millioneaLintEpoch ? await deps.millioneaLintEpoch(deps.now()).catch(() => null) : undefined;
+  const facts = await withMillioneaFacts(templateOf(c), deps.millioneaFacts);
+  const template: CampaignTemplate = sendingSincePreLint(c, epoch ?? null) ? { ...facts, millioneaLint: "flag" } : facts;
+  let flagged: string | null = null;
   for (const variant of variantsOf(template)) {
     const dry = deps.render(template, { variant, name: null, token: footerMeasurementToken(), origin: "account" });
-    if (!dry.ok) return pauseFor(c, "template_invalid", dry.problems[0] ?? "the saved message failed its own check", deps);
+    if (!dry.ok) {
+      // ⭐ Round 5, MEDIUM 4b · the stamp unread, and only Millionea's rules refuse a classic campaign: it may be one sending
+      // since before them, so it WAITS for the stamp (④d's rule: a signal that cannot be read costs only time) — never a pause.
+      const onlyTheRules = epoch === null && campaignProductOf(c.name) !== "MILLIONEA"
+        && deps.render({ ...facts, millioneaLint: "flag" }, { variant, name: null, token: footerMeasurementToken(), origin: "account" }).ok;
+      if (onlyTheRules) return { kind: "waiting", reason: "rules_unreadable", until: null };
+      return pauseFor(c, "template_invalid", dry.problems[0] ?? "the saved message failed its own check", deps);
+    }
+    flagged ??= dry.flagged?.[0] ?? null;
   }
+  if (flagged !== null) await flagOnce(c, flagged, state, deps);
 
   // ④g E16 · the credit kept for codes, for this slice — the console stub has no credit and spends none. ⭐ F-1 (the
   // engine's dry-fire, 2026-10-08): priced for the people this slice can still CLAIM, never a whole slice for nobody — a

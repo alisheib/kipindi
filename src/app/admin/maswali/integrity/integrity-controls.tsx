@@ -18,12 +18,16 @@ import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 import { validShareDecision } from "@/lib/maswali-admin-form-validation";
 import { MASWALI_REASON_MIN, MASWALI_REASON_MAX, pauseReasonLengthOk, reasonLengthOk } from "@/lib/maswali-ceremony-bounds";
 import {
-  forfeitMaswaliShareAction, holdMaswaliShareAction, pauseMaswaliSalesAction, releaseMaswaliShareAction, resumeMaswaliSalesAction,
-  voidMaswaliWeekAction,
+  clearUnresolvedLetterAction, forfeitMaswaliShareAction, holdMaswaliShareAction, markMillioneaWinnerReachedAction, pauseMaswaliSalesAction,
+  releaseMaswaliShareAction, resumeMaswaliSalesAction, voidMaswaliWeekAction,
 } from "./actions";
 import { raiseAuditWarning } from "../audit-warning";
 
 const FORFEIT_WORD = "FORFEIT SHARE";
+/** The server's `WINNER_REACHED_WORD` (maswali-console.ts), restated here: this client file imports no server module. */
+const REACHED_WORD = "REACHED";
+/** The server's `LETTERS_CLEARED_WORD` (maswali-console.ts), restated here for the same reason. */
+const CHECKED_WORD = "CHECKED";
 const fd = (o: Record<string, string>) => { const f = new FormData(); for (const [k, v] of Object.entries(o)) f.set(k, v); return f; };
 
 function useAct() {
@@ -88,6 +92,46 @@ export function VoidWeekControl({ weekId, code }: { weekId: string; code: string
           {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
         </div>}
         onConfirm={() => run(() => voidMaswaliWeekAction(fd({ weekId })), () => setOpen(false), (warning) => raiseAuditWarning("integrity:weekVoid", warning))} />
+    </span>
+  );
+}
+
+/** S6 · MB-93 · the desk records a call that reached a winner no notice is known to have reached: the row and its alert clear. */
+export function MarkReachedControl({ weekId, userId, holder }: { weekId: string; userId: string; holder: string }) {
+  const mayAct = useMayAct();
+  const { pending, error, note, run } = useAct();
+  const [text, setText] = useState("");
+  const [open, setOpen] = useState(false);
+  if (!mayAct) return <ActReadOnly />;
+  return (
+    <span className="inline-flex flex-col gap-1">
+      <Button size="xs" variant="ghost" disabled={pending} onClick={() => setOpen(true)}>Reached by phone…</Button>
+      {error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
+      {note && <span role="status" className="text-body-sm text-success">{note}</span>}
+      <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="brand" tier="hard" typedWord={REACHED_WORD}
+        title={`Record that ${holder} was reached?`} confirmLabel="Record the call"
+        body={<Field label="How they were reached (the number called, what they were told)"><Textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} /></Field>}
+        onConfirm={() => run(() => markMillioneaWinnerReachedAction(fd({ weekId, userId, typed: REACHED_WORD, note: text })), () => { setOpen(false); setText(""); })} />
+    </span>
+  );
+}
+
+/** S6 · an officer records that a week's letters not known to have gone were checked: the row leaves the card. */
+export function ClearLettersControl({ weekId, notice, code }: { weekId: string; notice: string; code: string }) {
+  const mayAct = useMayAct();
+  const { pending, error, note, run } = useAct();
+  const [text, setText] = useState("");
+  const [open, setOpen] = useState(false);
+  if (!mayAct) return <ActReadOnly />;
+  return (
+    <span className="inline-flex flex-col gap-1">
+      <Button size="xs" variant="ghost" disabled={pending} onClick={() => setOpen(true)}>Checked…</Button>
+      {error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
+      {note && <span role="status" className="text-body-sm text-success">{note}</span>}
+      <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="brand" tier="hard" typedWord={CHECKED_WORD}
+        title={`Record that ${code}'s letters were checked?`} confirmLabel="Record the check"
+        body={<Field label="What was checked (the provider's activity, what the holder was told)"><Textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} /></Field>}
+        onConfirm={() => run(() => clearUnresolvedLetterAction(fd({ weekId, notice, typed: CHECKED_WORD, note: text })), () => { setOpen(false); setText(""); })} />
     </span>
   );
 }

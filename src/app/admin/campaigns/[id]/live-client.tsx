@@ -175,6 +175,7 @@ export function LiveStatus() {
       </div>
       <p className="text-body text-text" data-live-headline>{view.headline}</p>
       {view.stopSentence !== null && <p className="text-body-sm text-text-secondary" data-live-stop>{view.stopSentence}</p>}
+      {typeof view.lintFlag === "string" && view.lintFlag !== "" && <p className="text-body-sm text-text-secondary" data-live-flag>{view.lintFlag}</p>}
       <p className="text-body-sm text-text-tertiary" data-live-audience>{liveAudienceLine(view.audienceLines)}</p>
       {view.confirmed !== null && <p className="text-body-sm text-text-tertiary" data-live-confirmed>{liveConfirmedLine(view.confirmed)}</p>}
     </div>

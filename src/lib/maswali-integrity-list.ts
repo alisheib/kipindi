@@ -19,6 +19,8 @@ export type IntegrityListQuery = {
    *  line opened, and that line's accounts' page — carried by every other list's links and forms, so paging one list never
    *  closes the line an officer opened. */
   cluster: { page: number; group: string; groupPage: number };
+  /** S6-INT 14 · the winners not yet reached (lane N's desk list, MB-93): its page, carried the same way (S17). */
+  unreached: { page: number };
 };
 
 const first = (value: string | string[] | undefined) => typeof value === "string" ? value : Array.isArray(value) ? value[0] ?? "" : "";
@@ -50,11 +52,12 @@ export function parseIntegrityListQuery(sp: Record<string, string | string[] | u
     },
     // A line's key is `<weekId>.<line id>` (an id and 16 hex): anything longer is no line of this page.
     cluster: { page: pageOf(first(sp.cpage)), group: first(sp.cgroup).trim().slice(0, 80), groupPage: pageOf(first(sp.gpage)) },
+    unreached: { page: pageOf(first(sp.npage)) },
   };
 }
 
 /** These are the only values passed to sort links, filter forms and the four independent pagers — and the cluster report's
- *  three (S6-INT), so a list's link keeps the line the officer opened. */
+ *  three (S6-INT), so a list's link keeps the line the officer opened, and the unreached winners' page (S6-INT 14). */
 export function integrityListParams(query: IntegrityListQuery): Record<string, string | undefined> {
   return {
     hq: query.held.q || undefined,
@@ -79,6 +82,7 @@ export function integrityListParams(query: IntegrityListQuery): Record<string, s
     cpage: query.cluster.page > 1 ? String(query.cluster.page) : undefined,
     cgroup: query.cluster.group || undefined,
     gpage: query.cluster.groupPage > 1 ? String(query.cluster.groupPage) : undefined,
+    npage: query.unreached.page > 1 ? String(query.unreached.page) : undefined,
   };
 }
 

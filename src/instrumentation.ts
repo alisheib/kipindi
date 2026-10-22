@@ -100,6 +100,16 @@ export async function register() {
     } catch (err) {
       console.error("[instrumentation] Failed to start the house-bot engine:", err);
     }
+
+    // MASWALI-BUILD S6 (rounds 4 and 5, rule 6) · the instant Millionea's claims rules first ran — this process's own start,
+    // stamped once for good by the first process of a build that carries them: a classic campaign already sending before it
+    // is flagged, never paused, until a restart binds it (`millionea-lint-epoch.ts`). It never throws.
+    try {
+      const { millioneaLintEpoch } = await import("./lib/server/marketing/millionea-lint-epoch");
+      await millioneaLintEpoch();
+    } catch (err) {
+      console.error("[instrumentation] Failed to stamp the first run of Millionea's claims rules:", err);
+    }
   }
 }
 

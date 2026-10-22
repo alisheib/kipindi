@@ -108,6 +108,9 @@ export const ENGINE_MIGRATIONS = Object.freeze([
   "20261009120000_contact_import_target_list",
   // C8c · N3 (2026-10-09): a unique index on lower("name") of "ContactList" — a list's name is unique whatever its case.
   "20261009180000_contact_list_name_lower_unique",
+  // MASWALI-BUILD S6 (the notices' winner SMS, 2026-10-18): a unique partial index on "SmsMessage" ("targetType", "targetId")
+  // for a Millionea winner's own target — the engine's own sends never match it, but its SQL names a marketing table.
+  "20261018120000_maswali_winner_sms_once",
 ]);
 
 /** The SystemConfig keys the tools read (never write). ⭐ `test:marketing-preflight` P6e holds each to the APP's own constant

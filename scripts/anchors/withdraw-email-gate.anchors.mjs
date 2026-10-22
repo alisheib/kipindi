@@ -79,16 +79,18 @@ export const MUTATIONS = [
     name: "money-mail-to-unconfirmed",
     why: "`confirmedOnly` ignored: a statement of a player's money goes to an address nobody proved is theirs.",
     file: EMAIL,
-    from: `    if (opts.confirmedOnly && user?.email && !user.emailVerifiedAt && !CANNOT_SIGN_IN.has(String(user.status))) {`,
-    to: `    if (false) {`,
+    // MASWALI-BUILD S6 (lane N, round 17) · re-anchored on the one address rule the send and the provider's search share
+    // (`letterAddress`, since the notices' round 7) — the rule these three plants were written against, moved, not changed.
+    from: `  if (confirmedOnly && user?.email && !user.emailVerifiedAt && !CANNOT_SIGN_IN.has(String(user.status))) return { withheld: "unconfirmed" };`,
+    to: `  if (false) return { withheld: "unconfirmed" };`,
     check: "8.1 ★ a money mail to an UNCONFIRMED address is withheld",
   },
   {
     name: "locked-out-player-silenced",
     why: "The exception for accounts that cannot sign in is dropped: a deposit reversed during a self-exclusion is told to nobody (no bell they can open, no letter).",
     file: EMAIL,
-    from: `    if (opts.confirmedOnly && user?.email && !user.emailVerifiedAt && !CANNOT_SIGN_IN.has(String(user.status))) {`,
-    to: `    if (opts.confirmedOnly && user?.email && !user.emailVerifiedAt) {`,
+    from: `  if (confirmedOnly && user?.email && !user.emailVerifiedAt && !CANNOT_SIGN_IN.has(String(user.status))) return { withheld: "unconfirmed" };`,
+    to: `  if (confirmedOnly && user?.email && !user.emailVerifiedAt) return { withheld: "unconfirmed" };`,
     check: "8.7 ★ an account that cannot sign in",
   },
   {
@@ -103,8 +105,8 @@ export const MUTATIONS = [
     name: "phone-map-for-money-mail",
     why: "The operator's phone→email override answers for a money mail — an address no player ever confirmed.",
     file: EMAIL,
-    from: `    const email = user?.email || (opts.confirmedOnly ? "" : resolvePhoneEmail(user?.phoneE164 ?? ""));`,
-    to: `    const email = user?.email || resolvePhoneEmail(user?.phoneE164 ?? "");`,
+    from: `  const email = user?.email || (confirmedOnly ? "" : resolvePhoneEmail(user?.phoneE164 ?? ""));`,
+    to: `  const email = user?.email || resolvePhoneEmail(user?.phoneE164 ?? "");`,
     check: "8.5 ⛔ PHONE_EMAIL_MAP is never used for money mail",
   },
   {

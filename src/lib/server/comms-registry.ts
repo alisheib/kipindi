@@ -100,6 +100,12 @@ export const EMAIL_TEMPLATES: readonly EmailSpec[] = [
   { template: "marketCancelledRefundHtml", trigger: "src/lib/server/market-service.ts",    audience: "player",  chrome: "royal", money: true },
   { template: "marketCancelledAdminHtml",  trigger: "src/lib/server/market-service.ts",    audience: "officer", chrome: "royal", money: true },
   { template: "marketResolutionAdminHtml", trigger: "src/lib/server/market-service.ts",    audience: "officer", chrome: "royal", money: false },
+  // ── Maswali Millionea (MASWALI-BUILD S6; MB-11, MB-44, MB-68) ───────────────
+  // The week's three letters, each beside its bell notice (`MILLIONEA_NOTICES` below). The win is the one Millionea letter
+  // that may be gold, and only on its PAID branch (MB-68): royal when every share is held (DUAL_CHROME_TEMPLATES).
+  { template: "millioneaWinHtml",          trigger: "src/lib/server/maswali-notify.ts",    audience: "player",  chrome: "gold",  money: true },
+  { template: "millioneaNotWonHtml",       trigger: "src/lib/server/maswali-notify.ts",    audience: "player",  chrome: "royal", money: true },
+  { template: "millioneaWeekRefundedHtml", trigger: "src/lib/server/maswali-notify.ts",    audience: "player",  chrome: "royal", money: true },
   // ── Bonus ─────────────────────────────────────────────────────────────────
   { template: "bonusCreditedHtml",         trigger: "src/lib/server/bonus-service.ts",     audience: "player",  chrome: "gold",  money: true },
   { template: "bonusFulfilledHtml",        trigger: "src/lib/server/bonus-service.ts",     audience: "player",  chrome: "gold",  money: true },
@@ -122,6 +128,10 @@ export const EMAIL_TEMPLATES: readonly EmailSpec[] = [
   // A player learns identity comes before a withdrawal on the withdrawal screen and in one dismissible
   // wallet notice; a player EMAIL about identity answers something that happened in verification —
   // the four KYC letters above and `refusedFundsDecisionHtml`. `test:cert-c1` §5b holds it.
+  // ⭐ ONE NAMED EXCEPTION, BY A LATER RULING: the Millionea win (`millioneaWinHtml` and its bell row `notifyMillioneaWon`)
+  // states the withdrawal ladder — a confirmed email and the typed identity details, the cap, the fee (MB-11, ruled
+  // 2026-10-16: "Nothing tells the winner truthfully how a share becomes cash"). It states the ladder as facts of a
+  // withdrawal, once, on the win itself: no prompt, no link into verification, no reminder. Nothing else joins it.
   // ── Agent affiliate programme ─────────────────────────────────────────────
   { template: "agentApprovedHtml",              trigger: "src/lib/server/agent-application-service.ts", audience: "player",  chrome: "gold",  money: true },
   { template: "agentRejectedHtml",              trigger: "src/lib/server/agent-application-service.ts", audience: "player",  chrome: "royal", money: true },
@@ -208,7 +218,11 @@ export const CONFIRMED_ONLY_TEMPLATES: readonly string[] = EMAIL_TEMPLATES
  * when money moves; the chrome check treats it as satisfied if EITHER wrapper
  * appears. Listed explicitly so the exception is a decision, not an oversight.
  */
-export const DUAL_CHROME_TEMPLATES: readonly string[] = ["proposalApprovedHtml"];
+export const DUAL_CHROME_TEMPLATES: readonly string[] = [
+  "proposalApprovedHtml",
+  // MASWALI-BUILD S6 · gold on its paid branch, royal when every winning share is held for Compliance (MB-43, MB-68).
+  "millioneaWinHtml",
+];
 
 /**
  * Templates that legitimately carry NO CTA button — a link would be wrong, not
@@ -335,6 +349,21 @@ export const NOTIFICATION_EMITTERS: readonly EmitterSpec[] = [
   { fn: "notifyProposalDeclined",      kind: "PROPOSAL",          audience: "player" },
   { fn: "notifyObjectionDecided",      kind: "OBJECTION",         audience: "player" },
   { fn: "notifyVerdictRecorded",       kind: "VERDICT",           audience: "player" },
+  // ── Maswali Millionea (MASWALI-BUILD S6; MB-68): a week's notices, one per state (`MILLIONEA_NOTICES` below). Every one
+  // is a money kind and states a figure. The two refunds are REFUND, as every refund is since S5 (Up & Down's too); a
+  // question voided is a VERDICT (a result recorded, no money moved yet), and the close is SELECTION_CLOSED by meaning.
+  { fn: "notifyMillioneaTicketsCut",      kind: "BET_PLACED",       audience: "player" },
+  { fn: "notifyMillioneaTicketCancelled", kind: "REFUND",           audience: "player" },
+  { fn: "notifyMillioneaSalesClosed",     kind: "SELECTION_CLOSED", audience: "player" },
+  { fn: "notifyMillioneaQuestionVoided",  kind: "VERDICT",          audience: "player" },
+  // A correction (OD-09, MB-24) records a result and moves no money; a moved close (MB-28) is the close's own kind.
+  { fn: "notifyMillioneaQuestionCorrected", kind: "VERDICT",        audience: "player" },
+  { fn: "notifyMillioneaCloseMoved",      kind: "SELECTION_CLOSED", audience: "player" },
+  { fn: "notifyMillioneaWon",             kind: "WIN",              audience: "player" },
+  // ⛔ A win whose every share is held pays nothing yet: a VERDICT, never a gold WIN (its letter wears royal too).
+  { fn: "notifyMillioneaWonHeld",         kind: "VERDICT",          audience: "player" },
+  { fn: "notifyMillioneaNotWon",          kind: "LOSS",             audience: "player" },
+  { fn: "notifyMillioneaWeekRefunded",    kind: "REFUND",           audience: "player" },
   // Officer-facing — same bell, same completeness rule.
   { fn: "notifyAdminKycReview",        kind: "KYC",               audience: "officer" },
   // ── Agent affiliate programme ─────────────────────────────────────────────
@@ -447,3 +476,57 @@ export function channelAllowed(kind: NotificationKind, opts: { houseOnly?: boole
   const row = CHANNEL_POLICY[kind];
   return { sms: row.sms !== "never", email: row.email !== "never" };
 }
+
+/* ══ MASWALI MILLIONEA ══════════════════════════════════════════════════════ */
+
+/**
+ * ⭐ THE REGISTERED SET — ONE NOTICE PER WEEK STATE (MASWALI-BUILD S6; MASWALI-PLAN §7b S6 item 2, MB-68, OD-25).
+ *
+ * What a Millionea player is told, by whom, on which channels and from which money file's commit. `maswali-notify.ts`
+ * sends each exactly once per player, each part on its own key: the bell first, because its link is the notice's key
+ * (`millioneaNoticeHref`, read by `existsWithHref`, the Up & Down digest's mechanism); the letter with the bell, and for a
+ * result or a refund on its own record too; and (winners first, each right after its winner) the one service SMS on its
+ * own target (`MaswaliWinner`, reserved by its own row). A result or refund run that stopped part-way is finished by the
+ * reconcile (`reconcileMillioneaNotices`, the tick and the heal), one process at a time (the week's lease), which sends only
+ * what is missing; every other notice is at most once (the ticket page shows the truth, a failed write raises an ALARM).
+ * Only AFTER the money commits: each trigger is an `afterCommit` or a call after the outer lock returns, never a write
+ * inside a money transaction (`test:maswali-notify` holds both).
+ * ⛔ THE POLL'S NOTICES NEVER REACH A TICKET (MB-68): no "Bet placed · YES", no "the exact amount you receive" — the ticket
+ *    arms return before them (S3), and these are the only Millionea notices there are.
+ * ⛔ HOLDERS ONLY (OD-25): every recipient below holds a ticket of the week. Anyone else hears of Millionea only through an
+ *    approved marketing wording, past the consent gate (`millionea-claims.ts`, MB-47).
+ * ⛔ THE BELL IS THE RECORD where there is no letter (MB-93): a receipt, a cancel, the close and a void are in the app
+ *    already, on the ticket page; a result and a refund also go by letter to a confirmed address (or, for an account that
+ *    cannot sign in, the address on file — `CANNOT_SIGN_IN`, email.ts).
+ */
+export type MillioneaNoticeSpec = {
+  /** The notice, as `maswali-notify.ts` names its run. */
+  notice: "receipt" | "cancel" | "closed" | "closeMoved" | "void" | "correction" | "won" | "wonHeld" | "notWon" | "refund";
+  /** The week state(s) it belongs to. */
+  states: readonly ("OPEN" | "CLOSED" | "RESOLVING" | "SETTLED" | "VOIDED")[];
+  /** Its bell emitter (`NOTIFICATION_EMITTERS`). */
+  emitter: string;
+  /** Its letter (`EMAIL_TEMPLATES`), or null when the bell and the ticket page are the record. */
+  template: string | null;
+  /** The one service SMS of OD-25: a winning holder only. */
+  sms: boolean;
+  /** Who is told: the buyer of the act, every holder of the week, its winners, or its other holders. */
+  to: "buyer" | "holders" | "winners" | "losers";
+  /** The money file whose commit sends it — the one `afterCommit` or post-lock call, in that file. */
+  trigger: string;
+  /** The `maswali-notify.ts` function that file calls. */
+  sender: string;
+};
+
+export const MILLIONEA_NOTICES: readonly MillioneaNoticeSpec[] = [
+  { notice: "receipt", states: ["OPEN"],                        emitter: "notifyMillioneaTicketsCut",      template: null,                        sms: false, to: "buyer",   trigger: "src/lib/server/maswali-service.ts",       sender: "noticeTicketsBought" },
+  { notice: "cancel",  states: ["OPEN"],                        emitter: "notifyMillioneaTicketCancelled", template: null,                        sms: false, to: "buyer",   trigger: "src/lib/server/maswali-money-service.ts", sender: "noticeTicketCancelled" },
+  { notice: "closed",  states: ["CLOSED"],                      emitter: "notifyMillioneaSalesClosed",     template: null,                        sms: false, to: "holders", trigger: "src/lib/server/maswali-service.ts",       sender: "noticeSalesClosed" },
+  { notice: "closeMoved", states: ["OPEN"],                     emitter: "notifyMillioneaCloseMoved",      template: null,                        sms: false, to: "holders", trigger: "src/lib/server/maswali-service.ts",       sender: "noticeCloseMoved" },
+  { notice: "void",    states: ["OPEN", "CLOSED", "RESOLVING"], emitter: "notifyMillioneaQuestionVoided",  template: null,                        sms: false, to: "holders", trigger: "src/lib/server/maswali-service.ts",       sender: "noticeQuestionVoided" },
+  { notice: "correction", states: ["CLOSED", "RESOLVING"],      emitter: "notifyMillioneaQuestionCorrected", template: null,                      sms: false, to: "holders", trigger: "src/lib/server/maswali-service.ts",       sender: "noticeQuestionCorrected" },
+  { notice: "won",     states: ["SETTLED"],                     emitter: "notifyMillioneaWon",             template: "millioneaWinHtml",          sms: true,  to: "winners", trigger: "src/lib/server/maswali-settlement.ts",    sender: "noticeWeekSettled" },
+  { notice: "wonHeld", states: ["SETTLED"],                     emitter: "notifyMillioneaWonHeld",         template: "millioneaWinHtml",          sms: true,  to: "winners", trigger: "src/lib/server/maswali-settlement.ts",    sender: "noticeWeekSettled" },
+  { notice: "notWon",  states: ["SETTLED"],                     emitter: "notifyMillioneaNotWon",          template: "millioneaNotWonHtml",       sms: false, to: "losers",  trigger: "src/lib/server/maswali-settlement.ts",    sender: "noticeWeekSettled" },
+  { notice: "refund",  states: ["VOIDED"],                      emitter: "notifyMillioneaWeekRefunded",    template: "millioneaWeekRefundedHtml", sms: false, to: "holders", trigger: "src/lib/server/maswali-void.ts",          sender: "noticeWeekRefunded" },
+];

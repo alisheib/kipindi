@@ -6,6 +6,7 @@
  * All call sites must have `await` (Phase 3) before flipping the flag.
  */
 import { prismaDb } from "./prisma-dal";
+import { isExclusiveSmsTarget, SmsTargetTakenError } from "@/lib/sms-targets";
 import { hasDatabase } from "./prisma";
 import { randomId } from "./crypto";
 import { matchesFilters, sortAndPage, summarise, type TxnSearchFilters, type TxnSearchResult } from "./txn-filters";
@@ -460,6 +461,23 @@ export type StoredSmsMessage = {
  *  Prisma DAL must enforce the SAME rule — a monotonic guard implemented in only one
  *  backend is a guard that holds in tests and not in production. */
 export const SMS_TERMINAL: readonly SmsStatus[] = ["DELIVERED", "FAILED"];
+
+/**
+ * ⭐ ONE ROW PER EXCLUSIVE TARGET (`@/lib/sms-targets`, MASWALI-BUILD S6 round 3 A5) — the memory twin's half of the unique
+ * partial index Postgres holds (`20261018120000_maswali_winner_sms_once`): a write naming an exclusive target that already
+ * has its row, or naming it twice, is REFUSED whole before anything is written — so a second batch for it sends nothing,
+ * exactly as the Prisma twin's plain insert fails there.
+ */
+function refuseTakenSmsTargets(ms: readonly StoredSmsMessage[]): void {
+  const taken = new Set<string>();
+  for (const m of ms) {
+    if (!isExclusiveSmsTarget(m.targetType)) continue;
+    const key = `${m.targetType} ${m.targetId ?? ""}`;
+    const held = taken.has(key) || [...store.smsMessages.values()].some((x) => x.targetType === m.targetType && x.targetId === m.targetId);
+    if (held) throw new SmsTargetTakenError(String(m.targetType));
+    taken.add(key);
+  }
+}
 
 /** One normalised line of a delivery receipt. ⛔ `status: null` means WE DO NOT RECOGNISE
  *  the provider's token: record it raw and leave the row's status exactly as it was.
@@ -3791,8 +3809,8 @@ const memoryDb = {
   },
 
   smsMessage: {
-    create: (m: StoredSmsMessage): StoredSmsMessage => { store.smsMessages.set(m.reference, m); return m; },
-    createMany: (ms: StoredSmsMessage[]): StoredSmsMessage[] => { for (const m of ms) store.smsMessages.set(m.reference, m); return ms; },
+    create: (m: StoredSmsMessage): StoredSmsMessage => { refuseTakenSmsTargets([m]); store.smsMessages.set(m.reference, m); return m; },
+    createMany: (ms: StoredSmsMessage[]): StoredSmsMessage[] => { refuseTakenSmsTargets(ms); for (const m of ms) store.smsMessages.set(m.reference, m); return ms; },
     findByReference: (reference: string): StoredSmsMessage | null => store.smsMessages.get(reference) ?? null,
     update: (reference: string, patch: Partial<StoredSmsMessage>): StoredSmsMessage | null => {
       const m = store.smsMessages.get(reference);

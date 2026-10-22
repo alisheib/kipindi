@@ -127,6 +127,17 @@ const RENDERS: Rendered[] = [
   { template: "updownDigestHtml",
     benign:  E.updownDigestHtml({ dayLabel: "2 Aug", rounds: 4, wins: 1, losses: 3, refunds: 0, wonPayout: 8_700, lostStake: 15_000, refundedStake: 0, staked: 20_000, returned: 8_700, net: -11_300 }),
     hostile: E.updownDigestHtml({ dayLabel: HOSTILE, rounds: 1, wins: 0, losses: 0, refunds: 1, wonPayout: 0, lostStake: 0, refundedStake: 1, staked: 1, returned: 1, net: 0 }) },
+  // MASWALI-BUILD S6 (2026-10-17) — the three Millionea letters. The win is DUAL: rendered benign on its PAID branch (gold,
+  // the withdrawal ladder) and hostile on its HELD branch (royal, a locked account), so both branches are read and escaped.
+  { template: "millioneaWinHtml",
+    benign:  E.millioneaWinHtml({ weekNumber: 44, serials: ["MLN-2026-W44-000123"], paidTickets: 1, heldTickets: 0, shareTzs: 870_000, paidTzs: 870_000, score: 10, maxPerWithdrawalTzs: 5_000_000, withdrawalFeeRate: 0.015, cannotSignIn: false, ticketHref: "/millionea/tickets/MLN-2026-W44-000123" }),
+    hostile: E.millioneaWinHtml({ weekNumber: 44, serials: [HOSTILE, HOSTILE], paidTickets: 0, heldTickets: 2, shareTzs: 435_000, paidTzs: 0, score: 9, maxPerWithdrawalTzs: 5_000_000, withdrawalFeeRate: 0.015, cannotSignIn: true, ticketHref: "/millionea/tickets/MLN-2026-W44-000123" }) },
+  { template: "millioneaNotWonHtml",
+    benign:  E.millioneaNotWonHtml({ weekNumber: 44, tickets: 2, spentTzs: 2_000, winningTickets: 0, winningScore: null, carried: { amountTzs: 1_234_000, intoWeekNumber: 45 } }),
+    hostile: E.millioneaNotWonHtml({ weekNumber: 44, tickets: 1, spentTzs: 1_000, winningTickets: 3, winningScore: 9, carried: null }) },
+  { template: "millioneaWeekRefundedHtml",
+    benign:  E.millioneaWeekRefundedHtml({ weekNumber: 44, serials: ["MLN-2026-W44-000123", "MLN-2026-W44-000124"], refundedTzs: 2_000 }),
+    hostile: E.millioneaWeekRefundedHtml({ weekNumber: 44, serials: [HOSTILE], refundedTzs: 1_000 }) },
   { template: "marketCancelledRefundHtml",
     benign:  E.marketCancelledRefundHtml({ title: SAFE, reason: "Source retracted the result", amount: 10_000, bonusStakeTzs: 0, reference: "pos_a1" }),
     hostile: E.marketCancelledRefundHtml({ title: HOSTILE, reason: HOSTILE, amount: 1, bonusStakeTzs: 0, reference: HOSTILE }) },
@@ -363,7 +374,10 @@ ok("every template is rendered by this suite",
 // (C4 ruling 149) — the holder receives no house-bot email at all. Measured the same way after the edit = 66.
 // ⚠️ 66 → 67 on 2026-09-26 (branch marketing-s7): `smsCreditLowAdminHtml`, the officer alert when the SMS credit
 // reaches the alert line. Measured the same way after the edit = 67.
-ok(`the inventory is 67 templates (found ${exported.length})`, exported.length === 67);
+// ⚠️ 67 → 70 on 2026-10-17 (branch mln-s6-notices, MASWALI-BUILD S6): the three Millionea letters — `millioneaWinHtml` (dual:
+// gold on its paid branch, royal when every share is held), `millioneaNotWonHtml` and `millioneaWeekRefundedHtml`. Counted
+// with the same grep against the edited email.ts: 67 before, 70 after; nothing else was added or removed.
+ok(`the inventory is 70 templates (found ${exported.length})`, exported.length === 70);
 
 // ── 2 · Every template has a real sender ───────────────────────────────────────
 section("2 · wiring — a template with no sender is a template nobody gets");

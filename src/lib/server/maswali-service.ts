@@ -20,7 +20,7 @@ import { createHash } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { audit, getAuditForTargetDurable } from "./audit";
 import { randomId } from "./crypto";
-import { afterCommit, withLock } from "./locks";
+import { afterCommit, currentLockTx, hookContext, runOutsideLock, withLock } from "./locks";
 import { buyPosition, createMarket, isFencedMaswali } from "./market-service";
 import { dbNowMs, landedMaswaliAnswer } from "./maswali-money-service";
 import { refundVoidedWeek } from "./maswali-void";
@@ -677,6 +677,13 @@ export async function purchaseMaswaliTickets(input: {
   // S5 · a sale moved the week's pool: the live hub hears it, coalesced, after the purchase committed (MB-31). A replay
   // moved nothing.
   if (r.ok && !r.data?.replayed) noteMaswaliPoolChanged(week.id);
+  // S6 · the receipt, to the buyer, once the purchase has committed (MB-52, MB-68): one notice for the whole purchase, and
+  // none for a replay. Loaded on use, so no notice rides the money path's own module graph.
+  if (r.ok && r.data?.maswali && !r.data.replayed) {
+    const bought = r.data.maswali;
+    const placedAt = r.data.placedAt;
+    void import("./maswali-notify").then((m) => m.noticeTicketsBought(input.userId, bought, placedAt)).catch(() => {});
+  }
   return r;
 }
 
@@ -731,7 +738,13 @@ export async function moveClose(input: { weekId: string; toCloseAt: string; expe
   });
   if (!res.ok) return res;
   // S5-FIX-SRV · the move's audit row is owed, written once the move has committed (finding 2): `recorded` says it landed.
-  return { ok: true, week: res.week, recorded: await recordOwed(res.owed) };
+  const recorded = await recordOwed(res.owed);
+  // S6 · MB-28 · every holder hears the new close once the move has committed and its record has landed — after the lock,
+  // never inside it. ⛔ Round 4, L4 · the record keys the notice (`noticeCloseMoved` counts the moves): a move whose record
+  // did not land is told to nobody, and says so — an ALARM, never silence (M-3).
+  if (recorded) void import("./maswali-notify").then((m) => m.noticeCloseMoved(input.weekId)).catch(() => {});
+  else console.error(`[maswali-service] ALARM: week ${res.week.code}'s moved close was not recorded; its holders' notice cannot be keyed.`);
+  return { ok: true, week: res.week, recorded };
 }
 
 /** A week's frozen rules, or null when they cannot be read (a week past DRAFT always has them). */
@@ -790,6 +803,10 @@ export async function closeWeek(input: { weekId: string; actorId?: string; early
       const won = await weekStore.stampClose(week.id, { closedAt: new Date(atMs).toISOString(), ticketCount: live.length, salesAtClose: live.length * rules.ticketPriceTzs, ticketMerkleRoot: root }, lockTx ?? undefined);
       if (!won) return { ok: true, week: (await weekStore.get(week.id, lockTx ?? undefined))!, already: true };
       if (week.marketId && input.early) await marketStore.stamp(week.marketId, { selectionClosedAt: new Date(nowMs).toISOString(), updatedAt: new Date(nowMs).toISOString() } as never, lockTx ?? undefined);
+      // S6 · the holders hear the close once the commitment has committed (MB-68): queued on this lock's own transaction, so
+      // the notice reads the CLOSED week and never runs inside the close. Only the close that won its stamp gets here.
+      // ⭐ MEDIUM 3 · the witness is read in the hook itself, before it escapes every lock (`hookContext`).
+      afterCommit(currentLockTx(), () => { const at = hookContext(); runOutsideLock(() => { void import("./maswali-notify").then((m) => m.noticeSalesClosed(week.id, at)).catch(() => {}); }); });
       // S5 · the sales are final: the hub's figure stops moving with sales from here (noted once the close has committed).
       afterCommit(lockTx, () => noteMaswaliPoolChanged(week.id));
       return { ok: true, week: (await weekStore.get(week.id, lockTx ?? undefined))!, owed: [{ category: "ADMIN", action: "maswali.week.closed", actorId: input.actorId ?? SYSTEM, targetType: "MaswaliCycle", targetId: week.id,
@@ -905,7 +922,7 @@ export async function sealQuestion(input: {
     if (!g.ok) throw new Error(g.error);
     return { ok: true, gate: g.gate, weekVoidCertain: g.weekVoidCertain, owed: [
       { category: "ADMIN", action: "maswali.question.sealed", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id,
-        payload: { week: week.code, slot: slotLabel(q.slot), outcome: input.outcome, voidReason: input.voidReason ?? null, twoOfficer } },
+        payload: { week: week.code, slot: slotLabel(q.slot), outcome: input.outcome, voidReason: input.voidReason ?? null, twoOfficer, sealedAt: at } },
       ...g.owed,
     ] };
   });
@@ -919,6 +936,10 @@ export async function sealQuestion(input: {
       if (closed.ok && !closed.recorded) recorded = false; // S5-FIX-SRV · the close this seal made is part of its record
     }
   }
+  // S6 · a void, once its seal has committed and its record has landed (M-3: the notice keys on the record's `sealedAt`):
+  // each holder hears it, with the reserve rule (MB-14, MB-68). A question already sealed is refused above, so its void is
+  // announced once.
+  if (input.outcome === "VOID") void import("./maswali-notify").then((m) => m.noticeQuestionVoided(input.weekId, input.slot)).catch(() => {});
   return { ok: true, gate: res.gate, weekVoidCertain: res.weekVoidCertain, recorded };
 }
 
@@ -950,7 +971,7 @@ export async function confirmSeal(input: { weekId: string; slot: number; officer
     const g = await recomputeGateLocked(week.id, nowMs, tx ?? undefined);
     if (!g.ok) throw new Error(g.error);
     return { ok: true, weekVoidCertain: g.weekVoidCertain, owed: [
-      { category: "ADMIN", action: "maswali.question.confirmed", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id, payload: { week: week.code, slot: slotLabel(q.slot) } },
+      { category: "ADMIN", action: "maswali.question.confirmed", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id, payload: { week: week.code, slot: slotLabel(q.slot), sealedAt: q.sealedAt } },
       ...g.owed,
     ] };
   });
@@ -965,6 +986,11 @@ export async function confirmSeal(input: { weekId: string; slot: number; officer
       if (closed.ok && !closed.recorded) recorded = false; // S5-FIX-SRV · the close this confirmation made is part of its record
     }
   }
+  // S6 · a seal made while two officers were required is final only now: a void, or a correction (its own record says what
+  // it was), is told once the confirmation and its record have landed — and any void muted while the week's void was
+  // certain is caught up (M-3). Lane N's flag for a confirmation refused after it landed has no case here: the recompute's
+  // failure throws inside the lock, so a landed confirmation is never answered as refused.
+  void import("./maswali-notify").then((m) => m.noticeQuestionCorrected(input.weekId, input.slot)).catch(() => {});
   return { ok: true, recorded };
 }
 
@@ -989,7 +1015,7 @@ export async function correctSeal(input: {
   if ((input.expectedOutcome !== "YES" && input.expectedOutcome !== "NO" && input.expectedOutcome !== "VOID") || !input.expectedSealedAt) {
     return refuse("Reload the week and review the sealed result before correcting it.");
   }
-  const res = await withLock(MASWALI_CHAIN_LOCK, async (tx): Promise<Result<{ code: string; owed: OwedAudit[] }>> => {
+  const res = await withLock(MASWALI_CHAIN_LOCK, async (tx): Promise<Result<{ code: string; from: MaswaliOutcome; owed: OwedAudit[] }>> => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
     if (week.state !== "RESOLVING" && week.state !== "CLOSED") return refuse(`Week ${week.code} is ${week.state}; its seals are final.`);
@@ -1015,16 +1041,22 @@ export async function correctSeal(input: {
     await weekStore.patch(week.id, { gradedSetFinalAt: null, objectionsCloseAt: null }, tx ?? undefined);
     const g = await recomputeGateLocked(week.id, nowMs, tx ?? undefined);
     if (!g.ok) throw new Error(g.error);
-    return { ok: true, code: week.code, owed: [
+    return { ok: true, code: week.code, from: q.outcome, owed: [
       { category: "ADMIN", action: "maswali.question.corrected", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id,
-        payload: { week: week.code, slot: slotLabel(q.slot), from: q.outcome, to: input.outcome } },
+        payload: { week: week.code, slot: slotLabel(q.slot), from: q.outcome, to: input.outcome, sealedAt: revisedAt } },
       ...g.owed,
     ] };
   });
   if (!res.ok) return res;
   // Committed: the register forgets the week only now, so no reader can re-cache the record as it was before.
   invalidateMillioneaRegisterWeek(res.code);
-  return { ok: true, recorded: await recordOwed(res.owed) };
+  const recorded = await recordOwed(res.owed);
+  // S6 · MB-24 · a correction is told once it has committed and its record has landed (M-3: the notice reads the question's
+  // own records): to a void as that void, a void to a result as reinstated, YES↔NO as corrected; and every void muted while
+  // the week's void was certain is caught up. Its own seal instant keys it, so each is told once — after the lock, outside
+  // every lock. A void re-grounded (VOID to VOID) changes nothing a holder was told, and is not told.
+  if (res.from !== input.outcome) void import("./maswali-notify").then((m) => m.noticeQuestionCorrected(input.weekId, input.slot, res.from)).catch(() => {});
+  return { ok: true, recorded };
 }
 
 /**

@@ -92,6 +92,14 @@ export function officerPausedSentence(who: string, atIso: string | null): string
 // ⭐ The U47b-1 review · an officer's Stop has NO sentence of its own: the CANCELLED headline already says "Stopped by <who>
 // at <time>" (`stoppedHeadline`), and the page says it once.
 
+/**
+ * ⭐ MASWALI-BUILD S6 (round 4, rule 6) · a campaign sending since before Millionea's claims rules first ran: it keeps
+ * sending, the page says what the rules would refuse (`detail`, the rules' own sentence), and when they will bind it.
+ */
+export function preRulesFlagSentence(detail: string): string {
+  return `Still sending as confirmed: it began before Millionea's claims rules, which do not stop it now. They would refuse it: ${detail.trim()} They apply if it is paused and resumed, and to any copy made of it.`;
+}
+
 /** The copy advice when somebody on the campaign was already messaged — a fact. */
 const REACHED_AGAIN =
   "Some people on it have already been messaged, and a copy would message them again: stop it, and confirm a copy only if that is what you want.";
@@ -190,6 +198,9 @@ export function waitSentence(reason: string, until: string | null): string {
     // side after three at any size (`tooSlowCounts`) — "if it keeps taking too long" is true of both.
     case "slice_too_slow":
       return "Waiting — getting the last group of people ready to send took too long, so they were put back unsent. It tries again by itself, with a smaller group when it can; if it keeps taking too long, the campaign pauses.";
+    // ⭐ MASWALI-BUILD S6 (round 5, MEDIUM 4b) · the engine answers it while the start of Millionea's claims rules cannot be read.
+    case "rules_unreadable":
+      return "Waiting — the start of Millionea's claims rules couldn't be read, so this message waits until it can be. It tries again by itself.";
   }
   return `Waiting — engine reason: ${reason}.`;
 }

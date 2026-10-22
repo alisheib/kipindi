@@ -1,0 +1,838 @@
+/**
+ * MASWALI MILLIONEA — WHAT A MARKETING MESSAGE MAY SAY ABOUT IT (MASWALI-BUILD S6; MASWALI-PLAN §7b S6 item 3, MB-47,
+ * MB-88, OD-25, OD-30, R-HEADLINE; the lane-N review's HIGH 1 and MEDIUM 6, as the coordinator decided them).
+ *
+ * 🔴 THE FINDING (MB-47). The SMS composer sent text as typed, so "Shinda TZS 1,000,000 kwa TZS 1,000!" could go out, and
+ *    it is false three ways: a ticket is a set of answers, not a win; the jackpot changes every week and is shared by every
+ *    10/10 ticket; and the price is not a stake against a prize. 🔴 AND THE FIRST LINT WAS GATED ON THE PRODUCT'S NAME: the
+ *    same sentence passed by leaving "Millionea" out, and "Millionéa", "Millionea2026" or "Mamilionea" walked past it.
+ * ⭐ A CAMPAIGN DECLARES ITS PRODUCT. A campaign whose staff-only name begins with the word "Millionea" is a Millionea
+ *    campaign (`campaignProductOf`): the tag is the campaign's own name, kept with the rest of the draft and frozen with it
+ *    at its confirmation, so no column and no migration were needed. Then, in the composer's one door (`footer.ts`), on a
+ *    text NORMALISED first (case and accents gone, invisible characters dropped, letter and digit runs split, look-alike
+ *    letters and digits folded):
+ *    · a campaign NOT tagged Millionea that carries a Millionea signal (the name in any spelling, millionaire, jackpot,
+ *      milioni, 10/10, a figure of a million or more) is refused, in words: tag it Millionea, or reword it;
+ *    · a Millionea campaign carries the three R-HEADLINE facts — the Jackpot; "shared equally by every 10/10 ticket"; "N%
+ *      fee at payout" — and claims nothing else: no amount, no win, no winner named or described, no sum, no income, no
+ *      guarantee, no rank, no chance;
+ *    · WHERE THE SERVER READ THE WEEK (the save, the test send, the real send: `millioneaFactsProblems`), N is the week's
+ *      own fee, and the campaign is refused while Millionea is not open to everyone, or while the facts cannot be read.
+ * ⭐ `{pct}` IS NEVER TYPED. The approved wordings hold the placeholder; `maswali-marketing.ts` fills it from the week's own
+ *    frozen fee for the officer to copy.
+ * ⛔ NEVER A WINNER (OD-30, MB-88): the platform holds no written opt-in to publicity, so a winner is never named, described
+ *    or congratulated.
+ * ⛔ A SENTENCE HERE NEVER QUOTES A FIGURE: it can be stored (a refusal, a pause's detail), and a run of digits may be a
+ *    phone number (§5.14) — a figure is named as "a figure", never repeated.
+ * ⛔ A CAMPAIGN WITH NO MILLIONEA SIGNAL AND NO TAG IS NOT READ FOR MILLIONEA'S CLAIMS: its problems stay exactly what they
+ *    were — but a body in Chinese characters is refused for every campaign but the one exemption (round 17, L4: OD42
+ *    writes campaigns in Swahili and English, and these rules read those two alone).
+ * Pure and client-safe: the composer's live counter runs this in the browser. ⛔ No server import, ever.
+ */
+
+/** The facts a stated fee is held to. */
+export type MillioneaClaimFacts = { feeRate: number };
+
+/** What a server door reads for a Millionea campaign: the week's fee at payout, and whether Millionea is open to everyone. */
+export type MillioneaFacts = { feeRate: number; live: boolean };
+
+/**
+ * The facts a door hands the composer for a Millionea campaign: read (`MillioneaFacts`), unreadable (`null` — the campaign
+ * is refused, never sent unchecked), or not asked (`undefined` — the composer's live counter in the browser; the save,
+ * the test send and the send each ask).
+ */
+export type MillioneaComposeFacts = MillioneaFacts | null | undefined;
+
+/** The two languages a campaign is written in (OD42). */
+export type MillioneaWordingLocale = "SW" | "EN";
+
+/** The products a campaign may declare. A campaign that declares none is every other campaign. */
+export type CampaignProduct = "MILLIONEA";
+
+/**
+ * A campaign's product, for a Millionea campaign the facts its door read, and the text the rules judge when it is not the
+ * message itself: a recipient's render hands the TEMPLATE's body with the counter's reserved name (`judged`), so a
+ * recipient is never refused for her own name (a Zawadi, a Bahati, a Rich) and the send judges what the counter judged.
+ */
+export type MillioneaComposeContext = {
+  product: CampaignProduct | null; facts?: MillioneaComposeFacts; judged?: string;
+  /** ⛔ Round 4, rule 6 · the rules REPORT instead of refuse (`MILLIONEA_EXEMPT`). Absent: they refuse. */
+  exempt?: true;
+};
+
+/** Every other campaign's context. */
+export const UNTAGGED_CAMPAIGN: MillioneaComposeContext = Object.freeze({ product: null });
+
+/**
+ * ⛔ ROUND 4, RULE 6 · THE ONE EXEMPTION — a classic campaign SENDING since before these rules first ran is not refused by
+ * them: `renderForRecipient` composes it with this context and carries what the rules would refuse as `flagged` instead,
+ * from a template the engine alone marks (`millioneaLint: "flag"`, `millionea-lint-epoch.ts`). Nothing else may pass it —
+ * never a campaign named as Millionea's (round 5, HIGH 3).
+ */
+export const MILLIONEA_EXEMPT: MillioneaComposeContext = Object.freeze({ product: null, exempt: true as const });
+
+/** The refusal of a campaign that is not tagged Millionea but speaks its words — the coordinator's own wording. */
+export const MILLIONEA_UNTAGGED = "These words belong to Millionea's claims rules: tag the campaign Millionea or reword it";
+/** How a campaign is tagged, said beside that refusal. */
+export const MILLIONEA_TAG_HOW = "a Millionea campaign's name begins with “Millionea”";
+/** A Millionea campaign while its facts cannot be read. */
+export const MILLIONEA_FACTS_UNREAD = "The week's fee at payout could not be read, so a Millionea campaign cannot be saved or sent now.";
+/** A Millionea campaign while Millionea is not open to everyone. */
+export const MILLIONEA_NOT_LIVE = "Millionea is not open to everyone yet, so no campaign may be about it.";
+/** ⭐ Round 17 (L4) · a body in Chinese characters, refused for any campaign (OD42: a campaign is written in Swahili, with an
+ *  optional English body — and these rules read those two languages alone). */
+export const CAMPAIGN_HAN_SCRIPT = "Campaign messages are written in Swahili or English: remove the Chinese characters from this body.";
+
+/** A door's read of the week's facts, never throwing: a reader that is absent, fails or answers nothing is unread (null). */
+export async function millioneaFactsFrom(read: (() => Promise<MillioneaFacts | null>) | undefined): Promise<MillioneaFacts | null> {
+  if (!read) return null;
+  try {
+    const facts = await read();
+    return facts && Number.isFinite(facts.feeRate) && typeof facts.live === "boolean" ? facts : null;
+  } catch {
+    return null;
+  }
+}
+
+/* ══ THE NORMAL FORM ═════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/** Letters of other scripts that pass for Latin ones, keyed by code point (none is typed here): Cyrillic, Greek, and a few
+ *  Latin letters NFKD does not take apart. */
+const LOOK_ALIKE_LETTERS: ReadonlyMap<number, string> = new Map<number, string>([
+  [0x0430, "a"], [0x0435, "e"], [0x0451, "e"], [0x0456, "i"], [0x0458, "j"], [0x043A, "k"], [0x043C, "m"], [0x043E, "o"],
+  [0x0440, "p"], [0x0441, "c"], [0x0442, "t"], [0x0443, "y"], [0x0445, "x"], [0x0455, "s"], [0x0501, "d"], [0x04CF, "l"],
+  [0x04BB, "h"], [0x03B1, "a"], [0x03B5, "e"], [0x03B9, "i"], [0x03BA, "k"], [0x03BD, "v"], [0x03BF, "o"], [0x03C1, "p"],
+  [0x03C4, "t"], [0x03C5, "u"], [0x03C7, "x"], [0x0131, "i"], [0x0142, "l"], [0x0111, "d"], [0x00F8, "o"], [0x0127, "h"],
+  // Round 3 (B6) · the Greek capitals an SMS can carry, lowered.
+  [0x03BB, "a"], [0x03C3, "e"], [0x03C2, "e"],
+]);
+
+/** Digits and signs that pass for letters inside a word — folded for the product's words and the claims, never a figure. */
+const LOOK_ALIKE_DIGITS: Readonly<Record<string, string>> = { "0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "@": "a", "$": "s" };
+
+/** A mobile-money wallet's name, read as one word where it is the brand — never a figure's size, and never money (round 4,
+ *  M4; round 5, HIGH 1 and LOW 15). */
+const WALLETS = new RegExp([
+  String.raw`(?<![a-z0-9])(?:m|t)\s*[-.]\s*pesa(?![a-z])`,
+  String.raw`(?<![a-z0-9])(?:m|t)\s*pesa(?![a-z])`,
+  String.raw`(?<![a-z])(?:tigo|halo|ezy)\s*[-.]?\s*pesa(?![a-z])`,
+  String.raw`(?<![a-z])airtel\s*[-.]?\s*money(?![a-z])`,
+].join("|"), "g");
+
+/** A short number right before a wallet's letter (round 7). */
+const SHORT_NUMBER_BEFORE = /(?:^|[^0-9.,])[0-9]{1,3}(?:[.,][0-9]{1,2})?\s{1,3}$/;
+/** A figure's own look-alikes (rounds 7 and 17): an "o" for a zero inside a grouped figure, a leading "l", "I" or "|" for
+ *  its one (round 17, L3) — grouped by commas or dots, or by spaces in two groups or more — and an apostrophe or an
+ *  underscore between its thousands. Each is read as the digit it stands for. */
+const FIGURE_O = /(?<![a-z0-9])[0-9li|][0-9o]*(?:(?:[,.][0-9o]{3})+|(?: [0-9o]{3}){2,})(?![a-z0-9])/g;
+const THOUSANDS_MARK = new RegExp(`(?<=[0-9])['_${String.fromCharCode(0x2019)}](?=[0-9]{3}(?![0-9]))`, "g");
+/** A size written onto a currency's or a wallet's word ("5mtzs", "5m-pesa"): the size, then the word (round 7). */
+const GLUED_SIZE = /(?<![0-9.,])([0-9]+(?:[.,][0-9]+)?)(m|mn|mil|mill|mln|bn|b|bil|k)-?(pesa|tshs|tzs|tsh|shs|sh)\b/g;
+
+/** A digit of the Arabic scripts, read as the ASCII digit it is (round 7). */
+function asciiDigit(ch: string): string | null {
+  const c = ch.codePointAt(0) ?? -1;
+  if (c >= 0x0660 && c <= 0x0669) return String(c - 0x0660);
+  if (c >= 0x06F0 && c <= 0x06F9) return String(c - 0x06F0);
+  return null;
+}
+
+/** A wallet's name as one word, read with the number before it (round 7). */
+function walletFold(m: string, offset: number, whole: string): string {
+  if (/^[mt]\s*pesa$/.test(m)) {
+    const before = whole.slice(0, offset);
+    if (SHORT_NUMBER_BEFORE.test(before) && !PAY_BEFORE.test(before)) return m;
+  }
+  return m.replace(/[^a-z]+/g, "");
+}
+
+/** Compatibility forms apart and their marks gone, invisible format characters dropped, lower case, look-alike letters
+ *  and digits folded, a figure's own look-alikes read, a wallet's name one word — the form every reading starts from. */
+function baseForm(text: string): string {
+  const lowered = (text ?? "").normalize("NFKD").replace(/\p{M}+/gu, "").replace(/\p{Cf}+/gu, "").toLowerCase();
+  let out = "";
+  for (const ch of lowered) out += asciiDigit(ch) ?? LOOK_ALIKE_LETTERS.get(ch.codePointAt(0) ?? -1) ?? ch;
+  out = out.replace(FIGURE_O, (m) => m.replace(/^[li|]/, "1").replace(/o/g, "0")).replace(THOUSANDS_MARK, ",").replace(GLUED_SIZE, "$1$2 $3");
+  return out.replace(WALLETS, (m: string, offset: number, whole: string) => walletFold(m, offset, whole));
+}
+
+/** ⭐ THE NORMAL FORM: `baseForm`, with letter and digit runs apart ("Millionea2026" → "millionea 2026"). */
+export function normalizeClaimText(text: string): string {
+  return baseForm(text).replace(/(\p{L})(\p{Nd})/gu, "$1 $2").replace(/(\p{Nd})(\p{L})/gu, "$1 $2");
+}
+
+/** The base form with look-alike digits folded to letters ("M1llionea" → "millionea", "Sh1nda" → "shinda"). */
+function foldedForm(text: string): string {
+  return baseForm(text).replace(/[013457@$]/g, (c) => LOOK_ALIKE_DIGITS[c] ?? c);
+}
+
+/* ══ THE SIGNALS — what makes an untagged campaign Millionea's business ══════════════════════════════════════════════ */
+
+/** The product's own words, in each spelling and form the lint reads (round 5, MEDIUM 6: a word written in two parts too). */
+const SIGNAL_WORDS = /\b(?:ma)?mill?ionea\b|\bmill?ionai?res?\b|\bjac?k[^a-z0-9]{0,6}pot(?:s|i)?\b|\bj[ae]ki?poti?\b|\b(?:ma)?milioni\b/g;
+/** The same words with their letters spaced, dotted or stood in for by look-alike signs (round 3, B6; round 4, L7). */
+const SIGNAL_SQUEEZED = /mi{2,4}onea|mi{2,4}onai?re|jac?kpot/;
+/** Ten of ten, the ticket the jackpot is shared by. */
+const TEN = /(?<![0-9/])10\s*[/]\s*10(?![0-9])(?!\s*[/]\s*[0-9])|\b10\s+(?:kati ya|out of|of)\s+10\b/g;
+/** The words a date is written with (round 4, M1 and L8; round 5, MEDIUM 6 and LOW 15). */
+const DATE_BEFORE = /\b(?:jumatatu|jumanne|jumatano|alhamisi|ijumaa|jumamosi|jumapili|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun|leo|kesho|today|tomorrow|tarehe|date|kuanzia|tangu|from|since|hadi|mpaka|until|till|by|before|kabla|on|januari|februari|machi|aprili|mei|juni|julai|agosti|septemba|oktoba|novemba|desemba|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\b(?:\s+(?:hii|ijayo|this|next))?[,.:]?\s*(?:(?:ya|of|the)\s+)?$/;
+/** A fixture's two sides (round 6, L3). */
+const FIXTURE_BEFORE = /\b(?:vs|v|dhidi\s+ya|against)\s+[a-z]+[,.:]?\s*$/;
+/** The words a deadline, a fixture or a rating is written with (round 7). */
+const DEADLINE_BEFORE = /\b(?:mwisho|inaisha|itaisha|ends?|expires?|deadline|inaanza|itaanza|starts?|begins?|utasimama|itasimama|matengenezo|maintenance|ofa|offer|bonasi|bonus|mechi|match|derby|game|fixture|kickoff|rate|rated|rating|tupe|huduma|service|review)\b[^.!?;]{0,16}$/;
+/** A count's own noun, read before "milioni" (round 6, L3). */
+const COUNT_BEFORE = /\b(?:watazamaji|wafuasi|watu|mashabiki|wachezaji|wanachama|watumiaji|wateja|vipakuliwa|kura|maoni)\s+$/;
+/** …and after. */
+const DATE_AFTER = /^\s*[,.]?\s*(?:[a-z]+\s+)?(?:[0-9]{1,2}:[0-9]{2}(?![0-9])|[0-9]{1,2}\s*(?:am|pm)\b|saa\s+(?:[0-9]{1,2}(?![0-9])|moja|mbili|tatu|nne|tano|sita|saba|nane|tisa|kumi)\b)|^\s*(?:hadi|mpaka|to|until|till|-)\s*[0-9]{1,2}\s*[/]\s*[0-9]{1,2}(?![0-9])/;
+/** Ten of ten that is someone's, or waits for someone, or equals a figure: a claim, whatever date stands with it (round 7). */
+const SCORE_CLAIM_AFTER = /^\s*(?:(?:ni|is|are|iko)\s+)?(?:yako|zako|yenu|zenu|yours)\b|^\s*(?:i|zi)?(?:na|ta)ku(?:subiri|ngoj)|^\s*(?:is\s+)?(?:waiting\s+for\s+you|awaits\s+you)\b|^\s*=/;
+/** The ticket's own description, ten of ten in words (round 6, M5). */
+const TEN_WORDS = /\b10\s+sahihi\b|\b(?:all\s+(?:the\s+)?)?10\s+(?:right|correct)(?:\s+answers?)?\b|\bmaswali\s+yote\s+10\b/;
+/** A ticket named right after ten of ten: the ticket's own description, never a date (round 6, M5). */
+const TICKET_AFTER = /^\s*(?:tickets?|tiketi|tikiti)\b/;
+/** "Up to" before a figure (round 6, M5: the lead's decision — a getting verb with it is a claim). */
+const UP_TO_BEFORE = /\b(?:hadi|mpaka|up\s+to)\s*$/;
+/** The words a limit or a payment of one's own is written with, heading the figure's phrase (the lead's refined ruling,
+ *  round 8, M4; round 17, M4: the Swahili verbs in every person and tense — "ukiweka", "umetoa", "utatuma" — the English
+ *  past and the deposit's own noun, "amana"). */
+const LIMIT_BEFORE = /\b(?:(?:u|ni|tu|m|wa|a|ku)?(?:ki|me|li|ta|na|nge)?(?:toa|weka|tuma)|withdraw(?:s|n|ing|als?)?|withdrew|deposit(?:s|ed|ing)?|transfer(?:s|red|ring)?|kikomo|limit|amana)\b[^.!?;,]{0,24}$/;
+/** A claim of getting (round 5, MEDIUM 6 and 7a; round 17, M3: "took home", "walk away with", "went home with", and
+ *  someone who has taken it). */
+const GET_BEFORE = /(?:pat(?:a|ia|ie|e)|\b(?:get|gets|getting|got|earn|earns|score|scores|scored|collect|collects|claim|claims|chukua|jichukulie)|\b(?:take|takes|took|taking)\s+home|\b(?:walk(?:s|ed|ing)?\s+away|go(?:es|ing)?\s+home|went\s+home)\s+with|\b(?:a|wa)(?:me|li|na|ta)chukua)\s*$/;
+/** ⭐ Round 17 (M3) · "take … home" around the figure ("one player took TZS 8,000,000 home"): the same getting verb — its
+ *  verb right before the figure, "home" right after it (`HOME_AFTER`). */
+const TAKE_BEFORE = /\b(?:take|takes|took|taking)\s*$/;
+/** ⭐ Round 17 (M3) · a shot or a chance AT the figure: the figure is the prize it promises. */
+const SHOT_BEFORE = /(?:\b(?:shot|chance)\s+at|\bnafasi\s+ya)\s*$/;
+
+/** True when the text says ten of ten as a score, or claims getting it (round 3, B5; round 4, M1; round 5, MEDIUM 6). */
+function tenOfTen(n: string): boolean {
+  if (TEN_WORDS.test(n)) return true;
+  for (const m of n.matchAll(TEN)) {
+    const at = m.index ?? 0;
+    const end = at + m[0].length;
+    const before = n.slice(Math.max(0, at - 48), at);
+    if (GET_BEFORE.test(before) || GET_BEFORE.test(foldWords(before))) return true;
+    if (TICKET_AFTER.test(n.slice(end, end + 24)) || SCORE_CLAIM_AFTER.test(n.slice(end, end + 24))) return true;
+    const dated = DATE_BEFORE.exec(before);
+    if (dated) {
+      const head = before.slice(0, dated.index);
+      if (GET_BEFORE.test(head) || GET_BEFORE.test(foldWords(head))) return true;
+      continue;
+    }
+    if (FIXTURE_BEFORE.test(before) || DEADLINE_BEFORE.test(before) || DATE_AFTER.test(n.slice(end, end + 40))) continue;
+    return true;
+  }
+  return false;
+}
+
+/** A run shaped like a phone number of the region, in any of the forms one is written (round 3, B5; round 4, L7). */
+function phoneShaped(digits: string): boolean {
+  return (digits.length === 12 && digits.startsWith("2")) || (digits.length === 10 && digits.startsWith("0"))
+    || (digits.length === 9 && (digits.startsWith("6") || digits.startsWith("7")));
+}
+
+/** ⭐ THE ONE CURRENCY LIST (round 5, HIGH 2): the words and the signs every reading of an amount uses. */
+const CURRENCY = String.raw`(?:tshs|tzs|tsh|shs|shillingi|shilingi|shillings?|sh)`;
+const CURRENCY_SIGN = String.raw`(?:[/]=|[/]-)`;
+/** A currency word or sign right after a number (round 6, L4) — ⭐ round 17 · never one that heads the next number ("Lipa
+ *  Namba 5566778 Tsh 2000": the currency is 2000's). */
+const CURRENCY_AFTER = new RegExp(String.raw`^\s*(?:${CURRENCY}\b(?![.:]?\s*[0-9])|${CURRENCY_SIGN})`);
+/** A currency word before a number (round 5, MEDIUM 6). */
+const CURRENCY_BEFORE = new RegExp(String.raw`\b${CURRENCY}[.:]?\s*$`);
+/** ⭐ Round 17 (M3) · "home" right after the figure (its currency word between, if any): `TAKE_BEFORE`'s other half. */
+const HOME_AFTER = new RegExp(String.raw`^\s*(?:${CURRENCY}\b[.:]?\s*)?home\b`);
+/** A price: a price word heading the figure's phrase, with no reader word in it (rounds 9, 11 and 15, the lead's rulings). */
+const PRICE_BEFORE = /\b(?:bei|price|costs?|kiingilio|entry|inauzwa|sells\s+for)\b[^.!?;,]{0,24}$/;
+/** A payment's own verb, then a short number (round 7). */
+const PAY_BEFORE = new RegExp(String.raw`\b(?:weka|lipa|tuma|toa|deposit|pay|send|withdraw)\s+(?:${CURRENCY}[.:]?\s*)?[0-9]{1,3}(?:[.,][0-9]{1,2})?\s{1,3}$`);
+/** A word that names a till, an account or a code (round 4, L7). */
+const TILL_BEFORE = /\b(?:namba|nambari|number|no|till|paybill|akaunti|account|ref|kumbukumbu|code|msimbo|piga|call|whatsapp|simu|sms)\b[)\]]?[.:#]?\s*$/;
+/** A phone's own word, read right after a run of digits (round 12). ⭐ Enforced (round 17, L2): a run counts as a figure
+ *  unless it is written in a phone number's own format AND one of these words follows it — and after a prize verb it
+ *  counts as a figure whatever follows it (round 15). */
+const PHONE_AFTER = /^\s*(?:(?:kwenye|kwa|on|via|kupitia)\s+)?(?:whatsapp|simu|sms|telegram)\b/;
+/** The nouns a count is written with — people, plays, sales — read right after a figure (rounds 5, 6 and 11).
+ *  ⭐ Enforced (round 17, L2): every figure is judged as a claim unless the noun it counts stands at once after it. */
+const COUNT_AFTER = /^\s*[+]?\s*(?:tanzanians?|watanzania|kenyans?|wakenya|views?|likes?|followers?|fans?|subscribers?|downloads?|players?|members?|people|users?|shares?|comments?|streams?|plays?|votes?|wafuasi|watazamaji|wachezaji|watu|wanachama|watumiaji|mashabiki|wapiga\s+kura|kura|maoni|vipakuliwa|watazamaji|tickets?\s+sold|zimeuzwa)\b/;
+/** A prize or a win, in either language, read by its stem (round 5, MEDIUM 7b; round 6, H1 and M3): a figure in a sentence
+ *  that says one is a claim. ⭐ Round 17 (M4) · "mfuko" (a fund) is a prize word in a prize's sense — the week's fund, a
+ *  prize fund, a fund of a figure — and a wait is one only where it waits for the reader. */
+const PRIZE_WORDS = new RegExp([
+  String.raw`shind|\bpots?\b|\breward|\b(?:wins?|winning\w*|won|winners?|prizes?)\b|\bjac?k[^a-z0-9]{0,6}pot(?:s|i)?\b|\bj[ae]ki?poti?\b`,
+  String.raw`zawadi|tuz[ow]|(?:na|ta|me)ku(?:subiri|ngoj)|\bawait(?:s|ing)?\s+you\b|\bwaiting\s+for\s+you\b|\bup\s+for\s+grabs\b`,
+  String.raw`(?:ta|me|na)?kuwa\s+(?:yako|zako|yenu|zenu)\b`,
+  String.raw`\bmfuko\s+(?:(?:mkubwa|mnono|huu|wetu|wenu|wako|mpya)\s+)?(?:wa|ya)\s+(?:wiki|zawadi|milioni|bilioni|laki|${CURRENCY}\b|[0-9])`,
+].join("|"));
+/** "It is yours" right before the figure (round 7). */
+const YOURS_BEFORE = /\b(?:it.?s|ni|is)\s+(?:yours|yako|zako|yenu|zenu)\s*[:-]?\s*$/;
+/** A figure in hundreds of thousands, as Swahili writes it ("laki 50") (round 7). */
+const LAKI = /\blaki\s+([0-9]+(?:[.,][0-9]+)?)\b/g;
+/** The figure as the subject of "is yours" (round 6, H1 and M3). */
+const YOURS_AFTER = new RegExp(String.raw`^\s*(?:\b${CURRENCY}\b[.:]?\s*)?(?:(?:ni|is|are)\s+|(?:[a-z]+\s+){0,3}?(?:could|can|will|may|might)\s+be\s+)?(?:yako|zako|yenu|zenu|yours)\b`);
+/** A number with a word or a short suffix for its size (round 3, B3). */
+const SIZED = /(?<![0-9])(?<![0-9][.,])([0-9]+(?:[.,][0-9]+)*)\s*(millions?|milioni|billions?|bilioni|mill|mil|mln|mn|bil|bn|b|m|k)\b(?!-)/g;
+/** A figure written as a word (round 6, M4). */
+const WORD_FIGURES = /\b(?:millions?|billions?|bilioni)\b/g;
+/** Thousands grouped by a comma or a dot (round 4, M2). */
+const GROUPED_MARKS = /(?<![0-9])(?<![0-9][.,])[0-9]{1,3}(?:[,.][0-9]{3})+(?![0-9])(?![.,][0-9])/g;
+/** Thousands grouped by spaces. */
+const GROUPED_SPACES = /(?<![0-9+])(?<![0-9][.,])[0-9]{1,3}(?: [0-9]{3})+(?![0-9])(?![.,][0-9])/g;
+/** A run of digits with no separator. */
+const BARE = /(?<![0-9+])(?<![0-9][.,])[0-9]+(?![0-9])(?![.,][0-9])/g;
+/** Where a sentence ends — never at a line break (round 6, H1). */
+const SENTENCE_END = /[.!?;](?=\s|$)/;
+/** A sentence's words, the sender's own name left out. */
+const wordsIn = (s: string): number => s.replace(/^\s*50\s*pick\s*:/, " ").trim().split(/\s+/).filter((w) => w !== "").length;
+
+/** The figure's own sentence, with a sentence of at most two words (an exclamation) read with the one after it (round 6,
+ *  H1). */
+function sentenceOf(n: string, at: number, end: number): string {
+  const before = n.slice(0, at).split(SENTENCE_END);
+  const after = n.slice(end).split(SENTENCE_END);
+  let sentence = `${before.pop() ?? ""} ${after[0] ?? ""}`;
+  while (before.length > 0 && wordsIn(before[before.length - 1] ?? "") <= 2) sentence = `${before.pop() ?? ""} ${sentence}`;
+  for (let k = 1; k < after.length && wordsIn(sentence) <= 2; k++) sentence = `${sentence} ${after[k] ?? ""}`;
+  return sentence;
+}
+
+/** A sized number's value: "2.5 m" → 2,500,000; "1,500 m" → 1,500,000,000. */
+function sizedValue(num: string, unit: string): number {
+  const plain = /^[0-9]{1,3}(?:,[0-9]{3})+(?:[.][0-9]+)?$/.test(num) ? num.replace(/,/g, "") : num.replace(",", ".");
+  const v = Number.parseFloat(plain);
+  const scale = unit === "k" ? 1_000 : /^(?:billions?|bilioni|bil|bn|b)$/.test(unit) ? 1_000_000_000 : 1_000_000;
+  return Number.isFinite(v) ? v * scale : 0;
+}
+
+/** The normal form's letter and digit runs joined back, look-alike digits folded: the words around a figure, as read. */
+function foldWords(s: string): string {
+  return s.replace(/(?<=\p{L}) (?=\p{Nd})|(?<=\p{Nd}) (?=\p{L})/gu, "").replace(/[013457@$]/g, (c) => LOOK_ALIKE_DIGITS[c] ?? c);
+}
+
+/** The reader addressed: "you", and the Swahili second person (round 7). */
+const READER = /\byou(?:r|rs)?\b|\bwewe\b|\b(?:yako|zako|lako|chako|kwako|wako|yenu|zenu|wenu|lenu|kwenu)\b|\bu(?:ta|na|me|li|ki|nge)[a-z]{3,}/;
+/** A question that asks who (round 7). */
+const WHO = /\b(?:who|nani)\b/;
+/** A sentence that opens as a question (rounds 7 and 8, H1). */
+const MARKET_ASKS = /^\s*(?:50\s*pick\s*:\s*)?(?:je|will|would|can|could|does|do|did|is|are|has|have|what|which|how|when|where)\b/;
+/** A winning or getting verb (round 8, H1): before the figure, a question about it is a claim. */
+const WIN_OR_GET = /shind|\b(?:wins?|winning|won|get|gets|got|take|takes|collect|collects|claim|claims)\b|pat(?:a|ia|ie|e)\b|chukua/;
+/** A figure framed as the reader's, in their hands or their future, is a claim (rounds 9 and 11, the lead's rulings).
+ *  ⭐ Round 17 (M4) · a wait frames it in the reader's own form or an impersonal one ("unasubiri", "inakusubiri",
+ *  "zinasubiri"), or wherever it waits for the reader ("wanakusubiri", "waiting for you", "awaits you"); a third person's
+ *  wait ("wanasubiri", "tunasubiri", "fans await the derby") is their own. */
+const FRAME = new RegExp([
+  String.raw`\byours\b|change\s+a\s+life|\bwaiting\s+for\s+you\b|\bawait(?:s|ing)?\s+you\b`,
+  String.raw`\b(?:you|youre|wewe|who)\b[^.!?;]{0,12}\bnext\b|\bnext\b[^.!?;]{0,12}\b(?:you|wewe)\b`,
+  String.raw`\b(?:u|i|zi|ki|vi|li|ya)(?:na|ta|me)(?:ku|wa)?(?:subiri|ngoj)|\b[a-z]{0,4}?(?:na|ta|me)ku(?:subiri|ngoj)`,
+  String.raw`\b(?:nani|wewe)\b[^.!?;]{0,12}\b(?:ajaye|atafuata|anayefuata)\b|\b(?:ajaye|atafuata|anayefuata)\b[^.!?;]{0,12}\b(?:nani|wewe)\b`,
+].join("|"));
+/** ⭐ Round 17 (M4) · the figure itself waiting, right after it ("TZS 50,000,000 is waiting", "… awaits"). */
+const WAIT_AFTER = new RegExp(String.raw`^\s*(?:${CURRENCY}\b[.:]?\s*)?(?:(?:is|are|now|still)\s+)*(?:waiting|awaits?|awaiting)\b`);
+/* ⭐ Round 17 (H2, the lead's ruling) · A PAYMENT BY 50PICK, READ BY ITS PARTIES (it replaces round 15's word order): the
+ * platform as the payer — 50pick, "we" or "our …" before a pay verb, "paid … by 50pick", the "tu-" forms of "-lipa" — or the
+ * platform's players as the payee — "paid (out) to … players, winners or you", players or winners who "were paid", the
+ * "wa-" passives of "-lipwa". The "i-" forms of "-lipa" and "-toa", and any "-lipwa", are the platform's where 50pick is
+ * named in the sentence. The sender's own name before its colon is never a party. */
+/** What may stand between a payer and its verb: an auxiliary, or an adverb of time or manner. */
+const PAY_AUX = String.raw`(?:has|have|had|is|are|was|were|will|would|shall|been|be|being|just|already|now|also|again|still|ever|even|once|recently|finally|proudly|officially|successfully|so\s+far|to\s+date|today|yesterday|in\s+total|altogether|this\s+(?:week|month|year|season)|last\s+(?:week|month|year|season))`;
+const PAYER_EN = String.raw`\b(?:50\s*pick|we|our(?:\s+[a-z]+){1,2})(?:['’](?:ve|ll|d|re))?(?:\s+${PAY_AUX})*\s+`;
+const PLATFORM_PAYS = new RegExp([
+  String.raw`${PAYER_EN}(?:paid|pays|pay|paying)\b`,
+  String.raw`${PAYER_EN}(?:made|makes|make|making|sent|sends|send|sending|issued|issues)\s+(?:[a-z-]+\s+){0,2}payouts?\b`,
+  String.raw`\b50\s*pick['’]s\s+(?:[a-z-]+\s+){0,2}payouts?\b`,
+  String.raw`\b(?:paid|payments?|payouts?)\b[^.!?;]{0,40}\bby\s+50\s*pick\b`,
+  String.raw`\bpaid\s+(?:out\s+)?to\s+(?:[a-z0-9]+\s+){0,2}(?:players?|winners?|users?|members?|customers?|punters?|people|tanzanians?|you)\b`,
+  String.raw`\b(?:players?|winners?|users?|members?|customers?|punters?)\s+(?:were|are|was|is|have\s+been|has\s+been|had\s+been|will\s+be|got|get|gets|getting)\s+(?:[a-z]+\s+)?paid\b`,
+  String.raw`\btu(?:me|li|na|ta|mesha|lisha|ki|nge)(?:wa|ku|m|mw)?lip[ae]\b`,
+  String.raw`\bwa(?:me|li|na|ta|mesha|lisha|ki|nge)lipw[ae]\b`,
+].join("|"));
+/** …and the forms that are the platform's where 50pick is named in the sentence. */
+const PLATFORM_PAYS_NAMED = /\bi(?:me|li|na|ta|mesha|lisha)(?:wa|ku|m|mw)?(?:lipa|toa)\b|\b[a-z]*lipw[ae]\b|\b[a-z]*(?:lipa|toa|tolewa)\b[^.!?;]{0,40}\b(?:na|kutoka\s+kwa)\s+50\s*pick\b/;
+/** 50pick named in a sentence (its sender's name before the colon set aside first). */
+const NAMES_50PICK = /\b50\s*pick\b/;
+/** ⭐ Round 17 (H2) · a tax, a fee or a levy as THE FIGURE'S OWN OBJECT — heading it ("kodi ya", "a levy of", "income tax
+ *  of") or right after it ("in taxes", "as tax", "kama kodi") — makes that figure a payment the platform owes, not a payout;
+ *  never where the sentence says there was none ("zero fees", "bila ada", "tax-free"). Enforced: a payment by 50pick is its
+ *  claim unless its own figure is such a payment. */
+const TAX_NOUN = String.raw`(?:tax(?:es)?|fees?|lev(?:y|ies)|dut(?:y|ies)|kodi|ada|ushuru|tozo)`;
+const TAX_HEADS = new RegExp(String.raw`\b${TAX_NOUN}(?:\s+(?:ya\s+|la\s+|za\s+|on\s+)?[a-z]+)?\s*(?:(?:of|ya|za|la|totall?ing|worth|amounting\s+to)\s*)?[:]?\s*(?:${CURRENCY}[.:]?\s*)?$`);
+const TAX_FOLLOWS = new RegExp(String.raw`^\s*(?:${CURRENCY}\b[.:]?\s*)?(?:(?:in|as|for|kama|kwa)\s+(?:[a-z]+\s+)?)?${TAX_NOUN}\b`);
+const TAX_NEGATED = new RegExp(String.raw`\b(?:no|zero|without|nil|free\s+of|bila|hakuna|pasipo)\s+(?:[a-z]+\s+)?(?:${TAX_NOUN}|makato|deductions?|charges?)\b|\b(?:tax|fee|levy|duty|commission|charge)[\s-]*free\b`);
+/** ⭐ Round 17 (M3) · a question just before the figure's sentence, whatever its length: it joins that sentence (round 15
+ *  joined only a short one). */
+const QUESTION_BEFORE = /(?:^|[.!?;]\s+)([^.!?;]+\?)\s*$/;
+/** ⭐ Round 17 (M3) · a payout or the winnings heading the figure's phrase ("This week's payout is …", "Malipo ya wiki hii
+ *  ni …"): the figure is the prize. */
+const WINNINGS_BEFORE = /\b(?:payouts?|winnings?|malipo)\b[^.!?;,]{0,24}$/;
+/** ⭐ Round 17 (M3) · money, riches or an income asked about in the question joined to the figure's sentence ("Want to be
+ *  rich? …", "Unataka pesa? …"). */
+const INCOME_QUESTION = /\btajir|\b(?:rich|riches|wealth|wealthy|money|cash|income|fortune|pesa|fedha|hela|kipato|mapato|faida)\b/;
+/** ⭐ Round 17 (M3) · the sentence after the figure's puts the reader next: "Next could be you!", "You could be next",
+ *  "Wewe je?". */
+const NEXT_YOU = /\bnext\b[^.!?;]{0,16}\b(?:could|might|may|will|can)\s+be\s+you\b|\b(?:you|it)\s+(?:could|might|may|will|can)\s+be\s+next\b|\byou(?:['’]re|\s+are)\s+next\b|\bcould\s+be\s+you\b|\bwewe\s+je\b|\b(?:wewe|ni\s+wewe)\b[^.!?;]{0,12}\b(?:ajaye|atafuata|anayefuata)\b/;
+/** A ticket named in the figure's sentence (round 9, b). */
+const TICKET_WORD = /\b(?:tiketi|tikiti|tickets?)\b/;
+/** A prize verb right before a run of digits (round 9, the lead's ruling c). */
+const PRIZE_VERB_BEFORE = /(?:shind[a-z]*|\bwins?|\bwon|\bget|\bpata|\bjipatie)\s*$/;
+/** A third person's own verb (round 12). ⭐ Enforced (round 17, L2): a reader word before the figure makes it the reader's
+ *  — a claim — unless a third person's verb or a new clause stands between them (`readerGoverns`). */
+const THIRD_PERSON =/\b(?:a|wa)(?:na|ta|me|li|nge|ki)[a-z]{2,}\b|\b(?:he|she|they)\s+(?:is|was|were|are|will|has|had|gets?|got|earns?|earned|makes?|made)\b|\b[a-z]{3,}\s+(?:earns|gets|makes|is\s+paid|was\s+paid)\b/;
+/** Every reader word, for the last one before a figure (round 12). */
+const READER_ALL = new RegExp(READER.source, "g");
+
+/** The reader's own pronoun in the rest of the figure's sentence (round 15). */
+const READER_AFTER = /\b(?:you|your|yours|wewe|yako|zako|lako|chako|wako|kwako|yenu|zenu|wenu|lenu|kwenu)\b/;
+/** A third party's own verb, or a new clause, after the reader's word and before the figure (rounds 12 and 15). */
+const THIRD_PARTY = new RegExp(THIRD_PERSON.source + String.raw`|\b(?:kwamba|that)\b|\b(?:i|zi|li|ki|vi|ya)(?:na|ta|me|li|ki)[a-z]{3,}\b|\b(?:signed|signs|spent|spends|raised|raises|raise|cost|costs|paid|bought|built|sold)\b`);
+/** ⭐ Round 17 (H3, the lead's ruling) · an ACCOUNT FACT stated of the figure — a balance ("balance", "salio"), what is held
+ *  ("hold"), a limit in the wallet ("up to … in your wallet", "hadi … kwenye pochi", "amana hadi"), what a wallet has
+ *  ("your wallet has", "pochi yako ina", "you have … in your wallet", "una … kwenye pochi yako"). Enforced: the reader's
+ *  money figure is a claim unless the sentence states one of these — and never where a hypothetical frames it. */
+const ACCOUNT_FACT = /\b(?:balance|salio|holds?|holding)\b|\b(?:up\s+to|hadi|mpaka)\b[^.!?;]{0,40}\b(?:wallet|pochi|account|akaunti)\b|\b(?:wallet|pochi|account|akaunti)\s+(?:yako\s+|your\s+)?(?:has|have|holds|ina|zina)\b|\byou\s+have\b[^.!?;]{0,40}\bin\s+your\s+(?:wallet|account|balance)\b|\buna\b[^.!?;]{0,40}\b(?:kwenye|katika|ndani\s+ya)\s+(?:pochi|akaunti)\s+yako\b|\bamana\s+(?:ya\s+)?(?:hadi|mpaka)\b/;
+/** ⭐ Round 17 (H3) · a hypothetical or a promise to come: a figure imagined, or said to arrive, in the reader's account is
+ *  a lure, never an account fact ("Imagine …", "Fikiria …", "could land in your wallet", "itaingia …"). */
+const HYPOTHETICAL = /\b(?:imagine|imagining|picture|suppose|supposing|dream|dreaming|what\s+if|could|might|would|will|land|lands|landing|fikiria|wazia|tuseme|inaweza|zinaweza)\b|\b(?:i|zi)ta[a-z]{2,}|\b(?:u|i|zi|a|wa)nge[a-z]{2,}/;
+/** ⭐ Round 17 (M3) · a third party spending or being paid, before the figure: its figures are its own sums, never a stake
+ *  against a prize ("Simba spent …", "Mchezaji analipwa …", "Simba ilitumia …"). */
+const THIRD_SPEND = /\b(?!(?:you|we|i)\b)[a-z]{2,}\s+(?:(?:has|have|had|just|already|will|would)\s+)?(?:spent|spends|spend|paid|pays|bought|buys|signed|signs|raised|raises|sold|sells|built|builds|invested|invests|earned|earns|owes|owed)\b|\b(?:a|wa|i|zi|ki|vi|li|ya)(?:li|me|na|ta|mesha)(?:sajili|tumia|lipa|lipwa|nunua|uza|jenga|wekeza|changia)\b/;
+/** Where a Swahili you-verb starts its own clause: no noun before it as its subject (round 15). */
+const CLAUSE_START = /(?:^|[.,:;!?\-]\s*|\b(?:je|sasa|leo|kesho|wewe|basi|kama|ili|hata|pia|tayari|pick)\s+)$/;
+/** The sizes a money figure is written with ("5m", "2.5 bn", "1 million"). */
+const MONEY_SIZE = String.raw`millions?|milioni|billions?|bilioni|mill|mil|mln|mn|bil|bn|b|m|k`;
+/** ⭐ Round 17 (M3) · every money figure of a sentence — digits with their currency before or after them. */
+const MONEY_IN = new RegExp(String.raw`\b${CURRENCY}[.:]?\s*([0-9]+(?:[,. ][0-9]{3})*(?:[.,][0-9]+)?)(?:\s*(${MONEY_SIZE})\b)?|\b([0-9]+(?:[,. ][0-9]{3})*(?:[.,][0-9]+)?)(?:\s*(${MONEY_SIZE}))?\s*(?:${CURRENCY}\b|${CURRENCY_SIGN})`, "g");
+
+/** A figure written with its size ("5m", "2.5 bn"). */
+const SIZED_FIGURE = new RegExp(String.raw`^([0-9]+(?:[.,][0-9]+)*)\s*(${MONEY_SIZE})$`);
+
+/** A figure's value as written: digits grouped or bare, a size ("5m"), "laki 50", or a size word alone ("a million"). */
+function figureValue(figure: string): number {
+  const laki = /^laki\s+([0-9]+(?:[.,][0-9]+)?)$/.exec(figure);
+  if (laki) return Number.parseFloat((laki[1] ?? "0").replace(",", ".")) * 100_000;
+  if (/^(?:millions?)$/.test(figure)) return 1_000_000;
+  if (/^(?:billions?|bilioni)$/.test(figure)) return 1_000_000_000;
+  const sized = SIZED_FIGURE.exec(figure);
+  if (sized) return sizedValue(sized[1] ?? "", sized[2] ?? "");
+  const digits = figure.replace(/[^0-9]/g, "");
+  return digits === "" ? 0 : Number(digits);
+}
+
+/** ⭐ Round 17 (M3, the lead's ruling) · a smaller money figure in the figure's own sentence is a stake against it as a
+ *  prize ("TZS 1,000 for a shot at TZS 50,000,000", "TZS 1,000 leo, TZS 50,000,000 Ijumaa"). */
+function stakedAgainst(sentence: string, figure: string): boolean {
+  const value = figureValue(figure);
+  if (!(value > 0)) return false;
+  for (const m of sentence.matchAll(MONEY_IN)) {
+    const num = m[1] ?? m[3] ?? "";
+    const size = m[2] ?? m[4] ?? "";
+    const other = size !== "" ? sizedValue(num, size) : Number(num.replace(/[^0-9]/g, ""));
+    if (other > 0 && other < value) return true;
+  }
+  return false;
+}
+
+/** ⭐ Rounds 12 and 15 (the lead's rulings) · a reader word makes the figure a claim only when it governs it: the reader's
+ *  pronoun after the figure, or the reader's own word before it with no third party's verb or new clause between — a
+ *  subject anyone could be, or a "who", between them keeps it the reader's. */
+function readerGoverns(own: string, after: string): boolean {
+  if (READER_AFTER.test(after) || READER_AFTER.test(foldWords(after))) return true;
+  let last = -1;
+  for (const m of own.matchAll(READER_ALL)) {
+    const at = m.index ?? 0;
+    // ⭐ Enforced (round 17, L2): a Swahili you-verb that opens its own clause is the reader's word; one with a noun
+    // before it as its subject is read as that noun's verb.
+    if (m[0].startsWith("u") && !/^u(?:r|rs)?$/.test(m[0]) && !CLAUSE_START.test(own.slice(0, at))) continue;
+    last = at + m[0].length;
+  }
+  if (last < 0) return !READER.test(own) && READER.test(foldWords(own));
+  const between = own.slice(last);
+  if (GENERIC_SUBJECT.test(between) || WHO.test(between)) return true;
+  return !THIRD_PARTY.test(between);
+}
+
+/** A subject anyone could be (round 8, H1): a question about it is a claim. */
+const GENERIC_SUBJECT = /\b(?:anyone|anybody|someone|somebody|mtu|mshindi|washindi|winners?|wachezaji|players?|tickets?|tiketi|mmoja)\b/;
+
+/** True when the figure stands in a claim (round 5, MEDIUM 7; rounds 7 and 8). */
+function inAClaim(n: string, at: number, end: number): boolean {
+  const sentence = sentenceOf(n, at, end);
+  const tail = n.slice(end);
+  const stop = tail.search(SENTENCE_END);
+  const asks = stop >= 0 && tail[stop] === "?";
+  // ⭐ Rounds 7 and 8 (H1) · the question test: MARKET_ASKS, WIN_OR_GET, GENERIC_SUBJECT, WHO and READER.
+  const own = n.slice(0, at).split(SENTENCE_END).pop() ?? "";
+  const market = asks && MARKET_ASKS.test(own) && !WIN_OR_GET.test(own) && !WIN_OR_GET.test(foldWords(own))
+    && !PRIZE_WORDS.test(sentence) && !PRIZE_WORDS.test(foldWords(sentence)) && !FRAME.test(sentence)
+    && !GENERIC_SUBJECT.test(sentence) && !WHO.test(sentence) && !READER.test(sentence) && !READER.test(foldWords(sentence));
+  if (market) return false;
+  const reads = (re: RegExp, s: string) => re.test(s) || re.test(foldWords(s));
+  // What the figure's own words make it: a limit, a price (rounds 8, 9 and 11), an account fact (round 17, H3).
+  const limit = LIMIT_BEFORE.exec(own);
+  const priced = PRICE_BEFORE.exec(own);
+  const price = priced !== null && !READER.test(priced[0]) && !READER.test(foldWords(priced[0]));
+  // ⭐ Rounds 15 and 17 (M3) · a question just before the figure's sentence joins it, whatever its length — but a market
+  // question about someone else (it opens as one, and asks no reader, no "who" and no one anyone could be) asks about its
+  // own event: it does not join a figure its own words read as a limit, a price or an account fact.
+  const asked = QUESTION_BEFORE.exec(n.slice(0, at - own.length));
+  const question = asked?.[1] ?? null;
+  const othersQuestion = question !== null && MARKET_ASKS.test(question) && !reads(READER, question) && !WHO.test(question)
+    && !GENERIC_SUBJECT.test(question);
+  const classified = limit !== null || price || (ACCOUNT_FACT.test(sentence) && !HYPOTHETICAL.test(sentence));
+  const joins = question !== null && !(othersQuestion && classified);
+  const joined = joins ? `${question} ${sentence}` : sentence;
+  const ownJoined = joins ? `${question} ${own}` : own;
+  // ⭐ Round 11 (the lead's ruling) · a prize or win word anywhere in the figure's sentence makes it a claim, a limit's too.
+  if (limit && !reads(PRIZE_WORDS, joined) && !YOURS_AFTER.test(tail.slice(0, 32))) return false;
+  if (reads(PRIZE_WORDS, joined)) return true;
+  // ⭐ Round 17 (H2, the lead's ruling) · a payment by 50pick — read by its parties — is its claim, unless a tax, a fee or a
+  // levy is this figure's own object and the sentence denies none.
+  const party = sentence.replace(/^\s*50\s*pick\s*:\s*/, "");
+  const pays = PLATFORM_PAYS.test(party) || (NAMES_50PICK.test(party) && PLATFORM_PAYS_NAMED.test(party));
+  const taxObject = (TAX_HEADS.test(own) || TAX_FOLLOWS.test(tail.slice(0, 40))) && !TAX_NEGATED.test(party);
+  // ⭐ Round 17 (M3) · a payout or the winnings heading the figure's phrase — and, by H2's own lift, never a payment
+  // ("malipo") whose own object is a tax, a fee or a levy ("Malipo ya kodi ya TZS …").
+  if (reads(WINNINGS_BEFORE, own) && !taxObject) return true;
+  if (pays && !taxObject) return true;
+  if (YOURS_AFTER.test(n.slice(end, end + 32))) return true;
+  if (YOURS_BEFORE.test(n.slice(Math.max(0, at - 40), at).replace(CURRENCY_BEFORE, ""))) return true;
+  // ⭐ Round 9 (the lead's ruling b) · the figure put in the reader's hands or future: a question asked of the reader, the
+  // frame around it, a ticket beside it — never a ticket's price.
+  if (!price) {
+    const near = `${n.slice(Math.max(0, at - 60), at)} ${sentence}`;
+    // A reader word makes a money figure a claim, and a question's figure of any kind.
+    const money = CURRENCY_BEFORE.test(own) || CURRENCY_AFTER.test(tail.slice(0, 12));
+    const after = stop >= 0 ? tail.slice(0, stop) : tail;
+    // ⭐ Round 17 (H3, the lead's ruling) · only an account fact stated of the figure, never one imagined, keeps the reader's
+    // figure from being a claim — and the joined question counts as the figure's sentence.
+    const accountFact = ACCOUNT_FACT.test(joined) && !HYPOTHETICAL.test(joined);
+    if ((asks || money) && reads(READER, joined) && !accountFact && readerGoverns(ownJoined, after)) return true;
+    if (reads(FRAME, near) || TICKET_WORD.test(sentence)) return true;
+    // ⭐ Round 17 (M4) · the figure itself waiting; (M3) money asked about in the joined question; the next sentence
+    // putting the reader next; a smaller money figure beside it as its stake — a third party's own sums aside.
+    if (WAIT_AFTER.test(tail.slice(0, 40))) return true;
+    if (joins && !accountFact && INCOME_QUESTION.test(question ?? "")) return true;
+    const next = stop >= 0 ? (tail.slice(stop + 1).split(SENTENCE_END)[0] ?? "") : "";
+    if (reads(NEXT_YOU, next)) return true;
+    if (!accountFact && !THIRD_SPEND.test(own) && stakedAgainst(sentence, n.slice(at, end))) return true;
+  }
+  const before = n.slice(Math.max(0, at - 40), at).replace(CURRENCY_BEFORE, "").replace(UP_TO_BEFORE, "");
+  // ⭐ Round 17 (M3) · a getting verb right before the figure (or around it: "took … home"), or a shot at it.
+  return reads(GET_BEFORE, before) || reads(SHOT_BEFORE, before) || (TAKE_BEFORE.test(before) && HOME_AFTER.test(tail.slice(0, 24)));
+}
+
+/**
+ * ⭐ True when an UNTAGGED campaign's text claims a money figure of a million or more (round 4, M3; round 5, MEDIUM 6 and
+ * the lead's ruling MEDIUM 7b).
+ */
+function millionFigure(n: string): boolean {
+  const taken: Array<[number, number]> = [];
+  const free = (at: number, end: number) => !taken.some(([x, y]) => at < y && end > x);
+  const figures: Array<{ at: number; end: number }> = [];
+  for (const m of n.matchAll(SIZED)) {
+    const at = m.index ?? 0;
+    const end = at + m[0].length;
+    taken.push([at, end]);
+    if (sizedValue(m[1] ?? "", m[2] ?? "") >= 1_000_000) figures.push({ at, end });
+  }
+  for (const m of n.matchAll(LAKI)) {
+    const at = m.index ?? 0;
+    const end = at + m[0].length;
+    if (!free(at, end)) continue;
+    taken.push([at, end]);
+    if (Number.parseFloat((m[1] ?? "0").replace(",", ".")) * 100_000 >= 1_000_000) figures.push({ at, end });
+  }
+  for (const m of n.matchAll(WORD_FIGURES)) {
+    const at = m.index ?? 0;
+    const end = at + m[0].length;
+    if (!free(at, end)) continue;
+    taken.push([at, end]);
+    figures.push({ at, end });
+  }
+  for (const [re, kind] of [[GROUPED_MARKS, "marks"], [GROUPED_SPACES, "spaces"], [BARE, "bare"]] as const) {
+    for (const m of n.matchAll(re)) {
+      const at = m.index ?? 0;
+      const end = at + m[0].length;
+      if (!free(at, end)) continue;
+      taken.push([at, end]);
+      const digits = m[0].replace(/[^0-9]/g, "");
+      if (Number(digits) < 1_000_000) continue;
+      const before = n.slice(Math.max(0, at - 24), at);
+      const money = CURRENCY_BEFORE.test(before) || CURRENCY_AFTER.test(n.slice(end, end + 12));
+      // ⭐ Round 7 · the phone-shape test reads a run's last six digits too.
+      // ⭐ Round 9 (the lead's ruling c) · a prize verb right before the run makes it a figure whatever its shape.
+      const prized = PRIZE_VERB_BEFORE.test(before) || PRIZE_VERB_BEFORE.test(foldWords(before));
+      // ⭐ Rounds 12 and 15 · a run written in a phone number's own format, with a phone's own word right after it, is a
+      // phone, a prize verb before it or not; a bare run after a prize verb stays a figure.
+      const phone = phoneShaped(digits) && !/000000$/.test(digits);
+      const formatted = (digits.length === 10 && digits.startsWith("0")) || (digits.length === 12 && digits.startsWith("255"));
+      const phoneAfter = phone && formatted && PHONE_AFTER.test(n.slice(end, end + 24));
+      if (kind !== "marks" && !money && ((!prized && phone) || phoneAfter || TILL_BEFORE.test(before))) continue;
+      figures.push({ at, end });
+    }
+  }
+  return figures.some((f) => !COUNT_AFTER.test(n.slice(f.end, f.end + 32)) && inAClaim(n, f.at, f.end));
+}
+
+/** The strokes `squeezedWords` reads as one letter, keyed by code point (none is typed here). */
+const ONE_STROKE: ReadonlySet<number> = new Set<number>([0x69, 0x6C, 0x31, 0x7C, 0xA1]);
+
+/** One word with the strokes that pass for one another read as ONE letter, the other look-alike digits folded, and every
+ *  non-letter gone. */
+function squeeze(word: string): string {
+  let out = "";
+  for (const ch of word) out += ONE_STROKE.has(ch.codePointAt(0) ?? -1) ? "i" : (LOOK_ALIKE_DIGITS[ch] ?? ch);
+  return out.replace(/[^a-z]+/g, "");
+}
+
+/** The text's words for the squeezed pass, each squeezed: every word on its own, and a run of single letters as one. */
+function squeezedWords(text: string): string[] {
+  const words: string[] = [];
+  let run = "";
+  for (const token of baseForm(text).split(/\s+/)) {
+    const marks = [...token].filter((ch) => /[\p{L}\p{Nd}]/u.test(ch) || ONE_STROKE.has(ch.codePointAt(0) ?? -1)).length;
+    if (marks === 1) { run += token; continue; }
+    if (run !== "") { words.push(run); run = ""; }
+    if (marks > 1) words.push(token);
+  }
+  if (run !== "") words.push(run);
+  return words.map(squeeze);
+}
+
+/**
+ * The Millionea signals a text carries, as words a human can read — a figure is named "a figure of a million or more",
+ * never repeated (§5.14). Empty: none.
+ */
+export function millioneaSignals(text: string): string[] {
+  const n = normalizeClaimText(text);
+  const folded = foldedForm(text);
+  const out = new Set<string>();
+  // ⭐ Round 6 (L3) · "milioni" after a count's own noun is the count.
+  const counted = (s: string, m: RegExpMatchArray) => m[0].endsWith("milioni") && COUNT_BEFORE.test(s.slice(Math.max(0, (m.index ?? 0) - 24), m.index ?? 0));
+  for (const m of n.matchAll(SIGNAL_WORDS)) if (!counted(n, m)) out.add(m[0]);
+  for (const m of folded.matchAll(SIGNAL_WORDS)) if (!counted(folded, m)) out.add(m[0]);
+  if (out.size === 0) {
+    for (const word of squeezedWords(text)) {
+      const squeezed = SIGNAL_SQUEEZED.exec(word);
+      if (!squeezed) continue;
+      out.add(squeezed[0].startsWith("j") ? "jackpot" : squeezed[0].endsWith("onea") ? "millionea" : "millionaire");
+      break;
+    }
+  }
+  if (tenOfTen(n)) out.add("10/10");
+  if (millionFigure(n)) out.add("a figure of a million or more");
+  return [...out];
+}
+
+/** True when the text carries a Millionea signal. */
+export function namesMillionea(text: string): boolean {
+  return millioneaSignals(text).length > 0;
+}
+
+/** A campaign's declared product: MILLIONEA when its staff-only name begins with the product's own name, as a word (a
+ *  bracket or a quote before it is no part of the name). */
+export function campaignProductOf(name: string | null | undefined): CampaignProduct | null {
+  const n = normalizeClaimText(name ?? "").replace(/^[^a-z0-9]+/, "");
+  return /^millionea(?![a-z0-9])/.test(n) ? "MILLIONEA" : null;
+}
+
+/** The refusal an untagged campaign gets, naming what it said. */
+export function millioneaUntaggedProblem(signals: readonly string[]): string {
+  const said = signals.map((s) => (s.startsWith("a figure") ? s : `“${s}”`)).join(", ");
+  return `${MILLIONEA_UNTAGGED} (it says ${said}; ${MILLIONEA_TAG_HOW}).`;
+}
+
+/* ══ THE CLAIMS A MILLIONEA CAMPAIGN MAY NOT MAKE ════════════════════════════════════════════════════════════════════ */
+
+/** One family of claim a Millionea campaign may not make. */
+export type MillioneaClaimFamily = "amount" | "win" | "winner" | "sum" | "income" | "guarantee" | "rank" | "chance";
+
+/**
+ * ⭐ THE REFUSED CLAIMS (MB-47's list — amount, shinda, milioni, uhakika, "first" — the English that says the same, the
+ * income a campaign may not promise, and the winner it may not name or describe). Read on the NORMAL FORM, and again with
+ * look-alike digits folded, so neither case, an accent, "1000000TZS" nor "Sh1nda" hides one.
+ */
+export const MILLIONEA_CLAIM_FAMILIES: ReadonlyArray<{ family: MillioneaClaimFamily; pattern: RegExp; why: string }> = [
+  {
+    family: "amount",
+    // Round 5 (HIGH 2) · the one currency list, and its signs.
+    pattern: new RegExp(String.raw`\b${CURRENCY}\b|${CURRENCY_SIGN}|\b[0-9]{1,3}(?:[,.\s][0-9]{3})+\b|\b(?!(?:19|20)[0-9]{2}\b)[0-9]{4,}\b`),
+    why: "an amount — the jackpot changes every week and is shared, so a figure in an SMS is a promise it cannot keep",
+  },
+  {
+    family: "win",
+    // Round 3 (B4) · a verb in every person and tense, not only its bare form.
+    pattern: /shind|pat(?:a|ia|ie)\b|\b(?:wins?|winning|won|winners?|prizes?|zawadi)\b/,
+    why: "a win or a prize — a ticket is a set of answers, not a win",
+  },
+  {
+    family: "winner",
+    pattern: /\b[a-z]{2,}\s+[a-z][.](?=\s|$)|\b(?:alipata|amepata|walipata|wamepata|aliyepata|waliopata|got|scored|hit|hongera|iliyopita)\b|congrat|\blast (?:week|time|month)\b/,
+    why: "a winner named or described — no written opt-in exists, so no message names, describes or congratulates one",
+  },
+  {
+    family: "sum",
+    // Round 3 (B4 · B3 · B6) · a jackpot's size in words and in short forms too — and never the first letter of a
+    // hyphenated name.
+    pattern: /\b(?:ma)?milioni\b|\bmillions?\b|\bbilioni\b|\bbillions?\b|\blaki\b|\belfu\b|\b[0-9]+(?:[.,][0-9]+)?\s*(?:m|mn|bn|b|bil|k|mil|mill|mln)\b(?!-)|\b(?:kubwa|nono|big|huge|massive|giant|mega)\b/,
+    why: "a sum — the size of a jackpot is never a marketing claim",
+  },
+  {
+    family: "income",
+    // Round 3 (B4) · a stem in every form, not only at the start of a word.
+    pattern: /tajir|\bpesa\b|\bfedha\b|\bhela\b|\bkipato\b|\bmapato\b|\bfaida\b|\brich(?:es)?\b|\bwealth\w*|\bmoney\b|\bcash\b|\bincome\b|\bearn\w*|\bprofit\w*|\bfortune\w*|\b(?:ma)?milionea\b|\bmamill?ionea\b|\bmill?ionai?res?\b/,
+    why: "an income or riches — no message promises money, a fortune or a millionaire's life",
+  },
+  {
+    family: "guarantee",
+    pattern: /\b(?:uhakika|hakika|guarantee[sd]?|dhamana|sure|certain(?:ly)?|definitely)\b|\bbila shaka\b/,
+    why: "a guarantee — nothing about a week's result is certain",
+  },
+  {
+    family: "rank",
+    pattern: /\b(?:first|kwanza|biggest|largest|best|number one)\b|\bbora zaidi\b|\bkubwa zaidi\b|#\s?1\b/,
+    why: "a rank — no message calls Millionea or its jackpot first or biggest",
+  },
+  {
+    family: "chance",
+    pattern: /\b(?:odds|chances?|nafasi|uwezekano|probability|bahati|luck|lucky)\b/,
+    why: "a chance or luck — no message states or suggests one",
+  },
+];
+
+/** The headline's first fact: the word itself. */
+const FACT_JACKPOT = /\bjackpot\b/;
+/** The second, in either language, as the headline words it (`millionea.ruleShared`). */
+const FACT_SHARED = [/\bshared equally by every 10\s*[/]\s*10 ticket\b/g, /\binagawanywa sawa kwa kila tiketi ya 10\s*[/]\s*10\b/g];
+/** The third, in either language, with the fee it states captured. */
+const FACT_FEE = [/\b([0-9]+(?:[.][0-9]+)?)% fee at payout\b/g, /\bada ([0-9]+(?:[.][0-9]+)?)% wakati wa malipo\b/g];
+
+/** A rate as the headline prints it: 0.13 → "13", 0.125 → "12.5" (never a float's tail). */
+export function feePctOf(rate: number): string {
+  return String(Math.round(rate * 10_000) / 100);
+}
+
+/** Every fee the text states in the headline's words, as printed. */
+export function statedFeesIn(text: string): string[] {
+  const n = normalizeClaimText(text);
+  const out: string[] = [];
+  for (const re of FACT_FEE) for (const m of n.matchAll(re)) out.push(String(Number(m[1])));
+  return out;
+}
+
+/** The headline facts the text does not carry. */
+export function missingMillioneaFacts(text: string): Array<"jackpot" | "shared" | "fee"> {
+  const n = normalizeClaimText(text);
+  const out: Array<"jackpot" | "shared" | "fee"> = [];
+  if (!FACT_JACKPOT.test(n)) out.push("jackpot");
+  if (!FACT_SHARED.some((re) => n.match(re) !== null)) out.push("shared");
+  if (statedFeesIn(text).length === 0) out.push("fee");
+  return out;
+}
+
+/** "10/10" anywhere but inside the shared fact: a score, so a winner described. */
+function scoreOutsideTheFact(n: string): boolean {
+  let rest = n;
+  for (const re of FACT_SHARED) rest = rest.replace(re, " ");
+  return tenOfTen(rest);
+}
+
+/** What one family finds in the text — on the normal form, then with look-alike digits folded. */
+function familyHit(f: (typeof MILLIONEA_CLAIM_FAMILIES)[number], n: string, folded: string): string | null {
+  const hit = f.pattern.exec(n) ?? f.pattern.exec(folded);
+  if (hit) return hit[0].trim();
+  if (f.family === "winner" && scoreOutsideTheFact(n)) return "10/10";
+  return null;
+}
+
+/** One family's sentence. ⛔ A figure is never repeated (§5.14). */
+function familySentence(hit: string, why: string): string {
+  if (hit === "10/10") return `A Millionea campaign may not say “10/10” except in “shared equally by every 10/10 ticket”: that is ${why}.`;
+  return /[0-9]/.test(hit)
+    ? `A Millionea campaign may not state a figure: that is ${why}.`
+    : `A Millionea campaign may not say “${hit}”: that is ${why}.`;
+}
+
+/** A stated fee that is not the week's. */
+function feeProblems(text: string, feeRate: number): string[] {
+  const want = feePctOf(feeRate);
+  return [...new Set(statedFeesIn(text))]
+    .filter((said) => said !== want)
+    .map((said) => `This message states a ${said}% fee, and the week's fee at payout is ${want}%.`);
+}
+
+/**
+ * ⭐ THE LINT OF A MILLIONEA CAMPAIGN — every problem its text has as a Millionea claim, one sentence each. Always read (the
+ * campaign is Millionea's). With `facts`, a stated fee must be the week's own.
+ */
+export function millioneaClaimProblems(text: string, facts: MillioneaClaimFacts | null = null): string[] {
+  const n = normalizeClaimText(text);
+  const folded = foldedForm(text);
+  const out: string[] = [];
+  for (const f of MILLIONEA_CLAIM_FAMILIES) {
+    const hit = familyHit(f, n, folded);
+    if (hit !== null) out.push(familySentence(hit, f.why));
+  }
+  if (missingMillioneaFacts(text).length > 0) {
+    out.push(
+      "A Millionea campaign carries its headline's three facts, as every approved wording does: the Jackpot, " +
+        "“shared equally by every 10/10 ticket” (“inagawanywa sawa kwa kila tiketi ya 10/10”) and “N% fee at payout” " +
+        "(“ada N% wakati wa malipo”), N being the week's fee.",
+    );
+  }
+  if (facts && Number.isFinite(facts.feeRate)) out.push(...feeProblems(text, facts.feeRate));
+  return out;
+}
+
+/**
+ * ⭐ THE SERVER'S PART — what only a door that read the week can judge: the facts were read, Millionea is open to everyone,
+ * and every fee the text states is the week's own. The save, the test send and the send each hold a Millionea campaign
+ * to it; the composer's live counter cannot (it reads no week), and the save then says it.
+ */
+export function millioneaFactsProblems(text: string, facts: MillioneaFacts | null): string[] {
+  if (facts === null || !Number.isFinite(facts.feeRate)) return [MILLIONEA_FACTS_UNREAD];
+  return [...(facts.live ? [] : [MILLIONEA_NOT_LIVE]), ...feeProblems(text, facts.feeRate)];
+}
+
+/** ⭐ Round 17 (L4) · a body that holds a Chinese (Han) character. */
+const HAN = /\p{Script=Han}/u;
+
+/**
+ * ⭐ THE ONE POLICY, for the composer's one door: an untagged campaign carrying a Millionea signal is refused in words; a
+ * Millionea campaign is held to the whole lint and, where its door read the week, to the server's part; and ⭐ round 17
+ * (L4) · a body in Chinese characters is refused for every campaign but the one exemption (OD42: Swahili, and an optional
+ * English body — the two languages these rules read). Any other campaign: nothing (its problems stay what they were).
+ */
+export function millioneaCampaignProblems(text: string, ctx: MillioneaComposeContext = UNTAGGED_CAMPAIGN): string[] {
+  if (ctx.exempt === true) return [];
+  const script = HAN.test(text ?? "") ? [CAMPAIGN_HAN_SCRIPT] : [];
+  if (ctx.product !== "MILLIONEA") {
+    const signals = millioneaSignals(text);
+    return [...(signals.length > 0 ? [millioneaUntaggedProblem(signals)] : []), ...script];
+  }
+  const server = ctx.facts === undefined ? [] : millioneaFactsProblems(text, ctx.facts);
+  return [...new Set([...server, ...script, ...millioneaClaimProblems(text)])];
+}
+
+/* ══ THE APPROVED WORDINGS ═══════════════════════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * ⭐ THE APPROVED WORDINGS — each begins with the sender, stays in the GSM alphabet and inside one message, carries the
+ * three facts with `{pct}` for the fee, and claims nothing else. No name placeholder: no wording greets or names anyone.
+ * A campaign that uses one is a Millionea campaign: its name begins with "Millionea".
+ */
+export const MILLIONEA_WORDINGS: Readonly<Record<MillioneaWordingLocale, readonly string[]>> = {
+  SW: [
+    "50pick: Millionea. Jackpot inagawanywa sawa kwa kila tiketi ya 10/10; ada {pct}% wakati wa malipo. Jibu maswali ya wiki hii kwenye programu ya 50pick.",
+    "50pick: Millionea ni mchezo wa maswali wa kila wiki. Jackpot inagawanywa sawa kwa kila tiketi ya 10/10; ada {pct}% wakati wa malipo. Cheza kwa kiasi.",
+  ],
+  EN: [
+    "50pick: Millionea. The Jackpot is shared equally by every 10/10 ticket; {pct}% fee at payout. Answer this week's questions in the 50pick app.",
+    "50pick: Millionea is a weekly question game. The Jackpot is shared equally by every 10/10 ticket; {pct}% fee at payout. Play responsibly.",
+  ],
+};
+
+/** One approved wording with its fee filled in. */
+export function fillMillioneaWording(template: string, feeRate: number): string {
+  return template.split("{pct}").join(feePctOf(feeRate));
+}

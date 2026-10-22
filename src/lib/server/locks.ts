@@ -49,12 +49,14 @@ type LockCtx = { tx: Prisma.TransactionClient | null; held: Set<string>; committ
 // Next can compile the same server module into separate route and action bundles. They must serialize the same
 // in-memory rows and inherit the same ambient context, including same-key re-entry and transaction joining.
 const lockGlobal = globalThis as typeof globalThis & {
-  __50pickLocks?: { context: AsyncLocalStorage<LockCtx>; memory: Map<string, Promise<unknown>> };
+  __50pickLocks?: { context: AsyncLocalStorage<LockCtx>; memory: Map<string, Promise<unknown>>; committing?: { depth: number } };
 };
 const lockRuntime = lockGlobal.__50pickLocks ??= {
   context: new AsyncLocalStorage<LockCtx>(), memory: new Map<string, Promise<unknown>>(),
 };
 const lockStore = lockRuntime.context;
+/** How deep this process is inside callbacks `runCommitted` is running (they run synchronously) — shared by every copy. */
+const committing = (lockRuntime.committing ??= { depth: 0 });
 
 /**
  * The transaction of the enclosing withLock(), or null when there is none (or
@@ -132,8 +134,20 @@ export async function drainCommitted(effects: ReadonlyArray<() => void | Promise
 /** Each queued callback once, none able to stop the rest — they describe a write that has already committed. */
 function runCommitted(fns: ReadonlyArray<() => void>): void {
   for (const fn of fns) {
-    try { fn(); } catch { /* a notice about a committed write must never surface as that write failing */ }
+    committing.depth++;
+    try { fn(); } catch { /* a notice about a committed write must never surface as that write failing */ } finally { committing.depth--; }
   }
+}
+
+/**
+ * Where a hook is running, read SYNCHRONOUSLY by the hook itself: inside a lock, and inside a lock's transaction. ⭐ A
+ * callback `afterCommit` is running does not count as inside a lock: the write it describes has committed — or, on the
+ * in-memory store, which has no transaction, has landed — and on that store such a callback runs INSIDE the lock that
+ * queued it, so `inLock()` alone cannot tell a hook launched after the commit from one launched inside the transaction.
+ * The Millionea notices record it at each trigger, before the hook escapes every lock (`maswali-notify.ts`, its witness).
+ */
+export function hookContext(): { inLock: boolean; inTx: boolean } {
+  return { inLock: inLock() && committing.depth === 0, inTx: currentLockTx() !== null };
 }
 
 /* ── In-memory fallback (dev without Postgres) ──────────────────────── */

@@ -273,7 +273,8 @@ export function identityFingerprint(idType: string, idNumber: string): string {
  * digits from it (a rate bucket kept per phone number, `marketing.testSendTo`). HMAC-SHA256 under the same pepper as
  * `identityFingerprint` (one key, for the reasons above), domain-separated in the message, and spelled in the letters
  * a–p, one per hex nibble — so no digit run a scrubber or a reader could take for a phone number can ever appear, and
- * nobody without the pepper can enumerate Tanzanian numbers back to it. Rotating the pepper only resets such buckets.
+ * nobody without the pepper can enumerate Tanzanian numbers back to it. Rotating the pepper resets such buckets, and lists
+ * every pending Millionea money letter for an officer instead of matching it (`maswali-notify.ts`, its runbook line).
  */
 export function pepperedLetters(domain: string, value: string, length = 16): string {
   const hex = createHmac("sha256", otpPepper()).update(`${domain}:v1:${value}`, "utf8").digest("hex");

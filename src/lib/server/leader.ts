@@ -30,7 +30,7 @@
  * consequence is a NUMBER, not a hand-wave — see docs/POLISH-BACKLOG.md §3.
  */
 import { withLock } from "./locks";
-import { loadConfig, saveConfig, saveConfigOrThrow } from "./config-store";
+import { loadConfig, loadConfigResult, saveConfig, saveConfigOrThrow } from "./config-store";
 import { hasDatabase } from "./prisma";
 import { randomBytes } from "node:crypto";
 
@@ -98,7 +98,21 @@ export type LeadershipOptions = {
    * unchanged.
    */
   strictWrite?: boolean;
+  /**
+   * ⛔ Fail closed when the lease READ fails. `loadConfig` answers null for a read that failed, which reads as "nobody holds
+   * it" and takes a live lease. The Millionea notices set it (MASWALI-BUILD S6, the lane-N review's round 4, L3); every
+   * other caller's behaviour is unchanged.
+   */
+  strictRead?: boolean;
 };
+
+/** The lease as stored — and, for a strict read, a THROW when the read did not happen (the caller's `catch` fails closed). */
+async function leaseOf(task: string, strict: boolean): Promise<Lease | null> {
+  if (!strict) return loadConfig<Lease>(keyFor(task));
+  const read = await loadConfigResult<Lease>(keyFor(task));
+  if (!read.ok) throw new Error(`the lease could not be read: ${read.error}`);
+  return read.value;
+}
 
 export async function acquireLeadership(task: string, opts: LeadershipOptions = {}): Promise<boolean> {
   const now = opts.now ?? Date.now();
@@ -111,7 +125,7 @@ export async function acquireLeadership(task: string, opts: LeadershipOptions = 
   }
 
   return withLock(`leader:${task}`, async () => {
-    const current = await loadConfig<Lease>(keyFor(task));
+    const current = await leaseOf(task, opts.strictRead === true);
     const mine = current?.holder === INSTANCE_ID;
     const expired = !current || current.expiresAt <= now;
 

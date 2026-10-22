@@ -19,7 +19,7 @@
 import { createHash } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { audit } from "./audit";
-import { afterCommit, withLock } from "./locks";
+import { afterCommit, hookContext, runOutsideLock, withLock } from "./locks";
 import { prisma, hasDatabase } from "./prisma";
 import {
   acct, maswaliGuaranteeFundEntries, maswaliGuaranteeReturnEntries, maswaliJackpotOf, postLedgerEntries, withMoneyTx, type LedgerLine,
@@ -594,6 +594,8 @@ export async function cancelMaswaliTicket(input: { userId: string; positionId: s
         // S5 · the pool figure moved down a ticket: the live hub hears it once the money commits (`maswali-pool-feed.ts`,
         // loaded here on use, so this money module gains no import).
         afterCommit(mTx, () => { void import("./maswali-pool-feed").then((m) => m.noteMaswaliPoolChanged(week.id)).catch(() => {}); });
+        // S6 · the cancel's own notice, to the buyer, once the refund has committed (MB-68) — loaded on use, as the feed is.
+        afterCommit(mTx, () => { const at = hookContext(); runOutsideLock(() => { void import("./maswali-notify").then((m) => m.noticeTicketCancelled(userId, ticket.id, at)).catch(() => {}); }); });
         return { value, balance };
       });
     });
