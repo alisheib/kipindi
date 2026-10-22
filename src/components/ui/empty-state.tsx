@@ -53,6 +53,7 @@ export function EmptyState({
   kind = "default",
   title,
   body,
+  bodyPart,
   action,
   fill,
   className,
@@ -61,6 +62,9 @@ export function EmptyState({
   title: string;
   /** The words, or the words with the runs the caller put into them that must stay whole (a date: `breakSentence`). */
   body?: EmptyStateBody;
+  /** OPT-IN (2026-10-22): each plain string of the body drawn through it — a caller's numeral face (Millionea's
+   *  `numeralRuns`, §T5). Omitted, the body is drawn exactly as before (test:maswali-tickets 11.2 renders both). */
+  bodyPart?: (text: string) => ReactNode;
   /** Accepted for back-compat; no longer rendered (single-language UI). */
   titleSw?: string;
   bodySw?: string;
@@ -115,7 +119,7 @@ export function EmptyState({
           `emptyStateBody` — round 5 (H4): nothing is inserted into the words. Round 7 (the owner's item 37): the balanced
           title never ends a line on a connective — each one keeps the space after it (`keepConnectives`, keep-run.tsx). */}
       <p className={cn(EMPTY_STATE_TITLE, "text-text")}>{keepConnectives(title, [], hangCjkMarks)}</p>
-      {body && <p className={cn(EMPTY_STATE_BODY, "text-text-subtle")}>{emptyStateBody(body)}</p>}
+      {body && <p className={cn(EMPTY_STATE_BODY, "text-text-subtle")}>{emptyStateBody(body, bodyPart)}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );

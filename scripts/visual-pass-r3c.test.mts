@@ -146,7 +146,9 @@ section("2 · the empty state: a YES/NO pair on one line, and content centred in
   const es = read("src/components/ui/empty-state.tsx");
   // ⚠️ Pin moved 2026-10-09 (round 4, R4-K, E50) to `{hangCjkMarks(emptyStateBody(body))}`, and again in round 5 (R5-E,
   // H4): `emptyStateBody` now draws the spans and hangs each part's marks itself, so the call is `{emptyStateBody(body)}`.
-  ok("2.4 · EmptyState renders its body through emptyStateBody", es.includes("{emptyStateBody(body)}") && !/function dashOnItsWord/.test(es));
+  // Pin moved 2026-10-22 (S5-R2-TICKETS, the lead's ruling): the call passes the caller's OPT-IN numeral part along
+  // (`bodyPart`, undefined for every caller but Tiketi zangu's — byte-identical, test:maswali-tickets 11.2).
+  ok("2.4 · EmptyState renders its body through emptyStateBody", es.includes("{emptyStateBody(body, bodyPart)}") && !/function dashOnItsWord/.test(es));
 
   // PHOSPHOR-MIGRATION release 2b: the twelve private drawings retired. Read the rendered
   // plate and glyph as well as their mapping, so a source-only mention cannot pass.

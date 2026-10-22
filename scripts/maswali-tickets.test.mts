@@ -110,6 +110,9 @@ const FILES = {
   listGhost: "src/app/millionea/tickets/tickets-ghost.tsx",
   ticketGhost: "src/app/millionea/tickets/[serial]/ticket-ghost.tsx",
   hint: "src/components/maswali/maswali-ghost-hint.tsx",
+  emptyText: "src/components/ui/empty-state-text.ts",
+  empty: "src/components/ui/empty-state.tsx",
+  ticketsEmpty: "src/app/millionea/tickets/tickets-empty.tsx",
   headGhost: "src/components/journey/tickets/tickets-ghost.tsx",
   switch: "src/components/journey/tickets/ticket-switch.tsx",
   tabs: "src/components/ui/tabs.tsx",
@@ -444,6 +447,49 @@ check("11.1", "the empty states are their siblings': they fill for a journey rea
   for (const [lens, key] of [["open", "ticketsEmptyOpenTitle"], ["settled", "ticketsEmptySettled"], ["won", "ticketsEmptyWon"]]) {
     need(d, p.includes(`case "${lens}": return t.journey.${key};`), `the ${lens} lens's title is not the platform's`);
   }
+  return d;
+});
+
+// ── §11.2 · §T5 · the kit EmptyState's opt-in numeral part (the lead's ruling, 2026-10-22) ──────────────────────────
+const BEFORE_EMPTY_TEXT = execFileSync("git", ["show", `7e9a314f0:${FILES.emptyText}`], { cwd: ROOT, encoding: "utf8" }).replace(/\r\n/g, "\n");
+const BEFORE_EMPTY = execFileSync("git", ["show", `7e9a314f0:${FILES.empty}`], { cwd: ROOT, encoding: "utf8" }).replace(/\r\n/g, "\n");
+const emptyTextOld = compiled<{ emptyStateBody: (b: unknown) => unknown }>(FILES.emptyText, BEFORE_EMPTY_TEXT);
+const emptyOld = compiled<{ EmptyState: unknown }>(FILES.empty, BEFORE_EMPTY);
+/** Every empty-state and notice body the dictionary writes, in a language — and Tiketi zangu's own, filled as the page fills it. */
+const EMPTY_BODIES = (l: Locale): string[] => [
+  ...Object.values(dict[l]).flatMap((ns) => Object.entries(ns as Record<string, unknown>).filter(([k, v]) => typeof v === "string" && /empty|Body$/i.test(k)).map(([, v]) => v as string)),
+  String(dict[l].millionea.emptyTicketsNext).replace("{week}", "3").replace("{when}", l === "zh" ? "周五 18:00" : l === "sw" ? "Ijumaa 18:00" : "Friday 18:00"),
+];
+const EMPTY_CASES: Array<Record<string, unknown>> = [
+  { title: "Nothing here yet.", body: "Wiki 3 iko wazi hadi Ijumaa 18:00." },
+  { title: "暂无。", body: "第3周开放至周五 18:00。", kind: "positions", fill: true },
+  { title: "No positions", body: { text: "Pick YES or NO — then 10/10 on 21 Oct", keep: ["21 Oct"] }, action: h("a", { href: "/x" }, "Go") },
+];
+check("11.2", "§T5 · the kit EmptyState's body takes an OPT-IN numeral part (the lead's ruling, 2026-10-22): without it every body the dictionary writes draws byte for byte as before (7e9a314f0), and the component too, in three languages; only Tiketi zangu's empty states ask for it — and there the week and the clock are mono (\"Wiki 3 … Ijumaa 18:00.\")", (w) => {
+  const d: string[] = [];
+  const textNew = (w.src.emptyText === REAL.src.emptyText ? req("../src/components/ui/empty-state-text.ts") : compiled(FILES.emptyText, w.src.emptyText)) as { emptyStateBody: (b: unknown, part?: unknown) => unknown };
+  const emptyNew = (w.src.empty === REAL.src.empty ? req("../src/components/ui/empty-state.tsx") : compiled(FILES.empty, w.src.empty)) as { EmptyState: unknown };
+  const P = (node: unknown) => renderToStaticMarkup(h("p", null, node as never));
+  let n = 0;
+  for (const l of LOCALES) for (const body of EMPTY_BODIES(l)) {
+    n++;
+    if (P(emptyTextOld.emptyStateBody(body)) !== P(textNew.emptyStateBody(body))) { d.push(`${l}: "${body.slice(0, 48)}" draws differently without a part`); break; }
+  }
+  need(d, n > 60, `only ${n} bodies read`);
+  for (const l of LOCALES) for (const c of EMPTY_CASES) {
+    const a = inApp(l, h(emptyOld.EmptyState as never, c as never)), b = inApp(l, h(emptyNew.EmptyState as never, c as never));
+    if (a !== b) { d.push(`${l}/${String(c.title)}: the component differs at byte ${[...a].findIndex((ch, i) => ch !== b[i])}`); break; }
+  }
+  const walk = (dir: string, out: string[] = []): string[] => {
+    for (const x of readdirSync(join(ROOT, dir))) { const q = posix.join(dir, x); if (statSync(join(ROOT, q)).isDirectory()) walk(q, out); else if (q.endsWith(".tsx")) out.push(q); }
+    return out;
+  };
+  const askers = walk("src").filter((f) => /\bbodyPart=\{/.test(decomment(raw(f))));
+  need(d, j(askers) === j([FILES.ticketsEmpty]), `the part is asked by ${j(askers)}`);
+  need(d, code(w, "list").includes('<MillioneaTicketsEmpty fill={journey} kind="positions" title={t.millionea.emptyTickets}') && count(code(w, "list"), "<MillioneaTicketsEmpty ") === 2, "the list's empty states are not Tiketi zangu's own");
+  const { MillioneaTicketsEmpty } = (w.src.ticketsEmpty === REAL.src.ticketsEmpty ? req("../src/app/millionea/tickets/tickets-empty.tsx") : compiled(FILES.ticketsEmpty, w.src.ticketsEmpty)) as { MillioneaTicketsEmpty: unknown };
+  const m = inApp("sw", h(MillioneaTicketsEmpty as never, { title: "Huna tiketi ya Millionea bado.", body: "Wiki 3 iko wazi hadi Ijumaa 18:00." } as never));
+  need(d, m.includes('<span class="mono">3</span>') && m.includes('<span class="mono">18:00</span>'), "the week and the clock are not mono on Tiketi zangu's empty state");
   return d;
 });
 
@@ -787,6 +833,8 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["H1 undone — the positions back on the loss card", "1.2", plantSrc("ledger", "      </p>\n    </ReceiptCard>", "      </p>\n      <ol><li>{t.millionea.pick}</li></ol>\n    </ReceiptCard>")],
   ["H2 undone — an at-rest clause at the disabled opacity", "2.1", plantSrc("ticket", 'style={reserve ? { background: "var(--wash-inset)" } : undefined}', 'style={{ ...(reserve ? { background: "var(--wash-inset)" } : null), ...(inert ? { opacity: "var(--state-disabled-opacity)" } : null) }}')],
   ["H2 — the muted ink dimmed under the floor", "2.2", (() => { const w = plantSrc("css", "  --text-muted:    oklch(86% 0.040 268);", "  --text-muted:    oklch(40% 0.040 268);"); return w; })()],
+  ["§T5 — the numeral face forced on every caller (not opt-in)", "11.2", plantSrc("emptyText", "part ? (p, following) => throughPart(hangCjkMarks(p, following), part) : hangCjkMarks", "(p, following) => throughPart(hangCjkMarks(p, following), part ?? ((x: string) => x.split(/(\d+)/).map((s, i) => (i % 2 ? createElement(\"span\", { key: i, className: \"mono\" }, s) : s))))")],
+  ["§T5 undone — Tiketi zangu's empty state without the numeral part", "11.2", plantSrc("ticketsEmpty", "<EmptyState {...props} bodyPart={numeralRuns} />", "<EmptyState {...props} />")],
   ["M4 undone — the clause back on the button", "3.1", plantSrc("cancel", "{pending ? t.millionea.cancelling : t.millionea.confirmCancel}", "{pending ? t.millionea.cancelling : t.millionea.cancelFreeUntil.replace(\"{time}\", \"10:09\")}")],
   ["§T5 undone — the free cancel's clock in the body face", "3.1", plantSrc("cancel", 'className="mono whitespace-nowrap">{eatClock(until)}</time>', 'className="whitespace-nowrap tabular-nums">{eatClock(until)}</time>')],
   ["M4 undone — no timer on the clock line", "3.1", plantSrc("cancel", '<span role="timer" className="whitespace-nowrap font-mono font-bold tabular-nums text-text">{freeLeftLabel(left)}</span>', "")],

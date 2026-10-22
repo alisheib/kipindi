@@ -4,7 +4,7 @@
  * `empty-state.tsx` could be neither. `EmptyState` draws its body through `emptyStateBody`; the words stay the
  * dictionary's own, and only where a line may break changes.
  */
-import type { ReactNode } from "react";
+import { createElement, Fragment, type ReactNode } from "react";
 import { hangCjkMarks } from "@/lib/cjk-marks";
 import { keepRanges, keptRanges, mergeRanges, possessiveRanges, runAndDashRanges } from "./keep-run";
 
@@ -63,10 +63,19 @@ export function emptyStateRanges(text: string, keep: readonly string[] = []): Ar
   return mergeRanges(ranges);
 }
 
-/** The body as `EmptyState` draws it: its held runs nowrap, its Chinese marks hung, its words the dictionary's. */
-export function emptyStateBody(body: EmptyStateBody): ReactNode {
+/** The body as `EmptyState` draws it: its held runs nowrap, its Chinese marks hung, its words the dictionary's — and, given
+ *  `part` (OPT-IN, the lead's ruling 2026-10-22: a caller's numeral face, Millionea's `numeralRuns` for §T5), each of its
+ *  plain strings drawn through it, inside a kept run too. Without `part`, exactly what it drew before. */
+export function emptyStateBody(body: EmptyStateBody, part?: (text: string) => ReactNode): ReactNode {
   const { text, keep } = typeof body === "string" ? { text: body, keep: [] as readonly string[] } : body;
-  return keepRanges(text, emptyStateRanges(text, keep), hangCjkMarks);
+  return keepRanges(text, emptyStateRanges(text, keep), part ? (p, following) => throughPart(hangCjkMarks(p, following), part) : hangCjkMarks);
+}
+
+/** A drawn piece's strings through `part`; the hung marks' own spans left as they are. */
+function throughPart(node: ReactNode, part: (text: string) => ReactNode): ReactNode {
+  if (typeof node === "string") return part(node);
+  if (!Array.isArray(node)) return node;
+  return node.map((n, i) => (typeof n === "string" ? createElement(Fragment, { key: `p${i}` }, part(n)) : n));
 }
 
 /**

@@ -33,7 +33,6 @@ import { redirect } from "next/navigation";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
 import { BackLink } from "@/components/ui/back-link";
-import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination, PLAYER_PER_PAGE, buildBaseHref } from "@/components/ui/pagination";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { MaswaliTicketCard } from "@/components/maswali/maswali-ticket";
@@ -49,6 +48,7 @@ import type { Dict } from "@/lib/i18n-dict";
 import { MILLIONEA_HREF, signInHref, ticketPageHref } from "../millionea-parts";
 import { lineOfSlots, msOf } from "../millionea-view";
 import { inLens, lensHref, MillioneaTicketsBar, parseMillioneaLens, type MillioneaLens } from "./tickets-bar";
+import { MillioneaTicketsEmpty } from "./tickets-empty";
 
 export const dynamic = "force-dynamic";
 
@@ -147,7 +147,7 @@ export default async function MillioneaTicketsPage({ searchParams }: { searchPar
           : <PageHeader eyebrow={t.millionea.productTitle} title={t.millionea.ticketsTitle} />}
       <MillioneaTicketsBar lens={lens} t={t} />
       {total === 0 ? (
-        <EmptyState
+        <MillioneaTicketsEmpty
           fill={journey}
           kind="positions"
           title={t.millionea.emptyTickets}
@@ -160,7 +160,7 @@ export default async function MillioneaTicketsPage({ searchParams }: { searchPar
         />
       ) : cards.length === 0 ? (
         // The reader holds tickets; this lens leaves none on this page (or, on the one page, none at all).
-        <EmptyState
+        <MillioneaTicketsEmpty
           fill={journey}
           kind="positions"
           title={total > PLAYER_PER_PAGE ? t.millionea.lensNoneOnPage : lensEmptyTitle(t, lens)}
