@@ -964,8 +964,11 @@ is always "the first *k* non-void reserves", so the lowest-numbered voided main 
 - The Tiketi zangu switch becomes **Maswali | Juu/Chini | Millionea**. That means a third `TicketKind`, with `/millionea/tickets` added to `TAB_ROUTES` above `/millionea`.
 - A Millionea ticket never renders as a Yes/No position, either in `/positions` or in `/positions/[id]`.
 - The classic shell needs an entry point because launch may come before the S15 flip (OD-23, accepted): a Millionea
-  card at the head of the classic `/markets` board, "Millionea" as the first row of More (and of the desktop overflow
-  menu from 1024), a notice row on classic `/positions` when tickets are held, and **no** bottom-rail slot.
+  card at the head of the classic `/markets` board, ~~"Millionea" as the first row of More (and of the desktop overflow
+  menu from 1024)~~, a notice row on classic `/positions` when tickets are held, ~~and **no** bottom-rail slot~~.
+  ⭐ Superseded: Millionea is a core link of the classic top bar (Ali, 2026-10-19) and, on the classic phone rail, a track
+  in Live's place while its door is drawn, Live leading More (Ali, 2026-10-22). The rule lives in `docs/DESIGN_AUTHORITY.md`
+  §M8a item 11.
 
 ### B · The week
 
@@ -1784,8 +1787,8 @@ differ, these win.
     `journey-preview.ts` and working in **both** shells. The journey's `kp_preview` forces the journey shell, and
     the S8 drive needs non-staff QA players.
   - *`/api/health` gains a Millionea rollout field.* A `qa:live` "dark" section, in its own module with one call
-    line, proves on production that `/millionea*` 404s and that no card, More row or notice shows while below the
-    rollout. A local control shows them.
+    line, proves on production that `/millionea*` 404s and that no card, nav door (the bar's link, the rail's track) or
+    notice shows while below the rollout. A local control shows them.
   - *The `/legal/terms` sentence and the TERMS_VERSION move are deferred* to S8's launch commit (OD-18: existing
     terms do not change). The binding text is `/legal/rules/millionea`, with its own version and hash.
   - *Optional:* a `NOT VALID` → `VALIDATE` CHECK on `PredictionMarket.productLine`.
@@ -3099,9 +3102,12 @@ three money colours (`.kp-millionea-ink`; no animation, by the lead's reading of
 (c) below and the journey's "no tab" (D-13 (b), D-15); (a), (b) on the phone rail, (d) and (e) stand.
 
 - **(a) The same card at the head of the classic `/markets` board,** above the filters, at every width. Record it as a change to the accepted v3 discovery layer.
-- **(b) "Millionea" as the first row of the phone rail's `NavMore`,** for signed-in players and guests, wearing the tab's ink (S5-TAB 1). Guests reach the hub, and buying asks them to sign in.
+- ~~**(b) "Millionea" as the first row of the phone rail's `NavMore`,** for signed-in players and guests, wearing the tab's ink (S5-TAB 1).~~ Struck 2026-10-22 by (d)'s replacement below. Guests reach the hub, and buying asks them to sign in.
 - **(c) At 1024 and above, a core link of the top bar right after Up & Down** (Ali, 2026-10-19). While it shows, Results moves into More as its first row, at every width — the link's room. ~~Results folds into More at 1024–1279 and returns inline from 1280~~ (struck the same day, measured in S5-TAB: the bar's room is capped at `--w-board`, 1280px, and with both inline the Swahili bar of a signed-in player at TZS 999,999 needs 12px more at every width from 1280 and pushes the account menu off the screen — E-190's failure). ~~A row in the top bar's overflow menu; no inline link~~ (struck 2026-10-19).
-- **(d) No bottom-rail slot on the classic phone rail.** It is five equal tracks with the centre coin, so Millionea stays More's first row there.
+- ~~**(d) No bottom-rail slot on the classic phone rail.** It is five equal tracks with the centre coin, so Millionea stays More's first row there.~~
+  ⭐ **(d) since 2026-10-22 (Ali: "ok replace live please … keep live in more"): Millionea's track takes Live's place on the
+  classic phone rail** while its door is drawn — Markets · Up & Down · Deposit · Millionea · More, five equal tracks
+  around the centred coin — and Live becomes More's first row. The rule lives in `docs/DESIGN_AUTHORITY.md` §M8a item 11.
 - **(e) Classic `/positions`:** one NoticeBar-style row, "Tiketi za Millionea wiki hii: 2 →", only when the player holds tickets.
 
 ##### 3.3 Hub `/millionea` (`reading` tier)
@@ -3565,8 +3571,10 @@ platform is moving to (`PHOSPHOR-MIGRATION.md`, branch `phosphor-migration`), re
 - **Weight:** Phosphor **Bold** up to 26 px, Regular from 27 px (R-WEIGHT 1B).
 - **Duo tier:** Phosphor Duotone with the tone layer at 20% (R-TONE 2B) — the hub's plate and the empty states.
 - **Selected:** the **Fill** icon on the opaque royal pill with its lit edge (R-INDICATOR 3B) — the Tiketi zangu
-  "Millionea" segment and the More row's active state.
-- **Tabs:** 24 px (R-RAIL 4B). Millionea has no tab of its own (R-PLACEMENT), so this applies only inside the switch.
+  "Millionea" segment and a lit Millionea tab or track on either phone rail.
+- **Tabs:** 24 px (R-RAIL 4B), on Millionea's own slot of both phone rails too: the journey's tab (Ali, 2026-10-19) and the
+  classic rail's track (Ali, 2026-10-22), its glyph resting in gold there — the Owner's label for a destination, not
+  money (`docs/DESIGN_AUTHORITY.md` §M8a item 11). ~~Millionea has no tab of its own (R-PLACEMENT), so this applies only inside the switch.~~
 - **Ink:** an icon never carries gold; gold is earned money only (DA, `test:gold-is-money`). A win's gold stays on the
   amount (O-6).
 
@@ -3576,7 +3584,7 @@ platform's lexicon already owns a meaning, Millionea uses that key and adds none
 
 | Meaning | Where it shows | `I` key | Phosphor | Why this one |
 |---|---|---|---|---|
-| **Millionea, the product** | home card, the journey rail's tab (S5-TAB: a More row and the classic bar's link carry no mark), the Tiketi zangu segment, the hub's head | `millionea` (new) | `diamond` — ⏳ **Ali's pick** among `diamond` (recommended), `star-four`, `crown-simple`, `medal` | Phosphor's `diamond` is the card-suit rhombus, not a cut gem (its only gem is a brand logo); it reads as "the big prize" at 14 px and is unlike any other mark on 50pick. Not `crown` (the Leaderboard) nor `trophy` (a win). Replaces the coronet (O-5) |
+| **Millionea, the product** | home card, both phone rails' Millionea slot (the journey's tab; the classic rail's track since 2026-10-22 — the classic bar's link carries no mark), the Tiketi zangu segment, the hub's head | `millionea` (new) | `diamond` — ⏳ **Ali's pick** among `diamond` (recommended), `star-four`, `crown-simple`, `medal` | Phosphor's `diamond` is the card-suit rhombus, not a cut gem (its only gem is a brand logo); it reads as "the big prize" at 14 px and is unlike any other mark on 50pick. Not `crown` (the Leaderboard) nor `trophy` (a win). Replaces the coronet (O-5) |
 | A ticket | the ticket page, the switch's ticket counts | `ticket` (lexicon) | `ticket` | The platform's word for a held position |
 | A question not yet sealed | the ticket's 15 marks, the register | `markPending` (new) | `circle-dashed` | An open ring: "not known yet", never "wrong". Replaces `sealNil` |
 | Your answer matched the result | the ticket's marks | `checkCircle` (lexicon) | `check-circle` (Fill, success ink) | The platform's own "done right"; the word beside it carries the meaning (glyph + ink + word, Phosphor W4) |

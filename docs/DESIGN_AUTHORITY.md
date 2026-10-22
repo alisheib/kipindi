@@ -1727,7 +1727,10 @@ The platform's hardest-won rules. Most were bought with an incident.
    ⛔ No mascots. ⛔ **No baked-in text in reusable art** — it cannot be translated.
 8. **During a break, nothing a break pauses is offered — and no offer to earn or recruit.** While a player's
    cooling-off or self-exclusion is running, the interface offers neither what the break stops (R4-I and R6-A,
-   2026-10-09: no bet panel or one-tap stake, no first-bet invitation, no deposit door) nor, by the owner's ruling (4)
+   2026-10-09: no bet panel or one-tap stake, no first-bet invitation, no deposit door — in the classic shell too since
+   MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22, the lead's approval of the hub lane's reader finding: the rail's centre
+   coin is the Wallet door, drawn exactly as for a held wallet, the bar's deposit pill is withheld and the balance capsule's
+   Wallet drops its Deposit; `test:millionea-shell` §5) nor, by the owner's ruling (4)
    of 2026-10-10 (owner items 16 and 56), any door to the three programmes that pay for activity: **Alika**
    (`/profile/invite` — a player's invite and an agent's dashboard alike), **Mapendekezo / Propose & earn**
    (`/proposals`) and **Kuwa wakala / Become an agent** (`/agent`). Their doors are not drawn in either shell — the
@@ -3060,6 +3063,16 @@ its branches in the same change or it does not land. The delivery named only the
 gates; this product has three (E-125) — our target device is exactly the one the third
 covers. Guard: `npm run test:reduce-motion`. Maswali Millionea's three motions (N1–N3) obey all three gates: §M8a.
 
+The same holds for every entrance of the kit's motion vocabulary (`motion.css`: `.m-in`, `.m-dialog-in`, `.m-sheet-in`,
+`.m-scrim`, `.m-seal`, `.m-axis-reveal`, `.m-draw` and the rest), every one a Millionea surface wears, and the route
+entrance (`.route-enter`): the clamp zeroes time, not the first frame, so a clamped entrance without its branch paints its
+first keyframe once — measured 2026-10-22: a seal, a reveal and a drawn line, every dialog, sheet and menu invisible for a
+frame, and every route change's first frame blank. With its branch (`animation: none`; a keyframe that names no first
+frame also writes its last) the end frame is the first one painted. An exit is not branched: it opens on the surface as it
+stands, and the kit unmounts a leaving surface at once under both clamps (`exitBeatMs`). `test:reduce-motion` rule 3
+derives the set from the keyframes (MASWALI-BUILD S5 round 2 · PLATFORM, the motion critic's "Reduced-motion parity" row;
+every reader who asked for reduced motion, on every page).
+
 A countdown hairline that a script draws is held to the same clamps as one the stylesheet draws: under either clamp it
 stands FULL for its whole dwell — "still here", true until the timer closes the surface — never draining (E-269, the
 toast's `.toast-countdown`). Since Ali 2026-10-21 10/10 pass (the lead's ruling on the motion critic's L6) that includes
@@ -3146,8 +3159,24 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     link of the classic top bar (while it shows, Results moves into More, as its first row, at every width — measured
     2026-10-19: the bar's room is capped at `--w-board`, 1280px, and with both inline the Swahili bar of a signed-in
     player at TZS 999,999 needs 12px more and loses its account menu, E-190's failure; ~~"inline again from 1280"~~,
-    struck the same day). The classic phone rail keeps its five tracks around the centre coin, so there Millionea stays
-    More's first row, beside Results, which has lived in that More since the coin.
+    struck the same day), and a track of the classic phone rail, in Live's place (the sub-point below). ~~The classic
+    phone rail keeps its five tracks around the centre coin, so there Millionea stays More's first row, beside Results,
+    which has lived in that More since the coin.~~ (struck 2026-10-22 by Ali's ruling below)
+    - **The classic phone rail: Millionea's track in Live's place (Ali, 2026-10-22: *"ok replace live please … keep live
+      in more"*, and *"make sure it takes the perfect design and the whole navbar is tested, visually and logically
+      still appealing"*; recorded with his rulings of the day in `docs/COMPLIANCE-DECISIONS.md`, "2026-10-22 · Maswali
+      Millionea — build done, launch later", item 4).** Six tracks cannot be made perfect: the centred coin needs two
+      tracks on each side, and Swahili labels do not fit ~53px. So while Millionea's door is drawn for the reader (the
+      shell's one answer: the rollout admits the request and the reader is not on a break), the rail reads Markets · Up
+      & Down · Deposit · Millionea · More — its five equal tracks, the coin optically centred — and Live becomes More's
+      FIRST row, above Results, for a player and a guest alike. The track is its siblings' own: slot, pip, lit pill,
+      label metrics, glyph size and baseline; only its label's ink differs, and its glyph rests in gold, as on the
+      journey rail's pip (a lit track takes the siblings' Fill on the pill). Millionea's pages light the track;
+      `/millionea/tickets` and a ticket light Positions, Tiketi zangu's classic destination, a row of the rail's More
+      (`classicMillioneaLit`, `src/lib/nav/active-tab.ts`); `/live` lights More, Live's row current. While the door is
+      not drawn (WITHDRAWN, a reader the rollout does not admit, a break) the rail is the one it was, byte for byte:
+      Live in its track, and on a break D13's lighting below. Guards: `test:millionea-shell` §6 (every composition and
+      every destination's lit slot, in sw/en/zh, with plants), `qa:classic-rail` (the whole bar in a browser).
     `/millionea` and its pages light Millionea's tab; `/millionea/tickets` and a ticket light Tiketi zangu. Where the
     four tabs are drawn (Millionea not visible to the reader), Millionea's pages light Maswali, the tab whose home carries
     its card. On a break (Millionea visible, its door not drawn) the classic bar and rail light the same destination —
@@ -3157,7 +3186,10 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     line; its page, its title and the desktop link keep the full words; Chinese keeps 我的注单). The full Swahili "Juu na
     Chini" wraps on the five-tab rail below 416 with all pips aligned, then fits one line (§K 8b). No two of the five
     labels stand closer than their pips (8px at 320): below 337px English's labels close their tracking by 0.04em
-    (S5-FIX-PLATFORM D14, `test:visual-pass-r9c` §4c). From 1024 to 1279,
+    (S5-FIX-PLATFORM D14, `test:visual-pass-r9c` §4c). Nor do two of the four, the rail every reader is served while
+    Millionea does not show: from 332.8px, where Swahili's "Juu na Chini" and "Tiketi zangu" first fit one line, to 348.8px,
+    where they clear 8px untouched, those labels close their tracking by the same 0.04em (they stood 4.0px apart at 333;
+    S5 round 2 · PLATFORM, 2026-10-22 — a change every Swahili journey reader sees at those widths). From 1024 to 1279,
     while five destinations show, the journey bar's
     nav gives up its own leading 12px (the Swahili row otherwise ran 5.1px into the page's gutter at 1024 for a signed-in
     player — measured, `qa:journey-header-fit`), and takes it back from 1280.
@@ -3171,9 +3203,10 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     still gradient fill at its siblings' size and weight, and persistent navigation must not animate, WCAG 2.2.2).
     Forced colours draw plain system text. One class, `.kp-millionea-ink` (`globals.css`, beside the rail rules), worn by
     every nav that draws Millionea. Its mark, Millionea's own glyph (`millionea`) in gold (a lit tab draws the siblings'
-    Fill on the pill), is drawn only where every sibling carries one: on the journey rail's pip. The classic bar's core
-    link and the classic phone rail's More row are its words in the ink alone, so every row of a More list starts its
-    words at one x (the lead's tile read, 2026-10-19: the row's mark had set its words ~28px right of every other row's).
+    Fill on the pill), is drawn only where every sibling carries one: on both phone rails' pips (the journey's tab, and
+    the classic rail's track since 2026-10-22). The classic bar's core link is its words in the ink alone, as its
+    siblings are, and no More list draws Millionea; every row of a More list starts its words at one x (the lead's tile
+    read, 2026-10-19: the classic rail's former Millionea row, marked, had set its words ~28px right of every other row's).
     More's two panels are opaque, the kit's elevated surface whole (`bg-bg-elevated`, the language menu's): the bar's
     was 95% under a backdrop blur, and at 1280 the page's own words read through it. ⚠️ The bar's panel is opaque for
     EVERY reader, Millionea shown or not: the first change to the classic chrome this item rules (the lead's tile read,
@@ -3182,7 +3215,13 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     that shows the chat: the bubble at rest over a line of text or a figure YIELDS — it fades to `--state-yield-opacity`,
     never moves, stays live (a pointer's hover and a keyboard's focus bring it back whole; its taps are kept) — and is
     whole again once the content clears (MASWALI-BUILD S5-FIX-PLATFORM D15, the register critic's M5; lead 2026-10-21, the
-    10/10 pass; globals.css D15, `test:chat-yield`, `qa:chat-yield`). This gold is the
+    10/10 pass; globals.css D15, `test:chat-yield`, `qa:chat-yield`). ⚠️ And D11's, every reader's on every page: a
+    hover is a pointer's — on a touch screen, where `:hover` sticks to the last element tapped, no tapped control keeps
+    what a pointer's hover gives it. The kit button's lift (`.btn:hover`), struck gilt's sheen (`.gilt-metal:hover`) and
+    every kit button's fill — L17's solid fills (2026-09-27) and, in round 2, the ghost, claret and aqua-ghost tints —
+    stand inside `@media (hover: hover)`; a mouse still lifts, sheens and tints (MASWALI-BUILD S5-FIX-PLATFORM D11, the
+    motion critic's M1 and L6, 2026-10-21; the tints the lead's round 2, 2026-10-22; `test:hover-touch`,
+    `qa:hover-touch`). This gold is the
     Owner's label for a destination, not money: item 7 is untouched.
     The other doors stand: one card on the journey home after the head (the How-to card and the headline) and before the
     topic chips; on classic, one card at the head of `/markets` and, while a week is on sale to the reader, the landing
@@ -3198,7 +3237,9 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     shows (one More, current on /results). A journey not-found page's first paint puts the lit
     Millionea tab's word and glyph back to their resting values with the rest of R4-J's (`test:visual-pass-r4j` 5.12).
     More keeps no slot for a mark and both its panels paint the whole surface (`test:maswali-ui` §5c).
-    One answer drives all four navs: AppShell's `millioneaRow` (the rollout, and no break).*
+    One answer drives all four navs: AppShell's `millioneaRow` (the rollout, and no break).
+    Build, 2026-10-22 (MASWALI-BUILD S5 round 2 · PLATFORM, Ali's ruling above): the classic rail's fourth track is
+    Millionea's while the door is drawn (`bottom-nav.tsx`; Live leads its More), and S5-TAB 1's More row went with it.*
 12. **Icons are Phosphor (§0 item 7 of the plan, Ali 2026-10-17).** No hand-drawn glyph: the delivery's `sealNil`, `sealX`
     and coronet are replaced by the Phosphor keys of `docs/MASWALI-PLAN.md` §10c, reached only through `I`. Where the
     delivery's motion notes name `sealCheck` / `sealX` / `sealNil` on a socket, the build shows `checkCircle` / `xCircle`

@@ -659,3 +659,33 @@ html.kp-reduce-motion .maswali-carry, html.kp-reduce-motion .maswali-attest,
 html.kp-reduce-motion .maswali-cut, html.kp-reduce-motion .maswali-cut-undo
                    { animation: none !important; opacity: 1; transform: none; filter: none; }
 html.kp-reduce-motion .seal-sheen { animation: none !important; opacity: 0; }
+
+/* ── M6 · …AND THE KIT'S OWN ENTRANCES, AND THE ROUTE'S: THE FIRST FRAME IS THE END FRAME ──────────────────────────
+   (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22: the motion critic's "Reduced-motion parity" row, the lead's round 2.)
+   The universal clamp zeroes an animation's TIME, not its FIRST FRAME: a run the clamp shortens to .01ms still opens on
+   its first keyframe, and Chromium paints that frame once before the run is over. MEASURED in Chromium, the first
+   animation frame after the class lands, under the OS preference and under the in-app switch alike: `.m-seal` at
+   opacity 0 and scale .9, `.m-axis-reveal` clipped away, `.m-draw` undrawn (its dash still the path's length),
+   `.m-in` / `.m-in-lift` / `.m-dialog-in` / `.m-float-in` / `.m-scrim` at opacity 0, `.m-sheet-in` a whole panel below
+   its place — while the N-block and `.g-*`, written above, start no run at all. So under either clamp a ticket's lock
+   line, stamp line and perforation, the unbroken line and the closing rule, the slip's closed band and every kit dialog,
+   sheet and menu stood invisible for a frame first; and every route change painted the new page's first frame blank
+   (`.route-enter`, the content wrapper, `m-settle-in` from opacity 0: a blink between two pages, for the reader who
+   asked for none). Written for both clamps, their end frame is the first one painted: `animation: none`, and each of
+   these keyframes ends exactly on the layout (opacity 1, in place, unclipped). `.m-draw` alone ends on a value its
+   layout does not hold — its caller sets the dash to the path's length inline — so its branch draws the line whole
+   (`stroke-dashoffset: 0`, important over the inline style).
+   ⛔ Exits are not here: `.m-out` / `.m-float-out` open on the surface as it stands, and the kit unmounts a leaving
+   surface at once under both clamps (`exitBeatMs`, modal.tsx). Nor `.m-tick` and `.m-aura`: each opens on the frame
+   it ends on. ⛔ The `reduced` tier is a throttle, not a clamp: every entrance plays there in full (§M6).
+   `test:reduce-motion` rule 3 derives this set from the keyframes and holds both branches of each member. */
+@media (prefers-reduced-motion: reduce) {
+  .m-in, .m-in-lift, .m-float-in, .m-dialog-in, .m-sheet-in, .m-scrim,
+  .m-seal, .m-axis-reveal, .route-enter { animation: none !important; }
+  .m-draw { animation: none !important; stroke-dashoffset: 0 !important; }
+}
+html.kp-reduce-motion .m-in, html.kp-reduce-motion .m-in-lift, html.kp-reduce-motion .m-float-in,
+html.kp-reduce-motion .m-dialog-in, html.kp-reduce-motion .m-sheet-in, html.kp-reduce-motion .m-scrim,
+html.kp-reduce-motion .m-seal, html.kp-reduce-motion .m-axis-reveal,
+html.kp-reduce-motion .route-enter { animation: none !important; }
+html.kp-reduce-motion .m-draw { animation: none !important; stroke-dashoffset: 0 !important; }

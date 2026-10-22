@@ -87,7 +87,7 @@ export type TopAppBarUser = {
   walletHeld?: boolean;
 };
 
-export function TopAppBar({ user, proposalsState, inviteVisible = false, invitePaid = false, millionea = false, millioneaOnBreak = false }: { user: TopAppBarUser; proposalsState: ProposalsState; inviteVisible?: boolean; invitePaid?: boolean; millionea?: boolean; millioneaOnBreak?: boolean }) {
+export function TopAppBar({ user, proposalsState, inviteVisible = false, invitePaid = false, onBreak = false, millionea = false, millioneaOnBreak = false }: { user: TopAppBarUser; proposalsState: ProposalsState; inviteVisible?: boolean; invitePaid?: boolean; onBreak?: boolean; millionea?: boolean; millioneaOnBreak?: boolean }) {
   const pathname = usePathname();
   /** D13 · on a break, a Millionea page lights the destination the journey's table names (null everywhere else). */
   const standIn = millioneaOnBreak ? classicMillioneaStandIn(pathname) : null;
@@ -293,7 +293,7 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
             // ⛔ AND THE PILL IS NOW THE WALLET DOOR AT EVERY WIDTH — it has always been a
             // `<Link href="/wallet">`. That is why removing the icon costs nothing: the
             // door did not go away, the DUPLICATE did.
-            <WalletBalancePill balance={liveBalance} held={!!user.walletHeld} />
+            <WalletBalancePill balance={liveBalance} held={!!user.walletHeld} onBreak={onBreak} />
           )}
 
           {/* ⛔ THE WRAPPER SPAN IS LOAD-BEARING — `hidden lg:inline-flex` ON the button
@@ -303,7 +303,12 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
               attempt put the classes on the <Link> and the CTA still rendered at 360, 33px
               past the viewport edge. The span is not a `.btn`, so the utility applies to it.
               ⚠️ This is the idiom this file already uses for the same reason. */}
-          {user.isAuthed && !user.walletHeld && !pathname.startsWith("/wallet/deposit") && (
+          {/* ⭐ …AND NOT DURING THE READER'S OWN BREAK (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22; the hub lane's reader
+              finding, the lead's approval): `/wallet/deposit` refuses a player on a break, and the break rule offers no
+              deposit door (DESIGN_AUTHORITY, R4-I and R6-A) — the journey's "+ Weka pesa" already yields. Withheld without a
+              word, as the journey's pill is; `onBreak` is AppShell's `promoSuppressed`, handed only while true (an OFFER's
+              gate, failing open). The rail's coin turns into the Wallet door for the same reason (`bottom-nav.tsx`). */}
+          {user.isAuthed && !user.walletHeld && !onBreak && !pathname.startsWith("/wallet/deposit") && (
             // The money-in door uses the shared gilt-metal skin and keeps its pill geometry.
             /* 🔴 THE DEPOSIT CTA YIELDS BELOW `lg`, AND THE RULE IS **ONE DEPOSIT PER SCREEN**.
                UPDATE-2026-09-28 §1: below 1024 the bottom rail shows (`lg:hidden`) and its CENTRE

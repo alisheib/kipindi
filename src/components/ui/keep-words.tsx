@@ -373,10 +373,10 @@ export function keepRegulator(text: string): ReactNode {
   if (!cut) return text;
   // ⭐ ROUND 7 (2026-10-10, the owner's item 37 — a line never ends on a connective): "Leseni ya" / "Bodi ya Michezo ya
   // Kubahatisha Tanzania." kept the name whole by ending the line above it on "ya". The connective that introduces the
-  // name now travels with it — "Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania." where the line holds the run
-  // (277.4px in Inter 13px, so the sw container condition is 281px, globals.css) — and a line narrower than that wraps
-  // the sentence with each connective held to the word after it ("Leseni ya Bodi ya Michezo" / "ya Kubahatisha
-  // Tanzania."), never splitting after "ya". en ("Licensed by the") and zh have no connective before the name.
+  // name now travels with it, and each connective is held to the word after it, so a line never ends on "ya". Since
+  // 2026-10-22 (MASWALI-BUILD S5 round 2, the lead's ruling on K34) no stylesheet holds the sw name whole: holding it could
+  // only leave "Leseni" alone above it. The sentence wraps at the held connectives instead ("Leseni ya Bodi ya Michezo" /
+  // "ya Kubahatisha Tanzania."). en ("Licensed by the") and zh have no connective before the name.
   const [before, lead] = splitLeadConnective(cut[0]);
   const name = lead + cut[1];
   return [before, <span key="gbt" className="kp-gbt-name">{drawRuns(name, connectiveRanges(name), "c")}</span>, ...afterRun(cut[2])];

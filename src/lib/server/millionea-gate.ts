@@ -6,7 +6,7 @@
  *     ACTIVE         → everyone
  *
  * The decision is the rollout's own (`millionea-rollout.ts → millioneaVisibleFor`, resolved per request by
- * `millionea-preview.ts → resolveMillionea`, React-cached so the page, its metadata, the home card and the More row can
+ * `millionea-preview.ts → resolveMillionea`, React-cached so the page, its metadata, the home card and the navs' doors can
  * never disagree inside one render). This file only turns "not visible" into the 404 a route returns.
  *
  * ⛔ A HIDDEN PRODUCT IS A MISSING PAGE, NOT A REFUSAL: `notFound()`, the same answer as a route that does not exist —

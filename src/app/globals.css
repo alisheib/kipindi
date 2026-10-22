@@ -1433,9 +1433,16 @@ body {
   color: var(--text);
   border-color: var(--border);
 }
+/* ⭐ D11'S GATE, ON THE THREE TINTS IT HAD LEFT OUT (MASWALI-BUILD S5 round 2, 2026-10-22; the platform lane's own finding).
+   L17 gated the solid fills' hover to pointers that hover and D11 the kit's lift and struck gilt's sheen; the ghost, claret
+   and aqua-ghost tints stayed outside, so on a touch screen a tapped ghost button kept its fill (and its stronger edge) and
+   a tapped claret one its glow, after the tap, as the lift had. Each now stands in the same gate; a mouse still tints.
+   `test:hover-touch` 1.5–1.6 holds every kit button's hover there; `qa:hover-touch` taps and hovers them. */
+@media (hover: hover) {
 .btn-ghost:hover:not(:disabled) {
   background: oklch(40% 0.07 264 / 0.35);
   border-color: var(--border-strong);
+}
 }
 
 .btn-danger {
@@ -1485,7 +1492,9 @@ body {
     0 10px 28px -10px oklch(38% 0.14 15 / 0.55);
   text-shadow: 0 1px 0 oklch(15% 0.06 15 / 0.45);
 }
+@media (hover: hover) {
 .btn-claret:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)) saturate(1.04) drop-shadow(0 6px 16px color-mix(in oklab, var(--claret-500) 32%, transparent)); }
+}
 
 /* ⛔ `.btn-outline` RETIRED (round 9 of the visual pass, R9-C, 2026-10-11; R4-F2, tile 156). Its one consumer, the guest
    Tiketi sheet's Ingia, is `btn-ghost` now, as every other secondary action. The kit listed it with no role, and its
@@ -1511,10 +1520,12 @@ body {
   color: var(--text);
   border: 1px solid var(--aqua-edge);
 }
+@media (hover: hover) {
 .btn-aqua-ghost:hover:not(:disabled) {
   background: color-mix(in oklab, var(--aqua-300) 22%, transparent);
   color: var(--text);
   box-shadow: 0 0 0 3px var(--aqua-glow);
+}
 }
 
 /* ---------- Chip ---------- */
@@ -4919,28 +4930,34 @@ html[data-sheet-open] .route-enter { animation: none; }
    is `nowrap` only where the line is at least as wide as the name, so it can never overflow: each line's box is a size
    container and the condition is the name's own width in Inter 13px (`text-body-sm` and the trust row's
    `--type-small`), from the font — en "Gaming Board of Tanzania." 164.7px, sw "Bodi ya Michezo ya Kubahatisha Tanzania."
-   259.3px, zh 坦桑尼亚博彩委员会 117px — plus 3px. A narrower line wraps the sentence as before (the footer's four-column
-   layout from 1024 cannot hold the Swahili name; its two-column tablet layout can). The journey's footer sentence is
+   259.3px (sw holds no condition since 2026-10-22, below), zh 坦桑尼亚博彩委员会 117px — plus 3px. A narrower line wraps
+   the sentence as before. The journey's footer sentence is
    `.kp-gbt`; the hero's trust row is `.kp-gbt-row`, the ROW being the container because the loading ghost draws the
    words' own span `fit-content`, which size containment would empty — so its widths add the row's 28px roundel and
    12px gap. The classic footer is frozen chrome and wears neither. */
 .kp-gbt { container: kp-gbt / inline-size; }
 @container kp-gbt (min-width: 168px) { .kp-gbt-name:lang(en) { white-space: nowrap; } }
-@container kp-gbt (min-width: 281px) { .kp-gbt-name:lang(sw) { white-space: nowrap; } }
 @container kp-gbt (min-width: 120px) { .kp-gbt-name:lang(zh) { white-space: nowrap; } }
 .kp-hero__trust > li.kp-gbt-row { container: kp-gbt-row / inline-size; }
 @container kp-gbt-row (min-width: 208px) { .kp-gbt-name:lang(en) { white-space: nowrap; } }
-@container kp-gbt-row (min-width: 321px) { .kp-gbt-name:lang(sw) { white-space: nowrap; } }
 @container kp-gbt-row (min-width: 160px) { .kp-gbt-name:lang(zh) { white-space: nowrap; } }
-/* ⭐ ROUND 7 (2026-10-10, the owner's item 37 — a line never ends on a connective): the sw name now carries the "ya" that
-   introduces it ("Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania.", `keepRegulator`), so its condition is that
-   run's width — 277.4px in Inter 13px, plus 3px: 281 (the row: + its 40px roundel and gap, 321). en and zh are as they
-   were. A narrower line wraps the sentence with its connectives held ("Leseni ya Bodi ya Michezo" / "ya Kubahatisha
-   Tanzania."), never after "ya".
-   ⭐ The footer now has two columns from 768 to 1023 and four from 1024. From 768 to 1023 the two columns hold the Swahili name
-   (at 768: (768 - 32px side padding - 32px gap) / 2 = 352px). From 1024, the four columns are (W - 160) / 4,
-   and the 1280px board caps the four columns at 280px; 281 keeps it out by 1px. The sw sentence can therefore wrap
-   "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania." at 1024 and 1280 (round 8's tiles 299 and 301). */
+/* ⭐ ROUND 7 (2026-10-10, the owner's item 37 — a line never ends on a connective): the sw name carries the "ya" that
+   introduces it (`keepRegulator`), and each connective inside it is held to the word after it, so a line never ends on
+   "ya". Round 7 also held that run whole wherever its line could (277.4px in Inter 13px: from 281px, the trust row 321),
+   which drew "Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania." — the one-word first line that became the owner's
+   question K34.
+   ⭐ THE SWAHILI NAME IS NEVER HELD WHOLE (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22, the lead's ruling on K34: no
+   word stands alone on a line). One word stands before the name, so a line that held the name but not the sentence could
+   only leave "Leseni" alone above it. Measured in Chromium at every width from 320 to 1920:
+     - the journey footer at 313–352 (the tickets lane's tile, Tiketi zangu at sw 320);
+     - the opt-out page's footer at 351–390;
+     - the hero's trust row at 353–395;
+     - the offline document at 351–363 (in its fallback face).
+   Its connectives stay held and `text-wrap: balance` shares the words: "Leseni ya Bodi ya Michezo" / "ya Kubahatisha
+   Tanzania." — the classic footer's own lines — until the line holds the whole sentence, then one line. So sw has no
+   condition here, nor in the offline document's copy (`OFFLINE_GBT_FROM`). en and zh keep theirs: en has three words before
+   the name ("Licensed by the"), and the zh sentence fits every line it is drawn on. `test:visual-pass-r9b` 5.4 lays the
+   four lines out at every width; r7a 3.11, r5a 6.2 and r5g 4.8 hold that no sw condition comes back. */
 /* ⛔ `.kp-hero__tel` (the helpline link in row 1) was DELETED 2026-10-06 with the helpline itself —
    the owner's ruling took it off every player surface (docs/COMPLIANCE-DECISIONS.md). */
 
@@ -7686,7 +7703,8 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    is its siblings' own (the slot, the pip, the lit pill, the label's size, weight and spacing) and ONLY the label's ink
    differs: the platform's three money colours as ONE smooth horizontal gradient across the word, green to gold to red,
    left to right, as Kalshi fills its "Midterms" tab. ONE class, worn by every nav that draws Millionea: the journey
-   rail's label, the journey and classic desktop links, the classic rail's More row.
+   rail's label, the journey and classic desktop links, the classic phone rail's track (Ali, 2026-10-22: in Live's place
+   while the door is drawn; it was a More row until then).
    ⛔ IT NEVER MOVES (the lead's evaluation of the Owner's Kalshi reference, 2026-10-19). Persistent navigation that
    animates is a distraction no reader can stop (WCAG 2.2.2), and the reference's restraint is the point: no shimmer, no
    drift, no transition. `test:maswali-ui` §5b holds the class to carrying no animation at all, so no motion clamp has
@@ -7697,7 +7715,7 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    The halo is faint gold drawn by `filter: drop-shadow`, which follows the letters' own edges and never muddies the fill
    (a text-shadow under a transparent fill paints over it). A hover brightens the word one tint (the -200s), where its
    siblings' ink steps up to `--text`; so does a lit tab, link or row (`[aria-current]`, which every lit Millionea door
-   carries: the journey's tab and link, the classic core link, a More row), where its siblings' ink is `--text` — and on
+   carries: the journey's tab and link, the classic core link and track), where its siblings' ink is `--text` — and on
    the destination pill the -200s are the contrast call (6.85:1, the lead's ruling, 2026-10-19). The lit weight is the
    label's own rule. Forced colours draw plain system text, no gradient and no halo. This app has no light theme (dark
    only), so no darker variant is owed. The transparent fill sits behind `@supports`, so an engine that cannot clip a
@@ -7715,9 +7733,9 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   }
   :is(a, button):hover .kp-millionea-ink, [aria-current] .kp-millionea-ink { background-image: linear-gradient(90deg, var(--yes-200), var(--gold-200), var(--no-200)); }
 }
-/* Millionea's own mark: on the journey rail's pip, where every tab carries one, in gold and drawn crisp (no halo); a More
-   row and the classic bar's link are words alone (every More row's words at one x). A lit tab keeps the siblings'
-   treatment, its Fill glyph in their ink on the pill. */
+/* Millionea's own mark: on both phone rails' pips, where every slot carries one (the journey's tab, and the classic rail's
+   track since 2026-10-22), in gold and drawn crisp (no halo); the classic bar's link is words alone, as its siblings are.
+   A lit tab or track keeps the siblings' treatment, its Fill glyph in their ink on the pill. */
 .kp-millionea-glyph { color: var(--gold-300); }
 .kp-rail__item[data-on] .kp-millionea-glyph { color: inherit; }
 @media (forced-colors: active) {
@@ -7917,9 +7935,19 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    (5 × (59.4 + 8) = 337), English's labels close their tracking by 0.04em (9 × 6.16 = 55.4px, 8.6px apart at 320).
    Swahili (its long name on two lines through 415) and Chinese clear 8px at every width as they are.
    `test:visual-pass-r9c` §4c measures every neighbour pair in the three languages at every width from 320 with §4's
-   own width model and holds this minimum; the four-tab rail is not touched. */
+   own width model and holds this minimum; the four-tab rail's own answer follows. */
 .kp-rail--journey[data-tabs="5"]:lang(en) .kp-jtab__label { letter-spacing: -0.04em; }
 @media (min-width: 337px) { .kp-rail--journey[data-tabs="5"]:lang(en) .kp-jtab__label { letter-spacing: normal; } }
+/* ⭐ …AND ON THE FOUR-TAB RAIL TOO (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22: D14's minimum on the rail every reader
+   is served while Millionea does not show; `data-tabs` is absent there). Swahili's "Juu na Chini" and "Tiketi zangu"
+   (12 × 6.6 = 79.2px each) both fit one line from 332.8 (the rule above that centres Swahili's slots), and there they stood
+   83.25 − 79.2 = 4.05px apart at 333; untouched they clear 8px only from 4 × (79.2 + 8) = 348.8. Between the two widths
+   they close their tracking by D14's 0.04em (12 × 6.16 = 73.9px, 9.3px apart at 332.8). Below 332.8 they wrap (two short
+   lines, more than 40px apart) and are not touched; from 348.8 they are as before. English (least 17.3px) and Chinese (47)
+   clear 8px at every width as they are. `test:visual-pass-r9c` §4c measures both rails; `qa:journey-rail-gaps` reads them
+   in Chromium. */
+@media (min-width: 332.8px) { .kp-rail--journey:not([data-tabs]):lang(sw) .kp-jtab__label { letter-spacing: -0.04em; } }
+@media (min-width: 348.8px) { .kp-rail--journey:not([data-tabs]):lang(sw) .kp-jtab__label { letter-spacing: normal; } }
 /* ⭐ ONE TAB IS LIT IN EVERY FRAME (2026-10-09, the visual pass round 4, R4-J; E37/E41, tiles 301 306 333). The classic
    slot fades its ink and its pip over --t-quick (`.kp-rail__item`, `.kp-rail__pip`), so for 140ms after the router
    commits the new page the pill is half on the tab being left and half on the new one, beside the new label already bold
@@ -8434,8 +8462,9 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-hghost__act { width: min(100%, 320px); height: var(--h-control-xl); border-radius: var(--r-pill); background: var(--bg-elevated); }
 /* `/account`. The identity card and every row are the hub's own boxes (the 52px ring, the 56px row), their words bars.
    A guest is drawn the prompt and a guest's cards, chosen by the shell's own answer: `#main-content` carries
-   `data-viewer="guest"` exactly when the journey header shows its sign-in pills (`journeyHeaderState` `authPills`;
-   app-shell.tsx `MainLandmark`), and both are in the page's first HTML. ⭐ A21, 2026-10-14: it read
+   `data-viewer="guest"` for a signed-out reader — for a journey reader exactly when the journey header shows its sign-in
+   pills (`journeyHeaderState` `authPills`; app-shell.tsx `MainLandmark`; every signed-out reader since S5 round 2, this
+   ghost being the journey's alone) — and both are in the page's first HTML. ⭐ A21, 2026-10-14: it read
    `:root:has(.kp-jhdr__auth)` before, a root `:has()` (see the note at `.ticker-label`); `:root [data-viewer]` keeps that
    rule's specificity. */
 .kp-hubghost--guest { display: none; }

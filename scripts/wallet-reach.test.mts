@@ -102,8 +102,10 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
      /height: "var\(--h-control-md\)"/.test(pill));
   // ⛔ The top bar consumes ONE component — no wrapper div, no second CashEye out there.
   // ⭐ R1 · with the LIVE balance (SSE), so the bar's zero/funded decision and the figure agree.
+  // RE-PINNED (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22, the lead's approval): the capsule is also handed the
+  // reader's break (`onBreak`, the bar's only-while-true prop), so the Wallet it opens offers no Deposit on a break.
   ok("1: the top bar renders the capsule as a single control, fed the LIVE balance",
-     /<WalletBalancePill balance=\{liveBalance\} held=\{!!user\.walletHeld\}\s*\/>/.test(bar) &&
+     /<WalletBalancePill balance=\{liveBalance\} held=\{!!user\.walletHeld\} onBreak=\{onBreak\}\s*\/>/.test(bar) &&
      /const liveBalance = useLiveBalance\(user\.balance \?\? 0\)/.test(bar));
   ok("1: …and no longer mounts its own CashEye beside it", !/<CashEye\b/.test(bar));
 }
@@ -251,19 +253,28 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
 //    the new shape rather than deleted — the rail still has a fixed number of tracks, and Wallet
 //    is still reachable by name on a phone; both are just reached differently.
 {
-  const items = rail.slice(rail.indexOf("const items = ["), rail.indexOf("];", rail.indexOf("const items = [")));
+  // RE-PINNED (MASWALI-BUILD S5 round 2 · PLATFORM; Ali, 2026-10-22, DESIGN_AUTHORITY §M8a item 11): the fourth track is
+  // Millionea's while its door is drawn, Live's otherwise — three flanking destinations drawn either way — and Live, when
+  // it gives up its track, leads More: reachable by name on a phone in every composition.
+  const itemsAt = rail.indexOf("const items: ");
+  const items = rail.slice(itemsAt, rail.indexOf("];", itemsAt));
   const hrefs = [...items.matchAll(/href: "([^"]+)"/g)].map((m) => m[1]);
-  ok("6: three flanking destinations, because the centre track is the coin", hrefs.length === 3, hrefs.join(", "));
-  ok("6: …and Live still holds one of them", hrefs.includes("/live"), hrefs.join(", "));
+  ok("6: three flanking destinations drawn, because the centre track is the coin — the fourth Millionea's or Live's, on the shell's answer",
+     hrefs.join(", ") === "/markets, /updown, /millionea, /live" && /millionea\s*\?\s*\{ href: "\/millionea"[^}]*\}\s*:\s*\{ href: "\/live"/.test(items), hrefs.join(", "));
+  ok("6: …and Live is never unreachable: its track while Millionea is not drawn, More's first row while it is",
+     /const liveRow: \{ href: string; label: string \}\[\] = millionea \? \[\{ href: "\/live", label: t\.nav\.live \}\] : \[\];/.test(rail)
+       && (rail.match(/\[\s*\.\.\.liveRow,\s*\{ href: "\/results"/g) ?? []).length === 2, hrefs.join(", "));
   ok("6: …and the rail is STILL five equal tracks — the coin took a track, it did not add one",
      /repeat\(5, minmax\(0, 1fr\)\)/.test(rail) && /kp-rail__item--coin/.test(rail));
   ok("6: ⭐ Results did not vanish when it left the rail — it is a named row under More",
      /href: "\/results",\s*label: t\.common\.results/.test(rail));
   const more = rail.slice(rail.indexOf("moreItems"), rail.indexOf("moreActive"));
+  // RE-PINNED (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22, the lead's approval): a reader's break closes the money-in
+  // door exactly as a held wallet does (`moneyInClosed`) — `/wallet/deposit` refuses both.
   ok("6: Wallet is STILL reachable by name on phones — under More when the wallet is usable…",
-     /walletHeld \? \[\] : \[\{ href: "\/wallet"/.test(rail) && /\.\.\.walletRow/.test(more));
-  ok("6: ⛔ …and when it is HELD the centre coin becomes that door, so it is never neither and never both",
-     /const coinHref = walletHeld \? "\/wallet" : "\/wallet\/deposit"/.test(rail));
+     /moneyInClosed \? \[\] : \[\{ href: "\/wallet"/.test(rail) && /\.\.\.walletRow/.test(more));
+  ok("6: ⛔ …and when it is HELD — or the reader is on a break — the centre coin becomes that door, so it is never neither and never both",
+     /const moneyInClosed = walletHeld \|\| onBreak;/.test(rail) && /const coinHref = moneyInClosed \? "\/wallet" : "\/wallet\/deposit"/.test(rail));
 }
 
 // ── 7 · R1 · THE WALLET — what the door opens (landing v3, 2026-09-26) ─────
@@ -352,7 +363,8 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
   ok("8.3 the Wallet it opens is anchored to it and speaks the journey's words — the classic capsule's Wallet does not",
      // R4-I (2026-10-09): the journey's Wallet is also handed the break's end (`breakEnd`), for its notice.
      cap.includes("<WalletSheet open={open} onClose={() => setOpen(false)} balance={balance} held={held} anchorRef={capsuleRef} journey onBreak={onBreak} breakEnd={breakEnd} />")
-     && pill.includes("<WalletSheet open={open} onClose={() => setOpen(false)} balance={effectiveBalance} held={held} anchorRef={capsuleRef} />"));
+     // RE-PINNED (S5 round 2 · PLATFORM, 2026-10-22): the classic capsule's Wallet is handed the break (never its end, never the journey's words).
+     && pill.includes("<WalletSheet open={open} onClose={() => setOpen(false)} balance={effectiveBalance} held={held} anchorRef={capsuleRef} onBreak={onBreak} />"));
   ok("8.4 no eye and no caret in the capsule ⛔ — hiding balances lives in the Wallet it opens (SJ-15)",
      !cap.includes("<CashEye") && !cap.includes("chevronDown"));
   ok("8.5 TZS at EVERY width ⭐ — the figure is the whole formatBalancePill string, and nothing in the capsule yields by width",
@@ -456,13 +468,17 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
      && jbar.includes('<WalletBalanceCaptioned balance={liveBalance} held={state.capsule === "held"} ')
      && jbar.includes("const liveBalance = useLiveBalance(user.balance ?? 0);"),
      capsule === "" ? "the capsule's guard was not found as written" : capsule.slice(0, 140));
-  ok("8c.1b ⛔ the break reaches the Wallet — the bar hands its onBreak to the capsule, and the capsule to the journey's Wallet (§7: no Deposit during a break); the classic Wallet is never told",
+  // RE-PINNED IN THE OPEN (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22; the hub lane's reader finding, the lead's
+  // approval): the classic Wallet is told the break now too — on a break it drops its Deposit, as the journey's does,
+  // because `/wallet/deposit` refuses one — but never its end (the classic bar is not handed it), so no notice there.
+  ok("8c.1b ⛔ the break reaches the Wallet — the bar hands its onBreak to the capsule, and the capsule to the journey's Wallet (§7: no Deposit during a break); the classic Wallet is told the break, never its end",
      // R4-I (2026-10-09): the break's END rides beside the flag (`breakEnd`) — the bar to the capsule, the capsule to the
-     // journey's Wallet, which states it; the classic Wallet is still told neither.
+     // journey's Wallet, which states it; the classic Wallet is told the break alone (S5 round 2).
      jbar.includes('<WalletBalanceCaptioned balance={liveBalance} held={state.capsule === "held"} onBreak={onBreak} breakEnd={breakEnd} />')
      && pill.includes("export function WalletBalanceCaptioned({ balance, held = false, onBreak = false, breakEnd = null }: { balance: number; held?: boolean; onBreak?: boolean; breakEnd?: BreakState | null }) {")
      && pill.includes("anchorRef={capsuleRef} journey onBreak={onBreak} breakEnd={breakEnd} />")
-     && pill.includes("<WalletSheet open={open} onClose={() => setOpen(false)} balance={effectiveBalance} held={held} anchorRef={capsuleRef} />"));
+     && pill.includes("<WalletSheet open={open} onClose={() => setOpen(false)} balance={effectiveBalance} held={held} anchorRef={capsuleRef} onBreak={onBreak} />")
+     && !pill.includes("anchorRef={capsuleRef} onBreak={onBreak} breakEnd"));
   const pillBlock = span("{state.pill && (", "</a>");
   ok("8c.2 + Weka pesa shows at EVERY width — the classic pill's yield below 1024 is the coin's, and this rail has none",
      pillBlock.length > 0 && !WIDTH_GATE.test(pillBlock) && pillBlock.includes('href="/wallet/deposit"')
