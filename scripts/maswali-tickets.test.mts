@@ -17,7 +17,8 @@
  *   §8  M1   the card: the journey card's shell, the whole card the link (named "View ticket MLN-…"), the chip's glyph
  *   §9  M7   one fact, one wording: "Price", "Bought {date}", zh 派奖
  *   §10 M2   the lenses on the kit's strip, one row
- *   §11 M3   the empty and lens-empty states: fill, the verb call, the platform's lens words, the way out
+ *   §11 M3   the empty and lens-empty states: fill, the verb call, the platform's lens words, the way out; §T5 their numerals
+ *            mono through the kit EmptyState's OPT-IN part — every other caller byte for byte as before (a census of all)
  *   §12 M5 L7 the stub: the serial whole on its own row, the purchase time breaking only after its weekday, the week number
  *   §13 M6 L3 the legal line follows the resolution mode and opens the week's register; the stub's hash too
  *   §14 L1   the kind switch wears Millionea's ink; the kit Tabs byte-identical for every caller without it
@@ -112,7 +113,7 @@ const FILES = {
   hint: "src/components/maswali/maswali-ghost-hint.tsx",
   emptyText: "src/components/ui/empty-state-text.ts",
   empty: "src/components/ui/empty-state.tsx",
-  ticketsEmpty: "src/app/millionea/tickets/tickets-empty.tsx",
+  mlnEmpty: "src/components/maswali/maswali-empty-state.tsx",
   headGhost: "src/components/journey/tickets/tickets-ghost.tsx",
   switch: "src/components/journey/tickets/ticket-switch.tsx",
   tabs: "src/components/ui/tabs.tsx",
@@ -450,46 +451,197 @@ check("11.1", "the empty states are their siblings': they fill for a journey rea
   return d;
 });
 
-// ── §11.2 · §T5 · the kit EmptyState's opt-in numeral part (the lead's ruling, 2026-10-22) ──────────────────────────
-const BEFORE_EMPTY_TEXT = execFileSync("git", ["show", `7e9a314f0:${FILES.emptyText}`], { cwd: ROOT, encoding: "utf8" }).replace(/\r\n/g, "\n");
-const BEFORE_EMPTY = execFileSync("git", ["show", `7e9a314f0:${FILES.empty}`], { cwd: ROOT, encoding: "utf8" }).replace(/\r\n/g, "\n");
-const emptyTextOld = compiled<{ emptyStateBody: (b: unknown) => unknown }>(FILES.emptyText, BEFORE_EMPTY_TEXT);
-const emptyOld = compiled<{ EmptyState: unknown }>(FILES.empty, BEFORE_EMPTY);
-/** Every empty-state and notice body the dictionary writes, in a language — and Tiketi zangu's own, filled as the page fills it. */
-const EMPTY_BODIES = (l: Locale): string[] => [
-  ...Object.values(dict[l]).flatMap((ns) => Object.entries(ns as Record<string, unknown>).filter(([k, v]) => typeof v === "string" && /empty|Body$/i.test(k)).map(([, v]) => v as string)),
-  String(dict[l].millionea.emptyTicketsNext).replace("{week}", "3").replace("{when}", l === "zh" ? "周五 18:00" : l === "sw" ? "Ijumaa 18:00" : "Friday 18:00"),
+// ── §11.2–11.4 · §T5 · the kit EmptyState's OPT-IN numeral part (the lead's ruling, 2026-10-22) ─────────────────────
+// The kit EmptyState is SHARED by the whole app, so the change is proven from both sides. WITHOUT a part — every caller but
+// Millionea's one wrapper — the body and the component draw byte for byte what 7e9a314f0 drew: every string the dictionary
+// writes in each language, each template filled as a page fills it (and again with its fill kept whole), a generated set
+// of hard cases (Chinese marks mid-text and before a closer, a dash, a YES/NO pair, a possessive, a figure, a clock, a
+// serial); the notice rules that share the module too; and the component bound to 7e9a314f0's own text rules, across every
+// kind, width rule, body shape and action. WITH Millionea's part, only the numerals' face changes: for every one of those
+// bodies, the markup less its `.mono` / `.amount` runs is the markup without the part. A parse of every TSX file under
+// src/ finds each `<EmptyState>` the app draws and who asks for a part.
+type EmptyTextMod = { emptyStateBody: (b: unknown, part?: unknown) => unknown; noticeBody: (b: unknown, o?: unknown) => unknown };
+type EmptyMod = { EmptyState: unknown; EmptyStateSection: unknown; ErrorState: unknown };
+const atRelease = (rel: string) => execFileSync("git", ["show", `7e9a314f0:${rel}`], { cwd: ROOT, encoding: "utf8" }).replace(/\r\n/g, "\n");
+/** `rel` compiled from `source` while `dep`'s module is `depExports` — so 7e9a314f0's component draws with 7e9a314f0's text
+ *  rules, and a planted text module reaches the component compiled beside it. */
+function compiledWith<T>(rel: string, source: string, dep: string, depExports: unknown): T {
+  req(`../${rel}`); // the live module first, bound to the live dependency, before the swap
+  const at = req.resolve(`../${dep}`), cache = req.cache as Record<string, NodeModule>, live = cache[at];
+  const stub = new NodeModule(at);
+  stub.filename = at; stub.loaded = true; stub.exports = depExports;
+  cache[at] = stub;
+  try { return compiled<T>(rel, source); } finally { cache[at] = live; }
+}
+const emptyTextOld = compiled<EmptyTextMod>(FILES.emptyText, atRelease(FILES.emptyText));
+const emptyOld = compiledWith<EmptyMod>(FILES.empty, atRelease(FILES.empty), FILES.emptyText, emptyTextOld);
+const emptyTextOf = (w: World) => (w.src.emptyText === REAL.src.emptyText ? req("../src/components/ui/empty-state-text.ts") : compiled(FILES.emptyText, w.src.emptyText)) as EmptyTextMod;
+const emptyOf = (w: World) => (w.src.empty === REAL.src.empty && w.src.emptyText === REAL.src.emptyText
+  ? req("../src/components/ui/empty-state.tsx")
+  : compiledWith(FILES.empty, w.src.empty, FILES.emptyText, emptyTextOf(w))) as EmptyMod;
+const mlnEmptyOf = (w: World) => (w.src.mlnEmpty === REAL.src.mlnEmpty ? req("../src/components/maswali/maswali-empty-state.tsx") : compiled(FILES.mlnEmpty, w.src.mlnEmpty)) as { MaswaliEmptyState: unknown };
+const { numeralRuns } = req("../src/components/maswali/maswali-facts.tsx") as { numeralRuns: (s: string) => unknown };
+const P = (node: unknown) => renderToStaticMarkup(h("p", null, node as never));
+/** The markup less the numerals' face: each `.mono` / `.amount` run its bare text again. */
+const faceless = (m: string) => m.replace(/<span class="(?:mono|amount)">([^<]*)<\/span>/g, "$1");
+
+/** The bodies: every string the dictionary writes in a language; each template filled as a page fills one (a count, a
+ *  clock, a figure, a serial, a date — the runs a part and a keep act on), and again with its fill kept whole (`keep`, as
+ *  a caller's `breakSentence` hands it); and the generated hard cases, each alone and joined to each other. */
+type Body = string | { text: string; keep: string[] };
+const FILLS = ["3", "18:00", "TZS 1,000", "MLN-2026-W49-000041", "21 Oct"];
+const stringsIn = (v: unknown, out: string[] = []): string[] => {
+  if (typeof v === "string") out.push(v);
+  else if (v && typeof v === "object") for (const x of Object.values(v)) stringsIn(x, out);
+  return out;
+};
+const HARD = [
+  "选择一个问题，点击“是”或“否”——您的注单会显示在这里。", "第3周开放至周五 18:00。开放时公布 15 道问题。", "还剩 2 张？好！", "“你好，”他说：“第 49 周。”",
+  "（第 49 周）已结束；共 10/10。", "Pick YES or NO — your ticket shows up here.", "Chagua NDIO au HAPANA — tiketi yako itaonekana hapa.",
+  "Week 49 — 3 of 15 results in", "TZS 1,000 returned to your main balance.", "Wiki ya 49: tiketi 2 zimeshinda 10/10.", "A or B or C",
 ];
-const EMPTY_CASES: Array<Record<string, unknown>> = [
-  { title: "Nothing here yet.", body: "Wiki 3 iko wazi hadi Ijumaa 18:00." },
-  { title: "暂无。", body: "第3周开放至周五 18:00。", kind: "positions", fill: true },
-  { title: "No positions", body: { text: "Pick YES or NO — then 10/10 on 21 Oct", keep: ["21 Oct"] }, action: h("a", { href: "/x" }, "Go") },
-];
-check("11.2", "§T5 · the kit EmptyState's body takes an OPT-IN numeral part (the lead's ruling, 2026-10-22): without it every body the dictionary writes draws byte for byte as before (7e9a314f0), and the component too, in three languages; only Tiketi zangu's empty states ask for it — and there the week and the clock are mono (\"Wiki 3 … Ijumaa 18:00.\")", (w) => {
-  const d: string[] = [];
-  const textNew = (w.src.emptyText === REAL.src.emptyText ? req("../src/components/ui/empty-state-text.ts") : compiled(FILES.emptyText, w.src.emptyText)) as { emptyStateBody: (b: unknown, part?: unknown) => unknown };
-  const emptyNew = (w.src.empty === REAL.src.empty ? req("../src/components/ui/empty-state.tsx") : compiled(FILES.empty, w.src.empty)) as { EmptyState: unknown };
-  const P = (node: unknown) => renderToStaticMarkup(h("p", null, node as never));
+const HARD_CASES = HARD.flatMap((a, i) => HARD.map((b, k) => (i === k ? a : `${a}${["", " ", "，", " — "][(i + k) % 4]}${b}`)));
+const CORPUS = Object.fromEntries(LOCALES.map((l) => {
+  const strings = stringsIn(dict[l]);
+  const filled = strings.filter((s) => /\{\w+\}/.test(s)).flatMap((s, i): Body[] => {
+    const v = FILLS[i % FILLS.length], text = s.replace(/\{\w+\}/g, v);
+    return [text, { text, keep: [v] }];
+  });
+  return [l, [...strings, ...filled, ...HARD_CASES]];
+})) as Record<Locale, Body[]>;
+const CORPUS_SIZE = LOCALES.reduce((n, l) => n + CORPUS[l].length, 0);
+const bodyText = (b: Body) => (typeof b === "string" ? b : b.text).slice(0, 40);
+
+/** The text rules over the corpus, once per text module (a plant that leaves the module alone reads the same pass). */
+const textPasses = new Map<string, { identity: string[]; faces: string[]; mono: number }>();
+const textPassOf = (w: World) => {
+  const hit = textPasses.get(w.src.emptyText);
+  if (hit) return hit;
+  const now = emptyTextOf(w), identity: string[] = [], faces: string[] = [];
+  let mono = 0;
+  for (const l of LOCALES) for (const body of CORPUS[l]) {
+    const without = P(now.emptyStateBody(body));
+    if (identity.length < 3 && P(emptyTextOld.emptyStateBody(body)) !== without) identity.push(`${l} body ${j(bodyText(body))}`);
+    if (identity.length < 3 && typeof body === "string") {
+      for (const o of [undefined, { centred: true }]) {
+        if (P(emptyTextOld.noticeBody(body, o)) !== P(now.noticeBody(body, o))) identity.push(`${l} notice${o ? " (centred)" : ""} ${j(bodyText(body))}`);
+      }
+    }
+    const withPart = P(now.emptyStateBody(body, numeralRuns));
+    if (withPart.includes('<span class="mono">')) mono++;
+    if (faces.length < 3 && faceless(withPart) !== without) faces.push(`${l} ${j(bodyText(body))}`);
+  }
+  const pass = { identity, faces, mono };
+  textPasses.set(w.src.emptyText, pass);
+  return pass;
+};
+/** The component, 7e9a314f0's against the world's, once per pair of sources: every kind × the width rules (unset, fill,
+ *  boxed with a class) × no body, a sentence (zh with its marks and numerals), a kept body × with and without an action ×
+ *  alone and inside a titled section, in three languages; and the error state beside it. */
+const EMPTY_KINDS = ["markets", "positions", "leaderboard", "notifications", "audit", "sources", "proposals", "kyc", "fairness", "rg", "admin", "default"];
+const componentPasses = new Map<string, { defects: string[]; n: number }>();
+const componentPassOf = (w: World) => {
+  const key = `${w.src.empty}\u0000${w.src.emptyText}`;
+  const hit = componentPasses.get(key);
+  if (hit) return hit;
+  const now = emptyOf(w), defects: string[] = [];
   let n = 0;
-  for (const l of LOCALES) for (const body of EMPTY_BODIES(l)) {
-    n++;
-    if (P(emptyTextOld.emptyStateBody(body)) !== P(textNew.emptyStateBody(body))) { d.push(`${l}: "${body.slice(0, 48)}" draws differently without a part`); break; }
+  const differ = (what: string, a: string, b: string) => { n++; if (a !== b && defects.length < 3) defects.push(`${what}: differs at byte ${[...a].findIndex((ch, i) => ch !== b[i])}`); };
+  const action = h("a", { href: "/x", className: "btn btn-primary btn-md" }, "Go");
+  for (const l of LOCALES) {
+    const sentence = l === "zh" ? "第3周开放至周五 18:00。开放时公布 15 道问题。" : l === "sw" ? "Wiki 3 iko wazi hadi Ijumaa 18:00." : "Pick YES or NO — your ticket shows up here.";
+    const bodies: Array<Body | undefined> = [undefined, sentence, { text: "Pick YES or NO — then 10/10 on 21 Oct", keep: ["21 Oct"] }];
+    for (const kind of EMPTY_KINDS) for (const fill of [undefined, true, false]) for (const body of bodies) for (const act of [undefined, action]) {
+      const props = { kind, title: l === "zh" ? "暂无。" : "Nothing here yet — 3 of 15.", body, fill, action: act, className: fill === false ? "mt-3" : undefined };
+      for (const section of [false, true]) {
+        const draw = (m: EmptyMod) => inApp(l, section ? h(m.EmptyStateSection as never, null, h(m.EmptyState as never, props as never)) : h(m.EmptyState as never, props as never));
+        differ(`${l}/${kind}/fill=${String(fill)}/${body === undefined ? "no body" : typeof body === "string" ? "sentence" : "kept"}${act ? "/action" : ""}${section ? "/section" : ""}`, draw(emptyOld), draw(now));
+      }
+    }
+    for (const props of [{}, { title: "x", detail: "MLN-2026-W49-000041", action }]) {
+      differ(`${l}/ErrorState`, inApp(l, h(emptyOld.ErrorState as never, props as never)), inApp(l, h(now.ErrorState as never, props as never)));
+    }
   }
-  need(d, n > 60, `only ${n} bodies read`);
-  for (const l of LOCALES) for (const c of EMPTY_CASES) {
-    const a = inApp(l, h(emptyOld.EmptyState as never, c as never)), b = inApp(l, h(emptyNew.EmptyState as never, c as never));
-    if (a !== b) { d.push(`${l}/${String(c.title)}: the component differs at byte ${[...a].findIndex((ch, i) => ch !== b[i])}`); break; }
-  }
-  const walk = (dir: string, out: string[] = []): string[] => {
-    for (const x of readdirSync(join(ROOT, dir))) { const q = posix.join(dir, x); if (statSync(join(ROOT, q)).isDirectory()) walk(q, out); else if (q.endsWith(".tsx")) out.push(q); }
-    return out;
+  const pass = { defects, n };
+  componentPasses.set(key, pass);
+  return pass;
+};
+const REAL_TEXT_PASS = textPassOf(REAL), REAL_COMPONENT_PASS = componentPassOf(REAL);
+check("11.2", `§T5 · the kit EmptyState WITHOUT a part (every caller but Millionea's one wrapper) draws byte for byte what 7e9a314f0 drew: ${CORPUS_SIZE} bodies in sw/en/zh (every string the dictionary writes, each template filled and kept, the generated hard cases) through the body and the notice rules, and the component bound to 7e9a314f0's own text rules in ${REAL_COMPONENT_PASS.n} drawings (every kind, width rule, body shape and action, alone and in a section; the error state)`, (w) => {
+  const d: string[] = [];
+  const text = textPassOf(w), comp = componentPassOf(w);
+  for (const x of text.identity) d.push(`draws differently without a part — ${x}`);
+  d.push(...comp.defects);
+  need(d, CORPUS_SIZE > 10_000 && comp.n > 1_000, `only ${CORPUS_SIZE} bodies and ${comp.n} component drawings read`);
+  return d;
+});
+
+/** Every `<EmptyState …>` element in a TSX source: its line, and whether it asks for a part or spreads its props (a spread
+ *  could carry one). A parse, not a pattern: an attribute is an attribute wherever it sits. */
+type EmptyCall = { file: string; line: number; part: boolean; spread: boolean };
+const emptyCallsIn = (file: string, source: string): EmptyCall[] => {
+  const sf = ts.createSourceFile(file, source, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TSX);
+  const out: EmptyCall[] = [];
+  const visit = (n: ts.Node) => {
+    if ((ts.isJsxSelfClosingElement(n) || ts.isJsxOpeningElement(n)) && n.tagName.getText(sf) === "EmptyState") {
+      const props = n.attributes.properties;
+      out.push({
+        file, line: sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1,
+        part: props.some((a) => ts.isJsxAttribute(a) && a.name.getText(sf) === "bodyPart"),
+        spread: props.some((a) => ts.isJsxSpreadAttribute(a)),
+      });
+    }
+    ts.forEachChild(n, visit);
   };
-  const askers = walk("src").filter((f) => /\bbodyPart=\{/.test(decomment(raw(f))));
-  need(d, j(askers) === j([FILES.ticketsEmpty]), `the part is asked by ${j(askers)}`);
-  need(d, code(w, "list").includes('<MillioneaTicketsEmpty fill={journey} kind="positions" title={t.millionea.emptyTickets}') && count(code(w, "list"), "<MillioneaTicketsEmpty ") === 2, "the list's empty states are not Tiketi zangu's own");
-  const { MillioneaTicketsEmpty } = (w.src.ticketsEmpty === REAL.src.ticketsEmpty ? req("../src/app/millionea/tickets/tickets-empty.tsx") : compiled(FILES.ticketsEmpty, w.src.ticketsEmpty)) as { MillioneaTicketsEmpty: unknown };
-  const m = inApp("sw", h(MillioneaTicketsEmpty as never, { title: "Huna tiketi ya Millionea bado.", body: "Wiki 3 iko wazi hadi Ijumaa 18:00." } as never));
-  need(d, m.includes('<span class="mono">3</span>') && m.includes('<span class="mono">18:00</span>'), "the week and the clock are not mono on Tiketi zangu's empty state");
+  visit(sf);
+  return out;
+};
+const SRC_TSX = (() => {
+  const out: string[] = [];
+  const walk = (dir: string) => {
+    for (const x of readdirSync(join(ROOT, dir))) { const q = posix.join(dir, x); if (statSync(join(ROOT, q)).isDirectory()) walk(q); else if (q.endsWith(".tsx")) out.push(q); }
+  };
+  walk("src");
+  return out;
+})();
+const IN_WORLD = new Set<string>(Object.values(FILES));
+const WORLD_TSX = (Object.keys(FILES) as FileKey[]).filter((k) => FILES[k].endsWith(".tsx"));
+const DISK_EMPTY_CALLS = SRC_TSX.filter((f) => !IN_WORLD.has(f)).flatMap((f) => emptyCallsIn(f, raw(f)));
+const DRAWS_MLN_EMPTY = /from\s+"@\/components\/maswali\/maswali-empty-state"/;
+const DISK_MLN_EMPTY_USERS = SRC_TSX.filter((f) => !IN_WORLD.has(f) && DRAWS_MLN_EMPTY.test(decomment(raw(f))));
+const emptyCallsOf = (w: World) => [...DISK_EMPTY_CALLS, ...WORLD_TSX.flatMap((k) => emptyCallsIn(FILES[k], w.src[k]))];
+const REAL_EMPTY_CALLS = emptyCallsOf(REAL);
+check("11.3", `the census: of every <EmptyState> the app draws (${REAL_EMPTY_CALLS.length} in ${new Set(REAL_EMPTY_CALLS.map((c) => c.file)).size} files, a TSX parse of src/), only Millionea's one wrapper asks for a part or spreads its props; the wrapper is drawn only by Millionea's pages — Tiketi zangu's two empty states`, (w) => {
+  const d: string[] = [];
+  const calls = emptyCallsOf(w);
+  need(d, calls.length >= 60, `only ${calls.length} calls read`);
+  const asking = calls.filter((c) => c.part || c.spread);
+  need(d, asking.length === 1 && asking[0].file === FILES.mlnEmpty && asking[0].part, `a part or a spread at ${j(asking.map((c) => `${c.file}:${c.line}`))}`);
+  const users = [...DISK_MLN_EMPTY_USERS, ...WORLD_TSX.filter((k) => DRAWS_MLN_EMPTY.test(decomment(w.src[k]))).map((k) => FILES[k])];
+  need(d, users.length > 0 && users.every((f) => f.startsWith("src/app/millionea/")), `Millionea's empty state is drawn outside Millionea: ${j(users)}`);
+  const list = code(w, "list");
+  need(d, count(list, "<MaswaliEmptyState ") === 2 && list.includes('<MaswaliEmptyState fill={journey} kind="positions" title={t.millionea.emptyTickets}'), "the list's two empty states are not Millionea's");
+  return d;
+});
+
+const FRIDAY_1800 = Date.parse("2026-12-04T15:00:00.000Z"); // Friday 18:00 EAT
+check("11.4", `§T5 · WITH Millionea's part the numerals take their face and nothing else changes: Tiketi zangu's empty body, filled as the page fills it, sets the week and the clock \`.mono\` in sw, en and zh — the Chinese body too, whose hung mark comes back in a fragment — and a numeral after a hung mark mid-text; for every body of 11.2 (${REAL_TEXT_PASS.mono} of them with a numeral set) the markup less its numeral runs is the markup without the part`, (w) => {
+  const d: string[] = [];
+  const { MaswaliEmptyState } = mlnEmptyOf(w), { EmptyState } = emptyOf(w);
+  const { eatWeekdayClock } = req("../src/components/maswali/maswali-format.ts") as { eatWeekdayClock: (t: unknown, ms: number) => string };
+  const { fill } = req("../src/lib/utils.ts") as { fill: (s: string, v: Record<string, string | number>) => string };
+  for (const l of LOCALES) {
+    const M = mln(w, l);
+    const props = { fill: true, kind: "positions", title: M.emptyTickets, body: fill(M.emptyTicketsNext, { week: 3, when: eatWeekdayClock(w.dict[l], FRIDAY_1800) }) };
+    const m = inApp(l, h(MaswaliEmptyState as never, props as never)), plain = inApp(l, h(EmptyState as never, props as never));
+    need(d, m.includes('<span class="mono">3</span>') && m.includes('<span class="mono">18:00</span>'), `${l}: the week and the clock are not mono ("${textOf(m).slice(textOf(m).indexOf(M.emptyTickets) + M.emptyTickets.length)}")`);
+    need(d, faceless(m) === plain, `${l}: more than the numerals' face changed`);
+  }
+  const zh = P(emptyTextOf(w).emptyStateBody("第3周开放至周五 18:00。开放时公布 15 道问题。", numeralRuns));
+  need(d, zh.includes('<span class="mono">18:00</span>') && zh.includes('<span class="mono">15</span>') && count(zh, 'class="kp-cjk-mark"') === 2, `zh: a numeral after a hung mark is not mono, or a mark no longer hangs (${zh})`);
+  const text = textPassOf(w);
+  for (const x of text.faces) d.push(`more than the face changed — ${x}`);
+  need(d, text.mono > 1_000, `the part set the numerals of only ${text.mono} bodies`);
   return d;
 });
 
@@ -664,8 +816,8 @@ check("23.2", "round 2 · a ticket's week wears the ONE week chip (`WeekStateChi
 // ── §17 · L10 + the seal (the platform's) ───────────────────────────────────────────────────────────────────────────
 check("17.1", "the seal speaks Millionea's words — eyebrow \"Millionea · Week 49\", heading \"You won\", facts the tickets at 10/10 then each serial — and lands final", (w) => {
   const a = code(w, "acts"), p = code(w, "page"), d: string[] = [];
-  need(d, a.includes('dispatchWinCelebration({ kind: "WIN", amount, eyebrow, heading: t.millionea.wonHeading, facts, roll: false })'), "the door does not hand the seal its words");
-  need(d, p.includes("eyebrow={`${t.millionea.productLabel} · ${weekWord(t, weekNumber)}`}") && p.includes("facts={[counted(paidSerials.length, t.millionea.wonTicketsOne, t.millionea.wonTickets), ...paidSerials]}"), "the page does not name the week and the serials");
+  need(d, a.includes('dispatchWinCelebration({ kind: "WIN", amount, eyebrow, heading: t.millionea.wonHeading, facts: sealFacts(line, serials), roll: false })'), "the door does not hand the seal its words");
+  need(d, p.includes("eyebrow={`${t.millionea.productLabel} · ${weekWord(t, weekNumber)}`}") && p.includes("line={counted(paidSerials.length, t.millionea.wonTicketsOne, t.millionea.wonTickets)} serials={paidSerials}"), "the page does not name the week and the serials");
   return d;
 });
 check("17.2", "the platform's seal: its words are the payload's when given and its own otherwise; the amount ONE line at every width (nowrap, sized by its final figure to the column, never over 38px); facts one whole line each", (w) => {
@@ -674,13 +826,41 @@ check("17.2", "the platform's seal: its words are the payload's when given and i
   need(d, c.includes('const amountFit = { "--seal-chars": formatTzs(payload.amount).length, fontSize: "min(38px, calc(100cqi / (var(--seal-chars) * 0.6)))" } as CSSProperties;'), "the amount's size is not fitted to its figure");
   need(d, c.includes('<div className="g-settle mt-3 w-full [container-type:inline-size]" style={{ "--i": 2 } as CSSProperties}> <p data-seal-amount="" className={`whitespace-nowrap font-mono text-[38px]'), "the amount is not one line in its column's container");
   need(d, c.includes("style={amountFit}"), "the fitted size is not applied");
-  need(d, c.includes('{payload.facts.map((f, i) => ( <span key={i} className={IDENTIFIER.test(f) ? "whitespace-nowrap font-mono" : "whitespace-nowrap"}>'), "a fact may break");
+  // RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-TICKETS): back to round 1's drawing — each fact whole on its line, drawn as its
+  // caller hands it (Millionea sets its own numerals' face, 17.3); a classic seal passes no facts.
+  need(d, c.includes('{payload.facts.map((f, i) => ( <span key={i} className="whitespace-nowrap"> {i > 0 && <span className="sr-only">{" · "}</span>} {f} </span> ))}'), "a fact may break, or is not drawn as handed");
   return d;
 });
-check("17.3", "§T5 (round 2) · the seal's facts set every numeral mono: a serial (one word holding digits) whole in the numerals' face, a sentence's numerals (\"1 ticket at 10/10\") each a `.mono` run; the held and forfeited notes' counts too", (w) => {
-  const c = code(w, "celebrate"), p = code(w, "page"), d: string[] = [];
-  need(d, c.includes("const IDENTIFIER = /^\\S*\\d\\S*$/;") && c.includes("{IDENTIFIER.test(f) ? f : monoNumerals(f)}") && c.includes('out.push(<span key={at} className="mono">{m[0]}</span>);'), "the seal's facts are not set by the numerals' rule");
-  need(d, count(p, "{ part: numeralRuns }") === 2, "the held and forfeited notes do not set their counts mono");
+/** The ticket's acts as the world writes them — their two server actions stood in (a static render reaches no server). */
+{
+  const at = req.resolve("../src/app/millionea/actions.ts");
+  const stub = new NodeModule(at);
+  stub.filename = at; stub.loaded = true;
+  stub.exports = { cancelMillioneaTicketAction: async () => ({}), markMillioneaTicketSeenAction: async () => ({ ok: true }) };
+  (req.cache as Record<string, unknown>)[at] = stub;
+}
+type ActsMod = { sealFacts: (line: string, serials: readonly string[]) => unknown[] };
+const actsOf = (w: World) => (w.src.acts === REAL.src.acts ? req("../src/app/millionea/tickets/[serial]/ticket-acts.tsx") : compiled(FILES.acts, w.src.acts)) as ActsMod;
+check("17.3", "§T5 (round 2) · Millionea hands the seal its facts in the numerals' face, in sw/en/zh: the count line's numerals each a `.mono` run and its words in the body face, every serial whole in one `.mono` run, the words the dictionary's (the seal draws each fact as handed, 17.2); the held and forfeited notes' counts mono too", (w) => {
+  const { sealFacts } = actsOf(w), d: string[] = [];
+  const { counted } = req("../src/components/maswali/maswali-format.ts") as { counted: (n: number, one: string, many: string) => string };
+  for (const l of LOCALES) {
+    const M = mln(w, l);
+    for (const n of [1, 3]) {
+      const line = counted(n, M.wonTicketsOne, M.wonTickets), serials = Array.from({ length: n }, (_, i) => `MLN-2026-W49-00004${i + 1}`);
+      const m = P(sealFacts(line, serials).map((f, i) => h("span", { key: i }, f as never)));
+      const numerals = line.match(/\d+(?:\/\d+)?/g) ?? [];
+      need(d, numerals.length === 2 && numerals.every((x) => m.includes(`<span class="mono">${x}</span>`)), `${l}/${n}: the line's numerals are not each a mono run (${m})`);
+      need(d, !/<span class="mono">[^<]*[^\d/<][^<]*<\/span>/.test(m.replace(/<span class="mono">MLN-[^<]*<\/span>/g, "")), `${l}/${n}: a word is set in the numerals' face (${m})`);
+      need(d, serials.every((s) => m.includes(`<span class="mono">${s}</span>`)), `${l}/${n}: a serial is not whole in one mono run (${m})`);
+      need(d, textOf(m) === line + serials.join(""), `${l}/${n}: the words changed (${textOf(m)})`);
+    }
+    for (const [one, many] of [[M.shareHeldNoteOne, M.shareHeldNote], [M.shareForfeitedNoteOne, M.shareForfeitedNote]]) {
+      const note = P(emptyTextOf(w).noticeBody(counted(2, one, many), { part: numeralRuns }));
+      need(d, note.includes('<span class="mono">2</span>'), `${l}: a held or forfeited note's count is not mono (${textOf(note)})`);
+    }
+  }
+  need(d, count(code(w, "page"), "{ part: numeralRuns }") === 2, "the held and forfeited notes do not set their counts mono");
   return d;
 });
 
@@ -834,7 +1014,14 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["H2 undone — an at-rest clause at the disabled opacity", "2.1", plantSrc("ticket", 'style={reserve ? { background: "var(--wash-inset)" } : undefined}', 'style={{ ...(reserve ? { background: "var(--wash-inset)" } : null), ...(inert ? { opacity: "var(--state-disabled-opacity)" } : null) }}')],
   ["H2 — the muted ink dimmed under the floor", "2.2", (() => { const w = plantSrc("css", "  --text-muted:    oklch(86% 0.040 268);", "  --text-muted:    oklch(40% 0.040 268);"); return w; })()],
   ["§T5 — the numeral face forced on every caller (not opt-in)", "11.2", plantSrc("emptyText", "part ? (p, following) => throughPart(hangCjkMarks(p, following), part) : hangCjkMarks", "(p, following) => throughPart(hangCjkMarks(p, following), part ?? ((x: string) => x.split(/(\d+)/).map((s, i) => (i % 2 ? createElement(\"span\", { key: i, className: \"mono\" }, s) : s))))")],
-  ["§T5 undone — Tiketi zangu's empty state without the numeral part", "11.2", plantSrc("ticketsEmpty", "<EmptyState {...props} bodyPart={numeralRuns} />", "<EmptyState {...props} />")],
+  ["the kit hands every caller a part (a default numeral face)", "11.2", plantSrc("empty", "  bodyPart,\n  action,", "  bodyPart = (s: string) => s.split(/(\\d+)/).map((x, i) => (i % 2 ? <span key={i} className=\"mono\">{x}</span> : x)),\n  action,")],
+  ["the notice rules moved with the module (a centred notice's marks no longer hang)", "11.2", plantSrc("emptyText", "  if (opts.centred) return keepRanges(text, ranges, hangCjkMarks);", "  if (opts.centred) return keepRanges(text, ranges);")],
+  ["a second caller asks for the part", "11.3", plantSrc("list", "      <MillioneaTicketsBar lens={lens} t={t} />\n", "      {false && <EmptyState title=\"\" bodyPart={numeralRuns} />}\n      <MillioneaTicketsBar lens={lens} t={t} />\n")],
+  ["a caller spreads its props into the kit", "11.3", plantSrc("list", "      <MillioneaTicketsBar lens={lens} t={t} />\n", "      {false && <EmptyState title=\"\" {...{}} />}\n      <MillioneaTicketsBar lens={lens} t={t} />\n")],
+  ["Millionea's empty state drawn by a classic file", "11.3", plantSrc("switch", 'import { PageHeader } from "@/components/ui/page-header";\n', 'import { PageHeader } from "@/components/ui/page-header";\nimport { MaswaliEmptyState } from "@/components/maswali/maswali-empty-state";\n')],
+  ["§T5 undone — Millionea's empty state without the numeral part", "11.4", plantSrc("mlnEmpty", "<EmptyState {...props} bodyPart={numeralRuns} />", "<EmptyState {...props} />")],
+  ["§T5 — a Chinese body's numerals skipped (the fragment its hung mark comes in passed over)", "11.4", plantSrc("emptyText", "  if (!isValidElement<{ children?: ReactNode }>(node) || node.type !== Fragment) return node;\n", "  return node;\n")],
+  ["the part inserts a character (a no-break space for each space)", "11.4", plantSrc("emptyText", "  if (typeof node === \"string\") return part(node);", "  if (typeof node === \"string\") return part(node.replace(/ /g, \"\\u00a0\"));")],
   ["M4 undone — the clause back on the button", "3.1", plantSrc("cancel", "{pending ? t.millionea.cancelling : t.millionea.confirmCancel}", "{pending ? t.millionea.cancelling : t.millionea.cancelFreeUntil.replace(\"{time}\", \"10:09\")}")],
   ["§T5 undone — the free cancel's clock in the body face", "3.1", plantSrc("cancel", 'className="mono whitespace-nowrap">{eatClock(until)}</time>', 'className="whitespace-nowrap tabular-nums">{eatClock(until)}</time>')],
   ["M4 undone — no timer on the clock line", "3.1", plantSrc("cancel", '<span role="timer" className="whitespace-nowrap font-mono font-bold tabular-nums text-text">{freeLeftLabel(left)}</span>', "")],
@@ -868,13 +1055,15 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["L2 undone — the zh spaced dash", "15.1", plantWord("zh", "finality", "此处每个数字均为最终结果 — 不再有任何欠付。")],
   ["zh — the space back between two Han words", "15.2", plantWord("zh", "emptyTicketsNext", "第{week}周开放至 {when}。")],
   ["L8 undone — the cannot-win box hand-rolled", "16.1", plantSrc("ticket", '{cannotWin && <Callout tone="neutral">{t.millionea.cannotWin}</Callout>}', '{cannotWin && <p className="mat-inset rounded-control px-3 py-2 text-body-sm text-text text-pretty">{t.millionea.cannotWin}</p>}')],
-  ["L10 undone — the seal's label the serials alone", "17.1", plantSrc("acts", "eyebrow, heading: t.millionea.wonHeading, facts, roll: false", "label: facts.join(\" · \"), roll: false")],
+  ["L10 undone — the seal's label the serials alone", "17.1", plantSrc("acts", "eyebrow, heading: t.millionea.wonHeading, facts: sealFacts(line, serials), roll: false", "label: serials.join(\" · \"), roll: false")],
+  ["a fact drawn in the seal's own face again (the classic seal parsing Millionea's facts)", "17.2", plantSrc("celebrate", "                {f}\n              </span>\n            ))}", "                {typeof f === \"string\" ? <span className=\"font-mono\">{f}</span> : f}\n              </span>\n            ))}")],
   ["the 7-digit wrap back", "17.2", plantSrc("celebrate", 'className={`whitespace-nowrap font-mono text-[38px]', 'className={`font-mono text-[38px]')],
   ["an amount that always fitted shrunk (the 0.62 margin)", "17.2", plantSrc("celebrate", "(var(--seal-chars) * 0.6)))", "(var(--seal-chars) * 0.62)))")],
   ["the seal's eyebrow forced to the platform's", "17.2", plantSrc("celebrate", "{payload.eyebrow ?? t.common.positionWon}", "{t.common.positionWon}")],
   ["L11 undone — an open week's ticket silent", "18.1", plantSrc("ticket", "        live.salesCloseAt !== undefined ? keepFact(locale, fill(t.millionea.salesCloseAt, { when: eatWeekdayClock(t, live.salesCloseAt) })) : null,\n", "")],
   ["L13 undone — a sealed reserve still the open ring", "19.1", plantSrc("seal", 'out === "YES" || out === "NO" ? "sealed" : "standby"', '"standby"')],
-  ["§T5 undone — the seal's facts in the body face", "17.3", plantSrc("celebrate", "{IDENTIFIER.test(f) ? f : monoNumerals(f)}", "{f}")],
+  ["§T5 undone — the seal's facts handed in the body face", "17.3", plantSrc("acts", "return [<Fragment key=\"line\">{numeralRuns(line)}</Fragment>, ...serials.map((s) => <span key={s} className=\"mono\">{s}</span>)];", "return [line, ...serials];")],
+  ["§T5 — a serial set in pieces (the fact-line rule run over it)", "17.3", plantSrc("acts", "...serials.map((s) => <span key={s} className=\"mono\">{s}</span>)", "...serials.map((s) => <Fragment key={s}>{numeralRuns(s)}</Fragment>)")],
   ["§T5 undone — the held note's count in the body face", "17.3", plantSrc("page", "shareHeldNote), { part: numeralRuns })}", "shareHeldNote))}")],
   ["L14 undone — no close fact (the lock moment dead again)", "20.1", plantSrc("player", ' facts.push({ kind: "close", at: week.closedAt });', " void 0;")],
   ["L14 — the scheduled close instead of the recorded one", "20.1", plantSrc("player", 'facts.push({ kind: "close", at: week.closedAt });', 'facts.push({ kind: "close", at: week.closesAt });')],

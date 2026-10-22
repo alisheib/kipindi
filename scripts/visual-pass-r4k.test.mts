@@ -296,7 +296,7 @@ section("4 · a Chinese mark that ends a centred line hangs its empty part (E50;
     // Pin moved 2026-10-10 (round 7, R7-A, the owner's item 37): the title hangs its marks through `keepConnectives`, which
     // draws its plain parts with `hangCjkMarks` (a Chinese title has no connective, so it is exactly `hangCjkMarks(title)`).
     // Pin moved 2026-10-22 (S5-R2-TICKETS, the lead's ruling): the body passes its caller's OPT-IN numeral part along
-    // (`bodyPart`, undefined for every caller but Tiketi zangu's — byte-identical, test:maswali-tickets 11.2).
+    // (`bodyPart`, undefined for every caller but Millionea's `MaswaliEmptyState` — byte-identical, test:maswali-tickets 11.2–11.3).
     code("src/components/ui/empty-state.tsx").includes("{keepConnectives(title, [], hangCjkMarks)}") && code("src/components/ui/empty-state.tsx").includes("{emptyStateBody(body, bodyPart)}")
       && html(h("p", null, emptyStateBody("选择一个问题，点击“是”或“否”——您的注单会显示在这里。"))).endsWith(`显示在这里<span class="kp-cjk-mark">。</span></p>`)
       && code("src/components/markets/side-picker.tsx").includes("{hangCjkMarks(t.market.whichWay)}") && code("src/components/markets/side-picker.tsx").includes("{hangCjkMarks(t.market.chooseSideHelp)}")

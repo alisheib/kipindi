@@ -791,10 +791,10 @@ const pagedDefects = (readAt: (rel: string) => string) => {
   if (!list.includes(`{total > PLAYER_PER_PAGE && ( <div className="mt-4 rounded-lg border border-border bg-bg-elevated/40 overflow-hidden"> <Pagination total={total} page={page} perPage={PLAYER_PER_PAGE} baseHref={buildBaseHref(MILLIONEA_HREF.tickets, { lens: lens === "all" ? undefined : lens })} ${LABELS}`)) d.push("Tiketi zangu has no link pager keeping its lens");
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-TICKETS M3): both states fill for a journey reader, as their siblings do;
   // a lens that empties says which in the platform's own words (one page: the lens's title; several: "on this page").
-  // RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-TICKETS, §T5): the two are the kit's EmptyState through Tiketi zangu's own
-  // client wrapper (`MillioneaTicketsEmpty`), which joins the numeral face to the body (test:maswali-tickets 11.2).
-  if (!list.includes('{total === 0 ? ( <MillioneaTicketsEmpty fill={journey} kind="positions" title={t.millionea.emptyTickets}')) d.push("\"no ticket yet\" is not kept for a reader who holds none");
-  if (!list.includes(') : cards.length === 0 ? ( <MillioneaTicketsEmpty fill={journey} kind="positions" title={total > PLAYER_PER_PAGE ? t.millionea.lensNoneOnPage : lensEmptyTitle(t, lens)}')) d.push("a lens that empties a page does not say so in its own words");
+  // RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-TICKETS, §T5): the two are the kit's EmptyState through Millionea's one client
+  // wrapper (`MaswaliEmptyState`), which joins the numeral face to the body (test:maswali-tickets 11.2–11.4).
+  if (!list.includes('{total === 0 ? ( <MaswaliEmptyState fill={journey} kind="positions" title={t.millionea.emptyTickets}')) d.push("\"no ticket yet\" is not kept for a reader who holds none");
+  if (!list.includes(') : cards.length === 0 ? ( <MaswaliEmptyState fill={journey} kind="positions" title={total > PLAYER_PER_PAGE ? t.millionea.lensNoneOnPage : lensEmptyTitle(t, lens)}')) d.push("a lens that empties a page does not say so in its own words");
   const register = squash(code(readAt(REGISTER)));
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER, the lead's H2 ruling and the critic's M11): the index reads the
   // weeks still running beside its one page of final weeks with their total, and its launch-day empty state is the kit's own,

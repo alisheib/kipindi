@@ -42,22 +42,6 @@ import { keepFigures } from "@/components/ui/keep-words";
 
 const EVENT_NAME = "50pick:celebrate";
 
-/** A seal fact that is one word holding a digit — an identifier, a ticket's serial — is set whole in the numerals' face. */
-const IDENTIFIER = /^\S*\d\S*$/;
-/** A seal fact's numerals ("1 ticket at 10/10"), each a `.mono` run (§T5), its words left in the sentence's face. */
-function monoNumerals(text: string): ReactNode {
-  const out: ReactNode[] = [];
-  let last = 0;
-  for (const m of text.matchAll(/\d+(?:[:.,/]\d+)*/g)) {
-    const at = m.index ?? 0;
-    if (at > last) out.push(text.slice(last, at));
-    out.push(<span key={at} className="mono">{m[0]}</span>);
-    last = at + m[0].length;
-  }
-  if (last < text.length) out.push(text.slice(last));
-  return out;
-}
-
 export type WinCelebrationPayload = {
   /** Heading row. Only WIN is used — cash-out doesn't celebrate. */
   kind: "WIN";
@@ -78,11 +62,12 @@ export type WinCelebrationPayload = {
    * it in its own words — `eyebrow` over `heading` ("MILLIONEA · WIKI 49" over "Umeshinda", the v6 delivery's
    * W-seal frames), never the platform's "MADAU YAMEFANIKIWA" (a position won) — and its context as `facts`, a fact line
    * whose every fact stays whole (a ticket's serial never breaks at its hyphens) and whose separator never opens or ends a
-   * line. Omitted, the seal draws exactly what it always has: the platform's eyebrow, heading and `label`.
+   * line — each fact drawn as its caller sets it (Millionea sets its numerals in their face, §T5). Omitted, the seal draws
+   * exactly what it always has: the platform's eyebrow, heading and `label`.
    */
   eyebrow?: string;
   heading?: string;
-  facts?: ReadonlyArray<string>;
+  facts?: ReadonlyArray<ReactNode>;
   /** ⛔ SET BY `dispatchWinCelebration`, NEVER BY A CALLER — see the function below. */
   ack?: { accepted: boolean };
 };
@@ -396,11 +381,9 @@ export function WinCelebrationHost() {
             style={{ "--i": 4 } as CSSProperties}
           >
             {payload.facts.map((f, i) => (
-              // §T5 (round 2): every numeral is mono — an identifier (one word holding digits: a serial) whole, a sentence's
-              // numerals each a `.mono` run, its words in the body face.
-              <span key={i} className={IDENTIFIER.test(f) ? "whitespace-nowrap font-mono" : "whitespace-nowrap"}>
+              <span key={i} className="whitespace-nowrap">
                 {i > 0 && <span className="sr-only">{" · "}</span>}
-                {IDENTIFIER.test(f) ? f : monoNumerals(f)}
+                {f}
               </span>
             ))}
           </p>

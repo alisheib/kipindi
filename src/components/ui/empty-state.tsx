@@ -63,7 +63,7 @@ export function EmptyState({
   /** The words, or the words with the runs the caller put into them that must stay whole (a date: `breakSentence`). */
   body?: EmptyStateBody;
   /** OPT-IN (2026-10-22): each plain string of the body drawn through it — a caller's numeral face (Millionea's
-   *  `numeralRuns`, §T5). Omitted, the body is drawn exactly as before (test:maswali-tickets 11.2 renders both). */
+   *  `numeralRuns`, §T5). Omitted, the body is drawn exactly as before (test:maswali-tickets 11.2–11.4 render both). */
   bodyPart?: (text: string) => ReactNode;
   /** Accepted for back-compat; no longer rendered (single-language UI). */
   titleSw?: string;

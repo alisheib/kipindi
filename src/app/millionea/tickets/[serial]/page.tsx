@@ -211,7 +211,8 @@ export default async function MillioneaTicketPage({ params }: { params: Promise<
                 <SealDoor
                   amount={view.win.yourTotal}
                   eyebrow={`${t.millionea.productLabel} · ${weekWord(t, weekNumber)}`}
-                  facts={[counted(paidSerials.length, t.millionea.wonTicketsOne, t.millionea.wonTickets), ...paidSerials]}
+                  line={counted(paidSerials.length, t.millionea.wonTicketsOne, t.millionea.wonTickets)}
+                  serials={paidSerials}
                 />
               )}
             </>

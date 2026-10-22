@@ -4,7 +4,7 @@
  * `empty-state.tsx` could be neither. `EmptyState` draws its body through `emptyStateBody`; the words stay the
  * dictionary's own, and only where a line may break changes.
  */
-import { createElement, Fragment, type ReactNode } from "react";
+import { createElement, Fragment, isValidElement, type ReactNode } from "react";
 import { hangCjkMarks } from "@/lib/cjk-marks";
 import { keepRanges, keptRanges, mergeRanges, possessiveRanges, runAndDashRanges } from "./keep-run";
 
@@ -71,11 +71,13 @@ export function emptyStateBody(body: EmptyStateBody, part?: (text: string) => Re
   return keepRanges(text, emptyStateRanges(text, keep), part ? (p, following) => throughPart(hangCjkMarks(p, following), part) : hangCjkMarks);
 }
 
-/** A drawn piece's strings through `part`; the hung marks' own spans left as they are. */
+/** A drawn piece's plain strings through `part`. `hangCjkMarks` hands a piece back as it came (a string) or, where a Chinese
+ *  mark hangs, as a fragment of its plain runs and the marks' own spans: the runs go through `part`, the spans stay. */
 function throughPart(node: ReactNode, part: (text: string) => ReactNode): ReactNode {
   if (typeof node === "string") return part(node);
-  if (!Array.isArray(node)) return node;
-  return node.map((n, i) => (typeof n === "string" ? createElement(Fragment, { key: `p${i}` }, part(n)) : n));
+  if (!isValidElement<{ children?: ReactNode }>(node) || node.type !== Fragment) return node;
+  const runs = Array.isArray(node.props.children) ? node.props.children : [node.props.children];
+  return createElement(Fragment, null, ...runs.map((n, i) => (typeof n === "string" ? createElement(Fragment, { key: `p${i}` }, part(n)) : n)));
 }
 
 /**
