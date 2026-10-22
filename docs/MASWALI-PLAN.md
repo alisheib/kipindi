@@ -29,6 +29,13 @@
 
 ## §0 · RESUME AT
 
+**⏳ RESUMED (2026-10-22 11:41 UTC, Ali: "proceed"; the same session asheib-f3 leads, every lane resumed with its own
+context):** HUB, TICKETS, REGISTER, PLATFORM and SLIP finish their STOP 4 lists on their r2 branches; S7 its list on
+`claude/maswali-s7-s5` (TK.2 = password writes only; RD.5 = shares from tickets bought at or after the reversed deposit);
+S6 the integration on `claude/maswali-s6-release` (R and N next); DOORS (done) now builds the objection door OB.0 on
+`claude/maswali-s7-ob` from `claude/maswali-s7-s5`. main `da3d32180` (docs) deployed SUCCESS while stopped. The STOP 4
+record below still names every head and list.
+
 **⏹ STOP 4 (2026-10-22 ~10:45 UTC, OMEGA-COMPILE01, the Claude session asheib-f3 led; Ali: "push the progress we reached
 cleanly and stop the session cleanly so we proceed later on a clean base"). RESUME HERE, from any machine:** the hand-over
 branch `maswali-handover-20261021`, `handover/maswali-2026-10-21/` — README's top section (STOP 4: every branch and head,
