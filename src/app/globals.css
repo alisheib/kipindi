@@ -4777,10 +4777,20 @@ html[data-sheet-open] .route-enter { animation: none; }
 .eyebrow .kp-mln-facts, .kp-mln-facts.eyebrow { --mln-sep: calc(3ch + 0.42em); }
 .kp-mln-zh:lang(zh) .eyebrow .kp-mln-facts { --mln-sep: 3ch; }
 /* MASWALI-BUILD S5-DESIGN-HUB (R1-motion M8) · THE LAST HOUR'S ROOM IN THE CLOSE LINE: while the closing pill counts down
-   in the hub's close row, the close is today, so its weekday steps aside — "Mauzo yanafungwa 18:00 ⌛ 40 Dak" holds one
+   in the hub's close row, the close is today, so its weekday steps aside — "Mauzo yanafungwa: 18:00 ⌛ 40 Dak" holds one
    line where the weekday and the pill took two (sw 320), and nothing under the row moves when the pill arrives. A
-   browser without :has() keeps the weekday and lets the pill wrap. */
+   browser without :has() keeps the weekday and lets the pill wrap.
+   S5-R2-HUB · the line is the one wording now, "Mauzo yanafungwa: {when} EAT" (the lead's ruling, the slip's and the
+   ticket's words): below 360 its zone steps aside too, since there the words and the pill would take 298px of a 296px row. */
 .kp-mln-close:has(.closing-pill) .kp-mln-close-day { display: none; }
+@media (max-width: 359.98px) { .kp-mln-close:has(.closing-pill) .kp-mln-close-zone { display: none; } }
+/* MASWALI-BUILD S5-R2-HUB · THE PINNED PAIR'S FOOT FADES (`HUB_PINNED`, hub-frame.ts; the tile readers: mid-scroll the
+   ledger slid out from under the pinned jackpot and door cut flat, a box with no top). From 1024 the pair stands on the
+   page's own ground; its last 16px fade to nothing, so what reads on in the column leaves from under it through a soft
+   edge. At rest that foot lies in the column's own gap, over the same ground, and shows nothing. */
+@media (min-width: 1024px) {
+  .kp-mln-pinned { background: linear-gradient(to bottom, var(--bg-base) calc(100% - var(--sp-4)), transparent); }
+}
 /* MASWALI-BUILD S5 · VIS-P P10 · A SOCKET AT REST: a reserve the week did not need, a socket of a voided week, every socket
    of a cancelled or refunded ticket — the open ring at the disabled control's own opacity, so it never reads as the live
    "awaiting" ring beside it (`maswali-seal-line.tsx`, `SocketGlyph`). */

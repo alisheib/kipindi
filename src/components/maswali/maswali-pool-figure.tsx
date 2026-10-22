@@ -87,8 +87,11 @@ function headlineOf(t: Dict, v: PoolView): ReactNode {
 }
 
 /**
- * ⭐ THE HEAD — ONE ORDER, THE CARD'S (S5 VIS P3): the label, the figure, the R-HEADLINE's rule (in Millionea's final week,
- * the final week's), then — while an earlier week is unsettled — the carry's line; the rule's facts are a fact line (`maswali-facts.tsx`,
+ * ⭐ THE HEAD — ONE ORDER, THE CARD'S (S5 VIS P3; DOORS' M2 card order, the lead's ruling 2026-10-22): the label, the figure,
+ * then — while an earlier week is unsettled — the carry's line that adds to it, then the R-HEADLINE's rule (in Millionea's
+ * final week, the final week's). The carry's line stood after the fee and read as adding to the fee (the hub's sw tile
+ * reader read it so; the card moved it for the same reason). Each line says what it is (`data-head`), so a measure never
+ * counts children. The rule's facts are a fact line (`maswali-facts.tsx`,
  * A1), so no line starts or ends with a separator and no phrase ("Week 47's", "13% fee") is torn.
  * ⭐ L10 · the figure at the title-sm rung below 360 and title-md from 360: "at least TZS 1,000,000" holds one line in
  * the 256px a 320 phone gives it (22px left "at least" alone on a line above the figure).
@@ -124,15 +127,15 @@ export function MaswaliPoolHead({ t, locale, view, pct, final = false, tick, lab
     <div className={cn(HUB_POOL_HEAD.box, className)} data-testid="millionea-hub-jackpot">
       <span id={labelId} className={HUB_POOL_HEAD.label}>{t.millionea.jackpot}</span>
       <span className={cn(HUB_POOL_HEAD.figure, tick && "m-tick")} data-testid="millionea-hub-figure">{headlineOf(t, v)}</span>
+      {pending && v.carriedIn && v.carriedIn.week !== null && (
+        <span className={HUB_POOL_HEAD.carry} data-head="carry">{keepFact(locale, fill(t.millionea.pendingCarry, { week: v.carriedIn.week }))}</span>
+      )}
       {finalLine ? (
-        <span className={HUB_POOL_HEAD.finalRule} data-testid="millionea-hub-final-rule">
+        <span className={HUB_POOL_HEAD.finalRule} data-head="rule" data-testid="millionea-hub-final-rule">
           <MillioneaGlyph name="finalWeek" s={14} className="relative top-0.5 shrink-0 text-text-subtle" />
           <MaswaliFacts facts={[finalLine, ...(rule ? factsOf(rule).slice(1) : [])].map((f) => keepFact(locale, f))} className={HUB_POOL_HEAD.facts} />
         </span>
-      ) : rule && <span className={HUB_POOL_HEAD.rule}>{facts(rule)}</span>}
-      {pending && v.carriedIn && v.carriedIn.week !== null && (
-        <span className={HUB_POOL_HEAD.carry}>{keepFact(locale, fill(t.millionea.pendingCarry, { week: v.carriedIn.week }))}</span>
-      )}
+      ) : rule && <span className={HUB_POOL_HEAD.rule} data-head="rule">{facts(rule)}</span>}
     </div>
   );
 }

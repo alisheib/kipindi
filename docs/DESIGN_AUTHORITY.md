@@ -3255,6 +3255,30 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     dialog is unchanged (`test:maswali-slip-design` §1); `test:enter-where-pressed` 5.8 pins the call with its plant, and
     `qa:dialog-way-back` drives it at 360 in Chromium and WebKit (scrollY unchanged across the close, focus on the opener,
     the jump back when `preventScroll` is dropped).
+25. **The hub's loading drawing is the hub's own frame (lead 2026-10-22, round 2 on R1-hub's loading row; MASWALI-BUILD
+    S5-R2-HUB).** Which drawing a Millionea page shows on the way in: item 22. The hub's own:
+    - The page and its drawing (`hub-ghost.tsx`) compose ONE frame, written once in `hub-frame.ts`: the grid, the strip,
+      the buy column and its pinned pair, each block's cell, the question rows.
+    - The drawing stands in the page root's class (`kp-mln-zh`).
+    - It draws the head's two pills at their labels' lengths: a table of character counts held to the dictionary, never
+      words.
+    - It draws the strip's ranges as their two kept runs, so a range wraps where the page's does.
+    - The reader's own block stands LAST in the buy column, the one band whose height is the reader's.
+    - A numeral never grows a frame line. Every frame line's inline numerals (`.mono`, `.amount`) take line-height 0,
+      the platform's `.kp-cjk-gap` recipe; a mono numeral had made its line a pixel taller.
+    So the swap moves nothing above or beside that block: within ±1px for a reader holding none, one or many at 360 and
+    1280, and one at all six widths in three languages (`qa:maswali-hub-states` "ghost"). An earlier week's pending carry
+    line is not drawn, because its window is that week's settlement, never the calendar; its residual is printed.
+26. **The hub's own lines: one order, one wording (lead 2026-10-22; MASWALI-BUILD S5-R2-HUB).** The jackpot head says
+    the card's order (DOORS' M2): the label, the figure, then — while an earlier week is unsettled — item 9's carry line,
+    which adds to that figure, then the rule. Under the fee, the carry line read as adding to the fee. The sales close is
+    item 24's one wording.
+27. **The hub's buy column (MASWALI-BUILD S5-R2-HUB, the tile readers).**
+    - At 768 no cell stands empty. A head with no door beside it (sales paused) runs both columns; with no block of the
+      reader's, the graded week takes that block's cell, level with the ledger.
+    - From 1024 the pinned head and door stand on the page's own ground, whose foot fades, so nothing passes under them
+      cut flat. At rest the block under them stands the column's own gap below.
+    - A closed week's held rows stand under "Your tickets", the tickets page's own title.
 
 ---
 

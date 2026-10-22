@@ -145,6 +145,7 @@ async function shoot(state, shell, ctx, { check, oneView = false, path = "/milli
       await ruleChecks(page, label);
       await doorRowChecks(page, label);
       await widowChecks(page, label);
+      if (width === 768) await holeChecks(page, label);
       if (width <= YIELD_AT) await yieldCheck(page, `${label} · s1`);
       const name = `${state}-${shell}-${locale}-${width}`;
       await page.screenshot({ path: `${OUT}/${name}.png` });
@@ -205,6 +206,17 @@ async function openWeekChecks(page, label, locale, width, { door = "millionea-hu
       d.x >= head.x + head.width && d.y >= head.y - 1 && d.y + d.height <= head.y + head.height + 1, j({ head, d }));
   }
   if (width >= 1024 && head) {
+    // S5-R2-HUB · the pinned pair's foot (the tile read: mid-scroll the ledger slid out from under the pair cut flat, a box
+    // with no top): its ground fades over its last 16px, and at rest the block under it stands the column's 16px below.
+    const foot = await page.evaluate(() => {
+      const p = document.querySelector('[data-testid="millionea-hub-pinned"]');
+      const next = p?.nextElementSibling, last = p?.lastElementChild;
+      if (!p || !next || !last) return null;
+      const cs = getComputedStyle(p);
+      return { image: cs.backgroundImage.slice(0, 120), pad: cs.paddingBottom, gap: Math.round(next.getBoundingClientRect().top - last.getBoundingClientRect().bottom) };
+    });
+    ok(`${label} · the pinned pair's ground fades over its last 16px, and at rest the next block stands 16px under the pair (${foot?.gap}px)`,
+      !!foot && /linear-gradient/.test(foot.image) && foot.pad === "16px" && Math.abs(foot.gap - 16) <= 1, j(foot));
     await page.evaluate(() => window.scrollTo(0, 900));
     await page.waitForTimeout(300);
     const pinnedHead = await box(page, "millionea-hub-jackpot");
@@ -252,6 +264,20 @@ async function widowChecks(page, label) {
   for (const f of found) ok(`${label} · ${f.where}: its last line is no lone word ("${f.last}")`, f.words >= 2, j(f));
 }
 
+/** M1 · NO CELL OF THE TWO-UP COLUMN STANDS EMPTY at 768 (S5-R2-HUB; the tile read: paused, a 350×170px hole beside the
+ *  head; a guest's graded week hung a row lower, under an empty one): with no door the head runs both columns, and with no
+ *  block of the reader's the graded week stands level with the ledger. */
+async function holeChecks(page, label) {
+  const g = await page.evaluate(() => {
+    const box = (s) => { const el = document.querySelector(s); if (!el || el.getClientRects().length === 0) return null; const r = el.getBoundingClientRect(); return { top: Math.round(r.top), width: Math.round(r.width) }; };
+    return { aside: box('[data-testid="millionea-hub-aside"]'), head: box('[data-testid="millionea-hub-jackpot"]'), buy: box('[data-testid="millionea-hub-buy"]'),
+      ledger: box('[data-testid="millionea-hub-ledger"]'), mine: box('[data-testid="millionea-hub-mine"]'), grading: box('[data-testid="millionea-hub-grading"]') };
+  });
+  if (!g.aside || !g.head || !g.ledger) return; // a week with no pool: one column, no cells
+  if (!g.buy) ok(`${label} · M1 with no door beside it the head runs both columns`, Math.abs(g.head.width - g.aside.width) <= 1, j(g));
+  if (g.grading && !g.mine) ok(`${label} · M1 with no block of the reader's the graded week stands level with the ledger`, Math.abs(g.grading.top - g.ledger.top) <= 1, j(g));
+}
+
 /** A door row (the graded week's facts, last week's row) ends in its chevron: its words stop at least the row's gap (8px)
  *  before it. A kept run wider than the row's text box ran past it (the tile read: sw 320, "Matokeo 15 kati ya 15
  *  yametolewa" 2–5px from the chevron). Measured on the glyphs' own boxes. */
@@ -282,7 +308,7 @@ async function doorRowChecks(page, label) {
  */
 async function ruleChecks(page, label) {
   const facts = await page.evaluate(() => {
-    const rule = document.querySelector('[data-testid="millionea-hub-jackpot"]')?.children[2];
+    const rule = document.querySelector('[data-testid="millionea-hub-jackpot"] [data-head="rule"]');
     if (!rule) return null;
     const out = [];
     for (const fact of rule.querySelectorAll(".kp-mln-fact")) {
@@ -578,27 +604,35 @@ if (RUN === "a") {
   // the buy column, its height the reader's — starts where it was drawn and is replaced in place.
   const BANDS = (ghost) => {
     const box = (el) => { if (!el || el.getClientRects().length === 0) return null; const r = el.getBoundingClientRect(); return { top: Math.round(r.top + window.scrollY), height: Math.round(r.height) }; };
+    // S5-R2-HUB · the head's two pills (their place and width) and the first ten question rows' tops (a row 1px taller carried
+    // 1px a row down the list: 15px by the fifteenth, the tile read at 1280).
+    const span = (el) => { const r = el.getBoundingClientRect(); return { left: Math.round(r.left), width: Math.round(r.width) }; };
+    const tops = (els) => els.slice(0, 10).map((el) => Math.round(el.getBoundingClientRect().top + window.scrollY));
     if (ghost) {
       const g = document.querySelector('[aria-busy="true"]');
       if (!g) return null;
       const q = (n) => g.querySelector(`[data-ghost="${n}"]`);
-      const rows = [...(q("questions")?.lastElementChild?.children ?? [])].slice(0, 3).map(box);
-      return { title: box(g.querySelector("h1")), strip: box(q("strip")), jackpot: box(q("jackpot")), door: box(q("door")), ledger: box(q("ledger")), mine: box(q("mine")), questions: box(q("questions")), rows };
+      const rowEls = [...(q("questions")?.lastElementChild?.children ?? [])];
+      return { title: box(g.querySelector("h1")), strip: box(q("strip")), jackpot: box(q("jackpot")), door: box(q("door")), ledger: box(q("ledger")), mine: box(q("mine")), questions: box(q("questions")),
+        rows: rowEls.slice(0, 3).map(box), rowTops: tops(rowEls), doors: [...(q("doors")?.children ?? [])].map(span) };
     }
     const h = document.querySelector('[data-testid="millionea-hub"]');
     const q = (n) => document.querySelector(`[data-testid="${n}"]`);
-    const rows = [...document.querySelectorAll('[data-testid="millionea-hub-questions"] li[data-slot]')].slice(0, 3).map(box);
+    const rowEls = [...document.querySelectorAll('[data-testid="millionea-hub-questions"] li[data-slot]')];
     return { title: box(h?.querySelector("h1")), strip: box(q("millionea-week-strip")), jackpot: box(q("millionea-hub-jackpot")), door: box(q("millionea-hub-buy")),
-      ledger: box(q("millionea-hub-ledger")), mine: box(q("millionea-hub-mine")), questions: box(q("millionea-hub-questions")), rows };
+      ledger: box(q("millionea-hub-ledger")), mine: box(q("millionea-hub-mine")), questions: box(q("millionea-hub-questions")),
+      rows: rowEls.slice(0, 3).map(box), rowTops: tops(rowEls), doors: [...document.querySelectorAll('[data-testid="millionea-hub-doors"] a')].map(span) };
   };
-  /** How many lines the page's wrapping bands take (the drawing's table, `hub-ghost.tsx` WRAPS, is held to these). */
+  /** How many lines the page's wrapping bands take (the drawing's table, `hub-ghost.tsx` WRAPS, is held to these), and the
+   *  width of each kept run of the strip's ranges (the drawing's RANGES, which wrap where the page's do). */
   const LINES = () => {
     const lines = (el) => { if (!el) return null; const cs = getComputedStyle(el); const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2; return Math.round(el.getBoundingClientRect().height / lh); };
     const head = document.querySelector('[data-testid="millionea-hub-jackpot"]');
     return {
       subtitle: lines(document.querySelector('[data-testid="millionea-hub"] p.italic')),
-      rule: lines(head?.children[2] ?? null), carry: lines(head?.children[3] ?? null),
+      rule: lines(head?.querySelector('[data-head="rule"]') ?? null), carry: lines(head?.querySelector('[data-head="carry"]') ?? null),
       floor: lines(document.querySelector('[data-testid="millionea-hub-ledger"] [data-ledger-row="floor"] span.min-w-0')),
+      ranges: [...document.querySelectorAll('[data-testid="millionea-week-strip"] li')].map((li) => [...li.querySelectorAll("[data-range] > .whitespace-nowrap")].map((el) => Math.round(el.getBoundingClientRect().width * 10) / 10)),
     };
   };
   /** The drawing's motion: each of its blocks wears the platform's skeleton sweep (`.kp-shimmer-track::after`). */
@@ -611,7 +645,12 @@ if (RUN === "a") {
   };
   const deltas = (g, r) => Object.fromEntries(["title", "strip", "jackpot", "door", "ledger", "mine", "questions"].flatMap((k) => [
     [k, g[k] && r[k] ? r[k].top - g[k].top : null], [`${k}H`, g[k] && r[k] ? r[k].height - g[k].height : null],
-  ]).concat([["rowsH", r.rows.map((x, i) => (x && g.rows[i] ? x.height - g.rows[i].height : null))]]));
+  ]).concat([
+    ["rowsH", r.rows.map((x, i) => (x && g.rows[i] ? x.height - g.rows[i].height : null))],
+    // The tenth row's top: what each row's height carries down the list.
+    ["row10", r.rowTops[9] !== undefined && g.rowTops[9] !== undefined ? r.rowTops[9] - g.rowTops[9] : null],
+    ["doors", r.doors.map((x, i) => (g.doors[i] ? { left: x.left - g.doors[i].left, width: x.width - g.doors[i].width } : null))],
+  ]));
   async function ghostSwap(ctx, locale, width, name, { reduced = false } = {}) {
     await setLocale(ctx, locale);
     const page = await ctx.newPage();
@@ -795,8 +834,11 @@ if (RUN === "a") {
       const off = deltas(m.ghost, m.real);
       console.log(`INFO L7 ${label} · page − drawing, px: ${j(off)} · the page's lines ${j(m.lines)} · viewer ${m.viewer}`);
       const guestUnmarked = reader === "guest" && m.viewer !== "guest";
-      const frame = guestUnmarked ? ["title", "strip", "jackpot", "jackpotH"] : ["title", "strip", "jackpot", "jackpotH", "door", "doorH", "ledger", "ledgerH"];
+      const frame = guestUnmarked ? ["title", "titleH", "strip", "stripH", "jackpot", "jackpotH"] : ["title", "titleH", "strip", "stripH", "jackpot", "jackpotH", "door", "doorH", "ledger", "ledgerH"];
       ok(`${label} · L7 the frame lands where it was drawn (±1px: ${frame.map((k) => `${k} ${off[k]}`).join(", ")})`, frame.every((k) => off[k] !== null && Math.abs(off[k]) <= 1), j({ off, ghost: m.ghost, real: m.real }));
+      // S5-R2-HUB · the head's two pills, each as wide as its label (`DOOR_LABELS`): the second jumped 31px at sw 360.
+      ok(`${label} · L7 the head's two doors stand where they were drawn (±1px: ${j(off.doors)})`,
+        off.doors.length === 2 && off.doors.every((d) => !!d && Math.abs(d.left) <= 1 && Math.abs(d.width) <= 1), j({ ghost: m.ghost.doors, real: m.real.doors }));
       if (reader === "guest") {
         if (guestUnmarked) console.log(`INFO L7 ${label} · the classic shell marks no guest: the guest's door stands ${off.doorH}px taller than the player's door it was drawn as, and the ledger lands ${off.ledger}px lower`);
         else ok(`${label} · L7 a marked guest is drawn no block of tickets, as the page draws none`, m.ghost.mine === null && m.real.mine === null, j({ ghost: m.ghost.mine, real: m.real.mine }));
@@ -806,6 +848,8 @@ if (RUN === "a") {
       if (width >= 1024) {
         ok(`${label} · L7 the questions' column stands where it was drawn, its rows as tall (top ${off.questions}, rows ${j(off.rowsH)})`,
           off.questions !== null && Math.abs(off.questions) <= 1 && off.rowsH.length === 3 && off.rowsH.every((x) => x !== null && Math.abs(x) <= 1), j({ ghost: m.ghost.rows, real: m.real.rows }));
+        // A pixel a row is fifteen by the list's end: the tenth row stands where it was drawn.
+        ok(`${label} · L7 the tenth question row stands where it was drawn (${off.row10}px)`, off.row10 !== null && Math.abs(off.row10) <= 1, j({ ghost: m.ghost.rowTops, real: m.real.rowTops }));
       }
       // MOTION: every block of the drawing sweeps with the platform's skeleton shimmer; under reduced motion none moves (the
       // still bar is the end state).
@@ -819,6 +863,10 @@ if (RUN === "a") {
   const closedCheck = (word) => async (page, label, locale) => {
     ok(`${label} · after the close the door follows the results`, (await page.getByTestId("millionea-hub-follow").count()) === 1);
     if (word) await stateWordChecks(page, label, locale, word);
+    // S5-R2-HUB · a closed week's held rows stand under their own label (the tile read: under the ledger, unlabelled, they
+    // read as more of the ledger), the tickets page's own title.
+    const mine = await page.evaluate(() => { const m = document.querySelector('[data-testid="millionea-hub-mine"]'); return m ? (m.firstElementChild?.tagName === "P" ? m.firstElementChild.textContent : "") : null; });
+    if (mine !== null) ok(`${label} · the reader's held rows stand under their label ("${mine}")`, mine === { en: "Your tickets", sw: "Tiketi zako", zh: "您的彩票" }[locale], j(mine));
   };
   await shoot("closed", "classic", demoClassic, { check: closedCheck({ en: "Sales closed", sw: "Imefungwa", zh: "已截止" }) });
   await shoot("closed", "journey", demoJourney, { check: closedCheck(null), matrix: { sw: [360, 1280] } });
@@ -927,6 +975,22 @@ if (RUN === "a") {
     ok(`${label} · L13 each voided main says what it leaves the week`, words === 6, `void words=${words}`);
     const refund = await page.locator('[data-row="refund"]').first().textContent().catch(() => null);
     ok(`${label} · L15 the conditional refund row carries no dash and no figure`, refund === "", j(refund));
+    // The lead's 7b · the head's absent figure is the platform's empty slot: the em-dash in the faint ink, hidden from the
+    // screen reader (the market card's `.mcardp-pct--empty`), on the figure's own line.
+    const slot = await page.evaluate(() => {
+      const fig = document.querySelector('[data-testid="millionea-hub-figure"]');
+      const dash = fig?.firstElementChild;
+      if (!fig || !dash) return null;
+      // The faint ink as the stylesheet computes it (its token through the theme's colour, never a string of our own).
+      const probe = document.createElement("span");
+      probe.className = "text-text-faint";
+      document.body.appendChild(probe);
+      const faint = getComputedStyle(probe).color;
+      probe.remove();
+      return { text: dash.textContent, hidden: dash.getAttribute("aria-hidden"), color: getComputedStyle(dash).color, faint };
+    });
+    ok(`${label} · 7b the head's absent figure is the platform's empty slot (the faint em-dash, hidden from the screen reader)`,
+      !!slot && slot.text === "—" && slot.hidden === "true" && slot.color === slot.faint, j(slot));
     await stateWordChecks(page, label, locale, { en: "Week is being voided", sw: "Wiki inabatilishwa", zh: "整周作废中" });
     await zhLineChecks(page, label, locale, ["millionea-hub-voiding"]);
   };

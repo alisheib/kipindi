@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { MaswaliFacts, factRuns, factsOf, keepFact } from "@/components/maswali/maswali-facts";
 import { counted, eatClock, eatWeekday, eatWeekdayClock, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
 import { MaswaliLastWeek } from "@/components/maswali/maswali-pool-figure";
-import { numeralFace } from "@/components/maswali/maswali-numerals";
+import { numeralFace, weekdayClock } from "@/components/maswali/maswali-numerals";
 import { formatEatDate } from "@/lib/eat-day";
 import { fillNodes } from "@/lib/fill-nodes";
 import { fill, formatNumber } from "@/lib/utils";
@@ -41,6 +41,32 @@ export function closeMovedWords(t: Dict, toMs: number, fromMs: number): ReactNod
   const sameDay = eatWeekday(t, toMs) === eatWeekday(t, fromMs) && Math.abs(toMs - fromMs) < 86_400_000;
   const line = t.millionea.closeMoved;
   return fillNodes(line, { when: meet(line, "when", eatWeekdayClock(t, toMs)), from: meet(line, "from", sameDay ? eatClock(fromMs) : eatWeekdayClock(t, fromMs)) });
+}
+
+/**
+ * THE CLOSE LINE, IN THE ONE WORDING (the lead's ruling, 2026-10-22: `salesCloseColon`, the slip's and the ticket's words —
+ * "Sales close: Friday 18:00 EAT", "Mauzo yanafungwa: Ijumaa 18:00 EAT", "销售截止：周五 18:00 EAT"; the hub said "Sales close
+ * Friday 18:00", with no zone). The weekday in the sentence's face and its own span, which steps aside in the last hour
+ * beside the closing pill (`.kp-mln-close-day`, R1-motion M8); the clock a `.mono` numeral (§T5); and the zone held to the
+ * clock — one unbreakable run (A1: a clock with its zone) — in its own span, which below 360 steps aside in that hour too.
+ */
+export function closeWords(t: Dict, closesMs: number): ReactNode {
+  const [before = "", after = ""] = t.millionea.salesCloseColon.split("{when}");
+  return (
+    <>
+      {before}
+      <span className="whitespace-nowrap">
+        {weekdayClock(t, closesMs, { className: "text-text", dayClass: "kp-mln-close-day" })}
+        <span className="kp-mln-close-zone">{after}</span>
+      </span>
+    </>
+  );
+}
+
+/** L9/P17 · the paused notice's words: Millionea's own sentence, kept as every Millionea line is (`keepFact`) — its last two
+ *  words one run ("salama." stood alone at sw 320), any numeral a wording holds in the numerals' face. */
+export function pausedWords(t: Dict, locale: Locale): ReactNode {
+  return keepFact(locale, t.millionea.paused);
 }
 
 /** M6 · a week being voided, named: how many mains voided against how few valid reserves, and by when it is final if no

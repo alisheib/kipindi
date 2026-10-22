@@ -5,7 +5,9 @@ import { PageContainer } from "@/components/layout/page-container";
 import { PAGE_HEADER_PILL, PageHeader } from "@/components/ui/page-header";
 import { ReceiptRow } from "@/components/ui/receipt-row";
 import { RoutePick } from "@/components/ui/route-pick";
+import { I } from "@/components/ui/glyphs";
 import { GhostLine } from "@/components/maswali/maswali-ghost";
+import { MillioneaGlyph } from "@/components/maswali/maswali-glyph";
 import { useT } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n-dict";
 import { cn } from "@/lib/utils";
@@ -39,12 +41,46 @@ const WRAPS: Record<Locale, { subtitle: Wrap; rule: Wrap; floor: Wrap }> = {
   en: { subtitle: [3, 2, 1], rule: [2, 2, 2], floor: [1, 1, 1] },
   zh: { subtitle: [2, 2, 1], rule: [2, 1, 1], floor: [1, 1, 1] },
 };
-/** Each line's place in each band: drawn where the band has that many lines, gone where it has fewer (literal classes, so
- *  the stylesheet holds every one). */
+/** Each line's place in each band: drawn where the band has that many lines, gone where it has fewer — and the band's last
+ *  line at each width drawn short, as a sentence's last line is (a one-line subtitle at 1280 was a bar across the whole
+ *  measure). Literal classes, so the stylesheet holds every one. */
 const SHOWN = { narrow: ["hidden", "block"], phone: ["xs:hidden", "xs:block"], wide: ["md:hidden", "md:block"] } as const;
+const SHORT = { narrow: ["w-full", "w-[62%]"], phone: ["xs:w-full", "xs:w-[62%]"], wide: ["md:w-full", "md:w-[62%]"] } as const;
 function shownIn(i: number, n: Wrap): string {
   return cn(SHOWN.narrow[i < n[0] ? 1 : 0], SHOWN.phone[i < n[1] ? 1 : 0], SHOWN.wide[i < n[2] ? 1 : 0]);
 }
+function lengthIn(i: number, n: Wrap): string {
+  return cn(SHORT.narrow[i === n[0] - 1 ? 1 : 0], SHORT.phone[i === n[1] - 1 ? 1 : 0], SHORT.wide[i === n[2] - 1 ? 1 : 0]);
+}
+
+/**
+ * THE HEAD'S TWO DOORS (How to play; the reader's tickets) as the page's pills set their labels — the numerals' mono at the
+ * caption rung, 11px tracked 0.2px (`PAGE_HEADER_PILL`) — each label's length in the face's own units: a Latin character
+ * one `ch` of the monospaced face, an ideograph one `em`. Numbers, never words (a drawing reads no Millionea word,
+ * `test:maswali-ui` 1.3); `test:maswali-hub` 19.3 holds each to the dictionary's own label, and the drive measures each pill
+ * against the page's. Each pill's glyph is the page's own, unpainted, so its box is the page's box. (The pills were bars of
+ * one width in every language: on landing the second jumped 31px at sw 360.)
+ */
+type Label = readonly [latin: number, ideographs: number];
+export const DOOR_LABELS: Record<Locale, readonly [how: Label, tickets: Label]> = {
+  sw: [[16, 0], [11, 0]],
+  en: [[11, 0], [12, 0]],
+  zh: [[0, 4], [0, 4]],
+};
+const labelWidth = ([latin, wide]: Label) => `calc(${latin}ch + ${wide}em + ${((latin + wide) * 0.2).toFixed(1)}px)`;
+
+/**
+ * THE STRIP'S RANGES as the page sets them (`maswali-week-strip.tsx`): each its two kept runs — "Jumatatu 00:01 –" and
+ * "Ijumaa 18:00 EAT" — with the one space between them where the line may break, so a range wraps in the drawing exactly
+ * where the page's does (Swahili's sales range takes two lines in a third of the measure, from 768 to ~800 — and stood
+ * 20px taller than its drawing). The week's template in each language, each run's width (bars, never words); the drive
+ * prints the page's runs and holds the strip's band to them.
+ */
+const RANGES: Record<Locale, readonly (readonly [string, string])[]> = {
+  sw: [["w-[109.4px]", "w-[109.9px]"], ["w-[115px]", "w-[50.8px]"], ["w-[60.9px]", "w-[56.4px]"]],
+  en: [["w-[101.7px]", "w-[107.4px]"], ["w-[106.7px]", "w-[45.8px]"], ["w-[55.8px]", "w-[51.6px]"]],
+  zh: [["w-[78.3px]", "w-[95.8px]"], ["w-[78.3px]", "w-[25.9px]"], ["w-[36px]", "w-[25.9px]"]],
+};
 
 /**
  * A line of words in the page's own type: the drawing's bar inside the very line box those words fill (`text` names their
@@ -60,7 +96,7 @@ function Lines({ n, text, className, sweep = false }: { n: Wrap; text: string; c
   return (
     <span className={cn("block", text, className)}>
       {Array.from({ length: most }, (_, i) => (
-        <Line key={i} width={i === most - 1 ? "w-[62%]" : "w-full"} className={shownIn(i, n)} sweep={sweep} />
+        <Line key={i} width={lengthIn(i, n)} className={shownIn(i, n)} sweep={sweep} />
       ))}
     </span>
   );
@@ -113,6 +149,7 @@ function LedgerRow({ r, floorLines }: { r: GhostRow; floorLines: Wrap }) {
 export function MillioneaHubGhost() {
   const { t, locale } = useT();
   const wraps = WRAPS[locale];
+  const doors = DOOR_LABELS[locale];
   const head: ReactNode = (
     <div className={cn(HUB_POOL_HEAD.box, SWEEP, hubCell(true, "head"))} data-ghost="jackpot">
       <Line text={HUB_POOL_HEAD.label} width="w-[64px]" />
@@ -140,7 +177,9 @@ export function MillioneaHubGhost() {
     </div>
   );
   return (
-    <PageContainer tier="reading">
+    // The page root's own class (`kp-mln-zh`, page.tsx): Chinese eyebrows at the label rung, 12/16 (globals.css A3) — the
+    // jackpot's label among them, which stood 2px short in zh.
+    <PageContainer tier="reading" className="kp-mln-zh">
       {/* `data-ghost-page`: which page's drawing this is — the one marker the hop drive reads (qa:millionea-ghost-hops). */}
       <div className="flex flex-col gap-6" aria-busy="true" data-ghost-page="hub">
         <div aria-hidden>
@@ -156,23 +195,30 @@ export function MillioneaHubGhost() {
             subtitle={<Lines n={wraps.subtitle} text="" sweep />}
             actionsWrap
             actions={(
-              <span className="flex shrink-0 items-center gap-1">
-                <span className={cn(PAGE_HEADER_PILL, "w-[112px]", SWEEP)} />
-                <span className={cn(PAGE_HEADER_PILL, "w-[104px]", SWEEP)} />
+              <span className="flex shrink-0 items-center gap-1" data-ghost="doors">
+                <span className={cn(PAGE_HEADER_PILL, SWEEP)}>
+                  <MillioneaGlyph name="howTo" s={13} className="invisible" />
+                  <span className="shrink-0" style={{ width: labelWidth(doors[0]) }} />
+                </span>
+                <span className={cn(PAGE_HEADER_PILL, SWEEP)}>
+                  <I.ticket s={13} className="invisible" />
+                  <span className="shrink-0" style={{ width: labelWidth(doors[1]) }} />
+                </span>
               </span>
             )}
           />
         </div>
         <div className={HUB_GRID} aria-hidden>
-          {/* The strip: three phases, each a dot's place and two lines of the strip's own type (its label over its range),
-              a column each from 768, across the measure (`maswali-week-strip.tsx`). */}
+          {/* The strip: three phases, each a dot's place and the strip's own type — its label over its range, the range
+              its two runs with the space between them (`RANGES`), so it wraps where the page's does — a column each from
+              768, across the measure (`maswali-week-strip.tsx`). */}
           <div className={cn("flex flex-col gap-2 md:grid md:grid-cols-3 md:gap-3", HUB_STRIP)} data-ghost="strip">
-            {[0, 1, 2].map((i) => (
+            {RANGES[locale].map(([from, to], i) => (
               <div key={i} className="flex items-baseline gap-2 md:border-t-2 md:border-border-strong md:pt-1.5">
                 <span className="h-1.5 w-1.5 shrink-0" />
                 <span className="min-w-0 text-body-sm">
                   <Line width="w-[96px] max-w-full" sweep />
-                  <Line width="w-[208px] max-w-full" sweep />
+                  <span className="block"><GhostLine className={cn(from, SWEEP)} />{" "}<GhostLine className={cn(to, SWEEP)} /></span>
                 </span>
               </div>
             ))}

@@ -811,14 +811,18 @@ const cardBlockDefects = (src: string) => {
   ok("4.P3b′ PLANT · a 768-only block put back on the card is reported", old768 !== read(CARD) && cardBlockDefects(old768).some((x) => x.includes("768")));
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-HUB H1): the pool block is its HEAD and its LEDGER now; the order is the head's.
   const { MaswaliPoolHead } = req("../src/components/maswali/maswali-pool-figure.tsx") as { MaswaliPoolHead: (p: Record<string, unknown>) => unknown };
-  const hubOrder = LOCALES.filter((l) => {
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-HUB, the lead's ruling): the card's order is DOORS' M2 one — the carry's line
+  // right after the figure it adds to (under the fee it read as adding to the fee, as the hub's sw tile reader read it).
+  const carryFirst = (l: L3, text: string) => {
     const d = dict[l].millionea;
-    const text = textOf(inApp(l, h(MaswaliPoolHead as never, { t: dict[l], locale: l, pct: 13,
-      view: { kind: "selling", carriedIn: { week: 47, amount: null }, sales: { tickets: 41, amount: 41_000 }, pool: 41_000, floor: 1_000_000, jackpot: 1_000_000 } } as never)));
     const rule = text.indexOf(fill(FACTS.factsOf(d.ruleShared)[0] ?? "", { pct: 13 })), carry = text.indexOf(fill(d.pendingCarry, { week: 47 }));
-    return !(rule >= 0 && carry > rule);
-  });
-  ok("4.P3c · the hub's pool block says the same order: the figure, the R-HEADLINE's rule, then the carry's line (it said the carry first)", hubOrder.length === 0, j(hubOrder));
+    return carry >= 0 && rule > carry;
+  };
+  const hubOrder = LOCALES.filter((l) => !carryFirst(l, textOf(inApp(l, h(MaswaliPoolHead as never, { t: dict[l], locale: l, pct: 13,
+    view: { kind: "selling", carriedIn: { week: 47, amount: null }, sales: { tickets: 41, amount: 41_000 }, pool: 41_000, floor: 1_000_000, jackpot: 1_000_000 } } as never)))));
+  ok("4.P3c · the hub's pool block says the card's order: the figure, the carry's line that adds to it, then the R-HEADLINE's rule", hubOrder.length === 0, j(hubOrder));
+  ok("4.P3c′ PLANT · the head's old order (the rule, then the carry's line) is reported",
+    !carryFirst("en", `${fill(FACTS.factsOf(dict.en.millionea.ruleShared)[0] ?? "", { pct: 13 })} ${fill(dict.en.millionea.pendingCarry, { week: 47 })}`));
 }
 
 // P4 · the strip: a label, then its whole range
