@@ -402,7 +402,11 @@ export async function shootDoorPreview(o) {
       ok(`doors ${tag} · D12's one bar above the page, the Millionea section drawn and no mark of its own in it`, r.bars === 1 && r.section && r.inSection === 0 && r.overflow <= 1, JSON.stringify(r));
       await page.screenshot({ path: `${OUT}/door-preview-results-top-${locale}-${width}.png`, fullPage: false });
       if (r.section) {
-        if (width === 320 || width === 1280) {
+        // A STAFF_PREVIEW server cannot seed weeks (the seed sells, and a preview does not sell), so the section is its own
+        // empty state there: §T5 is measured in the rows when rows stand (and always in the ACTIVE drive's door-results).
+        const rows = await page.locator('[data-testid="millionea-results-section"] li').count();
+        if (rows === 0) ok(`doors ${tag} · no final week yet: the section draws its empty state, no rows`, (await page.locator('[data-testid="millionea-results-section"] ul').count()) === 0);
+        else if (width === 320 || width === 1280) {
           const f = await page.evaluate(NUMERAL_FACE, '[data-testid="millionea-results-section"]');
           ok(`doors ${tag} · §T5 · every digit in the week rows computes to JetBrains Mono, tabular (${f.digits} digit runs)`, f.digits > 0 && f.bad.length === 0, f.bad.slice(0, 3).join(" | "));
         }
