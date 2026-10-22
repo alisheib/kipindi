@@ -97,6 +97,13 @@ Paths under `$S` are the lead's scratchpad on OMEGA; re-point them on another ma
 - millionea-shell 1.1b counts MillioneaPreviewMark calls (9): goes red as the lanes remove theirs in round 2 → at the merge
   re-pin to "no call left" and delete the component (PLATFORM names its file/tests).
 
+## MAIN 67e47f8d2 LIVE (2026-10-22 08:12:48Z; Railway deploy requested 07:15Z on Ali's word). Read-back (lead, signed out,
+## tools/readback.sh): dpl on www, apex and the Railway host; /api/health ok (DB reachable, migrated, configured);
+## qa:chunks-prod 6/6 on www and apex (154 GETs each); production qa:live ALL PASS 364/0. OWED: record U43's part in
+## MOBILE-VISUAL-PLAN §0 (its ⛔ deploy paragraph: "On main, NOT yet deployed" → live, with these results) WITH the next
+## push to main (S5's) — no docs-only deploy during Railway's backlog. asheib-bb's session had ended (not told); the
+## marketing check (Jay's own-number test of the harm-marker mute) can run now — its owner's.
+
 ## ROUND 2 STOP (2026-10-22 ~08:00Z, Ali: "finish here on a clean level … continue Maswali from a new prompt")
 - REGISTER r2 at a8e25a07d (claude/maswali-s5-r2-register): DONE items (1) covered() accepts --state-yield-opacity (+ waits
   for the bubble's opacity to settle), (4) preview-mark calls removed (index, week, How; millionea-shell 1.1b re-pinned to

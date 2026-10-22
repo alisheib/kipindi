@@ -26,8 +26,8 @@ branch's head commit says what is verified and what is left.
   stop). Re-run it on the final head.
 - **Railway:** a security incident (status.railway.com) — Railway advises rolling every env var stored there; that is
   Ali's (payout credentials and the Anthropic keys first). Builds are back for Pro; `main` `67e47f8d2` was requested at
-  07:15Z on Ali's word and was still QUEUED at 08:05Z (Railway: "deployments … taking longer than usual to start"). When
-  it lands: `tools/readback.sh <sha>`, record U43's part in MOBILE-VISUAL-PLAN §0, tell asheib-bb.
+  07:15Z on Ali's word and went LIVE at 08:12:48Z — read-back green (dpl on www/apex/Railway host, health ok,
+  qa:chunks-prod 6/6 on both, production qa:live 364/0). Owed: U43's record in MOBILE-VISUAL-PLAN §0, with S5's push to main.
 
 ### Next, in order
 1. Fix the dark-safety blocker (DOORS' markets loading props) and finish each round-2 branch's "left" list.
