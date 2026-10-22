@@ -254,7 +254,9 @@ export async function editDraftQuestions(input: {
   const result = await withLock(MASWALI_CHAIN_LOCK, async (tx): Promise<Result<{ version: string }>> => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
-    if (week.state !== "DRAFT") return refuse(`Week ${week.code} is ${week.state}: its questions are frozen (MR-13).`);
+    // MR-13 · past the draft, the questions are frozen. ⛔ Every refusal in this file reads as words, never a programme code
+    // (S6-ADMIN, DESIGN_AUTHORITY §M8a item 29): the code stays in a comment beside it.
+    if (week.state !== "DRAFT") return refuse(`Week ${week.code} is ${week.state}: its questions are frozen.`);
     if (!Array.isArray(input.edits) || input.edits.length < 1 || input.edits.length > MAIN_COUNT + RESERVE_COUNT) {
       return refuse("Choose one to fifteen changed questions to save.");
     }
@@ -328,7 +330,8 @@ async function draftAuthorship(week: StoredWeek, current: string, injected?: typ
     return "The draft's history is longer than one read can check, so who wrote it cannot be established. Nothing was attested; an administrator must review it.";
   }
   if (!authorKnown) {
-    return "The draft's current text has no audit record of who wrote it (an edit's record was not written), so no second reader can be established (MB-79). Nothing was attested; an administrator must review the draft's history — a recorded edit restores it.";
+    // MB-79 · the second reader is never the text's author.
+    return "The draft's current text has no audit record of who wrote it (an edit's record was not written), so no second reader can be established. Nothing was attested; an administrator must review the draft's history — a recorded edit restores it.";
   }
   return { editors };
 }
@@ -359,7 +362,7 @@ export async function attestParity(input: {
     const authorship = await draftAuthorship(week, current, input.readHistory);
     if (typeof authorship === "string") return refuse(authorship);
     if (authorship.editors.has(input.officerId)) {
-      return refuse("You edited this draft since its last attestation, so you cannot attest it — a second reader who did not write it must (MB-79).");
+      return refuse("You edited this draft since its last attestation, so you cannot attest it — a second reader who did not write it must."); // MB-79
     }
     const at = (input.now ?? new Date()).toISOString();
     await weekStore.patch(week.id, { parityAttestedBy: input.officerId, parityAttestedAt: at }, tx ?? undefined);
@@ -380,7 +383,7 @@ export type GuaranteeReader = { balance(): Promise<number | null> };
  * builder's checklist (`consoleWeekDetail`) lists them too, so the page never says every check passes while the open
  * would refuse.
  */
-export const NO_LICENCE_BASIS = "No licence basis is recorded. The Owner records it before any week opens (OD-01).";
+export const NO_LICENCE_BASIS = "No licence basis is recorded. The Owner records it before any week opens."; // OD-01
 
 /**
  * OD-02: the guarantee must cover every unsettled week, this one included, before it opens — each at its OWN frozen floor
@@ -392,19 +395,19 @@ export async function guaranteeProblem(week: StoredWeek, rules: MaswaliRulesSnap
   const unsettled = await weekStore.list({ states: ["OPEN", "CLOSED", "RESOLVING"] });
   const floors = unsettledFloors(unsettled);
   if (!floors.ok) {
-    return `Week ${floors.unreadable.map((w) => w.code).join(", ")}: its frozen rules cannot be read, so what the guarantee must cover is unknown; no week opens until they can be (OD-02).`;
+    return `Week ${floors.unreadable.map((w) => w.code).join(", ")}: its frozen rules cannot be read, so what the guarantee must cover is unknown; no week opens until they can be.`;
   }
   const need = guaranteeRequirement([...floors.weeks, { floor: rules.floorTzs, confirmedCarryIn: week.rolloverIn }]);
   const held = await guarantee.balance().catch(() => null);
-  if (held === null) return "The guarantee balance could not be read; no week opens until it can be (OD-02).";
-  return held < need ? `The guarantee holds ${formatTzs(held)}; ${formatTzs(need)} is needed to open (OD-02).` : null;
+  if (held === null) return "The guarantee balance could not be read; no week opens until it can be.";
+  return held < need ? `The guarantee holds ${formatTzs(held)}; ${formatTzs(need)} is needed to open.` : null;
 }
 
 /** Every reason a draft cannot open, in words — empty when it can. Pure over what the open read. */
 export async function openProblems(week: StoredWeek, questions: StoredQuestion[], rules: MaswaliRulesSnapshot, nowMs: number): Promise<string[]> {
   const p: string[] = [];
   if (questions.length !== MAIN_COUNT + RESERVE_COUNT) p.push(`A week is ${MAIN_COUNT} mains and ${RESERVE_COUNT} reserves; this one has ${questions.length}.`);
-  if (!week.parityAttestedBy) p.push("A second reader has not attested that English, Swahili and Chinese agree (MB-79).");
+  if (!week.parityAttestedBy) p.push("A second reader has not attested that English, Swahili and Chinese agree."); // MB-79
   const closeMs = Date.parse(week.closesAt);
   if (!(closeMs > nowMs)) p.push("The sales close has already passed.");
   const earliest = Math.min(...questions.map((q) => Date.parse(q.eventStartsAt)));
@@ -425,7 +428,8 @@ export async function openProblems(week: StoredWeek, questions: StoredQuestion[]
     if (Date.parse(q.voidDeadlineAt) > finalMs) p.push(`${label}: its void deadline is after the week's final deadline.`);
     if (Date.parse(q.voidDeadlineAt) > Date.parse(week.opensAt) + 7 * DAY_MS + rules.voidDeadlineHours * 3_600_000) p.push(`${label}: its void deadline is too far after the open.`);
     const pr = q.probabilityEstimate;
-    if (pr == null || !q.probabilitySource) p.push(`${label}: it needs an estimated probability and its source (OD-14).`);
+    // OD-14 · how questions are built: an estimated chance and its source, inside the rules' band.
+    if (pr == null || !q.probabilitySource) p.push(`${label}: it needs an estimated probability and its source.`);
     else if (pr < rules.questionCaps.probabilityMin || pr > rules.questionCaps.probabilityMax) {
       p.push(`${label}: its estimated probability ${Math.round(pr * 100)}% is outside ${Math.round(rules.questionCaps.probabilityMin * 100)}–${Math.round(rules.questionCaps.probabilityMax * 100)}%.`);
     }
@@ -438,14 +442,14 @@ export async function openProblems(week: StoredWeek, questions: StoredQuestion[]
     }
   }
   for (const [competition, n] of perCompetition) {
-    if (n > rules.questionCaps.maxPerCompetition) p.push(`${n} questions share ${competition}; at most ${rules.questionCaps.maxPerCompetition} may (OD-14).`);
+    if (n > rules.questionCaps.maxPerCompetition) p.push(`${n} questions share ${competition}; at most ${rules.questionCaps.maxPerCompetition} may.`); // OD-14
   }
-  if (reserveSources.size < rules.questionCaps.minReserveSources) p.push(`The reserves come from ${reserveSources.size} source(s); at least ${rules.questionCaps.minReserveSources} are needed (OD-14).`);
+  if (reserveSources.size < rules.questionCaps.minReserveSources) p.push(`The reserves come from ${reserveSources.size} source(s); at least ${rules.questionCaps.minReserveSources} are needed.`); // OD-14
   const events = new Map<string, string>();
   for (const q of questions) {
     const key = `${q.sourceDomain}|${q.eventStartsAt}|${q.criterionEn.toLowerCase().replace(/\W+/g, " ").trim()}`;
     const prev = events.get(key);
-    if (prev) p.push(`${slotLabel(q.slot)} and ${prev} are the same event (OD-14: no shared events).`);
+    if (prev) p.push(`${slotLabel(q.slot)} and ${prev} are the same event; no two questions may share one.`); // OD-14: no shared events
     else events.set(key, slotLabel(q.slot));
   }
   return p;
@@ -487,13 +491,14 @@ export async function openWeek(input: { weekId: string; officerId: string; guara
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
     if (week.state !== "DRAFT") return refuse(`Week ${week.code} is already ${week.state}.`);
-    if (await weekStore.openFor(week.visibility)) return refuse(`Another ${week.visibility === "DRIVE" ? "drive" : "public"} week is open (MR-3).`);
+    // MR-3 · one week of a line sells at a time.
+    if (await weekStore.openFor(week.visibility)) return refuse(`Another ${week.visibility === "DRIVE" ? "drive" : "public"} week is open; one week of a line sells at a time.`);
     // ⛔ R3 · THE CHAIN IS THE CALENDAR (MR-3; `seq` only numbers the drafts): a week whose calendar week comes BEFORE one of
     //    its line that has already opened never opens — it would settle after it, claiming a carry the later week may
     //    already have drawn. In the template this never bites (one week of a line sells at a time, above, and no week
     //    opens after its own close, `openProblems`); it holds when a later week was opened early and closed early.
     const later = (await weekStore.list({ visibility: week.visibility })).find((w) => w.state !== "DRAFT" && calendarStartMs(w) > calendarStartMs(week));
-    if (later) return refuse(`Week ${later.code} comes after week ${week.code} and has already opened; weeks open, claim and settle strictly in calendar order (MR-3), so this week can no longer open.`);
+    if (later) return refuse(`Week ${later.code} comes after week ${week.code} and has already opened; weeks open, claim and settle strictly in calendar order, so this week can no longer open.`);
     // MR-30 · the sunset: nothing opens after a final week that ran, and a final week that voided or sold nothing hands
     // the role to the next PUBLIC week to open (OD-03). While a final week is ENDING, only a week whose calendar comes
     // AFTER it is refused: an earlier week drafted beside it still runs.
@@ -712,7 +717,7 @@ export async function moveClose(input: { weekId: string; toCloseAt: string; expe
     //    close, moved it later and reopened sales the database had already closed. The later of the two clocks decides,
     //    and it measures the earlier close's lead too.
     const atMs = Math.max(nowMs, await dbNowMs(tx));
-    if (fromMs <= atMs) return refuse("The close has already passed; it can never move back (MR-13).");
+    if (fromMs <= atMs) return refuse("The close has already passed; it can never move back."); // MR-13
     const rules = frozenRules(week);
     if (!rules) return refuse(`Week ${week.code}'s frozen rules cannot be read.`);
     // Every sold ticket keeps its free-cancel window (RULES §2.6, frozen in the week's feeSnapshot): an earlier close must
@@ -785,7 +790,7 @@ export async function closeWeek(input: { weekId: string; actorId?: string; early
     //    the database's clock reaches the close, and stamped at the database's instant. ⭐ S7-F2 (L1) · the refusal says how
     //    far that clock is short, so the scheduler asks again the moment it arrives, never at the 5-minute reconcile.
     const atMs = input.early ? nowMs : closeClockForTests ? closeClockForTests(nowMs) : await dbNowMs(lockTx);
-    if (!input.early && Date.parse(week.closesAt) > atMs) return { ...refuse("The close has not arrived on the database's clock (MB-84)."), dbShortMs: Date.parse(week.closesAt) - atMs };
+    if (!input.early && Date.parse(week.closesAt) > atMs) return { ...refuse("The close has not arrived on the database's clock."), dbShortMs: Date.parse(week.closesAt) - atMs };
     const rules = frozenRules(week);
     if (!rules) return refuse(`Week ${week.code}'s frozen rules cannot be read.`);
     // ⭐ R2 (adversarial review, 2026-10-17) · THE CLOSE WAITS FOR EVERY PURCHASE AND CANCEL IN FLIGHT. Both commit inside
@@ -883,7 +888,7 @@ export async function sealQuestion(input: {
   const evidence = input.evidence.trim();
   if (evidence.length < 10) return refuse("A seal records its evidence (at least 10 characters).");
   if (input.outcome !== "YES" && input.outcome !== "NO" && input.outcome !== "VOID") return refuse("A result is YES, NO or VOID.");
-  if (input.outcome === "VOID" && !isMaswaliVoidReason(input.voidReason)) return refuse("A void names its ground from the closed list (MR-15).");
+  if (input.outcome === "VOID" && !isMaswaliVoidReason(input.voidReason)) return refuse("A void names its ground from the closed list."); // MR-15
   if (input.outcome !== "VOID" && input.voidReason) return refuse("Only a VOID carries a void ground.");
   // ⛔ S7-F2 · THE TWO-OFFICER SETTING IS READ, OR THE SEAL REFUSES (MR-14; MB-82: its value at stage 1 is the seal's own).
   //    A read that could not ask answered the code default, one officer, so a seal made while it failed was single-officer
@@ -899,7 +904,7 @@ export async function sealQuestion(input: {
     const questions = await questionStore.listForWeek(week.id);
     const q = questions.find((x) => x.slot === input.slot);
     if (!q) return refuse(`No ${slotLabel(input.slot)} in week ${week.code}.`);
-    if (q.outcome !== null) return refuse(`${slotLabel(q.slot)} is already sealed; correct it through its own correction (OD-09).`);
+    if (q.outcome !== null) return refuse(`${slotLabel(q.slot)} is already sealed; correct it through its own correction.`); // OD-09
     if (input.outcome === "VOID" && !voidGroundAvailable(input.voidReason as MaswaliVoidReason, Date.parse(q.voidDeadlineAt), nowMs)) {
       return refuse(`${slotLabel(q.slot)} cannot void on that ground before its void deadline (${q.voidDeadlineAt}).`);
     }
@@ -1010,7 +1015,7 @@ export async function correctSeal(input: {
   const evidence = input.evidence.trim();
   if (evidence.length < 10) return refuse("A correction records its evidence (at least 10 characters).");
   if (input.outcome !== "YES" && input.outcome !== "NO" && input.outcome !== "VOID") return refuse("A result is YES, NO or VOID.");
-  if (input.outcome === "VOID" && !isMaswaliVoidReason(input.voidReason)) return refuse("A void names its ground from the closed list (MR-15).");
+  if (input.outcome === "VOID" && !isMaswaliVoidReason(input.voidReason)) return refuse("A void names its ground from the closed list."); // MR-15
   if (input.outcome !== "VOID" && input.voidReason) return refuse("Only a VOID carries a void ground.");
   if ((input.expectedOutcome !== "YES" && input.expectedOutcome !== "NO" && input.expectedOutcome !== "VOID") || !input.expectedSealedAt) {
     return refuse("Reload the week and review the sealed result before correcting it.");
@@ -1185,7 +1190,7 @@ export async function claimCarry(input: { weekId: string; readJackpot: () => Pro
     if (!week) return refuse("No such week.");
     if (week.rolloverIn != null) return { ok: true, rolloverIn: week.rolloverIn, already: true };
     const blocking = await carryBlocker(week);
-    if (blocking) return refuse(`Week ${blocking.code} is not settled yet; the carry is claimed strictly in order (MR-3).`);
+    if (blocking) return refuse(`Week ${blocking.code} is not settled yet; the carry is claimed strictly in order.`); // MR-3
     const r = await input.readJackpot().catch(() => null);
     if (r === null || !Number.isSafeInteger(r) || r < 0) return refuse("The jackpot balance could not be read, so no carry was claimed.");
     // S5-FIX-SRV · the claim takes the chain lock's transaction; its audit row is owed, written once that has committed.
@@ -1249,17 +1254,18 @@ function stopStanding(line: StoredWeek[], atMs: number): { onSale: StoredWeek | 
  */
 function stopNextAct(s: ReturnType<typeof stopStanding>, asked: StoredWeek | null, clockMs: number): string {
   const { onSale, deciding, next } = s;
+  // OD-03 · a final week is announced a full week before it opens (shorter only for the next week while results are decided).
   if (onSale && onSale.id !== asked?.id) return `To stop Millionea, make the week on sale, ${onSale.code}, the final week: it may be made final at once.`;
   if (deciding) {
     return next
-      ? `To stop Millionea, make the next week to open, ${next.code}, the final week: while week ${deciding.code}'s results are decided, it may be made final although it opens in less than a full week (OD-03).`
-      : `To stop Millionea, draft the next week and make it the final week: while week ${deciding.code}'s results are decided, it may be made final although it opens in less than a full week (OD-03).`;
+      ? `To stop Millionea, make the next week to open, ${next.code}, the final week: while week ${deciding.code}'s results are decided, it may be made final although it opens in less than a full week.`
+      : `To stop Millionea, draft the next week and make it the final week: while week ${deciding.code}'s results are decided, it may be made final although it opens in less than a full week.`;
   }
-  if (!next) return "To stop Millionea, draft the next week and make it the final week, a full week before it opens or once it is on sale (OD-03).";
+  if (!next) return "To stop Millionea, draft the next week and make it the final week, a full week before it opens or once it is on sale.";
   if (Date.parse(next.opensAt) - clockMs >= SUNSET_NOTICE_MS) {
-    return `To stop Millionea, make the next week to open, ${next.code}, the final week: it opens a full week or more from now (OD-03).`;
+    return `To stop Millionea, make the next week to open, ${next.code}, the final week: it opens a full week or more from now.`;
   }
-  return `To stop Millionea, make week ${next.code} the final week once it opens (a week on sale may be made final at once), or make a week that opens a full week or more from now the final week (OD-03).`;
+  return `To stop Millionea, make week ${next.code} the final week once it opens (a week on sale may be made final at once), or make a week that opens a full week or more from now the final week.`;
 }
 
 /**
@@ -1337,7 +1343,7 @@ export async function sunsetMaswali(input: { weekId: string; ownerId: string; ty
       basis = "FULL_NOTICE";
       if (Date.parse(week.opensAt) - clockMs < SUNSET_NOTICE_MS) {
         if (onSale || !deciding || next?.id !== week.id) {
-          return refuse(`Week ${week.code} opens in less than a week; a final week is announced a full week ahead (OD-03). ${stopNextAct(standing, week, clockMs)}`);
+          return refuse(`Week ${week.code} opens in less than a week; a final week is announced a full week ahead. ${stopNextAct(standing, week, clockMs)}`); // OD-03
         }
         basis = "NEXT_AFTER_CLOSE";
       }
@@ -1373,5 +1379,5 @@ export async function millioneaPromotionBlock(userId: string): Promise<string | 
   if (live.length === 0) return null;
   const codes: string[] = [];
   for (const cycleId of new Set(live.map((t) => t.cycleId))) codes.push((await weekStore.get(cycleId))?.code ?? cycleId);
-  return `This account holds ${live.length} Millionea ticket(s) in a week that has not settled (${codes.join(", ")}). An insider never holds a ticket (OD-12): make the change once that week has settled.`;
+  return `This account holds ${live.length} Millionea ticket(s) in a week that has not settled (${codes.join(", ")}). An insider never holds a ticket: make the change once that week has settled.`; // OD-12
 }

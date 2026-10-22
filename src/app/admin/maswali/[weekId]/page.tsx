@@ -61,6 +61,12 @@ async function Content({ params }: Props) {
     aiSuggestion: typeof q.aiSuggestion === "object" && q.aiSuggestion ? JSON.stringify(q.aiSuggestion).slice(0, 160) : null,
   }));
   const mainsSealed = questions.filter((q) => q.slot <= MAIN_COUNT && q.outcome !== null).length;
+  // S6-ADMIN · the latest close the week's frozen rules allow (MB-28: the first event less the rules' minutes before it), in
+  // EAT: the move's form states its bound as a time. Null when the rules or the events cannot be read.
+  const firstEventMs = Math.min(...questions.map((q) => Date.parse(q.eventStartsAt)));
+  const latestClose = d.rules && Number.isFinite(firstEventMs)
+    ? { eat: fmtEat(new Date(firstEventMs - d.rules.minLockBufferMinutes * 60_000).toISOString()), minutes: d.rules.minLockBufferMinutes }
+    : null;
 
   return (
     <>
@@ -101,7 +107,7 @@ async function Content({ params }: Props) {
           <AdminCard title="Move the sales close" sw="Badilisha muda wa kufunga" >
             {/* S7-F2 · the holiday review (MB-85) stays while the close can still move: bringing it forward is done here. */}
             {(warnings ?? []).map((w, i) => <p key={i} className="mb-3 text-body-sm text-warning">{w}</p>)}
-            {canMove ? <MoveCloseForm weekId={week.id} weekCode={week.code} currentEat={fmtEat(week.closesAt)} closesAt={week.closesAt} />
+            {canMove ? <MoveCloseForm weekId={week.id} weekCode={week.code} currentEat={fmtEat(week.closesAt)} closesAt={week.closesAt} latest={latestClose} />
               : <ControlLocked what="Move the close" need={CONTROL_DOMAIN.moveMaswaliClose} block />}
           </AdminCard>
         )}

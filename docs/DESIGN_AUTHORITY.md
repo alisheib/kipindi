@@ -3277,6 +3277,18 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     "Millionea inakaribia kufikia mwisho. Wiki 52 itakuwa wiki ya mwisho.", zh "Millionea 即将结束。第52周将为最后一周。").
     Why: "It opens 30 Nov." read on 30 Nov at 09:00, of a week no one has opened, promises a moment already gone. Guards:
     `test:maswali-hub` §13 (with its plant) and `test:maswali-design` 2.F1d.
+29. **An admin reads plain words (Ali, 2026-10-22: his admin guide must be "clear, perfect … no unneeded wording"; the
+    lead's rulings G1–G9 on the S6-DOCS lane's walk of `/admin/maswali`; MASWALI-BUILD S6-ADMIN).** Every word the
+    Millionea console draws — page text, labels, hints, chips, refusals, the open's checklist, the alerts, and the
+    services' and the settlement's answers it prints — says what a rule is in plain words. ⛔ **Never a programme code**
+    (`MB-nn`, `OD-nn`, `MR-nn`, `OPEN-nn`, `R-…`): a code stays in a comment beside the words that replaced it, and the
+    words carry the rule itself — the week builder's chance hint states the band the rules allow ("The rules allow
+    30–70%"), and the move of a sales close states its latest allowed close as an EAT time ("no later than Sat 07 Nov,
+    09:30 (EAT), 30 minutes before the first event"). The evidence pack an auditor downloads reads the same way. Guard:
+    `test:maswali-admin-words` §1 — a census over every Millionea source an admin's screen can be drawn from, derived
+    from the folders (the console, its download route, every Millionea service and shared module, the lock chip) — with
+    `red:maswali-admin-words`; the desk scripts (`maswali-support-scripts.ts`) wait, named in the census, for the S6-DOCS
+    lane's item 9, and the census fails once they hold no code until their exclusion is deleted.
 
 ---
 

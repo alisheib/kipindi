@@ -77,8 +77,9 @@ export function salesPauseRowsFor(week: Pick<StoredWeek, "opensAt" | "closedAt" 
 }
 
 /** MB-92 (S6 review R2-8a) · what the pack says for a question whose evidence capture was never taken: the capture is
- *  MB-80's, which no seal writes yet — a statement, never a bare null an auditor could read as "lost". */
-export const EVIDENCE_CAPTURE_NOT_TAKEN = "capture not taken (MB-80 owed)";
+ *  MB-80's, which no seal writes yet — a statement, never a bare null an auditor could read as "lost". ⛔ In words: the
+ *  auditor reads the pack, and a programme code means nothing to them (S6-ADMIN, DESIGN_AUTHORITY §M8a item 29). */
+export const EVIDENCE_CAPTURE_NOT_TAKEN = "no capture was taken: the platform does not record source captures yet";
 
 /** The ticket CSV's columns, in order. */
 export const EVIDENCE_TICKET_COLUMNS = [

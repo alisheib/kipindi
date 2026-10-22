@@ -81,7 +81,7 @@ export function AttestOpenControls({ weekId, weekCode, attestedBy, canAttest, ca
       <ConfirmModal open={confirm} onClose={() => setConfirm(false)} loading={pending} tone="brand"
         title="Open the week for sale?" confirmLabel="Open the week"
         body={<div className="space-y-2">
-          <p>The rules, the fifteen questions and their sources freeze now and cannot change afterwards (MR-13). Players can buy as soon as Millionea is visible to them.</p>
+          <p>The rules, the fifteen questions and their sources freeze now and cannot change afterwards. Players can buy as soon as Millionea is visible to them.{/* MR-13 */}</p>
           {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
         </div>}
         onConfirm={() => run(() => openMaswaliWeekAction(fd({ weekId })), () => setConfirm(false), (warning) => raiseAuditWarning(`week:${weekId}`, warning))} />
@@ -91,8 +91,14 @@ export function AttestOpenControls({ weekId, weekCode, attestedBy, canAttest, ca
 
 // ── Move the close ──────────────────────────────────────────────────────────────────────────────────
 
-/** `closesAt` is the close this page was drawn with: the move sends it, and the service refuses if another move landed since (A3). */
-export function MoveCloseForm({ weekId, weekCode, currentEat, closesAt }: { weekId: string; weekCode: string; currentEat: string; closesAt: string }) {
+/**
+ * `closesAt` is the close this page was drawn with: the move sends it, and the service refuses if another move landed since (A3).
+ * `latest` is the latest close the week's frozen rules allow — the first event less the rules' minutes before it — in EAT,
+ * so the officer reads the bound as a time, never as a rule's name (S6-ADMIN; null when the rules cannot be read).
+ */
+export function MoveCloseForm({ weekId, weekCode, currentEat, closesAt, latest }: {
+  weekId: string; weekCode: string; currentEat: string; closesAt: string; latest: { eat: string; minutes: number } | null;
+}) {
   const mayAct = useMayAct();
   const { pending, error, run, setError } = useAct();
   const [date, setDate] = useState("");
@@ -101,7 +107,10 @@ export function MoveCloseForm({ weekId, weekCode, currentEat, closesAt }: { week
   const [auditWarning, setAuditWarning] = useState<string | null>(null);
   return (
     <div className="space-y-3 max-w-form">
-      <p className="text-body-sm text-text-secondary">Now closes {currentEat} (EAT). Earlier, never inside the next notice period; later, never past the first event less its buffer (MB-28).</p>
+      {/* MB-28 · the move's two bounds, as the service's own refusals state them (`moveClose`). */}
+      <p className="text-body-sm text-text-secondary">Now closes {currentEat} (EAT). Earlier: at least the free-cancel window from now, so every ticket keeps it. {latest
+        ? <>Later: no later than {latest.eat} (EAT), {latest.minutes} minutes before the first event.</>
+        : <>Later: never closer to the first event than the week&apos;s rules allow.</>}</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="New close date (EAT)"><DateSelect value={date} onChange={setDate} size="md" /></Field>
         <Field label="New close time (EAT)"><TimeSelect value={time} onChange={setTime} size="md" aria-label="New close time" /></Field>
@@ -261,7 +270,7 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
         title={`Void ${voidRow?.label ?? ""}?`} confirmLabel="Void the question"
         body={
           <div className="space-y-3 text-left">
-            <p>A voided main is replaced by the next usable reserve; a voided reserve is skipped (MR-17).</p>
+            <p>A voided main is replaced by the next usable reserve; a voided reserve is skipped.{/* MR-17 */}</p>
             <Field label="Ground" required error={voidTried && !isMaswaliVoidReason(voidReason) ? "Choose a ground from the list." : undefined}><Select size="md" value={voidReason} onChange={setVoidReason} ariaLabel="Void ground" options={[{ value: "", label: "Choose the ground" }, ...voidReasons.map((v) => ({ value: v, label: isMaswaliVoidReason(v) ? MASWALI_VOID_REASON_LABEL[v] : v }))]} /></Field>
             <Field label="Evidence" required error={voidTried && voidEvidence.trim().length < 10 ? "Write at least 10 characters of evidence." : undefined}><Input size="md" value={voidEvidence} onChange={(e) => setVoidEvidence(e.target.value)} placeholder="What happened, as the source records it" /></Field>
             {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
@@ -277,7 +286,7 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
         title={`Correct ${correctRow?.label ?? ""}?`} confirmLabel="Record the correction"
         body={
           <div className="space-y-3 text-left">
-            <p>Only the officer who sealed it may correct it, and only inside the objection window; the window starts again (OD-09).</p>
+            <p>Only the officer who sealed it may correct it, and only inside the objection window; the window starts again.{/* OD-09 */}</p>
             <Field label="Correct result"><Select size="md" value={correction.outcome} onChange={(v) => setCorrection((c) => ({ ...c, outcome: v }))} ariaLabel="Correct result" options={[{ value: "YES", label: "YES" }, { value: "NO", label: "NO" }, { value: "VOID", label: "VOID" }]} /></Field>
             {correction.outcome === "VOID" && <Field label="Ground" required error={correctTried && !isMaswaliVoidReason(correction.voidReason) ? "Choose a ground from the list." : undefined}><Select size="md" value={correction.voidReason} onChange={(v) => setCorrection((c) => ({ ...c, voidReason: v }))} ariaLabel="Void ground" options={[{ value: "", label: "Choose the ground" }, ...voidReasons.map((v) => ({ value: v, label: isMaswaliVoidReason(v) ? MASWALI_VOID_REASON_LABEL[v] : v }))]} /></Field>}
             <Field label="Evidence" required error={correctTried && correction.evidence.trim().length < 10 ? "Write at least 10 characters of evidence." : undefined}><Input size="md" value={correction.evidence} onChange={(e) => setCorrection((c) => ({ ...c, evidence: e.target.value }))} /></Field>

@@ -65,6 +65,14 @@ export const GUARANTEE_POLICY_LABEL: Readonly<Record<string, string>> = {
 
 /** A rate as the percentage the form shows ("0.13" → "13"), kept to two decimals of a percent. */
 const asPercent = (rate: number) => String(Math.round(rate * 10_000) / 100);
+
+/**
+ * The chance of YES a question may carry under these rules (OD-14, `questionCaps`), in percents to two decimals — what the
+ * week builder's hint states (S6-ADMIN: the officer reads the band, never the rule's code).
+ */
+export function chanceBand(c: Pick<MaswaliConfig, "questionCaps">): { min: number; max: number } {
+  return { min: Number(asPercent(c.questionCaps.probabilityMin)), max: Number(asPercent(c.questionCaps.probabilityMax)) };
+}
 /** A percentage as the rate the config stores ("13" → 0.13). Not a number stays not a number: the validator says so. */
 const asRate = (text: string) => Math.round(Number(text) * 100) / 10_000;
 /** Digits as a number; the thousands groups a box may show are dropped first. */

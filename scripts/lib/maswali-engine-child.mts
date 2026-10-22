@@ -216,7 +216,8 @@ const nowOpen = new Date(W2 + 60_000); // Monday 00:01 EAT
   const listed = async () => (await consoleRead.consoleWeekDetail(week.id, nowOpen))?.problems ?? [];
   const before = await listed();
   ok("2.0 · ⭐ the builder's checklist names the missing licence basis (OD-01) and the short guarantee (OD-02), as the open words them",
-    before[0] === svc.NO_LICENCE_BASIS && before.some((p) => /^The guarantee holds TZS 0; TZS [\d,]+ is needed to open \(OD-02\)\.$/.test(p)), JSON.stringify(before));
+    // S6-ADMIN · the words end at the rule, never at its code (DESIGN_AUTHORITY §M8a item 29): no "(OD-02)" on the screen.
+    before[0] === svc.NO_LICENCE_BASIS && before.some((p) => /^The guarantee holds TZS 0; TZS [\d,]+ is needed to open\.$/.test(p)), JSON.stringify(before));
   const noLicence = await svc.openWeek({ weekId: week.id, officerId: DRAFTER, guarantee: RICH, now: nowOpen });
   ok("2.1 · ⛔ no licence basis → refused (OD-01)", !noLicence.ok && errOf(noLicence) === svc.NO_LICENCE_BASIS, errOf(noLicence));
   await recordLicenceBasis({ kind: "OWNER_RULING", ref: "Owner ruling 2026-10-16, docs/COMPLIANCE-DECISIONS.md" }, OWNER);

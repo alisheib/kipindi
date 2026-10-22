@@ -215,8 +215,9 @@ export const MUTATIONS = [
   {
     name: "(22) a correction accepts an outcome outside the closed list",
     file: SVC,
-    from: '  if (input.outcome !== "YES" && input.outcome !== "NO" && input.outcome !== "VOID") return refuse("A result is YES, NO or VOID.");\n  if (input.outcome === "VOID" && !isMaswaliVoidReason(input.voidReason)) return refuse("A void names its ground from the closed list (MR-15).");\n  if (input.outcome !== "VOID" && input.voidReason) return refuse("Only a VOID carries a void ground.");\n  if ((input.expectedOutcome',
-    to: '  if (false) return refuse("A result is YES, NO or VOID.");\n  if (input.outcome === "VOID" && !isMaswaliVoidReason(input.voidReason)) return refuse("A void names its ground from the closed list (MR-15).");\n  if (input.outcome !== "VOID" && input.voidReason) return refuse("Only a VOID carries a void ground.");\n  if ((input.expectedOutcome',
+    // S6-ADMIN · re-pinned: the refusal reads in words, its code a comment beside it (DESIGN_AUTHORITY §M8a item 29).
+    from: '  if (input.outcome !== "YES" && input.outcome !== "NO" && input.outcome !== "VOID") return refuse("A result is YES, NO or VOID.");\n  if (input.outcome === "VOID" && !isMaswaliVoidReason(input.voidReason)) return refuse("A void names its ground from the closed list."); // MR-15\n  if (input.outcome !== "VOID" && input.voidReason) return refuse("Only a VOID carries a void ground.");\n  if ((input.expectedOutcome',
+    to: '  if (false) return refuse("A result is YES, NO or VOID.");\n  if (input.outcome === "VOID" && !isMaswaliVoidReason(input.voidReason)) return refuse("A void names its ground from the closed list."); // MR-15\n  if (input.outcome !== "VOID" && input.voidReason) return refuse("Only a VOID carries a void ground.");\n  if ((input.expectedOutcome',
     expect: "6.10b · ⛔ an outcome outside YES, NO, VOID",
     suite: "engine",
   },

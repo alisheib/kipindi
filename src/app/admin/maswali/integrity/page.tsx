@@ -413,7 +413,8 @@ async function Content({ searchParams }: IntegrityPageProps) {
               {(query.seals.q || query.seals.state) && <Link href={clearListHref(listParams, "s") as never} className="btn btn-ghost btn-sm">Clear</Link>}
             </form>
           </div>
-          {v.sealWeeks.allTotal === 0 ? <EmptyState title="Nothing to show yet" body="A week's seals appear here once its results can no longer change (MB-34)." />
+          {/* MB-34 · the seal log is read after the fact, never while an officer could still be steered. */}
+          {v.sealWeeks.allTotal === 0 ? <EmptyState title="Nothing to show yet" body="A week's seals appear here once its results can no longer change." />
             : v.sealWeeks.total === 0 ? <EmptyState title="No sealed weeks match these filters" body="Try another week code or state." /> : (
             <>
             <p className="px-4 pt-3 font-mono text-micro uppercase tracking-widest text-text-subtle">{formatNumber(v.sealWeeks.total)} of {adminCount(v.sealWeeks.allTotal, "sealed week")}</p>
@@ -452,7 +453,8 @@ async function Content({ searchParams }: IntegrityPageProps) {
             <>
               <p className="text-body-sm text-text-secondary mb-3">
                 {wordings.facts.live ? null : <span className="text-warning">Millionea is not public yet, so no campaign may be about it. </span>}
-                A Millionea campaign is one whose name begins with &ldquo;Millionea&rdquo;: it carries its headline&apos;s three facts and the week&apos;s own fee, and the composer refuses an amount, a win or a winner, a sum, an income, a guarantee, a rank or a chance (MB-47); any other campaign that uses Millionea&apos;s words is refused until it is tagged or reworded, and no wording names a winner (OD-30).
+                {/* MB-47 · the campaign lint · OD-30 · no wording names a winner. */}
+                A Millionea campaign is one whose name begins with &ldquo;Millionea&rdquo;: it carries its headline&apos;s three facts and the week&apos;s own fee, and the composer refuses an amount, a win or a winner, a sum, an income, a guarantee, a rank or a chance; any other campaign that uses Millionea&apos;s words is refused until it is tagged or reworded, and no wording names a winner.
                 {" "}The fee below is {wordings.facts.source === "WEEK" ? `${wordings.facts.weekCode ?? "this week"}'s own` : "the one the next week will freeze"}.
               </p>
               <ul className="space-y-2">

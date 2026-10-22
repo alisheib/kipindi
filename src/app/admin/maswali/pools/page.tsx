@@ -103,9 +103,10 @@ async function Content({ searchParams }: PoolsPageProps) {
       <AdminBody>
         <KpiGrid cols="1-sm2-xl4">
           <AdminKpi label="Jackpot carried" sw="Jackpot" value={money(v.jackpotPublic)} note="Players' money, for the next winning week" {...(v.jackpotPublic === null ? { tone: "danger" as const } : {})} />
-          <AdminKpi label="Guarantee" sw="Dhamana" value={money(v.guarantee)} note={`Needed now: ${money(v.requirement)} (OD-02)`} {...(v.guarantee === null || v.requirement === null || short ? { tone: "danger" as const } : {})} />
+          {/* OD-02 · the guarantee against what the unsettled weeks need · OD-21 · the drive's jackpot is its own. */}
+          <AdminKpi label="Guarantee" sw="Dhamana" value={money(v.guarantee)} note={`Needed now: ${money(v.requirement)}`} {...(v.guarantee === null || v.requirement === null || short ? { tone: "danger" as const } : {})} />
           <AdminKpi label="Payout float" sw="Akiba ya malipo" value={money(v.float)} note={`Prepared payouts: ${formatTzs(v.pendingPayout)}`} {...(floatShort ? { tone: "warning" as const } : {})} />
-          <AdminKpi label="Drive jackpot" sw="Jackpot ya majaribio" value={money(v.jackpotDrive)} note="The private drive's own (OD-21)" />
+          <AdminKpi label="Drive jackpot" sw="Jackpot ya majaribio" value={money(v.jackpotDrive)} note="The private drive's own" />
         </KpiGrid>
 
         <AdminCard title="Open weeks" sw="Wiki zilizo wazi" padding="p-0">
@@ -159,7 +160,7 @@ async function Content({ searchParams }: PoolsPageProps) {
                               <div className="space-y-1">
                                 <p className="text-body-sm">{a?.kind === "ROLLOVER" ? <>No 10 of 10: <span className="font-mono tabular-nums">{formatTzs(w.preview.sales)}</span> rolls to the jackpot.</>
                                   : <>{a?.k} winner{a?.k === 1 ? "" : "s"} · <span className="font-mono tabular-nums">{formatTzs(a && a.kind === "PAYOUT" ? a.share : 0)}</span> each · fee <span className="font-mono tabular-nums">{formatTzs(a && a.kind === "PAYOUT" ? a.F : 0)}</span> · top-up <span className="font-mono tabular-nums">{formatTzs(w.preview.guaranteeNeeded)}</span>{w.preview.basis === "TOP_SCORE" ? ` · final week, top score ${w.preview.winningScore} of 10` : ""}</>}</p>
-                                {w.preview.held > 0 && <p className="text-body-sm text-warning">{w.preview.held} winner(s) will be paid and held for Compliance (MB-43).</p>}
+                                {w.preview.held > 0 && <p className="text-body-sm text-warning">{w.preview.held} winner(s) will be paid and held for Compliance.{/* MB-43 */}</p>}
                                 {canRelease ? <ReleaseControl weekId={w.row.id} code={w.row.code} digest={w.preview.digest} />
                                   : <ControlLocked what="Release" need={CONTROL_DOMAIN.releaseMaswaliSettlement} />}
                               </div>
@@ -253,7 +254,8 @@ async function Content({ searchParams }: PoolsPageProps) {
             </section>
             <section className="space-y-2">
               <h3 className="font-semibold text-body">Stop the product</h3>
-              <p className="text-body-sm text-text-secondary">{standing?.sunset.kind === "ENDING" ? `Week ${standing.sunset.week.code} is the final week.` : standing?.sunset.kind === "RETIRED" ? "Millionea has ended." : "The final week runs normally; if no ticket gets 10 of 10, the top score shares the jackpot (MR-30)."}</p>
+              {/* MR-30 · the sunset: the final week runs normally, and with no 10 of 10 the top score shares the jackpot. */}
+              <p className="text-body-sm text-text-secondary">{standing?.sunset.kind === "ENDING" ? `Week ${standing.sunset.week.code} is the final week.` : standing?.sunset.kind === "RETIRED" ? "Millionea has ended." : "The final week runs normally; if no ticket gets 10 of 10, the top score shares the jackpot."}</p>
               {/* S5-FIX-SRV · the stop's form gives way once a final week stands: its audit warning stands here instead. */}
               <StandingAuditWarning slot="pools:stop" />
               {canSunset ? <SunsetCeremony weeks={sunsetCandidates.map((w) => ({ id: w.id, code: w.code, state: w.state }))} nextAct={standing?.stopNextAct ?? null} />

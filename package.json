@@ -782,6 +782,8 @@
     "red:maswali-admin-question-fields": "node scripts/maswali-admin-question-fields.test.mjs --prove-red",
     "test:maswali-admin-touch": "tsx scripts/maswali-admin-touch.test.mts",
     "red:maswali-admin-touch": "tsx scripts/maswali-admin-touch.test.mts --prove-red",
+    "test:maswali-admin-words": "tsx scripts/maswali-admin-words.test.mts",
+    "red:maswali-admin-words": "tsx scripts/maswali-admin-words.test.mts --prove-red",
     "qa:maswali-player-shots": "node scripts/maswali-player-shots.mjs",
     "qa:maswali-door-preview": "node scripts/maswali-door-preview-shots.mjs",
     "qa:maswali-door-dark": "node scripts/maswali-door-dark.mjs",

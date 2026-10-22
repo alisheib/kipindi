@@ -444,8 +444,9 @@ export const MUTATIONS = [
   {
     name: "(S7-close-db-clock) a close that is not early is stamped on the container's clock: a fast container closes the sales early (MB-84)",
     file: SVC,
-    from: "    if (!input.early && Date.parse(week.closesAt) > atMs) return { ...refuse(\"The close has not arrived on the database's clock (MB-84).\"), dbShortMs: Date.parse(week.closesAt) - atMs };",
-    to: "    if (!input.early && Date.parse(week.closesAt) > nowMs) return { ...refuse(\"The close has not arrived on the database's clock (MB-84).\"), dbShortMs: Date.parse(week.closesAt) - atMs };",
+    // S6-ADMIN · re-pinned: the refusal reads in words, its code a comment above it (DESIGN_AUTHORITY §M8a item 29).
+    from: "    if (!input.early && Date.parse(week.closesAt) > atMs) return { ...refuse(\"The close has not arrived on the database's clock.\"), dbShortMs: Date.parse(week.closesAt) - atMs };",
+    to: "    if (!input.early && Date.parse(week.closesAt) > nowMs) return { ...refuse(\"The close has not arrived on the database's clock.\"), dbShortMs: Date.parse(week.closesAt) - atMs };",
     expect: "CS.4 · ⭐",
     suite: "adversarial:CS",
   },
@@ -650,8 +651,9 @@ export const MUTATIONS = [
   {
     name: "(F2-stop-next-act) a stop refused at short notice names no next act once no week is on sale or being decided (MR-30, OD-03)",
     file: SVC,
-    from: "          return refuse(`Week ${week.code} opens in less than a week; a final week is announced a full week ahead (OD-03). ${stopNextAct(standing, week, clockMs)}`);",
-    to: "          return refuse(`Week ${week.code} opens in less than a week; a final week is announced a full week ahead (OD-03).`);",
+    // S6-ADMIN · re-pinned: the refusal reads in words, its code a comment beside it (DESIGN_AUTHORITY §M8a item 29).
+    from: "          return refuse(`Week ${week.code} opens in less than a week; a final week is announced a full week ahead. ${stopNextAct(standing, week, clockMs)}`);",
+    to: "          return refuse(`Week ${week.code} opens in less than a week; a final week is announced a full week ahead.`);",
     expect: "SN.1 · ⭐",
     suite: "adversarial:SN",
   },

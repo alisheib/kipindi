@@ -1343,3 +1343,20 @@ Found by S6-ADMIN's baseline run on `d97266317`, before any change of its own:
 
 Fixed: each refusal inside its dialog and gated off the page while the dialog is open, both buttons on the `sm` rung
 (40px), both routes in the population. The three suites are the cases; the base run is the undone state, red as above.
+
+#### ✅ G1 · the programme's codes were printed to officers all over the console — fixed by S6-ADMIN 3
+
+The S6-DOCS walk found "(MB-75)", "(MB-85, OD-27)", "OD-14: inside the rules' band", "(MR-13)", "(OD-02)" and their kin
+on the console's pages, in its hints and dialogs, and in what the services hand the screen: the open's checklist, the
+refusals, the holiday warnings, the alerts ("… (MB-96)", "(MB-11)"), the settlement's and the stop's answers. The census
+found 76 such codes outside comments in 19 files on the branch's head before the sweep (and 6 more in the desk scripts,
+the S6-DOCS lane's item 9) — seven of those files the walk had not listed: the stop's confirmation text
+(`maswali-admin-form-validation.ts`), the rules form's and the frozen snapshot's paid-exit refusals (`maswali-config.ts`),
+the evidence pack's "capture not taken (MB-80 owed)" (`maswali-evidence.ts`), the watched invariants' guarantee lines
+(`maswali-invariants.ts`), the guarantee's return refusal (`maswali-money-service.ts`), the scheduler's void-proposal
+note in the audit log (`maswali-scheduler.ts`) and the void's market evidence (`maswali-void.ts`). THE RULE
+(DESIGN_AUTHORITY §M8a item 29): every word reads as the rule itself, and a code
+stays in a comment beside it; the builder's chance hint states the band ("The rules allow 30–70%") and the move of the
+close states its latest close as an EAT time. Held by `test:maswali-admin-words` §1 (the census, its population derived
+from the folders) and its in-memory plants (`red:maswali-admin-words`: a code back in JSX text, a refusal, an alert and an
+attribute is caught; one in a comment is not).

@@ -130,7 +130,7 @@ ok("1.6 · the fifteen questions, each sealed with its evidence and its officer"
   await W.dal.questionStore.patch(q1.id, { evidenceCaptureRef: "captures/mln/q1-test.png" });
   const withCapture = await maswaliEvidencePack(week.id);
   await W.dal.questionStore.patch(q1.id, { evidenceCaptureRef: null });
-  ok("1.6b · R2-8a · MB-92 · a capture never taken reads \"capture not taken (MB-80 owed)\" on every question — and a capture that exists is the one shown",
+  ok("1.6b · R2-8a · MB-92 · a capture never taken reads in words (\"no capture was taken: …\", never a programme code) on every question — and a capture that exists is the one shown",
     pack?.questions.every((q: Any) => q.evidenceCaptureRef === EVIDENCE_CAPTURE_NOT_TAKEN) && withCapture.ok
       && withCapture.pack.questions.find((q: Any) => q.slot === 1)?.evidenceCaptureRef === "captures/mln/q1-test.png"
       && withCapture.pack.questions.filter((q: Any) => q.evidenceCaptureRef === EVIDENCE_CAPTURE_NOT_TAKEN).length === 14,

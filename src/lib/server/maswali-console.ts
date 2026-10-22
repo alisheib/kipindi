@@ -140,9 +140,11 @@ export async function consoleWeekDetail(weekId: string, now: Date = new Date()):
     warnings = [];
     const holiday = holidayOn(Date.parse(week.closesAt));
     if (holiday) {
+      // MB-85 the holiday review · R-WEEK and MB-28 the close may move · OD-27 a week may be skipped with notice. ⛔ The
+      // officer reads the rule in words, never its code (S6-ADMIN, DESIGN_AUTHORITY §M8a item 29).
       warnings.push(week.state === "DRAFT"
-        ? `The sales close falls on ${holiday}, a public holiday on the Owner's list (the holiday review, MB-85). The week may still open: bring the close forward once it is open (R-WEEK), or skip the week with notice (OD-27).`
-        : `The sales close falls on ${holiday}, a public holiday on the Owner's list (the holiday review, MB-85). Bring the close forward while it is still ahead (R-WEEK, MB-28).`);
+        ? `The sales close falls on ${holiday}, a public holiday on the Owner's list. The week may still open: bring the close forward once it is open, or skip the week with notice.`
+        : `The sales close falls on ${holiday}, a public holiday on the Owner's list. Bring the close forward while it is still ahead.`);
     }
   }
   return { week, row: await rowOf(week), questions, rules, problems, warnings, proposedVoids: await proposeVoidsAtDeadline(week.id, now) };
@@ -192,7 +194,8 @@ export async function consoleAlerts(
         }
       }
       const proposed = await proposeVoidsAtDeadline(w.id, now);
-      if (proposed.length) out.push({ level: "warning", weekId: w.id, text: `${w.code}: ${proposed.length} question(s) passed their void deadline unsealed; seal each as VOID (MR-15).` });
+      // MR-15 · a question unsealed at its void deadline voids on a ground from the closed list, sealed by an officer.
+      if (proposed.length) out.push({ level: "warning", weekId: w.id, text: `${w.code}: ${proposed.length} question(s) passed their void deadline unsealed; void each one, with its ground.` });
       if (w.objectionsCloseAt && Date.parse(w.objectionsCloseAt) + cfg.releaseAlertHours * HOUR < nowMs) {
         out.push({ level: "critical", weekId: w.id, text: `${w.code}: its results are final and its window closed ${cfg.releaseAlertHours} h ago, and it is not settled. Accounting releases it.` });
       }
@@ -204,16 +207,18 @@ export async function consoleAlerts(
   // ⛔ S7-F2 · FAIL CLOSED: a week whose frozen rules cannot be read has an unknown floor, so the guarantee cannot be shown
   //    to cover the unsettled weeks and the alert fires, naming the week. Counted as 0, its floor kept this alert silent.
   const floors = unsettledFloors(weeks.filter(unsettled));
+  // OD-02 · the guarantee covers every unsettled week's floor less its confirmed carry.
   for (const w of floors.ok ? [] : floors.unreadable) {
-    out.push({ level: "critical", weekId: w.id, text: `${w.code}: its frozen rules cannot be read, so its floor is unknown and the guarantee cannot be shown to cover the unsettled weeks (OD-02).` });
+    out.push({ level: "critical", weekId: w.id, text: `${w.code}: its frozen rules cannot be read, so its floor is unknown and the guarantee cannot be shown to cover the unsettled weeks.` });
   }
   const need = floors.ok ? guaranteeRequirement(floors.weeks) : null;
   if (held === null) out.push({ level: "critical", text: "The guarantee balance could not be read." });
-  else if (need !== null && held < need) out.push({ level: "critical", text: `The guarantee holds ${formatTzs(held)}; the unsettled weeks need ${formatTzs(need)} (OD-02).` });
+  else if (need !== null && held < need) out.push({ level: "critical", text: `The guarantee holds ${formatTzs(held)}; the unsettled weeks need ${formatTzs(need)}.` });
   // The product's own standing speaks only once Millionea has a week — any week, settled ones included (`maxSeq` is 0
   // only before the first draft): before it, a missing licence basis is the plan's Gate A, not an alert for every officer.
   if ((await weekStore.maxSeq()) > 0) {
-    if (!licenceBasisAllowsOpen(getLicenceBasis())) out.push({ level: "warning", text: "No licence basis is recorded; no week can open until the Owner records it (OD-01)." });
+    // OD-01 · the licence basis is the Owner's record.
+    if (!licenceBasisAllowsOpen(getLicenceBasis())) out.push({ level: "warning", text: "No licence basis is recorded; no week can open until the Owner records it." });
     const pause = getSalesPause();
     if (pause.paused) out.push({ level: "warning", text: `Sales are paused: ${pause.reason ?? "no reason recorded"}.` });
     // S6 · MB-93 · a winner nothing has reached a day after the settlement: the desk calls them (the integrity page lists
@@ -243,7 +248,7 @@ async function takeoverAlerts(nowMs: number, read?: () => Promise<TakeoverWatch>
   const watch = await (read ?? (() => takeoverWatch(new Date(nowMs))))().catch((): TakeoverWatch => ({ readable: false, findings: [] }));
   const out: ConsoleAlert[] = [];
   if (!watch.readable) {
-    out.push({ level: "warning", text: "The winners' takeover watch could not be read in full, so a winning account may have changed hands unseen. Compliance checks the winners on the integrity page (MB-96)." });
+    out.push({ level: "warning", text: "The winners' takeover watch could not be read in full, so a winning account may have changed hands unseen. Compliance checks the winners on the integrity page." });
   }
   const byWeek = new Map<string, { code: string; n: number }>();
   for (const f of watch.findings) {
@@ -254,7 +259,7 @@ async function takeoverAlerts(nowMs: number, read?: () => Promise<TakeoverWatch>
   }
   for (const [weekId, { code, n }] of byWeek) {
     out.push({ level: "critical", weekId,
-      text: `${code}: ${n} winning account${n === 1 ? "" : "s"} had ${n === 1 ? "its" : "their"} password changed after this week's payout and then asked to withdraw — the shape of an account takeover. Compliance checks ${n === 1 ? "it" : "them"} on the integrity page (MB-96).` });
+      text: `${code}: ${n} winning account${n === 1 ? "" : "s"} had ${n === 1 ? "its" : "their"} password changed after this week's payout and then asked to withdraw — the shape of an account takeover. Compliance checks ${n === 1 ? "it" : "them"} on the integrity page.` });
   }
   return out;
 }
@@ -583,13 +588,13 @@ async function floatShortAlerts(readFloat?: FloatReader): Promise<ConsoleAlert[]
   const out: ConsoleAlert[] = [];
   for (const { w, left } of owed) {
     if (float === null) {
-      out.push({ level: "critical", weekId: w.id, text: `${w.code}: its winners can still withdraw ${formatTzs(left)} of what it paid, and the payout float cannot be read now. Finance checks the float before the winners withdraw (MB-11).` });
+      out.push({ level: "critical", weekId: w.id, text: `${w.code}: its winners can still withdraw ${formatTzs(left)} of what it paid, and the payout float cannot be read now. Finance checks the float before the winners withdraw.` });
       continue;
     }
     const short = left + FLOAT_ALERT_BUFFER_TZS - float;
     if (short <= 0) continue;
     out.push({ level: float < left ? "critical" : "warning", weekId: w.id,
-      text: `${w.code}: the payout float holds ${formatTzs(float)} against the ${formatTzs(left)} of this week's payout its winners can still withdraw — ${formatTzs(short)} short of the payout and its headroom. Finance tops the float up before the winners withdraw (MB-11).` });
+      text: `${w.code}: the payout float holds ${formatTzs(float)} against the ${formatTzs(left)} of this week's payout its winners can still withdraw — ${formatTzs(short)} short of the payout and its headroom. Finance tops the float up before the winners withdraw.` });
   }
   return out;
 }
