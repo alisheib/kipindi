@@ -659,7 +659,9 @@ const slipDefects = (src: string) => {
   if (!s.includes('export const MILLIONEA_SLIP_KEY_PREFIX = "kp-millionea-slip:";')) d.push("the tab key is not kp-millionea-slip: (Privacy §7 names it)");
   const calls = [...s.matchAll(/buyMillioneaTicketsAction\(/g)].map((m) => m.index ?? 0);
   const commit = s.indexOf("const commit = () => {");
-  const commitEnd = s.indexOf("const shortfall", commit);
+  // RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-SLIP, H4): the commit is followed by the deposit plan, where the raw
+  // shortfall stood.
+  const commitEnd = s.indexOf("const plan = ", commit);
   if (calls.length !== 1 || !(calls[0] > commit && calls[0] < commitEnd)) d.push(`the buy is not called once, from the confirm's commit alone: ${calls.length} call(s)`);
   if (!s.includes("onCommit={commit}")) d.push("the confirm's armed control is not the commit");
   for (const m of s.matchAll(/useEffect\(\(\) => \{([\s\S]*?)\}, \[/g)) if (m[1].includes("buyMillioneaTicketsAction") || m[1].includes("commit(")) d.push("⛔ an effect buys");

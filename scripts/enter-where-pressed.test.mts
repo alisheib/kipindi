@@ -1139,7 +1139,8 @@ function run(w: World, log: (l: string) => void): string[] {
   const escAt = keyText.indexOf('"Escape"');
   ok("5.8 · Modal stands on the stack: every opening is laid on it IN THE SAME COMMIT AS ITS PAGE (a layout effect: the second of two queued win seals is on the stack from its first drawn frame) and every close leaves it through `leaveLayer`, on the page itself; a dialog takes focus only while it is the top one (one opened beneath waits), and each focus it takes arms its beat; only the top one answers Escape and Tab, an Escape a dialog above has answered closes nothing more, focus outside its panel is brought in both ways, and an Escape on an open list (focused or not) or in a surface over it is that surface's; and its leaving ghost is inert",
     squashed(modalSrc).includes("React.useLayoutEffect(() => { if (!open) return;") && modalSrc.includes("openLayer(layer);") && modalSrc.includes("leaveLayer(layer, PAGE);")
-      && pageText.includes("activeElement: () => document.activeElement,") && pageText.includes("focus: (node) => { if (node instanceof HTMLElement) node.focus(); },")
+      // The way back never moves the page (lead 2026-10-21, the 10/10 pass — DESIGN_AUTHORITY §M8a item 18).
+      && pageText.includes("activeElement: () => document.activeElement,") && pageText.includes("focus: (node) => { if (node instanceof HTMLElement) node.focus({ preventScroll: true }); },")
       && pageText.includes("now: () => performance.now(),") && pageText.includes("isNowhere,")
       && focusInText.includes(TOP) && focusInText.includes("target?.focus();") && focusInText.includes("armBeat(rootRef.current, performance.now());")
       /* Review 6, B-1 (2026-10-09) moved this pin: the way out still reaches the stack, and one that cannot take focus
@@ -1443,7 +1444,9 @@ if (!PROVE_RED) {
     { name: "a dialog's first focus is not armed (a double press on the dial confirms: DD)", expect: /^5[.]8 /,
       world: () => plantIn(MODAL, "      armBeat(rootRef.current, performance.now());" + NL, "") },
     { name: "the page Modal hands to leaving moves no focus", expect: /^5[.]8 /,
-      world: () => plantIn(MODAL, "focus: (node) => { if (node instanceof HTMLElement) node.focus(); },", "focus: () => {},") },
+      world: () => plantIn(MODAL, "focus: (node) => { if (node instanceof HTMLElement) node.focus({ preventScroll: true }); },", "focus: () => {},") },
+    { name: "the way back scrolls the page to a sticky opener again (no `preventScroll`: the lead's 2026-10-21 ruling)", expect: /^5[.]8 /,
+      world: () => plantIn(MODAL, "node.focus({ preventScroll: true }); },", "node.focus(); },") },
     // (Review 6, B-1 moved the next two anchors: the way out falls back to the panel, and focus ON the panel is brought
     // to a control both ways, as focus outside it is.)
     { name: "Modal's layer names no way out (its safeFocus never reaches the stack)", expect: /^5[.]8 /,

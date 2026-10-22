@@ -3042,6 +3042,19 @@ its branches in the same change or it does not land. The delivery named only the
 gates; this product has three (E-125) — our target device is exactly the one the third
 covers. Guard: `npm run test:reduce-motion`. Maswali Millionea's three motions (N1–N3) obey all three gates: §M8a.
 
+A countdown hairline that a script draws is held to the same clamps as one the stylesheet draws: under either clamp it
+stands FULL for its whole dwell — "still here", true until the timer closes the surface — never draining (E-269, the
+toast's `.toast-countdown`). Since Ali 2026-10-21 10/10 pass (the lead's ruling on the motion critic's L6) that includes
+the result modal's auto-close strip, a rAF loop no clamp reached (`operation-result-modal.tsx`, `stripStill`); the
+`reduced` throttle keeps the drain, as it keeps the toast's. Guard: `test:maswali-slip-design` §1.
+
+**One dim across two dialogs** (Ali 2026-10-21 10/10 pass; the motion critic's H1). A dialog that closes in the same commit
+another opens in its place passes the kit Modal's `handoff` on both — the closing one drops its dim at once while its panel
+plays `.m-out`, the opening one holds the dim from its first frame — and the opening panel waits one exit beat
+(`panelDelay`, `--t-quick`, zeroed by the clamps): the page behind is never seen bare between them and two panels never
+stand at once. Inert unless passed (byte-identical markup for every other caller). First consumer: the Millionea confirm
+sheet into its stamp (`slip-client.tsx`).
+
 ### M7 — Wins get the seal; losses get the receipt
 
 The celebration vocabulary (seal-impress, needle-sweep, mark-flip, gilt strike) is
@@ -3230,6 +3243,18 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     running first, each the one row with its phase chip and no figure. ⛔ How a question counted ("↪ A1", "↪ 4", "Not
     used") is drawn from the FINAL record only — an objection can still reinstate a question while its window is open
     (item 1: never an un-carry); before that a voided main says it waits for its reserve, or that the week is due to void.
+18. **A dialog's way back never moves the page (lead 2026-10-21, the 10/10 pass; MASWALI-BUILD S5-DESIGN-SLIP).** When a
+    dialog closes, focus returns to the control that opened it WITHOUT scrolling (`modal.tsx` `PAGE.focus`:
+    `focus({ preventScroll: true })`, Safari 15+). Why: while a dialog is open `useModalLock` sets `overflow: hidden` on
+    `<html>` AND `<body>`, which makes the body a scroll box, so a sticky opener stops sticking and stands at its place in
+    the document; the way back focused it there and the browser scrolled the page to it — to the top of the page for the
+    classic bar's balance capsule, ~2,700px down for Millionea's pay rail at 360 (the motion run: the slip's first answer
+    at y −2,248 under the stamp). Once the lock lifts the opener is back in its own place, so nothing needs scrolling.
+    ⚠️ It holds for EVERY reader and every dialog on the kit Modal, Millionea shown or not: the second change to the
+    classic product this rulebook rules (the first: item 11's opaque More panel, S5-FIX-PLATFORM D8). The markup of every
+    dialog is unchanged (`test:maswali-slip-design` §1); `test:enter-where-pressed` 5.8 pins the call with its plant, and
+    `qa:dialog-way-back` drives it at 360 in Chromium and WebKit (scrollY unchanged across the close, focus on the opener,
+    the jump back when `preventScroll` is dropped).
 
 ---
 

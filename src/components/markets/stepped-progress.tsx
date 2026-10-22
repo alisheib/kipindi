@@ -33,10 +33,12 @@ export function SteppedProgress(props: (Stepped | Grouped) & { className?: strin
 }
 
 /**
- * ⭐ THE TRACK IS SEEN (MASWALI-BUILD S5 · VIS-P P7, measured WCAG 2.x on the tokens, oklch → sRGB): an empty segment is
- * `--border-strong` — 2.32:1 on the Millionea rail's `--panel`, where the `--bg-inset` it was measured 1.08:1 (near
- * invisible at every width) — and the done `--royal-400` stands 1.97:1 brighter than it (4.56:1 on the panel), so "not yet"
- * and "done" stay two things. (`--border-control` would read 3.31:1 on the panel but only 1.38:1 from done.) The count
+ * ⭐ HOLLOW IS "NOT YET", SOLID IS "DONE" (Ali 2026-10-21 10/10 pass; the slip critic's H1, measured WCAG 2.x on the tokens):
+ * VIS-P's empty `--border-strong` and the done `--royal-400` were two saturated blues 1.97:1 apart, so a slip at 0/15 read
+ * as full. An empty step is now the kit ProgressBar's own track — the sunken well (`--bg-sunken`) inside a 1px
+ * `--border-control` ring, 3.31:1 on the rail's `--panel` (the 3:1 a non-text mark needs) — and a done step is solid
+ * `--royal-400` (4.56:1 on the panel): the shape tells them apart, not only the shade. 6px tall, the bar's own rhythm, and a
+ * step fills over the control's own beat (`--t-quick`, linear) — the pick's fill and its step land together. The count
  * beside the meter says the numbers in words; the meter is their picture. Only this branch: the `groups` meter is
  * Millionea's alone (its one caller, `maswali-slip.tsx`), the stepped one above draws what it always drew.
  */
@@ -46,10 +48,15 @@ function GroupedProgress({ groups, className }: { groups: ReadonlyArray<{ steps:
       {groups.map((g, gi) => (
         <span key={gi} className="flex gap-0.5" style={{ flexGrow: g.steps, flexBasis: 0 }}>
           {Array.from({ length: g.steps }).map((_, i) => (
-            <span key={i} className="h-1 flex-1 rounded-pill" style={{ background: i < g.done ? "var(--royal-400)" : "var(--border-strong)" }} />
+            <span key={i} data-done={i < g.done ? "" : undefined} className="h-[6px] flex-1 rounded-pill"
+              style={i < g.done ? DONE_STEP : EMPTY_STEP} />
           ))}
         </span>
       ))}
     </div>
   );
 }
+
+const STEP_FILL = "background var(--t-quick) linear, box-shadow var(--t-quick) linear";
+const DONE_STEP = { background: "var(--royal-400)", boxShadow: "inset 0 0 0 1px var(--royal-400)", transition: STEP_FILL } as const;
+const EMPTY_STEP = { background: "var(--bg-sunken)", boxShadow: "inset 0 0 0 1px var(--border-control)", transition: STEP_FILL } as const;

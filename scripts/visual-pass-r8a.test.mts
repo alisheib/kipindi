@@ -343,12 +343,14 @@ const WARN_REGISTRY: Record<string, [number, string]> = {
   "src/app/auth/forgot-password/page.tsx": [2, "the rate-limit box's frame and wash — a refusal the player clears by waiting, as sign-in's (its words the muted ink)"],
   "src/app/profile/account/privacy-request-form.tsx": [2, "the erasure request's caution — what an irreversible erasure keeps by law, read before sending"],
   "src/components/rg/limit-usage.tsx": [1, "THE one limit ramp's caution step, 75–90% of a limit the player set — never gilt"],
-  // MASWALI-BUILD S5 — Millionea's two ambers, each where somebody must act or money is deducted.
+  // MASWALI-BUILD S5 — Millionea's ambers, each where somebody must act or money is deducted.
   // 3 → 1 on 2026-10-21 (S5-FIX-PLAYER P18): the hand-rolled box (its frame, wash and glyph) is the kit's own Callout now,
   // which paints the family itself — the slip names only its tone.
-  "src/components/maswali/maswali-slip.tsx": [1, "the confirm's short main balance — the player deposits before cutting a ticket (the kit Callout's warning tone)"],
   // 1 → gone on 2026-10-21 (S5-DESIGN-TICKETS round 2, in the open): the win receipt draws the ONE ledger now
   // (`MaswaliLedger`), so its fee row's amber is that file's entry below — the receipt paints none of its own.
+  // which paints the family itself — the slip names only its tone. 1 → 0 the same day (S5-DESIGN-SLIP, the slip critic's
+  // M4): the confirm's short main balance is the bet sheet's own low frame, the kit Callout's INFO tone with its alert glyph
+  // — so the slip draws no amber at all, and its entry left the registry (a count above the tree is slack).
   // 2026-10-18 (S5 integration): the same deduction on the two pages that print a week's money as a receipt.
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER): How's worked weeks are the one ledger's rows now, so How names
   // no warning tone of its own (its fee row's tone is `maswali-ledger.tsx`'s, counted below).

@@ -697,7 +697,8 @@ check("22.1", "the hub's held row lifts and presses as the kit's raised card (`m
   const row = (more: Record<string, unknown>) => inApp("en", h(m.ticket.MaswaliHeldTicketRow as never, { href: `/millionea/tickets/${SERIAL}`, serial: SERIAL, line: lineOf(m.seal, Array(10).fill(null), Array(5).fill(null)), ...more } as never));
   const named = row({ t: REAL.dict.en }), open = row({ t: REAL.dict.en, cancelUntil: NOW + 582_000, serverNow: NOW }), shut = row({ t: REAL.dict.en, cancelUntil: NOW - 1, serverNow: NOW });
   need(d, named.includes(`aria-label="View ticket · ${SERIAL}"`) && /class="mat-raised mat-raised-i /.test(named), "the row is not named, or does not lift");
-  need(d, textOf(open).includes("Free cancel until 10:09 · 9:42") && !textOf(named).includes("Free cancel") && !textOf(shut).includes("Free cancel"), `the cancel line is wrong (${textOf(open)})`);
+  // RE-PINNED IN THE OPEN at the S5 integration (2026-10-21): the shared `cancelFreeUntil` ends "EAT" since S5-DESIGN-SLIP.
+  need(d, textOf(open).includes("Free cancel until 10:09 EAT · 9:42") && !textOf(named).includes("Free cancel") && !textOf(shut).includes("Free cancel"), `the cancel line is wrong (${textOf(open)})`);
   return d;
 });
 

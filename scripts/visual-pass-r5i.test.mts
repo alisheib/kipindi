@@ -163,7 +163,10 @@ const REGISTRY: Record<string, [number, string]> = {
   // MASWALI-BUILD S5 folded the crest's two side tests into one sealed line.
   // Ali's 2026-10-20 restoration keeps the placed-bet strip, seal and Continue action in the staked side.
   "src/components/markets/operation-result-modal.tsx": [12, "SIDE — a placed bet's strip, commit seal and Continue action follow its `stripTone` yes/no; earned money uses gold"],
-  "src/components/maswali/maswali-slip.tsx": [2, "SIDE — the slip's pick controls: the chosen side in its button's ink with the check, one lit control per row, the other a ghost (§B2)"],
+  // +2, 2026-10-21 (S5-DESIGN-SLIP, the slip critic's M5 — the lead's routing of the critic's report): the panel's and the
+  // confirm's picks list sets each answer in its side's ink (`--yes-300` / `--no-300`, the bet confirm's own `sideTone.fg`),
+  // so fifteen picks are checked at a glance — still the SIDE a pick is on, never an app state.
+  "src/components/maswali/maswali-slip.tsx": [4, "SIDE — the slip's pick controls: the chosen side in its button's ink with the check, one lit control per row, the other a ghost (§B2); and the picks list's answers in their side's ink, the bet confirm's sideTone.fg"],
   "src/components/markets/position-card.tsx": [2, "SIDE — a position's side chip"],
   "src/components/markets/side-picker.tsx": [4, "SIDE — the picked side's chip and the two side buttons"],
   "src/components/onboarding/first-visit-primer.tsx": [20, "SIDE — the primer's picture of the two sides, their bar and their pools"],

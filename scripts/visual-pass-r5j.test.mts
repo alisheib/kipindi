@@ -183,6 +183,8 @@ const LEFT: Record<string, string> = {
   "src/components/onboarding/first-visit-primer.tsx :: slot {n} :: \"200\"": "the primer's demo dial labels, multipliers (\"1× chini\", \"200× juu\"), not counts",
   "src/components/onboarding/first-visit-primer.tsx :: template :: (step + 1) / CARDS.length": "a progress bar's scale (a style), not text",
   "src/components/ui/keep-words.tsx :: template :: out.length": "a React key, not text",
+  // MASWALI-BUILD S5-DESIGN-HUB (classified at the S5 integration, 2026-10-21): the pool's live tick compares frames by key.
+  "src/app/millionea/hub-pool.tsx :: template :: inTotal": "a frame's comparison key (`rowFigures`, R1-motion L1), never printed",
   "src/components/charts/pnl-chart.tsx :: jsx :: data[data.length - 1].label": "a label (words), not a count",
   "src/components/ui/query-bar-ghost.tsx :: jsx :: count": "the loading ghost's phrase drawn transparent to its width (\"Miamala 00\"), not a count — R5-K's bar ghost, shared by R5-L (merged 2026-10-09)",
   "src/app/agent/apply/loading.tsx :: slot {n} :: \"0\"": "the loading ghost's placeholder digit (the seven documents: one digit's room), not a count — R5-L's ghosts (merged 2026-10-09)",
@@ -204,7 +206,6 @@ const LEFT: Record<string, string> = {
   // S5-DESIGN-REGISTER (2026-10-21, the critic's M3): a question's row says how it counted, its screen-reader sentence the
   // log's own ("Question 4: reserve A1 took its place").
   "src/app/millionea/register/[week]/page.tsx :: slot {n} :: mark.main": `${ORDINAL}: the main question a reserve stood in for, on that reserve's row (1–10)`,
-  "src/components/maswali/maswali-slip.tsx :: slot {n} :: labelOf(unanswered[0])": `${ORDINAL}: the first unanswered question's place label ("3", "A2") in the slip's jump link`,
   'src/app/positions/page.tsx :: slot {n} :: <span className="font-mono tabular-nums">{formatNumber(millioneaHeld)}</span>': "the count already grouped (`formatNumber(millioneaHeld)`) inside its own mono span — a node the slot carries whole",
 };
 {

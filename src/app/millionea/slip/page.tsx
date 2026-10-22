@@ -18,7 +18,6 @@
  */
 import type { Metadata } from "next";
 import { generateMetadata as notFoundMetadata } from "@/app/not-found";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
@@ -28,6 +27,8 @@ import { BetBreakNotice } from "@/components/rg/bet-break-notice";
 import { weekNumberOf } from "@/components/maswali/maswali-format";
 import { millioneaGate } from "@/lib/server/millionea-gate";
 import { millioneaSlip } from "@/lib/server/maswali-player";
+import { viewerFacts } from "@/lib/server/journey-sheet";
+import type { SlipDepositFacts } from "@/lib/millionea-slip-money";
 import { millioneaBreakOf, millioneaDoor, millioneaHubNow, millioneaOpenTemplate } from "@/lib/server/millionea-doors";
 import { nextWeekOpen } from "@/components/maswali/maswali-card-model";
 import { getServerT } from "@/lib/i18n-server";
@@ -49,15 +50,20 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: `${t.millionea.titleSlip} · ${t.millionea.productLabel}` };
 }
 
-/** The page when no slip is drawn: its name, the reason, and the way back to the hub. */
+/**
+ * The page when no slip is drawn: the way back to the hub over its head, as the slip itself draws it ("‹ MASWALI
+ * MILLIONEA"), its name, and the reason. ⭐ ONE way back, named (Ali 2026-10-21 10/10 pass, the slip critic's LOW): the
+ * page's foot once carried a second, a ghost button whose only words were the product's name. The reason stands at the
+ * slip's own measure (640px, its question column), never stretched to the page's width from 1280.
+ */
 function NoSlip({ t, preview, children }: { t: Dict; preview: boolean; children: React.ReactNode }) {
   return (
     <PageContainer tier="reading" className="kp-mln-zh">
-      <div className="flex flex-col gap-5" data-testid="millionea-slip-none">
-        <PageHeader eyebrow={t.millionea.productTitle} title={t.millionea.titleSlip} />
+      <BackLink fallbackHref={MILLIONEA_HREF.hub} label={t.millionea.productTitle} />
+      <div className="flex max-w-[640px] flex-col gap-5 pt-5" data-testid="millionea-slip-none">
+        <PageHeader title={t.millionea.titleSlip} />
         {preview && <MillioneaPreviewMark t={t} />}
         {children}
-        <Link href={MILLIONEA_HREF.hub as never} className="btn btn-ghost btn-md self-start border-border-control">{t.millionea.productTitle}</Link>
       </div>
     </PageContainer>
   );
@@ -85,7 +91,8 @@ export default async function MillioneaSlipPage() {
       </NoSlip>
     );
   }
-  // Sales closed is the slip's own state (its band, its resting controls); every other refusal is said instead of a slip.
+  // Sales closed is the slip's own state (its closed statement in the pay control's place, its resting controls); every other
+  // refusal is said instead of a slip.
   // ⭐ S5-FIX-PLAYER P13 · NOTHING HAS BEEN TRIED YET: a refusal before any pick is said in the words of the page that offers
   // the slip, never in a purchase result's ("Nothing was charged.", "…you can buy again when next week opens"): the cap as
   // the hub's buy block says it — the next week named only when one can follow (`nextWeekOpen`: none in a final week or
@@ -111,6 +118,14 @@ export default async function MillioneaSlipPage() {
     );
   }
   const closesAt = msOf(slip.week.closesAt) ?? nowMs;
+  // ⭐ THE DEPOSIT HALF OF THE SHORTFALL PLAN'S FACTS (Ali 2026-10-21 10/10 pass, the slip critic's H4): the journey sheet's
+  // own reads (`viewerFacts`: the wallet's status, a deposit still in flight, the RG limits and their use, the source of
+  // funds, the open rails), so a short main balance is offered the deposit the bet sheet would offer — never one the
+  // deposit refuses, never a second beside one in flight. Null when any read fails: the door then keeps the minimum alone.
+  const facts = slip.balance === null ? null : await viewerFacts(gate.userId, null).catch(() => null);
+  const depositFacts: SlipDepositFacts | null = facts && facts.wallet
+    ? { walletStatus: facts.wallet.status, pendingDeposit: facts.pendingDeposit, deposit: facts.deposit }
+    : null;
   return (
     <PageContainer tier="reading" className="kp-mln-zh">
       {/* The way back to the hub over the slip's head, as the S-slip frames draw it ("‹ MASWALI MILLIONEA"). */}
@@ -131,6 +146,7 @@ export default async function MillioneaSlipPage() {
         balance={slip.balance}
         freeCancelMinutes={slip.freeCancelMinutes}
         pct={pctNum(slip.feeRate)}
+        depositFacts={depositFacts}
       />
     </PageContainer>
   );
