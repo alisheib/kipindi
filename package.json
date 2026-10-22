@@ -719,6 +719,8 @@
     "red:maswali-week-cache": "tsx scripts/maswali-week-cache.test.mts --prove-red",
     "test:maswali-i18n": "tsx scripts/maswali-i18n.test.mts",
     "test:maswali-design": "tsx scripts/maswali-design.test.mts",
+    "test:maswali-facts": "tsx scripts/maswali-facts.test.mts",
+    "test:maswali-fact-mark": "tsx scripts/maswali-fact-mark.test.mts",
     "test:maswali-doors": "tsx scripts/maswali-doors.test.mts",
     "test:maswali-slip-design": "tsx scripts/maswali-slip-design.test.mts",
     "test:maswali-ui": "tsx scripts/maswali-ui.test.mts",
