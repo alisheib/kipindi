@@ -268,9 +268,11 @@ const shellDefects = (shellSrc: string, navs: Record<string, string>) => {
 };
 {
   // The classic two also default D13's break answer to false (`millioneaOnBreak`, handed only while true, as this is).
+  // RE-PINNED (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22): and the reader's break (`onBreak`, handed only while true:
+  // on a break the classic shell offers no deposit door).
   const NAVS = {
-    "src/components/layout/top-app-bar.tsx": "invitePaid = false, millionea = false, millioneaOnBreak = false }",
-    "src/components/layout/bottom-nav.tsx": "walletHeld = false, millionea = false, millioneaOnBreak = false }",
+    "src/components/layout/top-app-bar.tsx": "invitePaid = false, onBreak = false, millionea = false, millioneaOnBreak = false }",
+    "src/components/layout/bottom-nav.tsx": "walletHeld = false, onBreak = false, millionea = false, millioneaOnBreak = false }",
     "src/components/journey/journey-tabs.tsx": "export function JourneyTabs({ userId, millionea = false }",
     "src/components/journey/journey-top-bar.tsx": "millionea = false,",
   };

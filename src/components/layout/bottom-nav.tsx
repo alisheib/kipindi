@@ -63,7 +63,7 @@ import type { ProposalsState } from "@/lib/server/proposals-config";
  * no commit ever added it. The rest position is host logic in `needle.tsx` (side rails only, `nearestEdge`;
  * E-413's clear-rest glide), and the rail's centre coin is a `data-needle-keepout` below.
  */
-export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = false, walletHeld = false, millionea = false, millioneaOnBreak = false }: { isAuthed?: boolean; proposalsState: ProposalsState; inviteVisible?: boolean; walletHeld?: boolean; millionea?: boolean; millioneaOnBreak?: boolean }) {
+export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = false, walletHeld = false, onBreak = false, millionea = false, millioneaOnBreak = false }: { isAuthed?: boolean; proposalsState: ProposalsState; inviteVisible?: boolean; walletHeld?: boolean; onBreak?: boolean; millionea?: boolean; millioneaOnBreak?: boolean }) {
   const pathname = usePathname();
   /** D13 · on a break, a Millionea page lights the destination the journey's table names (null everywhere else). */
   const standIn = millioneaOnBreak ? classicMillioneaStandIn(pathname) : null;
@@ -86,9 +86,16 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
    *  ⛔ A HELD WALLET IS THE ONE BRANCH, and it is not a styling choice: `/wallet/deposit` REFUSES
    *  a held wallet, so a coin offering money-in there would be a door that cannot open. The slot
    *  becomes the Wallet door and the coin drops its "+" for the mark's hub. Identical reasoning,
-   *  and identical `walletHeld` input, to the header pill's own guard. */
-  const coinHref = walletHeld ? "/wallet" : "/wallet/deposit";
-  const coinLabel = walletHeld ? t.nav.wallet : t.common.deposit;
+   *  and identical `walletHeld` input, to the header pill's own guard.
+   *  ⭐ …AND A BREAK IS THE SECOND (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22; the hub lane's reader finding, the
+   *  lead's approval): during a player's own break `/wallet/deposit` refuses too (`wallet-service.deposit()`: a held wallet,
+   *  then the break), and DESIGN_AUTHORITY's break rule offers no deposit door (R4-I, R6-A) — the journey's Wallet already
+   *  drops its own. So on a break the slot is the Wallet door, drawn exactly as for a held wallet. `onBreak` is AppShell's
+   *  `promoSuppressed`, handed only while true: it gates an OFFER and fails open (`feature-state.ts` LAW 1) — after a failed
+   *  read the coin offers Deposit and the deposit screen still refuses. */
+  const moneyInClosed = walletHeld || onBreak;
+  const coinHref = moneyInClosed ? "/wallet" : "/wallet/deposit";
+  const coinLabel = moneyInClosed ? t.nav.wallet : t.common.deposit;
 
   /** `More` carries the rest. Positions / Wallet / Top / Invite / Propose for a player; the
    *  public destinations for a visitor, who has no positions or wallet to reach. */
@@ -138,7 +145,7 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
      one idea). When the wallet is not held, the coin points at /wallet/deposit and this row is the
      only way to /wallet, so it stays. */
   const walletRow: { href: string; label: string }[] =
-    walletHeld ? [] : [{ href: "/wallet", label: t.nav.wallet }];
+    moneyInClosed ? [] : [{ href: "/wallet", label: t.nav.wallet }];
   /* MASWALI-BUILD S5 · MASWALI MILLIONEA IS MORE'S FIRST ROW, for a player and a guest alike (§10 §3.2 (b), (d); D-13):
      this rail keeps its five equal tracks around the centre coin, so Millionea is a row behind More here, never a slot.
      Drawn only on the shell's own answer (the rollout admits the request, the reader is not on a break), as
@@ -241,7 +248,7 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
                   The lifted deposit coin inherits the brand mark's four colours. */}
               <span className="kp-coin__needle" />
               <span className="kp-coin__face">
-                {walletHeld ? (
+                {moneyInClosed ? (
                   <span className="kp-coin__hub" />
                 ) : (
                   /* The deposit's own glyph, as on every other money-in door (R-LEXICON 5.3A; the audit of

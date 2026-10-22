@@ -714,8 +714,11 @@ function g10Wiring(W: World) {
   // handed only to a reader on a break to whom Millionea is visible, so a Millionea page lights one classic destination
   // (the journey's fallback) instead of none. Empty for every other reader: while Millionea is WITHDRAWN a classic viewer
   // is still served exactly what they were.
-  const SWAP_HEADER = "{journeyShown ? <LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} breakEnd={journeyBreak} proposalsState={proposalsState} inviteVisible={inviteVisible} inviteAgent={inviteViewer.agentInGoodStanding} kycOffered={journeyKycOffered} invitePaid={invitePaid} {...millioneaProp} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} {...millioneaProp} {...millioneaBreakProp} />}";
-  const SWAP_RAIL = "{journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} {...millioneaProp} /> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} {...millioneaProp} {...millioneaBreakProp} />}";
+  // ⚠️ RE-PINNED IN THE OPEN, MASWALI-BUILD S5 round 2 · PLATFORM (2026-10-22; the lead's approval): BOTH classic arms gain
+  // `{...breakProp}`, handed only to a reader on a break, so the classic shell offers that reader no deposit door (the coin
+  // becomes the Wallet door, the bar's pill and the capsule's Deposit are withheld). Empty for every other reader.
+  const SWAP_HEADER = "{journeyShown ? <LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} breakEnd={journeyBreak} proposalsState={proposalsState} inviteVisible={inviteVisible} inviteAgent={inviteViewer.agentInGoodStanding} kycOffered={journeyKycOffered} invitePaid={invitePaid} {...millioneaProp} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} {...millioneaProp} {...breakProp} {...millioneaBreakProp} />}";
+  const SWAP_RAIL = "{journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} {...millioneaProp} /> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} {...millioneaProp} {...breakProp} {...millioneaBreakProp} />}";
   const SHELL_LAZY = "src/components/layout/shell-lazy.tsx";
   /** The two journey arms' lines in the shell's one lazy module (S6 WP6c): `next/dynamic`, server render on, no option object, the lost-chunk guard last. */
   const DYNAMIC_LINES = [
@@ -937,7 +940,7 @@ const PLANTS: Plant[] = [
   { name: "the journey tabs render for everyone (S6 WP6b)", expect: new RegExp("^10[.]shell[.]chrome[.]tabs"),
     world: (w) => ({ ...w, shell: w.shell.replace("{journeyShown ? <LazyJourneyTabs", "{true ? <LazyJourneyTabs") }) },
   { name: "the classic rail is dropped (S6 WP6b)", expect: new RegExp("^10[.]shell[.]chrome[.]tabs"),
-    world: (w) => ({ ...w, shell: w.shell.replace(" : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} {...millioneaProp} {...millioneaBreakProp} />}", " : null}") }) },
+    world: (w) => ({ ...w, shell: w.shell.replace(" : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} {...millioneaProp} {...breakProp} {...millioneaBreakProp} />}", " : null}") }) },
   { name: "the classic footer's arm says journeyShown too, so every reader's proposals link is balanced (the visual pass, 2026-10-09)", expect: new RegExp("^10[.]shell[.]chrome[.]footer"),
     world: (w) => ({ ...w, shell: w.shell.replace("supportPhoneTel={SUPPORT_PHONE_TEL()} />}", "supportPhoneTel={SUPPORT_PHONE_TEL()} journeyShown />}") }) },
   // ⚠️ RE-ANCHORED 2026-10-12: R9-B (c4f65f6e) gave this link `keep={journeyShown}`, so the old anchor matched nothing and

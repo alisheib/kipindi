@@ -180,8 +180,12 @@ function useBalanceRoll(effectiveBalance: number): { display: number; flashing: 
  * the bar's zero/funded decision and this capsule can never disagree about the same number.
  * `held` is the wallet's freeze (app-shell: `wallet.status !== "ACTIVE"`); the Wallet it opens
  * then says so and offers no money buttons.
+ * `onBreak` (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22; the lead's approval) is the reader's own break, handed by the
+ * classic bar only while true: the Wallet it opens offers no Deposit and Withdraw stands alone (WalletSheet's own rule, the
+ * journey's Wallet's), because `/wallet/deposit` refuses a player on a break. No notice here: the classic bar is not
+ * handed the break's end.
  */
-export function WalletBalancePill({ balance, held = false }: { balance: number; held?: boolean }) {
+export function WalletBalancePill({ balance, held = false, onBreak = false }: { balance: number; held?: boolean; onBreak?: boolean }) {
   const { t } = useT();
   const effectiveBalance = balance;
   // ⭐ R1 · THE CAPSULE OPENS THE WALLET instead of navigating to it. The capsule is the anchor:
@@ -428,7 +432,7 @@ export function WalletBalancePill({ balance, held = false }: { balance: number; 
         className="inline-flex h-full w-[var(--tap-min)] shrink-0 items-center justify-center rounded-r-pill text-[var(--gold-300)] transition-colors hover:bg-[color-mix(in_oklab,var(--gold-300)_10%,transparent)] hover:text-gold-200"
       />
     </div>
-    <WalletSheet open={open} onClose={() => setOpen(false)} balance={effectiveBalance} held={held} anchorRef={capsuleRef} />
+    <WalletSheet open={open} onClose={() => setOpen(false)} balance={effectiveBalance} held={held} anchorRef={capsuleRef} onBreak={onBreak} />
     </>
   );
 }

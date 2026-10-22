@@ -19,6 +19,8 @@
  * §3 (S5 round 2) F10 · every programmatic move on a Millionea surface starts the platform's progress bar first.
  * §4 (S5 round 2) the main landmark's guest switch marks every signed-out reader, classic too; every rule keyed on it
  *    reaches only the journey's ghosts or Millionea's pages, so no classic page's rule changes.
+ * §5 (S5 round 2) on a break the classic shell offers no deposit door: the rail's coin is the Wallet door (as for a held
+ *    wallet), the bar's deposit pill and the balance capsule's Deposit are withheld; the break handed only while true.
  * Every check has a plant that must turn it red. The bar's look at 320 and 1280, a staff session on a running server,
  * is the lane's `s5fplt` drive (reported with the commit).
  */
@@ -299,6 +301,58 @@ section("4 · the main landmark's guest switch marks every signed-out reader; ev
   const btnLeak = keyed(':root [data-viewer="guest"] .btn-ghost { opacity: 0.5; }').filter(reachesClassic);
   const bareLeak = keyed('main[data-viewer="guest"] { padding-top: 24px; }').filter(reachesClassic);
   ok("4.2′ PLANT · a rule keyed on the switch that reaches a classic class (the kit's ghost button) or the landmark itself is reported", btnLeak.length === 1 && bareLeak.length === 1, j({ btnLeak, bareLeak }));
+}
+
+/* ══ §5 · ON A BREAK THE CLASSIC SHELL OFFERS NO DEPOSIT DOOR ═════════════════════════════════════════════════════════════
+   MASWALI-BUILD S5 round 2 · PLATFORM (2026-10-22; the hub lane's reader finding, the lead's approval). `/wallet/deposit`
+   refuses a player on a break (`wallet-service.deposit()`), and DESIGN_AUTHORITY's break rule offers no deposit door (R4-I,
+   R6-A); the journey's bar and Wallet already keep it, yet the classic shell still offered three: the rail's centre coin,
+   the bar's deposit pill and the balance capsule's Wallet. Now the coin is the Wallet door, drawn exactly as for a held
+   wallet; the pill is withheld; the capsule's Wallet drops its Deposit (WalletSheet's own rule). AppShell hands the break
+   (`promoSuppressed`, an offer's gate that fails open) to the classic bar and rail only while it is true. */
+section("5 · on a break the classic shell offers no deposit door: the coin is the Wallet door, the bar's pill and the capsule's Deposit are withheld");
+{
+  type Nav = (p: Record<string, unknown>) => unknown;
+  const BAR = "src/components/layout/top-app-bar.tsx", RAIL = "src/components/layout/bottom-nav.tsx", PILL = "src/components/layout/wallet-balance-pill.tsx";
+  const realBar = (req(`../${BAR}`) as { TopAppBar: Nav }).TopAppBar, realRail = (req(`../${RAIL}`) as { BottomNav: Nav }).BottomNav;
+  const user = { initials: "DP", name: "Demo Player", phone: "+255•••84", isAuthed: true, balance: 25_000 };
+  const rail = (R: Nav, props: Record<string, unknown>, l: Locale) => at(h(R as never, { isAuthed: true, proposalsState: "DISABLED", ...props } as never), "/markets", l);
+  const bar = (B: Nav, props: Record<string, unknown>, l: Locale) => at(h(B as never, { user, proposalsState: "DISABLED", ...props } as never), "/markets", l);
+  const railDefects = (R: Nav) => LOCALES.flatMap((l) => [
+    ...(rail(R, { onBreak: true }, l) === rail(R, { walletHeld: true }, l) ? [] : [`${l}: on a break the rail is not the held wallet's`]),
+    ...(rail(R, {}, l) !== rail(R, { walletHeld: true }, l) && rail(R, {}, l).includes('href="/wallet/deposit"') ? [] : [`${l}: CONTROL — not on a break, the coin is not the deposit door`]),
+  ]);
+  ok("5.1 · on a break the rail's centre is the Wallet door, drawn exactly as for a held wallet (coin, label, no Wallet row in More), in sw, en and zh; not on a break the coin is the deposit door (control)",
+    railDefects(realRail).length === 0, j(railDefects(realRail)));
+  const deposits = (s: string) => (s.match(/href="\/wallet\/deposit"/g) ?? []).length;
+  const barDefects = (B: Nav) => LOCALES.flatMap((l) => [
+    ...(deposits(bar(B, { onBreak: true }, l)) === 0 ? [] : [`${l}: the bar offers a deposit door on a break`]),
+    ...(deposits(bar(B, {}, l)) > 0 ? [] : [`${l}: CONTROL — not on a break, the bar offers no deposit door`]),
+  ]);
+  ok("5.2 · on a break the classic bar draws no deposit door (its pill withheld), in sw, en and zh; not on a break it draws the pill (control)",
+    barDefects(realBar).length === 0, j(barDefects(realBar)));
+  const capsuleWired = (barSrc: string, pillSrc: string) => squash(decomment(barSrc)).includes("<WalletBalancePill balance={liveBalance} held={!!user.walletHeld} onBreak={onBreak} />")
+    && squash(decomment(pillSrc)).includes("<WalletSheet open={open} onClose={() => setOpen(false)} balance={effectiveBalance} held={held} anchorRef={capsuleRef} onBreak={onBreak} />");
+  ok("5.3 · the bar hands the break to its balance capsule and the capsule to its Wallet, whose own rule drops the Deposit and stands Withdraw alone (the journey's Wallet's)",
+    capsuleWired(raw(BAR), raw(PILL)));
+  const SHELL = "src/components/layout/app-shell.tsx";
+  const wiring = (src: string) => {
+    const s = squash(decomment(src));
+    const d: string[] = [];
+    if (count(s, "const breakProp: { onBreak?: true } = promoSuppressed ? { onBreak: true } : {};") !== 1) d.push("the break is not handed only while true");
+    if (count(s, "{...breakProp}") !== 2 || !/<TopAppBar [^>]*\{\.\.\.breakProp\}/.test(s) || !/<BottomNav [^>]*\{\.\.\.breakProp\}/.test(s)) d.push("the classic bar and rail are not both handed the break");
+    if (/<LazyJourney\w+ [^>]*breakProp/.test(s)) d.push("a journey nav is handed the classic break prop");
+    return d;
+  };
+  ok("5.4 · AppShell hands the break to the classic bar and rail alone, only while it runs (no other reader's payload changes)", wiring(raw(SHELL)).length === 0, j(wiring(raw(SHELL))));
+  const heldOnly = fromSource<{ BottomNav: Nav }>(RAIL, plant(raw(RAIL), "const moneyInClosed = walletHeld || onBreak;", "const moneyInClosed = walletHeld;")).BottomNav;
+  ok("5.1′ PLANT · the coin that ignores the break (a deposit door a break refuses) is reported", railDefects(heldOnly).length === LOCALES.length, j(railDefects(heldOnly)));
+  const pillOnBreak = fromSource<{ TopAppBar: Nav }>(BAR, plant(raw(BAR), "!user.walletHeld && !onBreak && !pathname", "!user.walletHeld && !pathname")).TopAppBar;
+  ok("5.2′ PLANT · the bar's pill drawn on a break again is reported", barDefects(pillOnBreak).length === LOCALES.length, j(barDefects(pillOnBreak)));
+  ok("5.3′ PLANT · the capsule's Wallet not handed the break (its Deposit back on a break) is reported",
+    !capsuleWired(raw(BAR), plant(raw(PILL), "anchorRef={capsuleRef} onBreak={onBreak} />", "anchorRef={capsuleRef} />")));
+  ok("5.4′ PLANT · the break handed to every reader (\"onBreak\":false in each classic payload) is reported",
+    wiring(plant(raw(SHELL), "promoSuppressed ? { onBreak: true } : {}", "{ onBreak: true }")).length > 0);
 }
 
 console.log(`\nmillionea-shell: ${pass} passed, ${fails.length} failed`);

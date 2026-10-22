@@ -401,6 +401,13 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
      the destination the journey's own table names (`classicMillioneaStandIn`). Handed ONLY when true, as `millioneaProp`
      is (D3): no other reader's payload changes, and a dark address (Millionea hidden) lights nothing, as an unknown one. */
   const millioneaBreakProp: { millioneaOnBreak?: true } = promoSuppressed && (await resolveMillionea()).visible ? { millioneaOnBreak: true } : {};
+  /* ⭐ ON A BREAK, THE CLASSIC SHELL OFFERS NO DEPOSIT DOOR EITHER (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22; the hub
+     lane's reader finding, the lead's approval). `/wallet/deposit` refuses a player on a break and the break rule offers no
+     deposit door (DESIGN_AUTHORITY, R4-I and R6-A); the journey's bar and Wallet already keep it. The classic bar's deposit
+     pill is withheld, the balance capsule's Wallet drops its Deposit, and the rail's coin turns into the Wallet door, as for a
+     held wallet. Handed ONLY while true (D3's rule): no other reader's payload changes. It is `promoSuppressed`, which gates
+     an OFFER and fails open (`feature-state.ts` LAW 1) — never the break's end, which stays the journey bar's alone. */
+  const breakProp: { onBreak?: true } = promoSuppressed ? { onBreak: true } : {};
   /** D12 · the request sees Millionea as a PREVIEW (STAFF_PREVIEW and a stored staff role): it wears the preview bar. */
   const millioneaPreview = (await resolveMillionea()).preview;
   /* ⭐ THE SECOND HALF OF THE PAIR, RESOLVED IN THE SAME PLACE AND FOR THE SAME REASON: the menu
@@ -515,7 +522,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           MASWALI-BUILD S5-TAB (2026-10-19): each arm takes `{...millioneaProp}`, the one answer above, handed only while it
           is true (D3) — the journey bar draws Millionea's link from it, the classic bar its core link; the classic bar also
           takes `{...millioneaBreakProp}` (D13), the destination it lights on a Millionea page during a break. */}
-      {journeyShown ? <LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} breakEnd={journeyBreak} proposalsState={proposalsState} inviteVisible={inviteVisible} inviteAgent={inviteViewer.agentInGoodStanding} kycOffered={journeyKycOffered} invitePaid={invitePaid} {...millioneaProp} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} {...millioneaProp} {...millioneaBreakProp} />}
+      {journeyShown ? <LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} breakEnd={journeyBreak} proposalsState={proposalsState} inviteVisible={inviteVisible} inviteAgent={inviteViewer.agentInGoodStanding} kycOffered={journeyKycOffered} invitePaid={invitePaid} {...millioneaProp} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} {...millioneaProp} {...breakProp} {...millioneaBreakProp} />}
       {/* ⭐ THE PREVIEW MARKER — first under the bar, so whoever holds this browser knows at once that they are
           looking at pages players do not see yet, and has the way out on the same line. */}
       {journeyPreview && <PreviewMarker label={t.journey.previewMarker} exit={t.journey.previewExit} />}
@@ -643,7 +650,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       {/* MASWALI-BUILD S5-TAB: both rails take the one Millionea answer, handed only while it is true (D3) — the journey's
           draws its fifth tab from it, the classic rail its first More row; the classic rail also takes the break's answer
           (D13), as the classic bar does. */}
-      {journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} {...millioneaProp} /> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} {...millioneaProp} {...millioneaBreakProp} />}
+      {journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} {...millioneaProp} /> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} {...millioneaProp} {...breakProp} {...millioneaBreakProp} />}
       <RealityCheckHost enabled={!!session} intervalMin={realityCheckMin} userId={session?.userId ?? null} />
       {/* 🔴 SESSION-GATED, like its neighbours on the lines above and below (audit F-08).
           It was the only one of the three that was not, and the omission had no upper bound.

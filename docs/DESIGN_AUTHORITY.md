@@ -1709,7 +1709,10 @@ The platform's hardest-won rules. Most were bought with an incident.
    ⛔ No mascots. ⛔ **No baked-in text in reusable art** — it cannot be translated.
 8. **During a break, nothing a break pauses is offered — and no offer to earn or recruit.** While a player's
    cooling-off or self-exclusion is running, the interface offers neither what the break stops (R4-I and R6-A,
-   2026-10-09: no bet panel or one-tap stake, no first-bet invitation, no deposit door) nor, by the owner's ruling (4)
+   2026-10-09: no bet panel or one-tap stake, no first-bet invitation, no deposit door — in the classic shell too since
+   MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22, the lead's approval of the hub lane's reader finding: the rail's centre
+   coin is the Wallet door, drawn exactly as for a held wallet, the bar's deposit pill is withheld and the balance capsule's
+   Wallet drops its Deposit; `test:millionea-shell` §5) nor, by the owner's ruling (4)
    of 2026-10-10 (owner items 16 and 56), any door to the three programmes that pay for activity: **Alika**
    (`/profile/invite` — a player's invite and an agent's dashboard alike), **Mapendekezo / Propose & earn**
    (`/proposals`) and **Kuwa wakala / Become an agent** (`/agent`). Their doors are not drawn in either shell — the
