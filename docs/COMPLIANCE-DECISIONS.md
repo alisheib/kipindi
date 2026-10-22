@@ -8,6 +8,25 @@
 
 ---
 
+## 2026-10-22 · The Maswali Millionea rules' §11 states the stale-form rule — the hash moves a sixth time inside version 2026-10-18, before anything was published (MASWALI-BUILD S6-DOCS)
+
+**Authority.** The build lead's S6-DOCS brief (2026-10-22, its open list): "the binding rules text's §11 states the
+stale-form rule (a form opened before a week was made final cannot buy) — a move of the binding text goes with its hash
+in `millionea-rules-version.ts` inside the unpublished version, with a dated COMPLIANCE line". The rule is built: the
+purchase refuses a slip that did not state the final week's rule once its week has been made final, and nothing is
+charged (`maswali-money-service.ts`, inside the market lock; `maswali-service.ts`, before it).
+
+**What moved.** §11 "If Millionea ends" gains one paragraph, in the decided words How to play's stop rule already
+carries (`ruleSunset`, en/sw/zh — one wording per truth): "Once a week is final, the Millionea page and every ticket
+form opened from then on say so, and a ticket cannot be bought from a form opened before." Nothing else moves.
+`MILLIONEA_RULES_TEXT_SHA` moves d5a5e9e3e680 → 46f7b1b18732 under `MILLIONEA_RULES_VERSION` 2026-10-18.
+
+**Why the version did not move.** The product is WITHDRAWN and the Millionea rules are served only above that ceiling:
+nobody but staff has read 2026-10-18, and no ticket has been bought under it. At publication the version moves, as the
+entry of 2026-10-18 says.
+
+---
+
 ## 2026-10-22 · The Maswali Millionea rules' Chinese text names an event 事件 — the hash moves a fifth time inside version 2026-10-18, before anything was published (MASWALI-BUILD S6)
 
 **Authority.** The build lead's ruling D2 of 2026-10-22, on Ali's ruling of 2026-10-21 (§ "2026-10-21 · Maswali
@@ -228,6 +247,9 @@ between 707c9f634d7c and 2c3c95afeeb9.)
 
 ⟶ A fifth move, 4ed78ea80417 → d5a5e9e3e680, on 2026-10-22: § "2026-10-22 · The Maswali Millionea rules' Chinese text
 names an event 事件 — …".
+
+⟶ A sixth move, d5a5e9e3e680 → 46f7b1b18732, on 2026-10-22: § "2026-10-22 · The Maswali Millionea rules' §11
+states the stale-form rule — …".
 
 **Why the version did not move.** The product is WITHDRAWN: `/legal/rules/millionea` answers as the 404 to every reader
 the rollout does not admit, nobody but staff has read 2026-10-18, and no ticket has been bought under it.
