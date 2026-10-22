@@ -84,7 +84,10 @@ section("1 · D12 · Millionea's staff preview is one bar above the page, the pl
   const callSites = ["src/app/millionea/how/page.tsx", "src/app/millionea/page.tsx", "src/app/millionea/register/page.tsx", "src/app/millionea/register/[week]/page.tsx",
     "src/app/millionea/slip/page.tsx", "src/app/millionea/tickets/page.tsx", "src/app/millionea/tickets/[serial]/page.tsx", "src/app/results/millionea-results-view.tsx"];
   const calls = callSites.reduce((n, f) => n + count(decomment(raw(f)), "<MillioneaPreviewMark t={t} />"), 0);
-  ok(`1.1b · the pages keep their ${calls} calls, unchanged (round 2 removes them)`, calls === 9, String(calls));
+  // Round 2 removes them page by page, each lane its own (S5-R2-SLIP took the slip's two): never more than the 9 D12 left,
+  // and none on a page whose lane has removed them.
+  const slipCalls = count(decomment(raw("src/app/millionea/slip/page.tsx")), "MillioneaPreviewMark");
+  ok(`1.1b · the pages keep ${calls} calls — never more than D12's 9 — and the slip none (round 2 removes them)`, calls <= 9 && slipCalls === 0, String(calls));
   const callout = fromSource<{ MillioneaPreviewMark: Mark }>(PARTS, plant(plant(raw(PARTS), "export function MillioneaPreviewMark(_props: { t: Dict }): null {\n  return null;\n}",
     'export function MillioneaPreviewMark({ t }: { t: Dict }) {\n  return <div data-testid="millionea-preview-mark"><Callout tone="info" glyph="eye" role="status">{t.millionea.previewMark}</Callout></div>;\n}'),
     'import { I } from "@/components/ui/glyphs";', 'import { I } from "@/components/ui/glyphs";\nimport { Callout } from "@/components/ui/callout";')).MillioneaPreviewMark;
