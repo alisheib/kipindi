@@ -847,7 +847,7 @@ export function objectionWindowEnd(openedMs: number, hours: number, notBefore: s
  * is asked BEFORE the first write; should one come anyway, it is thrown, so it escapes the lock and the act rolls back
  * whole — never a landed seal reported as failed (S5 review 2).
  */
-type OwedAudit = Parameters<typeof audit>[0];
+export type OwedAudit = Parameters<typeof audit>[0];
 type GateNow = { gate: ReturnType<typeof settlementGate>; weekVoidCertain: boolean };
 type OwedAuditWriter = (row: OwedAudit) => Promise<{ recorded: boolean }>;
 /** The writer a test set, if any. On globalThis (S5-FIX-SRV): Next bundles a dev route and a server action apart, and the
@@ -859,8 +859,9 @@ export function __setMaswaliAuditWriterForTests(writer: OwedAuditWriter | null):
   auditSeam.__50PICK_MLN_AUDIT_WRITER = writer;
 }
 
-/** Write the rows an act owes, in order, after its lock committed. True only when every one was recorded; never throws. */
-async function recordOwed(rows: readonly OwedAudit[]): Promise<boolean> {
+/** Write the rows an act owes, in order, after its lock committed. True only when every one was recorded; never throws.
+ *  Exported for the objection door (`maswali-objections.ts`, MR-16): its filings and rulings owe their rows the same way. */
+export async function recordOwed(rows: readonly OwedAudit[]): Promise<boolean> {
   let all = true;
   for (const row of rows) {
     const r = await (auditSeam.__50PICK_MLN_AUDIT_WRITER ?? audit)(row).catch(() => ({ recorded: false }));
@@ -1065,8 +1066,9 @@ export async function correctSeal(input: {
 /**
  * Re-read the record and stamp the graded set final (and open the objection window) once the gate is ready. Under the lock,
  * on its transaction (`tx`): the reads see the write this follows, and the stamp commits with it. Its audit row is owed.
+ * Exported for the objection door (`maswali-objections.ts`, MR-16): a ruling that changes the graded set re-runs MR-17 here.
  */
-async function recomputeGateLocked(weekId: string, nowMs: number, tx?: Prisma.TransactionClient): Promise<Result<GateNow & { owed: OwedAudit[] }>> {
+export async function recomputeGateLocked(weekId: string, nowMs: number, tx?: Prisma.TransactionClient): Promise<Result<GateNow & { owed: OwedAudit[] }>> {
   const week = await weekStore.get(weekId, tx);
   if (!week) return refuse("No such week.");
   const qs = gradable(await questionStore.listForWeek(week.id, tx));

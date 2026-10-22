@@ -30,6 +30,7 @@ import { adminCount, formatNumber, formatTzs } from "@/lib/utils";
 import { fmtEat } from "@/lib/maswali-admin-format";
 import { HeldShareControls, HoldShareControl, MarkReachedControl, PauseControl, VoidWeekControl, ClearLettersControl } from "./integrity-controls";
 import { StandingAuditWarning } from "../audit-warning";
+import { MillioneaObjectionQueue } from "./objection-queue";
 
 export const metadata = { title: "Admin · Millionea · Integrity" };
 export const dynamic = "force-dynamic";
@@ -56,6 +57,7 @@ const SMS_HELD: Record<string, string> = {
  * MB-78, OD-07).
  *
  *   · the SALES PAUSE (sales only; never a cancel, a settlement or a refund);
+ *   · the OBJECTIONS to one question (MR-16, MB-23; S7-OB), by week and question, to rule (`objection-queue.tsx`);
  *   · weeks whose whole-week void is certain and whose window has closed, to void;
  *   · S6 · each VOIDED week still owed its refunds, a row of its own until they land (R1's one truth, `unrefundedVoids`);
  *   · S6 · the WINNERS NOT YET REACHED (MB-93), among the weeks settled in the last `UNREACHED_RECENT_DAYS`: no seen mark,
@@ -104,6 +106,8 @@ async function Content({ searchParams }: IntegrityPageProps) {
     ]),
   ]);
   const [canPause, canResume, canVoid, canHold, canRelease, canForfeit, canReach, canClearLetters] = can;
+  // S7-OB · the objection queue's ruling (MR-16): Compliance's, the Owner the fallback.
+  const canRule = await canUseControl(role, "ruleMaswaliObjection");
   // The cluster report for the latest weeks whose ticket set is fixed (closed, being sealed, or just settled).
   const closed = (await weekStore.list({ states: ["CLOSED", "RESOLVING", "SETTLED"], limit: 3 }).catch(() => []));
   const clusters = await Promise.all(closed.map((w) => clusterReport(w).catch(() => null)));
@@ -133,6 +137,8 @@ async function Content({ searchParams }: IntegrityPageProps) {
             ? <PauseControl paused={!!standing?.pause.paused} />
             : <ControlLocked what={standing?.pause.paused ? "Resume sales" : "Pause sales"} need={CONTROL_DOMAIN.pauseMaswaliSales} block />}
         </AdminCard>
+
+        <MillioneaObjectionQueue viewerId={session?.userId ?? null} viewerIsOwner={role === "ADMIN"} canRule={canRule} />
 
         <AdminCard title="Answers moving while a week sells" sw="Mabadiliko ya majibu">
           {shifts === null ? <p className="text-body-sm text-danger-fg">The pick shifts could not be read.</p>
@@ -164,18 +170,18 @@ async function Content({ searchParams }: IntegrityPageProps) {
         </AdminCard>
 
         {/* ⭐ MB-96 · the winners' takeover watch (S7-F9, `maswali-takeover.ts`): an alert, never a hold — a winner's share is
-            held from the winners below (OD-07), and no withdrawal is ever held (2026-10-10). */}
-        <AdminCard title="Winners' accounts to check" sw="Akaunti za washindi za kukagua">
+            held from the winners below (OD-07); nothing else is ever held (2026-10-10). The card says what the control
+            enforces, never what it watches for (the repository is public; the lead's ruling, 2026-10-22). */}
+        <AdminCard title="Possible account takeovers after a payout" sw="Akaunti za washindi za kukagua">
           {!takeover.readable && <p role="alert" className="text-body-sm text-danger-fg mb-2">The takeover watch could not be read in full; a winning account may be missing from this list.</p>}
           {takeover.findings.length === 0
-            ? (takeover.readable && <p className="text-body-sm text-text-secondary">No recent winner's password changed after their payout and was followed by a withdrawal request.</p>)
+            ? (takeover.readable && <p className="text-body-sm text-text-secondary">No winning account is flagged for review.</p>)
             : (
               <ul className="space-y-1.5 text-body-sm">
                 {takeover.findings.map((f) => (
                   <li key={`${f.userId}-${f.weekId}`}>
-                    <span className="tabular">{f.code}</span> · {f.holder} · password {f.passwordHow} <span className="tabular">{fmtEat(f.passwordAt)}</span>,
-                    {" "}then {f.attempts}{f.more ? "+" : ""} withdrawal request{f.attempts === 1 && !f.more ? "" : "s"}, the latest <span className="tabular">{fmtEat(f.attemptAt)}</span>.
-                    <span className="text-text-tertiary"> Paid <span className="tabular">{fmtEat(f.creditAt)}</span>. Confirm the owner before the money leaves; hold the share from Winners below if it is not theirs.</span>
+                    <span className="tabular">{f.code}</span> · {f.holder} · flagged <span className="tabular">{fmtEat(f.flaggedAt)}</span>
+                    <span className="text-text-tertiary"> (paid <span className="tabular">{fmtEat(f.creditAt)}</span>). Review the account with its owner before its money leaves; hold the share from Winners below if it is not theirs.</span>
                   </li>
                 ))}
               </ul>
@@ -280,7 +286,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
                       <td className="text-right tabular">{u.forfeited ? "Forfeited" : u.held ? "Held" : u.paidTzs === null ? "Not on record" : formatTzs(u.paidTzs)}</td>
                       <td className="text-left tabular">{fmtEat(u.settledAt)} · {u.hoursSince} h{u.hoursSince >= UNREACHED_ALERT_HOURS ? <span className="text-warning"> · past {UNREACHED_ALERT_HOURS} h</span> : null}</td>
                       <td className="text-left">{u.bell ? "Written · not opened" : "Not written"}</td>
-                      <td className="text-left">{u.email === "confirmed" ? "Confirmed address" : u.email === "unconfirmed" ? "Unconfirmed address" : "No address"}</td>
+                      <td className="text-left">{u.emailState === "confirmed" ? "Confirmed address" : u.emailState === "unconfirmed" ? "Unconfirmed address" : "No address"}</td>
                       <td className="text-left">{u.sms ? SMS_STATE[u.sms.status] : u.smsHeld ? (SMS_HELD[u.smsHeld] ?? "Held") : "Not sent"}</td>
                       <td className="text-left">{canReach ? <MarkReachedControl weekId={u.weekId} userId={u.userId} holder={u.holder} />
                         : <ControlLocked what="Record a call" need={CONTROL_DOMAIN.markMillioneaWinnerReached} />}</td>
