@@ -220,4 +220,12 @@ export const MUTATIONS = [
     to: "  const script: string[] = [];",
     expect: "7.7 · ⭐ round 17 (L4)",
   },
+  /* ── Finding 9 (the lint review after round 17) · an oversized body is read by no rule ── */
+  {
+    name: "(C27) finding 9 · the composer's door reads a body past one SMS: its time grows with the square of a long run",
+    file: LINT,
+    from: "  if ((text ?? \"\").length > CLAIMS_MAX_CHARS) return [];",
+    to: "  if (false) return [];",
+    expect: "8.1 · ⭐ finding 9",
+  },
 ];

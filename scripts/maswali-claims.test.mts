@@ -1628,15 +1628,48 @@ const passAll = (tag: string, list: readonly string[]) => list.forEach((text, i)
     !draft.ok && (draft.problems.bodyEn ?? []).includes(claims.CAMPAIGN_HAN_SCRIPT) && draft.problems.bodySw === undefined, J(draft.problems));
 }
 
+// ── §8 · FINDING 9 (the lint review after round 17) — an oversized body costs the server nothing ─────────────────────────
+console.log(`${LF}§8 · finding 9 — a body past one SMS is refused by its length, and no rule reads it`);
+{
+  const timed = (f: () => unknown): number => { const t0 = performance.now(); f(); return performance.now() - t0; };
+  // The composer's one door (the save, the test send and a slice judge a body through it too), untagged and tagged.
+  const door = (text: string) => { claims.millioneaCampaignProblems(text); claims.millioneaCampaignProblems(text, TAGGED); };
+  // Measured before the fix: 16,000 spaces after a tax word took 500 ms and 8,000 digit groups 735 ms on the untagged path
+  // (every campaign's), each growing with the square of the run — over budget without the limit, so its plant is caught in
+  // about a second; the review's 1 MB body (minutes without it) runs only once these are in budget.
+  const spaces = `50pick: ada${" ".repeat(16_000)}# 5,000,000`;
+  const groups = `50pick: ${"000 ".repeat(8_000)}# 5,000,000`;
+  const smallMs = Math.max(timed(() => door(spaces)), timed(() => door(groups)));
+  ok("8.1 · ⭐ finding 9 · 16,000 spaces after a tax word, and 8,000 digit groups, are each answered in under 50 ms by the composer's door (untagged and tagged)",
+    smallMs < 50, `${smallMs.toFixed(1)} ms`);
+  const huge = `50pick: ada${" ".repeat(1_000_000)}# 5,000,000`;
+  const hugeMs = smallMs < 50 ? timed(() => door(huge)) : Number.POSITIVE_INFINITY;
+  ok("8.2 · ⭐ finding 9 · the review's body — \"50pick: ada\", about 1 MB of spaces, \"# 5,000,000\" — is answered in under 50 ms by the door's rules (not run while 8.1 is over budget)",
+    hugeMs < 50, hugeMs === Number.POSITIVE_INFINITY ? "not run" : `${hugeMs.toFixed(1)} ms`);
+  // ⛔ Only once the door is in budget: without the limit this body holds the suite for minutes (its red twin's plant).
+  const hugeVerdict = smallMs < 50 ? plain(huge) : null;
+  ok("8.3 · …and the composer refuses it by its length, in the one cap's sentence, with no rule's sentence (not run while 8.1 is over budget)",
+    hugeVerdict !== null && !hugeVerdict.ok && hugeVerdict.problems.some((p) => p.includes("and the limit is")) && millioneaIn(hugeVerdict.problems).length === 0,
+    hugeVerdict === null ? "not run" : J(hugeVerdict.problems.map((p) => p.slice(0, 60))));
+  const claim = "50pick: Shinda TZS 50,000,000 Ijumaa hii!";
+  const atLimit = claim + " ".repeat(claims.CLAIMS_MAX_CHARS - claim.length);
+  ok("8.4 · control · a claim padded to exactly the limit is still read: refused untagged and as a Millionea campaign",
+    atLimit.length === claims.CLAIMS_MAX_CHARS && claims.millioneaCampaignProblems(atLimit).length > 0 && claims.millioneaCampaignProblems(atLimit, TAGGED).length > 0,
+    J({ len: atLimit.length }));
+  ok("8.5 · control · the limit lies past anything one SMS carries: a body one character over it is several messages",
+    sizeSms(`${atLimit} `).segments > 1, J(sizeSms(`${atLimit} `).segments));
+}
+
 /**
  * The floor: the checks this file makes when every one runs, counted from the source (§1 121+1+1+21 = 144 ·
  * §2 20+2+3+8+2+36+1+1+3+2+3+2+10+7+7+11+16+7+10+4+12+11+9+11+9+6+2+2+3+3+4+1+5+1+4+1 = 239 · §3 1+16+1+1+2 = 21 · §4
  * 4+5+8+9+5+5+19+7 = 62 · §5 6 · §6 8 = 480), never from a run. ⏳ Re-pin from the first green run's printed count; it only
  * rises. ⭐ Round 17 · re-pinned to each green run's printed count (the floor line's "— N ran"): with §7.0–7.1 (H2), 548;
  * with §7.2 (H3), 560; with §7.3 (M3), 591; with §7.4 (M4), 615; with §7.5 (L2), 616; with §7.6 (L3), 622; with §7.7
- * (L4), 626; with §7.3d–e (M3, a tax heading "malipo"), 629; with §7.3f–g (M3, a getting verb's other shapes), 634.
+ * (L4), 626; with §7.3d–e (M3, a tax heading "malipo"), 629; with §7.3f–g (M3, a getting verb's other shapes), 634;
+ * with §8 (finding 9, S6-INT 16), 639.
  */
-const FLOOR = 634;
+const FLOOR = 639;
 ok(`floor · at least ${FLOOR} checks ran before this one (a suite that goes blind prints fewer)`, pass + fail >= FLOOR, `${pass + fail} ran`);
 console.log(`${LF}test:maswali-claims: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

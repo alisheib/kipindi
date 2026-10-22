@@ -798,6 +798,16 @@ export function millioneaFactsProblems(text: string, facts: MillioneaFacts | nul
 const HAN = /\p{Script=Han}/u;
 
 /**
+ * ⭐ FINDING 9 (the lint review after round 17) · the longest body the composer's one door reads. Nothing longer can be sent
+ * — one SMS at most (`SMS_MAX_SEGMENTS`), and the composer's length rule refuses it in its own sentence — while the
+ * signals' patterns cost time that grows with the square of a long run (measured: 16,000 spaces after a tax word, 500 ms;
+ * 8,000 digit groups, 735 ms), and every campaign meets them, a classic one too. One oversized save or composer body
+ * (the save action has no cap of its own) could hold the server's one process for minutes. So a body past this is read
+ * by no rule: its length is its refusal (`test:maswali-claims` §8; recorded in docs/FAILURE-INVENTORY.md §9b).
+ */
+export const CLAIMS_MAX_CHARS = 640;
+
+/**
  * ⭐ THE ONE POLICY, for the composer's one door: an untagged campaign carrying a Millionea signal is refused in words; a
  * Millionea campaign is held to the whole lint and, where its door read the week, to the server's part; and ⭐ round 17
  * (L4) · a body in Chinese characters is refused for every campaign but the one exemption (OD42: Swahili, and an optional
@@ -805,6 +815,8 @@ const HAN = /\p{Script=Han}/u;
  */
 export function millioneaCampaignProblems(text: string, ctx: MillioneaComposeContext = UNTAGGED_CAMPAIGN): string[] {
   if (ctx.exempt === true) return [];
+  // ⭐ Finding 9 · past one SMS no rule reads the body: the length rule is its refusal (`CLAIMS_MAX_CHARS`).
+  if ((text ?? "").length > CLAIMS_MAX_CHARS) return [];
   const script = HAN.test(text ?? "") ? [CAMPAIGN_HAN_SCRIPT] : [];
   if (ctx.product !== "MILLIONEA") {
     const signals = millioneaSignals(text);

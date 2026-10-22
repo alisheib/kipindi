@@ -1290,3 +1290,18 @@ the settlement (RD.1). Before ACTIVE: the wallet lane's trigger, or the Owner's 
 
 The takeover alert MB-96 asks for is not built. What holds today: the preventive control (E-215, TK.1). Before
 ACTIVE: the alert, or a dated deferral recorded by the Owner.
+
+## §9b · MASWALI MILLIONEA — the S6 integration's fixes, each a FINAL rule (2026-10-22)
+
+Each entry is the rule as it stands, where it is enforced, and the case and the plant that hold it (MASWALI-BUILD S6-INT,
+branch `claude/maswali-s6-release`).
+
+#### ✅ Lint finding 9 · an oversized body cost the server time that grew with its square (S6-INT 16)
+
+The claims lint (`src/lib/marketing/millionea-claims.ts`) read a body of any length on the composer's one door, which
+every campaign meets (a classic one too), and its signal patterns cost time that grows with the square of a long run: one
+save or composer request (the save action has no length cap of its own) could hold the server's one process for minutes.
+THE RULE: a body longer than `CLAIMS_MAX_CHARS` (640 characters) is read by no claims rule — nothing that long can be sent
+(one SMS at most), and the composer's length rule refuses it in its own sentence. Held by `test:maswali-claims` §8 (the
+review's 1 MB body answered in under 50 ms; a claim padded to the limit still refused) and the plant (C27) of
+`red:maswali-claims`.
