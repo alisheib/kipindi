@@ -3164,7 +3164,13 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     that shows the chat: the bubble at rest over a line of text or a figure YIELDS — it fades to `--state-yield-opacity`,
     never moves, stays live (a pointer's hover and a keyboard's focus bring it back whole; its taps are kept) — and is
     whole again once the content clears (MASWALI-BUILD S5-FIX-PLATFORM D15, the register critic's M5; lead 2026-10-21, the
-    10/10 pass; globals.css D15, `test:chat-yield`, `qa:chat-yield`). This gold is the
+    10/10 pass; globals.css D15, `test:chat-yield`, `qa:chat-yield`). ⚠️ And D11's, every reader's on every page: a
+    hover is a pointer's — on a touch screen, where `:hover` sticks to the last element tapped, no tapped control keeps
+    what a pointer's hover gives it. The kit button's lift (`.btn:hover`), struck gilt's sheen (`.gilt-metal:hover`) and
+    every kit button's fill — L17's solid fills (2026-09-27) and, in round 2, the ghost, claret and aqua-ghost tints —
+    stand inside `@media (hover: hover)`; a mouse still lifts, sheens and tints (MASWALI-BUILD S5-FIX-PLATFORM D11, the
+    motion critic's M1 and L6, 2026-10-21; the tints the lead's round 2, 2026-10-22; `test:hover-touch`,
+    `qa:hover-touch`). This gold is the
     Owner's label for a destination, not money: item 7 is untouched.
     The other doors stand: one card on the journey home after the head (the How-to card and the headline) and before the
     topic chips; on classic, one card at the head of `/markets`; and a third switch in Tiketi zangu. Placing the card

@@ -1433,9 +1433,16 @@ body {
   color: var(--text);
   border-color: var(--border);
 }
+/* ⭐ D11'S GATE, ON THE THREE TINTS IT HAD LEFT OUT (MASWALI-BUILD S5 round 2, 2026-10-22; the platform lane's own finding).
+   L17 gated the solid fills' hover to pointers that hover and D11 the kit's lift and struck gilt's sheen; the ghost, claret
+   and aqua-ghost tints stayed outside, so on a touch screen a tapped ghost button kept its fill (and its stronger edge) and
+   a tapped claret one its glow, after the tap, as the lift had. Each now stands in the same gate; a mouse still tints.
+   `test:hover-touch` 1.5–1.6 holds every kit button's hover there; `qa:hover-touch` taps and hovers them. */
+@media (hover: hover) {
 .btn-ghost:hover:not(:disabled) {
   background: oklch(40% 0.07 264 / 0.35);
   border-color: var(--border-strong);
+}
 }
 
 .btn-danger {
@@ -1485,7 +1492,9 @@ body {
     0 10px 28px -10px oklch(38% 0.14 15 / 0.55);
   text-shadow: 0 1px 0 oklch(15% 0.06 15 / 0.45);
 }
+@media (hover: hover) {
 .btn-claret:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)) saturate(1.04) drop-shadow(0 6px 16px color-mix(in oklab, var(--claret-500) 32%, transparent)); }
+}
 
 /* ⛔ `.btn-outline` RETIRED (round 9 of the visual pass, R9-C, 2026-10-11; R4-F2, tile 156). Its one consumer, the guest
    Tiketi sheet's Ingia, is `btn-ghost` now, as every other secondary action. The kit listed it with no role, and its
@@ -1511,10 +1520,12 @@ body {
   color: var(--text);
   border: 1px solid var(--aqua-edge);
 }
+@media (hover: hover) {
 .btn-aqua-ghost:hover:not(:disabled) {
   background: color-mix(in oklab, var(--aqua-300) 22%, transparent);
   color: var(--text);
   box-shadow: 0 0 0 3px var(--aqua-glow);
+}
 }
 
 /* ---------- Chip ---------- */
