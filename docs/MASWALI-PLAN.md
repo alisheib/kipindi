@@ -2606,6 +2606,18 @@ stays open as KNOWN-RED TK.2, with MB-23 (OB.0) and MB-74 (RD.5): §6.1 Gate B l
   The latency targets stay TBD-BASELINE (S17's constants): these are the first baseline; the lead sets them.
   ⚠️ The prep had never run green: it opened its week two weeks ahead and could not move the close to the run against
   `MaswaliCycle_close_after_open_check` — fixed in the harness (S7-F8 11: the week opens at the real clock).
+- **S7 · the automatic resolver against two-admin authorization (S7-F9 2, 2026-10-22).** The question: can the AI seal a
+  Millionea question alone while two-admin authorization is on? It cannot. A question is sealed only by `sealQuestion`,
+  `confirmSeal` and `correctSeal`, and only officer actions call them. The automatic seal (`resolveDueMarket`) stamps
+  both stages as `system_auto_resolver` and never reads the two-admin setting (the 2026-07-24 ruling: automatic
+  resolution is its own axis), and its door skips a week (`isFencedMaswali`) before any claim, verdict or stamp; the
+  scheduler arms no deadline for a week and the sentinel answers nothing for one. **Guards:** `test:maswali-fence`
+  2.4b–2.4d on both stores — two-admin ON, the week in automatic mode, a confident verdict citing its own source:
+  skipped, nothing stamped; the operator's re-check of a closed week records nothing; CONTROL: the same verdict seals a
+  poll.
+  Plants (18) and (19) in `red:maswali-fence` (the door's fence removed; the fence narrowed to calls with no verdict),
+  each caught on its own case. *Recorded, no change* (the lead's ruling): on a classic poll the automatic seal still
+  stamps both stages with two-admin on.
 
 #### S8 · Live drive and public launch
 

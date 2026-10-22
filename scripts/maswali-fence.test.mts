@@ -11,13 +11,15 @@
  * ⛔ NO POSTGRES IS A FAILURE, NOT A SKIP (exit 3, NOT MEASURED).
  *
  * The floor is per store: the census (§5, seven assertions) runs in the memory child only. Measured from the first
- * printed run; it only ever rises.
+ * printed run; it only ever rises. +3 on both with 2.4b–2.4d (S7-F9, the automatic resolver against two-admin
+ * authorization): 32 printed on Postgres, 38 on memory — printed while the census's 5.1 is red for another lane's file
+ * (`src/app/results/millionea-results-view.tsx`, no census entry), so a green memory run prints 39.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({
   suite: "test:maswali-fence",
   casesFile: "scripts/lib/maswali-fence-child.mts",
-  minPass: { memory: 36, postgres: 29 },
+  minPass: { memory: 38, postgres: 32 },
   dbPrefix: "mlw_fence",
 });
