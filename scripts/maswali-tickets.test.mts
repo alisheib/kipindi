@@ -275,6 +275,8 @@ check("3.1", "the free cancel is the platform's free exit: a clock line (the tim
     const [before] = String(M.cancelFreeUntil).split("{time}");
     const clock = /<p class="text-body-sm text-text-muted">([\s\S]*?)<\/p>/.exec(m)?.[1] ?? "";
     need(d, textOf(clock).startsWith(before.trim()) && /<time date[Tt]ime="[^"]+"[^>]*>10:09<\/time>/.test(clock) && /role="timer"[^>]*>9:42</.test(clock), `${l}: the clock line is not "${before.trim()} 10:09 · 9:42" (${textOf(clock)})`);
+    // §T5 (round 2): the clock is a `.mono` numeral, as every digit run of a Millionea fact line; the timer is mono too.
+    need(d, /<time date[Tt]ime="[^"]+" class="mono whitespace-nowrap">10:09<\/time>/.test(clock) && /role="timer" class="[^"]*font-mono[^"]*">9:42</.test(clock), `${l}: the clock or the timer is not a mono numeral (§T5)`);
     const btn = /<button[^>]*>([\s\S]*?)<\/button>/.exec(m)?.[1] ?? "";
     const [rb, ra] = J.sellFullRefund.split("{amount}");
     need(d, textOf(btn).includes(M.confirmCancel) && /<span class="amount[^"]*">TZS 1,000<\/span>/.test(btn) && textOf(btn).includes(`${rb}TZS 1,000${ra}`.trim()), `${l}: the button is not "${M.confirmCancel}" over the full refund (${textOf(btn)})`);
@@ -780,6 +782,7 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["H2 undone — an at-rest clause at the disabled opacity", "2.1", plantSrc("ticket", 'style={reserve ? { background: "var(--wash-inset)" } : undefined}', 'style={{ ...(reserve ? { background: "var(--wash-inset)" } : null), ...(inert ? { opacity: "var(--state-disabled-opacity)" } : null) }}')],
   ["H2 — the muted ink dimmed under the floor", "2.2", (() => { const w = plantSrc("css", "  --text-muted:    oklch(86% 0.040 268);", "  --text-muted:    oklch(40% 0.040 268);"); return w; })()],
   ["M4 undone — the clause back on the button", "3.1", plantSrc("cancel", "{pending ? t.millionea.cancelling : t.millionea.confirmCancel}", "{pending ? t.millionea.cancelling : t.millionea.cancelFreeUntil.replace(\"{time}\", \"10:09\")}")],
+  ["§T5 undone — the free cancel's clock in the body face", "3.1", plantSrc("cancel", 'className="mono whitespace-nowrap">{eatClock(until)}</time>', 'className="whitespace-nowrap tabular-nums">{eatClock(until)}</time>')],
   ["M4 undone — no timer on the clock line", "3.1", plantSrc("cancel", '<span role="timer" className="whitespace-nowrap font-mono font-bold tabular-nums text-text">{freeLeftLabel(left)}</span>', "")],
   ["H3 — a button label too long for 320", "3.2", plantWord("sw", "confirmCancel", "Kughairi bila malipo hadi 10:21")],
   ["a door outliving its window", "3.3", plantSrc("cancel", "  const left = useTickSeconds(until, serverNow, true, serverNow);\n  if (left !== null && left <= 0) return null;\n  // The dictionary marks where the amount sits", "  const left = useTickSeconds(until, serverNow, true, serverNow);\n  // The dictionary marks where the amount sits")],
