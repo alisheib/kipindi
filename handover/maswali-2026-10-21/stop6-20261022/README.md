@@ -69,6 +69,28 @@ re-point its test readers; item 24's note).
 - JetBrains Mono ships 400/500/600 only (fonts.css): the rail's 700 labels are SYNTHESIZED bold — wider; likely the root
   of F1/F5 (the 320 rail clipping). R3-FIX should look there first (ship 700, or use 600), then re-measure.
 
+### S5-R3-FIX's report (branch `claude/maswali-s5-r3-fix` = `15b36c135`, WIP: hover-touch's tap now holds the sticky
+### :hover a phone leaves — written, not run) and THE LEAD'S CORRECTED RULING
+- ⛔ The runner has NO Chinese font: every zh reading on it so far is VOID (tofu boxes; "two characters 17px" where a real
+  face needs ~22). Voids F5's zh cut, F6's zh offsets, and every zh reading of the repo's own CI browser gates. Every
+  measuring job installs `fonts-noto-cjk` first (R3-FIX's jobs do).
+- ⛔ The first ruling's reason was WRONG. At device pixel ratio 1 the runner rounds each letter of the 11px mono to a whole
+  pixel (7.0px: "Markets" = 7×7 + 4 = 53) — WIDER than real phones (ratio 2–3: ~6.5–6.67; iOS fractional 6.6).
+  **CORRECTED RULING (lead, 2026-10-22):** text geometry (a label's fit, a drawing's line table, a rail's least gap) is
+  MEASURED at a phone's pixel ratio — 2.625 and 3, Chromium AND WebKit, with the phones' CJK face installed — and "never
+  clip / never overflow" is checked at ratio 1 as well. Record it in DESIGN_AUTHORITY (R3-FIX proposes §M4a with a pointer
+  from §M8a item 22), its reason the measured advance table. F2 → option (b): gaps at a phone's ratio (~-0.05em suffices),
+  no clipping at either ratio.
+- New defects R3-FIX found (beyond F1–F6): five tabs at 320 — sw/zh "Millionea" (67px) overflows its 64px track (the
+  gaps drive checks gaps, not cuts); four-tab sw "Tiketi zangu"/"Juu na Chini" wrap between 348.8 and 352 with the tabs
+  centred (the pip misalignment the stack-from-top rule prevents), and sit < 8px apart from 352 to 368.
+- R3-FIX's measuring runs: rails `39830221442` (done, NOT read: `ADV`/`RAIL`/`TRIAL` lines), register `39830230189`
+  (was running). Its plan for F1/F5: below 335px every classic rail label tightens by D14's 0.04em (63.04px fits 64), one
+  rule for all five labels; a classic-visible change at 320–334 (name it for parity); re-pin r9c's `fourReached`. ALSO
+  check JetBrains Mono 700 being SYNTHESIZED (HUB's finding) — shipping the real 700 or using 600 may be the cleaner fix.
+- Open for the lead/Ali: should the repo's CI (`ci.yml` on main) install `fonts-noto-cjk`? (Recommended: yes, in a release
+  of its own, with the browser gates' zh results re-read.)
+
 ## 3 · S7 and S6
 - S7 (`claude/maswali-s7-s5`, lane brief `lanes/s7/BRIEF.md`): S7-MERGE 4 (the release merged in) and its list 1–7 — read
   its last commit for where it stopped.
