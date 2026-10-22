@@ -13,8 +13,8 @@ import type { Locale } from "@/lib/i18n-dict";
  * hub's drawing's rule — so each band is the page's height): the back link's box; the head with its state chip and code
  * under the title (S5 VIS R4), its facts and its times (the critic's M1) as many lines as they take in the reader's language;
  * the ledger's card at the receipt's measure (M4) as a rolled week draws it — the common weekly case — in the ONE ledger's
- * own rows (`MaswaliLedger`: the kit's `ReceiptRow`, the step before the second group, the carry's link row, the totals'
- * hairlines); the commitments' titled card (M12); then the questions' heading and the first questions as the page draws
+ * own rows (`MaswaliLedger`: the kit's `ReceiptRow` at one rhythm, the carry's link row, the totals' hairlines); the
+ * commitments' titled card (M12); then the questions' heading and the first questions as the page draws
  * them — a ticket's clause on a card below 1024 (category, question, criterion, event and source, outcome), the six-column
  * table on its panel from 1024 (R1, L18). What the week holds (its kind, its rows) the drawing cannot know. Wordless but
  * for the screen reader's "loading" (`maswali-ghost.tsx`). Measured by `qa:maswali-register-shots`' register-ghosts hop.
@@ -50,11 +50,12 @@ function Wrapped({ text, lines: [below360, from360, from768], last, mono = false
   );
 }
 
-/** One ledger row in the kit's own row (`ReceiptRow`, the sentence label), its words and figure as bars. */
-function LedgerRow({ label, emphasis, divider, gap, note }: { label: string; emphasis?: "total" | "muted"; divider?: boolean; gap?: boolean; note?: boolean }) {
+/** One ledger row in the kit's own row (`ReceiptRow`, the sentence label), its words and figure as bars — no step of space
+ *  above any row: the ledger keeps one rhythm (the lead's ruling of 2026-10-22). */
+function LedgerRow({ label, emphasis, divider, note }: { label: string; emphasis?: "total" | "muted"; divider?: boolean; note?: boolean }) {
   return (
     <div>
-      <ReceiptRow labelStyle="sentence" label={<GhostLine className={label} />} value={<GhostLine className="w-[88px]" />} emphasis={emphasis} divider={divider} className={gap ? "mt-3" : undefined} />
+      <ReceiptRow labelStyle="sentence" label={<GhostLine className={label} />} value={<GhostLine className="w-[88px]" />} emphasis={emphasis} divider={divider} />
       {note && <span className="mt-0.5 block text-body-sm"><MonoLine width="w-[200px] max-w-full" /></span>}
     </div>
   );
@@ -96,12 +97,12 @@ export function MillioneaRegisterWeekGhost() {
         <div className="flex flex-col gap-2" aria-hidden data-ghost="ledger">
           {H2}
           <div className="mat-flat flex max-w-receipt flex-col rounded-card p-3">
-            {/* A rolled week's rows (`millioneaLedgerRows`): the sales over their note; Money in; the floor after the step
-                into the second group; the fee; the carry's link row (`--h-control-md`); Money out. */}
+            {/* A rolled week's rows (`millioneaLedgerRows`): the sales over their note; Money in; the floor (the second
+                group, at the list's one gap); the fee; the carry's link row (`--h-control-md`); Money out. */}
             <div className="flex flex-col gap-1.5">
               <LedgerRow label="w-[96px]" note />
               <LedgerRow label="w-[88px]" emphasis="total" divider />
-              <LedgerRow label="w-[120px]" emphasis="muted" gap />
+              <LedgerRow label="w-[120px]" emphasis="muted" />
               <LedgerRow label="w-[48px]" />
               <div className="flex flex-col justify-center" style={{ minHeight: "var(--h-control-md)" }}>
                 <ReceiptRow labelStyle="sentence" label={<GhostLine className="w-[160px]" />} value={<GhostLine className="w-[88px]" />} />

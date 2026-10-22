@@ -411,11 +411,13 @@ check("2.9", "the hub's kinds (round 2): a live week prints its pool so far (\"a
     && j(voiding.map((r) => r.key)) === j(["sales", "pool", "refund"]);
   return [ok, j({ live: rows.map((r) => [r.key, r.value]), voiding: voiding.map((r) => r.key) })];
 });
-check("2.10", "the drawing is the kit's own: every row a sentence-case ReceiptRow, a step of space before the first row after \"Money in\", and no hairline under every row (`border-b`)", (w) => {
+// ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-REGISTER, the lead's ruling from HUB's sw readers): no step of space after
+// "Money in" any more — the ledger keeps ONE rhythm (2.19 holds it and why); the kit's rows and no rule under every row stand.
+check("2.10", "the drawing is the kit's own: every row a sentence-case ReceiptRow, and no hairline under every row (`border-b`)", (w) => {
   const drawn = inApp("sw", h(w.Ledger as never, { rows: w.ledger(dict.sw as never, "sw", CASES.dust) } as never));
   const rows = count(drawn, "data-ledger-row=");
   const sentence = count(drawn, 'class="min-w-0 text-body-sm');
-  return [rows === 10 && sentence >= 10 && !/border-b\b/.test(drawn) && drawn.includes("mt-3"), j({ rows, sentence })];
+  return [rows === 10 && sentence >= 10 && !/border-b\b/.test(drawn), j({ rows, sentence })];
 });
 // The tile read of 2026-10-21 (How, sw 320): Money out's parts wrapped to six lines in the label's column beside the total's
 // figure ("Ada TZS 136,500 / imelipwa kwa / washindi / TZS 913,500 / imehamishwa / TZS 0"); a line of figures runs the row's
@@ -517,6 +519,33 @@ check("2.17", "the week's commitments card fills the column it stands in — on 
   const holds = /max-w-receipt/.test(section(held));
   const page = code(w, "weekPage").includes('<WeekCommitments className="max-w-receipt" ');
   return [fills && holds && page, j({ card: card(bare), held: section(held), page })];
+});
+// The lead's ruling of 2026-10-22, from HUB's sw readers of the hub's pool card (sw 320/360/768).
+const LIVE_WAITING = { ...VOIDING, kind: "live", carryIn: { amount: null, week: 47 }, floor: 1_000_000, jackpot: 1_000_000, jackpotAtLeast: true };
+const RHYTHM_CASES: Array<[string, Record<string, unknown>]> = [["live", LIVE_WAITING], ["voiding", VOIDING], ...["dust", "topped", "sunset", "rolled", "voided", "voidedPending"].map((k) => [k, CASES[k]] as [string, Record<string, unknown>])];
+check("2.18", "every figure keeps the figures' edge: each row's value is drawn right-aligned (the kit row's `alignEnd`), so a value that wraps ends every line at the column's right edge — never left-aligned short of it (sw 320: \"angalau / TZS 51,000\" stood ~56px short) — in every kind of week", (w) => {
+  const off = RHYTHM_CASES.flatMap(([name, f]) => {
+    const drawn = inApp("sw", h(w.Ledger as never, { rows: w.ledger(dict.sw as never, "sw", f) } as never));
+    const rows = count(drawn, "data-ledger-row=");
+    const values = count(drawn, '<span class="font-mono text-[');
+    const right = [...drawn.matchAll(/<span class="(font-mono text-\[[^"]*)"/g)].filter((m) => /(^|\s)text-right(\s|$)/.test(m[1])).length;
+    return rows > 0 && values === rows && right === rows ? [] : [`${name}: ${j({ rows, values, right })}`];
+  });
+  return [off.length === 0, off.join(" | ")];
+});
+check("2.19", "ONE rhythm: every row of the ledger stands the rows' one gap apart (`gap-1.5`), a total set apart only by its hairline above — no step of space after a total (under \"Jumla ya bwawa\" it stood ~46px against the rows' 26px pitch at 320/360/768) — in every kind of week", (w) => {
+  const off = RHYTHM_CASES.flatMap(([name, f]) => {
+    const built = w.ledger(dict.en as never, "en", f);
+    const drawn = inApp("en", h(w.Ledger as never, { rows: built } as never));
+    const list = /<div class="([^"]*)" data-testid="millionea-ledger"/.exec(drawn)?.[1] ?? "";
+    // Every class in the drawing that steps a row apart: a top or vertical margin, a top padding — but a total's own hairline
+    // band (`border-t … pt-1.5`) and a note's line under its label (`mt-0.5`).
+    const steps = [...drawn.matchAll(/class="([^"]*)"/g)].map((m) => m[1])
+      .filter((c) => /(^|\s)(m[ty]|p[ty]|space-y)-/.test(c) && !/(^|\s)border-t(\s|$)/.test(c) && !/^mt-0\.5 /.test(c));
+    const flagged = built.filter((r) => (r as { gap?: boolean }).gap !== undefined).map((r) => r.key);
+    return list === "flex flex-col gap-1.5" && steps.length === 0 && flagged.length === 0 ? [] : [`${name}: ${j({ list, steps, flagged })}`];
+  });
+  return [off.length === 0, off.join(" | ")];
 });
 
 // ── §3 · the one week chip ────────────────────────────────────────────────────────────────────────────────────────────
@@ -785,6 +814,16 @@ const plantLedger = (from: string, to: string): World | null => {
   const mod = compileAt(FILES.ledger, s) as { millioneaLedgerRows: LedgerFn; MaswaliLedger: Row };
   return { ...REAL, ledger: mod.millioneaLedgerRows, Ledger: mod.MaswaliLedger };
 };
+/** The round-1 step put back at both its sites — the builder's `gap` on the first row after a total, the drawing's `mt-3`. */
+const plantStep = (): World | null => {
+  const s1 = planted("ledger", "            divider={r.divider}\n            alignEnd\n", '            divider={r.divider}\n            alignEnd\n            className={cn(r.gap && "mt-3")}\n');
+  if (s1 === null) return null;
+  const ret = "  return [...rows, ...afterIn];\n}";
+  if (s1.split(ret).length - 1 !== 1) { problems.push(`PLANT MISSED in ${FILES.ledger}: the builder's return is not there once`); return null; }
+  const s2 = s1.replace(ret, "  if (afterIn.length > 0) afterIn[0] = { ...afterIn[0], gap: true };\n" + ret);
+  const mod = compileAt(FILES.ledger, s2) as { millioneaLedgerRows: LedgerFn; MaswaliLedger: Row };
+  return { ...REAL, ledger: mod.millioneaLedgerRows, Ledger: mod.MaswaliLedger };
+};
 /** A world whose seal line is compiled from a planted copy of its source. */
 const plantSeal = (from: string, to: string): World | null => {
   const s = planted("seal", from, to);
@@ -830,7 +869,8 @@ const PLANTS: Array<[string, string, World | null]> = [
     return { ...REAL, ledger: mod.millioneaLedgerRows, Ledger: mod.MaswaliLedger };
   })()],
   ["the floor at full ink when it did not bind (H5)", "2.3", plantLedger('emphasis: binds ? undefined : "muted"', "emphasis: undefined")],
-  ["a hairline under every row again", "2.10", plantLedger('className={cn(r.gap && "mt-3")}', 'className={cn("border-b border-border", r.gap && "mt-3")}')],
+  // ⚠️ RE-POINTED 2026-10-22 (S5-R2-REGISTER): the rows carry no step class now; the plant adds the rule to the row's props.
+  ["a hairline under every row again", "2.10", plantLedger("            divider={r.divider}\n            alignEnd\n", '            divider={r.divider}\n            alignEnd\n            className="border-b border-border"\n')],
   ["the fee unsigned (\"TZS −136,630\")", "2.4", plantLedger("{fee > 0 ? formatTzsSigned(-fee) : formatTzs(0)}", "{formatTzs(-fee)}")],
   ["the levies dropped from under the fee", "2.4", plantLedger("note: f.levies && fee > 0 ? noteLine(", "note: false && f.levies && fee > 0 ? noteLine(")],
   ["a carry's amount printed outside its money run", "2.5", plantLedger("const money = (n: number) => <span className=\"amount\">{formatTzs(n)}</span>;", "const money = (n: number) => <span>{formatTzs(n)}</span>;")],
@@ -859,6 +899,8 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["a waiting carry's state squeezed beside its label again", "2.16", plantLedger("value: carryIn.amount === null ? null : money(carryIn.amount),\n      ...(carryIn.amount === null ? { note: m.carriedInPending } : {}),", "value: carryIn.amount === null ? m.carriedInPending : money(carryIn.amount),")],
   ["the commitments' card capped at the receipt's measure again (short of the hub's questions)", "2.17", plantParts('<div className="mat-flat flex flex-col gap-4 rounded-card p-3">', '<div className="mat-flat flex max-w-receipt flex-col gap-4 rounded-card p-3">')],
   ["the register's week page letting its commitments run the page's width", "2.17", plantSrc("weekPage", '<WeekCommitments className="max-w-receipt" ', "<WeekCommitments ")],
+  ["a wrapped value left-aligned short of the figures' edge again (no `alignEnd`)", "2.18", plantLedger("            divider={r.divider}\n            alignEnd\n", "            divider={r.divider}\n")],
+  ["the step of space after a total back (the builder's `gap` and the drawing's `mt-3`)", "2.19", plantStep()],
   // §3
   ["a settled week in the resolved seal again", "3.1", plantParts('case "SETTLED": return "MILLIONEA_WEEK_SETTLED";', 'case "SETTLED": return "RESOLVED";')],
   ["a paused week royal, as if it sold", "3.1", plantParts('case "OPEN": return paused ? "MILLIONEA_WEEK_PAUSED" : "MILLIONEA_WEEK_OPEN";', 'case "OPEN": return "MILLIONEA_WEEK_OPEN";')],

@@ -98,10 +98,8 @@ export type MillioneaLedgerRow = {
   value: ReactNode;
   emphasis?: "fee" | "muted" | "total";
   tone?: "warning";
-  /** A total: the hairline above it. */
+  /** A total: the hairline above it — the one mark that sets a group's end apart (no step of space after it: one rhythm). */
   divider?: boolean;
-  /** The first row of a new group: a step of space above it. */
-  gap?: boolean;
   /** A carry that opens its week's register page (M10). */
   href?: string | null;
 };
@@ -290,17 +288,20 @@ export function millioneaLedgerRows(t: Dict, locale: Locale, f: MillioneaLedgerI
       });
     }
   }
-  if (afterIn.length > 0) afterIn[0] = { ...afterIn[0], gap: true };
   return [...rows, ...afterIn];
 }
 
 /**
- * The rows, drawn: the kit's ReceiptRow in its sentence-case label, a step of space between the groups, a hairline only
- * above a total (the withdraw confirm's bottom line — never a rule under every row, H5). A carry row that names its week
- * opens that week's register page: the whole row is the link (at least `--h-control-md`, 40px), its label in the link
- * ink with the chevron after it, its figure in the column every other figure stands in. A row's note stands on its own
- * line under the label AND the figure, across the row's whole width, in the kit row's note face (the lead's ruling of
- * 2026-10-21) — never squeezed into the label's column beside a figure.
+ * The rows, drawn: the kit's ReceiptRow in its sentence-case label, a hairline only above a total (the withdraw confirm's
+ * bottom line — never a rule under every row, H5). A carry row that names its week opens that week's register page: the
+ * whole row is the link (at least `--h-control-md`, 44px), its label in the link ink with the chevron after it, its figure
+ * in the column every other figure stands in. A row's note stands on its own line under the label AND the figure, across
+ * the row's whole width, in the kit row's note face (the lead's ruling of 2026-10-21) — never squeezed into the label's
+ * column beside a figure.
+ * ⭐ ONE RHYTHM, ONE EDGE (the lead's ruling of 2026-10-22, from HUB's sw readers of the hub's pool card): every row stands
+ * the list's one gap apart — a total is set apart by its hairline alone; the step of space round 1 put after it stood ~46px
+ * under "Jumla ya bwawa" against the rows' 26px pitch (320/360/768). And every figure keeps the figures' edge: a value that
+ * wraps ends each line there (the kit row's `alignEnd`) — "angalau / TZS 51,000" sat ~56px short of it, left-aligned.
  */
 export function MaswaliLedger({ rows, className }: { rows: readonly MillioneaLedgerRow[]; className?: string }) {
   return (
@@ -319,7 +320,7 @@ export function MaswaliLedger({ rows, className }: { rows: readonly MillioneaLed
             emphasis={r.emphasis}
             tone={r.tone}
             divider={r.divider}
-            className={cn(r.gap && "mt-3")}
+            alignEnd
           />
         );
         // The note: the kit row's own note face, on the row's whole width under its label and its figure.
