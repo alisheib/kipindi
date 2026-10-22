@@ -16,13 +16,14 @@
  * the same wait (S7-F5); +1 on both with 7.0a, the bonus case's premise — the grant landed with turnover still to make
  * (S7-F7 2): 110 on memory, 113 on Postgres, what the merged integration's run printed; +2 on both with R10b.4b/R10b.4c,
  * the batched desk check fails closed for an omitted account and for a failed batch (9277c9ab5): 112 on memory, 115 on
- * Postgres, what 66f3af8be's run printed (2026-10-21).
+ * Postgres, what 66f3af8be's run printed (2026-10-21); +1 on both with the S7 × S5 merge's one case list
+ * (claude/maswali-s7-s5): 113 on memory, 116 on Postgres, what dfb438dd2's run printed (2026-10-22).
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({
   suite: "test:maswali-purchase",
   casesFile: "scripts/lib/maswali-purchase-child.mts",
-  minPass: { memory: 112, postgres: 115 },
+  minPass: { memory: 113, postgres: 116 },
   dbPrefix: "mlw_purchase",
 });
