@@ -3806,7 +3806,6 @@ export const dict = {
       helpQ5: "Where are the full rules?",
       helpA5: "In the Maswali Millionea rules under Legal, Game Rules, and in How to play.",
       helpScope: "The answers above on fees, odds, cash-out, voids and results are about {yes}/{no} markets and Up & Down. Maswali Millionea works differently:",
-      helpFinalWeek: "One exception: if the final week before Millionea is retired has no 10/10 ticket, the tickets with the highest score share its jackpot equally, and the fee is taken.",
     },
   },
 
@@ -6759,7 +6758,6 @@ export const dict = {
       helpQ5: "Kanuni kamili ziko wapi?",
       helpA5: "Kwenye kanuni za Maswali Millionea chini ya Kisheria, Kanuni za Michezo, na kwenye Jinsi ya kucheza.",
       helpScope: "Majibu yaliyo hapo juu kuhusu ada, uwezekano, kuuza dau, ubatili na matokeo yanahusu masoko ya {yes}/{no} na Juu na Chini. Maswali Millionea inafanya kazi tofauti:",
-      helpFinalWeek: "Isipokuwa jambo moja: wiki ya mwisho kabla Millionea haijafungwa ikikosa tiketi ya 10/10, tiketi zenye alama za juu zaidi zinagawana jackpot yake sawa, na ada inatozwa.",
     },
   },
 
@@ -9693,7 +9691,6 @@ export const dict = {
       helpQ5: "完整规则在哪里？",
       helpA5: "在“法律 · 游戏规则”下的 Maswali Millionea 规则中，以及玩法说明中。",
       helpScope: "以上关于费用、赔率、兑现、作废与结果的回答适用于{yes}/{no}市场与涨跌。Maswali Millionea 的运作方式不同：",
-      helpFinalWeek: "唯一的例外：若 Millionea 停办前的最后一周没有 10/10 彩票，则由得分最高的彩票平分该周大奖，并收取费用。",
     },
   },
 } as const;

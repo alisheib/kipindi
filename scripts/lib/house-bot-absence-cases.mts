@@ -82,7 +82,9 @@ export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // the lead's `finalWeekRule`, in place of their own pool clause, in en/sw/zh. No other line changed.
   // D19a RE-PINNED AT S6-INT 10 (was b84814a4a, S6-INT 9's): the zh void ground for MR-5's case names its event 事件, the
   // lead's zh word for a Millionea event (test:maswali-design 4.D), where S6-INT 1 had taken 赛事. No other line changed.
-  "src/lib/i18n-dict.ts": "f11aa8c5164f2a7d08bc5af6c3c7e7e6041d81d7",
+  // D19a RE-PINNED AT S6-INT 11 (was f11aa8c51, S6-INT 10's): `millioneaFairness.helpFinalWeek` is removed in en/sw/zh —
+  // /help draws `finalWeekRule`, the one wording (the lead's ruling (a) of 2026-10-22). No other line changed.
+  "src/lib/i18n-dict.ts": "24f9c840726ba56b5e13950fdf3d22866f94c568",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
 };

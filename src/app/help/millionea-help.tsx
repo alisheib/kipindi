@@ -9,8 +9,10 @@
  *    with the figures the reader's week froze — or the next week's (`millioneaHowTo`, How to play's own read). No figure
  *    is typed here (L2: admins can change everything).
  * ⛔ AND THE ONE EXCEPTION THEY LEAVE OUT (round 3): the jackpot rule and `howFour` say every 10/10 ticket shares and a week
- *    without one carries forward — false in the final week, where the highest score shares and the fee is taken. How to
- *    play states it in its sunset rule; here it follows them at once (`helpFinalWeek`), as in the rules and the chat.
+ *    without one carries forward — false in the final week, where the highest score shares and the fee is taken. It
+ *    follows them at once in the one wording the hub, the slip, the confirm sheet and How to play's stop line draw
+ *    (`finalWeekRule`): the lead's ruling (a) of 2026-10-22 retired /help's own sentence. A rule line ends as a sentence
+ *    here (`stop`).
  * ⛔ NEVER A PICK: nothing here says which answers to choose, how likely a question is, or how many tickets to buy.
  * ⛔ Drawn only when the page's caller has resolved the rollout and read the rules (`page.tsx`): every other reader's
  *    `/help` is today's, its FAQ answers untouched in their slots (`test:flip-copy` §5 pins them word for word).
@@ -33,7 +35,7 @@ export function MillioneaHelp({ t, locale, h }: { t: Dict; locale: Locale; h: Mi
   const items: Array<{ key: string; glyph: "howTo" | "rotateCcw" | "coins" | "commitment" | "tippingScales"; q: string; a: string }> = [
     {
       key: "mln1", glyph: "howTo", q: f.helpQ1,
-      a: [fill(m.howOne, { price: formatTzs(h.ticketPrice) }), m.howTwo, fill(m.ruleSharedJackpot, { pct }), m.howFour, f.helpFinalWeek].join(joiner(locale)),
+      a: [fill(m.howOne, { price: formatTzs(h.ticketPrice) }), m.howTwo, `${fill(m.ruleSharedJackpot, { pct })}${stop(locale)}`, m.howFour, `${m.finalWeekRule}${stop(locale)}`].join(joiner(locale)),
     },
     {
       key: "mln2", glyph: "rotateCcw", q: f.helpQ2,

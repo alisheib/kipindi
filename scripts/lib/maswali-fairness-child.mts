@@ -594,7 +594,7 @@ if (STORE === "memory") {
       zh: ["持有该周未取消彩票的玩家", "原始结果需经第二位官员确认的，更正后的结果同样须由第二位官员确认", "提现手续费为平台当前的费率", "不再开放任何公开的周",
         "以下列三种方式之一确定", "Millionea 页面及首页上的 Millionea 卡片即标明该周",
         "在无周正在销售、且某周结果正在确定期间（其销售已截止、尚未结算）下令停办", "其购买者在购买时即获告知", "在两周之间", "留存于该账户中",
-        "或其赛事在销售截止前已开始；", "在有 10/10 彩票的一周", "（最后一周则留存于大奖账户，见第 11 条）", "其余部分留在保底资金中，因为保底补足只支付费用与份额", "计分题的集合仅取决于哪些题目作废", "被没收的份额回归大奖"],
+        "或其事件在销售截止前已开始；", "在有 10/10 彩票的一周", "（最后一周则留存于大奖账户，见第 11 条）", "其余部分留在保底资金中，因为保底补足只支付费用与份额", "计分题的集合仅取决于哪些题目作废", "被没收的份额回归大奖"],
     };
     // ⛔ What no language may say: an objection path, a regulator refund, a fault void, a per-ticket refund, the leaf's
     //    "identifier" (sw in either number, round 3 L6), a remainder that is "none" in a topped-up week, an announcement
@@ -751,9 +751,10 @@ if (STORE === "memory") {
       sunsetOff.length === 0 && sunsetOld.length === 0 && insiderHouse.length === 0 && OLD_INSIDER.every((s) => HOUSE_RULE.test(s))
         && OLD_SUNSET.every((s) => SUNSET_OLD.test(s)) && /at any time, a week named a full week ahead/.test(dict.en.millionea.ruleSunset),
       [...sunsetOff, ...sunsetOld, ...insiderHouse.map((l) => `${l}: ruleInsider names the house`)].join(" · "));
-    ok("H.10 · ⛔ round 3, item 3 · How to play's 10/10 and carry lines are followed at once by the final week's exception, in every language — /help says nothing false in a final week",
-      LOCS.every((l) => { const at = out[l].indexOf(dict[l].millionea.howFour); const ex = out[l].indexOf(dict[l].millioneaFairness.helpFinalWeek); return at >= 0 && ex > at; })
-        && /highest score/.test(dict.en.millioneaFairness.helpFinalWeek), J(LOCS.map((l) => out[l].indexOf(dict[l].millioneaFairness.helpFinalWeek))));
+    ok("H.10 · ⛔ round 3, item 3 · How to play's 10/10 and carry lines are followed at once by the final week's exception, in every language, in its one wording (`finalWeekRule`; the lead's ruling (a) of 2026-10-22 retired /help's own sentence) — /help says nothing false in a final week",
+      LOCS.every((l) => { const at = out[l].indexOf(dict[l].millionea.howFour); const ex = out[l].indexOf(dict[l].millionea.finalWeekRule); return at >= 0 && ex > at; })
+        && /highest-scoring/.test(dict.en.millionea.finalWeekRule) && LOCS.every((l) => !("helpFinalWeek" in dict[l].millioneaFairness)),
+      J(LOCS.map((l) => out[l].indexOf(dict[l].millionea.finalWeekRule))));
     const guide = read("docs/maswali-operator-guide.html");
     const told = guide.slice(guide.indexOf("<h2 class=\"pb\">11 · What to say to players</h2>"), guide.indexOf("<h2>12 · If something looks wrong</h2>"));
     ok("H.11 · ⛔ round 3, M3 · the operator guide promises no unbuilt path — no fault void, no player objection pulling a reserve in — and what staff tell players carries the final week's exception twice (how it works; nobody won)",

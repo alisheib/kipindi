@@ -8,6 +8,30 @@
 
 ---
 
+## 2026-10-22 · The Maswali Millionea rules' Chinese text names an event 事件 — the hash moves a fifth time inside version 2026-10-18, before anything was published (MASWALI-BUILD S6)
+
+**Authority.** The build lead's ruling D2 of 2026-10-22, on Ali's ruling of 2026-10-21 (§ "2026-10-21 · Maswali
+Millionea — staff preview after S5, no separate drive-week buying phase, the ruled words final, …", item 4: the decided
+words ship as they are, with no separate native review). The decided Chinese word for a Millionea event is 事件 (the S5
+visual pass's §D; the dictionary carries it since MASWALI-BUILD S6-INT 10). `src/lib/millionea-rules-version.ts` lets
+the hash move alone inside a version nobody has been served, recorded here, as § "2026-10-18 · The Maswali Millionea
+rules' text hash moved four times inside version 2026-10-18, …" records the first four moves.
+
+**What moved.** The binding rules' Chinese text takes 事件 where it said 赛事, in three places: the close's distance
+before the week's first event, the officer's limit on moving the close, and the void ground for an event begun before
+the close. The English and the Swahili texts, the meaning and every figure are unchanged. `MILLIONEA_RULES_TEXT_SHA`
+moves 4ed78ea80417 → d5a5e9e3e680 under `MILLIONEA_RULES_VERSION` 2026-10-18 (MASWALI-BUILD S6-INT 11).
+
+**Why the version did not move.** The product is WITHDRAWN, and the Millionea rules are served only above that ceiling:
+nobody but staff has read 2026-10-18, and no ticket has been bought under it. At publication the version moves, as the
+entry of 2026-10-18 says.
+
+**What does not change (the same ruling).** The live classic documents keep 赛事, their established word for a market's
+event: the general Terms §6, the Yes/No rules and the Up & Down rules. A Millionea release does not move a live classic
+legal version, so the two words standing side by side across the products is deliberate, not an inconsistency.
+
+---
+
 ## 2026-10-21 · Harm markers muted for marketing SMS (owner ruling)
 
 **Authority.** Ali, 2026-10-21, in the Claude session on OMEGA-COMPILE01, after the marketing team could not send a
@@ -201,6 +225,9 @@ its branch, so none is named here.
 
 (A value `b0bf9a6fa080` named in the module's notes for a while was never held by a commit: it was a working copy
 between 707c9f634d7c and 2c3c95afeeb9.)
+
+⟶ A fifth move, 4ed78ea80417 → d5a5e9e3e680, on 2026-10-22: § "2026-10-22 · The Maswali Millionea rules' Chinese text
+names an event 事件 — …".
 
 **Why the version did not move.** The product is WITHDRAWN: `/legal/rules/millionea` answers as the 404 to every reader
 the rollout does not admit, nobody but staff has read 2026-10-18, and no ticket has been bought under it.

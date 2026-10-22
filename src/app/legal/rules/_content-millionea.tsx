@@ -716,8 +716,8 @@ export function millioneaContent(r: MillioneaRulesFigures): Record<Locale, React
               {r.source === "WEEK"
                 ? <>第 {n(r.weekCode)} 周于{day.zh.open} {n(r.openAt)} EAT 由官员开放并开始销售，其截止时间为{day.zh.close} {n(r.closeAt)} EAT。</>
                 : <>每周自官员开放之时起销售——默认为{day.zh.open} {n(r.openAt)} EAT——至截止时止，默认截止时间为{day.zh.close} {n(r.closeAt)} EAT。</>}
-              每周页面显示其截止时间，并以该时间为准。截止时间始终至少早于该周十五个赛事中最早一个赛事
-              {n(r.minLockBufferMinutes)} 分钟。官员仅可在该周仍在销售时调整截止时间，绝不晚于任何赛事的开始，也绝不在截止时间过后调整。
+              每周页面显示其截止时间，并以该时间为准。截止时间始终至少早于该周十五个事件中最早一个事件
+              {n(r.minLockBufferMinutes)} 分钟。官员仅可在该周仍在销售时调整截止时间，绝不晚于任何事件的开始，也绝不在截止时间过后调整。
             </li>
             <li>
               <strong className="text-text">截止即为终止。</strong>截止之后，任何彩票既不能购买，也不能取消。
@@ -766,7 +766,7 @@ export function millioneaContent(r: MillioneaRulesFigures): Record<Locale, React
             <li>在其作废截止时间前未进行或未完成；</li>
             <li>已中止，且无官方结果；</li>
             <li>截止时间前，其来源及指定的备用来源均未给出读数；</li>
-            <li>其结果在销售截止前已公开，或其赛事在销售截止前已开始；</li>
+            <li>其结果在销售截止前已公开，或其事件在销售截止前已开始；</li>
             <li>题目存在实质性错误，或其英文与斯瓦希里文表述不一致——于截止前发现，或于截止后、复核期结束前发现（第 6 条）。</li>
           </ul>
           <p>

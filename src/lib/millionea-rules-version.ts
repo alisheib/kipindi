@@ -43,5 +43,8 @@ export const MILLIONEA_RULES_VERSION = "2026-10-18";
 //                  result's second officer by its original seal;
 //   4ed78ea80417 · round 5: the top-up covers only the fee and the shares, a final week's remainder in the
 //                  jackpot account, a week's own figures fixed at its open, its close excepted.
+//   d5a5e9e3e680 · 2026-10-22, MASWALI-BUILD S6-INT 11 (the lead's ruling D2): the Chinese text names an event 事件, the
+//                  decided word, in three places; the English and the Swahili are unchanged. Recorded in
+//                  COMPLIANCE-DECISIONS § "2026-10-22 · The Maswali Millionea rules' Chinese text names an event 事件 …".
 // (`b0bf9a6fa080`, named here for a while, was never held by a commit: a working copy between the first two.)
-export const MILLIONEA_RULES_TEXT_SHA = "4ed78ea80417";
+export const MILLIONEA_RULES_TEXT_SHA = "d5a5e9e3e680";
