@@ -211,8 +211,9 @@ section("2 · every warning paint reads the family — toast, chip, Callout, bad
   const warn = at < 0 ? "" : TOAST.slice(at, TOAST.indexOf("\n  },", at));
   // The glyph in Fill since PHOSPHOR-MIGRATION W4 (§8c: a status in its status container).
   ok("2.1 · the warning TOAST: the amber stop for its bar and rail, the amber ink for its glyph, the amber ring (`.mat-tint-warn`) — no gold",
-    /bar: "bg-warning",/.test(warn) && /rail: "bg-warning",/.test(warn) && /icon: <span className="text-warning-fg"><I\.warning s=\{18\} tier="fill" \/><\/span>,/.test(warn)
-      && /surface: "mat-tint-warn",/.test(warn) && !/gold|gilt/.test(warn), warn.slice(0, 160));
+    // PHOSPHOR-MIGRATION release 2a part 2: the shared warning plate owns the glyph's amber ink.
+    /bar: "bg-warning",/.test(warn) && /rail: "bg-warning",/.test(warn) && /icon: <I\.warning s=\{plateGlyph\(40\)\} tier="fill" \/>,/.test(warn)
+      && /plate: "warning",/.test(warn) && /surface: "mat-tint-warn",/.test(warn) && !/gold|gilt/.test(warn), warn.slice(0, 180));
   ok("2.1′ · …and `.mat-tint-warn` mixes the warning stop (the ring every rung's box-shadow opens with)",
     /--mat-tint:\s*inset 0 0 0 1px color-mix\(in oklab, var\(--warning-500\) 32%, transparent\)/.test(rule(MOTION, ".mat-tint-warn")) && !/gilt|gold/.test(rule(MOTION, ".mat-tint-warn")));
 
@@ -256,12 +257,11 @@ section("2 · every warning paint reads the family — toast, chip, Callout, bad
       && /tone === "warning" \? "text-warning-fg"/.test(read("src/components/ui/receipt-row.tsx"))
       && /\$\{rejected \? "text-warning-fg" : done \? "text-success-fg" : "text-text-subtle"\}/.test(read("src/app/agent/apply/apply-client.tsx")));
   // 2.9 · ONE amber WORD ink. The stop (`--warning-500`, `--warning`) is for marks — bars, dots, frames, fills. A word in
-  // amber is the ink. The one stop-coloured glyph is the apply slot's disc, which mirrors its `done` twin (`bg-success/15
-  // text-success`) — a glyph on a disc, not a word.
+  // amber is the ink. The apply slot now uses the same warning plate as the other status glyphs.
   const STOP_AS_INK = /(?<![\w-])(?:[a-z0-9-]+:)*text-warning(?:-500)?(?:\/[\w.[\]]+)?(?![\w-])|(?<![\w-])color:\s*["'`]?var\(--warning(?:-500)?\)/g;
   const stopInk = PLAYER(/\.(tsx|ts)$/).flatMap((f) => read(f).split("\n").flatMap((ln, i) => [...ln.matchAll(STOP_AS_INK)].map((m) => `${f}:${i + 1}:${m[0]}`)));
-  ok("2.9 · ONE amber word ink — no player file writes a word in the stop; the only stop-coloured glyph is the apply slot's disc (its `done` twin's shape)",
-    stopInk.length === 1 && /^src\/app\/agent\/apply\/apply-client\.tsx:\d+:text-warning$/.test(stopInk[0]) && /rejected \? "bg-warning\/15 text-warning" : done \? "bg-success\/15 text-success"/.test(read("src/app/agent/apply/apply-client.tsx")),
+  ok("2.9 · ONE amber word ink — no player file writes a word in the stop; the apply slot uses the shared warning plate",
+    stopInk.length === 0 && /variant=\{rejected \? "warning" : done \? "success" : "identity"\}/.test(read("src/app/agent/apply/apply-client.tsx")),
     stopInk.join(" · "));
   ok("2.9′ PLANT · a word in the stop (`text-warning-500`, `color: \"var(--warning-500)\"`) is seen",
     [..."<p className=\"text-warning-500\" style={{ color: \"var(--warning-500)\" }} />".matchAll(STOP_AS_INK)].length === 2);
@@ -294,7 +294,8 @@ function warnHits(file: string, src: string): Hit[] {
 }
 const WARN_REGISTRY: Record<string, [number, string]> = {
   // ── the kit's definitions of the family ───────────────────────────────────────────────────────────────────────────
-  "src/app/globals.css": [3, "the family's tokens — `--warning`, `--warning-bg`, `--warning-border` read the one stop"],
+  "src/app/globals.css": [6, "the family's tokens — `--warning`, `--warning-bg`, `--warning-border` read the one stop · PHOSPHOR-MIGRATION release 2 (+3): `.kp-plate--warning`, the warning family's plate (a status that asks the player to act, in its edge, wash and ink)"],
+  "src/components/ui/icon-plate.tsx": [1, "the plate's `warning` variant — a status plate in the warning family (§B11: somebody must act); PHOSPHOR-MIGRATION release 2"],
   "src/app/motion.css": [2, "the warning toast's ring, `.mat-tint-warn` (its class and its mix of the stop)"],
   "src/components/ui/toast.tsx": [6, "the `warning` variant — amber stop bar and rail, amber glyph, the amber ring; never a fixable refusal's (F3)"],
   "src/components/ui/chip.tsx": [7, "the amber `warning` and `paused` chips — the stop's fill and edge, the family's ink — and the variant's name"],
@@ -313,14 +314,14 @@ const WARN_REGISTRY: Record<string, [number, string]> = {
   "src/app/markets/[id]/page.tsx": [5, "the hedge caution's box and words — the player weighs a thin upside before betting"],
   "src/components/markets/resolution-panel.tsx": [6, "the dispute and fee-cap cautions"],
   "src/components/markets/sell-confirm-modal.tsx": [2, "two exit cautions — read before selling"],
-  "src/app/agent/apply/apply-client.tsx": [7, "an officer's request · a rejected document to replace — the applicant acts (the rejected slot's frame, wash, glyph disc and word)"],
+  "src/app/agent/apply/apply-client.tsx": [6, "an officer's request · a rejected document to replace — the applicant acts (the rejected slot's frame, wash, shared warning plate and word)"],
   "src/app/agent/invite/[token]/invite-client.tsx": [2, "the invite is for another address · a fixable refusal"],
   "src/app/agent/page.tsx": [2, "'an officer has asked for one more thing' — the applicant acts (every other notice is neutral)"],
   "src/app/auth/login/page.tsx": [8, "sign-in refusals the player clears — wait, sign in again, use the password, create the account, ask us about a closed one (F3 severity warning) · their box's frame and wash; the break's panel is neutral"],
   "src/app/auth/register/register-form.tsx": [5, "sign-up refusals the player can fix"],
   // 7 → 5 on 2026-10-10 (typed-only identity): the extra-document card's amber disc — a wash and an ink — went with player
   // uploads; what is left is the corrections box (frame, wash, ink ×3), now "Check your details".
-  "src/app/profile/kyc/page.tsx": [5, "'check your details' — ADDITIONAL_INFO_REQUIRED, an officer's request to correct the typed details, player amber (§B11)"],
+  "src/app/profile/kyc/page.tsx": [4, "'check your details' — ADDITIONAL_INFO_REQUIRED, an officer's request to correct the typed details, player amber (§B11); the glyph is on the shared warning plate"],
   "src/app/profile/page.tsx": [5, "the KYC 'more info' pill and a declaration to resubmit (§B11 player amber)"],
   "src/app/profile/security/security-client.tsx": [4, "backup codes: two or fewer left; save them now"],
   "src/app/profile/source-of-funds/page.tsx": [3, "the declaration's legal-attestation caution"],
@@ -342,12 +343,21 @@ const WARN_REGISTRY: Record<string, [number, string]> = {
   "src/app/auth/forgot-password/page.tsx": [2, "the rate-limit box's frame and wash — a refusal the player clears by waiting, as sign-in's (its words the muted ink)"],
   "src/app/profile/account/privacy-request-form.tsx": [2, "the erasure request's caution — what an irreversible erasure keeps by law, read before sending"],
   "src/components/rg/limit-usage.tsx": [1, "THE one limit ramp's caution step, 75–90% of a limit the player set — never gilt"],
-  // MASWALI-BUILD S5 — Millionea's two ambers, each where somebody must act or money is deducted.
-  "src/components/maswali/maswali-slip.tsx": [3, "the confirm's short main balance — the player deposits before cutting a ticket (its box's frame and wash, its glyph)"],
-  "src/components/maswali/maswali-win-ledger.tsx": [1, "the fee row's amber (a deduction), the receipt's own `ReceiptRow` tone"],
+  // MASWALI-BUILD S5 — Millionea's ambers, each where somebody must act or money is deducted.
+  // 3 → 1 on 2026-10-21 (S5-FIX-PLAYER P18): the hand-rolled box (its frame, wash and glyph) is the kit's own Callout now,
+  // which paints the family itself — the slip names only its tone.
+  // 1 → gone on 2026-10-21 (S5-DESIGN-TICKETS round 2, in the open): the win receipt draws the ONE ledger now
+  // (`MaswaliLedger`), so its fee row's amber is that file's entry below — the receipt paints none of its own.
+  // which paints the family itself — the slip names only its tone. 1 → 0 the same day (S5-DESIGN-SLIP, the slip critic's
+  // M4): the confirm's short main balance is the bet sheet's own low frame, the kit Callout's INFO tone with its alert glyph
+  // — so the slip draws no amber at all, and its entry left the registry (a count above the tree is slack).
   // 2026-10-18 (S5 integration): the same deduction on the two pages that print a week's money as a receipt.
-  "src/app/millionea/how/page.tsx": [1, "the worked example's fee row (a deduction), the receipt's own `ReceiptRow` tone — as the win ledger's"],
-  "src/app/millionea/register/[week]/page.tsx": [1, "the week's ledger fee row (a deduction), the receipt's own `ReceiptRow` tone — as the win ledger's"],
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER): How's worked weeks are the one ledger's rows now, so How names
+  // no warning tone of its own (its fee row's tone is `maswali-ledger.tsx`'s, counted below).
+  // RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER): the week's ledger rows are the ONE Millionea ledger's now
+  // (`maswali-ledger.tsx`: the register's week page, How to play's examples, the win ledger and the hub in round 2), so the
+  // fee row's tone moved there with them — its row type's member and its one use; register-parts names none of its own.
+  "src/components/maswali/maswali-ledger.tsx": [2, "the ledger's fee row (a deduction), the receipt's own `ReceiptRow` tone — as the win ledger's (the row type's `tone` and the fee row's)"],
 };
 section("3 · the warning census — every warning paint in the player's code is a §B11 warning, ruled and registered");
 const wcensus = new Map<string, Hit[]>();

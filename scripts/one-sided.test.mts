@@ -165,11 +165,13 @@ log("\n── 3 · the card's one-sided state");
     /emptyLabel=\{outcomeLabel \?\? \(oneSided \? t\.market\.oneSideOnly : neverBet \? t\.market\.noBetsYet : t\.market\.noPoolYet\)\}/.test(card)
     && /<span className="mcardp-oneside"[^>]*>\{t\.market\.oneSideOnly\}<\/span>/.test(card));
   // ⛔ THE HEADLINE SLOT (WP6 review): without its own one-sided arm a one-sided card falls through to
-  // the priced arm and prints `{yesPct}%` — 0 there, "YES 0%" on a market whose money is all on YES.
+  // the priced arm and prints a percent on a market with money on only one side.
   const armAt = card.search(/\) : oneSided \? \(\s*<div className="mcardp-pct mcardp-pct--empty" aria-hidden>—<\/div>/);
-  const pricedAt = card.indexOf('<div className="mcardp-pct">{yesPct}');
+  const pricedAt = card.indexOf('<div className="mcardp-pct">{leadingPct}');
   check("3.11 ⛔ the price slot has a one-sided arm (the dash), and it comes before the priced arm",
     armAt > 0 && pricedAt > armAt, `oneSided arm @${armAt}, priced arm @${pricedAt}`);
+  check("3.11-control a fall-through from the one-sided arm is caught",
+    !/\) : oneSided \? \(\s*<div className="mcardp-pct mcardp-pct--empty" aria-hidden>—<\/div>/.test(card.replace(') : oneSided ? (', ') : false ? (')));
   // The label is the only word that explains the dash on a CLOSED or SETTLED one-sided card.
   check("3.12 the 'One side only' row renders on one-sided cards in EVERY phase, not only live ones",
     /\{\(live \|\| oneSided\) && \(\s*<div className="mcardp-moveline">/.test(card));
@@ -390,8 +392,10 @@ log("\n── 8 · the detail page reads the card's rule (C1)");
   check("8.6-control an ungated figure IS detected",
     !/\{yesPct !== null && <span className="font-mono text-\[12\.5px\]">@ \{yesPct\}%<\/span>\}/.test('{hasPool && <span className="font-mono text-[12.5px]">@ {yesPct}%</span>}'));
   const en = dict.en.market as Record<string, string>;
-  check("8.7 the panel's pending refund sentence says the refund is in full and carries no fee",
-    /refunded in full/.test(en.resOneSidedPending ?? "") && /no fee/.test(en.resOneSidedPending ?? ""), en.resOneSidedPending);
+  check("8.7 the panel promises only still-held stakes back, keeps earlier cash-outs, and charges no settlement fee",
+    /remaining held stakes will be refunded in full/.test(en.resOneSidedPending ?? "") &&
+    /Earlier cash-outs keep their paid amount/.test(en.resOneSidedPending ?? "") &&
+    /No settlement fee will be taken/.test(en.resOneSidedPending ?? ""), en.resOneSidedPending);
   // The panel: a refund (void, or one side only) shows no fee row and no fee-capped callout.
   const panel = decomment(read("src/components/markets/resolution-panel.tsx"));
   check("8.8 the resolution panel treats a one-sided pool as the refund it is (no fee row, no capped callout, no payout note)",
@@ -534,8 +538,10 @@ log("\n── 11 · a chart point needs a price (C1; behaviour in test:history �
   const cardAt = hist.indexOf("function cardChartFrom(");
   const prob = probAt > 0 ? hist.slice(probAt, hist.indexOf("export async function getCardChart(", probAt)) : "";
   const cardFn = cardAt > 0 ? hist.slice(cardAt, hist.indexOf("const CARD_WINDOW_MS", cardAt)) : "";
-  check("11.2 the detail chart AND the card sparkline both read it (slice control: both bodies found and bounded)",
-    /pricedPoints\(/.test(prob) && /pricedPoints\(/.test(cardFn) && prob.length > 100 && prob.length < 3_000 && cardFn.length > 100 && cardFn.length < 4_000,
+  check("11.2 detail history drops unpriced points; card history requires priced current pools joined to its latest point",
+    /pricedPoints\(/.test(prob) && /currentPrice\.kind !== "priced"/.test(cardFn)
+    && /last\.yesPool !== current\.yesPool \|\| last\.noPool !== current\.noPool/.test(cardFn)
+    && prob.length > 100 && prob.length < 3_000 && cardFn.length > 100 && cardFn.length < 4_000,
     `prob ${prob.length} · card ${cardFn.length}`);
   check("11.3 the batched board read carries the pools the rule needs", /select: \{ marketId: true, t: true, yes: true, yesPool: true, noPool: true \}/.test(hist));
   check("11.4 ⛔ no chart value is the raw stored share any more", !/Math\.round\(\s*\w+\.yes \* 100\)/.test(hist));
@@ -561,8 +567,11 @@ log("\n── 13 · Up & Down reads the pools (C1)");
     && round.includes("emptyLabel={price.kind === \"oneSided\" ? t.market.oneSideOnly : round.players === 0 ? t.market.noBetsYet : t.market.noPoolYet}"));
   const roundSplitAt = round.indexOf("{upPct !== null && downPct !== null ? (");
   const roundSplit = roundSplitAt > 0 ? round.slice(roundSplitAt, roundSplitAt + 1_500) : "";
+  // U43, 2026-10-19: the slim board card gives the one-sided caption a named
+  // alignment class; the detail page retains its plain flex row. Both still
+  // put the same labelled state in the split's one-sided arm.
   check("13.4 a one-sided round carries the 'One side only' label where the split would be (card and round page)",
-    /\) : price\.kind === "oneSided" \? \(\s*<div className="flex"><span className="mcardp-oneside">\{t\.market\.oneSideOnly\}<\/span><\/div>/.test(split)
+    /\) : price\.kind === "oneSided" \? \(\s*<div className="ud-oneside-caption flex"><span className="mcardp-oneside">\{t\.market\.oneSideOnly\}<\/span><\/div>/.test(split)
     && /\) : price\.kind === "oneSided" \? \(\s*<div className="flex"><span className="mcardp-oneside">\{t\.market\.oneSideOnly\}<\/span><\/div>/.test(roundSplit));
   const board = decomment(read("src/lib/server/updown-board.ts"));
   const udPage = decomment(read("src/app/updown/page.tsx"));

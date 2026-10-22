@@ -75,8 +75,10 @@ for (const c of CONTROLS) {
 // ── §3 · each control enforced in its own route's action file, by its own id ─
 for (const c of CONTROLS) {
   const src = read(ROUTES[c.route].file);
-  ok(`3 · ${c.id} is enforced as requireStaff(CONTROL_DOMAIN.${c.id}, "${c.id}") in ${ROUTES[c.route].file}`,
-    src.includes(`requireStaff(CONTROL_DOMAIN.${c.id}, "${c.id}")`));
+  // The draft builder posts all changed slots to one atomic action; its audit name is plural.
+  const actionName = c.id === "editMaswaliQuestion" ? "editMaswaliQuestions" : c.id;
+  ok(`3 · ${c.id} is enforced as requireStaff(CONTROL_DOMAIN.${c.id}, "${actionName}") in ${ROUTES[c.route].file}`,
+    src.includes(`requireStaff(CONTROL_DOMAIN.${c.id}, "${actionName}")`));
 }
 
 // ── §4 · every acting role can open the page that hosts its control ─────────

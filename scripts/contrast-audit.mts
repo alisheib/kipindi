@@ -782,18 +782,64 @@ function ruleOpacity(selector: string): number {
   return m ? parseFloat(m[1].trim()) : 1;
 }
 /**
- * ⭐ S8 WP5 — THE BET SHEET'S OWN DISABLED GOLD (`.kp-bsheet .btn-gold:disabled`, globals.css). Its words are scored
- * on its navy plate below. ⛔ That ratio is the painted one only while the rule sets `opacity: 1`: without it
+ * ⭐ THE BET SHEET'S OWN DISABLED GOLD COMMIT (`.kp-bsheet .btn-gold:disabled`, globals.css).
+ * Its words are scored on its navy plate below. ⛔ That ratio is the painted one only while the rule sets `opacity: 1`: without it
  * `.btn:disabled`'s 0.45 still applies and dims the plate and its words together, which this gate does not model — so a
  * rule that drops it is REFUSED here rather than scored as though it were opaque.
  */
-const SHEET_GOLD_OFF = ".kp-bsheet .btn-gold:disabled";
-if (!/(?:^|;)\s*opacity\s*:/.test(ruleBody(SHEET_GOLD_OFF)) || ruleOpacity(SHEET_GOLD_OFF) !== 1) {
+const SHEET_COMMIT_OFF = ".kp-bsheet .btn-gold:disabled";
+if (!/(?:^|;)\s*opacity\s*:/.test(ruleBody(SHEET_COMMIT_OFF)) || ruleOpacity(SHEET_COMMIT_OFF) !== 1) {
   throw new Error(
-    `contrast-audit: "${SHEET_GOLD_OFF}" does not set opacity: 1, so .btn:disabled's dimming still paints it — ` +
+    `contrast-audit: "${SHEET_COMMIT_OFF}" does not set opacity: 1, so .btn:disabled's dimming still paints it — ` +
       `the ratio below would describe a plate the product does not draw.`,
   );
 }
+/**
+ * ⭐ PHOSPHOR-MIGRATION release 2 (W5) — AN ICON PLATE'S FILL, READ FROM ITS RULE. `IconPlate`'s variants are one rule each
+ * (`.kp-plate--<variant>`, globals.css), and a fill is a token laid over the surface at an alpha that may itself be a token's
+ * own mix (`--info-bg` is `--info-500` at 18%; the info plate lays `--info-bg` at 30%). This unwraps that chain from the
+ * stylesheet, so a re-tuned wash is scored as painted — the rule this file's header states: nothing here is typed by hand.
+ */
+function plateFill(variant: string): { tint: Oklch; alpha: number } {
+  const body = ruleBody(`.kp-plate--${variant}`);
+  const bg = /(?:^|[;{\s])background:\s*([^;]+);/.exec(body)?.[1].trim();
+  if (!bg) throw new Error(`contrast-audit: .kp-plate--${variant} has no background`);
+  const unwrap = (raw: string, depth = 0): { name: string; alpha: number } => {
+    if (depth > 6) throw new Error(`contrast-audit: .kp-plate--${variant}'s fill nests deeper than 6`);
+    const v = raw.trim();
+    const tok = /^var\(--([\w-]+)\)$/.exec(v);
+    if (tok) {
+      const inner = declValue(tok[1]).trim();
+      return /^(?:color-mix|var)\(/.test(inner) ? unwrap(inner, depth + 1) : { name: tok[1], alpha: 1 };
+    }
+    const mix = /^color-mix\(in oklab, var\(--([\w-]+)\) ([\d.]+)%, transparent\)$/.exec(v);
+    if (!mix) throw new Error(`contrast-audit: .kp-plate--${variant}'s fill "${v}" is not a token or a token's mix with transparent`);
+    const inner = declValue(mix[1]).trim();
+    const pct = Number(mix[2]) / 100;
+    if (/^(?:color-mix|var)\(/.test(inner)) { const u = unwrap(inner, depth + 1); return { name: u.name, alpha: u.alpha * pct }; }
+    return { name: mix[1], alpha: pct };
+  };
+  const u = unwrap(bg);
+  return { tint: token(u.name), alpha: u.alpha };
+}
+/** The surfaces a plate stands on: the page, a card, the sunken bands (the landing's trust band) and the soft royal (a hero). */
+const PLATE_SURFACES = (): Array<[string, Oklch]> => [
+  ["--bg", T.bg], ["--bg-elevated", T.bgElevated], ["--bg-overlay", T.bgOverlay], ["--bg-royal-soft", token("bg-royal-soft")],
+];
+/** One row per variant: its ink on its own fill, over the surface that reads worst under that ink. Non-text (WCAG 1.4.11):
+ *  a plate's glyph names the row or the notice beside its words — 3.0. */
+function plateChecks(): Check[] {
+  // W6's empty state is the shared identity plate with one decorative metal dot;
+  // keep its Duotone ink in the same rendered plate contrast census.
+  return ["identity", "empty", "quiet", "info", "success", "warning", "danger", "gold"].map((variant) => {
+    const { tint, alpha } = plateFill(variant);
+    const ink = ruleValue(`.kp-plate--${variant}`, "color");
+    const fills = PLATE_SURFACES().map(([name, surface]) => ({ name, fill: mixOklab(surface, tint, alpha) }));
+    const worst = fills.reduce((w, x) => (contrast(ink, x.fill) < contrast(ink, w.fill) ? x : w));
+    return { name: `R2 · the ${variant} plate's glyph on its fill (${Math.round(alpha * 1000) / 10}% over ${worst.name}, the worst surface)`, fg: ink, bg: worst.fill, min: 3.0 };
+  });
+}
+
 const CHECKS: Check[] = [
   { name: "btn-no label (pearl on no-bg)", fg: T.pearl50, bg: T.btnNoBg, min: 4.5 },
   { name: "btn-yes label (pearl on yes-bg)", fg: T.pearl50, bg: T.btnYesBg, min: 4.5 },
@@ -897,8 +943,8 @@ const CHECKS: Check[] = [
 
   // ── Gold, checked for the first time (ATOM 2d) ────────────────────────────
   { name: "btn-gold label (gold-fg on gold-500)", fg: T.btnGoldFg, bg: T.btnGoldBg, min: 4.5 },
-  // ⭐ S8 WP5 — the sheet's disabled "Weka dau": its words (text, 4.5) on its own navy plate.
-  { name: "S8 · the sheet's disabled gold — its words on its navy plate", fg: ruleValue(SHEET_GOLD_OFF, "color"), bg: ruleValue(SHEET_GOLD_OFF, "background"), min: 4.5 },
+  // The sheet's disabled "Weka dau": its words (text, 4.5) on its own navy plate.
+  { name: "the sheet's disabled gold commit — its words on its navy plate", fg: ruleValue(SHEET_COMMIT_OFF, "color"), bg: ruleValue(SHEET_COMMIT_OFF, "background"), min: 4.5 },
   { name: "--gilt money ink on --bg", fg: T.gilt, bg: T.bg, min: 4.5 },
   { name: "--gilt money ink on --bg-elevated", fg: T.gilt, bg: T.bgElevated, min: 4.5 },
   { name: "--gilt money ink on --panel", fg: T.gilt, bg: T.panel, min: 4.5 },
@@ -1030,6 +1076,9 @@ const CHECKS: Check[] = [
   { name: "W3 · a current desktop link's focus ring, inside its pill (--brand-300 on --nav-pill, non-text 3.0)", fg: token("brand-300"), bg: token("nav-pill"), min: 3.0 },
   { name: "W3 · any other desktop link's focus ring, inside it (--brand-500 on --panel, non-text 3.0)", fg: token("brand-500"), bg: T.panel, min: 3.0 },
   { name: "W3 · the Up & Down gilt dot on a current tab's pill (--gilt on --nav-pill, non-text 3.0)", fg: T.gilt, bg: token("nav-pill"), min: 3.0 },
+  // ── PHOSPHOR-MIGRATION release 2 (W5): every IconPlate variant's ink on its own fill (INTAKE §4c: a new pair is scored in
+  // the change that paints it). The fill is read from its rule (`plateFill`), over the surface that reads worst.
+  ...plateChecks(),
 ];
 
 // ✅ AUDIT H10 IS CLOSED, and its fixes are now PARSED rather than described.
@@ -1323,10 +1372,17 @@ function endOfButtonOpenTag(s: string, from: number): number {
   // lexer regression (or a future refactor away from raw <button>) fails LOUDLY here rather
   // than printing a quiet, meaningless PASS.
   console.log(`   (checked ${calls} call-site opacity utilit${calls === 1 ? "y" : "ies"} across ${buttons} btn-yes/no/danger/gold buttons, ${runaways} unreadable open tag(s))`);
-  // The floor is the population as measured: 17 since 16e0be5e (KYC typed-only, 2026-10-11) deleted
-  // components/admin/kyc-review-controls.tsx and the three solid buttons of the photo review (btn-no, btn-yes, btn-no);
-  // it was 20. Found red on main by round 9 of the visual pass; re-derive it whenever a solid button is removed.
-  if (buttons < 17 || runaways > 0) {
+  // U43 B1 uses one UpDownSidePair declaration for both signed-in and signed-out
+  // cards. A placed bet's result action follows its actual side; a successful
+  // sale can use the gold branch. Prove those explicit branches before accepting
+  // a census with no call-site opacity defects.
+  const pair = readFileSync(join(ROOT, "src/components/updown/updown-stake-controls.tsx"), "utf8");
+  const sharedPair = pair.includes('export function UpDownSidePair(')
+    && pair.includes('(["UP", "DOWN"] as const).map((side) => (')
+    && pair.includes('side === "UP" ? "btn-yes" : "btn-no"');
+  const result = readFileSync(join(ROOT, "src/components/markets/operation-result-modal.tsx"), "utf8");
+  const resultActions = result.includes('stripTone === "gold" ? "btn-gold" : stripTone === "yes" ? "btn-yes" : stripTone === "no" ? "btn-no" : "btn-primary"');
+  if (buttons < 12 || runaways > 0 || !sharedPair || !resultActions) {
     console.log(`FAIL  §P-u2 CONTROL — the population collapsed (${buttons} buttons, ${runaways} runaway) — this is 0 reach, not 0 defects`);
     process.exitCode = 1;
   }

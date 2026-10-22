@@ -42,6 +42,8 @@ export type RefreshCadence = {
 
 /** The result phase is short and the player is watching it. */
 export const AWAITING_RESULT_MS = 5_000;
+/** A recorded verdict can wait on an objection for hours; keep it fresh without fast polling. */
+export const PAYMENT_PENDING_MS = 60_000;
 /** Matches the board, so two views of one round never disagree about how fresh they are. */
 export const LIVE_ROUND_MS = 20_000;
 /**
@@ -97,6 +99,7 @@ export function handoverPollUntil(input: {
 export function refreshCadence(input: {
   settled: boolean;
   awaitingResult: boolean;
+  paymentPending?: boolean;
   /**
    * ⭐ E-166 · the settled round is waiting for its successor to appear.
    *
@@ -108,7 +111,7 @@ export function refreshCadence(input: {
    */
   handover?: { active: boolean; untilMs: number; nowMs: number };
 }): RefreshCadence {
-  const { settled, awaitingResult, handover } = input;
+  const { settled, awaitingResult, paymentPending, handover } = input;
   // ⛔ `settled` wins over everything. A round cannot be both decided and awaiting a result,
   // but a caller that derives the two independently could pass both — and of the two possible
   // mistakes, "kept polling a finished round" is the one that costs a player data forever
@@ -121,6 +124,7 @@ export function refreshCadence(input: {
     }
     return { enabled: false, intervalMs: LIVE_ROUND_MS };
   }
+  if (paymentPending) return { enabled: true, intervalMs: PAYMENT_PENDING_MS };
   if (awaitingResult) return { enabled: true, intervalMs: AWAITING_RESULT_MS };
   return { enabled: true, intervalMs: LIVE_ROUND_MS };
 }

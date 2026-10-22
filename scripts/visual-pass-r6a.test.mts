@@ -171,8 +171,14 @@ const STAKES = /role="radiogroup"|btn-yes|btn-no|btn-gold/;
   const open = act(card("sw", {}));
   ok("3.3′ CONTROL · the same card with no break draws the stake controls and no notice", STAKES.test(open) && !open.includes("updown-card-break"));
   const locked = card("sw", { breakBody: sentenceOf("sw", false), selectionClosesAtMs: NOW - MIN });
-  ok("3.4 · EXECUTED · a LOCKED card keeps its locked presentation on a break — the notice stands only where a stake would",
-    !locked.includes("updown-card-break") && textOf(locked).includes(T.sw.market.udLockedTitle));
+  const lockedPresentation = (markup: string) => markup.includes('data-phase="locked"')
+    && !markup.includes("updown-card-break") && !STAKES.test(act(markup))
+    && textOf(markup).includes(T.sw.market.udLockedWhy.split("{time}")[0]);
+  ok("3.4 · EXECUTED · a LOCKED card keeps its locked reason and no stake or break notice",
+    lockedPresentation(locked));
+  ok("3.4′ PLANT · removing the locked phase or reason fails that rendered guard",
+    !lockedPresentation(locked.replace('data-phase="locked"', 'data-phase="open"'))
+      && !lockedPresentation(locked.replace(T.sw.market.udLockedWhy.split("{time}")[0], "")));
   const guest = act(card("sw", { breakBody: sentenceOf("sw", false), isAuthed: false }));
   ok("3.5 · EXECUTED · the gate is the signed-in stake path (`canQuickBet`): a guest's card is untouched", !guest.includes("updown-card-break") && /btn-yes/.test(guest));
 }

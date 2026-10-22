@@ -336,7 +336,7 @@ section("5 · E30 the card's two-line title slot is the contract (tiles 251 252)
 {
   const q = rule(CSS, ".mcardp-q");
   ok("5.1 · the grid card's question clamps at two lines over a two-line minimum — every card in a row keeps its pick, bar and foot on one line, and --mcard-base (the skeleton's height) is measured with it",
-    /-webkit-line-clamp:\s*2/.test(q) && /min-height:\s*calc\(2 \* 1\.34em\)/.test(q) && /--mcard-base:\s*216px/.test(CSS), q);
+    /-webkit-line-clamp:\s*2/.test(q) && /min-height:\s*calc\(2 \* 1\.34em\)/.test(q) && /--mcard-base:\s*171\.5px/.test(CSS), q);
   // The title column: card = viewport − 32 gutter; − 2 border − 24 phone / 32 desktop padding;
   // − the price column ("—" in 28px mono) − 12 gap.
   const dash = 0.6 * 28;
@@ -374,7 +374,8 @@ section("6 · E31 E33 the journey's account menu (tiles 209 213 224 228 239 243 
     tw(c, "px") !== tw(item, "px") && "inset differs",
     tw(c, "py") !== tw(item, "py") && "height differs",
     tw(c, "gap") !== tw(item, "gap") && "gap differs",
-    !/<NeedleMark size=\{15\} \/>/.test(b) && "the mark is not in the rows' 15px glyph box",
+    // PHOSPHOR-MIGRATION release 2: the mark is the family's needle in Duotone, in the same 15px box.
+    !/<I\.needle s=\{15\} tier="duo" \/>/.test(b) && "the mark is not in the rows' 15px glyph box",
     !/role="menuitem"/.test(b) && "not a menuitem",
   ].filter(Boolean) as string[];
   ok("6.3 · the `menu-item` row: Item's 16px inset, 12px padding and 10px gap (gap-[10px] = gap-2.5), the 15px glyph box, a menuitem — in a `py-1` wrapper with no side padding",
@@ -472,13 +473,24 @@ section("9 · E34 the journey's toaster hangs under its header (tiles 203 218 23
   const base = /:root:is\(\[data-shell="journey"\], #kp-journey-shell\) \[data-toaster\] \{ top: max\(56px, var\(--toast-clear, 0px\)\); \}/.test(CSS);
   const sm = /@media \(min-width: 640px\) \{ :root:is\(\[data-shell="journey"\], #kp-journey-shell\) \[data-toaster\] \{ top: calc\(max\(56px, var\(--toast-clear, 0px\)\) \+ var\(--sp-2\)\); \} \}/.test(CSS);
   const clear = toast.slice(toast.indexOf("function usePreviewClearance"), toast.indexOf("function ToastViewport"));
-  ok("9.4 · A25 item 17: the stack learns where the staff preview bar ends only on a page that wears it, writes it on its own box (never the root) and only when it moved",
-    /document\.querySelector<HTMLElement>\('\[data-testid="journey-preview-marker"\]'\)/.test(clear) && /if \(!shown \|\| !region \|\| !bar\) return;/.test(clear)
-      && /region\.style\.setProperty\("--toast-clear", value\)/.test(clear) && !/documentElement/.test(clear)
-      && /if \(region\.style\.getPropertyValue\("--toast-clear"\) !== value\)/.test(clear) && /usePreviewClearance\(regionRef, !held\);/.test(toast));
+  // ⚠️ RE-PINNED OPENLY, MASWALI-BUILD S5-FIX-PLATFORM D12 (2026-10-21): Millionea's staff preview bar is the same marker,
+  // standing under the journey's when both show and on Millionea's pages only — so the hook asks for both bars, clears the
+  // LOWEST, asks again on every move (the router's address is its dependency) and takes the clearance away on a page with
+  // neither bar. Everything else A25 item 17 holds is held as it was.
+  const bars = /const PREVIEW_BARS = '\[data-testid="journey-preview-marker"\], \[data-testid="millionea-preview-mark"\]';/.test(toast);
+  const clears = (c: string) => bars && /const bars = document\.querySelectorAll<HTMLElement>\(PREVIEW_BARS\);/.test(c)
+    && /const bar = bars\.length > 0 \? bars\[bars\.length - 1\] : null;/.test(c) && /if \(!shown \|\| !region \|\| !bar\) \{/.test(c)
+    && /region\.style\.removeProperty\("--toast-clear"\)/.test(c) && /\}, \[ref, shown, pathname\]\);/.test(c) && /const pathname = usePathname\(\);/.test(c)
+    && /region\.style\.setProperty\("--toast-clear", value\)/.test(c) && !/documentElement/.test(c)
+    && /if \(region\.style\.getPropertyValue\("--toast-clear"\) !== value\)/.test(c) && /usePreviewClearance\(regionRef, !held\);/.test(toast);
+  ok("9.4 · A25 item 17: the stack learns where the LOWEST staff preview bar ends (the journey's, Millionea's under it) only on a page that wears one, asks again on every move, writes it on its own box (never the root) and only when it moved",
+    clears(clear));
   const onRoot = clear.replace('region.style.setProperty("--toast-clear", value)', 'document.documentElement.style.setProperty("--toast-clear", value)');
   ok("9.4′ PLANT · the clearance written on the document root (every element restyled on each scroll) is reported",
     onRoot !== clear && (!/region\.style\.setProperty\("--toast-clear", value\)/.test(onRoot) || /documentElement/.test(onRoot)));
+  const onceOnly = clear.replace("}, [ref, shown, pathname]);", "}, [ref, shown]);");
+  ok("9.4″ PLANT · the bars asked for once, at mount (a move to a Millionea page leaves its bar under the stack), is reported",
+    onceOnly !== clear && !clears(onceOnly));
   const header = Number(/height:\s*(\d+)px/.exec(rule(CSS, ".kp-jhdr"))?.[1] ?? NaN);
   const menuPhone = /top-\[calc\(env\(safe-area-inset-top\)\+(\d+)px\)\]/.exec(read("src/components/layout/avatar-menu.tsx"))?.[1];
   const menuSm = /sm:top-\[(\d+)px\]/.exec(read("src/components/layout/avatar-menu.tsx"))?.[1];

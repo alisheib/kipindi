@@ -306,9 +306,30 @@ console.log("\n── 4b · The BOOT path does not read a whole table ───�
     "It must use positionStore.listOpen(), which pushes WHERE status='OPEN' to the database.");
   ok("…it uses the pushed-down read instead",
     /positionStore\.listOpen\(\)/.test(body));
-  // CONTROL: the slice really contains the function, not an empty string.
-  ok("CONTROL: the isolated body is the real function", body.includes("marketStore.has(p.marketId)"),
+  // The indexed pre-filter is only a cheap skip. The refund decision rereads the
+  // position and its market inside wallet → market locks, or a new market could
+  // appear between the pre-filter and the refund. Check both phases in this
+  // isolated boot function; the two mutations prove neither phase is ornamental.
+  const shape = (source: string) => {
+    const flat = source.replace(/\s+/g, " ");
+    return {
+      fast: flat.includes("for (const candidate of await positionStore.listOpen()) { if (await marketStore.has(candidate.marketId)) continue;"),
+      locked: flat.includes('const result = await withLock(`wallet:${candidate.userId}`, () => withLock(`market:${candidate.marketId}`, async (lockTx) => { const p = await positionStore.get(candidate.id, lockTx); if (!p || p.status !== "OPEN" || await marketStore.get(p.marketId, lockTx)) return null;'),
+    };
+  };
+  const current = shape(body);
+  ok("CONTROL: the isolated boot repair has its indexed market pre-filter", current.fast,
     `sliced ${body.length} chars`);
+  ok("CONTROL: wallet → market locks hold the position and market reread before refund", current.locked);
+  const fastAnchor = "marketStore.has(candidate.marketId)";
+  const lockedAnchor = "await marketStore.get(p.marketId, lockTx)";
+  const marketLockAnchor = 'withLock(`market:${candidate.marketId}`, async (lockTx) => {';
+  ok("RED: losing the indexed pre-filter is caught",
+    body.split(fastAnchor).length === 2 && !shape(body.replace(fastAnchor, "marketStore.has(p.marketId)")).fast);
+  ok("RED: losing the locked market reread is caught",
+    body.split(lockedAnchor).length === 2 && !shape(body.replace(lockedAnchor, "await marketStore.has(p.marketId)")).locked);
+  ok("RED: taking the market lock as a second wallet lock is caught",
+    body.split(marketLockAnchor).length === 2 && !shape(body.replace(marketLockAnchor, 'withLock(`wallet:${candidate.userId}`, async (lockTx) => {')).locked);
 }
 
 console.log("\n── 5 · The leaderboard is bounded by the board, not the platform ─");

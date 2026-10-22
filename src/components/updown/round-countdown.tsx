@@ -220,10 +220,13 @@ export function useHoldAnchor(
  */
 export function RoundCountdownPod({
   closesAtMs, isOpen, label, serverNowMs, resultMode = false,
-  roundClosesAtMs, resultTargetMs = null, settled = false, resultLabels,
+  lastSecondsLabel,
+  roundClosesAtMs, resultTargetMs = null, settled = false, paymentPending = false, resultLabels,
   handover, handoverLabels,
 }: {
   closesAtMs: number; isOpen: boolean; label: string; serverNowMs?: number;
+  /** Visible final-30-second words, supplied only while betting remains open. */
+  lastSecondsLabel?: string;
   /**
    * ⭐ E-166 · THE HANDOVER'S SERVER FACTS. Given these the pod stops saying "Round settled"
    * over a dead `00:00` and becomes the ticker for the round that follows.
@@ -254,6 +257,8 @@ export function RoundCountdownPod({
   /** The measured result instant, or null when the asset is under the sample floor (A-5). */
   resultTargetMs?: number | null;
   settled?: boolean;
+  /** The price verdict exists, but the market payout transaction has not committed. */
+  paymentPending?: boolean;
   /** Captions for the phases the pod can now enter on its own. Translated on the server. */
   resultLabels?: { resultIn: string; awaiting: string; settled: string };
   /**
@@ -292,9 +297,9 @@ export function RoundCountdownPod({
   const pastClose = clock?.awaiting === true;
   // The pod only takes over once it is genuinely past the boundary; before that the caller's
   // phase stands, which is what keeps this additive for the board card.
-  const inResult = pastClose || resultMode;
+  const inResult = !paymentPending && (pastClose || resultMode);
   const target = pastClose ? (clock!.targetMs ?? roundClosesAtMs!) : closesAtMs;
-  const caption = pastClose && resultLabels
+  const caption = !paymentPending && pastClose && resultLabels
     ? (settled ? resultLabels.settled : resultTargetMs != null ? resultLabels.resultIn : resultLabels.awaiting)
     : label;
 
@@ -330,23 +335,25 @@ export function RoundCountdownPod({
   const running = (isOpen || pastClose) && (left == null || left > 0);
   // ⛔ Never urgent in result mode: `confirming` is CALM by design, and rose here would tell a
   // player something is wrong at the exact moment the platform is working correctly.
-  const urgent = !inResult && isOpen && left != null && left > 0 && left <= 30;
+  const urgent = !inResult && isOpen && lastSecondsLabel != null && left != null && left > 0 && left <= 30;
   // ⛔ `—:—`, NEVER a dead `0:00`. Past the boundary with no measured target — or past a target
   // that has been overrun — we say we have stopped counting, which is the truth. This branch is
   // now reached the INSTANT the boundary passes rather than at the next poll.
   const spent = inResult && !running;
-  // ⭐ E-166 · past the hold, the pod is the handover ticker. The BOX does not move: same flex
-  // row, same padding, same 28px digits — only the caption and the digits cross-fade, which is
-  // what makes it read as one object changing state rather than a component being swapped.
+  // ⭐ E-166 · past the hold, the pod is the handover ticker. Settled phases
+  // without a countdown target (including the brief hold before handover)
+  // become a compact status capsule without false digits.
   const handCaption = !inHandover || !handoverLabels ? null
     : hand!.phase === "counting" ? handoverLabels.counting
     : hand!.phase === "live" ? handoverLabels.live
     : hand!.phase === "waiting" ? handoverLabels.waiting
     : handoverLabels.unavailable;
-  const shownCaption = handCaption ?? caption;
-  // ⛔ `—:—` ON EVERY NON-COUNTING BRANCH, INCLUDING SETTLED. The `"00:00"` this used to fall
-  // through to is the dead clock measured on production; see the block above.
-  const shownDigits = inHandover
+  const textOnlyPod = paymentPending || (settled && (!inHandover || !hand!.counting));
+  const shownCaption = urgent ? lastSecondsLabel! : handCaption ?? caption;
+  // ⛔ Keep `—:—` as the non-counting fallback, never the dead `00:00` measured on
+  // production. Settled text-only phases hide this fallback behind the truthful label.
+  const shownDigits = paymentPending ? "—:—"
+    : inHandover
     ? (hand!.counting ? mmss(handLeft) : "—:—")
     : settled ? "—:—"
     : spent ? "—:—"
@@ -365,23 +372,26 @@ export function RoundCountdownPod({
    * each time is the counting-up animation `.m-tick`'s own comment forbids. The key changes
    * only when the pod starts saying a different KIND of thing.
    *
-   * ⚠️ The box does not participate. Padding, gap, font size and the caption's single line are
-   * all fixed, so the pod occupies the same rectangle before and after — no layout shift.
+   * ⚠️ The box does not participate. A phase without honest digits uses a compact
+   * status capsule, so it never leaves an empty clock box.
    * ⚠️ Reduced motion needs no branch here: all three gates clamp `animation-duration` to
    * 0.01ms globally (motion.css §"THREE GATES"), so this becomes an instant state change and
    * the handover still happens. That is why the kit utility is used instead of a bespoke one.
    */
-  const podPhase = inHandover ? `h:${hand!.phase}`
+  const podPhase = paymentPending ? "payment-pending"
+    : inHandover ? `h:${hand!.phase}`
     : settled ? "settled" : spent ? "spent" : inResult ? "result" : isOpen ? "open" : "idle";
 
   return (
-    <div className="ud-round-pod">
+    <div className="ud-round-pod" data-text-only={textOnlyPod ? "true" : undefined}>
       <span key={`c-${podPhase}`}
-            className="m-tick font-mono text-micro font-semibold uppercase eyebrow text-text-subtle"
+            className={textOnlyPod
+              ? "m-tick font-mono text-body-sm font-semibold uppercase eyebrow text-text-subtle"
+              : "m-tick font-mono text-micro font-semibold uppercase eyebrow text-text-subtle"}
             /* The pod has a full-width mobile row for the caption. Each phase keeps that row,
                so a longer Swahili label neither crosses the gutter nor shifts the digit row. */
             style={{ whiteSpace: "nowrap" }}>{shownCaption}</span>
-      <span
+      {!textOnlyPod && <span
         key={`d-${podPhase}`}
         className="m-tick"
         style={{
@@ -407,11 +417,10 @@ export function RoundCountdownPod({
           transition: "color var(--t-base) var(--m-glide)",
         }}
       >
-        {/* 🔴 U43 (2026-10-19) · the urgency loop on its OWN span: beside `.m-tick` on one element it lost the cascade
-            (motion.css is imported last, and both rules set `animation`), so the last 30 seconds never pulsed — the card's
-            twin of this fix is `updown-card.tsx`'s `CardCountdownDigits`. */}
-        <span className={urgent ? "ud-count-pulse" : undefined}>{shownDigits}</span>
-      </span>
+        {/* The kit's urgency loop is on the digits; the caption names the phase
+            even when animation is reduced. */}
+        <span className={urgent ? "m-urgent" : undefined}>{shownDigits}</span>
+      </span>}
     </div>
   );
 }
@@ -430,12 +439,13 @@ export function RoundCountdownPod({
  * instants on the tick (E-104's law), never from a server-rendered phase. Omit them and
  * the component behaves exactly as before.
  */
-export function RoundCountdown({ closesAtMs, label, lockAtMs, lockLabel, serverNowMs }: {
+export function RoundCountdown({ closesAtMs, label, lockAtMs, lockLabel, lastSecondsLabel, serverNowMs }: {
   closesAtMs: number; label: string;
   /** The betting lock instant, when it differs from the round close. */
   lockAtMs?: number | null;
   /** Caption while counting to the lock (e.g. udBetsCloseIn), translated by the caller. */
   lockLabel?: string;
+  lastSecondsLabel?: string;
   /** The server's clock at render (E-72) — anchors both counts on a drifting handset. */
   serverNowMs?: number;
 }) {
@@ -450,15 +460,15 @@ export function RoundCountdown({ closesAtMs, label, lockAtMs, lockLabel, serverN
   const left = inLock ? lockLeft : closeLeft;
   const shownLabel = inLock ? lockLabel! : label;
   const running = left == null || left > 0;
-  const urgent = left != null && left > 0 && left <= 30;
+  const urgent = lastSecondsLabel != null && inLock && left != null && left > 0 && left <= 30;
   return (
     <div className="text-right">
       {/* Ends on the clock's edge, its trailing tracking taken back (F19, round 6 · C11). */}
-      <div className="font-mono text-micro uppercase eyebrow text-text-subtle kp-track-end">{shownLabel}</div>
+      <div className="font-mono text-micro uppercase eyebrow text-text-subtle kp-track-end">{urgent ? lastSecondsLabel : shownLabel}</div>
       {/* The digits end on that edge too (round 7, R7-C, 2026-10-10): tracked 0.05em, the clock's last digit stood 1.2px
           short of the label above it; `kp-track-end--05` takes the tracking back. */}
       <div
-        className={urgent ? "kp-track-end kp-track-end--05 ud-count-pulse" : "kp-track-end kp-track-end--05"}
+        className={urgent ? "kp-track-end kp-track-end--05 m-urgent" : "kp-track-end kp-track-end--05"}
         style={{
           fontFamily: "var(--font-mono)", fontSize: 24, fontWeight: 700,
           fontVariantNumeric: "tabular-nums", letterSpacing: "0.05em", lineHeight: 1.1,

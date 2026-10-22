@@ -67,6 +67,7 @@ import { pathToFileURL } from "node:url";
 import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { landingSignInMode } from "./landing-ten-auth.mjs";
 
 // Repo root, derived from this file rather than hard-coded, so the gate runs from any worktree.
 const REPO = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
@@ -1680,11 +1681,26 @@ for (let attempt = 1; !browser; attempt++) {
 let SIGNED_IN_STATE = null;
 let SIGNED_IN_WHY = "not attempted";
 if (cells.some((c) => c.state === "signedin")) {
-  if (!process.env.LIVE_BASE) process.env.LIVE_BASE = BASE;
   try {
-    const { loginOnce } = await import(pathToFileURL(join(REPO, "scripts/live/harness.mjs")).href);
-    SIGNED_IN_STATE = await loginOnce(browser, "mobile01");
-    console.log(`signed in once as mobile01 against ${process.env.LIVE_BASE}`);
+    if (landingSignInMode(BASE) === "demo") {
+      const context = await browser.newContext();
+      try {
+        const page = await context.newPage();
+        await page.goto(BASE + "/auth/demo", { waitUntil: "domcontentloaded" });
+        SIGNED_IN_STATE = await context.storageState();
+        if (!SIGNED_IN_STATE.cookies.some((cookie) => cookie.name === "kp_session" && cookie.value)) {
+          throw new Error("local demo sign-in did not hold");
+        }
+      } finally {
+        await context.close();
+      }
+      console.log(`signed in once as a local demo player against ${BASE}`);
+    } else {
+      if (!process.env.LIVE_BASE) process.env.LIVE_BASE = BASE;
+      const { loginOnce } = await import(pathToFileURL(join(REPO, "scripts/live/harness.mjs")).href);
+      SIGNED_IN_STATE = await loginOnce(browser, "mobile01");
+      console.log(`signed in once as mobile01 against ${process.env.LIVE_BASE}`);
+    }
   } catch (e) {
     SIGNED_IN_WHY = "sign-in failed: " + String(e.message).split(String.fromCharCode(10))[0].slice(0, 90);
     console.log(`⛔ ${SIGNED_IN_WHY}`);

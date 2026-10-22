@@ -11,6 +11,7 @@
  */
 import { audit } from "./audit";
 import { defineConfig } from "./define-config";
+import { MASWALI_REASON_MIN, MASWALI_REASON_MAX } from "@/lib/maswali-ceremony-bounds";
 
 export const MASWALI_PAUSE_KEY = "maswali.salesPause";
 
@@ -24,8 +25,8 @@ export type SalesPause = {
 };
 
 export const SALES_RUNNING: SalesPause = { paused: false, reason: null, at: null, by: null };
-export const PAUSE_REASON_MIN = 5;
-export const PAUSE_REASON_MAX = 300;
+export const PAUSE_REASON_MIN = MASWALI_REASON_MIN;
+export const PAUSE_REASON_MAX = MASWALI_REASON_MAX;
 
 /** Why a pause record is refused, or null. */
 export function salesPauseProblem(p: SalesPause): string | null {

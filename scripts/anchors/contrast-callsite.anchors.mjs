@@ -30,21 +30,13 @@ export const MUTATIONS = [
     from: `<span className="font-mono text-[12.5px]">@ {yesPct}%</span>`,
     to: `<span className="font-mono text-[12.5px] opacity-85">@ {yesPct}%</span>`,
   },
-  // ⚠️ RE-AIMED 2026-10-14. These two restored the `opacity-85` on the Up button's `×N` suffix; Ali's ruling of that day
-  // took the suffix off every Up & Down choice ("keep up and down only"), so the anchors were gone. The call sites are
-  // not: the two Up buttons are still solid `btn-yes` money buttons whose children §P-u2 reads, and a faded label inside
-  // either is the same defect. Each now plants the fade on the side's WORD, the one label those buttons still carry.
+  // U43 B1 gives signed-out and quick-bet cards one shared UpDownSidePair. Plant
+  // the fade on that pair's visible word; the guard reads its solid button.
   {
-    name: "updown-card.tsx — a faded opacity-85 Up label inside the signed-out Up button (where the ×N suffix stood)",
-    file: "src/components/updown/updown-card.tsx",
-    from: `<I.arrowUp s={14} edge="start" text="body-700" className={GLYPH_NO_SHRINK} /> {t.market.udUp}`,
-    to: `<I.arrowUp s={14} edge="start" text="body-700" className={GLYPH_NO_SHRINK} /> <span className="opacity-85">{t.market.udUp}</span>`,
-  },
-  {
-    name: "updown-stake-controls.tsx — a faded opacity-85 Up label inside the quick-bet Up button (where the ×N suffix stood)",
+    name: "updown-stake-controls.tsx — a faded side word inside the shared Up/Down pair",
     file: "src/components/updown/updown-stake-controls.tsx",
-    from: `<I.arrowUp s={compact ? 14 : 15} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />} {t.market.udUp}`,
-    to: `<I.arrowUp s={compact ? 14 : 15} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />} <span className="opacity-85">{t.market.udUp}</span>`,
+    from: `          {sideWord(t, side, "UPDOWN")}`,
+    to: `          <span className="opacity-85">{sideWord(t, side, "UPDOWN")}</span>`,
   },
   {
     name: "conviction-dial.tsx — restore the commit button's stake opacity-90 (the site §P-u2 itself found)",

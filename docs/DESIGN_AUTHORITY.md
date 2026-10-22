@@ -165,15 +165,14 @@ The brand hue is **royal indigo, OKLCH hue 268** — matching `design-master-bri
 |---|---|---|---|
 | YES | `#00A24F` | `oklch(62% 0.17 152)` | winning / affirmative money surface |
 | NO | `#E6424C` | `oklch(62% 0.20 22)` | losing / negative money surface |
-| Gilt | `#D49824` | `oklch(72% 0.14 78)` | needle, hub, accents |
+| Gilt | `#D49824` | `oklch(72% 0.14 78)` | 50pick's signature metal and named money controls; struck payout ink remains earned (§M3a) |
 | Canvas royal | `#060A50` | hue 268 (L deepened to ~15% by design) | app background |
 | Aqua | `#36BABA` | `oklch(72% 0.110 195)` | finishing accent only (see B4) |
 | Claret | `#A4273F` | `oklch(48% 0.160 15)` | editorial weight only (see B4) |
 
 `src/app/globals.css` is authoritative for the exact values. Brand-identity hexes in
-`src/components/brand.tsx` (`#1EA362`/`#B03A3E`/`#E3BC66`) are a deliberate byte-identical
-port of the delivered logo `mark-a.svg` and are allowed to diverge from theme tokens —
-brand identity ≠ theme tokens.
+`src/lib/brand-mark.ts` owns the logo colours: its green and red halves name YES and NO,
+while its needle and hub use the delivered gilt under Ali's current ruling (§M3a).
 
 ⚠️ **A `teal-*` name means royal indigo, not teal.** `--teal-50` … `--teal-950` in `globals.css`, and the Tailwind
 `teal-*` utilities bridged from them, are DEPRECATED backward-compatible aliases: each is literally `var(--royal-N)`,
@@ -197,6 +196,14 @@ chord, the **gilt NEEDLE** riding the seam past the rim, over a gilt hub with a 
    dial. The mark is not a logo that sits near the UI; it is **the UI's own instrument
    reduced**, and anything built on it must read as that instrument.
 
+**Current colour ruling (Ali, 2026-10-20).** Restore the delivered gilt on the
+mark's needle and hub, the `TippingBar` needle and conviction dial that consume
+`--bar-needle`, and the settled shimmer and hover sweep. They are the shared
+instrument's signature, not claims that a player won. The YES and NO fills keep
+their own green and red. The win-rate `NeedleDial` on `/positions` follows the
+same instrument gold, including at 0%; its printed percentage remains a factual
+measure, not a payout. This supersedes U43's 2026-10-19 neutral-instrument pass.
+
 **The −14° axis is measured from this artwork, not chosen.** From the shipped coordinates
 (`x1 38.39, y1 3.43 → x2 61.61, y2 96.57`): `atan(23.22 / 93.14) = 13.998°`, so
 `--m-tilt: -14deg` is accurate to three significant figures. Negative because the needle's
@@ -205,10 +212,9 @@ top leans **left** of centre. ⚠️ `@keyframes m-axis-sweep` in `motion.css` w
 the one place the number is duplicated and it must move with the axis.
 
 ⛔ **Never hand-edit a GENERATED brand asset.** `scripts/build-brand-assets.mts`
-(`npm run build:brand`) writes exactly twelve files, and its own header lists them: eleven from
-`brand-mark.ts` — `public/brand/mark-{color,white,dark,simplified}.svg`, plus
-`public/icons/{mark-color,mark-white,mark-dark,maskable,tile}-512.png`, `icon-192.png` and
-`apple-touch-180.png` — and the X card `public/og/twitter-1200x600.png`, cut (the centred 1200×600)
+(`npm run build:brand`) writes the assets listed in its header from
+`brand-mark.ts`: mark and lockup SVGs, PWA and favicon SVG/PNG/ICO files, plus the X card
+`public/og/twitter-1200x600.png`, cut (the centred 1200×600)
 from the share picture `public/og/og-1200x630.png`. Editing one of **those** directly is how the PWA
 icon and every outbound email once shipped the superseded round-1 logo. **Change the source, regenerate.**
 
@@ -218,22 +224,17 @@ corner and the chat bubble in the other, on every X preview of 50pick. `npm run 
 holds it equal to the share picture's middle rows, pixel for pixel. The 1200×630 share picture itself
 (also the manifest's wide screenshot) is **held**: `build:brand` reads it and never writes it.
 
-⚠️ **Corrected 2026-08-21, and the error ran in the dangerous direction.** This rule read
-*"Every SVG and PNG under `public/brand/` and `public/icons/` is generated"* — which promises a
-session that a regeneration will undo whatever it breaks. It will not. Six of the files in
-those folders are **held, not generated**, and `build:brand` never writes one of them:
-`lockup-horizontal.svg` and `lockup-stacked.svg` (the delivered lockups named two paragraphs
-above), `email-signature.png` (`docs/EMAIL-SIGNATURES.md` serves it from the live domain), and
-the three `icons/shortcut-*.png` cited by `public/manifest.json`. `favicon.svg` / `favicon.ico`
-sit at `public/` root and are outside the generator too, as is anything else that has ever been
-dropped into `public/icons/` by hand. An edit to any of them is unrecoverable by rerunning the
-script — so for those the instruction is the opposite: **there is no source to change; keep the
-file.** ⭐ The reliable test is not the folder, it is the script: if a filename is not in
-`build-brand-assets.mts`, `build:brand` will not produce it.
+⚠️ **Held assets remain distinct from generated assets.** The staff email signature
+`public/brand/email-signature.png` and the three `public/icons/shortcut-*.png` files are
+still held. U43 moved the lockups and favicons into the single-source generator so their
+player-visible needle and hub follow the current mark ink. The shortcut icons remain owned
+by the Phosphor migration; do not edit that lane's unfinished artwork from U43. The
+reliable test is the generator's output list, not the directory name.
 
-⚠️ **And the mark's gold stays `#E3BC66`.** Any satin/material recipe adopted for *surfaces*
-does not apply to the trademark — that is this rule's parent, B1, applied to the one place it
-matters most.
+**Current mark ink (Ali, 2026-10-20):** the YES and NO halves keep `#1EA362` and
+`#B03A3E`; the needle and hub use the delivered `#E3BC66` gold on player-visible
+React, PWA and exported artwork. Regenerate assets from
+`brand-mark.ts`; never recolour a generated image by hand.
 
 **Reproduction law** (enforced in `FiftyMark`, which auto-switches below 24px): full mark
 min **24px** · simplified min **14px** · clear space **0.25 × diameter**.
@@ -267,14 +268,41 @@ be mistaken for one:
 ⛔ **Nor to express time or liveness** (2026-09-14, register E-405/E-406). A countdown's last seconds and a
 "live" word or count are app state too: on 2026-09-14 the Up & Down digits turned `--no-300` in their final 30 s
 (beside the round's Down side, where rose reads as "price going down"), and home cards painted time-left and live counts
-in `--yes-*`. Urgency is carried by motion (`ud-count-pulse`) and the player's LIVE signal by the broadcast red of §B11;
+in `--yes-*`. Urgency is carried by the kit's `m-urgent` motion and the player's LIVE signal by a neutral pip and word (§B11);
 the text keeps its neutral ink. `test:betting-ink` pins the sites.
+
+**U43 palette amendment (Ali, 2026-10-19; gold restoration 2026-10-20).** On player surfaces, live status and HOT
+crowd signals are neutral. Green and red name only the two betting sides and their outcomes.
+The shared ticker's LIVE pip, word, separators and controls are neutral; keyboard focus uses
+brand. The Journey balance delta keeps its signed number in neutral ink; the classic
+capsule retains its earlier directional delta. The full pre-B5 house-gold
+treatment returns on named shell accents and controls (§M3a), including the classic bell,
+product-line dots, footer midpoint and deposit doors. Ali's 2026-10-20 amendment restores
+the external social marks' original vendor colours; these registered marks are not app-state
+or betting-side ink. The 50pick mark keeps YES/NO side halves
+and uses its delivered gilt needle and hub (§B1a).
+On the Up & Down board, round page and market board, a recoverable page error uses a neutral
+alert mark and explicit retry words. An invalid custom stake keeps `aria-invalid`, a strong
+neutral field edge and a plain range sentence. The chart's delayed-source receipt is neutral
+and still names the delay. These three error treatments reserve red for DOWN/NO without
+concealing the error.
+On the round card the breathing clock pip and the
+one-shot placed-bet ring use neutral ink. Green and red belong to the UP and DOWN choices
+and outcomes; a neutral placement must not look like an UP bet. The source footer names
+the market class and the observed **hh:mm EAT** once, with its exact instant retained in
+the time element. A settled refund card gives the reason once and the player's exact
+returned amount once; it does not repeat the return promise above that amount or in a chip.
 
 ⛔ **Nor to express a price MOVE** (2026-09-27, the landing v3 WP3+WP4 review, R8). A market card's 24h move
 of the YES price is not a side, and a green-up / rose-down move invites chasing. The grid card printed "+5pt" in
-`--yes-400` / `--no-400` while the featured card on the same page printed the same move "▲5 · 24h ago" in neutral
-ink: ONE reading on every card now — `DayAgoMove` in `market-card.tsx`, `.mcardp-h24`, `--text-subtle`, ▲/▼, bare
-points — printed only where a price exists now. `test:betting-ink` §5 pins it, with planted inked moves.
+`--yes-400` / `--no-400` while the featured card printed the same move in neutral
+ink: ONE reading on every card now — `DayAgoMove` in `market-card.tsx`, `.mcardp-h24`, `--text-subtle`, the family's
+filled direction caret for a move, and plain words for a flat reading — printed only where a price exists now.
+The line names the measured YES side (Up for an Up & Down card) even when NO leads the pool, and says the baseline
+is the first available reading within the past 24 hours. The full line wraps at the reading floor on a narrow card.
+The move and mini chart appear only when the latest recorded snapshot's pools equal the current market row's pools;
+otherwise a delayed history write could put a stale price beside the card's current figure, so both stay absent.
+`test:betting-ink` §5 pins its neutral ink, with planted inked moves.
 
 ⛔ Never reach for the betting pair to express an app state: a surface that says *saved* in
 the YES ink has spent the money vocabulary on chrome, and the next player to see that green
@@ -421,10 +449,10 @@ as a decision stops being a drift.
 
 | Word | Player | Console (admin) | `/proposals` |
 |---|---|---|---|
-| **LIVE** | broadcast red | success green | royal |
+| **LIVE** | slate | success green | royal |
 | **CLOSED** | royal | *royal* (was amber) | — |
 | **PENDING** | royal | *royal* (was amber) | royal |
-| **RESOLVED** | struck gilt | soft gilt | struck gilt |
+| **RESOLVED** | *slate* | *slate* | *slate* |
 | **APPROVED** | — | success green | *success green* (was struck gilt) |
 | **REJECTED** | — | rose | claret |
 | **OPEN** | royal | claret | — |
@@ -482,7 +510,7 @@ the money is moving). Receipts would have been a third. All three read `status-t
 `playerStatusChip`, the `/wallet` row's printed word through `playerStatusInk` (`TONE_INK`, the chip's own text colour) —
 so one payment reads one colour everywhere: **waiting is royal** (Pending, Processing, In review), **Completed is
 success green**, **Failed is the failure colour**, and **Reversed and Cancelled are slate** — terminal and inert, the
-money is back or never left. ⛔ Never gilt: moving your own money in or out earns nothing (§M3a D1). A deposit held for
+money is back or never left. These receipt status words do not borrow the gold of the deposit control (§M3a). A deposit held for
 return is SHOWN as Reversed (`presentedStatus`, `lib/wallet/receipts.ts`), as its notice and email say.
 
 **6. VOID IS SLATE TO THE PLAYER TOO (2026-10-10, the S6 visual pass's round 7, R7-B; round 6's read R8-3, readers 4, 5
@@ -499,16 +527,21 @@ follows the dictionary: the ticket and position cards, the board cards, the home
 page and history, the market's resolution panel and `/results`' notable card (both hand-typed royal until this change);
 a void printed as a word takes the slate chip's own text (`playerStatusInk`, `--text-muted`).
 
-**⛔ THE ONE KEPT SPLIT — LIVE — AND IT IS A DECISION, NOT A LEFTOVER.** LIVE is two facts
-wearing one word. To a **player** it is a broadcast — *this is open, money is moving, act
-now* — and the red live-pill is the platform's oldest and loudest signal of exactly that. To
-an **officer** it is operational health — *this market is up* — sitting in a column beside
-DRAFT and VOIDED, where red would read as an incident. Painting both the same would make one
-of the two lie about what it is for. `/proposals` keeps royal: a listed proposal is a
-lifecycle step reached, not a market broadcasting that it is taking money.
+**7. RESOLVED HAS ITS EARLIER GILT STATUS TONE AGAIN (Ali, 2026-10-20).** U43's
+2026-10-19 slate replacement is superseded. The status says the market has reached
+a final state; it is not a claim that this viewer won. The three status surfaces
+take the named tone from `STATUS_TONE`, including the market card, `/results` and
+the resolution panel. A player's won amount has its separate earned-money treatment.
+
+**⛔ THE KEPT SURFACE SPLIT — LIVE.** Ali's 2026-10-19 U43 ruling replaces the older player
+broadcast red: the player sees a neutral word and pip, because red and green name the two
+betting sides. The console keeps success green for operational health. `/proposals` keeps
+royal for its own lifecycle step. `STATUS_TONE.LIVE.player` supplies slate to every player
+status reader; a component does not hand-type another LIVE chip colour.
 
 **The other recorded divergences** — decisions, not drift, each with its reason in
-`STATUS_TONE_EXCEPTIONS` (Maswali Millionea's won word, green with gold only on the amount: §M8a item 8):
+`STATUS_TONE_EXCEPTIONS` (Maswali Millionea's won word, green with gold only on the amount: §M8a item 8; a settled
+Millionea week's word, slate and never RESOLVED's seal: §M8a item 13):
 
 - **REJECTED** is rose in KYC/DSAR (a person was refused), claret on `/proposals` (an
   editorial decline, §B4) and deliberately **slate on the objection queue** — a rejected
@@ -534,7 +567,7 @@ renders the kit `<Chip>` and hand-types the **variant** (`"pending"`, `"resolved
 still a §B11 site by the law above but a different defect with a different fix. And it never
 named `home/trust-band.tsx` or `updown/[roundId]/page.tsx`, which held the same defect.
 
-**Still hand-typed, on a PLAYER surface, and each one is one of two kinds:**
+**Hand-typed player sites recorded in the 2026-08-30 audit, in two kinds:**
 
 - *Agrees with the dictionary — a NAME fix at zero visual risk.* `markets/resolution-panel.tsx`
   (VOID · RESOLVED) · `updown/updown-card.tsx` (CLOSED · PENDING) ·
@@ -552,6 +585,11 @@ named `home/trust-band.tsx` or `updown/[roundId]/page.tsx`, which held the same 
   and **ACTIVE in the betting-YES token** (§B2a). ⛔ None of these three belongs in
   `STATUS_TONE_EXCEPTIONS` — writing a drift down as a decision would repeal the ruling by
   paperwork.
+
+**U43 update (2026-10-19).** The RESOLVED market status now reads slate through the shared
+status dictionary on the card, market detail, results, proposals and resolution panel. The
+list above remains the dated audit of the earlier implementation; it is not a current inventory.
+The earned WIN amount keeps its separate gold treatment (§M3).
 
 ⚠️ **And a status pill is not always a chip.** `wallet/receipt/[id]/page.tsx` held a file-local
 constant *named* `STATUS_TONE`, shadowing this module's export, hand-typing seven payment tones
@@ -1458,6 +1496,18 @@ them, never dip under.
    list carrying `cursor-not-allowed` / `pointer-events-none`, a rendered fact, never by a
    filename. A file-scoped allowlist would exempt every future site in the same file, which is
    how `filter-language` §6.7 once convicted an innocent `<input>`.
+   ⭐ **TWO OPACITY TOKENS, TWO MEANINGS — NEVER ONE FOR THE OTHER (`state-tokens.css`).** `--state-disabled-opacity`
+   says *switched off*: a pending board tab, a waiting chip, an inert ticket.
+   `--state-yield-opacity`: floating chrome yielding to the content beneath it; still live, never disabled — the chat
+   bubble at rest over a line of text or a figure (globals.css D15; MASWALI-BUILD S5-FIX-PLATFORM D15, lead 2026-10-21,
+   the 10/10 pass): a pointer's hover and a keyboard's focus bring it back whole, its taps are kept, and its value is
+   MEASURED, never chosen: every figure it covers meets item 1's minimum for its size through the real bubble — its
+   median glyph pixel AND its 10th-percentile one, so the figure reads under the bubble's icon too (the lead's rule,
+   2026-10-21: .50, provided that holds on every covered figure, else the highest value where it does;
+   `qa:chat-yield --measure`). **Measured 2026-10-21 → .50**, on the register lane's head (ceb06e8cb), at 320 and 360:
+   32 covered figures, 13–16px mono (4.5:1 each). Median / p10 at .50: the sunset week's ledger 5.34–5.82 / 4.99–5.31,
+   How to play's worked figures 5.39–5.51 / 4.87–5.01, `/wallet`'s right-aligned amounts 5.10–5.11 / 4.58–4.59 (the
+   tightest; at .55 their p10 falls to 3.90). The whole table is the token's note in `state-tokens.css`.
 2. **Tap targets ≥ `--tap-min` (40px), 44px preferred on mobile.** Money controls are
    never the exception — a stake chip is where a player chooses how much to risk, and it
    was shipped at 26px once (E-112). `--h-input` already sits at 44px.
@@ -1651,12 +1701,11 @@ The platform's hardest-won rules. Most were bought with an incident.
 6. ⛔ **NO EMOJI IN UI COPY. ANYWHERE.** Glyphs are SVG from the kit (the family `I`, drawn by
    Phosphor — §K3), or typographic marks. Reasons, in order: tone on a licensed money product; rendering on cheap Android;
    and localisation, because an emoji is not translatable.
-7. **Illustration idiom: gilt line-art / etched SVG, a single gold accent.** ⚠️ **2026-10-17
-   (PHOSPHOR-MIGRATION W2):** this said "1.9 stroke, from `glyphs.tsx`'s `GL` 64-grid wrapper" —
-   but no page ever drew a `GL` line-art (the inspection found all 8 unused), and they went with
-   the hand-drawn family. The empty states draw `ui/empty-state.tsx`'s own set (a 56 grid at
-   1.5) until the migration's W6 makes an empty state one Duotone glyph on a plate, its single
-   accent `--metal-gold` (§Q5), never money gold.
+7. **Illustration idiom: one Duotone family glyph on a royal plate, with a single metal accent.**
+   `EmptyState` maps each kind to its page's Phosphor glyph and draws it at 28px on the shared 56px
+   plate; the notification panel uses the same plate. Its one 4px accent is `--metal-gold` (§Q5),
+   never money gold. The retired `GL` 64-grid art and the empty states' private drawings are no
+   longer a second icon source (PHOSPHOR-MIGRATION W6).
    ⛔ No mascots. ⛔ **No baked-in text in reusable art** — it cannot be translated.
 8. **During a break, nothing a break pauses is offered — and no offer to earn or recruit.** While a player's
    cooling-off or self-exclusion is running, the interface offers neither what the break stops (R4-I and R6-A,
@@ -2680,10 +2729,10 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
      commit — `test:journey-shell` 8.label.measure says so.
    - ⭐ **With five tabs the tickets tab says its short rail label** (`journey.tabTicketsShort`: Swahili "Tiketi",
      English "Tickets"; Chinese keeps 我的注单, which fits), the lead's rulings of 2026-10-19: a fifth of a 320 phone is
-     64px, and "Tiketi zangu" needs 83.2, "My tickets" 70 — as Juu/Chini's rail label is the short `nav.updown`, its page,
-     its title and the desktop link keep the full words. Every five-tab label of every language then sits on ONE line
-     from 317 (its longest, 63.4px, × 5) — at every width we hold, 320 included — so one rule centres the five slots from
-     317 in all three languages (`test:visual-pass-r9c` §4b, `test:journey-shell` 8.label.measure.five and 8.align.five).
+     64px, and "Tiketi zangu" needs 83.2, "My tickets" 70; their pages, titles and desktop links keep the full words.
+     U43's `nav.updown` is the game's full name in Swahili too: "Juu na Chini" needs 83.2px. The five-tab rail wraps it
+     below 416 and top-aligns all pips; at 416 it fits one line and the slots centre. English and Chinese centre from
+     317 (`test:visual-pass-r9c` §4b, `test:journey-shell` 8.label.measure.five and 8.align.five).
    - The page clears the rail with `--rail-h`, the one name for its reserve (WP11) — ⛔ never a second literal for the
      page's reserve. The chat bubble's 80 and the install card's 148 stay literal because gates pin them
      (`test:stacking`'s chat-fab locator, `test:install-invite` 5.4), each naming `--rail-h` as its source.
@@ -2792,55 +2841,79 @@ not a failure.
   `.m-out` (scrim `.m-scrim`) · toast → the toast component's own transition. There is no
   third entrance.
 
-### M3 — Gold is struck, and struck means earned
+### M3 — Gilt material and earned amounts
 
 Gilt renders as satin metal — one calm `--gilt-metal` ramp anchored on the **measured**
-trademark: `#E3BC66` = `oklch(81.2% 0.1141 85.4)`, written at hue **84** (E-124 — the
+former delivered mark sample: `#E3BC66` = `oklch(81.2% 0.1141 85.4)`, written at hue **84** (E-124 — the
 delivery's `0.095` figure round-trips to a duller `#D7B672`; every gilt chroma shipped
 ×1.2011). An even `--gilt-metal-edge` ring; one soft `shimmer-gilt` specular sweep on hover
 (a per-layer keyframe — do not "simplify" it back to one value, the metal slides off the
 button). **No bloom** — radial glow dilutes the financial texture; **rays are banned**.
-The usage law has teeth: **struck gold appears only where money was earned** (payout,
-celebration, resolved seal). A decorative element wearing `--gilt-metal` is a violation, not
-a style choice. And `.gilt-metal:focus-visible` **keeps a real `outline`** (E-129): a
-box-shadow ring is invisible in forced-colors, and this class lands on the Deposit button.
+**Earned payout figures and win celebrations use the struck treatment.** Ali's
+2026-10-20 ruling also restores the named earlier house-gold identity and controls
+in §M3a. A gold deposit or bet button marks an action, not a won amount; an
+ordinary amount must not acquire `.gilt-ink` for decoration. `.gilt-metal:focus-visible`
+**keeps a real `outline`** (E-129): a box-shadow ring is invisible in forced-colors.
 Maswali Millionea's jackpot, floor, rollover and stub are unearned and never gold: §M8a item 7.
 
-### M3a — Which money commits wear gold, and which do not (D1, D5)
+### M3a — Named house gold and money controls (D1, D5; U43 B5)
 
-Added 2026-08-21 — **D1 and D5, Ali's rulings, applied at their stated defaults.** §M3 says
-struck gold means **earned**. Two families of surface had been reading it as *"money is
-involved"*, which is not the same claim:
+**Current player rule (Ali, 2026-10-20): restore the full earlier house-gold treatment
+that U43 B5 removed.** The delivered mark, shared needle and split instrument,
+available wallet balance and its flash/eye, deposit entries, bet and sell commit
+buttons, classic bell and shell accents, and RESOLVED status regain their named
+gold treatment. A bet, sale or deposit still earns no money by itself. Earned
+payout amounts and win celebrations remain separately identified by the struck
+win treatment (§M3). Gold is not a generic tint for unrelated copy, a HOT/LIVE
+signal, an unearned bonus offer or an error. The U43 2026-10-19 gold-only-winnings
+restriction is superseded at these named sites; its neutral LIVE/HOT and side-ink
+rules remain in force. Restore a component from its pre-B5 role, not by recolouring
+every neutral surface.
+
+Historical rulings, added 2026-08-21 — **D1 and D5, applied at their stated defaults at
+that time.** §M3 said struck gold meant **earned**. Two families of surface had been
+reading it as *"money is involved"*, which is not the same claim:
 
 - **D1 — the confirm button.** A **deposit** or a **withdrawal** commit is **brand** — not
   gold, and not claret. Moving your own money into or out of your own wallet earns nothing,
   so gold overstates it; and a routine transfer is not an irreversible ceremony (§B4a), so
-  claret overstates it in the other direction. **Bet and sell keep gold**: a stake committed
-  and a position sold are the money moments the gold budget exists for.
+  claret overstates it in the other direction. D1 then let bet and sell commits keep gold;
+  U43 removed that gold, and Ali's 2026-10-20 ruling restores those named commits.
 - **D5 — the wallet's promotional cards.** A **zero** bonus balance and a **deposit
   inducement** are not earned money. A card that says *you have TZS 0 in bonuses*, and a card
   whose whole purpose is to ask you to pay money in, must not wear the ink this platform uses
   to say *you won this* — on an inducement, a house colour becomes a marketing claim.
 
-⚠️ **Applied 2026-09-29 to the Simplified Journey (SJ-12; effective at the S15 flip):** the journey's two deposit
-buttons follow D1 and the header-pill precedent, not D5.
-- **The low-balance "Weka pesa TZS {x}"** is a deposit ENTRY. The player named the amount by choosing a stake, so it is
-  not an inducement card. It wears the deposit door's `gilt-metal`, like the header pill.
-- **"Lipa TZS {x}"** on the journey deposit screen is a deposit COMMIT, so it is **brand** (`btn-primary`), never gold.
+⚠️ **Historical SJ-12 decision, applied 2026-09-29 at the S15 flip:** the journey's two deposit
+buttons followed D1 and the header-pill precedent, not D5.
+- **The low-balance "Weka pesa TZS {x}"** was treated as a deposit entry rather than an inducement
+  card and wore `gilt-metal` like the header pill. U43 B5 changed that door to brand;
+  the current ruling restores its earlier gold treatment.
+- **"Lipa TZS {x}"** on the journey deposit screen was a brand (`btn-primary`) deposit commit.
 
-The bet commit "Weka dau · TZS {x}" keeps gold (bet and sell keep gold). The deck's gold "Nimeelewa, anza" and gold
-active tab are not adopted: they use `btn-primary` and `--pill-active` (owner ruling R5: 50pick's look, unchanged).
+The bet commit "Weka dau · TZS {x}" keeps its earlier gold treatment under the
+current ruling. The deck's gold "Nimeelewa, anza" and gold active tab were not adopted:
+they use `btn-primary` and `--pill-active` (owner ruling R5: 50pick's look, unchanged).
+
+**Historical U43 B5 pass (2026-10-19, superseded for gold on 2026-10-20):**
+it removed gold from the wallet balance, flash and eye, deposit and bet/sell doors,
+classic rail coin, bell, navigation dots, footer midpoint, instrument needle and
+mark centre. Ali asked for that earlier gold treatment back after seeing it live.
+The shared `test:u43-shell-palette` and `test:u43-bar-ink` guards now pin the
+restored paint with mutation proof. LIVE and HOT remain neutral. External social
+marks keep their original vendor colours under Ali's 2026-10-20 amendment.
 
 Two more surfaces where gold is decided, both by the same test:
-- **The result after an act** — `OperationResultModal`'s `stripTone` (its auto-close strip, and on success its primary
-  button and crest; `src/components/markets/operation-result-modal.tsx`). A placed bet passes its SIDE, `yes` or `no`:
-  the side-coloured button and the commit crest. Every other result takes the default `brand` — a sale's result too
-  (`SellResultModal`), because it returns a stake and earns nothing, as do deposits, withdrawals and every console
-  act. `gold` is kept for money earned, and no caller passes it today.
-- **The board's HOT flag is rose, never gold** — the kit `Chip variant="hot"` (`src/components/ui/chip.tsx`; the
-  `.chip-hot-rose` class it was ported from is deleted). "Hot" is a crowd signal, not money earned, so the gilt chips
-  (`gold`, `objection`) are not available to it. ⚠️ `hot` shares the `no` chip's ROSE object (§B2a); splitting that
-  pair was offered and not taken (the note in `chip.tsx`).
+- **The result after an act** — `OperationResultModal`'s `stripTone` (its auto-close strip;
+  `src/components/markets/operation-result-modal.tsx`). A placed bet passes its
+  SIDE, `yes` or `no`, to the strip and Continue action; its crest names a
+  commitment, not a win. A successful sale (`SellResultModal`) restores its
+  earlier gold completion treatment; a failed sale stays neutral or brand and
+  never claims money returned. Deposit, withdrawal and console results keep
+  their own named treatments. The modal does not infer a payout from its colour.
+- **The board's HOT flag is slate** (Ali, 2026-10-19, U43 B4). "Hot" is a crowd signal,
+  not a betting side or won money. The market card asks the kit for its neutral variant;
+  the kit's older `hot` variant has other callers and is not its colour source.
 
 
 ### M4 — Money is mono, and it never reflows
@@ -2969,6 +3042,19 @@ its branches in the same change or it does not land. The delivery named only the
 gates; this product has three (E-125) — our target device is exactly the one the third
 covers. Guard: `npm run test:reduce-motion`. Maswali Millionea's three motions (N1–N3) obey all three gates: §M8a.
 
+A countdown hairline that a script draws is held to the same clamps as one the stylesheet draws: under either clamp it
+stands FULL for its whole dwell — "still here", true until the timer closes the surface — never draining (E-269, the
+toast's `.toast-countdown`). Since Ali 2026-10-21 10/10 pass (the lead's ruling on the motion critic's L6) that includes
+the result modal's auto-close strip, a rAF loop no clamp reached (`operation-result-modal.tsx`, `stripStill`); the
+`reduced` throttle keeps the drain, as it keeps the toast's. Guard: `test:maswali-slip-design` §1.
+
+**One dim across two dialogs** (Ali 2026-10-21 10/10 pass; the motion critic's H1). A dialog that closes in the same commit
+another opens in its place passes the kit Modal's `handoff` on both — the closing one drops its dim at once while its panel
+plays `.m-out`, the opening one holds the dim from its first frame — and the opening panel waits one exit beat
+(`panelDelay`, `--t-quick`, zeroed by the clamps): the page behind is never seen bare between them and two panels never
+stand at once. Inert unless passed (byte-identical markup for every other caller). First consumer: the Millionea confirm
+sheet into its stamp (`slip-client.tsx`).
+
 ### M7 — Wins get the seal; losses get the receipt
 
 The celebration vocabulary (seal-impress, needle-sweep, mark-flip, gilt strike) is
@@ -2982,10 +3068,11 @@ design (designer R2 Q5, confirmed). A Maswali Millionea win lands its amount fin
 
 Identity motion (mark-flip on the needle axis, `.mark-pending`'s ambient breath — listed in
 the frozen ambient-loop set and in the third gate's list) is reserved for the trademark. The
-mark's colours stay the delivered hexes (#1EA362 / #B03A3E / #E3BC66) in chrome; on the seal
+mark's YES/NO halves stay the delivered hexes (#1EA362 / #B03A3E), with the
+delivered gilt needle and hub (#E3BC66) in chrome; on the seal
 it renders single-ink relief. Clear space 0.25 × diameter is law even inside our own seal —
-76px on a 114px face is the ceiling, not a style choice. Surface gold is the trademark
-re-derivation (M3); the two never drift because they share one source. `--m-pivot` is
+76px on a 114px face is the ceiling, not a style choice. The mark's gold centre
+is identity, while a struck payout figure states money earned (§M3). `--m-pivot` is
 reserved for the needle and dials — `.g-ring` takes `--m-glide` (a bell is neither).
 
 ### M8a — Millionea exceptions (Ali, 2026-10-17)
@@ -3000,6 +3087,12 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
    sockets. It plays only when all fifteen results are final, never as an un-carry. ⚠️ It stands only if it holds 50fps
    at 360 on a phone with 4 cores or fewer and 4GB or less (measured at S5's acceptance and on a real phone at S8);
    otherwise its fallback ships: `GlyphSwap` in place and the printed "4 → A1".
+   *How it plays (Ali, 2026-10-21 10/10 pass — the motion critic's M5 and H6; `maswali-carry.tsx`):* the token starts at
+   its true size — the scale is the two boxes' HEIGHTS, the annex's 18px glyph into a main's 24px socket (0.75), never a
+   width that counts the label beside a glyph; it plays only when both ends lie wholly inside the viewport (a carry that
+   starts off screen is not seen, and its end frame is the layout); the origin is vacated while the token flies and its
+   own mark ("↪4") settles in (`.g-settle`) on the landing, never before; a caller replays it with a run counter, never
+   by remounting the line (which blanked it for a frame), and hears its end — at once when nothing plays.
 2. **N2 Kugonga Muhuri — the attestation press (O-2: yes).** A result stamp arrives down the needle's line (`--m-tilt`) by
    `--sp-2` with the seal-place press stops (1.02 / 0.98), on `--t-base` / `--m-settle`; the socket beside it swaps by
    `GlyphSwap`. The same press for every outcome, matched or not — never a verdict on the player. Where an engine cannot
@@ -3029,7 +3122,8 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     tab but with writing in it kind of colors … in mixed glowing green red color and gold like 50pick design for
     uniqueness like kalshi how it states some of its tabs … perfect with perfect visual appearance of what we have".*
     Millionea gets its OWN tab, right after Up & Down / Juu/Chini, in every nav that has tabs, and only while Millionea
-    is visible to the viewer (the shell's own answer; while WITHDRAWN every nav is byte-identical to before): the journey
+    is visible to the viewer (the shell's own answer; while WITHDRAWN every nav draws what it drew before Millionea, with
+    one ruled change that every reader gets: the classic bar's More panel is opaque, below): the journey
     rail's fifth tab (five equal tracks while it shows, four when it does not), the journey's desktop link, and a core
     link of the classic top bar (while it shows, Results moves into More, as its first row, at every width — measured
     2026-10-19: the bar's room is capped at `--w-board`, 1280px, and with both inline the Swahili bar of a signed-in
@@ -3038,10 +3132,15 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     More's first row, beside Results, which has lived in that More since the coin.
     `/millionea` and its pages light Millionea's tab; `/millionea/tickets` and a ticket light Tiketi zangu. Where the
     four tabs are drawn (Millionea not visible to the reader), Millionea's pages light Maswali, the tab whose home carries
-    its card. While five tabs show, the journey rail's tickets tab says its short rail label — Swahili "Tiketi", English
+    its card. On a break (Millionea visible, its door not drawn) the classic bar and rail light the same destination —
+    Markets, or Positions on Millionea's tickets — one lit item, never none (MASWALI-BUILD S5-FIX-PLATFORM D13,
+    2026-10-21). While five tabs show, the journey rail's tickets tab says its short rail label — Swahili "Tiketi", English
     "Tickets" (the lead's rulings, 2026-10-19: a fifth of a 320 phone holds neither "Tiketi zangu" nor "My tickets" on one
-    line; its page, its title and the desktop link keep the full words; Chinese keeps 我的注单) — so every five-tab label
-    sits on one line at every width we hold (§K 8b). From 1024 to 1279, while five destinations show, the journey bar's
+    line; its page, its title and the desktop link keep the full words; Chinese keeps 我的注单). The full Swahili "Juu na
+    Chini" wraps on the five-tab rail below 416 with all pips aligned, then fits one line (§K 8b). No two of the five
+    labels stand closer than their pips (8px at 320): below 337px English's labels close their tracking by 0.04em
+    (S5-FIX-PLATFORM D14, `test:visual-pass-r9c` §4c). From 1024 to 1279,
+    while five destinations show, the journey bar's
     nav gives up its own leading 12px (the Swahili row otherwise ran 5.1px into the page's gutter at 1024 for a signed-in
     player — measured, `qa:journey-header-fit`), and takes it back from 1280.
     **The look.** The tab is its siblings' own (slot, pip, lit pill, label size, weight and spacing) and ONLY the label's
@@ -3058,8 +3157,15 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     link and the classic phone rail's More row are its words in the ink alone, so every row of a More list starts its
     words at one x (the lead's tile read, 2026-10-19: the row's mark had set its words ~28px right of every other row's).
     More's two panels are opaque, the kit's elevated surface whole (`bg-bg-elevated`, the language menu's): the bar's
-    was 95% under a backdrop blur, and at 1280 the page's own words read through it. This gold is the Owner's label for
-    a destination, not money: item 7 is untouched.
+    was 95% under a backdrop blur, and at 1280 the page's own words read through it. ⚠️ The bar's panel is opaque for
+    EVERY reader, Millionea shown or not: the first change to the classic chrome this item rules (the lead's tile read,
+    2026-10-19; kept at S5's release review, 2026-10-21). The phone rail's panel was opaque already. ⚠️ The third
+    ruled classic change (the second is S5-DESIGN-SLIP's modal focus with `preventScroll`), every reader's on every page
+    that shows the chat: the bubble at rest over a line of text or a figure YIELDS — it fades to `--state-yield-opacity`,
+    never moves, stays live (a pointer's hover and a keyboard's focus bring it back whole; its taps are kept) — and is
+    whole again once the content clears (MASWALI-BUILD S5-FIX-PLATFORM D15, the register critic's M5; lead 2026-10-21, the
+    10/10 pass; globals.css D15, `test:chat-yield`, `qa:chat-yield`). This gold is the
+    Owner's label for a destination, not money: item 7 is untouched.
     The other doors stand: one card on the journey home after the head (the How-to card and the headline) and before the
     topic chips; on classic, one card at the head of `/markets`; and a third switch in Tiketi zangu. Placing the card
     there deviates from the sponsor deck's home (recorded in `docs/COMPLIANCE-DECISIONS.md`, 2026-10-17).
@@ -3078,6 +3184,77 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     and coronet are replaced by the Phosphor keys of `docs/MASWALI-PLAN.md` §10c, reached only through `I`. Where the
     delivery's motion notes name `sealCheck` / `sealX` / `sealNil` on a socket, the build shows `checkCircle` / `xCircle`
     / `markPending`.
+13. **One chip says where a week stands (Ali, 2026-10-21 10/10 pass — the register critic's L2).** Every surface that
+    names a week's state draws `WeekStateChip` (`millionea/register/register-parts.tsx`): its word the week's phase
+    (`millioneaWeekPhase` → `weekPhaseWord`, or "Paused for now" while an officer has paused sales), its tone status-tone's
+    Millionea week row (§B11) — royal while the week is on its way to a result (selling, sales closed, results coming in,
+    the objection window, settling, being voided), slate when an officer paused its sales, slate once settled or voided.
+    ⭐ A SETTLED week is slate, never RESOLVED's struck seal: its register states money, it awards none (item 7) — a
+    Millionea-only row in `STATUS_TONE_EXCEPTIONS` with that reason; VOIDED is VOID's own slate and no exception.
+14. **One ledger prints a week's money (Ali, 2026-10-21 10/10 pass — the register critic's H3 and H5).** Every Millionea
+    surface that prints a week's money draws the rows of `millioneaLedgerRows` with `MaswaliLedger`
+    (`components/maswali/maswali-ledger.tsx`): the register's week page and How to play's worked examples now, the win
+    ledger and the hub's pool block as they adopt it. Its labels are the kit `ReceiptRow`'s sentence-case label
+    (`labelStyle="sentence"`, the body face — a ledger's nouns, never eyebrow capitals that letter-space the money inside
+    them, §M4), each row's detail a `note` line under it. It prints MR-26's identity on its face as two matching totals,
+    each from its own components — "Money in" (carried in + ticket sales + the floor's top-up) and "Money out" (fee + paid
+    to winners + carried forward; a voided week, its refunds and the carry handed on) — between them the jackpot's story
+    in the order the money moved (the floor, a quiet line unless it bound; the jackpot; the fee, the platform's signed
+    amber figure with its levies as one muted line out of it; "To winners"; "÷ k"; the remainder; what carried forward),
+    a hairline only above a total (the withdraw confirm's bottom line), every amount an `.amount` run, and each carry a
+    link to its week's register page. A row with no figure is its sentence alone — never beside a "—", which reads as a
+    missing figure (a voiding week's refund-if-it-stands, the sunset's no top-up). ⭐ ONE CORE FOR THE MONEY: a final
+    week's figures come from `millioneaWeekMoneyRecord` (`lib/server/maswali-player.ts`) on either line — the public
+    register reads it inside its own PUBLIC refusal and its cache, a DRIVE week's own ticket reads it after the holder's
+    check — so the two ledgers of one week are the same rows; a DRIVE week's carries name their weeks without a link
+    (`registerLedgerRows(…, { links: false })`), the public register having no page for them.
+15. **A ticket's moments play where its owner sees them, once (Ali, 2026-10-21 10/10 pass — the R1 tickets critic's M8,
+    the motion critic's H3, H4 and L2; `components/maswali/maswali-moment.tsx`).** Item 5 holds, and a ticket page adds
+    WHERE: each moment — the cut (N3) and its reverse, a result's press (N2), the stamp line's reveal, the receipt's
+    closing rule and the stub's lock line — waits at its first frame until half of its part is in view, then plays once
+    (`MaswaliMoment`: the platform's `<Reveal>` observer, its state rendered by React; one hold rule in `globals.css`,
+    scoped off both clamps and off a page without scripting, so nothing waits where nothing would move). The seen mark
+    that puts a fact to rest waits for the moments (`MaswaliMomentsHost`): a view that never reached a moment leaves its
+    facts unseen, and they perform on the next view. The lock line seals (`.m-seal`) once, at the week's RECORDED close
+    (`closedAt` — never the scheduled close, never now), only on a ticket bought before it. The free cancel's result
+    stays up over the page's refresh until its owner closes it, over the ticket now at rest, and the stub's return plays
+    when it comes into view — never under the dialog. A live count ("12 of 15 results in") dips and lands once per
+    change (`.m-tick`, `MaswaliTick`), never on the first paint. Nothing of this shifts the layout.
+16. **A ticket says where its money went, in every state (Ali, 2026-10-21 10/10 pass — the R1 tickets critic's L1, L12,
+    L13 and the motion critic's seal rows).** Won: paid to the main balance and when, held for review, or forfeited, each
+    said on the ticket; a won ticket's receipt is the week's one ledger (item 14) with this player's gold rows — "For
+    your ticket", and for more than one "× n" and "Your total" — straight after the share (`winLedgerRows`); a DRIVE week
+    prints the same ledger from the one core (item 14), its carries named without a link. Lost: the week's line — no
+    10/10 and the week its pool carried to, or how many tickets won. Voided: the refund on its way back until it lands,
+    then landed. Cancelled: the price back on the main balance. A reserve whose result is in and did not count wears the
+    verdict-free "sealed" mark (`I.attestation`, muted) — never a match, never a miss. The Tiketi zangu switch's Millionea
+    tab wears item 11's ink (the kit `Tabs`' `ink: "millionea"`, its siblings' tab otherwise). The seal (items 6 and 10)
+    opens on Millionea's own eyebrow ("Millionea · Week 49") and lists each paid serial as its own fact; ⚠️ its amount
+    is one unbroken run at every width, fitted to its box by container units, never wrapped — for EVERY caller of
+    `WinCelebration`, the platform's market win included (the one classic-visible change of this item: a caller that
+    passes no eyebrow, heading or facts keeps its own words and layout, and only its amount no longer wraps).
+17. **The register shows a public week from its open, and its money once final (Ali, 2026-10-21 10/10 pass — the
+    register critic's H2 and the lead's ruling).** `/millionea/register/[week]` serves an OPEN, CLOSED or RESOLVING public
+    week (`millioneaRegisterRecord`): its two commitments the moment each is stamped — the question set's hash at the
+    open; the tickets' root at the close with its time and count, "Fixed {when} · {n} tickets" (MR-13) — under a titled
+    section of nouns (`WeekCommitments`, the hub's too); its fifteen questions, each with its criterion, its event and its
+    source as /fairness links it; and each CONFIRMED outcome with how it was attested (one officer or two, never a name).
+    ⛔ No money before the week is final: the ledger's place says when the ledger comes; the index lists the weeks still
+    running first, each the one row with its phase chip and no figure. ⛔ How a question counted ("↪ A1", "↪ 4", "Not
+    used") is drawn from the FINAL record only — an objection can still reinstate a question while its window is open
+    (item 1: never an un-carry); before that a voided main says it waits for its reserve, or that the week is due to void.
+18. **A dialog's way back never moves the page (lead 2026-10-21, the 10/10 pass; MASWALI-BUILD S5-DESIGN-SLIP).** When a
+    dialog closes, focus returns to the control that opened it WITHOUT scrolling (`modal.tsx` `PAGE.focus`:
+    `focus({ preventScroll: true })`, Safari 15+). Why: while a dialog is open `useModalLock` sets `overflow: hidden` on
+    `<html>` AND `<body>`, which makes the body a scroll box, so a sticky opener stops sticking and stands at its place in
+    the document; the way back focused it there and the browser scrolled the page to it — to the top of the page for the
+    classic bar's balance capsule, ~2,700px down for Millionea's pay rail at 360 (the motion run: the slip's first answer
+    at y −2,248 under the stamp). Once the lock lifts the opener is back in its own place, so nothing needs scrolling.
+    ⚠️ It holds for EVERY reader and every dialog on the kit Modal, Millionea shown or not: the second change to the
+    classic product this rulebook rules (the first: item 11's opaque More panel, S5-FIX-PLATFORM D8). The markup of every
+    dialog is unchanged (`test:maswali-slip-design` §1); `test:enter-where-pressed` 5.8 pins the call with its plant, and
+    `qa:dialog-way-back` drives it at 360 in Chromium and WebKit (scrollY unchanged across the close, focus on the opener,
+    the jump back when `preventScroll` is dropped).
 
 ---
 
@@ -3110,14 +3287,15 @@ answered**, in a file `docs/README.md` marks 🟢 LAW and which the design-syste
 as the single front door. A law doc asserting refuted state is worse than a stale note: it is
 the thing a session is told to trust. Found by auditing the close-out, not by reading it.
 
-1. ✅ **Q5 — GOLD IS MONEY, AND NOTHING ELSE.** Both halves resolved: the Gold **asset chip**
+1. ✅ **Q5 — GOLD AS MONEY INK; THE HOUSE MARK RETAINS ITS METAL.** Both halves resolved: the Gold **asset chip**
    (`updown-card.tsx` `AssetMark`) and the **tier ring / badge** (`TIER_RING`, `.tier-*`) are
    off the money tokens. The rule, narrower than "no gold anywhere": a tier or asset may be
    METALLIC; it may not wear `--gilt`, `--gilt-metal`, `--gilt-ink`, `--gilt-strong` or
    `--gold-300…500`. ⛔ **Q7 forced this decision** — with the lettermarks final, the standing
    *"accept it, artwork replaces the tint anyway"* answer ceased to exist. **Enforced by
    `npm run test:gold-is-money`**, which exists because this law shipped as prose and was
-   already broken in its own file (E-141).
+   already broken in its own file (E-141). Ali's 2026-10-20 restoration in §M3a
+   names the brand and control exceptions; it does not recolour the Gold asset chip.
    ⭐ **And not the warning ink either — Ali's ruling (1) of 2026-10-10.** `--warning-fg` *was* `--gilt` (F3), so every
    warning on the platform wore money's gold; the warning family is its own amber now (F3's note), so gold-is-money's
    money-ink list no longer names it — an amber warning is not money, and money's gold is not a warning.
@@ -3133,13 +3311,15 @@ the thing a session is told to trust. Found by auditing the close-out, not by re
 
 ### ✅ Closed here, 2026-08-10 (session 38) — these were never Ali's to decide
 
-- **The 360px card title (Q6) — ANSWERED BY IMPLEMENTATION.** The 2-line clamp shipped on
-  both card families, and one of them cites Q6 by name: `updown-card.tsx:399-402`
-  (`WebkitLineClamp: 2`) and `globals.css:2782` (`.mcardp-q`). Both took the recommended
-  answer and agree with each other. ⚠️ It is *asserted, not proven* — `innerText` returns
-  the full string either way and a WRAP satisfies `scrollWidth === clientWidth` exactly as
-  a fit does, so the honest check is rendered: computed `-webkit-line-clamp` plus height at
-  360 × sw/zh. That belongs to the exit sweeps.
+- **The 360px card title (Q6) — REVISED FOR CHOICES AND RESULTS, U43.** The two-line clamp remains
+  a waiting browse-preview treatment only. A market card offering YES/NO buttons shows its **whole
+  proposition above those buttons**: the 320px Swahili Bitcoin card hid the deciding
+  “kijani kesho?” behind an ellipsis while both choices remained active. A final result also
+  shows the whole proposition so the verdict has an unambiguous subject. The title keeps
+  the two-line minimum for row rhythm and grows by the actual question's remaining lines.
+  The Up & Down round card now names the asset and time window, not a clamped question.
+  Measure the visible title against an unclamped copy in the browser; `innerText` returns
+  hidden lines too and cannot prove that a player sees the complete question.
 - **The crest chief band opacity — DECLARED AT THE RENDERED VALUE, `0.16`.** Three
   documents held three answers (provenance `0.26`, this file "open", the render `0.16`)
   for one thing that has exactly one observable truth: `identity-avatar.tsx:123` paints

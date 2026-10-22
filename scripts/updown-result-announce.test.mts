@@ -28,8 +28,9 @@
  *     a winner and a loser got byte-identical props;
  *  2. `WinCelebrationHost` (already built, already mounted in `AppShell`) is fired by
  *     `notify-poller.tsx` behind a `readStoredBet()` localStorage record the Up & Down quick-bet
- *     path never writes — and behind notifications, which are suppressed for UPDOWN.
- *     **Suppressing the message also suppressed the moment.**
+ *     path never wrote. At the time generic per-event Up & Down notifications were
+ *     suppressed, so that poller did not provide a result moment either. Dedicated
+ *     settlement bell rows were added under Ali's 2026-08-22 ruling.
  *
  * ⚠️ EVERY CHECK IS SCOPED TO A FUNCTION BODY. Session 29 shipped six checks that could not
  * fail, and session 30 shipped two more in its own E-64 driver, both times because a symbol was
@@ -96,7 +97,7 @@ console.log("§0 · the slices this suite reasons over (refuse to measure an emp
 const effect = sliceBraces(announcer, "useEffect(() => {");
 ok("0.1 the announcer's effect body is locatable", effect != null);
 ok("0.2 …and is substantial", (effect?.length ?? 0) > 600, `${effect?.length ?? 0} chars`);
-const myStakes = sliceBraces(board, "async function myStakesByMarket(userId: string | undefined): Promise<Map<string, MyMarketStake>> {");
+const myStakes = sliceBraces(board, "async function myStakesByMarket(userId: string | undefined, marketIds: readonly string[]): Promise<Map<string, MyMarketStake>> {");
 ok("0.3 `myStakesByMarket`'s body is locatable", myStakes != null);
 ok("0.4 …and is substantial", (myStakes?.length ?? 0) > 500, `${myStakes?.length ?? 0} chars`);
 if (!effect || !myStakes) {
@@ -114,7 +115,8 @@ ok("1.3 `myStakesByMarket` populates it inside its own body", /e\.result\s*=/.te
 // projection, and a celebrated projection is a false money statement.
 ok("1.4 the payout comes from `finalPayout`, never a projection", /finalPayout/.test(myStakes));
 ok("1.5 …and the status is read off the POSITION row, not inferred from the round outcome",
-   /p\.status\s*===\s*"WIN"/.test(myStakes) && /p\.status\s*===\s*"LOSS"/.test(myStakes),
+   /p\.status\s*===\s*"WIN"/.test(myStakes) && /p\.status\s*===\s*"LOSS"/.test(myStakes)
+   && /e\.results\.push\(\{ status: p\.status, side, stake: p\.stake, payout: knownPayout \}\)/.test(myStakes),
    "a round can resolve DOWN and still refund an UP backer in full (E-65) — inferring from the outcome would call that a loss");
 ok("1.6 `toBoardRound` actually passes it through", /myResult:\s*mine\?\.result/.test(board));
 
@@ -139,16 +141,19 @@ ok("3.3 the win fires the kit's existing celebration, not a bespoke popup",
 const celebration = sliceBraces(effect, "dispatchWinCelebration({");
 ok("3.4 …headlining the REALISED payout, not the stake or an estimate",
    celebration != null && /amount:\s*res\.payout/.test(celebration));
-ok("3.5 the loss names the amount (an unnamed number is the euphemism RG forbids)",
-   /formatTzs\(res\.stake\)/.test(effect));
+const lossStart = effect.indexOf('} else if (routing.channel === "TOAST") {');
+const lossEnd = effect.indexOf('} else {', lossStart + 1);
+const lossArm = lossStart >= 0 && lossEnd > lossStart ? effect.slice(lossStart, lossEnd) : "";
+ok("3.5 the loss description names the stake (an unnamed number is the euphemism RG forbids)",
+   /description:\s*`\$\{sideWord\} · \$\{formatTzs\(res\.stake\)\}`/.test(lossArm));
 // ⚠️ RG: the loss must NOT be the win's mirror. No glow, no counter, no haptic.
 ok("3.6 ⚠️ RG — the loss does NOT celebrate: no haptic in the announcer at all",
    !/haptics\./.test(announcerCode));
 ok("3.7 every string comes from the dictionary, never a literal",
    /t\.market\.udStakeReturnedTitle/.test(effect) && /t\.market\.udLostTitle/.test(effect));
 
-// ── §4. ⛔ THE OWNER DECISION — in-app ONLY ────────────────────────────────────────────────
-console.log("\n§4 · ⛔ Ali's 2026-07-24 suppression stands — this feature must stay in-app");
+// ── §4. ⛔ THE ANNOUNCER DOES NOT DUPLICATE THE SETTLEMENT EMITTER ────────────────────────
+console.log("\n§4 · ⛔ the announcer sends no second notification or email");
 for (const [label, sym] of [
   ["notifyWin", "notifyWin"], ["notifyLoss", "notifyLoss"], ["notifyRefund", "notifyRefund"],
   ["sendEmailToUser", "sendEmailToUser"], ["pushOnly", "pushOnly"], ["sendPushToUser", "sendPushToUser"],
@@ -162,8 +167,8 @@ ok("4.control · the stripped source is still real code (else §4's absences pro
    /dispatchWinCelebration/.test(announcerCode) && /useEffect/.test(announcerCode)
    && announcerCode.length > 800,
    `${announcerCode.length} chars after stripping`);
-// And the predicate itself must still say UPDOWN is suppressed — if someone flips it, this
-// feature's whole premise changed and a human must re-read the decision.
+// The generic per-event predicate still suppresses UPDOWN. Dedicated settlement
+// bell/push rows are written separately, under the later 2026-08-22 decision.
 const svc = read("src/lib/server/market-service.ts");
 const pred = sliceBraces(svc, 'export function perEventNotificationsSuppressed(m: Pick<StoredMarket, "productLine">): boolean {');
 // S0.5 (MASWALI-BUILD): the predicate is an exhaustive switch on the line; UPDOWN must still map to true (suppressed),
@@ -194,4 +199,4 @@ if (fails.length) {
   for (const f of fails) console.log(`  · ${f}`);
   process.exit(1);
 }
-console.log("updown-result-announce: OK — win celebrates, loss and refund state their own truth, and nothing leaves the app");
+console.log("updown-result-announce: OK — the screen moment states each result truthfully and sends no duplicate message");

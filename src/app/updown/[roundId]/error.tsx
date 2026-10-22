@@ -22,6 +22,7 @@ export default function UpDownError({
       error={error}
       reset={reset}
       logTag="updown-round"
+      tone="neutral"
       body={t.error.pageHitSnagBody}
       back={{ href: "/updown", label: t.market.udBackToBoard }}
     />

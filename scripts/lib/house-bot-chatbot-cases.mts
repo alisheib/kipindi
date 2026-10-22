@@ -128,7 +128,7 @@ function createCallKeys(js: string): string[] {
   return [...new Set(keys)].sort();
 }
 
-export async function runChatbotCases(ok: Ok, section: Section, ROOT: string): Promise<void> {
+export async function runChatbotCases(ok: Ok, section: Section, ROOT: string, baselineRef = "8ce376ca0"): Promise<void> {
   const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
   const underRoot = async <T,>(p: string): Promise<T> => (await import(pathToFileURL(join(ROOT, p)).href)) as T;
 
@@ -289,11 +289,11 @@ export async function runChatbotCases(ok: Ok, section: Section, ROOT: string): P
   );
 
   // ── §6.6 · the guard is provable WITHOUT touching the file that talks to players ─────────────────
-  const diff = trunkDiff(ROOT, [CHAT_TS], "8ce376ca0");
+  const diff = trunkDiff(ROOT, [CHAT_TS], baselineRef);
   ok(
-    "6.6 · D19a · src/app/_actions/chat.ts is byte-identical to the approved S11 journey prompt checkpoint 8ce376ca0 — today's template and fixed journey swaps stay pinned without editing or importing the action",
+    "6.6 · D19a · src/app/_actions/chat.ts is byte-identical to the pinned baseline — today's template and fixed journey swaps stay pinned without editing or importing the action",
     diff.measured && diff.clean,
-    diff.measured ? `clean against 8ce376ca0 (${diff.sha}) · ${diff.files} file(s) compared` : `⛔ NOT MEASURED — ${diff.why}`,
+    diff.measured ? `clean against ${baselineRef} (${diff.sha}) · ${diff.files} file(s) compared` : `⛔ NOT MEASURED against ${baselineRef} — ${diff.why}`,
   );
 
   // ── §6.7 / §6.8 · POSITIVE CONTROLS · what must still be ALLOWED and PRESENT ─────────────────────

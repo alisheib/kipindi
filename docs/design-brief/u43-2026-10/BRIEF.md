@@ -14,8 +14,10 @@
   pulse moved onto the digits' own span) and A.1 `ee76c9489` (the checks release A turned red; a named one-sided rule in
   `updown-board.ts`; the two capture tools registered). Both read back on production (all three origins, `/api/health`,
   `qa:chunks-prod` on www and apex, production `qa:live` 363/0).
-- **NOT STARTED:** release B's code. If the read-only spec workflow finished before the handover, its five area specs are
-  in `RELEASE-B-SPECS.md` beside this file; otherwise build from this brief, the two records and the code.
+- **Release B state:** live — Release B `a12f7b26d`, its hotfix `3ec111a83`, the gold restoration `dd1386f06` and the
+  CI-repair release of 2026-10-21. **⏸ Paused by Ali on 2026-10-21, no after score.**
+  [`MOBILE-VISUAL-PLAN.md` §0](../../MOBILE-VISUAL-PLAN.md) owns the current state and the owed work (its ⏸ U43 block).
+  The five area specs are in §5 below.
 - **The goal (done means):** all 24 cells (8 lenses × 3 surfaces) score 10 in two consecutive independent, adversarially
   verified critic reads of fresh tiles at 320/360/390/768/1024/1280/1920 × sw/en/zh × every state; positional claims
   pixel-measured; zero open findings; every statement true and consistent across the board, round page, history, /live,
@@ -26,11 +28,11 @@
 ## 2 · Ali's four rulings (binding; full text in COMPLIANCE-DECISIONS)
 
 1. **Live line in the card.** The round a player can bet on carries a small line of the price since the round opened,
-   with the round's price to beat as a dashed line, from the same feed the result is read from, every point timed. The
+   with the opening price as a dashed reference, from the same feed the result is read from, every point timed. The
    board's big chart stays one tap away and is FIXED so it never shows a different price from the card. Accepted: at most
    ~5,800 vendor credits/day for two assets whatever the number of players (one call per asset per 30-second cache); the
    house desk reads that cache (`peekVendorBar`) and will stake on more rounds.
-2. **Slim card.** One line per fact: the round's time window, the price to beat once, the time left beside it, the pool,
+2. **Slim card.** One line per fact: the round's time window, the opening reference once, the time left beside it, the pool,
    players and split, then the stake chips and Up/Down. Removed: the ±$0.02 target tiles, the repeated price, the empty
    clock boxes, the status said three times. The source-and-time line stays, merged into one line. Goal: Up/Down on the
    first phone screen.
@@ -41,7 +43,9 @@
 ## 3 · Fixed points (never break)
 
 Up/Down buttons show the side word + arrow only; the after-lock payout rows stay; never a fabricated price, point, time or
-chart history; gold only for EARNED money (§M3); yes/no ink only for the two sides (§B2a); micro charts aqua (§B12.2); the
+chart history; the 2026-10-20 owner amendment restores the named pre-B5 house gold
+on identity, instruments, balances and money controls (§M3a), while struck win
+amounts remain earned-only; yes/no ink only for the two sides (§B2a); micro charts aqua (§B12.2); the
 closed type ladder (§T1); FilterPill 44px (§K6); the motion ladder and its three reduced-motion gates (§B5/§M6); the
 countdown is the only manufactured urgency (§C5); settlement proof, refund-reason copy and the result moment untouched;
 house bots never named publicly; every player string in en, sw AND zh with ONE word per concept; no text character as an
@@ -61,8 +65,16 @@ the half-step trap).
 3. Vendor bars: `src/lib/server/updown-terminal-vendor.ts` `vendorBarsFor(asset, range)` — 15M/30M/1H at 1-minute,
    6H/12H at 5-minute, 24H at 15-minute, 7D hourly; one credit per call; a 30-second per-process cache (15 s on failure);
    public through `/api/updown/history?asset=&range=&style=` (10 s CDN cache, ETag). **Budget:** one range per asset for the
-   card line (`1H` covers every round length on offer) keeps the line inside the ruling's ~5,800/day for two assets; say
-   what the chart lab's other ranges add.
+   card line keeps the line inside the ruling's ~5,800/day for two assets; say what the chart lab's other ranges add.
+   **U43 correction, 2026-10-19:** a 60-minute choice spans 72 minutes with its result phase, so `1H` does not cover
+   that round. Release B asks for 77 one-minute bars through the shared per-asset vendor call and cache; the round
+   response can show up to 76 minutes, while the ordinary `1H` chart still displays 60 minutes.
+   **Credit bound for the built request pattern:** the card uses only `1H`, so with one production process and a
+   continuously viewed card on each of two assets, the 30-second cache permits at most 2 × 2,880 = 5,760
+   `/time_series` calls in 24 hours. The chart lab can request six *other* ranges per asset; if every range on both
+   assets is viewed continuously, those ranges add at most 6 × 2 × 2,880 = 34,560 calls in 24 hours. A chart range
+   shares its cache across viewers, and the card and chart share `1H`; viewing a different range can still spend an
+   extra credit. This is a bound from the cache and range count, not a claim about measured production usage.
 4. Round timing (`src/lib/updown-durations.ts`): span = duration + `resultPhaseMinutes`; bets close
    `selectionCloseLeadSeconds` before the close; one settle closes a round and opens its successor at that boundary.
 5. The board shows at most three cards: current (the newest by `boundaryAt` among started unsettled rounds), just closed,
@@ -79,9 +91,10 @@ the half-step trap).
 `round-countdown.tsx`, `round-action-panel.tsx`, `round-stake-panel.tsx`, `src/app/updown/[roundId]/page.tsx`,
 `src/lib/updown-card-phase.ts`, `src/lib/server/updown-board.ts`, `.ud-*` in `globals.css`, `market.ud*` keys).
 Identity row: the asset mark, the asset's name, the round's window "14:30–14:35" (EAT). Clock row: one caption per clock
-and the 28px digits; the last 30 seconds says so in words in every motion tier (the reduced-motion urgency cue). The price
-to beat ONCE. The live-line slot (B2). Pool · players · split. Stake chips + Up/Down. One helper line, the empty-side note
-when a side is empty, one merged source line. Remove the ±$0.02 tiles, the "Open $X" footer, the "LIVE · BTC" line, the
+and the 28px digits; the last 30 seconds says so in words in every motion tier (the reduced-motion urgency cue). The opening
+price appears once. The live-line slot (B2). Pool · players · split. Stake chips + Up/Down. One helper line: the empty-side
+note when a side is empty, or a small-move refund note when both sides hold bets; one merged source line. Remove the ±$0.02
+tiles, the "Open $X" footer, the "LIVE · BTC" line, the
 "5 MIN" chip, the clock box, "CONFIRMED PRICE … 0.00% · Exactly at the opening price" while nothing has moved, the fake
 "AWAITING RESULT" button, the "STAKE" label, the status said three times. Settled: the viewer's own result (check
 `myStakesByMarket` — it takes status from the first settled row and side from the last; keep one result per side).
@@ -94,7 +107,7 @@ detail: `PANEL-SYNTHESIS.md` cardSpec and statesSpec (minus anything a ruling ov
 `/api/updown/history`, a new `RoundLiveLine` component mounted by B1, `src/components/charts/*`). Data: opens at label
 times, from the round's open boundary to min(now, close), rounded to the asset's decimals, gaps kept as gaps. Cadence: 30
 seconds, only for the open or locked round (a settled card shows the frozen line while its bars are still in the window,
-else nothing). Drawing: the card's width × ~56px, aqua 1.5px, a dashed line at the price to beat, an end dot, the latest
+else nothing). Drawing: the card's width × ~56px, aqua 1.5px, a dashed opening-price reference, an end dot, the latest
 point's "hh:mm EAT" and value, no axes, a minimum y-span so a one-tick wiggle never reads as a crash, static under reduced
 motion, a text alternative for screen readers. States: one point only (before the second minute's bar), vendor missing
 (hide the line; say "no newer price since the open at hh:mm"), stale feed, market closed. The big chart: its line plots
@@ -116,7 +129,7 @@ the 320 title fits.
 One statement of where the money is (the big percentage in a neutral ink with the side caption in its own ink — check
 §B2/§B2a, and the case where NO leads); the 24h move and the 7-day trend labelled ("7 days" / "siku 7" / "7天"), legible,
 with a minimum scale, aqua; ONE word per state for void / resolved / closed; one status chip, ordered (SOON before HOT,
-HOT the only rose chip, CLOSED royal); a one-row footer; "Close call" vs "Closest call" made one word; the Watching empty
+HOT neutral/slate as DESIGN_AUTHORITY §B2a's U43 amendment requires, CLOSED royal); a one-row footer; "Close call" vs "Closest call" made one word; the Watching empty
 state's star promise removed; glyphs, not ▲▼↑↓→; every size on the ladder; the press scale token; the skeleton at the
 card's radius and height (`PANEL-SYNTHESIS.md` marketCardSpec).
 
@@ -124,7 +137,8 @@ card's radius and height (`PANEL-SYNTHESIS.md` marketCardSpec).
 `test:spacing-scale`'s ceiling drops); every off-ladder size onto a rung (`test:type-scale`); one inset recipe; motion per
 `PANEL-SYNTHESIS.md` motionSpec (a live dot only on the bettable card, the rollover arrival, the pool needle's travel, every
 rule with its three reduced-motion branches); palette per paletteSpec (LIVE once per screen; `--brand-300` only for links
-and selection; gold only for earned money); copy: "round" = "raundi" = "回合" everywhere (no "mechi"/"match"), ONE name for
+and selection; Ali's 2026-10-20 restoration of the earlier named gold sites supersedes
+the 2026-10-19 earned-only restriction); copy: "round" = "raundi" = "回合" everywhere (no "mechi"/"match"), ONE name for
 the game in each language (today "Juu na Chini" on /updown and "Juu au Chini" on /live — pick one, use it everywhere),
 one pool word, "dakika 5" (numeral after the noun), the receipt's "$2,126.26" grouping and "hh:mm EAT". The stored
 Swahili market titles with errors are CONTENT: list them for Ali; never change data.

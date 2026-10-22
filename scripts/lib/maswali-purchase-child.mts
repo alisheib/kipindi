@@ -241,20 +241,22 @@ console.log("\n§7 · a voided week refunds every ticket");
   //    WITHDRAWN from the product (`feature-state.ts`) and `creditBonus` refuses while it sleeps, so `a` held no bonus: 7.0b
   //    and 7.3b compared 0 with 0, and red:maswali-money-path's (6b) — a void refund that reverses turnover — stayed green.
   //    The switch is the server-side one an operator would set, scoped as `withdrawn-features` §4 scopes it and put back
-  //    after; the accrual, the summary and a reversal never read it. 7.0a refuses to go on without the premise.
-  const bonusWas = process.env.FEATURE_BONUS;
-  process.env.FEATURE_BONUS = "ACTIVE";
-  let granted: Awaited<ReturnType<typeof bonus.creditBonus>>;
-  try {
-    granted = await bonus.creditBonus(a, { amountTzs: 10_000, source: "ADMIN", sourceRef: `mln-wager-${a}`, wagerMultiplier: 10, notifyPlayer: false });
-  } finally {
-    if (bonusWas === undefined) delete process.env.FEATURE_BONUS; else process.env.FEATURE_BONUS = bonusWas;
-  }
+  //    after; the accrual, the summary and a reversal never read it. 7.0a and 7.0c each name the premise they hold.
+  const bonusGrant = await (async () => {
+    const previous = process.env.FEATURE_BONUS;
+    process.env.FEATURE_BONUS = "ACTIVE";
+    try {
+      return await bonus.creditBonus(a, { amountTzs: 10_000, source: "ADMIN", sourceRef: `mln-wager-${a}`, wagerMultiplier: 10, notifyPlayer: false });
+    } finally {
+      if (previous === undefined) delete process.env.FEATURE_BONUS;
+      else process.env.FEATURE_BONUS = previous;
+    }
+  })();
+  ok("7.0a · premise: the local bonus fixture was actually granted", bonusGrant.ok, bonusGrant.ok ? "granted" : bonusGrant.error);
   await bonus.recordWagering(a, 5_000);
   const wagerLeft = async () => (await bonus.getBonusSummary(a)).activeWagerRemainingTzs;
   const leftBefore = await wagerLeft();
-  ok("7.0a · the premise: `a` holds a bonus with turnover both made and still to make (10,000 at ×10, 5,000 played: 95,000 left) — without it 7.0b and 7.3b compare nothing",
-    granted.ok && leftBefore === 95_000, `${granted.ok ? "granted" : granted.error} · ${leftBefore} left`);
+  ok("7.0c · premise: the bonus has 95,000 turnover left for a bad refund to reverse", leftBefore === 95_000, `${leftBefore}`);
   await W.buy(a, v.id, [W.WIN, W.LOSE]);
   ok("7.0b · buying tickets accrues no turnover against the bonus", (await wagerLeft()) === leftBefore, `${leftBefore} → ${await wagerLeft()}`);
   await W.buy(b, v.id, [W.WIN]);

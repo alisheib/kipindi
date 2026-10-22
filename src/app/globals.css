@@ -775,6 +775,13 @@
   /* The primary material's lit edge (S7-PLAN A14): `.btn-primary`'s even 1px ring at the delivery's 32% tinted-edge
      strength, byte for byte — its first shadow, read by the button and the How-to card's royal plate. */
   --edge-primary:    inset 0 0 0 1px oklch(74% 0.16 268 / 0.32);
+  /* ⭐ THE GLYPH'S TONE AND THE PLATE IT STANDS ON (PHOSPHOR-MIGRATION release 2, W5; R-TONE 2B, Ali 2026-10-17). A Duotone
+     glyph (`tier="duo"`, glyphs.tsx) paints Phosphor's Regular outline over a tone layer of its own ink; the codegen writes
+     that layer's opacity as `var(--glyph-tone, 0.2)`, so this is its one definition. The identity plate is the specimen's
+     (docs/design-brief/phosphor-2026-10/phosphor-specimen-w0.html, choice 2B, the account hub on a phone): the soft royal
+     surface at 60% under the lit edge, its glyph in the muted ink. `IconPlate`'s variants read it (`.kp-plate--*`). */
+  --glyph-tone: 0.2;
+  --plate-identity: color-mix(in oklab, var(--bg-royal-soft) 60%, transparent);
 
   /* The wash each rung catches. The lightness spread is deliberately small —
      this is material, not decoration. Rung 4 carries +0.015 chroma against mud
@@ -867,7 +874,7 @@
   --hero-no-accent:    var(--no-400);
   --hero-tag-yes:      var(--yes-300);
 
-  /* TippingBar — kit royal track + gilt needle.
+  /* TippingBar — kit royal track + gilt signature needle.
      ⚠️ 2026-07-29: this family existed from the start and `brand.tsx` did not use
      ANY of it — the component re-typed `oklch(50% 0.20 268)`, `oklch(58% 0.17 268)`
      and `oklch(86% 0.13 82)` inline, byte-for-byte the values below. The tokens
@@ -882,7 +889,7 @@
   --bar-fill-no:          linear-gradient(270deg, oklch(52% 0.16 22) 0%, oklch(60% 0.18 22) 100%);
   --bar-glow-yes:         0 0 18px oklch(58% 0.16 152 / 0.35);
   --bar-glow-no:          0 0 18px oklch(60% 0.18 22 / 0.35);
-  /* The resolved shimmer + the hover-recast gilt sweep. */
+  /* The resolved shimmer and hover recast use the same house signature gold. */
   --bar-shimmer:          linear-gradient(90deg, transparent 0%, oklch(75% 0.110 84 / 0.5) 50%, transparent 100%);
   --bar-sweep:            linear-gradient(90deg, transparent 0%, oklch(78% 0.115 84 / 0) 20%, oklch(78% 0.115 84 / 0.90) 50%, oklch(78% 0.115 84 / 0) 80%, transparent 100%);
   /* Cold-start (Step 2): the neutral "awaiting first bet" track. A dashed rail,
@@ -910,14 +917,13 @@
      commit. --mcard-h is the SUM of the tokens the card itself reads, so the
      skeleton follows the card by construction rather than by memory.
 
-     --mcard-base IS THE ONE MEASURED RESIDUAL: the chip row, title block,
-     conviction bar, stats row, footer row and fixed card padding. The
-     2026-09-23 browser baseline at 360 SW was 347.44px
-     for a cold-start card and 278px for a closed card. V2a moves the layout
-     spacing to --sp-* rungs and makes the action the shared 44px md control.
-     The base rises by 7px: +4px action height, +3px bottom padding. The
-     resulting 372px / 299px Comfortable and 326px / 261px Compact heights
-     are arithmetic targets pending the local browser re-measurement.
+     --mcard-base IS THE MEASURED RESIDUAL: the chip row, title block,
+     conviction bar, stats row and fixed card padding. U43 B4 puts the pool,
+     info, Share and Details in one footer row. The browser measured a
+     representative live card at 315.5px Comfortable and 277.5px Compact,
+     and a closed card at 299.5px and 265.5px. The one-row footer removes
+     one child gap; Compact needs its own live residual to match the measured
+     card. Keep the card and skeleton in step when this layout changes.
 
      THE HEIGHT TOKEN OVERRIDES MUST LAND ON `html` ITSELF (see the Compact block
      beside the card rules). A custom property resolves against the element it
@@ -931,10 +937,10 @@
   --mcard-traders-h: var(--sp-6);
   --mcard-spark-h: 28px;
   --mcard-meta-mb: 0px;
-  --mcard-base: 216px;
-  --mcard-base-closed: 167px;
-  --mcard-h: calc(var(--mcard-base) + var(--mcard-pt) + 8 * var(--mcard-gap) + var(--mcard-act-mt) + var(--mcard-act-mb) + var(--mcard-traders-h) + var(--mcard-meta-mb));
-  --mcard-h-closed: calc(var(--mcard-base-closed) + var(--mcard-pt) + 6 * var(--mcard-gap) + var(--mcard-act-mt) + var(--mcard-act-mb) + var(--mcard-traders-h) + var(--mcard-meta-mb));
+  --mcard-base: 171.5px;
+  --mcard-base-closed: 179.5px;
+  --mcard-h: calc(var(--mcard-base) + var(--mcard-pt) + 7 * var(--mcard-gap) + var(--mcard-act-mt) + var(--mcard-act-mb) + var(--mcard-traders-h) + var(--mcard-meta-mb));
+  --mcard-h-closed: calc(var(--mcard-base-closed) + var(--mcard-pt) + 5 * var(--mcard-gap) + var(--mcard-act-mt) + var(--mcard-act-mb) + var(--mcard-traders-h) + var(--mcard-meta-mb));
   /* How far the cold-start pair ("No bets yet" / "Be the first to predict") is lowered to sit mid-way between the rail and
      the pick — derived from the two tokens that differ between the densities, like --mcard-h, so Compact gets its own
      (5.3px Comfortable, 2.8px Compact). It moves the pair, never the card: see `.mcardp-nobets` below. */
@@ -943,10 +949,8 @@
      --mcard-gap and --mcard-pt. These four are the spacing INSIDE it, which the market card
      has no equivalent of. The values are the ones the card shipped with, moved out of the TSX
      so §0d holds (spacing lives in globals.css) and so Compact can step them once. */
-  --ud-gap-lg: 16px;
-  --ud-gap-md: 12px;
-  --ud-gap-sm: 10px;
-  --ud-act-pt: 12px;
+  --ud-pad: var(--sp-4);
+  --ud-gap: var(--sp-1);
   /* THE JOURNEY CARD'S OWN GEOMETRY (the Vodacom plan S7, S7-PLAN WP5; §2's card row: "own height tokens --jcard-*;
      density does not apply"). Named once beside the card rhythms above, so WP7's home ghost draws the card's boxes from
      the numbers the card itself reads and cannot drift from it (the --mcard-h lesson). ⛔ NO COMPACT RUNG: the journey
@@ -1257,7 +1261,14 @@ body {
   -webkit-user-select: none;
   user-select: none;
 }
+/* ⭐ THE LIFT IS A POINTER'S (MASWALI-BUILD S5-FIX-PLATFORM D11, 2026-10-21; the motion critic's M1). On a touch screen
+   `:hover` sticks to the last element tapped, so this lift kept a tapped button raised 2px after the tap (a picked
+   answer stood lifted while the next screen loaded). L17 (2026-09-27, the fills below) gated the fills' hover to
+   pointers that hover, and this rule had stayed outside the gate. A tap keeps its press (`:active`, next); a mouse still
+   lifts. `test:hover-touch` holds the gate; `qa:hover-touch` taps on a touch screen and hovers with a mouse. */
+@media (hover: hover) {
 .btn:hover:not(:disabled)  { transform: translateY(var(--m-lift)); }
+}
 /* Press returns to rest and scales — it never sinks BELOW the resting plane. */
 .btn:active:not(:disabled) { transform: translateY(0) scale(var(--m-press)); filter: brightness(0.93); }
 .btn:focus-visible { outline: 2px solid var(--brand-500); outline-offset: 2px; box-shadow: 0 0 0 4px oklch(63% 0.18 262 / 0.25); }
@@ -1452,11 +1463,9 @@ body {
 .btn-gold:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 0 0 1px oklch(95% 0.054 84 / 0.55), 0 5px 16px oklch(80% 0.114 84 / 0.5); }
 }
 
-/* ⭐ S8 WP5 — THE BET SHEET'S OWN DISABLED GOLD (VODACOM-PLAN §0g, design call 4; §0h: scoped to the sheet).
-   `.btn:disabled` dims a button to 45%, which turns the gold CTA a muddy brown on navy; inside the sheet a disabled
-   "Weka dau" is a navy plate with subtle words and a 1px edge instead. ⛔ SCOPED UNDER `.kp-bsheet`, never a bare
-   `.btn-gold:disabled`: gold is money, and every other gold button keeps `.btn:disabled` exactly as it is. The words
-   on the plate are held to 4.5 by `test:contrast`. */
+/* The sheet's disabled gold commit is an opaque navy plate with readable
+   words and a quiet edge. Scope it to the sheet; other gold controls keep
+   the kit's generic disabled treatment. */
 .kp-bsheet .btn-gold:disabled {
   opacity: 1;
   background: oklch(28% 0.12 268);
@@ -1551,7 +1560,7 @@ body {
 .count-badge[data-lift="pearl"] { box-shadow: var(--shadow-2); }
 
 /* ---------- LiveDot + animations ---------- */
-/* Bright red-orange pulsing dot. Uses opacity animation so it works
+/* Neutral pulsing dot. Uses opacity animation so it works
    inside overflow:hidden containers (market cards). The dot itself
    is always visible; the pulse is a brightness/opacity breathe. */
 .live-dot {
@@ -1559,7 +1568,7 @@ body {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--live-400);
+  background: var(--text-subtle);
   flex-shrink: 0;
   /* The kit's `.m-live-pip` cadence — one of exactly two loops allowed to run
      unattended. Calmer and slower than the old 1.4s 0.3↔1 blink: on a real-money
@@ -1659,8 +1668,8 @@ body {
   transition: color var(--t-flick) var(--m-glide);
 }
 .ticker-pause:hover { color: var(--text); }
-.ticker-pause[aria-pressed="true"] { color: var(--live-400); }
-.ticker-pause:focus-visible { outline: 2px solid var(--live-400); outline-offset: -4px; border-radius: 6px; }
+.ticker-pause[aria-pressed="true"] { color: var(--text); }
+.ticker-pause:focus-visible { outline: 2px solid var(--brand-300); outline-offset: -4px; border-radius: 6px; }
 /* The run is a tap target while it moves (see the pause note above); a still run is a scroller, not a button. */
 .ticker-viewport { cursor: pointer; }
 /* ⭐ STILL = THE READABLE LIST, NOT A FROZEN FRAME (2026-09-26). A paused marquee behind a clipping box is
@@ -1676,7 +1685,7 @@ body {
    outer ring to a sliver — so the ring is drawn INSIDE, the pattern this file already uses for clipped boxes.
    ⚠️ And LIFTED above the end cap (z-index 10, overlapping the run's last 40px), which otherwise painted its
    solid fade over the ring's right edge. The fade steps aside while the list has focus. */
-.ticker-viewport:focus-visible { outline: 2px solid var(--live-400); outline-offset: -2px; position: relative; z-index: 11; }
+.ticker-viewport:focus-visible { outline: 2px solid var(--brand-300); outline-offset: -2px; position: relative; z-index: 11; }
 
 /* 🔴 D26 · THE 18+ LICENCE FOOTER SAT INSIDE THE VIEWPORT AT FIRST PAINT AND WAS THEN THROWN OFF IT.
    `app-shell` is `min-h-screen flex flex-col` with `<main class="flex-1">` above `<PublicFooter>`, so while the
@@ -1767,6 +1776,25 @@ html[data-fab-idle] .cm-fab:not(.cm-fab--open):not(:focus-within) {
   html[data-scrolling] .cm-fab:not(.cm-fab--open):not(:focus-within),
   html[data-fab-idle] .cm-fab:not(.cm-fab--open):not(:focus-within) { transform: none; }
   .cm-fab { transition: opacity var(--t-quick) linear; }
+}
+/* ⭐ D15 · AT REST OVER A LINE OF TEXT OR A FIGURE, THE BUBBLE YIELDS: IT FADES, IT NEVER MOVES (MASWALI-BUILD
+   S5-FIX-PLATFORM D15, 2026-10-21; the register critic's M5, ruled by the lead 2026-10-21, the 10/10 pass — the third
+   ruled classic change, DESIGN_AUTHORITY §M8a item 11). D3 and D75 above clear the bubble while the page moves and once
+   the reader has left it alone; between the two it stood at full ink over whatever lay under it — a Millionea week
+   page's Money out at 320 and 360, How to play's worked figures, and every classic page's right-aligned figure.
+   ChatRoot's census (`lib/chat/fab-census.ts`) marks the wrapper `data-over-content` while a visible line of text or an
+   `.amount` lies under the bubble's resting rect (its box and its ring), asked at most once a frame and again whenever D3
+   or D75 hands it back; here it yields to `--state-yield-opacity` (state-tokens.css: still live, never disabled — an
+   opacity at which every covered figure, under the bubble's icon too, still meets its contrast minimum, measured) and returns when the content
+   clears. ⛔ No nudge: a support button that moves is disorienting. ⛔ Never "disabled": a pointer's hover and a
+   keyboard's focus bring it back whole (an open panel and any focus within keep it whole, as in D3 and D75), it keeps
+   `pointer-events`, and a tap works as ever. ⚠️ Lower in the cascade than D3 and D75 (no `html[…]` prefix), so a moving
+   page and an idle reader still clear it whole. Its opacity moves on `.cm-fab`'s own `--t-quick`; the reduced-motion
+   clamps (motion.css) make the switch instant. `test:chat-yield` holds the rules; `qa:chat-yield` drives them at 320 and
+   360 and measures the covered figures through the faded bubble. */
+.cm-fab[data-over-content]:not(.cm-fab--open):not(:focus-within) { opacity: var(--state-yield-opacity); }
+@media (hover: hover) {
+  .cm-fab[data-over-content]:not(.cm-fab--open):hover { opacity: 1; }
 }
 
 /* 🔴 D68 · A CENTRED 80svh BLOCK ON A SHORT SCREEN PUSHES ITS OWN EXIT BELOW THE FOLD.
@@ -1894,17 +1922,8 @@ html.kp-reduce-motion .ticker-pause,
 }
 
 /* ---------- "Coming soon" badge ----------
-   Calm, informational flag for a not-yet-live surface (e.g. proposing pools). It
-   was a bright gilt pill with a constant glinting sweep — players reported it as
-   visually distracting (it pulled the eye on a loop). Redesigned as a quiet muted
-   tag: a soft warm-neutral surface, muted text, no gradient, no animation. It now
-   reads as a status note, not an attention-grabbing promo.
-   ⛔ AND THE WARMTH IS GOLD (R5-C, the second gold audit, 2026-10-09): its fill and edge are `--gold-500` at 9% and 22% —
-   the money ramp on a feature that is not open yet (Q5). In PAGE BODIES (inside `#main-content`, both shells) and
-   everywhere in the JOURNEY the flag is the plain inset and edge; the clock and the words carry it. The base rule below
-   stays as it was ONLY because the classic header's, rail's and avatar menu's "coming soon" tags wear it, and classic
-   chrome is frozen (S6/S7, `qa:classic-shell-parity`): the owner's change is to drop the scope and let the neutral
-   override below apply everywhere. */
+   Classic shell keeps its older warm house accent; page bodies and Journey
+   use the neutral inset override below. */
 .cs-badge {
   color: var(--text-subtle);
   background: color-mix(in oklab, var(--gold-500) 9%, var(--bg-inset));
@@ -1932,7 +1951,7 @@ html.kp-reduce-motion .ticker-pause,
    an M1 pass spent real work converting its inset rings to family hues on rules no player has
    ever seen. A recipe nobody renders is still a recipe somebody copies. */
 
-/* ── TippingBar — the signature split rail + gilt needle (DESIGN_AUTHORITY B10) ──
+/* ── TippingBar — the signature split rail + gilt needle (DESIGN_AUTHORITY B1a) ──
    Every rule here used to be an inline `style={{…}}` object inside brand.tsx —
    21 of them, including the whole colour recipe, both glows, the needle, the
    shimmer, the sweep and a `<style>` tag carrying two @keyframes. The component
@@ -2892,11 +2911,11 @@ textarea::placeholder { color: var(--text-subtle); }
    A brief ring pulse on the card + a flash on the side just tapped. Kept short so
    rapid repeat taps re-fire cleanly. Motion is removed under reduced-motion; the
    aria-live announcement carries the confirmation regardless. */
-/* ⭐ The SUCCESS green (R5-I, 2026-10-09; §B2a): "your bet is placed" is an app state — the toast it replaces is
-   `success` — and it pulsed the YES side's green on a Down bet too. The side tapped has its own flash (`ud-side-flash`). */
+/* U43 B5 (Ali, 2026-10-19): the ring confirms placement without borrowing either side's
+   colour. The actual UP/DOWN button has its own brief flash (`ud-side-flash`). */
 @keyframes ud-place-pulse {
-  0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--success-500) 55%, transparent); }
-  100% { box-shadow: 0 0 0 8px color-mix(in oklab, var(--success-500) 0%, transparent); }
+  0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--text) 40%, transparent); }
+  100% { box-shadow: 0 0 0 8px color-mix(in oklab, var(--text) 0%, transparent); }
 }
 /* 240ms → `--t-base` (220), the nearest rung down. The ring expands and is gone —
    a one-shot arrival — so `--m-settle`, not the legacy `--ease-sink`. */
@@ -3431,7 +3450,6 @@ textarea::placeholder { color: var(--text-subtle); }
                                     low-end device cannot afford, "free" or not    */
 [data-motion="reduced"] .closing-pill,              /* its base IS the gold urgent
                                     end of the pulse, by its own design comment    */
-[data-motion="reduced"] .ud-count-pulse,            /* Up & Down live counters      */
 [data-motion="reduced"] .ud-point,
 [data-motion="reduced"] .cm-typing span,            /* support chat typing dots     */
 [data-motion="reduced"] .mark-pending,              /* ⭐ §C's settling-round ±2°
@@ -3466,7 +3484,7 @@ textarea::placeholder { color: var(--text-subtle); }
    Uses the kit's `m-breathe`; the local `dot-pulse-soft` keyframe this used to
    name was byte-identical to it and has been retired. */
 [data-motion="reduced"] .live-dot,
-[data-motion="reduced"] .cm-status-dot { animation: m-breathe 1.6s var(--m-breathe) infinite !important; box-shadow: none !important; }
+[data-motion="reduced"] .cm-status-dot { animation: m-breathe 2600ms var(--m-breathe) infinite !important; box-shadow: none !important; }
 
 /* 🔴 THE STICKY TOP-BAR FROSTED BLUR IS DELETED — batch 3, 2026-08-13 (kit §2 / SPEC §3.1).
    It was `color-mix(in oklab, var(--panel) 78%, transparent) !important` plus a 12px backdrop
@@ -3786,6 +3804,16 @@ th .link-pending { --lp-inset: 0px; --lp-bottom: 8px; }
   display: grid;
   gap: var(--sp-4);
   grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+}
+
+  /* U43 · At 320×640 a real 32px live ticker strip can push the first market's NO
+   choice into the raised centre rail. Recover one 8px rung only when that strip
+   exists on a short phone. The grid and its loading ghost share `mt-5`, so both
+   move together; wider phones and an empty ticker keep the original rhythm. */
+@media (max-width: 359.98px) and (max-height: 700px) {
+  /* density: general — /markets' margin above its grid on a short 320 phone under a live ticker, so the first card's NO
+     clears the rail; page rhythm, not card spacing — both card-spacing settings. */
+  .ticker-strip ~ main .market-grid.mt-5 { margin-top: var(--sp-4); }
 }
 
 /* ─────────────────────────── the ONE filter-pill language ───────────────────────────
@@ -4115,9 +4143,10 @@ th .link-pending { --lp-inset: 0px; --lp-bottom: 8px; }
    be called `kp-menu-caret`: `test:filter-language` §5.3 asserts the string `kp-menu` never
    appears in `filter-sheet.tsx`, so that `qa:discovery-board` can keep counting exactly two
    `details.kp-menu` under the bar. Different name, same definition. */
-.kp-menu-caret, .kp-fsheet-caret { transition: transform var(--t-quick) ease-out; }
+.kp-menu-caret, .kp-fsheet-caret, .kp-mln-caret { transition: transform var(--t-quick) ease-out; }
 .kp-menu[open] > summary .kp-menu-caret,
-.kp-fsheet[open] > summary .kp-fsheet-caret { transform: rotate(180deg); }
+.kp-fsheet[open] > summary .kp-fsheet-caret,
+.kp-mln-ticket[open] > summary .kp-mln-caret { transform: rotate(180deg); }
 
 /* 🔴 UD-13e · THE SHEET HAD NO EXIT. It rises on `.m-sheet-in` and used to leave by having
    `display: none` applied in the same frame the `open` attribute went — a considered 240ms
@@ -4740,12 +4769,54 @@ html[data-sheet-open] .route-enter { animation: none; }
   .kp-mln-facts--phone > .kp-mln-fact { padding-inline-start: 0; }
   .kp-mln-facts--phone > .kp-mln-fact::before { content: none; }
 }
-/* A stacked list centred (the cut ticket's stamp): a stacked list draws no mark, so its lines may stand in the middle. */
-.kp-mln-facts--center { align-items: center; text-align: center; }
+/* MASWALI-BUILD S5-DESIGN-HUB L1 (Ali 2026-10-21 10/10 pass) · A FACT LINE IN THE NUMERALS' MONO KEEPS A TYPED " · "'S
+   SPACING: its gap is the face's three characters (space, dot, space) — and in a tracked eyebrow their 0.14em tracking
+   too (3 × 0.14em) — so a mono label's separator reads as the page head's " · " beside it (it read 5px a side against
+   the head's 13px). Chinese eyebrows run untracked (the A3 rule below), so theirs is the three characters alone. */
+.font-mono .kp-mln-facts, .kp-mln-facts.font-mono { --mln-sep: 3ch; }
+.eyebrow .kp-mln-facts, .kp-mln-facts.eyebrow { --mln-sep: calc(3ch + 0.42em); }
+.kp-mln-zh:lang(zh) .eyebrow .kp-mln-facts { --mln-sep: 3ch; }
+/* MASWALI-BUILD S5-DESIGN-HUB (R1-motion M8) · THE LAST HOUR'S ROOM IN THE CLOSE LINE: while the closing pill counts down
+   in the hub's close row, the close is today, so its weekday steps aside — "Mauzo yanafungwa 18:00 ⌛ 40 Dak" holds one
+   line where the weekday and the pill took two (sw 320), and nothing under the row moves when the pill arrives. A
+   browser without :has() keeps the weekday and lets the pill wrap. */
+.kp-mln-close:has(.closing-pill) .kp-mln-close-day { display: none; }
 /* MASWALI-BUILD S5 · VIS-P P10 · A SOCKET AT REST: a reserve the week did not need, a socket of a voided week, every socket
    of a cancelled or refunded ticket — the open ring at the disabled control's own opacity, so it never reads as the live
    "awaiting" ring beside it (`maswali-seal-line.tsx`, `SocketGlyph`). */
 .kp-mln-rest { opacity: var(--state-disabled-opacity); }
+/* MASWALI-BUILD S5-DESIGN-TICKETS · A MOMENT WAITS FOR ITS OWNER'S EYES (the R1 tickets critic's M8 and the motion critic's
+   H3, Ali 2026-10-21 10/10 pass; `maswali-moment.tsx` says why). Inside a moment that has not yet come into view
+   (`[data-mln-moment]` without `[data-mln-played]`, which React renders from the observer's state) every N-block animation
+   — and the axis reveal and the line draw a ticket's moments use — holds its FIRST frame, so it starts when the owner can
+   see it and never blinks from its end frame back to its first. ⛔ Scoped off both clamps (the OS preference and the in-app
+   switch, whose `animation: none` IS the end frame) and to an engine running scripts: without JavaScript nothing waits and
+   each moment plays where it stands. The low-end `reduced` tier waits and plays like every other device (§M8a item 5). */
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  html:not(.kp-reduce-motion):not([data-motion="minimal"]) [data-mln-moment]:not([data-mln-played]) :is(.maswali-cut, .maswali-cut-undo, .maswali-attest, .maswali-carry, .m-axis-reveal, .m-draw, .m-seal) {
+    animation-play-state: paused;
+  }
+}
+/* MASWALI-BUILD S5-DESIGN-TICKETS · THE FREE CANCEL'S DOOR (M4, H3): the kit's lg button holding the journey free exit's two
+   lines — "Ghairi tiketi" over "Rudishiwa TZS 1,000 kamili" — at least the lg control's height, its lines free to wrap so a
+   long language never runs past the edge (the clock and the rule sit outside it, on lines of their own). */
+.btn.kp-mln-free-exit {
+  height: auto;
+  min-height: var(--h-control-lg);
+  padding-block: var(--sp-1);
+  white-space: normal;
+}
+/* S5-DESIGN-REGISTER (2026-10-21, the motion critic's M5) · N1'S ORIGIN, VACATED WHILE THE TOKEN IS IN FLIGHT: the reserve's
+   socket has left the annex, so its own mark ("↪4") is not shown until the token lands — then it settles in (`.g-settle`).
+   Set and cleared by `MaswaliCarry` around a run it plays; never under a clamp, where nothing plays (its box keeps its
+   place either way: visibility, not display). */
+.kp-mln-carry-vacated { visibility: hidden; }
+/* S5-DESIGN-REGISTER (2026-10-21, the register critic's H4) · A SOURCE LINK INSIDE A LINE OF TEXT REACHES THE 40px FLOOR
+   WITHOUT MOVING A PIXEL OF PAINT — the kit switch's own recipe (DG-A-02, `.toggle-switch::after` above): an out-of-flow
+   box exactly `--tap-min` tall, centred on the link, no wider than it (a horizontal bleed could take a neighbour's tap).
+   (The example button's override, `.btn.kp-mln-example-button`, is gone with its two-line label — L10.) */
+.kp-mln-hit { position: relative; }
+.kp-mln-hit::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: var(--tap-min); transform: translateY(-50%); }
 /* MASWALI-BUILD S5 · MILLIONEA'S CHINESE, AS THE PLATFORM SETS IT (the S5 review of 24ec0d33, LOW 14): every Millionea page
    root and each Millionea part drawn on another page (the home card, the /positions row) carries `.kp-mln-zh`, so its
    Chinese runs break only at their spaces and punctuation — a word kept whole — and a run longer than its line still
@@ -4758,6 +4829,65 @@ html[data-sheet-open] .route-enter { animation: none; }
    lead's ruling); other languages are untouched, and the platform-wide eyebrow is a separate, later platform question. */
 .kp-mln-zh:lang(zh) .eyebrow { letter-spacing: 0; }
 .kp-mln-zh:lang(zh) .eyebrow:is(.text-micro, .text-caption) { font-size: 12px; line-height: 16px; }
+/* ⭐ MASWALI-BUILD S5-DESIGN-DOORS · THE MILLIONEA DOOR (the critic's R1 M1 L1 L2 L4 M5; `maswali-home-card.tsx` says why).
+   ONE ANATOMY: a head row of three on one axis — the 48px plate, the title, the chevron, 14px apart (the How-to card's own
+   row) — and under it the body: the R-HEADLINE's facts, then the state's. Below 768 the body runs the card's full inner
+   width (a 9-to-13-line card was a two-line door's column: its facts wrapped in 164px at 320); from 768 it stands under the
+   title; from 1280 the card is one row, plate | title | headline | state | chevron, a void state's words at the row's end.
+   The body opens 12px under the head row (the card's own inset), the state 4px under the headline (the facts' rhythm).
+   ITS HOST'S BOX AND ITS HOST'S HOVER, on a pointer that hovers only: on the journey home the How-to card's (`--journey`: its
+   flat box and inset; its border turns royal), on the board the market cards' (`--board`, with `mat-raised`: 12px, 16px
+   across from 640, as `.mcardp`; it lifts --m-lift with the brand ring over --t-base / --m-glide, as every board card does —
+   the motion critic's L5). `.kp-mln-ghost` is its loading picture (`maswali-home-card-ghost.tsx`): the same box, its words
+   hidden over bars, and no hover. */
+.kp-mln-door { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; grid-template-areas: "plate head chev" "rule rule rule" "state state state"; column-gap: 14px; align-items: center; min-width: 0; border-radius: var(--r-lg); color: var(--text); }
+.kp-mln-door__plate { grid-area: plate; }
+.kp-mln-door__head { grid-area: head; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.kp-mln-door__title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); min-width: 0; }
+.kp-mln-door__rule { grid-area: rule; min-width: 0; margin-top: var(--sp-3); }
+.kp-mln-door__state { grid-area: state; min-width: 0; margin-top: var(--sp-1); }
+.kp-mln-door__head + .kp-mln-door__state { margin-top: var(--sp-3); }
+.kp-mln-door__chev { grid-area: chev; color: var(--text-subtle); }
+.kp-mln-door--journey { padding: var(--sp-3) 14px var(--sp-3) var(--sp-3); border: 1px solid var(--border); background: var(--bg-elevated); transition: border-color var(--t-quick) linear; }
+.kp-mln-door--board { padding: var(--sp-3); transition: translate var(--t-base) var(--m-glide), border-color var(--t-base) var(--m-glide), box-shadow var(--t-base) var(--m-glide); }
+@media (min-width: 640px) { .kp-mln-door--board { padding-inline: var(--sp-4); } }
+@media (hover: hover) {
+  .kp-mln-door--journey:not(.kp-mln-ghost):hover { border-color: var(--border-royal); }
+  .kp-mln-door--board:not(.kp-mln-ghost):hover { translate: 0 var(--m-lift); border-color: var(--brand-500); box-shadow: 0 0 0 1px var(--brand-500), var(--elev-raised-hover); }
+}
+@media (min-width: 768px) { .kp-mln-door { grid-template-areas: "plate head chev" ". rule ." ". state ."; } }
+@media (min-width: 1280px) {
+  .kp-mln-door { grid-template-columns: 48px max-content minmax(0, 1fr) max-content auto; grid-template-areas: "plate head rule state chev"; }
+  .kp-mln-door__rule, .kp-mln-door__state, .kp-mln-door__head + .kp-mln-door__state { margin-top: 0; margin-inline-start: var(--sp-2); }
+}
+.kp-mln-ghost { cursor: default; }
+.kp-mln-ghost .kp-mln-door__chev { color: transparent; }
+.kp-mln-ghost__bar { border-radius: var(--r-xs); background: var(--bg-overlay); -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.kp-mln-ghost__words, .kp-mln-ghost .kp-mln-fact::before { visibility: hidden; }
+/* Below 768 the body is one fact per line: a fact too long for its line hangs its continuation one em in, so the line it
+   runs on never reads as a fact of its own ("pamoja na kiasi kinachohamishwa kutoka" / "  Wiki 46 itakapokamilika"). */
+@media (max-width: 767.98px) { .kp-mln-door .kp-mln-facts--phone > .kp-mln-fact { padding-inline-start: 1em; text-indent: -1em; } }
+/* ⭐ MASWALI-BUILD S5 · THE SLIP (Ali 2026-10-21 10/10 pass; the slip critic's report, the motion critic's slip items;
+   `maswali-slip.tsx`). An answer wears the lit side's type in both states — `.btn-yes`/`.btn-no`'s own 700 and 0.06em — so
+   a pick changes its ink and never its width: the word jumped ~9px as the weight and the tracking arrived (motion M1). */
+.btn.kp-mln-answer { font-weight: 700; letter-spacing: 0.06em; }
+/* From 768 the answers stand in one column: the mains take the reserves box's own inset — its 1px edge and the reserve rows'
+   `px-3` (--sp-4) — so YES stands over YES (the slip critic's LOW: the reserves' column sat 17px left of the mains'). */
+@media (min-width: 768px) { .kp-mln-row--main { padding-inline: calc(var(--sp-4) + 1px); } }
+/* The rail's foot (below 1024, where it docks on the tab bar): the classic phone rail's gold Deposit coin rises above its
+   65px row to --rail-h, so the slip's rail keeps that much clear under its controls and the coin rises into empty rail
+   (the slip critic's M2) — never into "Answer all 15". The journey's rail has no coin: its foot is the rail's own --sp-3. */
+@media (max-width: 1023.98px) {
+  .kp-mln-rail > * { padding-bottom: calc(var(--sp-3) + var(--rail-h) - 65px); }
+  :root:is([data-shell="journey"], #kp-journey-shell) .kp-mln-rail > * { padding-bottom: var(--sp-3); }
+}
+/* The confirm sheet, as the bet confirm is built (R4-I; the slip critic's M3): never taller than the screen less 40px, its
+   picks and facts scrolling inside it, its money and its two answers pinned under them on a hairline. */
+.kp-mln-confirm { max-height: calc(100dvh - 40px); overflow: hidden; }
+.kp-mln-confirm__body { display: flex; flex: 1 1 auto; flex-direction: column; gap: var(--sp-3); min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.kp-mln-confirm__foot { display: flex; flex: none; flex-direction: column; gap: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--border); }
+/* A ticket of the purchase, folded in the confirm: its own marker gone for the family caret (`.kp-mln-caret`, above). */
+.kp-mln-ticket > summary::-webkit-details-marker { display: none; }
 .kp-hero__trust-glyph { display: flex; justify-content: center; color: var(--text-subtle); }
 /* The wallet names are the row's emphasis — brand spellings from the payment catalogue, in the
    reader's own list form (`rail-list.ts`); the joiners and the sentence stay muted. */
@@ -4972,15 +5102,13 @@ html[data-sheet-open] .route-enter { animation: none; }
   color: var(--text-subtle);
   margin-top: 4px;
 }
-/* An 8px pip beside the live count. ⚠️ 2026-09-14 (E-400 ⑦f): it carried the YES ink and glow, "the same ink the board
-   uses for a market that is taking bets" — but that ink names a SIDE (§B2a), and a player's LIVE signal is the broadcast
-   red (§B11, `.live-dot`). The pip now wears `--live-400`, without the YES glow, and the count beside it is plain text. */
+/* An 8px pip beside the live count. Liveness is neutral; green and red name sides only. */
 .kp-proof__pip {
   display: inline-block;
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--live-400);
+  background: var(--text-subtle);
   flex: none;
 }
 /* 🔴 THE 44px STEP WAITS FOR 1024, AND IT IS A MONEY FIX, NOT A TASTE ONE (§M4 — money never
@@ -5447,16 +5575,20 @@ html[data-sheet-open] .route-enter { animation: none; }
 .mcardp-catgrp { display: flex; align-items: center; gap: var(--sp-1); min-width: 0; }
 .mcardp-top > :has(+ .mcardp-tail) { margin-right: 2px; }
 /* §T3 0.14em, was 0.12 — tracking in the shared eyebrow rule beside `.amount`. */
-.mcardp-cat { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; color: var(--text-subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.mcardp-cat { font-family: var(--font-mono); font-size: var(--type-micro); text-transform: uppercase; color: var(--text-subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.mcardp-live-mark { display: inline-flex; align-items: center; min-width: 6px; }
+.mcardp-live-dot { display: block; width: 6px; height: 6px; border-radius: 50%; background: var(--text-subtle); }
+.mcardp-closes { margin-inline-start: auto; color: var(--text); font-size: var(--type-small); white-space: nowrap; }
 .mcardp-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); flex: 1 1 auto; }
 .mcardp-qwrap { flex: 1 1 auto; min-width: 0; }
 .mcardp-q { font-family: var(--font-display); font-weight: 600; font-size: 15px; line-height: 1.34; letter-spacing: -0.015em; color: var(--text); text-wrap: balance; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height: calc(2 * 1.34em); }
 .mcardp-q-sw { margin-top: 1px; font-size: 10px; font-style: italic; color: var(--text-subtle); display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; }
 .mcardp-prob { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; flex-shrink: 0; text-align: right; }
-.mcardp-pct { font-family: var(--font-mono); font-weight: 700; font-size: 28px; line-height: 1; letter-spacing: -0.02em; color: var(--yes-400); font-variant-numeric: tabular-nums; }
+.mcardp-pct { font-family: var(--font-mono); font-weight: 700; font-size: 28px; line-height: 1; letter-spacing: -0.02em; color: var(--text); font-variant-numeric: tabular-nums; }
 .mcardp-pct .u { font-size: 13px; color: var(--text-subtle); margin-left: 1px; }
 /* §T3 0.14em, was 0.12 — tracking in the shared eyebrow rule beside `.amount`. */
-.mcardp-pctcap { font-family: var(--font-mono); font-size: 9.5px; font-weight: 600; text-transform: uppercase; color: var(--yes-400); }
+.mcardp-pctcap { font-family: var(--font-mono); font-size: var(--type-micro); font-weight: 600; text-transform: uppercase; color: var(--yes-400); }
+.mcardp-pctcap--no { color: var(--no-400); }
 /* ⭐ A RIGHT-ALIGNED TRACKED LABEL ENDS WHERE ITS NEIGHBOURS END (round 5 of the visual pass, 2026-10-09, F19 — tile 327;
    R3-C's rule for the admin tables' right-aligned heads, `.admin-tbl thead th.text-right::after`, carried to every label
    of the kind). The price caption is tracked 0.14em and right-aligned over its figure, and a browser adds the tracking
@@ -5486,7 +5618,6 @@ html[data-sheet-open] .route-enter { animation: none; }
 .kp-track-end { margin-inline-end: calc(-1 * var(--track-end, 0.14em)); }
 .tipbar-labels .tb-no { --track-end: 0.05em; }
 .kp-track-end--16 { --track-end: 0.16em; }
-.kp-track-end--10 { --track-end: 0.10em; }
 /* Round 6 (2026-10-09, review C11): the ten right-aligned tracked labels F19 had not reached — the bet confirm's stake
    and the sell confirm's fee, the withdraw screen's balance, the Wallet history's status word, an Up & Down round's net,
    pick, players, open price and clock, and /positions/performance's status words (tracked 0.08em, below) — end on their
@@ -5513,6 +5644,23 @@ html[data-sheet-open] .route-enter { animation: none; }
    the family's 1.9-unit stroke. */
 .kp-gtext { stroke-width: var(--g-stem); }
 .kp-gtext * { vector-effect: non-scaling-stroke; }
+/* ⭐ ONE PLATE, ITS ROLES FROM THE TOKENS (PHOSPHOR-MIGRATION release 2, W5: "one plate everywhere"). `IconPlate` is the only
+   plate (`test:icon-sizes` §3); its `variant` names what the plate says, and each is one recipe here:
+   · identity — what a row, a door or a cell IS: its glyph in Duotone (DESIGN_AUTHORITY §K3 item 3: identity on a plate).
+   · quiet    — the quiet outcomes and the neutral notices: a loss, a result recorded (§M7: a loss is bookkeeping).
+   · info · success · warning · danger — a status's own family: the family's edge at full strength over a 30% veil of its
+     wash, the glyph in the family's ink (the notification plates' recipe since §B2a, now one definition).
+   · gold     — a win, and nothing else (§Q5: gold is money earned).
+   The edge is an inset ring, never a border, so a plate's variant never moves its glyph. */
+.kp-plate--identity { background: var(--plate-identity); box-shadow: var(--edge-lit); color: var(--text-muted); }
+.kp-plate--empty { position: relative; background: var(--plate-identity); box-shadow: var(--edge-lit); color: var(--text-muted); }
+.kp-plate--empty::after { content: ""; position: absolute; top: 7px; right: 7px; width: 4px; height: 4px; border-radius: 50%; background: var(--metal-gold); }
+.kp-plate--quiet { background: var(--bg-overlay); box-shadow: inset 0 0 0 1px var(--border); color: var(--text-muted); }
+.kp-plate--info { background: color-mix(in oklab, var(--info-bg) 30%, transparent); box-shadow: inset 0 0 0 1px var(--info-border); color: var(--info-fg); }
+.kp-plate--success { background: color-mix(in oklab, var(--success-bg) 30%, transparent); box-shadow: inset 0 0 0 1px var(--success-border); color: var(--success-fg); }
+.kp-plate--warning { background: color-mix(in oklab, var(--warning-bg) 30%, transparent); box-shadow: inset 0 0 0 1px var(--warning-border); color: var(--warning-fg); }
+.kp-plate--danger { background: color-mix(in oklab, var(--danger-bg) 30%, transparent); box-shadow: inset 0 0 0 1px var(--danger-border); color: var(--danger-fg); }
+.kp-plate--gold { background: color-mix(in oklab, var(--gold-500) 10%, transparent); box-shadow: inset 0 0 0 1px var(--gold-700); color: var(--gold-300); }
 .mcardp-spark { line-height: 0; margin-top: 2px; }
 .mcardp-traders { display:flex; align-items:center; gap:var(--sp-2); }
 .av-stack { display:flex; }
@@ -5523,14 +5671,17 @@ html[data-sheet-open] .route-enter { animation: none; }
 .mcardp-traders .t-txt b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text); font-weight:600; }
 /* A1 · the move-line row, right-aligned just above the bar: the 24h move (`.mcardp-h24`, every priced card)
    or "One side only". */
-.mcardp-moveline { display:flex; justify-content:flex-end; align-items:center; min-height:var(--sp-3); margin:calc(-1 * var(--sp-1)) 0; }
+.mcardp-moveline { display:flex; justify-content:flex-end; align-items:center; min-width:0; min-height:var(--sp-3); margin:calc(-1 * var(--sp-1)) 0; }
 /* A1 · 24h YES% sparkline directly under the bar; draws in on mount.
    pathLength=1 normalizes the dash regardless of the rendered card width. */
-.mcardp-spark { margin-top:-4px; height: var(--mcard-spark-h); }
-.mcardp-spark-line { stroke-dasharray:1; stroke-dashoffset:1; animation:m-draw var(--dur-arrive) var(--ease-glide) forwards; }
+.mcardp-spark-row { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.mcardp-spark-label { font-family: var(--font-mono); font-size: var(--type-micro); color: var(--text-subtle); }
+.mcardp-spark { margin-top: 0; height: var(--mcard-spark-h); }
+.mcardp-spark-line { stroke-dasharray:1; stroke-dashoffset:1; animation:m-draw var(--t-stage) var(--m-glide) forwards; }
 @media (prefers-reduced-motion: reduce) {
   .mcardp-spark-line { animation:none; stroke-dasharray:none; stroke-dashoffset:0; }
 }
+[data-motion="reduced"] .mcardp-spark-line { animation:none; stroke-dasharray:none; stroke-dashoffset:0; }
 /* The action margins use the spacing scale in both card densities. The md control
    below is 44px, matching the landing question rows; the skeleton base includes
    that extra 4px and the 3px increase in bottom padding.
@@ -5552,7 +5703,9 @@ html[data-sheet-open] .route-enter { animation: none; }
    The pair's gap and the 8px inline padding match the home question rows; the phone card gains width from the
    12px inset below, so the label keeps space from each border. Verify actual glyph advances in the served page. */
 .mcardp-actions .btn { height: var(--h-control-md); font-size: 13px; font-weight: 600; min-width: 0; padding: 0 var(--sp-2); letter-spacing: 0.04em; border-radius: var(--r-md); transition: transform var(--t-quick) var(--m-glide), box-shadow var(--t-quick) linear, filter var(--t-quick) linear; }
-.mcardp-actions .btn:active:not(:disabled) { transform: translateY(1px) scale(0.96); }
+.mcardp-actions .btn:active:not(:disabled) { transform: translateY(0) scale(var(--m-press)); }
+.mcardp-fact { display: flex; align-items: center; min-height: var(--h-control-md); margin: 0; color: var(--text-muted); font-size: var(--type-small); }
+.mcardp-pool { white-space: nowrap; }
 /* Stats row — single line (no wrap), time + info pinned right. Kept on one line
    so the footer height is identical on every card (a previous double margin-auto
    wrapped to a variable number of lines, making cards different heights). */
@@ -5573,7 +5726,22 @@ html[data-sheet-open] .route-enter { animation: none; }
    Android's text-only scaling, and `flex-wrap: wrap` is a no-op while the row fits, so the gate bought
    nothing and cost the case it was written for. §A5 forbids clipping money at every width and setting. */
 .mcardp-meta { flex-wrap: wrap; }
+.mcardp-meta > .mcardp-foot { margin-left: auto; flex-shrink: 0; }
+@media (max-width: 359px) {
+  /* density: general — the 320 meta line holding its pool whole beside Info and Share at their full hit widths (the
+     featured pool on a line of its own), not card spacing; both card-spacing settings. */
+  /* U43 B4: a 320px live pool, Info and Share fit on one line only when
+     the Info box gives the Share target its full 40px hit width. The Info
+     glyph is centred inside its own 44px box, so zero box gap still reads
+     as a separate control. The footer remains against the content edge. */
+  .mcardp-meta { column-gap: 0; }
+  .mcardp-meta > .mcardp-meta-right { margin-left: 0; }
+  /* The featured pool uses larger ink. At 320px it needs its own fact line;
+     Info, Share and Details then share a second 44px control row. */
+  .mcardp--featured .mcardp-meta > .mcardp-pool { flex-basis: 100%; }
+}
 .mcardp-meta > span:not(.dot):not(.mcardp-meta-right) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.mcardp-meta > .mcardp-pool { overflow: visible; text-overflow: clip; flex-shrink: 0; }
 .mcardp-meta .dot { width:3px;height:3px;border-radius:50%;background:var(--border-strong); flex-shrink:0; }
 /* 2026-09-14 (register E-400 ⑦f): the time left on a live card was painted `--yes-300`, directly under the YES/NO
    buttons, where betting-YES green reads as a side (§B2a). A player's LIVE signal is the broadcast red dot and chip
@@ -5618,7 +5786,7 @@ html[data-sheet-open] .route-enter { animation: none; }
    ⭐ Its ink is the link blue (Ali's ruling (2) of 2026-10-10, §B4c): it was `--accent-400`, the aqua the ruling
    retired — one of the five aqua links. Its hover stays the underline the `(hover: hover)` rule below gives it, the
    hover most of the platform's blue links use (`hover:underline`). */
-.mcardp-details { position:relative; display:inline-flex; align-items:center; justify-content:flex-end; gap:4px; font-family: var(--font-display); font-weight:600; font-size:11.5px; text-decoration:none; color: var(--brand-300); }
+.mcardp-details { position:relative; display:inline-flex; align-items:center; justify-content:flex-end; gap:var(--sp-1); font-family: var(--font-display); font-weight:600; font-size:var(--type-micro); text-decoration:none; color: var(--brand-300); }
 /* ⭐ THE TAP FLOOR, REACHED WITHOUT MOVING LAYOUT — batch 4, §4e. Deferred twice because the row
    PAINTS 17px and must keep painting 17px: `MARKET_CARD_H` (347, card-geometry.ts — was 349
    until PV-13b, 2026-09-03, shrank `.mcardp-info` below by 2px) is derived from it and BOTH
@@ -5631,8 +5799,8 @@ html[data-sheet-open] .route-enter { animation: none; }
    PV-13b) sits in the meta row with 12px of calculated clearance above this row in
    both densities (Compact's 8px gap plus 4px meta margin). It opens an explainer rather than
    the market — swallowing its clicks would trade one defect for another. Calculated room: 12 above,
-   17 below (the card's 16px padding-bottom plus the gap). 9 + 17 + 14 = 40px = `--tap-min`, Law 9's
-   floor, leaving 3px clear beneath the info button. If `--tap-min` is ever raised, this cannot
+   17 below (the card's 16px padding-bottom plus the gap). 9 + 17 + 15 = 41px, clearing Law 9's
+   40px floor and leaving 2px beneath the info button. If `--tap-min` is ever raised, this cannot
    simply consume the difference upward — re-measure the neighbour first.
    ⚠️ THE POSITIONING CONTEXT USED TO COME FROM `.mcardp > *` (globals.css:3149) and this note
    used to say it deliberately did not restate it. That stopped being true on 2026-08-25, when a
@@ -5649,8 +5817,8 @@ html[data-sheet-open] .route-enter { animation: none; }
   left: 0;
   right: 0;
   top: -9px;
-  bottom: -14px;
-  /* 🔴 D89 · THE VERTICAL REACH WAS ENGINEERED TO EXACTLY 40px AND THE HORIZONTAL REACH WAS
+  bottom: -15px;
+  /* 🔴 D89 · THE VERTICAL REACH CLEARS 40px AND THE HORIZONTAL REACH WAS
      LEFT TO THE TRANSLATION. `left:0; right:0` makes this overlay exactly as wide as the link's
      text, and the text is not the same width in every language: measured 2026-09-25 on the detail
      page's similar-markets cards, the hit area is 63.9x40.3 in Swahili ("Maelezo") and 56.4x40.3
@@ -5758,9 +5926,9 @@ html[data-sheet-open] .route-enter { animation: none; }
    no phone-only query, so the Compact fence (`test:density-contract` §2) has nothing to police. None of
    these selectors is one a guard reads by first match. */
 /* The question. Whole from 640 — h4, then h3 from 1024 (the concept's 21–26px mapped onto the locked
-   ladder). Below 640 it keeps the card's 15px and clamps at THREE lines in every language: at 360 the
-   hero's first screen has ~65px left for everything WP3 adds (hero v3 §7), and the clamp paints an
-   ellipsis while the h2 keeps the whole question for a screen reader and the card's link names it.
+   ladder). Below 640 a featured card without active choices keeps the historical three-line
+   browse clamp. A live featured card releases it in the U43 choice rule below: a player sees
+   the whole proposition before choosing, rather than relying on the link or screen reader.
    ⭐ ITS LINES ARE BALANCED, LIKE EVERY OTHER MARKET TITLE (round 5, 2026-10-09, F1 F4: tiles 029 059 074 084 097 109
    and 023 026). It wore `text-wrap: pretty`, which Chromium (score_line_breaker.cc, `ShouldOptimize`) applies only
    when the greedy last line is under a third of the line AND has no break opportunity inside, and then re-breaks the
@@ -5779,6 +5947,10 @@ html[data-sheet-open] .route-enter { animation: none; }
 @media (min-width: 1024px) {
   .mcardp--featured .mcardp-q { font-size: var(--type-h3); line-height: 1.25; }
 }
+/* U43 B4: live choices and final results show the whole proposition. A card
+   grows by its real question's lines; only a waiting browse preview can clamp. */
+.mcardp[data-market-choices="open"] .mcardp-q,
+.mcardp[data-market-result="final"] .mcardp-q { display: block; -webkit-line-clamp: unset; overflow: visible; }
 /* The time left, top-right: the meta row's rung, in `--text` (the tracker's ink; a countdown never takes
    the betting pair, `test:betting-ink`). `margin-left: auto` keeps it right-aligned on whichever line it
    lands when the chip row wraps (D65: chips wrap, never cut) — inside `.mcardp-tail` since 2026-10-08, so
@@ -5824,8 +5996,7 @@ html[data-sheet-open] .route-enter { animation: none; }
    above it (V15, hero v3 §7) — by `order`, which moves no focusable thing (it is text). From 640 it sits
    where it reads. */
 .mcardp-src--featured { margin-top: 0; order: 1; }
-.mcardp--featured > .mcardp-meta,
-.mcardp--featured > .mcardp-foot { order: 2; }
+.mcardp--featured > .mcardp-meta { order: 2; }
 /* "Hakuna bwawa bado" in the featured card's pool slot is a sentence too (round 3: 11px, cap height 8px), so it takes
    the same 13px as the line above. FEATURED ONLY, and measured: the featured row holds the words and the 44px info
    button alone (its time is top-right), 133 + 7 + 44 = 184px against 256 at 320. A grid card's row also holds an 11px
@@ -5844,24 +6015,25 @@ html[data-sheet-open] .route-enter { animation: none; }
 .mcardp-pool > .amount { color: var(--text); font-weight: 600; }
 @media (min-width: 640px) {
   .mcardp-src--featured { order: 0; max-inline-size: 60ch; }
-  .mcardp--featured > .mcardp-meta,
-  .mcardp--featured > .mcardp-foot { order: 0; }
+  .mcardp--featured > .mcardp-meta { order: 0; }
 }
-/* The 24h move — ONE reading on every priced card ("▲5 · 24h ago"): the meta row's rung, neutral ink (a move
-   of the YES price is not a side, §B2a; `test:betting-ink` §5). The featured card keys it to the mark on its
-   bar. It rides the move-line row the card always had, so it costs no height. */
+/* The measured move names its side and the first available baseline within 24h.
+   This is a sentence, so it wraps at the reading floor when a 320px card needs it.
+   Its neutral ink is separate from the betting pair (`test:betting-ink` §5). */
 .mcardp-h24 {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--sp-1);
+  min-width: 0;
+  max-width: 100%;
   font-family: var(--font-mono);
-  font-size: var(--type-micro);
-  line-height: 1;
+  font-size: var(--type-small);
+  line-height: 1.3;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  white-space: normal; text-align: right;
   color: var(--text-subtle);
 }
-/* The legend key: the mark's own shape and ink, so "▲5 · 24h ago" names the hairline on the bar. */
+/* The legend key matches the neutral baseline mark on the featured bar. */
 .mcardp-h24-key { width: 2px; height: 10px; border-radius: var(--r-pill); background: var(--text); }
 @media (hover: hover) {
   .mcardp-details:hover { text-decoration: underline; }
@@ -6082,46 +6254,11 @@ textarea::-webkit-resizer {
    actually paint. ⛔ If the tint is ever genuinely wanted on the label, move it ONTO the anchor —
    the th cannot win that cascade. */
 
-/* ===========================================================================
-   View Transitions API — native cross-fade for route changes (Chrome/Edge 111+).
-   Falls back to the existing .route-enter CSS animation on other browsers.
-   =========================================================================== */
-::view-transition-old(root),
-::view-transition-new(root) {
-  /* 180ms → `--t-quick` (140), the rung it sits on. ⚠️ This cross-fade is the
-     NATIVE half of the same route entrance `.route-enter` renders elsewhere, so the
-     two must not drift; both now read tokens rather than one reading a literal. */
-  animation-duration: var(--t-quick);
-  animation-timing-function: var(--m-glide);
-}
-::view-transition-old(root) {
-  animation-name: vt-fade-out;
-}
-::view-transition-new(root) {
-  animation-name: vt-fade-in;
-}
-@keyframes vt-fade-out {
-  from { opacity: 1; transform: none; }
-  to   { opacity: 0; transform: translateY(-4px); }
-}
-@keyframes vt-fade-in {
-  from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: none; }
-}
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(root),
-  ::view-transition-new(root) { animation: none !important; }
-}
-
-/* ── Up & Down: final-30-seconds urgency ────────────────────────────────────
-   The ONE piece of motion the Up & Down card adds. Opacity only — no movement,
-   no scale — so it reads as a pulse rather than a nag, and it costs nothing on a
-   low-end Android. Reduced-motion turns it off entirely: urgency must never be
-   conveyed by motion alone (the digits also shift to rose). Kit-level so any
-   surface can use it; never hard-code this animation in a component. */
-.ud-count-pulse { animation: ud-count-pulse 1s var(--ease-conduct, ease-in-out) infinite; }
-@keyframes ud-count-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
-@media (prefers-reduced-motion: reduce) { .ud-count-pulse { animation: none; } }
+/* ⛔ THE VIEW TRANSITION'S RULES ARE DELETED (MASWALI-BUILD S5-FIX-PLATFORM D10, 2026-10-21). `::view-transition-old/new
+   (root)` and their `vt-fade-out`/`vt-fade-in` keyframes drew a classic reader's route change in Chrome and Edge as a
+   cross-fade of the whole document, the header and the rail with the page. No route change starts a View Transition any
+   more (`route-transition.tsx` says why), so they drew nothing: a route's one entrance is `.route-enter` (`m-settle-in`),
+   on the page alone, for every reader in every engine. */
 
 /* ── Up & Down: the live price point on the D3 round hero ────────────────────
    A slow opacity breath on the current-price dot (D3 round detail), so a still
@@ -6910,7 +7047,7 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-jbal__fig > span { grid-area: 1 / 1; }
 .kp-jbal__sizer { visibility: hidden; }
 .kp-jbal:hover .kp-jbal__fig { color: var(--gold-200); }
-/* Held or masked, the figure is plain ink, as the S4 frames draw it: gold marks money you can use. */
+/* Held or masked, the figure remains plain ink. */
 .kp-jbal:is([data-held], [data-masked]) .kp-jbal__fig { color: var(--text); }
 /* ⭐ THE ±DELTA TAKES THE CAPTION'S ROW FOR A MOMENT; IT NEVER SHARES IT. The plan set it at the row's left end,
    and the widths refuse it: at 320 the figure box is 64.8px (nine mono characters at 12px), "Balance" takes
@@ -6986,7 +7123,9 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    radius, so the end rows take the card's inner curve and the ring stays whole. */
 .kp-hub__card > li:first-child .kp-hub__row { border-top-left-radius: calc(var(--r-lg) - 1px); border-top-right-radius: calc(var(--r-lg) - 1px); }
 .kp-hub__card > li:last-child .kp-hub__row { border-bottom-left-radius: calc(var(--r-lg) - 1px); border-bottom-right-radius: calc(var(--r-lg) - 1px); }
-.kp-hub__glyph { flex-shrink: 0; display: inline-flex; color: var(--text-muted); }
+/* A row's glyph stands on its identity plate (`HubPlate`, hub-plate.tsx: PHOSPHOR-MIGRATION release 2) — the plate brings its
+   own box, tint and ink (`IconPlate`, `.kp-plate--identity`); it was a bare 20px glyph in the muted ink. */
+.kp-hub__glyph { flex-shrink: 0; }
 .kp-hub__text { display: flex; flex: 1 1 auto; flex-direction: column; gap: 2px; min-width: 0; }
 .kp-hub__label { font-size: var(--type-body); font-weight: 500; line-height: 1.3; overflow-wrap: anywhere; }
 .kp-hub__sub { font-size: var(--type-small); line-height: 1.35; color: var(--text-subtle); }
@@ -7178,9 +7317,11 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   .kp-trust > * { padding-right: var(--sp-6); }
   .kp-trust > * + * { border-left: 1px solid var(--border); padding-left: var(--sp-6); }
 }
-/* Each fact's glyph is an ACCENT, and the product's one non-money accent is the brand family (R5-C, the second gold audit,
-   2026-10-09; Q5 "gold is money, and nothing else"): it was `--gilt` on three claims about how a result is checked. */
-.kp-trust__glyph { display: flex; color: var(--brand-300); }
+/* Each fact's glyph is never gold (R5-C, the second gold audit, 2026-10-09; Q5 "gold is money, and nothing else"): it was
+   `--gilt` on three claims about how a result is checked, then the brand ink. Since PHOSPHOR-MIGRATION release 2 it stands on
+   the identity plate (`IconPlate`, trust-band.tsx), whose surface, edge and ink are the plate's own (`.kp-plate--identity`),
+   so this rule keeps only its place in the cell. */
+.kp-trust__glyph { flex-shrink: 0; }
 .kp-trust__h {
   font-family: var(--font-display);
   font-weight: 600;
@@ -7488,7 +7629,25 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   padding-inline: 2px;
 }
 .kp-rail__item[data-on] .kp-rail__label { font-weight: 700; }
-/* The product-line dot — the same 5px gilt mark the desktop nav carries, on the pip's corner.
+/* The full Swahili game name takes two lines in a fifth of a phone rail. Give each
+   classic non-coin slot the same 64px grid: 3 + 32 + 4 + 22 + 3. The other labels
+   sit in the centre of the 22px label row, so their baseline and the pips agree. */
+.kp-rail:not(.kp-rail--journey):lang(sw) .kp-rail__item:not(.kp-rail__item--coin) {
+  justify-content: flex-start;
+  padding-block: 3px;
+}
+.kp-rail:not(.kp-rail--journey):lang(sw) .kp-rail__item:not(.kp-rail__item--coin) .kp-rail__label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+}
+.kp-rail:not(.kp-rail--journey):lang(sw) .kp-rail__item[href="/updown"] .kp-rail__label {
+  white-space: normal;
+  text-overflow: clip;
+  text-align: center;
+}
+/* The product-line dot — the same 5px brand mark the desktop nav carries, on the pip's corner.
    ⭐ W3: it keeps its place beside the glyph — 2px right of the glyph's box and 2px above it, as on the 44×26 pip — so
    on the 56×32 pip around a 24px glyph it stands 9px from the right and 2px from the top, inside the lit pill's curve. */
 .kp-rail__dot {
@@ -7714,23 +7873,31 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 @media (min-width: 280px) { .kp-rail--journey:lang(en) .kp-rail__item { justify-content: center; } }
 @media (min-width: 332.8px) { .kp-rail--journey:lang(sw) .kp-rail__item { justify-content: center; } }
 @media (min-width: 360px) { .kp-rail--journey .kp-rail__item { justify-content: center; } }
-/* ⭐ FIVE TABS WHILE MASWALI MILLIONEA SHOWS (Ali, 2026-10-19; DESIGN_AUTHORITY §M8a item 11). The rail draws Millionea's
-   tab right after Juu/Chini (`journeyTabsFor`) and says so on the nav, `data-tabs="5"`: five equal tracks on the list, and
-   the five labels' own centring width. ⛔ The four-track rules above are not edited — a reader who is not shown
-   Millionea is drawn today's rail, its markup and its boxes — and these come after them, so at equal specificity the
-   five-track answer wins where both match.
-   The width is R9-C's rule with five slots: a label wraps where it needs more than a fifth of the phone, so the slots
-   centre from five times the longest label (the rail's 11px mono at 0.6em a letter and 1em a Chinese character, plus the
-   label's 2 × 2px). With the tickets tab's short rail label (`journey.tabTicketsShort`, the lead's rulings: Swahili
-   "Tiketi", English "Tickets"), every language's longest label is 9 letters — "Juu/Chini", "Millionea" (Latin in every
-   language), "Questions", "Up & Down" — 59.4 + 4 = 63.4px × 5 = 317, so ONE rule centres the slots from 317 in sw, en
-   and zh alike: at 320, the narrowest width we hold, every label sits on one line and every slot is centred. Below 317
-   (no width we hold) the slots stack from the top, as R9-C's rule says where a label would wrap. A copy change that makes
-   one language longer splits this by `:lang()`, as the four-track rules above are split. `test:visual-pass-r9c` §4b
-   derives the width from the dictionary and holds this rule to it. */
+/* ⭐ FIVE TABS WHILE MASWALI MILLIONEA SHOWS (Ali, 2026-10-19; DESIGN_AUTHORITY §M8a item 11). Millionea follows
+   Juu na Chini (`journeyTabsFor`): five equal tracks on the list. The four-track rules above remain the answer while
+   Millionea is withdrawn. The short tickets rail label fits in all languages at 320. U43 gives the game its full
+   Swahili name, "Juu na Chini", here too. Its measured 83.2px needs 416px across five tracks, so that label wraps and
+   all five pips remain top-aligned below 416. English and Chinese fit one line from 317 and centre there. At 416 the
+   Swahili label returns to one line and its five slots centre. `test:visual-pass-r9c` §4b derives both widths. */
 .kp-rail--journey[data-tabs="5"] > ul { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .kp-rail--journey[data-tabs="5"] .kp-rail__item { justify-content: flex-start; }
 @media (min-width: 317px) { .kp-rail--journey[data-tabs="5"] .kp-rail__item { justify-content: center; } }
+/* The four-tab label rule makes every label nowrap from 360. The full Swahili game name needs two lines through 415. */
+.kp-rail--journey[data-tabs="5"]:lang(sw) .kp-jtab__label { white-space: normal; text-overflow: clip; line-height: 1.15; }
+@media (min-width: 317px) { .kp-rail--journey[data-tabs="5"]:lang(sw) .kp-rail__item { justify-content: flex-start; } }
+@media (min-width: 416px) { .kp-rail--journey[data-tabs="5"]:lang(sw) .kp-jtab__label { white-space: nowrap; text-overflow: ellipsis; line-height: 1; } }
+@media (min-width: 416px) { .kp-rail--journey[data-tabs="5"]:lang(sw) .kp-rail__item { justify-content: center; } }
+/* ⭐ …AND NO TWO LABELS STAND CLOSER THAN THEIR PIPS (MASWALI-BUILD S5-FIX-PLATFORM D14, 2026-10-21). In five equal
+   tracks English's three nine-letter neighbours ("Questions", "Up & Down", "Millionea": 9 × 6.6 = 59.4px each) stood
+   4.6px apart at 320 (the tile journey-home-en-320 read ~5px), where the 56px pips above them stand 8px apart. Every
+   label fits its track, so the rail's own answer to a label that does not (a second line, the slots stacked from the
+   top) does not apply: it would break a game name that fits. Below the width where that pair clears 8px untouched
+   (5 × (59.4 + 8) = 337), English's labels close their tracking by 0.04em (9 × 6.16 = 55.4px, 8.6px apart at 320).
+   Swahili (its long name on two lines through 415) and Chinese clear 8px at every width as they are.
+   `test:visual-pass-r9c` §4c measures every neighbour pair in the three languages at every width from 320 with §4's
+   own width model and holds this minimum; the four-tab rail is not touched. */
+.kp-rail--journey[data-tabs="5"]:lang(en) .kp-jtab__label { letter-spacing: -0.04em; }
+@media (min-width: 337px) { .kp-rail--journey[data-tabs="5"]:lang(en) .kp-jtab__label { letter-spacing: normal; } }
 /* ⭐ ONE TAB IS LIT IN EVERY FRAME (2026-10-09, the visual pass round 4, R4-J; E37/E41, tiles 301 306 333). The classic
    slot fades its ink and its pip over --t-quick (`.kp-rail__item`, `.kp-rail__pip`), so for 140ms after the router
    commits the new page the pill is half on the tab being left and half on the new one, beside the new label already bold
@@ -8151,9 +8318,7 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   height: 52px;
   margin-top: calc(-1 * var(--kp-coin-pull));
   border-radius: var(--r-pill);
-  /* The ring IS the mark's split. `from -14deg` starts the sweep where the mark's chord meets the
-     rim, so 0–50% paints the RIGHT half red and 50–100% the LEFT half green — the mark's own
-     orientation, not a mirror of it. */
+  /* The coin ring repeats the mark's split, then the gold deposit face sits above it. */
   background: conic-gradient(from -14deg,
       var(--kp-coin-red) 0 50%,
       var(--kp-coin-green) 50% 100%);
@@ -8512,7 +8677,6 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 /* The rows that hold real controls, above the link. Whole rows — see the note above. */
 .mcardp > .mcardp-actions,
 .mcardp > .mcardp-meta,
-.mcardp > .mcardp-foot,
 .mcardp > .ud-act { z-index: 3; }
 
 .mcardp-share::after {
@@ -8524,36 +8688,169 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
      symmetric reach would leave ~1.5px between two live controls and each would steal the
      other's edge. 4px on the right keeps that gap at 8px. To the LEFT the footer row is 223px
      of empty card, so the reach grows into space no control wants.
-     top / bottom are UNCHANGED at -9 / -14: `test:card-share` §4 pins both literals, and with
-     the box stretched to the row they already clear 40px. */
+     The U43 compact footer needs one extra pixel of downward reach to clear the
+     40px tap floor; browser hit-testing guards both controls. */
   left: -24px;
   right: -4px;
   top: -9px;
-  bottom: -14px;
+  bottom: -15px;
 }
 
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   THE UP & DOWN CARD'S INNER RHYTHM (U3). These six hooks replace the Tailwind margin
-   utilities and one inline `paddingTop: 12` the card carried, so the numbers live in one place
-   and Compact can step them. Each value is EXACTLY what the card shipped with, so Comfortable
-   and every width >= 640 are a zero diff — proven by measurement, not by assertion.
-   .ud-act keeps `margin-top: auto`: it is what bottom-pins the action block, not spacing. */
-.ud-pod { margin-top: var(--ud-gap-lg); }
-.ud-stats { margin-top: var(--ud-gap-lg); }
-.ud-split { margin-top: var(--ud-gap-md); }
-.ud-prices { margin-top: var(--ud-gap-sm); }
-.ud-act { margin-top: auto; padding-top: var(--ud-act-pt); }
-.ud-foot { margin-top: var(--ud-gap-lg); padding-top: var(--ud-gap-sm); }
+/* U43: one card rhythm in every state. Let an outcome card keep its own content
+   height beside a live round; the shared market card otherwise fills the grid row. */
+.ud-card { height: auto; gap: var(--ud-gap); padding: var(--ud-pad); }
+/* Match the live card footprint from 360px upward, where there is room to
+   distribute the locked explanation. The 320px card follows its content. */
+.ud-card[data-phase="locked"][data-ud-layout="guest"] { min-height: 329px; }
+.ud-card[data-phase="locked"][data-ud-layout="player"] { min-height: 381px; }
+.ud-card[data-phase="locked"][data-ud-layout="held"] { min-height: 381px; }
+.ud-card[data-phase="locked"] .ud-act { flex: 0 0 auto; margin-top: 0; }
+@media (min-width: 360px) {
+  .ud-card[data-phase="open"][data-ud-layout="guest"] { min-height: 329px; }
+  .ud-card[data-phase="open"][data-ud-layout="player"] { min-height: 381px; }
+  .ud-card[data-phase="open"][data-ud-layout="held"] { min-height: 381px; }
+  .ud-card[data-phase="locked"] { justify-content: space-between; }
+}
+@media (max-width: 359px) {
+  /* density: general — the 320 locked card follows its content instead of reserving the live card's footprint, so its
+     footer stays clear of the rail; a height floor released, not card spacing — both card-spacing settings. */
+  /* The 320px holder previously had roughly 140px of blank card below its
+     next-round sentence; that also placed its source footer under the rail. */
+  .ud-card[data-phase="locked"][data-ud-layout="guest"],
+  .ud-card[data-phase="locked"][data-ud-layout="player"],
+  .ud-card[data-phase="locked"][data-ud-layout="held"] { min-height: 0; }
+}
+@media (min-width: 1024px) {
+  .ud-card[data-phase="locked"][data-ud-layout="guest"] { min-height: 345px; }
+  .ud-card[data-phase="locked"][data-ud-layout="player"] { min-height: 394px; }
+  .ud-card[data-phase="locked"][data-ud-layout="held"] { min-height: 419px; }
+}
+/* The Up & Down bet receipt keeps every disclosure but compacts its shared
+   modal's phone rhythm so both follow-up actions fit a 740px viewport. */
+@media (max-width: 639px) {
+  /* density: general — the Up & Down receipt's own modal rhythm on a phone, not the board's card spacing; both settings. */
+  .orm-phone-compact { padding: var(--sp-4); }
+  .orm-phone-compact .orm-crest { width: var(--sp-12); height: var(--sp-12); }
+  .orm-phone-compact .orm-eyebrow { margin-top: var(--sp-2); }
+  .orm-phone-compact .orm-details { margin-top: var(--sp-2); gap: var(--sp-1); }
+  .orm-phone-compact .orm-detail { padding: var(--sp-1) var(--sp-3); }
+  .orm-phone-compact .orm-actions { margin-top: var(--sp-3); }
+}
+/* A 320 × 640 receipt has to show the projection qualifier before its short
+   auto-close window. Keep all six rows, full-size actions and 13px body copy;
+   remove vertical whitespace only, within this receipt's compact opt-in. */
+@media (max-width: 639px) and (max-height: 679px) {
+  /* density: general — the same receipt on a short phone (its qualifier inside the auto-close window), not the board's
+     card spacing; both settings. */
+  .orm-phone-compact { padding-block: var(--sp-2); }
+  .orm-phone-compact .orm-crest { width: var(--sp-10); height: var(--sp-10); }
+  .orm-phone-compact .orm-eyebrow { margin-top: var(--sp-1); }
+  .orm-phone-compact .orm-details { margin-top: var(--sp-1); gap: 2px; }
+  .orm-phone-compact .orm-detail { padding-block: 2px; }
+  .orm-phone-compact .orm-actions { margin-top: var(--sp-2); gap: var(--sp-1); }
+  .orm-phone-compact .orm-actions + p { margin-top: var(--sp-1); }
+}
+.ud-identity { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; min-height: var(--sp-8); }
+.ud-title { flex: 1 1 auto; min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-display); font-size: 15px; font-weight: 600; }
+.ud-window { flex: 0 0 auto; color: var(--text-subtle); font-size: var(--type-small); }
+.ud-clock { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); min-height: 28px; }
+.ud-clock-caption { display: inline-flex; align-items: center; gap: var(--sp-1); min-width: 0; }
+.ud-card-result { font-size: 15px; }
+.ud-beat, .ud-now { min-width: 0; }
+.ud-figure { font-size: 15px; }
+.ud-stats, .ud-split { margin-top: 0; }
+.ud-act { margin-top: auto; padding-top: 0; }
+.ud-foot { margin-top: 0; padding-top: var(--sp-1); }
+.ud-card-wait, .ud-card-payouts, .ud-card-own-result, .ud-card-refund { display: flex; flex-direction: column; gap: var(--sp-2); }
+.ud-card-next { margin-top: var(--sp-2); font-size: var(--type-small); }
+.ud-card-next-button { min-height: var(--h-control-md); }
+.ud-refund-brief { display: block; }
+.ud-stake-rail { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.ud-stake-rail::-webkit-scrollbar { display: none; }
+.ud-stake-chip[aria-checked="true"] { background: var(--pill-active); color: var(--text); outline: 1px solid var(--brand-400); outline-offset: -1px; }
+@media (max-width: 390px) {
+  /* density: general — three lines that repeat what is already on screen leave a phone's board (the tagline, the ready
+     helper, the one-sided caption), so a held player's choices reach above the rail; words, not card spacing — both
+     card-spacing settings. */
+  /* The title already names the game. Reclaim one line before the first card
+     so held players can reach both full-size choices above the phone rail. */
+  .ud-board-page .ud-board-header > p:last-child { display: none; }
+  /* The selected stake and labelled side buttons already say how to place a
+     ready bet. Keep pending, low-balance and refusal feedback visible. */
+  .ud-card .ud-stake-ready-helper { display: none; }
+  /* The brief condition above the choices is the card's only refund sentence. */
+  .ud-card .ud-oneside-caption { display: none; }
+}
+@media (max-width: 359px) {
+  /* density: general — two fits at the smallest width, held in both card-spacing settings: a held card's row gaps give
+     a pixel each so its choices clear the fixed rail (measured at the default spacing), and the plus glyph keeps all
+     five stakes on one row. */
+  /* A held player's extra status line previously left the choices 23px above
+     the fixed rail. One pixel from each non-money row gap restores clearance. */
+  .ud-card[data-ud-layout="held"][data-phase="open"] { gap: 3px; }
+  /* The smallest width needs the plus glyph to keep all five stakes on one row in either density. */
+  .ud-custom-word { display: none; }
+}
+/* U43 B3: each filter axis remains a single visible row. A genuine overflow also
+   reveals the kit sheet; the strip itself stays operable for touch and keyboard. */
+.ud-filter-rail { max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: none; }
+.ud-filter-rail::-webkit-scrollbar { display: none; }
+/* U43 B3: the short names remain visible. At the narrowest width the actions
+   wrap below the title; the removed tape leaves more room before the card. */
+.ud-board-header > div:first-child { flex-wrap: wrap; align-items: center; }
+.ud-header-action { min-height: var(--tap-min); padding-inline: var(--sp-2); white-space: nowrap; }
+.ud-board-stage { display: flex; flex-direction: column; min-width: 0; }
+.ud-board-rounds { order: 1; min-width: 0; margin-top: var(--sp-4); }
+.ud-board-lab { order: 2; min-width: 0; margin-top: var(--sp-5); }
+.ud-board-viz { display: flex; flex-direction: column; gap: var(--sp-4); }
+.ud-board-cubes { order: 1; min-width: 0; }
+.ud-board-chart { order: 2; min-width: 0; }
+.ud-chart-trigger { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); min-height: var(--tap-min); padding-inline: var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--bg-elevated); color: var(--text); font-family: var(--font-mono); font-size: var(--type-small); }
+.ud-chart-trigger > :last-child { transition: transform var(--t-quick) var(--m-glide); }
+.ud-chart-trigger[aria-expanded="true"] > :last-child { transform: rotate(180deg); }
+.ud-chart-slot:not([hidden]) { min-height: 300px; margin-top: var(--sp-3); }
+@media (max-width: 359px) {
+  /* density: general — the Up & Down page's own rhythm above its first card at 320 (header, both filter rows), so the
+     first Up/Down pair clears the fixed rail; page chrome, not card spacing — both card-spacing settings. */
+  /* U43 B3: keep both 44px filter rows while the first Up/Down pair clears
+     the fixed rail on a 320×640 phone. The tagline restates the h1 here. */
+  .ud-board-page { padding-top: var(--sp-1); }
+  .ud-board-page .ud-board-header > div:first-child { row-gap: var(--sp-1); }
+  .ud-board-page > .ud-filter-rail.mt-4 { margin-top: var(--sp-1); }
+  .ud-board-page > .ud-filter-rail.mt-2 { margin-top: var(--sp-1); }
+  .ud-board-page .ud-board-rounds { margin-top: var(--sp-1); }
+}
+@media (min-width: 1024px) {
+  .ud-board-stage { display: grid; grid-template-columns: minmax(0, 1fr) 392px; gap: var(--sp-5); align-items: start; }
+  .ud-board-lab { order: 1; grid-column: 1; grid-row: 1; margin-top: var(--sp-4); }
+  .ud-board-rounds { order: 2; grid-column: 2; grid-row: 1; }
+  .ud-board-chart { order: 1; }
+  .ud-board-cubes { order: 2; }
+  .ud-chart-slot:not([hidden]) { min-height: 380px; }
+  /* A saved closed chart must not strand the playable cards at the far edge
+     of an empty chart column. Keep the player's choice, fill the board with
+     cards first, then put recent results and the chart control underneath. */
+  .ud-board-stage:has(.ud-board-viz[data-viz-state="closed"]) { grid-template-columns: minmax(0, 1fr); }
+  .ud-board-stage:has(.ud-board-viz[data-viz-state="closed"]) .ud-board-rounds { grid-column: 1; grid-row: 1; }
+  .ud-board-stage:has(.ud-board-viz[data-viz-state="closed"]) .ud-board-lab { grid-column: 1; grid-row: 2; margin-top: var(--sp-5); }
+  .ud-board-stage:has(.ud-board-viz[data-viz-state="closed"]) .ud-board-chart { order: 2; }
+  .ud-board-stage:has(.ud-board-viz[data-viz-state="closed"]) .ud-board-cubes { order: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .ud-chart-trigger > :last-child { transition: none; } }
+[data-motion="reduced"] .ud-chart-trigger > :last-child,
+[data-motion="off"] .ud-chart-trigger > :last-child { transition: none; }
 /* The round page's open + targets: beside the confirmed price where there is room; below 400 they wrap under it
    and read as a left-aligned list, not a column floating at the right (frame panel, 2026-09-27). */
 .ud-hero-chunk { white-space: nowrap; }
-/* F12/F12b: the round clock shares the card width on phones. Keep one caption row
-   and one digit row in every phase; Swahili cannot push the box into the gutter. */
+/* F12/F12b: the round clock shares the card width on phones. Counting phases
+   keep separate caption and digit rows; Swahili cannot push the box into the gutter. */
 .ud-round-pod { display: flex; align-items: center; gap: var(--sp-3); max-width: 100%; padding: var(--sp-2) var(--sp-4); background: var(--bg-inset); border: 1px solid color-mix(in oklab, var(--border) 70%, transparent); border-radius: var(--r-md); }
+.ud-round-pod[data-text-only="true"] { min-height: var(--tap-min); justify-content: center; }
 @media (max-width: 639px) {
   /* density: general — a round clock fits the phone gutter in both card sizes */
   .ud-round-pod { width: 100%; flex-direction: column; align-items: flex-start; gap: var(--sp-2); }
+  .ud-round-pod[data-text-only="true"] { min-height: var(--tap-min); width: fit-content; max-width: 100%; border-radius: var(--r-pill); }
 }
 /* ⭐ A LINE THAT OPENS ON THE QUOTE STAMP OPENS ON A CAPITAL (round 4, 2026-10-09, tiles 165 166). The stamp is the
    dictionary's mid-sentence word — "imenukuliwa" / "quoted", written to follow "… · " — and with no move to follow
@@ -8602,9 +8899,8 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    sum — the skeleton-lies defect the token route exists to make impossible.
 
    The compact row gap is --sp-2, four pixels below Comfortable's --sp-3.
-   --mcard-meta-mb returns those four pixels above the footer so its reach
-   stays separated from the prior row. V2a's new geometry targets are 326px
-   cold start and 261px closed at 360 SW; browser re-measurement remains due. */
+   The one-row footer has a measured 277.5px live card and 265.5px closed
+   card at 360; the density residual below keeps the skeleton aligned. */
 @media (max-width: 639.98px) {
   /* density: general — the 320px market-card meta line previously used 257.6px of 258px.
      The new kit-sized column gap costs up to 2px; keeping 16px side padding would
@@ -8623,18 +8919,14 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
        exists and is only trimmed here. It is never removed and its space is never reserved. */
     --mcard-spark-h: 20px;
     --mcard-meta-mb: var(--sp-1);
+    --mcard-base: 175.5px;
   }
   html:not([data-density="comfortable"]) .market-grid { gap: var(--sp-3); }
 
   /* The Up & Down card, one rung down each. Its height follows the LIVE ROUND (U1 measured the
      same card at 468 and 660px minutes apart), so its target is stated per phase in §2 and read
      off data-phase — never diffed against a card in another state. */
-  html:not([data-density="comfortable"]) {
-    --ud-gap-lg: 12px;
-    --ud-gap-md: 8px;
-    --ud-gap-sm: 8px;
-    --ud-act-pt: 8px;
-  }
+  html:not([data-density="comfortable"]) { --ud-pad: var(--sp-3); --ud-gap: var(--sp-1); }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────

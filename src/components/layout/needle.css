@@ -64,7 +64,7 @@
   --ndl-face-a-hi: #1C9264;  --ndl-face-a-lo: #146F4C;   /* left face  */
   --ndl-face-b-hi: #A83A43;  --ndl-face-b-lo: #822A33;   /* right face */
   --ndl-inlay-a:   #54EDA6;  --ndl-inlay-b:   #FF7B82;   /* seam hairlines */
-  --ndl-seam:        #FFE7B0;                            /* the needle itself */
+  --ndl-seam:        #FFE7B0;                            /* gilt needle */
   --ndl-seam-glow:   rgba(255, 214, 120, 0.9);
   --ndl-seam-shadow: #070A1E;
   --ndl-hub-0: #FFF3D4; --ndl-hub-1: #EFCC7C;

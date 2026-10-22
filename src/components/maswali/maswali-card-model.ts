@@ -12,9 +12,11 @@
 import type { MillioneaHub } from "@/lib/server/maswali-player";
 import type { HomeCardState } from "@/components/maswali/maswali-home-card";
 import { eatWeekday, weekNumberOf } from "@/components/maswali/maswali-format";
-import { eatIsoWeek, eatNextWeekAt } from "@/lib/eat-day";
+// The week's phase from its pure home (`millionea-phase.ts`), never `millionea-view.ts`: that joint reaches the Seal Line's
+// client marks, which would join `/`'s first load (test:journey-home 7.client; test:maswali-doors 3.2).
+import { millioneaWeekPhase, weekPhaseWord } from "@/app/millionea/millionea-phase";
+import { eatDayKey, eatIsoWeek, eatNextWeekAt } from "@/lib/eat-day";
 import { pctNum } from "@/lib/utils";
-import { MAIN_COUNT, weekVoidCertain, type GradableQuestion } from "@/lib/maswali-score";
 import type { Dict } from "@/lib/i18n-dict";
 
 
@@ -55,12 +57,16 @@ function msOf(iso: string | null | undefined): number | null {
  * ⭐ THE CARD, FROM THE HUB'S READ MODEL — or null when it must not be drawn.
  *   · a week on sale: its close, the reader's tickets of the cap, and — at the cap — when the next week opens
  *     (`nextOpenMs`, `nextWeekOpen`'s answer: none in a final week or while Millionea ends); a carry still waiting on an
- *     earlier week makes the figure "at least" and names that week (§M8a item 9, as the hub's pool block does);
+ *     earlier week makes the figure "at least" and names that week (§M8a item 9, as the hub's pool block does); and the
+ *     week's frozen ticket price, which the card says to a reader who holds no ticket this week (the critic's M7);
  *   · paused by an operator: no figure (§10 §3.1);
- *   · sales closed, results arriving: how many of the fifteen are out — unless its void is already certain (MR-18):
+ *   · sales closed, results arriving: how many of the fifteen are out, and where the week stands after them — the one
+ *     answer every surface says (S5-FIX-PLAYER's `millioneaWeekPhase`, the critic's P6 on the card: "15 of 15 results in",
+ *     then nothing): the objection window and its end while it runs, then "Settling" — unless its void is certain (MR-18):
  *     then "being voided", with no jackpot and no rule (the S5 UI review, MEDIUM 7);
  *   · no week on sale: the last settled week's line — or a voided one's, its refunds landed or on their way — else the
- *     day the next one opens (MB-84: no pre-sale), or, while Millionea ends, the day its announced final week opens;
+ *     day and date the next one opens (MB-84: no pre-sale), or, while Millionea ends, the day and date its announced final
+ *     week opens;
  *   · and on every card but the final week's own, the announced final week by its number (`finalAhead`).
  * `fallbackRate` is the configured fee share, used ONLY where no week froze one; a week's card prints its frozen rate (L2).
  * ⛔ A week whose figure cannot be read draws no card, rather than a rule without its rate.
@@ -88,10 +94,12 @@ function homeCardBody(t: Dict, hub: MillioneaHub, fallbackRate: number | null, n
       const held = w.mine?.held ?? null;
       const next = nextOpenMs === null ? null : { week: eatIsoWeek(nextOpenMs).week, opensOn: eatWeekday(t, nextOpenMs) };
       const capFull = held !== null && held >= w.ticketCap ? { next } : undefined;
-      return { ...base, ...bound, jackpot: w.pool.jackpot, state: { kind: "open", closesAt, held, capFull } };
+      // The week's frozen price (MR-11, the hub's `ticketPrice`): the card says what a ticket costs to a reader who holds none.
+      return { ...base, ...bound, jackpot: w.pool.jackpot, state: { kind: "open", closesAt, held, price: w.ticketPrice, capFull } };
     }
-    if (voidCertainOf(w.questions)) return { ...base, ...exact, jackpot: null, state: { kind: "voiding" } };
-    return { ...base, ...bound, jackpot: w.pool.jackpot, state: { kind: "closed", resultsIn: w.resultsOut } };
+    const phase = millioneaWeekPhase(w, nowMs);
+    if (phase.kind === "voiding") return { ...base, ...exact, jackpot: null, state: { kind: "voiding" } };
+    return { ...base, ...bound, jackpot: w.pool.jackpot, state: { kind: "closed", resultsIn: w.resultsOut, phase: { kind: phase.kind, objectionsUntil: phase.objectionsUntil, word: weekPhaseWord(t, w.state, phase) } } };
   }
   if (fallbackRate === null || !Number.isFinite(fallbackRate)) return null;
   const pct = pctNum(fallbackRate);
@@ -108,22 +116,16 @@ function homeCardBody(t: Dict, hub: MillioneaHub, fallbackRate: number | null, n
   }
   const opens = msOf(hub.nextOpensAt);
   if (opens !== null && hub.life !== "RETIRED") {
-    return { week: eatIsoWeek(opens).week, pct, cap: 0, finalWeek: false, ...exact, jackpot: null, state: { kind: "presale", opensOn: eatWeekday(t, opens) } };
+    // The day AND its date (the critic's L10): the next open is the template's next one, always within seven days, so a bare
+    // weekday read on that same weekday ("Opens Monday", said on a Monday) could mean today or a week ahead.
+    return { week: eatIsoWeek(opens).week, pct, cap: 0, finalWeek: false, ...exact, jackpot: null, state: { kind: "presale", opensOn: eatWeekday(t, opens), opensDay: eatDayKey(opens) } };
   }
   // No week and no last week, while the final week waits to open (the hub's `nextOpensAt` is null while Millionea ends):
-  // the final week's own presale line, on the time it was announced to open.
+  // the final week's own presale line, on the time it was announced to open — its day and its date, as every presale says
+  // it (the critic's L10).
   const finalOpens = hub.finalAhead ? msOf(hub.finalAhead.opensAt) : null;
   if (hub.finalAhead && finalOpens !== null && finalOpens > nowMs) {
-    return { week: weekNumberOf(hub.finalAhead.code), pct, cap: 0, finalWeek: true, ...exact, jackpot: null, state: { kind: "presale", opensOn: eatWeekday(t, finalOpens) } };
+    return { week: weekNumberOf(hub.finalAhead.code), pct, cap: 0, finalWeek: true, ...exact, jackpot: null, state: { kind: "presale", opensOn: eatWeekday(t, finalOpens), opensDay: eatDayKey(finalOpens) } };
   }
   return null;
-}
-
-/** The week's void is already certain (the one grader's `weekVoidCertain`); a record it refuses is not. */
-function voidCertainOf(questions: ReadonlyArray<{ slot: number; role: "MAIN" | "RESERVE"; outcome: GradableQuestion["outcome"] }>): boolean {
-  try {
-    return weekVoidCertain(questions.map((q) => ({ role: q.role, ordinal: q.role === "MAIN" ? q.slot : q.slot - MAIN_COUNT, outcome: q.outcome })));
-  } catch {
-    return false;
-  }
 }

@@ -128,9 +128,8 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
         </p>
       )}
 
-      {/* DS-6 — composed from the semantic families (the success green for the free
-          window, royal for the fee'd exit), not hand-typed oklch. ⭐ `--success-*`, not `--yes-*` (R5-I, 2026-10-09;
-          §B2a): "no fee" is good news about a sale, not the YES side — and the ticket being sold may be a NO one. */}
+      {/* DS-6 — a free exit is a neutral return of stake, not a win or a side.
+          The fee'd exit keeps its royal treatment; neither path invents a gain. */}
       <div
         className="rounded-lg border p-4"
         style={{

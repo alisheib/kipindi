@@ -4,7 +4,8 @@ import { Fragment, Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { BrandSpinner, TippingBar } from "@/components/brand";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
-import { marketCategoryLabel, pickLocalized } from "@/lib/localized";
+import { marketCategoryLabel } from "@/lib/localized";
+import { marketDisplayTitle } from "@/lib/updown-round-name";
 import { useT } from "@/lib/i18n";
 import { SearchBox } from "@/components/ui/search-box";
 import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
@@ -227,7 +228,7 @@ const TAG_BOX_Y = "py-0.5 border-y";
  */
 function PulseCard({ market, index }: { market: Market; index: number }) {
   const { t, locale } = useT();
-  const title = pickLocalized(locale, market.titleEn, market.titleSw, market.titleZh);
+  const title = marketDisplayTitle(t, locale, market);
   const Cat = I[categoryGlyph(market.category)];
   const isUpDown = market.productLine === "UPDOWN";
   const productLine = isUpDown ? "UPDOWN" : "MARKET";

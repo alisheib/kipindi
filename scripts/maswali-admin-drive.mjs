@@ -7,20 +7,26 @@
  * ONCE PER SERVER: right after `qa:maswali-admin-shots` (whose seed call built the weeks), or on its own (step 6 seeds).
  *   1 · the Owner signs in (`/api/dev-test/seed-admin`, as the shots do) and reads the product's standing;
  *   3 · checks the trusted sources the draft cites, then drafts a DRIVE week in the builder — fifteen cards, each
- *       criterion from its kind's template with every {…} filled, a calendar suggestion in M1 when the store has one.
+ *       criterion from its kind's template with every {…} filled; seeds a local calendar fixture through the events
+ *       console, checks that its suggestion fills M1, then edits M1 into the officer's reviewed question.
  *       A drive week, because the seeded public week is selling and one public week sells at a time (MR-3);
  *   4 · the drafter's own attestation is refused (MB-79); a second reader — a MODERATOR, in a browser context of their
  *       own (a second context for the SAME account would sign the first out) — attests; the Owner opens the week;
  *   2 · (inside 4) when the open refuses for want of a licence basis or of guarantee, the Owner records the basis
  *       (typed RECORD) or pays in exactly what the refusal says is short (typed FUND GUARANTEE), then opens again;
  *   5 · a close after the first event is refused in the service's words; an earlier close is accepted (MB-28);
- *   6 · on the seeded weeks (`/api/dev-test/seed-maswali`; a 409 means the shots already seeded this store): seals the
- *       closed week's fifteen results (typed SEAL); reads the ready week's prepared settlement, then releases it (typed
+ *   6 · on the seeded weeks (`/api/dev-test/seed-maswali`; a 409 means the shots already seeded this store): enables the
+ *       two-officer rule only after seeding, seals M1, has a different MODERATOR confirm its exact review, returns the
+ *       local rule to single-admin, then seals the other fourteen; reads the ready week's prepared settlement and releases it (typed
  *       RELEASE); pauses and resumes sales (PAUSE / RESUME); voids the week that voids whole (VOID); holds, releases,
- *       holds again and forfeits a winning share (HOLD, RELEASE, FORFEIT SHARE).
+ *       holds again and forfeits a winning share (HOLD, RELEASE, FORFEIT SHARE); and, last, makes a week the final week
+ *       (typed SUNSET MILLIONEA).
+ * ⭐ S5-FIX-SRV · ONE TRUTH FOR EVERY ACT: the open (4.6), a move of the close (5.3), the week void (6.4c) and the stop
+ *    (6.6) each run once with their audit row LOST (`/api/dev-test/maswali-audit-fault` arms one), and the page must say
+ *    so in the console's own words, readable whole at 360 and at 1280, a tile at each.
  * After each act: what the page SAYS (the outcome sentence and the state chip), no console error since the act before,
  * and a viewport tile (never full-page) in `.50pick-shots/maswali/drive/`.
- * ⛔ The only routes it calls itself are those two dev-only ones; everything else is a click, a key or a typed word.
+ * ⛔ The only routes it calls itself are those three dev-only ones; everything else is a click, a key or a typed word.
  * ⚠️ THE WEEK VOID NEEDS THE TICK OFF (`MASWALI_SCHEDULER=false LIFECYCLE_TICKER=false` on the dev server): the Millionea
  *    tick voids a certain week as soon as its window has closed (`maswali-scheduler.ts`), so with it on, the seeded
  *    week is voided by the system first and 6.4 SKIPs, saying so.
@@ -29,6 +35,7 @@
  *    decode them (`test:source-bytes`). A slash in a pattern is written `[/]`.
  */
 import { chromium } from "playwright";
+import { checkOpenChecklist } from "./maswali-admin-checklist.mjs";
 import { mkdirSync } from "node:fs";
 
 const BASE = process.env.BASE || "http://localhost:3410";
@@ -175,6 +182,14 @@ const RESUME_WHY = "Drive: the fixture is confirmed; sales start again.";
 const HOLD_WHY = "Drive: the deposit that funded this ticket is under review.";
 const RELEASE_WHY = "Drive: the review cleared the deposit; the player keeps the share.";
 const FORFEIT_WHY = "Drive: the deposit was reversed; the share goes back to the jackpot.";
+const STOP_WHY = "Drive: the Owner stops Millionea after this week.";
+/** S5-FIX-SRV · what the console says when an act LANDED but its audit row was lost (the actions' own sentences). */
+const UNRECORDED = {
+  open: "The open landed, but its audit record could not be fully written. Tell an administrator; do not repeat the open.",
+  move: "The move landed, but its audit record could not be fully written. Tell an administrator; do not repeat the move.",
+  void: "The week void landed, but its audit record could not be fully written. Tell an administrator; do not repeat the void.",
+  stop: "The stop landed, but its audit record could not be fully written. Tell an administrator; do not repeat the stop.",
+};
 
 // ── The browser: one context per account ───────────────────────────────────────────────────────────────────────────
 const browser = await chromium.launch();
@@ -254,7 +269,8 @@ async function typeTime(group, hhmm) {
 /**
  * Drive one kit ConfirmModal to its end. `fields` fills the dialog's own body; a hard tier then types its word — its
  * confirm must be dead until then (`gated`) — and the confirm is pressed. The controls close their dialog only when the
- * act went through (`closed`); a refusal leaves it open and prints the service's sentence behind it, read from `alert`.
+ * act went through (`closed`); a refusal leaves it open and prints the service's sentence in `alert`.
+ * `alert` can be a locator for a page alert or a function that scopes an alert to the open dialog.
  */
 async function confirmDialog(p, title, { word, confirm, alert, fields }) {
   const dlg = p.getByRole("alertdialog", { name: title, exact: true });
@@ -270,7 +286,7 @@ async function confirmDialog(p, title, { word, confirm, alert, fields }) {
   const end = await until(async () => {
     if ((await dlg.count()) === 0) return { closed: true };
     const busy = (await dlg.getAttribute("aria-busy", { timeout: 1_000 }).catch(() => null)) === "true";
-    const said = alert ? await alertText(alert) : "";
+    const said = alert ? await alertText(typeof alert === "function" ? alert(dlg) : alert) : "";
     return said && !busy ? { closed: false, refusal: said } : null;
   }, 120_000);
   const cancel = async () => {
@@ -281,13 +297,41 @@ async function confirmDialog(p, title, { word, confirm, alert, fields }) {
   return { gated, closed: !!end?.closed, refusal: end?.refusal ?? (end ? "" : "the dialog neither closed nor said why"), cancel };
 }
 
+/** S5-FIX-SRV · arm ONE lost audit write: the next row with `action` an act owes is reported unrecorded and not written. */
+async function loseNextAuditRow(action) {
+  const res = await ctx.request.post(`${BASE}/api/dev-test/maswali-audit-fault`, { data: { action } });
+  return res.ok();
+}
+/**
+ * The act's warning, read off the page in the console's own words, then measured where an officer reads it: whole inside
+ * the viewport and no sideways scroll, at 360 and at 1280, with a tile at each width.
+ */
+async function auditWarningReads(tag, scope, words, tile) {
+  const warning = scope.getByRole("alert").filter({ hasText: words });
+  const shown = await until(async () => (await warning.count()) > 0, 30_000);
+  ok(`${tag} the page says the act landed without its audit record, in the console's words`, !!shown, await alertText(scope.getByRole("alert")));
+  if (!shown) return;
+  for (const width of [360, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await warning.first().scrollIntoViewIfNeeded();
+    const fit = await warning.first().evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return { left: r.left, right: r.right, width: r.width, root: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+    });
+    ok(`${tag} …and it reads whole at ${width}px: inside the viewport, with no sideways scroll`,
+      fit.left >= 0 && fit.right <= width + 1 && fit.width > 0 && fit.root <= 1, JSON.stringify(fit));
+    await shot(page, `${tile}-${width}`);
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
+}
+
 /** Run one part; a throw is that part's failure, and the drive goes on to the next part. */
 async function part(name, fn) {
   try { await fn(); } catch (e) { ok(`${name} · ran to its end`, false, clip(e?.message ?? e, 300)); errs.length = 0; }
 }
 
 // ── State the parts hand on ──────────────────────────────────────────────────────────────────────────────────────────
-let standing = { licence: "?", guarantee: "?" };
+let standing = { licence: "?", guarantee: "?", requirement: "?" };
 let weekPath = null, driveCode = null, opened = false;
 let SAT = null, SUN = null, THU = null;
 
@@ -304,6 +348,9 @@ await part("1 · sign in", async () => {
   };
   ok(`1.3 the standing reads: licence basis ${standing.licence}, guarantee ${standing.guarantee}`, standing.licence !== "?" && standing.guarantee !== "?");
   await checkpoint(page, "1", "01-weeks");
+  await go(page, "/admin/maswali/pools");
+  standing.requirement = /Needed now:\s*(TZS [\d,]+)/.exec(await page.locator("main").textContent())?.[1] ?? "?";
+  ok(`1.4 the pools page states the guarantee needed now: ${standing.requirement}`, standing.requirement !== "?");
 });
 
 // ── 3 · the draft ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -329,25 +376,38 @@ await part("3 · draft", async () => {
     r.expectEat = fmtEat(eatMs(r.date, r.time));
   }
 
+  // The fresh memory store has no operator-authored calendar rows. Add one through the real admin form, only on this
+  // localhost store, inside the builder's upcoming event window. The suggestion is a starting point, not a publishable
+  // question: after checking it fills M1, the officer edits that question before saving the draft.
+  const fixtureTitle = `Drive test fixture: a Saturday result for ${SAT}`;
+  await go(page, "/admin/events");
+  const eventForm = page.locator("form").filter({ has: page.getByText("Add a real event", { exact: true }) });
+  await eventForm.getByRole("textbox", { name: "What happens", exact: true }).fill(fixtureTitle);
+  await eventForm.locator('input[name="startsAt"]').fill(`${SAT}T10:00`);
+  await eventForm.getByRole("textbox", { name: "Official source URL", exact: true }).fill("https://www.nbc.co.tz/results");
+  await eventForm.getByRole("button", { name: "Add event", exact: true }).click();
+  const seededFixture = await until(async () => (await page.getByText(fixtureTitle, { exact: true }).count()) > 0, 30_000);
+  ok("3.1c the Owner adds one named local calendar fixture through the events console", !!seededFixture, fixtureTitle);
+  await go(page, "/admin/maswali/new");
+
   const line = page.getByRole("combobox", { name: "Line", exact: true });
   await choose(page, line, "Drive (private)");
   ok("3.2 the line is the private drive (a public week is selling, and one sells at a time, MR-3)", clip(await line.textContent()) === "Drive (private)", clip(await line.textContent()));
 
-  // §7b S4 item 7 · a suggestion fills a card; the officer edits from there (only the English words are kept here).
+  // §7b S4 item 7 · the event suggestion fills a card; the officer then edits it into a reviewed question.
   const calendar = page.locator("details").filter({ hasText: "Start from the calendar" });
-  if ((await calendar.count()) === 0) {
-    skipped("3.3 a calendar suggestion fills a card", "this store has no fixture or AI-drafted poll in the week's window — the in-memory store seeds neither (draftSuggestions, maswali-console.ts:172; the list renders only when it has one, week-builder.tsx:142)");
-  } else {
+  if (ok("3.3 a local calendar suggestion appears in the builder", (await calendar.count()) === 1)) {
     await calendar.locator("summary").click();
-    const fillSel = calendar.getByRole("combobox").first();
+    const fillSel = calendar.getByRole("combobox", { name: `Fill a slot with ${fixtureTitle}`, exact: true });
     const named = await fillSel.evaluate((el) => document.getElementById(el.getAttribute("aria-labelledby") ?? "")?.textContent ?? "");
     const sgText = clip(named.replace(/^Fill a slot with /, ""));
     await fillSel.click();
     await page.getByRole("option", { name: "M1", exact: true }).click();
     const m1 = page.locator('section[aria-label="Question M1"]').getByRole("textbox", { name: "Question · English", exact: true });
     const took = await until(async () => clip(await m1.inputValue()) === sgText, 10_000);
-    ok(`3.3 a calendar suggestion fills M1 with its words ("${clip(sgText, 60)}")`, !!took && sgText.length > 0, clip(await m1.inputValue(), 120));
-    if (took) { ROWS[0].keepEnglish = true; ROWS[0].en = sgText; }
+    ok(`3.3b the calendar suggestion fills M1 with its words ("${clip(sgText, 60)}")`, !!took && sgText === fixtureTitle, clip(await m1.inputValue(), 120));
+    await m1.fill(ROWS[0].en);
+    ok("3.3c the officer edits M1 to the reviewed question before saving", (await m1.inputValue()) === ROWS[0].en);
   }
 
   const cards = [];
@@ -357,7 +417,7 @@ await part("3 · draft", async () => {
     await sec.scrollIntoViewIfNeeded();
     await choose(page, sec.getByRole("combobox", { name: `${r.label} category`, exact: true }), r.category);
     await choose(page, sec.getByRole("combobox", { name: `${r.label} kind`, exact: true }), r.kind);
-    if (!r.keepEnglish) await field("Question · English").fill(r.en);
+    await field("Question · English").fill(r.en);
     await field("Question · Kiswahili").fill(r.sw);
     await field("Question · 中文").fill(r.zh);
     // MB-21 · the kind's own template, read back from the box, then every {…} filled from the card's facts.
@@ -398,9 +458,17 @@ await part("3 · draft", async () => {
   await until(async () => /^MLD-\d{4}-W\d{2}$/.test(clip(await h1.textContent())), 120_000);
   driveCode = clip(await h1.textContent());
   ok(`3.6 the week is ${driveCode}, on the drive line, its chip Draft`, /^MLD-\d{4}-W\d{2}$/.test(driveCode) && (await chipOf(page)) === "Draft", `${driveCode} · ${await chipOf(page)}`);
+  // Pools' "Needed now" covers already open weeks, so a draft must not change it. The draft's
+  // prospective floor appears in its own opening checklist and is checked separately below.
+  const beforeRequirement = standing.requirement;
+  await go(page, "/admin/maswali/pools");
+  standing.requirement = /Needed now:\s*(TZS [\d,]+)/.exec(await page.locator("main").textContent())?.[1] ?? "?";
+  ok(`3.6b the pools page still needs ${standing.requirement} for already open weeks`, standing.requirement === beforeRequirement);
+  await go(page, weekPath);
   const problems = (await card(page, "Before it can open").getByRole("listitem").allTextContents()).map((t) => clip(t).replace(/^•\s*/, ""));
-  ok("3.7 the open's checklist names one thing left, in words: the second reader's attestation (MB-79)",
-    problems.length === 1 && /A second reader has not attested/.test(problems[0]), problems.join(" | ").slice(0, 400));
+  const checklist = checkOpenChecklist(standing, problems);
+  ok("3.7 the open's checklist matches the live licence, guarantee and second-reader state (MB-79)",
+    checklist.ok, `${checklist.reason}; ${problems.join(" | ").slice(0, 400)}`);
   const qs = region(page, "Millionea week questions");
   const off2 = [];
   for (const r of ROWS) {
@@ -440,8 +508,12 @@ await part("4 · attest and open", async () => {
   if (!weekPath) { ok("4 · a drafted week to attest and open", false, "step 3 left no week"); return; }
   const own = card(page, "Before it can open");
   await own.getByRole("button", { name: "I read all three languages: they agree", exact: true }).click();
-  const refused = await until(() => alertText(own.getByRole("alert")), 30_000);
-  ok("4.1 the drafter's own attestation is refused: a second reader must attest (MB-79)", /cannot attest its translations/.test(refused ?? ""), refused ?? "no answer on the page");
+  const ownReview = await confirmDialog(page, `Attest ${driveCode}'s three languages?`, {
+    word: "ATTEST", confirm: "Record the attestation", alert: (dlg) => dlg.getByRole("alert"),
+  });
+  ok("4.1 the drafter's own attestation is refused after the hard confirm: a second reader must attest (MB-79)",
+    ownReview.gated && !ownReview.closed && /cannot attest its translations/.test(ownReview.refusal), ownReview.refusal);
+  await ownReview.cancel();
   ok("4.1b …and the week stays an unattested draft", (await chipOf(page)) === "Draft" && (await own.getByText("The three languages are attested.", { exact: true }).count()) === 0);
   await checkpoint(page, "4.1", "05-attest-refused");
 
@@ -454,8 +526,12 @@ await part("4 · attest and open", async () => {
     await go(reader, weekPath);
     const theirs = card(reader, "Before it can open");
     await theirs.getByRole("button", { name: "I read all three languages: they agree", exact: true }).click();
-    const attested = await until(async () => (await theirs.getByText("The three languages are attested.", { exact: true }).count()) > 0, 30_000);
-    ok("4.2b the second reader attests: the page says the three languages are attested", !!attested, await alertText(theirs.getByRole("alert")));
+    const secondReview = await confirmDialog(reader, `Attest ${driveCode}'s three languages?`, {
+      word: "ATTEST", confirm: "Record the attestation", alert: (dlg) => dlg.getByRole("alert"),
+    });
+    const attested = secondReview.closed && await until(async () => (await theirs.getByText("The three languages are attested.", { exact: true }).count()) > 0, 30_000);
+    ok("4.2b the second reader attests after the hard confirm: the page says the three languages are attested",
+      secondReview.gated && !!attested, secondReview.refusal || await alertText(theirs.getByRole("alert")));
     await checkpoint(reader, "4.2", "06-attested-by-second-reader");
   } finally {
     await readerCtx.close();
@@ -480,6 +556,9 @@ await part("4 · attest and open", async () => {
       && (await ready.getByText("The three languages are attested.", { exact: true }).count()) > 0, clip(await ready.textContent(), 300));
   await checkpoint(page, "4.3", "07-open-ready");
 
+  // S5-FIX-SRV · this open's own audit row is lost (one armed fault): the week still opens, and the page says so (4.6).
+  const armedOpen = await loseNextAuditRow("maswali.week.opened");
+  ok("4.4a the open's audit row is armed to be lost (the dev-only fault route)", armedOpen);
   await ready.getByRole("button", { name: "Open the week", exact: true }).click();
   const r = await confirmDialog(page, "Open the week for sale?", { confirm: "Open the week", alert: ready.getByRole("alert") });
   opened = r.closed;
@@ -489,6 +568,7 @@ await part("4 · attest and open", async () => {
   const selling = await until(async () => (await chipOf(page)) === "Selling", 60_000);
   ok("4.5 the open shows: the chip reads Selling and the close can be moved", !!selling && (await card(page, "Move the sales close").count()) > 0, await chipOf(page));
   await checkpoint(page, "4.4", "08-opened");
+  await auditWarningReads("4.6", page.locator("main"), UNRECORDED.open, "08b-open-unrecorded");
 });
 
 // ── 5 · move the close ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -502,8 +582,16 @@ await part("5 · move the close", async () => {
   await typeDate(mv, SAT);
   await typeTime(time, "12:00");
   await mv.getByRole("button", { name: "Move the close", exact: true }).click();
-  const refused = await until(() => alertText(mv.getByRole("alert")), 30_000);
-  ok("5.1 a close after the first event is refused, in the service's words", /The close must stay at least \d+ minutes before the first event[.]/.test(refused ?? ""), refused ?? "no answer on the page");
+  const lateReview = await confirmDialog(page, `Move ${driveCode}'s sales close?`, {
+    word: "MOVE CLOSE", confirm: "Move the close", alert: (dlg) => dlg.getByRole("alert"),
+    fields: async (dlg) => {
+      const text = clip(await dlg.textContent());
+      ok("5.1a the late-move dialog shows both EAT close values", text.includes(`Current close: ${was} (EAT)`) && text.includes(`New close: ${SAT} 12:00 (EAT)`), text);
+    },
+  });
+  ok("5.1 a close after the first event is refused after the hard confirm, in the service's words",
+    lateReview.gated && !lateReview.closed && /The close must stay at least \d+ minutes before the first event[.]/.test(lateReview.refusal), lateReview.refusal);
+  await lateReview.cancel();
   ok("5.1b …and the close did not move", (await nowCloses()) === was && was !== null && (await chipOf(page)) === "Selling", `${await nowCloses()} (was ${was})`);
   await checkpoint(page, "5.1", "09-close-refused");
 
@@ -511,10 +599,31 @@ await part("5 · move the close", async () => {
   await typeDate(mv, THU);
   await typeTime(time, "17:00");
   await mv.getByRole("button", { name: "Move the close", exact: true }).click();
-  const moved = await until(async () => (await nowCloses()) === want, 30_000);
-  ok(`5.2 an earlier close is accepted: the page now says it closes ${want} (EAT)`, !!moved && (await mv.getByRole("alert").count()) === 0, `${await nowCloses()} ${await alertText(mv.getByRole("alert"))}`);
+  const earlyReview = await confirmDialog(page, `Move ${driveCode}'s sales close?`, {
+    word: "MOVE CLOSE", confirm: "Move the close", alert: (dlg) => dlg.getByRole("alert"),
+    fields: async (dlg) => {
+      const text = clip(await dlg.textContent());
+      ok("5.2a the earlier-move dialog shows both EAT close values", text.includes(`Current close: ${was} (EAT)`) && text.includes(`New close: ${THU} 17:00 (EAT)`), text);
+    },
+  });
+  const moved = earlyReview.closed && await until(async () => (await nowCloses()) === want, 30_000);
+  ok(`5.2 an earlier close is accepted after the hard confirm: the page now says it closes ${want} (EAT)`,
+    earlyReview.gated && !!moved && (await mv.getByRole("alert").count()) === 0, earlyReview.refusal || `${await nowCloses()} ${await alertText(mv.getByRole("alert"))}`);
   ok("5.2b …and the week still sells", (await chipOf(page)) === "Selling", await chipOf(page));
   await checkpoint(page, "5.2", "10-close-moved");
+
+  // S5-FIX-SRV · one more move, its audit row lost (one armed fault): the close still moves, and the form says so.
+  const armedMove = await loseNextAuditRow("maswali.week.close_moved");
+  const wantAgain = fmtEat(eatMs(THU, "16:00"));
+  await typeDate(mv, THU);
+  await typeTime(time, "16:00");
+  await mv.getByRole("button", { name: "Move the close", exact: true }).click();
+  const unrecordedMove = await confirmDialog(page, `Move ${driveCode}'s sales close?`, { word: "MOVE CLOSE", confirm: "Move the close", alert: (dlg) => dlg.getByRole("alert") });
+  const movedAgain = unrecordedMove.closed && await until(async () => (await nowCloses()) === wantAgain, 30_000);
+  ok(`5.3 a move whose audit row is lost still lands: the page now says it closes ${wantAgain} (EAT)`,
+    armedMove && unrecordedMove.gated && !!movedAgain, unrecordedMove.refusal || `${await nowCloses()}`);
+  await checkpoint(page, "5.3", "10b-close-moved-unrecorded");
+  await auditWarningReads("5.3b", mv, UNRECORDED.move, "10c-move-unrecorded");
 });
 
 // ── 6 · the seeded weeks ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -534,18 +643,107 @@ await part("6.1 · seal", async () => {
   await link.click(); // the list's own link: a client navigation
   await until(async () => clip(await page.getByRole("heading", { level: 1 }).first().textContent()) === code, 120_000);
   ok(`6.1 the list's link opens ${code}: its chip Closed, the seal console ready`, (await chipOf(page)) === "Closed" && (await card(page, "Seal the results").count()) > 0, await chipOf(page));
+  const closedPath = new URL(page.url()).pathname;
+  await go(page, "/admin/resolver-queue");
+  const single = page.getByRole("switch", { name: "Two-admin authorization: off", exact: true });
+  ok("6.1a the local resolution policy starts with single-admin authorization", (await single.count()) === 1 && (await single.getAttribute("aria-checked")) === "false");
+  await single.click();
+  const twoOn = await until(async () => (await page.getByRole("switch", { name: "Two-admin authorization: on", exact: true }).getAttribute("aria-checked")) === "true", 30_000);
+  ok("6.1b the Owner enables the local two-officer ceremony after the seed finishes", !!twoOn);
+  await go(page, closedPath);
   const sc = card(page, "Seal the results");
   const plan = ROWS.map((r, i) => ({ label: r.label, outcome: i < 10 && i % 2 === 1 ? "NO" : "YES" }));
-  for (const s of plan) {
-    const combo = sc.getByRole("combobox", { name: `${s.label} result`, exact: true });
+  const first = plan[0];
+  const firstRow = sc.getByRole("row").filter({ has: page.getByRole("combobox", { name: `${first.label} result`, exact: true }) });
+  await firstRow.getByRole("textbox", { name: `${first.label} seal evidence`, exact: true }).fill(`The source's official result for ${first.label}: ${first.outcome}.`);
+  await choose(page, firstRow.getByRole("combobox", { name: `${first.label} result`, exact: true }), first.outcome);
+  await sc.getByRole("button", { name: "Seal 1 result", exact: true }).click();
+  const firstSeal = await confirmDialog(page, "Seal 1 result?", { word: "SEAL", confirm: "Seal", alert: sc.getByRole("alert") });
+  const awaitingSecond = firstSeal.closed && await until(async () => {
+    const row = region(page, "Millionea results to seal").getByRole("row").filter({ has: page.getByRole("cell", { name: "M1", exact: true }) });
+    return clip(await row.textContent()).includes("awaits a second officer");
+  }, 60_000);
+  ok("6.1c M1 was sealed under the two-officer rule and now awaits a second officer", firstSeal.gated && !!awaitingSecond, firstSeal.refusal);
+  await checkpoint(page, "6.1c", "11a-awaits-second");
+  for (const width of [360, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    const pendingResult = region(page, "Millionea results to seal").getByRole("combobox", { name: "M2 result", exact: true });
+    await pendingResult.scrollIntoViewIfNeeded();
+    const fit = await pendingResult.evaluate((button) => {
+      const label = button.querySelector("span");
+      const text = document.createRange();
+      if (label) text.selectNodeContents(label);
+      const row = button.closest("tr");
+      const voidButton = Array.from(row?.querySelectorAll("button") ?? []).find((el) => el.textContent?.trim() === "Void…");
+      const secondButton = Array.from(button.closest("tbody")?.querySelectorAll("button") ?? []).find((el) => el.textContent?.trim() === "Confirm as second officer");
+      return { trigger: button.getBoundingClientRect().width, triggerHeight: button.getBoundingClientRect().height,
+        voidHeight: voidButton?.getBoundingClientRect().height ?? 0, secondHeight: secondButton?.getBoundingClientRect().height ?? 0,
+        lines: label ? text.getClientRects().length : 0,
+        root: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+    });
+    ok(`6.1c the pending result stays one readable line after first seal at ${width}px`,
+      fit.trigger >= 99 && fit.triggerHeight >= 40 && fit.voidHeight >= 40 && fit.secondHeight >= 40
+        && fit.lines === 1 && fit.root <= 1, JSON.stringify(fit));
+    await shot(page, `11a-awaits-second-${width}`);
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
+
+  const confirmerCtx = await browser.newContext({ viewport: { width: 360, height: 900 } });
+  try {
+    await confirmerCtx.addCookies([{ name: "kp-locale", value: "en", url: BASE }]);
+    const confirmer = await confirmerCtx.newPage();
+    watch(confirmer, "confirmer");
+    const seeded = await confirmerCtx.request.post(`${BASE}/api/dev-test/seed-admin`, {
+      data: { role: "MODERATOR", phone: "+255700000074", name: "Mo Second Seal Officer" },
+    });
+    ok("6.1d a distinct MODERATOR signs in to confirm the seal", seeded.ok(), String(seeded.status()));
+    await go(confirmer, closedPath);
+    const sealRow = region(confirmer, "Millionea results to seal").getByRole("row").filter({ has: confirmer.getByRole("cell", { name: "M1", exact: true }) });
+    await sealRow.getByRole("button", { name: "Confirm as second officer", exact: true }).click();
+    const title = `Confirm ${code} M1 as second officer?`;
+    const dialog = confirmer.getByRole("alertdialog", { name: title, exact: true });
+    await dialog.waitFor();
+    const reviewText = clip(await dialog.textContent());
+    ok("6.1e the second officer sees the exact week, slot, question and sealed result",
+      reviewText.includes(`Week: ${code}`) && reviewText.includes("Slot: M1") && reviewText.includes("Sealed result: YES")
+        && reviewText.includes("Will event 1 happen this weekend?"), reviewText);
+    for (const width of [360, 1280]) {
+      await confirmer.setViewportSize({ width, height: 900 });
+      await confirmer.waitForTimeout(400);
+      const fit = await confirmer.evaluate(() => {
+        const dlg = document.querySelector('[role="alertdialog"]')?.getBoundingClientRect();
+        return { lang: document.documentElement.lang, overflow: document.documentElement.scrollWidth - innerWidth,
+          left: dlg?.left ?? -1, right: dlg?.right ?? innerWidth + 1 };
+      });
+      ok(`6.1f the second-officer review fits at ${width}px and html lang is English`,
+        fit.lang === "en" && fit.overflow <= 1 && fit.left >= -1 && fit.right <= width + 1, JSON.stringify(fit));
+      await shot(confirmer, `11b-second-officer-${width}`);
+    }
+    const secondSeal = await confirmDialog(confirmer, title, { word: "CONFIRM", confirm: "Confirm this seal", alert: (dlg) => dlg.getByRole("alert") });
+    const confirmed = secondSeal.closed && await until(async () => !clip(await sealRow.textContent()).includes("awaits a second officer"), 60_000);
+    ok("6.1g the distinct officer confirms M1 after its hard typed-word review", secondSeal.gated && !!confirmed, secondSeal.refusal);
+    await checkpoint(confirmer, "6.1g", "11c-second-confirmed");
+  } finally {
+    await confirmerCtx.close();
+  }
+
+  await go(page, "/admin/resolver-queue");
+  await page.getByRole("switch", { name: "Two-admin authorization: on", exact: true }).click();
+  const relaxed = await confirmDialog(page, "Allow single-admin resolution?", { confirm: "Yes, single admin can resolve" });
+  const twoOff = relaxed.closed && await until(async () => (await page.getByRole("switch", { name: "Two-admin authorization: off", exact: true }).getAttribute("aria-checked")) === "false", 30_000);
+  ok("6.1h the Owner returns the local policy to its initial single-admin state", !!twoOff, relaxed.refusal);
+  await go(page, closedPath);
+  const remaining = card(page, "Seal the results");
+  for (const s of plan.slice(1)) {
+    const combo = remaining.getByRole("combobox", { name: `${s.label} result`, exact: true });
     // ⚠️ A `has` locator is re-run inside each candidate row, so it is rooted at the page, never at the card.
-    const row = sc.getByRole("row").filter({ has: page.getByRole("combobox", { name: `${s.label} result`, exact: true }) });
-    await row.getByPlaceholder("What the source says", { exact: true }).fill(`The source's official result for ${s.label}: ${s.outcome}.`);
+    const row = remaining.getByRole("row").filter({ has: page.getByRole("combobox", { name: `${s.label} result`, exact: true }) });
+    await row.getByRole("textbox", { name: `${s.label} seal evidence`, exact: true }).fill(`The source's official result for ${s.label}: ${s.outcome}.`);
     await choose(page, combo, s.outcome);
   }
   await shot(page, "11-seal-console-filled");
-  await sc.getByRole("button", { name: "Seal 15 results", exact: true }).click();
-  const r = await confirmDialog(page, "Seal 15 results?", { word: "SEAL", confirm: "Seal", alert: sc.getByRole("alert") });
+  await remaining.getByRole("button", { name: "Seal 14 results", exact: true }).click();
+  const r = await confirmDialog(page, "Seal 14 results?", { word: "SEAL", confirm: "Seal", alert: remaining.getByRole("alert") });
   const results = region(page, "Millionea results to seal");
   const sealedAll = r.closed && await until(async () => {
     for (const s of plan) {
@@ -554,10 +752,21 @@ await part("6.1 · seal", async () => {
     }
     return true;
   }, 60_000);
-  ok("6.1b fifteen results sealed in one act (the confirm armed only on SEAL): each row shows the result it was given", r.gated && !!sealedAll, r.refusal);
+  ok("6.1i all fifteen results are sealed, including M1's second-officer confirmation", r.gated && !!sealedAll, r.refusal);
   const chip = await until(async () => ((await chipOf(page)) === "Sealing" ? "Sealing" : null), 30_000);
-  ok("6.1c the week is being sealed: its chip reads Sealing and its objection window is open", chip === "Sealing" && (await page.getByText(/^Objection window to /).count()) > 0, await chipOf(page));
+  ok("6.1j the week is being sealed: its chip reads Sealing and its objection window is open", chip === "Sealing" && (await page.getByText(/^Objection window to /).count()) > 0, await chipOf(page));
   await checkpoint(page, "6.1", "12-sealed");
+  for (const width of [360, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    const correction = region(page, "Millionea results to seal").getByRole("button", { name: "Correct…", exact: true }).first();
+    await correction.scrollIntoViewIfNeeded();
+    const fit = await correction.evaluate((button) => ({ height: button.getBoundingClientRect().height,
+      root: document.documentElement.scrollWidth - document.documentElement.clientWidth }));
+    ok(`6.1k the sealed result's correction target is touch-sized at ${width}px`,
+      fit.height >= 40 && fit.root <= 1, JSON.stringify(fit));
+    await shot(page, `12-sealed-correct-${width}`);
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
 });
 
 await part("6.2 · preview and release", async () => {
@@ -631,11 +840,15 @@ await part("6.4 · void a week", async () => {
     return;
   }
   const code = clip(await btn.textContent()).replace(/^Void /, "");
+  // S5-FIX-SRV · this void's audit row is lost (one armed fault): the week still voids and refunds, and the card says so.
+  const armedVoid = await loseNextAuditRow("maswali.week.voided");
+  ok("6.4a the void's audit row is armed to be lost (the dev-only fault route)", armedVoid);
   await btn.click();
   const r = await confirmDialog(page, `Void ${code} whole?`, { word: "VOID", confirm: "Void and refund", alert: vw.getByRole("alert") });
   const gone = r.closed && await until(async () => (await vw.getByRole("button", { name: `Void ${code}`, exact: true }).count()) === 0, 60_000);
   ok(`6.4 compliance voids ${code} whole (the confirm armed only on VOID): it leaves the weeks to void`, r.gated && !!gone, r.refusal || clip(await vw.textContent(), 200));
   await checkpoint(page, "6.4", "18-voided");
+  await auditWarningReads("6.4c", vw, UNRECORDED.void, "18b-void-unrecorded");
   await go(page, "/admin/maswali");
   const chip = await listChip(page, code);
   ok(`6.4b the weeks list says ${code} is Voided`, chip === "Voided", chip);
@@ -691,6 +904,31 @@ await part("6.5 · hold, release and forfeit a share", async () => {
   ok(`6.5d compliance forfeits ${B.serial} to the jackpot (the confirm armed only on FORFEIT SHARE): its row reads Forfeited and the winner "forfeited · …"`,
     r2.gated && !!forfeited && said === `forfeited · ${FORFEIT_WHY}`, r2.refusal || said);
   await checkpoint(page, "6.5d", "22-forfeited");
+});
+
+// ── 6.6 · LAST: the Owner stops the product, its audit row lost (S5-FIX-SRV) ─────────────────────────────────────────
+// Last, because a final week changes what may open after it. The week chosen is the one on sale (it becomes final at once)
+// or else a draft a full week out — an earlier week is refused once a later one has opened (MR-30).
+await part("6.6 · stop the product", async () => {
+  await go(page, "/admin/maswali/pools");
+  const stop = page.locator("section").filter({ has: page.getByRole("heading", { name: "Stop the product", exact: true }) });
+  const pick = stop.getByRole("combobox", { name: "Final week", exact: true });
+  if ((await pick.count()) === 0) { skipped("6.6 stop the product", clip(await stop.textContent().catch(() => "no stop section"), 200)); return; }
+  await pick.click();
+  const labels = (await page.getByRole("option").allTextContents()).map((l) => clip(l));
+  const label = labels.find((l) => l.endsWith("· open")) ?? labels.find((l) => l.endsWith("· draft"));
+  if (!label) { await page.keyboard.press("Escape"); skipped("6.6 stop the product", `no week on sale or drafted to make final: ${labels.join(", ")}`); return; }
+  await page.getByRole("option", { name: label, exact: true }).click();
+  const code = label.split(" · ")[0];
+  await stop.getByRole("textbox", { name: "Why Millionea is stopping", exact: true }).fill(STOP_WHY);
+  const armed = await loseNextAuditRow("maswali.sunset.ordered");
+  await stop.getByRole("button", { name: "Make it the final week", exact: true }).click();
+  const r = await confirmDialog(page, `Make ${code} the final week?`, { word: "SUNSET MILLIONEA", confirm: "Make it final", alert: (dlg) => dlg.getByRole("alert") });
+  const named = r.closed && await until(async () => clip(await stop.textContent()).includes(`Week ${code} is the final week.`), 60_000);
+  ok(`6.6 the Owner makes ${code} the final week (the confirm armed only on SUNSET MILLIONEA), its audit row lost: the page names it`,
+    armed && r.gated && !!named, r.refusal || clip(await stop.textContent(), 300));
+  await checkpoint(page, "6.6", "23-stopped");
+  await auditWarningReads("6.6b", stop, UNRECORDED.stop, "23b-stop-unrecorded");
 });
 
 await browser.close();

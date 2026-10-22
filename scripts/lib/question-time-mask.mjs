@@ -48,6 +48,18 @@ export const QUESTION_BREAK_CLOCK = {
   text: "22 Sep, 22:22",
 };
 
+/**
+ * Only the classic watchlist card's EAT moment, not a countdown or another card label. Since U43 B4 (1384383fd) a card
+ * states its time in its top row, `.mcardp-closes`, right-aligned by `margin-left: auto` and drawn only while the card
+ * takes bets (market-card.tsx `live`); /watchlist hands it the row's EAT moment. The live mark (a dot and its sr-only
+ * status word) sits inside it, so replace only the one direct date text node.
+ */
+export const BOOK_WATCHLIST_DATE = {
+  ...QUESTION_BREAK_CLOCK,
+  selector: '#main-content article.mcardp .mcardp-closes[data-market-part="time"]',
+  textNode: true,
+};
+
 /** Runs in the page before geometry is read. It keeps the date element, attributes, style and surrounding words. */
 export function normaliseQuestionBreakClocks(mask, roots = null) {
   const candidates = roots ?? [...document.querySelectorAll(mask.selector)];
@@ -56,8 +68,9 @@ export function normaliseQuestionBreakClocks(mask, roots = null) {
   if (!months) return 0;
   let fields = 0;
   for (const el of candidates) {
-    if (el.childElementCount !== 0) continue;
-    const parsed = valid.exec(el.textContent);
+    const directText = mask.textNode ? [...el.childNodes].filter((node) => node.nodeType === 3 && node.nodeValue?.trim()) : null;
+    if (mask.textNode ? directText.length !== 1 : el.childElementCount !== 0) continue;
+    const parsed = valid.exec(mask.textNode ? directText[0].nodeValue : el.textContent);
     if (!parsed) continue;
     const month = months.indexOf(parsed[2]), day = Number(parsed[1]);
     // An omitted year can be a leap year; a present year must be Gregorian, in the formatter's four-digit domain.
@@ -66,7 +79,8 @@ export function normaliseQuestionBreakClocks(mask, roots = null) {
     const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
     const last = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month];
     if (day > last) continue;
-    el.textContent = mask.text;
+    if (mask.textNode) directText[0].nodeValue = mask.text;
+    else el.textContent = mask.text;
     fields++;
   }
   return fields;

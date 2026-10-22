@@ -109,6 +109,26 @@ export function afterCommit(tx: Prisma.TransactionClient | null | undefined, fn:
   runCommitted([fn]);
 }
 
+/**
+ * Run a service's post-commit effects in order, each awaited — the effects that service queued through `afterCommit`
+ * once its own lock's transaction committed (settlement's notices, chart point, prize and watcher alert).
+ *
+ * ⛔ A NESTED CALL IS DIFFERENT (2026-10-21, U43). Called inside an enclosing withLock on PostgreSQL, the service's own
+ * lock JOINED that transaction, so its `afterCommit` pushes have not run yet when it returns: `effects` is still empty,
+ * and draining it now would drop every effect for good. Pass the enclosing transaction (`currentLockTx()` after the
+ * service's lock returned) and the drain is queued behind those pushes on the same commit, in order, unawaited.
+ */
+export async function drainCommitted(effects: ReadonlyArray<() => void | Promise<unknown>>,
+  joinedTx: Prisma.TransactionClient | null): Promise<void> {
+  const drain = async () => {
+    for (const effect of effects) {
+      try { await effect(); } catch { /* an effect of committed money cannot undo it */ }
+    }
+  };
+  if (joinedTx) { afterCommit(joinedTx, () => { void drain(); }); return; }
+  await drain();
+}
+
 /** Each queued callback once, none able to stop the rest — they describe a write that has already committed. */
 function runCommitted(fns: ReadonlyArray<() => void>): void {
   for (const fn of fns) {
@@ -153,7 +173,7 @@ async function withMemoryLockInner<T>(key: string, fn: (tx: null) => Promise<T>)
 
 /* ── Postgres advisory lock (production) ────────────────────────────── */
 
-async function withAdvisoryLock<T>(key: string, fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+async function withAdvisoryLock<T>(key: string, fn: (tx: Prisma.TransactionClient) => Promise<T>, timeoutMs = 30000): Promise<T> {
   const db = prisma()!;
   const lockId = hashKey64(key);
 
@@ -200,7 +220,7 @@ async function withAdvisoryLock<T>(key: string, fn: (tx: Prisma.TransactionClien
     // transaction instead of each opening their own.
     return await lockStore.run({ tx, held: new Set([key]), committed }, () => fn(tx));
   }, {
-    timeout: 30000,  // 30s — covers worst-case resolution payouts
+    timeout: timeoutMs,  // emergency market-wide restitution can need a measured larger budget
     maxWait: 10000,  // 10s — queue time waiting for a pool connection
   });
   runCommitted(committed);
@@ -275,9 +295,13 @@ export async function drainLock(key: string, o: { timeout: string }): Promise<"d
  * error escape the lock rather than swallowing it inside (see buyPosition's
  * BetAbort, which is caught outside withLock for exactly this reason).
  */
-export async function withLock<T>(key: string, fn: (tx: Prisma.TransactionClient | null) => Promise<T>): Promise<T> {
+export async function withLock<T>(key: string, fn: (tx: Prisma.TransactionClient | null) => Promise<T>, options?: { timeoutMs?: number }): Promise<T> {
   if (hasDatabase()) {
-    return withAdvisoryLock(key, fn);
+    const timeoutMs = options?.timeoutMs ?? 30000;
+    if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 30000 || timeoutMs > 600000) {
+      throw new Error("withLock timeout must be an integer from 30s through 10min");
+    }
+    return withAdvisoryLock(key, fn, timeoutMs);
   }
   return withMemoryLock(key, fn);
 }

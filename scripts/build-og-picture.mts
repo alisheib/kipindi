@@ -47,7 +47,7 @@ export async function renderOgPicture(lines: { en: string; sw: string }): Promis
   h("div", { style: { position: "absolute", top: 284, left: 0, width: 1200, display: "flex", justifyContent: "center", alignItems: "baseline" } },
     h("span", { style: { fontFamily: "Sora", fontWeight: 700, fontSize: 68, letterSpacing: -3 } }, "50pick"),
     h("span", { style: { fontFamily: "Inter", fontWeight: 400, fontSize: 33, color: "#a7afd3", marginLeft: 8 } }, ".tz")),
-  h("div", { style: { position: "absolute", top: 407, left: 520, width: 160, height: 1, backgroundColor: "#b89b6a", opacity: 0.75 } }),
+  h("div", { style: { position: "absolute", top: 407, left: 520, width: 160, height: 1, backgroundColor: "#A7AFD3", opacity: 0.75 } }),
   h("div", { style: { position: "absolute", top: 441, left: 35, width: 1130, display: "flex", justifyContent: "center", fontFamily: "Sora", fontWeight: 700, fontSize: 32, letterSpacing: -0.8, textAlign: "center", whiteSpace: "nowrap" } }, lines.en),
   h("div", { style: { position: "absolute", top: 498, left: 35, width: 1130, display: "flex", justifyContent: "center", fontFamily: "Inter", fontWeight: 400, fontSize: 24, color: "#aab2d6", textAlign: "center", whiteSpace: "nowrap" } }, lines.sw),
   h("div", { style: { position: "absolute", top: 563, left: 0, width: 1200, display: "flex", justifyContent: "center", fontFamily: "JetBrains Mono", fontSize: 15, letterSpacing: 3, color: "#929ec9" } }, "LICENSED BY THE GAMING BOARD OF TANZANIA · 18+"),

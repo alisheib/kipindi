@@ -23,6 +23,7 @@
 import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
 import { clippedControls } from "./clip.mjs";
+import { localeCookieForOrigin } from "./rules-pages-locale.mjs";
 
 const BASE = process.env.BASE || "https://50pick.tz";
 const ROUTES = ["/legal/rules", "/legal/rules/yes-no", "/legal/rules/up-down"];
@@ -49,7 +50,7 @@ const browser = await chromium.launch();
 try {
   for (const loc of LOCALES) {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 1000 } });
-    await ctx.addCookies([{ name: "kp-locale", value: loc, domain: "50pick.tz", path: "/" }]);
+    await ctx.addCookies([localeCookieForOrigin(BASE, loc)]);
     const page = await ctx.newPage();
 
     for (const route of ROUTES) {

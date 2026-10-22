@@ -19,6 +19,13 @@ const PAGE = "src/app/markets/[id]/page.tsx";
 
 export const MUTATIONS = [
   {
+    name: "a paid early exit is filed as a win again",
+    file: "src/lib/server/notification-service.ts",
+    from: '    kind: opts.inGracePeriod ? "REFUND" : "CASHOUT",',
+    to: '    kind: opts.inGracePeriod ? "REFUND" : "WIN",',
+    expect: "C.STAFF_PREVIEW.census",
+  },
+  {
     name: "the switch forced on now — a preview reads as the flip (the ceiling ignored, anything but WITHDRAWN says yes)",
     file: SWITCH,
     from: `    if (simpleJourneyCeiling().ceiling !== "ACTIVE") return false;\n    return (await simpleJourneyStateNow()) === "ACTIVE";`,
@@ -49,8 +56,8 @@ export const MUTATIONS = [
   {
     name: "an Up & Down round's result row switched too — a round quotes short titles forced onto its row",
     file: SVC,
-    from: `          notifyUpDownWin(p.userId, {\n            payout,\n            stake: p.stake,\n            marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh),`,
-    to: `          notifyUpDownWin(p.userId, {\n            payout,\n            stake: p.stake,\n            marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m),`,
+    from: `          queueSettlementEffect(() => { void notifyUpDownWin(p.userId, {\n            payout,\n            stake: p.stake,\n            marketTitle: upDownResultTitle(m),`,
+    to: `          queueSettlementEffect(() => { void notifyUpDownWin(p.userId, {\n            payout,\n            stake: p.stake,\n            marketTitle: messageTitles(shortTitles, upDownResultTitle(m), m),`,
     expect: "C.ACTIVE.round",
   },
   {

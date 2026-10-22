@@ -35,6 +35,7 @@ process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-aaaa";
 process.env.OTP_PEPPER ??= "test-only-otp-pepper-16chars";
 
 import { readFileSync } from "node:fs";
+import { decomment } from "./lib/decomment.mts";
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { positionStore, marketStore } from "../src/lib/server/market-dal.ts";
 import {
@@ -208,28 +209,80 @@ const ms = readFileSync(new URL("../src/lib/server/market-service.ts", import.me
 // Anchor on the call, then look BACK for the gate. This is a source assertion on
 // purpose: the defect was a call site nobody had gated, which produces no wrong
 // output at all until a real round voids on production.
+/* ⛔ RE-POINTED 2026-10-21 · U43 Release B (c29cb7526), NOT RELAXED. Settlement's player notices now run after the money
+ * commits. Each round notice is QUEUED inside its gate — `queueSettlementEffect(() => { void notifyX(p.userId, …); })` —
+ * and the orphan repair's refund notice rides `afterCommit(lockTx, () => { effects.push(() => { void notifyRefund(…) }); })`,
+ * run once its lock returns. The old scan anchored on `notifyX(` at the start of a line. It found none of the four queued
+ * notices, and three of the five emitters then PASSED VACUOUSLY at 0/0: only notifyRefund failed, and only because of its
+ * exemption. Now:
+ *   · a call site is any of those three STATEMENT shapes, read on comment-stripped source, and every mention must BE one
+ *     (a call behind an expression is dead code);
+ *   · each emitter's number of call sites is EXACT (CALL_SITES), so 0/0 can never pass again;
+ *   · "gated" is STRUCTURAL as well as near: the call lies inside the if-block of an
+ *     `if (!perEventNotificationsSuppressed(…)) {`, found by matching braces, AND, as before, the predicate is in the 400
+ *     raw characters above it. The look-back alone was satisfied by a call moved into the else branch, or by a gate
+ *     weakened to `if (true || !perEventNotificationsSuppressed(m))`; the block test is not. */
+const raw5 = ms.replace(/\r\n/g, "\n");
+const code5 = decomment(raw5); // every newline survives, so a line number means the same line in both texts
+const rawLines5 = raw5.split("\n");
+const lineStarts = (lines: string[]) => { const out: number[] = []; let at = 0; for (const l of lines) { out.push(at); at += l.length + 1; } return out; };
+const rawStarts5 = lineStarts(rawLines5), codeStarts5 = lineStarts(code5.split("\n"));
+const lineAt = (starts: number[], i: number) => { let lo = 0, hi = starts.length - 1; while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (starts[mid] <= i) lo = mid; else hi = mid - 1; } return lo; };
+const blockEnd5 = (open: number): number => {
+  let depth = 0;
+  for (let i = open; i < code5.length; i++) { if (code5[i] === "{") depth++; else if (code5[i] === "}" && --depth === 0) return i; }
+  return -1;
+};
+const gateBlocks5 = [...code5.matchAll(/if \(!perEventNotificationsSuppressed\([^()]*\)\) \{/g)]
+  .map((g) => { const open = (g.index ?? 0) + g[0].length - 1; return { open, close: blockEnd5(open) }; });
+ok("§5 · the reader sees the five suppression gates, each a closed block", gateBlocks5.length === 5 && gateBlocks5.every((b) => b.close > b.open),
+  `${gateBlocks5.length} gate block(s)`);
+// `notifyRefund` has one legitimately ungated caller: the orphaned-position
+// repair, which has NO market to ask (`marketId: ""`) and is a boot-time data
+// repair, not a round outcome. Named explicitly so the exception is a decision.
+const CALL_SITES: Record<string, { sites: number; exempt: number }> = {
+  notifyRefund: { sites: 2, exempt: 1 }, notifyOneSidedRefund: { sites: 1, exempt: 0 }, notifyWin: { sites: 1, exempt: 0 },
+  notifyLoss: { sites: 1, exempt: 0 }, notifyBetPlaced: { sites: 1, exempt: 0 },
+};
+const ungatedAt: Record<string, number[]> = {};
 for (const emitter of ["notifyRefund", "notifyOneSidedRefund", "notifyWin", "notifyLoss", "notifyBetPlaced"]) {
-  const callIdx = [...ms.matchAll(new RegExp(`^\\s*${emitter}\\(`, "gm"))].map((m) => m.index ?? -1);
-  const gated = callIdx.filter((i) => {
+  const statement = new RegExp(`^[ \\t]*(?:queueSettlementEffect\\(\\(\\) => \\{ void |afterCommit\\(lockTx, \\(\\) => \\{ effects\\.push\\(\\(\\) => \\{ void )?${emitter}\\(`, "gm");
+  const calls = [...code5.matchAll(statement)].map((m) => {
+    const at = (m.index ?? 0) + m[0].length - emitter.length - 1;
+    const line = lineAt(codeStarts5, at);
     // The nearest enclosing 400 characters must contain the predicate. Every one
     // of these sits directly inside its `if (!perEventNotificationsSuppressed(m))`.
-    const before = ms.slice(Math.max(0, i - 400), i);
-    return /!perEventNotificationsSuppressed\(/.test(before);
+    const rawAt = rawStarts5[line] + rawLines5[line].indexOf(`${emitter}(`);
+    const near = /!perEventNotificationsSuppressed\(/.test(raw5.slice(Math.max(0, rawAt - 400), rawAt));
+    const inside = gateBlocks5.some((b) => b.open < at && at < b.close);
+    return { line: line + 1, gated: near && inside };
   });
-  // `notifyRefund` has one legitimately ungated caller: the orphaned-position
-  // repair, which has NO market to ask (`marketId: ""`) and is a boot-time data
-  // repair, not a round outcome. Named explicitly so the exception is a decision.
-  const allowedUngated = emitter === "notifyRefund" ? 1 : 0;
-  ok(`${emitter}: every round call site is gated (${gated.length}/${callIdx.length}, ${allowedUngated} exempt)`,
-    callIdx.length - gated.length === allowedUngated,
-    `ungated=${callIdx.length - gated.length}`);
+  const mentions = [...code5.matchAll(new RegExp(`\\b${emitter}\\(`, "g"))].length;
+  const gated = calls.filter((c) => c.gated).length;
+  const want = CALL_SITES[emitter];
+  ungatedAt[emitter] = calls.filter((c) => !c.gated).map((c) => c.line);
+  ok(`${emitter}: every round call site is gated (${gated}/${calls.length}, ${want.exempt} exempt)`,
+    calls.length === want.sites && mentions === calls.length && calls.length - gated === want.exempt,
+    `call sites ${calls.length} (expected ${want.sites}) · mentions ${mentions} · ungated at line(s) ${ungatedAt[emitter].join(", ") || "none"}`);
 }
 // ⚠️ RE-ANCHORED 2026-08-15: the title is `localizedText("Orphaned position")` now — every
 // player emitter carries all three languages (§7.2c), so the bare-string form is gone. The
 // assertion is unchanged in substance: the ONE ungated `notifyRefund` must be the orphan
 // repair, and it is identified by that phrase rather than by its position in the file.
+// ⚠️ RE-ANCHORED 2026-10-21 · U43 Release B (c29cb7526) rewrote the orphan repair: the notice is queued after the commit
+// (`afterCommit(lockTx, () => { effects.push(() => { void notifyRefund(p.userId, {` with its fields on the next line), and
+// the lock's caller runs the queue. The exempt call must now ALSO be the one ungated site, inside repairOrphanedPositions,
+// whose queue is run once its lock returns.
+const orphanAt = code5.indexOf("export async function repairOrphanedPositions(");
+const orphanNext = orphanAt < 0 ? -1 : code5.slice(orphanAt + 1).search(/\n(?:export )?(?:async )?function /);
+const orphanBody = orphanAt < 0 ? "" : code5.slice(orphanAt, orphanNext < 0 ? undefined : orphanAt + 1 + orphanNext);
+const orphanFirst = orphanAt < 0 ? -1 : lineAt(codeStarts5, orphanAt) + 1;
+const orphanLast = orphanFirst + orphanBody.split("\n").length - 1;
 ok("the one exempt notifyRefund is the orphan repair, not a round",
-  /notifyRefund\(p\.userId, \{ stake: p\.stake, marketTitle: localizedText\("Orphaned position"\)/.test(ms));
+  /notifyRefund\(p\.userId, \{\s*stake: p\.stake, marketTitle: localizedText\("Orphaned position"\), marketId: "", positionId: p\.id,/.test(orphanBody)
+    && ungatedAt.notifyRefund.length === 1 && ungatedAt.notifyRefund[0] > orphanFirst && ungatedAt.notifyRefund[0] <= orphanLast
+    && /for \(const effect of result\.effects\) \{\s*try \{ effect\(\); \}/.test(orphanBody),
+  `orphan repair at lines ${orphanFirst}–${orphanLast} · ungated notifyRefund at line(s) ${ungatedAt.notifyRefund.join(", ") || "none"}`);
 
 // ── 6 · Idempotence, DRIVEN ───────────────────────────────────────────────────
 section("6 · run it twice — the second run must send nothing");

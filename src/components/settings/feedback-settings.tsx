@@ -7,7 +7,8 @@
  * pref store (localStorage) and applies the in-app reduce-motion class live.
  */
 import { useEffect, useState } from "react";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { Toggle } from "@/components/ui/toggle";
 import { useT } from "@/lib/i18n";
 import { getPrefs, setPrefs, haptics } from "@/lib/haptics";
@@ -54,14 +55,14 @@ export function FeedbackSettings() {
 
       <div className="divide-y divide-border/60">
         <Row
-          icon={<I.vibrate s={16} />}
+          icon={<I.vibrate s={plateGlyph(40)} tier="duo" />}
           title={t.common.hapticFeedback}
           subtitle={t.common.hapticSubtitle}
           on={hapticsOn}
           onToggle={toggleHaptics}
         />
         <Row
-          icon={<I.sparkle s={16} className="text-brand-300" />}
+          icon={<I.sparkle s={plateGlyph(40)} tier="duo" />}
           title={t.common.reduceMotion}
           subtitle={t.common.motionSubtitle}
           on={reduceMotion}
@@ -72,14 +73,16 @@ export function FeedbackSettings() {
             about 60px at 360, one word per line, and the button painted over "choose". From `sm`
             up the row is the one-line layout it always was. */}
         <div className="flex items-start gap-3 py-3.5 sm:items-center">
-          {/* ⛔ LITERALS, NOT `h-9 w-9` — the spacing scale is overridden
-              (tailwind.config.ts:200-215) and that pair is 64×64px, taller on its own than
-              the py-3.5 row it sits in. 40px = --tap-min, the kit's glyph-tile size. */}
-          <span className="grid h-[40px] w-[40px] shrink-0 place-items-center rounded-md" style={{ background: "color-mix(in oklab, var(--brand-500) 12%, transparent)" }}>
+          {/* The row's identity plate (PHOSPHOR-MIGRATION release 2), as the two rows above: 40px = --tap-min, the kit's
+              glyph-tile size, set by the atom as a number (the spacing scale is overridden: `h-9 w-9` is 64px, taller on its
+              own than the py-3.5 row). The 12% brand wash, the glyph's brand ink and the 8px corner typed here are the
+              variant's now. */}
+          <IconPlate size={40} variant="identity" aria-hidden>
             {/* The family's Needle (`I.needle`, a house extra in Phosphor's grammar): in a list of row glyphs the Needle is
-                one of them, as the hub's row draws it (round 4, 2026-10-09); this was a copy of the drawer's two-tone mark. */}
-            <I.needle s={16} className="text-brand-300" />
-          </span>
+                one of them, as the hub's row draws it (round 4, 2026-10-09); this was a copy of the drawer's two-tone mark.
+                On its plate it draws in Duotone, as the hub's Needle row does (release 2). */}
+            <I.needle s={plateGlyph(40)} tier="duo" />
+          </IconPlate>
           <div className="min-w-0 flex-1 sm:flex sm:items-center sm:gap-3">
             <div className="min-w-0 flex-1">
               <p className="font-display text-[13.5px] font-semibold text-text leading-tight">
@@ -110,11 +113,13 @@ function Row({
 }) {
   return (
     <div className="flex items-center gap-3 py-3.5">
-      {/* ⛔ LITERALS, NOT `h-9 w-9` (64×64px under the overridden spacing scale,
-          tailwind.config.ts:200-215). 40px = --tap-min. */}
-      <span className="grid h-[40px] w-[40px] shrink-0 place-items-center rounded-md" style={{ background: "color-mix(in oklab, var(--brand-500) 12%, transparent)" }}>
+      {/* The setting's identity plate (PHOSPHOR-MIGRATION release 2): 40px = --tap-min, set by the atom as a number (`h-9 w-9`
+          is 64px on the overridden scale); the 12% brand wash and the 8px corner typed here are the variant's now. Its glyph
+          is the caller's, in Duotone at `plateGlyph(40)` — the vibrate glyph drew the text ink (inherited) and the sparkle
+          the brand ink, two inks for one family; the variant's is the one ink. The switch says the state. */}
+      <IconPlate size={40} variant="identity" aria-hidden>
         {icon}
-      </span>
+      </IconPlate>
       <div className="min-w-0 flex-1">
         <p className="font-display text-[13.5px] font-semibold text-text leading-tight">
           {title}

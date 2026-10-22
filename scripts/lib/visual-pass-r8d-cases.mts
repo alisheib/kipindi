@@ -16,6 +16,8 @@
  * application's fee columns and — on Postgres — the fee's ledger group. The control that pays moves every one of them.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { AsyncLocalStorage } from "node:async_hooks";
+
 type Any = any;
 export type Ok = (label: string, cond: boolean, detail?: string) => void;
 
@@ -237,17 +239,25 @@ export async function runR8dServiceCases(ok: Ok): Promise<{ onPostgres: boolean 
     // sendEmailToUser itself: the break read only when asked, failing open.
     email.clearEmailOutbox();
     const realGet = db.responsible.get;
-    let reads = 0;
-    db.responsible.get = (...a: Any[]) => { reads++; return realGet.apply(db.responsible, a); };
+    const readScope = new AsyncLocalStorage<"plain" | "aware" | "failure">();
+    let plainReads = 0, awareReads = 0;
+    db.responsible.get = (...a: Any[]) => {
+      const call = readScope.getStore();
+      if (call === "plain") plainReads++;
+      if (call === "aware") awareReads++;
+      if (call === "failure") throw new Error("down");
+      return realGet.apply(db.responsible, a);
+    };
     const seen: boolean[] = [];
-    await email.sendEmailToUser(on, (to: string, reader: Any) => { seen.push(reader.onBreak); return { to, subject: "x", html: "<p>x</p>", tag: "r8d-plain" }; });
-    const plainReads = reads;
-    await email.sendEmailToUser(on, (to: string, reader: Any) => { seen.push(reader.onBreak); return { to, subject: "x", html: "<p>x</p>", tag: "r8d-aware" }; }, { breakAware: true });
-    db.responsible.get = () => { throw new Error("down"); };
-    await email.sendEmailToUser(on, (to: string, reader: Any) => { seen.push(reader.onBreak); return { to, subject: "x", html: "<p>x</p>", tag: "r8d-fail" }; }, { breakAware: true });
-    db.responsible.get = realGet;
+    try {
+      await readScope.run("plain", () => email.sendEmailToUser(on, (to: string, reader: Any) => { seen.push(reader.onBreak); return { to, subject: "x", html: "<p>x</p>", tag: "r8d-plain" }; }));
+      await readScope.run("aware", () => email.sendEmailToUser(on, (to: string, reader: Any) => { seen.push(reader.onBreak); return { to, subject: "x", html: "<p>x</p>", tag: "r8d-aware" }; }, { breakAware: true }));
+      await readScope.run("failure", () => email.sendEmailToUser(on, (to: string, reader: Any) => { seen.push(reader.onBreak); return { to, subject: "x", html: "<p>x</p>", tag: "r8d-fail" }; }, { breakAware: true }));
+    } finally {
+      db.responsible.get = realGet;
+    }
     ok("L.5 · `sendEmailToUser` reads no break for a send that does not ask (every other letter reads what it read before)", plainReads === 0 && seen[0] === false, j({ plainReads, seen }));
-    ok("L.6 · …tells a `breakAware` builder the recipient's break (on a break: true) — and a failed read is no break (it gates a solicitation)", seen[1] === true && seen[2] === false, j(seen));
+    ok("L.6 · …tells a `breakAware` builder the recipient's break (on a break: true) — and a failed read is no break (it gates a solicitation)", awareReads === 1 && seen[1] === true && seen[2] === false, j({ awareReads, seen }));
   }
 
   /* ══ N · THE "FRIEND JOINED" NOTICE ════════════════════════════════════════════════════════════════════════════════ */

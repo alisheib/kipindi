@@ -94,7 +94,7 @@ const git = (cwd: string, args: string[]) => execFileSync("git", ["-C", cwd, ...
 async function runAgainst(root: string): Promise<{ results: Result[]; crash: string | null }> {
   const results: Result[] = [];
   try {
-    await runChatbotCases((label, cond, detail = "") => results.push({ label, pass: !!cond, detail }), () => {}, root);
+    await runChatbotCases((label, cond, detail = "") => results.push({ label, pass: !!cond, detail }), () => {}, root, "origin/main");
     return { results, crash: null };
   } catch (e) {
     return { results, crash: e instanceof Error ? `${e.message}` : String(e) };
@@ -129,10 +129,11 @@ try {
      * for the other diff controls. A shadow with no refs would make 6.6 say NOT MEASURED, and chat.ts
      * mutations would then appear red for the wrong reason.
      */
-    // §6.6 measures chat.ts against the approved S11 checkpoint, not origin/main.
-    // Give the shadow that real checkpoint's chat blob before committing its live
-    // files. Otherwise the pristine positive control is red on a missing ref and
-    // every chat mutation appears caught for the wrong reason.
+    // The suite measures §6.6 against the approved S11 checkpoint (8ce376ca0); this red drive hands it the shadow's own
+    // origin/main — the pristine copy — as its baseline (`runAgainst`, S5's f5a11a06a), so a mutated chat.ts differs for
+    // exactly the reason the assertion names. The shadow also carries that real checkpoint's chat blob under its ref
+    // (S7's 5c0cc5e38, 0.2), so it holds both baselines and neither is ever missing: a missing ref would leave the pristine
+    // positive control red and every chat mutation caught for the wrong reason.
     const chatPath = join(template, "src/app/_actions/chat.ts");
     const liveChat = readFileSync(chatPath);
     const approvedChat = execFileSync("git", ["-C", ROOT, "show", "8ce376ca0:src/app/_actions/chat.ts"]);

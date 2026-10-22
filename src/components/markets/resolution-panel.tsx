@@ -128,7 +128,7 @@ export function ResolutionPanel({
   // Only the real recorded excerpt is ever shown — empty/whitespace → omit the block.
   // Not shown after a correction on objection: the recorded quote justified the verdict that was thrown out.
   const evidenceText = correctedOnObjection ? null : (evidence?.trim() || null);
-  // ⭐ C1 · settlement refunds EVERY stake at zero fee when one pool is empty, whatever the verdict
+  // ⭐ C1 · settlement refunds every still-held stake at zero fee when one pool is empty, whatever the verdict
   // (`settleMarket`'s one-sided branch, rules §7). `poolFee(…, winner)` would still price a loser-share
   // fee off the funded side and mark the empty pool the winner: a fee nobody was charged, printed on the
   // one panel a player reads to check we paid him correctly. Read from the POOLS, never a rounded 0/100.
@@ -138,10 +138,8 @@ export function ResolutionPanel({
     <section className="glass-panel p-5 space-y-4">
       {/* Header — title + outcome chip */}
       <div className="flex items-center justify-between gap-3">
-        {/* ⛔ The SEAL is the chip beside this heading (§M3: "resolved seal"; §B11 RESOLVED = struck gilt) and the winning
-            pool's row below — and only those. The heading's glyph, the evidence label's glyph and the quote's rule were
-            gilt too; a mark is not the seal and not money (Q5). They take the subtle ink of the market page's own section
-            glyphs and the border of its own quoted criterion (R5-C, the second gold audit, 2026-10-09). */}
+        {/* The market's resolved seal uses struck gilt; VOID remains slate. The
+            player's individual win or refund is stated in their own position. */}
         <h2 className="font-display text-[16px] font-semibold text-text flex items-center gap-2">
           <I.shieldcheck s={16} edge="start" className="text-text-subtle" />
           {t.market.resTitle}
@@ -152,7 +150,7 @@ export function ResolutionPanel({
             ⭐ The void arm reads the dictionary (R7-B, round 7, 2026-10-10; round 6's read R8-3): it was a hand-typed royal
             `pending` — a void is the dictionary's slate on every surface (`status-tone.ts` VOID). `metrics="status"` keeps
             the slot one size whichever arm shows: the size no longer follows the colour (chip.tsx, G1). */}
-        <Chip variant={isVoid ? TONE_CHIP[STATUS_TONE.VOID.player] : "resolved"} metrics="status">
+        <Chip variant={TONE_CHIP[STATUS_TONE[isVoid ? "VOID" : "RESOLVED"].player]} metrics="status">
           {isVoid ? t.market.resVoided : `${t.market.resolvedOutcome} · ${outcomeWord(t, outcome, "MARKET")}`}
         </Chip>
       </div>
@@ -268,10 +266,10 @@ export function ResolutionPanel({
       )}
 
       {/* Settlement / pool composition — exact stored values only. A refund (void, or one side only) shows
-          no fee row and no winning pool: settled, it says every stake was refunded; before the money moves,
-          that every stake will be (a RESOLVED market cannot be reopened, so the pools are final). */}
+          no fee row and no winning pool. The copy follows settledAt and only names still-held stakes;
+          positions cashed out earlier keep their separate paid amount. */}
       {refundedAll ? (
-        <p className="text-body-sm leading-relaxed text-text-muted">{isVoid || settledAt ? t.market.resVoidRefund : t.market.resOneSidedPending}</p>
+        <p className="text-body-sm leading-relaxed text-text-muted">{settledAt ? t.market.resVoidRefund : isVoid ? t.market.resVoidPending : t.market.resOneSidedPending}</p>
       ) : (
         <div className="rounded-md border border-border/60 bg-bg-overlay/40 font-mono text-[12.5px]">
           <Row label={t.market.resFinalPool} value={formatTzs(gross)} strong />

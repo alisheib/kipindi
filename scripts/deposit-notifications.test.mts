@@ -151,7 +151,7 @@ await setPaymentControls({ provider: "mock" }, "test").catch(() => {});
   ok("B3 NO money moved", (await balanceOf("usr_dn_fail")) === before);
 
   const ns = await notifsFor("usr_dn_fail");
-  const failNote = ns.find((n) => n.kind === "DEPOSIT" && /failed/i.test(n.titleEn));
+  const failNote = ns.find((n) => n.kind === "DEPOSIT_FAILED" && /failed/i.test(n.titleEn));
   ok("B4 a failure notification exists", !!failNote);
   ok("B5 notification says no money was taken",
     /no money was taken/i.test(failNote?.bodyEn ?? ""), failNote?.bodyEn ?? "none");
@@ -201,10 +201,10 @@ await setPaymentControls({ provider: "mock" }, "test").catch(() => {});
   // The TITLE MATCHES THE BODY — held for return, in all three languages, never "Reversed" (Ali, 2026-10-14, superseding
   // the 2026-10-07 "Reversed" label for a held deposit). The BODY is the truth while the money waits: not added, held for
   // return, and no claim that a return has been delivered (the 2026-10-07 entry records that claim as untrue).
-  const revNote = ns.find((n) => n.kind === "DEPOSIT" && /held for return/i.test(n.titleEn));
+  const revNote = ns.find((n) => n.kind === "DEPOSIT_HELD" && /held for return/i.test(n.titleEn));
   ok("C4 a held-deposit notification exists, titled held for return in all three languages", !!revNote
     && /^Deposit held for return · /.test(revNote.titleEn) && /^Amana imeshikiliwa ili irudishwe · /.test(revNote.titleSw ?? "") && /^充值暂扣待退还 · /.test(revNote.titleZh ?? "")
-    && !ns.some((n) => n.kind === "DEPOSIT" && /reversed|imerudishwa|已退回/i.test(`${n.titleEn} ${n.titleSw} ${n.titleZh}`)));
+    && !ns.some((n) => n.kind === "DEPOSIT_HELD" && /reversed|imerudishwa|已退回/i.test(`${n.titleEn} ${n.titleSw} ${n.titleZh}`)));
   ok("C5 notification explains held funds without claiming a completed refund",
     /not added/i.test(revNote?.bodyEn ?? "") && /held for return/i.test(revNote?.bodyEn ?? "")
     && /zinashikiliwa ili zirudishwe/.test(revNote?.bodySw ?? "") && /待退还/.test(revNote?.bodyZh ?? "")
@@ -242,7 +242,7 @@ await setPaymentControls({ provider: "mock" }, "test").catch(() => {});
   ok("D3 nothing credited while in flight", (await balanceOf("usr_dn_pending")) === 0);
 
   const ns = await notifsFor("usr_dn_pending");
-  const pendNote = ns.find((n) => n.kind === "DEPOSIT" && /processing/i.test(n.titleEn));
+  const pendNote = ns.find((n) => n.kind === "DEPOSIT_PROCESSING" && /processing/i.test(n.titleEn));
   ok("D4 a processing notification fires immediately", !!pendNote);
   ok("D5 it tells them NOT to pay again (the double-pay guard)",
     /don't pay again|do not pay again/i.test(pendNote?.bodyEn ?? ""), pendNote?.bodyEn ?? "none");
@@ -346,7 +346,7 @@ await setPaymentControls({ provider: "mock" }, "test").catch(() => {});
   ok("H3 no money moved", (await balanceOf("usr_dn_recon")) === before);
   const ns = await notifsFor("usr_dn_recon");
   ok("H4 the player was told, even though a machine decided it",
-    ns.some((n) => n.kind === "DEPOSIT" && /failed/i.test(n.titleEn)));
+    ns.some((n) => n.kind === "DEPOSIT_FAILED" && /failed/i.test(n.titleEn)));
   const mail = depositMail();
   ok("H5 and emailed", mail.length >= 1, `got ${mail.length}`);
   ok("H6 the email still leads with 'no money was taken'",

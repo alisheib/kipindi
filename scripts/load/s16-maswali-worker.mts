@@ -258,8 +258,12 @@ try {
     const r: any = await W.settle.healStrayMillioneaHolds();
     say({ ok: true, checked: r.checked, lifted: r.lifted.length, ms: Date.now() - t, liftSections: r.checked > 0 ? ends.length + 1 : 0 });
   } else if (job.kind === "correct") {
+    // The seal the correction reviewed (S5-FIX-SRV A4/A5), read as the console reads it — before the start mark, so the
+    // read is no part of the timed act.
+    const q: any = (await W.dal.questionStore.listForWeek(job.weekId)).find((x: any) => x.slot === job.slot);
     const t = await started();
-    const r: any = await W.svc.correctSeal({ weekId: job.weekId, slot: job.slot, outcome: job.outcome, evidence: job.evidence, officerId: SEALER, now: new Date(job.at) });
+    const r: any = await W.svc.correctSeal({ weekId: job.weekId, slot: job.slot, outcome: job.outcome, evidence: job.evidence, officerId: SEALER, now: new Date(job.at),
+      expectedOutcome: q?.outcome, expectedSealedAt: q?.sealedAt });
     say({ ok: r.ok === true, error: errOf(r), t, ms: Date.now() - t });
   } else if (job.kind === "void") {
     const t = await started();

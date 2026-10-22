@@ -15,7 +15,8 @@
  * white tile that component owns. ⛔ Never inline the SVG.
  */
 import Link from "next/link";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph, type DuoGlyphKey } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { PaymentLogo } from "@/components/wallet/payment-logo";
 import type { PaymentMethodSpec } from "@/lib/payment-providers";
 import { Chip } from "@/components/ui/chip";
@@ -70,10 +71,12 @@ export function TrustBand({
   /** The render instant — a settlement from an earlier year prints its year. */
   nowMs: number;
 }) {
-  const cells = [
-    { glyph: <I.shieldcheck s={26} />, h: t.home.trustCell1H, b: t.home.trustCell1B, marks: false },
-    { glyph: <I.resolved s={26} />,    h: t.home.trustCell2H, b: t.home.trustCell2B, marks: false },
-    { glyph: <I.phone s={26} />,       h: t.home.trustCell3H, b: t.home.trustCell3B, marks: true },
+  /* PHOSPHOR-MIGRATION release 2 (W5: "help and trust cells in Duotone on plates"): each fact's glyph stands on the identity
+     plate (`IconPlate`, 48px), in Duotone at the plate's own size — it was a bare 26px glyph in the brand ink. */
+  const cells: ReadonlyArray<{ glyph: DuoGlyphKey; h: string; b: string; marks: boolean }> = [
+    { glyph: "shieldcheck", h: t.home.trustCell1H, b: t.home.trustCell1B, marks: false },
+    { glyph: "resolved",    h: t.home.trustCell2H, b: t.home.trustCell2B, marks: false },
+    { glyph: "phone",       h: t.home.trustCell3H, b: t.home.trustCell3B, marks: true },
   ];
 
   return (
@@ -89,9 +92,13 @@ export function TrustBand({
         <Claim text={t.home.trustClaim} accent={t.home.trustClaimAccent} />
 
         <div className="kp-trust">
-          {cells.map((c) => (
+          {cells.map((c) => {
+            const Glyph = I[c.glyph];
+            return (
             <div key={c.h}>
-              <span className="kp-trust__glyph" aria-hidden>{c.glyph}</span>
+              <IconPlate size={48} variant="identity" className="kp-trust__glyph" aria-hidden>
+                <Glyph s={plateGlyph(48)} tier="duo" />
+              </IconPlate>
               {/* `text-balance` (2026-09-13): at 1280 and 768 the zh bodies left one glyph alone on
                   the last line. Balance, not pretty, because Firefox and older Safari ignore pretty. */}
               <h3 className="kp-trust__h text-balance">{c.h}</h3>
@@ -129,7 +136,8 @@ export function TrustBand({
                 </span>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
 
         {settlements.length > 0 && (

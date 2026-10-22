@@ -20,11 +20,18 @@ export const MUTATIONS = [
   {
     // ⭐ Vodacom S6 A0 (2026-10-01), restored verbatim: the away bar's "view" link used a key the
     // positions page never reads, so every player landed on "all" instead of their settled tickets.
-    name: "away-summary-bar.tsx — link with ?filter= (a key parsePortfolioParams never reads)",
-    file: "src/components/layout/away-summary-bar.tsx",
-    from: `href="/positions?tab=settled"`,
-    to: `href="/positions?filter=settled"`,
+    name: "away-ledger.ts — market result link with ?filter= (a key parsePortfolioParams never reads)",
+    file: "src/lib/away-ledger.ts",
+    from: `destinations.has("/positions?tab=settled") ? "/positions?tab=settled"`,
+    to: `destinations.has("/positions?tab=settled") ? "/positions?filter=settled"`,
     expect: "6.8",
+  },
+  {
+    name: "away-ledger.ts — mixed products sent only to market positions",
+    file: "src/lib/away-ledger.ts",
+    from: `    : "/notifications";`,
+    to: `    : "/positions?tab=settled";`,
+    expect: "6.11",
   },
   {
     // ⭐ E-266, restored verbatim: the destructive flood guard.

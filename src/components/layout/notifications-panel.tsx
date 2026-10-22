@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
 import { CountBadge } from "@/components/ui/count-badge";
 import { Dot } from "@/components/ui/dot";
 import { IconPlate } from "@/components/ui/icon-plate";
@@ -16,7 +16,7 @@ import { useT } from "@/lib/i18n";
 import { useModalLock } from "@/lib/use-modal-lock";
 // ⛔ ONE HOME for how a kind looks (§0a). The page renders the same rows; a second map here
 // would let a win be gold in the bell and grey on the page, and nothing would say so.
-import { iconFor, tierFor, tintFor } from "@/lib/notification-appearance";
+import { appearanceKind, iconFor, tierFor, tintFor } from "@/lib/notification-appearance";
 import { readableNotificationBody } from "@/lib/notification-text";
 import { DotSeq } from "@/components/ui/dot-seq";
 import { moneyRuns, moneySentence } from "@/lib/fill-nodes";
@@ -67,24 +67,12 @@ function pickBody(n: StoredNotification, locale: string): string {
   return readableNotificationBody(n.bodyEn);
 }
 
-/**
- * ⭐ `journey` (R5-C, the second gold audit, 2026-10-09). The journey's header (from 1024) mounts this same bell, and
- * there its unread signs take the journey's own unread ink — the brand family of the rail's dot and the Arifa count
- * (DESIGN_AUTHORITY §8b, §8c) — not gold, which is money (Q5). The CLASSIC bell is frozen chrome (S6/S7,
- * `qa:classic-shell-parity`), so it keeps its gold row wash and dots until the owner rules: the change for it is these
- * same two tones with the prop dropped (named in the visual pass's owner items). Absent, the panel is byte-for-byte what
- * the classic bar has always mounted.
- */
+/** The classic bell keeps its gold unread marks; the journey bell uses brand ink. */
 export function NotificationsPanel({ journey = false }: { journey?: boolean } = {}) {
   const unreadDot = journey ? "brand" : "gold";
   const unreadWash = journey ? "bg-brand-500/[0.04]" : "bg-gold-500/[0.04]";
-  // ⭐ R5-I (the visual pass's round 5, 2026-10-09; DESIGN_AUTHORITY §B2a) — the betting pair is not the bell's. In the
-  // journey the count badge is the brand pip the Arifa row already counts the same unread in (`unread-row.tsx`,
-  // `CountBadge tone="brand"`), and "Clear all" answers a hover in the danger ink every destructive control wears (a
-  // comment's Delete, the menu's Sign out) — both were the NO side's rose. The classic bell keeps its rose badge and hover
-  // until the owner rules (frozen chrome): the change for it is these two values with the prop dropped.
-  const countTone = journey ? "brand" : "rose";
-  const clearAllHover = journey ? "hover:text-danger-fg" : "hover:text-no-300";
+  const countTone = "brand";
+  const clearAllHover = "hover:text-text";
   // ⭐ R5-J (the visual pass's round 5, 2026-10-09) — the journey bell says its unread count as every count reads, grouped
   // (`formatNumber`: "1,247 unread", as the Arifa page and its row say it). The classic bell keeps its bare count until the
   // owner rules (frozen chrome): the change for it is this value with the prop dropped. Below 1,000 the two are the same.
@@ -518,7 +506,7 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
           <I.bell s={20} tier={open ? "fill" : undefined} />
         </span>
         {/* ⭐ STAGE 9b — the kit <CountBadge>. `md` is this pip's own box (min-width 18,
-            height 18, 0 4px, 10px/700) and `rose`/`ring`/`glow` are its own gradient,
+            height 18, 0 4px, 10px/700) and `brand`/`ring`/`glow` are its own gradient,
             2px cut-out and halo, carried across unchanged. Only the POSITION stays
             inline, because where a pip hangs is a fact about the bell, not about pips.
 
@@ -533,7 +521,7 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
           tone={countTone}
           size="md"
           ring="var(--bg-base)"
-          // DS-24's halo now lives on the `rose` tone inside the primitive, not here — a
+          // DS-24's halo now lives on the badge tone inside the primitive, not here — a
           // caller can no longer pass a shadow at all, so the raw `oklch()` this line used
           // to carry cannot come back.
           lift
@@ -626,7 +614,8 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
             </div>
             <div className="flex-1 overflow-y-auto overscroll-contain bg-transparent" aria-live="polite" aria-relevant="additions">
               {items.map((n) => {
-                const Icon = iconFor(n.kind);
+                const kind = appearanceKind(n);
+                const Icon = iconFor(kind);
                 const isUnread = !n.readAt;
                 return (
                   /* 🔴 THE ROW USED TO BE A `<button>` WITH THE DISMISS `<button>` INSIDE IT.
@@ -667,8 +656,8 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
                           `/notifications` now render one plate, at one size, from one place.
                           ⚠️ The size stays an inline literal inside the atom: `theme.spacing`
                           is overridden, so `h-8` would render 48px, not 32. */}
-                      <IconPlate size={32} className={cn("border", tintFor(n.kind))}>
-                        <Icon s={16} tier={tierFor(n.kind)} />
+                      <IconPlate size={32} variant={tintFor(kind)}>
+                        <Icon s={plateGlyph(32)} tier={tierFor(kind)} />
                       </IconPlate>
                       <div className="flex-1 min-w-0">
                         {/* ⭐ IN THE JOURNEY A NOTICE READS AS IT DOES ON /notifications (round 6, 2026-10-09, review C10): its
@@ -679,8 +668,8 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
                             its first line (`items-start`; the dot's 4px is that line's centre). Classic chrome is frozen: its
                             bell keeps today's one-line title and plain body. */}
                         <div className={journey ? "flex items-start justify-between gap-2" : "flex items-center justify-between gap-2"}>
-                          {/* §A4 — colour is never the only signal. Unread was a gold wash plus
-                              the gold dot below, and the dot is (correctly) `aria-hidden`, so a
+                          {/* §A4 — colour is never the only signal. Unread has a brand wash plus
+                              the brand dot below, and the dot is (correctly) `aria-hidden`, so a
                               screen-reader user could not tell a settled-money notification they
                               had opened from one they had not. Announced BEFORE the title so the
                               state arrives with the headline, not after it. `sr-only` is
@@ -724,22 +713,9 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
               })}
               {items.length === 0 && (
                 <div className="px-4 py-12 text-center">
-                  <svg
-                    aria-hidden
-                    width="48"
-                    height="48"
-                    viewBox="0 0 56 56"
-                    className="mx-auto mb-3 text-brand-300"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={1.5}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M14 38 V24 a14 14 0 0 1 28 0 V38 l4 4 H10 Z" />
-                    <path d="M22 44 a6 6 0 0 0 12 0" />
-                    <circle cx="42" cy="14" r="4" fill="var(--gold-400)" stroke="none" />
-                  </svg>
+                  <IconPlate size={56} variant="empty" className="mx-auto mb-3" aria-hidden>
+                    <I.bell s={plateGlyph(56)} tier="duo" />
+                  </IconPlate>
                   <p className="font-display text-body font-semibold text-text">
                     {t.notif.noNotifications}
                   </p>

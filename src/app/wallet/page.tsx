@@ -84,6 +84,8 @@ function adaptTxn(t: StoredTxn): Transaction {
   return {
     id: t.id,
     type: typeMap[t.type],
+    // PHOSPHOR-MIGRATION release 2a part 2: the icon reads the stored event, not this page's display fold.
+    storedType: t.type,
     amount: t.amount,
     status: statusMap[presentedStatus(t)],
     description: t.description ?? "",

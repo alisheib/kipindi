@@ -25,6 +25,7 @@ import { hubWord, type HubRow, type HubSearch, type HubViewer } from "@/componen
 import { UnreadRow } from "@/components/journey/account/unread-row";
 import { LanguageRow } from "@/components/journey/account/language-row";
 import { CardSizeRow } from "@/components/journey/account/card-size-row";
+import { HubPlate } from "@/components/ui/hub-plate";
 
 export function HubRowItem({ row, t, viewer, locale }: { row: HubRow; t: Dict; viewer: HubViewer; locale?: Locale }) {
   if (row.kind === "language") return <LanguageRow />;
@@ -41,7 +42,6 @@ export function HubRowItem({ row, t, viewer, locale }: { row: HubRow; t: Dict; v
     return <UnreadRow userId={viewer.signedIn ? viewer.userId : null} href={row.href} label={hubWord(t, row.label)} />;
   }
   if (row.kind === "search") return <SearchRow row={row} t={t} />;
-  const Glyph = I[row.glyph];
   // Round 7 (2026-10-10, the owner's item 37): a label never ends a line on a connective — "Mapendekezo" / "ya Masoko",
   // never "Mapendekezo ya" / "Masoko" (`keepConnectives`; the words unchanged).
   const label = <span className="kp-hub__label">{keepConnectives(hubWord(t, row.label))}</span>;
@@ -59,7 +59,7 @@ export function HubRowItem({ row, t, viewer, locale }: { row: HubRow; t: Dict; v
   return (
     <li>
       <Link href={row.href as never} className={row.extra === "proposals" && viewer.signedIn ? "kp-hub__row kp-hub__row--proposals" : "kp-hub__row"}>
-        <span className="kp-hub__glyph" aria-hidden><Glyph s={20} /></span>
+        <HubPlate glyph={row.glyph} />
         <span className="kp-hub__text">
           {/* The programme's flag rides its label (WP12's tiles 124, 255, 297, 2026-10-08): beside it where both fit,
               under it where they do not — it no longer takes the label's width from the row and folds
@@ -110,13 +110,12 @@ function HubSub({ text }: { text: string }) {
  *    home caps them (`MAX_QUERY_LEN`).
  */
 function SearchRow({ row, t }: { row: HubSearch; t: Dict }) {
-  const SearchGlyph = I[row.glyph];
   const label = hubWord(t, row.label);
   return (
     <li>
       <details className="kp-hub__find">
         <summary className="kp-hub__row">
-          <span className="kp-hub__glyph" aria-hidden><SearchGlyph s={20} /></span>
+          <HubPlate glyph={row.glyph} />
           <span className="kp-hub__text"><span className="kp-hub__label">{keepConnectives(label)}</span></span>
           <I.chevronRight s={18} edge="end" className="kp-hub__chev" aria-hidden />
         </summary>

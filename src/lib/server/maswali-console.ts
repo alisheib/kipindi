@@ -33,6 +33,8 @@ import { MAIN_COUNT, settlementGate, weekVoidCertain } from "@/lib/maswali-score
 import { guaranteeRequirement } from "@/lib/maswali-money";
 import type { RolloutState } from "@/lib/millionea-rollout";
 import { formatTzs } from "@/lib/utils";
+import { parseWeekListQuery, selectWeekPage, type WeekListQuery } from "@/lib/maswali-week-list";
+import { parseIntegrityListQuery, selectHeldShares, selectWinnerTickets, selectSealWeeks, selectVoidableWeeks, type IntegrityListQuery } from "@/lib/maswali-integrity-list";
 
 const HOUR = 3_600_000;
 
@@ -72,10 +74,10 @@ export async function listConsoleWeeks(limit?: number): Promise<ConsoleWeekRow[]
  * One page of the week list (`test:grid-paging`: it grows a week at a time). Every week is COUNTED, so none falls off the
  * console; rows are built only for the page asked, clamped into range.
  */
-export async function pageConsoleWeeks(askedPage: number, perPage: number): Promise<{ rows: ConsoleWeekRow[]; total: number; page: number }> {
+export async function pageConsoleWeeks(askedPage: number, perPage: number, query: WeekListQuery = parseWeekListQuery({})): Promise<{ rows: ConsoleWeekRow[]; total: number; allTotal: number; page: number }> {
   const weeks = await weekStore.list({});
-  const page = clampPage(askedPage, weeks.length, perPage);
-  return { rows: await Promise.all(weeks.slice((page - 1) * perPage, page * perPage).map(rowOf)), total: weeks.length, page };
+  const selected = selectWeekPage(weeks, askedPage, perPage, query);
+  return { rows: await Promise.all(selected.weeks.map(rowOf)), total: selected.total, allTotal: selected.allTotal, page: selected.page };
 }
 
 /** A 1-based page inside [1, last], the pager's own rule. */
@@ -424,22 +426,24 @@ export async function poolsView(now: Date = new Date()): Promise<PoolsView> {
 
 // ── COMPLIANCE (/admin/maswali/integrity) ───────────────────────────────────────────────────────────
 
-export type HeldShare = { ticketId: string; serial: string; weekCode: string; userId: string; holder: string; payout: number; reason: string; forfeited: boolean };
+export type HeldShare = { ticketId: string; serial: string; weekCode: string; weekSeq: number; userId: string; holder: string; payout: number; reason: string; forfeited: boolean };
 export type SealLogRow = { weekCode: string; slot: number; outcome: string; voidReason: string | null; sealedBy: string | null; sealedAt: string | null; evidence: string | null; stage2By: string | null };
 export type WinnerRow = { ticketId: string; weekCode: string; serial: string; userId: string; holder: string; role: string; status: string; accountAgeDays: number; payout: number; frozenReason: string | null };
 
 export type IntegrityView = {
-  /** Every held share of every settled week: a decision waiting on an officer is never paged away. */
+  /** One reachable page of held shares, selected from every settled winner. */
   held: HeldShare[];
+  heldPage: { total: number; allTotal: number; page: number };
   /** MB-34 · the seal log, shown only for weeks whose results can no longer change (settled or voided) — one page of weeks. */
   sealLog: SealLogRow[];
   /** How many weeks the seal log spans, and the page of them shown. */
-  sealWeeks: { total: number; page: number };
+  sealWeeks: { total: number; allTotal: number; page: number };
   /** One page of every paid ticket, newest week first, to screen. */
   winners: WinnerRow[];
-  winnersPage: { total: number; page: number };
+  winnersPage: { total: number; allTotal: number; page: number };
   /** Weeks a compliance officer may void whole (MR-18): the void is certain and the window has closed. */
   voidable: ConsoleWeekRow[];
+  voidablePage: { total: number; allTotal: number; page: number };
 };
 
 const holderOf = async (userId: string) => {
@@ -456,39 +460,53 @@ export const SEAL_WEEKS_PER_PAGE = 4;
 
 /**
  * ⛔ NO SILENT CAP (`test:grid-paging`; the console used to read the newest 40 weeks, so an older held share fell off the
- * page an officer decides it on). Every week is read; the paid tickets are read at the query (`won`), never every ticket;
- * every held share is listed whole; the winners and the seal log come a page at a time, counted in full.
+ * page an officer decides it on). Every week is read; paid tickets are read at the query (`won`), never every ticket;
+ * the held shares, winners and seal weeks are all filtered and sorted over their complete sets before paging.
  */
-export async function integrityView(now: Date = new Date(), pages: { winners?: number; sealWeeks?: number } = {}): Promise<IntegrityView> {
+export async function integrityView(now: Date = new Date(), pages: { held?: number; winners?: number; sealWeeks?: number; voidable?: number } = {}, query: IntegrityListQuery = parseIntegrityListQuery({})): Promise<IntegrityView> {
   const weeks = await weekStore.list({});
-  const held: HeldShare[] = [], winners: WinnerRow[] = [], sealLog: SealLogRow[] = [], voidable: ConsoleWeekRow[] = [];
-  const won: Array<{ ticket: StoredTicket; code: string }> = [];
+  const allHeld: HeldShare[] = [], winners: WinnerRow[] = [], sealLog: SealLogRow[] = [], voidable: StoredWeek[] = [];
+  const won: Array<{ ticket: StoredTicket; code: string; seq: number }> = [];
+  const holderCache = new Map<string, ReturnType<typeof holderOf>>();
+  const holderFor = (userId: string) => {
+    let found = holderCache.get(userId);
+    if (!found) { found = holderOf(userId); holderCache.set(userId, found); }
+    return found;
+  };
   for (const w of weeks) {
     if (w.state === "SETTLED") {
-      for (const ticket of await ticketStore.listForWeek(w.id, { status: "SETTLED", won: true })) won.push({ ticket, code: w.code });
+      for (const ticket of await ticketStore.listForWeek(w.id, { status: "SETTLED", won: true })) won.push({ ticket, code: w.code, seq: w.seq });
     }
     if ((w.state === "CLOSED" || w.state === "RESOLVING") && w.objectionsCloseAt && Date.parse(w.objectionsCloseAt) <= now.getTime()) {
       const gate = settlementGate(gradable(await questionStore.listForWeek(w.id)));
-      if (gate.ready && gate.weekVoid) voidable.push(await rowOf(w));
+      if (gate.ready && gate.weekVoid) voidable.push(w);
     }
   }
-  for (const { ticket: t, code } of won) {
+  for (const { ticket: t, code, seq } of won) {
     if (!t.frozenReason) continue;
-    const h = await holderOf(t.userId);
-    held.push({ ticketId: t.id, serial: t.serial, weekCode: code, userId: t.userId, holder: h.holder, payout: Math.round(t.payout ?? 0), reason: t.frozenReason, forfeited: t.frozenReason.startsWith("forfeited · ") });
+    const h = await holderFor(t.userId);
+    allHeld.push({ ticketId: t.id, serial: t.serial, weekCode: code, weekSeq: seq, userId: t.userId, holder: h.holder, payout: Math.round(t.payout ?? 0), reason: t.frozenReason, forfeited: t.frozenReason.startsWith("forfeited · ") });
   }
-  const winnersAt = clampPage(pages.winners ?? 1, won.length, CONSOLE_PER_PAGE);
-  for (const { ticket: t, code } of won.slice((winnersAt - 1) * CONSOLE_PER_PAGE, winnersAt * CONSOLE_PER_PAGE)) {
-    const h = await holderOf(t.userId);
+  const selectedHeld = selectHeldShares(allHeld, { ...query.held, page: pages.held ?? query.held.page }, CONSOLE_PER_PAGE);
+  const selectedWinners = selectWinnerTickets(won, { ...query.winners, page: pages.winners ?? query.winners.page }, CONSOLE_PER_PAGE);
+  const selectedVoidable = selectVoidableWeeks(voidable, { ...query.voidable, page: pages.voidable ?? query.voidable.page }, CONSOLE_PER_PAGE);
+  for (const { ticket: t, code } of selectedWinners.rows) {
+    const h = await holderFor(t.userId);
     const ageDays = h.createdAt ? Math.floor((now.getTime() - Date.parse(h.createdAt)) / 86_400_000) : 0;
     winners.push({ ticketId: t.id, weekCode: code, serial: t.serial, userId: t.userId, holder: h.holder, role: h.role, status: h.status, accountAgeDays: ageDays, payout: Math.round(t.payout ?? 0), frozenReason: t.frozenReason });
   }
   const sealed = weeks.filter((w) => w.state === "SETTLED" || w.state === "VOIDED");
-  const sealAt = clampPage(pages.sealWeeks ?? 1, sealed.length, SEAL_WEEKS_PER_PAGE);
-  for (const w of sealed.slice((sealAt - 1) * SEAL_WEEKS_PER_PAGE, sealAt * SEAL_WEEKS_PER_PAGE)) {
+  const selectedSeals = selectSealWeeks(sealed, { ...query.seals, page: pages.sealWeeks ?? query.seals.page }, SEAL_WEEKS_PER_PAGE);
+  for (const w of selectedSeals.rows) {
     for (const q of await questionStore.listForWeek(w.id)) {
       sealLog.push({ weekCode: w.code, slot: q.slot, outcome: q.outcome ?? "—", voidReason: q.voidReason, sealedBy: q.sealedBy, sealedAt: q.sealedAt, evidence: q.evidence, stage2By: q.stage2By });
     }
   }
-  return { held, sealLog, sealWeeks: { total: sealed.length, page: sealAt }, winners, winnersPage: { total: won.length, page: winnersAt }, voidable };
+  return {
+    held: selectedHeld.rows, heldPage: { total: selectedHeld.total, allTotal: selectedHeld.allTotal, page: selectedHeld.page },
+    sealLog, sealWeeks: { total: selectedSeals.total, allTotal: selectedSeals.allTotal, page: selectedSeals.page },
+    winners, winnersPage: { total: selectedWinners.total, allTotal: selectedWinners.allTotal, page: selectedWinners.page },
+    voidable: await Promise.all(selectedVoidable.rows.map(rowOf)),
+    voidablePage: { total: selectedVoidable.total, allTotal: selectedVoidable.allTotal, page: selectedVoidable.page },
+  };
 }

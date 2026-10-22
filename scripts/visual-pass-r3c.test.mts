@@ -148,96 +148,36 @@ section("2 · the empty state: a YES/NO pair on one line, and content centred in
   // H4): `emptyStateBody` now draws the spans and hangs each part's marks itself, so the call is `{emptyStateBody(body)}`.
   ok("2.4 · EmptyState renders its body through emptyStateBody", es.includes("{emptyStateBody(body)}") && !/function dashOnItsWord/.test(es));
 
-  // ⭐ EACH DRAWING'S INK TOP, COMPUTED FROM ITS OWN GEOMETRY, IS ITS ROW IN INK_TOP (floor), AND EACH SVG USES ITS ROW.
-  const inkTop = INK_TOP_OF(es);
-  const table = Object.fromEntries([...(/const INK_TOP[^=]*=\s*\{([\s\S]*?)\};/.exec(code(es))?.[1] ?? "").matchAll(/(\w+):\s*(\d+)/g)].map((m) => [m[1], Number(m[2])]));
-  const kinds = Object.keys(inkTop);
-  ok("2.5.locate · twelve drawings were read and measured", kinds.length === 12, kinds.join(","));
-  const wrong = kinds.filter((k) => table[k] !== Math.floor(inkTop[k] + 1e-9)).map((k) => `${k}: table ${table[k]} vs ink ${inkTop[k].toFixed(2)}`);
-  ok("2.5 · every INK_TOP row is its drawing's first ink row (the topmost stroke, less half the 1.5px stroke, rounded down)", wrong.length === 0, wrong.join(" · "));
-  const framed = kinds.filter((k) => !new RegExp(`case "${k}":[\\s\\S]{0,40}<svg \\{\\.\\.\\.frame\\(INK_TOP\\.${k}\\)\\}`).test(es) && !(k === "default" && /default:[\s\S]{0,40}<svg \{\.\.\.frame\(INK_TOP\.default\)\}/.test(es)));
-  ok("2.6 · every drawing's svg takes its frame from its own row, and none is a full 56px square any more",
-    framed.length === 0 && !/viewBox="0 0 56 56"/.test(es), framed.join(","));
-  ok("2.7 · frame() starts the viewBox at the row, keeps the 56-unit width, and shortens the svg by the same amount",
-    /viewBox:\s*`0 \$\{top\} 56 \$\{56 - top\}`, width: 56, height: 56 - top/.test(es));
-  const plant = es.replace("audit: 7,", "audit: 8,");
-  const plantTable = Object.fromEntries([...(/const INK_TOP[^=]*=\s*\{([\s\S]*?)\};/.exec(code(plant))?.[1] ?? "").matchAll(/(\w+):\s*(\d+)/g)].map((m) => [m[1], Number(m[2])]));
-  ok("2.5′ PLANT · a row one unit too deep (audit 8, which would clip its top stroke) is reported", plantTable.audit !== Math.floor(inkTop.audit));
+  // PHOSPHOR-MIGRATION release 2b: the twelve private drawings retired. Read the rendered
+  // plate and glyph as well as their mapping, so a source-only mention cannot pass.
+  const { EmptyState, ErrorState } = await import("../src/components/ui/empty-state.tsx");
+  const kinds = ["markets", "positions", "leaderboard", "notifications", "audit", "sources",
+    "proposals", "kyc", "fairness", "rg", "admin", "default"] as const;
+  const expected = ["markets", "portfolio", "podium", "bell", "audit", "sources",
+    "idea", "idCard", "attestation", "limits", "reports", "compass"];
+  const map = /const EMPTY_GLYPH:[^=]+ = \{([\s\S]*?)\};/.exec(es)?.[1] ?? "";
+  const values = Object.fromEntries([...map.matchAll(/(\w+):\s*"([^"]+)"/g)].map((m) => [m[1], m[2]]));
+  ok("2.5.locate · all twelve empty kinds name a page glyph", kinds.length === 12 && Object.keys(values).length === 12);
+  ok("2.5 · each empty kind wears its page glyph, rather than another meaning",
+    kinds.every((kind, i) => values[kind] === expected[i]));
+  const plated = (src: string) => /<IconPlate size=\{56\} variant="empty">\s*<Glyph s=\{plateGlyph\(56\)\} tier="duo" \/>\s*<\/IconPlate>/.test(src);
+  const rendered = kinds.map((kind) => renderToStaticMarkup(h(EmptyState, { kind, title: "Empty" })));
+  ok("2.6 · every rendered empty state has one 56px plate and a 28px Duotone family glyph",
+    plated(es) && rendered.every((markup, i) => /kp-plate--empty/.test(markup)
+      && /<svg[^>]*width="28"[^>]*data-g="[^"]+\.duo"/.test(markup)
+      && markup.includes('data-g="' + expected[i] + '.duo"')
+      && (markup.match(/<svg/g) ?? []).length === 1));
+  ok("2.6′ PLANT · a Line glyph on the plate fails the same contract", !plated(es.replace('tier="duo"', 'tier="line"')));
+  const error = renderToStaticMarkup(h(ErrorState, { title: "Error" }));
+  ok("2.7 · the error mark is the family's filled circled cross on a danger plate",
+    /kp-plate--danger/.test(error) && /data-g="xCircle\.fill"/.test(error)
+      && !/<svg/.test(es));
   // The box itself: 48px each side, which is what makes "ink 48px under the border" the centre.
   const box = read("src/components/ui/empty-state-classes.ts");
   ok("2.8 · the box's padding is still 48px top and bottom (py-8 on the overridden scale), the button's 48px under its ink",
     /EMPTY_STATE_BOX =\s*\n?\s*"[^"]*\bpy-8\b/.test(box) && /"8":\s*"48px"/.test(read("tailwind.config.ts")));
 }
 
-/** Each DefaultIllustration case's ink top, in svg units, from its lines, rects, circles, ellipses and paths. */
-function INK_TOP_OF(src: string): Record<string, number> {
-  const body = src.slice(src.indexOf("function DefaultIllustration"), src.indexOf("function ErrorMark"));
-  const parts = body.split(/\n\s*(?=case "\w+":|default:)/).slice(1);
-  const out: Record<string, number> = {};
-  const num = (s: string, a: string) => Number(new RegExp(`\\b${a}="([-0-9.]+)"`).exec(s)?.[1] ?? NaN);
-  for (const part of parts) {
-    const kind = /^case "(\w+)":/.exec(part)?.[1] ?? (part.startsWith("default:") ? "default" : "");
-    if (!kind) continue;
-    let top = Infinity;
-    for (const el of part.matchAll(/<(line|rect|circle|ellipse|path)\b([^>]*?)\/?>/g)) {
-      const [, tag, a] = el;
-      const half = /stroke="none"/.test(a) ? 0 : 0.75;
-      if (tag === "line") top = Math.min(top, Math.min(num(a, "y1"), num(a, "y2")) - half);
-      if (tag === "rect") top = Math.min(top, num(a, "y") - half);
-      if (tag === "circle") top = Math.min(top, num(a, "cy") - num(a, "r") - half);
-      if (tag === "ellipse") top = Math.min(top, num(a, "cy") - num(a, "ry") - half);
-      if (tag === "path") top = Math.min(top, pathTop(/\bd="([^"]+)"/.exec(a)?.[1] ?? "") - half);
-    }
-    out[kind] = top;
-  }
-  return out;
-}
-/** The smallest y a path reaches: vertices, quadratic extremes and sampled arcs (M L H V Q A, absolute or relative, Z). */
-function pathTop(d: string): number {
-  const toks = d.match(/[a-zA-Z]|-?[0-9]*\.?[0-9]+/g) ?? [];
-  let i = 0, x = 0, y = 0, sx = 0, sy = 0, cmd = "", top = Infinity;
-  const n = () => Number(toks[i++]);
-  const see = (yy: number) => { top = Math.min(top, yy); };
-  while (i < toks.length) {
-    if (/[a-zA-Z]/.test(toks[i])) cmd = toks[i++];
-    const rel = cmd === cmd.toLowerCase();
-    const C = cmd.toUpperCase();
-    if (C === "Z") { x = sx; y = sy; continue; }
-    if (C === "M" || C === "L") { const nx = n() + (rel ? x : 0), ny = n() + (rel ? y : 0); x = nx; y = ny; if (C === "M") { sx = x; sy = y; } see(y); continue; }
-    if (C === "H") { x = n() + (rel ? x : 0); see(y); continue; }
-    if (C === "V") { y = n() + (rel ? y : 0); see(y); continue; }
-    if (C === "Q") {
-      const cx = n() + (rel ? x : 0), cy = n() + (rel ? y : 0), ex = n() + (rel ? x : 0), ey = n() + (rel ? y : 0);
-      const den = y - 2 * cy + ey, t = den === 0 ? -1 : (y - cy) / den;
-      if (t > 0 && t < 1) see((1 - t) * (1 - t) * y + 2 * (1 - t) * t * cy + t * t * ey);
-      see(ey); x = ex; y = ey; continue;
-    }
-    if (C === "A") {
-      let rx = Math.abs(n()), ry = Math.abs(n()); const phi = (n() * Math.PI) / 180; const large = n(), sweep = n();
-      const ex = n() + (rel ? x : 0), ey = n() + (rel ? y : 0);
-      // SVG's endpoint-to-centre conversion (implementation notes F.6.5), then sampled.
-      const dx2 = (x - ex) / 2, dy2 = (y - ey) / 2;
-      const x1 = Math.cos(phi) * dx2 + Math.sin(phi) * dy2, y1 = -Math.sin(phi) * dx2 + Math.cos(phi) * dy2;
-      const lam = (x1 * x1) / (rx * rx) + (y1 * y1) / (ry * ry);
-      if (lam > 1) { rx *= Math.sqrt(lam); ry *= Math.sqrt(lam); }
-      const sign = large === sweep ? -1 : 1;
-      const co = sign * Math.sqrt(Math.max(0, (rx * rx * ry * ry - rx * rx * y1 * y1 - ry * ry * x1 * x1) / (rx * rx * y1 * y1 + ry * ry * x1 * x1)));
-      const cxp = (co * rx * y1) / ry, cyp = (-co * ry * x1) / rx;
-      const cx = Math.cos(phi) * cxp - Math.sin(phi) * cyp + (x + ex) / 2, cy = Math.sin(phi) * cxp + Math.cos(phi) * cyp + (y + ey) / 2;
-      const ang = (ux: number, uy: number, vx: number, vy: number) => Math.atan2(ux * vy - uy * vx, ux * vx + uy * vy);
-      const t1 = ang(1, 0, (x1 - cxp) / rx, (y1 - cyp) / ry);
-      let dt = ang((x1 - cxp) / rx, (y1 - cyp) / ry, (-x1 - cxp) / rx, (-y1 - cyp) / ry);
-      if (!sweep && dt > 0) dt -= 2 * Math.PI; else if (sweep && dt < 0) dt += 2 * Math.PI;
-      for (let k = 0; k <= 64; k++) {
-        const t = t1 + (dt * k) / 64;
-        see(Math.sin(phi) * rx * Math.cos(t) + Math.cos(phi) * ry * Math.sin(t) + cy);
-      }
-      x = ex; y = ey; continue;
-    }
-    i++; // an unknown token is skipped rather than looped on
-  }
-  return top;
-}
 
 /* ══ §3 · THE STRIP'S HALO ═══════════════════════════════════════════════════════════════════════════════════════════ */
 section("3 · a filter strip has room for the selected pill's halo (tile 319)");
@@ -311,14 +251,16 @@ section("5 · the hub's Needle row is one of the hub's rows (tiles 122–130 158
   const ordinaryClass = ordinaryMatch?.[1] ?? "";
   const parts = (s: string) => ({
     row: /className="kp-hub__row"/.test(s) || /className="kp-hub__row">/.test(s),
-    glyph: /className="kp-hub__glyph" aria-hidden><[A-Za-z.]+ (?:s|size)=\{20\}/.test(s),
+    // Re-pinned (PHOSPHOR-MIGRATION release 2, W5): every hub row leads with the one hub plate (`HubPlate`, hub-plate.tsx:
+    // the identity plate, its glyph in Duotone) — the Needle's row and the ordinary row still wear the one same slot.
+    glyph: /<HubPlate glyph=(?:"[A-Za-z]+"|\{row\.glyph\}) \/>/.test(s),
     label: /className="kp-hub__label"/.test(s),
     // Re-pinned (round 9, R9-A4, 2026-10-11): every hub row's chevron ends its ink on the row's edge (`edge="end"`) —
     // the Needle's row and the ordinary row still wear the one same chevron, which is this check's point.
     chev: s.includes('<I.chevronRight s={18} edge="end" className="kp-hub__chev"'),
   });
   const a = parts(branch), b = parts(`className="kp-hub__row">${ordinary}`);
-  ok("5.2 · its row, its 20px glyph slot, its label and its 18px chevron are the ordinary row's", a.row && a.glyph && a.label && a.chev
+  ok("5.2 · its row, its glyph slot (the hub plate), its label and its 18px chevron are the ordinary row's", a.row && a.glyph && a.label && a.chev
     && /\? "kp-hub__row kp-hub__row--proposals" : "kp-hub__row"/.test(ordinaryClass)
     && b.glyph && b.chev && /const label = <span className="kp-hub__label">/.test(hub) && /\) : label\}/.test(ordinary),
     JSON.stringify({ needle: a, ordinary: b, ordinaryClass }));

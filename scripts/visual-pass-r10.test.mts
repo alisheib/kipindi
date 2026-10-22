@@ -314,9 +314,10 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
     ["src/components/layout/top-app-bar.tsx", "<I.arrowDownToLine s={14} />", 1, "frozen", "the classic header's deposit pill (classic chrome, frozen until the flip; it drew the plus until W2 — a named parity change)"],
     ["src/components/layout/wallet-sheet.tsx", '<I.arrowDownToLine s={16} edge={journey ? "start" : undefined} />', 1, "journey", "the wallet sheet's Deposit door (it drew the plus until W2 — §6.6″): pulled in the journey, the classic capsule's sheet keeps its box"],
     ["src/components/layout/wallet-sheet.tsx", '<I.arrowUpFromLine s={16} edge={journey ? "start" : undefined} />', 1, "journey", "the wallet sheet's Withdraw door (§6.8)"],
-    ["src/app/wallet/wallet-client.tsx", "<I.arrowDown s={16} />", 1, "alone", "a history row's credit arrow, alone in its 34px plate"],
-    ["src/app/wallet/wallet-client.tsx", "<I.arrowUp s={16} />", 1, "alone", "a history row's debit arrow, alone in its 34px plate"],
+    // PHOSPHOR-MIGRATION release 2a part 2: the wallet row now selects a glyph by stored ledger kind (§3.3).
+    ["src/components/ui/not-found-view.tsx", '<I.arrowLeft s={plateGlyph(40)} />', 1, "alone", "the Home door's back arrow, centred on its identity plate"],
     ["src/components/charts/chart-toggle.tsx", '<I.chevronDown s={14} edge="end" className={[ "text-text-muted shrink-0 transition-transform duration-200", open ? "rotate-180" : "", ].join(" ")} />', 1, "edge", "the chart toggle's row end; it turns about its own box"],
+    ["src/components/charts/board-viz.tsx", '<I.chevronDown s={14} edge="end" />', 1, "edge", "U43's board chart control ends with the family caret"],
     ["src/components/charts/updown-match-track.tsx", "<I.arrowDown s={12} />", 1, "alone", "the track's gutter marks, each alone on its lane"],
     ["src/components/charts/updown-match-track.tsx", "<I.arrowUp s={12} />", 1, "alone", "the track's gutter marks, each alone on its lane"],
     ["src/components/home/updown-band.tsx", '<I.arrowDown s={16} edge="start" text="body-700" />', 1, "text", "the home band's DOWN pick"],
@@ -344,14 +345,10 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
     ["src/components/charts/outcome-cubes.tsx", "<I.arrowDown s={9} />", 1, "alone", "a past round's DOWN, alone in its cube"],
     ["src/components/journey/updown/jud-arm.tsx", '<I.arrowUp s={size === "card" ? 14 : 15} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />', 1, "text", "the journey arm's UP pick: an arrow leading a centred .btn-yes's Inter 700 word, as the home band's"],
     ["src/components/journey/updown/jud-arm.tsx", '<I.arrowDown s={size === "card" ? 14 : 15} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />', 1, "text", "the journey arm's DOWN pick"],
-    ["src/components/updown/updown-card.tsx", '<I.arrowUp s={11} edge="start" text="mono-700" />', 1, "text", "the live price's side, leading its JetBrains Mono 700 figure"],
-    ["src/components/updown/updown-card.tsx", '<I.arrowDown s={11} edge="start" text="mono-700" />', 1, "text", "the live price's side, DOWN"],
-    ["src/components/updown/updown-card.tsx", '<I.arrowUp s={10} edge="start" text="mono-700" />', 1, "text", "the UP target's label start, among its mono 700 word"],
-    ["src/components/updown/updown-card.tsx", '<I.arrowDown s={10} edge="end" text="mono-700" />', 1, "text", "the DOWN target's label end, right-aligned"],
-    ["src/components/updown/updown-card.tsx", '<I.arrowUp s={14} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />', 1, "text", "the signed-out UP button's start, among its Inter 700 word (.btn-yes)"],
-    ["src/components/updown/updown-card.tsx", '<I.arrowDown s={14} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />', 1, "text", "the signed-out DOWN button's start"],
-    ["src/components/updown/updown-card.tsx", '<I.arrowUp s={14} edge="start" text="mono-700" className={GLYPH_NO_SHRINK} />', 1, "text", "the settled round's verdict, UP WINS, among its mono 700 words"],
-    ["src/components/updown/updown-card.tsx", '<I.arrowDown s={14} edge="start" text="mono-700" className={GLYPH_NO_SHRINK} />', 1, "text", "the settled round's verdict, DOWN WINS"],
+    ["src/components/updown/updown-card.tsx", '<I.arrowUp s={12} edge="start" text="mono-700" />', 1, "text", "the confirmed price's side, leading its JetBrains Mono figure"],
+    ["src/components/updown/updown-card.tsx", '<I.arrowDown s={12} edge="start" text="mono-700" />', 1, "text", "the confirmed price's side, DOWN"],
+    ["src/components/updown/updown-card.tsx", '<I.arrowUp s={14} edge="start" text="body-700" />', 1, "text", "the settled round's verdict, UP WINS, among its Inter words"],
+    ["src/components/updown/updown-card.tsx", '<I.arrowDown s={14} edge="start" text="body-700" />', 1, "text", "the settled round's verdict, DOWN WINS"],
     ["src/components/updown/updown-stake-controls.tsx", '<I.arrowUp s={compact ? 14 : 15} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />', 1, "text", "the quick bet's UP button start"],
     ["src/components/updown/updown-stake-controls.tsx", '<I.arrowDown s={compact ? 14 : 15} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />', 1, "text", "the quick bet's DOWN button start"],
     // W4, the other new sites: the classic coin's verb, the card's 24h move, the sort's arrows and the field carets.
@@ -387,15 +384,50 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
   // the two money arrows' — the receipts' plates and /help's FAQ column.
   ok("3.3 · the arrows named through a variable are classified too: the Up & Down verdict's (`Arrow`, words' stroke, its pull in em — §6) and the notification plates' (`notification-appearance.ts`, alone in their plates); the receipts' `Dir` (arrowDownToLine / arrowUpFromLine, alone in its 40px plate) and /help's withdraw FAQ (faq3's arrowUpFromLine, the FAQ's centred icon column — 2.3)",
     has("src/components/home/updown-match-words.tsx", '<Arrow key="a" s={16} text="display-700" className="kp-udbug__arrow" />')
-      && code("src/lib/notification-appearance.ts").includes('case "DEPOSIT":      return I.arrowDownToLine;') && code("src/lib/notification-appearance.ts").includes('case "WITHDRAW":     return I.arrowUpFromLine;')
+      && code("src/lib/notification-appearance.ts").includes('case "DEPOSIT":      return "arrowDownToLine";') && code("src/lib/notification-appearance.ts").includes('case "WITHDRAW":     return "arrowUpFromLine";')
       && has("src/components/wallet/receipt-list-row.tsx", 'const Dir = type === "DEPOSIT" ? I.arrowDownToLine : I.arrowUpFromLine;')
-      && has("src/components/wallet/receipt-list-row.tsx", '<IconPlate size={40} className="bg-brand-500/10 text-brand-300"> <Dir s={20} /> </IconPlate>')
+      && has("src/components/wallet/receipt-list-row.tsx", '<IconPlate size={40} variant="identity"> <Dir s={plateGlyph(40)} tier="duo" /> </IconPlate>')
+      && has("src/app/wallet/wallet-client.tsx", 'DEPOSIT: "arrowDownToLine"')
+      && has("src/app/wallet/wallet-client.tsx", 'WITHDRAWAL: "arrowUpFromLine"')
+      && has("src/app/wallet/wallet-client.tsx", '<LedgerGlyph s={plateGlyph(32)} tier={ledgerGlyph ? "duo" : "line"} />')
       && has("src/app/help/page.tsx", '{ key: "faq3", glyph: "arrowUpFromLine" },'));
   // …and no other player file names the two money arrows but those the census and 3.3 read.
   const NAMES_DOOR = new RegExp('(?:I[.]|glyph: ")arrow(?:DownToLine|UpFromLine)(?![A-Za-z])', "g");
   const doorFiles = PLAYER_TSX.filter((f) => [...code(f).matchAll(NAMES_DOOR)].length > [...code(f).matchAll(MARK)].filter((m) => new RegExp("^<I[.]arrow(?:DownToLine|UpFromLine)").test(m[0])).length);
   ok(`3.3′ · every other naming of the two money arrows on a player surface is one of 3.3's — ${doorFiles.join(", ")}`,
     j([...doorFiles].sort()) === j(["src/app/help/page.tsx", "src/components/wallet/receipt-list-row.tsx"]), j(doorFiles));
+  // PHOSPHOR-MIGRATION release 2a part 2: a sign-based arrow mislabels payouts, refunds and fees. A filled wallet tile
+  // then caught the display fold feeding this map instead of the stored enum. Pin the adapter as well as the row, and
+  // prove both a wrong mapping and a dropped stored type fail this check.
+  const ledgerSource = code("src/app/wallet/wallet-client.tsx");
+  const ledgerMapping = (src: string) => {
+    const block = src.match(/const LEDGER_GLYPH: Record<TxnTypeValue, DuoGlyphKey \| null> = \{([\s\S]*?)\};/)?.[1] ?? "";
+    return Object.fromEntries([...block.matchAll(/\b([A-Z_]+):\s*(?:"([a-zA-Z]+)"|(null)),/g)].map((m) => [m[1], m[2] ?? null]));
+  };
+  const expectedLedger = {
+    DEPOSIT: "arrowDownToLine", WITHDRAWAL: "arrowUpFromLine", BET_PLACED: "ticket",
+    BET_PAYOUT: "resolved", BET_REFUND: "refund", BONUS_CREDIT: "gift", CASHOUT: "cashOut",
+    AGENT_COMMISSION: "agent", AGENT_COMMISSION_REVERSAL: "agent", AGENT_REGISTRATION_FEE: "agent",
+    ADJUSTMENT_DEBIT: null, ADJUSTMENT_CREDIT: null, HOUSE_FEE: null,
+  };
+  const sameLedger = (src: string) => j(ledgerMapping(src)) === j(expectedLedger);
+  const adapterSource = code("src/app/wallet/page.tsx");
+  const transactionTypeSource = code("src/lib/ui-stubs.ts");
+  const ledgerPathWorks = (row: string, adapter: string, shape: string) =>
+    sameLedger(row)
+      && row.includes("const ledgerGlyph = tx.storedType ? LEDGER_GLYPH[tx.storedType] : null;")
+      && row.includes("const LedgerGlyph = ledgerGlyph ? I[ledgerGlyph] : I.receipt;")
+      && row.includes('<IconPlate size={32} variant={ledgerGlyph ? "identity" : "quiet"} aria-hidden>')
+      && adapter.includes("storedType: t.type,")
+      && shape.includes("storedType?: TxnTypeValue;");
+  ok("3.3″ · each stored ledger type has its glyph, internal adjustments stay neutral, and the adapter carries the unfurled type into the row",
+    ledgerPathWorks(ledgerSource, adapterSource, transactionTypeSource));
+  const mislabelRefund = ledgerSource.replace('BET_REFUND: "refund",', 'BET_REFUND: "arrowDownToLine",');
+  ok("3.3″ PLANT · a returned stake mislabeled as a deposit fails the same ledger check",
+    mislabelRefund !== ledgerSource && !sameLedger(mislabelRefund));
+  const dropStoredType = adapterSource.replace("storedType: t.type,", "storedType: undefined,");
+  ok("3.3″ PLANT · folding the stored event away before rendering fails the same ledger check",
+    dropStoredType !== adapterSource && !ledgerPathWorks(ledgerSource, dropStoredType, transactionTypeSource));
   // ⭐ RE-PINNED IN THE OPEN 2026-10-19 (PHOSPHOR-MIGRATION W4, §8a): the Select's field caret and DateSelect's month title
   // drew their own 12-unit caret, pulled by a derived FIELD_CARET_PULL. They are the family's chevronDown now, at 12px
   // (Phosphor's Bold caret carries the hand-drawn one's weight there; at 10px it read faint), and the edge rule reads its
@@ -413,10 +445,11 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
     // ↑/↓ and the 24h move's ▲/▼. What is left reads "to": a figure joined to a figure, and a path in a sentence.
     "src/app/updown/history/page.tsx": [3, "data: a staked → returned pair (twice) and an open → close price pair — the figures' own face"],
     "src/app/legal/privacy/page.tsx": [3, "a path in the privacy policy's sentence (“Profile → Notifications”), in each language — the D19a-pinned legal text, frozen"],
-    "src/components/updown/updown-card.tsx": [1, "data: the open → close price pair (D52 holds the arrow to its figure)"],
     "src/app/s/optout-refusal.tsx": [1, "a path in a sentence (“Wasifu → Arifa”): the words' own face — S12 with the dictionary's arrows"],
     // MASWALI-BUILD S5 (2026-10-18): the worked example's eyebrow, beside its figures in their own mono face.
-    "src/app/millionea/how/page.tsx": [1, "data: the worked example's voided main → its reserve (“4 → A1”, as MASWALI-PLAN §10 §3.4 draws it)"],
+    // RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER): How's "4 → A1" eyebrow is gone (the critic's L16: one meaning
+    // drawn two ways — the reserve's own ↪ glyph says it); the register's log prints the objection window's two ends (P6).
+    "src/app/millionea/register/[week]/page.tsx": [1, "data: the objection window's two ends in the week's log (“from → to”, as the delivery's log prints it, P6)"],
   };
   // Read as the player gets it (PHOSPHOR W4's review): a JS escape (`←`, `\u{…}`) or an HTML entity is the character.
   const ENT: Record<string, number> = { larr: 0x2190, uarr: 0x2191, rarr: 0x2192, darr: 0x2193 };
@@ -1151,21 +1184,23 @@ section("11 · composition only: the dictionary is the commit's, byte for byte")
   ok("11.1 · src/lib/i18n-dict.ts is the commit's own", head === raw("src/lib/i18n-dict.ts"));
 }
 
-section("9b · R10-B the Up & Down empty-side note holds \"dau lako\" / \"your stake\" (round 10's read, tile 166) — all three panels");
+section("9b · R10-B the full Up & Down empty-side note holds \"dau lako\" / \"your stake\" on detail panels; the board has one brief before its choices");
 {
   const SITES: Array<[string, string]> = [
     ["src/components/updown/updown-stake-controls.tsx", "<span>{noticeBody(emptyCopy)}</span>"],
     ["src/components/updown/round-stake-panel.tsx", "<span>{noticeBody(warnCopy)}</span>"],
-    ["src/components/updown/updown-card.tsx", "<span>{noticeBody(outEmptyCopy)}</span>"],
   ];
   const raw9b = SITES.filter(([f, s]) => !has(f, s));
-  ok("9b.1 · the note is drawn through noticeBody in the stake controls, the round panel and the board card — never raw", raw9b.length === 0, raw9b.map(([f]) => f).join(" | "));
+  const boardBrief = (source: string) => source.includes("const refundBrief = cardRefundBrief(t, emptySideOf(pricing));")
+    && source.includes("bettable && refundBrief && (") && source.includes("{refundBrief}")
+    && !source.includes("outEmptyCopy");
+  ok("9b.1 · full detail notes use noticeBody; the board has only its pool-derived brief before choices", raw9b.length === 0 && boardBrief(raw("src/components/updown/updown-card.tsx")), raw9b.map(([f]) => f).join(" | "));
   const mk = (l: Loc) => String(((DICT[l] as Record<string, Record<string, string>>).market.udNobodyBacked) ?? "").replace("{side}", String((DICT[l] as Record<string, Record<string, string>>).market.udDown));
   const sw = render(h("p", null, est.noticeBody(mk("sw")) as never));
   const en = render(h("p", null, est.noticeBody(mk("en")) as never));
   ok("9b.2 · rendered, sw holds \"dau lako\" (with its last-words tail: \"dau lako litarudi.\") and en \"your stake\" inside one unbreakable run each", /<span class="whitespace-nowrap">[^<]*dau lako[^<]*<\/span>/.test(sw) && /<span class="whitespace-nowrap">[^<]*your stake[^<]*<\/span>/.test(en), JSON.stringify([sw.slice(0, 260), en.slice(0, 200)]));
-  const plant = raw("src/components/updown/updown-card.tsx").replace("<span>{noticeBody(outEmptyCopy)}</span>", "<span>{outEmptyCopy}</span>");
-  ok("9b.1′ PLANT · the board card drawing its note raw is reported by 9b.1", !squash(decomment(plant)).includes(squash("<span>{noticeBody(outEmptyCopy)}</span>")));
+  const plant = raw("src/components/updown/updown-card.tsx").replace("{refundBrief}", "{t.market.udNobodyBackedEither}");
+  ok("9b.1′ PLANT · the board card replacing its specific brief with generic copy is reported by 9b.1", plant !== raw("src/components/updown/updown-card.tsx") && !boardBrief(plant));
 }
 
 section("12 · R10-C /updown's chart is drawn again after its rebuild — the board widened past 1024px (tiles 164)");
@@ -1174,7 +1209,9 @@ section("12 · R10-C /updown's chart is drawn again after its rebuild — the bo
   // The rule as a predicate over a source, so a planted regression is judged by the very check.
   const drawsEveryBuild = (src: string) => {
     const s = squash(decomment(src));
-    const keyed = s.includes("useEffect(() => { if (feed && engineGen > 0) draw(feed); }, [feed, engineGen, draw]);");
+    // U43 B2, 2026-10-19: the frozen price-to-beat reference is a fourth
+    // legitimate redraw cause. The generation still proves every chart rebuild.
+    const keyed = s.includes("useEffect(() => { if (guardedFeed && engineGen > 0) draw(guardedFeed); }, [guardedFeed, engineGen, draw, priceToBeat]);");
     const counts = s.includes("setEngineGen((g) => g + 1);");
     const noReset = !/setEngineGen\(\s*0\s*\)|setEngineReady\(\s*false\s*\)/.test(s);
     const rebuildsOnHeight = /\}, \[height\]\);/.test(s);
@@ -1182,7 +1219,7 @@ section("12 · R10-C /updown's chart is drawn again after its rebuild — the bo
   };
   const src = raw(TC);
   ok("12.1 · the draw effect keys on the chart's BUILD GENERATION and every build counts it up — a rebuild (300 → 380 when the board widens) is always drawn, never batched to \"unchanged\"", drawsEveryBuild(src));
-  const flag = src.replace("const [engineGen, setEngineGen] = useState(0);", "const [engineReady, setEngineReady] = useState(false);").replace("setEngineGen((g) => g + 1);", "setEngineReady(true);").replace("useEffect(() => { if (feed && engineGen > 0) draw(feed); }, [feed, engineGen, draw]);", "useEffect(() => { if (feed && engineReady) draw(feed); }, [feed, engineReady, draw]);");
+  const flag = src.replace("const [engineGen, setEngineGen] = useState(0);", "const [engineReady, setEngineReady] = useState(false);").replace("setEngineGen((g) => g + 1);", "setEngineReady(true);").replace("useEffect(() => { if (guardedFeed && engineGen > 0) draw(guardedFeed); }, [guardedFeed, engineGen, draw, priceToBeat]);", "useEffect(() => { if (guardedFeed && engineReady) draw(guardedFeed); }, [guardedFeed, engineReady, draw, priceToBeat]);");
   ok("12.1′ PLANT · the old true/false flag (cleared by the cleanup, set by the build, batched to unchanged) is reported by 12.1", flag !== src && !drawsEveryBuild(flag));
 }
 

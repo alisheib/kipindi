@@ -19,7 +19,9 @@
  * "0 horizontal overflow" bar (§0.1b rule 3): two texts overlapping inside an SVG overflow
  * nothing at all.
  */
-import { priceTagOffsetY } from "../src/components/updown/price-hero.tsx";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { PriceHero, priceTagOffsetY } from "../src/components/updown/price-hero.tsx";
 
 let pass = 0; const fails: string[] = [];
 const ok = (n: string, c: boolean, d = "") => { if (c) pass++; else fails.push(`${n}${d ? ` — ${d}` : ""}`); };
@@ -103,6 +105,54 @@ const clears = (lastY: number, targets: Array<number | null>, preferAbove: boole
   ok("5.3 the helper is given BOTH target baselines, offset exactly as they are drawn",
      /priceTagOffsetY\(\s*parseFloat\(lastY\),[\s\S]{0,260}?parseFloat\(upY\) - 4[\s\S]{0,120}?parseFloat\(downY\) \+ 11/.test(src),
      "passing the LINE positions instead of the LABEL baselines measures the wrong gap");
+}
+
+// ── §6 · the confirmed value follows settlement's target-side tone; the opening reference is gilt ──
+{
+  const render = (tone: "up" | "down" | "level", livePrice: number, upTarget = 101, downTarget = 99) => renderToStaticMarkup(createElement(PriceHero, {
+    openPrice: 100, upTarget, downTarget, livePrice,
+    priceSeries: [{ t: "2026-10-19T10:30:00.000Z", price: 100 }, { t: "2026-10-19T10:31:00.000Z", price: livePrice }],
+    decimals: 2, tone,
+    copy: { priceLabel: "Confirmed price", openLabel: "Open", upLabel: "Up target", downLabel: "Down target",
+      awaitingRead: "Awaiting read", aboveBelow: null, source: null, chartAlt: "Confirmed round prices" },
+  }));
+  for (const { tone, livePrice, ink } of [
+    { tone: "up", livePrice: 102, ink: "yes-300" },
+    { tone: "down", livePrice: 98, ink: "no-300" },
+    { tone: "level", livePrice: 100, ink: "text-muted" },
+  ] as const) {
+    const html = render(tone, livePrice);
+    const gradients = html.slice(html.indexOf("<defs>"), html.indexOf("</defs>") + 7);
+    const expected = `var(--${ink})`;
+    ok(`6.1 ${tone}: confirmed number, move, path, point and tag follow the target-side tone`,
+      html.includes(`data-tone="${tone}"`)
+      && html.includes(`color:${expected}">$${livePrice.toFixed(2)}</span>`)
+      && new RegExp(`class="font-mono font-semibold tabular-nums" style="[^"]*color:var\\(--${ink}\\)"`).test(html)
+      && html.includes(`fill="none" stroke="${expected}" stroke-width="2.25"`)
+      && new RegExp(`<circle class="ud-point"[^>]*fill="var\\(--${ink}\\)"`).test(html)
+      && html.includes(`fill="${expected}" font-family="var(--font-mono)" font-size="11" font-weight="700">$${livePrice.toFixed(2)}</text>`),
+      "all five readings must agree with the supplied settlement tone");
+    ok(`6.2 ${tone}: opening reference is gilt and both observed-price washes keep their sides`,
+      /<line x1="0" y1="[^"]+" x2="606" y2="[^"]+" stroke="var\(--gilt\)" stroke-width="1\.25"/.test(html)
+      && /<text class="ud-svg-label" x="0"[^>]*fill="var\(--gilt\)"/.test(html)
+      && gradients.includes('id="udUp"') && gradients.includes('id="udDown"')
+      && /id="udUp"[\s\S]*?stop-color="var\(--yes-400\)"/.test(gradients)
+      && /id="udDown"[\s\S]*?stop-color="var\(--no-400\)"/.test(gradients)
+      && !html.includes('fill="none" stroke="var(--gilt)" stroke-width="2.25"'),
+      "gold is the named reference, not the observed-price path");
+    ok(`6.3 ${tone}: UP and DOWN target lines and labels retain side colours`,
+      /<line x1="0" y1="[^"]+" x2="606" y2="[^"]+" stroke="var\(--yes-400\)"/.test(html)
+      && /<line x1="0" y1="[^"]+" x2="606" y2="[^"]+" stroke="var\(--no-400\)"/.test(html)
+      && /style="color:var\(--yes-300\)"[^>]*>UP TARGET/.test(html)
+      && /style="color:var\(--no-300\)"[^>]*>DOWN TARGET/.test(html));
+  }
+  const banded = render("level", 101.5, 103, 101);
+  ok("6.4 a read above open but strictly inside the target band remains level/muted",
+    banded.includes('data-tone="level"')
+    && banded.includes('color:var(--text-muted)">$101.50</span>')
+    && banded.includes('fill="none" stroke="var(--text-muted)" stroke-width="2.25"')
+    && !banded.includes('fill="none" stroke="var(--yes-300)" stroke-width="2.25"'),
+    "the opening delta cannot replace the settlement target rule");
 }
 
 console.log(`\nUP & DOWN CHART LABELS — ${pass} passed, ${fails.length} failed`);

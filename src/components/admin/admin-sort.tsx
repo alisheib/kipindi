@@ -93,7 +93,7 @@ export function SortBtn<K extends string>({
 }) {
   const isActive = current === field;
   return (
-    <button type="button" onClick={() => onSort(field)} className={`inline-flex min-h-[44px] items-center gap-1 font-mono text-micro uppercase tracking-[0.1em] hover:text-text transition-colors ${isActive ? "text-text" : "text-text-subtle"}`}>
+    <button type="button" onClick={() => onSort(field)} className={`inline-flex min-h-[44px] min-w-[44px] items-center gap-1 font-mono text-micro uppercase tracking-[0.1em] hover:text-text transition-colors ${isActive ? "text-text" : "text-text-subtle"}`}>
       {label}
       <span className={`text-brand-300 ${isActive ? "" : "opacity-0"}`} aria-hidden>{dir === "asc" ? "↑" : "↓"}</span>
     </button>
@@ -170,7 +170,7 @@ export function SortTh({
     >
       <Link
         href={`${baseHref}?${params.toString()}` as never}
-        className={`group inline-flex min-h-[44px] items-center gap-1 hover:text-text transition-colors ${isActive ? "text-text" : ""}`}
+        className={`group inline-flex min-h-[44px] min-w-[44px] items-center gap-1 hover:text-text transition-colors ${isActive ? "text-text" : ""}`}
         scroll={false}
       >
         {label}

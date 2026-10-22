@@ -28,9 +28,11 @@ import { atRiskReply, buildUserMessage, sendMessage } from "@/lib/chat/send-mess
 import { chatForReader as chatWithClaude } from "@/app/_actions/chat-reader";
 import { useT } from "@/lib/i18n";
 import { isJourneySurface, isSlipSurface } from "@/lib/surfaces";
+import { suppressChatOnU43 } from "@/lib/u43-overlay-routes";
 import { useJourneyOn } from "@/lib/journey/journey-on";
 import { useNotFoundShown } from "@/lib/not-found-mark";
 import { CHAT_STORAGE_KEY, historyFor, historyRecord } from "@/lib/chat/history";
+import { contentUnder } from "@/lib/chat/fab-census";
 
 // `s` = the marketing opt-out page (D6) — no chat bubble on the way out; `test:marketing-optout` pins it.
 const HIDE_ON = /^\/(auth|admin|s)(\/|$)/;
@@ -248,9 +250,11 @@ export function ChatRoot({ supportEmail, chatOwner }: { supportEmail: string; ch
       setMessages([]);
       setOpen(false);
     }
+    if (suppressChatOnU43(pathname)) setOpen(false);
   }, [pathname]);
 
   if (pathname && HIDE_ON.test(pathname)) return null;
+  if (suppressChatOnU43(pathname)) return null;
   /* ⭐ S6 WP7 · NOT ON THE NEW JOURNEY'S PAGES, FOR A JOURNEY VIEWER — the bubble stands down there and nowhere else.
      Unlike HIDE_ON (left as it is) this neither closes the panel nor clears the history: the conversation is where
      the player left it on the next page that shows the bubble. */
@@ -305,6 +309,45 @@ function ChatRootInner({
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+
+  /* ⭐ D15 · AT REST OVER TEXT OR A FIGURE, THE BUBBLE YIELDS — IT FADES, IT NEVER MOVES (MASWALI-BUILD S5-FIX-PLATFORM,
+     2026-10-21; the register critic's M5, ruled by the lead 2026-10-21, the 10/10 pass). The census (`fab-census.ts`)
+     marks the wrapper `data-over-content` while a line of text or an `.amount` lies under the bubble's resting rect, and
+     globals.css (D15) takes it to `--state-yield-opacity`. Asked at most once a frame: on a scroll and a resize, a new
+     page, a change of the body's size (a page's content arriving), the fonts' arrival, and when D3 or D75 hands the
+     bubble back (`data-scrolling` / `data-fab-idle` leaving the root). Not asked while the bubble is away (moving, idle)
+     or its panel is open — nothing is shown then, and the return asks again; the mark is written only when it changes. */
+  useEffect(() => {
+    const fab = bubbleRef.current;
+    if (!fab) return;
+    const root = document.documentElement;
+    let frame = 0;
+    const ask = () => {
+      frame = 0;
+      if (open || root.hasAttribute("data-scrolling") || root.hasAttribute("data-fab-idle")) return;
+      const over = contentUnder(fab);
+      if (over !== fab.hasAttribute("data-over-content")) fab.toggleAttribute("data-over-content", over);
+    };
+    const schedule = () => { if (!frame) frame = requestAnimationFrame(ask); };
+    schedule();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    const handedBack = new MutationObserver(schedule);
+    handedBack.observe(root, { attributes: true, attributeFilter: ["data-scrolling", "data-fab-idle"] });
+    const grown = typeof ResizeObserver === "function" ? new ResizeObserver(schedule) : null;
+    grown?.observe(document.body);
+    let live = true;
+    document.fonts?.ready.then(() => { if (live) schedule(); }).catch(() => {});
+    return () => {
+      live = false;
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      handedBack.disconnect();
+      grown?.disconnect();
+    };
+  }, [open, pathname]);
 
   // Desktop click-outside (mobile uses a scrim with explicit onClick).
   useEffect(() => {

@@ -1,0 +1,260 @@
+/**
+ * A signed-in player's position read may fail, but their money must not disappear from
+ * the board, round detail or history. Run in memory and on disposable PostgreSQL.
+ */
+import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import pg from "pg";
+
+process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
+process.env.MARKET_SCHEDULER = "false";
+process.env.HOUSE_BOT_ENGINE = "false";
+
+// db:scratch supplies only the loopback admin URL. Give this test its own migrated
+// database, so neither an existing checkout nor production can be altered by fixtures.
+const scratch = process.env.VERIFY_DATABASE_URL ?? "";
+const scratchDb = scratch ? `ud_posread_${process.pid}` : "";
+if (scratch) {
+  const host = new URL(scratch).hostname;
+  if (!["127.0.0.1", "localhost", "::1", "[::1]"].includes(host)) throw new Error("position-read fixture requires loopback PostgreSQL");
+  const admin = new pg.Client({ connectionString: scratch });
+  try {
+    await admin.connect();
+    await admin.query(`DROP DATABASE IF EXISTS "${scratchDb}" WITH (FORCE)`);
+    await admin.query(`CREATE DATABASE "${scratchDb}"`);
+  } finally { await admin.end(); }
+  const dbUrl = `${scratch.replace(/\/[^/?]*(\?.*)?$/, "")}/${scratchDb}?connect_timeout=30`;
+  execFileSync("npx", ["prisma", "migrate", "deploy"], {
+    env: { ...process.env, DATABASE_URL: dbUrl }, stdio: "inherit", shell: process.platform === "win32",
+  });
+  process.env.DATABASE_URL = dbUrl;
+  process.env.USE_PRISMA_DAL = "true";
+}
+
+const { db } = await import("../src/lib/server/store.ts");
+const { marketStore, positionStore } = await import("../src/lib/server/market-dal.ts");
+const { buyPosition } = await import("../src/lib/server/market-service.ts");
+const { getBoard, getRoundDetail, getMyUpDownHistory } = await import("../src/lib/server/updown-board.ts");
+const UC = await import("../src/lib/server/updown-config.ts");
+const UD = await import("../src/lib/server/updown-dal.ts");
+const { openRound } = await import("../src/lib/server/updown-service.ts");
+const { seedDefaultSources, addSource } = await import("../src/lib/server/source-registry.ts");
+
+const onPostgres = !!process.env.DATABASE_URL && process.env.USE_PRISMA_DAL !== "false";
+try {
+if (!onPostgres) { UD.__resetUpDownMemoryStores(); UC.__resetUpDownConfig(); }
+await seedDefaultSources();
+try { await addSource({ domain: "kitco.com", label: "Kitco", category: "crypto", rationale: "test fixture", addedBy: "system" }); }
+catch { /* already registered */ }
+
+const tag = `PRF${process.pid % 10_000}`;
+const asset = await UC.createAsset({ key: tag, symbol: "BTC/USD", nameEn: "Bitcoin", nameSw: "Bitcoin", nameZh: "比特币",
+  iconKey: "crypto", priceSourceUrl: "https://www.kitco.com/price/crypto", category: "crypto", decimals: 2, minMoveTicks: 2 }, "off");
+if (!asset.ok) throw new Error(`fixture asset: ${asset.error}`);
+await UC.setAssetEnabled(asset.data.id, true, "off");
+const chainResult = await UC.createChain({ assetId: asset.data.id, durationMinutes: 5 }, "off");
+if (!chainResult.ok) throw new Error(`fixture chain: ${chainResult.error}`);
+await UC.setChainState(chainResult.data.id, "RUNNING", "off");
+const chain = await UD.chainStore.get(chainResult.data.id);
+assert.ok(chain);
+
+const openedAt = new Date(Date.now() - 60_000).toISOString();
+const observation = await UD.observationStore.ensure(asset.data.id, openedAt);
+await UD.observationStore.confirm(observation.id, { price: 62_000, sourceUrl: asset.data.priceSourceUrl,
+  sourceQuotedAt: openedAt, evidence: "fixture", confidence: 95, model: "test", rawHash: `prf-${process.pid}` });
+const round = await openRound(chain, openedAt, observation.id, 62_000);
+if (!round.ok) throw new Error(`fixture round: ${round.error}`);
+
+const userId = `usr_prf_${process.pid}`;
+const now = new Date().toISOString();
+await db.user.create({ id: userId, phoneE164: `+2556${String(process.pid % 10_000_000).padStart(7, "0")}0`, email: null,
+  passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status: "ACTIVE", locale: "SW",
+  displayName: null, dob: null, region: null, acceptedTermsVersion: null, acceptedTermsAt: null, marketingOptIn: false,
+  twoFactorEnabled: false, avatarDataUrl: null, recruitedBy: null, createdAt: now, updatedAt: now, lastLoginAt: null, closedAt: null } as never);
+await db.wallet.create({ id: `wal_${userId}`, userId, balance: 20_000, pending: 0, hold: 0, bonusBalance: 0,
+  currency: "TZS", status: "ACTIVE", createdAt: now, updatedAt: now } as never);
+const bet = await buyPosition(userId, { marketId: round.data.marketId, side: "YES", stake: 2_000,
+  idempotencyKey: `prf-${process.pid}` });
+if (!bet.ok) throw new Error(`fixture bet: ${bet.error}`);
+
+// 2026-10-21 · U43 Release B (4e9d9bcbe) builds the board card AND the round detail from one indexed read of the
+// viewer's OWN rows (`myStakesByMarket` → `positionStore.listForUserAndMarket(userId, marketId)`); the detail used to
+// read every player's positions on the round and filter them in the page. A second player on the OTHER side of the same
+// round, with a different stake, proves on both stores that the new read hands the viewer nobody else's money.
+const rivalId = `usr_prf_rival_${process.pid}`;
+await db.user.create({ id: rivalId, phoneE164: `+2557${String(process.pid % 10_000_000).padStart(7, "0")}0`, email: null,
+  passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status: "ACTIVE", locale: "SW",
+  displayName: null, dob: null, region: null, acceptedTermsVersion: null, acceptedTermsAt: null, marketingOptIn: false,
+  twoFactorEnabled: false, avatarDataUrl: null, recruitedBy: null, createdAt: now, updatedAt: now, lastLoginAt: null, closedAt: null } as never);
+await db.wallet.create({ id: `wal_${rivalId}`, userId: rivalId, balance: 20_000, pending: 0, hold: 0, bonusBalance: 0,
+  currency: "TZS", status: "ACTIVE", createdAt: now, updatedAt: now } as never);
+const rivalBet = await buyPosition(rivalId, { marketId: round.data.marketId, side: "NO", stake: 3_000,
+  idempotencyKey: `prf-rival-${process.pid}` });
+if (!rivalBet.ok) throw new Error(`fixture rival bet: ${rivalBet.error}`);
+
+const marketReadForBoard = marketStore.get;
+let boardMarketReads = 0;
+marketStore.get = async (marketId, tx) => {
+  boardMarketReads++;
+  return marketReadForBoard(marketId, tx);
+};
+let board: Awaited<ReturnType<typeof getBoard>>;
+try { board = await getBoard({ assetKey: tag, durationMinutes: 5, userId }); }
+finally { marketStore.get = marketReadForBoard; }
+assert.equal(boardMarketReads, 1,
+  "the board reuses one market snapshot for selection and viewer hydration");
+const detail = await getRoundDetail(round.data.id, userId);
+
+// The privacy half of the read (see the rival above), asserted BEFORE the fixture's own figures so a leak is named
+// as a leak. Premise first: both stakes really are on this one round.
+const roundRows = await positionStore.listForMarket(round.data.marketId);
+assert.deepEqual(roundRows.map((p) => p.userId).sort(), [rivalId, userId].sort(),
+  "premise: the viewer and a rival each hold one position on the same round");
+assert.deepEqual((await positionStore.listForUserAndMarket(userId, round.data.marketId)).map((p) => [p.id, p.userId]),
+  [[bet.data.positionId, userId]], "the indexed own-position read returns the viewer's row and nobody else's");
+const viewerCard = board.rounds.find((r) => r.roundId === round.data.id);
+assert.equal(viewerCard?.myDownStake, 0, "board must not show another player's stake as the viewer's");
+assert.deepEqual(detail?.myPosition?.items.map((p) => p.id), [bet.data.positionId],
+  "detail must itemise the viewer's own position and nobody else's");
+assert.deepEqual([detail?.myPosition?.hedged, detail?.round.myDownStake], [false, 0],
+  "detail must not fold another player's opposite stake into the viewer's");
+const rivalDetail = await getRoundDetail(round.data.id, rivalId);
+assert.deepEqual([rivalDetail?.myPosition?.items.map((p) => p.id), rivalDetail?.myPosition?.side, rivalDetail?.myPosition?.stake],
+  [[rivalBet.data.positionId], "DOWN", 3_000], "each player's detail holds exactly their own position");
+
+assert.equal(viewerCard?.myUpStake, 2_000, "board fixture must show this stake");
+assert.equal(detail?.myPosition?.stake, 2_000, "detail fixture must show this stake");
+const history = await getMyUpDownHistory(userId);
+assert.equal(history.some((p) => p.positionId === bet.data.positionId), true, "history fixture must show this position");
+
+// A failed catalog or round read is not an empty market. The same board retry
+// boundary serves guests and players; both must receive the real read error.
+async function expectReadFault(
+  target: object,
+  method: string,
+  action: () => Promise<unknown>,
+  message: string,
+): Promise<void> {
+  const methods = target as Record<string, unknown>;
+  const original = methods[method];
+  const fault = new Error(`fixture ${method} read failure`);
+  methods[method] = async () => { throw fault; };
+  try {
+    await assert.rejects(action, (e) => e === fault, message);
+  } finally { methods[method] = original; }
+}
+
+for (const [store, method, label] of [
+  [UD.assetStore, "list", "asset catalog"],
+  [UD.chainStore, "list", "chain catalog"],
+  [UD.roundStore, "list", "round list"],
+] as const) {
+  await expectReadFault(store, method, () => getBoard({ assetKey: tag, durationMinutes: 5, userId }),
+    `player board must not turn failed ${label} read into an empty market`);
+  await expectReadFault(store, method, () => getBoard({ assetKey: tag, durationMinutes: 5 }),
+    `guest board must not turn failed ${label} read into an empty market`);
+}
+
+// A player's bet has a real round, chain and asset. If one lookup fails, the
+// history page must retry instead of inventing an unknown asset or round.
+for (const [store, method, label] of [
+  [UD.roundStore, "getByMarketId", "round"],
+  [UD.chainStore, "get", "chain"],
+  [UD.assetStore, "get", "asset"],
+] as const) {
+  await expectReadFault(store, method, () => getMyUpDownHistory(userId),
+    `history must not turn failed ${label} lookup into Unknown`);
+}
+
+// A player's old stake cannot vanish because they have made >500 newer Up & Down
+// positions elsewhere. The previous board and detail readers capped the entire
+// account before filtering for the shown market. This fixture makes that cap's
+// failure concrete: the original position is absent from the old 500-row view.
+const liveMarket = await marketStore.get(round.data.marketId);
+const held = await positionStore.get(bet.data.positionId);
+assert.ok(liveMarket && held, "the cap fixture needs its real market and held position");
+const otherMarketId = `ud_prf_noise_${process.pid}`;
+await marketStore.set({ ...liveMarket, id: otherMarketId, yesPool: 501, noPool: 0,
+  predictorCount: 1, createdAt: now, updatedAt: now });
+for (let offset = 0; offset < 501; offset += 20) {
+  await Promise.all(Array.from({ length: Math.min(20, 501 - offset) }, (_, index) => {
+    const i = offset + index;
+    return positionStore.set({ ...held, id: `ud_prf_noise_${process.pid}_${i}`,
+      marketId: otherMarketId, stake: 1, potentialPayout: 1,
+      idempotencyKey: null, placedAt: new Date(Date.parse(held.placedAt) + i + 1).toISOString() });
+  }));
+}
+assert.equal((await positionStore.listForUser(userId, 500, "UPDOWN")).some((p) => p.id === held.id), false,
+  "premise: the old account-wide 500-position cap discards the visible round's stake");
+const uncappedBoard = await getBoard({ assetKey: tag, durationMinutes: 5, userId });
+assert.equal(uncappedBoard.rounds.find((r) => r.roundId === round.data.id)?.myUpStake, held.stake,
+  "the board still shows the older held stake after 501 newer positions elsewhere");
+const uncappedDetail = await getRoundDetail(round.data.id, userId);
+assert.equal(uncappedDetail?.round.myUpStake, held.stake,
+  "the round detail still shows the older held stake after 501 newer positions elsewhere");
+
+const ownMarketRead = positionStore.listForUserAndMarket;
+const ownMarketFault = new Error("fixture own-position-by-market read failure");
+positionStore.listForUserAndMarket = async () => { throw ownMarketFault; };
+try {
+  await assert.rejects(() => getBoard({ assetKey: tag, durationMinutes: 5, userId }), (e) => e === ownMarketFault,
+    "board must not turn failed position read into no stake");
+  await assert.rejects(() => getRoundDetail(round.data.id, userId), (e) => e === ownMarketFault,
+    "detail must not turn failed position read into no stake");
+  const guestBoard = await getBoard({ assetKey: tag, durationMinutes: 5 });
+  assert.equal(guestBoard.rounds.find((r) => r.roundId === round.data.id)?.myUpStake, 0,
+    "guest board must remain anonymous");
+  const guestDetail = await getRoundDetail(round.data.id);
+  assert.equal(guestDetail?.myPosition, null, "guest detail must remain anonymous");
+} finally { positionStore.listForUserAndMarket = ownMarketRead; }
+
+const userRead = positionStore.listForUser;
+const userFault = new Error("fixture history position-by-user read failure");
+positionStore.listForUser = async () => { throw userFault; };
+try {
+  await assert.rejects(() => getMyUpDownHistory(userId), (e) => e === userFault,
+    "history must not turn failed position read into no bets");
+} finally { positionStore.listForUser = userRead; }
+
+// 2026-10-21 · U43 Release B (4e9d9bcbe): the detail no longer reads the round's market-wide list for the viewer. Its
+// position read is the indexed own-row read whose failure is proven above ("detail must not turn failed position read
+// into no stake"), so it can no longer reject with this fault. The fault now proves the stronger fact the move bought:
+// with every player's list failing, the signed-in detail still shows exactly the viewer's own money (it never reads
+// other players' rows to find one player's), and a guest still reads no position at all.
+const marketRead = positionStore.listForMarket;
+const marketFault = new Error("fixture position-by-market read failure");
+positionStore.listForMarket = async () => { throw marketFault; };
+try {
+  const ownOnly = await getRoundDetail(round.data.id, userId);
+  assert.deepEqual([ownOnly?.myPosition?.items.map((p) => p.id), ownOnly?.myPosition?.stake], [[held.id], held.stake],
+    "detail must read only the viewer's own rows, never every player's positions on the round");
+  const guestDetail = await getRoundDetail(round.data.id);
+  assert.equal(guestDetail?.myPosition, null, "guest detail must skip the market-position read");
+} finally { positionStore.listForMarket = marketRead; }
+
+// A settled round uses the detail-only successor lookup. If that read fails,
+// the detail page must retry instead of announcing no next round.
+// 2026-10-21 · U43 Release B (4e9d9bcbe) made the MARKET the authority for a round's verdict (`marketOutcomeForRound`):
+// a round whose market is still LIVE reads `open` whatever its own row says. The fixture therefore records the verdict
+// the way `closeRound` does — the market's stamp and the round's outcome — before it asks for the settled path.
+const decidedAt = new Date().toISOString();
+await marketStore.stamp(round.data.marketId, { status: "RESOLVED", resolvedOutcome: "YES",
+  resolutionStage1By: "system_updown", resolutionStage1At: decidedAt, resolutionStage2By: "system_updown", resolutionStage2At: decidedAt,
+  objectionsClosedAt: decidedAt, updatedAt: decidedAt });
+await UD.roundStore.patch(round.data.id, { outcome: "UP", resolvedAt: decidedAt });
+const settledDetail = await getRoundDetail(round.data.id, userId);
+assert.equal(settledDetail?.round.state, "resolved", "successor fixture must use the settled detail path");
+await expectReadFault(UD.roundStore, "list", () => getRoundDetail(round.data.id, userId),
+  "detail must not turn failed successor lookup into no next round");
+
+console.log(`Up & Down position-read fault guard: ${onPostgres ? "PostgreSQL" : "memory"} passed`);
+} finally {
+  if (scratchDb) {
+    try { await (await import("../src/lib/server/prisma.ts")).prisma().$disconnect(); } catch { /* no connection */ }
+    const admin = new pg.Client({ connectionString: scratch });
+    try {
+      await admin.connect();
+      await admin.query(`DROP DATABASE IF EXISTS "${scratchDb}" WITH (FORCE)`);
+    } finally { await admin.end(); }
+  }
+}

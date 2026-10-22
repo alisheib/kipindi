@@ -29,6 +29,13 @@ import type { MaswaliVoidReason } from "@/lib/maswali-void-reason";
 
 export type WeekVisibility = "PUBLIC" | "DRIVE";
 export type EventKind = "SPORT" | "PRICE" | "WEATHER" | "ANNOUNCEMENT";
+/** The kinds the database's `MaswaliQuestion_event_kind_check` allows; the memory store refuses every other the same way. */
+export const EVENT_KINDS: readonly EventKind[] = ["SPORT", "PRICE", "WEATHER", "ANNOUNCEMENT"];
+export const isEventKind = (v: unknown): v is EventKind => typeof v === "string" && (EVENT_KINDS as readonly string[]).includes(v);
+/** The memory twin of `MaswaliQuestion_event_kind_check` (S5 review 6: the stores diverged — memory kept any string). */
+function memEventKindCheck(fields: { eventKind?: unknown }): void {
+  if ("eventKind" in fields && !isEventKind(fields.eventKind)) throw new Error(`MaswaliQuestion_event_kind_check: ${String(fields.eventKind)}`);
+}
 
 export type StoredWeek = {
   id: string;
@@ -201,7 +208,8 @@ function refuseUnpatchable(store: string, fields: object, allow: Record<string, 
 // ── THE INTERFACES ──────────────────────────────────────────────────────────────────────────────────
 
 export interface WeekStore {
-  get(id: string): Promise<StoredWeek | null>;
+  /** `tx`: read inside the caller's lock transaction — a read AFTER a write there must see that write (S5-FIX-SRV 2). */
+  get(id: string, tx?: Prisma.TransactionClient): Promise<StoredWeek | null>;
   getByMarketId(marketId: string): Promise<StoredWeek | null>;
   getByCode(code: string): Promise<StoredWeek | null>;
   /** Newest first. */
@@ -210,7 +218,7 @@ export interface WeekStore {
   openFor(visibility: WeekVisibility): Promise<StoredWeek | null>;
   /** The highest `seq` so far, 0 when there is none. */
   maxSeq(): Promise<number>;
-  create(w: StoredWeek): Promise<void>;
+  create(w: StoredWeek, tx?: Prisma.TransactionClient): Promise<void>;
   patch(id: string, fields: Partial<StoredWeek>, tx?: Prisma.TransactionClient): Promise<void>;
   /** ⭐ The open's one write: market, rules, question-set hash and state, WHERE the week is still DRAFT — and the final
    *  deadline re-frozen from those rules (S7, `deadlinesUnderRules`), the one write that ever moves it. */
@@ -250,7 +258,7 @@ export type WeekSettlementStamp = {
 export interface QuestionStore {
   listForWeek(cycleId: string, tx?: Prisma.TransactionClient): Promise<StoredQuestion[]>;
   get(id: string): Promise<StoredQuestion | null>;
-  createMany(cycleId: string, rows: Array<DraftQuestionFields & { id: string }>): Promise<void>;
+  createMany(cycleId: string, rows: Array<DraftQuestionFields & { id: string }>, tx?: Prisma.TransactionClient): Promise<void>;
   /** A draft's text, only while its week is DRAFT (the caller checks the week; this refuses non-draft columns). */
   editDraftQuestion(id: string, fields: Partial<DraftQuestionFields>): Promise<void>;
   /** One builder save: every changed draft slot lands together, or none does. */
@@ -434,6 +442,8 @@ const memoryQuestions: QuestionStore = {
   async get(id) { const q = memQuestions.get(id); return q ? copyQuestion(q) : null; },
   async createMany(cycleId, rows) {
     const existing = [...memQuestions.values()].filter((q) => q.cycleId === cycleId);
+    // The database checks a row's CHECKs before its keys: the same order here.
+    for (const r of rows) memEventKindCheck(r);
     for (const r of rows) {
       if (existing.some((q) => q.slot === r.slot) || rows.filter((x) => x.slot === r.slot).length > 1) throw new Error(`MaswaliQuestion_cycleId_slot_key: ${r.slot}`);
       if (r.slot !== (r.role === "MAIN" ? r.ordinal : r.ordinal + 10)) throw new Error("MaswaliQuestion_ordinal_check");
@@ -445,6 +455,7 @@ const memoryQuestions: QuestionStore = {
   },
   async editDraftQuestion(id, fields) {
     for (const k of Object.keys(fields)) if (!DRAFT_EDITABLE.has(k as keyof DraftQuestionFields)) throw new Error(`questionStore.editDraftQuestion: '${k}' is not a draft field`);
+    memEventKindCheck(fields);
     const cur = memQuestions.get(id);
     if (cur) memQuestions.set(id, { ...cur, ...fields });
   },
@@ -452,6 +463,7 @@ const memoryQuestions: QuestionStore = {
     const updated = new Map<string, StoredQuestion>();
     for (const { id, fields } of edits) {
       for (const k of Object.keys(fields)) if (!DRAFT_EDITABLE.has(k as keyof DraftQuestionFields)) throw new Error(`questionStore.editDraftQuestions: '${k}' is not a draft field`);
+      memEventKindCheck(fields);
       if (updated.has(id)) throw new Error(`questionStore.editDraftQuestions: duplicate question ${id}`);
       const cur = memQuestions.get(id);
       if (!cur) throw new Error(`questionStore.editDraftQuestions: missing question ${id}`);
@@ -629,7 +641,7 @@ function toTicket(r: any): StoredTicket {
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 const prismaWeeks: WeekStore = {
-  async get(id) { const r = await pc().maswaliCycle.findUnique({ where: { id } }); return r ? toWeek(r) : null; },
+  async get(id, tx) { const r = await db_(tx).maswaliCycle.findUnique({ where: { id } }); return r ? toWeek(r) : null; },
   async getByMarketId(marketId) { const r = await pc().maswaliCycle.findUnique({ where: { marketId } }); return r ? toWeek(r) : null; },
   async getByCode(code) { const r = await pc().maswaliCycle.findUnique({ where: { code } }); return r ? toWeek(r) : null; },
   async list(opts) {
@@ -642,8 +654,8 @@ const prismaWeeks: WeekStore = {
   },
   async openFor(visibility) { const r = await pc().maswaliCycle.findFirst({ where: { state: "OPEN", visibility } }); return r ? toWeek(r) : null; },
   async maxSeq() { const r = await pc().maswaliCycle.aggregate({ _max: { seq: true } }); return r._max.seq ?? 0; },
-  async create(w) {
-    await pc().maswaliCycle.create({
+  async create(w, tx) {
+    await db_(tx).maswaliCycle.create({
       data: {
         id: w.id, marketId: w.marketId, code: w.code, seq: w.seq, visibility: w.visibility, state: w.state,
         opensAt: new Date(w.opensAt), closesAt: new Date(w.closesAt), finalDeadlineAt: new Date(w.finalDeadlineAt),
@@ -714,8 +726,8 @@ const prismaQuestions: QuestionStore = {
     return rows.map(toQuestion);
   },
   async get(id) { const r = await pc().maswaliQuestion.findUnique({ where: { id } }); return r ? toQuestion(r) : null; },
-  async createMany(cycleId, rows) {
-    await pc().maswaliQuestion.createMany({
+  async createMany(cycleId, rows, tx) {
+    await db_(tx).maswaliQuestion.createMany({
       data: rows.map((r) => ({
         id: r.id, cycleId, role: r.role, ordinal: r.ordinal, slot: r.slot, category: r.category,
         textEn: r.textEn, textSw: r.textSw, textZh: r.textZh, criterionEn: r.criterionEn, criterionSw: r.criterionSw, criterionZh: r.criterionZh,

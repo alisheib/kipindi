@@ -28,6 +28,7 @@ import { ChartToggle } from "@/components/charts/chart-toggle";
 import { SellButton } from "@/components/markets/sell-button";
 import { ResolutionPanel } from "@/components/markets/resolution-panel";
 import { Chip } from "@/components/ui/chip";
+import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 import { Stat } from "@/components/ui/stat";
 import { cashOutValue, freeExitEndsAt, getMarket, isClosedByTime, isSelectionClosed, listPositionsForUser, ratesFor } from "@/lib/server/market-service";
 import { priceState } from "@/lib/markets/price-state";
@@ -609,7 +610,7 @@ export default async function MarketDetail({
             </span>
           )}
           {isResolved && m.resolvedOutcome && (
-            <Chip variant="resolved" size="lg">{t.market.resolvedOutcome} · {outcomeWord(t, m.resolvedOutcome ?? "VOID", "MARKET")}</Chip>
+            <Chip variant={TONE_CHIP[STATUS_TONE.RESOLVED.player]} size="lg" metrics="status">{t.market.resolvedOutcome} · {outcomeWord(t, m.resolvedOutcome ?? "VOID", "MARKET")}</Chip>
           )}
           {/* 🔴 D86 · A STANDALONE CONTROL AT ~55x18, IN A ROW WITH TWO 40x40 ONES.
               Measured ~55x18 in Swahili and ~40x18 in Chinese: it declared no height, so its box

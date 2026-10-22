@@ -486,7 +486,6 @@ const ROUTED: Array<[string, string]> = [
     "src/app/profile/invite/invite-client.tsx profile.yourReferralLink": "\"Kiungo chako cha rufaa\" 163px in a column of 240px or more",
     // Re-measured 2026-10-14 (S12, row 66: "hai" → "mubashara"; mono 11px at 0.14em, 8.14px a letter): 163px before.
     "src/components/home/updown-band.tsx home.updownEyebrow": "\"Mchezo wa kasi · mubashara\" 212px beside its dot in 278px or more",
-    "src/app/updown/[roundId]/page.tsx market.udSettlementProof": "\"Uthibitisho wa malipo\" 155px in a flex-WRAP row of 252px or more",
     "src/app/updown/history/page.tsx market.udWinRate": "\"Kiwango cha ushindi\" 141px in a stat card of 167px or more",
     "src/app/profile/activity/page.tsx activity.moneyEyebrow": "\"Muhtasari wa fedha\" 133px in the panel's 240px",
     "src/app/profile/invite/page.tsx profile.bonusRequirements": "\"Masharti ya bonasi\" 133px beside its glyph in 229px or more",

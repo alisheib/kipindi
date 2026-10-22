@@ -1,6 +1,7 @@
 "use client";
 
 import { useT } from "@/lib/i18n";
+import { MaswaliHomeCardGhost } from "@/components/maswali/maswali-home-card-ghost";
 import { PageContainer } from "@/components/layout/page-container";
 import { PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { MARKET_CARD_H } from "@/components/markets/card-geometry";
@@ -65,8 +66,8 @@ export const STATUS_PILL_W = [64, 104, 60, 92, 84, 52];
  * a refresh of this page carries the drawing's reference, not its tree, and the server's HTML is what it was —
  * `components/ui/page-loader.tsx` has the convention.
  */
-export default function MarketsGhost() {
-  const { t } = useT();
+export default function MarketsGhost({ millionea = false, preview = false }: { millionea?: boolean; preview?: boolean }) {
+  const { t, locale } = useT();
   return (
     <PageContainer tier="board">
       {/* Header row — title left, the live-count + volume line right. The real page renders
@@ -75,6 +76,11 @@ export default function MarketsGhost() {
         <p className="font-mono text-caption font-bold uppercase eyebrow text-text-subtle">{t.market.title}</p>
         <div className="kp-shimmer-track h-4 w-40 rounded bg-bg-elevated" aria-hidden />
       </div>
+
+      {/* MASWALI-BUILD S5-DESIGN-DOORS H1 · the Millionea card's slot, where the page draws the card (after the header row,
+          before the search, mb-3), when `loading.tsx`'s door says it will be offered: the card's own loading picture, so the
+          search, the bar and the grid land where they stand (they dropped by the card's height + 16px, 113–303px). */}
+      {millionea && <MaswaliHomeCardGhost t={t} locale={locale} host="board" preview={preview} className="mb-3" />}
 
       {/* Search — full width, with the echo row reserved exactly as the real box reserves it.
           ⚠️ THE BOX IS `--h-input` PLUS 2px, NOT `--h-input`. The real `.input-group` renders
@@ -178,7 +184,7 @@ export function MarketsBoardGhost() {
         {Array.from({ length: PLAYER_PER_PAGE }).map((_, i) => (
           <div
             key={i}
-            className="kp-shimmer-track rounded-md border border-border bg-bg-elevated"
+            className="kp-shimmer-track rounded-[var(--r-lg)] border border-border bg-bg-elevated"
             style={{ height: MARKET_CARD_H }}
           />
         ))}

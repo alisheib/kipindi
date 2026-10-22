@@ -235,8 +235,6 @@ const REGISTRY: Array<{ file: string; key: string; role: Role; inks: string[]; w
     why: "the dial's poles: the side the stake leans to in its betting ink, the rest `var(--text-subtle)` (inline, per span)" },
   { file: "src/components/onboarding/first-visit-primer.tsx", key: "{poolYes}", role: "SIDE", inks: ["style:\"oklch(70% 0.12 152)\""], why: "the YES pool — a bet's side" },
   { file: "src/components/onboarding/first-visit-primer.tsx", key: "{poolNo}", role: "SIDE", inks: ["style:\"oklch(70% 0.14 22)\""], why: "the NO pool — a bet's side" },
-  { file: "src/components/updown/updown-card.tsx", key: "{t.market.udUp}", role: "SIDE", inks: ["style:\"var(--yes-300)\""], why: "UP — a bet's side, over its target" },
-  { file: "src/components/updown/updown-card.tsx", key: "{t.market.udDown}", role: "SIDE", inks: ["style:\"var(--no-300)\""], why: "DOWN — a bet's side, over its target" },
   { file: "src/components/ui/field-legend.tsx", key: "{children}", role: "FORM", inks: ["text-text-muted"],
     why: "the form field's label (the Field atom's): it names a control, not a block — the kit's form-label ink" },
   { file: "src/components/ui/modal.tsx", key: "{typeLabel}", role: "STAFF", inks: ["text-claret-300"],
@@ -291,11 +289,11 @@ ok("1.3 · the section heads the round moved are in it, in the one ink: /live's 
     const own = census.verdicts.filter((v) => v.site.file === f);
     return own.length > 0 && own.every((v) => v.verdict === "ONE INK");
   }));
-ok("1.4 · the data labels the round moved are in it, in the one ink: Up & Down's (card, round, history, pods), the wallet's rows, the agent's worked example, the board's viz",
+ok("1.4 · the data labels the round moved are in it, in the one ink: Up & Down's round, history and pods, the wallet's rows, the agent's worked example, the board's viz; U43's slim card has no eyebrow",
   ["src/app/updown/[roundId]/page.tsx", "src/app/updown/history/page.tsx", "src/app/wallet/wallet-client.tsx", "src/components/agent/commission-waterfall.tsx",
     "src/components/charts/board-viz.tsx", "src/components/updown/price-hero.tsx", "src/components/updown/round-countdown.tsx", "src/components/updown/round-stake-panel.tsx",
     "src/components/updown/updown-stake-controls.tsx"].every((f) => census.verdicts.filter((v) => v.site.file === f).every((v) => v.verdict === "ONE INK"))
-    && census.verdicts.filter((v) => v.site.file === "src/components/updown/updown-card.tsx" && v.verdict !== "SIDE").every((v) => v.verdict === "ONE INK"));
+    && census.verdicts.filter((v) => v.site.file === "src/components/updown/updown-card.tsx").length === 0);
 {
   // Plants, each through the census's own reader: an old ink back on a section head, a data label, a new head in a new ink,
   // a ghost that would show its words, a registered state line whose state ink is gone.
@@ -478,7 +476,7 @@ section("4 · the KYC gate panel — a state word keeps its tone's ink; a headin
 }
 
 /* ══ §5 · RENDERED IN THREE LANGUAGES ═══════════════════════════════════════════════════════════════════════════════ */
-section("5 · rendered in sw, en and zh — every eyebrow a player reads on these surfaces is in the one ink (or a side)");
+section("5 · rendered in sw, en and zh — U43's slim card labels and the remaining eyebrows use the ruled inks");
 {
   const React = req("react") as typeof import("react");
   const h = React.createElement;
@@ -497,18 +495,32 @@ section("5 · rendered in sw, en and zh — every eyebrow a player reads on thes
     .map((m) => ({ inks: inksOf(m[2].split(/\s+/)), style: m[3] ?? "" }));
   const offInk = (rows: Array<{ inks: string[]; style: string }>, sides = false) =>
     rows.filter((r) => !(j(r.inks) === j([ONE_INK]) || (sides && !r.inks.length && /^color:var\(--(?:yes|no)-300\)$/.test(r.style.replace(/\s+/g, "")))));
-  // Up & Down's card, open, as the board draws it (the props test:updown-match renders).
+  // U43's slim card removed its four old eyebrows. Its current data labels are body-sm
+  // in one ink, and the side controls alone use the YES/NO inks.
   const { UpDownCard } = req("../src/components/updown/updown-card.tsx") as { UpDownCard: unknown };
   const NOW = Date.UTC(2026, 8, 27, 11, 26), MIN = 60_000;
   const CARD = {
-    roundId: "udr_r8b", assetName: "Bitcoin", assetTicker: "BTC", assetIcon: "crypto", durationMinutes: 10, decimals: 2,
-    openPrice: 85000, upTarget: 85000.02, downTarget: 84999.98, movePct: null, livePrice: 85010.5,
+    roundId: "udr_r8b", assetName: "Bitcoin", assetTicker: "BTC", assetIcon: "crypto", assetKey: "BTCUSD", durationMinutes: 10, decimals: 2,
+    openPrice: 85000, upTarget: 85000.02, downTarget: 84999.98, readPrice: 85010.5, readUnavailable: false,
+    opensAtMs: NOW - 2 * MIN,
     closesAtMs: NOW + 6 * MIN, selectionClosesAtMs: NOW + 4 * MIN, serverNowMs: NOW, volumeTzs: 120_000, players: 4,
-    pricing: { upPool: 0, downPool: 0, rates: {}, show: false }, state: "open", sourceClass: "crypto", sourceQuotedAt: new Date(NOW - 26_000).toISOString(),
+    pricing: { upPool: 0, downPool: 0, rates: {}, show: false }, state: "open", sourceClass: "crypto",
+    openQuotedAt: new Date(NOW - 2 * MIN).toISOString(), readQuotedAt: new Date(NOW - 26_000).toISOString(), closeQuotedAt: null,
   };
-  const card = LOCALES.map((l) => ({ l, rows: eyebrowsIn(inLocale(l, h(UpDownCard as never, CARD as never))) }));
-  ok(`5.1 EXECUTED · Up & Down's card in sw, en and zh: its ${card[0].rows.length} eyebrows — the price's name, the countdown's, "Vol", the target heading — in the one ink; UP and DOWN in their sides' inks`,
-    card.every((c) => c.rows.length >= 5 && offInk(c.rows, true).length === 0 && c.rows.filter((r) => /yes-300|no-300/.test(r.style)).length === 2), j(card.map((c) => ({ l: c.l, off: offInk(c.rows, true) }))));
+  const card = LOCALES.map((l) => ({ l, html: inLocale(l, h(UpDownCard as never, CARD as never)) }));
+  const cardLabelsInOneInk = (html: string) =>
+    /class="[^"]*\bud-clock-caption\b[^"]*\btext-body-sm\b[^"]*\btext-text-subtle\b/.test(html)
+    && /class="ud-beat[^\"]*"><span class="text-body-sm text-text-subtle"/.test(html)
+    && /class="ud-now" data-tone="up"><div class="flex flex-wrap[^\"]*"><span class="text-body-sm text-text-subtle"/.test(html)
+    && /class="ud-stats[^\"]*\btext-body-sm\b/.test(html)
+    && /style="color:var\(--text\)"><svg[^>]*>/.test(html)
+    && /\bbtn-yes\b/.test(html) && /\bbtn-no\b/.test(html)
+    && eyebrowsIn(html).length === 0;
+  ok("5.1 EXECUTED · U43's slim card in sw, en and zh: clock, open, read and stats use body-sized neutral ink; UP and DOWN stay side controls",
+    card.every((c) => cardLabelsInOneInk(c.html)), j(card.filter((c) => !cardLabelsInOneInk(c.html)).map((c) => c.l)));
+  const mutatedCard = card[0].html.replace("ud-clock-caption m-tick text-body-sm text-text-subtle", "ud-clock-caption m-tick text-body-sm text-text-faint");
+  ok("5.1′ PLANT · a U43 clock label back in faint fails the rendered card guard",
+    mutatedCard !== card[0].html && !cardLabelsInOneInk(mutatedCard));
   const { CommissionWaterfall } = req("../src/components/agent/commission-waterfall.tsx") as { CommissionWaterfall: unknown };
   const RATES = { platformFeeRate: 0.05, operatorFeeRate: 0.05, traTaxOnCommissionRate: 0.1, gbtLevyOnCommissionRate: 0.05, agentPct: 10, withholdingPct: 5 };
   const wf = LOCALES.map((l) => eyebrowsIn(renderToStaticMarkup(h(CommissionWaterfall as never, { t: dict[l], rates: RATES } as never))));
@@ -527,7 +539,7 @@ section("5 · rendered in sw, en and zh — every eyebrow a player reads on thes
       && has("src/components/profile/password-section.tsx", "<FieldLegend as=\"p\">{t.common.passwordLabel}</FieldLegend>")
       && has("src/components/profile/email-editor.tsx", "<FieldLegend as=\"p\">{t.common.contactEmail}</FieldLegend>")
       && !/text-text-muted">\{t\.common\.passwordLabel\}/.test(code("src/components/profile/password-section.tsx")), legend);
-  ok("5.1′ PLANT · a card eyebrow back in faint is reported by the rendered reader", offInk(eyebrowsIn('<span class="font-mono text-micro font-semibold uppercase eyebrow text-text-faint">x</span>')).length === 1);
+  ok("5.1″ PLANT · an eyebrow back in faint is reported by the rendered reader", offInk(eyebrowsIn('<span class="font-mono text-micro font-semibold uppercase eyebrow text-text-faint">x</span>')).length === 1);
 }
 
 /* ══ §6 · CONTRAST ══════════════════════════════════════════════════════════════════════════════════════════════════ */

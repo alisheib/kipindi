@@ -477,10 +477,12 @@ function g4Words(W: World, ok: Ok) {
 
 /* ══ §5 · THE SWITCH ═════════════════════════════════════════════════════════════════════════════════════════ */
 /** RE-PINNED (MASWALI-BUILD S5 pages, deliberately): Millionea is the third kind (MASWALI-PLAN §10 §3.9, §M8a item 11),
- *  drawn for a request its door admits (`millionea-doors.ts → millioneaTicketsDoor`) — the two kinds stand as they were. */
+ *  drawn for a request its door admits (`millionea-doors.ts → millioneaTicketsDoor`) — the two kinds stand as they were.
+ *  ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-TICKETS L1, the lead's ruling): its word wears Millionea's ink, as every nav
+ *  that draws Millionea does (§M8a item 11), through the kit Tabs' `ink` — a link like its siblings, nothing else changed. */
 const KINDS = [`{ value: "questions", labelEn: t.journey.tabQuestions, href: "/positions" }`,
   `{ value: "updown", labelEn: t.nav.updown, href: "/updown/history" }`,
-  `{ value: "millionea", labelEn: t.millionea.productLabel, href: "/millionea/tickets" }`];
+  `{ value: "millionea", labelEn: t.millionea.productLabel, href: "/millionea/tickets", ink: "millionea" as const }`];
 /** The wrapper's one element: the kit's underline rail, handed the switch's three props and nothing else. */
 const RAIL_TABS = `<Tabs variant="line" ariaLabel={ariaLabel} value={value} tabs={tabs} />`;
 /**
@@ -789,6 +791,11 @@ const SELL_DIALOGS = [
   ');',
 ].join("");
 /** S6 A8h — the result a sale opens, as its one module draws it (`SellResultModal`, for the shell's host and the button's fallback alike): today's words and figures, moved unchanged out of the button, the journey's word only under the look, and the money figures in its title whole since S6 A8f — re-pinned by R5-J (round 5, G-6): the result reads every title's figures itself (`moneyRuns`, `test:sell-grace-truth` §6), so the sale's `wholeFigures` opt-in is gone and the markup ends at `stripTone`. Read from its tag up to the tag's close. */
+// 2026-10-21 · U43's gold restoration (dd1386f06, Ali's 2026-10-20 ruling) redrew this classic result, and
+// DESIGN_AUTHORITY records it ("The result after an act": "A successful sale (`SellResultModal`) restores its earlier gold
+// completion treatment; a failed sale stays neutral or brand and never claims money returned"): the result's own variant
+// again (Release B's neutral success and neutral crest are gone) and a gold strip on a successful sale, brand on a failed
+// one. Two lines of the markup changed with it; every word and figure is unchanged. The journey still adds nothing here.
 const SELL_RESULT_MARKUP = [
   '<OperationResultModal',
   'open={open}',
@@ -817,7 +824,7 @@ const SELL_RESULT_MARKUP = [
   '] : undefined}',
   'primaryLabel={resultData.variant === "success" ? t.common.doneSawa : t.common.close}',
   'onClose={onClose}',
-  'stripTone="brand"',
+  'stripTone={resultData.variant === "success" ? "gold" : "brand"}',
 ].join("");
 /** The dialogs' three words: the journey's under the look, today's (the dialog's own defaults) without it. */
 const DIALOG_ARMS = ["titleLabel={journey ? t.journey.sellConfirmTitle : undefined}", "keepLabel={journey ? t.journey.sellKeep : undefined}",
@@ -1166,6 +1173,10 @@ const thirdHostAsks = withFile(PLANTED_HOST, () => [`import { SellButton } from 
   `export function PlantedHost() {`, `  return <SellButton positionId="x" stake={1} value={1} pricedFree look="journey" />;`, `}`].join(LF));
 const classicMoved = swap(SELL_BUTTON, "px-2 py-1 rounded-md", "px-3 py-1 rounded-md");
 const sharedMoved = swap(SELL_RESULT, "eyebrow={resultData.variant === ", "eyebrow={resultData.variant !== ");
+// 2026-10-21 · the two lines dd1386f06's gold restoration redrew in the shared result, each moved off the restored state.
+const saleStripBrand = swap(SELL_RESULT, 'stripTone={resultData.variant === "success" ? "gold" : "brand"}', 'stripTone="brand"');
+const failedSaleGold = swap(SELL_RESULT, 'stripTone={resultData.variant === "success" ? "gold" : "brand"}', 'stripTone="gold"');
+const saleResultNeutral = swap(SELL_RESULT, "variant={resultData.variant}\n", 'variant={resultData.variant === "success" ? "success" : "neutral"}\n      successCrestTone="neutral"\n');
 // S6 A8h — the result is one module's: a second definition of it in the button or in the host, its journey word for every
 // reader, or the host dropping the look the button handed it
 const resultInButton = swap(SELL_BUTTON, "<SellResultModal", "<OperationResultModal");
@@ -1289,6 +1300,9 @@ const plants: Plant[] = [
   { name: "a third host, found nowhere in a list, asks for the journey look", expect: ["12.opt-in"], world: thirdHostAsks, landed: changed(thirdHostAsks, PLANTED_HOST) },
   { name: "the classic free strip changes its padding", expect: ["12.default"], world: classicMoved, landed: changed(classicMoved, SELL_BUTTON) },
   { name: "the shared result dialog changes for every reader", expect: ["12.default"], world: sharedMoved, landed: changed(sharedMoved, SELL_RESULT) },
+  { name: "a successful sale's result loses its restored gold strip (dd1386f06)", expect: ["12.default"], world: saleStripBrand, landed: changed(saleStripBrand, SELL_RESULT) },
+  { name: "a failed sale's result is painted gold", expect: ["12.default"], world: failedSaleGold, landed: changed(failedSaleGold, SELL_RESULT) },
+  { name: "the sale's result returns to Release B's neutral success and crest", expect: ["12.default"], world: saleResultNeutral, landed: changed(saleResultNeutral, SELL_RESULT) },
   { name: "the button writes the result's words a second time, its own result in place of the shared one (S6 A8h)", expect: ["12.dialogs"], world: resultInButton, landed: changed(resultInButton, SELL_BUTTON) },
   { name: "the shell's host writes a result of its own: two definitions of one result (S6 A8h)", expect: ["12.dialogs"], world: resultInHost, landed: changed(resultInHost, SELL_HOST) },
   { name: "the result's journey word is drawn for every reader (S6 A8h)", expect: ["12.dialogs"], world: resultWordForAll, landed: changed(resultWordForAll, SELL_RESULT) },

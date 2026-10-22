@@ -34,7 +34,7 @@ import { lastTwoWordsAt, moneySentence } from "../src/lib/fill-nodes.tsx";
 import { hyphenParts, KeepHyphenated } from "../src/app/live/pulse-grid.tsx";
 import { clipQuote, endClause, readableNotificationBody } from "../src/lib/notification-text.ts";
 import { keepNameEnd, nameEndAt, nameWithEnd } from "../src/components/ui/keep-words.tsx";
-import { roundName, storedRound } from "../src/lib/updown-round-name.ts";
+import { roundDuration, roundName, storedRound } from "../src/lib/updown-round-name.ts";
 import { pickLocalized } from "../src/lib/localized.ts";
 
 let pass = 0;
@@ -515,10 +515,11 @@ section("6 · A6 an Up & Down round is named in its page's own words — its <ti
       && storedRound({ titleEn: "Bitcoin Up or Down · 15 min", titleSw: "Bitcoin Juu au Chini · dakika 5", titleZh: null }) === null
       && storedRound({ titleEn: "Bitcoin Up or Down · 15 min", titleSw: "Kitu kingine", titleZh: null }) === null);
   const words = LOCALES.map((l) => roundName(D[l], l === "zh" ? "比特币" : "Bitcoin", 15));
+  // U43 B5 (2026-10-19): Swahili duration reads "dakika 15", not "15 dakika". The card also adds its EAT window.
   ok(`6.3 · the words are the page's: ${words.map((w) => `"${w}"`).join(", ")} — the h1's name and game, then its chip's minutes, as the Up & Down card names a round`,
-    words[0] === `Bitcoin ${D.sw.market.udTitle} · 15 ${D.sw.market.udMin}` && code("src/components/updown/updown-card.tsx").includes("aria-label={`${assetName} ${t.market.udTitle} · ${durationMinutes} ${t.market.udMin}`}")
+    words[0] === `Bitcoin ${D.sw.market.udTitle} · ${roundDuration(D.sw, 15)}` && code("src/components/updown/updown-card.tsx").includes("aria-label={`${assetName} ${t.market.udTitle} · ${durationWords}${windowLabel ? ` · ${windowLabel}` : \"\"}`}")
       && code("src/app/updown/[roundId]/page.tsx").includes('{name}{" "}<span className="whitespace-nowrap">{t.market.udTitle}</span>')
-      && code("src/app/updown/[roundId]/page.tsx").includes("<Chip>{round.durationMinutes} {t.market.udMin}</Chip>"));
+      && code("src/app/updown/[roundId]/page.tsx").includes("<Chip>{roundDuration(t, round.durationMinutes)}</Chip>"));
   const storedSw = roundTitle ? roundTitle(ASSETS[0], 15, "sw") : "";
   ok(`6.4 CONTROL · the stored title is a third name for the game: "${storedSw}" beside the page's "${D.sw.market.udTitle}" — and round 5's <title> was the English stored title in every language`,
     storedSw.includes("Juu au Chini") && !storedSw.includes(D.sw.market.udTitle));
@@ -533,18 +534,19 @@ section("6 · A6 an Up & Down round is named in its page's own words — its <ti
   ok("6.6 · /positions/performance (every product line): its recent rows and its best-win caption name a round in the page's words, through one `titleOf`; a long-form market keeps its question",
     perfOk(perf));
   ok("6.6′ PLANT · a recent row back on the stored title is reported", !perfOk(perf.replace("title: m ? titleOf(m) : p.marketId.slice(0, 8),", "title: m ? pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh) : p.marketId.slice(0, 8),")));
-  // The siblings outside this fixer's area that still show a round's stored title: named for the integrator.
-  const NAMED = [
-    ["src/app/live/pulse-grid.tsx", "const title = pickLocalized(locale, market.titleEn, market.titleSw, market.titleZh);", "/live's wall: an Up & Down card's title (under its own \"Juu na Chini\" tag)"],
-    ["src/app/live/page.tsx", "title: pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh), yesPct,", "/live's featured list"],
-    ["src/app/results/page.tsx", "title: pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh),", "/results' rows (both product lines)"],
-    ["src/app/fairness/page.tsx", "const titleOf = (r: AttestationRow) => pickLocalized(locale, r.titleEn, r.titleSw, r.titleZh);", "/fairness' attestation archive (99% rounds)"],
-    ["src/lib/server/market-service.ts", "marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh),", "the Up & Down result notices (a writer: new notices quote the stored title)"],
-  ] as const;
-  const named = NAMED.filter(([f, s]) => code(f).includes(s));
-  ok(`6.7 · the siblings outside this area still read a round's stored title (named for the integrator, \`roundName\` + \`storedRound\` ready for them): ${named.length} of ${NAMED.length} found as named`,
-    named.length === NAMED.length, NAMED.filter((x) => !named.includes(x)).map(([f]) => f).join(", "));
-  for (const [f, , why] of NAMED) console.log(`       ${f}: ${why}`);
+  // U43 B5 closes the named player-facing siblings. /fairness deliberately reads MARKET only.
+  const live = code("src/app/live/page.tsx");
+  const pulse = code("src/app/live/pulse-grid.tsx");
+  const results = code("src/app/results/page.tsx");
+  const fairness = code("src/app/fairness/page.tsx");
+  const notices = code("src/lib/server/market-service.ts");
+  ok("6.7 · /live, its featured row, /results, and the four round result notices display the current game name; /fairness has no round rows",
+    live.includes("title: marketDisplayTitle(t, locale, m), yesPct,")
+      && pulse.includes("const title = marketDisplayTitle(t, locale, market);")
+      && results.includes("title: marketDisplayTitle(t, locale, m),")
+      && results.includes("keepFigures(marketDisplayTitle(t, locale, m))")
+      && (notices.match(/marketTitle: upDownResultTitle\(m\),/g) ?? []).length === 4
+      && fairness.includes("const terminal = await listTerminalMarkets();"));
 }
 
 /* ══ §7 · A7 THE WIN NOTICE'S CUT ════════════════════════════════════════════════════════════════════════════════════ */

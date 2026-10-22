@@ -1,8 +1,8 @@
 /**
  * Bonus void-restitution tests (audit C2). Proves the money-evaporation bug is
  * fixed: refundBonusToActive NEVER returns less than requested, and when the
- * player has no ACTIVE grant to hold the refunded bonus it mints a zero-wagering
- * restitution grant — so a voided bet's bonus stake can never be silently
+ * player has an ACTIVE grant or not, it mints a dedicated zero-wagering
+ * restitution grant for the refund — so a voided bet's bonus stake can never be silently
  * forfeited (the `bonus.refund_forfeited` branch is unreachable in the normal,
  * has-a-wallet path).
  *
@@ -83,7 +83,7 @@ setBonusConfig({ enabled: true } as never);
   ok("C2: invariant holds after restitution", await invariantHolds("usr_restitute_wagered"));
 }
 
-// ── 3) Regression: an existing ACTIVE grant still receives the refund in place ─
+// ── 3) An unrelated ACTIVE grant cannot absorb another position's refund ─────
 {
   await fundedUser("usr_restitute_active");
   await creditBonus("usr_restitute_active", { amountTzs: 5_000, source: "ADMIN", wagerMultiplier: 2 });
@@ -91,8 +91,12 @@ setBonusConfig({ enabled: true } as never);
   const r = await refundBonusToActive("usr_restitute_active", 3_000);
   ok("regression: refund returns full amount", r.refundedToBonus === 3_000);
   const activeAfter = await db.bonusGrant.listActiveByUser("usr_restitute_active");
-  ok("regression: no NEW grant minted (added to existing)", activeAfter.length === activeBefore.length, `before=${activeBefore.length} after=${activeAfter.length}`);
-  ok("regression: existing grant grew by the refund", (activeAfter[0]?.remainingTzs ?? 0) === 5_000 + 3_000);
+  ok("regression: a separate restitution grant is minted", activeAfter.length === activeBefore.length + 1,
+    `before=${activeBefore.length} after=${activeAfter.length}`);
+  ok("regression: original grant remains unchanged and new face equals refund",
+    activeAfter.find((g) => g.id === activeBefore[0]?.id)?.remainingTzs === 5_000 &&
+    activeAfter.some((g) => g.sourceRef?.startsWith("void-restitution:") &&
+      g.amountTzs === 3_000 && g.remainingTzs === 3_000));
   ok("regression: invariant holds", await invariantHolds("usr_restitute_active"));
 }
 

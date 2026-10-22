@@ -400,7 +400,12 @@ section("4 · every confirm's ✕ on its title's capitals, and the header no tal
   const confirmX = (src: string) => {
     const c = confirmOf(src);
     const cls = /<CloseX withheld=\{loading\} onClick=\{onClose\} label=\{t\.common\.close\} className="([^"]+)" \/>/.exec(c)?.[1];
-    const wired = /showClose=\{false\}/.test(c) && /className="mt-0\.5 shrink-0 inline-flex h-\[36px\] w-\[36px\]/.test(c)
+    // PHOSPHOR-MIGRATION release 2a part 2: IconPlate owns the 36px size and shrink-0;
+    // the confirm's custom material and CloseX geometry stay the same.
+    const wired = /showClose=\{false\}/.test(c) && /<IconPlate size=\{36\} className="mt-0\.5"/.test(c)
+      && /bg=\{`color-mix\(in oklab, \$\{ink\.ring\} 15%, transparent\)`\}/.test(c)
+      && /border=\{`1px solid color-mix\(in oklab, \$\{ink\.ring\} 30%, transparent\)`\}/.test(c)
+      && /grid shrink-0 place-items-center/.test(read("src/components/ui/icon-plate.tsx"))
       && /function CloseX\([\s\S]*?className=\{`\$\{className\} inline-flex h-8 w-8 items-center justify-center rounded-md/.test(src);
     if (!cls || !wired) return null;
     const top = margin(cls, "mt"), bottom = margin(cls, "mb");
@@ -633,15 +638,17 @@ section("7 · the refusal: one of eyebrow and title, and its reason announced (E
       && /eyebrow=\{resultData\.variant === "success" \? t\.common\.betPlacedEyebrow : refusalRepeatsEyebrow \? undefined : t\.common\.couldNotPlaceBet\}/.test(DIAL)
       && /: refusalRepeatsEyebrow \? t\.common\.couldNotPlaceBet : \(resultData\.title \?\? resultData\.error \?\? t\.error\.tryAgain\)\}/.test(DIAL));
   const ORM = read("src/components/markets/operation-result-modal.tsx");
-  // Without an eyebrow the heading follows the crest directly, and the hold surface's `[&>div+h2]:mt-4` gives it the
-  // eyebrow's 20px from the crest (`mt-4`) instead of its own 4px; its own class stays ONE literal string, because
-  // test:sell-grace-truth's dialog model reads the title's classes from it (a template literal read as no classes: NaN).
-  const holdCls = /<div\s+className="([^"]*)"\s+onPointerMove=\{onPointerMoveHold\}/.exec(ORM)?.[1] ?? "";
+  // Without an eyebrow the heading follows the crest directly. U43 appends a
+  // phone-only compact modifier to the hold, leaving the mt-4 relation intact.
+  const holdCls = /<div\s+className=\{`([^$]*)\$\{compactOnPhone \? " orm-phone-compact" : ""\}`\}\s+onPointerMove=\{onPointerMoveHold\}/.exec(ORM)?.[1] ?? "";
   ok("7.3 · the result dialog draws no eyebrow line when given none, and the heading then stands the crest's 20px under it (mt-4), not 4px",
-    /\{eyebrow && \(\s*<p\s+className="mt-4 font-mono text-micro uppercase eyebrow font-bold"/.test(ORM)
+    /\{eyebrow && \(\s*<p\s+className="orm-eyebrow mt-4 font-mono text-micro uppercase eyebrow font-bold"/.test(ORM)
       && /<h2 className="mt-1 font-display text-\[22px\] font-bold text-text leading-tight tracking-\[-0\.018em\]">/.test(ORM)
       && holdCls.split(" ").includes("[&>div+h2]:mt-4") && twStep("4") === 20
       && /aria-hidden\s*>\s*<CrestIcon variant=\{variant\} color=\{tone\.fg\} \/>\s*<\/div>\s*\{eyebrow && \(/.test(ORM), holdCls);
+  const eyebrowWithoutGap = ORM.replace("orm-eyebrow mt-4 font-mono", "orm-eyebrow mt-1 font-mono");
+  ok("7.3′ PLANT · an eyebrow pulled to 4px from the crest fails the result-dialog spacing rule",
+    eyebrowWithoutGap !== ORM && !/\{eyebrow && \(\s*<p\s+className="orm-eyebrow mt-4 font-mono text-micro uppercase eyebrow font-bold"/.test(eyebrowWithoutGap));
   ok("7.4 · the refusal is an alertdialog DESCRIBED by its reason (aria-describedby → the subtitle), so a reader hears why when focus moves in",
     /role=\{variant === "danger" \? "alertdialog" : "dialog"\}\s*ariaLabel=\{title\}\s*describedBy=\{subtitle \? subtitleId : undefined\}/.test(ORM)
       && /<p id=\{subtitleId\} className="mt-1\.5 text-\[13px\] text-text-muted leading-snug">/.test(ORM)
@@ -725,9 +732,12 @@ section("10 · the journey Wallet says why there is no Deposit; Pumzika states t
     /journeyBreak = breakStateFromTimers\(rg\?\.selfExclusionUntil, rg\?\.coolingOffUntil, now\);/.test(SHELL)
       // `user={journeyUser}` since R4-H (the journey header's copy of the user, its phone masked by maskPhone).
       // ⚠️ RE-PINNED, MASWALI-BUILD S5 (2026-10-17): the classic bar gains `millionea` (Millionea's More row, MASWALI-PLAN
-      // §10 §3.2), never the break's end — still the journey bar's alone.
+      // §10 §3.2), never the break's end — still the journey bar's alone. ⚠️ RE-PINNED, S5-FIX-PLATFORM D3 (2026-10-21): the
+      // answer is spread, `{...millioneaProp}`, handed only while it is true. ⚠️ RE-PINNED, S5-FIX-PLATFORM D13 (2026-10-21):
+      // the classic bar also takes `{...millioneaBreakProp}` — whether Millionea's pages light a stand-in on a break, never
+      // the break's end, which stays the journey bar's alone.
       && /<LazyJourneyTopBar user=\{journeyUser\} onBreak=\{promoSuppressed\} breakEnd=\{journeyBreak\}/.test(SHELL)
-      && /<TopAppBar user=\{topUser\} proposalsState=\{proposalsState\} inviteVisible=\{inviteVisible\} invitePaid=\{invitePaid\} millionea=\{millioneaRow\} \/>/.test(SHELL)
+      && /<TopAppBar user=\{topUser\} proposalsState=\{proposalsState\} inviteVisible=\{inviteVisible\} invitePaid=\{invitePaid\} \{\.\.\.millioneaProp\} \{\.\.\.millioneaBreakProp\} \/>/.test(SHELL)
       && /onBreak=\{onBreak\} breakEnd=\{breakEnd\} \/>/.test(read("src/components/journey/journey-top-bar.tsx")));
   // The hub row, rendered.
   const viewer = {
@@ -874,9 +884,13 @@ section("14 · gold is money and nothing else — the auth pages, the paused dep
   ok("14.2′ PLANT · one gold ink back on any of them is reported", AUTH.every(([, s]) => /gold-\d{3}/.test(s.replace("text-text-muted", "text-gold-300")) || !s.includes("text-text-muted")));
   const REG = read("src/app/auth/register/page.tsx");
   const golds = REG.match(/[a-z-]*gold-\d{3}[^"\s]*/g) ?? [];
-  ok("14.3 · the register page's bonus cards: gold only on the two money figures (.amount), the cards neutral",
-    golds.length === 2 && (REG.match(/<span className="amount text-gold-300">\{formatTzs\((referral\.newPlayerBonusTzs|invite\.bonusAmountTzs)\)\}<\/span>/g) ?? []).length === 2
+  ok("14.3 · the register page's two offered bonuses use neutral amount ink; gold is reserved for money won",
+    golds.length === 0 && (REG.match(/<span className="amount text-text">\{formatTzs\((referral\.newPlayerBonusTzs|invite\.bonusAmountTzs)\)\}<\/span>/g) ?? []).length === 2
       && !/var\(--gold-500\)/.test(REG), golds.join(" · "));
+  const offerPlants = ["referral.newPlayerBonusTzs", "invite.bonusAmountTzs"].map((field) =>
+    REG.replace(`<span className="amount text-text">{formatTzs(${field})}</span>`, `<span className="amount text-gold-300">{formatTzs(${field})}</span>`));
+  ok("14.3′ PLANT · either offered bonus changed back to gold is reported",
+    offerPlants.every((plant) => plant !== REG && (plant.match(/[a-z-]*gold-\d{3}[^"\s]*/g) ?? []).length !== 0));
   const DEP = read("src/app/wallet/deposit/page.tsx");
   // R8-A (2026-10-10): re-pinned. The premise clause was "the warning tone is struck in gilt" (`--warning-fg: var(--gilt)`);
   // Ali's ruling (1) made the family amber, and the tiles stay neutral on §B11's own ground — a paused deposit asks the
@@ -887,7 +901,7 @@ section("14 · gold is money and nothing else — the auth pages, the paused dep
   ok("14.5 · the code page masks the phone with the platform's one mask (\"+255••••84\", as the hub and the hero)",
     /const masked = phone \? maskPhone\(phone\) : "\+255••••";/.test(read("src/app/auth/otp/page.tsx")));
   const plant = REG.replace('<div className="overflow-hidden rounded-xl border border-border bg-bg-elevated">', '<div className="overflow-hidden rounded-xl border border-gold-500/40 bg-gold-500/10">');
-  ok("14.5′ PLANT · a gilt card back is reported", (plant.match(/[a-z-]*gold-\d{3}[^"\s]*/g) ?? []).length !== 2);
+  ok("14.5′ PLANT · a gilt card back is reported", (plant.match(/[a-z-]*gold-\d{3}[^"\s]*/g) ?? []).length !== 0);
 }
 
 /* ══ §15 · THE BELL SAYS THE END THE SAME WAY ═════════════════════════════════════════════════════════════════════════ */

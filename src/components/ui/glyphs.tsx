@@ -36,6 +36,14 @@ export type GlyphKey = RegistryKey;
 export type FillGlyphKey = {
   [K in RegistryKey]: (typeof GLYPH_REGISTRY)[K]["i"] extends { readonly fill: unknown } ? K : never;
 }[RegistryKey];
+/**
+ * The keys that ship a Duotone (map.ts DUO_KEYS), read from the registry the same way. A door that stands a key on an
+ * identity plate in Duotone — the hub's rows, a notification's plate (release 2, W5) — takes this type, so tsc refuses a
+ * key whose Duotone would fall back to Bold.
+ */
+export type DuoGlyphKey = {
+  [K in RegistryKey]: (typeof GLYPH_REGISTRY)[K]["i"] extends { readonly duo: unknown } ? K : never;
+}[RegistryKey];
 type GlyphProps ={ s?: number; edge?: GlyphEdge; text?: GlyphText; tier?: GlyphTier } & Omit<SVGProps<SVGSVGElement>, "ref">;
 
 /* ⭐ DG-A-19 — THE SIZE CONSTANTS DESCRIBE WHAT IS THERE. `s` is the size prop (the lucide-compatible `size` alias is gone
@@ -50,9 +58,11 @@ export const GLYPH = {
   card: 18,
 } as const;
 
-/** The glyph that sits centred on an `IconPlate` of the given edge, derived — never hand-picked. */
-export function plateGlyph(plateEdge: 36 | 40 | 44 | 48): number {
-  return { 36: 19, 40: 20, 44: 23, 48: 24 }[plateEdge];
+/** The glyph that sits centred on an `IconPlate` of the given edge, derived — never hand-picked. Release 2 (W5) put every
+ *  plate on the atom, and the sizes it found in use joined the table at the glyphs they already drew: 26 (the invite
+ *  page's promises) 14, 32 (a notification) 16, 42 (the Propose promo) 22. */
+export function plateGlyph(plateEdge: 26 | 32 | 36 | 40 | 42 | 44 | 48 | 56): number {
+  return { 26: 14, 32: 16, 36: 19, 40: 20, 42: 22, 44: 23, 48: 24, 56: 28 }[plateEdge];
 }
 
 /* ⭐ R9-A4 · THE EDGE RULE — A GLYPH AT A RUN'S START OR END PUTS ITS INK ON THAT EDGE. Every drawing pads itself inside

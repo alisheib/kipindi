@@ -139,7 +139,7 @@ export function PublicFooter({
    */
   return (
     <footer className="mt-8 lg:mt-[var(--rh-close)] bg-bg-elevated/40 pb-[calc(var(--rail-h)+env(safe-area-inset-bottom))] lg:pb-0">
-      {/* Heraldic claret rule with gilt midpoint — regulator/footer chrome. */}
+      {/* Quiet brand rule above the regulator and footer links. */}
       <div aria-hidden className="claret-rule mx-auto max-w-board" />
       <div className="mx-auto max-w-board px-3 lg:px-6 pt-2 pb-7 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-[12px]">
         {/* Brand + license */}
@@ -359,12 +359,8 @@ function FooterCol({
  * target against the rail pip's 45% — deliberately quieter, because this is chrome.
  * ⛔ Never `h-9 w-9` here: this repo OVERRIDES Tailwind's spacing scale and `9` is 64px.
  *
- * ⚠️ THE MARK DOES NOT DIM WITH ITS LABEL, AND THAT IS THE COST OF THE OWNER'S CHOICE.
- * Instagram's gradient and TikTok's three inks are the vendors' own and are not ours to
- * re-hue, so they cannot ride `currentColor` the way every other footer icon does — the
- * word brightens on hover and the logo beside it holds. Measured against the alternative
- * on a real render 2026-09-12 and accepted: a one-ink version of the same geometry dimmed
- * correctly but gave up the instant recognition that is the whole reason the row exists.
+ * The vendor marks keep their original colours (Ali, 2026-10-20). Their brand ink
+ * is distinct from the app's UP/DOWN betting-side colours.
  *
  * ⛔ NO HOVER ANIMATION ON THE MARK (§M5 — "icons respond, they do not perform"). The only
  * motion is the colour crossfade the global `:where(a)` rule already applies to the label

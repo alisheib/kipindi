@@ -130,7 +130,7 @@ check(
   Object.keys(emptyChart.series).length === 0 && emptyChart.ranges.length === 0,
   JSON.stringify(emptyChart),
 );
-const emptySpark = await getCardChart(EMPTY);
+const emptySpark = await getCardChart({ id: EMPTY, yesPool: 0, noPool: 0 });
 check(
   "market with no history → empty sparkline, no move24h",
   emptySpark.spark.length === 0 && emptySpark.move24h === undefined,
@@ -140,7 +140,7 @@ check(
 // 2b. ONE point is still not a line. The old code would have invented 16.
 await recordSnapshot(ONE, 600, 400);
 const oneChart = await getProbabilityChart(ONE);
-const oneSpark = await getCardChart(ONE);
+const oneSpark = await getCardChart({ id: ONE, yesPool: 600, noPool: 400 });
 check(
   "single data point → still no chart (a line needs two real points)",
   oneChart.ranges.length === 0 && oneSpark.spark.length === 0,
@@ -151,20 +151,26 @@ check(
 await recordSnapshot(MANY, 500, 500); // 50%
 await recordSnapshot(MANY, 700, 300); // 70%
 await recordSnapshot(MANY, 900, 100); // 90%
+await recordSnapshot(MANY, 800, 200); // 80%
 const stored = await getHistory(MANY);
 check(
   "history returns exactly the points recorded, oldest first",
-  stored.length === 3 &&
+  stored.length === 4 &&
     Math.round(stored[0].yes * 100) === 50 &&
     Math.round(stored[1].yes * 100) === 70 &&
-    Math.round(stored[2].yes * 100) === 90,
+    Math.round(stored[2].yes * 100) === 90 &&
+    Math.round(stored[3].yes * 100) === 80,
   JSON.stringify(stored.map((s) => Math.round(s.yes * 100))),
 );
 
-const manySpark = await getCardChart(MANY);
+const manySpark = await getCardChart({ id: MANY, yesPool: 800, noPool: 200 });
+// U43 B4 (2026-10-19): four real observations permit the mini chart, but its
+// seven-day slots carry the last recorded split and leave earlier time blank.
 check(
-  "sparkline contains only recorded values, none invented",
-  manySpark.spark.length === 3 && manySpark.spark.every((p) => [50, 70, 90].includes(p)),
+  "sparkline's sampled values come only from recorded prices, never before the first",
+  manySpark.spark.length === 16 && manySpark.spark[0] === null
+    && manySpark.spark.some((p) => p !== null)
+    && manySpark.spark.every((p) => p === null || [50, 70, 90, 80].includes(p)),
   JSON.stringify(manySpark.spark),
 );
 
@@ -198,15 +204,15 @@ log("\nC1 · a chart point needs a price:");
   const c51 = await getProbabilityChart(PRICED);
   check("5.1 one-sided snapshots are not plotted: (1000,0)×2, (600,400), (700,300) → {60, 70}",
     JSON.stringify(series(c51)) === "[60,70]", JSON.stringify(series(c51)));
-  const s55 = await getCardChart(PRICED);
-  check("5.5 ⛔ no 24h move is measured from a one-sided baseline (it read 100, so the card printed −30)",
-    s55.move24h === undefined && JSON.stringify(s55.spark) === "[60,70]", JSON.stringify(s55));
+  const s55 = await getCardChart({ id: PRICED, yesPool: 700, noPool: 300 });
+  check("5.5 ⛔ no 24h move is measured from a one-sided baseline; two priced events do not create a 7-day mini chart",
+    s55.move24h === undefined && s55.spark.length === 0, JSON.stringify(s55));
 
   await recordSnapshot(VOIDED, 600, 400);
   await recordSnapshot(VOIDED, 700, 300);
   await recordSnapshot(VOIDED, 0, 0);
   const c52 = await getProbabilityChart(VOIDED);
-  const s52 = await getCardChart(VOIDED);
+  const s52 = await getCardChart({ id: VOIDED, yesPool: 0, noPool: 0 });
   check("5.2 a final (0,0) point (a void) is not plotted as 50, and the card draws no line and no move",
     JSON.stringify(series(c52)) === "[60,70]" && s52.spark.length === 0 && s52.move24h === undefined,
     JSON.stringify({ chart: series(c52), card: s52 }));
@@ -219,9 +225,9 @@ log("\nC1 · a chart point needs a price:");
   await recordSnapshot(TWO, 500, 500);
   await recordSnapshot(TWO, 600, 400);
   const c54 = await getProbabilityChart(TWO);
-  const s54 = await getCardChart(TWO);
-  check("5.4-control two priced points DO give a 2-point series, a line and a real move (+10)",
-    JSON.stringify(series(c54)) === "[50,60]" && JSON.stringify(s54.spark) === "[50,60]" && s54.move24h === 10,
+  const s54 = await getCardChart({ id: TWO, yesPool: 600, noPool: 400 });
+  check("5.4-control two priced points DO give the full chart and a real move (+10), while the mini chart waits for four",
+    JSON.stringify(series(c54)) === "[50,60]" && s54.spark.length === 0 && s54.move24h === 10,
     JSON.stringify({ chart: series(c54), card: s54 }));
 }
 

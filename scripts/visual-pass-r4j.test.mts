@@ -107,9 +107,10 @@ function bareChrome(shell: string): { ok: boolean; why: string } {
   const headerBoxed = shell.replace(/\{journeyShown \? <LazyJourneyTopBar ([^\n]*?) \/> : <TopAppBar/,
     '{journeyShown ? <Suspense fallback={<div aria-hidden="true" className="kp-jhdr" />}><LazyJourneyTopBar $1 /></Suspense> : <TopAppBar');
   ok("1.1′ PLANT · the header back in its boundary over the bar's empty box is reported", headerBoxed !== shell && !bareChrome(headerBoxed).ok);
-  // RE-ANCHORED, MASWALI-BUILD S5-TAB (2026-10-19): the rail's arm takes `millionea={millioneaRow}` (its fifth tab).
-  const tabsBoxed = shell.replace("{journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} millionea={millioneaRow} /> :",
-    "{journeyShown ? <Suspense fallback={null}><LazyJourneyTabs userId={session?.userId ?? null} millionea={millioneaRow} /></Suspense> :");
+  // RE-ANCHORED, MASWALI-BUILD S5-TAB (2026-10-19): the rail's arm takes the Millionea answer (its fifth tab) — spread as
+  // `{...millioneaProp}` since S5-FIX-PLATFORM D3 (2026-10-21), handed only while it is true.
+  const tabsBoxed = shell.replace("{journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} {...millioneaProp} /> :",
+    "{journeyShown ? <Suspense fallback={null}><LazyJourneyTabs userId={session?.userId ?? null} {...millioneaProp} /></Suspense> :");
   ok("1.1″ PLANT · the tabs back in theirs is reported", tabsBoxed !== shell && !bareChrome(tabsBoxed).ok);
 }
 
@@ -199,21 +200,31 @@ function bellTwin(bar: string, panel: string, tw: string): { ok: boolean; why: s
 /* ══ §2 · E37 · E41 · A ROUTE CHANGE MOVES ONLY THE PAGE ═══════════════════════════════════════════════════════ */
 section("2 · E37 E41 · no cross-fade of the chrome, one current destination and one lit tab (tiles 292 301 306 315 328 333 338)");
 {
+  // ⚠️ RE-PINNED OPENLY, MASWALI-BUILD S5-FIX-PLATFORM D10 (2026-10-21; the motion critic's M7). R4-J took the journey
+  // reader off the document View Transition and left the classic reader on it; D10 takes the classic reader too, for
+  // R4-J's own reasons (the chrome cross-faded with the page, and the scroll to the top ran after the new page was drawn
+  // at the old scroll). These checks held the classic half (2.1's "everybody else keeps it", 2.1b's observed promises,
+  // 2.2's cross-fade rules); they now hold that no reader's move starts one. `qa:route-entrance` drives it in Chromium.
   const rt = read(RT);
-  const vt = (s: string) => s.includes("if (doc.startViewTransition && !motionOff() && !journeyFlagSnapshot()) {")
-    && /import \{ journeyFlagSnapshot \} from "@\/lib\/journey\/journey-on";/.test(s) && hasDirective(s, "use client");
-  ok("2.1 · a journey reader's route change never starts a document View Transition (the root cross-fade took the header, the strip and the rail, 4px apart and dimmed); everybody else keeps it", vt(rt));
-  ok("2.1′ PLANT · the journey term dropped is reported", !vt(rt.replace(" && !journeyFlagSnapshot()", "")));
-  // ⭐ An aborted cross-fade (a resize, a hidden tab, a newer move) rejects the transition's promises; each is observed, so
-  // a dropped animation is never an uncaught page error (found by MASWALI-BUILD S5's player drive, 2026-10-19).
-  const observed = (s: string) => /const transition = doc\.startViewTransition\(\(\) => \{\s*setKey\(pathname\);\s*\}\);/.test(s)
-    && ["ready", "finished", "updateCallbackDone"].every((p) => s.includes(`transition.${p}.catch(() => {});`));
-  ok("2.1b · the View Transition's promises are kept and observed — an aborted cross-fade is never an uncaught page error", observed(rt));
-  ok("2.1b′ PLANT · the `ready` rejection left unobserved is reported", !observed(rt.replace("transition.ready.catch(() => {});", "")));
-  // The native cross-fade itself is untouched: a classic reader is served it.
-  ok("2.2 · the native cross-fade's rules are unchanged for everybody else (vt-fade-out −4px / vt-fade-in +4px, --t-quick)",
-    /@keyframes vt-fade-out \{\s*from \{ opacity: 1; transform: none; \}\s*to\s+\{ opacity: 0; transform: translateY\(-4px\); \}\s*\}/.test(CSS)
-      && /::view-transition-old\(root\),\s*::view-transition-new\(root\) \{[^}]*animation-duration: var\(--t-quick\);/.test(CSS));
+  const oneEntrance = (s: string) => !s.includes("startViewTransition") && hasDirective(s, "use client")
+    && squash(s).includes("useLayoutEffect(() => { if (pathname !== key) { setKey(pathname); } }, [pathname, key]);");
+  ok("2.1 · no reader's route change starts a document View Transition (the root cross-fade took the header, the strip and the rail, 4px apart and dimmed): the key changes in the layout phase, for every reader", oneEntrance(rt));
+  const classicCrossFade = rt.replace("    if (pathname !== key) {\n      setKey(pathname);\n    }",
+    "    if (pathname !== key) {\n      const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown };\n      if (doc.startViewTransition) doc.startViewTransition(() => setKey(pathname)); else setKey(pathname);\n    }");
+  ok("2.1′ PLANT · the classic cross-fade back (startViewTransition around the key's change) is reported", classicCrossFade !== rt && !oneEntrance(classicCrossFade));
+  // ⭐ AND NOWHERE ELSE: an aborted cross-fade (a resize, a hidden tab, a newer move) rejected the transition's promises,
+  // which route-transition.tsx observed (MASWALI-BUILD S5's player drive, 2026-10-19). With no transition started anywhere
+  // in the app there is no promise to reject — held across every source file, not this one alone.
+  const files: string[] = [];
+  const walk = (d: string) => { for (const n of readdirSync(d)) { const p = join(d, n).replace(/\\/g, "/"); if (statSync(p).isDirectory()) walk(p); else if (/\.(tsx?|mts)$/.test(n)) files.push(p); } };
+  walk("src");
+  const starters = (text: (p: string) => string) => files.filter((p) => /startViewTransition/.test(text(p)));
+  ok(`2.1b · no source file starts a View Transition (${files.length} read), so no aborted cross-fade can reject an unobserved promise`, starters(read).length === 0, JSON.stringify(starters(read)));
+  ok("2.1b′ PLANT · a View Transition started in another file is reported", starters((p) => (p === "src/components/ui/toast.tsx" ? `${read(p)}\nexport const fade = () => document.startViewTransition?.(() => {});` : read(p))).length === 1);
+  // The cross-fade's rules went with it: nothing starts one, so a `::view-transition-*` rule or its keyframe draws nothing.
+  const vtRules = (css: string) => /::view-transition-|@keyframes vt-fade-/.test(css);
+  ok("2.2 · the native cross-fade's rules are gone with it (no `::view-transition-*` rule, no `vt-fade-*` keyframe in globals.css)", !vtRules(CSS));
+  ok("2.2′ PLANT · the old rules back are reported", vtRules(`${CSS}\n::view-transition-old(root) { animation-name: vt-fade-out; }`));
 }
 {
   // ⭐ RE-PINNED OPENLY, PHOSPHOR-MIGRATION W3 (2026-10-18): the current mark was an underline (`::after`, scaling in over
@@ -240,8 +251,10 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
   const loading = read(LOADING), shell = read(SHELL);
   // ⚠️ MOVED IN ROUND 5 (review G1, R5-D): the arm renders the ghosts' lazy client binding with the one server answer
   // the browser cannot read (the rails); the words are the client dictionary's (`test:visual-pass-r5d` §2).
+  // ⚠️ RE-PINNED, MASWALI-BUILD S5-FIX-PLATFORM D6 (2026-10-21): …and the rollout's answer for Millionea's ghosts, handed only
+  // while it is true (`test:millionea-dark-edge` §6 renders both).
   const journeyArm = (s: string) => squash(s).includes(
-    'const pathname = (await headers()).get("x-pathname") ?? ""; if (!pathname.startsWith("/admin") && !isOptOutPath(pathname) && (await resolveSimpleJourney()).journey) { return <LazyJourneyRouteGhost rails={heroRailNames(null)} />; }');
+    'const pathname = (await headers()).get("x-pathname") ?? ""; if (!pathname.startsWith("/admin") && !isOptOutPath(pathname) && (await resolveSimpleJourney()).journey) { const millionea = (await resolveMillionea()).visible; return <LazyJourneyRouteGhost rails={heroRailNames(null)} {...(millionea ? { millionea } : {})} />; }');
   const classicArm = (s: string) => squash(s).includes('return ( <div className="mx-auto max-w-[1280px] px-3 lg:px-6 py-10"> <SectionLoader height={360} /> </div> );');
   ok("3.1 · the root loading file asks AppShell's own questions — not the console, not the opt-out page, the per-request resolver — and draws the journey's ghost for a journey reader alone",
     journeyArm(loading) && shell.includes('if (pathname.startsWith("/admin")) {') && shell.includes("if (isOptOutPath(pathname)) {") && shell.includes("const journeyRead = resolveSimpleJourney();"));
@@ -285,7 +298,8 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
     // RE-PINNED (MASWALI-BUILD S5 pages): Maswali Millionea's four, each its loading file's own drawing.
     ['"/millionea": <MillioneaHubGhost />', 'import { MillioneaHubGhost } from "@/app/millionea/hub-ghost";', "src/app/millionea/loading.tsx", "return <MillioneaHubGhost />;"],
     ['"/millionea/slip": <MillioneaSlipGhost />', 'import { MillioneaSlipGhost } from "@/app/millionea/slip/slip-ghost";', "src/app/millionea/slip/loading.tsx", "return <MillioneaSlipGhost />;"],
-    ['"/millionea/tickets": <MillioneaTicketsGhost journeyHead={<TicketsHeadGhost t={t} />} />', 'import { MillioneaTicketsGhost } from "@/app/millionea/tickets/tickets-ghost";', "src/app/millionea/tickets/loading.tsx", "return <MillioneaTicketsGhost />;"],
+    // RE-PINNED (S5-FIX-PLATFORM, the tickets design lane's M9): its head is handed the page's three kinds.
+    ['"/millionea/tickets": <MillioneaTicketsGhost journeyHead={<TicketsHeadGhost t={t} kinds={3} />} />', 'import { MillioneaTicketsGhost } from "@/app/millionea/tickets/tickets-ghost";', "src/app/millionea/tickets/loading.tsx", "return <MillioneaTicketsGhost />;"],
     ['["^/millionea/tickets/[^/]+$", <MillioneaTicketGhost />]', 'import { MillioneaTicketGhost } from "@/app/millionea/tickets/[serial]/ticket-ghost";', "src/app/millionea/tickets/[serial]/loading.tsx", "return <MillioneaTicketGhost />;"],
   ];
   const oneDrawing = (g: string) => own.filter(([use, imp, file, renders]) => !(g.includes(use) && g.includes(imp) && read(file).includes(renders)));
@@ -367,15 +381,19 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
   const PAGE_FILE = read("src/app/page.tsx");
   const HOME_GHOST_IMPORT = 'import { JourneyHomeGhost } from "@/components/journey/home/journey-home-ghost";';
   // RE-PINNED (MASWALI-BUILD S5 pages, deliberately): the page's fallback holds the Millionea card's slot on the doors' one
-  // answer (`millionea={millionea}`); the root's picture of "/" cannot ask, and stays the plain ghost.
-  const homeEntry = (g: string, p: string) => squash(g).includes('"/": <JourneyHomeGhost t={t} />,') && g.includes(HOME_GHOST_IMPORT)
-    && !/"\/": <HomeGhost/.test(squash(g)) && squash(p).includes("<Suspense fallback={<JourneyHomeGhost t={t} millionea={millionea} />}>") && p.includes(HOME_GHOST_IMPORT);
+  // answer (`millionea={millionea}`). ⚠️ RE-PINNED AGAIN (S5-FIX-PLATFORM D6 with the doors lane's H1, 2026-10-21): the root's
+  // picture of "/" is now handed the rollout's per-request answer by the root loading file, and passes it on, so it holds
+  // the slot for a reader Millionea is visible to (no read of its own). RE-PINNED (S5 integration, 2026-10-21): the route
+  // ghost hands it the reader's locale as the page's fallback does (S5-DESIGN-DOORS H1: the slot's kept runs wrap by
+  // language), and the page's fallback also hands it the preview answer.
+  const homeEntry = (g: string, p: string) => squash(g).includes('"/": <JourneyHomeGhost t={t} locale={locale} millionea={millionea} />,') && g.includes(HOME_GHOST_IMPORT)
+    && !/"\/": <HomeGhost/.test(squash(g)) && squash(p).includes("<Suspense fallback={<JourneyHomeGhost t={t} locale={locale} millionea={millionea} preview={preview} />}>") && p.includes(HOME_GHOST_IMPORT);
   ok("3.14 · \"/\" draws the journey home's own ghost (journey-home-ghost.tsx), the same drawing app/page.tsx's journey arm stands in its Suspense boundary — the root's picture of the home and the page's own are one; the landing's ghost is shelved, unmounted (3.9 and 3.10 hold it still)",
     homeEntry(ghost, PAGE_FILE));
   ok("3.14′ PLANT · \"/\" back to the landing's ghost is reported",
-    !homeEntry(ghost.replace('"/": <JourneyHomeGhost t={t} />,', '"/": <HomeGhost t={t} locale={locale} rails={rails} />,'), PAGE_FILE));
+    !homeEntry(ghost.replace('"/": <JourneyHomeGhost t={t} locale={locale} millionea={millionea} />,', '"/": <HomeGhost t={t} locale={locale} rails={rails} />,'), PAGE_FILE));
   ok("3.14″ PLANT · the page's Suspense fallback drawn as anything but the home's ghost is reported",
-    !homeEntry(ghost, PAGE_FILE.replace("<Suspense fallback={<JourneyHomeGhost t={t} millionea={millionea} />}>", "<Suspense fallback={null}>")));
+    !homeEntry(ghost, PAGE_FILE.replace("<Suspense fallback={<JourneyHomeGhost t={t} locale={locale} millionea={millionea} preview={preview} />}>", "<Suspense fallback={null}>")));
 }
 {
   // /account: the page's own column, h1, identity card, prompt and column cut.
@@ -492,16 +510,28 @@ section("5 · the not-found mark (tiles 345–398: the market not-found stood th
   ok(`5.3 · only client code loads it (${loaders.length}: ${loaders.map((f) => f.split("/").pop()).join(", ")})`, loaders.length === 7 && servers.length === 0, JSON.stringify(servers));
 }
 {
-  // The three overlays: the stand-down term joined by `&& !notFoundShown`, the mark read once each.
+  // The three overlays: the journey stand-down term joined by `&& !notFoundShown`, the mark read once each. U43 adds
+  // its overlay route gate to the Needle; S5 then adds the slip while it is a real page.
   const TERM = "journeyOn && isJourneySurface(pathname) && !notFoundShown";
+  const needleLine = `const suppressed = hiddenPref || isMoneySurface(pathname) || suppressNeedleOnU43(pathname) || (${TERM});`;
   const sites: Array<[string, string, string]> = [
-    ["the Needle", NEEDLE, `const suppressed = hiddenPref || isMoneySurface(pathname) || (${TERM});`],
+    ["the Needle", NEEDLE, needleLine],
     ["the chat bubble", CHAT, `if (${TERM}) return null;`],
     ["the channels panel", CHANNELS, `const journeyHidden = ${TERM};`],
   ];
   const overlay = (s: string, line: string) => count(s, line) === 1 && count(s, "const notFoundShown = useNotFoundShown();") === 1
     && s.includes('import { useNotFoundShown } from "@/lib/not-found-mark";');
   for (const [name, file, line] of sites) ok(`5.4 · ${name} stands down for a journey page that is not a not-found page: ${line}`, overlay(read(file), line));
+  const needle = read(NEEDLE);
+  ok("5.4a · the Needle also stands down for U43 overlay routes and a real Millionea slip, feeding the combined gate to the engine",
+    needle.includes('import { suppressNeedleOnU43 } from "@/lib/u43-overlay-routes";')
+      && count(needle, "const standDown = suppressed || (isSlipSurface(pathname) && !notFoundShown);") === 1
+      && count(needle, "wantSuppressed.current = standDown;") === 1
+      && count(needle, "apiRef.current?.setSuppressed(standDown);") === 1);
+  ok("5.4a′ PLANT · dropping the U43 gate from the Needle is reported",
+    !overlay(needle.replace(" || suppressNeedleOnU43(pathname)", ""), needleLine));
+  ok("5.4a″ PLANT · dropping the Millionea slip gate from the Needle is reported",
+    !needle.replace(" || (isSlipSurface(pathname) && !notFoundShown)", "").includes("const standDown = suppressed || (isSlipSurface(pathname) && !notFoundShown);"));
   ok("5.4′ PLANT · the chat's term without the mark (the market not-found loses its bubble again) is reported",
     !overlay(read(CHAT).replace(`if (${TERM}) return null;`, "if (journeyOn && isJourneySurface(pathname)) return null;"), sites[1][2]));
   ok("5.5 · the Needle's gate runs again when the mark comes or goes", read(NEEDLE).includes("}, [hiddenPref, pathname, journeyOn, notFoundShown]);"));

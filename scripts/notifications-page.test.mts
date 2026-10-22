@@ -25,6 +25,8 @@ import { db, type StoredNotification, type StoredWallet } from "../src/lib/serve
 import { pageForUser, restore } from "../src/lib/server/notification-service.ts";
 import { MONEY_KINDS } from "../src/lib/server/comms-registry.ts";
 import { ACCOUNT_FILTER_KINDS, NOTIFICATION_FILTERS } from "../src/lib/notification-filters.ts";
+import { appearanceKind, iconFor, tierFor, tintFor } from "../src/lib/notification-appearance.ts";
+import { I } from "../src/components/ui/glyphs.tsx";
 
 let pass = 0;
 const fails: string[] = [];
@@ -305,6 +307,57 @@ section("8 · the page can act in bulk — and cannot bulk-hide");
   // …while the BELL still has it, so this is a placement decision and not a removal.
   ok("§8 …and the bell still has it (this is placement, not removal)",
      /dismissAllAction/.test(strip(read(PANEL))));
+}
+
+// PHOSPHOR-MIGRATION release 2a part 2: drive the actual appearance and Money lens.
+// A deposit still in review cannot share a confirmed deposit's green plate, and a
+// refund is money returned rather than another deposit or a win.
+section("9 · deposit status and refund appearance, including historic rows");
+{
+  const statusCases = [
+    ["DEPOSIT", "success", "duo", I.arrowDownToLine],
+    ["DEPOSIT_PROCESSING", "info", "fill", I.clock],
+    ["DEPOSIT_REVIEW", "warning", "fill", I.info],
+    ["DEPOSIT_FAILED", "danger", "fill", I.alertCircle],
+    ["DEPOSIT_HELD", "warning", "fill", I.lock],
+    ["REFUND", "info", "duo", I.refund],
+    ["CASHOUT", "identity", "duo", I.cashOut],
+  ] as const;
+  for (const [kind, tint, tier, icon] of statusCases) {
+    ok(`§9 ${kind} has its own plate and glyph`,
+      tintFor(kind) === tint && tierFor(kind) === tier && iconFor(kind) === icon);
+  }
+  const oldCases = [
+    ["DEPOSIT", "Deposit processing · TZS 50,000", "DEPOSIT_PROCESSING"],
+    ["DEPOSIT", "Deposit under review · TZS 50,000", "DEPOSIT_REVIEW"],
+    ["DEPOSIT", "Deposit failed · TZS 50,000", "DEPOSIT_FAILED"],
+    ["DEPOSIT", "Deposit held for return · TZS 50,000", "DEPOSIT_HELD"],
+    ["DEPOSIT", "Refund · TZS 50,000", "REFUND"],
+    ["DEPOSIT", "Refunded · TZS 50,000", "REFUND"],
+    ["DEPOSIT", "Market cancelled · TZS 50,000", "REFUND"],
+    ["WIN", "Full refund · TZS 50,000", "REFUND"],
+    ["WIN", "Free exit · TZS 50,000", "REFUND"],
+    ["WIN", "Cashed out · TZS 50,000", "CASHOUT"],
+  ] as const;
+  for (const [kind, titleEn, expected] of oldCases) {
+    ok(`§9 old ${kind}: ${titleEn} resolves without rewriting the row`,
+      appearanceKind({ kind, titleEn } as StoredNotification) === expected);
+  }
+  ok("§9 a confirmed deposit stays a confirmed deposit",
+    appearanceKind({ kind: "DEPOSIT", titleEn: "Deposit confirmed · TZS 50,000" } as StoredNotification) === "DEPOSIT");
+  ok("§9 a real win stays a win",
+    appearanceKind({ kind: "WIN", titleEn: "You won · TZS 50,000" } as StoredNotification) === "WIN");
+  const statusUser = "np_status";
+  await mkUser(statusUser);
+  for (const [kind] of statusCases) await seed(statusUser, kind);
+  const statusMoney = await pageForUser({ userId: statusUser, filter: "money", sort: "newest", page: 1, perPage: 50 });
+  ok("§9 every new deposit/refund kind remains in the Money lens",
+    statusMoney.total === statusCases.length && statusCases.every(([kind]) => statusMoney.items.some((n) => n.kind === kind)),
+    statusMoney.items.map((n) => n.kind).join(","));
+  for (const path of [PANEL, PAGE]) {
+    ok(`§9 ${path} renders the resolved appearance kind`,
+      /const kind = appearanceKind\(n\);/.test(strip(read(path))));
+  }
 }
 
 const label = "notifications page (the door the bell cannot be)";

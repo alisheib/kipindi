@@ -346,7 +346,8 @@ export const MUTATIONS = [
   {
     name: "(S7-move-clock) a move of the close reads the container's clock alone: a slow container moves a close the database passed",
     file: SVC,
-    from: "    const atMs = Math.max(nowMs, await dbNowMs(lockTx));",
+    // Re-pinned at the S7 × S5 merge: `moveClose`'s lock hands its transaction as `tx` (the release's name there).
+    from: "    const atMs = Math.max(nowMs, await dbNowMs(tx));",
     to: "    const atMs = nowMs;",
     expect: "CS.3 · ⭐",
     suite: "adversarial:CS",
@@ -362,12 +363,15 @@ export const MUTATIONS = [
   {
     name: "(S7-correct-ground) a correction voids on 'not played' before the void deadline a seal refuses (MR-15)",
     file: SVC,
+    // Re-pinned at the S7 × S5 merge: the one void-ground check (both sides added it) stands after the reviewed-seal check.
     from: [
-      "    if (q.sealedBy !== input.officerId) return refuse(\"Only the officer who sealed a question may correct it; anyone else files an objection.\");",
+      "      return refuse(\"The seal changed; reload the week and review it again before correcting it.\");",
+      "    }",
       "    if (input.outcome === \"VOID\" && !voidGroundAvailable(input.voidReason as MaswaliVoidReason, Date.parse(q.voidDeadlineAt), nowMs)) {",
     ].join(LF),
     to: [
-      "    if (q.sealedBy !== input.officerId) return refuse(\"Only the officer who sealed a question may correct it; anyone else files an objection.\");",
+      "      return refuse(\"The seal changed; reload the week and review it again before correcting it.\");",
+      "    }",
       "    if (false) {",
     ].join(LF),
     expect: "CV.1",
@@ -510,16 +514,26 @@ export const MUTATIONS = [
   {
     name: "(S7-F8-refreeze-owed) the re-freeze's row is written inside the lock, before the open commits",
     file: SVC,
-    from: `      afterCommit(lockTx, () => void recordOwed([{ category: "ADMIN", action: "maswali.week.deadlines_refrozen",`,
-    to: `      void audit(Object.assign({}, ...[{ category: "ADMIN", action: "maswali.week.deadlines_refrozen",`,
+    // Re-pinned at the S7 × S5 merge: the row is OWED with the open's other rows (`owed.push`), as S5-FIX-SRV's open owes.
+    from: `      owed.push({ category: "ADMIN", action: "maswali.week.deadlines_refrozen",`,
+    to: `      void audit({ category: "ADMIN", action: "maswali.week.deadlines_refrozen",`,
     expect: "DL.7 · ⭐",
     suite: "adversarial:DL",
   },
   {
     name: "(S7-F8-sunset-owed) the Owner's stop is recorded inside the lock, before its mark commits",
     file: SVC,
-    from: `    afterCommit(lockTx, () => void recordOwed([{ category: "COMPLIANCE", action: "maswali.sunset.ordered",`,
-    to: `    void audit(Object.assign({}, ...[{ category: "COMPLIANCE", action: "maswali.sunset.ordered",`,
+    // Re-pinned at the S7 × S5 merge: the stop returns its order row OWED (S5-FIX-SRV's form); the plant writes it inside the
+    // lock instead and owes nothing.
+    from: [
+      `    return { ok: true, week: { ...week, isFinal: true }, owed: [{ category: "COMPLIANCE", action: "maswali.sunset.ordered", actorId: input.ownerId, targetType: "MaswaliCycle", targetId: week.id,`,
+      `      payload: { code: week.code, state: week.state, reason, basis } }] };`,
+    ].join(LF),
+    to: [
+      `    void audit({ category: "COMPLIANCE", action: "maswali.sunset.ordered", actorId: input.ownerId, targetType: "MaswaliCycle", targetId: week.id,`,
+      `      payload: { code: week.code, state: week.state, reason, basis } });`,
+      `    return { ok: true, week: { ...week, isFinal: true }, owed: [] };`,
+    ].join(LF),
     expect: "SU.5a · ⭐",
     suite: "adversarial:SU",
   },

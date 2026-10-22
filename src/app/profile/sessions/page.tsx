@@ -3,7 +3,8 @@ import { headers } from "next/headers";
 // The IP label never ends a line on a connective (round 9, R9-B): it shares its row with the address (masked or shown),
 // which squeezes it — where the address leaves it 67–88px, "Anwani ya IP" breaks "Anwani ya" / "IP"; now "Anwani" / "ya IP".
 import { keepConnectives } from "@/components/ui/keep-run";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { Chip } from "@/components/ui/chip";
 import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
@@ -92,11 +93,12 @@ export default async function SessionsPage() {
       <section className="rounded-xl border border-border bg-bg-elevated p-5 border-l-2" style={{ borderLeftColor: "var(--aqua-400)" }}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            {/* ⚠️ LITERALS, not `h-10 w-10` — spacing is overridden (tailwind.config.ts:200-215),
-                so `h-10` renders an 80px disc and doubles the session list's length. */}
-            <span className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full bg-aqua-500/15 text-aqua-300">
-              <DeviceGlyph s={18} />
-            </span>
+            {/* The device's identity plate (PHOSPHOR-MIGRATION release 2): what this session runs on, its glyph in Duotone.
+                It was an aqua disc, and aqua is never semantic (§B4), so it takes the identity plate — and the family's one
+                corner, 12px, never a circle (B10.2). */}
+            <IconPlate size={40} variant="identity" aria-hidden>
+              <DeviceGlyph s={plateGlyph(40)} tier="duo" />
+            </IconPlate>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="font-display text-[15px] font-semibold text-text leading-tight">{deviceLine}</p>

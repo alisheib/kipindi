@@ -118,13 +118,13 @@ try {
     const start = W.weekStartAhead(2);
     const drafted: any = await W.svc.createWeek({ weekStartMs: start, visibility: "PUBLIC", questions: W.questions(start), officerId: DRAFTER, now: new Date() });
     if (!drafted.ok) throw new Error(`the week could not be drafted: ${drafted.error}`);
-    const attested: any = await W.svc.attestParity({ weekId: drafted.week.id, officerId: READER });
+    const attested: any = await W.svc.attestParity({ weekId: drafted.week.id, officerId: READER, readVersion: await W.svc.readDraftVersion(drafted.week.id) });
     if (!attested.ok) throw new Error(`the week could not be attested: ${attested.error}`);
     const opened: any = await W.svc.openWeek({ weekId: drafted.week.id, officerId: DRAFTER, guarantee: W.money.guaranteeReader, now: new Date() });
     if (!opened.ok) throw new Error(`the week could not be opened: ${opened.error}`);
     const week = opened.week;
     const dbNow = await W.money.dbNowMs(null);
-    const moved: any = await W.svc.moveClose({ weekId: week.id, toCloseAt: new Date(dbNow + job.closeInSec * 1_000).toISOString(), officerId: DRAFTER, now: new Date() });
+    const moved: any = await W.svc.moveClose({ weekId: week.id, toCloseAt: new Date(dbNow + job.closeInSec * 1_000).toISOString(), expectedClosesAt: week.closesAt, officerId: DRAFTER, now: new Date() });
     if (!moved.ok) throw new Error(`the week's close could not be brought to the run (MB-28): ${moved.error}`);
     const rules: any = W.svc.frozenRules(moved.week);
     const state = {

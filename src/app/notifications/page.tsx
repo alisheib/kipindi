@@ -29,7 +29,7 @@
  */
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
 // ⛔ B7 — a page states its width through <PageContainer tier> and NOTHING else. A
 // hand-typed `max-w-[…]` is the exact string that law exists to delete, and `test:measure`
@@ -50,8 +50,7 @@ import { getSession } from "@/lib/server/session";
 import { pageForUser } from "@/lib/server/notification-service";
 import { getServerT } from "@/lib/i18n-server";
 import { formatNumber } from "@/lib/utils";
-import { cn } from "@/lib/utils";
-import { iconFor, tierFor, tintFor } from "@/lib/notification-appearance";
+import { appearanceKind, iconFor, tierFor, tintFor } from "@/lib/notification-appearance";
 import { readableNotificationBody } from "@/lib/notification-text";
 import {
   parseFilter, parseSort,
@@ -250,9 +249,9 @@ export default async function NotificationsPage({
          * every other setting and drops only `q`.
          */
         <EmptyState
+          kind="notifications"
           title={q ? `${t.results.noResultsMatch} "${q}"` : empty.title}
           body={q ? t.results.tryDifferentKeywords : empty.body}
-          illustration={<I.bell s={30} />}
           action={
             q ? (
               <Link href={hrefWith({ q: "", page: 1 }) as never} className="btn btn-ghost btn-sm">
@@ -264,7 +263,8 @@ export default async function NotificationsPage({
       ) : (
         <ul className="space-y-2" data-notif-total={total}>
           {items.map((n) => {
-            const Icon = iconFor(n.kind);
+            const kind = appearanceKind(n);
+            const Icon = iconFor(kind);
             const isUnread = !n.readAt;
             return (
               <li
@@ -282,8 +282,8 @@ export default async function NotificationsPage({
                   {/* ⛔ THE SAME ATOM, THE SAME SIZE, THE SAME GLYPH as the bell renders.
                       A row is one object; it must not be 32px in the panel and 36px here,
                       or the page reads as a different product than the bell that opened it. */}
-                  <IconPlate size={32} className={cn("mt-0.5 border", tintFor(n.kind))}>
-                    <Icon s={16} tier={tierFor(n.kind)} />
+                  <IconPlate size={32} variant={tintFor(kind)} className="mt-0.5">
+                    <Icon s={plateGlyph(32)} tier={tierFor(kind)} />
                   </IconPlate>
                   <div className="min-w-0 flex-1">
                     {/* ⛔ A REAL ANCHOR, not a click handler. The bell must close its panel

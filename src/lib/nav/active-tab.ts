@@ -40,9 +40,9 @@ export type TabLabelKey =
 export type JourneyTabDef = { key: JourneyTab; href: string; glyph: TabGlyph; label: TabLabelKey; railLabel?: TabLabelKey };
 
 /**
- * The four tabs, in the deck's order — what a reader who is not shown Millionea is drawn (`journeyTabsFor`). ⚠️ Juu/Chini
- * reuses `nav.updown`, the rail's own short label (a fifth of a 360 phone cannot hold the product title); the three new
- * words are `journey.*` keys until the S15 flip.
+ * The four tabs, in the deck's order — what a reader who is not shown Millionea is drawn (`journeyTabsFor`). Juu na Chini
+ * reuses `nav.updown`, the game's full name. Its Swahili rail label wraps where the five-tab track needs it; the three
+ * other labels are `journey.*` keys until the S15 flip.
  */
 export const JOURNEY_TABS: readonly JourneyTabDef[] = [
   // The board: the classic rail's "Masoko" and this "Maswali" are one meaning, so one glyph (PHOSPHOR-MIGRATION R-LEXICON 5.1A).
@@ -66,9 +66,9 @@ export const MILLIONEA_TAB: JourneyTabDef = { key: "millionea", href: "/millione
  * given its short rail label.
  * ⭐ THE SHORT RAIL LABEL WHILE FIVE TABS SHOW (the lead's rulings, 2026-10-19, measured with `test:visual-pass-r9c`'s own
  * model): a fifth of a 320 phone is 64px, and the Swahili "Tiketi zangu" needs 83.2 (12 × 6.6 + 4), the English "My
- * tickets" 70, so the rail says "Tiketi" and "Tickets" (`journey.tabTicketsShort`) — as Juu/Chini's rail label is the
- * short `nav.updown` — while its page and its desktop link keep the full words; Chinese keeps 我的注单 (48px). Every
- * five-tab label of every language then sits on one line from 317 (the longest, 63.4px, × 5), so at every width we hold.
+ * tickets" 70, so the rail says "Tiketi" and "Tickets" (`journey.tabTicketsShort`), while its page and desktop link
+ * keep the full words. Juu na Chini keeps its full `nav.updown` name, and Chinese tickets keep 我的注单 (48px). English and
+ * Chinese five-tab labels fit one line from 317; Swahili's full game name wraps until 416 (`globals.css`).
  */
 const WITH_MILLIONEA: readonly JourneyTabDef[] = (() => {
   const at = JOURNEY_TABS.findIndex((d) => d.key === "updown") + 1;
@@ -152,6 +152,25 @@ export function rowTabIn(row: TabRoute | null, tabs: readonly JourneyTabDef[]): 
 /** THE resolver: which of the drawn `tabs` this page belongs to, or null when none is lit. */
 export function activeTabFor(pathname: string | null | undefined, tabs: readonly JourneyTabDef[]): JourneyTab | null {
   return rowTabIn(tabRouteFor(pathname), tabs);
+}
+
+/** The classic destination of each journey tab a Millionea page can fall to (D13, below). */
+const CLASSIC_STAND_IN: Partial<Record<JourneyTab, "/markets" | "/positions">> = { questions: "/markets", tickets: "/positions" };
+
+/**
+ * ⭐ THE CLASSIC NAVS' DESTINATION ON A MILLIONEA PAGE WHOSE OWN DOOR IS NOT DRAWN (MASWALI-BUILD S5-FIX-PLATFORM D13,
+ * 2026-10-21) — a reader on a break, to whom Millionea is visible but offered nothing (AppShell's `millioneaOnBreak`). The
+ * classic bar and rail lit NOTHING there. The journey lights what this table names among the four tabs it then draws:
+ * Tiketi zangu on Millionea's tickets, Maswali on every other Millionea page (the `/millionea` row's fallback, the tab whose
+ * home carries the card). The classic navs light the same destination: `/positions`, or `/markets`. Null off Millionea's
+ * pages. ⛔ The navs ask only when the shell hands them the break's answer: a dark Millionea address lights nothing, as
+ * an unknown address does.
+ */
+export function classicMillioneaStandIn(pathname: string | null | undefined): "/markets" | "/positions" | null {
+  const row = tabRouteFor(pathname);
+  if (row === null || !routeMatches(row.prefix, { prefix: "/millionea" })) return null;
+  const tab = rowTabIn(row, JOURNEY_TABS);
+  return tab === null ? null : CLASSIC_STAND_IN[tab] ?? null;
 }
 
 /**

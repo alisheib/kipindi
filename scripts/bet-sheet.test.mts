@@ -362,9 +362,15 @@ function doubtCeiling(src: Sources): { ms: number; parts: Record<string, number>
   const delays = /const DELAYS_MS = \[([^\]]*)\]/.exec(src.retry)?.[1];
   const jitter = /const JITTER = ([\d.]+)/.exec(src.retry)?.[1];
   const pool = /searchParams\.set\("pool_timeout", "(\d+)"\)/.exec(src.prisma)?.[1];
-  const run = /timeout:\s*([\d_]+),\s*\/\/ 30s/.exec(src.locks)?.[1];
   const wait = /maxWait:\s*([\d_]+),\s*\/\/ 10s/.exec(src.locks)?.[1];
   const inner = functionBody(decomment(src.service), "async function buyPositionInner(");
+  // 2026-10-21 · U43 Release B (c29cb7526) made the lock's run budget a per-call option (30 s to 10 min, for the emergency
+  // void's market-wide restitution): the `$transaction` takes `timeout: timeoutMs`, which `withLock` defaults to 30 s. A bet
+  // names no budget of its own — so its run term is that default, read where it is set, and the ceiling refuses to price a
+  // bet path that ever names one (it would then have to be recomputed from that budget).
+  const runDefault = /const timeoutMs = options\?\.timeoutMs \?\? ([\d_]+);/.exec(src.locks)?.[1];
+  const runUsed = /\btimeout: timeoutMs,/.test(src.locks) && /return withAdvisoryLock\(key, fn, timeoutMs\);/.test(src.locks);
+  const run = runUsed && inner && !/\btimeoutMs\b/.test(inner) ? runDefault : undefined;
   if (!admission || !delays || !jitter || !pool || !run || !wait || !inner) return null;
   const n = (s: string) => Number(s.replace(/_/g, ""));
   const beforeLock = inner.slice(0, inner.indexOf("withLock(`wallet:"));
@@ -984,11 +990,23 @@ function run(impl: Impl, log: (l: string) => void): string[] {
   ok("8.viewport-quiet · an unlifted sheet only removes its keyboard properties: no inherited custom property is written onto the panel, which restyled the whole sheet inside the opening tap (A21)",
     lifecycle.unliftedQuiet && /translate: 0 calc\(-1 \* var\(--bsheet-keyboard-lift, 0px\)\)/.test(impl.src.css)
       && /var\(--bsheet-visible-height, 100dvh\)/.test(impl.src.css), j(lifecycle));
+  const depositRows = rendered.filter((x) => x.html.includes('data-testid="journey-sheet-deposit"'));
+  // 2026-10-21 · dd1386f06 restored the earlier house gold under Ali's 2026-10-20 ruling (DESIGN_AUTHORITY §M3a, "restore
+  // the full earlier house-gold treatment … deposit entries, bet and sell commit"): the sheet's commit and deposit door are
+  // the kit's gold again, the deposit row wears its metal whole, its rails take the dark gold ink and the disabled commit
+  // is restyled under `.btn-gold` — the sheet's code and its `.kp-bsheet` rules are a504ad280's again, line for line.
+  // Release B's brand pins are therefore stale. This is the pre-B expectation with B's rendered-row checks kept, aimed at
+  // the restored classes, and B's absence check turned round: no brand disabled rule beside the gold one.
   ok("9.tokens · inset neutral estimate, standard figure ink, kit gold commit, metal deposit row with dark rail ink, info callouts, forced-colours-safe selected outline and one capped scrolling middle",
     /\.kp-bsheet__estimate \{[^}]*background: var\(--bg-inset\)/.test(impl.src.css)
       && /\.kp-bsheet__estimate-figure[^}]*color: var\(--text\)/.test(impl.src.css)
       && sheetSrc.includes('variant="gold" size="xl" fullWidth className="kp-bsheet__deposit gilt-metal"') && sheetSrc.includes('Callout tone="info"')
+      && depositRows.length > 0 && depositRows.every((x) => /<button[^>]*class="btn btn-gold btn-xl w-full kp-bsheet__deposit gilt-metal"[^>]*data-testid="journey-sheet-deposit"/.test(x.html))
+      && sheetSrc.includes('variant="gold" size="xl" fullWidth className="kp-bsheet__commit"')
+      && commitRows.length > 0 && commitRows.every((x) => /<button[^>]*class="btn btn-gold btn-xl w-full kp-bsheet__commit"[^>]*data-testid="journey-sheet-place"/.test(x.html))
       && /\.kp-bsheet__rails[^}]*color: var\(--gold-fg\)/.test(impl.src.css)
+      && /\.kp-bsheet \.btn-gold:disabled \{/.test(impl.src.css)
+      && !/\.kp-bsheet \.btn-primary:disabled \{/.test(impl.src.css)
       && /\.kp-bsheet__chip\[aria-pressed="true"\][^}]*outline: 2px solid var\(--brand-400\)/.test(impl.src.css)
       && /\.kp-bsheet__scroll[^}]*min-height: 0[^}]*overflow-y: auto/.test(impl.src.css)
       && /\.kp-bsheet__scroll > \* \{[^}]*flex-shrink: 0/.test(impl.src.css)
@@ -1262,8 +1280,15 @@ if (!PROVE_RED) {
     { name: "closing keeps the last live message active", expect: /^8\.lifecycle /, impl: withSrc({ sheet: SOURCES.sheet.replace('if (!open) { setLive(""); return; }', '') }) },
     { name: "a closed exit ghost retains its polite live region", expect: /^8\.lifecycle /, impl: withSrc({ sheet: SOURCES.sheet.replace('{open && <p className="sr-only" aria-live="polite"', '{<p className="sr-only" aria-live="polite"') }) },
     { name: "the estimate's figure painted gold", expect: /^9\.tokens /, impl: withSrc({ css: SOURCES.css.replace(/(\.kp-bsheet__estimate-figure[^}]*color: )var\(--text\)/, "$1var(--gilt)") }) },
+    // 2026-10-21 · the money doors' plants follow dd1386f06's restored gold (Ali, 2026-10-20, DESIGN_AUTHORITY §M3a): each
+    // one now moves a door OFF the restored treatment — to Release B's brand, to ghost, or its metal off the whole row.
+    { name: "deposit door drifts back to Release B's brand", expect: /^9\.tokens /, impl: withSrc({ sheet: SOURCES.sheet.replace('variant="gold" size="xl" fullWidth className="kp-bsheet__deposit gilt-metal"', 'variant="primary" size="xl" fullWidth className="kp-bsheet__deposit gilt-metal"') }) },
     { name: "metal highlights only the deposit label instead of the whole row", expect: /^9\.tokens /, impl: withSrc({ sheet: SOURCES.sheet.replace('className="kp-bsheet__deposit gilt-metal"', 'className="kp-bsheet__deposit"').replace('className="kp-bsheet__deposit-copy"><span>', 'className="kp-bsheet__deposit-copy"><span className="gilt-metal">') }) },
     { name: "ghost hover clears the money door's metal wash behind dark rail ink", expect: /^9\.tokens /, impl: withSrc({ sheet: SOURCES.sheet.replace('variant="gold" size="xl" fullWidth className="kp-bsheet__deposit gilt-metal"', 'variant="ghost" size="xl" fullWidth className="kp-bsheet__deposit gilt-metal"') }) },
+    { name: "deposit rails lose their dark gold ink for Release B's pearl", expect: /^9\.tokens /, impl: withSrc({ css: SOURCES.css.replace(/(\.kp-bsheet__rails[^}]*color: )var\(--gold-fg\)/, "$1var(--pearl-50)") }) },
+    { name: "stake commit drifts back to Release B's brand", expect: /^9\.tokens /, impl: withSrc({ sheet: SOURCES.sheet.replace('variant="gold" size="xl" fullWidth className="kp-bsheet__commit"', 'variant="primary" size="xl" fullWidth className="kp-bsheet__commit"') }) },
+    { name: "disabled stake commit restyled as a brand control", expect: /^9\.tokens /, impl: withSrc({ css: SOURCES.css.replace('.kp-bsheet .btn-gold:disabled {', '.kp-bsheet .btn-primary:disabled {') }) },
+    { name: "a brand disabled rule left beside the gold one", expect: /^9\.tokens /, impl: withSrc({ css: SOURCES.css.replace('.kp-bsheet .btn-gold:disabled {', '.kp-bsheet .btn-primary:disabled { opacity: 1; }\n.kp-bsheet .btn-gold:disabled {') }) },
     { name: "a short viewport shrinks multiline controls across their edges", expect: /^9\.tokens /, impl: withSrc({ css: SOURCES.css.replace('.kp-bsheet__scroll > * { flex-shrink: 0; }', '.kp-bsheet__scroll > * { flex-shrink: 1; }') }) },
     { name: "the deposit door loses its vertical reading space", expect: /^9\.tokens /, impl: withSrc({ css: SOURCES.css.replace(/(\.kp-bsheet__deposit \{[^}]*); padding-block: var\(--sp-2\)/, '$1') }) },
     { name: "a late font no longer remeasures the whole estimate", expect: /^9\.figure-fit /, impl: withSrc({ parts: SOURCES.parts.replace('document.fonts.addEventListener("loadingdone", fitEstimateFigure)', 'document.fonts.addEventListener("loadingdone", () => {})') }) },
@@ -1387,6 +1412,12 @@ if (!PROVE_RED) {
       impl: withSS({ afterKeyRead: (it, kp, at) => SS.afterKeyRead(it.settledAt === null ? { ...it, settledAt: it.sentAt ?? 0 } : it, kp, at) }) },
     { name: "DOUBT_SETTLE_MS below the pinned ceiling (30 s)", expect: /^3\.ceiling /,
       impl: withSS({ DOUBT_SETTLE_MS: 30_000 } as Partial<typeof SS>) },
+    // 2026-10-21 · the lock's run budget became a per-call option in U43 Release B (c29cb7526); both ways a bet could
+    // outgrow the 30 s it is priced at must break the ceiling.
+    { name: "a bet's wallet lock names its own ten-minute budget", expect: /^3\.ceiling /,
+      impl: withSrc({ service: SOURCES.service.replace("bonusStakeTzs: bonusPart } };\n  });\n  } catch (err) {", "bonusStakeTzs: bonusPart } };\n  }, { timeoutMs: 600_000 });\n  } catch (err) {") }) },
+    { name: "withLock's default run budget raised to ten minutes", expect: /^3\.ceiling /,
+      impl: withSrc({ locks: SOURCES.locks.replace("const timeoutMs = options?.timeoutMs ?? 30000;", "const timeoutMs = options?.timeoutMs ?? 600000;") }) },
     { name: "a keyed reopen that trusts another bet's key (another side)", expect: /^3\.marker /,
       impl: withSS({ markerIntentFor: (raw, b, now) => { const r = SS.markerIntentFor(raw, b, now); if (r) return r; try { const k = (JSON.parse(raw ?? "") as { k?: string }).k; return SS.isIntentKey(k) ? { key: k, stake: 5_000 } : null; } catch { return null; } } }) },
     { name: "the key dropped when the address's stake differs from the marker's (the old full-bet match)", expect: /^3\.marker /,

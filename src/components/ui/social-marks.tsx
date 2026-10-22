@@ -1,32 +1,18 @@
 /**
- * The Instagram and TikTok marks, in their own colours.
+ * External social marks keep the vendor's recognizable geometry and colours.
+ * Ali restored their original colours on 2026-10-20. They are the documented
+ * vendor-mark exception to the single UI glyph family, kept beside the brand
+ * mark rather than copied into page components or generated glyph output.
+ * A multicolour registered logo cannot be drawn by the currentColor stroke
+ * contract of ordinary I glyphs. Their literal colours are brand identity,
+ * not theme tokens or the UP/DOWN betting palette.
  *
- * ⛔ WHY THESE ARE NOT IN `glyphs.tsx`, AND COULD NOT BE. That file's `G` wrapper hard-codes
- * `fill="none" stroke="currentColor" strokeWidth="1.9"` — that IS the family contract, and it
- * is what makes 178 glyphs agree without anyone remembering to make them agree. A multi-path,
- * multi-fill, gradient-bearing vendor logo cannot satisfy it. Bending `G` to admit one would
- * not be extending the kit, it would be dissolving the rule the kit is made of (§K5,
- * "extend the kit; never fork it" — the point of which is that the kit stays one thing).
- *
- * ⭐ SO THEY LIVE BESIDE `brand.tsx`, UNDER ITS DOCUMENTED EXCEPTION. That file already
- * carries literal hexes (`#1EA362` / `#B03A3E` / `#E3BC66`) with the reason written down:
- * "a deliberate byte-identical port of the delivered logo … allowed to diverge from theme
- * tokens — brand identity ≠ theme tokens." A third party's registered mark is the same case,
- * only more so: we do not own these colours and are not free to re-hue them. The Definition
- * of Done's "zero new hex literals in components" is a rule about THEME values leaking into
- * components; these are not theme values and there is no token that could hold them.
- *
- * ⚠️ THE COLOURS ARE THE VENDORS', COPIED, NOT CHOSEN — do not "improve" them:
+ * The colours are the vendors', copied, not chosen:
  *   Instagram  radial gradient #FDF497 → #FD5949 → #D6249F → #285AEB
  *   TikTok     cyan #25F4EE · red #FE2C55 · body #FFFFFF
  *   WhatsApp   bubble #25D366 · handset #FFFFFF
  *
- * ⚠️ AND WHATSAPP'S GREEN IS NOT THE BETTING GREEN, WHICH IS WHY IT IS SPELLED HERE AND NOT
- * TAKEN FROM A TOKEN. `#25D366` is WhatsApp's; YES-emerald `#00A24F` means *won* on this
- * platform. §B2a forbids reaching for the betting pair to express a non-money state, and
- * `share-button.tsx` already breaks that by painting its WhatsApp tile `bg-yes-500/15
- * text-yes-300`. ⛔ Do not "tidy" this mark onto the YES token — that would be adopting the
- * existing bug, not fixing it. The vendor hex is the correct answer on both counts.
+ * WhatsApp's green is not a betting green and must not be replaced by YES ink.
  *
  * ⭐ TIKTOK'S BODY IS WHITE, AND THAT IS THE CORRECT VARIANT, NOT A CHOICE. TikTok publishes
  * two: a black-body note for light grounds and a white-body note for dark ones. 50pick has

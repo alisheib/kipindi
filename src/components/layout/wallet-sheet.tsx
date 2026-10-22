@@ -58,7 +58,7 @@ export function WalletSheet({
   held: boolean;
   anchorRef: React.RefObject<HTMLElement | null>;
   /** S6 · the journey capsule's Wallet: its two doors read "Weka pesa" and "Toa pesa", and its figure takes the capsule's
-   *  ink (gold on a live balance only). Omitted, today's words and today's ink. */
+   *  gilt balance ink. Omitted, the classic words. */
   journey?: boolean;
   /** S6 · the reader is on a self-imposed break (AppShell's `promoSuppressed`): no Deposit, Withdraw alone. The journey
    *  capsule passes it; omitted, both doors as today. */

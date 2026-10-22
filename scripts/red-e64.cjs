@@ -33,7 +33,7 @@ const SUITE = "scripts/updown-bet-feedback.test.mts";
 const TOAST_CALL = `          toast({
             title: copy.placed,
             description: \`\${side === "UP" ? copy.up : copy.down} · \${formatTzs(amount)}\`,
-            variant: "success",
+            variant: "factual",
             // §F8 · the dwell is named, not typed. The value is unchanged (3s — Ali:
             // "keep placing bets popups normal"); what changed is that it is now filed
             // beside the dwells it has to be read against instead of sitting here as a
@@ -50,9 +50,9 @@ const MUTATIONS = [
     with: `          // Deliberately NOT a toast.`,
   },
   {
-    name: "wrong-variant — it announces, but as a neutral/default chip",
-    find: `            variant: "success",`,
-    with: `            variant: "default",`,
+    name: "wrong-variant — revert the placed-bet toast to app-state green",
+    find: `            variant: "factual",`,
+    with: `            variant: "success",`,
   },
   {
     name: "hardcoded-english — invisible to test:i18n, ships English to SW and ZH players",
@@ -90,15 +90,25 @@ const MUTATIONS = [
     with: `            description: side === "UP" ? copy.up : copy.down,`,
   },
   {
+    name: "red server refusal — a blocked stake borrows a betting side's ink",
+    find: `            toast({ title: copy.failed, description: fail.description, variant: "factual", durationMs: 0 });`,
+    with: `            toast({ title: copy.failed, description: fail.description, variant: "danger", durationMs: 0 });`,
+  },
+  {
+    name: "red transport refusal — an unconfirmed tap borrows a betting side's ink",
+    find: `        toast({ title: copy.failed, description: errCopy.udErrBusy, variant: "factual", durationMs: 0 });`,
+    with: `        toast({ title: copy.failed, description: errCopy.udErrBusy, variant: "danger", durationMs: 0 });`,
+  },
+  {
     name: "moved-out-of-the-success-branch — a toast on EVERY tap, success or not",
     // The precise defect a file-level `includes("toast(")` check cannot see: the symbol is
     // present, the file compiles, and the success branch is silent again.
     find: TOAST_CALL,
     with: ``,
     also: {
-      find: `      } catch {`,
-      with: `        toast({ title: copy.placed, description: \`\${side === "UP" ? copy.up : copy.down} · \${formatTzs(amount)}\`, variant: "success", durationMs: DWELL_BET_PLACED_MS });
-      } catch {`,
+      find: `      } catch (e) {`,
+      with: `        toast({ title: copy.placed, description: \`\${side === "UP" ? copy.up : copy.down} · \${formatTzs(amount)}\`, variant: "factual", durationMs: DWELL_BET_PLACED_MS });
+      } catch (e) {`,
     },
   },
 ];

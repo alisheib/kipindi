@@ -17,6 +17,8 @@ const BASE = process.env.BASE || "http://localhost:3410";
 if (!/^http:\/\/localhost(:\d+)?$/.test(BASE)) { console.error("refusing: BASE must be a localhost dev server"); process.exit(2); }
 const OUT = ".50pick-shots/maswali";
 mkdirSync(OUT, { recursive: true });
+// Playwright's default caret hiding briefly mutates live inputs and can cause a hydration warning.
+const captureTile = (page, name, width) => page.screenshot({ path: `${OUT}/${name}-${width}.png`, fullPage: false, caret: "initial" });
 let pass = 0, fail = 0;
 const ok = (n, c, e = "") => { if (c) pass++; else { fail++; console.log(`FAIL ${n}${e ? ` — ${e}` : ""}`); } };
 
@@ -60,7 +62,7 @@ for (const [name, path, heading] of PAGES) {
     await page.waitForTimeout(250);
     const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     ok(`${name} · no horizontal overflow @${width}`, over <= 1, `overflow=${over}px`);
-    await page.screenshot({ path: `${OUT}/${name}-${width}.png`, fullPage: false });
+    await captureTile(page, name, width);
   }
   ok(`${name} · no console error`, errs.length === 0, errs.slice(0, 3).join(" | "));
 }

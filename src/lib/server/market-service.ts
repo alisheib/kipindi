@@ -19,11 +19,11 @@ import { audit } from "./audit";
 import { db } from "./store";
 import { isDepositReturnBet } from "@/lib/journey/deposit-state";
 import { randomId } from "./crypto";
-import { withLock, runOutsideLock } from "./locks";
+import { withLock, runOutsideLock, afterCommit, currentLockTx, drainCommitted } from "./locks";
 import { withAdmission, AdmissionBusy, runOutsideAdmission } from "./admission";
 import { withTransientRetry } from "./retry";
 import { emit } from "./event-bus";
-import { spendBonusLocked, recordWageringLocked, reverseWagering, reverseWageringLocked, refundBonusToActive, refundBonusLocked, expireActiveGrants, type BonusAllocation } from "./bonus-service";
+import { spendBonusLocked, recordWageringLocked, reverseWageringLocked, refundEmergencyBonusLocked, refundBonusLocked, expireActiveGrants, type BonusAllocation } from "./bonus-service";
 import { spendableOf } from "@/lib/spendable";
 import { notifyBonusFulfilled } from "./notification-service";
 import { isLockedOut, checkLossLimit, checkSessionTimeLimit } from "./responsible-gambling";
@@ -36,6 +36,8 @@ import { normaliseCriterionTranslation } from "../localized";
 import { getEffectiveConfig, getEffectiveResolutionMode, snapshotFromConfig, snapshotOrLegacy, type RateConfig } from "./market-config";
 import { stakeBoundsForUpDownMarket } from "./updown-config";
 import { localizedText } from "@/lib/localized";
+import { dict } from "@/lib/i18n-dict";
+import { marketDisplayTitle } from "@/lib/updown-round-name";
 import { normaliseShortTitleSet, messageTitle, messageTitles } from "@/lib/markets/short-title";
 // S12 WP12 (the Vodacom plan): a player's message carries the officer-approved short title only once the new journey is
 // ACTIVE for everyone — the S15 flip — and the full title until then, and on any failure (`message-titles.ts`).
@@ -374,6 +376,15 @@ export type StoredMarket = {
   createdAt: string;
   updatedAt: string;
 };
+
+/** Player-facing round title for result notices; the stored market title and ledger text remain untouched. */
+function upDownResultTitle(m: Pick<StoredMarket, "productLine" | "titleEn" | "titleSw" | "titleZh">) {
+  return localizedText(
+    marketDisplayTitle(dict.en, "en", m),
+    marketDisplayTitle(dict.sw, "sw", m),
+    marketDisplayTitle(dict.zh, "zh", m),
+  );
+}
 
 export type StoredPosition = {
   id: string;
@@ -762,7 +773,7 @@ export type CreateMarketInput = {
   rateOverrides?: Partial<RateConfig>;
 };
 
-export async function createMarket(input: CreateMarketInput) {
+export async function createMarket(input: CreateMarketInput, tx?: Parameters<typeof marketStore.set>[1], owe?: (row: Parameters<typeof audit>[0]) => void) {
   const now = new Date().toISOString();
   const nowMs = Date.now();
   const id = `mkt_${randomId(10)}`;
@@ -868,7 +879,7 @@ export async function createMarket(input: CreateMarketInput) {
     createdAt: now,
     updatedAt: now,
   };
-  await marketStore.set(m);
+  await marketStore.set(m, tx); // S5-FIX-SRV · `tx`: a caller's lock transaction (a Millionea open) — the row commits with it; `owe` hands its audit row to that caller, who writes it once it has committed.
   // ⭐ NOT WRITTEN FOR AN UP & DOWN ROUND (audit F-10, Ali's decision 2026-08-20:
   // "reduce what Up & Down writes").
   //
@@ -890,9 +901,9 @@ export async function createMarket(input: CreateMarketInput) {
   //   · `market.settled`             — THE MONEY: winnersPaid, pools, positionsSettled.
   // Cutting any of those would trade audit volume for a compliance record, which is not a
   // trade to make on a licensed operator's tamper-evident chain.
-  // A Millionea week is one row a week, so its creation is audited like a poll's (S0.5: said, not defaulted).
+  const announce = owe ?? ((row: Parameters<typeof audit>[0]) => afterCommit(tx, () => void audit(row))); // A Millionea week is one row a week, so its creation is audited like a poll's (S0.5: said, not defaulted).
   if (switchLine(m.productLine, { MARKET: () => true, UPDOWN: () => false, MASWALI: () => true })) {
-    audit({
+    announce({
       category: "ADMIN",
       action: "market.created",
       actorId: input.proposedBy,
@@ -910,7 +921,7 @@ export async function createMarket(input: CreateMarketInput) {
   // Arm this market's per-market timers (closing-soon → selection-closed → resolve).
   // Fire-and-forget: a scheduler hiccup must never fail market creation; the 5-min
   // reconciler heals any market that ends up without a live timer.
-  void armMarketTimer(m.id);
+  afterCommit(tx, () => void armMarketTimer(m.id));
   return m;
 }
 
@@ -1687,7 +1698,10 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
       };
     }
 
-    const payoutIfWin = await projectedPayout(market, opts.side, opts.stake);
+    // The receipt must quote the pool THIS bet actually joins. Another wallet can
+    // change the market while this bet waits for its market lock, so the projection
+    // is calculated from the locked `fresh` row below, before any money write.
+    let payoutIfWin: number | undefined;
     const positionId = `pos_${randomId(10)}`;
     const betTxnId = `txn_${randomId(12)}`;
     const placedAt = new Date().toISOString();
@@ -1696,25 +1710,6 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
     const depositReturn = isDepositReturnBet(userId, returnRow, {
       marketId: opts.marketId, side: opts.side, stake: opts.stake, houseBotId: houseIntent?.houseBotId ?? null,
     }, Date.parse(placedAt));
-    const position: StoredPosition = {
-      id: positionId,
-      userId,
-      marketId: opts.marketId,
-      side: opts.side,
-      stake: opts.stake,
-      bonusStakeTzs: bonusPart,
-      potentialPayout: payoutIfWin,
-      status: "OPEN",
-      finalPayout: null,
-      placedAt,
-      settledAt: null,
-      idempotencyKey: opts.idempotencyKey ?? null,
-      ...(depositReturn ? { origin: "deposit_return" } : {}),
-      // H5 · the immutable house marker (PLAN I8). Spread, so a player's position object is unchanged.
-      // SEAM:marker
-      ...(ctx.kind === "house" ? { houseBotId: ctx.botId } : {}),
-    };
-
     // Pool mutation must be serialized PER-MARKET, not per-wallet: two
     // different users betting the same market hold different `wallet:` locks,
     // so without this they read-modify-write the same pool concurrently and
@@ -1763,6 +1758,26 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
         housePool = h3.pool;
         houseTwoSidedDesk = h3.twoSidedDesk;
       }
+      const payoutIfWinAtCommit = await projectedPayout(fresh, opts.side, opts.stake);
+      payoutIfWin = payoutIfWinAtCommit;
+      const position: StoredPosition = {
+        id: positionId,
+        userId,
+        marketId: opts.marketId,
+        side: opts.side,
+        stake: opts.stake,
+        bonusStakeTzs: bonusPart,
+        potentialPayout: payoutIfWinAtCommit,
+        status: "OPEN",
+        finalPayout: null,
+        placedAt,
+        settledAt: null,
+        idempotencyKey: opts.idempotencyKey ?? null,
+        ...(depositReturn ? { origin: "deposit_return" } : {}),
+        // H5 · the immutable house marker (PLAN I8). Spread, so a player's position object is unchanged.
+        // SEAM:marker
+        ...(ctx.kind === "house" ? { houseBotId: ctx.botId } : {}),
+      };
       const writeMoney = async (counterparties: Counterparty[] | null) => {
         await withMoneyTx(async (tx) => {
           usedTx = tx !== null;
@@ -1911,7 +1926,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
       // deferred to `committed` and fired after withLock resolves.
       committed = {
         positionId, placedAt, yesPool: fresh.yesPool, noPool: fresh.noPool,
-        payoutIfWin, bonusPart, walletId: wallet.id, bonusAllocations, usedTx,
+        payoutIfWin: payoutIfWinAtCommit, bonusPart, walletId: wallet.id, bonusAllocations, usedTx,
       };
       return "OK";
     });
@@ -1932,6 +1947,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
     }
     // A house gate refused inside the market or control lock — before any money write (H3/H4).
     if (typeof outcome === "object") return outcome;
+    if (payoutIfWin === undefined) throw new Error("Committed bet has no payout projection.");
     // The bet's audit trail, inbox receipt and email all moved BELOW the lock.
     // They are fire-and-forget and need no lock, but the market advisory lock is
     // now held until the outer transaction ends (it rides the same tx), so any
@@ -2459,7 +2475,7 @@ export async function notifySelectionClosedForMarket(marketId: string): Promise<
         thinProfitRatio: rates.thinProfitRatio,
         triggers: { oneSided, thinUpside, lopsidedBook },
         reason: oneSided
-          ? "ONE-SIDED — no opposing pool. Every stake will be refunded in full; this market earns nothing."
+          ? "ONE-SIDED — no opposing pool. Stakes still held are due full return when settlement commits; earlier cash-outs keep their paid amount. The remaining pool incurs no settlement fee."
           : thinUpside
             ? "THIN UPSIDE — a real position would be paid under the thin-profit ratio if its side wins. Winners are protected (never below stake) but there is little in it for them."
             : "LOPSIDED BOOK — the smaller side is a small fraction of the pool. Winners on the big side share a thin losing pool.",
@@ -3119,60 +3135,77 @@ export async function repairOrphanedPositions(): Promise<{ repaired: number; ref
   // filter is the database's job. Measured: 790 rows no longer streamed and hydrated per
   // boot, and the shape that once exhausted the connection pool on /leaderboard is gone from
   // the boot path.
-  for (const p of await positionStore.listOpen()) {
-    if (await marketStore.has(p.marketId)) continue; // market still exists → nothing to repair
-    // Orphaned — refund the stake, mark VOID, audit. Split: real portion → real
-    // balance, bonus portion → bonus wallet (no market lock held here, so the
-    // wallet-locked bonus refund is safe to call directly).
-    const w = await db.wallet.findByUserId(p.userId);
-    if (!w) continue;
-    const bonusPart = p.bonusStakeTzs ?? 0;
-    const realRefund = p.stake - bonusPart;
-    // Reverse this bet's turnover (it never settled) and return the bonus portion
-    // to the bonus wallet — never to real (no active grant → bonus is forfeit).
-    // SEAM:reverseWageringOrphan (04 A17) — never for a house-marked position.
-    if (p.houseBotId == null) await reverseWagering(p.userId, p.stake);
-    touchedWallets.add(p.userId);
-    if (bonusPart > 0) {
-      const { refundedToBonus } = await refundBonusToActive(p.userId, bonusPart);
-      if (refundedToBonus < bonusPart) {
-        audit({ category: "WALLET", action: "bonus.refund_forfeited", actorId: p.userId, targetType: "Position", targetId: p.id, payload: { requested: bonusPart, refundedToBonus, forfeited: bonusPart - refundedToBonus, reason: "orphan refund, no active grant" } });
-      }
+  for (const candidate of await positionStore.listOpen()) {
+    if (await marketStore.has(candidate.marketId)) continue; // indexed fast path
+    // Healthy PostgreSQL enforces Position.marketId → PredictionMarket; only a
+    // damaged legacy store can hold this shape. Lock and reread anyway: memory
+    // boot repair used to credit first, then mark VOID, so a process fault could
+    // replay the OPEN row and credit the same principal again.
+    const result = await withLock(`wallet:${candidate.userId}`, () =>
+      withLock(`market:${candidate.marketId}`, async (lockTx) => {
+        const p = await positionStore.get(candidate.id, lockTx);
+        if (!p || p.status !== "OPEN" || await marketStore.get(p.marketId, lockTx)) return null;
+        const w = await db.wallet.findByUserId(p.userId, lockTx);
+        if (!w) throw new Error(`orphan refund ${p.id}: wallet missing`);
+        const bonusPart = p.bonusStakeTzs ?? 0;
+        if (!Number.isSafeInteger(p.stake) || p.stake <= 0 ||
+            !Number.isSafeInteger(bonusPart) || bonusPart < 0 || bonusPart > p.stake) {
+          throw new Error(`orphan refund ${p.id}: invalid funding split`);
+        }
+        const realRefund = p.stake - bonusPart;
+        const restoreMemory = lockTx ? null : snapshotEmergencyMemoryRows(p.marketId, new Set([p.userId]));
+        const effects: Array<() => void> = [];
+        try {
+          const settledAt = new Date().toISOString();
+          const refundTxnId = `txn_${randomId(12)}`;
+          await withMoneyTx(async (tx) => {
+            let newBal = w.balance;
+            if (realRefund > 0) {
+              const updated = await db.wallet.adjust(w.id, { balance: realRefund }, undefined, tx);
+              if (!updated) throw new Error(`orphan refund ${p.id}: wallet disappeared`);
+              newBal = updated.balance;
+            }
+            p.status = "VOID"; p.finalPayout = p.stake; p.settledAt = settledAt;
+            await positionStore.set(p, tx);
+            if (realRefund > 0) await db.txn.create({
+              id: refundTxnId, walletId: w.id, userId: p.userId,
+              type: "BET_REFUND", status: "CONFIRMED", amount: realRefund,
+              fee: 0, taxWithheld: 0, balanceAfter: newBal, currency: "TZS",
+              provider: "INTERNAL", providerRef: null, msisdn: null,
+              description: "Refund · orphaned position (market record missing)", positionId: p.id,
+              // SEAM:markerOrphan — the house marker remains on the refund txn.
+              ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),
+              amlReason: null, createdAt: settledAt, updatedAt: settledAt, completedAt: settledAt,
+            }, tx);
+            if (realRefund > 0 || bonusPart > 0) await postLedgerEntries(`refund_${refundTxnId}`,
+              refundEntries({ txnId: refundTxnId, userId: p.userId, marketId: p.marketId, realPart: realRefund, bonusPart }), tx);
+            // SEAM:reverseWageringOrphan (04 A17) — never for house-marked money.
+            if (p.houseBotId == null) await reverseWageringLocked(p.userId, p.stake, tx,
+              (fn) => { effects.push(fn); });
+            if (bonusPart > 0) await refundEmergencyBonusLocked(p.userId, p.id, bonusPart, tx,
+              (fn) => { effects.push(fn); });
+          });
+          afterCommit(lockTx, () => { effects.push(() => { void notifyRefund(p.userId, {
+            stake: p.stake, marketTitle: localizedText("Orphaned position"), marketId: "", positionId: p.id,
+          }); }); });
+          afterCommit(lockTx, () => { effects.push(() => { audit({
+            category: "WALLET", action: "position.orphan_refund", actorId: p.userId,
+            targetType: "Position", targetId: p.id,
+            payload: { marketId: p.marketId, refunded: p.stake, reason: "market record missing" },
+          }); }); });
+          return { stake: p.stake, userId: p.userId, effects };
+        } catch (error) {
+          if (restoreMemory) await restoreMemory();
+          throw error;
+        }
+      }));
+    if (!result) continue;
+    touchedWallets.add(result.userId);
+    for (const effect of result.effects) {
+      try { effect(); } catch { /* committed refund remains final */ }
     }
-    let newBal = w.balance;
-    if (realRefund > 0) {
-      const updated = await db.wallet.adjust(w.id, { balance: realRefund });
-      newBal = updated?.balance ?? w.balance + realRefund;
-    }
-    p.status = "VOID";
-    p.finalPayout = p.stake;
-    p.settledAt = new Date().toISOString();
-    await positionStore.set(p);
-    if (realRefund > 0) await db.txn.create({
-      id: `txn_${randomId(12)}`,
-      walletId: w.id, userId: p.userId,
-      type: "BET_REFUND", status: "CONFIRMED",
-      amount: realRefund, fee: 0, taxWithheld: 0,
-      balanceAfter: newBal, currency: "TZS",
-      provider: "INTERNAL", providerRef: null, msisdn: null,
-      description: `Refund · orphaned position (market record missing)`,
-      positionId: p.id,
-      // SEAM:markerOrphan — the house marker travels to every txn of a marked position (PLAN §3 propagation).
-      ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),
-      amlReason: null,
-      createdAt: p.settledAt, updatedAt: p.settledAt, completedAt: p.settledAt,
-    });
-    notifyRefund(p.userId, { stake: p.stake, marketTitle: localizedText("Orphaned position"), marketId: "", positionId: p.id });
-    audit({
-      category: "WALLET",
-      action: "position.orphan_refund",
-      actorId: p.userId,
-      targetType: "Position",
-      targetId: p.id,
-      payload: { marketId: p.marketId, refunded: p.stake, reason: "market record missing" },
-    });
     repaired++;
-    refundedTzs += p.stake;
+    refundedTzs += result.stake;
   }
   await emitWalletBalances(touchedWallets);
   return { repaired, refundedTzs };
@@ -3913,12 +3946,12 @@ export async function settleMarket(
   marketId: string,
   settleOpts: { actorId?: string; force?: boolean } = {},
 ): Promise<ServiceResult<{ winnersPaid: number; positionsSettled: number }>> {
-  // Bonus refunds + wagering reversals take the WALLET lock, and taking it while
-  // holding the market lock would invert buyPosition's wallet→market order and
-  // could deadlock. Collected inside the lock, applied after it releases.
-  const pendingBonusRefunds: Array<{ userId: string; amount: number }> = [];
-  // `houseBotId`: a house-marked refund reverses NO wagering (04 A17) — the stake never accrued any.
-  const pendingWagerReversals: Array<{ userId: string; stake: number; houseBotId: string | null }> = [];
+  // A settlement's money, terminal stamp and outward claims must agree. Queue
+  // every outcome's notices, audit, history and proposal work until commit.
+  // An effect may return a promise: the proposer's prize and the watchers' alert
+  // are awaited after commit, as they were awaited before the queue existed.
+  const committedSettlementEffects: Array<() => void | Promise<unknown>> = [];
+  const refundedUserIds = new Set<string>();
   // Referral commission — a share of the fee we ACTUALLY KEPT. Applied after
   // the market lock releases, because it takes the REFERRER's wallet lock.
   // `positionId` travels with it: it is the idempotency key's second half, so a resumed
@@ -3929,7 +3962,7 @@ export async function settleMarket(
   let settledOutcome: Side | "VOID" | null = null;
   /**
    * ⭐ Whose top-bar balance this settlement changed. WINNERS are collected below; REFUNDED
-   * players are already enumerated by `pendingWagerReversals`, so they are not collected twice.
+   * players are already enumerated by `refundedUserIds`, so they are not collected twice.
    * ⛔ LOSERS are deliberately absent: their balance did not move at settlement (the stake left
    * at PLACEMENT), so an emit for them would be a wallet read per losing position on every
    * settlement to tell a player a number he already has.
@@ -3943,8 +3976,30 @@ export async function settleMarket(
   // `persistResolution` below so the settledAt stamp commits WITH the payouts —
   // see the block comment there. Null on the in-memory store, where there is no
   // transaction to join and `set()` writes straight to the map.
-  const result = await withLock(`market:${marketId}`, async (lockTx): Promise<ServiceResult<{ winnersPaid: number; positionsSettled: number }>> => {
-  const m = await marketStore.get(marketId);
+  type SettleRetry = { retryRefundPlan: true };
+  const refundMode = (market: StoredMarket) => market.resolvedOutcome === "VOID" ||
+    (market.resolvedOutcome != null &&
+      ((market.yesPool > 0 && market.noPool === 0) || (market.yesPool === 0 && market.noPool > 0)));
+  let result: ServiceResult<{ winnersPaid: number; positionsSettled: number }> | SettleRetry = { retryRefundPlan: true };
+  for (let attempt = 0; attempt < 3; attempt++) {
+  // A bet can arrive between planning and the market lock. Snapshot the holders,
+  // acquire their wallets in stable order, then reread under the market lock.
+  // A changed holder set or verdict returns a retry token before ANY money move.
+  const plannedMarket = await marketStore.get(marketId);
+  if (!plannedMarket) return { ok: false, error: "Market not found.", code: "NOT_FOUND" };
+  const plannedRefund = plannedMarket != null && refundMode(plannedMarket);
+  const plannedOpen = plannedMarket
+    ? (await positionStore.listForMarket(marketId)).filter((p) => p.status === "OPEN")
+    : [];
+  const holderIds = new Set(plannedOpen.map((p) => p.userId));
+  const sortedHolders = [...holderIds].sort();
+  const timeoutMs = Math.min(600_000, Math.max(30_000, 30_000 + plannedOpen.length * 50));
+  const visitHolder = async <T>(index: number, fn: () => Promise<T>): Promise<T> => index === sortedHolders.length
+    ? fn()
+    : withLock(`wallet:${sortedHolders[index]}`, () => visitHolder(index + 1, fn),
+      index === 0 ? { timeoutMs } : undefined);
+  result = await visitHolder(0, () => withLock(`market:${marketId}`, async (lockTx): Promise<ServiceResult<{ winnersPaid: number; positionsSettled: number }> | SettleRetry> => {
+  const m = await marketStore.get(marketId, lockTx);
   if (!m) return { ok: false, error: "Market not found.", code: "NOT_FOUND" };
   if (m.status !== "RESOLVED" && m.status !== "VOIDED") {
     return { ok: false, error: "Market has not been adjudicated yet.", code: "INVALID" };
@@ -3955,6 +4010,28 @@ export async function settleMarket(
   // week void refunds in bulk with the market's settled stamp in the same transaction (`maswali-void.ts`, MR-18) — the
   // one exactly-once truth. This one-sided branch would refund every ticket at zero fee; this VOID arm timed a week out.
   if (isFencedMaswali(m)) return { ok: false, code: "INVALID", error: MASWALI_FENCE_ERROR };
+
+  const allMarketPositions = await positionStore.listForMarket(m.id, lockTx);
+  const myPositions = allMarketPositions.filter((p) => p.status === "OPEN");
+  const currentRefund = refundMode(m);
+  if (currentRefund !== plannedRefund ||
+      myPositions.some((p) => !holderIds.has(p.userId))) {
+    return { retryRefundPlan: true };
+  }
+  if (currentRefund) for (const p of myPositions) {
+    const bonus = p.bonusStakeTzs ?? 0;
+    if (!Number.isSafeInteger(p.stake) || p.stake <= 0 ||
+        !Number.isSafeInteger(bonus) || bonus < 0 || bonus > p.stake) {
+      throw new Error(`settle ${m.id}: invalid funding split on position ${p.id}`);
+    }
+  }
+  const restoreMemory = !lockTx
+    ? snapshotEmergencyMemoryRows(m.id, holderIds)
+    : null;
+  const queueSettlementEffect = (fn: () => void | Promise<unknown>) => {
+    afterCommit(lockTx, () => { committedSettlementEffects.push(fn); });
+  };
+  try {
 
   // ── The deep link carried by every Up & Down result row (owner decision 2026-08-22).
   //
@@ -4028,7 +4105,9 @@ export async function settleMarket(
   // ⛔ Never call `marketStore.set` inside this scope without `lockTx`.
   const persistResolution = async () => {
     await marketStore.set(m, lockTx ?? undefined);
-    recordSnapshot(m.id, m.yesPool, m.noPool);
+    // The chart may only describe a settlement every reader can see. A failed
+    // lock transaction rolls its stamp and payouts back, so it drops this too.
+    queueSettlementEffect(() => recordSnapshot(m.id, m.yesPool, m.noPool));
   };
 
   // THE POLL'S OWN RATES — frozen at creation, not whatever admin has set today.
@@ -4073,8 +4152,6 @@ export async function settleMarket(
   // ⚠️ E-200: this note was already correct on 2026-08-24 while the allocation
   // below filtered on `side` alone and counted the CASHED_OUT row anyway. A
   // comment is not a control; the rule is a function now so a suite can drive it.
-  const allMarketPositions = await listPositionsForMarket(m.id);
-  const myPositions = allMarketPositions.filter((p) => p.status === "OPEN");
 
   // One-sided win: all bets went to the same side, so there is no
   // opposing pool to pay winnings from. Per the platform rules, all
@@ -4084,7 +4161,7 @@ export async function settleMarket(
 
   if (isOneSided) {
     for (const p of myPositions) {
-      const w = await db.wallet.findByUserId(p.userId);
+      const w = await db.wallet.findByUserId(p.userId, lockTx);
       // ⛔ REFUSE, NEVER SKIP. This used to be `if (!w) continue;` — it stepped over
       // the position, left it OPEN, and then settlement stamped settledAt anyway, so
       // the stake was stranded permanently with nothing able to detect it (every
@@ -4094,16 +4171,14 @@ export async function settleMarket(
       // commits with the money — so the market stays unsettled, visible in the queue,
       // and retryable. Refusal is the safe direction (see this function's docstring).
       if (!w) throw new Error(`settle ${m.id}: wallet row missing for user ${p.userId} — refusing to settle and strand position ${p.id}`);
-      // Split: real portion → real balance now; bonus portion → bonus wallet
-      // after the lock (queued in pendingBonusRefunds).
+      // The real and bonus portions land before the terminal stamp commits.
       const bonusPart = p.bonusStakeTzs ?? 0;
       const realPart = p.stake - bonusPart;
       const oneSidedTxnId = `txn_${randomId(12)}`;
       // ATOMIC (audit C3): the real-money refund credit, the position → VOID mark,
       // the BET_REFUND txn, and the ledger refund group commit together. A ledger
       // failure rolls the credit back and the position stays OPEN for a clean
-      // resume. (The bonus part is refunded after the lock via pendingBonusRefunds
-      // → a zero-wagering restitution grant, per C2.)
+      // resume, including the bonus principal and wagering reversal.
       await withMoneyTx(async (tx) => {
         // L4/C2: finalPayout = the FULL stake, honest — real → balance, bonus →
         // a zero-wagering restitution grant (refundBonusToActive never forfeits).
@@ -4129,10 +4204,13 @@ export async function settleMarket(
         await positionStore.set(p, tx);
         if (realPart > 0 || bonusPart > 0) {
           await postLedgerEntries(`refund_${oneSidedTxnId}`, refundEntries({ txnId: oneSidedTxnId, userId: p.userId, marketId: m.id, realPart, bonusPart }), tx);
-        }
+        } // SEAM:reverseWageringOneSided (04 A17) — below: a house stake recorded no turnover, so its refund reverses none.
+        if (p.houseBotId == null) await reverseWageringLocked(p.userId, p.stake, tx,
+          (fn) => { committedSettlementEffects.push(fn); });
+        if (bonusPart > 0) await refundEmergencyBonusLocked(p.userId, p.id, bonusPart, tx,
+          (fn) => { committedSettlementEffects.push(fn); });
       });
-      pendingWagerReversals.push({ userId: p.userId, stake: p.stake, houseBotId: p.houseBotId ?? null });
-      if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
+      refundedUserIds.add(p.userId);
       // E-43. The refund half of the SAME 2026-07-24 decision that already
       // suppresses wins and losses for Up & Down. Leaving it ungated made the
       // policy inverted rather than incomplete: measured on production
@@ -4141,14 +4219,14 @@ export async function settleMarket(
       // player heard about was the one where their money came back unchanged.
       // The digest states refunds with their own count and figure.
       if (!perEventNotificationsSuppressed(m)) {
-        notifyOneSidedRefund(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, positionId: p.id });
+        queueSettlementEffect(() => { void notifyOneSidedRefund(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, positionId: p.id }); });
         // SEAM:emailOneSided — no per-stake email for a house-marked position (04 F6); the bell is any player's (ruling 143).
-        if (p.houseBotId == null) sendEmailToUser(p.userId, (email) => ({
+        if (p.houseBotId == null) queueSettlementEffect(() => { void sendEmailToUser(p.userId, (email) => ({
           to: email,
           subject: `Full refund · ${formatTzs(p.stake)} returned`,
           html: oneSidedRefundHtml({ reference: p.id, stake: p.stake, marketTitle: messageTitle(shortTitles, "en", m.titleEn, m), settledAt }),
           tag: "one-sided-refund",
-        }), { confirmedOnly: true }).catch(() => {});
+        }), { confirmedOnly: true }).catch(() => {}); });
       } else {
         // E-57 · ⛔ THE REFUND IS ANNOUNCED TOO, AND THIS BRANCH IS THE WHOLE POINT OF E-43.
         // Announcing wins and losses while staying silent on refunds would rebuild the
@@ -4158,16 +4236,16 @@ export async function settleMarket(
         // ⭐ 2026-08-22 — this now writes a BELL ROW as well as pushing (owner decision;
         // see the block above `notifyUpDownWin`). The push is derived from the row, so the
         // two channels carry identical words and the per-round collapse key is preserved.
-        notifyUpDownOneSidedRefund(p.userId, {
+        queueSettlementEffect(() => { void notifyUpDownOneSidedRefund(p.userId, {
           stake: p.stake,
-          marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh),
+          marketTitle: upDownResultTitle(m),
           roundHref: updownRoundHref,
           pushTag: updownResultPushTag(m.id),
           positionId: p.id,
-        });
+        }); });
       }
     }
-    audit({
+    queueSettlementEffect(() => { audit({
       category: "ADMIN",
       action: "market.resolved.one_sided_refund",
       actorId: opts.officerId,
@@ -4182,20 +4260,19 @@ export async function settleMarket(
         evidence,
         reason: "One-sided win — all bets on same side, full refund issued at 0% fee",
       },
-    });
-    try {
-      const { onMarketResolved } = await import("./proposals-service");
-      await onMarketResolved(m.id, { voided: false });
-    } catch { /* proposal prize must never break settlement */ }
+    }); });
+    queueSettlementEffect(() => import("./proposals-service")
+      .then(({ onMarketResolved }) => onMarketResolved(m.id, { voided: false }))
+      .catch(() => { /* proposal prize must never break settlement */ }));
     await persistResolution(); // all one-sided refunds done → now stamp settledAt
-    audit({
+    queueSettlementEffect(() => { audit({
       category: "WALLET",
       action: "market.settled",
       actorId: opts.officerId,
       targetType: "Market",
       targetId: m.id,
       payload: { outcome: opts.outcome, settledAt, winnersPaid: 0, positionsSettled: myPositions.length, reason: "one-sided refund" },
-    });
+    }); });
     return { ok: true, data: { winnersPaid: 0, positionsSettled: myPositions.length } };
   }
 
@@ -4212,7 +4289,9 @@ export async function settleMarket(
     // ⚠️ ONE lookup, before the loop — not one per position. And only for Up & Down: a
     // long-form poll that voids has no per-round reason to name, so its wording is unchanged.
     const udReason = m.productLine === "UPDOWN"
-      ? await roundStore.getByMarketId(m.id).then((r) => r?.voidReason ?? null).catch(() => null)
+      ? await (lockTx
+        ? lockTx.upDownRound.findUnique({ where: { marketId: m.id } })
+        : roundStore.getByMarketId(m.id)).then((r) => r?.voidReason ?? null).catch(() => null)
       : null;
     // A Millionea week never reaches this arm (the fence above, R1): its whole-week void refunds in bulk, in its own
     // words (`MASWALI_VOID_REFUND`, maswali-void.ts). A long-form poll has no per-round reason to name, so its wording
@@ -4221,7 +4300,7 @@ export async function settleMarket(
 
     // Refund everyone
     for (const p of myPositions) {
-      const w = await db.wallet.findByUserId(p.userId);
+      const w = await db.wallet.findByUserId(p.userId, lockTx);
       // ⛔ REFUSE, NEVER SKIP. This used to be `if (!w) continue;` — it stepped over
       // the position, left it OPEN, and then settlement stamped settledAt anyway, so
       // the stake was stranded permanently with nothing able to detect it (every
@@ -4235,9 +4314,8 @@ export async function settleMarket(
       const realPart = p.stake - bonusPart;
       const refundTxnId = `txn_${randomId(12)}`;
       // ATOMIC (audit C3): real refund credit + position → VOID + BET_REFUND txn +
-      // ledger refund group commit together; a failure rolls back and the position
-      // stays OPEN for a clean resume. (Bonus part → restitution grant after the
-      // lock via pendingBonusRefunds, per C2.)
+      // ledger refund group, bonus principal and wagering reversal commit together;
+      // a failure rolls back and the position stays OPEN for a clean resume.
       await withMoneyTx(async (tx) => {
         p.status = "VOID";
         // L4/C2: full-stake refund is honest — real → balance, bonus → restitution grant.
@@ -4264,30 +4342,31 @@ export async function settleMarket(
         await positionStore.set(p, tx);
         if (realPart > 0 || bonusPart > 0) {
           await postLedgerEntries(`refund_${refundTxnId}`, refundEntries({ txnId: refundTxnId, userId: p.userId, marketId: m.id, realPart, bonusPart }), tx);
-        }
+        } // SEAM:reverseWageringVoid (04 A17) — below: a house stake recorded no turnover, so its refund reverses none.
+        const accruedTurnover = switchLine(m.productLine, { MARKET: () => true, UPDOWN: () => true, MASWALI: () => false });
+        if (accruedTurnover && p.houseBotId == null) await reverseWageringLocked(p.userId, p.stake, tx,
+          (fn) => { committedSettlementEffects.push(fn); });
+        if (bonusPart > 0) await refundEmergencyBonusLocked(p.userId, p.id, bonusPart, tx,
+          (fn) => { committedSettlementEffects.push(fn); });
       });
-      // MASWALI-BUILD S3 · a Millionea ticket recorded no turnover (OD-20), so its void refund removes none — reversing
-      // it would take progress the player earned on their other bets.
-      const accruedTurnover = switchLine(m.productLine, { MARKET: () => true, UPDOWN: () => true, MASWALI: () => false });
-      if (accruedTurnover) pendingWagerReversals.push({ userId: p.userId, stake: p.stake, houseBotId: p.houseBotId ?? null });
-      if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
+      refundedUserIds.add(p.userId);
       // E-43 — see the one-sided branch above. Same decision, same predicate.
       // E-57 / 2026-08-22 — and the same announcement, for the same reason: every terminal
       // outcome reaches the player or none does. The Up & Down arm writes a bell row and
       // pushes it from one copy; the long-form arm keeps its own emitter and its email.
       if (!perEventNotificationsSuppressed(m)) {
-        notifyRefund(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, positionId: p.id });
+        queueSettlementEffect(() => { void notifyRefund(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, positionId: p.id }); });
       } else {
         // MASWALI-BUILD S3 · a voided Millionea week is announced by its own notice (S6), which names the week and the
         // carried jackpot — never the Up & Down round's "the round was voided". Exhaustive: a new line must choose.
         if (switchLine(m.productLine, { MARKET: () => false, UPDOWN: () => true, MASWALI: () => false })) {
-          notifyUpDownRefund(p.userId, {
+          queueSettlementEffect(() => { void notifyUpDownRefund(p.userId, {
             stake: p.stake,
-            marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh),
+            marketTitle: upDownResultTitle(m),
             roundHref: updownRoundHref,
             pushTag: updownResultPushTag(m.id),
             positionId: p.id,
-          });
+          }); });
         }
       }
     }
@@ -4365,7 +4444,7 @@ export async function settleMarket(
     const traByPos = allocateFeeShares(feeShareRows, settleFee.fee, settleLevies.traLevy);
     const gbtByPos = allocateFeeShares(feeShareRows, settleFee.fee, settleLevies.gbtLevy);
     for (const p of myPositions) {
-      const w = await db.wallet.findByUserId(p.userId);
+      const w = await db.wallet.findByUserId(p.userId, lockTx);
       // ⛔ REFUSE, NEVER SKIP. This used to be `if (!w) continue;` — it stepped over
       // the position, left it OPEN, and then settlement stamped settledAt anyway, so
       // the stake was stranded permanently with nothing able to detect it (every
@@ -4425,7 +4504,7 @@ export async function settleMarket(
         });
         // Tamper-evident chain entry for the payout credit (txn row is the
         // ledger; this anchors it in the HMAC audit chain too).
-        audit({ category: "WALLET", action: "bet.payout", actorId: p.userId, targetType: "Position", targetId: p.id, payload: { marketId: m.id, outcome: opts.outcome, payout, balanceAfter } });
+        queueSettlementEffect(() => { audit({ category: "WALLET", action: "bet.payout", actorId: p.userId, targetType: "Position", targetId: p.id, payload: { marketId: m.id, outcome: opts.outcome, payout, balanceAfter } }); });
         // Win receipt — opens the position so they can see the payout. Suppressed for
         // Up & Down (see perEventNotificationsSuppressed): the money above is already
         // credited, booked and audited; only the message is digested.
@@ -4433,30 +4512,30 @@ export async function settleMarket(
           // E-101 · the bell entry opens THIS ticket. It used to open `/positions`, which is
           // the long-form list — right product here by luck (this branch is suppressed for
           // Up & Down), wrong row always.
-          notifyWin(p.userId, payout, messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), positionPermalinkHref(p.id));
+          queueSettlementEffect(() => { void notifyWin(p.userId, payout, messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), positionPermalinkHref(p.id)); });
           // ⭐ ↑ The market's name alone (round 3 of the visual pass, 2026-10-09): " · pos_…" was appended to it, a raw id
           // in the sentence ("<title> · pos_… kimelipa."). The link is this position's own permalink, so two wins on one
           // market already stay two notices. (Written UNDER the call: `test:updown-digest` §5 looks 400 characters back
           // from it for the `perEventNotificationsSuppressed` gate, and a note above would push the gate out of reach.)
           // SEAM:emailWin — no per-stake email for a house-marked position (04 F6); the bell is any player's (ruling 143).
-          if (p.houseBotId == null) sendEmailToUser(p.userId, (email) => ({
+          if (p.houseBotId == null) queueSettlementEffect(() => { void sendEmailToUser(p.userId, (email) => ({
             to: email,
             subject: `You won · ${formatTzs(payout)}`,
             html: winNotificationHtml({ reference: p.id, payout, stake: p.stake, marketTitle: messageTitle(shortTitles, "en", m.titleEn, m), settledAt }),
             tag: "win",
-          }), { confirmedOnly: true }).catch(() => {});
+          }), { confirmedOnly: true }).catch(() => {}); });
         } else {
           // E-57 / 2026-08-22 · the win now lands in the BELL and pushes, from one copy.
           // ⛔ `payout` is the REALISED amount, not the place-time projection — E-105's rule,
           // and the reason the long-form celebration is still filed as a separate finding.
-          notifyUpDownWin(p.userId, {
+          queueSettlementEffect(() => { void notifyUpDownWin(p.userId, {
             payout,
             stake: p.stake,
-            marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh),
+            marketTitle: upDownResultTitle(m),
             roundHref: updownRoundHref,
             pushTag: updownResultPushTag(m.id),
             positionId: p.id,
-          });
+          }); });
         }
       } else {
         p.status = "LOSS"; p.finalPayout = 0; p.settledAt = settledAt;
@@ -4478,14 +4557,14 @@ export async function settleMarket(
         // loss clause carries its own count and its own figure and is never folded
         // into the net — asserted by `npm run test:updown-digest`.
         if (!perEventNotificationsSuppressed(m)) {
-          notifyLoss(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, positionId: p.id });
+          queueSettlementEffect(() => { void notifyLoss(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, positionId: p.id }); });
           // SEAM:emailLoss — no per-stake email for a house-marked position (04 F6); the bell is any player's (ruling 143).
-          if (p.houseBotId == null) sendEmailToUser(p.userId, (email) => ({
+          if (p.houseBotId == null) queueSettlementEffect(() => { void sendEmailToUser(p.userId, (email) => ({
             to: email,
             subject: `Bet lost · ${formatTzs(p.stake)}`,
             html: lossNotificationHtml({ reference: p.id, stake: p.stake, marketTitle: messageTitle(shortTitles, "en", m.titleEn, m), settledAt }),
             tag: "loss",
-          }), { confirmedOnly: true }).catch(() => {});
+          }), { confirmedOnly: true }).catch(() => {}); });
         } else {
           // E-57 / 2026-08-22 · the loss is announced too, and it stays DIRECT. ⛔ Announcing
           // only wins would be the E-43 failure wearing a new channel — the player would hear
@@ -4499,13 +4578,13 @@ export async function settleMarket(
           // lost. The fix had been applied to `notifyLoss` and never propagated to this
           // hand-written copy. Routing through the emitter makes that class of drift
           // impossible — there is now one source for the words.
-          notifyUpDownLoss(p.userId, {
+          queueSettlementEffect(() => { void notifyUpDownLoss(p.userId, {
             stake: p.stake,
-            marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh),
+            marketTitle: upDownResultTitle(m),
             roundHref: updownRoundHref,
             pushTag: updownResultPushTag(m.id),
             positionId: p.id,
-          });
+          }); });
         }
       }
 
@@ -4552,7 +4631,7 @@ export async function settleMarket(
   const totalWinnersPaid = settledNow.reduce((s, p) => s + (p.status === "WIN" ? (p.finalPayout ?? 0) : 0), 0);
   const totalPositionsSettled = settledNow.filter((p) => p.status !== "OPEN").length;
 
-  audit({
+  const resolutionAudit = () => audit({
     category: "ADMIN",
     action: "market.resolved",
     actorId: opts.officerId,
@@ -4586,27 +4665,27 @@ export async function settleMarket(
       evidence,
     },
   });
+  queueSettlementEffect(resolutionAudit);
 
   // Feature 2 — if this market came from a player proposal, pay the proposer
   // their prize now that it is listed AND resolved. Best-effort; never blocks
   // settlement. VOID outcomes mark the proposal resolved without a prize.
-  try {
-    const { onMarketResolved } = await import("./proposals-service");
-    await onMarketResolved(m.id, { voided: opts.outcome === "VOID" });
-  } catch { /* proposal prize must never break settlement */ }
+  queueSettlementEffect(() => import("./proposals-service")
+    .then(({ onMarketResolved }) => onMarketResolved(m.id, { voided: opts.outcome === "VOID" }))
+    .catch(() => { /* proposal prize must never break settlement */ }));
 
   await persistResolution(); // all winners paid / refunds issued → now flip status
 
   // F3 — tell WATCHERS the market they follow has settled. Bettors are EXCLUDED:
   // they already receive their own win/loss receipt (which carries the money), so
   // alerting them again would duplicate. Best-effort — never breaks settlement.
-  try {
-    const { alertWatchersSettled } = await import("./watchlist-service");
-    const bettorIds = new Set((await listPositionsForMarket(m.id)).map((p) => p.userId));
-    await alertWatchersSettled(m.id, messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), opts.outcome, bettorIds);
-  } catch { /* watcher alerts must never break settlement */ }
+  queueSettlementEffect(() => import("./watchlist-service")
+    .then(({ alertWatchersSettled }) => alertWatchersSettled(m.id,
+      messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), opts.outcome,
+      new Set(allMarketPositions.map((p) => p.userId))))
+    .catch(() => { /* watcher alerts must never break settlement */ }));
 
-  audit({
+  const settledAudit = () => audit({
     category: "WALLET",
     action: "market.settled",
     actorId: opts.officerId,
@@ -4620,34 +4699,30 @@ export async function settleMarket(
       forced: settleOpts.force === true,
     },
   });
+  queueSettlementEffect(settledAudit);
 
   return { ok: true, data: { winnersPaid: totalWinnersPaid, positionsSettled: totalPositionsSettled } };
-  }); // end withLock market
-
-  // Apply, now the market lock is released (refund helpers take the wallet lock —
-  // taking it inside the market lock would invert buyPosition's wallet→market
-  // order and could deadlock). Reverse each refunded bet's turnover first, then
-  // return the bonus principal to the bonus wallet. If the source grant is gone,
-  // refundBonusToActive mints a zero-wagering restitution grant so the principal
-  // is never forfeited (audit C2) — the money the ledger already recorded as a
-  // BONUS_REFUND (refundEntries, above) now always lands in the wallet too, so
-  // ledger and wallet cannot diverge on a void.
-  // SEAM:reverseWagering (04 A17) — a house stake recorded no turnover, so its refund removes none from
-  // the holder's personal bonus requirement.
-  for (const r of pendingWagerReversals) if (r.houseBotId == null) await reverseWagering(r.userId, r.stake);
-  for (const r of pendingBonusRefunds) {
-    if (r.amount <= 0) continue;
-    const { refundedToBonus } = await refundBonusToActive(r.userId, r.amount);
-    if (refundedToBonus < r.amount) {
-      audit({ category: "WALLET", action: "bonus.refund_forfeited", actorId: r.userId, targetType: "User", targetId: r.userId, payload: { requested: r.amount, refundedToBonus, forfeited: r.amount - refundedToBonus, reason: "no active grant to hold refunded bonus" } });
-    }
+  } catch (error) {
+    if (restoreMemory) await restoreMemory();
+    throw error;
+  }
+  }, sortedHolders.length === 0 ? { timeoutMs } : undefined)); // end withLock market and ordered wallet locks
+  if (!("retryRefundPlan" in result)) break;
+  }
+  if ("retryRefundPlan" in result) {
+    return { ok: false, error: "Market holders or verdict changed during settlement; please retry. No money moved.", code: "BUSY" };
   }
 
-  // ⭐ NOW the top-bar balance, and only now: AFTER the wagering reversals and the bonus
-  // principal have been applied above. Emitting inside the lock would push a figure that the
-  // very next line changes — a re-locked bonus moves cash out of `balance` — so the pill would
-  // land on an intermediate and stay there. One emit per player, from the committed wallet.
-  await emitWalletBalances([...paidWallets, ...pendingWagerReversals.map((r) => r.userId)]);
+  // All money has committed before any balance event or notice. A failed balance
+  // event must not suppress the committed settlement's player or audit claims.
+  try { await emitWalletBalances([...paidWallets, ...refundedUserIds]); }
+  catch (error) {
+    audit({ category: "SYSTEM", action: "market.settlement.balance_emit_failed", actorId: settleOpts.actorId ?? "system",
+      targetType: "Market", targetId: marketId, payload: { users: paidWallets.size + refundedUserIds.size, error: String(error) } });
+  }
+  // Each effect awaited in order; a call that joined an enclosing lock's transaction drains after THAT commit.
+  // Committed money cannot be undone by an outward effect.
+  if (result.ok) await drainCommitted(committedSettlementEffects, currentLockTx());
 
   // Referral commission, on the fee we ACTUALLY KEPT. Outside the market lock
   // for the same reason as the bonus work above: onRecruitSettlement takes the
@@ -4909,6 +4984,41 @@ export async function adminReopenMarket(marketId: string, officerId: string): Pr
  * already RESOLVED/VOIDED is rejected, so stakes can never be double-refunded.
  * Already CASHED_OUT positions are skipped (their stake already left the pool).
  */
+function snapshotEmergencyMemoryRows(marketId: string, holderIds: ReadonlySet<string>): () => Promise<void> {
+  const core = globalThis.__50PICK_STORE;
+  const markets = globalThis.__50PICK_MARKETS;
+  const positions = globalThis.__50PICK_POSITIONS;
+  const rounds = globalThis.__50PICK_UD_ROUNDS;
+  if (!core || !markets || !positions || !rounds) throw new Error("emergency void memory store unavailable");
+  // The caller holds every named wallet lock and this market lock. Restore only
+  // these rows, so a different market/user cannot be rolled back by our fault.
+  const capture = <V>(rows: Map<string, V>, belongs: (row: V) => boolean) => {
+    const before = [...rows].filter(([, row]) => belongs(row)).map(([id, row]) => [id, structuredClone(row)] as const);
+    return () => {
+      for (const [id, row] of rows) if (belongs(row)) rows.delete(id);
+      for (const [id, row] of before) rows.set(id, row);
+    };
+  };
+  const restoreWallets = capture(core.wallets, (row) => holderIds.has(row.userId));
+  const restoreGrants = capture(core.bonusGrants, (row) => holderIds.has(row.userId));
+  const restoreTxns = capture(core.txns, (row) => holderIds.has(row.userId));
+  const restorePositions = capture(positions, (row) => row.marketId === marketId);
+  const restoreMarket = capture(markets, (row) => row.id === marketId);
+  const restoreRound = capture(rounds, (row) => row.marketId === marketId);
+  const restoreObjections = capture(core.objections, (row) => row.marketId === marketId);
+  return async () => {
+    restoreObjections();
+    restoreRound();
+    restoreMarket();
+    restorePositions();
+    restoreTxns();
+    restoreGrants();
+    restoreWallets();
+    const original = markets.get(marketId);
+    if (original) await marketStore.set(original); // invalidate board/history memos after restoration
+  };
+}
+
 export async function emergencyVoidMarket(opts: { marketId: string; officerId: string; reason: string }): Promise<ServiceResult<{ refundedCount: number; refundedTzs: number }>> {
   const reason = (opts.reason ?? "").trim();
   if (reason.length < 5) return { ok: false, error: "A reason (≥ 5 characters) is required for an emergency void.", code: "INVALID" };
@@ -4932,21 +5042,40 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
   }
 
   // Officer-conflict block removed (owner decision 2026-07-24) — an admin may void a
-  // market they hold a position in. An emergency void only REFUNDS every stake at 0
-  // fee (nobody wins or loses), so there is no self-interest to guard against; and
-  // the whole conflict-of-interest posture was retired with two-admin authorization
-  // (see resolution-policy.ts + docs/COMPLIANCE-DECISIONS.md). The ADMIN/COMPLIANCE
+  // market they hold a position in. An emergency void REFUNDS still-held stakes at 0
+  // fee; earlier cash-outs keep their sell value. The conflict-of-interest posture
+  // was retired with two-admin authorization (see resolution-policy.ts and
+  // docs/COMPLIANCE-DECISIONS.md). The ADMIN/COMPLIANCE
   // role gate + 2FA above still stand.
 
-  const pendingBonusRefunds: Array<{ userId: string; amount: number }> = [];
-  // `houseBotId`: a house-marked refund reverses NO wagering (04 A17) — the stake never accrued any.
-  const pendingWagerReversals: Array<{ userId: string; stake: number; houseBotId: string | null }> = [];
+  // Outward claims are queued only after the complete money transaction commits; each is awaited in order.
+  const committedNotices: Array<() => void | Promise<unknown>> = [];
+  const refundedUserIds = new Set<string>();
   // S12 WP12 · the title switch, read once for every player notice and letter this cancellation sends — and BEFORE the
   // market lock, so the refunds' transaction never waits on it (`message-titles.ts`). The officers' copies keep the full
   // English question: the console is English by design.
   const shortTitles = await shortTitlesInMessagesNow();
-  const result = await withLock(`market:${opts.marketId}`, async (lockTx) => {
-    const m = await marketStore.get(opts.marketId);
+  const officers = await db.user.listByRoles(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+  // Snapshot holder IDs before taking locks, then acquire wallet locks in stable
+  // order BEFORE the market lock. A newly arrived holder is detected by the
+  // in-transaction reread and retried from outside every lock. No money moves
+  // on an incomplete holder set. The outer transaction's timeout grows with
+  // the book; a timeout rolls every refund back and the officer can retry.
+  const initialOpen = (await positionStore.listForMarket(opts.marketId)).filter((p) => p.status === "OPEN");
+  const holderIds = new Set(initialOpen.map((p) => p.userId));
+  let observedOpenCount = initialOpen.length;
+  const withHolderLocks = async <T>(ids: string[], timeoutMs: number, fn: () => Promise<T>): Promise<T> => {
+    const visit = (i: number): Promise<T> => i === ids.length
+      ? ids.length === 0 ? withLock(`market:${opts.marketId}`, () => fn(), { timeoutMs }) : fn()
+      : withLock(`wallet:${ids[i]}`, () => visit(i + 1), i === 0 ? { timeoutMs } : undefined);
+    return visit(0);
+  };
+  type Retry = { retryHolderIds: string[]; openCount: number };
+  let result: ServiceResult<{ refundedCount: number; refundedTzs: number }> | Retry = { retryHolderIds: [], openCount: observedOpenCount };
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const timeoutMs = Math.min(600_000, Math.max(30_000, 30_000 + observedOpenCount * 50));
+    result = await withHolderLocks([...holderIds].sort(), timeoutMs, () => withLock(`market:${opts.marketId}`, async (lockTx) => {
+    const m = await marketStore.get(opts.marketId, lockTx);
     if (!m) return { ok: false as const, error: "Market not found.", code: "NOT_FOUND" as const };
     // S0.5 · the fence: a whole Millionea week is voided by its own Compliance control (OD-26), which also keeps the
     // carried-in jackpot whole (MR-18). Never through this generic door.
@@ -4962,23 +5091,44 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
       return { ok: false as const, error: "Market is already settled — its money has moved. Nothing to void.", code: "INVALID" as const };
     }
 
+    const open = (await positionStore.listForMarket(m.id, lockTx)).filter((p) => p.status === "OPEN");
+    const newlySeen = [...new Set(open.map((p) => p.userId))].filter((id) => !holderIds.has(id));
+    if (newlySeen.length) return { retryHolderIds: newlySeen, openCount: open.length };
+    for (const p of open) {
+      const bonus = p.bonusStakeTzs ?? 0;
+      if (!Number.isSafeInteger(p.stake) || p.stake <= 0 ||
+          !Number.isSafeInteger(bonus) || bonus < 0 || bonus > p.stake) {
+        throw new Error(`emergency void ${m.id}: invalid funding split on position ${p.id}`);
+      }
+    }
+    const linkedRound = m.productLine === "UPDOWN"
+      ? lockTx
+        ? await lockTx.upDownRound.findUnique({ where: { marketId: m.id } })
+        : await roundStore.getByMarketId(m.id)
+      : null;
+    if (m.productLine === "UPDOWN" && !linkedRound) {
+      throw new Error(`emergency void ${m.id}: linked UpDownRound missing`);
+    }
+    const restoreMemory = lockTx ? null : snapshotEmergencyMemoryRows(m.id, holderIds);
+    try {
     const now = new Date().toISOString();
     const grossPool = m.yesPool + m.noPool;
+    const previousVerdict = m.resolvedOutcome;
 
-    // Refund every OPEN position its full stake. db.wallet.adjust is atomic, so
-    // (like the resolveMarket VOID path) no nested wallet lock is needed.
-    const open = (await listPositionsForMarket(m.id)).filter((p) => p.status === "OPEN");
+    // Refund every OPEN position its full stake. Prior cash-outs retain their
+    // paid amounts and are not refunded again. Every holder's wallet lock and
+    // the market lock are held until all real/bonus money and the verdict commit.
     let refundedCount = 0;
     let refundedTzs = 0;
     for (const p of open) {
-      const w = await db.wallet.findByUserId(p.userId);
+      const w = await db.wallet.findByUserId(p.userId, lockTx);
       // ⛔ REFUSE, NEVER SKIP. `if (!w) continue;` stepped over the position, left it
       // OPEN, and let the void complete anyway — the player's stake silently excluded
       // from an emergency refund every other holder received. Refusing aborts the void
       // (now transactional, below), so nothing is half-done and the officer can retry.
       if (!w) throw new Error(`emergency void ${m.id}: wallet row missing for user ${p.userId} — refusing to void and skip position ${p.id}`);
-      // Split: real portion → real now; bonus portion → bonus wallet after the
-      // lock; reverse the bet's turnover (it never settled).
+      // Split: real portion → real wallet; bonus portion → bonus grant/wallet
+      // inside this same transaction. Reverse turnover before stamping VOID.
       const bonusPart = p.bonusStakeTzs ?? 0;
       const realPart = p.stake - bonusPart;
       const emergTxnId = `txn_${randomId(12)}`;
@@ -5023,24 +5173,30 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
         if (realPart > 0 || bonusPart > 0) {
           await postLedgerEntries(`refund_${emergTxnId}`, refundEntries({ txnId: emergTxnId, userId: p.userId, marketId: m.id, realPart, bonusPart }), tx);
         }
+        // SEAM:reverseWageringEmergency (04 A17) — house-marked stakes never accrued player wagering turnover.
+        if (p.houseBotId == null) await reverseWageringLocked(p.userId, p.stake, tx,
+          (fn) => { committedNotices.push(fn); });
+        if (bonusPart > 0) await refundEmergencyBonusLocked(p.userId, p.id, bonusPart, tx,
+          (fn) => { committedNotices.push(fn); });
       });
-      pendingWagerReversals.push({ userId: p.userId, stake: p.stake, houseBotId: p.houseBotId ?? null });
-      if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
-      // Player notice — BOTH channels, and both carry the admin's reason so the
-      // player knows WHY their market was pulled and that they were made whole.
-      notifyMarketCancelled(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, reason, positionId: p.id });
-      // SEAM:emailCancelled — no per-stake email for a house-marked position (04 F6); the bell is any player's (ruling 143).
-      if (p.houseBotId == null) sendEmailToUser(p.userId, (email) => ({
-        to: email,
-        subject: `Market cancelled — ${formatTzs(p.stake)} refunded`,
-        html: marketCancelledRefundHtml({ title: messageTitle(shortTitles, "en", m.titleEn, m), reason, amount: p.stake, reference: p.id }),
-        tag: "market-cancelled-refund",
-      }), { confirmedOnly: true }).catch(() => {});
+      refundedUserIds.add(p.userId);
+      // Outward refund claims wait for the market transaction to commit. A later
+      // objection-closure failure can still roll all money back on PostgreSQL.
+      afterCommit(lockTx, () => { committedNotices.push(() => {
+        void notifyMarketCancelled(p.userId, { stake: p.stake, bonusStakeTzs: bonusPart, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, reason, positionId: p.id }).catch(() => {});
+        // SEAM:emailCancelled — no per-stake email for a house-marked position (04 F6); the bell is any player's (ruling 143).
+        if (p.houseBotId == null) void sendEmailToUser(p.userId, (email) => ({
+          to: email,
+          subject: `Market cancelled — ${formatTzs(p.stake)} refunded`,
+          html: marketCancelledRefundHtml({ title: messageTitle(shortTitles, "en", m.titleEn, m), reason, amount: p.stake, bonusStakeTzs: bonusPart, reference: p.id }),
+          tag: "market-cancelled-refund",
+        }), { confirmedOnly: true }).catch(() => {});
+      }); });
       refundedCount++;
       refundedTzs += p.stake;
     }
 
-    // Pools are now empty (all stakes refunded, seeds returned). Mark VOIDED and
+    // Pools are now empty (all still-held stakes refunded, seeds returned). Mark VOIDED and
     // stamp both resolution officers as this single emergency operator for the trail.
     m.yesPool = 0;
     m.noPool = 0;
@@ -5057,69 +5213,103 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
     // refunds are still uncommitted is a market every readout calls "done" over
     // players who were never paid.
     m.settledAt = now;
-    // Surface the recorded cancellation reason as the settlement-proof evidence so
-    // a voided market tells players WHY it was pulled (same value already sent in
-    // the cancellation notice; capped for parity with the ceremony path).
-    m.resolutionEvidence = reason ? String(reason).trim().slice(0, 2000) || null : null;
+    // Surface the recorded cancellation reason and complete prior public price
+    // evidence. PostgreSQL stores this as Text; truncation would erase the only
+    // surviving observation record after an officer changed the payable verdict.
+    const priorEvidence = m.resolutionEvidence?.trim() || "none recorded";
+    const priorDirectionalVerdict = previousVerdict === "YES" || previousVerdict === "NO" ||
+      linkedRound?.outcome === "UP" || linkedRound?.outcome === "DOWN";
+    m.resolutionEvidence = m.productLine === "UPDOWN" &&
+      (priorEvidence.startsWith("UPDOWN_OFFICER_CORRECTION:") ||
+       priorEvidence.startsWith("UPDOWN_RECORD_CORRECTION:"))
+      ? `${priorEvidence} Emergency cancellation reason: ${reason}`
+      : m.productLine === "UPDOWN" && priorDirectionalVerdict
+      ? (`UPDOWN_OPERATOR_VOID: A recorded price verdict was cancelled by an officer. ` +
+            `Reason: ${reason}. Prior resolution record: ${priorEvidence}`)
+      : reason;
     m.updatedAt = now;
     await marketStore.set(m, lockTx ?? undefined);
-    recordSnapshot(m.id, 0, 0);
+    // The linked game round records the payable verdict in the same transaction.
+    // Prices and frozen targets remain observed facts, even when the officer
+    // voids after a prior price verdict. A round still awaiting its price keeps
+    // its null observations and gains only the administrative resolution time.
+    if (m.productLine === "UPDOWN" && linkedRound) {
+      if (lockTx) {
+        await lockTx.upDownRound.update({ where: { id: linkedRound.id }, data: {
+          outcome: "VOID", voidReason: "operator", settledAt: new Date(now),
+          resolvedAt: linkedRound.resolvedAt ? new Date(linkedRound.resolvedAt) : new Date(now),
+        } });
+      } else {
+        await roundStore.patch(linkedRound.id, {
+          outcome: "VOID", voidReason: "operator", settledAt: now,
+          resolvedAt: linkedRound.resolvedAt instanceof Date
+            ? linkedRound.resolvedAt.toISOString() : linkedRound.resolvedAt ?? now,
+        });
+      }
+    }
 
-    audit({
-      category: "COMPLIANCE",
-      action: "market.emergency_void",
-      actorId: opts.officerId,
-      targetType: "Market",
-      targetId: m.id,
-      payload: { reason, refundedCount, refundedTzs, grossPoolBefore: grossPool, title: m.titleEn },
-    });
+    afterCommit(lockTx, () => { committedNotices.push(() => {
+      audit({
+        category: "COMPLIANCE", action: "market.emergency_void", actorId: opts.officerId,
+        targetType: "Market", targetId: m.id,
+        payload: { reason, refundedCount, refundedTzs, grossPoolBefore: grossPool, title: m.titleEn },
+      });
+    }); });
 
     // An emergency void does not wait for objections — it is the kill switch. But
     // it has just SETTLED the market, so any objection still open against it would
     // be stranded: un-actionable in the officer queue, and unanswered for the
-    // player who filed it. A void refunds every stake in full, which is precisely
-    // the VOID remedy, so close them out as that and notify the objectors.
-    try {
-      const { closeObjectionsForVoidedMarket } = await import("./objections-service");
-      await closeObjectionsForVoidedMarket(m.id, opts.officerId, reason);
-    } catch (e) {
-      // Never let this break the refund path — the money is already back.
-      console.error("[emergency-void] could not close objections:", e);
-    }
+    // player who filed it. A void refunds stakes still held in full, which is
+    // precisely the VOID remedy. The objector notice waits for bonus restitution.
+    const { closeObjectionsForVoidedMarket } = await import("./objections-service");
+    await closeObjectionsForVoidedMarket(m.id, opts.officerId, reason,
+      (notice) => { committedNotices.push(notice); });
 
     // Confirm to EVERY admin/officer that the cancellation succeeded — in-app +
     // email — so the whole team has an awareness/audit trail (and the acting
     // officer gets a definitive "done" beyond the result modal). Best-effort.
-    const officers = await db.user.listByRoles(["ADMIN", "COMPLIANCE", "MODERATOR"]); // audit M5
-    for (const o of officers) {
-      notifyAdminMarketCancelled(o.id, { title: m.titleEn, reason, refundedCount, refundedTzs }).catch(() => {});
-      sendEmailToUser(o.id, (email) => ({
-        to: email,
-        subject: `Market cancelled · ${clipQuote(m.titleEn, 50)}`,
-        html: marketCancelledAdminHtml({ title: m.titleEn, reason, refundedCount, refundedTzs }),
-        tag: "market-cancelled-admin",
-        trackLinks: false,
-      })).catch(() => {});
-    }
+    afterCommit(lockTx, () => { committedNotices.push(() => {
+      for (const o of officers) {
+        void notifyAdminMarketCancelled(o.id, { title: m.titleEn, reason, refundedCount, refundedTzs }).catch(() => {});
+        void sendEmailToUser(o.id, (email) => ({
+          to: email,
+          subject: `Market cancelled · ${clipQuote(m.titleEn, 50)}`,
+          html: marketCancelledAdminHtml({ title: m.titleEn, reason, refundedCount, refundedTzs }),
+          tag: "market-cancelled-admin",
+          trackLinks: false,
+        })).catch(() => {});
+      }
+    }); });
 
+    afterCommit(lockTx, () => { committedNotices.push(() => recordSnapshot(m.id, 0, 0)); });
     return { ok: true as const, data: { refundedCount, refundedTzs } };
-  });
-
-  // After the market lock: reverse turnover + return bonus principal to bonus
-  // (never to real — forfeit if no active grant). See resolveMarket for rationale.
-  // SEAM:reverseWageringEmergency (04 A17) — a house stake recorded no turnover, so its refund removes none from
-  // the holder's personal bonus requirement.
-  for (const r of pendingWagerReversals) if (r.houseBotId == null) await reverseWagering(r.userId, r.stake);
-  for (const r of pendingBonusRefunds) {
-    if (r.amount <= 0) continue;
-    const { refundedToBonus } = await refundBonusToActive(r.userId, r.amount);
-    if (refundedToBonus < r.amount) {
-      audit({ category: "WALLET", action: "bonus.refund_forfeited", actorId: r.userId, targetType: "User", targetId: r.userId, payload: { requested: r.amount, refundedToBonus, forfeited: r.amount - refundedToBonus, reason: "emergency void, no active grant" } });
+    } catch (error) {
+      if (restoreMemory) await restoreMemory();
+      throw error;
     }
+  }));
+    if (!("retryHolderIds" in result)) break;
+    for (const id of result.retryHolderIds) holderIds.add(id);
+    observedOpenCount = Math.max(observedOpenCount, result.openCount);
   }
-  // An emergency void refunds EVERY position, so `pendingWagerReversals` already names every
-  // player whose balance moved — there is no winner set to collect here.
-  await emitWalletBalances(pendingWagerReversals.map((r) => r.userId));
+  if ("retryHolderIds" in result) {
+    return { ok: false, error: "Market holders changed during emergency void; please retry. No money moved.", code: "BUSY" };
+  }
+
+  // An emergency void refunds every OPEN position; earlier cash-outs retain
+  // their paid amount. A balance-event failure cannot suppress notices about
+  // money that is already committed.
+  if (result.ok) {
+    try { await emitWalletBalances([...refundedUserIds]); }
+    catch { audit({ category: "SYSTEM", action: "market.emergency_void.balance_emit_failed", actorId: opts.officerId,
+      targetType: "Market", targetId: opts.marketId, payload: { refundedUsers: refundedUserIds.size } }); }
+  }
+  // On PostgreSQL this list is populated only after commit. In memory it is
+  // populated during the operation but discarded if the scoped rollback throws.
+  // Bonus principal already has its final home before any notice is dispatched.
+  // Each notice awaited in order; a call that joined an enclosing lock's transaction drains after THAT commit.
+  // The committed refund cannot be undone by a notice failure.
+  await drainCommitted(committedNotices, currentLockTx());
   // ⭐ CLAWBACK — the one reversal this platform can actually reach. There is no "un-settle";
   // the void IS the reversal, so any agent commission that accrued against this market is
   // taken back here. Outside the market lock for the same reason as every other wallet
@@ -5198,6 +5388,7 @@ export async function seedDemoMarkets() {
     {
       titleEn: "Will the TZS strengthen against the USD by month-end?",
       titleSw: "Je, TZS itaimarika dhidi ya USD kufikia mwisho wa mwezi?",
+      titleZh: "月底前坦桑尼亚先令兑美元会升值吗？",
       category: "macro",
       sourceUrl: "https://www.bot.go.tz/exchangerates",
       resolutionCriterion: "Resolves YES if the BoT mid-rate on the last business day of the calendar month is below the rate on the first business day. Source: Bank of Tanzania official daily mid-rate.",
@@ -5207,6 +5398,7 @@ export async function seedDemoMarkets() {
     {
       titleEn: "Will the long rains begin in Dar es Salaam before April 15?",
       titleSw: "Je, masika yataanza Dar es Salaam kabla ya Aprili 15?",
+      titleZh: "4月15日前达累斯萨拉姆会进入长雨季吗？",
       category: "weather",
       sourceUrl: "https://www.meteo.go.tz",
       resolutionCriterion: "Resolves YES if Dar es Salaam records ≥10mm rainfall on at least three calendar days between March 1 and April 14 inclusive. Source: TMA daily station report.",
@@ -5216,6 +5408,7 @@ export async function seedDemoMarkets() {
     {
       titleEn: "Will Simba SC win the next Kariakoo Derby?",
       titleSw: "Je, Simba SC watashinda Derby ya Kariakoo ijayo?",
+      titleZh: "辛巴SC会赢得下一场卡里亚库德比吗？",
       category: "sports",
       sourceUrl: "https://nbc.co.tz/premier-league",
       resolutionCriterion: "Resolves YES if Simba SC win the scheduled NBC Premier League fixture vs Yanga SC. Draw or Yanga win resolves NO. Source: NBC Premier League official result.",
@@ -5225,6 +5418,7 @@ export async function seedDemoMarkets() {
     {
       titleEn: "Will the BoT base rate change at the next MPC meeting?",
       titleSw: "Je, kiwango cha riba cha BoT kitabadilika kwenye mkutano ujao wa MPC?",
+      titleZh: "坦桑尼亚央行会在下次货币政策会议上调整基准利率吗？",
       category: "macro",
       sourceUrl: "https://www.bot.go.tz/MonetaryPolicy/",
       resolutionCriterion: "Resolves YES if the announced policy rate differs from the prior rate. Source: BoT MPC press release.",
@@ -5234,6 +5428,7 @@ export async function seedDemoMarkets() {
     {
       titleEn: "Will Bongo Star Search 2026 finale air on schedule?",
       titleSw: "Je, fainali ya Bongo Star Search 2026 itarushwa kwa wakati uliopangwa?",
+      titleZh: "《Bongo Star Search》2026年总决赛会如期播出吗？",
       category: "culture",
       sourceUrl: "https://www.itv.co.tz/bongostarsearch",
       resolutionCriterion: "Resolves YES if the finale episode airs on the scheduled date and time per the official broadcast schedule. Source: ITV Tanzania programming.",
@@ -5243,6 +5438,7 @@ export async function seedDemoMarkets() {
     {
       titleEn: "Will Bitcoin close above $80,000 at end of week?",
       titleSw: "Je, Bitcoin itafungwa juu ya $80,000 mwishoni mwa wiki?",
+      titleZh: "本周末比特币收盘价会高于80,000美元吗？",
       category: "crypto",
       sourceUrl: "https://www.coingecko.com/en/coins/bitcoin",
       resolutionCriterion: "Resolves YES if BTC/USD on CoinGecko at 23:59 UTC on Sunday is ≥ 80,000. Source: CoinGecko close price.",
@@ -5252,6 +5448,7 @@ export async function seedDemoMarkets() {
     {
       titleEn: "Will Mount Kilimanjaro see snow at the summit by mid-June?",
       titleSw: "Je, Mlima Kilimanjaro utakuwa na theluji kileleni ifikapo katikati ya Juni?",
+      titleZh: "到6月中旬，乞力马扎罗山顶会下雪吗？",
       category: "weather",
       sourceUrl: "https://www.meteo.go.tz",
       resolutionCriterion:
@@ -5260,46 +5457,46 @@ export async function seedDemoMarkets() {
       proposedBy: "system",
     },
     // ── Sports — football fixtures & national teams ──────────────────────
-    { titleEn: "Will Yanga SC top the NBC Premier League at the next round?", titleSw: "Je, Yanga SC watakuwa juu ya jedwali la NBC ifikapo raundi ijayo?", category: "sports", sourceUrl: "https://nbc.co.tz/premier-league", resolutionCriterion: "Resolves YES if Yanga SC are top of the official NBC Premier League standings at end of the next scheduled match round. Source: NBC official table.", resolutionAt: new Date(now + 5 * day).toISOString(), proposedBy: "system" },
-    { titleEn: "Will Taifa Stars qualify for the next AFCON?", titleSw: "Je, Taifa Stars wataitishwa AFCON ijayo?", category: "sports", sourceUrl: "https://www.cafonline.com", resolutionCriterion: "Resolves YES if Tanzania appears on the official CAF AFCON qualified-teams list at qualifier conclusion. Source: CAF Online.", resolutionAt: new Date(now + 60 * day).toISOString(), proposedBy: "system" },
-    { titleEn: "Will Azam FC reach the CAF Confederation Cup quarter-finals?", titleSw: "Je, Azam FC watafika robo-fainali ya Kombe la Shirikisho la CAF?", category: "sports", sourceUrl: "https://www.cafonline.com/caf-confederation-cup/", resolutionCriterion: "Resolves YES if Azam FC are listed in the official CAF quarter-final draw. Source: CAF Online.", resolutionAt: new Date(now + 45 * day).toISOString(), proposedBy: "system" },
-    { titleEn: "Will Manchester City win the Premier League this season?", titleSw: "Je, Manchester City watashinda Premier League msimu huu?", category: "sports", sourceUrl: "https://www.premierleague.com/tables", resolutionCriterion: "Resolves YES if Manchester City are crowned champions per the official Premier League final standings. Source: Premier League official site.", resolutionAt: new Date(now + 80 * day).toISOString(), proposedBy: "system" },
-    { titleEn: "Will Real Madrid reach the Champions League final?", titleSw: "Je, Real Madrid watafika fainali ya Champions League?", category: "sports", sourceUrl: "https://www.uefa.com/uefachampionsleague/", resolutionCriterion: "Resolves YES if Real Madrid appear in the official UEFA Champions League final fixture. Source: UEFA Online.", resolutionAt: new Date(now + 50 * day).toISOString(), proposedBy: "system" },
-    { titleEn: "Will Tanzania win an Olympic medal at the next Summer Games?", titleSw: "Je, Tanzania itashinda medali ya Olimpiki kwenye michezo ya majira ya joto ijayo?", category: "sports", sourceUrl: "https://olympics.com/en/medals", resolutionCriterion: "Resolves YES if Tanzania appears on the official IOC medal table at games close. Source: olympics.com.", resolutionAt: new Date(now + 90 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will Yanga SC top the NBC Premier League at the next round?", titleSw: "Je, Yanga SC watakuwa juu ya jedwali la NBC ifikapo raundi ijayo?", titleZh: "下一轮结束时，扬加SC会位居NBC超级联赛榜首吗？", category: "sports", sourceUrl: "https://nbc.co.tz/premier-league", resolutionCriterion: "Resolves YES if Yanga SC are top of the official NBC Premier League standings at end of the next scheduled match round. Source: NBC official table.", resolutionAt: new Date(now + 5 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will Taifa Stars qualify for the next AFCON?", titleSw: "Je, Taifa Stars wataitishwa AFCON ijayo?", titleZh: "坦桑尼亚国家队会晋级下一届非洲杯吗？", category: "sports", sourceUrl: "https://www.cafonline.com", resolutionCriterion: "Resolves YES if Tanzania appears on the official CAF AFCON qualified-teams list at qualifier conclusion. Source: CAF Online.", resolutionAt: new Date(now + 60 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will Azam FC reach the CAF Confederation Cup quarter-finals?", titleSw: "Je, Azam FC watafika robo-fainali ya Kombe la Shirikisho la CAF?", titleZh: "阿赞FC会进入非洲足联联合会杯四分之一决赛吗？", category: "sports", sourceUrl: "https://www.cafonline.com/caf-confederation-cup/", resolutionCriterion: "Resolves YES if Azam FC are listed in the official CAF quarter-final draw. Source: CAF Online.", resolutionAt: new Date(now + 45 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will Manchester City win the Premier League this season?", titleSw: "Je, Manchester City watashinda Premier League msimu huu?", titleZh: "曼彻斯特城会夺得本赛季英超冠军吗？", category: "sports", sourceUrl: "https://www.premierleague.com/tables", resolutionCriterion: "Resolves YES if Manchester City are crowned champions per the official Premier League final standings. Source: Premier League official site.", resolutionAt: new Date(now + 80 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will Real Madrid reach the Champions League final?", titleSw: "Je, Real Madrid watafika fainali ya Champions League?", titleZh: "皇家马德里会进入欧冠决赛吗？", category: "sports", sourceUrl: "https://www.uefa.com/uefachampionsleague/", resolutionCriterion: "Resolves YES if Real Madrid appear in the official UEFA Champions League final fixture. Source: UEFA Online.", resolutionAt: new Date(now + 50 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will Tanzania win an Olympic medal at the next Summer Games?", titleSw: "Je, Tanzania itashinda medali ya Olimpiki kwenye michezo ya majira ya joto ijayo?", titleZh: "坦桑尼亚会在下一届夏季奥运会上赢得奖牌吗？", category: "sports", sourceUrl: "https://olympics.com/en/medals", resolutionCriterion: "Resolves YES if Tanzania appears on the official IOC medal table at games close. Source: olympics.com.", resolutionAt: new Date(now + 90 * day).toISOString(), proposedBy: "system" },
     // ── Macro — TZ economy / BoT / NBS releases ──────────────────────────
-    { titleEn: "Will TZS inflation print below 4.0% next NBS release?", titleSw: "Je, mfumuko wa bei wa TZS utakuwa chini ya 4.0% kwenye taarifa ijayo ya NBS?", category: "macro", sourceUrl: "https://www.nbs.go.tz", resolutionCriterion: "Resolves YES if year-over-year CPI in the next NBS Monthly CPI press release is < 4.0%. Source: NBS official release.", resolutionAt: new Date(now + 30 * day).toISOString(), proposedBy: "system" },
-    { titleEn: "Will the BoT keep the policy rate unchanged at the next MPC?", titleSw: "Je, BoT itaiacha riba kuu bila mabadiliko kwenye MPC ijayo?", category: "macro", sourceUrl: "https://www.bot.go.tz/MonetaryPolicy/", resolutionCriterion: "Resolves YES if the BoT MPC press release reports an unchanged policy rate vs the prior decision. Source: BoT MPC.", resolutionAt: new Date(now + 22 * day).toISOString(), proposedBy: "system" },
-    { titleEn: "Will the BoT FX reserves rise above $5.5 billion next monthly print?", titleSw: "Je, akiba ya BoT itazidi $5.5 bilioni kwenye taarifa ya kila mwezi ijayo?", category: "macro", sourceUrl: "https://www.bot.go.tz", resolutionCriterion: "Resolves YES if Bank of Tanzania official monthly FX reserves figure exceeds USD 5.5 billion. Source: BoT monthly bulletin.", resolutionAt: new Date(now + 33 * day).toISOString(), proposedBy: "system" },
-    { titleEn: "Will Tanzania GDP growth print above 5.5% in the next quarterly NBS release?", titleSw: "Je, ukuaji wa Pato la Taifa utazidi 5.5% kwenye taarifa ya robo mwaka ijayo ya NBS?", category: "macro", sourceUrl: "https://www.nbs.go.tz", resolutionCriterion: "Resolves YES if NBS reports quarterly real GDP growth > 5.5%. Source: NBS quarterly GDP release.", resolutionAt: new Date(now + 65 * day).toISOString(), proposedBy: "system" },
-    { titleEn: "Will the next US Fed FOMC keep rates unchanged?", titleSw: "Je, FOMC ijayo ya Fed itaiacha riba bila mabadiliko?", category: "macro", sourceUrl: "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm", resolutionCriterion: "Resolves YES if the FOMC statement reports the target range unchanged from the previous decision. Source: Federal Reserve.", resolutionAt: new Date(now + 26 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will TZS inflation print below 4.0% next NBS release?", titleSw: "Je, mfumuko wa bei wa TZS utakuwa chini ya 4.0% kwenye taarifa ijayo ya NBS?", titleZh: "坦桑尼亚国家统计局下次公布的通胀率会低于4.0%吗？", category: "macro", sourceUrl: "https://www.nbs.go.tz", resolutionCriterion: "Resolves YES if year-over-year CPI in the next NBS Monthly CPI press release is < 4.0%. Source: NBS official release.", resolutionAt: new Date(now + 30 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will the BoT keep the policy rate unchanged at the next MPC?", titleSw: "Je, BoT itaiacha riba kuu bila mabadiliko kwenye MPC ijayo?", titleZh: "坦桑尼亚央行会在下次货币政策会议上维持政策利率不变吗？", category: "macro", sourceUrl: "https://www.bot.go.tz/MonetaryPolicy/", resolutionCriterion: "Resolves YES if the BoT MPC press release reports an unchanged policy rate vs the prior decision. Source: BoT MPC.", resolutionAt: new Date(now + 22 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will the BoT FX reserves rise above $5.5 billion next monthly print?", titleSw: "Je, akiba ya BoT itazidi $5.5 bilioni kwenye taarifa ya kila mwezi ijayo?", titleZh: "坦桑尼亚央行下次公布的月度外汇储备会超过55亿美元吗？", category: "macro", sourceUrl: "https://www.bot.go.tz", resolutionCriterion: "Resolves YES if Bank of Tanzania official monthly FX reserves figure exceeds USD 5.5 billion. Source: BoT monthly bulletin.", resolutionAt: new Date(now + 33 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will Tanzania GDP growth print above 5.5% in the next quarterly NBS release?", titleSw: "Je, ukuaji wa Pato la Taifa utazidi 5.5% kwenye taarifa ya robo mwaka ijayo ya NBS?", titleZh: "坦桑尼亚国家统计局下次公布的季度GDP增长率会超过5.5%吗？", category: "macro", sourceUrl: "https://www.nbs.go.tz", resolutionCriterion: "Resolves YES if NBS reports quarterly real GDP growth > 5.5%. Source: NBS quarterly GDP release.", resolutionAt: new Date(now + 65 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will the next US Fed FOMC keep rates unchanged?", titleSw: "Je, FOMC ijayo ya Fed itaiacha riba bila mabadiliko?", titleZh: "美联储下次FOMC会议会维持利率不变吗？", category: "macro", sourceUrl: "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm", resolutionCriterion: "Resolves YES if the FOMC statement reports the target range unchanged from the previous decision. Source: Federal Reserve.", resolutionAt: new Date(now + 26 * day).toISOString(), proposedBy: "system" },
     // ── Weather — TMA station-driven outcomes ─────────────────────────────
-    { titleEn: "Will Arusha get measurable rainfall on Saturday?", titleSw: "Je, Arusha kutapata mvua inayopimika Jumamosi?", category: "weather", sourceUrl: "https://www.meteo.go.tz", resolutionCriterion: "Resolves YES if Arusha TMA station records ≥ 1.0 mm rainfall on the named Saturday. Source: TMA daily report.", resolutionAt: new Date(now + 5 * day).toISOString(), proposedBy: "system" },
-    { titleEn: "Will Mwanza max temperature exceed 32°C this Sunday?", titleSw: "Je, joto la juu Mwanza litazidi nyuzi 32 Jumapili?", category: "weather", sourceUrl: "https://www.meteo.go.tz", resolutionCriterion: "Resolves YES if Mwanza TMA station's daily Tmax for the named Sunday exceeds 32.0 °C. Source: TMA daily report.", resolutionAt: new Date(now + 6 * day).toISOString(), proposedBy: "system" },
-    { titleEn: "Will Zanzibar see a full sunny day this Friday?", titleSw: "Je, Zanzibar itakuwa na siku kamili ya jua Ijumaa hii?", category: "weather", sourceUrl: "https://www.meteo.go.tz", resolutionCriterion: "Resolves YES if Zanzibar TMA station records < 0.2 mm rainfall and ≥ 7 hours sunshine on the named Friday. Source: TMA station report.", resolutionAt: new Date(now + 4 * day).toISOString(), proposedBy: "system" },
-    { titleEn: "Will Dodoma exceed 35°C any day this week?", titleSw: "Je, Dodoma itazidi nyuzi 35 siku yoyote wiki hii?", category: "weather", sourceUrl: "https://www.meteo.go.tz", resolutionCriterion: "Resolves YES if Dodoma TMA station Tmax exceeds 35 °C on any day in the named week. Source: TMA daily report.", resolutionAt: new Date(now + 7 * day).toISOString(), proposedBy: "system" },
-    { titleEn: "Will the masika season end before May 31 in Dar es Salaam?", titleSw: "Je, masika yataisha kabla ya Mei 31 Dar es Salaam?", category: "weather", sourceUrl: "https://www.meteo.go.tz", resolutionCriterion: "Resolves YES if the TMA officially declares the long-rain season ended on or before May 31 in their seasonal bulletin. Source: TMA seasonal bulletin.", resolutionAt: new Date(now + 25 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will Arusha get measurable rainfall on Saturday?", titleSw: "Je, Arusha kutapata mvua inayopimika Jumamosi?", titleZh: "本周六阿鲁沙会有可测量的降雨吗？", category: "weather", sourceUrl: "https://www.meteo.go.tz", resolutionCriterion: "Resolves YES if Arusha TMA station records ≥ 1.0 mm rainfall on the named Saturday. Source: TMA daily report.", resolutionAt: new Date(now + 5 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will Mwanza max temperature exceed 32°C this Sunday?", titleSw: "Je, joto la juu Mwanza litazidi nyuzi 32 Jumapili?", titleZh: "本周日姆万扎最高气温会超过32°C吗？", category: "weather", sourceUrl: "https://www.meteo.go.tz", resolutionCriterion: "Resolves YES if Mwanza TMA station's daily Tmax for the named Sunday exceeds 32.0 °C. Source: TMA daily report.", resolutionAt: new Date(now + 6 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will Zanzibar see a full sunny day this Friday?", titleSw: "Je, Zanzibar itakuwa na siku kamili ya jua Ijumaa hii?", titleZh: "本周五桑给巴尔会是全天晴天吗？", category: "weather", sourceUrl: "https://www.meteo.go.tz", resolutionCriterion: "Resolves YES if Zanzibar TMA station records < 0.2 mm rainfall and ≥ 7 hours sunshine on the named Friday. Source: TMA station report.", resolutionAt: new Date(now + 4 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will Dodoma exceed 35°C any day this week?", titleSw: "Je, Dodoma itazidi nyuzi 35 siku yoyote wiki hii?", titleZh: "本周多多马会有一天气温超过35°C吗？", category: "weather", sourceUrl: "https://www.meteo.go.tz", resolutionCriterion: "Resolves YES if Dodoma TMA station Tmax exceeds 35 °C on any day in the named week. Source: TMA daily report.", resolutionAt: new Date(now + 7 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will the masika season end before May 31 in Dar es Salaam?", titleSw: "Je, masika yataisha kabla ya Mei 31 Dar es Salaam?", titleZh: "达累斯萨拉姆的长雨季会在5月31日前结束吗？", category: "weather", sourceUrl: "https://www.meteo.go.tz", resolutionCriterion: "Resolves YES if the TMA officially declares the long-rain season ended on or before May 31 in their seasonal bulletin. Source: TMA seasonal bulletin.", resolutionAt: new Date(now + 25 * day).toISOString(), proposedBy: "system" },
     // ── Crypto — daily/weekly closes, BTC + ETH + SOL ────────────────────
-    { titleEn: "Will Bitcoin close above $90,000 next Sunday?", titleSw: "Je, Bitcoin itafungwa juu ya $90,000 Jumapili ijayo?", category: "crypto", sourceUrl: "https://www.coingecko.com/en/coins/bitcoin", resolutionCriterion: "Resolves YES if BTC/USD CoinGecko close on the named Sunday at 23:59 UTC ≥ 90,000. Source: CoinGecko.", resolutionAt: new Date(now + 6 * day).toISOString(), proposedBy: "system" },
-    { titleEn: "Will Ethereum close above $3,500 next Sunday?", titleSw: "Je, Ethereum itafungwa juu ya $3,500 Jumapili ijayo?", category: "crypto", sourceUrl: "https://www.coingecko.com/en/coins/ethereum", resolutionCriterion: "Resolves YES if ETH/USD CoinGecko close on the named Sunday at 23:59 UTC ≥ 3,500. Source: CoinGecko.", resolutionAt: new Date(now + 6 * day).toISOString(), proposedBy: "system" },
-    { titleEn: "Will Solana close above $200 next Sunday?", titleSw: "Je, Solana itafungwa juu ya $200 Jumapili ijayo?", category: "crypto", sourceUrl: "https://www.coingecko.com/en/coins/solana", resolutionCriterion: "Resolves YES if SOL/USD CoinGecko close on the named Sunday at 23:59 UTC ≥ 200. Source: CoinGecko.", resolutionAt: new Date(now + 6 * day).toISOString(), proposedBy: "system" },
-    { titleEn: "Will Bitcoin's 7-day move be positive?", titleSw: "Je, mwendo wa Bitcoin wa siku 7 utakuwa chanya?", category: "crypto", sourceUrl: "https://www.coingecko.com/en/coins/bitcoin", resolutionCriterion: "Resolves YES if BTC/USD CoinGecko close 7 days from market open exceeds the open-day close. Source: CoinGecko.", resolutionAt: new Date(now + 7 * day).toISOString(), proposedBy: "system" },
-    { titleEn: "Will Ethereum hit a new 30-day high before month-end?", titleSw: "Je, Ethereum itafikia kiwango kipya cha juu cha siku 30 kabla ya mwisho wa mwezi?", category: "crypto", sourceUrl: "https://www.coingecko.com/en/coins/ethereum", resolutionCriterion: "Resolves YES if ETH/USD CoinGecko 24h-high exceeds the prior 30-day rolling high before the last calendar day of the month. Source: CoinGecko.", resolutionAt: new Date(now + 18 * day).toISOString(), proposedBy: "system" },
-    { titleEn: "Will the next Bitcoin daily close be green?", titleSw: "Je, kufungwa kwa kila siku kwa Bitcoin kutakuwa kijani kesho?", category: "crypto", sourceUrl: "https://www.coingecko.com/en/coins/bitcoin", resolutionCriterion: "Resolves YES if BTC/USD CoinGecko close on the named day exceeds the prior day's close. Source: CoinGecko.", resolutionAt: new Date(now + 1 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will Bitcoin close above $90,000 next Sunday?", titleSw: "Je, Bitcoin itafungwa juu ya $90,000 Jumapili ijayo?", titleZh: "下周日比特币收盘价会高于90,000美元吗？", category: "crypto", sourceUrl: "https://www.coingecko.com/en/coins/bitcoin", resolutionCriterion: "Resolves YES if BTC/USD CoinGecko close on the named Sunday at 23:59 UTC ≥ 90,000. Source: CoinGecko.", resolutionAt: new Date(now + 6 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will Ethereum close above $3,500 next Sunday?", titleSw: "Je, Ethereum itafungwa juu ya $3,500 Jumapili ijayo?", titleZh: "下周日以太坊收盘价会高于3,500美元吗？", category: "crypto", sourceUrl: "https://www.coingecko.com/en/coins/ethereum", resolutionCriterion: "Resolves YES if ETH/USD CoinGecko close on the named Sunday at 23:59 UTC ≥ 3,500. Source: CoinGecko.", resolutionAt: new Date(now + 6 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will Solana close above $200 next Sunday?", titleSw: "Je, Solana itafungwa juu ya $200 Jumapili ijayo?", titleZh: "下周日Solana收盘价会高于200美元吗？", category: "crypto", sourceUrl: "https://www.coingecko.com/en/coins/solana", resolutionCriterion: "Resolves YES if SOL/USD CoinGecko close on the named Sunday at 23:59 UTC ≥ 200. Source: CoinGecko.", resolutionAt: new Date(now + 6 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will Bitcoin's 7-day move be positive?", titleSw: "Je, mwendo wa Bitcoin wa siku 7 utakuwa chanya?", titleZh: "比特币未来7天的涨跌幅会为正吗？", category: "crypto", sourceUrl: "https://www.coingecko.com/en/coins/bitcoin", resolutionCriterion: "Resolves YES if BTC/USD CoinGecko close 7 days from market open exceeds the open-day close. Source: CoinGecko.", resolutionAt: new Date(now + 7 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will Ethereum hit a new 30-day high before month-end?", titleSw: "Je, Ethereum itafikia kiwango kipya cha juu cha siku 30 kabla ya mwisho wa mwezi?", titleZh: "月底前以太坊会创下30天新高吗？", category: "crypto", sourceUrl: "https://www.coingecko.com/en/coins/ethereum", resolutionCriterion: "Resolves YES if ETH/USD CoinGecko 24h-high exceeds the prior 30-day rolling high before the last calendar day of the month. Source: CoinGecko.", resolutionAt: new Date(now + 18 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will the next Bitcoin daily close be green?", titleSw: "Je, kufungwa kwa kila siku kwa Bitcoin kutakuwa kijani kesho?", titleZh: "比特币下一次日线会收涨吗？", category: "crypto", sourceUrl: "https://www.coingecko.com/en/coins/bitcoin", resolutionCriterion: "Resolves YES if BTC/USD CoinGecko close on the named day exceeds the prior day's close. Source: CoinGecko.", resolutionAt: new Date(now + 1 * day).toISOString(), proposedBy: "system" },
     // ── Culture — film, music, awards ────────────────────────────────────
-    { titleEn: "Will the next Diamond Platnumz single chart top 5 on Boomplay TZ?", titleSw: "Je, wimbo ujao wa Diamond Platnumz utakuwa kati ya 5 bora kwenye Boomplay TZ?", category: "culture", sourceUrl: "https://www.boomplay.com/charts", resolutionCriterion: "Resolves YES if the named single appears in Top 5 on the Boomplay Tanzania weekly chart within 14 days of release. Source: Boomplay.", resolutionAt: new Date(now + 14 * day).toISOString(), proposedBy: "system" },
-    { titleEn: "Will the next Wasafi-released video pass 1M views in its first week?", titleSw: "Je, video ijayo ya Wasafi itapita milioni 1 wiki ya kwanza?", category: "culture", sourceUrl: "https://www.youtube.com/@WasafiClassicBaby", resolutionCriterion: "Resolves YES if the named YouTube upload reports ≥ 1,000,000 views 7 days after publish. Source: YouTube public counter.", resolutionAt: new Date(now + 8 * day).toISOString(), proposedBy: "system" },
-    { titleEn: "Will Bongo Movie Awards 2026 air on schedule?", titleSw: "Je, Tuzo za Filamu za Bongo 2026 zitarushwa kwa wakati?", category: "culture", sourceUrl: "https://www.bongomovie.com", resolutionCriterion: "Resolves YES if the broadcast occurs on the announced date and channel. Source: Official Bongo Movie Awards announcement.", resolutionAt: new Date(now + 33 * day).toISOString(), proposedBy: "system" },
-    { titleEn: "Will the next Marvel film open above $100M domestic box office?", titleSw: "Je, filamu ijayo ya Marvel itafungua juu ya $100M ndani ya nchi?", category: "culture", sourceUrl: "https://www.boxofficemojo.com", resolutionCriterion: "Resolves YES if the named Marvel theatrical release reports a US domestic opening weekend gross above $100,000,000. Source: Box Office Mojo.", resolutionAt: new Date(now + 22 * day).toISOString(), proposedBy: "system" },
-    { titleEn: "Will Sauti Sol release a new single in the next 30 days?", titleSw: "Je, Sauti Sol watatoa wimbo mpya katika siku 30 zijazo?", category: "culture", sourceUrl: "https://www.sautisol.com", resolutionCriterion: "Resolves YES if a new single is released on at least one major streaming platform within 30 days of market open. Source: Spotify/Boomplay artist pages.", resolutionAt: new Date(now + 30 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will the next Diamond Platnumz single chart top 5 on Boomplay TZ?", titleSw: "Je, wimbo ujao wa Diamond Platnumz utakuwa kati ya 5 bora kwenye Boomplay TZ?", titleZh: "Diamond Platnumz的下一首单曲会进入Boomplay坦桑尼亚榜前五吗？", category: "culture", sourceUrl: "https://www.boomplay.com/charts", resolutionCriterion: "Resolves YES if the named single appears in Top 5 on the Boomplay Tanzania weekly chart within 14 days of release. Source: Boomplay.", resolutionAt: new Date(now + 14 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will the next Wasafi-released video pass 1M views in its first week?", titleSw: "Je, video ijayo ya Wasafi itapita milioni 1 wiki ya kwanza?", titleZh: "Wasafi发布的下一个视频首周观看量会超过100万次吗？", category: "culture", sourceUrl: "https://www.youtube.com/@WasafiClassicBaby", resolutionCriterion: "Resolves YES if the named YouTube upload reports ≥ 1,000,000 views 7 days after publish. Source: YouTube public counter.", resolutionAt: new Date(now + 8 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will Bongo Movie Awards 2026 air on schedule?", titleSw: "Je, Tuzo za Filamu za Bongo 2026 zitarushwa kwa wakati?", titleZh: "2026年Bongo电影奖会如期播出吗？", category: "culture", sourceUrl: "https://www.bongomovie.com", resolutionCriterion: "Resolves YES if the broadcast occurs on the announced date and channel. Source: Official Bongo Movie Awards announcement.", resolutionAt: new Date(now + 33 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will the next Marvel film open above $100M domestic box office?", titleSw: "Je, filamu ijayo ya Marvel itafungua juu ya $100M ndani ya nchi?", titleZh: "下一部漫威电影的美国本土首周末票房会超过1亿美元吗？", category: "culture", sourceUrl: "https://www.boxofficemojo.com", resolutionCriterion: "Resolves YES if the named Marvel theatrical release reports a US domestic opening weekend gross above $100,000,000. Source: Box Office Mojo.", resolutionAt: new Date(now + 22 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will Sauti Sol release a new single in the next 30 days?", titleSw: "Je, Sauti Sol watatoa wimbo mpya katika siku 30 zijazo?", titleZh: "Sauti Sol会在未来30天发布新单曲吗？", category: "culture", sourceUrl: "https://www.sautisol.com", resolutionCriterion: "Resolves YES if a new single is released on at least one major streaming platform within 30 days of market open. Source: Spotify/Boomplay artist pages.", resolutionAt: new Date(now + 30 * day).toISOString(), proposedBy: "system" },
     // ── Sports — boxing & athletics ──────────────────────────────────────
-    { titleEn: "Will Hassan Mwakinyo win his next professional bout?", titleSw: "Je, Hassan Mwakinyo atashinda mechi yake ijayo ya kulipwa?", category: "sports", sourceUrl: "https://boxrec.com", resolutionCriterion: "Resolves YES if BoxRec records Mwakinyo's next professional bout as a win by KO/TKO/decision. Source: BoxRec.", resolutionAt: new Date(now + 28 * day).toISOString(), proposedBy: "system" },
-    { titleEn: "Will a Tanzanian runner break 28:00 in the next World Athletics 10K?", titleSw: "Je, mkimbiaji wa Tanzania atavunja dakika 28:00 kwenye 10K ya World Athletics ijayo?", category: "sports", sourceUrl: "https://worldathletics.org", resolutionCriterion: "Resolves YES if any Tanzanian runner runs a sub-28:00 in an official World Athletics 10,000 m race in the named period. Source: WA results.", resolutionAt: new Date(now + 70 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will Hassan Mwakinyo win his next professional bout?", titleSw: "Je, Hassan Mwakinyo atashinda mechi yake ijayo ya kulipwa?", titleZh: "Hassan Mwakinyo会赢得下一场职业拳击赛吗？", category: "sports", sourceUrl: "https://boxrec.com", resolutionCriterion: "Resolves YES if BoxRec records Mwakinyo's next professional bout as a win by KO/TKO/decision. Source: BoxRec.", resolutionAt: new Date(now + 28 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will a Tanzanian runner break 28:00 in the next World Athletics 10K?", titleSw: "Je, mkimbiaji wa Tanzania atavunja dakika 28:00 kwenye 10K ya World Athletics ijayo?", titleZh: "坦桑尼亚选手会在下一场世界田联1万米比赛中跑进28分钟吗？", category: "sports", sourceUrl: "https://worldathletics.org", resolutionCriterion: "Resolves YES if any Tanzanian runner runs a sub-28:00 in an official World Athletics 10,000 m race in the named period. Source: WA results.", resolutionAt: new Date(now + 70 * day).toISOString(), proposedBy: "system" },
     // ── Macro — global markets ────────────────────────────────────────────
-    { titleEn: "Will the S&P 500 close higher this week?", titleSw: "Je, S&P 500 itafungwa juu wiki hii?", category: "macro", sourceUrl: "https://www.spglobal.com/spdji/en/indices/equity/sp-500/", resolutionCriterion: "Resolves YES if the S&P 500 official Friday close exceeds the prior Friday close. Source: S&P Dow Jones Indices.", resolutionAt: new Date(now + 5 * day).toISOString(), proposedBy: "system" },
-    { titleEn: "Will gold close above $2,400/oz next Friday?", titleSw: "Je, dhahabu itafungwa juu ya $2,400/oz Ijumaa ijayo?", category: "macro", sourceUrl: "https://www.lbma.org.uk/prices-and-data/precious-metal-prices", resolutionCriterion: "Resolves YES if the LBMA Gold Price PM fix on the named Friday is ≥ 2,400.00 USD/oz. Source: LBMA.", resolutionAt: new Date(now + 5 * day).toISOString(), proposedBy: "system" },
-    { titleEn: "Will Brent crude close above $80/bbl next Monday?", titleSw: "Je, Brent itafungwa juu ya $80/bbl Jumatatu ijayo?", category: "macro", sourceUrl: "https://www.eia.gov/dnav/pet/pet_pri_spt_s1_d.htm", resolutionCriterion: "Resolves YES if EIA Brent spot price on the named Monday closes ≥ 80.00 USD/bbl. Source: EIA.", resolutionAt: new Date(now + 4 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will the S&P 500 close higher this week?", titleSw: "Je, S&P 500 itafungwa juu wiki hii?", titleZh: "标普500指数本周收盘会高于上周吗？", category: "macro", sourceUrl: "https://www.spglobal.com/spdji/en/indices/equity/sp-500/", resolutionCriterion: "Resolves YES if the S&P 500 official Friday close exceeds the prior Friday close. Source: S&P Dow Jones Indices.", resolutionAt: new Date(now + 5 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will gold close above $2,400/oz next Friday?", titleSw: "Je, dhahabu itafungwa juu ya $2,400/oz Ijumaa ijayo?", titleZh: "下周五黄金收盘价会高于每盎司2,400美元吗？", category: "macro", sourceUrl: "https://www.lbma.org.uk/prices-and-data/precious-metal-prices", resolutionCriterion: "Resolves YES if the LBMA Gold Price PM fix on the named Friday is ≥ 2,400.00 USD/oz. Source: LBMA.", resolutionAt: new Date(now + 5 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will Brent crude close above $80/bbl next Monday?", titleSw: "Je, Brent itafungwa juu ya $80/bbl Jumatatu ijayo?", titleZh: "下周一布伦特原油收盘价会高于每桶80美元吗？", category: "macro", sourceUrl: "https://www.eia.gov/dnav/pet/pet_pri_spt_s1_d.htm", resolutionCriterion: "Resolves YES if EIA Brent spot price on the named Monday closes ≥ 80.00 USD/bbl. Source: EIA.", resolutionAt: new Date(now + 4 * day).toISOString(), proposedBy: "system" },
     // ── Weather — long-range hurricane / drought ──────────────────────────
-    { titleEn: "Will the next Indian Ocean tropical cyclone reach Category 3+?", titleSw: "Je, kimbunga kijacho cha Bahari ya Hindi kitafikia daraja la 3 au juu?", category: "weather", sourceUrl: "https://www.meteo.go.tz", resolutionCriterion: "Resolves YES if any tropical cyclone in the SW Indian Ocean basin during the named period reaches Category 3 (≥ 178 km/h sustained) per RSMC La Réunion. Source: RSMC La Réunion bulletin.", resolutionAt: new Date(now + 45 * day).toISOString(), proposedBy: "system" },
+    { titleEn: "Will the next Indian Ocean tropical cyclone reach Category 3+?", titleSw: "Je, kimbunga kijacho cha Bahari ya Hindi kitafikia daraja la 3 au juu?", titleZh: "下一场印度洋热带气旋会达到3级或以上吗？", category: "weather", sourceUrl: "https://www.meteo.go.tz", resolutionCriterion: "Resolves YES if any tropical cyclone in the SW Indian Ocean basin during the named period reaches Category 3 (≥ 178 km/h sustained) per RSMC La Réunion. Source: RSMC La Réunion bulletin.", resolutionAt: new Date(now + 45 * day).toISOString(), proposedBy: "system" },
     // Demo markets removed per tester feedback — real markets only.
   ];
   for (const s of seed) {

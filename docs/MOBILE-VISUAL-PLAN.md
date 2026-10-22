@@ -24,6 +24,33 @@
 
 ## §0 — RESUME AT
 
+**U43 · ⏸ PAUSED by Ali on 2026-10-21 (other priorities). U43 is NOT done and has no after score.** Live, in order:
+Release A `9393dcb53` + A.1 `ee76c9489` (2026-10-19); Release B `a12f7b26d` + its desktop chart/layout/social hotfix
+`3ec111a83` (2026-10-20, Codex); Ali's house-gold restoration `dd1386f06` (2026-10-20). **On `main`, NOT yet deployed:**
+the **CI-repair release `110587e7e`** (2026-10-21 09:59Z, Claude, asheib-bb). Release B reached `main` with 28 test
+suites red that its own source changes broke. The CI-repair release re-points each guard to the new source shape (a
+dated comment, the property kept, a mutation proof — none weakened) and fixes three real defects those guards exposed:
+`settleMarket` again AWAITS the proposer's prize and the watchers' settled alert after commit (Release B had made both
+fire-and-forget); the settlement and emergency-void chart points are awaited too; and a call that joins an enclosing
+lock's transaction no longer drops every post-commit effect (`drainCommitted` in `locks.ts`; no production caller nests
+today). Before the push, at the exact commit: typecheck 0, `next build` green, local `qa:live` 386/0 (source identical
+at `2919a4ff7`), `e2e:money`, `e2e:fault` and `e2e:card` PASS on their own disposable PostgreSQL databases. Linux CI on
+the candidate failed only `dead-css` (item 3 below), the five Maswali suites, and `updown-push` (fixed in `110587e7e`).
+
+⛔ **PRODUCTION HAS NOT DEPLOYED ANY PUSH SINCE 2026-10-20 16:02Z — A RAILWAY-WIDE OUTAGE, NOT THIS CODE.** That
+deployment (`4471bb440`) FAILED inside Railway's builder ("railpack prepare exited with an error" pulling
+`ghcr.io/railwayapp/railpack-builder:latest`). status.railway.com then reported new builds paused (2026-10-20
+17:03–20:56Z) and, from 2026-10-21 07:24Z, "Dashboard and API unavailable, builds paused" in every region; a push made
+during a pause is DROPPED, not queued, so `cffe67cf2`, `5dea3f410`, `110587e7e` and `2b35d679a` have no deployment
+record at all, and a deploy request is answered "Deploys have been paused temporarily". The service's trigger itself
+is intact (branch `main`, `alisheib/kipindi`, `checkSuites: false`). Production serves `d268ef919` on www, apex and the
+Railway host, healthy (database reachable and migrated). Ali, 2026-10-21: *"keep pushing to github anyways until
+working … no need to check on railway"* — the Maswali session retries a deploy of `main`'s head every 10 minutes and
+stops at the first accepted one. There is no migration and no dependency change between `d268ef919` and `main`.
+**Owed once Railway deploys `main`:** the AGENTS.md §4 read-back — `?dpl=<main's sha>` on all three hosts,
+`/api/health`, `qa:chunks-prod` on www and apex, production `qa:live`; `handover/u43-2026-10-21/u43-readback.sh` on the
+hand-over branch runs all of it — then this paragraph rewritten as live. The ⏸ U43 block below lists the rest.
+
 ### ⛔ IS MOBILE VISUALISATION DONE? **NO.** Read this before telling anyone otherwise.
 
 Ali asked on 2026-09-25 whether the programme was finished. It is not, and the honest figure is
@@ -32,7 +59,7 @@ enforces that these numbers agree with §1 and with `NEXT-PLAN.md`.
 
 | | |
 |---|---|
-| **Units** | **12 of 43 ✅** (U1 U2 U3 U4 U5 U6 U7 U33 U34 U37 U41 U42) · 1 🔵 shipped-not-closed (U25) · **30 not started** (U43 among them, in flight since 2026-10-19 — see ⏳ below) |
+| **Units** | **12 of 43 ✅** (U1 U2 U3 U4 U5 U6 U7 U33 U34 U37 U41 U42) · 1 🔵 shipped-not-closed (U25) · **29 not started** · 1 ⏸ (U43, paused 2026-10-21 — see ⏸ U43 below) |
 | **Defects** | **90 filed, 15 ✅** · the rest are 🔵 live-but-unclosed, ◐ half-done, or ⬜ open |
 | **Closure conditions (§1a)** | **9, of which 4 are partly under way and 5 HAVE NOT BEGUN** |
 
@@ -278,48 +305,60 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
    · **`results/page.tsx:481`** has a `<MarketCard>` call site that rendered zero cards on
      production, so `test:outcome`'s rule 2 may be governing an unreachable site.
 
-⏳ **IN FLIGHT — U43, Ali's 10/10 request (2026-10-19), OMEGA-COMPILE01, session asheib-54:**
-- Worktree `C:\50pick-ssd\kipindi-udv` (its own `npm ci`), branch **`claude/updown-visual-10`** off `origin/main`
-  `13299425`. Resume on any machine: `git fetch && git worktree add <dir> origin/claude/updown-visual-10`.
-- Done: Round 0 measured on production (§9 U43 holds the scores) and Ali's four rulings taken (COMPLIANCE-DECISIONS,
-  2026-10-19); the capture tools `scripts/live/updown-visual-capture.mjs` (any BASE, read-only) and
-  `scripts/live/updown-visual-states.mjs` (local dev only, every card state) are on the branch.
-- ✅ **Release A — LIVE, `9393dcb53`** (pushed at Ali's instruction, 2026-10-19: *"push live now everything you have done
-  please and proceed tests, if we find anything after pushing we fix"*; §9 U43 "Release A"): no figure on any card choice
-  (ruling 4, both shells), the one-sided lock sentence with its stake-back quote, and the last-30-seconds pulse.
-  - Before the push: its guards and red proofs, a scoped typecheck and a green `next build`.
-  - After the push: all three origins served it within ~3 min; `/api/health` OK (database reachable, migrated);
-    `qa:chunks-prod` green on www and apex; production `qa:live` 363/0 ([E3] not measured, by design). Production tiles at
-    360/1280 × sw/en/zh read 252 side choices, none carrying a figure. Local: `qa:live`, `test:revoked-deadend`,
-    `test:admin-section-gate`, `test:needle-rest`, `test:motion`, `test:responsive`, `qa:landing-v3:rows`, `qa:card360`
-    and the every-state capture are all green. The money e2e trio on a scratch Postgres: `e2e:money` 64/0, `e2e:fault`
-    34/0, `e2e:card` 100/0 (on its own database — run after the other two in one database, its platform total counted
-    their bets).
-  - `test:all` 597/613. Its red, every one accounted for:
-    - mine, fixed in A.1 below: `test:outcome` (the one-sided line, now a named rule), `test:orphans` (the two capture
-      tools, now `qa:u43-capture` / `qa:u43-states`), `test:house-bot-disclosure` 5.1 (the dictionary pin; PHOSPHOR W4's
-      re-point to its own commit covers it);
-    - mine, fixed before the push (the run had started on the older tree): `test:betting-ink`, `test:labels`;
-    - needed a live server, green in the local run: `test:revoked-deadend`, `test:admin-section-gate`,
-      `test:needle-rest`;
-    - not mine, and identical on `adb3551e6` (main before the push), all in Maswali files (handed to asheib-bf):
-      `test:guards-exist`, `test:visual-pass-r5a`/`r5j`/`r6c`/`r7c`/`r5h`, `test:rate-copy`, `test:presence-class`.
-- ✅ **A.1 — LIVE, `ee76c9489`** (on PHOSPHOR W4 + Maswali's platform fix): the fixes above, a fourth hidden-estimate
-  plant in `red:journey-estimate` (no rates), `red:updown-hedge-quote` 13/13, and the capture tools' choice-text and
-  pulse readings. Before the push, at the exact commit: tsc 0 in source, `next build` green, local `qa:live` 386/0;
-  the suites that read its files 45/46 (the 46th, `test:guards-exist`, was Maswali's and is green on main since
-  `baddd8230`). After: all three origins in ~4 min, `/api/health` OK, `qa:chunks-prod` www + apex green, production
-  `qa:live` 363/0.
-- ⏳ **Release B — NOT STARTED IN CODE; HANDED OVER (Ali, 2026-10-19: the three lanes move to Codex).** ▶ **START HERE:**
-  `docs/design-brief/u43-2026-10/BRIEF.md` — where it stands, Ali's rulings, the fixed points, the data facts, five work
-  packages (the round card; the live line and the chart made to agree; the board and the two chip rows; the market card;
-  system, motion, palette and copy), the guards, the tools, the release steps, and the three lanes' push lock
-  (`F:/kipindi-locks/main-push.lock`). Records beside it: `ROUND0-REGISTER.md` (135 measured findings) and
-  `PANEL-SYNTHESIS.md` (the panel's proposal; the rulings win). ⚠️ Found while specifying: the big chart's line plots each
-  minute bar's CLOSE at its label time while settlement reads the OPEN of the bar labelled T (`updown-feed.ts`) — $0.29–$0.87
-  apart on gold — which is why Round 0 saw the chart and the card disagree; release B's line and the fixed chart plot opens.
-- Worktree on OMEGA: `C:\50pick-ssd\kipindi-udv` (own `node_modules`), branch `claude/updown-visual-10` = `main` at the
-  handover. Start release B on a fresh branch from `origin/main`.
+⏸ **U43 — PAUSED (Ali, 2026-10-21). Up & Down board, round card and market card, every lens 10/10 (Ali, 2026-10-19).**
+- **Owner and push rule.** From 2026-10-21 only Claude sessions work this programme (Ali: *"from now on claude will
+  proceed only"*). The U43 session pushes its own verified releases (the NEXT-PLAN board's U43 exception): AGENTS.md §4
+  in full, rebased right before, `F:/kipindi-locks/main-push.lock` taken, and the Maswali and PHOSPHOR sessions messaged
+  before and after. Nothing is unpushed: the work branch `u43-seal` is on `main`. The tools used (slot helper, fresh
+  dev-server runner, width-group state matrix, critics brief, reading lists, pin/plant provers) are on branch
+  `u43-handover-20261021`, `handover/u43-2026-10-21/` (README there). Codex's `codex/u43-release-b` is superseded: its one
+  WIP commit is in `u43-seal`, and a verified bundle is at `F:\kipindi-archive\u43-codex-release-b-5f8d500c1-20261021.bundle`.
+- **The goal is unchanged** ([`BRIEF.md`](design-brief/u43-2026-10/BRIEF.md) §1): all 24 cells (8 lenses × board, round
+  card, market card) score 10 in two consecutive independent, adversarially verified reads of fresh tiles at
+  320/360/390/768/1024/1280/1920 × sw/en/zh × every state, positions measured, zero open findings.
+- **Owed, in order:**
+  1. **The review.** Round R1 (a diagnostic eight-lens read of fresh production frames and every state at 360px sw) was
+     launched on 2026-10-21 and stopped when Claude Code subagent access was disabled for the account mid-run: **no
+     scores exist**. Two consecutive 10/10 reads are owed. Capture the state matrix in width groups: one state run
+     cannot photograph 14 cells inside betting's 30-second last call (R21: p6 and p7 failed in all 14 cells), while 2–4
+     cells per run pass (R22: 18 phases, 0 problems). The capture tools now settle animations at their END frame — the
+     old `animation:none` froze draw-in lines at their hidden first frame, so the market card's 7-day line had been
+     missing from every review frame.
+  2. **Known findings to fix first, each with its guard** (the lead's own read of production frames, 2026-10-21):
+     - a. *Logic, high — two prices on one card that can disagree.* The row above the choices is the server's latest
+       confirmed read; the live line below them is the vendor's minute opens fetched in the browser. At 320px sw the row
+       read "Hakuna bei mpya tangu 10:21" while the line plotted minute opens to ~10:24; at 360px en both printed
+       $82,818.45 (one price twice, against ruling 2). Make one statement of the latest timed price — the row takes the
+       line's newest point when it is newer, the line's footer stops repeating it — without moving the Up/Down buttons
+       when the line arrives.
+     - b. *"The next round appears when scheduled."* (`udNextAfterResult`) names no time, while the successor opens at
+       this round's close: "The next round opens at hh:mm EAT." in en, sw and zh.
+     - c. *`/updown/history` money truth* (the Maswali lane handed the page to U43 on 2026-10-21; keep S5's four Tiketi
+       hunks there): a decided round with an unpaid leg reads "In play" (→ `udSettlementPending`); a closed round
+       awaiting its result reads "In play" (→ Confirming price); `returned += payout ?? 0` counts a missing or invalid
+       stored payout as nothing paid (→ `validRealizedPayout`, "payout unavailable", and leave that round out of the P&L
+       strip as open rounds already are); a cash-out-only round still running reads "Confirming price".
+     - d. *Market card copy:* the 24h move line ("YES: same as first available reading (within 24h)") is clumsy; the 7-day
+       line of a market younger than a week starts mid-width (honest — judge it in the review).
+     - e. *Board layout:* at 1280 and 1920 the cards leave the right third empty (BRIEF B3: the chart beside the current
+       round); at 360 the Swahili first card sits 51px lower than the English one (the title and its two pills wrap);
+       the 320 top padding differs from the 360 one.
+  3. **`test:needle-rest`** (a live-server suite) has been red since Release B — bisected by the Maswali lane on
+     2026-10-21: 92/0 at `1b7a91782`; 89/3 from `1384383fd` (three §9 CONTROL checks: a disc clear of the chat bubble's
+     ink moves 4px); 55/35 from `7e3a06ea0` ("fix(u43): align card states and truthful market evidence") — from there the
+     Needle never glides off a control ("Tafuta soko" stays under it). U43's to fix, starting from `7e3a06ea0`'s diff.
+     **`test:dead-css`** still reports `.kp-track-end--10` (`globals.css`), which lost its last consumer in Release B;
+     `test:visual-pass-r5a` (the Maswali lane's) still requires the rule, so the Maswali S5 release deletes both in one
+     commit (agreed 2026-10-21). Already red before Release B and the Maswali lane's, shipping with its S5 release:
+     `test:rate-copy`, `test:visual-pass-r5a`, `r5j` (3.7.2 and the Millionea counts), `r6c`, `r7c`.
+  4. **Stale remote branches** — the auto-mode classifier refused their deletion, so it needs Ali's approval:
+     `codex/u43-release-b`, `claude/updown-visual-10`, `codex/updown-no-odds` (every commit is in `main` or `u43-seal`).
+  5. **A recorded premise** (`test:house-bot-rules` 11.7's comment): the house-bot claim lifetime
+     (180 s ≥ 15 + 4 × (10 + 30) + 5) assumes no holder of a house bot's wallet lock runs past withLock's 30 s default;
+     settlement passes a larger budget only when it holds no wallet locks. Neither proven nor disproven.
+- **Records:** [`BRIEF.md`](design-brief/u43-2026-10/BRIEF.md) (the build brief), `ROUND0-REGISTER.md` (135 findings,
+  2026-10-19), `PANEL-SYNTHESIS.md`, §9 U43. Codex's day-by-day Release B log was removed from this section on
+  2026-10-21; it is in git history (this file at `4471bb440`).
 
 ▶ NEXT: **U35** (13 settled rounds in one run, then close it), then **U11**, **U27**, **U31**, **U9** — money truth first.
   Ranked by (player harm × confidence it is real × cheapness to verify), NOT by unit number.
@@ -628,7 +667,7 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | U40 Player copy and terminology (EN/SW/ZH) | General | ⬜ | S22 | | | | needs a native reader |
 | U41 /fairness on a phone (D60 · D61) | General | ✅ | S23 | `c9ba60cc` + guard `qa:fairness-phone` | source links outside the scroller **12 of 12 → 0** at 320/360/412; table off-screen **48.8% / 41.7% / 32.4% → 0%** (client==scroll: 286/286, 326/326, 378/378); rows paint **0 identical titles** | yes (`qa:fairness-phone`, `RED_TABLE=1` serves the five-column table back and reproduces THIS UNIT'S OWN RECORDED NUMBERS: client 326 vs scroll **559**, 49%/42%/32% off-screen at 320/360/412, all 12 source links outside — a green RED run exits 2 as a broken harness) | 2026-09-24 — D60 and D61 both closed. ⚠️ The third assertion (no two rows paint identical title text) is DATA-DEPENDENT and did not fire under RED: today's twelve markets clamp to distinguishable text. It is kept because it is the defect that mattered most — two markets painting the same row is worse than a table that scrolls — but a green run of it is evidence about THIS board, not about the layout. |
 | U42 The sign-up funnel on a phone (D69) | General | ✅ | S23 | `ea023299` + guard `qa:signup-funnel` | 7 `/auth/*` routes × 2 widths: **200, `lang=sw`, 0 able to scroll sideways**; DOB accessible names **`Day/Month/Year` → `Siku/Mwezi/Mwaka`** | yes (`qa:signup-funnel`: `RED_WIDE=1` fails all 14 route×width cells, `RED_ARIA=1` fails both widths — each required to break its OWN section; a green RED run exits 2 as a broken harness) | 2026-09-24 — D69 closed. ⚠️ Signed-out and at-rest only: nothing here says the funnel WORKS, only that it does not overflow and speaks Swahili. A keyboard over every field is U30. |
-| U43 Up & Down board, round card and market card — every lens 10/10 (Ali's request) | General | ⬜ | S24 | | | | ⏳ in flight (asheib-54, branch `claude/updown-visual-10`) — the §0 ⏳ block and §9 U43 hold the state; ⬜ until its first release |
+| U43 Up & Down board, round card and market card — every lens 10/10 (Ali's request) | General | ⏸ | S24 | | | | ⏸ paused by Ali 2026-10-21 (other priorities). Live: Release A, Release B + hotfix, the gold restoration and the CI-repair release; no after score — the §0 ⏸ U43 block lists what is owed |
 
 | Defect | Status | Owning unit |
 |---|---|---|
@@ -2854,8 +2893,13 @@ by U1's driver at the §11 matrix unless a unit says otherwise.
     (`udLockedOneSided`) instead of the two rows. Guard: `test:updown-hedge-quote` §6 (driven to settlement), 12/12 RED.
   - **The last 30 seconds never pulsed** — `ud-count-pulse` lost the cascade to `.m-tick` on the same element; it moves to
     the digits' own span. Guard: `test:journey-updown` §6.1's named swaps; the tiles of the last-30 state.
-- **Coordination:** PHOSPHOR W4 (asheib-26) owns every glyph choice in these files and lands first; Maswali (asheib-bf)
-  owns `/markets/page.tsx` and `/updown/history`; heavy jobs share the `mln-slot` budget as lane `udv`.
+- **Coordination:** PHOSPHOR owns every glyph choice in these files; Maswali owns `/markets/page.tsx`. `/updown/history`
+  is U43's since 2026-10-21 (the Maswali lane handed it over; S5's four Tiketi hunks there stay). Heavy jobs use U43's
+  slots `F:/kipindi-locks/mln-slot-5..8`.
+- **Release B and its repair (2026-10-20/21):** Release B `a12f7b26d` and hotfix `3ec111a83` (Codex) and Ali's gold
+  restoration `dd1386f06` are live; the CI-repair release of 2026-10-21 repaired the 28 suites Release B turned red and
+  three post-commit defects they exposed (§0). **⏸ Paused by Ali on 2026-10-21; no after score** — §0's ⏸ U43 block
+  is the resume point.
 
 ---
 

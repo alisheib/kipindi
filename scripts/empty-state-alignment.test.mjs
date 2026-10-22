@@ -4,6 +4,7 @@ import path from "node:path";
 import os from "node:os";
 import { createHash } from "node:crypto";
 import { chromium } from "playwright";
+import ts from "typescript";
 import { emptyStateAlignment } from "./live/empty-state-alignment.mjs";
 
 const artifactDir = process.env.QA_EMPTY_ALIGNMENT_ARTIFACTS || (process.platform === "win32"
@@ -11,9 +12,10 @@ const artifactDir = process.env.QA_EMPTY_ALIGNMENT_ARTIFACTS || (process.platfor
 fs.mkdirSync(artifactDir, { recursive: true });
 const knownChromium = "C:/Users/asheib/AppData/Local/ms-playwright/chromium-1217/chrome-win64/chrome.exe";
 const executablePath = process.env.QA_CHROMIUM_PATH || (fs.existsSync(knownChromium) ? knownChromium : undefined);
-const browser = await chromium.launch({ ...(executablePath ? { executablePath } : {}) });
-const page = await browser.newPage({ viewport: { width: 1280, height: 640 } });
-let requests = 0; page.on("request", () => requests++);
+const sourceOnly = process.argv.includes("--source-only");
+const browser = sourceOnly ? null : await chromium.launch({ ...(executablePath ? { executablePath } : {}) });
+const page = sourceOnly ? null : await browser.newPage({ viewport: { width: 1280, height: 640 } });
+let requests = 0; page?.on("request", () => requests++);
 const style = `<style>*{box-sizing:border-box}body{margin:0;padding:20px;font:16px Arial;color:#eee;background:#181220}
 h1,h2,p{margin:0 0 16px} [data-empty-state-scope],section,article,[data-measure]{position:relative}
 .card{padding:32px;border:1px solid #555;width:1000px;margin-top:20px}.empty{border:1px dashed #777;padding:28px;text-align:center}
@@ -23,6 +25,30 @@ const empty = (variant="fill", content="No rows yet") => `<div class="empty ${va
 const card = (body, classes="") => `<div class="card ${classes}" data-empty-state-scope>${body}</div>`;
 const title = `<p data-section-heading>Local section</p>`;
 const collection = (body, extra="") => `<div class="card" data-measure="reading" data-empty-state-owner="collection" ${extra}><h1>Collection page</h1>${body}</div>`;
+/** Tie the measured fill variant to the real leaderboard call site, including its page heading and reading measure. */
+function leaderboardEmptyContract(source) {
+  const ast = ts.createSourceFile("leaderboard/page.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const tagged = [];
+  const name = (node) => node.tagName.getText(ast);
+  function visit(node) {
+    if (ts.isJsxSelfClosingElement(node) && name(node) === "EmptyState") {
+      const kind = node.attributes.properties.find((p) => ts.isJsxAttribute(p) && p.name.text === "kind");
+      if (kind?.initializer && ts.isStringLiteral(kind.initializer) && kind.initializer.text === "leaderboard") tagged.push(node);
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(ast);
+  if (tagged.length !== 1) return { passed:false, fill:null };
+  const empty = tagged[0];
+  let owner = empty.parent;
+  while (owner && !(ts.isJsxElement(owner) && name(owner.openingElement) === "PageContainer")) owner = owner.parent;
+  const tier = owner?.openingElement.attributes.properties.find((p) => ts.isJsxAttribute(p) && p.name.text === "tier");
+  const heading = owner?.children.some((child) => ts.isJsxSelfClosingElement(child) && name(child) === "PageHeader");
+  const fill = empty.attributes.properties.find((p) => ts.isJsxAttribute(p) && p.name.text === "fill");
+  const trueFill = fill && (!fill.initializer ||
+    (ts.isJsxExpression(fill.initializer) && fill.initializer.expression?.kind === ts.SyntaxKind.TrueKeyword));
+  return { passed:!!(owner && tier?.initializer && ts.isStringLiteral(tier.initializer) && tier.initializer.text === "reading" && heading && trueFill), fill };
+}
 const fixtures = [
   { name:"padded-filled-local", html:card(title+empty()), head:"Local section", aligned:true, association:"card" },
   { name:"wide-boxed-real-misalignment", html:card(title+empty("boxed")), head:"Local section", aligned:false, association:"card" },
@@ -65,9 +91,9 @@ function verdict(f, rows) {
   return e.headText === f.head && aligned === f.aligned && e.association === f.association
     && (f.geometry === undefined || e.collection?.passed === f.geometry);
 }
-const evidence = { browser:browser.version(), viewport:{width:1280,height:640}, tolerance:24, requests:0,
+const evidence = { browser:browser?.version() ?? null, viewport:{width:1280,height:640}, tolerance:24, requests:0,
   sourceProof:{ evaluator:createHash("sha256").update(emptyStateAlignment.toString()).digest("hex"),
-    files:Object.fromEntries(["./live/empty-state-alignment.mjs","./empty-state-alignment.test.mjs"].map(file =>
+    files:Object.fromEntries(["./live/empty-state-alignment.mjs","./empty-state-alignment.test.mjs","../src/app/leaderboard/page.tsx"].map(file =>
       [file,createHash("sha256").update(fs.readFileSync(new URL(file,import.meta.url))).digest("hex")])) },
   controls:[], mutants:[] };
 let pass=0,fail=0;
@@ -77,6 +103,20 @@ async function read(f, evaluator=emptyStateAlignment) {
   return page.evaluate(evaluator);
 }
 try {
+  const leaderboardSource = fs.readFileSync(new URL("../src/app/leaderboard/page.tsx",import.meta.url),"utf8");
+  const contract = leaderboardEmptyContract(leaderboardSource);
+  ok("leaderboard's empty panel fills its headed reading measure",contract.passed);
+  evidence.controls.push({name:"leaderboard-headed-reading-measure",passed:contract.passed});
+  if (contract.fill) {
+    const withoutFill = leaderboardSource.slice(0,contract.fill.getStart()) + leaderboardSource.slice(contract.fill.end);
+    const caught = !leaderboardEmptyContract(withoutFill).passed;
+    ok("RED removing leaderboard fill breaks the headed reading contract",caught);
+    evidence.mutants.push({name:"remove-leaderboard-fill",caught});
+  } else {
+    ok("RED removing leaderboard fill breaks the headed reading contract",false);
+    evidence.mutants.push({name:"remove-leaderboard-fill",caught:false,premise:"fill attribute absent"});
+  }
+  if (!sourceOnly) {
   for (const f of fixtures) {
     const rows=await read(f);ok(f.name,verdict(f,rows));evidence.controls.push({name:f.name,rows,passed:verdict(f,rows)});
     await page.screenshot({ path:path.join(artifactDir,`${f.name}.png`), fullPage:true });
@@ -107,8 +147,9 @@ try {
     ok(`RED ${plant.name}`,caught);evidence.mutants.push({name:plant.name,rows,caught});
   }
   ok("no HTTP or asset requests",requests===0);evidence.requests=requests;
+  }
 } finally {
-  await browser.close();fs.writeFileSync(path.join(artifactDir,"evidence.json"),JSON.stringify({...evidence,pass,fail},null,2));
+  await browser?.close();fs.writeFileSync(path.join(artifactDir,"evidence.json"),JSON.stringify({...evidence,pass,fail},null,2));
 }
 console.log(`empty-state-alignment: ${pass} passed, ${fail} failed · ${artifactDir}`);
 process.exitCode=fail?1:0;

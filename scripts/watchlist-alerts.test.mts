@@ -64,6 +64,11 @@ async function mkMarket(id: string, minutes: number): Promise<string> {
 const watchNotes = async (userId: string) =>
   (await listForUser(userId, 50)).filter((n) => n.kind === "WATCHLIST");
 
+// U43, 2026-10-21: settleMarket runs its outward effects after the money commits
+// and AWAITS each one before it returns, so the watcher's alert is read the moment
+// settlement returns — no polling. A bounded poll (S5's interim version) would
+// pass a fire-and-forget alert that a process exiting after settlement loses.
+
 await mkUser("wl_officer1", 0);
 await mkUser("wl_officer2", 0);
 await mkUser("wl_a");

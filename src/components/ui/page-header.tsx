@@ -31,6 +31,15 @@ const EYEBROW_TONE: Record<Tone, string> = {
   subtle: "text-text-subtle",
 };
 
+/**
+ * ⭐ THE PAGE HEAD'S OWN DOORS, ONE RECIPE (2026-10-21, MASWALI-BUILD S5-DESIGN-HUB, R1-hub M2): a pill with its glyph and
+ * a short name, the tap floor's height (§A2), never wrapping — the Up & Down board's rules and history pills (its own copy,
+ * `HEADER_PILL` + `.ud-header-action`, until U43 adopts this one) and the Millionea hub's How to play and tickets pills. One
+ * definition, so two heads' doors cannot drift (a second copy of its tracking once took the arbitrary-tracking ratchet up).
+ */
+export const PAGE_HEADER_PILL =
+  "inline-flex min-h-[var(--tap-min)] shrink-0 items-center gap-1 whitespace-nowrap rounded-pill border border-border bg-bg-elevated px-1.5 font-mono text-caption text-text-muted transition-colors hover:border-brand-400 hover:text-text";
+
 export function PageHeader({
   eyebrow,
   title,
@@ -39,6 +48,7 @@ export function PageHeader({
   tone = "subtle",
   className,
   actions,
+  actionsWrap = false,
   eyebrowTight = false,
 }: {
   /**
@@ -64,6 +74,12 @@ export function PageHeader({
    * subtitle runs the column's full width under it. Without `actions` the markup is exactly what it was.
    */
   actions?: ReactNode;
+  /**
+   * ⭐ 2026-10-21 (MASWALI-BUILD S5-DESIGN-HUB, R1-hub M2) · The actions wrap UNDER the title where the two do not fit side
+   * by side (a phone), and stand beside it, centred on the heading, where they do — the Up & Down board's own answer
+   * (`.ud-board-header > div:first-child`), as a prop. Off by default: every other call site renders exactly what it did.
+   */
+  actionsWrap?: boolean;
   /**
    * ⭐ 2026-10-10 · The eyebrow at the body's own letter-spacing instead of the eyebrow's wide tracking — for a language
    * whose eyebrow would otherwise wrap on the narrowest phone (sw "UTHIBITISHO WA KITAMBULISHO" at 320, the KYC
@@ -114,7 +130,7 @@ export function PageHeader({
   return (
     <div className={className}>
       {actions != null ? (
-        <div className="flex items-start justify-between gap-3">
+        <div className={actionsWrap ? "flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5" : "flex items-start justify-between gap-3"}>
           <div>{head}</div>
           {actions}
         </div>

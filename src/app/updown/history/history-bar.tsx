@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/query-bar";
 import { effectiveDir } from "@/lib/query/sort";
 import type { Dict } from "@/lib/i18n-dict";
+import { roundDuration } from "@/lib/updown-round-name";
 import {
   UD_LENSES,
   UD_NATURAL_DIR,
@@ -176,7 +177,7 @@ export function HistoryBar({
           <FilterSheetGroup label={t.market.udDurations}>
             {durations.map((d) => (
               <Chip key={d} href={href({ dur: d })}
-                label={d === "all" ? t.common.all : `${d} ${t.market.udMin}`}
+                label={d === "all" ? t.common.all : roundDuration(t, Number(d))}
                 count={counts.dur[d]} on={state.dur === d} testId={`dur:${d}`} />
             ))}
           </FilterSheetGroup>
@@ -202,7 +203,7 @@ export function HistoryBar({
           <FilterGroupKey>{t.market.udDurations}</FilterGroupKey>
           {durations.map((d) => (
             <Chip key={d} href={href({ dur: d })}
-              label={d === "all" ? t.common.all : `${d} ${t.market.udMin}`}
+              label={d === "all" ? t.common.all : roundDuration(t, Number(d))}
               count={counts.dur[d]} on={state.dur === d} testId={`dur:${d}`} />
           ))}
         </nav>

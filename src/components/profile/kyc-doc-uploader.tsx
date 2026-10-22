@@ -15,7 +15,8 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Spinner } from "@/components/ui/spinner";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { attachDocumentAction } from "@/app/profile/kyc/actions";
@@ -120,17 +121,12 @@ export function KycDocUploader({
           // below reads as "working on this photo", not "done".
           <img src={showThumb} alt={label} className={`mx-auto mb-1.5 h-16 w-auto rounded object-contain transition-opacity ${working ? "opacity-40" : ""}`} />
         ) : (
-          // ⛔ LITERAL, NOT `h-8 w-8` — `theme.extend.spacing` is overridden
-          // (tailwind.config.ts:200-215), so that pair renders 48×48px. 40px is the
-          // kit's badge disc (= --tap-min) around a 14px glyph.
-          <span className={`mx-auto mb-1.5 h-[40px] w-[40px] inline-flex items-center justify-center rounded-full ${
-            done ? "border border-success-border bg-success-bg text-success-fg" : "bg-bg-overlay text-text-subtle border border-border"
-          }`}>
+          <IconPlate size={40} variant={done ? "success" : "identity"} className="mx-auto mb-1.5" aria-hidden>
             {/* C1b — per-slot silhouette line-art: ID card for NIDA front/back,
                 person for the selfie slot. */}
             {/* M5 — the done-check ARRIVES on the state change via the settle primitive. */}
-            {working ? <Spinner size={14} /> : done ? <I.check s={14} className="g-settle" /> : (docType === "SELFIE" ? <I.user s={14} /> : <I.idCard s={14} />)}
-          </span>
+            {working ? <Spinner size={14} /> : done ? <I.checkCircle s={plateGlyph(40)} tier="fill" className="g-settle" /> : (docType === "SELFIE" ? <I.user s={plateGlyph(40)} tier="duo" /> : <I.idCard s={plateGlyph(40)} tier="duo" />)}
+          </IconPlate>
         )}
         <span className="block font-display text-[12px] font-semibold text-text">{label}</span>
         {/* Spinner sits NEXT TO the status text so a slow resize/upload always

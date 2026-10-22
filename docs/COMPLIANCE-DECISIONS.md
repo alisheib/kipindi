@@ -8,6 +8,86 @@
 
 ---
 
+## 2026-10-21 · Harm markers muted for marketing SMS (owner ruling)
+
+**Authority.** Ali, 2026-10-21, in the Claude session on OMEGA-COMPILE01, after the marketing team could not send a
+campaign test: *"remove this flag for everyone … pause it now"*, then *"keep the development but mute it for now for
+everyone, later if needed I tell you to activate it"*, and *"I have full GBT licence"*. Asked about the public page, he
+chose *"code only, leave the page"*.
+
+**Why it came up.** The marketing gate refused an officer's own test number. A read-only production check showed both
+of the officer's ADMIN accounts ACTIVE, 25 or over, with no self-exclusion and no break: the refusal was the automatic
+harm marker `LATE_NIGHT_PLAY` (5 and 9 bets between 00:00 and 06:00 EAT in seven days, from staff testing). The marker
+is not stored — it is recomputed from the account's transactions at every send — so nothing could be removed from the
+database, and nothing was.
+
+**What it rules.** The automatic harm markers (rapid deposits, deposits soon after placing a bet, late-night play) no
+longer stop a marketing SMS, for anyone: `MARKETING_HARM_MARKERS_MUTED = true` in `src/lib/server/marketing/rg.ts`
+makes the gate's default dependency report no harm flag. Everyone the markers were holding is released at the next
+send; there is no per-person state to clear.
+
+**What it does NOT change.** A person's stop, self-exclusion (GN 478T reg 49(3)), a break, under 25 with a
+self-exclusion or a break on record, under 18, an unknown age and the account's status still refuse, exactly as
+before. The detector itself still runs for the Player Safety page and the daily harm count. The harm step's code is
+kept, and `test:rg-doors` still proves it refuses whatever flags it is handed.
+
+**The public page.** `/legal/responsible-gambling` §4 (en/sw/zh), its promise register (`src/lib/legal/kept-promises.ts`,
+`harmSign`) and the `rg.marketing` policy line are unchanged on Ali's instruction. While the markers are muted, the §4
+words "a player showing a sign of harm" describe a protection that is switched off; reactivating the markers makes
+them true again. (`test:rg-policy` reads the refusal's text in `rg.ts`, which stays, so it remains green.)
+
+**Supersedes in part** item 2 of § "2026-10-07 · Marketing SMS go to anyone with a phone — consent is not a condition
+(the owner's FINAL rule), and his approvals given in the session": its "a sign of harm" only, while this ruling stands.
+
+**How to reactivate** (only on Ali's word): set `MARKETING_HARM_MARKERS_MUTED` to `false`; restore the expectations this
+change moved — `test:rg-doors` 8.11b (`rg_harm_marker` again), `test:campaign-audience` (pa10 protected again: will
+receive 4, protected 7, not receiving 17; players 4, 7, 13; `rg_harm_marker` back in its reason set) and the dry-fire
+world's `harm_marker` person (SKIPPED `rg_harm_marker`); and record the reactivation here.
+
+---
+
+## 2026-10-21 · Maswali Millionea — staff preview after S5, no separate drive-week buying phase, the ruled words final, Finance confirmed, five days to answer a complaint, "Buy ticket" (owner rulings)
+
+**Authority.** Ali, 2026-10-21, to the Maswali lead (Claude, OMEGA-COMPILE01), choosing among the options put to him and,
+where he wrote them, in his own words:
+1. **Staff preview after S5.** "Right after S5 is live": once S5 is on `main` and read back,
+   `FEATURE_MILLIONEA=STAFF_PREVIEW` on Railway (reversible: `WITHDRAWN` undoes it). Players see nothing.
+2. **R10c — who may buy a DRIVE-week ticket.** *"no need for this phase, it will be live for everyone normally"*: there
+   is no separate staff-only buying phase; Millionea opens to every player (`ACTIVE`) at launch, after its gates. R10c
+   is closed by this ruling; S8's live drive runs on the first public week.
+3. **The tab's ink.** The softer tints as built (the colour tokens' -300 stops, 8.98:1); DESIGN_AUTHORITY §M8a item 11's
+   open choice is closed.
+4. **Native-language review.** "Ship the ruled words as they are": no separate native review of the Swahili and Chinese
+   words; the words decided in MASWALI-PLAN §0a and the S5 visual pass's §D are final. This closes Gate B's language
+   item only.
+5. **Finance (OD-08, MB-77).** *"finance confirmed it"*: Finance's confirmation of the tax report's reconciling lines and
+   of no withholding on winnings is recorded on Ali's word; Gate B's Finance item is closed. Ali adds that 50pick will
+   later levy a tax on amounts players withdraw (he wrote "155"; read as 15%, to be confirmed when it is designed). That
+   is NOT part of this build: when it is built, AGENTS.md §6 ("taxes are levied only on 50pick's commission, never on a
+   player"), RULES.md and every player-facing word about withholding change with it, by a new owner ruling.
+6. **Time to answer a complaint about a result.** Five days — the default on the Owner's rules form, confirmed.
+7. **English buy wording.** "Buy ticket · {price}", "Ticket bought" and "Buying…" replace the calque "Cut ticket";
+   Swahili keeps "Kata tiketi" and Chinese 出票.
+8. **Stale branches.** Delete the old Codex branches proven contained in `main` or in the S5 release (28 deleted the
+   same day; every local Maswali ref is archived in `F:\kipindi-archive\maswali-codex-and-lanes-20261021.bundle`).
+
+**Implementation boundary.** Rulings 1 and 2 change S5's release sequence and S8's plan; 3, 6 and 7 are build details;
+4 and 5 close those two Gate B items and no other.
+
+---
+## 2026-10-20 · U43 Twelve Data use — owner attestation
+
+**Authority.** Ali, in the U43 Release B session, stated that 50pick has a full Twelve Data licence for its use in
+Tanzania and instructed the release team to mark the data-rights question done and proceed with the existing feed.
+This records Ali's attestation and direction. The session verified that the production key returns valid BTC/USD and
+XAU/USD UTC minute bars, but did not inspect a separate vendor agreement or infer permission from the key alone.
+
+**Implementation boundary.** Keep the existing Twelve Data source and the exact-minute-bar-open settlement rule.
+Do not change the source of an existing round, invent a price, buy a plan or expose a credential. U43's other release
+gates and production read-back still apply.
+
+---
+
 ## 2026-10-19 · Up & Down and the market cards (MOBILE-VISUAL U43): a live line inside the round card, the slim card, visible filters, no odds on any card choice (owner rulings)
 
 **Authority.** Ali, 2026-10-19, to the U43 session (OMEGA-COMPILE01, asheib-54), after the eight-lens critics read of
@@ -16,7 +96,7 @@ market cards: *"for market cards we can remove odds please, keep yes and no only
 plan perfectly cleanly"*. Then his choice of the option offered, for each of four questions:
 
 1. **Charts — "Live line in the card"** (offered beside "No chart by default" and "Big chart by default"). The Up & Down
-   round a player can bet on carries a small line of the price since the round opened, with the round's price to beat as
+   round a player can bet on carries a small line of the price since the round opened, with the opening reference price as
    a dashed reference line, drawn from the same market feed the result is read from, every point timed. The board's
    chart view (DESIGN_AUTHORITY §B12.6's lab) stays one tap away and is fixed so that it never shows a different price
    from the card. ⭐ This **reverses in part** the closing order of 2026-09-04, *"no need for round chart — remove it for
@@ -27,10 +107,15 @@ plan perfectly cleanly"*. Then his choice of the option offered, for each of fou
    - the house desk reads that same cache (`peekVendorBar`, [`HOUSE-BOTS.md`](HOUSE-BOTS.md)), so a warm one-minute cache
      gives it fresher prices and it stakes on more rounds. Its limits are unchanged.
 2. **The round card — "Slim card"** (offered beside "Keep every detail, polish only"). One line per fact: which round it
-   is (its time window), the price to beat once, the time left beside it, the pool, players and split, then the stake
+   is (its time window), the opening reference price once, the time left beside it, the pool, players and split, then the stake
    chips and Up/Down.
    - Removed: the ±$0.02 target tiles, the repeated price, the empty clock boxes and the status said three times.
    - The source-and-time line stays, merged into one line.
+
+   **2026-10-20 implementation clarification:** The opening price is the chart's dashed reference, not a winning
+   boundary. The round has separate frozen Up and Down targets. A close strictly between them voids and refunds stakes;
+   the exact targets appear on round details before a bet. The compact card says that a small move may refund. This
+   clarifies the earlier "price to beat" shorthand without changing Ali's card or chart choice or the settlement rule.
 3. **The phone filter — "Visible chips"** (offered beside "Keep the Filters button"). On a phone the assets and durations
    are two short rows of chips, one tap to switch, with no sheet. The sheet returns by itself only when the choices stop
    fitting.
@@ -473,6 +558,11 @@ reflected as well. mark this as decision, keep up and down only"*. The rule in f
    fixed odds. It is not a promise until betting closes."* (sw and zh alike). The binding words moved, so the document is
    re-dated **v2026-10-14** (`src/app/legal/rules/up-down/page.tsx`). **Why no notice:** nothing a player may do, and no
    figure a player is paid, changed — the sentence now names the figure the platform actually shows.
+
+   **2026-10-20 implementation correction:** The last clause above could imply that betting close alone guarantees
+   payment. The receipt qualifier and the three binding Rules translations at v2026-10-20 now state that lock fixes only the conditional
+   return for a winning pick. It is paid only if that pick wins; a voided round returns the stake. The settlement rule
+   and amount computation are unchanged.
 
 **What it supersedes, in part.** `UPDOWN-FINAL-DESIGN.md` D2 part 1 ("a live, pool-implied multiplier" on the card) — the
 card half only; D2 part 2, the empty-side state, stands. The Vodacom record's S4 canvas call "Juu/Chini keeps its own side
@@ -1385,6 +1475,8 @@ item 7. ⛔ Never remove: the self-exclusion, under-18 and responsible-gambling 
 
 
 ## 2026-10-07 · Marketing SMS go to anyone with a phone — consent is not a condition (the owner's FINAL rule), and his approvals given in the session
+
+⟶ superseded in part on 2026-10-21 by § "2026-10-21 · Harm markers muted for marketing SMS (owner ruling)" — item 2's "a sign of harm" only: the automatic harm markers do not stop a marketing SMS while that ruling stands.
 
 ⟶ superseded on 2026-10-09 by § "2026-10-09 · Privacy v2026-10-09 — a marketing SMS is sent exactly as the officer wrote it: no stop link, no 18+, no helpline, no source line (owner ruling)" — in part: no message keeps a stop link (a person's own stop is still honoured), the G5 source line is printed in no message, and Privacy §4's gateway bullet names no company.
 

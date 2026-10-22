@@ -247,7 +247,7 @@ const legalTitle = (file: string): Record<Loc, string> => {
 /** What each page calls itself for a journey reader — its tab, and its h1 — with the source lines that say so. */
 type Page = { title: Words; h1?: Words; proof: Array<[string, string]> };
 const PAGES: Record<string, Page> = {
-  "/updown": { title: "market.udTitle", h1: "market.udTitle", proof: [["src/app/updown/page.tsx", "return { title: t.market.udTitle };"], ["src/app/updown/page.tsx", "eyebrow={t.market.udStreaming} title={t.market.udTitle}"]] },
+  "/updown": { title: "market.udTitle", h1: "market.udTitle", proof: [["src/app/updown/page.tsx", "return { title: t.market.udTitle };"], ["src/app/updown/page.tsx", "<PageHeader className=\"ud-board-header\" title={t.market.udTitle}"]] },
   "/positions": { title: "journey.tabTickets", h1: "journey.tabTickets", proof: [["src/app/positions/page.tsx", "return { title: journey ? t.journey.tabTickets : t.common.positions };"], ["src/components/journey/tickets/ticket-switch.tsx", "<PageHeader title={t.journey.tabTickets} />"]] },
   "/updown/history": { title: "journey.tabTickets", h1: "journey.tabTickets", proof: [["src/app/updown/history/page.tsx", "return { title: journey ? t.journey.tabTickets : t.market.udHistoryTitle };"], ["src/app/updown/history/page.tsx", '{journey ? <TicketsHead current="updown" millionea={millionea} t={t} />']] },
   "/account": { title: "journey.tabAccount", h1: "journey.tabAccount", proof: [["src/app/account/page.tsx", "return { title: t.journey.tabAccount };"]] },
@@ -306,6 +306,7 @@ const FILES = {
   switch: "src/components/journey/tickets/ticket-switch.tsx", udStake: "src/components/updown/updown-stake-controls.tsx",
   udPanel: "src/components/updown/round-stake-panel.tsx", apply: "src/app/agent/apply/apply-client.tsx", kyc: "src/app/profile/kyc/page.tsx",
   cashback: "src/components/ui/cashback-promo.tsx", menu: "src/components/layout/avatar-menu.tsx",
+  mlnSlip: "src/app/millionea/slip/slip-client.tsx",
 };
 const DOORS: Door[] = [
   // The journey header (SJ-15) and the Wallet sheet.
@@ -323,6 +324,8 @@ const DOORS: Door[] = [
   { at: "/wallet · the empty book's door", proof: [FILES.wallet, "{journey ? t.journey.depositAction : t.common.depositCta}"], words: "journey.depositAction", to: "/wallet/deposit", verdict: "name" },
   { at: "/wallet · Risiti zote", proof: [FILES.wallet, "{t.receipts.allReceipts}"], words: "receipts.allReceipts", to: "/wallet/receipts", verdict: "action", why: "\"all\" + the page's name (Risiti)" },
   { at: "/wallet/receipts · the empty book's door", proof: [FILES.receipts, "{journey ? t.journey.depositAction : t.common.depositCta}"], words: "journey.depositAction", to: "/wallet/deposit", verdict: "name" },
+  { at: "Millionea slip · shortfall deposit", proof: [FILES.mlnSlip, "fillNodes(t.journey.lowDeposit, { amount:"], words: "journey.lowDeposit", to: "/wallet/deposit", verdict: "action",
+    why: "The slip names the amount to add before its one reviewed ticket purchase; the deposit page names itself in its own heading." },
   { at: "/wallet/deposit · back", proof: [FILES.deposit, '<BackLink fallbackHref="/wallet" label={t.wallet.title} />'], words: "wallet.title", to: "/wallet", verdict: "name" },
   { at: "/wallet/deposit · the break's Toa pesa", proof: [FILES.deposit, "{journey ? t.journey.withdrawAction : t.common.withdraw}"], words: "journey.withdrawAction", to: "/wallet/withdraw", verdict: "name" },
   { at: "/wallet/withdraw · back", proof: [FILES.withdraw, '<BackLink fallbackHref="/wallet" label={t.wallet.title} />'], words: "wallet.title", to: "/wallet", verdict: "name" },
@@ -356,7 +359,8 @@ const DOORS: Door[] = [
 const { JOURNEY_TABS } = req("../src/lib/nav/active-tab.ts") as { JOURNEY_TABS: Array<{ key: string; href: string; label: string }> };
 const TAB_VERDICT: Record<string, [Verdict, string?]> = {
   questions: ["home", "the front page carries the brand's name in its tab (an absolute title) and the hero's question as its h1; the tab names the board it holds"],
-  updown: ["s12", "sw \"Juu/Chini\" (the tab, the nav, the switch) against the page's \"Juu na Chini\" — triage r5-5's S12 item, a native speaker's word"],
+  // U43 gave the rail the page's full name in Swahili; the old S12 exception must now be measured as a normal name.
+  updown: ["name"],
   tickets: ["name"], account: ["name"],
 };
 for (const tab of JOURNEY_TABS) DOORS.push({ at: `tab · ${tab.key}`, proof: ["src/lib/nav/active-tab.ts", `label: "${tab.label}"`], words: tab.label, to: tab.href, verdict: TAB_VERDICT[tab.key]?.[0] ?? ("?" as Verdict), why: TAB_VERDICT[tab.key]?.[1] });
@@ -484,6 +488,10 @@ for (const [viewer, rows] of [["guest", hubRowsFor({ signedIn: false })], ["memb
   // PLANTS: a door that says another page's word, and a census that loses a door.
   const planted: Door = { at: "PLANT", proof: ["", ""], words: "common.deposit", to: "/wallet/deposit", verdict: "name" };
   ok("2.4′ PLANT · the deposit screen's old Swahili name on a journey door (\"Amana\" → a page named \"Weka pesa\") is reported", !named(planted, "sw"));
+  const updownTab = DOORS.find((d) => d.at === "tab · updown");
+  const oldShortUpdown: Words = { sw: "Juu/Chini", en: words(updownTab?.words ?? "nav.updown", "en"), zh: words(updownTab?.words ?? "nav.updown", "zh") };
+  ok("2.4′b PLANT · restoring the old short Swahili Up & Down tab fails the page-name rule",
+    updownTab?.verdict === "name" && named(updownTab, "sw") && !named({ ...updownTab, words: oldShortUpdown }, "sw"));
   const plantedPage = { ...PAGES, "/wallet/deposit": { ...PAGES["/wallet/deposit"], title: "common.deposit", h1: "common.deposit" } };
   ok("2.4″ PLANT · the page's old name with the doors' new words (the defect this item fixed) is reported", fold(words("journey.depositAction", "sw")) !== fold(words(plantedPage["/wallet/deposit"].title, "sw")));
   // ONE NAME, ONE PAGE — the other half: two pages a journey reader can open must not share a name, or say why they do.
@@ -543,9 +551,9 @@ section("3 · G-1's sweep fixes · the history page's tab and its pill, /profile
     has(HISTORY, '{journey ? <TicketsHead current="updown" millionea={millionea} t={t} />') && has("src/components/journey/tickets/ticket-switch.tsx", "<PageHeader title={t.journey.tabTickets} />")
       && word("sw", "market.udHistoryTitle") === "Juu na Chini zako");
   const ud = squash(code("src/app/updown/page.tsx"));
-  ok("3.2 · the Up & Down board's history pill names the page it opens for a journey reader — \"Tiketi zangu\" and the tab's ticket sign — and keeps \"Juu na Chini zako\" and its portfolio sign for everybody else",
+  ok("3.2 · the Up & Down board's history pill keeps the destination's accessible name and correct sign, with the visible My bets label at every width",
     ud.includes("const { journey } = await resolveSimpleJourney(); const historyName = journey ? t.journey.tabTickets : t.market.udHistoryTitle;")
-      && ud.includes('href="/updown/history" aria-label={historyName} className={HEADER_PILL} > {journey ? <I.ticket s={13} /> : <I.portfolio s={13} />} <span className="hidden sm:inline">{historyName}</span>')
+      && ud.includes('href="/updown/history" aria-label={historyName} className={HEADER_PILL} > {journey ? <I.ticket s={13} /> : <I.portfolio s={13} />} <span>{t.common.myBets}</span>')
       && has("src/lib/nav/active-tab.ts", '{ key: "tickets", href: "/positions", glyph: "ticket", label: "journey.tabTickets" }'));
   const prof = code("src/app/profile/page.tsx");
   ok(`3.3 · /profile's help row names the help page as the page does — "${word("en", "common.help")}" / "${word("zh", "common.help")}" (its tab), where it said "${word("en", "profile.helpSupport")}" / "${word("zh", "profile.helpSupport")}"`,

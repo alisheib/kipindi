@@ -29,6 +29,216 @@
 
 ## §0 · RESUME AT
 
+**⏳ IN FLIGHT (2026-10-22 PM, OMEGA-COMPILE01, the Claude session asheib-f3 leads; Ali: "proceed until done … pushed live
+and development closed").** Ali's scope (2026-10-22): **build done, launch later** — S5, then S7, then S6, each verified
+(critics 10/10 + every gate) and pushed to `main` DARK; STAFF_PREVIEW right after S5 is live (his 2026-10-21 ruling); S8
+prepared and handed to him (his items listed in this §0 at the close). Running now, each on its own branch (pushed after
+every commit): the six round-2 lanes finish their LEFT lists (code, static checks, targeted proofs — the full render runs
+ONCE on the integrated head, then the independent critics); DOORS fixes the ⛔ dark-safety blocker first (every place a
+`millionea=`/`preview=` prop reaches a client component); S7 merges this release into `claude/maswali-s7-s5` (FIX-SRV's
+map), then builds TK.2 (MB-96) and RD.5 (MB-74); S6 reviews N's round 17 and maps its merge (read-only). OB.0 (MB-23,
+MR-16's objection door) is built on the integrated UI after S5's merge. Lead's working state: this §0 + the hand-over
+branch `maswali-handover-20261021` (a new top section at each milestone).
+
+**State (2026-10-21):** S1–S4 are on `main` dark. S5's release candidate is branch
+`claude/maswali-s5-release` (Codex's mirror `codex/maswali-coord-20261019` retired 2026-10-21 PM): Codex's integrated
+S5 (`bd139142`) merged with production `main` `4471bb44` (U43's house-gold restore `dd1386f0` and PHOSPHOR
+release 2b, W6) at `d1c5910f`. That merge took `main`'s copies of the three U43 RED anchor files and
+`u43-chart-direction-red.mjs`, set `test:visual-pass-r5c`'s globals.css gold census to 103 (U43's +24 and S5's
+ruled Millionea ink +7 are independent), and set `PREVIOUS_SPRITES` to the pair `main` serves (`app.76a3696e`,
+`admin.75aeb290`) before re-running `glyphs:gen`. S5 holds the player and admin surfaces, global admin
+search/filter/sort/paging, bounded integrity report coverage, reviewed consequential actions, partial-seal and
+device-audit feedback, versioned seal corrections, the multi-ticket slip, the separate Results section, the public
+settled-week sitemap and share image, and bounded public week and register caches. The rollout stays `WITHDRAWN`.
+
+**⏹ STOP 3 (2026-10-22 ~08:10 UTC, Ali: "finish here on a clean level … then continue Maswali from a new prompt"; only
+verified work goes live). RESUME HERE:** hand-over branch `maswali-handover-20261021`, `handover/maswali-2026-10-21/`
+README's top section (STOP 3: the six round-2 branches and heads, what each left, the next steps in order) and
+MERGE-NOTES.md (today's part first: the round-2 reports, test:all's real reds by owner, and ⛔ the dark-safety blocker —
+`src/app/markets/loading.tsx` hands the client MarketsGhost `millionea={false}`, so /markets' payload carries the prop and
+qa:live's dark rule fails; fix before S5 deploys). Round 2 stopped clean on `claude/maswali-s5-r2-{hub,slip,tickets,
+register,doors,platform}`; none merged yet; S5 is not live. `main` `67e47f8d2` (U43's CI repair and the marketing
+harm-marker mute) went LIVE at 08:12:48Z; its read-back is green (dpl on www, apex and the Railway host; health ok;
+qa:chunks-prod 6/6 on both; production qa:live 364/0) — U43's record in MOBILE-VISUAL-PLAN §0 rides with S5's push.
+
+**The 2026-10-22 morning (from ~07:00 UTC, Ali: "proceed … until done") — the Claude session asheib-65 on OMEGA led.**
+EVERY S5 lane is merged into this release (`7e9a314f0`: FIX-SRV, PLATFORM D1–D15, DOORS, HUB, TICKETS, REGISTER, SLIP; the
+salesPaused Fill with one glyphs:gen, app sprite `app.b899eae1.svg`); tsc 0 and every Maswali suite green; each merge's
+resolutions are in its commit (the old-shape moveClose/attestParity calls in three dev routes and one suite now use
+FIX-SRV's API; maswali-ui 4.8b's flake fixed). Round 2 runs on `claude/maswali-s5-r2-<lane>` branches from this head
+(brief: hand-over `critics/ROUND2.md`), then the critics re-score; `test:all` runs in parallel on a gate tree. Railway: a
+**security incident** (status.railway.com; Railway advises rolling every env var stored there — Ali's, at the providers);
+builds are back for Pro since 06:29Z, and `main` `67e47f8d2` was requested at 07:15Z on Ali's word ("deploy main now").
+Hand-over for any machine: branch `maswali-handover-20261021` (README top section + MERGE-NOTES). S7 is at `0f0d42fcc`
+(S17 rush first green); S6-N owes its blind 6b guard.
+
+**⏳ The PM round (2026-10-21 from ~12:35 UTC, Ali: "proceed") — the Claude session asheib-65 on OMEGA-COMPILE01 led:**
+- Lanes resumed with their own context, each on its branch and SSD tree, heavy jobs in Maswali slots 1–3:
+  S5-DESIGN-HUB, -SLIP, -TICKETS (plus P6 on a ticket and the tickets ghost's third box), -REGISTER (its shared pieces
+  first, merged early for round 2), -DOORS (the owed browser re-run and tile read), S5-FIX-PLATFORM (verify 8–11, then
+  D12–D14) and S5-FIX-SRV (finding 2's class in openWeek, closeWeek, voidWeek, claimCarry and sunsetMaswali).
+- This release now holds fix-srv `9935dfd47` + fix-player `54512f311` + parity `9a0c6b033` + fix-platform 1–7 `f74aaa312`
+  + `main` `bfa0b7d57` (merge `b7292198d`: U43 took S5's five red fixes verbatim, and its watchlist repair supersedes S5's
+  interim poll; four conflicts, each explained in the commit) and `b4fcc4e4b`, which deletes `.kp-track-end--10` (no
+  label since U43's `1384383fd`; test:dead-css has been red on `main` since). Green there: tsc 0, test:maswali-player 187
+  per store, house-bot-reports, maswali-fence, watchlist, maswali-ui 151, journey-tickets 51, r4j 91, r5g 65, r5a 97,
+  r7c 65, r5j 62, dead-css; test:house-bot-blob-pin is red only on D19a's dictionary blob (re-pinned once at the final
+  merge). Since then: fix-srv 2b merged (`6e6949a4f`: the open, close, week void, carry and the Owner's stop each commit
+  whole, audits after the commit; engine 189, purchase 102, settle 100, void 57 on PostgreSQL, tsc 0); `main` `8175dbca3`
+  merged (`a413e75be`, the marketing harm-marker mute; rg-doors 130, campaign-audience 42, tsc 0); S5-DESIGN-DOORS merged
+  (`60eb085bc`, the doors at 10/10, with REGISTER's shared pieces; the route ghost hands the home ghost the locale; tsc
+  queued). red:maswali-money-path on this release: 30/30 caught (plant 6b included — S6-N's miss is its own).
+  Next to merge: HUB, SLIP, TICKETS, REGISTER, platform 8–15 and fix-srv's last items; `glyphs:gen` (HUB's `salesPaused`
+  Fill) and the D19a re-pin once, at the final merge. Every PM ruling and merge step: `MERGE-NOTES.md` on branch
+  `maswali-handover-20261021` (`handover/maswali-2026-10-21/`).
+- Classic parity is calibrated on `main` `bfa0b7d57`: baseline 52/52 (224 cells) and null compare 68/68, no flaky cell
+  (the baseline file lives in the OMEGA lead's scratchpad, `s5par/parity-v5-bfa0b7d57.json`; another machine re-captures
+  it with the hand-over's `tools/job-par-base.sh`). The candidate compare runs at the final integrated head.
+- ⏰ Ali (~15:20Z): "work for 2 hours and push everything and progress in case any issue happens so we continue from
+  another machine" — every lane pushes after each commit and stops at 17:05Z with its state in its head commit.
+- Railway's builds are still paused (status.railway.com, 12:23Z). A watcher asks Railway every 10 min to deploy `main`'s
+  head and stops at the first accepted request; then U43's read-back, which U43 asked the Maswali lead to run.
+- OMEGA: the S6 notices lane's two leftover chains still run its owed checks in `kipindi-mln-not` (slot 4); their summary
+  is `s6n/heavy/summary.txt` in the lead's scratchpad. On `bd74c982c`: tsc 0, maswali-notify 144 and house-bot-reports 81
+  on both stores, maswali-engine 109, red:maswali-rbac 7/7, red:dal-parity 285/285, red:house-bot-money 82/0,
+  red:house-bot-c5 --only 24/24, red:deposit-recheck and red:payment-background green; **red:maswali-money-path 41/42 —
+  plant (6b) "a voided ticket's refund reverses wagering it never accrued" MISSED** (the purchase suite's 7.3b stayed
+  green). The S6 lane owes the cause; the lead re-runs the same proofs on this release to see whether S5 shares it.
+- Slots: U43 (paused) lent `mln-slot-5..8`; the S5 lanes use 1, 2, 3, 5 (`mln-slot-s5x.sh`), S7 uses 6 and 4.
+- S7 resumed (~13:15Z) on `claude/maswali-s7`: the refused release's lift in bounded sections, the S17 rush, the F7 6–8
+  render read, red:house-bot-c5 and red:house-bot-console.
+- The lead's rulings in the 10/10 pass (2026-10-21 PM), recorded with the merge in DESIGN_AUTHORITY §M8a where they set a
+  rule: the ticket's lock moment plays once at the week's RECORDED close (a "close" fact; `.m-seal` stays, Ali's N-block);
+  a paid seal lists its serials as stacked facts; zh puts no space between two Han characters (a space only where a
+  Latin letter or digit meets Han — typography, the ruled words unchanged); ONE ledger builder for the register, the hub
+  and the ticket (MR-26's money in = money out), with a core money record of any visibility for a DRIVE week's ticket and
+  the public register still refusing DRIVE weeks; one week row (`WeekRow`) for the register and /results.
+
+**⏹ STOPPED (2026-10-21 ~10:45 UTC, on Ali's word: "finish … so we proceed on another session with clean pushed").
+The lanes' state at that stop (superseded by IN FLIGHT above where they differ). RESUME HERE, from any machine:** read branch `maswali-handover-20261021`, folder `handover/maswali-2026-10-21/` —
+README.md (every branch, each lane's state at the stop, the next steps in order), `critics/` (round 1 of Ali's 10/10
+design pass: scores and fixes per surface, the LEAD RULINGS, the design lanes' brief and file ownership) and `tools/`.
+Every lane committed and pushed at the stop; a commit marked "WIP … not verified" does not compile or was not run.
+- Finished and verified: `claude/maswali-s5-fix-srv` (`9935dfd47`, all 16 server/console findings with guards and plants);
+  `claude/maswali-s5-fix-platform` commits 1–7 (D1–D9, r5j 3.7.2; head `c1e3a1b28`: 8–11 written, not fully verified;
+  D12–D14 not started); `claude/maswali-s5-parity` (`9a0c6b033`, the instrument fixed, --prove-red 299/299).
+- `claude/maswali-s5-fix-player` (`54512f311`): P1–P15 and P17–P19 fixed, P16 not reproduced (44px). Verified: tsc 0,
+  test:maswali-player 186/186 on both stores, the 8 Maswali red twins, 129 of 142 reader suites green — the 11 reds are
+  D19a's dictionary pin (re-pinned once at the merge) or pre-existing U43 reds, each proven on 8c468393b; on screen: P1's
+  free-cancel promise moves with the clock on a sheet left open, P7, P8, P10 (slip and ticket), P17, P6 on the hub. NOT
+  verified: P6 on a ticket (the drive's seed held no ticket in a week inside its objection window).
+- WIP, not compiling: `claude/maswali-s5-design-hub` (`7fe758046`), `-slip` (`524128dbb`), `-register` (`3bf97ffdf`),
+  `-tickets` (`96e5e9a94`). `claude/maswali-s5-design-doors` (`5bc6e2c57`): H1 and nearly all of R1-doors done and
+  verified (the ghost equals the card: 188/188px at 360, 74/74 at 1280); its last commit (L7 and three small items) is
+  verified by static suites only — the full browser re-run and tile read are owed.
+- `claude/maswali-s7` (`2cba1f577`, Codex's integration contained in it): S7-F8 1–6. **The money finding (S7-F8 4,
+  `66f3af8be`):** a final week whose ~7,000 winners are all held could never settle — one hold per winner inside the chain
+  lock's single 30 s transaction expired, rolled back, and left wallets frozen; the holds are now placed in 5 s sections of
+  the lock (each re-reads the week), paying only in a section with budget left. Measured on scratch PostgreSQL: S16 43/0,
+  the all-held week settles once in 15 sections (81.6 s), the wide week in one 6.7 s section, exactly once, conservation
+  exact. tsc 0; every two-store suite at or above its floor (settle 102/106, purchase 112/115, house-bot-reports 253/81,
+  adversarial 194/202 …); e2e:maswali-fault 16/0; red:maswali-money-path 73/73, red:dal-parity 285/285. Owed: the S17 rush
+  (no measured rush figures), the S7-F7 6–8 render read, a refused release lifting thousands of holds one by one (minutes);
+  after S5 lands: merge, re-pin D19a, red:house-bot-c5 and red:house-bot-console, test:all and the money battery.
+- ⚠️ OMEGA only: the S6 notices lane's background loops (Git Bash pids 194830, 200821, 194836) survived the stop and were
+  running its red twins in `C:\50pick-ssd\kipindi-mln-not` (slot 4) — the session's classifier refused to kill them, so
+  Ali decides. Before using that tree: `git -C C:/50pick-ssd/kipindi-mln-not status --short` must be clean; if
+  `src/lib/server/maswali-settlement.ts` shows modified, `git checkout -- src/lib/server/maswali-settlement.ts` and delete
+  `scripts/.red-maswali-money-path.lock` (a red twin's plant — never commit it). The pushed branch is clean.
+- `mln-s6-notices` (`bd74c982c`): round 17 COMPLETE — M5, L1, H2, H3, M3, M4, L2, L3, L4 in 14 commits, both Codex attempts
+  reconciled (their branches archived in `F:\kipindi-archive\codex-s6n-attempts-20261021.bundle` and deleted);
+  maswali-notify 138/0 mem + 144/0 PG, maswali-claims 635/0, red:maswali-claims 29/29, ~60 derived light suites green.
+  Owed at the final head: tsc, the both-store suites, full red:maswali-money-path (plants N6–N12 never run), red:maswali-rbac,
+  red:dal-parity, red:house-bot-money, red:house-bot-c5 --only (24 plants) and the other reds the lane lists in its commits.
+- `main` = `c63c89387` (U43's CI-repair release + docs) — NOT deployed: Railway paused builds platform-wide
+  (status.railway.com); production serves `d268ef919`. Pushes during a pause are dropped: re-trigger by hand with the
+  hand-over's `tools/railway-deploy-main.mjs` when builds return, then U43's owed read-back (see the README).
+- `test:needle-rest` (server-bound, never run by CI) is red on production since U43 Release B — bisected: 92/0 at `1b7a91782`; 89/3 from `1384383fd` (3 small §9 CONTROL failures); **55/35 from `7e3a06ea0`** ("fix(u43): align card states and truthful market evidence": the Needle never glides off a control). U43's to fix (paused); it rests over Millionea's held-ticket chevron too.
+- The repository was cleaned on Ali's word (stale branches merged or archived in `F:\kipindi-archive\*-20261021.bundle`).
+
+**⏳ The day's record (2026-10-21, OMEGA-COMPILE01 — the Claude session asheib-65 took S5 over from Codex on Ali's word):**
+- Running on `d1c5910f`: `test:all` with the database suites in the release tree; the classic-parity calibration on
+  a `main` tree (`--prove-red`, the baseline, a null compare); every `red:*` that reads an S5-changed file in its own
+  tree; four read-only reviews (server and data, player, admin and shared UI, dark-release safety).
+- Found: production `main` is red on `test:house-bot-rules` 11.5 and `test:house-bot-seam` 4.1, 4.2 and 6.g since
+  U43's `c29cb752` (`locks.ts`, `market-service.ts`; S5 touches neither). The U43 lane (Claude asheib-bb) owns that
+  repair and lands it on `main`; S5 then merges `main` again and repeats every gate the merge touches. S5 already
+  carries self-contained fixes for five of U43's reds (`342574e6`, `678314ca`, the watchlist half of `e3cb7acf`,
+  `0823ecc2`, `a075174d`); U43 takes or replaces them so that each red is fixed once.
+- Lanes on OMEGA: Maswali (asheib-65, `F:/kipindi-locks/mln-slot-1..4`), U43 (asheib-bb, slots 5–8), PHOSPHOR
+  (asheib-66, slots 9–12). `main-push.lock` as below; each lane messages the others before taking it. Release order
+  agreed: U43's CI repair → PHOSPHOR 2c+2d → S5 → PHOSPHOR 3.
+- **Ali's rulings of 2026-10-21** (COMPLIANCE-DECISIONS § "2026-10-21 · Maswali Millionea — staff preview after S5, no
+  separate drive-week buying phase, …"): STAFF_PREVIEW right after S5 is live; R10c closed — no staff-only buying
+  phase, Millionea opens to everyone at launch; the softer tab ink; the ruled sw/zh words final (no native review);
+  Finance confirmed OD-08 and MB-77; five days to answer a complaint; English "Buy ticket"; the old Codex branches
+  deleted. And his request: every Millionea surface rated 10/10 by a player, a UI/UX engineer and an animation
+  specialist, consistent with 50pick's design, before it ships — round 1 of the critics scored every surface; the fix
+  and design lanes are working from their reports.
+
+**Next:** Finish S5's gates on its exact release commit — after U43's repair lands, merge `main` again — every
+changed-file reader and mutation proof, current-`main` classic parity, the admin and player browser drives and
+tile reads (every page to its end, 320–1920 × en/sw/zh), the compiled responsive sweep (the leaderboard empty
+panel), the multi-slip drive, `test:all` with the database suites, typecheck, the exact-commit production build,
+bundle verification and local `qa:live`; fix what any of them or the reviews confirm. Recheck current `main` and
+`main-push.lock` before the push. Deploy S5 dark only after every gate passes, then AGENTS.md §4's three-host,
+health, chunk, live-QA and browser read-back. S7 follows on `claude/maswali-s7` (its held-winner settlement fix
+S7-F8 4 verified on both stores and under the 10,000-ticket load — see the STOPPED block above);
+S6 follows in L → D → R → N order. S8 remains at its owner and regulatory gates in §6. Do not flip the rollout as
+part of a dark release.
+
+## §0a · Historical handovers (superseded by §0 above)
+
+**Codex's S5 checkpoints (2026-10-20) — record.** Codex's state line of that day: the earlier ACTIVE player drive,
+WITHDRAWN-route drive and three-language player tile read passed; classic parity against the then-current `main`
+passed 67/67; the disposable-PostgreSQL money battery passed 198/198 on the integrated source.
+
+**Cross-device checkpoint (2026-10-20):** Fetch the remote branch
+`codex/maswali-coord-20261019` and read its HEAD; it merges U43 `a12f7b26`
+and hotfix `3ec111a83` above the
+clean S5 source commit `46135acdec22f9404decaac20f6d62ec4d6c0286` and its
+documentation checkpoint `d566067acf54808c90a9cb172b6592af763bb6ff`. This is
+a branch checkpoint, not a `main` release. The first clean two-store `test:all` baseline found four
+failures in the new work (the house-bot report line pin and visual passes R5-G,
+R8-B and R9-A); all four were repaired and their focused checks pass on the
+checkpoint. A subsequent exact-commit `46135acd` two-store `test:all` finished
+635/637 green: the only two reds were spacing-scale's stale 405 count and
+week-controls' stale `xs` token; both were corrected in the newer merged branch
+and their focused guards pass. The compiled `d566067a` responsive sweep found
+9 leaderboard empty-state heading alignment failures at tablet, laptop and
+desktop across all three languages (11,376 passes, 19 warnings); this remains
+open and must be fixed and rechecked. A real-browser `47a9d7f9` Swahili probe
+confirmed the five-tab rail and full `Juu na Chini` label fit at 320 and 360
+without overflow. None of those earlier-commit results substitutes for a fresh
+exact-commit two-store `test:all`, current-`main` classic
+parity, final 135-cell admin tile/tap sweep, compiled multi-slip browser drive,
+exact-commit build and local live QA are in progress or still owed. New devices
+must fetch the branch, recheck remote `main` and both shared locks, and use their
+own authorized nonpersonal GitHub credential; OMEGA's repository deploy key is
+local to that machine. U43 may advance `main` again for its hotfix, in which case merge its
+actual remote commit and repeat every affected release check. Never use the
+personal token offered in chat or write production data.
+
+**Latest S5 branch checkpoint (2026-10-20):** The coordinator branch now also
+contains the objection-rollback cache invalidation and seven-site freshness
+proof, repaired U43 RED anchors and post-commit watchlist assertion, the
+leaderboard empty-panel alignment and report/visual guard repairs, and
+versioned, input-validated admin seal corrections. These changes were tested
+with focused guards and mutation proofs on their source branches; the objection
+verdict memory test passed 75/75 and results freshness passed 59/59 in each
+store. Their combined exact commit still needs the full two-store suite,
+money battery, real-browser tile and responsive reads, typecheck, build and
+local live QA. The leaderboard fix still needs compiled-browser confirmation.
+U43 still owns `main-push.lock`; S5 has not pushed `main`, and Millionea remains
+`WITHDRAWN`. Fetch and read the remote coordinator branch HEAD rather than
+assuming an older hash in this section is final.
+The interrupted two-store run at `7f91c8ea9` recorded 264 passed checks and
+seven actual reds: house-bot-rules, house-bot-seam, results-freshness,
+wallet-status-writers, red-anchors, watchlist and report-parity. The latter
+five have focused fixes in the coordinator branch; the two house-bot guards
+still need diagnosis. The test process and its disposable PostgreSQL were
+stopped, and the run is not a final suite verdict.
+
 **⏹ STOPPED (2026-10-19, last updated ~13:45 UTC, OMEGA-COMPILE01 — the lead) — RESUME HERE, from any machine (Claude or
 Codex).** Ali, at the second wrap-up: *"push everything you have now live as it is, and give me a prompt for Codex to
 proceed after you."* This block supersedes the LIVE STATE below wherever they differ. Every branch named here is on origin
@@ -168,9 +378,9 @@ The State paragraph below is the last push's.)**
      `simple-journey-flag`, `visual-pass-r4i`, `-r6c`, `-r9c` (a five-label twin of §4's widths), and
      `qa-journey-shell.mjs`'s copy of the table. ⭐ The lead's ruling on the widths (measured with r9c's own model:
      with five tabs a slot is 72px at 360, and the Swahili "Tiketi zangu" needs 83.2): while five tabs show, the rail's
-     tickets tab carries a short Swahili label, "Tiketi" (its page keeps the title, as Juu/Chini's rail label is short),
-     so every label sits on one line from 360 (the English "My tickets" from 350); the centring thresholds re-derived
-     from the five real labels. **Then** the classic top
+     tickets tab carries a short Swahili label, "Tiketi" (its page keeps the title). U43's full "Juu na Chini" name
+     wraps on the five-tab rail below 416, with all pips top-aligned; English and Chinese centre from 317. The thresholds
+     are re-derived from the five real labels. **Then** the classic top
      bar's core link after Up & Down — Results folds into More at 1024–1279 only while Millionea shows, which needs
      More's lit state to know the band (at 1280 and up the hidden Results row would light More too) and its
      screen-reader text; the header-fit anchors and red read that file. Merge it into
@@ -190,7 +400,7 @@ The State paragraph below is the last push's.)**
      two-officer setting; the close retry is measured from the refusal; `/pools` shows unreadable figures as unknown;
      the holiday-save plant. ✅ **On the merged tree (`1b8744e8`, 18:24 UTC) the twelve derived checks that need no
      Postgres are green:** `test:house-bot-disclosure` (the D19a re-pin), `test:failure-reasons`, `test:i18n`,
-     `test:maswali-i18n`, `test:red-anchors`, `test:control-gates`, `test:privacy-notice`, `test:popup-fit`,
+     the maswali-i18n suite (S5's, its npm entry lands with S5), `test:red-anchors`, `test:control-gates`, `test:privacy-notice`, `test:popup-fit`,
      `test:maswali-design`, `test:maswali-ui`, `test:two-admin`, `test:bulk-resolve`.
      **Still owed on the merged tree:** `tsc`; the derived suites that need Postgres or a server — `test:maswali-purchase`
      (103/106), `test:maswali-player` (182/182), `test:maswali-adversarial` (185/193), `-config`, `-engine`, `-void`,
@@ -232,7 +442,7 @@ The State paragraph below is the last push's.)**
      `test:maswali-void`, `test:maswali-engine`, `test:maswali-player`, `test:house-bot-reports`,
      `red:maswali-money-path`, `test:failure-reasons`, `test:predictor-shown`, `test:bulk-resolve`, `test:one-sided`,
      `test:unsaved-changes`, `test:house-bot-console` (each with its red twin where one exists), `test:control-gates`,
-     `test:labels`, `test:overdue-format`, `test:house-bot-surfaces`, `test:i18n`, `test:maswali-i18n`,
+     `test:labels`, `test:overdue-format`, `test:house-bot-surfaces`, `test:i18n`, the maswali-i18n suite (lands with S5),
      `test:criterion-i18n`, `test:red-anchors`, `test:eyebrow-roles`, `test:maswali-settle`, `test:betting-ink`,
      `test:admin-action-gate`, `test:two-admin`, `tsc`, and a render of `/admin/resolver-queue` and `/admin/resolver/[id]`
      (the setting unknown and known) and `/admin/maswali/pools`. Then merge it into `mln-sf` (D19a re-pinned at the merge).
@@ -388,7 +598,7 @@ The State paragraph below is the last push's.)**
   reference (a date, a line reference, a plan, section or case id) is no figure.
 - **Gate B (before ACTIVE):** MB-23 the objection door; OD-26 the regulator's stop and a week void for a 50pick fault;
   MB-69 the rules version on each ticket; S7's three KNOWN-RED cases (§6.1 line 14 and `FAILURE-INVENTORY.md` §9, on
-  `mln-sf`); the restore runbook proves that backup artifacts carry and restore the database's functions and triggers.
+  `mln-sf`); the restore runbook re-applies the database's triggers and functions (a backup carries none).
 - **Helpers** follow AGENTS.md (the one rules file). On Ali-Blade15 (failing RAM) a lane writes and runs nothing — the
   lead runs every heavy job through `~/heavy-node-lock.sh`, one at a time — and spawns no agents; at most four agents per
   session. Each lane round is briefed from its independent review's findings.
@@ -523,8 +733,8 @@ The route:
 - **Merge and read-back.** Merge `origin/main` into `maswali-build`, push `main`, then read back production per AGENTS.md §4.
   `?dpl=` must match on all three hosts, health must pass, `qa:chunks-prod` and production `qa:live` must pass, the changed pages are looked
   at in a real browser, and every Millionea route must 404 while WITHDRAWN.
-- **Exception.** A docs-only push skips the build checks. Only the doc guards and the read-back run, under Ali's
-  efficiency ruling of 2026-10-10.
+- **Docs-only pushes.** Run the changed document guards and mutation proofs, plus AGENTS.md §4's typecheck,
+  exact-commit build, local `qa:live` and production read-back. Every `main` push deploys the real-money app.
 
 **Decisions taken under Ali's delegation (2026-10-17).** They are recorded here and in the v6 manifest's L-rows.
 1. **The won chip.** O-6's success chip is a Millionea-only `STATUS_TONE_EXCEPTIONS` row. Yes/No and Up & Down won
@@ -617,15 +827,15 @@ never build there. The repository is public: describe anti-abuse controls by wha
 | S0 | Rulings recorded; plan, board, pointers, guard, R2 commission filed | ✅ | de8a00619 (2026-10-16), merged to `main` the same day on Ali's word |
 | D1 | Design R2: the commission cut live and sent | ✅ | e224aef46 (2026-10-17): sent at stamp 72ca5cff9; its owner-ruling form answered the same day (§0) |
 | S0.5 | Fence the third product line | ✅ | 9834aaf0 (2026-10-17): the fence on both stores, its red twin 17/17, test:all and the money battery green, merged to `main` dark |
-| S1 | Law, config, accounts, schema, rollout switch | 🔨 | on `main` dark at `f312d652` (2026-10-18), with the S3 review's R1–R10: tsc, build, every two-store suite, the money battery and the render check green on the push; ✅ after `test:all` at the milestone close |
-| S2 | Week engine (no money, no UI) | 🔨 | on `main` dark at `f312d652` (2026-10-18), with the S3 review's R1–R10: tsc, build, every two-store suite, the money battery and the render check green on the push; ✅ after `test:all` at the milestone close |
-| S3 | Money path (local and throwaway PostgreSQL) | 🔨 | on `main` dark at `f312d652` (2026-10-18), with the S3 review's R1–R10: tsc, build, every two-store suite, the money battery and the render check green on the push; ✅ after `test:all` at the milestone close |
+| S1 | Law, config, accounts, schema, rollout switch | ✅ | on `main` dark at `f312d652` (2026-10-18); milestone close: source/database `test:all` 615/615 and its five server-bound browser suites individually green on S5's integrated tree |
+| S2 | Week engine (no money, no UI) | ✅ | on `main` dark at `f312d652` (2026-10-18); the same milestone battery closes its deferred `test:all` gate |
+| S3 | Money path (local and throwaway PostgreSQL) | ✅ | on `main` dark at `f312d652` (2026-10-18); the milestone battery and disposable PostgreSQL money, fault and card E2E are green |
 | D2 | Design R2: received and inherited | ✅ | 2b335451f (2026-10-17): filed raw at `design-system/v6-2026-10-17-millionea/` with its INHERIT-MANIFEST; no gate failed |
-| S4 | Admin console and operations | 🔨 | on `main` dark at `f312d652` (2026-10-18), with the S3 review's R1–R10: tsc, build, every two-store suite, the money battery and the render check green on the push; ✅ after `test:all` at the milestone close; the console's shots read tile by tile at 360/768/1280/1920 |
+| S4 | Admin console and operations | ✅ | on `main` dark at `f312d652` (2026-10-18); the milestone battery closes its deferred `test:all` gate, and the console's shots were read tile by tile at 360/768/1280/1920 |
 | D3 | Ali's N1–N4 rulings, filed in DESIGN_AUTHORITY and motion.css | ✅ | 2b6bf5bf (2026-10-17): DESIGN_AUTHORITY §M8a, COMPLIANCE-DECISIONS, the manifests, the agency note; the N-block lands in `motion.css` with its first consumer in S5 (`test:dead-css`) |
-| S5 | Player surfaces | 🔨 | components, read models, gate and actions on `main` dark at `f312d652`; the pages and every fix on `maswali-s4` `f54d5745`; the tab DONE on `mln-s5-tab` `85e67d9f`; the tile read’s fixes WIP on `mln-s5-vis-p` / `mln-s5-vis-r` (§0 ⏹); the staff preview after its batch |
-| S6 | Fairness, notices, reports, legal, data | 🔨 | legal + data squash-merged on `mln-s6-int` `81c60f0f`; reports round 15 accepted on `mln-s6-reports` `57624a2f`; notices round 17 in progress on `mln-s6-notices` `d6e4544d` (both BLOCKERs fixed) — §0 ⏹ |
-| S7 | Adversarial hardening | 🔨 | rounds 1–6 merged on `mln-sf` `55a5f6ce` with S7-F7 1–8, its derived list green; the merge with `main`, two long reds and the money battery left; lands after S5 — §0 ⏹ |
+| S5 | Player surfaces | 🔨 | on `claude/maswali-s5-release`, with the fix lanes and `main` `bfa0b7d57` merged (2026-10-21 PM) and the design lanes' 10/10 pass in flight; focused source and two-store action checks, the 198/198 disposable-PostgreSQL money battery, earlier player tiles and classic parity are green; final exact-commit suite, render, build, local live QA, dark deploy and production read-back remain |
+| S6 | Fairness, notices, reports, legal, data | 🔨 | legal + data squash-merged on `mln-s6-int` `81c60f0f`; reports round 15 accepted on `mln-s6-reports` `57624a2f`; notices round 17 complete on `mln-s6-notices` `bd74c982c` (both BLOCKERs fixed; its final-head checks owed) — §0 |
+| S7 | Adversarial hardening | 🔨 | on `claude/maswali-s7` at `2cba1f577`: F7 integrated, and S7-F8 1–6 — the held-winner release placed in 5 s sections of the lock (a 7,000-held week settles once in 81.6 s), measured on both stores and under the S16 10,000-ticket load; the S17 rush and the F7 6–8 render read are owed; lands after S5 |
 | S8 | Live drive and public launch | ⬜ | never before every §6 line is ticked |
 
 **Status values:** ⬜ not started (cites no commit) · 🔨 in progress · ✅ done (cites a commit that exists) · ⛔ blocked
@@ -1336,7 +1546,7 @@ R-LAUNCH means "launch once built and the drive passes". Real money enters at th
    - `journey-measures-dal.ts` filter live;
    - the launch date marked on the measures view;
    - VODACOM-PLAN §0 notified through the Vodacom lane, not edited by this lane.
-8. ☐ **Tax treatment ruled (OD-08)** and the reconciling lines live. Otherwise the first no-winner week jams locking and filing of the **whole** book. Withholding tax on winnings confirmed by Finance/TRA (MB-77).
+8. ☐ **Tax treatment ruled (OD-08)** and the reconciling lines live. Otherwise the first no-winner week jams locking and filing of the **whole** book. Withholding tax on winnings confirmed by Finance/TRA (MB-77). *(2026-10-21: Finance's confirmation of both is recorded on Ali's word — COMPLIANCE-DECISIONS § "2026-10-21 · Maswali Millionea — …"; the box ticks when S6's reconciling lines are live.)*
 9. ☐ **RULES §5 step 6** verified on production (database and screen). Both PDFs regenerated and rasterised.
 10. ☐ **Agent terms** version bumped per OD-20. Terms and Millionea rules versions effective at ACTIVE.
 11. ☐ **Monitoring and runbook:** alerts proven, operator guide published, support scripts live.
@@ -1387,33 +1597,17 @@ R-LAUNCH means "launch once built and the drive passes". Real money enters at th
 
 ### §7a · Branch and worktree strategy
 
-**Worktree.** S0 created `C:\50pick-ssd\kipindi-maswali` (OMEGA-COMPILE01) on branch `maswali-plan`. Once S0 is merged,
-the build reuses that worktree on a fresh branch:
-
-```
-git -C C:\50pick-ssd\kipindi-maswali fetch origin
-git -C C:\50pick-ssd\kipindi-maswali switch -c maswali-build origin/main
-cd C:\50pick-ssd\kipindi-maswali ; npm ci ; npx prisma generate
-```
-
-On another machine, create an equivalent SSD worktree off `origin/main` — a path is a fact about a machine (AGENTS.md
-§10), never copy one from here. **Ali-Blade15 (since 2026-10-17):**
-- **Worktree.** `git -C C:\kipindi-main worktree add -b maswali-build C:\kipindi-maswali origin/main`, then a real
-  `npm ci` and `prisma generate` under `~/heavy-node-lock.sh`.
-- **Never a `node_modules` junction.** Turbopack refuses one, and `npm ci` through one empties the other tree.
-- **The lock.** Heavy jobs take that laptop's lock (one at a time: its RAM fails under parallel load). The throwaway
-  PostgreSQL is `scripts/db-scratch.mts` (embedded, port 5433, override `KP_SCRATCH_PORT`).
-
-- `TEMP=C:\50pick-ssd\tmp`.
-- Copy the three MSVC DLLs into embedded-postgres `native/bin`.
-- Give the lane its own ports. Check that they are free; the suggestion is `next dev` on 3410 and the throwaway PostgreSQL on 55440.
-- Run one `next dev` in this worktree only.
-- `F:` is never used for builds, tests or servers.
+**Worktree.** Each active build session uses its own SSD worktree and branch, following AGENTS.md §§4 and 10. Check the
+actual host, path and branch in the shell before work; continue an existing on-board branch only after fetching current
+`main`. Install dependencies in that worktree after a dependency or schema change. On OMEGA-COMPILE01, keep builds, tests,
+servers and temporary files on the SSD; copy the three MSVC DLLs into embedded-postgres `native/bin` when needed. Check
+ports before use, and run only one `next dev` per worktree. Never delete a `node_modules` junction as if it were a folder.
 
 **Session start, every time:**
 
 1. `hostname && pwd && git rev-parse --show-toplevel && git branch --show-current && git status --short`.
-2. `git fetch origin`, then `git merge origin/main` into `maswali-build`. Rebase only if nothing has been pushed since the last merge.
+2. Fetch using the access AGENTS.md §9 permits, then bring current `origin/main` into this session's branch. Rebase only
+   if nothing has been pushed since its last merge.
 3. Read NEXT-PLAN ▶ 0i, then §0.
 
 **Commits:**
@@ -1423,8 +1617,9 @@ On another machine, create an equivalent SSD worktree off `origin/main` — a pa
 - Commit a type together with its users.
 
 **Pushes and merges:**
-- Non-release sessions push only `maswali-build`.
-- **Who merges (Ali, 2026-10-17):** *"any session that finishes, let it push … each session pushes whatever it finished, until the final session, who finishes everything, puts it live."* The session that finishes a green step merges `maswali-build` into `main` itself; the board records this beside its release-owner line. The release goes out per AGENTS.md §4: typecheck, `next build` at the exact commit, local `qa:live`, the deploy read-backs, and production `qa:live`. A docs-only push runs the doc guards and the read-back only (Ali's efficiency ruling, 2026-10-10).
+- Non-release sessions push only their own branches. The board names the sole release owner; the release owner alone
+  pushes `main` after the gates in AGENTS.md §4, including typecheck, exact-commit `next build`, local `qa:live`, deploy
+  read-backs and production `qa:live`. Docs-only pushes follow the same push gates.
 - A money session also runs `test:all`, `e2e:money`, `e2e:fault` and `e2e:card` on a throwaway PostgreSQL first.
 - Every push to `main` is a live deploy. Millionea is merged **dark**: the rollout ceiling is `WITHDRAWN` in code until S8.
 - Small, frequent merges keep the diff against the Vodacom lane small.

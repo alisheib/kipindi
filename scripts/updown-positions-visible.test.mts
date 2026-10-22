@@ -18,8 +18,9 @@
  * empty list and the page said they had no position on a round they had played.
  *
  * ⛔ WHAT THIS FILE MAY AND MAY NOT CLAIM. These are SOURCE assertions, so each one is
- * written to fail on the real pre-fix text — `scripts/updown-positions-visible-red.mjs`
- * restores that text verbatim and requires this suite to go red. A check that would pass
+ * written to fail on the real pre-fix visibility defects — `scripts/updown-positions-visible-red.mjs`
+ * restores those defects and plants named silent-read fallbacks on the current read paths.
+ * It requires this suite or the live read-fault guard to go red. A check that would pass
  * with the feature absent is worth nothing here, so every "the cap is gone" assertion is
  * paired with a positive control proving the file was actually read and understood.
  */
@@ -36,6 +37,7 @@ function ok(name: string, cond: boolean, detail?: string) {
 const HISTORY = "src/app/updown/history/page.tsx";
 const ROUND = "src/app/updown/[roundId]/page.tsx";
 const BOARD = "src/lib/server/updown-board.ts";
+const DAL = "src/lib/server/market-dal.ts";
 const DICT = "src/lib/i18n-dict.ts";
 
 /**
@@ -54,7 +56,23 @@ const DICT = "src/lib/i18n-dict.ts";
 const history = stripComments(readFileSync(HISTORY, "utf8"));
 const round = stripComments(readFileSync(ROUND, "utf8"));
 const board = stripComments(readFileSync(BOARD, "utf8"));
+const dal = stripComments(readFileSync(DAL, "utf8"));
 const dict = readFileSync(DICT, "utf8");
+const boardStakeRead = board.match(/async function myStakesByMarket\([\s\S]*?\n\}/)?.[0] ?? "";
+// 2026-10-21 · U43 Release B (4e9d9bcbe) moved the round detail's read: `getRoundDetail` takes the viewer's rows from the
+// SAME indexed snapshot the board card uses (`myStakesByMarket(userId, [r.marketId])` → one
+// `positionStore.listForUserAndMarket(userId, marketId)` per market), and `myPositionFor` became a pure function over
+// those rows. §3 and §4 below follow the read there; each property they guard still holds and is asserted on the new code.
+// Each body runs to the brace that stands ALONE on its line: both functions spell out an object return type whose own
+// closing brace also starts a line (`} | null {`).
+const roundDetail = board.match(/export async function getRoundDetail\([\s\S]*?\n\}\r?\n/)?.[0] ?? "";
+const positionFor = board.match(/\nfunction myPositionFor\([\s\S]*?\n\}\r?\n/)?.[0] ?? "";
+const storeObject = (name: string) => dal.match(new RegExp(`\\nconst ${name}: PositionStore = \\{[\\s\\S]*?\\n\\};`))?.[0] ?? "";
+const ownRead = (store: string) => store.match(/\n {2}async listForUserAndMarket\([^)]*\) \{[\s\S]*?\n {2}\},/)?.[0] ?? "";
+const memoryOwnRead = ownRead(storeObject("memoryPositions"));
+const prismaOwnRead = ownRead(storeObject("prismaPositions"));
+const DETAIL_READ = /const mine = userId \? \(await myStakesByMarket\(userId, \[r\.marketId\]\)\)\.get\(r\.marketId\) : undefined;/;
+const DETAIL_AGGREGATE = /const myPosition = myPositionFor\(mine\?\.positions, board\.settled\);/;
 
 console.log("\n── 1 · the history card renders EVERY bet ─────────────────────────\n");
 
@@ -103,8 +121,13 @@ ok("2.3 …and renders the notice when it did",
 
 console.log("\n── 3 · the round panel itemises, and the aggregate survives ───────\n");
 
+// 2026-10-21 · U43 Release B (4e9d9bcbe) names the panel's figure `resultAmount`: settlement's aggregate payout
+// (`myPosition?.payout`) for every result but a LOSS, which shows the stake lost; when a terminal row lacks its recorded
+// payout (`incompletePayout`) the panel says "payout unavailable" instead of printing the old `?? 0`, a zero nobody paid.
+// The aggregate is still the figure the result panel draws, through `formatTzs`.
 ok("3.0 positive control · the result panel still renders the aggregate payout",
-  /myPosition\.payout\s*\?\?\s*0/.test(round),
+  /const resultAmount = myPosition\?\.incompletePayout \? null\s*: result === "LOSS" \? myPosition\?\.stake \?\? null : myPosition\?\.payout \?\? null;/.test(round)
+  && /\{resultAmount == null \? t\.market\.udPayoutUnavailable : formatTzs\(resultAmount\)\}/.test(round),
   "the aggregate payout figure is gone — settlement's own number must stay");
 
 ok("3.1 every position is rendered",
@@ -135,8 +158,12 @@ ok("3.3 the itemised list reads STORED status — it derives no result of its ow
 
 console.log("\n── 4 · myPositionFor is scoped to the ROUND, not to a user cap ────\n");
 
+// 2026-10-21 · U43 Release B (4e9d9bcbe): `myPositionFor` is no longer async — it reads no store, it aggregates the
+// viewer's rows the detail already holds. The control now reads its body: the aggregate it returns and the hedge flag.
 ok("4.0 positive control · myPositionFor still exists and still returns the aggregate",
-  /async function myPositionFor\(/.test(board) && /hedged:/.test(board),
+  /\nfunction myPositionFor\(\s*positions: readonly StoredPosition\[\] \| undefined,/.test(positionFor)
+  && /return \{\s*side, stake, payout: anyPayout && !incompletePayout \? payout : null, result,/.test(positionFor)
+  && /hedged: up > 0 && down > 0/.test(positionFor),
   "myPositionFor was not found");
 
 // 🔴 THE DEFECT ITSELF: a global cap applied by the store, then filtered by market.
@@ -144,17 +171,47 @@ ok("4.1 it no longer takes the user's most-recent-N and filters by market",
   !/listPositionsForUser\([^)]*\)[^\n]*\.filter\(\(p\)\s*=>\s*p\.marketId === marketId\)/.test(board),
   "still capping across all rounds before filtering to this one");
 
+// 2026-10-21 · U43 Release B (4e9d9bcbe): the round detail asks for its ONE market through `myStakesByMarket`, whose only
+// position read is the indexed per-market `listForUserAndMarket` — and the detail reads no other position list at all.
 ok("4.2 it queries by market",
-  /listPositionsForMarket\(marketId\)/.test(board),
+  DETAIL_READ.test(roundDetail) && DETAIL_AGGREGATE.test(roundDetail)
+  && /\.map\(\(marketId\) => positionStore\.listForUserAndMarket\(userId, marketId\)\)/.test(boardStakeRead)
+  && !/listPositionsFor(?:User|Market)\(|\.listFor(?:User|Market|Markets)\(/.test(roundDetail),
   "the market-scoped query is not used");
 
+// 2026-10-21 · U43 Release B (4e9d9bcbe): the viewer filter moved from the page (`.filter(p => p.userId === userId)` over
+// every player's rows) into the read itself, so this check now proves the read cannot return anyone else's row: the
+// guest returns BEFORE any read (on PostgreSQL `where: { userId: undefined }` would match every player), the read is
+// keyed by this viewer, and BOTH stores behind `positionStore` filter on the user AND the market.
+// `test:updown-position-read-fail` drives the same property with a second player on the same round, on both stores.
 ok("4.3 …and still restricts to the viewer",
-  /listPositionsForMarket\(marketId\)[\s\S]{0,120}p\.userId === userId/.test(board),
+  /if \(!userId \|\| marketIds\.length === 0\) return out;[\s\S]*positionStore\.listForUserAndMarket\(userId, marketId\)/.test(boardStakeRead)
+  && /^import \{ marketStore, positionStore \} from "\.\/market-dal";\r?$/m.test(board)
+  && /export const positionStore: PositionStore = usePrisma \? prismaPositions : memoryPositions;/.test(dal)
+  && /return Array\.from\(positions\.values\(\)\)\.filter\(\(p\) => p\.userId === userId && p\.marketId === marketId\);/.test(memoryOwnRead)
+  && /\.position\.findMany\(\{ where: \{ userId, marketId \} \}\);/.test(prismaOwnRead),
   "the market query is not filtered to this user — that would leak other players");
 
 ok("4.4 it returns the itemised list",
   /items:\s*MyRoundPosition\[\]/.test(board) && /export type MyRoundPosition/.test(board),
   "items is not part of the contract");
+
+// A read error is not a player with no positions. All three routes have retry
+// boundaries, so signed-in reads must throw while guests keep their early return.
+ok("4.5 the board keeps the guest shortcut and propagates a signed-in read failure",
+  /if \(!userId \|\| marketIds\.length === 0\) return out;/.test(boardStakeRead)
+  && /const positions = \(await Promise\.all\(\[\.\.\.new Set\(marketIds\)\]\s*\.map\(\(marketId\) => positionStore\.listForUserAndMarket\(userId, marketId\)\)\)\)\.flat\(\);/.test(boardStakeRead)
+  && !/\.catch\(\(\) => \[\]\)/.test(boardStakeRead),
+  "the board may silently erase a signed-in player's stake");
+ok("4.6 the history read propagates failure instead of claiming no bets",
+  /export async function getMyUpDownHistory\([\s\S]{0,150}const positions = await listPositionsForUser\(userId, limit, "UPDOWN"\);/.test(board),
+  "the history may show an empty book after a failed read");
+// 2026-10-21 · U43 Release B (4e9d9bcbe): the guest shortcut is now the detail's own `userId ? … : undefined` (and
+// `myStakesByMarket`'s `!userId` return, 4.3), the signed-in read is awaited with no fallback (4.5 holds the reader
+// itself to no `.catch`), and no rows still means no position.
+ok("4.7 the round detail keeps the guest shortcut and propagates a signed-in read failure",
+  DETAIL_READ.test(roundDetail) && /if \(!positions\?\.length\) return null;/.test(positionFor),
+  "the round may hide a player's result after a failed read");
 
 console.log("\n── 5 · the copy exists in all three languages ─────────────────────\n");
 

@@ -89,8 +89,111 @@ function runSource(world: World, log: (l: string) => void): string[] {
     UNION.filter((s) => phase.roundIsSettled(s)).length === 2 && UNION.filter((s) => phase.roundIsSettled(s)).every((s) => verdict(s) === false));
   check("2.4 ⛔ a round whose window has not begun is never kept, whatever its state (`opensAt <= now` stays load-bearing)",
     ["open", "locked", "confirming"].every((s) => verdict(s, later) === false));
-  check("2.5 the current round is still the newest started one, and the one behind it shows only while confirming",
-    /const current = started\[0\] \?\? null;/.test(board) && /const justClosed = started\.slice\(1\)\.find\(\(r\) => r\.state === "confirming"\) \?\? null;/.test(board));
+  check("2.5 the current round is still the newest started one; the immediately previous round may confirm",
+    /const current = started\[0\] \?\? null;/.test(board)
+    && /const immediatePrevious = current/.test(board)
+    && /const justClosed = current\?\.state !== "confirming" && immediatePrevious\?\.state === "confirming"/.test(board));
+  return failed;
+}
+
+/* ── §3 · U43 frozen-pool payout gates, read and evaluated from the actual source ─────────────────────────────── */
+function runPayoutSource(world: World, log: (l: string) => void): string[] {
+  const failed: string[] = [];
+  const check = (id: string, cond: boolean) => {
+    log(`${cond ? "  ✓" : "  ✗"} ${id}`);
+    if (!cond) failed.push(id);
+  };
+  const source = ts.createSourceFile(BOARD, world.read(BOARD), ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const gates = new Map<string, (state: string, myStake: number, myUpStake: number, myDownStake: number) => boolean>();
+  const names = new Set(["myPayoutIfUp", "myPayoutIfDown", "myExactPayout"]);
+  function visit(node: ts.Node): void {
+    if (ts.isPropertyAssignment(node) && ts.isIdentifier(node.name) && names.has(node.name.text)
+      && ts.isConditionalExpression(node.initializer)) {
+      const condition = node.initializer.condition.getText(source);
+      try {
+        gates.set(node.name.text, new Function("state", "myStake", "myUpStake", "myDownStake", `return !!(${condition});`) as never);
+      } catch { /* the missing gate fails below */ }
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(source);
+  const gate = (name: string, state: string, stake: number, up = stake, down = 0): boolean | null => {
+    try { return gates.get(name)?.(state, stake, up, down) ?? null; } catch { return null; }
+  };
+  check("3.0 control · all three real payout gates were found", gates.size === 3);
+  for (const name of names) {
+    check(`3.1 ${name} · a holder keeps the quote in BOTH frozen states`,
+      gate(name, "locked", 2_000) === true && gate(name, "confirming", 2_000) === true);
+    check(`3.2 ${name} · open/settled and guest states cannot claim an exact payout`,
+      gate(name, "open", 2_000) === false && gate(name, "resolved", 2_000) === false
+        && gate(name, "confirming", 0, 0, 0) === false);
+  }
+  check("3.3 the one-number field remains silent for a hedged holder",
+    gate("myExactPayout", "locked", 3_000, 2_000, 1_000) === false
+      && gate("myExactPayout", "confirming", 3_000, 2_000, 1_000) === false);
+  return failed;
+}
+
+/* ── §4 · execute the board's real per-round observation mapper against an adversarial source ─────────────────── */
+async function runQuoteSource(world: World, log: (l: string) => void): Promise<string[]> {
+  const failed: string[] = [];
+  const check = (id: string, cond: boolean) => {
+    log(`${cond ? "  ✓" : "  ✗"} ${id}`);
+    if (!cond) failed.push(id);
+  };
+  const source = ts.createSourceFile(BOARD, world.read(BOARD), ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  let declaration: ts.FunctionDeclaration | null = null;
+  source.forEachChild((node) => {
+    if (ts.isFunctionDeclaration(node) && node.name?.text === "withRoundQuoteTimes") declaration = node;
+  });
+  if (!declaration) { check("4.0 control · the real mapper was found", false); return failed; }
+  const now = Date.now();
+  const at = (offset: number) => new Date(now + offset * 60_000).toISOString();
+  const open = at(-10), within = at(-7), close = at(-5), after = at(-4);
+  const quotedOpen = new Date(Date.parse(open) + 9_000).toISOString();
+  const quotedWithin = new Date(Date.parse(within) + 7_000).toISOString();
+  const observations = [
+    { id: "open", assetId: "asset", boundaryAt: open, state: "CONFIRMED", price: 62_500, sourceQuotedAt: quotedOpen },
+    { id: "within", assetId: "asset", boundaryAt: within, state: "CONFIRMED", price: 62_525, sourceQuotedAt: quotedWithin },
+    { id: "close", assetId: "asset", boundaryAt: close, state: "CONFIRMED", price: 62_570, sourceQuotedAt: close },
+    { id: "after", assetId: "asset", boundaryAt: after, state: "CONFIRMED", price: 63_000, sourceQuotedAt: after },
+  ];
+  let readsFail = false;
+  const observationStore = {
+    get: async (id: string) => observations.find((o) => o.id === id) ?? null,
+    list: async (opts: { assetId?: string; state?: string; boundaryFrom?: string; boundaryTo?: string; limit?: number }) => {
+      if (readsFail) throw new Error("fixture read failure");
+      return observations.filter((o) => (!opts.assetId || o.assetId === opts.assetId)
+        && (!opts.state || o.state === opts.state)
+        && (!opts.boundaryFrom || o.boundaryAt >= opts.boundaryFrom)
+        && (!opts.boundaryTo || o.boundaryAt <= opts.boundaryTo))
+        .sort((a, b) => b.boundaryAt.localeCompare(a.boundaryAt)).slice(0, opts.limit);
+    },
+  };
+  let map: ((round: unknown, stored: unknown) => Promise<any>) | null = null;
+  try {
+    map = compileModule(`const observationStore = require("obs");\n${declaration.getText(source)}\nexport { withRoundQuoteTimes };`, { obs: observationStore }).withRoundQuoteTimes;
+  } catch { /* control fails below */ }
+  check("4.0 control · the real mapper compiles with a stored-observation source", typeof map === "function");
+  if (!map) return failed;
+  const base = { roundId: "round", assetId: "asset", state: "confirming", openPrice: 62_500, closePrice: null };
+  const stored = { opensAt: open, closesAt: close, openObservationId: "open", closeObservationId: null,
+    openPrice: 62_500, closePrice: null };
+  try {
+    const result = await map(base, stored);
+    check("4.1 the latest asset read AFTER this round is excluded; the in-round price keeps its own time",
+      result.readPrice === 62_570 && result.readQuotedAt === close && result.openQuotedAt === quotedOpen
+        && result.readUnavailable === false);
+    const settled = await map({ ...base, state: "resolved", closePrice: 62_570 },
+      { ...stored, closeObservationId: "close", closePrice: 62_570 });
+    check("4.2 the settled card's closing time comes from its pinned close observation",
+      settled.closeQuotedAt === close && settled.readPrice === null && settled.readQuotedAt === null);
+    readsFail = true;
+    const unavailable = await map(base, stored);
+    check("4.3 a failed in-round read stays unknown, not 'no newer price'",
+      unavailable.readUnavailable === true && unavailable.readPrice === null && unavailable.readQuotedAt === null
+        && unavailable.openQuotedAt === quotedOpen);
+  } catch { check("4.4 the mapper completed its reads", false); }
   return failed;
 }
 
@@ -104,6 +207,7 @@ if (PROVE_RED) {
   const control = runSource(real, () => {});
   console.log(`control (the real tree): ${control.length === 0 ? "every §2 check passes" : `FAILS ${control.join(", ")}`}`);
   let missed = control.length ? 1 : 0;
+  let totalPlants = 0;
   const KEEP = "(r) => !roundIsSettled(r.state) && Date.parse(r.opensAt) <= nowMs,";
   const plants: Array<[string, string, string, string]> = [
     ["the pre-fix filter: open and confirming only (the lock window dropped)", KEEP, '(r) => (r.state === "open" || r.state === "confirming") && Date.parse(r.opensAt) <= nowMs,', "2.1"],
@@ -113,12 +217,42 @@ if (PROVE_RED) {
     ["the oldest started round made current", "const current = started[0] ?? null;", "const current = started[started.length - 1] ?? null;", "2.5"],
   ];
   for (const [name, from, to, want] of plants) {
+    totalPlants++;
     const failed = runSource(planted(from, to), () => {});
     const hit = failed.some((f) => f.startsWith(want));
     console.log(`${hit ? "PROVED" : "MISSED"} ${name} → ${want} (${failed.join(", ") || "nothing failed"})`);
     if (!hit) missed++;
   }
-  console.log(`\nupdown-lock-window red: ${plants.length} plants; control ${control.length === 0 ? "green" : "RED"}; ${missed === 0 ? "every plant caught" : `${missed} problem(s)`}`);
+  const payoutControl = runPayoutSource(real, () => {});
+  if (payoutControl.length) missed++;
+  console.log(`payout control: ${payoutControl.length === 0 ? "green" : `RED ${payoutControl.join(", ")}`}`);
+  for (const name of ["myPayoutIfUp", "myPayoutIfDown", "myExactPayout"]) {
+    totalPlants++;
+    const from = name === "myExactPayout"
+      ? `    ${name}:\n      (state === "locked" || state === "confirming") && myStake > 0 && (myUpStake === 0 || myDownStake === 0)`
+      : `    ${name}:\n      (state === "locked" || state === "confirming") && myStake > 0`;
+    const to = from.replace('(state === "locked" || state === "confirming")', 'state === "locked"');
+    const failed = runPayoutSource(planted(from, to), () => {});
+    const hit = failed.some((f) => f.startsWith(`3.1 ${name}`));
+    console.log(`${hit ? "PROVED" : "MISSED"} confirming quote removed from ${name} → 3.1 (${failed.join(", ") || "nothing failed"})`);
+    if (!hit) missed++;
+  }
+  const quoteControl = await runQuoteSource(real, () => {});
+  if (quoteControl.length) missed++;
+  console.log(`round quote control: ${quoteControl.length === 0 ? "green" : `RED ${quoteControl.join(", ")}`}`);
+  for (const [name, from, to, want] of [
+    ["the round read loses its close bound", "boundaryTo: new Date(endMs).toISOString(), limit: 1", "limit: 1", "4.1"],
+    ["the newer price inherits the opening stamp", "readQuotedAt: newerInRound ? sourceTime(newer!.sourceQuotedAt) : null", "readQuotedAt: newerInRound ? sourceTime(openObs!.sourceQuotedAt) : null", "4.1"],
+    ["the closing stamp comes from the opening observation", "? sourceTime(closeObs.sourceQuotedAt) : null,", "? sourceTime(openObs!.sourceQuotedAt) : null,", "4.2"],
+    ["a failed read is called empty", "readUnavailable: recent === null", "readUnavailable: false", "4.3"],
+  ]) {
+    totalPlants++;
+    const failed = await runQuoteSource(planted(from, to), () => {});
+    const hit = failed.some((f) => f.startsWith(want));
+    console.log(`${hit ? "PROVED" : "MISSED"} ${name} → ${want} (${failed.join(", ") || "nothing failed"})`);
+    if (!hit) missed++;
+  }
+  console.log(`\nupdown-lock-window red: ${totalPlants} plants; control ${control.length === 0 && payoutControl.length === 0 && quoteControl.length === 0 ? "green" : "RED"}; ${missed === 0 ? "every plant caught" : `${missed} problem(s)`}`);
   process.exit(missed === 0 ? 0 : 1);
 }
 
@@ -258,10 +392,88 @@ try {
     guest.rounds[0]?.roundId === roundId && guest.rounds[0].state === "locked" && guest.rounds[0].myUpStake === 0);
   ok("1.8 nothing invented: no multiplier field rides the round, and the pool is the stakes placed",
     !!row && !("estMultiplier" in row) && row.pricing.upPool === 2_000 && row.pricing.downPool === 3_000, J(row?.pricing));
+  ok("1.8 U43 · the opening source time is pinned to THIS round's opening observation",
+    row?.openQuotedAt === round.data.opensAt && row.readPrice === null && row.readQuotedAt === null,
+    J(row && [row.openQuotedAt, row.readPrice, row.readQuotedAt]));
+
+  // A different observation after this round closes becomes the asset's latest,
+  // while the card must continue to show its own newer read and its own time.
+  const withinAt = new Date(Date.parse(round.data.opensAt) + 60_000).toISOString();
+  const withinQuotedAt = new Date(Date.parse(withinAt) + 7_000).toISOString();
+  const afterAt = new Date(Date.parse(round.data.closesAt) + 60_000).toISOString();
+  const within = await UD.observationStore.ensure(asset.data.id, withinAt);
+  await UD.observationStore.confirm(within.id, { price: 62_525, sourceUrl: asset.data.priceSourceUrl,
+    sourceQuotedAt: withinQuotedAt, evidence: "within", confidence: 95, model: "t", rawHash: `within-${roundId}` });
+  const after = await UD.observationStore.ensure(asset.data.id, afterAt);
+  await UD.observationStore.confirm(after.id, { price: 63_000, sourceUrl: asset.data.priceSourceUrl,
+    sourceQuotedAt: afterAt, evidence: "later", confidence: 95, model: "t", rawHash: `later-${roundId}` });
+
+  // U43 · Settlement waits for a source reading after the boundary. The market has stopped
+  // accepting stakes, so the same frozen-pool quote must survive the locked → confirming
+  // transition. Move only the read clock: the fixture's round and money rows stay real.
+  const clock = Date.now;
+  let confirming: Awaited<ReturnType<typeof getBoard>> | null = null;
+  let confirmingDetail: Awaited<ReturnType<typeof getRoundDetail>> = null;
+  let confirmingGuest: Awaited<ReturnType<typeof getBoard>> | null = null;
+  try {
+    Date.now = () => Date.parse(round.data.closesAt) + 1_000;
+    confirming = await getBoard({ assetKey: KEY, durationMinutes: 5, userId: holder });
+    confirmingDetail = await getRoundDetail(roundId, holder);
+    confirmingGuest = await getBoard({ assetKey: KEY, durationMinutes: 5 });
+  } finally {
+    Date.now = clock;
+  }
+  const confirmingRow = confirming?.rounds.find((r) => r.roundId === roundId);
+  const confirmingGuestRow = confirmingGuest?.rounds.find((r) => r.roundId === roundId);
+  ok("1.9 U43 · the round remains current while its final price is confirming",
+    confirming?.rounds[0]?.roundId === roundId && confirmingRow?.state === "confirming",
+    J(confirming?.rounds.map((r) => [r.roundId === roundId ? "ROUND" : "PREV", r.state])));
+  ok("1.10 U43 · the frozen-pool pair survives locked → confirming unchanged on board and detail",
+    row != null && confirmingRow?.myPayoutIfUp === row.myPayoutIfUp
+      && confirmingRow?.myPayoutIfDown === row.myPayoutIfDown
+      && confirmingDetail?.round.state === "confirming"
+      && confirmingDetail.round.myPayoutIfUp === row.myPayoutIfUp
+      && confirmingDetail.round.myPayoutIfDown === row.myPayoutIfDown,
+    J({ locked: row && [row.myPayoutIfUp, row.myPayoutIfDown], board: confirmingRow && [confirmingRow.myPayoutIfUp, confirmingRow.myPayoutIfDown], detail: confirmingDetail?.round && [confirmingDetail.round.myPayoutIfUp, confirmingDetail.round.myPayoutIfDown] }));
+  ok("1.11 U43 · the one-number quote survives too, while guests receive no payout quote",
+    row != null && confirmingRow?.myExactPayout === row.myExactPayout
+      && confirmingGuestRow?.state === "confirming"
+      && confirmingGuestRow.myPayoutIfUp === null && confirmingGuestRow.myPayoutIfDown === null
+      && confirmingGuestRow.myExactPayout === null,
+    J({ one: confirmingRow?.myExactPayout, guest: confirmingGuestRow && [confirmingGuestRow.myPayoutIfUp, confirmingGuestRow.myPayoutIfDown, confirmingGuestRow.myExactPayout] }));
+  ok("1.12 U43 · the round's newer price and source time stay paired, excluding a later asset quote",
+    confirming?.activeAsset?.livePrice === 63_000
+      && confirmingRow?.readPrice === 62_525 && confirmingRow.readQuotedAt === withinQuotedAt
+      && confirmingDetail?.round.readPrice === 62_525 && confirmingDetail.round.readQuotedAt === withinQuotedAt
+      && confirmingRow.openQuotedAt === round.data.opensAt && confirmingRow.closeQuotedAt === null,
+    J({ assetLatest: confirming?.activeAsset?.livePrice, board: confirmingRow && [confirmingRow.readPrice, confirmingRow.readQuotedAt], detail: confirmingDetail?.round && [confirmingDetail.round.readPrice, confirmingDetail.round.readQuotedAt] }));
+
+  const savedList = UD.observationStore.list;
+  try {
+    UD.observationStore.list = async (opts) => {
+      if (opts?.boundaryTo) throw new Error("fixture observation read failure");
+      return savedList(opts);
+    };
+    Date.now = () => Date.parse(round.data.closesAt) + 1_000;
+    const failedRead = await getRoundDetail(roundId, holder);
+    ok("1.13 U43 · a failed read is unavailable, never falsely 'no newer price'",
+      failedRead?.round.readUnavailable === true && failedRead.round.readPrice === null
+        && failedRead.round.readQuotedAt === null && failedRead.round.openQuotedAt === round.data.opensAt,
+      J(failedRead?.round && [failedRead.round.readUnavailable, failedRead.round.readPrice, failedRead.round.readQuotedAt]));
+  } finally {
+    Date.now = clock;
+    UD.observationStore.list = savedList;
+  }
 
   console.log("\n§2 · the source");
   const failed2 = runSource({ read: readRaw }, (l) => console.log(l));
   for (const id of ["2.0", "2.1", "2.2", "2.3", "2.4", "2.5"]) ok(`§${id} (see above)`, !failed2.some((f) => f.startsWith(id)));
+  console.log("\n§3 · frozen-pool payout gates");
+  const failed3 = runPayoutSource({ read: readRaw }, (l) => console.log(l));
+  ok("§3 source gates all hold", failed3.length === 0, failed3.join(", "));
+  console.log("\n§4 · per-round source reads");
+  const failed4 = await runQuoteSource({ read: readRaw }, (l) => console.log(l));
+  ok("§4 round quote provenance holds", failed4.length === 0, failed4.join(", "));
 } finally {
   try { await appPrisma?.$disconnect(); } catch { /* nothing to close */ }
   if (DB) {

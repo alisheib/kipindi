@@ -223,7 +223,7 @@ export function WalletBalancePill({ balance, held = false }: { balance: number; 
         background: "var(--bg-inset)",
         boxShadow: flashing
           ? "0 0 0 3px color-mix(in oklab, var(--gold-300) 22%, transparent), inset 0 0 0 1px var(--gold-300)"
-          : "inset 0 0 0 1px oklch(78% 0.13 80 / 0.35)",
+          : "inset 0 0 0 1px color-mix(in oklab, var(--border-gold) 35%, transparent)",
         transitionDuration: "260ms",
       }}
       data-testid="wallet-balance-capsule"
@@ -266,8 +266,7 @@ export function WalletBalancePill({ balance, held = false }: { balance: number; 
         // clipped, so a `right <= viewport` check passed it. The check was wrong, not the
         // layout: a bar must end where its container ends.
         "pl-1.5 pr-1 text-caption sm:pl-3 sm:pr-2.5 sm:text-label",
-        // ⭐ R1 · THE FIGURE IS GOLD — it is money (the delivery's law: gold only on money — pools,
-        // paid out, balance, Deposit). The currency word stays in muted ink, so the number carries the metal.
+        // The figure carries the balance's earlier gold treatment; the currency word stays muted.
         "cursor-pointer text-gold-300 hover:text-gold-200",
       )}
       style={{ gap: 7, transitionDuration: "260ms" }}
@@ -412,10 +411,7 @@ export function WalletBalancePill({ balance, held = false }: { balance: number; 
           ⛔ EVERY NUMBER IS AN ARBITRARY LITERAL ON PURPOSE. `theme.extend.spacing` is
           overridden (tailwind.config.ts): `h-11` is 96px and `w-7` is 40px, so a scale token
           would ship a 96×40 control while the class list still read correct.
-          ⚠️ `hover:text-gold-200` is not decoration — `CashEye`'s own base carries
-          `hover:text-text`, which would flip this gold control to WHITE on hover and make it
-          look like a different control mid-interaction. Overriding the hover with a BRIGHTER
-          gold keeps the ink's meaning and still answers the pointer.
+          The eye shares the capsule's gold ink and brightens on hover.
           ⛔ PV-13a (2026-09-03) — `h-[42px]` WAS HAND-TYPED HERE, 2px off the 40/44 rung
           ladder (§K1), on every top bar (measured on production: 42px inside a 44px
           capsule — the comment three lines up already said "44px tall is the WCAG 2.5.5

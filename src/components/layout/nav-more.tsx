@@ -31,6 +31,7 @@ export function NavMore({
   label,
   variant = "bar",
   active,
+  current,
   cardSpacing,
 }: {
   /** `ink`: the row's words in Millionea's ink (`kp-millionea-ink`, globals.css; Ali, 2026-10-19, §M8a item 11) — the one
@@ -43,6 +44,9 @@ export function NavMore({
   variant?: "bar" | "rail";
   /** Rail only: `More` reads as current when the page behind it is one of its own. */
   active?: boolean;
+  /** Rail only (MASWALI-BUILD S5-FIX-PLATFORM D13): the row that stands for the page when the page is none of the rows'
+   *  own — a Millionea page on a break, whose tickets are Positions' — so the open menu shows the row the rail lit. */
+  current?: string | null;
   /** Rail only: the phone's "Card spacing" switch as the menu's first row (Mobile Visual Plan U2). Off by default,
    *  so the top-bar menu never grows it. */
   cardSpacing?: boolean;
@@ -203,7 +207,7 @@ export function NavMore({
               );
             })()}
             {items.map((it) => {
-              const a = pathname.startsWith(it.href);
+              const a = pathname.startsWith(it.href) || it.href === current;
               return (
                 <Link
                   key={it.href}

@@ -23,6 +23,7 @@ import { resolvePhoneEmail } from "./email-map";
 import { isSuppressed } from "./email-suppression";
 import { appUrl } from "@/lib/app-url";
 import { formatTzs } from "@/lib/utils";
+import { emergencyRefundDestination } from "@/lib/emergency-refund-destination";
 // R5-B (2026-10-09, F9): a day a letter states, in each of its lines' own words (`agentRevokedHtml`) — the notice's rule.
 // R6-A (2026-10-09, A1): and the end of a break or an exclusion, with its time (`rgEndIn`) — the bell's rule.
 import { formatEatDate, formatEatDateTime } from "@/lib/eat-day";
@@ -63,12 +64,11 @@ import { SUPPORT_EMAIL } from "@/lib/server/support-config";
 import { SOCIAL, SOCIAL_LIVE } from "@/lib/social";
 
 /**
- * The social labels as they appear in email. ⛔ NOT from `i18n-dict.ts`, and that is not an
- * oversight: this shell is not translated through the dictionary at all — it writes English
- * with a Swahili line beside it (`subtitleSw`), because §11 of the agent programme rules
- * emails EN + SW and no Chinese. These two are company names and read identically in every
- * language, which is the same reason `footer.instagram` / `footer.tiktok` are the only two
- * footer keys on the `IDENTICAL_OK` list in `scripts/i18n-parity.test.mts`.
+ * The social labels as they appear in email. These company names read identically
+ * in every language, which is why `footer.instagram` / `footer.tiktok` are on the
+ * `IDENTICAL_OK` list in `scripts/i18n-parity.test.mts`. The older mail shell uses
+ * English with a Swahili line; changed player-money copy also includes Chinese,
+ * as the current AGENTS.md language rule requires.
  */
 const SOCIAL_EMAIL_LABEL: Record<(typeof SOCIAL)[number]["labelKey"], string> = {
   instagram: "Instagram",
@@ -1598,38 +1598,42 @@ export function marketResolutionAdminHtml({ title, closedAt, reviewUrl }: {
 
 /**
  * Player email when a market is cancelled (emergency void). States the admin's
- * REASON and confirms the full stake was refunded to their wallet.
+ * REASON and the funding split credited at refund time. A later bonus
+ * re-lock can change the current withdrawable balance.
  */
-export function marketCancelledRefundHtml({ title, reason, amount, reference }: {
-  title: string; reason: string; amount: number; reference: string;
+export function marketCancelledRefundHtml({ title, reason, amount, bonusStakeTzs, reference }: {
+  title: string; reason: string; amount: number; bonusStakeTzs: number; reference: string;
 }): string {
+  const destination = emergencyRefundDestination(amount, bonusStakeTzs);
   return wrap(`
     ${eyebrow("Market cancelled · Soko limefutwa")}
     ${heading("Your stake has been refunded")}
-    ${subtitle(`We had to cancel a market you'd staked on. Your full stake has been returned to your 50pick wallet — you've lost nothing.`)}
-    ${subtitleSw("Tumelazimika kufuta soko ulilokuwa umeweka dau. Dau lako lote limerejeshwa kwenye pochi yako.")}
+    ${subtitle(`We had to cancel a market you staked on. ${destination.en}`)}
+    ${subtitleSw(`Tumelazimika kufuta soko uliloweka dau. ${destination.sw}`)}
+    ${subtitle(destination.zh)}
     ${detailRows([
       { label: "Market", value: title },
       { label: "Reason", value: reason },
-      { label: "Refunded to wallet", value: formatTzs(amount), tone: "good" },
+      ...(destination.real > 0 ? [{ label: "Credited to main at refund", value: formatTzs(destination.real), tone: "good" as const }] : []),
+      ...(destination.bonus > 0 ? [{ label: "Credited to bonus at refund", value: formatTzs(destination.bonus), tone: "good" as const }] : []),
       { label: "Reference", value: reference },
     ])}
     ${ctaButton("/wallet", "View wallet · Pochi")}
   `);
 }
 
-/** Officer email confirming an emergency void completed (with the reason). */
+/** Officer email: refundedCount counts open stakes, not distinct players. */
 export function marketCancelledAdminHtml({ title, reason, refundedCount, refundedTzs }: {
   title: string; reason: string; refundedCount: number; refundedTzs: number;
 }): string {
   return wrap(`
     ${eyebrow("Market cancelled · confirmation")}
-    ${heading("Market voided & players refunded")}
-    ${subtitle("An emergency void completed successfully. Every open stake was refunded in full and the market is closed.")}
+    ${heading("Market voided and open stakes refunded")}
+    ${subtitle("An emergency void completed successfully. Every still-open stake was refunded in full; earlier cash-outs kept their paid amount.")}
     ${detailRows([
       { label: "Market", value: title },
       { label: "Reason", value: reason },
-      { label: "Players refunded", value: String(refundedCount) },
+      { label: "Stakes refunded", value: String(refundedCount) },
       { label: "Total refunded", value: formatTzs(refundedTzs) },
     ])}
     ${ctaButton("/admin/markets", "Open markets")}

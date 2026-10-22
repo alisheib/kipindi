@@ -82,10 +82,8 @@ function Items({ events, prefix, verbs, sides }: { events: TickerEvent[]; prefix
             </>
           )}
           <span className="text-text-muted"> {verbs.on} {ev.title}</span>
-          {/* Stage 9b — kit <Dot>. `color` rather than `tone="gold"`: the separator is
-              gold-400, one stop lighter than the tone's gold-500, and a consolidation
-              does not get to change a hue on the way past. */}
-          <Dot color="var(--gold-400)" size={3} className="ticker-sep opacity-40 ml-2" />
+          {/* The separator is chrome, so it uses neutral ink. */}
+          <Dot color="var(--text-subtle)" size={3} className="ticker-sep opacity-40 ml-2" />
         </span>
       ))}
     </>
@@ -265,11 +263,9 @@ export function LiveTicker({ events, journey = false }: { events: TickerEvent[];
           rule an inline style would have beaten. */}
       <div className="ticker-label">
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-          {/* Stage 9b — kit <Dot pulse>, which IS `.live-dot`: same 6px, same
-              `--live-400`, same 2600ms breathe, and the same gating at all three
-              reduced-motion tiers. */}
-          <Dot tone="live" size={6} pulse />
-          <span className="font-mono text-micro font-semibold uppercase tracking-[0.1em] text-[var(--live-400)]">
+          {/* LIVE is a status, not one of the two betting sides. */}
+          <Dot tone="neutral" size={6} pulse />
+          <span className="font-mono text-micro font-semibold uppercase tracking-[0.1em] text-text-subtle">
             {t.common.live}
           </span>
         </span>

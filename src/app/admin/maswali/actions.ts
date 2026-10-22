@@ -10,36 +10,47 @@
  * ⛔ The services decide; these only parse the form, call one service and report its words. A refusal is the service's
  *    own sentence, never a generic failure.
  */
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { safeError } from "@/lib/server/safe-error";
 import { requireStaff } from "@/lib/server/rbac-guard";
 import { CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import {
-  attestParity, confirmSeal, correctSeal, createWeek, editDraftQuestion, moveClose, openWeek, sealQuestion,
+  attestParity, confirmSeal, correctSeal, createWeek, editDraftQuestions, moveClose, openWeek, sealQuestion,
   type DraftQuestionInput,
 } from "@/lib/server/maswali-service";
 import { guaranteeReader } from "@/lib/server/maswali-money-service";
 import { noteSealDevice } from "@/lib/server/maswali-integrity";
 import { saveMaswaliConfig } from "@/lib/server/maswali-config";
 import { saveMaswaliHolidays } from "@/lib/server/maswali-holidays";
+import { applySealBatch, CONFIRM_AUDIT_WARNING, parseSealRows, SEAL_AUDIT_WARNING, type SealBatchResult } from "@/lib/maswali-seal-batch";
 import { clientMeta } from "@/lib/server/auth-service";
 import { eatWeekStartMs } from "@/lib/eat-day";
+import { MASWALI_PUBLIC_WEEK_QUESTIONS_TAG } from "@/lib/server/maswali-player";
 import type { MaswaliOutcome } from "@/lib/maswali-score";
 import { parseHolidayList, parseRulesForm } from "./rules-form";
 
-type ActionResult = { ok: true; weekId?: string } | { ok: false; error: string; field?: string };
+type ActionResult = { ok: true; weekId?: string; recorded?: boolean; auditWarning?: string | null } | { ok: false; error: string; field?: string };
 
 const refresh = (weekId?: string) => {
+  // A newly opened set or a seal must be visible on the next read, including across different readers' requests.
+  revalidateTag(MASWALI_PUBLIC_WEEK_QUESTIONS_TAG, { expire: 0 });
   revalidatePath("/admin/maswali");
   if (weekId) revalidatePath(`/admin/maswali/${weekId}`);
   // MASWALI-BUILD S5 · an open, a moved close or a seal changes what the hub, a ticket and the register state (MB-97).
   revalidatePath("/millionea", "layout");
 };
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
+/** A landed attestation whose audit row was not written (the attestation itself stands on the week). */
+const ATTEST_AUDIT_WARNING = "The attestation landed, but its audit record could not be written. Tell an administrator; do not attest it again.";
+/** S5-FIX-SRV · a landed open, or a landed move of the close, whose audit rows were not all written (the act stands). */
+const OPEN_AUDIT_WARNING = "The open landed, but its audit record could not be fully written. Tell an administrator; do not repeat the open.";
+const MOVE_AUDIT_WARNING = "The move landed, but its audit record could not be fully written. Tell an administrator; do not repeat the move.";
 /** MB-94 · where a seal came from, noted after it landed (never blocking it). */
-const noteDevice = async (officerId: string, weekId: string, slots: number[]) => {
-  const meta = await clientMeta();
-  await noteSealDevice({ officerId, weekId, slots, ip: meta.ip, userAgent: meta.ua });
+const noteDevice = async (officerId: string, weekId: string, slots: number[]): Promise<boolean> => {
+  try {
+    const meta = await clientMeta();
+    return await noteSealDevice({ officerId, weekId, slots, ip: meta.ip, userAgent: meta.ua });
+  } catch { return false; }
 };
 
 /** The builder posts its fifteen rows as one JSON field; anything that is not that shape is refused, never coerced. */
@@ -63,26 +74,30 @@ export async function createMaswaliWeekAction(formData: FormData): Promise<Actio
     const visibility = str(formData, "visibility") === "DRIVE" ? "DRIVE" : "PUBLIC";
     const r = await createWeek({ weekStartMs: ms, visibility, questions, officerId: session.userId });
     if (!r.ok) return { ok: false, error: r.error };
-    refresh(r.week.id);
-    return { ok: true, weekId: r.week.id };
+    try { refresh(r.week.id); } catch { /* The draft is already stored; the client refreshes too. */ }
+    return { ok: true, weekId: r.week.id, recorded: r.recorded };
   } catch (err) {
     return { ok: false, error: safeError(err, "The week could not be drafted") };
   }
 }
 
-export async function editMaswaliQuestionAction(formData: FormData): Promise<ActionResult> {
-  const session = await requireStaff(CONTROL_DOMAIN.editMaswaliQuestion, "editMaswaliQuestion");
+/** One builder submission, one service decision and one transaction for all changed slots. */
+export async function editMaswaliQuestionsAction(formData: FormData): Promise<ActionResult> {
+  const session = await requireStaff(CONTROL_DOMAIN.editMaswaliQuestion, "editMaswaliQuestions");
   const weekId = str(formData, "weekId");
   try {
-    const slot = Number(str(formData, "slot"));
-    let changes: Partial<DraftQuestionInput>;
-    try { changes = JSON.parse(str(formData, "changes")) as Partial<DraftQuestionInput>; } catch { return { ok: false, error: "The change could not be read." }; }
-    const r = await editDraftQuestion({ weekId, slot, changes, officerId: session.userId });
+    let edits: unknown;
+    try { edits = JSON.parse(str(formData, "edits")); } catch { return { ok: false, error: "The changes could not be read." }; }
+    if (!Array.isArray(edits) || edits.length < 1 || edits.length > 15 || edits.some((edit) => !edit || typeof edit !== "object" || Array.isArray(edit)
+      || !Number.isInteger(edit.slot) || !edit.changes || typeof edit.changes !== "object" || Array.isArray(edit.changes))) {
+      return { ok: false, error: "Choose one to fifteen changed questions to save." };
+    }
+    const r = await editDraftQuestions({ weekId, edits, officerId: session.userId });
     if (!r.ok) return { ok: false, error: r.error };
-    refresh(weekId);
-    return { ok: true, weekId };
+    try { refresh(weekId); } catch { /* The questions are already saved; the client refreshes too. */ }
+    return { ok: true, weekId, recorded: r.recorded };
   } catch (err) {
-    return { ok: false, error: safeError(err, "The question could not be saved") };
+    return { ok: false, error: safeError(err, "The questions could not be saved") };
   }
 }
 
@@ -90,10 +105,11 @@ export async function attestMaswaliParityAction(formData: FormData): Promise<Act
   const session = await requireStaff(CONTROL_DOMAIN.attestMaswaliParity, "attestMaswaliParity");
   const weekId = str(formData, "weekId");
   try {
-    const r = await attestParity({ weekId, officerId: session.userId });
+    // A4 · the draft's version the reader's page was drawn from: an edit landed since refuses the attestation.
+    const r = await attestParity({ weekId, officerId: session.userId, readVersion: str(formData, "readVersion") });
     if (!r.ok) return { ok: false, error: r.error };
-    refresh(weekId);
-    return { ok: true, weekId };
+    try { refresh(weekId); } catch { /* The attestation already landed; the client refreshes too. */ }
+    return { ok: true, weekId, auditWarning: r.recorded ? null : ATTEST_AUDIT_WARNING };
   } catch (err) {
     return { ok: false, error: safeError(err, "The attestation could not be recorded") };
   }
@@ -105,8 +121,8 @@ export async function openMaswaliWeekAction(formData: FormData): Promise<ActionR
   try {
     const r = await openWeek({ weekId, officerId: session.userId, guarantee: guaranteeReader });
     if (!r.ok) return { ok: false, error: r.error };
-    refresh(weekId);
-    return { ok: true, weekId };
+    try { refresh(weekId); } catch { /* The week is already open; the client refreshes too. */ }
+    return { ok: true, weekId, auditWarning: r.recorded ? null : OPEN_AUDIT_WARNING };
   } catch (err) {
     return { ok: false, error: safeError(err, "The week could not be opened") };
   }
@@ -119,23 +135,14 @@ export async function moveMaswaliCloseAction(formData: FormData): Promise<Action
     const at = str(formData, "closeAt"); // YYYY-MM-DDTHH:MM in EAT
     const ms = Date.parse(`${at}:00+03:00`);
     if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(at) || !Number.isFinite(ms)) return { ok: false, error: "Give the new close as a date and a time (EAT)." };
-    const r = await moveClose({ weekId, toCloseAt: new Date(ms).toISOString(), officerId: session.userId });
+    // A3 · the close the officer reviewed; the service refuses when another move landed since the page was drawn.
+    const r = await moveClose({ weekId, toCloseAt: new Date(ms).toISOString(), expectedClosesAt: str(formData, "expectedClosesAt"), officerId: session.userId });
     if (!r.ok) return { ok: false, error: r.error };
-    refresh(weekId);
-    return { ok: true, weekId };
+    try { refresh(weekId); } catch { /* The close already moved; the client refreshes too. */ }
+    return { ok: true, weekId, auditWarning: r.recorded ? null : MOVE_AUDIT_WARNING };
   } catch (err) {
     return { ok: false, error: safeError(err, "The close could not be moved") };
   }
-}
-
-/** One row of a seal: a YES/NO with its evidence, or a VOID with its ground (MR-15). */
-type SealRow = { slot: number; outcome: MaswaliOutcome; evidence: string; voidReason?: string | null };
-
-function parseSeals(raw: string): SealRow[] | string {
-  let rows: unknown;
-  try { rows = JSON.parse(raw); } catch { return "The seals could not be read."; }
-  if (!Array.isArray(rows) || rows.length === 0 || rows.length > 15) return "Seal between one and fifteen questions at once.";
-  return rows as SealRow[];
 }
 
 /**
@@ -143,26 +150,18 @@ function parseSeals(raw: string): SealRow[] | string {
  * its own control (`voidMaswaliQuestion`): the same service, but a seal that sends money back is never mixed into a
  * bulk YES/NO by accident.
  */
-export async function sealMaswaliQuestionsAction(formData: FormData): Promise<{ ok: true; sealed: number[] } | { ok: false; error: string; sealed: number[] }> {
+export async function sealMaswaliQuestionsAction(formData: FormData): Promise<SealBatchResult> {
   const session = await requireStaff(CONTROL_DOMAIN.sealMaswaliQuestion, "sealMaswaliQuestion");
   const weekId = str(formData, "weekId");
-  const rows = parseSeals(str(formData, "seals"));
-  if (typeof rows === "string") return { ok: false, error: rows, sealed: [] };
-  if (rows.some((r) => r.outcome !== "YES" && r.outcome !== "NO")) return { ok: false, error: "A void is sealed on its own, with its ground.", sealed: [] };
-  const sealed: number[] = [];
-  try {
-    for (const row of rows) {
-      const r = await sealQuestion({ weekId, slot: Number(row.slot), outcome: row.outcome, evidence: String(row.evidence ?? ""), officerId: session.userId });
-      if (!r.ok) { refresh(weekId); return { ok: false, error: `Slot ${row.slot}: ${r.error}`, sealed }; }
-      sealed.push(Number(row.slot));
-    }
-    await noteDevice(session.userId, weekId, sealed);
-    refresh(weekId);
-    return { ok: true, sealed };
-  } catch (err) {
-    refresh(weekId);
-    return { ok: false, error: safeError(err, "The seal could not be recorded"), sealed };
-  }
+  const rows = parseSealRows(str(formData, "seals"));
+  if (typeof rows === "string") return { ok: false, error: rows, sealed: [], auditWarning: null };
+  if (rows.some((r) => r.outcome !== "YES" && r.outcome !== "NO")) return { ok: false, error: "A void is sealed on its own, with its ground.", sealed: [], auditWarning: null };
+  const result = await applySealBatch(rows,
+    (row) => sealQuestion({ weekId, slot: row.slot, outcome: row.outcome, evidence: row.evidence, officerId: session.userId }),
+    (sealed) => noteDevice(session.userId, weekId, sealed),
+    (error) => safeError(error, "The seal could not be recorded"));
+  try { refresh(weekId); } catch { /* The returned landed slots remain authoritative; the client also refreshes. */ }
+  return result;
 }
 
 export async function voidMaswaliQuestionAction(formData: FormData): Promise<ActionResult> {
@@ -175,9 +174,9 @@ export async function voidMaswaliQuestionAction(formData: FormData): Promise<Act
       evidence: str(formData, "evidence"), officerId: session.userId,
     });
     if (!r.ok) return { ok: false, error: r.error };
-    await noteDevice(session.userId, weekId, [slot]);
-    refresh(weekId);
-    return { ok: true, weekId };
+    const audited = await noteDevice(session.userId, weekId, [slot]);
+    try { refresh(weekId); } catch { /* The seal already landed; the client refreshes too. */ }
+    return { ok: true, weekId, auditWarning: audited && r.recorded ? null : SEAL_AUDIT_WARNING };
   } catch (err) {
     return { ok: false, error: safeError(err, "The void could not be recorded") };
   }
@@ -187,10 +186,15 @@ export async function confirmMaswaliSealAction(formData: FormData): Promise<Acti
   const session = await requireStaff(CONTROL_DOMAIN.confirmMaswaliSeal, "confirmMaswaliSeal");
   const weekId = str(formData, "weekId");
   try {
-    const r = await confirmSeal({ weekId, slot: Number(str(formData, "slot")), officerId: session.userId });
+    const expectedOutcome = str(formData, "expectedOutcome");
+    const expectedSealedAt = str(formData, "expectedSealedAt");
+    if ((expectedOutcome !== "YES" && expectedOutcome !== "NO" && expectedOutcome !== "VOID") || !expectedSealedAt) {
+      return { ok: false, error: "Reload the week and review the sealed result before confirming it." };
+    }
+    const r = await confirmSeal({ weekId, slot: Number(str(formData, "slot")), officerId: session.userId, expectedOutcome, expectedSealedAt });
     if (!r.ok) return { ok: false, error: r.error };
-    refresh(weekId);
-    return { ok: true, weekId };
+    try { refresh(weekId); } catch { /* The confirmation already landed; the client refreshes too. */ }
+    return { ok: true, weekId, auditWarning: r.recorded ? null : CONFIRM_AUDIT_WARNING };
   } catch (err) {
     return { ok: false, error: safeError(err, "The confirmation could not be recorded") };
   }
@@ -208,7 +212,8 @@ export async function saveMaswaliConfigAction(formData: FormData): Promise<Actio
     if (!parsed.ok) return { ok: false, error: parsed.error, field: parsed.field };
     const r = await saveMaswaliConfig(parsed.updates, session.userId);
     if (!r.ok) return { ok: false, error: r.error };
-    refresh();
+    // S5-FIX-SRV A7 (the S7 × S5 merge) · the rules are saved: a failed refresh never reports the save as failed.
+    try { refresh(); } catch { /* The rules already saved; the client refreshes too. */ }
     return { ok: true };
   } catch (err) {
     return { ok: false, error: safeError(err, "The Millionea rules could not be saved") };
@@ -223,7 +228,8 @@ export async function saveMaswaliHolidaysAction(formData: FormData): Promise<Act
     if (!dates) return { ok: false, error: "The holiday list could not be read. Reload the page and try again." };
     const r = await saveMaswaliHolidays(dates, session.userId);
     if (!r.ok) return { ok: false, error: r.error };
-    refresh();
+    // S5-FIX-SRV A7 (the S7 × S5 merge) · the list is saved: a failed refresh never reports the save as failed.
+    try { refresh(); } catch { /* The list already saved; the client refreshes too. */ }
     return { ok: true };
   } catch (err) {
     return { ok: false, error: safeError(err, "The holiday list could not be saved") };
@@ -238,12 +244,14 @@ export async function correctMaswaliSealAction(formData: FormData): Promise<Acti
     const slot = Number(str(formData, "slot"));
     const r = await correctSeal({
       weekId, slot, outcome, evidence: str(formData, "evidence"),
-      voidReason: outcome === "VOID" ? str(formData, "voidReason") : null, officerId: session.userId,
+      voidReason: outcome === "VOID" ? str(formData, "voidReason") : null,
+      expectedOutcome: str(formData, "expectedOutcome") as MaswaliOutcome,
+      expectedSealedAt: str(formData, "expectedSealedAt"), officerId: session.userId,
     });
     if (!r.ok) return { ok: false, error: r.error };
-    await noteDevice(session.userId, weekId, [slot]);
-    refresh(weekId);
-    return { ok: true, weekId };
+    const audited = await noteDevice(session.userId, weekId, [slot]);
+    try { refresh(weekId); } catch { /* The correction already landed; the client refreshes too. */ }
+    return { ok: true, weekId, auditWarning: audited && r.recorded ? null : SEAL_AUDIT_WARNING };
   } catch (err) {
     return { ok: false, error: safeError(err, "The correction could not be recorded") };
   }

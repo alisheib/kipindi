@@ -48,7 +48,9 @@ const REGISTER = "docs/COMPLIANCE-DECISIONS.md";
 const SUPPORT = "src/lib/server/support-config.ts";
 const LEXICON = "scripts/lib/house-bot-assurances.mjs";
 const DEFERRED = "plans/house-bots/DEFERRED-TESTS.md";
-const D19A_CHECKPOINT = "byte-identical to the approved S11 journey prompt checkpoint 8ce376ca0";
+/** The D19a chat pin's label as `house-bot-chatbot-cases.mts` 6.6 prints it (S5's f5a11a06a: the pinned baseline is the
+ *  approved S11 checkpoint 8ce376ca0 in the suite, the shadow's own origin/main in the red drive). ONE constant, every case. */
+const D19A_CHECKPOINT = "byte-identical to the pinned baseline";
 
 /**
  * ⛔ THE PLANTED SENTENCES ARE NOT RESPELLED HERE. They are the same strings the suite's own §6c controls

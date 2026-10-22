@@ -183,13 +183,13 @@ export function describeClosure(v: SessionVerdict): string {
  * the market is already open. Steps hour by hour, which is exact enough for a calendar whose
  * finest edge is on the hour, and terminates inside one week by construction.
  */
-export function nextOpenAfter(category: string, at: string | Date): string {
+export function nextOpenAfter(category: string, at: string | Date, deadHoursUtc?: readonly number[]): string {
   const start = at instanceof Date ? new Date(at.getTime()) : new Date(at);
   if (!Number.isFinite(start.getTime())) return new Date().toISOString();
   const probe = new Date(start.getTime());
   probe.setUTCMinutes(0, 0, 0);
   for (let i = 0; i <= 24 * 8; i++) {
-    if (isMarketOpenAt(category, probe)) {
+    if (isMarketOpenAt(category, probe, deadHoursUtc)) {
       // Never report an opening BEFORE the instant asked about.
       return probe.getTime() < start.getTime() ? start.toISOString() : probe.toISOString();
     }

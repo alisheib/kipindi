@@ -1,0 +1,653 @@
+/**
+ * qa:maswali-hub-states — EVERY STATE OF THE MILLIONEA HUB, IN BOTH SHELLS, MEASURED AND SHOT (MASWALI-BUILD S5-DESIGN-HUB;
+ * the design lanes' brief, "shoot every state of your surface"; the round-1 hub critic's list of owed states).
+ *
+ *   BASE=http://localhost:3550 MLN_HUB_RUN=a node scripts/maswali-hub-states.mjs
+ *
+ * ⚠️ PREMISE — a FRESH in-memory `next dev` (no DATABASE_URL) with FEATURE_MILLIONEA=ACTIVE, DISABLE_ADMIN_TOTP=true and the
+ *    journey previewable (`scripts/live/journey-pass.mjs`). It seeds the weeks (`seed-maswali`), then walks the store FORWARD
+ *    through the hub's states with `/api/dev-test/maswali-hub-act` — every act a product service — and at each state reads
+ *    the page as a player would: classic and journey (with a staff pass), signed in or a guest, in Swahili first.
+ *    Run "a" walks a week from sale to its void; run "b" the sunset: the final week announced, run, and Millionea ended.
+ *
+ * Each state ASSERTS VALUES on the rendered page (boxes, computed styles, the words in the reader's language), then writes
+ * viewport tiles to `.50pick-shots/maswali-hub-states/` (`<state>-<shell>-<locale>-<width>[-sN].png`), read one by one.
+ * A once-per-week notice is marked seen as it is shown, so the notice states are shot in ONE page view per language (the
+ * viewport resized, never reloaded), each language by its own player.
+ */
+import { chromium } from "playwright";
+import { mkdirSync } from "node:fs";
+import { premise, mintStaffPass, demoSession, LOCALE_COOKIE, SESSION_COOKIE } from "./live/journey-pass.mjs";
+
+const BASE = process.env.BASE || "http://localhost:3550";
+const RUN = (process.env.MLN_HUB_RUN || "a").toLowerCase();
+const OUT = ".50pick-shots/maswali-hub-states";
+const HEIGHT = 780;
+const OVERLAP = 240;
+const ONLY = (process.env.MLN_HUB_STATES ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+const want = (state) => ONLY.length === 0 || ONLY.includes(state);
+/** Swahili first (the longest), at every platform width; English and Chinese where a layout changes with the language. */
+const CLASSIC = { sw: [320, 360, 768, 1024, 1280, 1920], en: [320, 360, 1280], zh: [360, 1280] };
+const JOURNEY = { sw: [360, 1024, 1280], en: [360], zh: [360] };
+/** Where a state is shot to its end (scroll tiles): the phone and the desktop column. */
+const SCROLL_AT = new Set([360, 1280]);
+
+let pass = 0, fail = 0;
+const ok = (n, c, e = "") => { if (c) pass++; else { fail++; console.log(`FAIL ${n}${e ? ` — ${e}` : ""}`); } if (c && process.env.MLN_HUB_VERBOSE) console.log(`PASS ${n}`); };
+const die = (why) => { console.error(`\nPREMISE ABSENT — ${why}\n`); process.exit(2); };
+const j = (v) => JSON.stringify(v);
+
+const pre = await premise(BASE);
+if (pre.refuse) die(pre.refuse);
+if (pre.health?.millionea?.state !== "ACTIVE") die(`/api/health says millionea = ${j(pre.health?.millionea)}: start next dev with FEATURE_MILLIONEA=ACTIVE`);
+mkdirSync(OUT, { recursive: true });
+
+const browser = await chromium.launch();
+const errs = [];
+
+/** A context for one reader: its cookies (a session, a staff pass) and the language; a guest has none. */
+async function readerContext(cookies) {
+  const ctx = await browser.newContext({ viewport: { width: 360, height: HEIGHT } });
+  if (cookies.length) await ctx.addCookies(cookies.map((c) => ({ ...c, url: BASE, domain: undefined, path: undefined })));
+  return ctx;
+}
+async function setLocale(ctx, locale) {
+  await ctx.addCookies([{ name: LOCALE_COOKIE, value: locale, url: BASE }]);
+}
+async function open(page, path) {
+  const res = await page.goto(`${BASE}${path}`, { waitUntil: "load", timeout: 180_000 });
+  await page.waitForLoadState("networkidle", { timeout: 2_000 }).catch(() => {});
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(true))));
+  }).catch(() => {});
+  await page.waitForTimeout(400);
+  return res;
+}
+async function tiles(page, name, width) {
+  const total = await page.evaluate(() => document.documentElement.scrollHeight);
+  let covered = HEIGHT;
+  for (let n = 2; n <= 24 && covered < total - 1; n++) {
+    const top = Math.min((n - 1) * (HEIGHT - OVERLAP), Math.max(0, total - HEIGHT));
+    await page.evaluate((y) => window.scrollTo(0, y), top);
+    await page.waitForTimeout(250);
+    await page.screenshot({ path: `${OUT}/${name}-s${n}.png` });
+    covered = (await page.evaluate(() => window.scrollY)) + HEIGHT;
+  }
+  await page.evaluate(() => window.scrollTo(0, 0));
+  void width;
+}
+
+/** One dev act, through the product's services (`/api/dev-test/maswali-hub-act`), on `ctx`'s cookies when given. */
+async function act(body, ctx = null) {
+  const c = ctx ?? (await browser.newContext());
+  const r = await c.request.post(`${BASE}/api/dev-test/maswali-hub-act`, { data: body, timeout: 240_000 });
+  const out = await r.json().catch(() => ({}));
+  if (!ctx) await c.close();
+  ok(`act ${body.act} answers`, r.ok() && out.ok, `${r.status()} ${j(out)}`);
+  return out;
+}
+
+/** What every hub page must be: 200, the hub itself, the language asked, no sideways scroll. */
+async function baseChecks(page, label, locale, res) {
+  ok(`${label} · answers 200`, res?.status() === 200, `${res?.status()}`);
+  ok(`${label} · the hub is drawn`, (await page.getByTestId("millionea-hub").count()) === 1);
+  ok(`${label} · html language matches the cookie`, (await page.locator("html").getAttribute("lang")) === locale);
+  const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  ok(`${label} · no horizontal overflow`, over <= 1, `overflow=${over}px`);
+}
+
+/** The page's bottom bar (a phone rail), or 0: what hides the bottom of the screen. */
+const railHeight = (page) => page.evaluate(() => {
+  const el = [...document.querySelectorAll("nav")].find((n) => { const r = n.getBoundingClientRect(); const s = getComputedStyle(n); return s.position === "fixed" && r.bottom >= innerHeight - 1 && r.height < 140; });
+  return el ? Math.round(el.getBoundingClientRect().height) : 0;
+});
+const box = (page, testId) => page.getByTestId(testId).first().boundingBox().catch(() => null);
+
+/**
+ * Shoot one state: every (locale, width) of the shell's matrix — load, the base checks, the state's own checks, the first
+ * viewport and, at SCROLL_AT widths, the page to its end. `check(page, label, locale, width)` asserts the state's values.
+ * `oneView`: the notices are shown once, so each language is ONE page load, resized through its widths.
+ */
+async function shoot(state, shell, ctx, { check, oneView = false, path = "/millionea", matrix } = {}) {
+  if (!want(state)) return;
+  const m = matrix ?? (shell === "journey" ? JOURNEY : CLASSIC);
+  const page = await ctx.newPage();
+  page.on("pageerror", (e) => errs.push(`${state}/${shell}: ${e}`));
+  for (const [locale, widths] of Object.entries(m)) {
+    await setLocale(ctx, locale);
+    let res = null;
+    for (const [i, width] of widths.entries()) {
+      await page.setViewportSize({ width, height: HEIGHT });
+      if (!oneView || i === 0) res = await open(page, path);
+      else await page.waitForTimeout(350);
+      const label = `${state} · ${shell} · ${locale} @${width}`;
+      await baseChecks(page, label, locale, res);
+      if (check) await check(page, label, locale, width);
+      if (locale === "zh") await zhScan(page, label);
+      const name = `${state}-${shell}-${locale}-${width}`;
+      await page.screenshot({ path: `${OUT}/${name}.png` });
+      if (SCROLL_AT.has(width)) await tiles(page, name, width);
+    }
+  }
+  await page.close();
+}
+
+// ── the seed ───────────────────────────────────────────────────────────────────────────────────────────────────────────
+{
+  const owner = await browser.newContext();
+  await owner.request.post(`${BASE}/api/dev-test/seed-admin`, { data: { phone: "+255700000091", name: "Millionea Owner" }, timeout: 240_000 });
+  const seed = await owner.request.post(`${BASE}/api/dev-test/seed-maswali`, { data: {}, timeout: 300_000 });
+  ok("the weeks are seeded on a fresh store", seed.ok(), `${seed.status()} ${await seed.text().catch(() => "")}`);
+  await owner.close();
+}
+const pass_ = await mintStaffPass(browser, BASE);
+const demo = await demoSession(browser, BASE, { query: "?deposit=0", balance: 50_000 });
+const demoClassic = await readerContext([demo]);
+const demoJourney = await readerContext([demo, pass_]);
+const guestClassic = await readerContext([]);
+const guestJourney = await readerContext([pass_]);
+const t = { // the words a check reads, per language (the dictionary's, via the rendered page's own <html lang>)
+  pausedShort: { en: "Paused for now", sw: "Imesimamishwa kwa muda", zh: "暂时停售" },
+  open: { en: "Open", sw: "Wazi", zh: "开放" },
+};
+
+// ── shared checks ──────────────────────────────────────────────────────────────────────────────────────────────────────
+/** H1: on a phone the door to the slip stands on the first screen, above the rail. H2: from 1024 the jackpot's head and the
+ *  door stay pinned 72px down while the page reads on, never under the 56px header. M1: from 768 the head and the door
+ *  stand side by side. L17: the column is named by the jackpot's label. M5: the state word is in its state's ink. */
+async function openWeekChecks(page, label, locale, width, { door = "millionea-hub-fill" } = {}) {
+  const d = await box(page, door);
+  ok(`${label} · the door is drawn`, !!d);
+  if (!d) return;
+  if (width <= 767) {
+    const rail = await railHeight(page);
+    // The journey's staff preview bar ("Preview — …", `journey-preview-marker`) is drawn only for a staff pass: a player's
+    // page has no such bar, so the player's first screen is measured without it.
+    const staffBar = await page.getByTestId("journey-preview-marker").first().boundingBox().catch(() => null);
+    // The calm bars over the page — a once-per-week notice, a moved close, the final week announced — stand above the hub
+    // on the visits that carry them (§F9, the platform's away bar): the door is measured on the visit without them, and
+    // how far the bars push it is printed (they are the page's own first lines, never a door's competitor).
+    const bars = await page.evaluate(() => ["millionea-hub-notices", "millionea-hub-close-moved", "millionea-hub-final-ahead"]
+      .map((id) => document.querySelector(`[data-testid="${id}"]`)?.getBoundingClientRect().height ?? 0).reduce((a, b) => a + b, 0));
+    const bottom = d.y + d.height - (staffBar?.height ?? 0) - bars;
+    ok(`${label} · H1 the door stands on a player's first screen, above the rail (bottom ${Math.round(bottom)} ≤ ${HEIGHT - rail}${staffBar ? `, the staff bar's ${Math.round(staffBar.height)}px aside` : ""}${bars ? `, the page's calm bars' ${Math.round(bars)}px aside: ${Math.round(bottom + bars)} with them` : ""})`,
+      bottom <= HEIGHT - rail, j({ d, rail, staffBar, bars }));
+  }
+  const head = await box(page, "millionea-hub-jackpot");
+  if (width >= 768 && width < 1024 && head) {
+    // Side by side: the door in the column beside the head, standing within the head's height (centred on it, the round-1
+    // fix for the right column's gap at 768 — `md:self-center`), never below it.
+    const centred = Math.abs((d.y + d.height / 2) - (head.y + head.height / 2));
+    ok(`${label} · M1 the jackpot's head and the door stand side by side from 768 (the door ${Math.round(centred)}px off the head's centre, inside its height)`,
+      d.x >= head.x + head.width && d.y >= head.y - 1 && d.y + d.height <= head.y + head.height + 1, j({ head, d }));
+  }
+  if (width >= 1024 && head) {
+    await page.evaluate(() => window.scrollTo(0, 900));
+    await page.waitForTimeout(300);
+    const pinnedHead = await box(page, "millionea-hub-jackpot");
+    const pinned = await box(page, "millionea-hub-pinned");
+    const header = await page.evaluate(() => { const h = document.querySelector("header"); return h ? h.getBoundingClientRect().bottom : 0; });
+    ok(`${label} · H2 scrolled 900px, the jackpot's head stands pinned 72px down, 16px clear of the header (${pinnedHead && Math.round(pinnedHead.y)} vs header ${Math.round(header)})`,
+      !!pinnedHead && Math.abs(pinnedHead.y - 72) <= 1 && pinnedHead.y >= header + 15, j({ pinnedHead, header }));
+    ok(`${label} · H2 the pinned pair's ground reaches the header's foot (nothing reading on shows in the gap above it)`, !!pinned && pinned.y <= header + 1, j({ pinned, header }));
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForTimeout(200);
+    const named = await page.evaluate(() => { const a = document.querySelector('[data-testid="millionea-hub-aside"]'); const id = a?.getAttribute("aria-labelledby"); return id ? document.getElementById(id)?.textContent ?? null : null; });
+    ok(`${label} · L17 the column is named by the jackpot's label`, !!named && named.length > 0, j(named));
+  }
+}
+/**
+ * M5: the week's state is the register's one chip (`WeekStateChip`, the lead's ruling) in the page head's eyebrow, beside
+ * the week it qualifies — its word the state's, its ink its tone's (status-tone: royal while the week runs, slate while
+ * sales are paused), never the eyebrow's subtle ink; on the week word's line wherever the two fit on one.
+ */
+async function stateWordChecks(page, label, locale, word, tone = "royal") {
+  const s = await page.evaluate(() => {
+    const w = document.querySelector('[data-testid="millionea-hub"] [data-testid="millionea-week-state"]');
+    // The tones' inks are status-tone's own (the chip's `pending` and `neutral` faces: --brand-300, --text-muted), probed the
+    // way the chip sets them (its inline `color: var(--…)`), so both read back in ONE serialisation: a utility class can
+    // serialise the same ink in another space (oklab against the token's lab) and never compare equal.
+    const probe = (token) => { const p = document.createElement("span"); p.style.color = `var(${token})`; document.body.appendChild(p); const c = getComputedStyle(p).color; p.remove(); return c; };
+    if (!w) return null;
+    const cs = getComputedStyle(w), r = w.getBoundingClientRect();
+    const week = w.previousElementSibling?.getBoundingClientRect() ?? null;
+    const sameLine = !!week && r.top < week.bottom && week.top < r.bottom;
+    return {
+      text: w.textContent, color: cs.color, border: cs.borderTopWidth, royal: probe("--brand-300"), slate: probe("--text-muted"), subtle: probe("--text-subtle"),
+      sameLine, centreOff: week && sameLine ? Math.round(((r.top + r.bottom) / 2 - (week.top + week.bottom) / 2) * 10) / 10 : null,
+    };
+  });
+  ok(`${label} · M5 the week's state is the register's chip in its state's ink (${tone}), never the eyebrow's subtle ink`, !!s && s.color === s[tone] && s.color !== s.subtle && parseFloat(s.border) >= 1, j(s));
+  if (s?.sameLine) ok(`${label} · M5 the chip stands centred on the week word's line (${s.centreOff}px)`, Math.abs(s.centreOff ?? 99) <= 1.5, j(s));
+  if (word) ok(`${label} · M5 the state word reads "${word[locale]}"`, s?.text === word[locale], j(s));
+}
+
+/** Millionea's zh rule (the lead's ruling, 2026-10-21): a space only where a Latin letter or a digit meets a Han character. */
+const HAN_GAP = /[㐀-䶿一-鿿豈-﫿]\s+[㐀-䶿一-鿿豈-﫿]/;
+/** The hub's own timed lines, in zh: none parts two Han characters with a space. */
+async function zhLineChecks(page, label, locale, testIds) {
+  if (locale !== "zh") return;
+  for (const id of testIds) {
+    const text = await page.getByTestId(id).first().textContent().catch(() => null);
+    ok(`${label} · zh ${id}: no space between two Han characters`, text !== null && !HAN_GAP.test(text), j(text));
+  }
+}
+/** Every other zh line on the page with such a space, for the report (each key's owner fixes their own): not a check. */
+const zhElsewhere = new Map();
+async function zhScan(page, label) {
+  const found = await page.evaluate((src) => {
+    const re = new RegExp(src);
+    const out = [];
+    const walk = document.createTreeWalker(document.querySelector("main") ?? document.body, NodeFilter.SHOW_ELEMENT);
+    for (let el = walk.currentNode; el; el = walk.nextNode()) {
+      if (el.children.length > 0 || !el.textContent) continue;
+      if (re.test(el.textContent)) out.push(`${el.closest("[data-testid]")?.getAttribute("data-testid") ?? "?"}: ${el.textContent.trim().slice(0, 80)}`);
+    }
+    // a line whose Han characters stand in separate elements (a fill's run beside its template)
+    for (const el of document.querySelectorAll("main p, main span, main li, main [role='status']")) {
+      const t = el.textContent ?? "";
+      if (re.test(t) && ![...el.querySelectorAll("*")].some((c) => re.test(c.textContent ?? ""))) out.push(`${el.closest("[data-testid]")?.getAttribute("data-testid") ?? "?"}: ${t.trim().slice(0, 80)}`);
+    }
+    return [...new Set(out)];
+  }, HAN_GAP.source);
+  for (const f of found) if (!zhElsewhere.has(f)) zhElsewhere.set(f, label);
+}
+
+if (RUN === "a") {
+  // ── S1 · an open week, signed in, holding a ticket (a losing slip, so the week can roll over later) ────────────────────
+  await act({ act: "tickets", n: 1, lose: true });
+  // Two more players, one per other language, with a ticket each: their once-per-week notices are unseen later (S11) — and
+  // two for the carry's flight (H6): one read on a phone, one on a tall desktop.
+  const players = {};
+  for (const l of ["en", "zh", "phone", "desk"]) {
+    const ctx = await readerContext([]);
+    const p = await act({ act: "player", tickets: 1, lose: true }, ctx); // signed in through this context's cookie
+    players[l] = { ctx, id: p.userId };
+  }
+  const openCheck = async (page, label, locale, width) => {
+    await openWeekChecks(page, label, locale, width);
+    await stateWordChecks(page, label, locale, t.open);
+    ok(`${label} · the reader's ticket row is drawn`, (await page.getByTestId("millionea-hub-mine").count()) === 1);
+    ok(`${label} · M2 the head's two doors are drawn`, (await page.getByTestId("millionea-hub-doors").locator("a").count()) === 2);
+  };
+  await shoot("open", "classic", demoClassic, { check: openCheck });
+  await shoot("open", "journey", demoJourney, { check: openCheck });
+
+  // ── L7 · the loading drawing stands where the page lands ──────────────────────────────────────────────────────────────
+  // A move to the hub from How to play, its answer slowed (the network throttled, so the route's loading drawing paints
+  // while the page streams): each band's top in the drawing, then in the page — the head's title, the strip, the
+  // jackpot's head, the door, the ledger and the questions. The first screen's bands must land where they were drawn.
+  if (want("ghost")) {
+    const bandsOf = (ghost) => {
+      const top = (el) => (el ? Math.round(el.getBoundingClientRect().top + window.scrollY) : null);
+      if (ghost) {
+        const g = document.querySelector('[aria-busy="true"]');
+        if (!g) return null;
+        const q = (n) => g.querySelector(`[data-ghost="${n}"]`);
+        return { title: top(g.querySelector("h1")), strip: top(q("strip")), jackpot: top(q("jackpot")), door: top(q("door")), ledger: top(q("ledger")), questions: top(q("questions")) };
+      }
+      const h = document.querySelector('[data-testid="millionea-hub"]');
+      const q = (n) => document.querySelector(`[data-testid="${n}"]`);
+      return { title: top(h?.querySelector("h1")), strip: top(q("millionea-week-strip")), jackpot: top(q("millionea-hub-jackpot")), door: top(q("millionea-hub-fill") ?? q("millionea-hub-guest")),
+        ledger: top(q("millionea-hub-ledger")), questions: top(q("millionea-hub-questions")) };
+    };
+    for (const [ctx, shell, locale, width] of [[demoClassic, "classic", "sw", 360], [demoClassic, "classic", "sw", 1280], [demoClassic, "classic", "en", 360], [demoClassic, "classic", "zh", 360], [demoJourney, "journey", "sw", 360]]) {
+      const label = `ghost · ${shell} · ${locale} @${width}`;
+      await setLocale(ctx, locale);
+      const page = await ctx.newPage();
+      page.on("pageerror", (e) => errs.push(`${label}: ${e}`));
+      await page.setViewportSize({ width, height: HEIGHT });
+      await open(page, "/millionea/how");
+      const cdp = await ctx.newCDPSession(page);
+      await cdp.send("Network.enable");
+      await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 400, downloadThroughput: 12 * 1024, uploadThroughput: 64 * 1024 });
+      // The app router's own move (`window.next.router`, what a Link calls): a phone's classic rail has no Millionea tab.
+      await page.evaluate(() => { window.next?.router?.push("/millionea"); });
+      const drawn = await page.waitForSelector('[aria-busy="true"] [data-ghost="strip"]', { timeout: 20_000 }).then(() => true).catch(() => false);
+      const ghost = drawn ? await page.evaluate(bandsOf, true) : null;
+      if (drawn) await page.screenshot({ path: `${OUT}/ghost-${shell}-${locale}-${width}.png` });
+      await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+      await page.waitForSelector('[data-testid="millionea-hub"]', { timeout: 60_000 }).catch(() => {});
+      await page.waitForTimeout(800);
+      const real = await page.evaluate(bandsOf, false);
+      await page.screenshot({ path: `${OUT}/ghost-landed-${shell}-${locale}-${width}.png` });
+      ok(`${label} · L7 the route's loading drawing is shown on the way in`, drawn && !!ghost);
+      if (ghost && real) {
+        const off = Object.fromEntries(Object.keys(real).map((k) => [k, real[k] === null || ghost[k] === null ? null : real[k] - ghost[k]]));
+        console.log(`L7 ${label} · page − drawing, px: ${j(off)}`);
+        // The fixed bands land within 4px; the door within one body line and the head's gap (18 + 4px): the jackpot's rule and
+        // its carry line run to one or two lines by language and by whether a carry is pending — words a wordless drawing
+        // cannot know (it draws two lines of rule and one of carry).
+        const tol = { title: 4, strip: 4, jackpot: 4, door: 22 };
+        const first = Object.keys(tol).filter((k) => off[k] !== null && real[k] < HEIGHT);
+        ok(`${label} · L7 the first screen's bands land where they were drawn (title/strip/jackpot ±4px, door ±22px: ${first.map((k) => `${k} ${off[k]}`).join(", ")})`,
+          first.length >= 3 && first.every((k) => Math.abs(off[k]) <= tol[k]), j({ ghost, real }));
+      }
+      await page.close();
+    }
+  }
+
+  // ── S2 · a guest ───────────────────────────────────────────────────────────────────────────────────────────────────────
+  const guestCheck = async (page, label, locale, width) => {
+    await openWeekChecks(page, label, locale, width, { door: "millionea-hub-guest" });
+    const up = await page.getByTestId("millionea-hub-signup").getAttribute("href");
+    const inn = await page.getByTestId("millionea-hub-signin").getAttribute("href");
+    ok(`${label} · M3 Sign up first, then Sign in, both back to the slip`, /^\/auth\/register\?/.test(up ?? "") && /^\/auth\/login\?/.test(inn ?? "")
+      && (up ?? "").includes("next=%2Fmillionea%2Fslip") && (inn ?? "").includes("next=%2Fmillionea%2Fslip"), j({ up, inn }));
+  };
+  await shoot("guest", "classic", guestClassic, { check: guestCheck });
+  await shoot("guest", "journey", guestJourney, { check: guestCheck });
+  // M3 · a shared link's codes ride beside `next`, never dropped
+  if (want("guest")) {
+    const page = await guestClassic.newPage();
+    await setLocale(guestClassic, "en");
+    await open(page, "/millionea?ref=ABCD2345&invite=XYZ12345");
+    const up = await page.getByTestId("millionea-hub-signup").getAttribute("href");
+    ok("guest · M3 the hub's ?ref and ?invite reach Sign up beside next", (up ?? "").includes("ref=ABCD2345") && (up ?? "").includes("next=%2Fmillionea%2Fslip"), j(up));
+    await page.close();
+  }
+
+  // ── S4 · paused ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  if (want("paused")) {
+    await act({ act: "pause", on: true });
+    const pausedCheck = async (page, label, locale) => {
+      await stateWordChecks(page, label, locale, t.pausedShort, "slate");
+      ok(`${label} · L9/P15 no close line and no door to buy while paused`, (await page.getByTestId("millionea-hub-close").count()) === 0 && (await page.getByTestId("millionea-hub-fill").count()) === 0);
+    };
+    await shoot("paused", "classic", demoClassic, { check: pausedCheck });
+    await shoot("paused", "journey", demoJourney, { check: pausedCheck, matrix: { sw: [360, 1280] } });
+    await act({ act: "pause", on: false });
+  }
+
+  // ── S6 · on a break (a new player with two tickets, on a one-hour cooling-off) ─────────────────────────────────────────
+  // Losing slips, as every ticket of this week: the week must roll over for S11's notices and the carry (a 10/10 here
+  // left Week 49 won, and S11 had no rollover to show).
+  if (want("break")) {
+    const brk = await readerContext([]);
+    await act({ act: "breakPlayer", tickets: 2, lose: true }, brk);
+    const breakCheck = async (page, label) => {
+      ok(`${label} · RG the break notice stands where the door stood, and no door to buy`, (await page.getByTestId("millionea-hub-break").count()) === 1 && (await page.getByTestId("millionea-hub-fill").count()) === 0);
+      ok(`${label} · L9 no close line beside the break`, (await page.getByTestId("millionea-hub-close").count()) === 0);
+    };
+    await shoot("break", "classic", brk, { check: breakCheck });
+    const brkJ = await readerContext([...(await brk.cookies(BASE)).filter((c) => c.name === SESSION_COOKIE), pass_]);
+    await shoot("break", "journey", brkJ, { check: breakCheck, matrix: { sw: [360, 1280] } });
+  }
+
+  // ── S5 · at the cap (ten tickets: three rows, then "See all") ─────────────────────────────────────────────────────────
+  if (want("cap")) {
+    await act({ act: "tickets", n: 9, lose: true });
+    const capCheck = async (page, label, locale) => {
+      const rows = await page.getByTestId("millionea-hub-mine").first().locator("a[href^='/millionea/tickets/']").count();
+      ok(`${label} · M8 at most three ticket rows, then See all`, rows === 3 && (await page.getByTestId("millionea-hub-see-all").count()) === 1, `rows=${rows}`);
+      ok(`${label} · L9 no close line under the cap's line`, (await page.getByTestId("millionea-hub-close").count()) === 0);
+      void locale;
+    };
+    await shoot("cap", "classic", demoClassic, { check: capCheck });
+    await shoot("cap", "journey", demoJourney, { check: capCheck, matrix: { sw: [360, 1280] } });
+  }
+
+  // ── S3 · the close moved (M7) ─────────────────────────────────────────────────────────────────────────────────────────
+  if (want("moved")) {
+    const mv = await act({ act: "moveClose", hours: 2 });
+    const movedCheck = async (page, label, locale) => {
+      const bar = await page.getByTestId("millionea-hub-close-moved").textContent().catch(() => null);
+      ok(`${label} · M7 the moved close is announced, with the close it was`, !!bar && /16:00/.test(bar) && /18:00/.test(bar), j(bar));
+      await zhLineChecks(page, label, locale, ["millionea-hub-close-moved"]);
+      if (locale === "zh") ok(`${label} · zh the same day's old close stands spaced from its Han ("原为 18:00")`, /原为 18:00/.test(bar ?? ""), j(bar));
+    };
+    void mv;
+    await shoot("moved", "classic", guestClassic, { check: movedCheck });
+    await shoot("moved", "journey", guestJourney, { check: movedCheck, matrix: { sw: [360, 1280] } });
+  }
+
+  // ── M8 (R1-motion) · the last hour: the countdown pill (the SLIP lane's) stands in the close line, its place reserved
+  // there — beside the close it counts down to, under the door, never above it, and the line never grows a second one.
+  // ⚠️ The seed's weeks are dated ahead of the real clock (a close can never move before its own open), so no real last
+  // hour exists on this store: the pill is drawn by its own recipe (SLIP's compact `MaswaliClosingPill`: the hourglass,
+  // "59" and the language's minute unit — its widest count) into the close line, and the line is measured with it and
+  // without it. The line makes its room by its own rule (`.kp-mln-close:has(.closing-pill)`: the close is today, so its
+  // weekday steps aside while the pill counts down to it).
+  if (want("closing")) {
+    // A reader the fill door is for (the demo player is at the cap by now): a new player holding one ticket.
+    const closer = await readerContext([]);
+    await act({ act: "player", tickets: 1, lose: true }, closer);
+    const closerJ = await readerContext([...(await closer.cookies(BASE)).filter((c) => c.name === SESSION_COOKIE), pass_]);
+    const UNIT = { en: "Min", sw: "Dak", zh: "分" };
+    const closingCheck = async (page, label, locale) => {
+      const g = await page.evaluate((unit) => {
+        const at = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom), left: Math.round(b.left), right: Math.round(b.right) }; };
+        const row = document.querySelector('[data-testid="millionea-hub-close"]');
+        if (!row) return null;
+        const before = at(row), door = at(document.querySelector('[data-testid="millionea-hub-fill"]'));
+        const next = row.parentElement?.nextElementSibling ?? row.closest("[data-testid='millionea-hub-buy']")?.nextElementSibling ?? null;
+        const nextBefore = at(next);
+        const pill = document.createElement("span");
+        pill.className = "closing-pill inline-flex items-center whitespace-nowrap rounded-full border text-body-sm tabular-nums h-5 gap-1 px-1.5";
+        pill.innerHTML = `<svg width="12" height="12" aria-hidden="true" class="shrink-0"></svg>59 ${unit}`;
+        row.appendChild(pill);
+        const after = { row: at(row), text: at(row.querySelector("p")), pill: at(pill), next: at(next) };
+        pill.remove();
+        return { before, door, nextBefore, ...after };
+      }, UNIT[locale]);
+      const oneLine = !!g?.pill && !!g.text && Math.abs((g.pill.top + g.pill.bottom) / 2 - (g.text.top + g.text.bottom) / 2) <= 3;
+      ok(`${label} · M8 the pill stands in the close line, beside the close — the line does not grow (${g?.before ? g.before.bottom - g.before.top : "?"} → ${g?.row ? g.row.bottom - g.row.top : "?"}px)`,
+        oneLine && !!g.before && !!g.row && g.row.bottom - g.row.top === g.before.bottom - g.before.top, j(g));
+      ok(`${label} · M8 nothing under the close line moves when the pill arrives, and the pill stands under the door`,
+        !!g?.pill && !!g.door && g.pill.top >= g.door.bottom && (g.nextBefore === null || g.next === null || g.next.top === g.nextBefore.top), j(g));
+    };
+    await shoot("closing", "classic", closer, { check: closingCheck });
+    await shoot("closing", "journey", closerJ, { check: closingCheck, matrix: { sw: [360, 1280] } });
+  }
+
+  // ── S7–S10 · the week on sale closes, its results come in, its window opens, it settles ─────────────────────────────────
+  // The seed leaves its earlier weeks graded but unsettled; settlement runs strictly in order (MR-3), so they settle first.
+  await act({ act: "catchUp" });
+  await act({ act: "closeOpen" });
+  const closedCheck = (word) => async (page, label, locale) => {
+    ok(`${label} · after the close the door follows the results`, (await page.getByTestId("millionea-hub-follow").count()) === 1);
+    if (word) await stateWordChecks(page, label, locale, word);
+  };
+  await shoot("closed", "classic", demoClassic, { check: closedCheck({ en: "Sales closed", sw: "Imefungwa", zh: "已截止" }) });
+  await shoot("closed", "journey", demoJourney, { check: closedCheck(null), matrix: { sw: [360, 1280] } });
+  await act({ act: "seal", slots: [1, 2, 3, 4, 5], outcome: "YES" });
+  await shoot("resolving", "classic", demoClassic, {
+    check: async (page, label, locale) => {
+      await closedCheck(null)(page, label, locale);
+      const live = await page.getByTestId("millionea-hub-facts").textContent().catch(() => "");
+      if (locale === "en") ok(`${label} · L12 the next event is said after the results count`, /5 of 15 results in/.test(live ?? "") && /next event/.test(live ?? ""), j(live));
+      if (locale === "zh") ok(`${label} · L8 zh says the count as 已公布 n/15 个结果`, /已公布 5\/15 个结果/.test(live ?? ""), j(live));
+    },
+  });
+  // ── M11 / R1-motion L2 · a result that arrives while the reader looks presses once; the first paint presses nothing ─────
+  // The reader's page stays open while two results are sealed; the page's own refresh (the poller's event) brings them in.
+  const early = want("press") ? [6, 7] : [];
+  if (want("press")) {
+    await setLocale(demoClassic, "en");
+    const page = await demoClassic.newPage();
+    page.on("pageerror", (e) => errs.push(`press: ${e}`));
+    await page.setViewportSize({ width: 1280, height: 1400 });
+    await open(page, "/millionea");
+    const atLoad = await page.locator("[data-pressed]").count();
+    ok("press · classic · en @1280 · M11 opening the hub presses nothing (five results already in)", atLoad === 0, `pressed at load: ${atLoad}`);
+    await act({ act: "seal", slots: early, outcome: "YES" });
+    await page.evaluate(() => window.dispatchEvent(new Event("50pick:refresh")));
+    await page.waitForSelector('[data-slot="7"] [data-pressed]', { timeout: 20_000 }).catch(() => {});
+    const pressed = await page.evaluate(() => [...document.querySelectorAll("[data-pressed]")].map((el) => Number(el.closest("[data-slot]")?.getAttribute("data-slot"))));
+    const steps = await page.evaluate(() => [...document.querySelectorAll("[data-pressed] .maswali-attest")].map((el) => getComputedStyle(el).getPropertyValue("--i").trim()));
+    ok("press · classic · en @1280 · M11 the two results that arrived press, in slot order, and only they", j(pressed) === j(early) && j(steps) === j(["0", "1"]), j({ pressed, steps }));
+    await page.screenshot({ path: `${OUT}/press-classic-en-1280.png` });
+    await page.close();
+  }
+  await act({ act: "seal", slots: [6, 7, 8, 9, 10, 11, 12, 13, 14, 15].filter((s) => !early.includes(s)), outcome: "YES" });
+  await shoot("objections", "classic", demoClassic, { check: closedCheck({ en: "Objection window", sw: "Dirisha la pingamizi", zh: "异议窗口" }), matrix: { sw: [320, 360, 1280], en: [360], zh: [360] } });
+  await act({ act: "window", open: false });
+  await shoot("settling", "classic", demoClassic, { check: closedCheck({ en: "Settling", sw: "Inakamilishwa", zh: "待结算" }), matrix: { sw: [360, 1280], en: [360], zh: [360] } });
+  await act({ act: "settle" });
+
+  // ── S12 · no week on sale (as a guest: a signed-in view would mark the week's notices seen) — and paused (L21) ───────────
+  const noWeekCheck = (paused) => async (page, label, locale) => {
+    ok(`${label} · L6 no week on sale is the platform's empty state`, (await page.getByTestId("millionea-hub-no-week").locator(".kp-shimmer-track, [class*='dashed']").count()) >= 0
+      && (await page.getByTestId("millionea-hub-no-week").count()) === 1);
+    const body = await page.getByTestId("millionea-hub-no-week").textContent().catch(() => "");
+    if (locale === "en") ok(`${label} · L21 the next open is promised only while sales run`, paused ? !/The next week opens/.test(body ?? "") : /The next week opens/.test(body ?? ""), j(body));
+    await zhLineChecks(page, label, locale, ["millionea-hub-no-week"]);
+  };
+  await shoot("noweek", "classic", guestClassic, { check: noWeekCheck(false) });
+  await shoot("noweek", "journey", guestJourney, { check: noWeekCheck(false), matrix: { sw: [360, 1280] } });
+  if (want("noweek-paused")) {
+    await act({ act: "pause", on: true });
+    await shoot("noweek-paused", "classic", guestClassic, { check: noWeekCheck(true), matrix: { sw: [360], en: [360] } });
+    await act({ act: "pause", on: false });
+  }
+
+  // ── S11 · after settlement: the next week opens; the rollover and the result are said once, the carry leaves the notice ──
+  await act({ act: "openNext" });
+  await act({ act: "tickets", n: 1, lose: false });
+  const afterCheck = async (page, label, locale) => {
+    const bars = await page.getByTestId("millionea-hub-notices").locator('[role="status"]').count();
+    ok(`${label} · M9 the once-per-week notices are the platform's calm bars`, bars >= 1, `bars=${bars}`);
+    const origin = await page.evaluate(() => { const el = document.getElementById("mln-carried-figure"); return el ? { cls: el.className, text: el.textContent } : null; });
+    ok(`${label} · M10 the carry leaves from the rollover notice's own figure`, !!origin && /\bamount\b/.test(origin.cls), j(origin));
+    void locale;
+  };
+  if (want("after")) {
+    await shoot("after", "classic", demoClassic, { check: afterCheck, oneView: true, matrix: { sw: [320, 360, 768, 1024, 1280, 1920] } });
+    await shoot("after", "classic", players.en.ctx, { check: afterCheck, oneView: true, matrix: { en: [360, 1280] } });
+    await shoot("after", "journey", (await readerContext([...(await players.zh.ctx.cookies(BASE)).filter((c) => c.name === SESSION_COOKIE), pass_])), { check: afterCheck, oneView: true, matrix: { zh: [360, 1280] } });
+  }
+  // ── H6/M7 · the carry plays only with both ends in view (the shared MaswaliCarry): a reader on a phone — the ledger far
+  // below the notice — sees no flight; on a tall desktop both ends stand in view and the figure lands, its origin settling
+  // in once the token has left it. Each reader's first view, the rollover notice unseen. The ends are measured on boxes a
+  // flight never moves (the row's own span, the notice's figure).
+  if (want("after")) {
+    for (const [who, vp] of [["phone", { width: 360, height: HEIGHT }], ["desk", { width: 1920, height: 1440 }]]) {
+      const ctx = players[who].ctx;
+      await setLocale(ctx, "sw");
+      const page = await ctx.newPage();
+      page.on("pageerror", (e) => errs.push(`carry/${who}: ${e}`));
+      await page.setViewportSize(vp);
+      await page.goto(`${BASE}/millionea`, { waitUntil: "load", timeout: 180_000 });
+      const ends = await page.evaluate(() => {
+        const at = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right) }; };
+        const inView = (b) => !!b && b.top >= 0 && b.left >= 0 && b.bottom <= innerHeight && b.right <= innerWidth;
+        const origin = at(document.getElementById("mln-carried-figure")), dest = at(document.querySelector('[data-row="in"]'));
+        return { origin, dest, both: inView(origin) && inView(dest) };
+      });
+      await page.waitForTimeout(1600);
+      const after = await page.evaluate(() => document.getElementById("mln-carried-figure")?.className ?? null);
+      const landed = /\bg-settle\b/.test(after ?? ""), vacated = /\bkp-mln-carry-vacated\b/.test(after ?? "");
+      ok(`after · carry · sw ${vp.width}×${vp.height} · H6 the carry plays exactly when both ends stand in view (${ends.both ? "both in view: it lands" : "an end out of view: no flight"})`,
+        !!ends.origin && !!ends.dest && (ends.both ? landed && !vacated : !landed && !vacated), j({ ends, after }));
+      if (who === "desk") ok(`after · carry · sw ${vp.width}×${vp.height} · H6 a tall desktop holds both ends, so the flight is seen`, ends.both, j(ends));
+      await page.screenshot({ path: `${OUT}/after-carry-sw-${vp.width}.png` });
+      await page.close();
+    }
+  }
+
+  // ── S14 · a week being voided (six mains void against five reserves), then voided whole ───────────────────────────────────
+  await act({ act: "closeOpen" });
+  await act({ act: "seal", slots: [1, 2, 3, 4, 5, 6], outcome: "VOID" });
+  const voidingCheck = async (page, label, locale) => {
+    ok(`${label} · M6 the week being voided is named in a neutral notice`, (await page.getByTestId("millionea-hub-voiding").count()) === 1);
+    const words = await page.getByTestId("millionea-hub-void-words").count();
+    ok(`${label} · L13 each voided main says what it leaves the week`, words === 6, `void words=${words}`);
+    const refund = await page.locator('[data-row="refund"]').first().textContent().catch(() => null);
+    ok(`${label} · L15 the conditional refund row carries no dash and no figure`, refund === "", j(refund));
+    await stateWordChecks(page, label, locale, { en: "Week is being voided", sw: "Wiki inabatilishwa", zh: "整周作废中" });
+    await zhLineChecks(page, label, locale, ["millionea-hub-voiding"]);
+  };
+  await shoot("voiding", "classic", demoClassic, { check: voidingCheck });
+  await shoot("voiding", "journey", demoJourney, { check: voidingCheck, matrix: { sw: [360, 1280] } });
+  await act({ act: "seal", slots: [7, 8, 9, 10, 11, 12, 13, 14, 15], outcome: "YES" });
+  await act({ act: "voidLead" });
+  // The next week opens on Monday, as after any week: the hub's own week on sale, last week voided under it (L14) — with no
+  // week on the hub, "last week" is the calendar's, and this store's weeks are dated ahead of the real clock.
+  await act({ act: "draftNext" });
+  await act({ act: "openNext" });
+  const voidedCheck = async (page, label, locale) => {
+    const row = await page.getByTestId("millionea-hub-last-week").textContent().catch(() => "");
+    if (locale === "en") ok(`${label} · L14 last week voided reads the register's words`, /Voided/.test(row ?? "") && /Every ticket refunded|Refunds on their way/.test(row ?? ""), j(row));
+  };
+  if (want("voided")) await shoot("voided", "classic", demoClassic, { check: voidedCheck, oneView: true, matrix: { sw: [360, 1280], en: [360] } });
+
+  // ── L16 · the ghost button's border against the page, and the kit ghost's own ────────────────────────────────────────────
+  {
+    const page = await guestClassic.newPage();
+    await open(page, "/millionea");
+    const c = await page.evaluate(() => {
+      // Each colour as the screen shows it: painted by the browser into one sRGB pixel — the border over the page's ground,
+      // so a lab()/oklch() serialisation or a translucent border reads as the eye sees it (a regex over lab() did not).
+      const cv = document.createElement("canvas"); cv.width = cv.height = 1;
+      const cx = cv.getContext("2d", { willReadFrequently: true });
+      const px = (color, under) => { cx.clearRect(0, 0, 1, 1); if (under) { cx.fillStyle = under; cx.fillRect(0, 0, 1, 1); } cx.fillStyle = color; cx.fillRect(0, 0, 1, 1); return [...cx.getImageData(0, 0, 1, 1).data].slice(0, 3); };
+      const lum = ([r, g, b]) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+      const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+      const probe = (cls) => { const b = document.createElement("a"); b.className = cls; b.textContent = "x"; document.body.appendChild(b); const col = getComputedStyle(b).borderTopColor; b.remove(); return col; };
+      const ground = document.createElement("div"); ground.style.background = "var(--bg-base)"; document.body.appendChild(ground);
+      const bg = getComputedStyle(ground).backgroundColor; ground.remove();
+      const kit = probe("btn btn-ghost btn-lg"), hub = probe("btn btn-ghost btn-lg border-border-control");
+      const ground_ = px(bg), kitPx = px(kit, bg), hubPx = px(hub, bg);
+      return { bg, kit, hub, groundPx: ground_, kitPx, hubPx, kitRatio: ratio(kitPx, ground_), hubRatio: ratio(hubPx, ground_) };
+    });
+    // ⚠️ MEASURED 2026-10-21 at 80d2d35da: 1.79:1 for both — the kit's .btn-ghost rule wins over the hub's
+    // `border-border-control`, so the override drew nothing of its own and the hub dropped it. A ghost border under 3:1 is
+    // the kit's, on every page (§A1; the critic's own caution: a kit change is platform-wide) — a figure for the lead, so
+    // it is printed, not asserted here; what this drive holds is that the hub draws the kit's ghost as it is.
+    console.log(`INFO L16 · ghost border contrast: kit .btn-ghost ${c.kitRatio.toFixed(2)}:1, with the hub's old override ${c.hubRatio.toFixed(2)}:1 (${j(c)})`);
+    ok("L16 · the hub's old override drew nothing of its own (the kit's rule wins: one border, the kit's)", c.kit === c.hub, j(c));
+    const follow = await page.evaluate(() => [...document.querySelectorAll(".btn-ghost")].filter((el) => el.closest('[data-testid="millionea-hub"]') && /border-border-control/.test(el.className)).length);
+    ok("L16 · the hub draws no ghost button with a border override of its own", follow === 0, `${follow}`);
+    await page.close();
+  }
+}
+
+if (RUN === "b") {
+  await act({ act: "tickets", n: 1, lose: true });
+  // ── L22 · the final week announced ahead ──────────────────────────────────────────────────────────────────────────────
+  await act({ act: "sunsetDraft" });
+  const aheadCheck = async (page, label, locale) => {
+    const bar = await page.getByTestId("millionea-hub-final-ahead").textContent().catch(() => null);
+    if (locale === "en") ok(`${label} · L22 the final week is announced ahead in the lead's words`, !!bar && /^Week \d+ will be Millionea's final week\. It opens .+\.$/.test(bar.trim()), j(bar));
+    ok(`${label} · L22 the announcement is a calm bar`, !!bar);
+    await zhLineChecks(page, label, locale, ["millionea-hub-final-ahead"]);
+  };
+  await shoot("final-ahead", "classic", demoClassic, { check: aheadCheck, matrix: { sw: [320, 360, 768, 1280], en: [360, 1280], zh: [360] } });
+  await shoot("final-ahead", "journey", demoJourney, { check: aheadCheck, matrix: { sw: [360, 1280] } });
+  // ── H3 · the final week itself ────────────────────────────────────────────────────────────────────────────────────────
+  await act({ act: "catchUp" });
+  await act({ act: "closeOpen" });
+  await act({ act: "seal", slots: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], outcome: "YES" });
+  await act({ act: "settle" });
+  await act({ act: "openNext" });
+  await act({ act: "tickets", n: 1, lose: true });
+  const finalCheck = async (page, label, locale, width) => {
+    await openWeekChecks(page, label, locale, width);
+    const rule = await page.getByTestId("millionea-hub-final-rule").textContent().catch(() => null);
+    // The head's ONE rule in the final week (efaccba2d): the critic's key with the fee as its rule's own fact.
+    if (locale === "en") ok(`${label} · H3 the final week's rule stands under the figure`, rule === "Final week: if no ticket gets 10/10, the pool is shared equally by this week's highest-scoring tickets · 13% fee at payout", j(rule));
+    ok(`${label} · H3 the final week's rule is drawn`, !!rule);
+  };
+  await shoot("final", "classic", demoClassic, { check: finalCheck });
+  await shoot("final", "journey", demoJourney, { check: finalCheck, matrix: { sw: [360, 1280] } });
+  // ── H4 · Millionea has ended ──────────────────────────────────────────────────────────────────────────────────────────
+  await act({ act: "closeOpen" });
+  await act({ act: "seal", slots: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], outcome: "YES" });
+  await act({ act: "settle" });
+  const retiredCheck = async (page, label, locale) => {
+    ok(`${label} · H4 only the closed statement, the final week's row and the register`, (await page.getByTestId("millionea-hub-retired").count()) === 1
+      && (await page.getByTestId("millionea-hub-no-week").count()) === 0 && (await page.getByTestId("millionea-hub-doors").count()) === 0);
+    const links = await page.getByTestId("millionea-hub-retired").locator("a[href='/millionea/how']").count();
+    ok(`${label} · H4 no How to play door after the end`, links === 0, `how links=${links}`);
+    void locale;
+  };
+  await shoot("retired", "classic", guestClassic, { check: retiredCheck });
+  await shoot("retired", "journey", guestJourney, { check: retiredCheck, matrix: { sw: [360, 1280] } });
+}
+
+ok("no page error on any page", errs.length === 0, errs.slice(0, 3).join(" | "));
+for (const [line, where] of zhElsewhere) console.log(`INFO zh space between two Han characters — ${line}  (first at ${where})`);
+await browser.close();
+console.log(`\nmaswali-hub-states (run ${RUN}): ${pass} passed, ${fail} failed · tiles in ${OUT}/`);
+process.exit(fail === 0 ? 0 : 1);

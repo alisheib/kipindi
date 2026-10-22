@@ -9,7 +9,7 @@
  *     markets handle quote freshness without faking certainty. 10 s
  *     gives a player time to read the side + stake + payout block
  *     without rushing; 5 s was too tight (Ali's report).
- *   • Kit-faithful (border-border, bg-bg-elevated, gold confirm gradient,
+ *   • Kit-faithful (border-border, bg-bg-elevated, gold confirm ramp,
  *     OKLCH hues, mono numerals).
  *   • A11: the dialog chrome (portal, scrim, Android scroll/zoom lock, focus
  *     trap, focus-return, Esc, kit rise/fade) is the shared <Modal> primitive;

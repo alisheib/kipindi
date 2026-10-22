@@ -61,8 +61,8 @@ const MUTATIONS = [
   {
     name: "the emergency void's settledAt stamp autocommits again",
     breaks: "marketStore.set(...) passes a tx",
-    from: "await marketStore.set(m, lockTx ?? undefined);\n    recordSnapshot(m.id, 0, 0);",
-    to: "await marketStore.set(m);\n    recordSnapshot(m.id, 0, 0);",
+    from: "await marketStore.set(m, lockTx ?? undefined);\n    afterCommit(lockTx, () => { void recordSnapshot(m.id, 0, 0); });",
+    to: "await marketStore.set(m);\n    afterCommit(lockTx, () => { void recordSnapshot(m.id, 0, 0); });",
   },
   {
     name: "the emergency ledger group goes back to fire-and-forget",

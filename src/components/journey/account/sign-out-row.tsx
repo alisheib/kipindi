@@ -10,7 +10,7 @@
  */
 import { useRef } from "react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { I } from "@/components/ui/glyphs";
+import { HubPlate } from "@/components/ui/hub-plate";
 import { useT } from "@/lib/i18n";
 
 export function SignOutRow() {
@@ -30,7 +30,7 @@ export function SignOutRow() {
         submitsForm
         trigger={
           <button type="button" className="kp-hub__exit">
-            <span className="kp-hub__glyph" aria-hidden><I.logOut s={20} /></span>
+            <HubPlate glyph="logOut" variant="danger" />
             <span className="kp-hub__label">{t.common.signOut}</span>
           </button>
         }

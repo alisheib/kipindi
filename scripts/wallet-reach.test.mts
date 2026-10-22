@@ -272,7 +272,7 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
   ok("7: a bottom sheet below 1024 and a panel under the chip from 1024",
      /<Modal\b[^>]*\bsheet\b[^>]*sheetUntil="lg"[^>]*anchorRef=\{anchorRef\}/.test(sheet));
   // ⭐ V19 · MONEY PARITY. Withdraw is as easy to find as Deposit: the same rung, the same box,
-  // side by side. Only the skin differs (struck gold for money in, ghost for money out).
+  // side by side. Only the skin differs (gilt for money in, ghost for money out).
   const link = (href: string) => {
     const at = sheet.indexOf(`href="${href}"`);
     return at < 0 ? "" : sheet.slice(sheet.lastIndexOf("<Link", at), sheet.indexOf("</Link>", at));
@@ -282,7 +282,7 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
   ok("7: ⭐ Deposit and Withdraw are BOTH in the Wallet", !!dep && !!wd);
   ok("7: ⭐ …at the SAME size — one rung and one box, only the skin differs",
      geom(dep) !== null && geom(dep) === geom(wd), `${geom(dep)} vs ${geom(wd)}`);
-  ok("7: …Deposit is struck gold (money), Withdraw is not a lesser control hidden in a menu",
+  ok("7: …Deposit uses gilt, Withdraw is not a lesser control hidden in a menu",
      /btn gilt-metal/.test(dep) && /btn btn-ghost/.test(wd));
   const pairAt = sheet.indexOf("kp-wsheet__pair");
   ok("7: …side by side, in one two-column pair", pairAt > 0 && pairAt < sheet.indexOf('href="/wallet/deposit"') && pairAt < sheet.indexOf('href="/wallet/withdraw"') &&
@@ -365,7 +365,7 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
   ok("8.7 the figure is money type — the amount class: mono, tabular, never letter-spaced (§M4)",
      cap.includes('<span className="kp-jbal__fig amount">') && css.includes(".amount.amount {")
      && !ruleBody(".kp-jbal__fig").includes("letter-spacing"));
-  ok("8.8 gold on a live balance, plain ink when held or masked — as the S4 frames draw it",
+  ok("8.8 available balance is gilt; held and masked balances stay plain",
      ruleBody(".kp-jbal__fig").includes("color: var(--gold-300)")
      && css.includes(".kp-jbal:is([data-held], [data-masked]) .kp-jbal__fig { color: var(--text); }")
      && cap.includes('data-held={held ? "" : undefined}') && cap.includes('data-masked={hidden ? "" : undefined}'));

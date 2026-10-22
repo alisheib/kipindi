@@ -30,6 +30,10 @@ export const ADMIN_ROUTES = [
    * not land earlier. ⛔ Its `?u=` and `?step=` states are NOT entries: the same rule as `?tab=`, and a drive handed
    * an unresolvable account id would report a false failure. */
   "/admin/desk", "/admin/desk/new",
+  // Maswali Millionea's static console doors: every design-gate reader of
+  // ADMIN_ROUTES must measure these too. Week detail/edit need fixture ids and
+  // remain in the dedicated Maswali browser drive, not this static population.
+  "/admin/maswali", "/admin/maswali/new", "/admin/maswali/pools", "/admin/maswali/integrity",
 ];
 
 /** Public player routes — reachable signed OUT, which is how they are driven while the

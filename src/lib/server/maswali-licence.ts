@@ -14,6 +14,7 @@
  * The open reads it FRESH (`readLicenceBasisFresh`) and fails closed: a read that could not ask refuses the open.
  */
 import { defineConfig } from "./define-config";
+import { MASWALI_LICENCE_REF_MIN, MASWALI_LICENCE_REF_MAX } from "@/lib/maswali-ceremony-bounds";
 
 export const MASWALI_LICENCE_KEY = "maswali.licenceBasis";
 
@@ -32,8 +33,8 @@ export type LicenceBasis = {
 
 export const LICENCE_BASIS_NONE: LicenceBasis = { kind: "NONE", ref: null, recordedAt: null, recordedBy: null };
 
-export const LICENCE_REF_MIN = 5;
-export const LICENCE_REF_MAX = 500;
+export const LICENCE_REF_MIN = MASWALI_LICENCE_REF_MIN;
+export const LICENCE_REF_MAX = MASWALI_LICENCE_REF_MAX;
 
 /** Why a licence record is refused, or null. */
 export function licenceBasisProblem(b: LicenceBasis): string | null {

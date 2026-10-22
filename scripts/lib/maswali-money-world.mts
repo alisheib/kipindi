@@ -87,7 +87,7 @@ export async function loadMaswaliWorld() {
     const start = weekStartAhead(o.weeksAhead);
     const c = await svc.createWeek({ weekStartMs: start, visibility: o.visibility ?? "PUBLIC", questions: questions(start), officerId: DRAFTER, now: new Date(start - 3 * DAY) });
     if (!c.ok) throw new Error(`world.openWeek: draft refused: ${c.error}`);
-    const a = await svc.attestParity({ weekId: c.week.id, officerId: READER });
+    const a = await svc.attestParity({ weekId: c.week.id, officerId: READER, readVersion: await svc.readDraftVersion(c.week.id) });
     if (!a.ok) throw new Error(`world.openWeek: attest refused: ${a.error}`);
     const r = await svc.openWeek({ weekId: c.week.id, officerId: DRAFTER, guarantee: money.guaranteeReader, now: new Date(start + 60_000) });
     if (!r.ok) throw new Error(`world.openWeek: open refused: ${r.error}`);

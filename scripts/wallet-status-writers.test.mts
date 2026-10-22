@@ -324,17 +324,38 @@ function devOnly(path: string, raw: string, proxyRaw: string): { ok: boolean; wh
 }
 
 // ── the allow-list ──────────────────────────────────────────────────────────────────────────────────────────────
-type Bucket = "not a status writer" | "transport" | "freeze" | "close" | "registration" | "fixture" | "VIOLATION";
+type Bucket = "not a status writer" | "transport" | "freeze" | "close" | "registration" | "fixture" | "rollback" | "VIOLATION";
 const TRANSPORT = new Set(["src/lib/server/store.ts", "src/lib/server/prisma-dal.ts"]);
 // ONE since 2026-10-06: the one-time-code sign-up (verifyOtpAndAuth's create branch) was deleted.
 const REGISTRATION_FNS = new Set(["registerWithPassword"]);
 const FIXTURE_ROOTS = ["src/app/api/dev-test/", "src/app/auth/demo/"];
+
+/** The standalone bonus refund's memory rollback restores its own untouched wallet snapshot.
+ * It holds that user's wallet lock, captures only that user's rows before the refund,
+ * and reaches the set only in catch. A general opaque `wallets.set` is still refused. */
+function bonusRefundRollbackIsSnapshotRestore(raw: string): boolean {
+  const d = decomment(raw);
+  const chunk = chunksOf(d).find((c) => c.name === "refundBonusToActive");
+  if (!chunk) return false;
+  const body = d.slice(chunk.start, chunk.end);
+  return body.includes('return withLock(`wallet:${userId}`, async (tx) => {')
+    && body.includes("const core = tx ? null : globalThis.__50PICK_STORE;")
+    && /const walletBefore = core\s*\?\s*\[\.\.\.core\.wallets\]\.filter\(\(\[, row\]\) => row\.userId === userId\)\.map\(\(\[id, row\]\) => \[id, structuredClone\(row\)\] as const\)\s*:\s*\[\];/.test(body)
+    && /catch \(error\) \{\s*if \(core\) \{\s*for \(const \[id, row\] of core\.wallets\) if \(row\.userId === userId\) core\.wallets\.delete\(id\);\s*for \(const \[id, row\] of walletBefore\) core\.wallets\.set\(id, row\);/.test(body)
+    && (body.match(/\bwallets\.set\(/g) ?? []).length === 1
+    && (body.match(/\bwalletBefore\b/g) ?? []).length === 2;
+}
 
 function judge(s: Site, raw: string, proxyRaw: string): { bucket: Bucket; why: string } {
   const touches = s.writesStatus || s.writesReasons || s.opaque || s.via === "raw SQL";
   if (!touches) return { bucket: "not a status writer", why: "" };
   const bad = (why: string) => ({ bucket: "VIOLATION" as const, why });
   if (s.via === "raw SQL") return bad("raw SQL writes the Wallet table around the DAL and the freeze");
+  if (s.path === "src/lib/server/bonus-service.ts" && s.fn === "refundBonusToActive"
+    && s.via === "wallets.set(" && s.method === "set" && s.opaque
+    && !s.writesStatus && !s.writesReasons && bonusRefundRollbackIsSnapshotRestore(raw)) {
+    return { bucket: "rollback", why: "same-user snapshot restored under wallet lock after refund fault" };
+  }
   if (TRANSPORT.has(s.path)) {
     const literal = s.statuses.filter((v) => v !== "<computed>");
     if (literal.length > 0) return bad(`the store assigns status ${literal.join(", ")} of its own`);
@@ -402,7 +423,8 @@ const FILE_FLOOR = 800;
 // 38 since 2026-10-17 (MASWALI-BUILD R1): `prisma-dal.ts` `wallet.creditMany` — the week void's bulk refund, one
 // `updateMany` of `balance: { increment }` per distinct amount — a balance-only write in the transport; its memory twin
 // credits through `adjust`, so it adds no site. Its callers are skipped as deltas, as `adjust`'s are.
-const SITE_COUNT = 38;
+// 39 since the standalone bonus-refund memory fault rollback restores its same-user wallet snapshot under the wallet lock.
+const SITE_COUNT = 39;
 ok(`1.1 the walk read every .ts/.tsx under src/`, files.length >= FILE_FLOOR, `${files.length} files (floor ${FILE_FLOOR})`);
 ok(`1.2 ⛔ RATCHET · the census found exactly the wallet write sites measured`, all.length === SITE_COUNT,
   `${all.length} sites (pinned ${SITE_COUNT} — a changed count is a changed population: read §1's list, then move the pin)`);
@@ -566,6 +588,33 @@ section("§3 · CONTROLS: each planted writer is caught, and the harmless shapes
     flagged(P, fn(`  const { wallet } = db;\n  await wallet.update(id, { status: "ACTIVE" });`)).length === 1);
   ok("3.36 ⭐ CONTROL · a bracketed delegate (`db[\"wallet\"].update(`) is FLAGGED",
     flagged(P, fn(`  await db["wallet"].update(id, { status: "ACTIVE" });`)).length === 1);
+  {
+    const bonusPath = "src/lib/server/bonus-service.ts";
+    const bonus = readFileSync(join(ROOT, bonusPath), "utf8");
+    const restore = (source: string) => judgeFile(bonusPath, source, proxyRaw)
+      .filter((site) => site.fn === "refundBonusToActive" && site.via === "wallets.set(");
+    const start = bonus.indexOf("export async function refundBonusToActive(");
+    const end = bonus.indexOf("export async function refundEmergencyBonusLocked(", start);
+    const functionSource = start >= 0 && end > start ? bonus.slice(start, end) : "";
+    const original = restore(bonus);
+    ok("3.37 CONTROL · only the same-user bonus-refund fault rollback restores a wallet snapshot",
+      original.length === 1 && original[0].bucket === "rollback");
+    const plants = [
+      ["wallet lock changed", 'withLock(`wallet:${userId}`', 'withLock(`wallet:other:${userId}`'],
+      ["snapshot reaches other users", '? [...core.wallets].filter(([, row]) => row.userId === userId).map(([id, row]) => [id, structuredClone(row)] as const)', '? [...core.wallets].map(([id, row]) => [id, structuredClone(row)] as const)'],
+      ["snapshot changes status", '? [...core.wallets].filter(([, row]) => row.userId === userId).map(([id, row]) => [id, structuredClone(row)] as const)', '? [...core.wallets].filter(([, row]) => row.userId === userId).map(([id, row]) => [id, { ...row, status: "ACTIVE" }] as const)'],
+      ["rollback deletes other users", 'if (row.userId === userId) core.wallets.delete(id);', 'core.wallets.delete(id);'],
+      ["restored row changes status", 'core.wallets.set(id, row);', 'core.wallets.set(id, { ...row, status: "ACTIVE" });'],
+      ["rollback moved out of catch", 'catch (error) {', 'finally {'],
+    ] as const;
+    for (const [name, before, after] of plants) {
+      const unique = functionSource.split(before).length === 2;
+      const altered = unique ? bonus.slice(0, start) + functionSource.replace(before, after) + bonus.slice(end) : "";
+      const sites = unique ? restore(altered) : [];
+      ok(`3.38 ⭐ PLANT · ${name} is a forbidden opaque wallet writer`,
+        unique && sites.length === 1 && sites[0].bucket === "VIOLATION");
+    }
+  }
 }
 
 console.log(`\nwallet-status-writers: ${pass} passed, ${fail} failed`);

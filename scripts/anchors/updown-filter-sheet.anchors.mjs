@@ -27,11 +27,21 @@
 /** @typedef {{ name: string, file: string, suite: string, from: string, to: string, why: string, expect: string }} RedMutation */
 
 const TABS = "src/components/updown/updown-board-tabs.tsx";
+const PENDING = "src/lib/updown-filter-pending.ts";
 const PAGE = "src/app/updown/page.tsx";
 const CSS = "src/app/globals.css";
 
 /** @type {RedMutation[]} */
 export const MUTATIONS = [
+  {
+    name: "asset-only switch selects an impossible asset-duration pair",
+    why: "BTC 3 minutes to Gold omits d because Gold has no 3-minute chain. The pending Gold pill must not be selected beside Bitcoin's still-selected 3-minute pill.",
+    file: PENDING,
+    suite: "updown-filter-sheet",
+    from: "  if (pendingDuration === null) return false;",
+    to: "  if (pendingDuration === null) return true;",
+    expect: "9: pending asset-only URL keeps the old asset and duration together",
+  },
   {
     // ⭐ THE POSITIVE CONTROL.
     name: "trigger-says-filters",
@@ -112,22 +122,31 @@ export const MUTATIONS = [
     expect: "11: 🔴 the transition REPLACES rather than pushes, and does not scroll",
   },
   {
-    name: "split-at-lg",
-    why: "⭐ the disclosure widens from `sm` to `lg`, which reads like more of a good thing. It removes working controls from tablets, where BOTH rails measured a single clean 44px row — the defect had a band and the fix has to have the same one",
+    name: "overflow-sheet-on-tablets",
+    why: "U43: the measured overflow escape hatch is phone-only; widening it crowds the tablet board even though both rails remain visible",
     file: TABS,
     suite: "updown-filter-sheet",
-    from: '      <div className="mt-4 sm:hidden">',
-    to: '      <div className="mt-4 lg:hidden">',
-    expect: "1: …inside a wrapper that hides it from `sm` up",
+    from: '      <div className={choicesOverflow ? "mt-2 sm:hidden" : "hidden"}>',
+    to: '      <div className={choicesOverflow ? "mt-2 lg:hidden" : "hidden"}>',
+    expect: "1: the sheet appears only after measured overflow and only on phones",
   },
   {
-    name: "chips-deleted-not-disclosed",
-    why: "⛔ the asset rail is hidden at EVERY width instead of below `sm`, so the chips are not disclosed progressively — they are gone. The sheet still exists and every 'is there a sheet' assertion stays green, but desktop has silently lost its filter rail",
+    name: "phone-chip-row-hidden",
+    why: "U43: the asset row is hidden on phones, forcing a player back through a sheet and hiding the one-tap choice Ali requested",
     file: TABS,
     suite: "updown-filter-sheet",
-    from: '      <nav aria-label={assetsLabel} data-filter-rail className="mt-4 hidden flex-wrap gap-2 sm:flex">',
-    to: '      <nav aria-label={assetsLabel} data-filter-rail className="mt-4 hidden flex-wrap gap-2">',
-    expect: "1: the asset rail still exists and is shown from `sm` up",
+    from: '      <nav ref={assetRailRef} aria-label={assetsLabel} data-filter-rail className="ud-filter-rail mt-4 flex gap-2">',
+    to: '      <nav ref={assetRailRef} aria-label={assetsLabel} data-filter-rail className="ud-filter-rail mt-4 hidden gap-2 sm:flex">',
+    expect: "1: the asset rail is visible at every width",
+  },
+  {
+    name: "overflow-not-measured",
+    why: "U43: the fallback sheet disappears even when a row cannot show all its chips",
+    file: TABS,
+    suite: "updown-filter-sheet",
+    from: "const measure = () => setChoicesOverflow(rails.some((rail) => rail.scrollWidth > rail.clientWidth + 1));",
+    to: "const measure = () => setChoicesOverflow(false);",
+    expect: "1: the sheet appears only after measured overflow and only on phones",
   },
   {
     name: "second-drawer",

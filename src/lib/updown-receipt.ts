@@ -41,7 +41,7 @@ export type UpDownReceiptInfo = {
   durationMinutes: number;
   /** ISO — when betting stops. Null on legacy rounds with no window. */
   selectionClosedAt: string | null;
-  /** ISO — the round's close, i.e. when the result is due. */
+  /** ISO — the round's close and deciding-price label; the source may publish the result later. */
   closesAt: string;
   /** The round's open price, or null when it has not been read yet. */
   openPrice: number | null;
@@ -65,6 +65,15 @@ export type PlacedBetFacts = {
   /** How much of the stake came from the bonus wallet. > 0 ⇒ never sellable. */
   bonusStakeTzs: number;
 };
+
+/** Show the projection written with this bet, never a fresh calculation from an older board. */
+export function receiptProjectedPayout(
+  show: boolean,
+  placed: { payoutIfWin: number },
+): number | null {
+  return show && Number.isSafeInteger(placed.payoutIfWin) && placed.payoutIfWin > 0
+    ? placed.payoutIfWin : null;
+}
 
 /**
  * Does THIS bet have a free cancellation, and for how long?

@@ -848,8 +848,11 @@ section("§8 · no house wording on outcome notices, in any language");
     await sleep(500);
     // Each row is found by its LINK, which opens its own ticket (`#<position id>`) — since round 3 of the visual pass
     // (2026-10-09) the id rides the link and not the sentence (notification-text.ts).
-    const hcRow = (await rows(hc.userId, "DEPOSIT")).find((n: Any) => String(n.href ?? "").includes(rc.data.positionId));
-    const pcRow = (await rows(pc, "DEPOSIT")).find((n: Any) => String(n.href ?? "").includes(pcPos.data.positionId));
+    // PHOSPHOR-MIGRATION release 2a part 2: returned stakes now carry REFUND.
+    // Keep the link and field-for-field checks below; changing only the lookup
+    // must not make a missing notice look like a passing absence check.
+    const hcRow = (await rows(hc.userId, "REFUND")).find((n: Any) => String(n.href ?? "").includes(rc.data.positionId));
+    const pcRow = (await rows(pc, "REFUND")).find((n: Any) => String(n.href ?? "").includes(pcPos.data.positionId));
     ok("8.14 · HB-LC-11 fixture · the cancelled market really refunded both, and BOTH notices EXIST — the rows are asserted PRESENT before anything is asserted absent from them",
       voided.ok === true && !!hcRow && !!pcRow, j({ voided: show(voided), holder: !!hcRow, player: !!pcRow }));
     ok("8.15 · HB-LC-11 · the holder's MARKET CANCELLED notice carries no house word in any of the three languages, link included",
@@ -867,8 +870,8 @@ section("§8 · no house wording on outcome notices, in any language");
     await w.svc.resolveMarket({ marketId: mo.id, outcome: "YES", officerId: OFFICER });
     await w.svc.settleMarket(mo.id, { force: true });
     await sleep(500);
-    const hoRow = (await rows(ho.userId, "WIN")).find((n: Any) => String(n.href ?? "").includes(ro2.data.positionId));
-    const poRow = (await rows(po, "WIN")).find((n: Any) => String(n.href ?? "").includes(poPos.data.positionId));
+    const hoRow = (await rows(ho.userId, "REFUND")).find((n: Any) => String(n.href ?? "").includes(ro2.data.positionId));
+    const poRow = (await rows(po, "REFUND")).find((n: Any) => String(n.href ?? "").includes(poPos.data.positionId));
     ok("8.17 · HB-LC-11 fixture · with every stake on ONE side both readers got the full-refund notice — asserted PRESENT first, because an absence proved over a missing row proves nothing",
       !!hoRow && !!poRow && hoRow.titleEn.startsWith("Full refund") && poRow.titleEn.startsWith("Full refund"),
       j({ holder: hoRow?.titleEn, player: poRow?.titleEn }));

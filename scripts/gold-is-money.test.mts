@@ -26,7 +26,6 @@ import { readFileSync } from "node:fs";
 /** Files that render IDENTITY. Gold here would mean "status", which is the confusion Q5 ends. */
 const IDENTITY_SURFACES = [
   "src/components/ui/identity-avatar.tsx",
-  "src/components/updown/updown-card.tsx",
   // 2026-10-09 (round 3, tiles 177 178 203): the leaderboard's ribbon struck its top TIER in `text-gold-300` — "Fedha",
   // silver, in the money ink. The ribbon states ranks, counts and rates; its gold accent is gone, and this keeps it gone.
   "src/components/layout/page-ribbon.tsx",
@@ -92,6 +91,33 @@ for (const f of IDENTITY_SURFACES) {
   ok(`1 · ${f} uses no money-ink token`, hits.length === 0, hits.join(", "));
   const classHits = [...code.matchAll(MONEY_CLASS)].map((m) => m[0]);
   ok(`1b · ${f} uses no money-ink Tailwind class`, classHits.length === 0, classHits.join(", "));
+}
+// The Up & Down card contains asset identity and a viewer's settled result in one file.
+// Its sole money ink belongs to an earned WIN payout; its identity and every other
+// status stay neutral. Keep this mixed surface explicit rather than exempting it.
+{
+  const card = strip(read("src/components/updown/updown-card.tsx"));
+  // 2026-10-20: the valid-payout gate wraps the amount fragment; inside it,
+  // WIN alone may choose gold. A LOSS or a missing payout stays neutral.
+  const earnedGold = /cardResults\[0\]\.status === "WIN" \? "var\(--gold-300\)" : "var\(--text\)"/;
+  const earnedScope = (source: string) => {
+    const single = source.split("{cardResults.length === 1 ? (")[1]?.split(") : (")[0] ?? "";
+    const gatedAmount = single.match(/\{cardResults\[0\]\.payout != null && <>([\s\S]*?)<\/>\}/)?.[1] ?? "";
+    return source.includes("settledNow && settled && cardResults.length > 0")
+      && /payout: validRealizedPayout\(r\) \? r\.payout : null/.test(source)
+      && gatedAmount.includes('<span className="amount font-semibold"')
+      && gatedAmount.includes("{formatTzs(cardResults[0].payout)}")
+      && earnedGold.test(gatedAmount);
+  };
+  ok("1.card · Up & Down's only gold is the viewer's earned WIN payout",
+    earnedScope(card) && [...card.matchAll(MONEY_INK)].length === 1 && [...card.matchAll(MONEY_CLASS)].length === 0);
+  const mutant = card.replace('cardResults[0].status === "WIN" ? "var(--gold-300)"',
+    'cardResults[0].status === "LOSS" ? "var(--gold-300)"');
+  ok("1.card.control · a LOSS painted gold fails the earned-money gate",
+    mutant !== card && !earnedScope(mutant));
+  const ungated = card.replace("cardResults[0].payout != null && <>", "true && <>");
+  ok("1.card.control · removing the valid-payout gate fails the earned-money gate",
+    ungated !== card && !earnedScope(ungated));
 }
 // ⭐ CONTROLS for 1b — the class form of the defect, planted, must be caught; neighbouring non-money classes must not be.
 {

@@ -1,7 +1,8 @@
 import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { keepFigures, keepLastWords } from "@/components/ui/keep-words";
 // The rail's labels never end a line on a connective (round 9, R9-B): a node is ~93px at 320 (70 in agent mode), and
 // "Leseni ya udereva" breaks "Leseni ya" / "udereva", "Kadi ya mpiga kura" "Kadi ya" / "mpiga kura".
@@ -402,11 +403,9 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
         // for the NO side of a stake. Box, disc and ink are the kit Callout's danger tone, verbatim.
         <section role="alert" className="rounded-xl border border-danger-500/50 bg-danger-500/10 p-4 lg:p-5">
           <div className="flex items-start gap-3">
-            {/* ⚠️ LITERALS, not `h-9 w-9` — spacing is overridden (tailwind.config.ts:200-215),
-                so `h-9` renders 64px. This is the surface that gates every withdrawal. */}
-            <span className="inline-flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full bg-danger-500/15 text-danger-fg">
-              <I.alertCircle s={18} />
-            </span>
+            <IconPlate size={36} variant="danger" aria-hidden>
+              <I.alertCircle s={plateGlyph(36)} tier="fill" />
+            </IconPlate>
             <div className="min-w-0">
               {/* 2026-09-14 — a FINAL refusal is "Refused", the word its own body uses; "Rejected" reads as retryable. */}
               <p className="font-display text-[14px] font-bold text-danger-fg text-balance">{finalRefusal ? t.profile.refusedFinal : t.profile.rejected}</p>
@@ -482,10 +481,9 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       {needsInfo && (
         <section role="status" className="rounded-xl border border-warning-border bg-warning-bg p-4 lg:p-5">
           <div className="flex items-start gap-3">
-            {/* ⚠️ LITERALS — see the rejected-medallion note above. `h-9` is 64px here. */}
-            <span className="inline-flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full bg-warning-bg text-warning-fg">
-              <I.info s={18} />
-            </span>
+            <IconPlate size={36} variant="warning" aria-hidden>
+              <I.info s={plateGlyph(36)} tier="fill" />
+            </IconPlate>
             <div className="min-w-0">
               <p className="font-display text-[14px] font-bold text-warning-fg text-balance">{t.profile.kycMoreInfo}</p>
               {/* zh sets sentences with no joining space; a space there reads as a typo.
@@ -509,9 +507,9 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       {needsInfo && openRequests.length > 0 && (
         <section data-kyc-legacy-requests className="rounded-xl glass-panel p-5 lg:p-6 space-y-3">
           <div className="flex items-center gap-2">
-            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-bg-overlay text-text-subtle">
-              <I.fileSignature s={15} />
-            </span>
+            <IconPlate size={40} variant="quiet" aria-hidden>
+              <I.fileSignature s={plateGlyph(40)} />
+            </IconPlate>
             <h2 className="font-display text-[15px] font-semibold text-text text-balance">{t.profile.kycRequestedDocs}</h2>
           </div>
           <p className={`text-body-sm text-text-muted leading-snug ${zhKeep}`}>
@@ -545,9 +543,9 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
         {showIdentityForm && (
           <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-4">
             <div className="flex items-center gap-2">
-              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-500/15 text-brand-300">
-                <I.user s={15} />
-              </span>
+              <IconPlate size={40} variant="identity" aria-hidden>
+                <I.idCard s={plateGlyph(40)} tier="duo" />
+              </IconPlate>
               {/* The typed track is ONE step, so it is not numbered; the agent track's details are step 1 of 2. */}
               <h2 className="font-display text-[15px] font-semibold text-text text-balance">{agentMode ? `${t.profile.step1} · ${t.profile.identityDocument}` : t.profile.identityDocument}</h2>
             </div>
@@ -801,10 +799,9 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               // Withdrawals are untouched by it (`approvedAt` stands), so nothing here speaks of them.
               <section data-kyc-agent-expired className="rounded-xl border border-border bg-bg-elevated p-4 lg:p-5">
                 <div className="flex items-start gap-3">
-                  {/* ⚠️ LITERALS — see the rejected-medallion note above. */}
-                  <span className="inline-flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full border border-border bg-bg-overlay text-text-subtle">
-                    <I.idCard s={18} />
-                  </span>
+                  <IconPlate size={36} variant="quiet" aria-hidden>
+                    <I.idCard s={plateGlyph(36)} />
+                  </IconPlate>
                   <div className="min-w-0">
                     <h2 className="font-display text-body font-bold text-text text-balance">{t.profile.agentPhotosExpiredTitle.replace("{document}", idLabel)}</h2>
                     <p className={`mt-1 text-body-sm text-text-muted leading-snug ${zhKeep}`}>
@@ -844,9 +841,9 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                 <span className="font-mono text-micro uppercase tracking-[0.1em] text-text-subtle">{idLabel}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-500/15 text-brand-300">
-                  <I.camera s={15} />
-                </span>
+                <IconPlate size={40} variant="identity" aria-hidden>
+                  <I.camera s={plateGlyph(40)} tier="duo" />
+                </IconPlate>
                 <h2 className="font-display text-[15px] font-semibold text-text text-balance">
                   {approved ? t.profile.agentPhotosUpgradeTitle : `${t.profile.step2} · ${t.profile.uploadDocuments}`}
                 </h2>

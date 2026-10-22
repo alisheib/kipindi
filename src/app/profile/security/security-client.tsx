@@ -4,7 +4,8 @@ import { useEffect, useState, useTransition } from "react";
 import QRCode from "qrcode";
 import { useRouter } from "next/navigation";
 import { formatNumber } from "@/lib/utils";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { OtpInput } from "@/components/ui/otp-input";
@@ -179,11 +180,13 @@ export function SecurityClient({ enabled, backupRemaining, hasPassword }: { enab
     <section className="rounded-xl glass-panel p-5 space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          {/* ⚠️ LITERALS, not `h-10 w-10` — spacing is overridden (tailwind.config.ts:200-215)
-              and `h-10` renders 80px. */}
-          <span className={`inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-md ${enabled ? "bg-success-500/10 text-success-fg" : "bg-brand-500/10 text-brand-300"}`}>
-            <I.shieldcheck s={18} />
-          </span>
+          {/* A STATUS PLATE (PHOSPHOR-MIGRATION release 2): it says what the chip beside it says. On, two-step guards the
+              account — the success family, the shield in Fill (a state that is on, §8c). Off is a neutral, inactive state —
+              the quiet plate, the shield in Line: never Duotone's life on a protection that is not running (`shieldcheck`
+              means verified, §8b). The tints and the 8px corner typed here are the variants' now. */}
+          <IconPlate size={40} variant={enabled ? "success" : "quiet"} aria-hidden>
+            <I.shieldcheck s={plateGlyph(40)} tier={enabled ? "fill" : "line"} />
+          </IconPlate>
           <div>
             <p className="font-display text-[15px] font-semibold text-text leading-tight">{t.security.totpTitle}</p>
             <p className="mt-0.5 text-body-sm text-text-subtle leading-snug">{t.security.totpBody}</p>

@@ -157,11 +157,12 @@ const SELL = "src/components/markets/sell-confirm-modal.tsx";
 
 /* ══ §2 · C7 · A MONEY RANGE IS ONE AMOUNT ════════════════════════════════════════════════════════════════════════════ */
 section("2 · C7 Up & Down's range line: the range is the amount, the sentence before it wraps — and no `.amount` holds a sentence it can clip");
-const RANGE_LINE = '<p className={cn("mt-1 text-micro", customInvalid ? "text-danger-fg" : "text-text-subtle")}> {customInvalid ? `${t.market.udStakeRange} · ` : ""}<span className="amount">{formatTzs(bet.min)} – {formatTzs(bet.max)}</span> </p>';
+const RANGE_LINE = '<p className={cn("mt-1 text-micro", customInvalid ? "text-text" : "text-text-subtle")}> {customInvalid ? `${t.market.udStakeRange} · ` : ""}<span className="amount">{formatTzs(bet.min)} – {formatTzs(bet.max)}</span> </p>';
+const CARD_RANGE_LINE = RANGE_LINE.replace("mt-1 text-micro", "mt-1 text-body-sm");
 const UD_CONTROLS = "src/components/updown/updown-stake-controls.tsx", UD_PANEL = "src/components/updown/round-stake-panel.tsx";
 {
   ok("2.1 · the board card's range line: the line is the hint's own words, and only the range is an amount (it was ONE `.amount` — mono, nowrap)",
-    has(UD_CONTROLS, RANGE_LINE) && !has(UD_CONTROLS, '"mt-1 text-micro amount"'));
+    has(UD_CONTROLS, CARD_RANGE_LINE) && !has(UD_CONTROLS, '"mt-1 text-body-sm amount"'));
   ok("2.1′ · …and its twin on the round page says it the same way (one rule, both stake panels)", has(UD_PANEL, RANGE_LINE) && !has(UD_PANEL, '"mt-1 text-micro amount"'));
   const { formatTzs } = req("../src/lib/utils.ts") as { formatTzs: (n: number) => string };
   const { PLATFORM_MIN_STAKE, PLATFORM_MAX_STAKE } = req("../src/lib/payout.ts") as { PLATFORM_MIN_STAKE: number; PLATFORM_MAX_STAKE: number };
@@ -200,17 +201,21 @@ const UD_CONTROLS = "src/components/updown/updown-stake-controls.tsx", UD_PANEL 
   const RULED: Array<[string, RegExp, string]> = [
     ["src/components/journey/bet-sheet/sheet-parts.tsx", /fill\(t\.journey\.multOnly/, "S8 keyboard compact multiple: the translation is the bare figure ≈{mult}× in every locale, no dictionary words"],
     ["src/app/updown/[roundId]/page.tsx", /udBothSides/, "a settled round's pick · stake: a side word and one figure (\"Juu · TZS 1,000\"), short in every language"],
+    ["src/app/updown/[roundId]/page.tsx", /earlierCashoutPayout == null \? t\.market\.udPayoutUnavailable/, "U43: a prior cash-out's amount slot says the short unavailable phrase when its payout is unknown; the containing paragraph can wrap at 320"],
+    ["src/app/updown/[roundId]/page.tsx", /resultAmount == null \? t\.market\.udPayoutUnavailable/, "U43: the result figure slot substitutes the short unavailable phrase; its flex row wraps at 320"],
+    ["src/app/updown/[roundId]/page.tsx", /p\.payout == null \? t\.market\.udPayoutUnavailable/, "U43: a ticket row's payout slot substitutes the short unavailable phrase; the row flex-wraps at 320"],
     ["src/components/markets/sell-confirm-modal.tsx", /t\.dialog\.noFee/, "\"No fee\" in the fee figure's own slot — two words where a figure stands"],
     ["src/components/markets/sell-confirm-modal.tsx", /t\.dialog\.freeExitWindow/, "the fee's caption: three words in the figure column (≤ 132px)"],
     ["src/components/updown/round-action-panel.tsx", /udYouGet\} \{formatTzs\(payoutIfUp/, "\"you get\" + the UP payout: its figure's own label, ≤ 176px beside a wrapping label at 320 (it fits)"],
     ["src/components/updown/round-action-panel.tsx", /udYouGet\} \{formatTzs\(payoutIfDown/, "\"you get\" + the DOWN payout, as above"],
   ];
   const unruled = sites.filter((s) => !RULED.some(([f, re]) => s.startsWith(`${f}|`) && re.test(s)));
-  ok(`2.3 · every \`.amount\` that holds dictionary words is ruled (${sites.length} sites: a pick · stake, two labels in a figure's slot, two "you get" payouts; the archive count now uses mono without amount) — none is a sentence that can be clipped`,
-    unruled.length === 0 && sites.length === RULED.length, j({ unruled, sites }));
-  const oldLine = squash(code(UD_CONTROLS)).replace(squash(RANGE_LINE), '<p className={cn("mt-1 text-micro amount", customInvalid ? "text-danger-fg" : "text-text-subtle")}> {customInvalid ? `${t.market.udStakeRange} · ` : ""}{formatTzs(bet.min)} – {formatTzs(bet.max)} </p>');
+  ok(`2.3 · every \`.amount\` that holds dictionary words is ruled (${sites.length} sites, including U43's three unknown-payout placeholders) — none is a sentence that can be clipped`,
+    unruled.length === 0 && sites.length === RULED.length + 1
+      && RULED.every(([f, re]) => sites.some((s) => s.startsWith(`${f}|`) && re.test(s))), j({ unruled, sites }));
+  const oldLine = squash(code(UD_CONTROLS)).replace(squash(CARD_RANGE_LINE), '<p className={cn("mt-1 text-body-sm amount", customInvalid ? "text-danger-fg" : "text-text-subtle")}> {customInvalid ? `${t.market.udStakeRange} · ` : ""}{formatTzs(bet.min)} – {formatTzs(bet.max)} </p>');
   ok("2.4 PLANT · the whole-line `.amount` back on the board card is reported (2.1 reads it), and its sentence would be an unruled `.amount` site",
-    oldLine !== squash(code(UD_CONTROLS)) && !hasIn(oldLine, RANGE_LINE) && !RULED.some(([f, re]) => f === UD_CONTROLS && re.test("{customInvalid ? `${t.market.udStakeRange} · ` : \"\"}")));
+    oldLine !== squash(code(UD_CONTROLS)) && !hasIn(oldLine, CARD_RANGE_LINE) && !RULED.some(([f, re]) => f === UD_CONTROLS && re.test("{customInvalid ? `${t.market.udStakeRange} · ` : \"\"}")));
 }
 
 /* ══ §3 · C8 · NO GRID TRACK WIDER THAN A PHONE'S COLUMN ═══════════════════════════════════════════════════════════════ */
@@ -366,8 +371,10 @@ const INVITE = "src/app/profile/invite/page.tsx", NAME_HOME = "src/lib/journey/i
   // §10 §3.2) — not a journey door answer; the two this check is about still reach the journey arms alone.
   // ⚠️ RE-PINNED, MASWALI-BUILD S5-TAB (2026-10-19): the journey bar's props gain the same `millionea` (Millionea's own link,
   // DESIGN_AUTHORITY §M8a item 11), the shell's one answer for every nav — still not one of the two door answers.
+  // ⚠️ RE-PINNED, MASWALI-BUILD S5-FIX-PLATFORM D13 (2026-10-21): the classic bar also takes `{...millioneaBreakProp}` (the
+  // destination a Millionea page lights on a break) — not a door answer either.
   ok("5.7 · the shell hands the journey's two door answers to the journey arms alone",
-    has(SHELL, "inviteAgent={inviteViewer.agentInGoodStanding} kycOffered={journeyKycOffered} invitePaid={invitePaid} millionea={millioneaRow} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} millionea={millioneaRow} />")
+    has(SHELL, "inviteAgent={inviteViewer.agentInGoodStanding} kycOffered={journeyKycOffered} invitePaid={invitePaid} {...millioneaProp} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} {...millioneaProp} {...millioneaBreakProp} />")
       && has(SHELL, "invitePaid={invitePaid} inviteAgent={inviteViewer.agentInGoodStanding} journeyShown /> : <PublicFooter proposalsState={proposalsState} agentDoorVisible={agentDoorVisible} inviteVisible={inviteVisible} supportEmail={SUPPORT_EMAIL()} supportPhone={SUPPORT_PHONE()} supportPhoneTel={SUPPORT_PHONE_TEL()} />"));
   // Plants: the hub back to "never a paid word"; the menu back to the classic literal for a paid reader.
   const hubOld = (v: ReturnType<typeof member>) => (v.agentInStanding ? "agent.dashTitle" : "profile.inviteFriends");
@@ -402,7 +409,8 @@ section("6 · C14 the journey's doors and pages call /positions \"Tiketi zangu\"
     !/^\s*["']use client["']/m.test(loading) && loading.includes("const { journey } = await resolveSimpleJourney();") && loading.includes("return <PerformanceGhost journey={journey} />;")
       && /^\s*["']use client["']/m.test(code("src/app/positions/performance/performance-ghost.tsx")));
   ok("6.4 · /help's card to /positions says Tiketi zangu with the tab's ticket glyph in the journey; everybody else's is today's",
-    has("src/app/help/page.tsx", "icon={journey ? <I.ticket s={15} /> : <I.portfolio s={15} />}") && has("src/app/help/page.tsx", "title={journey ? t.journey.tabTickets : t.help.myPositions}"));
+    // PHOSPHOR-MIGRATION release 2: the card names its glyph by key; the help cells draw it on the identity plate (`HelpPlate`).
+    has("src/app/help/page.tsx", "glyph={journey ? \"ticket\" : \"portfolio\"}") && has("src/app/help/page.tsx", "title={journey ? t.journey.tabTickets : t.help.myPositions}"));
   ok("6.5 · a settled round's door to its tickets says Tiketi zangu in the journey (it said \"Fungua kwenye Nafasi\")",
     has("src/app/updown/[roundId]/page.tsx", "{journey ? t.journey.tabTickets : t.market.udOpenInPositions}</Link>"));
   // Every journey door that names the tickets page, census: no positions word left in a journey arm.
@@ -512,6 +520,7 @@ section("10 · C9 every player dialog's ✕ is ruled — on its title, in its he
     "src/components/journey/bet-sheet/bet-sheet.tsx": "header-row", // S8 A13: the chosen-side row is the sheet's header; pure BetSheetBody draws CloseX there.
     "src/components/journey/tickets-guest-sheet.tsx": "title", "src/components/markets/market-card.tsx": "title",
     "src/components/markets/objection-dialog.tsx": "title", "src/components/markets/share-button.tsx": "title", "src/components/rg/reality-check.tsx": "title",
+    "src/components/maswali/maswali-slip.tsx": "title", // Modal's aria title points to the slip's own h2 via titleId.
     // The Vodacom plan S7, WP6: the How to Play sheet — the guest sheet's title class (its 24px modifier) on the corner ✕.
     "src/components/onboarding/how-to-play-sheet.tsx": "title",
     "src/components/markets/bet-confirm-modal.tsx": "header-row", "src/components/markets/sell-confirm-modal.tsx": "header-row", "src/components/ui/modal.tsx": "header-row",
@@ -536,7 +545,13 @@ section("10 · C9 every player dialog's ✕ is ruled — on its title, in its he
     if (!modals.length) return "no <Modal>";
     if (!kind) return "unruled";
     const noCorner = modals.every((m) => /showClose=\{false\}/.test(m[1]));
-    if (kind === "title") return !noCorner && /kp-modal-title|kp-jsheet__title|id="reality-check-title"/.test(src) ? "" : "a titled dialog without its title on the corner ✕";
+    if (kind === "title") {
+      const linkedTitle = file === "src/components/maswali/maswali-slip.tsx"
+        && modals.every(([tag]) => /\blabelledBy=\{titleId\}/.test(tag))
+        && /<h2\b[^>]*\bid=\{titleId\}/.test(src);
+      return !noCorner && (/kp-modal-title|kp-jsheet__title|id="reality-check-title"/.test(src) || linkedTitle)
+        ? "" : "a titled dialog without its title on the corner ✕";
+    }
     if (kind === "header-row") {
       const inModal = src.slice(src.indexOf("<Modal"));
       const inline = /<CloseX\b/.test(inModal);
@@ -547,7 +562,7 @@ section("10 · C9 every player dialog's ✕ is ruled — on its title, in its he
     if (kind === "none") return noCorner && !/<CloseX\b/.test(src) ? "" : "a dialog ruled without a ✕ that draws one";
     // The exception: Modal's corner ✕, and the panel's first drawn thing a crest or seal, before any title.
     const body = src.slice(src.indexOf("<Modal"));
-    const crestAt = body.search(/className=\{`mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full|<StruckSeal \/>/);
+    const crestAt = body.search(/className=\{`orm-crest mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full|<StruckSeal \/>/);
     const titleAt = body.search(/<h2\b/);
     return !noCorner && crestAt > 0 && titleAt > crestAt && !/kp-modal-title/.test(src) ? "" : "a crest-first exception whose panel does not open on its crest";
   };
@@ -568,6 +583,13 @@ section("10 · C9 every player dialog's ✕ is ruled — on its title, in its he
   const crestLast = judge("src/components/markets/operation-result-modal.tsx", ormSrc.replace(/<h2\b/, "<h2 data-x").replace("<Modal", "<Modal><h2 data-first>t</h2>"), "crest");
   ok("10.4 PLANT · a titled dialog ruled a crest, a new dialog nobody ruled, and a crest dialog whose title comes first are each reported",
     !!shareAsCrest && fresh === "unruled" && !!crestLast, j({ shareAsCrest, fresh, crestLast }));
+  const slip = code("src/components/maswali/maswali-slip.tsx");
+  const brokenLabel = slip.replace("labelledBy={titleId}", "labelledBy={brokenId}");
+  const brokenHeading = slip.replace("<h2 id={titleId}", "<h2 id={brokenId}");
+  ok("10.5 PLANT · the slip's accessible title link is checked at both ends",
+    brokenLabel !== slip && brokenHeading !== slip
+      && !!judge("src/components/maswali/maswali-slip.tsx", brokenLabel, "title")
+      && !!judge("src/components/maswali/maswali-slip.tsx", brokenHeading, "title"));
 }
 
 /* ══ §11 · C3 · THE GOLD CENSUS COUNTS THE WARNING FAMILY ═════════════════════════════════════════════════════════════ */
@@ -600,9 +622,16 @@ section("11 · C3 the warning census counts the family in every spelling, and ev
   // word, the result crest's glyph) = 63. Typed-only identity (2026-10-10) took one more: the KYC page's extra-document
   // card and its amber disc (a `bg-warning-bg` wash) went with player uploads = 62. MASWALI-BUILD S5 (2026-10-18) adds two:
   // the Millionea confirm's short-balance box, its frame and wash (`border-warning-border bg-warning-bg`; its glyph is the
-  // ink, `text-warning-fg`) — ruled in r8a §3 = 64.
-  ok(`11.2 PLANT · the census as it stood (\`--warning-fg\` alone) misses ${old.length} of them — the review's 61, 63 since R8-A's amber, 62 since typed-only identity, 64 with Millionea's confirm`, old.length === 64, String(old.length));
+  // ink, `text-warning-fg`) — ruled in r8a §3 = 64. S5 measured 66 with the shared warning plate. Phosphor 2a
+  // centralised five caller paints on that plate: agent apply's rejected disc wash and ink (−2), the KYC page's
+  // correction disc wash (−1), and the KYC gate's action and held washes (−2) = 61. S5-FIX-PLAYER P18 (2026-10-21) gave
+  // the Millionea short-balance box back to the kit (`<Callout tone="warning">`, which paints the family itself): its frame
+  // and wash leave the slip (−2) = 59. R8-A pins each file's exact count; this plant proves the old `--warning-fg`-only net
+  // still misses the family.
+  ok(`11.2 PLANT · the \`--warning-fg\`-only census misses ${old.length} warning paints after the shared plate replaces five caller paints`, old.length === 59, String(old.length));
   const NEW = ["src/app/auth/forgot-password/page.tsx", "src/app/profile/account/privacy-request-form.tsx", "src/components/rg/limit-usage.tsx"];
+  ok(`11.2 PLANT · the old \`--warning-fg\`-only census misses warning paint in all three named surfaces (${old.length} misses today)`,
+    NEW.every((f) => old.some((site) => site.startsWith(`${f}:`))), old.slice(0, 4).join(" | "));
   // R8-A (2026-10-10): the fourth, the maintenance flag, paints no spelling of its own any more — its label took the
   // family's ink through the Callout's `MAINTENANCE_AMBER` (as its wash and edge already did), counted where that lives.
   ok("11.3 · the files the census saw first are registered, each with its ruling (a rate-limit wait, an erasure's caution, the one limit ramp's caution step) — and the maintenance flag reads MAINTENANCE_AMBER whole",
@@ -668,18 +697,21 @@ section("14 · C16 one pill size in the board card's row · C17 the classic held
 {
   const CARD = "src/components/markets/market-card.tsx";
   const card = squash(code(CARD));
-  ok("14.1 · C16: the status pill and the signal pill state the row's one size and box (`xs`, `metrics=\"status\"`)",
-    card.includes('<Chip size="xs" metrics="status" variant={TONE_CHIP[STATUS_TONE[statusWord].player]} dot={live}>') && card.includes('<Chip size="xs" metrics="status" aria-label={signal.label}'));
+  // U43 B4 (2026-10-19): grid chips now share the 11px md status box; the
+  // landing's featured hero keeps its xs row. Both still name one metric.
+  ok("14.1 · C16: both grid chips choose the same md status box; featured keeps xs",
+    card.includes('size={featured ? "xs" : "md"} metrics="status" variant={TONE_CHIP[STATUS_TONE[statusWord].player]}')
+      && card.includes('size={featured ? "xs" : "md"} metrics="status" aria-label={signal.label}'));
   const { Chip } = req("../src/components/ui/chip.tsx") as { Chip: unknown };
   const box = (props: Record<string, unknown>) => {
     const m = renderToStaticMarkup(h(Chip as never, props as never, "x"));
     return `${/min-height:(\d+)px/.exec(m)?.[1]}/${/font-size:([0-9.]+)px/.exec(m)?.[1]}`;
   };
-  const status = box({ size: "xs", metrics: "status", variant: "pending" });
-  const signals = ["hot", "pending", "signal", "new"].map((v) => box({ size: "xs", metrics: "status", variant: v }));
-  ok(`14.2 · RENDERED: every signal pill is the status pill's box and type (${status}) whatever its colour`, signals.every((s) => s === status) && status === "23/9.5", j({ status, signals }));
+  const status = box({ size: "md", metrics: "status", variant: "pending" });
+  const signals = ["hot", "pending", "signal", "new"].map((v) => box({ size: "md", metrics: "status", variant: v }));
+  ok(`14.2 · RENDERED: every signal pill is the status pill's 11px box (${status}) whatever its colour`, signals.every((s) => s === status) && status === "23/11", j({ status, signals }));
   const before = ["hot", "signal"].map((v) => box({ variant: v }));
-  ok(`14.2′ CONTROL · the default size drew two boxes in that row: ${before.join(" and ")} against the status pill's ${status}`, before.every((b) => b !== status) && before[0] !== before[1]);
+  ok(`14.2′ CONTROL · omitting status metrics gives inconsistent signal boxes: ${before.join(" and ")} against ${status}`, before.some((b) => b !== status) && before[0] !== before[1]);
   const PC = "src/components/markets/position-card.tsx";
   ok("14.3 · C17: the classic position card's question is whole (no clamp), as its journey twin's — the board's two-line clamp is for browsing cards",
     has(PC, '<p className="font-display text-[15px] font-semibold leading-tight tracking-[-0.005em] text-text text-balance">') && !/line-clamp/.test(code(PC))
@@ -744,8 +776,17 @@ section("16 · one gap between two large buttons, stacked or side by side: 12px,
   const pairs = PLAYER_TSX.flatMap((f) => pairsIn(f, code(f)));
   const PAIR_CSS_GAP = /\.kp-wsheet__pair \{[^}]*gap:\s*var\(--sp-3\)/.test(decommentCss(raw("src/app/globals.css"))) && /--sp-3:\s*12px/.test(raw("src/app/globals.css"));
   const off = pairs.filter((p) => !(p.gap === "2" || (p.gap === "css" && PAIR_CSS_GAP)));
-  ok(`16.1 · every pair of large buttons stands 12px apart — \`gap-2\` (${twStep("2")}px on this scale) or the Wallet sheet's pair class (\`--sp-3\`) — ${pairs.length} pairs: the receipt's and the deposit return's, both confirms', the market's and Up & Down's two sides, the reality check's, the mail-link pages'`,
-    off.length === 0 && pairs.length >= 10 && twStep("2") === 12, j(off.map((p) => `${p.file}:${p.line} gap-${p.gap}`)));
+  // U43 B1's side pair maps one button over UP/DOWN. The static sibling counter
+  // sees that as one JSX button, so check its real grid and both classes directly.
+  const udControls = code("src/components/updown/updown-stake-controls.tsx");
+  const mappedSidePair = (s: string) => s.includes('className="grid grid-cols-2 gap-2"')
+    && /className=\{cn\("btn", side === "UP" \? "btn-yes" : "btn-no", "btn-lg",/.test(s);
+  ok(`16.1 · every large-button pair keeps the 12px gap — ${pairs.length} static pairs plus Up & Down's mapped UP/DOWN grid`,
+    off.length === 0 && pairs.length >= 9 && mappedSidePair(udControls) && twStep("2") === 12,
+    j(off.map((p) => `${p.file}:${p.line} gap-${p.gap}`)));
+  const mappedPairTooTight = udControls.replace('className="grid grid-cols-2 gap-2"', 'className="grid grid-cols-2 gap-1"');
+  ok("16.1′ PLANT · squeezing Up & Down's mapped pair to gap-1 fails the same guard",
+    mappedPairTooTight !== udControls && !mappedSidePair(mappedPairTooTight));
   ok("16.2 · the two money pages the coordinator named say it the same way, and the receipt's ghost draws its pair on the same gap",
     has("src/app/wallet/deposit/return/page.tsx", '<div className="flex flex-col sm:flex-row gap-2">') && has("src/app/wallet/receipt/[id]/page.tsx", '<div className="flex flex-col sm:flex-row gap-2">')
       && has("src/app/wallet/receipt/[id]/loading.tsx", '<div className="flex flex-col sm:flex-row gap-2" aria-hidden>'));

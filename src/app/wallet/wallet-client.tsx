@@ -5,7 +5,9 @@ import Link from "next/link";
 // each ~98px at 320, where "Kumbukumbu ya lango" breaks "Kumbukumbu ya" / "lango" — now "Kumbukumbu" / "ya lango".
 import { keepConnectives } from "@/components/ui/keep-run";
 import { useState } from "react";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph, type DuoGlyphKey } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
+import type { TxnTypeValue } from "@/lib/wallet/ledger";
 import { PageHeader } from "@/components/ui/page-header";
 import { FiftyMark } from "@/components/brand";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -470,6 +472,24 @@ const STORED_STATUS: Record<Transaction["status"], string> = {
   failed: "FAILED", reversed: "REVERSED", cancelled: "CANCELLED",
 };
 
+// PHOSPHOR-MIGRATION release 2a part 2: the stored ledger kind, never its amount sign, decides the glyph. An unknown
+// kind or an internal adjustment stays a neutral receipt until it has its own player-facing meaning.
+const LEDGER_GLYPH: Record<TxnTypeValue, DuoGlyphKey | null> = {
+  DEPOSIT: "arrowDownToLine",
+  WITHDRAWAL: "arrowUpFromLine",
+  BET_PLACED: "ticket",
+  BET_PAYOUT: "resolved",
+  BET_REFUND: "refund",
+  BONUS_CREDIT: "gift",
+  CASHOUT: "cashOut",
+  AGENT_COMMISSION: "agent",
+  AGENT_COMMISSION_REVERSAL: "agent",
+  AGENT_REGISTRATION_FEE: "agent",
+  ADJUSTMENT_DEBIT: null,
+  ADJUSTMENT_CREDIT: null,
+  HOUSE_FEE: null,
+};
+
 function TxnRow({ tx }: { tx: Transaction }) {
   const { t, locale } = useT();
   const [expanded, setExpanded] = useState(false);
@@ -482,7 +502,6 @@ function TxnRow({ tx }: { tx: Transaction }) {
   // deposit read as a green "+TZS 100,000". Green + "+" is a SETTLED credit only; a row that moved
   // nothing (failed/reversed/cancelled) is muted and unsigned; an in-flight credit keeps its "+"
   // (direction) but not the green (it has not landed). Display only — no amount or total changes.
-  const settledCredit = isCredit && tx.status === "confirmed";
   const movedNothing = tx.status === "failed" || tx.status === "reversed" || tx.status === "cancelled";
   // Tone AND label for every state the money can actually be in. The label was
   // previously the raw enum printed lowercase (`{tx.status}`) — the one place on
@@ -502,14 +521,8 @@ function TxnRow({ tx }: { tx: Transaction }) {
     reversed: t.wallet.txnStatusReversed,
     cancelled: t.wallet.txnStatusCancelled,
   };
-  // ⭐ THE RECEIPTS ROW'S PLATE, AND ITS AMOUNT INK (R5-I, the visual pass's round 5, 2026-10-09). `receipt-list-row.tsx`
-  // decided this row on 2026-10-07 — "NO BETTING INK AND NO GOLD. Deposit and withdrawal share ONE neutral brand plate;
-  // the glyph gives the direction (§B2a)" — and named this one "the drift, not a second design". Money that moved (a
-  // settled credit, or a debit, which has left Available even while it is held) takes that brand plate; money that has
-  // not landed, or moved nothing, keeps the muted one. Direction is the arrow's, and the "+" the amount's.
-  const arrowBg =
-    settledCredit || !(isCredit || movedNothing) ? "bg-brand-500/10 text-brand-300"
-    : "bg-bg-overlay text-text-subtle";
+  const ledgerGlyph = tx.storedType ? LEDGER_GLYPH[tx.storedType] : null;
+  const LedgerGlyph = ledgerGlyph ? I[ledgerGlyph] : I.receipt;
   return (
     /* The row's machine-readable identity — see `position-card.tsx` for the contract and why a
        driver must not parse the visible status word on a trilingual product. */
@@ -521,9 +534,9 @@ function TxnRow({ tx }: { tx: Transaction }) {
         /* The ring sits inside the row: the list is an `overflow-hidden` panel, which clipped an outset ring's sides. */
         className="w-full flex items-center gap-3 py-3 px-3 hover:bg-bg-overlay/30 transition-colors text-left focus-visible:[outline-offset:-2px]"
       >
-        <span className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-md shrink-0 ${arrowBg}`}>
-          {isCredit ? <I.arrowDown s={16} /> : <I.arrowUp s={16} />}
-        </span>
+        <IconPlate size={32} variant={ledgerGlyph ? "identity" : "quiet"} aria-hidden>
+          <LedgerGlyph s={plateGlyph(32)} tier={ledgerGlyph ? "duo" : "line"} />
+        </IconPlate>
         <div className="flex-1 min-w-0">
           {/* 🔴 DG-P-08 · THE ROW PROMISED MORE AND THEN WITHHELD THE ONE THING IT CUT.
               This line is the only human-readable fact on the row, and it is written by

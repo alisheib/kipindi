@@ -6,7 +6,8 @@
  *   npm run build:brand
  *
  * Outputs (all derived from the single source — never hand-edit them):
- *   public/brand/mark-{color,white,dark,simplified}.svg
+ *   public/brand/mark-{color,white,dark,simplified}.svg · lockup-{horizontal,stacked}.svg
+ *   public/favicon.svg · public/favicon.ico · public/icons/favicon-{16,32}.png
  *   public/icons/{mark-color,mark-white,mark-dark,maskable,tile}-512.png
  *   public/icons/icon-192.png · public/icons/apple-touch-180.png
  *   public/og/twitter-1200x600.png — the X card, CUT from the held share picture public/og/og-1200x630.png
@@ -21,7 +22,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import sharp from "sharp";
-import { markSvg, maskableSvg, tileSvg } from "../src/lib/brand-mark.ts";
+import { markSvg, lockupSvg, maskableSvg, tileSvg } from "../src/lib/brand-mark.ts";
 
 const ROOT = process.cwd();
 const BRAND = resolve(ROOT, "public/brand");
@@ -45,6 +46,25 @@ async function png(svg: string, size: number, out: string) {
   console.log(`  icons/${out}  (${size}px)`);
 }
 
+/** ICO holds the same 16px and 32px PNGs as the manifest favicons. */
+function ico(entries: Array<{ size: number; bytes: Buffer }>): Buffer {
+  const table = Buffer.alloc(6 + entries.length * 16);
+  table.writeUInt16LE(1, 2);
+  table.writeUInt16LE(entries.length, 4);
+  let offset = table.length;
+  entries.forEach(({ size, bytes }, i) => {
+    const at = 6 + i * 16;
+    table.writeUInt8(size, at);
+    table.writeUInt8(size, at + 1);
+    table.writeUInt16LE(1, at + 4);
+    table.writeUInt16LE(32, at + 6);
+    table.writeUInt32LE(bytes.length, at + 8);
+    table.writeUInt32LE(offset, at + 12);
+    offset += bytes.length;
+  });
+  return Buffer.concat([table, ...entries.map(({ bytes }) => bytes)]);
+}
+
 async function main() {
   // 1) Flat SVGs — the master vectors.
   const svgs: Array<[string, string]> = [
@@ -52,11 +72,15 @@ async function main() {
     ["mark-white.svg", markSvg({ variant: "white" })],
     ["mark-dark.svg", markSvg({ variant: "dark" })],
     ["mark-simplified.svg", markSvg({ variant: "color", simplified: true })],
+    ["lockup-horizontal.svg", lockupSvg("horizontal")],
+    ["lockup-stacked.svg", lockupSvg("stacked")],
   ];
   for (const [name, svg] of svgs) {
     writeFileSync(resolve(BRAND, name), svg + "\n", "utf8");
     console.log(`  brand/${name}`);
   }
+  writeFileSync(resolve(ROOT, "public/favicon.svg"), markSvg({ variant: "color", simplified: true }) + "\n", "utf8");
+  console.log("  favicon.svg");
 
   // 2) PNGs. Flat marks stay transparent (email/report sit on light bg); the
   //    installed-app icons (icon-192, apple-touch) and maskable/tile are the
@@ -68,6 +92,17 @@ async function main() {
   await png(tileSvg(), 512, "tile-512.png");
   await png(tileSvg(), 192, "icon-192.png");
   await png(tileSvg(), 180, "apple-touch-180.png");
+  const faviconSvg = markSvg({ variant: "color", simplified: true });
+  const faviconPngs: Array<{ size: number; bytes: Buffer }> = [];
+  for (const size of [16, 32]) {
+    const bytes = await sharp(Buffer.from(faviconSvg), { density: 384 })
+      .resize(size, size, { fit: "contain", background: transparent }).png().toBuffer();
+    writeFileSync(resolve(ICONS, `favicon-${size}.png`), bytes);
+    faviconPngs.push({ size, bytes });
+    console.log(`  icons/favicon-${size}.png`);
+  }
+  writeFileSync(resolve(ROOT, "public/favicon.ico"), ico(faviconPngs));
+  console.log("  favicon.ico");
 
   // 3) The X card: the centred 1200×600 cut of the held 1200×630 share picture, lossless (PNG to PNG, no resize).
   await sharp(readFileSync(resolve(OG, "og-1200x630.png")))

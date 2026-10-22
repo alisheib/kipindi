@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
 import { IconPlate } from "@/components/ui/icon-plate";
 import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 import { getServerT } from "@/lib/i18n-server";
@@ -37,11 +37,8 @@ export async function ProposePromo({ href }: { href: string }) {
       href={target as never}
       className="group flex items-center gap-3.5 rounded-xl border border-border bg-bg-elevated p-4 transition-colors hover:border-brand-400"
     >
-      <IconPlate
-        size={42}
-        className="bg-brand-500/10 text-brand-300 transition-colors group-hover:bg-brand-500/15"
-      >
-        <I.idea s={22} />
+      <IconPlate size={42} variant="identity" aria-hidden>
+        <I.idea s={plateGlyph(42)} tier="duo" />
       </IconPlate>
       <div className="min-w-0 flex-1">
         <p className="flex flex-wrap items-center gap-2 font-display text-[14.5px] font-bold text-text">

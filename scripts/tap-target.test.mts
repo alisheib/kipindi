@@ -357,10 +357,6 @@ const RATCHET: Record<string, { px: number; note: string }> = {
     { px: 34, note: "the proposal up/down vote buttons are 36×34 inside a 3px-padded capsule (≈40 outer). Genuinely close, and genuinely not 44." },
   "src/components/ui/tabs.tsx:button@36":
     { px: 36, note: "36px segment inside the `p-1` (4px) capsule ⇒ a 46px capsule. The SEGMENT is under the floor even though the control group is not; documented at the call site." },
-  "src/components/ui/date-select.tsx:button@36":
-    { px: 36, note: "calendar day cell. Documented at the call site: `h-9` is 64px on this repo's scale, which made six rows 384px of grid inside a 320px popover." },
-  "src/components/ui/date-select.tsx:button@32":
-    { px: 32, note: "calendar year cell, same reason — `h-8` is 48px here, which showed 4.5 rows in a 240px scroller instead of 7." },
 };
 const keyOf = (f: Finding) => `${f.file}:${f.tag}@${f.px}`;
 const seenKeys = new Set(findings.map(keyOf));

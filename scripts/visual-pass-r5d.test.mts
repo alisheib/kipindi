@@ -316,8 +316,12 @@ function serverOnly(entry: string, text: (p: string) => string = raw): { reached
   // ⚠️ MOVED BY THE VODACOM PLAN S7 (WP7, A24 item 2, 2026-10-12): the binding reads the words alone (`const { t } = useT();`)
   // — the locale went with the classic landing's ghost, shelved at "/" since a journey reader's `/` is the journey home —
   // and still takes the rails, which that shelved ghost draws (2.9).
-  const shape = (s: string) => hasDirective(s, "use client") && s.includes("export function JourneyRouteGhost({ rails, at }: { rails: readonly string[]; at?: JourneyGhostPage }) {")
-    && squash(s).includes("const { t } = useT();") && s.includes('import { useT } from "@/lib/i18n";');
+  // ⚠️ MOVED BY MASWALI-BUILD S5-FIX-PLATFORM D6 (2026-10-21): …and `millionea`, the rollout's answer, so a Millionea address
+  // draws Millionea's ghost only for a reader it is visible to (`test:millionea-dark-edge` §6).
+  // ⚠️ MOVED BY THE MASWALI-BUILD S5 INTEGRATION (2026-10-21): the binding reads the locale again (`const { t, locale } = useT();`)
+  // — the journey home's ghost holds Millionea's slot, whose kept runs wrap by language (S5-DESIGN-DOORS H1).
+  const shape = (s: string) => hasDirective(s, "use client") && s.includes("export function JourneyRouteGhost({ rails, at, millionea = false }: { rails: readonly string[]; at?: JourneyGhostPage; millionea?: boolean }) {")
+    && squash(s).includes("const { t, locale } = useT();") && s.includes('import { useT } from "@/lib/i18n";');
   ok("2.1 · route-ghost.tsx is client code: the ghosts take the rails alone and read the words from the client dictionary (`useT`)", shape(ghost));
   ok("2.1′ PLANT · the ghosts drawn by a server component again (the directive gone) is reported", !shape(ghost.replace(/^\s*"use client";/, "")));
   const graph = serverOnly(GHOST_LAZY);
@@ -362,12 +366,14 @@ function serverOnly(entry: string, text: (p: string) => string = raw): { reached
 }
 {
   const loading = code(LOADING);
-  const arm = (s: string) => squash(s).includes("(await resolveSimpleJourney()).journey) { return <LazyJourneyRouteGhost rails={heroRailNames(null)} />; }")
+  // ⚠️ RE-PINNED, MASWALI-BUILD S5-FIX-PLATFORM D6 (2026-10-21): the arm also hands Millionea's visibility, only while true.
+  const ARM = "(await resolveSimpleJourney()).journey) { const millionea = (await resolveMillionea()).visible; return <LazyJourneyRouteGhost rails={heroRailNames(null)} {...(millionea ? { millionea } : {})} />; }";
+  const arm = (s: string) => squash(s).includes(ARM)
     && s.includes('import { LazyJourneyRouteGhost } from "@/components/journey/route-ghost-lazy";')
     && !s.includes("@/components/journey/route-ghost\"") && !/getServerT/.test(s);
-  ok("2.5 · the root loading file hands the lazy binding the one server answer the browser cannot read (the rails that pay out), and no words and no ghost of its own", arm(loading));
+  ok("2.5 · the root loading file hands the lazy binding the server answers the browser cannot read (the rails that pay out; Millionea's visibility, only while true), and no words and no ghost of its own", arm(loading));
   ok("2.5′ PLANT · the words handed in again (the dictionary written into every payload) is reported",
-    !arm(loading.replace("<LazyJourneyRouteGhost rails={heroRailNames(null)} />", "<LazyJourneyRouteGhost rails={heroRailNames(null)} t={t} />")));
+    !arm(loading.replace("<LazyJourneyRouteGhost rails={heroRailNames(null)} {...(millionea ? { millionea } : {})} />", "<LazyJourneyRouteGhost rails={heroRailNames(null)} {...(millionea ? { millionea } : {})} t={t} />")));
 }
 
 /** The root loading element as Next writes it into a payload — Flight's shape: a "use client" export is a reference
@@ -484,7 +490,8 @@ const ghostAt = (path: string, l: Locale) => inApp(path, l, h(JourneyRouteGhost 
     // ⚠️ MOVED BY THE VODACOM PLAN S7 (WP7, A24 item 2, 2026-10-12): a journey reader's `/` is the journey home, so its ghost
     // is the home's own (`journey-home-ghost.tsx`), which draws the How-to card's title in words; it was the landing hero's.
     ["/", (l) => dict[l].journey.howToCardTitle],
-    ["/updown", (l) => dict[l].market.udStreaming],
+    // U43 removed the duplicate live label; the loading view keeps the page's question in each language.
+    ["/updown", (l) => dict[l].market.udTagline],
     ["/positions", (l) => dict[l].journey.tabTickets],
     ["/account", (l) => `>${dict[l].journey.tabAccount}</h1>`],
     ["/updown/history", (l) => dict[l].journey.tabTickets],
@@ -723,6 +730,8 @@ section("5 · F4's pattern · every useSyncExternalStore reader is classified, a
     "src/lib/analytics-consent.ts": "the reader's consent, not a page's state",
     "src/lib/journey/one-poller.ts": "a media query, not a page's state",
     "src/lib/journey/use-unread-count.ts": "the unread feed, not a page's state",
+    // Came in with MASWALI-BUILD S5-FIX-SRV (dd0627d5f); classified at the S5 integration (2026-10-21).
+    "src/app/admin/maswali/audit-warning.tsx": "a console page's standing audit warning: raised by that page's own controls, read by the StandingAuditWarning the same page draws, and deleted in that reader's unmount cleanup — a page that is left takes its warning with it, and nothing outside the page reads it",
     // Came in with main (S14's U47b-2, 4116d4be) after this suite was written; classified at the merge.
     "src/components/admin/admin-crumbs.tsx": "a record page's registered name for its last crumb, read by the admin header KEYED BY THE PATH BEING DRAWN (crumbNames.get(lastSegmentOf(pathname))): a page that is left cannot name the next one — F4's own principle, already",
   };

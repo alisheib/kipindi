@@ -10,6 +10,20 @@
  */
 export const MUTATIONS = [
   {
+    name: "jud-arm.tsx — duplicate the full empty-side sentence inside the card arm",
+    file: "src/components/journey/updown/jud-arm.tsx",
+    from: `size === "detail" && <EmptySideNote t={t} side={judEmptySide(round.pricing, null)} />`,
+    to: `size !== "never" && <EmptySideNote t={t} side={judEmptySide(round.pricing, null)} />`,
+    expect: "5.1 every journey render obeys the ruling and the boards",
+  },
+  {
+    name: "round-stake-panel.tsx — remove the journey confirm arm from its classic slot",
+    file: "src/components/updown/round-stake-panel.tsx",
+    from: `<LazyJudConfirm bet={bet} round={jud} viewer={props.journey.viewer}`,
+    to: `<MissingConfirm bet={bet} round={jud} viewer={props.journey.viewer}`,
+    expect: "6.3 the journey arms stay in the card's and both panel branches' classic slots",
+  },
+  {
     // The money: a tap that places without the frame's and the hook's agreement.
     name: "jud-arm.tsx — the two-way buttons place without `ready` (a tap could send a figure the player is not looking at)",
     file: "src/components/journey/updown/jud-arm.tsx",
@@ -75,28 +89,28 @@ export const MUTATIONS = [
     file: "src/components/journey/updown/jud-arm.tsx",
     from: `className={GLYPH_NO_SHRINK} />} {sideWord(t, side, "UPDOWN")}`,
     to: `className={GLYPH_NO_SHRINK} />} {sideWord(t, side, "UPDOWN")}<span className="amount">≈1.50×</span>`,
-    expect: "5.1 every journey render obeys the ruling and the boards: word-only sides, no \"×\", chips in full, the commit and the prompt name the stake, the projection is the pool's with its qualifier, the empty side iff true",
+    expect: "5.1 every journey render obeys the ruling and the boards: word-only sides, no \"×\", full chips, a truthful projection and the full empty-side note only on detail or confirm",
   },
   {
     name: "jud-arm.tsx — the confirm panel's projection from a rate instead of the pool",
     file: "src/components/journey/updown/jud-arm.tsx",
     from: `  const projected = judProjection(round.pricing, side, frame.breaks === null ? frame.stake : null);`,
     to: `  const projected = frame.breaks === null && frame.stake !== null ? Math.round(frame.stake * 1.5) : null;`,
-    expect: "5.1 every journey render obeys the ruling and the boards: word-only sides, no \"×\", chips in full, the commit and the prompt name the stake, the projection is the pool's with its qualifier, the empty side iff true",
+    expect: "5.1 every journey render obeys the ruling and the boards: word-only sides, no \"×\", full chips, a truthful projection and the full empty-side note only on detail or confirm",
   },
   {
     name: "jud-arm.tsx — the chips go back to the classic short labels (\"1K\")",
     file: "src/components/journey/updown/jud-arm.tsx",
     from: `onClick={() => setText(String(amount))}>{formatNumber(amount)}</Button>)}`,
     to: `onClick={() => setText(String(amount))}>{amount >= 1000 ? \`\${amount / 1000}K\` : formatNumber(amount)}</Button>)}`,
-    expect: "5.1 every journey render obeys the ruling and the boards: word-only sides, no \"×\", chips in full, the commit and the prompt name the stake, the projection is the pool's with its qualifier, the empty side iff true",
+    expect: "5.1 every journey render obeys the ruling and the boards: word-only sides, no \"×\", full chips, a truthful projection and the full empty-side note only on detail or confirm",
   },
   {
     name: "updown-card.tsx — a line of the classic control edited (a classic reader would be served a different card)",
     file: "src/components/updown/updown-card.tsx",
     from: `                bet={bet} pricing={pricing} assetName={assetName} size="card" stopPropagation`,
     to: `                bet={bet} pricing={pricing} assetName={assetName} size="detail" stopPropagation`,
-    expect: "6.1 every base line of the five classic files is still there, in order, but for the named swaps and DotSeq footer",
+    expect: "6.1 each of the five classic files matches its U43 source snapshot",
   },
   {
     name: "board page — the journey prop handed to every card (a classic card's props and flight data gain a key)",

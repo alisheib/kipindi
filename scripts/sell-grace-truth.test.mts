@@ -1687,7 +1687,7 @@ const READER_IMPORT = `import { moneyRuns } from "@/lib/fill-nodes";`;
 const WHOLE_TITLE = ">{moneyRuns(title)}<";
 /** The confirm's two buttons as today's markup draws them, each with its label: the gold sell and the ghost keep. */
 const GOLD_BUTTON = `className="btn btn-gold btn-lg w-full"`;
-const GOLD_LABEL = "{pending ? t.dialog.selling : `${t.dialog.sellLabel} · ${formatTzs(value)}`}";
+const BRAND_LABEL = "{pending ? t.dialog.selling : `${t.dialog.sellLabel} · ${formatTzs(value)}`}";
 const KEEP_BUTTON = `className="btn btn-ghost btn-lg w-full"`;
 const KEEP_LABEL = "{keepLabel ?? t.dialog.keepPosition}";
 type DialogPrice = { stake: number; free: boolean; value: number; rate: number | null };
@@ -1753,10 +1753,10 @@ type DialogFacts = {
   sp: (key: string) => number;
   lg: number; micro: number; microTrack: number; titleSm: number; titleSmTrack: number;
   btnBorder: number; btnNowrap: boolean; btnBody: boolean; btnPad: number; btnFont: number;
-  goldTrack: number; primaryTrack: number; noTrack: number; ghostTrack: number;
+  primaryTrack: number; goldTrack: number; noTrack: number; ghostTrack: number;
   eyebrowEm: number; amountWhole: boolean; material: number; features: string[];
   gutter: number; pad: number; padLg: number; confirmMax: number;
-  confirm: { eyeL: Classes; eyeR: Classes; figure: Classes; fee: Classes; note: Classes; left: Classes; row: Classes; box: Classes; right: Classes; gold: boolean; keep: boolean };
+  confirm: { eyeL: Classes; eyeR: Classes; figure: Classes; fee: Classes; note: Classes; left: Classes; row: Classes; box: Classes; right: Classes; brand: boolean; keep: boolean };
   result: {
     max: number; flush: boolean; inner: Classes; pad: number; padLg: number; title: Classes; titleWhole: boolean;
     figureRe: boolean; helper: boolean; label: Classes; value: Classes; detailRow: Classes;
@@ -1814,13 +1814,19 @@ function dialogFacts(W: World): DialogFacts {
     fee: classesAt(sq, openBefore(sq, ">{isFree ? t.dialog.noFee : ", "p")),
     note: classesAt(sq, openBefore(sq, ">{isFree ? t.dialog.freeExitWindow : ", "p")),
     left: classesAt(sq, left), row: classesAt(sq, row), box: classesAt(sq, box), right: classesAt(sq, right),
-    gold: sq.includes(GOLD_BUTTON) && sq.includes(GOLD_LABEL),
+    brand: sq.includes(GOLD_BUTTON) && sq.includes(BRAND_LABEL),
     keep: sq.includes(KEEP_BUTTON) && sq.includes(KEEP_LABEL),
   };
   // The result: its own padding (the panel's is none), its title and the helper behind it, and a detail row.
   const rq = squash(W.files.get(RESULT_MODAL) ?? "");
   const hold = rq.indexOf("onPointerMove={onPointerMoveHold}");
-  const inner = hold < 0 ? null : classesAt(rq, rq.lastIndexOf("<div", hold));
+  const innerOpen = hold < 0 ? -1 : rq.lastIndexOf("<div", hold);
+  const innerTag = innerOpen < 0 ? "" : rq.slice(innerOpen, hold);
+  // U43 adds a conditional compact class to this same wrapper. Read its literal
+  // padding classes for Sell, which leaves compactOnPhone false; the receipt's
+  // compact padding is measured by test:u43-receipt-fit instead.
+  const innerTemplate = innerTag.match(/className=\{`([^$]*)\$\{compactOnPhone \? " orm-phone-compact" : ""\}`\}/);
+  const inner = innerTemplate ? innerTemplate[1].split(" ").filter(Boolean) : classesAt(rq, innerOpen);
   const innerPads = (inner ?? []).filter((c) => c.startsWith("p-"));
   const innerLg = (inner ?? []).filter((c) => c.startsWith("lg:p-"));
   const titleWhole = rq.includes(WHOLE_TITLE);
@@ -1851,8 +1857,8 @@ function dialogFacts(W: World): DialogFacts {
     titleSm: dialogNum(dialogFrom(sizes, `"title-sm":`), `["`), titleSmTrack: dialogNum(dialogFrom(sizes, `"title-sm":`), `letterSpacing: "`),
     btnBorder: dialogNum(btn, "border: "), btnNowrap: btn.includes("white-space: nowrap;"), btnBody: btn.includes("font-family: var(--font-body);"),
     btnPad: dialogNum(lgLine, "padding: 0 "), btnFont: dialogNum(lgLine, "font-size: "),
-    goldTrack: dialogNum(dialogRule(css, ".btn-gold {"), "letter-spacing: "),
     primaryTrack: dialogNum(dialogRule(css, ".btn-primary {"), "letter-spacing: "),
+    goldTrack: dialogNum(dialogRule(css, ".btn-gold {"), "letter-spacing: "),
     noTrack: dialogNum(dialogRule(css, ".btn-no {"), "letter-spacing: "),
     ghostTrack: dialogRule(css, ".btn-ghost {").includes("letter-spacing") ? Number.NaN : 0,
     eyebrowEm: dialogNum(dialogFrom(css, ".eyebrow.eyebrow,"), "{ letter-spacing: "),
@@ -1961,8 +1967,8 @@ function dialogButtons(F: DialogFacts, vw: number, loc: string, value: number): 
   const em = labelEmOf(F.features);
   const inside = (row: string, room: number, label: string, track: number) => ({ row, room: room - memoRun(face, label, em, px, track) });
   return [
-    inside("confirm.gold", content, `${dialogWord(F, loc, "dialog", "sellLabel")} ${DIALOG_DOT} ${formatTzs(value)}`, F.goldTrack * px),
-    inside("confirm.gold.selling", content, dialogWord(F, loc, "dialog", "selling"), F.goldTrack * px),
+    inside("confirm.brand", content, `${dialogWord(F, loc, "dialog", "sellLabel")} ${DIALOG_DOT} ${formatTzs(value)}`, F.goldTrack * px),
+    inside("confirm.brand.selling", content, dialogWord(F, loc, "dialog", "selling"), F.goldTrack * px),
     inside("confirm.keep", content, dialogWord(F, loc, "dialog", "keepPosition"), F.ghostTrack * px),
     inside("confirm.keep.journey", content, dialogWord(F, loc, "journey", "sellKeep"), F.ghostTrack * px),
     inside("result.primary", resultContent, dialogWord(F, loc, "common", "doneSawa"), F.primaryTrack * px),
@@ -2012,7 +2018,7 @@ async function g6Dialogs(W: World) {
   const c = F.confirm;
   const numbers: Record<string, number> = {
     lg: F.lg, micro: F.micro, microTrack: F.microTrack, titleSm: F.titleSm, titleSmTrack: F.titleSmTrack, btnBorder: F.btnBorder,
-    btnPad: F.btnPad, btnFont: F.btnFont, goldTrack: F.goldTrack, primaryTrack: F.primaryTrack, noTrack: F.noTrack,
+    btnPad: F.btnPad, btnFont: F.btnFont, primaryTrack: F.primaryTrack, goldTrack: F.goldTrack, noTrack: F.noTrack,
     ghostTrack: F.ghostTrack, eyebrowEm: F.eyebrowEm, material: F.material, gutter: F.gutter, pad: F.pad, padLg: F.padLg,
     confirmMax: F.confirmMax, resultMax: F.result.max, resultPad: F.result.pad, resultPadLg: F.result.padLg,
   };
@@ -2491,6 +2497,8 @@ const PLANTS: Plant[] = [
     world: (w) => inFile(w, SELL_MODAL, `className="rounded-lg border p-4"`, `className="rounded-lg border p-6"`) },
   { name: "the Modal's gutter widens (the confirm's box narrows past the whole figure on a 320 phone)", expect: ["6.confirm"],
     world: (w) => inFile(w, DIALOG_SHELL, `: "px-3 py-4"`, `: "px-5 py-4"`) },
+  { name: "the Sell confirm loses its gold commit treatment", expect: ["6.model"],
+    world: (w) => inFile(w, SELL_MODAL, GOLD_BUTTON, `className="btn btn-primary btn-lg w-full"`) },
   { name: "a longer Swahili sell word (the gold button's label, with TZS 1,000,000, runs out of its button at 320)", expect: ["6.button"],
     world: (w) => withEntry(w, "sw", "dialog", "sellLabel", "Uza tiketi yako yote sasa hivi") },
   { name: "a longer Swahili keep word in the journey's look (its keep button overflows at 320)", expect: ["6.button"],
@@ -2511,6 +2519,8 @@ const PLANTS: Plant[] = [
     world: (w) => inFile(w, RESULT_MODAL, "px-3 py-2 flex flex-wrap items-baseline", "px-3 py-2 flex items-baseline") },
   { name: "the result's title grows to 34px (its widest figure no longer fits a 320 phone's line)", expect: ["6.result"],
     world: (w) => inFile(w, RESULT_MODAL, "font-display text-[22px] font-bold", "font-display text-[34px] font-bold") },
+  { name: "the result's inner phone padding widens and leaves too little room for its money figures", expect: ["6.result"],
+    world: (w) => inFile(w, RESULT_MODAL, 'className={`p-6 lg:p-7', 'className={`p-10 lg:p-7') },
   { name: "a word the dialogs draw is missing in Chinese (the model would measure an empty eyebrow)", expect: ["6.model"],
     world: (w) => withEntry(w, "zh", "dialog", "earlyExitFee", "") },
   { name: "the eyebrow's tracking is misread in the stylesheet (the model no longer draws the boxes the browser drew)", expect: ["6.control"],

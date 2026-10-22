@@ -3,6 +3,7 @@ import { SectionLoader } from "@/components/brand";
 import { LazyJourneyRouteGhost } from "@/components/journey/route-ghost-lazy";
 import { isOptOutPath } from "@/lib/marketing/optout";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+import { resolveMillionea } from "@/lib/server/millionea-preview";
 import { heroRailNames } from "@/lib/server/payout-rails";
 
 export default async function RootLoading() {
@@ -15,10 +16,16 @@ export default async function RootLoading() {
      root — each journey document and each refresh — so it carries a reference and the one thing the browser cannot read
      for itself, the rails that pay out (`heroRailNames`; the page drops a paused one, the ghost names them all, as
      before). The words are the client dictionary's, in the language the browser has (`route-ghost.tsx`, loaded through
-     `route-ghost-lazy.tsx`). */
+     `route-ghost-lazy.tsx`).
+     ⭐ MILLIONEA'S GHOSTS ONLY FOR A READER MILLIONEA IS VISIBLE TO (MASWALI-BUILD S5-FIX-PLATFORM D6): the ghost is picked
+     by the address, before any gate answers, so a journey reader the rollout hides it from (staff while it is WITHDRAWN,
+     an agency with a journey pass below ACTIVE) saw a Millionea-shaped ghost at a dark /millionea before its 404. The
+     rollout's one per-request answer (`resolveMillionea`, React-cached: the shell reads it for the same render) is handed
+     in, and only while it is true, so every other reader's element is the very one it was. */
   const pathname = (await headers()).get("x-pathname") ?? "";
   if (!pathname.startsWith("/admin") && !isOptOutPath(pathname) && (await resolveSimpleJourney()).journey) {
-    return <LazyJourneyRouteGhost rails={heroRailNames(null)} />;
+    const millionea = (await resolveMillionea()).visible;
+    return <LazyJourneyRouteGhost rails={heroRailNames(null)} {...(millionea ? { millionea } : {})} />;
   }
   // 1280 = the board width tier. This was 1240, a one-off matching no page in the
   // app, so the generic fallback always reflowed into whatever route resolved next.

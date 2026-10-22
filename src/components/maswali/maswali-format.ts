@@ -82,6 +82,9 @@ export function weekWord(t: Dict, week: number): string {
  * "7, 9 na A5" — a list joined the way the reader's language joins one (`Intl.ListFormat`, no conjunction typed here).
  * ⭐ In Chinese, a space stands where a Latin letter or a digit meets an ideograph — Millionea's own Chinese convention
  * ("备选题 {r} 替补", "{n} 张", "A1 至 A5"; S5 VIS §D) — so the engine's "A4和A5" reads "A4 和 A5"; "、" stays unspaced.
+ * ⛔ ONE EXCEPTION, RULED: an ORDINAL stays unspaced — "第{week}周", "第{n}题", "第{n}张" — one word, as Chinese sets 第N
+ * (the lead's ruling of 2026-10-19, MASWALI-PLAN §0; kept by the critics' round of 2026-10-21, R1 L6). `weekWord` above is
+ * one: "第49周", never "第 49 周".
  */
 const LATIN_THEN_HAN = /([A-Za-z0-9])([㐀-䶿一-鿿豈-﫿])/g;
 const HAN_THEN_LATIN = /([㐀-䶿一-鿿豈-﫿])([A-Za-z0-9])/g;

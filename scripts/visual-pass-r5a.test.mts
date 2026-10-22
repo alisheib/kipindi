@@ -414,11 +414,14 @@ section("7 · F19 · a right-aligned tracked label ends where its neighbours end
   // Each take-back equals its label's own tracking.
   const eyebrowList = /((?:[^{}\n]+,\s*\n)+)\.mcardp-pctcap \{ letter-spacing: 0\.14em; \}/.exec(CSS)?.[1] ?? "";
   const res = read("src/app/results/page.tsx"), ud = read("src/app/updown/page.tsx");
-  ok("7.2 · each takes back exactly its own tracking: 0.14em (the caption and the one-sided label), 0.05em (the bar's labels), 0.16em (the spotlight's flag), 0.10em (Up & Down's live note)",
+  // U43 (2026-10-19): the board's redundant live eyebrow left. MASWALI-BUILD S5 integration (2026-10-21): the 0.10em step
+  // `.kp-track-end--10` lost its last label in that rebuild (1384383fd) and test:dead-css reports it, so it is deleted — a
+  // 0.10em label that needs its take-back brings the step back with its consumer. The removed note stays absent.
+  ok("7.2 · tracked labels end on their edge; the board's duplicate live note and its orphaned 0.10em step stay absent",
     eyebrowList.includes(".mcardp-oneside,") && /letter-spacing:\s*0\.05em/.test(rule(CSS, ".tipbar-labels")) && /\.tipbar-labels \.tb-no \{ --track-end: 0\.05em; \}/.test(CSS)
-      && /--track-end:\s*0\.16em/.test(rule(CSS, ".kp-track-end--16")) && /--track-end:\s*0\.10em/.test(rule(CSS, ".kp-track-end--10"))
+      && /--track-end:\s*0\.16em/.test(rule(CSS, ".kp-track-end--16")) && !CSS.includes(".kp-track-end--10")
       && res.includes("uppercase tracking-[0.16em] font-bold text-brand-300") /* the ink R5-C's gold audit gave the flag (merged 2026-10-09) */ && res.includes('<I.crown s={13} /> <span className="kp-track-end kp-track-end--16">{t.results.notableResult}</span>')
-      && ud.includes("uppercase tracking-[0.10em] text-text-faint") && ud.includes('<span className="live-dot" /> <span className="kp-track-end kp-track-end--10">{t.market.udStreaming}</span>'));
+      && !ud.includes("t.market.udStreaming") && ud.includes('className="ud-board-header"'));
   ok("7.3 · the one-sided label keeps its tracking where it is centred or left-aligned (the market page, /results, Up & Down)",
     !/(^|\n)\s*\.mcardp-oneside::after/.test(CSS) && read("src/app/results/page.tsx").includes('<p className="mt-1.5 flex justify-center"><span className="mcardp-oneside">'));
   // The prediction, from JetBrains Mono: the caption's O ends its cell 0.84px in; the trailing tracking was 1.33px.
@@ -558,7 +561,7 @@ section("8 · F20 · every close ✕ of a panel, a sheet or a dialog: on its tit
     "src/components/admin/admin-mobile-nav.tsx": [C("hand ✕", "the admin drawer's close — admin chrome, a 44px box")],
     "src/app/notifications/row-actions.tsx": [C("row ✕", "a notification row's delete")],
     // Round 6 (review C2): seen once the census read the ✕ in any spelling — two <line>s inside a circle.
-    "src/components/ui/empty-state.tsx": [C("glyph", "`ErrorMark`, an error state's circled ✕ illustration — it closes nothing")],
+    // PHOSPHOR-MIGRATION release 2b: ErrorState draws I.xCircle in Fill; its private ErrorMark retired.
     "src/components/ui/search-box.tsx": [C("row ✕", "clears the field")],
     "src/components/ui/query-bar.tsx": [C("row ✕", "a link that clears the query, worded beside its ✕")],
     // The Vodacom plan S7 (WP7, 2026-10-12): the journey home's "Futa utafutaji", the query bar's clear in the home's words.
@@ -853,21 +856,47 @@ section("11 · the checks: /markets' 34px, the hub's two glyphs, the chart's dea
     return /const deadline = setTimeout\(\(\) => \{\s*mine\.overdue = true;\s*if \(alive && seq === seqRef\.current\) setStatus\(\(s\) => \(s === "loading" \? "error" : s\)\);\s*\}, HISTORY_DEADLINE_MS\);/.test(l)
       && /finally \{\s*clearTimeout\(deadline\);[^}]*\}/.test(l);
   };
+  const honestFallback = (src: string) => src.includes('{!guardedFeed && (')
+    && src.includes('{status === "empty" ? labels.empty : status === "error" || feed != null ? labels.error : labels.loading}');
   ok(`11.3 · the chart says "loading" for ${deadline / 1000}s at most (the route's vendor read aborts at ${vendor / 1000}s), then "${word("sw", "market.udChartError")}" while it keeps retrying`,
-    deadlined(tc) && deadline > vendor && vendor === 8000 && tc.includes('{status === "empty" ? labels.empty : status === "error" ? labels.error : labels.loading}')
+    deadlined(tc) && deadline > vendor && vendor === 8000 && honestFallback(tc)
       && read("src/app/updown/page.tsx").includes("error: t.market.udChartError,") && LOCALES.every((l) => word(l, "market.udChartError").length > 0));
   ok("11.3′ PLANT · the load without its deadline is reported", !deadlined(tc.replace(/const deadline = setTimeout\([\s\S]*?HISTORY_DEADLINE_MS\);/, "const deadline = 0;")));
-  // The grid card's pool figure: the word for a screen reader; on screen, no room (the row's worst case at 320).
-  const mono11 = 0.6 * 11, content320 = 320 - 2 * twStep("3") - 2 * 15;
-  const worst = 13 * mono11 + 7 + "dakika 59 zimebaki".length * mono11 + 6 + 40;
-  ok(`11.4 · a grid card names its pool to a screen reader in the featured card's word; on screen the 320 row's worst case is ${worst.toFixed(1)} of ${content320}px, so a word (+${(6 * mono11).toFixed(1)}) or a glyph (+16) would wrap a fixed-height card — an owner question`,
-    read("src/components/markets/market-card.tsx").includes(': <><span className="sr-only">{t.common.pool}{" "}</span>{formatTzs(volume)}</>}') && content320 === 258 && worst <= content320 && worst + 16 > content320);
+  ok("11.3″ PLANT · a masked stale feed must not make the pane claim it is still loading",
+    honestFallback(tc)
+      && !honestFallback(tc.replace('status === "error" || feed != null ? labels.error : labels.loading', 'status === "error" ? labels.error : labels.loading')));
+  // U43 B4 (2026-10-19): the countdown moved to the top. The meta row now
+  // has room to name the pool visibly; money must never be ellipsised. The
+  // browser geometry check covers actual widths at 320 and scaled text.
+  const cardSource = read("src/components/markets/market-card.tsx");
+  const timeInHead = (src: string) => {
+    const tail = src.slice(src.indexOf('<span className="mcardp-tail">'), src.indexOf('<div className="mcardp-head">'));
+    return tail.includes('live && <span className="mcardp-closes inline-flex items-center gap-1" data-market-part="time">')
+      && tail.includes('{!featured && <span className="mcardp-live-mark">')
+      && tail.includes('{timeLeft}</span>');
+  };
+  ok("11.4 · the grid visibly names its pool, with the countdown above and the money row free to wrap",
+    /data-market-part="pool" className=\{featured && fresh \? "mcardp-nopool" : "mcardp-pool"\}/.test(cardSource)
+      && cardSource.includes('{t.common.pool}{" "}<span className="amount">{formatTzs(volume)}</span>')
+      && timeInHead(cardSource)
+      && !cardSource.includes("{!featured && timeLeft}")
+      && /\.mcardp-meta \{ flex-wrap: wrap; \}/.test(CSS)
+      && /\.mcardp-meta > \.mcardp-pool \{[^}]*overflow: visible;/.test(CSS));
+  const timeLine = cardSource.split("\n").find((line) => line.includes('live && <span className="mcardp-closes'))?.trim() ?? "";
+  const timeMovedToMeta = cardSource.replace(timeLine, "").replace('<div className="mcardp-meta">', `<div className="mcardp-meta">${timeLine}`);
+  ok("11.4′ PLANT · moving the countdown from the card header into its money row fails the layout rule",
+    timeLine.length > 0 && timeMovedToMeta !== cardSource && !timeInHead(timeMovedToMeta));
   // By design: the two chips' heights, the rail's shadow.
   const chip = read("src/components/ui/chip.tsx");
+  const resultsSource = read("src/app/results/page.tsx");
+  const semanticResultsChips = (src: string) => src.includes('<Chip variant="cat" size="sm" metrics="status">')
+    && src.includes('<Chip variant={TONE_CHIP[STATUS_TONE.VOID.player]} size="sm" metrics="status">')
+    && src.includes('<Chip variant={TONE_CHIP[STATUS_TONE.RESOLVED.player]} size="sm" metrics="status">');
   ok("11.5 BY DESIGN · the spotlight's category and resolved chips share the 20px status metrics, centred on one line",
     /sm: \{\s*base:\s*\{ height: 18,[\s\S]*?status: \{ height: 20,/.test(chip) && /v === "resolved"/.test(chip.slice(chip.indexOf("const isStatus")))
-      && read("src/app/results/page.tsx").includes('<Chip variant="cat" size="sm" metrics="status">')
-      && read("src/app/results/page.tsx").includes('<Chip variant="resolved" size="sm">'));
+      && semanticResultsChips(resultsSource));
+  ok("11.5′ PLANT · restoring a hard-coded resolved chip breaks the shared status-tone rule",
+    !semanticResultsChips(resultsSource.replace('variant={TONE_CHIP[STATUS_TONE.RESOLVED.player]}', 'variant="resolved"')));
   ok("11.6 BY DESIGN · the AML title's third line is under the bottom rail's elevation shadow at that scroll (232 against 245 at most), not a gradient of its own",
     /\.kp-rail \{\s*background: var\(--panel\);\s*border-top: 1px solid var\(--border\);\s*box-shadow: var\(--shadow-overlay-up\);/.test(CSS));
 }

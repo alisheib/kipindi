@@ -16,7 +16,7 @@
  * It comes from `PredictionMarket.resolvedOutcome` or it is not displayed at all.
  *
  * Two rules:
- *   1. No component derives a YES/NO side from a probability/percentage variable.
+ *   1. No component derives a SETTLED YES/NO side from a probability/percentage variable.
  *   2. Every MarketCard call site that can render a RESOLVED card passes
  *      `resolvedOutcome`.
  *
@@ -70,6 +70,11 @@ for (const f of files) {
   const body = decomment(readFileSync(f, "utf8"));
   body.split("\n").forEach((line, i) => {
     if (!PROB.test(line)) return;
+    // U43 B4 (2026-10-19): this one crowd-leader label is a price caption,
+    // never a settlement verdict. Keep the exception exact, by file AND line;
+    // an `outcomeSide` inferred the same way must still fail this guard.
+    if (rel(f) === "src/components/markets/market-card.tsx"
+      && /^\s*const leadingSide = noPool > yesPool \? "NO" : "YES";\s*$/.test(line)) return;
     // Only a violation when the ternary actually yields a YES/NO side.
     const after = line.slice(line.search(PROB));
     if (SIDE.test(after)) inferred.push(`${rel(f)}:${i + 1}  ${line.trim().slice(0, 100)}`);
@@ -80,6 +85,9 @@ check(
   inferred.length === 0,
   inferred.length ? `${inferred.length}\n      ${inferred.join("\n      ")}` : "",
 );
+check("U43 price leader exception is exact; a pool-inferred outcome remains forbidden",
+  PROB.test('const outcomeSide = noPool > yesPool ? "NO" : "YES";')
+    && !/^\s*const leadingSide = noPool > yesPool \? "NO" : "YES";\s*$/.test('const outcomeSide = noPool > yesPool ? "NO" : "YES";'));
 
 // ---------------------------------------------------------------------------
 // 2. Every MarketCard usage that can be RESOLVED passes resolvedOutcome.
@@ -140,7 +148,8 @@ check(
   && /resolvedOutcome\s*\?\s*outcomeWord/.test(card)
   // ④ and the side is STILL never inferred from the pool split. Comments stripped both ways:
   //    the prop docs discuss yesPct on purpose, and a doc must not be able to fail a code rule.
-  && !PROB.test(card.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "")),
+   && !PROB.test(card.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "")
+     .replace(/^\s*const leadingSide = noPool > yesPool \? "NO" : "YES";\s*$/gm, "")),
   "",
 );
 
@@ -223,13 +232,14 @@ check(
   check("D29 the empty rail is named by what is KNOWN — the outcome, else one side only, else 'no bets yet' only where nobody ever bet",
     /emptyLabel=\{outcomeLabel \?\? \(oneSided \? t\.market\.oneSideOnly : neverBet \? t\.market\.noBetsYet : t\.market\.noPoolYet\)\}/.test(card),
     "`\"\"` would leave a role=progressbar with no name at all on every voided card; a bare noBetsYet names a one-sided rail falsely");
-  // ⚠️ AMENDED TWICE, AND IT NEEDS BOTH. C1's review added `!settled` ("yet" is false of a finished
-  //    market, which shows its verdict); V18 added `data-market-part` to the caption, so the tag may
-  //    hold attributes. Either amendment ALONE leaves this regex no longer matching the card it
-  //    guards — green, and blind. The detail page's rail caption and the share image keep the gate.
-  check("D29 the visible 'no bets yet' caption is gated on the history test too, and leaves a settled card",
-    /\{noPrice && neverBet && !settled && <div className="mcardp-nobets"[^>]*>/.test(card),
-    "the caption is the one claim a sighted player can check — it must be true");
+  // U43 B4 (2026-10-19): the fresh card's rail names its absence accessibly and
+  // the invitation is its one visible sentence. A refunded market must not gain
+  // a duplicate "no bets" caption; a cashed-out live pool keeps its different
+  // visible "no pool" sentence, because someone really did bet on it.
+  const visibleNoBets = /<div className="mcardp-nobets"[^>]*>\{t\.market\.noBetsYet\}<\/div>/;
+  check("D29 no duplicate visible 'no bets yet' caption; a cashed-out live pool still names its missing price",
+    !visibleNoBets.test(card)
+      && /\{live && noPrice && !neverBet && <div className="mcardp-nobets"[^>]*>\{t\.market\.noPoolYet\}<\/div>\}/.test(card));
 
   // ⭐ CONTROLS — each matcher shown able to say no, against the pre-fix spelling.
   check("D29 control · the pre-fix phase gate IS detected",
@@ -237,15 +247,12 @@ check(
   check("D29 control · an unconditional aria-label IS detected",
     !/neverBet \? \{ "aria-label": t\.market\.noBetsYet \} : \{\}/
       .test('<div className="mcardp-pct mcardp-pct--empty" aria-label={t.market.noBetsYet}>—</div>'));
-  check("D29 control · an ungated caption IS detected",
-    !/\{noPrice && neverBet && !settled && <div className="mcardp-nobets"[^>]*>/
-      .test('{noPrice && <div className="mcardp-nobets">{t.market.noBetsYet}</div>}'));
+  check("D29 control · an ungated duplicate caption IS detected",
+    visibleNoBets.test('{noPrice && <div className="mcardp-nobets">{t.market.noBetsYet}</div>}'));
   check("D29 control · the pre-review caption ('No bets yet' under a settled card's verdict) IS detected",
-    !/\{noPrice && neverBet && !settled && <div className="mcardp-nobets"[^>]*>/
-      .test('{noPrice && neverBet && <div className="mcardp-nobets">{t.market.noBetsYet}</div>}'));
-  check("D29 control · …and the attribute-bearing caption without the settled gate IS detected",
-    !/\{noPrice && neverBet && !settled && <div className="mcardp-nobets"[^>]*>/
-      .test('{noPrice && neverBet && <div className="mcardp-nobets" data-market-part="state">{t.market.noBetsYet}</div>}'));
+    visibleNoBets.test('{noPrice && neverBet && <div className="mcardp-nobets">{t.market.noBetsYet}</div>}'));
+  check("D29 control · …and an attribute-bearing duplicate caption IS detected",
+    visibleNoBets.test('{noPrice && neverBet && <div className="mcardp-nobets" data-market-part="state">{t.market.noBetsYet}</div>}'));
   check("D29 control · a one-sided rail named 'no bets yet' IS detected",
     !/emptyLabel=\{outcomeLabel \?\? \(oneSided \? t\.market\.oneSideOnly : neverBet \? t\.market\.noBetsYet : t\.market\.noPoolYet\)\}/
       .test("empty={noPrice || oneSided} emptyLabel={outcomeLabel ?? (oneSided ? t.market.oneSideOnly : t.market.noBetsYet)}"));

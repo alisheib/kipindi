@@ -11695,11 +11695,17 @@ export default function Ruling513Control() {
   ok("1.417 · …and the loader's own prose does not contradict it — one statement of the cell padding, not two",
     !/overrides no cell padding/.test(read(LOADING)) && !/12px cell padding/.test(read(LOADING)), "");
 
-  /* 1.403 · a gloss only where the word already ships. */
+  /* 1.403 · a gloss only where the word already ships, on the head it actually names. A word that ships for
+   * another surface (for example Events) is not thereby the right gloss for Desk. The loader's head is pinned
+   * independently by 1.313; the page must agree with that real loading state. */
   const glosses = [...sectionFiles.flatMap((f) => [...read(f).matchAll(/sw="([^"]+)"/g)].map((m) => m[1]))];
   const shipped = read("src/lib/i18n-dict.ts") + read("src/lib/admin-status-lexicon.ts");
-  ok("1.403 · every Swahili gloss the section passes occurs verbatim in a shipped source — nothing invented, nothing machine-translated",
-    glosses.length >= 2 && glosses.every((g) => shipped.includes(g)), j(glosses));
+  const headGlosses = [PAGE, LOADING].map((f) =>
+    [...decomment(read(f)).matchAll(/<AdminPageHead\b[^>]*\bsw="([^"]+)"/g)].map((m) => m[1]));
+  ok("1.403 · every Swahili gloss the section passes occurs verbatim in a shipped source — and the page's head agrees with its loader",
+    glosses.length >= 2 && glosses.every((g) => shipped.includes(g))
+      && headGlosses.every((heads) => heads.length === 1) && headGlosses[0][0] === headGlosses[1][0],
+    j({ glosses, headGlosses }));
   ok("1.403 · the page renders no `<main>`, no `<h1>` and no second header of its own",
     !/<main|<h1/.test(pageCode), "");
 

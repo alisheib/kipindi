@@ -15,14 +15,18 @@
  *   · REJECTED  — rose in KYC/DSAR · slate on the objection queue · claret on /proposals
  *   · OPEN      — info-royal to a player · claret on the objection queue
  *
- * ⭐ ALI'S RULING (2026-08-21), applied at its stated default. The table below IS the
- * shipped state, with exactly three corrections:
+ * ⭐ ALI'S RULING (2026-08-21), applied at its stated default, with the later
+ * U43 gold-only-winnings ruling (2026-10-19):
  *
  *   1. **APPROVED is success-green everywhere.** /proposals loses its gold gradient —
  *      DESIGN_AUTHORITY §M3: struck gold means money that was EARNED, and an approval
  *      is not money. (KYC and the three AI queues were already green.)
  *   2. **PENDING is royal everywhere.** The console loses amber for it.
  *   3. **CLOSED is royal everywhere.** The console loses amber for it.
+ *   4. **RESOLVED is slate everywhere.** A market's resolution is not a
+ *      player's earned payout; only WIN keeps the gold chip.
+ *   5. **LIVE is slate to players.** Its word and motion state liveness;
+ *      red and green are reserved for the two betting sides.
  *
  * ⛔ AND ONE DIVERGENCE IS KEPT ON PURPOSE — see `STATUS_TONE_EXCEPTIONS`. A drift
  * that is written down as a decision stops being a drift; an undocumented one gets
@@ -109,15 +113,14 @@ export const TONE_INK = {
  * error rather than a guess.
  */
 export const STATUS_TONE = {
-  /** ⛔ THE ONE KEPT SPLIT — see `STATUS_TONE_EXCEPTIONS.LIVE`. */
-  LIVE:     { player: "broadcast", admin: "green", proposals: "royal" },
+  /** U43 B5 · neutral to players; console health retains its own state tone. */
+  LIVE:     { player: "slate", admin: "green", proposals: "royal" },
   /** Betting is shut and the market is waiting to be resolved. Nothing is wrong,
    *  so it is royal — the console's amber said otherwise until 2026-08-21. */
   CLOSED:   { player: "royal", admin: "royal" },
   /** Waiting on a queue. Royal for the same reason: waiting is not a warning. */
   PENDING:  { player: "royal", admin: "royal", proposals: "royal" },
-  /** Settled money. The player gets the struck seal (§M3, §M7); the console gets the
-   *  soft gilt, because an operator reading a hundred rows is not being congratulated. */
+  /** A settled market uses the earlier struck player seal and quieter console gilt. */
   RESOLVED: { player: "giltStruck", admin: "gilt", proposals: "giltStruck" },
   /** ⭐ ADDED 2026-08-30 (DG-P-10). The market or round settled to NOTHING and every
    *  stake came back. It was recorded royal as MEASURED (five player surfaces painted it so), and the owner's
@@ -226,6 +229,27 @@ export const STATUS_TONE = {
    * Up & Down. Tiketi zangu's switch shows one product at a time, so the two won chips never share a list.
    */
   MILLIONEA_WIN: { player: "green" },
+  /**
+   * ⭐ WHERE A MILLIONEA WEEK STANDS, AS ONE CHIP (S5-DESIGN-REGISTER, 2026-10-21 — Ali's 10/10 pass; the register critic's
+   * L2). The register's rows and week pages, and the hub, say a week's state with one chip (`WeekStateChip`,
+   * `millionea/register/register-parts.tsx`) — its word `millioneaWeekPhase` → `weekPhaseWord`, its tone read HERE, so no
+   * surface hand-types a variant beside the word (§B11). Each tone is the one the platform gives the same state:
+   *   · selling, and every stage on the way to a result — sales closed, results coming in, the objection window, settling,
+   *     being voided — ROYAL: in flight, nothing is wrong (OPEN, CLOSED and PENDING are royal to a player). A week being
+   *     voided is money on its way back, as a voided week's ticket reads "Pending" until its own refund lands;
+   *   · paused — SLATE: an officer's pause is inert to the player, with nothing for them to do (DEACTIVATED's player tone);
+   *   · VOIDED — SLATE, VOID's own player tone: terminal and inert, the money is back;
+   *   · SETTLED — SLATE, and that one is a decision: `STATUS_TONE_EXCEPTIONS.MILLIONEA_WEEK_SETTLED`.
+   */
+  MILLIONEA_WEEK_OPEN:       { player: "royal" },
+  MILLIONEA_WEEK_PAUSED:     { player: "slate" },
+  MILLIONEA_WEEK_CLOSED:     { player: "royal" },
+  MILLIONEA_WEEK_RESOLVING:  { player: "royal" },
+  MILLIONEA_WEEK_OBJECTIONS: { player: "royal" },
+  MILLIONEA_WEEK_SETTLING:   { player: "royal" },
+  MILLIONEA_WEEK_VOIDING:    { player: "royal" },
+  MILLIONEA_WEEK_SETTLED:    { player: "slate" },
+  MILLIONEA_WEEK_VOIDED:     { player: "slate" },
   // ── A PLAYER'S PAYMENT — a deposit or a withdrawal (2026-10-07, the Receipts page) ─────────────
   /**
    * ⭐ THE SEVEN `TxnStatus` WORDS A PLAYER READS ON THEIR OWN MONEY, DECIDED ONCE. Until 2026-10-07 two surfaces
@@ -377,8 +401,8 @@ export const STATUS_TONE_EXCEPTIONS = {
   /**
    * LIVE is the one word that is a different colour on purpose, because it is two
    * different facts wearing one word:
-   *   · to a PLAYER it is a broadcast — "this is open, money is moving, act now" —
-   *     and the red live-pill is the platform's oldest and loudest such signal;
+   *   · to a PLAYER it is a live market, marked by its word and cadence in slate;
+   *     red and green remain available only for the two sides;
    *   · to an OFFICER it is operational health — "this market is up" — sitting in a
    *     column beside DRAFT and VOIDED, where red would read as an incident.
    * Painting both the same would make one of the two lie about what it is for.
@@ -386,7 +410,7 @@ export const STATUS_TONE_EXCEPTIONS = {
    * market broadcast, and was left as shipped — it is the one arm Ali's ruling did
    * not adjudicate.
    */
-  LIVE: "Two facts, one word: player broadcast (red) vs console ops-health (green). /proposals keeps royal as a lifecycle step.",
+  LIVE: "Two facts, one word: player liveness (slate) vs console ops-health (green). /proposals keeps royal as a lifecycle step.",
   /**
    * REJECTED is rose in KYC/DSAR (a person was refused), claret on /proposals (an
    * editorial decline, §B4), and deliberately SLATE on the objection queue — a
@@ -452,6 +476,16 @@ export const STATUS_TONE_EXCEPTIONS = {
    * about different products and both stand: do not move `WIN` to green, and do not move this row to `WIN`'s ink.
    */
   MILLIONEA_WIN: "Success green on a won Millionea ticket's word (Ali's O-6, §M8a item 8) — the paid amount carries the money ink, the word does not — while WIN keeps its own for Yes/No and Up & Down.",
+  /**
+   * ⭐ ADDED 2026-10-21 (S5-DESIGN-REGISTER; the register critic's L2) — A SETTLED MILLIONEA WEEK IS SLATE, NOT RESOLVED'S
+   * STRUCK SEAL. RESOLVED wears that seal to a player (Ali, 2026-10-20: a market's final state). A Millionea week's
+   * "Settled" ("Imekamilika") heads the public record of a week's money — the jackpot it struck, the fee, the carry — and
+   * none of it is money the reader earned: §M8a item 7 puts the money ink only on the amount a won ticket was paid, and
+   * the register states money, it awards none. So the week's final word is terminal and inert, as VOIDED is.
+   * ⛔ Do not move it to RESOLVED's tone, and do not move RESOLVED here: the two rulings are about different words.
+   * (VOIDED is not an exception: it reads VOID's own player slate.)
+   */
+  MILLIONEA_WEEK_SETTLED: "Slate on a settled Millionea week's word (§M8a item 7: the register states money, it awards none) — RESOLVED keeps its own struck seal for a market's final state.",
   /*
    * ⛔ `CASHED_OUT` USED TO HAVE AN ENTRY HERE AND IT IS GONE ON PURPOSE — answered by Ali
    * 2026-09-09, and the note it replaced carried the instruction followed here verbatim: *"if the

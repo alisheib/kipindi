@@ -58,6 +58,11 @@ Next: the first real campaign — it waits only on Ali's words, audience and swi
    S15's lane on Ali-Blade15; S15 left that day, Ali gave its leftovers to S14, and S14 landed them (STEP 57). Its only
    open step is C3e (not designed); a session that works on it keeps that file's §0 and §1 true, and this board's rows
    for the units it moves.
+6. ⏸ **2026-10-21 · the automatic harm markers no longer stop a marketing SMS** (Ali's ruling, main `8175dbca3`; live
+   with the next Railway deploy — Railway's builds were paused that day): `MARKETING_HARM_MARKERS_MUTED` in
+   `src/lib/server/marketing/rg.ts`. The stop list, self-exclusion, a break, under 25 with RG history, age and status
+   still refuse. Reactivate only on Ali's word — COMPLIANCE-DECISIONS § "2026-10-21 · Harm markers muted for marketing
+   SMS (owner ruling)" lists what to restore. The public RG page §4 was left unchanged on his instruction.
 
 ```
 ▶ NEXT: the FIRST REAL CAMPAIGN — Ali picks its words and its audience (management's pilot of about 200 players) and
@@ -886,7 +891,8 @@ with S14's contacts push). OD61 stands, and since 2026-10-09 only the Owner and 
 - **OD12 · Marketing suppression on self-exclusion uses `selfExclusionStanding`, never `isLockedOut`**,
   and treats any self-exclusion as lasting at least six months (GN 478T reg 48(3)), lifted only by an
   officer restore **plus** a fresh consent after restoration. ⛔ `isLockedOut` itself is not modified.
-- **OD13 · Cooling-off and `detectHarmMarkers` also suppress marketing**, with their own skip reasons.
+- **OD13 · Cooling-off and `detectHarmMarkers` also suppress marketing**, with their own skip reasons. ⟶ The harm-marker
+  half is MUTED since 2026-10-21 (Ali; §0 item 6); cooling-off still suppresses.
 - **OD14 · 18+ is enforced in the loop.** An account's `dob` must yield ≥18; a contact with no account
   is marketable only when the import recorded an explicit 18+ attestation with the consent. Unknown age
   is `skipped`, never sent. *(Since 2026-09-26 the identity check is asked too: a final KYC refusal

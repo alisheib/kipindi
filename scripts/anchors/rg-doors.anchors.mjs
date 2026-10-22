@@ -279,6 +279,16 @@ export const MUTATIONS = [
     check: "8.12 ⛔ a harm check that cannot be READ refuses",
   },
   {
+    // 2026-10-21 · Ali's ruling mutes the harm markers for marketing SMS; this plant reactivates them unasked.
+    name: "the-muted-harm-markers-come-back-unasked",
+    why: "The owner muted the automatic harm markers for marketing SMS (2026-10-21) until he says otherwise; "
+       + "a silent flip back would stop campaigns to every flagged player without his word.",
+    file: MKT_RG,
+    from: `export const MARKETING_HARM_MARKERS_MUTED = true;`,
+    to: `export const MARKETING_HARM_MARKERS_MUTED = false;`,
+    check: "8.11b ⏸ the DEFAULT dependency is MUTED",
+  },
+  {
     name: "the-predicate-reads-through-the-writer",
     why: "🔴 U7's DEFECT, THE HALF ITS FIX MISSED. `getRgSettings` creates a row for a user with none "
        + "and rewrites one whose pending limit has come due — once per recipient, 150,000 per campaign.",

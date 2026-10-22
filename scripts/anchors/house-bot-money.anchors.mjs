@@ -137,8 +137,8 @@ export const MUTATIONS = [
   {
     name: "H5 · the position loses its house marker",
     file: SVC,
-    from: `      // SEAM:marker\n      ...(ctx.kind === "house" ? { houseBotId: ctx.botId } : {}),`,
-    to: `      // SEAM:marker\n      ...(ctx.kind === "house" ? {} : {}),`,
+    from: `        // SEAM:marker\n        ...(ctx.kind === "house" ? { houseBotId: ctx.botId } : {}),`,
+    to: `        // SEAM:marker\n        ...(ctx.kind === "house" ? {} : {}),`,
     expect: "1.2 · the position carries the house marker",
     suite: "money-mem",
   },
@@ -304,8 +304,8 @@ export const MUTATIONS = [
   {
     name: "MC-3 · the orphan refund loses its house marker",
     file: SVC,
-    from: `// SEAM:markerOrphan — the house marker travels to every txn of a marked position (PLAN §3 propagation).\n      ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),\n`,
-    to: `// SEAM:markerOrphan — the house marker travels to every txn of a marked position (PLAN §3 propagation).\n`,
+    from: `// SEAM:markerOrphan — the house marker remains on the refund txn.\n              ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),\n`,
+    to: `// SEAM:markerOrphan — the house marker remains on the refund txn.\n`,
     expect: "10.1 · the orphaned house stake is refunded once, and its refund carries the house marker",
     suite: "money-mem",
   },
@@ -571,8 +571,8 @@ export const MUTATIONS = [
      * `settleMarket`'s own "REFUSE, NEVER SKIP" comment records having shipped once already. */
     name: "12-settle-skips-closed · settlement quietly SKIPS a closed wallet, stamping settledAt over a position it never paid",
     file: SVC,
-    from: `    const gbtByPos = allocateFeeShares(feeShareRows, settleFee.fee, settleLevies.gbtLevy);\n    for (const p of myPositions) {\n      const w = await db.wallet.findByUserId(p.userId);`,
-    to: `    const gbtByPos = allocateFeeShares(feeShareRows, settleFee.fee, settleLevies.gbtLevy);\n    for (const p of myPositions) {\n      const w = await db.wallet.findByUserId(p.userId);\n      if (w && w.status === "CLOSED") continue;`,
+    from: `    const gbtByPos = allocateFeeShares(feeShareRows, settleFee.fee, settleLevies.gbtLevy);\n    for (const p of myPositions) {\n      const w = await db.wallet.findByUserId(p.userId, lockTx);`,
+    to: `    const gbtByPos = allocateFeeShares(feeShareRows, settleFee.fee, settleLevies.gbtLevy);\n    for (const p of myPositions) {\n      const w = await db.wallet.findByUserId(p.userId, lockTx);\n      if (w && w.status === "CLOSED") continue;`,
     expect: "12.5 · ⛔ a house stake already OPEN when the wallet CLOSED still settles INTO it",
     suite: "money-mem",
   },

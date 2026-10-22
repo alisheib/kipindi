@@ -176,12 +176,15 @@ const LEFT: Record<string, string> = {
   "src/app/results/notable-carousel.tsx :: slot {n} :: String(i + 1)": ORDINAL,
   "src/components/onboarding/first-visit-primer.tsx :: slot {n} :: String(i + 1)": ORDINAL,
   "src/components/chat/messages/Primitives.tsx :: slot {n} :: String(n)": `${ORDINAL}: a source's number, matching the [n] in the answer`,
-  "src/app/updown/page.tsx :: slot {n} :: String(activeDuration)": "a duration in minutes (3–60), the time grammar's, not a count",
+  // U43 (2026-10-19): the board now uses a truthful empty-state sentence rather
+  // than interpolating a duration into the old promise that a round is being prepared.
   "src/lib/markets/card-close-label.ts :: slot {n} :: String(label.n)": "a duration in days (the time-left grammar), in a module pure by contract (it imports only eat-day.ts; `test:client-graph-safe`) — under 1,000 for any market under 2.7 years (production's furthest: 170)",
   "src/components/onboarding/first-visit-primer.tsx :: slot {n} :: \"1\"": "the primer's demo dial labels, multipliers (\"1× chini\", \"200× juu\"), not counts",
   "src/components/onboarding/first-visit-primer.tsx :: slot {n} :: \"200\"": "the primer's demo dial labels, multipliers (\"1× chini\", \"200× juu\"), not counts",
   "src/components/onboarding/first-visit-primer.tsx :: template :: (step + 1) / CARDS.length": "a progress bar's scale (a style), not text",
   "src/components/ui/keep-words.tsx :: template :: out.length": "a React key, not text",
+  // MASWALI-BUILD S5-DESIGN-HUB (classified at the S5 integration, 2026-10-21): the pool's live tick compares frames by key.
+  "src/app/millionea/hub-pool.tsx :: template :: inTotal": "a frame's comparison key (`rowFigures`, R1-motion L1), never printed",
   "src/components/charts/pnl-chart.tsx :: jsx :: data[data.length - 1].label": "a label (words), not a count",
   "src/components/ui/query-bar-ghost.tsx :: jsx :: count": "the loading ghost's phrase drawn transparent to its width (\"Miamala 00\"), not a count — R5-K's bar ghost, shared by R5-L (merged 2026-10-09)",
   "src/app/agent/apply/loading.tsx :: slot {n} :: \"0\"": "the loading ghost's placeholder digit (the seven documents: one digit's room), not a count — R5-L's ghosts (merged 2026-10-09)",
@@ -200,7 +203,9 @@ const LEFT: Record<string, string> = {
   "src/app/millionea/how/page.tsx :: slot {n} :: EXAMPLE_VOIDED_MAIN": `${ORDINAL}: the worked example's voided main question, by its number (1–10)`,
   "src/app/millionea/register/[week]/page.tsx :: slot {n} :: s.main": `${ORDINAL}: the main question a reserve stood in for, by its number (1–10)`,
   "src/app/millionea/register/[week]/page.tsx :: slot {n} :: q.slot": `${ORDINAL}: a voided main question in the week's log, by its number (1–10)`,
-  "src/components/maswali/maswali-slip.tsx :: slot {n} :: labelOf(unanswered[0])": `${ORDINAL}: the first unanswered question's place label ("3", "A2") in the slip's jump link`,
+  // S5-DESIGN-REGISTER (2026-10-21, the critic's M3): a question's row says how it counted, its screen-reader sentence the
+  // log's own ("Question 4: reserve A1 took its place").
+  "src/app/millionea/register/[week]/page.tsx :: slot {n} :: mark.main": `${ORDINAL}: the main question a reserve stood in for, on that reserve's row (1–10)`,
   'src/app/positions/page.tsx :: slot {n} :: <span className="font-mono tabular-nums">{formatNumber(millioneaHeld)}</span>': "the count already grouped (`formatNumber(millioneaHeld)`) inside its own mono span — a node the slot carries whole",
 };
 {
@@ -358,16 +363,23 @@ const oldAmounts = (s: string) => s.split(OLD_FIGURE).filter((_, i) => i % 2 ===
     dial.includes('title={resultData.variant === "success" ? `${sideWord(t, resultData.side, "MARKET")} · ${formatTzs(resultData.stake)}`'));
 
   // P2 adds an opt-in mono title and an opt-in panel class for Millionea. Every other result must render the same
-  // bytes as the component before P2, not merely keep a familiar heading class. e984abbe5 is VIS-P's parent; the
-  // blob pin refuses a moving or missing baseline. Both modules use the Modal stand-in installed above and the same
-  // current dependencies, so this comparison isolates OperationResultModal's own rendered markup.
+  // bytes as the component PRODUCTION SERVES, not merely keep a familiar heading class. Both modules use the Modal
+  // stand-in installed above and the same current dependencies, so this comparison isolates OperationResultModal's own
+  // rendered markup.
+  // ⚠️ RE-POINTED (MASWALI-BUILD S5-FIX-PLATFORM, 2026-10-21): the baseline was VIS-P's parent e984abbe5, and production
+  // `main` changed this component after it (U43's board rebuild 1384383f and house-gold restore dd1386f0) — so every case
+  // "differed" from a file production no longer serves, while S5 changes nothing for these callers. The baseline is now
+  // production main's copy as S5 merged it: ONE constant, re-pointed to main's commit at every re-merge of main.
+  const P2_BASELINE_MAIN = "4471bb440";
   const resultPath = "src/components/markets/operation-result-modal.tsx";
-  const beforeRef = `e984abbe5:${resultPath}`;
+  const beforeRef = `${P2_BASELINE_MAIN}:${resultPath}`;
   const beforeBlob = execFileSync("git", ["rev-parse", beforeRef], { encoding: "utf8" }).trim();
   const beforeSource = execFileSync("git", ["show", beforeRef], { encoding: "utf8" }).replace(/\r\n/g, "\n");
-  ok("3.7.0 · P2's before-source is VIS-P parent e984abbe5, at the exact approved component blob",
-    beforeBlob === "de69d620de263fb372d92933d773407a60bc05f7" && beforeSource.includes("export function OperationResultModal(")
-      && !beforeSource.includes("function PanelClass("), beforeBlob);
+  let baselineMerged = false;
+  try { execFileSync("git", ["merge-base", "--is-ancestor", P2_BASELINE_MAIN, "HEAD"], { stdio: "ignore" }); baselineMerged = true; } catch { baselineMerged = false; }
+  ok(`3.7.0 · P2's baseline is production main's component as this branch merged it (${P2_BASELINE_MAIN}, blob ${beforeBlob.slice(0, 12)}): a commit HEAD contains, before P2 (no PanelClass, no titleFace)`,
+    baselineMerged && beforeSource.includes("export function OperationResultModal(")
+      && !beforeSource.includes("function PanelClass(") && !beforeSource.includes("titleFace"), j({ baselineMerged, beforeBlob }));
   const resultModulePath = req.resolve(`../${resultPath}`);
   const liveModule = (req.cache as Record<string, NodeModule>)[resultModulePath];
   const fromSource = (source: string) => {

@@ -33,6 +33,7 @@
 import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
 import { emptyStateAlignment } from "./live/empty-state-alignment.mjs";
+import { assertLang } from "./qa-locale.mjs";
 
 const BASE = process.env.BASE || "http://localhost:3000";
 const SURFACE = process.env.SURFACE || "all";
@@ -41,6 +42,11 @@ const ONLY = process.env.ONLY ? process.env.ONLY.split(",") : null;
 const SHOTS_ALL = process.env.SHOTS_ALL === "1";
 const SHOTS = ".50pick-shots/responsive";
 mkdirSync(SHOTS, { recursive: true });
+
+async function screenshotWithLocale(page, locale, path) {
+  await assertLang(page, locale);
+  await page.screenshot({ path });
+}
 
 const BREAKPOINTS = [
   { tag: "xs", w: 320, h: 568 },
@@ -494,7 +500,7 @@ async function sweep(browser, label, paths, contextFactory, guestContextFactory)
           const real = errs.filter((e) => !/fonts\.googleapis|fonts\.gstatic|Failed to load resource.*font|vibrate|webpack-hmr|WebSocket connection|_next\/static|hot-reloader/i.test(e));
           ok(`${cell} zero console errors`, real.length === 0, real.slice(0, 2).join(" | "));
           if (SHOTS_ALL || bp.tag === "xs" || bp.tag === "desktop" || bp.tag === "land") {
-            await page.screenshot({ path: `${SHOTS}/${label}/${surfName}-${bp.tag}${locale !== "en" ? "-" + locale : ""}.png` });
+            await screenshotWithLocale(page, locale, `${SHOTS}/${label}/${surfName}-${bp.tag}${locale !== "en" ? "-" + locale : ""}.png`);
           }
         } catch (e) {
           ok(`${cell} loads`, false, String(e).split("\n")[0].slice(0, 90));
@@ -552,7 +558,7 @@ async function overlaySweep(browser, playerCtxFactory, adminCtxFactory) {
         // safeBottom 0: this is a backdrop overlay (z-61, full-screen scrim) that
         // legitimately covers the bottom nav — it only must fit the viewport.
         await fitsViewport(p, dlg, `overlay notifications @${bp.tag}`, 0);
-        await p.screenshot({ path: `${SHOTS}/overlays/notifications-${bp.tag}.png` });
+        await screenshotWithLocale(p, "en", `${SHOTS}/overlays/notifications-${bp.tag}.png`);
       } else soft(`overlay notifications @${bp.tag}`, true, "bell not visible");
       await p.close();
     }
@@ -569,7 +575,7 @@ async function overlaySweep(browser, playerCtxFactory, adminCtxFactory) {
         await menu.waitFor();
         // safeBottom 0: backdrop overlay (z-61 scrim over the nav) — fits-viewport only.
         await fitsViewport(p, menu, `overlay avatar-menu @${bp.tag}`, 0);
-        await p.screenshot({ path: `${SHOTS}/overlays/avatar-${bp.tag}.png` });
+        await screenshotWithLocale(p, "en", `${SHOTS}/overlays/avatar-${bp.tag}.png`);
       } else soft(`overlay avatar-menu @${bp.tag}`, true, "avatar not visible");
       await p.close();
     }
@@ -650,7 +656,7 @@ async function overlaySweep(browser, playerCtxFactory, adminCtxFactory) {
         }
         await p.waitForTimeout(300);
         await picker.scrollIntoViewIfNeeded();
-        await p.screenshot({ path: `${SHOTS}/overlays/market-detail-${bp.tag}.png` });
+        await screenshotWithLocale(p, "en", `${SHOTS}/overlays/market-detail-${bp.tag}.png`);
         // open the confirm modal if a place-bet button is enabled
         const placeBtn = p.getByRole("button", { name: /Place|Weka|下注|Confirm/i }).first();
         if (await placeBtn.isEnabled().catch(() => false)) {
@@ -659,11 +665,11 @@ async function overlaySweep(browser, playerCtxFactory, adminCtxFactory) {
           await modal.waitFor();
           await modal.evaluate(async el => { await document.fonts.ready; await Promise.all(el.getAnimations({subtree:true}).filter(a => a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {}))); });
           await fitsViewport(p, modal, `overlay bet-confirm @${bp.tag}`);
-          await p.screenshot({ path: `${SHOTS}/overlays/bet-confirm-${bp.tag}.png` });
+          await screenshotWithLocale(p, "en", `${SHOTS}/overlays/bet-confirm-${bp.tag}.png`);
           const body=p.getByTestId("bet-confirm-body");
           const scrolled=await body.evaluate(el=>{const scrollable=el.scrollHeight>el.clientHeight;el.scrollTop=el.scrollHeight;return{scrollable,height:el.clientHeight,scrollHeight:el.scrollHeight,overflow:getComputedStyle(el).overflowY};});
           ok(`overlay bet-confirm disclosures @${bp.tag} remain scroll-reachable`,scrolled.height>0&&(!scrolled.scrollable||["auto","scroll"].includes(scrolled.overflow)));
-          if(scrolled.scrollable)await p.screenshot({path:`${SHOTS}/overlays/bet-confirm-${bp.tag}-body-bottom.png`});
+          if(scrolled.scrollable)await screenshotWithLocale(p, "en", `${SHOTS}/overlays/bet-confirm-${bp.tag}-body-bottom.png`);
           ok(`overlay bet-confirm @${bp.tag} opens without a money commitment`,moneyActions===0);
         } else soft(`overlay bet-confirm @${bp.tag} NOT DRIVEN`, false, "actual detail has no enabled bet entry");
       } else soft(`overlay market-detail(dial) @${bp.tag}`, true, "no market card");
@@ -683,7 +689,7 @@ async function overlaySweep(browser, playerCtxFactory, adminCtxFactory) {
     ok(`overlay admin/players @${bp.tag} no h-overflow`, cell.overflowPx <= 1,
       `+${cell.overflowPx}px via ${cell.widestName}`);
     ok(`overlay admin/players @${bp.tag} no off-screen fixed`, cell.offscreen.length === 0, cell.offscreen.slice(0, 2).join(" | "));
-    await p.screenshot({ path: `${SHOTS}/overlays/admin-players-${bp.tag}.png` });
+    await screenshotWithLocale(p, "en", `${SHOTS}/overlays/admin-players-${bp.tag}.png`);
     await p.close();
   }
   await actx.close();

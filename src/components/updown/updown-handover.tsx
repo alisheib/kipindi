@@ -48,9 +48,9 @@
  *     scrolled off the header — into the price hero, the pool, or the settlement proof, which is
  *     the trust artefact this whole page exists for. Replacing the page under someone mid-sentence
  *     is the same discourtesy as yanking their result away, one screen further down.
- *     ⚠️ It DEFERS, it does not cancel, and it is not a dead end while it defers: the handover bar
- *     is pinned at the top of the content with an explicit way forward. Scroll back and the next
- *     clock tick (≤1s) takes them.
+ *     ⚠️ It DEFERS, it does not cancel, and it is not a dead end while it defers: the pod names
+ *     the successor's phase and, once a real round is open, a link gives the way forward.
+ *     Scroll back and the next clock tick (≤1s) takes them.
  *
  * ── AND THE NAVIGATION ITSELF ────────────────────────────────────────────────────────────────
  *
@@ -200,24 +200,14 @@ export function UpDownHandover({
      * ⛔ AND IT MUST EXIST AT ALL. Without it the page would navigate under a screen-reader user
      * with no warning — worse than the dead end, not better.
      *
-     * ⚠️ Visible on every branch, not only when the redirect is deferred. When auto-advance
-     * fires this bar is on screen for the moment between the hold ending and the route
-     * changing; when it is deferred (an open modal, a request in flight, or a player who
-     * arrived at an already-settled round) it is the permanent, honest statement plus the way
-     * out. `m-in` is the kit's arrival, `--t-move` on `--m-settle`, clamped by all three
+     * The pod already prints the next-round phase and clock. Repeating its meaning in a
+     * second visible sentence made a settled detail page look like two separate notices.
+     * This status keeps the fuller sentence for screen readers; the only visible addition is
+     * a link when a real successor row is ready. `m-in` is the kit's arrival, clamped by the
      * reduced-motion gates.
      */
-    <div
-      role="status"
-      aria-live="polite"
-      className="m-in flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 px-3.5 py-2.5"
-      style={{
-        background: "var(--bg-inset)",
-        border: "1px solid color-mix(in oklab, var(--border) 70%, transparent)",
-        borderRadius: "var(--r-md)",
-      }}
-    >
-      <span className="text-body-sm leading-[1.45] text-text-muted">{sentence}</span>
+    <>
+      <span role="status" aria-live="polite" className="sr-only">{sentence}</span>
       {/* ⛔ Only when there is somewhere real to go — `ready` is true solely when a successor
           ROW is open, so this can never point at a round that does not exist.
           ⛔ And it wears the KIT's ghost button, the same control the board card offers this
@@ -227,14 +217,16 @@ export function UpDownHandover({
           label). An anchor rather than a `<Button>` because this one is a real navigation and
           must keep middle-click, "open in new tab" and a copyable address. */}
       {hand.ready && successorRoundId && (
-        <a
-          href={`/updown/${successorRoundId}?from=${encodeURIComponent(roundId)}`}
-          className="btn btn-ghost btn-sm inline-flex items-center gap-1 font-mono uppercase tracking-[0.08em]"
-          style={{ color: "var(--brand-300)", fontSize: 10.5 }}
-        >
-          {labels.go}
-        </a>
+        <div className="m-in flex justify-end">
+          <a
+            href={`/updown/${successorRoundId}?from=${encodeURIComponent(roundId)}`}
+            className="btn btn-ghost btn-sm inline-flex items-center gap-1 font-mono uppercase tracking-[0.08em]"
+            style={{ color: "var(--brand-300)", fontSize: "var(--type-small)", minHeight: "var(--tap-min)" }}
+          >
+            {labels.go}
+          </a>
+        </div>
       )}
-    </div>
+    </>
   );
 }

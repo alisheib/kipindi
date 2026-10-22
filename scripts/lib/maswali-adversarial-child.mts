@@ -78,6 +78,20 @@ const owedOnceAfterCommit = (rows: OwedRow[], action: string, targetId: string) 
   const mine = rows.filter((r) => r.action === action && r.targetId === targetId);
   return mine.length === 1 && (STORE !== "postgres" || !mine[0].underLock);
 };
+/**
+ * S5-FIX-SRV's reviewed fields, read as the console reads them (the S7 × S5 merge's caller sweep): a correction and a
+ * confirmation name the seal they reviewed (A4/A5), a move the close it reviewed (A3), a draft edit the row it read (A5)
+ * and an attestation the draft it read (3+A4) — each the state as it stands, so every case here meets the check it was
+ * written for, never a stale-review refusal in its place.
+ */
+const reviewedSeal = async (weekId: string, slot: number) => {
+  const q = (await dal.questionStore.listForWeek(weekId)).find((x: any) => x.slot === slot);
+  return { expectedOutcome: q?.outcome, expectedSealedAt: q?.sealedAt };
+};
+const reviewedClose = async (weekId: string) => ({ expectedClosesAt: (await dal.weekStore.get(weekId))?.closesAt });
+const rowVersion = async (weekId: string, slot: number) =>
+  ({ version: W.svc.draftRowVersion((await dal.questionStore.listForWeek(weekId)).find((x: any) => x.slot === slot)) });
+const readVersion = async (weekId: string) => ({ readVersion: await W.svc.readDraftVersion(weekId) });
 const { trialBalance } = await import("../../src/lib/server/ledger.ts");
 const { setRequireTwoOfficerResolution } = await import("../../src/lib/server/resolution-policy.ts");
 const { houseBotEligibility } = await import("../../src/lib/server/house-bot/eligibility.ts");
@@ -157,7 +171,7 @@ async function bought(u: string, weekId: string, slips: Pick[][]): Promise<Array
 async function drafted(start: number, o: { visibility?: "PUBLIC" | "DRIVE"; qs?: any[] } = {}): Promise<any> {
   const c = await W.svc.createWeek({ weekStartMs: start, visibility: o.visibility ?? "PUBLIC", questions: o.qs ?? W.questions(start), officerId: DRAFTER, now: new Date(start - 3 * DAY) });
   if (!c.ok) throw new Error(`draft ${new Date(start).toISOString()}: ${c.error}`);
-  const a = await W.svc.attestParity({ weekId: c.week.id, officerId: READER });
+  const a = await W.svc.attestParity({ ...(await readVersion(c.week.id)), weekId: c.week.id, officerId: READER });
   if (!a.ok) throw new Error(`attest ${c.week.code}: ${a.error}`);
   return c.week;
 }
@@ -263,7 +277,7 @@ if (runs("CS")) {
   }
   const dbNow = async () => (await money.dbNowMs(null)) as number;
   const target = new Date((await dbNow()) + 75_000).toISOString();
-  const moved = await W.svc.moveClose({ weekId: wk.id, toCloseAt: target, officerId: DRAFTER, now: new Date() });
+  const moved = await W.svc.moveClose({ ...(await reviewedClose(wk.id)), weekId: wk.id, toCloseAt: target, officerId: DRAFTER, now: new Date() });
   if (!moved.ok) throw new Error(`CS: the close could not be brought forward: ${moved.error}`);
   const closeMs = Date.parse(moved.week.closesAt);
   const [early, buyer] = await people(2, 50_000);
@@ -277,7 +291,7 @@ if (runs("CS")) {
   ok("CS.1b · …and nothing moved: the buyer's balance, the week's count and its pool",
     (await bal(buyer)) === 50_000 && (await dal.weekStore.get(wk.id)).ticketCount === 1 && (await pool(wk.marketId)) === 1_000);
   const cutoff = (await W.mdal.marketStore.get(wk.marketId))?.selectionClosedAt;
-  const mv = await W.svc.moveClose({ weekId: wk.id, toCloseAt: new Date(closeMs + 2 * HOUR).toISOString(), officerId: DRAFTER, now: new Date(closeMs - 30_000) });
+  const mv = await W.svc.moveClose({ ...(await reviewedClose(wk.id)), weekId: wk.id, toCloseAt: new Date(closeMs + 2 * HOUR).toISOString(), officerId: DRAFTER, now: new Date(closeMs - 30_000) });
   const after = await dal.weekStore.get(wk.id);
   ok("CS.3 · ⭐ a close already passed on the database clock can never move — not even for a container whose clock reads before it (MB-28: the move would reopen sales)",
     !mv.ok && /already passed/.test(errOf(mv)) && after.closesAt === moved.week.closesAt, errOf(mv) || `moved to ${after.closesAt}`);
@@ -305,7 +319,7 @@ if (runs("CS")) {
   const fresh = await market.cashOutPosition(holder, t2.positionId);
   ok("CS.2b · control: a ticket inside its free window cancels, refunded in full", fresh.ok && (await bal(holder)) === 50_000 - 1_000, J(fresh));
   const to = new Date(eatWeekAt(start, 5, "19:00")).toISOString();
-  const moved = await W.svc.moveClose({ weekId: fw.id, toCloseAt: to, officerId: DRAFTER, now: new Date(start + HOUR) });
+  const moved = await W.svc.moveClose({ ...(await reviewedClose(fw.id)), weekId: fw.id, toCloseAt: to, officerId: DRAFTER, now: new Date(start + HOUR) });
   ok("CS.3b · control: a close still ahead on both clocks moves later, inside its buffer", moved.ok && moved.week.closesAt === to, errOf(moved));
   // THE OTHER SKEW: a container whose clock runs FAST, reading the close as passed while the database is days before it.
   const fastAt = new Date(Date.parse((await dal.weekStore.get(fw.id)).closesAt) + MIN);
@@ -449,14 +463,14 @@ if (runs("RP")) {
   const s8 = await W.svc.sealQuestion({ weekId: wk.id, slot: 8, outcome: "YES", evidence: "Official result for event 8", officerId: SEALER, now: early });
   if (!s8.ok) throw new Error(`CV: the seal of M8 was refused: ${s8.error}`);
   const q8 = (await dal.questionStore.listForWeek(wk.id)).find((q: any) => q.slot === 8);
-  const cv1 = await W.svc.correctSeal({ weekId: wk.id, slot: 8, outcome: "VOID", voidReason: "not_played", evidence: "Corrected: the match was postponed", officerId: SEALER, now: new Date(early.getTime() + MIN) });
+  const cv1 = await W.svc.correctSeal({ ...(await reviewedSeal(wk.id, 8)), weekId: wk.id, slot: 8, outcome: "VOID", voidReason: "not_played", evidence: "Corrected: the match was postponed", officerId: SEALER, now: new Date(early.getTime() + MIN) });
   ok("CV.1 · ⭐ a correction to VOID on 'not played' before the question's void deadline is refused, as a seal is (MR-15)",
     !cv1.ok && /before its void deadline/.test(errOf(cv1)) && Date.parse(q8.voidDeadlineAt) > early.getTime() + MIN && (await dal.questionStore.get(q8.id)).outcome === "YES", errOf(cv1));
-  const cv2 = await W.svc.correctSeal({ weekId: wk.id, slot: 8, outcome: "NO", evidence: "   ", officerId: SEALER, now: new Date(early.getTime() + 2 * MIN) });
+  const cv2 = await W.svc.correctSeal({ ...(await reviewedSeal(wk.id, 8)), weekId: wk.id, slot: 8, outcome: "NO", evidence: "   ", officerId: SEALER, now: new Date(early.getTime() + 2 * MIN) });
   ok("CV.2 · ⭐ a correction carrying no evidence is refused, as a seal is (MR-14)",
     !cv2.ok && /evidence/.test(errOf(cv2)) && (await dal.questionStore.get(q8.id)).outcome === "YES", errOf(cv2));
-  const cv3 = await W.svc.correctSeal({ weekId: wk.id, slot: 8, outcome: "VOID", voidReason: "abandoned", evidence: "Corrected: abandoned at half time, no official result", officerId: SEALER, now: new Date(early.getTime() + 3 * MIN) });
-  const cv4 = await W.svc.correctSeal({ weekId: wk.id, slot: 8, outcome: "YES", evidence: "Corrected back: the federation published the official result", officerId: SEALER, now: new Date(early.getTime() + 4 * MIN) });
+  const cv3 = await W.svc.correctSeal({ ...(await reviewedSeal(wk.id, 8)), weekId: wk.id, slot: 8, outcome: "VOID", voidReason: "abandoned", evidence: "Corrected: abandoned at half time, no official result", officerId: SEALER, now: new Date(early.getTime() + 3 * MIN) });
+  const cv4 = await W.svc.correctSeal({ ...(await reviewedSeal(wk.id, 8)), weekId: wk.id, slot: 8, outcome: "YES", evidence: "Corrected back: the federation published the official result", officerId: SEALER, now: new Date(early.getTime() + 4 * MIN) });
   ok("CV.3 · control: a correction to VOID on a ground available at any time lands, and so does the correction back (a reinstatement)",
     cv3.ok && cv4.ok && (await dal.questionStore.get(q8.id)).outcome === "YES", `${errOf(cv3)} ${errOf(cv4)}`);
   await sealRest(wk.id, start);
@@ -502,7 +516,7 @@ if (runs("RP")) {
   const pre = await settle.previewMaswaliSettlement(wk.id, new Date(end0 + MIN));
   ok("RP.1b · …and on that record exactly one ticket wins", pre.ok && pre.preview.winners === 1, pre.ok ? `${pre.preview.winners}` : errOf(pre));
   const fixAt = new Date(sealAt.getTime() + 13 * HOUR);
-  const fix = await W.svc.correctSeal({ weekId: wk.id, slot: 11, outcome: "YES", evidence: "Corrected: the reserve match was completed, official result YES", officerId: SEALER, now: fixAt });
+  const fix = await W.svc.correctSeal({ ...(await reviewedSeal(wk.id, 11)), weekId: wk.id, slot: 11, outcome: "YES", evidence: "Corrected: the reserve match was completed, official result YES", officerId: SEALER, now: fixAt });
   const rules = W.svc.frozenRules(wk);
   const end1 = await windowEndOf(wk.id);
   ok("RP.2 · ⭐ the sealer reinstates A1 (VOID → YES) inside the window: it lands, and the window restarts from the correction (OD-09)",
@@ -532,7 +546,7 @@ if (runs("RP")) {
   const pre = await settle.previewMaswaliSettlement(wk.id, new Date(end0 + MIN));
   ok("LV.0 · M3 voided and A1 standing in: one ticket wins on that record (C's — its wrong A2 is never graded)", pre.ok && pre.preview.winners === 1, pre.ok ? `${pre.preview.winners}` : errOf(pre));
   const fixAt = new Date(sealAt.getTime() + 13 * HOUR);
-  const late = await W.svc.correctSeal({ weekId: wk.id, slot: 7, outcome: "VOID", voidReason: "abandoned", evidence: "Corrected: abandoned in the second half, no official result", officerId: SEALER, now: fixAt });
+  const late = await W.svc.correctSeal({ ...(await reviewedSeal(wk.id, 7)), weekId: wk.id, slot: 7, outcome: "VOID", voidReason: "abandoned", evidence: "Corrected: abandoned in the second half, no official result", officerId: SEALER, now: fixAt });
   const end1 = await windowEndOf(wk.id);
   const m = await mapOf(wk.id);
   ok("LV.1 · ⭐ a late void (M7, corrected to VOID inside the window) pulls the next usable reserve in — A1 for M3, A2 for M7 — and restarts the window",
@@ -558,7 +572,7 @@ if (runs("RP")) {
   ok("RW.1 · six mains voided against five usable reserves: the week void is certain on the final record, and waits for its window (MR-18, MB-15)",
     g0.ok && g0.gate.ready && g0.gate.weekVoid && !inWindow.ok && /objection window/.test(errOf(inWindow)), errOf(inWindow));
   const fixAt = new Date(sealAt.getTime() + 13 * HOUR);
-  const back = await W.svc.correctSeal({ weekId: wk.id, slot: 6, outcome: "YES", evidence: "Corrected: the match was played, official result YES", officerId: SEALER, now: fixAt });
+  const back = await W.svc.correctSeal({ ...(await reviewedSeal(wk.id, 6)), weekId: wk.id, slot: 6, outcome: "YES", evidence: "Corrected: the match was played, official result YES", officerId: SEALER, now: fixAt });
   const end1 = await windowEndOf(wk.id);
   ok("RW.2 · the sealer reinstates M6 inside the window (VOID → YES): five voids against five reserves — the week grades, and the window restarts",
     back.ok && end1 > end0, errOf(back));
@@ -1051,8 +1065,8 @@ if (runs("IN")) {
   try {
     const s11 = await W.svc.sealQuestion({ weekId: wk.id, slot: 11, outcome: "YES", evidence: "Official result for reserve 1", officerId: SEALER, now: sealAt });
     if (!s11.ok) throw new Error(`IN: the seal of A1 was refused: ${s11.error}`);
-    byHolder = await W.svc.confirmSeal({ weekId: wk.id, slot: 11, officerId: p, now: sealAt });
-    byReader = await W.svc.confirmSeal({ weekId: wk.id, slot: 11, officerId: READER, now: sealAt });
+    byHolder = await W.svc.confirmSeal({ ...(await reviewedSeal(wk.id, 11)), weekId: wk.id, slot: 11, officerId: p, now: sealAt });
+    byReader = await W.svc.confirmSeal({ ...(await reviewedSeal(wk.id, 11)), weekId: wk.id, slot: 11, officerId: READER, now: sealAt });
   } finally {
     await setRequireTwoOfficerResolution(false, OWNER);
   }
@@ -1098,7 +1112,7 @@ if (runs("TO")) {
     on.ok && q1on?.outcome === "YES" && q1on?.twoOfficerAtStage1 === true && q1on?.stage2By === null, errOf(on) || J({ marker: q1on?.twoOfficerAtStage1 }));
   const off = await seal(2, async () => false);
   ok("TO.3 · control: the read answering OFF, the seal lands single-officer", off.ok && (await slotOf(2))?.twoOfficerAtStage1 === false, errOf(off));
-  const second = await W.svc.confirmSeal({ weekId: wk.id, slot: 1, officerId: READER, now: sealAt });
+  const second = await W.svc.confirmSeal({ ...(await reviewedSeal(wk.id, 1)), weekId: wk.id, slot: 1, officerId: READER, now: sealAt });
   ok("TO.4 · control: …and a second officer confirms the two-officer seal, which reads its own marker, not the setting", second.ok && (await slotOf(1))?.stage2By === READER, errOf(second));
   // The books close behind the cases: the rest void, so the week voids whole; it sold nothing.
   await sealRest(wk.id, start, ALL_VOID);
@@ -1221,8 +1235,8 @@ if (runs("CC")) {
     (await slotOf(uk.id, 2)).voidDeadlineAt === `${day(ukStart, 7)}T14:00:00.000Z`, (await slotOf(uk.id, 2)).voidDeadlineAt);
   ok("CC.3b · …and one that would pass the week's final deadline is capped there: Sunday 14:00 London (GMT) + 48 h → Monday 23:59 EAT",
     (await slotOf(uk.id, 11)).voidDeadlineAt === new Date(eatWeekAt(ukStart + 7 * DAY, 1, "23:59")).toISOString(), (await slotOf(uk.id, 11)).voidDeadlineAt);
-  const ukEdit = await W.svc.editDraftQuestion({ weekId: uk.id, slot: 1, changes: { eventLocalStart: `${day(ukStart, 4)}T16:30`, eventZone: "Europe/London" }, officerId: DRAFTER });
-  await W.svc.attestParity({ weekId: uk.id, officerId: READER });
+  const ukEdit = await W.svc.editDraftQuestion({ ...(await rowVersion(uk.id, 1)), weekId: uk.id, slot: 1, changes: { eventLocalStart: `${day(ukStart, 4)}T16:30`, eventZone: "Europe/London" }, officerId: DRAFTER });
+  await W.svc.attestParity({ ...(await readVersion(uk.id)), weekId: uk.id, officerId: READER });
   const ukOpen = await openAt(uk.id, ukStart);
   ok("CC.4 · …moved to 16:30 London (15:30 UTC: exactly the buffer), the week opens — the buffer is inclusive", ukEdit.ok && ukOpen.ok, `${errOf(ukEdit)} ${errOf(ukOpen)}`);
   if (ukOpen.ok) {
@@ -1235,11 +1249,11 @@ if (runs("CC")) {
     (await slotOf(us.id, 1)).eventStartsAt === `${day(usStart, 4)}T15:00:00.000Z`, (await slotOf(us.id, 1)).eventStartsAt);
   const usRefused = await openAt(us.id, usStart);
   ok("CC.6 · ⭐ …so that open is refused too (an EST reading would have passed)", !usRefused.ok && /at least 30 minutes before the first event/.test(errOf(usRefused)), errOf(usRefused));
-  await W.svc.editDraftQuestion({ weekId: us.id, slot: 1, changes: { eventLocalStart: `${day(usStart, 4)}T11:30`, eventZone: "America/New_York" }, officerId: DRAFTER });
-  await W.svc.editDraftQuestion({ weekId: us.id, slot: 2, changes: { eventLocalStart: `${day(usStart, 4)}T15:30`, eventZone: "Europe/London" }, officerId: DRAFTER });
+  await W.svc.editDraftQuestion({ ...(await rowVersion(us.id, 1)), weekId: us.id, slot: 1, changes: { eventLocalStart: `${day(usStart, 4)}T11:30`, eventZone: "America/New_York" }, officerId: DRAFTER });
+  await W.svc.editDraftQuestion({ ...(await rowVersion(us.id, 2)), weekId: us.id, slot: 2, changes: { eventLocalStart: `${day(usStart, 4)}T15:30`, eventZone: "Europe/London" }, officerId: DRAFTER });
   ok("CC.7 · ⭐ after Europe's change, that Friday's 15:30 in London is GMT: 15:30 UTC (a stale BST reading would put it before the close)",
     (await slotOf(us.id, 2)).eventStartsAt === `${day(usStart, 4)}T15:30:00.000Z`, (await slotOf(us.id, 2)).eventStartsAt);
-  await W.svc.attestParity({ weekId: us.id, officerId: READER });
+  await W.svc.attestParity({ ...(await readVersion(us.id)), weekId: us.id, officerId: READER });
   const usOpen = await openAt(us.id, usStart);
   ok("CC.8 · …and the week opens with both events exactly the buffer after its close", usOpen.ok, errOf(usOpen));
   const twice = await W.svc.createWeek({ weekStartMs: usStart + 7 * DAY, visibility: "DRIVE", officerId: DRAFTER, now: new Date(usStart + 4 * DAY),
@@ -1303,7 +1317,7 @@ if (runs("HF")) {
   const [h1, h2] = await people(2, 50_000);
   const [early] = await bought(h1, wk.id, [MISS_M1]);
   const eve = new Date(eatWeekAt(hs, 4, "18:00")).toISOString();
-  const mv = await W.svc.moveClose({ weekId: wk.id, toCloseAt: eve, officerId: DRAFTER, now: new Date(hs + HOUR) });
+  const mv = await W.svc.moveClose({ ...(await reviewedClose(wk.id)), weekId: wk.id, toCloseAt: eve, officerId: DRAFTER, now: new Date(hs + HOUR) });
   const m = await W.mdal.marketStore.get(wk.marketId);
   ok("HF.3 · ⭐ the officer brings the close forward to the holiday's eve (Thursday 18:00 EAT): the week and its market's cutoff follow (R-WEEK)",
     mv.ok && mv.week.closesAt === eve && m?.selectionClosedAt === eve, errOf(mv));
@@ -1311,7 +1325,7 @@ if (runs("HF")) {
   ok("HF.3b · …and a ticket sold before the move keeps its free-cancel window: cancelled in full (MB-28)", c.ok, J(c));
   const sold = await W.buy(h2, wk.id, [MISS_M1]);
   ok("HF.3c · …the week sells on until its new close", sold.ok, J(sold.ok ? "sold" : sold));
-  const tooLate = await W.svc.moveClose({ weekId: wk.id, toCloseAt: new Date(eatWeekAt(hs, 6, "12:00")).toISOString(), officerId: DRAFTER, now: new Date(hs + 2 * HOUR) });
+  const tooLate = await W.svc.moveClose({ ...(await reviewedClose(wk.id)), weekId: wk.id, toCloseAt: new Date(eatWeekAt(hs, 6, "12:00")).toISOString(), officerId: DRAFTER, now: new Date(hs + 2 * HOUR) });
   ok("HF.4 · ⛔ moving it past the first event less its buffer is refused, and the refusal names the question (MR-4)",
     !tooLate.ok && /before the first event[.] M1 starts at /.test(errOf(tooLate)), errOf(tooLate));
   const d0 = await driveJackpot();

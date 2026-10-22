@@ -295,6 +295,8 @@ export default async function WatchlistPage({
                   msLeft={resolved ? undefined : Date.parse(m.selectionClosedAt ?? m.resolutionAt) - Date.now()}
                   status={m.status === "VOIDED" ? "VOIDED" : m.status === "RESOLVED" ? "RESOLVED" : m.status}
                   resolvedOutcome={m.resolvedOutcome}
+                  settledAt={m.settledAt}
+                  nowMs={nowMs}
                   // ⭐ THE SAME BOOLEAN THE LENS PREDICATE READ — see `rows` above.
                   selectionClosed={row.selectionClosed}
                   sourceUrl={m.sourceUrl}

@@ -435,7 +435,7 @@ export interface MarketStore {
 }
 
 export interface PositionStore {
-  get(id: string): Promise<StoredPosition | null>;
+  get(id: string, tx?: Prisma.TransactionClient | null): Promise<StoredPosition | null>;
   // tx (audit C3): pass a Prisma transaction client to persist the position in
   // the SAME transaction as its wallet/txn/ledger movement (settlement), so a
   // credit and its "paid" mark commit together — no double-pay on resume, no
@@ -465,6 +465,14 @@ export interface PositionStore {
    * loading — and then discarding — thousands of round positions.
    */
   listForUser(userId: string, limit?: number, productLine?: ProductLineFilter): Promise<StoredPosition[]>;
+  /**
+   * A user's SCORED positions, newest first: every line but Millionea's (MASWALI-PLAN S5 item 9 — a ticket is no prediction
+   * any board scores), the tickets left out IN the read, before its `limit` (MASWALI-BUILD S5-FIX-PLATFORM D7). One bounded
+   * query for the leaderboard's per-row streak and sparkline on its "all" lens, where S5 had read each scored line on its
+   * own — twice main's rows per row — to stop a page of tickets crowding out the predictions (S5 re-review 8). For an
+   * account with no tickets it is the every-line page `listForUser(userId, limit)` returns, row for row.
+   */
+  listScoredForUser(userId: string, limit?: number): Promise<StoredPosition[]>;
   /**
    * How many markets this account is OPEN in on its OWN book — `houseBotId is null`, so a position the desk
    * placed from the account is not one the holder is in.
@@ -541,7 +549,7 @@ export interface PositionStore {
    * players.
    */
   leaderboardPlayerCounts(): Promise<{ all: number; market: number; updown: number }>;
-  listForMarket(marketId: string): Promise<StoredPosition[]>;
+  listForMarket(marketId: string, tx?: Prisma.TransactionClient | null): Promise<StoredPosition[]>;
   /**
    * Positions across a KNOWN SET of markets, in one indexed query.
    *
@@ -884,12 +892,19 @@ const memoryPositions: PositionStore = {
       .sort((a, b) => b.placedAt.localeCompare(a.placedAt))
       .slice(0, limit);
   },
+  async listScoredForUser(userId, limit = 100) {
+    // Every line but Millionea's, left out before the limit — as the SQL twin, and as this store's leaderboard counts.
+    return Array.from(positions.values())
+      .filter((p) => p.userId === userId && storedProductLine(markets.get(p.marketId)?.productLine) !== "MASWALI")
+      .sort((a, b) => b.placedAt.localeCompare(a.placedAt))
+      .slice(0, limit);
+  },
   // ⛔ NO `slice`, NO `limit` — this answers a POPULATION and a page cannot.
   async countOwnOpenForUser(userId) {
     return Array.from(positions.values())
       .filter((p) => p.userId === userId && p.status === "OPEN" && p.houseBotId == null).length;
   },
-  async listForMarket(marketId) {
+  async listForMarket(marketId, _tx) {
     return Array.from(positions.values()).filter((p) => p.marketId === marketId);
   },
   async listForMarkets(marketIds) {
@@ -1451,8 +1466,8 @@ const prismaMarkets: MarketStore = {
 };
 
 const prismaPositions: PositionStore = {
-  async get(id) {
-    const r = await pc().position.findUnique({ where: { id } });
+  async get(id, tx) {
+    const r = await (tx ?? pc()).position.findUnique({ where: { id } });
     return r ? toStoredPosition(r) : null;
   },
   async set(p, tx) {
@@ -1542,6 +1557,17 @@ const prismaPositions: PositionStore = {
     });
     return rows.map(toStoredPosition);
   },
+  async listScoredForUser(userId, limit = 100) {
+    const rows = await pc().position.findMany({
+      // `listForUser`'s join on the market, negated: the database leaves the tickets out, before `take`. The column is
+      // NOT NULL, and any value but 'MASWALI' is a scored line here as in the memory twin (`storedProductLine` reads an
+      // unknown value as MARKET).
+      where: { userId, market: { productLine: { not: "MASWALI" } } },
+      orderBy: { placedAt: "desc" },
+      take: limit,
+    });
+    return rows.map(toStoredPosition);
+  },
   // ⛔ ONE `count` — the database answers the population, so no page length can stand in for it.
   async countOwnOpenForUser(userId) {
     return pc().position.count({ where: { userId, status: "OPEN", houseBotId: null } });
@@ -1599,8 +1625,8 @@ const prismaPositions: PositionStore = {
     );
     return { all: Number(row?.all ?? 0), market: Number(row?.market ?? 0), updown: Number(row?.updown ?? 0) };
   },
-  async listForMarket(marketId) {
-    const rows = await pc().position.findMany({ where: { marketId } });
+  async listForMarket(marketId, tx) {
+    const rows = await (tx ?? pc()).position.findMany({ where: { marketId } });
     return rows.map(toStoredPosition);
   },
   async listForMarkets(marketIds) {

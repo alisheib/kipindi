@@ -47,7 +47,7 @@
  * (WP6b); the gate reads its source, so each was provable from the commit that added it, before the mount.
  */
 
-/** @typedef {{ name: string, file: string, suite: string, from: string, to: string, why: string, expect: string }} RedMutation */
+/** @typedef {{ name: string, file: string, suite: string, from: string, to: string, why: string, expect: string, onlyFailure?: boolean }} RedMutation */
 
 const BAR = "src/components/layout/top-app-bar.tsx";
 const PILL = "src/components/layout/wallet-balance-pill.tsx";
@@ -196,12 +196,12 @@ export const MUTATIONS = [
   },
   {
     name: "held-figure-stays-gold",
-    why: "the held half of the plain-ink rule is dropped, so a FROZEN wallet's figure keeps the gold of money you can use. The S4 held frame draws it in plain ink because gold marks a balance a player can spend; the masked half still looks right, which is what makes this the easy slip",
+    why: "the held figure is painted gold, even though held and masked balances must stay plain while the available balance uses the restored gilt treatment",
     file: CSS,
     suite: "wallet-reach",
     from: `.kp-jbal:is([data-held], [data-masked]) .kp-jbal__fig { color: var(--text); }`,
-    to: `.kp-jbal[data-masked] .kp-jbal__fig { color: var(--text); }`,
-    expect: "8.8 gold on a live balance, plain ink when held or masked",
+    to: `.kp-jbal[data-held] .kp-jbal__fig { color: var(--gold-300); }`,
+    expect: "8.8 available balance is gilt; held and masked balances stay plain",
   },
   {
     name: "flash-ring-goes-inline",
@@ -250,12 +250,22 @@ export const MUTATIONS = [
   },
   {
     name: "journey-plus-takes-the-words-with-it",
-    why: "the classic pill's label idiom carried across: the words hidden below 1280, so on a phone the gilt pill is a bare + glyph. S4 measured the row with the words in and the + out, never the other way round",
+    why: "the words borrow the glyph's existing CSS class, so both spans disappear below 360. The phone keeps an aria-label but has no visible Deposit words or glyph; S4 measured the row with the words in and the glyph out",
+    file: JBAR,
+    suite: "wallet-reach",
+    from: `<span>{t.journey.depositAction}</span>`,
+    to: `<span className="kp-jhdr__plus">{t.journey.depositAction}</span>`,
+    expect: "8c.3 its glyph is the one part that yields",
+    onlyFailure: true,
+  },
+  {
+    name: "journey-words-hidden-until-xl",
+    why: "the classic pill's label idiom carried across: the words hidden below 1280, so on a phone the deposit pill is only a glyph. S4 measured the row with the words in and the glyph out, never the other way round",
     file: JBAR,
     suite: "wallet-reach",
     from: `<span>{t.journey.depositAction}</span>`,
     to: `<span className="hidden xl:inline">{t.journey.depositAction}</span>`,
-    expect: "8c.3 its + is the one part that yields",
+    expect: "8c.3 its glyph is the one part that yields",
   },
   {
     name: "journey-sign-in-yields-on-phones",

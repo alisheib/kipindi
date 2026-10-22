@@ -12,13 +12,15 @@
  *    left no card on `/` or `/markets`.
  */
 import type { ReactElement } from "react";
-import { MaswaliHomeCard } from "@/components/maswali/maswali-home-card";
+import { MaswaliHomeCard, type DoorHost } from "@/components/maswali/maswali-home-card";
 import { homeCardOf, nextWeekOpen } from "@/components/maswali/maswali-card-model";
 import { configuredFeeRate, millioneaBreakOf, millioneaDoor, millioneaHubNow, millioneaOpenTemplate } from "@/lib/server/millionea-doors";
 import { getServerT } from "@/lib/i18n-server";
 import type { Dict } from "@/lib/i18n-dict";
 
-export async function millioneaHomeCard(t: Dict, nowMs: number, opts: { onBreak?: boolean; className?: string } = {}): Promise<ReactElement | null> {
+/** `host` is the page the door stands on — its box is that page's own (S5-DESIGN-DOORS L2); `preview` marks it at
+ *  STAFF_PREVIEW, as every Millionea page is marked (L12). */
+export async function millioneaHomeCard(t: Dict, nowMs: number, opts: { onBreak?: boolean; className?: string; host: DoorHost }): Promise<ReactElement | null> {
   const door = await millioneaDoor();
   if (!door.visible) return null;
   const onBreak = opts.onBreak ?? (await millioneaBreakOf(door.userId)) !== null;
@@ -32,7 +34,7 @@ export async function millioneaHomeCard(t: Dict, nowMs: number, opts: { onBreak?
   return (
     <div data-testid="millionea-home-card" className={opts.className}>
       <MaswaliHomeCard t={t} locale={locale} week={model.week} jackpot={model.jackpot} pct={model.pct} cap={model.cap} state={model.state} finalWeek={model.finalWeek}
-        finalAhead={model.finalAhead} atLeast={model.atLeast} pendingWeek={model.pendingWeek} />
+        finalAhead={model.finalAhead} atLeast={model.atLeast} pendingWeek={model.pendingWeek} preview={door.preview} host={opts.host} />
     </div>
   );
 }

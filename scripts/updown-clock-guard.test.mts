@@ -239,12 +239,9 @@ console.log("\n§7i · both surfaces call the one function");
   const detail = strip(read("src/app/updown/[roundId]/page.tsx"));
   const phase = strip(read("src/lib/updown-card-phase.ts"));
 
-  /* ⛔ THE PROP'S VALUE IS EXTRACTED AND ASSERTED POSITIVELY, never tested with a bare negative.
-     `!/livePrice=\{activeAsset!\.livePrice\}/` looks like a guard and is not one: it passes if
-     the prop is renamed, if the call site is deleted, if the whole file is gone — and a revert
-     spelled `livePrice={ activeAsset!.livePrice }` walks straight through on one space. So the
-     value is brace-matched out and must START WITH the chooser. ⭐ And a failed extraction FAILS
-     (§7i, §7k): a read that did not land is not a zero. */
+  /* The card's number and time must come from THIS round's observations. Extract each
+     prop positively: an absent card call or renamed prop must fail rather than make an
+     absence test pass over nothing. */
   const propValue = (src: string, prop: string): string | null => {
     const at = src.indexOf(`${prop}={`);
     if (at < 0) return null;
@@ -255,48 +252,67 @@ console.log("\n§7i · both surfaces call the one function");
     }
     return null;
   };
-  const bLive = propValue(board, "livePrice");
-  const bMove = propValue(board, "movePct");
+  const bRead = propValue(board, "readPrice");
+  const bFailed = propValue(board, "readUnavailable");
+  const roundRead = (source: string) => propValue(source, "readPrice")?.trim() === "r.readPrice";
+  const roundStamps = (source: string) => propValue(source, "openQuotedAt")?.trim() === "r.openQuotedAt"
+    && propValue(source, "readQuotedAt")?.trim() === "r.readQuotedAt"
+    && propValue(source, "closeQuotedAt")?.trim() === "r.closeQuotedAt";
 
-  ok("§7i the board's `livePrice` prop is still there to read", bLive !== null,
+  ok("§7i the board's `readPrice` prop is still there to read", bRead !== null,
     "a failed extraction must fail loudly, or every assertion below it is a confident zero");
-  ok("§7j …and its value is CHOSEN by `heroPrice`, not taken from the asset",
-    bLive !== null && /^heroPrice\(/.test(bLive.trim()),
-    "`livePrice={activeAsset!.livePrice}` is D36 verbatim — what shipped until 2026-09-24");
-  ok("§7k the board's `movePct` prop is still there to read", bMove !== null);
-  ok("§7l …and its value is CHOSEN by `heroMovePct`, with no arithmetic left on the board",
-    bMove !== null && /^heroMovePct\(/.test(bMove.trim()) && !/\/ r\.openPrice\) \* 100/.test(board),
-    "the half-fix: `livePrice=` corrected while the percentage below it still ticks every 20s");
-  // ⛔ AND BOTH MUST BE HANDED THE ROUND'S OWN STATE AND CLOSE. Calling the chooser with only the
-  // asset's live read would satisfy §7j and §7l and still tick on a settled card.
-  ok("§7m …and both are handed the ROUND's state and close, not just the asset's price",
-    [bLive, bMove].every((v) => v !== null && /state:\s*r\.state/.test(v) && /closePrice:\s*r\.closePrice/.test(v)),
-    "a chooser that is never told the state cannot choose");
+  ok("§7j the card receives this round's confirmed read, never asset latest",
+    roundRead(board) && !/livePrice=\{/.test(board),
+    "an asset's next-round quote must never be called this round's price");
+  ok("§7k the card receives open, newer and close source times from this round",
+    roundStamps(board));
+  ok("§7l the card receives a failed-read signal; no stale quote is painted as current",
+    bFailed?.trim() === "r.readUnavailable");
+  ok("§7m the retired percentage prop is absent; the card derives its dollar move from the displayed prices",
+    propValue(board, "movePct") === null && !/movePct:/.test(strip(read("src/components/updown/updown-card.tsx"))),
+    "the unused percentage could drift from the round's price");
+  const assetPlant = board.replace("readPrice={r.readPrice}", "readPrice={activeAsset!.livePrice}");
+  ok("§7s control · an asset-latest read fails the same round-read gate",
+    assetPlant !== board && !roundRead(assetPlant));
+  const stampPlant = board.replace("closeQuotedAt={r.closeQuotedAt}", "closeQuotedAt={r.openQuotedAt}");
+  ok("§7t control · an opening stamp used for the close fails the same source gate",
+    stampPlant !== board && !roundStamps(stampPlant));
   ok("§7n …and there is still exactly ONE <UpDownCard> call site for all of this to govern",
     (board.match(/<UpDownCard/g) ?? []).length === 1,
     "a second board would need the same rule and nothing above would notice it");
 
-  ok("§7o ⭐ the ROUND PAGE chooses with the SAME function, so the two cannot disagree about the PRICE",
-    /const heroLive = heroPrice\(/.test(detail),
-    "a rule written on one of two surfaces is a coincidence, not a rule");
+  ok("§7o ⭐ the ROUND PAGE chooses its price from the same round read and frozen close",
+    /const heroLive = heroPrice\(\{ state: round\.state, closePrice: round\.closePrice, livePrice: round\.readPrice \}\)/.test(detail)
+      && /round\.closePrice != null \? round\.closeQuotedAt : round\.openQuotedAt/.test(detail),
+    "a detail page that borrows the asset latest can disagree with its card");
   ok("§7p the phase module holds exactly ONE spelling of `settled`",
     (phase.match(/state === "resolved" \|\| state === "void"/g) ?? []).length === 1,
     "three functions here each carried their own copy; the board carried none, and that missing copy was D36");
 
-  /* ⚠️ THE REST OF THE TREE STILL SPELLS IT BY HAND — seven copies, and this counts them so an
-     EIGHTH cannot arrive unnoticed. They are correct today and are left alone rather than folded
+  /* ⚠️ THE REST OF THE TREE STILL SPELLS IT BY HAND — five copies, and this counts them so a
+     sixth cannot arrive unnoticed. They are correct today and are left alone rather than folded
      into an unrelated commit; the number is the point, not the spelling. Raise it deliberately,
      or better, replace a copy with `roundIsSettled` and lower it. */
+  const settledCount = (source: string) =>
+    (strip(source).match(/=== "resolved" \|\| [\w.]+ === "void"/g) ?? []).length;
   const HAND_SPELT = [
     ["src/components/updown/updown-card.tsx", 2],
     ["src/app/updown/[roundId]/page.tsx", 1],
-    ["src/lib/server/updown-board.ts", 3],
+    ["src/lib/server/updown-board.ts", 2],
   ] as const;
   for (const [rel, expected] of HAND_SPELT) {
-    const hits = (strip(read(rel)).match(/=== "resolved" \|\| [\w.]+ === "void"/g) ?? []).length;
+    const hits = settledCount(read(rel));
     ok(`§7q ${rel} still hand-spells the settled test exactly ${expected}×`, hits === expected,
       `found ${hits} — if this grew, route it through \`roundIsSettled\`; if it shrank, lower the number here`);
   }
+  const serverBoard = read("src/lib/server/updown-board.ts");
+  const selection = '(r) => !roundIsSettled(r.state) && Date.parse(r.opensAt) <= nowMs,';
+  const handSpeltSelection = '(r) => !(r.state === "resolved" || r.state === "void") && Date.parse(r.opensAt) <= nowMs,';
+  const copied = serverBoard.replace(selection, handSpeltSelection);
+  ok("§7q control · restoring the board selection's third hand-spelt settled check is rejected",
+    serverBoard.includes(selection) && copied !== serverBoard
+      && settledCount(serverBoard) === 2 && settledCount(copied) === 3,
+    "the real board selection must be found, and the same count must catch the extra copy");
 
   /* ⭐ §7r · THE POPULATION PROOF. The six states §7a–§7b exercise are not a list somebody
      remembered — they are the whole union, read out of the source and compared. Add a seventh
@@ -310,31 +326,32 @@ console.log("\n§7i · both surfaces call the one function");
     `union reads [${UNION.join(", ")}] — a state nobody tested is a state nobody chose a price for`);
 }
 
-/* ── §8 · D52 · the settled pod's price pair never breaks AFTER the arrow ─────────────────── */
-/* 🔴 One loose text run printed `{open} → {close}`, so at 360 SW a long pair broke wherever it
-   ran out of room and stranded the connector at the end of the first line. The arrow is now bound
-   to the price it points at, so the only break available is BEFORE it. */
-console.log("\n§8 · the settled pod's price pair (D52)");
+/* ── §8 · U43 B1 · the separated opening and close figures each stay whole ─────────────────── */
+/* The old pair and connector are gone. The open is stated once; the close sits
+   with its own side arrow in the same unbreakable figure span. */
+console.log("\n§8 · the separated opening and close figures (U43 B1)");
 {
   const strip = (x: string) => x.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/.*$/gm, "");
   const card = strip(read("src/components/updown/updown-card.tsx"));
-  /* ⛔ ANCHOR ON `priceText.close`, NOT `priceText.open`. The FIRST `priceText.open` in this file
-     is the win-target line ~200 lines above the pod, so a window opened there contains no close
-     price and §8a failed on a correct tree — a guard misreporting its own read. */
-  const closeAt = card.indexOf("priceText.close");
-  const pod = closeAt < 0 ? "" : card.slice(Math.max(0, closeAt - 200), closeAt + 120);
+  const beatAt = card.indexOf('<div className="ud-beat');
+  const nowAt = card.indexOf('<div className="ud-now"');
+  const beat = beatAt >= 0 && nowAt > beatAt ? card.slice(beatAt, nowAt) : "";
+  const now = nowAt >= 0 ? card.slice(nowAt, card.indexOf("<RoundLiveLine", nowAt)) : "";
 
-  ok("§8a the pod's price pair is still there to read",
-    closeAt >= 0 && pod.includes("priceText.open"),
+  ok("§8a the separate price-to-beat and confirmed-price rows are found",
+    beat.includes("priceText.open") && now.includes("priceText.live"),
     "a failed extraction is not a zero — every §8 assertion below depends on this landing");
-  ok("§8b the pair is no longer ONE loose text run",
+  ok("§8b the old open-to-close loose run stays removed",
     !/\{priceText\.open\} → \{priceText\.close\}/.test(card),
-    "that spelling IS D52 — it is what shipped until 2026-09-24");
-  ok("§8c ⭐ the ARROW travels with the close price, so a wrap can only put it at the START of a line",
-    /whitespace-nowrap">→ \{priceText\.close\}/.test(card),
-    "binding it to the OPEN price instead would strand it at the end, which is the defect");
-  ok("§8d …and the open price is unbreakable in its own right",
-    /whitespace-nowrap">\{priceText\.open\}/.test(card),
+    "the connector would repeat the opening price and could strand at a wrap");
+  ok("§8c the side arrow stays with the confirmed or close figure",
+    /<span className="ml-auto inline-flex items-center gap-1\.5 whitespace-nowrap"/.test(now)
+    && /\{tone === "up" && <I\.arrowUp/.test(now)
+    && /\{tone === "down" && <I\.arrowDown/.test(now)
+    && /\{priceText\.live\}/.test(now),
+    "the arrow and price belong to one no-wrap element");
+  ok("§8d the opening price is unbreakable in its own row",
+    /<span className="ud-figure whitespace-nowrap[^\"]*">\s*\{priceText\.open \?\? "—"\}/.test(beat),
     "a price may never break mid-digits");
 }
 
@@ -343,17 +360,13 @@ console.log("\n§8e · controls");
 {
   ok("§8e control · the old loose run IS detected",
     /\{priceText\.open\} → \{priceText\.close\}/.test("                {priceText.open} → {priceText.close}"));
-  ok("§8f control · an arrow bound to the OPEN price is NOT accepted",
-    !/whitespace-nowrap">→ \{priceText\.close\}/.test('<span className="whitespace-nowrap">{priceText.open} →</span>'));
+  ok("§8f control · a confirmed figure without its no-wrap span is rejected",
+    !/<span className="ml-auto inline-flex items-center gap-1\.5 whitespace-nowrap"/.test('<span className="ml-auto inline-flex items-center gap-1.5">'));
 }
 
 /* ── §7s · controls — every §7 matcher shown able to say no ───────────────────────────────── */
-console.log("\n§7s · controls");
+console.log("\n§7u · controls");
 {
-  ok("§7s control · the reverted prop spelling IS detected",
-    /livePrice=\{activeAsset!\.livePrice\}/.test("                livePrice={activeAsset!.livePrice}"));
-  ok("§7t control · the board doing its own move arithmetic IS detected",
-    /\/ r\.openPrice\) \* 100/.test("                movePct={ ((activeAsset!.livePrice - r.openPrice) / r.openPrice) * 100 }"));
   // ⭐ THE MIRROR-CONTROL THAT MATTERS: the plausible wrong helper, written out, and §7c's own
   // assertion run against it. If §7c could pass for `?? livePrice`, it would pass for the defect.
   {
@@ -371,5 +384,5 @@ console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fai
 // ⛔ A suite that silently stops running is a suite that cannot fail (see `chart-series`).
 // ⛔ RAISE THIS WITH EVERY SECTION ADDED. Left at 28 while §7 added 17, the whole of §7 could be
 //    deleted and this suite would still report ALL PASS over the 32 that remained.
-if (pass + fail < 62) { console.error(`!! only ${pass + fail} assertions ran — treating as failure.`); process.exit(3); }
+if (pass + fail < 63) { console.error(`!! only ${pass + fail} assertions ran — treating as failure.`); process.exit(3); }
 process.exit(fail === 0 ? 0 : 1);

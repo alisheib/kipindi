@@ -14,9 +14,10 @@
 > the Phosphor migration pushes its own verified releases to `main` — rebased on `origin/main` immediately before, with
 > the AGENTS.md §4 release checklist — per [`PHOSPHOR-MIGRATION.md`](PHOSPHOR-MIGRATION.md) §0. **Exception for
 > `MOBILE-VISUAL` U43 (Ali, 2026-10-19, to the OMEGA session asheib-54 working his 10/10 request on Up & Down and the
-> market cards):** *"they are working and pushing live; you work and push live cleanly, perfectly"*. That session pushes
-> its own verified U43 releases to `main` the same way — rebased immediately before, AGENTS.md §4 in full, staged by name —
-> per [`MOBILE-VISUAL-PLAN.md`](MOBILE-VISUAL-PLAN.md) §0 and §9 U43.
+> market cards):** *"they are working and pushing live; you work and push live cleanly, perfectly"*. Since 2026-10-21
+> only Claude sessions work it (Ali: *"from now on claude will proceed only"*): the U43 session pushes its verified U43
+> releases to `main` the same way — rebased immediately before, AGENTS.md §4 in full, staged by name —
+> per [`MOBILE-VISUAL-PLAN.md`](MOBILE-VISUAL-PLAN.md) §0 and §9 U43. **U43 is ⏸ paused (Ali, 2026-10-21).**
 
 > ### ⚑ RECONCILED 2026-09-11 — **ten rows on this board were already dead**
 >
@@ -165,7 +166,7 @@ against each other within a daily budget, may fetch their own price, and the ros
 | **Where** | Release and live readback: [`docs/HOUSE-BOTS.md`](HOUSE-BOTS.md) §§12.20–12.21; current programme status: [`plans/house-bots/RESUME-HERE.md`](../plans/house-bots/RESUME-HERE.md) §0e; management and admin instructions: `docs/50pick-house-bots-desk-guide.pdf`. |
 | **Next** | Read [`plans/house-bots/RESUME-HERE.md`](../plans/house-bots/RESUME-HERE.md) §0e — never this cell |
 
-## ▶ 0i · MASWALI MILLIONEA — the third product, a weekly jackpot — `MASWALI-BUILD` · 🔨 **RE-PLANNED 2026-10-16; S0.5 ✅ `9834aaf0` and D3 ✅ `2b6bf5bf`; S1–S4 and S5’s foundations on `main` dark; S5 next (the tab done, the tile read’s fixes in progress), then S7, then S6 (notices not merge-ready); nothing switched on (WITHDRAWN). ▶ Resume: MASWALI-PLAN §0 ⏹ STOPPED (2026-10-19, OMEGA)** · 5/13 sessions ✅
+## ▶ 0i · MASWALI MILLIONEA — the third product, a weekly jackpot — `MASWALI-BUILD` · 🔨 **S1–S4 closed by the milestone battery; S5 final dark-release checks on its own branch; S7's wide-winner load blocker next, then S6 in L → D → R → N order; rollout WITHDRAWN. ▶ Resume: MASWALI-PLAN §0** · 9/13 sessions ✅
 
 Ali, 2026-10-16: *"disregard any august rulgint he enw paln is final ruling"* · *"th enew pd is rveewd by management and
 update dlatly so any old ruels repalc ehtem if lost y those fomr the new pdf"* · *"we need to be very creative in how we
@@ -182,7 +183,7 @@ create its design … animations that no platform has … signature for this pla
 | **Next** | Read it from the tracker's §0, never from this cell |
 | **Rule** | Every session rewrites the tracker's §0 and ticks §1 in its own commit, and **updates this row's count in the same commit** — `npm run test:maswali-plan` asserts the two agree |
 
-## ▶ 0j · PHOSPHOR MIGRATION — every icon and glyph on Phosphor — `PHOSPHOR-MIGRATION` · 🔨 **W0–W4 LIVE — W4 2026-10-19 (`70c069cb`, its remainder 1b `d6f0b3ec`): status in Fill, outcomes as glyph + ink + word, every notification its glyph, the player front's old icons — release 1 of the audit (§8) complete, its stopped checks owed; W3 2026-10-18 (`ee62451c`): every bar of destinations marks the current one with its Fill glyph on one opaque royal pill; W2: every icon on the platform drawn by Phosphor; W1: the codegen and the one-icon-source law in predeploy** · 5/10 waves ✅
+## ▶ 0j · PHOSPHOR MIGRATION — every icon and glyph on Phosphor — `PHOSPHOR-MIGRATION` · ⏸ **PAUSED 2026-10-21 (Ali: other priorities first) · W0–W4 and W6 LIVE; W5 PARTLY LIVE — release 2a's shared plates and meaning-specific notices reached production at `e4b148a05` and `e30d599cb`. W5's remainder (2c + 2d) and W7 + W8 (release 3) are built and parked on `phosphor-2d-v2` and `phosphor-3-v2`, their batteries clean on GitHub, with the independent reviews' fix list to do first (§0). W6's empty-state family is LIVE at `d268ef919` (release 2b); its deferred checks ran 2026-10-21 (§0). W4 2026-10-19 (`70c069cb`, its remainder 1b `d6f0b3ec`): status in Fill, outcomes as glyph + ink + word, every notification its glyph, the player front's old icons — release 1 of the audit (§8) complete, its stopped checks owed; W3 2026-10-18 (`ee62451c`): every bar of destinations marks the current one with its Fill glyph on one opaque royal pill; W2: every icon on the platform drawn by Phosphor; W1: the codegen and the one-icon-source law in predeploy** · 6/10 waves ✅
 
 Ali, 2026-10-17: *"users liek 50pick but they say our icons dont give enough life"* · *"Switch to Phosphor"* ·
 *"Now, players see it"* · *"when we sya continue phosphor migration they know … dnto tolose any progress"* · *"if ay new
@@ -194,7 +195,7 @@ pages are cretaed we tlel them impelemtn on any new pages rth ephosphor plan"*.
 | **Why** | Players say the icons lack life. The inspection (the tracker's Appendix A): one thin line weight, 65% of icons at ≤ 14 px painting about 1.1 px, no filled selected state in any shell, three icon families live at once, outcomes told by colour only. The rulings: [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) § "2026-10-17 · Icons — every icon and glyph moves to Phosphor, in waves, live as each is proven (owner)" |
 | **Shape** | 10 waves: W0 tracking + specimen · W1 codegen, engine and guards with no visual change · W2 the one-commit swap · W3 selected states · W4 outcomes · W5 plates, money, hub, categories, admin cards · W6 empty states · W7 consolidation · W8 motion · W9 close |
 | **Every page** | Every icon on every page, new or old, comes from the glyph family `I` — [`AGENTS.md`](../AGENTS.md) §7; a `predeploy` guard holds it from W1 |
-| **Where** | Branch `phosphor-migration` off `origin/main` (worktree `C:\kipindi-phosphor`, Ali-Blade15); the programme's session pushes its own verified releases to `main` (the header's exception, Ali 2026-10-17: "until live") |
+| **Where** | The parked branches `phosphor-2d-v2` and `phosphor-3-v2` on origin (the tracker's §0 says how to resume on any machine); the programme's session pushes its own verified releases to `main` (the header's exception, Ali 2026-10-17: "until live") |
 | **Next** | Read it from the tracker's §0, never from this cell |
 | **Rule** | Every session rewrites the tracker's §0 and ticks §1 in its own commit, and **updates this row's count in the same commit** — `npm run test:phosphor-plan` asserts the two agree |
 

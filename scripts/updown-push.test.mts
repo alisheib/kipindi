@@ -60,6 +60,29 @@ const ok = (name: string, cond: boolean, detail = "") => {
   const gates = (MS.match(/if \(!perEventNotificationsSuppressed\(/g) ?? []).length;
   ok("§2 the suppression predicate gates exactly 5 player messages", gates === 5, `found ${gates}`);
 
+  // ⛔ RE-POINTED 2026-10-21 · U43 Release B (c29cb7526), NOT RELAXED. Settlement's player notices now run AFTER the
+  // money commits: each of the four results is queued, `queueSettlementEffect(() => { void notifyUpDownX(p.userId, {…}); })`,
+  // in statement position in its gate's else branch; `queueSettlementEffect` hands the effect to `afterCommit(lockTx, …)`
+  // (dropped on rollback), and once the lock returns `if (result.ok)` awaits each queued effect. So the RESULT announcement
+  // statement is now the queued call, with the announcer as the arrow's first statement — nothing in between, so a
+  // `void 0 &&` or any other expression in front of the announcer still reads as dead code below. Bet-placed is not a
+  // settlement notice: its `pushOnly(` stays a direct statement. The queue and its drain are pinned too, because the
+  // queued form is reachable only while both stand. A result announced directly again (outside the queue) fails here
+  // and must be re-pointed on purpose: it would be a notice sent before its money committed.
+  const BELL_STATEMENT = /^[ \t]*queueSettlementEffect\(\(\) => \{ void (notifyUpDown\w*)\(/gm;
+  const PUSH_STATEMENT = /^[ \t]*(pushOnly)\(/gm;
+  const announcersIn = (s: string) => [...s.matchAll(PUSH_STATEMENT), ...s.matchAll(BELL_STATEMENT)].map((m) => m[1]);
+  const queue = MS.match(/const queueSettlementEffect = \(fn: \(\) => void \| Promise<unknown>\) => \{\s*afterCommit\(lockTx, \(\) => \{ committedSettlementEffects\.push\(fn\); \}\);\s*\};/g) ?? [];
+  // 2026-10-21 · the drain moved into locks.ts `drainCommitted` (it also covers a call that joined an enclosing lock's
+  // transaction): settlement hands it the queue once, and its own loop awaits each effect. Both halves are pinned.
+  const LOCKS = lf(readFileSync(new URL("../src/lib/server/locks.ts", import.meta.url), "utf8"));
+  const drainLoop = /const drain = async \(\) => \{\s*for \(const effect of effects\) \{\s*try \{ await effect\(\); \}/.test(LOCKS);
+  const drain = drainLoop ? MS.match(/^[ \t]*if \(result\.ok\) await drainCommitted\(committedSettlementEffects, currentLockTx\(\)\);/gm) ?? [] : [];
+  const emptied = MS.match(/committedSettlementEffects(?:\.length\s*=[^=]|\.splice\(|\.pop\(|\.shift\(|\s*=[^=>])/g) ?? [];
+  ok("§2 ⭐ the settlement queue reaches its notices: queueSettlementEffect hands each effect to afterCommit, and after the lock `if (result.ok)` awaits every queued effect — nothing empties the queue in between",
+     queue.length === 1 && drain.length === 1 && emptied.length === 0,
+     `queue ${queue.length} · drain ${drain.length} · emptied ${emptied.length}`);
+
   // ⭐ AND EVERY GATE MUST HAVE AN `else`, AND THE ELSE MUST PUSH. Consistency is the
   // assertion: a gate without one is an outcome the device never hears about, which is
   // E-43's shape exactly.
@@ -71,6 +94,7 @@ const ok = (name: string, cond: boolean, detail = "") => {
   // braces: from each gate, match the if-block's closing brace, require `else` immediately
   // after it, then require a reachable `pushOnly(` STATEMENT inside that else block.
   const bareGates: string[] = [];
+  const gateAnnouncers: string[] = [];
   {
     const gateRe = /if \(!perEventNotificationsSuppressed\(/g;
     let g: RegExpExecArray | null;
@@ -101,12 +125,19 @@ const ok = (name: string, cond: boolean, detail = "") => {
       // copy. Bet-placed still uses `pushOnly` (it is not a result and gets no bell row).
       // So the gate now accepts either announcer — and still fails on a gate that announces
       // NOTHING, which is the only thing this check ever cared about.
-      if (!/^[ \t]*(pushOnly|notifyUpDown\w*)\(/m.test(elseBody)) {
-        bareGates.push(`line ${line}: else branch announces nothing (no pushOnly / notifyUpDown* statement)`);
+      // ⛔ 2026-10-21 · U43 Release B (c29cb7526): a result announcer is now the QUEUED statement (see above), and each
+      // else branch must carry EXACTLY ONE announcement — the five gates together name each announcer once (below).
+      const found = announcersIn(elseBody);
+      if (found.length !== 1) {
+        bareGates.push(`line ${line}: else branch has ${found.length} announcement statement(s) (pushOnly / queued notifyUpDown*), expected 1${found.length ? ` — ${found.join(", ")}` : ""}`);
       }
+      gateAnnouncers.push(...found);
     }
   }
   ok("§2 ⭐ no suppression gate is missing its push branch", bareGates.length === 0, bareGates.join(" · "));
+  ok("§2 ⭐ …and the five else branches name each announcer exactly once — pushOnly (bet) and the four queued results",
+     gateAnnouncers.slice().sort().join() === ["notifyUpDownLoss", "notifyUpDownOneSidedRefund", "notifyUpDownRefund", "notifyUpDownWin", "pushOnly"].join(),
+     gateAnnouncers.slice().sort().join(", "));
 
   // ⭐⭐ COUNT CALLS THAT CAN ACTUALLY RUN, NOT OCCURRENCES OF THE NAME.
   // The first version of this counted `pushOnly(` anywhere in the file, and the RED
@@ -118,10 +149,11 @@ const ok = (name: string, cond: boolean, detail = "") => {
   // ⚠️ 2026-08-22 — the five announcements now split across TWO channels, so the count is
   // taken over both and the split is asserted explicitly. Counting only the total would let
   // a result silently fall back to push-only (losing its bell row) without anything failing.
-  const pushes = (MS.match(/^[ \t]*pushOnly\(/gm) ?? []).length;
-  const bellRows = (MS.match(/^[ \t]*notifyUpDown\w*\(/gm) ?? []).length;
+  // ⚠️ 2026-10-21 · U43 Release B (c29cb7526): a bell-row statement is the QUEUED call (BELL_STATEMENT, above).
+  const pushes = (MS.match(PUSH_STATEMENT) ?? []).length;
+  const bellRows = (MS.match(BELL_STATEMENT) ?? []).length;
   ok("§2 ⭐ every suppressed outcome is announced — bet, win, loss, refund, one-sided refund",
-     pushes + bellRows === 5, `found ${pushes} pushOnly + ${bellRows} notifyUpDown* STATEMENT(s), expected 5 total`);
+     pushes + bellRows === 5, `found ${pushes} pushOnly + ${bellRows} queued notifyUpDown* STATEMENT(s), expected 5 total`);
   ok("§2 ⭐ …and the four RESULTS are the ones carrying a bell row",
      bellRows === 4, `found ${bellRows} notifyUpDown* statement(s), expected 4 (win, loss, refund, one-sided refund)`);
   ok("§2 ⭐ …while bet-placed stays push-only (it is not a result)",
@@ -153,11 +185,12 @@ const ok = (name: string, cond: boolean, detail = "") => {
   // Asserting only the call would pass over an emitter whose words had been emptied;
   // asserting only the copy would pass over an emitter nothing calls. Each outcome is
   // named so a removal says WHICH one went missing — the E-43 requirement.
+  // ⚠️ 2026-10-21 · U43 Release B (c29cb7526): each call site is the queued statement, addressed to the position's owner.
   for (const [outcome, call, copy] of [
-    ["win",              /^[ \t]*notifyUpDownWin\(p\.userId, \{/m,             /titleEn: `You won \$\{formatTzs\(opts\.payout\)\}`/],
-    ["loss",             /^[ \t]*notifyUpDownLoss\(p\.userId, \{/m,            /titleEn: `Bet lost · \$\{formatTzs\(opts\.stake\)\}`/],
-    ["refund",           /^[ \t]*notifyUpDownRefund\(p\.userId, \{/m,          /the round was voided and your stake came back in full/],
-    ["one-sided refund", /^[ \t]*notifyUpDownOneSidedRefund\(p\.userId, \{/m,  /only one side had bets, so your stake came back in full/],
+    ["win",              /^[ \t]*queueSettlementEffect\(\(\) => \{ void notifyUpDownWin\(p\.userId, \{/m,             /titleEn: `You won \$\{formatTzs\(opts\.payout\)\}`/],
+    ["loss",             /^[ \t]*queueSettlementEffect\(\(\) => \{ void notifyUpDownLoss\(p\.userId, \{/m,            /titleEn: `Bet lost · \$\{formatTzs\(opts\.stake\)\}`/],
+    ["refund",           /^[ \t]*queueSettlementEffect\(\(\) => \{ void notifyUpDownRefund\(p\.userId, \{/m,          /the round was voided and your stake came back in full/],
+    ["one-sided refund", /^[ \t]*queueSettlementEffect\(\(\) => \{ void notifyUpDownOneSidedRefund\(p\.userId, \{/m,  /only one side had bets, so your stake came back in full/],
   ] as const) {
     ok(`§2 the ${outcome} outcome is announced (call site)`, call.test(MS));
     ok(`§2 the ${outcome} outcome has its copy`, copy.test(NS));

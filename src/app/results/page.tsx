@@ -36,7 +36,8 @@ import { ResultsGhostBands } from "./loading";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { formatNumber, formatTzsCompact } from "@/lib/utils";
 import { Ring } from "@/components/charts/ring";
-import { pickLocalized, marketCategoryLabel } from "@/lib/localized";
+import { marketCategoryLabel } from "@/lib/localized";
+import { marketDisplayTitle } from "@/lib/updown-round-name";
 import { keepFigures } from "@/components/ui/keep-words";
 import { getServerT } from "@/lib/i18n-server";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
@@ -44,6 +45,8 @@ import { outcomeWord, sideWord, type LabelProductLine } from "@/lib/side-label";
 import { STATUS_TONE, TONE_CHIP, playerStatusInk } from "@/lib/status-tone";
 import { PageContainer } from "@/components/layout/page-container";
 import { ROOT_OPEN_GRAPH } from "../layout";
+import { MillioneaResultsSection } from "./millionea-results";
+import { millioneaSectionShown } from "./millionea-results-view";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -142,6 +145,13 @@ export default async function ResultsPage({
         <Suspense fallback={<ResultsGhostBands notable={!searching && pageNum === 1} searching={searching} />}>
           <ResultsContent state={state} searching={searching} pageNum={pageNum} />
         </Suspense>
+        {/* A separate register read: its weeks never enter the classic archive's counts, search, or pager — and it stands on
+            the archive's first, unfiltered page alone (S5-DESIGN-DOORS L16, `millioneaSectionShown`). */}
+        {millioneaSectionShown(state, searching, pageNum) && (
+          <Suspense fallback={null}>
+            <MillioneaResultsSection />
+          </Suspense>
+        )}
       </div>
     </PageContainer>
   );
@@ -228,7 +238,7 @@ async function ResultsContent({
     outcome: (m.resolvedOutcome ?? (m.status === "VOIDED" ? "VOID" : null)) as ArchiveRow["outcome"],
     volume: m.yesPool + m.noPool,
     resolvedAtMs: Date.parse(m.resolutionStage2At ?? m.updatedAt) || 0,
-    title: pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh),
+    title: marketDisplayTitle(t, locale, m),
     titleEn: m.titleEn,
     titleSw: m.titleSw ?? "",
     titleZh: m.titleZh ?? "",
@@ -322,7 +332,7 @@ async function ResultsContent({
   // One query for the whole board — never map getCardChart across a list.
   // B-1 — deliberate degrade: sparks are garnish; a card without one renders no
   // chart (A-5), which is distinguishable from a real flat series.
-  const cardCharts = await getCardCharts(paged.map((m) => m.id)).catch(() => new Map());
+  const cardCharts = await getCardCharts(paged).catch(() => new Map());
 
   // Helpers
   /**
@@ -574,6 +584,8 @@ async function ResultsContent({
                     timeLeft={m.resolvedOutcome === "VOID" ? t.common.voided : `${t.market.resolvedOutcome} ${outcomeWord(t, m.resolvedOutcome ?? "VOID", m.productLine)}`}
                     status={m.status === "VOIDED" ? "VOIDED" : "RESOLVED"}
                     resolvedOutcome={m.resolvedOutcome}
+                    settledAt={m.settledAt}
+                    nowMs={nowMs}
                     sourceUrl={m.sourceUrl}
                     spark={(cardCharts.get(m.id) ?? { spark: [] }).spark}
                   />
@@ -669,7 +681,7 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
             page's own slate legend and arc. `metrics="status"` keeps the slot the resolved seal's size. */}
         {isVoid
           ? <Chip variant={TONE_CHIP[STATUS_TONE.VOID.player]} size="sm" metrics="status">{t.common.voided}</Chip>
-          : <Chip variant="resolved" size="sm">{t.market.resolvedOutcome} · {outcomeWord(t, m.resolvedOutcome ?? "VOID", m.productLine)}</Chip>}
+          : <Chip variant={TONE_CHIP[STATUS_TONE.RESOLVED.player]} size="sm" metrics="status">{t.market.resolvedOutcome} · {outcomeWord(t, m.resolvedOutcome ?? "VOID", m.productLine)}</Chip>}
         {/* Round 5 (F19): the flag ends on the card's edge — its trailing 0.16em taken back (`kp-track-end`, globals.css).
             ⚠️ ONE UNBREAKABLE UNIT (2026-10-10, round 6's read: tiles 169, 170, 201, 326): the take-back is a negative end
             margin, so this shrink-to-fit flag sized itself 1.6px narrower than its words and broke them — "MATOKEO" /
@@ -682,7 +694,7 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
       {/* A market title, set as every market title is (round 5, R5-E — F1 F4, review 3 H1): its lines balanced and its
           figures whole (`keepFigures`); this headline wrapped greedily, the featured card's "…exceeds 200mm / in July". */}
       <h2 className="mb-4 max-w-[70ch] font-display text-[18px] lg:text-[22px] font-semibold leading-tight text-text text-balance group-hover:text-brand-200">
-        {keepFigures(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh))}
+        {keepFigures(marketDisplayTitle(t, locale, m))}
       </h2>
       {price.kind === "priced" ? (
         <TippingBar yesPct={price.yesPct} height={28} showLabels resolved={!isVoid} recastOnHover={false}

@@ -317,7 +317,7 @@ export interface RoundStore {
    */
   deleteMany(ids: string[]): Promise<number>;
   create(r: StoredRound): Promise<void>;
-  patch(id: string, fields: Partial<StoredRound>): Promise<void>;
+  patch(id: string, fields: Partial<StoredRound>, tx?: Prisma.TransactionClient | null): Promise<void>;
   /**
    * ⭐ E-63 · CLAIM-THE-ROW open backfill — the ONE sanctioned write to the frozen line.
    *
@@ -375,11 +375,12 @@ export interface ObservationStore {
   /** Terminal failure — every round bounded by this observation VOIDs and refunds.
    *  Conditional on PENDING for the same reason as `confirm`. */
   fail(id: string, failReason: string): Promise<boolean>;
-  /** `boundaryFrom` (ISO) bounds the read in TIME — the terminal chart's history
+  /** `boundaryFrom` and `boundaryTo` (ISO, inclusive) bound the read in TIME — the terminal chart's history
    *  windows read weeks-old tables and must never scan them (CHART-SPRINT-2).
    *  Served by `@@index([assetId, state, boundaryAt])`. Same name + semantics as
-   *  the rounds store's `boundaryFrom`. */
-  list(opts?: { assetId?: string; state?: ObservationState; limit?: number; boundaryFrom?: string }): Promise<StoredObservation[]>;
+   *  the rounds store's `boundaryFrom`. The upper bound keeps a round's price read
+   *  from silently becoming the asset's later, unrelated price (U43 B1). */
+  list(opts?: { assetId?: string; state?: ObservationState; limit?: number; boundaryFrom?: string; boundaryTo?: string }): Promise<StoredObservation[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -484,7 +485,7 @@ const memoryRounds: RoundStore = {
       .slice(0, limit);
   },
   async create(r) { memRounds.set(r.id, { ...r }); },
-  async patch(id, fields) {
+  async patch(id, fields, _tx) {
     // ⛔ THE SAME ALLOWLIST THE PRISMA STORE ENFORCES. This used to spread `fields`
     // blindly, so the create-only columns — the frozen line (`marginBps`, `upTarget`,
     // `downTarget`) and the pinned source — were write-once in production and freely
@@ -556,6 +557,7 @@ const memoryObservations: ObservationStore = {
       .filter((o) => !opts?.assetId || o.assetId === opts.assetId)
       .filter((o) => !opts?.state || o.state === opts.state)
       .filter((o) => !opts?.boundaryFrom || Date.parse(o.boundaryAt) >= Date.parse(opts.boundaryFrom))
+      .filter((o) => !opts?.boundaryTo || Date.parse(o.boundaryAt) <= Date.parse(opts.boundaryTo))
       .sort((a, b) => b.boundaryAt.localeCompare(a.boundaryAt));
     return opts?.limit != null ? rows.slice(0, opts.limit) : rows;
   },
@@ -752,7 +754,7 @@ const prismaRounds: RoundStore = {
       },
     });
   },
-  async patch(id, fields) {
+  async patch(id, fields, tx) {
     const data: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(fields)) {
       const coerce = ROUND_PATCHABLE[k];
@@ -760,7 +762,7 @@ const prismaRounds: RoundStore = {
       data[k] = coerce(v);
     }
     if (Object.keys(data).length === 0) return;
-    await pc().upDownRound.update({ where: { id }, data });
+    await (tx ?? pc()).upDownRound.update({ where: { id }, data });
   },
   async backfillOpen(id, fields) {
     // Conditional on the row still being priceless — the same claim-the-row shape every
@@ -868,7 +870,10 @@ const prismaObservations: ObservationStore = {
       where: {
         ...(opts?.assetId ? { assetId: opts.assetId } : {}),
         ...(opts?.state ? { state: opts.state } : {}),
-        ...(opts?.boundaryFrom ? { boundaryAt: { gte: new Date(opts.boundaryFrom) } } : {}),
+        ...(opts?.boundaryFrom || opts?.boundaryTo ? { boundaryAt: {
+          ...(opts?.boundaryFrom ? { gte: new Date(opts.boundaryFrom) } : {}),
+          ...(opts?.boundaryTo ? { lte: new Date(opts.boundaryTo) } : {}),
+        } } : {}),
       },
       orderBy: { boundaryAt: "desc" },
       ...(opts?.limit != null ? { take: opts.limit } : {}),

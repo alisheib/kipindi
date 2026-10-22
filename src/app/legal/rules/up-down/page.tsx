@@ -36,11 +36,13 @@ const SUBTITLE: Record<Locale, string> = {
  * ⛔ BUMPED 2026-10-14 (owner ruling, docs/COMPLIANCE-DECISIONS.md "2026-10-14 · Up & Down cards show Up and Down
  * only"): §2's bullet described "the displayed multiplier", and no Up & Down surface displays one any more; it names the
  * projected return shown when a stake is placed. The binding words moved, so the date moved; no right changed.
+ * ⛔ BUMPED 2026-10-20: §2 now says that lock fixes only a winning pick's conditional return. The previous
+ * "not a promise until betting closes" implied payment merely on lock. The settlement rule did not change.
  */
 const META: Record<Locale, string> = {
-  en: "Version 2026-10-14 · Effective on entering a round.",
-  sw: "Toleo 2026-10-14 · Zinaanza kutumika unapoingia raundi.",
-  zh: "版本 2026-10-14 · 自进入回合时生效。",
+  en: "Version 2026-10-20 · Effective on entering a round.",
+  sw: "Toleo 2026-10-20 · Zinaanza kutumika unapoingia raundi.",
+  zh: "版本 2026-10-20 · 自进入回合时生效。",
 };
 
 export default async function UpDownRulesPage() {

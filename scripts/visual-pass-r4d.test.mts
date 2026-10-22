@@ -140,7 +140,14 @@ section("3 · the round page: the stake is money, the projection's qualifier is 
   // The label quotes the line as it reads since S12 WP3 (review 2: "Gusa" → "Bonyeza"); the check reads the markup, not the word.
   ok("3.1 · \"Bonyeza Juu au Chini kuweka dau · TZS 1,000\": the stake is an .amount, inside ONE flex item",
     ctl.includes(`<span>{t.market.udTapToBet} · <span className="amount">{formatTzs(bet.stake)}</span></span>`));
-  ok("3.2 · …and so is the stake on the line that streams a bet", ctl.includes(`<span><span className="amount">{formatTzs(bet.stake)}</span> · {t.market.udStreaming}</span>`));
+  const streamingStake = `<span>{bet.pendingSlow ? t.market.udStillPlacing : t.market.udPlacing} · <span className="amount">{formatTzs(bet.stake)}</span></span>`;
+  const placingStake = (s: string) => s.includes(streamingStake);
+  ok("3.2 · the placing line keeps its stake in the money face while naming normal and slow waits",
+    placingStake(ctl));
+  const rawStreamingStake = streamingStake.replace('<span className="amount">{formatTzs(bet.stake)}</span>', '{formatTzs(bet.stake)}');
+  const plantedPlacing = ctl.replace(streamingStake, rawStreamingStake);
+  ok("3.2′ PLANT · a placing stake back in sentence type fails the same check",
+    plantedPlacing !== ctl && !placingStake(plantedPlacing));
   ok("3.1′ PLANT · the line as it shipped — the figure in the sentence's face — is reported",
     !`<>{t.market.udTapToBet} · {formatTzs(bet.stake)}</>`.includes(`<span className="amount">{formatTzs(bet.stake)}</span>`));
 

@@ -1,10 +1,8 @@
 /**
  * UpDown D3 — the price hero.
  *
- * The reference line the bet is measured against (the open price, gilt + dashed) with
- * the real price path drawn against it: emerald tint + line where price is ABOVE the
- * open, rose where BELOW — so "am I up or down?" reads pre-cognitively, before any
- * number. No axis, no gridlines, no ticks (per D3 brief).
+ * The opening reference and confirmed price path are neutral data. The frozen UP and
+ * DOWN target lines retain their side colours. No axis, gridlines or ticks (per D3 brief).
  *
  * ⚠️ REAL DATA OR NOTHING. `priceSeries` is real CONFIRMED oracle reads only (built in
  * updown-board.ts). When it is null we fall back to the two real points we always have —
@@ -86,15 +84,6 @@ export function PriceHero({
   const hasPrice = livePrice != null;
   const isUp = hasPrice && openPrice != null ? livePrice! >= openPrice : true;
   const move = hasPrice && openPrice != null ? livePrice! - openPrice : null;
-  // ⭐ E-261 · THREE states — the board card's own rule (dir "flat" → text-muted, zero
-  // unsigned), adopted here and in the board RoundChart in the same commit so the one
-  // recipe keeps agreeing with itself. At exactly-flat a banded round VOIDs; UP-green at
-  // 0.00% was a false direction claim in §B2 ink. Green/rose stay strictly above/below.
-  // ⭐ R5 (2026-09-27) · GENERALISED: a banded round voids ANYWHERE strictly between its targets, not
-  // only at exactly flat, so when the page passes `tone` (settlement's `decideOutcomeByTargets` on the
-  // shown price) "flat" becomes "between the targets": muted there, green at or above the UP target,
-  // rose at or below the DOWN target — the landing band's own verdict ink, so a player who taps through
-  // meets one answer. `isUp` (the tag placement below) is untouched.
   const flat = move === 0;
   const ink = tone
     ? (tone === "level" ? "var(--text-muted)" : tone === "up" ? "var(--yes-300)" : "var(--no-300)")
@@ -225,8 +214,7 @@ export function PriceHero({
             </>
           )}
 
-          {/* The money line — the open price the bet is measured against. Gilt is correct
-              here: it is the reference, not decoration. */}
+          {/* The opening reference is the gilt line the measured price is compared with. */}
           {/* ⭐ E-263 · every in-svg label wears .ud-svg-label — E-257's hide-below-sm
               remedy, backported to the surface E-198 was originally MEASURED on: these
               four painted ~4.34px at 393 (the measurement lives at the E-198 note above)

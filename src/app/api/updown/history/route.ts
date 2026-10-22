@@ -1,7 +1,7 @@
 /**
  * GET /api/updown/history?asset=BTC&range=1H — the terminal chart's history feed
- * (CHART-SPRINT-2). Public, read-only market data: exactly the confirmed reads
- * the board page itself renders, one asset, one bounded window (see
+ * (CHART-SPRINT-2). Public, read-only market data: vendor bars when available,
+ * with confirmed reads as the labelled fallback, one asset, one bounded window (see
  * `getAssetTerminalSeries` — index-served, capped, cadence-derived gaps and
  * candle floors decided SERVER-side so every client draws the same truth).
  *
@@ -33,14 +33,17 @@ export async function GET(req: Request) {
   const asset = (url.searchParams.get("asset") ?? "").slice(0, 32);
   const range = (url.searchParams.get("range") ?? "") as TerminalRange;
   const style = (url.searchParams.get("style") || "auto") as TerminalStyle;
-  if (!asset || !RANGES.includes(range) || !STYLES.includes(style)) {
+  const scope = url.searchParams.get("scope") || "chart";
+  if (!asset || !RANGES.includes(range) || !STYLES.includes(style)
+    || (scope !== "chart" && scope !== "round")
+    || (scope === "round" && (range !== "1H" || style !== "line"))) {
     return NextResponse.json(
       { error: "asset and range (15M|30M|1H|6H|12H|24H|7D) are required; style is line|candles|auto" },
       { status: 400, headers: { "Cache-Control": "no-store" } },
     );
   }
   try {
-    const data = await getAssetTerminalSeries(asset, range, style);
+    const data = await getAssetTerminalSeries(asset, range, style, scope);
     if (!data) {
       return NextResponse.json({ error: "unknown asset" }, { status: 404, headers: { "Cache-Control": "no-store" } });
     }

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { maskQuestionEventTimes, normaliseQuestionBreakClocks, QUESTION_BREAK_CLOCK, normaliseBookHomeCloseDates, BOOK_HOME_CLOSE_DATE } from "./lib/question-time-mask.mjs";
+import { maskQuestionEventTimes, normaliseQuestionBreakClocks, QUESTION_BREAK_CLOCK, normaliseBookHomeCloseDates, BOOK_HOME_CLOSE_DATE, BOOK_WATCHLIST_DATE } from "./lib/question-time-mask.mjs";
 
 const first = "2026-10-13T12:00:00.123Z", next = "2026-10-13T12:37:00.123Z";
 const event = `{"@context":"https://schema.org","@type":"Event","name":"rain \\u003c quote \\\"","startDate":"${first}","endDate":"${first}","organizer":{"startDate":"${first}","name":"50pick"},"location":{"url":"/markets/market_fixed"}}`;
@@ -75,3 +75,25 @@ for (const locale of ['en', 'sw']) {
   assert.equal(normaliseBookHomeCloseDates(mask, {featured: [], rows: valid}).rows, 3);
 }
 console.log('home-close-date: only complete locale dates in the two named home leaf kinds canonicalize; prefix/source/attributes/paint stay intact; invalid date/locale/year/word/population controls pass');
+
+// U43 B4 moved the card's time into its top row (.mcardp-closes, market-card.tsx), the live mark inside it, before the date.
+assert.equal(BOOK_WATCHLIST_DATE.selector, '#main-content article.mcardp .mcardp-closes[data-market-part="time"]', 'only classic watchlist card time slots are selected');
+for (const locale of ['en', 'sw']) {
+  const mask = { ...BOOK_WATCHLIST_DATE, locale }, month = locale === 'sw' ? 'Okt' : 'Oct';
+  const date = { nodeType: 3, nodeValue: `14 ${month}, 13:43` };
+  const liveMark = { nodeType: 1, outerHTML: '<span class="mcardp-live-mark"><span class="mcardp-live-dot" aria-hidden="true"></span><span class="sr-only">Live</span></span>' };
+  const card = { childNodes: [liveMark, date], childElementCount: 1, className: 'mcardp-closes inline-flex items-center gap-1', style: 'color: navy', attributes: { 'data-market-part': 'time' } };
+  assert.equal(normaliseQuestionBreakClocks(mask, [card]), 1, 'a date text node beside the live mark is canonicalized');
+  assert.equal(date.nodeValue, mask.text);
+  assert.equal(card.childNodes[0], liveMark, 'the live mark before the date is kept');
+  assert.equal(card.style, 'color: navy', 'the card paint is kept');
+  assert.equal(normaliseQuestionBreakClocks(mask, [card]), 1, 'a stability read is idempotent');
+  for (const bad of ['31 Feb, 13:43', '14 ' + month + ' 13:43', locale === 'sw' ? '14 Oct, 13:43' : '14 Okt, 13:43', 'Voided', 'Resolved YES']) {
+    const node = { nodeType: 3, nodeValue: bad };
+    assert.equal(normaliseQuestionBreakClocks(mask, [{ childNodes: [liveMark, node], childElementCount: 1 }]), 0, `${bad} remains visible`);
+    assert.equal(node.nodeValue, bad);
+  }
+  const two = [{ nodeType: 3, nodeValue: `14 ${month}, 13:43` }, { nodeType: 3, nodeValue: 'extra words' }];
+  assert.equal(normaliseQuestionBreakClocks(mask, [{ childNodes: two, childElementCount: 0 }]), 0, 'two direct text nodes are not a date');
+}
+console.log('watchlist-date: only a complete locale EAT moment in one direct text node canonicalizes; the live mark and paint stay intact; invalid, status and mixed-text controls pass');

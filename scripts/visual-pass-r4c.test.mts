@@ -278,7 +278,9 @@ section("3 · notifications: a figure whole and mono, a body's last two words to
   ok("3.6′ PLANT · the bare title put back is reported", /(?<!=)\{pickTitle\(n\)\}/.test(page.replace("<DotSeq text={pickTitle(n)} renderPart={moneyRuns} />", "{pickTitle(n)}")));
   // The action column: the row is items-start; the plate is 32px at mt-0.5; each control is 44px.
   const actions = code("src/app/notifications/row-actions.tsx");
-  const plateTop = /<IconPlate size=\{32\} className=\{cn\("mt-0\.5 border"/.test(page) ? SCALE["0.5"] : NaN;
+  // PHOSPHOR-MIGRATION release 2a part 2: `kind` is the row's status-aware appearance, shared with the bell. Measure
+  // the actual 32px plate and its mt-0.5 offset; a missing or moved plate still fails this centre alignment check.
+  const plateTop = /<IconPlate size=\{32\} variant=\{tintFor\(kind\)\} className="mt-0\.5"/.test(page) ? SCALE["0.5"] : NaN;
   const plateMid = plateTop + 32 / 2;
   const lift = px(/<span className="([^"]*)"/.exec(actions)?.[1] ?? "", "-mt");
   const restoreLift = px(/className="(-mt-[^"]*min-h-\[44px\] px-2[^"]*)"/.exec(actions)?.[1] ?? "", "-mt");
@@ -319,9 +321,19 @@ section("4 · the capture waits for the demo player's unread sign on the tickets
   // states its target inline, and React writes that transition into the style attribute the selector reads.
   const chart = code("src/components/charts/terminal-chart.tsx");
   const styled = html(h("div", { style: { opacity: 1, transition: "opacity var(--dur-arrive) var(--ease-glide)" } }));
-  ok("4.4 · …and finds the terminal chart's canvas container: the role=\"img\" box's child whose inline style fades on --dur-arrive (terminal-chart.tsx), as React serialises it",
-    /<div role="img"[^>]*>\s*<div\s+ref=\{wrapRef\}\s+className="absolute inset-0"\s+style=\{\{ opacity: feed \? 1 : 0, transition: "opacity var\(--dur-arrive\) var\(--ease-glide\)" \}\}/.test(chart)
-      && /style="[^"]*--dur-arrive/.test(styled), styled);
+  // 2026-10-21 · U43 Release B (1384383fd) · the chart paints `guardedFeed` — the vendor feed with any bar a confirmed
+  // card price contradicts masked out (`maskConflictingVendorOpens`), null when nothing honest is left — and the canvas
+  // container's arrival fade follows that same value, so the target is `guardedFeed`, not `feed`. Same box, same inline
+  // transition the capture's selector reads; a fade on the raw feed would bring up a canvas the chart never drew on.
+  const canvasOk = (s: string) =>
+    /<div role="img"[^>]*>\s*<div\s+ref=\{wrapRef\}\s+className="absolute inset-0"\s+style=\{\{ opacity: guardedFeed \? 1 : 0, transition: "opacity var\(--dur-arrive\) var\(--ease-glide\)" \}\}/.test(s)
+      && /if \(guardedFeed && engineGen > 0\) draw\(guardedFeed\);/.test(s);
+  ok("4.4 · …and finds the terminal chart's canvas container: the role=\"img\" box's child whose inline style fades on --dur-arrive (terminal-chart.tsx), as React serialises it, on the feed the chart draws",
+    canvasOk(chart) && /style="[^"]*--dur-arrive/.test(styled), styled);
+  ok("4.4′ PLANT · the fade put back on the raw feed (a canvas faded in that the guarded chart never drew on) is reported",
+    !canvasOk(chart.replace("opacity: guardedFeed ? 1 : 0", "opacity: feed ? 1 : 0")));
+  ok("4.4″ PLANT · the container without its arrival transition (nothing for the capture's selector to find) is reported",
+    !canvasOk(chart.replace(', transition: "opacity var(--dur-arrive) var(--ease-glide)"', "")));
   // The probe itself, run on a stand-in document: arrived only when the COMPUTED opacity is 1.
   const probeSrc = /const CHART_ARRIVED = (\(sel\) => [^\n]+);/.exec(drive)?.[1] ?? "";
   const run = (src: string, computed: string[]) => {

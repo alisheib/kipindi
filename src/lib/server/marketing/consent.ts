@@ -68,7 +68,8 @@ import { withLock } from "@/lib/server/locks";
  *     referee named before that version) is refused `agent_referee` right after the stop list (1b): before any basis is
  *     asked, consent and an open record included. ⚠️ Step 1b is one keyed read in EVERY state, so a closed record now costs that one read more than before,
  *     and a promised referee is refused `agent_referee` rather than `no_consent` while it is closed.
- *     ⛔ And what the rule does NOT change: the stop, self-exclusion, under-18s and RG standing still refuse.
+ *     ⛔ And what the rule does NOT change: the stop, self-exclusion, under-18s and RG standing still refuse (the automatic
+ *     harm markers are MUTED for marketing since 2026-10-21 — `MARKETING_HARM_MARKERS_MUTED` in rg.ts).
  */
 
 /** ⭐ Named, and each value is a `skipped` reason — never a failure (§5.6). A refusal is the

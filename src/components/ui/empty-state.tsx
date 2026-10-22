@@ -2,16 +2,13 @@
 
 /**
  * EmptyState — kit-faithful: 360px (or full-width, via `fill`) boxed, dashed border,
- * line-art SVG illustration: a restrained --text-faint etch (via currentColor) with a
- * single gold accent. (v1.1 reconciliation, 2026-07-27: the old kit "--teal-400 stroke"
- * is retired with the teal era; where a brand stroke is wanted it is --brand-400, never
- * teal. The default line-art stays the neutral --text-faint so it reads as etching.)
+ * a large Phosphor Duotone glyph on the shared empty-state plate. The plate's one
+ * metal-gold accent belongs to identity art, never to a money outcome (W6).
  * Title (display 16/600), body (13), optional ghost CTA.
  *
  * The kit explicitly forbids mascots / full-color cartoons.
  *
- * Kinds map to a built-in line-art icon:
- *   markets · positions · leaderboard · notifications · audit · sources · default
+ * Each kind maps to its page's family glyph through EMPTY_GLYPH below.
  */
 import { createContext, useContext, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
@@ -20,10 +17,18 @@ import { EMPTY_STATE_BOX, EMPTY_STATE_TITLE, EMPTY_STATE_BODY } from "./empty-st
 import { emptyStateBody, type EmptyStateBody } from "./empty-state-text";
 import { keepConnectives } from "./keep-run";
 import { hangCjkMarks } from "@/lib/cjk-marks";
+import { I, plateGlyph, type DuoGlyphKey } from "./glyphs";
+import { IconPlate } from "./icon-plate";
 
 type Kind =
   | "markets" | "positions" | "leaderboard" | "notifications" | "audit" | "sources"
   | "proposals" | "kyc" | "fairness" | "rg" | "admin" | "default";
+
+const EMPTY_GLYPH: Record<Kind, DuoGlyphKey> = {
+  markets: "markets", positions: "portfolio", leaderboard: "podium", notifications: "bell",
+  audit: "audit", sources: "sources", proposals: "idea", kyc: "idCard",
+  fairness: "attestation", rg: "limits", admin: "reports", default: "compass",
+};
 
 /**
  * ⭐ A TITLED SECTION SAYS ONCE THAT ITS EMPTY STATE FILLS IT (S8, 2026-10-14) — the call sites stopped having to remember.
@@ -44,10 +49,8 @@ const SectionFill = createContext(false);
 export function EmptyStateSection({ children }: { children: ReactNode }) {
   return <SectionFill.Provider value>{children}</SectionFill.Provider>;
 }
-
 export function EmptyState({
   kind = "default",
-  illustration,
   title,
   body,
   action,
@@ -55,7 +58,6 @@ export function EmptyState({
   className,
 }: {
   kind?: Kind;
-  illustration?: ReactNode;
   title: string;
   /** The words, or the words with the runs the caller put into them that must stay whole (a date: `breakSentence`). */
   body?: EmptyStateBody;
@@ -85,6 +87,7 @@ export function EmptyState({
   // The call site's own word wins, either way; unset, a titled section's declaration decides (boxed outside one).
   const sectionFill = useContext(SectionFill);
   const filled = fill ?? sectionFill;
+  const Glyph = I[EMPTY_GLYPH[kind]];
   return (
     <div
       /* ⭐ A CONTRACT FOR THE INSTRUMENTS, exactly like `<PageContainer>`'s `data-measure`.
@@ -100,9 +103,11 @@ export function EmptyState({
         className,
       )}
     >
-      {/* Kit shows the line-art illustration bare and centered (no ring badge). */}
-      <div className="mx-auto mb-4 inline-flex items-center justify-center text-text-faint" aria-hidden>
-        {illustration ?? <DefaultIllustration kind={kind} />}
+      {/* W6: the kind's own Duotone glyph, on the family's one empty plate. */}
+      <div className="mx-auto mb-3 flex justify-center" aria-hidden>
+        <IconPlate size={56} variant="empty">
+          <Glyph s={plateGlyph(56)} tier="duo" />
+        </IconPlate>
       </div>
       {/* ⭐ Both lines are centred, so a Chinese mark that ends one hangs its empty half (`hangCjkMarks`, 2026-10-09,
           round 4, E50: "…显示在这里。" stood 4.5px left of the box's centre on tiles 427 428). Latin text is untouched.
@@ -116,7 +121,7 @@ export function EmptyState({
   );
 }
 
-/** Compact error-state — same chrome, no-rose accent. */
+/** Compact error state — the failure uses the shared danger plate and filled circled cross. */
 export function ErrorState({
   title,
   detail,
@@ -138,222 +143,15 @@ export function ErrorState({
         className,
       )}
     >
-      {/* 48px mark — ARBITRARY LITERAL. The spacing scale is OVERRIDDEN
-          (tailwind.config.ts:200-215), so `w-12 h-12` was a 128px box, nearly a third
-          of this panel's 420px measure. ⛔ Never a scale token here. */}
-      <div className="mx-auto mb-4 w-[48px] h-[48px] grid place-items-center text-danger-fg" aria-hidden>
-        <ErrorMark />
+      {/* A failure is a status: the family's filled circled cross on its danger plate. */}
+      <div className="mx-auto mb-4 flex justify-center" aria-hidden>
+        <IconPlate size={48} variant="danger">
+          <I.xCircle s={plateGlyph(48)} tier="fill" />
+        </IconPlate>
       </div>
       <p className="font-display text-[15px] font-semibold text-text">{resolvedTitle}</p>
       {detail && <p className="mt-2 font-mono text-[11px] text-text-subtle">{detail}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
-  );
-}
-
-/**
- * ⭐ EACH DRAWING'S BOX STARTS WHERE ITS INK STARTS (2026-10-09, round 3, tiles 165 166 241). Every drawing is a 56px square,
- * but its ink does not reach the square's top: the compass begins 8.25px down, the briefcase 14.25px. The box's padding is
- * 48px on both sides, so with a call to action under the body (whose ink ends where its box ends) the content stood 56 and
- * 62px under the dashed top against 48px over its bottom — 4px and 7px below the box's centre, measured on Juu/Chini's
- * history (box y333–647, ink y390–598) and on Tiketi zangu's (ink y396–594 in y333–643). So each viewBox starts at its
- * drawing's first ink row (the topmost stroke, less half the 1.5px stroke, rounded down) and the svg is that much shorter:
- * the ink now opens 48px under the border, as the button closes 48px above it. The scale is unchanged (one unit, one
- * pixel), the width stays 56, and nothing below the ink moves, so each drawing keeps its gap to the title.
- * ⚠️ A NEW DRAWING NEEDS ITS ROW HERE — `test:visual-pass-r3c` §2 reads each case's topmost coordinate and fails on a
- * number that is not its ink top. An `illustration` handed in by a caller is drawn as it comes.
- */
-const INK_TOP: Record<Kind, number> = {
-  markets: 14, positions: 14, leaderboard: 12, notifications: 13, audit: 7, sources: 10,
-  proposals: 8, kyc: 12, fairness: 14, rg: 12, admin: 8, default: 8,
-};
-/** The svg's frame for a drawing whose ink starts `top` units down its 56-unit square. */
-function frame(top: number) {
-  return { viewBox: `0 ${top} 56 ${56 - top}`, width: 56, height: 56 - top };
-}
-
-/** Line-art illustrations — gilt-line etching on dark glass; one gold accent per scene. */
-function DefaultIllustration({ kind }: { kind: Kind }) {
-  const s = { fill: "none", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
-  const g = "oklch(78% 0.14 86)";
-  switch (kind) {
-    case "markets":
-      return (
-        <svg {...frame(INK_TOP.markets)} {...s}>
-          {/* Tilted scales weighing a YES/NO pip pair — the tipping metaphor;
-              gilt pivot diamond. Left pan holds a filled YES pip, right pan a
-              hollow NO ring, so the pair reads without relying on colour. */}
-          <line x1="28" y1="47" x2="28" y2="17" />
-          <path d="M23 49 L25 45 H31 L33 49" />
-          <line x1="19" y1="49" x2="37" y2="49" />
-          <line x1="11" y1="23" x2="45" y2="15" />
-          <line x1="13" y1="23.5" x2="9" y2="31" />
-          <line x1="13" y1="23.5" x2="17" y2="31" />
-          <path d="M8 31 A6.5 6.5 0 0 0 18 31" />
-          <line x1="43" y1="15.5" x2="39" y2="23" />
-          <line x1="43" y1="15.5" x2="47" y2="23" />
-          <path d="M38 23 A6.5 6.5 0 0 0 48 23" />
-          {/* YES pip (filled) in the left pan · NO pip (hollow) in the right pan */}
-          <circle cx="13" cy="28.5" r="2.1" fill="currentColor" stroke="none" />
-          <circle cx="43" cy="20.5" r="2.1" />
-          <path d="M28 15.8 L31 19 L28 22.2 L25 19 Z" fill={g} stroke="none" />
-        </svg>
-      );
-    case "positions":
-      return (
-        <svg {...frame(INK_TOP.positions)} {...s}>
-          {/* Closed briefcase, gilt latch. */}
-          <rect x="10" y="21" width="36" height="25" rx="3" />
-          <path d="M22 21 V17.5 Q22 15 24.5 15 H31.5 Q34 15 34 17.5 V21" />
-          <line x1="10" y1="31" x2="23" y2="31" />
-          <line x1="33" y1="31" x2="46" y2="31" />
-          <rect x="26" y="29" width="4" height="4" rx="1" fill={g} stroke="none" />
-        </svg>
-      );
-    case "leaderboard":
-      return (
-        <svg {...frame(INK_TOP.leaderboard)} {...s}>
-          {/* Empty podium, gilt spark above first place. */}
-          <rect x="21" y="26" width="14" height="20" />
-          <rect x="7" y="33" width="14" height="13" />
-          <rect x="35" y="37" width="14" height="9" />
-          <line x1="28" y1="31" x2="28" y2="37" />
-          <path d="M28 12 Q29 16.5 33 17.5 Q29 18.5 28 23 Q27 18.5 23 17.5 Q27 16.5 28 12 Z" fill={g} stroke="none" />
-        </svg>
-      );
-    case "notifications":
-      return (
-        <svg {...frame(INK_TOP.notifications)} {...s}>
-          {/* Bell at rest — gilt clapper; ground line. */}
-          <path d="M19 36 V27 A9 9 0 0 1 37 27 V36 L40.5 41 H15.5 L19 36 Z" />
-          <path d="M26 16 a2 2 0 0 1 4 0" />
-          <circle cx="28" cy="45.5" r="2" fill={g} stroke="none" />
-          <line x1="20" y1="50" x2="36" y2="50" />
-        </svg>
-      );
-    case "audit":
-      return (
-        <svg {...frame(INK_TOP.audit)} {...s}>
-          {/* Document under a lens, gilt glint. */}
-          <path d="M14 8 H32 L38 14 V38 H14 Z" />
-          <path d="M32 8 V14 H38" />
-          <line x1="19" y1="20" x2="31" y2="20" />
-          <line x1="19" y1="26" x2="27" y2="26" />
-          <circle cx="34" cy="36" r="7.5" />
-          <line x1="39.5" y1="41.5" x2="46" y2="48" />
-          <path d="M30 33 A4.5 4.5 0 0 1 34 31" stroke={g} />
-        </svg>
-      );
-    case "sources":
-      return (
-        <svg {...frame(INK_TOP.sources)} {...s}>
-          {/* Globe with meridians — gilt dot on Tanzania. */}
-          <circle cx="28" cy="28" r="17" />
-          <ellipse cx="28" cy="28" rx="7.5" ry="17" />
-          <line x1="11" y1="28" x2="45" y2="28" />
-          <path d="M13.5 19.5 Q28 14 42.5 19.5" />
-          <path d="M13.5 36.5 Q28 42 42.5 36.5" />
-          <circle cx="34" cy="34" r="2.2" fill={g} stroke="none" />
-        </svg>
-      );
-    case "proposals":
-      return (
-        <svg {...frame(INK_TOP.proposals)} {...s}>
-          {/* Ballot box receiving a folded paper + quill — "propose & earn";
-              gilt nib. */}
-          <path d="M11 30 L15 24 H41 L45 30" />
-          <rect x="11" y="30" width="34" height="17" rx="3" />
-          <line x1="24" y1="27.5" x2="32" y2="27.5" />
-          <path d="M22 24 V13 H33 L38 18 V24" />
-          <line x1="26" y1="17" x2="34" y2="17" />
-          <line x1="26" y1="20.5" x2="31" y2="20.5" />
-          <line x1="43" y1="9" x2="33" y2="21" />
-          <path d="M33 21 L31.5 25 L35 23.5 Z" fill={g} stroke="none" />
-        </svg>
-      );
-    case "kyc":
-      return (
-        <svg {...frame(INK_TOP.kyc)} {...s}>
-          {/* ID card above a progress rail — two steps done, one live (gilt),
-              one to go. */}
-          <rect x="13" y="13" width="30" height="19" rx="3" />
-          <circle cx="21" cy="21" r="3" />
-          <path d="M17 27.5 a4 4 0 0 1 8 0" />
-          <line x1="30" y1="19" x2="38" y2="19" />
-          <line x1="30" y1="23.5" x2="36" y2="23.5" />
-          <line x1="13" y1="43" x2="43" y2="43" />
-          <circle cx="17" cy="43" r="2.4" fill="currentColor" stroke="none" />
-          <circle cx="27" cy="43" r="2.4" fill="currentColor" stroke="none" />
-          <circle cx="37" cy="43" r="2.6" fill={g} stroke="none" />
-          <circle cx="45" cy="43" r="2.4" />
-        </svg>
-      );
-    case "fairness":
-      return (
-        <svg {...frame(INK_TOP.fairness)} {...s}>
-          {/* Provably-fair chain: commit → reveal → attest (gilt node + check). */}
-          <circle cx="15" cy="30" r="7" />
-          <circle cx="28" cy="30" r="7" />
-          <circle cx="41" cy="30" r="7" />
-          <line x1="22.5" y1="30" x2="21" y2="30" />
-          <line x1="35" y1="30" x2="33.5" y2="30" />
-          <path d="M25 30 l2 2 l4-4.5" />
-          <line x1="28" y1="19" x2="28" y2="15" />
-          <circle cx="41" cy="30" r="2.4" fill={g} stroke="none" />
-        </svg>
-      );
-    case "rg":
-      return (
-        <svg {...frame(INK_TOP.rg)} {...s}>
-          {/* Calm sunrise over a horizon — self-care, never gambling imagery;
-              gilt sun core. */}
-          <line x1="10" y1="40" x2="46" y2="40" />
-          <path d="M19 40 a9 9 0 0 1 18 0" />
-          <line x1="28" y1="18" x2="28" y2="13" />
-          <line x1="14.5" y1="25.5" x2="11" y2="22" />
-          <line x1="41.5" y1="25.5" x2="45" y2="22" />
-          <line x1="12" y1="40" x2="7" y2="40" />
-          <line x1="44" y1="40" x2="49" y2="40" />
-          <circle cx="28" cy="40" r="2.4" fill={g} stroke="none" />
-        </svg>
-      );
-    case "admin":
-      return (
-        <svg {...frame(INK_TOP.admin)} {...s}>
-          {/* Clipboard under a lens — a generic admin console at rest;
-              gilt glint. */}
-          <rect x="14" y="12" width="24" height="32" rx="3" />
-          <rect x="22" y="9" width="8" height="6" rx="2" />
-          <line x1="19" y1="22" x2="33" y2="22" />
-          <line x1="19" y1="28" x2="33" y2="28" />
-          <line x1="19" y1="34" x2="27" y2="34" />
-          <circle cx="37" cy="37" r="7" />
-          <line x1="42" y1="42" x2="47" y2="47" />
-          <path d="M33.5 34 A4 4 0 0 1 37 32" stroke={g} />
-        </svg>
-      );
-    default:
-      return (
-        <svg {...frame(INK_TOP.default)} {...s}>
-          {/* Compass rose, gilt north point. */}
-          <circle cx="28" cy="28" r="19" />
-          <path d="M28 9 L31 25 L47 28 L31 31 L28 47 L25 31 L9 28 L25 25 Z" />
-          <line x1="37" y1="19" x2="40" y2="16" />
-          <line x1="37" y1="37" x2="40" y2="40" />
-          <line x1="19" y1="37" x2="16" y2="40" />
-          <line x1="19" y1="19" x2="16" y2="16" />
-          <path d="M28 9 L30.6 24.6 L28 28 L25.4 24.6 Z" fill={g} stroke="none" />
-        </svg>
-      );
-  }
-}
-
-function ErrorMark() {
-  return (
-    <svg viewBox="0 0 48 48" width="48" height="48" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <circle cx="24" cy="24" r="18" />
-      <line x1="17" y1="17" x2="31" y2="31" />
-      <line x1="31" y1="17" x2="17" y2="31" />
-    </svg>
   );
 }

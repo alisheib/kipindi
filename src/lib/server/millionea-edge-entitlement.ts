@@ -2,6 +2,10 @@
  * A narrow pre-render entitlement for Millionea's ticket routes while the product is dark.
  * The page still checks the stored rollout, full session and its own ticket read. This check
  * only prevents a non-holder's streamed notFound() from leaving an HTTP 200 behind.
+ * ⛔ IT NEVER THROWS (S5-FIX-PLATFORM D5): the proxy loads it on a signed-in request to a dark ticket address only
+ *    (`ticketHolderAtEdge`, src/proxy.ts), and a throw there would answer that request 500. Every read is caught: a
+ *    failed session or holding read is private absence (false), as the page's own admission rules; a failed detail read
+ *    after admission is the PAGE's error path (true: the request goes on to the page, B-1).
  */
 import { normalizeMillioneaSerial } from "@/lib/millionea-serial";
 import { SESSION_IDLE_TIMEOUT_MS } from "@/lib/session-limits";
@@ -62,7 +66,12 @@ export async function millioneaTicketEntitledAtEdge(
   let decoded: string;
   try { decoded = decodeURIComponent(tail); } catch { return false; }
   const serial = normalizeMillioneaSerial(decoded);
-  // Once admission succeeded, a failed detail read is the page's error path (B-1).
-  // Foreign and unknown serials still share the same 404.
-  return serial !== null && (await reads.ownerOf(serial)) === session.userId;
+  if (serial === null) return false;
+  // Once admission succeeded, a failed detail read is the PAGE's error path (B-1: never a not-found drawn over a ticket
+  // that may hold the reader's money): the request goes on, and the page's own read answers it or throws to its retryable
+  // error boundary. ⛔ Never thrown from here: the proxy would answer the whole request 500 (S5-FIX-PLATFORM D5). Only a
+  // holder reaches this line, and the page still checks the serial is theirs. Foreign and unknown serials share one 404.
+  let owner: string | null;
+  try { owner = await reads.ownerOf(serial); } catch { return true; }
+  return owner === session.userId;
 }

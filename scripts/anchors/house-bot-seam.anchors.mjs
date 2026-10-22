@@ -37,7 +37,12 @@ export const SEAM_SITES = [
   "H0", "H1", "session", "replay", "H2", "shownCount", "cash", "marker", "lockTimeout", "H3", "markPlaced", "revertNoFunds",
   "revertNoFundsBonus", "txnMarker", "H4", "wagering", "superseded", "audit", "receipts", "recruit",
   "reverseWageringOrphan", "markerOrphan", "cashOutValue", "cashOutReason", "cashOutPosition", "markerCashout", "markerOneSided",
-  "markerVoid", "markerWin", "reverseWagering", "markerEmergency", "reverseWageringEmergency",
+  /* 2026-10-21 · U43 Release B (c29cb7526) moved every refund's wagering reversal INSIDE its money transaction
+   * (`reverseWagering` after the lock → `reverseWageringLocked(…, tx, …)` per position). The settlement's one post-lock
+   * loop, `reverseWagering`, became TWO in-lock sites — `reverseWageringOneSided` and `reverseWageringVoid` — and the
+   * emergency void's loop became one in-lock site that keeps the name `reverseWageringEmergency`. Each still skips a
+   * house-marked position (`p.houseBotId == null`). The three markers trail an existing line, so no line moved. */
+  "markerVoid", "reverseWageringOneSided", "reverseWageringVoid", "markerWin", "markerEmergency", "reverseWageringEmergency",
   // 04 F6: the per-stake email rule on outcome notices, and a verdict's objection standing (C4 rulings 143–145;
   // D19 removed the liquidity label these sites used to carry).
   "emailOneSided", "emailWin", "emailLoss", "emailCancelled", "verdictStanding", "selectionClosedEmail",

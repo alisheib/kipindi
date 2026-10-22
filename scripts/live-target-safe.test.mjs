@@ -129,5 +129,21 @@ console.log("\n[live-target-safe] §3 CONTROL · the detector catches the shape 
   ok("§3 CONTROL · the safe line is NOT caught, so §1 is not merely rejecting everything", !hits(safe));
 }
 
+console.log("\n[live-target-safe] §4 the SSE probe's synthetic sign-in stays local and uses the right transport");
+{
+  const sse = readFileSync(join(ROOT, "scripts/live/sse-edge-probe.mjs"), "utf8");
+  const defects = (src) => [
+    !src.includes('demo && !(target.protocol === "http:" && ["localhost", "127.0.0.1"].includes(target.hostname))'),
+    !src.includes('await page.goto(`${BASE}/auth/demo`, { waitUntil: "domcontentloaded" })'),
+    !src.includes('(url.protocol === "http:" ? httpRequest : httpsRequest)('),
+  ];
+  ok("§4 the probe only signs a synthetic player in on loopback HTTP, and selects HTTP(S) for the stream",
+    defects(sse).every((bad) => !bad));
+  ok("§4 PLANT · removing the local-only gate is caught",
+    defects(sse.replace('demo && !(target.protocol === "http:" && ["localhost", "127.0.0.1"].includes(target.hostname))', 'false')).some(Boolean));
+  ok("§4 PLANT · forcing HTTPS for a local stream is caught",
+    defects(sse.replace('(url.protocol === "http:" ? httpRequest : httpsRequest)(', 'httpsRequest(')).some(Boolean));
+}
+
 console.log("\n" + (failures.length === 0 ? "ALL PASS" : "FAILURES") + " — live-target-safe: " + pass + " passed, " + failures.length + " failed");
 if (failures.length) { for (const f of failures) console.log("  · " + f); process.exit(1); }

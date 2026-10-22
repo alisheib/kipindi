@@ -76,9 +76,19 @@ async function readExclusionRecord(userId: string): Promise<ExclusionRecord> {
   };
 }
 
+/**
+ * ⏸ THE AUTOMATIC HARM MARKERS ARE MUTED FOR MARKETING SMS — Ali's ruling, 2026-10-21 (COMPLIANCE-DECISIONS
+ * § "2026-10-21 · Harm markers muted for marketing SMS"): *"keep the development but mute it for now for everyone,
+ * later if needed I tell you to activate it"*. While this is `true` the default deps report no harm flag, so step 3
+ * below never refuses a send for one. Self-exclusion, a break, the under-25 rule, age, status and the stop list are
+ * untouched, and so is the detector itself (Player Safety, the daily harm count). Step 3 still refuses whatever flags
+ * it is handed, which `test:rg-doors` keeps proving. Reactivate by setting this to `false`.
+ */
+export const MARKETING_HARM_MARKERS_MUTED = true;
+
 export const MARKETING_RG_DEPS: MarketingRgDeps = {
   // ⛔ NO OPTIONS. Passing `sessionStartedAt` switches on the one detector that calls `getRgSettings`.
-  harmFlags: (userId) => detectHarmMarkers(userId),
+  harmFlags: (userId) => (MARKETING_HARM_MARKERS_MUTED ? Promise.resolve([]) : detectHarmMarkers(userId)),
   exclusionRecord: readExclusionRecord,
 };
 

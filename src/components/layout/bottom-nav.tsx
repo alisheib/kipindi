@@ -7,6 +7,7 @@ import { I, type GlyphKey } from "@/components/ui/glyphs";
 import { NavGlyph } from "@/components/ui/nav-glyph";
 import { useT } from "@/lib/i18n";
 import { NavMore } from "@/components/layout/nav-more";
+import { classicMillioneaStandIn } from "@/lib/nav/active-tab";
 import { MARK } from "@/lib/brand-mark";
 import type { ProposalsState } from "@/lib/server/proposals-config";
 
@@ -29,7 +30,7 @@ import type { ProposalsState } from "@/lib/server/proposals-config";
  * extra code. It also STAYS in the desktop header's `CORE_ITEMS` (§3 of the same update): the
  * phone toolbar was the request, and no primary destination is hidden on a tablet or a laptop.
  *
- * ⚠️ ONE DEPOSIT PER SCREEN. Below 1024 this coin is the only one and the header's gold pill
+ * ⚠️ ONE DEPOSIT PER SCREEN. Below 1024 this coin is the only one and the header's deposit pill
  * yields (`top-app-bar.tsx`, `hidden lg:inline-flex`); at 1024 and up this rail is absent
  * (`lg:hidden`) and the pill is the only one. `qa:landing-ten` V25 is what holds that true.
  *
@@ -62,8 +63,10 @@ import type { ProposalsState } from "@/lib/server/proposals-config";
  * no commit ever added it. The rest position is host logic in `needle.tsx` (side rails only, `nearestEdge`;
  * E-413's clear-rest glide), and the rail's centre coin is a `data-needle-keepout` below.
  */
-export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = false, walletHeld = false, millionea = false }: { isAuthed?: boolean; proposalsState: ProposalsState; inviteVisible?: boolean; walletHeld?: boolean; millionea?: boolean }) {
+export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = false, walletHeld = false, millionea = false, millioneaOnBreak = false }: { isAuthed?: boolean; proposalsState: ProposalsState; inviteVisible?: boolean; walletHeld?: boolean; millionea?: boolean; millioneaOnBreak?: boolean }) {
   const pathname = usePathname();
+  /** D13 · on a break, a Millionea page lights the destination the journey's table names (null everywhere else). */
+  const standIn = millioneaOnBreak ? classicMillioneaStandIn(pathname) : null;
   const { t } = useT();
 
   /** The destinations FLANKING the centre — identical for guest and player, because a destination
@@ -72,9 +75,8 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
    *  the middle track. The grid below is still five equal tracks. */
   const items = [
     { href: "/markets", glyph: "markets" as const,    label: t.common.markets },
-    /* 2026-09-14 — the rail has its own short label (`nav.updown`): the product title "Juu na Chini"
-       cannot fit a fifth of a 360 phone and read "Juu na Ch…" on every Swahili page. The accessible
-       name stays the VISIBLE label (WCAG 2.5.3 label-in-name: a voice user says what they see). */
+    /* The full product name wraps in the Swahili phone rail. The accessible name stays
+       the visible label (WCAG 2.5.3 label-in-name: a voice user says what they see). */
     // One meaning, one glyph (PHOSPHOR-MIGRATION R-LEXICON): Up & Down is `trade` in both shells; Live is `live`.
     { href: "/updown",  glyph: "trade" as const,      label: t.nav.updown, accent: true },
     { href: "/live",    glyph: "live" as const,       label: t.nav.live },
@@ -167,6 +169,9 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
       ];
 
   const isActive = (href: string) => {
+    // S5-FIX-PLATFORM D13: on a break, a Millionea page lights the slot standing in for its undrawn More row (Markets),
+    // or More itself where the stand-in is one of its rows (Positions, below), as the journey falls back.
+    if (href === standIn) return true;
     if (href === "/markets") return pathname === "/" || pathname.startsWith("/markets");
     if (href === "/updown") return pathname.startsWith("/updown");
     /* ⚠️ THE `/results` BRANCH IS GONE BECAUSE THE SLOT IS. It is `More`'s now, and `moreActive`
@@ -180,7 +185,7 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
   /** `More` reads as current when the page behind it is one of its own — and never while the coin is current. Its Wallet
    *  row (`/wallet`) is a prefix of the coin's `/wallet/deposit`, so on the coin's own page both lit: two "you are here"
    *  marks on one bar, which the opaque pill made plain (PHOSPHOR-MIGRATION W3's tile read; the double-lit was older). */
-  const moreActive = !coinOn && moreItems.some((m) => pathname.startsWith(m.href));
+  const moreActive = !coinOn && moreItems.some((m) => pathname.startsWith(m.href) || m.href === standIn);
 
   return (
     <nav
@@ -196,11 +201,6 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
          used it. One attribute is the whole fix: no z-index change, and not one line of the
          vendored do-not-edit physics touched. */
       data-needle-keepout=""
-      /* ⭐ THE MARK'S COLOURS, FROM THE ONE PLACE THEY ARE DEFINED (`lib/brand-mark.ts`, audit C11).
-         They are brand identity, not theme tokens (DESIGN_AUTHORITY B1), so they are not in
-         `globals.css` — and handing them over as custom properties keeps the coin's geometry in the
-         stylesheet while its colours stay downstream of the one definition the exported assets and
-         the in-app mark also read. ⚠️ Set on the NAV so the whole coin subtree inherits them. */
       style={{
         "--kp-coin-green": MARK.green,
         "--kp-coin-red": MARK.red,
@@ -237,9 +237,8 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
                 painted one. Both keep-outs stand; they are different rectangles. V22 asserts the
                 coin's rect sits inside one of them, because reasoning about it got it wrong once. */}
             <span className="kp-coin" aria-hidden data-needle-keepout="">
-              {/* Painted by DOM order: ring (the element's own background) → needle → face → verb.
-                  That order is what lets one gold line cross the ring and show past the rim while
-                  staying hidden under the struck disc. */}
+              {/* Painted by DOM order: ring → needle → face → verb.
+                  The lifted deposit coin inherits the brand mark's four colours. */}
               <span className="kp-coin__needle" />
               <span className="kp-coin__face">
                 {walletHeld ? (
@@ -269,6 +268,7 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
             label={t.common.more}
             variant="rail"
             active={moreActive}
+            current={standIn}
             cardSpacing
           />
         </li>

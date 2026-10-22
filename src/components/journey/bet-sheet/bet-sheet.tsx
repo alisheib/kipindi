@@ -75,7 +75,7 @@ type BodyProps = BetSheetProps & {
  * ⭐ THE LOW FRAME'S ROWS — ONE BLOCK, TWO HOSTS (Vodacom S12 WP10, S12-PLAN Open point 32). The sheet draws them between
  * its estimate and its balance row, and Juu/Chini's journey arm (`components/journey/updown/jud-arm.tsx`) draws the same
  * rows from the same frame: the low callout, the loss room, a pending deposit by its age, why no deposit is offered, the
- * gilt deposit door with the open rails' names and its other amounts, the below-minimum note, the two doors out, then the
+ * brand deposit door with the open rails' names and its other amounts, the below-minimum note, the two doors out, then the
  * host's own second option (`instead`: the sheet's "bet instead", which places; Juu/Chini's "use instead", which sets the
  * stake). Every figure is the frame's. ⛔ It stays in this file, not `sheet-parts.tsx`: `test:bet-sheet` reads this
  * file's source for the deposit door and plants its copies here, and the sheet's rendered rows are byte-identical to the

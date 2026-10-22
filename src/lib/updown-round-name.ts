@@ -1,21 +1,30 @@
 /**
  * ⭐ AN UP & DOWN ROUND'S NAME, IN THE ROUND PAGE'S OWN WORDS (review 6, A6 · C6 · 2026-10-09).
  *
- * The round page names a round in its h1 — "{asset} {udTitle}" over a "{minutes} {udMin}" chip — and the Up & Down card's
- * accessible name is that same line (`updown-card.tsx`): "Bitcoin Juu na Chini · 15 dakika", "Bitcoin Up & Down · 15 min",
+ * The round page names a round in its h1 — "{asset} {udTitle}" over a localized duration chip — and the Up & Down card's
+ * accessible name is that same line (`updown-card.tsx`): "Bitcoin Juu na Chini · dakika 15", "Bitcoin Up & Down · 15 min",
  * "比特币 涨跌 · 15 分钟". The round's STORED title (`roundTitle`, updown-service.ts) is a third name for the game —
  * "Bitcoin Juu au Chini · dakika 15", "Bitcoin Up or Down · 15 min" — kept as written, for the audit trail and the
  * reports, and never rewritten. A reader's surface names a round in the page's words: the page's own <title>, and the
  * surfaces that list a round as a market (`/positions/performance`).
  * Pure and client-safe: the words come in with the caller's dictionary.
  */
+import type { Locale } from "@/lib/i18n-dict";
+import { pickLocalized } from "@/lib/localized";
 
 /** The two dictionary words a round's name is made of (`t.market.udTitle`, `t.market.udMin`). */
 export type RoundWords = { market: { udTitle: string; udMin: string } };
 
-/** "{asset} {udTitle} · {minutes} {udMin}" — the h1's words and the card's accessible name. */
+/** The duration in the reader's language; Swahili puts the numeral after dakika. */
+export function roundDuration(t: { market: { udMin: string } }, durationMinutes: number): string {
+  return t.market.udMin === "dakika"
+    ? `${t.market.udMin} ${durationMinutes}`
+    : `${durationMinutes} ${t.market.udMin}`;
+}
+
+/** "{asset} {udTitle} · {duration}" — the h1's words and the card's accessible name. */
 export function roundName(t: RoundWords, assetName: string, durationMinutes: number): string {
-  return `${assetName} ${t.market.udTitle} · ${durationMinutes} ${t.market.udMin}`;
+  return `${assetName} ${t.market.udTitle} · ${roundDuration(t, durationMinutes)}`;
 }
 
 /** A round's asset name in each language and its minutes, read back from its STORED titles. */
@@ -39,4 +48,16 @@ export function storedRound(titles: { titleEn: string; titleSw: string | null; t
   const zh = titles.titleZh ? STORED_ZH.exec(titles.titleZh) : null;
   if ((titles.titleSw && (!sw || Number(sw[2]) !== minutes)) || (titles.titleZh && (!zh || Number(zh[2]) !== minutes))) return null;
   return { nameEn: en[1], nameSw: sw ? sw[1] : null, nameZh: zh ? zh[1] : null, minutes };
+}
+
+/** A player's title for a market or round. Only the known stored round shape is translated into the current game name. */
+export function marketDisplayTitle(
+  t: RoundWords,
+  locale: Locale,
+  market: { productLine?: string | null; titleEn: string; titleSw: string | null; titleZh?: string | null },
+): string {
+  const round = market.productLine === "UPDOWN" ? storedRound({ ...market, titleZh: market.titleZh ?? null }) : null;
+  return round
+    ? roundName(t, pickLocalized(locale, round.nameEn, round.nameSw, round.nameZh), round.minutes)
+    : pickLocalized(locale, market.titleEn, market.titleSw, market.titleZh);
 }

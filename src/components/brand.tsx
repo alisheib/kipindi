@@ -1,7 +1,7 @@
 /**
  * 50pick brand primitives — FINAL (logo round 2, Direction B "Needle").
  *
- * The mark: YES emerald LEFT · NO rose RIGHT · the gilt NEEDLE riding the seam
+ * The mark: YES emerald LEFT · NO rose RIGHT · a gilt NEEDLE riding the seam
  * past the rim (same object as TippingBar needle + conviction dial) over a gilt
  * hub with a navy pivot. No ring, no numerals — the wordmark carries the name.
  *

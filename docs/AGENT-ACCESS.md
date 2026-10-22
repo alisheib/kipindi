@@ -3,6 +3,11 @@
 Written 2026-07-31, after a session that stalled on three access walls. This file exists so
 nobody has to rediscover which wall is which.
 
+**Current working rules are in [`AGENTS.md`](../AGENTS.md), especially §§4 and 9.** The machine
+state recorded below is historical evidence, not permission to use a saved login. Agents
+never use Ali's personal credentials. A `main` push still needs the release owner, current
+branch and release-lock checks, and the complete release gates.
+
 **There are TWO different kinds of block, and they look identical from the outside.**
 
 | | Symptom | Fix |
@@ -26,7 +31,7 @@ forever.
 
 | Blocked | Verdict |
 |---|---|
-| `git credential fill` (reading the stored GitHub token) | 🔴 **Leave this blocked.** It reads a live secret into the transcript. The right fix is `gh auth login`, not opening the credential store. |
+| `git credential fill` (reading the stored GitHub token) | 🔴 **Leave this blocked.** It reads a live secret into the transcript. The right fix is a separately configured service credential (§2.1), not opening the credential store. |
 | `Remove-Item docs/<stale>.md` | Safe to allow, scoped to the repo. |
 | `Get-ChildItem -Recurse` across `C:\` roots | Safe to allow read-only, scoped. |
 | `railway run … --create` (creating an R2 bucket) | Reasonable to keep behind a prompt — it mutates cloud infrastructure. |
@@ -60,7 +65,7 @@ Rules are `Tool(specifier)`; `:*` is a prefix wildcard. Paste-ready, merge into 
 
   "Bash(git status:*)", "Bash(git log:*)", "Bash(git diff:*)", "Bash(git show:*)",
   "Bash(git fetch:*)", "Bash(git branch:*)", "Bash(git pull --ff-only)",
-  "Bash(git add:*)", "Bash(git commit:*)", "Bash(git push origin main)",
+  "Bash(git add:*)", "Bash(git commit:*)", "Bash(git push origin main)", // only after AGENTS.md §4 gates
 
   "Bash(railway status:*)", "Bash(railway logs:*)", "Bash(railway variables)",
   "Bash(railway variables --json)", "Bash(railway run:*)",
@@ -97,29 +102,32 @@ is nearly as fast and it still stops the unusual thing.
 
 ### 2.1 GitHub — 🔴 the blocker that matters most
 
-Needed for: repository secrets (so the nightly backup can run), PRs, releases.
+Needed for: an authorized Git push, PR, release or repository-secret change. A deploy key
+covers Git access to its repository; it does not grant GitHub API access for PRs or secrets.
 
-**Why it is blocked:** `gh` is **not authenticated** on this machine and there is no
-`GH_TOKEN`. Git pushes work only because **Windows Credential Manager** holds the
-credential — and `gh` cannot read that store. So an agent can push code but cannot touch
-repository settings.
+**The 2026-07-31 block:** `gh` was unauthenticated while Git could push through Windows
+Credential Manager. That did not establish an agent-safe identity. A saved credential may
+belong to Ali personally; a successful push is not proof that an agent may use it.
 
-1. Create a token at **https://github.com/settings/tokens/new**
-   - Note `claude-code`, expiry **30 days** (not "no expiration")
-   - Classic token: tick **`repo`** — that is enough for repository secrets
-   - Fine-grained instead: repo `alisheib/kipindi`, permissions **Secrets: Read and write**,
-     **Contents: Read and write**, **Actions: Read and write**
-2. In **your own terminal**, not through the agent:
-
-   ```
-   gh auth login --with-token
-   ```
-
-   Paste the token at the blank prompt, press Enter. Verify with `gh auth status`.
-
-🔴 **Paste it into the terminal, never into the chat.** Anything typed in chat is written
-into the session transcript permanently. That is how this project already accumulated a
-rotation debt (see §4).
+1. An authorized human provisions a **50pick-owned GitHub App installation, dedicated bot
+   account, or repository-scoped SSH deploy key with write access**, limited to this
+   repository and the operation at hand. Grant Contents read/write for a push through an App
+   or bot; add Secrets or Actions permissions only for tasks that need them. A deploy key is
+   attached directly to the repository, with "Allow write access" enabled by the human
+   ([GitHub's deploy-key guide](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys)).
+   Use a short-lived token or remove a temporary deploy key after the release, not a token
+   from Ali's personal account. An agent cannot create or authorize its own bot account,
+   install its own deploy key, or widen its permissions.
+2. The human makes that credential available through a secure local credential or process
+   environment, **never chat**. Before a write, the agent verifies the service identity and
+   that the Git command will use it rather than the saved personal Windows login. A read-only
+   `gh auth status` can help for a bot account; a GitHub App installation token and an SSH
+   deploy key have no user login to check that way. For a deploy key, pin Git to that SSH
+   identity, verify repository-bound authentication, and have the human confirm write access
+   in repository settings. Do not print or retrieve a token or private key.
+3. If the only available credential is personal, Ali performs the push himself after the
+   release owner gives him the reviewed commit and checks. The agent does not borrow his
+   login, including when he offers it.
 
 ### 2.2 Cloudflare R2 — needed to create the backup bucket
 
@@ -157,11 +165,13 @@ is yours.
 3. `railway variables --set SENTRY_DSN=https://…` then redeploy
 4. Verify: `/api/health` flips to `monitoring.alerting:true`
 
-### 2.4 Railway — already granted
+### 2.4 Railway — historical session access
 
-The CLI is logged in and linked to `50pick` / `production`. That is what let this session
-read every variable, tail logs, and run `railway ssh`. For headless or CI use, create a
-**project token** (Railway → project → Settings → Tokens) and expose it as `RAILWAY_TOKEN`.
+The 2026-07-31 session had a CLI login linked to `50pick` / `production`. That is a record,
+not an access grant for another agent or machine. Follow `AGENTS.md` §9's identity and
+project checks before any Railway command, and never use Ali's personal login. For an agent
+or CI, an authorized human can provision a **project token** (Railway → project → Settings →
+Tokens) and expose it locally as `RAILWAY_TOKEN` without printing it.
 
 🔴 **`railway run` ≠ `railway ssh`.** `run` executes **locally** with production's env vars
 injected; `ssh` executes **inside the production container**. For anything IP-whitelisted —
@@ -231,9 +241,10 @@ holds the secrets; this file holds the map to them.
 
 ## 4 · Rules that survive this session
 
-1. **Never paste a secret into the chat.** Terminal, `railway variables --set`, or
-   `gh secret set`. The transcript is permanent.
-2. **Expiry on everything.** 30 days. A token an agent used once does not need to outlive
+1. **Never paste a secret into the chat.** A human enters a project credential through a
+   secure local flow; an agent never prints it. The transcript is permanent.
+2. **Time-box access.** Set token expiry to 30 days or less; remove a temporary repository
+   deploy key after the release. A credential an agent used once does not need to outlive
    the task.
 3. **Least privilege beats convenience.** The bucket-scoped R2 token blocked an agent today —
    that is the control working, not failing. Grant the narrow thing.

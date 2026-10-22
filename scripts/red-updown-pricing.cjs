@@ -7,7 +7,8 @@
  *
  * ⭐ THE ONES THAT MATTER MOST:
  *  · `flat-constant-returns` restores D2's first defect: one number for both sides, whatever the
- *    pool holds — on the projection the confirm panel and the receipt still state.
+ *    pool holds — on the confirm panel's pre-commit projection. The receipt reads the
+ *    money action's committed projection, which can differ after another bet moves the pool.
  *  · the three `prints a multiple again` mutations restore what Ali's ruling of 2026-10-14 removed
  *    — a `× N` on the board card's Up button, on the shared controls' Up button, and beside the
  *    confirm panel's projection. If any is MISSED this guard has stopped guarding the ruling.
@@ -78,16 +79,16 @@ const MUTATIONS = [
   },
   {
     // ⚠️ REPLACES `both buttons share ONE multiplier` (2026-10-14): the buttons hold no multiplier to share.
-    name: "⭐ the board card's signed-out Up button prints a multiple again (the owner's ruling of 2026-10-14)",
+    name: "⭐ the board card prints a multiple beside the choices again (the owner's ruling of 2026-10-14)",
     file: CARD,
-    find: `<I.arrowUp s={14} edge="start" text="body-700" className={GLYPH_NO_SHRINK} /> {t.market.udUp}`,
-    with: `<I.arrowUp s={14} edge="start" text="body-700" className={GLYPH_NO_SHRINK} /> {t.market.udUp}\n                  <span className="font-mono text-[12.5px]">× {(1.26).toFixed(2)}</span>`,
+    find: `<UpDownSidePair assetName={assetName} onPick={go} />`,
+    with: `<UpDownSidePair assetName={assetName} onPick={go} /><span className="font-mono text-[12.5px]">× {(1.26).toFixed(2)}</span>`,
   },
   {
     name: "⭐ the shared controls' Up button prints a multiple again (the authed card and the round page's two-way control)",
     file: CONTROLS,
-    find: `<I.arrowUp s={compact ? 14 : 15} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />} {t.market.udUp}`,
-    with: `<I.arrowUp s={compact ? 14 : 15} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />} {t.market.udUp}\n          <span className="font-mono text-[12.5px]">× {(1.26).toFixed(2)}</span>`,
+    find: `          {sideWord(t, side, "UPDOWN")}\n        </button>`,
+    with: `          {sideWord(t, side, "UPDOWN")}<span className="font-mono text-[12.5px]">× {(1.26).toFixed(2)}</span>\n        </button>`,
   },
   {
     name: "⭐ the confirm panel prints the card's multiple again beside its projection",
@@ -98,20 +99,20 @@ const MUTATIONS = [
   {
     name: "⭐ sentence-on-a-two-sided-round — the card says a side is empty when both hold money (a lie)",
     file: CARD,
-    find: `  const outEmpty = emptySideOf(pricing);`,
-    with: `  const outEmpty = emptySideOf(pricing) ?? "BOTH";`,
+    find: `  const refundBrief = cardRefundBrief(t, emptySideOf(pricing));`,
+    with: `  const refundBrief = cardRefundBrief(t, emptySideOf(pricing) ?? "BOTH");`,
   },
   {
     name: "⭐ card-drops-the-sentence — a one-sided round refunds a visitor who was never told",
     file: CARD,
-    find: `              {outEmptyCopy && (`,
-    with: `              {false && outEmptyCopy && (`,
+    find: `      {bettable && refundBrief && (`,
+    with: `      {false && refundBrief && (`,
   },
   {
     name: "the estimate note comes back under the card's buttons (it explained the removed multiple)",
     file: CARD,
-    find: `                  <span>{noticeBody(outEmptyCopy)}</span>\n                </p>\n              )}\n            </>`,
-    with: `                  <span>{noticeBody(outEmptyCopy)}</span>\n                </p>\n              )}\n              <p className="mt-1 text-body-sm text-text-faint">{t.market.udEstimateNote}</p>\n            </>`,
+    find: `<UpDownSidePair assetName={assetName} onPick={go} />`,
+    with: `<UpDownSidePair assetName={assetName} onPick={go} />\n              <p className="mt-1 text-body-sm text-text-faint">{t.market.udEstimateNote}</p>`,
   },
   {
     name: "the round panel projects from a rate again instead of the pool",
@@ -152,21 +153,21 @@ const MUTATIONS = [
   {
     name: "the qualifier opens on × again — naming a multiple no surface prints",
     file: DICT,
-    find: `      udEstimateNote: "The projected return moves with every bet — it is priced from this pool right now, not from fixed odds. When betting closes it becomes your exact payout.",`,
-    with: `      udEstimateNote: "× moves with every bet — it is this pool right now, not fixed odds. When betting closes it becomes your exact payout.",`,
+    find: `      udEstimateNote: "Projected return changes until betting closes. Winning return then fixes; paid only if you win. A void refunds your stake.",`,
+    with: `      udEstimateNote: "× changes until betting closes. Winning return then fixes; paid only if you win. A void refunds your stake.",`,
   },
   {
     // 2026-10-14, the same day: the ruling's Swahili shipped S4-COPY-AUDIT's class-10 agreement error ("Dau zikifungwa").
     name: "the Swahili qualifier goes back to the class-10 \"Dau zikifungwa\" (the reviewed form is \"Madau yakifungwa\")",
     file: DICT,
-    find: `si odds zisizobadilika. Madau yakifungwa, yanakuwa malipo yako kamili.",`,
-    with: `si odds zisizobadilika. Dau zikifungwa, yanakuwa malipo yako kamili.",`,
+    find: `hadi madau yafungwe. Kiasi cha ushindi huwa thabiti; hulipwa ukishinda tu.`,
+    with: `hadi dau zifungwe. Kiasi cha ushindi huwa thabiti; hulipwa ukishinda tu.`,
   },
   {
-    name: "the binding Rules §2 in Swahili goes back to \"dau zitakapofungwa\" (the reviewed form is \"madau yatakapofungwa\")",
+    name: "the binding Rules §2 in Swahili goes back to singular \"dau zikifungwa\"",
     file: RULES,
-    find: `Si ahadi hadi madau yatakapofungwa.</li>`,
-    with: `Si ahadi hadi dau zitakapofungwa.</li>`,
+    find: `Madau yakifungwa, kiasi utakachopata ukishinda kinakuwa thabiti; utakipata tu ukishinda.`,
+    with: `Dau zikifungwa, kiasi utakachopata ukishinda kinakuwa thabiti; utakipata tu ukishinda.`,
   },
   {
     // S12 WP9 step 6: the journey arm's side buttons are their own components; the ruling holds them too.

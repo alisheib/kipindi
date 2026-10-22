@@ -303,6 +303,9 @@ const RUNTIME: Array<{ file: string; cls: string; on: string[]; also?: string[][
   { file: "src/components/layout/needle.tsx", cls: "on", on: [], why: "the needle's wake halo breathes while it is awake (`#needle-root #wake.on`; the halo is placed by `inset`)" },
   // MASWALI-BUILD S5 (2026-10-18): N1 Kubeba (§M8a item 1). Its two callers: the pool figure (no class) and the seal line (`max-w-full`).
   { file: "src/components/maswali/maswali-carry.tsx", cls: "maswali-carry", on: ["inline-flex"], also: [["inline-flex", "max-w-full"]], why: "the carry: the destination's wrapper takes the class for one run, bound from one measurement (`--carry-dx/-dy/-s`), and drops it at its own animationend — the wrapper writes no translate or scale of its own" },
+  // S5-DESIGN-REGISTER (2026-10-21, the motion critic's M5): the carry's ORIGIN — the seal line's annex glyph box — settles its
+  // own mark in when the token lands, the platform's arrival, once; that box writes no placement of its own.
+  { file: "src/components/maswali/maswali-carry.tsx", cls: "g-settle", on: ["inline-flex"], why: "the carry's origin (the annex glyph box, `inline-flex` and nothing else) settles its own mark (\"↪4\") in on the token's landing — `.g-settle` once, on a box that writes no translate, scale or transform of its own" },
 ];
 const PRESS_HELPER = "src/lib/press-feedback.ts";
 /** Follow the exact helper import, including named aliases/namespaces. A new caller must have its element profile
@@ -850,42 +853,134 @@ section("4 · C4 the journey rail stacks from the top only where a label wraps �
   const allLangs = CSS.replace(/@media \(min-width: (?:192|280|332\.8)px\) \{ \.kp-rail--journey:lang\(\w+\) \.kp-rail__item \{ justify-content: center; \} \}\n/g, "");
   ok("4.2″ PLANT · the round-8 rule (every language stacked below 360) is reported", allLangs !== CSS && !railRules(allLangs).holds);
 
-  // ⭐ §4b · MASWALI-BUILD S5-TAB (Ali, 2026-10-19; the lead's width rulings the same day): THE SAME DERIVATION WITH FIVE
-  // TABS. While Millionea shows the rail draws five (`journeyTabsFor(true)`), so a slot is a fifth of the phone, and the
-  // words are the rail's own — the tickets tab's short rail label (`journey.tabTicketsShort`: sw "Tiketi", en "Tickets"; zh
-  // keeps 我的注单). Every language's longest rail word is then 9 letters, so the five slots centre from the same width in
-  // sw, en and zh — under 320 — and ONE rule on the five-tab nav (`data-tabs="5"`) says so; the four-tab rules above are
-  // untouched (4.2 still holds them).
+  // ⭐ §4b · MASWALI-BUILD S5-TAB: five equal tracks (`journeyTabsFor(true)`). The tickets tab takes its short rail
+  // label; U43 keeps the game's full name in every surface. Thus English and Chinese fit one line from 317px, while
+  // Swahili's "Juu na Chini" needs 416px and wraps at 320/360. The five pips stack from the top until its line fits.
+  // Four-tab rules remain separately guarded above.
   const FIVE_TABS = TAB.journeyTabsFor(true);
   const railWord = (l: Loc) => FIVE_TABS.map((d) => TAB.tabLabel(dict[l], d.railLabel ?? d.label));
   const fitsFrom5 = (l: Loc, labels = railWord(l)) => Number((5 * Math.max(...labels.map((s) => mono(s) + labelPad))).toFixed(1));
   const W5 = Object.fromEntries(LOCALES.map((l) => [l, fitsFrom5(l)])) as Record<Loc, number>;
-  const from5 = Math.max(W5.sw, W5.en, W5.zh);
-  ok(`4b.1 · with five tabs every language's longest rail word fits its fifth of the phone from the same width — sw ${W5.sw}px, en ${W5.en}px, zh ${W5.zh}px (the tickets tab says "${railWord("sw")[3]}", "${railWord("en")[3]}", "${railWord("zh")[3]}") — under 320, so no label wraps at any width we hold`,
-    FIVE_TABS.length === 5 && FIVE_TABS[2]?.key === "millionea" && W5.sw === 317 && W5.en === 317 && W5.zh === 317 && from5 <= 320, j(W5));
+  const from5 = W5.en;
+  const overlong5 = (l: Loc, labels = railWord(l)) => labels.filter((s) => mono(s) + labelPad > 320 / 5).length;
+  ok(`4b.1 · five tracks: en ${W5.en}px and zh ${W5.zh}px fit from 317; sw ${W5.sw}px keeps full "${railWord("sw")[1]}" and wraps exactly that label at 320 (tickets: "${railWord("sw")[3]}")`,
+    FIVE_TABS.length === 5 && FIVE_TABS[2]?.key === "millionea" && W5.sw === 416 && W5.en === 317 && W5.zh === 317
+      && railWord("sw")[1] === dict.sw.nav.updown && overlong5("sw") === 1 && overlong5("en") === 0 && overlong5("zh") === 0, j(W5));
   const FIVE = `.kp-rail--journey[data-tabs="5"]`;
-  /** The five-tab rail's rules as one predicate over a stylesheet: five tracks, the slots stacking from the top below the
-   *  width, ONE rule centring them from it in every language (no per-language split while every language agrees). */
-  const railRules5 = (css: string, from: number = from5) => {
+  /** The five-tab rail: common centring from the en/zh fit width, and a full-name Swahili exception until its fit width. */
+  const railRules5 = (css: string, widths: Record<Loc, number> = W5) => {
     const rule = (px: number, sel: string) => { const head = `@media (min-width: ${px}px) { ${sel} {`; const at = css.indexOf(head); return at < 0 ? "" : css.slice(at + head.length, css.indexOf("}", at + head.length)); };
     const own = (sel: string) => { const at = css.indexOf(`\n${sel} {`); return at < 0 ? "" : css.slice(at + sel.length + 3, css.indexOf("}", at)); };
-    const grid = own(`${FIVE} > ul`), base = own(`${FIVE} .kp-rail__item`), one = rule(from, `${FIVE} .kp-rail__item`);
-    const perLang = LOCALES.filter((l) => css.includes(`${FIVE}:lang(${l})`));
+    const sw = `${FIVE}:lang(sw)`;
+    const grid = own(`${FIVE} > ul`), base = own(`${FIVE} .kp-rail__item`);
+    const common = rule(widths.en, `${FIVE} .kp-rail__item`);
+    const swStack = rule(widths.en, `${sw} .kp-rail__item`);
+    const swCentre = rule(widths.sw, `${sw} .kp-rail__item`);
+    const swLabel = own(`${sw} .kp-jtab__label`), swLabelOne = rule(widths.sw, `${sw} .kp-jtab__label`);
+    const commonIndex = css.indexOf(`@media (min-width: ${widths.en}px) { ${FIVE} .kp-rail__item {`);
+    const swStackIndex = css.indexOf(`@media (min-width: ${widths.en}px) { ${sw} .kp-rail__item {`);
+    const swCentreIndex = css.indexOf(`@media (min-width: ${widths.sw}px) { ${sw} .kp-rail__item {`);
     const holds = /grid-template-columns: repeat\(5, minmax\(0, 1fr\)\)/.test(grid) && /justify-content: flex-start/.test(base)
-      && /justify-content: center/.test(one) && perLang.length === 0;
-    return { holds, grid, base, one, perLang };
+      && widths.en === widths.zh && /justify-content: center/.test(common)
+      && /justify-content: flex-start/.test(swStack) && /justify-content: center/.test(swCentre)
+      && /white-space: normal/.test(swLabel) && /text-overflow: clip/.test(swLabel)
+      && /white-space: nowrap/.test(swLabelOne) && /line-height: 1/.test(swLabelOne)
+      && commonIndex >= 0 && swStackIndex > commonIndex && swCentreIndex > swStackIndex;
+    return { holds, grid, base, common, swStack, swCentre, swLabel, swLabelOne };
   };
   const R5 = railRules5(CSS);
-  ok(`4b.2 · the stylesheet holds that width for the five-tab rail: five tracks on the list, the slots stacking from the top below ${from5}px, and one rule centring them from ${from5}px in every language — mobile-first, after the four-tab rules`, R5.holds, j(R5));
+  ok(`4b.2 · five-tab CSS centres en/zh from ${from5}px; sw wraps its full name and top-aligns through ${W5.sw - 1}px, then centres from ${W5.sw}px`, R5.holds, j(R5));
   const longer5 = fitsFrom5("en", railWord("en").map((s) => (s === "Tickets" ? "My open tickets" : s)));
   ok(`4b.1′ PLANT · English's rail word grown to "My open tickets" moves the five-tab width to ${longer5}px: the very check fails on today's stylesheet`,
-    longer5 > from5 && !railRules5(CSS, Math.max(longer5, from5)).holds);
-  const longSw = fitsFrom5("sw", FIVE_TABS.map((d) => TAB.tabLabel(dict.sw, d.label)));
-  const longEn = fitsFrom5("en", FIVE_TABS.map((d) => TAB.tabLabel(dict.en, d.label)));
-  ok(`4b.1″ PLANT · without the short rail label the five-tab widths would be sw ${longSw}px and en ${longEn}px — past 320, so "Tiketi zangu" and "My tickets" could not sit on one line in a fifth of a 320 phone`,
-    longSw > 320 && longEn > 320 && longSw > from5 && longEn > from5);
+    longer5 > from5 && !railRules5(CSS, { ...W5, en: longer5, zh: longer5 }).holds);
+  const fullSw = FIVE_TABS.map((d) => TAB.tabLabel(dict.sw, d.label));
+  const fullEn = FIVE_TABS.map((d) => TAB.tabLabel(dict.en, d.label));
+  ok("4b.1″ PLANT · dropping the short tickets label creates a second wrapping Swahili tab and a wrapping English tab at 320",
+    overlong5("sw", fullSw) === 2 && overlong5("en", fullEn) === 1);
   const stale5 = CSS.replace(`@media (min-width: 317px) { ${FIVE} .kp-rail__item {`, `@media (min-width: 350px) { ${FIVE} .kp-rail__item {`);
   ok("4b.2′ PLANT · the five-tab centring keyed at the old English width, 350, is reported", stale5 !== CSS && !railRules5(stale5).holds);
+  const earlySw = CSS.replace(`@media (min-width: 416px) { ${FIVE}:lang(sw) .kp-rail__item {`, `@media (min-width: 360px) { ${FIVE}:lang(sw) .kp-rail__item {`);
+  ok("4b.2″ PLANT · centring Swahili before its full name fits is reported", earlySw !== CSS && !railRules5(earlySw).holds);
+  const clippedSw = CSS.replace(`${FIVE}:lang(sw) .kp-jtab__label { white-space: normal;`, `${FIVE}:lang(sw) .kp-jtab__label { white-space: nowrap;`);
+  ok("4b.2‴ PLANT · making the Swahili name nowrap while its slot is narrow is reported", clippedSw !== CSS && !railRules5(clippedSw).holds);
+
+  // ⭐ §4c · MASWALI-BUILD S5-FIX-PLATFORM D14 (2026-10-21): NO TWO LABELS STAND CLOSER THAN THEIR PIPS. In five equal
+  // tracks English's nine-letter neighbours stood 4.6px apart at 320 (the tile journey-home-en-320 read ~5px). The minimum
+  // is READ: the pips' own gap at the narrowest phone (a fifth of 320, less `.kp-rail__pip`'s width). Every neighbour pair
+  // is measured with §4's model (the rail's 11px mono, 0.6em a letter, 1em a Chinese character), each label as the
+  // stylesheet sets it at that width — its tracking (`letter-spacing`, after every glyph as Chromium draws it) and, where
+  // it may wrap, its lines (greedy, by word, in its track less its padding) — at every width from 320 to 1023 (the rail is
+  // `lg:hidden`), in sw, en and zh.
+  const pipW = Number(/(?:^|[\s;])width: (\d+)px/.exec(pipRule)?.[1] ?? NaN);
+  const MIN_GAP = 320 / 5 - pipW;
+  /** The value a five-tab label's `prop` takes at `w` in `l`: the last rule that reaches it, in source order (mobile-first). */
+  const fiveLabel = (css: string, prop: string, w: number, l: Loc): string | null => {
+    let value: string | null = null;
+    const rx = new RegExp(`(?:@media \\(min-width: ([0-9.]+)px\\) \\{ )?\\.kp-rail--journey\\[data-tabs="5"\\](?::lang\\((\\w+)\\))? \\.kp-jtab__label \\{([^}]*)\\}`, "g");
+    for (const m of css.matchAll(rx)) {
+      const from = m[1] ? Number(m[1]) : 0, lang = m[2];
+      const decl = new RegExp(`(?:^|;)\\s*${prop}: ([^;]+);`).exec(m[3]);
+      if (decl && w >= from && (!lang || lang === l)) value = decl[1].trim();
+    }
+    return value;
+  };
+  const trackPx = (v: string | null) => (v === null || v === "normal" ? 0 : v.endsWith("em") ? parseFloat(v) * micro : parseFloat(v));
+  type Tabs = ReadonlyArray<{ key: string; label: string; railLabel?: string }>;
+  /** Each label's ink width at `w` in `l` under `css`: tracked, and wrapped where its white-space lets it. */
+  const inks = (css: string, w: number, l: Loc, tabs: Tabs = FIVE_TABS) => {
+    const ls = tabs.length === 5 ? trackPx(fiveLabel(css, "letter-spacing", w, l)) : 0;
+    const lineW = (s: string) => [...s].reduce((a, ch) => a + ((ch.codePointAt(0) ?? 0) >= 0x2e80 ? 1 : 0.6) * micro + ls, 0);
+    const room = w / tabs.length - labelPad;
+    // The base rule wraps below 360, the five-tab Swahili rule through 415; anything else is one line (and would ellipsise).
+    const own = tabs.length === 5 ? fiveLabel(css, "white-space", w, l) : null;
+    const wraps = (own ?? (w < 360 ? "normal" : "nowrap")) === "normal";
+    return tabs.map((d) => {
+      const s = TAB.tabLabel(dict[l], d.railLabel ?? d.label);
+      if (!wraps || lineW(s) <= room) return Math.min(lineW(s), room);
+      const lines: string[] = [];
+      for (const part of s.split(" ")) {
+        const last = lines.at(-1);
+        if (last !== undefined && lineW(`${last} ${part}`) <= room) lines[lines.length - 1] = `${last} ${part}`;
+        else lines.push(part);
+      }
+      return Math.max(...lines.map(lineW));
+    });
+  };
+  /** The least gap between two neighbouring labels' ink, over every width, per language (and where it falls). */
+  const leastGap = (css: string, tabs: Tabs = FIVE_TABS) => Object.fromEntries(LOCALES.map((l) => {
+    let least = { gap: Infinity, at: 0 };
+    for (let w = 320; w < 1024; w++) {
+      const ink = inks(css, w, l, tabs), track = w / tabs.length;
+      for (let i = 0; i + 1 < ink.length; i++) {
+        const gap = Number((track - (ink[i] + ink[i + 1]) / 2).toFixed(2));
+        if (gap < least.gap) least = { gap, at: w };
+      }
+    }
+    return [l, least];
+  })) as Record<Loc, { gap: number; at: number }>;
+  const G = leastGap(CSS);
+  ok(`4c.1 · five tabs: no two neighbouring labels stand closer than their pips (${MIN_GAP}px) at any width from 320 — least sw ${G.sw.gap}px (at ${G.sw.at}), en ${G.en.gap}px (at ${G.en.at}), zh ${G.zh.gap}px (at ${G.zh.at})`,
+    pipW === 56 && MIN_GAP === 8 && LOCALES.every((l) => G[l].gap >= MIN_GAP), j(G));
+  const untracked = CSS.replace(/\n\.kp-rail--journey\[data-tabs="5"\]:lang\(en\) \.kp-jtab__label \{ letter-spacing: -0\.04em; \}\n@media \(min-width: 337px\) \{ \.kp-rail--journey\[data-tabs="5"\]:lang\(en\) \.kp-jtab__label \{ letter-spacing: normal; \} \}/, "");
+  const U = leastGap(untracked);
+  ok(`4c.1′ CONTROL + PLANT · without English's tracking the model reads the tile's gap — en ${U.en.gap}px at ${U.en.at} — and the check fails`,
+    untracked !== CSS && U.en.gap === 4.6 && U.en.at === 320 && U.en.gap < MIN_GAP, j(U.en));
+  const early = CSS.replace('@media (min-width: 337px) { .kp-rail--journey[data-tabs="5"]:lang(en) .kp-jtab__label { letter-spacing: normal; } }',
+    '@media (min-width: 330px) { .kp-rail--journey[data-tabs="5"]:lang(en) .kp-jtab__label { letter-spacing: normal; } }');
+  ok("4c.1″ PLANT · the tracking given back at 330, before the pair clears 8px untouched, is reported", early !== CSS && leastGap(early).en.gap < MIN_GAP, j(leastGap(early).en));
+  // The four-tab rail is the answer while Millionea is withdrawn: no rule of this kind reaches it, so it draws as it did.
+  // ⚠️ AND ITS OWN LEAST GAP IS UNDER THE MINIMUM, read here and left as it is: Swahili's "Juu na Chini" | "Tiketi zangu",
+  // both one line from 332.8 (§4.1), stand 83.25 − 79.2 = 4.05px apart at 333 and clear 8px only from ~347. It is the rail
+  // every reader is served while Millionea is withdrawn, which this release may not change (reported to the lead).
+  /** Every rule that tracks a rail label (or anything in the journey rail) without naming the five-tab rail. */
+  const fourReached = (css: string) => [...css.matchAll(/(?:^|\n|\{ )([^{}\n]*(?:kp-jtab__label|kp-rail__label|kp-rail--journey)[^{}\n]*)\{([^}]*)\}/g)]
+    .filter((m) => /letter-spacing/.test(m[2]) && !m[1].includes('[data-tabs="5"]')).map((m) => m[1].trim());
+  const G4 = leastGap(CSS, TAB.JOURNEY_TABS);
+  ok(`4c.2 · the four-tab rail is untouched: no tracking rule reaches it, nor any rail label but the five-tab rail's (its least gap from 320, as it was: sw ${G4.sw.gap}px at ${G4.sw.at}, en ${G4.en.gap}, zh ${G4.zh.gap})`,
+    fourReached(CSS).length === 0 && fourReached(untracked).length === 0, j({ reached: fourReached(CSS), G4 }));
+  const spilled = CSS.replace('.kp-rail--journey[data-tabs="5"]:lang(en) .kp-jtab__label { letter-spacing: -0.04em; }', ".kp-rail--journey:lang(en) .kp-jtab__label { letter-spacing: -0.04em; }");
+  ok("4c.2′ PLANT · the tracking written for every journey rail (the four-tab rail's English changed while Millionea is withdrawn) is reported",
+    spilled !== CSS && fourReached(spilled).length === 1, j(fourReached(spilled)));
 }
 
 /* ══ §5 · C5 · THE STACKED FLAG ON A WHOLE PIXEL ═══════════════════════════════════════════════════════════════════════ */

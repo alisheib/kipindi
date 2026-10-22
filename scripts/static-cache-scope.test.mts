@@ -43,7 +43,15 @@ const PUBLIC = join(process.cwd(), "public");
 type Rule = { source: string; headers: { key: string; value: string }[] };
 // next.config.ts loads as CommonJS under tsx, so its default export may arrive one level down.
 const config = ((configModule as { default?: { default?: unknown } }).default?.default ?? (configModule as { default?: unknown }).default) as { headers: () => Promise<Rule[]> };
-const rules = (await config.headers()) ?? [];
+/** Ask the same config in both modes: the production cache policy and Next's development revalidation differ. */
+const env = process.env as Record<string, string | undefined>;
+const rulesIn = async (mode: "development" | "production"): Promise<Rule[]> => {
+  const was = env.NODE_ENV;
+  env.NODE_ENV = mode;
+  try { return (await config.headers()) ?? []; } finally { if (was === undefined) delete env.NODE_ENV; else env.NODE_ENV = was; }
+};
+const devRules = await rulesIn("development"), prodRules = await rulesIn("production");
+const rules = prodRules;
 const immutableSources = rules.filter((r) => r.headers.some((h) => h.key.toLowerCase() === "cache-control" && h.value === IMMUTABLE)).map((r) => r.source);
 /** As the server compiles a header's source (custom routes: strict, unnamed params removed, and the route regex
  *  modified as `router-utils/filesystem.js` modifies it — an optional trailing slash, so `/:path*` also matches `/`;
@@ -51,10 +59,10 @@ const immutableSources = rules.filter((r) => r.headers.some((h) => h.key.toLower
 const matcherOf = (source: string) => getPathMatch(source, { strict: true, removeUnnamedParams: true, regexModifier: (r: string) => modifyRouteRegex(r) });
 const matchesAny = (sources: readonly string[], path: string) => sources.find((s) => matcherOf(s)(path) !== false) ?? null;
 
-console.log("static-cache-scope — the one-year immutable cache is for static files only");
+console.log("static-cache-scope — production caches only static files; development revalidates them");
 
 console.log("§1 · every immutable source names a real static place");
-ok("1.locate · next.config.ts's headers() sends the immutable cache to at least the build output", immutableSources.includes("/_next/static/:path*"), immutableSources.join(" "));
+ok("1.locate · production headers() sends the immutable cache to at least the build output", immutableSources.includes("/_next/static/:path*"), immutableSources.join(" "));
 for (const s of immutableSources) {
   if (s === "/_next/static/:path*") continue;
   const folder = /^\/([a-z0-9-]+)\/:path\*$/.exec(s);
@@ -94,14 +102,7 @@ const planted = [...immutableSources, OLD];
 ok("4.2 PLANT · the old suffix rule put back into the list is reported by §3", PAGES.some((p) => matchesAny(planted, p)));
 
 console.log("§5 · every response carries the static security headers (all but the CSP)");
-/** headers() as each environment reads it (it asks NODE_ENV when called): HSTS is production's alone. */
-const env = process.env as Record<string, string | undefined>;
-const rulesIn = async (mode: "development" | "production"): Promise<Rule[]> => {
-  const was = env.NODE_ENV;
-  env.NODE_ENV = mode;
-  try { return (await config.headers()) ?? []; } finally { if (was === undefined) delete env.NODE_ENV; else env.NODE_ENV = was; }
-};
-const devRules = await rulesIn("development"), prodRules = await rulesIn("production");
+/** HSTS is production's alone; both modes still share every other security header. */
 const lower = (hs: { key: string; value: string }[]) => Object.fromEntries(hs.map((h) => [h.key.toLowerCase(), h.value]));
 const listFor = (production: boolean) => lower(Object.entries({ ...SECURITY_HEADERS, ...(production ? PROD_HEADERS : {}) }).map(([key, value]) => ({ key, value })));
 const sameMap = (a: Record<string, string>, b: Record<string, string>) => JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort());
@@ -144,6 +145,15 @@ ok("5.8 PLANT · a CSP put into it is reported by 5.2; its source narrowed to /:
   withCsp(plantRule((r) => ({ ...r, headers: [...r.headers, { key: "Content-Security-Policy", value: "default-src 'self'" }] }))).length === 1
     && unreached(plantRule((r) => ({ ...r, source: "/:path+" }))).includes("/")
     && !proxySendsList(proxySrc.replace("// The static security headers", 'const SECURITY_HEADERS = { "X-Frame-Options": "DENY" };\n// The static security headers')));
+
+console.log("§6 · Next owns development cache revalidation");
+const customCache = (rs: Rule[]) => rs.filter((r) => r.headers.some((h) => h.key.toLowerCase() === "cache-control"));
+ok("6.1 · development adds no custom Cache-Control rule to changing chunks or public files",
+  customCache(devRules).length === 0, customCache(devRules).map((r) => r.source).join(" · "));
+ok("6.2 · production keeps the one-year cache on chunks and public files, and not on pages",
+  headersAt(prodRules, "/_next/static/chunks/main-abc123.js")["cache-control"] === IMMUTABLE
+    && headersAt(prodRules, "/icons/nope")["cache-control"] === IMMUTABLE
+    && headersAt(prodRules, "/markets")["cache-control"] === undefined);
 
 console.log(`static-cache-scope: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

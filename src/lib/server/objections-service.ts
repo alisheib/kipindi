@@ -25,8 +25,9 @@
 import { db, type StoredObjection, type ObjectionReason, type ObjectionRemedy } from "./store";
 import { audit } from "./audit";
 import { randomId } from "./crypto";
-import { withLock } from "./locks";
+import { afterCommit, withLock } from "./locks";
 import { getMarket, listPositionsForMarket, type StoredMarket } from "./market-service";
+import { roundStore, type VoidReason } from "./updown-dal";
 import { getEffectiveConfig } from "./market-config";
 import { notifyAdminObjectionFiled, notifyObjectionDecided } from "./notification-service";
 // R9-D: every objection write below moves the rulings memo's generation once it has landed (reversals.ts).
@@ -48,7 +49,7 @@ export const OBJECTION_REASONS: ObjectionReason[] = [
 
 /**
  * Ruling on an objection is a MONEY act — upholding VOIDs a market (refunding
- * every stake) or REVERSEs the verdict (paying the other side instead), and even
+ * stakes still held while keeping earlier cash-outs) or REVERSEs the verdict (paying the other side instead), and even
  * a rejection releases a settlement freeze so the pool pays out. So the role is
  * checked HERE, in the service, not only in the server action.
  *
@@ -208,13 +209,14 @@ export async function fileObjection(
 }
 
 /**
- * An emergency void kills a market outright and refunds every stake. It is the
+ * An emergency void kills a market outright and refunds stakes still held. It is the
  * ops kill-switch, so it deliberately does NOT wait for objections — but that
  * leaves any OPEN objection stranded on a market that has now settled: stuck in
  * the officer queue as un-actionable, inflating the frozen-money KPI, and leaving
  * the player who filed it with no answer.
  *
- * A void IS the VOID remedy — every stake came back in full, which is exactly what
+ * A void IS the VOID remedy — held stakes came back in full, while earlier cash-outs
+ * keep their paid amount — which is exactly what
  * upholding with VOID does. So we close them out as UPHELD/VOID and tell the
  * objector, rather than letting them rot. Called from emergencyVoidMarket AFTER
  * the officer's role has already been checked there.
@@ -223,29 +225,77 @@ export async function closeObjectionsForVoidedMarket(
   marketId: string,
   officerId: string,
   reason: string,
+  deferNoticeUntilRefundsFinish?: (notice: () => void) => void,
 ): Promise<number> {
-  const open = (await db.objection.listForMarket(marketId)).filter((o) => o.status === "OPEN");
-  const now = new Date().toISOString();
-  for (const o of open) {
-    await db.objection.update(o.id, {
-      status: "UPHELD",
-      remedy: "VOID",
-      reviewedBy: officerId,
-      reviewedAt: now,
-      reviewNote: `Market emergency-voided; every stake refunded in full. Reason: ${reason}`.slice(0, 1000),
+  // emergencyVoidMarket calls this while it holds this exact lock. Re-entry
+  // joins the same PostgreSQL transaction; direct callers acquire the lock too.
+  // The old DAL calls used pc() on another connection, so a later failure could
+  // roll the refunds back while leaving these cases UPHELD and players notified.
+  return withLock(`market:${marketId}`, async (tx) => {
+    const { marketStore } = await import("./market-dal");
+    const market = await marketStore.get(marketId, tx);
+    if (!market || market.status !== "VOIDED" || market.resolvedOutcome !== "VOID" || !market.settledAt) {
+      throw new Error("cannot close objections before the emergency VOID is recorded");
+    }
+    const open = tx
+      ? await tx.objection.findMany({ where: { marketId, status: "OPEN" }, orderBy: { createdAt: "desc" } })
+      : (await db.objection.listForMarket(marketId)).filter((o) => o.status === "OPEN");
+    const now = new Date().toISOString();
+    const reviewNote = `Market emergency-voided; held stakes refunded in full, earlier cash-outs kept their paid amount. Reason: ${reason}`.slice(0, 1000);
+    const changedMemory: StoredObjection[] = [];
+    const notices: Array<() => void> = [];
+    try { for (const o of open) {
+      if (tx) {
+        await tx.objection.update({
+          where: { id: o.id },
+          data: { status: "UPHELD", remedy: "VOID", reviewedBy: officerId, reviewedAt: new Date(now), reviewNote },
+        });
+      } else {
+        const written = await db.objection.update(o.id, {
+          status: "UPHELD", remedy: "VOID", reviewedBy: officerId, reviewedAt: now, reviewNote,
+        });
+        if (!written) throw new Error("OPEN objection disappeared during emergency VOID closure");
+        changedMemory.push(o as StoredObjection);
+      }
+      notices.push(() => {
+        audit({
+          category: "COMPLIANCE", action: "objection.closed_by_void", actorId: officerId,
+          targetType: "Market", targetId: marketId,
+          payload: { objectionId: o.id, objectorId: o.userId, reason,
+            effect: "market voided; held stakes refunded and earlier cash-outs kept their paid amount — the objection is answered by the void" },
+        });
+        void notifyObjectionDecided(o.userId, { upheld: true, marketId,
+          note: `The market was voided. Stakes still held were refunded; earlier cash-outs kept their paid amount. ${reason}` }).catch(() => {});
+      });
+    } } catch (error) {
+      // The in-memory twin has no database rollback. At least make this helper
+      // all-or-none: undo any objection rows changed before a later write fault,
+      // and send none of their notices. The broader emergency money path remains
+      // non-transactional in memory; PostgreSQL rolls the whole market back.
+      if (!tx) {
+        const rollbackErrors: unknown[] = [];
+        for (const prior of changedMemory.reverse()) {
+          try {
+            await db.objection.update(prior.id, {
+              status: prior.status, remedy: prior.remedy, reviewedBy: prior.reviewedBy,
+              reviewedAt: prior.reviewedAt, reviewNote: prior.reviewNote,
+            });
+          } catch (rollbackError) { rollbackErrors.push(rollbackError); }
+        }
+        // A reader may have cached the temporary UPHELD row before the memory
+        // rollback. Invalidate that snapshot even when a restore itself failed.
+        noteObjectionWrite();
+        if (rollbackErrors.length) throw new AggregateError([error, ...rollbackErrors], "emergency objection closure and memory rollback failed");
+      }
+      throw error;
+    }
+    afterCommit(tx, () => noteObjectionWrite());
+    for (const notice of notices) afterCommit(tx, () => {
+      if (deferNoticeUntilRefundsFinish) deferNoticeUntilRefundsFinish(notice);
+      else notice();
     });
-    noteObjectionWrite();
-    audit({
-      category: "COMPLIANCE",
-      action: "objection.closed_by_void",
-      actorId: officerId,
-      targetType: "Market",
-      targetId: marketId,
-      payload: { objectionId: o.id, objectorId: o.userId, reason, effect: "market voided and every stake refunded — the objection is answered by the void" },
-    });
-    notifyObjectionDecided(o.userId, { upheld: true, marketId, note: `The market was voided and your stake was refunded in full. ${reason}` }).catch(() => {});
-  }
-  return open.length;
+    return open.length;
+  });
 }
 
 /**
@@ -284,7 +334,7 @@ export async function closeObjectionsForVoidedMarket(
  * ⚠️ SO THE HONEST STATEMENT IS NARROWER, AND IT IS STILL THE PROPERTY WORTH HAVING: a lone
  * officer cannot turn their own hold into a PAYOUT. Both directions that move money to a player
  * — reject (pay the recorded verdict) and uphold/REVERSE (pay the other side) — require a second
- * officer. What one officer can still do alone is VOID the market, which refunds every stake at
+ * officer. What one officer can still do alone is VOID the market, which refunds held stakes at
  * zero fee and answers their own case by destroying it. That is the pre-existing kill switch, not
  * a hole this feature opened, and it is deliberately NOT closed here: leaving an objection OPEN
  * on a market that has been voided and fully refunded would strand the row and the market, which
@@ -377,8 +427,8 @@ export async function holdSettlementAsOfficer(
         effect:
           "settlement frozen: no winner is paid until an objection ruling. Both paying outcomes " +
           "(reject → the recorded verdict pays; uphold → the other side pays) require a DIFFERENT " +
-          "officer, because a filer cannot rule on their own case. A void, which refunds every " +
-          "stake, remains available to a single ADMIN/COMPLIANCE officer and would close this hold.",
+          "officer, because a filer cannot rule on their own case. A void, which refunds held " +
+          "stakes while preserving earlier cash-outs, remains available to a single ADMIN/COMPLIANCE officer and would close this hold.",
       },
     });
 
@@ -423,12 +473,29 @@ export async function rejectObjection(
     return { ok: false, error: "You cannot rule on your own objection.", code: "CONFLICT" };
   }
 
-  await db.objection.update(objectionId, {
-    status: "REJECTED",
-    reviewedBy: officerId,
-    reviewedAt: new Date().toISOString(),
-    reviewNote,
+  // A rejection and an uphold for the SAME OPEN case must serialize. Previously
+  // reject wrote outside the market lock, so two officers could both pass the
+  // OPEN pre-check and each announce a different final ruling. PostgreSQL's
+  // conditional update runs inside the same transaction as the market lock.
+  const rejected = await withLock(`market:${o.marketId}`, async (tx) => {
+    const live = tx
+      ? await tx.objection.findUnique({ where: { id: objectionId } })
+      : await db.objection.findById(objectionId);
+    if (!live || live.status !== "OPEN") return false;
+    if (tx) {
+      await tx.objection.update({
+        where: { id: objectionId },
+        data: { status: "REJECTED", reviewedBy: officerId, reviewedAt: new Date(), reviewNote },
+      });
+    } else {
+      await db.objection.update(objectionId, {
+        status: "REJECTED", reviewedBy: officerId,
+        reviewedAt: new Date().toISOString(), reviewNote,
+      });
+    }
+    return true;
   });
+  if (!rejected) return { ok: false, error: "This objection has already been decided.", code: "INVALID" };
   noteObjectionWrite();
   audit({
     category: "COMPLIANCE",
@@ -466,12 +533,12 @@ export async function rejectObjection(
  * UPHOLD — the player was right. Because the market has not settled, the pool is
  * still whole and we can genuinely fix the outcome:
  *
- *   VOID    → nobody was right; refund every stake in full (0% fee).
+ *   VOID    → no side wins; refund stakes still held in full (0% fee), preserving earlier cash-outs.
  *   REVERSE → the other side actually won; flip the verdict.
  *
  * A REVERSE re-opens the objection window: the verdict changed, so the players it
  * now goes against deserve the same right to object that the original side had.
- * A VOID does not — a full refund cannot aggrieve anyone, so it settles on the
+ * A VOID does not — held stakes get a full refund, so it settles on the
  * next sweep.
  *
  * Both remedies are only reachable while settledAt is null. If the market somehow
@@ -504,10 +571,16 @@ export async function upholdObjection(
     return { ok: false, error: "You cannot rule on your own objection.", code: "CONFLICT" };
   }
 
-  const ruling = await withLock(`market:${o.marketId}`, async (): Promise<ServiceResult<{ newOutcome: string }>> => {
+  const ruling = await withLock(`market:${o.marketId}`, async (tx): Promise<ServiceResult<{ newOutcome: string }>> => {
     // Re-read under the lock — this is a money decision.
     const { marketStore } = await import("./market-dal");
-    const m = await marketStore.get(o.marketId);
+    const liveObjection = tx
+      ? await tx.objection.findUnique({ where: { id: objectionId } })
+      : await db.objection.findById(objectionId);
+    if (!liveObjection || liveObjection.status !== "OPEN") {
+      return { ok: false, error: "This objection has already been decided.", code: "INVALID" };
+    }
+    const m = await marketStore.get(o.marketId, tx);
     if (!m) return { ok: false, error: "Market not found.", code: "NOT_FOUND" };
     if (m.settledAt) {
       // Should be impossible (an OPEN objection freezes settlement), but if it
@@ -526,56 +599,136 @@ export async function upholdObjection(
       return { ok: false, error: "Only a YES/NO verdict can be reversed. Use VOID.", code: "INVALID" };
     }
 
+    // Up & Down keeps the price observation on its round, while the PredictionMarket
+    // carries the money verdict. Validate the linked row BEFORE any write. On PostgreSQL
+    // the three writes below share this lock's transaction, so a failed round update
+    // cannot leave a changed money verdict with an old player-facing round result.
+    const round = m.productLine === "UPDOWN"
+      ? tx
+        ? await tx.upDownRound.findUnique({ where: { marketId: m.id } })
+        : await roundStore.getByMarketId(m.id)
+      : null;
+    if (m.productLine === "UPDOWN" && !round) {
+      return { ok: false, error: "The Up & Down round linked to this market is missing.", code: "NOT_FOUND" };
+    }
+
     const previousOutcome = m.resolvedOutcome;
     const now = new Date().toISOString();
+    const newOutcome = input.remedy === "VOID" ? "VOID" : previousOutcome === "YES" ? "NO" : "YES";
+    const objectionsClosedAt = input.remedy === "VOID"
+      ? new Date(Date.now() - 1000).toISOString()
+      : new Date(Date.now() + Math.max(0, (await getEffectiveConfig(m.id)).objectionWindowHours) * 3600_000).toISOString();
+    const correction = m.productLine === "UPDOWN" && previousOutcome !== newOutcome;
+    const priorEvidence = m.resolutionEvidence ?? "";
+    // A second successful objection must describe the LATEST official verdict,
+    // while retaining the original source record only once. Audit rows preserve
+    // each intervening ruling; nesting correction prose here would mislabel an
+    // earlier officer ruling as a read and bury the original price evidence.
+    const originalEvidence = priorEvidence.startsWith("UPDOWN_OFFICER_CORRECTION:")
+      ? priorEvidence.split("Prior resolution record: ").at(-1) ?? ""
+      : priorEvidence;
+    const resolutionEvidence = correction
+      ? (`UPDOWN_OFFICER_CORRECTION: Official verdict changed from ${previousOutcome ?? "unrecorded"} to ${newOutcome} after an upheld objection. ` +
+          `The recorded open and close prices and targets remain unchanged. Prior resolution record: ${originalEvidence}`)
+      : m.resolutionEvidence;
 
-    if (input.remedy === "VOID") {
-      m.resolvedOutcome = "VOID";
-      m.status = "VOIDED";
-      // Refunds cannot aggrieve anyone, so no fresh window: settle on the next
-      // sweep. (Backdating by a second keeps the sweeper's `<= now` honest.)
-      m.objectionsClosedAt = new Date(Date.now() - 1000).toISOString();
-    } else {
-      m.resolvedOutcome = m.resolvedOutcome === "YES" ? "NO" : "YES";
-      m.status = "RESOLVED";
-      // The verdict changed — the newly-losing side gets its own objection window.
-      const cfg = await getEffectiveConfig(m.id);
-      m.objectionsClosedAt = new Date(Date.now() + Math.max(0, cfg.objectionWindowHours) * 3600_000).toISOString();
+    // A VOID needs no fresh objection window; the still-held stakes are due back
+    // when settlement commits. A REVERSE gives the newly losing side a fresh window.
+    try {
+    await marketStore.stamp(m.id, {
+      resolvedOutcome: newOutcome,
+      status: newOutcome === "VOID" ? "VOIDED" : "RESOLVED",
+      objectionsClosedAt,
+      resolutionEvidence,
+      updatedAt: now,
+    }, tx);
+
+    if (round) {
+      const roundOutcome = newOutcome === "YES" ? "UP" : newOutcome === "NO" ? "DOWN" : "VOID";
+      const priorReason = round.voidReason;
+      const validPriorReason: VoidReason | null = priorReason === "no-move" || priorReason === "source-failed" ||
+        priorReason === "source-mismatch" || priorReason === "operator" ? priorReason : null;
+      const voidReason: VoidReason | null = roundOutcome === "VOID"
+        ? previousOutcome === "VOID" ? validPriorReason : "operator"
+        : null;
+      // Preserve immutable source observations, prices and frozen targets. The
+      // officer's ruling changes the payable verdict, not what the feed recorded.
+      if (tx) {
+        await tx.upDownRound.update({
+          where: { id: round.id }, data: { outcome: roundOutcome, voidReason },
+        });
+      } else {
+        await roundStore.patch(round.id, { outcome: roundOutcome, voidReason });
+      }
     }
-    m.updatedAt = now;
-    await marketStore.set(m);
 
-    await db.objection.update(objectionId, {
-      status: "UPHELD",
-      reviewedBy: officerId,
-      reviewedAt: now,
-      reviewNote,
-      remedy: input.remedy,
+    if (tx) {
+      await tx.objection.update({
+        where: { id: objectionId },
+        data: { status: "UPHELD", reviewedBy: officerId, reviewedAt: new Date(now), reviewNote, remedy: input.remedy },
+      });
+    } else {
+      const written = await db.objection.update(objectionId, {
+        status: "UPHELD", reviewedBy: officerId, reviewedAt: now, reviewNote, remedy: input.remedy,
+      });
+      if (!written) throw new Error("OPEN objection disappeared before its ruling could be recorded");
+    }
+    } catch (error) {
+      // Production's explicit `tx` rolls all three rows back. The local memory
+      // twin has no transaction; restore its prior snapshots too, so a fault in
+      // the round or objection write never leaves an OPEN case with a flipped
+      // market that a retry would flip back a second time.
+      if (!tx) {
+        const rollbackErrors: unknown[] = [];
+        if (round) {
+          try {
+            await roundStore.patch(round.id, {
+              outcome: round.outcome as "UP" | "DOWN" | "VOID" | null,
+              voidReason: round.voidReason as VoidReason | null,
+            });
+          } catch (rollbackError) { rollbackErrors.push(rollbackError); }
+        }
+        try {
+          await marketStore.stamp(m.id, {
+            resolvedOutcome: m.resolvedOutcome, status: m.status,
+            objectionsClosedAt: m.objectionsClosedAt,
+            resolutionEvidence: m.resolutionEvidence, updatedAt: m.updatedAt,
+          });
+        } catch (rollbackError) { rollbackErrors.push(rollbackError); }
+        try {
+          const after = await db.objection.findById(objectionId);
+          if (after?.status === "UPHELD") await db.objection.update(objectionId, {
+            status: liveObjection.status, reviewedBy: liveObjection.reviewedBy,
+            // This branch has no Prisma transaction, so the row came from the
+            // memory DAL and its timestamp is already an ISO string or null.
+            reviewedAt: (liveObjection as StoredObjection).reviewedAt,
+            reviewNote: liveObjection.reviewNote, remedy: (liveObjection as StoredObjection).remedy,
+          });
+        } catch (rollbackError) { rollbackErrors.push(rollbackError); }
+        // The failed ruling could have been observed between its memory write
+        // and this restore; the rulings memo must not keep that temporary row.
+        noteObjectionWrite();
+        if (rollbackErrors.length) throw new AggregateError([error, ...rollbackErrors], "officer ruling and memory rollback failed");
+      }
+      throw error;
+    }
+
+    afterCommit(tx, () => {
+      noteObjectionWrite();
+      audit({
+        category: "COMPLIANCE", action: "objection.upheld", actorId: officerId,
+        targetType: "Market", targetId: m.id,
+        payload: {
+          objectionId, objectorId: o.userId, reason: o.reason, remedy: input.remedy,
+          previousOutcome, newOutcome, roundId: round?.id ?? null,
+          note: reviewNote, objectionsClosedAt,
+          note2: "held positions had not settled; earlier cash-outs retain their paid amounts",
+        },
+      });
+      void notifyObjectionDecided(o.userId, { upheld: true, marketId: m.id, note: reviewNote }).catch(() => {});
     });
-    noteObjectionWrite();
 
-    audit({
-      category: "COMPLIANCE",
-      action: "objection.upheld",
-      actorId: officerId,
-      targetType: "Market",
-      targetId: m.id,
-      payload: {
-        objectionId,
-        objectorId: o.userId,
-        reason: o.reason,
-        remedy: input.remedy,
-        previousOutcome,
-        newOutcome: m.resolvedOutcome,
-        note: reviewNote,
-        objectionsClosedAt: m.objectionsClosedAt,
-        note2: "money had not moved — the verdict was corrected before settlement",
-      },
-    });
-
-    notifyObjectionDecided(o.userId, { upheld: true, marketId: m.id, note: reviewNote }).catch(() => {});
-
-    return { ok: true, data: { newOutcome: m.resolvedOutcome! } };
+    return { ok: true, data: { newOutcome } };
   });
 
   // 🔴 RE-ARM THE SETTLE TIMER — MOVING `objectionsClosedAt` IS NOT ENOUGH.

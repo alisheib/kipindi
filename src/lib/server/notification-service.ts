@@ -24,6 +24,7 @@ import { randomId } from "./crypto";
 import { emit } from "./event-bus";
 import type { StoredNotification } from "./store";
 import { formatTzs } from "@/lib/utils";
+import { emergencyRefundDestination } from "@/lib/emergency-refund-destination";
 // 2026-09-13 · the one review-wait number every surface quotes (the submitted notice and the officer's
 // overdue-review alert), and the label that alert names a player by.
 import { KYC_REVIEW_SLA_HOURS } from "@/lib/kyc-sla";
@@ -530,13 +531,10 @@ export function notifyUpDownLoss(userId: string, opts: UpDownResultOpts) {
 /**
  * Up & Down VOID refund — the round could not be settled, so the stake returns in full.
  *
- * ⚠️ `kind: DEPOSIT` is chosen, not copied. `notifyOneSidedRefund` files a refund under
- * `WIN`, which `comms-registry` itself flags as one of the misfilings that make the
- * production "top events" numbers wrong. A refund is money returning to the wallet, so
- * DEPOSIT is the honest kind and it renders with the money-in tint rather than a trophy.
+ * A refund has its own kind: money returned after a void is neither a deposit nor a win.
  */
 export function notifyUpDownRefund(userId: string, opts: UpDownResultOpts) {
-  return notifyUpDownResult(userId, "DEPOSIT", opts, {
+  return notifyUpDownResult(userId, "REFUND", opts, {
     titleEn: `Refunded · ${formatTzs(opts.stake)}`,
     titleSw: `Umerudishiwa · ${formatTzs(opts.stake)}`,
     titleZh: `已退款 · ${formatTzs(opts.stake)}`,
@@ -548,7 +546,7 @@ export function notifyUpDownRefund(userId: string, opts: UpDownResultOpts) {
 
 /** Up & Down ONE-SIDED refund — nobody took the other side, so there was nothing to win. */
 export function notifyUpDownOneSidedRefund(userId: string, opts: UpDownResultOpts) {
-  return notifyUpDownResult(userId, "DEPOSIT", opts, {
+  return notifyUpDownResult(userId, "REFUND", opts, {
     titleEn: `Refunded · ${formatTzs(opts.stake)}`,
     titleSw: `Umerudishiwa · ${formatTzs(opts.stake)}`,
     titleZh: `已退款 · ${formatTzs(opts.stake)}`,
@@ -731,7 +729,7 @@ export function notifyDeposit(
   if (opts.status === "AML_REVIEW") {
     return notify({
       userId,
-      kind: "DEPOSIT",
+      kind: "DEPOSIT_REVIEW",
       titleEn: `Deposit under review · ${amt}`,
       titleSw: `Amana inakaguliwa · ${amt}`,
       titleZh: `充值待核查 · ${amt}`,
@@ -762,7 +760,7 @@ export function notifyDeposit(
     // expensive mistake this line exists to prevent.
     return notify({
       userId,
-      kind: "DEPOSIT",
+      kind: "DEPOSIT_PROCESSING",
       titleEn: `Deposit processing · ${amt}`,
       titleSw: `Amana inashughulikiwa · ${amt}`,
       titleZh: `充值处理中 · ${amt}`,
@@ -778,7 +776,7 @@ export function notifyDeposit(
     // deposit reads as a charge that vanished.
     return notify({
       userId,
-      kind: "DEPOSIT",
+      kind: "DEPOSIT_FAILED",
       titleEn: `Deposit failed · ${amt}`,
       titleSw: `Amana imeshindikana · ${amt}`,
       titleZh: `充值失败 · ${amt}`,
@@ -798,7 +796,7 @@ export function notifyDeposit(
   // been delivered (the 2026-10-07 entry records "returned to the account it came from", sent while still held, as untrue).
   return notify({
     userId,
-    kind: "DEPOSIT",
+    kind: "DEPOSIT_HELD",
     titleEn: `Deposit held for return · ${amt}`,
     titleSw: `Amana imeshikiliwa ili irudishwe · ${amt}`,
     titleZh: `充值暂扣待退还 · ${amt}`,
@@ -1271,7 +1269,7 @@ export function notifyProposalDeclined(userId: string, opts: { titleEn: string; 
 export function notifyRefund(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; positionId?: string }) {
   return notify({
     userId,
-    kind: "DEPOSIT",
+    kind: "REFUND",
     titleEn: `Refund · ${formatTzs(opts.stake)} returned`,
     titleSw: `Kurudishiwa · ${formatTzs(opts.stake)}`,
     titleZh: `退款 · 已退回 ${formatTzs(opts.stake)}`,
@@ -1282,38 +1280,39 @@ export function notifyRefund(userId: string, opts: { stake: number; marketTitle:
   });
 }
 
-/** Player notice: a market they had a stake in was cancelled (emergency void).
- *  Carries the admin's reason and confirms the full refund.
+/** Player notice: a still-held stake was refunded by an emergency void.
+ *  Carries the admin's reason and the actual real/bonus destination.
  *  🔴 ROUND 3 (2026-10-09, tile 192): it read "…before settlement.. Dau lako lote limerejeshwa kwenye pochi yako.
  *  · pos_34d10350dfa7510cfad5" — the officer's reason kept its own full stop under the template's, and the position
  *  id was appended to the sentence. `endClause` ends the reason once, in the reader's own stop; the id rides the
  *  link, which opens the refunded ticket on its market's page (it opened /wallet, and one link for every refund of a
- *  market is why the id had to be in the words). The wallet is still where the sentence says the money went. */
-export function notifyMarketCancelled(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; reason: string; positionId?: string }) {
+ *  market is why the id had to be in the words). */
+export function notifyMarketCancelled(userId: string, opts: { stake: number; bonusStakeTzs: number; marketTitle: LocalizedText; marketId: string; reason: string; positionId?: string }) {
+  const destination = emergencyRefundDestination(opts.stake, opts.bonusStakeTzs);
   return notify({
     userId,
-    kind: "DEPOSIT", // money returned to the wallet
+    kind: "REFUND", // the message names credits at refund; current balances can reflect a bonus re-lock
     titleEn: `Market cancelled · ${formatTzs(opts.stake)} refunded`,
     titleSw: `Soko limefutwa · ${formatTzs(opts.stake)} imerejeshwa`,
     titleZh: `市场已取消 · 已退款 ${formatTzs(opts.stake)}`,
-    bodyEn: `"${clipQuote(opts.marketTitle.en, 60)}" was cancelled: ${endClause(clipQuote(opts.reason, 120), ".")} Your full stake has been returned to your wallet.`,
-    bodySw: `"${clipQuote(opts.marketTitle.sw, 60)}" limefutwa: ${endClause(clipQuote(opts.reason, 120), ".")} Dau lako lote limerejeshwa kwenye pochi yako.`,
-    bodyZh: `"${clipQuote(opts.marketTitle.zh, 60)}" 已取消：${endClause(clipQuote(opts.reason, 120), "。")}您的本金已全额退回钱包。`,
+    bodyEn: `"${clipQuote(opts.marketTitle.en, 60)}" was cancelled: ${endClause(clipQuote(opts.reason, 120), ".")} ${destination.en}`,
+    bodySw: `"${clipQuote(opts.marketTitle.sw, 60)}" limefutwa: ${endClause(clipQuote(opts.reason, 120), ".")} ${destination.sw}`,
+    bodyZh: `"${clipQuote(opts.marketTitle.zh, 60)}" 已取消：${endClause(clipQuote(opts.reason, 120), "。")} ${destination.zh}`,
     href: ticketHref(opts.marketId, opts.positionId, "/wallet"),
   });
 }
 
-/** Officer confirmation that an emergency void completed — who/what/how-many. */
+/** Officer confirmation: refundedCount counts open stakes, not distinct players. */
 export function notifyAdminMarketCancelled(adminUserId: string, opts: { title: string; reason: string; refundedCount: number; refundedTzs: number }) {
   return notify({
     userId: adminUserId,
     kind: "SECURITY",
-    titleEn: `Market cancelled · ${opts.refundedCount} refunded`,
-    titleSw: `Soko limefutwa · ${opts.refundedCount} wamerejeshewa`,
-    titleZh: `市场已取消 · ${opts.refundedCount} 人已退款`,
-    bodyEn: `"${clipQuote(opts.title, 60)}" was emergency-voided — ${formatTzs(opts.refundedTzs)} refunded to ${opts.refundedCount} ${opts.refundedCount === 1 ? "player" : "players"}. Reason: ${clipQuote(opts.reason, 100)}`,
-    bodySw: `Soko limefutwa kwa dharura. ${formatTzs(opts.refundedTzs)} imerejeshwa.`,
-    bodyZh: `"${clipQuote(opts.title, 60)}" 已紧急作废 — 已向 ${opts.refundedCount} 位玩家退款 ${formatTzs(opts.refundedTzs)}。原因：${clipQuote(opts.reason, 100)}`,
+    titleEn: `Market cancelled · ${opts.refundedCount} ${opts.refundedCount === 1 ? "stake" : "stakes"} refunded`,
+    titleSw: `Soko limefutwa · Madau yaliyorejeshwa: ${opts.refundedCount}`,
+    titleZh: `市场已取消 · 已退回 ${opts.refundedCount} 笔投注`,
+    bodyEn: `"${clipQuote(opts.title, 60)}" was emergency-voided — ${opts.refundedCount} open ${opts.refundedCount === 1 ? "stake was" : "stakes were"} refunded in full, totalling ${formatTzs(opts.refundedTzs)}. Reason: ${clipQuote(opts.reason, 100)}`,
+    bodySw: `"${clipQuote(opts.title, 60)}" limefutwa kwa dharura — madau ${opts.refundedCount} yaliyokuwa wazi yamerejeshwa kikamilifu, jumla ${formatTzs(opts.refundedTzs)}. Sababu: ${clipQuote(opts.reason, 100)}`,
+    bodyZh: `"${clipQuote(opts.title, 60)}" 已紧急作废 — ${opts.refundedCount} 笔未结投注已全额退回，合计 ${formatTzs(opts.refundedTzs)}。原因：${clipQuote(opts.reason, 100)}`,
     href: "/admin/markets",
   });
 }
@@ -1337,7 +1336,7 @@ export function notifyCashout(userId: string, opts: {
   const mins = opts.freeExitGraceMinutes;
   return notify({
     userId,
-    kind: "WIN",
+    kind: opts.inGracePeriod ? "REFUND" : "CASHOUT",
     titleEn: `${opts.inGracePeriod ? "Free exit" : "Cashed out"} · ${formatTzs(opts.amount)}`,
     titleSw: `${opts.inGracePeriod ? "Toka bila gharama" : "Umetoa"} · ${formatTzs(opts.amount)}`,
     titleZh: `${opts.inGracePeriod ? "免费退出" : "已套现"} · ${formatTzs(opts.amount)}`,
@@ -1359,7 +1358,7 @@ export function notifyOneSidedRefund(userId: string, opts: { stake: number; mark
   // The position rides the link, not the sentence (round 3, 2026-10-09; `ticketHref`, notification-text.ts).
   return notify({
     userId,
-    kind: "WIN",
+    kind: "REFUND",
     titleEn: `Full refund · ${formatTzs(opts.stake)}`,
     titleSw: `Pesa imerudishwa · ${formatTzs(opts.stake)}`,
     titleZh: `全额退款 · ${formatTzs(opts.stake)}`,

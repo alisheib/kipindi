@@ -16,6 +16,7 @@ export default function MarketsError({
       error={error}
       reset={reset}
       logTag="markets"
+      tone="neutral"
       body={t.error.pageHitSnagBody}
       back={{ href: "/markets", label: t.error.backToMarkets }}
     />

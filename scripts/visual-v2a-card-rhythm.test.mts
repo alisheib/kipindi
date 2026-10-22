@@ -61,21 +61,25 @@ function inspect(styles: string) {
   const control = px(value(":root", "--h-control-md"));
   const floor = px(value(":root", "--tap-min"));
   const base = px(value(":root", "--mcard-base"));
+  const compactBase = px(value('html:not([data-density="comfortable"])', "--mcard-base", true));
   const closedBase = px(value(":root", "--mcard-base-closed"));
   const tradersRoot = sp(value(":root", "--mcard-traders-h"));
   const tradersCompact = px(value('html:not([data-density="comfortable"])', "--mcard-traders-h", true));
   const metaRoot = px(value(":root", "--mcard-meta-mb"));
   const metaCompact = sp(value('html:not([data-density="comfortable"])', "--mcard-meta-mb", true));
-  const formula = (closed: boolean) => `calc(var(--mcard-base${closed ? "-closed" : ""}) + var(--mcard-pt) + ${closed ? 6 : 8} * var(--mcard-gap) + var(--mcard-act-mt) + var(--mcard-act-mb) + var(--mcard-traders-h) + var(--mcard-meta-mb))`;
+  const formula = (closed: boolean) => `calc(var(--mcard-base${closed ? "-closed" : ""}) + var(--mcard-pt) + ${closed ? 5 : 7} * var(--mcard-gap) + var(--mcard-act-mt) + var(--mcard-act-mb) + var(--mcard-traders-h) + var(--mcard-meta-mb))`;
   const skeletonFormulas = value(":root", "--mcard-h") === formula(false)
     && value(":root", "--mcard-h-closed") === formula(true)
     && geometry.includes('MARKET_CARD_H = "var(--mcard-h)"')
     && geometry.includes('MARKET_CARD_H_CLOSED = "var(--mcard-h-closed)"');
-  const predictedBase = 209 + (control - 40) + (padBottom - 13);
-  const predictedClosedBase = 160 + (control - 40) + (padBottom - 13);
+  // U43 B4: browser-measured one-row footer at 360/1280. A former separate
+  // footer row or an unmeasured skeleton residual must fail this guard.
+  const predictedBase = 171.5 + (control - 44) + (padBottom - 16);
+  const predictedCompactBase = 175.5 + (control - 44) + (padBottom - 16);
+  const predictedClosedBase = 179.5 + (control - 44) + (padBottom - 16);
   const height = (closed: boolean, compact: boolean) => {
     const [pt, gap, mt, mb] = compact ? compactLayout : rootLayout;
-    return (closed ? closedBase : base) + pt + (closed ? 6 : 8) * gap + mt + mb
+    return (closed ? closedBase : compact ? compactBase : base) + pt + (closed ? 5 : 7) * gap + mt + mb
       + (compact ? tradersCompact : tradersRoot) + (compact ? metaCompact : metaRoot);
   };
   const heights = {
@@ -94,9 +98,12 @@ function inspect(styles: string) {
     phoneMetaSlack,
     actionEqual: cardAction === kitAction && cardAction === "var(--h-control-md)" && control >= floor,
     footerReach: Number.isFinite(footerReach) && padBottom + 1 >= footerReach,
-    skeletonCoherent: skeletonFormulas && base === predictedBase && closedBase === predictedClosedBase
+    skeletonCoherent: skeletonFormulas && base === predictedBase && compactBase === predictedCompactBase
+      && closedBase === predictedClosedBase
       && Object.values(heights).every(Number.isFinite) && heights.openComfortable > heights.openCompact
-      && heights.closedComfortable > heights.closedCompact && heights.openCompact > heights.closedCompact,
+      && heights.closedComfortable > heights.closedCompact && heights.openCompact > heights.closedCompact
+      && heights.openComfortable === 315.5 && heights.openCompact === 277.5
+      && heights.closedComfortable === 299.5 && heights.closedCompact === 265.5,
     heights,
   };
 }
@@ -122,6 +129,7 @@ check("CONTROL · restoring the 40px card action is caught", !plant(".mcardp-act
 check("CONTROL · restoring a private 10px row gap is caught", !plant("--mcard-gap: var(--sp-3);", "--mcard-gap: 10px;").layoutScaled);
 check("CONTROL · a 16px phone inset that wraps the money row is caught", !plant(".mcardp { padding-inline: var(--sp-3); }", ".mcardp { padding-inline: var(--sp-4); }").phoneMetaSafe);
 check("CONTROL · shrinking the footer padding below its hit reach is caught", !plant("padding: var(--mcard-pt) var(--sp-4) var(--sp-4);", "padding: var(--mcard-pt) var(--sp-4) var(--sp-3);").footerReach);
-check("CONTROL · a stale skeleton base is caught", !plant("--mcard-base: 216px;", "--mcard-base: 209px;").skeletonCoherent);
+check("CONTROL · a stale skeleton base is caught", !plant("--mcard-base: 171.5px;", "--mcard-base: 216px;").skeletonCoherent);
+check("CONTROL · a stale compact skeleton base is caught", !plant("--mcard-base: 175.5px;", "--mcard-base: 216px;").skeletonCoherent);
 console.log(`\n${passed} passed, ${failures.length} failed`);
 if (failures.length) { console.error(failures.join("\n")); process.exitCode = 1; }

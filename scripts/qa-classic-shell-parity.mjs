@@ -164,12 +164,16 @@
  * beside it (`.rejected.json` for a baseline that failed a check, `.current.json` for a compare that found differences).
  */
 import { chromium } from "playwright";
+import { maskPositionCountdown } from "./qa/classic-parity-noise.mjs";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { maskQuestionEventTimes, normaliseQuestionBreakClocks, QUESTION_BREAK_CLOCK, normaliseBookHomeCloseDates, BOOK_HOME_CLOSE_DATE } from "./lib/question-time-mask.mjs";
+import { maskQuestionEventTimes, normaliseQuestionBreakClocks, QUESTION_BREAK_CLOCK, normaliseBookHomeCloseDates, BOOK_HOME_CLOSE_DATE, BOOK_WATCHLIST_DATE } from "./lib/question-time-mask.mjs";
+import { recycleParityBrowser } from "./lib/parity-browser-cycle.mjs";
+import { CLASSIC_NOT_FOUND_EXPECTED } from "./lib/classic-not-found-expected.mjs";
+import { retryNavigationCapture } from "./lib/classic-shell-navigation.mjs";
 
 const NL = "\n";
 const msg = (e) => String(e?.message ?? e).split(NL)[0].slice(0, 200);
@@ -367,6 +371,17 @@ const TIED_CARDS = BOOK_NORMALISERS.find((n) => n.id === "tied-cards").hands;
  *   · home-close-date-leaves  only the home featured card's and board rows' validated complete locale dates are
  *                  canonicalized before geometry, retaining their prefixes, source words, elements and every paint
  *                  attribute. B.9 requires the source's one featured plus QUESTION_BOARD_SIZE leaves, zero elsewhere.
+ *   · watchlist-date-leaves  only the seeded player's /watchlist card time leaves' complete locale EAT moments are
+ *                  canonicalized before geometry. The 870772af same-head null found their HTML already read as ~date
+ *                  under eat-dates, while their digit glyph widths and right-aligned margin still differed in 9–10
+ *                  layout lines at en/sw × 360/1280. Since U43 B4 (1384383fd) a card states that moment in its top row
+ *                  (`.mcardp-closes`, BOOK_WATCHLIST_DATE), drawn only while the card takes bets, the very predicate of
+ *                  the follow lens "open" (isFollowOpen: LIVE and selection open), and main 4471bb44's null pair saw
+ *                  the same noise there: 12 of 569 layout lines in each player /watchlist cell, the three open
+ *                  labels and their live marks. B.9 requires exactly seed-watchlist's byLens.open (at least one) time
+ *                  leaves in each /watchlist cell, every one canonicalized, and zero elsewhere. No box is masked after
+ *                  the read (classic-parity-noise.mjs retired its right-edge mask): a real change of the row moves a
+ *                  box, which --prove-red's P.1c, P.8y and the served /watchlist plants hold.
  * The pair that showed it is 090bbf76's (BOOK_NORMALISE_ON's eat-dates records it): its ninth differing field, the
  * guest's / at 360 in English (regions.main.layout, 4 of 556 element lines), was the payment rail's four logos
  * (/pay/mpesa.svg, airtel.png, halopesa.png and mixx.png, loading="lazy" at y≈5380 in a 40×40 slot each), 0x0 on the
@@ -375,7 +390,7 @@ const TIED_CARDS = BOOK_NORMALISERS.find((n) => n.id === "tied-cards").hands;
  * read as the browser left it. --prove-red's book phase holds the settle to a lazy image it plants out of the browser's
  * reach: 0x0 in a capture without the settle, drawn in one with it, and the markup of the two the same.
  */
-const BOOK_SETTLE = ["lazy-images", "home-close-date-leaves"];
+const BOOK_SETTLE = ["lazy-images", "home-close-date-leaves", "watchlist-date-leaves"];
 /** How long a book cell's settle waits, in all, for its lazy images to load. */
 const LAZY_SETTLE_MS = 10_000;
 /**
@@ -395,8 +410,18 @@ const LAZY_SETTLE_MS = 10_000;
  * server it can land after the 3 s read, so one capture has it and the next does not. A Sell cell's first paint is the
  * one read it does not precede (servedSellOf opens its page without open()): every script is held there, so no Needle can
  * mount, and that capture reads no overlays.
+ *   · strips-marked  before the Needle's settle, open() waits until every scrolling strip (`[data-strip-autoscroll]`)
+ *                  carries the `data-edges` its own client leaf writes (STRIPS_MARKED), STRIPS_MARK_MS at most; a strip
+ *                  still unmarked by then is a note in the cell, never a hang and never a failure by itself.
+ * The run that showed it: main 4471bb44's --prove-red (OMEGA-COMPILE01, 2026-10-21, the Maswali lane's calibration on a
+ * fresh in-memory server), 251/252, its one failure the player's /results at 1280 in English, whose two clean captures
+ * disagreed in regions.main.html by `data-edges="none"` on the results' chip rail, present in one and absent in the
+ * other. `StripAutoScroll` (ui/strip-autoscroll.tsx) marks a strip from inside it, so the mark lands when that strip's part
+ * of the page hydrates — on a busy dev server after the shell's fiber and the 3 s. An unmarked strip is the strip before
+ * its script (its CSS reads it as "end"), an earlier moment of the same page, not a difference between two trees.
+ * PHOSPHOR-MIGRATION's instrument for its releases; a baseline read under ["needle-rest"] alone is refused (re-capture).
  */
-const SETTLE = ["needle-rest"];
+const SETTLE = ["needle-rest", "strips-marked"];
 
 const BASE = process.env.KP_BASE ?? "http://localhost:3041";
 if (!/^http:\/\/localhost(:\d+)?$/.test(BASE)) {
@@ -547,6 +572,7 @@ const BOOK = {
   /** How a book cell is read (BOOK_SETTLE): a baseline records it, and a compare must read the same way. */
   settle: BOOK_SETTLE,
   homeCloseDates: { ...BOOK_HOME_CLOSE_DATE, population: HOME_CLOSE_POPULATION },
+  watchlistDates: BOOK_WATCHLIST_DATE,
 };
 /** The book's text normalisers switched on for this run, in BOOK_NORMALISERS' order. */
 const BOOK_TEXT = BOOK_NORMALISERS.filter((n) => n.kind === "text" && BOOK.normalise.includes(n.id));
@@ -670,6 +696,10 @@ const EXPECTED_DIFFS = [
     reason: "S6 WP11: the footer's rail reserve names the token --rail-h (88px, globals.css) instead of the literal, so its class string moves in every cell while what it computes does not — footerPaddingBottom and scrollPaddingBottom are their own fields, compared in every cell, and must still be equal (88px below 1024; the footer 0px from 1024).",
   },
 ];
+// S5 VIS-P P14 changed only the shared 404 hint. The exact whole-text entries
+// cover both classic not-found controls in English and Swahili; every other
+// field and route still passes through diffCells unchanged.
+EXPECTED_DIFFS.push(...CLASSIC_NOT_FOUND_EXPECTED);
 /**
  * ⭐ THE VISUAL PASS (VODACOM-PLAN, 2026-10-08 and 09) — AND THE CLASSIC /positions EMPTY STATE, NAMED. Pushed after the
  * list's literal, as A8f's Sell entries are. The pass fixes the shared EmptyState for every player, so the one page body
@@ -1356,7 +1386,7 @@ const SNAPSHOT = ({ crest, props, animated, notFound, pageBody, sell, confirm, t
 };
 
 /** What changes between two servers of the SAME tree and is not the product: React ids, asset hashes, the port, store ids, times. */
-const norm = (s) => String(s)
+const norm = (s) => maskPositionCountdown(s)
   .replace(/_[Rr]_[0-9A-Za-z]+_/g, "_id_")
   .replace(/«[Rr][0-9A-Za-z]*»/g, "_id_")
   .replace(/https?:\/\/localhost(?::\d+)?/g, "http://localhost")
@@ -1533,6 +1563,8 @@ function applyGlyphSwap(field, text, glyphs) {
 }
 /** Every field that differs, split into the named EXPECTED differences and everything else. */
 function diffCells(route, base, cur, baseStore, curStore, list = EXPECTED_DIFFS) {
+  // No box is masked here: the /watchlist moment is canonical before geometry (BOOK_SETTLE watchlist-date-leaves), and
+  // the retired right-edge mask (steadyTimeLeftLayout) hid a real change of its label's width (classic-parity-noise.mjs).
   const a = fieldsOf(base, baseStore), b = fieldsOf(cur, curStore);
   const unexpected = [], expected = [];
   for (const field of [...new Set([...Object.keys(a), ...Object.keys(b)])].sort()) {
@@ -1823,6 +1855,10 @@ function bookChecks(book, seed, store) {
   const tally = cardTally(book);
   const head = (c) => (c.head ? store[c.head] ?? "" : null);
   const headless = (c) => head(c) === null || !/^canonical \S/m.test(head(c)) || !/^og:url \S/m.test(head(c));
+  // A classic card states its moment only while it takes bets (BOOK_WATCHLIST_DATE), the follow lens "open": one time
+  // leaf per open row, each canonicalized. With no open row there is nothing the canonical moment was proved on.
+  const watchMoments = seed?.watchlist?.reply?.byLens?.open;
+  const watchPremise = Number.isInteger(watchMoments) && watchMoments >= 1;
   return [
     { id: "B.0", name: `the book was seeded through dev-test doors that already exist — seed-markets, seed-player-portfolio { markets: ${BOOK.markets} }, seed-watchlist — and every reply holds what A8 item 1 asks; every book cell was captured (${size})`,
       fails: [...verdict.problems, ...(all.length === size && keys.every(([k]) => k in (book ?? {})) ? [] : [`the book holds ${all.length} cells`]),
@@ -1843,9 +1879,12 @@ function bookChecks(book, seed, store) {
       fails: CARD_STATES.filter((s) => !((tally.get(s) ?? 0) > 0)).map((s) => `no ${CARD_LABELS[s]} card in any book cell`) },
     { id: "B.8", name: "only React's DEV performance-track sentence is ever filed as DEV-only in a book cell — every other page error is compared",
       fails: live.filter(([, c]) => (c.devOnly ?? []).some((x) => !isDevMeasure(x))).map(([k, c]) => `${k} (filed DEV-only: ${c.devOnly.find((x) => !isDevMeasure(x))})`) },
-    { id: "B.9", name: `only home's complete locale close-date leaves were canonicalized before geometry: one featured and ${HOME_BOARD_SIZE} board rows in every seeded home cell, zero elsewhere`,
+    { id: "B.9", name: `only complete locale date leaves were canonicalized before geometry: one home featured and ${HOME_BOARD_SIZE} board rows, /watchlist's open rows' moments (seed-watchlist's byLens.open, at least one), zero elsewhere`,
       fails: bad((r, c) => ['featured', 'rows'].some((kind) => c.homeCloseDates?.[kind] !== (r === '/' ? HOME_CLOSE_POPULATION[kind] : 0)
-        || c.homeCloseDates?.leaves?.[kind] !== (r === '/' ? HOME_CLOSE_POPULATION[kind] : 0))) },
+        || c.homeCloseDates?.leaves?.[kind] !== (r === '/' ? HOME_CLOSE_POPULATION[kind] : 0))
+        || (r === '/watchlist' && !watchPremise)
+        || c.watchlistDates?.slots !== (r === '/watchlist' ? watchMoments : 0)
+        || c.watchlistDates?.canonicalized !== (r === '/watchlist' ? watchMoments : 0)) },
   ];
 }
 
@@ -1870,6 +1909,7 @@ function syntheticBook() {
     "/watchlist": [card(0, "priced"), card(3, "closed"), card(6, "resolved-yes"), card(7, "resolved-no"), card(11, "void")],
     [BOOK.similar]: [card(1, "priced"), card(5, "one-sided")],
   };
+  const WATCH_LENS = { all: 9, open: 3, progress: 2, done: 3, void: 1 };
   const book = {};
   for (const [k, , , , r] of bookCellKeys()) {
     book[k] = {
@@ -1878,6 +1918,7 @@ function syntheticBook() {
       cards: CARDS[r].map((c) => ({ ...c })),
       ...(r === BOOK.head ? { head: "head" } : {}),
       homeCloseDates: { ...(r === '/' ? HOME_CLOSE_POPULATION : { featured: 0, rows: 0 }), leaves: { ...(r === '/' ? HOME_CLOSE_POPULATION : { featured: 0, rows: 0 }) } },
+      watchlistDates: { slots: r === '/watchlist' ? WATCH_LENS.open : 0, canonicalized: r === '/watchlist' ? WATCH_LENS.open : 0 },
     };
   }
   const seed = {
@@ -1889,7 +1930,7 @@ function syntheticBook() {
       refusals: ["updown udr_planted0000000000000: CLOSED the round's window closed between listing and buying"],
       marketIds: ids,
     } },
-    watchlist: { status: 200, reply: { ok: true, starred: 9, watching: 9, byLens: { all: 9, open: 3, progress: 2, done: 3, void: 1 }, forcedProgress: [ids[3], ids[4]], refusals: [] } },
+    watchlist: { status: 200, reply: { ok: true, starred: 9, watching: 9, byLens: WATCH_LENS, forcedProgress: [ids[3], ids[4]], refusals: [] } },
     probe: {
       results: [card(6, "resolved-yes"), card(7, "resolved-no"), card(9, "resolved-yes"), card(10, "resolved-no"), card(11, "void")],
       watchlist: [card(0, "priced"), card(3, "closed"), card(6, "resolved-yes"), card(11, "void")],
@@ -2104,11 +2145,17 @@ if (COMPARE) {
   if (baseline.base?.dirty?.length) console.log(`  ⚠ the baseline was captured over ${baseline.base.dirty.length} uncommitted change(s): ${baseline.base.dirty.slice(0, 4).join(" · ")}`);
 }
 
-const b = await chromium.launch({ headless: true });
+let b = await chromium.launch({ headless: true });
 const BROWSER = b.version();
 const t0 = Date.now();
 console.log(`  Chromium ${BROWSER}`);
 if (baseline && baseline.server?.browser !== BROWSER) console.log(`  ⚠ the baseline was captured with Chromium ${baseline.server?.browser}; this run uses ${BROWSER} — geometry may move for reasons outside S6.`);
+
+/** A completed group has no open contexts. Keep this run's seeded server/store and all capture maps; reclaim Chromium. */
+async function recycleBrowser(label) {
+  b = await recycleParityBrowser(b, () => chromium.launch({ headless: true }), BROWSER, label);
+  console.log(`  browser recycled after ${label} · Chromium ${BROWSER} · the seeded server and capture maps remain`);
+}
 
 /** React has hydrated the shell: its host nodes carry a fiber. The 3 s overlay clock starts here, not at first paint. */
 const hydrated = (page) => page.waitForFunction(() => {
@@ -2145,9 +2192,27 @@ async function settleNeedle(page) {
   const seen = await page.evaluate(() => ({ mounted: !!window.needle, resting: typeof window.needle?.resting === "function" ? window.needle.resting() : null })).catch(() => null);
   return `the Needle had not come to rest ${secs(NEEDLE_REST_MS)} into the settle (${seen ? `${seen.mounted ? "its engine mounted" : "its engine not mounted"}, resting() ${seen.resting}` : "unread"}), so the page is read as it stands`;
 }
+/**
+ * ⭐ PHOSPHOR-MIGRATION 2026-10-21 · EVERY SCROLLING STRIP MARKED (SETTLE "strips-marked"), read IN THE PAGE: each
+ * `[data-strip-autoscroll]` carries `data-edges` (StripAutoScroll's mark, ui/strip-autoscroll.tsx). A page with no strip
+ * is settled. Self-contained like NEEDLE_AT_REST; --prove-red P.8s hands it synthetic documents as `doc`.
+ */
+const STRIPS_MARKED = (_, doc = document) =>
+  Array.from(doc.querySelectorAll("[data-strip-autoscroll]")).every((el) => el.hasAttribute("data-edges"));
+/** How long open() waits, at most, for its strips' marks: the strip's own chunk of the page, which a dev server may
+ *  compile on first request, hydrating after the shell's. */
+const STRIPS_MARK_MS = 15_000;
+/** Every strip marked (STRIPS_MARKED, read every 100 ms for STRIPS_MARK_MS at most): null once it is, else the note its
+ *  cell carries — never a throw, never a failure by itself; the page is then read as it stands. */
+async function settleStrips(page) {
+  const marked = await page.waitForFunction(STRIPS_MARKED, null, { timeout: STRIPS_MARK_MS, polling: 100 }).then(() => true, () => false);
+  if (marked) return null;
+  const left = await page.evaluate(() => Array.from(document.querySelectorAll("[data-strip-autoscroll]")).filter((el) => !el.hasAttribute("data-edges")).length).catch(() => null);
+  return `${typeof left === "number" ? left : "some"} scrolling strip(s) still had no data-edges ${secs(STRIPS_MARK_MS)} into the settle (their StripAutoScroll had not run), so the page is read as it stands`;
+}
 /** Opens a cell's page: its bytes, hydration, the plant and 3 s (again for a client redirect's second document), and —
- *  calibration 3 — the Needle at rest (SETTLE), so every read of an opened page comes after it. `needle` is the settle's
- *  note, or null. */
+ *  calibration 3 — every scrolling strip marked, then the Needle at rest (SETTLE), so every read of an opened page comes
+ *  after them. `strips` and `needle` are the two settles' notes, each null when it settled. */
 async function open(page, route, plant) {
   const res = await page.goto(BASE + route, { waitUntil: "load", timeout: 180_000 });
   // The bytes the server sent, read before anything replaces the document: hydration removes what streamed first.
@@ -2164,26 +2229,44 @@ async function open(page, route, plant) {
     await applyPlant(page, plant).catch(() => {});
     await page.waitForTimeout(3000);
   }
+  // SETTLE "strips-marked": every scrolling strip's own leaf has run (its fades marked), then the Needle at rest.
+  const strips = await settleStrips(page);
   const needle = await settleNeedle(page);
-  return { status: res ? res.status() : 0, body, needle };
+  return { status: res ? res.status() : 0, body, needle, strips };
 }
 const localeCookie = (locale) => ({ name: "kp-locale", value: locale, domain: HOST, path: "/" });
 
-/** One cell, in a FRESH context — a context carried across cells accumulates visits, and the overlays count visits. */
-async function capture(jar, locale, width, route, plant = null) {
+/** A dev-server document replacement is one browser interruption, not a page difference. */
+async function evaluateStableSnapshot(page, args, plant) {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try { return await page.evaluate(SNAPSHOT, args); }
+    catch (e) {
+      if (!/Execution context was destroyed/.test(String(e)) || attempt === 3) throw e;
+      await page.waitForLoadState("load", { timeout: 120_000 });
+      await page.locator("main").first().waitFor({ timeout: 120_000 });
+      await hydrated(page);
+      await applyPlant(page, plant);
+      await settleNeedle(page);
+    }
+  }
+}
+
+/** One attempt in a FRESH context — a context carried across cells accumulates visits, and the overlays count visits. */
+async function captureOnce(jar, locale, width, route, plant = null) {
   const ctx = await b.newContext({ viewport: { width, height: HEIGHT } });
   const pageErrors = [], devOnly = [];
   try {
     await ctx.addCookies([...jar, localeCookie(locale)]);
     const page = await ctx.newPage();
     page.on("pageerror", fileError(pageErrors, devOnly));
-    const { status, body, needle } = await open(page, route, plant);
+    const { status, body, needle, strips } = await open(page, route, plant);
     const args = { crest: CREST, props: PROPS, animated: ANIMATED, notFound: route === "/account" || route === NOT_FOUND, pageBody: jar.length > 0 && route === BODY_ROUTE, trace: TRACE };
-    let snap = await page.evaluate(SNAPSHOT, args);
+    // Turbopack may replace this warmed document. The retry still judges its landed URL and regions.
+    let snap = await evaluateStableSnapshot(page, args, plant);
     let stable = false;
     for (let i = 0; i < 6 && !stable; i++) {
       await page.waitForTimeout(700);
-      const next = await page.evaluate(SNAPSHOT, args);
+      const next = await evaluateStableSnapshot(page, args, plant);
       stable = JSON.stringify(next) === JSON.stringify(snap);
       snap = next;
     }
@@ -2194,11 +2277,21 @@ async function capture(jar, locale, width, route, plant = null) {
       snap = { ...snap, notFound: { ...snap.notFound, robots: [...body.matchAll(/<meta name="robots" content="([^"]*)"/g)].map((m) => m[1]).sort() } };
     }
     const pass = (await ctx.cookies(BASE)).some((c) => c.name === "kp_preview");
-    return toCell(snap, { status, stable, pass, raw: rawOf(body), pageErrors: [...new Set(pageErrors)].sort(), devOnly: [...new Set(devOnly)].sort(), ...notesOf([needle]) });
-  } catch (e) {
-    return { error: msg(e) };
+    return toCell(snap, { status, stable, pass, raw: rawOf(body), pageErrors: [...new Set(pageErrors)].sort(), devOnly: [...new Set(devOnly)].sort(), ...notesOf([strips, needle]) });
   } finally {
     await ctx.close().catch(() => {});
+  }
+}
+
+/** A late navigation invalidates an evaluation. Retry only that interruption, once, from a new context. */
+async function capture(jar, locale, width, route, plant = null) {
+  try {
+    return await retryNavigationCapture(
+      () => captureOnce(jar, locale, width, route, plant),
+      () => console.log(`  ↻ ${locale}|${width}|${route} navigation interrupted; retrying the whole cell`),
+    );
+  } catch (e) {
+    return { error: msg(e) };
   }
 }
 
@@ -2331,7 +2424,7 @@ async function captureSellCell(jar, locale, width, place, held, plant = null, wi
     const served = withServed ? await servedSellOf(ctx, routeOfPlace(place, held), args).catch((e) => ({ error: msg(e) })) : undefined;
     const page = await ctx.newPage();
     page.on("pageerror", fileError(pageErrors, devOnly));
-    const { status, body, needle } = await open(page, routeOfPlace(place, held), plant);
+    const { status, body, needle, strips } = await open(page, routeOfPlace(place, held), plant);
     let snap = await page.evaluate(SNAPSHOT, args);
     let stable = false;
     for (let i = 0; i < 6 && !stable; i++) {
@@ -2373,7 +2466,7 @@ async function captureSellCell(jar, locale, width, place, held, plant = null, wi
       ...(served === undefined ? {} : { served }),
       pageErrors: [...new Set(pageErrors)].sort(),
       devOnly: [...new Set(devOnly)].sort(),
-      ...notesOf([needle]),
+      ...notesOf([strips, needle]),
     };
   } catch (e) {
     return { error: msg(e) };
@@ -2443,7 +2536,7 @@ async function probeBook(jar) {
       await ctx.addCookies([...jar, localeCookie("en")]);
       const page = await ctx.newPage();
       await open(page, route, null);
-      const snap = await page.evaluate(SNAPSHOT, bookArgsOf(route));
+      const snap = await evaluateStableSnapshot(page, bookArgsOf(route), null);
       if (snap.url.split("?")[0] !== route) {
         probe[name] = null;
         probe[`${name}Error`] = `it landed on ${snap.url}`;
@@ -2500,8 +2593,12 @@ async function captureBookCell(jar, locale, width, route, similarId, plant = nul
     const page = await ctx.newPage();
     page.on("pageerror", fileError(pageErrors, devOnly));
     const target = route === BOOK.similar ? `/markets/${similarId}` : route;
-    const { status, body: sent, needle } = await open(page, target, { css: `${STRIP_STILL}${plant?.css ? `${NL}${plant.css}` : ""}`, js: plant?.js ?? null });
+    const { status, body: sent, needle, strips } = await open(page, target, { css: `${STRIP_STILL}${plant?.css ? `${NL}${plant.css}` : ""}`, js: plant?.js ?? null });
     const body = plant?.bytes && typeof sent === "string" ? plant.bytes(sent) : sent;
+    // PHOSPHOR-MIGRATION owed parity: the null compare of this exact tree moved four
+    // /watchlist number boxes by 5.5px with identical HTML and CSS. Wait for the
+    // actual font before recording book geometry, as the Sell capture already does.
+    await page.evaluate(() => document.fonts.ready.then(() => true));
     const args = bookArgsOf(route);
     const regions = Object.values(args.book.regions);
     let lazy = null;
@@ -2522,12 +2619,30 @@ async function captureBookCell(jar, locale, width, route, similarId, plant = nul
       }), {selectors: BOOK_HOME_CLOSE_DATE.selectors, population: HOME_CLOSE_POPULATION}, {timeout: 30_000});
       await page.evaluate(plant.lateHomeJs);
     }
+    // The same seam for /watchlist's moments (--prove-red only): planted once every open card's time leaf has hydrated.
+    // The plant returns how many moments it rewrote, kept on the cell (never compared), so a plant that found none is seen.
+    let lateWatchlist = null;
+    if (plant?.lateWatchlistJs) {
+      if (route !== '/watchlist') throw new Error('late watchlist plant requested outside /watchlist');
+      await page.waitForFunction((selector) => {
+        const leaves = [...document.querySelectorAll(selector)];
+        return leaves.length > 0 && leaves.every((el) => Object.keys(el).some((key) => key.startsWith('__reactFiber$')));
+      }, BOOK_WATCHLIST_DATE.selector, {timeout: 30_000});
+      lateWatchlist = await page.evaluate(plant.lateWatchlistJs);
+    }
     const untie = args.book.tied ? { ...args.book.tied, regions } : null;
     const homeDateMask = route === '/' ? { ...BOOK_HOME_CLOSE_DATE, locale } : null;
+    const watchlistDateMask = route === '/watchlist' ? { ...BOOK_WATCHLIST_DATE, locale } : null;
     let homeCloseDates = { featured: 0, rows: 0, leaves: { featured: 0, rows: 0 } };
+    let watchlistDates = { slots: 0, canonicalized: 0 };
     const read = async () => {
       if (untie) await page.evaluate(UNTIE_CARDS, untie);
       if (homeDateMask) homeCloseDates = await page.evaluate(normaliseBookHomeCloseDates, homeDateMask);
+      if (watchlistDateMask) {
+        const slots = await page.evaluate((selector) => document.querySelectorAll(selector).length, watchlistDateMask.selector);
+        const canonicalized = await page.evaluate(normaliseQuestionBreakClocks, watchlistDateMask);
+        watchlistDates = { slots, canonicalized };
+      }
       return page.evaluate(SNAPSHOT, args);
     };
     const seen = (s) => JSON.stringify([s.url, s.regions, s.journey, s.cards]);
@@ -2539,7 +2654,8 @@ async function captureBookCell(jar, locale, width, route, similarId, plant = nul
       stable = seen(next) === seen(snap);
       snap = next;
     }
-    const cell = toBookCell(snap, { status, stable, homeCloseDates, raw: rawOf(body), pageErrors: [...new Set(pageErrors)].sort(), devOnly: [...new Set(devOnly)].sort(), ...notesOf([needle, lazy]) });
+    const cell = toBookCell(snap, { status, stable, homeCloseDates, watchlistDates, raw: rawOf(body), pageErrors: [...new Set(pageErrors)].sort(), devOnly: [...new Set(devOnly)].sort(), ...notesOf([strips, needle, lazy]) });
+    if (lateWatchlist !== null) cell.lateWatchlist = lateWatchlist;
     if (route === BOOK.similar && similarId) cell.landed = cell.landed.split(similarId).join(":similar");
     if (route === BOOK.head) cell.head = typeof body === "string" ? put(bookNorm(headOf(body))) : null;
     return cell;
@@ -2596,6 +2712,7 @@ async function captureBook(still) {
       }
       console.log(`  book-${v} · ${l} · ${n} cells · ${secs(Date.now() - t)}`);
       still(`by the end of book-${v} · ${l}`);
+      if (v !== BOOK.viewers.at(-1) || l !== BOOK.locales.at(-1)) await recycleBrowser(`book-${v} · ${l}`);
     }
   }
 }
@@ -2655,7 +2772,7 @@ async function captureQuestionCell(jar, locale, width, state, ids, plant = null)
     await ctx.addCookies([...jar, localeCookie(locale)]);
     const page = await ctx.newPage();
     page.on("pageerror", fileError(pageErrors, devOnly));
-    const { status, body: sent, needle } = await open(page, routeOfQuestion(state.route, ids), plant);
+    const { status, body: sent, needle, strips } = await open(page, routeOfQuestion(state.route, ids), plant);
     const body = plant?.bytes && typeof sent === "string" ? plant.bytes(sent) : sent;
     const args = questionArgsOf(locale);
     const regions = Object.values(args.book.regions);
@@ -2679,7 +2796,7 @@ async function captureQuestionCell(jar, locale, width, state, ids, plant = null)
       stable = seen(next) === seen(snap);
       snap = next;
     }
-    const cell = toQuestionCell(snap, { status, stable, raw: rawOf(body), pageErrors: [...new Set(pageErrors)].sort(), devOnly: [...new Set(devOnly)].sort(), ...notesOf([needle, lazy]) });
+    const cell = toQuestionCell(snap, { status, stable, raw: rawOf(body), pageErrors: [...new Set(pageErrors)].sort(), devOnly: [...new Set(devOnly)].sort(), ...notesOf([strips, needle, lazy]) });
     for (const [name, id] of Object.entries(ids ?? {})) if (id) cell.landed = cell.landed.split(id).join(`:${name}`);
     return cell;
   } catch (e) {
@@ -2844,6 +2961,7 @@ async function captureQuestions(still) {
       }
       console.log(`  question-${v} · ${l} · ${n} cells · ${secs(Date.now() - t)}`);
       still(`by the end of question-${v} · ${l}`);
+      if (v !== QUESTION.viewers.at(-1) || l !== QUESTION.locales.at(-1)) await recycleBrowser(`question-${v} · ${l}`);
     }
   };
   await run("guest", []);
@@ -2931,14 +3049,18 @@ async function captureMatrix() {
       }
       console.log(`  ${v.id} · ${l} · ${WIDTHS.length * ROUTES.length} cells · ${secs(Date.now() - t)}`);
       still(`by the end of ${v.id} · ${l}`);
+      if (v !== VIEWERS.at(-1) || l !== LOCALES.at(-1)) await recycleBrowser(`matrix-${v.id} · ${l}`);
     }
     if (BASELINE && v.id === "player") report320 = await header320(jar);
   }
   // WP10 · the Sell capture comes after the matrix: it gives the demo player a portfolio, and every cell above read it empty.
+  await recycleBrowser("matrix before Sell seed");
   await captureSell();
   // S7 WP1 · then the book (A8): it seeds through the same player, after the Sell capture's { markets: 5 }.
+  await recycleBrowser("Sell before book seed");
   await captureBook(still);
   // S8 WP1 · and the question page last: it reads the book's world, and its reader on a break ends the session for good.
+  await recycleBrowser("book before question seed");
   await captureQuestions(still);
   still("by the end of the capture");
 }
@@ -3013,7 +3135,7 @@ async function proveHomeDateCalibration() {
       <p class="ordinary">${o.ordinary ?? 'Other words'}</p></main></body></html>`);
     const homeCloseDates = await page.evaluate(normaliseBookHomeCloseDates, { ...BOOK_HOME_CLOSE_DATE, locale });
     const snap = await page.evaluate(SNAPSHOT, bookArgsOf('/'));
-    const cell = toBookCell(snap, { status: 200, stable: true, homeCloseDates, raw: { shell: true, trace: [] }, pageErrors: [], devOnly: [] });
+    const cell = toBookCell(snap, { status: 200, stable: true, homeCloseDates, watchlistDates: { slots: 0, canonicalized: 0 }, raw: { shell: true, trace: [] }, pageErrors: [], devOnly: [] });
     cell.landed = '/';
     return cell;
   };
@@ -3055,9 +3177,97 @@ async function proveHomeDateCalibration() {
   finally { await page.close().catch(() => {}); }
 }
 
+/**
+ * The /watchlist moments (BOOK_SETTLE watchlist-date-leaves), rendered: a U43 card's top-row time (`.mcardp-closes`, the
+ * live mark inside it, pushed right by margin-left:auto) is written canonical before its box is read. The page draws
+ * syntheticBook's seed-watchlist: three open cards with a moment, two in progress, three done and one void with a chip
+ * and no time. Each change below is planted beside the canonical moment, never instead of it, so what it moves is its own.
+ */
+async function proveWatchlistDateCalibration() {
+  const page = await b.newPage({ viewport: { width: 360, height: HEIGHT } });
+  const key = keyOf('book-player', 'en', 360, '/watchlist');
+  const zeroHome = { featured: 0, rows: 0, leaves: { featured: 0, rows: 0 } };
+  const take = async (locale, o = {}) => {
+    const month = locale === 'sw' ? 'Okt' : 'Oct';
+    const moment = o.date ?? `14 ${month}, 13:43`;
+    const time = (i) => {
+      const part = i === 1 && o.wrongSelector ? '' : ' data-market-part="time"';
+      const words = i === 1 && o.dateOne ? o.dateOne : i === 1 && o.besideWords ? `${moment}<!-- -->${o.besideWords}` : moment;
+      return `<span class="mcardp-closes inline-flex items-center gap-1"${part}><span class="mcardp-live-mark"><span class="mcardp-live-dot" aria-hidden="true"></span><span class="sr-only">${o.liveWord ?? 'Live'}</span></span>${words}</span>`;
+    };
+    const tail = (inner) => `<span class="mcardp-tail"><span class="mcardp-catgrp"><span class="mcardp-catico"></span><span class="mcardp-cat">${o.category ?? 'Sports'}</span></span>${inner}</span>`;
+    const card = (i, top) => `<article class="mcardp" data-row-id="mkt_calibration${i}"><a class="mcardp-open" aria-label="Question ${i}"></a><div class="mcardp-top">${top}</div><div class="mcardp-meta"><span>Pool TZS 1,234</span><span class="mcardp-meta-right"><span class="mcardp-timeleft"><button type="button" aria-label="How it works">i</button></span></span></div></article>`;
+    const chips = ['Closed', 'Closed', 'Resolved YES', 'Resolved NO', 'Resolved YES', 'Voided'];
+    const cards = [...[0, 1, 2].map((i) => card(i, tail(time(i)))),
+      ...chips.map((chip, j) => card(3 + j, `<span class="chip">${j === 0 && o.status ? o.status : chip}</span>${tail('')}`))];
+    await page.setContent(`<!doctype html><html lang="${locale}"><head><style>
+      article.mcardp{width:300px;margin-bottom:8px;padding:4px;position:relative}
+      .mcardp-top{display:flex;align-items:center;gap:4px;min-height:20px}
+      .mcardp-tail{display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px;flex:1 1 auto;min-width:0}
+      .mcardp-catgrp{display:inline-flex;align-items:center;gap:4px} .mcardp-catico{display:inline-block;width:12px;height:12px}
+      .mcardp-closes{margin-left:auto;font:13px Arial;line-height:1.3;white-space:nowrap;color:rgb(80,80,80);display:inline-flex;align-items:center;gap:4px}
+      .mcardp-live-mark{display:inline-flex;align-items:center;min-width:6px}
+      .mcardp-live-dot{display:block;width:6px;height:6px;border-radius:50%;background:rgb(120,120,120)}
+      .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+      .mcardp-meta{display:flex;width:100%} .mcardp-meta-right{margin-left:auto}
+      ${o.css ?? ''}</style></head><body><main id="main-content">${cards.join('')}${o.extra ? card(9, tail(time(0))) : ''}
+      <p class="ordinary">${o.outside ?? 'Other words'}</p></main></body></html>`);
+    const mask = { ...BOOK_WATCHLIST_DATE, locale };
+    const slots = await page.evaluate((selector) => document.querySelectorAll(selector).length, mask.selector);
+    const canonicalized = o.skipMask ? 0 : await page.evaluate(normaliseQuestionBreakClocks, mask);
+    const snap = await page.evaluate(SNAPSHOT, bookArgsOf('/watchlist'));
+    const cell = toBookCell(snap, { status: 200, stable: true, homeCloseDates: zeroHome, watchlistDates: { slots, canonicalized }, raw: { shell: true, trace: [] }, pageErrors: [], devOnly: [] });
+    cell.landed = '/watchlist';
+    return cell;
+  };
+  const b9 = (cell) => { const sample = syntheticBook(); sample.book[key] = cell; return bookChecks(sample.book, sample.seed, {...sample.store, ...blobs}).find((c) => c.id === 'B.9').fails; };
+  const fields = (a, c) => diffCells('/watchlist', a, c, blobs, blobs, BOOK_EXPECTED_DIFFS).unexpected;
+  try {
+    for (const locale of ['en', 'sw']) {
+      const month = locale === 'sw' ? 'Okt' : 'Oct';
+      const clean = await take(locale);
+      ok(`P.8y ${locale} three open cards draw the only three time leaves, each a valid EAT moment, under the real B.9 verdict`, b9(clean).length === 0, JSON.stringify(clean.watchlistDates));
+      // Another server's seeding moment: another day (one digit, not two) and another minute.
+      const shifted = await take(locale, {date: `4 ${month}, 09:07`});
+      ok(`P.8y ${locale} another seeding moment leaves markup and geometry equal after the pre-geometry canonical moment`, fields(clean, shifted).length === 0 && b9(shifted).length === 0,
+        fields(clean, shifted).map((d) => `${d.field}: ${d.detail}`).join(' | ').slice(0, 300));
+      const unmasked = await take(locale, {date: `4 ${month}, 09:07`, skipMask: true});
+      const unmaskedFields = fields(clean, unmasked).map((d) => d.field);
+      ok(`P.8y ${locale} without the canonical moment, that other moment moves the row's boxes although eat-dates reads both markups as ~date`,
+        unmaskedFields.includes('regions.main.layout') && !unmaskedFields.includes('regions.main.html'), unmaskedFields.join(', '));
+      for (const [name, change, need] of [
+        ['word spacing (no signature records it: only its boxes move)', {css: '.mcardp-closes{word-spacing:3px}'}, 'regions.main.layout'],
+        ['font size', {css: '.mcardp-closes{font-size:15px}'}, 'regions.main.layout'],
+        ['lost right alignment', {css: '.mcardp-closes{margin-left:0}'}, 'regions.main.layout'],
+        ['live mark size', {css: '.mcardp-live-dot{width:8px;height:8px}'}, 'regions.main.layout'],
+        ['ink', {css: '.mcardp-closes{color:rgb(255,0,0)}'}, 'regions.main.layout'],
+        ['live mark word', {liveWord: 'Open'}, 'regions.main.html'],
+        ['category words', {category: 'Weather'}, 'regions.main.html'],
+        ['status chip words', {status: 'Wrong status'}, 'regions.main.html'],
+        ['outside words', {outside: 'Changed outside date'}, 'regions.main.html'],
+      ]) {
+        const changed = await take(locale, change), diff = fields(clean, changed);
+        ok(`P.8y ${locale} a real change of the time row, ${name}, is still seen (${need})`, diff.some((d) => d.field === need) && b9(changed).length === 0, diff.map((d) => d.field).join(', '));
+      }
+      for (const [name, change] of [
+        ['an impossible moment', {dateOne: `31 Feb 2027, 13:43`}],
+        ['a moment in the other locale\'s month', {dateOne: `14 ${locale === 'sw' ? 'Oct' : 'Okt'} 2027, 13:43`}],
+        ['a moment beside other words', {besideWords: ' extra words'}],
+        ['an open card whose time lost its data-market-part', {wrongSelector: true}],
+        ['an extra open card', {extra: true}],
+      ]) {
+        const changed = await take(locale, change);
+        ok(`P.8y ${locale} ${name} fails B.9 and stays visible to the book diff`, b9(changed).length > 0 && fields(clean, changed).length > 0, JSON.stringify(changed.watchlistDates));
+      }
+    }
+  } catch(e) { ok('P.8y rendered watchlist-date calibration completes', false, msg(e)); }
+  finally { await page.close().catch(() => {}); }
+}
+
 async function proveRed() {
   await proveQuestionCalibration();
   await proveHomeDateCalibration();
+  await proveWatchlistDateCalibration();
   console.log(`\n§P · the control — first on synthetic captures, then planted in the browser`);
   // ① The EXPECTED_DIFFS matcher: it must pass what it names and nothing beside it.
   const store = { f1: '<footer class="pad-old">x</footer>', f2: '<footer class="pad-new">x</footer>', f3: '<footer class="pad-new">y</footer>' };
@@ -3065,6 +3275,28 @@ async function proveRed() {
   const run = (route, a, c, list = EXPECTED_DIFFS) => diffCells(route, a, c, store, store, list);
   const same = run("/", cell(200, "f1"), cell(200, "f1"));
   ok("P.1 identical cells differ in nothing", same.unexpected.length === 0 && same.expected.length === 0);
+  // MASWALI-BUILD S5-PARITY · the /watchlist time row (BOOK_SETTLE watchlist-date-leaves): its moment is written canonical
+  // before any box is read, and no box is masked after it (classic-parity-noise.mjs retired the right-edge mask), so the
+  // book diff reads the row as recorded. One canonical row from two servers compares equal; the row main 4471bb44's null
+  // pair drew from two seeding moments (the label 3px wider at x 318, its auto margin 3.2px smaller) is reported, and so
+  // is a label that lost its right alignment.
+  {
+    const own = {};
+    const keep = (s) => { const k = createHash("sha1").update(s).digest("hex").slice(0, 12); own[k] = s; return k; };
+    const html = keep('<main id="main-content"><article data-row-id="mkt_~" class="mcardp group"><div class="mcardp-top"><span class="mcardp-tail"><span class="mcardp-catgrp"></span><span class="mcardp-closes inline-flex items-center gap-1" data-market-part="time"><span class="mcardp-live-mark"></span>~date</span></span></div></article></main>');
+    const row = (x, width, margin) => {
+      const cell = structuredClone(syntheticBook().book[keyOf("book-player", "en", 1280, "/watchlist")]);
+      const sig = keep(`display:inline-flex${NL}margin-left:${margin}px${NL}font-size:13px`);
+      cell.regions.main = { count: 1, html, layout: keep(`main>div0>article0>div0>span0>span1 ${x},990.5,${width}x17 ${sig}`) };
+      return cell;
+    };
+    const read = (a, c) => diffCells("/watchlist", a, c, own, own, BOOK_EXPECTED_DIFFS).unexpected.map((d) => d.field).join();
+    const canonicalRow = row(321, 88.5, 198.453);
+    ok("P.1c ⭐ the /watchlist time row is compared as recorded: one canonical row from two servers compares equal; a label 3px wider with its auto margin 3.2px smaller (what main 4471bb44's null pair drew from two seeding moments) and a label that lost its right alignment are each reported in regions.main.layout",
+      read(canonicalRow, row(321, 88.5, 198.453)) === "" && read(canonicalRow, row(318, 91.5, 195.25)) === "regions.main.layout"
+        && read(canonicalRow, row(120, 88.5, 0)) === "regions.main.layout",
+      [read(canonicalRow, row(321, 88.5, 198.453)), read(canonicalRow, row(318, 91.5, 195.25)), read(canonicalRow, row(120, 88.5, 0))].map((x) => x || "(none)").join(" · "));
+  }
   // PHOSPHOR-MIGRATION W2 · the sprite name's hash is read as ~, and nothing else in a glyph is: another symbol, another
   // group or another file still differs.
   const glyphAt = (href) => norm(`<svg viewBox="0 0 256 256" width="14" height="14" aria-hidden="true" data-g="clock.bold"><use href="${href}"></use></svg>`);
@@ -3074,6 +3306,31 @@ async function proveRed() {
       && glyphAt("/icons/g/app.304710bb.svg#p-clock-bold") !== glyphAt("/icons/g/app.304710bb.svg#p-clock-regular")
       && glyphAt("/icons/g/app.304710bb.svg#p-clock-bold") !== glyphAt("/icons/g/admin.304710bb.svg#p-clock-bold")
       && glyphAt("/icons/g/app.304710bb.svg#p-clock-bold") !== glyphAt("/icons/g/app.svg#p-clock-bold"));
+  const ring = (dash, word, klass = "shrink-0", label = "Selection closes") => `<svg width="44" height="44" role="img" aria-label="${label}" class="${klass}"><circle cx="22" cy="22" r="19" stroke="var(--bg-overlay)"></circle><circle cx="22" cy="22" r="19" stroke="var(--aqua-400)" stroke-dasharray="119" stroke-dashoffset="${dash}"></circle><text x="50%">${word}</text></svg>`;
+  ok("P.1d the open-ticket countdown's numeric value is masked, while its accessible status, arc ink, shape and another SVG remain compared",
+    norm(ring(12.2, "3d")) === norm(ring(12.6, "2d"))
+      && norm(ring(12.2, "3d")).includes('stroke-dashoffset="~"')
+      && norm(ring(12.2, "3d")).includes('aria-label="Selection closes"')
+      && norm(ring(12.2, "3d")) !== norm(ring(12.6, "2d", "shrink-0", "Selection closed"))
+      && norm(ring(12.2, "3d")) !== norm(ring(12.2, "3d").replace("aqua-400", "no-400"))
+      && norm(ring(12.2, "3d")) !== norm(ring(12.2, "3d").replace('r="19"', 'r="18"'))
+      && norm(ring(12.2, "3d", "other")) !== norm(ring(12.6, "2d", "other")));
+  {
+    let reads = 0, loads = 0, replants = 0;
+    const interrupted = {
+      evaluate: async () => { if (++reads === 1) throw new Error("Execution context was destroyed"); return { landed: true }; },
+      waitForLoadState: async () => { loads++; },
+      locator: () => ({ first: () => ({ waitFor: async () => {} }) }),
+      waitForFunction: async () => true,
+      addStyleTag: async () => { replants++; },
+    };
+    const resumed = await evaluateStableSnapshot(interrupted, {}, { css: "header { color: red; }" });
+    let refused = false;
+    try { await evaluateStableSnapshot({ evaluate: async () => { throw new Error("real snapshot failure"); } }, {}, null); }
+    catch (e) { refused = String(e).includes("real snapshot failure"); }
+    ok("P.1e one document replacement is retried after load, hydration and plant; another snapshot failure is reported",
+      resumed.landed === true && reads === 2 && loads === 1 && replants === 1 && refused);
+  }
   const named = run("/account", cell(404, "f1"), cell(200, "f1"));
   ok("P.2 /account 404 → 200 is the named expected difference, not a failure", named.unexpected.length === 0 && named.expected.map((e) => e.id).join() === "account-streams-200", JSON.stringify(named));
   const wrongTo = run("/account", cell(404, "f1"), cell(500, "f1"));
@@ -3591,7 +3848,7 @@ async function proveRed() {
     const misread = PAGES.filter(([, root, win, want]) => NEEDLE_AT_REST(null, docOf(root), win) !== want).map(([what, , , want]) => `${what} read ${want ? "unsettled" : "at rest"}`);
     ok("P.8r (a) the Needle's rest is read from needle.tsx's probe as the page states it: a page without #needle-root (a guest's) is at rest; a #needle-root whose engine has not mounted is NOT (qa:journey-shell reads that as resting; every signed-in classic page mounts one), nor is an engine without the probe or one whose resting() answers anything but true; resting() true is",
       misread.length === 0, JSON.stringify(misread).slice(0, 400));
-    const pageOf = ({ redirect = false, rests = true } = {}) => {
+    const pageOf = ({ redirect = false, rests = true, marks = true } = {}) => {
       const asked = [];
       let at = null;
       return {
@@ -3599,13 +3856,19 @@ async function proveRed() {
         goto: async (url) => { asked.push("goto"); at = url; return { text: async () => "<main></main>", url: () => url, status: () => 200 }; },
         locator: () => ({ first: () => ({ waitFor: async () => { asked.push("main"); } }) }),
         waitForFunction: async (fn, arg, options) => {
+          if (fn === STRIPS_MARKED) {
+            asked.push(`strips ${options?.timeout} ${options?.polling}`);
+            if (!marks) throw new Error("page.waitForFunction: Timeout exceeded");
+            return true;
+          }
           if (fn !== NEEDLE_AT_REST) { asked.push("hydrated"); return true; }
           asked.push(`needle ${options?.timeout} ${options?.polling}`);
           if (!rests) throw new Error("page.waitForFunction: Timeout exceeded");
           return true;
         },
         addStyleTag: async () => { asked.push("plant"); },
-        evaluate: async () => { asked.push("read"); return { mounted: true, resting: false }; },
+        // A read after a settle timed out: two unmarked strips (P.8s), or a Needle mounted but not resting (P.8r).
+        evaluate: async () => { asked.push("read"); return marks ? { mounted: true, resting: false } : 2; },
         waitForTimeout: async (ms) => { asked.push(`wait ${ms}`); },
         url: () => (redirect && asked.includes("wait 3000") ? `${BASE}/auth/login` : at),
         waitForLoadState: async () => { asked.push("load"); },
@@ -3628,6 +3891,43 @@ async function proveRed() {
     }
     ok(`P.8r (b) open(), the one door every read of a hydrated page goes through (matrix, Sell and book cells), ends with the Needle's settle, once — after hydration, the plant and the 3 s, and after a client redirect's second document too — bounded (${secs(NEEDLE_REST_MS)}, read every 100 ms); a Needle that never comes to rest is a note in what open() returns, never a throw`,
       openFails.length === 0, JSON.stringify(openFails).slice(0, 400));
+    // ②c4 PHOSPHOR-MIGRATION 2026-10-21 · every scrolling strip marked (SETTLE "strips-marked"). (a) STRIPS_MARKED, the
+    // function the page runs, on synthetic documents: no strip is settled, an unmarked strip is not, nor is a page whose
+    // one strip was marked while a later-streamed one was not; every strip marked (any of the four states) is. (b) open()
+    // asks it once — after hydration, the plant and the last document's 3 s — immediately before the Needle's settle,
+    // bounded by STRIPS_MARK_MS and read every 100 ms; (c) a strip never marked is a note in what open() returns, never a throw.
+    const stripDoc = (rails) => ({ querySelectorAll: (sel) => (sel === "[data-strip-autoscroll]"
+      ? rails.map((edges) => ({ hasAttribute: (name) => name === "data-edges" && edges !== null })) : []) });
+    const DOCS = [
+      ["a page without a scrolling strip", [], true],
+      ["one strip its StripAutoScroll has not marked", [null], false],
+      ["two strips, one marked and one that streamed in after the other's leaf ran", ["none", null], false],
+      ["one strip marked none (everything fits)", ["none"], true],
+      ["every strip marked", ["start", "both", "end"], true],
+    ];
+    const stripMisread = DOCS.filter(([, rails, want]) => STRIPS_MARKED(null, stripDoc(rails)) !== want).map(([what, , want]) => `${what} read ${want ? "unsettled" : "settled"}`);
+    ok("P.8s (a) the strips' marks are read as the page states them: a page without a scrolling strip is settled; an unmarked strip is NOT, nor is a page whose later-streamed strip is still unmarked beside a marked one; every strip marked is",
+      stripMisread.length === 0, JSON.stringify(stripMisread).slice(0, 400));
+    const STRIPS_ASK = `strips ${STRIPS_MARK_MS} 100`;
+    const stripFails = [];
+    for (const [what, opts] of [["a page", {}], ["a page the client redirects", { redirect: true }]]) {
+      const page = pageOf(opts);
+      const got = await open(page, "/results", { css: "main { color: red }" }).catch((e) => ({ error: msg(e) }));
+      const s = page.asked.indexOf(STRIPS_ASK), n = page.asked.indexOf(SETTLE_ASK);
+      const after = ["hydrated", "plant", "wait 3000"].every((x) => page.asked.lastIndexOf(x) < s);
+      if (got.error || got.strips !== null || page.asked.filter((x) => x.startsWith("strips")).length !== 1 || s < 0 || s !== n - 1 || !after) {
+        stripFails.push(`${what}: asked ${page.asked.join(", ")} → ${JSON.stringify(got).slice(0, 120)}`);
+      }
+    }
+    {
+      const page = pageOf({ marks: false });
+      const got = await open(page, "/results", null).catch((e) => ({ error: msg(e) }));
+      if (got.error || got.status !== 200 || got.needle !== null || typeof got.strips !== "string" || !got.strips.includes("2 scrolling strip(s) still had no data-edges")) {
+        stripFails.push(`a strip never marked: asked ${page.asked.join(", ")} → ${JSON.stringify(got).slice(0, 160)}`);
+      }
+    }
+    ok(`P.8s (b) open() waits for every scrolling strip's mark once — after hydration, the plant and the last document's 3 s — immediately before the Needle's settle, bounded (${secs(STRIPS_MARK_MS)}, read every 100 ms); (c) a strip never marked is a note in what open() returns, never a throw`,
+      stripFails.length === 0, JSON.stringify(stripFails).slice(0, 400));
   }
   // ②d S7 WP1 · /'s head from the bytes (WP1 steps 3 and 5): the reader takes the canonical link and every og:* meta in
   // order — attributes in any order, a tag streamed into the body — and never twitter:*, a comment or the RSC payload's
@@ -3799,6 +4099,14 @@ async function proveRed() {
     ["B.9", "a home featured close date not canonicalized", (m) => { atBook(m, "guest", "en", 360, "/").homeCloseDates.featured = 0; }],
     ["B.9", "an extra home board close-date leaf", (m) => { atBook(m, "player", "sw", 1280, "/").homeCloseDates.leaves.rows++; }],
     ["B.9", "a close-date leaf canonicalized outside home", (m) => { atBook(m, "guest", "en", 360, "/markets").homeCloseDates.rows = 1; }],
+    ["B.9", "a watchlist moment with an invalid locale date", (m) => { atBook(m, "player", "en", 360, "/watchlist").watchlistDates.canonicalized--; }],
+    ["B.9", "an extra watchlist time slot", (m) => { atBook(m, "player", "sw", 1280, "/watchlist").watchlistDates.slots++; }],
+    ["B.9", "an open watchlist card that draws no time leaf", (m) => { const c = atBook(m, "player", "en", 1280, "/watchlist"); c.watchlistDates.slots--; c.watchlistDates.canonicalized--; }],
+    ["B.9", "a seeded watchlist with no open row, so no moment to canonicalize", (m) => {
+      m.seed.watchlist.reply.byLens.open = 0;
+      for (const [k, , , , r] of bookCellKeys()) if (r === "/watchlist") m.book[k].watchlistDates = { slots: 0, canonicalized: 0 };
+    }],
+    ["B.9", "a watchlist moment canonicalized outside watchlist", (m) => { atBook(m, "guest", "en", 360, "/markets").watchlistDates.canonicalized = 1; }],
   ];
   for (const [id, what, plant] of BOOK_FLOOR_PLANTS) {
     const m = structuredClone(SB);
@@ -3899,6 +4207,7 @@ async function proveRed() {
   }
 
   // ③ The browser: the instrument agrees with itself, and sees each plant in its own field and nowhere else.
+  await recycleBrowser("rendered synthetic controls before served plants");
   const PLANTS = [
     { id: "height", css: "header.app-topbar { height: 64px !important; }", what: "the canvas's 64px bar in place of the kit's 56", need: "regions.header.layout", within: ["regions.header."] },
     { id: "paint", css: "header.app-topbar a { color: rgb(255, 0, 0) !important; }", what: "a paint-only change (the header's links turn red)", need: "regions.header.layout", within: ["regions.header."] },
@@ -3942,6 +4251,7 @@ async function proveRed() {
     }
   }
 
+  await recycleBrowser("served matrix plants before Sell seed");
   // ④ WP10 · the Sell capture in the browser, after every cell above (they read the demo portfolio empty): the player is
   // given an open ticket; at BOTH places a classic holder is sold to, two clean captures of a Sell cell agree inside its
   // free window (in the holder block, with the classic confirm captured inside its quote hold); and a planted change to
@@ -4006,6 +4316,7 @@ async function proveRed() {
     }
   }
 
+  await recycleBrowser("served Sell plants before book seed");
   // ⑤ S7 WP1 · the book in the browser, after the Sell capture (its { markets: 5 } came first, as in a capture): the demo
   // player's book is seeded through the existing doors and probed (A8 items 1 and 2); the LIVE strip is waited for; then
   // two clean captures of each BOOK_PROVE cell agree — the strip read still — and each plant is reported in its own field
@@ -4055,6 +4366,26 @@ async function proveRed() {
       ] },
       { v: "player", l: "sw", w: 360, r: "/watchlist", plants: [
         { id: "book-card", js: cardIn.main, what: "a class added to one card in /watchlist's body", need: "regions.main.html", within: ["regions.main."] },
+        // MASWALI-BUILD S5-PARITY · the open cards' moments (BOOK_SETTLE watchlist-date-leaves), on the served page.
+        { id: "watchlist-moment", lateWatchlistJs: () => {
+          let moved = 0;
+          for (const el of document.querySelectorAll('#main-content article.mcardp .mcardp-closes[data-market-part="time"]')) {
+            for (const n of el.childNodes) if (n.nodeType === 3 && /^[1-9][0-9]? [A-Z][a-z]{2}(?: [0-9]{4})?, [0-9]{2}:[0-9]{2}$/.test(n.nodeValue)) { n.nodeValue = '3 Okt, 07:11'; moved++; }
+          }
+          return moved;
+        },
+          what: "every open card's moment changed to another server's (another day and minute), canonicalized before geometry", noDiff: true },
+        { id: "watchlist-date-spacing", css: '#main-content .mcardp-closes { word-spacing: 3px !important; }',
+          what: "the open cards' time set 3px wider between words, which no signature records (only boxes can show it)", need: "regions.main.layout", within: ["regions.main."] },
+        { id: "watchlist-date-alignment", css: '#main-content .mcardp-tail > .mcardp-closes { margin-left: 0 !important; }',
+          what: "the open cards' time no longer pushed to the row's right edge", need: "regions.main.layout", within: ["regions.main."] },
+        { id: "watchlist-date-format", lateWatchlistJs: () => {
+          const el = document.querySelector('#main-content article.mcardp .mcardp-closes[data-market-part="time"]');
+          const n = el && [...el.childNodes].find((x) => x.nodeType === 3 && x.nodeValue.trim());
+          const was = n?.nodeValue;
+          if (n) n.nodeValue = n.nodeValue.replace(/^([0-9]+) (\S+), /, '$1, $2 ');
+          return n && n.nodeValue !== was ? 1 : 0;
+        }, what: "one open card's moment written in another format", need: "regions.main.html", within: ["regions.main."], population: true },
       ] },
       { v: "guest", l: "sw", w: 1280, r: "/live", plants: [] },
       { v: "player", l: "en", w: 360, r: BOOK.similar, plants: [
@@ -4077,21 +4408,34 @@ async function proveRed() {
         noise.length === 0 && bodyCount === 1 && stripOk,
         `${noise.length ? noise.slice(0, 3).map((d) => `${d.field}: ${d.detail}`).join(" | ").slice(0, 400)
           : `body ${bodyCount ?? 0} · strip ${BOOK.lobby.includes(r) ? clean.regions.ticker?.count ?? 0 : "-"} · cards ${clean.cards.length}`}${notedIn(clean, again)}`);
+      // B.9 on the served page: /watchlist is judged against this run's own seed-watchlist (its byLens.open), every other
+      // route against the synthetic book's, whose home population is the source's own.
+      const b9Of = (cell) => (r === "/watchlist"
+        ? bookChecks({ [k]: cell }, bookPR, blobs)
+        : (() => { const sample = syntheticBook(); sample.book[k] = cell; return bookChecks(sample.book, sample.seed, {...sample.store, ...blobs}); })()
+      ).find((c) => c.id === "B.9").fails.includes(k);
+      if (r === "/watchlist") {
+        ok(`P.${k} the served /watchlist drew exactly its open rows' time leaves (seed-watchlist's byLens.open ${bookPR?.watchlist?.reply?.byLens?.open}) and canonicalized every one before geometry (B.9)`,
+          !b9Of(clean) && !b9Of(again) && clean.watchlistDates?.slots >= 1, JSON.stringify(clean.watchlistDates));
+      }
       for (const plant of plants) {
         const planted = await captureBookCell(jar, l, w, r, bookV.similarId, plant);
         if (planted.error) { ok(`P.${k} ${plant.id} was captured`, false, planted.error); continue; }
         const seen = diffCells(r, clean, planted, blobs, blobs, BOOK_EXPECTED_DIFFS).unexpected;
         if (plant.noDiff) {
-          ok(`P.${k} ${plant.what} changes no field under the real book diff`, seen.length === 0 && JSON.stringify(clean.homeCloseDates) === JSON.stringify(planted.homeCloseDates), seen.map((d) => d.field).join(', '));
+          const acted = plant.lateWatchlistJs ? planted.lateWatchlist >= 1 && planted.lateWatchlist === clean.watchlistDates?.slots : true;
+          ok(`P.${k} ${plant.what} changes no field under the real book diff`,
+            acted && seen.length === 0 && JSON.stringify(clean.homeCloseDates) === JSON.stringify(planted.homeCloseDates)
+              && JSON.stringify(clean.watchlistDates) === JSON.stringify(planted.watchlistDates),
+            `${seen.map((d) => d.field).join(', ')}${plant.lateWatchlistJs ? ` · rewrote ${planted.lateWatchlist} of ${clean.watchlistDates?.slots} moment(s)` : ''}`);
           continue;
         }
         ok(`P.${k} ⭐ ${plant.what} is reported in ${plant.need}, and nowhere outside ${plant.within.join(" / ")}`,
-          seen.some((d) => inside(d.field, [plant.need])) && seen.every((d) => inside(d.field, plant.within)),
+          (!plant.lateWatchlistJs || planted.lateWatchlist >= 1) && seen.some((d) => inside(d.field, [plant.need])) && seen.every((d) => inside(d.field, plant.within)),
           seen.length ? seen.slice(0, 2).map((d) => `${d.field}: ${d.detail}`).join(" | ").slice(0, 400) : "NOT SEEN — a book compare with this harness proves nothing");
         if (plant.population) {
-          const sample = syntheticBook(); sample.book[k] = planted;
-          const failed = bookChecks(sample.book, sample.seed, {...sample.store, ...blobs}).find((c) => c.id === 'B.9').fails;
-          ok(`P.${k} ${plant.what} also fails the same B.9 exact population verdict`, failed.includes(k), JSON.stringify(planted.homeCloseDates));
+          ok(`P.${k} ${plant.what} also fails the same B.9 exact population verdict`, b9Of(planted) && !b9Of(clean),
+            JSON.stringify(r === "/watchlist" ? planted.watchlistDates : planted.homeCloseDates));
         }
       }
     }
@@ -4130,6 +4474,7 @@ async function proveRed() {
     }
   }
 
+  await recycleBrowser("served book plants before question seed");
   // ⑥ S8 WP1 · the question phase in the browser, after the book (it reads the book's world, as a capture does): the
   // questions are found and made through the existing doors and judged; then two clean captures of each QUESTION_PROVE
   // cell agree — the clocks masked, the chart's time axis read whole — and each plant is reported in its own field and

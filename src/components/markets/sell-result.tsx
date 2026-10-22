@@ -106,7 +106,7 @@ export function SellResultModal({
       ] : undefined}
       primaryLabel={resultData.variant === "success" ? t.common.doneSawa : t.common.close}
       onClose={onClose}
-      stripTone="brand"
+      stripTone={resultData.variant === "success" ? "gold" : "brand"}
     />
   );
 }

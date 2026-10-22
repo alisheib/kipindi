@@ -25,7 +25,7 @@
  * `data-type` / `data-status` instead of parsing a translated word.
  */
 import Link from "next/link";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
 import { Chip } from "@/components/ui/chip";
 import { Cash } from "@/components/ui/cash";
 import { IconPlate } from "@/components/ui/icon-plate";
@@ -66,8 +66,8 @@ export function ReceiptListRow({
         className="group flex items-center gap-3 px-3 py-3 transition-colors duration-quick hover:bg-bg-overlay/40 focus-visible:[outline-offset:-2px] lg:px-4"
       >
         <span className="hidden shrink-0 sm:block" aria-hidden>
-          <IconPlate size={40} className="bg-brand-500/10 text-brand-300">
-            <Dir s={20} />
+          <IconPlate size={40} variant="identity">
+            <Dir s={plateGlyph(40)} tier="duo" />
           </IconPlate>
         </span>
         <div className="min-w-0 flex-1">

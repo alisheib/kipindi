@@ -23,9 +23,10 @@ import { DateSelect } from "@/components/ui/date-select";
 import { TimeSelect } from "@/components/ui/time-select";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
+import { useDeferredToast } from "@/components/ui/toast";
 import { utcToZonedLocal } from "@/lib/maswali-time";
 import type { DraftSuggestion } from "@/lib/server/maswali-console";
-import { createMaswaliWeekAction, editMaswaliQuestionAction } from "../actions";
+import { createMaswaliWeekAction, editMaswaliQuestionsAction } from "../actions";
 
 const CATEGORIES = ["sports", "macro", "weather", "crypto", "culture", "tech", "other"] as const;
 const KINDS = ["SPORT", "PRICE", "WEATHER", "ANNOUNCEMENT"] as const;
@@ -72,10 +73,11 @@ const toQuestion = (r: Row) => ({
 });
 
 /**
- * `edit` opens the builder on an existing DRAFT: the week's start and line are fixed, and saving sends only the rows that
- * changed, one by one (`editDraftQuestion`; any edit clears the second reader's attestation, MB-79).
+ * `edit` opens a DRAFT: its start and line stay fixed, and the changed slots save as one batch (MB-79). `versions[i]` is
+ * row i's stored version as this editor loaded it: each changed slot sends it, and the service refuses the whole save
+ * when another officer's save changed that slot since (S5 review A5) — never a silent overwrite.
  */
-export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { defaultMonday: string; edit?: { weekId: string; rows: Row[] }; suggestions?: DraftSuggestion[] }) {
+export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { defaultMonday: string; edit?: { weekId: string; rows: Row[]; versions: string[] }; suggestions?: DraftSuggestion[] }) {
   const router = useRouter();
   const mayAct = useMayAct();
   const [weekStart, setWeekStart] = useState(defaultMonday);
@@ -83,6 +85,7 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
   const [rows, setRows] = useState<Row[]>(() => edit ? edit.rows.map((r) => ({ ...r })) : Array.from({ length: 15 }, (_, i) => emptyRow(i)));
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const { deferToast } = useDeferredToast(pending);
   // The draft as it was first drawn: any change since is work the officer would lose by leaving (test:unsaved-changes).
   const [baseline] = useState(() => JSON.stringify([weekStart, visibility, rows]));
   const dirty = JSON.stringify([weekStart, visibility, rows]) !== baseline;
@@ -102,17 +105,20 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
     if (edit) {
       const changed = rows.map((r, i) => ({ r, i })).filter(({ r, i }) => JSON.stringify(r) !== JSON.stringify(edit.rows[i]));
       if (changed.length === 0) { setError("Nothing changed."); return; }
+      const edits = changed.map(({ r, i }) => {
+        const { role: _role, ordinal: _ordinal, ...changes } = toQuestion(r);
+        void _role; void _ordinal;
+        return { slot: r.role === "MAIN" ? r.ordinal : r.ordinal + 10, changes, version: edit.versions[i] };
+      });
+      const form = new FormData();
+      form.set("weekId", edit.weekId);
+      form.set("edits", JSON.stringify(edits));
       start(async () => {
-        for (const { r } of changed) {
-          const { role: _role, ordinal: _ordinal, ...changes } = toQuestion(r);
-          void _role; void _ordinal;
-          const f = new FormData();
-          f.set("weekId", edit.weekId);
-          f.set("slot", String(r.role === "MAIN" ? r.ordinal : r.ordinal + 10));
-          f.set("changes", JSON.stringify(changes));
-          const res = await editMaswaliQuestionAction(f);
-          if (!res.ok) { setError(`${label(r)}: ${res.error}`); return; }
-        }
+        const res = await editMaswaliQuestionsAction(form);
+        if (!res.ok) { setError(res.error); return; }
+        deferToast(res.recorded === false
+          ? { title: "Questions saved, but the audit record was not written", description: "Tell an administrator. The edits are already saved; do not repeat them.", variant: "warning", durationMs: 0 }
+          : { title: "Questions saved", variant: "success" });
         router.push(`/admin/maswali/${edit.weekId}` as Route);
       });
       return;
@@ -125,6 +131,10 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
     start(async () => {
       const r = await createMaswaliWeekAction(fd);
       if (!r.ok) { setError(r.error); return; }
+      // S5-FIX-SRV · a draft whose audit row was not written is said so, as an edit's is (one truth for every act).
+      if (r.recorded === false) {
+        deferToast({ title: "Week drafted, but the audit record was not written", description: "Tell an administrator. The draft is already saved; do not draft it again.", variant: "warning", durationMs: 0 });
+      }
       router.push(`/admin/maswali/${r.weekId}` as Route);
     });
   };
@@ -135,10 +145,10 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
       {!edit && (
         <div className="glass-panel p-4 grid gap-3 sm:grid-cols-2">
           <Field label="The Monday the week starts" hint="Sales open and close on the rules' template days, in East Africa Time.">
-            <DateSelect value={weekStart} onChange={setWeekStart} size="sm" />
+            <DateSelect value={weekStart} onChange={setWeekStart} size="md" />
           </Field>
           <Field label="Line" hint="A drive week is private and never seeds a public week (OD-21).">
-            <Select size="sm" value={visibility} onChange={(v) => setVisibility(v === "DRIVE" ? "DRIVE" : "PUBLIC")} ariaLabel="Line"
+            <Select size="md" value={visibility} onChange={(v) => setVisibility(v === "DRIVE" ? "DRIVE" : "PUBLIC")} ariaLabel="Line"
               options={[{ value: "PUBLIC", label: "Public" }, { value: "DRIVE", label: "Drive (private)" }]} />
           </Field>
         </div>
@@ -154,7 +164,7 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
                 <span className="text-body-sm text-text-tertiary tabular min-w-[120px]">{utcToZonedLocal(Date.parse(sg.startsAt), "Africa/Dar_es_Salaam").replace("T", " ")} EAT</span>
                 <span className="text-body-sm text-text-tertiary">{sg.kind === "ai" ? "AI draft" : "Fixture"} · {sg.category}</span>
                 <span className="min-w-0 flex-1">{sg.textEn}</span>
-                <Select size="xs" value="" ariaLabel={`Fill a slot with ${sg.textEn}`} onChange={(v) => { if (v !== "") fillFrom(Number(v), sg); }}
+                <Select size="md" value="" ariaLabel={`Fill a slot with ${sg.textEn}`} onChange={(v) => { if (v !== "") fillFrom(Number(v), sg); }}
                   options={[{ value: "", label: "Fill slot…" }, ...rows.map((r, j) => ({ value: String(j), label: label(r) }))]} />
               </li>
             ))}
@@ -168,16 +178,16 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
             <h2 className="font-display font-semibold text-title-sm">{label(r)} <span className="text-text-tertiary text-body-sm">{r.role === "MAIN" ? "main" : "reserve · Akiba"}</span></h2>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Category"><Select size="sm" value={r.category} onChange={(v) => set(i, { category: v })} ariaLabel={`${label(r)} category`} options={CATEGORIES.map((c) => ({ value: c, label: c }))} /></Field>
-            <Field label="Kind of event"><Select size="sm" value={r.eventKind} onChange={(v) => set(i, { eventKind: v })} ariaLabel={`${label(r)} kind`} options={KINDS.map((k) => ({ value: k, label: k.toLowerCase() }))} /></Field>
+            <Field label="Category"><Select size="md" value={r.category} onChange={(v) => set(i, { category: v })} ariaLabel={`${label(r)} category`} options={CATEGORIES.map((c) => ({ value: c, label: c }))} /></Field>
+            <Field label="Kind of event"><Select size="md" value={r.eventKind} onChange={(v) => set(i, { eventKind: v })} ariaLabel={`${label(r)} kind`} options={KINDS.map((k) => ({ value: k, label: k.toLowerCase() }))} /></Field>
           </div>
           {([["textEn", "Question · English"], ["textSw", "Question · Kiswahili"], ["textZh", "Question · 中文"]] as const).map(([k, l]) => (
             <Field key={k} label={l} hint={`${r[k].length} / ${TEXT_GUIDE}${r[k].length > TEXT_GUIDE ? " · long for the slip" : ""}`}>
-              <Input size="sm" value={r[k]} onChange={(e) => set(i, { [k]: e.target.value } as Partial<Row>)} />
+              <Textarea rows={5} value={r[k]} onChange={(e) => set(i, { [k]: e.target.value } as Partial<Row>)} />
             </Field>
           ))}
           <div className="flex items-center gap-2 flex-wrap">
-            <Button size="xs" variant="ghost" onClick={() => set(i, { criterionEn: CRITERION_TEMPLATES[r.eventKind] ?? CRITERION_TEMPLATES.ANNOUNCEMENT })}>Use the {r.eventKind.toLowerCase()} template</Button>
+            <Button size="sm" variant="ghost" onClick={() => set(i, { criterionEn: CRITERION_TEMPLATES[r.eventKind] ?? CRITERION_TEMPLATES.ANNOUNCEMENT })}>Use the {r.eventKind.toLowerCase()} template</Button>
             {/[{}]/.test(r.criterionEn) && <span className="text-body-sm text-warning">Fill every {"{…}"} before saving.</span>}
           </div>
           {([["criterionEn", "How it resolves · English"], ["criterionSw", "How it resolves · Kiswahili"], ["criterionZh", "How it resolves · 中文"]] as const).map(([k, l]) => (
@@ -186,22 +196,22 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
             </Field>
           ))}
           <div className="grid gap-3 sm:grid-cols-3">
-            <Field label="Event date (source's zone)"><DateSelect value={r.eventDate} onChange={(v) => set(i, { eventDate: v })} size="sm" /></Field>
-            <Field label="Start time"><TimeSelect value={r.eventTime} onChange={(v) => set(i, { eventTime: v })} size="sm" aria-label={`${label(r)} start time`} /></Field>
-            <Field label="The source's zone"><Select size="sm" value={r.eventZone} onChange={(v) => set(i, { eventZone: v })} ariaLabel={`${label(r)} zone`} options={ZONES.map((z) => ({ value: z, label: z }))} /></Field>
+            <Field label="Event date (source's zone)"><DateSelect value={r.eventDate} onChange={(v) => set(i, { eventDate: v })} size="md" /></Field>
+            <Field label="Start time"><TimeSelect value={r.eventTime} onChange={(v) => set(i, { eventTime: v })} size="md" aria-label={`${label(r)} start time`} /></Field>
+            <Field label="The source's zone"><Select size="md" value={r.eventZone} onChange={(v) => set(i, { eventZone: v })} ariaLabel={`${label(r)} zone`} options={ZONES.map((z) => ({ value: z, label: z }))} /></Field>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Source (the official result)"><Input size="sm" value={r.sourceUrl} onChange={(e) => set(i, { sourceUrl: e.target.value })} placeholder="https://" /></Field>
-            <Field label="Fallback source" optional><Input size="sm" value={r.fallbackSourceUrl} onChange={(e) => set(i, { fallbackSourceUrl: e.target.value })} placeholder="https://" /></Field>
+            <Field label="Source (the official result)"><Input size="md" value={r.sourceUrl} onChange={(e) => set(i, { sourceUrl: e.target.value })} placeholder="https://" /></Field>
+            <Field label="Fallback source" optional><Input size="md" value={r.fallbackSourceUrl} onChange={(e) => set(i, { fallbackSourceUrl: e.target.value })} placeholder="https://" /></Field>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <Field label="Estimated chance of YES (%)" hint="OD-14: inside the rules' band">
-              <Input size="sm" inputMode="numeric" value={r.probabilityPct} onChange={(e) => set(i, { probabilityPct: e.target.value.replace(/[^0-9]/g, "").slice(0, 2) })} />
+              <Input size="md" inputMode="numeric" value={r.probabilityPct} onChange={(e) => set(i, { probabilityPct: e.target.value.replace(/[^0-9]/g, "").slice(0, 2) })} />
             </Field>
-            <Field label="Where the estimate comes from" className="sm:col-span-2"><Input size="sm" value={r.probabilitySource} onChange={(e) => set(i, { probabilitySource: e.target.value })} /></Field>
+            <Field label="Where the estimate comes from" className="sm:col-span-2"><Input size="md" value={r.probabilitySource} onChange={(e) => set(i, { probabilitySource: e.target.value })} /></Field>
           </div>
           <Field label="Reading tolerance" optional hint="For a price or a reading: how close counts (e.g. two decimals as published)">
-            <Input size="sm" value={r.readingTolerance} onChange={(e) => set(i, { readingTolerance: e.target.value })} />
+            <Input size="md" value={r.readingTolerance} onChange={(e) => set(i, { readingTolerance: e.target.value })} />
           </Field>
         </section>
       ))}
