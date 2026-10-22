@@ -170,8 +170,16 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
   const sheet = decomment(readFileSync(join(ROOT, "src/components/markets/filter-sheet.tsx"), "utf8"));
   ok("7: 🔴 the trigger carries a caret — the affordance every other disclosure has",
      /kp-fsheet-caret/.test(sheet) && /I\.chevronDown/.test(sheet));
-  ok("7: …and it rotates when the sheet opens, so the caret is live and not an ornament",
-     /\.kp-fsheet\[open\]\s*>\s*summary\s+\.kp-fsheet-caret\s*\{[^}]*rotate\(180deg\)/.test(css));
+  // ⭐ RE-PINNED IN THE OPEN 2026-10-22 (MASWALI-BUILD S5-R2-SLIP). globals.css keeps ONE pair of declarations for
+  // every caret, as a selector list, and Maswali's folded ticket (`.kp-mln-ticket[open] > summary .kp-mln-caret`)
+  // joined that list after this sheet's selector — so the selector is no longer the list's last, and a pattern that
+  // wanted it glued to `{` stopped matching a rule that still turns the caret. The selector may now be followed by
+  // more members of ITS OWN list (no brace, no semicolon: the match cannot run into another rule).
+  // `red:updown-filter-sheet`'s `caret-turns-its-wrapper` plants the defect this line exists for.
+  const TURNS = /\.kp-fsheet\[open\]\s*>\s*summary\s+\.kp-fsheet-caret\s*(?:,[^{};]*)?\{[^}]*rotate\(180deg\)/;
+  ok("7: …and it rotates when the sheet opens, so the caret is live and not an ornament", TURNS.test(css));
+  ok("7: ⭐ CONTROL — main's list (the sheet's selector last, as the old pattern read it) still reads",
+     TURNS.test(".kp-menu[open] > summary .kp-menu-caret,\n.kp-fsheet[open] > summary .kp-fsheet-caret { transform: rotate(180deg); }"));
   // ⛔ The caret must NOT be `kp-menu-caret` — §5.3 of `test:filter-language` asserts the
   // string `kp-menu` never appears in this file so the desktop row's two menus stay countable.
   ok("7: ⛔ …without joining the `.kp-menu` count that qa:discovery-board asserts",

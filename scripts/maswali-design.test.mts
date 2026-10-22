@@ -646,17 +646,22 @@ const factLineDefects = (m: string, n: number, joined: string) => {
   const cssDefects = (s: string) => {
     const d2: string[] = [];
     if (!s.includes(".kp-mln-facts { --mln-sep: 0.9em; display: flex; flex-wrap: wrap; align-items: baseline; margin-inline-start: calc(-1 * var(--mln-sep)); clip-path: inset(-1em -100vw -1em var(--mln-sep)); }")) d2.push("the list is not pulled back and clipped at its start");
-    if (!s.includes(".kp-mln-fact { min-width: 0; padding-inline-start: var(--mln-sep); }")) d2.push("a fact cannot wrap inside itself, or has no gap for its mark");
-    if (!s.includes('.kp-mln-fact::before { content: "·"; content: "·" / ""; display: inline-block; width: var(--mln-sep); margin-inline-start: calc(-1 * var(--mln-sep)); text-align: center; }')) d2.push("the mark is not each fact's leading mark, drawn in its gap");
+    // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5 round 2, HUB's sw 320 read): the mark stands outside the line's flow —
+    // absolutely, in its fact's gap, the fact its containing block. As an inline-block a line could break after it, and a
+    // fact whose first run did not fit left the mark alone on an empty first line (`test:maswali-fact-mark` measures it).
+    if (!s.includes(".kp-mln-fact { position: relative; min-width: 0; padding-inline-start: var(--mln-sep); }")) d2.push("a fact cannot wrap inside itself, has no gap for its mark, or does not hold its mark");
+    if (!s.includes('.kp-mln-fact::before { content: "·"; content: "·" / ""; position: absolute; inset-inline-start: 0; top: 0; width: var(--mln-sep); text-align: center; }')) d2.push("the mark is not each fact's leading mark, drawn in its gap outside the line's flow");
     if (!s.includes(".kp-mln-facts--stack > .kp-mln-fact::before { content: none; }")) d2.push("a stacked list draws marks");
     if (!/@media \(max-width: 767\.98px\) \{ \.kp-mln-facts--phone \{ flex-direction: column;[^}]*\} \.kp-mln-facts--phone > \.kp-mln-fact \{ padding-inline-start: 0; \} \.kp-mln-facts--phone > \.kp-mln-fact::before \{ content: none; \} \}/.test(s)) d2.push("below 768 the phone layout is not one fact per line without marks");
     return d2;
   };
   const c = cssDefects(css);
-  ok("4.A1b · the stylesheet: the list pulled back by the mark's gap and clipped there (so the mark of a line's first fact is cut away), each fact's mark LEADING it in that gap (so none ends a line), a fact free to wrap inside itself (no overflow at 320), and the stacked and phone layouts drawing no mark",
+  ok("4.A1b · the stylesheet: the list pulled back by the mark's gap and clipped there (so the mark of a line's first fact is cut away), each fact's mark LEADING it in that gap (so none ends a line) and outside the line's flow (so none stands alone on a line), a fact free to wrap inside itself (no overflow at 320), and the stacked and phone layouts drawing no mark",
     c.length === 0, c.join(" | "));
   ok("4.A1b′ PLANT · a list that is not clipped at its start (a line could open on \"·\") is reported",
     cssDefects(css.replace("clip-path: inset(-1em -100vw -1em var(--mln-sep)); ", "")).some((x) => x.includes("clipped")));
+  ok("4.A1b″ PLANT · the release's inline-block mark put back (a line may break after it) is reported",
+    cssDefects(css.replace("position: absolute; inset-inline-start: 0; top: 0; width: var(--mln-sep); text-align: center; }", "display: inline-block; width: var(--mln-sep); margin-inline-start: calc(-1 * var(--mln-sep)); text-align: center; }")).some((x) => x.includes("outside the line's flow")));
   // Each phrase A1 names, from the dictionary as drawn: one unbreakable run in the reader's language.
   const runsOf = (l: L3, text: string) => keptRuns(renderToStaticMarkup(h("p", null, FACTS.keepFact(l, text) as never)));
   const CASES: Array<[L3, string, string]> = [
@@ -796,9 +801,10 @@ const cardBlockDefects = (src: string) => {
     const d = dict[l].millionea;
     const head = FACTS.factsOf(d.ruleWithFigure);
     // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-DOORS M2): the carry stands right after the figure it adds to — it hung
-    // after the fee and read as adding to the fee.
+    // after the fee and read as adding to the fee. ⚠️ RE-PINNED 2026-10-22 (S5-FACTS, ONE wording for the close): the card's
+    // close is `salesCloseColon` now, read by its words before {when}.
     const marks = [d.productLabel, (head[0] ?? "").replace("{amount}", "").trim(), fill(d.pendingCarry, { week: 47 }), fill(head[1] ?? "", { pct: 13 }),
-      fill(head[2] ?? "", { pct: 13 }), d.salesCloseAt.replace("{when}", "").trim(), fill(d.yourTicketsThisWeek, { n: 1, cap: 10 })];
+      fill(head[2] ?? "", { pct: 13 }), d.salesCloseColon.split("{when}")[0].trim(), fill(d.yourTicketsThisWeek, { n: 1, cap: 10 })];
     const text = cardOf(l);
     const at = marks.map((m) => text.indexOf(m));
     return at.some((x, i) => x < 0 || (i > 0 && x <= at[i - 1])) ? [`${l}: ${j(at)} in "${text}"`] : [];
@@ -997,7 +1003,9 @@ const railDefects = (src: string) => {
   if (!rail.startsWith('<div className="kp-mln-rail sticky bottom-[calc(65px+env(safe-area-inset-bottom,0px))] z-30')) d.push("the rail is not docked on the tab bar");
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-SLIP): the meter's row also holds the last hour's pill (the motion critic's
   // M8: its place reserved, so the rail never grows when it arrives); the row is still the rail's full width.
-  if (!rail.includes('<div className="flex max-w-[640px] flex-col gap-2"> <div className="flex h-5 items-center gap-2"> <SteppedProgress groups={groups} className="min-w-0 flex-1" /> <MaswaliClosingPill closesAt={closesAt} serverNow={serverNow} compact className="shrink-0" /> </div>')) d.push("the meter has not the rail's full width on its own row");
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-SLIP, `test:measure`): the rail's column is the kit's form tier (`max-w-form`,
+  // 640px), no longer a hand-typed `max-w-[640px]` — the same width from the token.
+  if (!rail.includes('<div className="flex max-w-form flex-col gap-2"> <div className="flex h-5 items-center gap-2"> <SteppedProgress groups={groups} className="min-w-0 flex-1" /> <MaswaliClosingPill closesAt={closesAt} serverNow={serverNow} compact className="shrink-0" /> </div>')) d.push("the meter has not the rail's full width on its own row");
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-FIX-PLAYER P10): each count carries its total — the questions the slip asks.
   if (!s.includes('<span key="mains" className="whitespace-nowrap">{fill(t.millionea.mainsProgress, { a: formatNumber(progress.mains), n: formatNumber(progress.mainsOf) })}</span>') || !s.includes('<span key="reserves" className="whitespace-nowrap">{fill(t.millionea.reservesProgress, { b: formatNumber(progress.reserves), n: formatNumber(progress.reservesOf) })}</span>')) d.push("the two counts are not whole facts");
   if (!s.includes('{ key: "cap", node: capLine, className: "xl:hidden" }') || !s.includes("<span>{capLine}</span>")) d.push("the cap stands twice from 1280");
@@ -1499,8 +1507,8 @@ const kitNoticeDefects = (src: string) => {
 }
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI DESIGN: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
-/** The floor is the count a green run prints; VIS-P's fact, example and word plants brought it to 110, and S5-FIX-PLAYER's §5
- *  (P5, P6, P7, P8, P9, P10, P13, P15, P17, P18) to 141. */
-const MIN_ASSERTIONS = 141;
+/** The floor is the count a green run prints; VIS-P's fact, example and word plants brought it to 110, S5-FIX-PLAYER's §5
+ *  (P5, P6, P7, P8, P9, P10, P13, P15, P17, P18) to 141, and S5-FACTS 3's mark plant (4.A1b″) to 142. */
+const MIN_ASSERTIONS = 142;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

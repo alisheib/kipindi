@@ -81,7 +81,9 @@ async function opened(ms: number) {
   const w = await draft(ms);
   const a = await attestParity({ weekId: w.id, officerId: "usr_dev_reader", readVersion: await readDraftVersion(w.id) });
   if (!a.ok) throw new Error(`attest: ${a.error}`);
-  const o = await openWeek({ weekId: w.id, officerId: OWNER, guarantee: guaranteeReader, now: new Date(ms + 60_000) });
+  // At its drafted open, the config's own time (DESIGN_AUTHORITY §M8a item 24): the strip's sales start and the no-week
+  // body's next open then read the same "Monday 00:00" — opened a minute late, the tiles drew 00:01 beside 00:00.
+  const o = await openWeek({ weekId: w.id, officerId: OWNER, guarantee: guaranteeReader, now: new Date(Date.parse(w.opensAt)) });
   if (!o.ok) throw new Error(`open: ${o.error}`);
   return o.week;
 }
@@ -96,7 +98,7 @@ async function sell(weekId: string, players: string[], winners: number) {
 }
 /** Close the week, then seal all fifteen YES — or M1…M`voidedMains` VOID on the `abandoned` ground, a fact (MR-15). */
 async function closeAndSeal(week: { id: string; closesAt: string }, ms: number, voidedMains = 0) {
-  await closeWeek({ weekId: week.id, now: new Date(Date.parse(week.closesAt) + 60_000) });
+  await closeWeek({ weekId: week.id, now: new Date(Date.parse(week.closesAt)) });
   for (let slot = 1; slot <= 15; slot++) {
     const voided = slot <= voidedMains;
     const r = await sealQuestion({
@@ -145,7 +147,7 @@ export async function POST() {
     const mc = m2 + 7 * DAY;
     const wc = await opened(mc);
     await sell(wc.id, players.slice(0, 6), 0);
-    const closed = await closeWeek({ weekId: wc.id, now: new Date(Date.parse(wc.closesAt) + 60_000) });
+    const closed = await closeWeek({ weekId: wc.id, now: new Date(Date.parse(wc.closesAt)) });
     if (!closed.ok) throw new Error(`close: ${closed.error}`);
 
     // Voids whole: six voided mains outnumber the five usable reserves (MR-18), and its window has closed.

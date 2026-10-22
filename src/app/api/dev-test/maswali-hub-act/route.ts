@@ -144,7 +144,7 @@ async function act(b: Body): Promise<NextResponse> {
       case "closeOpen": {
         const week = await weekStore.openFor("PUBLIC");
         if (!week) return refuse("No week is on sale.");
-        const r = await closeWeek({ weekId: week.id, now: new Date(Date.parse(week.closesAt) + 60_000) });
+        const r = await closeWeek({ weekId: week.id, now: new Date(Date.parse(week.closesAt)) });
         return r.ok ? NextResponse.json({ ok: true, closed: week.code }) : refuse(r.error);
       }
       case "seal": {
@@ -228,7 +228,8 @@ async function act(b: Body): Promise<NextResponse> {
         if (!next) return refuse("No week is drafted.");
         const a = await attestParity({ weekId: next.id, officerId: "usr_dev_reader", readVersion: await readDraftVersion(next.id) });
         if (!a.ok) return refuse(`attest: ${a.error}`);
-        const o = await openWeek({ weekId: next.id, officerId: OWNER, guarantee: guaranteeReader, now: new Date(Date.parse(next.opensAt) + 60_000) });
+        // At its drafted open, the config's own time (DESIGN_AUTHORITY §M8a item 24), as seed-maswali opens.
+        const o = await openWeek({ weekId: next.id, officerId: OWNER, guarantee: guaranteeReader, now: new Date(Date.parse(next.opensAt)) });
         return o.ok ? NextResponse.json({ ok: true, opened: o.week.code }) : refuse(`open: ${o.error}`);
       }
       case "draftNext": {

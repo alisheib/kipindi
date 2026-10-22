@@ -44,49 +44,53 @@ export function MillioneaTicketGhost() {
   const { t, locale } = useT();
   const cancelOpen = freeCancelKnownOpen(ticketSerialOf(usePathname()), Date.now());
   return (
-    <PageContainer tier="receipt" className="space-y-5">
-      <BackLinkGhost />
-      <GhostCard className="flex flex-col gap-3 px-3 pb-3 pt-4">
-        <div className="flex flex-col gap-1.5">
-          {/* The ticket's chip, then the week and its chip: two rows on a phone, one from `sm` (the page's head). */}
-          <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:justify-between">
-            <GhostBar className="h-[23px] w-[112px] rounded-pill" />
-            <span className="inline-flex items-center gap-2">
-              <GhostBar className="h-3 w-[56px]" />
-              <GhostBar className="h-[23px] w-[136px] rounded-pill" />
-            </span>
-          </div>
-          <GhostBar className="h-[28px] w-[230px] max-w-full" />
-        </div>
-        {/* The Seal Line's box: 24px mains, their numbers, the annex and its labels, between its two rules — 108px in an
-            open week, 122px once results are in (a sealed reserve's stamp stands taller than a waiting ring); 2px less at 320. */}
-        <div className="flex flex-col border-y border-border py-2">
-          <GhostBar className="h-[24px] w-full" />
-          <GhostBar className="mt-0.5 h-[14px] w-full" />
-          <GhostBar className={cn("mt-1.5 w-full", cancelOpen ? "h-[16px] xs:h-[18px]" : "h-[30px] xs:h-[32px]")} />
-          <GhostBar className="mt-0.5 h-[14px] w-full" />
-        </div>
-        <GhostBar className={cn("w-[85%]", LIVE[cancelOpen ? "open" : "graded"][locale])} />
-        {cancelOpen && (
-          // The free cancel's door (`MaswaliCancelButton`): its clock line, the button holding its two lines, the rule.
-          <div className="flex flex-col gap-1.5" data-ghost-band="free-cancel">
-            <GhostBar className="h-[18px] w-[80%]" />
-            <GhostBar className="h-[53px] w-full rounded-control" />
-            <GhostBar className={cn("w-[70%] self-center", RULE[locale])} />
-          </div>
-        )}
-        {CLAUSES.map((i) => (
-          <div key={i} className="grid grid-cols-[28px_1fr] gap-x-2 gap-y-1 border-t border-border py-2">
-            <GhostBar className="h-4 w-4" />
-            <div className="flex flex-col gap-1">
-              <GhostBar className="h-3 w-[96px]" />
-              <GhostBar className="h-4 w-full" />
-              <GhostBar className="h-4 w-[60%]" />
+    <PageContainer tier="receipt">
+      {/* The page this drawing stands for, for the hop drive: one box-less wrapper around the whole drawing, carrying its
+          rhythm (the list's drawing says why). */}
+      <div className="contents space-y-5" data-ghost-page="ticket">
+        <BackLinkGhost />
+        <GhostCard className="flex flex-col gap-3 px-3 pb-3 pt-4">
+          <div className="flex flex-col gap-1.5">
+            {/* The ticket's chip, then the week and its chip: two rows on a phone, one from `sm` (the page's head). */}
+            <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+              <GhostBar className="h-[23px] w-[112px] rounded-pill" />
+              <span className="inline-flex items-center gap-2">
+                <GhostBar className="h-3 w-[56px]" />
+                <GhostBar className="h-[23px] w-[136px] rounded-pill" />
+              </span>
             </div>
+            <GhostBar className="h-[28px] w-[230px] max-w-full" />
           </div>
-        ))}
-      </GhostCard>
-      <span className="sr-only">{t.common.loading}</span>
+          {/* The Seal Line's box: 24px mains, their numbers, the annex and its labels, between its two rules — 108px in an
+              open week, 122px once results are in (a sealed reserve's stamp stands taller than a waiting ring); 2px less at 320. */}
+          <div className="flex flex-col border-y border-border py-2">
+            <GhostBar className="h-[24px] w-full" />
+            <GhostBar className="mt-0.5 h-[14px] w-full" />
+            <GhostBar className={cn("mt-1.5 w-full", cancelOpen ? "h-[16px] xs:h-[18px]" : "h-[30px] xs:h-[32px]")} />
+            <GhostBar className="mt-0.5 h-[14px] w-full" />
+          </div>
+          <GhostBar className={cn("w-[85%]", LIVE[cancelOpen ? "open" : "graded"][locale])} />
+          {cancelOpen && (
+            // The free cancel's door (`MaswaliCancelButton`): its clock line, the button holding its two lines, the rule.
+            <div className="flex flex-col gap-1.5" data-ghost-band="free-cancel">
+              <GhostBar className="h-[18px] w-[80%]" />
+              <GhostBar className="h-[53px] w-full rounded-control" />
+              <GhostBar className={cn("w-[70%] self-center", RULE[locale])} />
+            </div>
+          )}
+          {CLAUSES.map((i) => (
+            <div key={i} className="grid grid-cols-[28px_1fr] gap-x-2 gap-y-1 border-t border-border py-2">
+              <GhostBar className="h-4 w-4" />
+              <div className="flex flex-col gap-1">
+                <GhostBar className="h-3 w-[96px]" />
+                <GhostBar className="h-4 w-full" />
+                <GhostBar className="h-4 w-[60%]" />
+              </div>
+            </div>
+          ))}
+        </GhostCard>
+        <span className="sr-only">{t.common.loading}</span>
+      </div>
     </PageContainer>
   );
 }

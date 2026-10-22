@@ -16,18 +16,25 @@
  *      name; the journey home's ghost and the board's draw it where the card lands, and only when told the card is offered
  *   §3 the stylesheet: the door's one anatomy per width, its hover, the ghost's hidden words
  *   §4 controls: each check above is shown failing on a planted copy
+ *   §5 the dark payload (round 2's blocker): a Millionea answer crosses into client code only while it is true — the two
+ *      loading files RUN for every reader, what they hand their client drawings read as Flight writes it; a census of every
+ *      place in src that hands one, each classified by the side of the server/client line it stands on; with its plants
  * The browser half — the ghost's box against the card's at 320/360/768/1280 in three languages, and every state shot — is
- * `qa:maswali-player-shots`' door pages (MASWALI_SHOTS_PAGES=door-states,door-ghosts).
+ * `qa:maswali-player-shots`' door pages (MASWALI_SHOTS_PAGES=door-states,door-ghosts); the dark payload's real bytes are
+ * `qa:maswali-door-dark`'s (every door page, every hidden reader, document and flight, with its plant) and qa:live's dark
+ * section (`scripts/live/millionea-dark.mjs`), each run against a WITHDRAWN and a STAFF_PREVIEW server.
  * Pure: it reads source files and renders components. No server, no database, no network, no file written.
  */
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import ts from "typescript";
 import { dict } from "../src/lib/i18n-dict.ts";
 import { fill, formatTzs } from "../src/lib/utils.ts";
 import { decomment } from "./lib/decomment.mts";
+import { isDirective } from "./lib/is-directive.mts";
 import { HOSTS, LOCALES, STATES, cardMarkup, doorFixtures, inApp, type DoorHost } from "./lib/maswali-door-fixtures.mts";
-import { createRequire } from "node:module";
+import NodeModule, { createRequire } from "node:module";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
@@ -72,7 +79,9 @@ ok(`1.0 · the fixtures draw ${STATES.length} states × ${LOCALES.length} langua
 // M2 · one order: the figure, the carry that adds to it, the 10/10 share, the fee — then the state.
 const orderDefects = (l: L, m: string) => {
   const d = dict[l].millionea, head = d.ruleWithFigure.split(" · ");
-  const marks = [head[0].replace("{amount}", "").trim(), fill(d.pendingCarry, { week: 46 }), head[1], fill(head[2], { pct: 13 }), d.salesCloseAt.replace("{when}", "").trim()];
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-FACTS, the lead's ruling: ONE wording for the week's close): the card's close is
+  // the slip's and the ticket's `salesCloseColon` now ("Sales close: … EAT", zh "销售截止：…"), read by its words before {when}.
+  const marks = [head[0].replace("{amount}", "").trim(), fill(d.pendingCarry, { week: 46 }), head[1], fill(head[2], { pct: 13 }), d.salesCloseColon.split("{when}")[0].trim()];
   const text = textOf(m), at = marks.map((x) => text.indexOf(x));
   return at.some((x, i) => x < 0 || (i > 0 && x <= at[i - 1])) ? [`${l}: ${j(at)} in "${text}"`] : [];
 };
@@ -139,18 +148,22 @@ const plateDefects = (m: string) => {
 }
 
 // L7 · a time as §T5 sets a numeral (the lead's ruling, 2026-10-21): the weekday in the body face, the clock `.mono`, one run.
-const TIME_RUN = /<span class="whitespace-nowrap">([^<]+) <span class="mono">(\d{2}:\d{2})<\/span><\/span>/;
+// ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-FACTS, the lead's ruling: ONE wording for the week's close): the card's close is
+// the slip's and the ticket's `salesCloseColon`, "Sales close: Friday 18:00 EAT" — its zone kept in the same run as its clock
+// (`keepFact`'s clock run), where the card said "Sales close Friday 18:00" with no zone.
+const TIME_RUN = /<span class="whitespace-nowrap">([^<]+) <span class="mono">(\d{2}:\d{2})<\/span>( EAT)?<\/span>/;
 const timeDefects = (l: L, state: string) => {
   const WEEKDAY: Record<L, string> = { en: "Friday", sw: "Ijumaa", zh: "周五" };
   const m = TIME_RUN.exec(state);
-  return m && m[1] === WEEKDAY[l] && m[2] === "18:00" && !/font-mono|tabular-nums">[^<]*\d/.test(state) ? [] : [`${l}: ${m?.[0] ?? state.slice(0, 160)}`];
+  return m && m[1] === WEEKDAY[l] && m[2] === "18:00" && m[3] === " EAT" && !/font-mono|tabular-nums">[^<]*\d/.test(state) ? [] : [`${l}: ${m?.[0] ?? state.slice(0, 160)}`];
 };
 {
   const wrong = LOCALES.flatMap((l) => timeDefects(l, stateOf(card(l, "open · no ticket"))));
-  ok("1.8 · L7 · the close is set as §T5 sets a numeral — the weekday in the sentence's face, the clock \"18:00\" a `.mono` numeral (JetBrains Mono, tabular), the whole run never parted (\"Ijumaa 18:00\"); it was one mono run, weekday and all",
+  ok("1.8 · L7 · the close is set as §T5 sets a numeral — the weekday in the sentence's face, the clock \"18:00\" a `.mono` numeral (JetBrains Mono, tabular), its zone with it, the whole run never parted (\"Ijumaa 18:00 EAT\"); it was one mono run, weekday and all",
     wrong.length === 0, wrong.join(" | "));
-  ok("1.8′ PLANT · the old all-mono run, and an all-body-face one, are both reported",
-    timeDefects("en", '<span class="whitespace-nowrap font-mono">Friday 18:00</span>').length > 0 && timeDefects("en", '<span class="whitespace-nowrap tabular-nums">Friday 18:00</span>').length > 0);
+  ok("1.8′ PLANT · the old all-mono run, an all-body-face one, and the zone left outside the run (free to wrap alone) are each reported",
+    timeDefects("en", '<span class="whitespace-nowrap font-mono">Friday 18:00</span> EAT').length > 0 && timeDefects("en", '<span class="whitespace-nowrap tabular-nums">Friday 18:00</span> EAT').length > 0
+      && timeDefects("en", '<span class="whitespace-nowrap">Friday <span class="mono">18:00</span></span> EAT').length > 0);
 }
 /** An instant's run (`doorTime`, `doorDay`): one unparted run whose every number is a `.mono` numeral and whose words are not. */
 const instantDefects = (state: string) => {
@@ -401,10 +414,17 @@ const skeleton = (m: string) => [...m.replace(/(class="[^"]*kp-mln-door__plate[^
   });
   ok("2.5 · H1 · the board's ghost holds the slot between its header row and the search, with the page's mb-3 (it reserved none: the search, bar and grid dropped by the card's height + 16px) — and none when not", board.length === 0, j(board));
   const loading = squash(code("src/app/markets/loading.tsx")), page = squash(code("src/app/page.tsx"));
-  const gate = loading.includes("const millionea = await millioneaCardShown(); return <MarketsGhost millionea={millionea} preview={millionea && (await millioneaDoor()).preview} />;")
+  // Round 2 (the dark-safety blocker): the door's answers handed only while true — §5 runs the file for every reader.
+  const gate = loading.includes("const millionea = await millioneaCardShown(); const preview = millionea && (await millioneaDoor()).preview; return <MarketsGhost {...(millionea ? { millionea: true as const, ...(preview ? { preview: true as const } : {}) } : {})} />;")
     && page.includes("const millionea = await millioneaCardShown(); const { preview } = await millioneaDoor();")
     && squash(code("src/lib/server/millionea-doors.ts")).includes("export const millioneaCardShown = cache(async (): Promise<boolean> => { const door = await millioneaDoor(); if (!door.visible) return false;");
   ok("2.6 · H1 · the slot is drawn on the door's own answer — the card is offered (`millioneaCardShown`: visible to the reader and no break) — by /markets' loading and `/`'s fallback, so a hidden Millionea (WITHDRAWN) holds no slot", gate);
+  // Round 2: the root loading's picture of "/" (`app/loading.tsx` → `JourneyRouteGhost`, D6) is the journey home's ghost
+  // itself — with the reader's locale (`useT`), so its slot's kept runs wrap as the card's — told or not told Millionea.
+  const route = LOCALES.filter((l) => FX.routeGhost[l].slot !== FX.journeyGhost[l].slot || FX.routeGhost[l].none !== FX.journeyGhost[l].none);
+  const boardPreview = LOCALES.filter((l) => count(FX.marketsGhost[l].preview, 'data-kit-chip=""') !== 1 || count(FX.marketsGhost[l].slot, 'data-kit-chip=""') !== 0);
+  ok("2.7 · H1 · D6's path: the root loading's \"/\" (the route ghost) draws, byte for byte, the journey home's ghost in the reader's language — its slot when told Millionea is visible, none when not; and the board's ghost holds the preview chip's place at STAFF_PREVIEW only",
+    route.length === 0 && boardPreview.length === 0, j({ route, boardPreview }));
 }
 
 // ── §3 · the stylesheet ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -422,6 +442,8 @@ const cssDefects = (css: string) => {
   if (!css.includes(".mcardp:hover { translate: 0 var(--m-lift); border-color: var(--brand-500); box-shadow: 0 0 0 1px var(--brand-500), var(--elev-raised-hover); }")) d.push("the board's own card hover moved: re-read it before matching it");
   if (!css.includes(".kp-mln-ghost__words, .kp-mln-ghost .kp-mln-fact::before { visibility: hidden; }") || !css.includes(".kp-mln-ghost__bar { border-radius: var(--r-xs); background: var(--bg-overlay); -webkit-box-decoration-break: clone; box-decoration-break: clone; }")) d.push("the ghost's words and its facts' marks are not hidden over line bars");
   if (!css.includes("@media (max-width: 767.98px) { .kp-mln-door .kp-mln-facts--phone > .kp-mln-fact { padding-inline-start: 1em; text-indent: -1em; } }")) d.push("below 768 a wrapped fact's continuation does not hang (it reads as a fact of its own)");
+  // Round 2: the preview chip under the title at every width, so it never widens the one-row card's title column.
+  if (!css.includes(".kp-mln-door__title { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-1); min-width: 0; }")) d.push("the preview chip does not stand under the title (beside it, the one-row card's headline took a third line)");
   return d;
 };
 {
@@ -509,12 +531,230 @@ console.log("\n§4 · controls — each check fails on a planted copy");
     cssDefects(CSS.replace('"plate head chev" "rule rule rule" "state state state"', '"plate head chev" "plate rule chev" "plate state chev"')).length > 0
       && cssDefects(CSS.replace(".kp-mln-ghost__words, .kp-mln-ghost .kp-mln-fact::before { visibility: hidden; }", ".kp-mln-ghost__words { color: transparent; }")).length > 0
       && cssDefects(CSS.replace("padding-inline-start: 1em; text-indent: -1em;", "padding-inline-start: 0;")).length > 0);
+  ok("4.16 · the preview chip back beside the title (round 1's flex-wrap row) is reported (3.1)",
+    cssDefects(CSS.replace(".kp-mln-door__title { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-1); min-width: 0; }", ".kp-mln-door__title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); min-width: 0; }")).some((x) => x.includes("under the title")));
+  const routeOff = { ...FX.routeGhost.en, slot: FX.routeGhost.en.slot.replace(/<div aria-hidden="true" class="kp-mln-zh kp-mln-ghost[\s\S]*?data-ghost-part="millionea">/, '<div data-ghost-part="other">') };
+  ok("4.17 · a root loading \"/\" that differs from the journey home's ghost (its slot dropped) is reported (2.7)", routeOff.slot !== FX.journeyGhost.en.slot);
   const twinOff = skeleton(FX.ghost.en.board.replace("kp-mln-door__rule", "kp-mln-door__body"));
   ok("4.7 · a ghost whose anatomy drifts from the card's is reported (2.2)", twinOff.replace(/span\.(?=\s|$)/g, "") !== skeleton(twin("en", "board")).replace(/span\.(?=\s|$)/g, ""));
 }
 
+// ── §5 · the dark payload ─────────────────────────────────────────────────────────────────────────────────────────────
+// ROUND 2'S BLOCKER (found by S5-FIX-PLATFORM, 2026-10-22): /markets' loading file handed its client drawing
+// `millionea={millionea}` and `preview={…}` ALWAYS, so every visitor's board carried `"millionea":false` in its payload —
+// the trace qa:live's dark section refuses at every rollout below ACTIVE, production's WITHDRAWN included. Next writes every
+// prop handed to CLIENT code into the payload (a reference and its props); a server component's props never are (the server
+// runs it and writes what it returns). So a Millionea answer crosses into client code only while it is true — D3's rule, the
+// root loading file's shape — and that is held here twice: the two loading files RUN for each reader, and a census of every
+// place in src that hands an answer, each classified by the side of the line it stands on.
+console.log("\n§5 · the dark payload: a Millionea answer crosses into client code only while it is true (round 2's blocker)");
+/** The rollout's answers a door is handed: Millionea visible to the reader, the reader on a break, its staff preview. */
+const ANSWERS = new Set(["millionea", "millioneaOnBreak", "preview"]);
+/** The request a loading file reads (r5h's world, stubbed): its address, the journey's answer, the doors' and the rollout's. */
+const REQ = { path: "/markets", journey: false, offered: false, visible: false, preview: false };
+(req("next/headers") as { headers: unknown }).headers = async () => new Headers({ "x-pathname": REQ.path });
+const stubModule = (rel: string, exports: Record<string, unknown>) => {
+  const at = req.resolve(`../${rel}`);
+  const m = new NodeModule(at);
+  m.filename = at; m.loaded = true; m.exports = exports;
+  (req.cache as Record<string, unknown>)[at] = m;
+};
+stubModule("src/lib/server/journey-preview.ts", { resolveSimpleJourney: async () => ({ state: "LIVE", journey: REQ.journey, preview: false, pass: null }) });
+stubModule("src/lib/server/millionea-doors.ts", { millioneaCardShown: async () => REQ.offered, millioneaDoor: async () => ({ visible: REQ.visible, preview: REQ.preview }) });
+stubModule("src/lib/server/millionea-preview.ts", { resolveMillionea: async () => ({ state: REQ.preview ? "STAFF_PREVIEW" : REQ.visible ? "ACTIVE" : "WITHDRAWN", visible: REQ.visible, preview: REQ.preview }) });
+/** A module compiled from a planted source at the real file's place, so its imports resolve (dark-edge's `fromSource`). */
+function fromSource<T>(rel: string, source: string): T {
+  const filename = req.resolve(`../${rel}`);
+  req(filename);
+  const live = (req.cache as Record<string, NodeModule>)[filename];
+  const compiled = ts.transpileModule(source, {
+    fileName: filename,
+    compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
+  }).outputText;
+  const m = new NodeModule(filename);
+  m.filename = filename;
+  m.paths = live.paths;
+  (m as NodeModule & { _compile(s: string, f: string): void })._compile(compiled, filename);
+  return m.exports as T;
+}
+type El = { type: unknown; props: Record<string, unknown> };
+type Loading = () => Promise<El>;
+const MarketsLoading = (req("../src/app/markets/loading.tsx") as { default: Loading }).default;
+const RootLoading = (req("../src/app/loading.tsx") as { default: Loading }).default;
+const MARKETS_GHOST = (req("../src/app/markets/markets-ghost.tsx") as { default: unknown }).default;
+const { LazyJourneyRouteGhost: ROUTE_GHOST } = req("../src/components/journey/route-ghost-lazy.tsx") as { LazyJourneyRouteGhost: unknown };
+const { heroRailNames } = req("../src/lib/server/payout-rails.ts") as { heroRailNames: (p: null) => string[] };
+/** A client element's props as Flight writes them into the payload — an `undefined` too ("$undefined": the key is there). */
+const written = (props: Record<string, unknown>) => JSON.stringify(props, (_k, v) => (v === undefined ? "$undefined" : v));
+const refName = (type: unknown) => (type === MARKETS_GHOST ? "MarketsGhost" : type === ROUTE_GHOST ? "LazyJourneyRouteGhost" : typeof type === "string" ? `<${type}>` : "another element");
+type Reader = { who: string; path: string; journey: boolean; offered?: boolean; visible?: boolean; preview?: boolean; ref: unknown; props: string };
+const handedDefects = async (load: Loading, readers: readonly Reader[]) => {
+  const d: string[] = [];
+  for (const r of readers) {
+    Object.assign(REQ, { path: r.path, journey: r.journey, offered: r.offered === true, visible: r.visible ?? r.offered === true, preview: r.preview === true });
+    const el = await load();
+    if (el.type !== r.ref || written(el.props) !== r.props) d.push(`${r.who} (${r.path}): ${refName(el.type)} ${written(el.props)} — want ${refName(r.ref)} ${r.props}`);
+  }
+  return d;
+};
+// A reader the card is not offered to: WITHDRAWN, a STAFF_PREVIEW player, a reader on a break — the door's one false.
+const BOARD: Reader[] = [
+  { who: "a classic reader the card is not offered to", path: "/markets", journey: false, ref: MARKETS_GHOST, props: "{}" },
+  { who: "the same reader at a question under the board", path: "/markets/rec_any", journey: false, ref: MARKETS_GHOST, props: "{}" },
+  { who: "a journey reader the card is not offered to, on the board", path: "/markets", journey: true, ref: MARKETS_GHOST, props: "{}" },
+  { who: "a journey reader at a question (the journey's picture)", path: "/markets/rec_any", journey: true, ref: ROUTE_GHOST, props: '{"rails":[],"at":"/markets/[id]"}' },
+  { who: "a reader the card is offered to (ACTIVE)", path: "/markets", journey: false, offered: true, ref: MARKETS_GHOST, props: '{"millionea":true}' },
+  { who: "staff at STAFF_PREVIEW", path: "/markets", journey: false, offered: true, preview: true, ref: MARKETS_GHOST, props: '{"millionea":true,"preview":true}' },
+];
+const RAILS = j(heroRailNames(null));
+const ROOT_READERS: Reader[] = [
+  { who: "a journey reader Millionea is hidden from (WITHDRAWN, a STAFF_PREVIEW player)", path: "/", journey: true, ref: ROUTE_GHOST, props: `{"rails":${RAILS}}` },
+  { who: "the same reader on the board", path: "/markets", journey: true, ref: ROUTE_GHOST, props: `{"rails":${RAILS}}` },
+  { who: "a journey reader Millionea is visible to", path: "/", journey: true, visible: true, ref: ROUTE_GHOST, props: `{"rails":${RAILS},"millionea":true}` },
+  { who: "a classic reader Millionea is visible to (the box, no client picture)", path: "/", journey: false, visible: true, ref: "div", props: "{}" },
+];
+{
+  const clientCode = [read("src/app/markets/markets-ghost.tsx"), read("src/components/journey/route-ghost-lazy.tsx")].every((s) => isDirective(s, "use client"));
+  const board = await handedDefects(MarketsLoading, BOARD);
+  ok(`5.1 · RUN as the server runs it, /markets' loading file hands its client drawing (a "use client" export: its props ARE the payload's) NO Millionea key for a reader the card is not offered to — WITHDRAWN, a STAFF_PREVIEW player, a reader on a break; classic or journey; on the board and at a question under it: \`<MarketsGhost />\`, \`{}\`, the element main serves — \`{"millionea":true}\` to a reader it is offered to and \`{"millionea":true,"preview":true}\` to staff at STAFF_PREVIEW (${BOARD.length} readers)`,
+    clientCode && board.length === 0, board.join(" | "));
+  // The classic arm returns the box; its props are read apart from React's own element fields.
+  const root = await handedDefects(async () => {
+    const el = await RootLoading();
+    return el.type === "div" ? { type: "div", props: {} } : el;
+  }, ROOT_READERS);
+  ok(`5.2 · RUN as the server runs it, the root loading file hands the journey's route ghost \`millionea\` only while it is true: \`{"rails":[…]}\` for a journey reader Millionea is hidden from, \`"millionea":true\` added for one it is visible to; a classic reader is drawn the box (${ROOT_READERS.length} readers)`,
+    root.length === 0, root.join(" | "));
+}
+
+/* ── the census: every place in src that hands a Millionea answer, and the side of the line it stands on ─────────────── */
+/** Millionea's own addresses — dark as a whole: a reader it is hidden from gets the platform's 404, so their payloads never
+ *  reach one (qa:live's MILLIONEA_ROUTES) — and the officer console (staff only, behind its own gate). */
+const NOT_A_DOOR = /^src\/app\/(?:millionea|admin|legal\/rules\/millionea|api\/og\/millionea)\//;
+const tsxUnder = (dir: string, out: string[] = []): string[] => {
+  for (const n of readdirSync(join(ROOT, dir))) {
+    const p = `${dir}/${n}`;
+    if (statSync(join(ROOT, p)).isDirectory()) tsxUnder(p, out);
+    else if (p.endsWith(".tsx")) out.push(p);
+  }
+  return out;
+};
+const DOOR_FILES = tsxUnder("src").filter((f) => !NOT_A_DOOR.test(f));
+type Shape = { keys: string[]; ok: boolean; why: string };
+const unwrap = (e: ts.Expression): ts.Expression => (ts.isParenthesizedExpression(e) || ts.isAsExpression(e) || ts.isSatisfiesExpression(e) || ts.isNonNullExpression(e) ? unwrap(e.expression) : e);
+/** The answers an object literal carries, each held only while true: `key: true` (`true as const`), or the condition's own
+ *  name, narrowed true by it (`millionea ? { millionea } : {}`). */
+function objectShape(o: ts.ObjectLiteralExpression, cond: string | null, sf: ts.SourceFile): Shape {
+  const keys: string[] = [], bad: string[] = [];
+  for (const p of o.properties) {
+    if (ts.isSpreadAssignment(p)) { const r = spreadShape(p.expression, sf); keys.push(...r.keys); if (!r.ok) bad.push(r.why); continue; }
+    const name = p.name && (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) ? p.name.text : null;
+    if (name === null || !ANSWERS.has(name)) continue;
+    keys.push(name);
+    if (ts.isPropertyAssignment(p) && unwrap(p.initializer).kind === ts.SyntaxKind.TrueKeyword) continue;
+    if (ts.isShorthandPropertyAssignment(p) && cond === name) continue;
+    bad.push(`"${p.getText(sf)}" holds more than true`);
+  }
+  return { keys, ok: bad.length === 0, why: bad.join("; ") };
+}
+/** A spread's answers and whether each exists only while true: `c ? { …true } : {}`, or a name declared so in the file. */
+function spreadShape(e0: ts.Expression, sf: ts.SourceFile, depth = 0): Shape {
+  const e = unwrap(e0);
+  if (ts.isConditionalExpression(e)) {
+    const c = unwrap(e.condition), yes = unwrap(e.whenTrue), no = unwrap(e.whenFalse);
+    const t = ts.isObjectLiteralExpression(yes) ? objectShape(yes, ts.isIdentifier(c) ? c.text : null, sf) : { keys: [], ok: true, why: "" };
+    const f = ts.isObjectLiteralExpression(no) ? objectShape(no, null, sf) : { keys: [], ok: true, why: "" };
+    const keys = [...new Set([...t.keys, ...f.keys])];
+    const empty = ts.isObjectLiteralExpression(no) && no.properties.length === 0;
+    return { keys, ok: keys.length === 0 || (t.ok && empty), why: [t.why, empty ? "" : `its other branch is not {} (${no.getText(sf).slice(0, 60)})`].filter(Boolean).join("; ") };
+  }
+  if (ts.isObjectLiteralExpression(e)) return objectShape(e, null, sf);
+  if (ts.isIdentifier(e) && depth === 0) {
+    let init: ts.Expression | undefined;
+    const find = (n: ts.Node): void => { if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.name.text === e.text && n.initializer) init = n.initializer; else ts.forEachChild(n, find); };
+    find(sf);
+    if (init) return spreadShape(init, sf, 1);
+  }
+  return { keys: [], ok: true, why: "" };
+}
+type Site = { file: string; tag: string; keys: string; how: "attribute" | "spread"; side: "server→client" | "server→server" | "inside client code"; target: string; ok: boolean; why: string };
+/** Every element in a door file handed an answer, classified: inside client code (the file is a "use client" module — a
+ *  prop handed there is a runtime value, never written into a payload); server→server (the target is a server component,
+ *  run on the server: its props are never written); server→client (a "use client" export, a package's component or a host
+ *  element: its props ARE written) — the one side where an answer must exist only while true. */
+function census(text: (rel: string) => string = read): Site[] {
+  const sites: Site[] = [];
+  for (const file of DOOR_FILES) {
+    const src = text(file);
+    if (!/\b(?:millionea|millioneaOnBreak|preview)\b/.test(src)) continue;
+    const sf = ts.createSourceFile(file, src, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    const imports = new Map<string, string>();
+    for (const st of sf.statements) {
+      if (!ts.isImportDeclaration(st) || st.importClause?.isTypeOnly || !ts.isStringLiteral(st.moduleSpecifier)) continue;
+      const c = st.importClause;
+      if (c?.name) imports.set(c.name.text, st.moduleSpecifier.text);
+      if (c?.namedBindings && ts.isNamedImports(c.namedBindings)) for (const el of c.namedBindings.elements) if (!el.isTypeOnly) imports.set(el.name.text, st.moduleSpecifier.text);
+    }
+    const inClient = isDirective(src, "use client");
+    const visit = (node: ts.Node): void => {
+      if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+        const tag = node.tagName.getText(sf);
+        for (const a of node.attributes.properties) {
+          let site: Pick<Site, "keys" | "how" | "ok" | "why"> | null = null;
+          if (ts.isJsxAttribute(a) && ANSWERS.has(a.name.getText(sf))) site = { keys: a.name.getText(sf), how: "attribute", ok: false, why: `a plain attribute: its false is written too (${a.getText(sf).slice(0, 70)})` };
+          else if (ts.isJsxSpreadAttribute(a)) { const r = spreadShape(a.expression, sf); if (r.keys.length > 0) site = { keys: r.keys.join("+"), how: "spread", ok: r.ok, why: r.why }; }
+          if (site === null) continue;
+          let side: Site["side"], target: string;
+          if (inClient) { side = "inside client code"; target = "(rendered in the browser's tree)"; }
+          else if (/^[a-z]/.test(tag)) { side = "server→client"; target = `<${tag}> (a host element: its props are written)`; }
+          else {
+            const spec = imports.get(tag.split(".")[0]);
+            const to = spec === undefined ? file : resolveSpec(file, spec);
+            if (to === null) { side = "server→client"; target = `${spec} (a package's component, taken as client code)`; }
+            else { side = isDirective(text(to), "use client") ? "server→client" : "server→server"; target = to; }
+          }
+          sites.push({ file, tag, side, target, ...site, ok: side !== "server→client" || site.ok });
+        }
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(sf);
+  }
+  return sites;
+}
+{
+  const sites = census();
+  const by = (side: Site["side"]) => sites.filter((s) => s.side === side);
+  for (const s of sites) console.log(`     · ${s.side.padEnd(18)} ${s.file} <${s.tag}> ${s.keys} (${s.how}) → ${s.target}${s.ok ? "" : `  ✗ ${s.why}`}`);
+  const crossing = by("server→client");
+  ok(`5.3 · the census — every place in src that hands a Millionea answer (${sites.length} sites in ${DOOR_FILES.length} door files; Millionea's own pages and the console aside): the ${crossing.length} that cross into client code (a "use client" export, a package's component or a host element — their props are written into the payload) each hand it ONLY WHILE TRUE (\`c ? { key: true } : {}\`, the root loading file's shape); the ${by("server→server").length} server→server hand-offs and the ${by("inside client code").length} inside client code are never written`,
+    sites.length >= 20 && crossing.length >= 8 && sites.every((s) => s.ok), sites.filter((s) => !s.ok).map((s) => `${s.file} <${s.tag}> ${s.keys}: ${s.why}`).join(" | "));
+}
+{
+  const LOADING = "src/app/markets/loading.tsx", SHELL = "src/components/layout/app-shell.tsx";
+  const OLD = "return <MarketsGhost millionea={millionea} preview={millionea && (await millioneaDoor()).preview} />;";
+  const NOW_LINE = "return <MarketsGhost {...(millionea ? { millionea: true as const, ...(preview ? { preview: true as const } : {}) } : {})} />;";
+  const at = (rel: string, from: string, to: string) => (p: string) => {
+    const s = read(p);
+    if (p !== rel) return s;
+    if (count(s, from) !== 1) throw new Error(`plant anchor found ${count(s, from)} times in ${rel}: ${from.slice(0, 60)}`);
+    return s.replace(from, to);
+  };
+  const s5 = at(LOADING, NOW_LINE, OLD);
+  const planted = fromSource<{ default: Loading }>(LOADING, s5(LOADING)).default;
+  const red = await handedDefects(planted, BOARD);
+  ok("5.1′ PLANT · the S5 line (`millionea={millionea} preview={…}` handed always) is reported: a reader the card is not offered to is handed `{\"millionea\":false,\"preview\":false}`",
+    red.some((x) => x.includes('{"millionea":false,"preview":false}')), red.slice(0, 1).join(""));
+  const redSites = census(s5).filter((s) => !s.ok);
+  ok("5.3′ PLANT · the same line is reported by the census: a plain attribute handed across into client code", redSites.some((s) => s.file === LOADING && s.how === "attribute"), j(redSites.map((s) => s.file)));
+  const nav = census(at(SHELL, "walletHeld={!!topUser.walletHeld} {...millioneaProp}", "walletHeld={!!topUser.walletHeld} millionea={millioneaRow}")).filter((s) => !s.ok);
+  ok("5.3″ PLANT · a nav handed `millionea={millioneaRow}` again (D3's defect) is reported", nav.some((s) => s.file === SHELL && s.tag === "BottomNav"), j(nav.map((s) => `${s.file} ${s.tag}`)));
+  const leaky = census(at(SHELL, "millioneaRow ? { millionea: true } : {};", "millioneaRow ? { millionea: true } : { millionea: false };")).filter((s) => !s.ok);
+  ok("5.3‴ PLANT · a spread whose other branch carries the key (`c ? { millionea: true } : { millionea: false }`) is reported at every nav it reaches", leaky.filter((s) => s.file === SHELL).length === 4, j(leaky.map((s) => s.tag)));
+}
+
 console.log(`\n${"═".repeat(70)}\n  MASWALI DOORS: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run prints. */
-const MIN_ASSERTIONS = 53;
+const MIN_ASSERTIONS = 63;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

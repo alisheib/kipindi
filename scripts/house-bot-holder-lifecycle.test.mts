@@ -217,7 +217,14 @@ ok("2.1 · ⭐ every script that writes an account fact is a suite, or carries t
  *     accounts it creates itself, and the gate's play-clock write on one of them, in the LOOPBACK scratch Postgres it
  *     refuses to leave; its world holds no house bot. It carries the L2-sweep declaration (2.1), saying so.
  */
-const SCRIPT_CEILING = 38;
+/**
+ * ⚠️ 38 → 39 on 2026-10-22 (the MASWALI-BUILD S5 release), by the same rule: the one new member was READ before it was
+ * admitted. It is `maswali-doors.test.mts` (ebb6caa5f, S5-DESIGN-DOORS, 2026-10-21). It enters on the data-rights pattern
+ * `queue.push(r);` — at its `clientReach` walk, a breadth-first queue of the import graph that finds which files a card's
+ * model reaches on the client — so the match is the predicate's conservative catch, not a write: the suite writes no
+ * account fact at all. It is declared by the `.test.mts` rule (2.1). Nobody else joined or left.
+ */
+const SCRIPT_CEILING = 39;
 ok(`2.2 · the script population is shrink-only (${scriptWriters.length} found, ceiling ${SCRIPT_CEILING})`, scriptWriters.length <= SCRIPT_CEILING,
   scriptWriters.map((s) => s.file).slice(0, 6).join(" · "));
 

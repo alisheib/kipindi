@@ -4743,7 +4743,14 @@ html[data-sheet-open] .route-enter { animation: none; }
    the mark of the fact that opens each line is cut away, and a leading mark can never end a line. `--stack` puts one
    fact on each line at every width and `--phone` below 768 — with no marks at all, so a stacked list may be centred.
    The mark is declared twice: an engine without generated content's alternative text keeps the plain mark; the rest
-   give it empty text, since the DOM carries the " · " a screen reader and a copy read (sr-only). */
+   give it empty text, since the DOM carries the " · " a screen reader and a copy read (sr-only).
+   ⭐ THE MARK STANDS OUTSIDE THE LINE'S FLOW (S5 round 2, HUB's sw 320 read; `test:maswali-fact-mark` measures it in
+   Chromium and WebKit): absolutely positioned in its fact's gap, the fact its containing block, at the top of the fact's
+   first line. As an inline-block it was an atomic inline, which a line may always break after, so a fact whose first run
+   did not fit its line left the mark alone on an EMPTY first line (cut away by the clip) and its words on the next. Out
+   of flow it offers no break: a fact's first run opens its first line. On a line of the list's own height it is drawn
+   pixel for pixel where the inline-block drew it; beside a taller first line it sits at that line's top, not its baseline.
+   The rule: DESIGN_AUTHORITY §M8a item 24. */
 .kp-mln-facts {
   --mln-sep: 0.9em;
   display: flex;
@@ -4752,13 +4759,14 @@ html[data-sheet-open] .route-enter { animation: none; }
   margin-inline-start: calc(-1 * var(--mln-sep));
   clip-path: inset(-1em -100vw -1em var(--mln-sep));
 }
-.kp-mln-fact { min-width: 0; padding-inline-start: var(--mln-sep); }
+.kp-mln-fact { position: relative; min-width: 0; padding-inline-start: var(--mln-sep); }
 .kp-mln-fact::before {
   content: "·";
   content: "·" / "";
-  display: inline-block;
+  position: absolute;
+  inset-inline-start: 0;
+  top: 0;
   width: var(--mln-sep);
-  margin-inline-start: calc(-1 * var(--mln-sep));
   text-align: center;
 }
 .kp-mln-facts--stack { flex-direction: column; align-items: flex-start; margin-inline-start: 0; clip-path: none; }
@@ -4796,6 +4804,11 @@ html[data-sheet-open] .route-enter { animation: none; }
    of a cancelled or refunded ticket — the open ring at the disabled control's own opacity, so it never reads as the live
    "awaiting" ring beside it (`maswali-seal-line.tsx`, `SocketGlyph`). */
 .kp-mln-rest { opacity: var(--state-disabled-opacity); }
+/* MASWALI-BUILD S5 round 2 · A STRUCK QUESTION'S STRIKE ENDS AT ITS INK (the lead's read of the zh tiles: "…吗？-"; the
+   rule: DESIGN_AUTHORITY §M8a item 24; `maswali-strike.tsx` says why). The last full-width mark's empty part is clipped
+   by the platform's own measured trim (cjk-marks.tsx: 0.65em, ？ 0.5em), its strike with it; nothing moves. */
+.kp-mln-strike-end { clip-path: inset(0 0.65em 0 0); }
+.kp-mln-strike-end--q { clip-path: inset(0 0.5em 0 0); }
 /* MASWALI-BUILD S5-DESIGN-TICKETS · A MOMENT WAITS FOR ITS OWNER'S EYES (the R1 tickets critic's M8 and the motion critic's
    H3, Ali 2026-10-21 10/10 pass; `maswali-moment.tsx` says why). Inside a moment that has not yet come into view
    (`[data-mln-moment]` without `[data-mln-played]`, which React renders from the observer's state) every N-block animation
@@ -4850,11 +4863,15 @@ html[data-sheet-open] .route-enter { animation: none; }
    flat box and inset; its border turns royal), on the board the market cards' (`--board`, with `mat-raised`: 12px, 16px
    across from 640, as `.mcardp`; it lifts --m-lift with the brand ring over --t-base / --m-glide, as every board card does —
    the motion critic's L5). `.kp-mln-ghost` is its loading picture (`maswali-home-card-ghost.tsx`): the same box, its words
-   hidden over bars, and no hover. */
+   hidden over bars, and no hover.
+   ⭐ THE PREVIEW CHIP STANDS UNDER THE TITLE (round 2, 2026-10-22), as the final week's line does (L4): beside it, in the
+   one-row card from 1280 the chip widened the title's column and squeezed the headline onto a third line (sw 1280: 88px
+   for the common card's 74), so a staff preview card stood taller than the root loading's picture of "/", which knows no
+   preview. Under the title it fits the head row's 48px at every width: a preview card is the common card's height. */
 .kp-mln-door { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; grid-template-areas: "plate head chev" "rule rule rule" "state state state"; column-gap: 14px; align-items: center; min-width: 0; border-radius: var(--r-lg); color: var(--text); }
 .kp-mln-door__plate { grid-area: plate; }
 .kp-mln-door__head { grid-area: head; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.kp-mln-door__title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); min-width: 0; }
+.kp-mln-door__title { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-1); min-width: 0; }
 .kp-mln-door__rule { grid-area: rule; min-width: 0; margin-top: var(--sp-3); }
 .kp-mln-door__state { grid-area: state; min-width: 0; margin-top: var(--sp-1); }
 .kp-mln-door__head + .kp-mln-door__state { margin-top: var(--sp-3); }

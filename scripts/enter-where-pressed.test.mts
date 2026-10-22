@@ -1004,10 +1004,19 @@ function run(w: World, log: (l: string) => void): string[] {
   const bet = decomment(w.read(BET)), sell = decomment(w.read(SELL)), orm = decomment(w.read(ORM));
   const betConfirm = buttonWith(bet, "ref={confirmRef}") ?? "", sellConfirm = buttonWith(sell, "ref={confirmRef}") ?? "";
   const ormPrimary = buttonWith(orm, "ref={primaryRef}") ?? "";
-  ok("2.2 · each money dialog opens with focus on its primary, whose click IS the act — bet: onConfirm, sell: onConfirm, result: onPrimary else onClose",
+  // ⭐ RE-PINNED IN THE OPEN 2026-10-22 (MASWALI-BUILD S5-R2-SLIP, the lead's ruling): the result's primary may be drawn as the
+  // kit's Link (`primaryHref` — the Millionea stamp's "View ticket", so production prefetches where it goes). Either form is
+  // THE primary: the dialog opens with focus on whichever is drawn, and each one's click IS the act (onPrimary, else close).
+  const ormLink = (() => {
+    const at = orm.indexOf("ref={primaryLinkRef}");
+    const start = at < 0 ? -1 : orm.lastIndexOf("<Link", at), end = at < 0 ? -1 : orm.indexOf("</Link>", at);
+    return start < 0 || end < 0 ? "" : orm.slice(start, end);
+  })();
+  ok("2.2 · each money dialog opens with focus on its primary, whose click IS the act — bet: onConfirm, sell: onConfirm, result: onPrimary else onClose (its primary a button, or the kit's Link when it is handed an address)",
     /initialFocus=\{confirmRef\}/.test(bet) && /onConfirm\(\)/.test(betConfirm) && !/onCancel/.test(betConfirm)
       && /initialFocus=\{confirmRef\}/.test(sell) && /onConfirm\(\)/.test(sellConfirm) && !/onCancel/.test(sellConfirm)
-      && /initialFocus=\{primaryRef\}/.test(orm) && /if \(onPrimary\) onPrimary\(\); else onClose\(\)/.test(ormPrimary),
+      && /initialFocus=\{primaryHref \? primaryLinkRef : primaryRef\}/.test(orm) && /if \(onPrimary\) onPrimary\(\); else onClose\(\)/.test(ormPrimary)
+      && /onClick=\{\(\) => \(onPrimary \?\? onClose\)\(\)\}/.test(ormLink),
     JSON.stringify({ bet: betConfirm.slice(0, 80), sell: sellConfirm.slice(0, 80), orm: ormPrimary.slice(0, 80) }));
   const sheetSrc = decomment(w.read(SHEET));
   ok("2.2s · the journey's bet sheet is a stake surface: first focus is its heading; actual market/side/receipt revision re-arms frame changes except a live editable stake transition, and only the commit button's own click places the bet",
@@ -1230,6 +1239,11 @@ if (!PROVE_RED) {
       world: () => plantIn(SELL, "      initialFocus={confirmRef}\n", "") },
     { name: "the result's primary click drops onPrimary (Enter and click no longer the act)", expect: /^2\.2 /,
       world: () => plantIn(ORM, "onClick={() => { if (onPrimary) onPrimary(); else onClose(); }}", "onClick={() => { onClose(); }}") },
+    // 2026-10-22 (S5-R2-SLIP): the primary drawn as the kit's Link (`primaryHref`) is held as the button is.
+    { name: "the result opens with focus off its primary when that primary is a Link", expect: /^2\.2 /,
+      world: () => plantIn(ORM, "      initialFocus={primaryHref ? primaryLinkRef : primaryRef}\n", "      initialFocus={primaryRef}\n") },
+    { name: "the result's Link primary drops onPrimary (Enter and click no longer the act)", expect: /^2\.2 /,
+      world: () => plantIn(ORM, "onClick={() => (onPrimary ?? onClose)()}", "onClick={() => onClose()}") },
     { name: "the bet confirm's Cancel made to confirm", expect: /^2\.3 /,
       world: () => plantIn(BET, "            onClick={onCancel}\n            disabled={pending}", "            onClick={onConfirm}\n            disabled={pending}") },
     { name: "the rule made impure (it imports)", expect: /^2\.5 /,

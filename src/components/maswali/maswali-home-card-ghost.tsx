@@ -27,7 +27,8 @@ import type { Dict, Locale } from "@/lib/i18n-dict";
  * card's own will; the week beside it is a datum, and a bar.
  * ⚠️ WHAT IT CANNOT KNOW: the week's state and the reader's tickets are the hub's read, which the ghost stands in for. A week
  * still waiting on an earlier one's carry, a closed week, a void, a reader at the cap — each a line more or fewer — land at
- * their own height; `qa:maswali-doors` measures the common card exactly and states the rest.
+ * their own height; `qa:maswali-player-shots`' door pages measure the common card exactly and record the rest
+ * (`qa:maswali-door-preview` the staff preview's), and `test:maswali-doors` §2 holds the ghost's anatomy and words.
  * ⛔ NO DIRECTIVE, NO SERVER READ, NO WORD OF ITS OWN: a server page and two client modules draw it, so it takes its words
  * as `t` and reaches only pure modules (`test:journey-home` 7.client holds the journey ghost's graph). Its callers draw it
  * only where their door answered that the card will be offered — never while Millionea is hidden (WITHDRAWN draws nothing).
@@ -54,9 +55,9 @@ export function MaswaliHomeCardGhost({ t, locale, host, preview = false, classNa
     bar(fillNodes(rule[at] ?? "", { amount, pct })),
     ...rule.slice(at + 1).map((f) => keep(fill(f, { pct }))),
   ];
-  // The close as the card sets it (`doorTime`): the weekday in the body face, the clock a `.mono` numeral, one run.
-  const when = <span className="whitespace-nowrap">{t.millionea.weekdays[4]} <span className="mono">18:00</span></span>;
-  const state = [bar(fillNodes(t.millionea.salesCloseAt, { when })), keep(fill(t.millionea.cardPrice, { price: formatTzs(1_000) }))];
+  // The close as the card sets it: the one wording (`salesCloseColon`, "Sales close: Friday 18:00 EAT"), kept as the card
+  // keeps it — the weekday in the body face, the clock a `.mono` numeral, the zone with them — so its line wraps as the card's.
+  const state = [keep(fill(t.millionea.salesCloseColon, { when: `${t.millionea.weekdays[4]} 18:00` })), keep(fill(t.millionea.cardPrice, { price: formatTzs(1_000) }))];
   return (
     <div aria-hidden className={cn("kp-mln-zh kp-mln-ghost kp-shimmer-track", doorClass(host), className)} data-ghost-part="millionea">
       <span className="kp-mln-door__plate kp-jhome-ghost__plate" />

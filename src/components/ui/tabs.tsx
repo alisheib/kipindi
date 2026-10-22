@@ -157,6 +157,12 @@ export type TabItem = {
    * ways and holds them byte for byte).
    */
   ink?: "millionea";
+  /**
+   * The option's accessible name when its visible label leans on the group's own label (the Millionea slip's pills "1 ·
+   * 15/15" under the group's "Tiketi": each is named "Tiketi 1 · 15/15" — the lead's ruling (a), MASWALI-BUILD S5-R2-SLIP).
+   * Omitted, nothing is written: every other caller draws exactly as before (`test:maswali-slip-design` §1).
+   */
+  ariaLabel?: string;
 };
 
 type Variant = "line" | "segmented" | "pill";
@@ -232,6 +238,7 @@ function TabControl({
       <Link
         href={item.href as never}
         aria-current={active ? "page" : undefined}
+        aria-label={item.ariaLabel}
         data-tab-active={activeAttr}
         className={cls}
         style={style}
@@ -243,7 +250,7 @@ function TabControl({
     );
   }
   return (
-    <button type="button" aria-pressed={active} data-tab-active={activeAttr} onClick={onSelect} className={cls} style={style}>
+    <button type="button" aria-pressed={active} aria-label={item.ariaLabel} data-tab-active={activeAttr} onClick={onSelect} className={cls} style={style}>
       {body}
     </button>
   );

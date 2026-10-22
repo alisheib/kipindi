@@ -272,7 +272,8 @@ in `--yes-*`. Urgency is carried by the kit's `m-urgent` motion and the player's
 the text keeps its neutral ink. `test:betting-ink` pins the sites.
 
 **U43 palette amendment (Ali, 2026-10-19; gold restoration 2026-10-20).** On player surfaces, live status and HOT
-crowd signals are neutral. Green and red name only the two betting sides and their outcomes.
+crowd signals are neutral. Green and red name only the two betting sides and their outcomes —
+with one owner's exception, the language-change loader's ring (2026-10-22, below).
 The shared ticker's LIVE pip, word, separators and controls are neutral; keyboard focus uses
 brand. The Journey balance delta keeps its signed number in neutral ink; the classic
 capsule retains its earlier directional delta. The full pre-B5 house-gold
@@ -292,6 +293,23 @@ and outcomes; a neutral placement must not look like an UP bet. The source foote
 the market class and the observed **hh:mm EAT** once, with its exact instant retained in
 the time element. A settled refund card gives the reason once and the player's exact
 returned amount once; it does not repeat the return promise above that amount or in a chip.
+
+**The owner's exception: the language-change loader (Ali, 2026-10-22).** The ring of six glyphs that orbits the brand-blue
+pulse while the site changes language (`LocaleChangeOverlay`, `src/lib/i18n.tsx`) alternates the YES and NO inks —
+`--yes-400` on Hi, Ha and Sw, `--no-400` on 语, 好 and En. It was born green and red (2026-06-29). The visual pass's round 5
+(R5-I, 2026-10-09) moved it to the brand family's two pale steps, which drew a blue-grey ring, and Ali asked for it back:
+*"on change language the colored animation is still on grey scale — give it back its color"*, then *"its green and red"*.
+It is the one decoration the pair is lent to. It names no side and no state, and it reads the pair's tokens, never a
+hand-typed value (the old inks, `oklch(78% 0.16 152 / 22)`, were typed by hand).
+⭐ **The step was measured, not picked.** On one frozen frame of the live loader, the mean OKLCH chroma of the ring's ink
+pixels (360 / 1280 / reduced motion) was **0.118 / 0.119 / 0.139** with the inks before R5-I, **0.079 / 0.077 / 0.080**
+with R5-I's brand steps (the grey Ali saw), **0.102 / 0.105 / 0.121** with `-300` (0.87×, short of "as far from grey as
+before") and **0.136 / 0.137 / 0.157** with `-400` (1.13–1.15×, at the same on-screen lightness). Against the scrim
+measured behind the ring, the lower of the two `-400` inks reads 6.79:1 at worst (36 readings: a guest, a signed-in player
+and the journey shell, at 360 and 1280, every change, with and without motion). `test:betting-ink` §7i holds its file to
+exactly that ring;
+`test:visual-pass-r5i` registers it (§1) and pins it (§2.15⁗); `qa:locale-loader` measures it on screen on every run against
+the ring as it was before R5-I, and fails under 0.9× of it.
 
 ⛔ **Nor to express a price MOVE** (2026-09-27, the landing v3 WP3+WP4 review, R8). A market card's 24h move
 of the YES price is not a side, and a green-up / rose-down move invites chasing. The grid card printed "+5pt" in
@@ -3255,6 +3273,35 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     dialog is unchanged (`test:maswali-slip-design` §1); `test:enter-where-pressed` 5.8 pins the call with its plant, and
     `qa:dialog-way-back` drives it at 360 in Chromium and WebKit (scrollY unchanged across the close, focus on the opener,
     the jump back when `preventScroll` is dropped).
+24. **Facts are drawn whole, struck to their ink, and seeded on the product's own clock (the lead's rulings of
+    2026-10-22, S5 round 2; MASWALI-BUILD S5-FACTS).**
+    - **The fact line** (`MaswaliFacts`, `.kp-mln-facts`). Facts joined by "·" are one flex item each: facts that fit
+      share a line, a fact that does not moves whole to the next, a fact longer than its line wraps inside itself. The
+      separator is each fact's LEADING mark, drawn in the gap before it and cut away where a fact opens a line
+      (`clip-path`), so no line opens or ends on "·"; the DOM carries the " · " a copy and a screen reader read
+      (`sr-only`). The mark stands OUTSIDE the line's flow (absolutely, its fact the containing block): drawn as an
+      inline-block it was a place a line could break, and a fact whose first run did not fit sat a line low under an
+      empty one (HUB, sw 320). `test:maswali-design` 4.A1, `test:maswali-fact-mark` (Chromium, WebKit).
+    - **The kept runs** (`keepFact`). A phrase is one unbreakable run: a week and its number, a clock with its day and
+      zone, a reserve range, a cap's count, a number and its noun, a money figure (`.amount`), and a one-letter word with
+      the word after it ("A ticket", never "A" / "ticket"). Every run fits the narrowest box a fact line is drawn in at
+      320, 180px (`test:maswali-facts`, the census of every Millionea string in sw, en and zh). So a noun before a cap's
+      count stays free ("Matokeo" / "5 kati ya 15 yametolewa"), the digits of a money figure start no number phrase,
+      and a run that would start inside a figure starts after it: a figure is its own run however the jackpot grows.
+      The words are the dictionary's, character for character.
+    - **The week's close is said one way**: `salesCloseColon` ("Sales close: Friday 18:00 EAT", "Mauzo yanafungwa:
+      Ijumaa 18:00 EAT", "销售截止：周五 18:00 EAT"), its zone kept with its clock: the card and its ghost
+      (`test:maswali-doors` 1.1, 1.8), the slip and the ticket. ⚠️ The hub's close row and the register's week row still
+      say `salesCloseAt`, with no zone, until the S5 round-2 merge rules on them.
+    - **A struck question** (`MaswaliStrike`, `.kp-mln-strike-end`). The strike is the strong border ink and ends at the
+      ink of the text's last full-width mark, cut back by the platform's measured trims (`cjk-marks.tsx`: 0.65em, ？
+      0.5em) with a `clip-path` that moves nothing; a plain strike ran half an em past "？" ("…吗？-"). The ticket draws it;
+      ⚠️ the hub's question rows adopt it at the S5 round-2 merge. `test:maswali-strike` (the browser's strike against
+      the ink, Chromium and WebKit).
+    - **A seeded week keeps the product's clock (dev only).** The dev seeds (`src/app/api/dev-test/**`) open a week at its
+      drafted open and close it at its drafted close, the config's own times, so a tile never draws a time the product
+      would not: opened and closed a minute late, the tiles read "Jumatatu 00:01" beside the template's "Jumatatu 00:00",
+      and a close at 18:01. `test:maswali-seed-clock`.
 25. **The hub's loading drawing is the hub's own frame (lead 2026-10-22, round 2 on R1-hub's loading row; MASWALI-BUILD
     S5-R2-HUB).** Which drawing a Millionea page shows on the way in: item 22. The hub's own:
     - The page and its drawing (`hub-ghost.tsx`) compose ONE frame, written once in `hub-frame.ts`: the grid, the strip,

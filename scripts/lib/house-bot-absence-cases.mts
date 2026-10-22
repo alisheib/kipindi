@@ -62,7 +62,12 @@ const lf = (s: string) => s.replace(/\r\n/g, "\n");
 export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // S5 player/register and MB-89 multi-ticket words, merged with U43's reviewed three-language copy.
   // The exact merged dictionary blob is pinned; a future copy edit must be reviewed and re-pinned.
-  "src/lib/i18n-dict.ts": "e634e4dc797e8c1f383deeb1c2a3f58f49946d96",
+  // 2026-10-22 (the S5 dark release): e634e4dc7 → e851d5fa5. Reviewed by the lead: OUTSIDE the three `millionea` blocks
+  // (en/sw/zh) the two blobs are byte-identical (a brace-matched strip of each block, with a positive control that a
+  // planted classic edit is reported); inside them only S5 round 2's ruled player words moved — "Objection window" for
+  // the check window (MR-16), the one sales-close wording with its zone, "Buy ticket"/"Ticket bought" (Ali's 2026-10-21
+  // ruling 7), the slip's counted asks, the final week's rule (MR-30) — no policy string, no classic word.
+  "src/lib/i18n-dict.ts": "e851d5fa577fb1dc216476a46eb1b78d289adfbd",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
 };
@@ -223,7 +228,10 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     const APPROVED_EXTRA = new Map([
       ["src/app/legal/_components.tsx", PHOS_R2A_PART2],
       ["src/app/legal/rules/page.tsx", PHOS_R2A_PART2],
-      ["src/app/legal/privacy/page.tsx", "8d126b819"],
+      // 2026-10-22: 8d126b819 → c58b316ff — the one reviewed line between them: the never-printed Millionea slip
+      // paragraph's English "removed once your ticket is cut" → "… is bought" (Ali's 2026-10-21 ruling 7; the
+      // Privacy v2026-10-17 entry is amended; production's notice is unchanged).
+      ["src/app/legal/privacy/page.tsx", "c58b316ff2116976f5021ad89b242ce09244953e"],
       ["src/app/legal/responsible-gambling/page.tsx", W4],
     ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };

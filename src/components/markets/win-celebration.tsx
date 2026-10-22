@@ -29,7 +29,7 @@
  * flip offsets in motion.css) — this file only composes classes.
  */
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Modal } from "@/components/ui/modal";
 import { FiftyMark } from "@/components/brand";
 import { haptics } from "@/lib/haptics";
@@ -62,11 +62,12 @@ export type WinCelebrationPayload = {
    * it in its own words — `eyebrow` over `heading` ("MILLIONEA · WIKI 49" over "Umeshinda", the v6 delivery's
    * W-seal frames), never the platform's "MADAU YAMEFANIKIWA" (a position won) — and its context as `facts`, a fact line
    * whose every fact stays whole (a ticket's serial never breaks at its hyphens) and whose separator never opens or ends a
-   * line. Omitted, the seal draws exactly what it always has: the platform's eyebrow, heading and `label`.
+   * line — each fact drawn as its caller sets it (Millionea sets its numerals in their face, §T5). Omitted, the seal draws
+   * exactly what it always has: the platform's eyebrow, heading and `label`.
    */
   eyebrow?: string;
   heading?: string;
-  facts?: ReadonlyArray<string>;
+  facts?: ReadonlyArray<ReactNode>;
   /** ⛔ SET BY `dispatchWinCelebration`, NEVER BY A CALLER — see the function below. */
   ack?: { accepted: boolean };
 };

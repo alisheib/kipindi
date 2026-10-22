@@ -112,7 +112,10 @@ const PRIVACY_VERSION = "2026-10-15.2";
 const PRIVACY_EN_SHA = "bd8dc162cbac";
 /** The version printed above the ceiling (`POLICY_PAGES.privacy` in META's place), and its English block's hash. */
 const PRIVACY_VERSION_MILLIONEA = "2026-10-17";
-const PRIVACY_EN_SHA_MILLIONEA = "8393748023c3";
+/** 2026-10-22 (MASWALI-BUILD S5 integration): 8393748023c3 → f54c05f4d5dd — the slip paragraph's English "removed once your
+ *  ticket is cut" became "… is bought", Ali's English buy wording (COMPLIANCE-DECISIONS 2026-10-21 ruling 7). Within
+ *  v2026-10-17: that rendering has never printed (it needs an ACTIVE ceiling); production's own hash above is unchanged. */
+const PRIVACY_EN_SHA_MILLIONEA = "f54c05f4d5dd";
 /** Every cookie name the code writes, as of v2026-09-30. A new one must be described in §7 first. */
 const COOKIES = ["_ga", "_ga_W66WRL67MQ", "kp-density", "kp-kyc-notice", "kp-locale", "kp_admin_totp", "kp_pending_2fa", "kp_preview", "kp_revoked", "kp_session"];
 // ⭐ `_ga` / `_ga_W66WRL67MQ` joined the census 2026-09-15.2: gtag.js SETS them, and our code EXPIRES them when consent is
@@ -1497,7 +1500,7 @@ console.log(String.fromCharCode(10) + "§4l · v2026-10-11 · §5: on erasure th
   // The slip keeps one week's fifteen picks in the tab (`src/app/millionea/slip/slip-client.tsx`; MASWALI-PLAN MB-57): §7
   // says so in every language, as its own paragraph after S12's, and the code keeps exactly that key, in the tab alone.
   const SLIP_WORDS: Record<Loc, string[]> = {
-    en: ["maswali millionea", "kp-millionea-slip:", "sessionStorage", "the week&apos;s identifier", "no identifier of you", "removed once your ticket is cut", "the tab closes", "never buy a ticket unless you confirm it"],
+    en: ["maswali millionea", "kp-millionea-slip:", "sessionStorage", "the week&apos;s identifier", "no identifier of you", "removed once your ticket is bought", "the tab closes", "never buy a ticket unless you confirm it"],
     // 2026-10-18 (S5 integration): "msimbo wa wiki" and "taarifa yoyote inayokutambulisha", not "kitambulisho" — the word
     // for an identity document, which beside "kuweka pesa" and "bila" read as money moving without identity
     // (`test:kyc-copy-truth` §2 rule 1), and which a reader takes the same way. The English and Chinese never said it.
@@ -1528,7 +1531,7 @@ console.log(String.fromCharCode(10) + "§4l · v2026-10-11 · §5: on erasure th
     return d;
   };
   const slipSrc = read(SLIP_FILE);
-  ok("§4p en/sw/zh §7 say a Millionea slip's picks for a week sit in that tab's sessionStorage as kp-millionea-slip: with the week's identifier, hold no identifier, go with the cut ticket or the closed tab and buy nothing unconfirmed — and the slip keeps exactly that key, in the tab alone",
+  ok("§4p en/sw/zh §7 say a Millionea slip's picks for a week sit in that tab's sessionStorage as kp-millionea-slip: with the week's identifier, hold no identifier, go with the bought ticket or the closed tab and buy nothing unconfirmed — and the slip keeps exactly that key, in the tab alone",
     slipDefects(pageSrc).length === 0 && slipCodeDefects(slipSrc).length === 0, [...slipDefects(pageSrc), ...slipCodeDefects(slipSrc)].join("; "));
   const dropZh = pageSrc.replace(/<p data-policy-addition="millionea-slip">\s*您填写[\s\S]*?<\/p>/, "");
   ok("§4p control · the Chinese slip paragraph removed is reported in Chinese only", dropZh !== pageSrc && slipDefects(dropZh).length > 0 && slipDefects(dropZh).every((x) => x.startsWith("zh:")));

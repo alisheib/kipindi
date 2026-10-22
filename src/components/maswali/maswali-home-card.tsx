@@ -5,7 +5,7 @@ import { IconPlate } from "@/components/ui/icon-plate";
 import { I, plateGlyph } from "@/components/ui/glyphs";
 import { MillioneaGlyph } from "@/components/maswali/maswali-glyph";
 import { MaswaliFacts, factsOf, keepFact } from "@/components/maswali/maswali-facts";
-import { counted, eatClock, eatWeekday, weekWord } from "@/components/maswali/maswali-format";
+import { counted, eatClock, eatWeekday, eatWeekdayClock, weekWord } from "@/components/maswali/maswali-format";
 import { formatEatDay } from "@/lib/eat-day";
 import { fillNodes } from "@/lib/fill-nodes";
 import { cn, fill, formatNumber, formatTzs } from "@/lib/utils";
@@ -141,7 +141,10 @@ export function MaswaliHomeCard({ t, locale, week, jackpot, pct, cap, state, fin
       meta = state.capFull
         ? [keep(fill(t.millionea.yourTicketsThisWeek, { n: formatNumber(cap), cap: formatNumber(cap) })),
             state.capFull.next ? keep(fill(t.millionea.nextWeekOpens, { week: state.capFull.next.week, day: state.capFull.next.opensOn })) : null]
-        : [<span key="close">{fillNodes(t.millionea.salesCloseAt, { when: doorTime(t, state.closesAt) })}</span>,
+        // ONE wording for the week's close on every surface (the lead's ruling, S5 round 2): the slip's and the ticket's
+        // `salesCloseColon` — "Sales close: Friday 18:00 EAT", its zone kept with its clock and the clock a `.mono`
+        // numeral (`keepFact`, §T5), where the card said "Sales close Friday 18:00" with no zone.
+        : [keep(fill(t.millionea.salesCloseColon, { when: eatWeekdayClock(t, state.closesAt) })),
             state.held !== null && state.held > 0
               ? keep(fill(t.millionea.yourTicketsThisWeek, { n: formatNumber(state.held), cap: formatNumber(cap) }))
               : keep(fill(t.millionea.cardPrice, { price: formatTzs(state.price) }))];

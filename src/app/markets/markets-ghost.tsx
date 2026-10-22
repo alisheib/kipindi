@@ -65,8 +65,11 @@ export const STATUS_PILL_W = [64, 104, 60, 92, 84, 52];
  * ⭐ CLIENT CODE, ITS WORDS ITS OWN (round 5's follow-up, R5-H · G-2): the words are the client dictionary's (`useT`), so
  * a refresh of this page carries the drawing's reference, not its tree, and the server's HTML is what it was —
  * `components/ui/page-loader.tsx` has the convention.
+ * ⛔ `millionea` AND `preview` CAN ONLY BE TRUE (MASWALI-BUILD S5-DESIGN-DOORS round 2): every prop this drawing is handed
+ * is written into the payload of every reader of the board, so the Millionea answers are handed only while they hold —
+ * absent otherwise (`loading.tsx`) — and a `false` handed here does not type-check.
  */
-export default function MarketsGhost({ millionea = false, preview = false }: { millionea?: boolean; preview?: boolean }) {
+export default function MarketsGhost({ millionea, preview }: { millionea?: true; preview?: true }) {
   const { t, locale } = useT();
   return (
     <PageContainer tier="board">

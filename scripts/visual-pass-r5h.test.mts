@@ -228,7 +228,8 @@ function withoutQuestionPathRead(f: string, s: string): string {
   const pathRead = 'const pathname = (await headers()).get("x-pathname") ?? "";';
   if (f !== "src/app/markets/loading.tsx" || count(s, headerImport) !== 1 || count(s, pathRead) !== 1
     || !s.includes('if (journey && /^\\/markets\\/[^/]+$/.test(pathname)) return <LazyJourneyRouteGhost rails={[]} at="/markets/[id]" />;')
-    || !s.includes('import MarketsGhost from "./markets-ghost";') || !s.includes("return <MarketsGhost millionea={millionea} preview={millionea && (await millioneaDoor()).preview} />;")) return s;
+    // RE-PINNED (MASWALI-BUILD S5-DESIGN-DOORS round 2): the Millionea answers handed only while true (the dark-safety rule).
+    || !s.includes('import MarketsGhost from "./markets-ghost";') || !s.includes("return <MarketsGhost {...(millionea ? { millionea: true as const, ...(preview ? { preview: true as const } : {}) } : {})} />;")) return s;
   return s.replace(headerImport, "").replace(pathRead, "");
 }
 function wordsCheck(text: (p: string) => string) {
@@ -506,6 +507,8 @@ const phasesOf = (t: (p: string) => string) => ({
     "src/lib/use-modal-lock.ts": "the page's scroll lock under a dialog (body overflow, with the scrollbar's width padded back in the same write): a lock, not a picture — the frame it lands in shows the same page",
     "src/components/ui/unsaved-changes.tsx": "the save bar's room at the page's end (body padding): written on the reader's edit (typing — discrete updates, before the paint)",
     "src/components/layout/scroll-cast.tsx": "the scroll state (data-scrolled, data-scrolling, data-fab-idle): written from scroll events, never by a first paint",
+    // MASWALI-BUILD S5-FIX-PLATFORM D15 (2026-10-21), classified in round 2: the chat bubble yields over text and figures.
+    "src/components/chat/ChatRoot.tsx": "the chat bubble's yield (data-over-content, on the bubble's own wrapper): written in an animation frame that a scroll, a resize, a new page, the body's growth, the fonts' arrival or the bubble's hand-back (data-scrolling / data-fab-idle leaving) asks for, at most once a frame and only when the answer changes; it fades floating chrome to --state-yield-opacity and moves no box, so the frame it lands in shows the same page, and only the bubble's own opacity rule reads it (D15)",
     "src/components/updown/use-quick-bet.ts": "a request in flight (body data-ud-busy): a gate the handover reads, not a picture",
     "src/components/updown/updown-handover.tsx": "reads the busy gate and the scroll lock; writes no mark",
     "src/components/markets/win-celebration.tsx": "reads the motion class; writes no mark",
@@ -517,6 +520,10 @@ const phasesOf = (t: (p: string) => string) => ({
     "src/components/markets/menu-shell.tsx": "the open sort menu (data-sort-open on <html>, A21 2026-10-14): mirrored from a MutationObserver on the menu's `open` attribute — a record delivered before the next frame — and taken down when the menu goes",
     // MASWALI-BUILD S5 (2026-10-18): N1 Kubeba, Millionea's carry (§M8a item 1).
     "src/components/maswali/maswali-carry.tsx": "the carry's run class (maswali-carry) and its bound variables, on the destination's own wrapper: added in the LAYOUT phase of the commit that draws the destination at rest, from one measurement, so the run's first frame stands where its origin stands before any paint — and removed at the run's own animationend; only when the caller says play (the seen state), never under a motion clamp",
+    // MASWALI-BUILD S5-R2-SLIP (2026-10-22): two readers of §M6's three motion clamps the pattern catches by their
+    // `document.documentElement.classList` read, as it catches win-celebration's — neither writes a mark.
+    "src/components/markets/operation-result-modal.tsx": "reads the motion clamps (`stripStill`: the OS preference, the in-app class, the minimal tier — E-269's rule, Ali 2026-10-21 10/10 pass: under a clamp the auto-close strip holds full instead of draining on its own rAF loop); writes no mark",
+    "src/components/maswali/maswali-slip.tsx": "reads the motion clamps (`motionStill`, the same three gates: a jump to a question scrolls its row into view at once instead of smoothly under a clamp); writes no mark",
   };
   const PATTERN = /document\.documentElement\.(?:setAttribute|removeAttribute|classList|dataset)|document\.body\.(?:style|dataset|classList|setAttribute)|\.setAttribute\("data-|\.classList\.(?:add|remove|toggle)\(|\.toggleAttribute\(|body\.dataset\.|body\.style\./;
   const writers = (text: (p: string) => string) => walk("src").filter((p) => /\.tsx?$/.test(p) && !p.startsWith("src/app/admin/") && PATTERN.test(decomment(text(p)))).sort();
