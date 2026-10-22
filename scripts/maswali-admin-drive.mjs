@@ -556,7 +556,7 @@ await part("4 · attest and open", async () => {
     const lockText = clip(await lock.textContent().catch(() => ""));
     const lockTitle = (await lock.getAttribute("title").catch(() => null)) ?? "";
     ok("4.2c ⭐ G8 · a Trading officer's lock chip reads “Change the rules · The Owner only” and says whom to ask",
-      lockText === "Change the rules · The Owner only" && lockTitle === "Change the rules — The Owner only. Ask the Owner.", `${lockText} | ${lockTitle}`);
+      lockText.split("·").map((s) => s.trim()).join(" · ") === "Change the rules · The Owner only" && lockTitle === "Change the rules — The Owner only. Ask the Owner.", `${lockText} | ${lockTitle}`);
   } finally {
     await readerCtx.close();
   }
@@ -901,8 +901,8 @@ await part("6.5 · hold, release and forfeit a share", async () => {
     });
     const held = r.closed && await until(async () => (await heldRow(s.serial).count()) > 0, 60_000);
     const said = await screening(s.serial);
-    ok(`${tag} compliance holds the share on ${s.serial} (the confirm armed only on HOLD): it is listed under Held shares and the winner reads "compliance · …"`,
-      r.gated && !!held && said === `compliance · ${HOLD_WHY}`, r.refusal || said);
+    ok(`${tag} compliance holds the share on ${s.serial} (the confirm armed only on HOLD): it is listed under Held shares and the winner's screening reads its reason`,
+      r.gated && !!held && said === HOLD_WHY, r.refusal || said); // R2-1: the console reads the reason, never the raw mark
     await checkpoint(page, tag, tile);
   }
   await hold(A, "6.5", "19-held");
@@ -925,8 +925,8 @@ await part("6.5 · hold, release and forfeit a share", async () => {
   });
   const forfeited = r2.closed && await until(async () => (await heldRow(B.serial).getByText("Forfeited", { exact: true }).count()) > 0, 60_000);
   const said = await screening(B.serial);
-  ok(`6.5d compliance forfeits ${B.serial} to the jackpot (the confirm armed only on FORFEIT SHARE): its row reads Forfeited and the winner "forfeited · …"`,
-    r2.gated && !!forfeited && said === `forfeited · ${FORFEIT_WHY}`, r2.refusal || said);
+  ok(`6.5d compliance forfeits ${B.serial} to the jackpot (the confirm armed only on FORFEIT SHARE): its row reads Forfeited and the winner's screening reads its reason`,
+    r2.gated && !!forfeited && said === FORFEIT_WHY, r2.refusal || said); // R2-1: the reason, never the raw mark
   await checkpoint(page, "6.5d", "22-forfeited");
 });
 
