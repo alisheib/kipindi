@@ -20,7 +20,11 @@ The docs-only §0 record (`3aecf0edd` = 2ed817395 + MASWALI-PLAN §0 / NEXT-PLAN
 runner, run 39866699781) was pushed to main at 22:44:33 and rebuilt the code: Railway deployment 7265529542 in_progress
 22:44:38 → **success 22:49:58**. dpl=3aecf0edd on www, the apex and the Railway host; /api/health ok, database reachable and
 migrated, a new container, Millionea `{ceiling: WITHDRAWN, state: WITHDRAWN}`. The first build's failure was Railway's own
-transient. Full read-back (qa:chunks-prod ×2, production qa:live): run 39867143092. Next: STAFF_PREVIEW (needs Railway).
+transient. **READ-BACK GREEN (run 39867143092):** all three hosts live after 275 s; qa:chunks-prod rc 0 on www and the
+apex; production qa:live (signed out) **ALL PASS 368/0** (its dark section included: /legal/rules/millionea answers as an
+unknown twin while WITHDRAWN). Next: STAFF_PREVIEW (needs Railway — `railway login` from Ali), with the staff check and
+qa:live's [E3] QA-player sign-in then; before it, the product drive's hang (runs active-drive 39867875286 scheduler off,
+active-drive-sched 39867909278 scheduler on, both bounded to 60 min).
 
 ## 🔴 UPDATE 19:52 UTC — RAILWAY'S BUILD OF 2ed817395 FAILED; PRODUCTION STILL SERVES da3d32180 (healthy)
 The read-back (run 39837626118) waited 40 minutes: all three hosts still serve dpl=da3d32180. GitHub's deployment record
