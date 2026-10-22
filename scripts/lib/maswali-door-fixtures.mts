@@ -28,6 +28,9 @@ const { MaswaliHomeCard } = req("../../src/components/maswali/maswali-home-card.
 const { MaswaliHomeCardGhost } = req("../../src/components/maswali/maswali-home-card-ghost.tsx") as { MaswaliHomeCardGhost: (p: Record<string, unknown>) => unknown };
 const { JourneyHomeGhost } = req("../../src/components/journey/home/journey-home-ghost.tsx") as { JourneyHomeGhost: (p: Record<string, unknown>) => unknown };
 const MarketsGhost = (req("../../src/app/markets/markets-ghost.tsx") as { default: (p: Record<string, unknown>) => unknown }).default;
+/** The root loading's picture of a page (`app/loading.tsx` → `JourneyRouteGhost`, S5-FIX-PLATFORM D6): its "/" is drawn with
+ *  the client dictionary's words and locale (`useT`), picked by the address — the path H1 must hold through too. */
+const { JourneyRouteGhost } = req("../../src/components/journey/route-ghost.tsx") as { JourneyRouteGhost: (p: Record<string, unknown>) => unknown };
 
 const ROUTER = { push() {}, replace() {}, refresh() {}, prefetch() {}, back() {}, forward() {}, hmrRefresh() {} };
 /** As the app renders it: inside the router, a pathname and the language provider. */
@@ -113,11 +116,13 @@ export type DoorFixtures = {
   cards: Record<Locale, Record<DoorHost, string[]>>;
   ghost: Record<Locale, Record<DoorHost, string>>;
   journeyGhost: Record<Locale, { slot: string; none: string; preview: string }>;
-  marketsGhost: Record<Locale, { slot: string; none: string }>;
+  marketsGhost: Record<Locale, { slot: string; none: string; preview: string }>;
+  /** The root loading's "/" (`JourneyRouteGhost`), told Millionea is visible (`slot`) or not (`none`): it knows no preview. */
+  routeGhost: Record<Locale, { slot: string; none: string }>;
 };
 
 export function doorFixtures(): DoorFixtures {
-  const out: DoorFixtures = { now: NOW, states: STATES.map((s) => s.name), names: {} as DoorFixtures["names"], cards: {} as DoorFixtures["cards"], ghost: {} as DoorFixtures["ghost"], journeyGhost: {} as DoorFixtures["journeyGhost"], marketsGhost: {} as DoorFixtures["marketsGhost"] };
+  const out: DoorFixtures = { now: NOW, states: STATES.map((s) => s.name), names: {} as DoorFixtures["names"], cards: {} as DoorFixtures["cards"], ghost: {} as DoorFixtures["ghost"], journeyGhost: {} as DoorFixtures["journeyGhost"], marketsGhost: {} as DoorFixtures["marketsGhost"], routeGhost: {} as DoorFixtures["routeGhost"] };
   for (const l of LOCALES) {
     const d = dict[l].millionea;
     out.names[l] = { title: `${d.productLabel} · ${d.week.replace("{week}", "47")}`, figure: d.ruleWithFigure.split(" · ")[0].replace("{amount}", formatTzs(1_000_000)) };
@@ -131,9 +136,17 @@ export function doorFixtures(): DoorFixtures {
       none: inApp(l, h(JourneyHomeGhost as never, { t: dict[l], locale: l, millionea: false } as never)),
       preview: inApp(l, h(JourneyHomeGhost as never, { t: dict[l], locale: l, millionea: true, preview: true } as never)),
     };
+    // Each as `markets/loading.tsx` hands it: the Millionea answers only while true, nothing when the card is not offered.
     out.marketsGhost[l] = {
       slot: inApp(l, h(MarketsGhost as never, { millionea: true } as never), "/markets"),
-      none: inApp(l, h(MarketsGhost as never, { millionea: false } as never), "/markets"),
+      none: inApp(l, h(MarketsGhost as never, {} as never), "/markets"),
+      preview: inApp(l, h(MarketsGhost as never, { millionea: true, preview: true } as never), "/markets"),
+    };
+    // The rails are drawn by no page's ghost since WP7 (route-ghost.tsx); the root loading hands the server's names.
+    const RAILS = ["M-Pesa", "Airtel Money"];
+    out.routeGhost[l] = {
+      slot: inApp(l, h(JourneyRouteGhost as never, { rails: RAILS, millionea: true } as never), "/"),
+      none: inApp(l, h(JourneyRouteGhost as never, { rails: RAILS } as never), "/"),
     };
   }
   return out;
