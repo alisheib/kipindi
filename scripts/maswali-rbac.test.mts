@@ -63,8 +63,9 @@ const CONTROLS: Array<{ id: ControlId; domain: string; route: keyof typeof ROUTE
     "voidMaswaliQuestion", "confirmMaswaliSeal", "correctMaswaliSeal"] as const).map((id) => ({ id, domain: "trading", route: "week" as const })),
   { id: "releaseMaswaliSettlement", domain: "accounting", route: "pools" },
   // S6 (2026-10-18): the desk's record of a call that reached a winner (MB-93) joins Compliance's acts on /integrity.
+  // S7-OB: the ruling on a player's objection to one question (MR-16) joins them too.
   ...(["voidMaswaliWeek", "pauseMaswaliSales", "resumeMaswaliSales", "holdMaswaliShare", "releaseMaswaliShare", "forfeitMaswaliShare",
-    "markMillioneaWinnerReached", "clearUnresolvedLetter"] as const)
+    "markMillioneaWinnerReached", "clearUnresolvedLetter", "ruleMaswaliObjection"] as const)
     .map((id) => ({ id, domain: "compliance", route: "integrity" as const })),
   ...(["fundMaswaliGuarantee", "returnMaswaliGuarantee", "sunsetMaswali", "setMaswaliLicenceBasis", "setMillioneaRollout"] as const)
     .map((id) => ({ id, domain: "ops", route: "pools" as const })),
@@ -84,7 +85,8 @@ for (const [name, r] of Object.entries(ROUTES)) {
 // ── §2 · every role × every control ─────────────────────────────────────────
 // S6-INT 14 · 25 at the N squash: 21 before S7, S7-F2's two (saveMaswaliConfig, saveMaswaliHolidays) and the notices' two
 // (markMillioneaWinnerReached, clearUnresolvedLetter, Compliance on /integrity) — the count this suite printed.
-ok("2 · there are 25 Millionea controls, each registered", CONTROLS.length === 25 && CONTROLS.every((c) => c.id in CONTROL_DOMAIN), `${CONTROLS.length}`);
+// S6-INT 21 · 26 with S7-OB's objection ruling (ruleMaswaliObjection, Compliance on /integrity) merged in.
+ok("2 · there are 26 Millionea controls, each registered", CONTROLS.length === 26 && CONTROLS.every((c) => c.id in CONTROL_DOMAIN), `${CONTROLS.length}`);
 for (const c of CONTROLS) {
   ok(`2 · ${c.id} is registered ${c.domain}`, CONTROL_DOMAIN[c.id] === c.domain, `registered ${CONTROL_DOMAIN[c.id]}`);
   for (const role of ROLES) {

@@ -87,7 +87,20 @@ export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // D19a RE-PINNED AT S6-INT 13 (the merge of S7-MERGE 2, which carries S5's round 2; was 24f9c8407, S6-INT 11's):
   // S5-R2-SLIP's `draftTicketsNoun` (the noun once over the switcher's pills, the lead's ruling (a) of round 2) in
   // en/sw/zh. No other line changed.
-  "src/lib/i18n-dict.ts": "28a7cf95115bd761b85cda8158d0aa04ab07be42",
+  // D19a RE-PINNED AT S7-MERGE 2 (the S5 release's round 2, e34bcdc95; was 7a9a98ffe): S7's dictionary plus the release's
+  // one addition since 81e312f01 — `draftTicketsNoun` in en/sw/zh ("Tickets" / "Tiketi" / "彩票", SLIP round 2's ruling
+  // (a)). No other line changed.
+  // D19a RE-PINNED (S7-OB, the Millionea objection door, 2026-10-22; was 475f305f6, S7-MERGE 2's): S7's dictionary as pinned
+  // above plus 24 `millionea.obj*` keys in en/sw/zh — the ticket page's door: its window and the money's rule, the dialog's
+  // title, intro, question picker and filed toast, each refusal in the player's words, and the player's objections in every
+  // state with the officer's note. No other line changed.
+  // D19a RE-PINNED AT S7-MERGE 3 (the objection lane merged over S7-F9 13, 2026-10-22; was fad013995, S7-OB's): one comment
+  // line, the {hours} placeholder's note naming the window by its one name — "objection window", the lead's P6 ruling.
+  // No published word changed.
+  // D19a RE-PINNED AT S6-INT 21 (the merge of S7 at a7feccbef, S7-MERGE 3 with the objection lane; was 28a7cf951,
+  // S6-INT 13's, and bd4addcfc, S7-MERGE 3's): the union of the two — S7-OB's 24 `millionea.obj*` keys in en/sw/zh and
+  // S7-MERGE 3's one comment line ("objection window") beside S6's lines since S7-MERGE 2. No other line changed.
+  "src/lib/i18n-dict.ts": "d61b839100b27874e62d343d855435e2f23400e4",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
 };

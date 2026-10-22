@@ -1268,28 +1268,51 @@ re-reads. It is the write-once guarantee working, logged by Prisma rather than b
 
 ## §9 · MASWALI MILLIONEA — what S7 left open, recorded (2026-10-18)
 
-S7's acceptance (`docs/MASWALI-PLAN.md` §7b S7): every finding is fixed or recorded here. These three are booked as
+S7's acceptance (`docs/MASWALI-PLAN.md` §7b S7): every finding is fixed or recorded here. These three were booked as
 KNOWN-RED cases in `test:maswali-adversarial` (a case that reports, never fails the suite, until the work lands) and
-stand on the launch gate as Gate B line 14 (`MASWALI-PLAN.md` §6.1). None blocks the S8 drive; each blocks rollout
-ACTIVE until it is closed, or accepted in writing as that line says. Millionea is dark on production (`WITHDRAWN`).
+stood on the launch gate as Gate B line 14 (`MASWALI-PLAN.md` §6.1). All three are closed (2026-10-22): RD.5 and TK.2 by
+S7-F9, each with its commits, and OB.0 by S7-OB — each case passes now. Millionea is dark on production (`WITHDRAWN`).
 
-#### ⏳ OB.0 · MB-23 · a player cannot object to one question
+#### ✅ OB.0 · MB-23 · a player objects to one question — CLOSED (S7-OB, 2026-10-22)
 
-MR-16 promises a per-question objection in Millionea's own window, and no objection door exists for a Millionea week
-yet. What holds today: the settlement refuses to release while any objection is open, failing closed (OB.1–OB.5), and
-the sealing officer may correct a seal while the window is open. Before ACTIVE: the objection door (MB-23), or the
-rules' promise withdrawn by a dated ruling.
+MR-16's per-question objection door exists, on both stores and across instances:
+- **The player** objects from the ticket page while the week's own window is open (24 hours from the graded set's
+  finality, never closing before 12:00 EAT, frozen in the week's rules): one question at a time, once per question,
+  only while holding a live ticket in the week; the ticket then shows each of their objections in every state, with
+  the officer's note once ruled.
+- **Compliance** rules on `/admin/maswali/integrity` — REJECT, or uphold with REVERSE, VOID or REINSTATE — through the
+  kit's typed confirmation, never the question's sealer or confirmer, never the officer whose upheld ruling set its
+  present result, never the objector or an officer holding a ticket in the week; the Owner is the fallback.
+- **The money:** an OPEN objection holds the week's settlement and its week void; an upheld change re-grades the week
+  (MR-17) and restarts the window once; a SETTLED week is final. Filing, ruling and release serialize on the chain lock.
+Proof: `test:maswali-objections` (both stores) and its red twin `red:maswali-objections`; `test:maswali-adversarial`
+OB.0 (now a passing case) and §4b OM with the money-path plants (S7-OB-…); `load:maswali-objection-cross-instance`
+(S18, two processes per race on one PostgreSQL); `qa:maswali-objection-console` and `qa:maswali-objection-door`.
+Notices (an objection received, an objection decided) arrive with S6-N's registry.
 
-#### ⏳ RD.5 · MB-74 · a deposit reversed after its winner was paid
+*Recorded 2026-10-18:* MR-16 promised a per-question objection in Millionea's own window, and no objection door existed for a
+Millionea week; the settlement's refusal while any objection was open (OB.1–OB.5) and the sealer's own correction held.
 
-A deposit the provider reverses after the week has paid its winner can leave a share, already paid free, withdrawable
-before the reversal lands. What holds today: a winner whose deposit the provider has already contradicted is held at
-the settlement (RD.1). Before ACTIVE: the wallet lane's trigger, or the Owner's recorded acceptance of the risk.
+#### ✅ RD.5 · MB-74 · a deposit reversed after its winner was paid — closed (S7-F9 9, `378b842d0`, 2026-10-22)
 
-#### ⏳ TK.2 · MB-96 · account-takeover alerting
+A deposit the provider reverses after the week has paid its winner could leave a share, already paid free, withdrawable
+before the reversal lands. **Closed** (the lead's ruling of 2026-10-22): the moment a credited deposit is contradicted —
+reversed, or re-reported at another amount — the webhook that marks it for review also holds, at once, every paid
+winning Millionea share of that account whose ticket was bought at or after the deposit was credited, for Compliance to
+release or forfeit (OD-07). Nothing is debited, a share held once for a deposit is never held for it again, a nightly
+heal places a hold a stopped process left unplaced, and the integrity page shows the deposit behind each such hold. A
+share whose record lacks its payout counts as paid, never as 0 (S7-F9 13). Proven on both stores
+(`test:maswali-adversarial` RD.5–RD.11, a release in flight included) and across instances (S16 §6b), with red plants
+in `red:maswali-money-path`. The rules' reversal clause is the S6 legal lane's to carry.
 
-The takeover alert MB-96 asks for is not built. What holds today: the preventive control (E-215, TK.1). Before
-ACTIVE: the alert, or a dated deferral recorded by the Owner.
+#### ✅ TK.2 · MB-96 · account-takeover alerting — closed (S7-F9 8 and 11, `32b7f7992` and `8194bf3e3`, 2026-10-22)
+
+The takeover alert MB-96 asks for was not built. **Closed** (the lead's rulings of 2026-10-22: an alert only): a winning
+account that may have been taken over since its payout raises a critical alert on the console — a count per week, never
+an account — and is named on the integrity page for Compliance to review, where the share can be held; nothing blocks
+money (2026-10-10). The preventive control (E-215, TK.1) still holds. A winner whose share, or whose week's paid total,
+the records lack is watched all the same, never passed over as 0 (S7-F9 13). Proven on both stores
+(`test:maswali-adversarial` TK.2–TK.7), with red plants in `red:maswali-money-path`.
 
 ## §9b · MASWALI MILLIONEA — the S6 integration's fixes, each a FINAL rule (2026-10-22)
 

@@ -20,6 +20,8 @@
  * goes through `objections-service.ts`, and each one calls `noteObjectionWrite()` once it has landed; the memo
  * keeps the generation from BEFORE its read and is served only while no write has moved it since (the
  * switches' `gen` law, simple-journey-switch.ts). A write from another process is bounded by `TTL_MS`.
+ * ⚠️ A Millionea objection (one question of a week, `maswali-objections.ts`) is never a ruling read here:
+ * `listUpheldRulings` returns only rows without a question, on both stores, so its writes move nothing here.
  */
 import { db } from "./store";
 import type { Ruling } from "@/lib/markets/signoff";

@@ -57,7 +57,7 @@ state across runs (fixed IDs collide, audit chains don't chain across runs).
 
 ## Millionea (MASWALI-BUILD S7) — self-contained
 
-These two boot the on-box scratch cluster themselves (`scripts/db-scratch.mts`), create their own
+These three boot the on-box scratch cluster themselves (`scripts/db-scratch.mts`), create their own
 database, migrate it and drop it at the end, so they need no `DATABASE_URL`, no marker row and no
 `reset-db.mjs`. Every act is several OS processes on one database, started at one instant by a barrier.
 
@@ -68,6 +68,9 @@ npm run load:maswali-cross-instance   # S16: the cap, a key, a reference, the cl
 npm run load:maswali-rush             # S17 (MB-31): the Friday 18:00 rush at 10× the synthetic S7 test reference on two
                                       #      instances, Up & Down running, the close on the real clock; latency
                                       #      percentiles, refusals by reason, then POOL, drift and the trial balance
+npm run load:maswali-objection-cross-instance   # S18 (MB-23): the objection door on two instances at once — a filing
+                                      #      against the release, a REVERSE against the release, two officers on one
+                                      #      case, two REVERSEs of one question, two filings on one question
 ```
 
 S17's latency targets are named constants at `TBD-BASELINE`: the lead sets them from the first measured

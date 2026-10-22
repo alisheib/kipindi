@@ -12,6 +12,8 @@
  *   §2  CH · a six-week chain — week 3 voided, week 4 skipped — each week opening while the last waits (MR-3, MR-21, MB-16)
  *   §3  RP · reserve patterns × late voids × a reinstatement: the money follows the FINAL record (MR-17, MR-19, MB-15)
  *   §4  OB · an objection during settlement (MR-16, MB-23)
+ *   §4b OM · an objection upheld through the Millionea door: the re-grade, the one restart, the money on the final record
+ *          (MR-16, MR-17, MB-23; S7-OB)
  *   §5  SD · a source domain switched off mid-week (MB-22)
  *   §6  GU · an under-funded guarantee at k ≥ 1, to the shilling, and a short float (MR-22, MB-03, MB-11, MB-63)
  *   §7  WF · no winner floor: 950 winners at the floor, each paid below the ticket's price (MR-25, OD-19)
@@ -55,7 +57,6 @@ const { checkMaswaliInvariants } = await import("../../src/lib/server/maswali-in
 const { eatWeekStartMs, eatWeekAt } = await import("../../src/lib/eat-day.ts");
 const { merkleRoot } = await import("../../src/lib/maswali-commitment.ts");
 const { displayMap } = await import("../../src/lib/maswali-score.ts");
-const objections = await import("../../src/lib/server/objections-service.ts");
 const sources = await import("../../src/lib/server/source-registry.ts");
 const holidays = await import("../../src/lib/server/maswali-holidays.ts");
 const { formatTzs } = await import("../../src/lib/utils.ts");
@@ -131,6 +132,12 @@ const guarantee = async () => (await W.balanceOf(acct.maswaliGuarantee)) as numb
 const pool = async (marketId: string) => (await W.balanceOf(acct.pool(marketId))) as number;
 const commission = async () => (W.onPostgres ? ((await W.balanceOf(acct.commission)) as number) : null);
 const heldOf = async (u: string) => (((await W.bal(u)).freezeReasons ?? []) as string[]).includes("MILLIONEA_SHARE");
+/** ⚠️ A FIXTURE, DECLARED (S7-F9): a ticket's stored payout written as `v` — null, as a record that lacks it would hold it —
+ *  on the store the suite runs; each case puts the value back after. It moves no money, ledger or wallet. */
+const fixturePayout = async (ticketId: string, v: number | null) => {
+  if (W.onPostgres) await W.prisma()!.maswaliTicket.update({ where: { id: ticketId }, data: { payout: v } });
+  else { const row = ((globalThis as any).__50PICK_MLN_TICKETS as Map<string, any>).get(ticketId); if (row) row.payout = v; }
+};
 /** Each section's buyers buy on purpose; the platform's per-account bet bucket is a separate suite's subject. */
 const section = (title: string) => {
   (globalThis as any).__50PICK_RL_RESET_HOOK?.();
@@ -596,13 +603,22 @@ if (runs("OB")) {
   await W.sell(wk.id, 9, MISS_M1, [filler]);
   await closed(wk.id);
   await sealRest(wk.id, start);
-  // MR-16: any holder may object, per question, inside the week's own window. The platform has one objection door.
-  const filed = await objections.fileObjection(holder, { marketId: wk.marketId, reason: "WRONG_OUTCOME", detail: "M3 was sealed against the result its source published" });
-  knownRed("MB-23", "OB.0 · KNOWN-RED MB-23 · a ticket holder files an objection against one question inside the week's window (MR-16: per question, any holder; REVERSE, VOID or REINSTATE by an officer other than the sealer)",
-    filed.ok, J(filed));
-  if (filed.ok) await W.db.objection.update(filed.data.objectionId, { status: "REJECTED", reviewedBy: OWNER, reviewedAt: new Date().toISOString(), reviewNote: "decided" });
+  // MR-16: any holder may object, per question, inside the week's own window — through the Millionea door (S7-OB), and an
+  // officer other than the sealer rules (here the Owner, rejecting it, so the cases below start from a decided week).
+  const mob = await import("../../src/lib/server/maswali-objections.ts");
+  const ruler = await W.user({ id: `usr_adv_ob_owner_${process.pid}`, role: "ADMIN" });
+  const finalAt = Date.parse((await dal.weekStore.get(wk.id)).gradedSetFinalAt);
+  const filed = await mob.fileMillioneaObjection({ userId: holder, weekId: wk.id, slot: 3, reason: "WRONG_OUTCOME", detail: "M3 was sealed against the result its source published", now: new Date(finalAt + MIN) });
+  const q3 = (await dal.questionStore.listForWeek(wk.id)).find((q: any) => q.slot === 3);
+  const ruled = filed.ok
+    ? await mob.decideMillioneaObjection({ objectionId: filed.objectionId, officerId: ruler, ruling: "REJECT", note: "The official source confirms the seal of M3", expectedOutcome: q3.outcome, expectedSealedAt: q3.sealedAt, now: new Date(finalAt + 2 * MIN) })
+    : filed;
+  ok("OB.0 · ⭐ a ticket holder files an objection against one question inside the week's window, and an officer other than the sealer rules on it (MR-16: per question, any holder; REVERSE, VOID or REINSTATE)",
+    filed.ok && ruled.ok && (await W.db.objection.findById(filed.objectionId))?.questionOrdinal === 3 && (await W.db.objection.findById(filed.objectionId))?.status === "REJECTED",
+    J({ filed, ruled }));
   const at = await afterWindow(wk.id);
-  // ⚠️ A FIXTURE, DECLARED: the OPEN objection a Millionea door would write — none exists yet (OB.0) — as the row itself.
+  // ⚠️ A FIXTURE, DECLARED: an OPEN objection written as the row itself, so each case below sets the instant it lands —
+  //    after the window (OB.1), inside the release's chain lock (OB.3); the door's own filing is OB.0 and §4b's.
   const objection = (id: string) => ({
     id, marketId: wk.marketId, userId: holder, reason: "WRONG_OUTCOME", detail: "M3 sealed against its source (declared fixture)", status: "OPEN",
     createdAt: new Date().toISOString(), reviewedBy: null, reviewedAt: null, reviewNote: null, remedy: null, outcomeAtFiling: null,
@@ -635,6 +651,55 @@ if (runs("OB")) {
   ok("OB.4 · …decided, the same week releases once and pays its winner", r2.ok && r2.week.state === "SETTLED" && (await bal(holder)) > before.bal, errOf(r2));
   const r3 = await W.release(wk.id, at);
   ok("OB.5 · …and a second release pays nothing (already)", r3.ok && r3.already === true);
+}
+
+// ═══ §4b · OM · an objection upheld through the Millionea door ═════════════════════════════════════════════════════════
+if (runs("OM")) section("§4b · OM · an objection upheld through the Millionea door: the question re-graded, the window restarted once, and the money paid on the final record (MR-16, MR-17, MB-23)");
+if (runs("OM")) {
+  const mob = await import("../../src/lib/server/maswali-objections.ts");
+  const owner = await W.user({ id: `usr_adv_om_owner_${process.pid}`, role: "ADMIN" });
+  const start = W.weekStartAhead(ahead++);
+  const wk = await openWeekAt(start);
+  // M4's result decides between the two: `right` says NO, `sealedWinner` says YES; the fillers miss M1.
+  const [right, sealedWinner, filler] = await people(3, 50_000);
+  const [tR] = await bought(right, wk.id, [picks({ 4: "NO" })]);
+  const [tS] = await bought(sealedWinner, wk.id, [ALL_YES]);
+  await W.sell(wk.id, 8, MISS_M1, [filler]);
+  await closed(wk.id);
+  const sealAt = new Date(start + 9 * DAY);
+  await sealRest(wk.id, start, {}, sealAt);
+  const end0 = await windowEndOf(wk.id);
+  const pre = await settle.previewMaswaliSettlement(wk.id, new Date(end0 + MIN));
+  ok("OM.0 · as sealed (M4 YES), one ticket wins: the all-YES one", pre.ok && pre.preview.winners === 1, pre.ok ? `${pre.preview.winners}` : errOf(pre));
+  const filed = await mob.fileMillioneaObjection({ userId: right, weekId: wk.id, slot: 4, reason: "WRONG_OUTCOME", detail: "The official source published NO for event 4", now: new Date(sealAt.getTime() + HOUR) });
+  const held = await W.release(wk.id, new Date(end0 + MIN));
+  ok("OM.1 · ⭐ an objection filed through the door inside the window holds the week: at the window's end the release refuses, and nothing pays",
+    filed.ok && !held.ok && /objection is standing/.test(errOf(held)) && (await dal.weekStore.get(wk.id)).state === "RESOLVING"
+      && (await dal.ticketStore.listForWeek(wk.id)).every((t: any) => t.status === "LIVE"), J({ filed, held: errOf(held) }));
+  const q4 = (await dal.questionStore.listForWeek(wk.id)).find((q: any) => q.slot === 4);
+  const ruleAt = new Date(end0 + 2 * MIN);
+  const upheld = filed.ok
+    ? await mob.decideMillioneaObjection({ objectionId: filed.objectionId, officerId: owner, ruling: "REVERSE", note: "The official source reads NO for event 4", expectedOutcome: q4.outcome, expectedSealedAt: q4.sealedAt, now: ruleAt })
+    : filed;
+  const rules = W.svc.frozenRules(wk);
+  const end1 = await windowEndOf(wk.id);
+  ok("OM.2 · ⭐ the Owner upholds it after the first window ended (a ruling has no window): M4 reverses to NO, the graded set changes, and the window restarts from the ruling — once",
+    upheld.ok && upheld.changed && upheld.restarted && (await dal.questionStore.get(q4.id)).outcome === "NO" && (await dal.weekStore.get(wk.id)).objectionRestarted === true
+      && end1 === W.svc.objectionWindowEnd(ruleAt.getTime(), rules.objectionWindowHours, rules.objectionNotBeforeAt),
+    `${J(upheld)} · ${new Date(end0).toISOString()} → ${new Date(end1).toISOString()}`);
+  const tooSoon = await W.release(wk.id, new Date(ruleAt.getTime() + MIN));
+  ok("OM.3 · ⛔ right after the ruling the week does not settle: the restarted window is open, and nothing pays",
+    !tooSoon.ok && /objection window/.test(errOf(tooSoon)) && (await dal.weekStore.get(wk.id)).state === "RESOLVING", errOf(tooSoon));
+  const before = { right: await bal(right), sealed: await bal(sealedWinner) };
+  const r = await W.release(wk.id, new Date(end1 + MIN));
+  const share = r.ok ? r.week.sharePerTicket : null;
+  ok("OM.4 · ⭐ released on the final record: the M4-NO ticket wins and its holder is paid the share; the ticket that won as sealed is paid nothing",
+    r.ok && J(await winnersOf(wk.id)) === J([tR.ticketId]) && (await dal.ticketStore.get(tS.ticketId)).won === false
+      && (await dal.ticketStore.get(tR.ticketId)).payout === share && (await bal(right)) === before.right + share && (await bal(sealedWinner)) === before.sealed,
+    J({ won: await winnersOf(wk.id), right: tR.ticketId, share, err: errOf(r) }));
+  const late = await mob.fileMillioneaObjection({ userId: sealedWinner, weekId: wk.id, slot: 4, reason: "WRONG_OUTCOME", detail: "The first seal of event 4 was the right one", now: new Date(end1 + 2 * MIN) });
+  ok("OM.5 · a SETTLED week is final: an objection after it is refused (WEEK_FINAL) and writes nothing",
+    !late.ok && late.why === "WEEK_FINAL" && (await W.db.objection.listForMarket(wk.marketId)).length === 1, J(late));
 }
 
 // ═══ §5 · SD · a source domain switched off mid-week ═════════════════════════════════════════════════════════════════
@@ -809,6 +874,34 @@ if (runs("GU")) {
   const byOthers = await floatAlertFor(b.id, atB, 0);
   ok("FL.4i · ⭐ S7-F4 · …but once other withdrawals drain the shared float, the alert returns: the held share is still owed, and nothing covers it — critical, below what is owed",
     !!byOthers && byOthers.level === "critical" && byOthers.text.includes(formatTzs(shareB)) && /short of the payout/.test(byOthers.text), J(byOthers ?? "no float alert"));
+  // ⭐ S7-F9 · A FIGURE NOT ON RECORD IS NEVER 0 (S6-R's rule; the lead's word of 2026-10-22). ⚠️ A FIXTURE, DECLARED:
+  //    the held winner's stored payout set to null, as a record that lacks it would hold it — then the week's own share
+  //    too — and both put back after; the fixture itself moves no money, ledger or wallet.
+  const heldB = (await dal.ticketStore.listForWeek(b.id, { won: true })).find((t: any) => t.userId === wB[0]);
+  const payout0 = heldB?.payout ?? null, share0 = (await dal.weekStore.get(b.id)).sharePerTicket;
+  const setPayout = async (v: number | null) => { if (heldB) await fixturePayout(heldB.id, v); };
+  await setPayout(null);
+  const unreadPayout = await floatAlertFor(b.id, atB, 0);
+  ok("FL.4j · ⭐ S7-F9 · a winner's share its record lacks is still OWED — counted at the week's own share, never as 0: the alert stands, critical, naming the held share",
+    !!heldB && !!unreadPayout && unreadPayout.level === "critical" && unreadPayout.text.includes(formatTzs(shareB)) && /short of the payout/.test(unreadPayout.text),
+    J(unreadPayout ?? "no float alert"));
+  const balHeld = await bal(wB[0]), jackHeld = await jackpot();
+  const ff = await settle.forfeitMaswaliShare({ ticketId: heldB?.id ?? "", officerId: OWNER, typed: settle.FORFEIT_SHARE_WORD, reason: "FL.4l: the share is not on record" })
+    .catch((e: unknown) => ({ ok: false as const, error: `threw: ${(e as Error)?.message ?? e}` }));
+  const heldAfter = heldB ? await dal.ticketStore.get(heldB.id) : null;
+  ok("FL.4l · ⭐ S7-F9 · …and that share is never forfeited as 0: the forfeit is refused, nothing moves, and the share stays held for Compliance",
+    !ff.ok && /not on record/.test(errOf(ff)) && (await bal(wB[0])) === balHeld && (await jackpot()) === jackHeld
+      && !!heldAfter?.frozenReason && !heldAfter.frozenReason.startsWith("forfeited · ") && (await heldOf(wB[0])),
+    J({ refused: errOf(ff), frozen: heldAfter?.frozenReason }));
+  await dal.weekStore.patch(b.id, { sharePerTicket: null });
+  const unknownOwed = await floatAlertFor(b.id, atB, 0);
+  ok("FL.4k · ⭐ S7-F9 · …and with the week's own share not on record too, what is owed is unknown: its own critical alert — never a float judged against less, never silence (fail closed)",
+    !!unknownOwed && unknownOwed.level === "critical" && /not on record/.test(unknownOwed.text) && !/short of the payout/.test(unknownOwed.text), J(unknownOwed ?? "no float alert"));
+  await dal.weekStore.patch(b.id, { sharePerTicket: share0 });
+  await setPayout(payout0);
+  ok("FL.4m · control: the fixture put back — the week's share and the held winner's payout read as they did, and the alert is FL.4i's again",
+    (await dal.weekStore.get(b.id)).sharePerTicket === share0 && (heldB ? (await dal.ticketStore.get(heldB.id))?.payout : undefined) === payout0 && payout0 === shareB
+      && J(await floatAlertFor(b.id, atB, 0)) === J(byOthers), J({ share0, payout0 }));
   for (const id of outs) await W.db.txn.update(id, { status: "FAILED" });
   const rC = pc.ok ? await settle.settleMaswaliWeek({ weekId: c.id, releasedBy: RELEASER, digest: pc.preview.digest, now: atC }) : pc;
   ok("GU.7 · ⭐ …and the second, one shilling short, refuses whole: nothing paid, no carry claimed, the guarantee untouched",
@@ -1242,10 +1335,11 @@ if (runs("RD")) {
   const { runOutsideLock } = await import("../../src/lib/server/locks.ts");
   const start2 = W.weekStartAhead(ahead++);
   const wk2 = await openWeekAt(start2);
-  const racer = await deposited(20_000);
+  const racer = await deposited(20_000), blank = await deposited(20_000);
   const [filler2] = await people(1, 50_000);
   await step();
   const [tRacer] = await bought(racer.u, wk2.id, [ALL_YES]);
+  const [tBlank] = await bought(blank.u, wk2.id, [ALL_YES]);
   await W.sell(wk2.id, 9, MISS_M1, [filler2]);
   await closed(wk2.id);
   await sealRest(wk2.id, start2);
@@ -1263,6 +1357,21 @@ if (runs("RD")) {
   ok("RD.10 · ⭐ a reversal landing while a release is in flight waits for it, then holds the share it paid — never the share paid out free (the shares are read under the chain lock)",
     !!r2?.ok && !!reversal && tr2.payout === r2.week.sharePerTicket && tr2.frozenReason === "deposit under review" && (await heldOf(racer.u)),
     J({ released: !!r2?.ok, frozen: tr2.frozenReason, held: await heldOf(racer.u) }));
+  // ⭐ S7-F9 · A SHARE ITS RECORD LACKS IS STILL A PAID SHARE (S6-R's rule; the lead's word of 2026-10-22): `blank`'s paid
+  //    winning ticket has its payout written as null (the fixture above); its deposit, credited before the ticket, is then
+  //    reversed. The hold must take it all the same — never pass it over as a share of 0 — and the value is put back after.
+  const blank0 = (await dal.ticketStore.get(tBlank.ticketId))?.payout ?? null;
+  await fixturePayout(tBlank.ticketId, null);
+  await wallet.settlePaymentWebhook({ providerRef: blank.providerRef, status: "FAILED" });
+  await step();
+  const tb = await dal.ticketStore.get(tBlank.ticketId);
+  ok("RD.11 · ⭐ S7-F9 · a paid share whose record lacks its payout is held all the same when its deposit is reversed — never passed over as a share of 0",
+    blank0 !== null && blank0 === r2?.week.sharePerTicket && tb.frozenReason === "deposit under review" && (await heldOf(blank.u)),
+    J({ payout: blank0, frozen: tb.frozenReason, held: await heldOf(blank.u) }));
+  const rb = await settle.releaseMaswaliShare({ ticketId: tBlank.ticketId, officerId: OWNER, note: "RD.11b: the deposit was settled with the provider" });
+  ok("RD.11b · ⭐ S7-F9 · …and Compliance can release that share: to its acts too a share its record lacks is a paid share — never one the console can no longer decide",
+    rb.ok && (await dal.ticketStore.get(tBlank.ticketId)).frozenReason === null && !(await heldOf(blank.u)), errOf(rb));
+  await fixturePayout(tBlank.ticketId, blank0);
 }
 
 // ═══ §11 · TK · the winner-takeover pattern ═════════════════════════════════════════════════════════════════════════
@@ -1270,10 +1379,9 @@ if (runs("TK")) section("§11 · TK · the winner-takeover pattern: a winner's m
 if (runs("TK")) {
   const start = W.weekStartAhead(ahead++);
   const wk = await openWeekAt(start);
-  // ⭐ S7-F9 · MB-96, THE WATCH (`maswali-takeover.ts`; the lead's ruling of 2026-10-22: password writes only). Four winners
-  //    of one week, each a shape the watch must tell apart: `winner` — the password changed after the payout, then a
-  //    withdrawal asked (the takeover); `plain` — a withdrawal with no password change; `early` — the password changed
-  //    BEFORE the payout, then a withdrawal; `asked` — a withdrawal, THEN the password changed, nothing asked after.
+  // ⭐ S7-F9 · MB-96, THE WATCH (`maswali-takeover.ts`; an alert, never a hold). Four winners of one week, each a shape the
+  //    watch must tell apart: `winner` — the pattern after the payout (named); `plain` — half of it (not named); `early` —
+  //    the pattern begun before the payout (not named); `asked` — its acts in the other order (not named).
   // ⚠️ Every audit row is stamped on its own turn of the queue: each step waits for its rows (`auditFlush`) and a moment
   //    more, so no two of them share an instant and the order the case makes is the order the records keep.
   const step = async () => { await auditFlush(); await new Promise((res) => setTimeout(res, 25)); };
@@ -1283,7 +1391,7 @@ if (runs("TK")) {
   await W.sell(wk.id, 5, MISS_M1, [filler]);
   await closed(wk.id);
   await sealRest(wk.id, start);
-  const pwEarly = await changePassword(early, "", "Mlw-adversarial-early-2026");
+  const actEarly = await changePassword(early, "", "Mlw-adversarial-early-2026");
   await step();
   await released(wk.id);
   await step();
@@ -1296,36 +1404,56 @@ if (runs("TK")) {
     !away.ok && (away as any).reason === "payout_destination_not_registered" && (await bal(winner)) === afterWin, J(away));
   for (const u of [plain, early, asked]) await wallet.withdraw(u, { provider: "MPESA", amount: 10_000, msisdn: await phoneOf(u) });
   await step();
-  const pwAsked = await changePassword(asked, "", "Mlw-adversarial-asked-2026");
-  const pw = await changePassword(winner, "", "Mlw-adversarial-takeover-2026");
+  const actAsked = await changePassword(asked, "", "Mlw-adversarial-asked-2026");
+  const act = await changePassword(winner, "", "Mlw-adversarial-takeover-2026");
   await step();
   const home = await wallet.withdraw(winner, { provider: "MPESA", amount: 10_000, msisdn: mine });
   await step();
   // ⚠️ The payout float's alert (FL) speaks of the winners' withdrawals too, and since S7-F2 this week's own payout, its
   //    float unread here, raises one: it is about the float, never a takeover, so it is not counted as one.
   const alerts = (await consoleRead.consoleAlerts(new Date())).filter((x) => !/payout float/i.test(x.text));
-  const alert = alerts.find((x) => x.weekId === wk.id && /takeover/i.test(x.text));
+  const alert = alerts.find((x) => x.weekId === wk.id && /taken over/i.test(x.text));
   const watch = await takeover.takeoverWatch(new Date());
   const named = watch.findings.filter((f) => f.weekId === wk.id).map((f) => f.userId);
-  const detail = J({ passwords: [pw.ok, pwEarly.ok, pwAsked.ok], attempt: home.ok ? "sent" : (home as any).reason ?? home.code, alert: alert?.text, readable: watch.readable, named: named.length });
-  ok("TK.2 · ⭐ a password changed after a Millionea credit, then a withdrawal asked for, raises a takeover alert for Compliance — critical, on the console, naming the week and how many (MB-96; an alert only: 2026-10-10 removed withdrawal holds)",
-    pw.ok && !!alert && alert.level === "critical" && alert.text.includes(`${wk.code}: 1 winning account `), detail);
+  const detail = J({ acts: [act.ok, actEarly.ok, actAsked.ok], last: home.ok ? "sent" : (home as any).reason ?? home.code, alert: alert?.text, readable: watch.readable, named: named.length });
+  ok("TK.2 · ⭐ a winning account that may have been taken over after its payout raises a critical alert for Compliance on the console, naming the week and how many accounts (MB-96; an alert only, never a hold)",
+    act.ok && !!alert && alert.level === "critical" && alert.text.includes(`${wk.code}: 1 winning account `), detail);
   const f = watch.findings.find((x) => x.userId === winner && x.weekId === wk.id);
-  ok("TK.3 · ⭐ …and the integrity read names that account: its week, its password written by the player after the payout, and the request after it",
-    watch.readable && !!f && f.passwordHow === "changed by the player" && f.attempts === 1 && !f.more
-      && Date.parse(f.creditAt) <= Date.parse(f.passwordAt) && Date.parse(f.passwordAt) <= Date.parse(f.attemptAt), J(f ?? watch));
-  ok("TK.3a · control: a winner who asked to withdraw with no password change is not named", pwEarly.ok && !named.includes(plain), detail);
-  ok("TK.3b · control: a winner whose password changed BEFORE the payout is not named, though it asked after", pwEarly.ok && !named.includes(early), detail);
-  ok("TK.3c · control: a winner who asked before its password changed, and nothing after, is not named", pwAsked.ok && !named.includes(asked), detail);
+  ok("TK.3 · ⭐ …and the integrity read names that account and its week, flagged after the payout",
+    watch.readable && !!f && f.count === 1 && !f.more
+      && Date.parse(f.creditAt) <= Date.parse(f.startedAt) && Date.parse(f.startedAt) <= Date.parse(f.flaggedAt), J(f ?? watch));
+  ok("TK.3a · control: a winner with half the pattern is not named", !named.includes(plain), detail);
+  ok("TK.3b · control: a winner whose pattern began BEFORE the payout is not named", actEarly.ok && !named.includes(early), detail);
+  ok("TK.3c · control: a winner whose acts came in the other order is not named", actAsked.ok && !named.includes(asked), detail);
   ok("TK.4 · the console's alert names no account — no id, no name, no number (the trading console carries no holder, MR-14)",
     !!alert && ![winner, mine, mine.slice(-4)].some((x) => alert.text.includes(x)), alert?.text ?? "no alert");
+  // ⭐ The lead's ruling of 2026-10-22: the repository is public, so what the control prints says what it ENFORCES — a
+  //    possible takeover to review — in its reviewed words, and nothing more. Read on the alert as raised and on the card.
+  const { readFileSync } = await import("node:fs");
+  const page = readFileSync("src/app/admin/maswali/integrity/page.tsx", "utf8");
+  const said = `${wk.code}: 1 winning account may have been taken over since this week's payout. Compliance reviews it on the integrity page and may hold the share (MB-96).`;
+  ok("TK.4b · the alert and the integrity card say what the control enforces, in their reviewed words — a possible account takeover after a payout, to review — and nothing more (the lead's ruling of 2026-10-22)",
+    alert?.text === said && page.includes('title="Possible account takeovers after a payout"') && page.includes("Review the account with its owner before its money leaves"),
+    J({ alert: alert?.text }));
   const share = (await dal.ticketStore.listForWeek(wk.id, { won: true })).find((t: any) => t.userId === winner);
   ok("TK.5 · nothing is held: the winner's wallet carries no Millionea hold and its share stands unfrozen (the watch never blocks money)",
     !(await heldOf(winner)) && !!share && share.frozenReason === null, J({ held: await heldOf(winner), frozen: share?.frozenReason }));
   /** ⚠️ A FAULT, DECLARED: the watch's read fails, for one read of the console. */
   const unread = await consoleRead.consoleAlerts(new Date(), { readTakeover: async () => { throw new Error("TK · the watch's read failed (a planted fault)"); } });
   ok("TK.6 · ⛔ a watch that cannot be read says so on the console — never silence (fail closed)",
-    unread.some((x) => /takeover watch could not be read/.test(x.text)) && !unread.some((x) => x.weekId === wk.id && /takeover/i.test(x.text)), J(unread.map((x) => x.text)));
+    unread.some((x) => /takeover watch could not be read/.test(x.text)) && !unread.some((x) => x.weekId === wk.id && /taken over/i.test(x.text)), J(unread.map((x) => x.text)));
+  // ⭐ S7-F9 · A SHARE ITS RECORD LACKS IS STILL WATCHED (S6-R's rule; the lead's word of 2026-10-22). ⚠️ A FIXTURE, DECLARED:
+  //    the named winner's payout and the week's paid total written as null (`fixturePayout`, the week store's own patch),
+  //    as records that lack them would hold them, and both put back after.
+  const paid0 = share?.payout ?? null, total0 = (await dal.weekStore.get(wk.id)).paidTotal;
+  if (share) await fixturePayout(share.id, null);
+  await dal.weekStore.patch(wk.id, { paidTotal: null });
+  const blind = await takeover.takeoverWatch(new Date());
+  await dal.weekStore.patch(wk.id, { paidTotal: total0 });
+  if (share) await fixturePayout(share.id, paid0);
+  ok("TK.7 · ⭐ S7-F9 · a winner whose share — and whose week's paid total — the records lack is watched all the same: still named, never passed over as 0",
+    !!share && paid0 !== null && total0 !== null && blind.readable && blind.findings.some((x) => x.userId === winner && x.weekId === wk.id),
+    J({ paid0, total0, named: blind.findings.filter((x) => x.weekId === wk.id).length }));
 }
 
 // ═══ §12 · CC · both clock-change weekends ══════════════════════════════════════════════════════════════════════════
