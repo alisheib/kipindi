@@ -635,19 +635,25 @@ check("13.1", "A2 · no Chinese run in the register's body text is longer than 1
 // code with its facts and times under the head (M1), the ledger's card before the commitments' (M4, M12), the table on its
 // panel (L18); the index's intro (M11) and its list's own top edge, the row drawing no rule (L3).
 // ⚠️ RE-PINNED 2026-10-21 (S5-DESIGN-REGISTER, the tile read — §16): the ghost's cards at the receipt's measure, as the page's.
-check("12.1", "the week's ghost opens on the page's bands, in its order: the chip beside the code under the head, then the facts and times; the ledger's card at the receipt's measure; the commitments' card; cards below 1024 and the table on its panel from 1024", (w) => {
+// ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-REGISTER 23): both drawings in the page's own type — a line of words the kit's
+// bar inside that line's own box (`GhostTextLine`), as How's and the hub's are — so each band is the page's height (the
+// band probe's data, the register-ghosts hop's measure): the week's chip row is the page's own (`flex flex-wrap items-center
+// gap-x-3 gap-y-1`), its ledger the ONE ledger's rows in the kit's `ReceiptRow`; the index's intro as many lines as the
+// reader's language takes, its rows `WeekRow`'s own parts. The order and the measures below are unchanged.
+check("12.1", "the week's ghost opens on the page's bands, in its order: the chip beside the code under the head (the page's own chip row), then the facts and times; the ledger's card at the receipt's measure, drawn in the kit's ledger rows; the commitments' card; cards below 1024 and the table on its panel from 1024", (w) => {
   const g = code(w, "weekGhost");
-  const chip = g.includes('<MaswaliGhostHead eyebrowWidth="w-[144px]" titleWidth="w-[132px]" /> <div className="flex items-center gap-3" aria-hidden> <GhostBar className="h-[23px] w-[96px] rounded-pill" /> <GhostBar className="h-3 w-[112px]" /> </div>');
-  const at = ['<div className="mat-flat flex max-w-receipt flex-col gap-2.5 rounded-card p-3">', '<div className="mat-flat flex max-w-receipt flex-col gap-4 rounded-card p-3">',
+  const chip = g.includes('<MaswaliGhostHead eyebrowWidth="w-[144px]" titleWidth="w-[132px]" /> <div className="flex flex-wrap items-center gap-x-3 gap-y-1"> <span className="inline-block h-[23px] w-[96px] rounded-pill bg-bg-overlay" />');
+  const rows = g.includes("<ReceiptRow labelStyle=\"sentence\"") && g.includes('<div className="flex flex-col gap-1.5">');
+  const at = ['<div className="mat-flat flex max-w-receipt flex-col rounded-card p-3">', '<div className="mat-flat flex max-w-receipt flex-col gap-4 rounded-card p-3">',
     '<div className="flex max-w-receipt flex-col lg:hidden">', '<div className="glass-panel hidden flex-col lg:flex">'].map((x) => g.indexOf(x));
   const order = at.every((x, i) => x >= 0 && (i === 0 || x > at[i - 1]));
-  return [chip && order, j({ chip, at })];
+  return [chip && rows && order, j({ chip, rows, at })];
 });
 check("12.2", "the index's ghost: the intro's lines under the head at the reading measure, then the list with its own top edge, dividing rows that carry the week, its chip and its facts as the rows do (beside the week from 768)", (w) => {
   const g = code(w, "indexGhost");
-  const intro = g.includes('<div className="flex max-w-[68ch] flex-col gap-2" aria-hidden>');
+  const intro = g.includes('<span className="block max-w-[68ch] text-body">') && g.includes("const INTRO_LINES: Record<Locale, Tiers> =");
   const list = g.includes('<div className="flex flex-col divide-y divide-border border-t border-border">') && !/border-b border-border py-3/.test(g);
-  const row = g.includes('<GhostBar className="h-[23px] w-[88px] rounded-pill" />') && g.includes('<div className="flex flex-col gap-1 md:flex-row md:items-center md:gap-6">');
+  const row = g.includes('<span className="inline-block h-[23px] w-[88px] rounded-pill bg-bg-overlay" />') && g.includes('<span className="flex flex-col gap-1 md:flex-row md:items-center md:gap-6">');
   return [intro && list && row, j({ intro, list, row })];
 });
 
@@ -951,9 +957,10 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["L6 undone — two sw nouns for the floor's top-up", "11.1", plantWord("sw", "topUp", "Nyongeza ya dhamana")],
   // §12
   ["the week's ghost without the table's bands from 1024", "12.1", plantSrc("weekGhost", '<div className="glass-panel hidden flex-col lg:flex">', '<div className="hidden">')],
-  ["the week's ghost without the ledger's card", "12.1", plantSrc("weekGhost", '<div className="mat-flat flex max-w-receipt flex-col gap-2.5 rounded-card p-3">', '<div className="flex flex-col gap-2.5">')],
-  ["the index ghost's rows without the chip", "12.2", plantSrc("indexGhost", '<GhostBar className="h-[23px] w-[88px] rounded-pill" />', "")],
-  ["the index ghost without the intro", "12.2", plantSrc("indexGhost", '<div className="flex max-w-[68ch] flex-col gap-2" aria-hidden>', '<div className="flex flex-col gap-2" aria-hidden>')],
+  ["the week's ghost without the ledger's card", "12.1", plantSrc("weekGhost", '<div className="mat-flat flex max-w-receipt flex-col rounded-card p-3">', '<div className="flex flex-col">')],
+  ["the week's ghost head on a chip row of its own again (not the page's: it never wraps)", "12.1", plantSrc("weekGhost", '<div className="flex flex-wrap items-center gap-x-3 gap-y-1">', '<div className="flex items-center gap-3">')],
+  ["the index ghost's rows without the chip", "12.2", plantSrc("indexGhost", '<span className="inline-block h-[23px] w-[88px] rounded-pill bg-bg-overlay" />', "")],
+  ["the index ghost's intro off the reading measure", "12.2", plantSrc("indexGhost", '<span className="block max-w-[68ch] text-body">', '<span className="block text-body">')],
   // §14
   ["M5 undone — the ledger's 56px right lane back", "14.1", plantSrc("week", 'className="mat-flat flex max-w-receipt flex-col rounded-card p-3"', 'className="mat-flat flex max-w-receipt flex-col rounded-card p-3 pr-[56px] xl:pr-3"')],
   ["M4 undone — the ledger across the whole reading measure", "14.1", plantSrc("week", 'className="mat-flat flex max-w-receipt flex-col rounded-card p-3"', 'className="mat-flat flex flex-col rounded-card p-3"')],
