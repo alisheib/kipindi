@@ -1,4 +1,4 @@
-# The S5 lead's merge notes and rulings (2026-10-21 PM, OMEGA-COMPILE01, Claude asheib-65)
+# The S5 lead's merge notes and rulings (2026-10-21/22, OMEGA-COMPILE01, Claude asheib-65)
 
 What the next integration must do, every ruling made in the 10/10 pass, and where each lane's work meets another's.
 Paths under `$S` are the lead's scratchpad on OMEGA; re-point them on another machine.
@@ -61,6 +61,123 @@ Paths under `$S` are the lead's scratchpad on OMEGA; re-point them on another ma
   highest passing (32 figures; p10 4.58–5.31; /wallet tightest; .55 → wallet p10 3.90), recorded in state-tokens.css +
   DESIGN_AUTHORITY §A item 1. Classic case = /wallet (U43 keepout
   hides the bubble on /markets, /, /results, /watchlist, /updown).
+
+## 2026-10-22 — ALL LANES MERGED: release 7e9a314f0 (+ §0 2f79ff04a). REGISTER 318d92741, maswali-ui 4.8b flake fixed
+## b4853f23d, SLIP 0c1c6c7ad (§M8a: SLIP's way-back = item 18; DOORS' r5j/r8a/design re-pins per owners), the register
+## seed's attest 29f72241a, salesPaused Fill + one glyphs:gen 7e9a314f0 (app.b899eae1.svg; PREVIOUS = app.76a3696e +
+## admin.75aeb290 = main's GLYPH_SPRITES). tsc 0. ROUND 2 on claude/maswali-s5-r2-<lane> branches (brief critics/ROUND2.md).
+## test:all on the gate tree (7e9a314f0), STOPPED by the lead at 08:03Z for the clean stop — 706 result lines; every
+## "0.0s" FAIL (settle-winner-atomic-db, settle-refund-atomic-db, u43-snapshot-commit, u43-hedged-result-db,
+## updown-position-read-fail-db, updown-objection-verdict-db, u43-market-history-join, journey-measures, house-bot-ops, …)
+## is the STOP, not a defect — they never ran. Full log: $S/lead/gate2/test-all-7e9a314f0.log. Real reds, by owner:
+## - server-bound (need a running server — the render jobs run them): responsive, motion, revoked-deadend,
+##   admin-section-gate, needle-rest (needle-rest is red on production since U43's 7e3a06ea0 anyway);
+## - DOORS: maswali-fence 5.1 — an `=== "UPDOWN"` branch in src/app/results/millionea-results-view.tsx (1) not in the
+##   census → classify it; guards-exist phantom (fixed on DOORS' r2 branch, ed12bcf35);
+## - SLIP: updown-filter-sheet 7 + visual-pass-r10 1.4/3.1 (the grouped caret rule — its r2 WIP plan); measure: NEW
+##   hand-typed page widths `max-w-[640px]` in millionea/slip/page.tsx and slip-ghost.tsx (+ more listed) → the kit's
+##   measure or the ratchet with a reason; r5h 3.5 DOM-mark writers in operation-result-modal.tsx + maswali-slip.tsx;
+## - PLATFORM: r5h 3.5 ChatRoot.tsx (D15's census writes a DOM mark → classify); visual-pass-r7c 1.4 (the notices + both
+##   preview markers draw through one component — check D12's bar);
+## - REGISTER: ui-consistency (how-ghost h-10);
+## - money census: wallet-status-writers 1.2 (42 sites vs 39 pinned — read §1's list: which 3 are new, from FIX-SRV's acts?);
+## - house-bot: holder-lifecycle 15/1, disclosure, blob-pin (D19a, expected until the final re-pin), harm-watch 2/1 (a DB
+##   suite) — read each; spacing-scale — read.
+## RE-RUN test:all on the final integrated head (after round 2) — this partial run is the map, not the gate.
+## (earlier note) RELEASE-ONLY REDS (green on main 67e47f8d2):
+- test:ui-consistency: NEW numeric-size utility `h-10` in src/app/millionea/how/how-ghost.tsx L43 ("h-10 w-[160px]
+  rounded-control") — REGISTER's: use the kit's size or re-baseline with a reason.
+- test:wallet-status-writers 1.2 RATCHET: the census finds 42 wallet write sites, pinned 39 — read §1's list (which 3 are
+  new: FIX-SRV's acts / S5 purchase paths?) and move the pin only after reading each (money path).
+- test:guards-exist: NEW PHANTOM `qa:maswali-doors` cited in src/components/maswali/maswali-home-card-ghost.tsx:30 (no
+  such script; the suite is test:maswali-doors) — DOORS': cite the real script.
+- test:house-bot-holder-lifecycle 15/1 and test:house-bot-disclosure FAIL — read (D19a's dictionary pin is expected red
+  until the final re-pin; check whether these two read the dictionary blob too).
+- (test:house-bot-blob-pin: expected red — D19a re-pinned once at the final merge.)
+- millionea-shell 1.1b counts MillioneaPreviewMark calls (9): goes red as the lanes remove theirs in round 2 → at the merge
+  re-pin to "no call left" and delete the component (PLATFORM names its file/tests).
+
+## ROUND 2 STOP (2026-10-22 ~08:00Z, Ali: "finish here on a clean level … continue Maswali from a new prompt")
+- REGISTER r2 at a8e25a07d (claude/maswali-s5-r2-register): DONE items (1) covered() accepts --state-yield-opacity (+ waits
+  for the bubble's opacity to settle), (4) preview-mark calls removed (index, week, How; millionea-shell 1.1b re-pinned to
+  the other pages' 6 + plant; register-cache pageGate re-pinned), + text-balance headings on all three pages. NOT DONE:
+  (2) the full re-shoot + read (stopped; partial tiles set aside — don't read), (3) the SEP measurement (built into the
+  shot script, not run). Resume: `TSC=1 bash $S/mln-slot-s5x.sh dreg bash $S/s5dreg/r2/job-r2-shots.sh` (~45 min, 5 GB
+  free), then sheets.ps1 / crops.ps1 / batches.mjs + readers.json + reader-brief.md (all in $S/s5dreg/r2/), read every
+  tile sw first + motion frames, grep SEP/MEASURE lines, fix, re-score R1-register + How's R1-motion rows.
+
+- HUB r2 at a7b7c894c (claude/maswali-s5-r2-hub; a7b7c894c is an empty WIP commit listing what's verified/left): DONE
+  (static suites only — maswali-hub 55 (floor 53→55), design 141, r9a 63, r5j 62, journey-shell 566, ui 151,
+  gold-is-money 61): L4/L20 (MaswaliHeldTicketRow gets t, cancelUntil from millioneaHubCancelEnds, serverNow); L5 (the
+  graded week's facts = one row-door to /millionea/register/<code>; both carries link, PUBLIC only; DRIVE stays words);
+  the preview-mark call gone; §T5 in the hub's own lines (tagline, cap line, "See all n tickets", the end statement, the
+  voiding counts, the final week's number, a stand-in reserve's label). NOT RUN: tsc, red:glyph-source,
+  red:journey-shell, drives a/b/c (c = STAFF_PREVIEW via the console's typed confirmation: one platform bar above the hub,
+  none in its column, nothing to buy, the bar on Millionea pages and /results only). Resume:
+  `bash $S/mln-slot-s5x.sh dhub bash $S/s5dhub/heavy-r2.sh` (tsc + red twins + drives → $S/s5dhub/r2/tiles-<run>), read
+  every tile sw first + the drive's INFO lines, re-score. The loading-ghost 9 (UI, Motion) stays: the drawing can't know
+  the reader's held rows without a read in loading.tsx, which by design makes none.
+  Cross-lane gaps HUB saw (unconfirmed in tiles): TICKETS' maswali-ticket-cancel.tsx:38 CancelClock `<time>` lacks
+  `.mono` (§T5/L7); the hub's no-week EmptyState body clock ("…Monday 00:01", page.tsx:612) needs the kit's opt-in
+  numeral part (TICKETS is adding it to EmptyState in its round 2 — the hub then passes `numeralRuns`).
+
+- DOORS r2 at 410997dc7 (claude/maswali-s5-r2-doors): DONE 5849ce9e3 (H1 through the route ghost's "/" — byte-identical to
+  the journey home ghost in 3 langs ± Millionea; the preview chip moved UNDER the title at every width so a preview card is
+  the common card's height; new `qa:maswali-door-preview` STAFF_PREVIEW pass), ed12bcf35 (guards-exist phantom
+  `qa:maswali-doors` fixed → 9/0 — that test:all red is DOORS'-fixed on this branch). WIP 410997dc7 (unverified):
+  maswali-player-shots clicks /^Buy ticket/ (SLIP renamed "Cut ticket"); shootDoorPreview asserts /results' empty state
+  when no weeks (a STAFF_PREVIEW server's seed answers 409). STAFF_PREVIEW pass 94/100 (6 fails = one wrong check, fixed
+  in WIP). Static green: doors 56 (floor 56), design 141, r9a 63, r4j 92, i18n 3141 keys, dead-css, guards-exist 9.
+  LEFT: re-run the ACTIVE door drive (job-doors.sh) + qa:maswali-door-preview (job-preview.sh, expect 100/0), read every
+  tile, re-score R1-doors + the card row of R1-motion.
+  Red NOT DOORS': ui-consistency (REGISTER's how-ghost h-10); visual-pass-r5h 3.5 — DOM-mark writers not yet classified
+  in ChatRoot.tsx (PLATFORM D15), operation-result-modal.tsx and maswali-slip.tsx (SLIP) → those lanes classify them.
+
+- SLIP r2 at fe2d9fc79 (claude/maswali-s5-r2-slip; fe2d9fc79 = WIP): DONE d8e17bd73 (pills per ruling (a): group label
+  `draftTicketsNoun` "Tiketi"/"Tickets"/"彩票", each pill "1 · 15/15", accessible name noun + count; kit tabs.tsx
+  `TabItem.ariaLabel` — byte-identical for 5 caller shapes × 3 langs vs 7e9a314f0, slip-design 1.9 + plant), 723f41ea9
+  (MaswaliGhostHint beside "View ticket"), 151208cce (TICKETS' cancel confirm: panelClassName kp-mln-zh, handoff,
+  panelDelay — 9-line hunk), 0d4808239 (slip page's preview-mark calls gone; millionea-shell 1.1b → "at most 9, none in
+  the slip page"). slip-design 80/0, ui 151, design 141, i18n 22 (3142 keys), multi-slip 16, tickets 39, tsc 0. WIP
+  fe2d9fc79: the multi-slip drive finds pills by name + a "two pills on one row at 320" check (NOT RUN). LEFT: r10 1.4
+  re-pin (read the grouped rule, require the exact fsheet selector; plant: rotation moved to the wrapper; control: main's
+  two-selector rule), r10 3.1 list entry (the slip chevron, "edge" kind), updown-filter-sheet 7 re-pin (its regex needs the
+  fsheet selector last — same cause, 57/1 on the release, green on main), then r10 90+/0, updown-filter-sheet 58/0, r9a
+  63/0, tsc, red twins; the re-shoot (no-week, way-back guard --prove-red Chromium + WebKit, the drive, motion, full
+  shots; measure two pills on one row at 320/360 en+sw; "View ticket" landing on the free-cancel band; the cancel's
+  confirm → result under one dim); re-score.
+- TICKETS r2 at 9dcd6fc6e (claude/maswali-s5-r2-tickets; 9dcd6fc6e = WIP): DONE 908a261b6 (preview mark gone from both
+  tickets pages; millionea-shell 1.1b re-pinned to a CEILING "at most 9 calls, the tickets pages none" — so no lane edits
+  an exact count; re-pin to "none left" at the merge), 5e57b5867 (the free-cancel clock `.mono`, door + held row),
+  c60894b88 (the seal's serial whole in mono, "1 ticket at 10/10" numerals mono, held/forfeited counts via numeralRuns).
+  WIP 9dcd6fc6e: EmptyState's opt-in `bodyPart` (emptyStateBody(body, part?)) + client wrapper `tickets-empty.tsx`
+  passing numeralRuns (11.2 byte-identity vs 7e9a314f0 for every empty/notice body + 2 plants; r4k/r3c re-pinned).
+  Checks: tickets 41 (red 65/65), ui 151, design 141, hub 53, journey-tickets 51, millionea-shell 18. LEFT: tsc after
+  908a261b6; re-shoot list-empty-*; the full re-shoot (states, moments, ghosts, sunset — incl. ticket-wonBig-sw-320 to
+  prove REGISTER's note fix, F's Visual 9 → 10); re-score. The hub's no-week EmptyState can pass numeralRuns through
+  the same bodyPart once merged (HUB's gap).
+- ⛔ DARK-SAFETY BLOCKER FOUND BY PLATFORM (must be fixed before S5 deploys): `src/app/markets/loading.tsx:16` (DOORS
+  ebb6caa5f) ALWAYS passes `millionea={millionea}` and `preview={…}` to the client `MarketsGhost`, so every visitor's
+  /markets payload carries `"millionea":false` — qa:live's dark section fails it ("/markets carries no Millionea entry, and
+  no Millionea prop in its payload, for a signed-out visitor while Millionea is STAFF_PREVIEW … traces prop:"millionea":"),
+  and the rule covers WITHDRAWN too, so production would trip it. FIX (D3's pattern): hand the props only when true —
+  `{...(millionea ? { millionea: true as const, ...(preview ? { preview: true as const } : {}) } : {})}`; re-pin DOORS'
+  markets-ghost/journey-question pins; re-run qa:live's dark section + the door drive. Check the other ghosts/loadings
+  for the same shape (route-ghost "/" hands `millionea={millionea}` too — D6's; verify its payload rule).
+- PLATFORM r2 at 68b8fab9d (claude/maswali-s5-r2-platform): DONE + verified — (1) red:journey-header-fit --alone 10/10
+  caught, nothing to fix; (2) `.btn-ghost/.btn-claret/.btn-aqua-ghost:hover` gated under @media (hover: hover)
+  (test:hover-touch 13/0, qa:hover-touch 14/0; D11's entry recorded in §M8a item 11 UNNUMBERED beside the More panel /
+  SLIP / D15 — number it at the merge); (3) qa:live PREVIEW_TESTIDS += `millionea-preview-mark` (plant proof); (4) the
+  kit NoticeBar keeps its last word pair together via keepLastWords (test:notice-bar-widow 12/0, qa:notice-bar-widow 145/0
+  — two widows joined: Millionea en 320 "staff only." and the journey marker sw 360 "kabla haijazinduliwa."). LEFT: tsc
+  on the r2 tree (only notice-bar.tsx typed); the reader sweep (191 scripts, list $S/s5fplt/sweep7-list.txt); the rest of
+  the re-shoot (D13, D14, D15 guard + red, D10).
+- MillioneaPreviewMark (delete at the merge once every call is gone): component src/app/millionea/millionea-parts.tsx:47;
+  calls how/page.tsx:151, page.tsx:530, register/[week]/page.tsx:460, register/page.tsx:68, slip/page.tsx:65 + :133,
+  tickets/[serial]/page.tsx:197, tickets/page.tsx:148, results/millionea-results-view.tsx:41 (DOORS' /results — not in
+  any lane's r2 list: remove it at the merge); tests scripts/millionea-shell.test.mts §1 (1.1 + plant lines 82-90, 1.1b
+  line 86), scripts/maswali-results-section.test.mts (pin line 72, plant line 186); doc comment
+  src/components/layout/millionea-preview-bar.tsx:6.
 
 ## RELEASE at 08228d0c7 (17:00Z): + PLATFORM (a118f7545: r5d 5.1 classifies FIX-SRV's audit-warning reader) + TICKETS
 ## (2698b3bb5 per HUB's map; 730a8b615: the tickets seed and the hub's dev route attest/move with FIX-SRV's API). tsc 0;

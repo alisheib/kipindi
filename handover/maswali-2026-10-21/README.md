@@ -1,5 +1,55 @@
 # MASWALI-BUILD — hand-over of 2026-10-21 (Claude, OMEGA-COMPILE01, the Maswali lead)
 
+## ⏹ STOP 3 — 2026-10-22 ~08:10 UTC (Ali: "finish here on a clean level … then continue Maswali from a new prompt")
+
+**Read in this order:** this section → `MERGE-NOTES.md` (same folder; its top part is today's) → MASWALI-PLAN §0 on
+`claude/maswali-s5-release`. Round 2's brief is `critics/ROUND2.md`. The lane agents' memory ends with the session; each
+branch's head commit says what is verified and what is left.
+
+### Where things stand
+- **Release** `claude/maswali-s5-release` (code at `7e9a314f0`, docs after): **every S5 lane is merged** — FIX-SRV,
+  PLATFORM D1–D15, DOORS, HUB, TICKETS, REGISTER, SLIP — plus the salesPaused Fill (one glyphs:gen, `app.b899eae1.svg`).
+  tsc 0, every Maswali suite green. **Not live** (Ali, 2026-10-22: only verified work goes live).
+- **Round 2** (on the integrated product) is on six branches from `7e9a314f0`, each stopped clean:
+  | Lane | Branch | Head | Done / left |
+  |---|---|---|---|
+  | HUB | `claude/maswali-s5-r2-hub` | a7b7c894c | wiring L4/L20/L5, preview mark gone, §T5 in its lines · left: tsc, reds, drives a/b/c, read, re-score |
+  | SLIP | `claude/maswali-s5-r2-slip` | fe2d9fc79 | pills (ruling a), ghost hint, the cancel confirm's kit options, preview mark gone · left: r10 1.4/3.1 + updown-filter-sheet 7 re-pins, re-shoot, re-score |
+  | TICKETS | `claude/maswali-s5-r2-tickets` | 9dcd6fc6e | preview mark gone, §T5 (cancel clock, seal facts, notes), EmptyState `bodyPart` (WIP) · left: tsc, re-shoot incl. ticket-wonBig, re-score |
+  | REGISTER | `claude/maswali-s5-r2-register` | a8e25a07d | covered() accepts the chat's yield, preview mark gone, headings balanced · left: re-shoot + SEP measure, re-score |
+  | DOORS | `claude/maswali-s5-r2-doors` | 410997dc7 | H1 through the route ghost, preview chip under the title, STAFF_PREVIEW pass, guards-exist fixed · left: re-run both drives, read, re-score |
+  | PLATFORM | `claude/maswali-s5-r2-platform` | 68b8fab9d | header-fit red 10/10, hover tints gated, qa:live catches the bar, NoticeBar widows · left: tsc, reader sweep, D13/D14/D15/D10 re-shoot |
+- ⛔ **A dark-safety blocker** (PLATFORM found it): `src/app/markets/loading.tsx` hands the client `MarketsGhost`
+  `millionea={false}`, so every /markets payload carries the prop and qa:live's dark rule fails. Fix (hand props only
+  when true) before S5 deploys — MERGE-NOTES has the exact fix.
+- **test:all** ran on `7e9a314f0` until the stop: its real reds are listed by owner in MERGE-NOTES (the "0.0s" ones are the
+  stop). Re-run it on the final head.
+- **Railway:** a security incident (status.railway.com) — Railway advises rolling every env var stored there; that is
+  Ali's (payout credentials and the Anthropic keys first). Builds are back for Pro; `main` `67e47f8d2` was requested at
+  07:15Z on Ali's word and was still QUEUED at 08:05Z (Railway: "deployments … taking longer than usual to start"). When
+  it lands: `tools/readback.sh <sha>`, record U43's part in MOBILE-VISUAL-PLAN §0, tell asheib-bb.
+
+### Next, in order
+1. Fix the dark-safety blocker (DOORS' markets loading props) and finish each round-2 branch's "left" list.
+2. Merge the six r2 branches into the release (expect conflicts in millionea-shell 1.1b — every lane re-pinned it; resolve
+   to "no call left"), delete `MillioneaPreviewMark` (MERGE-NOTES lists the component, the last call in
+   millionea-results-view.tsx, and its tests), number D11's §M8a entry, re-pin D19a once.
+3. The critics' round 2 (critics/COMMON.md + R1-*.md + ROUND2.md) until every cell is 10.
+4. The gates on the exact commit: test:all, the render jobs (they run the server-bound suites), the money battery,
+   classic parity (candidate compare; re-capture the baseline first if main changed a served page), next build, local
+   qa:live with its dark section.
+5. Push `main` under main-push.lock, Railway deploy, AGENTS §4 read-back, then STAFF_PREVIEW.
+6. S7 (merge S5, its left items), S6 (the 6b guard first), S8.
+
+### Trees on OMEGA (kept for the next prompt)
+Lane trees `kipindi-mln-{dhub,dslp,dtkt,dreg,ddoor,fplt,fsrv,fply}` (each on its r2 or lane branch, clean),
+`maswali-coord-20261019` (the release), `kipindi-mln-gate` (detached 7e9a314f0, real node_modules — test:all),
+`kipindi-mln-pbase` (main bfa0b7d57, parity's baseline server), `kipindi-mln-rb` (detached main, node_modules JUNCTION
+into the release tree — unlink first when removing; the read-back runs here), `maswali-s7-integrate-20261019` (S7),
+`maswali-s7-red-20261021` (S7's red checkout, JUNCTION), the S6 trees. U43 (paused) lent slots 5–8.
+
+---
+
 ## ⏹ STOP 2 — 2026-10-21 ~17:15 UTC (Ali: "work for 2 hours and push everything and progress … so we continue from another machine")
 
 **Read in this order:** this section → `MERGE-NOTES.md` (same folder: every PM ruling, what each lane changed, every
