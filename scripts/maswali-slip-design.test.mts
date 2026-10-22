@@ -434,6 +434,16 @@ section("§7 · the loading ghost draws the page it stands for");
   ok("7.2 · …at the slip's own measure — the form tier (column `max-w-form`, grid track `var(--w-form)`, 640px), the page's own — with no hand-typed width, and with no switcher box (the page draws one only for a second ticket)",
     MEASURE.every((c) => g.includes(c) && page.includes(c)) && wForm === "640" && !/max-w-\[[0-9]+px\]/.test(g) && !g.includes("millionea-ticket-drafts"),
     j({ wForm, ghost: MEASURE.map((c) => g.includes(c)), page: MEASURE.map((c) => page.includes(c)) }));
+  // 7.3 · round 2 (the lead, for REGISTER's `qa:millionea-ghost-hops`, which tells loading drawings apart by the page each
+  // names): the drawing's busy root names its page — a value, never a product word — and it is the drawing's one name.
+  const GHOST = "src/app/millionea/slip/slip-ghost.tsx";
+  const busyRoot = (m: string) => /<div[^>]*\baria-busy="true"[^>]*>/.exec(m)?.[0] ?? "";
+  const names = (m: string) => (m.match(/data-ghost-page="/g) ?? []).length;
+  ok("7.3 · the drawing's busy root names its page (`data-ghost-page=\"slip\"`), its one name — so a hop that shows it is known to show the slip's own drawing",
+    busyRoot(g).includes('data-ghost-page="slip"') && names(g) === 1, busyRoot(g));
+  const unnamedGhost = compileAt(GHOST, raw(GHOST).replace(' data-ghost-page="slip"', "")) as { MillioneaSlipGhost: () => unknown };
+  const ug = inApp("sw", h(unnamedGhost.MillioneaSlipGhost as never));
+  ok("7.3′ PLANT · the name taken off the busy root is caught", raw(GHOST).includes(' data-ghost-page="slip"') && busyRoot(ug) !== "" && !busyRoot(ug).includes("data-ghost-page") && names(ug) === 0);
 }
 
 /* ══ §8 · THE DECIDED WORDS ══════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -710,6 +720,6 @@ section("§12 · round 2 · the stamp notes each ticket's free cancel for its dr
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI SLIP DESIGN: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run printed. */
-const MIN_ASSERTIONS = 86;
+const MIN_ASSERTIONS = 88;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);
