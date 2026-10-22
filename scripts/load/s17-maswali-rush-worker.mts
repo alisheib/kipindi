@@ -41,7 +41,17 @@ const { checkMaswaliInvariants } = await import("../../src/lib/server/maswali-in
 const { auditFlush } = await import("../../src/lib/server/audit.ts");
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-const say = (v: unknown) => console.log(`@@RESULT ${JSON.stringify(v)}`);
+/**
+ * The answer, and its write. ⚠️ On Linux a pipe takes stdout asynchronously, and `process.exit` drops whatever is still
+ * queued: the check's answer (every live ticket's id, hundreds of kilobytes) reached the orchestrator cut off mid-id, so
+ * the first runs on a GitHub runner (2026-10-22) read "the check worker ended (0) without a result" (on Windows a pipe is
+ * written synchronously, which is why OMEGA never saw it). The worker waits for this write before it exits.
+ */
+let answered: Promise<void> = Promise.resolve();
+const say = (v: unknown) => {
+  const line = `@@RESULT ${JSON.stringify(v)}${String.fromCharCode(10)}`;
+  answered = new Promise<void>((resolve) => { process.stdout.write(line, () => resolve()); });
+};
 const writeAtomic = (path: string, text: string) => {
   writeFileSync(`${path}.tmp`, text);
   renameSync(`${path}.tmp`, path);
@@ -340,4 +350,6 @@ try {
   process.exitCode = 1;
 }
 try { await auditFlush(); } catch { /* the audit queue is not what this worker measures */ }
+// The answer reaches the pipe before the process ends (see `say`).
+await answered;
 process.exit(process.exitCode ?? 0);
