@@ -435,15 +435,40 @@ section("§7 · the loading ghost draws the page it stands for");
     MEASURE.every((c) => g.includes(c) && page.includes(c)) && wForm === "640" && !/max-w-\[[0-9]+px\]/.test(g) && !g.includes("millionea-ticket-drafts"),
     j({ wForm, ghost: MEASURE.map((c) => g.includes(c)), page: MEASURE.map((c) => page.includes(c)) }));
   // 7.3 · round 2 (the lead, for REGISTER's `qa:millionea-ghost-hops`, which tells loading drawings apart by the page each
-  // names): the drawing's busy root names its page — a value, never a product word — and it is the drawing's one name.
+  // names and reports any bar outside a named root as UNMARKED): the drawing names its page — a value, never a product word —
+  // on ONE box-less wrapper (`contents`) that is the page container's whole content: the back link, the busy root (its test
+  // id kept) and the docked rail, which stand outside the busy root, all inside it.
   const GHOST = "src/app/millionea/slip/slip-ghost.tsx";
-  const busyRoot = (m: string) => /<div[^>]*\baria-busy="true"[^>]*>/.exec(m)?.[0] ?? "";
-  const names = (m: string) => (m.match(/data-ghost-page="/g) ?? []).length;
-  ok("7.3 · the drawing's busy root names its page (`data-ghost-page=\"slip\"`), its one name — so a hop that shows it is known to show the slip's own drawing",
-    busyRoot(g).includes('data-ghost-page="slip"') && names(g) === 1, busyRoot(g));
-  const unnamedGhost = compileAt(GHOST, raw(GHOST).replace(' data-ghost-page="slip"', "")) as { MillioneaSlipGhost: () => unknown };
-  const ug = inApp("sw", h(unnamedGhost.MillioneaSlipGhost as never));
-  ok("7.3′ PLANT · the name taken off the busy root is caught", raw(GHOST).includes(' data-ghost-page="slip"') && busyRoot(ug) !== "" && !busyRoot(ug).includes("data-ghost-page") && names(ug) === 0);
+  /** The index just past the `</div>` that closes the `<div` opening at `at` (divs counted, the markup React writes). */
+  const closeOf = (m: string, at: number) => {
+    let depth = 0;
+    for (const t of m.slice(at).matchAll(/<div\b|<\/div>/g)) {
+      depth += t[0] === "</div>" ? -1 : 1;
+      if (depth === 0) return at + (t.index ?? 0) + t[0].length;
+    }
+    return -1;
+  };
+  const namedWhole = (m: string) => {
+    const pc = /<div data-measure="reading"[^>]*>/.exec(m);
+    const wrap = '<div class="contents" data-ghost-page="slip">';
+    if (!pc) return { ok: false, why: "no page container" };
+    const at = (pc.index ?? 0) + pc[0].length;
+    if (!m.startsWith(wrap, at)) return { ok: false, why: "the container's first child is not the named wrapper" };
+    const end = closeOf(m, at), inner = m.slice(at, end);
+    const whole = end > 0 && m.startsWith("</div>", end) && closeOf(m, pc.index ?? 0) === end + "</div>".length;
+    const holds = inner.includes('data-testid="slip-ghost"') && inner.includes("kp-mln-rail") && /aria-busy="true"/.test(inner);
+    const names = (m.match(/data-ghost-page="/g) ?? []).length;
+    return { ok: whole && holds && names === 1, why: JSON.stringify({ whole, holds, names }) };
+  };
+  const named = namedWhole(g);
+  ok("7.3 · the drawing names its page once, on a box-less wrapper (`contents`, data-ghost-page=\"slip\") that is the page container's whole content — back link, busy root and docked rail inside it — so no bar of it is unnamed in a hop",
+    named.ok, named.why);
+  // PLANT: the name back on the busy root alone (the rail and the back link outside it, unnamed — the defect the lead found).
+  const busyOnly = compileAt(GHOST, raw(GHOST).replace('<div className="contents" data-ghost-page="slip">', '<div className="contents">')
+    .replace(' data-testid="slip-ghost">', ' data-testid="slip-ghost" data-ghost-page="slip">')) as { MillioneaSlipGhost: () => unknown };
+  const bo = namedWhole(inApp("sw", h(busyOnly.MillioneaSlipGhost as never)));
+  ok("7.3′ PLANT · the name on the busy root alone (the docked rail and the back link outside any named root) is caught",
+    raw(GHOST).includes('<div className="contents" data-ghost-page="slip">') && !bo.ok, bo.why);
 }
 
 /* ══ §8 · THE DECIDED WORDS ══════════════════════════════════════════════════════════════════════════════════════════════════ */
