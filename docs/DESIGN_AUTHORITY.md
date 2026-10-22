@@ -272,7 +272,8 @@ in `--yes-*`. Urgency is carried by the kit's `m-urgent` motion and the player's
 the text keeps its neutral ink. `test:betting-ink` pins the sites.
 
 **U43 palette amendment (Ali, 2026-10-19; gold restoration 2026-10-20).** On player surfaces, live status and HOT
-crowd signals are neutral. Green and red name only the two betting sides and their outcomes.
+crowd signals are neutral. Green and red name only the two betting sides and their outcomes —
+with one owner's exception, the language-change loader's ring (2026-10-22, below).
 The shared ticker's LIVE pip, word, separators and controls are neutral; keyboard focus uses
 brand. The Journey balance delta keeps its signed number in neutral ink; the classic
 capsule retains its earlier directional delta. The full pre-B5 house-gold
@@ -292,6 +293,23 @@ and outcomes; a neutral placement must not look like an UP bet. The source foote
 the market class and the observed **hh:mm EAT** once, with its exact instant retained in
 the time element. A settled refund card gives the reason once and the player's exact
 returned amount once; it does not repeat the return promise above that amount or in a chip.
+
+**The owner's exception: the language-change loader (Ali, 2026-10-22).** The ring of six glyphs that orbits the brand-blue
+pulse while the site changes language (`LocaleChangeOverlay`, `src/lib/i18n.tsx`) alternates the YES and NO inks —
+`--yes-400` on Hi, Ha and Sw, `--no-400` on 语, 好 and En. It was born green and red (2026-06-29). The visual pass's round 5
+(R5-I, 2026-10-09) moved it to the brand family's two pale steps, which drew a blue-grey ring, and Ali asked for it back:
+*"on change language the colored animation is still on grey scale — give it back its color"*, then *"its green and red"*.
+It is the one decoration the pair is lent to. It names no side and no state, and it reads the pair's tokens, never a
+hand-typed value (the old inks, `oklch(78% 0.16 152 / 22)`, were typed by hand).
+⭐ **The step was measured, not picked.** On one frozen frame of the live loader, the mean OKLCH chroma of the ring's ink
+pixels (360 / 1280 / reduced motion) was **0.118 / 0.119 / 0.139** with the inks before R5-I, **0.079 / 0.077 / 0.080**
+with R5-I's brand steps (the grey Ali saw), **0.102 / 0.105 / 0.121** with `-300` (0.87×, short of "as far from grey as
+before") and **0.136 / 0.137 / 0.157** with `-400` (1.13–1.15×, at the same on-screen lightness). Against the scrim
+measured behind the ring, the lower of the two `-400` inks reads 6.79:1 at worst (36 readings: a guest, a signed-in player
+and the journey shell, at 360 and 1280, every change, with and without motion). `test:betting-ink` §7i holds its file to
+exactly that ring;
+`test:visual-pass-r5i` registers it (§1) and pins it (§2.15⁗); `qa:locale-loader` measures it on screen on every run against
+the ring as it was before R5-I, and fails under 0.9× of it.
 
 ⛔ **Nor to express a price MOVE** (2026-09-27, the landing v3 WP3+WP4 review, R8). A market card's 24h move
 of the YES price is not a side, and a green-up / rose-down move invites chasing. The grid card printed "+5pt" in

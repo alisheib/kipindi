@@ -440,6 +440,8 @@
     "backfill:zh": "tsx scripts/backfill-zh-titles.mts",
     "qa:toast-modal": "node scripts/qa-toast-modal.mjs",
     "qa:live": "node scripts/pre-deploy-live-check.mjs",
+    "qa:locale-loader": "node scripts/qa-locale-loader.mjs",
+    "red:locale-loader": "node scripts/qa-locale-loader-red.mjs",
     "qa:cert-expiry": "node scripts/cert-expiry-watch.mjs",
     "perf:smoke": "node scripts/perf-smoke.mjs",
     "qa:cards": "node scripts/marketing-invite-stress.mjs",

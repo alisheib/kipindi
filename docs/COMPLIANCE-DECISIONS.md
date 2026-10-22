@@ -8,41 +8,23 @@
 
 ---
 
-## 2026-10-21 · Harm markers muted for marketing SMS (owner ruling)
+## 2026-10-22 · The language-change loader wears its green and red again (owner ruling)
 
-**Authority.** Ali, 2026-10-21, in the Claude session on OMEGA-COMPILE01, after the marketing team could not send a
-campaign test: *"remove this flag for everyone … pause it now"*, then *"keep the development but mute it for now for
-everyone, later if needed I tell you to activate it"*, and *"I have full GBT licence"*. Asked about the public page, he
-chose *"code only, leave the page"*.
+**Authority.** Ali, 2026-10-22, relayed by the MASWALI-BUILD lead session on OMEGA-COMPILE01: *"on change language the
+colored animation is still on grey scale — give it back its color"*; asked which colours, he chose *"its green and red"*.
 
-**Why it came up.** The marketing gate refused an officer's own test number. A read-only production check showed both
-of the officer's ADMIN accounts ACTIVE, 25 or over, with no self-exclusion and no break: the refusal was the automatic
-harm marker `LATE_NIGHT_PLAY` (5 and 9 bets between 00:00 and 06:00 EAT in seven days, from staff testing). The marker
-is not stored — it is recomputed from the account's transactions at every send — so nothing could be removed from the
-database, and nothing was.
+**What it rules.** The ring of six glyphs that orbits while the site changes language (`LocaleChangeOverlay`,
+`src/lib/i18n.tsx`) alternates the YES and NO inks again, `--yes-400` / `--no-400`; the brand-blue centre dot is unchanged.
+It is the one owner's exception to DESIGN_AUTHORITY §B2a's U43 amendment ("green and red name only the two betting sides
+and their outcomes"): a decoration that names no side and no state. The rule, and the measurements that chose the `-400`
+step, are in DESIGN_AUTHORITY §B2a, "The owner's exception: the language-change loader".
 
-**What it rules.** The automatic harm markers (rapid deposits, deposits soon after placing a bet, late-night play) no
-longer stop a marketing SMS, for anyone: `MARKETING_HARM_MARKERS_MUTED = true` in `src/lib/server/marketing/rg.ts`
-makes the gate's default dependency report no harm flag. Everyone the markers were holding is released at the next
-send; there is no per-person state to clear.
+**Why it is logged here.** §B2a keeps the betting pair for the sides of a stake, so that green and red always mean money
+(D2). Lending the pair to the loader is deliberate; no later pass may "restore" the brand-blue ring that R5-I
+(`42a2003d6`, 2026-10-09) gave it and that this ruling reverses.
 
-**What it does NOT change.** A person's stop, self-exclusion (GN 478T reg 49(3)), a break, under 25 with a
-self-exclusion or a break on record, under 18, an unknown age and the account's status still refuse, exactly as
-before. The detector itself still runs for the Player Safety page and the daily harm count. The harm step's code is
-kept, and `test:rg-doors` still proves it refuses whatever flags it is handed.
-
-**The public page.** `/legal/responsible-gambling` §4 (en/sw/zh), its promise register (`src/lib/legal/kept-promises.ts`,
-`harmSign`) and the `rg.marketing` policy line are unchanged on Ali's instruction. While the markers are muted, the §4
-words "a player showing a sign of harm" describe a protection that is switched off; reactivating the markers makes
-them true again. (`test:rg-policy` reads the refusal's text in `rg.ts`, which stays, so it remains green.)
-
-**Supersedes in part** item 2 of § "2026-10-07 · Marketing SMS go to anyone with a phone — consent is not a condition
-(the owner's FINAL rule), and his approvals given in the session": its "a sign of harm" only, while this ruling stands.
-
-**How to reactivate** (only on Ali's word): set `MARKETING_HARM_MARKERS_MUTED` to `false`; restore the expectations this
-change moved — `test:rg-doors` 8.11b (`rg_harm_marker` again), `test:campaign-audience` (pa10 protected again: will
-receive 4, protected 7, not receiving 17; players 4, 7, 13; `rg_harm_marker` back in its reason set) and the dry-fire
-world's `harm_marker` person (SKIPPED `rg_harm_marker`); and record the reactivation here.
+**Guards.** `test:betting-ink` §7i (its file carries exactly that ring and no other betting ink) · `test:visual-pass-r5i`
+§1, §2.15⁗ and §5 · `qa:locale-loader` (measured on screen against the ring as it was before R5-I) · `red:locale-loader`.
 
 ---
 
@@ -87,6 +69,44 @@ where he wrote them, in his own words:
 Millionea is offered, except the landing's Live link, which every visitor sees (a classic-visible change named in the
 parity compare); 6 restates AGENTS.md §3 for this programme; 7–10 set this afternoon's push and its record. The
 language-change loader's colours (the same day) are recorded with their own release in DESIGN_AUTHORITY.
+
+---
+
+## 2026-10-21 · Harm markers muted for marketing SMS (owner ruling)
+
+**Authority.** Ali, 2026-10-21, in the Claude session on OMEGA-COMPILE01, after the marketing team could not send a
+campaign test: *"remove this flag for everyone … pause it now"*, then *"keep the development but mute it for now for
+everyone, later if needed I tell you to activate it"*, and *"I have full GBT licence"*. Asked about the public page, he
+chose *"code only, leave the page"*.
+
+**Why it came up.** The marketing gate refused an officer's own test number. A read-only production check showed both
+of the officer's ADMIN accounts ACTIVE, 25 or over, with no self-exclusion and no break: the refusal was the automatic
+harm marker `LATE_NIGHT_PLAY` (5 and 9 bets between 00:00 and 06:00 EAT in seven days, from staff testing). The marker
+is not stored — it is recomputed from the account's transactions at every send — so nothing could be removed from the
+database, and nothing was.
+
+**What it rules.** The automatic harm markers (rapid deposits, deposits soon after placing a bet, late-night play) no
+longer stop a marketing SMS, for anyone: `MARKETING_HARM_MARKERS_MUTED = true` in `src/lib/server/marketing/rg.ts`
+makes the gate's default dependency report no harm flag. Everyone the markers were holding is released at the next
+send; there is no per-person state to clear.
+
+**What it does NOT change.** A person's stop, self-exclusion (GN 478T reg 49(3)), a break, under 25 with a
+self-exclusion or a break on record, under 18, an unknown age and the account's status still refuse, exactly as
+before. The detector itself still runs for the Player Safety page and the daily harm count. The harm step's code is
+kept, and `test:rg-doors` still proves it refuses whatever flags it is handed.
+
+**The public page.** `/legal/responsible-gambling` §4 (en/sw/zh), its promise register (`src/lib/legal/kept-promises.ts`,
+`harmSign`) and the `rg.marketing` policy line are unchanged on Ali's instruction. While the markers are muted, the §4
+words "a player showing a sign of harm" describe a protection that is switched off; reactivating the markers makes
+them true again. (`test:rg-policy` reads the refusal's text in `rg.ts`, which stays, so it remains green.)
+
+**Supersedes in part** item 2 of § "2026-10-07 · Marketing SMS go to anyone with a phone — consent is not a condition
+(the owner's FINAL rule), and his approvals given in the session": its "a sign of harm" only, while this ruling stands.
+
+**How to reactivate** (only on Ali's word): set `MARKETING_HARM_MARKERS_MUTED` to `false`; restore the expectations this
+change moved — `test:rg-doors` 8.11b (`rg_harm_marker` again), `test:campaign-audience` (pa10 protected again: will
+receive 4, protected 7, not receiving 17; players 4, 7, 13; `rg_harm_marker` back in its reason set) and the dry-fire
+world's `harm_marker` person (SKIPPED `rg_harm_marker`); and record the reactivation here.
 
 ---
 
