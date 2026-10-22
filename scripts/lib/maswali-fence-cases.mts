@@ -219,7 +219,8 @@ export const CENSUS: Readonly<Record<string, { n: number; why: string }>> = {
   "src/lib/server/objections-service.ts": { n: 3, why: "upholdObjection's round correction (the linked round's read, its missing-round refusal, the correction evidence); a week's market row turns RESOLVED or VOIDED only in the write that stamps settledAt (maswali-settlement, maswali-void), so no objection is ever filed on it (ALREADY_SETTLED) and upholding refuses a settled market" },
   "src/lib/server/short-title-service.ts": { n: 1, why: "the round's own refusal, with the week's refusal beside it" },
   "src/lib/side-label.ts": { n: 2, why: "the exhaustive guard and the round arm of positionStatusWord" },
-  "src/lib/tax-report.ts": { n: 1, why: "parseProduct: MASWALI is not selectable until S6, by design" },
+  // ⚠️ Reason re-worded 2026-10-18 (MASWALI-BUILD S6): the count is unchanged — parseProduct's own Up & Down arm, beside its MASWALI arm.
+  "src/lib/tax-report.ts": { n: 1, why: "parseProduct: the Up & Down arm, beside the Millionea arm S6 added (each product its own value)" },
   // 2026-10-21 · U43 Release B (1384383fd) — classified by the U43 lane, for the Maswali lane's review.
   "src/lib/updown-round-name.ts": { n: 1, why: "marketDisplayTitle renames only a stored round title; every other line, a week included, shows its own stored title" },
 };
@@ -260,7 +261,17 @@ function runCensus(ok: Ok): void {
     (lit("src/app/admin/settlement/actions.ts").match(/isFencedMaswali\(await getMarket\(marketId\)\)/g) ?? []).length === 2);
   ok("5.5 · recheckMarketNowAction refuses a week before the paid AI call",
     /isFencedMaswali\(await getMarket\(marketId\)\)[\s\S]*sentinelCheckOne/.test(lit("src/app/admin/resolver-queue/resolution-mode-action.ts")));
-  ok("5.6 · the tax report refuses a period that holds a week (fail-closed until S6)",
-    /b\.productLine === "MASWALI"\)\)\s*\{\s*return \{ ok: false/.test(lit("src/lib/server/tax-report-data.ts")));
+  // ⚠️ RE-PINNED 2026-10-18 (MASWALI-BUILD S6, OD-08): S6 replaced the fail-closed refusal with the week's own treatment,
+  // as this case's label always said it would. What is pinned now: a resulted week takes its own arm BEFORE the poll
+  // mirror (`roundKeep` → `chargedFee`, which still throws on a week handed in without its settlement, 3.1), from its own
+  // settlement record, and the refusal is gone. `test:tax-report` §12 and `test:maswali-reporting` hold the figures.
+  {
+    const tax = lit("src/lib/server/tax-report-data.ts");
+    const arm = tax.indexOf("const wk = weekKeep(b, L.weeks.get(marketId));");
+    const poll = tax.indexOf("const keep = b ? roundKeep(b) : null;");
+    ok("5.6 · the tax report files a week by its own lines (S6, OD-08): its arm comes before the poll mirror, and the S0.5 refusal is gone",
+      arm > -1 && poll > -1 && arm < poll && /weekStore\.getByMarketId\(b\.id\)/.test(tax) && !/learns Millionea in MASWALI-PLAN S6/.test(tax),
+      `arm at ${arm}, poll mirror at ${poll}`);
+  }
   ok("5.7 · nextDeadlineFor arms a poll only", /if \(storedProductLine\(m\.productLine\) !== "MARKET"\) return null;/.test(lit("src/lib/server/market-scheduler.ts")));
 }

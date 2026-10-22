@@ -75,21 +75,32 @@ export const MUTATIONS = [
     // evidence. `withdrawalEntries` credits the gateway's share STRAIGHT to HOUSE:AGGREGATOR;
     // `feeEarned` reads positive HOUSE:COMMISSION rows only, so the share was never in it.
     // Taking it out here is the file header's own forbidden double-subtraction, one account over.
+    // ⚠️ RE-ANCHORED 2026-10-18 (MASWALI-BUILD S6, MB-04): the line gained `- guaranteePaid`; the defect planted is unchanged.
     name: "house-book.ts — subtract the gateway share that was never in the fee (the header's own ban, one account over)",
     file: "src/lib/house-book.ts",
-    from: `    netRetained: input.feeEarned - input.leviesOut - input.bonusCost - input.agentCommissionOut,`,
-    to: `    netRetained: input.feeEarned - input.leviesOut - input.aggregatorOut - input.bonusCost - input.agentCommissionOut,`,
+    from: `    netRetained: input.feeEarned - input.leviesOut - input.bonusCost - input.agentCommissionOut - guaranteePaid,`,
+    to: `    netRetained: input.feeEarned - input.leviesOut - input.aggregatorOut - input.bonusCost - input.agentCommissionOut - guaranteePaid,`,
     expect: "5.2",
   },
   {
     // ⭐ AGENT COMMISSION IS A COST OF REVENUE. It is paid out of the fee we kept, to a vetted
     // partner, and booked to HOUSE:AGENT_COMMISSION. Dropping the term reports the agent
     // programme as free — the owner reads a net retained that includes money already paid out.
+    // ⚠️ RE-ANCHORED 2026-10-18 (MASWALI-BUILD S6, MB-04): the line gained `- guaranteePaid`; the defect planted is unchanged.
     name: "house-book.ts — stop subtracting agent commission (the programme reads as free)",
     file: "src/lib/house-book.ts",
-    from: `    netRetained: input.feeEarned - input.leviesOut - input.bonusCost - input.agentCommissionOut,`,
-    to: `    netRetained: input.feeEarned - input.leviesOut - input.bonusCost,`,
+    from: `    netRetained: input.feeEarned - input.leviesOut - input.bonusCost - input.agentCommissionOut - guaranteePaid,`,
+    to: `    netRetained: input.feeEarned - input.leviesOut - input.bonusCost - guaranteePaid,`,
     expect: "5.8",
+  },
+  {
+    // ⭐ MASWALI-BUILD S6 · MB-04 — the house's own floor top-up booked as revenue: the fee earned includes its share of it,
+    // and without the step the owner reads a floor week as profit while the guarantee paid it out.
+    name: "house-book.ts — the waterfall forgets the jackpot guarantee paid (the fee on the house's own top-up reads as profit)",
+    file: "src/lib/house-book.ts",
+    from: `    netRetained: input.feeEarned - input.leviesOut - input.bonusCost - input.agentCommissionOut - guaranteePaid,`,
+    to: `    netRetained: input.feeEarned - input.leviesOut - input.bonusCost - input.agentCommissionOut,`,
+    expect: "5.9",
   },
   {
     // The other direction: answer the double-subtraction by DELETING the gateway figure. The
@@ -124,11 +135,29 @@ export const MUTATIONS = [
   {
     // A voided bonus market returns its stake as BONUS_REFUND to PLAYER_BONUS:, which
     // `LIKE 'PLAYER:%'` cannot match. Dropping the leg leaves the identity short by the bonus.
+    // ⚠️ RE-ANCHORED 2026-10-18 (MASWALI-BUILD S6, MB-04): the identity gained a Millionea week's `legs`; the defect is unchanged.
     name: "house-book.ts — ignore the bonus refund leg (a voided bonus market never closes)",
     file: "src/lib/house-book.ts",
-    from: `    closesTo: handle - g.paidOut - g.bonusRefunded - g.feeBooked,`,
-    to: `    closesTo: handle - g.paidOut - g.feeBooked,`,
+    from: `    closesTo: handle + legs - g.paidOut - g.bonusRefunded - g.feeBooked,`,
+    to: `    closesTo: handle + legs - g.paidOut - g.feeBooked,`,
     expect: "4.5",
+  },
+  {
+    // ⭐ MASWALI-BUILD S6 · MB-04 — the false weekly alarm, restored: a CORRECT Millionea week reads "did not close" when
+    // its carry in, its top-up and its carry out are left out of the identity.
+    name: "house-book.ts — a Millionea week's own legs left out of its identity (every correct week reads as broken)",
+    file: "src/lib/house-book.ts",
+    from: `  const legs = (g.carryIn ?? 0) + (g.topUp ?? 0) - (g.carryOut ?? 0);`,
+    to: `  const legs = 0;`,
+    expect: "4.9",
+  },
+  {
+    // ⭐ MASWALI-BUILD S6 · MB-04 — the house's own top-up left out of a week's net: a floor week reads as profit.
+    name: "house-book.ts — a week's net retained ignores the house's floor top-up (a losing floor week reads as profit)",
+    file: "src/lib/house-book.ts",
+    from: `    netRetained: g.feeBooked - g.leviesBooked - (g.topUp ?? 0),`,
+    to: `    netRetained: g.feeBooked - g.leviesBooked,`,
+    expect: "4.9b",
   },
   {
     // ⭐ MONEY WE HOLD BUT DO NOT OWN, reported as ours. `HOUSE:RG_SUSPENSE` is a self-excluded

@@ -594,6 +594,11 @@ async function AdminHouseContent({ searchParams }: { searchParams: Promise<SP> }
                           would flatter the gaming result with money that left the platform. */}
                       <tr><td className="text-left">Bonus cost</td><td className="tabular text-right"><Signed v={-flow.bonusCost} /></td><td className="text-left text-text-secondary">bonus that became withdrawable cash, net of re-locks</td></tr>
                       <tr><td className="text-left">Agent commission</td><td className="tabular text-right"><Signed v={-flow.agentCommissionOut} /></td><td className="text-left text-text-secondary">paid to vetted agents out of the fee kept, net of clawbacks</td></tr>
+                      {/* ⭐ MASWALI-BUILD S6 · MB-04 — the house's own floor top-ups, a step of their own: the fee above holds the
+                          week's fee share of them. Shown once a window holds one, so every other window's waterfall is unchanged. */}
+                      {flow.guaranteePaid > 0 && (
+                        <tr><td className="text-left">Jackpot guarantee paid</td><td className="tabular text-right"><Signed v={-flow.guaranteePaid} /></td><td className="text-left text-text-secondary">the house&rsquo;s top-up of Millionea weeks to their floor</td></tr>
+                      )}
                       <tr className="font-semibold"><td className="text-left">Net retained</td><td className="tabular text-right"><Amt v={flow.netRetained} /></td><td className="text-left text-text-secondary">what this window left the owner</td></tr>
                     </tbody>
                   </table>
@@ -789,8 +794,9 @@ async function AdminHouseContent({ searchParams }: { searchParams: Promise<SP> }
                             {/* ⛔ THE WORD COMES FROM THE LEXICON AND IS PRODUCT-AWARE. Up & Down
                                 stores YES/NO and a reader must see Up and Down; a VOID is never
                                 any of the four. This is a mixed book, so the product matters. */}
+                            {/* ⭐ S6 · a settled Millionea week carries no verdict (it is graded, not resolved YES or NO). */}
                             {r.outcome === null
-                              ? <span className="text-text-tertiary">not settled</span>
+                              ? <span className="text-text-tertiary">{r.productLine === "MASWALI" && r.settledAt ? "week settled" : "not settled"}</span>
                               : <>{outcomeWordIn("en", r.outcome, r.productLine)}{r.noFee && <span className="text-text-tertiary"> · no fee</span>}</>}
                           </td>
                           <td className="text-left whitespace-nowrap">{r.settledAt ? eatDayKey(Date.parse(r.settledAt)) : "—"}</td>

@@ -33,6 +33,21 @@
  * player stake in every report. Nothing here reads the marker.
  * ⛔ NO `listMarkets()` — it defaults to polls only and drops Up & Down, three quarters of the book.
  * Rounds are read by id (`bookByIds`), which takes no product filter by design.
+ *
+ * ── MILLIONEA (MASWALI-BUILD S6, OD-08; MB-65) ────────────────────────────────────────────────
+ *
+ * A Maswali Millionea week is a round of its own model. Its tickets are bets (money records and positions,
+ * as every bet), and when it settles its pool also takes money in that is not Sales — the carried jackpot
+ * R and the house's floor top-up U — and sends money out that is not Payout: a no-winner week's whole sales,
+ * or a paying week's rounding, carried to the jackpot for a later week. Those three amounts and the fee the
+ * week booked come from the WEEK'S OWN SETTLEMENT RECORD (`MaswaliCycle`, the columns its settlement wrote in
+ * the same transaction as its ledger group — the memory store keeps no ledger, so this is the one record both
+ * stores answer from). Its fee kept is recomputed by `chargedFee` from the week's frozen rate and its jackpot,
+ * the way the settlement took it, so the check still compares independent records:
+ *   Sales + On hold brought forward + Jackpot brought forward + House floor top-up
+ *     = Payout + Refunds + Platform fee kept + On hold + Carried to the jackpot
+ * Report 2 files the fee the week's settlement BOOKED (a share of J), never 13% × its winners' Payout. A view
+ * that holds no week reads nothing more and prints exactly what it always did.
  */
 import { db } from "./store";
 import type { StoredTxn } from "./store";
@@ -40,9 +55,12 @@ import { positionStore, marketStore, type MarketBook } from "./market-dal";
 import type { StoredPosition } from "./market-service";
 import { snapshotOrLegacy } from "./market-config";
 import { readTaxRates } from "./tax-config";
+import { weekStore, type StoredWeek } from "./maswali-dal";
+import { lacksText, settledWeekGaps } from "./maswali-week-record";
 import { chargedFee } from "@/lib/payout";
 import { eatDayKey } from "@/lib/eat-day";
 import {
+  BP_WHOLE,
   REFUND_REASON_ORDER,
   classifyRefund,
   cutoffOf,
@@ -54,6 +72,7 @@ import {
   toCents,
   type DifferenceParts,
   type ExceptionKind,
+  type JackpotTaxPart,
   type ProductFilter,
   type RateVersion,
   type Reconciliation,
@@ -136,7 +155,8 @@ export type TaxReportData = {
   /** The rate versions in force over the window, one per segment, oldest first. */
   rateVersions: RateVersion[];
   main: ProductFigures;
-  /** Polls and Up & Down side by side — only on the All-products view. */
+  /** Polls and Up & Down side by side — and Millionea beside them when the period holds a week (S6) — only on the
+   *  All-products view. */
   byProduct: ProductFigures[] | null;
   /** Money records in the window whose bet (or round) cannot be found, so no product can be named. They are
    *  counted under All products only — on every view, so a single-product view can say they exist. */
@@ -169,6 +189,10 @@ type Loaded = {
   records: StoredTxn[];
   bets: Map<string, StoredPosition>;
   books: Map<string, MarketBook>;
+  /** ⭐ S6 · each Millionea week the window's bets belong to, by its market id — its own settlement record. */
+  weeks: Map<string, StoredWeek>;
+  /** The window holds a Millionea week (its rounds are among `books`): All products then carries Millionea's lines. */
+  hasWeek: boolean;
   segments: ReturnType<typeof rateSegments>;
 };
 
@@ -218,7 +242,7 @@ async function load(period: TaxPeriod, nowMs: number, versions: RateVersion[]): 
   const S = period.startMs;
   const E = cutoffMs;
   if (notStarted || !(E > S)) {
-    return { S, E: S, records: [], bets: new Map(), books: new Map(), segments: [], inProgress, notStarted };
+    return { S, E: S, records: [], bets: new Map(), books: new Map(), weeks: new Map(), hasWeek: false, segments: [], inProgress, notStarted };
   }
   // One windowed read of the money records (half-open [S, E), the store's own bounds), then the
   // bets live in the window, then any bet a record names that the live read did not return.
@@ -235,7 +259,68 @@ async function load(period: TaxPeriod, nowMs: number, versions: RateVersion[]): 
   for (let i = 0; i < marketIds.length; i += BOOK_CHUNK) {
     for (const [id, b] of await marketStore.bookByIds(marketIds.slice(i, i + BOOK_CHUNK))) books.set(id, b);
   }
-  return { S, E, records, bets, books, segments: rateSegments(S, E, versions), inProgress, notStarted };
+  // ⭐ S6 · OD-08 — each Millionea week the window's bets belong to, read by its market: one read per week (a month
+  // holds four or five), and none at all for a window that holds no week. A week whose record cannot be found is left
+  // out of the map, and its round then names that, never a guessed figure.
+  const weeks = new Map<string, StoredWeek>();
+  let hasWeek = false;
+  for (const b of books.values()) {
+    if (b.productLine !== "MASWALI") continue;
+    hasWeek = true;
+    const w = await weekStore.getByMarketId(b.id);
+    if (w) weeks.set(b.id, w);
+  }
+  return { S, E, records, bets, books, weeks, hasWeek, segments: rateSegments(S, E, versions), inProgress, notStarted };
+}
+
+/** What a resulted Millionea week's pool took in and sent out besides its stakes and its winnings (`weekKeep`). */
+type WeekKeep = {
+  /** The fee it kept, in cents — `chargedFee`'s recompute from its frozen rate and its jackpot. */
+  keepCents: number;
+  /** R, when the week paid (a no-winner week claims its carry but moves none of it — MR-21). */
+  inCents: number;
+  /** U, the guarantee's top-up. */
+  topUpCents: number;
+  /** What it carried to the jackpot: S for a no-winner week, the rounding for a paying one. */
+  carriedCents: number;
+  /** Report 2's part, when the week paid: the instant, J and the fee its settlement booked. */
+  paid: { atMs: number; jackpotCents: number; bookedFee: number; feeRateBp: number | null } | null;
+  /** Why the week's own record could not supply its figures, or null. */
+  problem: string | null;
+};
+
+/**
+ * ⭐ S6 · OD-08 — a resulted Millionea week's own figures, from its settlement record. Exactly the settlement's own
+ * reading of a week (MASWALI-PLAN §5b): R entered the pool only when a ticket won (`MASWALI_ROLLOVER_IN`, or the final
+ * week's `MASWALI_SUNSET`); a no-winner week claims its carry but moves none of it, and rolls its whole S out
+ * (`carryOut` = S). The fee kept is `chargedFee`'s recompute — `round(rate × J)` from the frozen rate — so a week whose
+ * booked figures disagree with its own rate surfaces as a difference rather than being copied in.
+ * ⛔ A week whose record is missing, or not SETTLED although its tickets resulted, supplies nothing and says why.
+ */
+function weekKeep(b: MarketBook, w: StoredWeek | undefined): WeekKeep {
+  const none = (problem: string): WeekKeep => ({ keepCents: 0, inCents: 0, topUpCents: 0, carriedCents: 0, paid: null, problem });
+  if (!w) return none("The week's own record is missing, so its fee and its jackpot lines cannot be read.");
+  if (w.state !== "SETTLED") return none(`The week's tickets resulted, but week ${w.code} is ${w.state}: its settlement is not on record.`);
+  // ⛔ A null where a settled week must hold a figure is a fault in its record, never a zero (`settledWeekGaps`) — of the
+  // figures this report reads, and only those (round 5): its levies are priced from the fee, never read from the record.
+  const paidWeek = (w.winningTickets ?? 0) > 0;
+  const gaps = settledWeekGaps(w, ["winningTickets", "topUp", "carryOut", ...(paidWeek ? (["rolloverIn", "settledAt", "fee", "jackpot"] as const) : [])]);
+  if (gaps.length) return none(`Week ${w.code} is settled, but its settlement record lacks ${lacksText(gaps)}: its fee and its jackpot lines cannot be read.`);
+  const rates = snapshotOrLegacy(b.feeSnapshot);
+  // Every column below was checked present just above: these are the record's own figures, never a default.
+  const k = w.winningTickets as number;
+  const fee = chargedFee({ yesPool: b.yesPool, noPool: b.noPool, productLine: "MASWALI", week: { state: "SETTLED", jackpot: w.jackpot, winningTickets: k } }, rates).fee;
+  const rate = rates.jackpotFeeRate;
+  return {
+    keepCents: fee * 100,
+    inCents: k > 0 ? toCents(w.rolloverIn as number) : 0,
+    topUpCents: toCents(w.topUp as number),
+    carriedCents: toCents(w.carryOut as number),
+    paid: k > 0
+      ? { atMs: Date.parse(w.settledAt as string), jackpotCents: toCents(w.jackpot as number), bookedFee: Math.round(w.fee as number), feeRateBp: typeof rate === "number" ? Math.round(rate * BP_WHOLE) : null }
+      : null,
+    problem: null,
+  };
 }
 
 /** One product filter's figures and its exceptions — a pure function of what `load` read. */
@@ -246,6 +331,11 @@ function figuresFor(L: Loaded, filter: ProductFilter): { fig: ProductFigures; ex
   const reasons = new Map<RefundReasonCode, { count: number; cents: number }>(REFUND_REASON_ORDER.map((c) => [c, { count: 0, cents: 0 }]));
   let salesCents = 0, payoutCents = 0, refundsCents = 0, exitFeeCents = 0, onHoldCents = 0, broughtForwardCents = 0;
   let bonusPlaced = 0, bonusRefunded = 0;
+
+  // ⭐ S6 · OD-08 — Millionea's three reconciling lines, on a view that holds Millionea; Report 2's part per stretch.
+  const jackpotLines = filter === "MASWALI" || (filter === "ALL" && L.hasWeek);
+  let jackpotInCents = 0, topUpCents = 0, carriedCents = 0;
+  const segJackpot: Array<JackpotTaxPart | null> = L.segments.map(() => null);
 
   // ── Money records, grouped by the bet they belong to ───────────────────────────────────────
   type BetMoney = { stakeRec: number; winnings: number; refund: number; exitPaid: number; exitFee: number; payoutRecs: StoredTxn[] };
@@ -264,7 +354,8 @@ function figuresFor(L: Loaded, filter: ProductFilter): { fig: ProductFigures; ex
       payoutCents += amountCents; counts.payoutRecords++; contribution = -amountCents;
       const at = Date.parse(r.createdAt);
       const i = L.segments.findIndex((s) => at >= s.startMs && at < s.endMs);
-      segPayout[i < 0 ? Math.max(0, L.segments.length - 1) : i] += amountCents;
+      // ⭐ S6 · OD-08 — a Millionea share is Payout, never the taxable reference: Report 2 files the fee its week BOOKED.
+      if (prod !== "MASWALI") segPayout[i < 0 ? Math.max(0, L.segments.length - 1) : i] += amountCents;
     } else if (r.type === "BET_REFUND") { refundsCents += amountCents; counts.refundRecords++; contribution = -amountCents; }
     else { refundsCents += amountCents; exitFeeCents += feeCents; counts.refundRecords++; contribution = -(amountCents + feeCents); }
 
@@ -372,6 +463,34 @@ function figuresFor(L: Loaded, filter: ProductFilter): { fig: ProductFigures; ex
   for (const [marketId, acc] of rounds) {
     counts.roundsResulted++;
     const b = books.get(marketId);
+    // ⭐ S6 · OD-08 — A MILLIONEA WEEK closes with its own lines: stakes + R + U = winnings + fee + carried (§5b).
+    if (b?.productLine === "MASWALI") {
+      const wk = weekKeep(b, L.weeks.get(marketId));
+      feeKeptRounds += wk.keepCents;
+      settlementFeeCents += wk.keepCents;
+      jackpotInCents += wk.inCents; topUpCents += wk.topUpCents; carriedCents += wk.carriedCents;
+      const paid = wk.paid;
+      if (paid) {
+        const i = L.segments.findIndex((s) => paid.atMs >= s.startMs && paid.atMs < s.endMs);
+        const slot = i < 0 ? Math.max(0, L.segments.length - 1) : i;
+        const prev = segJackpot[slot];
+        segJackpot[slot] = prev
+          ? { jackpotCents: prev.jackpotCents + paid.jackpotCents, bookedFee: prev.bookedFee + paid.bookedFee, feeRateBp: prev.feeRateBp === paid.feeRateBp ? prev.feeRateBp : null, weeks: prev.weeks + 1 }
+          : { jackpotCents: paid.jackpotCents, bookedFee: paid.bookedFee, feeRateBp: paid.feeRateBp, weeks: 1 };
+      }
+      const into = wk.inCents + wk.topUpCents;
+      const contribution = acc.stakes + into - acc.winnings - wk.keepCents - wk.carriedCents;
+      // A week whose record cannot supply its lines is named even where its money happens to net to nothing.
+      if (contribution !== 0 || wk.problem) {
+        push({
+          kind: "RESULT_MISMATCH", ref: marketId, roundId: marketId, product: "MASWALI",
+          expectedCents: acc.stakes + into - wk.keepCents - wk.carriedCents, recordedCents: acc.winnings, contributionCents: contribution,
+          note: wk.problem
+            ?? `The week's tickets staked ${fmt(acc.stakes)} and its pool took ${fmt(into)} in from the jackpot and the guarantee; winnings paid ${fmt(acc.winnings)}, the fee kept ${fmt(wk.keepCents)} and ${fmt(wk.carriedCents)} carried to the jackpot should take exactly that out of it.`,
+        }, "resultCents");
+      }
+      continue;
+    }
     const keep = b ? roundKeep(b) : null;
     const keepCents = keep?.keepCents ?? 0;
     feeKeptRounds += keepCents;
@@ -408,8 +527,10 @@ function figuresFor(L: Loaded, filter: ProductFilter): { fig: ProductFigures; ex
     refundsCents,
     feeKeptCents: feeKeptRounds + exitFeeCents,
     broughtForwardCents,
+    // ⭐ S6 · OD-08 — only on a view that holds Millionea: every other view's Report 1 keeps its six lines, key for key.
+    ...(jackpotLines ? { jackpotBroughtForwardCents: jackpotInCents, floorTopUpCents: topUpCents, carriedToJackpotCents: carriedCents } : {}),
   };
-  const tax = taxForSegments(L.segments.map((segment, i) => ({ segment, payoutCents: segPayout[i] })));
+  const tax = taxForSegments(L.segments.map((segment, i) => ({ segment, payoutCents: segPayout[i], jackpot: segJackpot[i] })));
   return {
     fig: {
       product: filter,
@@ -470,7 +591,7 @@ function dayBreakdown(L: Loaded, period: TaxPeriod, filter: ProductFilter, versi
   }
   return edges.slice(0, n).map((a, i) => {
     const b = edges[i + 1];
-    const { fig } = figuresFor({ S: a, E: b, records: records[i], bets: bets[i], books: L.books, segments: rateSegments(a, b, versions) }, filter);
+    const { fig } = figuresFor({ S: a, E: b, records: records[i], bets: bets[i], books: L.books, weeks: L.weeks, hasWeek: L.hasWeek, segments: rateSegments(a, b, versions) }, filter);
     return {
       dayKey: eatDayKey(a),
       startMs: a,
@@ -498,18 +619,24 @@ export async function buildTaxReportData(opts: {
   period: TaxPeriod;
   product: ProductFilter;
   nowMs: number;
-}): Promise<{ ok: true; data: TaxReportData } | { ok: false; error: string }> {
+}): Promise<{
+  ok: true;
+  data: TaxReportData;
+  /** ⭐ S6 · the period holds a Millionea week (its money is in the window), on any product's view. Handed BESIDE the data,
+   *  never into it, so no lock snapshot or fingerprint carries it: the page offers the Millionea pill on this alone. */
+  hasWeek: boolean;
+} | { ok: false; error: string }> {
   const rates = await readTaxRates();
   if (!rates.ok) return { ok: false, error: `The tax rates could not be read (${rates.error}). No figure was computed.` };
   const L = await load(opts.period, opts.nowMs, rates.versions);
-  // ⛔ S0.5 · THE FENCE, FAIL-CLOSED. A Millionea week's money is the jackpot-payout model with its own reconciling
-  // lines (jackpot brought forward, house floor top-up, carried to the jackpot — OD-08), which this report learns in
-  // S6, before any week can settle. A period that holds one is refused out loud, never filed as polls or skipped.
-  if ([...L.books.values()].some((b) => b.productLine === "MASWALI")) {
-    return { ok: false, error: "This period holds Maswali Millionea weeks. The tax report learns Millionea in MASWALI-PLAN S6; until then no figure is computed for it." };
-  }
+  // ⭐ S6 · OD-08 — the S0.5 fence that refused a period holding a Millionea week is replaced by the week's own
+  // treatment (`weekKeep`): its three reconciling lines and Report 2's booked fee. A period that holds none reads exactly
+  // as it did, and Polls and Up & Down read exactly as they did whatever else the period holds.
   const main = figuresFor(L, opts.product);
-  const byProduct = opts.product === "ALL" ? (["MARKET", "UPDOWN"] as const).map((p) => figuresFor(L, p).fig) : null;
+  // Millionea stands beside Polls and Up & Down only where the period holds a week, so every other period's parts are the
+  // same two (and its lock fingerprint the same). Polls + Up & Down + Millionea = All on every Report 1 line.
+  const products: readonly Product[] = L.hasWeek ? ["MARKET", "UPDOWN", "MASWALI"] : ["MARKET", "UPDOWN"];
+  const byProduct = opts.product === "ALL" ? products.map((p) => figuresFor(L, p).fig) : null;
   const unattributedRecords = L.records.filter((r) => productOfBet(r.positionId ? L.bets.get(r.positionId) : undefined, L.books) === null).length;
   const whole = opts.product === "ALL" ? null : figuresFor(L, "ALL").fig.reconciliation;
   const all = main.exceptions;
@@ -538,5 +665,6 @@ export async function buildTaxReportData(opts: {
       exceptionCount: all.length,
       explainedCents,
     },
+    hasWeek: L.hasWeek,
   };
 }

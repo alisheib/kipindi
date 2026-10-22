@@ -18,6 +18,7 @@ import {
   providerStackedSeries,
   bucketGrain,
   settlementFeesByPoll,
+  unreadFeesText,
 } from "@/lib/server/analytics";
 import { dailyKpiSeries, lastEatDays } from "@/lib/server/report-money";
 import { resolveRange } from "@/lib/server/date-range";
@@ -48,6 +49,10 @@ const HOUSE_ACCOUNT_NOTE: Record<string, string> = {
   "HOUSE:GBT_LEVY": "GBT, levied on our commission",
   "HOUSE:RG_SUSPENSE": "a self-excluded player's deposit — held, owed back",
   "HOUSE:TAX": "Statutory tax held — owed to the state, NOT ours",
+  // ⭐ MASWALI-BUILD S6 · MB-04 — the Millionea accounts, named as the house book reads them (house-book.ts housePosition).
+  "HOUSE:MASWALI_JACKPOT": "Millionea jackpot — owed to future winners, NOT ours",
+  "HOUSE:MASWALI_JACKPOT_DRIVE": "the live drive's Millionea jackpot — players' money",
+  "HOUSE:MASWALI_GUARANTEE": "Owner capital held for the Millionea floor",
   "HOUSE:RESERVE": "RETIRED — historical rows only",
   "SYSTEM:BONUS": "bonus issuance",
   "SYSTEM:ADJUSTMENT": "admin adjustments",
@@ -457,15 +462,28 @@ async function AdminFinanceContent({ searchParams }: { searchParams: Promise<Fin
             pollFees ? (
               <span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
                 loser-share {pollFees.byModel["loser-share"].count} · {formatTzsCompact(pollFees.byModel["loser-share"].fee)} — capped {pollFees.byModel["capped-commission"].count} · {formatTzsCompact(pollFees.byModel["capped-commission"].fee)}
+                {/* ⭐ MASWALI-BUILD S6 — Millionea's weeks, once a period holds one that paid; every other period reads as before. */}
+                {pollFees.byModel["jackpot-payout"].count > 0 && <> — jackpot {pollFees.byModel["jackpot-payout"].count} · {formatTzsCompact(pollFees.byModel["jackpot-payout"].fee)}</>}
               </span>
             ) : null
           }
         >
-          {!pollFees || pollFees.rows.length === 0 ? (
-            <p className="text-caption text-text-tertiary">
-              No polls settled with a fee in this period. VOID and one-sided polls refund in full at zero fee, so
-              they are not listed here.
-            </p>
+          {/* ⛔ S6 round 3 · a fee view that could not be read says so: "no polls settled" is a figure, and nobody read it. */}
+          {pollFees === null ? (
+            <p className="text-body-sm text-warning-fg">The settlement fees could not be read, so none is listed — this is not zero.</p>
+          ) : pollFees.rows.length === 0 ? (
+            <>
+              <p className="text-caption text-text-tertiary">
+                No polls settled with a fee in this period. VOID and one-sided polls refund in full at zero fee, so
+                they are not listed here.
+              </p>
+              {pollFees.unread && (
+                <p className="mt-1 text-body-sm text-warning-fg">
+                  The fee of {pollFees.unread.length === 1 ? "one Millionea week" : `${pollFees.unread.length} Millionea weeks`} is not
+                  listed — not zero: {unreadFeesText(pollFees.unread)}.
+                </p>
+              )}
+            </>
           ) : (
             <>
               <ScrollX label="Settlement fees by poll" className="-mx-4 px-4">
@@ -500,10 +518,10 @@ async function AdminFinanceContent({ searchParams }: { searchParams: Promise<Fin
                               r.feeModel === "loser-share" ? "bg-brand-500/15 text-brand-300" : "bg-bg-inset text-text-muted"
                             }`}
                           >
-                            {r.feeModel === "loser-share" ? "Loser-share" : "Capped"}
+                            {r.feeModel === "loser-share" ? "Loser-share" : r.feeModel === "jackpot-payout" ? "Jackpot" : "Capped"}
                           </span>
                         </td>
-                        <td className="text-left">{r.outcome}</td>
+                        <td className="text-left">{r.outcome === "JACKPOT" ? "Jackpot paid" : r.outcome}</td>
                         {/* 🔴 THESE THREE CARRIED NO MONEY TREATMENT AT ALL — just `text-right`.
                             Every sibling money cell in this file is `font-mono tabular`, which is
                             §M4 (money is mono, figures are tabular); these rendered `formatTzs`
@@ -538,8 +556,16 @@ async function AdminFinanceContent({ searchParams }: { searchParams: Promise<Fin
                     on a money page an accountant reconciles against. The same mistake is
                     named in the dated note at wallet/deposit/deposit-confirm.tsx:69-72
                     ("`formatTzs` here would read 'TZS TZS 1,000'"). §C1: the prefix, once. */}
-                Total commission this period: {formatTzs(pollFees.totalFee)}.
+                Total commission this period: {formatTzs(pollFees.totalFee)}{pollFees.unread && " — incomplete"}.
               </p>
+              {/* ⭐ MASWALI-BUILD S6 — a resulted Millionea week whose record could not price its fee is named, and the total
+                  above says it is incomplete: never a fee of 0. Absent on every period whose weeks read whole. */}
+              {pollFees.unread && (
+                <p className="mt-1 text-body-sm text-warning-fg">
+                  The fee of {pollFees.unread.length === 1 ? "one Millionea week" : `${pollFees.unread.length} Millionea weeks`} is not
+                  in the total — not zero: {unreadFeesText(pollFees.unread)}.
+                </p>
+              )}
             </>
           )}
         </AdminCard>

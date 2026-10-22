@@ -19,13 +19,20 @@ import { weekStore } from "@/lib/server/maswali-dal";
 import { formatTzs } from "@/lib/utils";
 import { fmtEat, weekStateChip } from "@/lib/maswali-admin-format";
 import { openState, poolsLine, poolsSearchParams, queryOpenWeeks, queryRolloverTrail, type OpenSort, type TrailSort } from "@/lib/maswali-admin-pools-query";
+import { lacksText } from "@/lib/server/maswali-week-record";
 import { GuaranteeCeremony, LicenceCeremony, ReleaseControl, RolloutCeremony, SunsetCeremony } from "./pools-controls";
 import { StandingAuditWarning } from "../audit-warning";
 
 export const metadata = { title: "Admin · Millionea · Pools" };
 export const dynamic = "force-dynamic";
 
-const money = (v: number | null) => (v === null ? "Unreadable" : formatTzs(v));
+/**
+ * ⛔ S6 · ONE WORD FOR A MISSING FIGURE on this page (round 6, the lead's ruling): a balance that could not be read and a
+ * settled week's figure its record lacks (`settledWeekGaps`) alike read "Cannot be read" — never 0, never a dash — and so
+ * do the licence basis and the rollout when the standing cannot be read (round 7).
+ */
+const CANNOT_BE_READ = "Cannot be read";
+const money = (v: number | null) => (v === null ? CANNOT_BE_READ : formatTzs(v));
 
 /**
  * /admin/maswali/pools — ACCOUNTING's page (MASWALI-BUILD S4; MASWALI-PLAN §7b S4 item 1, OD-06, OD-02, MB-03, MB-11,
@@ -87,7 +94,7 @@ async function Content({ searchParams }: PoolsPageProps) {
   const trail = queryRolloverTrail(v.trail, { code: trailCode, line: trailLine, ...trailSort });
   const trailPage = parsePage(sp.tpage, trail.length, CONSOLE_PER_PAGE);
   const trailRows = trail.slice((trailPage - 1) * CONSOLE_PER_PAGE, trailPage * CONSOLE_PER_PAGE);
-  // S7-F2 · a requirement that cannot be read (a week's frozen rules unreadable) is unknown, shown so, never as covered.
+  // S7-F2 · a requirement that cannot be read (a week's frozen rules cannot be read) is unknown, shown so, never as covered.
   const short = v.guarantee !== null && v.requirement !== null && v.guarantee < v.requirement;
   const floatShort = v.float !== null && v.pendingPayout > v.float;
   return (
@@ -130,7 +137,7 @@ async function Content({ searchParams }: PoolsPageProps) {
                     <SortTh field="week" label="Week" current={openSort.sort} dir={openSort.dir} sp={sp} baseHref="/admin/maswali/pools" prefix="o" />
                     <SortTh field="state" label="State" current={openSort.sort} dir={openSort.dir} sp={sp} baseHref="/admin/maswali/pools" prefix="o" />
                     <SortTh field="sales" label="Sales" current={openSort.sort} dir={openSort.dir} sp={sp} baseHref="/admin/maswali/pools" prefix="o" align="right" />
-                    <th className="text-right">Carry claimed</th>
+                    <th className="text-right">Carry in</th>
                     <SortTh field="coverage" label="Coverage" current={openSort.sort} dir={openSort.dir} sp={sp} baseHref="/admin/maswali/pools" prefix="o" align="right" />
                     <SortTh field="topUp" label="Worst top-up" current={openSort.sort} dir={openSort.dir} sp={sp} baseHref="/admin/maswali/pools" prefix="o" align="right" />
                     <th className="text-left">Settlement</th>
@@ -143,11 +150,10 @@ async function Content({ searchParams }: PoolsPageProps) {
                         <tr key={w.row.id}>
                           <td className="text-left tabular">{w.row.code}{w.row.visibility === "DRIVE" ? " · drive" : ""}</td>
                           <td className="text-left"><Chip variant={chip.variant} size="sm">{chip.label}</Chip></td>
-                          {/* S7-F3 · a figure the week's frozen rules cannot give is said so, never shown as 0. */}
-                          <td className="text-right tabular">{w.sales === null ? "Cannot be read" : formatTzs(w.sales)}</td>
+                          <td className="text-right tabular">{money(w.sales)}</td>
                           <td className="text-right tabular">{w.rolloverIn === null ? "Not yet" : formatTzs(w.rolloverIn)}</td>
                           <td className="text-right tabular">{w.distinctCombos.toLocaleString("en")} of 1,024 · {(w.coverage * 100).toFixed(1)}%</td>
-                          <td className="text-right tabular">{w.worstTopUp === null ? "Cannot be read" : formatTzs(w.worstTopUp)}</td>
+                          <td className="text-right tabular">{money(w.worstTopUp)}</td>
                           <td className="text-left align-top min-w-[280px]">
                             {w.preview ? (
                               <div className="space-y-1">
@@ -207,11 +213,11 @@ async function Content({ searchParams }: PoolsPageProps) {
                   <tbody>
                     {trailRows.map((t) => (
                       <tr key={t.code}>
-                        <td className="text-left tabular">{t.code}</td><td className="text-left tabular">{fmtEat(t.settledAt)}</td>
-                        <td className="text-right tabular">{formatTzs(t.sales)}</td><td className="text-right tabular">{formatTzs(t.rolloverIn)}</td>
-                        <td className="text-right tabular">{t.winners}</td><td className="text-right tabular">{formatTzs(t.fee)}</td>
-                        <td className="text-right tabular">{formatTzs(t.topUp)}</td><td className="text-right tabular">{formatTzs(t.paid)}</td>
-                        <td className="text-right tabular">{formatTzs(t.carryOut)}</td><td className="text-right tabular">{formatTzs(t.levyOnOwnTopUp)}</td>
+                        <td className="text-left tabular">{t.code}{t.lacks.length > 0 && <span className="block text-body-sm text-warning-fg">Read, but its settlement record lacks {lacksText(t.lacks)} — not zero</span>}</td><td className="text-left tabular">{t.settledAt === null ? CANNOT_BE_READ : fmtEat(t.settledAt)}</td>
+                        <td className="text-right tabular">{money(t.sales)}</td><td className="text-right tabular">{money(t.rolloverIn)}</td>
+                        <td className="text-right tabular">{t.winners ?? CANNOT_BE_READ}</td><td className="text-right tabular">{money(t.fee)}</td>
+                        <td className="text-right tabular">{money(t.topUp)}</td><td className="text-right tabular">{money(t.paid)}</td>
+                        <td className="text-right tabular">{money(t.carryOut)}</td><td className="text-right tabular">{money(t.levyOnOwnTopUp)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -234,12 +240,12 @@ async function Content({ searchParams }: PoolsPageProps) {
             </section>
             <section className="space-y-2">
               <h3 className="font-semibold text-body">Licence basis</h3>
-              <p className="text-body-sm text-text-secondary">Now: {standing ? (standing.licence.kind === "NONE" ? "none recorded — no week can open" : `${standing.licence.kind === "GBT_WRITTEN" ? "the Board's letter" : "the Owner's ruling"} · ${standing.licence.ref}`) : "unreadable"}</p>
+              <p className="text-body-sm text-text-secondary">Now: {standing ? (standing.licence.kind === "NONE" ? "none recorded — no week can open" : `${standing.licence.kind === "GBT_WRITTEN" ? "the Board's letter" : "the Owner's ruling"} · ${standing.licence.ref}`) : CANNOT_BE_READ}</p>
               {canLicence ? <LicenceCeremony /> : <ControlLocked what="Record the licence basis" need={CONTROL_DOMAIN.setMaswaliLicenceBasis} block />}
             </section>
             <section className="space-y-2">
               <h3 className="font-semibold text-body">Rollout</h3>
-              <p className="text-body-sm text-text-secondary">Visible to: {standing?.rollout ?? "unreadable"}. The switch controls who SEES Millionea; selling needs the licence, the guarantee and an open week too.</p>
+              <p className="text-body-sm text-text-secondary">Visible to: {standing?.rollout ?? CANNOT_BE_READ}. The switch controls who SEES Millionea; selling needs the licence, the guarantee and an open week too.</p>
               {canRollout ? (sw && sw.kind !== "UNREAD"
                   ? <RolloutCeremony expectSeq={sw.kind === "SET" ? sw.seq : 0} current={standing?.rollout ?? "WITHDRAWN"} />
                   : <p className="text-body-sm text-danger-fg">The switch could not be read, so it cannot be moved now.</p>)

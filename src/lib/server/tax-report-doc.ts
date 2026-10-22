@@ -131,12 +131,21 @@ function segmentLabel(s: TaxSegment): string {
   return `${eatDateTimeLabel(s.startMs)} → ${eatDateTimeLabel(s.endMs)}`;
 }
 
-/** Report 1's rows: the plan's four lines, the two reconciling items, the check. Money in `amount`. */
+/**
+ * ⭐ S6 · OD-08 — does this Report 1 carry Millionea's three reconciling lines? Only a view that holds a week does
+ * (`tax-report-data.ts`), so the page and every file decide by this one predicate, and nothing changes elsewhere.
+ */
+export function holdsJackpotLines(r: ProductFigures["report1"]): boolean {
+  return r.jackpotBroughtForwardCents !== undefined || r.floorTopUpCents !== undefined || r.carriedToJackpotCents !== undefined;
+}
+
+/** Report 1's rows: the plan's four lines, the two reconciling items (five on a view that holds Millionea), the check. */
 export function report1Rows(f: ProductFigures): Array<{ line: string; cents: number; basis: string; kind: "line" | "item" | "check" | "difference" }> {
   const r = f.report1;
   const c = f.counts;
   const rec = f.reconciliation;
   const n = (k: number, one: string, many: string) => `${k.toLocaleString("en-US")} ${k === 1 ? one : many}`;
+  const jackpot = holdsJackpotLines(r);
   return [
     { line: "Sales", cents: r.salesCents, basis: `Every stake placed in the period (${n(c.betsPlaced, "bet", "bets")})`, kind: "line" },
     // ⭐ NO WORD OF WITHDRAWALS ON THE LINE (management, 2026-10-06): "withdrawals are never included" here was read as
@@ -154,10 +163,18 @@ export function report1Rows(f: ProductFigures): Array<{ line: string; cents: num
     },
     // `|| 0` turns −0 into 0: a period with nothing brought forward must print 0, never "-0".
     { line: "Less: on hold brought forward", cents: -r.broughtForwardCents || 0, basis: `Stakes placed before the period, still awaiting a result when it opened (${n(c.betsBroughtForward, "bet", "bets")})`, kind: "item" },
+    // ⭐ S6 · OD-08 — Millionea's three reconciling items, on a view that holds a week (every other view prints none).
+    ...(jackpot ? [
+      { line: "Less: jackpot brought forward", cents: -(r.jackpotBroughtForwardCents ?? 0) || 0, basis: "The carried Millionea jackpot the paying weeks drew into their pools — money in, not Sales", kind: "item" as const },
+      { line: "Less: house floor top-up", cents: -(r.floorTopUpCents ?? 0) || 0, basis: "The guarantee's top-up of a paying week to its floor — the house's own money in, not Sales", kind: "item" as const },
+      { line: "Carried to the jackpot", cents: r.carriedToJackpotCents ?? 0, basis: "Left the weeks' pools for a later week's jackpot: a no-winner week's sales, a paying week's rounding", kind: "item" as const },
+    ] : []),
     {
       line: "Check: accounted total",
       cents: rec.accountedCents,
-      basis: "Payout + On hold + Refunds + Platform fee kept − on hold brought forward",
+      basis: jackpot
+        ? "Payout + On hold + Refunds + Platform fee kept + Carried to the jackpot − on hold brought forward − jackpot brought forward − house floor top-up"
+        : "Payout + On hold + Refunds + Platform fee kept − on hold brought forward",
       kind: "check",
     },
     {
@@ -212,6 +229,37 @@ export function report2BasisText(r: Report2Row): string {
 }
 
 /**
+ * One rate segment's taxable reference and its Commission — the plan's two lines, which every segment without Millionea
+ * prints exactly as before. ⭐ S6 · OD-08: a segment in which Millionea weeks paid shows the commission on the Polls and Up &
+ * Down Payout, then the weeks' jackpots and the fee their settlements BOOKED, then their sum; the Millionea view shows its
+ * jackpots and its booked fee alone. The rows only lay out the engine's lines (`taxOnPayoutAndJackpot`); none is computed.
+ */
+function commissionRows(f: ProductFigures, s: TaxSegment, tag: string, segment: Report2Row["segment"]): Report2Row[] {
+  const j = s.jackpot;
+  const paid = (weeks: number) => `${count(weeks)} week${weeks === 1 ? "" : "s"} that paid`;
+  const booked = j && j.feeRateBp !== null ? rateLine(j.feeRateBp, "Jackpot, booked at payout") : "Each week's frozen rate × its Jackpot, booked at payout";
+  if (f.product === "MASWALI") {
+    return [
+      { line: `Jackpot paid (taxable reference)${tag}`, label: "Jackpot paid (taxable reference)", segment, basis: `The jackpots of the weeks that paid (${j ? paid(j.weeks) : "none"})`, amount: j ? j.jackpotCents : 0, cents: true, kind: "line" },
+      { line: `Commission${tag}`, label: "Commission", segment, basis: booked, amount: s.commission, cents: false, kind: "line" },
+    ];
+  }
+  if (!j) {
+    return [
+      { line: `Payout (taxable reference)${tag}`, label: "Payout (taxable reference)", segment, basis: "From Report 1", amount: s.payoutCents, cents: true, kind: "line" },
+      { line: `Commission${tag}`, label: "Commission", segment, basis: rateLine(s.rates.commissionBp, "Payout"), amount: s.commission, cents: false, kind: "line" },
+    ];
+  }
+  return [
+    { line: `Payout (taxable reference)${tag}`, label: "Payout (taxable reference)", segment, basis: "From Report 1: Polls and Up & Down", amount: s.payoutCents, cents: true, kind: "line" },
+    { line: `Commission on Payout${tag}`, label: "Commission on Payout", segment, basis: rateLine(s.rates.commissionBp, "Payout"), amount: j.payoutCommission, cents: false, kind: "line" },
+    { line: `Millionea jackpot paid${tag}`, label: "Millionea jackpot paid", segment, basis: `The jackpots of the ${paid(j.weeks)}`, amount: j.jackpotCents, cents: true, kind: "line" },
+    { line: `Millionea fee booked${tag}`, label: "Millionea fee booked", segment, basis: booked, amount: j.bookedFee, cents: false, kind: "line" },
+    { line: `Commission${tag}`, label: "Commission", segment, basis: "Commission on Payout + Millionea fee booked", amount: s.commission, cents: false, kind: "line" },
+  ];
+}
+
+/**
  * Report 2's rows: the plan's five lines, one block per rate segment, with its "Basis / Rate" column — framed by the
  * two lines of Finance's filing sheet (2026-10-06): Sales less refunds, with its tickets, first; Net commission revenue
  * last. Both are `filingSummary` of lines printed above them, so they can never disagree with the reports.
@@ -227,9 +275,8 @@ export function report2Rows(f: ProductFigures): Report2Row[] {
   for (const s of t.segments) {
     const tag = multi ? ` · ${segmentLabel(s)}` : "";
     const segment = multi ? { startMs: s.startMs, endMs: s.endMs } : null;
+    rows.push(...commissionRows(f, s, tag, segment));
     rows.push(
-      { line: `Payout (taxable reference)${tag}`, label: "Payout (taxable reference)", segment, basis: "From Report 1", amount: s.payoutCents, cents: true, kind: "line" },
-      { line: `Commission${tag}`, label: "Commission", segment, basis: rateLine(s.rates.commissionBp, "Payout"), amount: s.commission, cents: false, kind: "line" },
       { line: `TRA tax${tag}`, label: "TRA tax", segment, basis: rateLine(s.rates.traBp, "Commission"), amount: s.tra, cents: false, kind: "line" },
       { line: `GBT levy${tag}`, label: "GBT levy", segment, basis: rateLine(s.rates.gbtBp, "Commission"), amount: s.gbt, cents: false, kind: "line" },
     );
@@ -289,6 +336,19 @@ function productColumns(d: TaxReportData): Array<{ key: string; label: string; f
 }
 
 /**
+ * ⭐ S6 · OD-08 — the two sentences that say how a Millionea week is filed: its three reconciling items, and the booked fee
+ * Report 2 files. The rate is the weeks' own frozen share from the figures (a rule figure is never typed into copy).
+ */
+export function millioneaNotes(f: ProductFigures): string[] {
+  const bp = f.tax.jackpot?.feeRateBp ?? null;
+  const share = bp === null ? "each paying week's frozen share of its jackpot" : `${percentLabel(bp)} of each paying week's jackpot`;
+  return [
+    "Millionea (Maswali Millionea, the weekly jackpot): a week's pool also takes in money that is not Sales — the carried jackpot a paying week draws, and the house's top-up of a week to its floor — and sends out money that is not Payout: a no-winner week's whole sales, or a paying week's rounding, carried to the jackpot for a later week's players. Those are its three reconciling items, so a week with no winner balances like any other. They are read from each week's own settlement record, and its fee kept is recomputed from the week's frozen rate and its jackpot, exactly as its settlement took it.",
+    `Millionea is taxed on the fee its settlement booked — ${share}, taken at payout — never on its winners' Payout, which is the jackpot less that fee and its rounding. The booked fee joins Commission before TRA and GBT are taken, each rounded at its step at the rates in force. It includes the fee on any house floor top-up, and a week's fee is filed in the period in which the week paid.`,
+  ];
+}
+
+/**
  * The PDF / workbook document. `generatorName` is the officer's display name (the route reads it);
  * `lock` is the live lock when the period is locked — then `d` IS the locked snapshot.
  */
@@ -323,7 +383,7 @@ export function buildTaxDocument(d: TaxReportData, opts: {
   const sections: Section[] = [];
   sections.push({
     title: "Report 1 — Total Reporting System",
-    description: `Every stake placed in the period and where it stood at the cut-off (${windowStatement(d)}). The first four lines are the plan's; the next two are the reconciling items that make its rule hold on live books.`,
+    description: `Every stake placed in the period and where it stood at the cut-off (${windowStatement(d)}). The first four lines are the plan's; the next ${holdsJackpotLines(f.report1) ? "five are the reconciling items that make its rule hold on live books — two for every product, and three for Millionea's weeks" : "two are the reconciling items that make its rule hold on live books"}.`,
     columns: [
       { header: "Line", key: "line", width: 40 },
       { header: "Amount", sub: "TZS", key: "amount", format: moneyFmt, align: "right", width: 28 },
@@ -333,7 +393,13 @@ export function buildTaxDocument(d: TaxReportData, opts: {
   });
   sections.push({
     title: "Report 2 — Taxation",
-    description: "The approved model, each line rounded to the nearest shilling at each step: Commission on Payout, then TRA and GBT on the rounded Commission. It opens with the sales filed and their tickets, and closes with the commission left after tax.",
+    description: (d.product === "MASWALI"
+      // ⭐ S6 · OD-08 — the Millionea document's Commission is no rate on Payout, so its first sentence does not say one.
+      ? "The approved model, each line rounded to the nearest shilling at each step: Commission, then TRA and GBT on the rounded Commission."
+      : "The approved model, each line rounded to the nearest shilling at each step: Commission on Payout, then TRA and GBT on the rounded Commission.")
+      + " It opens with the sales filed and their tickets, and closes with the commission left after tax."
+      // ⭐ S6 · OD-08 — said only where the document holds Millionea.
+      + (d.product === "MASWALI" || f.tax.jackpot ? " Millionea's commission is the fee its weeks' settlements booked — a share of each paying week's jackpot — never a rate on its winners' Payout." : ""),
     columns: [
       { header: "Line", key: "line", width: 40 },
       { header: "Basis / Rate", key: "basis", width: 26 },
@@ -380,10 +446,14 @@ export function buildTaxDocument(d: TaxReportData, opts: {
       for (const c of cols) row[c.key] = isCents ? money(get(c.f)) : (exact ? formatWhole(get(c.f)) : get(c.f));
       return row;
     };
+    // ⭐ S6 · OD-08 — a period that holds a Millionea week stands it beside Polls and Up & Down, with its three lines.
+    const jackpot = cols.some((c) => holdsJackpotLines(c.f.report1));
     sections.push({
       title: "By product",
       description:
-        "Polls and Up & Down side by side. Every money line adds up to All products. Each product's tax is computed on its own Payout and rounded at each step, so the products' tax can differ from All by a shilling."
+        (jackpot
+          ? "Polls, Up & Down and Millionea side by side. Every money line adds up to All products. Each product's tax is computed on its own Payout (Millionea's on the fee its weeks booked) and rounded at each step, so the products' tax can differ from All by a shilling."
+          : "Polls and Up & Down side by side. Every money line adds up to All products. Each product's tax is computed on its own Payout and rounded at each step, so the products' tax can differ from All by a shilling.")
         + (d.unattributedRecords ? ` ${d.unattributedRecords} money record${d.unattributedRecords === 1 ? " names no bet or round, so it appears" : "s name no bet or round, so they appear"} only under All products.` : ""),
       columns: [
         { header: "Line", key: "line", width: 34 },
@@ -397,6 +467,11 @@ export function buildTaxDocument(d: TaxReportData, opts: {
         line("Platform fee kept", (x) => x.report1.feeKeptCents),
         // Subtracted, as Report 1 prints it — one document, one sign. `|| 0`: never "-0".
         line("Less: on hold brought forward", (x) => -x.report1.broughtForwardCents || 0),
+        ...(jackpot ? [
+          line("Less: jackpot brought forward", (x) => -(x.report1.jackpotBroughtForwardCents ?? 0) || 0),
+          line("Less: house floor top-up", (x) => -(x.report1.floorTopUpCents ?? 0) || 0),
+          line("Carried to the jackpot", (x) => x.report1.carriedToJackpotCents ?? 0),
+        ] : []),
         line("Check difference (must be 0)", (x) => x.reconciliation.differenceCents),
         line("Commission", (x) => x.tax.commission, false),
         line("TRA tax", (x) => x.tax.tra, false),
@@ -414,6 +489,12 @@ export function buildTaxDocument(d: TaxReportData, opts: {
     const taxFmt: ColumnFormat = exact ? "text" : "tzs";
     const whole = (n: number): number | string => (exact ? formatWhole(n) : n);
     const sum = (get: (x: DayFigures) => number) => days.reduce((t, x) => t + get(x), 0);
+    // ⭐ S6 · OD-08 — the workbook carries every daily figure, Millionea's three reconciling lines among them where the
+    // days hold a week (flows, so their sums are real sums). The portrait page keeps its five figures.
+    const dayJackpot = wide && days.some((x) => holdsJackpotLines(x.report1));
+    const jbf = (x: DayFigures) => -(x.report1.jackpotBroughtForwardCents ?? 0) || 0;
+    const topUp = (x: DayFigures) => -(x.report1.floorTopUpCents ?? 0) || 0;
+    const carried = (x: DayFigures) => x.report1.carriedToJackpotCents ?? 0;
     const money5: Column[] = [
       { header: "Sales", sub: "TZS", key: "sales", format: moneyFmt, align: "right", width: wide ? 16 : 21 },
       { header: "Payout", sub: "TZS", key: "payout", format: moneyFmt, align: "right", width: wide ? 16 : 21 },
@@ -426,6 +507,11 @@ export function buildTaxDocument(d: TaxReportData, opts: {
           ...money5,
           { header: "Platform fee kept", sub: "TZS", key: "fee", format: moneyFmt, align: "right", width: 16 },
           { header: "Less: on hold brought forward", sub: "TZS", key: "bf", format: moneyFmt, align: "right", width: 18 },
+          ...(dayJackpot ? [
+            { header: "Less: jackpot brought forward", sub: "TZS", key: "jbf", format: moneyFmt, align: "right" as const, width: 18 },
+            { header: "Less: house floor top-up", sub: "TZS", key: "topUp", format: moneyFmt, align: "right" as const, width: 16 },
+            { header: "Carried to the jackpot", sub: "TZS", key: "carried", format: moneyFmt, align: "right" as const, width: 16 },
+          ] : []),
           { header: "Difference (must be 0)", sub: "TZS", key: "diff", format: moneyFmt, align: "right", width: 16 },
           { header: "Commission", sub: "TZS", key: "commission", format: taxFmt, align: "right", width: 14 },
           { header: "TRA tax", sub: "TZS", key: "tra", format: taxFmt, align: "right", width: 12 },
@@ -448,6 +534,7 @@ export function buildTaxDocument(d: TaxReportData, opts: {
           fee: money(x.report1.feeKeptCents),
           // Subtracted, as Report 1 prints it. `|| 0`: never "-0".
           bf: money(-x.report1.broughtForwardCents || 0),
+          ...(dayJackpot ? { jbf: money(jbf(x)), topUp: money(topUp(x)), carried: money(carried(x)) } : {}),
           diff: money(x.differenceCents),
           commission: whole(x.tax.commission),
           tra: whole(x.tax.tra),
@@ -468,6 +555,7 @@ export function buildTaxDocument(d: TaxReportData, opts: {
           refunds: money(sum((x) => x.report1.refundsCents)),
           fee: money(sum((x) => x.report1.feeKeptCents)),
           bf: "",
+          ...(dayJackpot ? { jbf: money(sum(jbf)), topUp: money(sum(topUp)), carried: money(sum(carried)) } : {}),
           diff: money(sum((x) => x.differenceCents)),
           commission: whole(sum((x) => x.tax.commission)),
           tra: whole(sum((x) => x.tax.tra)),
@@ -535,12 +623,18 @@ export function buildTaxDocument(d: TaxReportData, opts: {
   notes.push(
     "Sales = every stake placed in the period. Payout = winnings paid on rounds resulted in the period. On hold = stakes still awaiting a result at the cut-off. Refunds = stakes returned (one-sided bets, cancelled rounds, players' early exits). Sales less refunds = Sales − Refunds: the stakes placed in the period less every stake returned in it, including refunds of tickets placed before the period, so a short period can print a negative figure; its tickets are the tickets placed in the period less the tickets refunded in it (one ticket is one bet). Net commission revenue = Commission − Total tax.",
     "Deposits and withdrawals are not part of this report: they are players' own money moving into and out of their wallets, never Sales, Payout, Refunds or any tax line.",
-    "The plan's rule — Sales = Payout + On hold + Refunds — holds exactly for a period that starts with nothing on hold and whose resulted pools go wholly to the winners. On 50pick a period opens holding stakes placed before it, and our fee (a share of the losing side, at each resulted round's own frozen rate; a legacy round keeps the model it froze) leaves each resulted pool with the winnings; those are the two reconciling items, and with them the check closes to the shilling.",
+    "The plan's rule — Sales = Payout + On hold + Refunds — holds exactly for a period that starts with nothing on hold and whose resulted pools go wholly to the winners. On 50pick a period opens holding stakes placed before it, and our fee (a share of the losing side, at each resulted round's own frozen rate; a legacy round keeps the model it froze) leaves each resulted pool with the winnings; " +
+      // ⭐ S6 · OD-08 — on a document that holds Millionea, the check closes with its three lines too (explained below).
+      (holdsJackpotLines(f.report1)
+        ? "those are the two reconciling items every product has, and with Millionea's three below, the check closes to the shilling."
+        : "those are the two reconciling items, and with them the check closes to the shilling."),
     `Cut-off: ${windowStatement(d)}. A round resulted after the cut-off stays On hold for this period and is reclassified in the period in which it results. All day, week and month boundaries are East Africa Time (UTC+3).`,
     "Tax is computed by the approved model of the Government Tax Reporting System plan (v1.0, 03 Oct 2026, §3.3): Commission = commission rate × Payout; TRA = TRA rate × Commission; GBT = GBT rate × Commission; Total tax = TRA + GBT. Each line is rounded to the nearest shilling (halves away from zero) at each step. The rates are admin settings with effective dates — see Rates applied.",
     "Sources: Sales, Payout and Refunds are the CONFIRMED money records (the Transaction table), plus the bonus-funded part of a stake and of its refund, which the bets record; the two On-hold balances are the bets themselves (each bet's placed and settled instants); the platform fee is recomputed from each resulted round's own frozen fee model and rates, exactly as settlement took it, plus the fee on any early exit. Three independent records — when they disagree, the exceptions name every shilling.",
-    "All amounts in Tanzanian Shillings (TZS).",
   );
+  // ⭐ S6 · OD-08 — Millionea's treatment, stated where the document holds a week and nowhere else.
+  if (holdsJackpotLines(f.report1) || f.tax.jackpot) notes.push(...millioneaNotes(f));
+  notes.push("All amounts in Tanzanian Shillings (TZS).");
 
   const signatures: SignatureRow[] | undefined = state.filingGrade
     ? [
@@ -611,6 +705,8 @@ export function buildTaxCsv(d: TaxReportData, opts: { generatorName: string; gen
     rows.push([S("Report 2 — Taxation"), S(r.line), S(report2BasisText(r)), r.cents ? N(r.amount) : W(r.amount), r.tickets ? W(r.tickets.net) : null]);
   }
   for (const r of f.refundsByReason) rows.push([S("Refunds by reason"), S(REFUND_REASONS[r.code].label), S(`${REFUND_REASONS[r.code].planCode} · ${REFUND_REASONS[r.code].approval}`), N(r.cents), W(r.count)]);
+  // ⭐ S6 · OD-08 — where a column carries Millionea's three lines, every column prints them (Polls and Up & Down at 0).
+  const productJackpot = productColumns(d).some((c) => holdsJackpotLines(c.f.report1));
   for (const c of productColumns(d)) {
     const x = c.f;
     const sec = `By product — ${c.label}`;
@@ -621,6 +717,11 @@ export function buildTaxCsv(d: TaxReportData, opts: { generatorName: string; gen
       [S(sec), S("Refunds"), null, N(x.report1.refundsCents), null],
       [S(sec), S("Platform fee kept"), null, N(x.report1.feeKeptCents), null],
       [S(sec), S("Less: on hold brought forward"), null, N(-x.report1.broughtForwardCents || 0), null],
+      ...(productJackpot ? [
+        [S(sec), S("Less: jackpot brought forward"), null, N(-(x.report1.jackpotBroughtForwardCents ?? 0) || 0), null],
+        [S(sec), S("Less: house floor top-up"), null, N(-(x.report1.floorTopUpCents ?? 0) || 0), null],
+        [S(sec), S("Carried to the jackpot"), null, N(x.report1.carriedToJackpotCents ?? 0), null],
+      ] : []),
       [S(sec), S("Check difference (must be 0)"), null, N(x.reconciliation.differenceCents), null],
       [S(sec), S("Commission"), null, W(x.tax.commission), null],
       [S(sec), S("TRA tax"), null, W(x.tax.tra), null],
@@ -639,6 +740,11 @@ export function buildTaxCsv(d: TaxReportData, opts: { generatorName: string; gen
       [S(sec), S("Refunds"), S(day), N(x.report1.refundsCents), W(x.counts.refundRecords)],
       [S(sec), S("Platform fee kept"), S(day), N(x.report1.feeKeptCents), null],
       [S(sec), S("Less: on hold brought forward"), S(day), N(-x.report1.broughtForwardCents || 0), null],
+      ...(holdsJackpotLines(x.report1) ? [
+        [S(sec), S("Less: jackpot brought forward"), S(day), N(-(x.report1.jackpotBroughtForwardCents ?? 0) || 0), null],
+        [S(sec), S("Less: house floor top-up"), S(day), N(-(x.report1.floorTopUpCents ?? 0) || 0), null],
+        [S(sec), S("Carried to the jackpot"), S(day), N(x.report1.carriedToJackpotCents ?? 0), null],
+      ] : []),
       [S(sec), S("Check difference (must be 0)"), S(day), N(x.differenceCents), null],
       [S(sec), S("Commission"), S(day), W(x.tax.commission), null],
       [S(sec), S("TRA tax"), S(day), W(x.tax.tra), null],

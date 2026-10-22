@@ -16,13 +16,13 @@ everyone, later if needed I tell you to activate it"*, and *"I have full GBT lic
 chose *"code only, leave the page"*.
 
 **Why it came up.** The marketing gate refused an officer's own test number. A read-only production check showed both
-of the officer's ADMIN accounts ACTIVE, 25 or over, with no self-exclusion and no break: the refusal was the automatic
-harm marker `LATE_NIGHT_PLAY` (5 and 9 bets between 00:00 and 06:00 EAT in seven days, from staff testing). The marker
-is not stored — it is recomputed from the account's transactions at every send — so nothing could be removed from the
-database, and nothing was.
+of the officer's ADMIN accounts ACTIVE, 25 or over, with no self-exclusion and no break. The refusal came from an
+automatic harm marker, set off by staff testing on those accounts. What the markers watch for is the published
+responsible-gambling policy's (`/legal/responsible-gambling` §3), and this record does not restate it (the repository is
+public; the wording follows S6-INT's rule for these records). The marker is not stored — it is recomputed from the
+account's transactions at every send — so nothing could be removed from the database, and nothing was.
 
-**What it rules.** The automatic harm markers (rapid deposits, deposits soon after placing a bet, late-night play) no
-longer stop a marketing SMS, for anyone: `MARKETING_HARM_MARKERS_MUTED = true` in `src/lib/server/marketing/rg.ts`
+**What it rules.** The automatic harm markers no longer stop a marketing SMS, for anyone: `MARKETING_HARM_MARKERS_MUTED = true` in `src/lib/server/marketing/rg.ts`
 makes the gate's default dependency report no harm flag. Everyone the markers were holding is released at the next
 send; there is no per-person state to clear.
 
@@ -242,7 +242,7 @@ and zh; RULES.md §2.12's sunset paragraph; the operator guide's Owner row.
 
 ---
 
-## 2026-10-18 · S16's "in bounds" amended for Maswali Millionea — its tickets leave the five measures, and harm markers are reported twice (OD-22)
+## 2026-10-18 · S16's "in bounds" amended for Maswali Millionea — its tickets leave the measures, and harm markers gain a count over the players without a ticket (OD-22)
 
 **Authority.** Ali, 2026-10-16: *"Accept all recommendations"* — every owner decision OD-01…OD-30 of
 [`MASWALI-PLAN.md`](MASWALI-PLAN.md) §9 is ruled as recommended there (§ "2026-10-16 · Maswali Millionea — the
@@ -253,26 +253,28 @@ dated amendment. The build is MASWALI-BUILD S6 lane R, on `mln-s6-reports`.
 
 **What item 8 now says.** § "2026-10-14 · The owner's answers to the open points — Up & Down follow-ups, S9's held-deposit
 words, S16's "in bounds", S10–S13 accepted" item 8 defines S16's "measures in bounds": seven days after launch, each of
-the five measures at or above its 14-day pre-launch baseline, and no harm marker (RAPID_DEPOSIT_ESCALATION,
-CHASING_LOSSES daily counts) above its own. Under OD-22:
+the five measures at or above its 14-day pre-launch baseline, and neither harm count above its own baseline. The
+harm counts are S13's two. They are the counts of RAPID_DEPOSIT_ESCALATION and CHASING_LOSSES. Under OD-22:
 1. **A Millionea ticket is never a bet in any of the five measures**: every bet read leaves out positions on a MASWALI
    market (`journey-measures-dal.ts`).
 2. **Measures 4b and 5 leave out a unit whose player bought a Millionea ticket** — of any week, the private drive's
    included — **within that unit's own horizon** (5: the first-bet horizon after the sign-up; 4b: the follow-up window
-   after the deposit), in every window before and after the launch alike (lane R round 5, 9246708b): a ticket-only
+   after the deposit), in every window before and after the launch alike (lane R round 5): a ticket-only
    sign-up or deposit cannot move them, and no figure moves once its horizon has passed; the measures view names that
    population exactly where a unit was left out.
-3. **From the first PUBLIC week's opening (`publicAt`) — never a drive week's — the harm markers are reported twice**:
-   over every player, as before, and over the players who had bought no Millionea ticket by the time that day was counted (any week, the
-   private drive's included; a cancelled ticket counts) — the harm watch's second row, `journey.harm.noTicket.daily`.
+3. **The harm markers gain a count over the players with no Millionea ticket**, beside the count over every player, as
+   before. That count starts when the first PUBLIC week opens (`publicAt`), never a drive week's, and reads the players
+   who had bought no Millionea ticket by the time that day was counted (any week, the private drive's included; a
+   cancelled ticket counts) — the harm watch's second row, `journey.harm.noTicket.daily`.
    **S16's bounds are judged on the second.** The first count is unchanged.
 4. **The view marks the day the first public week opened; before it the harm watch keeps one count.**
 
-**What does not change.** The five measures' definitions, their 14-day baselines and the seven-day window; the harm
-detector itself; the count over every player, which is still reported.
+**What does not change.** The five measures' definitions, their 14-day baselines and the seven-day window stay as they
+were. So does the count over every player, which is still reported. And so does the harm detector itself.
 
-**Where it is built and guarded.** Lane R's commits on `mln-s6-reports` (2bd52278, "the S16 measures leave Millionea out
-and report harm twice (OD-22, MB-46)", f1769983 and 9246708b), held by `test:journey-measures` M.12 and M.12b–M.12g,
+**Where it is built and guarded.** Lane R ("the S16 measures leave Millionea out and report harm twice (OD-22, MB-46)" and
+its rounds), squashed into the S6 integration as MASWALI-BUILD S6-INT 8 — the lane's own commits left with its branch —
+held by `test:journey-measures` M.12 and M.12b–M.12g,
 `test:harm-watch` H.11–H.11g, `test:journey-measures-view` V.16–V.18 and V.16e–V.20b, and `test:maswali-reporting`
 R7.2/R7.2b, with the dated notes in the S13
 plan. VODACOM-PLAN §0
@@ -533,7 +535,8 @@ questions, after asking to be asked everything at once. Each answer below is his
    didn't go through".
 7. **Withdrawals get the deposits' key door** (S9): a malformed request key is refused before anything is reserved.
 8. **S16's "measures in bounds" is defined**: seven days after launch, each of the five measures is at or above its 14-day
-   pre-launch baseline, and no harm marker (RAPID_DEPOSIT_ESCALATION, CHASING_LOSSES daily counts) rises above its own.
+   pre-launch baseline, and neither harm count rises above its own baseline. The harm counts are S13's two. They are the
+   counts of RAPID_DEPOSIT_ESCALATION and CHASING_LOSSES.
 9. **Every recommended answer in S10-PLAN, S11-PLAN, S12-PLAN and S13-PLAN "Points for Ali" is accepted** (the plans hold
    the wording), apart from the points above that he answered directly.
 10. **Not accepted as asked:** Ali asked the coordinator to delete the QA player, create its own account on production,
@@ -1576,7 +1579,7 @@ item 7. ⛔ Never remove: the self-exclusion, under-18 and responsible-gambling 
 
 ## 2026-10-07 · Marketing SMS go to anyone with a phone — consent is not a condition (the owner's FINAL rule), and his approvals given in the session
 
-⟶ superseded in part on 2026-10-21 by § "2026-10-21 · Harm markers muted for marketing SMS (owner ruling)" — item 2's "a sign of harm" only: the automatic harm markers do not stop a marketing SMS while that ruling stands.
+⟶ superseded in part on 2026-10-21 by § "2026-10-21 · Harm markers muted for marketing SMS (owner ruling)". What it supersedes is item 2's "a sign of harm" only. While that ruling stands, the automatic harm markers do not stop a marketing SMS.
 
 ⟶ superseded on 2026-10-09 by § "2026-10-09 · Privacy v2026-10-09 — a marketing SMS is sent exactly as the officer wrote it: no stop link, no 18+, no helpline, no source line (owner ruling)" — in part: no message keeps a stop link (a person's own stop is still honoured), the G5 source line is printed in no message, and Privacy §4's gateway bullet names no company.
 
@@ -3943,17 +3946,16 @@ could not tell which revision bound them. Its header now reads **Version 2026-09
 
 | §3 said | What the code does |
 |---|---|
-| "chasing losses (multiple deposits within a losing session)" | The `CHASING_LOSSES` detector counts deposits made within 30 minutes of **placing** a bet. It cannot see a loss (its own comment; ledger row 10.8, still open). |
+| "chasing losses (multiple deposits within a losing session)" | The `CHASING_LOSSES` detector counts deposits made soon after **placing** a bet. It cannot see a loss (its own comment; ledger row 10.8, still open). |
 | "declined card cycling" | No detector counts declined card attempts. Card deposits exist (Selcom checkout), but nothing watches their declines. |
-| "breaching previous self-imposed limits" | Detector 4 (`LIMIT_BREACH_HISTORY`) is a comment only and never raises a flag. |
+| "breaching previous self-imposed limits" | The `LIMIT_BREACH_HISTORY` detector is a comment only and never raises a flag. |
 | "unusual transaction patterns" | No detector. |
-| "late-night extended play" | `LATE_NIGHT_PLAY` counts bets placed 00:00–06:00 EAT. It measures bets, not time spent. |
-| "Any single marker triggers an in-app prompt; multiple markers trigger a contact from our Player Safety team within 24 hours" | `detectHarmMarkers` has one caller, `detectHarmMarkersForAllUsers`, used only by the staff console `/admin/compliance`. No player prompt, no outreach job, no 24-hour clock. `SESSION_OVERRUN` is also unreachable there: no session start is passed (the 2026-08-20 entry recorded this). |
+| "late-night extended play" | `LATE_NIGHT_PLAY` counts bets placed in the late-night band the published policy names (`/legal/responsible-gambling` §3). It measures bets, not time spent. |
+| "Any single marker triggers an in-app prompt; multiple markers trigger a contact from our Player Safety team within 24 hours" | `detectHarmMarkers` has one caller, `detectHarmMarkersForAllUsers`, used only by the staff console `/admin/compliance`. No player prompt, no outreach job, no clock for one. `SESSION_OVERRUN` is also unreachable there: no session start is passed (the 2026-08-20 entry recorded this). |
 
-**§3 now says,** in all three languages, only what runs: several deposits within an hour or a day's deposits far above
-the account's recent daily average; repeated deposits shortly after placing a bet; repeated betting late at night
-(00:00–06:00 EAT); an account showing one of these is listed for the compliance team; and the §2 tools are the player's
-to use at any time. It promises no prompt and no contact.
+**§3 now says,** in all three languages, only what runs — the patterns the detectors look for are the ones the published
+policy names (`/legal/responsible-gambling` §3), not restated here; an account showing one of these is listed for the
+compliance team; and the §2 tools are the player's to use at any time. It promises no prompt and no contact.
 
 **⛔ Do not restore** a card marker, a limit-breach marker, "unusual transaction patterns", an in-app prompt or a timed
 contact until the control exists: build it first, then write it here and re-version the policy.
@@ -4585,9 +4587,10 @@ Three of §4's four bullets remain unenforceable, and this panel is the first su
 them bite:
 
 - **"no sign-up nudges in the late-night window"** — *there is no late-night window in code.* The
-  only 00:00–06:00 EAT band on this platform is a **retrospective harm detector** in
-  `responsible-gambling.ts`, computed only when an officer opens the compliance page. Honouring
-  this bullet would mean *creating* the window, not reusing one. It was not created here.
+  only late-night band on this platform (the band the published policy names, `/legal/responsible-gambling`
+  §3) is a **retrospective harm detector** in `responsible-gambling.ts`, computed only when an officer
+  opens the compliance page. Honouring this bullet would mean *creating* the window, not reusing one. It
+  was not created here.
 - **"players under 25"** — `User.dob` exists; nothing computes an age band.
 - **"in vulnerability segments"** — no such concept exists in the code at all.
 
@@ -6282,11 +6285,11 @@ changed in this pass:
    wiring gap, not a missing input.
 2. **The `SESSION_OVERRUN` responsible-gambling detector is unreachable.**
    `responsible-gambling.ts:537-551` returns immediately unless `ctx.opts.sessionStartedAt`
-   is set, and its only caller (`:593`) passes no options. The detector that watches for a
-   player sitting on the platform past 4× their reality-check interval has never produced a
-   flag and cannot. Note the neighbouring detector #4 is *declared* an intentional no-op in
-   a comment — so this file already has a convention for saying so honestly, and #5 should
-   either be wired or labelled the same way.
+   is set, and its only caller (`responsible-gambling.ts:593`) passes no options. The detector
+   that watches for a session running well past the player's own reality-check interval has
+   never produced a flag and cannot. Note the neighbouring `LIMIT_BREACH_HISTORY` detector is
+   *declared* an intentional no-op in a comment — so this file already has a convention for
+   saying so honestly, and `SESSION_OVERRUN` should either be wired or labelled the same way.
 
 **Code:** `src/app/legal/privacy/page.tsx` (9 lines, 3 claims × 3 locales).
 **Tests:** `test:cert-d1` §2b (74/74, both negatives driven red).

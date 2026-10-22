@@ -10,12 +10,17 @@
  * arithmetic — so the stores agree by agreeing with it. Postgres adds M.10: every client call the reads make is recorded
  * and must carry a window or an id list, and N concurrent first counts of one counter key must make N.
  * ⛔ NO POSTGRES IS A FAILURE, NOT A SKIP. ⛔ THE FLOOR: 16 lines on memory + 0.store = 17; Postgres adds M.10 and M.10b = 19.
+ * ⭐ RAISED 2026-10-18 (MASWALI-BUILD S6, OD-22) TO THE PRINTED COUNT: S9's seam is open on this build, so M.9d and M.9e
+ *    print where M.9c did (the 17 above was a line short since), and M.12, M.12b, M.12c and M.12d (round 2) add four — 22 on
+ *    memory, 24 on Postgres. Round 3: M.12e, M.12f and M.12g add three — 25 and 27. Round 5 rewrites them for the unit's
+ *    own horizon (M.12b–M.12g; the count is unchanged). Round 6: M.12h and M.12i add two on each store, and M.12h2 one
+ *    on Postgres (every ticket read recorded with its window) — 27 and 30. Round 9: M.12j (reads across chunks) — 28 and 31. Round 11: M.12k (the chunk seam's guard) — 29 and 32.
  */
 const PROVE_RED = process.argv.includes("--prove-red");
 
 if (!PROVE_RED) {
   const { runTwoStores } = await import("./lib/house-bot-two-stores.mts");
-  await runTwoStores({ suite: "test:journey-measures", casesFile: "scripts/lib/journey-measures-child.mts", minPass: { memory: 17, postgres: 19 }, dbPrefix: "s13_measures" });
+  await runTwoStores({ suite: "test:journey-measures", casesFile: "scripts/lib/journey-measures-child.mts", minPass: { memory: 29, postgres: 32 }, dbPrefix: "s13_measures" });
 } else {
   delete process.env.DATABASE_URL;
   process.env.USE_PRISMA_DAL = "false";
@@ -41,6 +46,24 @@ if (!PROVE_RED) {
     return { id: t.id, userId: t.userId, at: c ?? Date.parse(t.createdAt), completedAt: c, savedBet: null };
   };
   const inWin = (r: Row, f: number, to: number) => r.at >= f && r.at < to;
+  /** The memory store's Millionea ticket positions of these players, as a bet read returns them — for the OD-22 plants. */
+  const ticketsOf = async (ids: readonly string[]) => {
+    const { positionStore, marketStore } = await import("../src/lib/server/market-dal.ts");
+    const mine = (await positionStore.values()).filter((p) => ids.includes(p.userId) && !p.houseBotId);
+    const books = await marketStore.bookByIds([...new Set(mine.map((p) => p.marketId))]);
+    return mine.filter((p) => books.get(p.marketId)?.productLine === "MASWALI")
+      .map((p) => ({ id: p.id, userId: p.userId, marketId: p.marketId, side: p.side, stake: p.stake, placedAt: Date.parse(p.placedAt) }));
+  };
+  /** A row as R2 or R4 returned it, with the round-5 mark taken off (the plants below put a ticket holder back in). */
+  const unmark = (r: Record<string, unknown>) => { const { ticketInHorizon: _mark, ...rest } = r; void _mark; return rest; };
+  /** ⭐ Round 6 — a window holding every ticket ever bought, and R2 re-marked over a mutated 4b horizon. */
+  const EVER_FROM = Date.parse("2000-01-01T00:00:00.000Z"), EVER_TO = Date.parse("2100-01-01T00:00:00.000Z");
+  const MIN = 60_000;
+  const remark4b = (lo: number, hi: number, endIncluded: boolean) => async (f: number, to: number) => {
+    const rows = (await REAL.confirmedDeposits(f, to)).map(unmark) as Array<Record<string, unknown> & { userId: string; at: number }>;
+    const bought = await REAL.ticketPurchases(rows.map((r) => r.userId), EVER_FROM, EVER_TO);
+    return rows.map((r) => ((bought.get(r.userId) ?? []).some((t) => t >= r.at + lo && (endIncluded ? t <= r.at + hi : t < r.at + hi)) ? { ...r, ticketInHorizon: true as const } : r));
+  };
   const plants: Array<{ name: string; expect: RegExp; impl: Impl }> = [
     { name: "R1 counts a REVERSED deposit (status filter dropped)", expect: /^M\.4 /,
       impl: { ...REAL, shortfallDeposits: async (f, to) => [...(await REAL.shortfallDeposits(f, to)), ...(await raw()).filter((t) => t.status === "REVERSED" && t.origin === "low_balance").map(asRow).filter((r) => inWin(r, f, to))] } },
@@ -74,6 +97,39 @@ if (!PROVE_RED) {
       impl: { ...REAL, measuresSource: REAL.measuresSource.replace("export const DEPOSIT_FOLLOW_UP_MS = 30 * 60_000;", "export const DEPOSIT_FOLLOW_UP_MS = 31 * 60_000;") } },
     { name: "the view walks a store itself", expect: /^M\.11 /,
       impl: { ...REAL, viewSource: `${REAL.viewSource}\nconst all = await db.txn.listAll();` } },
+    // ⭐ MASWALI-BUILD S6 · OD-22 — the two ways a ticket could come back in as a bet.
+    { name: "a Millionea ticket counted as a deposit's follow-up bet", expect: /^M\.12 /,
+      impl: { ...REAL, betsOf: async (ids, f, to) => [...(await REAL.betsOf(ids, f, to)), ...(await ticketsOf(ids)).filter((b) => b.placedAt >= f && b.placedAt <= to)] } },
+    // ⭐ Round 2 — the population rule of measures 5 and 4b: a ticket holder put back in either one's whole.
+    // ⭐ Round 5 — who 5 and 4b leave out: a unit whose player bought a ticket within the window the measure reads for it.
+    { name: "a sign-up whose ticket came within its horizon left unmarked (measure 5 keeps it)", expect: /^M\.12b /,
+      impl: { ...REAL, joinedPlayers: async (f, to) => (await REAL.joinedPlayers(f, to)).map(unmark) } },
+    { name: "a deposit followed by a ticket within its window left unmarked (4b keeps it)", expect: /^M\.12d /,
+      impl: { ...REAL, confirmedDeposits: async (f, to) => (await REAL.confirmedDeposits(f, to)).map(unmark) } },
+    { name: "every ticket holder marked, whenever the ticket was bought (the horizon ignored: the baseline moves)", expect: /^M\.12e /,
+      impl: { ...REAL, joinedPlayers: async (f, to) => {
+        const rows = await REAL.joinedPlayers(f, to);
+        const { ticketHolders } = await import("../src/lib/server/journey-measures-dal.ts");
+        const held = await ticketHolders(rows.map((p: { id: string }) => p.id), EVER_TO);
+        return rows.map((p: { id: string }) => (held.has(p.id) ? { ...p, ticketInHorizon: true as const } : p));
+      } } },
+    { name: "tickets read though no Millionea week has ever opened", expect: /^M\.12f /,
+      impl: { ...REAL, joinedPlayers: async (f, to) => {
+        const rows = await REAL.joinedPlayers(f, to);
+        const { ticketHolders } = await import("../src/lib/server/journey-measures-dal.ts");
+        await ticketHolders(rows.map((p: { id: string }) => p.id), EVER_TO);
+        return rows;
+      } } },
+    // ⭐ Round 6 (MEDIUM-2) — the ticket read as round 5 made it: every ticket an account ever bought.
+    { name: "the ticket read unbounded in time (every ticket an account ever bought)", expect: /^M\.12h /,
+      impl: { ...REAL, ticketPurchases: (ids) => REAL.ticketPurchases(ids, EVER_FROM, EVER_TO) } },
+    // ⭐ Round 6 (LOW 2) — 4b's horizon wrong at either end.
+    { name: "4b's horizon opened before the deposit (a ticket 10 minutes before it marks it)", expect: /^M\.12i /,
+      impl: { ...REAL, confirmedDeposits: remark4b(-30 * MIN, 30 * MIN, true) } },
+    { name: "4b's horizon open at its end (a ticket at exactly +30 minutes leaves the deposit in)", expect: /^M\.12i /,
+      impl: { ...REAL, confirmedDeposits: remark4b(0, 30 * MIN, false) } },
+    { name: "4b's horizon a millisecond long (a ticket at +30 minutes + 1 ms marks the deposit)", expect: /^M\.12i /,
+      impl: { ...REAL, confirmedDeposits: remark4b(0, 30 * MIN + 1, true) } },
   ];
   let caught = 0, fail = 0;
   const say = (label: string, cond: boolean, extra = "") => { if (!cond) fail++; console.log(`${cond ? "PROVED  " : "MISSED  "} ${label}${extra ? ` — ${extra}` : ""}`); };

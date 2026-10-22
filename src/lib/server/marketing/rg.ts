@@ -22,14 +22,14 @@ import { getAuditForTargetsDurable } from "@/lib/server/audit";
  *   · the RG row is read with `db.responsible.get` — ⛔ never `getRgSettings`, `selfExclusionStanding`
  *     or `isLockedOut`, which CREATE a row for a user who has none and REWRITE one whose pending limit
  *     change has come due (`effectivize`). U7's gate guarded only the first of those two writes;
- *   · harm markers are detected with NO options, because the session-overrun detector is the one
+ *   · harm markers are detected with NO options, because the session-overrun detector is the only
  *     path in `detectHarmMarkers` that reaches `getRgSettings`;
  *   · a refusal is RETURNED, never audited here. The audit line belongs to the send loop, when a
  *     refusal is acted on (`dispatch.ts`, U9) — an audience count must not write to the chain.
  *
  * THE ORDER IS §5.6's — self-exclusion → cooling-off → harm markers — and the caller asks consent
- * first, so the one expensive step (harm markers read up to 10,000 transactions) runs only for a
- * player who has already said yes.
+ * before any of them, so the expensive step (the harm markers' read of the player's transactions)
+ * runs only for a player who has already said yes.
  *
  * ⛔ `isLockedOut` is not modified and not called (OD12, §6). `push-service` and `watchlist-service` still
  * call it, and since S7 (D10, on Ali's delegation of 2026-09-26) each also refuses a SELF_EXCLUDED account
@@ -79,15 +79,15 @@ async function readExclusionRecord(userId: string): Promise<ExclusionRecord> {
 /**
  * ⏸ THE AUTOMATIC HARM MARKERS ARE MUTED FOR MARKETING SMS — Ali's ruling, 2026-10-21 (COMPLIANCE-DECISIONS
  * § "2026-10-21 · Harm markers muted for marketing SMS"): *"keep the development but mute it for now for everyone,
- * later if needed I tell you to activate it"*. While this is `true` the default deps report no harm flag, so step 3
- * below never refuses a send for one. Self-exclusion, a break, the under-25 rule, age, status and the stop list are
- * untouched, and so is the detector itself (Player Safety, the daily harm count). Step 3 still refuses whatever flags
- * it is handed, which `test:rg-doors` keeps proving. Reactivate by setting this to `false`.
+ * later if needed I tell you to activate it"*. While this is `true` the default deps report no harm flag, so the harm
+ * step below never refuses a send for one. Self-exclusion, a break, the under-25 rule, age, status and the stop list are
+ * untouched, and so is the detector itself (Player Safety, the daily harm count). The harm step still refuses whatever
+ * flags it is handed, which `test:rg-doors` keeps proving. Reactivate by setting this to `false`.
  */
 export const MARKETING_HARM_MARKERS_MUTED = true;
 
 export const MARKETING_RG_DEPS: MarketingRgDeps = {
-  // ⛔ NO OPTIONS. Passing `sessionStartedAt` switches on the one detector that calls `getRgSettings`.
+  // ⛔ NO OPTIONS. Passing `sessionStartedAt` switches on the only detector that calls `getRgSettings`.
   harmFlags: (userId) => (MARKETING_HARM_MARKERS_MUTED ? Promise.resolve([]) : detectHarmMarkers(userId)),
   exclusionRecord: readExclusionRecord,
 };
@@ -125,7 +125,7 @@ export async function marketingRgStanding(
     return latest !== null && latest.status === "GIVEN" && Date.parse(latest.createdAt) > Date.parse(iso);
   };
 
-  // ── 1 · SELF-EXCLUSION (GN 478T reg 49(3); OD12; OQ7's built default) ──────────────────────────
+  // ── SELF-EXCLUSION (GN 478T reg 49(3); OD12; OQ7's built default) ──────────────────────────────
   const se = selfExclusionStandingOf(row?.selfExclusionUntil ?? null, now);
   // ⭐ The status is itself standing evidence: SELF_EXCLUDED means no officer has reopened the account,
   // whatever the timer says — including a row whose end date is missing or unreadable.
@@ -166,7 +166,7 @@ export async function marketingRgStanding(
     }
   }
 
-  // ── 2 · COOLING-OFF (OD13) ─────────────────────────────────────────────────────────────────────
+  // ── COOLING-OFF (OD13) ─────────────────────────────────────────────────────────────────────────
   // ⭐ RULED 2026-09-25 (S6, on Ali's delegation): a break is standing for marketing too. It ends by
   // itself for BETTING (market-service reads the timer, by design); for marketing it ends only when the
   // player consents again after it. `coolingOffUntil` is never cleared (`furthest` keeps the latest),
@@ -183,9 +183,9 @@ export async function marketingRgStanding(
     return refuse("rg_cooling_off", "account is COOLED_OFF with no break on record (diverged), so it refuses", null);
   }
 
-  // ── 3 · HARM MARKERS (OD13) ────────────────────────────────────────────────────────────────────
-  // ⚠️ NOT STANDING, AND SAID SO: nothing persists a harm flag, so this refusal lasts as long as the
-  // detector's window (≤ 8 days) and no longer. Making it standing needs a persisted, officer-reviewed
+  // ── HARM MARKERS (OD13) ────────────────────────────────────────────────────────────────────────
+  // ⚠️ NOT STANDING, AND SAID SO: nothing persists a harm flag, so this refusal lasts only while the
+  // detector still raises the flag, and no longer. Making it standing needs a persisted, officer-reviewed
   // flag store, which does not exist — filed for Ali in the plan's §0, not invented here.
   // ⛔ A check that cannot be read REFUSES. `detectHarmMarkersForAllUsers` turns a failed read into
   // "no flags"; a marketing gate that copied that would market to exactly the player it could not assess.

@@ -108,7 +108,8 @@ const WINNER_SEARCH: EntitySchema = { fields: {
 const SEAL_SEARCH: EntitySchema = { fields: { week: { columns: ["code"], kind: "text" } }, default: ["code"], viewModel: true };
 const VOIDABLE_SEARCH: EntitySchema = { fields: { week: { columns: ["code"], kind: "text" } }, default: ["code"], viewModel: true };
 
-export type HeldListRow = { weekCode: string; weekSeq: number; serial: string; holder: string; payout: number; forfeited: boolean };
+/** `payout` null: the ticket's record lacks its share (S6 round 6) — sorted last, printed "Not on record", never 0. */
+export type HeldListRow = { weekCode: string; weekSeq: number; serial: string; holder: string; payout: number | null; forfeited: boolean };
 export function selectHeldShares<T extends HeldListRow>(all: readonly T[], query: IntegrityListQuery["held"], perPage: number): Result<T> {
   const parsed = parseQuery(query.q, { fields: ["week", "ticket", "holder"] });
   const filtered = all.filter((row) =>

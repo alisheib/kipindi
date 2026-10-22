@@ -1,5 +1,5 @@
 /**
- * /api/admin/tax/export?format=pdf|xlsx|csv&period=month|week|day|custom&…&product=ALL|MARKET|UPDOWN
+ * /api/admin/tax/export?format=pdf|xlsx|csv&period=month|week|day|custom&…&product=ALL|MARKET|UPDOWN|MASWALI
  *
  * The Government Tax Report as a file (`docs/TAX-REPORT.md` §7). The same `TaxReportView` the page
  * renders, laid out by `tax-report-doc.ts` — so the PDF, the workbook, the CSV and the screen

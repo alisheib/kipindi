@@ -14,6 +14,7 @@
  * ⛔ A BALANCE THAT COULD NOT BE READ IS `null`, NEVER 0: the page says it could not be read.
  */
 import { questionStore, ticketStore, weekStore, type StoredQuestion, type StoredTicket, type StoredWeek } from "./maswali-dal";
+import { settledWeekGaps, type SettlementField } from "./maswali-week-record";
 import {
   calendarStartMs, deadlinesUnderRules, frozenRules, gradable, guaranteeProblem, NO_LICENCE_BASIS, openProblems, proposeVoidsAtDeadline, stopNextActNow, sunsetState,
 } from "./maswali-service";
@@ -356,26 +357,46 @@ export async function draftSuggestions(fromMs: number, toMs: number, limit = 40)
 
 export type PoolsWeek = {
   row: ConsoleWeekRow;
-  /** Null when the week's frozen rules cannot be read: unknown, never 0 (S7-F3). */
+  /** ⛔ S6 · null when the week's frozen rules cannot be read (no ticket price on record) — never 0 (S7-F3's rule too). */
   sales: number | null;
   rolloverIn: number | null;
   /** MB-36 · the share of the 1,024 ways to answer the ten mains that some live ticket holds, 0…1. */
   coverage: number;
   distinctCombos: number;
-  /** The most this week could still draw from the guarantee: a single winner at the floor. Null when its rules or the
-   *  jackpot cannot be read (S7-F3). */
+  /**
+   * The most this week could still draw from the guarantee: a single winner at the floor. ⛔ S6 · null when a figure it
+   * stands on cannot be read — the frozen rules (the floor, the sales) or the jackpot it would claim — never a guess
+   * (S7-F3's rule too).
+   */
   worstTopUp: number | null;
   /** A settlement ready to release (results final, window closed): its prepared figures, or why not. */
   preview: MaswaliSettlementPreview | null;
   previewRefusal: string | null;
 };
 
+/**
+ * A settled week as its settlement left it. ⛔ S6 · A FIGURE ITS RECORD LACKS IS NULL AND NAMED in `lacks` (`settledWeekGaps`,
+ * the reports' one rule) — the page prints it as missing, never as 0. A whole record has every figure and `lacks` empty.
+ */
 export type PoolsTrailRow = {
-  code: string; visibility: StoredWeek["visibility"]; settledAt: string; sales: number; rolloverIn: number; winners: number;
-  fee: number; topUp: number; paid: number; carryOut: number;
+  code: string; visibility: StoredWeek["visibility"]; settledAt: string | null; sales: number | null; rolloverIn: number | null;
+  winners: number | null; fee: number | null; topUp: number | null; paid: number | null; carryOut: number | null;
   /** MB-10 · the TRA and GBT levies on the fee the house's own top-up generated, paid from house money. */
-  levyOnOwnTopUp: number;
+  levyOnOwnTopUp: number | null;
+  /** The settlement columns this week's record lacks, of those the trail reads; empty when it is whole. */
+  lacks: SettlementField[];
 };
+
+/**
+ * ⭐ S6 · ONE OPEN WEEK'S MONEY, with nothing guessed (round 5): no frozen rules on record → no sales and no worst top-up;
+ * no jackpot the week would claim (its own carry, else the line's jackpot balance) → no worst top-up. Pure, so a suite
+ * can hold each missing figure to its own answer.
+ */
+export function openWeekMoney(x: { liveTickets: number; ticketPriceTzs: number | null; floorTzs: number | null; jackpot: number | null }): { sales: number | null; worstTopUp: number | null } {
+  const sales = x.ticketPriceTzs === null ? null : x.liveTickets * x.ticketPriceTzs;
+  const worstTopUp = sales === null || x.floorTzs === null || x.jackpot === null ? null : Math.max(0, x.floorTzs - x.jackpot - sales);
+  return { sales, worstTopUp };
+}
 
 export type PoolsView = {
   /** `requirement` is null when a week's frozen rules cannot be read: unknown, never 0 (S7-F2). */
@@ -398,11 +419,11 @@ export async function poolsView(now: Date = new Date()): Promise<PoolsView> {
     const rules = frozenRules(w);
     const live = await ticketStore.listForWeek(w.id, { status: "LIVE" });
     const combos = new Set(live.map((t) => t.selections.slice(0, MAIN_COUNT).join("")));
-    // ⛔ S7-F3 · AN UNREADABLE WEEK'S FIGURES ARE UNKNOWN — null, never 0 (S7-F2's rule for the requirement): its price and
-    //    floor are its frozen rules', and a jackpot that cannot be read leaves the worst top-up unknown as well.
-    const sales = rules ? live.length * rules.ticketPriceTzs : null;
-    const jackpot = w.rolloverIn ?? (w.visibility === "DRIVE" ? jackpotDrive : jackpotPublic);
-    const worstTopUp = rules && sales !== null && jackpot !== null ? Math.max(0, rules.floorTzs - jackpot - sales) : null;
+    // ⛔ S6 · no `?? 0` (round 5): an unreadable rule or jackpot balance is said on the row, never priced as nothing.
+    const { sales, worstTopUp } = openWeekMoney({
+      liveTickets: live.length, ticketPriceTzs: rules?.ticketPriceTzs ?? null, floorTzs: rules?.floorTzs ?? null,
+      jackpot: w.rolloverIn ?? (w.visibility === "DRIVE" ? jackpotDrive : jackpotPublic),
+    });
     let preview: MaswaliSettlementPreview | null = null, previewRefusal: string | null = null;
     if (w.state === "RESOLVING" && w.objectionsCloseAt && Date.parse(w.objectionsCloseAt) <= now.getTime()) {
       const p = await previewMaswaliSettlement(w.id, now);
@@ -414,11 +435,19 @@ export async function poolsView(now: Date = new Date()): Promise<PoolsView> {
   const { getFloatBalance } = await import("./payments");
   const float = await getFloatBalance().then((f) => f?.balance ?? null).catch(() => null);
   const trail: PoolsTrailRow[] = weeks.filter((w) => w.state === "SETTLED").map((w) => {
-    const J = w.jackpot ?? 0, U = w.topUp ?? 0, levies = (w.traLevy ?? 0) + (w.gbtLevy ?? 0);
+    // ⛔ S6 · no `?? 0`: a figure the record lacks stays null and is named (round 3, the reports' rule) — of the columns
+    // the trail reads (round 5): the levies and the jackpot only where its own top-up needs them.
+    const U = w.topUp;
+    const lacks = settledWeekGaps(w, [
+      "settledAt", "salesAtClose", "rolloverIn", "winningTickets", "fee", "topUp", "paidTotal", "carryOut",
+      ...(U !== null && U > 0 ? (["traLevy", "gbtLevy", "jackpot"] as const) : []),
+    ]);
+    const J = w.jackpot, levies = w.traLevy !== null && w.gbtLevy !== null ? w.traLevy + w.gbtLevy : null;
+    // No own top-up, no levy on it (a no-winner week's null jackpot included); otherwise it needs J, U and both levies.
+    const levyOnOwnTopUp = U === 0 ? 0 : U === null || J === null || levies === null ? null : J > 0 ? Math.round((levies * U) / J) : 0;
     return {
-      code: w.code, visibility: w.visibility, settledAt: w.settledAt ?? "", sales: w.salesAtClose ?? 0, rolloverIn: w.rolloverIn ?? 0,
-      winners: w.winningTickets ?? 0, fee: w.fee ?? 0, topUp: U, paid: w.paidTotal ?? 0, carryOut: w.carryOut ?? 0,
-      levyOnOwnTopUp: J > 0 && U > 0 ? Math.round((levies * U) / J) : 0,
+      code: w.code, visibility: w.visibility, settledAt: w.settledAt, sales: w.salesAtClose, rolloverIn: w.rolloverIn,
+      winners: w.winningTickets, fee: w.fee, topUp: U, paid: w.paidTotal, carryOut: w.carryOut, levyOnOwnTopUp, lacks,
     };
   });
   return { jackpotPublic, jackpotDrive, guarantee, requirement: requirementOf(open), float, pendingPayout, weeks: out, trail };
@@ -426,9 +455,12 @@ export async function poolsView(now: Date = new Date()): Promise<PoolsView> {
 
 // ── COMPLIANCE (/admin/maswali/integrity) ───────────────────────────────────────────────────────────
 
-export type HeldShare = { ticketId: string; serial: string; weekCode: string; weekSeq: number; userId: string; holder: string; payout: number; reason: string; forfeited: boolean };
+/** ⛔ S6 round 6 · `payout` null: the ticket's record lacks its share — said "Not on record", never printed as 0 TZS. */
+export type HeldShare = { ticketId: string; serial: string; weekCode: string; weekSeq: number; userId: string; holder: string; payout: number | null; reason: string; forfeited: boolean };
 export type SealLogRow = { weekCode: string; slot: number; outcome: string; voidReason: string | null; sealedBy: string | null; sealedAt: string | null; evidence: string | null; stage2By: string | null };
-export type WinnerRow = { ticketId: string; weekCode: string; serial: string; userId: string; holder: string; role: string; status: string; accountAgeDays: number; payout: number; frozenReason: string | null };
+export type WinnerRow = { ticketId: string; weekCode: string; serial: string; userId: string; holder: string; role: string; status: string; accountAgeDays: number; payout: number | null; frozenReason: string | null };
+/** A paid ticket's share as its record holds it: null when the record lacks it (never `?? 0`). */
+const shareOf = (t: StoredTicket): number | null => (t.payout === null ? null : Math.round(t.payout));
 
 export type IntegrityView = {
   /** One reachable page of held shares, selected from every settled winner. */
@@ -485,7 +517,7 @@ export async function integrityView(now: Date = new Date(), pages: { held?: numb
   for (const { ticket: t, code, seq } of won) {
     if (!t.frozenReason) continue;
     const h = await holderFor(t.userId);
-    allHeld.push({ ticketId: t.id, serial: t.serial, weekCode: code, weekSeq: seq, userId: t.userId, holder: h.holder, payout: Math.round(t.payout ?? 0), reason: t.frozenReason, forfeited: t.frozenReason.startsWith("forfeited · ") });
+    allHeld.push({ ticketId: t.id, serial: t.serial, weekCode: code, weekSeq: seq, userId: t.userId, holder: h.holder, payout: shareOf(t), reason: t.frozenReason, forfeited: t.frozenReason.startsWith("forfeited · ") });
   }
   const selectedHeld = selectHeldShares(allHeld, { ...query.held, page: pages.held ?? query.held.page }, CONSOLE_PER_PAGE);
   const selectedWinners = selectWinnerTickets(won, { ...query.winners, page: pages.winners ?? query.winners.page }, CONSOLE_PER_PAGE);
@@ -493,7 +525,7 @@ export async function integrityView(now: Date = new Date(), pages: { held?: numb
   for (const { ticket: t, code } of selectedWinners.rows) {
     const h = await holderFor(t.userId);
     const ageDays = h.createdAt ? Math.floor((now.getTime() - Date.parse(h.createdAt)) / 86_400_000) : 0;
-    winners.push({ ticketId: t.id, weekCode: code, serial: t.serial, userId: t.userId, holder: h.holder, role: h.role, status: h.status, accountAgeDays: ageDays, payout: Math.round(t.payout ?? 0), frozenReason: t.frozenReason });
+    winners.push({ ticketId: t.id, weekCode: code, serial: t.serial, userId: t.userId, holder: h.holder, role: h.role, status: h.status, accountAgeDays: ageDays, payout: shareOf(t), frozenReason: t.frozenReason });
   }
   const sealed = weeks.filter((w) => w.state === "SETTLED" || w.state === "VOIDED");
   const selectedSeals = selectSealWeeks(sealed, { ...query.seals, page: pages.sealWeeks ?? query.seals.page }, SEAL_WEEKS_PER_PAGE);

@@ -17,7 +17,7 @@ import { db } from "@/lib/server/store";
 import { loadTaxReportView } from "@/lib/server/tax-report-view";
 import { recentLocks, seenFingerprint, type TaxLock } from "@/lib/server/tax-locks";
 import { readTaxRates } from "@/lib/server/tax-config";
-import { dayByDayNote, report1Rows, report2Rows, ticketsLabel, ticketsLine, windowStatement } from "@/lib/server/tax-report-doc";
+import { dayByDayNote, holdsJackpotLines, report1Rows, report2Rows, ticketsLabel, ticketsLine, windowStatement } from "@/lib/server/tax-report-doc";
 import type { DayFigures, ProductFigures, TaxReportData } from "@/lib/server/tax-report-data";
 import { adminCount, formatTzsCompact } from "@/lib/utils";
 import { eatDayKey } from "@/lib/eat-day";
@@ -115,6 +115,8 @@ async function AdminTaxContent({ searchParams }: { searchParams: Promise<TaxSear
   const nextAllowed = next !== null && next.startMs < nowMs;
 
   const loaded = await loadTaxReportView({ period, product, nowMs }).catch((err: unknown) => ({ ok: false as const, error: String((err as Error)?.message ?? err) }));
+  // ⭐ S6 · the Millionea pill, for a period that holds a week (or on its own view): every other period keeps the three it had.
+  const pills: readonly ProductFilter[] = product === "MASWALI" || (loaded.ok && loaded.view.millionea) ? [...PRODUCTS, "MASWALI"] : PRODUCTS;
   const rates = await readTaxRates().catch(() => null);
   const recent = await recentLocks(8).catch(() => null);
 
@@ -157,7 +159,7 @@ async function AdminTaxContent({ searchParams }: { searchParams: Promise<TaxSear
             ))}
           </div>
           <div data-filter-rail className="flex flex-wrap items-center gap-2" role="group" aria-label="Product">
-            {PRODUCTS.map((p) => (
+            {pills.map((p) => (
               <FilterPill key={p} href={taxPageHref(period, p)} label={p === "ALL" ? "All" : PRODUCT_LABEL[p]} on={product === p} rank="dense" semantics="tab" testId={`tax-product:${p}`} />
             ))}
           </div>
@@ -236,7 +238,12 @@ async function AdminTaxContent({ searchParams }: { searchParams: Promise<TaxSear
   const xBase = buildBaseHref("/admin/tax", listParams, "xpage");
   const dBase = buildBaseHref("/admin/tax", listParams, "dpage");
   const segments = f.tax.segments;
-  const commissionCaption = segments.length === 0 ? "nothing yet" : segments.length === 1 ? `${percentLabel(segments[0].rates.commissionBp)} × Payout` : `${segments.length} rates`;
+  // ⭐ S6 · OD-08 — a view that holds Millionea carries its three reconciling lines and its booked fee (one predicate,
+  // the documents' own); every other view reads exactly as before.
+  const jackpotView = holdsJackpotLines(f.report1);
+  const commissionCaption = product === "MASWALI" ? "booked at payout"
+    : f.tax.jackpot ? "incl. Millionea fee"
+    : segments.length === 0 ? "nothing yet" : segments.length === 1 ? `${percentLabel(segments[0].rates.commissionBp)} × Payout` : `${segments.length} rates`;
   const nowVersion = rates && rates.ok ? versionAt(nowMs, rates.versions) : null;
 
   // ── The status line: what this page is, before any figure. ──────────────────────────────────
@@ -276,7 +283,13 @@ async function AdminTaxContent({ searchParams }: { searchParams: Promise<TaxSear
   } else if (!lockable) {
     status = <Callout tone="success" title="Balanced — the check closes to the shilling.">This period closed moments ago; it can be locked from {eatDateTimeLabel(period.endMs + LOCK_GRACE_MS)} EAT.</Callout>;
   } else {
-    status = <Callout tone="success" size="md" title="Balanced — the check closes to the shilling. Ready to lock and file.">Sales equals Payout + On hold + Refunds once the platform fee kept and the stakes brought forward are counted.</Callout>;
+    status = (
+      <Callout tone="success" size="md" title="Balanced — the check closes to the shilling. Ready to lock and file.">
+        {jackpotView
+          ? "Sales equals Payout + On hold + Refunds once the platform fee kept, the stakes brought forward and Millionea's jackpot and floor top-up — in and out — are counted."
+          : "Sales equals Payout + On hold + Refunds once the platform fee kept and the stakes brought forward are counted."}
+      </Callout>
+    );
   }
 
   const r1 = report1Rows(f);
@@ -306,7 +319,11 @@ async function AdminTaxContent({ searchParams }: { searchParams: Promise<TaxSear
         {/* `lg:items-start`: a card keeps its own height — stretched to its tall neighbour it was a mostly empty panel. */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
           <AdminCard title="Report 1 — Total Reporting System">
-            <p className="mb-3 text-body-sm text-text-subtle">Every stake placed in the period, and where it stood at the cut-off. The first four lines are the plan&apos;s; the two reconciling items make its rule hold on live books.</p>
+            <p className="mb-3 text-body-sm text-text-subtle">
+              {jackpotView
+                ? "Every stake placed in the period, and where it stood at the cut-off. The first four lines are the plan's; the reconciling items — the two every period needs, and Millionea's three — make its rule hold on live books."
+                : "Every stake placed in the period, and where it stood at the cut-off. The first four lines are the plan's; the two reconciling items make its rule hold on live books."}
+            </p>
             <ScrollX label="Report 1" className="-mx-4 px-4">
               <table className="admin-tbl" data-testid="tax-report-1">
                 <thead><tr><th className="text-left">Line</th><th className="text-right">Amount<br />(TZS)</th></tr></thead>
@@ -336,7 +353,11 @@ async function AdminTaxContent({ searchParams }: { searchParams: Promise<TaxSear
           </AdminCard>
 
           <AdminCard title="Report 2 — Taxation">
-            <p className="mb-3 text-body-sm text-text-subtle">The approved model: each line rounded to the nearest shilling at each step — Commission on Payout, then TRA and GBT on the rounded Commission. It opens with the sales filed and their tickets, and closes with the commission left after tax.</p>
+            <p className="mb-3 text-body-sm text-text-subtle">
+              {product === "MASWALI" || f.tax.jackpot
+                ? "The approved model: each line rounded to the nearest shilling at each step — Commission, then TRA and GBT on the rounded Commission. Millionea's commission is the fee its weeks' settlements booked, a share of each paying week's jackpot, never a rate on its winners' Payout. It opens with the sales filed and their tickets, and closes with the commission left after tax."
+                : "The approved model: each line rounded to the nearest shilling at each step — Commission on Payout, then TRA and GBT on the rounded Commission. It opens with the sales filed and their tickets, and closes with the commission left after tax."}
+            </p>
             <ScrollX label="Report 2" className="-mx-4 px-4">
               <table className="admin-tbl" data-testid="tax-report-2">
                 <thead><tr><th className="text-left">Line</th><th className="text-right">Amount<br />(TZS)</th></tr></thead>
@@ -514,6 +535,15 @@ async function AdminTaxContent({ searchParams }: { searchParams: Promise<TaxSear
             <div><dt className="font-semibold text-text">Tax</dt><dd className="text-text-subtle">Commission = rate × Payout; TRA and GBT = their rates × the rounded Commission; Total = TRA + GBT. Every line rounded to the nearest shilling at each step. All times East Africa Time.</dd></div>
             <div><dt className="font-semibold text-text">Sales less refunds</dt><dd className="text-text-subtle">Sales − Refunds, as Finance files it: the stakes placed in the period less every stake returned in it — including refunds, in this period, of tickets placed before it, so a short period can show a negative figure. Its tickets are the tickets placed in the period less the tickets refunded in it; one ticket is one bet.</dd></div>
             <div><dt className="font-semibold text-text">Net commission revenue</dt><dd className="text-text-subtle">Commission − Total tax: the commission left once TRA and GBT are paid.</dd></div>
+            {/* ⭐ S6 · OD-08 — Millionea's lines, defined where they are printed and nowhere else. */}
+            {jackpotView && (
+              <>
+                <div><dt className="font-semibold text-text">Jackpot brought forward</dt><dd className="text-text-subtle">Millionea: the carried jackpot a week draws into its pool when a ticket wins — players&apos; money from earlier weeks, not this period&apos;s Sales.</dd></div>
+                <div><dt className="font-semibold text-text">House floor top-up</dt><dd className="text-text-subtle">Millionea: what the house&apos;s guarantee pays into a winning week&apos;s pool to bring its jackpot up to the floor — the house&apos;s own money, not Sales.</dd></div>
+                <div><dt className="font-semibold text-text">Carried to the jackpot</dt><dd className="text-text-subtle">Millionea: what leaves a week&apos;s pool for a later week&apos;s players — the whole sales of a week with no winner, or a paying week&apos;s rounding. Not Payout: nobody has been paid it yet.</dd></div>
+                <div><dt className="font-semibold text-text">Millionea&apos;s commission</dt><dd className="text-text-subtle">The fee each paying week&apos;s settlement booked — a share of its jackpot, taken at payout — never a rate on its winners&apos; Payout. TRA and GBT are taken on the Commission as always. Read from each week&apos;s own settlement record.</dd></div>
+              </>
+            )}
             <div className="md:col-span-2"><dt className="font-semibold text-text">Deposits and withdrawals</dt><dd className="text-text-subtle">Not part of this report. They are players&apos; own money moving into and out of their wallets — never Sales, Payout, Refunds or any tax line.</dd></div>
           </dl>
           <p className="mt-3 text-body-sm text-text-tertiary">Generated {eatDateTimeLabel(data.generatedAtMs)} EAT · {windowStatement(data)}</p>
@@ -528,6 +558,7 @@ function ByProductCard({ all, parts, unattributed }: { all: ProductFigures; part
   // parts and scrolled the total out of view (measured 2026-10-03).
   const cols = [all, ...parts];
   const colLabel = (x: ProductFigures) => (x.product === "ALL" ? "All" : PRODUCT_LABEL[x.product]);
+  const jackpot = cols.some((x) => holdsJackpotLines(x.report1));
   const lines: Array<{ label: string; get: (x: ProductFigures) => number; cents: boolean; strong: boolean }> = [
     { label: "Sales", get: (x) => x.report1.salesCents, cents: true, strong: false },
     { label: "Payout", get: (x) => x.report1.payoutCents, cents: true, strong: false },
@@ -536,6 +567,13 @@ function ByProductCard({ all, parts, unattributed }: { all: ProductFigures; part
     { label: "Fee kept", get: (x) => x.report1.feeKeptCents, cents: true, strong: false },
     // Subtracted, as Report 1 prints it: one screen showed −100,000 there and 100,000 here (2026-10-03). `|| 0`: never "−0".
     { label: "Less: brought fwd", get: (x) => -x.report1.broughtForwardCents || 0, cents: true, strong: false },
+    // ⭐ S6 · OD-08 — Millionea's three lines, where a column carries them (Polls and Up & Down read 0). An absent line is
+    // the 0 every other product has by construction — never a figure stood in for a failed read (that is a load error).
+    ...(jackpot ? [
+      { label: "Less: jackpot fwd", get: (x: ProductFigures) => -(x.report1.jackpotBroughtForwardCents || 0) || 0, cents: true, strong: false },
+      { label: "Less: floor top-up", get: (x: ProductFigures) => -(x.report1.floorTopUpCents || 0) || 0, cents: true, strong: false },
+      { label: "To the jackpot", get: (x: ProductFigures) => x.report1.carriedToJackpotCents || 0, cents: true, strong: false },
+    ] : []),
     { label: "Difference", get: (x) => x.reconciliation.differenceCents, cents: true, strong: true },
     { label: "Total tax", get: (x) => x.tax.total, cents: false, strong: true },
   ];
@@ -544,9 +582,9 @@ function ByProductCard({ all, parts, unattributed }: { all: ProductFigures; part
   return (
     <AdminCard title="By product" sw="Kwa bidhaa">
       <p className="mb-3 text-body-sm text-text-subtle">
-        Polls and Up &amp; Down side by side. Every money line adds up to All. Each product&apos;s tax is computed on its own
-        Payout and rounded at each step, so the products&apos; tax can differ from the All column by a shilling — file the
-        column that matches how you file.
+        {jackpot
+          ? "Polls, Up & Down and Millionea side by side. Every money line adds up to All. Each product's tax is computed on its own Payout (Millionea's on the fee its weeks booked) and rounded at each step, so the products' tax can differ from the All column by a shilling — file the column that matches how you file."
+          : "Polls and Up & Down side by side. Every money line adds up to All. Each product's tax is computed on its own Payout and rounded at each step, so the products' tax can differ from the All column by a shilling — file the column that matches how you file."}
         {unattributed > 0 ? ` ${adminCount(unattributed, "money record")} ${unattributed === 1 ? "names no bet or round, so it appears" : "name no bet or round, so they appear"} only under All.` : ""}
       </p>
       {/* ⭐ A PHONE READS EACH LINE AS ITS THREE LABELLED FIGURES: four columns do not fit 360px, and an "Up & Down"
@@ -555,7 +593,8 @@ function ByProductCard({ all, parts, unattributed }: { all: ProductFigures; part
         {lines.map((ln) => (
           <div key={ln.label} className="rounded-md border border-border-subtle px-3 py-2">
             <dt className={ln.strong ? "text-body-sm font-semibold text-text" : "text-body-sm text-text"}>{ln.label}</dt>
-            <dd className="mt-1 grid grid-cols-3 gap-2">
+            {/* Four products do not fit three across a 318px card: two by two (S6), three across as before. */}
+            <dd className={cols.length > 3 ? "mt-1 grid grid-cols-2 gap-2" : "mt-1 grid grid-cols-3 gap-2"}>
               {cols.map((x) => (
                 <span key={x.product} className="min-w-0">
                   <span className="block font-mono text-micro uppercase eyebrow text-text-tertiary">{colLabel(x)}</span>

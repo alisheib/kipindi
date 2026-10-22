@@ -209,7 +209,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
                   {v.held.map((h) => (
                     <tr key={h.ticketId}>
                       <td className="text-left tabular">{h.weekCode}</td><td className="text-left tabular">{h.serial}</td><td className="text-left">{h.holder}</td>
-                      <td className="text-right tabular">{formatTzs(h.payout)}</td><td className="text-left max-w-[280px]">{consoleShareNoteOf(h.reason)}</td>
+                      <td className="text-right tabular">{h.payout === null ? "Not on record" : formatTzs(h.payout)}</td><td className="text-left max-w-[280px]">{consoleShareNoteOf(h.reason)}</td>
                       <td className="text-left">{h.forfeited ? <Chip variant="danger" size="sm">Forfeited</Chip>
                         : <HeldShareControls ticketId={h.ticketId} serial={h.serial} canRelease={canRelease} canForfeit={canForfeit}
                             releaseNeed={CONTROL_DOMAIN.releaseMaswaliShare} forfeitNeed={CONTROL_DOMAIN.forfeitMaswaliShare} />}</td>
@@ -258,7 +258,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
                     <tr key={w.serial}>
                       <td className="text-left tabular">{w.weekCode}</td><td className="text-left tabular">{w.serial}</td><td className="text-left">{w.holder}</td>
                       <td className="text-left">{w.role} · {w.status}</td><td className="text-right tabular">{w.accountAgeDays} d</td>
-                      <td className="text-right tabular">{formatTzs(w.payout)}</td>
+                      <td className="text-right tabular">{w.payout === null ? "Not on record" : formatTzs(w.payout)}</td>
                       <td className="text-left">{w.frozenReason ? <span className="text-body-sm">{consoleShareNoteOf(w.frozenReason)}</span>
                         : canHold ? <HoldShareControl ticketId={w.ticketId} serial={w.serial} />
                         : <ControlLocked what="Hold the share" need={CONTROL_DOMAIN.holdMaswaliShare} />}</td>

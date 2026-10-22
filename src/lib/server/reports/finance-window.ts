@@ -21,8 +21,8 @@
  * ⚠️ Per owner rulings D20/D21b, house-bot volume is INSIDE these figures, and the notes say so.
  */
 import type { Report, Row, SummaryItem } from "./types";
-import { moneyForWindow, dailyPnl, eatDateLabel } from "../report-money";
-import { providerSummary, settlementFeesByPoll } from "../analytics";
+import { moneyForWindow, dailyPnl, eatDateLabel, moneyByGame, holdsMillionea, jackpotProblemsText } from "../report-money";
+import { providerSummary, settlementFeesByPoll, unreadFeesText } from "../analytics";
 import { houseAccountMovement, houseAccountBalances } from "../ledger";
 import { formatEatLocal } from "../date-range";
 import { getGlobalConfig } from "../market-config";
@@ -58,6 +58,16 @@ export async function buildFinanceWindow(
      total the module already produced is how two figures on one page start disagreeing. */
   const pnl = await dailyPnl(bounds).catch(() => null);
   const cfg = await getGlobalConfig().catch(() => null);
+  /* ⭐ MASWALI-BUILD S6 · MB-66 (OD-08) — MILLIONEA'S JACKPOT MODEL, beside GGR, never instead of it: the same lines the
+     monthly pack carries, over this window. Only a window that holds Millionea money gains a row, a section or a note.
+     ⛔ A failed read is said in a note, never printed as a window without Millionea. */
+  const byGame = await moneyByGame(bounds.start, bounds.end).catch(() => null);
+  // ⛔ NEVER WHILE THE WEEKS ARE UNREAD: the three lines below would print 0 for a movement nobody read. The note says so.
+  const mln = byGame && !byGame.jackpotUnread && holdsMillionea(byGame) ? byGame : null;
+  // The weeks the split was made from — its own rows, never a second read a settlement could land between.
+  const mlnWeeks = mln?.jackpotWeeks ?? null;
+  // What the weeks carried to the jackpot less what they drew from it — GGR's Millionea adjustment (a forfeit is not in it).
+  const mlnCarry = mln?.jackpot ? mln.jackpot.carried - mln.jackpot.claimed : 0;
 
   /**
    * ⛔ THE LEVIES ARE READ, NOT COMPUTED — and `HOUSE:COMMISSION` is NOT the base. That account
@@ -87,8 +97,9 @@ export async function buildFinanceWindow(
       description:
         "Every figure from report-money.summarise over this window — the same primitive the " +
         "console tiles read, so the two cannot disagree — except the two ledger lines at the foot " +
-        "(commission and levies booked), which name their source in the Basis column. " +
-        "CONFIRMED transactions only.",
+        "(commission and levies booked), which name their source in the Basis column" +
+        (mln ? ", and the three Millionea lines under GGR, read from the Millionea weeks settled in this window" : "") +
+        ". CONFIRMED transactions only.",
       columns: [
         { header: "Metric", key: "metric", width: 30 },
         { header: "Value", sub: "TZS", key: "value", format: "tzs", align: "right", width: 18 },
@@ -99,6 +110,12 @@ export async function buildFinanceWindow(
         { metric: "Payouts", value: m.payouts, basis: "BET_PAYOUT + CASHOUT, confirmed" },
         { metric: "Refunded stakes", value: m.refunds, basis: "BET_REFUND, confirmed" },
         { metric: "GGR", value: m.ggr, basis: "stakes − payouts − refunded stakes" },
+        // ⭐ S6 · MB-66 — beside GGR, never instead of it. 0 is a read zero here: the split was read and moved no jackpot.
+        ...(mln ? [
+          { metric: "Millionea jackpot liability movement", value: mln.jackpot?.movement ?? 0, basis: "owed to future winners: carried − claimed + forfeited" },
+          { metric: "Millionea house guarantee contribution", value: mln.jackpot?.guarantee ?? 0, basis: "the house's floor top-ups of paying weeks" },
+          { metric: "GGR excluding the Millionea jackpot movement", value: m.ggr - mlnCarry, basis: "GGR − (carried to the jackpot − claimed from it)" },
+        ] : []),
         { metric: "Bonus cost", value: m.bonusCost, basis: "BONUS_CREDIT, confirmed" },
         { metric: "Agent commission", value: m.agentCommissionCost, basis: "paid, net of clawbacks" },
         { metric: "Payment fees", value: m.fees, basis: "fee on DEPOSIT + WITHDRAWAL" },
@@ -155,7 +172,14 @@ export async function buildFinanceWindow(
       titleSw: "Ada za malipo kwa kila soko",
       description:
         "Commission per poll settled in this window, recomputed from each poll's own frozen " +
-        "snapshot. VOID and one-sided polls refund in full at zero fee and are not listed.",
+        "snapshot. VOID and one-sided polls refund in full at zero fee and are not listed." +
+        (fees.byModel["jackpot-payout"].count > 0
+          ? " A Millionea week that paid is listed with its jackpot as its pool and the fee its own frozen rate takes of it."
+          : "") +
+        // ⛔ S6 · a resulted week whose record could not price its fee is named, and the total says it is incomplete.
+        (fees.unread
+          ? ` The fee of ${fees.unread.length === 1 ? "one Millionea week" : `${fees.unread.length} Millionea weeks`} is not in the total — not zero: ${unreadFeesText(fees.unread)}.`
+          : ""),
       columns: [
         /* ⛔ THE TOTALS LABEL SITS IN A TEXT COLUMN, DELIBERATELY. Put it in a `date` column and
            both renderers used to erase it — the defect fixed in this same commit for
@@ -174,19 +198,72 @@ export async function buildFinanceWindow(
         title: r.title,
         settled: eatDateLabel(new Date(r.settledAt).getTime()),
         model: r.feeModel,
-        outcome: r.outcome,
+        // A Millionea week that paid carries no verdict: it says what it was (S6).
+        outcome: r.outcome === "JACKPOT" ? "Jackpot paid" : r.outcome,
         pool: r.pool,
         fee: r.fee,
         net: r.operatorNet,
       })),
       totals: {
-        title: "Total",
+        title: fees.unread ? "Total (incomplete)" : "Total",
         settled: "",
         model: "",
         outcome: "",
         pool: fees.rows.reduce((t, r) => t + r.pool, 0),
         fee: fees.totalFee,
         net: fees.rows.reduce((t, r) => t + r.operatorNet, 0),
+      },
+    });
+  }
+
+  /* ⭐ MASWALI-BUILD S6 · MB-66 — each Millionea week settled in this window, as its settlement left it. Its fee is the
+     week's own model (a share of its jackpot, at its frozen rate), so the weeks are listed here and never in the polls'
+     table above. */
+  if (mlnWeeks && mlnWeeks.length > 0) {
+    sections.push({
+      title: "Millionea weeks settled in this window",
+      titleSw: "Wiki za Millionea zilizokamilika katika kipindi hiki",
+      description:
+        "Each week's own settlement record. Its carry in and its top-up enter its pool besides its sales; the fee " +
+        "is booked only when a ticket wins; a week with no winner carries its whole sales to the jackpot, and a paying " +
+        "week carries its rounding.",
+      columns: [
+        // The totals label in a TEXT column (see the polls' table above).
+        // ⭐ S6 round 7 · the Pools trail's own header words, the words a gap is said in (`SETTLEMENT_FIELD_WORDS`).
+        { header: "Week", key: "week", width: 12 },
+        { header: "Settled", key: "settled", width: 11 },
+        { header: "Winners", key: "winners", format: "integer", align: "right", width: 9 },
+        { header: "Sales", sub: "TZS", key: "sales", format: "tzs", align: "right", width: 10 },
+        { header: "Carry in", sub: "TZS", key: "claimed", format: "tzs", align: "right", width: 10 },
+        { header: "Top-up", sub: "TZS", key: "topUp", format: "tzs", align: "right", width: 10 },
+        { header: "Jackpot", sub: "TZS", key: "jackpot", format: "tzs", align: "right", width: 10 },
+        { header: "Fee", sub: "TZS", key: "fee", format: "tzs", align: "right", width: 9 },
+        { header: "Paid", sub: "TZS", key: "paid", format: "tzs", align: "right", width: 10 },
+        { header: "Carried on", sub: "TZS", key: "carried", format: "tzs", align: "right", width: 10 },
+      ],
+      rows: mlnWeeks.map((w) => ({
+        week: w.code,
+        settled: eatDateLabel(Date.parse(w.settledAt)),
+        winners: w.winningTickets,
+        sales: w.sales,
+        claimed: w.claimed,
+        topUp: w.topUp,
+        jackpot: w.jackpot,
+        fee: w.fee,
+        paid: w.paid,
+        carried: w.carried,
+      })),
+      totals: {
+        week: "Total",
+        settled: "",
+        winners: mlnWeeks.reduce((t, w) => t + w.winningTickets, 0),
+        sales: mlnWeeks.reduce((t, w) => t + w.sales, 0),
+        claimed: mlnWeeks.reduce((t, w) => t + w.claimed, 0),
+        topUp: mlnWeeks.reduce((t, w) => t + w.topUp, 0),
+        jackpot: mlnWeeks.reduce((t, w) => t + (w.jackpot ?? 0), 0),
+        fee: mlnWeeks.reduce((t, w) => t + w.fee, 0),
+        paid: mlnWeeks.reduce((t, w) => t + w.paid, 0),
+        carried: mlnWeeks.reduce((t, w) => t + w.carried, 0),
       },
     });
   }
@@ -263,6 +340,22 @@ export async function buildFinanceWindow(
       "D20/D21b — house stakes count as player activity with no separate memo.",
     "House-account BALANCES are cumulative to date and are NOT bounded by this window; the " +
       "movement column beside them is.",
+    // ⭐ S6 · MB-66 (OD-08) — said only where it applies: a window holding Millionea money, or a split that could not be read.
+    ...(mln
+      ? ["Maswali Millionea: its stakes, payouts and refunded stakes are inside GGR like any game's. A week's GGR is not " +
+          "what it earned: a week with no winner carries its whole sales to the jackpot, owed to the next winning week's " +
+          "players, and a paying week pays out the carry it claimed and the house's floor top-up besides its own sales. " +
+          "So the jackpot liability movement, the house guarantee contribution and GGR excluding the jackpot movement " +
+          "are stated beside it. A forfeited share moves the jackpot without being gaming revenue, so it is not taken out of GGR."]
+      : []),
+    // A week this window holds whose record is incomplete is named, its own problem (round 3); a failed read is said whole.
+    ...(byGame?.jackpotProblems
+      ? [`${jackpotProblemsText(byGame.jackpotProblems)}: no Millionea jackpot line is shown for this window — it is omitted, not zero.`]
+      : byGame === null || byGame.jackpotUnread
+        ? ["The per-game split or the Millionea weeks could not be read, so no Millionea jackpot line is shown: it is omitted, not zero."]
+        : []),
+    // ⛔ Round 3 · a fee view that could not be read is said, never left to read as "no fee".
+    ...(fees === null ? ["The settlement fees by poll could not be read, so their section is omitted: it is not zero."] : []),
   ];
   notes.push(
     leviesBooked !== null

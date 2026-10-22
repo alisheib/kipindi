@@ -758,6 +758,7 @@
     "test:maswali-register-cache": "tsx scripts/maswali-register-cache.test.mts",
     "red:maswali-register-cache": "tsx scripts/maswali-register-cache.test.mts --prove-red",
     "test:maswali-fairness": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-fairness.test.mts",
+    "test:maswali-reporting": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-reporting.test.mts",
     "qa:maswali-admin-shots": "node scripts/maswali-admin-shots.mjs",
     "qa:maswali-seal-scroll": "node scripts/maswali-seal-scroll.mjs",
     "red:maswali-seal-scroll": "node scripts/maswali-seal-scroll.mjs --prove-red",

@@ -1439,10 +1439,17 @@ The tax report files Commission = round(13% × Payout), then TRA and GBT on the 
 | 1 | 300 (300,000) | 0 | 0 | — | 0 | 0 | 0 | 0 | — | 0 | 0 | 300,000 | 300,000 | 0 |
 | 2 | 400 (400,000) | 300,000 | 1 | 1,000,000 | 130,000 | 13,000 | 6,500 | 110,500 | 870,000 | 300,000 | 870,000 | 0 | 0 | −300,000 |
 | 3 | 500 (500,000) | 0 | 0 | — | 0 | 0 | 0 | 0 | — | 0 | 0 | 500,000 | 500,000 | 0 |
-| 4 | 600 (600,000) | 500,000 | 0 | — | 0 | 0 | 0 | 0 | — | 0 | 0 | 1,100,000 | 1,100,000 | 0 |
-| 5 | 700 (700,000) | 1,100,000 | 0 | — | 0 | 0 | 0 | 0 | — | 0 | 0 | 1,800,000 | 1,800,000 | 0 |
+| 4 | 600 (600,000) | 500,000 | 0 | — | 0 | 0 | 0 | 0 | — | 0 | 0 | 600,000 | 1,100,000 | 0 |
+| 5 | 700 (700,000) | 1,100,000 | 0 | — | 0 | 0 | 0 | 0 | — | 0 | 0 | 700,000 | 1,800,000 | 0 |
 | 6 | 800 (800,000) | 1,800,000 | 3 | 2,600,000 | 338,000 | 33,800 | 16,900 | 287,300 | 754,000 | 0 | 2,262,000 | 0 | 0 | 0 |
 | **Σ** | 3,300,000 | | | | 468,000 | 46,800 | 23,400 | 397,800 | | 300,000 | 3,132,000 | | | −300,000 |
+
+> **Corrected 2026-10-18 (MASWALI-BUILD S6, round-2 review): the carryOut of weeks 4 and 5.** They read 1,100,000 and
+> 1,800,000, which is the jackpot AFTER the week, not what the week carried. A no-winner week stamps carryOut = S, the
+> `POOL → JACKPOT` S it moved (the movements table above, and `maswali-settlement.ts`). Its R never left the jackpot, so
+> the JACKPOT after column (R + S) is unchanged, and the carryOut formula above is the winner week's (k ≥ 1).
+> `test:maswali-reporting` R1.1 replays these six weeks and holds each carryOut to S; `test:maswali-money` §2 holds the
+> jackpot after each week.
 
 **Week 2's group, line by line.** POOL starts at +400,000 from the stakes.
 
