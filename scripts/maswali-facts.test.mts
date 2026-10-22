@@ -45,6 +45,7 @@ import { dict } from "../src/lib/i18n-dict.ts";
 import { fill, formatTzs } from "../src/lib/utils.ts";
 import { eatRange, eatWeekdayClock, eatClock } from "../src/components/maswali/maswali-format.ts";
 import { formatEatDate } from "../src/lib/eat-day.ts";
+import { outcomeWordIn } from "../src/lib/side-label.ts";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const req = createRequire(import.meta.url);
@@ -153,6 +154,11 @@ const samples = (l: L3): Record<string, string | number> => {
     range: eatRange(t, at("2026-11-30T15:01:00.000Z"), at("2026-12-04T15:00:00.000Z")),
     hours: l === "sw" ? "saa 48" : l === "zh" ? "48 小时" : "48 hours",
     source: "nbc.co.tz",
+    // S7-OB's objection door (merged into S7 at S7-MERGE 3; the census met it at S7-MERGE 4): a ruling's result is the
+    // product's own YES or NO word, as the door fills it (`outcomeWord`, MASWALI) — the wider of the two — and the
+    // officer's note is the officer's own words, as the objection seed writes one.
+    result: [outcomeWordIn(l, "YES", "MASWALI"), outcomeWordIn(l, "NO", "MASWALI")].sort((a, b) => widthOf(b) - widthOf(a))[0],
+    note: "The federation's official report confirms event 2 took place; the result stands.",
   };
 };
 /** A placeholder that means something else in one string: `levies` names the two levies' RATES ("TRA {tra}%"), where the

@@ -1607,7 +1607,7 @@ console.log(`\n${"═".repeat(70)}\n  MASWALI DESIGN: ${pass} passed, ${fail} fa
  *  (P5, P6, P7, P8, P9, P10, P13, P15, P17, P18) to 141. S7's final-week and receipt proofs (it printed 120 beside VIS-P's)
  *  joined at the S7 × S5 merge, which printed 150 (dfb438dd2); the one wording of the final week's rule (S7-F9, the
  *  lead's ruling of 2026-10-22: 2.F3b and its plant) brings it to 152. The release's S5-FACTS 3 mark plant (4.A1b″; the
- *  release's floor 142) joins at S7-MERGE 4: the floor stays at 152 until the merged tree prints its count. */
-const MIN_ASSERTIONS = 152;
+ *  release's floor 142) joined at S7-MERGE 4, whose merged tree printed 153 (a41a2ed9e, the runner). */
+const MIN_ASSERTIONS = 153;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);
