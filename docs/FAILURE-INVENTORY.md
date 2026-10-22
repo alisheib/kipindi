@@ -1290,3 +1290,20 @@ the settlement (RD.1). Before ACTIVE: the wallet lane's trigger, or the Owner's 
 
 The takeover alert MB-96 asks for is not built. What holds today: the preventive control (E-215, TK.1). Before
 ACTIVE: the alert, or a dated deferral recorded by the Owner.
+
+## §9b · MASWALI MILLIONEA — the S6 integration's fixes, each a FINAL rule (2026-10-22)
+
+Each entry is the rule as it stands, where it is enforced, and the case and the plant that hold it (MASWALI-BUILD S6-INT,
+branch `claude/maswali-s6-release`).
+
+#### ✅ L-8 (part) · the untagged rules shipped in the composer's browser bundle (S6-LINT 1, the lead's ruling 6)
+
+The claims lint was one client-reachable module, so the rules a campaign NOT tagged Millionea meets — the product's words,
+the figure reader and the refusal that names the product — shipped in the admin composer's static chunk and ran in its
+live counter (lane N's review, L-8). THE RULE: the untagged rules are the server's alone
+(`src/lib/server/marketing/millionea-untagged.ts`); every server door — the save, the test send, the engine's slice, the
+composer's previews — asks `untaggedRulesFor` and hands what it answers to the composer's one door, and the live counter
+runs the tagged rules only, so a body the untagged rules refuse is refused at the save, in their words. Held by
+`test:maswali-claims` §9.1 (neither the composer's import graph nor any other client module's reaches them), §9.2–9.3b
+(the counter judges an untagged campaign as before; each door hands them in) and the plants (C30)–(C34) of
+`red:maswali-claims`.

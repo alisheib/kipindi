@@ -123,6 +123,7 @@ import { firstNameFor, renderForRecipient, variantFor, withMillioneaFacts } from
 import type { CampaignTemplate, CampaignVariant, RecipientOrigin } from "@/lib/marketing/campaign-template";
 import { footerMeasurementToken } from "@/lib/marketing/footer";
 import { campaignProductOf, type MillioneaFacts } from "@/lib/marketing/millionea-claims";
+import { untaggedRulesFor } from "@/lib/server/marketing/millionea-untagged";
 import { CAMPAIGN_FLAGGED_ACTION, millioneaLintEpoch, sendingSincePreLint } from "@/lib/server/marketing/millionea-lint-epoch";
 import { ledgerStamp } from "@/lib/server/marketing/ledger-stamp";
 import { assertSettle, fillRecipientCounts } from "@/lib/server/marketing/campaign-model";
@@ -405,6 +406,8 @@ function templateOf(c: StoredSmsCampaign): CampaignTemplate {
     nameFallbackEn: c.nameFallbackEn ?? "",
     sourcePhrase: c.sourcePhrase ?? "",
     product: campaignProductOf(c.name),
+    // ⭐ S6-LINT 1 · a campaign not tagged Millionea meets the untagged rules on this server door (`millionea-untagged.ts`).
+    untaggedRules: untaggedRulesFor(c.name),
   };
 }
 

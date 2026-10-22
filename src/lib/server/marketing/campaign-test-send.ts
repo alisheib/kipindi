@@ -111,6 +111,7 @@ import { renderForRecipient, firstNameFor, withMillioneaFacts } from "@/lib/mark
 import type { CampaignTemplate, CampaignVariant, RecipientOrigin } from "@/lib/marketing/campaign-template";
 import { footerMeasurementToken } from "@/lib/marketing/footer";
 import { campaignProductOf, type MillioneaFacts } from "@/lib/marketing/millionea-claims";
+import { untaggedRulesFor } from "@/lib/server/marketing/millionea-untagged";
 import { parseTzNumber } from "@/lib/tz-msisdn";
 import { maskPhone } from "@/lib/phone-normalize";
 import type { Role } from "@/lib/server/roles";
@@ -477,6 +478,8 @@ function templateOf(c: StoredSmsCampaign): CampaignTemplate {
     nameFallbackEn: c.nameFallbackEn ?? "",
     sourcePhrase: c.sourcePhrase ?? "",
     product: campaignProductOf(c.name),
+    // ⭐ S6-LINT 1 · a campaign not tagged Millionea meets the untagged rules on this server door (`millionea-untagged.ts`).
+    untaggedRules: untaggedRulesFor(c.name),
   };
 }
 

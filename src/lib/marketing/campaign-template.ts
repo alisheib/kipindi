@@ -59,7 +59,11 @@
  * template is SENT only with the week's facts its server door attached (`withMillioneaFacts`): one rendered without them is
  * refused as unread, so no door can send one unchecked. The rules judge the template's bodies, both of them, with the
  * counter's reserved name — never a recipient's own name — and say their reason FIRST, so a test send's refusal and an
- * engine's pause carry the rule's own words. A campaign with no Millionea signal and no tag is judged exactly as before.
+ * engine's pause carry the rule's own words.
+ * ⭐ S6-LINT 1 · A CAMPAIGN NOT TAGGED MILLIONEA meets the untagged rules only where a server door hands them in — the save
+ * (`validateCampaignTemplate`'s `untagged`), and every send and preview (`CampaignTemplate.untaggedRules`, set by the door's
+ * `templateOf` through `untaggedRulesFor`): they are the server's alone (`lib/server/marketing/millionea-untagged.ts`), so
+ * the composer's live counter judges a campaign not tagged Millionea exactly as before.
  *
  * Guard: `npm run test:campaign-compose` §15–§16 · `npm run test:maswali-claims` §4. Red: `npm run red:campaign-compose`.
  */
@@ -71,7 +75,7 @@ import { encodingFor, foldToGsm7, offendingChars, unitsIn, GSM7_BASIC, type SmsE
 import { charCount, cleanDisplayName, phoneNumberIn } from "@/lib/contacts/contact-fields";
 import {
   campaignProductOf, millioneaCampaignProblems, millioneaFactsFrom, MILLIONEA_EXEMPT, UNTAGGED_CAMPAIGN,
-  type CampaignProduct, type MillioneaComposeContext, type MillioneaComposeFacts, type MillioneaFacts,
+  type CampaignProduct, type MillioneaComposeContext, type MillioneaComposeFacts, type MillioneaFacts, type UntaggedCampaignRules,
 } from "@/lib/marketing/millionea-claims";
 
 /* ══ THE SHAPES ══════════════════════════════════════════════════════════════ */
@@ -127,6 +131,9 @@ export type CampaignTemplate = Omit<CampaignDraftFields, "name"> & {
    *  it. Absent: they refuse, as for every other template. ⛔ Only the engine's slice sets it, and a template whose campaign
    *  is named as Millionea's is judged in full whatever it carries (round 5, HIGH 3). */
   millioneaLint?: "flag";
+  /** ⭐ S6-LINT 1 · for a campaign not tagged Millionea, the untagged rules its server door attached (`untaggedRulesFor`, in
+   *  the door's `templateOf`). Absent: no Millionea rule reads it. */
+  untaggedRules?: UntaggedCampaignRules;
 };
 
 /** A recipient's message as the ONE renderer makes it: the composer's verdict, and — for a template marked `"flag"` only —
@@ -513,8 +520,14 @@ function templateFieldVerdict(t: CampaignTemplate, millionea: MillioneaComposeCo
  * ⛔ Swahili is required; English is optional, and validated in full when present.
  * `sourcePhrase` is still taken (one signature for every caller); since the owner's ruling of 2026-10-09 it is neither
  * printed, priced nor required.
+ * ⭐ S6-LINT 1 · `untagged`: the untagged rules the SAVE hands in for a campaign not tagged Millionea (`untaggedRulesFor`) —
+ * the server's alone, so the screen's live verdict, which hands in none, judges such a campaign exactly as before.
  */
-export function validateCampaignTemplate(f: CampaignDraftFields, sourcePhrase: string): TemplateVerdict {
+export function validateCampaignTemplate(
+  f: CampaignDraftFields,
+  sourcePhrase: string,
+  opts: { untagged?: UntaggedCampaignRules } = {},
+): TemplateVerdict {
   const problems: TemplateVerdict["problems"] = {};
   // ⭐ The contact book's ONE name cleaner, as the save stores it: invisible format characters (zero-width spaces,
   // direction overrides) and controls dropped, spaces collapsed, trimmed — so a name of zero-width characters is blank.
@@ -531,10 +544,12 @@ export function validateCampaignTemplate(f: CampaignDraftFields, sourcePhrase: s
   }
 
   // ⭐ HIGH 1 · the product the campaign's name declares — the screen and the save judge Millionea's rules by it (the save
-  // then holds a Millionea campaign to the week's facts it reads on the server, `campaign-draft.ts`).
+  // then holds a Millionea campaign to the week's facts it reads on the server, `campaign-draft.ts`, and any other to the
+  // untagged rules it hands in — S6-LINT 1).
+  const product = campaignProductOf(name);
   const template = templateFieldVerdict({
     bodySw: f.bodySw, bodyEn: f.bodyEn, nameFallbackSw: f.nameFallbackSw, nameFallbackEn: f.nameFallbackEn, sourcePhrase,
-  }, { product: campaignProductOf(name) });
+  }, product === null && opts.untagged ? { product, untagged: opts.untagged } : { product });
   Object.assign(problems, template.problems);
 
   return { ok: Object.keys(problems).length === 0, problems, counters: template.counters };
@@ -632,9 +647,10 @@ export function renderForRecipient(t: CampaignTemplate, r: CampaignRecipient): R
 
 /* ══ MILLIONEA'S CLAIMS RULES, AT THE SEND (MASWALI-BUILD S6, HIGH 1) ══════════════════════════════════════════ */
 
-/** ⛔ A Millionea template's facts as a send reads them: the ones its door attached — and none attached is unread (null). */
+/** ⛔ A template's Millionea context as a send reads it: a Millionea template's facts as its door attached them — none
+ *  attached is unread (null) — and any other's untagged rules where its server door attached them (S6-LINT 1). */
 function millioneaContextOf(t: CampaignTemplate): MillioneaComposeContext {
-  if (t.product !== "MILLIONEA") return { product: null };
+  if (t.product !== "MILLIONEA") return t.untaggedRules ? { product: null, untagged: t.untaggedRules } : { product: null };
   return { product: "MILLIONEA", facts: t.millioneaFacts === undefined ? null : t.millioneaFacts };
 }
 

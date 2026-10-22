@@ -1977,7 +1977,8 @@ async function checkSave(impl: ComposeImpl, log: (l: string) => void): Promise<s
       noDecider: !("composerSourcePhrase" in loaderModule) && !loader.includes("composerSourcePhrase"),
       noViewLine: !loader.includes("sourcePhrase: composer") && !client.includes("view.sourcePhrase"),
       screen: client.includes('validateCampaignTemplate(fields, "")'),
-      save: draft.includes('deps.validate(fields, "")'),
+      // MASWALI-BUILD S6-LINT 1 · the save's call hands "" as its line, and may hand the untagged rules as its option.
+      save: /deps[.]validate[(]fields, ""[,)]/.test(draft),
     };
     return [Object.values(handed).every(Boolean), JSON.stringify(handed)];
   });
