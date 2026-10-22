@@ -67,7 +67,11 @@ export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // (failMillioneaWeekFinal), F4's remainder notes and the final week's carry row, the card's finalAheadShort and the
   // purchase's finalRule, in en/sw/zh — less S7's two hub-only announcement words (finalAheadAt, finalAhead), which left
   // with the hub callout the release's L22 bar replaced. Every other line is the release's; the merge commit lists the diff.
-  "src/lib/i18n-dict.ts": "6c1d110fa15ccc0f642f49ede42c9808d64ad7a0",
+  // D19a RE-PINNED AT THE S6 INTEGRATION'S MERGE OF mln-s6-int (8620862fc, S6-INT 1; was 6c1d110fa, the S7 × S5 merge's): the
+  // legal lane's `millioneaFairness` namespace (/fairness, the proof route, /help) and How to play's sunset line as built
+  // (test:maswali-fairness H.12 pins its fragments), and the zh void grounds in the lane's meaning with S5's U+200B breaks
+  // — sw and zh for native review at Gate B; no versioned policy string moves. The merge commit lists every resolution.
+  "src/lib/i18n-dict.ts": "f88a4470d76fde02a66ab8c06cfe2e489a708cb6",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
 };
@@ -227,7 +231,9 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     // any changed blob must be reviewed and re-pinned in this file explicitly.
     const APPROVED_EXTRA = new Map([
       ["src/app/legal/_components.tsx", PHOS_R2A_PART2],
-      ["src/app/legal/rules/page.tsx", PHOS_R2A_PART2],
+      // S6-INT 2 · the chooser's third door (the legal lane's ThreeDoors, drawn on release 2a part 2's RuleCard) at the merge
+      // that joined them (8620862fc), whose blob is the page as it stands; the two doors' arm is release 2a part 2's, unchanged.
+      ["src/app/legal/rules/page.tsx", "8620862fc"],
       ["src/app/legal/privacy/page.tsx", "8d126b819"],
       ["src/app/legal/responsible-gambling/page.tsx", W4],
       // MASWALI-BUILD S6 lane L (2026-10-18) publishes the Maswali Millionea rules: the binding text in three languages
