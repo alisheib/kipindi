@@ -197,12 +197,16 @@ try {
   const serials = (await receipt.locator(".orm-detail").allInnerTexts()).map((row) => row.split("\n").pop()?.trim() ?? "").filter((v) => /^ML[ND]-/.test(v));
   ok("one Swahili receipt lists two distinct returned serials, each in its own row", serials.length === 2 && serials[0] !== serials[1], JSON.stringify(serials));
   ok("the receipt names its week in its eyebrow (M9) and when the payout comes", /MASWALI MILLIONEA · WIKI \d+/i.test(await receipt.innerText()) && (await receipt.innerText()).includes("Wiki itakapokamilika"));
-  ok("the receipt has one door to the player's ticket list", await receipt.getByRole("button", { name: "Tazama tiketi" }).count() === 1);
+  // Round 2 (the lead's ruling): the door is the kit's Link to the list (`primaryHref`), so it is found as a link — with the
+  // list's own address — and never as a button.
+  ok("the receipt has one door to the player's ticket list — a link to it",
+    await receipt.getByRole("link", { name: "Tazama tiketi" }).count() === 1 && await receipt.getByRole("button", { name: "Tazama tiketi" }).count() === 0
+      && await receipt.getByRole("link", { name: "Tazama tiketi" }).getAttribute("href") === "/millionea/tickets");
   ok("H2 · the cleared slip owes no refusal: no row is marked and no line says one is unanswered",
     await page.locator("li[data-flagged]").count() === 0 && await page.getByTestId("millionea-slip-refusal").count() === 0);
   await settle(page);
   await page.screenshot({ path: `${OUT}/receipt-sw-360.png`, fullPage: false });
-  await receipt.getByRole("button", { name: "Tazama tiketi" }).click();
+  await receipt.getByRole("link", { name: "Tazama tiketi" }).click();
   await page.waitForURL(`${BASE}/millionea/tickets`, { timeout: 120_000 });
   const list = page.getByTestId("millionea-tickets");
   await list.waitFor();

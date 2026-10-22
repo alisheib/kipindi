@@ -176,6 +176,22 @@ const parity = (A: unknown, B: unknown, cases: Array<[string, Record<string, unk
   const gates = /function stripStill\(\): boolean \{([\s\S]*?)\n\}/.exec(ormSrc)?.[1] ?? "";
   ok("1.8 · …and the still-flag reads the three gates of §M6 (the OS preference, the in-app switch, the `minimal` tier) — never the `reduced` throttle",
     gates.includes('"(prefers-reduced-motion: reduce)"') && gates.includes('classList.contains("kp-reduce-motion")') && gates.includes('getAttribute("data-motion") === "minimal"') && !gates.includes('"reduced"'));
+  // Round 2 (the lead's ruling): the primary as the kit's Link (`primaryHref`). Omitted, 1.6 holds every caller byte for byte;
+  // asked for, the primary — and only it — is drawn as a link to the address, with the button's own classes and label.
+  const STAMP = { open: true, onClose() {}, variant: "success", stamp: true, title: "MLN-2026-W49-000041", primaryLabel: "View ticket" };
+  const HREF = "/millionea/tickets/MLN-2026-W49-000041";
+  const asLink = draw(nowResult, "en", { ...STAMP, primaryHref: HREF }), asButton = draw(nowResult, "en", STAMP);
+  const primaryOf = (m: string) => /<div class="orm-actions[^"]*">(<(a|button)\b[^>]*>[^<]*<\/(?:a|button)>)/.exec(m);
+  const classOf = (tag: string) => /class="([^"]*)"/.exec(tag)?.[1] ?? "";
+  const pl = primaryOf(asLink), pb = primaryOf(asButton);
+  ok("1.11 · asked for, `primaryHref` draws the primary — and only it — as the kit's Link to that address, with the button's own classes and label; the rest of the result is byte for byte the same",
+    !!pl && !!pb && pl[2] === "a" && pb[2] === "button" && classOf(pl[1]) === classOf(pb[1]) && pl[1].includes(`href="${HREF}"`) && pl[1].endsWith(">View ticket</a>")
+      && asLink.replace(pl[1], "") === asButton.replace(pb[1], ""), j({ link: pl?.[1], button: pb?.[1] }));
+  // PLANT: the Link drawn for every caller (the option no longer asked for) breaks the parity of each.
+  const alwaysLink = compileAt(ORM, raw(ORM).replace("{primaryHref ? (", "{true ? (").replace("href={primaryHref as never}", 'href={(primaryHref ?? "/") as never}'),
+    { "@/components/ui/modal": nowModal }).OperationResultModal;
+  ok("1.11′ PLANT · a primary drawn as a link for every caller (asked for or not) breaks the parity",
+    raw(ORM).includes("{primaryHref ? (") && parity(baseResult, alwaysLink, RESULT_CASES.slice(0, 1), { variant: "success" }).length > 0);
 }
 // Round 2 (the lead's ruling (a)): the kit Tabs gains an option's own accessible name, `TabItem.ariaLabel`. Omitted, every
 // current caller's markup is the round-2 base's (7e9a314f0), byte for byte: line, segmented and pill, buttons and links,
@@ -513,8 +529,14 @@ section("§9 · the batch stamp's dwell lives with every other dwell");
   const timing = code("src/lib/feedback-timing.ts"), client = code("src/app/millionea/slip/slip-client.tsx");
   ok("9.1 · LOW · `DWELL_MILLIONEA_BATCH_STAMP_MS` is 60s in feedback-timing.ts (§F8: values live there and nowhere else), and the composer reads it — no literal at the call site",
     /export const DWELL_MILLIONEA_BATCH_STAMP_MS = 60_000;/.test(timing) && client.includes("autoCloseMs={many ? DWELL_MILLIONEA_BATCH_STAMP_MS : undefined}") && !/60_?000/.test(client));
-  ok("9.2 · motion M4 · \"View ticket\" starts the progress bar before it navigates (§F10's `50pick:navigating`)",
-    /onPrimary=\{\(\) => \{[\s\S]*?navigate\(\(\) => router\.push\(/.test(client) && client.includes('window.dispatchEvent(new Event("50pick:navigating"));'));
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-SLIP, the lead's ruling): "View ticket" is the kit's Link (`primaryHref`; the
+  // values in §1.11 and §12.4), and NavProgress starts on its press as on every internal link (its own capture-phase listener,
+  // §F10) — so the stamp no longer raises `50pick:navigating` itself. The slip's one programmatic move, the deposit door, does.
+  const nav = code("src/components/ui/nav-progress.tsx");
+  ok("9.2 · motion M4 · \"View ticket\" starts the progress bar on its press — it is the kit's Link, which NavProgress's own listener starts on (§F10) — and the deposit door, a programmatic move, still raises `50pick:navigating`",
+    client.includes("primaryHref={stamp ? (many ? MILLIONEA_HREF.tickets : millioneaTicketHref(stamp.serials[0])) : undefined}")
+      && nav.includes('document.addEventListener("click", onClick, { capture: true });') && nav.includes('closest("a[href]")')
+      && /onDeposit=\{\(amount\) => navigate\(\(\) => router\.push\(/.test(client) && client.includes('window.dispatchEvent(new Event("50pick:navigating"));'));
   ok("9.3 · motion M3 · the stamp keeps its words through its exit: its content is the last cut shown (`shownCut`), and closing clears only `cut`",
     client.includes("const stamp = shownCut;") && client.includes("onClose={() => setCut(null)}") && !/setShownCut\(null\)/.test(client));
   ok("9.4 · M10 · a block on the money path stays until read (`durationMs: 0` for `danger`)",
@@ -642,10 +664,12 @@ section("§12 · round 2 · the stamp notes each ticket's free cancel for its dr
   // the clauses land where it drew them. Drawn by the server with a landed cut in its state (one substitution, found once),
   // the hint stubbed to draw what it is handed.
   const CLIENT = "src/app/millionea/slip/slip-client.tsx";
-  const CUT_FROM = "const [cut, setCut] = useState<Cut | null>(null);";
+  // The landing sets both: `cut` (the stamp is up) and `shownCut` (the words it shows, kept through its exit — M3).
+  const CUT_FROM = "const [cut, setCut] = useState<Cut | null>(null);", SHOWN_FROM = "const [shownCut, setShownCut] = useState<Cut | null>(null);";
   const withCut = (src: string) => {
-    if (src.split(CUT_FROM).length - 1 !== 1) throw new Error("PREMISE ABSENT — the stamp's cut");
-    return src.replace(CUT_FROM, "const [cut, setCut] = useState<Cut | null>(() => (globalThis as { __cut?: Cut }).__cut ?? null);");
+    for (const a of [CUT_FROM, SHOWN_FROM]) if (src.split(a).length - 1 !== 1) throw new Error(`PREMISE ABSENT — the stamp's "${a.slice(0, 30)}…"`);
+    return src.replace(CUT_FROM, "const [cut, setCut] = useState<Cut | null>(() => (globalThis as { __cut?: Cut }).__cut ?? null);")
+      .replace(SHOWN_FROM, "const [shownCut, setShownCut] = useState<Cut | null>(() => (globalThis as { __cut?: Cut }).__cut ?? null);");
   };
   const STUBS = {
     "../actions": { buyMillioneaTicketsAction: async () => ({ ok: false, error: "stub" }) },
@@ -674,6 +698,33 @@ section("§12 · round 2 · the stamp notes each ticket's free cancel for its dr
   const noHint = raw(CLIENT).replace(HINT_LINE, "{null}");
   ok("12.1′ PLANT · the stamp's note taken out is caught (the ticket's drawing would hold no band, and the clauses land a band lower than drawn)",
     noHint !== raw(CLIENT) && hints(drawWith(stampOf(noHint), two)).length === 0);
+
+  // 12.4 · "View ticket" is the kit's Link (the lead's ruling): the stamp hands the kit the ticket's address — a batch, the
+  // list's — and its press only closes the stamp: the Link moves (production prefetches the ticket's loading drawing while the
+  // stamp is up), so the press pushes nothing itself. The result modal stubbed to keep what it is handed; the router's push
+  // counted. (A press after the server's render is a no-op state update; the old press raised a window event and pushed.)
+  const stampProps: Record<string, unknown>[] = [];
+  const RESULT_STUB = { ...STUBS, "@/components/markets/operation-result-modal": { OperationResultModal: (p: Record<string, unknown>) => { stampProps.push(p); return null; } } };
+  const linkOf = (src: string, cut: unknown) => {
+    stampProps.length = 0;
+    drawWith(compileAt(CLIENT, withCut(src), RESULT_STUB).SlipClient, cut);
+    const p = stampProps.at(-1) ?? {};
+    let pushes = 0, threw = "";
+    const push = ROUTER.push;
+    ROUTER.push = () => { pushes++; };
+    try { (p.onPrimary as (() => void) | undefined)?.(); } catch (e) { threw = String(e).slice(0, 80); } finally { ROUTER.push = push; }
+    return { href: p.primaryHref, pushes, threw };
+  };
+  const one = { ...two, serials: [two.serials[0]] };
+  const single = linkOf(raw(CLIENT), one), batch = linkOf(raw(CLIENT), two);
+  ok("12.4 · the stamp's \"View ticket\" is the kit's Link to the ticket (a batch's: to the list), and its press only closes the stamp — it pushes nothing itself",
+    single.href === `/millionea/tickets/${one.serials[0]}` && batch.href === "/millionea/tickets" && single.pushes === 0 && batch.pushes === 0 && !single.threw && !batch.threw,
+    j({ single, batch }));
+  const OLD_PRESS = 'onPrimary={() => {\n          const c = stamp;\n          setCut(null);\n          if (c) navigate(() => router.push(c.serials.length > 1 ? MILLIONEA_HREF.tickets as never : millioneaTicketHref(c.serials[0]) as never));\n        }}';
+  const oldPress = raw(CLIENT).replace(/\n {8}primaryHref=\{[^\n]*\n/, "\n").replace("onPrimary={() => setCut(null)}", OLD_PRESS);
+  const was = linkOf(oldPress, one);
+  ok("12.4′ PLANT · the stamp as it was (a button whose press raised the progress event and pushed) is caught — no address handed, a push or a throw on press",
+    oldPress !== raw(CLIENT) && was.href === undefined && (was.pushes > 0 || was.threw !== ""), j(was));
 
   // 12.2 · TICKETS' free cancel wears the slip's kit options (round 2, agreed with TICKETS): the confirm Millionea's panel class
   // (kp-mln-zh) and the hand-off's closing edge, the result the opening edge (`handoff={open}`) with its panel a beat late
@@ -745,6 +796,6 @@ section("§12 · round 2 · the stamp notes each ticket's free cancel for its dr
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI SLIP DESIGN: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run printed. */
-const MIN_ASSERTIONS = 88;
+const MIN_ASSERTIONS = 92;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

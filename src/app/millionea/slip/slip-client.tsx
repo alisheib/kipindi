@@ -190,7 +190,8 @@ function DepositOffer({ t, locale, plan, fallback, railNames, amount, onAmount, 
  *     the page reads again once the stamp has landed. Two panels are never up at once, and the slip is never seen bare.
  *     `haptics.confirm()` once. The stamp's serial is mono on one line (P2); its facts are the receipt's rows (§3.7, the
  *     Up & Down receipt's): the price, the free cancel in EAT, the payout "when the week settles"; it keeps its last words
- *     while it leaves (M3), and "View ticket" starts the progress bar before it navigates (M4).
+ *     while it leaves (M3), and "View ticket" is the kit's Link: its press starts the progress bar (M4) and production
+ *     prefetches the ticket's loading drawing while the stamp is up (round 2).
  *   · A refusal: the registry's sentence in the reader's language (never the server's English), the factual toast for a
  *     refusal the player can fix and the danger one — sticky — for a block (§F2, §F8, `refusalVariant`; M10). A short
  *     balance keeps the sheet open on its deposit door instead.
@@ -536,11 +537,11 @@ export function SlipClient({
         details={stampRows}
         autoCloseMs={many ? DWELL_MILLIONEA_BATCH_STAMP_MS : undefined}
         primaryLabel={many ? t.millionea.viewTickets : t.millionea.viewTicket}
-        onPrimary={() => {
-          const c = stamp;
-          setCut(null);
-          if (c) navigate(() => router.push(c.serials.length > 1 ? MILLIONEA_HREF.tickets as never : millioneaTicketHref(c.serials[0]) as never));
-        }}
+        // ⭐ "View ticket" IS THE KIT'S LINK (the lead's ruling, round 2): the press closes the stamp and the Link moves —
+        // NavProgress starts on it as on every internal link (§F10), and production prefetches the ticket's loading drawing
+        // while the stamp is up, so the move shows that drawing at once (it held the bare slip for a round trip).
+        primaryHref={stamp ? (many ? MILLIONEA_HREF.tickets : millioneaTicketHref(stamp.serials[0])) : undefined}
+        onPrimary={() => setCut(null)}
         onClose={() => setCut(null)}
       />
       {/* ⭐ WHAT THE STAMP KNOWS, FOR THE TICKET'S DRAWING (TICKETS' `maswali-ghost-hint.tsx`, round 2): "View ticket" opens a
