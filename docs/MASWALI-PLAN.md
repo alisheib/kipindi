@@ -2644,6 +2644,24 @@ stays open as KNOWN-RED TK.2, with MB-23 (OB.0) and MB-74 (RD.5): §6.1 Gate B l
   withdrawal without a password change, a password changed before the payout, and a request made before the change;
   plants (S7-F9-tk-alert), (S7-F9-tk-credit-order), (S7-F9-tk-attempt-order) and (S7-F9-tk-fail-closed) in
   `red:maswali-money-path`.
+- **S7 · a deposit contradicted after its winner was paid (S7-F9 9; MB-74, RD.5; the lead's ruling of 2026-10-22).**
+  When the provider contradicts a CREDITED deposit — a reversal, or the same deposit re-reported at another amount — the
+  webhook marks it for review (the platform's rule: nothing is clawed back) and at once holds every PAID winning
+  Millionea share of that account whose ticket was bought at or after the deposit was credited and that is not held
+  already (`holdSharesForReversedDeposit`): in the release's own words ("deposit under review"), with the wallet's
+  Millionea hold and a COMPLIANCE record naming the deposit; Compliance releases or forfeits it to the jackpot (OD-07).
+  A share whose ticket was bought before the deposit was credited is left free — that money cannot have bought it.
+  Nothing moves. Idempotent: the mark is placed once, and a share held once for a deposit is never held for it again,
+  whatever Compliance decided. Under the chain lock, as every hold of this reason (R6, R8); from inside a wallet lock the
+  hold runs once that lock has committed, outside every lock. The nightly heal (`healReversedDepositHolds`, before the
+  stray-hold heal) places a hold a stopped process left unplaced. The integrity page's held shares show the deposit's
+  provenance (MB-74). Guards: `test:maswali-adversarial` RD.5–RD.9 on both stores (RD.5c the amount contradiction, RD.5d
+  the provenance, RD.7 a share bought before the credit stays free, RD.8 the heal, RD.9 never a second hold); S16 §6b
+  across instances (a reversal heard by two instances at once holds each share once; a reversal racing the release holds
+  it once, by either); plants (S7-F9-rd5-trigger), (S7-F9-rd5-trigger-amount), (S7-F9-rd5-bought-after),
+  (S7-F9-rd5-once-per-deposit), (S7-F9-rd5-heal) and (S7-F9-rd5-provenance) in `red:maswali-money-path`. The rules'
+  reversal clause is the S6 legal lane's to carry (the Yes/No "payment reversals … forfeiture" clause; not on
+  `mln-s6-int` at 81c60f0f5).
 
 #### S8 · Live drive and public launch
 

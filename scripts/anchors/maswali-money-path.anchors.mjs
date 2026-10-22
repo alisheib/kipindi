@@ -716,4 +716,63 @@ export const MUTATIONS = [
     expect: "TK.6 · ⛔",
     suite: "adversarial:TK",
   },
+  // ── S7-F9 · RD.5 / MB-74 — a deposit contradicted after its winner was paid: the share held, never paid out free ───────
+  {
+    name: "(S7-F9-rd5-trigger) a reversal heard after the payout holds nothing: the share it may have bought stays free to withdraw (MB-74)",
+    file: "src/lib/server/wallet-service.ts",
+    from: "      // MB-74 · RD.5: a CREDITED deposit reversed may have bought a Millionea share already paid — held, never debited." + LF
+      + "      if (reviewAdded && txn.status === \"CONFIRMED\") await holdMillioneaSharesOfReviewedDeposit(txn.id);",
+    to: "      // MB-74 · RD.5: a CREDITED deposit reversed may have bought a Millionea share already paid — held, never debited.",
+    expect: "RD.5 · ⭐",
+    suite: "adversarial:RD",
+  },
+  {
+    name: "(S7-F9-rd5-trigger-amount) a credited deposit re-reported at another amount after the payout holds nothing (MB-74)",
+    file: "src/lib/server/wallet-service.ts",
+    from: "      // MB-74 · RD.5: a CREDITED deposit now under review may have bought a Millionea share already paid — held, never debited." + LF
+      + "      if (reviewAdded && txn.status === \"CONFIRMED\") await holdMillioneaSharesOfReviewedDeposit(txn.id);",
+    to: "      // MB-74 · RD.5: a CREDITED deposit now under review may have bought a Millionea share already paid — held, never debited.",
+    expect: "RD.5c · ⭐",
+    suite: "adversarial:RD",
+  },
+  {
+    name: "(S7-F9-rd5-bought-after) a share bought BEFORE the deposit was credited is held for that deposit too (money it cannot have bought)",
+    file: SETTLE,
+    from: "    && !(Date.parse(t.createdAt) < creditMs);",
+    to: "    && true;",
+    expect: "RD.7 · control",
+    suite: "adversarial:RD",
+  },
+  {
+    name: "(S7-F9-rd5-once-per-deposit) the heal holds again a share Compliance released for the same deposit",
+    file: SETTLE,
+    from: "      const todo = candidates.filter((t) => !done.has(t.id));",
+    to: "      const todo = candidates;",
+    expect: "RD.9 · ⭐",
+    suite: "adversarial:RD",
+  },
+  {
+    name: "(S7-F9-rd5-heal) the heal offers no marked deposit: a stop between the mark and its hold leaves the share free for good",
+    file: SETTLE,
+    from: "  for (const id of ids) {" + LF + "    try { held.push(...(await holdSharesForReversedDeposit(id)).held); }",
+    to: "  for (const id of [] as string[]) {" + LF + "    try { held.push(...(await holdSharesForReversedDeposit(id)).held); }",
+    expect: "RD.8 · ⭐",
+    suite: "adversarial:RD",
+  },
+  {
+    name: "(S7-F9-rd5-provenance) a share held for a deposit under review shows no deposit on the integrity page (MB-74's provenance)",
+    file: "src/lib/server/maswali-console.ts",
+    from: "  for (const h of selectedHeld.rows) if (!h.forfeited && h.reason === \"deposit under review\") h.provenance = await depositProvenance(h.userId);",
+    to: "",
+    expect: "RD.5d · ",
+    suite: "adversarial:RD",
+  },
+  {
+    name: "(S7-F9-rd5-read-in-lock) the shares are read BEFORE the chain lock: a release in flight then pays the share free (MB-74)",
+    file: SETTLE,
+    from: "    await withLock(MASWALI_CHAIN_LOCK, async (tx) => {" + LF + "      const candidates = (await ticketStore.listForUser(userId)).filter(mayHaveBought);",
+    to: "    const early = (await ticketStore.listForUser(userId)).filter(mayHaveBought);" + LF + "    await withLock(MASWALI_CHAIN_LOCK, async (tx) => {" + LF + "      const candidates = early;",
+    expect: "RD.10 · ⭐",
+    suite: "adversarial:RD",
+  },
 ];

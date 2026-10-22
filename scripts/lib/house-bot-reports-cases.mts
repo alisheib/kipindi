@@ -2399,6 +2399,12 @@ export const AUDIT_READERS_OUTSIDE_CONSOLE: Readonly<Record<string, string>> = {
      it since its last attestation and one yes/no — whether the text now stored has a recorded author. No row, payload or
      number leaves the module; the act answers only a refusal sentence. */
   "src/lib/server/maswali-service.ts": "MB-79's second reader: ONE draft week's own rows (target MaswaliCycle) folded into its editors since the last attestation and whether its stored text has a recorded author — no row is handed on",
+  /* Classified 2026-10-22 (MASWALI-BUILD S7-F9, MB-74 / RD.5), read from the source (`holdSharesForReversedDeposit`). ONE
+     read: the hold records (`maswali.share.held`, target MaswaliTicket) of the paid shares a contradicted deposit may have
+     bought, folded inside the module into the set of tickets already held once FOR THAT DEPOSIT, so neither the reversal's
+     trigger nor the nightly heal holds one again. No row, payload or number leaves the module; it returns ticket ids it
+     held. A desk account's tickets are its holder's; the rows are Millionea's own COMPLIANCE records, never a house action. */
+  "src/lib/server/maswali-settlement.ts": "RD.5's reversal hold: the hold records of ONE account's paid shares (target MaswaliTicket, one action), folded into the set of tickets already held for that deposit — no row is handed on",
   /* Classified 2026-10-22 (MASWALI-BUILD S7-F9, MB-96 / TK.2), read from the source (`takeoverWatch`). Two reads: the
      recent winners' own password writes (target User, by the three password actions) and, for only the winners whose
      password changed after their credit, their own withdrawal requests (by actor, by four withdraw actions). Each is
@@ -2453,6 +2459,7 @@ export const AUDIT_ROW_PAYLOAD: Readonly<Record<string, "handedOn" | "folded" | 
   "src/lib/server/maswali-console.ts": "folded",
   "src/lib/server/maswali-integrity.ts": "handedOn",
   "src/lib/server/maswali-service.ts": "folded",
+  "src/lib/server/maswali-settlement.ts": "folded",
   "src/lib/server/maswali-takeover.ts": "handedOn",
   "src/lib/server/notification-service.ts": "folded",
   "src/lib/server/refused-funds.ts": "handedOn",
