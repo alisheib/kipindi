@@ -29,6 +29,23 @@
 
 ## §0 · RESUME AT
 
+**⏳ S5 IS ON `main` DARK — `2ed817395`, pushed 2026-10-22 19:09 UTC (the Claude session ali-7e on ALI-BLADE15, on Ali's
+word "continue maswali … push all now"). ⭐ RESUME FIRST from the hand-over branch `maswali-handover-20261021`, file
+`handover/maswali-2026-10-21/stop6-20261022/README.md` (every lane's state, the runner tools, the findings).** Every gate ran
+at the exact commit on GitHub's machines (that laptop runs no Node): typecheck and the production build; CI's 702/702
+in-memory suites and its browser gates; e2e:money 64/0 (drift 0.00), e2e:fault 34/0, e2e:card 100 passed,
+e2e:maswali-money 3/0 (38/0 per store), e2e:maswali-fault 16/0 — `2ed817395` itself is the suite's own fix: its kill now
+reaches the release on Linux too, and 1.2 also holds that the killed release never finished (its plant caught); the
+cross-instance proofs s10, s11 and s12 on PostgreSQL; production's configuration — qa:live 390/0, the player drive's step
+W 15/0, revoked-deadend, motion, admin-section-gate, and the door census on WITHDRAWN with its plant and on STAFF_PREVIEW;
+classic parity against live main: 66/67, its one difference named — S5's Millionea results section adds an empty Suspense
+boundary to /results (two HTML comments, no element, no box) in its 8 book cells; null compares 68/68 (a flaky cell of the
+instrument seen in two other null compares is recorded in the hand-over). `test:needle-rest` is red on live main itself:
+55/35, the same cases at both commits (U43's, since 7e3a06ea0). ⛔ Railway's first build of `2ed817395` failed (19:11:55
+UTC; production kept serving `da3d32180`, healthy); this record's own push to `main` builds it again. Read back before
+anything else (AGENTS §4), then STAFF_PREVIEW (the Railway variable; Ali's pre-approval), then round 2, S7 and S6 as the
+hand-over's README orders them.
+
 **⏹ STOP 5 (2026-10-22 ~15:05 UTC, OMEGA; Ali: "I'll continue from another machine", the session's tokens ran out).
 RESUME HERE, from any machine — "continue maswali":** the S5 dark push was IN PROGRESS and is NOT done; production still
 serves `da3d32180` (nothing of S5–S8 is live). Its state, to finish first:
@@ -59,11 +76,12 @@ the money suites); the staff preview follows (pre-approved). Every Millionea scr
 get it. The admin guide's DRAFT is on his Desktop; the final follows S6. The admin console works whatever the rollout,
 so the Owner's ceremonies (licence basis, guarantee) and week drafts can start on production after this push.
 
-**State (2026-10-22):** S1–S4 are on `main` dark. This release — S5: every player surface, round 1 of Ali's 10/10 pass,
-and round 2 of DOORS, SLIP, TICKETS and FACTS — is the one going live dark now. Not in it, each pushed on its own branch:
-S5 round 2's HUB, REGISTER and PLATFORM (with the phone rail's Millionea track) and TICKETS' landing line and Live link;
-S7 (`claude/maswali-s7-s5`, the objection door on `claude/maswali-s7-ob`); S6 (`claude/maswali-s6-release` and its
-lanes `claude/maswali-s6-{notices,lint,money,docs,admin}`).
+**State (2026-10-23):** S1–S5 are on `main` dark — S5 at `2ed817395`: every player surface, round 1 of Ali's 10/10
+pass, and round 2 of DOORS, SLIP, TICKETS and FACTS. Not in it, each pushed on its own branch: S5 round 2's REGISTER,
+PLATFORM (with the phone rail's Millionea track) and TICKETS' landing line and Live link, merged on
+`claude/maswali-s5-r2-int`; HUB (`claude/maswali-s5-r2-hub`) and the phone-renderer fixes (`claude/maswali-s5-r3-fix`)
+to merge; S7 (`claude/maswali-s7-s5`, the objection door merged in, the release merged in); S6
+(`claude/maswali-s6-release`: S7, ADMIN and DOCS merged in; LINT, MONEY and NOTICES to finish).
 
 **Next:** "continue maswali" resumes here, in order: (1) S5 round 2 — merge HUB, REGISTER, PLATFORM and TICKETS' landing
 door into this branch, run the integrated render, have the independent critics score every cell to 10, push the next S5
