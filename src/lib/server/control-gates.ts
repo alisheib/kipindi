@@ -234,6 +234,10 @@ export const CONTROL_DOMAIN = {
   /** S6 · MB-93 · the desk records a call that reached a winner (on /integrity, typed). */
   markMillioneaWinnerReached: "compliance",
   clearUnresolvedLetter: "compliance",
+  /** S6-MONEY · OD-13 ("a Compliance officer pays to the registered number at the holder's request"): one payment of a
+   *  winning share whose holder's account cannot sign in, through the self-exclusion, never around another hold (on
+   *  /integrity, typed `PAY SHARE`; `maswali-share-payout.ts`). */
+  payLockedWinnerShare: "compliance",
   fundMaswaliGuarantee: "ops",
   returnMaswaliGuarantee: "ops",
   sunsetMaswali: "ops",

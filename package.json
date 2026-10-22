@@ -708,6 +708,7 @@
     "red:maswali-engine": "node scripts/red-maswali-engine.mjs",
     "test:maswali-purchase": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-purchase.test.mts",
     "test:maswali-settle": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-settle.test.mts",
+    "test:maswali-share-payout": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-share-payout.test.mts",
     "test:maswali-void": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-void.test.mts",
     "test:maswali-adversarial": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-adversarial.test.mts",
     "red:maswali-money-path": "node scripts/red-maswali-money-path.mjs",

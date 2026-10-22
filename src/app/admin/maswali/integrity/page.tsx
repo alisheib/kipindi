@@ -27,8 +27,10 @@ import { weekStore } from "@/lib/server/maswali-dal";
 import type { SmsStatus } from "@/lib/server/store";
 import { slotLabel } from "@/lib/maswali-score";
 import { adminCount, formatNumber, formatTzs } from "@/lib/utils";
+import { WITHDRAW_MAX_TZS } from "@/lib/server/validators";
 import { fmtEat } from "@/lib/maswali-admin-format";
-import { HeldShareControls, HoldShareControl, MarkReachedControl, PauseControl, VoidWeekControl, ClearLettersControl } from "./integrity-controls";
+import { lockedWinnerShares } from "@/lib/server/maswali-share-payout";
+import { HeldShareControls, HoldShareControl, MarkReachedControl, PauseControl, PayLockedShareControl, VoidWeekControl, ClearLettersControl } from "./integrity-controls";
 import { StandingAuditWarning } from "../audit-warning";
 
 export const metadata = { title: "Admin · Millionea · Integrity" };
@@ -64,6 +66,9 @@ const SMS_HELD: Record<string, string> = {
  *   ⛔ THE SALES PAUSE ALWAYS RENDERS. Each card reads on its own and says when its read failed; a failure of the integrity
  *     view takes its own cards, never the pause (the review's MEDIUM 7).
  *   · HELD SHARES, to release or forfeit to the jackpot; and every winner, to screen and hold;
+ *   · S6-MONEY · OD-13 · the SHARES OWED TO WINNERS WHO CANNOT SIGN IN (self-excluded, closed, suspended), each paid to
+ *     the registered number at the holder's request (`PayLockedShareControl`, typed) — or, when it cannot be paid now,
+ *     why (`lockedWinnerShares`), so no act is offered that the server would refuse;
  *   · the SEAL LOG, shown only for weeks whose results can no longer change (MB-34: the counterfactual is read after
  *     the fact, never while an officer could still be steered);
  *   · S6 · the approved MARKETING WORDINGS, with the public week's fee filled in (MB-47): what a campaign may say.
@@ -100,10 +105,16 @@ async function Content({ searchParams }: IntegrityPageProps) {
     Promise.all([
       canUseControl(role, "pauseMaswaliSales"), canUseControl(role, "resumeMaswaliSales"), canUseControl(role, "voidMaswaliWeek"),
       canUseControl(role, "holdMaswaliShare"), canUseControl(role, "releaseMaswaliShare"), canUseControl(role, "forfeitMaswaliShare"),
-      canUseControl(role, "markMillioneaWinnerReached"), canUseControl(role, "clearUnresolvedLetter"),
+      canUseControl(role, "markMillioneaWinnerReached"), canUseControl(role, "clearUnresolvedLetter"), canUseControl(role, "payLockedWinnerShare"),
     ]),
   ]);
-  const [canPause, canResume, canVoid, canHold, canRelease, canForfeit, canReach, canClearLetters] = can;
+  const [canPause, canResume, canVoid, canHold, canRelease, canForfeit, canReach, canClearLetters, canPayLocked] = can;
+  // S6-MONEY · OD-13 · its own read, its own card: a failure here takes only that card.
+  const locked = await lockedWinnerShares().catch((err: unknown) => {
+    console.error("[maswali-integrity] the shares owed to winners who cannot sign in could not be read:", (err as Error)?.message ?? err);
+    return null;
+  });
+  const lpage = parsePage(clusterQuery.lpage, locked?.length ?? 0, CONSOLE_PER_PAGE);
   // The cluster report for the latest weeks whose ticket set is fixed (closed, being sealed, or just settled).
   const closed = (await weekStore.list({ states: ["CLOSED", "RESOLVING", "SETTLED"], limit: 3 }).catch(() => []));
   const clusters = await Promise.all(closed.map((w) => clusterReport(w).catch(() => null)));
@@ -120,6 +131,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
     voidable: { ...query.voidable, page: v?.voidablePage.page ?? query.voidable.page },
     cluster: query.cluster,
     unreached: { page: v?.unreachedPage?.page ?? query.unreached.page },
+    locked: { page: lpage },
   };
   const listParams = integrityListParams(linkQuery);
 
@@ -346,6 +358,46 @@ async function Content({ searchParams }: IntegrityPageProps) {
             <AdminPagination page={v.heldPage.page} total={v.heldPage.total} perPage={CONSOLE_PER_PAGE}
               baseHref={buildBaseHref(INTEGRITY_HREF, listParams, "hpage")} param="hpage" />
           </div>}
+        </AdminCard>
+
+        {/* ⭐ S6-MONEY · OD-13 · a share owed to a winner whose account cannot sign in is paid by Compliance to the number
+            registered on the account, at the holder's request — the usual withdrawal rules apply, and the account's own
+            hold stays. Its own read: a failure takes this card only. */}
+        <AdminCard title={locked ? `Winners who cannot sign in · ${locked.length.toLocaleString("en")}` : "Winners who cannot sign in"} sw="Washindi wasioweza kuingia" padding="p-0">
+          <p className="px-4 pt-3 text-body-sm text-text-tertiary">A share owed to a winner whose account is self-excluded, closed or suspended. Pay it to the number registered on the account when the holder asks: the usual withdrawal rules apply, at most {formatTzs(WITHDRAW_MAX_TZS)} a payment, and the account&apos;s own hold stays.</p>
+          <div className="px-4 pt-3 empty:hidden"><StandingAuditWarning slot="integrity:sharePayment" /></div>
+          {locked === null ? <p className="p-4 text-body-sm text-danger-fg">The shares owed to winners who cannot sign in could not be read.</p>
+            : locked.length === 0 ? <EmptyState title="No share is owed to a winner who cannot sign in" body="A winner whose account cannot sign in is listed here until their share is paid in full." /> : (
+            <ScrollX label="Millionea shares owed to winners who cannot sign in">
+              <table className="admin-tbl min-w-[1100px]">
+                <thead><tr>
+                  <th scope="col" className="text-left">Week</th><th scope="col" className="text-left">Ticket</th><th scope="col" className="text-left">Holder</th>
+                  <th scope="col" className="text-left">Account</th><th scope="col" className="text-right">Share</th><th scope="col" className="text-right">Paid</th>
+                  <th scope="col" className="text-right">Left</th><th scope="col" className="text-left">Payment</th>
+                </tr></thead>
+                <tbody>
+                  {locked.slice((lpage - 1) * CONSOLE_PER_PAGE, lpage * CONSOLE_PER_PAGE).map((s) => (
+                    <tr key={s.ticketId}>
+                      <td className="text-left tabular">{s.weekCode}</td><td className="text-left tabular">{s.serial}</td><td className="text-left">{s.holder}</td>
+                      <td className="text-left">{s.standingLabel}</td>
+                      <td className="text-right tabular">{formatTzs(s.share)}</td><td className="text-right tabular">{formatTzs(s.paid)}</td>
+                      <td className="text-right tabular">{formatTzs(s.left)}</td>
+                      <td className="text-left max-w-[340px]">{s.blocked ? <span className="text-body-sm text-text-secondary">{s.blocked}</span>
+                        : canPayLocked ? <PayLockedShareControl ticketId={s.ticketId} serial={s.serial} holder={s.holder} amount={s.next} fee={s.fee} net={s.net}
+                            left={s.left} last4={s.last4} network={s.network} />
+                        : <ControlLocked what="Pay the share" need={CONTROL_DOMAIN.payLockedWinnerShare} />}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </ScrollX>
+          )}
+          {locked && locked.length > CONSOLE_PER_PAGE && (
+            <div className="border-t border-border-subtle px-4 py-2">
+              <AdminPagination page={lpage} total={locked.length} perPage={CONSOLE_PER_PAGE}
+                baseHref={buildBaseHref(INTEGRITY_HREF, listParams, "lpage")} param="lpage" />
+            </div>
+          )}
         </AdminCard>
 
         <AdminCard title="Winners" sw="Washindi" padding="p-0">
