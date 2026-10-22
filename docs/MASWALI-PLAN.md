@@ -29,7 +29,16 @@
 
 ## §0 · RESUME AT
 
-**⏳ S5 IS ON `main` DARK — `2ed817395`, pushed 2026-10-22 19:09 UTC (the Claude session ali-7e on ALI-BLADE15, on Ali's
+**⭐ MILLIONEA IS ACTIVE ON PRODUCTION (Ali's ruling, 2026-10-23 — COMPLIANCE-DECISIONS § "2026-10-23 · Maswali
+Millionea — switched ON for everyone ahead of the launch gate; …").** The Railway variable `FEATURE_MILLIONEA=ACTIVE` on
+`main` `3aecf0edd` (the S5 release), live from 2026-10-22 23:32 UTC; the code's shipped ceiling stays WITHDRAWN on purpose
+(delete the variable, or the Owner's stored switch, to hide it again). Every visitor sees the product; NOTHING SELLS until
+the Owner sets the licence basis, funds the guarantee and a week opens (the earliest Monday 00:00 EAT). ⛔ DEADLINES:
+before any week OPENS — S6's Millionea rules page (`/legal/rules/millionea`, a 404 at the switch) and its Terms section
+live; before the FIRST settlement — S7 and S6's notices, tax-report lines and payout-float check live. §6.1's lines stay
+unticked until each is true.
+
+**⏳ S5 IS ON `main` — `2ed817395`, pushed 2026-10-22 19:09 UTC (the Claude session ali-7e on ALI-BLADE15, on Ali's
 word "continue maswali … push all now"). ⭐ RESUME FIRST from the hand-over branch `maswali-handover-20261021`, file
 `handover/maswali-2026-10-21/stop6-20261022/README.md` (every lane's state, the runner tools, the findings).** Every gate ran
 at the exact commit on GitHub's machines (that laptop runs no Node): typecheck and the production build; CI's 702/702
@@ -76,8 +85,9 @@ the money suites); the staff preview follows (pre-approved). Every Millionea scr
 get it. The admin guide's DRAFT is on his Desktop; the final follows S6. The admin console works whatever the rollout,
 so the Owner's ceremonies (licence basis, guarantee) and week drafts can start on production after this push.
 
-**State (2026-10-23):** S1–S5 are on `main` dark — S5 at `2ed817395`: every player surface, round 1 of Ali's 10/10
-pass, and round 2 of DOORS, SLIP, TICKETS and FACTS. Not in it, each pushed on its own branch: S5 round 2's REGISTER,
+**State (2026-10-23):** S1–S5 are on `main` — S5 at `2ed817395`: every player surface, round 1 of Ali's 10/10
+pass, and round 2 of DOORS, SLIP, TICKETS and FACTS — and the rollout is ACTIVE on production (the Railway variable,
+Ali's ruling of 2026-10-23; nothing sells until the Owner's steps and an open week). Not in it, each pushed on its own branch: S5 round 2's REGISTER,
 PLATFORM (with the phone rail's Millionea track) and TICKETS' landing line and Live link, merged on
 `claude/maswali-s5-r2-int`; HUB (`claude/maswali-s5-r2-hub`) and the phone-renderer fixes (`claude/maswali-s5-r3-fix`)
 to merge; S7 (`claude/maswali-s7-s5`, the objection door merged in, the release merged in); S6
