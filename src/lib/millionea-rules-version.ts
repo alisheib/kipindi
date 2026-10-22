@@ -23,24 +23,25 @@
 export const MILLIONEA_RULES_VERSION = "2026-10-18";
 
 /** The first 12 hex of `sha256` over the whitespace-normalised `millioneaContent` bodies, then `LEGAL_BINDING_LANGUAGE`. */
-// 2026-10-18 · the hash's history under version 2026-10-18, every value with the commit that holds it and what its move
-// gained (a gain a later round reworded is marked so), all of it before anything was served (the product is WITHDRAWN, so
+// 2026-10-18 · the hash's history under version 2026-10-18, every value with the lane round that made it and what its move
+// gained (every round carried by the legal lane's squash 902afae56, merged at 8620862fc — the round commits left with the
+// lane's branch) (a gain a later round reworded is marked so), all of it before anything was served (the product is WITHDRAWN, so
 // no player has read 2026-10-18); each move went alone for that reason, and COMPLIANCE-DECISIONS.md records them
 // (§ "2026-10-18 · The Maswali Millionea rules' text hash moved four times inside version 2026-10-18"). The version moves
 // at publication.
-//   707c9f634d7c · c252ef65 · the binding text as first written (MASWALI-BUILD S6);
-//   2c3c95afeeb9 · 7ff0cfde · round 2: only what is built — the check window as built, the final week's exception, the
+//   707c9f634d7c · first · the binding text as first written (MASWALI-BUILD S6);
+//   2c3c95afeeb9 · round 2: only what is built — the check window as built, the final week's exception, the
 //                  remainder of a topped-up week ("there is none", revised in rounds 3-5), the open's default time, the
 //                  sunset's cases with no regulator refund and no fault void, the week's own times and its questions'
 //                  void hours (the void hours revised in round 4), "week id / ticket id", a forfeited share;
-//   9f864924a75e · 87893ff8 · round 3: the stop as `sunsetMaswali` accepts it, the jackpot account after the last week,
+//   9f864924a75e · round 3: the stop as `sunsetMaswali` accepts it, the jackpot account after the last week,
 //                  the floor-raised remainder ("none of it", revised in round 4), the floor of a 10 of 10 week, a
 //                  correction's evidence and second officer ("needs it again", revised in round 4), the counted set,
 //                  MR-5 under MR-15's ground, today's settings with a drafted week's caveat (revised in round 4);
-//   0812ab00056f · 3e8ba9a6 · round 4: the remainder as the money moves, today's settings and a week's own figures fixed
+//   0812ab00056f · round 4: the remainder as the money moves, today's settings and a week's own figures fixed
 //                  at its open, no public week after the last, the withdrawal fee as the current one, a corrected
 //                  result's second officer by its original seal;
-//   4ed78ea80417 · 4c70541a · round 5: the top-up covers only the fee and the shares, a final week's remainder in the
+//   4ed78ea80417 · round 5: the top-up covers only the fee and the shares, a final week's remainder in the
 //                  jackpot account, a week's own figures fixed at its open, its close excepted.
 // (`b0bf9a6fa080`, named here for a while, was never held by a commit: a working copy between the first two.)
 export const MILLIONEA_RULES_TEXT_SHA = "4ed78ea80417";

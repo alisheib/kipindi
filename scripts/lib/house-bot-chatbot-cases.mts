@@ -552,13 +552,14 @@ export async function runChatbotCases(ok: Ok, section: Section, ROOT: string, ba
 /**
  * The approved checkpoint 6.6 holds `chat.ts` to — ONE constant, read by the case and by `red:house-bot-chatbot`, whose
  * shadow repository names its pristine copy by it (a sha of this repository resolves nowhere else).
- * 2026-10-18 · 8ce376ca0 (the S11 journey prompt) → 7ff0cfde3 (MASWALI-BUILD S6): the fourth input, Millionea's global
+ * 2026-10-18 · 8ce376ca0 (the S11 journey prompt) → the S6 legal lane's first prompt (MASWALI-BUILD S6): the fourth input, Millionea's global
  * rollout's facts, and its passage — every market-only line scoped in its own words (S6 review #11), the facts reader's
  * import failing to no facts (#10). With no facts the prompt is origin/main's, byte for byte (`test:maswali-fairness` C.1).
- * 2026-10-18 · 7ff0cfde3 → 4c70541af (MASWALI-BUILD S6 round 5): Millionea's floor clause is a 10 of 10 week's — a final week's
+ * 2026-10-18 · the legal lane's round 5 (MASWALI-BUILD S6): Millionea's floor clause is a 10 of 10 week's — a final week's
  * top-score payout has no floor — and nothing else in the action moved (`test:maswali-fairness` C.12).
- * 2026-10-19 · 4c70541af → 902afae56 (the S6 legal lane's squash-merge onto the integration): the same bytes (blob e04f339b3),
- * pinned on the integration branch — a lane commit leaves with its branch, and a fresh clone could not resolve it.
+ * 2026-10-19 · → 902afae56 (the S6 legal lane's squash, carrying both lane steps above): the same bytes (blob e04f339b3),
+ * pinned on a commit every clone reaches — merged with its history into the S6 integration at 8620862fc (S6-INT 1); a lane
+ * commit leaves with its branch, and a fresh clone could not resolve it.
  */
 export const CHAT_PROMPT_PIN = "902afae56";
 
