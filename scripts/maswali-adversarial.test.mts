@@ -40,13 +40,17 @@
  * (at 3f6af84e1, and again at 76a8d4780 after S7-F7 2 made PL.4 record a throw as its own failure) — raised to them.
  * ⭐ S7-F8 9 (2026-10-21, S5-FIX-SRV's finding 2 in the re-freeze and the stop): DL.7, SU.5a and SU.6a on each store and
  * DL.6 on Postgres: 197 on memory, 206 on Postgres, what this commit's tree printed.
+ * ⭐ S7-OB (2026-10-22, the Millionea objection door): OB.0 struck on each store — a holder files on one question through
+ * the door and an officer other than the sealer rules — and §4b OM added, six on each (the filing holds the week, the
+ * REVERSE re-grades and restarts the window once, the money follows the final record): 204 on memory, 213 on Postgres,
+ * with 2 KNOWN-RED on each (RD.5, TK.2), what this commit's tree printed.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({
   suite: "test:maswali-adversarial",
   casesFile: "scripts/lib/maswali-adversarial-child.mts",
-  minPass: { memory: 197, postgres: 206 },
+  minPass: { memory: 204, postgres: 213 },
   dbPrefix: "mlw_adv",
   timeoutMs: 45 * 60_000,
 });
