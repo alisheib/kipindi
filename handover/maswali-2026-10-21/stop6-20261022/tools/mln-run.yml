@@ -1,0 +1,68 @@
+name: MLN run
+
+# MASWALI-BUILD — one job script run against an EXACT commit on GitHub's machines (the local laptop's memory cannot hold
+# them). A run branch carries the target commit plus one commit that adds this file and `.ci-run/`; the job checks out
+# the target (the run commit's parent), proves the tree is clean, and runs `.ci-run/job.sh` from a copy. Run branches
+# are never merged; logs, screenshots and tiles are uploaded as the run's artifact.
+
+on:
+  push:
+    branches: ['ci/run/**']
+
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    env:
+      SESSION_SECRET: ci-gate-session-secret-0123456789abcdef
+      AUDIT_CHAIN_SECRET: ci-gate-audit-chain-secret-9876543210
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: The job and its target
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/out"
+          cp -r .ci-run "$RUNNER_TEMP/ci-run"
+          TARGET=$(git rev-parse HEAD^)
+          git checkout -q --detach "$TARGET"
+          test -z "$(git status --porcelain)"
+          echo "TARGET=$TARGET" >> "$GITHUB_ENV"
+          echo "target: $(git log -1 --format='%H %s' | cut -c1-200)"
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - run: npm ci
+      - name: Browsers and the scratch database runtime
+        run: |
+          set -euo pipefail
+          B=chromium; [ -f "$RUNNER_TEMP/ci-run/webkit" ] && B="chromium webkit"
+          npx playwright install $B
+          # The runner image usually carries the browsers' system libraries; install them only when a launch fails
+          # (the apt route can take minutes).
+          if ! node -e "const p=require('playwright');Promise.all(process.argv.slice(1).map(n=>p[n].launch().then(b=>b.close()))).then(()=>process.exit(0),e=>{console.error(e.message);process.exit(1)})" $B; then
+            npx playwright install-deps $B
+          fi
+          npm install --prefix /tmp/50pick-ci-scratch --no-audit --no-fund embedded-postgres@18.3.0-beta.17
+          ln -s /tmp/50pick-ci-scratch/node_modules/embedded-postgres node_modules/embedded-postgres
+      - name: Job
+        env:
+          OUT: ${{ runner.temp }}/out
+          CI_RUN: ${{ runner.temp }}/ci-run
+        run: bash "$CI_RUN/job.sh"
+      - name: The tree after the job
+        if: always()
+        run: |
+          echo "HEAD $(git rev-parse HEAD) (target $TARGET)"
+          git status --short | head -50
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: out
+          path: |
+            ${{ runner.temp }}/out
+            .50pick-shots
+          if-no-files-found: ignore

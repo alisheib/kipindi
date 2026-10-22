@@ -1,0 +1,103 @@
+name: MLN parity
+
+# MASWALI-BUILD — classic parity for a release at an EXACT commit against live main, on GitHub's machines: one baseline
+# job on live main, then two jobs side by side from that same baseline file — the release's compare (--allow-base: the
+# release merged other lanes' served files, as the gate on OMEGA ran it) and a second null compare of live main (the
+# instrument's own stability on this runner). Lives on a gate branch only and never reaches main.
+
+on:
+  push:
+    branches: ['ci/mln-parity-*']
+
+concurrency:
+  group: mln-parity-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GATE_SHA: 2ed817395404c12935c10bf0fa4a5dbaf88693cb
+  BASE_SHA: da3d3218051cbe6b8c7b1176dd36eed544eb6050
+
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: '${{ env.GATE_SHA }}', fetch-depth: 0 }
+      - run: test "$(git rev-parse HEAD)" = "$GATE_SHA"
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - name: Trees
+        run: |
+          set -euo pipefail
+          git worktree add --detach "$RUNNER_TEMP/main-tree" "$BASE_SHA"
+          npm ci
+          (cd "$RUNNER_TEMP/main-tree" && npm ci)
+          npx playwright install chromium
+          mkdir -p "$RUNNER_TEMP/out"
+      - name: Baseline on live main
+        run: |
+          cd "$RUNNER_TEMP/main-tree" && rm -rf .next
+          setsid env -u DATABASE_URL SESSION_SECRET=ci-gate-session-secret-0123456789abcdef OTP_PEPPER=ci-gate-otp-pepper-0123456 AUDIT_CHAIN_SECRET=ci-gate-audit-chain-secret-9876543210 DISABLE_ADMIN_TOTP=true npx next dev -p 3542 > "$RUNNER_TEMP/out/baseline.server.log" 2>&1 &
+          SPID=$!
+          for i in $(seq 1 300); do [ "$(curl -s -o /dev/null -m 20 -w '%{http_code}' http://localhost:3542/api/health)" = 200 ] && break; sleep 2; done
+          for p in / /markets /positions /wallet /profile /updown /live /results; do curl -s -o /dev/null -m 300 "http://localhost:3542$p"; done
+          set +e
+          KP_TREE="$RUNNER_TEMP/main-tree" KP_BASE=http://localhost:3542 node "$GITHUB_WORKSPACE/scripts/qa-classic-shell-parity.mjs" --baseline "$RUNNER_TEMP/out/parity-base.json" > "$RUNNER_TEMP/out/baseline.log" 2>&1
+          RC=$?
+          kill -KILL -- -"$SPID" 2>/dev/null
+          grep -a -E "passed —|baseline written|NOT written|REFUSED" "$RUNNER_TEMP/out/baseline.log" | tail -5
+          exit $RC
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: baseline, path: '${{ runner.temp }}/out', if-no-files-found: ignore }
+
+  compare:
+    needs: baseline
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { which: release, tree: release }
+          - { which: null2, tree: main }
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: '${{ env.GATE_SHA }}', fetch-depth: 0 }
+      - run: test "$(git rev-parse HEAD)" = "$GATE_SHA"
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - uses: actions/download-artifact@v4
+        with: { name: baseline, path: '${{ runner.temp }}/base' }
+      - name: Trees
+        run: |
+          set -euo pipefail
+          npm ci
+          npx playwright install chromium
+          if [ "${{ matrix.tree }}" = main ]; then
+            git worktree add --detach "$RUNNER_TEMP/main-tree" "$BASE_SHA"
+            (cd "$RUNNER_TEMP/main-tree" && npm ci)
+            echo "SERVED=$RUNNER_TEMP/main-tree" >> "$GITHUB_ENV"
+          else
+            echo "SERVED=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          fi
+          mkdir -p "$RUNNER_TEMP/out"
+          ls -la "$RUNNER_TEMP/base"
+      - name: Compare (${{ matrix.which }})
+        run: |
+          cd "$SERVED" && rm -rf .next
+          setsid env -u DATABASE_URL SESSION_SECRET=ci-gate-session-secret-0123456789abcdef OTP_PEPPER=ci-gate-otp-pepper-0123456 AUDIT_CHAIN_SECRET=ci-gate-audit-chain-secret-9876543210 DISABLE_ADMIN_TOTP=true npx next dev -p 3544 > "$RUNNER_TEMP/out/${{ matrix.which }}.server.log" 2>&1 &
+          SPID=$!
+          for i in $(seq 1 300); do [ "$(curl -s -o /dev/null -m 20 -w '%{http_code}' http://localhost:3544/api/health)" = 200 ] && break; sleep 2; done
+          for p in / /markets /positions /wallet /profile /updown /live /results; do curl -s -o /dev/null -m 300 "http://localhost:3544$p"; done
+          set +e
+          ALLOW=""; [ "${{ matrix.which }}" = release ] && ALLOW="--allow-base"
+          KP_TREE="$SERVED" KP_BASE=http://localhost:3544 node "$GITHUB_WORKSPACE/scripts/qa-classic-shell-parity.mjs" --compare "$RUNNER_TEMP/base/parity-base.json" $ALLOW > "$RUNNER_TEMP/out/${{ matrix.which }}.log" 2>&1
+          RC=$?
+          kill -KILL -- -"$SPID" 2>/dev/null
+          grep -a -E "passed —|REFUSED|OVERRIDDEN|✗|FAIL|EXPECTED|NAMED" "$RUNNER_TEMP/out/${{ matrix.which }}.log" | tail -60
+          exit $RC
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: 'compare-${{ matrix.which }}', path: '${{ runner.temp }}/out', if-no-files-found: ignore }

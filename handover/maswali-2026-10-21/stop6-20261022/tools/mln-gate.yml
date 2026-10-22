@@ -1,0 +1,278 @@
+name: MLN gate
+
+# MASWALI-BUILD — the release gate at an EXACT commit, run on GitHub's machines (the local laptop's memory cannot hold
+# these jobs). It lives on a gate branch only and never reaches main. Every job checks out GATE_SHA itself and proves it
+# did; BASE_SHA is the live main the classic parity baseline is captured from. Logs and screenshots are uploaded.
+
+on:
+  push:
+    branches: ['ci/mln-gate-*']
+
+concurrency:
+  group: mln-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GATE_SHA: 2ed817395404c12935c10bf0fa4a5dbaf88693cb
+  BASE_SHA: da3d3218051cbe6b8c7b1176dd36eed544eb6050
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: '${{ env.GATE_SHA }}', fetch-depth: 1 }
+      - run: test "$(git rev-parse HEAD)" = "$GATE_SHA"
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Production build (no database, as the gate runs it)
+        run: |
+          set -euo pipefail
+          env -u DATABASE_URL SESSION_SECRET=ci-gate-session-secret-0123456789abcdef OTP_PEPPER=ci-gate-otp-pepper-0123456 npx next build
+          test "$(git rev-parse HEAD)" = "$GATE_SHA"
+          test -z "$(git status --porcelain -- src scripts package.json)"
+          printf '%s\n' "$GATE_SHA" > .next/kp-head
+      - name: House-bot bundle check
+        run: npm run verify:house-bot-bundle
+      - name: Production first-load delivery
+        run: npm run qa:first-load -- --read --routes 'index,markets,positions,help,live,results,watchlist,markets/[id],account,updown/history'
+
+  dark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: '${{ env.GATE_SHA }}', fetch-depth: 1 }
+      - run: test "$(git rev-parse HEAD)" = "$GATE_SHA"
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Tools
+        run: |
+          mkdir -p "$RUNNER_TEMP/out"
+          cat > "$RUNNER_TEMP/serve.sh" <<'EOF'
+          #!/usr/bin/env bash
+          # serve.sh <tree> <port> <log> [VAR=value ...] -- <command...>: a FRESH in-memory next dev (rm -rf .next, no
+          # DATABASE_URL, DISABLE_ADMIN_TOTP=true) with the extra env, warmed, then <command> from the tree with
+          # BASE/KP_BASE=http://localhost:<port>; the server's whole process group is stopped after.
+          set -u
+          TREE="$1"; PORT="$2"; LOG="$3"; shift 3
+          ENVS=()
+          while [ $# -gt 0 ] && [ "$1" != "--" ]; do ENVS+=("$1"); shift; done
+          [ "${1:-}" = "--" ] && shift
+          SECRETS=(SESSION_SECRET=ci-gate-session-secret-0123456789abcdef OTP_PEPPER=ci-gate-otp-pepper-0123456 AUDIT_CHAIN_SECRET=ci-gate-audit-chain-secret-9876543210 DISABLE_ADMIN_TOTP=true)
+          cd "$TREE" || exit 2
+          rm -rf .next
+          echo "== $(date -u +%T) next dev $(git rev-parse --short=9 HEAD) on :$PORT env: ${ENVS[*]:-none}"
+          setsid env -u DATABASE_URL "${SECRETS[@]}" "${ENVS[@]}" npx next dev -p "$PORT" > "$LOG.server.log" 2>&1 &
+          SPID=$!
+          stop() { kill -TERM -- -"$SPID" 2>/dev/null; sleep 3; kill -KILL -- -"$SPID" 2>/dev/null; fuser -k "$PORT/tcp" >/dev/null 2>&1; true; }
+          code=000
+          for i in $(seq 1 300); do
+            code=$(curl -s -o /dev/null -m 20 -w "%{http_code}" "http://localhost:$PORT/api/health" || true)
+            [ "$code" = "200" ] && break
+            sleep 2
+          done
+          if [ "$code" != "200" ]; then echo "server never came up"; tail -60 "$LOG.server.log"; stop; exit 3; fi
+          echo "== $(date -u +%T) up: $(curl -s -m 20 "http://localhost:$PORT/api/health" | head -c 700)"
+          for p in ${WARM:-/ /markets /positions /wallet /profile /updown /live /results}; do curl -s -o /dev/null -m 300 "http://localhost:$PORT$p"; done
+          echo "== $(date -u +%T) warmed; running: $*"
+          env -u DATABASE_URL "${SECRETS[@]}" "${ENVS[@]}" BASE="http://localhost:$PORT" KP_BASE="http://localhost:$PORT" "$@"
+          RC=$?
+          echo "== $(date -u +%T) command exit=$RC"
+          stop
+          exit $RC
+          EOF
+          cat > "$RUNNER_TEMP/each.sh" <<'EOF'
+          #!/usr/bin/env bash
+          # each.sh <label> <command...> ... separated by ';;' — runs every command, logs each to $OUT/<label>-<n>.log,
+          # prints its summary lines, and exits 1 when any failed (none is skipped because an earlier one failed).
+          set -u
+          LABEL="$1"; shift
+          all=0; n=0; cmd=()
+          runone() {
+            n=$((n + 1)); local log="$OUT/$LABEL-$n.log"
+            "${cmd[@]}" > "$log" 2>&1; local rc=$?
+            echo "---- [$LABEL $n] ${cmd[*]} -> rc=$rc"
+            grep -a -E "✗|FAIL|ALL PASS|passed, |passed —|[0-9]+ passed|failed|NOT MEASURED|PREMISE|SKIP" "$log" | tail -20
+            if [ $rc -ne 0 ]; then all=1; echo "     (last lines)"; tail -40 "$log"; fi
+            echo "$LABEL $n rc=$rc ${cmd[*]}" >> "$OUT/summary.txt"
+            cmd=()
+          }
+          for a in "$@"; do if [ "$a" = ";;" ]; then runone; else cmd+=("$a"); fi; done
+          [ ${#cmd[@]} -gt 0 ] && runone
+          exit $all
+          EOF
+          chmod +x "$RUNNER_TEMP/serve.sh" "$RUNNER_TEMP/each.sh"
+      - name: Dark — production's configuration (no FEATURE_MILLIONEA = the shipped WITHDRAWN ceiling)
+        if: always()
+        env: { OUT: '${{ runner.temp }}/out' }
+        run: >-
+          bash "$RUNNER_TEMP/serve.sh" "$GITHUB_WORKSPACE" 3596 "$OUT/dark" --
+          bash "$RUNNER_TEMP/each.sh" dark
+          node scripts/pre-deploy-live-check.mjs ";;"
+          node scripts/maswali-player-drive.mjs ";;"
+          node scripts/revoked-deadend.test.mjs ";;"
+          node scripts/motion-adoption-verify.mjs ";;"
+          node scripts/admin-section-gate.test.mjs ";;"
+          node scripts/needle-rest.test.mjs
+      - name: Door census — WITHDRAWN, then its plant (the detector must catch round 1's line)
+        if: always()
+        env: { OUT: '${{ runner.temp }}/out' }
+        run: >-
+          bash "$RUNNER_TEMP/serve.sh" "$GITHUB_WORKSPACE" 3597 "$OUT/door-w" FEATURE_MILLIONEA=WITHDRAWN --
+          bash "$RUNNER_TEMP/each.sh" door-w
+          node scripts/maswali-door-dark.mjs ";;"
+          env DOOR_DARK_PLANT=1 node scripts/maswali-door-dark.mjs
+      - name: Door census + qa:live — STAFF_PREVIEW (the state production moves to after the push)
+        if: always()
+        env: { OUT: '${{ runner.temp }}/out' }
+        run: >-
+          bash "$RUNNER_TEMP/serve.sh" "$GITHUB_WORKSPACE" 3598 "$OUT/door-sp" FEATURE_MILLIONEA=STAFF_PREVIEW --
+          bash "$RUNNER_TEMP/each.sh" door-sp
+          node scripts/maswali-door-dark.mjs ";;"
+          node scripts/pre-deploy-live-check.mjs
+      - name: Player drive — the product's configuration (ACTIVE, journey previewable), steps 1–6
+        if: always()
+        env: { OUT: '${{ runner.temp }}/out' }
+        run: >-
+          bash "$RUNNER_TEMP/serve.sh" "$GITHUB_WORKSPACE" 3599 "$OUT/active" FEATURE_MILLIONEA=ACTIVE FEATURE_SIMPLEJOURNEY=STAFF_PREVIEW --
+          bash "$RUNNER_TEMP/each.sh" active
+          node scripts/maswali-player-drive.mjs
+      - name: Summary
+        if: always()
+        run: cat "$RUNNER_TEMP/out/summary.txt" || true; git status --short
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dark
+          path: |
+            ${{ runner.temp }}/out
+            .50pick-shots
+          if-no-files-found: ignore
+
+  parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: '${{ env.GATE_SHA }}', fetch-depth: 0 }
+      - run: test "$(git rev-parse HEAD)" = "$GATE_SHA"
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - name: Trees (the release here; live main beside it)
+        run: |
+          set -euo pipefail
+          git worktree add --detach "$RUNNER_TEMP/main-tree" "$BASE_SHA"
+          test "$(git -C "$RUNNER_TEMP/main-tree" rev-parse HEAD)" = "$BASE_SHA"
+          npm ci
+          (cd "$RUNNER_TEMP/main-tree" && npm ci)
+          npx playwright install --with-deps chromium
+          mkdir -p "$RUNNER_TEMP/out"
+      - name: Tools
+        run: |
+          cat > "$RUNNER_TEMP/serve.sh" <<'EOF'
+          #!/usr/bin/env bash
+          set -u
+          TREE="$1"; PORT="$2"; LOG="$3"; shift 3
+          ENVS=()
+          while [ $# -gt 0 ] && [ "$1" != "--" ]; do ENVS+=("$1"); shift; done
+          [ "${1:-}" = "--" ] && shift
+          SECRETS=(SESSION_SECRET=ci-gate-session-secret-0123456789abcdef OTP_PEPPER=ci-gate-otp-pepper-0123456 AUDIT_CHAIN_SECRET=ci-gate-audit-chain-secret-9876543210 DISABLE_ADMIN_TOTP=true)
+          cd "$TREE" || exit 2
+          rm -rf .next
+          echo "== $(date -u +%T) next dev $(git rev-parse --short=9 HEAD) on :$PORT env: ${ENVS[*]:-none}"
+          setsid env -u DATABASE_URL "${SECRETS[@]}" "${ENVS[@]}" npx next dev -p "$PORT" > "$LOG.server.log" 2>&1 &
+          SPID=$!
+          stop() { kill -TERM -- -"$SPID" 2>/dev/null; sleep 3; kill -KILL -- -"$SPID" 2>/dev/null; fuser -k "$PORT/tcp" >/dev/null 2>&1; true; }
+          code=000
+          for i in $(seq 1 300); do
+            code=$(curl -s -o /dev/null -m 20 -w "%{http_code}" "http://localhost:$PORT/api/health" || true)
+            [ "$code" = "200" ] && break
+            sleep 2
+          done
+          if [ "$code" != "200" ]; then echo "server never came up"; tail -60 "$LOG.server.log"; stop; exit 3; fi
+          for p in ${WARM:-/ /markets /positions /wallet /profile /updown /live /results}; do curl -s -o /dev/null -m 300 "http://localhost:$PORT$p"; done
+          echo "== $(date -u +%T) warmed; running: $*"
+          env -u DATABASE_URL "${SECRETS[@]}" "${ENVS[@]}" BASE="http://localhost:$PORT" KP_BASE="http://localhost:$PORT" "$@" > "$LOG.log" 2>&1
+          RC=$?
+          grep -a -E "passed —|baseline written|REFUSED|OVERRIDDEN|differ|✗|FAIL" "$LOG.log" | tail -40
+          echo "== $(date -u +%T) command exit=$RC"
+          stop
+          exit $RC
+          EOF
+          chmod +x "$RUNNER_TEMP/serve.sh"
+      - name: Calibration — the instrument's own controls (--prove-red) on live main
+        env: { OUT: '${{ runner.temp }}/out' }
+        run: bash "$RUNNER_TEMP/serve.sh" "$RUNNER_TEMP/main-tree" 3541 "$OUT/prove-red" KP_TREE="$RUNNER_TEMP/main-tree" -- node "$GITHUB_WORKSPACE/scripts/qa-classic-shell-parity.mjs" --prove-red
+      - name: Baseline on live main
+        env: { OUT: '${{ runner.temp }}/out' }
+        run: bash "$RUNNER_TEMP/serve.sh" "$RUNNER_TEMP/main-tree" 3542 "$OUT/baseline" KP_TREE="$RUNNER_TEMP/main-tree" -- node "$GITHUB_WORKSPACE/scripts/qa-classic-shell-parity.mjs" --baseline "$OUT/parity-base.json"
+      - name: Null compare — a fresh server of live main against its own baseline (must be clean)
+        env: { OUT: '${{ runner.temp }}/out' }
+        run: bash "$RUNNER_TEMP/serve.sh" "$RUNNER_TEMP/main-tree" 3543 "$OUT/null" KP_TREE="$RUNNER_TEMP/main-tree" -- node "$GITHUB_WORKSPACE/scripts/qa-classic-shell-parity.mjs" --compare "$OUT/parity-base.json"
+      - name: Compare — the release against live main's baseline
+        if: always()
+        env: { OUT: '${{ runner.temp }}/out' }
+        run: bash "$RUNNER_TEMP/serve.sh" "$GITHUB_WORKSPACE" 3544 "$OUT/compare" KP_TREE="$GITHUB_WORKSPACE" -- node "$GITHUB_WORKSPACE/scripts/qa-classic-shell-parity.mjs" --compare "$OUT/parity-base.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: parity
+          path: ${{ runner.temp }}/out
+          if-no-files-found: ignore
+
+  money:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      SESSION_SECRET: ci-gate-session-secret-0123456789abcdef
+      AUDIT_CHAIN_SECRET: ci-gate-audit-chain-secret-9876543210
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: '${{ env.GATE_SHA }}', fetch-depth: 1 }
+      - run: test "$(git rev-parse HEAD)" = "$GATE_SHA"
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - run: npm ci
+      - name: Scratch database runtime (as CI installs it)
+        run: |
+          npm install --prefix /tmp/50pick-ci-scratch --no-audit --no-fund embedded-postgres@18.3.0-beta.17
+          ln -s /tmp/50pick-ci-scratch/node_modules/embedded-postgres node_modules/embedded-postgres
+      - name: Classic money — e2e:money, e2e:fault, e2e:card, each on a reset, migrated scratch PostgreSQL
+        env: { OUT: '${{ runner.temp }}/out' }
+        run: |
+          mkdir -p "$OUT"
+          cat > "$RUNNER_TEMP/money-inner.sh" <<'EOF'
+          set -u
+          export DATABASE_URL="$VERIFY_DATABASE_URL" USE_PRISMA_DAL=true
+          # A fresh scratch cluster: migrate it and mark it disposable once; reset-db then refuses anything unmarked.
+          npx prisma migrate deploy > "$OUT/migrate.log" 2>&1 || { echo "MIGRATE FAILED"; tail -20 "$OUT/migrate.log"; exit 3; }
+          node scripts/load/ci-plant-marker.mjs || exit 3
+          all=0
+          for s in money fault card; do
+            node scripts/load/reset-db.mjs > "$OUT/reset-$s.log" 2>&1 || { echo "RESET FAILED before e2e:$s"; tail -20 "$OUT/reset-$s.log"; exit 3; }
+            npm run "e2e:$s" > "$OUT/e2e-$s.log" 2>&1; rc=$?
+            echo "e2e:$s rc=$rc :: $(grep -a -E 'passed|failed|FAIL|✗|drift' "$OUT/e2e-$s.log" | tail -3 | tr '\n' ' ' | cut -c1-400)"
+            [ $rc -eq 0 ] || { all=1; tail -60 "$OUT/e2e-$s.log"; }
+          done
+          exit $all
+          EOF
+          npx tsx scripts/db-scratch.mts --run bash "$RUNNER_TEMP/money-inner.sh"
+      - name: e2e:maswali-money
+        if: always()
+        run: npm run e2e:maswali-money
+      - name: e2e:maswali-fault
+        if: always()
+        run: npm run e2e:maswali-fault
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: money
+          path: ${{ runner.temp }}/out
+          if-no-files-found: ignore
