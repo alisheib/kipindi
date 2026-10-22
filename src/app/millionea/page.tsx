@@ -349,9 +349,9 @@ function MineBlock({ t, locale, w, nowMs, cancelEnds, className }: {
 }
 
 /**
- * The buy block's DOOR (§10 §3.3 item 4): the door and its one status line — beside a door that buys, the printed close
- * with the closing pill in its row; under a closed week's "Follow the results", how far its results have come (results
- * in, valid reserves left, the objection window's end while open — P6 — and the next event, L12: a fact line, A1).
+ * The buy block's DOOR (§10 §3.3 item 4): the door and, beside a door that buys, its one status line — the printed close
+ * with the closing pill in its row. A closed week's "Follow the results" stands alone here: how far its results have come
+ * is the week's own cell under it (`WeekFacts`, S5-R2-HUB 12).
  * `nextOpen` is when the next week opens on the template (`nextWeekOpen`) — null in a final week or while Millionea ends,
  * and the cap line then promises no next week (the S5 review of 24ec0d33, MEDIUM 5).
  * ⭐ M3 · A GUEST IS OFFERED SIGN UP FIRST (§K 8d), then Sign in — the market page's own pair, through the one door rule
@@ -403,10 +403,6 @@ function BuyDoor({ t, locale, w, signedIn, nowMs, nextOpen, breakBody, guest, cl
     // wins; both measured 1.79:1 on the page's ground) — a ghost border under §A1's 3:1 is the kit's, reported for every page.
     door = <a href="#mln-questions" className="btn btn-ghost btn-lg w-full" data-testid="millionea-hub-follow">{t.millionea.followResults}</a>;
   }
-  // A closed week's status: the facts its "Follow the results" door stands over.
-  const results = w.state !== "OPEN"
-    ? [keepFact(locale, fill(t.millionea.resultsOut, { n: formatNumber(w.resultsOut) })), keepFact(locale, reservesLeftLine(t, w)), objectionsLine(t, locale, w, nowMs), nextEventLine(t, w)]
-    : null;
   if (!buyDrawn(w, !!breakBody)) return null;
   return (
     <div className={cn(HUB_DOOR.box, className)} data-testid="millionea-hub-buy">
@@ -427,9 +423,23 @@ function BuyDoor({ t, locale, w, signedIn, nowMs, nextOpen, breakBody, guest, cl
           <MaswaliClosingPill closesAt={closesMs} serverNow={nowMs} compact />
         </div>
       )}
-      {results && <p className="text-body-sm text-text-muted" data-testid="millionea-hub-facts"><MaswaliFacts facts={results} /></p>}
     </div>
   );
+}
+
+/**
+ * A CLOSED WEEK'S STATUS, UNDER ITS DOOR: how far its results have come — results in, valid reserves left, the objection
+ * window's end while open (P6) and the next event (L12) — a fact line (A1); nothing while the week sells.
+ * ⭐ S5-R2-HUB 12 · ITS OWN CELL (§M8a item 27; the tile readers, voiding at 768 in sw, en and zh): inside the door's block
+ * these three or four lines made "Follow the results" taller than the jackpot's head beside it, and from 768 the head's
+ * cell hung over an empty band (80px at sw and en 768) before the ledger. Under the door in the column's second row, they
+ * start level with the ledger, which follows the head; from 1024 they read on under the pinned pair, which holds only the
+ * head and the door (H2: the jackpot's head and the button, nothing else, stay pinned).
+ */
+function WeekFacts({ t, locale, w, nowMs, className }: { t: Dict; locale: Locale; w: MillioneaHubWeek; nowMs: number; className?: string }) {
+  if (w.state === "OPEN") return null;
+  const facts = [keepFact(locale, fill(t.millionea.resultsOut, { n: formatNumber(w.resultsOut) })), keepFact(locale, reservesLeftLine(t, w)), objectionsLine(t, locale, w, nowMs), nextEventLine(t, w)];
+  return <p className={cn("text-body-sm text-text-muted", className)} data-testid="millionea-hub-facts"><MaswaliFacts facts={facts} /></p>;
 }
 
 /** A second week still being graded while this one sells (MR-3): where it stands (P6, in its state's ink — M5), its
@@ -525,8 +535,10 @@ export default async function MillioneaHubPage({ searchParams }: { searchParams:
           breakBody={breakBody} guest={guest} className={hubCell(twoUp, "door")}
         />
       </div>
+      {/* A closed week's facts follow its door on a phone, stand under it from 768, read on under the pinned pair from 1024. */}
+      <WeekFacts t={t} locale={locale} w={w} nowMs={nowMs} className={hubCell(twoUp, "facts")} />
       {w.pool && <HubPoolLedger carryFrom={carries ? CARRIED_FIGURE_ID : undefined} carryPlay={carries} className={hubCell(twoUp, "ledger")} />}
-      <MineBlock t={t} locale={locale} w={w} nowMs={nowMs} cancelEnds={cancelEnds} className={hubCell(twoUp, "mine")} />
+      <MineBlock t={t} locale={locale} w={w} nowMs={nowMs} cancelEnds={cancelEnds} className={hubCell(twoUp, w.state === "OPEN" ? "mine" : "mineUnderFacts")} />
       {hub.grading && <GradingBlock t={t} locale={locale} w={hub.grading} nowMs={nowMs} className={hubCell(twoUp, mineDrawn(w) ? "grading" : "mine")} />}
     </aside>
   );

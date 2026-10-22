@@ -24,7 +24,7 @@
  * A once-per-week notice is marked seen as it is shown, so the notice states are shot in ONE page view per language (the
  * viewport resized, never reloaded), each language by its own player.
  */
-import { chromium } from "playwright";
+import { chromium, webkit } from "playwright";
 import { mkdirSync } from "node:fs";
 import { premise, mintStaffPass, demoSession, LOCALE_COOKIE, SESSION_COOKIE } from "./live/journey-pass.mjs";
 
@@ -56,7 +56,17 @@ if (pre.refuse) die(pre.refuse);
 if (pre.health?.millionea?.state !== "ACTIVE") die(`/api/health says millionea = ${j(pre.health?.millionea)}: start next dev with FEATURE_MILLIONEA=ACTIVE`);
 mkdirSync(OUT, { recursive: true });
 
-const browser = await chromium.launch();
+/**
+ * THE ENGINE AND THE DEVICE PIXEL RATIO (S5-R2-HUB 12; the lead's ruling for every text-geometry table, 2026-10-23: the
+ * drawing's per-language widths and line counts are MEASURED at a phone's device pixel ratio — 2.625 and 3 — in Chromium
+ * and WebKit, with the CJK face, never at ratio 1). `MLN_HUB_ENGINE` = chromium (the default) | webkit; `MLN_HUB_DPR` the
+ * ratio every reader's context renders at (1 when unset, as before).
+ */
+const ENGINE = (process.env.MLN_HUB_ENGINE || "chromium").toLowerCase();
+const DPR = Number(process.env.MLN_HUB_DPR || 1);
+if (!["chromium", "webkit"].includes(ENGINE) || !(DPR > 0)) die(`MLN_HUB_ENGINE=${ENGINE} MLN_HUB_DPR=${process.env.MLN_HUB_DPR}: chromium or webkit, a ratio above 0`);
+const browser = await (ENGINE === "webkit" ? webkit : chromium).launch();
+console.log(`INFO engine · ${ENGINE} ${browser.version()} at device pixel ratio ${DPR}`);
 const errs = [];
 
 /**
@@ -81,7 +91,7 @@ async function desktopTier(ctx) {
 
 /** A context for one reader: its cookies (a session, a staff pass) and the language; a guest has none. */
 async function readerContext(cookies) {
-  const ctx = await desktopTier(await browser.newContext({ viewport: { width: 360, height: HEIGHT } }));
+  const ctx = await desktopTier(await browser.newContext({ viewport: { width: 360, height: HEIGHT }, deviceScaleFactor: DPR }));
   if (cookies.length) await ctx.addCookies(cookies.map((c) => ({ ...c, url: BASE, domain: undefined, path: undefined })));
   return ctx;
 }
@@ -177,7 +187,7 @@ async function shoot(state, shell, ctx, { check, oneView = false, path = "/milli
 
 // ── the seed ───────────────────────────────────────────────────────────────────────────────────────────────────────────
 // The Owner, signed in in this context (`seed-admin`): who seeds, and in run c who moves the switch and reads the preview.
-const owner = await desktopTier(await browser.newContext({ viewport: { width: 1280, height: 900 } }));
+const owner = await desktopTier(await browser.newContext({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: DPR }));
 {
   await owner.request.post(`${BASE}/api/dev-test/seed-admin`, { data: { phone: "+255700000091", name: "Millionea Owner" }, timeout: 240_000 });
   const seed = await owner.request.post(`${BASE}/api/dev-test/seed-maswali`, { data: {}, timeout: 300_000 });
@@ -294,13 +304,21 @@ async function widowChecks(page, label) {
  *  block of the reader's the graded week stands level with the ledger. */
 async function holeChecks(page, label) {
   const g = await page.evaluate(() => {
-    const box = (s) => { const el = document.querySelector(s); if (!el || el.getClientRects().length === 0) return null; const r = el.getBoundingClientRect(); return { top: Math.round(r.top), width: Math.round(r.width) }; };
+    const box = (s) => { const el = document.querySelector(s); if (!el || el.getClientRects().length === 0) return null; const r = el.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), width: Math.round(r.width) }; };
+    const aside = document.querySelector('[data-testid="millionea-hub-aside"]');
     return { aside: box('[data-testid="millionea-hub-aside"]'), head: box('[data-testid="millionea-hub-jackpot"]'), buy: box('[data-testid="millionea-hub-buy"]'),
-      ledger: box('[data-testid="millionea-hub-ledger"]'), mine: box('[data-testid="millionea-hub-mine"]'), grading: box('[data-testid="millionea-hub-grading"]') };
+      ledger: box('[data-testid="millionea-hub-ledger"]'), mine: box('[data-testid="millionea-hub-mine"]'), grading: box('[data-testid="millionea-hub-grading"]'),
+      facts: box('[data-testid="millionea-hub-facts"]'), gap: aside ? Math.round(parseFloat(getComputedStyle(aside).rowGap)) : null };
   });
   if (!g.aside || !g.head || !g.ledger) return; // a week with no pool: one column, no cells
   if (!g.buy) ok(`${label} · M1 with no door beside it the head runs both columns`, Math.abs(g.head.width - g.aside.width) <= 1, j(g));
   if (g.grading && !g.mine) ok(`${label} · M1 with no block of the reader's the graded week stands level with the ledger`, Math.abs(g.grading.top - g.ledger.top) <= 1, j(g));
+  // S5-R2-HUB 12 (§M8a item 27) · no empty band under the head: the ledger stands the column's one row gap under it, however
+  // tall the door beside it (a closed week's facts in the door's block left 80px empty at sw and en 768) — and a closed
+  // week's facts, their own cell, start level with the ledger.
+  ok(`${label} · M1 the ledger stands one row gap under the jackpot's head (${g.ledger.top - g.head.bottom}px, the column's ${g.gap}px)`,
+    g.gap !== null && Math.abs(g.ledger.top - g.head.bottom - g.gap) <= 1, j(g));
+  if (g.facts) ok(`${label} · M1 a closed week's facts start level with the ledger (${g.facts.top - g.ledger.top}px)`, Math.abs(g.facts.top - g.ledger.top) <= 1, j(g));
 }
 
 /** A door row (the graded week's facts, last week's row) ends in its chevron: its words stop at least the row's gap (8px)
@@ -733,16 +751,25 @@ if (RUN === "a") {
     await page.setViewportSize({ width, height: HEIGHT });
     if (reduced) await page.emulateMedia({ reducedMotion: "reduce" });
     await open(page, "/millionea/how");
-    const cdp = await ctx.newCDPSession(page);
-    await cdp.send("Network.enable");
-    await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 400, downloadThroughput: 12 * 1024, uploadThroughput: 64 * 1024 });
+    // The page's answer is held back while the drawing is measured: Chromium's network slowed (its devtools protocol), and
+    // in WebKit — which has none — the move's own request for the hub held at the route (S5-R2-HUB 12) until released.
+    let cdp = null, release = () => {};
+    if (ENGINE === "chromium") {
+      cdp = await ctx.newCDPSession(page);
+      await cdp.send("Network.enable");
+      await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 400, downloadThroughput: 12 * 1024, uploadThroughput: 64 * 1024 });
+    } else {
+      const held = new Promise((done) => { release = done; });
+      await page.route((url) => url.pathname === "/millionea", async (route) => { await held; await route.continue().catch(() => {}); });
+    }
     // The app router's own move (`window.next.router`, what a Link calls): a phone's classic rail has no Millionea tab.
     await page.evaluate(() => { window.next?.router?.push("/millionea"); });
     const drawn = await page.waitForSelector('[aria-busy="true"] [data-ghost="strip"]', { timeout: 20_000 }).then(() => true).catch(() => false);
     const ghost = drawn ? await page.evaluate(BANDS, true) : null;
     const sweep = drawn ? await page.evaluate(SWEEPS) : null;
     if (drawn) await page.screenshot({ path: `${OUT}/${name}.png` });
-    await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+    if (cdp) await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+    else { release(); await page.unrouteAll({ behavior: "ignoreErrors" }).catch(() => {}); }
     await page.waitForSelector('[data-testid="millionea-hub"]', { timeout: 60_000 }).catch(() => {});
     await page.waitForTimeout(800);
     const real = await page.evaluate(BANDS, false);

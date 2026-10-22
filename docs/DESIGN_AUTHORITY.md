@@ -3355,7 +3355,10 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
       its day with its clock.
 27. **The hub's buy column (MASWALI-BUILD S5-R2-HUB, the tile readers).**
     - At 768 no cell stands empty. A head with no door beside it (sales paused) runs both columns; with no block of the
-      reader's, the graded week takes that block's cell, level with the ledger.
+      reader's, the graded week takes that block's cell, level with the ledger. A closed week's facts (results in, valid
+      reserves left, the objection window, the next event) are their own cell under the door, level with the ledger,
+      which follows the head; from 1024 they read on under the pinned pair, which holds only the head and the door. Inside
+      the door's block they made it taller than the head, and an empty band (80px at sw and en 768) stood under the head.
     - From 1024 the pinned head and door stand on the page's own ground, whose foot fades, so nothing passes under them
       cut flat. At rest the block under them stands the column's own gap below.
     - A closed week's held rows stand under "Your tickets", the tickets page's own title.

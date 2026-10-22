@@ -73,13 +73,18 @@ export const HUB_PINNED = "contents lg:sticky lg:top-[56px] lg:z-10 lg:-mt-3 lg:
  *  beside the reader's block, and the week being graded under the reader's block.
  *  ⭐ S5-R2-HUB · NO CELL STANDS EMPTY (the tile readers at 768): with no door beside it — sales paused, nothing to buy or
  *  follow — the head runs both columns (`headAlone`; a 350×170px hole stood beside it), and with no block of the reader's
- *  the graded week takes that block's cell, level with the ledger (it hung a row lower, under an empty one). */
+ *  the graded week takes that block's cell, level with the ledger (it hung a row lower, under an empty one).
+ *  ⭐ S5-R2-HUB 12 · A CLOSED WEEK'S FACTS HAVE THEIR OWN CELL (`facts`, under the door, level with the ledger; the
+ *  reader's block under them, `mineUnderFacts`): inside the door's block they made it taller than the head, and the head's
+ *  cell hung over an empty band before the ledger (80px at sw and en 768, voiding). */
 const CELLS = {
   head: "md:col-start-1 md:row-start-1",
   headAlone: "md:col-span-2 md:row-start-1",
   door: "md:col-start-2 md:row-start-1 md:self-center lg:self-auto",
+  facts: "md:col-start-2 md:row-start-2",
   ledger: "md:col-start-1 md:row-start-2 md:row-span-2",
   mine: "md:col-start-2 md:row-start-2",
+  mineUnderFacts: "md:col-start-2 md:row-start-3",
   grading: "md:col-start-2 md:row-start-3",
 } as const;
 export type HubCell = keyof typeof CELLS;
