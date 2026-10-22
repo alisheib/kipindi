@@ -44,7 +44,9 @@ const SCREENS: Record<string, readonly string[]> = {
   draft: ["src/app/admin/maswali/new/page.tsx", "src/app/admin/maswali/new/week-builder.tsx", "src/app/admin/maswali/[weekId]/edit/page.tsx"],
   week: ["src/app/admin/maswali/[weekId]/page.tsx", "src/app/admin/maswali/[weekId]/week-controls.tsx", "src/lib/maswali-void-reason.ts", "src/lib/maswali-admin-format.ts"],
   pools: ["src/app/admin/maswali/pools/page.tsx", "src/app/admin/maswali/pools/pools-controls.tsx", "src/lib/maswali-admin-format.ts"],
-  integrity: ["src/app/admin/maswali/integrity/page.tsx", "src/app/admin/maswali/integrity/integrity-controls.tsx", "src/lib/maswali-share-note.ts"],
+  integrity: ["src/app/admin/maswali/integrity/page.tsx", "src/app/admin/maswali/integrity/integrity-controls.tsx", "src/lib/maswali-share-note.ts",
+    // S7-OB · the objection queue and its ruling controls are the integrity page's own (S6-DOCS 10).
+    "src/app/admin/maswali/integrity/objection-queue.tsx", "src/app/admin/maswali/integrity/objection-controls.tsx"],
   evidence: ["src/app/admin/maswali/evidence/page.tsx", "src/lib/maswali-admin-format.ts"],
   lookup: ["src/app/admin/maswali/lookup/page.tsx", "src/app/admin/maswali/lookup/lookup-form.tsx", "src/app/admin/maswali/lookup/script-block.tsx"],
   tax: ["src/app/admin/tax/page.tsx", "src/lib/tax-report.ts"],

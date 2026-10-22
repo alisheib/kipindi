@@ -469,9 +469,9 @@ question.</p>
     ruling set its present result, nor the objector, nor an officer holding a ticket in the week. The Owner rules when no
     other officer can.</dd>
   <dt>Where</dt><dd>A holder objects to one question from their ticket's page while the objection window is open. Integrity →
-    <b>Objections</b> lists each week's objections by question: the result under dispute, each filer's reason and words.
-    Choose <b>Reject…</b>, <b>Reverse…</b>, <b>Void…</b> (with its ground) or <b>Reinstate…</b> (with its result), write the
-    <b>Reason for the record</b> — the player reads it — and type the ruling's word. An open objection holds its week's
+    <b class="ui" data-screen="integrity">Objections</b> lists each week's objections by question: the result under dispute, each filer's reason and words.
+    Choose <b class="ui" data-screen="integrity">Reject…</b>, <b class="ui" data-screen="integrity">Reverse…</b>, <b class="ui" data-screen="integrity">Void…</b> (with its ground) or <b class="ui" data-screen="integrity">Reinstate…</b> (with its result), write the
+    <b class="ui" data-screen="integrity">Reason for the record</b> — the player reads it — and type the ruling's word. An open objection holds its week's
     settlement and its week void. An upheld ruling that changes the counted set grades the week again and restarts the
     objection window, once per week.</dd>
   <dt>Refused when</dt><dd>You are barred on that question — the card says why in place of the buttons; the result changed
@@ -516,8 +516,9 @@ and <b class="ui" data-screen="pools">All states</b> · <b class="ui" data-scree
     (<b class="ui" data-screen="integrity">All winners</b>, <b class="ui" data-screen="integrity">Flagged</b>,
     <b class="ui" data-screen="integrity">Not flagged</b>), sort by Week, Ticket or Share. On a row,
     <b class="ui" data-screen="integrity">Hold…</b>, write why, type HOLD, <b class="ui" data-screen="integrity">Hold it</b>:
-    the winner's wallet is held until the share is decided. <b class="ui" data-screen="integrity">Winners' accounts to check</b>
-    names a winning account to review with its owner before its money leaves.</dd>
+    the winner's wallet is held until the share is decided. <b class="ui" data-screen="integrity">Possible account takeovers after a payout</b>
+    names a winning account that may have changed hands since its payout, for Compliance to review; its share can be held
+    from its row here. Nothing else stops the money.</dd>
   <dt>Refused when</dt><dd>The share is already held or forfeited; the ticket is not a paid winning ticket; no reason.</dd>
   <dt>If refused</dt><dd>Decide it under Held shares (B15).</dd>
 </dl>
@@ -780,6 +781,11 @@ are three different acts.</p>
   <tr><td class="mono">maswali.seal.new_device</td><td>A seal came from a device its officer had not sealed from before.</td></tr>
   <tr><td class="mono">maswali.seal.device_unchecked</td><td>A seal's device could not be checked.</td></tr>
   <tr><td class="mono">maswali.week.graded_set_final</td><td>The counted set became final; the objection window opened.</td></tr>
+  <tr><td class="mono">maswali.objection.filed</td><td>A ticket holder objected to one question's result.</td></tr>
+  <tr><td class="mono">maswali.objection.upheld</td><td>An officer upheld an objection: the question was reversed, voided or reinstated.</td></tr>
+  <tr><td class="mono">maswali.objection.rejected</td><td>An officer rejected an objection: the result stands.</td></tr>
+  <tr><td class="mono">maswali.objection.sealer_blocked</td><td>A ruling was refused: the officer sealed or confirmed that question.</td></tr>
+  <tr><td class="mono">maswali.objection.author_blocked</td><td>A ruling was refused: the officer's own upheld ruling set that question's result.</td></tr>
   <tr><td class="mono">maswali.week.carry_claimed</td><td>A week claimed the jackpot carried in.</td></tr>
   <tr><td class="mono">maswali.week.settled</td><td>A settlement was released.</td></tr>
   <tr><td class="mono">maswali.week.voided</td><td>A week was voided whole.</td></tr>
