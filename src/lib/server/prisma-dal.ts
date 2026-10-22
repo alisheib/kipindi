@@ -3719,8 +3719,10 @@ export const prismaDb = {
   // An OPEN row here freezes a market's settlement, so these are money-bearing
   // compliance records — they persist, they are never silently dropped.
   objection: {
-    create: async (o: StoredObjection): Promise<StoredObjection> => {
-      const row = await pc().objection.create({
+    /** `tx`: the enclosing lock's transaction (the Millionea objection door files on it); a second Millionea objection by
+     *  the same player on the same question fails on `Objection_maswali_question_player_key` (P2002). */
+    create: async (o: StoredObjection, tx?: Prisma.TransactionClient): Promise<StoredObjection> => {
+      const row = await (tx ?? pc()).objection.create({
         data: {
           id: o.id,
           marketId: o.marketId,
@@ -3742,6 +3744,18 @@ export const prismaDb = {
     findById: async (id: string): Promise<StoredObjection | null> => {
       const row = await pc().objection.findUnique({ where: { id } });
       return row ? toStoredObjection(row) : null;
+    },
+    /** ⭐ Rule on an objection only while it is OPEN — a conditional update (DATA-LAYER rule 2): true when THIS write
+     *  decided it, so two officers ruling on one case at once land exactly one ruling. `tx`: the lock's transaction. */
+    decideOpen: async (id: string, patch: Pick<StoredObjection, "status" | "reviewedBy" | "reviewedAt" | "reviewNote" | "remedy">, tx?: Prisma.TransactionClient): Promise<boolean> => {
+      const r = await (tx ?? pc()).objection.updateMany({
+        where: { id, status: "OPEN" },
+        data: {
+          status: patch.status, reviewedBy: patch.reviewedBy,
+          reviewedAt: patch.reviewedAt ? new Date(patch.reviewedAt) : null, reviewNote: patch.reviewNote, remedy: patch.remedy,
+        },
+      });
+      return r.count === 1;
     },
     update: async (id: string, patch: Partial<StoredObjection>): Promise<StoredObjection | null> => {
       const row = await pc().objection.update({
@@ -3772,8 +3786,9 @@ export const prismaDb = {
      *  remedy, who ruled and when. Narrow on purpose (four columns, no player text, no cap): the public
      *  sign-off reads it, and a capped newest-1000 list would silently drop an old ruling (v3 review). */
     listUpheldRulings: async (): Promise<Array<{ marketId: string; remedy: string; reviewedBy: string | null; reviewedAt: string | null }>> => {
+      // A Millionea ruling changes one question's result, never its market's verdict: no row of a market's sign-off.
       const rows = await pc().objection.findMany({
-        where: { status: "UPHELD", remedy: { in: ["REVERSE", "VOID"] } },
+        where: { status: "UPHELD", remedy: { in: ["REVERSE", "VOID"] }, questionOrdinal: null },
         select: { marketId: true, remedy: true, reviewedBy: true, reviewedAt: true },
       });
       return rows.map((r) => ({

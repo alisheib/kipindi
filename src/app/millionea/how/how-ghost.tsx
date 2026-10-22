@@ -40,7 +40,7 @@ export function MillioneaHowGhost() {
             <GhostBar className="h-4 w-[60%]" />
             <GhostBar className="h-3 w-full" />
             <GhostBar className="h-3 w-[80%]" />
-            <GhostBar className="h-10 w-[160px] rounded-control" />
+            <GhostBar className="h-[var(--h-control-md)] w-[160px] rounded-control" />
           </GhostCard>
         </div>
         <span className="sr-only">{t.common.loading}</span>

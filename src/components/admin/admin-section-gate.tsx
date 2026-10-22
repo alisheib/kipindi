@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { isStaffRole, isAdmin, isOwnerOnlyPath, domainForPath, DOMAIN_LABEL, DOMAIN_SUMMARY, roleLabel } from "@/lib/server/roles";
-import { canView, canAct } from "@/lib/server/rbac";
+import { canViewPath, canAct } from "@/lib/server/rbac";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
 import { AdminActProvider, ActReadOnlyBanner } from "@/components/admin/act-gate";
 import { crumbsFromPath } from "@/components/admin/admin-nav-groups";
@@ -81,7 +81,8 @@ export async function AdminSectionGate({ children, title: titleProp, banner = tr
   const role = user.role;
   const ownerOnly = isOwnerOnlyPath(path);
   const domain = domainForPath(path);
-  const viewBlocked = ownerOnly ? !isAdmin(role) : !(await canView(role, domain));
+  // The view by the PATH (its domain's grant, or MB-92's Auditor exception); the act stays the domain's alone.
+  const viewBlocked = ownerOnly ? !isAdmin(role) : !(await canViewPath(role, path));
   if (viewBlocked) {
     return <AdminRestricted title={title} need={ownerOnly ? "Owner (ADMIN) only" : `${DOMAIN_LABEL[domain]} access`} />;
   }
@@ -108,7 +109,7 @@ export async function viewerMayOpen(path: string): Promise<boolean> {
     const session = await currentSession();
     const user = session ? await viewerRow(session.userId) : null;
     if (!user || !isStaffRole(user.role) || !path.startsWith("/admin")) return false;
-    return isOwnerOnlyPath(path) ? isAdmin(user.role) : await canView(user.role, domainForPath(path));
+    return isOwnerOnlyPath(path) ? isAdmin(user.role) : await canViewPath(user.role, path);
   } catch {
     return false;
   }

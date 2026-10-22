@@ -20,6 +20,8 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:maswali-fairness",
   casesFile: "scripts/lib/maswali-fairness-child.mts",
-  minPass: { memory: 74, postgres: 31 },
+  // S6-DOCS 4 · the proof page on the tickets' gate gains its control H.6c (memory child only): 74 → 75, the count the
+  // run on a8b43c946 printed (run 39825278061).
+  minPass: { memory: 75, postgres: 31 },
   dbPrefix: "mlw_fairness",
 });

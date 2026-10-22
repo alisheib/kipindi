@@ -3,9 +3,10 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { checkOpenChecklist } from "./maswali-admin-checklist.mjs";
 
-const attestation = "A second reader has not attested that English, Swahili and Chinese agree (MB-79).";
-const licence = "No licence basis is recorded. The Owner records it before any week opens (OD-01).";
-const guarantee = "The guarantee holds TZS 0; TZS 1,000,000 is needed to open (OD-02).";
+// The open's checklist in the service's own words (S6-ADMIN: words, never a programme code — DESIGN_AUTHORITY §M8a item 29).
+const attestation = "A second reader has not attested that English, Swahili and Chinese agree.";
+const licence = "No licence basis is recorded. The Owner records it before any week opens.";
+const guarantee = "The guarantee holds TZS 0; TZS 1,000,000 is needed to open.";
 const seeded = { licence: "Owner ruling", guarantee: "TZS 7,056,000", requirement: "TZS 1,000,000" };
 const fresh = { licence: "None", guarantee: "TZS 0", requirement: "TZS 0" };
 const drivePath = fileURLToPath(new URL("./maswali-admin-drive.mjs", import.meta.url));
@@ -80,7 +81,7 @@ assert.equal(checkOpenChecklist(fresh, [attestation]).ok, false, "a missing lice
 assert.equal(checkOpenChecklist(fresh, [licence, attestation, guarantee.replace("1,000,000", "0")]).ok, false,
   "the prospective open must demand more than the balance held");
 assert.equal(checkOpenChecklist({ ...fresh, guarantee: "TZS 750,000", requirement: "TZS 1,000,000" },
-  [licence, attestation, "The guarantee holds TZS 750,000; TZS 900,000 is needed to open (OD-02)."]).ok, false,
+  [licence, attestation, "The guarantee holds TZS 750,000; TZS 900,000 is needed to open."]).ok, false,
   "the prospective open requirement must not be below the existing open-weeks requirement");
 assert.equal(checkOpenChecklist(seeded, [attestation, "Unknown blocker"]).ok, false, "an unexpected blocker must fail");
 assert.equal(hasFreshRequirementRead(driveSource), true, "drive must reread the pools requirement after the draft saves and before comparing the checklist");

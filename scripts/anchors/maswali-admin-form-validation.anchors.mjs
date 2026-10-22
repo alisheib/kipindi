@@ -145,8 +145,8 @@ export const MUTATIONS = [
   {
     name: "open-week refusal missing from its dialog",
     file: "src/app/admin/maswali/[weekId]/week-controls.tsx",
-    from: 'Players can buy as soon as Millionea is visible to them.</p>\n          {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}',
-    to: 'Players can buy as soon as Millionea is visible to them.</p>',
+    from: 'Players can buy as soon as Millionea is visible to them.{/* MR-13 */}</p>\n          {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}',
+    to: 'Players can buy as soon as Millionea is visible to them.{/* MR-13 */}</p>',
     failure: /Every confirmation must state its refusal inside itself/,
   },
   {

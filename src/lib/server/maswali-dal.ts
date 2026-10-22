@@ -19,6 +19,8 @@
  *      · `rolloverIn` is claimed once, by `claimCarry`, WHERE it IS NULL;
  *      · a week void is stamped once, by `stampVoid`, WHERE the week is CLOSED or RESOLVING (R1);
  *      · a ticket's seen mark moves only forward, by `markViewed`, WHERE it IS NULL or is older (S5 re-review 5).
+ *      · a draft leaves whole, with its questions, by `discardDraft`, WHERE it is still a DRAFT with no market, no ticket
+ *        and no final-week order (S6-ADMIN G5) — the only delete of a week; a week that opened is never deleted.
  *    Every one of those is a conditional write that answers whether it won the row, never a blind update.
  */
 import { Prisma } from "@prisma/client";
@@ -242,6 +244,13 @@ export interface WeekStore {
    * void won the row). The refunds are a later, separate write (`maswali-void.ts`), retried until they land.
    */
   stampVoid(id: string, tx?: Prisma.TransactionClient): Promise<boolean>;
+  /**
+   * ⭐ S6-ADMIN · G5 · A DRAFT THAT NEVER OPENED LEAVES WHOLE: its questions, then the week, WHERE it is still a DRAFT with no
+   * market, no ticket and no final-week order. False when the week is not that any more (the open won it, or the Owner
+   * made it the final week); nothing is deleted then. `tx`: the caller's lock transaction — the questions and the week
+   * leave in one transaction or not at all. A week that opened is never deleted by anything (its record is the sale).
+   */
+  discardDraft(id: string, tx?: Prisma.TransactionClient): Promise<boolean>;
 }
 
 /** One ticket's grade as the settlement writes it; `frozenReason` is a winning share held for Compliance (MB-43). */
@@ -437,6 +446,15 @@ const memoryWeeks: WeekStore = {
     const cur = memWeeks.get(id);
     if (!cur || (cur.state !== "CLOSED" && cur.state !== "RESOLVING")) return false;
     memWeeks.set(id, { ...cur, state: "VOIDED", updatedAt: now() });
+    return true;
+  },
+  async discardDraft(id) {
+    const cur = memWeeks.get(id);
+    if (!cur || cur.state !== "DRAFT" || cur.marketId !== null || cur.ticketCount !== 0 || cur.isFinal) return false;
+    // The database's ON DELETE RESTRICT, twinned: a week a ticket or a notice still points at is never deleted.
+    if ([...memTickets.values()].some((t) => t.cycleId === id)) throw new Error("MaswaliTicket_cycleId_fkey");
+    for (const [qid, q] of memQuestions) if (q.cycleId === id) memQuestions.delete(qid);
+    memWeeks.delete(id);
     return true;
   },
 };
@@ -728,6 +746,19 @@ const prismaWeeks: WeekStore = {
   async stampVoid(id, tx) {
     const r = await db_(tx).maswaliCycle.updateMany({ where: { id, state: { in: ["CLOSED", "RESOLVING"] } }, data: { state: "VOIDED" } });
     return r.count === 1;
+  },
+  async discardDraft(id, tx) {
+    const still = { id, state: "DRAFT" as const, marketId: null, ticketCount: 0, isFinal: false };
+    const run = async (t: Prisma.TransactionClient): Promise<boolean> => {
+      if ((await t.maswaliCycle.count({ where: still })) !== 1) return false;
+      // The questions first (their key RESTRICTs the week's delete), then the week on the same condition: a week that left
+      // DRAFT in between throws, and the transaction puts its questions back.
+      await t.maswaliQuestion.deleteMany({ where: { cycleId: id } });
+      const r = await t.maswaliCycle.deleteMany({ where: still });
+      if (r.count !== 1) throw new Error("maswali-dal.discardDraft: the week left DRAFT while it was being discarded");
+      return true;
+    };
+    return tx ? run(tx) : pc().$transaction(run);
   },
 };
 

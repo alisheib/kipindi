@@ -330,6 +330,10 @@ export function millioneaContent(r: MillioneaRulesFigures): Record<Locale, React
             at least a full week before its sales open.
           </p>
           <p>
+            Once a week is final, the Millionea page and every ticket form opened from then on say so, and a ticket
+            cannot be bought from a form opened before.
+          </p>
+          <p>
             The final week runs normally and everything the jackpot holds goes into it. If no ticket reaches 10 of 10, the
             jackpot is shared equally among the tickets with the highest score; our fee applies to that payout, and the
             floor top-up only if a ticket reaches 10 of 10. If the final week voids or sells nothing, the next week to open
@@ -651,6 +655,10 @@ export function millioneaContent(r: MillioneaRulesFigures): Record<Locale, React
             wiki ya mwisho iliyopangwa: inatajwa angalau wiki nzima kabla ya mauzo yake kufunguliwa.
           </p>
           <p>
+            Wiki ikishakuwa ya mwisho, ukurasa wa Millionea na kila fomu ya kujaza tiketi inayofunguliwa baada ya hapo
+            husema hivyo, na tiketi haiwezi kununuliwa kupitia fomu iliyofunguliwa kabla ya hapo.
+          </p>
+          <p>
             Wiki ya mwisho inaendeshwa kama kawaida na kila kitu kilicho kwenye jackpot kinaingia ndani yake. Hakuna tiketi
             ikifikia 10 kati ya 10, jackpot inagawanywa sawa kati ya tiketi zenye alama za juu zaidi; ada yetu inatumika
             kwa malipo hayo, na nyongeza ya dhamana tu ikiwa tiketi itafikia 10 kati ya 10. Wiki ya mwisho ikibatilishwa
@@ -892,6 +900,7 @@ export function millioneaContent(r: MillioneaRulesFigures): Record<Locale, React
             <li>在无周正在销售、且某周结果正在确定期间（其销售已截止、尚未结算）下令停办：该周按其自身规则结算——无 10/10 彩票的一周照常滚存——下一个开放的周成为最后一周，其购买者在购买时即获告知。</li>
           </ul>
           <p>在两周之间（既无正在销售的周，也无结果正在确定的周）下令停办，即为计划中的最后一周：须至少在其销售开放前一整周指定。</p>
+          <p>一周一旦成为最后一周，Millionea 页面及此后打开的每个填写彩票页面都会注明，且不能通过此前打开的填写彩票页面购票。</p>
           <p>
             最后一周照常进行，大奖中的全部资金均投入其中。若没有彩票达到 10/10，大奖由得分最高的彩票平分；该次赔付收取我们的费用，仅在有彩票达到 10/10 时才进行保底补足。若最后一周作废或未售出任何彩票，则下一个开放的周成为最后一周。最后一周进行完毕后，不再开放任何公开的周；大奖账户中剩余的资金——分配余数，或经审核后被没收的份额——留存于该账户中。
           </p>

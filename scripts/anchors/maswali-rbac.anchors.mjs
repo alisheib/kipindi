@@ -230,4 +230,47 @@ export const MUTATIONS = [
     expect: "10 · /admin/maswali/integrity draws the letters' check",
     suite: "rbac",
   },
+  // 2026-10-22 · S6-DOCS · MB-92 as built (the lead's ruling (m)): the Auditor reads the Millionea console, read-only, and
+  // nothing beyond it.
+  {
+    name: "(27) MB-92 · the Auditor's route exception widens past the Millionea console (every console page opens to it)",
+    file: "src/lib/server/roles.ts",
+    from: "export const AUDITOR_CONSOLE_PREFIX = \"/admin/maswali\";",
+    to: "export const AUDITOR_CONSOLE_PREFIX = \"/admin\";",
+    expect: "7 · ⛔ the Auditor opens no other trading page",
+    suite: "rbac",
+  },
+  {
+    name: "(28) MB-92 · the Auditor is handed an act (its compliance grant arms every Compliance control)",
+    file: "src/lib/server/roles.ts",
+    from: "    compliance: { canView: true, canAct: false },",
+    to: "    compliance: { canView: true, canAct: true },",
+    expect: "7 · ⛔ …and acts on NONE",
+    suite: "rbac",
+  },
+  {
+    name: "(29) MB-92 · the page gate stops asking the path (the Auditor is refused the week list its nav offers)",
+    file: "src/components/admin/admin-section-gate.tsx",
+    from: "  const viewBlocked = ownerOnly ? !isAdmin(role) : !(await canViewPath(role, path));",
+    to: "  const viewBlocked = ownerOnly ? !isAdmin(role) : !(await canView(role, domain));",
+    expect: "7 · the page gate asks canViewPath",
+    suite: "rbac",
+  },
+  /* ── MASWALI-BUILD S7-OB · Compliance's ruling on a player's objection to one question (MR-16), on /integrity. ── */
+  {
+    name: "(S7-OB-rbac-1) the objection ruling is registered as a trading control, so the week's own officer could rule on its seals",
+    file: "src/lib/server/control-gates.ts",
+    from: "  ruleMaswaliObjection: \"compliance\",",
+    to: "  ruleMaswaliObjection: \"trading\",",
+    expect: "2 · ruleMaswaliObjection is registered compliance",
+    suite: "rbac",
+  },
+  {
+    name: "(S7-OB-rbac-2) the objection ruling is enforced as the week void's control instead of its own",
+    file: "src/app/admin/maswali/integrity/actions.ts",
+    from: "requireStaff(CONTROL_DOMAIN.ruleMaswaliObjection, \"ruleMaswaliObjection\")",
+    to: "requireStaff(CONTROL_DOMAIN.voidMaswaliWeek, \"ruleMaswaliObjection\")",
+    expect: "3 · ruleMaswaliObjection is enforced",
+    suite: "rbac",
+  },
 ];

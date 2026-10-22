@@ -87,7 +87,31 @@ export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // D19a RE-PINNED AT S6-INT 13 (the merge of S7-MERGE 2, which carries S5's round 2; was 24f9c8407, S6-INT 11's):
   // S5-R2-SLIP's `draftTicketsNoun` (the noun once over the switcher's pills, the lead's ruling (a) of round 2) in
   // en/sw/zh. No other line changed.
-  "src/lib/i18n-dict.ts": "28a7cf95115bd761b85cda8158d0aa04ab07be42",
+  // D19a RE-PINNED AT S7-MERGE 2 (the S5 release's round 2, e34bcdc95; was 7a9a98ffe): S7's dictionary plus the release's
+  // one addition since 81e312f01 — `draftTicketsNoun` in en/sw/zh ("Tickets" / "Tiketi" / "彩票", SLIP round 2's ruling
+  // (a)). No other line changed.
+  // D19a RE-PINNED (S7-OB, the Millionea objection door, 2026-10-22; was 475f305f6, S7-MERGE 2's): S7's dictionary as pinned
+  // above plus 24 `millionea.obj*` keys in en/sw/zh — the ticket page's door: its window and the money's rule, the dialog's
+  // title, intro, question picker and filed toast, each refusal in the player's words, and the player's objections in every
+  // state with the officer's note. No other line changed.
+  // D19a RE-PINNED AT S7-MERGE 3 (the objection lane merged over S7-F9 13, 2026-10-22; was fad013995, S7-OB's): one comment
+  // line, the {hours} placeholder's note naming the window by its one name — "objection window", the lead's P6 ruling.
+  // No published word changed.
+  // D19a RE-PINNED AT S6-INT 21 (the merge of S7 at a7feccbef, S7-MERGE 3 with the objection lane; was 28a7cf951,
+  // S6-INT 13's, and bd4addcfc, S7-MERGE 3's): the union of the two — S7-OB's 24 `millionea.obj*` keys in en/sw/zh and
+  // S7-MERGE 3's one comment line ("objection window") beside S6's lines since S7-MERGE 2. No other line changed.
+  // THE RELEASE'S OWN RE-PIN, kept as its record (the S5 dark release, 2026-10-22: e634e4dc7 → e851d5fa5). Reviewed by the
+  // lead: OUTSIDE the three `millionea` blocks (en/sw/zh) the two blobs are byte-identical (a brace-matched strip of each
+  // block, with a positive control that a planted classic edit is reported); inside them only S5 round 2's ruled player
+  // words moved — "Objection window" for the check window (MR-16), the one sales-close wording with its zone, "Buy
+  // ticket"/"Ticket bought" (Ali's 2026-10-21 ruling 7), the slip's counted asks, the final week's rule (MR-30) — no policy
+  // string, no classic word. e851d5fa5 is the release's dictionary at e34bcdc95, which S7-MERGE 2 merged.
+  // NOT RE-PINNED AT S7-MERGE 4 (the release at 2ed817395, 2026-10-22): the release has not touched the dictionary since
+  // e34bcdc95, so the merged dictionary is S7's, byte for byte, and the pin stays S7's.
+  // NOT RE-PINNED AT S6-INT 25 (the merge of S7 at 66ec6e9be: S7-MERGE 4 with the S5 release at 2ed817395, S7-F9 14-16): S7's
+  // dictionary is unchanged since S7-MERGE 3 (bd4addcfc, merged at S6-INT 21), so the merged dictionary is S6-INT 21's,
+  // byte for byte, and the pin stays d61b83910.
+  "src/lib/i18n-dict.ts": "d61b839100b27874e62d343d855435e2f23400e4",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
 };
@@ -262,7 +286,10 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
       // (the chooser) and the dictionary are re-pinned at that merge in the follow-up commit.
       // S6-INT 12 · the binding text re-pinned at 3ea9f088f (S6-INT 11), whose blob is the file as it stands: its Chinese
       // names an event 事件 (the lead's ruling D2; MILLIONEA_RULES_TEXT_SHA d5a5e9e3e680). The route stays at 902afae56.
-      ["src/app/legal/rules/_content-millionea.tsx", "3ea9f088f"],
+      // S6-DOCS 9 · re-pinned at S6-DOCS 8, whose blob is the file as it stands: §11 states the stale-form rule in the
+      // decided words `ruleSunset` carries (MILLIONEA_RULES_TEXT_SHA 46f7b1b18732; COMPLIANCE § "2026-10-22 · The Maswali
+      // Millionea rules' §11 states the stale-form rule …"). Nothing else in the file moved.
+      ["src/app/legal/rules/_content-millionea.tsx", "e613003fd2bd1bfdd07a3716d89a7c76ddd39941"],
       ["src/app/legal/rules/millionea/page.tsx", "902afae56"],
     ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };

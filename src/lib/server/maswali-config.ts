@@ -164,7 +164,7 @@ export function maswaliConfigProblem(c: MaswaliConfig): string | null {
   if (caps) return caps;
   if (!(GUARANTEE_RESERVE_POLICIES as readonly unknown[]).includes(c.guaranteeReservePolicy)) return "The guarantee policy is not one the platform knows.";
   if (!isWhole(c.releaseAlertHours, 1, 72)) return "The release alert must be a whole number of hours from 1 to 72.";
-  if (c.paidExitWindowMinutes !== 0) return "A Millionea ticket has no paid early exit (MB-50); the window stays 0.";
+  if (c.paidExitWindowMinutes !== 0) return "A Millionea ticket has no paid early exit; the window stays 0."; // MB-50
   if (!isWhole(c.complaintAnswerDays, 1, 30)) return "The complaint answer target must be a whole number of working days from 1 to 30.";
   return null;
 }
@@ -304,7 +304,7 @@ function rulesV1Problem(s: Record<string, unknown>): string | null {
   if (!q || typeof q !== "object" || !isRate(q.probabilityMin, 0, 1) || !isRate(q.probabilityMax, 0, 1) || (q.probabilityMin as number) >= (q.probabilityMax as number)
     || !isWhole(q.maxPerCompetition, 1, 15) || !isWhole(q.minReserveSources, 1, 5)) return "the question rules are unreadable";
   if (s.guaranteeReservePolicy !== "FLOOR_LESS_CARRY_PER_OPEN_WEEK") return "the guarantee policy is not one version 1 knows";
-  if (s.paidExitWindowMinutes !== 0) return "it carries a paid early exit, which a Millionea ticket never has (MB-50)";
+  if (s.paidExitWindowMinutes !== 0) return "it carries a paid early exit, which a Millionea ticket never has"; // MB-50
   return null;
 }
 

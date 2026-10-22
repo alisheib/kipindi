@@ -251,8 +251,10 @@ const SIDELESS = [
   "src/app/auth/verify-email/page.tsx", "src/app/auth/reset-password/page.tsx", "src/components/ui/page-header.tsx",
   "src/components/ui/page-hero.tsx", "src/components/rg/self-care-art.tsx", "src/app/profile/responsible-gambling/page.tsx",
   "src/app/profile/activity/page.tsx", "src/app/profile/page.tsx", "src/components/wallet/payout-status-notice.tsx",
-  "src/components/layout/page-ribbon.tsx", "src/app/leaderboard/page.tsx", "src/lib/i18n.tsx", "src/app/agent/apply/apply-client.tsx",
+  "src/components/layout/page-ribbon.tsx", "src/app/leaderboard/page.tsx", "src/app/agent/apply/apply-client.tsx",
   "src/app/wallet/wallet-client.tsx", "src/app/profile/source-of-funds/page.tsx",
+  // ⚠️ `src/lib/i18n.tsx` LEFT THIS LIST on 2026-10-22: the owner gave the language loader's ring its green and red back
+  // (§B2a's owner exception). It is not let go — §7i holds it to exactly that ring and no other betting ink.
 ];
 const sideless = SIDELESS.map((f) => [f, sideInk(read(f))] as const).filter(([, hits]) => hits.length > 0);
 ok(`§7a ${SIDELESS.length} surfaces that name no side carry no betting ink`, sideless.length === 0, sideless.map(([f, x]) => `${f}: ${x.join(" ")}`).join(" | "));
@@ -302,6 +304,35 @@ ok("§7e control · the NO side's button as a refusal's way out is reported", ap
 ok("§7f control · a YES-green placed pulse and a YES-green balance move are reported", appStateDefects(ORM, plantPulse, BELL, DIAL, STAKE).length > 0 && appStateDefects(ORM, plantDelta, BELL, DIAL, STAKE).length > 0);
 ok("§7g control · either player bell's count back in the NO rose is reported", appStateDefects(ORM, css, plantBell, DIAL, STAKE).length > 0);
 ok("§7h control · a destructive hover in the NO rose is reported", sideInk(plantHover).length === 2, "", sideInk(plantHover).join(" "));
+
+/* §7i · THE ONE DECORATION THE PAIR IS LENT TO — the language-change loader (the owner, 2026-10-22) ─────────────────────
+   `src/lib/i18n.tsx` was SIDELESS from R5-I (2026-10-09), when the loader's six glyphs left the YES green and the NO rose
+   for the brand steps — a blue-grey ring on screen. Ali gave it its colour back ("on change language the colored animation
+   is still on grey scale — give it back its color", then "its green and red"): DESIGN_AUTHORITY §B2a's owner exception.
+   The file is held to EXACTLY that, rather than let go of the rule: inside the loader's GLYPHS, six inks alternating
+   `var(--yes-400)` / `var(--no-400)` from Hi; anywhere else in the file — the provider, the scrim, the dot, the words —
+   no betting ink at all. On screen: `qa:locale-loader`. */
+console.log("\n§7i · the language loader's ring is the pair's one decoration (owner, 2026-10-22), and nothing else in its file is");
+const RING = ["var(--yes-400)", "var(--no-400)", "var(--yes-400)", "var(--no-400)", "var(--yes-400)", "var(--no-400)"];
+function loaderInkDefects(src: string): string[] {
+  const c = code(N(src));
+  const glyphs = /const GLYPHS = \[([\s\S]*?)\] as const;/.exec(c)?.[1];
+  if (glyphs === undefined) return ["the loader's GLYPHS were not found"];
+  const d: string[] = [];
+  const ring = sideInk(glyphs);
+  if (ring.join(" ") !== RING.join(" ")) d.push(`the ring is not the pair alternating from Hi: ${ring.join(" ") || "no betting ink"}`);
+  const rest = sideInk(c.replace(glyphs, ""));
+  if (rest.length) d.push(`betting ink outside the ring: ${rest.join(" ")}`);
+  return d;
+}
+const I18N = read("src/lib/i18n.tsx");
+ok("§7i the language loader's six glyphs alternate the YES and NO inks from Hi, and its file carries no other betting ink",
+  loaderInkDefects(I18N).length === 0, loaderInkDefects(I18N).join("; "));
+const plantBrandRing = N(I18N).replace(/var\(--yes-400\)/g, "var(--brand-300)").replace(/var\(--no-400\)/g, "var(--brand-200)");
+const plantWordsInk = N(I18N).replace('className="font-display text-[13px] font-semibold text-text-subtle', 'className="font-display text-[13px] font-semibold text-no-300');
+ok("§7i′ control · both planted copies found their target", plantBrandRing !== N(I18N) && plantWordsInk !== N(I18N));
+ok("§7i″ control · R5-I's brand ring planted back is reported", loaderInkDefects(plantBrandRing).length > 0, "", loaderInkDefects(plantBrandRing).join("; "));
+ok("§7i‴ control · a betting ink outside the ring (the loader's words in the NO rose) is reported", loaderInkDefects(plantWordsInk).length > 0, "", loaderInkDefects(plantWordsInk).join("; "));
 
 /* §8 · AN OFFICER'S VERDICT IS NOT A SIDE (the Vodacom plan S12 WP6, 2026-10-14) ───────────────────────────────────────────
    §B2a, read in the console: the YES/NO ink names the side a stake is on, never an officer's verdict. The console's decisions

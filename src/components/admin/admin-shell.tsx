@@ -18,7 +18,7 @@ import { AiToolkit } from "./ai-toolkit";
 import { getAiToolkitStatus } from "@/lib/server/ai-controls";
 import { canUseControl } from "@/lib/server/control-gates";
 import { filterNavGroups } from "./admin-nav-groups";
-import { roleLabel, type AdminDomain } from "@/lib/server/roles";
+import { auditorReadsPath, roleLabel, type AdminDomain } from "@/lib/server/roles";
 import { AdminSpark } from "./admin-charts";
 import { formatDateISO } from "@/lib/utils";
 import { campaignAttentionBadge } from "@/lib/server/marketing/campaign-attention";
@@ -176,10 +176,11 @@ async function openRefusedFundsCases(canSeeMoney: boolean): Promise<number> {
   return report.accounts.filter(awaitsOfficer).length;
 }
 
-export async function AdminSidebar({ activeKey, viewDomains, isOwner }: { activeKey: string; viewDomains: AdminDomain[]; isOwner: boolean }) {
+export async function AdminSidebar({ activeKey, viewDomains, isOwner, role }: { activeKey: string; viewDomains: AdminDomain[]; isOwner: boolean; role: string }) {
   const badges = await getSidebarBadges(isOwner || viewDomains.includes("accounting"), isOwner || viewDomains.includes("growth"));
-  // RBAC nav gate — show only the groups/items whose domain the viewer may see.
-  const groups = filterNavGroups(viewDomains, isOwner);
+  // RBAC nav gate — show only the groups/items whose domain the viewer may see, and the console's one route exception
+  // (MB-92: the Auditor reads the Millionea console), on the viewer's STORED role.
+  const groups = filterNavGroups(viewDomains, isOwner, (href) => auditorReadsPath(role, href) && viewDomains.includes("compliance"));
   return (
     <aside className="hidden lg:flex shrink-0 border-r border-border flex-col gap-1 sticky top-0 self-start max-h-screen overflow-y-auto px-[14px] py-[18px]"
       style={{ width: 216, background: "var(--panel)" }}>
@@ -202,9 +203,9 @@ export async function AdminSidebar({ activeKey, viewDomains, isOwner }: { active
   );
 }
 
-export async function AdminTopBar({ crumbs, session, activeKey, viewDomains, isOwner }: { crumbs: string[]; session: AdminSession; activeKey: string; viewDomains: AdminDomain[]; isOwner: boolean }) {
+export async function AdminTopBar({ crumbs, session, activeKey, viewDomains, isOwner, role }: { crumbs: string[]; session: AdminSession; activeKey: string; viewDomains: AdminDomain[]; isOwner: boolean; role: string }) {
   const badges = await getSidebarBadges(isOwner || viewDomains.includes("accounting"), isOwner || viewDomains.includes("growth"));
-  const groups = filterNavGroups(viewDomains, isOwner);
+  const groups = filterNavGroups(viewDomains, isOwner, (href) => auditorReadsPath(role, href) && viewDomains.includes("compliance"));
   return (
     <div className="relative z-40 border-b border-border"
       style={{

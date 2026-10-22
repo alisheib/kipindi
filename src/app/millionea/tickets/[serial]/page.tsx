@@ -54,6 +54,7 @@ import { MILLIONEA_HREF, registerWeekHref, signInHref } from "../../millionea-pa
 import { clausesOf, earnedOf, lineOf, millioneaWeekPhase, msOf, refundOf } from "../../millionea-view";
 import { registerLedgerRows } from "../../register/register-parts";
 import { SealDoor, TicketCancel, TicketHost } from "./ticket-acts";
+import { MaswaliObjectionDoor } from "@/components/maswali/maswali-objection-door";
 
 export const dynamic = "force-dynamic";
 
@@ -271,6 +272,7 @@ export default async function MillioneaTicketPage({ params }: { params: Promise<
               play={play}
             />
           </div>
+          <MaswaliObjectionDoor t={t} locale={locale} userId={gate.userId} week={view.week} questions={view.questions} nowMs={nowMs} />
         </div>
       </TicketHost>
     </PageContainer>

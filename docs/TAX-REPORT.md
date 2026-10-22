@@ -15,7 +15,7 @@
 | Day by day | 🟢 **LIVE 2026-10-04, `d4db96bb`** (served from 11:45 UTC, read back from `?dpl=`) — every week, month or custom window lists its days, each that day's own report (§6b) |
 | Finance's filing lines | 🟢 **LIVE 2026-10-06, `9d1550da`** (served from 11:57 UTC, read back from `?dpl=`; `/admin/tax` still redirects to sign-in, the export route answers an anonymous request with 401, clean boot) (Jaykishan, Finance — §6c): Report 2 opens with **Sales less refunds** and its **tickets** and closes with **Net commission revenue**, as Finance's monthly sheet files them; the report names deposits and withdrawals once, in a note, and nowhere beside a figure |
 | GBT levy | 🟢 **LIVE 2026-10-06, `17e9e335`** (served from 13:43 UTC, read back from `?dpl=`, clean boot) — the Gaming Board's line reads "GBT levy" on every surface (Ali: "change gbt tax to gbt levy"; §12 item 13) |
-| Millionea | 🔨 **MASWALI-BUILD S6, written on `mln-s6-reports`, dark** — a Maswali Millionea week is filed by OD-08 (§6d): three reconciling lines, Report 2 on the fee its settlement booked, a Millionea pill on a period that holds a week. Polls and Up & Down are byte-identical (`test:tax-report` §12 (S6) 12.14). Finance's written confirmation of OD-08 is owed before ACTIVE (MASWALI-PLAN §6 Gate B) |
+| Millionea | 🔨 **MASWALI-BUILD S6, integrated on `claude/maswali-s6-release`, dark** — a Maswali Millionea week is filed by OD-08 (§6d): three reconciling lines, Report 2 on the fee its settlement booked, a Millionea pill on a period that holds a week. Polls and Up & Down are byte-identical (`test:tax-report` §12 (S6) 12.14). Finance's written confirmation of OD-08 is owed before ACTIVE (MASWALI-PLAN §6 Gate B) |
 | Who sees it | Owner (ADMIN), Finance, Compliance, Auditor — accounting VIEW (`roles.ts` `ROUTE_DOMAINS`) |
 | Who locks a period | Finance or the Owner (accounting ACT). The Owner alone (the stored ADMIN role) reopens one, records new rates, or locks a period out of balance — including one product while the whole book behind it is out |
 | Proof | `npm run test:tax-report` (engine + reader on real bets/settlements) · `npm run red:tax-report` (every declared mutation caught) |
@@ -233,8 +233,8 @@ confirmed unchanged; the sheet's lines are added around it.
 
 ## §6d · Millionea — the jackpot-payout model (MASWALI-BUILD S6, OD-08)
 
-The ruling (`docs/MASWALI-PLAN.md` §9 OD-08, Ali's acceptance of 2026-10-16; Finance's written confirmation is owed
-before ACTIVE): Report 1 gains three lines, Report 2 files the booked 13% of J, statutory GGR is unchanged with
+The ruling (`docs/MASWALI-PLAN.md` §9 OD-08, Ali's acceptance of 2026-10-16; Finance confirmed it on 2026-10-21 —
+`docs/COMPLIANCE-DECISIONS.md` 2026-10-21 item 5, on Ali's word; GBT's answer is still owed, on Ali's list for S8): Report 1 gains three lines, Report 2 files the booked 13% of J, statutory GGR is unchanged with
 liability and guarantee lines and a note, and the levy on the house's own top-up and the period shift are accepted.
 
 - **Why the plan's rule needs three more items.** A Millionea week's pool takes money in that is not Sales (the carried

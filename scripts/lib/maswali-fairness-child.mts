@@ -649,11 +649,14 @@ if (STORE === "memory") {
     // S6-INT 10 · the zh ground names its event 事件, the lead's zh word for a Millionea event (test:maswali-design 4.D).
     const [sbcEn, sbcSw, sbcZh] = words("settled_before_close"), [objEn, objSw, objZh] = words("criterion_objection");
     const guide = read("docs/maswali-operator-guide.html");
-    const g62 = guide.slice(guide.indexOf("<h3>6.2 · An event moved earlier</h3>"), guide.indexOf("<h3>6.3 · Pausing sales</h3>"));
-    ok("L.15 · ⛔ round 3, M2 · MR-5's case has a ground whose words are true: MR-15's own (\"settled before the close (MR-5)\") now names an event that had begun, on the console and on the register in three languages, and guide §6.2 sends officers to it; the after-close ground no longer claims a player's objection that no path files",
+    // MASWALI-BUILD S6-DOCS · the guide's "while it sells" step (part 2, B5) is where an officer meets MR-5's case: it names
+    // the ground as the console prints it, a quoted label (`test:maswali-admin-guide` holds every such label to its source).
+    const sells = guide.indexOf('<section class="step" id="sells">');
+    const g62 = sells < 0 ? "" : guide.slice(sells, guide.indexOf("</section>", sells));
+    ok("L.15 · ⛔ round 3, M2 · MR-5's case has a ground whose words are true: MR-15's own (\"settled before the close (MR-5)\") now names an event that had begun, on the console and on the register in three languages, and the guide's step for a selling week sends officers to it; the after-close ground no longer claims a player's objection that no path files",
       /begun/.test(VOID.MASWALI_VOID_REASON_LABEL.settled_before_close) && /begun/.test(sbcEn) && /lilianza/.test(sbcSw) && /事件已开始/.test(sbcZh)
         && !/objection/i.test(VOID.MASWALI_VOID_REASON_LABEL.criterion_objection) && !/objection/i.test(objEn) && !/pingamizi/i.test(objSw) && !/异议/.test(objZh)
-        && /after the close/.test(objEn) && g62.includes(`<i>${VOID.MASWALI_VOID_REASON_LABEL.settled_before_close}</i>`) && !g62.includes("Objection to the criterion upheld")
+        && /after the close/.test(objEn) && g62.includes(`<b class="ui" data-screen="week">${VOID.MASWALI_VOID_REASON_LABEL.settled_before_close}</b>`) && !g62.includes("Objection to the criterion upheld")
         && VOID.MASWALI_VOID_REASONS.length === 6,
       J({ sbc: VOID.MASWALI_VOID_REASON_LABEL.settled_before_close, obj: VOID.MASWALI_VOID_REASON_LABEL.criterion_objection, g62: g62.length }));
     // A week raised to the floor and topped up: the split leaves a remainder (the register prints it) and NONE of it
@@ -756,10 +759,15 @@ if (STORE === "memory") {
         && /highest-scoring/.test(dict.en.millionea.finalWeekRule) && LOCS.every((l) => !("helpFinalWeek" in dict[l].millioneaFairness)),
       J(LOCS.map((l) => out[l].indexOf(dict[l].millionea.finalWeekRule))));
     const guide = read("docs/maswali-operator-guide.html");
-    const told = guide.slice(guide.indexOf("<h2 class=\"pb\">11 · What to say to players</h2>"), guide.indexOf("<h2>12 · If something looks wrong</h2>"));
-    ok("H.11 · ⛔ round 3, M3 · the operator guide promises no unbuilt path — no fault void, no player objection pulling a reserve in — and what staff tell players carries the final week's exception twice (how it works; nobody won)",
+    // MASWALI-BUILD S6-DOCS · the guide's part 1 ("How Millionea works", what every admin reads first) is where staff learn
+    // what to tell a player; the desk's scripts themselves live on the Ticket lookup page, read from their one source.
+    const p1 = guide.indexOf('<h2 id="part-1">'), p2 = guide.indexOf('<h2 id="part-2">');
+    const told = p1 < 0 || p2 < p1 ? "" : guide.slice(p1, p2);
+    const row = (name: string) => told.slice(told.indexOf(`<tr><td>${name}</td>`), told.indexOf("</tr>", told.indexOf(`<tr><td>${name}</td>`)));
+    ok("H.11 · ⛔ round 3, M3 · the admin guide promises no unbuilt path — no fault void, no player objection pulling a reserve in — and its part 1 carries the final week's exception where it states the win and the rollover, and states the exception itself (the highest score shares)",
       !guide.includes("a platform fault voids the whole week") && !guide.includes("An objection that voids a main later")
-        && (told.match(/final week/g) ?? []).length >= 2 && told.length > 1000, J({ told: told.length }));
+        && /final week/.test(row("Ten counted of fifteen")) && /final\s+week/.test(row("Rollover")) && /highest score share/.test(row("The final week"))
+        && told.length > 1000, J({ told: told.length }));
   }
   {
     const page = decomment(read("src/app/fairness/page.tsx"));
@@ -772,14 +780,21 @@ if (STORE === "memory") {
     const dir = "src/app/fairness/millionea/[serial]";
     const page = decomment(read(`${dir}/page.tsx`));
     const at = (s: string) => page.indexOf(s);
-    // The page asks the product's gate or the tickets' gate (L5: a kill hides the product, never a holder's own tickets —
-    // the ticket page's own); its metadata asks that gate inside a try, or S5's tickets door, as the ticket page does.
-    const metaFn = page.slice(page.indexOf("export async function generateMetadata"), page.indexOf("export default async function"));
-    const metaGate = /try \{\s*await millionea(?:Ticket)?Gate\(\);\s*\} catch \{\s*return notFoundMetadata\(\);\s*\}|if \(!\(await millioneaTicketsDoor\(\)\)\) return notFoundMetadata\(\);/.exec(metaFn);
+    // ⭐ S6-DOCS (item 1) · the page asks the TICKETS' gate (L5: a kill hides the product, never a holder's own tickets —
+    // the ticket page's own; it asked the product's gate, the review's finding), and its title S5's tickets door, as the
+    // ticket page does. A predicate, so the control below can plant the product's gate back and see it caught.
+    const proofGateOk = (src: string) => {
+      const fn = src.slice(src.indexOf("export async function generateMetadata"), src.indexOf("export default async function"));
+      const door = /if \(!\(await millioneaTicketsDoor\(\)\)\) return notFoundMetadata\(\);/.exec(fn);
+      return (src.match(/const gate = await millioneaTicketGate\(\);/g) ?? []).length === 1 && !/millioneaGate\(/.test(src)
+        && !!door && door.index < fn.indexOf("getServerT()");
+    };
     ok("H.6 · ⛔ the proof route: the gate in the page and its metadata, sign-in for every signed-out reader before anything is read, and the one 404 for every other serial",
-      (page.match(/const gate = await millionea(?:Ticket)?Gate\(\);/g) ?? []).length === 1 && !!metaGate && metaGate.index < metaFn.indexOf("getServerT()")
+      proofGateOk(page)
         && at("if (!gate.userId) redirect(") > 0 && at("if (!gate.userId) redirect(") < at("await millioneaTicketProof(gate.userId, serial)")
         && page.includes("if (!p) notFound();") && page.includes("return { title: `${t.millioneaFairness.proofTitle} · ${t.millionea.productLabel}` };"));
+    ok("H.6c · control · the page planted back on the product's gate (a holder's proof hidden at a kill) is caught",
+      !proofGateOk(page.replace("const gate = await millioneaTicketGate();", "const gate = await millioneaGate();")));
     // ⛔ Read as what each file PRINTS — its string literals, template parts and JSX text, the platform's one print measure
     // (`player-surface-text.mts`) — never the span between two literals: a quote-to-quote pattern ran from the last import's
     // closing quote across the component's own name (`MillioneaProofLoading`) to the next literal, and failed both files at

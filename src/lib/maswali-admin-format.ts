@@ -16,6 +16,16 @@ export function fmtEat(iso: string | null | undefined): string {
   return Number.isFinite(d.getTime()) ? EAT.format(d) : "—";
 }
 
+/**
+ * ⭐ S6-ADMIN · G4 · AN INSTANT INSIDE A SENTENCE THE CONSOLE PRINTS — a refusal, the open's checklist, an alert:
+ * "Fri 23 Oct, 18:00 (EAT)", the console's own time with its zone named, as its tables and hints write it. Never a raw
+ * ISO string (the lead's ruling G4). Takes an ISO string or an epoch in milliseconds.
+ */
+export function eatInText(at: string | number | null | undefined): string {
+  const iso = typeof at === "number" ? (Number.isFinite(at) ? new Date(at).toISOString() : null) : at;
+  return `${fmtEat(iso)} (EAT)`;
+}
+
 const EAT_DAY = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Dar_es_Salaam", weekday: "short", day: "2-digit", month: "short" });
 const EAT_CLOCK = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Dar_es_Salaam", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 
@@ -47,6 +57,25 @@ export function fmtInZone(iso: string | null | undefined, zone: string): string 
     return `${EAT.format(d)} · EAT`;
   }
 }
+
+/**
+ * ⭐ S6-ADMIN · G3 · AN OFFICER WITH NO NAME ON RECORD, as the console names them: a stable handle from the id's tail, in the
+ * player handle's shape (`displayLabel`: "Player #A3F2K8") — "Officer #A3F2K8", never the raw id.
+ */
+export function officerHandle(id: string): string {
+  return `Officer #${id.replace(/^usr_/, "").slice(-6).toUpperCase()}`;
+}
+
+/**
+ * ⭐ S6-ADMIN · G6 · THE KINDS OF EVENT a question is built on, in the console's words (the lead's ruling G6: labels, not codes).
+ * The stored value stays the code (`EventKind`, `maswali-dal.ts`); each kind has its criterion template in the builder.
+ */
+export const EVENT_KIND_LABEL: Readonly<Record<string, string>> = {
+  SPORT: "Match result",
+  PRICE: "Price or rate",
+  WEATHER: "Weather reading",
+  ANNOUNCEMENT: "Announcement",
+};
 
 type ChipVariant = "neutral" | "live" | "pending" | "resolved" | "success" | "danger" | "info";
 

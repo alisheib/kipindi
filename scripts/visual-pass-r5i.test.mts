@@ -20,7 +20,8 @@
  *       ruling; a new use anywhere fails until it is ruled (with plants proving the scanner sees each spelling, and decoys
  *       — the danger and success families, claret — that it must not)
  *   §2  I-1 · the app states that wore the pair, fixed with their siblings (crests, the error mark, destructive controls,
- *       field errors, success marks, the auth eyebrow, the RG hero, the bell, a net, a balance's move, a rate, a loader)
+ *       field errors, success marks, the auth eyebrow, the RG hero, the bell, a net, a balance's move, a rate, a loader —
+ *       the language loader's ring given its green and red back by the owner on 2026-10-22, §2.15⁗)
  *   §3  I-2 · every refusal at the one form — the registry's rank, executed; the dial; Up & Down; every slip toast
  *   §4  I-3 · a grant's words in their §B11 tones, from the one dictionary; the declaration under review
  *   §5  contrast — every new ink pair measured on its surface (≥4.5:1 text, ≥3:1 marks)
@@ -202,9 +203,10 @@ const REGISTRY: Record<string, [number, string]> = {
   "src/components/ui/count-badge.tsx": [4, "OWNER — the `rose` pip: the classic bell (frozen chrome); the journey's bell is `brand`"],
   "src/components/markets/circular-progress.tsx": [2, "KIT — the side tones of a ring whose one consumer is the console"],
   "src/components/ui/password-input.tsx": [3, "a local NAME: the strength meter's strong step is called `yes` and paints the success family (D2's own example)"],
-  // ── OWNER: the classic bell and capsule (frozen chrome), a third party's mark, dead CSS ──────────────────────────────
+  // ── OWNER: the classic bell and capsule (frozen chrome), a third party's mark, the language loader's ring, dead CSS ───
   "src/components/layout/wallet-balance-pill.tsx": [2, "OWNER — the classic capsule's ±delta (the journey's `.kp-jbal__delta` is the text's ink)"],
   "src/components/ui/social-marks.tsx": [1, "a third party's mark: WhatsApp's own green"],
+  "src/lib/i18n.tsx": [6, "OWNER — the language-change loader's six glyphs alternate the YES and NO inks: its own colours, given back by Ali (2026-10-22, \"give it back its color\" — \"its green and red\"); a decoration, §B2a's one owner exception (§2.15⁗)"],
   "src/app/state-tokens.css": [2, "DEAD — `.countdown--critical` (no consumer; it would paint time in the NO rose, §B2a)"],
 };
 
@@ -432,8 +434,33 @@ section("2 · I-1 · an app state wears the app-state family — the crests, the
       && !/--(?:yes|no|success)-/.test(between(CSS, "@keyframes ud-place-pulse", "}\n}"))
       && /@keyframes ud-side-flash/.test(CSS));
   ok("2.15‴ · the journey balance's ±delta is the text's ink — its sign says which way", /color:\s*var\(--text\)/.test(rule(CSS, '.kp-jbal__delta[data-sign]')) && !/kp-jbal__delta\[data-sign="(?:up|down)"\]/.test(CSS));
+  // 2.15⁗ · THE LANGUAGE-CHANGE LOADER — RE-PINNED BY THE OWNER, 2026-10-22. This check held R5-I's ring: the six glyphs
+  // moved from the YES green and the NO rose to the brand family's two text steps. Measured on the live loader that ring
+  // was blue-grey (inks rgb(153,196,255) / rgb(183,216,255) at 0.4–1 opacity on the dark scrim), and Ali asked for its
+  // colour back — "on change language the colored animation is still on grey scale — give it back its color", then "its
+  // green and red". The ring alternates `--yes-400` and `--no-400` from Hi again: the pair's own tokens, no hand-typed
+  // value (test:design-frozen), the one decoration the pair is lent to (DESIGN_AUTHORITY §B2a's owner exception;
+  // registered in §1 and in test:betting-ink §7i; on screen, `qa:locale-loader`). ⭐ The -400 step because it was
+  // MEASURED on one frozen frame of the ring: -300 drew 0.87× the old ring's ink chroma, -400 1.13–1.15×.
+  const loaderInks = (src: string) =>
+    ((/const GLYPHS = \[([\s\S]*?)\] as const;/.exec(src)?.[1] ?? "").match(/color: "[^"]+"/g) ?? []).map((m) => m.slice(8, -1));
+  const tokenOklch = (v: string) => {
+    const name = /^var\(--([\w-]+)\)$/.exec(v)?.[1];
+    const m = name ? new RegExp(`--${name}:\\s*oklch\\(([\\d.]+)%\\s+([\\d.]+)\\s+([\\d.]+)\\)`).exec(CSS) : null;
+    return m ? { L: Number(m[1]), C: Number(m[2]), H: Number(m[3]) } : null;
+  };
+  const loaderOk = (src: string) => {
+    const inks = loaderInks(src);
+    return inks.length === 6 && inks.every((v, i) => v === (i % 2 ? "var(--no-400)" : "var(--yes-400)"))
+      && inks.map(tokenOklch).every((o, i) => o !== null && o.H === (i % 2 ? 22 : 152) && o.C >= 0.16);
+  };
   const I18N = read("src/lib/i18n.tsx");
-  ok("2.15⁗ · the language-change glyphs alternate the brand family's two text steps — no betting hue", (I18N.match(/color: "var\(--brand-(?:200|300)\)"/g) ?? []).length === 6 && !/oklch\(78% 0\.16 (?:152|22)\)/.test(I18N));
+  ok("2.15⁗ · OWNER (Ali, 2026-10-22) · the language-change glyphs alternate the YES and NO inks from Hi — `--yes-400` / `--no-400`, hue 152 / 22, chroma ≥ 0.16 in globals.css — no brand step, no hand-typed value",
+    loaderOk(I18N), loaderInks(I18N).join(" "));
+  const brandRing = I18N.replace(/var\(--yes-400\)/g, "var(--brand-300)").replace(/var\(--no-400\)/g, "var(--brand-200)");
+  ok("2.15⁗′ CONTROL · R5-I's brand ring planted back fails the loader's check", brandRing !== I18N && !loaderOk(brandRing));
+  const oneInk = I18N.replace(/var\(--no-400\)/g, "var(--yes-400)");
+  ok("2.15⁗″ CONTROL · one ink on all six glyphs (the NO red gone) fails it", oneInk !== I18N && !loaderOk(oneInk));
 }
 
 /* ══ §3 · I-2 — EVERY REFUSAL AT THE ONE FORM ═════════════════════════════════════════════════════════════════════════ */
@@ -576,7 +603,9 @@ section("5 · contrast — every new ink pair measured on its worst surface (≥
     ["the balance's positive delta: YES ink on the capsule's inset fill", token("yes-300"), INSET, 4.5],
     ["the balance's negative delta: NO ink on the capsule's inset fill", token("no-300"), INSET, 4.5],
     ["the placed pulse: the neutral 40% ring on the board (a mark)", over(token("text"), 0.40, BG), BG, 3],
-    ["the language glyphs: brand-200 / brand-300 on the 90% scrim", token("brand-300"), over(BG, 0.9, MODAL), 4.5],
+    // The language glyphs wear the pair again (the owner, 2026-10-22, §2.15⁗) — each ink measured on the 90% scrim.
+    ["the language glyphs: the YES ink (`--yes-400`) on the 90% scrim", token("yes-400"), over(BG, 0.9, MODAL), 4.5],
+    ["the language glyphs: the NO ink (`--no-400`) on the 90% scrim", token("no-400"), over(BG, 0.9, MODAL), 4.5],
     ["global-error's mark: its danger ink on its 18% disc", lit(82, 0.16, 25), over(lit(57, 0.22, 25), 0.18, lit(15, 0.13, 268)), 4.5],
     ["the royal declaration box: muted text on `--info-bg` (card)", token("text-muted"), over(token("info-500"), 0.18, CARD), 4.5],
   ];

@@ -79,7 +79,9 @@ ok(`1.0 · the fixtures draw ${STATES.length} states × ${LOCALES.length} langua
 // M2 · one order: the figure, the carry that adds to it, the 10/10 share, the fee — then the state.
 const orderDefects = (l: L, m: string) => {
   const d = dict[l].millionea, head = d.ruleWithFigure.split(" · ");
-  const marks = [head[0].replace("{amount}", "").trim(), fill(d.pendingCarry, { week: 46 }), head[1], fill(head[2], { pct: 13 }), d.salesCloseAt.replace("{when}", "").trim()];
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-FACTS, the lead's ruling: ONE wording for the week's close): the card's close is
+  // the slip's and the ticket's `salesCloseColon` now ("Sales close: … EAT", zh "销售截止：…"), read by its words before {when}.
+  const marks = [head[0].replace("{amount}", "").trim(), fill(d.pendingCarry, { week: 46 }), head[1], fill(head[2], { pct: 13 }), d.salesCloseColon.split("{when}")[0].trim()];
   const text = textOf(m), at = marks.map((x) => text.indexOf(x));
   return at.some((x, i) => x < 0 || (i > 0 && x <= at[i - 1])) ? [`${l}: ${j(at)} in "${text}"`] : [];
 };
@@ -146,18 +148,22 @@ const plateDefects = (m: string) => {
 }
 
 // L7 · a time as §T5 sets a numeral (the lead's ruling, 2026-10-21): the weekday in the body face, the clock `.mono`, one run.
-const TIME_RUN = /<span class="whitespace-nowrap">([^<]+) <span class="mono">(\d{2}:\d{2})<\/span><\/span>/;
+// ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-FACTS, the lead's ruling: ONE wording for the week's close): the card's close is
+// the slip's and the ticket's `salesCloseColon`, "Sales close: Friday 18:00 EAT" — its zone kept in the same run as its clock
+// (`keepFact`'s clock run), where the card said "Sales close Friday 18:00" with no zone.
+const TIME_RUN = /<span class="whitespace-nowrap">([^<]+) <span class="mono">(\d{2}:\d{2})<\/span>( EAT)?<\/span>/;
 const timeDefects = (l: L, state: string) => {
   const WEEKDAY: Record<L, string> = { en: "Friday", sw: "Ijumaa", zh: "周五" };
   const m = TIME_RUN.exec(state);
-  return m && m[1] === WEEKDAY[l] && m[2] === "18:00" && !/font-mono|tabular-nums">[^<]*\d/.test(state) ? [] : [`${l}: ${m?.[0] ?? state.slice(0, 160)}`];
+  return m && m[1] === WEEKDAY[l] && m[2] === "18:00" && m[3] === " EAT" && !/font-mono|tabular-nums">[^<]*\d/.test(state) ? [] : [`${l}: ${m?.[0] ?? state.slice(0, 160)}`];
 };
 {
   const wrong = LOCALES.flatMap((l) => timeDefects(l, stateOf(card(l, "open · no ticket"))));
-  ok("1.8 · L7 · the close is set as §T5 sets a numeral — the weekday in the sentence's face, the clock \"18:00\" a `.mono` numeral (JetBrains Mono, tabular), the whole run never parted (\"Ijumaa 18:00\"); it was one mono run, weekday and all",
+  ok("1.8 · L7 · the close is set as §T5 sets a numeral — the weekday in the sentence's face, the clock \"18:00\" a `.mono` numeral (JetBrains Mono, tabular), its zone with it, the whole run never parted (\"Ijumaa 18:00 EAT\"); it was one mono run, weekday and all",
     wrong.length === 0, wrong.join(" | "));
-  ok("1.8′ PLANT · the old all-mono run, and an all-body-face one, are both reported",
-    timeDefects("en", '<span class="whitespace-nowrap font-mono">Friday 18:00</span>').length > 0 && timeDefects("en", '<span class="whitespace-nowrap tabular-nums">Friday 18:00</span>').length > 0);
+  ok("1.8′ PLANT · the old all-mono run, an all-body-face one, and the zone left outside the run (free to wrap alone) are each reported",
+    timeDefects("en", '<span class="whitespace-nowrap font-mono">Friday 18:00</span> EAT').length > 0 && timeDefects("en", '<span class="whitespace-nowrap tabular-nums">Friday 18:00</span> EAT').length > 0
+      && timeDefects("en", '<span class="whitespace-nowrap">Friday <span class="mono">18:00</span></span> EAT').length > 0);
 }
 /** An instant's run (`doorTime`, `doorDay`): one unparted run whose every number is a `.mono` numeral and whose words are not. */
 const instantDefects = (state: string) => {

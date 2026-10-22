@@ -105,7 +105,8 @@ export function runMaswaliTick(now: Date = new Date()): Promise<TickReport> {
             report.proposals++;
             const q = (await questionStore.listForWeek(w.id)).find((x) => x.slot === slot);
             audit({ category: "ADMIN", action: "maswali.question.void_proposed", actorId: "system_maswali", targetType: "MaswaliQuestion", targetId: q?.id ?? `${w.id}#${slot}`,
-              payload: { week: w.code, slot, voidDeadlineAt: q?.voidDeadlineAt ?? null, note: "the void deadline passed unsealed; an officer seals the void (MR-15)" } });
+              // MR-15 · the record's note is read in the audit log: words, never the code (S6-ADMIN, §M8a item 29).
+              payload: { week: w.code, slot, voidDeadlineAt: q?.voidDeadlineAt ?? null, note: "the void deadline passed unsealed; an officer seals the void" } });
           }
           const fresh = await weekStore.get(w.id);
           if (g.ok && g.gate.ready && g.gate.weekVoid && fresh?.objectionsCloseAt && Date.parse(fresh.objectionsCloseAt) <= nowMs) {

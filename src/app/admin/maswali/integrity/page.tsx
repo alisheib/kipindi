@@ -28,8 +28,12 @@ import type { SmsStatus } from "@/lib/server/store";
 import { slotLabel } from "@/lib/maswali-score";
 import { adminCount, formatNumber, formatTzs } from "@/lib/utils";
 import { fmtEat } from "@/lib/maswali-admin-format";
+import { displayLabel } from "@/lib/display-label";
+import { roleLabel } from "@/lib/server/roles";
+import { accountStatusLabel } from "@/components/admin/status-badge";
 import { HeldShareControls, HoldShareControl, MarkReachedControl, PauseControl, VoidWeekControl, ClearLettersControl } from "./integrity-controls";
 import { StandingAuditWarning } from "../audit-warning";
+import { MillioneaObjectionQueue } from "./objection-queue";
 
 export const metadata = { title: "Admin · Millionea · Integrity" };
 export const dynamic = "force-dynamic";
@@ -56,6 +60,7 @@ const SMS_HELD: Record<string, string> = {
  * MB-78, OD-07).
  *
  *   · the SALES PAUSE (sales only; never a cancel, a settlement or a refund);
+ *   · the OBJECTIONS to one question (MR-16, MB-23; S7-OB), by week and question, to rule (`objection-queue.tsx`);
  *   · weeks whose whole-week void is certain and whose window has closed, to void;
  *   · S6 · each VOIDED week still owed its refunds, a row of its own until they land (R1's one truth, `unrefundedVoids`);
  *   · S6 · the WINNERS NOT YET REACHED (MB-93), among the weeks settled in the last `UNREACHED_RECENT_DAYS`: no seen mark,
@@ -104,6 +109,8 @@ async function Content({ searchParams }: IntegrityPageProps) {
     ]),
   ]);
   const [canPause, canResume, canVoid, canHold, canRelease, canForfeit, canReach, canClearLetters] = can;
+  // S7-OB · the objection queue's ruling (MR-16): Compliance's, the Owner the fallback.
+  const canRule = await canUseControl(role, "ruleMaswaliObjection");
   // The cluster report for the latest weeks whose ticket set is fixed (closed, being sealed, or just settled).
   const closed = (await weekStore.list({ states: ["CLOSED", "RESOLVING", "SETTLED"], limit: 3 }).catch(() => []));
   const clusters = await Promise.all(closed.map((w) => clusterReport(w).catch(() => null)));
@@ -134,6 +141,8 @@ async function Content({ searchParams }: IntegrityPageProps) {
             : <ControlLocked what={standing?.pause.paused ? "Resume sales" : "Pause sales"} need={CONTROL_DOMAIN.pauseMaswaliSales} block />}
         </AdminCard>
 
+        <MillioneaObjectionQueue viewerId={session?.userId ?? null} viewerIsOwner={role === "ADMIN"} canRule={canRule} />
+
         <AdminCard title="Answers moving while a week sells" sw="Mabadiliko ya majibu">
           {shifts === null ? <p className="text-body-sm text-danger-fg">The pick shifts could not be read.</p>
             : shifts.length === 0 ? <p className="text-body-sm text-text-secondary">No question's answers have swung among the latest tickets.</p>
@@ -155,7 +164,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
             : (
               <ul className="space-y-1.5 text-body-sm">
                 {newDevices.map((d, i) => (
-                  <li key={i}><span className="tabular">{fmtEat(d.at)}</span> · officer {d.officerId ?? "?"} · week {d.weekId ?? "?"}{d.kind === "unchecked"
+                  <li key={i}><span className="tabular">{fmtEat(d.at)}</span> · officer {d.officer ?? "not on record"} · week {d.weekCode ?? "not on record"}{d.kind === "unchecked"
                     ? <span className="text-warning"> · the device could not be checked against their earlier seals</span>
                     : d.firstSeal ? <span className="text-text-tertiary"> · their first seal on the platform</span> : <span className="text-warning"> · not a device they sealed from before</span>}</li>
                 ))}
@@ -164,18 +173,18 @@ async function Content({ searchParams }: IntegrityPageProps) {
         </AdminCard>
 
         {/* ⭐ MB-96 · the winners' takeover watch (S7-F9, `maswali-takeover.ts`): an alert, never a hold — a winner's share is
-            held from the winners below (OD-07), and no withdrawal is ever held (2026-10-10). */}
-        <AdminCard title="Winners' accounts to check" sw="Akaunti za washindi za kukagua">
+            held from the winners below (OD-07); nothing else is ever held (2026-10-10). The card says what the control
+            enforces, never what it watches for (the repository is public; the lead's ruling, 2026-10-22). */}
+        <AdminCard title="Possible account takeovers after a payout" sw="Akaunti za washindi za kukagua">
           {!takeover.readable && <p role="alert" className="text-body-sm text-danger-fg mb-2">The takeover watch could not be read in full; a winning account may be missing from this list.</p>}
           {takeover.findings.length === 0
-            ? (takeover.readable && <p className="text-body-sm text-text-secondary">No recent winner's password changed after their payout and was followed by a withdrawal request.</p>)
+            ? (takeover.readable && <p className="text-body-sm text-text-secondary">No winning account is flagged for review.</p>)
             : (
               <ul className="space-y-1.5 text-body-sm">
                 {takeover.findings.map((f) => (
                   <li key={`${f.userId}-${f.weekId}`}>
-                    <span className="tabular">{f.code}</span> · {f.holder} · password {f.passwordHow} <span className="tabular">{fmtEat(f.passwordAt)}</span>,
-                    {" "}then {f.attempts}{f.more ? "+" : ""} withdrawal request{f.attempts === 1 && !f.more ? "" : "s"}, the latest <span className="tabular">{fmtEat(f.attemptAt)}</span>.
-                    <span className="text-text-tertiary"> Paid <span className="tabular">{fmtEat(f.creditAt)}</span>. Confirm the owner before the money leaves; hold the share from Winners below if it is not theirs.</span>
+                    <span className="tabular">{f.code}</span> · {f.holder} · flagged <span className="tabular">{fmtEat(f.flaggedAt)}</span>
+                    <span className="text-text-tertiary"> (paid <span className="tabular">{fmtEat(f.creditAt)}</span>). Review the account with its owner before its money leaves; hold the share from Winners below if it is not theirs.</span>
                   </li>
                 ))}
               </ul>
@@ -280,7 +289,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
                       <td className="text-right tabular">{u.forfeited ? "Forfeited" : u.held ? "Held" : u.paidTzs === null ? "Not on record" : formatTzs(u.paidTzs)}</td>
                       <td className="text-left tabular">{fmtEat(u.settledAt)} · {u.hoursSince} h{u.hoursSince >= UNREACHED_ALERT_HOURS ? <span className="text-warning"> · past {UNREACHED_ALERT_HOURS} h</span> : null}</td>
                       <td className="text-left">{u.bell ? "Written · not opened" : "Not written"}</td>
-                      <td className="text-left">{u.email === "confirmed" ? "Confirmed address" : u.email === "unconfirmed" ? "Unconfirmed address" : "No address"}</td>
+                      <td className="text-left">{u.emailState === "confirmed" ? "Confirmed address" : u.emailState === "unconfirmed" ? "Unconfirmed address" : "No address"}</td>
                       <td className="text-left">{u.sms ? SMS_STATE[u.sms.status] : u.smsHeld ? (SMS_HELD[u.smsHeld] ?? "Held") : "Not sent"}</td>
                       <td className="text-left">{canReach ? <MarkReachedControl weekId={u.weekId} userId={u.userId} holder={u.holder} />
                         : <ControlLocked what="Record a call" need={CONTROL_DOMAIN.markMillioneaWinnerReached} />}</td>
@@ -379,7 +388,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
                   {v.winners.map((w) => (
                     <tr key={w.serial}>
                       <td className="text-left tabular">{w.weekCode}</td><td className="text-left tabular">{w.serial}</td><td className="text-left">{w.holder}</td>
-                      <td className="text-left">{w.role} · {w.status}</td><td className="text-right tabular">{w.accountAgeDays} d</td>
+                      <td className="text-left">{roleLabel(w.role)} · {accountStatusLabel(w.status)}{/* G8 · the role's and the account's words, never their enums */}</td><td className="text-right tabular">{w.accountAgeDays} d</td>
                       <td className="text-right tabular">{w.payout === null ? "Not on record" : formatTzs(w.payout)}</td>
                       <td className="text-left">{w.frozenReason ? <span className="text-body-sm">{consoleShareNoteOf(w.frozenReason)}</span>
                         : canHold ? <HoldShareControl ticketId={w.ticketId} serial={w.serial} />
@@ -413,7 +422,8 @@ async function Content({ searchParams }: IntegrityPageProps) {
               {(query.seals.q || query.seals.state) && <Link href={clearListHref(listParams, "s") as never} className="btn btn-ghost btn-sm">Clear</Link>}
             </form>
           </div>
-          {v.sealWeeks.allTotal === 0 ? <EmptyState title="Nothing to show yet" body="A week's seals appear here once its results can no longer change (MB-34)." />
+          {/* MB-34 · the seal log is read after the fact, never while an officer could still be steered. */}
+          {v.sealWeeks.allTotal === 0 ? <EmptyState title="Nothing to show yet" body="A week's seals appear here once its results can no longer change." />
             : v.sealWeeks.total === 0 ? <EmptyState title="No sealed weeks match these filters" body="Try another week code or state." /> : (
             <>
             <p className="px-4 pt-3 font-mono text-micro uppercase tracking-widest text-text-subtle">{formatNumber(v.sealWeeks.total)} of {adminCount(v.sealWeeks.allTotal, "sealed week")}</p>
@@ -428,8 +438,8 @@ async function Content({ searchParams }: IntegrityPageProps) {
                   {v.sealLog.map((s, i) => (
                     <tr key={i}>
                       <td className="text-left tabular">{s.weekCode}</td><td className="text-left tabular">{slotLabel(s.slot)}</td>
-                      <td className="text-left">{s.outcome}{s.voidReason ? ` · ${isMaswaliVoidReason(s.voidReason) ? MASWALI_VOID_REASON_LABEL[s.voidReason] : s.voidReason}` : ""}</td><td className="text-left">{s.sealedBy ?? "—"}</td>
-                      <td className="text-left tabular">{fmtEat(s.sealedAt)}</td><td className="text-left">{s.stage2By ?? "—"}</td>
+                      <td className="text-left">{s.outcome}{s.voidReason ? ` · ${isMaswaliVoidReason(s.voidReason) ? MASWALI_VOID_REASON_LABEL[s.voidReason] : s.voidReason}` : ""}</td><td className="text-left">{s.sealer ?? "—"}</td>
+                      <td className="text-left tabular">{fmtEat(s.sealedAt)}</td><td className="text-left">{s.secondOfficer ?? "—"}</td>
                       <td className="text-left max-w-[320px]">{s.evidence ?? "—"}</td>
                     </tr>
                   ))}
@@ -452,7 +462,8 @@ async function Content({ searchParams }: IntegrityPageProps) {
             <>
               <p className="text-body-sm text-text-secondary mb-3">
                 {wordings.facts.live ? null : <span className="text-warning">Millionea is not public yet, so no campaign may be about it. </span>}
-                A Millionea campaign is one whose name begins with &ldquo;Millionea&rdquo;: it carries its headline&apos;s three facts and the week&apos;s own fee, and the composer refuses an amount, a win or a winner, a sum, an income, a guarantee, a rank or a chance (MB-47); any other campaign that uses Millionea&apos;s words is refused until it is tagged or reworded, and no wording names a winner (OD-30).
+                {/* MB-47 · the campaign lint · OD-30 · no wording names a winner. */}
+                A Millionea campaign is one whose name begins with &ldquo;Millionea&rdquo;: it carries its headline&apos;s three facts and the week&apos;s own fee, and the composer refuses an amount, a win or a winner, a sum, an income, a guarantee, a rank or a chance; any other campaign that uses Millionea&apos;s words is refused until it is tagged or reworded, and no wording names a winner.
                 {" "}The fee below is {wordings.facts.source === "WEEK" ? `${wordings.facts.weekCode ?? "this week"}'s own` : "the one the next week will freeze"}.
               </p>
               <ul className="space-y-2">
@@ -559,7 +570,8 @@ async function ConnectedAccounts({ clusters, query }: { clusters: Array<ClusterR
                   {openAccounts.map((a) => (
                     <tr key={a.userId}>
                       <td className="text-left">{a.holder}</td>
-                      <td className="text-left font-mono break-all">{a.userId}</td>
+                      {/* S6-ADMIN · G3 · the account's stable handle (`displayLabel`'s "Player #…"), never its raw id. */}
+                      <td className="text-left tabular">{displayLabel({ id: a.userId, displayName: null })}</td>
                       <td className="text-right tabular">{a.tickets.toLocaleString("en")}</td>
                     </tr>
                   ))}
