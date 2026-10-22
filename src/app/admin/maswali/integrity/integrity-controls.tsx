@@ -103,14 +103,19 @@ export function MarkReachedControl({ weekId, userId, holder }: { weekId: string;
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
   if (!mayAct) return <ActReadOnly />;
+  // S6-ADMIN 1 · the 40px floor (sm, never xs: test:maswali-admin-touch), and the refusal stated inside the dialog while it
+  // is open — never a copy under the scrim (F4; test:maswali-admin-form-validation's dialog reader).
   return (
     <span className="inline-flex flex-col gap-1">
-      <Button size="xs" variant="ghost" disabled={pending} onClick={() => setOpen(true)}>Reached by phone…</Button>
-      {error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
+      <Button size="sm" variant="ghost" disabled={pending} onClick={() => setOpen(true)}>Reached by phone…</Button>
+      {!open && error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
       {note && <span role="status" className="text-body-sm text-success">{note}</span>}
       <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="brand" tier="hard" typedWord={REACHED_WORD}
         title={`Record that ${holder} was reached?`} confirmLabel="Record the call"
-        body={<Field label="How they were reached (the number called, what they were told)"><Textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} /></Field>}
+        body={<div className="space-y-2">
+          <Field label="How they were reached (the number called, what they were told)"><Textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} /></Field>
+          {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
+        </div>}
         onConfirm={() => run(() => markMillioneaWinnerReachedAction(fd({ weekId, userId, typed: REACHED_WORD, note: text })), () => { setOpen(false); setText(""); })} />
     </span>
   );
@@ -125,16 +130,18 @@ export function ClearLettersControl({ weekId, notice, code }: { weekId: string; 
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
   if (!mayAct) return <ActReadOnly />;
+  // S6-ADMIN 1 · as MarkReachedControl: the 40px floor, and the refusal inside the dialog while it is open.
   return (
     <span className="inline-flex flex-col gap-1">
-      <Button size="xs" variant="ghost" disabled={pending} onClick={() => setOpen(true)}>Checked…</Button>
-      {error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
+      <Button size="sm" variant="ghost" disabled={pending} onClick={() => setOpen(true)}>Checked…</Button>
+      {!open && error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
       {note && <span role="status" className="text-body-sm text-success">{note}</span>}
       <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="brand" tier="hard" typedWord={CHECKED_WORD}
         title={`Record that ${code}'s letters were checked?`} confirmLabel="Record the check"
         body={<div className="space-y-2">
           <p>Recording this closes this week&apos;s open letters for good: they are never searched for or sent again.</p>
           <Field label="What was checked (the provider's activity, what the holder was told)"><Textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} /></Field>
+          {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
         </div>}
         onConfirm={() => run(() => clearUnresolvedLetterAction(fd({ weekId, notice, typed: CHECKED_WORD, note: text })), () => { setOpen(false); setText(""); })} />
     </span>
