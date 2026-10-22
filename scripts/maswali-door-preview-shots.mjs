@@ -6,8 +6,10 @@
  *   BASE=http://localhost:3530 node scripts/maswali-door-preview-shots.mjs
  *   (MASWALI_SHOTS_LOCALES=sw,en / MASWALI_SHOTS_WIDTHS=360,1280 narrow it — a focused run.)
  *
- * The weeks are seeded here (`/api/dev-test/seed-maswali`, dev only); a staff session is signed in (`seed-admin`) and the
- * journey's own pass held beside it on "/" (`mintStaffPass`, as the doors' drive holds it). What it checks and shoots is
+ * The seed is asked for weeks (`/api/dev-test/seed-maswali`, dev only) and refuses on this server (409: a preview does not
+ * sell), so the doors are drawn with no week — the real card is the next week's presale, /results' section its empty state;
+ * a staff session is signed in (`seed-admin`) and the journey's own pass held beside it on "/" (`mintStaffPass`, as the
+ * doors' drive holds it). What it checks and shoots is
  * `shootDoorPreview` (scripts/lib/maswali-door-shots.mjs): the real card's preview chip and no bar on "/" and /markets, H1 at
  * STAFF_PREVIEW against every loading picture (the root loading's "/" included, which knows no preview), and /results under
  * D12's bar. Tiles: .50pick-shots/maswali-door-preview/. The player's ACTIVE pages are `qa:maswali-player-shots`'.

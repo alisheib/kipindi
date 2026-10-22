@@ -21,7 +21,8 @@
  *      place in src that hands one, each classified by the side of the server/client line it stands on; with its plants
  * The browser half — the ghost's box against the card's at 320/360/768/1280 in three languages, and every state shot — is
  * `qa:maswali-player-shots`' door pages (MASWALI_SHOTS_PAGES=door-states,door-ghosts); the dark payload's real bytes are
- * qa:live's dark section (`scripts/live/millionea-dark.mjs`), run against a WITHDRAWN and a STAFF_PREVIEW server.
+ * `qa:maswali-door-dark`'s (every door page, every hidden reader, document and flight, with its plant) and qa:live's dark
+ * section (`scripts/live/millionea-dark.mjs`), each run against a WITHDRAWN and a STAFF_PREVIEW server.
  * Pure: it reads source files and renders components. No server, no database, no network, no file written.
  */
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
