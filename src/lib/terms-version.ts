@@ -55,17 +55,41 @@
  *     (below). Correcting now rather than with S11's flip-time version is S12-PLAN's Point for Ali 6 — accepted by
  *     Ali, 2026-10-14. Its COMPLIANCE-DECISIONS entry is filed with the release.
  *
- * ⭐ `TERMS_TEXT_SHA` pins a hash of the binding bodies (`content()` in `/legal/terms/page.tsx`, all
- * three locales): the text cannot move without the hash moving, and the hash cannot be updated
- * without the editor being in THIS file, with the version in front of them. `npm run
- * test:terms-binding` — the same control `agent-terms-version.ts` carries for the agent terms.
+ * ⛔ **2026-10-23 · A SECOND RENDERING, ABOVE THE MILLIONEA CEILING — `TERMS_VERSION_WITH_MILLIONEA` (MASWALI-BUILD
+ * S6-INT; OD-18; the lead's order of 2026-10-23).** Maswali Millionea went ACTIVE in production on 2026-10-22 at 23:32 UTC,
+ * so §4 gains the one paragraph OD-18 planned for the launch: Maswali Millionea is not a price-competition market; a
+ * ticket is bought and settled under its own binding rules (/legal/rules/millionea), as published when it is bought; §4's
+ * statements about the commission, a winning bet never paid less than it staked, one-sided markets and cash-out do not
+ * apply to a ticket, and the rest of these terms do. It is drawn inside `MillioneaWording`: it prints — and with it this
+ * version — only while the server's ceiling admits the product (`millioneaWordingPublished`), as the privacy notice's
+ * Millionea paragraph does. Below the ceiling the page is `TERMS_VERSION`'s text, byte for byte: nothing anyone accepted
+ * moves, and a Yes/No or Up & Down player's terms read as before.
+ *   · No 14-day §10 notice and no re-acceptance: no right anyone holds, and nothing anyone may do, changes — the paragraph
+ *     tells a new product's buyers which rules bind their ticket. COMPLIANCE-DECISIONS § "2026-10-23 · Terms
+ *     v2026-10-23 …" records it, for Ali's confirmation. The Swahili and the Chinese await their native reading.
+ *
+ * ⭐ THE HASHES. `TERMS_TEXT_SHA` pins the binding bodies (`content()` in `/legal/terms/page.tsx`, all three locales) AS
+ * THEY PRINT BELOW THE CEILING — every `MillioneaWording` wrapper removed with its children — and
+ * `TERMS_TEXT_SHA_WITH_MILLIONEA` the bodies as they print above it (the wrappers' tags removed), each followed by
+ * `LEGAL_BINDING_LANGUAGE`: the text cannot move without a hash moving, and a hash cannot be updated without the editor
+ * being in THIS file, with that rendering's version in front of them. `npm run test:terms-binding` — the same control
+ * `agent-terms-version.ts` carries for the agent terms; both renderings read through `scripts/lib/millionea-wording-source.mts`.
  *
  * ⚠️ Nothing compares this to a stored value, so moving it forces NO re-acceptance. Existing rows keep
  * the version they were stamped with.
  *
- * ⛔ PURE AND IMPORT-FREE: a server component (the page) and a server service (auth) both read it.
+ * ⛔ PURE AND IMPORT-FREE: a server component (the page) and a server service (auth) both read it. The ceiling is asked
+ *    by the caller (`termsVersionFor(millioneaWordingPublished())`), never here.
  */
 export const TERMS_VERSION = "2026-10-14";
+
+/** The version of the Terms as they print above the Millionea ceiling: §4 with its Maswali Millionea paragraph. */
+export const TERMS_VERSION_WITH_MILLIONEA = "2026-10-23";
+
+/** The version a reader is shown, and registration stamps: the rendering the server's ceiling draws. */
+export function termsVersionFor(millioneaPublished: boolean): string {
+  return millioneaPublished ? TERMS_VERSION_WITH_MILLIONEA : TERMS_VERSION;
+}
 
 /**
  * The first 12 hex of `sha256` over the whitespace-normalised `content()` bodies of `/legal/terms` — all three
@@ -81,4 +105,11 @@ export const TERMS_VERSION = "2026-10-14";
  */
 // 2026-10-14 · re-pinned WITH `TERMS_VERSION` 2026-10-14 (S12 WP2: the Swahili side word and "madau" — §3a, §4, §6),
 // measured by `test:terms-binding` §2 over the new binding text (was 06208a18691e at 2026-10-10).
+// 2026-10-23 · unchanged, and now the rendering below the Millionea ceiling: the wrapped §4 paragraph removed, the bodies
+// hash exactly as v2026-10-14's (`test:terms-binding` 2.1).
 export const TERMS_TEXT_SHA = "bba4158e18c2";
+
+/** The same hash over the bodies as they print above the Millionea ceiling (the wrappers' tags removed). It moves only
+ *  together with `TERMS_VERSION_WITH_MILLIONEA`, as `TERMS_TEXT_SHA` does with `TERMS_VERSION`. */
+// 2026-10-23 · first pinned WITH `TERMS_VERSION_WITH_MILLIONEA` 2026-10-23: §4's Maswali Millionea paragraph (OD-18).
+export const TERMS_TEXT_SHA_WITH_MILLIONEA = "219c1dbcfa07";

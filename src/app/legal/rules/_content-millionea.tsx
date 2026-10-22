@@ -11,9 +11,13 @@
  *    (`millionea-legal.ts`, review #8) — or, with no week current, the rules the next will freeze (`millioneaHowTo`); the
  *    two worked examples are the settlement's own arithmetic over those rules (`millioneaExamplesFor`). An example the
  *    rules cannot show truthfully arrives as null and is left out, never bent.
- * ⛔ IT STATES ONLY WHAT THE SYSTEM DOES (the lead, round 2). A rule of the plan that is not built yet — the per-question
- *    objection (MB-23), the regulator's stop and a Compliance week void for a fault (OD-26) — is left out until it is,
- *    and `test:maswali-fairness` L.13 refuses its words in every language.
+ * ⛔ IT STATES ONLY WHAT THE SYSTEM DOES (the lead, round 2). A rule of the plan that is not built yet — the regulator's
+ *    stop and a Compliance week void for a fault (OD-26) — is left out until it is, and `test:maswali-fairness` L.13
+ *    refuses its words in every language. The per-question objection is BUILT (MR-16 as built, S7-OB) and §6 states it as
+ *    built, in the door's own terms (`objDoor*`); the hold a reversed payment places on the shares of the tickets bought
+ *    with it (MB-74, S7-F9 9) is §12's; §11 states the final week's rule in its one wording, written here as the dictionary's
+ *    `finalWeekRule` says it, character for character (DESIGN_AUTHORITY §M8a item 19; L.13 holds the two equal, so the
+ *    hash below covers the words a buyer reads) — the lead's order of 2026-10-23, at publication.
  * ⛔ THE ANSWERS ARE THE PRODUCT'S OWN WORDS (`sideWordIn(…, "MASWALI")`: NDIO/HAPANA, 是/否) and the weekdays the
  *    dictionary's (`millionea.weekdays`), so this text and every Millionea screen cannot name them differently.
  * ⛔ BINDING TEXT. `MILLIONEA_RULES_TEXT_SHA` (`src/lib/millionea-rules-version.ts`) pins a hash of `millioneaContent` below
@@ -179,10 +183,19 @@ export function millioneaContent(r: MillioneaRulesFigures): Record<Locale, React
             <li>
               <strong className="text-text">The check window.</strong> Once the counted questions are final, a check
               window of {n(r.objectionWindowHours)} hours opens, and it never closes before {n(r.objectionNotBeforeAt)}{" "}
-              EAT. No payout is made while it is open. During it, a holder of an uncancelled ticket in the week who believes a
-              result is wrong may raise it with support, naming the question. Until the window closes, the officer who set a
-              result may correct it, recording the evidence; the corrected result is confirmed by a second officer whenever
-              the original seal needed one. The window then starts again once the corrected results are final.
+              EAT. No payout is made while it is open. Until the window closes, the officer who set a result may correct it,
+              recording the evidence; the corrected result is confirmed by a second officer whenever the original seal needed
+              one. The window then starts again once the corrected results are final.
+            </li>
+            <li>
+              <strong className="text-text">Objections.</strong> During the check window, a holder of an uncancelled ticket
+              in the week who believes a question&apos;s result is wrong may object to it from the ticket&apos;s page, once
+              per question, giving a reason. An officer who had no hand in that result, and who holds no ticket in the week,
+              rules on it: the result stands, or it is reversed, voided on one of the grounds in section 5, or — for a voided
+              question — reinstated with its result. The holder reads the decision and the officer&apos;s note on the
+              ticket&apos;s page. The week is neither paid nor voided while any objection is undecided. The first ruling that
+              changes the counted results grades the week again and starts the window again once they are final; a later
+              one grades the week again and keeps the window.
             </li>
             <li>
               <strong className="text-text">Settlement.</strong> After the window an accounting officer releases the
@@ -334,10 +347,10 @@ export function millioneaContent(r: MillioneaRulesFigures): Record<Locale, React
             cannot be bought from a form opened before.
           </p>
           <p>
-            The final week runs normally and everything the jackpot holds goes into it. If no ticket reaches 10 of 10, the
-            jackpot is shared equally among the tickets with the highest score; our fee applies to that payout, and the
-            floor top-up only if a ticket reaches 10 of 10. If the final week voids or sells nothing, the next week to open
-            becomes the final one. After a final week that ran, no public week opens again, and what the jackpot account
+            The final week runs normally and everything the jackpot holds goes into it: a 10 of 10 ticket wins it as in
+            any week. Final week: if no ticket gets 10/10, the pool is shared equally by this week&apos;s highest-scoring
+            tickets, with no floor top-up. Our fee is taken from that payout as in any week. If the final
+            week voids or sells nothing, the next week to open becomes the final one. After a final week that ran, no public week opens again, and what the jackpot account
             still holds — a rounding remainder, or a share forfeited after review — stays in it.
           </p>
         </LegalSection>
@@ -351,8 +364,13 @@ export function millioneaContent(r: MillioneaRulesFigures): Record<Locale, React
               authorities. A forfeited share goes back to the jackpot, never to 50pick.
             </li>
             <li>
-              <strong className="text-text">Disputes.</strong> A result you believe is wrong is raised with support in the
-              check window (section 6). You may also raise any other dispute with support at any time; it is reviewed against the recorded
+              <strong className="text-text">Reversed payments.</strong> If a payment into your account is reversed after a
+              week has paid, the share of every winning ticket bought once that payment had reached your account is held at
+              once; after review, each is released to you or forfeited to the jackpot.
+            </li>
+            <li>
+              <strong className="text-text">Disputes.</strong> A result you believe is wrong is objected to from the
+              ticket&apos;s page in the check window (section 6). You may also raise any other dispute with support at any time; it is reviewed against the recorded
               evidence and the audit chain, and the outcome is given to you in writing.
             </li>
             <li>
@@ -501,11 +519,21 @@ export function millioneaContent(r: MillioneaRulesFigures): Record<Locale, React
             <li>
               <strong className="text-text">Muda wa ukaguzi.</strong> Maswali yanayohesabiwa yakishakuwa ya mwisho, muda wa
               ukaguzi wa saa {n(r.objectionWindowHours)} unafunguliwa, na kamwe haufungwi kabla ya{" "}
-              {n(r.objectionNotBeforeAt)} EAT. Hakuna malipo yanayofanywa muda huo ukiwa wazi. Katika muda huo, mwenye
-              tiketi ya wiki hiyo ambayo haijaghairiwa, anayeamini kwamba matokeo ni makosa, anaweza kuwasilisha suala hilo
-              kwa msaada, akitaja swali husika. Hadi muda huo unapofungwa, afisa aliyeweka matokeo anaweza kuyarekebisha,
-              akiandika ushahidi; matokeo yaliyorekebishwa yanahitaji idhini ya afisa wa pili kila mara muhuri wa awali
-              ulipoihitaji. Kisha muda huo unaanza upya matokeo yaliyorekebishwa yakishakuwa ya mwisho.
+              {n(r.objectionNotBeforeAt)} EAT. Hakuna malipo yanayofanywa muda huo ukiwa wazi. Hadi muda huo unapofungwa,
+              afisa aliyeweka matokeo anaweza kuyarekebisha, akiandika ushahidi; matokeo yaliyorekebishwa yanahitaji idhini
+              ya afisa wa pili kila mara muhuri wa awali ulipoihitaji. Kisha muda huo unaanza upya matokeo yaliyorekebishwa
+              yakishakuwa ya mwisho.
+            </li>
+            <li>
+              <strong className="text-text">Pingamizi.</strong> Katika muda wa ukaguzi, mwenye tiketi ya wiki hiyo ambayo
+              haijaghairiwa, anayeamini kwamba matokeo ya swali ni makosa, anaweza kuyapinga kutoka kwenye ukurasa wa
+              tiketi, mara moja kwa kila swali, akitoa sababu. Afisa ambaye hakuhusika na matokeo hayo, na ambaye hana
+              tiketi katika wiki hiyo, hutoa uamuzi: matokeo yanabaki, au yanageuzwa, au swali linabatilishwa kwa mojawapo
+              ya sababu za kifungu cha 5, au — kwa swali lililobatilishwa — linarejeshwa pamoja na matokeo yake. Mwenye
+              tiketi husoma uamuzi na maelezo ya afisa kwenye ukurasa wa tiketi. Wiki hailipwi wala haibatilishwi wakati
+              pingamizi lolote bado halijaamuliwa. Uamuzi wa kwanza unaobadilisha matokeo yanayohesabiwa hupima wiki upya na
+              kuanzisha upya muda wa ukaguzi matokeo hayo yakishakuwa ya mwisho; uamuzi unaofuata hupima wiki upya na muda
+              wa ukaguzi unabaki ulivyo.
             </li>
             <li>
               <strong className="text-text">Ukamilishaji.</strong> Baada ya muda huo afisa wa uhasibu huidhinisha malipo, na
@@ -659,10 +687,11 @@ export function millioneaContent(r: MillioneaRulesFigures): Record<Locale, React
             husema hivyo, na tiketi haiwezi kununuliwa kupitia fomu iliyofunguliwa kabla ya hapo.
           </p>
           <p>
-            Wiki ya mwisho inaendeshwa kama kawaida na kila kitu kilicho kwenye jackpot kinaingia ndani yake. Hakuna tiketi
-            ikifikia 10 kati ya 10, jackpot inagawanywa sawa kati ya tiketi zenye alama za juu zaidi; ada yetu inatumika
-            kwa malipo hayo, na nyongeza ya dhamana tu ikiwa tiketi itafikia 10 kati ya 10. Wiki ya mwisho ikibatilishwa
-            au isipouza chochote, wiki inayofuata kufunguliwa inakuwa ya mwisho. Baada ya wiki ya mwisho iliyoendeshwa,
+            Wiki ya mwisho inaendeshwa kama kawaida na kila kitu kilicho kwenye jackpot kinaingia ndani yake: tiketi ya 10
+            kati ya 10 inaishinda kama katika wiki yoyote. Wiki ya mwisho: ikiwa hakuna tiketi itakayopata 10/10, bwawa
+            litagawanywa sawa kwa tiketi zenye alama za juu zaidi wiki hii, bila nyongeza hadi kiwango cha chini. Ada yetu inakatwa kwenye
+            malipo hayo kama katika wiki yoyote. Wiki ya mwisho ikibatilishwa au isipouza chochote, wiki inayofuata
+            kufunguliwa inakuwa ya mwisho. Baada ya wiki ya mwisho iliyoendeshwa,
             hakuna wiki ya umma inayofunguliwa tena, na kinachobaki kwenye akaunti ya jackpot — salio la mgawanyo, au sehemu
             iliyonyang&apos;anywa baada ya ukaguzi — kinabaki humo.
           </p>
@@ -677,8 +706,14 @@ export function millioneaContent(r: MillioneaRulesFigures): Record<Locale, React
               mamlaka. Sehemu iliyonyang&apos;anywa inarudi kwenye jackpot, kamwe si kwa 50pick.
             </li>
             <li>
-              <strong className="text-text">Malalamiko.</strong> Matokeo unayoamini kuwa ni makosa huwasilishwa kwa msaada
-              katika muda wa ukaguzi (kifungu cha 6). Unaweza pia kuwasilisha malalamiko mengine yoyote kwa msaada wakati
+              <strong className="text-text">Malipo yaliyorejeshwa.</strong> Malipo yaliyoingia kwenye akaunti yako
+              yakirejeshwa baada ya wiki kulipa, sehemu ya kila tiketi iliyoshinda iliyonunuliwa baada ya malipo hayo kuingia
+              kwenye akaunti yako hushikiliwa mara moja; baada ya ukaguzi, kila sehemu huachiliwa kwako au hunyang&apos;anywa
+              na kurudi kwenye jackpot.
+            </li>
+            <li>
+              <strong className="text-text">Malalamiko.</strong> Matokeo unayoamini kuwa ni makosa hupingwa kutoka kwenye
+              ukurasa wa tiketi katika muda wa ukaguzi (kifungu cha 6). Unaweza pia kuwasilisha malalamiko mengine yoyote kwa msaada wakati
               wowote; hukaguliwa dhidi ya
               ushahidi uliorekodiwa na mnyororo wa ukaguzi, na jibu hutolewa kwako kwa maandishi.
             </li>
@@ -792,7 +827,10 @@ export function millioneaContent(r: MillioneaRulesFigures): Record<Locale, React
             </li>
             <li>
               <strong className="text-text">复核期。</strong>计分题全部确定后，开放 {n(r.objectionWindowHours)} 小时的复核期，且绝不在 EAT{" "}
-              {n(r.objectionNotBeforeAt)} 之前结束。复核期内不进行任何赔付。在此期间，持有该周未取消彩票的玩家如认为某题结果有误，可向客服提出并注明该题。复核期结束前，设定结果的官员可更正该结果并记录证据；原始结果需经第二位官员确认的，更正后的结果同样须由第二位官员确认。更正后的结果确定后，复核期重新开始。
+              {n(r.objectionNotBeforeAt)} 之前结束。复核期内不进行任何赔付。复核期结束前，设定结果的官员可更正该结果并记录证据；原始结果需经第二位官员确认的，更正后的结果同样须由第二位官员确认。更正后的结果确定后，复核期重新开始。
+            </li>
+            <li>
+              <strong className="text-text">异议。</strong>复核期内，持有该周未取消彩票的玩家如认为某题结果有误，可在彩票页面对该题提出异议，每道题限一次，并须说明理由。由未参与该结果、且在该周未持有彩票的官员作出裁定：维持原结果，或改判结果、依第 5 条所列理由之一将该题作废，或——对已作废的题目——恢复该题及其结果。持有人可在彩票页面查看裁定及官员说明。任何异议尚未裁定期间，该周既不派奖，也不作废。首次改变计分结果的裁定将使该周重新计分，并在计分结果确定后重新开始复核期；此后的裁定将使该周重新计分，复核期维持不变。
             </li>
             <li>
               <strong className="text-text">结算。</strong>复核期结束后，由会计官员发放赔付，每张中奖彩票的份额计入其持有人的主余额。每一项数值均公布于该周的登记册。已结算的一周即为最终结果。
@@ -902,7 +940,7 @@ export function millioneaContent(r: MillioneaRulesFigures): Record<Locale, React
           <p>在两周之间（既无正在销售的周，也无结果正在确定的周）下令停办，即为计划中的最后一周：须至少在其销售开放前一整周指定。</p>
           <p>一周一旦成为最后一周，Millionea 页面及此后打开的每个填写彩票页面都会注明，且不能通过此前打开的填写彩票页面购票。</p>
           <p>
-            最后一周照常进行，大奖中的全部资金均投入其中。若没有彩票达到 10/10，大奖由得分最高的彩票平分；该次赔付收取我们的费用，仅在有彩票达到 10/10 时才进行保底补足。若最后一周作废或未售出任何彩票，则下一个开放的周成为最后一周。最后一周进行完毕后，不再开放任何公开的周；大奖账户中剩余的资金——分配余数，或经审核后被没收的份额——留存于该账户中。
+            最后一周照常进行，大奖中的全部资金均投入其中：与任何一周相同，答对 10/10 的彩票赢得大奖。最后一周：若无彩票答对 10/10，奖池由本周得分最高的彩票平分，不进行保底补足。该次赔付与任何一周相同，收取我们的费用。若最后一周作废或未售出任何彩票，则下一个开放的周成为最后一周。最后一周进行完毕后，不再开放任何公开的周；大奖账户中剩余的资金——分配余数，或经审核后被没收的份额——留存于该账户中。
           </p>
         </LegalSection>
 
@@ -912,7 +950,10 @@ export function millioneaContent(r: MillioneaRulesFigures): Record<Locale, React
               <strong className="text-text">公平游戏。</strong>通过多个账户购买、与他人合谋规避上限，或使用机器人或脚本购买，均被禁止。上述行为可能导致中奖份额被暂扣并经审核后被没收、账户被停用，并在适用情形下移交主管机关。被没收的份额回归大奖，绝不归 50pick 所有。
             </li>
             <li>
-              <strong className="text-text">争议。</strong>如您认为某题结果有误，请在复核期内向客服提出（第 6 条）。您也可随时就其他事项向客服提出争议；我们将对照所记录的证据与审计链进行复核，并以书面形式告知结果。
+              <strong className="text-text">被撤回的付款。</strong>若某周派奖后，您账户的某笔入账付款被撤回，则在该笔付款到账后购买的每张中奖彩票的份额将立即被暂扣；经审核后，各份额将发放给您，或被没收并回归大奖。
+            </li>
+            <li>
+              <strong className="text-text">争议。</strong>如您认为某题结果有误，请在复核期内于彩票页面提出异议（第 6 条）。您也可随时就其他事项向客服提出争议；我们将对照所记录的证据与审计链进行复核，并以书面形式告知结果。
             </li>
             <li>
               <strong className="text-text">理性游戏。</strong>Millionea 是娱乐而非收入来源。个人资料页提供充值限额、时间限额、冷静期与自我排除工具。若游戏不再令人愉快，请停止。18+。

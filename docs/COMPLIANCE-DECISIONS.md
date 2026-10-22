@@ -8,6 +8,82 @@
 
 ---
 
+## 2026-10-23 · The Maswali Millionea rules are published as version 2026-10-23 — the objection door as built, the reversed-payment hold and the final week's rule in its one wording (MASWALI-BUILD S6-INT 30)
+
+**Authority.** The build lead's order of 2026-10-23, after Ali switched Maswali Millionea on for everyone in production
+(`FEATURE_MILLIONEA=ACTIVE`, live since 2026-10-22 23:32 UTC on main `3aecf0edd`): "LEGAL FIRST: make sure the Millionea
+rules page … and the Terms section exist, are correct against RULES §2.12 and MR-1…MR-32 (finalWeekRule, the Yes/No
+payment-reversal/forfeiture clause S7 found missing — MB-74, the objection door's rule MR-16 as built), and render at
+ACTIVE in en/sw/zh". Nothing can be bought before a week opens (Monday 00:00 EAT at the earliest), and
+`/legal/rules/millionea` answers as a missing page in production until the S6 release reaches main.
+
+**What moved** (`src/app/legal/rules/_content-millionea.tsx`, en/sw/zh):
+- §6 "Results, the check window and settlement": a holder no longer raises a disputed result "with support" — the
+  binding text states the objection door S7-OB built (RULES §2.12 "Objections", MR-16 as built): an uncancelled holder
+  objects to one question from the ticket's page, once per question, giving a reason; an officer who had no hand in that
+  result and holds no ticket in the week rules — the result stands, or it is reversed, voided on a §5 ground, or (a voided
+  question) reinstated with its result; the holder reads the decision and the officer's note on the ticket's page; the week
+  is neither paid nor voided while an objection is undecided; the first ruling that changes the counted results grades the
+  week again and restarts the window once they are final, and a later one grades it again and keeps the window. The
+  sealing officer's own correction is unchanged.
+- §12: "Disputes" points a disputed result at the door; a new "Reversed payments" line states the hold MB-74 built
+  (S7-F9 9): a payment into an account that is reversed after a week has paid holds at once the share of every winning
+  ticket bought once it had reached the account, and after review each is released or forfeited to the jackpot. It carries
+  the Yes/No rules' clause ("payment reversals after settlement … lead to … forfeiture of winnings", their §8) into
+  Millionea as far as the system does it.
+- §11: the final week's rule is stated in its one wording — the players' sentence `finalWeekRule` in each language,
+  character for character (DESIGN_AUTHORITY §M8a item 19; RULES §2.12 quotes the English) — with the 10 of 10 week's win
+  and the fee stated beside it. What it says did not change: without a 10 of 10 the week's highest scores share the
+  jackpot equally, with no floor top-up.
+- `MILLIONEA_RULES_VERSION` 2026-10-18 → 2026-10-23; `MILLIONEA_RULES_TEXT_SHA` 46f7b1b18732 → 8375d7809e2f.
+
+**Why the version moved.** The entry of 2026-10-18 says the version moves at publication, and this is the text the
+release publishes. Version 2026-10-18 was read by staff only and bound no ticket: no week has opened.
+
+**Owed.** The Swahili and the Chinese of §6's objection paragraph, §12's reversed-payment line and its disputes line are
+new words for the native reading (Gate B); the English is binding. What the plan has and the system does not — a
+regulator-ordered refund and a Compliance week void for a fault (OD-26) — stays unstated until it is built.
+
+**Guards.** `test:maswali-fairness` L.4 (the hash), L.13 (the door, the hold and the disputes line in every language; the
+old support path refused), L.13b (the final week's rule is `finalWeekRule` in every language), L.13c (L.13's predicate
+over planted copies: each defect caught, the real text passed); D19a (`test:house-bot-disclosure` §5), re-pinned at the
+commit.
+
+---
+
+## 2026-10-23 · Terms v2026-10-23 above the Millionea ceiling — §4 names the Maswali Millionea ticket's own rules (OD-18; MASWALI-BUILD S6-INT 30)
+
+**Authority.** The same order of the build lead, 2026-10-23; OD-18 — existing terms do not change before launch, and the
+paragraph waited for the launch commit (`docs/MASWALI-ARCHITECTURE.md` §9 held its draft). The launch came by Ali's
+switch, ahead of that commit.
+
+**What moved** (`src/app/legal/terms/page.tsx`, `src/lib/terms-version.ts`, `src/lib/server/auth-service.ts`). §4 "How
+price-competition markets work" gains one paragraph in en/sw/zh: "Maswali Millionea is not a price-competition market. A
+Millionea ticket is bought and settled under its own binding rules, the Maswali Millionea Rules, as published when the
+ticket is bought. This section's statements about our commission, about a winning bet never being paid less than it
+staked, about one-sided markets and about cash-out do not apply to a ticket; the rest of these terms do." It is drawn
+inside `MillioneaWording`, so it prints — and with it the version 2026-10-23, `TERMS_VERSION_WITH_MILLIONEA` — only while
+the server's ceiling admits the product, as the privacy notice's Millionea paragraph does (§ "Privacy v2026-10-17").
+Registration stamps the version of the rendering the page showed, `termsVersionFor(millioneaWordingPublished())`. Below
+the ceiling the Terms are v2026-10-14's text, byte for byte (`TERMS_TEXT_SHA` unchanged; above it
+`TERMS_TEXT_SHA_WITH_MILLIONEA` 219c1dbcfa07). The draft's "in the version recorded on the ticket" became "as published when the
+ticket is bought": a ticket records its week and the instant its rules froze, not the rules' version (the stamp waits,
+MASWALI-ARCHITECTURE §9), and the rules bind as published at purchase (their §12).
+
+**No 14-day §10 notice and no re-acceptance.** No right a player holds, and nothing a player may do, changes: Yes/No and
+Up & Down read as they did, and the paragraph tells a new product's buyers which rules bind their ticket — rules each
+buyer accepts on purchase. ⚠️ For Ali's confirmation: the 2026-09-13/14 precedent covered changes favourable to players;
+this one leaves existing players untouched and scopes §4 for a new product.
+
+**Owed.** The Swahili and the Chinese for the native reading (Gate B).
+
+**Guards.** `test:terms-binding` §1 (the page and the registration stamp read the version of the rendering in force), §2
+(each rendering's hash beside its version), §3 (one wrapped paragraph per language inside §4, linking the rules; below the
+ceiling the Terms name Millionea nowhere), each with its controls; D19a (`test:house-bot-disclosure` §5), re-pinned at
+the commit.
+
+---
+
 ## 2026-10-22 · The Maswali Millionea rules' §11 states the stale-form rule — the hash moves a sixth time inside version 2026-10-18, before anything was published (MASWALI-BUILD S6-DOCS)
 
 **Authority.** The build lead's S6-DOCS brief (2026-10-22, its open list): "the binding rules text's §11 states the

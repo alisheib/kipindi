@@ -1407,6 +1407,19 @@ result"), and one who cannot is taken down word for word and passed to Complianc
 record the result rules on it (MR-16 as built, S7-OB). Held by `test:maswali-admin-words` §1: this file is in its census
 since S6-DOCS 12 deleted its waiting exclusion, after the ADMIN lane reached this branch (its premise 1.0 names it).
 
+#### ✅ The binding rules told a holder to dispute a result through support, and lacked the reversed-payment clause (S6-INT 30)
+
+Found against the lead's order of 2026-10-23 (Millionea ACTIVE in production): `/legal/rules/millionea` §6 said a holder
+"may raise it with support, naming the question" — written while no objection path existed, and false once S7-OB built
+the door — and §12's disputes line said the same; MB-74's hold on the shares a reversed payment could have bought was
+built (S7-F9 9) with no word in the rules; §11 stated the final week's rule in words of its own beside the one wording
+every screen uses. THE RULE: the binding text states what the system does, in the system's terms — §6 the objection door
+as built (MR-16), §12 the reversed-payment hold (MB-74), §11 `finalWeekRule` character for character — and the version
+moves with the text at publication (v2026-10-23). The Terms' §4 paragraph (OD-18) prints with the product, as the privacy
+notice's does. Held by `test:maswali-fairness` L.13 (the old support path refused, the door, the hold and the disputes
+line required, in every language), L.13b (the final week's rule equals `finalWeekRule`), L.13c (L.13's predicate over
+planted copies) and L.4 (the hash), and by `test:terms-binding` §1–§3 with their controls.
+
 #### ✅ Item 6 · the harm watch's candidate window was typed beside the detectors it serves (S6-DOCS 6)
 
 The harm watch reads its candidates — the accounts a player-safety marker can be raised on — from a window that must

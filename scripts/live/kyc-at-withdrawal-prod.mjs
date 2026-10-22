@@ -67,10 +67,14 @@ const PRIVACY = (() => {
    2026-10-10 with typed-only identity — the pin would have gone red on a correct page for the same reason the privacy
    pin did. The Terms carry ONE version, `TERMS_VERSION` (the constant registration stamps on the account); the AML
    policy carries its own, in its page's META like the privacy notice. */
+// ⭐ 2026-10-23 · TWO RENDERINGS. Above the Millionea ceiling the Terms print §4's Millionea paragraph and
+// `TERMS_VERSION_WITH_MILLIONEA`; below it `TERMS_VERSION`. Production is ACTIVE, so the drive expects the first unless
+// MILLIONEA_DARK=1 says the server it drives is below the ceiling.
 const TERMS = (() => {
   const src = readFileSync(new URL("../../src/lib/terms-version.ts", import.meta.url), "utf8");
-  const v = (src.match(/export const TERMS_VERSION = "([0-9][0-9.-]*)"/) ?? [])[1];
-  if (!v) throw new Error("could not read TERMS_VERSION from src/lib/terms-version.ts");
+  const name = process.env.MILLIONEA_DARK === "1" ? "TERMS_VERSION" : "TERMS_VERSION_WITH_MILLIONEA";
+  const v = (src.match(new RegExp(`export const ${name} = "([0-9][0-9.-]*)"`)) ?? [])[1];
+  if (!v) throw new Error(`could not read ${name} from src/lib/terms-version.ts`);
   return v;
 })();
 const AML = (() => {

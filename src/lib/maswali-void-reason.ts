@@ -23,9 +23,9 @@ export const MASWALI_VOID_REASONS = [
   "settled_before_close",
   /** The criterion is materially wrong, or the English and Swahili texts diverge — found before the close. */
   "criterion_wrong",
-  /** The same, found after the close and before the check window ends — the sealing officer's finding or a player's report
-   *  through support; MB-23's per-question objection, once built, upholds onto this ground too. The stored code keeps its
-   *  name; its words say only what happened (MASWALI-BUILD S6 round 3: no objection path exists yet). */
+  /** The same, found after the close and before the check window ends — the sealing officer's finding, or an objection
+   *  upheld with a void (MR-16 as built, S7-OB: `OBJECTION_VOID_GROUND`, the ruling's default ground). The stored code keeps
+   *  its name; its words say only what happened. */
   "criterion_objection",
 ] as const;
 

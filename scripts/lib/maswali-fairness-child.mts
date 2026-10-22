@@ -565,7 +565,16 @@ if (STORE === "memory") {
     const words = LOCS.flatMap((l) => houseHits(text[l]));
     ok("L.9 · D19 · the binding text names no house word in any language (the staff bar is the only buyer bar it states)", words.length === 0, J(words));
     const mustSay: Record<string, string[]> = {
-      en: ["a holder of an uncancelled ticket in the week who believes a result is wrong may raise it with support",
+      en: [
+        // The lead's order of 2026-10-23 (S6-INT, at publication): the objection door as S7-OB built it (MR-16), the hold a
+        // reversed payment places (MB-74, S7-F9 9), and the disputes line pointing at the door.
+        "a holder of an uncancelled ticket in the week who believes a question's result is wrong may object to it from the ticket's page, once per question, giving a reason",
+        "An officer who had no hand in that result, and who holds no ticket in the week, rules on it: the result stands, or it is reversed, voided on one of the grounds in section",
+        "reinstated with its result. The holder reads the decision and the officer's note on the ticket's page",
+        "The week is neither paid nor voided while any objection is undecided",
+        "The first ruling that changes the counted results grades the week again and starts the window again once they are final; a later one grades the week again and keeps the window",
+        "If a payment into your account is reversed after a week has paid, the share of every winning ticket bought once that payment had reached your account is held at once; after review, each is released to you or forfeited to the jackpot",
+        "A result you believe is wrong is objected to from the ticket's page in the check window (section",
         "Until the window closes, the officer who set a result may correct it, recording the evidence; the corrected result is confirmed by a second officer whenever the original seal needed one",
         "where two-officer authorisation is switched on when the result is set, a second officer confirms it",
         "the withdrawal fee is the platform's current one",
@@ -584,31 +593,57 @@ if (STORE === "memory") {
         "; the rest stays with the guarantee, whose top-up covers only the fee and the shares — so in a week the guarantee tops up, the whole remainder stays with it",
         "the set of counted questions depends only on which questions voided",
         "made from its week id and its ticket id", "A forfeited share goes back to the jackpot"],
-      sw: ["ambayo haijaghairiwa", "matokeo yaliyorekebishwa yanahitaji idhini ya afisa wa pili kila mara muhuri wa awali ulipoihitaji",
+      sw: ["ambayo haijaghairiwa", "anaweza kuyapinga kutoka kwenye ukurasa wa tiketi, mara moja kwa kila swali, akitoa sababu",
+        "Afisa ambaye hakuhusika na matokeo hayo, na ambaye hana tiketi katika wiki hiyo, hutoa uamuzi",
+        "Wiki hailipwi wala haibatilishwi wakati pingamizi lolote bado halijaamuliwa", "Uamuzi wa kwanza unaobadilisha matokeo yanayohesabiwa hupima wiki upya",
+        "hushikiliwa mara moja; baada ya ukaguzi, kila sehemu huachiliwa kwako au hunyang'anywa na kurudi kwenye jackpot",
+        "hupingwa kutoka kwenye ukurasa wa tiketi katika muda wa ukaguzi", "matokeo yaliyorekebishwa yanahitaji idhini ya afisa wa pili kila mara muhuri wa awali ulipoihitaji",
         "ada ya kutoa pesa ni ile ya sasa ya jukwaa", "hakuna wiki ya umma inayofunguliwa tena", "kwa mojawapo ya njia tatu",
         "ukurasa wa Millionea na kadi yake kwenye ukurasa wa mwanzo huitaja", "wakati hakuna wiki inayouzwa na matokeo ya wiki yanaamuliwa", "wanunuzi wake wanaambiwa wanaponunua",
         "Usimamishaji unaoamriwa kati ya wiki", "kinachobaki kwenye akaunti ya jackpot", "au tukio lake lilianza, kabla ya mauzo kufungwa",
         "Katika wiki yenye tiketi ya 10 kati ya 10 haipungui kamwe", "(katika wiki ya mwisho linabaki kwenye akaunti ya jackpot, kifungu cha",
         "kinachobaki kinabaki kwenye dhamana, ambayo nyongeza yake hulipa ada na sehemu tu",
         "inategemea tu maswali yapi yalibatilishwa", "msimbo wa wiki yake na msimbo wa tiketi", "Sehemu iliyonyang'anywa inarudi kwenye jackpot"],
-      zh: ["持有该周未取消彩票的玩家", "原始结果需经第二位官员确认的，更正后的结果同样须由第二位官员确认", "提现手续费为平台当前的费率", "不再开放任何公开的周",
+      zh: ["持有该周未取消彩票的玩家", "可在彩票页面对该题提出异议，每道题限一次，并须说明理由", "由未参与该结果、且在该周未持有彩票的官员作出裁定",
+        "任何异议尚未裁定期间，该周既不派奖，也不作废", "首次改变计分结果的裁定将使该周重新计分", "的份额将立即被暂扣；经审核后，各份额将发放给您，或被没收并回归大奖",
+        "请在复核期内于彩票页面提出异议", "原始结果需经第二位官员确认的，更正后的结果同样须由第二位官员确认", "提现手续费为平台当前的费率", "不再开放任何公开的周",
         "以下列三种方式之一确定", "Millionea 页面及首页上的 Millionea 卡片即标明该周",
         "在无周正在销售、且某周结果正在确定期间（其销售已截止、尚未结算）下令停办", "其购买者在购买时即获告知", "在两周之间", "留存于该账户中",
         "或其事件在销售截止前已开始；", "在有 10/10 彩票的一周", "（最后一周则留存于大奖账户，见第 11 条）", "其余部分留在保底资金中，因为保底补足只支付费用与份额", "计分题的集合仅取决于哪些题目作废", "被没收的份额回归大奖"],
     };
-    // ⛔ What no language may say: an objection path, a regulator refund, a fault void, a per-ticket refund, the leaf's
-    //    "identifier" (sw in either number, round 3 L6), a remainder that is "none" in a topped-up week, an announcement
-    //    "in advance" the hub does not make, the floor promised to any winning week, the counted set by main voids alone.
+    // ⛔ What no language may say: a result disputed through support instead of the objection door (the old path, built
+    //    over by S7-OB — 2026-10-23), a regulator refund, a fault void, a per-ticket refund, the leaf's "identifier" (sw in
+    //    either number, round 3 L6), a remainder that is "none" in a topped-up week, an announcement "in advance" the hub
+    //    does not make, the floor promised to any winning week, the counted set by main voids alone.
     const mustNot: Record<string, RegExp> = {
-      en: /\bobject(?:ion|ions|s|ed)?\b|regulator|fault on 50pick|tickets being refunded|identifier|there is none|announced at least|a week that has a winner it is never less|on how many main|is never 50pick's|no week opens again|needs it again|pays only what is paid out/i,
-      sw: /pingamizi|udhibiti|Hitilafu|[kv]itambulisho|hakuna salio|inayotangazwa angalau|wiki yenye mshindi haipungui|idadi ya maswali\s+makuu|kamwe si la 50pick|hakuna wiki inayofunguliwa tena|yanaihitaji tena|hulipa tu kinacholipwa/i,
-      zh: /异议|监管|故障|不存在余数|一整周公布|有中奖者的一周，大奖绝不低于|作废主题的数量|始终不足一先令——绝不归|不再开放任何一周|须再次确认|只支付实际赔付/,
+      en: /raise it with support|is raised with support|regulator|fault on 50pick|tickets being refunded|identifier|there is none|announced at least|a week that has a winner it is never less|on how many main|is never 50pick's|no week opens again|needs it again|pays only what is paid out/i,
+      sw: /kuwasilisha suala hilo\s+kwa msaada|huwasilishwa kwa msaada\s+katika muda wa ukaguzi|udhibiti|Hitilafu|[kv]itambulisho|hakuna salio|inayotangazwa angalau|wiki yenye mshindi haipungui|idadi ya maswali\s+makuu|kamwe si la 50pick|hakuna wiki inayofunguliwa tena|yanaihitaji tena|hulipa tu kinacholipwa/i,
+      zh: /可向客服提出并注明该题|请在复核期内向客服提出|监管|故障|不存在余数|一整周公布|有中奖者的一周，大奖绝不低于|作废主题的数量|始终不足一先令——绝不归|不再开放任何一周|须再次确认|只支付实际赔付/,
     };
     const said = LOCS.flatMap((l) => mustSay[l].filter((s) => !text[l].includes(s)).map((s) => `${l} lacks: ${s.slice(0, 50)}`));
     const unsaid = LOCS.flatMap((l) => { const hit = mustNot[l].exec(text[l]); return hit ? [`${l} says: ${hit[0]}`] : []; });
     const swProof = Object.values(dict.sw.millioneaFairness as Record<string, string>).filter((v) => /[kv]itambulisho/i.test(v));
-    ok("L.13 · ⛔ THE TEXT STATES ONLY WHAT IS BUILT (reviews of rounds 2 and 3) · the check window as built (support, the sealing officer's own correction with its evidence and its second officer, uncancelled holders), the sunset's three cases exactly as mln-s7-fix accepts them and the stop between weeks, the planned week as the lead builds its announcement, the jackpot account after the last week, MR-5's case under its plan ground, the floor scoped to a 10 of 10 week, the remainder of a week raised to the floor, the counted set, the proof's own identifiers (and the proof page's sw words), a forfeited share — and none of the old promises, in any language",
+    ok("L.13 · ⛔ THE TEXT STATES ONLY WHAT IS BUILT (reviews of rounds 2 and 3; the lead's order of 2026-10-23) · the check window as built (the sealing officer's own correction with its evidence and its second officer), the objection door as built (MR-16: an uncancelled holder objects from the ticket's page once per question, an officer with no hand in the result and no ticket rules, the decision and its note on the ticket, no payout or void while one is undecided, the window restarted by the first changing ruling only, disputes pointed at the door), the reversal hold (MB-74), the sunset's three cases exactly as mln-s7-fix accepts them and the stop between weeks, the planned week as the lead builds its announcement, the jackpot account after the last week, MR-5's case under its plan ground, the floor scoped to a 10 of 10 week, the remainder of a week raised to the floor, the counted set, the proof's own identifiers (and the proof page's sw words), a forfeited share — and none of the old promises, in any language",
       said.length === 0 && unsaid.length === 0 && swProof.length === 0, [...said, ...unsaid, ...swProof.map((v) => `sw proof words: ${v.slice(0, 40)}`)].join(" · "));
+    // L.13's own predicate, driven over planted copies of the text (in memory: nothing on disk moves) — each shape of the
+    // defect must fail it, and the real text must pass it, or L.13 proves nothing (S6-INT, 2026-10-23).
+    const verdict = (tx: Record<string, string>) =>
+      LOCS.every((l) => mustSay[l].every((s) => tx[l].includes(s)) && !mustNot[l].exec(tx[l]));
+    const oldSupport = { ...text, en: text.en.replace("A result you believe is wrong is objected to from the ticket's page", "A result you believe is wrong is raised with support") };
+    const softHold = { ...text, sw: text.sw.replace("hushikiliwa mara moja", "inaweza kushikiliwa") };
+    const noFreeze = { ...text, zh: text.zh.replace("任何异议尚未裁定期间，该周既不派奖，也不作废", "") };
+    ok("L.13c · CONTROLS · L.13's predicate catches the old support path back in English, the Swahili reversal hold softened and the Chinese freeze sentence dropped — and passes the real text",
+      verdict(text) && !verdict(oldSupport) && !verdict(softHold) && !verdict(noFreeze)
+        && oldSupport.en !== text.en && softHold.sw !== text.sw && noFreeze.zh !== text.zh);
+    // S6-INT · the lead's order of 2026-10-23: §11 states the final week's rule in its one wording — the dictionary's
+    // `finalWeekRule`, character for character (DESIGN_AUTHORITY §M8a item 19), written in the binding text so its hash
+    // (L.4) covers the words a buyer reads. Whitespace is set aside on both sides: the legal pass sets "10/10" in its
+    // figure face, and its markup leaves a space before the punctuation that follows.
+    const squash = (s: string) => s.replace(/\s+/g, "");
+    const ruleOff = LOCS.filter((l) => !squash(text[l]).includes(squash(dict[l].millionea.finalWeekRule)));
+    const paraphrased = text.en.replace("highest-scoring tickets", "best tickets");
+    ok("L.13b · ⭐ the final week's rule is the players' own sentence, character for character, in every language (`finalWeekRule`) — and a paraphrase is caught",
+      ruleOff.length === 0 && paraphrased !== text.en && !squash(paraphrased).includes(squash(dict.en.millionea.finalWeekRule)), J(ruleOff));
     const cfgDocs = millioneaContent({ ...FIG, source: "CONFIG", weekCode: null, voidDeadlineHours: null });
     const cfgText = Object.fromEntries(LOCS.map((l) => [l, plain(cfgDocs[l])])) as Record<string, string>;
     const weekSays: Record<string, string> = {

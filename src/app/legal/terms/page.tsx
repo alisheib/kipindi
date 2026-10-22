@@ -2,7 +2,9 @@ import { LegalHeader, LegalSection, LEGAL_BINDING_LANGUAGE as BINDING } from "..
 import { SUPPORT_EMAIL, LICENCE_NUMBER } from "@/lib/server/support-config";
 import { getServerT, type Locale } from "@/lib/i18n-server";
 import { getGlobalConfig } from "@/lib/server/market-config";
-import { TERMS_VERSION } from "@/lib/terms-version";
+import { termsVersionFor } from "@/lib/terms-version";
+import { millioneaWordingPublished } from "@/lib/millionea-rollout";
+import { MillioneaWording } from "@/lib/server/legal/millionea-wording";
 
 // The void ground in §6 tracks a LIVE setting, so this page cannot be statically baked — it
 // would freeze a legal promise at whatever the window was on the day of the last build.
@@ -75,14 +77,17 @@ const TITLE: Record<Locale, string> = {
  * ⭐ Every identity sentence stays in a paragraph that names no deposit, bet or play, and the review sentence names no
  * withdrawal (`test:kyc-copy-truth` rules 2 and 4).
  */
-// ⭐ The version is `TERMS_VERSION`, the SAME constant registration stamps on the account
-// (`src/lib/terms-version.ts`, `test:terms-binding`) — so what a player read and what was recorded
-// as accepted cannot diverge again. Two literals did, twice (2026-09-09 and 2026-09-13).
-const META: Record<Locale, string> = {
-  en: `Version ${TERMS_VERSION} · Effective on account registration.`,
-  sw: `Toleo ${TERMS_VERSION} · Yanaanza kutumika unaposajili akaunti.`,
-  zh: `版本 ${TERMS_VERSION} · 自账户注册时生效。`,
-};
+// ⭐ The version is the one registration stamps on the account — `termsVersionFor(millioneaWordingPublished())`
+// (`src/lib/terms-version.ts`, `test:terms-binding`) — so what a player read and what was recorded as accepted cannot
+// diverge again. Two literals did, twice (2026-09-09 and 2026-09-13). ⭐ Since 2026-10-23 the Terms have two renderings:
+// §4's Maswali Millionea paragraph prints inside `MillioneaWording`, only while the server's ceiling admits the product,
+// and with it the version `TERMS_VERSION_WITH_MILLIONEA`; below the ceiling the page is `TERMS_VERSION`'s text, byte for
+// byte (OD-18; the privacy notice's precedent, `millionea-wording.tsx`).
+const META = (version: string): Record<Locale, string> => ({
+  en: `Version ${version} · Effective on account registration.`,
+  sw: `Toleo ${version} · Yanaanza kutumika unaposajili akaunti.`,
+  zh: `版本 ${version} · 自账户注册时生效。`,
+});
 
 /**
  * ⛔ A FUNCTION OF THE CONFIGURED WINDOW, NOT A CONSTANT — and the reason is §6, not §5.
@@ -215,6 +220,15 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
           it cannot be sold. If no bets are placed on the opposing side, there is no prize to pay from and every
           stake is refunded in full, at no charge.
         </p>
+        <MillioneaWording>
+          <p data-terms-addition="millionea">
+            Maswali Millionea is not a price-competition market. A Millionea ticket is bought and settled under its own
+            binding rules, the <a href="/legal/rules/millionea" className="text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline">Maswali Millionea Rules</a>, as published
+            when the ticket is bought. This section&apos;s statements about our commission, about a winning bet never being
+            paid less than it staked, about one-sided markets and about cash-out do not apply to a ticket; the rest of these
+            terms do.
+          </p>
+        </MillioneaWording>
       </LegalSection>
 
       <LegalSection n="5" title="Settlement and payout">
@@ -383,6 +397,15 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
           malipo — haliwezi kuuzwa. Kama hakuna dau lililowekwa upande mwingine, hakuna zawadi ya kulipa na kila dau
           litarudishwa kamili, bila gharama.
         </p>
+        <MillioneaWording>
+          <p data-terms-addition="millionea">
+            Maswali Millionea si soko la ushindani wa bei. Tiketi ya Millionea inanunuliwa na kulipwa kwa kanuni zake zenye
+            nguvu ya kisheria, <a href="/legal/rules/millionea" className="text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline">Kanuni za Maswali Millionea</a>, kama
+            zilivyochapishwa wakati tiketi inaponunuliwa. Kauli za sehemu hii kuhusu kamisheni yetu, kuhusu dau lililoshinda
+            kutolipwa chini ya dau lake kamwe, kuhusu masoko ya upande mmoja na kuhusu kuuza dau hazihusu tiketi; masharti
+            mengine yote yanaihusu.
+          </p>
+        </MillioneaWording>
       </LegalSection>
 
       <LegalSection n="5" title="Ufungaji na malipo">
@@ -512,6 +535,11 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
           下注后有一小段兑现（cash-out）窗口：前 5 分钟内您可全额取回本金且不收取任何费用——
           <strong>前提是您下注时，该市场仍剩余至少 5 分钟的投注时间</strong>。在涨跌的 3 分钟与 5 分钟回合中，该条件永远无法满足，因此<strong>这些回合完全不提供兑现</strong>。以奖金资助的持仓在任何时候均不可卖出。此后持仓将被锁定并保留至结算——无法卖出。若无人投注对方，则没有奖金可供支付，所有注金将全额退还，不收取任何费用。
         </p>
+        <MillioneaWording>
+          <p data-terms-addition="millionea">
+            Maswali Millionea 并非价格竞争市场。Millionea 彩票依其自身具有约束力的规则——即<a href="/legal/rules/millionea" className="text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline">《Maswali Millionea 规则》</a>——购买与结算，以购票时公布的版本为准。本节关于我们的佣金、关于获胜投注绝不会低于本金、关于单边市场以及关于兑现的说明不适用于彩票；本条款的其余内容仍然适用。
+          </p>
+        </MillioneaWording>
       </LegalSection>
 
       <LegalSection n="5" title="结算与派彩">
@@ -567,12 +595,14 @@ export default async function TermsPage() {
   // including on the day it changes, and without a second definition of the number living in a
   // legal document. `dynamic = "force-dynamic"` below is what stops it being baked at build time.
   const { objectionWindowHours } = await getGlobalConfig();
+  // The rendering this reader is shown, and so the version printed — the one registration stamps (`auth-service.ts`).
+  const version = termsVersionFor(millioneaWordingPublished());
   return (
     <>
       <LegalHeader
         eyebrow={EYEBROW[locale]}
         title={TITLE[locale]}
-        meta={META[locale]}
+        meta={META(version)[locale]}
         glyph="scrollText"
       />
       <p className="text-body-sm italic text-text-subtle">{BINDING[locale]}</p>

@@ -20,7 +20,11 @@
  *    only the hash.
  * ⛔ PURE AND IMPORT-FREE: a server component (the page), the purchase and the suites all read it.
  */
-export const MILLIONEA_RULES_VERSION = "2026-10-18";
+// ⭐ 2026-10-23 · PUBLISHED. The version moves at publication, as the entry of 2026-10-18 said: the S6 release carries the
+//    rules page to production, where Millionea has been ACTIVE since 2026-10-22 23:32 UTC (the lead's order of 2026-10-23).
+//    Version 2026-10-18 was read by staff only and bound no ticket. COMPLIANCE-DECISIONS § "2026-10-23 · The Maswali
+//    Millionea rules are published as version 2026-10-23 …".
+export const MILLIONEA_RULES_VERSION = "2026-10-23";
 
 /** The first 12 hex of `sha256` over the whitespace-normalised `millioneaContent` bodies, then `LEGAL_BINDING_LANGUAGE`. */
 // 2026-10-18 · the hash's history under version 2026-10-18, every value with the lane round that made it and what its move
@@ -51,4 +55,12 @@ export const MILLIONEA_RULES_VERSION = "2026-10-18";
 //                  `ruleSunset` carries in en/sw/zh. Recorded in COMPLIANCE-DECISIONS § "2026-10-22 · The Maswali
 //                  Millionea rules' §11 states the stale-form rule …".
 // (`b0bf9a6fa080`, named here for a while, was never held by a commit: a working copy between the first two.)
-export const MILLIONEA_RULES_TEXT_SHA = "46f7b1b18732";
+// 2026-10-23 · VERSION 2026-10-23, the published text (MASWALI-BUILD S6-INT 30; the lead's order of 2026-10-23):
+//   8375d7809e2f · §6 states the objection door as S7-OB built it (MR-16) — an uncancelled holder objects to one question from
+//                  the ticket's page; an officer with no hand in that result and no ticket in the week rules; the decision
+//                  and its note on the ticket; no payout or void while one is undecided; the window restarted by the first
+//                  changing ruling only — and §12 points disputes at it; §12 states the hold a reversed payment places on
+//                  the shares of the tickets bought with it (MB-74); §11 states the final week's rule in its one wording,
+//                  `finalWeekRule`'s, in en/sw/zh. Recorded in COMPLIANCE-DECISIONS § "2026-10-23 · The Maswali Millionea
+//                  rules are published as version 2026-10-23 …".
+export const MILLIONEA_RULES_TEXT_SHA = "8375d7809e2f";

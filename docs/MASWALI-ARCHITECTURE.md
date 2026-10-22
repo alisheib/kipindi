@@ -119,7 +119,8 @@ product (`npm run test:maswali-fairness` H.7; S5's ghosts are wordless for the s
 | `src/lib/maswali-time.ts` · `maswali-topics.ts` · `maswali-void-reason.ts` · `maswali-week-label.ts` | An event's own clock; the politics screen; the closed list of void grounds; the word for each state |
 | `src/app/admin/maswali/**` | The console: the week list, the builder, the week page and its seal console, pools, integrity |
 | `src/app/millionea/**` · `src/components/maswali/**` | The player pages (hub, slip, How to play, register, Tiketi zangu, a ticket) and their parts |
-| `src/app/legal/rules/millionea/page.tsx` · `src/app/legal/rules/_content-millionea.tsx` | The binding rules, en/sw/zh, every figure read |
+| `src/app/legal/rules/millionea/page.tsx` · `src/app/legal/rules/_content-millionea.tsx` | The binding rules, en/sw/zh, every figure read (version 2026-10-23, published with the S6 release) |
+| `src/app/legal/terms/page.tsx` §4 · `src/lib/terms-version.ts` | The Terms' Maswali Millionea paragraph (OD-18), printed with its version only above the ceiling (`MillioneaWording`); below it the Terms are v2026-10-14's text |
 | `src/app/fairness/millionea-section.tsx` · `src/app/fairness/millionea/[serial]/**` | `/fairness`'s commitments, and the owner-only inclusion proof with the browser's own check |
 | `src/app/help/millionea-help.tsx` | `/help`'s Millionea block |
 | `src/lib/server/maswali-notify.ts` · `maswali-winner-sms.ts` · `comms-registry.ts` (its Millionea rows) | The week's notices — the close, the results, a correction, the refunds — the holders' letters and one winner SMS per player-week: each sent exactly once across processes, recorded, reconciled, and the winners no notice reached listed for the desk |
@@ -211,21 +212,6 @@ domains are in `ROUTE_DOMAINS` (`src/lib/server/roles.ts`).
 
 ## 9 · Waiting for the launch commit (S8) — delete this section when it lands
 
-- **The Terms' sentence (OD-18).** Existing terms do not change before launch ([`RULES.md`](RULES.md) §2.12, Stated),
-  so `/legal/terms` §4 gains this paragraph in S8's commit, with `TERMS_VERSION` moved and the binding hash re-pinned.
-  Native readers check the Swahili and the Chinese at Gate B.
-  - **en** — *Maswali Millionea is not a price-competition market. A Millionea ticket is bought and settled under its
-    own binding rules — the Maswali Millionea Rules at /legal/rules/millionea, in the version recorded on the ticket.
-    This section's statements about our commission, about a winning bet never being paid less than it staked, about
-    one-sided markets and about cash-out do not apply to a ticket; the rest of these terms do.*
-  - **sw** — *Maswali Millionea si soko la ushindani wa bei. Tiketi ya Millionea inanunuliwa na kulipwa kwa kanuni
-    zake zenye nguvu ya kisheria — Kanuni za Maswali Millionea katika /legal/rules/millionea, kwa toleo
-    lililorekodiwa kwenye tiketi. Kauli za sehemu hii kuhusu kamisheni yetu, kuhusu dau lililoshinda kutolipwa chini
-    ya dau lake kamwe, kuhusu masoko ya upande mmoja na kuhusu kuuza dau hazihusu tiketi; masharti mengine yote
-    yanaihusu.*
-  - **zh** — *Maswali Millionea 并非价格竞争市场。Millionea 彩票依其自身具有约束力的规则购买与结算——即
-    /legal/rules/millionea 上的《Maswali Millionea 规则》，以彩票上记录的版本为准。本节关于我们的佣金、关于获胜投注
-    绝不会低于本金、关于单边市场以及关于兑现的说明不适用于彩票；本条款的其余内容仍然适用。*
 - **The ticket's rules version.** `MaswaliTicket.rulesVersion` is written by the purchase as the week's code and the
   instant its figures froze; it takes `MILLIONEA_RULES_VERSION` beside them when the purchase is wired to it
   (`src/lib/millionea-rules-version.ts` says so).
