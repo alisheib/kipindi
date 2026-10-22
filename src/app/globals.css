@@ -8267,7 +8267,10 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 }
 .kp-jhome-ghost .kp-jhowto { cursor: default; }
 @media (hover: hover) { .kp-jhome-ghost .kp-jhowto:hover { border-color: var(--border); } }
-.kp-jhome-ghost__plate { flex-shrink: 0; width: 48px; height: 48px; border-radius: var(--r-md); background: var(--bg-overlay); }
+/* One ghost plate, two owners: the journey home's and Millionea's door (`maswali-home-card-ghost.tsx`), which the classic
+   board draws too — so the door's drawing wears its own class, never the journey's: no journey markup on a classic page
+   (the journey-html rule of qa:chunks-prod; test:maswali-doors 5.9). */
+.kp-jhome-ghost__plate, .kp-mln-ghost__plate { flex-shrink: 0; width: 48px; height: 48px; border-radius: var(--r-md); background: var(--bg-overlay); }
 .kp-jhome-ghost__meta { display: block; width: 96px; height: 11px; margin-block: 3.5px; border-radius: var(--r-xs); background: var(--bg-overlay); }
 .kp-jhome-ghost__title { color: transparent; }
 .kp-jhome-ghost__title > span { border-radius: var(--r-md); background: var(--bg-elevated); -webkit-box-decoration-break: clone; box-decoration-break: clone; }
