@@ -414,14 +414,20 @@ export function SlipClient({
   const stampEyebrow = stamp ? `${many ? t.millionea.productTitle : t.millionea.ticketCut} · ${weekWord(t, stamp.weekNumber)}` : "";
 
   // ⭐ SEVERAL TICKETS (H2, M9): the kit's pills under the head, only once there are two; the remove action after them.
+  // ⭐ THE NOUN ONCE (the lead's ruling (a), round 2): the group's visible label says it ("TIKETI" / "TICKETS" / 彩票) and
+  // each pill says its number and its progress, "1 · 15/15", one format for every state — so two pills share one row at
+  // 320 in every language (they stacked, "TIKETI 1 · 15/15" ~172px each). Each pill's accessible name keeps the noun and
+  // the count ("Tiketi 1 · 15/15", the kit's `ariaLabel`); the visible label is the group's own name, said once by it.
   const switcher = count > 1 && !closed ? (
     <section aria-label={t.millionea.draftTickets} data-testid="millionea-ticket-drafts" className="flex min-w-0 flex-col gap-2">
+      <span aria-hidden className="font-mono text-caption uppercase eyebrow text-text-subtle">{t.millionea.draftTicketsNoun}</span>
       <Tabs variant="pill" ariaLabel={t.millionea.draftTickets} value={String(draft.active)}
         onChange={(v) => goToTicket(Number(v), false)}
         tabs={draft.slips.map((slip, i) => {
-          // Of the questions the slip ASKS (P10): "Ticket 1 · 0/14" when one voided before the close, never "1/15" untapped.
+          // Of the questions the slip ASKS (P10): "1 · 0/14" when one voided before the close, never "1/15" untapped.
           const p = slipProgress(slip, questions);
-          return { value: String(i), labelEn: `${nameOf(i)} · ${formatNumber(p.mains + p.reserves)}/${formatNumber(p.mainsOf + p.reservesOf)}` };
+          const progress = `${formatNumber(p.mains + p.reserves)}/${formatNumber(p.mainsOf + p.reservesOf)}`;
+          return { value: String(i), labelEn: `${formatNumber(held + i + 1)} · ${progress}`, ariaLabel: `${nameOf(i)} · ${progress}` };
         })} />
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <p className="min-w-0 flex-1 basis-[14rem] text-body-sm text-text-muted">{fill(t.millionea.ticketDraftHint, { n: formatNumber(questions.length) })}</p>

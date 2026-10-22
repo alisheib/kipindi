@@ -175,6 +175,35 @@ const parity = (A: unknown, B: unknown, cases: Array<[string, Record<string, unk
   ok("1.8 · …and the still-flag reads the three gates of §M6 (the OS preference, the in-app switch, the `minimal` tier) — never the `reduced` throttle",
     gates.includes('"(prefers-reduced-motion: reduce)"') && gates.includes('classList.contains("kp-reduce-motion")') && gates.includes('getAttribute("data-motion") === "minimal"') && !gates.includes('"reduced"'));
 }
+// Round 2 (the lead's ruling (a)): the kit Tabs gains an option's own accessible name, `TabItem.ariaLabel`. Omitted, every
+// current caller's markup is the round-2 base's (7e9a314f0), byte for byte: line, segmented and pill, buttons and links,
+// with a glyph, a count and Millionea's ink.
+const R2_BASE = "7e9a314f0", TABS = "src/components/ui/tabs.tsx";
+const atR2Base = (rel: string) => execFileSync("git", ["show", `${R2_BASE}:${rel}`], { cwd: ROOT, encoding: "utf8" }).replace(/\r\n/g, "\n");
+const baseTabs = compileAt(TABS, atR2Base(TABS)).Tabs;
+const nowTabsSrc = raw(TABS);
+const nowTabs = compileAt(TABS, nowTabsSrc).Tabs;
+const tabsOf = (...labels: string[]) => labels.map((labelEn, i) => ({ value: String(i), labelEn }));
+const TAB_CASES: Array<[string, Record<string, unknown>]> = [
+  ["a section rail of buttons, a count", { tabs: [{ value: "a", labelEn: "Alpha" }, { value: "b", labelEn: "Beta", count: 3 }], value: "a", onChange() {}, ariaLabel: "Sections" }],
+  ["a section rail of links, a glyph", { tabs: [{ value: "a", labelEn: "Alpha", href: "/a" }, { value: "b", labelEn: "Beta", href: "/b", glyph: h("svg", { "aria-hidden": "true" }) }], value: "b", ariaLabel: "Pages" }],
+  ["segmented", { variant: "segmented", tabs: tabsOf("Day", "Week", "Month"), value: "1", onChange() {}, ariaLabel: "Range" }],
+  ["pills of buttons", { variant: "pill", tabs: tabsOf("Ticket 1 · 15/15", "Ticket 2 · 7/15"), value: "0", onChange() {}, ariaLabel: "Tickets" }],
+  ["pills of links, Millionea's ink", { variant: "pill", tabs: [{ value: "m", labelEn: "Millionea", href: "/millionea/tickets", ink: "millionea" }, { value: "p", labelEn: "Markets", href: "/positions" }], value: "m", ariaLabel: "Kinds" }],
+];
+{
+  const diffs = LOCALES.flatMap((l) => TAB_CASES.flatMap(([name, p]) => {
+    const a = inApp(l, h(baseTabs as never, p as never)), b = inApp(l, h(nowTabs as never, p as never));
+    return a === b ? [] : [`${l}/${name}: first differing byte ${[...a].findIndex((ch, i) => ch !== b[i])}`];
+  }));
+  ok(`1.9 · round 2 · the kit Tabs: ${TAB_CASES.length} callers' shapes × sw/en/zh render byte-identically to ${R2_BASE} when \`ariaLabel\` is not passed`, diffs.length === 0, j(diffs));
+  const named = inApp("en", h(nowTabs as never, { variant: "pill", tabs: [{ value: "0", labelEn: "1 · 15/15", ariaLabel: "Ticket 1 · 15/15" }], value: "0", onChange() {}, ariaLabel: "Tickets" } as never));
+  ok("1.10 · …and passed, it names the option and nothing else moves (the label still drawn)",
+    named.includes('aria-pressed="true" aria-label="Ticket 1 · 15/15"') && textOf(named) === "1 · 15/15", named.slice(0, 240));
+  const always = compileAt(TABS, nowTabsSrc.replace('aria-pressed={active} aria-label={item.ariaLabel}', 'aria-pressed={active} aria-label={item.ariaLabel ?? item.labelEn}')).Tabs;
+  ok("1.9′ PLANT · a name written for every caller (`?? labelEn`) breaks the parity",
+    inApp("en", h(baseTabs as never, TAB_CASES[0][1] as never)) !== inApp("en", h(always as never, TAB_CASES[0][1] as never)));
+}
 
 /* ══ §2 · THE METER (H1) ════════════════════════════════════════════════════════════════════════════════════════════════════ */
 section("§2 · the meter: an empty step hollow, a done step solid, filled on the control's beat");
@@ -512,8 +541,57 @@ section("§10 · each fix undone in memory is caught by its case (the source pla
   ok("10.9 PLANT · the price's lone \"·\" from 1280 put back is caught", !!loneItem && !loneItem[2].split(" ").includes("xl:hidden"));
 }
 
+/* ══ §11 · ROUND 2 · THE COMPOSER'S PILLS (the lead's ruling (a)) ══════════════════════════════════════════════════════════ */
+section("§11 · round 2 · the composer says the noun once, as the switcher's label; each pill its number and progress, named with the noun");
+{
+  // The composer drawn by the server with two tickets in its draft (the tab's kept draft arrives after hydration, so the
+  // render is handed it the way `useExitPhase` is forced above: one mechanical substitution, found exactly once), its
+  // server action answered by a stub.
+  const CLIENT = "src/app/millionea/slip/slip-client.tsx";
+  const SEED_FROM = "useState<MillioneaSlipDraft>(() => newSlipDraft(hiddenSlots, VOIDED_ROW_FILL))";
+  const seeded = (src: string) => {
+    if (src.split(SEED_FROM).length - 1 !== 1) throw new Error("PREMISE ABSENT — the composer's draft seed");
+    return src.replace(SEED_FROM, "useState<MillioneaSlipDraft>(() => (globalThis as { __draft?: MillioneaSlipDraft }).__draft ?? newSlipDraft(hiddenSlots, VOIDED_ROW_FILL))");
+  };
+  const ACTIONS = { "../actions": { buyMillioneaTicketsAction: async () => ({ ok: false, error: "stub" }) } };
+  const composerOf = (src: string) => compileAt(CLIENT, seeded(src), ACTIONS).SlipClient;
+  const ALL = Array.from({ length: 15 }, () => "YES" as const);
+  const SEVEN = ALL.map((p, i) => (i < 7 ? p : null));
+  const drawComposer = (component: unknown, l: L3) => {
+    (globalThis as { __draft?: unknown }).__draft = { v: 2, active: 1, slips: [ALL, SEVEN] };
+    try {
+      return inApp(l, h(component as never, {
+        userId: "u1", weekId: "w1", weekNumber: 49, closesAt: CLOSE, firstEventAt: EVENT, serverNow: NOW, questions: QS, hiddenSlots: [],
+        price: 1_000, cap: 10, held: 0, balance: 50_000, freeCancelMinutes: 5, pct: 13, depositFacts: null,
+      } as never));
+    } finally { delete (globalThis as { __draft?: unknown }).__draft; }
+  };
+  const pillsOf = (m: string) => {
+    const box = /data-testid="millionea-ticket-drafts"[^>]*>([\s\S]*?)<\/section>/.exec(m)?.[1] ?? "";
+    return {
+      label: textOf(/<span aria-hidden="true" class="[^"]*eyebrow[^"]*">([^<]*)<\/span>/.exec(box)?.[1] ?? ""),
+      pills: [...box.matchAll(/<button type="button" aria-pressed="(true|false)" aria-label="([^"]*)"[^>]*>([\s\S]*?)<\/button>/g)].map((x) => ({ pressed: x[1], name: textOf(x[2]), text: textOf(x[3]) })),
+    };
+  };
+  const composer = composerOf(raw(CLIENT));
+  const seen = LOCALES.map((l) => ({ l, ...pillsOf(drawComposer(composer, l)) }));
+  const want = (l: L3, n: number, p: string) => `${fill(dict[l].millionea.draftTicket, { n })} · ${p}`;
+  ok("11.1 · ruling (a) · the switcher's visible label is the noun, once (\"Tiketi\" / \"Tickets\" / 彩票), and each pill says only its number and progress — \"1 · 15/15\", \"2 · 7/15\" — in sw, en and zh",
+    seen.every(({ l, label, pills }) => label === dict[l].millionea.draftTicketsNoun && pills.length === 2 && pills[0].text === "1 · 15/15" && pills[1].text === "2 · 7/15"),
+    j(seen.map(({ l, label, pills }) => ({ l, label, texts: pills.map((p) => p.text) }))));
+  ok("11.2 · …and each pill is NAMED with the noun and the count — \"Tiketi 1 · 15/15\", \"Ticket 2 · 7/15\", \"彩票 1 · 15/15\" — the pressed one the ticket being answered",
+    seen.every(({ l, pills }) => pills.length === 2 && pills[0].name === want(l, 1, "15/15") && pills[1].name === want(l, 2, "7/15") && pills[1].pressed === "true"),
+    j(seen.map(({ l, pills }) => ({ l, names: pills.map((p) => p.name) }))));
+  // PLANT: the name left off the pills — a reader hears "1 · 15/15" and no ticket.
+  const unnamed = composerOf(raw(CLIENT).replace(", ariaLabel: `${nameOf(i)} · ${progress}` };", " };"));
+  const lostHtml = drawComposer(unnamed, "sw");
+  const lostBox = /data-testid="millionea-ticket-drafts"[^>]*>([\s\S]*?)<\/section>/.exec(lostHtml)?.[1] ?? "";
+  ok("11.2′ PLANT · pills drawn without their names are caught (both pills still there, the noun gone from what a reader hears)",
+    (lostBox.match(/aria-pressed="/g) ?? []).length === 2 && pillsOf(lostHtml).pills.length === 0);
+}
+
 console.log(`\n${"═".repeat(70)}\n  MASWALI SLIP DESIGN: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run printed. */
-const MIN_ASSERTIONS = 74;
+const MIN_ASSERTIONS = 80;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);
