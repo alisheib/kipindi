@@ -1037,11 +1037,25 @@ if (RUN === "a") {
       const left = players[who].at + STALE_MS - Date.now();
       if (left > 0) { console.log(`INFO H6 · waiting ${Math.round(left / 1000)}s: ${who}'s session last seen ≥ 5 min ago, a returning player's`); await new Promise((r) => setTimeout(r, left)); }
     };
-    /** In the page, from its first script: the carry's marks, the hydration of the carried-in row (and the two ends then). */
+    /** In the page, from its first script: the carry's marks, the hydration of the carried-in row (and the two ends then),
+     *  and each time the page asks for the origin — the carry measures it then: what it saw (both ends' boxes, the
+     *  viewport, the motion clamps) and whether its wrapper stood in the carried-in row. */
     const CARRY_LOG = () => {
       const log = [];
       window.__mlnCarryLog = log;
       const push = (e) => log.push({ t: Date.now(), ...e });
+      const byId = Document.prototype.getElementById;
+      Document.prototype.getElementById = function (id) {
+        const el = byId.call(this, id);
+        if (id === "mln-carried-figure" && !window.__mlnDriveAsks) {
+          const wrap = document.querySelector('[data-row="in"] > span.inline-flex');
+          const r = (x) => { if (!x) return null; const b = x.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)]; };
+          push({ asked: true, origin: r(el), dest: r(wrap ?? document.querySelector('[data-row="in"]')), wrapper: !!wrap, vw: innerWidth, vh: innerHeight,
+            motion: document.documentElement.getAttribute("data-motion"), reduce: matchMedia("(prefers-reduced-motion: reduce)").matches,
+            off: document.documentElement.classList.contains("kp-reduce-motion") });
+        }
+        return el;
+      };
       new MutationObserver((ms) => {
         for (const m of ms) {
           const el = m.target;
@@ -1054,7 +1068,7 @@ if (RUN === "a") {
         if (!row || !Object.keys(row).some((k) => k.startsWith("__reactFiber"))) return;
         clearInterval(probe);
         const b = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return [Math.round(r.top), Math.round(r.bottom)]; };
-        push({ hydrated: true, origin: b(document.getElementById("mln-carried-figure")), dest: b(row), vh: innerHeight });
+        push({ hydrated: true, origin: b(document.querySelector("#mln-carried-figure")), dest: b(row), vh: innerHeight });
       }, 20);
     };
     /** The page's server actions and route renders, as the network saw them. */
@@ -1063,11 +1077,16 @@ if (RUN === "a") {
       const q = r.request().headers();
       return r.request().method() === "GET" && q.rsc === "1" && !q["next-router-prefetch"] && new URL(r.url()).pathname === "/millionea";
     };
-    const netLog = (page, out) => page.on("response", (r) => {
-      const q = r.request().headers();
-      if (q["next-action"]) out.push({ t: Date.now(), action: r.status(), revalidated: r.headers()["x-action-revalidated"] ?? null });
-      else if (isRender(r)) out.push({ t: Date.now(), render: r.status() });
-    });
+    // Each server action by its arguments (the seen mark carries its week, "ROLLOVER" or "RESULT" and the render's instant;
+    // the header's notifications read carries none), when it was sent and when it answered.
+    const netLog = (page, out) => {
+      page.on("request", (q) => { if (q.headers()["next-action"]) out.push({ t: Date.now(), sent: (q.postData() ?? "").slice(0, 70) }); });
+      page.on("response", (r) => {
+        const q = r.request().headers();
+        if (q["next-action"]) out.push({ t: Date.now(), action: r.status(), args: (r.request().postData() ?? "").slice(0, 70), revalidated: r.headers()["x-action-revalidated"] ?? null });
+        else if (isRender(r)) out.push({ t: Date.now(), render: r.status() });
+      });
+    };
     const timeline = async (page, net, t0) => [...(await page.evaluate(() => window.__mlnCarryLog ?? [])), ...net]
       .sort((a, b) => a.t - b.t).map((e) => ({ ...e, t: e.t - t0 }));
     for (const [who, vp] of [["phone", { width: 360, height: HEIGHT }], ["desk", { width: 1920, height: 1440 }]]) {
@@ -1085,13 +1104,13 @@ if (RUN === "a") {
       const ends = await page.evaluate(() => {
         const at = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right) }; };
         const inView = (b) => !!b && b.top >= 0 && b.left >= 0 && b.bottom <= innerHeight && b.right <= innerWidth;
-        const origin = at(document.getElementById("mln-carried-figure")), dest = at(document.querySelector('[data-row="in"]'));
+        const origin = at(document.querySelector("#mln-carried-figure")), dest = at(document.querySelector('[data-row="in"]'));
         return { origin, dest, both: inView(origin) && inView(dest) };
       });
       // Read once the page is React's and the 340ms flight has had its time — never at a guessed instant after load.
       const hydrated = await page.waitForFunction(() => (window.__mlnCarryLog ?? []).some((e) => e.hydrated), null, { timeout: 30_000 }).then(() => true).catch(() => false);
       await page.waitForTimeout(1200);
-      const after = await page.evaluate(() => document.getElementById("mln-carried-figure")?.className ?? null);
+      const after = await page.evaluate(() => document.querySelector("#mln-carried-figure")?.className ?? null);
       const landed = /\bg-settle\b/.test(after ?? ""), vacated = /\bkp-mln-carry-vacated\b/.test(after ?? "");
       console.log(`INFO H6 after · carry · sw ${vp.width}×${vp.height} · timeline (ms from the navigation): ${j(await timeline(page, net, t0))}`);
       ok(`after · carry · sw ${vp.width}×${vp.height} · H6 the carry plays exactly when both ends stand in view (${ends.both ? "both in view: it lands" : "an end out of view: no flight"})`,
@@ -1124,15 +1143,15 @@ if (RUN === "a") {
       const seen = page.waitForResponse((r) => r.request().method() === "POST" && !!r.request().headers()["next-action"], { timeout: 30_000 }).catch(() => null);
       const t0 = Date.now();
       await page.goto(`${BASE}/millionea`, { waitUntil: "load", timeout: 180_000 });
-      const flying = await page.waitForFunction(() => /kp-mln-carry-vacated/.test(document.getElementById("mln-carried-figure")?.className ?? ""), null, { timeout: 30_000 }).then(() => true).catch(() => false);
+      const flying = await page.waitForFunction(() => /kp-mln-carry-vacated/.test(document.querySelector("#mln-carried-figure")?.className ?? ""), null, { timeout: 30_000 }).then(() => true).catch(() => false);
       const mark = await seen;
       const rendered = page.waitForResponse(isRender, { timeout: 30_000 }).catch(() => null);
       await page.evaluate(() => window.next?.router?.refresh());
       const render = await rendered;
       await page.waitForTimeout(600);
-      const inAir = await page.evaluate(() => document.getElementById("mln-carried-figure")?.className ?? null);
-      await page.waitForFunction(() => /\bg-settle\b/.test(document.getElementById("mln-carried-figure")?.className ?? ""), null, { timeout: 15_000 }).catch(() => {});
-      const end = await page.evaluate(() => document.getElementById("mln-carried-figure")?.className ?? null);
+      const inAir = await page.evaluate(() => document.querySelector("#mln-carried-figure")?.className ?? null);
+      await page.waitForFunction(() => /\bg-settle\b/.test(document.querySelector("#mln-carried-figure")?.className ?? ""), null, { timeout: 15_000 }).catch(() => {});
+      const end = await page.evaluate(() => document.querySelector("#mln-carried-figure")?.className ?? null);
       const log = await timeline(page, net, t0);
       console.log(`INFO H6 ${label} · timeline (ms from the navigation): ${j(log)}`);
       ok(`${label} · the token was in the air when the seen mark answered and the route re-rendered (${mark ? `mark ${mark.status()}` : "no mark"}, ${render ? `render ${render.status()}` : "no render"})`,
