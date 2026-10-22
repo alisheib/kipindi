@@ -18,7 +18,9 @@
  * adds its own, the hub's drawing is known by `[data-ghost="strip"]` and the slip's by `[data-testid="slip-ghost"]`). A
  * frame passes when every drawing up is the destination's own; a drawing that names no page — an `[aria-busy]` or a
  * `.kp-shimmer-track` outside a named root — is UNMARKED and fails, never a silent pass. Nodes on screen before the move
- * (the source page's own) and inside the landed page are not drawings of the move. A hop that never lands (90s) fails.
+ * (the source page's own) and inside the landed page are not drawings of the move. A page that has not landed after 90s
+ * at that rate (the slip's payload is the heaviest) gets the network released, and its frames are still read until it lands;
+ * one that never lands (60s more) fails.
  * Each state's first frame is a tile (`.50pick-shots/millionea-ghost-hops/`).
  *
  * --prove-red. Plants the defect this drive exists for — the register's loading file drawing the index for every page
@@ -43,7 +45,9 @@ const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const OUT = ".50pick-shots/millionea-ghost-hops";
 const PROVE_RED = process.argv.includes("--prove-red");
 const KBPS = Number(process.env.THROTTLE_KBPS || 12);
+/** How long a hop is held to the throttled network, and how long the page then has to land on an open one. */
 const LAND_MS = 90_000;
+const RELEASE_MS = 60_000;
 mkdirSync(OUT, { recursive: true });
 
 let pass = 0, fail = 0;
@@ -134,7 +138,14 @@ async function hop(name) {
   const t0 = Date.now();
   const tiled = new Set();
   let landed = false;
-  while (Date.now() - t0 < LAND_MS) {
+  let released = null;
+  while (Date.now() - t0 < LAND_MS + RELEASE_MS) {
+    // A heavy page (the slip's) may not land in LAND_MS at this rate: the network is then released and the frames are
+    // still read until it lands — a drawing that came late is judged like any other, and only a page that never lands fails.
+    if (released === null && Date.now() - t0 >= LAND_MS) {
+      await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+      released = Date.now() - t0;
+    }
     const last = await page.evaluate(() => window.__frames[window.__frames.length - 1]?.state ?? "-");
     const drawings = last.replace(/ PAGE$/, "");
     if (drawings !== "-" && !tiled.has(drawings)) {
@@ -146,7 +157,7 @@ async function hop(name) {
   }
   const frames = await page.evaluate(() => window.__frames);
   await ctx.close();
-  return { started, landed, frames };
+  return { started, landed, frames, released };
 }
 
 /** The drawings a hop showed that are not the destination's own. */
@@ -177,11 +188,11 @@ if (PROVE_RED) {
   for (const name of HOPS) {
     const own = name.split(">")[1];
     const r = await hop(name);
-    console.log(`TIMELINE ${name} ${r.frames.map((f) => `${f.at}ms ${f.state}`).join(" → ")}`);
+    console.log(`TIMELINE ${name} ${r.frames.map((f) => `${f.at}ms ${f.state}`).join(" → ")}${r.released !== null ? ` (network released at ${r.released}ms)` : ""}`);
     ok(`${name} · the source page drew before the move`, r.started);
     const seen = strangers(r.frames, own);
     ok(`${name} · only ${own}'s own loading drawing (or none) was ever up — never a parent's, a sibling's or an unmarked one`, seen.length === 0, `also up: ${seen.join(", ")}`);
-    ok(`${name} · ${own} landed within ${LAND_MS / 1000}s`, r.landed);
+    ok(`${name} · ${own} landed (within ${LAND_MS / 1000}s throttled, or ${RELEASE_MS / 1000}s more on an open network)`, r.landed);
   }
 }
 await browser.close();

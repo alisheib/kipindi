@@ -352,52 +352,111 @@ const HOW_BANDS = (drawing) => {
     examples: box(document.querySelector('section[aria-labelledby="mln-how-examples"]')), swap: box(swap), seal: box(swap?.querySelector(":scope > div > div:first-child") ?? null),
     button: box(document.querySelector('[data-testid="millionea-how-example-play"]')) };
 };
+/** One client hop on the throttled network: the destination's OWN drawing caught on the way in (`drawingSel` — until a
+ *  parent's loading file picks by address, a parent's drawing may come first: `qa:millionea-ghost-hops` judges WHICH drawing
+ *  is up, this reads the destination's own), its bands read (`bands(true)`), then the landed page's (`bands(false)`), and
+ *  `control` run on the drawing in place. Tiles of both. */
+async function hopBands({ tag, locale, width, from, to, drawingSel, readySel, bands, control = null }) {
+  const ctx = await contextWith([await demoSession(browser, BASE)], locale);
+  const page = await ctx.newPage();
+  page.on("pageerror", (e) => errs.push(`${tag}: ${e}`));
+  await page.setViewportSize({ width, height: HEIGHT });
+  await open(page, from);
+  const cdp = await ctx.newCDPSession(page);
+  await cdp.send("Network.enable");
+  await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 400, downloadThroughput: 12 * 1024, uploadThroughput: 64 * 1024 });
+  await page.evaluate((path) => { window.next?.router?.push(path); }, to);
+  const drawn = await page.waitForSelector(drawingSel, { timeout: 60_000 }).then(() => true).catch(() => false);
+  const ghost = drawn ? await page.evaluate(bands, true) : null;
+  const planted = drawn && control ? await page.evaluate(control) : null;
+  if (drawn) await page.screenshot({ path: `${OUT}/${tag}-drawing.png` }).catch(() => {});
+  await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+  await page.waitForSelector(readySel, { timeout: 60_000 }).catch(() => {});
+  await settle(page);
+  const real = await page.evaluate(bands, false);
+  await page.screenshot({ path: `${OUT}/${tag}-page.png` }).catch(() => {});
+  await ctx.close();
+  return { drawn, ghost, real, planted };
+}
+/** Every band where the page puts it and as tall, within 1px — `topOnly` bands by their top alone, `info` bands printed and
+ *  not judged (what the drawing cannot know: how many rows a section holds) — and the whole comparison printed. */
+function judgeBands(tag, label, ghost, real, { topOnly = [], info = [] } = {}) {
+  const off = Object.keys(real).map((k) => [k, real[k] && ghost[k] ? { dy: real[k].y - ghost[k].y, dh: Math.round((real[k].h - ghost[k].h) * 10) / 10 } : null]);
+  console.log(`GHOST ${tag} · page − drawing, px: ${off.map(([k, o]) => (o ? `${k} y${o.dy} h${o.dh}` : `${k} —`)).join(" · ")}`);
+  const bad = off.filter(([k, o]) => !info.includes(k) && (!o || Math.abs(o.dy) > 1 || (!topOnly.includes(k) && Math.abs(o.dh) > 1)));
+  ok(`${tag} · ${label}`, bad.length === 0, JSON.stringify({ bad, ghost, real }));
+}
+/** The widths a drawing's tiers turn at (below 360, from 360, from 768) and the board's. */
+const GHOST_WIDTHS = WIDTHS.filter((w) => [320, 360, 768, 1280].includes(w));
 if (SCENARIO !== "states" && wantPage("how-ghost")) {
-  const ghostWidths = WIDTHS.filter((w) => [320, 360, 768, 1280].includes(w));
   for (const locale of LOCALES) {
-    for (const width of ghostWidths.length ? ghostWidths : WIDTHS) {
+    for (const width of GHOST_WIDTHS.length ? GHOST_WIDTHS : WIDTHS) {
       const tag = `how-ghost-${locale}-${width}`;
-      const ctx = await contextWith([await demoSession(browser, BASE)], locale);
-      const page = await ctx.newPage();
-      page.on("pageerror", (e) => errs.push(`${tag}: ${e}`));
-      await page.setViewportSize({ width, height: HEIGHT });
-      await open(page, "/millionea/register");
-      const cdp = await ctx.newCDPSession(page);
-      await cdp.send("Network.enable");
-      await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 400, downloadThroughput: 12 * 1024, uploadThroughput: 64 * 1024 });
-      await page.evaluate(() => { window.next?.router?.push("/millionea/how"); });
-      // How's own drawing, which until the hub's loading file picks by address comes only after the hub's drawing gives way
-      // (`qa:millionea-ghost-hops` judges WHICH drawing is up; this hop measures How's own).
-      const drawing = '[aria-busy="true"] [data-ghost="steps"]';
-      const drawn = await page.waitForSelector(drawing, { timeout: 60_000 }).then(() => true).catch(() => false);
-      const ghost = drawn ? await page.evaluate(HOW_BANDS, true) : null;
-      // CONTROL: the drawing's button bar at the numeric utility's height (`h-10` = 80px on the overridden scale), read in place.
-      const planted = drawn ? await page.evaluate(() => {
-        const bar = document.querySelector('[aria-busy="true"] [data-ghost="button"] > *');
-        if (!(bar instanceof HTMLElement)) return null;
-        bar.style.height = "80px";
-        const h = bar.getBoundingClientRect().height;
-        bar.style.height = "";
-        return h;
-      }) : null;
-      if (drawn) await page.screenshot({ path: `${OUT}/${tag}-drawing.png` }).catch(() => {});
-      await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
-      await page.waitForSelector('[data-testid="millionea-how-example-play"]', { timeout: 60_000 }).catch(() => {});
-      await settle(page);
-      const real = await page.evaluate(HOW_BANDS, false);
-      await page.screenshot({ path: `${OUT}/${tag}-page.png` }).catch(() => {});
-      ok(`${tag} · How's own loading drawing is shown on the way in`, drawn && !!ghost);
-      if (ghost && real) {
-        const off = Object.keys(real).map((k) => [k, real[k] && ghost[k] ? { dy: real[k].y - ghost[k].y, dh: Math.round((real[k].h - ghost[k].h) * 10) / 10 } : null]);
-        console.log(`GHOST ${tag} · page − drawing, px: ${off.map(([k, o]) => (o ? `${k} y${o.dy} h${o.dh}` : `${k} —`)).join(" · ")}`);
-        // Every band lands where it was drawn and as tall — but the examples' section, whose drawing holds the swap's card
-        // alone (the worked weeks below it are past the first screens): its top only.
-        const bad = off.filter(([k, o]) => !o || Math.abs(o.dy) > 1 || (k !== "examples" && Math.abs(o.dh) > 1));
-        ok(`${tag} · every band of How lands where its drawing stood and as tall (within 1px): steps, timeline, examples' top, swap card, seal line, button`,
-          bad.length === 0, JSON.stringify({ bad, ghost, real }));
-        ok(`${tag} · CONTROL · the button bar at the numeric utility's 80px is reported by the same judge`, planted !== null && real.button !== null && Math.abs(planted - real.button.h) > 1, `${planted} vs ${real.button?.h}`);
+      const r = await hopBands({ tag, locale, width, from: "/millionea/register", to: "/millionea/how", drawingSel: '[aria-busy="true"] [data-ghost="steps"]',
+        readySel: '[data-testid="millionea-how-example-play"]', bands: HOW_BANDS,
+        // CONTROL: the drawing's button bar at the numeric utility's height (`h-10` = 80px on the overridden scale), read in place.
+        control: () => {
+          const bar = document.querySelector('[aria-busy="true"] [data-ghost="button"] > *');
+          if (!(bar instanceof HTMLElement)) return null;
+          bar.style.height = "80px";
+          const h = bar.getBoundingClientRect().height;
+          bar.style.height = "";
+          return h;
+        } });
+      ok(`${tag} · How's own loading drawing is shown on the way in`, r.drawn && !!r.ghost);
+      if (r.ghost && r.real) {
+        // The examples' section: its drawing holds the swap's card alone (the worked weeks below are past the first screens).
+        judgeBands(tag, "every band of How lands where its drawing stood and as tall (within 1px): steps, timeline, examples' top, swap card, seal line, button", r.ghost, r.real, { topOnly: ["examples"] });
+        ok(`${tag} · CONTROL · the button bar at the numeric utility's 80px is reported by the same judge`, r.planted !== null && r.real.button !== null && Math.abs(r.planted - r.real.button.h) > 1, `${r.planted} vs ${r.real.button?.h}`);
       }
-      await ctx.close();
+    }
+  }
+}
+
+// ── The register's two loading drawings, caught on the way in (S5-R2-REGISTER 21) ───────────────────────────────────────
+// The index's from How, and a week's from the index (the register segment's loading picks it, S5-R2-REGISTER 18), band by
+// band as How's: where the page puts each band and as tall, within 1px. The states seed opens the index as a week on sale
+// opens it — its first running row the week on sale — and the week drawn is a rolled one, the common weekly case. What a
+// wordless drawing cannot know is printed, not judged: how many rows "In progress" holds (the seed's five), so where the
+// final weeks start; how many rows a week's ledger holds, so how tall its card is and where the commitments start.
+const INDEX_BANDS = (drawing) => {
+  const box = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return { y: Math.round(r.top + scrollY), h: Math.round(r.height * 10) / 10 }; };
+  if (drawing) {
+    const g = document.querySelector('[aria-busy="true"][data-ghost-page="register"]');
+    const q = (n) => g?.querySelector(`[data-ghost="${n}"]`) ?? null;
+    return { head: box(q("head")), running: box(q("running")), row: box(q("running")?.querySelector(":scope > div > :first-child") ?? null), final: box(q("final")) };
+  }
+  const running = document.querySelector('[data-testid="millionea-register-running"]');
+  return { head: box(document.querySelector('[data-testid="millionea-register"] > :first-child')), running: box(running),
+    row: box(running?.querySelector("li") ?? null), final: box(document.querySelector('[data-testid="millionea-register-final"]')) };
+};
+const WEEK_BANDS = (drawing) => {
+  const box = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return { y: Math.round(r.top + scrollY), h: Math.round(r.height * 10) / 10 }; };
+  if (drawing) {
+    const g = document.querySelector('[aria-busy="true"][data-ghost-page="week"]');
+    const q = (n) => g?.querySelector(`[data-ghost="${n}"]`) ?? null;
+    return { back: box(g?.firstElementChild ?? null), head: box(q("head")), ledger: box(q("ledger")), card: box(q("ledger")?.lastElementChild ?? null), commitments: box(q("commitments")) };
+  }
+  const p = document.querySelector('[data-testid="millionea-register-week"]');
+  const ledger = document.querySelector('section[aria-labelledby="mln-reg-ledger"]');
+  return { back: box(p?.firstElementChild ?? null), head: box(p?.children[1] ?? null), ledger: box(ledger), card: box(ledger?.lastElementChild ?? null),
+    commitments: box(document.querySelector('[data-testid="millionea-commitments"]')) };
+};
+if (SCENARIO === "states" && wantPage("register-ghosts")) {
+  for (const locale of LOCALES) {
+    for (const width of GHOST_WIDTHS.length ? GHOST_WIDTHS : WIDTHS) {
+      const itag = `index-ghost-${locale}-${width}`;
+      const i = await hopBands({ tag: itag, locale, width, from: "/millionea/how", to: "/millionea/register", drawingSel: '[aria-busy="true"][data-ghost-page="register"]',
+        readySel: '[data-testid="millionea-register"]', bands: INDEX_BANDS });
+      ok(`${itag} · the index's own loading drawing is shown on the way in`, i.drawn && !!i.ghost);
+      if (i.ghost && i.real) judgeBands(itag, "the index lands where its drawing stood (within 1px): the head with its intro, the running section's top, its first row", i.ghost, i.real, { topOnly: ["running"], info: ["final"] });
+      if (!weeks.rolled) continue;
+      const wtag = `week-ghost-${locale}-${width}`;
+      const w = await hopBands({ tag: wtag, locale, width, from: "/millionea/register", to: `/millionea/register/${encodeURIComponent(weeks.rolled)}`,
+        drawingSel: '[aria-busy="true"][data-ghost-page="week"]', readySel: '[data-testid="millionea-register-week"]', bands: WEEK_BANDS });
+      ok(`${wtag} · the week's own loading drawing is shown on the way in`, w.drawn && !!w.ghost);
+      // The card's height is the week's own rows (a carry in or not, winners or not) — past the first screen on a phone.
+      if (w.ghost && w.real) judgeBands(wtag, "a rolled week lands where its drawing stood (within 1px): the back link, the head, the ledger's heading and its card's top", w.ghost, w.real, { topOnly: ["ledger", "card"], info: ["commitments"] });
     }
   }
 }
