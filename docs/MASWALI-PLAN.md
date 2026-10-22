@@ -46,7 +46,9 @@ README's top section (STOP 3: the six round-2 branches and heads, what each left
 MERGE-NOTES.md (today's part first: the round-2 reports, test:all's real reds by owner, and ⛔ the dark-safety blocker —
 `src/app/markets/loading.tsx` hands the client MarketsGhost `millionea={false}`, so /markets' payload carries the prop and
 qa:live's dark rule fails; fix before S5 deploys). Round 2 stopped clean on `claude/maswali-s5-r2-{hub,slip,tickets,
-register,doors,platform}`; none merged yet; S5 is not live.
+register,doors,platform}`; none merged yet; S5 is not live. `main` `67e47f8d2` (U43's CI repair and the marketing
+harm-marker mute) went LIVE at 08:12:48Z; its read-back is green (dpl on www, apex and the Railway host; health ok;
+qa:chunks-prod 6/6 on both; production qa:live 364/0) — U43's record in MOBILE-VISUAL-PLAN §0 rides with S5's push.
 
 **The 2026-10-22 morning (from ~07:00 UTC, Ali: "proceed … until done") — the Claude session asheib-65 on OMEGA led.**
 EVERY S5 lane is merged into this release (`7e9a314f0`: FIX-SRV, PLATFORM D1–D15, DOORS, HUB, TICKETS, REGISTER, SLIP; the
