@@ -136,9 +136,10 @@ export function doorFixtures(): DoorFixtures {
       none: inApp(l, h(JourneyHomeGhost as never, { t: dict[l], locale: l, millionea: false } as never)),
       preview: inApp(l, h(JourneyHomeGhost as never, { t: dict[l], locale: l, millionea: true, preview: true } as never)),
     };
+    // Each as `markets/loading.tsx` hands it: the Millionea answers only while true, nothing when the card is not offered.
     out.marketsGhost[l] = {
       slot: inApp(l, h(MarketsGhost as never, { millionea: true } as never), "/markets"),
-      none: inApp(l, h(MarketsGhost as never, { millionea: false } as never), "/markets"),
+      none: inApp(l, h(MarketsGhost as never, {} as never), "/markets"),
       preview: inApp(l, h(MarketsGhost as never, { millionea: true, preview: true } as never), "/markets"),
     };
     // The rails are drawn by no page's ghost since WP7 (route-ghost.tsx); the root loading hands the server's names.

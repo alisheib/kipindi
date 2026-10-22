@@ -38,11 +38,18 @@ const oldBoardGhost = execFileSync("git", ["show", `${CLASSIC_GHOST_BASE}:src/ap
 //   · U43 (1384383fd, 2026-10-19, "rebuild Up & Down board and market cards"): the ghost's cards take the rebuilt market card's
 //     radius, `--r-lg` — made without re-pinning this check, so it stood red from that commit until it was recorded here.
 //   · MASWALI-BUILD S5-DESIGN-DOORS H1 (2026-10-21): the Millionea card's slot after the header row (its import, the two
-//     booleans `loading.tsx` hands it, the reader's locale, the slot).
+//     booleans `loading.tsx` hands it, the reader's locale, the slot); round 2 (2026-10-22, the dark-safety blocker): the
+//     two answers can only be true — handed only while they hold, so a hidden reader's payload carries neither — and the
+//     drawing's note says so.
 const SLOT_EDITS: Array<[string, string]> = [
   ['            className="kp-shimmer-track rounded-md border border-border bg-bg-elevated"\n', '            className="kp-shimmer-track rounded-[var(--r-lg)] border border-border bg-bg-elevated"\n'],
   ['import { useT } from "@/lib/i18n";\n', 'import { useT } from "@/lib/i18n";\nimport { MaswaliHomeCardGhost } from "@/components/maswali/maswali-home-card-ghost";\n'],
-  ["export default function MarketsGhost() {\n  const { t } = useT();\n", "export default function MarketsGhost({ millionea = false, preview = false }: { millionea?: boolean; preview?: boolean }) {\n  const { t, locale } = useT();\n"],
+  [" * `components/ui/page-loader.tsx` has the convention.\n */\nexport default function MarketsGhost() {\n  const { t } = useT();\n",
+    " * `components/ui/page-loader.tsx` has the convention.\n"
+    + " * ⛔ `millionea` AND `preview` CAN ONLY BE TRUE (MASWALI-BUILD S5-DESIGN-DOORS round 2): every prop this drawing is handed\n"
+    + " * is written into the payload of every reader of the board, so the Millionea answers are handed only while they hold —\n"
+    + " * absent otherwise (`loading.tsx`) — and a `false` handed here does not type-check.\n"
+    + " */\nexport default function MarketsGhost({ millionea, preview }: { millionea?: true; preview?: true }) {\n  const { t, locale } = useT();\n"],
   ['        <div className="kp-shimmer-track h-4 w-40 rounded bg-bg-elevated" aria-hidden />\n      </div>\n',
     '        <div className="kp-shimmer-track h-4 w-40 rounded bg-bg-elevated" aria-hidden />\n      </div>\n\n'
     + "      {/* MASWALI-BUILD S5-DESIGN-DOORS H1 · the Millionea card's slot, where the page draws the card (after the header row,\n"
@@ -89,7 +96,8 @@ function checks(w: World): string[] {
   ok("loading", w.detailLoading.includes('const { journey } = await resolveSimpleJourney();')
     && w.detailLoading.includes('if (journey) return <LazyJourneyRouteGhost rails={[]} at="/markets/[id]" />;')
     && w.detailLoading.includes('return <MarketDetailGhost />;') && w.parentLoading.includes('journey && /^\\/markets\\/[^/]+$/.test(pathname)')
-    && w.parentLoading.includes("return <MarketsGhost millionea={millionea} preview={millionea && (await millioneaDoor()).preview} />;") && w.parentLoading.includes('import MarketsGhost from "./markets-ghost";')
+    // MASWALI-BUILD S5-DESIGN-DOORS round 2: the Millionea answers handed only while true (the dark-safety rule).
+    && w.parentLoading.includes("return <MarketsGhost {...(millionea ? { millionea: true as const, ...(preview ? { preview: true as const } : {}) } : {})} />;") && w.parentLoading.includes('import MarketsGhost from "./markets-ghost";')
     && w.parentLoading.includes('import { headers } from "next/headers";')
     && w.parentLoading.includes('const pathname = (await headers()).get("x-pathname") ?? "";')
     && !w.parentLoading.includes('"use client"') && !w.detailLoading.includes('"use client"'));

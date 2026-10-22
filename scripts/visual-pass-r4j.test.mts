@@ -385,13 +385,14 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
   // picture of "/" is now handed the rollout's per-request answer by the root loading file, and passes it on, so it holds
   // the slot for a reader Millionea is visible to (no read of its own). RE-PINNED (S5 integration, 2026-10-21): the route
   // ghost hands it the reader's locale as the page's fallback does (S5-DESIGN-DOORS H1: the slot's kept runs wrap by
-  // language), and the page's fallback also hands it the preview answer.
-  const homeEntry = (g: string, p: string) => squash(g).includes('"/": <JourneyHomeGhost t={t} locale={locale} millionea={millionea} />,') && g.includes(HOME_GHOST_IMPORT)
+  // language), and the page's fallback also hands it the preview answer. RE-PINNED (S5-DESIGN-DOORS round 2): the route ghost
+  // hands the answer on only while true, the shape the root loading file hands it in (the dark-safety rule).
+  const homeEntry = (g: string, p: string) => squash(g).includes('"/": <JourneyHomeGhost t={t} locale={locale} {...(millionea ? { millionea: true as const } : {})} />,') && g.includes(HOME_GHOST_IMPORT)
     && !/"\/": <HomeGhost/.test(squash(g)) && squash(p).includes("<Suspense fallback={<JourneyHomeGhost t={t} locale={locale} millionea={millionea} preview={preview} />}>") && p.includes(HOME_GHOST_IMPORT);
   ok("3.14 · \"/\" draws the journey home's own ghost (journey-home-ghost.tsx), the same drawing app/page.tsx's journey arm stands in its Suspense boundary — the root's picture of the home and the page's own are one; the landing's ghost is shelved, unmounted (3.9 and 3.10 hold it still)",
     homeEntry(ghost, PAGE_FILE));
   ok("3.14′ PLANT · \"/\" back to the landing's ghost is reported",
-    !homeEntry(ghost.replace('"/": <JourneyHomeGhost t={t} locale={locale} millionea={millionea} />,', '"/": <HomeGhost t={t} locale={locale} rails={rails} />,'), PAGE_FILE));
+    !homeEntry(ghost.replace('"/": <JourneyHomeGhost t={t} locale={locale} {...(millionea ? { millionea: true as const } : {})} />,', '"/": <HomeGhost t={t} locale={locale} rails={rails} />,'), PAGE_FILE));
   ok("3.14″ PLANT · the page's Suspense fallback drawn as anything but the home's ghost is reported",
     !homeEntry(ghost, PAGE_FILE.replace("<Suspense fallback={<JourneyHomeGhost t={t} locale={locale} millionea={millionea} preview={preview} />}>", "<Suspense fallback={null}>")));
 }

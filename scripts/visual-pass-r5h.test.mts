@@ -228,7 +228,8 @@ function withoutQuestionPathRead(f: string, s: string): string {
   const pathRead = 'const pathname = (await headers()).get("x-pathname") ?? "";';
   if (f !== "src/app/markets/loading.tsx" || count(s, headerImport) !== 1 || count(s, pathRead) !== 1
     || !s.includes('if (journey && /^\\/markets\\/[^/]+$/.test(pathname)) return <LazyJourneyRouteGhost rails={[]} at="/markets/[id]" />;')
-    || !s.includes('import MarketsGhost from "./markets-ghost";') || !s.includes("return <MarketsGhost millionea={millionea} preview={millionea && (await millioneaDoor()).preview} />;")) return s;
+    // RE-PINNED (MASWALI-BUILD S5-DESIGN-DOORS round 2): the Millionea answers handed only while true (the dark-safety rule).
+    || !s.includes('import MarketsGhost from "./markets-ghost";') || !s.includes("return <MarketsGhost {...(millionea ? { millionea: true as const, ...(preview ? { preview: true as const } : {}) } : {})} />;")) return s;
   return s.replace(headerImport, "").replace(pathRead, "");
 }
 function wordsCheck(text: (p: string) => string) {
