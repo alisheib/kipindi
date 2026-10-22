@@ -82,10 +82,11 @@ async function week(ms: number, ownerId: string, buyers: Array<[string, MaswaliP
   const c = await createWeek({ weekStartMs: ms, visibility: "PUBLIC", questions: questions(ms), officerId: ownerId, now: new Date(ms - 3 * DAY) });
   if (!c.ok) throw new Error(`draft: ${c.error}`);
   must("attest", await attestParity({ weekId: c.week.id, officerId: "usr_dev_reader", readVersion: await readDraftVersion(c.week.id) }));
-  const o = await openWeek({ weekId: c.week.id, officerId: ownerId, guarantee: guaranteeReader, now: new Date(ms + 60_000) });
+  // At its drafted open and its drafted close, the config's own times (DESIGN_AUTHORITY §M8a item 24), as seed-maswali does.
+  const o = await openWeek({ weekId: c.week.id, officerId: ownerId, guarantee: guaranteeReader, now: new Date(Date.parse(c.week.opensAt)) });
   if (!o.ok) throw new Error(`open: ${o.error}`);
   for (const [userId, slip] of buyers) must("buy", await purchaseMaswaliTickets({ userId, weekId: o.week.id, slips: [slip] }));
-  must("close", await closeWeek({ weekId: o.week.id, now: new Date(Date.parse(o.week.closesAt) + 60_000) }));
+  must("close", await closeWeek({ weekId: o.week.id, now: new Date(Date.parse(o.week.closesAt)) }));
   for (let slot = 1; slot <= 15; slot++) {
     const outcome = outcomes[slot] ?? "YES";
     const voided = outcome === "VOID";

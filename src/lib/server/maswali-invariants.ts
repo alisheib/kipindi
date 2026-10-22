@@ -62,12 +62,13 @@ export async function checkMaswaliInvariants(): Promise<MaswaliInvariantReport> 
   // ⛔ S7-F2 · FAIL CLOSED: a week whose frozen rules cannot be read has an unknown floor, so the guarantee cannot be shown
   //    to cover the unsettled weeks — a broken invariant, never a floor of 0 that hides a shortfall.
   const floors = unsettledFloors(unsettled);
-  for (const w of floors.ok ? [] : floors.unreadable) problems.push(`${w.code}: its frozen rules cannot be read, so its floor is unknown and the guarantee cannot be shown to cover the unsettled weeks (OD-02).`);
+  // OD-02 · the guarantee covers every unsettled week. ⛔ Words, never the code (S6-ADMIN, DESIGN_AUTHORITY §M8a item 29).
+  for (const w of floors.ok ? [] : floors.unreadable) problems.push(`${w.code}: its frozen rules cannot be read, so its floor is unknown and the guarantee cannot be shown to cover the unsettled weeks.`);
   const held = await maswaliAccountBalance(acct.maswaliGuarantee);
   if (held === null) problems.push("The guarantee could not be read.");
   else if (floors.ok) {
     const need = guaranteeRequirement(floors.weeks);
-    if (held < need) problems.push(`The guarantee holds ${formatTzs(held)}; the unsettled weeks need ${formatTzs(need)} (OD-02).`);
+    if (held < need) problems.push(`The guarantee holds ${formatTzs(held)}; the unsettled weeks need ${formatTzs(need)}.`);
   }
 
   for (const w of weeks) {

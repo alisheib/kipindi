@@ -5,7 +5,12 @@ import { Chip } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { I } from "@/components/ui/glyphs";
-import { AdminPagination, parsePage } from "@/components/admin/admin-pagination";
+import Link from "next/link";
+import { AdminPagination, buildBaseHref } from "@/components/admin/admin-pagination";
+import { SortTh } from "@/components/admin/admin-sort";
+import { Button } from "@/components/ui/button";
+import { SearchBox } from "@/components/ui/search-box";
+import { Select } from "@/components/ui/select";
 import { currentSession } from "@/lib/server/auth-service";
 import { houseConsoleAudience } from "@/lib/server/house-console-read";
 import { weekStore } from "@/lib/server/maswali-dal";
@@ -13,6 +18,8 @@ import { CONSOLE_PER_PAGE } from "@/lib/server/maswali-console";
 import { evidenceReady } from "@/lib/server/maswali-evidence";
 import { formatTzs } from "@/lib/utils";
 import { fmtEat, weekStateChip } from "@/lib/maswali-admin-format";
+import { parseWeekListQuery, selectWeekPage, weekListParams } from "@/lib/maswali-week-list";
+import { WEEK_STATES } from "@/lib/maswali-week-label";
 
 export const metadata = { title: "Admin · Millionea · Evidence" };
 export const dynamic = "force-dynamic";
@@ -26,7 +33,11 @@ export const dynamic = "force-dynamic";
  * ⛔ A WEEK'S PACK IS OFFERED ONCE ITS RECORD IS FINAL — settled or voided (`evidenceReady`); before that its tickets are a
  *    pick aggregate (MB-34, MB-95). Every download is recorded with the SHA-256 of the bytes handed over.
  */
-type EvidencePageProps = { searchParams: Promise<{ page?: string }> };
+type EvidencePageProps = { searchParams: Promise<Record<string, string | string[] | undefined>> };
+
+const EVIDENCE_HREF = "/admin/maswali/evidence";
+/** A week has a record from its open: every state but DRAFT, in the console's order. */
+const RECORD_STATES = WEEK_STATES.filter((s) => s !== "DRAFT");
 
 export default async function AdminMaswaliEvidencePage(props: EvidencePageProps) {
   return <AdminPageGate title="Millionea · Evidence"><Content {...props} /></AdminPageGate>;
@@ -43,8 +54,14 @@ async function Content({ searchParams }: EvidencePageProps) {
   if (!weeks) {
     return (<><AdminPageHead title="Millionea · Evidence" sw="Ushahidi" /><AdminBody><p className="text-body-sm text-danger-fg">The weeks could not be read.</p></AdminBody></>);
   }
-  const page = parsePage(sp.page, weeks.length, CONSOLE_PER_PAGE);
-  const rows = weeks.slice((page - 1) * CONSOLE_PER_PAGE, page * CONSOLE_PER_PAGE);
+  // ⭐ S6-ADMIN · G7 · THE ARCHIVE IS A LIST LIKE THE OTHER THREE: the week list's own kit and URL parameters (q, state, line, sort,
+  // dir, page) — a week-code search, a state filter and a line filter, sorted, counted whole and paged, never the newest N.
+  const asked = parseWeekListQuery(sp);
+  const query = { ...asked, state: asked.state === "DRAFT" ? "" as const : asked.state };
+  const listParams = weekListParams(query);
+  const hasFilter = !!(query.q || query.state || query.line);
+  const selected = selectWeekPage(weeks, typeof sp.page === "string" ? Number(sp.page) : 1, CONSOLE_PER_PAGE, query);
+  const rows = selected.weeks;
 
   return (
     <>
@@ -60,11 +77,32 @@ async function Content({ searchParams }: EvidencePageProps) {
         </AdminCard>
 
         <AdminCard title="Weeks" sw="Wiki" padding="p-0">
-          {rows.length === 0 ? <EmptyState title="No week has run yet" body="A week appears here from its open; its evidence is ready once it settles or voids." />
+          <div className="border-b border-border-subtle p-4">
+            <span className="mb-1 block text-body-sm text-text-secondary">Week code</span>
+            <SearchBox mode="form" formId="maswali-evidence-filters" placeholder="Search week code" ariaLabel="Search week codes" helpFields={["code"]} />
+          </div>
+          <form id="maswali-evidence-filters" method="get" action={EVIDENCE_HREF} className="flex flex-wrap items-end gap-3 border-b border-border-subtle p-4">
+            <div className="min-w-[145px] flex-1 text-body-sm text-text-secondary">
+              <span>State</span>
+              <Select key={query.state} name="state" ariaLabel="Week state" defaultValue={query.state} className="mt-1" options={[{ value: "", label: "All states" }, ...RECORD_STATES.map((state) => ({ value: state, label: weekStateChip(state).label }))]} />
+            </div>
+            <div className="min-w-[145px] flex-1 text-body-sm text-text-secondary">
+              <span>Line</span>
+              <Select key={query.line} name="line" ariaLabel="Week line" defaultValue={query.line} className="mt-1" options={[{ value: "", label: "Both lines" }, { value: "PUBLIC", label: "Public" }, { value: "DRIVE", label: "Drive" }]} />
+            </div>
+            <input type="hidden" name="sort" value={query.sort} />
+            <input type="hidden" name="dir" value={query.dir} />
+            <Button type="submit" variant="primary" size="sm">Apply</Button>
+            {hasFilter && <Link href={EVIDENCE_HREF} className="btn btn-ghost btn-sm">Clear</Link>}
+          </form>
+          {selected.allTotal === 0 ? <EmptyState title="No week has run yet" body="A week appears here from its open; its evidence is ready once it settles or voids." />
+            : selected.total === 0 ? <EmptyState title="No weeks match these filters" body="Try another week code, state or line." action={<Link href={EVIDENCE_HREF} className="btn btn-ghost btn-sm">Clear filters</Link>} />
             : (
+              <>
+              <p className="px-4 pt-3 font-mono text-micro uppercase tracking-widest text-text-subtle" data-result-count={selected.total}>{selected.total} of {selected.allTotal} {selected.allTotal === 1 ? "week" : "weeks"}</p>
               <ScrollX label="Millionea weeks and their evidence">
                 <table className="admin-tbl min-w-[1080px]">
-                  <thead><tr><th className="text-left">Week</th><th className="text-left">State</th><th className="text-left">Sales closed (EAT)</th><th className="text-right">Tickets</th><th className="text-left">Result</th><th className="text-left">Evidence</th></tr></thead>
+                  <thead><tr><SortTh field="week" label="Week" current={query.sort} dir={query.dir} sp={listParams} baseHref={EVIDENCE_HREF} /><SortTh field="state" label="State" current={query.sort} dir={query.dir} sp={listParams} baseHref={EVIDENCE_HREF} /><SortTh field="closes" label="Sales closed (EAT)" current={query.sort} dir={query.dir} sp={listParams} baseHref={EVIDENCE_HREF} /><SortTh field="tickets" label="Tickets" current={query.sort} dir={query.dir} sp={listParams} baseHref={EVIDENCE_HREF} align="right" /><th className="text-left">Result</th><th className="text-left">Evidence</th></tr></thead>
                   <tbody>
                     {rows.map((w) => {
                       const chip = weekStateChip(w.state);
@@ -98,12 +136,13 @@ async function Content({ searchParams }: EvidencePageProps) {
                   </tbody>
                 </table>
               </ScrollX>
+              {selected.total > CONSOLE_PER_PAGE && (
+                <div className="border-t border-border-subtle px-4 py-2">
+                  <AdminPagination page={selected.page} total={selected.total} perPage={CONSOLE_PER_PAGE} baseHref={buildBaseHref(EVIDENCE_HREF, listParams)} />
+                </div>
+              )}
+              </>
             )}
-          {weeks.length > CONSOLE_PER_PAGE && (
-            <div className="border-t border-border-subtle px-4 py-2">
-              <AdminPagination page={page} total={weeks.length} perPage={CONSOLE_PER_PAGE} baseHref="/admin/maswali/evidence" />
-            </div>
-          )}
         </AdminCard>
       </AdminBody>
     </>

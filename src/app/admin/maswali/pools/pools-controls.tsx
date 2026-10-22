@@ -111,7 +111,7 @@ export function GuaranteeCeremony({ canFund, canReturn }: { canFund: boolean; ca
           <p>Amount: <strong>{review ? formatTzs(Number(review.amount)) : ""}</strong></p>
           <p>Bank or rail reference: <strong className="block break-words">{review?.reference}</strong></p>
           <p>{review?.mode === "return"
-            ? "Never below what the unsettled weeks need (OD-02); the service refuses a return that would leave the floor unbacked."
+            ? "Never below what the unsettled weeks need; the service refuses a return that would leave the floor unbacked." // OD-02
             : "Owner capital paid in to back the floor. It is the owner's money, committed: it never counts as retained earnings."}</p>
           <DialogError error={error} />
         </div>}

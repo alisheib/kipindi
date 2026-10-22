@@ -135,7 +135,7 @@ export const MUTATIONS = [
   {
     name: "(16) a void ruled off the closed list of grounds",
     file: DOOR,
-    from: `  if (input.ruling === "VOID" && !isMaswaliVoidReason(voidReason)) return refuse("A void names its ground from the closed list (MR-15).");${NL}`,
+    from: `  if (input.ruling === "VOID" && !isMaswaliVoidReason(voidReason)) return refuse("A void names its ground from the closed list."); // MR-15${NL}`,
     to: "",
     expect: "3.2 ·",
   },

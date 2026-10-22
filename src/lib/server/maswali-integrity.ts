@@ -32,6 +32,8 @@ import { questionStore, ticketStore, weekStore, type StoredTicket, type StoredWe
 import { gradable } from "./maswali-service";
 import { getAuditPage } from "./audit";
 import { db } from "./store";
+import { officerLabel } from "./actor-label";
+import { officerHandle } from "@/lib/maswali-admin-format";
 import { MAIN_COUNT, SLOT_COUNT, canonicalPicks, grade, slotLabel } from "@/lib/maswali-score";
 import { shareStateOf } from "@/lib/maswali-share-note";
 import { wholeReadCoverage, type ClusterCoverage } from "@/lib/maswali-cluster-coverage";
@@ -568,7 +570,20 @@ export async function noteSealDevice(
 }
 
 /** One record the integrity page lists: a seal from a new device, or one whose device could not be checked. */
-export type SealDeviceFlag = { officerId: string | null; weekId: string | null; at: string; kind: "new" | "unchecked"; firstSeal: boolean };
+export type SealDeviceFlag = {
+  officerId: string | null; weekId: string | null; at: string; kind: "new" | "unchecked"; firstSeal: boolean;
+  /** S6-ADMIN · G3 · what the page prints: the officer's name (`consoleOfficerName`) and the week's code — never their ids. */
+  officer: string | null; weekCode: string | null;
+};
+
+/**
+ * ⭐ S6-ADMIN · G3 · AN OFFICER AS THE CONSOLE NAMES THEM: their display name (`officerLabel`, the platform's one by-id way),
+ * else a stable handle from the id's tail in the player handle's shape ("Officer #A3F2K8", `displayLabel`) — never the
+ * raw id. Null for no officer.
+ */
+export async function consoleOfficerName(id: string | null): Promise<string | null> {
+  return officerLabel(id, { fallback: officerHandle });
+}
 
 /** The recent seal-device flags, newest first, for the integrity page — both kinds, so an unchecked seal is never hidden. */
 export async function recentNewDeviceSeals(limit = 20): Promise<SealDeviceFlag[] | null> {
@@ -576,9 +591,14 @@ export async function recentNewDeviceSeals(limit = 20): Promise<SealDeviceFlag[]
     const { getAuditByActionsDurable } = await import("./audit");
     // Both are COMPLIANCE rows: naming the category makes the read a range scan of one category (`getAuditByActionsDurable`).
     const r = await getAuditByActionsDurable([SEAL_NEW_DEVICE_ACTION, SEAL_DEVICE_UNCHECKED_ACTION], { category: "COMPLIANCE", limit });
-    return r.entries.map((e) => ({ officerId: e.actorId, weekId: e.targetId ?? null, at: e.createdAt,
+    // G3 · each officer and week named once per read, never printed by id.
+    const names = new Map<string, Promise<string | null>>(), codes = new Map<string, Promise<string | null>>();
+    const nameOf = (id: string | null) => (id ? (names.get(id) ?? names.set(id, consoleOfficerName(id)).get(id)!) : Promise.resolve(null));
+    const codeOf = (id: string | null) => (id ? (codes.get(id) ?? codes.set(id, Promise.resolve(weekStore.get(id)).then((w) => w?.code ?? null, () => null)).get(id)!) : Promise.resolve(null));
+    return await Promise.all(r.entries.map(async (e) => ({ officerId: e.actorId, weekId: e.targetId ?? null, at: e.createdAt,
       kind: e.action === SEAL_DEVICE_UNCHECKED_ACTION ? "unchecked" as const : "new" as const,
-      firstSeal: !!(e.payload as { firstSeal?: boolean } | null)?.firstSeal }));
+      firstSeal: !!(e.payload as { firstSeal?: boolean } | null)?.firstSeal,
+      officer: await nameOf(e.actorId ?? null), weekCode: await codeOf(e.targetId ?? null) })));
   } catch {
     return null;
   }

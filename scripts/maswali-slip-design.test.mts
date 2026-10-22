@@ -601,8 +601,10 @@ section("§10 · each fix undone in memory is caught by its case (the source pla
     'const EMPTY_STEP = { background: "var(--border-strong)", boxShadow: "none", transition: STEP_FILL } as const;')) as { SteppedProgress: (p: Record<string, unknown>) => unknown };
   const solidMeter = renderToStaticMarkup(h(solid.SteppedProgress as never, { groups: [{ steps: 10, done: 3 }, { steps: 5, done: 0 }] } as never));
   ok("10.8 PLANT · H1 · VIS-P's solid empty step put back is caught (no hollow ring)", !solidMeter.includes("var(--border-control)") && solidMeter.includes("background:var(--border-strong)"));
-  // The lone marker: the price drawn with its "·" from 1280 again.
-  const lone = planted('{ key: "price", node: priceLine, soleFromXl: true }', '{ key: "price", node: priceLine }');
+  // The lone marker: the price drawn with its "·" from 1280 again. ⚠️ RE-PINNED ON S7 (S7-F9 15): S7's slip keeps the price's
+  // marker in a final week, where the week's rule stands before the price (`soleFromXl: !finalWeek`, S7-MERGE 1, the F3
+  // rule); this slip is no final week, so the price stands alone and the plant drops the same switch.
+  const lone = planted('{ key: "price", node: priceLine, soleFromXl: !finalWeek }', '{ key: "price", node: priceLine }');
   const loneItem = /<li class="([^"]*)"><span aria-hidden="true" class="([^"]*)">·<\/span><span class="min-w-0">(?:(?!<\/li>)[\s\S])*?a ticket/.exec(drawSlip(lone, {}));
   ok("10.9 PLANT · the price's lone \"·\" from 1280 put back is caught", !!loneItem && !loneItem[2].split(" ").includes("xl:hidden"));
 }

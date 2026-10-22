@@ -152,7 +152,9 @@ async function computeSettlement(weekId: string, nowMs: number): Promise<{ ok: t
   const questions = gradable(await questionStore.listForWeek(week.id));
   const gate = settlementGate(questions);
   if (!gate.ready) return refuse(`Week ${week.code} still needs ${gate.needs.length} question(s) sealed before it can settle.`);
-  if (gate.weekVoid) return refuse(`Week ${week.code} voids whole (MR-18): refund it with the week void, never a settlement.`);
+  // MR-18 · a week whose voided mains outnumber its usable reserves voids whole. ⛔ Refusals here read as words, never a
+  // programme code (S6-ADMIN, DESIGN_AUTHORITY §M8a item 29): the pools page prints them.
+  if (gate.weekVoid) return refuse(`Week ${week.code} voids whole: refund it with the week void, never a settlement.`);
   if (!week.gradedSetFinalAt || !week.objectionsCloseAt) return refuse(`Week ${week.code}'s graded set is not final yet.`);
   if (Date.parse(week.objectionsCloseAt) > nowMs) return refuse(`Week ${week.code}'s objection window is still open.`);
   const { countOpenObjections } = await import("./objections-service");
@@ -327,7 +329,7 @@ export async function settleMaswaliWeek(input: {
       if (current?.state === "SETTLED") return { ok: true, week: current, already: true };
       // MR-3 · strictly in order: a week settles, and claims its carry, only once every earlier week of its line is terminal.
       const blocking = await carryBlocker(first);
-      if (blocking) return refuse(`Week ${blocking.code} is not settled yet; the carry is claimed strictly in order (MR-3).`);
+      if (blocking) return refuse(`Week ${blocking.code} is not settled yet; the carry is claimed strictly in order.`);
       // ⭐ S7-F8 · THE HOLDS AN EARLIER SECTION PLACED, READ AGAIN UNDER THIS LOCK: while the lock was let go a lift may have
       //    run (it found no held share — none has landed yet) and lifted one. Each one gone goes back to the queue's front,
       //    to be held again here, before any money; from here to the commit no lift can run (it needs this lock).
