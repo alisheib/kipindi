@@ -702,7 +702,8 @@ function g10Wiring(W: World) {
   // the invite row's one name) and `kycOffered` (its KYC row only where /profile and the hub offer it); the classic arm's
   // props are unchanged, character for character.
   // ⚠️ RE-PINNED IN THE OPEN, MASWALI-BUILD S5 (2026-10-17; MASWALI-PLAN §10 §3.2 (b)–(d), DESIGN_AUTHORITY §M8a item 11): BOTH
-  // classic arms gain one prop, `{...millioneaProp}` — Maswali Millionea as More's first row, recorded as a change to
+  // classic arms gain one prop, `{...millioneaProp}` — Maswali Millionea's classic doors (More's first row then; since
+  // Ali's rulings the bar's core link, 2026-10-19, and the rail's track in Live's place, 2026-10-22), recorded as a change to
   // the accepted classic discovery layer. It is false for every reader the rollout does not show Millionea to (and for a
   // reader on a break), so while Millionea is WITHDRAWN a classic viewer is still served exactly what they were.
   // ⚠️ RE-PINNED IN THE OPEN, MASWALI-BUILD S5-TAB (2026-10-19; Ali's ruling, DESIGN_AUTHORITY §M8a item 11): BOTH journey arms

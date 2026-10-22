@@ -1209,6 +1209,7 @@
     "qa:millionea-preview-bar": "node scripts/qa-millionea-preview-bar.mjs",
     "qa:millionea-break-nav": "node scripts/qa-millionea-break-nav.mjs",
     "qa:break-money-doors": "node scripts/qa-break-money-doors.mjs",
+    "qa:classic-rail": "node scripts/qa-classic-rail.mjs",
     "qa:journey-rail-gaps": "node scripts/qa-journey-rail-gaps.mjs",
     "test:chat-yield": "tsx scripts/chat-yield.test.mts",
     "qa:chat-yield": "node scripts/qa-chat-yield.mjs",

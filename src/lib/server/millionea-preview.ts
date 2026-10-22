@@ -52,7 +52,7 @@ async function storedStaff(userId: string | null | undefined, deps: MillioneaVie
 export type MillioneaResolution = {
   /** The effective rollout. */
   state: RolloutState;
-  /** This request may see Millionea: its routes, its card, its More row, its notices. */
+  /** This request may see Millionea: its routes, its card, its nav doors, its notices. */
   visible: boolean;
   /** …and wears the "Preview" mark while it does. */
   preview: boolean;
@@ -140,7 +140,7 @@ export function forwardMillioneaPool(
 }
 
 /**
- * ⭐ THE PER-REQUEST ANSWER. Every Millionea route, the home card, the More row and every notice ask THIS, and React's
+ * ⭐ THE PER-REQUEST ANSWER. Every Millionea route, the home card, the nav doors and every notice ask THIS, and React's
  * `cache` makes it one resolution per render, so two parts of one page cannot disagree. Never rejects.
  */
 export const resolveMillionea = cache(async (): Promise<MillioneaResolution> => {

@@ -57,6 +57,10 @@ The owner answered every item below on 2026-10-17. Each answer was applied to th
   journey's "no tab" are struck, and D-15 becomes: Millionea's tab on every /millionea page, Tiketi zangu on
   /millionea/tickets and on a ticket (and for a reader drawn the four tabs, Maswali on the other /millionea pages, as
   D-15 had it). D-13 (a), (c) and (d) stand.
+- ⭐ **Superseded in part again, 2026-10-22 (Ali: "ok replace live please … keep live in more").** D-13 (d) "NO
+  bottom-rail slot" is struck, and with it (b)'s More row on the phone: on the classic phone rail Millionea's track takes
+  Live's place while it is visible (Markets · Up & Down · Deposit · Millionea · More), and Live becomes More's first row.
+  D-13 (a) and (c) stand. The authority is `docs/DESIGN_AUTHORITY.md` §M8a item 11.
 
 ## Hub and How (U)
 

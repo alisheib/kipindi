@@ -3141,8 +3141,24 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     link of the classic top bar (while it shows, Results moves into More, as its first row, at every width — measured
     2026-10-19: the bar's room is capped at `--w-board`, 1280px, and with both inline the Swahili bar of a signed-in
     player at TZS 999,999 needs 12px more and loses its account menu, E-190's failure; ~~"inline again from 1280"~~,
-    struck the same day). The classic phone rail keeps its five tracks around the centre coin, so there Millionea stays
-    More's first row, beside Results, which has lived in that More since the coin.
+    struck the same day), and a track of the classic phone rail, in Live's place (the sub-point below). ~~The classic
+    phone rail keeps its five tracks around the centre coin, so there Millionea stays More's first row, beside Results,
+    which has lived in that More since the coin.~~ (struck 2026-10-22 by Ali's ruling below)
+    - **The classic phone rail: Millionea's track in Live's place (Ali, 2026-10-22: *"ok replace live please … keep live
+      in more"*, and *"make sure it takes the perfect design and the whole navbar is tested, visually and logically
+      still appealing"*; recorded with his rulings of the day in `docs/COMPLIANCE-DECISIONS.md`, "2026-10-22 · Maswali
+      Millionea — build done, launch later", item 4).** Six tracks cannot be made perfect: the centred coin needs two
+      tracks on each side, and Swahili labels do not fit ~53px. So while Millionea's door is drawn for the reader (the
+      shell's one answer: the rollout admits the request and the reader is not on a break), the rail reads Markets · Up
+      & Down · Deposit · Millionea · More — its five equal tracks, the coin optically centred — and Live becomes More's
+      FIRST row, above Results, for a player and a guest alike. The track is its siblings' own: slot, pip, lit pill,
+      label metrics, glyph size and baseline; only its label's ink differs, and its glyph rests in gold, as on the
+      journey rail's pip (a lit track takes the siblings' Fill on the pill). Millionea's pages light the track;
+      `/millionea/tickets` and a ticket light Positions, Tiketi zangu's classic destination, a row of the rail's More
+      (`classicMillioneaLit`, `src/lib/nav/active-tab.ts`); `/live` lights More, Live's row current. While the door is
+      not drawn (WITHDRAWN, a reader the rollout does not admit, a break) the rail is the one it was, byte for byte:
+      Live in its track, and on a break D13's lighting below. Guards: `test:millionea-shell` §6 (every composition and
+      every destination's lit slot, in sw/en/zh, with plants), `qa:classic-rail` (the whole bar in a browser).
     `/millionea` and its pages light Millionea's tab; `/millionea/tickets` and a ticket light Tiketi zangu. Where the
     four tabs are drawn (Millionea not visible to the reader), Millionea's pages light Maswali, the tab whose home carries
     its card. On a break (Millionea visible, its door not drawn) the classic bar and rail light the same destination —
@@ -3169,9 +3185,10 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     still gradient fill at its siblings' size and weight, and persistent navigation must not animate, WCAG 2.2.2).
     Forced colours draw plain system text. One class, `.kp-millionea-ink` (`globals.css`, beside the rail rules), worn by
     every nav that draws Millionea. Its mark, Millionea's own glyph (`millionea`) in gold (a lit tab draws the siblings'
-    Fill on the pill), is drawn only where every sibling carries one: on the journey rail's pip. The classic bar's core
-    link and the classic phone rail's More row are its words in the ink alone, so every row of a More list starts its
-    words at one x (the lead's tile read, 2026-10-19: the row's mark had set its words ~28px right of every other row's).
+    Fill on the pill), is drawn only where every sibling carries one: on both phone rails' pips (the journey's tab, and
+    the classic rail's track since 2026-10-22). The classic bar's core link is its words in the ink alone, as its
+    siblings are, and no More list draws Millionea; every row of a More list starts its words at one x (the lead's tile
+    read, 2026-10-19: the classic rail's former Millionea row, marked, had set its words ~28px right of every other row's).
     More's two panels are opaque, the kit's elevated surface whole (`bg-bg-elevated`, the language menu's): the bar's
     was 95% under a backdrop blur, and at 1280 the page's own words read through it. ⚠️ The bar's panel is opaque for
     EVERY reader, Millionea shown or not: the first change to the classic chrome this item rules (the lead's tile read,
@@ -3201,7 +3218,9 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     shows (one More, current on /results). A journey not-found page's first paint puts the lit
     Millionea tab's word and glyph back to their resting values with the rest of R4-J's (`test:visual-pass-r4j` 5.12).
     More keeps no slot for a mark and both its panels paint the whole surface (`test:maswali-ui` §5c).
-    One answer drives all four navs: AppShell's `millioneaRow` (the rollout, and no break).*
+    One answer drives all four navs: AppShell's `millioneaRow` (the rollout, and no break).
+    Build, 2026-10-22 (MASWALI-BUILD S5 round 2 · PLATFORM, Ali's ruling above): the classic rail's fourth track is
+    Millionea's while the door is drawn (`bottom-nav.tsx`; Live leads its More), and S5-TAB 1's More row went with it.*
 12. **Icons are Phosphor (§0 item 7 of the plan, Ali 2026-10-17).** No hand-drawn glyph: the delivery's `sealNil`, `sealX`
     and coronet are replaced by the Phosphor keys of `docs/MASWALI-PLAN.md` §10c, reached only through `I`. Where the
     delivery's motion notes name `sealCheck` / `sealX` / `sealNil` on a socket, the build shows `checkCircle` / `xCircle`

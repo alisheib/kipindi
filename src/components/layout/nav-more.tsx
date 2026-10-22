@@ -34,12 +34,10 @@ export function NavMore({
   current,
   cardSpacing,
 }: {
-  /** `ink`: the row's words in Millionea's ink (`kp-millionea-ink`, globals.css; Ali, 2026-10-19, §M8a item 11) — the one
-   *  class every nav that draws Millionea wears; every other row's words stay bare, byte for byte.
-   *  ⛔ No row carries a mark: every row's words start at one x. Millionea's row once drew its glyph before its words (the
-   *  v6 delivery's frame H13) and stood ~28px right of every other row; it is words in the ink now, as the classic bar's
-   *  core link is (the lead's tile read, MASWALI-BUILD S5-TAB, 2026-10-19). */
-  items: readonly { href: string; label: string; proposalsBadge?: ProposalsState; ink?: boolean }[];
+  /** ⛔ No row carries a mark: every row's words start at one x (the lead's tile read, MASWALI-BUILD S5-TAB, 2026-10-19).
+   *  ⚠️ Neither More draws Millionea since 2026-10-22: the classic bar draws it as a core link and the phone rail as a track
+   *  (Ali; DESIGN_AUTHORITY §M8a item 11), so the rows' Millionea ink (`ink`, S5-TAB 1) went with the rail's row. */
+  items: readonly { href: string; label: string; proposalsBadge?: ProposalsState }[];
   label: string;
   variant?: "bar" | "rail";
   /** Rail only: `More` reads as current when the page behind it is one of its own. */
@@ -222,7 +220,7 @@ export function NavMore({
                     background: a ? "var(--pill-active)" : "transparent",
                   }}
                 >
-                  {it.ink ? <span className="kp-millionea-ink">{it.label}</span> : it.label}
+                  {it.label}
                   {/* DG-P-11 — the rail branch accepted `proposalsBadge` in its props and threw
                       it away, so the same destination read "Propose & earn · Coming soon" on a
                       laptop and a bare "Propose" on a phone. Same flag, both variants. */}
@@ -297,7 +295,7 @@ export function NavMore({
                 className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13.5px] transition-colors hover:bg-bg-overlay"
                 style={{ color: active ? "var(--text)" : "var(--text-subtle)", fontWeight: active ? 600 : 500 }}
               >
-                {it.ink ? <span className="kp-millionea-ink">{it.label}</span> : it.label}
+                {it.label}
                 {it.proposalsBadge && (
                   <ProposalsStateBadge state={it.proposalsBadge} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className="ml-auto" />
                 )}

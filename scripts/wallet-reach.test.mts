@@ -253,10 +253,17 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
 //    the new shape rather than deleted — the rail still has a fixed number of tracks, and Wallet
 //    is still reachable by name on a phone; both are just reached differently.
 {
-  const items = rail.slice(rail.indexOf("const items = ["), rail.indexOf("];", rail.indexOf("const items = [")));
+  // RE-PINNED (MASWALI-BUILD S5 round 2 · PLATFORM; Ali, 2026-10-22, DESIGN_AUTHORITY §M8a item 11): the fourth track is
+  // Millionea's while its door is drawn, Live's otherwise — three flanking destinations drawn either way — and Live, when
+  // it gives up its track, leads More: reachable by name on a phone in every composition.
+  const itemsAt = rail.indexOf("const items: ");
+  const items = rail.slice(itemsAt, rail.indexOf("];", itemsAt));
   const hrefs = [...items.matchAll(/href: "([^"]+)"/g)].map((m) => m[1]);
-  ok("6: three flanking destinations, because the centre track is the coin", hrefs.length === 3, hrefs.join(", "));
-  ok("6: …and Live still holds one of them", hrefs.includes("/live"), hrefs.join(", "));
+  ok("6: three flanking destinations drawn, because the centre track is the coin — the fourth Millionea's or Live's, on the shell's answer",
+     hrefs.join(", ") === "/markets, /updown, /millionea, /live" && /millionea\s*\?\s*\{ href: "\/millionea"[^}]*\}\s*:\s*\{ href: "\/live"/.test(items), hrefs.join(", "));
+  ok("6: …and Live is never unreachable: its track while Millionea is not drawn, More's first row while it is",
+     /const liveRow: \{ href: string; label: string \}\[\] = millionea \? \[\{ href: "\/live", label: t\.nav\.live \}\] : \[\];/.test(rail)
+       && (rail.match(/\[\s*\.\.\.liveRow,\s*\{ href: "\/results"/g) ?? []).length === 2, hrefs.join(", "));
   ok("6: …and the rail is STILL five equal tracks — the coin took a track, it did not add one",
      /repeat\(5, minmax\(0, 1fr\)\)/.test(rail) && /kp-rail__item--coin/.test(rail));
   ok("6: ⭐ Results did not vanish when it left the rail — it is a named row under More",

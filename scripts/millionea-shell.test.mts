@@ -372,5 +372,97 @@ section("5 · on a break the classic shell offers no deposit door: the coin is t
     wiring(plant(raw(SHELL), "promoSuppressed ? { onBreak: true } : {}", "{ onBreak: true }")).length > 0);
 }
 
+/* ══ §6 · THE CLASSIC PHONE RAIL: MILLIONEA'S TRACK IN LIVE'S PLACE ═════════════════════════════════════════════════════
+   Ali, 2026-10-22 ("ok replace live please … keep live in more"; DESIGN_AUTHORITY §M8a item 11): while Millionea's door is
+   drawn for the reader (the shell's `millionea`, handed only while true), the rail is Markets · Up & Down · Deposit ·
+   Millionea · More, and Live is More's first row; the track is its siblings' own slot, its label in Millionea's ink and its
+   resting glyph gold. Every other reader — Millionea hidden, or on a break — is served the rail as it was, Live in its
+   track. Millionea's pages light its track; its tickets light Positions (Tiketi zangu's classic destination), a More row.
+   The rail is rendered with a stand-in for More that prints what the rail hands it (the real panel draws its rows only
+   once opened); `qa:classic-rail` opens it in a browser. */
+section("6 · the classic phone rail: Millionea's track takes Live's place while its door is drawn, and Live leads More");
+{
+  type Nav = (p: Record<string, unknown>) => unknown;
+  type Words = { nav: { live: string }; millionea: { productLabel: string } };
+  const W = dict as unknown as Record<Locale, Words>;
+  const RAIL = "src/components/layout/bottom-nav.tsx", TAB = "src/lib/nav/active-tab.ts";
+  const MORE_IMPORT = 'import { NavMore } from "@/components/layout/nav-more";';
+  const MORE_PROBE = 'const NavMore = (p: any) => <li-more data-rows={p.items.map((i: any) => i.href).join(" ")} data-labels={p.items.map((i: any) => i.label).join("|")} data-current={p.current ?? ""} data-on={p.active ? "1" : undefined} />;';
+  const probed = (src: string) => fromSource<{ BottomNav: Nav }>(RAIL, plant(src, MORE_IMPORT, MORE_PROBE)).BottomNav;
+  const Rail = probed(raw(RAIL));
+  type Read = { tracks: string[]; lit: string[]; rows: string[]; labels: string[]; current: string; html: string };
+  const slotOf = (m: RegExpMatchArray) => m[1] === "li-more" ? "More" : /data-testid="deposit-rail"/.test(m[0]) ? "coin" : /href="([^"]+)"/.exec(m[0])?.[1] ?? "?";
+  const read = (R: Nav, path: string, props: Record<string, unknown>, l: Locale = "en"): Read => {
+    const html = at(h(R as never, { proposalsState: "DISABLED", ...props } as never), path, l);
+    const tracks = [...html.matchAll(/<(a|li-more)\b[^>]*>/g)].map(slotOf);
+    const lit = [...html.matchAll(/<(a|li-more)\b[^>]*data-on="1"[^>]*>/g)].map(slotOf);
+    const more = /<li-more\b[^>]*>/.exec(html)?.[0] ?? "";
+    const attr = (n: string) => new RegExp(`${n}="([^"]*)"`).exec(more)?.[1] ?? "";
+    return { tracks, lit, rows: attr("data-rows").split(" ").filter(Boolean), labels: attr("data-labels").split("|").filter(Boolean), current: attr("data-current"), html };
+  };
+  const PLAYER = { isAuthed: true, inviteVisible: true };
+  const COMPOSITIONS: Array<[string, Record<string, unknown>, boolean]> = [
+    ["a guest, Millionea drawn", { millionea: true }, true], ["a guest, Millionea hidden", {}, false],
+    ["a player, Millionea drawn", { ...PLAYER, millionea: true }, true], ["a player, Millionea hidden", { ...PLAYER }, false],
+    ["a held wallet, Millionea drawn", { ...PLAYER, walletHeld: true, millionea: true }, true], ["a held wallet, Millionea hidden", { ...PLAYER, walletHeld: true }, false],
+    ["a player on a break (Millionea visible, its door not drawn)", { ...PLAYER, onBreak: true, millioneaOnBreak: true }, false],
+  ];
+  const compositionDefects = (R: Nav) => LOCALES.flatMap((l) => COMPOSITIONS.flatMap(([name, props, drawn]) => {
+    const r = read(R, "/markets", props, l);
+    const d: string[] = [];
+    if (j(r.tracks) !== j(["/markets", "/updown", "coin", drawn ? "/millionea" : "/live", "More"])) d.push(`tracks ${j(r.tracks)}`);
+    if (drawn) {
+      if (r.rows[0] !== "/live" || r.labels[0] !== W[l].nav.live || r.rows.filter((x) => x === "/live").length !== 1) d.push(`More's first row is not Live: ${j(r.rows)}`);
+      const track = /<a\b[^>]*href="\/millionea"[^>]*>([\s\S]*?)<\/a>/.exec(r.html)?.[1] ?? "";
+      if (!track.includes('class="kp-rail__pip kp-millionea-glyph"') || !track.includes(`<span class="kp-rail__label"><span class="kp-millionea-ink">${W[l].millionea.productLabel}</span></span>`)) d.push("the track's pip or label is not its siblings' with the ink and the gold glyph");
+    } else if (r.rows.includes("/live") || /millionea/i.test(r.html)) d.push(`hidden: Millionea drawn, or Live in More too: ${j(r.rows)}`);
+    if (r.rows.includes("/millionea")) d.push("More still carries a Millionea row");
+    return d.map((x) => `${l} · ${name}: ${x}`);
+  }));
+  ok("6.1 · every composition (a guest, a player, a held wallet, Millionea drawn or hidden, a break) in sw, en and zh: drawn — Markets · Up & Down · coin · Millionea · More, Live More's first row, the track its siblings' slot with the ink and the gold glyph; hidden or on a break — Live in its track, no Millionea anywhere and no Live row",
+    compositionDefects(Rail).length === 0, j(compositionDefects(Rail).slice(0, 6)));
+  // Which slot is lit on each destination (the rail's `data-on`; More's lit row is its `current`, or the page's own row).
+  const LIT_DRAWN: Record<string, [string, string]> = {
+    "/": ["/markets", ""], "/markets": ["/markets", ""], "/markets/abc": ["/markets", ""], "/updown": ["/updown", ""], "/updown/history": ["/updown", ""],
+    "/wallet/deposit": ["coin", ""], "/wallet/deposit/return": ["coin", ""],
+    "/millionea": ["/millionea", ""], "/millionea/how": ["/millionea", ""], "/millionea/register": ["/millionea", ""], "/millionea/register/MLN-2026-W42": ["/millionea", ""],
+    "/millionea/slip": ["/millionea", ""], "/millionea/tickets": ["More", "/positions"], "/millionea/tickets/MLN-2026-W42-000017": ["More", "/positions"],
+    "/live": ["More", ""], "/results": ["More", ""], "/positions": ["More", ""], "/wallet": ["More", ""], "/leaderboard": ["More", ""], "/profile/invite": ["More", ""],
+    "/legal/rules/millionea": ["", ""], "/millioneas": ["", ""], "/kpzzzzzzz": ["", ""],
+  };
+  const LIT_DARK: Record<string, string> = { "/markets": "/markets", "/updown": "/updown", "/wallet/deposit": "coin", "/live": "/live", "/results": "More", "/positions": "More",
+    "/millionea": "", "/millionea/how": "", "/millionea/tickets": "", "/millioneas": "" };
+  const litDefects = (R: Nav) => LOCALES.flatMap((l) => [
+    ...Object.entries(LIT_DRAWN).flatMap(([p, [slot, current]]) => {
+      const r = read(R, p, { ...PLAYER, millionea: true }, l);
+      return j(r.lit) === j(slot ? [slot] : []) && r.current === current ? [] : [`${l} drawn ${p}: lit ${j(r.lit)} current ${j(r.current)}`];
+    }),
+    ...Object.entries(LIT_DARK).flatMap(([p, slot]) => {
+      const r = read(R, p, { ...PLAYER }, l);
+      return j(r.lit) === j(slot ? [slot] : []) ? [] : [`${l} hidden ${p}: lit ${j(r.lit)}`];
+    }),
+  ]);
+  ok(`6.2 · one slot lit, never two: drawn, on ${Object.keys(LIT_DRAWN).length} destinations — Millionea's pages its track, its tickets More with Positions current, /live More (Live's row), the rest as before; hidden, on ${Object.keys(LIT_DARK).length} — Live its track, a Millionea address nothing (a dark address); in sw, en and zh`,
+    litDefects(Rail).length === 0, j(litDefects(Rail).slice(0, 6)));
+  const TABS = req(`../${TAB}`) as { classicMillioneaLit: (p: string) => string | null };
+  const litTable: Record<string, string | null> = { "/millionea": "/millionea", "/millionea/how": "/millionea", "/millionea/tickets": "/positions", "/millionea/tickets/x": "/positions", "/legal/rules/millionea": null, "/millioneas": null, "/markets": null };
+  ok("6.3 · `classicMillioneaLit` is the journey table's answer over the five tabs: Millionea's pages its own, its tickets Positions (Tiketi zangu's), nothing off Millionea",
+    Object.entries(litTable).every(([p, w]) => TABS.classicMillioneaLit(p) === w), j(Object.fromEntries(Object.keys(litTable).map((p) => [p, TABS.classicMillioneaLit(p)]))));
+  // PLANTS — each turns its check red.
+  const darkTrack = probed(plant(raw(RAIL), '    millionea\n      ? { href: "/millionea"', '    true\n      ? { href: "/millionea"'));
+  ok("6.1′ PLANT · the track drawn for a reader Millionea is hidden from (the answer ignored) is reported", compositionDefects(darkTrack).some((d) => d.includes("hidden")));
+  const liveStays = probed(plant(raw(RAIL), '    millionea\n      ? { href: "/millionea"', '    false\n      ? { href: "/millionea"'));
+  ok("6.1″ PLANT · Live kept in its track while the door is drawn (Live twice, no track) is reported", compositionDefects(liveStays).some((d) => d.includes("drawn: tracks")));
+  const noLiveRow = probed(plant(raw(RAIL), 'millionea ? [{ href: "/live", label: t.nav.live }] : []', "[]"));
+  ok("6.1‴ PLANT · Live dropped from More (the destination the track gave up, gone) is reported", compositionDefects(noLiveRow).some((d) => d.includes("More's first row is not Live")));
+  const bareTrack = probed(plant(raw(RAIL), '<span className="kp-rail__label">{ink ? <span className="kp-millionea-ink">{label}</span> : label}</span>', '<span className="kp-rail__label">{label}</span>'));
+  ok("6.1⁗ PLANT · the track's label without Millionea's ink is reported", compositionDefects(bareTrack).some((d) => d.includes("the track's pip or label")));
+  const ticketsOnTrack = probed(plant(plant(raw(RAIL), 'const moreCurrent = millioneaLit === "/positions" ? millioneaLit : standIn;', "const moreCurrent = standIn;"),
+    'if (href === "/millionea") return millioneaLit === "/millionea";', 'if (href === "/millionea") return millioneaLit !== null;'));
+  ok("6.2′ PLANT · Millionea's tickets lighting its track instead of Positions is reported", litDefects(ticketsOnTrack).some((d) => d.includes("/millionea/tickets")));
+  const doubleLit = probed(plant(raw(RAIL), 'if (href === "/millionea") return millioneaLit === "/millionea";', 'if (href === "/millionea") return pathname.startsWith("/millionea");'));
+  ok("6.2″ PLANT · a track that also lights on its tickets (two lit: the track and More) is reported", litDefects(doubleLit).some((d) => d.includes("/millionea/tickets")));
+}
+
 console.log(`\nmillionea-shell: ${pass} passed, ${fails.length} failed`);
 if (fails.length) { for (const f of fails) console.log(`  ✗ ${f}`); process.exitCode = 1; }

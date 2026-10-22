@@ -3,7 +3,7 @@
  * "Corrections of 2026-10-17").
  *
  * THREE positions, the journey's words (`rollout-state.ts → RolloutState`), and each is a different thing a person sees:
- *   · WITHDRAWN     — nobody. Every `/millionea` route 404s; no card, no More row, no notice anywhere.
+ *   · WITHDRAWN     — nobody. Every `/millionea` route 404s; no card, no nav door, no notice anywhere.
  *   · STAFF_PREVIEW — a signed-in STAFF session (its stored role re-checked), or a browser holding a Millionea preview
  *                     pass a staff member set (`server/millionea-preview.ts`), in EITHER shell, under a "Preview" mark.
  *   · ACTIVE        — everyone.

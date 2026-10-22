@@ -7,7 +7,7 @@
  *   1. `/api/health` states Millionea's rollout as exactly `{ ceiling, state }`, three words, state never above ceiling.
  *   2. Below ACTIVE, a SIGNED-OUT visitor gets a 404 from every Millionea route — the product's pages, its rules, its share
  *      image, and their percent-encoded spellings — and no Millionea trace in the served documents of the pages where
- *      an entry will live (the journey home's card, the classic board's card, the More row). A signed-out visitor is
+ *      an entry will live (the journey home's card, the classic board's card, the navs' doors). A signed-out visitor is
  *      never staff, so STAFF_PREVIEW changes nothing for this reader; only ACTIVE may show them.
  *      ⭐ HOW the route answers depends on the CEILING, because the edge reads only the ceiling (`millionea-edge.ts`):
  *        · a ceiling below ACTIVE — the edge marks a dark address unrouted and next.config's rewrite answers it where no
@@ -89,7 +89,7 @@ export function headerDefects(dark, twin) {
   return d;
 }
 
-/** The pages that will carry a Millionea entry (the home card, the board card, the More row) — read for traces. */
+/** The pages that will carry a Millionea entry (the home card, the board card, the navs' doors) — read for traces. */
 export const MILLIONEA_ENTRY_PAGES = ["/", "/markets"];
 
 const BS = String.fromCharCode(92);
