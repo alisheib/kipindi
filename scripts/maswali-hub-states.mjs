@@ -760,11 +760,18 @@ if (RUN === "a") {
       await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 400, downloadThroughput: 12 * 1024, uploadThroughput: 64 * 1024 });
     } else {
       const held = new Promise((done) => { release = done; });
-      await page.route((url) => url.pathname === "/millionea", async (route) => { await held; await route.continue().catch(() => {}); });
+      // Only the move's own request: a prefetch of the hub held here leaves the move waiting on it, and no drawing shows.
+      await page.route((url) => url.pathname === "/millionea", async (route) => {
+        if (!route.request().headers()["next-router-prefetch"]) await held;
+        await route.continue().catch(() => {});
+      });
     }
     // The app router's own move (`window.next.router`, what a Link calls): a phone's classic rail has no Millionea tab.
     await page.evaluate(() => { window.next?.router?.push("/millionea"); });
     const drawn = await page.waitForSelector('[aria-busy="true"] [data-ghost="strip"]', { timeout: 20_000 }).then(() => true).catch(() => false);
+    // Measured at rest: the route's one entrance (`.route-enter`, 10px up over --t-move) ended — every finite animation
+    // done; the shimmer's loops go on. Measured mid-entrance, WebKit's drawing stood 10px low (S5-R2-HUB 12).
+    if (drawn) await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running" || !Number.isFinite(a.effect?.getComputedTiming?.().endTime ?? Infinity)), null, { timeout: 3_000 }).catch(() => {});
     const ghost = drawn ? await page.evaluate(BANDS, true) : null;
     const sweep = drawn ? await page.evaluate(SWEEPS) : null;
     if (drawn) await page.screenshot({ path: `${OUT}/${name}.png` });
