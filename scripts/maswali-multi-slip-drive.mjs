@@ -3,6 +3,8 @@
  * slip's design pass (Ali 2026-10-21 10/10; the slip critic's H2, H3, M9), the composer's own rules: no switcher for one
  * ticket, "Add another ticket" after the reserves, the pay control armed only when EVERY ticket is answered (else "Finish
  * ticket n", which opens it), a ticket holding answers removed only after the kit's confirm, the stamp's serials as rows.
+ * Round 2 (the lead's ruling (a)): the pills say "n · 15/15" under the group's one noun, each named with the noun — found
+ * by those names — and two pills share ONE row, measured at 320 and 360 in English and Swahili.
  *
  *   BASE=http://localhost:<port> node scripts/maswali-multi-slip-drive.mjs
  *
@@ -14,7 +16,7 @@
  */
 import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
-import { premise, demoSession, LOCALE_COOKIE } from "./live/journey-pass.mjs";
+import { premise, demoSession, DEMO_PHONE, LOCALE_COOKIE } from "./live/journey-pass.mjs";
 
 const BASE = process.env.BASE || "http://localhost:3421";
 const OUT = ".50pick-shots/maswali-multi-slip";
@@ -74,9 +76,16 @@ try {
   await owner.request.post(`${BASE}/api/dev-test/seed-admin`, { data: { phone: "+255700000091", name: "Millionea Owner" }, timeout: 240_000 });
   const seed = await owner.request.post(`${BASE}/api/dev-test/seed-maswali`, { data: {}, timeout: 300_000 });
   ok("a fresh local week is seeded", seed.ok() || seed.status() === 409, String(seed.status()));
+  const session = await demoSession(browser, BASE, { query: "?deposit=0", balance: 50_000 });
+  // ⭐ ITS OWN PREMISE (round 2): the demo player starts the week holding no live ticket, so the pills are numbered from 1.
+  // A drive run before this one on the same server leaves tickets behind (qa:dialog-way-back buys one per engine), and the
+  // pills then read from 3. They are cancelled first through the product's own free cancel (the dev route, as
+  // qa:dialog-way-back does at its start). If that is refused, the premise is absent and the drive stops.
+  const reset = await (await owner.request.post(`${BASE}/api/dev-test/seed-maswali-slip`, { data: { cancelFor: DEMO_PHONE }, timeout: 120_000 })).json().catch(() => ({}));
+  if (reset.ok !== true) throw new Error(`PREMISE ABSENT — the demo player's live tickets could not be cancelled: ${JSON.stringify(reset)}`);
+  console.log(`INFO premise: ${reset.cancelled} live ticket(s) the demo player held this week cancelled first`);
   await owner.close();
 
-  const session = await demoSession(browser, BASE, { query: "?deposit=0", balance: 50_000 });
   const ctx = await browser.newContext({ viewport: { width: 320, height: 780 } });
   await ctx.addCookies([{ name: LOCALE_COOKIE, value: "en", url: BASE }, { ...session, url: BASE, domain: undefined, path: undefined }]);
   const page = await ctx.newPage();
@@ -132,6 +141,29 @@ try {
   await ask.getByRole("button", { name: "Keep ticket" }).click();
   await ask.waitFor({ state: "detached" });
   ok("M9 · \"Keep ticket\" keeps both", await complete(page).count() === 2);
+  // ⭐ ROUND 2 · RULING (a), MEASURED (S5-R2-SLIP): at 320 and 360, in English and in Swahili (the longest language), the two
+  // pills stand on ONE row, whole inside the viewport, unclipped and at least 40px tall — read from the boxes the browser laid
+  // out, under the group's one noun. Each composer is kept as a tile (`pills-*`, `composer-*`) to read.
+  const NOUN = { en: /^tickets$/i, sw: /^tiketi$/i };
+  for (const [locale, width] of [["en", 320], ["en", 360], ["sw", 320], ["sw", 360]]) {
+    await openSlip(ctx, page, locale, width);
+    await complete(page).first().waitFor();
+    await switcher(page).scrollIntoViewIfNeeded();
+    await settle(page);
+    const pills = await switcher(page).locator("button[aria-pressed]").evaluateAll((els) => els.map((e) => {
+      const r = e.getBoundingClientRect();
+      return { text: (e.textContent ?? "").replace(/\s+/g, " ").trim(), top: Math.round(r.top), left: Math.round(r.left * 10) / 10,
+        right: Math.round(r.right * 10) / 10, height: Math.round(r.height), clipped: e.scrollWidth > e.clientWidth + 1 };
+    }));
+    const vw = await page.evaluate(() => document.documentElement.clientWidth);
+    const noun = await switcher(page).locator("span[aria-hidden]").first().innerText();
+    console.log(`INFO ruling (a) ${locale} @${width}: noun "${noun}" · viewport ${vw} · pills ${JSON.stringify(pills)}`);
+    ok(`round 2 · ruling (a) · ${locale} @${width}: the label is the noun once, and the two pills ("n · 15/15") share ONE row, whole inside the viewport, unclipped, 40px tall`,
+      NOUN[locale].test(noun) && pills.length === 2 && pills.every((p) => /^\d+ · 15\/15$/.test(p.text)) && new Set(pills.map((p) => p.top)).size === 1
+        && pills.every((p) => p.left >= 0 && p.right <= vw && !p.clipped && p.height >= 40), JSON.stringify({ noun, vw, pills }));
+    await switcher(page).screenshot({ path: `${OUT}/pills-${locale}-${width}.png` });
+    await page.screenshot({ path: `${OUT}/composer-${locale}-${width}.png`, fullPage: false });
+  }
   await openSlip(ctx, page, "zh", 320);
   await complete(page).first().waitFor();
   ok("Chinese 320 keeps two complete tickets", await complete(page).count() === 2);
