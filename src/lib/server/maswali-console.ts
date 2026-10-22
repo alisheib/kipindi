@@ -466,7 +466,7 @@ function countIn(letters: unknown, key: string): number {
 export type UnresolvedLetterRow = OpenLetter & { holder: string };
 
 /** The causes in the order the card says them. */
-const CAUSE_ORDER = ["uncertain", "unmatched", "resendOwed"] as const;
+const CAUSE_ORDER = ["uncertain", "unmatched", "resendOwed", "capped"] as const;
 
 /**
  * ⭐ S6-NOTICES (L-3) · ONE WEEK'S OPEN LETTERS, FOR COMPLIANCE: the letters of a week's money notice open on their holders'

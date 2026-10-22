@@ -61,6 +61,7 @@ const CAUSE_WORD: Record<UnresolvedLetterRow["cause"], string> = {
   uncertain: "Search has not said",
   unmatched: "Search cannot be asked",
   resendOwed: "Resend owed",
+  capped: "Refused three times",
 };
 
 export type OpenedLetters = { key: string; list: { rows: UnresolvedLetterRow[]; total: number; page: number } | null };

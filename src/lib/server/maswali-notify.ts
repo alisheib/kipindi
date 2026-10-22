@@ -73,9 +73,10 @@ import {
   notifyMillioneaWonHeld, type MillioneaNoticeKey, type MillioneaWinShares,
 } from "./notification-service";
 import {
-  CANNOT_SIGN_IN, findOutboundLetter, letterAddressOf, millioneaNotWonHtml, millioneaWeekRefundedHtml, millioneaWinHtml, sendEmailToUser,
-  type SendResult,
+  CANNOT_SIGN_IN, emailHealth, findOutboundLetter, letterAddressOf, millioneaNotWonHtml, millioneaWeekRefundedHtml, millioneaWinHtml,
+  sendEmailToUser, type SendResult,
 } from "./email";
+import { isSuppressed } from "./email-suppression";
 import { sendMillioneaWinnerSms, type WinnerSmsLine, type WinnerSmsOutcome } from "./maswali-winner-sms";
 import { breakStateOf } from "@/lib/break-end";
 import { DEFAULT_WITHDRAWAL_FEE_RATE } from "@/lib/payout";
@@ -134,8 +135,13 @@ export type NoticeRun = {
    *  was sent to them now and the run is not complete (round 17, B2). ⭐ S6-NOTICES (L-3) · of the `unresolved`, those whose
    *  search cannot be asked because the account's address or the pepper changed since the attempt (`unmatched`); and
    *  `resendOwed`, letters whose search found no such message and whose one resend did not go in this run — what the
-   *  integrity card says, one sentence a cause (`maswali-console.ts` `unresolvedLetters`). */
-  letters: Partial<Record<LetterOutcome | "confirmed" | "unresolved" | "unread" | "unmatched" | "resendOwed", number>>;
+   *  integrity card says, one sentence a cause (`maswali-console.ts` `unresolvedLetters`). ⭐ M-2 (the lead's ruling 2) ·
+   *  `capped`, letters the provider definitely refused `LETTER_REFUSALS_CAP` times, which no run sends again (the run is
+   *  complete, the card lists them); and `deferred`, letters not sent because the email rail is DOWN — no attempt written,
+   *  no refusal used, and the run stays owed. */
+  letters: Partial<Record<LetterOutcome | "confirmed" | "unresolved" | "unread" | "unmatched" | "resendOwed" | "capped" | "deferred", number>>;
+  /** ⭐ M-2 · whether this run has sent its one letter while the email rail was DOWN (its probe). Never recorded. */
+  probed: boolean;
   /** The winners' SMS, on a result run. */
   sms: WinnerSmsTally | null;
   /** ⭐ THE WITNESS, taken as the run was launched — in the caller's own context, before it escapes every lock. */
@@ -152,8 +158,10 @@ export type NoticeCallSite = { inLock: boolean; inTx: boolean };
 
 /**
  * ⭐ A LETTER'S OUTCOME, as a run counts and records it (round 4, M6): the send's own reason — and a failure by its kind:
- * `failed` only for a definite refusal (sent again by the reconcile), `ambiguous` for one the provider may have delivered
- * (never sent again), `bounced` for one that can never go (complete, with its reason). Every outcome but `failed` is done.
+ * `failed` only for a definite refusal (sent again by the reconcile — ⭐ M-2, the lead's ruling 2: until the provider has
+ * refused it `LETTER_REFUSALS_CAP` times; then no run sends it again and the integrity card lists it), `ambiguous` for one
+ * the provider may have delivered (never sent again), `bounced` for one that can never go (complete, with its reason).
+ * Every outcome but `failed` is done.
  */
 export type LetterOutcome = SendResult["reason"] | "ambiguous" | "bounced";
 
@@ -214,7 +222,7 @@ function launch(notice: NoticeRun["notice"], weekId: string, body: (r: NoticeRun
   // ⭐ The witness is read HERE, in the caller's context (`runOutsideLock` below hides the lock from the run itself) — and
   // an `afterCommit` trigger's own reading, taken in its hook before that hook escaped, is added to it.
   const r: NoticeRun = {
-    notice, weekId, recipients: 0, sent: 0, alreadySent: 0, failed: 0, permanent: {}, letters: {}, sms: null,
+    notice, weekId, recipients: 0, sent: 0, alreadySent: 0, failed: 0, permanent: {}, letters: {}, probed: false, sms: null,
     calledInLock: (at?.inLock ?? false) || inLock(), calledInTx: (at?.inTx ?? false) || currentLockTx() !== null, skipped: null,
   };
   const log = runLog();
@@ -384,6 +392,39 @@ function doneIn(entries: readonly { payload?: Record<string, unknown> }[], notic
 /** A letter's attempt, as its record says it — written before the send. */
 const LETTER_ATTEMPT = "attempt";
 
+/**
+ * ⭐ M-2 (the lead's ruling 2, 2026-10-22) · A LETTER THE PROVIDER DEFINITELY REFUSED THIS MANY TIMES IS SENT AGAIN BY NO RUN:
+ * the run counts it `capped` and stays complete, the integrity card lists it for an officer, and the officer's recorded
+ * check closes it (`closeUnresolvedLetters`). Until then each definite refusal is sent again by the reconcile. Counted from
+ * the letter's own records, so every process and every run counts the same refusals (recorded in docs/FAILURE-INVENTORY.md
+ * §9b). ⛔ Without it a refused letter (a wrong provider key, say) was sent again every hour for fourteen days, with two
+ * audit rows for each holder each time.
+ */
+export const LETTER_REFUSALS_CAP = 3;
+
+/** How many definite refusals ("failed") one holder's own records hold for this notice. */
+function refusalsIn(entries: readonly { payload?: Record<string, unknown> }[], notice: "result" | "refund"): number {
+  return entries.filter((e) => e.payload?.notice === notice && e.payload?.outcome === "failed").length;
+}
+
+/**
+ * ⭐ M-2 · THE EMAIL RAIL DOWN (`emailHealth()`: this process's last sends all failed): a run sends ONE letter that would reach
+ * the provider — its probe — and DEFERS every other: a deferred letter writes no attempt and uses none of its refusals, and
+ * the run stays owed, so the reconcile sends it once the rail answers again. A probe that goes brings the rail back up for
+ * the letters after it. A letter that would reach no provider (no address on file, a suppressed address) is never a probe.
+ */
+function railAllowsLetter(r: NoticeRun): boolean {
+  if (emailHealth().status !== "DOWN") return true;
+  if (r.probed) return false;
+  r.probed = true;
+  return true;
+}
+
+/** Whether a letter to this address would reach the provider at all — `sendEmail`'s own skips: no address, a stub address,
+ *  a suppressed one (a hard bounce, a complaint). */
+const reachesProvider = (to: string | null): to is string =>
+  !!to && !to.endsWith("@stub") && !to.endsWith("@none") && !isSuppressed(to);
+
 /** ⚠️ FOR THE SUITES: whether one holder's own letter records (newest first) say the letter is done, as a run reads them. */
 export const millioneaLetterDone = doneIn;
 
@@ -503,7 +544,8 @@ const letterSearchMargin = (): number => {
  * (`resolveLetter`). ⛔ A bell that could not be written owes no letter (the bell is the record, MB-93; the reconcile writes
  * it, then the letter). ⛔ Round 17 (B2) · records that cannot be read send nothing now — a letter is sent only after a read
  * that says it is owed, so it can never go twice — and the holder is counted `unread`, which leaves the run not complete:
- * the reconcile reads them again, and the letter goes once they read.
+ * the reconcile reads them again, and the letter goes once they read. ⭐ M-2 · a letter the provider definitely refused
+ * `LETTER_REFUSALS_CAP` times is sent by no run: counted `capped`, listed on the card, closed by the officer's check.
  */
 async function letterStep(r: NoticeRun, bell: "wrote" | "seen" | "failed", read: Map<string, LetterRecord[]> | null, weekId: string, userId: string, job: LetterJob): Promise<void> {
   if (bell === "failed") return;
@@ -511,6 +553,8 @@ async function letterStep(r: NoticeRun, bell: "wrote" | "seen" | "failed", read:
   const records = await holderLetters(read, weekId, userId, notice);
   if (records === null) { r.letters.unread = (r.letters.unread ?? 0) + 1; return; }
   if (!doneIn(records, notice)) {
+    // ⭐ M-2 · refused as often as the cap allows: no attempt, no send — listed for an officer, and the run stays complete.
+    if (refusalsIn(records, notice) >= LETTER_REFUSALS_CAP) { r.letters.capped = (r.letters.capped ?? 0) + 1; return; }
     // ⭐ S6-NOTICES (L-3) · a resend still owed after an "absent" that does not go now is counted: the card says so.
     const resend = openKindOf(records, notice) === "resendOwed";
     if ((await sendLetter(r, userId, job)) !== "attempted" && resend) r.letters.resendOwed = (r.letters.resendOwed ?? 0) + 1;
@@ -592,11 +636,14 @@ function attemptMatches(attempt: LetterRecord | undefined, to: string | null): b
  * ⭐ A MONEY LETTER, SENT AT MOST ONCE (round 5, LOW 12): its attempt is recorded on the holder's own target BEFORE the send,
  * and its outcome after — so a run that dies between the two finds the attempt and never sends it again. An attempt that
  * could not be recorded is no send now: the letter is counted failed (an ALARM) and the reconcile sends it later.
+ * ⭐ M-2 · while the email rail is DOWN, a letter that would reach the provider and is not this run's one probe is DEFERRED
+ * before its attempt is written: no attempt, no refusal used, and the run stays owed (`railAllowsLetter`).
  * Answers whether the letter was attempted (S6-NOTICES, L-3: a resend still owed is counted by its caller).
  */
-async function sendLetter(r: NoticeRun, userId: string, job: LetterJob): Promise<"attempted" | "unrecorded"> {
+async function sendLetter(r: NoticeRun, userId: string, job: LetterJob): Promise<"attempted" | "unrecorded" | "deferred"> {
   const target = letterTarget(r.weekId, userId);
   const to = await letterAddressOf(userId, { confirmedOnly: true });
+  if (reachesProvider(to) && !railAllowsLetter(r)) { r.letters.deferred = (r.letters.deferred ?? 0) + 1; return "deferred"; }
   const attempt = await audit({
     category: "SYSTEM", action: LETTER_ACTION, actorId: SYSTEM, targetType: LETTER_TARGET, targetId: target,
     payload: { notice: r.notice, outcome: LETTER_ATTEMPT, ...(to ? { addr: addressHash(to), pv: pepperVersion() } : {}) },
@@ -711,14 +758,17 @@ async function nextWeekOf(week: StoredWeek): Promise<StoredWeek | null> {
 
 /**
  * Every holder of the run told, no write failed, no letter definitely refused, and (a result) no winner's SMS held in a way
- * a later run may clear: nothing left to send. A winner's SMS that did not go is final (M-1: not resent; the desk calls). A permanent refusal leaves it complete, with its reason counted —
- * and a letter that may have been delivered is done (round 4, M6). A holder whose letter records could not be read leaves
- * it NOT complete (round 17, B2), so the reconcile comes back to that letter.
+ * a later run may clear: nothing left to send. A winner's SMS that did not go is final (M-1: not resent; the desk calls).
+ * A permanent refusal leaves it complete, with its reason counted — and a letter that may have been delivered is done
+ * (round 4, M6). A holder whose letter records could not be read leaves it NOT complete (round 17, B2), so the reconcile
+ * comes back to that letter. ⭐ M-2 · a letter refused as often as the cap allows leaves it complete (`capped`: no run sends
+ * it again, the card lists it); a letter deferred while the email rail was DOWN leaves it NOT complete, so the reconcile
+ * sends it once the rail answers.
  */
 function complete(r: NoticeRun): boolean {
   const smsDone = r.sms === null || Object.keys(r.sms.held).length === 0;
   return r.failed === 0 && (r.letters.failed ?? 0) === 0 && (r.letters.unresolved ?? 0) === 0 && (r.letters.unread ?? 0) === 0
-    && r.sent + r.alreadySent === r.recipients && smsDone;
+    && (r.letters.deferred ?? 0) === 0 && r.sent + r.alreadySent === r.recipients && smsDone;
 }
 
 /** ⚠️ FOR THE SUITES: whether a run left nothing to send, as its record says it (`complete`). */
@@ -759,7 +809,8 @@ async function lastRunRecord(weekId: string, notice: "result" | "refund"): Promi
  */
 function standingLetters(letters: unknown): string {
   const l = (letters ?? {}) as Record<string, unknown>;
-  return (["unresolved", "unmatched", "resendOwed", "unread"] as const).map((k) => (typeof l[k] === "number" ? l[k] : 0)).join(",");
+  // ⭐ M-2 · and the letters capped or deferred: the card counts both.
+  return (["unresolved", "unmatched", "resendOwed", "unread", "capped", "deferred"] as const).map((k) => (typeof l[k] === "number" ? l[k] : 0)).join(",");
 }
 
 /**
@@ -787,21 +838,24 @@ async function moneyLetterHolders(week: StoredWeek, notice: "result" | "refund")
 /**
  * ⭐ A MONEY LETTER STILL OPEN, as its holder's own records say it (newest first) — what the integrity card lists and what an
  * officer's check closes, one rule for both: `attempted`, the provider may have taken it (its newest record an ambiguous
- * outcome or a bare attempt); `resendOwed`, its search found no such message and its one resend has not gone. Null for every
- * other letter: done, never sent, or definitely refused (the reconcile sends that one again).
+ * outcome or a bare attempt); `resendOwed`, its search found no such message and its one resend has not gone; ⭐ M-2 ·
+ * `capped`, the provider definitely refused it `LETTER_REFUSALS_CAP` times and no run sends it again. Null for every other
+ * letter: done, never sent, or definitely refused fewer times (the reconcile sends that one again).
  */
-function openKindOf(records: readonly LetterRecord[], notice: "result" | "refund"): "attempted" | "resendOwed" | null {
+function openKindOf(records: readonly LetterRecord[], notice: "result" | "refund"): "attempted" | "resendOwed" | "capped" | null {
   const newest = records.find((e) => e.payload?.notice === notice)?.payload?.outcome;
   if (newest === LETTER_ABSENT) return "resendOwed";
+  if (newest === "failed") return refusalsIn(records, notice) >= LETTER_REFUSALS_CAP ? "capped" : null;
   return newest === "ambiguous" || newest === LETTER_ATTEMPT ? "attempted" : null;
 }
 
 /**
  * Why a listed letter is open (S6-NOTICES, L-3), one sentence each on the card: `uncertain`, the provider may have taken it and
  * its search has not said so; `unmatched`, the same, but the account's address or the pepper changed since its attempt, so
- * its search is never asked; `resendOwed`, its search found no such message and its one resend is still owed.
+ * its search is never asked; `resendOwed`, its search found no such message and its one resend is still owed; ⭐ M-2 ·
+ * `capped`, the provider refused it as often as the cap allows, so no run sends it again.
  */
-export type OpenLetterCause = "uncertain" | "unmatched" | "resendOwed";
+export type OpenLetterCause = "uncertain" | "unmatched" | "resendOwed" | "capped";
 
 /** One open money letter as the card lists it for Compliance: its holder, why it is open, the tag the provider knows it by
  *  (`letterMetadata`, a one-way digest: no account id leaves) and its attempts' instants, newest first. */
@@ -826,7 +880,7 @@ export async function millioneaOpenLetters(weekId: string, notice: "result" | "r
     const kind = openKindOf(mine, notice);
     if (kind === null) continue;
     const attempts = mine.filter((e) => e.payload?.outcome === LETTER_ATTEMPT);
-    const cause: OpenLetterCause = kind === "resendOwed" ? "resendOwed"
+    const cause: OpenLetterCause = kind === "resendOwed" || kind === "capped" ? kind
       : attemptMatches(attempts[0], await letterAddressOf(userId, { confirmedOnly: true })) ? "uncertain" : "unmatched";
     out.push({ userId, cause, tag: letterMetadata(target), attempts: attempts.map((e) => e.createdAt) });
   }
