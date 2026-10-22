@@ -159,6 +159,9 @@ const samples = (l: L3): Record<string, string | number> => {
     // officer's note is the officer's own words, as the objection seed writes one.
     result: [outcomeWordIn(l, "YES", "MASWALI"), outcomeWordIn(l, "NO", "MASWALI")].sort((a, b) => widthOf(b) - widthOf(a))[0],
     note: "The federation's official report confirms event 2 took place; the result stands.",
+    // S7-F9 3 (the lead's ruling (a), DESIGN_AUTHORITY §M8a item 19): How to play's stop rule says the final week's rule in
+    // its one wording — `ruleSunset` filled with `finalWeekRule` as {rule}, as how/page.tsx fills it.
+    rule: t.millionea.finalWeekRule,
   };
 };
 /** A placeholder that means something else in one string: `levies` names the two levies' RATES ("TRA {tra}%"), where the
