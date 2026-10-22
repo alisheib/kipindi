@@ -15,6 +15,13 @@ Every heavy check ran on GitHub's machines (public repo: free Linux runners, 16 
 - Lanes worked as subagents with `lanes/LANE-COMMON-BLADE.md` (+ a BRIEF.md each); they write in worktrees, run nothing
   locally, and push their branches.
 
+## ✅ UPDATE 2026-10-22 22:50 UTC — S5 IS LIVE (dark): production serves `3aecf0edd`
+The docs-only §0 record (`3aecf0edd` = 2ed817395 + MASWALI-PLAN §0 / NEXT-PLAN ▶ 0i; its 14 document guards green on the
+runner, run 39866699781) was pushed to main at 22:44:33 and rebuilt the code: Railway deployment 7265529542 in_progress
+22:44:38 → **success 22:49:58**. dpl=3aecf0edd on www, the apex and the Railway host; /api/health ok, database reachable and
+migrated, a new container, Millionea `{ceiling: WITHDRAWN, state: WITHDRAWN}`. The first build's failure was Railway's own
+transient. Full read-back (qa:chunks-prod ×2, production qa:live): run 39867143092. Next: STAFF_PREVIEW (needs Railway).
+
 ## 🔴 UPDATE 19:52 UTC — RAILWAY'S BUILD OF 2ed817395 FAILED; PRODUCTION STILL SERVES da3d32180 (healthy)
 The read-back (run 39837626118) waited 40 minutes: all three hosts still serve dpl=da3d32180. GitHub's deployment record
 (id 7261165807, by railway-app[bot]): in_progress 19:09:32Z → **failure 19:11:55Z** (no description; ~2.5 min = an early
