@@ -10,7 +10,7 @@
  * ⭐ ONE SOURCE. The platform kept no DESK scripts before Millionea — the chat helper's intent table
  *    (`src/lib/chat/send-message.ts`) answers players, not the desk, and names no Millionea topic while the product is
  *    withdrawn. These live here and are read on the desk's own page (`/admin/maswali/lookup`), beside the one ticket a
- *    player is asking about. The operator guide MB-64 asks for is not written yet; when it is, it points at that page
+ *    player is asking about. The admin guide (`docs/maswali-operator-guide.html`, part 2 step B20) points at that page
  *    rather than copying them.
  * ⛔ NO FIGURE IS TYPED. Every number is a placeholder filled at the moment the desk reads it (`fillSupportScript`), from
  *    the ticket's week's frozen rules or the live configuration: the check window and its earliest close, the
