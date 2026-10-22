@@ -7,7 +7,8 @@
  *   · pauseMaswaliSales / resumeMaswaliSales — stop and restart SALES only (never a cancel, a settlement or a refund);
  *   · holdMaswaliShare / releaseMaswaliShare / forfeitMaswaliShare — Compliance decides a winning share under review;
  *   · markMillioneaWinnerReached — S6 · the desk records that a winner no notice reached was reached by phone (MB-93).
- *   · clearUnresolvedLetter — S6 · an officer records that a week's letters not known to have gone were checked.
+ *   · clearUnresolvedLetter — S6 · an officer records that a week's letters not known to have gone were checked, which
+ *     closes them for good (never searched for, never sent again); the answer says how many it closed (S6-NOTICES L-4).
  * Three acts are kept apart on purpose (MB-78): the pause (sales only), the week void (refund, carry untouched) and the
  * product stop (the Owner's sunset, on the pools page).
  */
@@ -96,7 +97,8 @@ export async function clearUnresolvedLetterAction(formData: FormData): Promise<A
     });
     if (!r.ok) return { ok: false, error: r.error };
     revalidatePath("/admin/maswali/integrity");
-    return { ok: true, note: "Recorded: the letters were checked." };
+    // S6-NOTICES (L-4) · how many letters the check closed, in the server's own words (`lettersClosedNote`).
+    return { ok: true, note: r.note };
   } catch (err) {
     return { ok: false, error: safeError(err, "The check could not be recorded") };
   }

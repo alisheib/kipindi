@@ -25,9 +25,11 @@
  *      (round 3, A8). ⛔ A letter the provider MAY have delivered is searched for before it is called gone — found, it is
  *      done; absent, it is sent once more and never again; unread, it is listed for an officer and searched again by a later
  *      run (rounds 7 and 8) — until an officer records the check, which closes it for good: never searched for, never sent
- *      again (`closeUnresolvedLetters`, round 17, M5). One that can never go (no address, a hard bounce) completes with its
- *      reason (round 4, M6); its attempt is recorded BEFORE it is sent, so a run that dies mid-send never sends it twice
- *      (round 5, LOW 12);
+ *      again (`closeUnresolvedLetters`, round 17, M5). The integrity card says why each listed letter is open, one sentence
+ *      a cause, and lists the holders whose records could not be read (S6-NOTICES L-2, L-3; `millioneaOpenLetters` hands
+ *      it each open letter with its holder, provider tag and attempts). One that can never go (no address, a hard bounce)
+ *      completes with its reason (round 4, M6); its attempt is recorded BEFORE it is sent, so a run that dies mid-send never
+ *      sends it twice (round 5, LOW 12);
  *    · ⛔ RUNBOOK · ROTATING `OTP_PEPPER` NEVER RESENDS A MONEY LETTER (round 13, the lead's ruling): the letters' records
  *      stay readable, a confirmed letter and a completed run stay done, and a letter the provider may have taken whose
  *      attempt was made under the old pepper is listed on the integrity card ("Letters not known to have gone") for an
@@ -126,8 +128,11 @@ export type NoticeRun = {
   /** Letters by outcome (`LetterOutcome`: the send's own reason, and for a failure its kind — round 4, M6) — and, for a win's
    *  or a refund's letter the provider may have taken, `confirmed` (its search found it) or `unresolved` (not yet known:
    *  the run is not complete; round 7, M2) — and `unread`: holders whose own letter records could not be read, so nothing
-   *  was sent to them now and the run is not complete (round 17, B2). */
-  letters: Partial<Record<LetterOutcome | "confirmed" | "unresolved" | "unread", number>>;
+   *  was sent to them now and the run is not complete (round 17, B2). ⭐ S6-NOTICES (L-3) · of the `unresolved`, those whose
+   *  search cannot be asked because the account's address or the pepper changed since the attempt (`unmatched`); and
+   *  `resendOwed`, letters whose search found no such message and whose one resend did not go in this run — what the
+   *  integrity card says, one sentence a cause (`maswali-console.ts` `unresolvedLetters`). */
+  letters: Partial<Record<LetterOutcome | "confirmed" | "unresolved" | "unread" | "unmatched" | "resendOwed", number>>;
   /** The winners' SMS, on a result run. */
   sms: WinnerSmsTally | null;
   /** ⭐ THE WITNESS, taken as the run was launched — in the caller's own context, before it escapes every lock. */
@@ -502,7 +507,12 @@ async function letterStep(r: NoticeRun, bell: "wrote" | "seen" | "failed", read:
   const notice = r.notice as "result" | "refund";
   const records = await holderLetters(read, weekId, userId, notice);
   if (records === null) { r.letters.unread = (r.letters.unread ?? 0) + 1; return; }
-  if (!doneIn(records, notice)) { await sendLetter(r, userId, job); return; }
+  if (!doneIn(records, notice)) {
+    // ⭐ S6-NOTICES (L-3) · a resend still owed after an "absent" that does not go now is counted: the card says so.
+    const resend = openKindOf(records, notice) === "resendOwed";
+    if ((await sendLetter(r, userId, job)) !== "attempted" && resend) r.letters.resendOwed = (r.letters.resendOwed ?? 0) + 1;
+    return;
+  }
   if (job.money) await resolveLetter(r, userId, records, job);
 }
 
@@ -523,6 +533,19 @@ async function resolveLetter(r: NoticeRun, userId: string, records: readonly Let
   if (newest !== "ambiguous" && newest !== LETTER_ATTEMPT) return;
   const attempt = mine.find((e) => e.payload?.outcome === LETTER_ATTEMPT);
   const attemptAt = Date.parse(attempt?.createdAt ?? mine[0]?.createdAt ?? "");
+  const target = letterTarget(r.weekId, userId);
+  const to = await letterAddressOf(userId, { confirmedOnly: true });
+  // ⭐ Round 9 (L3) · the search asks by today's address: when that is not the address the attempt went to (its record
+  // keeps a peppered hash of it, never the address), the letter stays unresolved — never searched, never resent.
+  // ⭐ Round 13 (the lead's ruling) · the hash is compared only under the pepper that made it: an attempt whose pepper
+  // version is not today's (a rotation since, or none recorded) cannot be compared, so it stays listed for an officer.
+  // ⭐ S6-NOTICES (L-3) · counted apart as well (`unmatched`), whatever the attempt's age — the card's list reads the same
+  // rule (`millioneaOpenLetters`), and says this letter's search is never asked.
+  if (!attemptMatches(attempt, to)) {
+    r.letters.unresolved = (r.letters.unresolved ?? 0) + 1;
+    r.letters.unmatched = (r.letters.unmatched ?? 0) + 1;
+    return;
+  }
   // ⭐ Round 8 (M2) · never asked while the provider's own request may still be in flight or not yet searchable: younger
   // than the margin, it stays unresolved this run.
   if (!Number.isFinite(attemptAt) || Date.now() - attemptAt < letterSearchMargin()) {
@@ -530,18 +553,6 @@ async function resolveLetter(r: NoticeRun, userId: string, records: readonly Let
     return;
   }
   const absentBefore = mine.some((e) => e.payload?.outcome === LETTER_ABSENT);
-  const target = letterTarget(r.weekId, userId);
-  const to = await letterAddressOf(userId, { confirmedOnly: true });
-  // ⭐ Round 9 (L3) · the search asks by today's address: when that is not the address the attempt went to (its record
-  // keeps a peppered hash of it, never the address), the letter stays unresolved — never searched, never resent.
-  // ⭐ Round 13 (the lead's ruling) · the hash is compared only under the pepper that made it: an attempt whose pepper
-  // version is not today's (a rotation since, or none recorded) cannot be compared, so it stays listed for an officer.
-  const sentTo = attempt?.payload?.addr;
-  const sameAddress = to !== null && attempt?.payload?.pv === pepperVersion() && addressHash(to) === sentTo;
-  if (typeof sentTo === "string" && !sameAddress) {
-    r.letters.unresolved = (r.letters.unresolved ?? 0) + 1;
-    return;
-  }
   const found = to === null ? null : await SEARCH.find({ to, tag: job.tag, sinceIso: new Date(attemptAt).toISOString(), letter: letterMetadata(target) }).catch(() => null);
   if (found === "found") {
     const kept = await audit({
@@ -554,17 +565,33 @@ async function resolveLetter(r: NoticeRun, userId: string, records: readonly Let
       category: "SYSTEM", action: LETTER_ACTION, actorId: SYSTEM, targetType: LETTER_TARGET, targetId: target,
       payload: { notice: r.notice, outcome: LETTER_ABSENT },
     });
-    if (kept.recorded) { await sendLetter(r, userId, job); return; }
+    if (kept.recorded) {
+      // ⭐ S6-NOTICES (L-3) · its one resend did not go now: owed, and the card says so.
+      if ((await sendLetter(r, userId, job)) !== "attempted") r.letters.resendOwed = (r.letters.resendOwed ?? 0) + 1;
+      return;
+    }
   }
   r.letters.unresolved = (r.letters.unresolved ?? 0) + 1;
+}
+
+/**
+ * ⭐ Round 9 (L3), round 13 · whether the address a letter would go to today is the one its attempt went to — compared by the
+ * attempt's peppered hash, and only under the pepper that made it. An attempt that recorded no address (none on file then)
+ * is compared with nothing. One rule for the run's search (`resolveLetter`) and the card's list (`millioneaOpenLetters`).
+ */
+function attemptMatches(attempt: LetterRecord | undefined, to: string | null): boolean {
+  const sentTo = attempt?.payload?.addr;
+  if (typeof sentTo !== "string") return true;
+  return to !== null && attempt?.payload?.pv === pepperVersion() && addressHash(to) === sentTo;
 }
 
 /**
  * ⭐ A MONEY LETTER, SENT AT MOST ONCE (round 5, LOW 12): its attempt is recorded on the holder's own target BEFORE the send,
  * and its outcome after — so a run that dies between the two finds the attempt and never sends it again. An attempt that
  * could not be recorded is no send now: the letter is counted failed (an ALARM) and the reconcile sends it later.
+ * Answers whether the letter was attempted (S6-NOTICES, L-3: a resend still owed is counted by its caller).
  */
-async function sendLetter(r: NoticeRun, userId: string, job: LetterJob): Promise<void> {
+async function sendLetter(r: NoticeRun, userId: string, job: LetterJob): Promise<"attempted" | "unrecorded"> {
   const target = letterTarget(r.weekId, userId);
   const to = await letterAddressOf(userId, { confirmedOnly: true });
   const attempt = await audit({
@@ -574,7 +601,7 @@ async function sendLetter(r: NoticeRun, userId: string, job: LetterJob): Promise
   if (!attempt.recorded) {
     console.error(`[maswali-notify] ALARM: a ${r.notice} letter's attempt for ${r.weekId} could not be recorded; it is not sent now.`);
     r.letters.failed = (r.letters.failed ?? 0) + 1;
-    return;
+    return "unrecorded";
   }
   const res = await job.send({ letter: letterMetadata(target) });
   const outcome = letterOutcome(res, job.money);
@@ -586,6 +613,7 @@ async function sendLetter(r: NoticeRun, userId: string, job: LetterJob): Promise
   // ⭐ Rounds 7 and 8 (M2, M3) · a win's or a refund's letter the provider may have taken — or whose outcome's own record
   // did not land — is not yet known to be gone.
   if (job.money && (outcome === "ambiguous" || !kept.recorded)) r.letters.unresolved = (r.letters.unresolved ?? 0) + 1;
+  return "attempted";
 }
 
 /** ⚠️ FOR THE SUITES: the winners' SMS of these outcomes, tallied as a run tallies them, and whether that leaves the SMS done. */
@@ -720,18 +748,85 @@ async function lastRunRecord(weekId: string, notice: "result" | "refund"): Promi
 }
 
 /**
+ * The letters a run leaves STANDING — those the integrity card lists, by cause (`maswali-console.ts` `unresolvedLetters`):
+ * as a key, so two runs' standing letters compare. A count a run makes of what it did this time (a letter sent, refused) is
+ * not here: a re-run that does nothing makes none of those.
+ */
+function standingLetters(letters: unknown): string {
+  const l = (letters ?? {}) as Record<string, unknown>;
+  return (["unresolved", "unmatched", "resendOwed", "unread"] as const).map((k) => (typeof l[k] === "number" ? l[k] : 0)).join(",");
+}
+
+/**
  * ⭐ A MONEY NOTICE'S RECORD, WRITTEN ONLY WHEN THE RUN CHANGED SOMETHING (round 3, A12): a first run, a bell, a letter or
- * an SMS that went, or a different answer to "complete" — so a hold that cannot clear yet leaves no record an hour for
- * fourteen days. A last record that cannot be read is no reason to stay silent: the run records.
+ * an SMS that went, or a different answer to "complete" — ⭐ S6-NOTICES (L-3) · or different letters left standing, which
+ * the integrity card reads from the newest record (a letter whose address changed since, a resend still owed) — so a hold
+ * that cannot clear yet leaves no record an hour for fourteen days. A last record that cannot be read is no reason to stay
+ * silent: the run records.
  */
 async function recordMoneyRun(week: StoredWeek, r: NoticeRun): Promise<void> {
   const last = await lastRunRecord(week.id, r.notice as "result" | "refund");
   const went = r.sent > 0 || (r.letters.sent ?? 0) + (r.letters.stub ?? 0) + (r.letters.ambiguous ?? 0) + (r.letters.confirmed ?? 0) > 0 || (r.sms?.sent ?? 0) > 0;
-  if (last && !went && last.complete === complete(r)) return;
+  if (last && !went && last.complete === complete(r) && standingLetters(last.letters) === standingLetters(r.letters)) return;
   recordRun(week, r);
 }
 
 // ── AN OFFICER'S CHECK CLOSES THE LETTERS IT LISTS (round 17, M5 — the lead's ruling) ───────────────────────────────
+
+/** The holders a week's money notice writes letters to: a result's winners, a refund's every holder (OD-25: nobody else). */
+async function moneyLetterHolders(week: StoredWeek, notice: "result" | "refund"): Promise<string[]> {
+  const tickets = await ticketStore.listForWeek(week.id, { status: notice === "result" ? "SETTLED" : "REFUNDED" });
+  return [...byHolder(tickets)].filter(([, mine]) => notice === "refund" || mine.some((t) => t.won === true)).map(([userId]) => userId);
+}
+
+/**
+ * ⭐ A MONEY LETTER STILL OPEN, as its holder's own records say it (newest first) — what the integrity card lists and what an
+ * officer's check closes, one rule for both: `attempted`, the provider may have taken it (its newest record an ambiguous
+ * outcome or a bare attempt); `resendOwed`, its search found no such message and its one resend has not gone. Null for every
+ * other letter: done, never sent, or definitely refused (the reconcile sends that one again).
+ */
+function openKindOf(records: readonly LetterRecord[], notice: "result" | "refund"): "attempted" | "resendOwed" | null {
+  const newest = records.find((e) => e.payload?.notice === notice)?.payload?.outcome;
+  if (newest === LETTER_ABSENT) return "resendOwed";
+  return newest === "ambiguous" || newest === LETTER_ATTEMPT ? "attempted" : null;
+}
+
+/**
+ * Why a listed letter is open (S6-NOTICES, L-3), one sentence each on the card: `uncertain`, the provider may have taken it and
+ * its search has not said so; `unmatched`, the same, but the account's address or the pepper changed since its attempt, so
+ * its search is never asked; `resendOwed`, its search found no such message and its one resend is still owed.
+ */
+export type OpenLetterCause = "uncertain" | "unmatched" | "resendOwed";
+
+/** One open money letter as the card lists it for Compliance: its holder, why it is open, the tag the provider knows it by
+ *  (`letterMetadata`, a one-way digest: no account id leaves) and its attempts' instants, newest first. */
+export type OpenLetter = { userId: string; cause: OpenLetterCause; tag: string; attempts: string[] };
+
+/**
+ * ⭐ S6-NOTICES (L-3) · THE OPEN LETTERS OF ONE WEEK'S MONEY NOTICE, from their holders' own records — exactly the letters an
+ * officer's check would close now, each with the tag and the attempt instants the provider's activity is searched by. Null
+ * when the records were not read whole (one read cut short, or failed): the card then says so, and no page load reads a
+ * week's holders one by one.
+ */
+export async function millioneaOpenLetters(weekId: string, notice: "result" | "refund"): Promise<OpenLetter[] | null> {
+  const week = await weekStore.get(weekId);
+  if (!week || week.state !== (notice === "result" ? "SETTLED" : "VOIDED")) return [];
+  const holders = await moneyLetterHolders(week, notice);
+  const read = await letterRecords(week.id, notice, holders);
+  if (read === null) return null;
+  const out: OpenLetter[] = [];
+  for (const userId of holders) {
+    const target = letterTarget(week.id, userId);
+    const mine = (read.get(target) ?? []).filter((e) => e.payload?.notice === notice);
+    const kind = openKindOf(mine, notice);
+    if (kind === null) continue;
+    const attempts = mine.filter((e) => e.payload?.outcome === LETTER_ATTEMPT);
+    const cause: OpenLetterCause = kind === "resendOwed" ? "resendOwed"
+      : attemptMatches(attempts[0], await letterAddressOf(userId, { confirmedOnly: true })) ? "uncertain" : "unmatched";
+    out.push({ userId, cause, tag: letterMetadata(target), attempts: attempts.map((e) => e.createdAt) });
+  }
+  return out;
+}
 
 /** What an officer's check of one week's notice did: the letters it closed, or why it did nothing. */
 export type LettersCheck = { ok: true; closed: number } | { ok: false; error: string };
@@ -775,15 +870,13 @@ export async function closeUnresolvedLetters(
     const lost: LettersCheck = { ok: false, error: "The week's hold was lost part-way, so the check was not recorded. Try again." };
     const week = await weekStore.get(weekId);
     if (!week || week.state !== (notice === "result" ? "SETTLED" : "VOIDED")) return { ok: false, error: "This week has no such notice to check." };
-    const tickets = await ticketStore.listForWeek(week.id, { status: notice === "result" ? "SETTLED" : "REFUNDED" });
-    const holders = [...byHolder(tickets)].filter(([, mine]) => notice === "refund" || mine.some((t) => t.won === true)).map(([userId]) => userId);
+    const holders = await moneyLetterHolders(week, notice);
     const read = await letterRecords(week.id, notice, holders);
     const open: string[] = [];
     for (const userId of holders) {
       const records = await holderLetters(read, week.id, userId, notice);
       if (records === null) return { ok: false, error: "A holder's letter records could not be read, so nothing was closed. Try again." };
-      const newest = records.find((e) => e.payload?.notice === notice)?.payload?.outcome;
-      if (newest === "ambiguous" || newest === LETTER_ATTEMPT || newest === LETTER_ABSENT) open.push(userId);
+      if (openKindOf(records, notice) !== null) open.push(userId);
     }
     for (const userId of open) {
       if (!(await keep())) return lost;

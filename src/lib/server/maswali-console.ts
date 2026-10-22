@@ -19,6 +19,8 @@ import { audit, getAuditForTargetsDurable } from "./audit";
 import { withLock } from "./locks";
 import { millioneaNoticeHref } from "./notification-service";
 import { winnerSmsRecords, winnerSmsTargetId } from "./maswali-winner-sms";
+// A type only, erased at build: the notices module itself still loads only when a check is recorded.
+import type { OpenLetter } from "./maswali-notify";
 import {
   calendarStartMs, deadlinesUnderRules, frozenRules, gradable, guaranteeProblem, NO_LICENCE_BASIS, openProblems, proposeVoidsAtDeadline, stopNextActNow, sunsetState,
 } from "./maswali-service";
@@ -37,7 +39,7 @@ import { marketStore } from "./market-dal";
 import { MAIN_COUNT, settlementGate, weekVoidCertain } from "@/lib/maswali-score";
 import { guaranteeRequirement } from "@/lib/maswali-money";
 import type { RolloutState } from "@/lib/millionea-rollout";
-import { formatTzs } from "@/lib/utils";
+import { formatNumber, formatTzs } from "@/lib/utils";
 import { fmtEat } from "@/lib/maswali-admin-format";
 import { parseWeekListQuery, selectWeekPage, type WeekListQuery } from "@/lib/maswali-week-list";
 import { parseIntegrityListQuery, selectHeldShares, selectWinnerTickets, selectSealWeeks, selectVoidableWeeks, type IntegrityListQuery } from "@/lib/maswali-integrity-list";
@@ -436,10 +438,62 @@ export async function owedRefunds(): Promise<OwedRefund[]> {
 
 // ── LETTERS NOT KNOWN TO HAVE GONE (S6, the lane-N review's round 7, M2; the integrity page's own rows) ──────────────
 
-/** A week whose newest money-notice run left letters the provider may have taken, and its search could not say — an
- *  officer's call: a later run asks the search again (an "absent" then sends the letter once more) until the officer's
- *  recorded check closes them (round 17, M5). Counts only: no holder is named. */
-export type UnresolvedLetters = { weekId: string; code: string; notice: "result" | "refund"; letters: number };
+/**
+ * A week whose newest money-notice run left letters an officer must look at — read from that run's own record, counts only:
+ *   · `letters`, the letters open on their holders' records: the provider may have taken them and its search has not said so
+ *     (`causes.uncertain`), the same but whose search cannot be asked because the account's address or the pepper changed
+ *     since the attempt (`causes.unmatched`), or whose one resend is still owed after the search found none
+ *     (`causes.resendOwed`) — a later run asks the search again, until the officer's recorded check closes them (round 17,
+ *     M5; S6-NOTICES L-3);
+ *   · ⭐ S6-NOTICES (L-2) · `unread`, the holders whose letter records the run could not read, so nothing was sent to them —
+ *     listed too: the reconcile reads them again only for `NOTICE_RECONCILE_DAYS`, and after that nobody else would see them.
+ * The letters themselves, with their holders, are read only when an officer opens the row (`unresolvedLetterList`).
+ */
+export type UnresolvedLetters = {
+  weekId: string; code: string; notice: "result" | "refund";
+  letters: number;
+  causes: { uncertain: number; unmatched: number; resendOwed: number };
+  unread: number;
+};
+
+/** A run record's count of one kind of letter: a whole number, else 0 (a record written before the kind existed). */
+function countIn(letters: unknown, key: string): number {
+  const n = (letters as Record<string, unknown> | null | undefined)?.[key];
+  return typeof n === "number" && Number.isSafeInteger(n) && n > 0 ? n : 0;
+}
+
+/** ⭐ S6-NOTICES (L-3) · one week's open letters, a page at a time, each with its holder — the card's opened row. */
+export type UnresolvedLetterRow = OpenLetter & { holder: string };
+
+/** The causes in the order the card says them. */
+const CAUSE_ORDER = ["uncertain", "unmatched", "resendOwed"] as const;
+
+/**
+ * ⭐ S6-NOTICES (L-3) · ONE WEEK'S OPEN LETTERS, FOR COMPLIANCE: the letters of a week's money notice open on their holders'
+ * own records (`millioneaOpenLetters`, maswali-notify.ts — exactly what the check would close; the integrity page reads
+ * them itself, after it has decided its audience, D19/259), each given its holder; by cause, then holder; a page at a time.
+ * Null when those records were not read whole: the card says so, and the week's audit trail has them.
+ */
+export async function unresolvedLetterList(
+  open: ReadonlyArray<Omit<UnresolvedLetterRow, "holder">> | null, askedPage: number,
+): Promise<{ rows: UnresolvedLetterRow[]; total: number; page: number } | null> {
+  if (open === null) return null;
+  const rows: UnresolvedLetterRow[] = [];
+  for (const l of open) rows.push({ ...l, holder: (await holderOf(l.userId)).holder });
+  rows.sort((a, b) => CAUSE_ORDER.indexOf(a.cause) - CAUSE_ORDER.indexOf(b.cause) || a.holder.localeCompare(b.holder) || a.userId.localeCompare(b.userId));
+  const page = clampPage(askedPage, rows.length, CONSOLE_PER_PAGE);
+  return { rows: rows.slice((page - 1) * CONSOLE_PER_PAGE, page * CONSOLE_PER_PAGE), total: rows.length, page };
+}
+
+/**
+ * ⭐ S6-NOTICES (L-4) · what the officer is told once the check is recorded: how many letters it closed, and that they are
+ * closed for good — never "the letters were checked" when nothing was closed.
+ */
+export function lettersClosedNote(closed: number): string {
+  return closed === 0
+    ? "Recorded. No letter of this week was open, so none was closed."
+    : `Recorded: ${closed === 1 ? "1 letter" : `${formatNumber(closed)} letters`} closed — never searched for or sent again.`;
+}
 
 /** An officer's record that a week's letters not known to have gone were checked (round 10, L4): the row leaves the card
  *  until a later run of that notice lists it again. */
@@ -454,7 +508,7 @@ export const LETTERS_CLEARED_WORD = "CHECKED";
 export async function clearUnresolvedLetter(
   input: { weekId: string; notice: string; officerId: string; typed: string; note: string },
   deps: { audit: typeof audit } = { audit },
-): Promise<{ ok: true; closed: number } | { ok: false; error: string }> {
+): Promise<{ ok: true; closed: number; note: string } | { ok: false; error: string }> {
   if (input.typed !== LETTERS_CLEARED_WORD) return { ok: false, error: `Type ${LETTERS_CLEARED_WORD} to record the check.` };
   const notice = input.notice;
   if (notice !== "result" && notice !== "refund") return { ok: false, error: "No such notice." };
@@ -465,10 +519,12 @@ export async function clearUnresolvedLetter(
   if (!week) return { ok: false, error: "No such week." };
   // The notices module loads only when a check is recorded, as it loads for the money files only when they fire.
   const { closeUnresolvedLetters } = await import("./maswali-notify");
-  return closeUnresolvedLetters(week.id, notice, input.officerId, async (closed) => (await deps.audit({
+  const r = await closeUnresolvedLetters(week.id, notice, input.officerId, async (closed) => (await deps.audit({
     category: "COMPLIANCE", action: LETTERS_CLEARED_ACTION, actorId: input.officerId, targetType: "MaswaliCycle", targetId: week.id,
     payload: { code: week.code, notice, note, closed },
   })).recorded);
+  // ⭐ S6-NOTICES (L-4) · the answer says how many letters the check closed (`lettersClosedNote`), the action passes it on.
+  return r.ok ? { ok: true, closed: r.closed, note: lettersClosedNote(r.closed) } : r;
 }
 
 /** How many of the newest settled or voided weeks the read covers (round 9, L4). */
@@ -489,7 +545,8 @@ export function newestEndedFirst<T extends Pick<StoredWeek, "settledAt" | "updat
 export type UnresolvedLettersRead = { rows: UnresolvedLetters[]; truncated: boolean; partial: boolean };
 
 /** The newest `UNRESOLVED_LETTER_WEEKS` settled or voided weeks whose newest result or refund run record counts letters
- *  unresolved, one row a notice — and whether there were older weeks it did not read (round 9, L4). */
+ *  left open (or, S6-NOTICES L-2, holders whose letter records it could not read), one row a notice — and whether there
+ *  were older weeks it did not read (round 9, L4). */
 export async function unresolvedLetters(): Promise<UnresolvedLettersRead> {
   const weeks = newestEndedFirst((await weekStore.list({})).filter((w) => w.state === "SETTLED" || w.state === "VOIDED"));
   const rows: UnresolvedLetters[] = [];
@@ -506,8 +563,15 @@ export async function unresolvedLetters(): Promise<UnresolvedLettersRead> {
       if (!run && read.truncated) partial = true;
       // ⭐ Round 10 (L4) · a check recorded after the newest run leaves the row out; a later run lists it again.
       if (run && cleared && read.entries.indexOf(cleared) < read.entries.indexOf(run)) continue;
-      const n = (run?.payload?.letters as { unresolved?: unknown } | null | undefined)?.unresolved;
-      if (typeof n === "number" && Number.isSafeInteger(n) && n > 0) rows.push({ weekId: w.id, code: w.code, notice, letters: n });
+      const letters = run?.payload?.letters;
+      // ⭐ S6-NOTICES (L-3) · by cause: of the unresolved, those whose search cannot be asked (`unmatched`); a resend owed.
+      const unresolved = countIn(letters, "unresolved");
+      const unmatched = Math.min(countIn(letters, "unmatched"), unresolved);
+      const causes = { uncertain: unresolved - unmatched, unmatched, resendOwed: countIn(letters, "resendOwed") };
+      const open = causes.uncertain + causes.unmatched + causes.resendOwed;
+      // ⭐ S6-NOTICES (L-2) · a run that could not read some holders' letter records is listed too.
+      const unread = countIn(letters, "unread");
+      if (open > 0 || unread > 0) rows.push({ weekId: w.id, code: w.code, notice, letters: open, causes, unread });
     }
   }
   return { rows, truncated: weeks.length > UNRESOLVED_LETTER_WEEKS, partial };

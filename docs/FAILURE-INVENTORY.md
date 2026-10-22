@@ -1290,3 +1290,39 @@ the settlement (RD.1). Before ACTIVE: the wallet lane's trigger, or the Owner's 
 
 The takeover alert MB-96 asks for is not built. What holds today: the preventive control (E-215, TK.1). Before
 ACTIVE: the alert, or a dated deferral recorded by the Owner.
+
+## §9b · MASWALI MILLIONEA — the S6 integration's fixes, each a FINAL rule (2026-10-22)
+
+Each entry is the rule as it stands, where it is enforced, and the case and the plant that hold it (MASWALI-BUILD S6-INT,
+branch `claude/maswali-s6-release`).
+
+#### ✅ L-2 · holders whose letter records could not be read were listed nowhere (S6-NOTICES 1)
+
+A money notice sends nothing to a holder whose own letter records cannot be read and leaves the run owed (round 17, B2),
+so the reconcile reads them again — but only for `NOTICE_RECONCILE_DAYS` after the week ended, and nothing listed them:
+past that window nobody would see a holder no letter reached. THE RULE (`unresolvedLetters`, `maswali-console.ts`): a
+week whose newest money-notice run counted such holders (`letters.unread`) is a row of the integrity card ("Letters not
+known to have gone"), which says nothing was sent to them, that each run reads them again for those days, and that the
+officer's check cannot be recorded until they read. Held by `test:maswali-notify` 11c.1b, 11c.2b and 11e.2, and the
+plants (N16), (N21) of `red:maswali-money-path`.
+
+#### ✅ L-3 · the integrity card's one sentence was untrue for three of its causes, and named no letter (S6-NOTICES 1)
+
+The card said of every listed letter that the provider's "own search could not say", and named no holder — false for a
+letter whose account address or pepper changed since its attempt (its search is never asked), for one the search did not
+find after its one resend (never sent again), and silent on a resend still owed; and "check the provider's activity"
+could not be done without the letter. THE RULE (`letters-card.tsx`; `millioneaOpenLetters` and the run's counts in
+`maswali-notify.ts`): one sentence a cause, each true of the letters it counts — may have been taken and not yet
+confirmed; its search can never be asked; its one resend owed; and (L-2) records not read — from the newest run's own
+counts (`unresolved`, of them `unmatched`, `resendOwed`, `unread`; a run is recorded whenever the letters it leaves
+standing change). An opened row lists, a page at a time, each open letter with its holder, account, cause, provider tag
+(the letter's metadata, a one-way digest) and attempt times — exactly the letters the officer's check closes. Held by
+`test:maswali-notify` 8.11f2, 11d.5b and §11e, and the plants (N11), (N17), (N18), (N22).
+
+#### ✅ L-4 · the check said "the letters were checked" whatever it closed (S6-NOTICES 1)
+
+THE RULE (`clearUnresolvedLetter`, `lettersClosedNote`, `maswali-console.ts`): the check's answer — the one the officer's
+action shows — says how many letters it closed and that they are closed for good ("Recorded: 3 letters closed — never
+searched for or sent again."; none open: "Recorded. No letter of this week was open, so none was closed."), and its
+dialog says before it is recorded that it closes the week's open letters for good. Held by `test:maswali-notify` 8.11g3,
+11d.5b and 11e.6, and the plants (N19), (N20).

@@ -60,6 +60,12 @@
  * the week skipped (11d.2–3), an unreadable holder refusing it (11d.4), only uncertain letters closed (11d.5), and on
  * Postgres another process's lease refusing it (11d.6) (M5) · 13.7 re-pinned (the check's own strict lease) · 13.9 the
  * integrity card says what becomes of a listed letter (M5) · 13.8 the provider metadata's doc names the digest (L1).
+ * S6-NOTICES (the lane-N merge review's LOWs, 2026-10-22): 8.11f2 a letter whose search can never be asked is counted by
+ * that cause — on the run, on the card's row and in its opened list, and a run whose letters changed cause records so (L-3)
+ * · 8.11g3 and 11d.5b the check's answer says how many letters it closed (L-4) · 11c.1b–2b the card lists a week whose
+ * holders' letter records could not be read, until they read (L-2) · 11d.5b a resend still owed is listed by its cause (L-3)
+ * · §11e the card's words rendered — one sentence a cause, each letter with its holder, tag and attempts, a page at a time;
+ * the officer's action answers with the check's own note (L-2, L-3, L-4) · 13.9 re-pinned to the card's own words.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const STORE = process.env.HB_MONEY_STORE ?? "unknown";
@@ -882,6 +888,15 @@ console.log(`${LF}§8 · a week void — a two-officer void, the certainty rule,
   await settleAll();
   ok("8.11e · ⭐ round 8 (M3) · a letter whose newest record is a bare attempt is searched for, and confirmed when the provider has it",
     resent === 1 && s5.letters.confirmed === 1 && searchedFor.length >= 4, J({ letters: s5.letters, searched: searchedFor.length }));
+  // ⭐ S6-NOTICES (L-3) · the week's newest record must say the letter's cause, not only whether the run completed: one more
+  // bare attempt whose search cannot answer leaves the run NOT complete (it may have gone) — so the run below, also not
+  // complete, is recorded only because the letter's cause changed (8.11f2 reads that record).
+  await audit({ category: "SYSTEM", action: "maswali.notice.letter", actorId: null, targetType: "MaswaliLetter",
+    targetId: notify.millioneaLetterTarget(w4.id, A), payload: { notice: "refund", outcome: "attempt" } } as any);
+  answer = null;
+  const sA = await notify.noticeWeekRefunded(w4.id);
+  await settleAll();
+  answer = "found";
   // ⭐ Round 9 (L3) · an attempt recorded for another address than today's is never searched for, nor resent.
   const searchedBefore = searchedFor.length;
   await audit({ category: "SYSTEM", action: "maswali.notice.letter", actorId: null, targetType: "MaswaliLetter",
@@ -890,12 +905,31 @@ console.log(`${LF}§8 · a week void — a two-officer void, the certainty rule,
   await settleAll();
   ok("8.11f · ⭐ round 9 (L3) · a letter attempted to an address no longer on file stays unresolved — never searched, never resent",
     s6.letters.unresolved === 1 && searchedFor.length === searchedBefore && resent === 1, J({ letters: s6.letters, searched: searchedFor.length - searchedBefore }));
+  // ⭐ S6-NOTICES (L-3) · that letter is counted by its own cause — its search can never be asked — and the integrity card says
+  // so: the run's record, the card's row and the opened row's letter (its holder, provider tag and attempts) each name it.
+  const rowF = (await consoleRead.unresolvedLetters()).rows.find((l: any) => l.weekId === w4.id && l.notice === "refund");
+  const openF = await notify.millioneaOpenLetters(w4.id, "refund");
+  const listF = await consoleRead.unresolvedLetterList(openF, 1);
+  ok("8.11f2 · ⭐ S6-NOTICES (L-3) · a letter whose address changed since its attempt is counted apart — the run, the card's row and the opened list each say its search can never be asked, with its holder, tag and attempts",
+    sA.letters.unresolved === 1 && !sA.letters.unmatched && !notify.millioneaRunComplete(sA)
+      && s6.letters.unmatched === 1 && J(rowF?.causes) === J({ uncertain: 0, unmatched: 1, resendOwed: 0 }) && rowF?.letters === 1 && rowF?.unread === 0
+      && openF?.length === 1 && openF[0].userId === A && openF[0].cause === "unmatched" && openF[0].tag === notify.millioneaLetterMetadata(w4.id, A)
+      && openF[0].attempts.length >= 2 && openF[0].attempts.every((x: string) => Number.isFinite(Date.parse(x)))
+      && listF?.total === 1 && listF.rows[0].userId === A && typeof listF.rows[0].holder === "string" && listF.rows[0].holder.length > 0,
+    J({ sA: sA.letters, letters: s6.letters, rowF, openF, listF }));
   // ⭐ Round 10 (L4) · an officer records the check: the row leaves the integrity card — and a later run of the notice lists
   // it again.
   const clearedBy = await consoleRead.clearUnresolvedLetter({ weekId: w4.id, notice: "refund", officerId: "usr_mln_notify_officer", typed: "CHECKED", note: "the provider's activity was checked" });
   const afterCheck = (await consoleRead.integrityView(at4)).unresolvedLetters;
   ok("8.11g · ⭐ round 10 (L4) · an officer's recorded check takes the week's row off the integrity card",
     clearedBy.ok && Array.isArray(afterCheck?.rows) && !afterCheck.rows.some((l: any) => l.weekId === w4.id && l.notice === "refund"), J({ clearedBy, afterCheck }));
+  // ⭐ S6-NOTICES (L-4) · the check's answer says how many letters it closed — the officer's note the action passes on.
+  ok("8.11g3 · ⭐ S6-NOTICES (L-4) · the check's answer says how many letters it closed, and that they are closed for good — never \"the letters were checked\" alone",
+    (clearedBy as any).note === "Recorded: 1 letter closed — never searched for or sent again."
+      && consoleRead.lettersClosedNote(3) === "Recorded: 3 letters closed — never searched for or sent again."
+      && consoleRead.lettersClosedNote(1_200) === "Recorded: 1,200 letters closed — never searched for or sent again."
+      && consoleRead.lettersClosedNote(0) === "Recorded. No letter of this week was open, so none was closed.",
+    J(clearedBy));
   // ⭐ Round 17 (M5, the lead's ruling) · the check CLOSES the letter it listed, on the holder's own record: a later run whose
   // search reads "absent" — which would have sent it once more — searches nothing and sends nothing, and completes.
   await auditFlush();
@@ -1215,12 +1249,18 @@ console.log(`${LF}§11c · ⭐ round 17 (B2) · a money letter whose records can
     const first = (await resultRuns(wu.id))[0] ?? null;
     ok("11c.1 · ⭐ round 17 (B2) · a winner whose letter records cannot be read: no letter now, the holder counted unread, and the run recorded NOT complete",
       bought.ok && rel?.ok && sentTags.length === 0 && first?.complete === false && first?.letters?.unread === 1, J({ rel: rel?.ok ? "ok" : rel, first, sentTags }));
+    // ⭐ S6-NOTICES (L-2) · that holder is never out of sight: the integrity card lists the week — one holder not read, no letter.
+    const listedUnread = (await consoleRead.unresolvedLetters()).rows.find((l: any) => l.weekId === wu.id && l.notice === "result");
+    ok("11c.1b · ⭐ S6-NOTICES (L-2) · …and the integrity card lists that week: one holder whose letter records could not be read, and no letter open",
+      listedUnread?.unread === 1 && listedUnread?.letters === 0, J(listedUnread));
     // The records read again: the tick's reconcile comes back to the week and sends that letter, once.
     const rec = await notify.reconcileMillioneaNotices(new Date());
     await settleAll();
     const second = (await resultRuns(wu.id))[0] ?? null;
     ok("11c.2 · ⭐ round 17 (B2) · once the records read, the reconcile sends that letter once and the run completes",
       J(sentTags) === J(["millionea-win"]) && second?.complete === true && !second?.letters?.unread, J({ rec, second, sentTags }));
+    ok("11c.2b · ⭐ S6-NOTICES (L-2) · …and the week leaves the integrity card",
+      !(await consoleRead.unresolvedLetters()).rows.some((l: any) => l.weekId === wu.id));
   } finally {
     putSender();
   }
@@ -1348,6 +1388,8 @@ console.log(`${LF}§11d · ⭐ round 17 (M5) · an officer's check closes the le
     const afterBare = (await newestOf())?.payload?.outcome;
     await audit({ category: "SYSTEM", action: "maswali.notice.letter", actorId: null, targetType: "MaswaliLetter", targetId: targetD,
       payload: { notice: "refund", outcome: "absent" } } as any);
+    // ⭐ S6-NOTICES (L-3) · read as the card's opened row reads it, before the check closes it.
+    const openAbsent = await notify.millioneaOpenLetters(wd.id, "refund");
     const owedResend = await checkD();
     const afterAbsent = (await newestOf())?.payload?.outcome;
     await audit({ category: "SYSTEM", action: "maswali.notice.letter", actorId: null, targetType: "MaswaliLetter", targetId: targetD,
@@ -1358,6 +1400,12 @@ console.log(`${LF}§11d · ⭐ round 17 (M5) · an officer's check closes the le
       bare.ok && (bare as any).closed === 1 && afterBare === "cleared" && owedResend.ok && (owedResend as any).closed === 1 && afterAbsent === "cleared"
         && refusedOne.ok && (refusedOne as any).closed === 0 && afterFailed === "failed",
       J({ bare, afterBare, owedResend, afterAbsent, refusedOne, afterFailed }));
+    ok("11d.5b · ⭐ S6-NOTICES (L-3, L-4) · the card's opened row lists the resend still owed by that cause — the letter the check then closed — and a check that closed nothing says so",
+      openAbsent?.length === 1 && openAbsent[0].userId === R4 && openAbsent[0].cause === "resendOwed" && openAbsent[0].tag === notify.millioneaLetterMetadata(wd.id, R4)
+        && (owedResend as any).note === "Recorded: 1 letter closed — never searched for or sent again."
+        && (refusedOne as any).note === "Recorded. No letter of this week was open, so none was closed."
+        && J(await notify.millioneaOpenLetters(wd.id, "refund")) === "[]",
+      J({ openAbsent, owed: (owedResend as any).note, refused: (refusedOne as any).note }));
 
     // 11d.6 · on PostgreSQL, another process holding the week's lease refuses the check before it reads or closes anything.
     if (W.onPostgres) {
@@ -1380,6 +1428,75 @@ console.log(`${LF}§11d · ⭐ round 17 (M5) · an officer's check closes the le
     putSearch();
     putSender();
   }
+}
+
+// ── §11e · ⭐ S6-NOTICES (L-2, L-3) · the integrity card's words, rendered ─────────────────────────────────────────────────
+console.log(`${LF}§11e · ⭐ S6-NOTICES (L-2, L-3) · the integrity card says one true sentence a cause, and lists each letter for Compliance`);
+{
+  const { createElement: h } = await import("react");
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const card = await import("../../src/app/admin/maswali/integrity/letters-card.tsx");
+  const { fmtEat } = await import("../../src/lib/maswali-admin-format.ts");
+  /** The card's text as a reader reads it: the markup's words, entities decoded, spaces collapsed. */
+  const textOf = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#x27;/g, "'").replace(/&quot;/g, "\"").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
+  const row = (o: Record<string, unknown>) => ({ weekId: "mlw_card_a", code: "MLN-2026-W44", notice: "refund", letters: 0,
+    causes: { uncertain: 0, unmatched: 0, resendOwed: 0 }, unread: 0, ...o }) as any;
+  const render = (read: any, opened: any = null) => renderToStaticMarkup(h(card.LettersCardBody as any, {
+    read, reconcileDays: notify.NOTICE_RECONCILE_DAYS, opened, query: { wpage: "2" }, control: () => h("span", null, "[the check]"),
+  }));
+  const rows = [
+    row({ letters: 4, causes: { uncertain: 2, unmatched: 1, resendOwed: 1 } }),
+    row({ weekId: "mlw_card_b", code: "MLN-2026-W45", notice: "result", unread: 3 }),
+  ];
+  const html = render({ rows, truncated: false, partial: false });
+  const text = textOf(html);
+  const days = notify.NOTICE_RECONCILE_DAYS;
+  const SAYS = {
+    head: "MLN-2026-W44 · 4 refund letters open",
+    uncertain: "2 letters may have been taken by the email provider, and their search has not said so. Each run asks again: a letter the search finds is done, and one it finds no trace of is sent once more, never a third time.",
+    unmatched: "1 letter may have been taken by the email provider, but its search can never be asked: the account's address, or the key its attempt was recorded under, has changed since. It is never searched for or sent again.",
+    resendOwed: "1 letter was not found by the provider's search: its one resend is owed, and the next run sends it.",
+    check: "Check the provider's activity for each letter, by its tag and attempt time, before anyone writes to the holder. Recording the check closes every open letter of this week for good: never searched for, never sent again.",
+    unreadHead: "MLN-2026-W45 · 3 holders' records not read",
+    unread: `3 holders' letter records could not be read, so nothing was sent to them. Each run reads them again for ${days} days after the week ended; the check cannot be recorded until they read.`,
+  };
+  ok("11e.1 · ⭐ S6-NOTICES (L-3) · each cause the run counted is said in its own sentence, true of the letters it counts, with what the check does",
+    Object.entries(SAYS).filter(([k]) => !k.startsWith("unread")).every(([, s]) => text.includes(s)) && (text.match(/Recording the check closes/g) ?? []).length === 1,
+    text.slice(0, 600));
+  ok("11e.2 · ⭐ S6-NOTICES (L-2) · a week whose holders' letter records could not be read is listed with that cause — and no letter to open, and no word of a check it cannot take",
+    text.includes(SAYS.unreadHead) && text.includes(SAYS.unread) && (text.match(/Show the letter/g) ?? []).length === 1 && (text.match(/\[the check\]/g) ?? []).length === 2,
+    text.slice(text.indexOf("MLN-2026-W45")));
+  const single = textOf(render({ rows: [row({ letters: 1, causes: { uncertain: 1, unmatched: 0, resendOwed: 0 } })], truncated: false, partial: false }));
+  const empty = textOf(render({ rows: [], truncated: false, partial: false }));
+  ok("11e.3 · ⭐ S6-NOTICES (L-3) · one letter is said in the singular; no sentence claims what the run did not find (\"its own search could not say\", \"never sent again by themselves\"); the empty card overclaims nothing",
+    single.includes("1 letter may have been taken by the email provider, and its search has not said so.") && single.includes("Show the letter ")
+      && ![text, single, empty].some((s) => /its own search could not say|never sent again by themselves|known to have gone or to need nothing/.test(s))
+      && empty === "No win or refund letter is waiting on an officer's check.",
+    J({ single: single.slice(0, 200), empty }));
+  const attemptAt = "2026-10-18T09:00:00.000Z";
+  const opened = { key: card.letterRowKey(rows[0]), list: { rows: [{ userId: "usr_card_holder", holder: "Asha M.", cause: "unmatched", tag: "0123456789abcdef0123456789abcdef", attempts: [attemptAt] }], total: 1, page: 1 } };
+  const openText = textOf(render({ rows, truncated: false, partial: false }, opened));
+  ok("11e.4 · ⭐ S6-NOTICES (L-3) · an opened row lists each open letter for Compliance: its holder, account, cause, provider tag and attempt time (EAT) — and the link closes it",
+    ["Asha M.", "usr_card_holder", "Search cannot be asked", "0123456789abcdef0123456789abcdef", fmtEat(attemptAt), "Hide the letters"].every((s) => openText.includes(s))
+      && !openText.includes("Show the letters"),
+    openText.slice(openText.indexOf("Hide"), openText.indexOf("Hide") + 300));
+  // The opened list a page at a time (no list cut at N), ordered by cause, then holder.
+  const many = Array.from({ length: 25 }, (_, i) => ({ userId: `usr_card_${String(i).padStart(2, "0")}`, cause: i % 3 === 0 ? "resendOwed" : "uncertain",
+    tag: `tag${i}`, attempts: [attemptAt] })) as any[];
+  const p1 = await consoleRead.unresolvedLetterList(many, 1);
+  const p2 = await consoleRead.unresolvedLetterList(many, 9);
+  const causesInOrder = [...(p1?.rows ?? []), ...(p2?.rows ?? [])].map((r: any) => r.cause);
+  ok("11e.5 · ⭐ S6-NOTICES (L-3) · the opened list pages every open letter — 25 as 20 and 5, a page asked past the end clamped to the last — the uncertain ones first",
+    p1?.total === 25 && p1.rows.length === 20 && p1.page === 1 && p2?.total === 25 && p2.rows.length === 5 && p2.page === 2
+      && causesInOrder.indexOf("resendOwed") === causesInOrder.filter((c) => c === "uncertain").length
+      && J(await consoleRead.unresolvedLetterList(null, 1)) === "null",
+    J({ p1: p1 && { total: p1.total, page: p1.page, n: p1.rows.length }, p2: p2 && { total: p2.total, page: p2.page, n: p2.rows.length } }));
+  // ⭐ S6-NOTICES (L-4) · the officer's action needs a signed-in session, so it is read: it hands back the check's own answer
+  // (8.11g3 holds its words), never a sentence of its own.
+  const actionsSrc = readFileSync(join(ROOT, "src/app/admin/maswali/integrity/actions.ts"), "utf8").replace(/\r\n/g, LF);
+  const clearAct = actionsSrc.slice(actionsSrc.indexOf("export async function clearUnresolvedLetterAction("), actionsSrc.indexOf("export async function holdMaswaliShareAction("));
+  ok("11e.6 · ⭐ S6-NOTICES (L-4) · the officer's action answers with the check's own note — how many it closed — and with no sentence of its own",
+    clearAct.length > 200 && clearAct.includes("return { ok: true, note: r.note };") && !clearAct.includes("the letters were checked"), clearAct.slice(0, 160));
 }
 
 // ── §12 · the final sunset week ───────────────────────────────────────────────────────────────────────
@@ -1477,11 +1594,13 @@ console.log(`${LF}§13 · exactly once across the run, in three languages; the p
     metaDoc.length > 40 && metaDoc.includes("a one-way digest of its letter's target") && !metaDoc.includes("carries its record's target"), metaDoc);
   // ⭐ Round 17 (M5) · the integrity card says what becomes of a listed letter: a later search may send it once more until the
   // check is recorded, and the recorded check closes it — where it said such letters are never sent again by themselves.
-  const pageSrc = readFileSync(join(ROOT, "src/app/admin/maswali/integrity/page.tsx"), "utf8").replace(/\r\n/g, LF);
-  const card = pageSrc.slice(pageSrc.indexOf('title="Letters not known to have gone"'), pageSrc.indexOf("Winners not yet reached"));
+  // ⭐ S6-NOTICES (L-3) · re-pinned to the card's own words (`letters-card.tsx`), read as values: one sentence a cause.
+  const cardWords = await import("../../src/app/admin/maswali/integrity/letters-card.tsx");
+  const said = [...cardWords.letterCauseSentences({ causes: { uncertain: 2, unmatched: 0, resendOwed: 0 }, unread: 0 }, notify.NOTICE_RECONCILE_DAYS),
+    cardWords.LETTERS_CHECK_SENTENCE].join(" ");
   ok("13.9 · ⭐ round 17 (M5) · the integrity card says a listed letter may still go once more until the check is recorded, and that the recorded check closes it — never that it is never sent again",
-    card.length > 200 && card.includes("Until the check is recorded, a later search that finds no such message may send")
-      && card.includes("the recorded check closes") && !card.includes("never sent again by themselves"), card.slice(0, 120));
+    said.includes("one it finds no trace of is sent once more") && said.includes("Recording the check closes every open letter of this week for good")
+      && !said.includes("never sent again by themselves"), said);
 }
 
 console.log(`${LF}@@SUMMARY ${JSON.stringify({ pass, fail, store: STORE })}`);

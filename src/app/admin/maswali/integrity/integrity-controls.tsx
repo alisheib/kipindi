@@ -116,7 +116,9 @@ export function MarkReachedControl({ weekId, userId, holder }: { weekId: string;
   );
 }
 
-/** S6 · an officer records that a week's letters not known to have gone were checked: the row leaves the card. */
+/** S6 · an officer records that a week's letters not known to have gone were checked: the check closes every letter of the
+ *  week still open for good — never searched for, never sent again (round 17, M5) — the dialog says so before it is
+ *  recorded, the answer says how many it closed (S6-NOTICES L-4), and the row leaves the card. */
 export function ClearLettersControl({ weekId, notice, code }: { weekId: string; notice: string; code: string }) {
   const mayAct = useMayAct();
   const { pending, error, note, run } = useAct();
@@ -130,7 +132,10 @@ export function ClearLettersControl({ weekId, notice, code }: { weekId: string; 
       {note && <span role="status" className="text-body-sm text-success">{note}</span>}
       <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="brand" tier="hard" typedWord={CHECKED_WORD}
         title={`Record that ${code}'s letters were checked?`} confirmLabel="Record the check"
-        body={<Field label="What was checked (the provider's activity, what the holder was told)"><Textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} /></Field>}
+        body={<div className="space-y-2">
+          <p>Recording this closes this week&apos;s open letters for good: they are never searched for or sent again.</p>
+          <Field label="What was checked (the provider's activity, what the holder was told)"><Textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} /></Field>
+        </div>}
         onConfirm={() => run(() => clearUnresolvedLetterAction(fd({ weekId, notice, typed: CHECKED_WORD, note: text })), () => { setOpen(false); setText(""); })} />
     </span>
   );

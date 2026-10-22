@@ -2414,7 +2414,7 @@ export const AUDIT_READERS_OUTSIDE_CONSOLE: Readonly<Record<string, string>> = {
      (`maswali-takeover.ts`, classified below) calls the readers, and no account or row reaches the console. */
   /* Classified 2026-10-18 (MASWALI-BUILD S6, lane N), read from the source (`smsHoldOf`, `voidedAtOf`): the desk list of
      winners not yet reached and the owed-refund rows added the reader. */
-  "src/lib/server/maswali-console.ts": "Millionea's console: its alerts read the settlement's own float-check rows (maswali.settlement.float_low / float_unread) of each line's newest paying week, by action, reduced to whether a finding stands; and its read model (S6 lane N) reads ONE week's own SYSTEM `maswali.notices.sent` run records (target MaswaliCycle), reduced to the winner SMS's hold reason (a code word the module names) and to its letters left unresolved (a count, round 7), with an officer's COMPLIANCE `maswali.letters.cleared` check reduced to its instant (round 10); ONE week's `maswali.week.voided` record reduced to its instant; and ONE week's COMPLIANCE `maswali.winner.reached` records reduced to the set of accounts the desk reached — no row, payload, note or actor is handed on",
+  "src/lib/server/maswali-console.ts": "Millionea's console: its alerts read the settlement's own float-check rows (maswali.settlement.float_low / float_unread) of each line's newest paying week, by action, reduced to whether a finding stands; and its read model (S6 lane N) reads ONE week's own SYSTEM `maswali.notices.sent` run records (target MaswaliCycle), reduced to the winner SMS's hold reason (a code word the module names) and to its letters left open (counts by cause, round 7; S6-NOTICES L-2/L-3: and the holders whose records it could not read, a count), with an officer's COMPLIANCE `maswali.letters.cleared` check reduced to its instant (round 10); ONE week's `maswali.week.voided` record reduced to its instant; and ONE week's COMPLIANCE `maswali.winner.reached` records reduced to the set of accounts the desk reached — no row, payload, note or actor is handed on",
   /* Classified 2026-10-17 (MASWALI-BUILD S4; 0.260.1 went red on the release gate's test:all, the guard doing its job).
      Three reads: the cluster report folds AuditLog rows into sets of linked account ids; `noteSealDevice` folds an
      officer's own rows into one yes/no; `recentNewDeviceSeals` hands its own `maswali.seal.new_device` and (S5-FIX-SRV 1)
@@ -2445,8 +2445,13 @@ export const AUDIT_READERS_OUTSIDE_CONSOLE: Readonly<Record<string, string>> = {
      `letterOwed`, `sealSteps`, `closeMoves`): the reconcile, the letters' own records, the correction notice and the moved
      close. Round 4 moved each letter record onto its holder's own target (round 13: the week and the account, never peppered), and reads the moves' newest close.
      Re-read 2026-10-21 (round 17, M5): an officer's check reads the same letter records, reduced to the holders whose letter
-     is still uncertain, and closes each with one COMPLIANCE record by that officer — the read's output stays inside. */
-  "src/lib/server/maswali-notify.ts": "Millionea's notices: ONE week's own SYSTEM `maswali.notices.sent` run records reduced to the last run's yes/no (complete) inside the module; the run's own holders' `maswali.notice.letter` records (SYSTEM, and an officer's COMPLIANCE closing record; each on its holder's own target, the week and the account, MaswaliLetter) reduced to done or not, and for an officer's check to the holders whose letter is still uncertain; ONE question's own seal, correction and confirmation records reduced to outcomes and instants; and ONE week's `maswali.week.close_moved` records counted, with the close the newest one set — no row, payload or actor is handed on",
+     is still uncertain, and closes each with one COMPLIANCE record by that officer — the read's output stays inside.
+     Re-read 2026-10-22 (MASWALI-BUILD S6-NOTICES, L-3), from the source (`millioneaOpenLetters`): the integrity card's opened
+     row reads the same letter records, reduced to the holders whose letter is still open, each with why (a word the module
+     names), the provider tag it computes from the target (a one-way digest) and its attempt records' instants — values that
+     reach /admin/maswali/integrity, which decides its audience on the stored role before it calls the read (0.434), so the
+     module is `handedOn`. No row, payload or actor is handed on, and a desk account's letters are its holder's own. */
+  "src/lib/server/maswali-notify.ts": "Millionea's notices: ONE week's own SYSTEM `maswali.notices.sent` run records reduced to the last run's yes/no (complete) and the letters it left standing, inside the module; the run's own holders' `maswali.notice.letter` records (SYSTEM, and an officer's COMPLIANCE closing record; each on its holder's own target, the week and the account, MaswaliLetter) reduced to done or not, for an officer's check to the holders whose letter is still open, and for the integrity card to those holders each with why, its provider tag and its attempts' instants — handed to /admin/maswali/integrity, which decides its audience on the stored role first (0.434); ONE question's own seal, correction and confirmation records reduced to outcomes and instants; and ONE week's `maswali.week.close_moved` records counted, with the close the newest one set — no row, payload or actor is handed on",
   // 2026-10-10: a second reader in the same module, the same shape — `runKycPostCheckAlerts` reads one submission's own
   // history to dedupe the officers' post-check bell, as `runKycReviewSlaAlerts` does for the review target.
   "src/lib/server/notification-service.ts": "a KYC case's own history, read to word that case's KYC notice and to send each officer alert (review target, post-check) once",
@@ -2499,7 +2504,7 @@ export const AUDIT_ROW_PAYLOAD: Readonly<Record<string, "handedOn" | "folded" | 
   "src/lib/server/maswali-service.ts": "folded",
   "src/lib/server/maswali-settlement.ts": "folded",
   "src/lib/server/maswali-takeover.ts": "handedOn",
-  "src/lib/server/maswali-notify.ts": "folded",
+  "src/lib/server/maswali-notify.ts": "handedOn",
   "src/lib/server/notification-service.ts": "folded",
   "src/lib/server/refused-funds.ts": "handedOn",
   "src/lib/server/report-pack.ts": "gated",

@@ -17,7 +17,8 @@ import { houseConsoleAudience } from "@/lib/server/house-console-read";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { AdminPagination, buildBaseHref } from "@/components/admin/admin-pagination";
 import { SortTh } from "@/components/admin/admin-sort";
-import { CONSOLE_PER_PAGE, SEAL_WEEKS_PER_PAGE, UNREACHED_ALERT_HOURS, UNREACHED_RECENT_DAYS, consoleStanding, integrityView } from "@/lib/server/maswali-console";
+import { CONSOLE_PER_PAGE, SEAL_WEEKS_PER_PAGE, UNREACHED_ALERT_HOURS, UNREACHED_RECENT_DAYS, consoleStanding, integrityView, unresolvedLetterList } from "@/lib/server/maswali-console";
+import { millioneaOpenLetters, NOTICE_RECONCILE_DAYS } from "@/lib/server/maswali-notify";
 import { parseIntegrityListQuery, integrityListParams } from "@/lib/maswali-integrity-list";
 import { isMaswaliVoidReason, MASWALI_VOID_REASON_LABEL } from "@/lib/maswali-void-reason";
 import { CLUSTER_LINE_PREVIEW, clusterReport, clusterRows, crowdedLineHolders, pickShifts, recentNewDeviceSeals } from "@/lib/server/maswali-integrity";
@@ -29,6 +30,7 @@ import { slotLabel } from "@/lib/maswali-score";
 import { adminCount, formatNumber, formatTzs } from "@/lib/utils";
 import { fmtEat } from "@/lib/maswali-admin-format";
 import { HeldShareControls, HoldShareControl, MarkReachedControl, PauseControl, VoidWeekControl, ClearLettersControl } from "./integrity-controls";
+import { LettersCardBody, letterRowKey, type OpenedLetters } from "./letters-card";
 import { StandingAuditWarning } from "../audit-warning";
 
 export const metadata = { title: "Admin · Millionea · Integrity" };
@@ -58,6 +60,9 @@ const SMS_HELD: Record<string, string> = {
  *   · the SALES PAUSE (sales only; never a cancel, a settlement or a refund);
  *   · weeks whose whole-week void is certain and whose window has closed, to void;
  *   · S6 · each VOIDED week still owed its refunds, a row of its own until they land (R1's one truth, `unrefundedVoids`);
+ *   · S6 · the LETTERS NOT KNOWN TO HAVE GONE (lane N, round 7; S6-NOTICES L-2, L-3): one sentence a cause, each week's open
+ *     letters with their holders, tags and attempts once a row is opened (`lopen`, `lpage`), and the check that closes them
+ *     (`letters-card.tsx`; the check's answer says how many it closed, L-4);
  *   · S6 · the WINNERS NOT YET REACHED (MB-93), among the weeks settled in the last `UNREACHED_RECENT_DAYS`: no seen mark,
  *     no ticket opened since the settlement, no delivered SMS, no call recorded — with what was sent, for the desk to call
  *     and then record (`MarkReachedControl`, typed); past `UNREACHED_ALERT_HOURS` the console raises it too;
@@ -122,6 +127,14 @@ async function Content({ searchParams }: IntegrityPageProps) {
     unreached: { page: v?.unreachedPage?.page ?? query.unreached.page },
   };
   const listParams = integrityListParams(linkQuery);
+  // S6-NOTICES (L-3) · the letters of the one row an officer opened (`lopen`), read here — after the audience was decided
+  // above (D19/259) — and only for a row the card lists.
+  const lopen = clusterQuery.lopen;
+  const openRow = lopen && v?.unresolvedLetters ? v.unresolvedLetters.rows.find((l) => letterRowKey(l) === lopen) ?? null : null;
+  const openedLetters: OpenedLetters | null = openRow ? {
+    key: letterRowKey(openRow),
+    list: await unresolvedLetterList(await millioneaOpenLetters(openRow.weekId, openRow.notice).catch(() => null), Number(clusterQuery.lpage ?? "1")).catch(() => null),
+  } : null;
 
   return (
     <>
@@ -247,22 +260,11 @@ async function Content({ searchParams }: IntegrityPageProps) {
           )}
         </AdminCard>
 
-        <AdminCard title="Letters not known to have gone" sw="Barua zisizojulikana kama zimefika">
-          {v.unresolvedLetters?.truncated ? <p className="text-body-sm text-text-tertiary">Only the newest weeks were read; older weeks are not shown here.</p> : null}
-          {v.unresolvedLetters?.partial ? <p className="text-body-sm text-text-tertiary">Some weeks hold more records than one read covers, so a letter of theirs may be missing here; the week&apos;s audit trail has the rest.</p> : null}
-          {v.unresolvedLetters === null ? <p className="text-body-sm text-danger-fg">The letters not known to have gone could not be read.</p>
-            : v.unresolvedLetters.rows.length === 0 ? <p className="text-body-sm text-text-secondary">{v.unresolvedLetters.partial ? "No letter is listed from the records read." : "Every win and refund letter is known to have gone or to need nothing."}</p> : (
-            <ul className="space-y-2">
-              {v.unresolvedLetters.rows.map((l) => (
-                <li key={`${l.weekId}-${l.notice}`} className="text-body-sm">
-                  <span className="tabular">{l.code}</span> · {l.letters.toLocaleString("en")} {l.notice === "refund" ? "refund" : "win"} {l.letters === 1 ? "letter" : "letters"}
-                  <span className="block text-text-tertiary">The email provider may have taken {l.letters === 1 ? "it" : "them"}, and its own search could not say. Until the check is recorded, a later search that finds no such message may send {l.letters === 1 ? "it" : "any of them"} once more; the recorded check closes {l.letters === 1 ? "it" : "them"} for good. Check the provider&apos;s activity, and record the check before anyone writes to the holder.</span>
-                  {canClearLetters ? <ClearLettersControl weekId={l.weekId} notice={l.notice} code={l.code} />
-                    : <ControlLocked what="Record the check" need={CONTROL_DOMAIN.clearUnresolvedLetter} />}
-                </li>
-              ))}
-            </ul>
-          )}
+        <AdminCard title="Letters not known to have gone" sw="Barua ambazo haijulikani kama zimetumwa">
+          {/* S6-NOTICES (L-2, L-3) · one sentence a cause, and each letter with its holder, tag and attempts once a row is opened. */}
+          <LettersCardBody read={v.unresolvedLetters} reconcileDays={NOTICE_RECONCILE_DAYS} opened={openedLetters} query={clusterQuery}
+            control={(l) => <>{canClearLetters ? <ClearLettersControl weekId={l.weekId} notice={l.notice} code={l.code} />
+              : <ControlLocked what="Record the check" need={CONTROL_DOMAIN.clearUnresolvedLetter} />}</>} />
         </AdminCard>
 
         <AdminCard title={v.unreachedPage ? `Winners not yet reached · ${v.unreachedPage.total.toLocaleString("en")}` : "Winners not yet reached"} sw="Washindi ambao hawajafikiwa" padding="p-0">
