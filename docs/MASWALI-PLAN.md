@@ -40,14 +40,16 @@ search/filter/sort/paging, bounded integrity report coverage, reviewed consequen
 device-audit feedback, versioned seal corrections, the multi-ticket slip, the separate Results section, the public
 settled-week sitemap and share image, and bounded public week and register caches. The rollout stays `WITHDRAWN`.
 
-**⏹ STOP 2 (2026-10-21 ~17:00 UTC, Ali: "work for 2 hours and push everything and progress … so we continue from another
-machine"). RESUME HERE, from any machine:** branch `maswali-handover-20261021`, `handover/maswali-2026-10-21/README.md`
-(its top section: every branch head and state, the next steps in order) and `MERGE-NOTES.md` beside it (every PM ruling,
-every lane's report, the merge maps and the owed items). In one line: the five S5 design lanes and both fix lanes finished
-their round (DOORS, HUB, SLIP, TICKETS, REGISTER, PLATFORM D1–D15, FIX-SRV); this release (`730a8b615`) holds FIX-SRV,
-PLATFORM (D1–D15), DOORS, HUB and TICKETS with tsc 0 and its suites green; SLIP and REGISTER's latest are pushed on
-their branches and merge next (conflicts mapped), then round 2 (the critics re-score), the gates, and `main` when Railway builds
-again (still paused at 17:00Z). S7 is at `0f0d42fcc` (S17 rush first green); S6-N owes its blind 6b guard.
+**⏳ IN FLIGHT (2026-10-22 from ~07:00 UTC, Ali: "proceed … until done") — the Claude session asheib-65 on OMEGA leads.**
+EVERY S5 lane is merged into this release (`7e9a314f0`: FIX-SRV, PLATFORM D1–D15, DOORS, HUB, TICKETS, REGISTER, SLIP; the
+salesPaused Fill with one glyphs:gen, app sprite `app.b899eae1.svg`); tsc 0 and every Maswali suite green; each merge's
+resolutions are in its commit (the old-shape moveClose/attestParity calls in three dev routes and one suite now use
+FIX-SRV's API; maswali-ui 4.8b's flake fixed). Round 2 runs on `claude/maswali-s5-r2-<lane>` branches from this head
+(brief: hand-over `critics/ROUND2.md`), then the critics re-score; `test:all` runs in parallel on a gate tree. Railway: a
+**security incident** (status.railway.com; Railway advises rolling every env var stored there — Ali's, at the providers);
+builds are back for Pro since 06:29Z, and `main` `67e47f8d2` was requested at 07:15Z on Ali's word ("deploy main now").
+Hand-over for any machine: branch `maswali-handover-20261021` (README top section + MERGE-NOTES). S7 is at `0f0d42fcc`
+(S17 rush first green); S6-N owes its blind 6b guard.
 
 **⏳ The PM round (2026-10-21 from ~12:35 UTC, Ali: "proceed") — the Claude session asheib-65 on OMEGA-COMPILE01 led:**
 - Lanes resumed with their own context, each on its branch and SSD tree, heavy jobs in Maswali slots 1–3:
