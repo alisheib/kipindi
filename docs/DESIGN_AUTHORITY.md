@@ -3139,7 +3139,10 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     line; its page, its title and the desktop link keep the full words; Chinese keeps 我的注单). The full Swahili "Juu na
     Chini" wraps on the five-tab rail below 416 with all pips aligned, then fits one line (§K 8b). No two of the five
     labels stand closer than their pips (8px at 320): below 337px English's labels close their tracking by 0.04em
-    (S5-FIX-PLATFORM D14, `test:visual-pass-r9c` §4c). From 1024 to 1279,
+    (S5-FIX-PLATFORM D14, `test:visual-pass-r9c` §4c). Nor do two of the four, the rail every reader is served while
+    Millionea does not show: from 332.8px, where Swahili's "Juu na Chini" and "Tiketi zangu" first fit one line, to 348.8px,
+    where they clear 8px untouched, those labels close their tracking by the same 0.04em (they stood 4.0px apart at 333;
+    S5 round 2 · PLATFORM, 2026-10-22 — a change every Swahili journey reader sees at those widths). From 1024 to 1279,
     while five destinations show, the journey bar's
     nav gives up its own leading 12px (the Swahili row otherwise ran 5.1px into the page's gutter at 1024 for a signed-in
     player — measured, `qa:journey-header-fit`), and takes it back from 1280.

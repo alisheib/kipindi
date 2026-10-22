@@ -7906,9 +7906,19 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    (5 × (59.4 + 8) = 337), English's labels close their tracking by 0.04em (9 × 6.16 = 55.4px, 8.6px apart at 320).
    Swahili (its long name on two lines through 415) and Chinese clear 8px at every width as they are.
    `test:visual-pass-r9c` §4c measures every neighbour pair in the three languages at every width from 320 with §4's
-   own width model and holds this minimum; the four-tab rail is not touched. */
+   own width model and holds this minimum; the four-tab rail's own answer follows. */
 .kp-rail--journey[data-tabs="5"]:lang(en) .kp-jtab__label { letter-spacing: -0.04em; }
 @media (min-width: 337px) { .kp-rail--journey[data-tabs="5"]:lang(en) .kp-jtab__label { letter-spacing: normal; } }
+/* ⭐ …AND ON THE FOUR-TAB RAIL TOO (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22: D14's minimum on the rail every reader
+   is served while Millionea does not show; `data-tabs` is absent there). Swahili's "Juu na Chini" and "Tiketi zangu"
+   (12 × 6.6 = 79.2px each) both fit one line from 332.8 (the rule above that centres Swahili's slots), and there they stood
+   83.25 − 79.2 = 4.05px apart at 333; untouched they clear 8px only from 4 × (79.2 + 8) = 348.8. Between the two widths
+   they close their tracking by D14's 0.04em (12 × 6.16 = 73.9px, 9.3px apart at 332.8). Below 332.8 they wrap (two short
+   lines, more than 40px apart) and are not touched; from 348.8 they are as before. English (least 17.3px) and Chinese (47)
+   clear 8px at every width as they are. `test:visual-pass-r9c` §4c measures both rails; `qa:journey-rail-gaps` reads them
+   in Chromium. */
+@media (min-width: 332.8px) { .kp-rail--journey:not([data-tabs]):lang(sw) .kp-jtab__label { letter-spacing: -0.04em; } }
+@media (min-width: 348.8px) { .kp-rail--journey:not([data-tabs]):lang(sw) .kp-jtab__label { letter-spacing: normal; } }
 /* ⭐ ONE TAB IS LIT IN EVERY FRAME (2026-10-09, the visual pass round 4, R4-J; E37/E41, tiles 301 306 333). The classic
    slot fades its ink and its pip over --t-quick (`.kp-rail__item`, `.kp-rail__pip`), so for 140ms after the router
    commits the new page the pill is half on the tab being left and half on the new one, beside the new label already bold
