@@ -303,8 +303,12 @@ const verifiedClaimsDefects = (src: string) => {
   const decoded = await readVerifiedSession(token);
   ok("4.8a · the proxy's HMAC verifier actually returns every signed claim the pre-render entitlement needs",
     decoded !== null && Object.entries(claims).every(([key, value]) => decoded[key as keyof typeof decoded] === value));
+  // The damage lands on a character in the MIDDLE of the token: its last base64url character can carry padding bits only
+  // ("A"↔"B" flips a bit the decoder drops), which let the "damaged" token still verify now and then — a flaky 4.8b.
+  const mid = Math.floor(token.length / 2);
+  const damaged = `${token.slice(0, mid)}${token[mid] === "A" ? "B" : "A"}${token.slice(mid + 1)}`;
   ok("4.8b · a damaged signature and an expired cookie hand no claims to the ticket belt",
-    await readVerifiedSession(`${token.slice(0, -1)}${token.endsWith("A") ? "B" : "A"}`) === null
+    await readVerifiedSession(damaged) === null
       && await readVerifiedSession(signSession({ ...claims, exp: now - 1 })) === null);
   ok("4.8c · the source returns the claims that were verified, not a role-only shell",
     verifiedClaimsDefects(read("src/lib/proxy-session.ts")).length === 0, verifiedClaimsDefects(read("src/lib/proxy-session.ts")).join(", "));
