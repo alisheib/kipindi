@@ -82,7 +82,7 @@ export function kept(text: string, runs: readonly string[]): ReactNode {
  * A FINAL WEEK'S FACTS, AFTER ITS STATE (R9: "Week 48 · Voided" and "Week 45: 1 ticket won" were two grammars for one kind
  * of row) — a voided week's refunds ("every ticket refunded" only once every refund landed: the read model's
  * `refundsPending`, MR-18, never a refund stated before it happened), a won week's winners and jackpot, or a week nobody
- * won: "no 10/10", what it carried forward and its fee 0 (the critic's L1 — the hub's last-week line says "no 10/10"
+ * won: "no 10/10", what it carried forward and its fee, TZS 0 (the critic's L1 — the hub's last-week line says "no 10/10"
  * too). Every amount is the read model's; each one is a single unbroken run.
  */
 export function weekFacts(t: Dict, w: MillioneaWeekSummary): ReactNode[] {
@@ -98,8 +98,12 @@ export function weekFacts(t: Dict, w: MillioneaWeekSummary): ReactNode[] {
   // of its own — a line of its own on a phone — so each opens with a capital, as every other fact of a row does. Its amount
   // is drawn as every amount is (`.amount`, the jackpot's face), inside its kept run: the tile read of 2026-10-21 found
   // "TZS 18,000 carried forward" in the body face beside "Jackpot TZS 50,000" in the figure face.
-  const fact = (f: string) => keepConnectives(f, runAndDashRanges(f, [amount]), (part) => moneyRuns(part));
-  return [...factsOf(fill(t.millionea.settledRollover, { amount })).map((f) => fact(factCase(f))), factCase(t.millionea.feeZero)];
+  // ⭐ ONE WORDING WITH THE HUB (the lead's ruling, 2026-10-22): the fee is an amount like every other — "Fee TZS 0", never
+  // the bare "fee 0" the row alone said without its currency — its figure the money face, kept whole (HUB's lastWeekRolled
+  // fills its "fee {fee}" with the same `formatTzs(0)`).
+  const fee = formatTzs(0);
+  const fact = (f: string, figure: string) => keepConnectives(f, runAndDashRanges(f, [figure]), (part) => moneyRuns(part));
+  return [...factsOf(fill(t.millionea.settledRollover, { amount })).map((f) => fact(factCase(f), amount)), fact(factCase(fill(t.millionea.feeZero, { fee })), fee)];
 }
 
 /** A fact's first letter as a list item's: a capital (a no-op for a figure or an ideograph). */

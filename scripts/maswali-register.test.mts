@@ -392,15 +392,17 @@ const FACTS: Record<(typeof LOCALES)[number], Record<keyof typeof WEEKS, string[
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER, the critic's L1): a week nobody won says "no 10/10" first, as
   // the hub's last-week line does (`settledRollover` + `feeZero`) — each a fact of its own here, so each opens with a capital
   // (the tile read of 2026-10-21: "no 10/10" and "fee 0" opened their phone lines in lower case beside "Jackpot …").
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-REGISTER, the lead's ruling: one wording with the hub): the fee says its amount
+  // as every amount does — "Fee TZS 0" / "Ada TZS 0" / "费用 TZS 0", `feeZero` filled with formatTzs(0) (7.8 holds its face).
   en: { pending: ["Refunds on their way"], landed: ["Every ticket refunded"], wonOne: ["1 ticket won", "Jackpot TZS 1,013,000"],
-    wonMany: ["3 tickets won", "Jackpot TZS 1,050,000"], rolled: ["No 10/10", "TZS 412,000 carried forward", "Fee 0"] },
+    wonMany: ["3 tickets won", "Jackpot TZS 1,050,000"], rolled: ["No 10/10", "TZS 412,000 carried forward", "Fee TZS 0"] },
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-FIX-PLAYER P14): Swahili says each fact with ONE verb, §D's — a refund
   // "imerejeshwa" (it read "imerejeshewa" here and "imerejeshwa" on the ticket), a carry "imehamishwa" (it read
   // "imeletwa mbele" here and "linahamishiwa" in How to play). `test:maswali-i18n` §7 holds the whole namespace to it.
   sw: { pending: ["Marejesho yanakuja"], landed: ["Kila tiketi imerejeshwa"], wonOne: ["Tiketi 1 ilishinda", "Jackpot TZS 1,013,000"],
-    wonMany: ["Tiketi 3 zilishinda", "Jackpot TZS 1,050,000"], rolled: ["Hakuna 10/10", "TZS 412,000 imehamishwa", "Ada 0"] },
+    wonMany: ["Tiketi 3 zilishinda", "Jackpot TZS 1,050,000"], rolled: ["Hakuna 10/10", "TZS 412,000 imehamishwa", "Ada TZS 0"] },
   zh: { pending: ["退款处理中"], landed: ["每张彩票已退款"], wonOne: ["1 张彩票中奖", "大奖 TZS 1,013,000"],
-    wonMany: ["3 张彩票中奖", "大奖 TZS 1,050,000"], rolled: ["无 10/10", "TZS 412,000 滚存至下周", "费用 0"] },
+    wonMany: ["3 张彩票中奖", "大奖 TZS 1,050,000"], rolled: ["无 10/10", "TZS 412,000 滚存至下周", "费用 TZS 0"] },
 };
 // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER, the critic's L3, and the DOORS lane's four gaps): ONE row for the
 // register's index and /results' section — `WeekRow` in register-parts — whose facts are a fact list (`MaswaliFacts`,
@@ -483,6 +485,19 @@ check("7.7", "the lead's ruling · ONE wording for a selling week's close: `sale
   });
   const off = said.filter((x, i) => x.text !== want[i] || !x.mono || !x.runs.includes(whole[i]));
   return [src && off.length === 0, j({ src, said })];
+});
+// ⭐ S5-R2-REGISTER (2026-10-22) · the lead's ruling, one wording with the hub: the row's fee was the only amount it said
+// without its currency ("Fee 0" beside "TZS 412,000 carried forward"). `feeZero` is "fee {fee}" / "ada {fee}" / "费用 {fee}"
+// filled with formatTzs(0), its figure in the money face and kept whole — as HUB's lastWeekRolled fills its own "fee {fee}".
+check("7.8", "one wording with the hub · a week nobody won says its fee as an amount — \"Fee TZS 0\" / \"Ada TZS 0\" / \"费用 TZS 0\" (`feeZero` filled with formatTzs(0)), the figure an `.amount` run kept whole — never the bare \"fee 0\"", (w) => {
+  const words = LOCALES.map((l) => mln(w, l).feeZero);
+  const said = LOCALES.map((l) => {
+    const fee = w.weekFacts(w.dict[l] as never, WEEKS.rolled).at(-1);
+    return { text: textOf(fee), amount: markup(fee).includes('<span class="amount">TZS 0</span>'), runs: nowrapRuns(fee) };
+  });
+  const want = ["Fee TZS 0", "Ada TZS 0", "费用 TZS 0"];
+  const off = said.filter((x, i) => x.text !== want[i] || !x.amount || !x.runs.some((r) => r.includes("TZS 0")));
+  return [j(words) === j(["fee {fee}", "ada {fee}", "费用 {fee}"]) && off.length === 0, j({ words, said })];
 });
 
 // ── §8 · R10 · the register's name ──────────────────────────────────────────────────────────────────────────────────
@@ -852,7 +867,7 @@ if (!PROVE_RED) {
   const { pass, fail } = runAll(REAL, false);
   console.log(`\n${"═".repeat(70)}\n  MASWALI REGISTER: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
   /** The floor is the count a green run PRINTS; it only rises, to a printed number. */
-  const MIN_ASSERTIONS = 60; // S5-FIX-PLAYER §15 (P3, P4, P9, P11) added five; S5-DESIGN-REGISTER (3.9, 5.3, 5.4, 7.5, 7.6, 9.8, 14.3) seven, §16 (the tile read) five; S5-R2-REGISTER (3.10, 7.7) two
+  const MIN_ASSERTIONS = 61; // S5-FIX-PLAYER §15 (P3, P4, P9, P11) added five; S5-DESIGN-REGISTER (3.9, 5.3, 5.4, 7.5, 7.6, 9.8, 14.3) seven, §16 (the tile read) five; S5-R2-REGISTER (3.10, 7.7, 7.8) three
   if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
   process.exit(fail === 0 ? 0 : 1);
 }
@@ -937,7 +952,7 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["the facts back after the week's column, far from the chevron", "7.2", plantSrc("parts", 'className="min-w-0 text-body-sm text-text-muted lg:ml-auto"', 'className="min-w-0 text-body-sm text-text-muted"')],
   ["the row drawing its own rule again", "7.2", plantSrc("parts", "<li>\n      <Link href={registerWeekHref(code) as never}", '<li className="border-b border-border">\n      <Link href={registerWeekHref(code) as never}')],
   ["R9 — a voided week says \"every ticket refunded\" before the refunds landed", "7.3", { ...REAL, weekFacts: (t, w) => (w.state === "VOIDED" ? [t.millionea.regRefunded] : weekFacts(t, w)) }],
-  ["R9 — the carry's amount free to break", "7.4", { ...REAL, weekFacts: (t, w) => (w.state === "SETTLED" && (w.winners ?? 0) === 0 ? [...fill(t.millionea.settledRollover, { amount: "TZS 412,000" }).split(" · "), t.millionea.feeZero] : weekFacts(t, w)) }],
+  ["R9 — the carry's amount free to break", "7.4", { ...REAL, weekFacts: (t, w) => (w.state === "SETTLED" && (w.winners ?? 0) === 0 ? [...fill(t.millionea.settledRollover, { amount: "TZS 412,000" }).split(" · "), fill(t.millionea.feeZero, { fee: "TZS 0" })] : weekFacts(t, w)) }],
   ["the carry's amount in the body face again (a kept run, no `.amount`)", "7.4", { ...REAL, weekFacts: (t, wk) => { const f = weekFacts(t, wk); if (wk.state !== "SETTLED" || (wk.winners ?? 0) > 0) return f; const amount = formatTzs(wk.carriedForward ?? 0); return f.map((x, i) => (i === 1 ? kept(textOf(x), [amount]) : x)); } }],
   ["L1 undone — a week nobody won says its carry without \"no 10/10\"", "7.3", { ...REAL, weekFacts: (t, w) => (w.state === "SETTLED" && (w.winners ?? 0) === 0 ? weekFacts(t, w).slice(1) : weekFacts(t, w)) }],
   ["a list without its own top edge", "7.2", plantSrc("index", 'const LIST = "flex flex-col divide-y divide-border border-t border-border";', 'const LIST = "flex flex-col divide-y divide-border";')],
@@ -949,6 +964,8 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["the second spelling of the close back (\"Sales close Friday 18:00\", no zone)", "7.7", plantSrc("parts", "fill(t.millionea.salesCloseColon, { when: eatWeekdayClock(t, closes) })", "fill(t.millionea.salesCloseAt, { when: eatWeekdayClock(t, closes) })")],
   ["the close said without its zone in Swahili", "7.7", plantWord("sw", "salesCloseColon", "Mauzo yanafungwa: {when}")],
   ["the close's clock in the sentence's face (no `.mono`)", "7.7", { ...REAL, liveFacts: (t, l, wk, n) => liveWeekFacts(t, l, wk, n).map((f) => keepFact(l, textOf(f), [], { numerals: false })) }],
+  ["the bare \"fee 0\" back — the one amount said without its currency", "7.8", plantWord("en", "feeZero", "fee 0")],
+  ["the fee's figure in the body face (no `.amount`, nothing kept)", "7.8", { ...REAL, weekFacts: (t, wk) => { const f = weekFacts(t, wk); return wk.state === "SETTLED" && (wk.winners ?? 0) === 0 ? [...f.slice(0, -1), textOf(f.at(-1))] : f; } }],
   // §8
   ["R10 undone — \"Week Register\" in title case", "8.1", plantWord("en", "registerTitle", "Week Register")],
   ["zh's door and title disagree", "8.1", plantWord("zh", "register", "每周登记册")],

@@ -3409,7 +3409,7 @@ export const dict = {
       floor: "Guaranteed floor",
       fee: "Fee",
       feeLine: "Fee {pct}%",
-      feeZero: "fee 0",
+      feeZero: "fee {fee}", // {fee} = formatTzs(0), in the money face — every amount says TZS (one wording with the hub's lastWeekRolled).
       // P5: before a payout the fee row's value is the rate and when it is taken — never a dash, which read as "no fee".
       feeAtPayout: "{pct}% at payout",
       levies: "TRA {tra}% · GBT {gbt}% of the fee",
@@ -6348,7 +6348,7 @@ export const dict = {
       floor: "Kiwango cha chini kilichohakikishwa",
       fee: "Ada",
       feeLine: "Ada {pct}%",
-      feeZero: "ada 0",
+      feeZero: "ada {fee}",
       feeAtPayout: "{pct}% wakati wa malipo",
       levies: "TRA {tra}% · GBT {gbt}% ya ada",
       toWinners: "Kwa washindi",
@@ -9218,7 +9218,7 @@ export const dict = {
       floor: "保底金额",
       fee: "费用",
       feeLine: "费用 {pct}%",
-      feeZero: "费用 0",
+      feeZero: "费用 {fee}",
       feeAtPayout: "派奖时扣除 {pct}%",
       levies: "费用中的 TRA {tra}% · GBT {gbt}%",
       toWinners: "派发给中奖者",
