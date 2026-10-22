@@ -888,6 +888,31 @@ export const MUTATIONS = [
     expect: "13.8 · ⭐ round 17 (L1)",
     suite: "notify",
   },
+  /* MASWALI-BUILD S6-INT (the lead's ruling 1, M-1) · a winner SMS that did not go is final, and never counted as sent. */
+  {
+    name: "(N13) M-1 · a winner SMS that did not go (FAILED, UNKNOWN) is counted as one that went on the next batch",
+    file: "src/lib/server/maswali-winner-sms.ts",
+    from: "    return status === \"FAILED\" || status === \"UNKNOWN\";",
+    to: "    return status === null;",
+    expect: "6.11d · ⭐ M-1",
+    suite: "notify",
+  },
+  {
+    name: "(N14) M-1 · a winner SMS that did not go leaves the SMS owed again: the reconcile would come back to it every hour",
+    file: NOTIFY,
+    from: "  return { tally: t, done: Object.keys(t.held).length === 0 };",
+    to: "  return { tally: t, done: Object.keys(t.held).length === 0 && t.notResent === 0 };",
+    expect: "9.8b · control",
+    suite: "notify",
+  },
+  {
+    name: "(N15) S16 · a winner whose paid share is missing from its record is told a money notice anyway (it would say TZS 0)",
+    file: NOTIFY,
+    from: "      if (share === null || paid.some((t) => t.payout === null)) { never(r, \"share_unread\"); continue; }",
+    to: "      if (false) { never(r, \"share_unread\"); continue; }",
+    expect: "5.5b · ⭐ S16",
+    suite: "notify",
+  },
   /* MASWALI-BUILD S6-NOTICES (L-2, L-3, L-4 — the lane-N merge review's LOWs) · the integrity card says what is true of each
      letter it lists and lists the holders nothing was sent to; the check says how many letters it closed. */
   {

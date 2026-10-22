@@ -14,7 +14,11 @@
  *    (`maswali-console.ts`). The bell and the letter have gone already; the SMS never stands in for them.
  * ⭐ ONCE PER PLAYER-WEEK. Each message carries its target (`MaswaliWinner`, `<weekId>:<userId>`), and a target that already
  *    has a message is never sent again — the SmsMessage row is the stamp, and its delivery receipt the record (MB-93: "log
- *    delivery status"). A read of the targets that fails holds the batch: never a second SMS. ⭐ RESERVED, NOT ONLY
+ *    delivery status"). A read of the targets that fails holds the batch: never a second SMS. ⭐ M-1 (the lead's ruling 1,
+ *    2026-10-22) · a message that did not go — refused by the gateway, or lost in transport (its row FAILED or UNKNOWN) —
+ *    is never sent again either: its row stands as the one attempt, the batch counts it `notResent`, the run is complete,
+ *    and the desk list names the winner for a call (a winner counts as reached only by a DELIVERED receipt, a seen mark
+ *    or the desk's recorded call; recorded in docs/FAILURE-INVENTORY.md §9b). ⭐ RESERVED, NOT ONLY
  *    CHECKED (round 3, A5): the batch writes that row BEFORE its request, and both store twins write it as the target's one
  *    row — under a unique index on Postgres (`@/lib/sms-targets`) — so two processes that both read "not sent" cannot both
  *    send: the second one's write is refused, its batch sends nothing, and it counts the first one's message.
@@ -102,6 +106,8 @@ export type WinnerSmsOutcome =
   | { kind: "held"; reason: "channel_closed" | "targets_unreadable" | "settings_unreadable" | "credit_unreadable" | "credit_low"; winners: number; costTzs: number | null }
   | {
       kind: "sent"; accepted: number; failed: number; refused: string | null; alreadySent: number;
+      /** ⭐ M-1 · targets whose one message did not go (FAILED, UNKNOWN): never sent again, and never counted as sent. */
+      notResent: number;
       /** The failures by their code (`SmsResult.code`; UNKNOWN when none was given) — so a run can tell a refusal that can
        *  never clear (a number the gateway cannot dial, no rail) from one the next run may clear (round 3, A12). */
       codes: Partial<Record<string, number>>;
@@ -113,8 +119,9 @@ export type WinnerSmsDeps = {
   credit(): Promise<BalanceFigure>;
   /** The owner's price per segment and the credit kept for codes — null when the record cannot be read in full. */
   settings(): Promise<{ pricePerSegmentTzs: number; codesReserveTzs: number } | null>;
-  /** The targets among these that already carry a message. */
-  sentTargets(targetIds: readonly string[]): Promise<Set<string>>;
+  /** The targets among these that already carry a message, each with its message's status (M-1: FAILED or UNKNOWN is a
+   *  message that did not go). */
+  sentTargets(targetIds: readonly string[]): Promise<Map<string, SmsStatus>>;
   send(messages: SmsOutbound[]): Promise<SmsBatchOutcome>;
 };
 
@@ -131,7 +138,7 @@ const LIVE: WinnerSmsDeps = {
     return r.ok && r.readable ? { pricePerSegmentTzs: r.settings.pricePerSegmentTzs, codesReserveTzs: r.settings.codesReserveTzs } : null;
   },
   async sentTargets(targetIds) {
-    return new Set((await winnerSmsRecords(targetIds)).keys());
+    return new Map([...await winnerSmsRecords(targetIds)].map(([id, r]): [string, SmsStatus] => [id, r.status]));
   },
   send: (messages) => sendBatch(messages),
 };
@@ -146,14 +153,20 @@ export async function sendMillioneaWinnerSms(lines: readonly WinnerSmsLine[], de
     ({ kind: "held", reason, winners: reachable.length, costTzs });
   // The channel policy is asked, never re-decided (F6): a win may use SMS.
   if (!channelAllowed("WIN").sms) return hold("channel_closed", null);
-  let already: Set<string>;
+  let already: Map<string, SmsStatus>;
   try {
     already = await deps.sentTargets(reachable.map((l) => winnerSmsTargetId(l.weekId, l.userId)));
   } catch {
     return hold("targets_unreadable", null);
   }
   const due = reachable.filter((l) => !already.has(winnerSmsTargetId(l.weekId, l.userId)));
-  if (due.length === 0) return { kind: "sent", accepted: 0, failed: 0, refused: null, alreadySent: reachable.length, codes: {} };
+  // ⭐ M-1 · a target whose one message did not go is not sent again — counted apart, never as a message that went.
+  const notResent = reachable.filter((l) => {
+    const status = already.get(winnerSmsTargetId(l.weekId, l.userId));
+    return status === "FAILED" || status === "UNKNOWN";
+  }).length;
+  const alreadySent = reachable.length - due.length - notResent;
+  if (due.length === 0) return { kind: "sent", accepted: 0, failed: 0, refused: null, alreadySent, notResent, codes: {} };
   const messages: SmsOutbound[] = due.map((l): SmsOutbound => ({
     to: l.phone, body: winnerSmsBody(l), purpose: "OPS", targetType: WINNER_SMS_TARGET, targetId: winnerSmsTargetId(l.weekId, l.userId),
   }));
@@ -168,20 +181,20 @@ export async function sendMillioneaWinnerSms(lines: readonly WinnerSmsLine[], de
     const accepted = out.results.filter((x) => x.ok).length;
     const codes: Partial<Record<string, number>> = {};
     for (const x of out.results) if (!x.ok) codes[x.code ?? "UNKNOWN"] = (codes[x.code ?? "UNKNOWN"] ?? 0) + 1;
-    return { kind: "sent", accepted, failed: out.results.length - accepted, refused: out.refused ?? null, alreadySent: reachable.length - due.length, codes };
+    return { kind: "sent", accepted, failed: out.results.length - accepted, refused: out.refused ?? null, alreadySent, notResent, codes };
   } catch (err) {
     // ⭐ A write refused because another process's row for the target landed first is that process's message — counted
     // as already sent, never as a failure of ours (the row is the reservation). ⭐ Round 4, L5 · ONLY that refusal says so:
     // the batch's rows are one statement, so none of ours was written, and a row there now is theirs. Any other throw may
     // come after our own rows were written — a row there is then OURS, and our message failed.
     const taken = isSmsTargetTaken(err)
-      ? await deps.sentTargets(due.map((l) => winnerSmsTargetId(l.weekId, l.userId))).catch(() => new Set<string>())
-      : new Set<string>();
+      ? await deps.sentTargets(due.map((l) => winnerSmsTargetId(l.weekId, l.userId))).catch(() => new Map<string, SmsStatus>())
+      : new Map<string, SmsStatus>();
     const lost = due.filter((l) => taken.has(winnerSmsTargetId(l.weekId, l.userId))).length;
     if (lost < due.length) console.error("[maswali-winner-sms] the winners' batch failed:", (err as Error)?.message ?? err);
     return {
       kind: "sent", accepted: 0, failed: due.length - lost, refused: lost === due.length ? null : "UNKNOWN",
-      alreadySent: reachable.length - due.length + lost, codes: lost === due.length ? {} : { UNKNOWN: due.length - lost },
+      alreadySent: alreadySent + lost, notResent, codes: lost === due.length ? {} : { UNKNOWN: due.length - lost },
     };
   }
 }

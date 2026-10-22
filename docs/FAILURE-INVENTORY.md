@@ -1296,6 +1296,34 @@ ACTIVE: the alert, or a dated deferral recorded by the Owner.
 Each entry is the rule as it stands, where it is enforced, and the case and the plant that hold it (MASWALI-BUILD S6-INT,
 branch `claude/maswali-s6-release`).
 
+#### ✅ Lint finding 9 · an oversized body cost the server time that grew with its square (S6-INT 16)
+
+The claims lint (`src/lib/marketing/millionea-claims.ts`) read a body of any length on the composer's one door, which
+every campaign meets (a classic one too), and its signal patterns cost time that grows with the square of a long run: one
+save or composer request (the save action has no length cap of its own) could hold the server's one process for minutes.
+THE RULE: a body longer than `CLAIMS_MAX_CHARS` (640 characters) is read by no claims rule — nothing that long can be sent
+(one SMS at most), and the composer's length rule refuses it in its own sentence. Held by `test:maswali-claims` §8 (the
+review's 1 MB body answered in under 50 ms; a claim padded to the limit still refused) and the plant (C27) of
+`red:maswali-claims`.
+
+#### ✅ M-1 · a winner SMS that did not go was counted as sent by the next run (the lead's ruling 1; S6-INT 17)
+
+A winner's SMS refused by the gateway, or lost in transport, left its row (FAILED, UNKNOWN), and the next run read that
+row as "already sent" and recorded the run complete — a tally that called a message sent that never went. THE RULE
+(`src/lib/server/maswali-winner-sms.ts`, `maswali-notify.ts`): a winner SMS that did not go is never sent again — once per
+player-week — and is counted `notResent`, never as sent, by this run and by any later one; the run is complete, and the
+desk list names the winner for a call (a winner counts as reached only by a DELIVERED receipt, a seen mark or the desk's
+recorded call). Held by `test:maswali-notify` 6.11d and 9.8b and the plants (N13), (N14) of `red:maswali-money-path`.
+
+#### ✅ S16 · a winner's share missing from its record was told as TZS 0 (S6-INT 14, recorded here at S6-INT 17)
+
+The desk list summed a winner's paid shares with a missing payout as 0, and the winner's notice did the same — a money
+notice that could say "You won TZS 0". THE RULE (lane R's round 6, carried to the notices): a missing figure is said,
+never printed as 0. The desk list prints "Not on record" (`unreachedWinners`, `paidTzs` null); a winner whose paid share,
+or the week's share, cannot be read from the records gets no money notice at all — the run counts `share_unread`, and
+the winner stays on the desk list for a call (`maswali-notify.ts`). Held by `test:maswali-notify` 5.5b on both stores
+and the plant (N15) of `red:maswali-money-path`.
+
 #### ✅ L-2 · holders whose letter records could not be read were listed nowhere (S6-NOTICES 1)
 
 A money notice sends nothing to a holder whose own letter records cannot be read and leaves the run owed (round 17, B2),
