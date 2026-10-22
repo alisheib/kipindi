@@ -73,7 +73,10 @@ export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // D19a RE-PINNED (S7-F9, the lead's ruling (b) of 2026-10-22; was 5a95302db): S7's F1 no-date announcement
   // (`finalAhead`) is back in en/sw/zh, byte for byte as S7's reviewed pin (f28803da1) held it, for L22 once a final week's
   // open has passed. No other line changed.
-  "src/lib/i18n-dict.ts": "7a9a98ffe077539630c112992c1074a3015ed57d",
+  // D19a RE-PINNED AT S7-MERGE 2 (the S5 release's round 2, e34bcdc95; was 7a9a98ffe): S7's dictionary plus the release's
+  // one addition since 81e312f01 — `draftTicketsNoun` in en/sw/zh ("Tickets" / "Tiketi" / "彩票", SLIP round 2's ruling
+  // (a)). No other line changed.
+  "src/lib/i18n-dict.ts": "475f305f6705c6895c08ff911c217c4478d89b76",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
 };
