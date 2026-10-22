@@ -83,10 +83,10 @@ async function Content({ searchParams }: EvidencePageProps) {
                           <td className="text-left">
                             {evidenceReady(w) ? (
                               <span className="inline-flex flex-wrap items-center gap-3">
-                                <a href={`/api/admin/maswali/evidence/${encodeURIComponent(w.id)}`} className="row-link inline-flex items-center gap-1 font-mono text-caption text-royal-300 hover:underline">
+                                <a href={`/api/admin/maswali/evidence/${encodeURIComponent(w.id)}`} className="row-link inline-flex items-center gap-1 font-mono text-body-sm text-royal-300 hover:underline">
                                   <I.download s={12} /> Pack (JSON)
                                 </a>
-                                <a href={`/api/admin/maswali/evidence/${encodeURIComponent(w.id)}?part=tickets`} className="row-link inline-flex items-center gap-1 font-mono text-caption text-royal-300 hover:underline">
+                                <a href={`/api/admin/maswali/evidence/${encodeURIComponent(w.id)}?part=tickets`} className="row-link inline-flex items-center gap-1 font-mono text-body-sm text-royal-300 hover:underline">
                                   <I.download s={12} /> Tickets (CSV)
                                 </a>
                               </span>

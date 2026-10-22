@@ -18,6 +18,8 @@ await runTwoStores({
   // the integrity page's order over two weeks, a week still to pay first (8.4, 8.5). 47 → 49 (round 7): a settled week
   // holding a share sorts with the pending weeks, and once every share is released it follows them (8.6, 8.7). 49 → 50
   // (round 8): three tiers — a held week leads a decided week's lines (8.6, rewritten), a pending ring leads both (8.6b).
-  minPass: 50,
+  // 50 → 51 (2026-10-22, S6-INT): S5's case 1.6 joins the data lane's cases at the integration's merge — printed 51 on
+  // memory and on Postgres (both green).
+  minPass: 51,
   dbPrefix: "mlw_integrity",
 });

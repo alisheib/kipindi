@@ -87,6 +87,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
     winners: { ...query.winners, page: v.winnersPage.page },
     seals: { ...query.seals, page: v.sealWeeks.page },
     voidable: { ...query.voidable, page: v.voidablePage.page },
+    cluster: query.cluster,
   };
   const listParams = integrityListParams(linkQuery);
 

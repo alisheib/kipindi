@@ -326,7 +326,8 @@ section("§W · the binding rules print a week on sale from its own record");
   // The config moves AFTER the draft and BEFORE the open: the open freezes the new figures and (S7, `deadlinesUnderRules`)
   // re-freezes the week's final deadline and every void deadline from them; the drafted close and the open instant stay.
   const moved = await CFG.saveMaswaliConfig({ voidDeadlineHours: 30, closeAt: "17:00" }, "usr_mln_drafter");
-  const attested = drafted.ok ? await W.svc.attestParity({ weekId: drafted.week.id, officerId: "usr_mln_reader" }) : { ok: false };
+  // S6-INT · S5-FIX-SRV's attestation names the draft version the reader read (`readDraftVersion`), as the money world does.
+  const attested = drafted.ok ? await W.svc.attestParity({ weekId: drafted.week.id, officerId: "usr_mln_reader", readVersion: await W.svc.readDraftVersion(drafted.week.id) }) : { ok: false };
   const opened = drafted.ok ? await W.svc.openWeek({ weekId: drafted.week.id, officerId: "usr_mln_drafter", guarantee: money.guaranteeReader, now: new Date(start + 60_000) }) : { ok: false, error: "no draft" };
   const wk = opened.ok ? opened.week : null;
   const snap = wk ? W.svc.frozenRules(wk) : null;
@@ -340,7 +341,8 @@ section("§W · the binding rules print a week on sale from its own record");
       && fig.closeAt === "18:00" && fig.voidDeadlineHours === 30 && fig.finalDeadlineWeekday === 1 && fig.finalDeadlineAt === "23:59"
       && later.ok === true && J(still) === J(fig),
     J({ moved: moved.ok || moved.error, opened: opened.ok || opened.error, fig: [fig.source, fig.openWeekday, fig.openAt, fig.closeWeekday, fig.closeAt, fig.voidDeadlineHours, fig.finalDeadlineAt], still: J(still) === J(fig) }));
-  const mv = wk ? await W.svc.moveClose({ weekId: wk.id, toCloseAt: new Date(W.eatWeekAt(start, 5, "17:30")).toISOString(), officerId: "usr_mln_drafter", now: new Date(start + 120_000) }) : { ok: false, error: "no week" };
+  // S6-INT · S5-FIX-SRV's move names the close the officer reviewed (`expectedClosesAt`): the week's own, as opened.
+  const mv = wk ? await W.svc.moveClose({ weekId: wk.id, toCloseAt: new Date(W.eatWeekAt(start, 5, "17:30")).toISOString(), expectedClosesAt: wk.closesAt, officerId: "usr_mln_drafter", now: new Date(start + 120_000) }) : { ok: false, error: "no week" };
   const after = await LEGAL.millioneaBindingFigures({ userId: null, state: "ACTIVE" });
   ok("W.2 · …and a close an officer moves is the close the rules print, the moment it moves (Friday 17:30)",
     mv.ok === true && after.closeWeekday === 5 && after.closeAt === "17:30" && after.openAt === "00:01", J({ mv: mv.ok || mv.error, closeAt: after.closeAt }));

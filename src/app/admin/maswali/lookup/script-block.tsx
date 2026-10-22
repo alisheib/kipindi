@@ -14,11 +14,11 @@ export function ScriptBlock({ script, figures }: { script: SupportScript; figure
       </ol>
       <div className="grid gap-3 md:grid-cols-2">
         <div lang="en" className="rounded-md border border-border-subtle p-3">
-          <p className="mb-1 text-caption text-text-tertiary">English</p>
+          <p className="mb-1 font-mono text-micro uppercase eyebrow text-text-tertiary">English</p>
           <p className="text-body-sm">{fillSupportScript(script.en, "en", figures)}</p>
         </div>
         <div lang="sw" className="rounded-md border border-border-subtle p-3">
-          <p className="mb-1 text-caption text-text-tertiary">Kiswahili</p>
+          <p className="mb-1 font-mono text-micro uppercase eyebrow text-text-tertiary">Kiswahili</p>
           <p className="text-body-sm">{fillSupportScript(script.sw, "sw", figures)}</p>
         </div>
       </div>

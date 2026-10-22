@@ -79,6 +79,11 @@ const bad = query({ hdecision: "BAD", hsort: "sql", hdir: "other", hpage: "2junk
 ok("untrusted URL values fall back to safe controls and first pages", bad.held.decision === "" && bad.held.sort === "week" && bad.held.dir === "desc" && bad.held.page === 1 && bad.winners.review === "" && bad.winners.sort === "week" && bad.winners.page === 1 && bad.seals.state === "" && bad.seals.page === 1 && bad.voidable.line === "" && bad.voidable.sort === "week" && bad.voidable.page === 1);
 const params = integrityListParams(query({ hq: " Amina ", hdecision: "pending", hpage: "2", wq: "MW-01", wsort: "share", wpage: "3", sq: "MW-02", sstate: "VOIDED", spage: "4", vq: "MW-03", vline: "DRIVE", vsort: "tickets", vpage: "5" }));
 ok("URL params preserve each list's independent filter, sort and page", params.hq === "Amina" && params.hdecision === "pending" && params.hpage === "2" && params.wq === "MW-01" && params.wsort === "share" && params.wpage === "3" && params.sq === "MW-02" && params.sstate === "VOIDED" && params.spage === "4" && params.vq === "MW-03" && params.vline === "DRIVE" && params.vsort === "tickets" && params.vpage === "5");
+// S6-INT · the cluster report's state (its page, the line opened, that line's page) rides every list's links too.
+const withLine = integrityListParams(query({ hpage: "2", cpage: "3", cgroup: "mlw_x.0123456789abcdef", gpage: "4" }));
+ok("the cluster report's page, opened line and line page survive every list's links",
+  withLine.hpage === "2" && withLine.cpage === "3" && withLine.cgroup === "mlw_x.0123456789abcdef" && withLine.gpage === "4"
+  && integrityListParams(query({})).cgroup === undefined && query({ cgroup: "x".repeat(200) }).cluster.group.length === 80);
 ok("all four kit searches reset only their own pager", ["h", "w", "s", "v"].every((prefix) => page.includes(`param="${prefix}q" pageParam="${prefix}page"`)) && searchBox.includes("sp.delete(pageParam)"));
 const formIds = { v: "maswali-voidable-filters", h: "maswali-held-filters", w: "maswali-winners-filters", s: "maswali-seals-filters" };
 const allSearchFormsWired = (source: string) => Object.entries(formIds).every(([prefix, id]) =>

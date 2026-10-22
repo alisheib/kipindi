@@ -11,6 +11,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { Chip } from "@/components/ui/chip";
+import { useActDisabledReason, useMayAct } from "@/components/admin/act-gate";
 import { runAdminAction } from "@/lib/client/run-admin-action";
 import { fmtEat, weekStateChip } from "@/lib/maswali-admin-format";
 import { SLOT_COUNT } from "@/lib/maswali-score";
@@ -34,9 +35,14 @@ export function LookupForm() {
   const [phone, setPhone] = useState("");
   const [answer, setAnswer] = useState<DeskLookup | null>(null);
   const [pending, start] = useTransition();
+  // S6-INT · the act gate (test:admin-act-gate): a lookup opens one holder's ticket and is recorded, so a viewer who may
+  // not act in this section reads the page and its scripts, never a ticket.
+  const mayAct = useMayAct();
+  const actReason = useActDisabledReason();
 
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!mayAct) return;
     const fd = new FormData();
     fd.set("serial", serial);
     fd.set("phone", phone);
@@ -56,7 +62,8 @@ export function LookupForm() {
           <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="off" />
         </Field>
         <div className="sm:col-span-2">
-          <Button type="submit" loading={pending} disabled={serial.trim() === "" || phone.trim() === ""}>Look up</Button>
+          <Button type="submit" loading={pending} disabled={!mayAct || serial.trim() === "" || phone.trim() === ""}>Look up</Button>
+          {!mayAct && <p className="mt-2 text-body-sm text-text-tertiary">{actReason ?? "You can read this page and its scripts, but not look up a ticket."}</p>}
         </div>
       </form>
       <div aria-live="polite">
