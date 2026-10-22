@@ -29,6 +29,9 @@
  *    sentence of that review's report and of its probes to the review's own verdict, and each ruling's forms beside their
  *    controls — every §7 check but its held sentences and its controls fails on the round-16 lint. Each rule's own defect
  *    is put back by `red:maswali-claims` (`scripts/anchors/maswali-claims.anchors.mjs`).
+ * 🔴 S6-LINT (the lead's ruling 6 and its accepted corrections; the lint review after round 17, findings 1–8 and 10–13):
+ *    the untagged rules shipped in the composer's browser bundle and ran for every campaign — §9 holds them the server's
+ *    alone (S6-LINT 1); each later S6-LINT commit adds its own §9 cases, every one red on the code before it.
  *   §1 ⭐ CONTROL FIRST: an untagged campaign with no Millionea signal is not read — it composes exactly as before — and
  *      the reader does see every spelling it is for
  *   §2 ⭐ the review's texts, every one red: refused untagged ("tag it Millionea or reword it") AND tagged (each claim
@@ -47,6 +50,11 @@
  *      7.2 H3 an account fact stated, never a lure · 7.3 M3 MB-47's stake against a prize, the winnings words, a question of
  *      any length · 7.4 M4 a deposit in any form, a third person's wait, "mfuko" as a fund · 7.5 L2 the comments · 7.6 L3 a
  *      look-alike leading one · 7.7 L4 a body in Chinese characters (OD42)
+ *   §8 ⭐ finding 9 (S6-INT 16): a body past one SMS is read by no rule — the oversized bodies answered in under 50 ms by
+ *      the server's untagged path, its signal reader and the composer's door, and each of the three guards alone (S6-LINT 4)
+ *   §9 ⭐ S6-LINT: 9.1 the untagged rules are the server's alone — neither the composer's client graph nor any other client
+ *      module's reaches them · 9.2 the live counter judges a campaign not tagged Millionea exactly as before, the save holds
+ *      it to them · 9.3 the wiring (every server door hands them in)
  * Each refusal is shown beside a text that passes, so no check here can pass by being blind. ⛔ §1–§4 hold no backslash
  * (an editing tool decodes them): patterns are character classes and characters are built from their codes.
  */
@@ -58,11 +66,13 @@ delete process.env.REDIS_URL;
 delete process.env.REDIS_ENABLED;
 process.env.SMS_PROVIDER = "console";
 
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const claims = await import("../src/lib/marketing/millionea-claims.ts");
+// ⭐ S6-LINT 1 · the untagged rules: the server's alone, handed in by a server door.
+const UNT = await import("../src/lib/server/marketing/millionea-untagged.ts");
 const { composeMarketing, footerMeasurementToken } = await import("../src/lib/marketing/footer.ts");
 const { validateCampaignTemplate, renderForRecipient } = await import("../src/lib/marketing/campaign-template.ts");
 const { sizeSms } = await import("../src/lib/sms-compose.ts");
@@ -79,6 +89,7 @@ const ENGINE = await import("../src/lib/server/marketing/engine.ts");
 const MKT = await import("../src/lib/server/maswali-marketing.ts");
 const LINT = await import("../src/lib/server/marketing/millionea-lint-epoch.ts");
 const LIVE = await import("../src/lib/server/marketing/campaign-live.ts");
+const LOADER = await import("../src/app/admin/campaigns/new/composer-loader.ts");
 const W = await import("./marketing-engine/engine-world.mts");
 // U13 · a suite that drives a send path hands it a FIXED window (`test:marketing-window` W6).
 const { ALWAYS_OPEN } = await import("./lib/send-window.mts");
@@ -101,21 +112,27 @@ const OPEN = { feeRate: RATE, live: true };
 /** A Millionea campaign at a server door (the save, the test send, the send) — and at the composer's counter (no week). */
 const TAGGED = { product: "MILLIONEA" as const, facts: OPEN };
 const SCREEN = { product: "MILLIONEA" as const };
+/** ⭐ S6-LINT 1 · a campaign NOT tagged Millionea at a server door: the untagged rules handed in (the screen hands in none). */
+const SERVER_UNTAGGED = { product: null, untagged: UNT.untaggedCampaignProblems };
+/** …as the save hands them to the one verdict, and as a send's or a preview's template carries them. */
+const SAVE_RULES = { untagged: UNT.untaggedCampaignProblems };
+const SEND_RULES = { untaggedRules: UNT.untaggedCampaignProblems };
 const fill = (t: string, rate: number) => claims.fillMillioneaWording(t, rate);
 const SW1 = fill(claims.MILLIONEA_WORDINGS.SW[0], RATE);
 const EN1 = fill(claims.MILLIONEA_WORDINGS.EN[0], RATE);
 /** The review's "{facts}": the headline's three facts and nothing else, at the week's fee. */
 const FACTS = `50pick: Millionea. Jackpot inagawanywa sawa kwa kila tiketi ya 10/10; ada ${PCT}% wakati wa malipo.`;
 const MISSING = "carries its headline's three facts";
-const untagged = (p: string) => p.startsWith(claims.MILLIONEA_UNTAGGED);
+const untagged = (p: string) => p.startsWith(UNT.MILLIONEA_UNTAGGED);
 const isMillioneaSentence = (p: string) => untagged(p) || p.startsWith("A Millionea campaign") || p.startsWith("This message states a")
   || p === claims.MILLIONEA_NOT_LIVE || p === claims.MILLIONEA_FACTS_UNREAD;
 const millioneaIn = (list: readonly string[] | undefined) => (list ?? []).filter(isMillioneaSentence);
 /** Which families a text trips, read back from the sentences (each carries its family's own `why`). */
 const familiesOf = (problems: readonly string[]) =>
   claims.MILLIONEA_CLAIM_FAMILIES.filter((f) => problems.some((p) => p.includes(f.why))).map((f) => f.family);
-/** Through the composer's ONE door: as a campaign with no product, and as one with the context given. */
-const plain = (text: string, locale: "SW" | "EN" = "SW") => composeMarketing(text, TOKEN, locale);
+/** Through the composer's ONE door: as a campaign with no product at a server door (the untagged rules handed in —
+ *  S6-LINT 1), and as one with the context given. */
+const plain = (text: string, locale: "SW" | "EN" = "SW") => composeMarketing(text, TOKEN, locale, "", SERVER_UNTAGGED);
 const as = (text: string, ctx: any, locale: "SW" | "EN" = "SW") => composeMarketing(text, TOKEN, locale, "", ctx);
 
 // ── §1 · the control: an untagged campaign with no Millionea signal is not read ───────────────────────────────────
@@ -261,7 +278,7 @@ console.log(`${LF}§1 · CONTROL — an untagged campaign with no Millionea sign
   CONTROL.forEach((text, i) => {
     const c = plain(text);
     ok(`1.1 · control ${i + 1} of ${CONTROL.length} · an untagged campaign with no Millionea signal is not read: it composes exactly as before, no problem at all`,
-      claims.millioneaSignals(text).length === 0 && c.ok && c.problems.length === 0, J({ text, signals: claims.millioneaSignals(text), problems: c.problems }));
+      UNT.millioneaSignals(text).length === 0 && c.ok && c.problems.length === 0, J({ text, signals: UNT.millioneaSignals(text), problems: c.problems }));
   });
   const v = validateCampaignTemplate({ name: "Derby week", bodySw: "50pick: Habari {jina}, soka leo.", bodyEn: "", nameFallbackSw: "Rafiki", nameFallbackEn: "Friend" }, "");
   ok("1.2 · the default campaign still validates exactly as before: ok, with no problem at all", v.ok && Object.keys(v.problems).length === 0, J(v.problems));
@@ -282,7 +299,7 @@ console.log(`${LF}§1 · CONTROL — an untagged campaign with no Millionea sign
     ["Jack Pot", "jack pot"], ["Get 2,000,000 today", "a figure of a million or more"],
   ];
   for (const [text, want] of SEEN) {
-    const got = claims.millioneaSignals(text);
+    const got = UNT.millioneaSignals(text);
     ok(`1.4 · control · the reader sees “${text}” as ${want}`, got.includes(want), J(got));
   }
 }
@@ -343,7 +360,7 @@ console.log(`${LF}§2 · HIGH 1 — the review's texts, every one refused; MEDIU
     [`${cc(0xFF11, 0xFF10)}/${cc(0xFF11, 0xFF10)}`, "10/10", "full-width digits"],
   ];
   for (const [text, want, how] of FORMS) {
-    const got = claims.millioneaSignals(text);
+    const got = UNT.millioneaSignals(text);
     ok(`2.6 · ⭐ the signal survives ${how}`, got.includes(want), J(got));
   }
 
@@ -803,8 +820,8 @@ console.log(`${LF}§4 · the doors — the screen and the save's verdict, a send
   const EPOCH = await LINT.millioneaLintEpoch({ stampAt: new Date(EPOCH_AT) });
 
   // ── the screen and the save's ONE verdict (`validateCampaignTemplate`): the product read from the name ──
-  const u = validateCampaignTemplate(fields("Derby week", SW1), "");
-  ok("4.1 · ⭐ the screen and the save refuse an approved wording in an UNTAGGED campaign, on its body, in the rule's words",
+  const u = validateCampaignTemplate(fields("Derby week", SW1), "", SAVE_RULES);
+  ok("4.1 · ⭐ the save refuses an approved wording in an UNTAGGED campaign, on its body, in the rule's words",
     !u.ok && (u.problems.bodySw ?? []).some(untagged), J(u.problems));
   const b = validateCampaignTemplate(fields(MLN, "50pick: Shinda Millionea kwa uhakika leo!"), "");
   ok("4.1 · ⭐ …and a tagged campaign's claims, for each family it makes and the facts it lacks",
@@ -827,7 +844,7 @@ console.log(`${LF}§4 · the doors — the screen and the save's verdict, a send
     !bare.ok && bare.problems[0] === claims.MILLIONEA_FACTS_UNREAD, J(bare.problems));
   const closedT = to(tpl({ millioneaFacts: { feeRate: RATE, live: false } }), "SW", null, "book");
   ok("4.2 · ⭐ …and while Millionea is not open, refused FIRST in the rule's words", !closedT.ok && closedT.problems[0] === claims.MILLIONEA_NOT_LIVE, J(closedT.problems));
-  const staleT = to({ bodySw: STALE, bodyEn: "", nameFallbackSw: "Rafiki", nameFallbackEn: "Friend", sourcePhrase: "", product: null }, "SW", null, "book");
+  const staleT = to({ bodySw: STALE, bodyEn: "", nameFallbackSw: "Rafiki", nameFallbackEn: "Friend", sourcePhrase: "", product: null, ...SEND_RULES }, "SW", null, "book");
   ok("4.2 · ⭐ an untagged campaign stored before the lint fails at its send with that reason, first", !staleT.ok && untagged(staleT.problems[0] ?? ""), J(staleT.problems));
   const enFee = to(tpl({ bodyEn: EN1.replace(`${PCT}% fee`, "1% fee") }), "SW", null, "book");
   ok("4.2 · one campaign, one verdict: a Swahili recipient is refused when the ENGLISH body states another fee",
@@ -842,14 +859,14 @@ console.log(`${LF}§4 · the doors — the screen and the save's verdict, a send
   const typed = to(tpl({ bodySw: JBODY.split("{jina}").join("Zawadi"), bodyEn: "" }), "SW", null, "book");
   ok("4.3 · control · …while “Zawadi” typed into a Millionea campaign's own words is refused (a prize)",
     !typed.ok && familiesOf(typed.problems).includes("win"), J(typed.problems));
-  const jack = to({ bodySw: "50pick: Habari {jina}, soka leo.", bodyEn: "", nameFallbackSw: "Rafiki", nameFallbackEn: "Friend", sourcePhrase: "" }, "SW", "Jackpot", "account");
+  const jack = to({ bodySw: "50pick: Habari {jina}, soka leo.", bodyEn: "", nameFallbackSw: "Rafiki", nameFallbackEn: "Friend", sourcePhrase: "", ...SEND_RULES }, "SW", "Jackpot", "account");
   ok("4.3 · control · an untagged campaign greets a player whose name is “Jackpot” — a name is never a signal",
     jack.ok && jack.text === "50pick: Habari Jackpot, soka leo.", J(jack.problems));
 
   // ⭐ Round 3 (B2) · THE OFFICER'S WORD FOR {jina} IS A MESSAGE TOO: a book contact (and a player with no usable name) is
   // sent the body with it, so it meets the body's rules — on its own field at the screen and the save, and at every send.
   const PLAIN_JINA = "50pick: Habari {jina}, soka leo.";
-  const untaggedFb = validateCampaignTemplate({ name: "Derby week", bodySw: PLAIN_JINA, bodyEn: "", nameFallbackSw: "Milionea", nameFallbackEn: "Friend" }, "");
+  const untaggedFb = validateCampaignTemplate({ name: "Derby week", bodySw: PLAIN_JINA, bodyEn: "", nameFallbackSw: "Milionea", nameFallbackEn: "Friend" }, "", SAVE_RULES);
   ok("4.3 · ⭐ B2 · an untagged campaign whose word for {jina} is one of Millionea's is refused on that word's field, in the rule's words — its body is not",
     !untaggedFb.ok && (untaggedFb.problems.nameFallbackSw ?? []).some((p) => untagged(p) && p.includes("“milionea”"))
       && untaggedFb.problems.bodySw === undefined, J(untaggedFb.problems));
@@ -861,7 +878,7 @@ console.log(`${LF}§4 · the doors — the screen and the save's verdict, a send
   ok("4.3 · ⭐ B2 · …and a send refuses it for every recipient: the book contact who would be sent the word, and a player greeted by her own name",
     !fbBook.ok && familiesOf(fbBook.problems).includes("win") && !fbOwn.ok && familiesOf(fbOwn.problems).includes("win"),
     J({ book: fbBook.problems, own: fbOwn.problems }));
-  const untaggedSend = to({ bodySw: PLAIN_JINA, bodyEn: "", nameFallbackSw: "Milionea", nameFallbackEn: "Friend", sourcePhrase: "" }, "SW", null, "book");
+  const untaggedSend = to({ bodySw: PLAIN_JINA, bodyEn: "", nameFallbackSw: "Milionea", nameFallbackEn: "Friend", sourcePhrase: "", ...SEND_RULES }, "SW", null, "book");
   ok("4.3 · ⭐ B2 · an untagged campaign's send is refused for its word for {jina}, first, in the rule's words",
     !untaggedSend.ok && untagged(untaggedSend.problems[0] ?? ""), J(untaggedSend.problems));
   const fbGood = validateCampaignTemplate(fields(MLN, JBODY), "");
@@ -994,7 +1011,7 @@ console.log(`${LF}§4 · the doors — the screen and the save's verdict, a send
     J({ r: e1.r, detail: e1.detail, calls: e1.wire.calls }));
   const e2 = await slice(await running("Derby week", STALE), { millioneaFacts: async () => OPEN });
   ok("4.6 · ⭐ THE REAL SEND · an untagged campaign saved before the lint and STARTED after its first run pauses at its first slice with that reason — nothing goes out unchecked",
-    e2.r.kind === "paused" && e2.r.reason === "template_invalid" && e2.detail.startsWith(claims.MILLIONEA_UNTAGGED) && e2.wire.calls === 0,
+    e2.r.kind === "paused" && e2.r.reason === "template_invalid" && e2.detail.startsWith(UNT.MILLIONEA_UNTAGGED) && e2.wire.calls === 0,
     J({ r: e2.r, detail: e2.detail, calls: e2.wire.calls }));
   const e3 = await slice(await running(MLN, SW1), { millioneaFacts: undefined });
   ok("4.6 · ⛔ THE REAL SEND · a dependency set with no reader pauses it as unread",
@@ -1066,7 +1083,7 @@ console.log(`${LF}§4 · the doors — the screen and the save's verdict, a send
   const preRow: any = await db.smsCampaign.find(pre);
   const card = LIVE.preRulesFlagOf([{ action: LINT.CAMPAIGN_FLAGGED_ACTION, createdAt: new Date().toISOString(), payload: { detail: f1.flagged } } as any], preRow);
   ok("4.8 · ⭐ rule 6 · …and it is FLAGGED: one SYSTEM row with what the rules would refuse, which its status card says while it sends, with what binds it",
-    f1.flagged.startsWith(claims.MILLIONEA_UNTAGGED) && typeof card === "string" && card.includes(f1.flagged)
+    f1.flagged.startsWith(UNT.MILLIONEA_UNTAGGED) && typeof card === "string" && card.includes(f1.flagged)
       && card.includes("They apply if it is paused and resumed, and to any copy made of it."), J({ flagged: f1.flagged, card }));
   // ⭐ Round 5 (LOW 9) · what binds it is only what the code allows, proven on the RUNNING campaign itself: it can be neither
   // saved nor test-sent, a copy of it is judged in full at its save, and a restart binds it.
@@ -1087,7 +1104,7 @@ console.log(`${LF}§4 · the doors — the screen and the save's verdict, a send
   await moveTo(pre, "PAUSED", "RUNNING", { stopReason: null }, null);
   const f2 = await slice(pre, { millioneaFacts: async () => OPEN });
   ok("4.8 · ⭐ rule 6 · …and a restart binds it: its next slice pauses template_invalid in the rule's words, nothing on the wire",
-    f2.r.kind === "paused" && f2.r.reason === "template_invalid" && f2.detail.startsWith(claims.MILLIONEA_UNTAGGED) && f2.wire.calls === 0,
+    f2.r.kind === "paused" && f2.r.reason === "template_invalid" && f2.detail.startsWith(UNT.MILLIONEA_UNTAGGED) && f2.wire.calls === 0,
     J({ r: f2.r, detail: f2.detail }));
   const restarted = await db.smsCampaign.find(pre);
   const stale = LIVE.preRulesFlagOf([{ action: LINT.CAMPAIGN_FLAGGED_ACTION, createdAt: preAt, payload: { detail: f1.flagged } } as any], restarted as any);
@@ -1101,7 +1118,7 @@ console.log(`${LF}§4 · the doors — the screen and the save's verdict, a send
     h3.r.kind === "paused" && h3.r.reason === "template_invalid" && h3.detail === claims.MILLIONEA_NOT_LIVE && h3.wire.calls === 0 && h3.flagged === "",
     J({ r: h3.r, detail: h3.detail, calls: h3.wire.calls }));
   const backstop = to(tpl({ millioneaLint: "flag", millioneaFacts: { feeRate: RATE, live: false } }), "SW", null, "book");
-  const classic: any = to({ bodySw: ROLLOUT, bodyEn: "", nameFallbackSw: "Rafiki", nameFallbackEn: "Friend", sourcePhrase: "", product: null, millioneaLint: "flag" }, "SW", null, "book");
+  const classic: any = to({ bodySw: ROLLOUT, bodyEn: "", nameFallbackSw: "Rafiki", nameFallbackEn: "Friend", sourcePhrase: "", product: null, millioneaLint: "flag", ...SEND_RULES }, "SW", null, "book");
   ok("4.8f · ⭐ round 5 (HIGH 3) · the backstop at the send's render: a Millionea template marked to be flagged is judged in full — a classic one keeps its flag",
     !backstop.ok && backstop.problems[0] === claims.MILLIONEA_NOT_LIVE && classic.ok && (classic.flagged ?? []).some(untagged),
     J({ backstop: backstop.problems, classic: classic.flagged }));
@@ -1112,7 +1129,7 @@ console.log(`${LF}§4 · the doors — the screen and the save's verdict, a send
   const g1 = await slice(prep, { millioneaFacts: async () => OPEN });
   const g2 = await slice(outgoing, { millioneaFacts: async () => OPEN });
   ok("4.8g · ⭐ round 5 (LOW 10) · a classic campaign preparing its list at the stamp, and one started by the outgoing build, each send their message — flagged, never paused",
-    [g1, g2].every((x) => x.r.kind === "sent" && x.wire.sent.length === 1 && x.wire.sent[0]?.body === ROLLOUT && x.detail === "" && x.flagged.startsWith(claims.MILLIONEA_UNTAGGED)),
+    [g1, g2].every((x) => x.r.kind === "sent" && x.wire.sent.length === 1 && x.wire.sent[0]?.body === ROLLOUT && x.detail === "" && x.flagged.startsWith(UNT.MILLIONEA_UNTAGGED)),
     J([g1, g2].map((x) => ({ r: x.r, detail: x.detail }))));
   // ⭐ Round 5 (MEDIUM 4b) · THE STAMP UNREAD: a classic campaign that only Millionea's rules would stop WAITS for it (a signal
   // that cannot be read costs only time) and sends once it reads; a message that fails another rule, or a campaign named as
@@ -1125,7 +1142,7 @@ console.log(`${LF}§4 · the doors — the screen and the save's verdict, a send
     J({ r: k1.r, status: unreadRow?.status }));
   const k2 = await slice(unreadPre, { millioneaFacts: async () => OPEN });
   ok("4.8h · …and once the stamp reads, it sends as a campaign sending since before the rules: flagged",
-    k2.r.kind === "sent" && k2.wire.sent.length === 1 && k2.flagged.startsWith(claims.MILLIONEA_UNTAGGED), J({ r: k2.r }));
+    k2.r.kind === "sent" && k2.wire.sent.length === 1 && k2.flagged.startsWith(UNT.MILLIONEA_UNTAGGED), J({ r: k2.r }));
   const broken = await seated(await running("Derby broken", "Habari, soka leo.", null, preAt));
   const mlnUnread = await seated(await running("Millionea unread", SW1, null, preAt));
   const k3 = await slice(broken, { millioneaFacts: async () => OPEN, millioneaLintEpoch: async () => null });
@@ -1170,8 +1187,9 @@ console.log(`${LF}§4 · the doors — the screen and the save's verdict, a send
       && once(engineSrc, ATTACH) && engineSrc.indexOf("const dry = deps.render(template,", engineSrc.indexOf(ATTACH)) > engineSrc.indexOf(ATTACH)
       && once(engineSrc, "prepare: (key: string) => prepareFor(template, key, deps)"));
   const draftSrc = code(DRAFT_REL);
+  const VERDICT_CALL = 'deps.validate(fields, "", { untagged: untaggedRulesFor(fields.name) })';
   ok("4.7 · the wiring · the save judges the week AFTER the one verdict, on the facts it reads itself",
-    draftSrc.indexOf('deps.validate(fields, "")') > 0 && draftSrc.indexOf("await millioneaFactsFrom(deps.millioneaFacts)") > draftSrc.indexOf('deps.validate(fields, "")'));
+    draftSrc.indexOf(VERDICT_CALL) > 0 && draftSrc.indexOf("await millioneaFactsFrom(deps.millioneaFacts)") > draftSrc.indexOf(VERDICT_CALL));
   const srcAll: string[] = [];
   const walkSrc = (dir: string) => {
     for (const n of readdirSync(dir)) {
@@ -1313,13 +1331,16 @@ console.log(`${LF}§6 · holders only (OD-25) — the one service SMS, and anyth
     'const template: CampaignTemplate = sendingSincePreLint(c, epoch ?? null) ? { ...facts, millioneaLint: "flag" } : facts;',
     'const onlyTheRules = epoch === null && campaignProductOf(c.name) !== "MILLIONEA"',
     '&& deps.render({ ...facts, millioneaLint: "flag" }, { variant, name: null, token: footerMeasurementToken(), origin: "account" }).ok;',
+    // S6-LINT 1 · the untagged rules' import (the server's alone), in each door.
+    'import { untaggedRulesFor } from "@/lib/server/marketing/millionea-untagged";',
   ];
   const mentions = (code: string) => code.split(LF).map((l) => l.trim()).filter((l) => /millionea/i.test(l));
   const outsideGate = (code: string) => mentions(code).filter((l) => !GATE_LINES.includes(l));
   const doorCode = DOORS.map((f) => decomment(readFileSync(join(ROOT, f), "utf8").split(CR).join("")));
-  // ⭐ Round 5 (LOW 13) · pinned per door, never a floor: the test send names Millionea on five lines, the engine on twelve.
-  ok("6.2c · ⭐ …and in each campaign door every line of code that names Millionea is the claims gate's own — five in the test send, twelve in the engine",
-    J(doorCode.map((c) => mentions(c).length)) === J([5, 12]) && doorCode.every((c) => outsideGate(c).length === 0),
+  // ⭐ Round 5 (LOW 13) · pinned per door, never a floor: the test send names Millionea on six lines, the engine on thirteen
+  // (S6-LINT 1: the untagged rules' import, one in each).
+  ok("6.2c · ⭐ …and in each campaign door every line of code that names Millionea is the claims gate's own — six in the test send, thirteen in the engine",
+    J(doorCode.map((c) => mentions(c).length)) === J([6, 13]) && doorCode.every((c) => outsideGate(c).length === 0),
     J(doorCode.map((c) => ({ mentions: mentions(c).length, outside: outsideGate(c) }))));
   ok("6.2d · control · a line planted outside the gate is caught", J(outsideGate(`${doorCode[1]}${LF}const note = "Millionea wiki hii";`)) === J(['const note = "Millionea wiki hii";']));
   const line = { userId: "u", weekId: "w", weekCode: "MLN-2026-W44", tickets: 1, paidTzs: 870_000, phone: "+255700000000", held: false, cannotSignIn: false } as const;
@@ -1351,7 +1372,7 @@ const refusedAsFigure = (text: string) => {
 const passesUntagged = (text: string) => {
   const c = plain(text);
   const clean = /^50pick/i.test(text) ? c.ok && c.problems.length === 0 : millioneaIn(c.problems).length === 0;
-  return { pass: claims.millioneaSignals(text).length === 0 && clean, signals: claims.millioneaSignals(text), problems: c.problems };
+  return { pass: UNT.millioneaSignals(text).length === 0 && clean, signals: UNT.millioneaSignals(text), problems: c.problems };
 };
 const refuseAll = (tag: string, list: readonly string[]) => list.forEach((text, i) => {
   const r = refusedAsFigure(text);
@@ -1577,7 +1598,9 @@ const passAll = (tag: string, list: readonly string[]) => list.forEach((text, i)
   // ⭐ 7.5 · L2 (the lead's ruling) · the lint's comments say what is enforced — none of the six the review read as a way out
   // (a phone, a count, a tax word, a third person, an account word, a noun before a you-verb) is left in its round-15 words;
   // the two whose rules H2 and H3 replaced say what is enforced now, and the other four are marked as rewritten.
-  const lintSrc = readFileSync(join(ROOT, "src/lib/marketing/millionea-claims.ts"), "utf8").split(CR).join("");
+  // S6-LINT 1 · the lint is two files now: the tagged rules (client-safe) and the untagged rules (the server's alone).
+  const lintSrc = ["src/lib/marketing/millionea-claims.ts", "src/lib/server/marketing/millionea-untagged.ts"]
+    .map((rel) => readFileSync(join(ROOT, rel), "utf8").split(CR).join("")).join(LF);
   const WAYS_OUT = [
     "is a phone, never a figure (round 12)",
     "is a count, never a claim (rounds 5, 6 and 11)",
@@ -1623,8 +1646,8 @@ const passAll = (tag: string, list: readonly string[]) => list.forEach((text, i)
   const exempt = claims.millioneaCampaignProblems(HAN_SENTENCES[0] ?? "", claims.MILLIONEA_EXEMPT);
   ok("7.7b · ⭐ round 17 (L4) · a Millionea campaign's Chinese body is refused for it too — and only the one exemption (a classic campaign sending since before the rules) is not",
     tagged.includes(claims.CAMPAIGN_HAN_SCRIPT) && exempt.length === 0, J({ tagged, exempt }));
-  const draft = validateCampaignTemplate({ name: "Derby week", bodySw: "50pick: Habari, soka leo.", bodyEn: `50pick: ${cc(0x4F60, 0x597D)}, derby tonight.`, nameFallbackSw: "Rafiki", nameFallbackEn: "Friend" }, "");
-  ok("7.7c · ⭐ round 17 (L4) · the screen and the save say it on the body that holds it: a Chinese line in the English body is refused there, the Swahili body is not",
+  const draft = validateCampaignTemplate({ name: "Derby week", bodySw: "50pick: Habari, soka leo.", bodyEn: `50pick: ${cc(0x4F60, 0x597D)}, derby tonight.`, nameFallbackSw: "Rafiki", nameFallbackEn: "Friend" }, "", SAVE_RULES);
+  ok("7.7c · ⭐ round 17 (L4) · the save says it on the body that holds it: a Chinese line in the English body is refused there, the Swahili body is not",
     !draft.ok && (draft.problems.bodyEn ?? []).includes(claims.CAMPAIGN_HAN_SCRIPT) && draft.problems.bodySw === undefined, J(draft.problems));
 }
 
@@ -1632,15 +1655,17 @@ const passAll = (tag: string, list: readonly string[]) => list.forEach((text, i)
 console.log(`${LF}§8 · finding 9 — a body past one SMS is refused by its length, and no rule reads it`);
 {
   const timed = (f: () => unknown): number => { const t0 = performance.now(); f(); return performance.now() - t0; };
-  // The composer's one door (the save, the test send and a slice judge a body through it too), untagged and tagged.
-  const door = (text: string) => { claims.millioneaCampaignProblems(text); claims.millioneaCampaignProblems(text, TAGGED); };
+  // ⭐ S6-LINT 4 · the doors a body meets: since S6-LINT 1 the untagged rules are the server's, so they are timed where they
+  // live — their path as every server door hands it in (`untaggedCampaignProblems`: the save, the test send, the slice) and
+  // their quadratic signal reader itself (`millioneaSignals`) — beside the tagged rules through the composer's one door.
+  const door = (text: string) => { UNT.untaggedCampaignProblems(text); UNT.millioneaSignals(text); claims.millioneaCampaignProblems(text, TAGGED); };
   // Measured before the fix: 16,000 spaces after a tax word took 500 ms and 8,000 digit groups 735 ms on the untagged path
   // (every campaign's), each growing with the square of the run — over budget without the limit, so its plant is caught in
   // about a second; the review's 1 MB body (minutes without it) runs only once these are in budget.
   const spaces = `50pick: ada${" ".repeat(16_000)}# 5,000,000`;
   const groups = `50pick: ${"000 ".repeat(8_000)}# 5,000,000`;
   const smallMs = Math.max(timed(() => door(spaces)), timed(() => door(groups)));
-  ok("8.1 · ⭐ finding 9 · 16,000 spaces after a tax word, and 8,000 digit groups, are each answered in under 50 ms by the composer's door (untagged and tagged)",
+  ok("8.1 · ⭐ finding 9 · 16,000 spaces after a tax word, and 8,000 digit groups, are each answered in under 50 ms by the server's untagged path, its signal reader and the composer's door (tagged)",
     smallMs < 50, `${smallMs.toFixed(1)} ms`);
   const huge = `50pick: ada${" ".repeat(1_000_000)}# 5,000,000`;
   const hugeMs = smallMs < 50 ? timed(() => door(huge)) : Number.POSITIVE_INFINITY;
@@ -1653,11 +1678,165 @@ console.log(`${LF}§8 · finding 9 — a body past one SMS is refused by its len
     hugeVerdict === null ? "not run" : J(hugeVerdict.problems.map((p) => p.slice(0, 60))));
   const claim = "50pick: Shinda TZS 50,000,000 Ijumaa hii!";
   const atLimit = claim + " ".repeat(claims.CLAIMS_MAX_CHARS - claim.length);
-  ok("8.4 · control · a claim padded to exactly the limit is still read: refused untagged and as a Millionea campaign",
-    atLimit.length === claims.CLAIMS_MAX_CHARS && claims.millioneaCampaignProblems(atLimit).length > 0 && claims.millioneaCampaignProblems(atLimit, TAGGED).length > 0,
+  ok("8.4 · control · a claim padded to exactly the limit is still read: refused untagged (through the door and on the server's own path) and as a Millionea campaign",
+    atLimit.length === claims.CLAIMS_MAX_CHARS && claims.millioneaCampaignProblems(atLimit, SERVER_UNTAGGED).length > 0
+      && UNT.untaggedCampaignProblems(atLimit).length > 0 && UNT.millioneaSignals(atLimit).length > 0 && claims.millioneaCampaignProblems(atLimit, TAGGED).length > 0,
     J({ len: atLimit.length }));
   ok("8.5 · control · the limit lies past anything one SMS carries: a body one character over it is several messages",
     sizeSms(`${atLimit} `).segments > 1, J(sizeSms(`${atLimit} `).segments));
+  // ⭐ S6-LINT 4 · each guard on its own, one character past the limit: the composer's door reads no rule (a tagged claim,
+  // and an untagged one through it), and the server's untagged path reads none either — a Chinese body there, whose rule
+  // costs nothing, so only the path's own guard can refuse to read it (the reader's guard covers the signals).
+  const over = `${atLimit} `;
+  ok("8.6 · ⭐ finding 9 · the composer's door reads no rule past the limit: a claim one character over it is answered by nothing, tagged or untagged",
+    over.length === claims.CLAIMS_MAX_CHARS + 1 && claims.millioneaCampaignProblems(over, TAGGED).length === 0
+      && claims.millioneaCampaignProblems(over, SERVER_UNTAGGED).length === 0,
+    J({ tagged: claims.millioneaCampaignProblems(over, TAGGED), untagged: claims.millioneaCampaignProblems(over, SERVER_UNTAGGED) }));
+  const hanAt = `50pick: ${cc(0x4F60, 0x597D)}`.padEnd(claims.CLAIMS_MAX_CHARS, " ");
+  const hanOver = `${hanAt} `;
+  ok("8.6b · ⭐ finding 9 · the server's untagged path reads nothing past the limit: a Chinese body one character over it gets no rule's sentence, one at the limit does",
+    hanAt.length === claims.CLAIMS_MAX_CHARS && UNT.untaggedCampaignProblems(hanAt).includes(claims.CAMPAIGN_HAN_SCRIPT)
+      && UNT.untaggedCampaignProblems(hanOver).length === 0,
+    J({ at: UNT.untaggedCampaignProblems(hanAt), over: UNT.untaggedCampaignProblems(hanOver) }));
+}
+
+// ── §9 · S6-LINT — the claims lint while Millionea is dark (the lead's ruling 6) and the lint round's findings ───────────
+console.log(`${LF}§9 · ⭐ S6-LINT — the untagged rules are the server's alone (ruling 6), and the lint round's findings`);
+/** A module's first line of code (comments and blank lines skipped): where a "use client" or "use server" directive stands. */
+const firstCodeLine = (src: string): string => {
+  let inBlock = false;
+  for (const raw of src.split(LF)) {
+    const l = raw.split(CR).join("").trim();
+    if (inBlock) { if (l.includes("*/")) inBlock = false; continue; }
+    if (l === "" || l.startsWith("//")) continue;
+    if (l.startsWith("/*")) { inBlock = !l.includes("*/"); continue; }
+    return l;
+  }
+  return "";
+};
+const directive = (src: string, word: "client" | "server") => {
+  const l = firstCodeLine(src);
+  return l.startsWith(`"use ${word}"`) || l.startsWith(`'use ${word}'`);
+};
+/** Whitespace, as a class built from its codes (this file holds no backslash): space, tab, line feed, carriage return. */
+const WS = `[ ${cc(9)}${cc(10)}${cc(13)}]`;
+/** The value imports a module makes: `import … from`, `export … from` (a type-only one is erased at build and not followed),
+ *  a bare `import "…"`, and a dynamic `import("…")` (the bundler ships its chunk too). */
+const STATIC_FROM = new RegExp(`^[ ${cc(9)}]*(?:import|export)${WS}+([^;]*?)${WS}from${WS}*["']([^"']+)["']`, "gm");
+const BARE_IMPORT = new RegExp(`^[ ${cc(9)}]*import${WS}*["']([^"']+)["']`, "gm");
+const DYNAMIC_IMPORT = new RegExp(`import${WS}*[(]${WS}*["']([^"']+)["']${WS}*[)]`, "g");
+const TYPE_ONLY = new RegExp(`^type${WS}`);
+const resolveSpec = (from: string, spec: string): string | null => {
+  const base = spec.startsWith("@/") ? join(ROOT, "src", spec.slice(2)) : spec.startsWith(".") ? join(dirname(from), spec) : null;
+  if (base === null) return null;
+  for (const ext of [".ts", ".tsx", "/index.ts", "/index.tsx", ""]) {
+    const p = base + ext;
+    if (existsSync(p) && statSync(p).isFile()) return p;
+  }
+  return null;
+};
+/** Every module a set of client modules' value-import graph reaches — stopping at a "use server" module, of which the
+ *  bundler sends the browser only a reference. `extra` stands in for a file's source (a planted control). */
+const clientGraph = (roots: readonly string[], extra: ReadonlyMap<string, string> = new Map()): Set<string> => {
+  const seen = new Set<string>();
+  const stack = [...roots];
+  while (stack.length > 0) {
+    const f = stack.pop() as string;
+    if (seen.has(f)) continue;
+    seen.add(f);
+    const src = extra.get(f) ?? readFileSync(f, "utf8");
+    if (directive(src, "server")) continue;
+    const specs: string[] = [];
+    for (const m of src.matchAll(STATIC_FROM)) if (!TYPE_ONLY.test((m[1] ?? "").trim())) specs.push(m[2] ?? "");
+    for (const m of src.matchAll(BARE_IMPORT)) specs.push(m[1] ?? "");
+    for (const m of src.matchAll(DYNAMIC_IMPORT)) specs.push(m[1] ?? "");
+    for (const s of specs) {
+      const r = resolveSpec(f, s);
+      if (r !== null) stack.push(r);
+    }
+  }
+  return seen;
+};
+const ABS = (rel: string) => join(ROOT, rel);
+const UNTAGGED_REL = "src/lib/server/marketing/millionea-untagged.ts";
+const COMPOSER_ROOT = ABS("src/app/admin/campaigns/new/composer-client.tsx");
+{
+  // ⭐ 9.1 · S6-LINT 1 (ruling 6's correction: "the untagged rules run server-side only") · no client module's value-import
+  // graph reaches the untagged rules — the composer's (the live counter's) first, then every "use client" module in src —
+  // and no module the counter's graph reaches declares any part of them. Controls first: the walker reaches the tagged
+  // rules from the composer, and the untagged rules from the save, where they ARE imported.
+  const composer = clientGraph([COMPOSER_ROOT]);
+  const reachesFromSave = clientGraph([ABS("src/lib/server/marketing/campaign-draft.ts")]);
+  ok("9.0 · control · the walker works: the composer's client graph reaches the composer's one door and the tagged rules, and a save's graph reaches the untagged rules",
+    composer.has(ABS("src/lib/marketing/footer.ts")) && composer.has(ABS("src/lib/marketing/millionea-claims.ts"))
+      && composer.has(ABS("src/lib/marketing/campaign-template.ts")) && reachesFromSave.has(ABS(UNTAGGED_REL)) && composer.size > 20,
+    `composer graph ${composer.size} modules · save graph ${reachesFromSave.size}`);
+  const DECLARES = ["export const MILLIONEA_UNTAGGED", "const SIGNAL_WORDS", "function millionFigure(", "export function millioneaSignals(", "export const untaggedCampaignProblems"];
+  const untaggedSrc = readFileSync(ABS(UNTAGGED_REL), "utf8");
+  ok("9.0 · control · the untagged rules' own declarations are what the census looks for: each stands in their module",
+    DECLARES.every((d) => untaggedSrc.includes(d)), J(DECLARES.filter((d) => !untaggedSrc.includes(d))));
+  const declaring = [...composer].filter((f) => DECLARES.some((d) => readFileSync(f, "utf8").includes(d))).map((f) => relative(ROOT, f));
+  ok("9.1 · ⭐ S6-LINT 1 · the composer's live counter carries no untagged rule: its client graph never reaches them, and no module in it declares any part of them",
+    !composer.has(ABS(UNTAGGED_REL)) && declaring.length === 0, J(declaring));
+  const clientRoots: string[] = [];
+  const walkClient = (dir: string) => {
+    for (const n of readdirSync(dir)) {
+      const p = join(dir, n);
+      if (statSync(p).isDirectory()) walkClient(p);
+      else if (/[.]tsx?$/.test(n) && directive(readFileSync(p, "utf8"), "client")) clientRoots.push(p);
+    }
+  };
+  walkClient(join(ROOT, "src"));
+  const everyClient = clientGraph(clientRoots);
+  ok("9.1b · ⭐ S6-LINT 1 · …nor does any other client module: the graph of every \"use client\" module in src never reaches them",
+    clientRoots.length > 100 && clientRoots.includes(COMPOSER_ROOT) && !everyClient.has(ABS(UNTAGGED_REL)),
+    `${clientRoots.length} client modules · ${everyClient.size} reached`);
+  const FOOTER = ABS("src/lib/marketing/footer.ts");
+  const planted = new Map([[FOOTER, `${readFileSync(FOOTER, "utf8")}${LF}import { untaggedCampaignProblems } from "@/lib/server/marketing/millionea-untagged";${LF}`]]);
+  ok("9.1c · control · an import of the untagged rules planted in the composer's one door is caught",
+    clientGraph([COMPOSER_ROOT], planted).has(ABS(UNTAGGED_REL)));
+
+  // ⭐ 9.2 · S6-LINT 1 · so the composer's live counter judges a campaign not tagged Millionea exactly as before — a Millionea
+  // signal and a Chinese line are refused only where a server door hands the untagged rules in: the save.
+  const SIGNAL_BODY = "50pick: Shinda hadi TZS 2,000,000 kwenye Up & Down leo!";
+  const HAN_BODY = `50pick: ${cc(0x4F60, 0x597D)}, derby tonight.`;
+  const draftOf = (bodySw: string, bodyEn = "") => ({ name: "Derby promo", bodySw, bodyEn, nameFallbackSw: "Rafiki", nameFallbackEn: "Friend" });
+  const screen = validateCampaignTemplate(draftOf(SIGNAL_BODY), "");
+  const atSave = validateCampaignTemplate(draftOf(SIGNAL_BODY), "", { untagged: UNT.untaggedRulesFor("Derby promo") });
+  ok("9.2 · ⭐ S6-LINT 1 · the live counter (no rules handed in) refuses nothing in an untagged body that speaks Millionea's words, while the save's verdict refuses it in the rule's words",
+    screen.ok && Object.keys(screen.problems).length === 0 && !atSave.ok && (atSave.problems.bodySw ?? []).some(untagged),
+    J({ screen: screen.problems, save: atSave.problems }));
+  const hanScreen = validateCampaignTemplate(draftOf("50pick: Habari, soka leo.", HAN_BODY), "");
+  const hanSave = validateCampaignTemplate(draftOf("50pick: Habari, soka leo.", HAN_BODY), "", { untagged: UNT.untaggedRulesFor("Derby promo") });
+  ok("9.2 · S6-LINT 1 · …and a Chinese line: the counter says only what it said before (the GSM alphabet's sentence), the save adds the Chinese-characters rule",
+    (hanScreen.problems.bodyEn ?? []).length > 0 && !(hanScreen.problems.bodyEn ?? []).includes(claims.CAMPAIGN_HAN_SCRIPT)
+      && J(hanSave.problems.bodyEn) === J([...(hanScreen.problems.bodyEn ?? []), claims.CAMPAIGN_HAN_SCRIPT]),
+    J({ screen: hanScreen.problems.bodyEn, save: hanSave.problems.bodyEn }));
+
+  // ⭐ 9.3 · S6-LINT 1 · the wiring: the one decision (`untaggedRulesFor`) answers the rules for a campaign not tagged
+  // Millionea and none for a tagged one; the save hands its answer to the one verdict, and every server door's template
+  // carries it — the test send, the engine, the composer's previews.
+  const code9 = (rel: string) => readFileSync(ABS(rel), "utf8").split(CR).join("");
+  const ATTACHES = "untaggedRules: untaggedRulesFor(c.name),";
+  const doors = ["src/lib/server/marketing/campaign-test-send.ts", "src/lib/server/marketing/engine.ts", "src/app/admin/campaigns/new/composer-loader.ts"];
+  ok("9.3 · S6-LINT 1 · the wiring · the one decision answers the untagged rules for an untagged name and none for a tagged one; the save hands them to its verdict; each send and preview door's template carries them",
+    UNT.untaggedRulesFor("Derby promo") === UNT.untaggedCampaignProblems && UNT.untaggedRulesFor("Millionea promo") === undefined
+      && code9("src/lib/server/marketing/campaign-draft.ts").split('deps.validate(fields, "", { untagged: untaggedRulesFor(fields.name) })').length === 2
+      && doors.every((rel) => code9(rel).split(ATTACHES).length === 2),
+    J(doors.map((rel) => code9(rel).split(ATTACHES).length - 1)));
+  // ⭐ 9.3b · …and the composer's typed-test preview, which the server renders, judges a saved untagged draft as its test send
+  // will: one that speaks Millionea's words is not offered, in the rule's words — a plain one is, with its preview.
+  const previewRow = (bodySw: string): any => ({
+    id: "cmp_s6lint_preview", name: "Derby promo", status: "DRAFT", bodySw, bodyEn: null, nameFallbackSw: null, nameFallbackEn: null,
+    sourcePhrase: null, draftRevision: 3,
+  });
+  const ADULT = { outreachOpen: true, adult: { text: "Nina miaka 18 au zaidi.", v: 1 } };
+  const refusedView = LOADER.composeTypedView(previewRow(SIGNAL_BODY), ADULT);
+  const plainView = LOADER.composeTypedView(previewRow("50pick: Habari, soka leo."), ADULT);
+  ok("9.3b · S6-LINT 1 · the composer's typed-test preview judges a saved untagged draft as its test send will: Millionea's words refused in the rule's words, a plain draft offered with its preview",
+    !refusedView.allowed && untagged(String(refusedView.why)) && refusedView.preview === null
+      && plainView.allowed && plainView.preview?.SW === "50pick: Habari, soka leo.",
+    J({ refused: [refusedView.allowed, refusedView.why], plain: [plainView.allowed, plainView.preview] }));
 }
 
 /**
@@ -1668,8 +1847,10 @@ console.log(`${LF}§8 · finding 9 — a body past one SMS is refused by its len
  * with §7.2 (H3), 560; with §7.3 (M3), 591; with §7.4 (M4), 615; with §7.5 (L2), 616; with §7.6 (L3), 622; with §7.7
  * (L4), 626; with §7.3d–e (M3, a tax heading "malipo"), 629; with §7.3f–g (M3, a getting verb's other shapes), 634;
  * with §8 (finding 9, S6-INT 16), 639.
+ * ⭐ S6-LINT · re-pinned the same way: with §9.0–9.3b (S6-LINT 1, the untagged rules the server's alone), 643; with §8
+ * merged in beside it (S6-INT 16), 648; with §8.6–8.6b (S6-LINT 4, finding 9's guards each on its own), 650.
  */
-const FLOOR = 639;
+const FLOOR = 650;
 ok(`floor · at least ${FLOOR} checks ran before this one (a suite that goes blind prints fewer)`, pass + fail >= FLOOR, `${pass + fail} ran`);
 console.log(`${LF}test:maswali-claims: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

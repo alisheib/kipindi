@@ -1319,15 +1319,19 @@ the records lack is watched all the same, never passed over as 0 (S7-F9 13). Pro
 Each entry is the rule as it stands, where it is enforced, and the case and the plant that hold it (MASWALI-BUILD S6-INT,
 branch `claude/maswali-s6-release`).
 
-#### ✅ Lint finding 9 · an oversized body cost the server time that grew with its square (S6-INT 16)
+#### ✅ Lint finding 9 · an oversized body cost the server time that grew with its square (S6-INT 16; S6-LINT 4)
 
 The claims lint (`src/lib/marketing/millionea-claims.ts`) read a body of any length on the composer's one door, which
 every campaign meets (a classic one too), and its signal patterns cost time that grows with the square of a long run: one
 save or composer request (the save action has no length cap of its own) could hold the server's one process for minutes.
 THE RULE: a body longer than `CLAIMS_MAX_CHARS` (640 characters) is read by no claims rule — nothing that long can be sent
-(one SMS at most), and the composer's length rule refuses it in its own sentence. Held by `test:maswali-claims` §8 (the
-review's 1 MB body answered in under 50 ms; a claim padded to the limit still refused) and the plant (C27) of
-`red:maswali-claims`.
+(one SMS at most), and the composer's length rule refuses it in its own sentence. WHERE IT IS ENFORCED (S6-LINT 4, after
+S6-LINT 1 moved the untagged rules to the server): three guards, each the first line of its function and each needed on
+its own — the composer's one door (`millioneaCampaignProblems`, every rule), and in
+`src/lib/server/marketing/millionea-untagged.ts` the server's untagged path (`untaggedCampaignProblems`) and the
+quadratic signal reader itself (`millioneaSignals`), whoever calls them. Held by `test:maswali-claims` §8 (the review's
+1 MB body answered in under 50 ms; a claim padded to the limit still refused; past it, nothing read) and the plants of
+`red:maswali-claims`: (C27) the reader's guard (8.1), (C35) the path's (8.6b), (C36) the door's (8.6).
 
 #### ✅ M-1 · a winner SMS that did not go was counted as sent by the next run (the lead's ruling 1; S6-INT 17)
 
@@ -1367,6 +1371,18 @@ column never held an address. THE RULE: the console hands the desk list a state,
 says so — `UnreachedWinner.emailState` (`maswali-console.ts`, read by `/admin/maswali/integrity`); no reviewed exception
 was added, so the ratchet's lists did not grow. Held by `test:read-tiers` 7.1 and `test:maswali-notify` (the desk list's
 rows, both stores).
+
+#### ✅ L-8 (part) · the untagged rules shipped in the composer's browser bundle (S6-LINT 1, the lead's ruling 6)
+
+The claims lint was one client-reachable module, so the rules a campaign NOT tagged Millionea meets — the product's words,
+the figure reader and the refusal that names the product — shipped in the admin composer's static chunk and ran in its
+live counter (lane N's review, L-8). THE RULE: the untagged rules are the server's alone
+(`src/lib/server/marketing/millionea-untagged.ts`); every server door — the save, the test send, the engine's slice, the
+composer's previews — asks `untaggedRulesFor` and hands what it answers to the composer's one door, and the live counter
+runs the tagged rules only, so a body the untagged rules refuse is refused at the save, in their words. Held by
+`test:maswali-claims` §9.1 (neither the composer's import graph nor any other client module's reaches them), §9.2–9.3b
+(the counter judges an untagged campaign as before; each door hands them in) and the plants (C30)–(C34) of
+`red:maswali-claims`.
 
 ## §9c · MASWALI MILLIONEA — the admin console, walked and made plain (S6, 2026-10-22)
 
