@@ -75,7 +75,7 @@ Ali's launch list in §6.1, then his launch word. §M8a numbers taken: 19–20 S
 
 **⏳ RESUMED (2026-10-22 11:41 UTC, Ali: "proceed"; the same session asheib-f3 leads, every lane resumed with its own
 context):** HUB, TICKETS, REGISTER, PLATFORM and SLIP finish their STOP 4 lists on their r2 branches; S7 its list on
-`claude/maswali-s7-s5` (TK.2 = password writes only; RD.5 = shares from tickets bought at or after the reversed deposit);
+`claude/maswali-s7-s5` (TK.2 = the takeover alert as the lead ruled it — an alert to Compliance, never a hold; RD.5 = shares from tickets bought at or after the reversed deposit);
 S6 the integration on `claude/maswali-s6-release` (R and N next); DOORS (done) now builds the objection door OB.0 on
 `claude/maswali-s7-ob` from `claude/maswali-s7-s5`. main `da3d32180` (docs) deployed SUCCESS while stopped. The STOP 4
 record below still names every head and list.
