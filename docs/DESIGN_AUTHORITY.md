@@ -3335,8 +3335,8 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     09:30 (EAT), 30 minutes before the first event"). The evidence pack an auditor downloads reads the same way. Guard:
     `test:maswali-admin-words` §1 — a census over every Millionea source an admin's screen can be drawn from, derived
     from the folders (the console, its download route, every Millionea service and shared module, the lock chip) — with
-    `red:maswali-admin-words`; the desk scripts (`maswali-support-scripts.ts`) wait, named in the census, for the S6-DOCS
-    lane's item 9, and the census fails once they hold no code until their exclusion is deleted.
+    `red:maswali-admin-words`; the desk scripts (`maswali-support-scripts.ts`) are in it since the S6-DOCS lane's item 9
+    stripped their codes (S6-DOCS 12 deleted their waiting exclusion).
     ⭐ **And the rest of plain (the lead's rulings G2–G8, S6-ADMIN 6).** **Names, never ids** — an officer by their name
     (`consoleOfficerName`: the display name, else the stable handle "Officer #A3F2K8"), a week by its code, an account
     by its handle ("Player #…"); no console page prints an id field as text. **Every time in a sentence is EAT, as the

@@ -88,7 +88,8 @@ jackpot equally.</p>
     <a class="ref" href="https://github.com/alisheib/kipindi/blob/main/docs/MASWALI-PLAN.md#g--money">MR-20 · MR-22</a></td></tr>
   <tr><td>The fee at payout</td><td>A share of the jackpot, taken only when at least one ticket wins — nothing in a week
     without a winner. TRA's and GBT's levies come out of the fee, never out of a share. The rate is the one the week froze
-    when it opened: the week page shows it under <b>Rules this week froze</b>; the next week's is under
+    when it opened: the week page shows it under <b class="ui" data-screen="week">Rules this week froze</b>, and Pools beside each open week
+    (<b class="ui" data-screen="pools">Fee at payout</b>); the next week's is under
     <b class="ui" data-screen="weeks">Rules for the next week</b>.
     <a class="ref" href="https://github.com/alisheib/kipindi/blob/main/docs/MASWALI-PLAN.md#g--money">MR-23 · MR-24</a>
     <a class="ref" href="https://github.com/alisheib/kipindi/blob/main/docs/RULES.md#22--taxes-are-only-ever-on-our-commission">RULES §2.2</a></td></tr>
@@ -143,7 +144,8 @@ under <b class="ui" data-screen="home">Open the weeks</b>, for Trading and the O
 
 <h4>How every control behaves</h4>
 <ul>
-  <li>A control your role cannot use is drawn locked, naming who can.</li>
+  <li>A control your role cannot use is drawn locked, naming the officers who work it — "Finance officers only", "The
+    Owner only" — and whom to ask.</li>
   <li>Every act is checked again when it runs. A refusal is written where you act — inside its dialog when one is open —
     and nothing changes. Read it, fix the cause, try again.</li>
   <li>If an act landed but its audit record could not be fully written, a warning says so: the act stands. Do not
@@ -153,6 +155,7 @@ under <b class="ui" data-screen="home">Open the weeks</b>, for Trading and the O
 </ul>
 <table>
   <tr><th style="width:44%">Act</th><th style="width:31%">Type</th><th>Who · where</th></tr>
+  <tr><td>Discard a draft that never opened</td><td><b class="ui" data-screen="week">DISCARD</b></td><td>Trading · the week page</td></tr>
   <tr><td>Attest a week's three languages</td><td><b class="ui" data-screen="week">ATTEST</b></td><td>Trading · the week page</td></tr>
   <tr><td>Move the sales close</td><td><b class="ui" data-screen="week">MOVE CLOSE</b></td><td>Trading · the week page</td></tr>
   <tr><td>Seal YES/NO results</td><td><b class="ui" data-screen="week">SEAL</b></td><td>Trading · the week page</td></tr>
@@ -300,10 +303,13 @@ code opens its page. <b class="ui" data-screen="weeks">Results</b> says where it
   <dt>Who</dt><dd>Trading.</dd>
   <dt>Where</dt><dd>The week page → <b class="ui" data-screen="week">Edit the questions</b> → change the slots →
     <b class="ui" data-screen="draft">Save the changes</b>. Every edit clears the attestation. A draft that will never
-    open is removed with <b>Discard draft</b>.</dd>
+    open is removed with <b class="ui" data-screen="week">Discard draft</b>: type DISCARD, then <b class="ui" data-screen="week">Discard the draft</b>. The draft and its fifteen
+    questions are deleted and its Monday is free for a new draft; the discard is recorded.</dd>
   <dt>Refused when</dt><dd>The week is no longer a draft; another officer saved a slot after you opened the editor
-    (nothing was saved); nothing changed.</dd>
-  <dt>If refused</dt><dd>Reload the editor and make the change again.</dd>
+    (nothing was saved); nothing changed. A discard: the week has opened (a week that opened is never discarded), or
+    it is the announced final week.</dd>
+  <dt>If refused</dt><dd>Reload the editor and make the change again. A refused discard stands: a week that opened, and
+    the announced final week, are never discarded.</dd>
 </dl>
 </section>
 
@@ -504,7 +510,8 @@ alert fires when a week waits too long for its release. Find an open week with
 and <b class="ui" data-screen="pools">All states</b> · <b class="ui" data-screen="pools">Selling</b> · <b class="ui" data-screen="pools">Closed</b> ·
 <b class="ui" data-screen="pools">Sealing</b> filters, or sort by <b class="ui" data-screen="pools">Week</b>,
 <b class="ui" data-screen="pools">State</b>, <b class="ui" data-screen="pools">Sales</b>,
-<b class="ui" data-screen="pools">Coverage</b> or <b class="ui" data-screen="pools">Worst top-up</b> (newest week first).</p>
+<b class="ui" data-screen="pools">Coverage</b> or <b class="ui" data-screen="pools">Worst top-up</b> (newest week first). Each row
+shows the fee its week froze, under <b class="ui" data-screen="pools">Fee at payout</b>.</p>
 </section>
 
 <section class="step" id="hold">
@@ -593,7 +600,10 @@ and <b class="ui" data-screen="pools">All states</b> · <b class="ui" data-scree
 <h3>B19 · Download a week's evidence</h3>
 <dl class="f4">
   <dt>Who</dt><dd>Compliance, the Auditor, the Owner.</dd>
-  <dt>Where</dt><dd>Evidence: every week that has opened, newest first. Once a week settles or voids,
+  <dt>Where</dt><dd>Evidence: every week that has opened, newest first. Find a week by its code, filter
+    <b class="ui" data-screen="evidence">State</b> (<b class="ui" data-screen="evidence">All states</b>, or one state) and <b class="ui" data-screen="evidence">Line</b> (<b class="ui" data-screen="evidence">Both lines</b>, <b class="ui" data-screen="evidence">Public</b>,
+    <b class="ui" data-screen="evidence">Drive</b>), <b class="ui" data-screen="evidence">Apply</b>; sort by <b class="ui" data-screen="evidence">Week</b>, <b class="ui" data-screen="evidence">State</b>, <b class="ui" data-screen="evidence">Sales closed (EAT)</b> or
+    <b class="ui" data-screen="evidence">Tickets</b>. Once a week settles or voids,
     <b class="ui" data-screen="evidence">Pack (JSON)</b> and <b class="ui" data-screen="evidence">Tickets (CSV)</b>. Every
     download is recorded. The pack holds the frozen rules, the fifteen questions, every seal and void with its evidence and
     officer, the week's audit record, the objections, the commitment checked again, the settlement's ledger lines, the
@@ -692,9 +702,9 @@ are three different acts.</p>
   <tr><td>Week code</td><td>A public week reads MLN-<i>year</i>-W<i>week</i>; a drive week MLD-….</td></tr>
   <tr><td><b class="ui" data-screen="weeks">Public</b> · <b class="ui" data-screen="weeks">Drive</b></td><td>The week's line: on sale to players, or private for 50pick's own tests.</td></tr>
   <tr><td><b class="ui" data-screen="weeks">Draft</b></td><td>Being written; nothing is on sale.</td></tr>
-  <tr><td><b class="ui" data-screen="weeks">Selling</b></td><td>Open: tickets can be bought. The State filter names it OPEN.</td></tr>
+  <tr><td><b class="ui" data-screen="weeks">Selling</b></td><td>Open: tickets can be bought.</td></tr>
   <tr><td><b class="ui" data-screen="weeks">Closed</b></td><td>Sales have closed; no result is sealed yet.</td></tr>
-  <tr><td><b class="ui" data-screen="weeks">Sealing</b></td><td>From the first seal until the week settles or voids: the seals, the objection window, the release. The State filter names it RESOLVING.</td></tr>
+  <tr><td><b class="ui" data-screen="weeks">Sealing</b></td><td>From the first seal until the week settles or voids: the seals, the objection window, the release.</td></tr>
   <tr><td><b class="ui" data-screen="weeks">Settled</b></td><td>Paid out, or rolled over. Final.</td></tr>
   <tr><td><b class="ui" data-screen="weeks">Voided</b></td><td>Voided whole; every ticket refunded in full.</td></tr>
   <tr><td><b class="ui" data-screen="weeks">Final</b> (beside a code)</td><td>The final week: Millionea ends after it.</td></tr>
@@ -768,6 +778,7 @@ are three different acts.</p>
 <table class="gl">
   <tr><td class="mono">maswali.week.drafted</td><td>A week was drafted.</td></tr>
   <tr><td class="mono">maswali.week.draft_edited</td><td>A draft's questions were edited.</td></tr>
+  <tr><td class="mono">maswali.week.discarded</td><td>A draft that never opened was discarded, with its questions.</td></tr>
   <tr><td class="mono">maswali.week.parity_attested</td><td>A second reader attested the three languages.</td></tr>
   <tr><td class="mono">maswali.week.deadlines_refrozen</td><td>The open re-set the deadlines to the rules it froze.</td></tr>
   <tr><td class="mono">maswali.week.opened</td><td>A week opened; its rules and questions froze.</td></tr>

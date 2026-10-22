@@ -1404,8 +1404,8 @@ Six codes ("(MB-86)", "(OD-07)" …) stood in what the desk reads (the G1 census
 script told the desk that "Compliance rules on" a challenge taken down by hand. THE RULE: the words carry the rule and a
 code stays in a comment; inside the check window the holder objects to the question from the ticket's page ("Object to a
 result"), and one who cannot is taken down word for word and passed to Compliance — a Compliance officer who did not
-record the result rules on it (MR-16 as built, S7-OB). Held by `test:maswali-admin-words` §1 once this file joins its
-census (the S6-ADMIN merge deletes its waiting exclusion).
+record the result rules on it (MR-16 as built, S7-OB). Held by `test:maswali-admin-words` §1: this file is in its census
+since S6-DOCS 12 deleted its waiting exclusion, after the ADMIN lane reached this branch (its premise 1.0 names it).
 
 #### ✅ Item 6 · the harm watch's candidate window was typed beside the detectors it serves (S6-DOCS 6)
 

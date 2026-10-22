@@ -102,7 +102,7 @@ product (`npm run test:maswali-fairness` H.7; S5's ghosts are wordless for the s
 | `src/lib/server/maswali-licence.ts` | The Owner-only licence basis; no week opens while it reads NONE |
 | `src/lib/server/maswali-pause.ts` | The sales pause: sales only — never a cancel, a settlement or a refund |
 | `src/lib/server/maswali-dal.ts` | The three stores (weeks, questions, tickets), Prisma and in-memory |
-| `src/lib/server/maswali-service.ts` | The lifecycle: draft, attestation, open (its checklist in words), the close and its moves, seals, corrections, the gate, the week void, the carry, the sunset |
+| `src/lib/server/maswali-service.ts` | The lifecycle: draft (and a never-opened draft's discard), attestation, open (its checklist in words), the close and its moves, seals, corrections, the gate, the week void, the carry, the sunset |
 | `src/lib/server/maswali-scheduler.ts` | ONE idempotent tick for the product: closes, void proposals, the certain week void |
 | `src/lib/server/maswali-money-service.ts` | The money path: purchase, cancel, the guarantee's ceremonies, ledger posting |
 | `src/lib/server/maswali-settlement.ts` | The preview, the release, holds, releases and forfeits of a share, the sunset's top score |
@@ -143,7 +143,7 @@ product (`npm run test:maswali-fairness` H.7; S5's ghosts are wordless for the s
 | `npm run test:maswali-fence` | No generic door or read treats a week as a poll (both stores) |
 | `npm run test:maswali-score` · `npm run test:maswali-time` · `npm run test:maswali-commitment` | The grader, the clocks, the commitment |
 | `npm run test:maswali-money` · `npm run test:maswali-ledger` | The arithmetic to the shilling; every movement a balanced group |
-| `npm run test:maswali-engine` | A week from draft to settlement (both stores) |
+| `npm run test:maswali-engine` | A week from draft to settlement, and a never-opened draft's discard (both stores) |
 | `npm run test:maswali-purchase` · `npm run test:maswali-settle` · `npm run test:maswali-void` · `npm run test:maswali-close-race` | The money path (both stores) |
 | `npm run e2e:maswali-fault` | A settlement under fault, on a real Postgres |
 | `npm run test:maswali-shared-paths` | The code every product shares, left as it was |
@@ -157,22 +157,23 @@ product (`npm run test:maswali-fairness` H.7; S5's ghosts are wordless for the s
 | `npm run test:maswali-claims` | The claims lint |
 | `npm run test:tax-report` §12 · `npm run test:house-book` | The tax report's Millionea lines; the house book |
 | `npm run test:maswali-admin-guide` | The admin guide quotes the console as built |
+| `npm run test:maswali-admin-words` · `npm run test:maswali-admin-plain` | The console in plain words: no programme code in anything an admin's screen prints; names not ids, times in EAT, labels not enums, the lock chip's role words, a week's frozen rules on its page, the archive's search and filters |
 | `npm run test:maswali-plan` | The plan's tracker cannot lie |
 | `npm run qa:live` (its Millionea section) · `npm run qa:maswali-admin-drive` · `npm run qa:maswali-admin-shots` | Live and visual drives |
 
 Red twins: `npm run red:maswali-law`, `npm run red:maswali-fence`, `npm run red:maswali-engine`,
 `npm run red:maswali-money-path`, `npm run red:maswali-rbac`, `npm run red:maswali-objections`, `npm run red:maswali-claims`,
-`npm run red:maswali-admin-guide`, `npm run red:tax-report`.
+`npm run red:maswali-admin-guide`, `npm run red:maswali-admin-words`, `npm run red:maswali-admin-plain`, `npm run red:tax-report`.
 
 ## 7 · Permissions
 
 Every control's domain is written once, in `CONTROL_DOMAIN` (`src/lib/server/control-gates.ts`), and the page asks
-exactly the question its action asks: a role that cannot act sees the control locked, naming who can. The routes'
+exactly the question its action asks: a role that cannot act sees the control locked, naming the officers who work it and whom to ask (`CONTROL_WHO`). The routes'
 domains are in `ROUTE_DOMAINS` (`src/lib/server/roles.ts`).
 
 | Domain | Pages | Controls |
 |---|---|---|
-| `trading` | `/admin/maswali`, `/admin/maswali/new`, a week's page | draft, edit a question, attest the languages, open, move the close, seal, void a question, confirm, correct |
+| `trading` | `/admin/maswali`, `/admin/maswali/new`, a week's page | draft, edit a question, discard a draft that never opened, attest the languages, open, move the close, seal, void a question, confirm, correct |
 | `accounting` | `/admin/maswali/pools` | release a settlement |
 | `compliance` | `/admin/maswali/integrity`, `/admin/maswali/evidence` | pause and resume sales, void a week whole, hold, release and forfeit a share, record a winner reached by phone, record a letters' check, rule on an objection |
 | `support` | `/admin/maswali/lookup` | none: the desk's lookup is a read, recorded before it answers |
