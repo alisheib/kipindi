@@ -425,7 +425,7 @@ check("7.2", "R9 · A1 · the facts are a fact list — one per line below 768, 
   const list = s.includes('const LIST = "flex flex-col divide-y divide-border border-t border-border";') && count(s, '<ul role="list" className={LIST}>') === 2;
   return [facts && !hand && list, j({ facts, hand, list })];
 });
-check("7.3", "R9 · each week's facts, rendered in three languages: refunds on their way until every refund landed, then every ticket refunded; winners and the jackpot; a rolled week's carry and fee 0", (w) => {
+check("7.3", "R9 · each week's facts, rendered in three languages: refunds on their way until every refund landed, then every ticket refunded; winners and the jackpot; a rolled week's carry and its fee, TZS 0", (w) => {
   const off: string[] = [];
   for (const l of LOCALES) for (const [k, s] of Object.entries(WEEKS) as Array<[keyof typeof WEEKS, MillioneaWeekSummary]>) {
     const got = w.weekFacts(w.dict[l] as never, s).map(textOf);
