@@ -232,7 +232,7 @@ function content(): Record<Locale, React.ReactNode> { return {
         <MillioneaWording>
           <p data-policy-addition="millionea-slip">
             While you fill a Maswali Millionea ticket, the answers you have picked for that week are kept in that tab&apos;s sessionStorage as kp-millionea-slip: followed by the week&apos;s identifier,
-            so they survive a reload or going to deposit. They hold no identifier of you, are removed once your ticket is cut or when the tab closes, and never buy a ticket unless you confirm it.
+            so they survive a reload or going to deposit. They hold no identifier of you, are removed once your ticket is bought or when the tab closes, and never buy a ticket unless you confirm it.
           </p>
         </MillioneaWording>
         <AnalyticsChoice />
