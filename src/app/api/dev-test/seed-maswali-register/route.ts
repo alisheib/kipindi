@@ -103,7 +103,8 @@ async function opened(ms: number) {
   if (!c.ok) throw new Error(`draft: ${c.error}`);
   const a = await attestParity({ weekId: c.week.id, officerId: "usr_dev_reader", readVersion: await readDraftVersion(c.week.id) });
   if (!a.ok) throw new Error(`attest: ${a.error}`);
-  const o = await openWeek({ weekId: c.week.id, officerId: OWNER, guarantee: guaranteeReader, now: new Date(ms + 60_000) });
+  // At its drafted open, the config's own time (DESIGN_AUTHORITY §M8a item 24), as seed-maswali opens.
+  const o = await openWeek({ weekId: c.week.id, officerId: OWNER, guarantee: guaranteeReader, now: new Date(Date.parse(c.week.opensAt)) });
   if (!o.ok) throw new Error(`open: ${o.error}`);
   return o.week;
 }
@@ -123,7 +124,7 @@ const times = (n: number, slip: MaswaliPick[]) => Array.from({ length: n }, () =
 
 /** Close the week, then seal `slots` (every slot by default) — YES, or VOID on the `abandoned` ground for `voided`. */
 async function closeAndSeal(week: { id: string; closesAt: string }, ms: number, voided: number[] = [], slots: number[] = Array.from({ length: 15 }, (_, i) => i + 1)) {
-  const c = await closeWeek({ weekId: week.id, now: new Date(Date.parse(week.closesAt) + 60_000) });
+  const c = await closeWeek({ weekId: week.id, now: new Date(Date.parse(week.closesAt)) });
   if (!c.ok) throw new Error(`close: ${c.error}`);
   for (const slot of slots) {
     const v = voided.includes(slot);

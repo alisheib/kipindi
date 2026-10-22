@@ -125,7 +125,8 @@ async function opened(ms: number, floorTzs?: number, visibility: "PUBLIC" | "DRI
     const c = await createWeek({ weekStartMs: ms, visibility, questions: questions(ms), officerId: OWNER, now: new Date(ms - 3 * DAY) });
     if (!c.ok) throw new Error(`draft: ${c.error}`);
     must("attest", await attestParity({ weekId: c.week.id, officerId: "usr_dev_reader", readVersion: await readDraftVersion(c.week.id) }));
-    const o = await openWeek({ weekId: c.week.id, officerId: OWNER, guarantee: guaranteeReader, now: new Date(ms + 60_000) });
+    // At its drafted open, the config's own time (DESIGN_AUTHORITY §M8a item 24), as seed-maswali opens.
+    const o = await openWeek({ weekId: c.week.id, officerId: OWNER, guarantee: guaranteeReader, now: new Date(Date.parse(c.week.opensAt)) });
     if (!o.ok) throw new Error(`open: ${o.error}`);
     return o.week;
   } finally {
@@ -142,9 +143,9 @@ async function buy(userId: string, weekId: string, slips: MaswaliPick[][]): Prom
   return tickets;
 }
 
-/** Closes the week on its own close (+1 minute). */
+/** Closes the week at its own close, the config's time (DESIGN_AUTHORITY §M8a item 24). */
 async function close(week: { id: string; closesAt: string }) {
-  must("close", await closeWeek({ weekId: week.id, now: new Date(Date.parse(week.closesAt) + 60_000) }));
+  must("close", await closeWeek({ weekId: week.id, now: new Date(Date.parse(week.closesAt)) }));
 }
 
 /** Seals the slots given (outcome by slot; VOID on the `abandoned` ground, a fact, MR-15) on the week's results day. */

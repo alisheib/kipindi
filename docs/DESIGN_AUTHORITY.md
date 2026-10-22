@@ -3255,8 +3255,8 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     dialog is unchanged (`test:maswali-slip-design` §1); `test:enter-where-pressed` 5.8 pins the call with its plant, and
     `qa:dialog-way-back` drives it at 360 in Chromium and WebKit (scrollY unchanged across the close, focus on the opener,
     the jump back when `preventScroll` is dropped).
-24. **Facts are drawn whole and struck to their ink (the lead's rulings of 2026-10-22, S5 round 2; MASWALI-BUILD
-    S5-FACTS).**
+24. **Facts are drawn whole, struck to their ink, and seeded on the product's own clock (the lead's rulings of
+    2026-10-22, S5 round 2; MASWALI-BUILD S5-FACTS).**
     - **The fact line** (`MaswaliFacts`, `.kp-mln-facts`). Facts joined by "·" are one flex item each: facts that fit
       share a line, a fact that does not moves whole to the next, a fact longer than its line wraps inside itself. The
       separator is each fact's LEADING mark, drawn in the gap before it and cut away where a fact opens a line
@@ -3280,6 +3280,10 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
       0.5em) with a `clip-path` that moves nothing; a plain strike ran half an em past "？" ("…吗？-"). The ticket draws it;
       ⚠️ the hub's question rows adopt it at the S5 round-2 merge. `test:maswali-strike` (the browser's strike against
       the ink, Chromium and WebKit).
+    - **A seeded week keeps the product's clock (dev only).** The dev seeds (`src/app/api/dev-test/**`) open a week at its
+      drafted open and close it at its drafted close, the config's own times, so a tile never draws a time the product
+      would not: opened and closed a minute late, the tiles read "Jumatatu 00:01" beside the template's "Jumatatu 00:00",
+      and a close at 18:01. `test:maswali-seed-clock`.
 
 ---
 

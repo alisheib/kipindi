@@ -722,6 +722,7 @@
     "test:maswali-facts": "tsx scripts/maswali-facts.test.mts",
     "test:maswali-fact-mark": "tsx scripts/maswali-fact-mark.test.mts",
     "test:maswali-strike": "tsx scripts/maswali-strike.test.mts",
+    "test:maswali-seed-clock": "tsx scripts/maswali-seed-clock.test.mts",
     "test:maswali-doors": "tsx scripts/maswali-doors.test.mts",
     "test:maswali-slip-design": "tsx scripts/maswali-slip-design.test.mts",
     "test:maswali-ui": "tsx scripts/maswali-ui.test.mts",
