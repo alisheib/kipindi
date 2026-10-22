@@ -140,9 +140,10 @@ export function MaswaliPoolHead({ t, locale, view, pct, final = false, tick, lab
   );
 }
 
-/** "Wiki 41 · hakuna 10/10 · TZS 389,000 imehamishwa · ada 0" — last week's words as one closed ledger row (the hub, §3.3),
- *  its facts a fact line (A1), the carried figure in the money face; `id` marks that figure when a page carries from it.
- *  The words alone: the hub's row is the door's own box (S5-DESIGN-HUB, P16's tap floor and end mark). */
+/** "Wiki 41 · hakuna 10/10 · TZS 389,000 imehamishwa · ada TZS 0" — last week's words as one closed ledger row (the hub,
+ *  §3.3), its facts a fact line (A1), each figure in the money face — the carried one in the figure's ink, the fee an amount
+ *  like every other (the lead's ruling 2b: it read "ada 0", the page's one amount without TZS); `id` marks the carried
+ *  figure when a page carries from it. The words alone: the hub's row is the door's own box (P16's tap floor and end mark). */
 export function MaswaliLastWeek({ t, locale, week, carried, id, className }: {
   t: Dict;
   locale: Locale;
@@ -154,12 +155,17 @@ export function MaswaliLastWeek({ t, locale, week, carried, id, className }: {
   className?: string;
 }) {
   const fact = (f: string) => {
-    if (!f.includes("{amount}")) return keepFact(locale, fill(f, { week }));
-    const [before, after] = f.split("{amount}");
+    const key = f.includes("{amount}") ? "amount" : f.includes("{fee}") ? "fee" : null;
+    if (key === null) return keepFact(locale, fill(f, { week }));
+    const [before, after] = f.split(`{${key}}`);
+    // A rolled-over week takes no fee: its fee is the amount 0 (`formatTzs`), in the money face and the row's own ink.
+    const figure = key === "amount"
+      ? <span id={id} className="amount text-text">{formatTzs(carried)}</span>
+      : <span className="amount">{formatTzs(0)}</span>;
     return (
       <span>
         {fill(before ?? "", { week })}
-        <span id={id} className="amount text-text">{formatTzs(carried)}</span>
+        {figure}
         {fill(after ?? "", { week })}
       </span>
     );

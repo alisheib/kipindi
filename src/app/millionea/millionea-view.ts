@@ -24,6 +24,7 @@ import type { PoolView } from "@/components/maswali/maswali-pool-figure";
 import type { WeekPhases } from "@/components/maswali/maswali-week-strip";
 import type { LossPosition, WinLines } from "@/components/maswali/maswali-win-ledger";
 import { counted, eatWeekday, weekNumberOf } from "@/components/maswali/maswali-format";
+import { factsOf } from "@/components/maswali/maswali-facts";
 import { MAIN_COUNT, weekVoidCertain, type GradableQuestion, type MaswaliPick } from "@/lib/maswali-score";
 import type { WeekState } from "@/lib/maswali-week-label";
 import { marketCategoryLabel } from "@/lib/localized";
@@ -251,4 +252,21 @@ export function lossPositionsOf(locale: Locale, questions: readonly MillioneaQue
     if (!question || !p || (outcome !== "YES" && outcome !== "NO") || (m.mark !== "matched" && m.mark !== "missed")) return [];
     return [{ ordinal: m.ordinal, text: textIn(locale, question.text), pick: p, outcome, mark: m.mark, standIn: m.standIn }];
   });
+}
+
+// ── S5-R2-HUB · THE RESERVES' RULE UNDER ITS HEAD (the lead's ruling 2c, 2026-10-22) ───────────────────────────────────────
+/**
+ * The reserves' rule as it stands UNDER its head ("Reserves · A1–A5"): the decided sentence (`reserveRule`) without the
+ * head's own words it opens with, its first letter a capital — "Count only when a main question voids, in order",
+ * "Zinahesabiwa tu swali kuu likibatilishwa, kwa mpangilio", "仅在正选题作废时按顺序计入" — so it never repeats the head right
+ * above it (the zh reader: "备选题 · A1–A5" over "备选题 A1–A5 仅在…"). A language whose sentence ever stops opening with its
+ * head's words keeps the whole sentence: never a sentence cut wrong. ONE helper for every place that draws the pair — the
+ * hub's questions now; the slip's reserve step and the ticket's reserves at the merge. The meaning is the decided one.
+ */
+export function reserveRuleAfterHead(t: Dict): string {
+  const head = factsOf(t.millionea.reservesHead).join(" ");
+  const rule = t.millionea.reserveRule;
+  if (!rule.startsWith(`${head} `)) return rule;
+  const rest = rule.slice(head.length + 1);
+  return rest.charAt(0).toLocaleUpperCase() + rest.slice(1);
 }

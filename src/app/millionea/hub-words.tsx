@@ -70,9 +70,11 @@ export function pausedWords(t: Dict, locale: Locale): ReactNode {
 }
 
 /** M6 · a week being voided, named: how many mains voided against how few valid reserves, and by when it is final if no
- *  objection changes it (`byMs`, the week's "results and payout" end). Its counts are numerals too (§T5, round 2). */
-export function voidingWords(t: Dict, voidedMains: number, validReserves: number, byMs: number): ReactNode {
-  return fillNodes(t.millionea.weekVoidingBody, { voided: numeralFace(formatNumber(voidedMains)), valid: numeralFace(formatNumber(validReserves)), when: run(eatWeekdayClock(t, byMs)) });
+ *  objection changes it (`byMs`, the week's "results and payout" end). Kept as every Millionea line is (`keepFact`): its
+ *  counts and its clock numerals (§T5), a count with its noun ("5 道"), its day with its clock, its last two words — sw 1024
+ *  left "itarejeshwa." alone on the notice's last line, zh 320 parted "5" from "道" (the S5-R2-HUB tile readers). */
+export function voidingWords(t: Dict, locale: Locale, voidedMains: number, validReserves: number, byMs: number): ReactNode {
+  return keepFact(locale, fill(t.millionea.weekVoidingBody, { voided: formatNumber(voidedMains), valid: formatNumber(validReserves), when: eatWeekdayClock(t, byMs) }));
 }
 
 /**
@@ -110,12 +112,16 @@ export function noWeekBody(t: Dict, locale: Locale, atMs: number | null): KeptBo
 }
 
 /**
- * L13 · a voided main's words that hold a "·" — "Void · a reserve will take its place", "Void · too few reserves: the week
- * is due to be voided" — as the fact line they are (A1): each fact kept whole with its last two words (`keepFact`), so no
- * word of it stands alone on a line ("…due to be" / "voided" at en 1280/1920).
+ * L13 · what a voided MAIN question leaves the week, after its stamp. The row's stamp already says "Void", so the words are
+ * the sentence's second fact — "Too few reserves: the week is due to be voided", "A reserve will take its place" — opening
+ * with a capital, as the register's week page draws the same row (REGISTER's `MarkWords`): one drawing for one truth. Kept
+ * as every Millionea line is (`keepFact`: its last two words one run, so "voided" never stands alone at en 1280/1920) and
+ * pretty-wrapped by its row. As a fact line (S5-R2-HUB 2) the long second fact moved whole to the next line and left
+ * "Void" / "Batili" alone on a first line at every width but 768, in all three languages (the tile readers).
  */
-export function voidFactWords(locale: Locale, line: string): ReactNode {
-  return <MaswaliFacts facts={factsOf(line).map((f) => keepFact(locale, f))} />;
+export function voidWords(locale: Locale, line: string): ReactNode {
+  const rest = factsOf(line).slice(1).join(" ");
+  return keepFact(locale, rest.charAt(0).toLocaleUpperCase() + rest.slice(1));
 }
 
 /**

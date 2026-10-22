@@ -19,9 +19,11 @@
  *   §13 L7 (round 2) the loading drawing composes the page's frame: the reader's block last, a guest by the shell's mark,
  *       every block sweeping                              §14 L6/L21 the no-week body keeps its day with its clock
  *   §15 the segment's loading state draws the page being opened (a census of every Millionea page)
- *   §16 L13 a voided main's words are a fact line; the paused notice's last pair
+ *   §16 L13 a voided main's words in the register's form; the paused notice's and the voiding notice's last pairs
  *   §17 7b the head's absent figure is the platform's empty slot
  *   §18 the close line in the one wording (salesCloseColon)  §19 the frame's line boxes, pills and the head's card order
+ *   §20 the lead's rulings 2a-2c: the result notices in the page form, last week's fee an amount, the reserves' rule
+ *       after its head (the shared `reserveRuleAfterHead`)
  */
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -394,7 +396,7 @@ console.log("\n§10 · the hub's new and changed words, as decided, in three lan
     nextOpen: W.nextOpenWords(t, EAT("2026-12-07T00:01:00")),
     sameDay: say(W.closeMovedWords(t, FRI_16, FRI_18)),
     acrossDays: say(W.closeMovedWords(t, FRI_16, THU_18)),
-    voiding: say(W.voidingWords(t, 3, 2, EAT("2026-12-08T12:00:00"))),
+    voiding: say(W.voidingWords(t, l, 3, 2, EAT("2026-12-08T12:00:00"))),
     finalAhead: say(W.finalAheadWords(t, l, 52, EAT("2026-11-30T00:01:00"), EAT("2026-11-20T10:00:00"))),
   });
   const HAN_GAP = /[㐀-䶿一-鿿豈-﫿]\s+[㐀-䶿一-鿿豈-﫿]/;
@@ -465,7 +467,7 @@ console.log("\n§12 · L7 · a time on the hub: its weekday in the body face, it
   const off = LOCALES.flatMap((l) => [
     markup(N.weekdayClock(dict[l] as never, FRI_18)),
     markup(W.closeMovedWords(dict[l] as never, FRI_16, FRI_18)),
-    markup(W.voidingWords(dict[l] as never, 3, 2, FRI_18)),
+    markup(W.voidingWords(dict[l] as never, l, 3, 2, FRI_18)),
     markup(W.finalAheadWords(dict[l] as never, l, 52, FRI_18, FRI_16)),
   ].flatMap(faceDefects).map((x) => `${l}: ${x}`));
   ok("12.1 · in three languages the close's time, the moved close, the voiding sentence and the final week's date set each numeral `.mono` and nothing else — no time set whole in the mono face", off.length === 0, off.slice(0, 3).join(" | "));
@@ -477,7 +479,7 @@ console.log("\n§12 · L7 · a time on the hub: its weekday in the body face, it
   // (an entity is markup too: "Millionea&#x27;s" holds no numeral)
   const bare = (m: string) => m.replace(/<span class="mono">[^<]*<\/span>/g, "").replace(/<[^>]+>/g, "").replace(/&#?\w+;/g, "").match(/\d+/g) ?? [];
   const lines = (l: L3) => ({
-    voiding: markup(W.voidingWords(dict[l] as never, 3, 2, FRI_18)),
+    voiding: markup(W.voidingWords(dict[l] as never, l, 3, 2, FRI_18)),
     finalAhead: markup(W.finalAheadWords(dict[l] as never, l, 52, FRI_18, FRI_16)),
     moved: markup(W.closeMovedWords(dict[l] as never, FRI_16, FRI_18)),
   });
@@ -574,25 +576,39 @@ console.log("\n§14 · L6/L21 · the no-week empty state's body: the next open's
   ok("14.1″ PLANT · the body keeping its clock alone (\"Maswali\" / \"15\" free to part) is reported", looseOf("sw", swBody.text, clockOnly).length > 0, clockOnly.slice(0, 200));
 }
 
-// ── §16 · L13 · a voided main's words are a fact line ──────────────────────────────────────────────────────────────────
-console.log("\n§16 · L13 · a voided main's words that hold a \"·\" are a fact line (A1): each fact kept whole with its last two words, so no word stands alone on a line");
+// ── §16 · L13 · a voided main's words, after its stamp ────────────────────────────────────────────────────────────────
+console.log("\n§16 · L13 · a voided main's words after its stamp are the register's: the sentence's second fact, opening with a capital, its last two words kept — never \"Void\" alone on a first line, never \"voided\" on a last");
 {
   const W = req("../src/app/millionea/hub-words.tsx") as typeof import("../src/app/millionea/hub-words.tsx");
   const FACTS = req("../src/components/maswali/maswali-facts.tsx") as typeof import("../src/components/maswali/maswali-facts.tsx");
-  const keptRuns = (m: string) => [...m.matchAll(/<span class="whitespace-nowrap">([\s\S]*?)<\/span>/g)].map((x) => textOf(x[1]).trim());
+  // Each kept run whole, the numerals' spans inside it included (a run's own span is closed by its matching tag).
+  const keptRuns = (m: string) => [...m.matchAll(/<span class="whitespace-nowrap">/g)].map((open) => {
+    let depth = 0, i = open.index ?? 0;
+    for (; i < m.length; i++) {
+      if (m.startsWith("<span", i)) depth++;
+      else if (m.startsWith("</span>", i) && --depth === 0) break;
+    }
+    return textOf(m.slice(open.index ?? 0, i)).trim();
+  });
   // The line's last two words (zh: its last two characters) inside one kept run — "…due to be voided" never leaves "voided".
   const tail = (l: L3, line: string) => { const last = FACTS.factsOf(line).at(-1) ?? ""; return l === "zh" ? last.slice(-2) : last.split(/\s+/).slice(-2).join(" "); };
+  // The register's week page draws the same row so (REGISTER's `MarkWords`): after the stamp that says "Void", the words
+  // that follow its first fact, opening with a capital.
   const voidDefects = (l: L3, key: "voidAwaiting" | "voidWeekCertain", m: string) => {
     const line = dict[l].millionea[key];
+    const rest = FACTS.factsOf(line).slice(1).join(" ");
+    const want = rest.charAt(0).toLocaleUpperCase() + rest.slice(1);
     const d: string[] = [];
-    if (count(m, 'class="kp-mln-fact"') !== FACTS.factsOf(line).length) d.push(`${l} ${key}: not a fact line`);
+    if (textOf(m) !== want) d.push(`${l} ${key}: "${textOf(m)}" for "${want}"`);
+    if (count(m, 'class="kp-mln-fact"') > 0) d.push(`${l} ${key}: a fact line (its long second fact moves whole and leaves "Void" alone)`);
     if (!keptRuns(m).some((x) => x.endsWith(tail(l, line)))) d.push(`${l} ${key}: its last pair is free to part`);
     return d;
   };
-  const off = LOCALES.flatMap((l) => (["voidAwaiting", "voidWeekCertain"] as const).flatMap((k) => voidDefects(l, k, inApp(l, W.voidFactWords(l, dict[l].millionea[k])))));
-  ok("16.1 · in three languages \"Void · a reserve will take its place\" and \"Void · too few reserves: the week is due to be voided\" are fact lines, their last two words one kept run", off.length === 0, off.join(" | "));
-  const old = inApp("en", dict.en.millionea.voidWeekCertain);
-  ok("16.1′ PLANT · round 1's plain sentence (\"voided\" free to stand alone) is reported", voidDefects("en", "voidWeekCertain", old).length > 0);
+  const off = LOCALES.flatMap((l) => (["voidAwaiting", "voidWeekCertain"] as const).flatMap((k) => voidDefects(l, k, inApp(l, W.voidWords(l, dict[l].millionea[k])))));
+  ok("16.1 · in three languages a voided main's words are the register's — \"A reserve will take its place\", \"Too few reserves: the week is due to be voided\" — their last two words one kept run", off.length === 0, off.join(" | "));
+  const asFacts = inApp("en", h(FACTS.MaswaliFacts as never, { facts: FACTS.factsOf(dict.en.millionea.voidWeekCertain).map((f) => FACTS.keepFact("en", f)) } as never));
+  ok("16.1′ PLANT · round 2's fact line (\"Void\" alone on a first line) and round 1's plain sentence (\"voided\" alone on a last) are each reported",
+    voidDefects("en", "voidWeekCertain", asFacts).length > 0 && voidDefects("en", "voidWeekCertain", inApp("en", dict.en.millionea.voidWeekCertain)).length > 0);
   // The paused notice is Millionea's own sentence, kept as every Millionea line is (`pausedWords`, keepFact): its last two
   // words one kept run ("salama." stood alone at sw 320), its numerals a numeral should a wording ever hold one.
   const pausedDefects = (l: L3, m: string) => {
@@ -602,6 +618,23 @@ console.log("\n§16 · L13 · a voided main's words that hold a \"·\" are a fac
   const paused = LOCALES.flatMap((l) => pausedDefects(l, inApp(l, W.pausedWords(dict[l] as never, l))));
   ok("16.2 · in three languages the paused notice's words are the dictionary's, their last two words one kept run", paused.length === 0, paused.join(" | "));
   ok("16.2′ PLANT · the plain sentence (\"salama.\" free to stand alone) is reported", pausedDefects("sw", inApp("sw", dict.sw.millionea.paused)).length > 0);
+  // M6 · the voiding notice, kept as every Millionea line is (`voidingWords`, keepFact): its last two words one run (sw 1024
+  // left "itarejeshwa." alone), a count with its noun ("5 道": zh 320 parted them), its numerals numerals.
+  const BY = Date.parse("2026-12-08T23:59:00+03:00");
+  const { fillNodes } = req("../src/lib/fill-nodes.tsx") as typeof import("../src/lib/fill-nodes.tsx");
+  const N = req("../src/components/maswali/maswali-format.ts") as typeof import("../src/components/maswali/maswali-format.ts");
+  const noticeDefects = (l: L3, m: string) => {
+    const line = fill(dict[l].millionea.weekVoidingBody, { voided: 6, valid: 5, when: N.eatWeekdayClock(dict[l] as never, BY) });
+    const d: string[] = [];
+    if (textOf(m) !== line) d.push(`${l}: "${textOf(m)}"`);
+    if (!keptRuns(m).some((x) => x.endsWith(tail(l, line)))) d.push(`${l}: its last pair is free to part`);
+    if (l === "zh" && !keptRuns(m).some((x) => x.includes("5 道"))) d.push("zh: \"5\" free to part from \"道\"");
+    return d;
+  };
+  const notices = LOCALES.flatMap((l) => noticeDefects(l, inApp(l, W.voidingWords(dict[l] as never, l, 6, 5, BY))));
+  ok("16.3 · in three languages the voiding notice keeps its last two words, zh's count with its noun (\"5 道\"), each numeral a numeral", notices.length === 0, notices.join(" | "));
+  const roundOne = (l: L3) => inApp(l, fillNodes(dict[l].millionea.weekVoidingBody, { voided: "6", valid: "5", when: N.eatWeekdayClock(dict[l] as never, BY) }));
+  ok("16.3′ PLANT · the round-1 fill (nothing kept) is reported in sw and zh", noticeDefects("sw", roundOne("sw")).length > 0 && noticeDefects("zh", roundOne("zh")).length > 0);
 }
 
 // ── §17 · 7b · the head's absent figure is the platform's empty slot ─────────────────────────────────────────────────────
@@ -725,13 +758,54 @@ console.log("\n§19 · L7 (round 2) · the drawing's lines are the page's line b
     !inOrder(orderOf('<span data-testid="millionea-hub-figure"></span><span data-head="rule"></span><span data-head="carry"></span>')));
 }
 
+// ── §20 · the lead's rulings 2a-2c ────────────────────────────────────────────────────────────────────────────────────
+console.log("\n§20 · the lead's rulings (2026-10-22): on Millionea's own page a week is named without the product, every notice sentence ends with its full stop; last week's fee is an amount; the reserves' rule never repeats its head");
+{
+  // 2a · the nine result lines (the hub is their only reader): "Week 49: your ticket did not win." — never "Millionea Week 49: …".
+  const KEYS = ["resultWon", "resultWonMany", "resultMixed", "resultLost", "resultLostOne", "resultForfeitedOne", "resultForfeited", "resultRefunded", "resultRefundedOne"] as const;
+  const pageForm = (l: L3, v: string) => (v.startsWith("Millionea") ? [`${l}: "${v}" names the product`] : []).concat(v.endsWith(l === "zh" ? "。" : ".") ? [] : [`${l}: "${v}" has no full stop`]);
+  const forms = LOCALES.flatMap((l) => KEYS.flatMap((k) => pageForm(l, String(dict[l].millionea[k]))));
+  ok("20.1 · in three languages each of the hub's nine result notices names its week without the product (\"Week 49: …\", \"Wiki 49: …\", \"第49周：…\") and ends with its full stop", forms.length === 0, forms.join(" | "));
+  ok("20.1′ PLANT · the old notice (\"Millionea Week {week}: your ticket did not win\") is reported", pageForm("en", "Millionea Week {week}: your ticket did not win").length === 2);
+  // 2b · a rolled-over week's fee, "TZS 0" through formatTzs, in the money face like every other amount.
+  const P = req("../src/components/maswali/maswali-pool-figure.tsx") as typeof import("../src/components/maswali/maswali-pool-figure.tsx");
+  const zero = escAttr(formatTzs(0));
+  const feeDefects = (l: L3, m: string) => (m.includes(`<span class="amount">${zero}</span>`) ? [] : [`${l}: "${textOf(m)}"`]);
+  const fees = LOCALES.flatMap((l) => feeDefects(l, inApp(l, h(P.MaswaliLastWeek as never, { t: dict[l], locale: l, week: 41, carried: 389_000 } as never))));
+  ok("20.2 · in three languages last week's rolled-over row says its fee as an amount (\"ada TZS 0\"), in the money face", fees.length === 0, fees.join(" | "));
+  ok("20.2′ PLANT · the literal \"ada 0\" is reported", feeDefects("sw", "<span>Wiki 41 · hakuna 10/10 · ada 0</span>").length > 0);
+  // 2c · the reserves' rule under its head (the shared helper): the sentence after its head's own words, opening with a capital.
+  const V = req("../src/app/millionea/millionea-view.ts") as typeof import("../src/app/millionea/millionea-view.ts");
+  const WANT: Record<L3, string> = { en: "Count only when a main question voids, in order", sw: "Zinahesabiwa tu swali kuu likibatilishwa, kwa mpangilio", zh: "仅在正选题作废时按顺序计入" };
+  const rules = LOCALES.filter((l) => V.reserveRuleAfterHead(dict[l] as never) !== WANT[l]).map((l) => `${l}: "${V.reserveRuleAfterHead(dict[l] as never)}"`);
+  ok("20.3 · in three languages the reserves' rule under its head does not repeat the head (\"Reserves · A1–A5\" over \"Count only when a main question voids, in order\")", rules.length === 0, rules.join(" | "));
+  const odd = { ...dict.en, millionea: { ...dict.en.millionea, reserveRule: "Only when a main question voids do reserves count" } };
+  ok("20.3′ PLANT · a sentence that does not open with its head is kept whole (never cut wrong), and the hub draws the helper, not the whole rule",
+    V.reserveRuleAfterHead(odd as never) === odd.millionea.reserveRule && readFileSync(join(ROOT, "src/app/millionea/page.tsx"), "utf8").includes("{keepFact(locale, reserveRuleAfterHead(t))}"));
+  // The drawing keeps the page's ledger and the kit's skeleton look (the lead's item from REGISTER's one rhythm; the tile
+  // readers): the ledger's rows the list's one gap apart, no step of space after the total; and the held ticket's block
+  // drawn with the raised card's own bars, never the page's darker bar (a hole on the raised surface).
+  const between = (m: string, from: string, to: string) => m.slice(m.indexOf(from), m.indexOf(to));
+  const stepDefects = (m: string) => (/\bmt-3\b/.test(between(m, 'data-ghost="ledger"', 'data-ghost="mine"')) ? ["the ledger steps a row apart"] : []);
+  const blockDefects = (m: string) => {
+    const block = between(m, 'class="mat-raised', 'data-ghost="questions"');
+    return count(block, "bg-bg-elevated") >= 3 && !block.includes("bg-bg-overlay") ? [] : ["the held block's bars are not the raised card's own"];
+  };
+  const drawn = LOCALES.flatMap((l) => [...stepDefects(ghostOf(l)), ...blockDefects(ghostOf(l))].map((x) => `${l}: ${x}`));
+  ok("20.4 · in three languages the drawing's ledger stands every row the list's one gap apart (no step after the total), and the held ticket's block draws its serial and its two socket rows in the raised card's own bars", drawn.length === 0, drawn.join(" | "));
+  const en = ghostOf("en");
+  const stepped = en.replace(/(data-ghost="ledger"[\s\S]*?class="flex items-baseline)/, "$1 mt-3");
+  ok("20.4′ PLANT · round 1's step after the total and the dark bar in the held block are each reported",
+    stepped !== en && stepDefects(stepped).length > 0 && blockDefects(en.replace(/(class="mat-raised[\s\S]*?)bg-bg-elevated/, "$1bg-bg-overlay")).length > 0);
+}
+
 console.log(`\n${"═".repeat(70)}\n  MASWALI HUB: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run prints (S5-DESIGN-HUB 3: 34; 4, the one ledger and zh's spacing rule: 43; 6, one
  *  carry origin: 45; 7, no door to a week the register does not draw yet: 47; 9, one final-week rule and last week's
  *  words: 50; 10, a time's face: 53; round 2, every numeral of the timed sentences: 55; S5-R2-HUB, the rule's balance, the
  *  drawing's frame, the no-week body and the segment's pick: 70; the void words' fact lines, the head's empty slot and
  *  the no-week body's kept phrases: 75; the paused notice's pair, the close line's one wording, the frame's line boxes,
- *  pills and the head's card order: 90). It only rises. */
-const MIN_ASSERTIONS = 90;
+ *  pills and the head's card order: 90; the void words in the register's form, the voiding notice kept, the lead's rulings 2a-2c and the drawing's ledger and held block: 100). It only rises. */
+const MIN_ASSERTIONS = 100;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

@@ -3263,6 +3263,9 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     - It draws the head's two pills at their labels' lengths: a table of character counts held to the dictionary, never
       words.
     - It draws the strip's ranges as their two kept runs, so a range wraps where the page's does.
+    - Its ledger keeps item 14's one rhythm (MASWALI-BUILD S5-R2-REGISTER 27): no step of space after the total.
+    - On the held ticket's raised card its bars are that card's own (`bg-bg-elevated`, as the kit's `GhostCard` holds
+      its `GhostBar`). The page's darker bar read there as a hole.
     - The reader's own block stands LAST in the buy column, the one band whose height is the reader's.
     - A numeral never grows a frame line. Every frame line's inline numerals (`.mono`, `.amount`) take line-height 0,
       the platform's `.kp-cjk-gap` recipe; a mono numeral had made its line a pixel taller.
@@ -3272,7 +3275,20 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
 26. **The hub's own lines: one order, one wording (lead 2026-10-22; MASWALI-BUILD S5-R2-HUB).** The jackpot head says
     the card's order (DOORS' M2): the label, the figure, then — while an earlier week is unsettled — item 9's carry line,
     which adds to that figure, then the rule. Under the fee, the carry line read as adding to the fee. The sales close is
-    item 24's one wording.
+    item 24's one wording. And:
+    - On Millionea's own page a week is named without the product, and a notice sentence ends with its full stop: "Week 49:
+      your ticket did not win." / "Wiki 49: tiketi yako haikushinda." / "第49周：您的彩票未中奖。" (the nine `result*` lines,
+      which the hub alone reads). A surface where the reader may be elsewhere names the product itself (`productLabel`).
+    - A zero is an amount like every other, through `formatTzs` in the money face: a rolled-over week's row says
+      "… · ada TZS 0" (`lastWeekRolled`'s `{fee}`).
+    - A line under its head never repeats the head. Under "Reserves · A1–A5" the decided rule is said without the head's
+      words, "Count only when a main question voids, in order". ONE shared helper does it, `reserveRuleAfterHead(t)` in
+      `src/app/millionea/millionea-view.ts`, for every place that draws the pair. A language whose sentence ever stops
+      opening with its head keeps the whole sentence.
+    - A voided main question's words follow its stamp, which already says "Void": the sentence's second fact, opening with
+      a capital ("Too few reserves: the week is due to be voided"), as the register's week page draws the same row.
+    - The week's voiding notice is kept as every Millionea line is: its last two words, a count with its noun ("5 道"),
+      its day with its clock.
 27. **The hub's buy column (MASWALI-BUILD S5-R2-HUB, the tile readers).**
     - At 768 no cell stands empty. A head with no door beside it (sales paused) runs both columns; with no block of the
       reader's, the graded week takes that block's cell, level with the ledger.

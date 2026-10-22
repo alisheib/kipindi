@@ -63,10 +63,10 @@ import { HUB_DOOR, HUB_GRID, HUB_MINE, HUB_PINNED, HUB_QUESTIONS, HUB_STRIP, hub
 import { HubPoolHead, HubPoolLedger, HubPoolLive } from "./hub-pool";
 import { HubNotices, type HubNotice } from "./hub-notices";
 import { HubOutcomeStamp, HubPressGroup } from "./hub-stamp";
-import { carryingRollover, closeMovedWords, closeWords, finalAheadWords, lastWeekWords, noWeekBody, pausedWords, voidFactWords, voidingWords } from "./hub-words";
+import { carryingRollover, closeMovedWords, closeWords, finalAheadWords, lastWeekWords, noWeekBody, pausedWords, voidWords, voidingWords } from "./hub-words";
 import { MILLIONEA_HREF, MillioneaReadingLinks, registerWeekHref, ticketPageHref } from "./millionea-parts";
 import { WeekCommitments, WeekStateChip, weekChipWord } from "./register/register-parts";
-import { bySlot, capReachedLine, gradableOf, lineOf, millioneaWeekPhase, msOf, ordinalOf, phaseNow, phasesOf, resultDoorSerial, resultLine, textIn } from "./millionea-view";
+import { bySlot, capReachedLine, gradableOf, lineOf, millioneaWeekPhase, msOf, ordinalOf, phaseNow, phasesOf, reserveRuleAfterHead, resultDoorSerial, resultLine, textIn } from "./millionea-view";
 
 export const dynamic = "force-dynamic";
 
@@ -179,13 +179,13 @@ async function noticesOf(t: Dict, hub: MillioneaHub, userId: string | null, carr
  * L13 · what a voided MAIN question leaves the week, in the ticket's own words (`maswali-ticket.tsx`, one wording per
  * truth): the reserve that stands in once the graded set has named it ("Void ↪ A1"), "too few reserves: the week is due to
  * be voided" once the void is certain, else "a reserve will take its place". A reserve's void is its stamp alone.
- * ⭐ S5-R2-HUB · the two sentences that hold a "·" are fact lines (A1, `voidFactWords`): each fact kept whole with its last
- * two words, so "…due to be voided" never leaves "voided" alone on a line (en 1280/1920).
+ * ⭐ S5-R2-HUB · after the row's stamp (which says "Void") the words are the sentence's second fact, as the register's week
+ * page draws them (`voidWords`): one drawing for one truth, never "Void" alone on a first line, never "voided" on a last.
  */
 function voidWordsOf(t: Dict, locale: Locale, q: MillioneaHubWeek["questions"][number], gq: ReturnType<typeof gradableOf>): ReactNode {
   if (q.role !== "MAIN" || q.outcome !== "VOID") return null;
   try {
-    if (weekVoidCertain(gq)) return voidFactWords(locale, t.millionea.voidWeekCertain);
+    if (weekVoidCertain(gq)) return voidWords(locale, t.millionea.voidWeekCertain);
     const row = displayMap(gq)?.find((r) => r.slot === q.slot);
     if (row?.state === "REPLACED_BY") {
       // The reserve's label is a numeral, as in its own row ("A1", §T5).
@@ -194,7 +194,7 @@ function voidWordsOf(t: Dict, locale: Locale, q: MillioneaHubWeek["questions"][n
   } catch {
     // A record the grader refuses names no stand-in: the waiting words below are true of it.
   }
-  return voidFactWords(locale, t.millionea.voidAwaiting);
+  return voidWords(locale, t.millionea.voidAwaiting);
 }
 
 /**
@@ -217,7 +217,7 @@ function QuestionRow({ t, locale, q, voidWords }: { t: Dict; locale: Locale; q: 
       </span>
       <span className={HUB_QUESTIONS.words}>
         <span className={cn(HUB_QUESTIONS.text, voided ? "text-text-muted line-through decoration-border-strong" : "text-text")}>{textIn(locale, q.text)}</span>
-        {voidWords && <span className="inline-flex flex-wrap items-center gap-x-1 text-body-sm text-text-muted" data-testid="millionea-hub-void-words">{voidWords}</span>}
+        {voidWords && <span className="inline-flex flex-wrap items-center gap-x-1 text-body-sm text-text-muted text-pretty" data-testid="millionea-hub-void-words">{voidWords}</span>}
       </span>
       <span className={HUB_QUESTIONS.when}>
         {/* "Event Saturday 09:00" is one run: a day never parts from its time (S5 VIS A1) — its words in the body face, its
@@ -248,7 +248,7 @@ function WeekQuestions({ t, locale, w }: { t: Dict; locale: Locale; w: Millionea
         <div className="mat-inset mt-1.5 rounded-control px-2" data-testid="millionea-hub-reserves">
           <div className="flex flex-col gap-0.5 pb-1.5 pt-2">
             <span className="font-mono text-caption uppercase eyebrow text-text-subtle"><MaswaliFacts facts={factsOf(t.millionea.reservesHead)} /></span>
-            <span className="text-body-sm text-text-muted text-pretty">{keepFact(locale, t.millionea.reserveRule)}</span>
+            <span className="text-body-sm text-text-muted text-pretty">{keepFact(locale, reserveRuleAfterHead(t))}</span>
           </div>
           <ol>{qs.filter((q) => q.role === "RESERVE").map(row)}</ol>
         </div>
@@ -453,14 +453,14 @@ function GradingBlock({ t, locale, w, nowMs, className }: { t: Dict; locale: Loc
 /** M6 · a week being voided, named: how many mains voided against how few valid reserves, and by when it is final if no
  *  objection changes it — the week's own "results and payout" end (`resultsBy`: the objection window's end once stamped,
  *  else the latest void deadline plus the frozen window). Neutral, never an error (M8). */
-function VoidingNotice({ t, w }: { t: Dict; w: MillioneaHubWeek }) {
+function VoidingNotice({ t, locale, w }: { t: Dict; locale: Locale; w: MillioneaHubWeek }) {
   const by = msOf(w.resultsBy);
   if (by === null) return null;
   // The reserves not voided themselves (never below zero: at most five can void), as the sentence says "only 2 valid".
   const valid = RESERVE_COUNT - w.voidedReserves;
   return (
     <div data-testid="millionea-hub-voiding">
-      <Callout tone="neutral" role="status">{voidingWords(t, w.voidedMains, valid, by)}</Callout>
+      <Callout tone="neutral" role="status">{voidingWords(t, locale, w.voidedMains, valid, by)}</Callout>
     </div>
   );
 }
@@ -591,7 +591,7 @@ export default async function MillioneaHubPage({ searchParams }: { searchParams:
                   led by the week's own mark (§10c `finalWeek`, flag-checkered — `flag` means "object to a result", P17;
                   `MaswaliPoolHead`). The page-wide "Final week of Millionea" box above it said the week a third time and put
                   the door under a 360 phone's fold (y 770). A week ahead, the announcement bar says it (L22). */}
-              {w && voidingNow(w, nowMs) && <VoidingNotice t={t} w={w} />}
+              {w && voidingNow(w, nowMs) && <VoidingNotice t={t} locale={locale} w={w} />}
               {w ? (
                 <div className={HUB_GRID}>
                   {/* The strip spans the measure (S5 VIS P4): each of its three ranges has a third of it, whole on its line. */}

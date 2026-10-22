@@ -208,7 +208,8 @@ console.log("\n§7 · Swahili says each fact with ONE verb (S5-FIX-PLAYER P14; S
     ["carriedForwardAgain", "Imehamishwa tena kwa ukamilifu"],
     ["rolloverNotice", "Wiki {prev}: hakuna tiketi ya 10/10. {amount} imehamishiwa Wiki {week}."],
     ["settledRollover", "hakuna 10/10 · {amount} imehamishwa"],
-    ["lastWeekRolled", "Wiki {week} · hakuna 10/10 · {amount} imehamishwa · ada 0"],
+    // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-HUB, the lead's ruling 2b): the fee is an amount like every other ("TZS 0").
+    ["lastWeekRolled", "Wiki {week} · hakuna 10/10 · {amount} imehamishwa · ada {fee}"],
     // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER): `regCarried` is gone (the one ledger names each carry by its
     // week); the ledger's own carry lines and How to play's void rule say the same two verbs.
     ["carriedOutAgain", "Imehamishiwa tena kwa ukamilifu Wiki {week}"],

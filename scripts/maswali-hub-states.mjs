@@ -207,16 +207,18 @@ async function openWeekChecks(page, label, locale, width, { door = "millionea-hu
   }
   if (width >= 1024 && head) {
     // S5-R2-HUB · the pinned pair's foot (the tile read: mid-scroll the ledger slid out from under the pair cut flat, a box
-    // with no top): its ground fades over its last 16px, and at rest the block under it stands the column's 16px below.
+    // with no top): its ground fades over its foot — as deep as the column's own gap — and at rest the block under it stands
+    // that gap below (it stood 36px against the column's 20).
     const foot = await page.evaluate(() => {
       const p = document.querySelector('[data-testid="millionea-hub-pinned"]');
-      const next = p?.nextElementSibling, last = p?.lastElementChild;
-      if (!p || !next || !last) return null;
+      const aside = p?.parentElement, next = p?.nextElementSibling, last = p?.lastElementChild;
+      if (!p || !aside || !next || !last) return null;
       const cs = getComputedStyle(p);
-      return { image: cs.backgroundImage.slice(0, 120), pad: cs.paddingBottom, gap: Math.round(next.getBoundingClientRect().top - last.getBoundingClientRect().bottom) };
+      return { image: cs.backgroundImage.slice(0, 160), pad: parseFloat(cs.paddingBottom), colGap: parseFloat(getComputedStyle(aside).rowGap),
+        gap: Math.round(next.getBoundingClientRect().top - last.getBoundingClientRect().bottom) };
     });
-    ok(`${label} · the pinned pair's ground fades over its last 16px, and at rest the next block stands 16px under the pair (${foot?.gap}px)`,
-      !!foot && /linear-gradient/.test(foot.image) && foot.pad === "16px" && Math.abs(foot.gap - 16) <= 1, j(foot));
+    ok(`${label} · the pinned pair's ground fades over its foot, and at rest the next block stands the column's own gap under the pair (${foot?.gap}px of ${foot?.colGap}px)`,
+      !!foot && foot.image.includes(`calc(100% - ${foot.pad}px)`) && foot.pad === foot.colGap && Math.abs(foot.gap - foot.colGap) <= 1, j(foot));
     await page.evaluate(() => window.scrollTo(0, 900));
     await page.waitForTimeout(300);
     const pinnedHead = await box(page, "millionea-hub-jackpot");
@@ -231,13 +233,14 @@ async function openWeekChecks(page, label, locale, width, { door = "millionea-hu
     ok(`${label} · L17 the column is named by the jackpot's label`, !!named && named.length > 0, j(named));
   }
 }
-/** A sentence's last line holds at least two words — two characters in Chinese: the paused notice and each voided main's
- *  words (S5-R2-HUB; the tile read: sw 320 "salama." and en 1280/1920 "voided" alone on their last lines). Lines are found
- *  from the glyphs' own boxes. */
+/** A sentence's last line holds at least two words — two characters in Chinese: the paused notice, the voiding notice and
+ *  each voided main's words, whose every line does (S5-R2-HUB; the tile read: sw 320 "salama.", en 1280/1920 "voided" and
+ *  sw 1024 "itarejeshwa." alone on a last line, "Void" / "Batili" alone on a first). Lines are found from the glyphs' own
+ *  boxes. */
 async function widowChecks(page, label) {
   const found = await page.evaluate(() => {
     const out = [];
-    for (const el of document.querySelectorAll('[data-testid="millionea-hub-paused"], [data-testid="millionea-hub-void-words"]')) {
+    for (const el of document.querySelectorAll('[data-testid="millionea-hub-paused"], [data-testid="millionea-hub-voiding"], [data-testid="millionea-hub-void-words"]')) {
       const glyphs = [];
       const range = document.createRange();
       const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
@@ -254,14 +257,16 @@ async function widowChecks(page, label) {
       for (const g of glyphs) { const l = lines.find((x) => Math.abs(x.mid - g.mid) < 6); if (l) l.chars.push(g); else lines.push({ mid: g.mid, chars: [g] }); }
       if (lines.length < 2) continue;
       lines.sort((a, b) => a.mid - b.mid);
-      const last = lines[lines.length - 1].chars.sort((a, b) => a.left - b.left).map((c) => c.ch).join("").trim();
-      const han = /[㐀-鿿]/.test(last);
-      const words = han ? [...last.replace(/[\s。．.，,、：:！!？?]/g, "")].length : last.split(/\s+/).filter(Boolean).length;
-      out.push({ where: el.getAttribute("data-testid"), last, words });
+      const texts = lines.map((l) => l.chars.sort((a, b) => a.left - b.left).map((c) => c.ch).join("").trim());
+      const size = (s) => (/[㐀-鿿]/.test(s) ? [...s.replace(/[\s。．.，,、：:！!？?]/g, "")].length : s.split(/\s+/).filter(Boolean).length);
+      const where = el.getAttribute("data-testid");
+      const every = where === "millionea-hub-void-words";
+      const worst = (every ? texts : [texts[texts.length - 1]]).reduce((a, b) => (size(b) < size(a) ? b : a));
+      out.push({ where, every, last: worst, words: size(worst), lines: texts });
     }
     return out;
   });
-  for (const f of found) ok(`${label} · ${f.where}: its last line is no lone word ("${f.last}")`, f.words >= 2, j(f));
+  for (const f of found) ok(`${label} · ${f.where}: ${f.every ? "no line" : "its last line"} is a lone word ("${f.last}")`, f.words >= 2, j(f));
 }
 
 /** M1 · NO CELL OF THE TWO-UP COLUMN STANDS EMPTY at 768 (S5-R2-HUB; the tile read: paused, a 350×170px hole beside the
@@ -633,6 +638,17 @@ if (RUN === "a") {
       rule: lines(head?.querySelector('[data-head="rule"]') ?? null), carry: lines(head?.querySelector('[data-head="carry"]') ?? null),
       floor: lines(document.querySelector('[data-testid="millionea-hub-ledger"] [data-ledger-row="floor"] span.min-w-0')),
       ranges: [...document.querySelectorAll('[data-testid="millionea-week-strip"] li')].map((li) => [...li.querySelectorAll("[data-range] > .whitespace-nowrap")].map((el) => Math.round(el.getBoundingClientRect().width * 10) / 10)),
+      // The eyebrow's week word and its state chip (their widths, the chip's height and its label's own width): the
+      // drawing's table for them is held to these.
+      eyebrow: (() => {
+        const chip = document.querySelector('[data-testid="millionea-hub"] [data-testid="millionea-week-state"]');
+        const word = chip?.previousElementSibling ?? null;
+        const w = (el) => (el ? Math.round(el.getBoundingClientRect().width * 100) / 100 : null);
+        const range = document.createRange();
+        const text = chip ? [...chip.childNodes].find((n) => n.nodeType === 3 || n.nodeType === 1) : null;
+        if (text) range.selectNodeContents(text);
+        return { word: w(word), chip: w(chip), chipH: chip ? Math.round(chip.getBoundingClientRect().height * 100) / 100 : null, label: text ? Math.round(range.getBoundingClientRect().width * 100) / 100 : null };
+      })(),
     };
   };
   /** The drawing's motion: each of its blocks wears the platform's skeleton sweep (`.kp-shimmer-track::after`). */

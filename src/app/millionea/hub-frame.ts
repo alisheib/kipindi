@@ -57,9 +57,10 @@ export function hubAside(twoUp: boolean, strip: boolean): string {
  * under the pair and never shows in the gap above it (H2). Below 1024 the wrapper is `contents`: its two blocks are the
  * column's own cells.
  * ⭐ S5-R2-HUB · THE PAIR'S FOOT FADES (`kp-mln-pinned`, globals.css; the tile readers: mid-scroll the ledger slid out from
- * under the pair cut flat — a box with no top). The pair's ground runs 16px past its door and fades there to nothing, so
- * what passes under it leaves through a soft edge; that foot is given back at rest (`pb-4`, `-mb-4`), so the block under
- * the pair stands the column's own 16px below it — it stood 28px, the one uneven gap of the column.
+ * under the pair cut flat — a box with no top). The pair's ground runs on past its door by the column's own gap (`pb-4`,
+ * 20px in this scale) and fades there to nothing, so what passes under it leaves through a soft edge; that foot is given
+ * back at rest (`-mb-4`), so the block under the pair stands the column's own gap below it — it stood 36px (`pb-3`'s 16
+ * and the gap's 20), the one uneven gap of the column.
  */
 export const HUB_PINNED = "contents lg:sticky lg:top-[56px] lg:z-10 lg:-mt-3 lg:-mb-4 lg:flex lg:flex-col lg:gap-3 lg:pb-4 lg:pt-3 kp-mln-pinned";
 

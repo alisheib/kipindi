@@ -104,9 +104,10 @@ function Lines({ n, text, className, sweep = false }: { n: Wrap; text: string; c
 
 /** The ledger's rows as the one Millionea ledger draws a selling week's (`millioneaLedgerRows` → `MaswaliLedger`): the
  *  carry it received (a door to its week: the row is the link, at least `--h-control-md`), the sales over their note, the
- *  pool so far under its hairline, then — a step of space after the total — the floor, the jackpot and the fee. */
-type GhostRow = { link?: boolean; note?: boolean; total?: boolean; gap?: boolean; floor?: boolean; muted?: boolean };
-const LEDGER: GhostRow[] = [{ link: true }, { note: true }, { total: true }, { gap: true, floor: true }, {}, { muted: true }];
+ *  pool so far under its hairline, then the floor, the jackpot and the fee — every row the list's one gap apart (the
+ *  ledger's one rhythm, REGISTER's S5-R2 27: a total is set apart by its hairline alone, no step of space after it). */
+type GhostRow = { link?: boolean; note?: boolean; total?: boolean; floor?: boolean; muted?: boolean };
+const LEDGER: GhostRow[] = [{ link: true }, { note: true }, { total: true }, { floor: true }, {}, { muted: true }];
 
 /** One ledger row in the kit's own row (`ReceiptRow`, its sentence label), so its line boxes are the page's. */
 function LedgerRow({ r, floorLines }: { r: GhostRow; floorLines: Wrap }) {
@@ -117,7 +118,6 @@ function LedgerRow({ r, floorLines }: { r: GhostRow; floorLines: Wrap }) {
       value={<GhostLine className="w-[84px]" />}
       emphasis={r.total ? "total" : r.muted ? "muted" : undefined}
       divider={r.total}
-      className={cn(r.gap && "mt-3")}
     />
   );
   const note = r.note ? <span className="mt-0.5 block text-body-sm"><GhostLine className="w-[132px]" /></span> : null;
@@ -236,14 +236,16 @@ export function MillioneaHubGhost() {
             {/* The reader's own block, last: the count line over one held ticket's row (the kit's raised block — the row's
                 serial line over its two rows of sockets, the ten mains at 18px and the five reserves at 14px under them,
                 `MaswaliHeldTicketRow` / `MaswaliSealLine` size 18), which the real rows replace in place. No block for a
-                guest. */}
+                guest. Its bars are the raised card's own (`bg-bg-elevated`, as every Millionea drawing's `GhostCard` holds
+                `GhostBar`s): the field's bar read as a dark hole on the raised surface, and the socket rows as an empty
+                slab (the S5-R2-HUB tile readers). */}
             <div className={cn(HUB_MINE.box, hubCell(true, "mine"), MEMBER)} data-ghost="mine">
               <Line text={HUB_MINE.count} width="w-[208px] max-w-full" sweep />
               <div className={cn("mat-raised flex flex-col gap-1.5 rounded-control p-2", SWEEP)} style={{ minHeight: "var(--h-control-md)" }}>
-                <Line text="font-mono text-body-sm font-bold" width="w-[176px] max-w-full" />
+                <Line text="font-mono text-body-sm font-bold" width="w-[176px] max-w-full bg-bg-elevated" />
                 <span className="flex flex-col gap-1.5">
-                  <span className="block h-[18px]" />
-                  <span className="block h-[14px]" />
+                  <span className="block h-[18px] w-[216px] max-w-full rounded-full bg-bg-elevated" />
+                  <span className="block h-[14px] w-[86px] rounded-full bg-bg-elevated" />
                 </span>
               </div>
             </div>
