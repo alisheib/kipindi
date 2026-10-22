@@ -2603,7 +2603,11 @@ stays open as KNOWN-RED TK.2, with MB-23 (OB.0) and MB-74 (RD.5): §6.1 Gate B l
   the week closed once, the commitment counts exactly the 10,012 live tickets, the pool agrees three ways
   (10,012,000), no account above the cap, every account paid for exactly what it was told it has, all 50 retries after
   the close answered with their receipts, Up & Down's books whole, the trial balance (2,640 wallets) and every invariant.
-  The latency targets stay TBD-BASELINE (S17's constants): these are the first baseline; the lead sets them.
+  These are the first baseline. **The targets, set by the lead (2026-10-22, S7-F9 6) from it:** a landed purchase p95
+  ≤ 1,000 ms and p99 ≤ 2,000 ms (measured 699 / 1,425), and 0 BUSY after retries — S17's constants
+  (`TARGET_PURCHASE_P95_MS`, `TARGET_PURCHASE_P99_MS`, `TARGET_BUSY_PERCENT`), each now a verdict; the refusal,
+  Up & Down and close-stamp targets stay TBD-BASELINE (printed, not judged). The rush runs again on the final merged
+  head.
   ⚠️ The prep had never run green: it opened its week two weeks ahead and could not move the close to the run against
   `MaswaliCycle_close_after_open_check` — fixed in the harness (S7-F8 11: the week opens at the real clock).
 - **S7 · the automatic resolver against two-admin authorization (S7-F9 2, 2026-10-22).** The question: can the AI seal a
