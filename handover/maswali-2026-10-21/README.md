@@ -1,6 +1,6 @@
 # MASWALI-BUILD — hand-over (Claude, OMEGA-COMPILE01, the Maswali lead)
 
-## ⏹ STOP 4 — 2026-10-22 ~12:30 UTC (Ali: "push the progress we reached cleanly and stop the session cleanly so we proceed later on a clean base"; then "finalize conflicts then push")
+## ⏹ STOP 4 — 2026-10-22 ~10:45 UTC (Ali: "push the progress we reached cleanly and stop the session cleanly so we proceed later on a clean base"; then "finalize conflicts then push")
 
 **Session asheib-f3.** Read in this order: this section → `MERGE-NOTES.md`'s top section ("2026-10-22 PM — asheib-f3, STOP 4":
 every lane's final state, every lead ruling, the merge-time wiring) → MASWALI-PLAN §0 on `claude/maswali-s5-release`. This
