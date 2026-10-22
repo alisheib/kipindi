@@ -19,6 +19,7 @@
  *   §13 L7 (round 2) the loading drawing composes the page's frame: the reader's block last, a guest by the shell's mark,
  *       every block sweeping                              §14 L6/L21 the no-week body keeps its day with its clock
  *   §15 the segment's loading state draws the page being opened (a census of every Millionea page)
+ *   §16 L13 a voided main's words are a fact line          §17 7b the head's absent figure is the platform's empty slot
  */
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -545,20 +546,64 @@ console.log("\n§14 · L6/L21 · the no-week empty state's body: the next open's
   const ES = req("../src/components/ui/empty-state-text.ts") as typeof import("../src/components/ui/empty-state-text.ts");
   const MON = Date.parse("2026-12-07T00:01:00+03:00");
   const drawn = (body: import("../src/components/ui/empty-state-text.ts").EmptyStateBody) => renderToStaticMarkup(h("p", null, ES.emptyStateBody(body) as never));
-  const kept = (l: L3, m: string) => { const when = N.eatWeekdayClock(dict[l] as never, MON); return [...m.matchAll(/<span class="whitespace-nowrap">([\s\S]*?)<\/span>/g)].some((x) => textOf(x[1]).includes(when)); };
+  const keptRuns = (m: string) => [...m.matchAll(/<span class="whitespace-nowrap">([\s\S]*?)<\/span>/g)].map((x) => textOf(x[1]));
+  const kept = (l: L3, m: string) => { const when = N.eatWeekdayClock(dict[l] as never, MON); return keptRuns(m).some((x) => x.includes(when)); };
+  // ⭐ S5-R2-HUB · and every phrase Millionea keeps whole (`factRuns`): "Maswali 15" broke "Maswali" / "15" at sw 360.
+  const FACTS = req("../src/components/maswali/maswali-facts.tsx") as typeof import("../src/components/maswali/maswali-facts.tsx");
+  const looseOf = (l: L3, text: string, m: string) => FACTS.factRuns(l, text).filter((r) => !keptRuns(m).some((x) => x.includes(r)));
   const off = LOCALES.flatMap((l) => {
     const d: string[] = [];
     const body = W.noWeekBody(dict[l] as never, l, MON);
     const want = [fill(dict[l].millionea.nextOpensAt, { when: N.eatWeekdayClock(dict[l] as never, MON) }), dict[l].millionea.questionsAtOpen].join(l === "zh" ? "" : " ");
     if (body.text !== want) d.push(`${l}: "${body.text}"`);
     if (!kept(l, drawn(body))) d.push(`${l}: the day parts from its clock`);
+    const loose = looseOf(l, body.text, drawn(body));
+    if (FACTS.factRuns(l, body.text).length < 2 || loose.length > 0) d.push(`${l}: phrases not kept ${j(loose)}`);
     const paused = W.noWeekBody(dict[l] as never, l, null);
-    if (paused.text !== dict[l].millionea.questionsAtOpen || paused.keep.length !== 0) d.push(`${l}: paused says "${paused.text}"`);
+    if (paused.text !== dict[l].millionea.questionsAtOpen || paused.keep.some((x) => /\d{1,2}:\d{2}/.test(x))) d.push(`${l}: paused says "${paused.text}"`);
     return d;
   });
-  ok("14.1 · in three languages the body is the next open's sentence then the questions' (zh joined with no space), the next open's day and clock one kept run, and while paused only the questions' sentence", off.length === 0, off.join(" | "));
+  ok("14.1 · in three languages the body is the next open's sentence then the questions' (zh joined with no space), the next open's day and clock one kept run, every phrase Millionea keeps whole (\"Maswali 15\") kept, and while paused only the questions' sentence", off.length === 0, off.join(" | "));
   const plain = drawn(W.noWeekBody(dict.sw as never, "sw", MON).text);
   ok("14.1′ PLANT · round 1's body (one plain string: nothing kept) is reported", !kept("sw", plain), plain.slice(0, 200));
+  const swBody = W.noWeekBody(dict.sw as never, "sw", MON);
+  const clockOnly = drawn({ text: swBody.text, keep: [N.eatWeekdayClock(dict.sw as never, MON)] });
+  ok("14.1″ PLANT · the body keeping its clock alone (\"Maswali\" / \"15\" free to part) is reported", looseOf("sw", swBody.text, clockOnly).length > 0, clockOnly.slice(0, 200));
+}
+
+// ── §16 · L13 · a voided main's words are a fact line ──────────────────────────────────────────────────────────────────
+console.log("\n§16 · L13 · a voided main's words that hold a \"·\" are a fact line (A1): each fact kept whole with its last two words, so no word stands alone on a line");
+{
+  const W = req("../src/app/millionea/hub-words.tsx") as typeof import("../src/app/millionea/hub-words.tsx");
+  const FACTS = req("../src/components/maswali/maswali-facts.tsx") as typeof import("../src/components/maswali/maswali-facts.tsx");
+  const keptRuns = (m: string) => [...m.matchAll(/<span class="whitespace-nowrap">([\s\S]*?)<\/span>/g)].map((x) => textOf(x[1]).trim());
+  // The line's last two words (zh: its last two characters) inside one kept run — "…due to be voided" never leaves "voided".
+  const tail = (l: L3, line: string) => { const last = FACTS.factsOf(line).at(-1) ?? ""; return l === "zh" ? last.slice(-2) : last.split(/\s+/).slice(-2).join(" "); };
+  const voidDefects = (l: L3, key: "voidAwaiting" | "voidWeekCertain", m: string) => {
+    const line = dict[l].millionea[key];
+    const d: string[] = [];
+    if (count(m, 'class="kp-mln-fact"') !== FACTS.factsOf(line).length) d.push(`${l} ${key}: not a fact line`);
+    if (!keptRuns(m).some((x) => x.endsWith(tail(l, line)))) d.push(`${l} ${key}: its last pair is free to part`);
+    return d;
+  };
+  const off = LOCALES.flatMap((l) => (["voidAwaiting", "voidWeekCertain"] as const).flatMap((k) => voidDefects(l, k, inApp(l, W.voidFactWords(l, dict[l].millionea[k])))));
+  ok("16.1 · in three languages \"Void · a reserve will take its place\" and \"Void · too few reserves: the week is due to be voided\" are fact lines, their last two words one kept run", off.length === 0, off.join(" | "));
+  const old = inApp("en", dict.en.millionea.voidWeekCertain);
+  ok("16.1′ PLANT · round 1's plain sentence (\"voided\" free to stand alone) is reported", voidDefects("en", "voidWeekCertain", old).length > 0);
+}
+
+// ── §17 · 7b · the head's absent figure is the platform's empty slot ─────────────────────────────────────────────────────
+console.log("\n§17 · the lead's 7b · a jackpot head with no figure to state (before sales, being voided, voided) shows the platform's empty slot: the em-dash in the faint ink, hidden from the screen reader as the market card hides it");
+{
+  // The market card's empty slot (`.mcardp-pct--empty`, DESIGN_AUTHORITY B6's noPrice): the em-dash in --text-faint.
+  const css = readFileSync(join(ROOT, "src/app/globals.css"), "utf8");
+  const EMPTY = `<span class="${FRAME.HUB_POOL_HEAD.figure}" data-testid="millionea-hub-figure"><span class="text-text-faint" aria-hidden="true">—</span></span>`;
+  const slotOf = (m: string) => { const at = m.indexOf('data-testid="millionea-hub-figure"'); return at < 0 ? "" : m.slice(m.lastIndexOf("<span", at), m.indexOf("</span></span>", at) + 14); };
+  const heads = LOCALES.map((l) => slotOf(headOf(l, VOIDING)));
+  ok("17.1 · in three languages a head being voided draws its figure's slot as the platform's empty slot (the market card's: the em-dash in the faint ink, aria-hidden) — the head's line kept",
+    /\.mcardp-pct--empty\s*\{\s*color:\s*var\(--text-faint\)/.test(css) && heads.every((x) => x === EMPTY), j(heads));
+  const bright = headOf("en", VOIDING).replace('<span class="text-text-faint" aria-hidden="true">—</span>', "—");
+  ok("17.1′ PLANT · round 1's bright \"—\" (the figure's own ink, read aloud) is reported", slotOf(bright) !== EMPTY);
 }
 
 // ── §15 · the segment's loading state draws the page being opened ────────────────────────────────────────────────────
@@ -601,7 +646,8 @@ console.log(`\n${"═".repeat(70)}\n  MASWALI HUB: ${pass} passed, ${fail} faile
 /** The floor is the count a green run prints (S5-DESIGN-HUB 3: 34; 4, the one ledger and zh's spacing rule: 43; 6, one
  *  carry origin: 45; 7, no door to a week the register does not draw yet: 47; 9, one final-week rule and last week's
  *  words: 50; 10, a time's face: 53; round 2, every numeral of the timed sentences: 55; S5-R2-HUB, the rule's balance, the
- *  drawing's frame, the no-week body and the segment's pick: 70). It only rises. */
-const MIN_ASSERTIONS = 70;
+ *  drawing's frame, the no-week body and the segment's pick: 70; the void words' fact lines, the head's empty slot and
+ *  the no-week body's kept phrases: 75). It only rises. */
+const MIN_ASSERTIONS = 75;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

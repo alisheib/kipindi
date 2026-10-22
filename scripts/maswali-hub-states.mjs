@@ -143,6 +143,8 @@ async function shoot(state, shell, ctx, { check, oneView = false, path = "/milli
       await t5Checks(page, label);
       await noteChecks(page, label);
       await ruleChecks(page, label);
+      await doorRowChecks(page, label);
+      await widowChecks(page, label);
       if (width <= YIELD_AT) await yieldCheck(page, `${label} · s1`);
       const name = `${state}-${shell}-${locale}-${width}`;
       await page.screenshot({ path: `${OUT}/${name}.png` });
@@ -217,6 +219,61 @@ async function openWeekChecks(page, label, locale, width, { door = "millionea-hu
     ok(`${label} · L17 the column is named by the jackpot's label`, !!named && named.length > 0, j(named));
   }
 }
+/** A sentence's last line holds at least two words — two characters in Chinese: the paused notice and each voided main's
+ *  words (S5-R2-HUB; the tile read: sw 320 "salama." and en 1280/1920 "voided" alone on their last lines). Lines are found
+ *  from the glyphs' own boxes. */
+async function widowChecks(page, label) {
+  const found = await page.evaluate(() => {
+    const out = [];
+    for (const el of document.querySelectorAll('[data-testid="millionea-hub-paused"], [data-testid="millionea-hub-void-words"]')) {
+      const glyphs = [];
+      const range = document.createRange();
+      const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+        if (n.parentElement?.closest(".sr-only")) continue;
+        const text = n.textContent ?? "";
+        for (let i = 0; i < text.length; i++) {
+          range.setStart(n, i); range.setEnd(n, i + 1);
+          const r = range.getClientRects()[0];
+          if (r && r.width > 0) glyphs.push({ ch: text[i], mid: (r.top + r.bottom) / 2, left: r.left });
+        }
+      }
+      const lines = [];
+      for (const g of glyphs) { const l = lines.find((x) => Math.abs(x.mid - g.mid) < 6); if (l) l.chars.push(g); else lines.push({ mid: g.mid, chars: [g] }); }
+      if (lines.length < 2) continue;
+      lines.sort((a, b) => a.mid - b.mid);
+      const last = lines[lines.length - 1].chars.sort((a, b) => a.left - b.left).map((c) => c.ch).join("").trim();
+      const han = /[㐀-鿿]/.test(last);
+      const words = han ? [...last.replace(/[\s。．.，,、：:！!？?]/g, "")].length : last.split(/\s+/).filter(Boolean).length;
+      out.push({ where: el.getAttribute("data-testid"), last, words });
+    }
+    return out;
+  });
+  for (const f of found) ok(`${label} · ${f.where}: its last line is no lone word ("${f.last}")`, f.words >= 2, j(f));
+}
+
+/** A door row (the graded week's facts, last week's row) ends in its chevron: its words stop at least the row's gap (8px)
+ *  before it. A kept run wider than the row's text box ran past it (the tile read: sw 320, "Matokeo 15 kati ya 15
+ *  yametolewa" 2–5px from the chevron). Measured on the glyphs' own boxes. */
+async function doorRowChecks(page, label) {
+  const rows = await page.evaluate(() => ['[data-testid="millionea-hub-grading-door"]', '[data-testid="millionea-hub-last-week"] a'].flatMap((sel) => {
+    const row = document.querySelector(sel);
+    const chevrons = row ? row.querySelectorAll("svg") : [];
+    const chevron = chevrons.length ? chevrons[chevrons.length - 1] : null;
+    if (!row || !chevron) return [];
+    const range = document.createRange();
+    let right = -Infinity;
+    const walk = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+      if (n.parentElement?.closest(".sr-only") || !(n.textContent ?? "").trim()) continue;
+      range.selectNodeContents(n);
+      for (const r of range.getClientRects()) if (r.width > 0) right = Math.max(right, r.right);
+    }
+    return [{ sel, clear: Math.round(chevron.getBoundingClientRect().left - right) }];
+  }));
+  for (const r of rows) ok(`${label} · a door row's words stop before its chevron (${r.sel.includes("grading") ? "the graded week" : "last week"}: ${r.clear}px clear)`, r.clear >= 8, j(r));
+}
+
 /**
  * The jackpot's rule (S5-R2-HUB): each fact that wraps inside itself is balanced — no line of it under half the width of
  * its longest (`HUB_POOL_HEAD.facts`, text-wrap: balance). At 320 Swahili's first fact broke greedily and stranded its

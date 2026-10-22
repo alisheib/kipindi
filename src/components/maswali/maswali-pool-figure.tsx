@@ -74,10 +74,14 @@ export function poolFinalLine(t: Dict, view: PoolView, final: boolean): string |
 }
 
 /** The headline's figure: the larger of the floor and the carry plus sales, from the composer; "at least" around it while
- *  the carry waits; a dash before sales and on a void. The figure itself is one unbreakable run. */
+ *  the carry waits; a dash before sales and on a void. The figure itself is one unbreakable run.
+ *  ⭐ S5-R2-HUB (the lead's 7b) · NO FIGURE TO STATE IS THE PLATFORM'S OWN EMPTY SLOT: the em-dash in the faint ink, never
+ *  a figure-bright "—" (the market card's `noPrice` / one-sided slot, `.mcardp-pct--empty`; DESIGN_AUTHORITY B6) — and
+ *  hidden from the screen reader, as the card hides it where the words around it say why: here the week's chip and the
+ *  voiding notice (or, before sales, the week's own state). The slot keeps the figure's line, so the head's height holds. */
 function headlineOf(t: Dict, v: PoolView): ReactNode {
   const whole = (n: number) => <span className="amount">{formatTzs(n)}</span>;
-  if (v.kind === "presale" || v.kind === "voiding" || v.kind === "voided") return DASH;
+  if (v.kind === "presale" || v.kind === "voiding" || v.kind === "voided") return <span className="text-text-faint" aria-hidden>{DASH}</span>;
   if (v.kind === "sunset") return whole(v.pool);
   return v.carriedIn?.amount === null ? fillNodes(t.millionea.atLeast, { amount: whole(v.jackpot) }) : whole(v.jackpot);
 }

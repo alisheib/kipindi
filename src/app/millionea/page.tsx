@@ -32,6 +32,7 @@ import Link from "next/link";
 import { PageContainer } from "@/components/layout/page-container";
 import { PAGE_HEADER_PILL, PageHeader } from "@/components/ui/page-header";
 import { Callout } from "@/components/ui/callout";
+import { keepText } from "@/components/ui/keep-run";
 import { EmptyState } from "@/components/ui/empty-state";
 import { NoticeBar } from "@/components/ui/notice-bar";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
@@ -63,7 +64,7 @@ import { HUB_DOOR, HUB_GRID, HUB_MINE, HUB_PINNED, HUB_QUESTIONS, HUB_STRIP, hub
 import { HubPoolHead, HubPoolLedger, HubPoolLive } from "./hub-pool";
 import { HubNotices, type HubNotice } from "./hub-notices";
 import { HubOutcomeStamp, HubPressGroup } from "./hub-stamp";
-import { carryingRollover, closeMovedWords, finalAheadWords, lastWeekWords, noWeekBody, voidingWords } from "./hub-words";
+import { carryingRollover, closeMovedWords, finalAheadWords, lastWeekWords, noWeekBody, voidFactWords, voidingWords } from "./hub-words";
 import { MILLIONEA_HREF, MillioneaReadingLinks, registerWeekHref, ticketPageHref } from "./millionea-parts";
 import { WeekCommitments, WeekStateChip, weekChipWord } from "./register/register-parts";
 import { bySlot, capReachedLine, gradableOf, lineOf, millioneaWeekPhase, msOf, ordinalOf, phaseNow, phasesOf, resultDoorSerial, resultLine, textIn } from "./millionea-view";
@@ -179,11 +180,13 @@ async function noticesOf(t: Dict, hub: MillioneaHub, userId: string | null, carr
  * L13 · what a voided MAIN question leaves the week, in the ticket's own words (`maswali-ticket.tsx`, one wording per
  * truth): the reserve that stands in once the graded set has named it ("Void ↪ A1"), "too few reserves: the week is due to
  * be voided" once the void is certain, else "a reserve will take its place". A reserve's void is its stamp alone.
+ * ⭐ S5-R2-HUB · the two sentences that hold a "·" are fact lines (A1, `voidFactWords`): each fact kept whole with its last
+ * two words, so "…due to be voided" never leaves "voided" alone on a line (en 1280/1920).
  */
-function voidWordsOf(t: Dict, q: MillioneaHubWeek["questions"][number], gq: ReturnType<typeof gradableOf>): ReactNode {
+function voidWordsOf(t: Dict, locale: Locale, q: MillioneaHubWeek["questions"][number], gq: ReturnType<typeof gradableOf>): ReactNode {
   if (q.role !== "MAIN" || q.outcome !== "VOID") return null;
   try {
-    if (weekVoidCertain(gq)) return t.millionea.voidWeekCertain;
+    if (weekVoidCertain(gq)) return voidFactWords(locale, t.millionea.voidWeekCertain);
     const row = displayMap(gq)?.find((r) => r.slot === q.slot);
     if (row?.state === "REPLACED_BY") {
       // The reserve's label is a numeral, as in its own row ("A1", §T5).
@@ -192,7 +195,7 @@ function voidWordsOf(t: Dict, q: MillioneaHubWeek["questions"][number], gq: Retu
   } catch {
     // A record the grader refuses names no stand-in: the waiting words below are true of it.
   }
-  return t.millionea.voidAwaiting;
+  return voidFactWords(locale, t.millionea.voidAwaiting);
 }
 
 /**
@@ -237,7 +240,7 @@ function WeekQuestions({ t, locale, w }: { t: Dict; locale: Locale; w: Millionea
   // "This week's questions" for the week on sale alone; a week being graded is named by its number (S5-FIX-PLAYER P8, the
   // register's own R6: "Week 47's questions" — the hub headed a past week's fifteen "this week's" when none sold).
   const heading = w.state === "OPEN" ? t.millionea.weekQuestions : fill(t.millionea.regWeekQuestions, { week: weekNumberOf(w.code) });
-  const row = (q: (typeof qs)[number]) => <QuestionRow key={q.slot} t={t} locale={locale} q={q} voidWords={voidWordsOf(t, q, gq)} />;
+  const row = (q: (typeof qs)[number]) => <QuestionRow key={q.slot} t={t} locale={locale} q={q} voidWords={voidWordsOf(t, locale, q, gq)} />;
   return (
     <section id="mln-questions" aria-labelledby="mln-questions-h" className={HUB_QUESTIONS.section} data-testid="millionea-hub-questions">
       <h2 id="mln-questions-h" className={HUB_QUESTIONS.heading}>{heading}</h2>
@@ -565,7 +568,13 @@ export default async function MillioneaHubPage({ searchParams }: { searchParams:
             </div>
           ) : (
             <>
-              {hub.paused && <Callout tone="neutral" glyph="salesPaused" role="status">{t.millionea.paused}</Callout>}
+              {/* The paused notice keeps its last pair together, the platform's kept sentence (`keepText`, as the break notice
+                  keeps its own): "salama." stood alone at sw 320. */}
+              {hub.paused && (
+                <div data-testid="millionea-hub-paused">
+                  <Callout tone="neutral" glyph="salesPaused" role="status">{keepText(t.millionea.paused)}</Callout>
+                </div>
+              )}
               {/* ⭐ H3 + H1 · Millionea's final week is said ONCE, in the jackpot's head: its rule line is the final week's,
                   led by the week's own mark (§10c `finalWeek`, flag-checkered — `flag` means "object to a result", P17;
                   `MaswaliPoolHead`). The page-wide "Final week of Millionea" box above it said the week a third time and put

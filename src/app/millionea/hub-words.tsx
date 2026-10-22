@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { MaswaliFacts, keepFact } from "@/components/maswali/maswali-facts";
+import { MaswaliFacts, factRuns, factsOf, keepFact } from "@/components/maswali/maswali-facts";
 import { counted, eatClock, eatWeekday, eatWeekdayClock, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
 import { MaswaliLastWeek } from "@/components/maswali/maswali-pool-figure";
 import { numeralFace } from "@/components/maswali/maswali-numerals";
@@ -72,16 +72,24 @@ export function nextOpenWords(t: Dict, atMs: number): string {
 /**
  * L6/L21 · THE NO-WEEK EMPTY STATE'S BODY, as the kit takes it (`EmptyStateBody`): the next open while one is due — none
  * while sales are paused (`atMs` null) — then "The 15 questions are published when sales open, …". The next open's day and
- * its clock are one kept run (A1: a day never parts from its time — the kit's own `keep`, a nowrap span); Chinese joins
- * its two sentences with no space between them. (§T5's numeral face for its clock and its count arrives with the kit's
- * opt-in `bodyPart`, TICKETS' round 2 — the lead wires it at the merge.)
+ * its clock are one kept run (A1: a day never parts from its time — the kit's own `keep`, a nowrap span), and so is every
+ * other phrase Millionea keeps whole (`factRuns`: a number and its noun — "Maswali 15", which broke "Maswali" / "15" at sw
+ * 360); Chinese joins its two sentences with no space between them. (§T5's numeral face for its clock and its count
+ * arrives with the kit's opt-in `bodyPart`, TICKETS' round 2 — the lead wires it at the merge.)
  */
 export function noWeekBody(t: Dict, locale: Locale, atMs: number | null): KeptBody {
   const first = atMs === null ? null : nextOpenWords(t, atMs);
-  return {
-    text: [first, t.millionea.questionsAtOpen].filter((x): x is string => !!x).join(locale === "zh" ? "" : " "),
-    keep: atMs === null ? [] : [eatWeekdayClock(t, atMs)],
-  };
+  const text = [first, t.millionea.questionsAtOpen].filter((x): x is string => !!x).join(locale === "zh" ? "" : " ");
+  return { text, keep: [...(atMs === null ? [] : [eatWeekdayClock(t, atMs)]), ...factRuns(locale, text)] };
+}
+
+/**
+ * L13 · a voided main's words that hold a "·" — "Void · a reserve will take its place", "Void · too few reserves: the week
+ * is due to be voided" — as the fact line they are (A1): each fact kept whole with its last two words (`keepFact`), so no
+ * word of it stands alone on a line ("…due to be" / "voided" at en 1280/1920).
+ */
+export function voidFactWords(locale: Locale, line: string): ReactNode {
+  return <MaswaliFacts facts={factsOf(line).map((f) => keepFact(locale, f))} />;
 }
 
 /**
