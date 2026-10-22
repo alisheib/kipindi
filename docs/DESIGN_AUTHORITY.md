@@ -3226,6 +3226,21 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     register reads it inside its own PUBLIC refusal and its cache, a DRIVE week's own ticket reads it after the holder's
     check — so the two ledgers of one week are the same rows; a DRIVE week's carries name their weeks without a link
     (`registerLedgerRows(…, { links: false })`), the public register having no page for them.
+    ⭐ ITS LINES, ITS RHYTHM, ITS EDGE (the lead's rulings of 2026-10-22, from HUB's sw/en/zh readers of the hub's pool
+    card; MASWALI-BUILD S5-R2-REGISTER). A figure inside a sentence keeps the word before it — "refunded TZS 1,000",
+    "itarejeshwa TZS 1,000", "每张彩票退款 TZS 1,000" (`priceRun`) — and never stands alone on a line (a sentence that
+    opens on its figure keeps the figure alone); an "at least" figure is one run ("angalau TZS 57,000"); the sales note
+    counts one ticket in the singular ("1 ticket at TZS 1,000", `regTicketsSoldOne`); a carry still waiting on its week
+    has no figure: its state is the row's note, on its own line under the label ("Not yet settled"). ONE RHYTHM: every
+    row stands the list's one gap apart, a total set apart by its hairline alone — no step of space after it (round 1's
+    stood ~46px under "Jumla ya bwawa" against the rows' 26px pitch) — and a carry's link row is as tall as its line, as
+    every row is: its TARGET reaches the tap floor out of flow (`.kp-mln-hit`, a `--tap-min` box centred on the row, the
+    register's recipe for its source links), never a 44px box with its line centred in it (~30px of air over the hub
+    card's first row against ~20px under its last). ONE EDGE: every value is right-aligned (the kit row's `alignEnd`), so
+    a value that wraps ends each line at the figures' edge. Guards: `test:maswali-design-register` 2.13–2.20, each with its
+    plant; in the browser, `qa:maswali-register-shots`' LEDGER judge on every page that draws a ledger (a final week's
+    page, How's worked weeks) — no row steps, every figure's lines end at the edge, every carry row answers a tap 19.5px
+    above and below its middle (hit-tested) — each with its in-page control.
 15. **A ticket's moments play where its owner sees them, once (Ali, 2026-10-21 10/10 pass — the R1 tickets critic's M8,
     the motion critic's H3, H4 and L2; `components/maswali/maswali-moment.tsx`).** Item 5 holds, and a ticket page adds
     WHERE: each moment — the cut (N3) and its reverse, a result's press (N2), the stamp line's reveal, the receipt's
@@ -3255,12 +3270,22 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     register critic's H2 and the lead's ruling).** `/millionea/register/[week]` serves an OPEN, CLOSED or RESOLVING public
     week (`millioneaRegisterRecord`): its two commitments the moment each is stamped — the question set's hash at the
     open; the tickets' root at the close with its time and count, "Fixed {when} · {n} tickets" (MR-13) — under a titled
-    section of nouns (`WeekCommitments`, the hub's too); its fifteen questions, each with its criterion, its event and its
-    source as /fairness links it; and each CONFIRMED outcome with how it was attested (one officer or two, never a name).
+    section of nouns (`WeekCommitments`, the hub's too), its card as wide as the column it stands in (on the hub, the
+    fifteen questions' — capped at the receipt's measure it ended 8–176px short of them; the register's week page holds
+    it at the receipt's measure under its ledger, `className="max-w-receipt"`); its fifteen questions, each with its
+    criterion, its event and its source as /fairness links it; and each CONFIRMED outcome with how it was attested (one
+    officer or two, never a name).
     ⛔ No money before the week is final: the ledger's place says when the ledger comes; the index lists the weeks still
     running first, each the one row with its phase chip and no figure. ⛔ How a question counted ("↪ A1", "↪ 4", "Not
     used") is drawn from the FINAL record only — an objection can still reinstate a question while its window is open
     (item 1: never an un-carry); before that a voided main says it waits for its reserve, or that the week is due to void.
+    ⭐ ONE WORDING PER MOMENT, EVERY AMOUNT IN ITS CURRENCY (the lead's rulings of 2026-10-22). A selling week's fact is
+    its close in the slip's words, "Sales close: Friday 18:00 EAT" / "Mauzo yanafungwa: Ijumaa 18:00 EAT" / "销售截止：
+    周五 18:00 EAT" (`salesCloseColon` — ONE wording for that moment on every surface: the slip, the ticket, the
+    register's row and head; its clock a `.mono` numeral, §T5; the weekday, the clock and the zone one kept run). A week
+    nobody won says its fee as an amount, "Fee TZS 0" / "Ada TZS 0" / "费用 TZS 0" (`feeZero` "fee {fee}" filled with
+    `formatTzs(0)`, its figure an `.amount` kept whole — the hub's `lastWeekRolled` says it the same way), never the bare
+    "fee 0". Guards: `test:maswali-register` 7.7 and 7.8 with their plants; `test:maswali-design-register` 2.17.
 18. **A dialog's way back never moves the page (lead 2026-10-21, the 10/10 pass; MASWALI-BUILD S5-DESIGN-SLIP).** When a
     dialog closes, focus returns to the control that opened it WITHOUT scrolling (`modal.tsx` `PAGE.focus`:
     `focus({ preventScroll: true })`, Safari 15+). Why: while a dialog is open `useModalLock` sets `overflow: hidden` on
@@ -3273,6 +3298,27 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     dialog is unchanged (`test:maswali-slip-design` §1); `test:enter-where-pressed` 5.8 pins the call with its plant, and
     `qa:dialog-way-back` drives it at 360 in Chromium and WebKit (scrollY unchanged across the close, focus on the opener,
     the jump back when `preventScroll` is dropped).
+22. **A loading picture is the page being opened (the lead's ruling of 2026-10-22; MASWALI-BUILD S5-R2-REGISTER, the
+    hub's and the tickets' segments alike).** Next wraps every page under a segment in that segment's `loading.tsx`, so a
+    hop from the register to a week drew the register's index, and a hop into any Millionea page the hub's. A segment
+    with pages under it picks the DESTINATION's own drawing by its path (`RoutePick`) inside ONE client component
+    (`MillioneaRegisterGhostPick` — the hub's and the tickets' picks the same way): its server `loading.tsx` hands over
+    that one client reference, never a pick of its own (on the server every drawing was serialised into the payload,
+    `test:visual-pass-r5h` 1.2/1.3/5.1). Each drawing names its page (`data-ghost-page`), and `qa:millionea-ghost-hops`
+    holds every Millionea hop to it on a throttled network — only the destination's own drawing, or none, is ever up; its
+    `--prove-red` undoes the register's pick and must catch it. A drawing is drawn in the page's own type — a line of
+    words is the kit's bar inside the very line box those words fill (`GhostTextLine`, the hub's L7 rule), its lines per
+    language from the page's measured tables — and lands where the page puts each band (`qa:maswali-register-shots`'
+    how-ghost and register-ghosts hops, within 1px, each drawing read once the route's entrance — `.route-enter`, 10px
+    rising over `--t-move` — has settled).
+23. **A fact list spaces its marks as a typed " · " does (the lead's SEP ruling, 2026-10-22 — measured, no CSS change).**
+    `MaswaliFacts` draws each fact as one wrap unit, its separators never opening or ending a line, at `--mln-sep`: 0.9em
+    in the body face; inside a tracked mono eyebrow `calc(3ch + 0.42em)`, 3ch in Chinese (the hub's L1 rule,
+    `globals.css`). Measured on the register at 320–1280 in three languages, every eyebrow list equals the same words
+    typed with " · " to 0.1px (en/sw "Reserves · A1–A5" 24.4 = 24.4px; zh "备选题 · A1–A5" 21.6 = 21.6px); a body-face list
+    runs 0.8–0.9px roomier than typed (11.7 against 10.9px at 13px; 12.6 against 11.7px at 14px), never tighter — kept.
+    Guard: `qa:maswali-register-shots`' `separators()` judge, with its in-page control (the eyebrow rule undone, the
+    round-1 0.9em: 9.9 against 24.4px, reported).
 24. **Facts are drawn whole, struck to their ink, and seeded on the product's own clock (the lead's rulings of
     2026-10-22, S5 round 2; MASWALI-BUILD S5-FACTS).**
     - **The fact line** (`MaswaliFacts`, `.kp-mln-facts`). Facts joined by "·" are one flex item each: facts that fit

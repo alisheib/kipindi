@@ -85,13 +85,18 @@ section("1 · D12 · Millionea's staff preview is one bar above the page, the pl
     "src/app/millionea/slip/page.tsx", "src/app/millionea/tickets/page.tsx", "src/app/millionea/tickets/[serial]/page.tsx", "src/app/results/millionea-results-view.tsx"];
   const calls = callSites.reduce((n, f) => n + count(decomment(raw(f)), "<MillioneaPreviewMark t={t} />"), 0);
   // Round 2 removes the calls lane by lane, each lane its own pages (S5-R2-SLIP the slip's two, S5-R2-TICKETS the tickets
-  // pages' two), so the census holds a CEILING — never more than the 9 D12 left — and none on a page whose lane has merged.
-  // Once every lane has merged it reads 0 and the dead export goes (the lead's merge).
+  // pages' two, S5-R2-REGISTER How's and the register's three — "since D12's bar marks the page"), so the census holds a
+  // CEILING — never more than the 9 D12 left — and none on a page whose lane has merged. Once every lane has merged it reads
+  // 0 and the dead export goes (the lead's merge).
   const callsOn = (files: string[]) => files.reduce((n, f) => n + count(decomment(raw(f)), "MillioneaPreviewMark"), 0);
   const slipCalls = callsOn(["src/app/millionea/slip/page.tsx"]);
   const ticketsCalls = callsOn(["src/app/millionea/tickets/page.tsx", "src/app/millionea/tickets/[serial]/page.tsx"]);
-  ok(`1.1b · the pages keep at most their nine calls (${calls} now), round 2 removing them — the slip and the tickets pages none`,
-    calls <= 9 && slipCalls === 0 && ticketsCalls === 0, `${calls} calls; slip ${slipCalls}, tickets ${ticketsCalls}`);
+  const REGISTER_HOW = ["src/app/millionea/how/page.tsx", "src/app/millionea/register/page.tsx", "src/app/millionea/register/[week]/page.tsx"];
+  const markLeft = (src: (f: string) => string) => REGISTER_HOW.filter((f) => decomment(src(f)).includes("MillioneaPreviewMark"));
+  ok(`1.1b · the pages keep at most their nine calls (${calls} now), round 2 removing them — the slip, the tickets pages, How and the register none`,
+    calls <= 9 && slipCalls === 0 && ticketsCalls === 0 && markLeft(raw).length === 0, j({ calls, slip: slipCalls, tickets: ticketsCalls, left: markLeft(raw) }));
+  ok("1.1b′ PLANT · a preview mark called again on the register's week page is reported",
+    markLeft((f) => (f.endsWith("[week]/page.tsx") ? raw(f).replace("        <WeekCommitments ", "        {gate.preview && <MillioneaPreviewMark t={t} />}\n        <WeekCommitments ") : raw(f))).length === 1);
   const callout = fromSource<{ MillioneaPreviewMark: Mark }>(PARTS, plant(plant(raw(PARTS), "export function MillioneaPreviewMark(_props: { t: Dict }): null {\n  return null;\n}",
     'export function MillioneaPreviewMark({ t }: { t: Dict }) {\n  return <div data-testid="millionea-preview-mark"><Callout tone="info" glyph="eye" role="status">{t.millionea.previewMark}</Callout></div>;\n}'),
     'import { I } from "@/components/ui/glyphs";', 'import { I } from "@/components/ui/glyphs";\nimport { Callout } from "@/components/ui/callout";')).MillioneaPreviewMark;

@@ -53,7 +53,7 @@ import { outcomeWord } from "../src/lib/side-label.ts";
 import { outcomeStampText } from "../src/components/maswali/maswali-outcome-stamp.tsx";
 import { sourceLabel } from "../src/components/maswali/maswali-format.ts";
 import { keepFact } from "../src/components/maswali/maswali-facts.tsx";
-import { kept, liveWeekFacts, registerLedgerRows, ticketSalesRuns, weekFacts } from "../src/app/millionea/register/register-parts.tsx";
+import { kept, liveWeekFacts, registerEventAt, registerLedgerRows, registerWhen, ticketSalesRuns, weekFacts } from "../src/app/millionea/register/register-parts.tsx";
 import { STATUS_TONE, TONE_CHIP } from "../src/lib/status-tone.ts";
 import { DEFAULT_GRANTS } from "../src/lib/server/roles.ts";
 import type { MillioneaRegisterLiveWeek, MillioneaRegisterWeek, MillioneaWeekSummary } from "../src/lib/server/maswali-player.ts";
@@ -115,6 +115,7 @@ type World = {
   liveFacts: typeof liveWeekFacts;
   kept: typeof kept;
   ledger: typeof registerLedgerRows;
+  eventAt: typeof registerEventAt;
   weekChip: string;
 };
 const REAL: World = {
@@ -127,6 +128,7 @@ const REAL: World = {
   liveFacts: liveWeekFacts,
   kept,
   ledger: registerLedgerRows,
+  eventAt: registerEventAt,
   // S5-DESIGN-REGISTER (L2): a settled week's chip reads its own Millionea row in status-tone (slate, an exception to
   // RESOLVED's seal written with its reason) — not VOID's ink borrowed for it.
   weekChip: TONE_CHIP[STATUS_TONE.MILLIONEA_WEEK_SETTLED.player],
@@ -289,6 +291,19 @@ check("3.9", "M3 · each question says how it counted on the final record — a 
     && s.includes("{words.charAt(0).toLocaleUpperCase() + words.slice(1)}");
   return [settledOnly && waiting && words && struck, j({ settledOnly, waiting, words, struck })];
 });
+// Round 2 (2026-10-22, the targeted drive's zh read): the shared "事件{when}" lost its space for the hub's and the slip's
+// weekday fill (S5-DESIGN-DOORS 8, the lead's zh ruling), and the register's date opens on its year — "事件2026年11月7日".
+check("3.10", "the zh ruling at the event line's edge: a card's event reads \"事件 2026年11月27日 09:00\" — a space where the shared word's Han meets the date's digit, never between two Han characters, exactly one space even if the shared word kept its own — and en/sw keep their words (\"Event 27 Nov, 09:00\", \"Tukio 27 Nov, 09:00\"); the week page's cards draw it", (w) => {
+  const iso = "2026-11-27T06:00:00.000Z", now = Date.parse("2026-11-20T09:00:00.000Z");
+  const said = Object.fromEntries(LOCALES.map((l) => [l, textOf(w.eventAt(w.dict[l] as never, l, iso, now))]));
+  const want = { en: "Event 27 Nov, 09:00", sw: "Tukio 27 Nov, 09:00", zh: "事件 2026年11月27日 09:00" };
+  // The shared word with its old space back: still one space at the edge, never two.
+  const spaced = { ...w.dict.zh, millionea: { ...w.dict.zh.millionea, eventAt: "事件 {when}" } };
+  const once = textOf(w.eventAt(spaced as never, "zh", iso, now)) === want.zh;
+  const none = w.eventAt(w.dict.en as never, "en", null, now) === null;
+  const page = code(w, "week").includes("const event = (q: Q) => registerEventAt(t, locale, q.eventStartsAt, nowMs);");
+  return [j(said) === j(want) && once && none && page, j({ said, once, none, page })];
+});
 
 // ── §4 · R3 · the register's stamp ──────────────────────────────────────────────────────────────────────────────────
 check("4.1", "R3 · the register draws the outcome stamp with `label={false}` in both layouts (the column head, or the card's place in its clause, already says what it is)", (w) => {
@@ -338,9 +353,12 @@ check("5.2", "R4 · L2 · the state chip wears slate for a settled week — its 
 // were sentences dressed as eyebrows ("SETI YA MASWALI IMECHAPISHWA 23 NOV, 00:01") and no heading. They are a titled section of
 // nouns — the ONE drawing the hub's week section adopts (`WeekCommitments`) — shown the moment each is stamped.
 // ⚠️ RE-PINNED 2026-10-21 (S5-DESIGN-REGISTER, the tile read — §16 says why): the heading balanced; the question set's eyebrow wears the glyph too.
-check("6.1", "M12 · L15 · H2 · the commitments are a titled section of nouns: the question set's hash under \"Question set\" with \"Published {when}\"; the tickets' root under \"Tickets at the close\" with its glyph and \"Fixed {when} · {n} tickets\" (the lead's words) — or when it will be published; one explainer once both exist", (w) => {
+// ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-REGISTER, the lead's item 5): the card fills the column it stands in (on the hub,
+// the questions' width), so the week page holds it at the receipt's measure itself — `className="max-w-receipt"`
+// (test:maswali-design-register 2.17 renders both). The section, its nouns and its words are as before.
+check("6.1","M12 · L15 · H2 · the commitments are a titled section of nouns: the question set's hash under \"Question set\" with \"Published {when}\"; the tickets' root under \"Tickets at the close\" with its glyph and \"Fixed {when} · {n} tickets\" (the lead's words) — or when it will be published; one explainer once both exist", (w) => {
   const s = code(w, "week"), p = code(w, "parts");
-  const drawn = s.includes("<WeekCommitments t={t} locale={locale} nowMs={nowMs} hash={v.hash} publishedAt={v.publishedAt} root={v.root} closedAt={v.closedAt} tickets={v.tickets} />");
+  const drawn = s.includes("<WeekCommitments className=\"max-w-receipt\" t={t} locale={locale} nowMs={nowMs} hash={v.hash} publishedAt={v.publishedAt} root={v.root} closedAt={v.closedAt} tickets={v.tickets} />");
   const nouns = p.includes('<h2 id="mln-reg-commit" className="font-display text-title-sm font-bold text-text text-balance">{t.millionea.commitTitle}</h2>')
     && p.includes("<span>{t.millionea.stubHash}</span>") && p.includes("<I.commitment s={12} className=\"shrink-0\" /> <span>{t.millionea.commitTicketsAtClose}</span>")
     && p.includes("counted(tickets, t.millionea.commitFixedOne, t.millionea.commitFixed, { when: fixed })") && p.includes("{t.millionea.commitAtClose}")
@@ -374,15 +392,17 @@ const FACTS: Record<(typeof LOCALES)[number], Record<keyof typeof WEEKS, string[
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER, the critic's L1): a week nobody won says "no 10/10" first, as
   // the hub's last-week line does (`settledRollover` + `feeZero`) — each a fact of its own here, so each opens with a capital
   // (the tile read of 2026-10-21: "no 10/10" and "fee 0" opened their phone lines in lower case beside "Jackpot …").
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-REGISTER, the lead's ruling: one wording with the hub): the fee says its amount
+  // as every amount does — "Fee TZS 0" / "Ada TZS 0" / "费用 TZS 0", `feeZero` filled with formatTzs(0) (7.8 holds its face).
   en: { pending: ["Refunds on their way"], landed: ["Every ticket refunded"], wonOne: ["1 ticket won", "Jackpot TZS 1,013,000"],
-    wonMany: ["3 tickets won", "Jackpot TZS 1,050,000"], rolled: ["No 10/10", "TZS 412,000 carried forward", "Fee 0"] },
+    wonMany: ["3 tickets won", "Jackpot TZS 1,050,000"], rolled: ["No 10/10", "TZS 412,000 carried forward", "Fee TZS 0"] },
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-FIX-PLAYER P14): Swahili says each fact with ONE verb, §D's — a refund
   // "imerejeshwa" (it read "imerejeshewa" here and "imerejeshwa" on the ticket), a carry "imehamishwa" (it read
   // "imeletwa mbele" here and "linahamishiwa" in How to play). `test:maswali-i18n` §7 holds the whole namespace to it.
   sw: { pending: ["Marejesho yanakuja"], landed: ["Kila tiketi imerejeshwa"], wonOne: ["Tiketi 1 ilishinda", "Jackpot TZS 1,013,000"],
-    wonMany: ["Tiketi 3 zilishinda", "Jackpot TZS 1,050,000"], rolled: ["Hakuna 10/10", "TZS 412,000 imehamishwa", "Ada 0"] },
+    wonMany: ["Tiketi 3 zilishinda", "Jackpot TZS 1,050,000"], rolled: ["Hakuna 10/10", "TZS 412,000 imehamishwa", "Ada TZS 0"] },
   zh: { pending: ["退款处理中"], landed: ["每张彩票已退款"], wonOne: ["1 张彩票中奖", "大奖 TZS 1,013,000"],
-    wonMany: ["3 张彩票中奖", "大奖 TZS 1,050,000"], rolled: ["无 10/10", "TZS 412,000 滚存至下周", "费用 0"] },
+    wonMany: ["3 张彩票中奖", "大奖 TZS 1,050,000"], rolled: ["无 10/10", "TZS 412,000 滚存至下周", "费用 TZS 0"] },
 };
 // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER, the critic's L3, and the DOORS lane's four gaps): ONE row for the
 // register's index and /results' section — `WeekRow` in register-parts — whose facts are a fact list (`MaswaliFacts`,
@@ -405,7 +425,7 @@ check("7.2", "R9 · A1 · the facts are a fact list — one per line below 768, 
   const list = s.includes('const LIST = "flex flex-col divide-y divide-border border-t border-border";') && count(s, '<ul role="list" className={LIST}>') === 2;
   return [facts && !hand && list, j({ facts, hand, list })];
 });
-check("7.3", "R9 · each week's facts, rendered in three languages: refunds on their way until every refund landed, then every ticket refunded; winners and the jackpot; a rolled week's carry and fee 0", (w) => {
+check("7.3", "R9 · each week's facts, rendered in three languages: refunds on their way until every refund landed, then every ticket refunded; winners and the jackpot; a rolled week's carry and its fee, TZS 0", (w) => {
   const off: string[] = [];
   for (const l of LOCALES) for (const [k, s] of Object.entries(WEEKS) as Array<[keyof typeof WEEKS, MillioneaWeekSummary]>) {
     const got = w.weekFacts(w.dict[l] as never, s).map(textOf);
@@ -448,6 +468,36 @@ check("7.6", "M11 · the index says what it is (an intro at /fairness's reading 
   const empty = s.includes("<EmptyState fill kind=\"fairness\" title={t.millionea.regEmpty} body={t.millionea.regEmptyBody} action={<EmptyStateLink href={MILLIONEA_HREF.hub}>{t.millionea.productTitle}</EmptyStateLink>} />");
   const words = LOCALES.map((l) => mln(w, l).regEmpty);
   return [intro && empty && j(words) === j(["No week is final yet.", "Bado hakuna wiki iliyokamilika.", "尚无已确定的周。"]), j({ intro, empty, words })];
+});
+// ⭐ S5-R2-REGISTER (2026-10-22) · the lead's ruling: ONE wording for a week's sales close everywhere — `salesCloseColon`, the
+// words the slip and the ticket draw, with its zone. The register's running row and a selling week's head said "Sales close
+// Friday 18:00" (`salesCloseAt`, no zone): the same moment spelled twice. The clock a `.mono` numeral (§T5); the weekday, the
+// clock and the zone one kept run — both `keepFact`'s own.
+check("7.7", "the lead's ruling · ONE wording for a selling week's close: `salesCloseColon` — \"Sales close: Friday 18:00 EAT\" / \"Mauzo yanafungwa: Ijumaa 18:00 EAT\" / \"销售截止：周五 18:00 EAT\", the slip's words — never `salesCloseAt`; its clock a `.mono` numeral (§T5) and \"Friday 18:00 EAT\" one kept run", (w) => {
+  const s = code(w, "parts");
+  const src = s.includes("[keepFact(locale, fill(t.millionea.salesCloseColon, { when: eatWeekdayClock(t, closes) }))]") && !s.includes("t.millionea.salesCloseAt");
+  const nowMs = Date.parse("2026-12-01T12:00:00+03:00");
+  const want = ["Sales close: Friday 18:00 EAT", "Mauzo yanafungwa: Ijumaa 18:00 EAT", "销售截止：周五 18:00 EAT"];
+  const whole = ["Friday 18:00 EAT", "Ijumaa 18:00 EAT", "周五 18:00 EAT"];
+  const said = LOCALES.map((l) => {
+    const facts = w.liveFacts(w.dict[l] as never, l, liveWeek({}), nowMs);
+    return { text: facts.map(textOf).join(" | "), mono: facts.some((f) => markup(f).includes('<span class="mono">18:00</span>')), runs: facts.flatMap(nowrapRuns) };
+  });
+  const off = said.filter((x, i) => x.text !== want[i] || !x.mono || !x.runs.includes(whole[i]));
+  return [src && off.length === 0, j({ src, said })];
+});
+// ⭐ S5-R2-REGISTER (2026-10-22) · the lead's ruling, one wording with the hub: the row's fee was the only amount it said
+// without its currency ("Fee 0" beside "TZS 412,000 carried forward"). `feeZero` is "fee {fee}" / "ada {fee}" / "费用 {fee}"
+// filled with formatTzs(0), its figure in the money face and kept whole — as HUB's lastWeekRolled fills its own "fee {fee}".
+check("7.8", "one wording with the hub · a week nobody won says its fee as an amount — \"Fee TZS 0\" / \"Ada TZS 0\" / \"费用 TZS 0\" (`feeZero` filled with formatTzs(0)), the figure an `.amount` run kept whole — never the bare \"fee 0\"", (w) => {
+  const words = LOCALES.map((l) => mln(w, l).feeZero);
+  const said = LOCALES.map((l) => {
+    const fee = w.weekFacts(w.dict[l] as never, WEEKS.rolled).at(-1);
+    return { text: textOf(fee), amount: markup(fee).includes('<span class="amount">TZS 0</span>'), runs: nowrapRuns(fee) };
+  });
+  const want = ["Fee TZS 0", "Ada TZS 0", "费用 TZS 0"];
+  const off = said.filter((x, i) => x.text !== want[i] || !x.amount || !x.runs.some((r) => r.includes("TZS 0")));
+  return [j(words) === j(["fee {fee}", "ada {fee}", "费用 {fee}"]) && off.length === 0, j({ words, said })];
 });
 
 // ── §8 · R10 · the register's name ──────────────────────────────────────────────────────────────────────────────────
@@ -498,13 +548,18 @@ check("9.4", "A1 · `kept` draws each run it is given as ONE nowrap span, the wo
 });
 // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER): the labels are the ONE Millionea ledger's (`maswali-ledger.tsx`),
 // each drawn through `keepFact` with its runs named — the platform's kept runs and Millionea's own, every figure an `.amount`.
-check("9.5", "A1 · every ledger label or note that carries a week, an amount or a % is drawn through `keepFact` with that run (the carries' weeks, the sales note's two phrases, the refunds' price, the fee's %, the split's \"÷ k\")", (w) => {
+// ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-REGISTER, the lead's item 5): every refund sentence is drawn by the ledger's one
+// `refundLabel`, its price kept WITH the word before it ("…refunded / TZS 1,000" left the figure alone on a line; HUB's read
+// of the hub) — rendered in three languages by test:maswali-design-register 2.14.
+check("9.5", "A1 · every ledger label or note that carries a week, an amount or a % is drawn through `keepFact` with that run (the carries' weeks, the sales note's two phrases, the refunds' price with its word, the fee's %, the split's \"÷ k\")", (w) => {
   const s = code(w, "ledger");
   const want = [
     "return week === null ? noWeek : keepFact(locale, fill(withWeek, { week }), [weekWord(t, week)]);",
     "note: keepFact(locale, sold, ticketSalesRuns(sold, price))",
-    "label: keepFact(locale, fill(m.refundEachPending, { price }), [price])",
-    "label: keepFact(locale, fill(m.refundEach, { price }), [price])",
+    "return keepFact(locale, text, [priceRun(text, price)]);",
+    "label: refundLabel(locale, m.refundEachIfVoid, price)",
+    "label: refundLabel(locale, m.refundEachPending, price)",
+    "label: refundLabel(locale, m.refundEach, price)",
     "keepFact(locale, fill(m.feeLine, { pct }), [`${pct}%`])",
     "label: keepFact(locale, perTicket, perTicket.match(/^÷ \\S+/) ?? [])",
   ];
@@ -620,19 +675,25 @@ check("13.1", "A2 · no Chinese run in the register's body text is longer than 1
 // code with its facts and times under the head (M1), the ledger's card before the commitments' (M4, M12), the table on its
 // panel (L18); the index's intro (M11) and its list's own top edge, the row drawing no rule (L3).
 // ⚠️ RE-PINNED 2026-10-21 (S5-DESIGN-REGISTER, the tile read — §16): the ghost's cards at the receipt's measure, as the page's.
-check("12.1", "the week's ghost opens on the page's bands, in its order: the chip beside the code under the head, then the facts and times; the ledger's card at the receipt's measure; the commitments' card; cards below 1024 and the table on its panel from 1024", (w) => {
+// ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-REGISTER 23): both drawings in the page's own type — a line of words the kit's
+// bar inside that line's own box (`GhostTextLine`), as How's and the hub's are — so each band is the page's height (the
+// band probe's data, the register-ghosts hop's measure): the week's chip row is the page's own (`flex flex-wrap items-center
+// gap-x-3 gap-y-1`), its ledger the ONE ledger's rows in the kit's `ReceiptRow`; the index's intro as many lines as the
+// reader's language takes, its rows `WeekRow`'s own parts. The order and the measures below are unchanged.
+check("12.1", "the week's ghost opens on the page's bands, in its order: the chip beside the code under the head (the page's own chip row), then the facts and times; the ledger's card at the receipt's measure, drawn in the kit's ledger rows; the commitments' card; cards below 1024 and the table on its panel from 1024", (w) => {
   const g = code(w, "weekGhost");
-  const chip = g.includes('<MaswaliGhostHead eyebrowWidth="w-[144px]" titleWidth="w-[132px]" /> <div className="flex items-center gap-3" aria-hidden> <GhostBar className="h-[23px] w-[96px] rounded-pill" /> <GhostBar className="h-3 w-[112px]" /> </div>');
-  const at = ['<div className="mat-flat flex max-w-receipt flex-col gap-2.5 rounded-card p-3">', '<div className="mat-flat flex max-w-receipt flex-col gap-4 rounded-card p-3">',
+  const chip = g.includes('<MaswaliGhostHead eyebrowWidth="w-[144px]" titleWidth="w-[132px]" /> <div className="flex flex-wrap items-center gap-x-3 gap-y-1"> <span className="inline-block h-[23px] w-[96px] rounded-pill bg-bg-overlay" />');
+  const rows = g.includes("<ReceiptRow labelStyle=\"sentence\"") && g.includes('<div className="flex flex-col gap-1.5">');
+  const at = ['<div className="mat-flat flex max-w-receipt flex-col rounded-card p-3">', '<div className="mat-flat flex max-w-receipt flex-col gap-4 rounded-card p-3">',
     '<div className="flex max-w-receipt flex-col lg:hidden">', '<div className="glass-panel hidden flex-col lg:flex">'].map((x) => g.indexOf(x));
   const order = at.every((x, i) => x >= 0 && (i === 0 || x > at[i - 1]));
-  return [chip && order, j({ chip, at })];
+  return [chip && rows && order, j({ chip, rows, at })];
 });
 check("12.2", "the index's ghost: the intro's lines under the head at the reading measure, then the list with its own top edge, dividing rows that carry the week, its chip and its facts as the rows do (beside the week from 768)", (w) => {
   const g = code(w, "indexGhost");
-  const intro = g.includes('<div className="flex max-w-[68ch] flex-col gap-2" aria-hidden>');
+  const intro = g.includes('<span className="block max-w-[68ch] text-body">') && g.includes("const INTRO_LINES: Record<Locale, Tiers> =");
   const list = g.includes('<div className="flex flex-col divide-y divide-border border-t border-border">') && !/border-b border-border py-3/.test(g);
-  const row = g.includes('<GhostBar className="h-[23px] w-[88px] rounded-pill" />') && g.includes('<div className="flex flex-col gap-1 md:flex-row md:items-center md:gap-6">');
+  const row = g.includes('<span className="inline-block h-[23px] w-[88px] rounded-pill bg-bg-overlay" />') && g.includes('<span className="flex flex-col gap-1 md:flex-row md:items-center md:gap-6">');
   return [intro && list && row, j({ intro, list, row })];
 });
 
@@ -784,7 +845,9 @@ check("16.5", "the page's headings balance their lines (`text-balance`, the plat
   const h2 = s.includes('const H2 = "font-display text-title-sm font-bold text-text text-balance";')
     && p.includes('<h2 id="mln-reg-commit" className="font-display text-title-sm font-bold text-text text-balance">{t.millionea.commitTitle}</h2>');
   const later = s.includes('<p className="text-body-sm text-text-muted text-pretty">{t.millionea.regLedgerLater}</p>');
-  return [h2 && later, j({ h2, later })];
+  // Round 2 (2026-10-22): the index's headings too — one heading wrap on the register's pages.
+  const index = code(w, "index").includes('const H2 = "font-display text-title-sm font-bold text-text text-balance";');
+  return [h2 && later && index, j({ h2, later, index })];
 });
 
 // ── the run ─────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -804,7 +867,7 @@ if (!PROVE_RED) {
   const { pass, fail } = runAll(REAL, false);
   console.log(`\n${"═".repeat(70)}\n  MASWALI REGISTER: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
   /** The floor is the count a green run PRINTS; it only rises, to a printed number. */
-  const MIN_ASSERTIONS = 58; // S5-FIX-PLAYER §15 (P3, P4, P9, P11) added five; S5-DESIGN-REGISTER (3.9, 5.3, 5.4, 7.5, 7.6, 9.8, 14.3) seven, §16 (the tile read) five
+  const MIN_ASSERTIONS = 61; // S5-FIX-PLAYER §15 (P3, P4, P9, P11) added five; S5-DESIGN-REGISTER (3.9, 5.3, 5.4, 7.5, 7.6, 9.8, 14.3) seven, §16 (the tile read) five; S5-R2-REGISTER (3.10, 7.7, 7.8) three
   if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
   process.exit(fail === 0 ? 0 : 1);
 }
@@ -861,6 +924,9 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["M3 undone — a carry drawn before the week settled (an objection could still un-carry it)", "3.9", plantSrc("week", 'if (w.state === "SETTLED") {\n    for (const s of w.substitutions) {', "{\n    for (const s of w.substitutions) {")],
   ["a waiting void's words opening a line in lower case again", "3.9", plantSrc("week", "{words.charAt(0).toLocaleUpperCase() + words.slice(1)}", "{words}")],
   ["M3 undone — a voided main's number no longer struck", "3.9", plantSrc("week", '{q.role === "MAIN" && q.outcome === "VOID" ? <s className="decoration-current">{label}</s> : label}', "{label}")],
+  ["the zh edge undone — the date glued to the shared word (\"事件2026年…\")", "3.10", { ...REAL, eventAt: (t, l, iso, n) => { const when = registerWhen(t, l, iso, n); return when === null ? null : keepFact(l, fill(t.millionea.eventAt, { when }), [when]); } }],
+  ["the edge spaced blind — two spaces once the shared word keeps its own", "3.10", { ...REAL, eventAt: (t, l, iso, n) => { const when = registerWhen(t, l, iso, n); return when === null ? null : keepFact(l, fill(t.millionea.eventAt, { when: l === "zh" ? ` ${when}` : when }), [when]); } }],
+  ["the week page's cards back on the bare fill", "3.10", plantSrc("week", "const event = (q: Q) => registerEventAt(t, locale, q.eventStartsAt, nowMs);", 'const event = (q: Q) => keepFact(locale, fill(t.millionea.eventAt, { when: registerWhen(t, locale, q.eventStartsAt, nowMs) ?? "" }), []);')],
   // §4
   ["R3 undone — the card's stamp says \"Result ·\" again", "4.1", plantSrc("week", '{q.outcome !== null ? <MaswaliOutcomeStamp t={t} outcome={q.outcome} label={false} /> : <span className="text-body-sm text-text-muted">', '{q.outcome !== null ? <MaswaliOutcomeStamp t={t} outcome={q.outcome} /> : <span className="text-body-sm text-text-muted">')],
   // §5
@@ -876,7 +942,7 @@ const PLANTS: Array<[string, string, World | null]> = [
   // §6
   ["M12 undone — the root's label a sentence again", "6.1", plantSrc("parts", "<span>{t.millionea.commitTicketsAtClose}</span>", "<span>{t.millionea.commitAtClose}</span>")],
   ["the lead's root words changed", "6.1", plantWord("en", "commitFixed", "Fixed {when}, {n} tickets")],
-  ["the week page without its commitments", "6.1", plantSrc("week", "<WeekCommitments t={t} locale={locale}", "<WeekCommitmentsGone t={t} locale={locale}")],
+  ["the week page without its commitments", "6.1", plantSrc("week", "<WeekCommitments className=\"max-w-receipt\" t={t} locale={locale}", "<WeekCommitmentsGone className=\"max-w-receipt\" t={t} locale={locale}")],
   ["R6 undone — \"This week's questions\" on a past week", "6.2", plantSrc("week", "const heading = fill(t.millionea.regWeekQuestions, { week: weekNumberOf(v.code) });", "const heading = t.millionea.weekQuestions;")],
   ["R6 — zh says 本周 again", "6.3", plantWord("zh", "regWeekQuestions", "本周题目")],
   // §7
@@ -886,7 +952,7 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["the facts back after the week's column, far from the chevron", "7.2", plantSrc("parts", 'className="min-w-0 text-body-sm text-text-muted lg:ml-auto"', 'className="min-w-0 text-body-sm text-text-muted"')],
   ["the row drawing its own rule again", "7.2", plantSrc("parts", "<li>\n      <Link href={registerWeekHref(code) as never}", '<li className="border-b border-border">\n      <Link href={registerWeekHref(code) as never}')],
   ["R9 — a voided week says \"every ticket refunded\" before the refunds landed", "7.3", { ...REAL, weekFacts: (t, w) => (w.state === "VOIDED" ? [t.millionea.regRefunded] : weekFacts(t, w)) }],
-  ["R9 — the carry's amount free to break", "7.4", { ...REAL, weekFacts: (t, w) => (w.state === "SETTLED" && (w.winners ?? 0) === 0 ? [...fill(t.millionea.settledRollover, { amount: "TZS 412,000" }).split(" · "), t.millionea.feeZero] : weekFacts(t, w)) }],
+  ["R9 — the carry's amount free to break", "7.4", { ...REAL, weekFacts: (t, w) => (w.state === "SETTLED" && (w.winners ?? 0) === 0 ? [...fill(t.millionea.settledRollover, { amount: "TZS 412,000" }).split(" · "), fill(t.millionea.feeZero, { fee: "TZS 0" })] : weekFacts(t, w)) }],
   ["the carry's amount in the body face again (a kept run, no `.amount`)", "7.4", { ...REAL, weekFacts: (t, wk) => { const f = weekFacts(t, wk); if (wk.state !== "SETTLED" || (wk.winners ?? 0) > 0) return f; const amount = formatTzs(wk.carriedForward ?? 0); return f.map((x, i) => (i === 1 ? kept(textOf(x), [amount]) : x)); } }],
   ["L1 undone — a week nobody won says its carry without \"no 10/10\"", "7.3", { ...REAL, weekFacts: (t, w) => (w.state === "SETTLED" && (w.winners ?? 0) === 0 ? weekFacts(t, w).slice(1) : weekFacts(t, w)) }],
   ["a list without its own top edge", "7.2", plantSrc("index", 'const LIST = "flex flex-col divide-y divide-border border-t border-border";', 'const LIST = "flex flex-col divide-y divide-border";')],
@@ -895,6 +961,11 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["M11 undone — the default empty box under a left heading", "7.6", plantSrc("index", "<EmptyState\n            fill\n            kind=\"fairness\"", "<EmptyState\n            kind=\"fairness\"")],
   ["M11 undone — the index says nothing of what it is", "7.6", plantSrc("index", "{keepFact(locale, t.millionea.regIntro)}", "{null}")],
   ["the intro's dash free to open a line again", "7.6", plantSrc("index", "{keepFact(locale, t.millionea.regIntro)}", "{t.millionea.regIntro}")],
+  ["the second spelling of the close back (\"Sales close Friday 18:00\", no zone)", "7.7", plantSrc("parts", "fill(t.millionea.salesCloseColon, { when: eatWeekdayClock(t, closes) })", "fill(t.millionea.salesCloseAt, { when: eatWeekdayClock(t, closes) })")],
+  ["the close said without its zone in Swahili", "7.7", plantWord("sw", "salesCloseColon", "Mauzo yanafungwa: {when}")],
+  ["the close's clock in the sentence's face (no `.mono`)", "7.7", { ...REAL, liveFacts: (t, l, wk, n) => liveWeekFacts(t, l, wk, n).map((f) => keepFact(l, textOf(f), [], { numerals: false })) }],
+  ["the bare \"fee 0\" back — the one amount said without its currency", "7.8", plantWord("en", "feeZero", "fee 0")],
+  ["the fee's figure in the body face (no `.amount`, nothing kept)", "7.8", { ...REAL, weekFacts: (t, wk) => { const f = weekFacts(t, wk); return wk.state === "SETTLED" && (wk.winners ?? 0) === 0 ? [...f.slice(0, -1), textOf(f.at(-1))] : f; } }],
   // §8
   ["R10 undone — \"Week Register\" in title case", "8.1", plantWord("en", "registerTitle", "Week Register")],
   ["zh's door and title disagree", "8.1", plantWord("zh", "register", "每周登记册")],
@@ -903,7 +974,8 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["A1 undone — the levies one plain \"·\"-joined string", "9.2", plantSrc("ledger", "return <MaswaliFacts facts={parts.map((p) => keepFact(locale, p, [p]))} />;", 'return parts.join(" · ");')],
   ["A1 undone — the standing's count ungrouped", "9.3", plantSrc("week", "{formatNumber(s.ticketsWithoutAMiss)}", "{s.ticketsWithoutAMiss}")],
   ["a `kept` that keeps nothing", "9.4", { ...REAL, kept: (text) => text }],
-  ["A1 undone — the refund's price free to break", "9.5", plantSrc("ledger", "label: keepFact(locale, fill(m.refundEach, { price }), [price])", "label: fill(m.refundEach, { price })")],
+  ["A1 undone — the refund's price free to break", "9.5", plantSrc("ledger", "label: refundLabel(locale, m.refundEach, price)", "label: fill(m.refundEach, { price })")],
+  ["the refund's price kept without its word again (it may open a line alone)", "9.5", plantSrc("ledger", "return keepFact(locale, text, [priceRun(text, price)]);", "return keepFact(locale, text, [price]);")],
   ["R2 undone — the sold note uses its old multiplication split", "9.5s", plantSrc("ledger", "note: keepFact(locale, sold, ticketSalesRuns(sold, price))", 'note: keepFact(locale, sold, [sold.split(" × ")[0].trim(), `× ${price}`])')],
   ["R2 undone — the unit-price helper keeps the entire sold label", "9.5s", { ...REAL, ticketSalesRuns: (sold) => [sold] }],
   ["A1 undone — the reserve rule's range free to part", "9.6", plantSrc("week", "{keepFact(locale, t.millionea.regSubRule)}", "{t.millionea.regSubRule}")],
@@ -931,9 +1003,10 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["L6 undone — two sw nouns for the floor's top-up", "11.1", plantWord("sw", "topUp", "Nyongeza ya dhamana")],
   // §12
   ["the week's ghost without the table's bands from 1024", "12.1", plantSrc("weekGhost", '<div className="glass-panel hidden flex-col lg:flex">', '<div className="hidden">')],
-  ["the week's ghost without the ledger's card", "12.1", plantSrc("weekGhost", '<div className="mat-flat flex max-w-receipt flex-col gap-2.5 rounded-card p-3">', '<div className="flex flex-col gap-2.5">')],
-  ["the index ghost's rows without the chip", "12.2", plantSrc("indexGhost", '<GhostBar className="h-[23px] w-[88px] rounded-pill" />', "")],
-  ["the index ghost without the intro", "12.2", plantSrc("indexGhost", '<div className="flex max-w-[68ch] flex-col gap-2" aria-hidden>', '<div className="flex flex-col gap-2" aria-hidden>')],
+  ["the week's ghost without the ledger's card", "12.1", plantSrc("weekGhost", '<div className="mat-flat flex max-w-receipt flex-col rounded-card p-3">', '<div className="flex flex-col">')],
+  ["the week's ghost head on a chip row of its own again (not the page's: it never wraps)", "12.1", plantSrc("weekGhost", '<div className="flex flex-wrap items-center gap-x-3 gap-y-1">', '<div className="flex items-center gap-3">')],
+  ["the index ghost's rows without the chip", "12.2", plantSrc("indexGhost", '<span className="inline-block h-[23px] w-[88px] rounded-pill bg-bg-overlay" />', "")],
+  ["the index ghost's intro off the reading measure", "12.2", plantSrc("indexGhost", '<span className="block max-w-[68ch] text-body">', '<span className="block text-body">')],
   // §14
   ["M5 undone — the ledger's 56px right lane back", "14.1", plantSrc("week", 'className="mat-flat flex max-w-receipt flex-col rounded-card p-3"', 'className="mat-flat flex max-w-receipt flex-col rounded-card p-3 pr-[56px] xl:pr-3"')],
   ["M4 undone — the ledger across the whole reading measure", "14.1", plantSrc("week", 'className="mat-flat flex max-w-receipt flex-col rounded-card p-3"', 'className="mat-flat flex flex-col rounded-card p-3"')],
@@ -956,6 +1029,7 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["the question set's eyebrow without its glyph (a ragged left edge)", "16.3", plantSrc("parts", '              <I.commitment s={12} className="shrink-0" />\n              <span>{t.millionea.stubHash}</span>', "              <span>{t.millionea.stubHash}</span>")],
   ["M4 undone — the cards across the whole page from 768", "16.4", plantSrc("week", 'className="flex max-w-receipt flex-col lg:hidden" data-testid="millionea-register-cards"', 'className="flex flex-col lg:hidden" data-testid="millionea-register-cards"')],
   ["the headings unbalanced again (\"tokeo\" alone)", "16.5", plantSrc("week", 'const H2 = "font-display text-title-sm font-bold text-text text-balance";', 'const H2 = "font-display text-title-sm font-bold text-text";')],
+  ["the index's headings unbalanced (one heading wrap broken across the register's pages)", "16.5", plantSrc("index", 'const H2 = "font-display text-title-sm font-bold text-text text-balance";', 'const H2 = "font-display text-title-sm font-bold text-text";')],
   ["the waiting words without the prose wrap (\"final.\" alone)", "16.5", plantSrc("week", '<p className="text-body-sm text-text-muted text-pretty">{t.millionea.regLedgerLater}</p>', '<p className="text-body-sm text-text-muted">{t.millionea.regLedgerLater}</p>')],
   ["P9 undone — \"Week 0\" where the chain names none", "15.5", { ...REAL, ledger: (t, l, wk) => registerLedgerRows(t, l, { ...wk, carryFromCode: wk.carryFromCode ?? "MLN-2026-W00", carryToCode: wk.carryToCode ?? "MLN-2026-W00" }) }],
 ];

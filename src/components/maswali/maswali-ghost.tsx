@@ -22,11 +22,21 @@ export function GhostLine({ className }: { className: string }) {
   return <span aria-hidden className={cn("inline-block h-[0.85em] max-w-full rounded-sm bg-bg-overlay align-middle", className)} />;
 }
 
-/** A page's head, as `PageHeader` draws it — its eyebrow and its title as bars of the given widths, never their words. */
+/** One line of words in the page's own type — `text` names the classes of the element those words sit in — as its bar
+ *  inside that line's own box: a band of such lines is the page's height, never a bar of a guessed one (the hub's drawing's
+ *  rule, S5-DESIGN-HUB L7, where it was drawn first as its own `Line`). `width` is the bar's. */
+export function GhostTextLine({ text = "", width, className }: { text?: string; width: string; className?: string }) {
+  return <span className={cn("block", text, className)}><GhostLine className={width} /></span>;
+}
+
+/** A page's head, as `PageHeader` draws it — its eyebrow and its title as bars of the given widths, never their words.
+ *  The eyebrow's bar stands in its own line box (`GhostTextLine`): PageHeader's eyebrow is a flex row, where a bare bar was
+ *  a flex item of its own 0.85em (9.35px) against the page's 15px line (16px in Millionea's Chinese) — every drawing under
+ *  this head stood 6px high (measured by `qa:maswali-register-shots`' how-ghost hop, S5-R2-REGISTER 20). */
 export function MaswaliGhostHead({ eyebrowWidth, titleWidth }: { eyebrowWidth?: string; titleWidth: string }) {
   return (
     <div aria-hidden>
-      <PageHeader eyebrow={eyebrowWidth ? <GhostLine className={eyebrowWidth} /> : undefined} title={<GhostLine className={titleWidth} />} />
+      <PageHeader eyebrow={eyebrowWidth ? <GhostTextLine width={eyebrowWidth} /> : undefined} title={<GhostLine className={titleWidth} />} />
     </div>
   );
 }

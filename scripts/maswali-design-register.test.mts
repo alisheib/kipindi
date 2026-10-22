@@ -29,7 +29,8 @@
  *   §5 HOW TO PLAY (the register critic's How rows): step 3 the hub's headline, the slip's reserve sentence, the rules a
  *      first visit needs (a week voided whole, where a win is paid, the objection window, the cap, responsible play with
  *      its door); the page's order and measures, ending on the hub and the register; the worked weeks the one ledger's
- *      rows from the settlement's arithmetic; Millionea's spaced Chinese in the window's duration.
+ *      rows from the settlement's arithmetic; Millionea's spaced Chinese in the window's duration; its loading drawing's
+ *      button at the height the page's own Button resolves to.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect in an IN-MEMORY copy (a compiled source, a helper, a
  *    word) and requires the check it targets to fail; a plant whose text is not in its file exactly once is INCONCLUSIVE.
@@ -95,6 +96,8 @@ const FILES = {
   example: "src/app/millionea/how/how-example.tsx",
   how: "src/app/millionea/how/page.tsx",
   line: "src/components/maswali/maswali-unbroken-line.tsx",
+  ghost: "src/app/millionea/how/how-ghost.tsx",
+  weekPage: "src/app/millionea/register/[week]/page.tsx",
 } as const;
 type FileKey = keyof typeof FILES;
 
@@ -119,10 +122,11 @@ type Box = { left: number; top: number; width: number; height: number };
 const L = {
   row: req(`../${FILES.row}`) as { ReceiptRow: Row },
   ledger: req(`../${FILES.ledger}`) as { millioneaLedgerRows: LedgerFn; MaswaliLedger: Row },
-  parts: req(`../${FILES.parts}`) as { WeekStateChip: Row; WeekRow: Row; weekChipKey: (s: string, p: unknown, paused?: boolean) => string; weekChipWord: (t: unknown, s: string, p: unknown, paused?: boolean) => string },
+  parts: req(`../${FILES.parts}`) as { WeekStateChip: Row; WeekRow: Row; WeekCommitments: Row; weekChipKey: (s: string, p: unknown, paused?: boolean) => string; weekChipWord: (t: unknown, s: string, p: unknown, paused?: boolean) => string },
   carry: req(`../${FILES.carry}`) as { carryGeometry: Geometry },
   seal: req(`../${FILES.seal}`) as { MaswaliSealLine: Row; sealLineOf: (q: unknown[], picks: unknown, o?: unknown) => unknown },
   example: req(`../${FILES.example}`) as { HowExample: Row },
+  ghost: req(`../${FILES.ghost}`) as { MillioneaHowGhost: Row },
   tone: req(`../${FILES.tone}`) as { STATUS_TONE: Record<string, Record<string, string>>; STATUS_TONE_EXCEPTIONS: Record<string, string>; TONE_CHIP: Record<string, string>; playerStatusChip: (w: string) => string | null },
   view: req("../src/app/millionea/millionea-view.ts") as { weekPhaseWord: (t: unknown, s: string, p: unknown) => string },
   money: req("../src/lib/maswali-money.ts") as { settleArithmetic: (i: Record<string, unknown>) => Record<string, number> & { kind: string } },
@@ -145,6 +149,8 @@ type World = {
   geometry: Geometry;
   Seal: Row;
   Example: Row;
+  Ghost: Row;
+  Commitments: Row;
 };
 const REAL: World = {
   src: Object.fromEntries(Object.entries(FILES).map(([k, f]) => [k, raw(f)])) as Record<FileKey, string>,
@@ -159,6 +165,8 @@ const REAL: World = {
   geometry: L.carry.carryGeometry,
   Seal: L.seal.MaswaliSealLine,
   Example: L.example.HowExample,
+  Ghost: L.ghost.MillioneaHowGhost,
+  Commitments: L.parts.WeekCommitments,
 };
 const code = (w: World, k: FileKey) => squash(decomment(w.src[k]));
 
@@ -371,11 +379,13 @@ check("2.6", "\"Money out\" says what it is made of on its own line — fee, pai
   });
   return [off.length === 0, off.join(" | ")];
 });
-check("2.7", "a carry names the chain's week and opens its register page (M10) — the whole row the link, at least 40px tall — and a week that carried nothing in prints no carry row (hidden at 0)", (w) => {
+// ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-REGISTER, the lead's ruling from HUB's readers): the row's TARGET reaches the
+// tap floor out of flow (`.kp-mln-hit`), no longer the row's own 44px box (2.20 holds why and how).
+check("2.7", "a carry names the chain's week and opens its register page (M10) — the whole row the link, its target the tap floor (`.kp-mln-hit`) — and a week that carried nothing in prints no carry row (hidden at 0)", (w) => {
   const rows = rowsOf(w, "en", CASES.plain);
   const into = rows.find((r) => r.key === "in");
   const drawn = inApp("en", h(w.Ledger as never, { rows: w.ledger(dict.en as never, "en", CASES.plain) } as never));
-  const link = [...drawn.matchAll(/<a [^>]*>/g)].some((m) => m[0].includes('href="/millionea/register/MLN-2026-W46"') && m[0].includes("min-height:var(--h-control-md)"));
+  const link = [...drawn.matchAll(/<a [^>]*>/g)].some((m) => m[0].includes('href="/millionea/register/MLN-2026-W46"') && m[0].includes('class="kp-mln-hit '));
   const none = !rowsOf(w, "en", CASES.dust).some((r) => r.key === "in");
   return [into?.label === "Carried in from Week 46" && into.row.href === "/millionea/register/MLN-2026-W46" && link && none, j({ label: into?.label, link, none })];
 });
@@ -395,17 +405,21 @@ check("2.9", "the hub's kinds (round 2): a live week prints its pool so far (\"a
   const live = { kind: "live", price: 1_000, tickets: 42, sales: 42_000, carryIn: { amount: null, week: 47 }, floor: 1_000_000, topUp: 0, jackpot: 1_000_000, jackpotAtLeast: true, feePct: 13, fee: null, levies: null, winners: 0, toWinners: null, share: null, paid: null, remainder: null, carriedForward: null, refunds: null, sunset: null };
   const rows = rowsOf(w, "en", live);
   const voiding = rowsOf(w, "en", { ...live, kind: "voiding", carryIn: null, jackpot: null });
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-REGISTER, the lead's item 5): the waiting carry's state is its row's note, no
+  // longer a value beside the label (2.16 holds why).
   const ok = j(rows.map((r) => r.key)) === j(["in", "sales", "pool", "floor", "jackpot", "fee"]) && rows.find((r) => r.key === "pool")?.value === "at least TZS 42,000"
-    && rows.find((r) => r.key === "in")?.value === "Not yet settled" && rows.find((r) => r.key === "fee")?.value === "13% at payout"
+    && rows.find((r) => r.key === "in")?.note === "Not yet settled" && rows.find((r) => r.key === "fee")?.value === "13% at payout"
     && rows.find((r) => r.key === "floor")?.row.emphasis === undefined
     && j(voiding.map((r) => r.key)) === j(["sales", "pool", "refund"]);
   return [ok, j({ live: rows.map((r) => [r.key, r.value]), voiding: voiding.map((r) => r.key) })];
 });
-check("2.10", "the drawing is the kit's own: every row a sentence-case ReceiptRow, a step of space before the first row after \"Money in\", and no hairline under every row (`border-b`)", (w) => {
+// ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-REGISTER, the lead's ruling from HUB's sw readers): no step of space after
+// "Money in" any more — the ledger keeps ONE rhythm (2.19 holds it and why); the kit's rows and no rule under every row stand.
+check("2.10", "the drawing is the kit's own: every row a sentence-case ReceiptRow, and no hairline under every row (`border-b`)", (w) => {
   const drawn = inApp("sw", h(w.Ledger as never, { rows: w.ledger(dict.sw as never, "sw", CASES.dust) } as never));
   const rows = count(drawn, "data-ledger-row=");
   const sentence = count(drawn, 'class="min-w-0 text-body-sm');
-  return [rows === 10 && sentence >= 10 && !/border-b\b/.test(drawn) && drawn.includes("mt-3"), j({ rows, sentence })];
+  return [rows === 10 && sentence >= 10 && !/border-b\b/.test(drawn), j({ rows, sentence })];
 });
 // The tile read of 2026-10-21 (How, sw 320): Money out's parts wrapped to six lines in the label's column beside the total's
 // figure ("Ada TZS 136,500 / imelipwa kwa / washindi / TZS 913,500 / imehamishwa / TZS 0"); a line of figures runs the row's
@@ -454,6 +468,98 @@ check("2.11", "a sentence with no figure stands alone: a voiding week's \"If the
     }
   }
   return [off.length === 0, off.join(" | ")];
+});
+
+// Round 2 (2026-10-22, the lead's item 5 — HUB's readers saw these in the shared ledger on the hub).
+check("2.13", "the sales note counts one ticket in the singular, in the dictionary's own plural forms — en \"1 ticket at TZS 1,000\" (never \"1 tickets\"), sw \"Tiketi 1 kwa TZS 1,000\", zh \"1 张，每张 TZS 1,000\" — and two in the plural", (w) => {
+  const note = (l: Locale, n: number) => rowsOf(w, l, { ...VOIDING, tickets: n, sales: n * 1_000 }).find((r) => r.key === "sales")?.note.replace(/​/g, "");
+  const said = { en1: note("en", 1), en2: note("en", 2), sw1: note("sw", 1), zh1: note("zh", 1) };
+  const want = { en1: "1 ticket at TZS 1,000", en2: "2 tickets at TZS 1,000", sw1: "Tiketi 1 kwa TZS 1,000", zh1: "1 张，每张 TZS 1,000" };
+  const keys = LOCALES.every((l) => typeof (dict[l].millionea as Record<string, unknown>).regTicketsSoldOne === "string");
+  return [keys && j(said) === j(want), j({ keys, said })];
+});
+check("2.14", "a refund's figure never opens a line alone: in every refund sentence (if the void stands, on its way back, refunded) the price is one kept run WITH the word before it (\"refunded TZS 1,000\", \"itarejeshwa TZS 1,000\", \"每张彩票退款 TZS 1,000\") — unless the sentence opens on it — in en, sw and zh", (w) => {
+  const off: string[] = [];
+  const voided = (landed: boolean) => ({ ...VOIDING, kind: "voided", refunds: { amount: 42_000, landed } });
+  for (const l of LOCALES) {
+    for (const [name, f] of [["voiding", VOIDING], ["pending", voided(false)], ["landed", voided(true)]] as const) {
+      const r = rowsOf(w, l, f as Record<string, unknown>).find((x) => x.key === "refund");
+      const label = r?.label ?? "";
+      const opens = label.startsWith("TZS 1,000");
+      // The kept run that holds the figure (it may run on past it: the platform keeps a number with the word after it too).
+      const run = keptTexts(inApp(l, r?.row.label as never)).find((k) => k.includes("TZS 1,000"));
+      if (!r || !run || (!opens && !/\S\s*TZS 1,000/.test(run))) off.push(`${l}/${name}: ${j({ label, run })}`);
+    }
+  }
+  return [off.length === 0, off.join(" | ")];
+});
+check("2.15", "a live pool still waiting on its carry says its total as ONE run on one line at the figures' edge — \"at least TZS 42,000\" / \"angalau TZS 42,000\" / \"至少 TZS 42,000\" never broken into two lines short of the column (sw 320)", (w) => {
+  const live = { ...VOIDING, kind: "live", carryIn: { amount: null, week: 47 }, floor: 1_000_000, jackpot: 1_000_000, jackpotAtLeast: true };
+  const off = LOCALES.flatMap((l) => {
+    const r = rowsOf(w, l, live).find((x) => x.key === "pool");
+    const runs = keptTexts(inApp(l, r?.row.value as never));
+    return r && runs.length === 1 && runs[0] === r.value && /42,000/.test(r.value) ? [] : [`${l}: ${j({ value: r?.value, runs })}`];
+  });
+  return [off.length === 0, off.join(" | ")];
+});
+check("2.16", "a carry still waiting on its week has no figure: its state is the row's note, on its own line under the link (\"Carried in from Week 47 ›\" / \"Not yet settled\") — never a value squeezed beside the label (sw 320: \"Kiasi kutoka / Wiki 47 ›\", \"Bado / haijakamilika\")", (w) => {
+  const live = { ...VOIDING, kind: "live", carryIn: { amount: null, week: 47 }, floor: 1_000_000, jackpot: 1_000_000, jackpotAtLeast: true };
+  const off = LOCALES.flatMap((l) => {
+    const m = dict[l].millionea as Record<string, string>;
+    const r = rowsOf(w, l, live).find((x) => x.key === "in");
+    return r && r.row.value == null && r.value === "" && r.note === m.carriedInPending ? [] : [`${l}: ${j({ value: r?.value, note: r?.note })}`];
+  });
+  return [off.length === 0, off.join(" | ")];
+});
+check("2.17", "the week's commitments card fills the column it stands in — on the hub, the fifteen questions' width at 1024–1920 (it ended 9–64px short) — and the register's week page holds it at the receipt's measure itself", (w) => {
+  const props = { t: dict.en, locale: "en", nowMs: Date.UTC(2026, 10, 30), hash: "a".repeat(64), publishedAt: "2026-11-23T00:01:00.000Z", root: "b".repeat(64), closedAt: "2026-11-27T15:00:00.000Z", tickets: 12 };
+  const bare = inApp("en", h(w.Commitments as never, props as never));
+  const held = inApp("en", h(w.Commitments as never, { ...props, className: "max-w-receipt" } as never));
+  const card = (m: string) => /<div class="([^"]*mat-flat[^"]*)"/.exec(m)?.[1] ?? "";
+  const section = (m: string) => /<section[^>]*class="([^"]*)"/.exec(m)?.[1] ?? "";
+  const fills = card(bare) !== "" && !/max-w-receipt/.test(card(bare)) && !/max-w-receipt/.test(section(bare));
+  const holds = /max-w-receipt/.test(section(held));
+  const page = code(w, "weekPage").includes('<WeekCommitments className="max-w-receipt" ');
+  return [fills && holds && page, j({ card: card(bare), held: section(held), page })];
+});
+// The lead's ruling of 2026-10-22, from HUB's sw readers of the hub's pool card (sw 320/360/768).
+const LIVE_WAITING = { ...VOIDING, kind: "live", carryIn: { amount: null, week: 47 }, floor: 1_000_000, jackpot: 1_000_000, jackpotAtLeast: true };
+const RHYTHM_CASES: Array<[string, Record<string, unknown>]> = [["live", LIVE_WAITING], ["voiding", VOIDING], ...["dust", "topped", "sunset", "rolled", "voided", "voidedPending"].map((k) => [k, CASES[k]] as [string, Record<string, unknown>])];
+check("2.18", "every figure keeps the figures' edge: each row's value is drawn right-aligned (the kit row's `alignEnd`), so a value that wraps ends every line at the column's right edge — never left-aligned short of it (sw 320: \"angalau / TZS 51,000\" stood ~56px short) — in every kind of week", (w) => {
+  const off = RHYTHM_CASES.flatMap(([name, f]) => {
+    const drawn = inApp("sw", h(w.Ledger as never, { rows: w.ledger(dict.sw as never, "sw", f) } as never));
+    const rows = count(drawn, "data-ledger-row=");
+    const values = count(drawn, '<span class="font-mono text-[');
+    const right = [...drawn.matchAll(/<span class="(font-mono text-\[[^"]*)"/g)].filter((m) => /(^|\s)text-right(\s|$)/.test(m[1])).length;
+    return rows > 0 && values === rows && right === rows ? [] : [`${name}: ${j({ rows, values, right })}`];
+  });
+  return [off.length === 0, off.join(" | ")];
+});
+check("2.19", "ONE rhythm: every row of the ledger stands the rows' one gap apart (`gap-1.5`), a total set apart only by its hairline above — no step of space after a total (under \"Jumla ya bwawa\" it stood ~46px against the rows' 26px pitch at 320/360/768) — in every kind of week", (w) => {
+  const off = RHYTHM_CASES.flatMap(([name, f]) => {
+    const built = w.ledger(dict.en as never, "en", f);
+    const drawn = inApp("en", h(w.Ledger as never, { rows: built } as never));
+    const list = /<div class="([^"]*)" data-testid="millionea-ledger"/.exec(drawn)?.[1] ?? "";
+    // Every class in the drawing that steps a row apart: a top or vertical margin, a top padding — but a total's own hairline
+    // band (`border-t … pt-1.5`) and a note's line under its label (`mt-0.5`).
+    const steps = [...drawn.matchAll(/class="([^"]*)"/g)].map((m) => m[1])
+      .filter((c) => /(^|\s)(m[ty]|p[ty]|space-y)-/.test(c) && !/(^|\s)border-t(\s|$)/.test(c) && !/^mt-0\.5 /.test(c));
+    const flagged = built.filter((r) => (r as { gap?: boolean }).gap !== undefined).map((r) => r.key);
+    return list === "flex flex-col gap-1.5" && steps.length === 0 && flagged.length === 0 ? [] : [`${name}: ${j({ list, steps, flagged })}`];
+  });
+  return [off.length === 0, off.join(" | ")];
+});
+check("2.20", "ONE rhythm at the card's edges: a carry's link row is as tall as its line, as every row is — no min-height, no line centred in a box (as a 44px box it put ~30px of air over the hub card's first row against ~20px under its last) — and its target reaches the tap floor out of flow (`.kp-mln-hit`: a `--tap-min` box centred on the row, no wider than it), in every week that draws a carry", (w) => {
+  const off = (["plain", "rolled", "voided"] as const).flatMap((name) => {
+    const drawn = inApp("en", h(w.Ledger as never, { rows: w.ledger(dict.en as never, "en", CASES[name]) } as never));
+    const links = [...drawn.matchAll(/<a [^>]*data-ledger-row="[^"]+"[^>]*>/g)].map((m) => m[0]);
+    const bad = links.filter((a) => !/class="kp-mln-hit flex flex-col rounded-control"/.test(a) || /min-height|justify-center/.test(a));
+    return links.length > 0 && bad.length === 0 ? [] : [`${name}: ${j({ links: links.length, bad })}`];
+  });
+  const css = squash(decommentCss(w.src.css));
+  const rule = css.includes(".kp-mln-hit { position: relative; }")
+    && css.includes('.kp-mln-hit::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: var(--tap-min); transform: translateY(-50%); }');
+  return [off.length === 0 && rule, j({ off, rule })];
 });
 
 // ── §3 · the one week chip ────────────────────────────────────────────────────────────────────────────────────────────
@@ -630,6 +736,50 @@ check("5.4", "L9 · Millionea's Chinese sets a digit apart from an ideograph in 
   return [fn && zh === "派奖前设有 24 小时的异议窗口", j({ fn, zh })];
 });
 
+// Round 2 (2026-10-22): one heading wrap on the register's pages — How's section headings and its cards' titles balance their
+// lines (`text-balance`, the platform's heading wrap), as the week page's and the index's do (test:maswali-register 16.5).
+check("5.5", "How's headings balance their lines — its section headings (H2) and its three cards' titles (H3) — as every heading of the register's pages does", (w) => {
+  const s = code(w, "how");
+  const h2 = s.includes('const H2 = "font-display text-title-sm font-bold text-text text-balance";');
+  const h3 = count(s, 'className="font-display text-body-lg font-semibold text-text text-balance"') === 2 && !s.includes('className="font-display text-body-lg font-semibold text-text"');
+  return [h2 && h3, j({ h2, h3 })];
+});
+
+// Round 2 (2026-10-22, the release's test:ui-consistency red): How's loading drawing drew the example's button with `h-10`,
+// which the product's overridden spacing scale makes 80px — the page's Button is the kit's md rung, 44px.
+/** The product's spacing scale as `tailwind.config.ts` overrides it (the parse `spacing-scale.test.mts` uses). */
+const SPACING = new Map([...(/spacing:\s*\{([\s\S]*?)\n\s{6}\},/.exec(raw("tailwind.config.ts"))?.[1] ?? "").matchAll(/"([\d.]+)":\s*"(\d+)px"/g)].map((m) => [m[1], Number(m[2])]));
+/** The px height a rendered class list asks for — a kit button's rung (`.btn-md` → its `--h-control-*` token), a token, a
+ *  px literal, or a key of the overridden scale — resolved through `globals.css` and `tailwind.config.ts`; null when none. */
+const heightPx = (css: string, cls: string): number | null => {
+  const token = (name: string) => { const m = new RegExp(`--${name}:\\s*(\\d+(?:\\.\\d+)?)px;`).exec(css); return m ? Number(m[1]) : null; };
+  let px: number | null = null;
+  for (const c of cls.split(/\s+/)) {
+    let m: RegExpExecArray | null;
+    if ((m = /^btn-(xs|sm|md|lg|xl)$/.exec(c))) { const r = new RegExp(`\\.btn-${m[1]}\\s*\\{\\s*height:\\s*var\\(--([\\w-]+)\\)`).exec(css); px = r ? token(r[1]) : null; }
+    else if ((m = /^h-\[var\(--([\w-]+)\)\]$/.exec(c))) px = token(m[1]);
+    else if ((m = /^h-\[(\d+(?:\.\d+)?)px\]$/.exec(c))) px = Number(m[1]);
+    else if ((m = /^h-([\d.]+)$/.exec(c))) px = SPACING.get(m[1]) ?? null;
+  }
+  return px;
+};
+check("5.6", "How's loading drawing draws the example's button at the height the page's own Button resolves to — both read off their RENDERED class lists and resolved to px through the kit's tokens and the overridden spacing scale (a numeric utility like `h-10` is 80px here; the kit's md rung is 44px), in en, sw and zh", (w) => {
+  const css = decommentCss(w.src.css);
+  const before = L.seal.sealLineOf(exampleQs, picks), after = L.seal.sealLineOf(exampleQs, picks, { final: true });
+  const out = LOCALES.map((l) => {
+    const g = inApp(l, h(w.Ghost as never, {} as never));
+    // The drawing's button: the one bar in the swap card's button row (`data-ghost="button"`).
+    const at = g.indexOf('data-ghost="button"');
+    const bar = at < 0 ? null : /<span aria-hidden="true" class="([^"]+)"><\/span>/.exec(g.slice(at))?.[1] ?? null;
+    const page = inApp(l, h(w.Example as never, { before, after, caption: "c" } as never));
+    const tag = /<button[^>]*data-testid="millionea-how-example-play"[^>]*>/.exec(page)?.[0] ?? "";
+    const button = /class="([^"]+)"/.exec(tag)?.[1] ?? "";
+    return { l, ghost: bar === null ? null : heightPx(css, bar), page: heightPx(css, button) };
+  });
+  const scale = SPACING.get("10") === 80 && SPACING.get("3") === 16;
+  return [scale && out.every((o) => o.ghost !== null && o.ghost === o.page), j({ scale, out })];
+});
+
 // ── the run ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 function runAll(w: World, quiet: boolean): { pass: number; fail: number; failed: string[] } {
   let pass = 0, fail = 0;
@@ -678,6 +828,16 @@ const plantLedger = (from: string, to: string): World | null => {
   const mod = compileAt(FILES.ledger, s) as { millioneaLedgerRows: LedgerFn; MaswaliLedger: Row };
   return { ...REAL, ledger: mod.millioneaLedgerRows, Ledger: mod.MaswaliLedger };
 };
+/** The round-1 step put back at both its sites — the builder's `gap` on the first row after a total, the drawing's `mt-3`. */
+const plantStep = (): World | null => {
+  const s1 = planted("ledger", "            divider={r.divider}\n            alignEnd\n", '            divider={r.divider}\n            alignEnd\n            className={cn(r.gap && "mt-3")}\n');
+  if (s1 === null) return null;
+  const ret = "  return [...rows, ...afterIn];\n}";
+  if (s1.split(ret).length - 1 !== 1) { problems.push(`PLANT MISSED in ${FILES.ledger}: the builder's return is not there once`); return null; }
+  const s2 = s1.replace(ret, "  if (afterIn.length > 0) afterIn[0] = { ...afterIn[0], gap: true };\n" + ret);
+  const mod = compileAt(FILES.ledger, s2) as { millioneaLedgerRows: LedgerFn; MaswaliLedger: Row };
+  return { ...REAL, ledger: mod.millioneaLedgerRows, Ledger: mod.MaswaliLedger };
+};
 /** A world whose seal line is compiled from a planted copy of its source. */
 const plantSeal = (from: string, to: string): World | null => {
   const s = planted("seal", from, to);
@@ -688,6 +848,11 @@ const plantExample = (from: string, to: string): World | null => {
   const s = planted("example", from, to);
   return s === null ? null : { ...REAL, src: { ...REAL.src, example: s }, Example: compileAt(FILES.example, s).HowExample as Row };
 };
+/** A world whose How loading drawing is compiled from a planted copy of its source. */
+const plantGhost = (from: string, to: string): World | null => {
+  const s = planted("ghost", from, to);
+  return s === null ? null : { ...REAL, src: { ...REAL.src, ghost: s }, Ghost: compileAt(FILES.ghost, s).MillioneaHowGhost as Row };
+};
 /** A world with one Millionea word changed in one language. */
 const plantWord = (l: Locale, key: string, value: string): World =>
   ({ ...REAL, dict: { ...dict, [l]: { ...dict[l], millionea: { ...dict[l].millionea, [key]: value } } } as typeof dict });
@@ -695,8 +860,8 @@ const plantWord = (l: Locale, key: string, value: string): World =>
 const plantParts = (from: string, to: string): World | null => {
   const s = planted("parts", from, to);
   if (s === null) return null;
-  const mod = compileAt(FILES.parts, s) as { WeekStateChip: Row; WeekRow: Row; weekChipKey: World["chipKey"] };
-  return { ...REAL, Chip: mod.WeekStateChip, WeekRow: mod.WeekRow, chipKey: mod.weekChipKey };
+  const mod = compileAt(FILES.parts, s) as { WeekStateChip: Row; WeekRow: Row; WeekCommitments: Row; weekChipKey: World["chipKey"] };
+  return { ...REAL, src: { ...REAL.src, parts: s }, Chip: mod.WeekStateChip, WeekRow: mod.WeekRow, Commitments: mod.WeekCommitments, chipKey: mod.weekChipKey };
 };
 const PLANTS: Array<[string, string, World | null]> = [
   // §1
@@ -718,7 +883,8 @@ const PLANTS: Array<[string, string, World | null]> = [
     return { ...REAL, ledger: mod.millioneaLedgerRows, Ledger: mod.MaswaliLedger };
   })()],
   ["the floor at full ink when it did not bind (H5)", "2.3", plantLedger('emphasis: binds ? undefined : "muted"', "emphasis: undefined")],
-  ["a hairline under every row again", "2.10", plantLedger('className={cn(r.gap && "mt-3")}', 'className={cn("border-b border-border", r.gap && "mt-3")}')],
+  // ⚠️ RE-POINTED 2026-10-22 (S5-R2-REGISTER): the rows carry no step class now; the plant adds the rule to the row's props.
+  ["a hairline under every row again", "2.10", plantLedger("            divider={r.divider}\n            alignEnd\n", '            divider={r.divider}\n            alignEnd\n            className="border-b border-border"\n')],
   ["the fee unsigned (\"TZS −136,630\")", "2.4", plantLedger("{fee > 0 ? formatTzsSigned(-fee) : formatTzs(0)}", "{formatTzs(-fee)}")],
   ["the levies dropped from under the fee", "2.4", plantLedger("note: f.levies && fee > 0 ? noteLine(", "note: false && f.levies && fee > 0 ? noteLine(")],
   ["a carry's amount printed outside its money run", "2.5", plantLedger("const money = (n: number) => <span className=\"amount\">{formatTzs(n)}</span>;", "const money = (n: number) => <span>{formatTzs(n)}</span>;")],
@@ -736,9 +902,21 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["the levies' names torn from their shares again (no runs kept)", "2.4", plantLedger("return <MaswaliFacts facts={parts.map((p) => keepFact(locale, p, [p]))} />;", "return <MaswaliFacts facts={parts.map((p) => keepFact(locale, p))} />;")],
   ["a carry row no longer a link", "2.7", plantLedger("return r.href ? (\n          <Link", "return false ? (\n          <Link")],
   ["\"every ticket refunded\" before the refunds landed", "2.8", plantLedger("afterIn.push(refunds.landed", "afterIn.push(true")],
-  ["the voiding week's refund line beside a dash again", "2.11", plantLedger('[price]), value: null, emphasis: "muted" });', '[price]), value: "—", emphasis: "muted" });')],
+  // ⚠️ RE-POINTED 2026-10-22 (S5-R2-REGISTER, item 5): the refund line's label is `refundLabel` now (its figure kept with its word).
+  ["the voiding week's refund line beside a dash again", "2.11", plantLedger('refundLabel(locale, m.refundEachIfVoid, price), value: null, emphasis: "muted" });', 'refundLabel(locale, m.refundEachIfVoid, price), value: "—", emphasis: "muted" });')],
   ["the sunset's no-top-up line beside a dash again", "2.11", plantLedger('label: factLine(locale, m.noTopUp), value: null,', 'label: factLine(locale, m.noTopUp), value: "—",')],
-  ["the live pool said as a figure while its carry waits", "2.9", plantLedger("value: carryIn?.amount === null ? keepFact(locale, fill(m.atLeast, { amount: formatTzs(inTotal) })) : money(inTotal),", "value: money(inTotal),")],
+  ["the live pool said as a figure while its carry waits", "2.9", plantLedger("value: carryIn?.amount === null ? atLeastRun(locale, m.atLeast, inTotal) : money(inTotal),", "value: money(inTotal),")],
+  // Round 2 (the lead's item 5)
+  ["\"1 tickets\" again — the sales note blind to one ticket", "2.13", plantLedger("const sold = counted(f.tickets, m.regTicketsSoldOne, m.regTicketsSold, { price });", "const sold = fill(m.regTicketsSold, { n: String(f.tickets), price });")],
+  ["a refund's figure kept alone again (it may open a line: \"refunded / TZS 1,000\")", "2.14", plantLedger("return keepFact(locale, text, [priceRun(text, price)]);", "return keepFact(locale, text, [price]);")],
+  ["the \"at least\" total free to break again (sw 320: two short lines)", "2.15", plantLedger("return keepFact(locale, text, [text]);", "return keepFact(locale, text);")],
+  ["a waiting carry's state squeezed beside its label again", "2.16", plantLedger("value: carryIn.amount === null ? null : money(carryIn.amount),\n      ...(carryIn.amount === null ? { note: m.carriedInPending } : {}),", "value: carryIn.amount === null ? m.carriedInPending : money(carryIn.amount),")],
+  ["the commitments' card capped at the receipt's measure again (short of the hub's questions)", "2.17", plantParts('<div className="mat-flat flex flex-col gap-4 rounded-card p-3">', '<div className="mat-flat flex max-w-receipt flex-col gap-4 rounded-card p-3">')],
+  ["the register's week page letting its commitments run the page's width", "2.17", plantSrc("weekPage", '<WeekCommitments className="max-w-receipt" ', "<WeekCommitments ")],
+  ["a wrapped value left-aligned short of the figures' edge again (no `alignEnd`)", "2.18", plantLedger("            divider={r.divider}\n            alignEnd\n", "            divider={r.divider}\n")],
+  ["the step of space after a total back (the builder's `gap` and the drawing's `mt-3`)", "2.19", plantStep()],
+  ["a carry's link row a 44px box again, its line centred in it", "2.20", plantLedger('className="kp-mln-hit flex flex-col rounded-control" data-ledger-row={r.key}>', 'className="flex flex-col justify-center rounded-control" style={{ minHeight: "var(--h-control-md)" }} data-ledger-row={r.key}>')],
+  ["the tap floor's out-of-flow target gone from the stylesheet", "2.20", plantSrc("css", ".kp-mln-hit::after { content: \"\"; position: absolute; left: 0; right: 0; top: 50%; height: var(--tap-min); transform: translateY(-50%); }", ".kp-mln-hit::after { content: none; }")],
   // §3
   ["a settled week in the resolved seal again", "3.1", plantParts('case "SETTLED": return "MILLIONEA_WEEK_SETTLED";', 'case "SETTLED": return "RESOLVED";')],
   ["a paused week royal, as if it sold", "3.1", plantParts('case "OPEN": return paused ? "MILLIONEA_WEEK_PAUSED" : "MILLIONEA_WEEK_OPEN";', 'case "OPEN": return "MILLIONEA_WEEK_OPEN";')],
@@ -780,7 +958,11 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["M8 undone — How ends on one link again", "5.2", plantSrc("how", "<MillioneaReadingLinks t={t} how={false} hub />", "<MillioneaReadingLinks t={t} how={false} />")],
   ["M4 undone — the swap's card across the whole reading measure", "5.2", plantSrc("how", 'className="mat-raised flex max-w-receipt flex-col gap-3 rounded-card p-3"', 'className="mat-raised flex flex-col gap-3 rounded-card p-3"')],
   ["H3 undone — a worked week's fee made on the page", "5.3", plantSrc("how", "jackpot: f.J, feePct: pctNum(h.feeRate), fee: f.F,", "jackpot: f.J, feePct: pctNum(h.feeRate), fee: Math.round(f.J * h.feeRate),")],
+  ["How's card title unbalanced (a heading wrap of its own)", "5.5", plantSrc("how", '            <h3 id="mln-how-ex-swap" className="font-display text-body-lg font-semibold text-text text-balance">', '            <h3 id="mln-how-ex-swap" className="font-display text-body-lg font-semibold text-text">')],
+  ["How's section headings unbalanced", "5.5", plantSrc("how", 'const H2 = "font-display text-title-sm font-bold text-text text-balance";', 'const H2 = "font-display text-title-sm font-bold text-text";')],
   ["L9 undone — the window's Chinese duration glued again (\"24小时\")", "5.4", plantSrc("how", "hours: spacedDuration(locale, h.objectionWindowHours)", "hours: durationHours(locale, h.objectionWindowHours)")],
+  ["the drawing's button back on the numeric utility (`h-10`: 80px on the overridden scale)", "5.6", plantGhost("h-[var(--h-control-md)] w-[160px] rounded-control", "h-10 w-[160px] rounded-control")],
+  ["the page's button a rung up (lg) while its drawing stays at md", "5.6", plantExample('size="md"', 'size="lg"')],
 ];
 let caught = 0;
 for (const [name, target, world] of PLANTS) {
