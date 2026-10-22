@@ -353,9 +353,12 @@ check("5.2", "R4 · L2 · the state chip wears slate for a settled week — its 
 // were sentences dressed as eyebrows ("SETI YA MASWALI IMECHAPISHWA 23 NOV, 00:01") and no heading. They are a titled section of
 // nouns — the ONE drawing the hub's week section adopts (`WeekCommitments`) — shown the moment each is stamped.
 // ⚠️ RE-PINNED 2026-10-21 (S5-DESIGN-REGISTER, the tile read — §16 says why): the heading balanced; the question set's eyebrow wears the glyph too.
-check("6.1", "M12 · L15 · H2 · the commitments are a titled section of nouns: the question set's hash under \"Question set\" with \"Published {when}\"; the tickets' root under \"Tickets at the close\" with its glyph and \"Fixed {when} · {n} tickets\" (the lead's words) — or when it will be published; one explainer once both exist", (w) => {
+// ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-REGISTER, the lead's item 5): the card fills the column it stands in (on the hub,
+// the questions' width), so the week page holds it at the receipt's measure itself — `className="max-w-receipt"`
+// (test:maswali-design-register 2.17 renders both). The section, its nouns and its words are as before.
+check("6.1","M12 · L15 · H2 · the commitments are a titled section of nouns: the question set's hash under \"Question set\" with \"Published {when}\"; the tickets' root under \"Tickets at the close\" with its glyph and \"Fixed {when} · {n} tickets\" (the lead's words) — or when it will be published; one explainer once both exist", (w) => {
   const s = code(w, "week"), p = code(w, "parts");
-  const drawn = s.includes("<WeekCommitments t={t} locale={locale} nowMs={nowMs} hash={v.hash} publishedAt={v.publishedAt} root={v.root} closedAt={v.closedAt} tickets={v.tickets} />");
+  const drawn = s.includes("<WeekCommitments className=\"max-w-receipt\" t={t} locale={locale} nowMs={nowMs} hash={v.hash} publishedAt={v.publishedAt} root={v.root} closedAt={v.closedAt} tickets={v.tickets} />");
   const nouns = p.includes('<h2 id="mln-reg-commit" className="font-display text-title-sm font-bold text-text text-balance">{t.millionea.commitTitle}</h2>')
     && p.includes("<span>{t.millionea.stubHash}</span>") && p.includes("<I.commitment s={12} className=\"shrink-0\" /> <span>{t.millionea.commitTicketsAtClose}</span>")
     && p.includes("counted(tickets, t.millionea.commitFixedOne, t.millionea.commitFixed, { when: fixed })") && p.includes("{t.millionea.commitAtClose}")
@@ -513,13 +516,18 @@ check("9.4", "A1 · `kept` draws each run it is given as ONE nowrap span, the wo
 });
 // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER): the labels are the ONE Millionea ledger's (`maswali-ledger.tsx`),
 // each drawn through `keepFact` with its runs named — the platform's kept runs and Millionea's own, every figure an `.amount`.
-check("9.5", "A1 · every ledger label or note that carries a week, an amount or a % is drawn through `keepFact` with that run (the carries' weeks, the sales note's two phrases, the refunds' price, the fee's %, the split's \"÷ k\")", (w) => {
+// ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-REGISTER, the lead's item 5): every refund sentence is drawn by the ledger's one
+// `refundLabel`, its price kept WITH the word before it ("…refunded / TZS 1,000" left the figure alone on a line; HUB's read
+// of the hub) — rendered in three languages by test:maswali-design-register 2.14.
+check("9.5", "A1 · every ledger label or note that carries a week, an amount or a % is drawn through `keepFact` with that run (the carries' weeks, the sales note's two phrases, the refunds' price with its word, the fee's %, the split's \"÷ k\")", (w) => {
   const s = code(w, "ledger");
   const want = [
     "return week === null ? noWeek : keepFact(locale, fill(withWeek, { week }), [weekWord(t, week)]);",
     "note: keepFact(locale, sold, ticketSalesRuns(sold, price))",
-    "label: keepFact(locale, fill(m.refundEachPending, { price }), [price])",
-    "label: keepFact(locale, fill(m.refundEach, { price }), [price])",
+    "return keepFact(locale, text, [priceRun(text, price)]);",
+    "label: refundLabel(locale, m.refundEachIfVoid, price)",
+    "label: refundLabel(locale, m.refundEachPending, price)",
+    "label: refundLabel(locale, m.refundEach, price)",
     "keepFact(locale, fill(m.feeLine, { pct }), [`${pct}%`])",
     "label: keepFact(locale, perTicket, perTicket.match(/^÷ \\S+/) ?? [])",
   ];
@@ -902,7 +910,7 @@ const PLANTS: Array<[string, string, World | null]> = [
   // §6
   ["M12 undone — the root's label a sentence again", "6.1", plantSrc("parts", "<span>{t.millionea.commitTicketsAtClose}</span>", "<span>{t.millionea.commitAtClose}</span>")],
   ["the lead's root words changed", "6.1", plantWord("en", "commitFixed", "Fixed {when}, {n} tickets")],
-  ["the week page without its commitments", "6.1", plantSrc("week", "<WeekCommitments t={t} locale={locale}", "<WeekCommitmentsGone t={t} locale={locale}")],
+  ["the week page without its commitments", "6.1", plantSrc("week", "<WeekCommitments className=\"max-w-receipt\" t={t} locale={locale}", "<WeekCommitmentsGone className=\"max-w-receipt\" t={t} locale={locale}")],
   ["R6 undone — \"This week's questions\" on a past week", "6.2", plantSrc("week", "const heading = fill(t.millionea.regWeekQuestions, { week: weekNumberOf(v.code) });", "const heading = t.millionea.weekQuestions;")],
   ["R6 — zh says 本周 again", "6.3", plantWord("zh", "regWeekQuestions", "本周题目")],
   // §7
@@ -929,7 +937,8 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["A1 undone — the levies one plain \"·\"-joined string", "9.2", plantSrc("ledger", "return <MaswaliFacts facts={parts.map((p) => keepFact(locale, p, [p]))} />;", 'return parts.join(" · ");')],
   ["A1 undone — the standing's count ungrouped", "9.3", plantSrc("week", "{formatNumber(s.ticketsWithoutAMiss)}", "{s.ticketsWithoutAMiss}")],
   ["a `kept` that keeps nothing", "9.4", { ...REAL, kept: (text) => text }],
-  ["A1 undone — the refund's price free to break", "9.5", plantSrc("ledger", "label: keepFact(locale, fill(m.refundEach, { price }), [price])", "label: fill(m.refundEach, { price })")],
+  ["A1 undone — the refund's price free to break", "9.5", plantSrc("ledger", "label: refundLabel(locale, m.refundEach, price)", "label: fill(m.refundEach, { price })")],
+  ["the refund's price kept without its word again (it may open a line alone)", "9.5", plantSrc("ledger", "return keepFact(locale, text, [priceRun(text, price)]);", "return keepFact(locale, text, [price]);")],
   ["R2 undone — the sold note uses its old multiplication split", "9.5s", plantSrc("ledger", "note: keepFact(locale, sold, ticketSalesRuns(sold, price))", 'note: keepFact(locale, sold, [sold.split(" × ")[0].trim(), `× ${price}`])')],
   ["R2 undone — the unit-price helper keeps the entire sold label", "9.5s", { ...REAL, ticketSalesRuns: (sold) => [sold] }],
   ["A1 undone — the reserve rule's range free to part", "9.6", plantSrc("week", "{keepFact(locale, t.millionea.regSubRule)}", "{t.millionea.regSubRule}")],

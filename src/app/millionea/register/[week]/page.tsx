@@ -467,7 +467,8 @@ export default async function MillioneaRegisterWeekPage({ params }: { params: Pr
               : <p className="text-body-sm text-text-muted text-pretty">{t.millionea.regLedgerLater}</p>}
           </div>
         </section>
-        <WeekCommitments t={t} locale={locale} nowMs={nowMs} hash={v.hash} publishedAt={v.publishedAt} root={v.root} closedAt={v.closedAt} tickets={v.tickets} />
+        {/* At the receipt's measure, under the ledger's card (M4) — the commitments fill their column elsewhere (the hub). */}
+        <WeekCommitments className="max-w-receipt" t={t} locale={locale} nowMs={nowMs} hash={v.hash} publishedAt={v.publishedAt} root={v.root} closedAt={v.closedAt} tickets={v.tickets} />
         <Questions t={t} locale={locale} v={v} nowMs={nowMs} />
         <ReserveMap t={t} locale={locale} v={v} />
         {rec.kind === "final" && rec.week.standing && rec.week.standing.length > 0 && (

@@ -97,6 +97,7 @@ const FILES = {
   how: "src/app/millionea/how/page.tsx",
   line: "src/components/maswali/maswali-unbroken-line.tsx",
   ghost: "src/app/millionea/how/how-ghost.tsx",
+  weekPage: "src/app/millionea/register/[week]/page.tsx",
 } as const;
 type FileKey = keyof typeof FILES;
 
@@ -121,7 +122,7 @@ type Box = { left: number; top: number; width: number; height: number };
 const L = {
   row: req(`../${FILES.row}`) as { ReceiptRow: Row },
   ledger: req(`../${FILES.ledger}`) as { millioneaLedgerRows: LedgerFn; MaswaliLedger: Row },
-  parts: req(`../${FILES.parts}`) as { WeekStateChip: Row; WeekRow: Row; weekChipKey: (s: string, p: unknown, paused?: boolean) => string; weekChipWord: (t: unknown, s: string, p: unknown, paused?: boolean) => string },
+  parts: req(`../${FILES.parts}`) as { WeekStateChip: Row; WeekRow: Row; WeekCommitments: Row; weekChipKey: (s: string, p: unknown, paused?: boolean) => string; weekChipWord: (t: unknown, s: string, p: unknown, paused?: boolean) => string },
   carry: req(`../${FILES.carry}`) as { carryGeometry: Geometry },
   seal: req(`../${FILES.seal}`) as { MaswaliSealLine: Row; sealLineOf: (q: unknown[], picks: unknown, o?: unknown) => unknown },
   example: req(`../${FILES.example}`) as { HowExample: Row },
@@ -149,6 +150,7 @@ type World = {
   Seal: Row;
   Example: Row;
   Ghost: Row;
+  Commitments: Row;
 };
 const REAL: World = {
   src: Object.fromEntries(Object.entries(FILES).map(([k, f]) => [k, raw(f)])) as Record<FileKey, string>,
@@ -164,6 +166,7 @@ const REAL: World = {
   Seal: L.seal.MaswaliSealLine,
   Example: L.example.HowExample,
   Ghost: L.ghost.MillioneaHowGhost,
+  Commitments: L.parts.WeekCommitments,
 };
 const code = (w: World, k: FileKey) => squash(decomment(w.src[k]));
 
@@ -400,8 +403,10 @@ check("2.9", "the hub's kinds (round 2): a live week prints its pool so far (\"a
   const live = { kind: "live", price: 1_000, tickets: 42, sales: 42_000, carryIn: { amount: null, week: 47 }, floor: 1_000_000, topUp: 0, jackpot: 1_000_000, jackpotAtLeast: true, feePct: 13, fee: null, levies: null, winners: 0, toWinners: null, share: null, paid: null, remainder: null, carriedForward: null, refunds: null, sunset: null };
   const rows = rowsOf(w, "en", live);
   const voiding = rowsOf(w, "en", { ...live, kind: "voiding", carryIn: null, jackpot: null });
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-REGISTER, the lead's item 5): the waiting carry's state is its row's note, no
+  // longer a value beside the label (2.16 holds why).
   const ok = j(rows.map((r) => r.key)) === j(["in", "sales", "pool", "floor", "jackpot", "fee"]) && rows.find((r) => r.key === "pool")?.value === "at least TZS 42,000"
-    && rows.find((r) => r.key === "in")?.value === "Not yet settled" && rows.find((r) => r.key === "fee")?.value === "13% at payout"
+    && rows.find((r) => r.key === "in")?.note === "Not yet settled" && rows.find((r) => r.key === "fee")?.value === "13% at payout"
     && rows.find((r) => r.key === "floor")?.row.emphasis === undefined
     && j(voiding.map((r) => r.key)) === j(["sales", "pool", "refund"]);
   return [ok, j({ live: rows.map((r) => [r.key, r.value]), voiding: voiding.map((r) => r.key) })];
@@ -459,6 +464,59 @@ check("2.11", "a sentence with no figure stands alone: a voiding week's \"If the
     }
   }
   return [off.length === 0, off.join(" | ")];
+});
+
+// Round 2 (2026-10-22, the lead's item 5 — HUB's readers saw these in the shared ledger on the hub).
+check("2.13", "the sales note counts one ticket in the singular, in the dictionary's own plural forms — en \"1 ticket at TZS 1,000\" (never \"1 tickets\"), sw \"Tiketi 1 kwa TZS 1,000\", zh \"1 张，每张 TZS 1,000\" — and two in the plural", (w) => {
+  const note = (l: Locale, n: number) => rowsOf(w, l, { ...VOIDING, tickets: n, sales: n * 1_000 }).find((r) => r.key === "sales")?.note.replace(/​/g, "");
+  const said = { en1: note("en", 1), en2: note("en", 2), sw1: note("sw", 1), zh1: note("zh", 1) };
+  const want = { en1: "1 ticket at TZS 1,000", en2: "2 tickets at TZS 1,000", sw1: "Tiketi 1 kwa TZS 1,000", zh1: "1 张，每张 TZS 1,000" };
+  const keys = LOCALES.every((l) => typeof (dict[l].millionea as Record<string, unknown>).regTicketsSoldOne === "string");
+  return [keys && j(said) === j(want), j({ keys, said })];
+});
+check("2.14", "a refund's figure never opens a line alone: in every refund sentence (if the void stands, on its way back, refunded) the price is one kept run WITH the word before it (\"refunded TZS 1,000\", \"itarejeshwa TZS 1,000\", \"每张彩票退款 TZS 1,000\") — unless the sentence opens on it — in en, sw and zh", (w) => {
+  const off: string[] = [];
+  const voided = (landed: boolean) => ({ ...VOIDING, kind: "voided", refunds: { amount: 42_000, landed } });
+  for (const l of LOCALES) {
+    for (const [name, f] of [["voiding", VOIDING], ["pending", voided(false)], ["landed", voided(true)]] as const) {
+      const r = rowsOf(w, l, f as Record<string, unknown>).find((x) => x.key === "refund");
+      const label = r?.label ?? "";
+      const opens = label.startsWith("TZS 1,000");
+      // The kept run that holds the figure (it may run on past it: the platform keeps a number with the word after it too).
+      const run = keptTexts(inApp(l, r?.row.label as never)).find((k) => k.includes("TZS 1,000"));
+      if (!r || !run || (!opens && !/\S\s*TZS 1,000/.test(run))) off.push(`${l}/${name}: ${j({ label, run })}`);
+    }
+  }
+  return [off.length === 0, off.join(" | ")];
+});
+check("2.15", "a live pool still waiting on its carry says its total as ONE run on one line at the figures' edge — \"at least TZS 42,000\" / \"angalau TZS 42,000\" / \"至少 TZS 42,000\" never broken into two lines short of the column (sw 320)", (w) => {
+  const live = { ...VOIDING, kind: "live", carryIn: { amount: null, week: 47 }, floor: 1_000_000, jackpot: 1_000_000, jackpotAtLeast: true };
+  const off = LOCALES.flatMap((l) => {
+    const r = rowsOf(w, l, live).find((x) => x.key === "pool");
+    const runs = keptTexts(inApp(l, r?.row.value as never));
+    return r && runs.length === 1 && runs[0] === r.value && /42,000/.test(r.value) ? [] : [`${l}: ${j({ value: r?.value, runs })}`];
+  });
+  return [off.length === 0, off.join(" | ")];
+});
+check("2.16", "a carry still waiting on its week has no figure: its state is the row's note, on its own line under the link (\"Carried in from Week 47 ›\" / \"Not yet settled\") — never a value squeezed beside the label (sw 320: \"Kiasi kutoka / Wiki 47 ›\", \"Bado / haijakamilika\")", (w) => {
+  const live = { ...VOIDING, kind: "live", carryIn: { amount: null, week: 47 }, floor: 1_000_000, jackpot: 1_000_000, jackpotAtLeast: true };
+  const off = LOCALES.flatMap((l) => {
+    const m = dict[l].millionea as Record<string, string>;
+    const r = rowsOf(w, l, live).find((x) => x.key === "in");
+    return r && r.row.value == null && r.value === "" && r.note === m.carriedInPending ? [] : [`${l}: ${j({ value: r?.value, note: r?.note })}`];
+  });
+  return [off.length === 0, off.join(" | ")];
+});
+check("2.17", "the week's commitments card fills the column it stands in — on the hub, the fifteen questions' width at 1024–1920 (it ended 9–64px short) — and the register's week page holds it at the receipt's measure itself", (w) => {
+  const props = { t: dict.en, locale: "en", nowMs: Date.UTC(2026, 10, 30), hash: "a".repeat(64), publishedAt: "2026-11-23T00:01:00.000Z", root: "b".repeat(64), closedAt: "2026-11-27T15:00:00.000Z", tickets: 12 };
+  const bare = inApp("en", h(w.Commitments as never, props as never));
+  const held = inApp("en", h(w.Commitments as never, { ...props, className: "max-w-receipt" } as never));
+  const card = (m: string) => /<div class="([^"]*mat-flat[^"]*)"/.exec(m)?.[1] ?? "";
+  const section = (m: string) => /<section[^>]*class="([^"]*)"/.exec(m)?.[1] ?? "";
+  const fills = card(bare) !== "" && !/max-w-receipt/.test(card(bare)) && !/max-w-receipt/.test(section(bare));
+  const holds = /max-w-receipt/.test(section(held));
+  const page = code(w, "weekPage").includes('<WeekCommitments className="max-w-receipt" ');
+  return [fills && holds && page, j({ card: card(bare), held: section(held), page })];
 });
 
 // ── §3 · the one week chip ────────────────────────────────────────────────────────────────────────────────────────────
@@ -749,8 +807,8 @@ const plantWord = (l: Locale, key: string, value: string): World =>
 const plantParts = (from: string, to: string): World | null => {
   const s = planted("parts", from, to);
   if (s === null) return null;
-  const mod = compileAt(FILES.parts, s) as { WeekStateChip: Row; WeekRow: Row; weekChipKey: World["chipKey"] };
-  return { ...REAL, Chip: mod.WeekStateChip, WeekRow: mod.WeekRow, chipKey: mod.weekChipKey };
+  const mod = compileAt(FILES.parts, s) as { WeekStateChip: Row; WeekRow: Row; WeekCommitments: Row; weekChipKey: World["chipKey"] };
+  return { ...REAL, src: { ...REAL.src, parts: s }, Chip: mod.WeekStateChip, WeekRow: mod.WeekRow, Commitments: mod.WeekCommitments, chipKey: mod.weekChipKey };
 };
 const PLANTS: Array<[string, string, World | null]> = [
   // §1
@@ -790,9 +848,17 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["the levies' names torn from their shares again (no runs kept)", "2.4", plantLedger("return <MaswaliFacts facts={parts.map((p) => keepFact(locale, p, [p]))} />;", "return <MaswaliFacts facts={parts.map((p) => keepFact(locale, p))} />;")],
   ["a carry row no longer a link", "2.7", plantLedger("return r.href ? (\n          <Link", "return false ? (\n          <Link")],
   ["\"every ticket refunded\" before the refunds landed", "2.8", plantLedger("afterIn.push(refunds.landed", "afterIn.push(true")],
-  ["the voiding week's refund line beside a dash again", "2.11", plantLedger('[price]), value: null, emphasis: "muted" });', '[price]), value: "—", emphasis: "muted" });')],
+  // ⚠️ RE-POINTED 2026-10-22 (S5-R2-REGISTER, item 5): the refund line's label is `refundLabel` now (its figure kept with its word).
+  ["the voiding week's refund line beside a dash again", "2.11", plantLedger('refundLabel(locale, m.refundEachIfVoid, price), value: null, emphasis: "muted" });', 'refundLabel(locale, m.refundEachIfVoid, price), value: "—", emphasis: "muted" });')],
   ["the sunset's no-top-up line beside a dash again", "2.11", plantLedger('label: factLine(locale, m.noTopUp), value: null,', 'label: factLine(locale, m.noTopUp), value: "—",')],
-  ["the live pool said as a figure while its carry waits", "2.9", plantLedger("value: carryIn?.amount === null ? keepFact(locale, fill(m.atLeast, { amount: formatTzs(inTotal) })) : money(inTotal),", "value: money(inTotal),")],
+  ["the live pool said as a figure while its carry waits", "2.9", plantLedger("value: carryIn?.amount === null ? atLeastRun(locale, m.atLeast, inTotal) : money(inTotal),", "value: money(inTotal),")],
+  // Round 2 (the lead's item 5)
+  ["\"1 tickets\" again — the sales note blind to one ticket", "2.13", plantLedger("const sold = counted(f.tickets, m.regTicketsSoldOne, m.regTicketsSold, { price });", "const sold = fill(m.regTicketsSold, { n: String(f.tickets), price });")],
+  ["a refund's figure kept alone again (it may open a line: \"refunded / TZS 1,000\")", "2.14", plantLedger("return keepFact(locale, text, [priceRun(text, price)]);", "return keepFact(locale, text, [price]);")],
+  ["the \"at least\" total free to break again (sw 320: two short lines)", "2.15", plantLedger("return keepFact(locale, text, [text]);", "return keepFact(locale, text);")],
+  ["a waiting carry's state squeezed beside its label again", "2.16", plantLedger("value: carryIn.amount === null ? null : money(carryIn.amount),\n      ...(carryIn.amount === null ? { note: m.carriedInPending } : {}),", "value: carryIn.amount === null ? m.carriedInPending : money(carryIn.amount),")],
+  ["the commitments' card capped at the receipt's measure again (short of the hub's questions)", "2.17", plantParts('<div className="mat-flat flex flex-col gap-4 rounded-card p-3">', '<div className="mat-flat flex max-w-receipt flex-col gap-4 rounded-card p-3">')],
+  ["the register's week page letting its commitments run the page's width", "2.17", plantSrc("weekPage", '<WeekCommitments className="max-w-receipt" ', "<WeekCommitments ")],
   // §3
   ["a settled week in the resolved seal again", "3.1", plantParts('case "SETTLED": return "MILLIONEA_WEEK_SETTLED";', 'case "SETTLED": return "RESOLVED";')],
   ["a paused week royal, as if it sold", "3.1", plantParts('case "OPEN": return paused ? "MILLIONEA_WEEK_PAUSED" : "MILLIONEA_WEEK_OPEN";', 'case "OPEN": return "MILLIONEA_WEEK_OPEN";')],

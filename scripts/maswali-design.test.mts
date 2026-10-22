@@ -203,11 +203,13 @@ const PICKS = Array.from({ length: 15 }, () => "YES" as const);
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER): the rows are the ONE Millionea ledger's (`maswali-ledger.tsx`,
   // rendered — refunds pending and landed, in three languages — by test:maswali-design-register 2.8); register-parts hands it
   // the read model's `refundsPending`, and the week page draws the rows with `MaswaliLedger`.
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-REGISTER, the lead's item 5): every refund sentence is drawn by the ledger's
+  // `refundLabel`, its figure kept with the word before it (test:maswali-design-register 2.14 renders it in three languages).
   const reg = squash(code(read("src/app/millionea/register/register-parts.tsx")));
   const ledgerSrc = squash(code(read("src/components/maswali/maswali-ledger.tsx")));
   ok("2.H1g · the register's voided ledger: \"refunded\" only once every refund landed",
     reg.includes("refunds: kind === \"voided\" ? { amount: w.sales ?? 0, landed: !w.refundsPending } : null,")
-      && ledgerSrc.includes("afterIn.push(refunds.landed") && ledgerSrc.includes("label: keepFact(locale, fill(m.refundEachPending, { price }), [price])")
+      && ledgerSrc.includes("afterIn.push(refunds.landed") && ledgerSrc.includes("label: refundLabel(locale, m.refundEachPending, price)")
       && squash(code(read(REGISTER_WEEK))).includes("<MaswaliLedger rows={registerLedgerRows(t, locale, rec.week)} />"));
 }
 
@@ -868,18 +870,21 @@ const cardBlockDefects = (src: string) => {
     sw: ["Kiasi kutoka Wiki 47", "Bado haijakamilika", "13% wakati wa malipo"],
     zh: ["滚存（第47周）", "尚未结算", "派奖时扣除 13%"],
   };
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-REGISTER, the lead's item 5): the unsettled week's words are the row's NOTE,
+  // on their own line under the link, and the row has no figure — beside the label they broke loose at 320 ("Bado /
+  // haijakamilika"; test:maswali-design-register 2.16). The words, the week said once and the fee row are as before.
   const wrong = LOCALES.flatMap((l) => {
     const rows = live(l), inRow = rows.find((r) => r.key === "in"), fee = rows.find((r) => r.key === "fee");
-    const [label, value, feeValue] = WORDS[l];
-    const got = { label: nodeText(inRow?.label), value: nodeText(inRow?.value), fee: nodeText(fee?.value) };
-    const once = got.label.split("47").length - 1 === 1;
-    return got.label === label && got.value === value && inRow?.emphasis === "muted" && once && got.fee === feeValue && fee?.emphasis === "muted" ? [] : [`${l}: ${j(got)}`];
+    const [label, state, feeValue] = WORDS[l];
+    const got = { label: nodeText(inRow?.label), note: nodeText(inRow?.note), value: nodeText(inRow?.value), fee: nodeText(fee?.value) };
+    const once = `${got.label} ${got.note}`.split("47").length - 1 === 1;
+    return got.label === label && got.note === state && inRow?.value == null && inRow?.emphasis === "muted" && once && got.fee === feeValue && fee?.emphasis === "muted" ? [] : [`${l}: ${j(got)}`];
   });
   // Before the first sale, the same: the fee is a rate and when it is taken.
   const presale = { value: nodeText(live("en", { sales: 0 }).find((r) => r.key === "fee")?.value) };
   const won = { value: nodeText(millioneaLedgerRows(en, "en", { ...LEDGER_AT_REST, kind: "won", tickets: 1050, sales: 1_050_000, jackpot: 1_050_000, fee: 136_500, winners: 3,
     toWinners: 913_500, share: 304_500, paid: 913_500, remainder: 0 }).find((r) => r.key === "fee")?.value) };
-  ok("4.P5 · the carry's row names its week ONCE and says an unsettled week in words (\"Carried in from Week 47\" · \"Not yet settled\", §D sw and zh), the fee row before a payout says the rate and when (\"13% at payout\", never \"—\"), and a fee taken is the signed figure (\"−TZS 136,500\")",
+  ok("4.P5 · the carry's row names its week ONCE and says an unsettled week in words (\"Carried in from Week 47\" over its note \"Not yet settled\", no figure; §D sw and zh), the fee row before a payout says the rate and when (\"13% at payout\", never \"—\"), and a fee taken is the signed figure (\"−TZS 136,500\")",
     wrong.length === 0 && presale?.value === "13% at payout" && won?.value === formatTzsSigned(-136_500) && formatTzsSigned(-136_500) === "−TZS 136,500", wrong.join(" | "));
   const oldLabel = `${fill("Carried in (Week {week})", { week: 47 })} · ${fill("Week {week} not yet settled", { week: 47 })}`;
   ok("4.P5′ PLANT · the old row (\"Carried in (Week 47) · Week 47 not yet settled\" over a dash) says Week 47 twice", oldLabel.split("47").length - 1 === 2);

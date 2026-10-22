@@ -3665,6 +3665,7 @@ export const dict = {
       regLedger: "Ledger",
       regCheck: "Objection window",
       regTicketsSold: "{n} tickets at {price}",
+      regTicketsSoldOne: "1 ticket at {price}",
       regStanding: "Tickets without a miss after each result",
       // A week's row on the index, its facts after its state.
       regWonOne: "1 ticket won",
@@ -6566,6 +6567,7 @@ export const dict = {
       regLedger: "Leja",
       regCheck: "Dirisha la pingamizi",
       regTicketsSold: "Tiketi {n} kwa {price}",
+      regTicketsSoldOne: "Tiketi 1 kwa {price}",
       regStanding: "Tiketi zisizo na kosa baada ya kila tokeo",
       regWonOne: "Tiketi 1 ilishinda",
       regWon: "Tiketi {n} zilishinda",
@@ -9438,6 +9440,7 @@ export const dict = {
       regLedger: "账目",
       regCheck: "异议窗口",
       regTicketsSold: "{n} 张，\u200B每张 {price}", // A zero-width break keeps the two phone-sized facts separate without adding a visible space.
+      regTicketsSoldOne: "1 张，\u200B每张 {price}",
       regStanding: "每个结果公布后仍无失误的彩票",
       regWonOne: "1 张彩票中奖",
       regWon: "{n} 张彩票中奖",

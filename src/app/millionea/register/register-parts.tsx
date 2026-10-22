@@ -16,7 +16,7 @@ import { counted, eatWeekdayClock, weekNumberOf, weekWord } from "@/components/m
 import { millioneaLedgerRows, ticketSalesRuns, type MillioneaLedgerRow } from "@/components/maswali/maswali-ledger";
 import { playerStatusChip } from "@/lib/status-tone";
 import { formatEatDateTime } from "@/lib/eat-day";
-import { fill, formatNumber, formatTzs, pctNum } from "@/lib/utils";
+import { cn, fill, formatNumber, formatTzs, pctNum } from "@/lib/utils";
 import { moneyRuns } from "@/lib/fill-nodes";
 import type { WeekState } from "@/lib/maswali-week-label";
 import type { MillioneaRegisterLiveWeek, MillioneaWeekMoney, MillioneaWeekSummary } from "@/lib/server/maswali-player";
@@ -256,11 +256,16 @@ const EYEBROW = "font-mono text-micro uppercase eyebrow text-text-subtle";
  * dressed as an eyebrow. The HUB lane prints the same commitments in its week section (round 2), from these words
  * (`stubHash`, `commitTicketsAtClose`, `commitPublished`, `commitFixed`, `commitExplainer` — the lead's keys).
  * ⛔ Never a hash that is not stamped: an absent one is not drawn (AGENTS.md §6).
+ * Its card fills the column it stands in — on the hub, the fifteen questions' width (capped at the receipt's measure it
+ * ended 9–64px short of them at 1024–1920; HUB's read, round 2); a page that sets it at the receipt's measure, as the
+ * register's week page does under its ledger, says so (`className`).
  */
-export function WeekCommitments({ t, locale, nowMs, hash, publishedAt, root, closedAt, tickets }: {
+export function WeekCommitments({ t, locale, nowMs, hash, publishedAt, root, closedAt, tickets, className }: {
   t: Dict;
   locale: Locale;
   nowMs: number;
+  /** The section's own measure, when the page sets one (the register's week page: `max-w-receipt`). */
+  className?: string;
   /** The question set's hash, published at the open. */
   hash: string | null;
   publishedAt: string | null;
@@ -275,9 +280,9 @@ export function WeekCommitments({ t, locale, nowMs, hash, publishedAt, root, clo
     ? counted(tickets, t.millionea.commitFixedOne, t.millionea.commitFixed, { when: fixed })
     : null;
   return (
-    <section aria-labelledby="mln-reg-commit" className="flex flex-col gap-2" data-testid="millionea-commitments">
+    <section aria-labelledby="mln-reg-commit" className={cn("flex flex-col gap-2", className)} data-testid="millionea-commitments">
       <h2 id="mln-reg-commit" className="font-display text-title-sm font-bold text-text text-balance">{t.millionea.commitTitle}</h2>
-      <div className="mat-flat flex max-w-receipt flex-col gap-4 rounded-card p-3">
+      <div className="mat-flat flex flex-col gap-4 rounded-card p-3">
         {hash && (
           <div className="flex flex-col gap-1">
             {/* Both commitments wear the commitment glyph — one left edge for the two eyebrows (the tile read of 2026-10-21:
