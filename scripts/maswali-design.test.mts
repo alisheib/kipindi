@@ -519,9 +519,11 @@ const heldGuardDefects = (hubSrc: string) => {
   const model = code(read("src/components/maswali/maswali-card-model.ts"));
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-FIX-PLAYER P13): the cap's line is one helper now (`capReachedLine`), which the
   // slip's refusal says too; §5 P13 checks its words in three languages.
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-DESIGN-HUB round 2, §T5): the hub draws the same line as a fact — its counts and
+  // its week's number `.mono` numerals, its phrases kept whole (`keepFact`); the words are the helper's, unchanged.
   const viewSrc = squash(code(read("src/app/millionea/millionea-view.ts")));
   ok("2.R4f · the hub's cap line promises no next week when none follows (`capReachedOnly`), and neither the hub nor the card counts seven days from a week's open",
-    hubSrc.includes("door = <Callout tone=\"info\" role=\"status\">{capReachedLine(t, w.ticketCap, nextOpen)}</Callout>;")
+    hubSrc.includes("door = <Callout tone=\"info\" role=\"status\">{keepFact(locale, capReachedLine(t, w.ticketCap, nextOpen))}</Callout>;")
       && viewSrc.includes("return nextOpenMs === null ? fill(t.millionea.capReachedOnly, { cap })")
       && hubSrc.includes("nextOpen={nextWeekOpen(hub, millioneaOpenTemplate(), nowMs)}")
       && !/7 \* 86_400_000/.test(hubSrc) && !/opened \+ 7 \* DAY_MS/.test(model));

@@ -43,9 +43,9 @@ export function closeMovedWords(t: Dict, toMs: number, fromMs: number): ReactNod
 }
 
 /** M6 · a week being voided, named: how many mains voided against how few valid reserves, and by when it is final if no
- *  objection changes it (`byMs`, the week's "results and payout" end). */
+ *  objection changes it (`byMs`, the week's "results and payout" end). Its counts are numerals too (§T5, round 2). */
 export function voidingWords(t: Dict, voidedMains: number, validReserves: number, byMs: number): ReactNode {
-  return fillNodes(t.millionea.weekVoidingBody, { voided: formatNumber(voidedMains), valid: formatNumber(validReserves), when: run(eatWeekdayClock(t, byMs)) });
+  return fillNodes(t.millionea.weekVoidingBody, { voided: numeralFace(formatNumber(voidedMains)), valid: numeralFace(formatNumber(validReserves)), when: run(eatWeekdayClock(t, byMs)) });
 }
 
 /**
@@ -81,7 +81,7 @@ export function carryingRollover<N extends { notice: string; code: string }>(
 }
 
 /** L22 · "Week 52 will be Millionea's final week. It opens 30 Nov." — the lead's words, the day as every "on {date}" line
- *  reads it (`formatEatDate`: zh "2026年11月30日", a digit first). */
+ *  reads it (`formatEatDate`: zh "2026年11月30日", a digit first); the week's number a numeral too (§T5, round 2). */
 export function finalAheadWords(t: Dict, locale: Locale, week: number, opensMs: number, nowMs: number): ReactNode {
-  return fillNodes(t.millionea.finalWeekAhead, { week, date: run(formatEatDate(opensMs, nowMs, t.common.monthsShort, locale)) });
+  return fillNodes(t.millionea.finalWeekAhead, { week: numeralFace(String(week)), date: run(formatEatDate(opensMs, nowMs, t.common.monthsShort, locale)) });
 }

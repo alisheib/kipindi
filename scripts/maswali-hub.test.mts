@@ -123,16 +123,21 @@ const ledgerDefects = (l: L3, m: string) => {
   ok("1.1′ PLANT · the old home-made <dl> ledger is reported", ledgerDefects("en", oldDl).length > 0);
   const eyebrows = hubLedgerOf("en", figure()).replaceAll('class="min-w-0 text-body-sm text-text"', 'class="min-w-0 font-mono text-micro uppercase eyebrow text-text-subtle"');
   ok("1.1″ PLANT · WIP 1's rows (the confirm's micro capitals for a ledger's nouns) are reported", ledgerDefects("en", eyebrows).some((x) => x.includes("capitals")));
-  // M10 · a carry that came opens its week's register page; one still waiting on its week names the week and links nothing
-  // — the register draws a week once it is final (its live page is the REGISTER lane's, H2), and a door never opens a 404.
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (round 2, L5 · REGISTER's H2: the register draws a public week from the moment it
+  // opens): every carry on the PUBLIC line opens its week's register page — the one still waiting on its week too — and on
+  // a DRIVE line none does (a drive week's chain is private; the public register has no page for it: never a 404 door).
   const { registerWeekHref } = req("../src/app/millionea/millionea-parts.tsx") as typeof import("../src/app/millionea/millionea-parts.tsx");
   const inRow = (input: ReturnType<typeof HP.ledgerInputOf>) => MLR.millioneaLedgerRows(dict.en as never, "en", input).find((r) => r.key === "in");
-  const waiting = HP.ledgerInputOf(figure() as never, 1_000, false);
-  const came = HP.ledgerInputOf(figure({ carryPendingCode: null, carryIn: 389_000, carryFromCode: "MLN-2026-W47", atLeast: false }) as never, 1_000, false);
-  const linkDefects = (w: typeof waiting) => [...(inRow(w)?.href ? ["the waiting carry links a week the register does not draw yet"] : []), ...(inRow(came)?.href !== registerWeekHref("MLN-2026-W47") ? ["the carry that came links nowhere"] : [])];
-  ok("1.3 · the carry that came opens Week 47's register page; the carry still waiting on Week 47 links nothing", linkDefects(waiting).length === 0, j(linkDefects(waiting)));
-  ok("1.3′ PLANT · a waiting carry linked to its week's page (a 404 until that week is final) is reported",
-    linkDefects({ ...waiting, carryIn: { ...waiting.carryIn!, href: registerWeekHref("MLN-2026-W47") } }).length > 0);
+  const came = { carryPendingCode: null, carryIn: 389_000, carryFromCode: "MLN-2026-W47", atLeast: false };
+  const at = (over: Record<string, unknown>) => inRow(HP.ledgerInputOf(figure(over) as never, 1_000, false))?.href ?? null;
+  const linkDefects = (href: (over: Record<string, unknown>) => string | null) => [
+    ...(href({}) !== registerWeekHref("MLN-2026-W47") ? ["the waiting carry does not open its week's page"] : []),
+    ...(href(came) !== registerWeekHref("MLN-2026-W47") ? ["the carry that came links nowhere"] : []),
+    ...(href({ visibility: "DRIVE" }) !== null || href({ ...came, visibility: "DRIVE" }) !== null ? ["a drive week's carry links the public register"] : []),
+  ];
+  ok("1.3 · on the public line both carries open Week 47's register page — the one that came and the one still waiting; on a drive line neither links", linkDefects(at).length === 0, j(linkDefects(at)));
+  ok("1.3′ PLANT · the old waiting carry that linked nothing, and a drive carry that links the public register, are each reported",
+    linkDefects((over) => (over.carryPendingCode === null ? at(over) : null)).length > 0 && linkDefects((over) => registerWeekHref(String(over.carryFromCode ?? "MLN-2026-W47"))).length > 0);
 }
 
 // ── §2 · L10 · the figure holds one line at 320 ──────────────────────────────────────────────────────────────────────────
@@ -446,12 +451,30 @@ console.log("\n§12 · L7 · a time on the hub: its weekday in the body face, it
   const sw = markup(N.weekdayClock(dict.sw as never, FRI_18));
   ok("12.2 · the weekday stands outside the numeral: \"Ijumaa \" in the body face, \"18:00\" a .mono run, one unbreakable span", /<span class="whitespace-nowrap"><span>Ijumaa <\/span><span class="mono">18:00<\/span><\/span>/.test(sw), sw);
   ok("12.1′ PLANT · the old all-mono time (\"Ijumaa 18:00\" set whole in font-mono) is reported", faceDefects('<span class="whitespace-nowrap font-mono">Ijumaa 18:00</span>').length > 0);
+  // §T5 (the lead's round-2 ruling): EVERY numeral of these sentences is a `.mono` run — the voiding sentence's counts and
+  // the final week's number as well as their times and dates: with every `.mono` run taken out, no digit is left.
+  // (an entity is markup too: "Millionea&#x27;s" holds no numeral)
+  const bare = (m: string) => m.replace(/<span class="mono">[^<]*<\/span>/g, "").replace(/<[^>]+>/g, "").replace(/&#?\w+;/g, "").match(/\d+/g) ?? [];
+  const lines = (l: L3) => ({
+    voiding: markup(W.voidingWords(dict[l] as never, 3, 2, FRI_18)),
+    finalAhead: markup(W.finalAheadWords(dict[l] as never, l, 52, FRI_18, FRI_16)),
+    moved: markup(W.closeMovedWords(dict[l] as never, FRI_16, FRI_18)),
+  });
+  const left = LOCALES.flatMap((l) => Object.entries(lines(l)).filter(([, m]) => bare(m).length > 0).map(([k, m]) => `${l} ${k}: ${bare(m).join(",")}`));
+  ok("12.3 · §T5 in three languages no digit of the voiding sentence (\"3 … 2 …\"), the final week ahead (\"Week 52 …\") or the moved close stands outside a .mono run", left.length === 0, left.join(" | "));
+  // PLANT · the round-1 fills, their counts and the week's number handed in as bare text, are caught.
+  const { fillNodes } = req("../src/lib/fill-nodes.tsx") as typeof import("../src/lib/fill-nodes.tsx");
+  const old = [
+    markup(fillNodes(dict.en.millionea.weekVoidingBody, { voided: "3", valid: "2", when: N.weekdayClock(dict.en as never, FRI_18) })),
+    markup(fillNodes(dict.en.millionea.finalWeekAhead, { week: 52, date: "30 Nov" })),
+  ];
+  ok("12.3′ PLANT · the round-1 fills (the counts and the week's number bare) are reported", old.every((m) => bare(m).length > 0), j(old.map(bare)));
 }
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI HUB: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run prints (S5-DESIGN-HUB 3: 34; 4, the one ledger and zh's spacing rule: 43; 6, one
  *  carry origin: 45; 7, no door to a week the register does not draw yet: 47; 9, one final-week rule and last week's
- *  words: 50; 10, a time's face: 53). It only rises. */
-const MIN_ASSERTIONS = 53;
+ *  words: 50; 10, a time's face: 53; round 2, every numeral of the timed sentences: 55). It only rises. */
+const MIN_ASSERTIONS = 55;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

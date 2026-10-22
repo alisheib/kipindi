@@ -28,16 +28,18 @@ function isFrameFor(weekId: string, visibility: PoolFigure["visibility"], x: unk
  * ⭐ THE LIVE POOL ON THE ONE MILLIONEA LEDGER (`maswali-ledger.tsx`, the REGISTER lane's shared builder; the lead's ruling
  * of 2026-10-21): the derived figure as that builder's `live` input — or `voiding` once the week's void is certain — so the
  * hub's rows say every figure in the words the register, How to play and the win ledger say it (MR-26's one wording). The
- * ticket count is the sales at the week's one frozen price (MR-11); a carry that came links its week's register page
- * (M10). ⚠️ A carry still waiting on its week names that week but links nothing yet: the register draws a week only once
- * it is final until its live page lands (the lead's H2 ruling, the REGISTER lane's), and a door must never open a 404.
+ * ticket count is the sales at the week's one frozen price (MR-11); each carry links its week's register page (M10) — a
+ * carry still waiting on its week too, since the register draws a public week from the moment it opens (REGISTER's H2).
+ * ⛔ Only on the PUBLIC line: a DRIVE week's chain is private and the public register has no page for it (the register's
+ * own `links: false`), so a staff drive's carry names its week and opens nothing — never a door to a 404.
  */
 export function ledgerInputOf(fig: PoolFigure, price: number, voiding: boolean): MillioneaLedgerInput {
   const pending = fig.carryPendingCode !== null;
+  const pageOf = (code: string | null) => (code && fig.visibility === "PUBLIC" ? registerWeekHref(code) : null);
   const carryIn = pending
-    ? { amount: null, week: weekNumberOf(fig.carryPendingCode as string), href: null }
+    ? { amount: null, week: weekNumberOf(fig.carryPendingCode as string), href: pageOf(fig.carryPendingCode) }
     : (fig.carryIn ?? 0) > 0
-      ? { amount: fig.carryIn, week: fig.carryFromCode ? weekNumberOf(fig.carryFromCode) : null, href: fig.carryFromCode ? registerWeekHref(fig.carryFromCode) : null }
+      ? { amount: fig.carryIn, week: fig.carryFromCode ? weekNumberOf(fig.carryFromCode) : null, href: pageOf(fig.carryFromCode) }
       : null;
   return {
     kind: voiding ? "voiding" : "live",
