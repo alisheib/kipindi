@@ -118,10 +118,16 @@ export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // D19a RE-PINNED AT S6-SHIP 10 (was the blob d61b83910, S6-INT 21's): the dictionary as the merge of main 07a400bc3 left it
   // (S6-SHIP 9, 0f65d3975) — this branch's plus round 2's three keys above, nothing else: its diff against d61b83910 is
   // main's own round-2 dictionary diff, line for line (12 lines, en/sw/zh). No other line changed.
+  // S7-SHIP 4 re-pinned S7's own branch at its merge of main 07a400bc3: 4a229943f, S7's dictionary plus the same three
+  // round-2 keys.
+  // NOT RE-PINNED AT S6-SHIP 16 (the merge of S7 at 2a1f6fc72: S7-SHIP 2-5): this branch already held S7's dictionary
+  // (S6-INT 21) and round 2's three keys (S6-SHIP 9), so the merged dictionary is S6-SHIP 10's, byte for byte, and the
+  // pin stays 2ef1a9d9f.
   // D19a RE-PINNED AT MASWALI-BUILD FLOW 3 (was 2ef1a9d9f7b5, S6-SHIP 10's; the lead's ruling of 2026-10-23, MB-57): inside
   // the three `millionea` blocks only, two keys each — `depositPaidSlip` and `depositReturnSlip`, the deposit wait page's
   // sentence and door once a deposit started from the slip has arrived — and one two-line comment in the English block.
-  // Its diff against 2ef1a9d9f7b5 is those 8 added lines; no line removed, no other line changed.
+  // Its diff against 2ef1a9d9f7b5 is those 8 added lines; no line removed, no other line changed. FLOW 11 (the merge of the
+  // release at 79db50fdc, S6-SHIP 16-18) changes no line of the dictionary: the merged blob is FLOW 3's, byte for byte.
   "src/lib/i18n-dict.ts": "1341177e5e1520c3f5ba316edb9ec34fe7ea217d",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",

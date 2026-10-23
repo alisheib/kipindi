@@ -19,14 +19,15 @@
  * the child never compiled after round 7 (two names reused in §8), so every floor before it was a count read from the
  * source. ⭐ Round 17 (M5, L1) · re-pinned to the printed counts of the run with 8.11g2, §11d, 13.8 and 13.9 — memory 138,
  * Postgres 144 (2026-10-21). ⭐ S6-INT 20 · re-pinned to the printed counts with M-1's 6.11d and S16's 5.5b (S6-INT 17) —
- * memory 140, Postgres 146 (2026-10-22).
+ * memory 140, Postgres 146 (2026-10-22). ⭐ S6-NOTICES 7 · re-pinned to the printed counts with §10b (an objection's two
+ * notices, the receipt's title) — memory 151, Postgres 157 (2026-10-23).
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({
   suite: "test:maswali-notify",
   casesFile: "scripts/lib/maswali-notify-child.mts",
-  minPass: { memory: 140, postgres: 146 },
+  minPass: { memory: 151, postgres: 157 },
   dbPrefix: "mlw_notify",
   timeoutMs: 30 * 60_000,
 });

@@ -16,7 +16,8 @@
  * while its question leaves the picker.
  * Tiles: each state's door at 320 / 360 / 768 / 1280 / 1920 × sw / en / zh (scrolled to the door), and the dialog open at
  * each. Asserted, not eyeballed: 200, `<html lang>` = the cookie, no horizontal overflow, no page error, the door's own
- * words in the reader's language. ⛔ Localhost and the in-memory store only. Tiles in `.50pick-shots/maswali/door/`.
+ * words in the reader's language, and every instant it draws one kept run, its weekday with its clock and nothing invisible
+ * slipped into the words (S7-SHIP, 2026-10-23). ⛔ Localhost and the in-memory store only. Tiles in `.50pick-shots/maswali/door/`.
  * ⚠️ No backslash escape for a slash, a word boundary or a control character anywhere in this file (`test:source-bytes`).
  */
 import { chromium } from "playwright";
@@ -121,6 +122,20 @@ for (const locale of LOCALES) {
       ok(`closed · ${locale} · the window closed, no button, the objection not upheld with the officer's note`,
         text.includes(w.mine) && text.includes(w.closed) && text.includes(w.rejected) && text.includes(w.note) && !text.includes(w.button), clip(text, 400));
     }
+    // ⭐ Every instant the door draws is ONE kept run (DESIGN_AUTHORITY §M8a item 24: a clock with its day): each
+    // "<weekday> <clock>" sits whole inside one `.whitespace-nowrap` run, and nothing invisible is slipped into the words to
+    // hold it (`test:visual-pass-r5e` 6.5) — the window's end in every state, and M3's filing time beside it in "mixed".
+    const instants = (await door(r).count()) === 1 ? await door(r).evaluate((el) => {
+      const words = el.textContent ?? "";
+      const clocks = (words.match(/[0-9]{1,2}:[0-9]{2}/g) ?? []).length;
+      const whole = [...el.querySelectorAll(".whitespace-nowrap")]
+        .reduce((n, run) => n + ((run.textContent ?? "").match(/[^ ]+ [0-9]{1,2}:[0-9]{2}/g) ?? []).length, 0);
+      const slipped = [0xa0, 0x2060, 0x200b, 0x202f].filter((c) => words.includes(String.fromCharCode(c))).map((c) => c.toString(16));
+      return { clocks, whole, slipped };
+    }) : null;
+    const drawn = state === "mixed" ? 2 : 1;
+    ok(`${state} · ${locale} · every instant the door draws (${drawn}) is one kept run — its weekday held to its clock, nothing slipped into the words`,
+      instants !== null && instants.clocks === drawn && instants.whole === drawn && instants.slipped.length === 0, JSON.stringify(instants));
     await tiles(r, `door-${state}-${locale}`, () => door(r));
     if (state !== "closed") {
       await r.page.getByRole("button", { name: w.button }).click();

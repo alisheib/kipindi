@@ -22,8 +22,10 @@
  * recompute, all or none. Their audit rows are owed and written once the lock has committed (`recordOwed`).
  * Its rows are never a market ruling: `listUpheldRulings` reads only rows without a question (both stores), so a filing or
  * a ruling here moves no rulings memo (`reversals.ts`) and calls no `noteObjectionWrite`.
- * ⏳ Notices (the officer's "a week is frozen", the player's "your objection was decided") are S6-N's registry's; the
- *    platform's own two notices name a market and link to the Yes/No queue, so this door sends neither yet.
+ * ⭐ NOTICES (S6-NOTICES, 2026-10-23 — the registry's `objectionFiled` and `objectionDecided`, comms-registry.ts): once a
+ *    filing commits, the console's officers are told the week's payout waits (`noticeObjectionFiled`); once a ruling commits,
+ *    the one holder who filed is told it, with the officer's note (`noticeObjectionDecided`) — each the Yes/No objection's own
+ *    notice for a Millionea question, sent by `maswali-notify.ts`. A refused filing or ruling sends nothing.
  */
 import { audit } from "./audit";
 import { randomId } from "./crypto";
@@ -168,7 +170,11 @@ export async function fileMillioneaObjection(input: {
     throw e;
   }
   if (!res.ok) return res;
-  return { ok: true, objectionId: res.objectionId, recorded: await recordOwed(res.owed) };
+  const recorded = await recordOwed(res.owed);
+  const objectionId = res.objectionId;
+  // S6-NOTICES (2026-10-23) · the officers' ping, once the filing has committed — never for a refused one.
+  void import("./maswali-notify").then((m) => m.noticeObjectionFiled(objectionId)).catch(() => {});
+  return { ok: true, objectionId, recorded };
 }
 
 // ── THE RULING ─────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -318,7 +324,10 @@ export async function decideMillioneaObjection(input: {
     ] };
   });
   if (!res.ok) return res;
-  return { ok: true, changed: res.changed, restarted: res.restarted, recorded: await recordOwed(res.owed) };
+  const recorded = await recordOwed(res.owed);
+  // S6-NOTICES (2026-10-23) · the filer's notice, once the ruling has committed — never for a refused or failed one.
+  void import("./maswali-notify").then((m) => m.noticeObjectionDecided(input.objectionId)).catch(() => {});
+  return { ok: true, changed: res.changed, restarted: res.restarted, recorded };
 }
 
 // ── THE READS ──────────────────────────────────────────────────────────────────────────────────────────────────────

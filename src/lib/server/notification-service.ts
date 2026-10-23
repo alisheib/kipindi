@@ -23,7 +23,7 @@ import { db } from "./store";
 import { randomId } from "./crypto";
 import { emit } from "./event-bus";
 import type { StoredNotification } from "./store";
-import { formatTzs } from "@/lib/utils";
+import { fill, formatTzs } from "@/lib/utils";
 import { emergencyRefundDestination } from "@/lib/emergency-refund-destination";
 // 2026-09-13 · the one review-wait number every surface quotes (the submitted notice and the officer's
 // overdue-review alert), and the label that alert names a player by.
@@ -2643,7 +2643,11 @@ export type MillioneaNoticeKey =
   | { notice: "correction"; weekCode: string; slot: number; sealedAt: string }
   | { notice: "closeMoved"; weekCode: string; move: number }
   | { notice: "result"; weekCode: string; winningSerial: string | null }
-  | { notice: "refund"; weekCode: string };
+  | { notice: "refund"; weekCode: string }
+  // S6-NOTICES (2026-10-23) · an objection decided, on the filer's own ticket (a player objects to a question once); and an
+  // objection filed, on the officers' integrity page (one per filing).
+  | { notice: "objection"; serial: string; slot: number }
+  | { notice: "objectionFiled"; objectionId: string };
 
 /** An instant as a key's digits (its milliseconds); 0 for an instant that does not parse. */
 const instantKey = (iso: string): number => {
@@ -2667,6 +2671,9 @@ export function millioneaNoticeHref(k: MillioneaNoticeKey): string {
   if (k.notice === "correction") return `${MILLIONEA_TICKETS}#${k.weekCode}-corrected-${k.slot}-${instantKey(k.sealedAt)}`;
   // ⭐ A moved close by its place among the week's moves (round 3, A7): keyed by its instant, B→A→B never told the second B.
   if (k.notice === "closeMoved") return `${MILLIONEA_TICKETS}#${k.weekCode}-close-${k.move}`;
+  // S6-NOTICES (2026-10-23) · the ticket page carries the objection door; the integrity page the officers' queue.
+  if (k.notice === "objection") return `${millioneaTicketHref(k.serial)}#objection-${k.slot}`;
+  if (k.notice === "objectionFiled") return `/admin/maswali/integrity#objection-${k.objectionId}`;
   return `${MILLIONEA_TICKETS}#${k.weekCode}-refund`;
 }
 
@@ -2707,8 +2714,29 @@ async function voidGroundIn(ground: MaswaliVoidReason): Promise<LocalizedText> {
 }
 
 /**
+ * One of the S5 Millionea surfaces' own words in each language (`millionea.<key>`, filled with `vars`), read when asked as
+ * `voidGroundIn` reads its ground — one wording, one home (the dictionary). Null when any language's word cannot be read:
+ * the caller then says less, never a second copy of the word.
+ */
+async function millioneaWordIn(key: string, vars: Record<string, string | number> = {}): Promise<LocalizedText | null> {
+  try {
+    const { dict } = await import("@/lib/i18n-dict");
+    const say = (l: "en" | "sw" | "zh"): string | null => {
+      const v = (dict[l].millionea as unknown as Record<string, unknown>)[key];
+      return typeof v === "string" && v.trim() !== "" ? fill(v, vars) : null;
+    };
+    const en = say("en"), sw = say("sw"), zh = say("zh");
+    return en !== null && sw !== null && zh !== null ? { en, sw, zh } : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * The receipt of one purchase (MB-52: no side, no payout) — ONE notice for the whole purchase, which is one act and one
- * debit: the S5 slip's own result ("Ticket cut", "{price} (main balance) · Free cancel until {time}").
+ * debit: the S5 slip's own result, its title in the slip's own words (`millionea.ticketCut` / `ticketsCut`: "Ticket bought",
+ * "{n} tickets bought" — Ali's ruling 7 of 2026-10-21; "Tiketi imekatwa"; "已出票"), and "{price} (main balance) · Free cancel
+ * until {time}".
  */
 export async function notifyMillioneaTicketsCut(userId: string, opts: {
   weekCode: string;
@@ -2727,12 +2755,14 @@ export async function notifyMillioneaTicketsCut(userId: string, opts: {
   const money = formatTzs(opts.totalTzs);
   const what = n === 1 ? { en: first, sw: first, zh: first } : { en: `${n} tickets`, sw: `Tiketi ${n}`, zh: `${n} 张彩票` };
   const until = opts.freeCancelUntil ? await instantIn(opts.freeCancelUntil, formatEatDateTime, "—") : null;
+  // S6-NOTICES (2026-10-23, FLOW's finding) · the title reads the slip's own keys — never a copy of the word.
+  const bought = await millioneaWordIn(n === 1 ? "ticketCut" : "ticketsCut", { n });
   return millioneaNotify({
     userId,
     kind: "BET_PLACED",
-    titleEn: n === 1 ? `${w.en} · Ticket cut` : `${w.en} · ${n} tickets cut`,
-    titleSw: n === 1 ? `${w.sw} · Tiketi imekatwa` : `${w.sw} · Tiketi ${n} zimekatwa`,
-    titleZh: n === 1 ? `${w.zh} · 已出票` : `${w.zh} · 已出票 ${n} 张`,
+    titleEn: bought ? `${w.en} · ${bought.en}` : w.en,
+    titleSw: bought ? `${w.sw} · ${bought.sw}` : w.sw,
+    titleZh: bought ? `${w.zh} · ${bought.zh}` : w.zh,
     bodyEn: `${what.en} · ${money} (main balance)${until ? ` · Free cancel until ${until.en}` : ""}.`,
     bodySw: `${what.sw} · ${money} (salio kuu)${until ? ` · Kughairi bila malipo hadi ${until.sw}` : ""}.`,
     bodyZh: `${what.zh} · ${money}（主余额）${until ? ` · 免费取消至 ${until.zh}` : ""}。`,
@@ -3039,6 +3069,92 @@ export function notifyMillioneaWeekRefunded(userId: string, opts: { weekCode: st
     bodySw: `Maswali makuu batili yalizidi akiba halali. ${n === 1 ? "Tiketi yako imerejeshwa" : `Tiketi zako ${n} zimerejeshwa`} · ${money} imerudi kwenye salio kuu.`,
     bodyZh: `作废的主题多于有效备选题。${n === 1 ? "您的彩票已退款" : `您的 ${n} 张彩票已退款`} · ${money} 已退回主余额。`,
     href: millioneaNoticeHref({ notice: "refund", weekCode: opts.weekCode }),
+  });
+}
+
+/** A question as a Millionea notice names it: "Question 7" or "Reserve A2", in the void notice's own words. */
+function millioneaQuestionIn(role: "MAIN" | "RESERVE", ordinal: number): LocalizedText {
+  return role === "MAIN"
+    ? { en: `Question ${ordinal}`, sw: `Swali ${ordinal}`, zh: `第${ordinal}题` }
+    : { en: `Reserve A${ordinal}`, sw: `Akiba A${ordinal}`, zh: `备选题 A${ordinal}` };
+}
+
+/**
+ * ⭐ A PLAYER'S OBJECTION DECIDED (MR-16, MB-23; S6-NOTICES, 2026-10-23 — FAILURE-INVENTORY §9 OB.0), to the one holder who
+ * filed it, once the ruling has committed (`maswali-notify.ts` `noticeObjectionDecided`): the Yes/No objection's notice in
+ * its own phrasing (`notifyObjectionDecided`: upheld, or reviewed with the result standing), the ruling's effect in
+ * Millionea's words, and the officer's note. ⛔ It never states the answer (MB-52's rule for a ticket's notices): the
+ * ticket page shows the result, and its objection door the ruling. The bell only, as the platform's notice is: no letter.
+ */
+export function notifyMillioneaObjectionDecided(userId: string, opts: {
+  weekCode: string; role: "MAIN" | "RESERVE"; ordinal: number; slot: number;
+  /** The filer's own ticket of the week: the notice opens it, where the objection door shows the ruling. */
+  serial: string;
+  ruling: "REJECT" | "REVERSE" | "VOID" | "REINSTATE";
+  /** The officer's recorded reasons. */
+  note: string;
+}) {
+  const w = millioneaWeekIn(opts.weekCode);
+  const q = millioneaQuestionIn(opts.role, opts.ordinal);
+  const main = opts.role === "MAIN";
+  const effect: LocalizedText = opts.ruling === "REVERSE" ? {
+    en: `${q.en}: an officer agreed with you and corrected the result before any payout. Your ticket shows the new result.`,
+    sw: `${q.sw}: afisa amekubaliana nawe na amerekebisha matokeo kabla ya malipo yoyote. Tiketi yako inaonyesha matokeo mapya.`,
+    zh: `${q.zh}：审核官认同您的意见，并已在派奖前更正结果。您的彩票显示新结果。`,
+  } : opts.ruling === "VOID" ? (main ? {
+    en: `${q.en}: an officer agreed with you, and it is now void. A reserve will take its place, in order from A1 to A5.`,
+    sw: `${q.sw}: afisa amekubaliana nawe, na sasa limebatilishwa. Akiba itachukua nafasi yake, kwa mpangilio kuanzia A1 hadi A5.`,
+    zh: `${q.zh}：审核官认同您的意见，该题现已作废。将由备选题替补，按 A1 至 A5 的顺序。`,
+  } : {
+    en: `${q.en}: an officer agreed with you, and it is now void. A voided reserve is skipped: the next valid reserve counts if a main question voids.`,
+    sw: `${q.sw}: afisa amekubaliana nawe, na sasa imebatilishwa. Akiba batili inarukwa: akiba halali inayofuata ndiyo inahesabiwa swali kuu likibatilishwa.`,
+    zh: `${q.zh}：审核官认同您的意见，该题现已作废。作废的备选题跳过：若有正选题作废，由下一道有效备选题计入。`,
+  }) : opts.ruling === "REINSTATE" ? {
+    en: `${q.en}: an officer agreed with you, and it is no longer void: it counts again. Your ticket shows its result.`,
+    sw: `${q.sw}: afisa amekubaliana nawe, na si batili tena: ${main ? "linahesabiwa" : "inahesabiwa"} tena. Tiketi yako inaonyesha matokeo yake.`,
+    zh: `${q.zh}：审核官认同您的意见，该题不再作废，重新计入。您的彩票显示其结果。`,
+  } : {
+    en: `${q.en}: an officer reviewed your objection and the result stands.`,
+    sw: `${q.sw}: afisa amekagua pingamizi lako na matokeo yamebaki vilevile.`,
+    zh: `${q.zh}：审核官已审核您的异议，原结果维持不变。`,
+  };
+  const said = clipQuote(opts.note.trim(), 120);
+  // The door's own label for the officer's reasons (`millionea.objMineNote`).
+  const note: LocalizedText = said ? { en: ` The officer's note: ${said}`, sw: ` Maelezo ya afisa: ${said}`, zh: `审核官说明：${said}` } : { en: "", sw: "", zh: "" };
+  const upheld = opts.ruling !== "REJECT";
+  return millioneaNotify({
+    userId,
+    kind: "OBJECTION", // the platform's objection kind (comms-registry)
+    titleEn: upheld ? `${w.en} · Your objection was upheld` : `${w.en} · Your objection was reviewed`,
+    titleSw: upheld ? `${w.sw} · Pingamizi lako limekubaliwa` : `${w.sw} · Pingamizi lako limekaguliwa`,
+    titleZh: upheld ? `${w.zh} · 您的异议已获支持` : `${w.zh} · 您的异议已审核`,
+    bodyEn: `${effect.en}${note.en}`,
+    bodySw: `${effect.sw}${note.sw}`,
+    bodyZh: `${effect.zh}${note.zh}`,
+    href: millioneaNoticeHref({ notice: "objection", serial: opts.serial, slot: opts.slot }),
+  });
+}
+
+/**
+ * ⭐ AN OBJECTION FILED, TO ONE CONSOLE OFFICER (MR-16, MB-23; S6-NOTICES, 2026-10-23 — FAILURE-INVENTORY §9 OB.0): the
+ * Yes/No objection's ping (`notifyAdminObjectionFiled`) for a Millionea question — an OPEN objection holds the week's payout
+ * (its settlement and its week void) until an officer rules. `maswali-notify.ts` `noticeObjectionFiled` sends it to the
+ * same officers the platform's ping reaches, once each per filing (its key is the filing).
+ */
+export function notifyAdminMillioneaObjectionFiled(adminUserId: string, opts: { weekCode: string; role: "MAIN" | "RESERVE"; ordinal: number; objectionId: string }) {
+  const w = millioneaWeekIn(opts.weekCode);
+  const q = millioneaQuestionIn(opts.role, opts.ordinal);
+  return millioneaNotify({
+    userId: adminUserId,
+    kind: "OBJECTION",
+    titleEn: `${w.en} · Objection filed · settlement frozen`,
+    titleSw: `${w.sw} · Pingamizi limewasilishwa · malipo yamesimamishwa`,
+    titleZh: `${w.zh} · 已提出异议 · 结算已冻结`,
+    // The door's own sentence for what a filing does (`millionea.objFiledWeek`).
+    bodyEn: `A player disputes the result of ${q.en}. The week's payout waits until an officer decides.`,
+    bodySw: `Mchezaji anapinga matokeo ya ${q.sw}. Malipo ya wiki yanasubiri hadi afisa aamue.`,
+    bodyZh: `有玩家对${q.zh}的结果提出异议。在审核官裁定前，本周派奖暂缓。`,
+    href: millioneaNoticeHref({ notice: "objectionFiled", objectionId: opts.objectionId }),
   });
 }
 

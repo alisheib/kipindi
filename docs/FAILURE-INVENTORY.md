@@ -1047,6 +1047,20 @@ silently missing — 7/7 became 8/8 without a new mutation being written).
 A runner that ran `git checkout` would have hidden this defect *and* destroyed the session's own
 uncommitted work.
 
+### 8.4 · ⚪ `red:house-bot-c5` cannot be stopped mid-run without leaving its plant — recorded (S7-SHIP, 2026-10-23), no fix in this release
+
+The shared restore guard (`scripts/lib/red-restore-guard.mjs`) gives a red drive a safe stop: when the suite child it
+waits on ends with STATUS_CONTROL_C_EXIT (0xC000013A — a console Ctrl-C or Ctrl-Break, or that status set on purpose), the
+drive reads it (`isConsoleStop`), puts the planted file back and halts (`haltIfStopped`). `red:maswali-money-path` and
+`red:house-bot-console` are built that way. `red:house-bot-c5` is not: its `run()` never reads the child's status (a
+stopped child only reads as red, and the drive goes on to its next plant), and its SIGINT/SIGTERM handlers release the
+lock and exit WITHOUT restoring the file it planted. Measured on OMEGA (2026-10-23, in an S7-SHIP red-only tree): its suite
+shell ended with 0xC000013A, and c5 went on to its next two plants; its process tree ended, and the plant stayed on disk
+(`scripts/lib/house-bot-reports-cases.mts`) beside the drive's lock — both cleared from git by the batch around it, in a
+tree that held nothing else. The remedy is the money-path drive's pattern (`armRestoreGuard`, `isConsoleStop` read in
+`run()`, `haltIfStopped` between plants). A record only — nothing changed in this release (the lead, 2026-10-23). Until
+it lands, stop `red:house-bot-c5` only in a tree of its own, and restore that tree from git afterwards.
+
 ---
 
 ### §7.3 · WHAT THE LEXICON SWEEP MISSED — found by Ali's consultants, after it shipped
@@ -1272,7 +1286,8 @@ S7's acceptance (`docs/MASWALI-PLAN.md` §7b S7): every finding is fixed or reco
 KNOWN-RED cases in `test:maswali-adversarial` (a case that reports, never fails the suite, until the work lands) and
 stood on the launch gate as Gate B line 14 (`MASWALI-PLAN.md` §6.1). All three are closed (2026-10-22): RD.5 and TK.2 by
 S7-F9, each with its commits, and OB.0 by S7-OB — each case passes now. One more, QL.1 (found 2026-10-23), is OPEN: it
-stands first below. What is live on production is `MASWALI-PLAN.md` §0's to say.
+stands first below; the last entry is a finding of S7's ship that is older than S7, recorded here only. What is live on
+production is `MASWALI-PLAN.md` §0's to say.
 
 #### ⏳ QL.1 · two of the question rules are not checked on a week drafted in the console — OPEN (found 2026-10-23; for Ali's list)
 
@@ -1315,7 +1330,13 @@ MR-16's per-question objection door exists, on both stores and across instances:
 Proof: `test:maswali-objections` (both stores) and its red twin `red:maswali-objections`; `test:maswali-adversarial`
 OB.0 (now a passing case) and §4b OM with the money-path plants (S7-OB-…); `load:maswali-objection-cross-instance`
 (S18, two processes per race on one PostgreSQL); `qa:maswali-objection-console` and `qa:maswali-objection-door`.
-Notices (an objection received, an objection decided) arrive with S6-N's registry.
+- **The notices** (S6-NOTICES, 2026-10-23 — FLOW's walk found none was sent): the Yes/No objection's own two, for a
+  Millionea question, registered in `MILLIONEA_NOTICES` (comms-registry.ts, `objectionFiled` and `objectionDecided`) and
+  sent by `maswali-notify.ts` once the act has committed, never for a refused one — a filing pings every console officer
+  the Yes/No ping reaches (ADMIN, COMPLIANCE, MODERATOR), once each per filing; a ruling tells the one holder who filed
+  it, once (its key is the filer's ticket and the question), with the ruling and the officer's note, in the bell only, as
+  the platform's notice is (no letter). Proof: `test:maswali-notify` §10b (both stores) and the plants (NOB1)–(NOB6) of
+  `red:maswali-money-path`.
 
 *Recorded 2026-10-18:* MR-16 promised a per-question objection in Millionea's own window, and no objection door existed for a
 Millionea week; the settlement's refusal while any objection was open (OB.1–OB.5) and the sealer's own correction held.
@@ -1340,6 +1361,20 @@ an account — and is named on the integrity page for Compliance to review, wher
 money (2026-10-10). The preventive control (E-215, TK.1) still holds. A winner whose share, or whose week's paid total,
 the records lack is watched all the same, never passed over as 0 (S7-F9 13). Proven on both stores
 (`test:maswali-adversarial` TK.2–TK.7), with red plants in `red:maswali-money-path`.
+
+#### ⚪ Older than S7 · the database the migrations build and `prisma/schema.prisma` disagree — recorded (S7-SHIP, 2026-10-23)
+
+S7's migration proof (its one migration applied after main's folder, on a throwaway PostgreSQL 18.3) also asked
+`prisma migrate diff --from-url <that database> --to-schema-datamodel prisma/schema.prisma --exit-code`: exit 2, not empty.
+The migrations build what the schema file does not declare — the hand-written trigram search indexes of
+`20260728030000_search_trgm_small_tables` and `20260926120000_restore_search_trgm_indexes` (`PredictionMarket` on
+category, resolutionCriterion, titleEn, titleSw and titleZh; `AiUsageEvent` on detail, errorType and model), a database
+default on `DepositFundingClaim.updatedAt` (`20261015133000_deposit_funding_claim`; the schema's `@updatedAt` has none),
+and `JourneyFunnelDay`'s unique index under the 63-character name PostgreSQL cut its 66-character name to
+(`20261001120000_journey_funnel`), not Prisma's own shortening. Not S7's: main's own folder against main's own schema (main
+at `ac9fd7c21`) gives the identical diff, and S7 changes neither the schema nor any earlier migration. A record only —
+nothing to fix in this release (the lead, 2026-10-23). `prisma migrate dev` would propose dropping those indexes: one more
+reason it never runs against anything but a throwaway database (`AGENTS.md` §5).
 
 ## §9b · MASWALI MILLIONEA — the S6 integration's fixes, each a FINAL rule (2026-10-22)
 
@@ -1573,7 +1608,40 @@ in), each red on the code before S6-SHIP's change:
 THE RULE in each case is the guard's own, unchanged: a census names what it finds, a citation names a guard that exists,
 the identity gate refuses only inside a withdrawal, money is set in the money type, a safety sentence names no parameter, a
 sprite production serves stays one release, every capture keeps the caret, every tracked uppercase site is read.
-`test:visual-pass-r5e` 6.5 (S7-OB's objection door's no-break space) is S7's, fixed on S7's branch by S7-SHIP.
+`test:visual-pass-r5e` 6.5 (S7-OB's objection door's no-break space) is S7's, fixed on S7's branch by S7-SHIP 2 and merged
+into the release at S6-SHIP 16.
+
+#### ✅ Evidence 7.3 · a read made by one of the week's own notices was counted as the evidence pack's, on Postgres (S6-SHIP 17)
+
+`test:maswali-evidence` 7.3 holds that the evidence pack is built in a bounded number of reads: it counts the reads of
+the week and of its tickets one pack makes, and requires as many for a week with six crowded lines as for a week with
+none. Its spies counted every call made while the pack was building, from anywhere. The week with six crowded lines has
+just been voided, and its own notices (its seventeen purchases', its fifteen voided questions', its refund's) still run
+on their own after the void and read the week as they send. In the S6-SHIP database battery at `28edef6cb` the Postgres
+half printed `{"six":[2,2],"none":[2,1]}`: one more read of the week, counted for the six-line pack. The memory half of
+the same run printed `[2,1]` for both and passed. The pack's own code reads the week once; it was not changed. Re-run
+alone at `b243a8455` (10:52 UTC): memory 68 passed, Postgres 70 passed, 0 failed; 7.3 printed
+`{"six":[2,1],"none":[2,1]}` on both stores. The count, not the pack, depended on timing. THE RULE: the pack's read
+counts are taken in the pack's own async context. Every spy (the week, the tickets, the raw statements) counts only
+inside an `AsyncLocalStorage` entered around `maswaliEvidencePack` alone, and a read made outside it is counted apart
+(`outside`, printed in 7.3's detail). It is held by two cases. 7.3c: a read of the week started outside the pack while
+it builds, as a notice's lands, is seen apart, and the pack's counts stay the clean build's. 7.3d: a pack made to read
+the week once more per crowded line is counted six more for six lines, which 7.3 fails. Mutation proofs (S6-SHIP 17):
+with the scope undone (every call counted as the pack's), 7.3c fails on both stores with the battery's own shape,
+`{"outside":0,"pack":[2,2,…],"clean":[2,1,…]}`; with a read per crowded line planted in `maswaliEvidencePack` itself,
+7.3 fails on both stores, `{"six":[2,7],"none":[2,1]}`. Each file was restored byte for byte (sha256 compared). Floors:
+memory 68 → 70, Postgres 70 → 72, as printed.
+
+#### ✅ The purchase's bell said "Ticket cut" in English after Ali ruled "Ticket bought" (S6-NOTICES, 2026-10-23; FLOW's walk)
+
+Ali's ruling 7 of 2026-10-21 (COMPLIANCE-DECISIONS) replaced the calque "Cut ticket" with "Buy ticket · {price}", "Ticket
+bought" and "Buying…", and the slip's own result says "Ticket bought" / "{n} tickets bought" (`millionea.ticketCut`,
+`ticketsCut`). The purchase's bell (`notifyMillioneaTicketsCut`) kept its own English copy, "Ticket cut" / "{n} tickets
+cut", while its comment claimed to mirror the slip. THE RULE: the bell's title reads the slip's own keys in all three
+languages (`millioneaWordIn`, notification-service.ts) — one wording, one home; Swahili "Tiketi imekatwa" and Chinese
+"已出票" as ruled. No other player-readable English "ticket(s) cut" exists (letters, SMS, receipts, OG cards, the bell:
+read 2026-10-23). Held by `test:maswali-notify` 10b.10 (the rendered titles, one ticket and two, en/sw/zh) and the plant
+(NOB7) of `red:maswali-money-path`.
 
 ## §9c · MASWALI MILLIONEA — the admin console, walked and made plain (S6, 2026-10-22)
 

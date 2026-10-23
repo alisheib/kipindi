@@ -32,7 +32,9 @@
  *      itself carries only the first few. Round 5: the pack is built in a bounded number of reads, as many for six
  *      crowded lines as for none (7.3), and carries the report's one order as the lines' ids (7.4). Round 6: the same
  *      three statements on Postgres (7.3b), and a failed read of the report stated in the pack, never thrown, with the
- *      refund CSV served all the same (7.5).
+ *      refund CSV served all the same (7.5). S6-SHIP 17: every count is the pack's own, taken in its own async context —
+ *      a read made elsewhere meanwhile (one of the week's own notices) is never counted (7.3c), while a read the pack
+ *      makes per crowded line is (7.3d).
  *   Round 2 also adds §1's tamper control on the commitment (1.4b, R2-14a) and the capture statement (1.6b, R2-8a).
  * Every week, ticket and seal goes through the product's own doors (`maswali-money-world.mts`).
  */
@@ -574,28 +576,52 @@ console.log(`${LF}§7 · R4 · a crowded place's holders ride along in the pack 
   // every reader) is wrapped for the build, and every raw statement sent on it — `$queryRaw`, `$queryRawUnsafe`,
   // `$executeRaw`, `$executeRawUnsafe` — is counted, marked or not. ⚠️ Not counted: a statement sent inside an interactive
   // transaction (its `tx` client is not wrapped), and model reads (`c.ledgerEntry…`).
+  // S6-SHIP 17 · and only THE PACK'S OWN: every counter fires only inside the pack's own async context (an
+  // `AsyncLocalStorage` entered around `maswaliEvidencePack` alone); a read or statement made outside it is counted apart
+  // (`outside`). The week voided just above still has its own notices running on their own — its purchases', its voided
+  // questions', its refund's — each reading the week as it sends, and on Postgres one landed inside the window once and
+  // was counted as the pack's (FAILURE-INVENTORY §9b). 7.3c and 7.3d prove the scope both ways.
   const integrity: Any = await import("../../src/lib/server/maswali-integrity.ts");
   const seamed = typeof integrity.__setClusterReadSeamsForTests === "function";
   const { prisma: prismaClient } = await import("../../src/lib/server/prisma.ts");
-  const counted = async (weekId: string) => {
-    const spy = { tickets: 0, weeks: 0, statements: 0 };
+  const { AsyncLocalStorage } = await import("node:async_hooks");
+  const packScope = new AsyncLocalStorage<"pack">();
+  const inPack = () => packScope.getStore() === "pack";
+  // The two plants: `outsideRead` (7.3c) — when the pack first reads its tickets, a read of the week is started OUTSIDE
+  // the pack's context and never awaited by it, as a notice's read lands mid-build; `readPerLine` (7.3d) — the pack made
+  // to read the week once more per crowded line it built.
+  const counted = async (weekId: string, plant: { outsideRead?: boolean; readPerLine?: boolean } = {}) => {
+    const spy = { tickets: 0, weeks: 0, statements: 0, outside: 0 };
     const orig = { tickets: W.dal.ticketStore.listForWeek, week: W.dal.weekStore.get };
     const real: Any = W.onPostgres ? prismaClient() : null;
+    let crossed: Promise<unknown> | null = null;
     try {
-      W.dal.ticketStore.listForWeek = (...a: Any[]) => { spy.tickets++; return orig.tickets.apply(W.dal.ticketStore, a as Any); };
-      W.dal.weekStore.get = (...a: Any[]) => { spy.weeks++; return orig.week.apply(W.dal.weekStore, a as Any); };
+      W.dal.ticketStore.listForWeek = (...a: Any[]) => {
+        if (!inPack()) spy.outside++;
+        else {
+          spy.tickets++;
+          if (plant.outsideRead && !crossed) crossed = packScope.exit(() => Promise.resolve(W.dal.weekStore.get(weekId)));
+        }
+        return orig.tickets.apply(W.dal.ticketStore, a as Any);
+      };
+      W.dal.weekStore.get = (...a: Any[]) => { if (inPack()) spy.weeks++; else spy.outside++; return orig.week.apply(W.dal.weekStore, a as Any); };
       if (real) {
         (globalThis as Any).__50PICK_PRISMA = new Proxy(real, {
           get(target: Any, prop: PropertyKey) {
             const v = Reflect.get(target, prop, target);
             if (prop === "$queryRaw" || prop === "$queryRawUnsafe" || prop === "$executeRaw" || prop === "$executeRawUnsafe") {
-              return (...a: Any[]) => { spy.statements++; return v.apply(target, a); };
+              return (...a: Any[]) => { if (inPack()) spy.statements++; else spy.outside++; return v.apply(target, a); };
             }
             return typeof v === "function" ? v.bind(target) : v;
           },
         });
       }
-      const r = await maswaliEvidencePack(weekId);
+      const r: Any = await packScope.run("pack", async () => {
+        const built: Any = await maswaliEvidencePack(weekId);
+        if (plant.readPerLine && built.ok) for (let k = 0; k < (built.pack.clusters.crowded ?? []).length; k++) await W.dal.weekStore.get(weekId);
+        return built;
+      });
+      await crossed;
       return { r, ...spy };
     } finally {
       W.dal.ticketStore.listForWeek = orig.tickets;
@@ -607,7 +633,7 @@ console.log(`${LF}§7 · R4 · a crowded place's holders ride along in the pack 
   ok("7.3 · ⭐ R5 · HIGH · the pack is built in a bounded number of reads: the week and its tickets read as often for six crowded lines as for a week with none (the spies fire, so the counts are measured)",
     many.r.ok && many.r.pack.clusters.crowded.length === 6 && none.r.ok && none.r.pack.clusters.crowded.length === 0
       && many.tickets >= 1 && many.weeks >= 1 && many.tickets === none.tickets && many.weeks === none.weeks,
-    J({ six: [many.tickets, many.weeks], none: [none.tickets, none.weeks] }));
+    J({ six: [many.tickets, many.weeks], none: [none.tickets, none.weeks], outside: [many.outside, none.outside] }));
   if (W.onPostgres) {
     ok("7.3b · ⭐ R7 · Postgres · counted at the client, the pack sends the same raw statements for six crowded lines as for a week with none — three, the report's own",
       many.statements === 3 && none.statements === 3, J({ six: many.statements, none: none.statements }));
@@ -615,6 +641,15 @@ console.log(`${LF}§7 · R4 · a crowded place's holders ride along in the pack 
     ok("7.3b · R7 · memory · the twin sends no statement, for six crowded lines as for none", many.statements === 0 && none.statements === 0,
       J({ six: many.statements, none: none.statements }));
   }
+  // S6-SHIP 17 · the scope proven both ways, on the six-line week.
+  const crossedOut: Any = await counted(sw.id, { outsideRead: true });
+  ok("7.3c · CONTROL · S6-SHIP 17 · a read of the week started OUTSIDE the pack while it builds (as one of the week's notices lands) is seen apart and never counted as the pack's: the pack's counts are the clean build's",
+    crossedOut.r.ok && crossedOut.outside >= 1 && crossedOut.tickets === many.tickets && crossedOut.weeks === many.weeks && crossedOut.statements === many.statements,
+    J({ outside: crossedOut.outside, pack: [crossedOut.tickets, crossedOut.weeks, crossedOut.statements], clean: [many.tickets, many.weeks, many.statements] }));
+  const perLine: Any = await counted(sw.id, { readPerLine: true });
+  ok("7.3d · PLANT · S6-SHIP 17 · a pack made to read the week once more per crowded line is counted — six more reads for six lines, so 7.3's equality fails it",
+    perLine.r.ok && perLine.r.pack.clusters.crowded.length === 6 && perLine.weeks === many.weeks + 6 && perLine.weeks !== none.weeks,
+    J({ planted: perLine.weeks, clean: many.weeks, none: none.weeks }));
   const seen = await clusterReport((await W.dal.weekStore.get(sw.id))!);
   const order: string[] = many.r.ok ? (many.r.pack.clusters.order ?? []) : [];
   ok("7.4 · R5 · the pack carries the report's one order, as the lines' ids — every line once, in the order Compliance saw them",

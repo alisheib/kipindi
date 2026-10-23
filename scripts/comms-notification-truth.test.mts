@@ -154,6 +154,14 @@ const EMITTED: { fn: string; row: StoredNotification | null }[] = [
   { fn: "notifyMillioneaNotWon",          row: await N.notifyMillioneaNotWon(U, { weekCode: "MLN-2026-W46", tickets: 2, spentTzs: 2_000, winningTickets: 0, winningScore: null, carried: { amountTzs: 1_234_000, intoWeekCode: "MLN-2026-W47" } }) },
   { fn: "notifyMillioneaNotWon",          row: await N.notifyMillioneaNotWon(U, { weekCode: "MLN-2026-W48", tickets: 1, spentTzs: 1_000, winningTickets: 3, winningScore: 10, carried: null }) },
   { fn: "notifyMillioneaWeekRefunded",    row: await N.notifyMillioneaWeekRefunded(U, { weekCode: "MLN-2026-W49", tickets: 2, refundedTzs: 2_000 }) },
+  // S6-NOTICES (2026-10-23) · a question's objection: the ruling in every shape whose words differ (it stands; reversed; a main
+  // voided and a reserve voided; reinstated), each on its own key — and the officers' ping on the filing.
+  { fn: "notifyMillioneaObjectionDecided", row: await N.notifyMillioneaObjectionDecided(U, { weekCode: "MLN-2026-W50", role: "MAIN", ordinal: 3, slot: 3, serial: "MLN-2026-W50-000101", ruling: "REJECT", note: "The official source confirms the seal" }) },
+  { fn: "notifyMillioneaObjectionDecided", row: await N.notifyMillioneaObjectionDecided(U, { weekCode: "MLN-2026-W50", role: "MAIN", ordinal: 4, slot: 4, serial: "MLN-2026-W50-000101", ruling: "REVERSE", note: "The official source published the other result" }) },
+  { fn: "notifyMillioneaObjectionDecided", row: await N.notifyMillioneaObjectionDecided(U, { weekCode: "MLN-2026-W50", role: "MAIN", ordinal: 5, slot: 5, serial: "MLN-2026-W50-000101", ruling: "VOID", note: "The event was not played" }) },
+  { fn: "notifyMillioneaObjectionDecided", row: await N.notifyMillioneaObjectionDecided(U, { weekCode: "MLN-2026-W50", role: "RESERVE", ordinal: 2, slot: 12, serial: "MLN-2026-W50-000101", ruling: "VOID", note: "The reserve's event was abandoned" }) },
+  { fn: "notifyMillioneaObjectionDecided", row: await N.notifyMillioneaObjectionDecided(U, { weekCode: "MLN-2026-W50", role: "MAIN", ordinal: 6, slot: 6, serial: "MLN-2026-W50-000101", ruling: "REINSTATE", note: "The event was played after all" }) },
+  { fn: "notifyAdminMillioneaObjectionFiled", row: await N.notifyAdminMillioneaObjectionFiled("c3_officer", { weekCode: "MLN-2026-W50", role: "MAIN", ordinal: 3, objectionId: "obj_c3_mln" }) },
   { fn: "notifyAdminKycReview",      row: await N.notifyAdminKycReview("c3_officer", { playerLabel: "Asha M.", userId: U }) },
   // 2026-10-10 · the URGENT shape: the NIDA number's own birth digits say under 18, so the case must not wait its turn.
   { fn: "notifyAdminKycReview",      row: await N.notifyAdminKycReview("c3_officer", { playerLabel: "Asha M.", userId: U, urgent: true }) },
