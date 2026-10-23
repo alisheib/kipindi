@@ -1658,7 +1658,7 @@
     "exceljs": "^4.4.0",
     "ioredis": "^5.11.1",
     "lightweight-charts": "5.2.1",
-    "next": "16.4.0",
+    "next": "16.4.2",
     "pdfkit": "^0.18.0",
     "postmark": "^4.0.7",
     "prisma": "^6.5.0",

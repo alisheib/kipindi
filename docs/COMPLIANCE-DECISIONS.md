@@ -84,6 +84,35 @@ the commit.
 
 ---
 
+## 2026-10-23 · Maswali Millionea — switched ON for everyone ahead of the launch gate; nothing sells until the Owner's steps; S6 and S7 owed by fixed deadlines (owner ruling)
+
+**Authority.** Ali, 2026-10-23 (~02:15–02:30 EAT), to the MASWALI-BUILD lead session on ALI-BLADE15, after being told
+plainly what still stood between that night and the launch — his own Gate A steps; S7's money safety and objection door;
+S6's winner notices, legal pages and tax-report lines; round 2's polish: *"please i request now make it live for
+everyone"*, *"turn it now on and let my admins start creating ones to make players win"*, *"push now i approve and
+continue your checks overnight"*, *"proceed make it live as need perfectly"*.
+
+**What it rules.** Millionea's rollout is ACTIVE on production from 2026-10-22 23:32 UTC: the Railway variable
+`FEATURE_MILLIONEA=ACTIVE` on the 50pick service (production), on `main` `3aecf0edd` (the S5 release). The code's shipped
+ceiling (`MILLIONEA_SHIPPED`) stays WITHDRAWN on purpose: deleting the variable hides Millionea again, and so does the
+Owner's stored switch in the console — neither deletes a ticket. Every visitor now sees the product (its tab, the hub, How
+to play, the register). Nothing can be bought until the Owner sets the licence basis, funds the guarantee and a week
+opens — the earliest Monday 00:00 EAT.
+
+**What it does not change — the deadlines, recorded so no later pass reads ACTIVE as "the launch is done".** It reverses
+MASWALI-PLAN §6.1's order ("gate A and gate B are both checked before ACTIVE") for the rollout switch alone; every §6 line
+stays unticked until it is true. Before any week OPENS for sale: S6's Millionea rules page (`/legal/rules/millionea`, a
+404 at the switch) and its Terms section are live. Before the FIRST settlement: S7 (the held-winner settlement, the
+reversed-deposit hold, the takeover alert, the objection door) and S6's winner notices, tax-report lines and payout-float
+check are live. The Owner's Gate A steps (the licence basis, the guarantee, Finance's float letter, the officers, the
+insider bar) remain his. MASWALI-PLAN §0 tracks each deadline.
+
+**Why it is logged here.** The plan's gate put ACTIVE last; the Owner chose to show the product first and let his admins
+prepare weeks while the remaining sessions land. A later pass must not "restore" WITHDRAWN on its own, nor treat the
+switch as permission to open a week for sale before the deadlines above are met.
+
+---
+
 ## 2026-10-22 · The Maswali Millionea rules' §11 states the stale-form rule — the hash moves a sixth time inside version 2026-10-18, before anything was published (MASWALI-BUILD S6-DOCS)
 
 **Authority.** The build lead's S6-DOCS brief (2026-10-22, its open list): "the binding rules text's §11 states the
@@ -124,6 +153,8 @@ entry of 2026-10-18 says.
 **What does not change (the same ruling).** The live classic documents keep 赛事, their established word for a market's
 event: the general Terms §6, the Yes/No rules and the Up & Down rules. A Millionea release does not move a live classic
 legal version, so the two words standing side by side across the products is deliberate, not an inconsistency.
+
+---
 
 ## 2026-10-22 · The language-change loader wears its green and red again (owner ruling)
 
