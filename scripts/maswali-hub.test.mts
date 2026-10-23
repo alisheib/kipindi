@@ -205,14 +205,17 @@ const finalDefects = (l: L3, m: string, want: boolean) => {
   ok("3.1′ PLANT · the old final weeks (the 10/10 rule alone; the 10/10 rule and the final line both) are each reported", finalDefects("en", alone, true).length > 0 && finalDefects("en", twice, true).length > 0);
   const unmarked = headOf("en", SELLING, true).replace(/(data-testid="millionea-hub-final-rule">)<(?:svg[\s\S]*?<\/svg>|span aria-hidden[^>]*><\/span>)/, "$1");
   ok("3.1″ PLANT · a final week's rule without the week's mark is reported", unmarked !== headOf("en", SELLING, true) && finalDefects("en", unmarked, true).length > 0);
-  // ⭐ S5-R2-HUB · each fact list of the head's rule balances a fact that wraps inside itself (`HUB_POOL_HEAD.facts`): at 320
-  // Swahili's first fact broke greedily and stranded its kept run on a line of its own ("Inagawanywa sawa kwa kila tiketi" /
-  // "ya 10/10", open-classic-sw-320 of round 2's run a). The lines themselves are measured in a browser
-  // (`qa:maswali-hub-states`' open state); here, the class on the rule's list, in every head a week can draw.
-  const balanced = (m: string) => count(m, `class="kp-mln-facts ${escAttr(FRAME.HUB_POOL_HEAD.facts)}"`);
+  // ⭐ S5-R2-HUB · each rule balances a fact that wraps inside itself: at 320 Swahili's first fact broke greedily and
+  // stranded its kept run on a line of its own ("Inagawanywa sawa kwa kila tiketi" / "ya 10/10", open-classic-sw-320 of
+  // round 2's run a). ⚠️ RE-PINNED IN THE OPEN (HUB-2B): the class stands on the rule's own LINE now
+  // (`HUB_POOL_HEAD.rule` / `.finalRule`: `[&_.kp-mln-fact]:text-balance`), not on its list, so the loading drawing's rule
+  // — a fact list the kit's GhostWords draws — balances by the same class. The lines themselves are measured in a browser
+  // (`qa:maswali-hub-states`' open state); here, the class on the rule's line over its one list, in every head a week can draw.
+  const BALANCE = escAttr("[&_.kp-mln-fact]:text-balance");
+  const balanced = (m: string) => (tagWith(m, 'data-head="rule"').includes(BALANCE) ? count(m, 'class="kp-mln-facts') : 0);
   const heads = LOCALES.flatMap((l) => [["selling", headOf(l, SELLING, false)], ["final", headOf(l, SELLING, true)]].map(([k, m]) => [`${l} ${k}`, balanced(m)] as const));
-  ok("3.2 · in three languages, the selling week's and the final week's rule each draw ONE fact list that balances a fact wrapping inside itself", heads.every(([, n]) => n === 1), j(heads));
-  const greedy = headOf("sw", SELLING, false).replace(` ${escAttr(FRAME.HUB_POOL_HEAD.facts)}"`, '"');
+  ok("3.2 · in three languages, the selling week's and the final week's rule line each balance their ONE fact list (a fact wrapping inside itself)", heads.every(([, n]) => n === 1), j(heads));
+  const greedy = headOf("sw", SELLING, false).replace(` ${BALANCE}`, "");
   ok("3.2′ PLANT · the round-1 rule (its facts wrapping greedily) is reported", balanced(greedy) === 0);
 }
 
@@ -522,7 +525,8 @@ console.log("\n§13 · L7 (round 2) · the hub's loading drawing composes the pa
 // browser (`qa:maswali-hub-states`' "ghost" state: every band's box, drawn and landed, for a reader holding none, one, many).
 const ghostOf = (l: L3) => inApp(l, h(GH.MillioneaHubGhost as never, {} as never));
 {
-  const ORDER = ["doors", "strip", "jackpot", "door", "ledger", "mine", "questions"];
+  // ⚠️ RE-PINNED IN THE OPEN (HUB-2B): the eyebrow is a band of its own now — the week's words and the chip's, unseen.
+  const ORDER = ["eyebrow", "doors", "strip", "jackpot", "door", "ledger", "mine", "questions"];
   const MEMBER = escAttr("[[data-viewer=guest]_&]:hidden"), GUEST = escAttr("hidden [[data-viewer=guest]_&]:block");
   const frameDefects = (l: L3, m: string) => {
     const d: string[] = [];
@@ -550,7 +554,7 @@ const ghostOf = (l: L3) => inApp(l, h(GH.MillioneaHubGhost as never, {} as never
     return d;
   };
   const all = LOCALES.flatMap((l) => { const m = ghostOf(l); return [...frameDefects(l, m), ...guestDefects(l, m), ...sweepDefects(l, m)]; });
-  ok("13.1 · in three languages the drawing's bands stand in the page's order — the head's two doors, the strip, jackpot, door, ledger, the reader's block LAST in the buy column, then the questions — in the frame's own grid, column, pinned pair and cells, with the page's ten question rows, marked data-ghost-page=\"hub\"", all.filter((x) => !/guest|sweep/.test(x)).length === 0, all.join(" | "));
+  ok("13.1 · in three languages the drawing's bands stand in the page's order — the head's eyebrow and its two doors, the strip, jackpot, door, ledger, the reader's block LAST in the buy column, then the questions — in the frame's own grid, column, pinned pair and cells, with the page's ten question rows, marked data-ghost-page=\"hub\"", all.filter((x) => !/guest|sweep/.test(x)).length === 0, all.join(" | "));
   ok("13.2 · a guest's door is drawn beside the player's, each shown by the shell's mark (main[data-viewer=\"guest\"]), and no block of tickets for a guest", all.filter((x) => /guest/.test(x)).length === 0, all.join(" | "));
   ok("13.3 · every block sweeps with the platform's skeleton shimmer (the jackpot, the ledger, the held ticket's block)", all.filter((x) => /sweep/.test(x)).length === 0, all.join(" | "));
   const en = ghostOf("en");
@@ -782,7 +786,7 @@ console.log("\n§18 · the lead's ruling (2026-10-22): the close line says the w
 }
 
 // ── §19 · the frame's line boxes ────────────────────────────────────────────────────────────────────────────────────────
-console.log("\n§19 · L7 (round 2) · the drawing's lines are the page's line boxes: a numeral never grows its line, the drawing stands in the page root's class, the head's two pills are as wide as their labels, the strip's ranges wrap where the page's do; the head says the card's order");
+console.log("\n§19 · L7 (round 2) · the drawing's lines are the page's line boxes: a numeral never grows its line, the drawing stands in the page root's class, the head's two pills are as wide as their labels; the head says the card's order; every line it can know is the page's own words, unseen (HUB-2B), and its templates the width of their class");
 {
   const LINES: Record<string, string> = {
     "the strip": FRAME.HUB_STRIP, "the rule": FRAME.HUB_POOL_HEAD.rule, "the final week's rule": FRAME.HUB_POOL_HEAD.finalRule,
@@ -817,63 +821,88 @@ console.log("\n§19 · L7 (round 2) · the drawing's lines are the page's line b
   ok("19.4′ PLANT · the head's old order (the rule, then the carry's line) is reported",
     !inOrder(orderOf('<span data-testid="millionea-hub-figure"></span><span data-head="rule"></span><span data-head="carry"></span>')));
 
-  // ⭐ G2 (S5-R2-HUB 7) · THE HEAD'S EYEBROW AND THE QUESTIONS' HEADING, drawn as the page sets them (the tile readers: on
-  // landing the state's chip jumped ~23px left in zh and 4–6px in en/sw; the heading was one English bar in every language,
-  // ~60px past "Maswali ya wiki", ~130px past "本周题目"). The drive holds each against the page ±1px in every ghost view;
-  // here, the drawing's tables against the dictionary and the faces' own metrics.
-  const fontkit = req("fontkit") as { openSync: (p: string) => { unitsPerEm: number; layout: (s: string) => { advanceWidth: number } } };
-  const face = (f: string) => fontkit.openSync(join(ROOT, "src/lib/server/reports/fonts", f));
-  const INTER_BOLD = face("Inter-Bold.ttf"), SORA_BOLD = face("Sora-Bold.ttf");
-  const isWide = (x: string) => /[　-鿿豈-﫿＀-￯]/.test(x);
-  /** A line's width: its Latin run in `font`, each ideograph one em, the tracking after every character. */
-  const lineWidth = (font: typeof INTER_BOLD, text: string, size: number, tracking: number) => {
-    const c = [...text], latin = c.filter((x) => !isWide(x)).join(""), wide = c.filter(isWide).length;
-    return (font.layout(latin).advanceWidth / font.unitsPerEm) * size + wide * size + c.length * tracking;
-  };
-  const pxOf = (cls: string) => Number(/^w-\[(\d+(?:\.\d+)?)px\]$/.exec(cls)?.[1] ?? NaN);
-  const { weekWord: wordOf } = req("../src/components/maswali/maswali-format.ts") as typeof import("../src/components/maswali/maswali-format.ts");
+  // ⭐ HUB-2B (the lead's ruling of 2026-10-23; DESIGN_AUTHORITY §M8a items 22 and 25) · THE DRAWING'S TEXTS ARE THE PAGE'S
+  // OWN WORDS, SET UNSEEN through the kit's one part (R3-2B's `GhostWords`): the line tables it kept (WRAPS, the eyebrow's
+  // and the heading's widths, the strip's runs) are gone, and each line lands where the page's does in any engine, by
+  // construction. Static words are the dictionary's; data the drawing cannot know is a SAME-WIDTH TEMPLATE
+  // (`hub-page-words.ts`). The drive holds every band against the page ±1px in Chromium and WebKit at a phone's ratios.
+  const HPW = req("../src/app/millionea/hub-page-words.ts") as typeof import("../src/app/millionea/hub-page-words.ts");
+  const GWS = req("../src/components/maswali/maswali-ghost-words-shown.tsx") as typeof import("../src/components/maswali/maswali-ghost-words-shown.tsx");
+  const STRIP = req("../src/components/maswali/maswali-week-strip.tsx") as typeof import("../src/components/maswali/maswali-week-strip.tsx");
   const { weekChipWord } = req("../src/app/millionea/register/register-parts.tsx") as typeof import("../src/app/millionea/register/register-parts.tsx");
-  // The week's word ("Wiki 49", the dictionary's two-digit week) in the eyebrow's type: the monospaced face at the caption
-  // rung (11px), each character 0.6em and the eyebrow's 0.14em tracking; Chinese at its label rung (12px), untracked, each
-  // ideograph one em (globals.css `.eyebrow.eyebrow`, `.kp-mln-zh:lang(zh) .eyebrow`).
-  const wordOfType = (l: L3) => {
-    const [latin, wide] = units(wordOf(dict[l] as never, 49));
-    const size = l === "zh" ? 12 : 11, tracking = l === "zh" ? 0 : 0.14;
-    return latin * (0.6 + tracking) * size + wide * (1 + tracking) * size;
+  const { weekWord: wordOf } = req("../src/components/maswali/maswali-format.ts") as typeof import("../src/components/maswali/maswali-format.ts");
+  /** The drawing as a reader Millionea is visible to gets it: inside the shell's words provider. */
+  const shownOf = (l: L3) => inApp(l, h(GWS.GhostWordsProvider as never, null, h(GH.MillioneaHubGhost as never, {} as never)));
+  /** Each word band's words, as the reader's copy and search would read them (unseen, but in the document). */
+  const bandsOf = (m: string) => [...m.matchAll(/<span class="kp-ghost-words__words">/g)].map((open) => {
+    const at = (open.index ?? 0) + open[0].length;
+    let depth = 1, end = at;
+    for (const t of m.slice(at).matchAll(/<span\b[^>]*>|<\/span>/g)) { depth += t[0] === "</span>" ? -1 : 1; if (depth === 0) { end = at + (t.index ?? 0); break; } }
+    return textOf(m.slice(at, end));
+  });
+  const { factsOf: factsOfRule } = req("../src/components/maswali/maswali-facts.tsx") as typeof import("../src/components/maswali/maswali-facts.tsx");
+  /** What the page draws for the template week, in the page's own builders: every line the drawing must set. */
+  const wantOf = (l: L3) => {
+    const t = dict[l] as never as Parameters<typeof HPW.hubIntroText>[0];
+    const strip = STRIP.weekStripWords(t, HPW.TEMPLATE_PHASES);
+    return [
+      ["the eyebrow's week", fill(dict[l].millionea.week, { week: "00" })],
+      ["the chip's word", weekChipWord(t, "OPEN", null, false)],
+      ["the head's line", HPW.hubIntroText(t, formatTzs(HPW.TEMPLATE.price))],
+      ...strip.flatMap((p, i) => [[`the strip's label ${i + 1}`, p.label], ...p.runs.map((r, k) => [`the strip's run ${i + 1}.${k + 1}`, r])]),
+      ...factsOfRule(HPW.hubRuleText(t, HPW.TEMPLATE.pct)).map((f, i) => [`the rule's fact ${i + 1}`, f]),
+      ["the carry's label", fill(dict[l].millionea.carriedIn, { week: "00" })],
+      ["the floor's label", dict[l].millionea.floor],
+      ["the questions' heading", dict[l].millionea.weekQuestions],
+    ] as Array<[string, string]>;
   };
-  // The chip (chip.tsx, `md` at the status metrics): Inter Bold 11px in capitals, 0.06em tracking, 9px padding and a 1px
-  // border each side — for a week on sale, the word "Wazi" / "Open" / "开放".
-  const chipOf = (l: L3) => lineWidth(INTER_BOLD, weekChipWord(dict[l] as never, "OPEN", null, false).toUpperCase(), 11, 0.06 * 11) + 2 * 9 + 2;
-  const within = (drawn: number, want: number) => Math.abs(drawn - want) / want <= 0.1;
-  const eyebrowDefects = (x: typeof GH.EYEBROW) => LOCALES.flatMap((l) => {
-    const d: string[] = [];
-    if (!within(pxOf(x[l].word), wordOfType(l))) d.push(`${l}: the week's word drawn ${pxOf(x[l].word)}px for "${wordOf(dict[l] as never, 49)}" ${wordOfType(l).toFixed(1)}px`);
-    if (!within(pxOf(x[l].chip), chipOf(l))) d.push(`${l}: the chip drawn ${pxOf(x[l].chip)}px for the chip's own ${chipOf(l).toFixed(1)}px`);
-    return d;
-  });
-  const rowDefects = LOCALES.flatMap((l) => {
-    const m = ghostOf(l);
-    const at = m.indexOf(`<span class="${escAttr(FRAME.HUB_EYEBROW)}">`);
-    const row = at < 0 ? "" : m.slice(at, m.indexOf("</h1>", at));
-    return at >= 0 && row.includes(GH.EYEBROW[l].word) && row.includes(`h-[23px] shrink-0 self-start rounded-pill ${GH.EYEBROW[l].chip}`) ? [] : [`${l}: the drawing's eyebrow is not the frame's row, its word's bar and the chip's pill`];
-  });
-  const pageRow = readFileSync(join(ROOT, "src/app/millionea/page.tsx"), "utf8").includes("<span className={HUB_EYEBROW}>");
-  ok(`19.5 · in three languages the eyebrow is the frame's one row in the page and the drawing; the drawing's week word (${LOCALES.map((l) => `${l} ${pxOf(GH.EYEBROW[l].word)} vs ${wordOfType(l).toFixed(1)}px`).join(", ")}) and its 23px chip pill (${LOCALES.map((l) => `${l} ${pxOf(GH.EYEBROW[l].chip)} vs ${chipOf(l).toFixed(1)}px`).join(", ")}) each within 10% of the dictionary's word in its own type`,
-    pageRow && rowDefects.length === 0 && eyebrowDefects(GH.EYEBROW).length === 0, [...rowDefects, ...eyebrowDefects(GH.EYEBROW)].join(" | "));
-  const roundOne = eyebrowDefects({ sw: { word: "w-[56px]", chip: "w-[72px]" }, en: { word: "w-[56px]", chip: "w-[72px]" }, zh: { word: "w-[56px]", chip: "w-[72px]" } });
-  ok("19.5′ PLANT · round 1's eyebrow (one 56px word and one 72px chip in every language) is reported", roundOne.length >= 4, j(roundOne));
-  // The heading (`HUB_QUESTIONS.heading`: Sora Bold at title-sm, its tracking) as wide as a week on sale's words.
-  const twCfg = ((m: { default?: unknown }) => (m.default ?? m) as { theme: { extend: { fontSize: Record<string, [string, { letterSpacing: string }]> } } })(req("../tailwind.config.ts"));
-  const [titleSize, { letterSpacing }] = twCfg.theme.extend.fontSize["title-sm"];
-  const headingOf = (l: L3) => lineWidth(SORA_BOLD, dict[l].millionea.weekQuestions, parseFloat(titleSize), parseFloat(letterSpacing));
-  const headingDefects = (table: typeof GH.QUESTIONS_HEADING) => LOCALES.flatMap((l) => {
-    const drawn = pxOf(table[l]), words = headingOf(l);
-    return Math.abs(drawn - words) / words <= 0.15 ? [] : [`${l}: drawn ${drawn}px for "${dict[l].millionea.weekQuestions}" ${words.toFixed(1)}px`];
-  });
-  ok(`19.6 · in three languages the drawing's questions' heading is as wide as its words within 15% (${LOCALES.map((l) => `${l} ${pxOf(GH.QUESTIONS_HEADING[l])} vs ${headingOf(l).toFixed(1)}px`).join(", ")})`,
-    headingDefects(GH.QUESTIONS_HEADING).length === 0, headingDefects(GH.QUESTIONS_HEADING).join(" | "));
-  const english = headingDefects({ sw: "w-[200px]", en: "w-[200px]", zh: "w-[200px]" });
-  ok("19.6′ PLANT · round 1's one English bar in every language (w-[200px]) is reported", english.length >= 2, j(english));
+  const wordDefects = (l: L3, m: string) => {
+    const bands = bandsOf(m), want = wantOf(l);
+    const missing = want.filter(([, w]) => !bands.includes(w)).map(([k, w]) => `${k} "${w}"`);
+    return [...missing.map((x) => `${l}: not set as its own words — ${x}`), ...(bands.length === want.length ? [] : [`${l}: ${bands.length} word bands for ${want.length} lines`])];
+  };
+  const words = LOCALES.flatMap((l) => wordDefects(l, shownOf(l)));
+  ok(`19.5 · in three languages the drawing sets every line it can know as the page's own words, unseen (${wantOf("en").length} bands: the eyebrow's week and the chip's word, the head's line, the strip's labels and runs, the rule's facts, the carry's and the floor's labels, the questions' heading) — each built by the page's own function`,
+    words.length === 0, words.join(" | "));
+  const tabled = shownOf("en").replace(/<span class="kp-ghost-words"><span class="kp-ghost-words__words">This week&#x27;s questions<\/span><\/span>/, '<span class="inline-block h-[0.85em] w-[200px]"></span>');
+  ok("19.5′ PLANT · round 1's heading (one 200px bar for every language's words) is reported", tabled !== shownOf("en") && wordDefects("en", tabled).some((x) => x.includes("the questions' heading")));
+  // ONE SOURCE: the page draws the same words with the same functions — its head's line (`hubIntroText`), its pool head's
+  // rule (`poolRule` → `hubRuleText`) and its strip (`weekStripWords`, which the strip draws unchanged).
+  const pageSrc = readFileSync(join(ROOT, "src/app/millionea/page.tsx"), "utf8"), poolSrc = readFileSync(join(ROOT, "src/components/maswali/maswali-pool-figure.tsx"), "utf8");
+  const stripSrc = readFileSync(join(ROOT, "src/components/maswali/maswali-week-strip.tsx"), "utf8");
+  const oneSource = [
+    pageSrc.includes("keepFact(locale, hubIntroText(t, formatTzs(w.ticketPrice)))") ? null : "the page's head line is not hubIntroText",
+    poolSrc.includes(": hubRuleText(t, pct);") ? null : "the pool head's rule is not hubRuleText",
+    stripSrc.includes("const rows = weekStripWords(t, phases).map(") ? null : "the strip does not draw weekStripWords",
+  ].filter((x): x is string => x !== null);
+  // The strip draws exactly its words: the component rendered for the template week reads the joined words.
+  const stripText = (l: L3) => textOf(renderToStaticMarkup(h(STRIP.MaswaliWeekStrip as never, { t: dict[l], phases: HPW.TEMPLATE_PHASES, current: 0 } as never)));
+  const stripWords = (l: L3) => STRIP.weekStripWords(dict[l] as never, HPW.TEMPLATE_PHASES).map((p) => `${p.label} · ${p.runs.join(" ")}`).join("");
+  const stripOff = LOCALES.filter((l) => stripText(l) !== stripWords(l)).map((l) => `${l}: "${stripText(l)}" vs "${stripWords(l)}"`);
+  ok("19.6 · the page and the drawing build one set of words: the head's line, the rule and the strip each through one function, and the strip draws exactly its words",
+    oneSource.length === 0 && stripOff.length === 0, [...oneSource, ...stripOff].join(" | "));
+  ok("19.6′ PLANT · a page that fills its head line itself is reported", !pageSrc.replace("keepFact(locale, hubIntroText(t, formatTzs(w.ticketPrice)))", "keepFact(locale, fill(t.millionea.howOne, { price: formatTzs(w.ticketPrice) }))").includes("keepFact(locale, hubIntroText(t, formatTzs(w.ticketPrice)))"));
+  // THE TEMPLATES are the width of their class: a two-digit week ("Wiki 00" set as "Wiki 49" is, character for character
+  // but the digits, which are the numerals' face), and the ruled price, rate and week template of the config
+  // (`MASWALI_DEFAULTS`). A week of one digit (1–9) is one numeral narrower: printed, its line count unchanged.
+  const { MASWALI_DEFAULTS: CFG } = req("../src/lib/server/maswali-config.ts") as typeof import("../src/lib/server/maswali-config.ts");
+  const sameClass = (a: string, b: string) => a.length === b.length && a.replace(/\d/g, "0") === b.replace(/\d/g, "0");
+  const eat = (ms: number) => { const d = new Date(ms + 3 * 3_600_000); return { weekday: ((d.getUTCDay() + 6) % 7) + 1, clock: `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}` }; };
+  const templateDefects = (tpl: typeof HPW.TEMPLATE, phases: typeof HPW.TEMPLATE_PHASES) => [
+    ...LOCALES.filter((l) => !sameClass(fill(dict[l].millionea.week, { week: tpl.week }), wordOf(dict[l] as never, 49))).map((l) => `${l}: the week's template is not a two-digit week`),
+    formatTzs(tpl.price) === formatTzs(CFG.ticketPriceTzs) ? null : `the price ${formatTzs(tpl.price)} is not the ruled ${formatTzs(CFG.ticketPriceTzs)}`,
+    tpl.pct === Math.round(CFG.jackpotFeeRate * 100) ? null : `the rate ${tpl.pct}% is not the ruled ${CFG.jackpotFeeRate * 100}%`,
+    j(eat(phases.salesFrom)) === j({ weekday: CFG.openWeekday, clock: CFG.openAt }) ? null : `the template opens ${j(eat(phases.salesFrom))}, the config ${CFG.openWeekday} ${CFG.openAt}`,
+    j(eat(phases.salesTo)) === j({ weekday: CFG.closeWeekday, clock: CFG.closeAt }) ? null : `the template closes ${j(eat(phases.salesTo))}, the config ${CFG.closeWeekday} ${CFG.closeAt}`,
+    j(eat(phases.resultsTo)) === j({ weekday: CFG.finalDeadlineWeekday, clock: CFG.finalDeadlineAt }) ? null : `the template's results end ${j(eat(phases.resultsTo))}, the config's final deadline ${CFG.finalDeadlineWeekday} ${CFG.finalDeadlineAt}`,
+  ].filter((x): x is string => x !== null);
+  const oneDigit = LOCALES.map((l) => `${l} "${wordOf(dict[l] as never, 9)}" vs "${fill(dict[l].millionea.week, { week: "00" })}"`).join(", ");
+  console.log(`  a week of one digit (1–9) is one numeral narrower than the template — ${oneDigit}; the eyebrow and the carry's label stay one line`);
+  const tplOff = templateDefects(HPW.TEMPLATE, HPW.TEMPLATE_PHASES);
+  ok("19.7 · the templates are the width of their class: a two-digit week (\"Wiki 00\"), the config's ruled price (TZS 1,000) and rate (13%), the template week's open, close and final deadline (Monday 00:00, Friday 18:00, Monday 23:59 EAT)",
+    tplOff.length === 0, tplOff.join(" | "));
+  const drifted = templateDefects({ ...HPW.TEMPLATE, week: "000", pct: 15 }, { ...HPW.TEMPLATE_PHASES, salesTo: HPW.TEMPLATE_PHASES.salesTo - 3_600_000 });
+  ok("19.7′ PLANT · a template off its class (a three-digit week, a 15% rate, a close an hour early) is reported", drifted.length >= 5, j(drifted));
 }
 
 // ── §20 · the lead's rulings 2a-2c ────────────────────────────────────────────────────────────────────────────────────
@@ -925,7 +954,8 @@ console.log(`\n${"═".repeat(70)}\n  MASWALI HUB: ${pass} passed, ${fail} faile
  *  the no-week body's kept phrases: 75; the paused notice's pair, the close line's one wording, the frame's line boxes,
  *  pills and the head's card order: 90; the void words in the register's form, the voiding notice kept, the lead's rulings 2a-2c and the drawing's ledger and held block: 100;
  *  S5-R2-HUB 6, the no-week body's numerals in Millionea's empty state and the void words one wrap unit: 104;
- *  S5-R2-HUB 7, G2's eyebrow and heading: 108; S5-R2-HUB 9, the carry's destination a box of its line: 110). It only rises. */
-const MIN_ASSERTIONS = 110;
+ *  S5-R2-HUB 7, G2's eyebrow and heading: 108; S5-R2-HUB 9, the carry's destination a box of its line: 110; HUB-2B, the
+ *  drawing's words unseen through GhostWords, one source with the page, its templates of their class: 112). It only rises. */
+const MIN_ASSERTIONS = 112;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

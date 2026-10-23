@@ -681,8 +681,9 @@ if (RUN === "a") {
       eyebrow: eyebrowOf(chip?.previousElementSibling ?? null, chip), heading: wordsOf(document.getElementById("mln-questions-h")),
       ledgerRows: [...document.querySelectorAll('[data-testid="millionea-hub-ledger"] [data-ledger-row]')].map((el) => Math.round(el.getBoundingClientRect().height)) };
   };
-  /** How many lines the page's wrapping bands take (the drawing's table, `hub-ghost.tsx` WRAPS, is held to these), and the
-   *  width of each kept run of the strip's ranges (the drawing's RANGES, which wrap where the page's do). */
+  /** How many lines the page's wrapping bands take, and the width of each kept run of the strip's ranges — printed (INFO).
+   *  ⚠️ HUB-2B: the drawing keeps no table of them any more; it sets these lines as the page's own words, unseen
+   *  (`GhostWords`, `hub-page-words.ts`), so they land by construction. The numbers stay a record of the page. */
   const LINES = () => {
     const lines = (el) => { if (!el) return null; const cs = getComputedStyle(el); const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2; return Math.round(el.getBoundingClientRect().height / lh); };
     const head = document.querySelector('[data-testid="millionea-hub-jackpot"]');
@@ -691,8 +692,9 @@ if (RUN === "a") {
       rule: lines(head?.querySelector('[data-head="rule"]') ?? null), carry: lines(head?.querySelector('[data-head="carry"]') ?? null),
       floor: lines(document.querySelector('[data-testid="millionea-hub-ledger"] [data-ledger-row="floor"] span.min-w-0')),
       ranges: [...document.querySelectorAll('[data-testid="millionea-week-strip"] li')].map((li) => [...li.querySelectorAll("[data-range] > .whitespace-nowrap")].map((el) => Math.round(el.getBoundingClientRect().width * 10) / 10)),
-      // The eyebrow's week word and its state chip (their widths, the chip's height and its label's own width): the
-      // drawing's table for them is held to these.
+      // The eyebrow's week word and its state chip (their widths, the chip's height and its label's own width), and what a week
+      // of one digit (1–9) does: the word set with one numeral, its width beside the two-digit word the drawing's template is
+      // (HUB-2B: the drawing sets "Wiki 00"; a one-digit week lands its chip that much further left, on the same line).
       eyebrow: (() => {
         const chip = document.querySelector('[data-testid="millionea-hub"] [data-testid="millionea-week-state"]');
         const word = chip?.previousElementSibling ?? null;
@@ -701,8 +703,18 @@ if (RUN === "a") {
         const text = chip ? [...chip.childNodes].find((n) => n.nodeType === 3 || n.nodeType === 1) : null;
         if (text) range.selectNodeContents(text);
         const cs = word ? getComputedStyle(word) : null;
+        let oneDigit = null;
+        if (word && /dd/.test(word.textContent ?? "")) {
+          const probe = word.cloneNode(true);
+          probe.textContent = (word.textContent ?? "").replace(/dd/, "9");
+          probe.style.position = "absolute"; probe.style.visibility = "hidden";
+          word.parentElement?.append(probe);
+          const one = probe.getBoundingClientRect().width, two = word.getBoundingClientRect().width;
+          probe.remove();
+          oneDigit = { word: probe.textContent, narrower: Math.round((two - one) * 100) / 100 };
+        }
         return { word: w(word), chip: w(chip), chipH: chip ? Math.round(chip.getBoundingClientRect().height * 100) / 100 : null, label: text ? Math.round(range.getBoundingClientRect().width * 100) / 100 : null,
-          type: cs ? [cs.fontSize, cs.letterSpacing, cs.fontWeight, cs.fontFamily.split(",")[0]] : null };
+          type: cs ? [cs.fontSize, cs.letterSpacing, cs.fontWeight, cs.fontFamily.split(",")[0]] : null, oneDigit };
       })(),
       // The carried-in row (the ledger's door to its week): its height, its label's width (words and chevron) and its
       // value's — where it wraps is the drawing's to follow.
@@ -712,7 +724,7 @@ if (RUN === "a") {
         const w = (el) => (el ? Math.round(el.getBoundingClientRect().width * 10) / 10 : null);
         return { h: Math.round(row.getBoundingClientRect().height), label: w(row.querySelector(".text-text-link")), value: w(row.querySelector('[data-row="in"]')) };
       })(),
-      // The questions' heading: its words' own width (the drawing's per-language bar is held to it, G2).
+      // The questions' heading: its words' own width (printed; the drawing sets its words, HUB-2B).
       heading: (() => {
         const el = document.getElementById("mln-questions-h");
         if (!el) return null;

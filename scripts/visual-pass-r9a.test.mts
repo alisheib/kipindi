@@ -623,6 +623,8 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     // MASWALI-BUILD S5-R3-FIX 8 (2026-10-23): the week's loading drawing sets the carry row's label as its own words, unseen,
     // beside the ledger's own mark drawn unseen, so the label wraps against the page's box — its edge's pull included.
     ['src/app/millionea/register/[week]/register-week-ghost.tsx', '<I.chevronRight s={14} edge="end" text="body-400" className="invisible shrink-0" />', 1, "text", "the week's loading drawing: the ledger carry row's mark, unpainted, its box and edge the page's own beside the label's words set unseen"],
+    // MASWALI-BUILD S5-R2-HUB (HUB-2B, 2026-10-23): the hub's loading drawing does the same for its pool ledger's carry row.
+    ['src/app/millionea/hub-ghost.tsx', '<I.chevronRight s={14} edge="end" text="body-400" className="invisible shrink-0" />', 1, "text", "the hub's loading drawing: the ledger carry row's mark, unpainted, its box and edge the page's own beside the label's words set unseen"],
     // S5-DESIGN-DOORS (2026-10-21): the /positions door ends as every other Millionea door — it was the only arrow among them.
     ['src/app/positions/page.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle" />', 1, "row", "classic /positions' Millionea row: a door's end on its content edge (D-13 (c)), the register's and /results' row end"],
     // MASWALI-BUILD S5 landing door (2026-10-22; the landing's R19, DESIGN_AUTHORITY §M8a item 21): Millionea's line in the

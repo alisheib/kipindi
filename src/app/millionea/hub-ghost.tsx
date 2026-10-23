@@ -120,9 +120,11 @@ function LedgerRow({ r }: { r: GhostRow }) {
  *    own answer, as the account hub's drawing chooses (`main[data-viewer="guest"]`, app-shell.tsx `MainLandmark`; `MEMBER`
  *    and `GUEST` below): nothing is read, nothing is said. The journey's shell marks a guest; the classic shell does not
  *    yet, so there a guest is drawn the player's door.
- * ⭐ MOTION: the platform's skeleton sweep on every bar and block (`SWEEP`); under reduced motion and the `minimal` tier the
- *    bars stand still, the end state. A word band stands still (the kit's part draws no sweep). The page itself lands with
- *    no motion of its own: the route's one entrance played when the drawing arrived (`route-transition.tsx`).
+ * ⭐ MOTION: the platform's skeleton sweep on every bar and block (`SWEEP`); a block of word bands sweeps as its own box
+ *    (as wide as its words where it holds one line — the kit's part draws no motion of its own: R3-2B's ruling, one
+ *    GPU-cheap transform sweep, never a repaint per band). Under reduced motion and the `minimal` tier everything stands
+ *    still, the end state. The page itself lands with no motion of its own: the route's one entrance played when the
+ *    drawing arrived (`route-transition.tsx`).
  * ONE DRAWING, TWO READERS: this route's `loading.tsx` draws it at /millionea (through `MillioneaGhostPick` below), and the
  * journey's root loading state draws it on a move to /millionea (`route-ghost.tsx`). Client code; the screen reader hears
  * "loading" alone (`maswali-ghost.tsx`).
@@ -160,6 +162,9 @@ export function MillioneaHubGhost() {
   // runs with the page's one space between them, where a line may break (`weekStripWords`, maswali-week-strip.tsx).
   const PHASE = "flex items-baseline gap-2 md:border-t-2 md:border-border-strong md:pt-1.5";
   const RUN = "whitespace-nowrap";
+  // Each block that holds word bands sweeps its own box (R3-2B's advice: the platform's transform sweep, never a band of its
+  // own), as wide as its words where it holds one line.
+  const LABEL = cn("block w-fit font-medium", SWEEP), RANGE = cn("block w-fit", SWEEP);
   return (
     // The page root's own class (`kp-mln-zh`, page.tsx): Chinese eyebrows at the label rung, 12/16 (globals.css A3) — the
     // jackpot's label among them, which stood 2px short in zh.
@@ -172,14 +177,14 @@ export function MillioneaHubGhost() {
               // The week and its state in the frame's row (`HUB_EYEBROW`, the page's `WeekLabel`'s): the week's words at the
               // template's two digits, then the register's chip (`WeekStateChip`) as the kit draws it, its word unseen.
               <span className={HUB_EYEBROW} data-ghost="eyebrow">
-                <span><GhostWords words={hubWeek} plain="w-[60px]" /></span>
+                <span className={SWEEP}><GhostWords words={hubWeek} plain="w-[60px]" /></span>
                 <Chip variant="neutral" metrics="status" className={cn("shrink-0 self-start", SWEEP)} style={CHIP_SKELETON}>
                   <GhostWords words={hubOpenChip} plain="w-[32px]" />
                 </Chip>
               </span>
             )}
             title={<GhostLine className={cn("w-[248px]", SWEEP)} />}
-            subtitle={<GhostWords words={hubIntro} plain="w-full" />}
+            subtitle={<span className={cn("block w-fit", SWEEP)}><GhostWords words={hubIntro} plain="w-full" /></span>}
             actionsWrap
             actions={(
               <span className="flex shrink-0 items-center gap-1" data-ghost="doors">
@@ -201,22 +206,22 @@ export function MillioneaHubGhost() {
             <div className={PHASE}>
               <span className="h-1.5 w-1.5 shrink-0" />
               <span className="min-w-0 text-body-sm">
-                <span className="block font-medium"><GhostWords words={hubSalesLabel} plain="w-[64px]" /></span>
-                <span className="block"><span className={RUN}><GhostWords words={hubSalesFrom} plain="w-[64px]" /></span>{" "}<span className={RUN}><GhostWords words={hubSalesTo} plain="w-[108px]" /></span></span>
+                <span className={LABEL}><GhostWords words={hubSalesLabel} plain="w-[64px]" /></span>
+                <span className={RANGE}><span className={RUN}><GhostWords words={hubSalesFrom} plain="w-[64px]" /></span>{" "}<span className={RUN}><GhostWords words={hubSalesTo} plain="w-[108px]" /></span></span>
               </span>
             </div>
             <div className={PHASE}>
               <span className="h-1.5 w-1.5 shrink-0" />
               <span className="min-w-0 text-body-sm">
-                <span className="block font-medium"><GhostWords words={hubEventsLabel} plain="w-[64px]" /></span>
-                <span className="block"><span className={RUN}><GhostWords words={hubEventsFrom} plain="w-[112px]" /></span>{" "}<span className={RUN}><GhostWords words={hubEventsTo} plain="w-[52px]" /></span></span>
+                <span className={LABEL}><GhostWords words={hubEventsLabel} plain="w-[64px]" /></span>
+                <span className={RANGE}><span className={RUN}><GhostWords words={hubEventsFrom} plain="w-[112px]" /></span>{" "}<span className={RUN}><GhostWords words={hubEventsTo} plain="w-[52px]" /></span></span>
               </span>
             </div>
             <div className={PHASE}>
               <span className="h-1.5 w-1.5 shrink-0" />
               <span className="min-w-0 text-body-sm">
-                <span className="block font-medium"><GhostWords words={hubResultsLabel} plain="w-[112px]" /></span>
-                <span className="block"><span className={RUN}><GhostWords words={hubResultsFrom} plain="w-[60px]" /></span>{" "}<span className={RUN}><GhostWords words={hubResultsTo} plain="w-[56px]" /></span></span>
+                <span className={LABEL}><GhostWords words={hubResultsLabel} plain="w-[112px]" /></span>
+                <span className={RANGE}><span className={RUN}><GhostWords words={hubResultsFrom} plain="w-[60px]" /></span>{" "}<span className={RUN}><GhostWords words={hubResultsTo} plain="w-[56px]" /></span></span>
               </span>
             </div>
           </div>
@@ -249,7 +254,7 @@ export function MillioneaHubGhost() {
           </div>
           <div className={hubMain(true)}>
             <div className={HUB_QUESTIONS.section} data-ghost="questions">
-              <span className={cn("block", HUB_QUESTIONS.heading)}><GhostWords words={hubQuestionsHeading} plain="w-[200px]" /></span>
+              <span className={cn("block w-fit", HUB_QUESTIONS.heading, SWEEP)}><GhostWords words={hubQuestionsHeading} plain="w-[200px]" /></span>
               <div>
                 {Array.from({ length: 10 }, (_, i) => (
                   <div key={i} className={cn(HUB_QUESTIONS.row, SWEEP)}>
