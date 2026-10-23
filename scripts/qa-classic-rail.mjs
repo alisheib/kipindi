@@ -14,7 +14,11 @@
  *   - the five slots in order, Millionea's track exactly where its door is drawn and Live's otherwise;
  *   - every slot a tap target of 40 × 40 or more; every label whole (never cut by its ellipsis) and on one line (the
  *     Swahili "Juu na Chini" alone wraps, by the classic rail's own rule); no two labels closer than 8px (their pips' gap);
- *   - the coin's disc centred on the bar (±0.5px); the Up & Down dot on its pip's corner (2px down, 9px in);
+ *   - the coin's disc centred on the bar (±0.5px);
+ *   - Up & Down drawn exactly as its siblings (Ali, 2026-10-23: "please remove the golden dot, make it like other tabs
+ *     please"; DESIGN_AUTHORITY §K 3): no dot and no box its sibling does not paint, the same pip box and top, glyph box,
+ *     centre and ink, label font, size, weight, tracking, line height, top and ink — and, once per reader at 360, lit on
+ *     its own page exactly as Markets is lit on its own;
  *   - Millionea's track drawn as its siblings (pip box and top, glyph box and centre, label font, size, weight, tracking,
  *     line height and top) — only its label's ink differs, and its resting glyph is gold;
  *   - More opened by a real tap: its rows in order (Live first while Millionea is drawn), every row ≥ 44px, the panel
@@ -81,8 +85,15 @@ const READ_RAIL = () => {
       }
     }
     const lcs = label ? getComputedStyle(label) : null;
-    const dot = el?.querySelector(".kp-rail__dot");
-    const pr = R(pip), dr = R(dot);
+    const pr = R(pip);
+    // Every box the slot paints inside itself (a fill, a shadow, a border) — the pip when lit, and nothing else: a product-
+    // line dot was one such box (Ali, 2026-10-23, removed).
+    const clear = (c) => c === "transparent" || /^rgba\(.*,\s*0\)$/.test(c);
+    const painted = el ? [...el.querySelectorAll("*")].filter((n) => !n.closest("svg")).filter((n) => {
+      const cs = getComputedStyle(n), b = n.getBoundingClientRect();
+      return b.width > 0 && b.height > 0 && cs.display !== "none" && (!clear(cs.backgroundColor) || cs.backgroundImage !== "none" || cs.boxShadow !== "none"
+        || ["Top", "Right", "Bottom", "Left"].some((s) => parseFloat(cs[`border${s}Width`]) > 0 && cs[`border${s}Style`] !== "none" && !clear(cs[`border${s}Color`])));
+    }).map((n) => { const b = n.getBoundingClientRect(); return `${n.className} ${b.width.toFixed(1)}x${b.height.toFixed(1)}`; }) : [];
     return {
       slot: el?.tagName === "BUTTON" ? "More" : el?.getAttribute("data-testid") === "deposit-rail" ? "coin" : el?.getAttribute("href"),
       text: label?.textContent?.trim() ?? "", on: !!el?.hasAttribute("data-on"), current: el?.getAttribute("aria-current") ?? null,
@@ -93,7 +104,7 @@ const READ_RAIL = () => {
       font: lcs ? [lcs.fontFamily.split(",")[0], lcs.fontSize, lcs.fontWeight, lcs.letterSpacing, lcs.lineHeight].join(" ") : null,
       ink: !!label?.querySelector(".kp-millionea-ink"), gold: !!el?.querySelector(".kp-millionea-glyph"),
       glyphColor: pip ? getComputedStyle(pip).color : null, labelColor: label ? getComputedStyle(label).color : null,
-      dot: pr && dr ? { right: +(pr.r - dr.r).toFixed(2), top: +(dr.y - pr.y).toFixed(2) } : null,
+      painted, dotEl: !!el?.querySelector(".kp-rail__dot"),
     };
   });
   const disc = nav.querySelector(".kp-coin");
@@ -156,8 +167,24 @@ async function composition(name, cookies, drawn, opts = {}) {
       const least = Math.min(...gaps);
       if (!(least >= 8 - 0.05)) problems.push(`labels ${least}px apart`);
       if (!(Math.abs(m.coinOff) <= 0.5)) problems.push(`coin off centre by ${m.coinOff}px`);
-      const ud = m.slots[1];
-      if (!ud.dot || Math.abs(ud.dot.top - 2) > 0.5 || Math.abs(ud.dot.right - 9) > 0.5) problems.push(`Up & Down's dot ${JSON.stringify(ud.dot)}`);
+      // ⭐ UP & DOWN IS DRAWN EXACTLY AS ITS SIBLINGS (Ali, 2026-10-23; DESIGN_AUTHORITY §K 3) — against the unlit link beside
+      // it on /markets (Live's track; More's where Millionea holds that track): no dot, no box the sibling does not paint, the
+      // same pip, glyph and label metrics, the same inks. The Swahili label alone may take its second line (its own rule),
+      // so its height is not compared — its top, font and ink are.
+      const ud = m.slots[1], udSib = drawn ? m.slots[4] : m.slots[3];
+      {
+        const same = (a, b, k) => !!a && !!b && Math.abs(a[k] - b[k]) <= 0.5;
+        const off = (s) => (s.glyph && s.pip ? { x: +(s.glyph.x - s.pip.x).toFixed(2), y: +(s.glyph.y - s.pip.y).toFixed(2) } : null);
+        const diffs = [];
+        if (ud.dotEl) diffs.push("a .kp-rail__dot");
+        if (JSON.stringify(ud.painted) !== JSON.stringify(udSib.painted)) diffs.push(`painted ${JSON.stringify(ud.painted)} vs ${JSON.stringify(udSib.painted)}`);
+        if (!(same(ud.pip, udSib.pip, "w") && same(ud.pip, udSib.pip, "h") && same(ud.pip, udSib.pip, "y"))) diffs.push(`pip ${JSON.stringify(ud.pip)} vs ${JSON.stringify(udSib.pip)}`);
+        if (!(same(ud.glyph, udSib.glyph, "w") && same(ud.glyph, udSib.glyph, "h") && JSON.stringify(off(ud)) === JSON.stringify(off(udSib)))) diffs.push(`glyph ${JSON.stringify(ud.glyph)} vs ${JSON.stringify(udSib.glyph)}`);
+        if (ud.font !== udSib.font || !same(ud.label, udSib.label, "y")) diffs.push(`label ${ud.font} ${JSON.stringify(ud.label)} vs ${udSib.font} ${JSON.stringify(udSib.label)}`);
+        if (ud.glyphColor !== udSib.glyphColor || ud.labelColor !== udSib.labelColor) diffs.push(`ink ${ud.glyphColor}/${ud.labelColor} vs ${udSib.glyphColor}/${udSib.labelColor}`);
+        if (ud.on || udSib.on) diffs.push("lit on /markets");
+        if (diffs.length) problems.push(`Up & Down is not drawn as ${udSib.slot}: ${diffs.join("; ")}`);
+      }
       if (drawn) {
         // Against More, the sibling unlit on /markets (Markets is lit there, its label at the lit weight).
         const mln = m.slots[3], sib = m.slots[4];
@@ -193,7 +220,7 @@ async function composition(name, cookies, drawn, opts = {}) {
       const restColor = m.slots[0].on ? m.slots[1].labelColor : m.slots[1].labelColor;
       if (after.open) problems.push("More did not close on a tap outside");
       if (!after.lit && after.color !== restColor) problems.push(`More keeps a hover after the tap (${after.color} vs ${restColor})`);
-      rows.push({ cell, slots, gaps, coinOff: m.coinOff, dot: ud.dot, mln: drawn ? { pip: m.slots[3].pip, glyph: m.slots[3].glyph, font: m.slots[3].font, glyphColor: m.slots[3].glyphColor } : null, labels: m.slots.map((s) => `${s.text}${s.lines > 1 ? ` (${s.lines} lines)` : ""}`) });
+      rows.push({ cell, slots, gaps, coinOff: m.coinOff, ud: { pip: ud.pip, glyph: ud.glyph, font: ud.font, glyphColor: ud.glyphColor, labelColor: ud.labelColor, painted: ud.painted, versus: udSib.slot }, mln: drawn ? { pip: m.slots[3].pip, glyph: m.slots[3].glyph, font: m.slots[3].font, glyphColor: m.slots[3].glyphColor } : null, labels: m.slots.map((s) => `${s.text}${s.lines > 1 ? ` (${s.lines} lines)` : ""}`) });
       ok(`${cell} · ${slots.join(" · ")} — taps ≥ 40, labels whole (${m.slots.map((s) => s.text).join(" | ")}), least gap ${least}px, coin ${m.coinOff}px off centre, More ${more ? `[${more.items.map((i) => i.href).join(" ")}]` : "?"}`, problems.length === 0, problems.join("; "));
       if (MODE === "dark") {
         const html = await page.content();
@@ -219,11 +246,14 @@ async function perReader(name, cookies, drawn, l, opts) {
     : opts.onBreak
       ? { "/markets": ["/markets", null], "/live": ["/live", null], "/results": ["More", "/results"], "/millionea": ["/markets", null], "/millionea/tickets": ["More", "/positions"] }
       : { "/markets": ["/markets", null], "/updown": ["/updown", null], "/live": ["/live", null], "/results": ["More", "/results"] };
+  /** The lit slot as drawn on its own page — Markets on /markets, Up & Down on /updown — for the lit comparison below. */
+  const litSlot = {};
   for (const [path, [slot, row]] of Object.entries(LIT)) {
     const res = await page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded", timeout: 180_000 });
     await settle(page);
     const m = await page.evaluate(READ_RAIL);
     const lit = (m?.slots ?? []).filter((s) => s.on).map((s) => s.slot);
+    if (path === "/markets" || path === "/updown") litSlot[path] = (m?.slots ?? []).find((s) => s.slot === path && s.on) ?? null;
     let currentRow = null;
     if (slot === "More") {
       await page.locator("nav.kp-rail button.kp-rail__item").first().click();
@@ -240,6 +270,19 @@ async function perReader(name, cookies, drawn, l, opts) {
     if (nb) await page.screenshot({ path: join(OUT, `${tag(name)}-${l}-360-lit-${tag(path) || "root"}.png`), clip: { x: 0, y: nb.y - 4, width: 360, height: nb.height + 4 } });
     ok(`${name} · ${l} · ${path} (${res?.status()}) lights ${slot}${row ? `, its More row ${row} current` : ""}`,
       JSON.stringify(lit) === JSON.stringify([slot]) && (row === null || currentRow === row), `lit ${JSON.stringify(lit)} row ${currentRow}`);
+  }
+  // ⭐ LIT, UP & DOWN IS MARKETS' TWIN (Ali, 2026-10-23; DESIGN_AUTHORITY §K 3): the same lit pill, glyph, label and inks —
+  // each on its own page. (On a break the rail lights neither page's slot by Up & Down's own route; that reader is skipped.)
+  if (LIT["/updown"]) {
+    const a = litSlot["/updown"], b = litSlot["/markets"];
+    const same = (x, y, k) => !!x && !!y && Math.abs(x[k] - y[k]) <= 0.5;
+    const off = (s) => (s?.glyph && s?.pip ? `${(s.glyph.x - s.pip.x).toFixed(2)},${(s.glyph.y - s.pip.y).toFixed(2)}` : null);
+    const twin = !!a && !!b && !a.dotEl && JSON.stringify(a.painted) === JSON.stringify(b.painted)
+      && same(a.pip, b.pip, "w") && same(a.pip, b.pip, "h") && same(a.pip, b.pip, "y")
+      && same(a.glyph, b.glyph, "w") && same(a.glyph, b.glyph, "h") && off(a) === off(b)
+      && a.font === b.font && same(a.label, b.label, "y") && a.glyphColor === b.glyphColor && a.labelColor === b.labelColor;
+    ok(`${name} · ${l} · lit, Up & Down is drawn exactly as Markets lit — pill ${a?.painted?.join(", ") || "?"}, glyph and label inks ${a?.glyphColor}/${a?.labelColor}`,
+      twin, JSON.stringify({ updown: a && { pip: a.pip, glyph: a.glyph, font: a.font, painted: a.painted, inks: [a.glyphColor, a.labelColor] }, markets: b && { pip: b.pip, glyph: b.glyph, font: b.font, painted: b.painted, inks: [b.glyphColor, b.labelColor] } }));
   }
   // Focus rings: Tab from the element before the rail onto each slot; the ring is the pip's (the coin keeps its own).
   await page.goto(`${BASE}/markets`, { waitUntil: "domcontentloaded", timeout: 180_000 });

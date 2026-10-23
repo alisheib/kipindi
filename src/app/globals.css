@@ -7524,15 +7524,15 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    for "a tab-like control with an active state": `--text` ink on a sunken `--bg-overlay`, and the
    ACTIVE item does not take it, because it already says what it is with `--pill-active`. Not a
    new invention; the nearest existing rule, copied deliberately.
-   ⚠️ Order matters below: `[aria-current]` follows `[data-accent]` at equal specificity, which is
-   what reproduces the old ternary exactly (active beat accent). Do not reorder them. */
+   ⭐ EVERY LINK ONE INK (Ali, 2026-10-23: "please remove the golden dot, make it like other tabs please"; DESIGN_AUTHORITY
+   §K 3, "Every nav tab alike"). Up & Down's `.kp-navlink[data-accent]` ink (`--brand-300`) went with its gilt dot: the
+   one rule below paints every link at rest, on hover and lit. ⛔ No rule here singles a destination out. */
 .kp-navlink {
   color: var(--text-subtle);
   background: transparent;
   /* ⛔ Never `transition: all` — one rule per property, from the motion ladder. W3: the pill's edge fades with its fill. */
   transition: color var(--t-quick) ease-out, background var(--t-quick) ease-out, box-shadow var(--t-quick) ease-out;
 }
-.kp-navlink[data-accent] { color: var(--brand-300); }
 /* TWO WAYS TO SAY "THIS IS THE CURRENT DESTINATION", because two elements say it: a real <a> says
    it with `aria-current="page"`, and the "More" <button> cannot — it is a menu trigger, not a page,
    so claiming `aria-current="page"` there would be a lie to a screen reader. It carries
@@ -7686,18 +7686,10 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   text-overflow: clip;
   text-align: center;
 }
-/* The product-line dot — the same 5px brand mark the desktop nav carries, on the pip's corner.
-   ⭐ W3: it keeps its place beside the glyph — 2px right of the glyph's box and 2px above it, as on the 44×26 pip — so
-   on the 56×32 pip around a 24px glyph it stands 9px from the right and 2px from the top, inside the lit pill's curve. */
-.kp-rail__dot {
-  position: absolute;
-  top: 2px;
-  right: 9px;
-  width: 5px;
-  height: 5px;
-  border-radius: var(--r-pill);
-  background: var(--gilt);
-}
+/* ⛔ NO PRODUCT-LINE DOT ON A PIP (Ali, 2026-10-23: "people are misunderstanding and thinking there is a certain
+   notification there … please remove the golden dot, make it like other tabs please"). `.kp-rail__dot`, Up & Down's 5px
+   gilt mark on its pip's corner, is deleted: every slot is drawn alike (DESIGN_AUTHORITY §K 3, "Every nav tab alike";
+   `test:nav-tabs-alike`). A dot on a tab is a notification's (the journey's Akaunti, `.kp-rail__badge`). */
 /* ⭐ MASWALI MILLIONEA'S INK — Ali, 2026-10-19 (DESIGN_AUTHORITY §M8a item 11): "the same tab but with writing in it kind
    of colors … in mixed glowing green red color and gold like 50pick design for uniqueness like kalshi". Millionea's tab
    is its siblings' own (the slot, the pip, the lit pill, the label's size, weight and spacing) and ONLY the label's ink

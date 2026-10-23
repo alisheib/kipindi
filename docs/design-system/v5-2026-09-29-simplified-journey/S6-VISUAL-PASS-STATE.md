@@ -682,6 +682,8 @@ C · CROSS-SURFACE CONSISTENCY (visual and verbal, statically). The pass's rule:
 29. Classic chrome still carries gold that is not money (frozen for S6/S7): the "• Juu na Chini" dots (top-app-bar.tsx
     :533, `.kp-rail__dot`) → brand or none; the classic bell, language tick and avatar-menu rows → the journey's
     colours; the live-ticker separator → `--border-strong`; the classic header's "INAKUJA" tag (kept tinted there).
+    ✅ The dots: NONE, Ali's ruling of 2026-10-23 ("please remove the golden dot, make it like other tabs please") —
+    deleted with Up & Down's own ink (DESIGN_AUTHORITY §K 3, "Every nav tab alike").
 30. The claret rule's gold midpoint (`.claret-rule`, `var(--gilt) 50%`) → `var(--claret-300) 50%` (and the offline page's
     copy).
 31. The legal pages' RG links are gold (Terms ×6, RG policy ×3) → brand. It changes the Terms/RG text hashes, so it ships
