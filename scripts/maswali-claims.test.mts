@@ -1307,9 +1307,12 @@ console.log(`${LF}§5 · MB-47's list — no gold but on the paid win, no count-
 // ── §6 · holders only; the one SMS; the consent gate ───────────────────────────────────────────────────
 console.log(`${LF}§6 · holders only (OD-25) — the one service SMS, and anything else past the consent gate`);
 {
-  const TO = new Set(["buyer", "holders", "winners", "losers"]);
-  ok("6.1 · every registered Millionea notice goes to a ticket's holder — buyer, holders, winners or losers — and only a win (paid or held) has an SMS",
-    MILLIONEA_NOTICES.length === 10 && MILLIONEA_NOTICES.every((n: any) => TO.has(n.to))
+  // S6-NOTICES (2026-10-23) · an objection's ruling goes to the holder who filed it (a holder: only a live ticket's holder
+  // may object), and its filing to the console's officers — the one Millionea notice to staff (comms-registry.ts).
+  const TO = new Set(["buyer", "holders", "winners", "losers", "filer"]);
+  ok("6.1 · every registered Millionea notice to a player goes to a ticket's holder — buyer, holders, winners, losers or an objection's filer — the one to staff is an objection filed, and only a win (paid or held) has an SMS",
+    MILLIONEA_NOTICES.length === 12 && MILLIONEA_NOTICES.every((n: any) => TO.has(n.to) || (n.to === "officers" && n.notice === "objectionFiled"))
+      && MILLIONEA_NOTICES.filter((n: any) => n.to === "officers").length === 1
       && MILLIONEA_NOTICES.filter((n: any) => n.sms).map((n: any) => n.notice).join() === "won,wonHeld", J(MILLIONEA_NOTICES.map((n: any) => [n.notice, n.to, n.sms])));
   // ⭐ THE CENSUS IS STRUCTURAL: every src/ file that sends an SMS, read as CODE (comments out). The only one whose code
   // says anything about Millionea is the winner's service SMS; the two campaign doors name it only to apply its claims gate

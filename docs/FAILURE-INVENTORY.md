@@ -1288,7 +1288,13 @@ MR-16's per-question objection door exists, on both stores and across instances:
 Proof: `test:maswali-objections` (both stores) and its red twin `red:maswali-objections`; `test:maswali-adversarial`
 OB.0 (now a passing case) and §4b OM with the money-path plants (S7-OB-…); `load:maswali-objection-cross-instance`
 (S18, two processes per race on one PostgreSQL); `qa:maswali-objection-console` and `qa:maswali-objection-door`.
-Notices (an objection received, an objection decided) arrive with S6-N's registry.
+- **The notices** (S6-NOTICES, 2026-10-23 — FLOW's walk found none was sent): the Yes/No objection's own two, for a
+  Millionea question, registered in `MILLIONEA_NOTICES` (comms-registry.ts, `objectionFiled` and `objectionDecided`) and
+  sent by `maswali-notify.ts` once the act has committed, never for a refused one — a filing pings every console officer
+  the Yes/No ping reaches (ADMIN, COMPLIANCE, MODERATOR), once each per filing; a ruling tells the one holder who filed
+  it, once (its key is the filer's ticket and the question), with the ruling and the officer's note, in the bell only, as
+  the platform's notice is (no letter). Proof: `test:maswali-notify` §10b (both stores) and the plants (NOB1)–(NOB6) of
+  `red:maswali-money-path`.
 
 *Recorded 2026-10-18:* MR-16 promised a per-question objection in Millionea's own window, and no objection door existed for a
 Millionea week; the settlement's refusal while any objection was open (OB.1–OB.5) and the sealer's own correction held.
@@ -1547,6 +1553,17 @@ THE RULE in each case is the guard's own, unchanged: a census names what it find
 the identity gate refuses only inside a withdrawal, money is set in the money type, a safety sentence names no parameter, a
 sprite production serves stays one release, every capture keeps the caret, every tracked uppercase site is read.
 `test:visual-pass-r5e` 6.5 (S7-OB's objection door's no-break space) is S7's, fixed on S7's branch by S7-SHIP.
+
+#### ✅ The purchase's bell said "Ticket cut" in English after Ali ruled "Ticket bought" (S6-NOTICES, 2026-10-23; FLOW's walk)
+
+Ali's ruling 7 of 2026-10-21 (COMPLIANCE-DECISIONS) replaced the calque "Cut ticket" with "Buy ticket · {price}", "Ticket
+bought" and "Buying…", and the slip's own result says "Ticket bought" / "{n} tickets bought" (`millionea.ticketCut`,
+`ticketsCut`). The purchase's bell (`notifyMillioneaTicketsCut`) kept its own English copy, "Ticket cut" / "{n} tickets
+cut", while its comment claimed to mirror the slip. THE RULE: the bell's title reads the slip's own keys in all three
+languages (`millioneaWordIn`, notification-service.ts) — one wording, one home; Swahili "Tiketi imekatwa" and Chinese
+"已出票" as ruled. No other player-readable English "ticket(s) cut" exists (letters, SMS, receipts, OG cards, the bell:
+read 2026-10-23). Held by `test:maswali-notify` 10b.10 (the rendered titles, one ticket and two, en/sw/zh) and the plant
+(NOB7) of `red:maswali-money-path`.
 
 ## §9c · MASWALI MILLIONEA — the admin console, walked and made plain (S6, 2026-10-22)
 

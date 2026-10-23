@@ -60,6 +60,11 @@
  * the week skipped (11d.2–3), an unreadable holder refusing it (11d.4), only uncertain letters closed (11d.5), and on
  * Postgres another process's lease refusing it (11d.6) (M5) · 13.7 re-pinned (the check's own strict lease) · 13.9 the
  * integrity card says what becomes of a listed letter (M5) · 13.8 the provider metadata's doc names the digest (L1).
+ * S6-NOTICES (2026-10-23; FAILURE-INVENTORY §9 OB.0): §10b a question's objection told — the filing pings every console
+ * officer the Yes/No ping reaches, once each and no player; the ruling tells the one holder who filed it, once, after it
+ * committed, in three languages with the officer's note and never the answer; a refused filing or ruling, a retried
+ * ruling and a second launch tell nobody (twice); and the receipt's title is the slip's own "Ticket bought" (Ali's ruling
+ * 7, 2026-10-21) · 13.5 twelve registered notices.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const STORE = process.env.HB_MONEY_STORE ?? "unknown";
@@ -1138,6 +1143,160 @@ console.log(`${LF}§10 · CONTROL — a poll bet's own notice, as the poll write
     J(holderRows.filter((n) => POLL_WORDS.test(`${n.titleEn} ${n.bodyEn}`)).map((n) => n.titleEn)));
 }
 
+// ── §10b · ⭐ S6-NOTICES (2026-10-23) · a question's objection told; the receipt's title in the slip's own words ──────────────
+// The Yes/No objection's two notices, for a Millionea question (MR-16, MB-23; FAILURE-INVENTORY §9 OB.0): the filing pings
+// the console's officers once each, and the ruling tells the one holder who filed it — once, after the ruling committed,
+// never on a refused one. And the purchase's bell titles itself in the slip's own words (Ali's ruling 7 of 2026-10-21).
+console.log(`${LF}§10b · ⭐ S6-NOTICES · an objection filed pings the officers once; its ruling tells the filer once; the receipt says "Ticket bought"`);
+{
+  const pid = process.pid;
+  const errOf = (x: any) => (x && x.ok === false ? String(x.error) : "");
+  const OFF = await W.user({ id: `usr_mln_ntf_off_${pid}`, role: "COMPLIANCE" }); // rules on the objections
+  const ADM = await W.user({ id: `usr_mln_ntf_adm_${pid}`, role: "ADMIN" });
+  const MOD = await W.user({ id: `usr_mln_ntf_mod_${pid}`, role: "MODERATOR" }); // pinged as the Yes/No ping pings, never a ruler
+  const F1 = await W.user({ balance: 500_000 }); // files two objections
+  const F2 = await W.user({ balance: 500_000 }); // files one, which is upheld
+  const NH = await W.user({ balance: 500_000 }); // holds no ticket of the week
+  const { week: wo, start: so } = await W.openWeek({ weeksAhead: ahead++ });
+  const f1 = await W.buy(F1, wo.id, [W.WIN]);
+  const f2 = await W.buy(F2, wo.id, [W.LOSE]);
+  await W.closeAndSeal(wo, so);
+  await settleAll();
+  const codeO = (await dal.weekStore.get(wo.id)).code as string;
+  const inWindow = (min: number) => new Date(so + 9 * DAY + HOUR + min * 60_000);
+  const ob = await import("../../src/lib/server/maswali-objections.ts");
+  const { millioneaTicketHref } = await import("../../src/lib/position-permalink.ts");
+  const qOf = async (slot: number) => (await dal.questionStore.listForWeek(wo.id)).find((q: any) => q.slot === slot);
+  const ruleOn = async (objectionId: string, officerId: string, ruling: string, slot: number, minute: number) => {
+    const q = await qOf(slot);
+    return ob.decideMillioneaObjection({ objectionId, officerId, ruling: ruling as any, note: `Checked against the official source for question ${slot}`,
+      expectedOutcome: q?.outcome, expectedSealedAt: q?.sealedAt, now: inWindow(minute) });
+  };
+  const officers = (await W.db.user.listByRoles(["ADMIN", "COMPLIANCE", "MODERATOR"])) as any[];
+  const players = [F1, F2, NH, A, B, C];
+  const filedHref = (id: string) => href({ notice: "objectionFiled", objectionId: id });
+  // The officers' ping opens the integrity page, not a /millionea page: read from every row, never `withHref` (which reads
+  // the /millionea rows only).
+  const pingRows = async (u: string, h: string) => (await rowsOf(u)).filter((n) => n.href === h);
+  const pingsOf = async (u: string) => (await rowsOf(u)).filter((n) => String(n.href ?? "").startsWith("/admin/maswali/integrity#objection-"));
+  const runsCount = (notice: string) => notify.millioneaNoticeRuns().filter((x: any) => x.notice === notice).length;
+
+  // The filing: F1 objects to question 3 — every console officer is pinged once; no player is.
+  const filed = await ob.fileMillioneaObjection({ userId: F1, weekId: wo.id, slot: 3, reason: "WRONG_OUTCOME", detail: "The source published another result for question 3", now: inWindow(0) });
+  await settleAll();
+  const id3 = (filed as any).objectionId as string;
+  const pinged = await Promise.all(officers.map(async (o: any) => (await pingRows(o.id, filedHref(id3))).length));
+  const ping = (await pingRows(OFF, filedHref(id3)))[0];
+  const playerPings = (await Promise.all(players.map(pingsOf))).flat();
+  ok("10b.1 · ⭐ an objection filed pings every console officer the Yes/No objection's ping reaches — the ruler, the Owner and a moderator — once each, and no player",
+    f1.ok && f2.ok && filed.ok && officers.length >= 3 && [OFF, ADM, MOD].every((u) => officers.some((o: any) => o.id === u))
+      && pinged.every((n) => n === 1) && playerPings.length === 0 && ping?.kind === "OBJECTION",
+    J({ filed, officers: officers.length, pinged, playerPings: playerPings.map((n) => n.href) }));
+  const n3 = Number(/-W([0-9]{1,2})$/.exec(codeO)?.[1] ?? "0");
+  ok("10b.2 · …in three languages, naming the week and the question and what the filing holds — never the player",
+    ping?.titleEn === `Millionea Week ${n3} · Objection filed · settlement frozen` && ping?.bodyEn === "A player disputes the result of Question 3. The week's payout waits until an officer decides."
+      && ping?.titleSw === `Millionea Wiki ${n3} · Pingamizi limewasilishwa · malipo yamesimamishwa` && String(ping?.bodySw).includes("Swali 3")
+      && ping?.titleZh === `Millionea 第${n3}周 · 已提出异议 · 结算已冻结` && String(ping?.bodyZh).includes("第3题")
+      && ![ping?.bodyEn, ping?.bodySw, ping?.bodyZh].some((s) => String(s).includes(F1)),
+    J({ titleEn: ping?.titleEn, bodyEn: ping?.bodyEn, titleSw: ping?.titleSw, titleZh: ping?.titleZh }));
+
+  // Refused filings ping nobody and launch no run; a second launch for the one filing pings nobody twice.
+  const filedRuns0 = runsCount("objectionFiled");
+  const noTicket = await ob.fileMillioneaObjection({ userId: NH, weekId: wo.id, slot: 3, reason: "WRONG_OUTCOME", detail: "I hold no ticket but object anyway", now: inWindow(1) });
+  const twice = await ob.fileMillioneaObjection({ userId: F1, weekId: wo.id, slot: 3, reason: "WRONG_OUTCOME", detail: "The same objection a second time", now: inWindow(1) });
+  await settleAll();
+  const filedRuns1 = runsCount("objectionFiled");
+  await ageNotices(officers.map((o: any) => o.id));
+  const relaunch = await notify.noticeObjectionFiled(id3);
+  await settleAll();
+  const pingedAgain = await Promise.all(officers.map(async (o: any) => (await pingRows(o.id, filedHref(id3))).length));
+  ok("10b.3 · ⭐ a refused filing (no ticket, already objected) pings nobody and launches no run; a second launch for the one filing — outside the duplicate window — pings nobody twice",
+    !noTicket.ok && !twice.ok && filedRuns1 === filedRuns0 && relaunch.sent === 0 && relaunch.alreadySent === officers.length && pingedAgain.every((n) => n === 1),
+    J({ noTicket: (noTicket as any).why, twice: (twice as any).why, filedRuns0, filedRuns1, relaunch: { sent: relaunch.sent, alreadySent: relaunch.alreadySent } }));
+
+  // The ruling: refused rulings tell nobody and launch no run; a launch for an objection still OPEN tells nobody.
+  const serialF1 = f1.data.maswali.tickets[0].serial as string;
+  const decidedHref = (serial: string, slot: number) => href({ notice: "objection", serial, slot });
+  const decidedRuns0 = runsCount("objection");
+  const bySealer = await ruleOn(id3, SEALER, "REJECT", 3, 2);
+  const byModerator = await ruleOn(id3, MOD, "REJECT", 3, 2);
+  await settleAll();
+  const decidedRuns1 = runsCount("objection");
+  const openLaunch = await notify.noticeObjectionDecided(id3);
+  await settleAll();
+  ok("10b.4 · ⭐ a refused ruling (the question's sealer, a moderator) tells the filer nothing and launches no run — and a launch for an objection still OPEN tells nobody",
+    !bySealer.ok && !byModerator.ok && decidedRuns1 === decidedRuns0 && openLaunch.sent === 0 && openLaunch.recipients === 0
+      && (await withHref(F1, decidedHref(serialF1, 3))).length === 0,
+    J({ bySealer: errOf(bySealer), byModerator: errOf(byModerator), decidedRuns0, decidedRuns1, openLaunch: { sent: openLaunch.sent, recipients: openLaunch.recipients } }));
+
+  // REJECT, by an officer who may rule: the filer is told once — the ruling, the officer's note, three languages, no answer.
+  const rejected = await ruleOn(id3, OFF, "REJECT", 3, 3);
+  await settleAll();
+  const told = await withHref(F1, decidedHref(serialF1, 3));
+  const others = (await Promise.all([F2, NH, OFF, ADM, MOD].map(async (u) => (await rowsOf(u)).filter((n) => String(n.href ?? "").includes("#objection-3")).length))).reduce((s, x) => s + x, 0);
+  const t = told[0];
+  ok("10b.5 · ⭐ the ruling commits, and the one holder who filed is told once — opening their own ticket — and nobody else",
+    rejected.ok && told.length === 1 && t?.kind === "OBJECTION" && t?.href === `${millioneaTicketHref(serialF1)}#objection-3` && others === 0,
+    J({ rejected, told: told.map((n) => [n.kind, n.href]), others }));
+  ok("10b.6 · …the platform's own words for a ruling that stands, with the officer's note, in English, Swahili and Chinese — and no answer, no side",
+    t?.titleEn === `Millionea Week ${n3} · Your objection was reviewed` && t?.titleSw === `Millionea Wiki ${n3} · Pingamizi lako limekaguliwa` && t?.titleZh === `Millionea 第${n3}周 · 您的异议已审核`
+      && t?.bodyEn === "Question 3: an officer reviewed your objection and the result stands. The officer's note: Checked against the official source for question 3"
+      && String(t?.bodySw).startsWith("Swali 3: afisa amekagua pingamizi lako na matokeo yamebaki vilevile.") && String(t?.bodySw).includes("Maelezo ya afisa: Checked against")
+      && String(t?.bodyZh).startsWith("第3题：审核官已审核您的异议，原结果维持不变。") && String(t?.bodyZh).includes("审核官说明：Checked against")
+      && ![t?.titleEn, t?.bodyEn, t?.titleSw, t?.bodySw, t?.titleZh, t?.bodyZh].some((s) => /\b(YES|NO)\b|NDIYO|HAPANA|是|否/.test(String(s))),
+    J({ titleEn: t?.titleEn, bodyEn: t?.bodyEn, bodySw: t?.bodySw, bodyZh: t?.bodyZh }));
+
+  // A retried ruling is refused and launches nothing; a second launch outside the duplicate window tells nobody twice.
+  const decidedRuns2 = runsCount("objection");
+  const retry = await ruleOn(id3, ADM, "REJECT", 3, 4);
+  await settleAll();
+  const decidedRuns3 = runsCount("objection");
+  await ageNotices([F1]);
+  const again = await notify.noticeObjectionDecided(id3);
+  await settleAll();
+  ok("10b.7 · ⭐ a retried ruling is refused and launches no run; a second launch, outside the duplicate window, tells the filer nothing twice",
+    !retry.ok && decidedRuns3 === decidedRuns2 && again.sent === 0 && again.alreadySent === 1 && (await withHref(F1, decidedHref(serialF1, 3))).length === 1,
+    J({ retry: errOf(retry), decidedRuns2, decidedRuns3, again: { sent: again.sent, alreadySent: again.alreadySent } }));
+
+  // Two objections of one filer are two decisions, each told on its own key; an upheld one says so.
+  const filed5 = await ob.fileMillioneaObjection({ userId: F1, weekId: wo.id, slot: 5, reason: "WRONG_OUTCOME", detail: "The source published another result for question 5", now: inWindow(5) });
+  const filed4 = await ob.fileMillioneaObjection({ userId: F2, weekId: wo.id, slot: 4, reason: "WRONG_OUTCOME", detail: "The official source published another result for event 4", now: inWindow(5) });
+  await settleAll();
+  const r5 = filed5.ok ? await ruleOn((filed5 as any).objectionId, OFF, "REJECT", 5, 6) : filed5;
+  const r4 = filed4.ok ? await ruleOn((filed4 as any).objectionId, OFF, "REVERSE", 4, 6) : filed4;
+  await settleAll();
+  const serialF2 = f2.data.maswali.tickets[0].serial as string;
+  const told5 = await withHref(F1, decidedHref(serialF1, 5));
+  const told4 = await withHref(F2, decidedHref(serialF2, 4));
+  ok("10b.8 · ⭐ a filer's second objection is its own decision, told on its own key — and an upheld REVERSE says the officer agreed and corrected the result, never the answer",
+    filed5.ok && filed4.ok && (r5 as any).ok && (r4 as any).ok && told5.length === 1 && (await withHref(F1, decidedHref(serialF1, 3))).length === 1 && told4.length === 1
+      && told4[0].titleEn === `Millionea Week ${n3} · Your objection was upheld` && told4[0].titleSw === `Millionea Wiki ${n3} · Pingamizi lako limekubaliwa` && told4[0].titleZh === `Millionea 第${n3}周 · 您的异议已获支持`
+      && String(told4[0].bodyEn).startsWith("Question 4: an officer agreed with you and corrected the result before any payout. Your ticket shows the new result.")
+      && !/\b(YES|NO)\b/.test(String(told4[0].bodyEn)) && (await withHref(F1, decidedHref(serialF1, 4))).length === 0,
+    J({ filed5: filed5.ok, filed4: filed4.ok, r5: errOf(r5), r4: errOf(r4), told5: told5.length, told4: told4.map((n) => [n.titleEn, n.bodyEn]) }));
+  const objectionRuns = notify.millioneaNoticeRuns().filter((x: any) => x.notice === "objection" || x.notice === "objectionFiled");
+  ok("10b.9 · every objection notice ran outside every lock and transaction — the witness read at its launch",
+    objectionRuns.length >= 6 && objectionRuns.every((x: any) => !x.calledInLock && !x.calledInTx), J(objectionRuns.filter((x: any) => x.calledInLock || x.calledInTx).length));
+
+  // The receipt's title is the slip's own result (Ali's ruling 7, 2026-10-21): "Ticket bought" — its Swahili and Chinese as ruled.
+  const receiptOf = async (u: string, ticket: any) => (await withHref(u, href({ notice: "receipt", serial: ticket.serial, positionId: ticket.positionId })))[0];
+  const one = await receiptOf(F2, f2.data.maswali.tickets[0]);
+  const two = await receiptOf(A, a1.data.maswali.tickets[0]);
+  const n1 = Number(/-W([0-9]{1,2})$/.exec(code1)?.[1] ?? "0");
+  ok("10b.10 · ⭐ the receipt's title is the slip's own result in all three languages: \"Ticket bought\" / \"2 tickets bought\", \"Tiketi imekatwa\" / \"Tiketi 2 zimekatwa\", \"已出票\" / \"已出票 2 张\" — never \"cut\" in English",
+    one?.titleEn === `Millionea Week ${n3} · Ticket bought` && one?.titleSw === `Millionea Wiki ${n3} · Tiketi imekatwa` && one?.titleZh === `Millionea 第${n3}周 · 已出票`
+      && two?.titleEn === `Millionea Week ${n1} · 2 tickets bought` && two?.titleSw === `Millionea Wiki ${n1} · Tiketi 2 zimekatwa` && two?.titleZh === `Millionea 第${n1}周 · 已出票 2 张`,
+    J({ one: [one?.titleEn, one?.titleSw, one?.titleZh], two: [two?.titleEn, two?.titleSw, two?.titleZh] }));
+  // The week settles once its objections are decided and its (restarted) window has closed, so every later week of the line
+  // can claim its carry in order (MR-3) — the release's own notices go as they always do.
+  const woEnd = await dal.weekStore.get(wo.id);
+  credit(100_000_000);
+  const settledO = woEnd?.objectionsCloseAt ? await W.release(wo.id, new Date(Date.parse(woEnd.objectionsCloseAt) + 60_000)) : { ok: false, error: "no window end" };
+  await settleAll();
+  ok("10b.11 · control · every objection decided and the window closed, the week settles, so the line goes on (MR-3)",
+    settledO.ok && (await dal.weekStore.get(wo.id)).state === "SETTLED", J(settledO.ok ? "ok" : settledO));
+}
+
 // ── §11 · never inside a money transaction ────────────────────────────────────────────────────────────
 console.log(`${LF}§11 · never inside a money transaction — the witness is taken at each run's launch`);
 {
@@ -1478,8 +1637,9 @@ console.log(`${LF}§13 · exactly once across the run, in three languages; the p
     if (typeof (notify as any)[spec.sender] !== "function") problems.push(`${spec.notice}: no sender ${spec.sender}`);
     if (!readFileSync(join(ROOT, spec.trigger), "utf8").includes(`m.${spec.sender}(`)) problems.push(`${spec.notice}: ${spec.trigger} never calls ${spec.sender}`);
   }
+  // S6-NOTICES (2026-10-23) · twelve: an objection's ruling (to its filer) and its filing (to the console's officers) joined.
   ok("13.5 · the registered set is the code's: every notice's emitter exists and is registered, its sender exists, and its trigger file calls it",
-    (registry.MILLIONEA_NOTICES as any[]).length === 10 && problems.length === 0, J(problems));
+    (registry.MILLIONEA_NOTICES as any[]).length === 12 && problems.length === 0, J(problems));
   const inv = await checkMaswaliInvariants();
   ok("13.6 · the nightly invariants hold over every week of the run: no notice moved money", inv.ok, J(inv));
   // Round 4 (L3) · the week's lease is taken only on a lease READ that happened: a read that fails throws inside the lease,
