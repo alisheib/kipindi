@@ -29,7 +29,11 @@
  *      a cause, and lists the holders whose records could not be read (S6-NOTICES L-2, L-3; `millioneaOpenLetters` hands
  *      it each open letter with its holder, provider tag and attempts). One that can never go (no address, a hard bounce)
  *      completes with its reason (round 4, M6); its attempt is recorded BEFORE it is sent, so a run that dies mid-send never
- *      sends it twice (round 5, LOW 12);
+ *      sends it twice (round 5, LOW 12). ⭐ M-2 (the lead's ruling 2): a letter the provider definitely refused
+ *      `LETTER_REFUSALS_CAP` times is sent by no run again — the run counts it `capped` and is complete, the integrity card
+ *      lists it, and the officer's check closes it; and while the email provider is DOWN (`emailHealth()`) a run sends one
+ *      letter that would reach it (its probe) and holds every other back — no attempt written, none of its refusals used,
+ *      the run owed — so the reconcile sends each once the provider answers;
  *    · ⛔ RUNBOOK · ROTATING `OTP_PEPPER` NEVER RESENDS A MONEY LETTER (round 13, the lead's ruling): the letters' records
  *      stay readable, a confirmed letter and a completed run stay done, and a letter the provider may have taken whose
  *      attempt was made under the old pepper is listed on the integrity card ("Letters not known to have gone") for an
@@ -557,7 +561,9 @@ async function letterStep(r: NoticeRun, bell: "wrote" | "seen" | "failed", read:
     if (refusalsIn(records, notice) >= LETTER_REFUSALS_CAP) { r.letters.capped = (r.letters.capped ?? 0) + 1; return; }
     // ⭐ S6-NOTICES (L-3) · a resend still owed after an "absent" that does not go now is counted: the card says so.
     const resend = openKindOf(records, notice) === "resendOwed";
-    if ((await sendLetter(r, userId, job)) !== "attempted" && resend) r.letters.resendOwed = (r.letters.resendOwed ?? 0) + 1;
+    // ⭐ M-2 · a letter held back while the email provider is down is counted `deferred` alone, never also a resend owed.
+    const went = await sendLetter(r, userId, job);
+    if (went === "unrecorded" && resend) r.letters.resendOwed = (r.letters.resendOwed ?? 0) + 1;
     return;
   }
   if (job.money) await resolveLetter(r, userId, records, job);

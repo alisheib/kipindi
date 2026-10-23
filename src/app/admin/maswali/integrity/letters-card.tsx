@@ -4,8 +4,9 @@
  * its money notice (`unresolvedLetters`, maswali-console.ts):
  *   · ONE SENTENCE A CAUSE, each true of the letters it counts (L-3): a letter the provider may have taken, whose search
  *     has not said so; one whose search can never be asked, because the account's address or the pepper changed since its
- *     attempt; one whose search found no such message and whose one resend is owed; and (L-2) holders whose letter records
- *     could not be read, so nothing was sent to them;
+ *     attempt; one whose search found no such message and whose one resend is owed; (M-2) one the provider refused as often
+ *     as the cap allows, which no run sends again; (L-2) holders whose letter records could not be read, so nothing was
+ *     sent to them; and (M-2) letters a run held back while the email provider was not answering;
  *   · FOR COMPLIANCE, each letter with its holder, its provider tag and its attempts' times — read only when the officer opens
  *     a week's row (`unresolvedLetterList`), a page at a time (`test:grid-paging`'s rule: no list cut at N);
  *   · the check (its control is the page's, `control`), which closes every open letter of the week for good.
@@ -16,6 +17,7 @@ import type { ReactNode } from "react";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { AdminPagination, buildBaseHref } from "@/components/admin/admin-pagination";
 import { CONSOLE_PER_PAGE, type UnresolvedLetterRow, type UnresolvedLetters, type UnresolvedLettersRead } from "@/lib/server/maswali-console";
+import { LETTER_REFUSALS_CAP } from "@/lib/server/maswali-notify";
 import { formatNumber } from "@/lib/utils";
 import { fmtEat } from "@/lib/maswali-admin-format";
 
@@ -31,9 +33,9 @@ export const letterRowKey = (l: Pick<UnresolvedLetters, "weekId" | "notice">): s
  * ⭐ ONE SENTENCE A CAUSE (S6-NOTICES L-3) — each says what is true of the letters it counts, and what becomes of them. Pure,
  * so a suite reads the card's words without a page.
  */
-export function letterCauseSentences(row: Pick<UnresolvedLetters, "causes" | "unread">, reconcileDays: number): string[] {
+export function letterCauseSentences(row: Pick<UnresolvedLetters, "causes" | "unread" | "deferred">, reconcileDays: number): string[] {
   const out: string[] = [];
-  const { uncertain, unmatched, resendOwed } = row.causes;
+  const { uncertain, unmatched, resendOwed, capped } = row.causes;
   if (uncertain > 0) {
     const one = uncertain === 1;
     out.push(`${lettersWord(uncertain)} may have been taken by the email provider, and ${one ? "its" : "their"} search has not said so. Each run asks again: a letter the search finds is done, and one it finds no trace of is sent once more, never a third time.`);
@@ -45,6 +47,14 @@ export function letterCauseSentences(row: Pick<UnresolvedLetters, "causes" | "un
   if (resendOwed > 0) {
     const one = resendOwed === 1;
     out.push(`${lettersWord(resendOwed)} ${one ? "was" : "were"} not found by the provider's search: ${one ? "its" : "each one's"} one resend is owed, and the next run sends it.`);
+  }
+  if (capped > 0) {
+    const one = capped === 1;
+    out.push(`${lettersWord(capped)} ${one ? "was" : "were"} refused by the email provider ${LETTER_REFUSALS_CAP} times: no run sends ${one ? "it" : "them"} again. Check the holder's address and the provider's activity; recording the check closes ${one ? "it" : "them"}.`);
+  }
+  if (row.deferred > 0) {
+    const one = row.deferred === 1;
+    out.push(`${lettersWord(row.deferred)} ${one ? "was" : "were"} held back: the email provider was not answering when the run sent. The next run sends ${one ? "it" : "them"} once the provider answers, and the check does not close ${one ? "it" : "them"}.`);
   }
   if (row.unread > 0) {
     const one = row.unread === 1;
@@ -61,7 +71,7 @@ const CAUSE_WORD: Record<UnresolvedLetterRow["cause"], string> = {
   uncertain: "Search has not said",
   unmatched: "Search cannot be asked",
   resendOwed: "Resend owed",
-  capped: "Refused three times",
+  capped: `Refused ${LETTER_REFUSALS_CAP} times`,
 };
 
 export type OpenedLetters = { key: string; list: { rows: UnresolvedLetterRow[]; total: number; page: number } | null };
@@ -91,6 +101,7 @@ export function LettersCardBody({ read, reconcileDays, opened, query, control }:
             const head = [
               ...(l.letters > 0 ? [`${lettersWord(l.letters, l.notice === "refund" ? "refund" : "win")} open`] : []),
               ...(l.unread > 0 ? [`${l.unread === 1 ? "1 holder's" : `${formatNumber(l.unread)} holders'`} records not read`] : []),
+              ...(l.deferred > 0 ? [`${lettersWord(l.deferred)} held back`] : []),
             ];
             return (
               <li key={key} className="text-body-sm">

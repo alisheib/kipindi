@@ -485,8 +485,11 @@ export async function owedRefunds(): Promise<OwedRefund[]> {
 export type UnresolvedLetters = {
   weekId: string; code: string; notice: "result" | "refund";
   letters: number;
-  causes: { uncertain: number; unmatched: number; resendOwed: number };
+  causes: { uncertain: number; unmatched: number; resendOwed: number; capped: number };
   unread: number;
+  /** ⭐ M-2 · letters the run did not send because the email provider was not answering: no attempt, none of their refusals
+   *  used, the run owed — the next run sends them once it answers. Never open: the officer's check does not close them. */
+  deferred: number;
 };
 
 /** A run record's count of one kind of letter: a whole number, else 0 (a record written before the kind existed). */
@@ -600,11 +603,15 @@ export async function unresolvedLetters(): Promise<UnresolvedLettersRead> {
       // ⭐ S6-NOTICES (L-3) · by cause: of the unresolved, those whose search cannot be asked (`unmatched`); a resend owed.
       const unresolved = countIn(letters, "unresolved");
       const unmatched = Math.min(countIn(letters, "unmatched"), unresolved);
-      const causes = { uncertain: unresolved - unmatched, unmatched, resendOwed: countIn(letters, "resendOwed") };
-      const open = causes.uncertain + causes.unmatched + causes.resendOwed;
-      // ⭐ S6-NOTICES (L-2) · a run that could not read some holders' letter records is listed too.
+      // ⭐ M-2 (the lead's ruling 2) · the letters refused as often as the cap allows are open too: no run sends them again,
+      //    and the officer's check closes them.
+      const causes = { uncertain: unresolved - unmatched, unmatched, resendOwed: countIn(letters, "resendOwed"), capped: countIn(letters, "capped") };
+      const open = causes.uncertain + causes.unmatched + causes.resendOwed + causes.capped;
+      // ⭐ S6-NOTICES (L-2) · a run that could not read some holders' letter records is listed too — ⭐ M-2 · and one that
+      //    deferred letters while the email provider was not answering.
       const unread = countIn(letters, "unread");
-      if (open > 0 || unread > 0) rows.push({ weekId: w.id, code: w.code, notice, letters: open, causes, unread });
+      const deferred = countIn(letters, "deferred");
+      if (open > 0 || unread > 0 || deferred > 0) rows.push({ weekId: w.id, code: w.code, notice, letters: open, causes, unread, deferred });
     }
   }
   return { rows, truncated: weeks.length > UNRESOLVED_LETTER_WEEKS, partial };

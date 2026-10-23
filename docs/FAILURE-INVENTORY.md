@@ -1382,6 +1382,18 @@ searched for or sent again."; none open: "Recorded. No letter of this week was o
 dialog says before it is recorded that it closes the week's open letters for good. Held by `test:maswali-notify` 8.11g3,
 11d.5b and 11e.6, and the plants (N19), (N20).
 
+#### ✅ M-2 · a letter the provider refused was sent again every hour for fourteen days (the lead's ruling 2; S6-NOTICES 6)
+
+A money letter the email provider definitely refused (a wrong or rotated provider key, say) was owed again by every run:
+the reconcile sent it each hour for `NOTICE_RECONCILE_DAYS`, with two audit rows a holder each time, into a chain that is
+never pruned. THE RULE (`maswali-notify.ts`): a letter the provider definitely refused `LETTER_REFUSALS_CAP` times is sent
+by no run again — counted `capped`, the run complete, listed on the integrity card with its own sentence, and closed by
+the officer's recorded check; and while the provider is DOWN (`emailHealth()`) a run sends ONE letter that would reach it
+— its probe, never a holder with no address on file — and holds every other back before its attempt is written: no
+attempt, none of its refusals used, the run owed, and the reconcile sends each once the provider answers (the card says
+so, and the check does not close a letter held back). Held by `test:maswali-notify` §11f (11f.1–11f.9, both stores) and
+the plants (N23)–(N30).
+
 #### ✅ The register's forgetting after a correction — its guard red since S6-INT 14, re-pinned (S6-INT 22)
 
 `test:maswali-register-cache` holds that a seal's correction makes the public register forget its week only once the

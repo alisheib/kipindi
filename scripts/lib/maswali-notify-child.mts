@@ -66,6 +66,10 @@
  * holders' letter records could not be read, until they read (L-2) · 11d.5b a resend still owed is listed by its cause (L-3)
  * · §11e the card's words rendered — one sentence a cause, each letter with its holder, tag and attempts, a page at a time;
  * the officer's action answers with the check's own note (L-2, L-3, L-4) · 13.9 re-pinned to the card's own words.
+ * S6-NOTICES 6 (M-2, the lead's ruling 2): §11f a letter the provider refused as often as the cap allows is sent by no run
+ * again, counted capped, the run complete, listed on the card and closed by the officer's check (11f.0–11f.3); the provider
+ * down, a run sends one probe — never to a holder with no address — and holds the rest back with no attempt and none of
+ * their refusals used, the run owed, until the reconcile sends each once (11f.4–11f.8); the card's two sentences (11f.9).
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const STORE = process.env.HB_MONEY_STORE ?? "unknown";
@@ -1521,6 +1525,124 @@ console.log(`${LF}§11e · ⭐ S6-NOTICES (L-2, L-3) · the integrity card says 
   const clearAct = actionsSrc.slice(actionsSrc.indexOf("export async function clearUnresolvedLetterAction("), actionsSrc.indexOf("export async function holdMaswaliShareAction("));
   ok("11e.6 · ⭐ S6-NOTICES (L-4) · the officer's action answers with the check's own note — how many it closed — and with no sentence of its own",
     clearAct.length > 200 && clearAct.includes("return { ok: true, note: r.note };") && !clearAct.includes("the letters were checked"), clearAct.slice(0, 160));
+}
+
+// ── §11f · ⭐ M-2 (the lead's ruling 2) · a letter refused as often as the cap allows; the email provider down ─────────
+console.log(`${LF}§11f · ⭐ M-2 · a letter the provider refused ${notify.LETTER_REFUSALS_CAP} times is sent by no run again; while the provider is down a run sends one letter and holds the rest back`);
+{
+  /** One holder's letter records on a week, newest first — the attempts and outcomes a run writes. */
+  const lettersOf = async (weekId: string, userId: string) => (await getAuditForTargetsDurable({
+    targetType: "MaswaliLetter", targetIds: [notify.millioneaLetterTarget(weekId, userId)], actions: ["maswali.notice.letter"],
+    sinceIso: "1970-01-01T00:00:00.000Z", limit: 200,
+  })).entries as any[];
+  const outcomes = (rows: any[], outcome: string) => rows.filter((e) => e.payload?.outcome === outcome).length;
+  const OFFICER = "usr_mln_notify_officer";
+
+  // (a) and (b) · a winner whose letter the provider definitely refuses, every time it is sent.
+  const R5 = await W.user({ balance: 500_000 });
+  await W.setUserFields(R5, { email: mailOf(R5), emailVerifiedAt: iso() });
+  let sendsR5 = 0;
+  const putRefuse = notify.withMillioneaLetterSender(async (userId: string) => {
+    if (userId === R5) { sendsR5++; return { ok: false, reason: "failed", failure: "refused" } as any; }
+    return { ok: true, reason: "sent" } as any;
+  });
+  try {
+    const { week: wr, start: sr } = await W.openWeek({ weeksAhead: ahead++ });
+    const bought = await W.buy(R5, wr.id, [W.WIN]);
+    const atR = await W.closeAndSeal(wr, sr);
+    credit(100_000_000);
+    const rel = await W.release(wr.id, atR);
+    await settleAll();
+    // The first run and its reconciles: each definite refusal is sent again, until the cap.
+    for (let i = 1; i < notify.LETTER_REFUSALS_CAP; i++) { await notify.reconcileMillioneaNotices(new Date(), { force: true }); await settleAll(); }
+    const atCap = await lettersOf(wr.id, R5);
+    ok(`11f.0 · premise · the provider refused the winner's letter ${notify.LETTER_REFUSALS_CAP} times: ${notify.LETTER_REFUSALS_CAP} attempts, ${notify.LETTER_REFUSALS_CAP} refusals, each recorded`,
+      bought.ok && rel?.ok && sendsR5 === notify.LETTER_REFUSALS_CAP && outcomes(atCap, "attempt") === notify.LETTER_REFUSALS_CAP && outcomes(atCap, "failed") === notify.LETTER_REFUSALS_CAP,
+      J({ rel: rel?.ok ? "ok" : rel, sendsR5, attempts: outcomes(atCap, "attempt"), failed: outcomes(atCap, "failed") }));
+    await notify.reconcileMillioneaNotices(new Date(), { force: true });
+    await settleAll();
+    const capRun = (await resultRuns(wr.id))[0] ?? null;
+    const afterCap = await lettersOf(wr.id, R5);
+    ok(`11f.1 · ⭐ M-2 (a) · refused ${notify.LETTER_REFUSALS_CAP} times, the letter is not attempted again: no fourth attempt record, no send, counted capped — and the run is complete`,
+      sendsR5 === notify.LETTER_REFUSALS_CAP && outcomes(afterCap, "attempt") === notify.LETTER_REFUSALS_CAP && capRun?.letters?.capped === 1 && capRun?.complete === true,
+      J({ sendsR5, attempts: outcomes(afterCap, "attempt"), run: capRun }));
+    const row = (await consoleRead.unresolvedLetters()).rows.find((l: any) => l.weekId === wr.id && l.notice === "result");
+    const open = await notify.millioneaOpenLetters(wr.id, "result");
+    ok("11f.2 · ⭐ M-2 (a) · …and the integrity card lists it: one letter open, its cause capped — on the row and in its opened list",
+      row?.letters === 1 && row?.causes?.capped === 1 && J(open?.map((x: any) => x.cause)) === J(["capped"]), J({ row, open }));
+    const cleared = await consoleRead.clearUnresolvedLetter({ weekId: wr.id, notice: "result", officerId: OFFICER, typed: "CHECKED", note: "the holder's address and the provider's activity were checked" });
+    await settleAll();
+    await notify.reconcileMillioneaNotices(new Date(), { force: true });
+    await settleAll();
+    ok("11f.3 · ⭐ M-2 (b) · the officer's recorded check closes the capped letter: one closed, the week off the card, and no run sends it again",
+      cleared.ok && (cleared as any).closed === 1 && !(await consoleRead.unresolvedLetters()).rows.some((l: any) => l.weekId === wr.id)
+        && sendsR5 === notify.LETTER_REFUSALS_CAP && outcomes(await lettersOf(wr.id, R5), "attempt") === notify.LETTER_REFUSALS_CAP,
+      J({ cleared, sendsR5 }));
+  } finally {
+    putRefuse();
+  }
+
+  // (c) and (d) · the email provider DOWN: one probe a run, every other letter held back with no attempt; the provider back,
+  //    the reconcile sends each held letter once. A holder with no address on file is never the probe.
+  const [D1, D2, DN] = [await W.user({ balance: 500_000 }), await W.user({ balance: 500_000 }), await W.user({ balance: 500_000 })];
+  await W.setUserFields(D1, { email: mailOf(D1), emailVerifiedAt: iso() });
+  await W.setUserFields(D2, { email: mailOf(D2), emailVerifiedAt: iso() });
+  await W.setUserFields(DN, { email: null, emailVerifiedAt: null });
+  const sent: string[] = [];
+  const putSent = notify.withMillioneaLetterSender(async (userId: string) => {
+    if (userId === DN) return { ok: false, reason: "no-address" } as any;
+    sent.push(userId);
+    return { ok: true, reason: "sent" } as any;
+  });
+  const healthBefore = (globalThis as any).__50PICK_EMAIL_HEALTH;
+  try {
+    const { week: wd, start: sd } = await W.openWeek({ weeksAhead: ahead++ });
+    const b1 = await W.buy(DN, wd.id, [W.WIN]), b2 = await W.buy(D1, wd.id, [W.WIN]), b3 = await W.buy(D2, wd.id, [W.WIN]);
+    const atD = await W.closeAndSeal(wd, sd);
+    credit(100_000_000);
+    // The provider down: this process's last sends all failed (`emailHealth()` reads DOWN).
+    email.resetEmailHealth();
+    (globalThis as any).__50PICK_EMAIL_HEALTH = { consecutiveFailures: email.EMAIL_DOWN_AFTER_FAILURES, totalFailures: email.EMAIL_DOWN_AFTER_FAILURES,
+      totalSent: 0, lastFailureAt: iso(), lastFailureReason: "TEST · the provider is not answering", alertedAt: iso() };
+    const down = email.emailHealth().status;
+    const relD = await W.release(wd.id, atD);
+    await settleAll();
+    const runD = (await resultRuns(wd.id))[0] ?? null;
+    const [l1, l2, ln] = [await lettersOf(wd.id, D1), await lettersOf(wd.id, D2), await lettersOf(wd.id, DN)];
+    const probe = sent.length === 1 ? sent[0] : null;
+    const heldBack = probe === D1 ? l2 : probe === D2 ? l1 : null;
+    ok("11f.4 · ⭐ M-2 (c) · while the provider is down a run sends ONE letter that would reach it — its probe — and holds the other back: no attempt record for it, counted deferred, the run owed",
+      down === "DOWN" && b1.ok && b2.ok && b3.ok && relD?.ok && !!probe && heldBack !== null && heldBack.length === 0
+        && runD?.letters?.deferred === 1 && runD?.complete === false,
+      J({ down, sent, run: runD, probeRecords: (probe === D1 ? l1 : l2).map((e: any) => e.payload?.outcome) }));
+    ok("11f.5 · ⭐ M-2 (c) · a holder with no address on file is never the probe: that letter is not held back, and the probe went to an address",
+      !!probe && probe !== DN && ln.every((e: any) => e.payload?.outcome !== "deferred") && runD?.letters?.["no-address"] === 1, J({ probe, ln: ln.map((e: any) => e.payload?.outcome), run: runD }));
+    ok("11f.6 · ⭐ M-2 (d) · the held-back letter used none of its refusals: its records hold no attempt and no refusal",
+      heldBack !== null && outcomes(heldBack, "failed") === 0 && outcomes(heldBack, "attempt") === 0);
+    const rowD = (await consoleRead.unresolvedLetters()).rows.find((l: any) => l.weekId === wd.id && l.notice === "result");
+    ok("11f.7 · M-2 · the integrity card says one letter was held back for the provider — not open, so the check does not close it",
+      rowD?.deferred === 1 && rowD?.letters === 0, J(rowD));
+    // The provider answers again.
+    email.resetEmailHealth();
+    await notify.reconcileMillioneaNotices(new Date(), { force: true });
+    await settleAll();
+    const runBack = (await resultRuns(wd.id))[0] ?? null;
+    const [m1, m2] = [await lettersOf(wd.id, D1), await lettersOf(wd.id, D2)];
+    ok("11f.8 · ⭐ M-2 (c) · the provider back, the reconcile sends the held-back letter once and the probe's never again: each winner one attempt, one send — the run complete",
+      J([...sent].sort()) === J([D1, D2].sort()) && outcomes(m1, "attempt") === 1 && outcomes(m2, "attempt") === 1 && runBack?.complete === true && !runBack?.letters?.deferred,
+      J({ sent, run: runBack }));
+  } finally {
+    putSent();
+    (globalThis as any).__50PICK_EMAIL_HEALTH = healthBefore;
+  }
+}
+// The card's words for the two, as values (one true sentence a cause).
+{
+  const card = await import("../../src/app/admin/maswali/integrity/letters-card.tsx");
+  const words = card.letterCauseSentences({ causes: { uncertain: 0, unmatched: 0, resendOwed: 0, capped: 1 }, unread: 0, deferred: 2 }, notify.NOTICE_RECONCILE_DAYS);
+  ok("11f.9 · ⭐ M-2 · the card says one true sentence for each: a letter refused as often as the cap allows is sent by no run again and the check closes it; letters held back go once the provider answers, and the check does not close them",
+    words.length === 2 && words[0].includes(`refused by the email provider ${notify.LETTER_REFUSALS_CAP} times: no run sends it again`) && words[0].includes("recording the check closes it")
+      && words[1].startsWith("2 letters were held back") && words[1].includes("the check does not close them"), J(words));
 }
 
 // ── §12 · the final sunset week ───────────────────────────────────────────────────────────────────────
