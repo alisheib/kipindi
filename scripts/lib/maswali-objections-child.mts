@@ -176,8 +176,11 @@ console.log(`${LF}§2 · the ruling (MR-16, MR-14)`);
 const o3 = (f1 as any).objectionId as string, o4 = (f2 as any).objectionId as string, o7 = (lastMs as any).objectionId as string;
 const byMod = await rule(o4, MOD, "REJECT", A.wk.id, 4, afterA);
 const byPlayer = await rule(o4, N, "REJECT", A.wk.id, 4, afterA);
-ok("2.1 · the platform's ruling gate: a MODERATOR and a player are refused (ADMIN or COMPLIANCE rules)",
-  !byMod.ok && /ADMIN or COMPLIANCE/.test(errOf(byMod)) && !byPlayer.ok && /ADMIN or COMPLIANCE/.test(errOf(byPlayer)), J({ byMod, byPlayer }));
+// S6-INT (ADMIN's red, 2026-10-23): since G8 (S6-ADMIN 6) the refusal names the roles in their own words — the Owner, a
+// Compliance officer — never the enums "ADMIN or COMPLIANCE".
+ok("2.1 · the platform's ruling gate: a MODERATOR and a player are refused — only the Owner or a Compliance officer rules",
+  !byMod.ok && /Only the Owner or a Compliance officer rules on an objection\./.test(errOf(byMod))
+    && !byPlayer.ok && /Only the Owner or a Compliance officer rules on an objection\./.test(errOf(byPlayer)), J({ byMod, byPlayer }));
 const bySealer = await rule(o3, SEALER, "REVERSE", A.wk.id, 3, afterA);
 ok("2.2 · ⭐ the officer who sealed the question never rules on it — another officer does, the Owner the fallback (MR-16)",
   !bySealer.ok && /another officer rules/.test(errOf(bySealer)) && (await objectionRow(o3)).status === "OPEN" && (await question(A.wk.id, 3)).outcome === "YES", errOf(bySealer));
