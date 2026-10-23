@@ -15,6 +15,9 @@
  *   §4  C4 · R3-D1 / R6-D1  the journey rail stacks from the top only where a label wraps: each language's width, derived
  *       §4b · MASWALI-BUILD S5-TAB (2026-10-19): the same widths derived for the FIVE-tab rail while Millionea shows (the
  *               tickets tab's short rail label), held to the five-tab nav's own rules
+ *       ⭐ S5-R3-FIX F2 (2026-10-23): every width in the phones' two engines (DESIGN_AUTHORITY §M4a rule 5 — Chromium 7px a
+ *               letter, WebKit 6.6), and the whole rail swept at every width 320–1023 in both: no label cut, no two
+ *               labels closer than their pips, the slots centred exactly where no label wraps; each rule's plant
  *   §5  C5 · R7-F2 / R8-F3  the stacked INAKUJA flag lands on a whole pixel, so its caps sit as the beside-its-label flag's
  *   §6  C6 · R4-F2  the guest Tiketi sheet's Ingia is the ghost secondary, `btn-outline` retired
  *   §7  C7 · R4-D8  the wallet's Bonus lens offered only to an account that has a bonus row (or while it is on)
@@ -806,212 +809,302 @@ function wrapperCensus(over: Record<string, string> = {}): { wrappers: Wrapper[]
 }
 
 /* ══ §4 · C4 · THE JOURNEY RAIL ════════════════════════════════════════════════════════════════════════════════════════ */
-section("4 · C4 the journey rail stacks from the top only where a label wraps — each language's width, derived from its words");
+section("4 · C4 the journey rail stacks from the top only where a label wraps — each language's widths, derived from its words in the phones' two engines");
 {
+  type Tab = { key: string; href: string; label: string; railLabel?: string };
   const TAB = req("../src/lib/nav/active-tab.ts") as {
-    JOURNEY_TABS: ReadonlyArray<{ key: string; label: string }>; tabLabel: (t: unknown, k: string) => string;
-    journeyTabsFor: (millionea: boolean) => ReadonlyArray<{ key: string; label: string; railLabel?: string }>;
+    JOURNEY_TABS: ReadonlyArray<Tab>; tabLabel: (t: unknown, k: string) => string;
+    journeyTabsFor: (millionea: boolean) => ReadonlyArray<Tab>;
   };
-  const micro = token("--type-micro");
-  const labelPad = 2 * Number(/\.kp-rail__label \{[^}]*padding-inline: ([0-9.]+)px/.exec(CSS)?.[1] ?? NaN);
-  // `test:journey-shell` §8's measure: the rail's 11px mono at 0.6em a letter, a Chinese character 1em, plus the label's padding.
-  const mono = (s: string) => [...s].reduce((w, ch) => w + ((ch.codePointAt(0) ?? 0) >= 0x2e80 ? 1 : 0.6) * micro, 0);
-  const fitsFrom = (l: Loc, labels = TAB.JOURNEY_TABS.map((d) => TAB.tabLabel(dict[l], d.label))) => Number((4 * Math.max(...labels.map((s) => mono(s) + labelPad))).toFixed(1));
-  const W = Object.fromEntries(LOCALES.map((l) => [l, fitsFrom(l)])) as Record<Loc, number>;
-  ok(`4.1 · each language's longest label fits its quarter of the phone from: sw ${W.sw}px ("${TAB.tabLabel(dict.sw, "journey.tabTickets")}"), en ${W.en}px, zh ${W.zh}px — so only Swahili wraps at 320`,
-    micro === 11 && labelPad === 4 && W.sw === 332.8 && W.en === 280 && W.zh === 192, j({ micro, labelPad, W }));
-  /** The rail's rules as one predicate over a stylesheet, so a plant is judged by the very check. */
-  const railRules = (css: string, widths: Record<Loc, number> = W) => {
-    const rule = (px: number, sel: string) => { const head = `@media (min-width: ${px}px) { ${sel} {`; const at = css.indexOf(head); return at < 0 ? "" : css.slice(at + head.length, css.indexOf("}", at + head.length)); };
-    const base = /\n\.kp-rail--journey \.kp-rail__item \{([^}]*)\}/.exec(css)?.[1] ?? "";
-    const per = Object.fromEntries(LOCALES.map((l) => [l, rule(widths[l], `.kp-rail--journey:lang(${l}) .kp-rail__item`)]));
-    const capped = [...css.matchAll(/@media[^{]*(?:max-width|width\s*<)[^{]*\{[^@]*?kp-rail--journey/g)].map((m) => m[0].slice(0, 60));
-    const holds = /justify-content: flex-start/.test(base) && LOCALES.every((l) => /justify-content: center/.test(per[l])) && /justify-content: center/.test(rule(360, ".kp-rail--journey .kp-rail__item")) && capped.length === 0;
-    return { holds, base, per, capped };
-  };
-  const RR = railRules(CSS);
-  ok("4.2 · the stylesheet holds exactly those widths: the slots stack from the top (the base rule), each language centres them from its width (`:lang()`), and from 360 every slot centres; mobile-first — no width-capping query reaches the rail",
-    RR.holds, j(RR));
-  // THE NUMBERS. A slot is 64px with 6px of padding; below 360 a label's line is 1.15 × 11, from 360 it is 1 × 11.
-  // ⭐ RE-PINNED OPENLY, PHOSPHOR-MIGRATION W3 (2026-10-18): the pip was the literal 26 here, so these numbers went on
-  // describing the 44×26 pip after W3 grew it to 56×32 around a 24px glyph (R-RAIL 4B) — and stayed green. Its height is
-  // now READ from `.kp-rail__pip`, and the numbers are re-derived from it: 7.675 | 7.675 at 320 in English and Chinese,
-  // 8.5 at 390, and Swahili's Tiketi slot 32 + 4 + 2 × 12.65 = 61.3px, which below 332.8px sets the rail's height (61.3 +
-  // the 12px of padding, + its 1px border: 74.3px, under --rail-h's 88).
-  const pipRule = /\n\.kp-rail__pip \{([^}]*)\}/.exec(CSS)?.[1] ?? "";
-  const slot = 64, pad = 6, pip = Number(/(?:^|[\s;])height: (\d+)px/.exec(pipRule)?.[1] ?? NaN), gap = token("--sp-1");
-  const oneLine = (lh: number) => pip + gap + lh;
-  const centred = (lh: number) => (slot - 2 * pad - oneLine(lh)) / 2 + pad;
-  const en320 = centred(1.15 * micro), at390 = centred(micro);
-  ok(`4.3 · English and Chinese at 320: the items centred ${en320.toFixed(3)} | ${en320.toFixed(3)} under the rail's edge and over its foot; at 390 ${at390.toFixed(1)} | ${at390.toFixed(1)}; Swahili at 320 still stacks (its Tiketi slot is ${pip} + ${gap} + 2 × 12.65 = ${(pip + gap + 2 * 1.15 * micro).toFixed(1)}px) and centres from 332.8 — the ${pip}px pip read from .kp-rail__pip — CONFIRM IN BROWSER (any journey page, 320 × 780, en and zh: the pip ${en320.toFixed(1)}px under the rail's top border)`,
-    pip === 32 && near(en320, 7.675, 1e-9) && near(at390, 8.5) && near(pip + gap + 2 * 1.15 * micro, 61.3, 1e-9));
-  // PLANTS: a longer label moves its language's width, so the stylesheet no longer matches it; the old one-language rule.
-  const longer = fitsFrom("en", TAB.JOURNEY_TABS.map((d) => TAB.tabLabel(dict.en, d.label)).map((s) => (s === "My tickets" ? "My open tickets" : s)));
-  ok(`4.1′ PLANT · English's Tiketi label grown to "My open tickets" moves its width to ${longer}px: the very check fails on today's stylesheet`, longer > W.en && !railRules(CSS, { ...W, en: longer }).holds);
-  const stale = CSS.replace("@media (min-width: 332.8px) { .kp-rail--journey:lang(sw)", "@media (min-width: 360px) { .kp-rail--journey:lang(sw)");
-  ok("4.2′ PLANT · Swahili keyed at 360 is reported", stale !== CSS && !railRules(stale).holds);
-  const allLangs = CSS.replace(/@media \(min-width: (?:192|280|332\.8)px\) \{ \.kp-rail--journey:lang\(\w+\) \.kp-rail__item \{ justify-content: center; \} \}\n/g, "");
-  ok("4.2″ PLANT · the round-8 rule (every language stacked below 360) is reported", allLangs !== CSS && !railRules(allLangs).holds);
-
-  // ⭐ §4b · MASWALI-BUILD S5-TAB: five equal tracks (`journeyTabsFor(true)`). The tickets tab takes its short rail
-  // label; U43 keeps the game's full name in every surface. Thus English and Chinese fit one line from 317px, while
-  // Swahili's "Juu na Chini" needs 416px and wraps at 320/360. The five pips stack from the top until its line fits.
-  // Four-tab rules remain separately guarded above.
+  const FOUR_TABS = TAB.JOURNEY_TABS;
   const FIVE_TABS = TAB.journeyTabsFor(true);
-  const railWord = (l: Loc) => FIVE_TABS.map((d) => TAB.tabLabel(dict[l], d.railLabel ?? d.label));
-  const fitsFrom5 = (l: Loc, labels = railWord(l)) => Number((5 * Math.max(...labels.map((s) => mono(s) + labelPad))).toFixed(1));
-  const W5 = Object.fromEntries(LOCALES.map((l) => [l, fitsFrom5(l)])) as Record<Loc, number>;
-  const from5 = W5.en;
-  const overlong5 = (l: Loc, labels = railWord(l)) => labels.filter((s) => mono(s) + labelPad > 320 / 5).length;
-  ok(`4b.1 · five tracks: en ${W5.en}px and zh ${W5.zh}px fit from 317; sw ${W5.sw}px keeps full "${railWord("sw")[1]}" and wraps exactly that label at 320 (tickets: "${railWord("sw")[3]}")`,
-    FIVE_TABS.length === 5 && FIVE_TABS[2]?.key === "millionea" && W5.sw === 416 && W5.en === 317 && W5.zh === 317
-      && railWord("sw")[1] === dict.sw.nav.updown && overlong5("sw") === 1 && overlong5("en") === 0 && overlong5("zh") === 0, j(W5));
-  const FIVE = `.kp-rail--journey[data-tabs="5"]`;
-  /** The five-tab rail: common centring from the en/zh fit width, and a full-name Swahili exception until its fit width. */
-  const railRules5 = (css: string, widths: Record<Loc, number> = W5) => {
-    const rule = (px: number, sel: string) => { const head = `@media (min-width: ${px}px) { ${sel} {`; const at = css.indexOf(head); return at < 0 ? "" : css.slice(at + head.length, css.indexOf("}", at + head.length)); };
-    const own = (sel: string) => { const at = css.indexOf(`\n${sel} {`); return at < 0 ? "" : css.slice(at + sel.length + 3, css.indexOf("}", at)); };
-    const sw = `${FIVE}:lang(sw)`;
-    const grid = own(`${FIVE} > ul`), base = own(`${FIVE} .kp-rail__item`);
-    const common = rule(widths.en, `${FIVE} .kp-rail__item`);
-    const swStack = rule(widths.en, `${sw} .kp-rail__item`);
-    const swCentre = rule(widths.sw, `${sw} .kp-rail__item`);
-    const swLabel = own(`${sw} .kp-jtab__label`), swLabelOne = rule(widths.sw, `${sw} .kp-jtab__label`);
-    const commonIndex = css.indexOf(`@media (min-width: ${widths.en}px) { ${FIVE} .kp-rail__item {`);
-    const swStackIndex = css.indexOf(`@media (min-width: ${widths.en}px) { ${sw} .kp-rail__item {`);
-    const swCentreIndex = css.indexOf(`@media (min-width: ${widths.sw}px) { ${sw} .kp-rail__item {`);
-    const holds = /grid-template-columns: repeat\(5, minmax\(0, 1fr\)\)/.test(grid) && /justify-content: flex-start/.test(base)
-      && widths.en === widths.zh && /justify-content: center/.test(common)
-      && /justify-content: flex-start/.test(swStack) && /justify-content: center/.test(swCentre)
-      && /white-space: normal/.test(swLabel) && /text-overflow: clip/.test(swLabel)
-      && /white-space: nowrap/.test(swLabelOne) && /line-height: 1/.test(swLabelOne)
-      && commonIndex >= 0 && swStackIndex > commonIndex && swCentreIndex > swStackIndex;
-    return { holds, grid, base, common, swStack, swCentre, swLabel, swLabelOne };
-  };
-  const R5 = railRules5(CSS);
-  ok(`4b.2 · five-tab CSS centres en/zh from ${from5}px; sw wraps its full name and top-aligns through ${W5.sw - 1}px, then centres from ${W5.sw}px`, R5.holds, j(R5));
-  const longer5 = fitsFrom5("en", railWord("en").map((s) => (s === "Tickets" ? "My open tickets" : s)));
-  ok(`4b.1′ PLANT · English's rail word grown to "My open tickets" moves the five-tab width to ${longer5}px: the very check fails on today's stylesheet`,
-    longer5 > from5 && !railRules5(CSS, { ...W5, en: longer5, zh: longer5 }).holds);
-  const fullSw = FIVE_TABS.map((d) => TAB.tabLabel(dict.sw, d.label));
-  const fullEn = FIVE_TABS.map((d) => TAB.tabLabel(dict.en, d.label));
-  ok("4b.1″ PLANT · dropping the short tickets label creates a second wrapping Swahili tab and a wrapping English tab at 320",
-    overlong5("sw", fullSw) === 2 && overlong5("en", fullEn) === 1);
-  const stale5 = CSS.replace(`@media (min-width: 317px) { ${FIVE} .kp-rail__item {`, `@media (min-width: 350px) { ${FIVE} .kp-rail__item {`);
-  ok("4b.2′ PLANT · the five-tab centring keyed at the old English width, 350, is reported", stale5 !== CSS && !railRules5(stale5).holds);
-  const earlySw = CSS.replace(`@media (min-width: 416px) { ${FIVE}:lang(sw) .kp-rail__item {`, `@media (min-width: 360px) { ${FIVE}:lang(sw) .kp-rail__item {`);
-  ok("4b.2″ PLANT · centring Swahili before its full name fits is reported", earlySw !== CSS && !railRules5(earlySw).holds);
-  const clippedSw = CSS.replace(`${FIVE}:lang(sw) .kp-jtab__label { white-space: normal;`, `${FIVE}:lang(sw) .kp-jtab__label { white-space: nowrap;`);
-  ok("4b.2‴ PLANT · making the Swahili name nowrap while its slot is narrow is reported", clippedSw !== CSS && !railRules5(clippedSw).holds);
-
-  // ⭐ §4c · MASWALI-BUILD S5-FIX-PLATFORM D14 (2026-10-21): NO TWO LABELS STAND CLOSER THAN THEIR PIPS. In five equal
-  // tracks English's nine-letter neighbours stood 4.6px apart at 320 (the tile journey-home-en-320 read ~5px). The minimum
-  // is READ: the pips' own gap at the narrowest phone (a fifth of 320, less `.kp-rail__pip`'s width). Every neighbour pair
-  // is measured with §4's model (the rail's 11px mono, 0.6em a letter, 1em a Chinese character), each label as the
-  // stylesheet sets it at that width — its tracking (`letter-spacing`, after every glyph as Chromium draws it) and, where
-  // it may wrap, its lines (greedy, by word, in its track less its padding) — at every width from 320 to 1023 (the rail is
-  // `lg:hidden`), in sw, en and zh.
-  const pipW = Number(/(?:^|[\s;])width: (\d+)px/.exec(pipRule)?.[1] ?? NaN);
+  const NL = String.fromCharCode(10);
+  /** A top-level rule's declarations, by its exact selector. */
+  const block = (css: string, sel: string) => { const at = css.indexOf(`${NL}${sel} {`); return at < 0 ? "" : css.slice(at, css.indexOf("}", at)); };
+  const micro = token("--type-micro");
+  const labelPad = 2 * parseFloat(block(CSS, ".kp-rail__label").split("padding-inline:")[1] ?? "NaN");
+  const pipRule = block(CSS, ".kp-rail__pip");
+  const pipW = parseFloat(pipRule.split("width:")[1] ?? "NaN");
   const MIN_GAP = 320 / 5 - pipW;
-  /** The value a five-tab label's `prop` takes at `w` in `l`: the last rule that reaches it, in source order (mobile-first). */
-  const fiveLabel = (css: string, prop: string, w: number, l: Loc): string | null => {
-    let value: string | null = null;
-    const rx = new RegExp(`(?:@media \\(min-width: ([0-9.]+)px\\) \\{ )?\\.kp-rail--journey\\[data-tabs="5"\\](?::lang\\((\\w+)\\))? \\.kp-jtab__label \\{([^}]*)\\}`, "g");
-    for (const m of css.matchAll(rx)) {
-      const from = m[1] ? Number(m[1]) : 0, lang = m[2];
-      const decl = new RegExp(`(?:^|;)\\s*${prop}: ([^;]+);`).exec(m[3]);
-      if (decl && w >= from && (!lang || lang === l)) value = decl[1].trim();
+  const TRACK = -0.04 * micro;
+  // ⭐ THE PHONES' TWO ENGINES (DESIGN_AUTHORITY §M4a rule 5; MASWALI-BUILD S5-R3-FIX F2, 2026-10-23 — RE-PINNED OPENLY: this
+  // model drew every letter at 0.6em, the Windows machine's reading of Chromium). Measured on the runner (2026-10-22, run
+  // 39830221442): the rail's 11px mono draws a Latin letter 7px in Chromium (0.6em, each advance rounded to the pixel, at
+  // every pixel ratio) and 6.6px in WebKit; a Chinese character is a full em in both; tracking is added to every glyph, the
+  // last one included. A rule holds when it holds in both.
+  type Engine = "chromium" | "webkit";
+  const ENGINES: Engine[] = ["chromium", "webkit"];
+  const letter = (e: Engine) => (e === "chromium" ? Math.round(0.6 * micro) : 0.6 * micro);
+  const lineW = (e: Engine, s: string, ls = 0) => [...s].reduce((w, ch) => w + ((ch.codePointAt(0) ?? 0) >= 0x2e80 ? micro : letter(e)) + ls, 0);
+  const words = (l: Loc, tabs: ReadonlyArray<Tab>) => tabs.map((d) => TAB.tabLabel(dict[l], d.railLabel ?? d.label));
+
+  /** The stylesheet, in source order: each rule at the top level (`min` null) or inside a plain `@media (min-width: Npx)`
+   *  (a rule under any other at-rule is left out). */
+  type Rule = { min: number | null; sel: string; body: string };
+  const parse = (css: string): Rule[] => {
+    const out: Rule[] = [];
+    let i = 0;
+    while (i < css.length) {
+      const open = css.indexOf("{", i);
+      if (open < 0) break;
+      const head = css.slice(i, open).trim();
+      if (head.startsWith("@")) {
+        let depth = 1, k = open + 1;
+        while (k < css.length && depth > 0) { if (css[k] === "{") depth++; else if (css[k] === "}") depth--; k++; }
+        if (head.startsWith("@media (min-width: ") && head.endsWith("px)") && !head.includes(" and ") && !head.includes(",")) {
+          const min = Number(head.slice("@media (min-width: ".length, head.length - "px)".length));
+          const inner = css.slice(open + 1, k - 1);
+          let p = 0;
+          while (p < inner.length) {
+            const o = inner.indexOf("{", p);
+            if (o < 0) break;
+            const c = inner.indexOf("}", o);
+            out.push({ min, sel: inner.slice(p, o).trim(), body: inner.slice(o + 1, c) });
+            p = c + 1;
+          }
+        }
+        i = k;
+      } else {
+        const close = css.indexOf("}", open);
+        out.push({ min: null, sel: head, body: css.slice(open + 1, close) });
+        i = close + 1;
+      }
     }
-    return value;
+    return out;
   };
-  const trackPx = (v: string | null) => (v === null || v === "normal" ? 0 : v.endsWith("em") ? parseFloat(v) * micro : parseFloat(v));
-  // RE-PINNED OPENLY (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22, the lead's round-2 item): the four-tab rail — the one
-  // every reader is served while Millionea does not show, `data-tabs` absent — now has its own tracking rule (Swahili, from
-  // 332.8 to 348.8), so the model reads it too, the same way: the last rule that reaches the label at `w` in `l`.
+  const prop = (body: string, name: string): string | null => {
+    for (const d of body.split(";")) { const c = d.indexOf(":"); if (c > 0 && d.slice(0, c).trim() === name) return d.slice(c + 1).trim(); }
+    return null;
+  };
+  /** The value `name` takes at `w` through `sels`, listed in cascade order (each later selector outranks the ones before it);
+   *  within one selector the last rule that reaches `w` wins (mobile-first). */
+  const value = (rules: Rule[], sels: string[], w: number, name: string): string | null => {
+    let v: string | null = null;
+    for (const sel of sels) for (const r of rules) if (r.sel === sel && (r.min === null || w >= r.min)) { const p = prop(r.body, name); if (p !== null) v = p; }
+    return v;
+  };
+  /** Every rule of the rail that opens a width-capping query (a rail rule is mobile-first, min-width only). */
+  const capped = (css: string) => {
+    const out: string[] = [];
+    let i = css.indexOf("@media");
+    while (i >= 0) {
+      const open = css.indexOf("{", i);
+      const head = css.slice(i, open);
+      let depth = 1, k = open + 1;
+      while (k < css.length && depth > 0) { if (css[k] === "{") depth++; else if (css[k] === "}") depth--; k++; }
+      if ((head.includes("max-width") || head.includes("width <")) && css.slice(open, k).includes("kp-rail--journey")) out.push(head.trim());
+      i = css.indexOf("@media", k);
+    }
+    return out;
+  };
+
   const FOUR = ".kp-rail--journey:not([data-tabs])";
-  const fourLabel = (css: string, prop: string, w: number, l: Loc): string | null => {
-    let value: string | null = null;
-    const rx = /(?:@media \(min-width: ([0-9.]+)px\) \{ )?\.kp-rail--journey:not\(\[data-tabs\]\)(?::lang\((\w+)\))? \.kp-jtab__label \{([^}]*)\}/g;
-    for (const m of css.matchAll(rx)) {
-      const from = m[1] ? Number(m[1]) : 0, lang = m[2];
-      const decl = new RegExp(`(?:^|;)\\s*${prop}: ([^;]+);`).exec(m[3]);
-      if (decl && w >= from && (!lang || lang === l)) value = decl[1].trim();
-    }
-    return value;
-  };
-  type Tabs = ReadonlyArray<{ key: string; label: string; railLabel?: string }>;
-  /** Each label's ink width at `w` in `l` under `css`: tracked, and wrapped where its white-space lets it. */
-  const inks = (css: string, w: number, l: Loc, tabs: Tabs = FIVE_TABS) => {
-    const ls = trackPx(tabs.length === 5 ? fiveLabel(css, "letter-spacing", w, l) : fourLabel(css, "letter-spacing", w, l));
-    const lineW = (s: string) => [...s].reduce((a, ch) => a + ((ch.codePointAt(0) ?? 0) >= 0x2e80 ? 1 : 0.6) * micro + ls, 0);
-    const room = w / tabs.length - labelPad;
-    // The base rule wraps below 360, the five-tab Swahili rule through 415; anything else is one line (and would ellipsise).
-    const own = tabs.length === 5 ? fiveLabel(css, "white-space", w, l) : null;
-    const wraps = (own ?? (w < 360 ? "normal" : "nowrap")) === "normal";
-    return tabs.map((d) => {
-      const s = TAB.tabLabel(dict[l], d.railLabel ?? d.label);
-      if (!wraps || lineW(s) <= room) return Math.min(lineW(s), room);
-      const lines: string[] = [];
+  const FIVE = '.kp-rail--journey[data-tabs="5"]';
+  /** One label as an engine draws it at `w`: its tracking, whether it may wrap, its measure (`min(100%, calc(Nch + 4px))` in
+   *  the engine's own `ch`, a "0" — its letter), its lines (greedy, by word), its ink and how far it is cut. */
+  const drawn = (rules: Rule[], e: Engine, w: number, l: Loc, n: number, href: string, s: string) => {
+    const rail = n === 5 ? FIVE : FOUR;
+    const sels = [".kp-rail__label", ".kp-jtab__label", `${rail} .kp-jtab__label`, `${rail}:lang(${l}) .kp-jtab__label`, `${rail}:lang(${l}) .kp-rail__item[href="${href}"] .kp-jtab__label`];
+    const lsV = value(rules, sels, w, "letter-spacing");
+    const ls = lsV === null || lsV === "normal" ? 0 : lsV.endsWith("em") ? parseFloat(lsV) * micro : parseFloat(lsV);
+    const wrapOk = value(rules, sels, w, "white-space") === "normal";
+    const mw = value(rules, sels, w, "max-width") ?? "100%";
+    const track = w / n;
+    const chAt = mw.indexOf("ch +");
+    const measure = chAt < 0 ? track : Math.min(track, parseFloat(mw.slice(mw.lastIndexOf("(", chAt) + 1, chAt)) * letter(e) + labelPad);
+    const room = measure - labelPad;
+    let lines = [s];
+    if (wrapOk && lineW(e, s, ls) > room + 1e-9) {
+      lines = [];
       for (const part of s.split(" ")) {
         const last = lines.at(-1);
-        if (last !== undefined && lineW(`${last} ${part}`) <= room) lines[lines.length - 1] = `${last} ${part}`;
+        if (last !== undefined && lineW(e, `${last} ${part}`, ls) <= room + 1e-9) lines[lines.length - 1] = `${last} ${part}`;
         else lines.push(part);
       }
-      return Math.max(...lines.map(lineW));
-    });
-  };
-  /** The least gap between two neighbouring labels' ink, over every width, per language (and where it falls). */
-  const leastGap = (css: string, tabs: Tabs = FIVE_TABS) => Object.fromEntries(LOCALES.map((l) => {
-    let least = { gap: Infinity, at: 0 };
-    for (let w = 320; w < 1024; w++) {
-      const ink = inks(css, w, l, tabs), track = w / tabs.length;
-      for (let i = 0; i + 1 < ink.length; i++) {
-        const gap = Number((track - (ink[i] + ink[i + 1]) / 2).toFixed(2));
-        if (gap < least.gap) least = { gap, at: w };
-      }
     }
-    return [l, least];
-  })) as Record<Loc, { gap: number; at: number }>;
-  const G = leastGap(CSS);
-  ok(`4c.1 · five tabs: no two neighbouring labels stand closer than their pips (${MIN_GAP}px) at any width from 320 — least sw ${G.sw.gap}px (at ${G.sw.at}), en ${G.en.gap}px (at ${G.en.at}), zh ${G.zh.gap}px (at ${G.zh.at})`,
-    pipW === 56 && MIN_GAP === 8 && LOCALES.every((l) => G[l].gap >= MIN_GAP), j(G));
-  const untracked = CSS.replace(/\n\.kp-rail--journey\[data-tabs="5"\]:lang\(en\) \.kp-jtab__label \{ letter-spacing: -0\.04em; \}\n@media \(min-width: 337px\) \{ \.kp-rail--journey\[data-tabs="5"\]:lang\(en\) \.kp-jtab__label \{ letter-spacing: normal; \} \}/, "");
-  const U = leastGap(untracked);
-  ok(`4c.1′ CONTROL + PLANT · without English's tracking the model reads the tile's gap — en ${U.en.gap}px at ${U.en.at} — and the check fails`,
-    untracked !== CSS && U.en.gap === 4.6 && U.en.at === 320 && U.en.gap < MIN_GAP, j(U.en));
-  const early = CSS.replace('@media (min-width: 337px) { .kp-rail--journey[data-tabs="5"]:lang(en) .kp-jtab__label { letter-spacing: normal; } }',
-    '@media (min-width: 330px) { .kp-rail--journey[data-tabs="5"]:lang(en) .kp-jtab__label { letter-spacing: normal; } }');
-  ok("4c.1″ PLANT · the tracking given back at 330, before the pair clears 8px untouched, is reported", early !== CSS && leastGap(early).en.gap < MIN_GAP, j(leastGap(early).en));
-  // ⭐ THE FOUR-TAB RAIL, RE-PINNED OPENLY (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22). Round 1 read its least gap
-  // under the minimum and left it, since D14 was not to change the rail every reader is served while Millionea is
-  // withdrawn: Swahili's "Juu na Chini" | "Tiketi zangu", both one line from 332.8 (§4.1), stood 83.25 − 79.2 = 4.05px apart
-  // at 333 and cleared 8px only from 348.8 (Chromium, qa:journey-rail-gaps' four-tab cells: 4.0 at 333, 5.8 at 340, 7.5 at
-  // 347). The lead's round 2 assigned it: the same minimum, by D14's own answer, on Swahili alone, from the width its labels
-  // first fit one line (§4.1) to the width they clear the minimum untouched — both derived here from the dictionary.
-  /** The one selector a four-tab tracking rule may name: Swahili's labels on the rail that carries no `data-tabs`. */
-  const FOUR_SW = `${FOUR}:lang(sw) .kp-jtab__label`;
-  /** Every rule that tracks a rail label (or anything in the journey rail) without naming the five-tab rail. */
-  const fourReached = (css: string) => [...css.matchAll(/(?:^|\n|\{ )([^{}\n]*(?:kp-jtab__label|kp-rail__label|kp-rail--journey)[^{}\n]*)\{([^}]*)\}/g)]
-    .filter((m) => /letter-spacing/.test(m[2]) && !m[1].includes('[data-tabs="5"]')).map((m) => m[1].trim());
-  const clear4 = Number((4 * (Math.max(...TAB.JOURNEY_TABS.map((d) => mono(TAB.tabLabel(dict.sw, d.label)))) + MIN_GAP)).toFixed(1));
-  const fourRule = (px: number, v: string) => `@media (min-width: ${px}px) { ${FOUR_SW} { letter-spacing: ${v}; } }`;
-  const G4 = leastGap(CSS, TAB.JOURNEY_TABS);
-  ok(`4c.2 · four tabs: no two neighbouring labels stand closer than their pips (${MIN_GAP}px) at any width from 320 — least sw ${G4.sw.gap}px (at ${G4.sw.at}), en ${G4.en.gap}px (at ${G4.en.at}), zh ${G4.zh.gap}px (at ${G4.zh.at}); the one tracking rule that reaches that rail is Swahili's, from ${W.sw} to ${clear4}`,
-    LOCALES.every((l) => G4[l].gap >= MIN_GAP) && clear4 === 348.8 && CSS.includes(fourRule(W.sw, "-0.04em")) && CSS.includes(fourRule(clear4, "normal"))
-      && fourReached(CSS).length === 2 && fourReached(CSS).every((s) => s === FOUR_SW), j({ reached: fourReached(CSS), G4 }));
-  const spilled = CSS.replace('.kp-rail--journey[data-tabs="5"]:lang(en) .kp-jtab__label { letter-spacing: -0.04em; }', ".kp-rail--journey:lang(en) .kp-jtab__label { letter-spacing: -0.04em; }");
-  ok("4c.2′ PLANT · the five-tab tracking written for every journey rail (the four-tab rail's English changed while Millionea is withdrawn) is reported",
-    spilled !== CSS && fourReached(spilled).some((s) => s !== FOUR_SW), j(fourReached(spilled)));
-  const bare = CSS.replace(fourRule(W.sw, "-0.04em"), "").replace(fourRule(clear4, "normal"), "");
-  const B4 = leastGap(bare, TAB.JOURNEY_TABS);
-  ok(`4c.2″ CONTROL + PLANT · without Swahili's four-tab tracking the model reads round 1's gap — sw ${B4.sw.gap}px at ${B4.sw.at} — and the check fails`,
-    bare !== CSS && B4.sw.gap === 4.05 && B4.sw.at === 333 && B4.sw.gap < MIN_GAP, j(B4.sw));
-  const back = CSS.replace(fourRule(clear4, "normal"), fourRule(345, "normal"));
-  ok("4c.2‴ PLANT · the tracking given back at 345, before the pair clears 8px untouched, is reported",
-    back !== CSS && leastGap(back, TAB.JOURNEY_TABS).sw.gap < MIN_GAP, j(leastGap(back, TAB.JOURNEY_TABS).sw));
-  const leak = CSS.replace(fourRule(W.sw, "-0.04em"), `${FOUR_SW} { letter-spacing: -0.04em; }`);
-  ok("4c.2⁗ PLANT · the tracking reaching below 332.8 (there the tracked labels fit one line, 6px apart at 320, where they wrapped) is reported",
-    leak !== CSS && leastGap(leak, TAB.JOURNEY_TABS).sw.gap < MIN_GAP, j(leastGap(leak, TAB.JOURNEY_TABS).sw));
+    const ink = Math.max(...lines.map((x) => lineW(e, x, ls)));
+    return { s, ls, lines: lines.length, ink: Math.min(ink, room), cut: Math.round((ink - room) * 100) / 100 };
+  };
+  /** The slots centre at `w` (R9-C), from the item rules in cascade order. */
+  const centred = (rules: Rule[], w: number, l: Loc, n: number) =>
+    value(rules, [".kp-rail--journey .kp-rail__item", `.kp-rail--journey:lang(${l}) .kp-rail__item`, ...(n === 5 ? [`${FIVE} .kp-rail__item`, `${FIVE}:lang(${l}) .kp-rail__item`] : [])], w, "justify-content") === "center";
+  /** Every width the rail is drawn at (320–1023, `lg:hidden`), in both engines and the three languages: the least gap and
+   *  where it falls, the worst cut, and any width where the slots centre over a wrapped label or stack over none. */
+  const sweep = (css: string, tabs: ReadonlyArray<Tab>, langs: Loc[] = LOCALES) => {
+    const rules = parse(css);
+    const out: Record<string, { gap: number; at: number; cut: number; cutAt: string; align: string[] }> = {};
+    for (const e of ENGINES) for (const l of langs) {
+      const r = { gap: Infinity, at: 0, cut: -Infinity, cutAt: "", align: [] as string[] };
+      for (let w = 320; w < 1024; w++) {
+        const track = w / tabs.length;
+        const labs = tabs.map((d) => drawn(rules, e, w, l, tabs.length, d.href, TAB.tabLabel(dict[l], d.railLabel ?? d.label)));
+        for (let i = 0; i + 1 < labs.length; i++) {
+          const g = Math.round((track - (labs[i].ink + labs[i + 1].ink) / 2) * 100) / 100;
+          if (g < r.gap) { r.gap = g; r.at = w; }
+        }
+        for (const x of labs) if (x.cut > r.cut) { r.cut = x.cut; r.cutAt = `${w} "${x.s}"`; }
+        const wraps = labs.some((x) => x.lines > 1);
+        if (wraps === centred(rules, w, l, tabs.length) && r.align.length < 4) r.align.push(`${w}${wraps ? " wraps, centred" : " one line, stacked"}`);
+      }
+      out[`${e}/${l}`] = r;
+    }
+    return out;
+  };
+  const holds = (S: ReturnType<typeof sweep>) => Object.values(S).every((r) => r.gap >= MIN_GAP - 1e-9 && r.cut <= 0.01 && r.align.length === 0);
+  const brief = (S: ReturnType<typeof sweep>) => Object.entries(S).map(([k, r]) => `${k} least ${r.gap} at ${r.at}${r.cut > 0.01 ? `, cut ${r.cut} at ${r.cutAt}` : ""}${r.align.length ? `, align ${r.align.join("/")}` : ""}`).join(" · ");
+
+  // ── THE FOUR TABS (the rail every reader is served while Millionea does not show) ──
+  // 4.1 · each language's labels stand on one line, untracked, in BOTH engines from (its longest + padding) × 4; Swahili's two
+  // long labels stand on one line 8px apart in Chromium, tracked by D14's 0.04em, from CENTRE_SW, and untracked from CLEAR_SW.
+  const fit4 = (l: Loc, ws = words(l, FOUR_TABS)) => Math.max(...ENGINES.map((e) => 4 * Math.max(...ws.map((s) => lineW(e, s) + labelPad))));
+  const W = { sw: fit4("sw"), en: fit4("en"), zh: fit4("zh") };
+  const longSw = words("sw", FOUR_TABS).reduce((a, s) => (lineW("chromium", s) > lineW("chromium", a) ? s : a));
+  const CENTRE_SW = Math.ceil(4 * (lineW("chromium", longSw, TRACK) + MIN_GAP));
+  const CLEAR_SW = 4 * (lineW("chromium", longSw) + MIN_GAP);
+  ok(`4.1 · four tabs: each language's labels stand on one line in both engines from sw ${W.sw}px ("${longSw}" ${lineW("chromium", longSw)}px in Chromium), en ${W.en}px, zh ${W.zh}px — so Swahili alone wraps at 320; its two long labels stand 8px apart on one line, tracked, from ${CENTRE_SW}px and untracked from ${CLEAR_SW}px`,
+    micro === 11 && labelPad === 4 && pipW === 56 && MIN_GAP === 8 && W.sw === 352 && W.en === 296 && W.zh === 192 && CENTRE_SW === 347 && CLEAR_SW === 368, j({ micro, labelPad, W, CENTRE_SW, CLEAR_SW }));
+  /** The four-tab rules as one predicate over a stylesheet, so a plant is judged by the very check. */
+  const rules4 = (css: string, widths = { sw: CENTRE_SW, en: W.en, zh: W.zh }) => {
+    const R = parse(css);
+    const at = (sel: string, px: number | null, name: string) => { for (const r of R) if (r.sel === sel && r.min === px) { const v = prop(r.body, name); if (v !== null) return v; } return null; };
+    const SW = `${FOUR}:lang(sw) .kp-jtab__label`;
+    const got = {
+      base: at(".kp-rail--journey .kp-rail__item", null, "justify-content"),
+      per: Object.fromEntries(LOCALES.map((l) => [l, at(`.kp-rail--journey:lang(${l}) .kp-rail__item`, widths[l], "justify-content")])),
+      all360: at(".kp-rail--journey .kp-rail__item", 360, "justify-content"),
+      swMeasure: at(SW, null, "max-width"), swReset: at(SW, CENTRE_SW, "max-width"), swTrack: at(SW, CENTRE_SW, "letter-spacing"), swClear: at(SW, CLEAR_SW, "letter-spacing"),
+      capped: capped(css),
+    };
+    const ok4 = got.base === "flex-start" && LOCALES.every((l) => got.per[l] === "center") && got.all360 === "center"
+      && got.swMeasure === "min(100%, calc(10ch + 4px))" && got.swReset === "100%" && got.swTrack === "-0.04em" && got.swClear === "normal" && got.capped.length === 0;
+    return { ok: ok4, got };
+  };
+  const R4 = rules4(CSS);
+  ok(`4.2 · the stylesheet holds exactly those widths: the slots stack from the top (the base rule), each language centres them from its width (zh ${W.zh}, en ${W.en}, sw ${CENTRE_SW}), every slot from 360; Swahili's labels held to ten letters below ${CENTRE_SW}, tracked to ${CLEAR_SW}; mobile-first — no width-capping query reaches the rail`,
+    R4.ok, j(R4.got));
+  // THE MEASURE: Swahili's ten letters (`10ch` and the padding, in the engine's own letter) admit every line the labels are
+  // drawn in — a seven-letter label whole, a long label's six-letter first line — and refuse either long label's one line,
+  // in both engines, tracked or not: so both engines wrap them where the slots stack.
+  const measureHolds = (n: number, fits: string[], refuses: string[]) => ENGINES.every((e) => [0, TRACK].every((ls) =>
+    fits.every((s) => lineW(e, s, ls) <= n * letter(e) + 1e-9) && refuses.every((s) => lineW(e, s, ls) > n * letter(e))));
+  const swWords4 = words("sw", FOUR_TABS);
+  const swLong4 = swWords4.filter((s) => lineW("chromium", s) + labelPad > 4 * 80 / 4 && s.includes(" "));
+  ok(`4.2a · Swahili's ten-letter measure holds "${swWords4.filter((s) => !swLong4.includes(s)).join('", "')}" whole and wraps "${swLong4.join('", "')}" after their first words, in both engines`,
+    swLong4.length === 2 && measureHolds(10, [...swWords4.filter((s) => !swLong4.includes(s)), ...swLong4.map((s) => s.slice(0, s.lastIndexOf(" ")))], swLong4), j({ swLong4 }));
+  const S4 = sweep(CSS, FOUR_TABS);
+  ok(`4.3 · four tabs, both engines, every width 320–1023: no label cut, no two labels closer than their pips (${MIN_GAP}px), and the slots centred exactly where no label wraps — ${brief(S4)}`, holds(S4), j(S4));
+  // THE NUMBERS. A slot is 64px with 6px of padding; below 360 a label's line is 1.15 × 11, from 360 it is 1 × 11.
+  // ⭐ RE-PINNED OPENLY, PHOSPHOR-MIGRATION W3 (2026-10-18): the pip's height is READ from `.kp-rail__pip`.
+  const slot = 64, pad = 6, pip = parseFloat(pipRule.split("height:")[1] ?? "NaN"), gap = token("--sp-1");
+  const oneLine = (lh: number) => pip + gap + lh;
+  const centredAt = (lh: number) => (slot - 2 * pad - oneLine(lh)) / 2 + pad;
+  const en320 = centredAt(1.15 * micro), at390 = centredAt(micro);
+  ok(`4.4 · English and Chinese at 320: the items centred ${en320.toFixed(3)} | ${en320.toFixed(3)} under the rail's edge and over its foot; at 390 ${at390.toFixed(1)} | ${at390.toFixed(1)}; Swahili's two-line slot ${pip} + ${gap} + 2 × 12.65 = ${(pip + gap + 2 * 1.15 * micro).toFixed(1)}px — the ${pip}px pip read from .kp-rail__pip`,
+    pip === 32 && near(en320, 7.675, 1e-9) && near(at390, 8.5) && near(pip + gap + 2 * 1.15 * micro, 61.3, 1e-9));
+  // PLANTS: a longer label moves its language's width; the old one-language rules; each part of Swahili's answer undone.
+  const longer = fit4("en", words("en", FOUR_TABS).map((s) => (s === "My tickets" ? "My open tickets" : s)));
+  ok(`4.1′ PLANT · English's Tiketi label grown to "My open tickets" moves its width to ${longer}px: the very check fails on today's stylesheet`,
+    longer > W.en && !rules4(CSS, { sw: CENTRE_SW, en: longer, zh: W.zh }).ok);
+  const swAt = (css: string, from: number, to: number) => css.replace(`@media (min-width: ${from}px) { .kp-rail--journey:lang(sw) .kp-rail__item {`, `@media (min-width: ${to}px) { .kp-rail--journey:lang(sw) .kp-rail__item {`);
+  const stale = swAt(CSS, CENTRE_SW, 360);
+  ok("4.1″ PLANT · Swahili's slots centred only from 360 are reported", stale !== CSS && !rules4(stale).ok);
+  const bare = CSS.replace(`${FOUR}:lang(sw) .kp-jtab__label { max-width: min(100%, calc(10ch + 4px)); }`, "");
+  const SB = sweep(bare, FOUR_TABS, ["sw"]);
+  ok(`4.3′ CONTROL + PLANT · without Swahili's ten-letter measure WebKit stands the long labels on one line where the slots stack, ${SB["webkit/sw"].gap}px apart at ${SB["webkit/sw"].at} — the check fails`,
+    bare !== CSS && !holds(SB) && SB["webkit/sw"].gap < MIN_GAP, j(SB["webkit/sw"]));
+  const round2 = swAt(CSS, CENTRE_SW, 332.8)
+    .replace(`@media (min-width: ${CENTRE_SW}px) { ${FOUR}:lang(sw) .kp-jtab__label { max-width: 100%; letter-spacing: -0.04em; } }`, `@media (min-width: 332.8px) { ${FOUR}:lang(sw) .kp-jtab__label { max-width: 100%; letter-spacing: -0.04em; } }`)
+    .replace(`@media (min-width: ${CLEAR_SW}px) { ${FOUR}:lang(sw) .kp-jtab__label { letter-spacing: normal; } }`, `@media (min-width: 348.8px) { ${FOUR}:lang(sw) .kp-jtab__label { letter-spacing: normal; } }`);
+  const S2 = sweep(round2, FOUR_TABS, ["sw"]);
+  ok(`4.3″ CONTROL + PLANT · round 2's Swahili widths (tracked 332.8–348.8) read the runner's finding — Chromium ${S2["chromium/sw"].gap}px at ${S2["chromium/sw"].at} — and the check fails`,
+    round2 !== CSS && !holds(S2) && S2["chromium/sw"].gap < 5, j(S2["chromium/sw"]));
+  const early = CSS.replace(`@media (min-width: ${CLEAR_SW}px) { ${FOUR}:lang(sw) .kp-jtab__label { letter-spacing: normal; } }`, `@media (min-width: 360px) { ${FOUR}:lang(sw) .kp-jtab__label { letter-spacing: normal; } }`);
+  ok("4.3‴ PLANT · Swahili's tracking given back at 360, before its labels clear 8px untouched, is reported", early !== CSS && !holds(sweep(early, FOUR_TABS, ["sw"])));
+  const allLangs = parse(CSS).filter((r) => r.min !== null && r.sel.startsWith(".kp-rail--journey:lang(") && r.sel.endsWith(" .kp-rail__item")).length;
+  const noPer = [192, W.en, CENTRE_SW].reduce((css, px) => css.replace(new RegExp(`@media [(]min-width: ${px}px[)] [{] [.]kp-rail--journey:lang[(][a-z]+[)] [.]kp-rail__item [{] justify-content: center; [}] [}]`), ""), CSS);
+  ok("4.1‴ PLANT · the round-8 rule (every language stacked below 360) is reported", allLangs === 3 && noPer !== CSS && !rules4(noPer).ok);
+
+  // ── THE FIVE TABS (while Millionea shows) ──
+  // 4b.1 · every one-line label fits a fifth untracked in Chromium from TRACK_TO (so below it all five are tracked); English's
+  // three nine-letter neighbours stand 8px apart tracked from EN_CENTRE (below it its game name wraps) and untracked from
+  // EN_CLEAR; Swahili's full game name fits one line from SW_CENTRE (below it, it wraps); Chinese's labels, tracked, stand on
+  // one line from CJK_FIT — the stylesheet centres it from 317, between that and 320.
+  const swName = TAB.tabLabel(dict.sw, "nav.updown");
+  const oneLine5 = (l: Loc) => words(l, FIVE_TABS).filter((s) => !(l === "sw" && s === swName));
+  const TRACK_TO = Object.fromEntries(LOCALES.map((l) => [l, 5 * Math.max(...oneLine5(l).map((s) => lineW("chromium", s) + labelPad))])) as Record<Loc, number>;
+  const longEn = words("en", FIVE_TABS).reduce((a, s) => (lineW("chromium", s) > lineW("chromium", a) ? s : a));
+  const EN_CENTRE = Math.ceil(5 * (lineW("chromium", longEn, TRACK) + MIN_GAP));
+  const EN_CLEAR = 5 * (lineW("chromium", longEn) + MIN_GAP);
+  const SW_CENTRE = 5 * (lineW("chromium", swName) + labelPad);
+  const CJK_FIT = Math.max(...ENGINES.map((e) => 5 * Math.max(...words("zh", FIVE_TABS).map((s) => lineW(e, s, TRACK) + labelPad))));
+  ok(`4b.1 · five tabs: every one-line label fits its fifth untracked in Chromium from ${TRACK_TO.en}px (sw ${TRACK_TO.sw}, zh ${TRACK_TO.zh}); English's nine-letter neighbours ("${longEn}") stand 8px apart tracked from ${EN_CENTRE}px and untracked from ${EN_CLEAR}px; "${swName}" fits one line from ${SW_CENTRE}px; Chinese, tracked, from ${Math.round(CJK_FIT * 100) / 100}px`,
+    FIVE_TABS.length === 5 && FIVE_TABS[2]?.key === "millionea" && LOCALES.every((l) => TRACK_TO[l] === 335) && EN_CENTRE === 336 && EN_CLEAR === 355 && SW_CENTRE === 440
+      && CJK_FIT <= 317 && swName === dict.sw.nav.updown, j({ TRACK_TO, EN_CENTRE, EN_CLEAR, SW_CENTRE, CJK_FIT }));
+  /** The five-tab rules as one predicate over a stylesheet. */
+  const rules5 = (css: string, w = { track: TRACK_TO.en, enCentre: EN_CENTRE, enClear: EN_CLEAR, swCentre: SW_CENTRE }) => {
+    const R = parse(css);
+    const at = (sel: string, px: number | null, name: string) => { for (const r of R) if (r.sel === sel && r.min === px) { const v = prop(r.body, name); if (v !== null) return v; } return null; };
+    const UD = (l: Loc) => `${FIVE}:lang(${l}) .kp-rail__item[href="/updown"] .kp-jtab__label`;
+    const got = {
+      grid: at(`${FIVE} > ul`, null, "grid-template-columns"), base: at(`${FIVE} .kp-rail__item`, null, "justify-content"),
+      zh: at(`${FIVE}:lang(zh) .kp-rail__item`, 317, "justify-content"), en: at(`${FIVE}:lang(en) .kp-rail__item`, w.enCentre, "justify-content"),
+      sw: at(`${FIVE}:lang(sw) .kp-rail__item`, w.swCentre, "justify-content"),
+      track: at(`${FIVE} .kp-jtab__label`, null, "letter-spacing"),
+      untrack: { sw: at(`${FIVE}:lang(sw) .kp-jtab__label`, w.track, "letter-spacing"), zh: at(`${FIVE}:lang(zh) .kp-jtab__label`, w.track, "letter-spacing"), en: at(`${FIVE}:lang(en) .kp-jtab__label`, w.enClear, "letter-spacing") },
+      enMeasure: at(UD("en"), null, "max-width"), enReset: at(UD("en"), w.enCentre, "max-width"),
+      swLabel: at(`${FIVE}:lang(sw) .kp-jtab__label`, null, "white-space"), swClip: at(`${FIVE}:lang(sw) .kp-jtab__label`, null, "text-overflow"),
+      swOne: at(`${FIVE}:lang(sw) .kp-jtab__label`, w.swCentre, "white-space"), swLh: at(`${FIVE}:lang(sw) .kp-jtab__label`, w.swCentre, "line-height"),
+      swMeasure: at(UD("sw"), null, "max-width"), swReset: at(UD("sw"), w.swCentre, "max-width"),
+    };
+    const ok5 = got.grid === "repeat(5, minmax(0, 1fr))" && got.base === "flex-start" && got.zh === "center" && got.en === "center" && got.sw === "center"
+      && got.track === "-0.04em" && got.untrack.sw === "normal" && got.untrack.zh === "normal" && got.untrack.en === "normal"
+      && got.enMeasure === "min(100%, calc(6ch + 4px))" && got.enReset === "100%"
+      && got.swLabel === "normal" && got.swClip === "clip" && got.swOne === "nowrap" && got.swLh === "1"
+      && got.swMeasure === "min(100%, calc(10ch + 4px))" && got.swReset === "100%";
+    return { ok: ok5, got };
+  };
+  const R5 = rules5(CSS);
+  ok(`4b.2 · the five-tab stylesheet: every label tracked below ${TRACK_TO.en} (English to ${EN_CLEAR}); English's game name held to six letters below ${EN_CENTRE} and its slots centred from there; Swahili's held to ten letters, wrapping, below ${SW_CENTRE} and its slots centred from there; Chinese centred from 317`,
+    R5.ok, j(R5.got));
+  const enName = TAB.tabLabel(dict.en, "nav.updown");
+  ok(`4b.2a · the six-letter measure holds "${enName.slice(0, enName.lastIndexOf(" "))}" and "${enName.slice(enName.lastIndexOf(" ") + 1)}" and wraps "${enName}" between them; the ten-letter one wraps "${swName}" after "${swName.slice(0, swName.lastIndexOf(" "))}" — in both engines, tracked or not`,
+    measureHolds(6, [enName.slice(0, enName.lastIndexOf(" ")), enName.slice(enName.lastIndexOf(" ") + 1)], [enName])
+      && measureHolds(10, [swName.slice(0, swName.lastIndexOf(" ")), ...oneLine5("sw")], [swName]));
+  const S5 = sweep(CSS, FIVE_TABS);
+  ok(`4b.3 · five tabs, both engines, every width 320–1023: no label cut, no two labels closer than their pips (${MIN_GAP}px), and the slots centred exactly where no label wraps — ${brief(S5)}`, holds(S5), j(S5));
+  // PLANTS: each part of the five-tab answer undone, and round 1's widths.
+  const noEnMeasure = CSS.replace(`${FIVE}:lang(en) .kp-rail__item[href="/updown"] .kp-jtab__label { max-width: min(100%, calc(6ch + 4px)); }`, "");
+  const P1 = sweep(noEnMeasure, FIVE_TABS, ["en"]);
+  ok(`4b.3′ CONTROL + PLANT · without English's six-letter measure its nine-letter neighbours stand ${P1["chromium/en"].gap}px apart at ${P1["chromium/en"].at} in Chromium (the runner read 4.95) — the check fails`,
+    noEnMeasure !== CSS && !holds(P1) && near(P1["chromium/en"].gap, 4.96, 0.02) && P1["chromium/en"].at === 320, j(P1["chromium/en"]));
+  const enOnly = CSS.replace(`${FIVE} .kp-jtab__label { letter-spacing: -0.04em; }`, `${FIVE}:lang(en) .kp-jtab__label { letter-spacing: -0.04em; }`);
+  const P2 = sweep(enOnly, FIVE_TABS, ["sw", "zh"]);
+  ok(`4b.3″ PLANT · round 1's tracking, English alone: "Millionea" cut in Chromium (sw ${P2["chromium/sw"].cut}px at ${P2["chromium/sw"].cutAt}, zh ${P2["chromium/zh"].cut}px) — reported`,
+    enOnly !== CSS && !holds(P2) && P2["chromium/sw"].cut > 0 && P2["chromium/zh"].cut > 0, j({ sw: P2["chromium/sw"], zh: P2["chromium/zh"] }));
+  const d14 = CSS.replace(`@media (min-width: ${EN_CLEAR}px) { ${FIVE}:lang(en) .kp-jtab__label { letter-spacing: normal; } }`, `@media (min-width: 337px) { ${FIVE}:lang(en) .kp-jtab__label { letter-spacing: normal; } }`);
+  const P3 = sweep(d14, FIVE_TABS, ["en"]);
+  ok(`4b.3‴ PLANT · English's tracking given back at D14's 337: ${P3["chromium/en"].gap}px at ${P3["chromium/en"].at} in Chromium (the runner read 4.39 at 337) — reported`,
+    d14 !== CSS && !holds(P3) && P3["chromium/en"].at === 337, j(P3["chromium/en"]));
+  const at416 = CSS.replace(`@media (min-width: ${SW_CENTRE}px) { ${FIVE}:lang(sw) .kp-jtab__label { white-space: nowrap;`, `@media (min-width: 416px) { ${FIVE}:lang(sw) .kp-jtab__label { white-space: nowrap;`);
+  const P4 = sweep(at416, FIVE_TABS, ["sw"]);
+  ok(`4b.3⁗ PLANT · Swahili's name on one line from round 1's 416: cut ${P4["chromium/sw"].cut}px at ${P4["chromium/sw"].cutAt} in Chromium — reported`,
+    at416 !== CSS && !holds(P4) && P4["chromium/sw"].cut > 0, j(P4["chromium/sw"]));
+  const at317 = CSS.replace(`@media (min-width: ${EN_CENTRE}px) { ${FIVE}:lang(en) .kp-rail__item {`, `@media (min-width: 317px) { ${FIVE}:lang(en) .kp-rail__item {`);
+  const P5 = sweep(at317, FIVE_TABS, ["en"]);
+  ok(`4b.3⁵ PLANT · English's slots centred from round 1's 317 while its game name wraps (${P5["chromium/en"].align.join(", ")}) — reported`,
+    at317 !== CSS && !holds(P5) && P5["chromium/en"].align.length > 0, j(P5["chromium/en"]));
+  const grown = rules5(CSS, { track: TRACK_TO.en, enCentre: Math.ceil(5 * (lineW("chromium", "My open tickets", TRACK) + MIN_GAP)), enClear: EN_CLEAR, swCentre: SW_CENTRE });
+  ok("4b.1′ PLANT · an English rail word grown to fifteen letters moves English's centring width: the very check fails on today's stylesheet", !grown.ok);
+
+  // ── THE CENSUS: which tracking reaches which rail ──
+  const tracked = (css: string) => parse(css).filter((r) => prop(r.body, "letter-spacing") !== null && (r.sel.includes("kp-rail--journey") || r.sel.includes("kp-jtab__label")) && !r.sel.includes(":not(.kp-rail--journey)")).map((r) => r.sel);
+  const T = tracked(CSS);
+  const four = T.filter((s) => !s.includes('[data-tabs="5"]')), five = T.filter((s) => s.includes('[data-tabs="5"]'));
+  ok(`4c.1 · the tracking that reaches the four-tab rail is Swahili's alone (${four.length} rules: ${CENTRE_SW} and ${CLEAR_SW}), and the five-tab rail's is its own four (every label below ${TRACK_TO.en}, back for sw/zh there and for English at ${EN_CLEAR})`,
+    four.length === 2 && four.every((s) => s === `${FOUR}:lang(sw) .kp-jtab__label`) && five.length === 4, j({ four, five }));
+  const spilled = CSS.replace(`${FIVE} .kp-jtab__label { letter-spacing: -0.04em; }`, ".kp-rail--journey .kp-jtab__label { letter-spacing: -0.04em; }");
+  ok("4c.1′ PLANT · the five-tab tracking written for every journey rail (the four-tab rail changed while Millionea is withdrawn) is reported",
+    spilled !== CSS && tracked(spilled).filter((s) => !s.includes('[data-tabs="5"]')).some((s) => s !== `${FOUR}:lang(sw) .kp-jtab__label`));
 }
 
 /* ══ §5 · C5 · THE STACKED FLAG ON A WHOLE PIXEL ═══════════════════════════════════════════════════════════════════════ */

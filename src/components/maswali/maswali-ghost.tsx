@@ -2,14 +2,18 @@
  * THE PARTS EVERY MILLIONEA LOADING DRAWING IS MADE OF (MASWALI-BUILD S5 composition; `components/ui/page-loader.tsx`'s
  * rule: a ghost opens on the bands its page opens on, with the page's own parts, in the page's own rhythm).
  *
- * ⛔ NO WORDS AT ALL — BARS AND SHAPES ONLY (the S5 review of 24ec0d33, HIGH 2). A loading drawing streams before any gate
- *    has answered: the journey's root loading state picks its picture by the ADDRESS (`route-ghost.tsx`), and a route's own
- *    loading file renders before its page's `notFound()`. So a signed-in reader the edge passes to the tickets' gate (L5)
- *    while Millionea is dark got HTTP 200 with the ghost in the document — and words "set and not shown" (`GhostText`'s
- *    transparent letters) are still words in it. A hidden product is a missing page (MR-2: never "coming soon"), so every
- *    Millionea drawing is wordless: a line of words is a bar inside that line's own element (`GhostLine`), so the geometry
- *    stays the page's, and the one word left is the platform's own "Loading" for a screen reader, which names nothing.
- *    `test:maswali-ui` 1.3 holds every Millionea loading and ghost file to it.
+ * ⛔ NO WORD OF ITS OWN, AND NO WORD AT ALL FOR A READER MILLIONEA IS HIDDEN FROM (the S5 review of 24ec0d33, HIGH 2; the
+ *    lead's ruling of 2026-10-23, MASWALI-BUILD S5-R3-FIX 7). A loading drawing streams before any gate has answered: the
+ *    journey's root loading state picks its picture by the ADDRESS (`route-ghost.tsx`), and a route's own loading file
+ *    renders before its page's `notFound()`. So a signed-in reader the edge passes to the tickets' gate (L5) while
+ *    Millionea is dark got HTTP 200 with the ghost in the document — and words "set and not shown" (`GhostText`'s
+ *    transparent letters) are still words in it. A hidden product is a missing page (MR-2: never "coming soon"). So a
+ *    drawing draws a line of words as a bar inside that line's own element (`GhostLine`), the geometry the page's — save a
+ *    STATIC paragraph's words, which it sets unseen through the kit's ONE part for them, `GhostWords`
+ *    (`maswali-ghost-words.tsx`), from its page's words module: that part sets them only inside the shell's provider,
+ *    which is handed only while Millionea is visible to the request, and draws a plain bar otherwise. The one word left
+ *    that is always drawn is the platform's own "Loading" for a screen reader, which names nothing. `test:maswali-ui` 1.3
+ *    holds every Millionea loading and ghost file to it.
  * ⛔ No directive and no read: client drawings load it.
  */
 import type { ReactNode } from "react";

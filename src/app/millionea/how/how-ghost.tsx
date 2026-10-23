@@ -21,10 +21,12 @@ import type { Locale } from "@/lib/i18n-dict";
 /** How many lines a paragraph's words take below 360, from 360 (the phone's column) and from 768 (the reading measure). */
 type Tiers = readonly [below360: number, from360: number, from768: number];
 /** The lines each of the four steps takes in each language, as the page's are measured (`qa:maswali-register-shots`,
- *  how-ghost): the drawing knows the reader's language, never a word of it. */
+ *  how-ghost, on the runner with the phones' Chinese face — DESIGN_AUTHORITY §M4a rule 5; S5-R3-FIX F6, 2026-10-23, where
+ *  the Windows reading put English's third step and Swahili's second on one line from 768 and Swahili's fourth on three
+ *  below 360): the drawing knows the reader's language, never a word of it. */
 const STEP_LINES: Record<Locale, readonly Tiers[]> = {
-  en: [[3, 3, 2], [3, 3, 2], [3, 3, 1], [2, 2, 1]],
-  sw: [[3, 2, 1], [3, 3, 1], [4, 3, 2], [3, 2, 1]],
+  en: [[3, 3, 2], [3, 3, 2], [3, 3, 2], [2, 2, 1]],
+  sw: [[3, 2, 1], [3, 3, 2], [4, 3, 2], [2, 2, 1]],
   zh: [[3, 2, 1], [3, 2, 1], [3, 2, 1], [2, 2, 1]],
 };
 /** The example's caption, likewise. */

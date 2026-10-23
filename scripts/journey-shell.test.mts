@@ -1798,10 +1798,16 @@ function g7Header(W: World, ok: Ok) {
 
 /* ══ §8 · THE TABS (S6 WP6a) ═════════════════════════════════════════════════════════════════════════════════ */
 /**
- * The rail's label, one line, in px: JetBrains Mono advances every Latin glyph 0.6em, and a CJK glyph (U+2E80 and up)
- * falls back to a full em. These are the fonts the S4 header was measured with (VODACOM-PLAN §0g design call 10).
+ * The rail's label, one line, in px, as the phones' two engines draw it (DESIGN_AUTHORITY §M4a rule 5 — RE-PINNED OPENLY,
+ * MASWALI-BUILD S5-R3-FIX F2, 2026-10-23: this model drew every Latin glyph 0.6em, the Windows machine's reading of
+ * Chromium). Measured on the runner (2026-10-22, run 39830221442): the rail's 11px JetBrains Mono draws a Latin glyph 7px in
+ * Chromium (0.6em, the advance rounded to the pixel, at every pixel ratio) and 6.6px in WebKit; a CJK glyph (U+2E80 and up)
+ * is a full em in both. Tracking (`ls`, px) is added to every glyph. Chromium, the wider, is the default: it binds a fit.
  */
-const monoWidth = (s: string, px: number) => [...s].reduce((w, ch) => w + ((ch.codePointAt(0) ?? 0) >= 0x2e80 ? 1 : 0.6) * px, 0);
+type RailEngine = "chromium" | "webkit";
+const RAIL_ENGINES: readonly RailEngine[] = ["chromium", "webkit"];
+const monoWidth = (s: string, px: number, e: RailEngine = "chromium", ls = 0) =>
+  [...s].reduce((w, ch) => w + ((ch.codePointAt(0) ?? 0) >= 0x2e80 ? px : e === "chromium" ? Math.round(0.6 * px) : 0.6 * px) + ls, 0);
 /**
  * A stand-in window whose `matchMedia` answers the lg query with a value the test sets, and counts its listeners.
  * Installed only for the call and taken away after, as §5's stand-in document is.
@@ -1887,82 +1893,108 @@ function g8Tabs(I: Impl, W: World, G: Graph, ok: Ok) {
       && badge.includes("box-shadow: 0 0 0 2px var(--panel)"),
     `${badge} · want top ${dotTop}px, right ${dotRight}px from a ${pipW}×${pipH} pip`);
 
-  // A17 · the rail label, measured: wrap to two lines below 360 only where a label would otherwise ellipsise.
+  // A17 · the rail label, measured: wrap to two lines below 360 only where a label would otherwise ellipsise — in the phones'
+  // two engines (DESIGN_AUTHORITY §M4a rule 5; RE-PINNED OPENLY, S5-R3-FIX F2, 2026-10-23): Chromium, the wider, earns a
+  // wrap; WebKit must earn it too wherever the rail stacks.
   const micro = parseFloat(tokenValue(css, "type-micro"));
   const padRule = baseRule(css, ".kp-rail__label");
   const padAt = padRule.indexOf("padding-inline:");
   const pad = 2 * parseFloat(padAt < 0 ? "NaN" : padRule.slice(padAt + "padding-inline:".length));
-  const oneLine = (s: string) => monoWidth(s, micro) + pad;
+  /** D14's tracking, 0.04em, in px. */
+  const TRACKED = -0.04 * micro;
+  /** No two labels closer than their pips: the 56px pips' own gap in a fifth of a 320 phone. */
+  const MIN_GAP = 320 / 5 - pipW;
+  const oneLine = (s: string, e: RailEngine = "chromium", ls = 0) => monoWidth(s, micro, e, ls) + pad;
   /** The words the rail says for each drawn tab, in each language: its rail label where it has one (S5-TAB). */
   const railWords = (tabs: readonly JourneyTabDef[]) =>
     (["en", "sw", "zh"] as const).flatMap((loc) => tabs.map((d) => ({ loc, key: d.key, s: TAB.tabLabel(dict[loc], d.railLabel ?? d.label) })));
   const labels = railWords(I.tabsFor(false));
-  const linesIn = (s: string, track: number) => {
+  const linesIn = (s: string, track: number, e: RailEngine = "chromium", ls = 0) => {
     let lines = 1;
     let cur = "";
     for (const word of s.split(" ")) {
       const next = cur ? `${cur} ${word}` : word;
-      if (cur && oneLine(next) > track) { lines++; cur = word; } else cur = next;
+      if (cur && oneLine(next, e, ls) > track) { lines++; cur = word; } else cur = next;
     }
     return lines;
   };
   const over320 = labels.filter((l) => oneLine(l.s) > 320 / 4);
   const over360 = labels.filter((l) => oneLine(l.s) > 360 / 4);
   const notTwo = over320.filter((l) => linesIn(l.s, 320 / 4) > 2 || l.s.split(" ").some((w) => oneLine(w) > 320 / 4));
-  ok("8.label.measure · A17, measured: at 320 a label needs more than its quarter of the phone (so the wrap is earned), it fits two lines there, and from 360 every label fits one",
-    Number.isFinite(micro) && Number.isFinite(pad) && over320.length > 0 && over360.length === 0 && notTwo.length === 0,
+  const bothEngines = RAIL_ENGINES.every((e) => over320.every((l) => oneLine(l.s, e) > 320 / 4) && labels.every((l) => oneLine(l.s, e) <= 360 / 4));
+  ok("8.label.measure · A17, measured in both engines: at 320 a label needs more than its quarter of the phone (so the wrap is earned), it fits two lines there, and from 360 every label fits one",
+    Number.isFinite(micro) && Number.isFinite(pad) && over320.length > 0 && over360.length === 0 && notTwo.length === 0 && bothEngines,
     Number.isFinite(micro) && Number.isFinite(pad) && over320.length === 0
       ? "every label now fits its quarter of a 320 phone, so A17's wrap is no longer earned: delete the label's wrap and the journey slot's top alignment in globals.css, in the same commit as the copy change, and these two checks with them"
-      : show({ micro, pad, over320: over320.map((l) => `${l.loc} ${l.s} ${oneLine(l.s).toFixed(1)}`), over360: over360.map((l) => `${l.loc} ${l.s}`), notTwo: notTwo.map((l) => l.s) }));
+      : show({ micro, pad, over320: over320.map((l) => `${l.loc} ${l.s} ${oneLine(l.s).toFixed(1)}`), over360: over360.map((l) => `${l.loc} ${l.s}`), notTwo: notTwo.map((l) => l.s), bothEngines }));
   ok("8.label · below 360 a label may take a second, centred line; from 360 the classic one-line rule stands",
     baseRule(css, ".kp-jtab__label").includes("white-space: normal") && baseRule(css, ".kp-jtab__label").includes("text-align: center")
       && minWidthRule(css, 360, ".kp-jtab__label").includes("white-space: nowrap")
       && rail.includes(`<span className="kp-rail__label kp-jtab__label">`),
     baseRule(css, ".kp-jtab__label"));
-  // S5-TAB's short tickets label still fits a fifth of a 320 phone. U43's full Swahili game name, Juu na Chini,
-  // takes two centred lines in the five-tab rail at 320 and 360; every other label fits one line.
+  // S5-TAB's short tickets label fits a fifth of a 320 phone — tracked: below 335 every five-tab label closes its tracking by
+  // 0.04em (S5-R3-FIX F2), and a nine-letter label fits a fifth only so in Chromium (67px untracked, 63.05 tracked, 64px).
+  // U43's full Swahili game name, Juu na Chini, is the one label over its track at 320 and 360 and takes two centred lines;
+  // every other label fits one line there, in both engines (English's game name wraps by its own measure, 8.align.five).
   const five = railWords(I.tabsFor(true));
-  const over320f = five.filter((l) => oneLine(l.s) > 320 / 5);
-  const over360f = five.filter((l) => oneLine(l.s) > 360 / 5);
+  const over320f = five.filter((l) => RAIL_ENGINES.some((e) => oneLine(l.s, e, TRACKED) > 320 / 5));
+  const over360f = five.filter((l) => RAIL_ENGINES.some((e) => oneLine(l.s, e) > 360 / 5));
   const swGame = (l: (typeof five)[number]) => l.loc === "sw" && l.key === "updown" && l.s === "Juu na Chini";
-  ok("8.label.measure.five · the only five-tab label over its track at 320 and 360 is Swahili Juu na Chini; it fits two lines and each word fits the 320 track",
+  ok("8.label.measure.five · the only five-tab label over its track at 320 (tracked) and 360 is Swahili Juu na Chini, in either engine; it fits two lines and each word fits the 320 track",
     Number.isFinite(micro) && Number.isFinite(pad) && five.length === 15
       && over320f.length === 1 && over360f.length === 1 && swGame(over320f[0]) && swGame(over360f[0])
-      && linesIn(over320f[0].s, 320 / 5) === 2
-      && over320f[0].s.split(" ").every((w) => oneLine(w) <= 320 / 5),
-    show({ over320: over320f.map((l) => `${l.loc} ${l.s} ${oneLine(l.s).toFixed(1)} > ${320 / 5}`) }));
+      && linesIn(over320f[0].s, 320 / 5, "chromium", TRACKED) === 2
+      && over320f[0].s.split(" ").every((w) => oneLine(w, "chromium", TRACKED) <= 320 / 5),
+    show({ over320: over320f.map((l) => `${l.loc} ${l.s} ${oneLine(l.s, "chromium", TRACKED).toFixed(2)} > ${320 / 5}`), over360: over360f.map((l) => `${l.loc} ${l.s}`) }));
   ok("8.label.five · the rail says each tab's rail label where it has one (the tickets tab's short words among five); the desktop link keeps the label, which its page is titled by",
     rail.includes("const label = tabLabel(t, d.railLabel ?? d.label);") && !bar.includes("railLabel") && count(bar, "tabLabel(t, d.label)") === 3);
   // The grid stretches every slot to the tallest, and the classic slot centres: a two-line label would lift its pip.
   // ⭐ RE-PINNED 2026-10-11 (round 9 of the visual pass, R9-C; R3-D1 and R6-D1): below 360 EVERY language stacked from the
-  // top, though only Swahili wraps — 6px over and 15 under the items in English and Chinese at 320. The top-stacking now
-  // holds only where a label wraps: each language centres its slots from the width at which its longest label fits its
-  // quarter of the phone (`oneLine` above × 4: Swahili 332.8, English 280, Chinese 192), keyed by `:lang()`.
+  // top, though only Swahili wraps — 6px over and 15 under the items in English and Chinese at 320. The top-stacking holds
+  // only where a label wraps, keyed by `:lang()`.
+  // ⭐ RE-PINNED OPENLY (S5-R3-FIX F2, 2026-10-23), in both engines: English centres from the width all its labels stand on
+  // one line in both (Chromium's "My tickets", 74px × 4 = 296; WebKit's is 280), Chinese from 192, and Swahili from the width
+  // its two long labels — held to ten letters below it, so WebKit wraps them where Chromium does — stand on one line 8px
+  // apart, tracked, in Chromium: ceil(4 × (78.72 + 8)) = 347.
   const wraps = baseRule(css, ".kp-jtab__label").includes("white-space: normal");
-  const fitsFrom = Object.fromEntries((["en", "sw", "zh"] as const).map((loc) => [loc, Number((4 * Math.max(...labels.filter((l) => l.loc === loc).map((l) => oneLine(l.s)))).toFixed(1))]));
+  const fit4 = (loc: "en" | "sw" | "zh") => Number((4 * Math.max(...RAIL_ENGINES.flatMap((e) => labels.filter((l) => l.loc === loc).map((l) => oneLine(l.s, e))))).toFixed(2));
+  const longSwInk = Math.max(...labels.filter((l) => l.loc === "sw").map((l) => monoWidth(l.s, micro, "chromium", TRACKED)));
+  const fitsFrom = { en: fit4("en"), zh: fit4("zh"), sw: Math.ceil(4 * (longSwInk + MIN_GAP)) };
   const perLang = Object.fromEntries(Object.entries(fitsFrom).map(([loc, w]) => [loc, minWidthRule(css, w, `.kp-rail--journey:lang(${loc}) .kp-rail__item`)]));
-  const align = { below: baseRule(css, ".kp-rail--journey .kp-rail__item"), from360: minWidthRule(css, 360, ".kp-rail--journey .kp-rail__item"), fitsFrom, perLang };
-  ok("8.align · where a label wraps the journey's slots stack from the top, so every pip shares one line; each language centres them from the width its longest label fits its quarter of the phone (R9-C), and from 360 the classic centring holds",
+  const SW_FOUR = ".kp-rail--journey:not([data-tabs]):lang(sw) .kp-jtab__label";
+  const align = { below: baseRule(css, ".kp-rail--journey .kp-rail__item"), from360: minWidthRule(css, 360, ".kp-rail--journey .kp-rail__item"), fitsFrom, perLang,
+    swMeasure: baseRule(css, SW_FOUR), swReset: minWidthRule(css, fitsFrom.sw, SW_FOUR) };
+  ok("8.align · where a label wraps the journey's slots stack from the top, so every pip shares one line; each language centres them from the width its labels stand on one line in both engines (R9-C: en 296, zh 192, sw 347, Swahili's long labels held to ten letters below it), and from 360 the classic centring holds",
     !wraps || (align.below.includes("justify-content: flex-start") && align.from360.includes("justify-content: center")
-      && Object.values(perLang).every((r) => r.includes("justify-content: center")) && fitsFrom.sw > 320 && fitsFrom.en <= 320 && fitsFrom.zh <= 320),
+      && Object.values(perLang).every((r) => r.includes("justify-content: center")) && fitsFrom.sw > 320 && fitsFrom.en <= 320 && fitsFrom.zh <= 320
+      && fitsFrom.en === 296 && fitsFrom.zh === 192 && fitsFrom.sw === 347
+      && align.swMeasure.includes("max-width: min(100%, calc(10ch + 4px))") && align.swReset.includes("max-width: 100%")),
     show(align));
-  // U43's full Swahili game name moves only that locale's five-tab centring threshold to 416. English and Chinese
-  // still centre from 317; Swahili keeps its pips top-aligned while the name wraps at 320 and 360.
+  // THE FIVE TABS, in both engines (S5-R3-FIX F2, 2026-10-23; they replace round 1's Windows widths, 317 and 416): Chinese's
+  // labels, tracked, stand on one line from 315.2 in Chromium and centre from 317; English's game name, held to six letters,
+  // wraps below the width its tracked nine-letter neighbours stand 8px apart in Chromium — ceil(5 × (59.04 + 8)) = 336 — and
+  // its slots centre there; Swahili's full game name fits one line only from 5 × 88 = 440, its slots centring there.
   const FIVE = `.kp-rail--journey[data-tabs="5"]`;
-  const fitsFrom5 = Object.fromEntries((["en", "sw", "zh"] as const).map((loc) => [loc, Number((5 * Math.max(...five.filter((l) => l.loc === loc).map((l) => oneLine(l.s)))).toFixed(1))]));
   const SW_FIVE = `${FIVE}:lang(sw)`;
-  const align5 = { below: baseRule(css, `${FIVE} .kp-rail__item`), from317: minWidthRule(css, fitsFrom5.en, `${FIVE} .kp-rail__item`),
-    swAt317: minWidthRule(css, fitsFrom5.en, `${SW_FIVE} .kp-rail__item`),
-    swAt416: minWidthRule(css, fitsFrom5.sw, `${SW_FIVE} .kp-rail__item`), fitsFrom: fitsFrom5 };
-  ok("8.align.five · EN/ZH centre from 317; SW keeps pips aligned while Juu na Chini wraps and centres from its measured 416px threshold",
-    !wraps || (align5.below.includes("justify-content: flex-start") && align5.from317.includes("justify-content: center")
-      && align5.swAt317.includes("justify-content: flex-start") && align5.swAt416.includes("justify-content: center")
-      && fitsFrom5.en === 317 && fitsFrom5.zh === 317 && fitsFrom5.sw === 416),
+  const swName = five.find((l) => swGame(l))?.s ?? "?";
+  const enLongInk = Math.max(...five.filter((l) => l.loc === "en").map((l) => monoWidth(l.s, micro, "chromium", TRACKED)));
+  const fitsFrom5 = { en: Math.ceil(5 * (enLongInk + MIN_GAP)), sw: 5 * oneLine(swName), zh: 317 };
+  const zhFit = Math.max(...RAIL_ENGINES.flatMap((e) => five.filter((l) => l.loc === "zh").map((l) => 5 * oneLine(l.s, e, TRACKED))));
+  const EN_UPDOWN = `${FIVE}:lang(en) .kp-rail__item[href="/updown"] .kp-jtab__label`;
+  const align5 = { below: baseRule(css, `${FIVE} .kp-rail__item`), en: minWidthRule(css, fitsFrom5.en, `${FIVE}:lang(en) .kp-rail__item`),
+    sw: minWidthRule(css, fitsFrom5.sw, `${SW_FIVE} .kp-rail__item`), zh: minWidthRule(css, fitsFrom5.zh, `${FIVE}:lang(zh) .kp-rail__item`),
+    enMeasure: baseRule(css, EN_UPDOWN), enReset: minWidthRule(css, fitsFrom5.en, EN_UPDOWN), fitsFrom: fitsFrom5, zhFit: Math.round(zhFit * 100) / 100 };
+  ok("8.align.five · ZH centres from 317 (its labels, tracked, one line from 315.2 in both engines); EN keeps its pips aligned while its game name, held to six letters, wraps, and centres from 336; SW while Juu na Chini wraps, centring from 440",
+    !wraps || (align5.below.includes("justify-content: flex-start") && align5.en.includes("justify-content: center")
+      && align5.sw.includes("justify-content: center") && align5.zh.includes("justify-content: center")
+      && align5.enMeasure.includes("max-width: min(100%, calc(6ch + 4px))") && align5.enReset.includes("max-width: 100%")
+      && fitsFrom5.en === 336 && fitsFrom5.sw === 440 && zhFit <= fitsFrom5.zh),
     show(align5));
-  const swLabel = { below: baseRule(css, `${SW_FIVE} .kp-jtab__label`), from416: minWidthRule(css, fitsFrom5.sw, `${SW_FIVE} .kp-jtab__label`) };
-  ok("8.label.five.sw-wrap · the full Swahili game name wraps at 320 and 360 without ellipsis, then returns to one line from 416",
+  const swLabel = { below: baseRule(css, `${SW_FIVE} .kp-jtab__label`), from: minWidthRule(css, fitsFrom5.sw, `${SW_FIVE} .kp-jtab__label`),
+    measure: baseRule(css, `${SW_FIVE} .kp-rail__item[href="/updown"] .kp-jtab__label`) };
+  ok("8.label.five.sw-wrap · the full Swahili game name wraps at 320 and 360 without ellipsis — held to ten letters, so both engines wrap it — then returns to one line from 440",
     swLabel.below.includes("white-space: normal") && swLabel.below.includes("text-overflow: clip")
-      && swLabel.from416.includes("white-space: nowrap"), show(swLabel));
+      && swLabel.from.includes("white-space: nowrap") && swLabel.measure.includes("max-width: min(100%, calc(10ch + 4px))"), show(swLabel));
 
   // ⛔ ONE UNREAD POLLER PER WIDTH (the WP3 review's cost, VODACOM-PLAN §0h point 16).
   const both = ([null, true, false] as const).filter((w) => I.pollers(w).bell && I.pollers(w).dot);
@@ -3335,7 +3367,13 @@ ${s}`);
     const railFour = withFile(WORLD, JTABS, (s) => s.replace("const tabs = journeyTabsFor(millionea);", "const tabs = journeyTabsFor(false);"));
     const railLongWords = withFile(WORLD, JTABS, (s) => s.replace("const label = tabLabel(t, d.railLabel ?? d.label);", "const label = tabLabel(t, d.label);"));
     const fiveInFour = withCss((s) => s.replace(`${LF}.kp-rail--journey[data-tabs="5"] > ul { grid-template-columns: repeat(5, minmax(0, 1fr)); }`, ""));
-    const fiveAt350 = withCss((s) => s.replace(`@media (min-width: 317px) { .kp-rail--journey[data-tabs="5"] .kp-rail__item {`, `@media (min-width: 350px) { .kp-rail--journey[data-tabs="5"] .kp-rail__item {`));
+    const fiveAt350 = withCss((s) => s.replace(`@media (min-width: 317px) { .kp-rail--journey[data-tabs="5"]:lang(zh) .kp-rail__item {`, `@media (min-width: 350px) { .kp-rail--journey[data-tabs="5"]:lang(zh) .kp-rail__item {`));
+    // S5-R3-FIX F2: English centred from round 1's 317 while its game name, held to six letters, still wraps.
+    const fiveEnAt317 = withCss((s) => s.replace(`@media (min-width: 336px) { .kp-rail--journey[data-tabs="5"]:lang(en) .kp-rail__item {`, `@media (min-width: 317px) { .kp-rail--journey[data-tabs="5"]:lang(en) .kp-rail__item {`));
+    // S5-R3-FIX F2: English's game name no longer held to six letters (its nine-letter neighbours 4.95px apart in Chromium).
+    const fiveEnUnheld = withCss((s) => s.replace(`.kp-rail--journey[data-tabs="5"]:lang(en) .kp-rail__item[href="/updown"] .kp-jtab__label { max-width: min(100%, calc(6ch + 4px)); }`, ""));
+    // S5-R3-FIX F2: Swahili's long four-tab labels no longer held to ten letters (WebKit stands them one line, 4px apart).
+    const fourSwUnheld = withCss((s) => s.replace(`.kp-rail--journey:not([data-tabs]):lang(sw) .kp-jtab__label { max-width: min(100%, calc(10ch + 4px)); }`, ""));
     const fiveCentredBelow = withCss(inRule(`.kp-rail--journey[data-tabs="5"] .kp-rail__item`, "justify-content: flex-start", "justify-content: center"));
     const fiveSwNoWrap = withCss(inRule(`.kp-rail--journey[data-tabs="5"]:lang(sw) .kp-jtab__label`, "white-space: normal", "white-space: nowrap"));
     const accountNamed = withFile(WORLD, JTABS, (s) => s.replace("<Link", "<Link aria-label={tabLabel(t, d.label)}"));
@@ -3546,7 +3584,7 @@ ${s}`);
         impl: withList(true, millioneaLate), landed: millioneaLate[3].key === "millionea", landedAs: "Millionea's tab two slots from Up & Down" },
       { name: "the five tabs lose the tickets tab's short rail label (S5-TAB)", expect: at("8.label.measure.five ·"),
         impl: withList(true, fiveLongWords), landed: fiveLongWords.every((d) => d.railLabel === undefined),
-        landedAs: "\"Tiketi zangu\", 83.2px, in a 72px fifth of a 360 phone" },
+        landedAs: "\"Tiketi zangu\", 88px in Chromium, in a 72px fifth of a 360 phone" },
       { name: "the shell drive's copy of the table loses Millionea's rows (S5-TAB)", expect: at("1.copy ·"),
         world: driveStale, landed: extraChanged(driveStale, QA_DRIVE), landedAs: "the drive expects Maswali lit on Millionea's tickets, and fails only at drive time" },
       { name: "a second resolver, written beside the classic rail", expect: at("1.one.definer ·"),
@@ -3834,9 +3872,15 @@ ${s}`);
       { name: "the rail draws the four tabs whatever the shell answers (S5-TAB)", expect: at("8.tabs ·"),
         world: railFour, landed: changed(railFour, JTABS), landedAs: "Millionea's link from 1024 and no tab on the phone" },
       { name: "the rail's tickets tab says its long words among five (S5-TAB)", expect: at("8.label.five ·"),
-        world: railLongWords, landed: changed(railLongWords, JTABS), landedAs: "\"Tiketi zangu\" in a 72px fifth of a 360 phone" },
-      { name: "the five tabs' centring keyed at the old English width, 350 (S5-TAB)", expect: at("8.align.five ·"),
-        world: fiveAt350, landed: cssChanged(fiveAt350), landedAs: "on a 320 phone EN/ZH slots stack from the top although their labels fit from 317" },
+        world: railLongWords, landed: changed(railLongWords, JTABS), landedAs: "\"Tiketi zangu\" (88px in Chromium) in a 72px fifth of a 360 phone" },
+      { name: "the five tabs' Chinese centring keyed at 350 (S5-TAB)", expect: at("8.align.five ·"),
+        world: fiveAt350, landed: cssChanged(fiveAt350), landedAs: "on a 320 phone ZH slots stack from the top although its labels fit from 317" },
+      { name: "English's five-tab slots centred from round 1's 317 while its game name wraps (S5-R3-FIX F2)", expect: at("8.align.five ·"),
+        world: fiveEnAt317, landed: cssChanged(fiveEnAt317), landedAs: "at 320 every English pip centred while Up & Down stands on two lines: its pip lifted above the others" },
+      { name: "English's five-tab game name no longer held to six letters (S5-R3-FIX F2)", expect: at("8.align.five ·"),
+        world: fiveEnUnheld, landed: cssChanged(fiveEnUnheld), landedAs: "Questions | Up & Down | Millionea 4.95px apart at 320 in Chromium" },
+      { name: "Swahili's long four-tab labels no longer held to ten letters (S5-R3-FIX F2)", expect: at("8.align ·"),
+        world: fourSwUnheld, landed: cssChanged(fourSwUnheld), landedAs: "WebKit stands Juu na Chini | Tiketi zangu on one line 4px apart at 333, under stacked slots" },
       { name: "the five-tab slots centred below their width (S5-TAB)", expect: at("8.align.five ·"),
         world: fiveCentredBelow, landed: cssChanged(fiveCentredBelow), landedAs: "below 317 a slot whose label no longer fits would lift its pip above the others" },
       { name: "Swahili's full five-tab game name forced onto one line (U43/S5)", expect: at("8.label.five.sw-wrap ·"),

@@ -2993,8 +2993,10 @@ const STRIP_SIGNATURE = "export function LiveTicker({ events, journey = false }:
 /** AppShell's main landmark, as written (OptOutShell writes its own on one line): the plants' anchor below the slot.
  *  ⚠️ Re-pinned 2026-10-15 (S10 WP0): A21 (`63704243c`) gave AppShell's landmark its `viewer` prop, so the bare
  *  `<MainLandmark>` this anchor named resolved 0 times and red:journey-home missed two plants.
- *  ⚠️ Re-pinned 2026-10-22 (MASWALI-BUILD S5 round 2 · PLATFORM): the switch marks every signed-out reader now. */
-const STRIP_MAIN = [`<MainLandmark viewer={!session ? "guest" : undefined}>`, "        <RouteTransition>{children}</RouteTransition>", "      </MainLandmark>"].join(LF);
+ *  ⚠️ Re-pinned 2026-10-22 (MASWALI-BUILD S5 round 2 · PLATFORM): the switch marks every signed-out reader now.
+ *  ⚠️ Re-pinned 2026-10-23 (MASWALI-BUILD S5-R3-FIX 7): the landmark's children pass through the loading drawings' words
+ *  provider (`withGhostWords`), which a reader Millionea is hidden from never gets — the anchor only. */
+const STRIP_MAIN = [`<MainLandmark viewer={!session ? "guest" : undefined}>`, "        <RouteTransition>{withGhostWords(children)}</RouteTransition>", "      </MainLandmark>"].join(LF);
 /** The client's own import line, as written: the anchor beside which a plant adds the hook's import. */
 const STRIP_TICKER_IMPORT = 'import { tickerShowsOn } from "@/lib/markets/ticker";';
 /**
