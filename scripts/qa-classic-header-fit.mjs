@@ -34,15 +34,22 @@ import { premise, demoSession, LOCALE_COOKIE } from "./live/journey-pass.mjs";
 
 const BASE = process.env.BASE || process.env.KP_BASE || "http://localhost:3720";
 const PROVE_RED = process.argv.includes("--prove-red");
+// The cells that matter by default (the lead's matrix, 2026-10-23): 1024 and the widths main still overflowed at, the xl
+// rung where the lockup and Deposit's word return, and the widest board. KP_HDR_WIDTHS=sweep walks 1024–1280 every 8px
+// and the desktop rungs to 1920 (the measurement that found the defect); KP_HDR_READERS / LOCALES / KP_HDR_ROUTES narrow.
+const SWEEP = [...Array.from({ length: 33 }, (_, i) => 1024 + i * 8), 1279, 1280, 1300, 1366, 1440, 1536, 1600, 1920];
+const WIDTHS = process.env.KP_HDR_WIDTHS === "sweep" ? SWEEP
+  : (process.env.KP_HDR_WIDTHS || "1024,1032,1040,1048,1280,1920").split(",").map(Number);
 const LOCALES = (process.env.LOCALES || "sw,en,zh").split(",");
-const WIDTHS = [...Array.from({ length: 33 }, (_, i) => 1024 + i * 8), 1279, 1280, 1300, 1366, 1440, 1536, 1600, 1920];
-const READERS = [
+const ALL_READERS = [
   { id: "guest", door: null },
   { id: "player", door: "" },
   { id: "unverified", door: "?email=unverified" },
   { id: "held", door: "?hold=officer" },
 ];
-const ROUTES = (signedIn) => ["/markets", "/updown", "/live", ...(signedIn ? ["/positions"] : [])];
+const READERS = process.env.KP_HDR_READERS ? ALL_READERS.filter((r) => process.env.KP_HDR_READERS.split(",").includes(r.id)) : ALL_READERS;
+const ROUTES = (signedIn) => (process.env.KP_HDR_ROUTES ? process.env.KP_HDR_ROUTES.split(",")
+  : ["/markets", "/updown", "/live", ...(signedIn && process.env.KP_HDR_WIDTHS === "sweep" ? ["/positions"] : [])]);
 
 /** Runs IN THE PAGE: the classic header row's content edges, its children and controls, the labels, the slack. */
 const ROW_PROBE = () => {
@@ -69,11 +76,16 @@ const ROW_PROBE = () => {
     if (b.right > right + 0.5) past.push(`control ${name(el)} ends ${b.right.toFixed(1)} > ${right.toFixed(1)}`);
     if (b.left < left - 0.5) past.push(`control ${name(el)} starts ${b.left.toFixed(1)} < ${left.toFixed(1)}`);
   }
-  const mark = home?.querySelector("svg");
+  // The DRAWN mark: below 1280 the 26px mark, from 1280 the lockup (the other one is display:none and reads 0x0).
+  const mark = home ? [...home.querySelectorAll("svg")].find(shown) : null;
   if (mark && shown(home)) {
     const m = mark.getBoundingClientRect();
     if (m.left < left - 0.5) past.push(`the mark starts ${m.left.toFixed(1)} < ${left.toFixed(1)}`);
   }
+  // HEADER-1024: the spacings that give way read the row's own gap ladder (`--kp-bar-gap`), so the two must agree.
+  const ladder = rs.getPropertyValue("--kp-bar-gap").trim();
+  const ladderPx = ladder ? (() => { const t = document.createElement("div"); t.style.width = ladder; t.style.flex = "none"; row.appendChild(t); const v = t.getBoundingClientRect().width; t.remove(); return v; })() : null;
+  if (ladderPx !== null && Math.abs(ladderPx - (parseFloat(rs.columnGap) || 0)) > 0.5) past.push(`--kp-bar-gap ${ladder} = ${ladderPx}px ≠ the row's gap ${rs.columnGap}`);
   // Every label whole: a desktop link, More, the language code, the balance's figure.
   const cut = [...row.querySelectorAll('nav a, nav button, details > summary, [data-testid="wallet-balance-pill"], [data-testid="wallet-balance-capsule"]')]
     .filter(shown).filter((el) => el.scrollWidth > el.clientWidth + 0.5).map((el) => `${name(el)} clipped (${el.scrollWidth} > ${el.clientWidth})`);

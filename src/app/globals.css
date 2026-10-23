@@ -7507,6 +7507,35 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 
 
 /* =====================================================================
+   THE TOP BAR'S ROW — ITS SPACING GIVES WAY BEFORE THE ROW LEAVES ITS EDGE (MASWALI-BUILD HEADER-1024, 2026-10-23)
+   =====================================================================
+   🔴 MEASURED ON MAIN 4c75dbbb6 (`qa:classic-header-fit`): in Swahili at 1024, for a signed-in player, the links and the
+   right cluster with the row's three fixed gaps ran 16.6px past the row's content edge (FEATURE_MILLIONEA=ACTIVE, as
+   production runs; 14.6px at WITHDRAWN) — into the gutter, the account menu 4.4px from the screen's edge — up to ~1047px.
+   The empty spacer between the clusters still cost the gaps on its two sides.
+   ⭐ THE FIX GIVES SPACING, NEVER A LABEL OR A CONTROL: the row keeps its gap ladder (`gap-2 sm:gap-4 lg:gap-2 xl:gap-4`,
+   12 · 20 · 12 · 20px — `test:journey-shell` 7.steps holds that spelling for both bars), `--kp-bar-gap` repeats it for the
+   two spacings below (`qa:classic-header-fit` reads the two equal at every width), and those spacings, which held fixed
+   px, become items that shrink:
+     · `.kp-bar-fill` (links → cluster): the spacer's two gaps and the free space as ONE item — negative margins cancel the
+       row's gaps, its basis restores them, it grows into the free space; when the row is full it gives way FIRST
+       (flex-shrink 1000), down to 8px;
+     · `.kp-bar-lead` (logo → links): the gap and the links' old 10px lead (`ml-2.5`) as the nav's first item (`::before`),
+       giving way next, down to 8px (the nav's own 2px gap stands after it).
+   ⭐ WHEREVER THE ROW HAS ROOM NOTHING MOVES: each spacing sits at its basis — exactly the old gap + lead (22px) and the
+   old gap + spacer + gap — so every pixel of a row that fits today is where it was. 28px give at lg (16 + 12), where the
+   worst row needed 16.6. A row that needs more fails `qa:classic-header-fit`, never the screen.
+   ⛔ Below lg the links are not drawn (`hidden lg:flex`), so the lead never shows; the fill does the same job between the
+   mark and the cluster. */
+.kp-bar-row { --kp-bar-gap: var(--sp-3); }
+@media (min-width: 640px) { .kp-bar-row { --kp-bar-gap: var(--sp-5); } }
+@media (min-width: 1024px) { .kp-bar-row { --kp-bar-gap: var(--sp-3); } }
+@media (min-width: 1280px) { .kp-bar-row { --kp-bar-gap: var(--sp-5); } }
+.kp-bar-fill { flex: 1 1000 calc(2 * var(--kp-bar-gap)); min-width: var(--sp-2); margin-inline: calc(-1 * var(--kp-bar-gap)); }
+.kp-bar-lead { margin-left: calc(-1 * var(--kp-bar-gap)); }
+.kp-bar-lead::before { content: ""; flex: 0 1 calc(var(--kp-bar-gap) + 10px - 2px); min-width: var(--sp-2); }
+
+/* =====================================================================
    THE TOP BAR'S NAV LINK — DG-P-01 (DESIGN-GATE-2026-08-28)
    =====================================================================
    🔴 THE PRIMARY NAVIGATION OF A MONEY PRODUCT ANSWERED A MOUSE ONLY ON CLICK. Measured on
