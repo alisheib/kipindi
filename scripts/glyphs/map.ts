@@ -369,10 +369,11 @@ export const DUO_KEYS: readonly string[] = [
  * load; `npm run glyphs:gen` keeps these files and deletes every other stale one, and `test:glyph-sync` §1 allows exactly
  * these. The next release that changes a sprite names the then-live files instead (one release each, never a pile).
  * File names inside `public/icons/g/`.
- * MASWALI-BUILD S5 (lands after PHOSPHOR release 2b, W6): main 4471bb44 serves app.76a3696e.svg and
- * admin.75aeb290.svg. Keep both for the release's open pages.
+ * MASWALI-BUILD S6-SHIP 14 (the S7 + S6 release, after the S5 release on main): main 07a400bc3 serves app.b899eae1.svg and
+ * admin.75aeb290.svg — S5's — while this release builds its own app and admin sprites. Keep both for the release's open
+ * pages; app.76a3696e.svg (W6's, which S5 kept) leaves.
  */
-export const PREVIOUS_SPRITES: readonly string[] = ["app.76a3696e.svg", "admin.75aeb290.svg"];
+export const PREVIOUS_SPRITES: readonly string[] = ["app.b899eae1.svg", "admin.75aeb290.svg"];
 
 /** Keys that share one Phosphor drawing because they mean the same thing; the swap collapses each pair. */
 export const ALIASES: Array<[string, string]> = [

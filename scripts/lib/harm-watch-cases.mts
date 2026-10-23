@@ -354,7 +354,7 @@ export async function runHarmCases(ok: Ok, impl: HarmImpl, HW: Any): Promise<{ o
       && strayOf(["const ", "SPAN_", "LIMIT", " = ", String(17), ";"].join("")) === 1,
     String(code.match(LITERAL)?.[0] ?? strayConsts.join(", ")));
   // ⭐ The candidate window is the detectors' own: derived from the windows they export, never typed —
-  // by value (the module's constant equals the larger window in whole days) and in source (its derivation line).
+  // by value (the module's constant equals the larger window, rounded up) and in source (its derivation line).
   {
     const rg = await import("../../src/lib/server/responsible-gambling.ts");
     const DERIVED = /export const HARM_WATCH_CANDIDATE_DAYS = Math\.ceil\(Math\.max\(RECENT_ACTIVITY_MS, DEPOSIT_ESCALATION_LOOKBACK_MS\) \/ DAY_MS\);/;

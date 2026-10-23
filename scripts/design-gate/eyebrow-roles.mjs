@@ -167,6 +167,9 @@ export const NOT_EYEBROW = new Map([
   ["app/admin/maswali/integrity/page.tsx :: <p className=\"px-4 pt-3 font-mono text-micro uppercase tracking-widest text-text-subtle\">{formatNumber(v.winnersPage.total)} of {adminCount(v.winnersPage.allTotal, \"winne", "OTHER"],
   ["app/admin/maswali/integrity/page.tsx :: <p className=\"px-4 pt-3 font-mono text-micro uppercase tracking-widest text-text-subtle\">{formatNumber(v.sealWeeks.total)} of {adminCount(v.sealWeeks.allTotal, \"sealed we", "OTHER"],
   ["app/admin/maswali/page.tsx :: <p className=\"px-4 pt-3 font-mono text-micro uppercase tracking-widest text-text-subtle\">{weeks.total} of {weeks.allTotal} {weeks.allTotal === 1 ? \"week\" : \"weeks\"}</p> ↵", "OTHER"],
+  // MASWALI-BUILD S6-SHIP · the evidence archive's count (S6-ADMIN 6, G7: the archive a list like the other three) — the same
+  // data readout as the week list's above, read and declared.
+  ["app/admin/maswali/evidence/page.tsx :: <p className=\"px-4 pt-3 font-mono text-micro uppercase tracking-widest text-text-subtle\" data-result-count={selected.total}>{selected.total} of {selected.allTotal} {selec", "OTHER"],
   ["app/admin/objections/objection-decision.tsx :: className=\"inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.08em] text-text-tertiary\" ↵ title=\"Upholding or rejecting an objection is a complia", "OTHER"],
   ["app/admin/objections/objection-decision.tsx :: className=\"inline-flex min-h-[40px] items-center gap-1 rounded-md border border-border bg-bg-overlay px-2.5 py-1.5 font-mono text-micro font-bold uppercase tracking-[0.08", "CONTROL_LABEL"],
   ["app/admin/objections/objection-decision.tsx :: className=\"inline-flex min-h-[40px] items-center gap-1 rounded-md border border-warning-border bg-warning-bg px-2.5 py-1.5 font-mono text-micro font-bold uppercase tracki", ["CONTROL_LABEL",2]],

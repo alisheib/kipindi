@@ -52,9 +52,8 @@ export const HARM_WATCH_MAX_DAYS = 400;
 /**
  * The candidates: accounts with a confirmed deposit created this many days back — a window that holds every deposit the
  * markers are raised on, so no account that can carry one is left out (`test:harm-watch` H.2 proves it on fixtures).
- * ⭐ DERIVED, never typed: the larger of the detectors' own windows (`RECENT_ACTIVITY_MS`,
- * `DEPOSIT_ESCALATION_LOOKBACK_MS`, exported by `responsible-gambling.ts`), in whole days — a detector's window moved
- * there moves this with it.
+ * ⭐ DERIVED, never typed: the larger of the windows the detectors export (`RECENT_ACTIVITY_MS`,
+ * `DEPOSIT_ESCALATION_LOOKBACK_MS`, from `responsible-gambling.ts`), rounded up — a window moved there moves this with it.
  */
 export const HARM_WATCH_CANDIDATE_DAYS = Math.ceil(Math.max(RECENT_ACTIVITY_MS, DEPOSIT_ESCALATION_LOOKBACK_MS) / DAY_MS);
 /** The count is taken once an EAT day, from this hour. */
