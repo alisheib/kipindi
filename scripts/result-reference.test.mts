@@ -85,9 +85,12 @@ ok("2.1 · ⭐ the modal draws the id's halves with ONE break opportunity betwee
   drawn === "<span>txn_b7f5f7cd59</span><span><wbr/>628ee1bb86d113</span>" && drawn.replace(/<[^>]+>/g, "") === TXN, drawn);
 ok("2.2 · any other value is drawn exactly as it was", renderToStaticMarkup(h(DetailValue, { value: "TZS 1,000" })) === "TZS 1,000");
 const modal = decomment(readFileSync(resolve(ROOT, "src/components/markets/operation-result-modal.tsx"), "utf8")).replace(/\s+/g, " ");
-ok("2.3 · ⭐ the value's box drops break-all for such a token (break-word the floor) and keeps it for every other value",
-  modal.includes('${evenBreakChunks(d.value) ? "[word-break:normal] [overflow-wrap:break-word]" : "break-all"}')
-    && modal.includes("<DetailValue value={d.value} />") && !modal.includes("> {d.value} </p>"));
+// The token's own branch, and every other value's markup exactly as before FLOW 4 (`test:sell-grace-truth` 6.model reads it).
+ok("2.3 · ⭐ such a token gets its own box — no break-all, break-word the floor, its chunks drawn — and every other value keeps its box exactly as it was",
+  modal.includes("{evenBreakChunks(d.value) ? (")
+    && modal.includes('<p data-detail-value className="min-w-0 ml-auto text-right font-mono text-[14px] font-bold tabular-nums [word-break:normal] [overflow-wrap:break-word]"')
+    && modal.includes("<DetailValue value={d.value} />")
+    && modal.includes('<p className="min-w-0 ml-auto text-right font-mono text-[14px] font-bold tabular-nums break-all"') && modal.includes("> {d.value} </p>"));
 
 const FLOOR = 7;
 ok(`floor · at least ${FLOOR} checks ran before this one`, passed + failed >= FLOOR, `${passed + failed} ran`);

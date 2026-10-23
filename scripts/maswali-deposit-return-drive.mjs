@@ -112,9 +112,11 @@ async function payDeposit(page, shell) {
     await trigger.click();
     const dialog = dialogOf(page);
     await dialog.waitFor({ timeout: 30_000 });
-    await dialog.getByRole("button").last().waitFor();
-    // The dialog's commit is its first button; Cancel is the second.
-    await dialog.getByRole("button").filter({ hasNot: page.locator("svg") }).first().click();
+    // The dialog's commit is its first button with words: the scrim (a button too, named "Cancel" in the reader's language)
+    // and the ✕ (a glyph) are not it; Cancel is the second.
+    const commit = dialog.locator("button:not(.m-scrim)").filter({ hasNot: page.locator("svg") }).first();
+    await commit.waitFor();
+    await commit.click();
   }
 }
 
@@ -200,7 +202,7 @@ async function drawnCase(shell, locale, width, pass, { tickets = 1, expectDoor =
     await payControl(page).click();
     await dialogOf(page).waitFor({ timeout: 60_000 });
     ok(`${label} · the confirm now offers the buy, not a deposit — nothing was bought by itself`,
-      (await page.getByTestId("millionea-slip-deposit").count()) === 0 && (await page.locator('[data-testid="millionea-slip-cut"], [role="dialog"] button.btn-gold, [role="dialog"] button[type="submit"]').count()) > 0
+      (await page.getByTestId("millionea-slip-deposit").count()) === 0 && await page.getByTestId("millionea-confirm-commit").isVisible()
         && (await page.getByRole("link", { name: /Ticket bought|Tiketi imekatwa|已出票/ }).count()) === 0);
     await tile(page, `${name}-5-confirm-funded`);
   } finally {

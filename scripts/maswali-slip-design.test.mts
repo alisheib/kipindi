@@ -428,8 +428,9 @@ section("§6 · the short main balance asks the bet sheet's own plan");
   ok("6.6 · MR-10 · bonus money never buys a ticket: the plan is asked with a bonus of nothing",
     code("src/lib/millionea-slip-money.ts").includes("wallet: { status: facts.walletStatus, balance: main, bonusBalance: 0 },"));
   const client = code("src/app/millionea/slip/slip-client.tsx");
-  ok("6.7 · H4 · the door goes where the bet sheet's goes, tagged as a low-balance deposit, the progress bar first (§F10)",
-    client.includes('`/wallet/deposit?${new URLSearchParams({ amount: String(amount), from: "low-balance" })}`') && client.includes('window.dispatchEvent(new Event("50pick:navigating"));'));
+  // Re-pinned at MASWALI-BUILD FLOW 3 (MB-57): the door also carries the slip's way back (`returnPath`, test:deposit-slip-return).
+  ok("6.7 · H4 · the door goes where the bet sheet's goes, tagged as a low-balance deposit, with the slip's way back, the progress bar first (§F10)",
+    client.includes('`/wallet/deposit?${new URLSearchParams({ amount: String(amount), from: "low-balance", returnPath: MILLIONEA_SLIP_RETURN })}`') && client.includes('window.dispatchEvent(new Event("50pick:navigating"));'));
   ok("6.1′ CONTROL · the raw shortfall the old door offered is under the minimum the deposit takes", 600 < DEPOSIT_MIN_TZS);
 }
 

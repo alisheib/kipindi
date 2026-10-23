@@ -615,9 +615,18 @@ export function OperationResultModal({
                     <p className="text-body-sm italic text-text-subtle">{d.sw}</p>
                   )}
                 </div>
+                {evenBreakChunks(d.value) ? (
+                  /* FLOW 4 · an unbroken token: its near-equal chunks, breaking only between them (`DetailValue`). */
+                  <p
+                    data-detail-value
+                    className="min-w-0 ml-auto text-right font-mono text-[14px] font-bold tabular-nums [word-break:normal] [overflow-wrap:break-word]"
+                    style={{ color: d.tone === "good" ? "var(--success-fg)" : d.tone === "bad" ? "var(--danger-fg)" : "var(--text)" }}
+                  >
+                    <DetailValue value={d.value} />
+                  </p>
+                ) : (
                 <p
-                  data-detail-value
-                  className={`min-w-0 ml-auto text-right font-mono text-[14px] font-bold tabular-nums ${evenBreakChunks(d.value) ? "[word-break:normal] [overflow-wrap:break-word]" : "break-all"}`}
+                  className="min-w-0 ml-auto text-right font-mono text-[14px] font-bold tabular-nums break-all"
                   style={{
                     color:
                       d.tone === "good" ? "var(--success-fg)" :
@@ -625,8 +634,9 @@ export function OperationResultModal({
                                           "var(--text)",
                   }}
                 >
-                  <DetailValue value={d.value} />
+                  {d.value}
                 </p>
+                )}
               </div>
             ))}
           </div>

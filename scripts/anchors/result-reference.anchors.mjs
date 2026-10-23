@@ -26,10 +26,17 @@ export const MUTATIONS = [
     failure: /FAIL 2[.]3 /,
   },
   {
-    name: "(RR4) the value's box breaks anywhere again (break-all for every value)",
+    name: "(RR4) the token's box breaks anywhere again (break-all)",
     file: "src/components/markets/operation-result-modal.tsx",
-    from: "${evenBreakChunks(d.value) ? \"[word-break:normal] [overflow-wrap:break-word]\" : \"break-all\"}",
-    to: "break-all",
+    from: "tabular-nums [word-break:normal] [overflow-wrap:break-word]\"",
+    to: "tabular-nums break-all\"",
+    failure: /FAIL 2[.]3 /,
+  },
+  {
+    name: "(RR5) no value takes the token's branch any more",
+    file: "src/components/markets/operation-result-modal.tsx",
+    from: "{evenBreakChunks(d.value) ? (",
+    to: "{false ? (",
     failure: /FAIL 2[.]3 /,
   },
 ];

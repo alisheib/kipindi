@@ -67,7 +67,8 @@ for (const locale of ["sw", "en", "zh"]) {
       await trigger.click();
       const confirm = page.locator('[role="dialog"], [role="alertdialog"]').last();
       await confirm.waitFor({ timeout: 30_000 });
-      await confirm.getByRole("button").filter({ hasNot: page.locator("svg") }).first().click();
+      // The commit: the first button with words — not the scrim (a button named "Cancel" in the reader's language), not the ✕.
+      await confirm.locator("button:not(.m-scrim)").filter({ hasNot: page.locator("svg") }).first().click();
       await page.waitForURL(/\/wallet\?deposited=/, { timeout: 120_000 });
       const id = new URL(page.url()).searchParams.get("deposited");
       const dialog = page.locator('[role="dialog"]').last();
