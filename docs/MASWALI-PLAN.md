@@ -38,6 +38,35 @@ before any week OPENS — S6's Millionea rules page (`/legal/rules/millionea`, a
 live; before the FIRST settlement — S7 and S6's notices, tax-report lines and payout-float check live. §6.1's lines stay
 unticked until each is true.
 
+**⏳ 2026-10-23 (the Claude session asheib-f3 on OMEGA; Ali: "replace in the navbar on mobile Millionea with Live … the
+order you think is perfect … give me the pdf … mark progress done").**
+- `main` `ac9fd7c21` (08:09 UTC): **Next.js 16.4.0 → 16.4.2**, the security patch (critical GHSA-2464-fhr4-w9xw and
+  GHSA-673q-mjm6-r5xr, high GHSA-p3m5-59mp-jv5r; Ali: "patch it first"). Gates at the exact commit: tsc 0, `next build`,
+  local qa:live 378/0 at ACTIVE and 390/0 at the default; CI: every step green but test:needle-rest 55/35 — the same 35
+  cases as live main's own run (U43's red since 7e3a06ea0). Read back: dpl on the three hosts after 415 s, health ok,
+  qa:chunks-prod 6/6 on www.
+- This commit: **S5 round 2 on `main`** — the classic phone rail draws **Millionea's track in Live's place** (Markets ·
+  Up & Down · Deposit · Millionea · More; Live leads More — DESIGN_AUTHORITY §M8a item 11; the order kept: the two
+  established tracks stay where players' thumbs know them, the coin stays centred, Millionea follows the coin in its own
+  ink, the products read in the journey tab's order), the landing's door row (the Live link — landing ruling R19; "Be
+  this week's winner?" — §M8a item 21), REGISTER's round 2 (§M8a items 22–23) and PLATFORM's round 2 (D10–D15, the break's
+  doors, the Swahili licence lines). Gates at `5ceb40c6f` (this commit's parent; this commit is documents only): tsc 0;
+  `next build`; qa:live 379/0 at ACTIVE and 391/0 at the default; qa:classic-rail drawn 212/0 and dark 172/0 (every rail
+  tile read by the lead: 320/360/412/740/768 × sw/en/zh × guest, player, held wallet; the lit states; More with Live
+  first); landing-doors 266/0 dark and 791/0 drawn; break nav 7/0, break money doors 7/0; door census 40/0 WITHDRAWN and
+  45/0 STAFF_PREVIEW; notice-bar widows 145/0; CI: every step green but needle-rest's same 35 cases; classic parity
+  against a fresh baseline of `ac9fd7c21` (224 cells; its null compare 68/68): 64/67, every difference NAMED — 32 cells
+  gain `<main data-viewer="guest">` (PLATFORM 10, an attribute, no box moves); the 8 `/` cells grow by exactly 64px and
+  the 4 player `/` cells differ in the hero's act (the landing's door row: a 44px row + its 20px gap, R19); and the
+  instrument's known flaky cell family, `question-player|en|1280` (`:selection-closed` timed out; `:open` read 0px
+  margins and an undrawn chart) — measured directly on fresh servers of both commits: identical (the reading container
+  1080px at x100 with 100px margins, the chart not yet drawn on either).
+- Not in it: HUB (`536b66535`, its last commit WIP) and R3-FIX (`3b24c846c`) — the next S5 release, then the critics.
+- In flight for the weekend: lane S7-SHIP readies `claude/maswali-s7-s5`, lane S6-SHIP `claude/maswali-s6-release` (the
+  rules page and Terms before Monday 00:00 EAT; the claims lint judges only Millionea-tagged campaigns in that release —
+  the lead's ruling of 2026-10-23, so the classic marketing path is unchanged); lane GUIDE writes Ali's admin PDF to what
+  ships.
+
 **⏳ S5 IS ON `main` — `2ed817395`, pushed 2026-10-22 19:09 UTC (the Claude session ali-7e on ALI-BLADE15, on Ali's
 word "continue maswali … push all now"). ⭐ RESUME FIRST from the hand-over branch `maswali-handover-20261021`, file
 `handover/maswali-2026-10-21/stop6-20261022/README.md` (every lane's state, the runner tools, the findings).** Every gate ran
