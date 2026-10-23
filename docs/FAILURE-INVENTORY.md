@@ -1901,7 +1901,7 @@ change). The hub's held notice wears its test id on a wrapper — the kit's Call
 page (its words and place unchanged). Held by `test:millionea-held-wallet` (the one choice, the surfaces and their order, the
 one condition across the buy, the cancel and the reads, the words) with plants (HW1)–(HW10) of `red:millionea-held-wallet`.
 
-#### ⚠️ FL.5 · the bell cut every Millionea title at its event — the order fixed by FLOW 15 (the lead's ruling of 2026-10-23, N1); the objection decisions still cut at 360 in sw and en (open)
+#### ✅ FL.5 · the bell cut every Millionea title at its event — fixed by FLOW 15 (the order) and FLOW 16b (the lines); the lead's and Ali's rulings of 2026-10-23
 
 Found on the critical walk of the S6 head (c5dede03d), classic shell, sw. The bell draws a title on ONE truncated line,
 and every Millionea title put the week first, so at 360 the event was the part cut: "Millionea Wiki 47 · Mau…" (sales
@@ -1915,7 +1915,13 @@ Week 49", once "Millionea Week 49 voided"), and an objection decided or filed. A
 The receipt alone keeps the bare week, for a dictionary that cannot be read. Held by `test:millionea-titles` (the rule, the
 census of emitters) with plants (MT1)–(MT2) of `red:millionea-titles`, and by `test:maswali-notify`'s exact titles on both
 stores (re-pinned). The receipt's money-path plant (NOB7) follows the receipt's new line.
-⚠️ STILL OPEN, MEASURED (FLOW 15's bell walk, the objection fixture's 11 notices, the classic bell). At 1280, and in zh at
-360, no event is cut. At 360 in sw and en, the objection decisions' events are themselves longer than the title's line:
-"Pingamizi lako limeku…", "Your objection was…". That is 4 of the 11 rows; their verdict word is lost, though the body's
-first words say it. It is put to the lead: shorter decision words, or two title lines for a Millionea row.
+FLOW 15's bell walk then measured a remainder (the objection fixture's 11 notices, the classic bell). At 1280, and in zh at
+360, no event was cut. At 360 in sw and en, the objection decisions' events were themselves longer than the one line:
+"Pingamizi lako limeku…", "Your objection was…", 4 of the 11 rows. Ali's ruling, "two-line Millionea titles", with the words
+kept as ruled and no short form; the lead's pick of three lines, after the walk measured the longest title wrapping to
+three at 360 ("Pingamizi lako / limekubaliwa · Millionea / Wiki 46"). FLOW 16b: in the classic bell a Millionea row's title
+takes up to THREE lines (`line-clamp-3`), with its dot on the first line. A row is Millionea's by its notice's own link
+(`isMillioneaNoticeHref`, `src/lib/millionea-notice.ts`): the player's /millionea… and the officer's filed objection. Every
+other classic row stays one line, its classes byte for byte. Held by `test:millionea-titles` §3 (the panel's classes and the
+predicate) with plants (MT4) (the clamp back to one line) and (MT5) of `red:millionea-titles`. The drawn proof, on a fresh
+server: every Millionea title whole at 360 and 1280 in sw, en and zh, and (MT4) written live is caught.

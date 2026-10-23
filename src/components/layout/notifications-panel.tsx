@@ -10,6 +10,7 @@ import { Dot } from "@/components/ui/dot";
 import { IconPlate } from "@/components/ui/icon-plate";
 import { useExitPhase } from "@/components/ui/modal";
 import { cn, formatNumber } from "@/lib/utils";
+import { isMillioneaNoticeHref } from "@/lib/millionea-notice";
 import { fetchMyNotifications, markNotifReadAction, markAllReadAction, dismissNotifAction, dismissAllAction } from "@/app/_actions/notifications";
 import type { StoredNotification } from "@/lib/server/store";
 import { useT } from "@/lib/i18n";
@@ -617,6 +618,10 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
                 const kind = appearanceKind(n);
                 const Icon = iconFor(kind);
                 const isUnread = !n.readAt;
+                // FLOW 16b (Ali's ruling on FL.5, 2026-10-23: "two-line Millionea titles"): a classic Millionea row's title takes
+                // up to three lines (the lead's pick: the longest wraps to three at 360), so no Millionea title is cut; every other
+                // classic row stays one line.
+                const mlnWrapped = !journey && isMillioneaNoticeHref(n.href);
                 return (
                   /* 🔴 THE ROW USED TO BE A `<button>` WITH THE DISMISS `<button>` INSIDE IT.
                      Nesting interactive content inside a button is invalid HTML — the parser
@@ -666,8 +671,9 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
                             the page's own renderers (R4-C). The journey's bell (from 1024) cut the title to one line and set
                             "TZS 4,200" in the sentence face, so one notice read two ways. A wrapping title keeps its dot on
                             its first line (`items-start`; the dot's 4px is that line's centre). Classic chrome is frozen: its
-                            bell keeps today's one-line title and plain body. */}
-                        <div className={journey ? "flex items-start justify-between gap-2" : "flex items-center justify-between gap-2"}>
+                            bell keeps today's one-line title and plain body — except a Millionea row's title, which takes up
+                            to three lines and keeps its dot on its first line (FLOW 16b, Ali's ruling on FL.5). */}
+                        <div className={journey || mlnWrapped ? "flex items-start justify-between gap-2" : "flex items-center justify-between gap-2"}>
                           {/* §A4 — colour is never the only signal. Unread has a brand wash plus
                               the brand dot below, and the dot is (correctly) `aria-hidden`, so a
                               screen-reader user could not tell a settled-money notification they
@@ -675,7 +681,7 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
                               state arrives with the headline, not after it. `sr-only` is
                               absolutely positioned, so it adds nothing to this flex row. */}
                           {isUnread && <span className="sr-only">{t.notif.unread}</span>}
-                          <p className={journey ? "font-display text-body-sm font-semibold text-text leading-tight" : "font-display text-body-sm font-semibold text-text truncate leading-tight"}>
+                          <p className={journey ? "font-display text-body-sm font-semibold text-text leading-tight" : mlnWrapped ? "font-display text-body-sm font-semibold text-text line-clamp-3 leading-tight" : "font-display text-body-sm font-semibold text-text truncate leading-tight"} data-mln-title={mlnWrapped ? "" : undefined}>
                             {journey ? <DotSeq text={pickTitle(n, locale)} renderPart={moneyRuns} /> : pickTitle(n, locale)}
                           </p>
                           {/* Stage 9b — kit <Dot>. `h-1.5 w-1.5` is 8px on this project's
