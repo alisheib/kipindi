@@ -1200,9 +1200,9 @@ console.log(`${LF}§10b · ⭐ S6-NOTICES · an objection filed pings the office
     J({ filed, officers: officers.length, pinged, playerPings: playerPings.map((n) => n.href) }));
   const n3 = Number(/-W([0-9]{1,2})$/.exec(codeO)?.[1] ?? "0");
   ok("10b.2 · …in three languages, naming the week and the question and what the filing holds — never the player",
-    ping?.titleEn === `Millionea Week ${n3} · Objection filed · settlement frozen` && ping?.bodyEn === "A player disputes the result of Question 3. The week's payout waits until an officer decides."
-      && ping?.titleSw === `Millionea Wiki ${n3} · Pingamizi limewasilishwa · malipo yamesimamishwa` && String(ping?.bodySw).includes("Swali 3")
-      && ping?.titleZh === `Millionea 第${n3}周 · 已提出异议 · 结算已冻结` && String(ping?.bodyZh).includes("第3题")
+    ping?.titleEn === `Objection filed · settlement frozen · Millionea Week ${n3}` && ping?.bodyEn === "A player disputes the result of Question 3. The week's payout waits until an officer decides."
+      && ping?.titleSw === `Pingamizi limewasilishwa · malipo yamesimamishwa · Millionea Wiki ${n3}` && String(ping?.bodySw).includes("Swali 3")
+      && ping?.titleZh === `已提出异议 · 结算已冻结 · Millionea 第${n3}周` && String(ping?.bodyZh).includes("第3题")
       && ![ping?.bodyEn, ping?.bodySw, ping?.bodyZh].some((s) => String(s).includes(F1)),
     J({ titleEn: ping?.titleEn, bodyEn: ping?.bodyEn, titleSw: ping?.titleSw, titleZh: ping?.titleZh }));
 
@@ -1249,7 +1249,7 @@ console.log(`${LF}§10b · ⭐ S6-NOTICES · an objection filed pings the office
     rejected.ok && told.length === 1 && t?.kind === "OBJECTION" && t?.href === `${millioneaTicketHref(serialF1)}#objection-3` && others === 0,
     J({ rejected, told: told.map((n) => [n.kind, n.href]), others }));
   ok("10b.6 · …the platform's own words for a ruling that stands, with the officer's note, in English, Swahili and Chinese — and no answer, no side",
-    t?.titleEn === `Millionea Week ${n3} · Your objection was reviewed` && t?.titleSw === `Millionea Wiki ${n3} · Pingamizi lako limekaguliwa` && t?.titleZh === `Millionea 第${n3}周 · 您的异议已审核`
+    t?.titleEn === `Your objection was reviewed · Millionea Week ${n3}` && t?.titleSw === `Pingamizi lako limekaguliwa · Millionea Wiki ${n3}` && t?.titleZh === `您的异议已审核 · Millionea 第${n3}周`
       && t?.bodyEn === "Question 3: an officer reviewed your objection and the result stands. The officer's note: Checked against the official source for question 3"
       && String(t?.bodySw).startsWith("Swali 3: afisa amekagua pingamizi lako na matokeo yamebaki vilevile.") && String(t?.bodySw).includes("Maelezo ya afisa: Checked against")
       && String(t?.bodyZh).startsWith("第3题：审核官已审核您的异议，原结果维持不变。") && String(t?.bodyZh).includes("审核官说明：Checked against")
@@ -1280,7 +1280,7 @@ console.log(`${LF}§10b · ⭐ S6-NOTICES · an objection filed pings the office
   const told4 = await withHref(F2, decidedHref(serialF2, 4));
   ok("10b.8 · ⭐ a filer's second objection is its own decision, told on its own key — and an upheld REVERSE says the officer agreed and corrected the result, never the answer",
     filed5.ok && filed4.ok && (r5 as any).ok && (r4 as any).ok && told5.length === 1 && (await withHref(F1, decidedHref(serialF1, 3))).length === 1 && told4.length === 1
-      && told4[0].titleEn === `Millionea Week ${n3} · Your objection was upheld` && told4[0].titleSw === `Millionea Wiki ${n3} · Pingamizi lako limekubaliwa` && told4[0].titleZh === `Millionea 第${n3}周 · 您的异议已获支持`
+      && told4[0].titleEn === `Your objection was upheld · Millionea Week ${n3}` && told4[0].titleSw === `Pingamizi lako limekubaliwa · Millionea Wiki ${n3}` && told4[0].titleZh === `您的异议已获支持 · Millionea 第${n3}周`
       && String(told4[0].bodyEn).startsWith("Question 4: an officer agreed with you and corrected the result before any payout. Your ticket shows the new result.")
       && !/\b(YES|NO)\b/.test(String(told4[0].bodyEn)) && (await withHref(F1, decidedHref(serialF1, 4))).length === 0,
     J({ filed5: filed5.ok, filed4: filed4.ok, r5: errOf(r5), r4: errOf(r4), told5: told5.length, told4: told4.map((n) => [n.titleEn, n.bodyEn]) }));
@@ -1295,7 +1295,7 @@ console.log(`${LF}§10b · ⭐ S6-NOTICES · an objection filed pings the office
   const flip = (o: unknown) => (o === "YES" ? "NO" : "YES");
   const ruled4 = await qOf(4); // the REVERSE's own record: its instant, and the outcome it ruled from (a REVERSE flips YES/NO)
   ok("10b.8b · ⭐ the upheld REVERSE reaches the other holder as the correction's own notice — an objection upheld, the window restarted by this ruling — and never its filer, who has the decided notice",
-    c4.length === 1 && c4[0].kind === "VERDICT" && c4[0].titleEn === `Millionea Week ${n3} · Question 4 corrected`
+    c4.length === 1 && c4[0].kind === "VERDICT" && c4[0].titleEn === `Question 4 corrected · Millionea Week ${n3}`
       && c4[0].bodyEn === "Its result was corrected after an objection was upheld. Your ticket shows the new result. The objection window runs again from the corrected record."
       && c4[0].bodySw === "Matokeo yake yamesahihishwa baada ya pingamizi kukubaliwa. Tiketi yako inaonyesha matokeo mapya. Dirisha la pingamizi linahesabiwa upya kuanzia rekodi iliyosahihishwa."
       && c4[0].bodyZh === "异议获支持后，该题结果已更正。您的彩票显示新结果。异议窗口自更正后的记录重新起算。"
@@ -1313,7 +1313,7 @@ console.log(`${LF}§10b · ⭐ S6-NOTICES · an objection filed pings the office
   const v6 = await withHref(F1, await voidHref(6));
   const c7 = await withHref(F2, await correctionHref(7));
   ok("10b.8c · ⭐ an upheld VOID reaches the other holder as the void notice; a second upheld REVERSE as the correction notice with no window sentence (it keeps the window it has, MR-16) — neither ever to its own filer",
-    (r6 as any).ok && (r7 as any).ok && v6.length === 1 && String(v6[0].titleEn) === `Millionea Week ${n3} · Question 6 voided`
+    (r6 as any).ok && (r7 as any).ok && v6.length === 1 && String(v6[0].titleEn) === `Question 6 voided · Millionea Week ${n3}`
       && c7.length === 1 && c7[0].bodyEn === "Its result was corrected after an objection was upheld. Your ticket shows the new result."
       && (await slotRows(F2, 6)).length === 0 && (await slotRows(F1, 7)).length === 0,
     J({ r6: errOf(r6), r7: errOf(r7), v6: v6.map((n) => n.titleEn), c7: c7.map((n) => n.bodyEn), f2Slot6: (await slotRows(F2, 6)).length, f1Slot7: (await slotRows(F1, 7)).length }));
@@ -1401,8 +1401,8 @@ console.log(`${LF}§10b · ⭐ S6-NOTICES · an objection filed pings the office
   const two = await receiptOf(A, a1.data.maswali.tickets[0]);
   const n1 = Number(/-W([0-9]{1,2})$/.exec(code1)?.[1] ?? "0");
   ok("10b.10 · ⭐ the receipt's title is the slip's own result in all three languages: \"Ticket bought\" / \"2 tickets bought\", \"Tiketi imekatwa\" / \"Tiketi 2 zimekatwa\", \"已出票\" / \"已出票 2 张\" — never \"cut\" in English",
-    one?.titleEn === `Millionea Week ${n3} · Ticket bought` && one?.titleSw === `Millionea Wiki ${n3} · Tiketi imekatwa` && one?.titleZh === `Millionea 第${n3}周 · 已出票`
-      && two?.titleEn === `Millionea Week ${n1} · 2 tickets bought` && two?.titleSw === `Millionea Wiki ${n1} · Tiketi 2 zimekatwa` && two?.titleZh === `Millionea 第${n1}周 · 已出票 2 张`,
+    one?.titleEn === `Ticket bought · Millionea Week ${n3}` && one?.titleSw === `Tiketi imekatwa · Millionea Wiki ${n3}` && one?.titleZh === `已出票 · Millionea 第${n3}周`
+      && two?.titleEn === `2 tickets bought · Millionea Week ${n1}` && two?.titleSw === `Tiketi 2 zimekatwa · Millionea Wiki ${n1}` && two?.titleZh === `已出票 2 张 · Millionea 第${n1}周`,
     J({ one: [one?.titleEn, one?.titleSw, one?.titleZh], two: [two?.titleEn, two?.titleSw, two?.titleZh] }));
   // ⭐ S6-NOTICES (the lead, 2026-10-23) · the receipt's free cancel is the slip's own line — its key and its clock — so the zone
   // is named in every language exactly as the slip names it.

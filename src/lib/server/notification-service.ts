@@ -2697,6 +2697,16 @@ function millioneaWeekIn(weekCode: string): LocalizedText {
 }
 
 /**
+ * ⭐ A MILLIONEA NOTICE'S TITLE LEADS WITH ITS EVENT (MASWALI-BUILD FLOW 15; the lead's ruling of 2026-10-23 on FLOW's N1):
+ * "Tiketi imekatwa · Millionea Wiki 49", never "Millionea Wiki 49 · Tiketi imekatwa". The classic bell draws a title on ONE
+ * truncated line, so the event comes first and a cut row loses only the week, as the bell's other notices lead with
+ * theirs. Every Millionea emitter titles through this one rule, in all three languages (`test:millionea-titles`).
+ */
+function millioneaTitle(event: LocalizedText, w: LocalizedText): { titleEn: string; titleSw: string; titleZh: string } {
+  return { titleEn: `${event.en} · ${w.en}`, titleSw: `${event.sw} · ${w.sw}`, titleZh: `${event.zh} · ${w.zh}` };
+}
+
+/**
  * A void's ground in each language — the closed list's own sentence (`millionea.void*` through MASWALI_VOID_REASON_KEY),
  * never a second copy. Read when asked, as `instantIn` reads the month words; a dictionary that cannot be read gives the
  * ground's code in every language rather than lose the notice.
@@ -2765,9 +2775,7 @@ export async function notifyMillioneaTicketsCut(userId: string, opts: {
   return millioneaNotify({
     userId,
     kind: "BET_PLACED",
-    titleEn: bought ? `${w.en} · ${bought.en}` : w.en,
-    titleSw: bought ? `${w.sw} · ${bought.sw}` : w.sw,
-    titleZh: bought ? `${w.zh} · ${bought.zh}` : w.zh,
+    ...(bought ? millioneaTitle(bought, w) : { titleEn: w.en, titleSw: w.sw, titleZh: w.zh }),
     bodyEn: `${what.en} · ${money} (main balance)${freeLine ? ` · ${freeLine.en}` : ""}.`,
     bodySw: `${what.sw} · ${money} (salio kuu)${freeLine ? ` · ${freeLine.sw}` : ""}.`,
     bodyZh: `${what.zh} · ${money}（主余额）${freeLine ? ` · ${freeLine.zh}` : ""}。`,
@@ -2782,9 +2790,7 @@ export function notifyMillioneaTicketCancelled(userId: string, opts: { weekCode:
   return millioneaNotify({
     userId,
     kind: "REFUND", // money back in the wallet: a refund, as every refund is filed since S5 (comms-registry's REFUND)
-    titleEn: `${w.en} · Ticket cancelled`,
-    titleSw: `${w.sw} · Tiketi imeghairiwa`,
-    titleZh: `${w.zh} · 彩票已取消`,
+    ...millioneaTitle({ en: "Ticket cancelled", sw: "Tiketi imeghairiwa", zh: "彩票已取消" }, w),
     bodyEn: `${opts.serial} · ${money} returned to main balance.`,
     bodySw: `${opts.serial} · ${money} imerudi kwenye salio kuu.`,
     bodyZh: `${opts.serial} · ${money} 已退回主余额。`,
@@ -2803,9 +2809,7 @@ export async function notifyMillioneaSalesClosed(userId: string, opts: { weekCod
   return millioneaNotify({
     userId,
     kind: "SELECTION_CLOSED",
-    titleEn: `${w.en} · Sales closed`,
-    titleSw: `${w.sw} · Mauzo yamefungwa`,
-    titleZh: `${w.zh} · 销售已截止`,
+    ...millioneaTitle({ en: "Sales closed", sw: "Mauzo yamefungwa", zh: "销售已截止" }, w),
     bodyEn: `Sales closed ${at.en}. ${n === 1 ? "Your ticket is" : `Your ${n} tickets are`} locked in.`,
     bodySw: `Mauzo yamefungwa ${at.sw}. ${n === 1 ? "Tiketi yako imefungwa" : `Tiketi zako ${n} zimefungwa`}.`,
     bodyZh: `销售已于 ${at.zh} 截止。您的 ${n} 张彩票已锁定。`,
@@ -2829,9 +2833,9 @@ export async function notifyMillioneaQuestionVoided(userId: string, opts: {
   return millioneaNotify({
     userId,
     kind: "VERDICT",
-    titleEn: main ? `${w.en} · Question ${n} voided` : `${w.en} · Reserve A${n} voided`,
-    titleSw: main ? `${w.sw} · Swali ${n} limebatilishwa` : `${w.sw} · Akiba A${n} imebatilishwa`,
-    titleZh: main ? `${w.zh} · 第 ${n} 题作废` : `${w.zh} · 备选题 A${n} 作废`,
+    ...millioneaTitle(main
+      ? { en: `Question ${n} voided`, sw: `Swali ${n} limebatilishwa`, zh: `第 ${n} 题作废` }
+      : { en: `Reserve A${n} voided`, sw: `Akiba A${n} imebatilishwa`, zh: `备选题 A${n} 作废` }, w),
     bodyEn: main
       ? `${g.en}. A reserve will take its place, in order from A1 to A5.`
       : `${g.en}. A voided reserve is skipped: the next valid reserve counts if a main question voids.`,
@@ -2890,9 +2894,9 @@ export function notifyMillioneaQuestionCorrected(userId: string, opts: {
   return millioneaNotify({
     userId,
     kind: "VERDICT",
-    titleEn: main ? `${w.en} · Question ${n} corrected` : `${w.en} · Reserve A${n} corrected`,
-    titleSw: main ? `${w.sw} · Swali ${n} limesahihishwa` : `${w.sw} · Akiba A${n} imesahihishwa`,
-    titleZh: main ? `${w.zh} · 第 ${n} 题已更正` : `${w.zh} · 备选题 A${n} 已更正`,
+    ...millioneaTitle(main
+      ? { en: `Question ${n} corrected`, sw: `Swali ${n} limesahihishwa`, zh: `第 ${n} 题已更正` }
+      : { en: `Reserve A${n} corrected`, sw: `Akiba A${n} imesahihishwa`, zh: `备选题 A${n} 已更正` }, w),
     bodyEn: body.en,
     bodySw: body.sw,
     bodyZh: body.zh,
@@ -2908,9 +2912,7 @@ export async function notifyMillioneaCloseMoved(userId: string, opts: { weekCode
   return millioneaNotify({
     userId,
     kind: "SELECTION_CLOSED",
-    titleEn: `${w.en} · Sales close moved`,
-    titleSw: `${w.sw} · Muda wa kufunga mauzo umebadilika`,
-    titleZh: `${w.zh} · 销售截止时间已调整`,
+    ...millioneaTitle({ en: "Sales close moved", sw: "Muda wa kufunga mauzo umebadilika", zh: "销售截止时间已调整" }, w),
     bodyEn: `Sales now close ${at.en}. ${n === 1 ? "Your ticket stands" : `Your ${n} tickets stand`} as bought.`,
     bodySw: `Mauzo sasa yanafungwa ${at.sw}. ${n === 1 ? "Tiketi yako inabaki" : `Tiketi zako ${n} zinabaki`} kama ulivyonunua.`,
     bodyZh: `销售现于 ${at.zh} 截止。您的 ${n} 张彩票保持不变。`,
@@ -2995,9 +2997,13 @@ export function notifyMillioneaWon(userId: string, opts: MillioneaWinShares) {
   return millioneaNotify({
     userId,
     kind: "WIN",
-    titleEn: opts.paidTickets > 0 ? `${w.en} · You won ${paid}` : `${w.en} · ${won === 1 ? "Your ticket won" : `${won} of your tickets won`}`,
-    titleSw: opts.paidTickets > 0 ? `${w.sw} · Umeshinda ${paid}` : `${w.sw} · ${won === 1 ? "Tiketi yako imeshinda" : `Tiketi zako ${won} zimeshinda`}`,
-    titleZh: opts.paidTickets > 0 ? `${w.zh} · 您赢得 ${paid}` : `${w.zh} · ${won === 1 ? "您的彩票中奖" : `您有 ${won} 张彩票中奖`}`,
+    ...millioneaTitle(opts.paidTickets > 0
+      ? { en: `You won ${paid}`, sw: `Umeshinda ${paid}`, zh: `您赢得 ${paid}` }
+      : {
+        en: won === 1 ? "Your ticket won" : `${won} of your tickets won`,
+        sw: won === 1 ? "Tiketi yako imeshinda" : `Tiketi zako ${won} zimeshinda`,
+        zh: won === 1 ? "您的彩票中奖" : `您有 ${won} 张彩票中奖`,
+      }, w),
     bodyEn: `${tickets.en}${paidLine.en}${ladder.en}${heldLine.en}`,
     bodySw: `${tickets.sw}${paidLine.sw}${ladder.sw}${heldLine.sw}`,
     bodyZh: `${tickets.zh}${paidLine.zh}${ladder.zh}${heldLine.zh}`,
@@ -3022,9 +3028,11 @@ export function notifyMillioneaWonHeld(userId: string, opts: MillioneaWinShares)
   return millioneaNotify({
     userId,
     kind: "VERDICT",
-    titleEn: `${w.en} · ${won === 1 ? "Your ticket won" : `${won} of your tickets won`}`,
-    titleSw: `${w.sw} · ${won === 1 ? "Tiketi yako imeshinda" : `Tiketi zako ${won} zimeshinda`}`,
-    titleZh: `${w.zh} · ${won === 1 ? "您的彩票中奖" : `您有 ${won} 张彩票中奖`}`,
+    ...millioneaTitle({
+      en: won === 1 ? "Your ticket won" : `${won} of your tickets won`,
+      sw: won === 1 ? "Tiketi yako imeshinda" : `Tiketi zako ${won} zimeshinda`,
+      zh: won === 1 ? "您的彩票中奖" : `您有 ${won} 张彩票中奖`,
+    }, w),
     bodyEn: `${tickets.en}${held.en}`,
     bodySw: `${tickets.sw}${held.sw}`,
     bodyZh: `${tickets.zh}${held.zh}`,
@@ -3070,9 +3078,11 @@ export function notifyMillioneaNotWon(userId: string, opts: {
   return millioneaNotify({
     userId,
     kind: "LOSS",
-    titleEn: `${w.en} · ${n === 1 ? "Your ticket did not win" : `Your ${n} tickets did not win`}`,
-    titleSw: `${w.sw} · ${n === 1 ? "Tiketi yako haikushinda" : `Tiketi zako ${n} hazikushinda`}`,
-    titleZh: `${w.zh} · ${n === 1 ? "您的彩票未中奖" : `您的 ${n} 张彩票未中奖`}`,
+    ...millioneaTitle({
+      en: n === 1 ? "Your ticket did not win" : `Your ${n} tickets did not win`,
+      sw: n === 1 ? "Tiketi yako haikushinda" : `Tiketi zako ${n} hazikushinda`,
+      zh: n === 1 ? "您的彩票未中奖" : `您的 ${n} 张彩票未中奖`,
+    }, w),
     bodyEn: `${week.en} Spent this week · ${n === 1 ? "1 ticket" : `${n} tickets`} · ${spent}.`,
     bodySw: `${week.sw} Ulichotumia wiki hii · tiketi ${n} · ${spent}.`,
     bodyZh: `${week.zh}本周支出 · ${n} 张 · ${spent}。`,
@@ -3088,9 +3098,7 @@ export function notifyMillioneaWeekRefunded(userId: string, opts: { weekCode: st
   return millioneaNotify({
     userId,
     kind: "REFUND", // money back in the wallet: a refund (comms-registry's REFUND)
-    titleEn: `${w.en} voided`,
-    titleSw: `${w.sw} imebatilishwa`,
-    titleZh: `${w.zh}已作废`,
+    ...millioneaTitle({ en: "Voided", sw: "Imebatilishwa", zh: "已作废" }, w),
     bodyEn: `More main questions voided than there were valid reserves. ${n === 1 ? "Your ticket refunded" : `Your ${n} tickets refunded`} · ${money} returned to main balance.`,
     bodySw: `Maswali makuu batili yalizidi akiba halali. ${n === 1 ? "Tiketi yako imerejeshwa" : `Tiketi zako ${n} zimerejeshwa`} · ${money} imerudi kwenye salio kuu.`,
     bodyZh: `作废的主题多于有效备选题。${n === 1 ? "您的彩票已退款" : `您的 ${n} 张彩票已退款`} · ${money} 已退回主余额。`,
@@ -3151,9 +3159,9 @@ export function notifyMillioneaObjectionDecided(userId: string, opts: {
   return millioneaNotify({
     userId,
     kind: "OBJECTION", // the platform's objection kind (comms-registry)
-    titleEn: upheld ? `${w.en} · Your objection was upheld` : `${w.en} · Your objection was reviewed`,
-    titleSw: upheld ? `${w.sw} · Pingamizi lako limekubaliwa` : `${w.sw} · Pingamizi lako limekaguliwa`,
-    titleZh: upheld ? `${w.zh} · 您的异议已获支持` : `${w.zh} · 您的异议已审核`,
+    ...millioneaTitle(upheld
+      ? { en: "Your objection was upheld", sw: "Pingamizi lako limekubaliwa", zh: "您的异议已获支持" }
+      : { en: "Your objection was reviewed", sw: "Pingamizi lako limekaguliwa", zh: "您的异议已审核" }, w),
     bodyEn: `${effect.en}${note.en}`,
     bodySw: `${effect.sw}${note.sw}`,
     bodyZh: `${effect.zh}${note.zh}`,
@@ -3173,9 +3181,7 @@ export function notifyAdminMillioneaObjectionFiled(adminUserId: string, opts: { 
   return millioneaNotify({
     userId: adminUserId,
     kind: "OBJECTION",
-    titleEn: `${w.en} · Objection filed · settlement frozen`,
-    titleSw: `${w.sw} · Pingamizi limewasilishwa · malipo yamesimamishwa`,
-    titleZh: `${w.zh} · 已提出异议 · 结算已冻结`,
+    ...millioneaTitle({ en: "Objection filed · settlement frozen", sw: "Pingamizi limewasilishwa · malipo yamesimamishwa", zh: "已提出异议 · 结算已冻结" }, w),
     // The door's own sentence for what a filing does (`millionea.objFiledWeek`).
     bodyEn: `A player disputes the result of ${q.en}. The week's payout waits until an officer decides.`,
     bodySw: `Mchezaji anapinga matokeo ya ${q.sw}. Malipo ya wiki yanasubiri hadi afisa aamue.`,
