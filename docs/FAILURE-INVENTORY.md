@@ -1528,3 +1528,16 @@ chips read the same words; the classic AI toolkit's and the classic objection co
 Millionea objection ruling's role refusal ("an ADMIN or COMPLIANCE officer"), were reworded with it. Held by
 `test:maswali-admin-plain` §8 (the chip rendered, every word against `ROLE_LABEL`) with plants (AP13), (AP14), and
 `qa:maswali-admin-drive` 4.2c (a Trading officer's chip read in the browser).
+
+#### ✅ AD.1 · three suites still read the console's words as they were before G1 and G8 — re-pinned by S6-ADMIN 10
+
+Run 39826898317 on `71ded2939` (S6-ADMIN 8) found them, each on both stores: `test:maswali-adversarial` TK.4b expected the
+takeover alert to end "may hold the share (MB-96)." — G1 moved the code into a comment beside the words, so the reviewed
+words end "may hold the share."; `test:maswali-objections` 2.1 expected the ruling's role refusal to say "ADMIN or
+COMPLIANCE" — G8 words it "Only the Owner or a Compliance officer rules on an objection."; `test:house-bot-reports`
+0.232.2, the line-pinned census of the marked money writes, found four sites moved by G1's and G4's line changes
+(maswali-money-service.ts 455→456 and 580→581, maswali-settlement.ts 451→453 and 816→818), each nine-line write
+byte-identical. THE RULE: a suite that reads what the console prints pins the words the console prints now; the census is
+re-derived from the run's printed list, never by hand. The same run's `red:maswali-engine` printed "108/108 caught, 0
+missed, 0 files left dirty": its "FAIL [postgres] 13.2" line is plant (79) caught, not a red. The engine's floor rose to
+the counts it printed there (memory 212, Postgres 220: §15, the draft discard).
