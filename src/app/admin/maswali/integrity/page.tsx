@@ -20,7 +20,7 @@ import { SortTh } from "@/components/admin/admin-sort";
 import { CONSOLE_PER_PAGE, SEAL_WEEKS_PER_PAGE, UNREACHED_ALERT_HOURS, UNREACHED_RECENT_DAYS, consoleStanding, integrityView } from "@/lib/server/maswali-console";
 import { parseIntegrityListQuery, integrityListParams } from "@/lib/maswali-integrity-list";
 import { isMaswaliVoidReason, MASWALI_VOID_REASON_LABEL } from "@/lib/maswali-void-reason";
-import { CLUSTER_LINE_PREVIEW, clusterReport, clusterRows, crowdedLineHolders, pickShifts, recentNewDeviceSeals } from "@/lib/server/maswali-integrity";
+import { CLUSTER_LINE_PREVIEW, clusterReport, clusterRows, clusterWinnerLine, crowdedLineHolders, pickShifts, recentNewDeviceSeals } from "@/lib/server/maswali-integrity";
 import { takeoverWatch, type TakeoverWatch } from "@/lib/server/maswali-takeover";
 import { millioneaApprovedWordings } from "@/lib/server/maswali-marketing";
 import { weekStore } from "@/lib/server/maswali-dal";
@@ -567,6 +567,8 @@ async function ConnectedAccounts({ clusters, query }: { clusters: Array<ClusterR
             <span className="font-semibold text-text tabular">{c.code}</span>
             {` · ${c.holders.toLocaleString("en")} holders · their tickets answer the ten mains ${c.combos.toLocaleString("en")} ways (${(c.boardCoverage * 100).toFixed(1)}% of the board) · records read from ${fmtEat(c.window.from)} to the close, ${fmtEat(c.window.to)} EAT${c.readable ? "" : " · the records could not all be read"}`}
           </p>
+          {/* ⭐ S6-MONEY · MB-35 · before the week pays, a line holding a winning ticket is an alert of its own, not only an order. */}
+          {clusterWinnerLine(c) && <p role="alert" className="text-body-sm text-danger-fg">{clusterWinnerLine(c)}</p>}
           {/* S5 (ad96345b6) · a bounded read says exactly how much it considered and showed (`ClusterCoverage`). */}
           {c.coverage.limited && <p role="alert" className="text-body-sm text-warning">
             Limited report. Connection checks considered {c.coverage.connectedHoldersChecked.toLocaleString("en")} of {c.coverage.holdersTotal.toLocaleString("en")} holders.

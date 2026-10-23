@@ -312,6 +312,15 @@ export async function settleMaswaliWeek(input: {
   const toHold = new Map<string, Winner>();
   for (const w of pre.c.winners) if (w.hold && !toHold.has(w.ticket.userId)) toHold.set(w.ticket.userId, w);
   const heldAccounts = [...toHold.keys()];
+  // ⭐ MB-11 · THE PAYOUT FLOAT, READ ONCE BEFORE ANY HOLD OR CREDIT, outside every lock (a network read never waits inside
+  //    one): this week's shares against the float and its headroom. ⛔ A READ, NEVER A BLOCK (the lead's ruling of
+  //    2026-10-23): a credit is the winners' entitlement in the platform's own books, the float matters only to the
+  //    withdrawals that ask their rail themselves, and a block on an external read would let a provider's outage stall
+  //    every winner's settlement. The officer was shown the same comparison beside the release before pressing it
+  //    (`releaseFloatLine`, the pools page): Finance's top-up before a release is a human gate, never the system's refusal.
+  //    A finding here is this payout's one record, written after the commit and before any winner is told (`floatCheck`).
+  const pays = pre.c.preview.arithmetic.kind === "PAYOUT" ? pre.c.preview.arithmetic.paid : 0;
+  const floatBefore = pays > 0 ? await readFloatCover(pays, input.readFloat) : null;
   await seams.beforeChain?.();
 
   type Out = { ok: true; week: StoredWeek; already?: boolean } | Refused;
@@ -531,7 +540,7 @@ export async function settleMaswaliWeek(input: {
     } catch (err) {
       console.error(`[maswali-settlement] week ${first.code} settled, but its row could not be re-read: ${(err as Error)?.message ?? err}`);
     }
-    void floatCheck({ weekId: first.id, code: first.code, paid: out.week.paidTotal ?? 0 }, input.readFloat).catch(() => {})
+    void floatCheck({ weekId: first.id, code: first.code, paid: out.week.paidTotal ?? 0 }, input.readFloat, floatBefore).catch(() => {})
       // S6 · MB-11 · the float is compared BEFORE any winner is told; then the result reaches every holder (MB-68), after commit.
       .then(() => import("./maswali-notify")).then((m) => m.noticeWeekSettled(first.id)).catch(() => {});
     return { ok: true, week: settled };
@@ -567,21 +576,63 @@ export async function settleMaswaliWeek(input: {
 export const FLOAT_ALERT_BUFFER_TZS = 500_000;
 
 /**
+ * ⭐ MB-11 · A WEEK'S SHARES AGAINST THE PAYOUT FLOAT AND ITS HEADROOM — the one comparison the release (before any credit),
+ * its after-commit check and the pools page beside the release button make: covered; short, by how much; or unread (the
+ * float could not be read — never judged as covering, fail closed). Pure.
+ */
+export type FloatCover =
+  | { state: "covered"; paid: number; float: number }
+  | { state: "short"; paid: number; float: number; short: number }
+  | { state: "unread"; paid: number };
+export function floatCover(paid: number, float: number | null): FloatCover {
+  if (float === null || !Number.isFinite(float)) return { state: "unread", paid };
+  const short = paid + FLOAT_ALERT_BUFFER_TZS - float;
+  return short > 0 ? { state: "short", paid, float, short } : { state: "covered", paid, float };
+}
+
+/** MB-11 · the payout float read once, as its cover of `paid`: unread when the read fails or answers nothing. */
+async function readFloatCover(paid: number, readFloat?: () => Promise<{ balance: number } | null>): Promise<FloatCover> {
+  const f = await (readFloat ?? (async () => (await import("./payments")).getFloatBalance()))().catch(() => null);
+  return floatCover(paid, f && Number.isFinite(f.balance) ? f.balance : null);
+}
+
+/**
+ * ⭐ MB-11 · WHAT THE RELEASING OFFICER READS BESIDE THE BUTTON (the pools page): the float against this week's shares, so
+ * the runbook's "Finance tops up before release" is a human gate, never a blind one — and never the system's refusal: the
+ * release credits the winners in full whatever the float holds. `tone` is the line's colour; the words are the officer's.
+ */
+export function releaseFloatLine(cover: FloatCover): { tone: "ok" | "warning"; text: string } {
+  if (cover.state === "covered") {
+    return { tone: "ok", text: `The payout float holds ${formatTzs(cover.float)}: it covers these shares and the headroom kept for withdrawals.` };
+  }
+  if (cover.state === "short") {
+    return { tone: "warning", text: `The payout float holds ${formatTzs(cover.float)}, ${formatTzs(cover.short)} short of these shares and the headroom kept for withdrawals. Ask Finance to top it up before you release: the release still credits every winner in full, and some may wait to withdraw.` };
+  }
+  return { tone: "warning", text: "The payout float cannot be read now. Ask Finance to check it before you release: the release still credits every winner in full, and some may wait to withdraw." };
+}
+
+/**
  * MB-11 · after a payout, is the disbursement float deep enough for the winners to withdraw? A read, never a block (the
  * shares are credited; the float is topped up by Finance). Records an alert when Σ shares exceeds the float minus the
  * buffer, and ⭐ S7-F2 its own when the float cannot be read (fail closed: never silence; the console raises both).
  * ⭐ R4c · `paid` is the total the settlement committed, handed over after the commit — never a row read in the lock.
+ * ⭐ S6-MONEY · `before` is the read the release made BEFORE any hold or credit (`readFloatCover`): a finding there —
+ *    short or unread — is this payout's one row, recorded here without a second read; a covering read is checked again
+ *    now, for a float drained while the week paid. Each row says which read it records (`read`). Before any winner is
+ *    told: the release, and the notices' reconcile, run this first.
  */
-export async function floatCheck(week: { weekId: string; code: string; paid: number }, readFloat?: () => Promise<{ balance: number } | null>): Promise<void> {
+export async function floatCheck(week: { weekId: string; code: string; paid: number }, readFloat?: () => Promise<{ balance: number } | null>, before?: FloatCover | null): Promise<void> {
   try {
     const paid = week.paid;
     if (paid <= 0) return;
-    const float = await (readFloat ?? (async () => (await import("./payments")).getFloatBalance()))().catch(() => null);
+    const found = before && before.paid === paid && before.state !== "covered" ? before : null;
+    const float = found ? (found.state === "short" ? { balance: found.float } : null)
+      : await (readFloat ?? (async () => (await import("./payments")).getFloatBalance()))().catch(() => null);
     const action = !float ? "maswali.settlement.float_unread" : paid > float.balance - FLOAT_ALERT_BUFFER_TZS ? "maswali.settlement.float_low" : null;
     if (action) {
       console.error(`[maswali-settlement] week ${week.code} paid ${paid}; the payout float ${float ? `holds ${float.balance}` : "could not be read"}.`);
       audit({ category: "COMPLIANCE", action, actorId: SYSTEM, targetType: "MaswaliCycle", targetId: week.weekId,
-        payload: { code: week.code, paid, float: float?.balance ?? null, buffer: FLOAT_ALERT_BUFFER_TZS } });
+        payload: { code: week.code, paid, float: float?.balance ?? null, buffer: FLOAT_ALERT_BUFFER_TZS, read: found ? "before crediting" : "after the payout" } });
     }
   } catch { /* a read about money already paid never surfaces as the payment failing */ }
 }

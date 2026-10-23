@@ -140,7 +140,9 @@ it to the end. When asked about a week, read that week's own figures.</p>
 </table>
 <p>These are the default grants; the Owner changes them on Roles. The Owner opens and acts everywhere. The Auditor reads
 every Millionea screen but Ticket lookup, and acts on none. Millionea's alerts also appear on the console's front page,
-under <b class="ui" data-screen="home">Open the weeks</b>, for Trading and the Owner.</p>
+under <b class="ui" data-screen="home">Open the weeks</b>: every alert for Trading and the Owner; the payout float's for
+Finance and Compliance too; and, for Compliance, the Auditor and the Owner alone, a group of connected accounts holding a
+winning ticket before its week pays.</p>
 
 <h4>How every control behaves</h4>
 <ul>
@@ -503,8 +505,10 @@ question.</p>
     Settle the earlier week first. A disagreement in sales goes to engineering.</dd>
 </dl>
 <p class="note">A winner the settlement cannot pay freely — a staff account, a suspended or closed account, a deposit under
-review — is paid and held for Compliance; the row says how many (B15). Before releasing, compare
-<b class="ui" data-screen="pools">Payout float</b> with its prepared payouts; Finance tops the float up when short. An
+review — is paid and held for Compliance; the row says how many (B15). Beside each release the row sets the payout float
+against that week's shares and the headroom kept for withdrawals: when it is short, or cannot be read, ask Finance to top it
+up or check it first. The release never refuses for the float — it credits every winner in full, and some may wait to
+withdraw. <b class="ui" data-screen="pools">Payout float</b> sits beside all the prepared payouts at the top. An
 alert fires when a week waits too long for its release. Find an open week with
 <b class="ui" data-screen="pools">Find an open week by code</b> and <b class="ui" data-screen="pools">Find week</b>, the
 <b class="ui" data-screen="pools">All lines</b> · <b class="ui" data-screen="pools">Public</b> · <b class="ui" data-screen="pools">Drive</b>
@@ -775,7 +779,7 @@ are three different acts.</p>
 <table class="gl">
   <tr><td><b class="ui" data-screen="integrity">Selling normally.</b> · Paused since …</td><td>The sales pause's state.</td></tr>
   <tr><td><b class="ui" data-screen="integrity">Seals from a new device</b></td><td>A seal made from a device its officer had not sealed from before; confirm it with the officer.</td></tr>
-  <tr><td><b class="ui" data-screen="integrity">Connected accounts</b></td><td>For each recently closed week, groups of accounts to look at before its winners are paid. Decide on the records, never on a group alone.</td></tr>
+  <tr><td><b class="ui" data-screen="integrity">Connected accounts</b></td><td>For each recently closed week, groups of accounts to look at before its winners are paid. Once its results are final and until it pays, a group holding a winning ticket is also an alert above the report and on the front page. Decide on the records, never on a group alone.</td></tr>
   <tr><td><b class="ui" data-screen="integrity">What ties them</b> · <b class="ui" data-screen="integrity">Ways covered</b></td><td>Why the report grouped the accounts; how many answer combinations their tickets cover.</td></tr>
   <tr><td><b class="ui" data-screen="integrity">Winning tickets</b></td><td>The group's winners; <b class="ui" data-screen="integrity">Not final yet</b> before settlement.</td></tr>
   <tr><td><b class="ui" data-screen="integrity">Bell</b> · <b class="ui" data-screen="integrity">Email</b> · <b class="ui" data-screen="integrity">SMS</b> · <b class="ui" data-screen="integrity">Desk</b></td><td>What was sent to an unreached winner, and the desk's call control.</td></tr>

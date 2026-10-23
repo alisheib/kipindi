@@ -180,6 +180,32 @@ console.log("\n§4 · the cluster report says how much of the board a group cove
     J(after.groups.find((x: Any) => x.basis === "answers")?.detail ?? null));
   ok("4.8 · CONTROL · with no winner yet counted, the wider pair sorts first — so 4.6's order is the winner rule's, not the board's",
     inWindow.groups[0] === pairOf(inWindow, [h, i2]), J(inWindow.groups[0]?.detail ?? null));
+
+  // ── S6-MONEY · MB-35 · the alert: a connected group holding a winner, before the week pays ──────────────────────
+  const { clusterWinnerLine } = await import("../../src/lib/server/maswali-integrity.ts");
+  const consoleRead = await import("../../src/lib/server/maswali-console.ts");
+  const line = clusterWinnerLine(after);
+  const mine = (await consoleRead.clusterWinnerAlerts(at)).filter((x: Any) => x.weekId === week.id);
+  ok("4.9 · ⭐ MB-35 · before the week pays, the line holding the winning ticket raises an alert of its own — critical, Compliance's, naming the week and one line, in the integrity page's own sentence",
+    !!line && line.startsWith(`${after.code}: one line of its connected-accounts report holds a winning ticket`) && /has not paid yet/.test(line)
+      && mine.length === 1 && mine[0].level === "critical" && mine[0].topic === "cluster" && mine[0].text === line, J({ line, mine }));
+  ok("4.10 · CONTROL · inside the objection window — the results not final — no line raises it, on the page or on the strip",
+    clusterWinnerLine(inWindow) === null && !(await consoleRead.clusterWinnerAlerts(new Date())).some((x: Any) => x.weekId === week.id));
+  ok("4.11 · CONTROL · a week whose lines hold no winner, or that has paid, raises none (its order on the page still shows the line first)",
+    clusterWinnerLine({ ...after, groupsWithWinner: 0 }) === null && clusterWinnerLine({ ...after, weekState: "SETTLED" }) === null);
+  const clusterStrip = async (role: string) => ((await consoleRead.millioneaStripAlerts(role as never, at, { readFloat: async () => ({ balance: 10 ** 12 }) })) ?? [])
+    .filter((x: Any) => x.weekId === week.id && x.topic === "cluster").length;
+  const [cOwner, cCompliance, cAuditor, cTrading, cFinance] = await Promise.all(["ADMIN", "COMPLIANCE", "AUDITOR", "MODERATOR", "FINANCE"].map(clusterStrip));
+  ok("4.12 · ⭐ ⛔ MB-35 · MR-14 · the overview strip shows it to Compliance, the Auditor and the Owner — never to the weeks' trading officer who seals, nor to Finance",
+    cCompliance === 1 && cAuditor === 1 && cOwner === 1 && cTrading === 0 && cFinance === 0,
+    J({ owner: cOwner, compliance: cCompliance, auditor: cAuditor, trading: cTrading, finance: cFinance }));
+  // R6's seam: the report's read fails for a week whose results are final — the alert says the report cannot be read.
+  const { __setClusterReadSeamsForTests } = await import("../../src/lib/server/maswali-integrity.ts");
+  __setClusterReadSeamsForTests({ beforeRead: () => { throw new Error("TEST · the report's read fails"); } });
+  let blind: Any[] = [];
+  try { blind = (await consoleRead.clusterWinnerAlerts(at)).filter((x: Any) => x.weekId === week.id); } finally { __setClusterReadSeamsForTests(null); }
+  ok("4.13 · ⭐ MB-35 · fail closed: a deciding week whose connected-accounts report cannot be read raises its own critical alert — never silence",
+    blind.length === 1 && blind[0].level === "critical" && blind[0].topic === "cluster" && /report cannot be read/.test(blind[0].text), J(blind));
 }
 
 // ── §5 · R2-3 / R2-9 / R3 · the records the report reads, and what ties two holders together ─────────

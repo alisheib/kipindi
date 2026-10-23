@@ -16,7 +16,9 @@
  *     a result leaking before its event.
  *
  * ⛔ COMPLIANCE ONLY. Pick aggregates never reach a player before settlement, and never the trading officer who seals
- *    (MR-14, MB-34): these reads are called only by `/admin/maswali/integrity` and the per-week evidence pack.
+ *    (MR-14, MB-34): these reads are called only by `/admin/maswali/integrity`, the per-week evidence pack, and
+ *    (S6-MONEY, MB-35) the overview strip's alert for Compliance (`clusterWinnerAlerts`, maswali-console.ts), which
+ *    carries a count of lines holding a winner — never a pick aggregate, never an account.
  * ⛔ The repository is public: this file says what the report is FOR, not what makes two accounts look connected.
  * ⛔ NO SILENT CAP (S6; the console's own law since `86eacd88`): every holder is read and every line reported — a report
  *    that stops at N lines answers "nothing else to look at" for a line it never read. A crowded line carries its count
@@ -360,6 +362,19 @@ export function clusterLineOrder(x: ClusterGroup, y: ClusterGroup): number {
   const won = (g: ClusterGroup) => ((g.winners ?? 0) > 0 ? 0 : 1);
   return won(x) - won(y) || BASIS_RANK[x.basis] - BASIS_RANK[y.basis] || (y.winners ?? 0) - (x.winners ?? 0)
     || y.combos - x.combos || y.accountCount - x.accountCount || (x.id < y.id ? -1 : x.id > y.id ? 1 : 0);
+}
+
+/**
+ * ⭐ MB-35 · THE SENTENCE A CONNECTED GROUP HOLDING A WINNER RAISES, BEFORE ITS WEEK PAYS (S6-MONEY): once the week's
+ * results are final and until it settles, a line of its report holding a winning ticket is said in words — on the
+ * integrity page above the report, and on the overview strip for Compliance (`clusterWinnerAlerts`). Null when there is
+ * nothing to say: the results are not final, the week is settled or void (the page's order still puts such a line
+ * first), or no line holds a winner. ⛔ It says nothing of what ties the accounts (the repository is public).
+ */
+export function clusterWinnerLine(report: Pick<ClusterReport, "code" | "weekState" | "resultsFinal" | "groupsWithWinner">): string | null {
+  if (report.weekState === "SETTLED" || report.weekState === "VOIDED" || !report.resultsFinal || !(report.groupsWithWinner > 0)) return null;
+  const n = report.groupsWithWinner;
+  return `${report.code}: ${n === 1 ? "one line" : `${n.toLocaleString("en")} lines`} of its connected-accounts report ${n === 1 ? "holds" : "hold"} a winning ticket, and the week has not paid yet. Compliance reviews ${n === 1 ? "it" : "them"} on the integrity page before the release, and holds any share it doubts.`;
 }
 
 /** R8 · a week's TIER on the integrity page (the lead's ruling): 0 · not yet settled (still to pay, its winners perhaps

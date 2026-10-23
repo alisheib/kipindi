@@ -34,7 +34,9 @@ import { millioneaStateNow } from "./millionea-switch";
 import { acct, maswaliJackpotOf } from "./ledger";
 import { db, type SmsStatus } from "./store";
 import { marketStore } from "./market-dal";
-import { consoleOfficerName } from "./maswali-integrity";
+import { clusterReport, clusterWinnerLine, consoleOfficerName } from "./maswali-integrity";
+import { canView } from "./rbac";
+import type { Role } from "./roles";
 import { snapshotOrLegacy } from "./market-config";
 import { MAIN_COUNT, settlementGate, weekVoidCertain } from "@/lib/maswali-score";
 import { guaranteeRequirement } from "@/lib/maswali-money";
@@ -177,8 +179,10 @@ export async function weekFeeRate(week: Pick<StoredWeek, "marketId">): Promise<n
   return fees.feeModel === "jackpot-payout" && typeof rate === "number" && Number.isFinite(rate) ? rate : null;
 }
 
-/** An operator alert (MASWALI-PLAN §7b S4 item 5). Never a guess: each names the week and the fact behind it. */
-export type ConsoleAlert = { level: "critical" | "warning"; text: string; weekId?: string };
+/** An operator alert (MASWALI-PLAN §7b S4 item 5). Never a guess: each names the week and the fact behind it. `topic`
+ *  marks the two kinds the overview strip shows beyond the weeks' own officers (`millioneaStripAlerts`): the payout
+ *  float's (MB-11) and a connected group holding a winner (MB-35). */
+export type ConsoleAlert = { level: "critical" | "warning"; text: string; weekId?: string; topic?: "float" | "cluster" };
 
 /** `deps.readFloat` reads the payout float (the payments provider's by default; a suite hands its own); `deps.readTakeover`
  *  the winners' takeover watch (`maswali-takeover.ts` by default). */
@@ -585,9 +589,11 @@ async function sharesNotWithdrawn(week: StoredWeek): Promise<number | null> {
 export type FloatReader = () => Promise<{ balance: number } | null>;
 
 /**
- * ⭐ S7 · A SHORT PAYOUT FLOAT, ON THE CONSOLE (MB-11, MB-63; FL.4). The settlement's float check is a read after the
- * commit, never a block: it records what it found when a week's paid total leaves the disbursement float short of the
- * payout and its headroom — or, S7-F2, when it could not read the float at all. Each line's newest week that PAID is the
+ * ⭐ S7 · A SHORT PAYOUT FLOAT, ON THE CONSOLE (MB-11, MB-63; FL.4). The settlement's float check is a read, never a
+ * block (the lead's ruling of 2026-10-23): the release reads the float before any hold or credit and records, after its
+ * commit, what it found when a week's paid total leaves the disbursement float short of the payout and its headroom —
+ * or, S7-F2, when it could not read the float at all. ⭐ S6-MONEY · Finance and Compliance see these alerts on the
+ * overview's strip as well as the weeks' own officers (`millioneaStripAlerts`). Each line's newest week that PAID is the
  * payout its winners are withdrawing, so a finding on it stands here, beside it, until the next week of that line pays
  * and its own check speaks.
  * ⭐ S7-F2 · JUDGED ON THE FLOAT AS IT STANDS, read once, only when a finding stands (the S7 review, round 2): it clears
@@ -616,7 +622,7 @@ async function floatShortAlerts(readFloat?: FloatReader): Promise<ConsoleAlert[]
     const left = await sharesNotWithdrawn(w);
     // S7-F9 · fail closed: shares not on record are their own critical alert, never a float judged against less.
     if (left === null) {
-      out.push({ level: "critical", weekId: w.id, text: `${w.code}: a winner's share of what it paid is not on record, nor is the week's share per ticket, so what its winners can still withdraw is unknown and the payout float cannot be judged against it. Finance checks the float before the winners withdraw.` }); // MB-11
+      out.push({ level: "critical", weekId: w.id, topic: "float", text: `${w.code}: a winner's share of what it paid is not on record, nor is the week's share per ticket, so what its winners can still withdraw is unknown and the payout float cannot be judged against it. Finance checks the float before the winners withdraw.` }); // MB-11
       continue;
     }
     if (left > 0) owed.push({ w, left });
@@ -626,14 +632,62 @@ async function floatShortAlerts(readFloat?: FloatReader): Promise<ConsoleAlert[]
   const float = await read().then((f) => (f && Number.isFinite(f.balance) ? f.balance : null)).catch(() => null);
   for (const { w, left } of owed) {
     if (float === null) {
-      out.push({ level: "critical", weekId: w.id, text: `${w.code}: its winners can still withdraw ${formatTzs(left)} of what it paid, and the payout float cannot be read now. Finance checks the float before the winners withdraw.` });
+      out.push({ level: "critical", weekId: w.id, topic: "float", text: `${w.code}: its winners can still withdraw ${formatTzs(left)} of what it paid, and the payout float cannot be read now. Finance checks the float before the winners withdraw.` });
       continue;
     }
     const short = left + FLOAT_ALERT_BUFFER_TZS - float;
     if (short <= 0) continue;
-    out.push({ level: float < left ? "critical" : "warning", weekId: w.id,
+    out.push({ level: float < left ? "critical" : "warning", weekId: w.id, topic: "float",
       text: `${w.code}: the payout float holds ${formatTzs(float)} against the ${formatTzs(left)} of this week's payout its winners can still withdraw — ${formatTzs(short)} short of the payout and its headroom. Finance tops the float up before the winners withdraw.` });
   }
+  return out;
+}
+
+/**
+ * ⭐ MB-35 · A CONNECTED GROUP HOLDING A WINNER, BEFORE THE WEEK PAYS (S6-MONEY). Each week being decided whose results
+ * are final — its objection window closed, not yet settled — is read for its cluster report, and a line of it holding a
+ * winning ticket raises a critical alert naming the week (`clusterWinnerLine`, the integrity page's own sentence): what it
+ * enforces is that Compliance is told before the money moves, and decides (a hold, OD-07). A report that cannot be read
+ * for such a week is its own critical alert, fail closed — never silence. ⛔ The repository is public: the alert says
+ * nothing of what ties accounts together. ⛔ Never to the trading officer who seals (MR-14): only the strip's
+ * Compliance audience reads it (`millioneaStripAlerts`), beside the integrity page.
+ */
+export async function clusterWinnerAlerts(now: Date = new Date()): Promise<ConsoleAlert[]> {
+  const out: ConsoleAlert[] = [];
+  const deciding = (await weekStore.list({ states: ["RESOLVING"] }))
+    .filter((w) => !!w.objectionsCloseAt && Date.parse(w.objectionsCloseAt) <= now.getTime());
+  for (const w of deciding) {
+    const report = await clusterReport(w, now).catch(() => null);
+    if (!report || !report.readable) {
+      out.push({ level: "critical", weekId: w.id, topic: "cluster",
+        text: `${w.code}: its connected-accounts report cannot be read, so whether a group of accounts holds a winning ticket is unknown. Compliance checks the integrity page before the week pays.` });
+      continue;
+    }
+    const line = clusterWinnerLine(report);
+    if (line) out.push({ level: "critical", weekId: w.id, topic: "cluster", text: line });
+  }
+  return out;
+}
+
+/**
+ * ⭐ MB-11 · MB-35 · WHO THE OVERVIEW'S MILLIONEA STRIP SPEAKS TO (`/admin`; S6-MONEY, the lead's ruling of 2026-10-23).
+ * A viewer of the weeks (trading) is shown every alert, as since S4; Finance and Compliance — Finance tops the payout
+ * float up, Compliance watches the winners' money — are shown the payout float's alerts, and only those; Compliance
+ * (and the Owner, and a role that reads Compliance's pages) the connected groups holding a winner (MB-35), which never
+ * reach a viewer who reads only the weeks (MR-14: the officer who seals). A role that reads none of these is shown no
+ * strip (null); a read that fails hides it rather than inventing a quiet product (the page's catch).
+ */
+export async function millioneaStripAlerts(
+  role: Role | null, now: Date = new Date(), deps: { readFloat?: FloatReader; readTakeover?: () => Promise<TakeoverWatch> } = {},
+): Promise<ConsoleAlert[] | null> {
+  if (!role) return null;
+  const may = async (domain: "trading" | "accounting" | "compliance") => canView(role, domain).catch(() => false);
+  const [trading, accounting, compliance] = await Promise.all([may("trading"), may("accounting"), may("compliance")]);
+  if (!trading && !accounting && !compliance) return null;
+  const out: ConsoleAlert[] = [];
+  if (trading) out.push(...await consoleAlerts(now, deps));
+  else out.push(...await floatShortAlerts(deps.readFloat));
+  if (compliance) out.push(...await clusterWinnerAlerts(now));
   return out;
 }
 

@@ -9,6 +9,7 @@
  *     `adversarial:<ids>` so the drive runs only the plant's own sections (`--only <ids>`)
  *   · notify   — `test:maswali-notify`   (`scripts/lib/maswali-notify-child.mts`, MASWALI-BUILD S6 lane N round 2)
  *   · sharepay — `test:maswali-share-payout` (`scripts/lib/maswali-share-payout-child.mts`, MASWALI-BUILD S6-MONEY, OD-13)
+ *   · integrity — `test:maswali-integrity` (`scripts/lib/maswali-integrity-child.mts`, MASWALI-BUILD S6-MONEY, MB-35)
  * DATA, so `test:red-anchors` can audit that every `from` still resolves exactly once without running the harness.
  *
  * `expect` is the start of (or a phrase in) the case's own label: any other red is WRONG-ASSERTION.
@@ -24,6 +25,9 @@ const NOTIFY = "src/lib/server/maswali-notify.ts";
 /** S6-MONEY · OD-13: the platform's withdrawal (its `lockedWinnerShare` path) and the act that pays a locked winner's share. */
 const WALLET = "src/lib/server/wallet-service.ts";
 const SHAREPAY = "src/lib/server/maswali-share-payout.ts";
+/** S6-MONEY · MB-11 and MB-35: the console's alerts and their audience; the cluster report's alert sentence. */
+const CONSOLE = "src/lib/server/maswali-console.ts";
+const INTEGRITY = "src/lib/server/maswali-integrity.ts";
 /** The close's one notice hook (S6 lane N, round 3), which (N1) and (N3) each rewrite. */
 const CLOSE_HOOK = '      afterCommit(currentLockTx(), () => { const at = hookContext(); runOutsideLock(() => { void import("./maswali-notify").then((m) => m.noticeSalesClosed(week.id, at)).catch(() => {}); }); });';
 /** The week void's one post-commit line (R10d's push), which (6), (6b) and (14) each rewrite. */
@@ -1116,5 +1120,71 @@ export const MUTATIONS = [
     to: "      : false ? \"\"",
     expect: "A.1 · the console lists the share",
     suite: "sharepay",
+  },
+  /* ── MASWALI-BUILD S6-MONEY · MB-11 · the payout float read before any credit, never a block (the lead's ruling of 2026-10-23) ─ */
+  {
+    name: "(SM14) MB-11 · the release reads the payout float only after the winners are credited: the finding is never the read made before the money",
+    file: SETTLE,
+    from: "  const floatBefore = pays > 0 ? await readFloatCover(pays, input.readFloat) : null;",
+    to: "  const floatBefore = null;",
+    expect: "FL.2b · ⭐",
+    suite: "adversarial:GU",
+  },
+  {
+    name: "(SM15) MB-11 · a short or unreadable payout float stops the release: the winners' credit waits on an external read (the reading the lead ruled out)",
+    file: SETTLE,
+    from: "  const floatBefore = pays > 0 ? await readFloatCover(pays, input.readFloat) : null;",
+    to: "  const floatBefore = pays > 0 ? await readFloatCover(pays, input.readFloat) : null;" + LF + "  if (floatBefore && floatBefore.state !== \"covered\") return refuse(\"The payout float is short of this week's shares; nothing was paid.\");",
+    expect: "FL.1 · ⭐",
+    suite: "adversarial:GU",
+  },
+  {
+    name: "(SM16) MB-11 · Finance and Compliance are shown no payout float alert on the overview's strip",
+    file: CONSOLE,
+    from: "  else out.push(...await floatShortAlerts(deps.readFloat));",
+    to: "  else void floatShortAlerts;",
+    expect: "FL.6 · ⭐",
+    suite: "adversarial:GU",
+  },
+  {
+    name: "(SM17) MB-11 · the overview's strip speaks to every staff role, not only to those its alerts are for",
+    file: CONSOLE,
+    from: "  if (!trading && !accounting && !compliance) return null;",
+    to: "  if (false) return null;",
+    expect: "FL.6b · ⛔",
+    suite: "adversarial:GU",
+  },
+  /* ── MASWALI-BUILD S6-MONEY · MB-35 · a connected group holding a winner, alerted before the week pays (`test:maswali-integrity`) ─ */
+  {
+    name: "(SM18) MB-35 · the connected-group alert reaches the trading officer who seals, and Finance (MR-14)",
+    file: CONSOLE,
+    from: "  if (compliance) out.push(...await clusterWinnerAlerts(now));",
+    to: "  out.push(...await clusterWinnerAlerts(now));",
+    expect: "4.12 · ⭐ ⛔ MB-35",
+    suite: "integrity",
+  },
+  {
+    name: "(SM19) MB-35 · a connected group holding a winner raises no alert before the week pays: only the page's order shows it",
+    file: INTEGRITY,
+    from: "  if (report.weekState === \"SETTLED\" || report.weekState === \"VOIDED\" || !report.resultsFinal || !(report.groupsWithWinner > 0)) return null;",
+    to: "  return null;",
+    expect: "4.9 · ⭐ MB-35",
+    suite: "integrity",
+  },
+  {
+    name: "(SM20) MB-35 · the alert stands after the week has paid, when nothing is left to decide before the money moves",
+    file: INTEGRITY,
+    from: "  if (report.weekState === \"SETTLED\" || report.weekState === \"VOIDED\" || !report.resultsFinal || !(report.groupsWithWinner > 0)) return null;",
+    to: "  if (!report.resultsFinal || !(report.groupsWithWinner > 0)) return null;",
+    expect: "4.11 · CONTROL",
+    suite: "integrity",
+  },
+  {
+    name: "(SM21) MB-35 · a deciding week whose connected-accounts report cannot be read raises nothing: silence (fail open)",
+    file: CONSOLE,
+    from: "    if (!report || !report.readable) {",
+    to: "    if (!report || !report.readable) { continue;",
+    expect: "4.13 · ⭐ MB-35",
+    suite: "integrity",
   },
 ];

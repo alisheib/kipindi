@@ -88,6 +88,9 @@ product (`npm run test:maswali-fairness` H.7; S5's ghosts are wordless for the s
   ends at exactly 0, with no rounding tolerance. A no-winner week is `maswaliRolloverEntries`. A whole-week void
   refunds every live ticket in one bulk transaction (`refundVoidedWeek`, group `maswali_void_{weekId}`). The guarantee
   moves only through the Owner's two ceremonies (`fundMaswaliGuarantee`, `returnMaswaliGuarantee`).
+- **The payout float** (MB-11) is read once at a release, before any hold or credit, against the week's shares and their
+  headroom (`floatCover`, `maswali-settlement.ts`), and is never a block: a short or unreadable float is the payout's one
+  record, written before any winner is told; Pools shows the same comparison beside the release (`releaseFloatLine`).
 - **A share owed to a winner who cannot sign in** (self-excluded, closed or suspended; OD-13) leaves only by Compliance's
   act, `payLockedWinnerShare` (`maswali-share-payout.ts`): one payment at the holder's request through the platform's own
   `withdraw` (its `lockedWinnerShare` option) — to the registered number, at the live fee, behind the identity and email
@@ -213,6 +216,8 @@ domains are in `ROUTE_DOMAINS` (`src/lib/server/roles.ts`).
 | The binding rules' version and text hash | `src/lib/millionea-rules-version.ts` |
 | Each control's domain | `CONTROL_DOMAIN` (`control-gates.ts`): 27 Millionea controls |
 | A locked winner's money leaving | `payLockedWinnerShare` (compliance), through `withdraw`'s `lockedWinnerShare` alone |
+| A week's shares against the payout float | `floatCover` (`maswali-settlement.ts`): the release, its after-commit check and the Pools line |
+| Who the console's front-page strip speaks to | `millioneaStripAlerts` (`maswali-console.ts`): every alert for trading; the float's for Finance and Compliance; a connected group holding a winner for Compliance (never trading) |
 | Who rules on an objection | `ruleMaswaliObjection` (compliance; `maswali-objections.ts` bars the question's sealer, its confirmer, the officer whose upheld ruling set its result, the objector and a holder) |
 | What a campaign may say about Millionea | `millionea-claims.ts` (the tagged rules, the composer's one door) and `millionea-untagged.ts` (the server's alone) |
 | A notice sent once | `maswali-notify.ts`: each notice's own key, its run's lease and record |
