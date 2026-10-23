@@ -1311,7 +1311,7 @@ console.log(`${LF}§6 · holders only (OD-25) — the one service SMS, and anyth
   // may object), and its filing to the console's officers — the one Millionea notice to staff (comms-registry.ts).
   const TO = new Set(["buyer", "holders", "winners", "losers", "filer"]);
   ok("6.1 · every registered Millionea notice to a player goes to a ticket's holder — buyer, holders, winners, losers or an objection's filer — the one to staff is an objection filed, and only a win (paid or held) has an SMS",
-    MILLIONEA_NOTICES.length === 12 && MILLIONEA_NOTICES.every((n: any) => TO.has(n.to) || (n.to === "officers" && n.notice === "objectionFiled"))
+    MILLIONEA_NOTICES.length === 13 && MILLIONEA_NOTICES.every((n: any) => TO.has(n.to) || (n.to === "officers" && n.notice === "objectionFiled"))
       && MILLIONEA_NOTICES.filter((n: any) => n.to === "officers").length === 1
       && MILLIONEA_NOTICES.filter((n: any) => n.sms).map((n: any) => n.notice).join() === "won,wonHeld", J(MILLIONEA_NOTICES.map((n: any) => [n.notice, n.to, n.sms])));
   // ⭐ THE CENSUS IS STRUCTURAL: every src/ file that sends an SMS, read as CODE (comments out). The only one whose code

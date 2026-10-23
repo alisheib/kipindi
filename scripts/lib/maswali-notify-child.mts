@@ -64,7 +64,10 @@
  * officer the Yes/No ping reaches, once each and no player; the ruling tells the one holder who filed it, once, after it
  * committed, in three languages with the officer's note and never the answer; a refused filing or ruling, a retried
  * ruling and a second launch tell nobody (twice); and the receipt's title is the slip's own "Ticket bought" (Ali's ruling
- * 7, 2026-10-21) · 13.5 twelve registered notices.
+ * 7, 2026-10-21). The lead's two (2026-10-23): an UPHELD change reaches every other holder as the correction's own notice
+ * in the objection's words (the window sentence only when the ruling restarted it) or as the void notice — never its filer,
+ * once per ruling, and any later run reads the ruling from the question's records (10b.8b–8h); the receipt's free cancel
+ * is the slip's own line, its zone named (10b.10b) · 13.5 thirteen registered notices.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const STORE = process.env.HB_MONEY_STORE ?? "unknown";
@@ -1278,6 +1281,113 @@ console.log(`${LF}§10b · ⭐ S6-NOTICES · an objection filed pings the office
       && String(told4[0].bodyEn).startsWith("Question 4: an officer agreed with you and corrected the result before any payout. Your ticket shows the new result.")
       && !/\b(YES|NO)\b/.test(String(told4[0].bodyEn)) && (await withHref(F1, decidedHref(serialF1, 4))).length === 0,
     J({ filed5: filed5.ok, filed4: filed4.ok, r5: errOf(r5), r4: errOf(r4), told5: told5.length, told4: told4.map((n) => [n.titleEn, n.bodyEn]) }));
+
+  // ⭐ S6-NOTICES (the lead, 2026-10-23) · an UPHELD change reaches every other holder as the seal correction's own notice —
+  // a VOID as the void notice — once per holder per ruling, never its filer twice, never on a REJECT.
+  const correctionHref = async (slot: number) => href({ notice: "correction", weekCode: codeO, slot, sealedAt: (await qOf(slot))?.sealedAt });
+  const voidHref = async (slot: number) => href({ notice: "void", weekCode: codeO, slot, sealedAt: (await qOf(slot))?.sealedAt });
+  const slotRows = async (u: string, slot: number) => (await mlnRows(u)).filter((n) => new RegExp(`#${codeO}-(corrected|void)-${slot}-`).test(String(n.href)));
+  const c4 = await withHref(F1, await correctionHref(4));
+  const restartedRun = !!(await dal.weekStore.get(wo.id)).objectionRestarted;
+  const flip = (o: unknown) => (o === "YES" ? "NO" : "YES");
+  const ruled4 = await qOf(4); // the REVERSE's own record: its instant, and the outcome it ruled from (a REVERSE flips YES/NO)
+  ok("10b.8b · ⭐ the upheld REVERSE reaches the other holder as the correction's own notice — an objection upheld, the window restarted by this ruling — and never its filer, who has the decided notice",
+    c4.length === 1 && c4[0].kind === "VERDICT" && c4[0].titleEn === `Millionea Week ${n3} · Question 4 corrected`
+      && c4[0].bodyEn === "Its result was corrected after an objection was upheld. Your ticket shows the new result. The objection window runs again from the corrected record."
+      && c4[0].bodySw === "Matokeo yake yamesahihishwa baada ya pingamizi kukubaliwa. Tiketi yako inaonyesha matokeo mapya. Dirisha la pingamizi linahesabiwa upya kuanzia rekodi iliyosahihishwa."
+      && c4[0].bodyZh === "异议获支持后，该题结果已更正。您的彩票显示新结果。异议窗口自更正后的记录重新起算。"
+      && restartedRun && (await slotRows(F2, 4)).length === 0 && (await slotRows(F1, 5)).length === 0 && (await slotRows(F2, 5)).length === 0,
+    J({ c4: c4.map((n) => [n.titleEn, n.bodyEn]), restartedRun, f2Slot4: (await slotRows(F2, 4)).length, slot5: [(await slotRows(F1, 5)).length, (await slotRows(F2, 5)).length] }));
+  // A VOID by objection: the void notice, keyed by the ruling's seal; a second upheld REVERSE keeps the window it has.
+  const filed6 = await ob.fileMillioneaObjection({ userId: F2, weekId: wo.id, slot: 6, reason: "WRONG_OUTCOME", detail: "Event 6 was not played as drawn", now: inWindow(7) });
+  const filed7 = await ob.fileMillioneaObjection({ userId: F1, weekId: wo.id, slot: 7, reason: "WRONG_OUTCOME", detail: "The source published another result for question 7", now: inWindow(7) });
+  await settleAll();
+  const q6 = await qOf(6);
+  const r6 = filed6.ok ? await ob.decideMillioneaObjection({ objectionId: (filed6 as any).objectionId, officerId: OFF, ruling: "VOID", note: "Event 6 was not played as drawn",
+    expectedOutcome: q6?.outcome, expectedSealedAt: q6?.sealedAt, now: inWindow(8) }) : filed6;
+  const r7 = filed7.ok ? await ruleOn((filed7 as any).objectionId, ADM, "REVERSE", 7, 8) : filed7;
+  await settleAll();
+  const v6 = await withHref(F1, await voidHref(6));
+  const c7 = await withHref(F2, await correctionHref(7));
+  ok("10b.8c · ⭐ an upheld VOID reaches the other holder as the void notice; a second upheld REVERSE as the correction notice with no window sentence (it keeps the window it has, MR-16) — neither ever to its own filer",
+    (r6 as any).ok && (r7 as any).ok && v6.length === 1 && String(v6[0].titleEn) === `Millionea Week ${n3} · Question 6 voided`
+      && c7.length === 1 && c7[0].bodyEn === "Its result was corrected after an objection was upheld. Your ticket shows the new result."
+      && (await slotRows(F2, 6)).length === 0 && (await slotRows(F1, 7)).length === 0,
+    J({ r6: errOf(r6), r7: errOf(r7), v6: v6.map((n) => n.titleEn), c7: c7.map((n) => n.bodyEn), f2Slot6: (await slotRows(F2, 6)).length, f1Slot7: (await slotRows(F1, 7)).length }));
+  await ageNotices([F1, F2]);
+  const q7 = await qOf(7);
+  const relaunch7 = await notify.noticeQuestionCorrected(wo.id, 7, flip(q7?.outcome), undefined, { filer: F1, windowRestarted: false, sealedAt: q7?.sealedAt });
+  await settleAll();
+  ok("10b.8d · ⭐ once per holder per ruling: the holders' notice launched again, outside the duplicate window, tells nobody twice",
+    relaunch7.sent === 0 && relaunch7.recipients > 0 && relaunch7.alreadySent === relaunch7.recipients
+      && (await withHref(F2, await correctionHref(7))).length === 1 && (await slotRows(F1, 7)).length === 0,
+    J({ recipients: relaunch7.recipients, sent: relaunch7.sent, alreadySent: relaunch7.alreadySent }));
+  // ⭐ Any later run reads the ruling from the question's own records: a void run again (as a catch-up runs it) never tells
+  // its filer, and nobody twice.
+  const later6 = await notify.noticeQuestionVoided(wo.id, 6);
+  await settleAll();
+  ok("10b.8e · ⭐ a later run — the void told again, as a catch-up tells it — reads the ruling from the records: never to its filer, nobody twice",
+    later6.sent === 0 && (await slotRows(F2, 6)).length === 0 && (await withHref(F1, await voidHref(6))).length === 1,
+    J({ recipients: later6.recipients, sent: later6.sent, alreadySent: later6.alreadySent, f2Slot6: (await slotRows(F2, 6)).length }));
+  // ⭐ The sealer then corrects question 4 back to the result the REVERSE ruled from: the holders were told the ruled result,
+  // so the correction is a change, told to both holders — the filer too, a change that is not theirs — in the correction's
+  // own words. The records hold the ruling, so the correction is read from the result it ruled.
+  const back4 = ruled4 ? await W.svc.correctSeal({ weekId: wo.id, slot: 4, outcome: flip(ruled4.outcome), evidence: "Corrected: the official source's final result for event 4",
+    ...(await reviewedSeal(wo.id, 4)), officerId: SEALER, now: inWindow(10) }) : { ok: false, error: "no question 4" };
+  await settleAll();
+  const plain4 = "Its sealed result was corrected. Your ticket shows the new result, and the objection window runs from the corrected record.";
+  const k4F1 = await withHref(F1, await correctionHref(4));
+  const k4F2 = await withHref(F2, await correctionHref(4));
+  ok("10b.8f · ⭐ the sealer's correction after an upheld REVERSE is told to both holders, in the correction's words — the records hold the ruling, so the change is read from the result it ruled",
+    back4.ok && (await qOf(4))?.sealedAt !== ruled4?.sealedAt && k4F1.length === 1 && k4F2.length === 1 && k4F1[0].bodyEn === plain4 && k4F2[0].bodyEn === plain4
+      && (await slotRows(F1, 4)).length === 2 && (await slotRows(F2, 4)).length === 1,
+    J({ back4: back4.ok ? "ok" : back4, k4F1: k4F1.map((n) => n.bodyEn), k4F2: k4F2.map((n) => n.bodyEn), f1Slot4: (await slotRows(F1, 4)).length, f2Slot4: (await slotRows(F2, 4)).length }));
+  // ⭐ …and a ruling's run that lands after a later record of its question drops the facts it was handed: it reads the records
+  // and tells the present record, as that record's own run did — nobody twice, and never the ruling's words for it.
+  await ageNotices([F1, F2]);
+  const stale4 = await notify.noticeQuestionCorrected(wo.id, 4, flip(ruled4?.outcome), undefined, { filer: F2, windowRestarted: true, sealedAt: ruled4?.sealedAt });
+  await settleAll();
+  ok("10b.8g · ⭐ a ruling's facts serve only its own record: run after the sealer's correction, it reads the present record — both holders already told, nobody twice",
+    stale4.sent === 0 && stale4.recipients === 3 && stale4.alreadySent === 3 && (await slotRows(F1, 4)).length === 2 && (await slotRows(F2, 4)).length === 1,
+    J({ recipients: stale4.recipients, sent: stale4.sent, alreadySent: stale4.alreadySent }));
+  // ⭐ With two officers required, a ruling is final at once — one officer rules it, and no second confirms it — so the
+  // sealer's correction back, final only on its confirmation, is read from the ruled result too.
+  await setRequireTwoOfficerResolution(true, OWNER);
+  const { week: wt, start: st } = await W.openWeek({ weeksAhead: ahead++ });
+  const t1 = await W.buy(F1, wt.id, [W.WIN]);
+  const t2 = await W.buy(F2, wt.id, [W.LOSE]);
+  const tAt = (min: number) => new Date(st + 9 * DAY + min * 60_000);
+  const closedT = await W.svc.closeWeek({ weekId: wt.id, now: new Date(Date.parse(wt.closesAt) + 60_000) });
+  let sealedT = t1.ok && t2.ok && closedT.ok;
+  for (let slot = 1; slot <= 15 && sealedT; slot++) {
+    const s = await W.svc.sealQuestion({ weekId: wt.id, slot, outcome: "YES", evidence: `Official result for event ${slot}`, officerId: SEALER, now: tAt(0) });
+    const c = s.ok ? await W.svc.confirmSeal({ weekId: wt.id, slot, ...(await reviewedSeal(wt.id, slot)), officerId: READER, now: tAt(1) }) : s;
+    sealedT = s.ok && c.ok;
+  }
+  await settleAll();
+  const codeT = (await dal.weekStore.get(wt.id)).code as string;
+  const filedT = await ob.fileMillioneaObjection({ userId: F2, weekId: wt.id, slot: 2, reason: "WRONG_OUTCOME", detail: "The source published another result for question 2", now: tAt(60) });
+  await settleAll();
+  const qT = async () => (await dal.questionStore.listForWeek(wt.id)).find((q: any) => q.slot === 2);
+  const qt0 = await qT();
+  const ruledT = filedT.ok ? await ob.decideMillioneaObjection({ objectionId: (filedT as any).objectionId, officerId: OFF, ruling: "REVERSE", note: "Checked against the official source for question 2",
+    expectedOutcome: qt0?.outcome, expectedSealedAt: qt0?.sealedAt, now: tAt(61) }) : filedT;
+  await settleAll();
+  const qt1 = await qT();
+  const fixT = (ruledT as any).ok ? await W.svc.correctSeal({ weekId: wt.id, slot: 2, outcome: "YES", evidence: "Corrected: the official source's final result for event 2",
+    ...(await reviewedSeal(wt.id, 2)), officerId: SEALER, now: tAt(62) }) : ruledT;
+  await settleAll();
+  const corrT = async (u: string) => (await mlnRows(u)).filter((n) => String(n.href).includes(`#${codeT}-corrected-2-`));
+  const pendingT = (await corrT(F2)).length;
+  const confT = (fixT as any).ok ? await W.svc.confirmSeal({ weekId: wt.id, slot: 2, ...(await reviewedSeal(wt.id, 2)), officerId: READER, now: tAt(63) }) : fixT;
+  await settleAll();
+  await setRequireTwoOfficerResolution(false, OWNER);
+  const tF1 = await corrT(F1);
+  const tF2 = await corrT(F2);
+  ok("10b.8h · ⭐ with two officers required, a ruling is final at once: the sealer's correction back, final on its confirmation, is told to both holders — read from the ruled result",
+    sealedT && filedT.ok && (ruledT as any).ok && qt1?.outcome === "NO" && (fixT as any).ok && pendingT === 0 && (confT as any).ok
+      && tF1.length === 2 && tF2.length === 1 && tF2[0].bodyEn === plain4,
+    J({ sealedT, filedT: filedT.ok, ruledT: errOf(ruledT), qt1: qt1?.outcome, fixT: errOf(fixT), pendingT, confT: errOf(confT), f1: tF1.map((n) => n.bodyEn), f2: tF2.map((n) => n.bodyEn) }));
   const objectionRuns = notify.millioneaNoticeRuns().filter((x: any) => x.notice === "objection" || x.notice === "objectionFiled");
   ok("10b.9 · every objection notice ran outside every lock and transaction — the witness read at its launch",
     objectionRuns.length >= 6 && objectionRuns.every((x: any) => !x.calledInLock && !x.calledInTx), J(objectionRuns.filter((x: any) => x.calledInLock || x.calledInTx).length));
@@ -1291,14 +1401,28 @@ console.log(`${LF}§10b · ⭐ S6-NOTICES · an objection filed pings the office
     one?.titleEn === `Millionea Week ${n3} · Ticket bought` && one?.titleSw === `Millionea Wiki ${n3} · Tiketi imekatwa` && one?.titleZh === `Millionea 第${n3}周 · 已出票`
       && two?.titleEn === `Millionea Week ${n1} · 2 tickets bought` && two?.titleSw === `Millionea Wiki ${n1} · Tiketi 2 zimekatwa` && two?.titleZh === `Millionea 第${n1}周 · 已出票 2 张`,
     J({ one: [one?.titleEn, one?.titleSw, one?.titleZh], two: [two?.titleEn, two?.titleSw, two?.titleZh] }));
+  // ⭐ S6-NOTICES (the lead, 2026-10-23) · the receipt's free cancel is the slip's own line — its key and its clock — so the zone
+  // is named in every language exactly as the slip names it.
+  const { dict } = await import("../../src/lib/i18n-dict.ts");
+  const { fill } = await import("../../src/lib/utils.ts");
+  const clock = /(\d{2}:\d{2}) EAT/.exec(String(one?.bodyEn))?.[1] ?? "";
+  const slipLine = (l: "en" | "sw" | "zh") => fill(String((dict as any)[l].millionea.cancelFreeUntil), { time: clock });
+  ok("10b.10b · ⭐ the receipt's free cancel names its zone as the slip does, in all three languages — the slip's own line (`millionea.cancelFreeUntil`) and its own clock",
+    clock !== "" && String(one?.bodyEn).endsWith(` · ${slipLine("en")}.`) && String(one?.bodySw).endsWith(` · ${slipLine("sw")}.`) && String(one?.bodyZh).endsWith(` · ${slipLine("zh")}。`)
+      && slipLine("en").endsWith(" EAT") && slipLine("sw").endsWith(" EAT") && slipLine("zh").endsWith(" EAT"),
+    J({ en: one?.bodyEn, sw: one?.bodySw, zh: one?.bodyZh, clock }));
   // The week settles once its objections are decided and its (restarted) window has closed, so every later week of the line
   // can claim its carry in order (MR-3) — the release's own notices go as they always do.
   const woEnd = await dal.weekStore.get(wo.id);
   credit(100_000_000);
   const settledO = woEnd?.objectionsCloseAt ? await W.release(wo.id, new Date(Date.parse(woEnd.objectionsCloseAt) + 60_000)) : { ok: false, error: "no window end" };
   await settleAll();
-  ok("10b.11 · control · every objection decided and the window closed, the week settles, so the line goes on (MR-3)",
-    settledO.ok && (await dal.weekStore.get(wo.id)).state === "SETTLED", J(settledO.ok ? "ok" : settledO));
+  const wtEnd = await dal.weekStore.get(wt.id);
+  const settledT = wtEnd?.objectionsCloseAt ? await W.release(wt.id, new Date(Date.parse(wtEnd.objectionsCloseAt) + 60_000)) : { ok: false, error: "no window end" };
+  await settleAll();
+  ok("10b.11 · control · every objection decided and each window closed, both weeks settle, so the line goes on (MR-3)",
+    settledO.ok && (await dal.weekStore.get(wo.id)).state === "SETTLED" && settledT.ok && (await dal.weekStore.get(wt.id)).state === "SETTLED",
+    J({ wo: settledO.ok ? "ok" : settledO, wt: settledT.ok ? "ok" : settledT }));
 }
 
 // ── §11 · never inside a money transaction ────────────────────────────────────────────────────────────
@@ -1641,9 +1765,10 @@ console.log(`${LF}§13 · exactly once across the run, in three languages; the p
     if (typeof (notify as any)[spec.sender] !== "function") problems.push(`${spec.notice}: no sender ${spec.sender}`);
     if (!readFileSync(join(ROOT, spec.trigger), "utf8").includes(`m.${spec.sender}(`)) problems.push(`${spec.notice}: ${spec.trigger} never calls ${spec.sender}`);
   }
-  // S6-NOTICES (2026-10-23) · twelve: an objection's ruling (to its filer) and its filing (to the console's officers) joined.
+  // S6-NOTICES (2026-10-23) · thirteen: an objection's ruling (to its filer), its filing (to the console's officers) and an
+  // upheld change (to every other holder, through the correction's own sender) joined.
   ok("13.5 · the registered set is the code's: every notice's emitter exists and is registered, its sender exists, and its trigger file calls it",
-    (registry.MILLIONEA_NOTICES as any[]).length === 12 && problems.length === 0, J(problems));
+    (registry.MILLIONEA_NOTICES as any[]).length === 13 && problems.length === 0, J(problems));
   const inv = await checkMaswaliInvariants();
   ok("13.6 · the nightly invariants hold over every week of the run: no notice moved money", inv.ok, J(inv));
   // Round 4 (L3) · the week's lease is taken only on a lease READ that happened: a read that fails throws inside the lease,
