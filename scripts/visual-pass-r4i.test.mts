@@ -735,9 +735,10 @@ section("10 · the journey Wallet says why there is no Deposit; Pumzika states t
       // §10 §3.2), never the break's end — still the journey bar's alone. ⚠️ RE-PINNED, S5-FIX-PLATFORM D3 (2026-10-21): the
       // answer is spread, `{...millioneaProp}`, handed only while it is true. ⚠️ RE-PINNED, S5-FIX-PLATFORM D13 (2026-10-21):
       // the classic bar also takes `{...millioneaBreakProp}` — whether Millionea's pages light a stand-in on a break, never
-      // the break's end, which stays the journey bar's alone.
+      // the break's end, which stays the journey bar's alone. ⚠️ RE-PINNED, MASWALI-BUILD S5 round 2 · PLATFORM (2026-10-22):
+      // and `{...breakProp}`, the break itself as a boolean (no deposit door offered on a break) — still never its end.
       && /<LazyJourneyTopBar user=\{journeyUser\} onBreak=\{promoSuppressed\} breakEnd=\{journeyBreak\}/.test(SHELL)
-      && /<TopAppBar user=\{topUser\} proposalsState=\{proposalsState\} inviteVisible=\{inviteVisible\} invitePaid=\{invitePaid\} \{\.\.\.millioneaProp\} \{\.\.\.millioneaBreakProp\} \/>/.test(SHELL)
+      && /<TopAppBar user=\{topUser\} proposalsState=\{proposalsState\} inviteVisible=\{inviteVisible\} invitePaid=\{invitePaid\} \{\.\.\.millioneaProp\} \{\.\.\.breakProp\} \{\.\.\.millioneaBreakProp\} \/>/.test(SHELL)
       && /onBreak=\{onBreak\} breakEnd=\{breakEnd\} \/>/.test(read("src/components/journey/journey-top-bar.tsx")));
   // The hub row, rendered.
   const viewer = {

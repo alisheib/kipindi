@@ -167,11 +167,19 @@ async function underBubble(page, id) {
       color: cs.color, size: parseFloat(cs.fontSize), weight: Number(cs.fontWeight) || 400 };
   }, id);
 }
-/** Scroll to the first offset where this drive's census finds nothing under the resting rect (8px steps). */
+/** Scroll to the first offset where this drive's census finds nothing under the resting rect (8px steps).
+ *  ⭐ JUDGED AT REST (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22; the week-320 failure on the integrated release, which
+ *  read "clear" at scrollY 120 while the product yielded there): the product asks only once the page is still — D3 holds
+ *  every ask while `data-scrolling` stands and asks again when it leaves (a probe read the mark stale at +0/+100ms, re-asked by
+ *  +300ms) — so a spot read on the frame right after the scroll compared a moving page with a settled one. A candidate is
+ *  rested on as the product rests, and kept only if it is still clear; a real disagreement at rest still fails, with what the
+ *  product saw (`UNDER`). */
 async function clearSpot(page) {
   const max = await page.evaluate(() => document.documentElement.scrollHeight - innerHeight);
   for (let y = 0; y <= max; y += 8) {
     await page.evaluate((y) => window.scrollTo(0, y), y);
+    if ((await page.evaluate(CENSUS)) !== false) continue;
+    await rest(page);
     if ((await page.evaluate(CENSUS)) === false) return y;
   }
   return null;
@@ -232,9 +240,43 @@ async function guard(kind, path, w) {
   const y = await clearSpot(page);
   await rest(page);
   const clear = await opacityNow(page);
-  ok(`${tag} · where nothing lies under it (scrollY ${y}) the bubble is whole`, y !== null && clear?.o === 1 && !clear.mark, JSON.stringify(clear));
+  const clearOk = y !== null && clear?.o === 1 && !clear.mark;
+  // On a failure, say what lay under the bubble AT THAT MOMENT, in the product's own terms (fab-census.ts, replicated as
+  // UNDER below) and in this drive's, with the page's scroll and idle marks: a timing gap and a census disagreement read
+  // differently (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22, the week-320 failure).
+  const why = clearOk ? "" : ` ${JSON.stringify({ ...(await page.evaluate(UNDER)), drive: await page.evaluate(CENSUS) })}`;
+  ok(`${tag} · where nothing lies under it (scrollY ${y}) the bubble is whole`, clearOk, JSON.stringify(clear) + why);
+  if (!clearOk) await page.screenshot({ path: join(OUT, `${RED ? "red-" : ""}${kind}-${w}-clear-FAIL.png`) });
   await ctx.close();
 }
+
+/** In the page: what the PRODUCT's census (`fab-census.ts` contentUnder, replicated) finds under the bubble's resting
+ *  rect — each `.amount` and each visible text line, with where it stands — and the root's scroll and idle marks. */
+const UNDER = () => {
+  const fab = document.querySelector(".cm-fab"); const bubble = fab?.querySelector(".cm-bubble") ?? fab;
+  if (!fab || !bubble) return { under: null };
+  const r = bubble.getBoundingClientRect(); const t = getComputedStyle(fab).transform; const m = t && t !== "none" ? new DOMMatrixReadOnly(t) : null;
+  const dx = m ? m.e : 0, dy = m ? m.f : 0; const past = (s) => (s / 2 + 3) * 1.08 - s / 2;
+  const box = { left: r.left - dx, right: r.right - dx, top: r.top - dy, bottom: r.bottom - dy };
+  const x = past(box.right - box.left), y = past(box.bottom - box.top);
+  const rect = { left: box.left - x, right: box.right + x, top: box.top - y, bottom: box.bottom + y };
+  const meets = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+  const seen = (el) => el.checkVisibility ? el.checkVisibility({ opacityProperty: true, visibilityProperty: true, checkOpacity: true, checkVisibilityCSS: true }) : getComputedStyle(el).visibility === "visible";
+  const found = [];
+  for (const a of document.querySelectorAll(".amount")) { if (fab.contains(a)) continue; const q = a.getBoundingClientRect(); if (q.width > 1 && q.height > 1 && meets(rect, q) && seen(a)) found.push({ amount: (a.textContent || "").trim().slice(0, 30), top: Math.round(q.top) }); }
+  const SKIP = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "IFRAME", "SELECT", "TEXTAREA", "INPUT"]);
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, { acceptNode(n) {
+    if (n.nodeType === Node.TEXT_NODE) return (n.textContent || "").trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+    const el = n; if (el === fab || el.id === "needle-root" || SKIP.has(el.tagName)) return NodeFilter.FILTER_REJECT;
+    const q = el.getBoundingClientRect(); if (q.width === 0 && q.height === 0) return getComputedStyle(el).display === "contents" ? NodeFilter.FILTER_SKIP : NodeFilter.FILTER_REJECT;
+    if (meets(rect, q)) return NodeFilter.FILTER_SKIP; const of = el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1; return of ? NodeFilter.FILTER_SKIP : NodeFilter.FILTER_REJECT; } });
+  const range = document.createRange();
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) { const parent = node.parentElement; if (!parent) continue; range.selectNodeContents(node);
+    for (const line of range.getClientRects()) { if (line.width <= 1 || line.height <= 1 || !meets(rect, line)) continue;
+      found.push({ text: (node.textContent || "").trim().slice(0, 40), seen: seen(parent), in: `${parent.tagName.toLowerCase()}.${String(parent.className).split(" ").slice(0, 3).join(".")}`, top: Math.round(line.top) }); break; } }
+  const root = document.documentElement;
+  return { under: found.slice(0, 6), rect: { top: Math.round(rect.top), bottom: Math.round(rect.bottom) }, scrolling: root.hasAttribute("data-scrolling"), idle: root.hasAttribute("data-fab-idle"), y: Math.round(scrollY) };
+};
 
 // ── --measure: the lead's table ─────────────────────────────────────────────────────────────────────────────────────
 const lum = ([r, g, b]) => { const f = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };

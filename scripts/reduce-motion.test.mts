@@ -9,6 +9,9 @@
  *    branch AND the html.kp-reduce-motion mirror: end frames render, nothing
  *    invisible. A new animation lands with its branch in the same change or it
  *    does not land."
+ *  …and since 2026-10-22 so does every entrance of the kit's motion vocabulary, every
+ *  one a Millionea surface wears, and the route entrance: rule 3 below (the clamp
+ *  zeroes time, not the first frame).
  *
  * (⚠️ The four class families are written without their leading dots and trailing
  *  stars on purpose: a `star slash` pair anywhere in this comment closes it, and
@@ -511,6 +514,71 @@ for (const a of jsxUngated) {
 const staleJsxKept = JSX_KEPT.filter((k) => !jsxLoops.some((a) => a.file === k.file && a.name === k.name));
 say(staleJsxKept.length === 0, `2.6 the JSX_KEPT list holds no stale entries (it may only SHRINK)`);
 for (const k of staleJsxKept) console.log(`         ${k.file} no longer runs an inline infinite "${k.name}"; delete the exemption`);
+
+/* ═══ RULE 3 — UNDER BOTH CLAMPS AN ENTRANCE'S FIRST FRAME IS ITS END FRAME ═══
+   (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22: the motion critic's "Reduced-motion parity" row, the lead's round 2.)
+   Rule 1's clamp zeroes TIME, not the FIRST FRAME: a run it shortens to .01ms still opens on its first keyframe, and
+   Chromium paints that frame once before the run is over. MEASURED (a probe of motion.css in Chromium, each class mounted
+   with its element and restarted on a standing one, under the OS preference and under the in-app switch): with only rule 1,
+   40 clamped first frames hid or moved an entrance — `.m-seal`, `.m-axis-reveal`, `.m-draw`, `.m-in`, `.m-in-lift`,
+   `.m-dialog-in`, `.m-sheet-in`, `.m-scrim`, `.m-float-in` and the route entrance, `.route-enter` (a blank first frame on
+   every route change); with motion.css's written branches, 0.
+   ⭐ THE SET IS DERIVED, NOT LISTED: every class rule of the kit's motion vocabulary (motion.css), every class a Millionea
+   surface wears that names a one-shot animation anywhere in the corpus, and the route entrance. Each runs its keyframe a
+   finite number of times (an `infinite` one is rule 2's), and it is an ENTRANCE when that keyframe OPENS on another frame
+   than the one it ends on, or names no first frame at all (then it opens on the element's own value). An entrance needs,
+   for BOTH clamps — an `@media (prefers-reduced-motion: reduce)` rule and an `html.kp-reduce-motion` rule naming exactly
+   that class — `animation: none`, so the layout's own frame is the first painted; and where its keyframe names no first
+   frame, that keyframe's last frame written into the branch too (`.m-draw`: its caller sets the dash to the path's length
+   inline). ⛔ An EXIT (a keyframe ending at opacity 0) opens on the surface as it stands and is not branched: the kit
+   unmounts a leaving surface at once under both clamps (`exitBeatMs`, modal.tsx).                                       */
+type Frame = Record<string, string>;
+const KEYFRAMES = new Map<string, { file: string; first: Frame | null; last: Frame | null }>();
+for (const rel of CSS_FILES) {
+  let root;
+  try { root = postcss.parse(readFileSync(`${ROOT}/${rel}`, "utf8"), { from: rel }); } catch { continue; } // 0.0 has failed it
+  root.walkAtRules(/^(?:-webkit-)?keyframes$/, (at) => {
+    const steps = (at.nodes ?? []).filter((n): n is postcss.Rule => n.type === "rule");
+    const frameAt = (re: RegExp): Frame | null => {
+      const step = steps.find((s) => s.selector.split(",").some((x) => re.test(x.trim())));
+      return step ? Object.fromEntries(step.nodes.filter((n): n is postcss.Declaration => n.type === "decl")
+        .map((d) => [d.prop, d.value.replace(/\s+/g, " ").trim()])) : null;
+    };
+    KEYFRAMES.set(at.params.trim(), { file: rel, first: frameAt(/^(?:from|0%)$/), last: frameAt(/^(?:to|100%)$/) });
+  });
+}
+const isClassRule = (r: Rule) => r.at.length === 0 && /^\.[\w-]+$/.test(r.sel);
+const shorthandOf = (r: Rule) => /(?:^|; )animation: ([^;]+)/.exec(r.body)?.[1] ?? null;
+const keyframeOf = (r: Rule) => (shorthandOf(r) ?? "").split(/\s+/).find((w) => KEYFRAMES.has(w)) ?? null;
+const oneShot = rules.filter((r) => isClassRule(r) && keyframeOf(r) !== null && !/\binfinite\b/.test(shorthandOf(r) ?? ""));
+const MLN_FILES = TSX_FILES.filter((f) => /^src\/(?:app\/millionea\/|components\/maswali\/|app\/results\/millionea)/.test(f));
+const mlnText = MLN_FILES.map((f) => blankComments(readFileSync(`${ROOT}/${f}`, "utf8")).replace(/(^|[^:])\/\/[^\n]*/g, "$1")).join("\n");
+const worn = (cls: string) => new RegExp(`(?<![\\w-])${cls.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w-])`).test(mlnText);
+const inScope = oneShot.filter((r) => r.file === "src/app/motion.css" || r.sel === ".route-enter" || worn(r.sel.slice(1)));
+const same = (a: Frame | null, b: Frame | null) => !!a && !!b && JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort());
+const census = inScope.map((r) => {
+  const k = KEYFRAMES.get(keyframeOf(r)!)!;
+  const kind = k.last?.opacity === "0" ? "exit" : same(k.first, k.last) ? "still" : "entrance";
+  return { cls: r.sel.slice(1), keyframe: keyframeOf(r)!, kind, implicit: k.first === null, last: k.last ?? {} };
+}).filter((c, i, all) => all.findIndex((x) => x.cls === c.cls) === i);
+const entrances = census.filter((c) => c.kind === "entrance");
+const partsOf = (sel: string) => sel.split(",").map((p) => p.trim());
+const stops = (r: Rule) => /(?:^|; )animation(?:-name)?: none\b/.test(r.body);
+const osBranch = (cls: string) => rules.filter((r) => r.at.some((a) => /prefers-reduced-motion\s*:\s*reduce/.test(a)) && partsOf(r.sel).includes(`.${cls}`) && stops(r));
+const appBranch = (cls: string) => rules.filter((r) => r.at.length === 0 && partsOf(r.sel).includes(`html.kp-reduce-motion .${cls}`) && stops(r));
+
+say(KEYFRAMES.size >= 20 && ["m-dialog-in", "route-enter", "m-axis-reveal", "m-draw"].every((c) => entrances.some((e) => e.cls === c)),
+  `3.0 PREMISE · the census reads the corpus' keyframes (${KEYFRAMES.size}) and derives ${entrances.length} entrances — among them the kit's dialog, the route entrance and Millionea's reveal and draw`);
+const unbranched = entrances.filter((e) => osBranch(e.cls).length === 0 || appBranch(e.cls).length === 0);
+say(unbranched.length === 0, `3.1 ⭐ every entrance has its end frame written for BOTH clamps — \`animation: none\` under the OS preference and under html.kp-reduce-motion`);
+for (const e of unbranched) console.log(`         .${e.cls} (${e.keyframe}) — OS branch ${osBranch(e.cls).length ? "✓" : "⛔ missing"}, in-app mirror ${appBranch(e.cls).length ? "✓" : "⛔ missing"}`);
+const unwritten = entrances.filter((e) => e.implicit).filter((e) => [osBranch(e.cls), appBranch(e.cls)].some((branches) =>
+  !Object.entries(e.last).every(([p, v]) => branches.some((r) => new RegExp(`(?:^|; )${p}: ${v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?: !important)?(?:;|$)`).test(r.body)))));
+say(unwritten.length === 0, `3.2 an entrance whose keyframe names no first frame writes that keyframe's last frame into both branches (it opens on the element's own value)`);
+for (const e of unwritten) console.log(`         .${e.cls} (${e.keyframe}) — its branches must write ${JSON.stringify(e.last)}`);
+console.log(`         entrances (${entrances.length}): ${entrances.map((e) => `.${e.cls}`).join(" ")}`);
+console.log(`         exits, not branched (${census.filter((c) => c.kind === "exit").length}): ${census.filter((c) => c.kind === "exit").map((c) => `.${c.cls}`).join(" ")}`);
+console.log(`         open on their end frame (${census.filter((c) => c.kind === "still").length}): ${census.filter((c) => c.kind === "still").map((c) => `.${c.cls}`).join(" ")}`);
 
 /* ═══ REPORTED, NEVER SILENT ═════════════════════════════════════════════════ */
 // ⚠️ "NAMED BY", NOT "SWITCHED OFF" — and the distinction is not pedantry. Two of

@@ -925,10 +925,24 @@ section("4 · C4 the journey rail stacks from the top only where a label wraps �
     return value;
   };
   const trackPx = (v: string | null) => (v === null || v === "normal" ? 0 : v.endsWith("em") ? parseFloat(v) * micro : parseFloat(v));
+  // RE-PINNED OPENLY (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22, the lead's round-2 item): the four-tab rail — the one
+  // every reader is served while Millionea does not show, `data-tabs` absent — now has its own tracking rule (Swahili, from
+  // 332.8 to 348.8), so the model reads it too, the same way: the last rule that reaches the label at `w` in `l`.
+  const FOUR = ".kp-rail--journey:not([data-tabs])";
+  const fourLabel = (css: string, prop: string, w: number, l: Loc): string | null => {
+    let value: string | null = null;
+    const rx = /(?:@media \(min-width: ([0-9.]+)px\) \{ )?\.kp-rail--journey:not\(\[data-tabs\]\)(?::lang\((\w+)\))? \.kp-jtab__label \{([^}]*)\}/g;
+    for (const m of css.matchAll(rx)) {
+      const from = m[1] ? Number(m[1]) : 0, lang = m[2];
+      const decl = new RegExp(`(?:^|;)\\s*${prop}: ([^;]+);`).exec(m[3]);
+      if (decl && w >= from && (!lang || lang === l)) value = decl[1].trim();
+    }
+    return value;
+  };
   type Tabs = ReadonlyArray<{ key: string; label: string; railLabel?: string }>;
   /** Each label's ink width at `w` in `l` under `css`: tracked, and wrapped where its white-space lets it. */
   const inks = (css: string, w: number, l: Loc, tabs: Tabs = FIVE_TABS) => {
-    const ls = tabs.length === 5 ? trackPx(fiveLabel(css, "letter-spacing", w, l)) : 0;
+    const ls = trackPx(tabs.length === 5 ? fiveLabel(css, "letter-spacing", w, l) : fourLabel(css, "letter-spacing", w, l));
     const lineW = (s: string) => [...s].reduce((a, ch) => a + ((ch.codePointAt(0) ?? 0) >= 0x2e80 ? 1 : 0.6) * micro + ls, 0);
     const room = w / tabs.length - labelPad;
     // The base rule wraps below 360, the five-tab Swahili rule through 415; anything else is one line (and would ellipsise).
@@ -968,19 +982,36 @@ section("4 · C4 the journey rail stacks from the top only where a label wraps �
   const early = CSS.replace('@media (min-width: 337px) { .kp-rail--journey[data-tabs="5"]:lang(en) .kp-jtab__label { letter-spacing: normal; } }',
     '@media (min-width: 330px) { .kp-rail--journey[data-tabs="5"]:lang(en) .kp-jtab__label { letter-spacing: normal; } }');
   ok("4c.1″ PLANT · the tracking given back at 330, before the pair clears 8px untouched, is reported", early !== CSS && leastGap(early).en.gap < MIN_GAP, j(leastGap(early).en));
-  // The four-tab rail is the answer while Millionea is withdrawn: no rule of this kind reaches it, so it draws as it did.
-  // ⚠️ AND ITS OWN LEAST GAP IS UNDER THE MINIMUM, read here and left as it is: Swahili's "Juu na Chini" | "Tiketi zangu",
-  // both one line from 332.8 (§4.1), stand 83.25 − 79.2 = 4.05px apart at 333 and clear 8px only from ~347. It is the rail
-  // every reader is served while Millionea is withdrawn, which this release may not change (reported to the lead).
+  // ⭐ THE FOUR-TAB RAIL, RE-PINNED OPENLY (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22). Round 1 read its least gap
+  // under the minimum and left it, since D14 was not to change the rail every reader is served while Millionea is
+  // withdrawn: Swahili's "Juu na Chini" | "Tiketi zangu", both one line from 332.8 (§4.1), stood 83.25 − 79.2 = 4.05px apart
+  // at 333 and cleared 8px only from 348.8 (Chromium, qa:journey-rail-gaps' four-tab cells: 4.0 at 333, 5.8 at 340, 7.5 at
+  // 347). The lead's round 2 assigned it: the same minimum, by D14's own answer, on Swahili alone, from the width its labels
+  // first fit one line (§4.1) to the width they clear the minimum untouched — both derived here from the dictionary.
+  /** The one selector a four-tab tracking rule may name: Swahili's labels on the rail that carries no `data-tabs`. */
+  const FOUR_SW = `${FOUR}:lang(sw) .kp-jtab__label`;
   /** Every rule that tracks a rail label (or anything in the journey rail) without naming the five-tab rail. */
   const fourReached = (css: string) => [...css.matchAll(/(?:^|\n|\{ )([^{}\n]*(?:kp-jtab__label|kp-rail__label|kp-rail--journey)[^{}\n]*)\{([^}]*)\}/g)]
     .filter((m) => /letter-spacing/.test(m[2]) && !m[1].includes('[data-tabs="5"]')).map((m) => m[1].trim());
+  const clear4 = Number((4 * (Math.max(...TAB.JOURNEY_TABS.map((d) => mono(TAB.tabLabel(dict.sw, d.label)))) + MIN_GAP)).toFixed(1));
+  const fourRule = (px: number, v: string) => `@media (min-width: ${px}px) { ${FOUR_SW} { letter-spacing: ${v}; } }`;
   const G4 = leastGap(CSS, TAB.JOURNEY_TABS);
-  ok(`4c.2 · the four-tab rail is untouched: no tracking rule reaches it, nor any rail label but the five-tab rail's (its least gap from 320, as it was: sw ${G4.sw.gap}px at ${G4.sw.at}, en ${G4.en.gap}, zh ${G4.zh.gap})`,
-    fourReached(CSS).length === 0 && fourReached(untracked).length === 0, j({ reached: fourReached(CSS), G4 }));
+  ok(`4c.2 · four tabs: no two neighbouring labels stand closer than their pips (${MIN_GAP}px) at any width from 320 — least sw ${G4.sw.gap}px (at ${G4.sw.at}), en ${G4.en.gap}px (at ${G4.en.at}), zh ${G4.zh.gap}px (at ${G4.zh.at}); the one tracking rule that reaches that rail is Swahili's, from ${W.sw} to ${clear4}`,
+    LOCALES.every((l) => G4[l].gap >= MIN_GAP) && clear4 === 348.8 && CSS.includes(fourRule(W.sw, "-0.04em")) && CSS.includes(fourRule(clear4, "normal"))
+      && fourReached(CSS).length === 2 && fourReached(CSS).every((s) => s === FOUR_SW), j({ reached: fourReached(CSS), G4 }));
   const spilled = CSS.replace('.kp-rail--journey[data-tabs="5"]:lang(en) .kp-jtab__label { letter-spacing: -0.04em; }', ".kp-rail--journey:lang(en) .kp-jtab__label { letter-spacing: -0.04em; }");
-  ok("4c.2′ PLANT · the tracking written for every journey rail (the four-tab rail's English changed while Millionea is withdrawn) is reported",
-    spilled !== CSS && fourReached(spilled).length === 1, j(fourReached(spilled)));
+  ok("4c.2′ PLANT · the five-tab tracking written for every journey rail (the four-tab rail's English changed while Millionea is withdrawn) is reported",
+    spilled !== CSS && fourReached(spilled).some((s) => s !== FOUR_SW), j(fourReached(spilled)));
+  const bare = CSS.replace(fourRule(W.sw, "-0.04em"), "").replace(fourRule(clear4, "normal"), "");
+  const B4 = leastGap(bare, TAB.JOURNEY_TABS);
+  ok(`4c.2″ CONTROL + PLANT · without Swahili's four-tab tracking the model reads round 1's gap — sw ${B4.sw.gap}px at ${B4.sw.at} — and the check fails`,
+    bare !== CSS && B4.sw.gap === 4.05 && B4.sw.at === 333 && B4.sw.gap < MIN_GAP, j(B4.sw));
+  const back = CSS.replace(fourRule(clear4, "normal"), fourRule(345, "normal"));
+  ok("4c.2‴ PLANT · the tracking given back at 345, before the pair clears 8px untouched, is reported",
+    back !== CSS && leastGap(back, TAB.JOURNEY_TABS).sw.gap < MIN_GAP, j(leastGap(back, TAB.JOURNEY_TABS).sw));
+  const leak = CSS.replace(fourRule(W.sw, "-0.04em"), `${FOUR_SW} { letter-spacing: -0.04em; }`);
+  ok("4c.2⁗ PLANT · the tracking reaching below 332.8 (there the tracked labels fit one line, 6px apart at 320, where they wrapped) is reported",
+    leak !== CSS && leastGap(leak, TAB.JOURNEY_TABS).sw.gap < MIN_GAP, j(leastGap(leak, TAB.JOURNEY_TABS).sw));
 }
 
 /* ══ §5 · C5 · THE STACKED FLAG ON A WHOLE PIXEL ═══════════════════════════════════════════════════════════════════════ */

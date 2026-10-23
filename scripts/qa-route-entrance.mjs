@@ -14,7 +14,11 @@
  *      Transition is started; every frame that shows the new address is at the top (y 0); the header and the rail run
  *      no animation while the page changes; the wrapper's entrance (`m-settle-in`) runs;
  *   2. the same under the OS's reduced motion and under the in-app switch (`html.kp-reduce-motion`): the entrance is
- *      clamped to nothing (§M6);
+ *      clamped to nothing (§M6), and — MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22, the motion critic's
+ *      "Reduced-motion parity" row — no frame that shows the new address paints the page below full opacity: the clamp
+ *      zeroed the run's time but its first frame was still painted, the new page blank once (motion.css, the kit's
+ *      entrances' branches; `test:reduce-motion` rule 3). 2′ PLANTS that clamped run back (the keyframe at the clamp's
+ *      .01ms, as it stood) and must see the blank frame, so the check can fail;
  *   3. Back keeps its place (B-19): a traversal is not sent to the top;
  *   4. a window resized while a move runs raises no page error (the aborted-transition fix, c129888f5, had nothing left
  *      to guard once no transition starts — this holds it so).
@@ -47,7 +51,9 @@ const RECORDER = () => {
       const chromeAnims = chrome().flatMap((el) => el.getAnimations().filter((a) => a.playState === "running").map((a) => a.animationName || "transition"));
       const wrap = document.querySelector(".route-enter");
       window.__kpFrames.push({ t: Math.round(performance.now()), path: location.pathname, y: Math.round(scrollY), docAnims, chromeAnims,
-        wrapAnims: wrap ? wrap.getAnimations().map((a) => ({ name: a.animationName, dur: a.effect?.getComputedTiming().duration })) : [] });
+        wrapAnims: wrap ? wrap.getAnimations().map((a) => ({ name: a.animationName, dur: a.effect?.getComputedTiming().duration })) : [],
+        // The page's own ink in this frame: the wrapper's opacity as the frame is styled (read in its animation frame).
+        wrapO: wrap ? getComputedStyle(wrap).opacity : null });
       if (performance.now() < until) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
@@ -105,22 +111,44 @@ try {
     await ctx.close();
   }
   // ── 2 · reduced motion: the OS preference, then the in-app switch ──
-  for (const [label, opts, init] of [
-    ["the OS preference", { reducedMotion: "reduce" }, null],
+  /* The run as it stood before the kit's entrances had their branches (rule 1's clamp alone): the keyframe, the clamp's
+     .01ms, `both` — put back over the branch by a more specific important rule, on the page's first script. */
+  const PLANT_CLAMPED_RUN = () => {
+    const put = () => {
+      const s = document.createElement("style");
+      s.textContent = "html body .route-enter.route-enter { animation: m-settle-in 0.01ms var(--m-settle) both !important; }";
+      document.head.appendChild(s);
+    };
+    if (document.head) put(); else document.addEventListener("DOMContentLoaded", put, { once: true });
+  };
+  const SWITCH = () => { try { localStorage.setItem("50pick:feedback", JSON.stringify({ haptics: true, motion: "off" })); } catch { /* none */ } };
+  for (const [label, opts, init, planted] of [
+    ["the OS preference", { reducedMotion: "reduce" }, null, false],
     // The app's own switch (Sound & feedback → Reduce motion): its stored choice, which the shell applies as
     // `html.kp-reduce-motion` and `data-motion="minimal"` (theme-provider.tsx).
-    ["the in-app switch", {}, () => { try { localStorage.setItem("50pick:feedback", JSON.stringify({ haptics: true, motion: "off" })); } catch { /* none */ } }],
+    ["the in-app switch", {}, SWITCH, false],
+    ["the OS preference, PLANTED", { reducedMotion: "reduce" }, null, true],
+    ["the in-app switch, PLANTED", {}, SWITCH, true],
   ]) {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 700 }, ...opts });
     await ctx.addInitScript(RECORDER);
     if (init) await ctx.addInitScript(init);
+    if (planted) await ctx.addInitScript(PLANT_CLAMPED_RUN);
     const page = await ctx.newPage();
     page.on("pageerror", (e) => errors.push(`${label}: ${e.message}`));
     const { frames, vt } = await moveFromFoot(page, 600);
     const arrived = frames.filter((f) => f.path === "/help");
     const long = arrived.flatMap((f) => f.wrapAnims).filter((a) => a.name === "m-settle-in" && a.dur > 1);
-    ok(`2 · reduced motion (${label}): no View Transition, the entrance clamped to nothing, still at the top`,
-      vt === 0 && long.length === 0 && arrived.every((f) => f.y === 0), `(vt ${vt}; unclamped entrance frames ${long.length})`);
+    const dim = arrived.filter((f) => f.wrapO !== null && Number(f.wrapO) < 1);
+    if (!planted) {
+      ok(`2 · reduced motion (${label}): no View Transition, the entrance clamped to nothing, still at the top`,
+        vt === 0 && long.length === 0 && arrived.every((f) => f.y === 0), `(vt ${vt}; unclamped entrance frames ${long.length})`);
+      ok(`2.1 · reduced motion (${label}): no frame at the new address paints the page below full opacity — the first frame is the end frame`,
+        arrived.length > 0 && dim.length === 0, `(${arrived.length} frames at /help; below full opacity: ${dim.length}${dim.length ? ` — first ${JSON.stringify({ t: dim[0].t, o: dim[0].wrapO })}` : ""})`);
+    } else {
+      ok(`2′ PLANT (${label}): with the clamped run put back, the check sees the blank first frame — it can fail`,
+        dim.length > 0, `(${arrived.length} frames at /help; below full opacity: ${dim.length}${dim.length ? `, first o=${dim[0].wrapO}` : ""})`);
+    }
     await ctx.close();
   }
   // ── 4 · a resize while a move runs ──

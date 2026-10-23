@@ -2,9 +2,10 @@
  * MASWALI MILLIONEA — ITS DOORS ON OTHER PLATFORM PAGES (MASWALI-BUILD S5 composition; MASWALI-PLAN §7b S5 items 4–5;
  * DESIGN_AUTHORITY §M8a item 11).
  *
- * The journey home's card, the classic board's card, the classic More rows and the classic /positions row each ask the
- * same two questions — may this request be shown Millionea at all, and what does the week say — and this file is the one
- * place they are answered, React-cached per request, so two doors on one page can never disagree.
+ * The journey home's card, the classic board's card, the classic More rows, the classic /positions row and the classic
+ * landing's line (DESIGN_AUTHORITY §M8a item 21; `millioneaLandingOffered`, at the end of this file) each ask the same two
+ * questions — may this request be shown Millionea at all, and what does the week say — and this file is the one place
+ * they are answered, React-cached per request, so two doors on one page can never disagree.
  *
  * ⛔ A HIDDEN PRODUCT HAS NO DOOR (MR-2): `visible` is the rollout's per-request answer (`resolveMillionea`); below it no
  *    door is drawn, no link is written and nothing is read.
@@ -163,4 +164,19 @@ export const millioneaHeldThisWeek = cache(async (userId: string): Promise<numbe
   } catch {
     return 0;
   }
+});
+
+// ── THE LANDING'S LINE (MASWALI-BUILD S5 landing door; Ali, 2026-10-22) ──────────────────────────────────────────────────
+/**
+ * ⭐ IS THE CLASSIC LANDING'S LINE OFFERED ("Be this week's winner?", the second door of the hero's door row, to the
+ * Millionea hub — DESIGN_AUTHORITY §M8a item 21; the row is the landing's ruling R19): exactly when the card is (`millioneaCardShown`: the product visible to the request, the reader on no
+ * break) AND this reader can buy into the hub's week now — the hub's own `week.selling` (open, before its close, sales not
+ * paused, and sold to this reader at this rollout: at STAFF_PREVIEW only a staff drive week). An invitation that cannot be
+ * taken up is not drawn, and no second rule decides it. React-cached, so the reads are the card's. Never throws: each answer
+ * it asks never does (an unread rollout hides the door, an unread hub is null), so a failure hides the line.
+ */
+export const millioneaLandingOffered = cache(async (): Promise<boolean> => {
+  if (!(await millioneaCardShown())) return false;
+  const door = await millioneaDoor();
+  return (await millioneaHubNow(door.userId, door.state))?.week?.selling === true;
 });

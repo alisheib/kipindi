@@ -8,7 +8,8 @@
  * tapped answer raised 2px, and `.gilt-metal:hover` (motion.css) played its once-only sheen at the press of a money commit.
  * L17 (2026-09-27) gated the four fills' hover to pointers that hover; this holds the lift and the sheen to the same rule:
  *   §1 every `.btn:hover` and `.gilt-metal:hover` rule in the app's CSS stands inside `@media (hover: hover)` — and so do
- *      L17's fills, which it must not have undone
+ *      L17's fills, which it must not have undone — and (round 2, 2026-10-22, the same defect on three more fills) the
+ *      ghost, claret and aqua-ghost tints, and so EVERY kit button's hover (`.btn-*:hover`): no tapped button keeps a fill
  *   §2 PLANTS: each rule as it was (outside the block) is reported
  * The behaviour — a touch-emulated tap leaves no lift and plays no sheen, a mouse hover still lifts and sheens — is
  * `qa:hover-touch` (a running server), reported with the commit.
@@ -67,10 +68,15 @@ const GLOBALS = read("src/app/globals.css"), MOTION = read("src/app/motion.css")
 const BTN_LIFT = /(^|,\s*)\.btn:hover(:not\(:disabled\))?\s*($|,)/;
 const GILT = /(^|,\s*)\.gilt-metal:hover\s*($|,)/;
 const FILLS = /(^|,\s*)\.btn-(primary|yes|no|danger|gold):hover(:not\(:disabled\))?\s*($|,)/;
+/** Round 2 (2026-10-22): the three tinted fills D11 had left outside the gate. */
+const TINTS = /(^|,\s*)\.btn-(ghost|claret|aqua-ghost):hover(:not\(:disabled\))?\s*($|,)/;
+/** Every kit button's own hover, whichever variant: none may answer a tap. */
+const ANY_BTN = /(^|,\s*)\.btn(-[a-z-]+)?:hover/;
 
 console.log("§1 · the lift, the sheen and the fills answer a pointer that hovers, never a tap");
 {
   const lift = ungated(GLOBALS, BTN_LIFT), sheen = ungated(MOTION, GILT), fills = ungated(GLOBALS, FILLS);
+  const tints = ungated(GLOBALS, TINTS), anyBtn = [...ungated(GLOBALS, ANY_BTN), ...ungated(MOTION, ANY_BTN)];
   ok(`1.1 · the kit button's hover lift (\`.btn:hover\`, globals.css: ${found(GLOBALS, BTN_LIFT)} rule) stands inside ${HOVER_GATE}`,
     found(GLOBALS, BTN_LIFT) === 1 && lift.length === 0, j(lift));
   ok(`1.2 · struck gilt's hover — its lift and its once-only sheen (\`.gilt-metal:hover\`, motion.css: ${found(MOTION, GILT)} rule) — stands inside ${HOVER_GATE}`,
@@ -78,6 +84,13 @@ console.log("§1 · the lift, the sheen and the fills answer a pointer that hove
   ok(`1.3 · L17's five fills keep their gate (${found(GLOBALS, FILLS)} rules)`, found(GLOBALS, FILLS) === 5 && fills.length === 0, j(fills));
   ok("1.4 · CONTROL · the walker sees the gate: the fills are found inside it, and a rule outside any block is found outside",
     rules(GLOBALS).some((r) => FILLS.test(r.selector) && r.within.includes(HOVER_GATE)) && rules(".x:hover { a: b; }")[0]?.within.length === 0);
+  ok(`1.5 · the ghost, claret and aqua-ghost tints (\`.btn-ghost:hover\`, \`.btn-claret:hover\`, \`.btn-aqua-ghost:hover\`: ${found(GLOBALS, TINTS)} rules) stand inside ${HOVER_GATE}`,
+    found(GLOBALS, TINTS) === 3 && tints.length === 0, j(tints));
+  ok(`1.6 · EVERY kit button's hover (\`.btn*:hover\`, ${found(GLOBALS, ANY_BTN) + found(MOTION, ANY_BTN)} rules in globals.css and motion.css) stands inside ${HOVER_GATE}: no tapped button keeps a lift or a fill`,
+    found(GLOBALS, ANY_BTN) >= 9 && anyBtn.length === 0, j(anyBtn));
+  const book = read("docs/DESIGN_AUTHORITY.md").replace(/\s+/g, " ");
+  ok("1.7 · DESIGN_AUTHORITY §M8a item 11 records it as D11's ruled classic change, the tints included",
+    /And D11's, every reader's on every page: a hover is a pointer's/.test(book) && /the ghost, claret and aqua-ghost tints — stand inside `@media \(hover: hover\)`/.test(book));
 }
 
 console.log("\n§2 · PLANTS — each rule as it was is reported");
@@ -86,6 +99,13 @@ console.log("\n§2 · PLANTS — each rule as it was is reported");
   const sheenAsWas = MOTION.replace(/@media \(hover: hover\) \{\s*(\.gilt-metal:hover \{[^}]*\})\s*\}/, "$1");
   ok("2.1 · the lift outside the gate (the rule as it stood) is reported", liftAsWas !== GLOBALS && ungated(liftAsWas, BTN_LIFT).length === 1);
   ok("2.2 · the sheen outside the gate (the rule as it stood) is reported", sheenAsWas !== MOTION && ungated(sheenAsWas, GILT).length === 1);
+  for (const [n, name] of [["2.3", "ghost"], ["2.4", "claret"], ["2.5", "aqua-ghost"]]) {
+    const asWas = GLOBALS.replace(new RegExp(`@media \\(hover: hover\\) \\{\\s*(\\.btn-${name}:hover:not\\(:disabled\\)\\s*\\{[^}]*\\})\\s*\\}`), "$1");
+    ok(`${n} · the ${name} tint outside the gate (the rule as it stood) is reported, by 1.5 and by 1.6`,
+      asWas !== GLOBALS && ungated(asWas, TINTS).length === 1 && ungated(asWas, ANY_BTN).length === 1);
+  }
+  const newcomer = `${GLOBALS}\n.btn-newcomer:hover:not(:disabled) { background: red; }\n`;
+  ok("2.6 · a new button variant whose hover stands outside the gate is reported by 1.6", ungated(newcomer, ANY_BTN).length === 1);
 }
 
 console.log(`\nhover-touch: ${pass} passed, ${fails.length} failed`);

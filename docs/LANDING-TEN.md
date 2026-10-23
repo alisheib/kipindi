@@ -31,6 +31,13 @@ starting any of them**, or both lanes will build the same thing twice in the sam
 
 ## §0 · RESUME AT — the v3 build (rewritten 2026-09-28)
 
+> ⭐ **2026-10-22 · R19 — THE HERO'S DOOR ROW** (Ali; MASWALI-BUILD S5 landing door). Under the hero's own actions — a
+> visitor's two CTAs, a player's block — one row of the hero's quiet links for every classic reader: **Live** (the nav's
+> own word after the family's live glyph: a change every classic reader sees), then **Millionea's line** only while a week
+> is on sale to the reader. The ruling is [INHERIT-MANIFEST §2 R19](design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md);
+> Millionea's door is [DESIGN_AUTHORITY §M8a item 21](DESIGN_AUTHORITY.md). Guards `test:landing-doors` / `red:landing-doors`;
+> drive `qa:landing-doors` (dark and drawn, 320–1920 × sw/en/zh); LANDING-TEN's gate reads the row as it reads every link.
+
 **⚠️ THE MACHINE CHANGED.** The session that ran this programme worked on **ALI-BLADE15**, with worktrees
 at `C:\kipindi-hero`, `C:\kipindi-c1`, `C:\kipindi-wp34`, `C:\kipindi-f1` and a `~/heavy-node-lock.sh`.
 That session ended. This one is **OMEGA-COMPILE01**, checkout `F:\kipindi-main` — those paths and that
@@ -302,7 +309,7 @@ once, on different things.
 | WP13 | Results: date, the market's own sign-off, source link, paid | ✅ | e9b4056c | measured on production 2026-09-27: date, the market's own sign-off (a reversed market reads "Corrected on objection"), source, paid; below 640 the amount and the source each take a line, so the host reads whole. L2 |
 | WP14 | Wallet: chip opens sheet/panel, equal Deposit/Withdraw, gold Deposit at zero, signed-in hero | ✅ | e9b4056c | ⚠️ **PART 2's MONEY HALF IS SUPERSEDED BY R17 (Ali, 2026-09-28): the signed-in hero's Deposit/Withdraw pair and the balance beside it are CUT.** A funded player met three money-in routes on one viewport — the capsule (whose Wallet holds the pair at equal size), the rail's coin, and the hero's own pair, the only one that scrolls away. The hero keeps Your picks, the frozen notice, the empty-balance sentence, and two doors that are not money (My positions, Set limits). Reachability is unchanged: money in is still one tap (the coin), money out still two (capsule → Withdraw). The SHEET's pair — the one V19 measures — is untouched. `test:landing-mine` §3 re-pointed at the absence WITH a reachability control beside it; V25 strengthened to "no hero Deposit at ANY width". ·· Original record: measured on production 2026-09-27 with `mobile01` (zero balance, no picks: header Deposit, hero empty-balance line + Deposit, no Withdraw, Set limits; pages render at 360/1280 sw/en). Funded Wallet + hero measured locally (Wallet 17 cells, hero 15 cells; 360–1280 × sw/en/zh). `test:wallet-reach` 48/48, `test:landing-mine` 22/22, both mutation-proved. R1, L19–L21 |
 | WP14b | Share on every card footer, in every phase; the WhatsApp preview card (og tags spread from `ROOT_OPEN_GRAPH`, no 0/100 in the preview) | ✅ | 541a9e76 | measured on production 2026-09-27: `qa:landing-v3:og-prod` CLEAN on 15 markets (og:type/site_name/locale present, one-sided markets preview "One side only.", images 1200×630 PNG) — its baseline before the push failed on all 15; `/results` captured 360/768/1280 × sw/en/zh, settled cards one `<article>`, looked at; the share drive (26/26: Copy, WhatsApp, Esc, backdrop stay on `/results`) ran locally. "Share on WhatsApp" after placing is WP5's; K50 closes with both |
-| WP1b | Bottom rail with a centre Deposit: Markets · Up & Down · **Deposit** · Live · More; Results into More; the coin is the mark as a control | ✅ | 37bde8a5 | production 2026-09-28: rise 14.0px, rail 65px unchanged, five slots at 64, off-centre ≤ 0.02px, coin's rect inside a keep-out, 57px reserve clearance, frames looked at at 360/414 × sw/en/zh. Ali's override of "the rail is destinations only" is recorded in the component's header comment — the centre is a ROUTE. Gates V22 + V25 |
+| WP1b | Bottom rail with a centre Deposit: Markets · Up & Down · **Deposit** · Live · More; Results into More; the coin is the mark as a control. ⭐ While Millionea's door is drawn, Millionea takes Live's track and Live leads More (Ali, 2026-10-22; `docs/DESIGN_AUTHORITY.md` §M8a item 11). | ✅ | 37bde8a5 | production 2026-09-28: rise 14.0px, rail 65px unchanged, five slots at 64, off-centre ≤ 0.02px, coin's rect inside a keep-out, 57px reserve clearance, frames looked at at 360/414 × sw/en/zh. Ali's override of "the rail is destinations only" is recorded in the component's header comment — the centre is a ROUTE. Gates V22 + V25 |
 | WP15 | Motion and performance | ⬜ | | L12 |
 | WP16 | i18n: every new key in en, sw and zh | 🔨 | 54f8199b | D1's keys in all three (`test:i18n`); sw/zh drafts carry the native-review marker (rows SW, ZH) |
 | WP17 | Accessibility: heading order, no nested controls, dialog semantics | 🔨 | 54f8199b | heading order and split row links live; dialog semantics arrive with the Wallet (WP14) and the slip (WP5) |
@@ -369,8 +376,9 @@ feature (a plant against a feature that does not exist yet cannot prove anything
   live until it is merged, rendered and measured). This note describes the v3 hero. The first build (`54f8199b`,
   measured on production 2026-09-26) had an English `<h1 lang="en">` over a sw/zh sub-line and its trust lines
   after the card; both are gone.
-- **One DOM, source order = screen order: claim → h1 → lede → trust rows → featured card → CTAs → sign-off.**
-  From 1024 the intro (claim, h1, lede, trust rows) and the act (CTAs, sign-off) share the left column and the
+- **One DOM, source order = screen order: claim → h1 → lede → trust rows → featured card → CTAs → door row →
+  sign-off** (the door row since R19, 2026-10-22: Live, then Millionea's line while it is offered — §0's note).
+  From 1024 the intro (claim, h1, lede, trust rows) and the act (CTAs, door row, sign-off) share the left column and the
   card takes the right, by grid areas — never a second DOM, never a CSS `order` (keyboard order = screen order).
 - **Claim** — `p.kp-hero__claim`, a class of its own (the shared eyebrow also dresses the section labels):
   `FiftyWordmark` 15 + a 1px `--border-strong` rule below 1280, then the text in JetBrains Mono 600, 13px,
@@ -393,9 +401,10 @@ feature (a plant against a feature that does not exist yet cannot prove anything
   less any paused rail; R8(6)). Today: M-Pesa, Airtel Money, HaloPesa, Mixx by Yas. No rails → no row.
   ⛔ Not in the hero any more: the RG sentence (R7(2) — the footer keeps it on every page) and "named sources"
   (the card names its own source).
-- **Act** — visitor: `home.heroStart` + arrow · `home.heroBrowseAll`, then the sign-off `p.kp-hero__signoff`
+- **Act** — visitor: `home.heroStart` + arrow · `home.heroBrowseAll`, then the door row (R19: `nav.live` after the
+  live glyph; Millionea's line while it is offered), then the sign-off `p.kp-hero__signoff`
   (`FiftyMark` 20 simplified, aria-hidden, + `home.heroHeadline` inked, `lang="en"` — the hero's only `lang`).
-  Player: `SignedInAct`, unchanged.
+  Player: `SignedInAct`, unchanged, then the same door row (its Millionea line never to a frozen wallet).
 - **Keys:** NEW `home.heroClaim`, `heroClaimFirst`, `heroAsk`, `heroLedeAct`, `heroLedePay`, `heroRails`,
   `heroStart`. DELETED `home.heroLocation`, `heroEst`, `heroHeadlineSub`, `heroBody` (the hero was their only
   reader). `home.heroHeadline` keeps its value and becomes the sign-off. sw `footer.licensedByGbt` and
@@ -810,7 +819,7 @@ drift from that file or a row names an id §1 does not have. An item is done whe
 | P3 | Language: inside the Menu, header on desktop | WP1 | R1, L4: the header's language menu at every width |
 | P4 | Join / Create account: header + after the featured card; hero left column on desktop | WP2 | The hero CTAs follow the featured card below 1024 and sit in the left column from 1024; the header keeps Sign in + Sign up (R1) |
 | P5 | Balance chip → Wallet: sheet below 1024, panel from 1024 | WP14 | R1 |
-| P6 | Bottom rail (`bottom-nav.tsx`): Markets · Up & Down · **centre Deposit** · Live · More; none at ≥ 1024 | WP1b | ⭐ NEW IN v4 (UPDATE-2026-09-28 §2). Live `37bde8a5`; V22 measures the coin's geometry |
+| P6 | Bottom rail (`bottom-nav.tsx`): Markets · Up & Down · **centre Deposit** · Live · More; none at ≥ 1024. ⭐ While Millionea's door is drawn, Millionea takes Live's track and Live leads More (Ali, 2026-10-22; `docs/DESIGN_AUTHORITY.md` §M8a item 11). | WP1b | ⭐ NEW IN v4 (UPDATE-2026-09-28 §2). Live `37bde8a5`; V22 measures the coin's geometry |
 | P7 | Deposit: header (gold), Wallet, hero | WP14 | R1 — but **not** its zero clause: R10 (2026-09-28) keeps the capsule at zero, so the header carries BOTH the figure and the Deposit there. Below 1024 the Deposit is the rail's centre coin (UPDATE-2026-09-28 §1) |
 | P8 | Results: inside More on phones and tablets, header nav on desktop | WP1b | ⭐ NEW IN v4. §3 of the update corrects the earlier plan: Results STAYS in `CORE_ITEMS`. ⚠️ "/results marks More as current" is not in V22 — a different route; `test:section-rail` owns it |
 | P9 | Positions, Wallet, Leaderboard, Invite, Propose: inside More (player), header / avatar menu on desktop | WP1b | ⭐ NEW IN v4. Wallet leaves More exactly when the centre slot becomes it, so the destination is reachable once and never marked twice |

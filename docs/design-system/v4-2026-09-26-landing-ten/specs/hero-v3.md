@@ -156,9 +156,13 @@ section.kp-hero > div.kp-hero__inner            (grid areas unchanged: intro / c
   div.kp-hero__card    (unchanged)
   div.kp-hero__act
     visitor: div.kp-hero__ctas (heroStart + I.arrowRight 16 · heroBrowseAll)
+             div.kp-mine__links[landing-doors] → a Live (I.live 14 + nav.live) · a Millionea line while offered   (R19)
              p.kp-hero__signoff → span aria-hidden<FiftyMark size={20} simplified/> + span lang="en"<Inked brand line/>
     player:  SignedInAct (unchanged; keeps Set limits →)
+             div.kp-mine__links[landing-doors] → the same row; its Millionea line never to a frozen wallet   (R19)
 ```
+⭐ **The door row (R19, Ali 2026-10-22):** added under the act after this spec was ruled — the landing's ruling R19 in
+`INHERIT-MANIFEST.md` §2 holds it (and DESIGN_AUTHORITY §M8a item 21 its Millionea door).
 
 **Build rules:**
 - **The trust list is the same for visitors and players.** It moves into the intro, and `TrustLines` now takes `locale`.

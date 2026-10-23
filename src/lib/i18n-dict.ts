@@ -3410,7 +3410,7 @@ export const dict = {
       floor: "Guaranteed floor",
       fee: "Fee",
       feeLine: "Fee {pct}%",
-      feeZero: "fee 0",
+      feeZero: "fee {fee}", // {fee} = formatTzs(0), in the money face — every amount says TZS (one wording with the hub's lastWeekRolled).
       // P5: before a payout the fee row's value is the rate and when it is taken — never a dash, which read as "no fee".
       feeAtPayout: "{pct}% at payout",
       levies: "TRA {tra}% · GBT {gbt}% of the fee",
@@ -3708,6 +3708,7 @@ export const dict = {
       regLedger: "Ledger",
       regCheck: "Objection window",
       regTicketsSold: "{n} tickets at {price}",
+      regTicketsSoldOne: "1 ticket at {price}",
       regStanding: "Tickets without a miss after each result",
       // A week's row on the index, its facts after its state.
       regWonOne: "1 ticket won",
@@ -3776,6 +3777,7 @@ export const dict = {
       ruleWinPaid: "A win is paid into your main balance when the week settles",
       ruleRg: "Your limits, Take a break and Self-exclude cover Millionea too",
       regLedgerLater: "The ledger is published once the week is final.",
+      landingInvite: "Be this week's winner?",
     },
   },
 
@@ -6391,7 +6393,7 @@ export const dict = {
       floor: "Kiwango cha chini kilichohakikishwa",
       fee: "Ada",
       feeLine: "Ada {pct}%",
-      feeZero: "ada 0",
+      feeZero: "ada {fee}",
       feeAtPayout: "{pct}% wakati wa malipo",
       levies: "TRA {tra}% · GBT {gbt}% ya ada",
       toWinners: "Kwa washindi",
@@ -6642,6 +6644,7 @@ export const dict = {
       regLedger: "Leja",
       regCheck: "Dirisha la pingamizi",
       regTicketsSold: "Tiketi {n} kwa {price}",
+      regTicketsSoldOne: "Tiketi 1 kwa {price}",
       regStanding: "Tiketi zisizo na kosa baada ya kila tokeo",
       regWonOne: "Tiketi 1 ilishinda",
       regWon: "Tiketi {n} zilishinda",
@@ -6700,6 +6703,7 @@ export const dict = {
       ruleWinPaid: "Ushindi unalipwa kwenye salio kuu wiki ikikamilika",
       ruleRg: "Mipaka yako, Pumzika na Jizuie zinahusu Millionea pia",
       regLedgerLater: "Leja inachapishwa wiki ikishakamilika.",
+      landingInvite: "Kuwa mshindi wa wiki hii?",
     },
   },
 
@@ -9293,7 +9297,7 @@ export const dict = {
       floor: "保底金额",
       fee: "费用",
       feeLine: "费用 {pct}%",
-      feeZero: "费用 0",
+      feeZero: "费用 {fee}",
       feeAtPayout: "派奖时扣除 {pct}%",
       levies: "费用中的 TRA {tra}% · GBT {gbt}%",
       toWinners: "派发给中奖者",
@@ -9547,6 +9551,7 @@ export const dict = {
       regLedger: "账目",
       regCheck: "异议窗口",
       regTicketsSold: "{n} 张，\u200B每张 {price}", // A zero-width break keeps the two phone-sized facts separate without adding a visible space.
+      regTicketsSoldOne: "1 张，\u200B每张 {price}",
       regStanding: "每个结果公布后仍无失误的彩票",
       regWonOne: "1 张彩票中奖",
       regWon: "{n} 张彩票中奖",
@@ -9605,6 +9610,7 @@ export const dict = {
       ruleWinPaid: "中奖金额在当周结算时计入主余额",
       ruleRg: "您的限额、休息一下与自我排除同样适用于 Millionea",
       regLedgerLater: "该周结果确定后公布账目。",
+      landingInvite: "成为本周赢家？",
     },
   },
 } as const;

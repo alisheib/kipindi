@@ -214,6 +214,31 @@ const MUTATIONS = [
     from: `[data-motion="reduced"] .m-urgent { animation: none !important; opacity: 1; }`,
     to: ``,
   },
+  // MASWALI-BUILD S5 round 2 · PLATFORM (2026-10-22): rule 3, an entrance's first frame under both clamps is its end frame.
+  {
+    // A ticket's lock line (`.m-seal`) opens invisible again for a frame under the OS preference.
+    name: "take .m-seal out of the OS branch — a seal's first frame is invisible again under the OS clamp",
+    check: "3.1",
+    file: "src/app/motion.css",
+    from: `  .m-seal, .m-axis-reveal, .route-enter { animation: none !important; }`,
+    to: `  .m-axis-reveal, .route-enter { animation: none !important; }`,
+  },
+  {
+    // Every route change paints the new page's first frame blank again under the in-app switch.
+    name: "point the route entrance's in-app mirror elsewhere — a blank first frame on every route change under the switch",
+    check: "3.1",
+    file: "src/app/motion.css",
+    from: `html.kp-reduce-motion .route-enter { animation: none !important; }`,
+    to: `html.kp-reduce-motion .route-leave { animation: none !important; }`,
+  },
+  {
+    // The unbroken line and the closing rule stay undrawn: the inline dash wins once the run is gone.
+    name: "the draw-on branch without its dash — the line stays undrawn under the switch",
+    check: "3.2",
+    file: "src/app/motion.css",
+    from: `html.kp-reduce-motion .m-draw { animation: none !important; stroke-dashoffset: 0 !important; }`,
+    to: `html.kp-reduce-motion .m-draw { animation: none !important; }`,
+  },
 ];
 
 const lf = (s) => s.replace(/\r\n/g, "\n");

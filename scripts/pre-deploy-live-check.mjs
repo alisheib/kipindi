@@ -372,7 +372,12 @@ console.log("\n[E] Tester changes — demos hidden, New tab, footer email");
  */
 console.log("\n[E2] New journey rollout — /api/health contract + signed-out classic or ACTIVE journey pages");
 const ROLLOUT_WORDS = ["WITHDRAWN", "STAFF_PREVIEW", "ACTIVE"]; // rank = index: WITHDRAWN < STAFF_PREVIEW < ACTIVE
-const PREVIEW_TESTIDS = ["journey-preview-marker", "journey-preview-exit"];
+/* ⭐ AND MILLIONEA'S STAFF PREVIEW BAR (MASWALI-BUILD S5 round 2, the platform lane's finding; the bar is S5-FIX-PLATFORM
+   D12): at Millionea's STAFF_PREVIEW the shell draws `millionea-preview-mark` for a STAFF request alone, on Millionea's
+   pages and /results — never for this signed-out reader. /results is one of the routes read below, so a bar served to a
+   guest is caught there. Its test id is written by the client bar itself (`MillioneaPreviewBar`), so it is in the
+   served HTML, not in the RSC payload (the bar is handed its words only). */
+const PREVIEW_TESTIDS = ["journey-preview-marker", "journey-preview-exit", "millionea-preview-mark"];
 /** Which of the preview marker's testids a page's HTML carries — the element, or the props in the RSC payload. */
 const previewMarksIn = (html) => PREVIEW_TESTIDS.filter((id) => html.includes(id));
 /**
@@ -645,6 +650,8 @@ const journeyRollout = await (async () => {
   ok(`control · the preview-marker matcher catches the marker and its exit (element and RSC payload)`,
     previewMarksIn(`<div data-testid="journey-preview-marker"><button data-testid="journey-preview-exit">`).length === 2
     && previewMarksIn(`self.__next_f.push([1,"{\\"testId\\":\\"journey-preview-exit\\"}"])`).length === 1);
+  ok(`control · …and Millionea's staff preview bar, as the bar serves it (its element in the page's HTML)`,
+    previewMarksIn(`<div role="status" aria-live="polite" data-testid="millionea-preview-mark" class="border-b border-info-border bg-info-bg text-info-fg"><p>Preview — Millionea is visible to staff only.</p></div>`).join() === "millionea-preview-mark");
   ok(`control · …and passes a page without them`, previewMarksIn(`<div data-testid="notice-bar">Preview</div>`).length === 0);
   ok(`control · the journey-shell matcher catches every trace the shell leaves — its test ids, the shell mark, the flag and a "new" funnel scope, as HTML and as RSC JSON`,
     journeyTracesIn(`<header class="sticky top-0 z-30 app-topbar kp-jhdr" data-testid="journey-top-bar"><a data-testid="journey-deposit"></a><button data-testid="journey-balance"></button></header><nav data-testid="journey-tabs"></nav><a data-testid="tickets-guest-signin"></a><span hidden="" id="kp-journey-shell"></span><span hidden="" data-kp-funnel="new"></span>`).length === 7

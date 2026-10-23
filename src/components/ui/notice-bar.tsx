@@ -20,6 +20,26 @@
  */
 import { I } from "@/components/ui/glyphs";
 import type { FillGlyphKey, GlyphKey } from "@/components/ui/glyphs";
+import { keepLastWords, lastTwo } from "@/components/ui/keep-words";
+
+/**
+ * ⭐ A BAR'S SENTENCE NEVER ENDS ON ONE WORD ALONE — the platform's widow rule (`keepLastWords`, keep-words.tsx), in the
+ * kit (MASWALI-BUILD S5 round 2, 2026-10-22; the platform lane's finding: at en 320 Millionea's staff preview bar put
+ * "only." alone on its second line). A bar handed plain words keeps its last two together; every other break is left
+ * alone, so a bar whose last line already holds two words or more draws exactly the lines it drew, and a bar handed
+ * built words (a fact line, a sentence with a bold head) keeps its own rules. ⚠️ The pair cannot break, so it is kept
+ * only while it fits the narrowest line a bar's words ever get — the text's 14rem basis, 224px, against at most
+ * `KEEP_PAIR_MAX` characters of `text-body-sm`'s 13px (about 170px: an operator's announcement can end on a long address,
+ * which then wraps as words do). Chinese is returned untouched (`keepLastWords`: its own rules govern it).
+ * `test:notice-bar-widow` holds it; `qa:notice-bar-widow` shoots every bar the drives reach, before and after.
+ */
+export const KEEP_PAIR_MAX = 24;
+export function barWords(children: React.ReactNode): React.ReactNode {
+  if (typeof children !== "string") return children;
+  const at = lastTwo(children, "kept")?.[0] ?? -1;
+  if (at <= 0 || children.trimEnd().length - at > KEEP_PAIR_MAX) return children;
+  return keepLastWords(children);
+}
 
 export type NoticeBarTone = "info" | "warning" | "success" | "maintenance";
 
@@ -107,7 +127,7 @@ export function NoticeBar({
             the text shrank to fit the action beside it and ran to five lines at 360 in Swahili.
             Now the action drops under the text on a phone. On desktop the basis always fits, so
             the text still grows into the same space it had before. */}
-        <p className="min-w-0 grow basis-[14rem] text-body-sm leading-snug font-medium">{children}</p>
+        <p className="min-w-0 grow basis-[14rem] text-body-sm leading-snug font-medium">{barWords(children)}</p>
         {action}
         {onDismiss && (
           <button

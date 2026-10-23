@@ -103,7 +103,10 @@ const ledgerDefects = (l: L3, m: string) => {
   // The pool so far is the ledger's total — the receipt's total figure under its hairline; the fee's words the muted row's.
   const pool = m.slice(m.indexOf('data-ledger-row="pool"'), m.indexOf('data-row="pool"'));
   if (!/border-t border-border pt-1\.5/.test(pool) || !/font-mono text-\[16px\] font-bold tabular-nums text-text/.test(pool)) d.push(`${l}: the pool is not the receipt's total`);
-  if (!/class="font-mono text-\[13px\] font-semibold text-text-muted"><span data-row="fee">/.test(m)) d.push(`${l}: the fee's words are not the muted row's`);
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-REGISTER, the lead's ruling from HUB's sw readers): every figure of the one
+  // ledger keeps the figures' edge when it wraps — the kit row's `alignEnd` (`text-right`) on each row's value (the ledger's
+  // own guard: test:maswali-design-register 2.18). The muted row's face is unchanged.
+  if (!/class="font-mono text-\[13px\] font-semibold text-text-muted text-right"><span data-row="fee">/.test(m)) d.push(`${l}: the fee's words are not the muted row's`);
   return d;
 };
 {

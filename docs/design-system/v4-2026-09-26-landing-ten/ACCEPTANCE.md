@@ -8,7 +8,7 @@
 | Language | inside Menu | inside Menu | header |
 | Join / Create account | header + full-width button after the featured card | header + after the card | header + hero left column |
 | Balance chip → Wallet | header right → bottom sheet | header right → bottom sheet | header right → panel |
-| Bottom rail (`bottom-nav.tsx`) | Markets · Up & Down · **centre Deposit** · Live · More | same | none (`lg:hidden`) |
+| Bottom rail (`bottom-nav.tsx`) | Markets · Up & Down · **centre Deposit** · Live · More. ⭐ While Millionea's door is drawn, Millionea takes Live's track and Live leads More (Ali, 2026-10-22; `docs/DESIGN_AUTHORITY.md` §M8a item 11). | same | none (`lg:hidden`) |
 | Deposit | the rail coin (/wallet/deposit), Wallet; no header pill; no hero Deposit below 640 | the rail coin, Wallet, hero; no header pill | header pill (gilt-metal), Wallet, hero |
 | Results | inside More (both branches) | same | header nav (unchanged) |
 | Positions, Wallet, Leaderboard, Invite, Propose | inside More (player) | same | header / avatar menu |

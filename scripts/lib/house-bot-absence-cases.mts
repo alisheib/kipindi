@@ -91,7 +91,14 @@ export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // string, no classic word. e851d5fa5 is the release's dictionary at e34bcdc95, which S7-MERGE 2 merged.
   // NOT RE-PINNED AT S7-MERGE 4 (the release at 2ed817395, 2026-10-22): the release has not touched the dictionary since
   // e34bcdc95, so the merged dictionary is S7's, byte for byte, and the pin stays S7's.
-  "src/lib/i18n-dict.ts": "bd4addcfcf51ba0158ef75bdb3761c4bee89e26d",
+  // 2026-10-23 (S5 round 2: REGISTER, TICKETS' landing door, PLATFORM's rail): e851d5fa5 → d8fb5c6ea. Reviewed the same
+  // way: outside the three `millionea` blocks byte-identical; inside them three keys only — `feeZero` takes the amount
+  // ("fee {fee}", filled with formatTzs(0)), `regTicketsSoldOne` ("1 ticket at {price}"), `landingInvite` (Ali's own words
+  // of 2026-10-22, "Be this week's winner?" / "Kuwa mshindi wa wiki hii?" / "成为本周赢家？").
+  // D19a RE-PINNED AT S7-SHIP 4 (the merge of main 07a400bc3, 2026-10-23; was bd4addcfc, S7-MERGE 3's): the dictionary as
+  // that merge leaves it — S7's plus round 2's three keys above, nothing else: its diff against bd4addcfc is main's own
+  // round-2 dictionary diff (e851d5fa5 → d8fb5c6ea), line for line (12 lines, en/sw/zh). No other line changed.
+  "src/lib/i18n-dict.ts": "4a229943f33e1c14bdc1b3158328ba358c4605a4",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
 };

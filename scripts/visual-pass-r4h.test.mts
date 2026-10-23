@@ -453,8 +453,10 @@ section("8 · E4 the home's signed-in link names /positions by the journey tab's
   const hero = read(HERO);
   // The landing's body, since S7 WP2 moved it verbatim out of the route file (§10 below still reads the route's metadata).
   const page = read("src/components/home/legacy-landing.tsx");
+  // RE-PINNED IN THE OPEN 2026-10-22 (MASWALI-BUILD S5 landing door, the landing's R19): the signature gained `millionea`,
+  // Millionea's line offered (handed only while true, DESIGN_AUTHORITY §M8a item 21); `journey = false` stands as it was.
   ok("8.1 · journey ? journey.tabTickets : home.myPositions, the flag from the one resolver, false for a visitor and by default",
-    hero.includes("{journey ? t.journey.tabTickets : t.home.myPositions}") && hero.includes("export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine, rails, journey = false }: Props) {")
+    hero.includes("{journey ? t.journey.tabTickets : t.home.myPositions}") && hero.includes("export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine, rails, journey = false, millionea }: Props) {")
       && hero.includes("<SignedInAct t={t} mine={mine ?? null} journey={journey} />")
       && page.includes("const journey = isAuthed && (await resolveSimpleJourney()).journey;") && page.includes("journey={journey}"));
   ok("8.1′ CONTROL · the two keys name the page differently (Nafasi zangu / Tiketi zangu), so the classic reader keeps today's words",
