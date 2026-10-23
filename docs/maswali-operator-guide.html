@@ -28,12 +28,10 @@
   th, td { text-align: left; vertical-align: top; padding: 1.3mm 1.8mm; border-bottom: 0.5pt solid #ccd5e6; }
   th { background: #eef2fb; font-size: 8.4pt; text-transform: uppercase; letter-spacing: 0.3pt; color: #1e3a8a; }
   td { font-size: 9pt; }
-  .rules td:first-child { width: 27mm; font-weight: 600; color: #1e3a8a; }
-  .box {
-    border: 0.7pt solid #1e3a8a; background: #f5f8ff;
-    padding: 2.2mm 2.8mm; margin: 0 0 3mm; border-radius: 1.2mm; page-break-inside: avoid;
-  }
-  .box p:last-child { margin-bottom: 0; }
+  ul.lead { margin: 0 0 2.4mm; padding-left: 5mm; font-size: 10pt; }
+  ul.lead li { margin-bottom: 1.1mm; }
+  figure.shot { margin: 1.2mm 0 3.6mm; page-break-inside: avoid; break-inside: avoid; }
+  figure.shot img { display: block; max-width: 100%; height: auto; border: 0.5pt solid #ccd5e6; border-radius: 1mm; }
   .ui { font-weight: 600; }
   section.step { page-break-inside: avoid; margin: 0 0 2.6mm; }
   section.step h3 { margin-top: 3.4mm; }
@@ -55,72 +53,36 @@
 <body>
 
 <h1>Maswali Millionea — Admin Guide</h1>
-<p class="sub">How Millionea works, how admins run it, and what every word on its console means. Words in bold are the
-console's own.</p>
+<p class="sub">Words in bold are the console's own.</p>
 
 <!-- ═══════════════════════════════ PART 1 ═══════════════════════════════ -->
 <h2 id="part-1">Part 1 · How Millionea works</h2>
 
-<p>A weekly ticket of fifteen YES/NO questions. Every ticket with all ten counted answers right shares the week's
-jackpot equally. This part sums up the binding rules players accept, published at
-<a href="https://www.50pick.tz/legal/rules/millionea">50pick.tz/legal/rules/millionea</a>.</p>
-
-<table class="rules">
-  <tr><td>The week</td><td>A week sells from the moment an officer opens it until its sales close; its events run after
-    the close. One public week sells at a time. The next week may open while the last is still being decided, and weeks
-    settle strictly in calendar order.</td></tr>
-  <tr><td>The ticket</td><td>A fixed price, paid from the main balance only — never bonus money. All fifteen questions
-    are answered before paying, and the answers never change. Each account may hold up to the weekly cap. Staff accounts
-    and accounts 50pick operates cannot buy, and an account holding a ticket cannot be made staff until its week settles.
-    A ticket may be cancelled for a full refund inside the free-cancel window, if that much selling time remained when it
-    was bought; after the close nothing is bought or cancelled.</td></tr>
-  <tr><td>Ten counted of fifteen</td><td>M1–M10 are the mains, A1–A5 the reserves. Ten are graded. A main that voids is
-    replaced by the first reserve, in order, that has not voided and is not yet used; a voided reserve is skipped. If more
-    mains void than there are usable reserves, the whole week voids and every ticket is refunded in full. A ticket wins
-    only on 10 of 10 — except in a final week that no ticket wins (below).</td></tr>
-  <tr><td>The jackpot</td><td>The larger of the floor and the carry-in plus the week's sales. The floor is counted before
-    the fee. In a winning week whose own money falls short of the floor, the guarantee — Owner capital — tops it up; the
-    top-up is never carried forward. A week's carry-in joins it only once the week before it is final.</td></tr>
-  <tr><td>The fee at payout</td><td>A percentage of the jackpot, taken only when at least one ticket wins — nothing in a
-    week without a winner. TRA's and GBT's levies come out of the fee, never out of a share. The rate is the one the week froze
-    when it opened: the week page shows it under <b class="ui" data-screen="week">Rules this week froze</b>, and Pools
-    beside each open week (<b class="ui" data-screen="pools">Fee at payout</b>); the next week's is under
-    <b class="ui" data-screen="weeks">Rules for the next week</b>.</td></tr>
-  <tr><td>Sharing</td><td>The jackpot less the fee, divided equally per winning ticket and rounded down to the shilling: a
-    player with two winning tickets gets two shares. There is no minimum — a share can be smaller than the ticket price.
-    The remainder, under one shilling per winning ticket, joins the next jackpot as far as the week's own money covers
-    it; the rest stays with the guarantee.</td></tr>
-  <tr><td>Rollover</td><td>With no 10 of 10, the week's whole sales join the jackpot carried: no fee, no upper limit —
-    except in a final week (below). The carried jackpot is players' money, waiting for the next winning week.</td></tr>
-  <tr><td>The final week</td><td>Millionea ends only through a final week the Owner names. It runs normally. If no ticket
-    gets 10 of 10, the tickets with the highest score share the jackpot: the fee applies, and there is no top-up. If the
-    final week voids or sells nothing, the next public week to open becomes the final week by itself. Once a final week
-    has sold and settled, no public week opens again.</td></tr>
-  <tr><td>Who sees it</td><td>The Owner's rollout: <b class="ui" data-screen="pools">Nobody (withdrawn)</b>,
-    <b class="ui" data-screen="pools">Staff preview</b> or <b class="ui" data-screen="pools">Everyone</b>, under a ceiling
-    the technical team sets on the server; the lower of the two is in force. A public week sells only at Everyone. At
-    Staff preview only staff see Millionea, and staff cannot buy. Withdrawing stops every sale and hides Millionea
-    everywhere but a holder's own tickets; it never stops a cancel in the free-cancel window, an objection, a settlement
-    or a refund.</td></tr>
-  <tr><td>What is published</td><td>At the open, the question set's fingerprint. At the close, one root over every ticket
-    still standing, with the count and the close time. Once the week settles or voids, its register: every question,
-    result, void and figure. A ticket's owner can check their ticket against the root.</td></tr>
-</table>
-
-<div class="box">
-<p>Every figure — the ticket price, the floor, the fee, the cap, the sales open and close, the buffer before the first
-event, the void deadline, the objection window — is a setting the Owner changes under
-<b class="ui" data-screen="weeks">Rules for the next week</b>. A week takes its sales open and close from these rules when
-it is drafted; it freezes the rest of these figures the moment it opens, and keeps them to the end. When asked about a week,
-read its own figures: <b class="ui" data-screen="week">Sales open</b> and <b class="ui" data-screen="week">Sales close</b>
-at the top of its page, the rest under <b class="ui" data-screen="week">Rules this week froze</b>.</p>
-</div>
+<ul class="lead">
+  <li>A week is fifteen YES/NO questions: ten mains (M1–M10) and five reserves (A1–A5).</li>
+  <li>A reserve stands in, in order, for a voided main; with too few, the week voids and refunds in full.</li>
+  <li>A ticket wins only on 10 of 10 — except in a final week, where the highest score shares the jackpot.</li>
+  <li>One public week sells at a time, from an officer's open to its sales close; weeks settle in order.</li>
+  <li>A week's rules freeze when it opens; a change the Owner saves applies from the next week.</li>
+  <li>Tickets are paid from the main balance, never bonus; staff and 50pick's own accounts never buy.</li>
+  <li>A ticket may be cancelled for a full refund in its free-cancel window, never after the close.</li>
+  <li>The jackpot is the floor, or the carry-in plus the week's sales if larger.</li>
+  <li>The fee is taken only when a ticket wins; winners share the rest equally, one share per ticket.</li>
+  <li>The guarantee, Owner capital, tops a winning week up to the floor; no week opens without enough of it.</li>
+  <li>With no 10 of 10, all sales roll into the next jackpot, with no fee — except in a final week.</li>
+  <li>Only an officer seals a result — from the question's own source, with its evidence.</li>
+  <li>A question voids only on a ground from the list; a fault on 50pick's side never voids one.</li>
+  <li>Holders may object in the objection window; no week pays until it closes and each objection is ruled.</li>
+  <li>Finance's release pays exactly the prepared figures; only a final week the Owner names ends Millionea.</li>
+  <li>Never advise a player on answers: Support reads the desk's scripts as written.</li>
+  <li>The Owner's rollout decides who sees Millionea; every act is recorded; all times are East Africa Time (EAT).</li>
+</ul>
+<p>The binding rules players accept: <a href="https://www.50pick.tz/legal/rules/millionea">50pick.tz/legal/rules/millionea</a>.</p>
 
 <!-- ═══════════════════════════════ PART 2 ═══════════════════════════════ -->
 <div class="part">
 <h2 id="part-2">Part 2 · How admins run it</h2>
 
-<h3 id="console">The console</h3>
 <table>
   <thead><tr><th style="width:21%">Menu (Millionea)</th><th>What it holds</th><th style="width:22%">Opens it</th><th style="width:21%">Acts there</th></tr></thead>
   <tr><td><b class="ui" data-screen="nav">Weeks</b></td><td>Every week, its drafting, opening, close and seals; the alerts; the rules and holiday list the Owner keeps.</td><td>Trading, Auditor, Owner</td><td>Trading; the Owner (rules, holidays)</td></tr>
@@ -129,22 +91,24 @@ at the top of its page, the rest under <b class="ui" data-screen="week">Rules th
   <tr><td><b class="ui" data-screen="nav">Evidence</b></td><td>Each settled or voided week's evidence.</td><td>Compliance, Auditor, Owner</td><td>Nobody: downloads only</td></tr>
   <tr><td><b class="ui" data-screen="nav">Ticket lookup</b></td><td>One ticket at a time, and the desk's scripts.</td><td>Support, Compliance, Owner</td><td>Support</td></tr>
 </table>
-<p>These are the default grants; the Owner changes them on Role permissions. The Owner opens and acts everywhere. The
-Auditor reads every Millionea screen but Ticket lookup, and acts on none. The console's front page repeats Millionea's
+<p>These are the default grants; the Owner changes them on Role permissions. The Owner is a role: every account that holds
+it opens and acts everywhere, sealing included. The Auditor reads every Millionea screen but Ticket lookup, and acts on
+none. The console's front page repeats Millionea's
 alerts in its Millionea card: every alert for Trading and the Owner; the payout float's for Finance, Compliance and the
 Auditor too; and, for Compliance, the Auditor and the Owner alone, a group of connected accounts holding a winning
 ticket before its week pays. Compliance cannot open Weeks: it reads Integrity every day, where the winners to reach, the
 takeovers to review and the held shares are listed.</p>
 
-<h4>How every control behaves</h4>
+<p class="keep">Every control behaves the same way:</p>
 <ul>
   <li>A control your role cannot use is drawn locked, naming who works it — "Finance officers only", "The Owner only";
     its tooltip says whom to ask.</li>
+  <li>Every list has its own search, filters, sort and pages above it.</li>
   <li>Every act is checked again when it runs. A refusal is written where you act, and nothing changes (a batch of seals
     keeps the rows before the refused one: B8): read it, fix the cause, try again.</li>
   <li>If an act landed but its audit record could not be fully written, a warning says so: the act stands. Do not
     repeat it; tell an administrator.</li>
-  <li>"An administrator" is 50pick's technical team. Times are East Africa Time (EAT).</li>
+  <li>"An administrator" is 50pick's technical team.</li>
   <li>These acts ask you to type a word before they run:</li>
 </ul>
 <table>
@@ -174,19 +138,23 @@ takeovers to review and the held shares are listed.</p>
 confirmation without a typed word.</p>
 
 <h3 id="before">A · Before the first week — the Owner</h3>
+<figure class="shot"><img src="guide-img/maswali/owner.png" alt="Pools, the Owner card: the guarantee's Pay in and the licence basis's Record" style="width:100%"></figure>
 
 <section class="step" id="licence">
-<h3>A1 · Record the licence basis</h3>
+<h3>A1 · The licence basis</h3>
 <dl class="f4">
-  <dt>Who</dt><dd>The Owner.</dd>
-  <dt>Where</dt><dd>Pools → <b class="ui" data-screen="pools">Owner</b> → <b class="ui" data-screen="pools">Licence basis</b>.
-    Choose the <b class="ui" data-screen="pools">Basis</b> — <b class="ui" data-screen="pools">The Owner's dated ruling</b>,
+  <dt>Who</dt><dd>The Owner, and only to change it.</dd>
+  <dt>Where</dt><dd>No step is needed: with no basis recorded, the Owner's ruling of 23 October 2026 on 50pick's Gaming Board
+    licence number applies, and Pools → <b class="ui" data-screen="pools">Owner</b> →
+    <b class="ui" data-screen="pools">Licence basis</b> says so. To record another, choose the
+    <b class="ui" data-screen="pools">Basis</b> — <b class="ui" data-screen="pools">The Owner's dated ruling</b>,
     <b class="ui" data-screen="pools">The Gaming Board's letter</b> or <b class="ui" data-screen="pools">None (withdraw it)</b> —
     write <b class="ui" data-screen="pools">Where it is kept</b> (not asked for None), press
-    <b class="ui" data-screen="pools">Record</b>, type RECORD, press <b class="ui" data-screen="pools">Record it</b>.</dd>
+    <b class="ui" data-screen="pools">Record</b>, type RECORD, press <b class="ui" data-screen="pools">Record it</b>. A
+    recorded basis replaces the ruling; None closes every week until a basis is recorded again.</dd>
   <dt>Refused when</dt><dd>Where it is kept is too short or too long (the button stays off until it fits); the current
     record cannot be read; the record could not be stored.</dd>
-  <dt>If refused</dt><dd>Correct the text; reload and try again. While none is recorded, no week can open.</dd>
+  <dt>If refused</dt><dd>Correct the text; reload and try again.</dd>
 </dl>
 </section>
 
@@ -194,10 +162,12 @@ confirmation without a typed word.</p>
 <h3>A2 · Fund the guarantee</h3>
 <dl class="f4">
   <dt>Who</dt><dd>The Owner.</dd>
-  <dt>Where</dt><dd>Pools → Owner → <b class="ui" data-screen="pools">Guarantee</b>: <b class="ui" data-screen="pools">Amount (TZS)</b>
-    and <b class="ui" data-screen="pools">Bank or rail reference</b>, then <b class="ui" data-screen="pools">Pay in</b> (type
-    FUND GUARANTEE, <b class="ui" data-screen="pools">Pay it in</b>) or <b class="ui" data-screen="pools">Take back</b> (type
-    RETURN GUARANTEE, <b class="ui" data-screen="pools">Take it back</b>).</dd>
+  <dt>Where</dt><dd>Pools → Owner → <b class="ui" data-screen="pools">Guarantee</b>: the
+    <b class="ui" data-screen="pools">Amount (TZS)</b> and the <b class="ui" data-screen="pools">Bank or rail reference</b>,
+    exactly as the bank printed it; press <b class="ui" data-screen="pools">Pay in</b>, check the amount and the reference
+    in the dialog, type FUND GUARANTEE, press <b class="ui" data-screen="pools">Pay it in</b>. The card answers with the new
+    balance. <b class="ui" data-screen="pools">Take back</b> (type RETURN GUARANTEE,
+    <b class="ui" data-screen="pools">Take it back</b>) returns only money no unsettled week needs.</dd>
   <dt>Refused when</dt><dd>The reference was already used for another pay-in (or take-back); a take-back would leave less
     than the unsettled weeks need; the balance, the guarantee's records or a week's frozen rules cannot be read.</dd>
   <dt>If refused</dt><dd>Use the bank's new reference; take back no more than the refusal names; try again later.</dd>
@@ -224,8 +194,10 @@ committed to Millionea.</p>
   <dt>If refused</dt><dd>Correct the value and save again.</dd>
 </dl>
 <p class="note">A week already open keeps the rules it froze, and a draft keeps the sales open and close it was drafted
-with. Two fields apply at once to every week: <b class="ui" data-screen="weeks">Complaint answer target (working days)</b>,
-the support desk's promise, and <b class="ui" data-screen="weeks">Alert when a release waits (hours)</b>.</p>
+with; its own figures are on its page, under <b class="ui" data-screen="week">Sales open</b>,
+<b class="ui" data-screen="week">Sales close</b> and <b class="ui" data-screen="week">Rules this week froze</b>. Two fields
+apply at once to every week: <b class="ui" data-screen="weeks">Complaint answer target (working days)</b>, the support
+desk's promise, and <b class="ui" data-screen="weeks">Alert when a release waits (hours)</b>.</p>
 </section>
 
 <section class="step" id="holidays">
@@ -248,26 +220,22 @@ move. It is a warning, never a refusal: bring the close forward, or skip the wee
 <dl class="f4">
   <dt>Who</dt><dd>The Owner.</dd>
   <dt>Where</dt><dd>Pools → Owner → <b class="ui" data-screen="pools">Rollout</b>: <b class="ui" data-screen="pools">Visible to</b>
-    and <b class="ui" data-screen="pools">Why</b>, then <b class="ui" data-screen="pools">Move the switch</b>; type the state
-    as the dialog names it — WITHDRAWN, STAFF_PREVIEW or ACTIVE; <b class="ui" data-screen="pools">Move it</b>. The
-    Weeks tile <b class="ui" data-screen="weeks">Rollout</b> shows the state in force.</dd>
+    (<b class="ui" data-screen="pools">Nobody (withdrawn)</b>, <b class="ui" data-screen="pools">Staff preview</b> or
+    <b class="ui" data-screen="pools">Everyone</b>) and <b class="ui" data-screen="pools">Why</b>, then
+    <b class="ui" data-screen="pools">Move the switch</b>; type the state as the dialog names it — WITHDRAWN,
+    STAFF_PREVIEW or ACTIVE; <b class="ui" data-screen="pools">Move it</b>. A ceiling the technical team sets on the
+    server still applies; the Weeks tile <b class="ui" data-screen="weeks">Rollout</b> shows the state in force.</dd>
   <dt>Refused when</dt><dd>The switch changed since the page loaded; it cannot be read; the reason is too short or too
     long; the change could not be stored.</dd>
   <dt>If refused</dt><dd>Reload, read the state, and move it again.</dd>
 </dl>
+<p class="note">A public week sells only at Everyone. At Staff preview only staff see Millionea, and staff cannot buy.
+Withdrawing stops every sale and hides Millionea everywhere but a holder's own tickets; it never stops a cancel in the
+free-cancel window, an objection, a settlement or a refund.</p>
 </section>
 
 <h3 id="life">B · A week's life</h3>
-
-<h4>Finding a week</h4>
-<p>Weeks lists every week, newest first: search by <b class="ui" data-screen="weeks">Week code</b>, filter by
-<b class="ui" data-screen="weeks">State</b> and <b class="ui" data-screen="weeks">Line</b>, press
-<b class="ui" data-screen="weeks">Apply</b> (<b class="ui" data-screen="weeks">Clear</b> resets). Sort by
-<b class="ui" data-screen="weeks">Week</b>, <b class="ui" data-screen="weeks">Line</b>,
-<b class="ui" data-screen="weeks">State</b>, <b class="ui" data-screen="weeks">Sales close (EAT)</b>,
-<b class="ui" data-screen="weeks">Tickets</b> or <b class="ui" data-screen="weeks">Settled</b>. The list is paged; a week's
-code opens its page, and <b class="ui" data-screen="weeks">Final</b> marks the final week.
-<b class="ui" data-screen="weeks">Results</b> says where its results stand (Part 3).</p>
+<figure class="shot"><img src="guide-img/maswali/weeks.png" alt="The Weeks page: Draft a week, the tiles, Needs attention and the list of weeks" style="width:84%"></figure>
 
 <section class="step" id="draft">
 <h3>B1 · Draft a week</h3>
@@ -297,6 +265,7 @@ code opens its page, and <b class="ui" data-screen="weeks">Final</b> marks the f
 </table>
 <p class="note">Keep to one question per event, and to the rules' limit of questions from one competition: the open
 refuses only the same question twice.</p>
+<figure class="shot"><img src="guide-img/maswali/builder.png" alt="Draft a week: the Monday, the line and the first slot's fields" style="width:64%"></figure>
 
 <section class="step" id="edit">
 <h3>B2 · Edit or discard a draft</h3>
@@ -344,14 +313,16 @@ refuses only the same question twice.</p>
     close has passed, or falls inside the buffer before the first event; a question about politics; a language missing
     its question or criterion; an estimated chance missing, without its source or outside the band; reserves from too few
     sources; a source or fallback that is not trusted; the same question twice; the rules do not validate; no licence
-    basis; a guarantee short of what the unsettled weeks need. The press itself is refused when another week of the same
+    basis in force; a guarantee short of what the unsettled weeks need. The press itself is refused when another week of the same
     line is on sale; a later week of the line has already opened; Millionea has ended, or the week comes after the final
     week; the final week is pressed before its announced open.</dd>
-  <dt>If refused</dt><dd>Fix each reason — an edit needs a new attestation. The Owner corrects the rules, records the
-    licence basis or pays into the guarantee. A week waits for the week on sale to close. A draft whose close has passed,
+  <dt>If refused</dt><dd>Fix each reason — an edit needs a new attestation. The Owner corrects the rules, pays into the
+    guarantee, or settles the licence basis as its message says (A1). A week waits for the week on sale to close. A draft whose close has passed,
     or that a later week has overtaken, never opens: discard it.</dd>
 </dl>
 </section>
+
+<figure class="shot"><img src="guide-img/maswali/open.png" alt="A draft's Before it can open card: every check passes, and Open the week" style="width:100%"></figure>
 
 <section class="step" id="sells">
 <h3>B5 · While it sells: move the close</h3>
@@ -425,6 +396,8 @@ final, the objection window opens. Alerts fire 2 and 12 hours after an event sta
 unsealed.</p>
 </section>
 
+<figure class="shot"><img src="guide-img/maswali/seal.png" alt="Seal the results: M1 chosen YES, with what the source says" style="width:100%"></figure>
+
 <section class="step" id="void-question">
 <h3>B9 · Void a question</h3>
 <dl class="f4">
@@ -434,8 +407,9 @@ unsealed.</p>
     A voided main is replaced by the next usable reserve; a voided reserve is skipped. Holders are told.</dd>
   <dt>Refused when</dt><dd>The ground needs the void deadline and it has not passed; the question is already sealed;
     evidence under 10 characters.</dd>
-  <dt>If refused</dt><dd>Wait for the void deadline (the row shows it, and <b class="ui" data-screen="week">void proposed</b>
-    once it passes); choose the ground that fits; correct an existing seal instead.</dd>
+  <dt>If refused</dt><dd>Wait for the void deadline (the row shows it, and marks the question
+    <b class="ui" data-screen="week">past its void deadline</b> once it passes); choose the ground that fits; correct an
+    existing seal instead.</dd>
 </dl>
 <table>
   <thead><tr><th style="width:38%">Ground</th><th>When it applies</th></tr></thead>
@@ -500,6 +474,8 @@ unsealed.</p>
 </dl>
 </section>
 
+<figure class="shot"><img src="guide-img/maswali/objections.png" alt="Integrity, the Objections card: each question's objections and the ruling buttons" style="width:100%"></figure>
+
 <section class="step" id="release">
 <h3>B13 · Release the settlement</h3>
 <dl class="f4">
@@ -520,26 +496,20 @@ under review, an account that could not be checked — is paid and held for Comp
 Beside each release the row sets the payout float against that week's shares and the headroom kept for withdrawals:
 when it is short or cannot be read, top the float up or have it checked first. The release never refuses for the float —
 it credits every winner in full, and some may wait to withdraw. A week left unreleased past the release-alert hours
-raises an alert (C). Find an open week with <b class="ui" data-screen="pools">Find an open week by code</b> and
-<b class="ui" data-screen="pools">Find week</b>, the <b class="ui" data-screen="pools">All lines</b> ·
-<b class="ui" data-screen="pools">Public</b> · <b class="ui" data-screen="pools">Drive</b> and
-<b class="ui" data-screen="pools">All states</b> · <b class="ui" data-screen="pools">Selling</b> ·
-<b class="ui" data-screen="pools">Closed</b> · <b class="ui" data-screen="pools">Sealing</b> filters, or sort by
-<b class="ui" data-screen="pools">Week</b>, <b class="ui" data-screen="pools">State</b>,
-<b class="ui" data-screen="pools">Sales</b>, <b class="ui" data-screen="pools">Coverage</b> or
-<b class="ui" data-screen="pools">Worst top-up</b> (newest week first).</p>
+raises an alert (C).</p>
 </section>
+
+<figure class="shot"><img src="guide-img/maswali/release.png" alt="Pools, Open weeks: a week's prepared settlement and its Release button" style="width:100%"></figure>
 
 <section class="step" id="hold">
 <h3>B14 · Screen the winners</h3>
 <dl class="f4">
   <dt>Who</dt><dd>Compliance.</dd>
-  <dt>Where</dt><dd>Integrity → <b class="ui" data-screen="integrity">Winners</b>: every paid ticket with its account. Search
-    by <b class="ui" data-screen="integrity">Week or ticket serial</b>, filter <b class="ui" data-screen="integrity">Screening</b>
-    (<b class="ui" data-screen="integrity">All winners</b>, <b class="ui" data-screen="integrity">Flagged</b> — held or
-    forfeited — or <b class="ui" data-screen="integrity">Not flagged</b>), sort by Week, Ticket or Share. On a row,
+  <dt>Where</dt><dd>Integrity → <b class="ui" data-screen="integrity">Winners</b>: every paid ticket with its account
+    (<b class="ui" data-screen="integrity">Flagged</b> means held or forfeited). On a row,
     <b class="ui" data-screen="integrity">Hold…</b>, write why, type HOLD, <b class="ui" data-screen="integrity">Hold it</b>:
-    the winner's wallet is frozen — no money moves in or out — until the share is decided. Two cards only alert, and the share is held from its row here:
+    the winner's wallet is frozen — no money moves in or out — until the share is decided. Two cards only alert, and the
+    share is held from its row here:
     <b class="ui" data-screen="integrity">Possible account takeovers after a payout</b>, a winning account whose owner must
     be confirmed; and, before a week pays, a group under <b class="ui" data-screen="integrity">Connected accounts</b> that
     holds a winning ticket — review it before the release, and hold any share you doubt once the week pays.</dd>
@@ -553,10 +523,7 @@ raises an alert (C). Find an open week with <b class="ui" data-screen="pools">Fi
 <h3>B15 · Decide a held share</h3>
 <dl class="f4">
   <dt>Who</dt><dd>Compliance.</dd>
-  <dt>Where</dt><dd>Integrity → <b class="ui" data-screen="integrity">Held shares</b>, waiting decisions first. Search by
-    <b class="ui" data-screen="integrity">Week, ticket or holder</b>, filter <b class="ui" data-screen="integrity">Decision</b>
-    (<b class="ui" data-screen="integrity">All decisions</b>, <b class="ui" data-screen="integrity">Pending</b>,
-    <b class="ui" data-screen="integrity">Forfeited</b>), sort by any heading but <b class="ui" data-screen="integrity">Why</b>.
+  <dt>Where</dt><dd>Integrity → <b class="ui" data-screen="integrity">Held shares</b>, waiting decisions first.
     <b class="ui" data-screen="integrity">Release…</b> (type RELEASE, <b class="ui" data-screen="integrity">Release it</b>):
     the player keeps the share, and the wallet's hold lifts once no other share of theirs is held.
     <b class="ui" data-screen="integrity">Forfeit…</b> (type FORFEIT SHARE, <b class="ui" data-screen="integrity">Forfeit to the jackpot</b>):
@@ -567,6 +534,8 @@ raises an alert (C). Find an open week with <b class="ui" data-screen="pools">Fi
   <dt>If refused</dt><dd>Read the account's wallet with Finance before deciding again.</dd>
 </dl>
 </section>
+
+<figure class="shot"><img src="guide-img/maswali/held.png" alt="Integrity, Held shares: a held share with its Release and Forfeit buttons" style="width:100%"></figure>
 
 <section class="step" id="pay-locked">
 <h3>B16 · Pay a winner who cannot sign in</h3>
@@ -630,10 +599,7 @@ raises an alert (C). Find an open week with <b class="ui" data-screen="pools">Fi
   <dt>Where</dt><dd>Integrity → <b class="ui" data-screen="integrity">Weeks that void whole</b>: a week whose sealed record
     makes the void certain and whose objection window has closed. <b class="ui" data-screen="integrity">Void</b> (the button
     names the week), type VOID, <b class="ui" data-screen="integrity">Void and refund</b>: every live ticket is refunded in
-    full, no fee is taken, and the jackpot carried is untouched. Search by week code, filter
-    <b class="ui" data-screen="integrity">Line</b>, choose <b class="ui" data-screen="integrity">Sort by</b>
-    (<b class="ui" data-screen="integrity">Week</b>, <b class="ui" data-screen="integrity">Tickets to refund</b>) and
-    <b class="ui" data-screen="integrity">Order</b>, press <b class="ui" data-screen="integrity">Apply</b>.</dd>
+    full, no fee is taken, and the jackpot carried is untouched.</dd>
   <dt>Refused when</dt><dd>The void is not final on the sealed record; the window is still open; an objection stands; the
     refunds did not land — the week stays voided and appears under <b class="ui" data-screen="integrity">Refunds owed</b>.</dd>
   <dt>If refused</dt><dd>Wait for the window or the objection rulings. Refunds owed are retried by the platform until they
@@ -645,10 +611,7 @@ raises an alert (C). Find an open week with <b class="ui" data-screen="pools">Fi
 <h3>B20 · Download a week's evidence</h3>
 <dl class="f4">
   <dt>Who</dt><dd>Compliance, the Auditor, the Owner.</dd>
-  <dt>Where</dt><dd>Evidence: every week that has opened, newest first. Find a week by its code, filter
-    <b class="ui" data-screen="evidence">State</b> (<b class="ui" data-screen="evidence">All states</b>, or one state) and <b class="ui" data-screen="evidence">Line</b> (<b class="ui" data-screen="evidence">Both lines</b>, <b class="ui" data-screen="evidence">Public</b>,
-    <b class="ui" data-screen="evidence">Drive</b>), <b class="ui" data-screen="evidence">Apply</b>; sort by <b class="ui" data-screen="evidence">Week</b>, <b class="ui" data-screen="evidence">State</b>, <b class="ui" data-screen="evidence">Sales closed (EAT)</b> or
-    <b class="ui" data-screen="evidence">Tickets</b>. Once a week settles or voids,
+  <dt>Where</dt><dd>Evidence: every week that has opened, newest first. Once a week settles or voids,
     <b class="ui" data-screen="evidence">Pack (JSON)</b> and <b class="ui" data-screen="evidence">Tickets (CSV)</b>; every
     download is recorded. The pack holds the frozen rules, the fifteen questions, every seal and void with its evidence and
     officer, the week's audit record, the objections, the commitment checked again, the settlement's ledger lines (or the
@@ -678,15 +641,14 @@ raises an alert (C). Find an open week with <b class="ui" data-screen="pools">Fi
 </dl>
 </section>
 
+<figure class="shot"><img src="guide-img/maswali/lookup.png" alt="Ticket lookup: the ticket serial, the phone number and Look up" style="width:100%"></figure>
+
 <section class="step" id="reports">
 <h3>B22 · The money reports</h3>
 <dl class="f4">
   <dt>Who</dt><dd>Finance; Compliance and the Auditor read.</dd>
-  <dt>Where</dt><dd>Pools → <b class="ui" data-screen="pools">Rollover trail</b>: every settled week — search
-    <b class="ui" data-screen="pools">Find a week by code</b>, filter the line, sort by <b class="ui" data-screen="pools">Week</b>,
-    <b class="ui" data-screen="pools">Settled</b> (newest first), <b class="ui" data-screen="pools">Sales</b>,
-    <b class="ui" data-screen="pools">Winners</b>, <b class="ui" data-screen="pools">Paid</b> or
-    <b class="ui" data-screen="pools">Carried on</b>. Tax report → the <b class="ui" data-screen="tax">Millionea</b> pill,
+  <dt>Where</dt><dd>Pools → <b class="ui" data-screen="pools">Rollover trail</b>: every settled week, with what it sold,
+    paid and carried on. Tax report → the <b class="ui" data-screen="tax">Millionea</b> pill,
     shown when the period holds a Millionea week: <b class="ui" data-screen="tax">Jackpot brought forward</b>,
     <b class="ui" data-screen="tax">House floor top-up</b>, <b class="ui" data-screen="tax">Carried to the jackpot</b>, and
     <b class="ui" data-screen="tax">Millionea's commission</b> — the fee its weeks booked at payout. Reports →
@@ -717,8 +679,9 @@ raises an alert (C). Find an open week with <b class="ui" data-screen="pools">Fi
     short or too long.</dd>
   <dt>If refused</dt><dd>Follow the next act the refusal names.</dd>
 </dl>
-<p class="note">A final week never opens before its announced time. Pausing sales, voiding a week and stopping Millionea
-are three different acts.</p>
+<p class="note">A final week never opens before its announced time. If it voids or sells nothing, the next public week to
+open becomes the final week by itself; once a final week has sold and settled, no public week opens again. Pausing
+sales, voiding a week and stopping Millionea are three different acts.</p>
 </section>
 
 <h3 id="alerts">C · Needs attention</h3>
@@ -734,7 +697,7 @@ and slots 11–15 are A1–A5.</p>
   <tr><td><i>its results are final and its window closed … and it is not settled</i></td><td>The release is waiting.</td><td>Finance releases it (B13).</td></tr>
   <tr><td><i>it voided whole, and its refunds have not landed</i></td><td>Refunds are being retried.</td><td>Tell an administrator; the platform keeps retrying.</td></tr>
   <tr><td><i>The guarantee holds …; the unsettled weeks need …</i></td><td>The floor is not fully backed.</td><td>The Owner pays in (A2). No week opens until then.</td></tr>
-  <tr><td><i>No licence basis is recorded</i></td><td>No week can open.</td><td>The Owner records it (A1).</td></tr>
+  <tr><td>A sentence about the licence basis (<i>No licence basis is recorded…</i>, <i>The Owner recorded None…</i>)</td><td>No week can open.</td><td>Do what it says: save the licence number on the System page, or the Owner records a basis (A1).</td></tr>
   <tr><td><i>Sales are paused: …</i></td><td>A pause stands.</td><td>Compliance resumes once its reason is resolved (B6).</td></tr>
   <tr><td><i>had no notice reach them</i> … <i>since the settlement</i></td><td>A winner is unreached.</td><td>Compliance calls them (B17).</td></tr>
   <tr><td>A winning account may have been taken over since its week's payout</td><td>Its owner must be confirmed.</td><td>Compliance reviews it, and may hold the share (B14).</td></tr>
@@ -766,7 +729,7 @@ and slots 11–15 are A1–A5.</p>
   <tr><td>Graded set</td><td>The ten questions a ticket is graded on. The published rules call them the counted questions.</td></tr>
   <tr><td>Seal</td><td>An officer's recorded result for one question — YES, NO or VOID — with its evidence.</td></tr>
   <tr><td><b class="ui" data-screen="week">Not yet</b></td><td>No result chosen for that question.</td></tr>
-  <tr><td><b class="ui" data-screen="week">void proposed</b></td><td>Its void deadline passed unsealed: seal its result if the source gave it by the deadline, otherwise the void.</td></tr>
+  <tr><td><b class="ui" data-screen="week">past its void deadline</b></td><td>Its void deadline passed unsealed: seal its result if the source gave it by the deadline, otherwise the void.</td></tr>
   <tr><td><b class="ui" data-screen="week">awaits a second officer</b></td><td>A two-officer seal not yet confirmed; it does not count yet.</td></tr>
   <tr><td>Void deadline</td><td>The latest time a question's event may be played or read; printed on the question.</td></tr>
   <tr><td>Final deadline</td><td>The latest any void deadline may fall, in the week after the close.</td></tr>
@@ -781,7 +744,7 @@ and slots 11–15 are A1–A5.</p>
 <table class="gl">
   <tr><td>Jackpot</td><td>What a winning week shares: the floor, or the carry-in plus the week's sales, whichever is larger.</td></tr>
   <tr><td>Floor</td><td>The smallest jackpot a winning week pays, counted before the fee.</td></tr>
-  <tr><td>Fee at payout</td><td>The week's percentage of the jackpot, taken only when a ticket wins; TRA and GBT come out of it.</td></tr>
+  <tr><td>Fee at payout</td><td>The week's percentage of the jackpot, taken only when a ticket wins; TRA and GBT come out of it. A week's own rate is on its page and on Pools.</td></tr>
   <tr><td>Share</td><td>One winning ticket's part of the jackpot after the fee; equal for every winning ticket.</td></tr>
   <tr><td>Rounding carried</td><td>The few shillings an equal split leaves over: they join the next jackpot as far as the week's own money covers them; the rest stays with the guarantee. Shown on the register.</td></tr>
   <tr><td><b class="ui" data-screen="pools">Jackpot carried</b></td><td>Players' money from weeks nobody won, waiting for the next winning week.</td></tr>
@@ -825,8 +788,7 @@ and slots 11–15 are A1–A5.</p>
   <tr><td><b class="ui" data-screen="lookup">Rules version</b></td><td>The version of the Millionea rules the ticket was bought under.</td></tr>
 </table>
 
-<h3>Audit records</h3>
-<p class="keep">The audit log names each Millionea act like this.</p>
+<h3 class="keep">Audit records</h3>
 <table class="gl">
   <tr><td class="mono">maswali.week.drafted</td><td>A week was drafted.</td></tr>
   <tr><td class="mono">maswali.week.draft_edited</td><td>A draft's questions were edited.</td></tr>
@@ -839,7 +801,7 @@ and slots 11–15 are A1–A5.</p>
   <tr><td class="mono">maswali.question.sealed</td><td>A question was sealed YES, NO or VOID.</td></tr>
   <tr><td class="mono">maswali.question.confirmed</td><td>A second officer confirmed a seal.</td></tr>
   <tr><td class="mono">maswali.question.corrected</td><td>The sealing officer corrected a seal.</td></tr>
-  <tr><td class="mono">maswali.question.void_proposed</td><td>A void deadline passed unsealed; a void was proposed.</td></tr>
+  <tr><td class="mono">maswali.question.void_proposed</td><td>A void deadline passed unsealed; the question was flagged for an officer to seal.</td></tr>
   <tr><td class="mono">maswali.seal.device</td><td>A seal's check was recorded.</td></tr>
   <tr><td class="mono">maswali.seal.new_device</td><td>A seal was listed for its officer to confirm.</td></tr>
   <tr><td class="mono">maswali.seal.device_unchecked</td><td>A seal's check could not run.</td></tr>
