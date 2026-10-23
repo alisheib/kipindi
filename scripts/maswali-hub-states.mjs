@@ -875,20 +875,6 @@ if (RUN === "a") {
     await shoot("cap", "journey", demoJourney, { check: capCheck, matrix: { sw: [360, 1280] } });
   }
 
-  // ── S3 · the close moved (M7) ─────────────────────────────────────────────────────────────────────────────────────────
-  if (want("moved")) {
-    const mv = await act({ act: "moveClose", hours: 2 });
-    const movedCheck = async (page, label, locale) => {
-      const bar = await page.getByTestId("millionea-hub-close-moved").textContent().catch(() => null);
-      ok(`${label} · M7 the moved close is announced, with the close it was`, !!bar && /16:00/.test(bar) && /18:00/.test(bar), j(bar));
-      await zhLineChecks(page, label, locale, ["millionea-hub-close-moved"]);
-      if (locale === "zh") ok(`${label} · zh the same day's old close stands spaced from its Han ("原为 18:00")`, /原为 18:00/.test(bar ?? ""), j(bar));
-    };
-    void mv;
-    await shoot("moved", "classic", guestClassic, { check: movedCheck });
-    await shoot("moved", "journey", guestJourney, { check: movedCheck, matrix: { sw: [360, 1280] } });
-  }
-
   // ── M8 (R1-motion) · the last hour: the countdown pill (the SLIP lane's) stands in the close line, its place reserved
   // there — beside the close it counts down to, under the door, never above it, and the line never grows a second one.
   // ⚠️ The seed's weeks are dated ahead of the real clock (a close can never move before its own open), so no real last
@@ -984,6 +970,23 @@ if (RUN === "a") {
       ok(`${label} · L7 every block of the drawing ${reduced ? "stands still" : "sweeps with the platform's shimmer"} (${m.sweep?.count} blocks: ${j(m.sweep?.names)})`,
         !!m.sweep && m.sweep.count >= 10 && j(m.sweep.names) === j([still]) && m.sweep.bands.every((n) => n === still), j(m.sweep));
     }
+  }
+
+  // ⚠️ HUB-2B: the moved close is shot HERE, after the swap, so the swap is measured in the week's common shape. Shot
+  // before it (S3's old place), its calm bar stood above the page's head through the ghost views and the whole frame
+  // landed 43–79px below the drawing (run hub2b-base, 2026-10-23) — a state the drawing cannot know, as a pending carry.
+  // ── S3 · the close moved (M7) ─────────────────────────────────────────────────────────────────────────────────────────
+  if (want("moved")) {
+    const mv = await act({ act: "moveClose", hours: 2 });
+    const movedCheck = async (page, label, locale) => {
+      const bar = await page.getByTestId("millionea-hub-close-moved").textContent().catch(() => null);
+      ok(`${label} · M7 the moved close is announced, with the close it was`, !!bar && /16:00/.test(bar) && /18:00/.test(bar), j(bar));
+      await zhLineChecks(page, label, locale, ["millionea-hub-close-moved"]);
+      if (locale === "zh") ok(`${label} · zh the same day's old close stands spaced from its Han ("原为 18:00")`, /原为 18:00/.test(bar ?? ""), j(bar));
+    };
+    void mv;
+    await shoot("moved", "classic", guestClassic, { check: movedCheck });
+    await shoot("moved", "journey", guestJourney, { check: movedCheck, matrix: { sw: [360, 1280] } });
   }
 
   await act({ act: "closeOpen" });
