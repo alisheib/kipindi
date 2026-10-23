@@ -247,6 +247,45 @@ async function pinnedGround(page) {
   }
   return { ...g, rows: rows.length, badCount: bad.length, bad: bad.slice(0, 6) };
 }
+/** S5-R2-HUB 26 · nothing shows through the pinned pair (from 1024, in every state the drive shoots that draws one).
+ *  The column's next block is read under the pinned pair twice: with its top border 10px inside the pair's foot, and
+ *  standing under the head. While the pair stands pinned it carries `data-stuck` and its one hairline, the kit's divider,
+ *  and its ground shows not one pixel of what passes under it, in the gap above the head or in its foot. Plant: the old
+ *  fading foot is reported. A state with no pair (no week, Millionea ended) has nothing to read; a page too short to
+ *  pin the pair at a position says so, and that position is not read. */
+async function pinnedGroundChecks(page, label) {
+  for (const [where, into] of [["its foot", 10], ["its head", null]]) {
+    const at = await page.evaluate((into) => {
+      const p = document.querySelector('[data-testid="millionea-hub-pinned"]');
+      if (!p || getComputedStyle(p).position !== "sticky") return null;
+      window.scrollTo(0, 0);
+      const r = p.getBoundingClientRect(), top = parseFloat(getComputedStyle(p).top);
+      const next = p.nextElementSibling;
+      return { y: Math.round(r.top - top + (into ?? r.height)), max: document.documentElement.scrollHeight - innerHeight,
+        next: !!next && next.getBoundingClientRect().height > 0 };
+    }, into);
+    if (!at) return;
+    if (at.y > at.max) { console.log(`INFO ${label} · the page is too short to pin the pair under ${where} (${at.y} > ${at.max})`); continue; }
+    if (!at.next) { console.log(`INFO ${label} · nothing reads on under the pinned pair in this state; its ground is read, its plant is not`); }
+    await page.evaluate((y) => window.scrollTo(0, y), at.y);
+    await page.waitForTimeout(300);
+    const g = await pinnedGround(page);
+    ok(`${label} · scrolled under ${where}, the pinned pair is marked pinned and its lower edge is one hairline, the kit's divider (${g?.shadow})`,
+      !!g && g.stuck && /inset/.test(g.shadow) && /0px -1px 0px/.test(g.shadow) && g.shadow.startsWith(g.divider), j(g && { stuck: g.stuck, shadow: g.shadow, divider: g.divider }));
+    ok(`${label} · scrolled under ${where}, the pinned pair's top stands at the bar's foot, and no pixel of what passes under it shows in the gap above its head or in its foot (${g?.rows} device rows read, ${g?.badCount} differ)`,
+      !!g && g.rows > 0 && g.badCount === 0 && g.y <= g.header + 1, j(g));
+    if (into !== null && at.next) {
+      const plant = await page.addStyleTag({ content: ".kp-mln-pinned { background: linear-gradient(to bottom, var(--bg-base) calc(100% - var(--sp-5)), transparent) !important; }" });
+      await page.waitForTimeout(100);
+      const planted = await pinnedGround(page);
+      ok(`${label} · PLANT · the old fading foot lets the next block show through, and the read reports it (${planted?.badCount} rows differ)`, !!planted && planted.badCount > 0, j(planted));
+      await plant.evaluate((el) => el.remove());
+      await page.waitForTimeout(100);
+    }
+  }
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForTimeout(200);
+}
 
 /**
  * Shoot one state: every (locale, width) of the shell's matrix — load, the base checks, the state's own checks, the first
@@ -274,6 +313,7 @@ async function shoot(state, shell, ctx, { check, oneView = false, path = "/milli
       await ruleChecks(page, label);
       await doorRowChecks(page, label);
       await widowChecks(page, label);
+      if (width >= 1024) await pinnedGroundChecks(page, label);
       if (width === 768) await holeChecks(page, label);
       if (width <= YIELD_AT) await yieldCheck(page, `${label} · s1`);
       const name = `${state}-${shell}-${locale}-${width}`;
@@ -364,35 +404,6 @@ async function openWeekChecks(page, label, locale, width, { door = "millionea-hu
     ok(`${label} · H2 scrolled 900px, the jackpot's head stands pinned 72px down, 16px clear of the header (${pinnedHead && Math.round(pinnedHead.y)} vs header ${Math.round(header)})`,
       !!pinnedHead && Math.abs(pinnedHead.y - 72) <= 1 && pinnedHead.y >= header + 15, j({ pinnedHead, header }));
     ok(`${label} · H2 the pinned pair's ground reaches the header's foot (nothing reading on shows in the gap above it)`, !!pinned && pinned.y <= header + 1, j({ pinned, header }));
-    // S5-R2-HUB 26 · nothing shows through the pinned pair. The column's next block is read twice under the pinned pair:
-    // once with its top border 10px inside the pair's foot, and once standing under the head. While the pair stands
-    // pinned it carries `data-stuck` and its one hairline (the kit's divider), and its ground shows not one pixel of what
-    // passes under it, in the gap above the head or in its foot. Plant: the old fading foot is reported.
-    for (const [where, into] of [["its foot", 10], ["its head", null]]) {
-      const at = await page.evaluate((into) => {
-        const p = document.querySelector('[data-testid="millionea-hub-pinned"]');
-        if (!p) return null;
-        window.scrollTo(0, 0);
-        const r = p.getBoundingClientRect(), top = parseFloat(getComputedStyle(p).top);
-        return Math.round(r.top - top + (into ?? r.height));
-      }, into);
-      if (at === null) { ok(`${label} · the pinned pair is drawn (${where})`, false); continue; }
-      await page.evaluate((y) => window.scrollTo(0, y), at);
-      await page.waitForTimeout(300);
-      const g = await pinnedGround(page);
-      ok(`${label} · scrolled under ${where}, the pinned pair is marked pinned and its lower edge is one hairline, the kit's divider (${g?.shadow})`,
-        !!g && g.stuck && /inset/.test(g.shadow) && /0px -1px 0px/.test(g.shadow) && g.shadow.startsWith(g.divider), j(g && { stuck: g.stuck, shadow: g.shadow, divider: g.divider }));
-      ok(`${label} · scrolled under ${where}, no pixel of what passes under the pinned pair shows in the gap above its head or in its foot (${g?.rows} device rows read, ${g?.badCount} differ)`,
-        !!g && g.rows > 0 && g.badCount === 0, j(g));
-      if (into !== null) {
-        const plant = await page.addStyleTag({ content: '.kp-mln-pinned { background: linear-gradient(to bottom, var(--bg-base) calc(100% - var(--sp-5)), transparent) !important; }' });
-        await page.waitForTimeout(100);
-        const planted = await pinnedGround(page);
-        ok(`${label} · PLANT · the old fading foot lets the next block show through, and the read reports it (${planted?.badCount} rows differ)`, !!planted && planted.badCount > 0, j(planted));
-        await plant.evaluate((el) => el.remove());
-        await page.waitForTimeout(100);
-      }
-    }
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.waitForTimeout(200);
     const named = await page.evaluate(() => { const a = document.querySelector('[data-testid="millionea-hub-aside"]'); const id = a?.getAttribute("aria-labelledby"); return id ? document.getElementById(id)?.textContent ?? null : null; });
