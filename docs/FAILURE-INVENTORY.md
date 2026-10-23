@@ -1345,8 +1345,9 @@ OB.0 (now a passing case) and §4b OM with the money-path plants (S7-OB-…); `l
   window, MR-16); a VOID as the void notice. Never to its filer, whose decided notice says it. The ruling's record is one of
   the question's own seal records, so any later run reads it: a void told again by a catch-up never reaches its filer, and a
   later correction is read from the result the ruling set — final at once, also while two officers are required (without
-  it, a sealer's correction back to the first result would be told to nobody, though every holder had been told the ruled
-  one). Proof: `test:maswali-notify` 10b.8b–8h and the plants (NOB9)–(NOB17).
+  it, a correction back to the first result would be told to nobody, though every holder had been told the ruled one; who
+  may make that correction: §9b, "The sealer could correct a result an upheld objection set"). Proof: `test:maswali-notify`
+  10b.8b–8h and the plants (NOB9)–(NOB17).
 
 *Recorded 2026-10-18:* MR-16 promised a per-question objection in Millionea's own window, and no objection door existed for a
 Millionea week; the settlement's refusal while any objection was open (OB.1–OB.5) and the sealer's own correction held.
@@ -1654,6 +1655,22 @@ read 2026-10-23). Held by `test:maswali-notify` 10b.10 (the rendered titles, one
 (NOB7) of `red:maswali-money-path`. ⭐ And its free cancel (the lead, 2026-10-23): the bell said "Free cancel until {time}"
 with no zone where the slip says "… EAT"; it now prints the slip's own line, `millionea.cancelFreeUntil`, with the slip's
 own clock (`eatClock`), in all three languages. Held by 10b.10b and the plant (NOB8).
+
+#### ✅ The sealer could correct a result an upheld objection set (S6-NOTICES, 2026-10-23; the lead's ruling)
+
+Found while proving the upheld change's notices: `correctSeal` asked only who sealed the question (`q.sealedBy`), and a
+ruling leaves that as it was. So inside the restarted window, the officer whose seal was objected to could correct the
+independently ruled result back, though the binding text (§6) gives the correction to "the officer who set a result" and
+RULES §2.12 already bars that sealer from ruling on the question's objections. THE RULE (the lead, 2026-10-23): a
+correction belongs to the officer who wrote the question's PRESENT record — its sealer for a sealed result, the officer
+who ruled for a ruled one (and for their own correction of it) — read from that act's own audit row by the instant it
+wrote; the ruling's row now names it (`sealedAt`). The sealer of a ruled result is refused and objects through another
+officer, as anyone else does. While two officers are required, a second officer confirms that correction — never the
+officer who made it, nor the sealer (`confirmSeal`). A question no objection was upheld on has had no author but its
+sealer, so a plain seal is as before; a ruled one whose present record cannot be read is corrected by nobody (fail
+closed). The binding text and RULES §2.12's bar stand word for word; the rule's own line is RULES §2.12 "Correcting a ruled
+result". Held by `test:maswali-objections` §2c, 2.18–2.22 (both stores), and the plants (NOC1)–(NOC5) of
+`red:maswali-objections`; `test:maswali-notify` 10b.8f and 10b.8h now prove the notices on the ruling officer's correction.
 
 ## §9c · MASWALI MILLIONEA — the admin console, walked and made plain (S6, 2026-10-22)
 

@@ -715,8 +715,8 @@ self-exclusion still settles. **10 tickets per account per week** (§2.4's excep
 **Cancelling.** §2.6's free cancellation applies unchanged: a ticket bought with the runway still ahead of it may be
 cancelled inside the window for a full refund, and leaves the count, the commitment and the grading. There is no paid exit.
 
-**Objections** (MR-16, as built — S7-OB, 2026-10-22). A Millionea objection disputes the result of **one question** of a
-week, never the week as a whole:
+**Objections** (MR-16, as built — S7-OB, 2026-10-22; who corrects a ruled result, as built — S6-NOTICES, 2026-10-23, the
+lead's ruling). A Millionea objection disputes the result of **one question** of a week, never the week as a whole:
 - **Who:** any holder of a live (not cancelled) ticket in the week, **once per question** — open or decided, keyed (week,
   question, player) — with a reason from the platform's list and their own words (10–1,000 characters), from the ticket's
   page.
@@ -730,6 +730,12 @@ week, never the week as a whole:
 - **Remedies:** **REJECT** (the result stands), or uphold with **REVERSE** (the other result), **VOID** (on a ground from
   the closed list — by default "objection to the criterion upheld") or **REINSTATE** (a voided question back, with its
   result).
+- **Correcting a ruled result:** until the window closes, "the officer who set a result may correct it" (the binding
+  text, §6) — the officer who wrote the question's **present** record: its sealer for a sealed result, the officer who
+  ruled for a result an upheld objection set (and for that officer's own correction of it). The sealer never corrects a
+  ruled result back: they object through another officer, as anyone else does. While two officers are required, that
+  correction counts only once a second officer confirms it — never the officer who made it, nor the sealer. Who set the
+  present result is read from that act's own record; while it cannot be read, a ruled result is corrected by nobody.
 - **The money:** while any objection is **OPEN**, the week neither settles nor voids. An upheld ruling re-grades the week
   (MR-17); when that changes the graded set, the window **restarts once** per week, from the ruling — a later change
   re-grades but keeps the window. A **SETTLED** or **VOIDED** week is final: no objection is filed or ruled on it.

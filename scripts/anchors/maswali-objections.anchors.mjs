@@ -14,6 +14,7 @@
 const DOOR = "src/lib/server/maswali-objections.ts";
 const STORE = "src/lib/server/store.ts";
 const CLASSIC = "src/lib/server/objections-service.ts";
+const SERVICE = "src/lib/server/maswali-service.ts";
 const NL = String.fromCharCode(10);
 
 export const MUTATIONS = [
@@ -182,5 +183,42 @@ export const MUTATIONS = [
     from: "    case \"OPEN\": return <>Objection window open until <When iso={w.window.closesAt} />.{restart}</>;",
     to: "    case \"OPEN\": return <>Check window open until <When iso={w.window.closesAt} />.{restart}</>;",
     expect: "9.1 ·",
+  },
+  // ── who corrects a ruled result (the lead's ruling, 2026-10-23; S6-NOTICES) — named (NOC…) so they never meet another
+  //    lane's numbers on another branch ─────────────────────────────────────────────────────────────────────────────
+  {
+    name: "(NOC1) the sealer corrects a result an upheld objection set: the correction asks only who sealed the question",
+    file: SERVICE,
+    from: "    if (author !== input.officerId) {",
+    to: "    if (q.sealedBy !== input.officerId) {",
+    expect: "2.18 ·",
+  },
+  {
+    name: "(NOC2) the ruling's own record is never read: a ruled result has no known author, so even the officer who ruled cannot correct it",
+    file: SERVICE,
+    from: "const RESULT_RECORDS = [\"maswali.question.sealed\", \"maswali.question.corrected\", \"maswali.objection.upheld\"] as const;",
+    to: "const RESULT_RECORDS = [\"maswali.question.sealed\", \"maswali.question.corrected\"] as const;",
+    expect: "2.19 ·",
+  },
+  {
+    name: "(NOC3) the officer who corrected a ruled result confirms their own correction: the two-officer rule asks only who sealed",
+    file: SERVICE,
+    from: "    if (author === input.officerId) return refuse(\"The officer who set this result cannot confirm it — a second officer must.\");",
+    to: "",
+    expect: "2.20 ·",
+  },
+  {
+    name: "(NOC4) a plain seal's correction is opened to any officer",
+    file: SERVICE,
+    from: "    if (author !== input.officerId) {",
+    to: "    if (author !== input.officerId && author !== q.sealedBy) {",
+    expect: "2.21 ·",
+  },
+  {
+    name: "(NOC5) a ruled question whose present record cannot be read falls back to its sealer, who corrects the ruled result",
+    file: SERVICE,
+    from: "  return ruled ? null : q.sealedBy;",
+    to: "  return q.sealedBy;",
+    expect: "2.22 ·",
   },
 ];

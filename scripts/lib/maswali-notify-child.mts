@@ -1332,16 +1332,17 @@ console.log(`${LF}§10b · ⭐ S6-NOTICES · an objection filed pings the office
   ok("10b.8e · ⭐ a later run — the void told again, as a catch-up tells it — reads the ruling from the records: never to its filer, nobody twice",
     later6.sent === 0 && (await slotRows(F2, 6)).length === 0 && (await withHref(F1, await voidHref(6))).length === 1,
     J({ recipients: later6.recipients, sent: later6.sent, alreadySent: later6.alreadySent, f2Slot6: (await slotRows(F2, 6)).length }));
-  // ⭐ The sealer then corrects question 4 back to the result the REVERSE ruled from: the holders were told the ruled result,
-  // so the correction is a change, told to both holders — the filer too, a change that is not theirs — in the correction's
-  // own words. The records hold the ruling, so the correction is read from the result it ruled.
+  // ⭐ The officer who set question 4's result — the one who ruled (the lead's ruling, 2026-10-23: never its sealer) — then
+  // corrects it back to the result the REVERSE ruled from: the holders were told the ruled result, so the correction is a
+  // change, told to both holders — the filer too, a change that is not theirs — in the correction's own words. The records
+  // hold the ruling, so the correction is read from the result it ruled.
   const back4 = ruled4 ? await W.svc.correctSeal({ weekId: wo.id, slot: 4, outcome: flip(ruled4.outcome), evidence: "Corrected: the official source's final result for event 4",
-    ...(await reviewedSeal(wo.id, 4)), officerId: SEALER, now: inWindow(10) }) : { ok: false, error: "no question 4" };
+    ...(await reviewedSeal(wo.id, 4)), officerId: OFF, now: inWindow(10) }) : { ok: false, error: "no question 4" };
   await settleAll();
   const plain4 = "Its sealed result was corrected. Your ticket shows the new result, and the objection window runs from the corrected record.";
   const k4F1 = await withHref(F1, await correctionHref(4));
   const k4F2 = await withHref(F2, await correctionHref(4));
-  ok("10b.8f · ⭐ the sealer's correction after an upheld REVERSE is told to both holders, in the correction's words — the records hold the ruling, so the change is read from the result it ruled",
+  ok("10b.8f · ⭐ the ruling officer's correction of the result their REVERSE set is told to both holders, in the correction's words — the records hold the ruling, so the change is read from the result it ruled",
     back4.ok && (await qOf(4))?.sealedAt !== ruled4?.sealedAt && k4F1.length === 1 && k4F2.length === 1 && k4F1[0].bodyEn === plain4 && k4F2[0].bodyEn === plain4
       && (await slotRows(F1, 4)).length === 2 && (await slotRows(F2, 4)).length === 1,
     J({ back4: back4.ok ? "ok" : back4, k4F1: k4F1.map((n) => n.bodyEn), k4F2: k4F2.map((n) => n.bodyEn), f1Slot4: (await slotRows(F1, 4)).length, f2Slot4: (await slotRows(F2, 4)).length }));
@@ -1350,11 +1351,11 @@ console.log(`${LF}§10b · ⭐ S6-NOTICES · an objection filed pings the office
   await ageNotices([F1, F2]);
   const stale4 = await notify.noticeQuestionCorrected(wo.id, 4, flip(ruled4?.outcome), undefined, { filer: F2, windowRestarted: true, sealedAt: ruled4?.sealedAt });
   await settleAll();
-  ok("10b.8g · ⭐ a ruling's facts serve only its own record: run after the sealer's correction, it reads the present record — both holders already told, nobody twice",
+  ok("10b.8g · ⭐ a ruling's facts serve only its own record: run after the correction that replaced it, it reads the present record — both holders already told, nobody twice",
     stale4.sent === 0 && stale4.recipients === 3 && stale4.alreadySent === 3 && (await slotRows(F1, 4)).length === 2 && (await slotRows(F2, 4)).length === 1,
     J({ recipients: stale4.recipients, sent: stale4.sent, alreadySent: stale4.alreadySent }));
-  // ⭐ With two officers required, a ruling is final at once — one officer rules it, and no second confirms it — so the
-  // sealer's correction back, final only on its confirmation, is read from the ruled result too.
+  // ⭐ With two officers required, a ruling is final at once — one officer rules it, and no second confirms it — so the ruling
+  // officer's correction back, final only on a second officer's confirmation, is read from the ruled result too.
   await setRequireTwoOfficerResolution(true, OWNER);
   const { week: wt, start: st } = await W.openWeek({ weeksAhead: ahead++ });
   const t1 = await W.buy(F1, wt.id, [W.WIN]);
@@ -1378,7 +1379,7 @@ console.log(`${LF}§10b · ⭐ S6-NOTICES · an objection filed pings the office
   await settleAll();
   const qt1 = await qT();
   const fixT = (ruledT as any).ok ? await W.svc.correctSeal({ weekId: wt.id, slot: 2, outcome: "YES", evidence: "Corrected: the official source's final result for event 2",
-    ...(await reviewedSeal(wt.id, 2)), officerId: SEALER, now: tAt(62) }) : ruledT;
+    ...(await reviewedSeal(wt.id, 2)), officerId: OFF, now: tAt(62) }) : ruledT;
   await settleAll();
   const corrT = async (u: string) => (await mlnRows(u)).filter((n) => String(n.href).includes(`#${codeT}-corrected-2-`));
   const pendingT = (await corrT(F2)).length;
@@ -1387,7 +1388,7 @@ console.log(`${LF}§10b · ⭐ S6-NOTICES · an objection filed pings the office
   await setRequireTwoOfficerResolution(false, OWNER);
   const tF1 = await corrT(F1);
   const tF2 = await corrT(F2);
-  ok("10b.8h · ⭐ with two officers required, a ruling is final at once: the sealer's correction back, final on its confirmation, is told to both holders — read from the ruled result",
+  ok("10b.8h · ⭐ with two officers required, a ruling is final at once: the ruling officer's correction back, final on a second officer's confirmation, is told to both holders — read from the ruled result",
     sealedT && filedT.ok && (ruledT as any).ok && qt1?.outcome === "NO" && (fixT as any).ok && pendingT === 0 && (confT as any).ok
       && tF1.length === 2 && tF2.length === 1 && tF2[0].bodyEn === plain4,
     J({ sealedT, filedT: filedT.ok, ruledT: errOf(ruledT), qt1: qt1?.outcome, fixT: errOf(fixT), pendingT, confT: errOf(confT), f1: tF1.map((n) => n.bodyEn), f2: tF2.map((n) => n.bodyEn) }));

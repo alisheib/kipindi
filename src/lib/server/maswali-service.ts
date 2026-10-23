@@ -18,7 +18,7 @@
  */
 import { createHash } from "node:crypto";
 import type { Prisma } from "@prisma/client";
-import { audit, getAuditForTargetDurable } from "./audit";
+import { audit, auditFlush, getAuditForTargetDurable, getAuditForTargetsDurable } from "./audit";
 import { randomId } from "./crypto";
 import { afterCommit, currentLockTx, hookContext, runOutsideLock, withLock } from "./locks";
 import { buyPosition, createMarket, isFencedMaswali } from "./market-service";
@@ -28,6 +28,7 @@ import { invalidateMillioneaRegisterWeek } from "./maswali-register-cache";
 import { millioneaStateNow } from "./millionea-switch";
 import type { RolloutState } from "@/lib/millionea-rollout";
 import { marketStore } from "./market-dal";
+import { db } from "./store";
 import { isSourceTrusted, seedDefaultSources } from "./source-registry";
 import { readRequireTwoOfficerResolution } from "./resolution-policy";
 import { getMaswaliConfig, readMaswaliConfigFresh, readMaswaliRulesSnapshot, snapshotMaswaliRules, unsettledFloors, type MaswaliRulesSnapshot } from "./maswali-config";
@@ -977,7 +978,34 @@ export async function sealQuestion(input: {
   return { ok: true, gate: res.gate, weekVoidCertain: res.weekVoidCertain, recorded };
 }
 
-/** The second officer's confirmation of a seal made while the two-officer flag was on (MR-14). ⛔ Never the sealer. */
+/** The records that WRITE a question's result — its seal, a correction, an upheld objection's ruling — each naming the
+ *  instant of the record it wrote (`sealedAt`). A confirmation writes none: it signs the record it names. */
+const RESULT_RECORDS = ["maswali.question.sealed", "maswali.question.corrected", "maswali.objection.upheld"] as const;
+
+/**
+ * ⭐ "THE OFFICER WHO SET A RESULT" (the rules, §6 "The check window"; the lead's ruling, 2026-10-23): the officer who wrote
+ * the question's PRESENT record — its sealer for a seal, the officer who corrected it, or the officer whose upheld objection
+ * ruling re-sealed it — read from that act's own audit row, by the instant it wrote (`sealedAt`). A question no objection
+ * was ever upheld on has had no author but its sealer, so its sealer answers when its row cannot be read. Null when an
+ * objection was upheld on it and its present record cannot be read: a correction, or a confirmation, waits — never the
+ * sealer by default on a result a ruling may have set.
+ */
+async function presentResultAuthor(q: StoredQuestion, marketId: string | null): Promise<string | null> {
+  let author: string | null = null;
+  try {
+    await auditFlush();
+    const rows = await getAuditForTargetsDurable({ targetType: "MaswaliQuestion", targetIds: [q.id], actions: RESULT_RECORDS, sinceIso: "1970-01-01T00:00:00.000Z", limit: 500 });
+    author = rows.entries.find((e) => q.sealedAt !== null && e.payload?.sealedAt === q.sealedAt)?.actorId ?? null;
+  } catch (err) {
+    console.error(`[maswali] ALARM: ${slotLabel(q.slot)}'s records could not be read:`, (err as Error)?.message ?? err);
+  }
+  if (author) return author;
+  const ruled = marketId ? (await db.objection.listForMarket(marketId)).some((o) => o.questionOrdinal === q.slot && o.status === "UPHELD") : false;
+  return ruled ? null : q.sealedBy;
+}
+
+/** The second officer's confirmation of a seal made while the two-officer flag was on (MR-14). ⛔ Never the sealer, and never
+ *  the officer who wrote the record it confirms (a ruling officer's correction of the result their ruling set). */
 export async function confirmSeal(input: { weekId: string; slot: number; officerId: string; expectedOutcome: MaswaliOutcome; expectedSealedAt: string; now?: Date }): Promise<Result<{ recorded: boolean }>> {
   const nowMs = (input.now ?? new Date()).getTime();
   const res = await withLock(MASWALI_CHAIN_LOCK, async (tx): Promise<Result<{ weekVoidCertain: boolean; owed: OwedAudit[] }>> => {
@@ -994,6 +1022,11 @@ export async function confirmSeal(input: { weekId: string; slot: number; officer
     if (q.twoOfficerAtStage1 !== true) return refuse("This seal needs no second officer.");
     if (q.stage2By) return refuse("Already confirmed.");
     if (q.sealedBy === input.officerId) return refuse("The officer who sealed it cannot confirm it — a second officer must.");
+    // ⭐ (the lead's ruling, 2026-10-23) · nor the officer who set the result it confirms: a ruling officer who corrected the
+    //    result their ruling set — the two-officer rule holds for that correction as for any seal.
+    const author = await presentResultAuthor(q, week.marketId);
+    if (author === null) return refuse(`${slotLabel(q.slot)}'s present record cannot be read, so who set its result is not known. Try again in a moment.`);
+    if (author === input.officerId) return refuse("The officer who set this result cannot confirm it — a second officer must.");
     // ⛔ S7 · the seal's own bar (MR-14): the second signature on a result is a seal too, so no officer holding a ticket in
     //    the week gives it — an account made staff mid-week while its ticket runs included.
     const holds = (await ticketStore.listForUser(input.officerId, { cycleId: week.id })).some((t) => t.status !== "CANCELLED");
@@ -1029,8 +1062,10 @@ export async function confirmSeal(input: { weekId: string; slot: number; officer
 }
 
 /**
- * OD-09 · the sealer corrects their OWN seal, before payout, inside the objection window — which restarts once the graded
- * set is final again. ⛔ Never after SETTLED: a paid week is never clawed back. The corrected result, the restarted window
+ * OD-09 · the officer who set a question's present result corrects it — the sealer their OWN seal; for a result an upheld
+ * objection set, the officer who ruled it, never the sealer (`presentResultAuthor`; the lead's ruling, 2026-10-23) — before
+ * payout, inside the objection window, which restarts once the graded set is final again. ⛔ Never after SETTLED: a paid
+ * week is never clawed back. The corrected result, the restarted window
  * and the recompute commit together or not at all (S5-FIX-SRV 2): never a corrected result whose window did not restart.
  * ⛔ S7 · A CORRECTION IS A SEAL, AND MEETS A SEAL'S RULES (MR-14, MR-15): it records its evidence, and it voids only on a
  *    ground available now. Without them an officer could seal YES and correct it to "not played" inside the very deadline
@@ -1056,7 +1091,17 @@ export async function correctSeal(input: {
     if (week.objectionsCloseAt && Date.parse(week.objectionsCloseAt) <= nowMs) return refuse("The objection window has closed; the seal stands.");
     const q = (await questionStore.listForWeek(week.id)).find((x) => x.slot === input.slot);
     if (!q || q.outcome === null) return refuse("Nothing sealed to correct.");
-    if (q.sealedBy !== input.officerId) return refuse("Only the officer who sealed a question may correct it; anyone else files an objection.");
+    // ⭐ (the lead's ruling, 2026-10-23) · "the officer who set a result may correct it" (the rules, §6): the officer who wrote
+    //    its PRESENT record — the sealer for a sealed result, the officer who ruled for a result an upheld objection set (and
+    //    for their own correction of it). The sealer never corrects a ruled result back: they object through another officer,
+    //    as anyone else does.
+    const author = await presentResultAuthor(q, week.marketId);
+    if (author === null) return refuse(`${slotLabel(q.slot)}'s present record cannot be read, so who set its result is not known. Try again in a moment.`);
+    if (author !== input.officerId) {
+      return refuse(author === q.sealedBy
+        ? "Only the officer who sealed a question may correct it; anyone else files an objection."
+        : `${slotLabel(q.slot)}'s present result was set on an objection: only the officer who ruled it may correct it; anyone else files an objection.`);
+    }
     if (q.outcome !== input.expectedOutcome || q.sealedAt !== input.expectedSealedAt) {
       return refuse("The seal changed; reload the week and review it again before correcting it.");
     }
