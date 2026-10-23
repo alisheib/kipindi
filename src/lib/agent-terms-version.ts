@@ -53,8 +53,16 @@
  * ASCII-spaced hyphen dash (" — "); it now uses the Chinese dash (——) with no spaces. No word changed in any language,
  * but the binding bodies hash all three locales, and the rule is that the text does not move without the version.
  * `COMPLIANCE-DECISIONS.md` § 2026-09-14 (seventh). Register E-400 ③.
+ *
+ * 🔴 **BUMPED 2026-10-23 — Ali's ruling OD-20 ("Agents and invites", MASWALI-PLAN §9), approved 2026-10-23.** §3 gains
+ * its last paragraph, in all three locales: an agent earns no commission on Maswali Millionea tickets, and first-bet
+ * invite rewards do not apply to Millionea tickets. That narrows what the counterparty earns, so the version moves.
+ * Prepared on `claude/maswali-agent-terms` and merged with the Maswali Millionea launch (Ali: "Prepare now, live at
+ * launch"): until that merge `main` serves 2026-09-14's text and stamps 2026-09-14. The money paths already pay neither on
+ * a ticket — a purchase leaves `buyPosition` for `buyMaswaliTickets` before `onRecruitBet`, `settleMarket` refuses a
+ * Millionea week, and no `maswali-*` server module calls a recruit hook. `docs/RULES.md` §2.10.
  */
-export const AGENT_TERMS_VERSION = "2026-09-14";
+export const AGENT_TERMS_VERSION = "2026-10-23";
 
 /**
  * The first 12 hex of `sha256` over the whitespace-normalised binding bodies of
@@ -64,4 +72,4 @@ export const AGENT_TERMS_VERSION = "2026-09-14";
  * the new hash and move on: a failure means the binding text changed, which is exactly the
  * event the version exists to record. Change both, in one commit, or neither.
  */
-export const AGENT_TERMS_TEXT_SHA = "ca98ae5123dc";
+export const AGENT_TERMS_TEXT_SHA = "27ebec097af3";

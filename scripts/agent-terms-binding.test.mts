@@ -47,6 +47,10 @@
  * the bodies it would hash the empty string — stably, forever, green. §3.0 therefore ratchets
  * the extracted length AND requires an anchor sentence from each of the three locales, so a
  * broken extractor fails loudly instead of silently agreeing with itself.
+ *
+ * ── §5: OD-20, THE MASWALI MILLIONEA EXCLUSION (Ali, 2026-10-23) ─────────────────────────
+ * §3 stops the text moving without the version; §5 holds the clause the ruling wrote — no commission on Maswali
+ * Millionea tickets, no first-bet invite reward on them — word for word in each locale's §3.
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -258,6 +262,54 @@ section("§4 · what a person read and what was recorded cannot diverge");
   ok("4.2 ⛔ the submit stamps the SAME constant, not a literal",
     /AGENT_TERMS_VERSION/.test(actions) && !/acceptedTermsVersion:\s*"20\d\d-/.test(actions),
     "submitForReview is being handed a hard-coded date instead of the shared constant");
+}
+
+// ═══ §5 · OD-20 · NO COMMISSION AND NO FIRST-BET INVITE REWARD ON MASWALI MILLIONEA ═══════════════
+/**
+ * ⭐ Ali's ruling OD-20 ("Agents and invites", MASWALI-PLAN §9), approved 2026-10-23: no agent commission and no invite
+ * first-bet credit on Maswali Millionea in v1, and the agent terms' version bumped. §3 alone cannot hold it: an edit that
+ * deleted this clause AND bumped the version would leave §3.1 green. So the CLAUSE is held here, word for word, in each
+ * locale's §3 (the Commission section), for as long as the ruling stands; a change to the ruling changes these lines
+ * and the version together.
+ */
+section("§5 · OD-20 · each locale's §3 states the Maswali Millionea exclusion");
+{
+  const raw = read(TERMS).replace(/\r\n/g, "\n");
+  type Loc = "en" | "sw" | "zh";
+  const LOCS: Loc[] = ["en", "sw", "zh"];
+  const CLAUSE: Record<Loc, string> = {
+    en: "<p>You earn <strong>no commission on Maswali Millionea tickets</strong>, and first-bet invite rewards do not apply to Millionea tickets.</p>",
+    sw: "<p><strong>Hupati kamisheni kwenye tiketi za Maswali Millionea</strong>, na zawadi za mialiko kwa dau la kwanza hazihusu tiketi za Millionea.</p>",
+    zh: "<p>您<strong>不会从 Maswali Millionea 彩票获得佣金</strong>，首次投注的邀请奖励亦不适用于 Millionea 彩票。</p>",
+  };
+  // Each locale's block of `content`, then the §3 section inside it — a clause in the wrong locale or section is absent.
+  const blockOf = (src: string, loc: Loc) => {
+    const start = src.indexOf("const content: Record<Locale, React.ReactNode> = {");
+    const at = (l: Loc) => src.indexOf(`\n    ${l}: (`, start);
+    const end = src.indexOf("\n  };", at("zh"));
+    const next: Record<Loc, number> = { en: at("sw"), sw: at("zh"), zh: end };
+    return start >= 0 && at(loc) > start && next[loc] > at(loc) ? src.slice(at(loc), next[loc]) : "";
+  };
+  const sectionThree = (block: string) => {
+    const s = block.indexOf('<LegalSection n="3"');
+    const e = block.indexOf("</LegalSection>", s);
+    return s >= 0 && e > s ? block.slice(s, e) : "";
+  };
+  const holds = (src: string) => LOCS.filter((l) => sectionThree(blockOf(src, l)).includes(CLAUSE[l]));
+
+  ok("5.0 CONTROL · each locale's block and its §3 (Commission) were found — a blind slicer passes over nothing",
+    LOCS.every((l) => /<LegalSection n="3" title="(Commission|Kamisheni|佣金)">/.test(sectionThree(blockOf(raw, l)))),
+    LOCS.map((l) => `${l}=${sectionThree(blockOf(raw, l)).length}`).join(" "));
+  ok("5.1 ⛔ OD-20 · §3 states the Maswali Millionea exclusion in EN, SW and ZH",
+    holds(raw).length === 3, `found in: ${holds(raw).join(", ") || "none"}`);
+  ok("5.1b CONTROL · a copy with the English clause deleted is reported",
+    holds(raw.replace(CLAUSE.en, "")).join(",") === "sw,zh");
+  const moved = raw.replace(CLAUSE.sw, "").replace('<LegalSection n="7" title="Jumla">', `<LegalSection n="7" title="Jumla">\n          ${CLAUSE.sw}`);
+  ok("5.1c CONTROL · a copy with the Swahili clause moved out of §3 (into §7) is reported",
+    moved !== raw && holds(moved).join(",") === "en,zh");
+  // ISO dates order as strings: the version stamped with this text can never predate the ruling that wrote it.
+  ok("5.2 ⛔ the version that carries the clause is not older than the ruling (2026-10-23)",
+    AGENT_TERMS_VERSION >= "2026-10-23", AGENT_TERMS_VERSION);
 }
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);

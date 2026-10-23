@@ -574,7 +574,7 @@ the waterfall they drew is rendered on `/agent` from `src/lib/agent-commission.t
 | | |
 |---|---|
 | **Enforced in** | `src/lib/server/affiliate-service.ts` — `policyFor()` (one resolver), `onRecruitSettlement()` (the accrual), `clawbackMarketCommission()`; `src/lib/server/agent-config.ts` (`PLATFORM_MAX_COMMISSION_PCT`, every number above); `src/lib/server/agent-application-service.ts` (approval, rate, standing, fee) |
-| **Stated to** | the agent on `/agent` and `/legal/agent-terms` (rate, base, lifetime, once), the officer on `/admin/agents` (settings + "In force now"), the applicant at every step of `/agent/apply` |
+| **Stated to** | the agent on `/agent` and `/legal/agent-terms` (rate, base, lifetime, once; the terms' §3 also states the Maswali Millionea exclusion below, from v2026-10-23), the officer on `/admin/agents` (settings + "In force now"), the applicant at every step of `/agent/apply` |
 | **Guarded by** | `test:agent-policy` · `test:commission-bounded` (the fixture pool 400,000 / fee 30,000 / stake 100,000 / 30% → gross **1,912** — floor(6,375 × 0.30); not 2,250, the gross-fee figure, and not 1,913, the rounded one — then **96** withheld and **1,816** credited; and §7 reproduces management's whole waterfall from a TZS 1,000,000 pool, joining the page's table to the engine's own `splitWithholding`) · `test:no-double-pay` · `test:agent-clawback` · `test:programme-isolation` · `test:attribution-provenance` · `test:agent-eligibility` · `test:agent-application-security` — each with a red harness (12 mutations across the eight gates) |
 
 ⚠️ **Two scales exist and are not the same.** `AffiliateAgent.commissionPct` is a **percent**
@@ -606,6 +606,12 @@ is indistinguishable from a successful one.
 
 No commission, first-bet or turnover reward accrues on house-marked stakes (§2.11, ⏳ live, not yet verified on production).
 
+**No commission accrues on a Maswali Millionea ticket (§2.12), and no first-bet invite reward (§2.10a) is paid on one** —
+Ali's ruling OD-20 of 2026-10-23 ("Agents and invites", `docs/MASWALI-PLAN.md` §9: for v1, reviewed after three months).
+A purchase leaves `buyPosition` for `buyMaswaliTickets` before `onRecruitBet`, `settleMarket` refuses a Millionea week,
+and no `maswali-*` server module calls a recruit hook. Stated in `/legal/agent-terms` §3 from v2026-10-23, in all three
+locales (`AGENT_TERMS_VERSION`; `test:agent-terms-binding` §5 holds the clause).
+
 ### 2.10a · The player invite is UNPAID by default — the link is tracked, and only the Owner's switch can make it pay
 
 **Decided** Ali, 2026-09-25: *"we don't want to pay anything on affiliate … i want to track how many
@@ -635,6 +641,7 @@ outside the platform and is not recorded here.
 | **Turning it on** | The Owner's ceremony on `/admin/affiliate` (until 2026-09-26: one word of code, or the env variable). Only the stored role `ADMIN` may, with a written reason (5–300 characters once invisible characters are cleaned out) and the typed words `MAKE PAYABLE`, exact. **No authenticator code**, by Ali's choice. It defaults to "Nothing yet": every reward switched off. **Stopping** is the Owner's too, with a reason only, offered whenever the stored record says Payable: no new referral reward starts from the moment he confirms, and a reward already being paid at that instant can still land. Each attempt and each change writes a COMPLIANCE audit row, and a Save that raises what the invite pays writes one too (`affiliate.reward.terms`). Rewards land as withdrawable **CASH** while the bonus wallet is withdrawn; a player's first withdrawal still needs their identity check. The suites that keep the paid path executable are named in `docs/PLAYER-INVITE-UNPAID.md` §7, and not repeated here, so the two lists cannot drift apart. No separate Gaming Board clearance is needed: 50pick's licence covers invite rewards (owner ruling 2026-09-27, `docs/COMPLIANCE-DECISIONS.md`) |
 | **The player commission ceiling** | At most **50% of the margin** a friend's bets earn 50pick, in whole percent, for a window of **1–60 months** (no lifetime term). Refused on save (`validateAffiliateConfig`), repaired on load (a mode with any out-of-rule field loads switched OFF) and clamped again at accrual (`effectivePlayerTerms`). ⛔ The 50% is a RULE since 2026-09-26, no longer guidance: an officer may set less, nothing may set more. The 1–60 window was already refused on save; since 2026-09-26 it is also repaired on load and clamped at accrual, so a stored 0 can no longer mean lifetime |
 | **No reward is tied to a deposit** | Since 2026-09-26 (Ali): the published Responsible Gambling policy promises "No bonus offers tied to deposit increases", so the bonus is paid on **sign-up** only (`BonusTrigger` is `SIGNUP` alone) and the prize on a friend's **first bet** only (`PrizeMilestone` is `FIRST_BET` alone). A Save naming `FIRST_DEPOSIT` or `DEPOSIT_THRESHOLD` is refused, a stored row naming one loads with that mode OFF, and a deposit pays no referral reward; a retired mode still armed is refused out loud (`player_deposit_trigger_retired`). ⚠️ `requireDeposit` on the first-bet prize stays: it is an anti-fraud precondition, not a reward for depositing, and a failed read of it pays nothing |
+| **Not on a Millionea ticket** | A Maswali Millionea ticket is not a bet the first-bet prize reads: buying one pays no prize and does not use it up (OD-20, Ali 2026-10-23 — the rule and its enforcement are §2.10's last paragraph) |
 
 Enforced by `npm run test:player-invite-unpaid` and, for the Owner's switch in database mode,
 `npm run test:invite-payable-db`, with their red controls `npm run red:player-invite-unpaid` and
@@ -711,6 +718,8 @@ Compliance week void, before ACTIVE — until then the binding text does not sta
 **Who may buy.** Real balance only — a purchase that would draw bonus money is refused. Accounts holding a staff role and
 accounts 50pick operates are refused. Every responsible-gambling gate applies (§2.9's refusals), and a ticket bought before a
 self-exclusion still settles. **10 tickets per account per week** (§2.4's exception).
+
+**Agents and invites.** A ticket earns no agent commission and no first-bet invite reward (OD-20; §2.10, §2.10a).
 
 **Cancelling.** §2.6's free cancellation applies unchanged: a ticket bought with the runway still ahead of it may be
 cancelled inside the window for a full refund, and leaves the count, the commitment and the grading. There is no paid exit.
