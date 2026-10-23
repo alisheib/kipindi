@@ -673,7 +673,12 @@ check("4.6", "a voided main's number is struck, the strike in the number's own i
 // M7 (the register critic) · M5 (the motion critic): the example teaches with the motion or without it.
 check("4.7", "M7 · M5 · How's example opens on the BEFORE frame — main 4 void with its number struck, A1–A5 standing by, no reserve carried, no Unbroken Line — and the tap draws the after frame in place; \"↪4\", the Unbroken Line, \"Replay\" and \"Example ended\" come only once the token has landed (at once under a clamp); the button keeps one width for both labels", (w) => {
   const ex = code(w, "example"), how = code(w, "how");
-  const frames = how.includes("return { before: sealLineOf(qs, picks), after: sealLineOf(qs, picks, { final: true }) };") && how.includes("<HowExample before={before} after={after} caption={caption} />");
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-23 (S5-R3-FIX 8): the example's record is said once, in How's words module
+  // (`how-words.ts`, `exampleRecord`), whose caption the loading drawing sets unseen; the page draws its two frames from
+  // that record, and the record is the one this suite draws (main 4 voided, every pick YES).
+  const record = (req("../src/app/millionea/how/how-words.ts") as { exampleRecord: () => { questions: unknown[]; picks: unknown[] } }).exampleRecord();
+  const frames = how.includes("const { questions, picks } = exampleRecord();") && how.includes("return { before: sealLineOf(questions, picks), after: sealLineOf(questions, picks, { final: true }) };")
+    && how.includes("<HowExample before={before} after={after} caption={caption} />") && j(record.questions) === j(exampleQs) && j(record.picks) === j(picks);
   const machine = ex.includes("const ended = run > 0 && landed === run;") && ex.includes("const line = run === 0 ? before : ended ? after : { ...after, unbroken: false };")
     && ex.includes("play={{ carry: run > 0, run, draw: ended, onCarried: () => setLanded(run) }}") && ex.includes("const label = landed > 0 ? t.millionea.replay : t.millionea.seeExample;")
     && ex.includes('<span role="status" className="text-body-sm text-text-subtle">{ended ? t.millionea.exampleEnded : ""}</span>')
@@ -947,7 +952,8 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["M5 undone — \"Example ended\" at the tap, before the token landed", "4.7", plantExample("const ended = run > 0 && landed === run;", "const ended = run > 0;")],
   ["M5 undone — the Unbroken Line drawn under a token still in flight", "4.7", plantExample("const line = run === 0 ? before : ended ? after : { ...after, unbroken: false };", "const line = run === 0 ? before : after;")],
   ["the non-scaling stroke back on the drawn line (it rests as dashes)", "4.8", plantSrc("line", "        pathLength={100}\n", '        vectorEffect="non-scaling-stroke"\n        pathLength={100}\n')],
-  ["M7 undone — How hands the example its end frame only", "4.7", plantSrc("how", "return { before: sealLineOf(qs, picks), after: sealLineOf(qs, picks, { final: true }) };", "return { before: sealLineOf(qs, picks, { final: true }), after: sealLineOf(qs, picks, { final: true }) };")],
+  // ⚠️ RE-PINNED 2026-10-23 (S5-R3-FIX 8): the frames are drawn from `exampleRecord()` (How's words module) — the anchor only.
+  ["M7 undone — How hands the example its end frame only", "4.7", plantSrc("how", "return { before: sealLineOf(questions, picks), after: sealLineOf(questions, picks, { final: true }) };", "return { before: sealLineOf(questions, picks, { final: true }), after: sealLineOf(questions, picks, { final: true }) };")],
   // §5
   ["M6 undone — step 3 without the floor (the old sentence's place)", "5.1", plantSrc("how", "? fill(t.millionea.ruleWithFigure, { amount: fill(t.millionea.atLeast, { amount: formatTzs(h.floor) }), pct })", "? fill(t.millionea.ruleShared, { pct })")],
   ["M6 undone — where a win is paid left unsaid", "5.1", plantSrc("how", "    keepFact(locale, t.millionea.ruleWinPaid),\n", "")],
