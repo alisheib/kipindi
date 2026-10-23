@@ -1163,6 +1163,9 @@ console.log(`${LF}§10b · ⭐ S6-NOTICES · an objection filed pings the office
   const { week: wo, start: so } = await W.openWeek({ weeksAhead: ahead++ });
   const f1 = await W.buy(F1, wo.id, [W.WIN]);
   const f2 = await W.buy(F2, wo.id, [W.LOSE]);
+  // The receipts are told while the week is still on sale: a receipt whose run lands after the close has no free cancel to
+  // name (`millioneaCancelUntil` is null once sales close), and 10b.10b reads F2's.
+  await settleAll();
   await W.closeAndSeal(wo, so);
   await settleAll();
   const codeO = (await dal.weekStore.get(wo.id)).code as string;
