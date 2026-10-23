@@ -3579,6 +3579,9 @@ export const dict = {
       // bet's sentence (`journey.depositPaidManual`) in the slip's own nouns and buy verb; the answers wait in this tab.
       depositPaidSlip: "Your money arrived. Return to your Millionea answers and confirm to buy; no ticket was bought automatically.",
       depositReturnSlip: "Return to your answers",
+      // FLOW 13 (the lead's ruling of 2026-10-23): a held wallet, in Millionea's buy words (Ali's ruling 7) — the buy's own
+      // refusal, the slip's pre-refusal and the hub's buy block; the platform's `failWalletFrozen` stays for the rest.
+      walletFrozen: "Your wallet is frozen, so tickets can’t be bought. Contact support to resolve it.",
       ticketCut: "Ticket bought",
       ticketsCut: "{n} tickets bought",
       viewTicket: "View ticket",
@@ -6600,6 +6603,7 @@ export const dict = {
       lowBalanceBody: "Salio kuu {balance} halitoshi kwa {price}. Bonasi haihesabiwi hapa.",
       depositPaidSlip: "Pesa zako zimefika. Rudi kwenye majibu yako ya Millionea na uthibitishe kukata tiketi; hakuna tiketi iliyokatwa kiotomatiki.",
       depositReturnSlip: "Rudi kwenye majibu yako",
+      walletFrozen: "Pochi yako imegandishwa, kwa hiyo huwezi kukata tiketi. Wasiliana na msaada kutatua hili.",
       ticketCut: "Tiketi imekatwa",
       ticketsCut: "Tiketi {n} zimekatwa",
       viewTicket: "Tazama tiketi",
@@ -9562,6 +9566,7 @@ export const dict = {
       lowBalanceBody: "主余额 {balance} 不足 {price}。奖金余额在此不计。",
       depositPaidSlip: "资金已到账。返回您的 Millionea 答案并确认出票；系统没有自动出票。",
       depositReturnSlip: "返回您的答案",
+      walletFrozen: "您的钱包已冻结，无法出票。请联系客服处理。",
       ticketCut: "已出票",
       ticketsCut: "已出票 {n} 张",
       viewTicket: "查看彩票",

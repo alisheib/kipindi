@@ -1863,4 +1863,18 @@ first. THE RULE: a held wallet meets the buy's own refusal, in the buy's own wor
 instead of the slip, as it says the cap — and the buy still decides (a wallet held while the slip is open meets the same
 refusal at the buy). The condition is the buy's own (a wallet whose status is not ACTIVE). Held by `test:maswali-player`
 4.7b on both stores (the slip's refusal, the buy's same reason, and the lift), with a recorded plant (the pre-refusal
-dropped: 4.7b failed on the memory store, 194/1, and the file was restored byte for byte).
+dropped: 4.7b failed on the memory store, 194/1, and the file was restored byte for byte). The words since FLOW 13: FL.4.
+
+#### ✅ FL.4 · a held wallet heard "bets", and the hub still offered it the slip — fixed by FLOW 13 (the lead's ruling of 2026-10-23)
+
+FL.3's follow-ups, put to the lead: the refusal FL.3 drew was the platform's sentence, "Your wallet is frozen, so bets can’t
+be placed." — a Millionea ticket is bought, never placed as a bet (Ali's ruling 7: "Buy ticket", "Kata tiketi", 出票) — and
+the hub still offered a held wallet "Fill a ticket", one tap from that refusal. THE RULE: a held wallet hears ONE Millionea
+sentence, `millionea.walletFrozen` — "Your wallet is frozen, so tickets can’t be bought. Contact support to resolve it." /
+"Pochi yako imegandishwa, kwa hiyo huwezi kukata tiketi. Wasiliana na msaada kutatua hili." / "您的钱包已冻结，无法出票。请联系客服处理。"
+— chosen in one place (`src/lib/millionea-refusal.ts`, `millioneaRefusalBody`) and said by three surfaces: the slip's
+pre-refusal (instead of the slip), the buy's refusal (the slip's toast) and the hub's buy block, which says it in place of
+the fill door (after a break's notice and a guest's door, before the cap's line; `millioneaWalletHeld`, the buy's own
+condition, failing open — the slip and the buy still refuse). Every other reason keeps the registry's sentence, and the
+platform's `error.failWalletFrozen` stays for every other product. Held by `test:millionea-held-wallet` (the one choice, the
+three surfaces and their order, the one condition, the words) with plants (HW1)–(HW6) of `red:millionea-held-wallet`.

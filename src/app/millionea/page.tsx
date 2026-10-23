@@ -44,7 +44,8 @@ import {
   millioneaCloseMove, millioneaFinalWeekAhead, millioneaHub, millioneaHubCommitments, millioneaMyTicketsWeek,
   type MillioneaHub, type MillioneaHubWeek, type MillioneaNotice, type MillioneaTicketsWeek,
 } from "@/lib/server/maswali-player";
-import { millioneaBreakOf, millioneaDoor, millioneaOpenTemplate } from "@/lib/server/millionea-doors";
+import { millioneaBreakOf, millioneaDoor, millioneaOpenTemplate, millioneaWalletHeld } from "@/lib/server/millionea-doors";
+import { millioneaRefusalBody } from "@/lib/millionea-refusal";
 import { nextWeekOpen } from "@/components/maswali/maswali-card-model";
 import { getServerT } from "@/lib/i18n-server";
 import { breakSentence } from "@/lib/break-end";
@@ -311,9 +312,9 @@ function MineBlock({ t, locale, w }: { t: Dict; locale: Locale; w: MillioneaHubW
  * ⭐ M3 · A GUEST IS OFFERED SIGN UP FIRST (§K 8d), then Sign in — the market page's own pair, through the one door rule
  * (`authDoorHrefs`: back to the slip after, the page's `ref` and `invite` carried beside `next`, never dropped).
  */
-function BuyDoor({ t, w, signedIn, nowMs, nextOpen, breakBody, guest, className }: {
+function BuyDoor({ t, w, signedIn, nowMs, nextOpen, breakBody, walletHeld = false, guest, className }: {
   t: Dict; w: MillioneaHubWeek; signedIn: boolean; nowMs: number; nextOpen: number | null;
-  breakBody: { text: string; keep: readonly string[] } | null; guest: { signIn: string; signUp: string }; className?: string;
+  breakBody: { text: string; keep: readonly string[] } | null; walletHeld?: boolean; guest: { signIn: string; signUp: string }; className?: string;
 }) {
   const closesMs = msOf(w.closesAt) ?? 0;
   // ⭐ S5-FIX-PLAYER P15 · THE CLOSE AND ITS COUNTDOWN STAND ONLY WHILE THE WEEK SELLS TO THIS READER (`selling`: OPEN, before
@@ -341,6 +342,10 @@ function BuyDoor({ t, w, signedIn, nowMs, nextOpen, breakBody, guest, className 
         </div>
       </div>
     );
+  } else if (open && walletHeld) {
+    // ⭐ FLOW 13 (the lead's ruling of 2026-10-23): a held wallet hears the buy's own refusal here, in Millionea's words — the
+    // one sentence the slip and the buy say (`millioneaRefusalBody`) — never a door to fifteen answers it cannot buy.
+    door = <Callout tone="neutral" role="status" data-testid="millionea-hub-held">{millioneaRefusalBody("wallet_frozen", t)}</Callout>;
   } else if (open && atCap) {
     // The cap's one line, the slip's refusal says it too (S5-FIX-PLAYER P13): the next week only when one can follow.
     door = <Callout tone="info" role="status">{capReachedLine(t, w.ticketCap, nextOpen)}</Callout>;
@@ -430,6 +435,8 @@ export default async function MillioneaHubPage({ searchParams }: { searchParams:
   const nowMs = now.getTime();
   const hub = await millioneaHub({ userId: gate.userId, state: gate.state }, now);
   const brk = await millioneaBreakOf(gate.userId);
+  // FLOW 13 · a held wallet is told the buy's refusal in the buy block, never offered the fill door (`millioneaWalletHeld`).
+  const walletHeld = await millioneaWalletHeld(gate.userId);
   const breakBody = brk
     ? breakSentence(brk.exclusion ? t.rg.exclusionActive : t.rg.breakActive, brk.until, nowMs, t.common.monthsShort, locale)
     : null;
@@ -480,7 +487,7 @@ export default async function MillioneaHubPage({ searchParams }: { searchParams:
             reader's tickets) then starts level in both columns. */}
         <BuyDoor
           t={t} w={w} signedIn={!!gate.userId} nowMs={nowMs} nextOpen={nextWeekOpen(hub, millioneaOpenTemplate(), nowMs)}
-          breakBody={breakBody} guest={guest} className={w.pool ? "md:col-start-2 md:row-start-1 md:self-center lg:self-auto" : undefined}
+          breakBody={breakBody} walletHeld={walletHeld} guest={guest} className={w.pool ? "md:col-start-2 md:row-start-1 md:self-center lg:self-auto" : undefined}
         />
       </div>
       <BuyFacts t={t} locale={locale} w={w} nowMs={nowMs} className={w.pool ? "md:col-start-2 md:row-start-2" : undefined} />
