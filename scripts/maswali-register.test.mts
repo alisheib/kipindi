@@ -903,7 +903,8 @@ if (!PROVE_RED) {
   /** The floor is the count a green run PRINTS; it only rises, to a printed number. */
   // S5-FIX-PLAYER §15 (P3, P4, P9, P11) added five; S5-DESIGN-REGISTER (3.9, 5.3, 5.4, 7.5, 7.6, 9.8, 14.3) seven, §16 (the
   // tile read) five; the S7 × S5 merge, S7's F4 cases (15.F4a, 15.F4b), two: 60 printed at dfb438dd2 (2026-10-22);
-  // S5-R2-REGISTER (3.10, 7.7, 7.8) three: 61 on main. Both sides' cases run here (S6-SHIP 9, the merge of main 07a400bc3):
+  // S5-R2-REGISTER (3.10, 7.7, 7.8) three: 61 on main. Both sides' cases run here (S6-SHIP 9 and S7-SHIP 4, each a
+  // merge of main 07a400bc3):
   // 63 printed on the merged tree.
   const MIN_ASSERTIONS = 63;
   if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }

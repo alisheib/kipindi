@@ -1047,6 +1047,20 @@ silently missing — 7/7 became 8/8 without a new mutation being written).
 A runner that ran `git checkout` would have hidden this defect *and* destroyed the session's own
 uncommitted work.
 
+### 8.4 · ⚪ `red:house-bot-c5` cannot be stopped mid-run without leaving its plant — recorded (S7-SHIP, 2026-10-23), no fix in this release
+
+The shared restore guard (`scripts/lib/red-restore-guard.mjs`) gives a red drive a safe stop: when the suite child it
+waits on ends with STATUS_CONTROL_C_EXIT (0xC000013A — a console Ctrl-C or Ctrl-Break, or that status set on purpose), the
+drive reads it (`isConsoleStop`), puts the planted file back and halts (`haltIfStopped`). `red:maswali-money-path` and
+`red:house-bot-console` are built that way. `red:house-bot-c5` is not: its `run()` never reads the child's status (a
+stopped child only reads as red, and the drive goes on to its next plant), and its SIGINT/SIGTERM handlers release the
+lock and exit WITHOUT restoring the file it planted. Measured on OMEGA (2026-10-23, in an S7-SHIP red-only tree): its suite
+shell ended with 0xC000013A, and c5 went on to its next two plants; its process tree ended, and the plant stayed on disk
+(`scripts/lib/house-bot-reports-cases.mts`) beside the drive's lock — both cleared from git by the batch around it, in a
+tree that held nothing else. The remedy is the money-path drive's pattern (`armRestoreGuard`, `isConsoleStop` read in
+`run()`, `haltIfStopped` between plants). A record only — nothing changed in this release (the lead, 2026-10-23). Until
+it lands, stop `red:house-bot-c5` only in a tree of its own, and restore that tree from git afterwards.
+
 ---
 
 ### §7.3 · WHAT THE LEXICON SWEEP MISSED — found by Ali's consultants, after it shipped
@@ -1271,7 +1285,8 @@ re-reads. It is the write-once guarantee working, logged by Prisma rather than b
 S7's acceptance (`docs/MASWALI-PLAN.md` §7b S7): every finding is fixed or recorded here. These three were booked as
 KNOWN-RED cases in `test:maswali-adversarial` (a case that reports, never fails the suite, until the work lands) and
 stood on the launch gate as Gate B line 14 (`MASWALI-PLAN.md` §6.1). All three are closed (2026-10-22): RD.5 and TK.2 by
-S7-F9, each with its commits, and OB.0 by S7-OB — each case passes now. Millionea is dark on production (`WITHDRAWN`).
+S7-F9, each with its commits, and OB.0 by S7-OB — each case passes now. The last entry is a finding of S7's ship that is
+older than S7, recorded here only.
 
 #### ✅ OB.0 · MB-23 · a player objects to one question — CLOSED (S7-OB, 2026-10-22)
 
@@ -1313,6 +1328,20 @@ an account — and is named on the integrity page for Compliance to review, wher
 money (2026-10-10). The preventive control (E-215, TK.1) still holds. A winner whose share, or whose week's paid total,
 the records lack is watched all the same, never passed over as 0 (S7-F9 13). Proven on both stores
 (`test:maswali-adversarial` TK.2–TK.7), with red plants in `red:maswali-money-path`.
+
+#### ⚪ Older than S7 · the database the migrations build and `prisma/schema.prisma` disagree — recorded (S7-SHIP, 2026-10-23)
+
+S7's migration proof (its one migration applied after main's folder, on a throwaway PostgreSQL 18.3) also asked
+`prisma migrate diff --from-url <that database> --to-schema-datamodel prisma/schema.prisma --exit-code`: exit 2, not empty.
+The migrations build what the schema file does not declare — the hand-written trigram search indexes of
+`20260728030000_search_trgm_small_tables` and `20260926120000_restore_search_trgm_indexes` (`PredictionMarket` on
+category, resolutionCriterion, titleEn, titleSw and titleZh; `AiUsageEvent` on detail, errorType and model), a database
+default on `DepositFundingClaim.updatedAt` (`20261015133000_deposit_funding_claim`; the schema's `@updatedAt` has none),
+and `JourneyFunnelDay`'s unique index under the 63-character name PostgreSQL cut its 66-character name to
+(`20261001120000_journey_funnel`), not Prisma's own shortening. Not S7's: main's own folder against main's own schema (main
+at `ac9fd7c21`) gives the identical diff, and S7 changes neither the schema nor any earlier migration. A record only —
+nothing to fix in this release (the lead, 2026-10-23). `prisma migrate dev` would propose dropping those indexes: one more
+reason it never runs against anything but a throwaway database (`AGENTS.md` §5).
 
 ## §9b · MASWALI MILLIONEA — the S6 integration's fixes, each a FINAL rule (2026-10-22)
 
