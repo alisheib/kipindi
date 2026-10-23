@@ -574,7 +574,10 @@ const heldGuardDefects = (hubSrc: string) => {
   // ⭐ THE ONE WORDING (the lead's ruling, 2026-10-22; MR-30, the S6 legal review): the final week's rule is ONE key, with
   // MR-30's floor clause last — `finalWeekRule` — on the slip, the confirm sheet, the hub (`poolRule`) and How to play (the
   // stop rule's {rule}). S7's own purchase line (`finalRule`) is gone, so no surface can say the rule a second way.
-  const FLOOR_CLAUSE: Record<(typeof LOCALES)[number], string> = { en: ", with no floor top-up", sw: ", bila nyongeza hadi kiwango cha chini", zh: "，不进行保底补足" };
+  // In Chinese the floor clause stands before the sharing clause (the lead's ruling, 2026-10-23, S5-R2-HUB 26). This is
+  // the clause order only, with the same meaning: Chinese breaks only at its punctuation, and the old order left the hub's
+  // rule a last line under half its longest at 320 and 360. So zh's tail is the floor clause and then the sharing clause.
+  const FLOOR_CLAUSE: Record<(typeof LOCALES)[number], string> = { en: ", with no floor top-up", sw: ", bila nyongeza hadi kiwango cha chini", zh: "，奖池不进行保底补足，由本周得分最高的彩票平分" };
   ok("2.F3a · ⛔ a final week's rule is on the slip (its first rule) and on the confirm sheet (beside the fee rule), on the week's own flag, in the one wording (`finalWeekRule`, MR-30's floor clause last) — and the purchase carries what the slip stated",
     slipF.includes('...(finalWeek ? [{ key: "final", node: keepFact(locale, t.millionea.finalWeekRule) }] : []), { key: "price", node: priceLine, soleFromXl: !finalWeek },')
       && slipF.includes("fill(t.millionea.ruleSharedJackpot, { pct }), finalWeek ? t.millionea.finalWeekRule : null, ]")

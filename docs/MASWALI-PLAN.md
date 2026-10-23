@@ -2883,7 +2883,8 @@ MB-96 (TK.2, S7-F9 8 and 11), MB-74 (RD.5, S7-F9 9) and MB-23 (OB.0, S7-OB, merg
   stamps both stages with two-admin on.
 - **S7 · the final week's rule in one wording (S7-F9 3; the lead's ruling of 2026-10-22, citing MR-30 and the S6 legal
   review).** `finalWeekRule` — the release's sentence with MR-30's floor clause last (en "…, with no floor top-up"; sw
-  "…, bila nyongeza hadi kiwango cha chini"; zh "…，不进行保底补足") — is the one key the hub, the slip, the confirm sheet
+  "…, bila nyongeza hadi kiwango cha chini"; zh "…奖池不进行保底补足，由本周得分最高的彩票平分", its floor clause before the
+  sharing clause since S5-R2-HUB 26, the lead's ruling of 2026-10-23 on clause order) — is the one key the hub, the slip, the confirm sheet
   and How to play draw (How through `ruleSunset`'s `{rule}`); S7's own purchase line, `finalRule`, is gone; D19a
   re-pinned. DESIGN_AUTHORITY §M8a item 19. Guards: `test:maswali-design` 2.F3a and 2.F3b (with its plant),
   `test:maswali-hub` 3.1 and §10. ⚠️ S6's L lane rewrites `ruleSunset` in all three languages: its merge keeps this key

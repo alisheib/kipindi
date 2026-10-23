@@ -140,7 +140,13 @@ export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // as 44ebc7238): the nine `result*` notices in the page form ("Week {week}: your ticket did not win." for "Millionea Week
   // {week}: your ticket did not win") and `lastWeekRolled`'s fee an amount ("· fee {fee}", as `feeZero`). No policy
   // string, no classic word; FLOW 13's `walletFrozen` stands as FLOW pinned it.
-  "src/lib/i18n-dict.ts": "2382f3ea3211ab53d4bab8001eff921aebcaba37",
+  // D19a RE-PINNED AT MASWALI-BUILD S5-R2-HUB 26 (was 2382f3ea3, HUB 20's). The strip-mln check against 592032196's
+  // dictionary: outside the three `millionea` blocks byte-identical (a planted classic edit reported). Inside them one key
+  // in one language: zh `finalWeekRule` puts its floor clause before its sharing clause, "最后一周：若无彩票答对 10/10，
+  // 奖池不进行保底补足，由本周得分最高的彩票平分" (the lead's ruling, 2026-10-23: clause order only, the same meaning; Chinese
+  // breaks only at its punctuation, and the old order left the hub's rule a last line under half its longest at 320 and
+  // 360). en and sw are unchanged. No policy string, no classic word.
+  "src/lib/i18n-dict.ts": "da3c4059945ca801beb9f94033f42bb8ee5a423a",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
 };

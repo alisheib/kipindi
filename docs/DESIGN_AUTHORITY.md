@@ -3430,7 +3430,10 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
 19. **The final week's rule has one wording, wherever it is told (the lead's ruling, 2026-10-22; MR-30, the S6 legal
     review).** One dictionary key, `finalWeekRule`, with MR-30's floor clause last: en "Final week: if no ticket gets
     10/10, the pool is shared equally by this week's highest-scoring tickets, with no floor top-up"; sw the same sentence
-    ending ", bila nyongeza hadi kiwango cha chini"; zh ending "，不进行保底补足". The hub draws it under the jackpot in a
+    ending ", bila nyongeza hadi kiwango cha chini"; zh "最后一周：若无彩票答对 10/10，奖池不进行保底补足，由本周得分最高的彩票平分".
+    In zh the floor clause stands before the sharing clause (the lead's ruling, 2026-10-23, S5-R2-HUB 26). That is the
+    clause order only, with the same meaning: Chinese breaks only at its punctuation, and the old order ("…彩票平分，
+    不进行保底补足") left the hub's rule a last line under half its longest at 320 and 360. The hub draws it under the jackpot in a
     final week, the slip as its first rule, the confirm sheet beside the fee rule, How to play inside its stop rule, and
     /help right after its 10/10 and carry lines. The stop rule (`ruleSunset`) keeps the legal lane's stop clauses — the
     week on sale made final at once; with no week on sale and one being decided, the next week, even at short notice; at
@@ -3618,8 +3621,11 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
       reserves left, the objection window, the next event) are their own cell under the door, level with the ledger,
       which follows the head; from 1024 they read on under the pinned pair, which holds only the head and the door. Inside
       the door's block they made it taller than the head, and an empty band (80px at sw and en 768) stood under the head.
-    - From 1024 the pinned head and door stand on the page's own ground, whose foot fades, so nothing passes under them
-      cut flat. At rest the block under them stands the column's own gap below.
+    - From 1024 the pinned head and door stand on the page's own ground, opaque across their whole box with no fade
+      (S5-R2-HUB 26, the lead's design call). Its top is at the bar's foot, so nothing that reads on in the column shows
+      through the pair or in the gap above it. While they stand pinned, their lower edge is one hairline, the kit's
+      divider (`--border-divider`), and what passes under them leaves at that edge. At rest they draw no edge, and the
+      block under them stands the column's own gap below.
     - A closed week's held rows stand under "Your tickets", the tickets page's own title.
     - The carried figure's flight into the ledger (item 1's N1, from the rollover notice's own figure) lands on a box of
       the row's line: the carry's wrapper is an inline block, so the frame's numeral rule (a figure's line height 0,
