@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { MaswaliFacts, factsOf } from "@/components/maswali/maswali-facts";
 import { eatRange, eatWeekday, eatWeekdayClock } from "@/components/maswali/maswali-format";
@@ -31,23 +31,37 @@ export type WeekPhases = {
   resultsFrom: number; resultsTo: number;
 };
 
-/** A phase from its dictionary words ("Mauzo · {range} EAT"): the label, and the range with what follows it ("EAT")
- *  held to the range's end. `ends` is the start and the end — or one day alone. Each clock a `.mono` numeral, each
- *  weekday the body's (the lead's L7 ruling, §T5). */
-function phaseOf(template: string, ends: readonly string[]): { label: string; range: ReactNode } {
+/** A phase's words from its dictionary line ("Mauzo · {range} EAT"): the label, and the range's kept runs — its start with
+ *  the dash held to it, and its end with what follows it ("EAT") — or one run when `ends` is one day alone. */
+function phaseWords(template: string, ends: readonly string[]): { label: string; runs: string[] } {
   const [label = "", part = "{range}"] = factsOf(template);
   const [before = "", after = ""] = part.split("{range}");
   const last = `${ends[ends.length - 1] ?? ""}${after}`;
-  const range = ends.length < 2
-    ? <span className="whitespace-nowrap">{numeralFace(`${before}${last}`)}</span>
-    : (
-      <>
-        <span className="whitespace-nowrap">{numeralFace(`${before}${ends[0]} –`)}</span>
-        {" "}
-        <span className="whitespace-nowrap">{numeralFace(last)}</span>
-      </>
-    );
-  return { label, range };
+  return { label, runs: ends.length < 2 ? [`${before}${last}`] : [`${before}${ends[0]} –`, last] };
+}
+
+/**
+ * THE STRIP'S WORDS, ONCE (MASWALI-BUILD S5-R2-HUB, HUB-2B): each phase's label and its range's kept runs, as strings — what
+ * the strip draws, and what the hub's loading drawing sets unseen for the template week (`hub-page-words.ts`). The sales
+ * range is `eatRange`'s (a whole day at midnight reads as its weekday), split back at the one dash it sets.
+ */
+export function weekStripWords(t: Dict, phases: WeekPhases): Array<{ label: string; runs: string[] }> {
+  const sameDay = (a: number, b: number) => eatWeekday(t, a) === eatWeekday(t, b);
+  return [
+    phaseWords(t.millionea.stripSales, eatRange(t, phases.salesFrom, phases.salesTo).split(" – ")),
+    phaseWords(t.millionea.stripEvents, [eatWeekdayClock(t, phases.eventsFrom), eatWeekday(t, phases.eventsTo)]),
+    phaseWords(t.millionea.stripResults, sameDay(phases.resultsFrom, phases.resultsTo)
+      ? [eatWeekday(t, phases.resultsFrom)]
+      : [eatWeekday(t, phases.resultsFrom), eatWeekday(t, phases.resultsTo)]),
+  ];
+}
+
+/** A range's runs drawn: each one unbreakable run, the one space between them where a line may break. Each clock a
+ *  `.mono` numeral, each weekday the body's (the lead's L7 ruling, §T5). */
+function rangeOf(runs: readonly string[]): ReactNode {
+  return runs.map((r, i) => (
+    <Fragment key={i}>{i > 0 && " "}<span className="whitespace-nowrap">{numeralFace(r)}</span></Fragment>
+  ));
 }
 
 export function MaswaliWeekStrip({ t, phases, current, className }: {
@@ -57,15 +71,7 @@ export function MaswaliWeekStrip({ t, phases, current, className }: {
   current: 0 | 1 | 2 | null;
   className?: string;
 }) {
-  const sameDay = (a: number, b: number) => eatWeekday(t, a) === eatWeekday(t, b);
-  // The sales range is `eatRange`'s (a whole day at midnight reads as its weekday), split back at the one dash it sets.
-  const rows = [
-    phaseOf(t.millionea.stripSales, eatRange(t, phases.salesFrom, phases.salesTo).split(" – ")),
-    phaseOf(t.millionea.stripEvents, [eatWeekdayClock(t, phases.eventsFrom), eatWeekday(t, phases.eventsTo)]),
-    phaseOf(t.millionea.stripResults, sameDay(phases.resultsFrom, phases.resultsTo)
-      ? [eatWeekday(t, phases.resultsFrom)]
-      : [eatWeekday(t, phases.resultsFrom), eatWeekday(t, phases.resultsTo)]),
-  ];
+  const rows = weekStripWords(t, phases).map(({ label, runs }) => ({ label, range: rangeOf(runs) }));
   return (
     <ol className={cn("flex flex-col gap-2 md:grid md:grid-cols-3 md:gap-3", className)} data-testid="millionea-week-strip">
       {rows.map((row, i) => {

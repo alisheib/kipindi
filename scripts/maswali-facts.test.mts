@@ -24,7 +24,7 @@
  *      figure's digits (2.2), no kept run running on past a figure's end into its words (2.3).
  *   §3 NOTHING ELSE MOVED: against the keeper at the release this branch started from (`BASE`), every fact of every string
  *      keeps the same runs, except where one of the rules applies — a Swahili fact with a cap's count, a fact with a money
- *      figure, or a fact with a one-letter word (§5) — and each such fact still keeps every run the base kept that overlaps
+ *      figure, a fact with a one-letter word (§5) or a connective (§6) — and each such fact still keeps every run the base kept that overlaps
  *      no figure and does not open on a cap's noun. (`test:maswali-design` 4.A1c holds the A1 phrases themselves.)
  *   §4 PLANTS, each compiled into the keeper: the old Swahili take of a cap's opener (§1, §2.1), a number rule taking a
  *      figure's digits (§2.2), a kept run left starting inside a figure (§2.3, §2.1), and both figure rules out (§2.1).
@@ -32,6 +32,12 @@
  *      every one-letter word of every line is one run with the word after it (5.1), the hub's intro among them (5.3);
  *      Swahili and Chinese lines are untouched by the rule, and an English line moves only where such a word stands (5.2);
  *      the rule taken out is caught (5.4).
+ *   §6 A CONNECTIVE NEVER ENDS A LINE (HUB-2B, the lead's ruling of 2026-10-23 on the hub-d8 tile read: the hub's
+ *      `reservesShort`, "…kuchukua nafasi ya" / "maswali yaliyobatilishwa" at sw 360 and 1280): the keeper keeps each
+ *      connective the kit's list names ("ya", "za", "kwa", "na"…, "of", "and") with the word after it, as `keepConnectives`
+ *      keeps a title's — every one in the census (6.1), the hub's line among them (6.2); Chinese is untouched and a line
+ *      moves only where a connective stands (6.3); the rule taken out is caught (6.4). The census (§2.1) measures a
+ *      connective's run WITH the word it holds (`unitsOf`): the span holds "ya ", the line cannot break before "maswali".
  * ⛔ It READS, compiles and renders in memory; it writes nothing.
  */
 import { readFileSync } from "node:fs";
@@ -45,6 +51,7 @@ import { dict } from "../src/lib/i18n-dict.ts";
 import { fill, formatTzs } from "../src/lib/utils.ts";
 import { eatRange, eatWeekdayClock, eatClock } from "../src/components/maswali/maswali-format.ts";
 import { formatEatDate } from "../src/lib/eat-day.ts";
+import { connectiveRanges } from "../src/lib/connectives.ts";
 import { outcomeWordIn } from "../src/lib/side-label.ts";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
@@ -105,7 +112,43 @@ const runsOf = (m: string): string[] => {
   return out;
 };
 const textOf = (m: string) => dec(m.replace(/<[^>]+>/g, ""));
-const kept = (k: Keeper, l: L3, fact: string) => runsOf(renderToStaticMarkup(h("p", null, k.keepFact(l, fact) as never)));
+const markupOf = (k: Keeper, l: L3, fact: string) => renderToStaticMarkup(h("p", null, k.keepFact(l, fact) as never));
+const kept = (k: Keeper, l: L3, fact: string) => runsOf(markupOf(k, l, fact));
+/**
+ * The units no engine breaks inside: each kept run — and a run that ENDS on its white space (a connective's, §6) with the
+ * word after it, up to that word's first break: no engine breaks after a space that closes a nowrap box (lib/connectives.ts
+ * says why), so "ya " holds "maswali" though the span holds only "ya ". As inner markup, so the width model reads each face.
+ */
+const unitsOf = (m: string): string[] => {
+  const tokens = [...m.matchAll(/<span\b[^>]*>|<\/span>|<\/?p>|[^<]+/g)].map((t) => t[0]);
+  const RUN = '<span class="whitespace-nowrap">';
+  const out: string[] = [];
+  for (let i = 0; i < tokens.length; i++) {
+    if (tokens[i] !== RUN) continue;
+    let depth = 0, end = i, unit = "";
+    for (; end < tokens.length; end++) {
+      const t = tokens[end];
+      if (t.startsWith("<span")) depth++;
+      else if (t === "</span>") depth--;
+      if (end > i && depth === 0) break;
+      if (end > i) unit += t;
+    }
+    if (/\s$/.test(textOf(unit))) {
+      for (let k = end + 1; k < tokens.length; k++) {
+        const t = tokens[k];
+        if (t === "</p>" || t === RUN) break;
+        if (t.startsWith("<")) { unit += t; continue; }
+        const cut = dec(t).search(/\s/);
+        if (cut >= 0) { unit += dec(t).slice(0, cut); break; }
+        unit += t;
+      }
+    }
+    out.push(unit);
+    i = end;
+  }
+  return out;
+};
+const units = (k: Keeper, l: L3, fact: string) => unitsOf(markupOf(k, l, fact));
 
 const fontkit = req("fontkit") as { openSync: (p: string) => { unitsPerEm: number; layout: (s: string) => { advanceWidth: number } } };
 const FONT = (f: string) => fontkit.openSync(join(ROOT, "src/lib/server/reports/fonts", f));
@@ -179,12 +222,13 @@ const census = (l: L3) => {
   return out;
 };
 const FACT_SET = Object.fromEntries(LOCALES.map((l) => [l, census(l)])) as Record<L3, Array<{ key: string; fact: string }>>;
-/** The census read with a keeper: every run that does not fit the budget, and the widest run per language. */
+/** The census read with a keeper: every unit (a kept run, a connective's run with the word it holds) that does not fit the
+ *  budget, and the widest per language. */
 const measure = (k: Keeper) => {
   const over: string[] = [];
   const widest: Record<string, { run: string; w: number; key: string }> = {};
   let runs = 0;
-  for (const l of LOCALES) for (const { key, fact } of FACT_SET[l]) for (const r of kept(k, l, fact)) {
+  for (const l of LOCALES) for (const { key, fact } of FACT_SET[l]) for (const r of units(k, l, fact)) {
     runs++;
     const w = widthOf(r), run = textOf(r);
     if (!widest[l] || w > widest[l].w) widest[l] = { run, w, key };
@@ -208,7 +252,7 @@ section(`§2 · every run of every Millionea line fits the narrowest box a fact 
 const nowCensus = measure(now), baseCensus = measure(base);
 for (const l of LOCALES) console.log(`  ${l} widest: "${nowCensus.widest[l].run}" ${nowCensus.widest[l].w.toFixed(1)}px (millionea.${nowCensus.widest[l].key}) · the base's: "${baseCensus.widest[l].run}" ${baseCensus.widest[l].w.toFixed(1)}px (millionea.${baseCensus.widest[l].key})`);
 console.log(`  base over budget (${baseCensus.over.length}): ${baseCensus.over.slice(0, 12).join(" | ")}`);
-ok(`2.1 · ${FACT_SET.sw.length + FACT_SET.en.length + FACT_SET.zh.length} facts in sw, en and zh, ${nowCensus.runs} kept runs: every one fits ${BUDGET}px — the widest ${Math.max(...LOCALES.map((l) => nowCensus.widest[l].w)).toFixed(1)}px`,
+ok(`2.1 · ${FACT_SET.sw.length + FACT_SET.en.length + FACT_SET.zh.length} facts in sw, en and zh, ${nowCensus.runs} kept units (a run, or a connective's run with the word it holds): every one fits ${BUDGET}px — the widest ${Math.max(...LOCALES.map((l) => nowCensus.widest[l].w)).toFixed(1)}px`,
   nowCensus.over.length === 0 && nowCensus.runs > 500, nowCensus.over.join(" | "));
 ok(`2.1′ CONTROL · the census reads the defects: at the base ${baseCensus.over.length} runs did not fit, the results line and the figure glued to its words among them`,
   baseCensus.over.some((x) => x.includes("Matokeo 15 kati ya 15 yametolewa")) && baseCensus.over.some((x) => x.includes("TZS 12,345,000 carried forward"))
@@ -250,13 +294,15 @@ const CAP_COUNT = /\b\d+ (?:of|kati ya) \d+\b/;
  *  start, or an opening bracket or quote), then the next word. */
 const ONE_LETTER = /(^|[\s(“])([A-Za-z])\s+(\S+)/g;
 const hasOneLetter = (fact: string) => [...fact.matchAll(ONE_LETTER)].length > 0;
+/** A connective with a word after it (§6), as the kit's one rule reads it. */
+const hasConnective = (fact: string) => connectiveRanges(fact).length > 0;
 const changed: string[] = [], unexplained: string[] = [], lost: string[] = [];
 for (const l of LOCALES) for (const { key, fact } of FACT_SET[l]) {
   const b = kept(base, l, fact).map(textOf), n = kept(now, l, fact).map(textOf);
   if (j(b) === j(n)) continue;
   changed.push(`${l} ${key}`);
   const money = FIGURE.test(fact), cap = l === "sw" && CAP_COUNT.test(fact);
-  if (!money && !cap && !hasOneLetter(fact)) { unexplained.push(`${l} millionea.${key} "${fact}": ${j(b)} → ${j(n)}`); continue; }
+  if (!money && !cap && !hasOneLetter(fact) && !hasConnective(fact)) { unexplained.push(`${l} millionea.${key} "${fact}": ${j(b)} → ${j(n)}`); continue; }
   // Every base run that overlaps no money figure and does not open on a noun before a cap's count is still kept, inside
   // some run now. (A run is a stretch of its fact: it is found where it stands, and a figure where the money reads it.)
   const figures = figuresIn(fact);
@@ -268,7 +314,7 @@ for (const l of LOCALES) for (const { key, fact } of FACT_SET[l]) {
   }
 }
 console.log(`  ${changed.length} facts changed: ${changed.join(", ")}`);
-ok("3.1 · every fact whose runs changed holds a money figure or a one-letter word, or is a Swahili fact with a cap's count — no other line moved", unexplained.length === 0 && changed.length > 0, unexplained.join(" | "));
+ok("3.1 · every fact whose runs changed holds a money figure, a one-letter word or a connective, or is a Swahili fact with a cap's count — no other line moved", unexplained.length === 0 && changed.length > 0, unexplained.join(" | "));
 ok("3.2 · …and each keeps every run the base kept that the rules do not touch (no phrase lost in sw, en or zh)", lost.length === 0, lost.join(" | "));
 
 /* ══ §4 · PLANTS ═══════════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -309,7 +355,7 @@ console.log(`  one-letter words: en ${byLocale("en")}, sw ${byLocale("sw")}, zh 
 ok(`5.1 · every one-letter word of every line is one run with the word after it (${letters.found.length} in the census: en ${byLocale("en")}, sw ${byLocale("sw")}, zh ${byLocale("zh")})`,
   byLocale("en") > 10 && letters.loose.length === 0, letters.loose.join(" | "));
 // The keeper without the rule: what §5.2 compares against, and §5.4's plant.
-const noLetter = planted("const ranges = mergeRanges([...kept, ...money, ...oneLetterRanges(text)]);", "const ranges = mergeRanges([...kept, ...money]);");
+const noLetter = planted("...money, ...oneLetterRanges(text), ...connectiveRanges(text)]);", "...money, ...connectiveRanges(text)]);");
 const swzhMoved: string[] = [], enMoved: string[] = [];
 let enChanged = 0;
 for (const l of LOCALES) for (const { key, fact } of FACT_SET[l]) {
@@ -330,8 +376,54 @@ const loosePlanted = looseLetters(noLetter).loose;
 ok(`5.4 PLANT · the rule taken out of the keeper: 5.1 reads ${loosePlanted.length} loose letters again (the rest the platform's last two words hold), the hub's "A ticket" among them`,
   loosePlanted.some((x) => x.startsWith("en millionea.howOne:") && x.includes('"A ticket"')), loosePlanted.join(" | "));
 
+/* ══ §6 · A CONNECTIVE NEVER ENDS A LINE ═══════════════════════════════════════════════════════════════════════════════ */
+section("§6 · a connective never ends a line: the fact keeper keeps it with the word after it, as the kit keeps a title's");
+/** Every connective of every line (one the kit's list names, a word after it) — and those the keeper leaves loose: not in
+ *  one unit with the word after it, where a line could end on it ("…kuchukua nafasi ya" / "maswali…"). */
+const looseConnectives = (k: Keeper) => {
+  const found: string[] = [], loose: string[] = [];
+  for (const l of LOCALES) for (const { key, fact } of FACT_SET[l]) {
+    const us = units(k, l, fact).map(textOf);
+    for (const [a, b] of connectiveRanges(fact)) {
+      // The connective and the word after it, its closing marks left off (no line breaks before a stop or a comma).
+      const pair = fact.slice(a, b) + (/^\S+/.exec(fact.slice(b))?.[0] ?? "").replace(/[.,;:!?)”’。，；：！？）]+$/u, "");
+      found.push(`${l} ${key}: "${pair}"`);
+      if (!us.some((u) => u.includes(pair))) loose.push(`${l} millionea.${key}: "${pair}" in "${fact}" — units ${j(us)}`);
+    }
+  }
+  return { found, loose };
+};
+const conn = looseConnectives(now);
+const connIn = (l: L3) => conn.found.filter((x) => x.startsWith(`${l} `)).length;
+console.log(`  connectives: sw ${connIn("sw")}, en ${connIn("en")}, zh ${connIn("zh")} — ${conn.found.filter((x) => x.startsWith("sw ")).slice(0, 6).join(" · ")} …`);
+ok(`6.1 · every connective of every line is one unit with the word after it (${conn.found.length} in the census: sw ${connIn("sw")}, en ${connIn("en")}, zh ${connIn("zh")})`,
+  connIn("sw") > 50 && connIn("en") > 5 && conn.loose.length === 0, conn.loose.join(" | "));
+// The hub's facts line (`reservesShort`, page.tsx and the ticket): "…kuchukua nafasi ya" / "maswali yaliyobatilishwa" at sw
+// 360 and 1280 in the tile read of hub-d8 (S5-R2-HUB 12).
+const short = T.sw.millionea.reservesShort;
+const shortUnits = units(now, "sw", short).map((u) => ({ unit: textOf(u), w: +widthOf(u).toFixed(1) }));
+console.log(`  the hub's reservesShort (sw): ${j(shortUnits)}`);
+ok(`6.2 · the hub's "${short}": "ya" travels with "maswali" — no line ends on "nafasi ya" (${shortUnits.find((u) => u.unit.startsWith("ya "))?.w}px, inside the census budget)`,
+  shortUnits.some((u) => u.unit.startsWith("ya maswali")) && shortUnits.some((u) => u.unit.startsWith("za kutosha")), j(shortUnits));
+// The keeper without the rule: what §6.3 compares against, and §6.4's plant.
+const noConnective = planted("...oneLetterRanges(text), ...connectiveRanges(text)]);", "...oneLetterRanges(text)]);");
+const zhMoved: string[] = [], swEnMoved: string[] = [];
+let connChanged = 0;
+for (const l of LOCALES) for (const { key, fact } of FACT_SET[l]) {
+  const was = j(kept(noConnective, l, fact).map(textOf)), is = j(kept(now, l, fact).map(textOf));
+  if (was === is) continue;
+  if (l === "zh") zhMoved.push(`zh millionea.${key}: ${was} → ${is}`);
+  else if (!hasConnective(fact)) swEnMoved.push(`${l} millionea.${key}: ${was} → ${is}`);
+  else connChanged++;
+}
+ok(`6.3 · Chinese is untouched — every zh line keeps exactly the runs it kept without the rule — and a Swahili or English line moves only where a connective stands (${connChanged} facts)`,
+  zhMoved.length === 0 && swEnMoved.length === 0 && connChanged > 50, [...zhMoved, ...swEnMoved].join(" | "));
+const looseOut = looseConnectives(noConnective).loose;
+ok(`6.4 PLANT · the rule taken out of the keeper: 6.1 reads ${looseOut.length} loose connectives again (the rest the platform's last two words hold), the hub's "ya maswali" among them`,
+  looseOut.some((x) => x.startsWith("sw millionea.reservesShort:") && x.includes('"ya maswali"')), looseOut.slice(0, 6).join(" | "));
+
 console.log(`\n${"═".repeat(70)}\n  MASWALI FACTS: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
-/** The floor is the count a green run printed (12; §5 brought it to 16). */
-const MIN_ASSERTIONS = 16;
+/** The floor is the count a green run printed (12; §5 brought it to 16; §6, a connective never ends a line, to 20). */
+const MIN_ASSERTIONS = 20;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

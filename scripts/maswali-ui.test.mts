@@ -310,7 +310,8 @@ const renderedDrawingDefects = (provider: unknown, hiddenProvided = false) => {
   const plant = (rel: string, from: string, to: string) => (r: string) => (r === rel ? read(r).replace(from, to) : read(r));
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-HUB L7): the hub's ghost draws its head through the kit PageHeader itself
   // now (its two doors and the game's line as bars); the plant reads the product's name back into that head's title.
-  const named = ghostWordDefects(plant(`${APP}/hub-ghost.tsx`, 'title={<GhostLine className="w-[248px]" />}', "title={t.millionea.productTitle}"));
+  // RE-PINNED (S5-R2-HUB): the title's bar sweeps with the platform's shimmer, as every band of the drawing does.
+  const named = ghostWordDefects(plant(`${APP}/hub-ghost.tsx`, 'title={<GhostLine className={cn("w-[248px]", SWEEP)} />}', "title={t.millionea.productTitle}"));
   ok("1.3′ CONTROL · the product's name read back into the hub's ghost is reported", named.some((x) => x.includes("hub-ghost.tsx") && x.includes("t.millionea")));
   const veiled = ghostWordDefects(plant(`${APP}/slip/slip-ghost.tsx`, '<GhostLine className="w-[264px]" />', "<GhostText>{\"Maswali Millionea\"}</GhostText>"));
   ok("1.3″ CONTROL · words set and not shown, or a string naming the product, in the slip's ghost are reported",

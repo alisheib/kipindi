@@ -24,6 +24,7 @@ import { useServerNowGated } from "@/lib/use-shared-second";
 import { cn, fill, formatNumber, formatTzs } from "@/lib/utils";
 import { stemOf } from "@/lib/display-stem";
 import type { Locale } from "@/lib/i18n-dict";
+import { reserveRuleAfterHead } from "@/app/millionea/millionea-view";
 
 /**
  * THE SLIP — fill a ticket (MASWALI-BUILD S5; MASWALI-PLAN §10 §3.5–§3.6; the v6 delivery's S-purchase frames; the
@@ -465,7 +466,7 @@ export function MaswaliSlip({
             <section aria-labelledby="mln-reserves-head" className="kp-mln-reserves mat-inset mt-3 flex flex-col rounded-card">
               <div className="flex flex-col gap-0.5 px-3 pb-2 pt-2.5">
                 <span id="mln-reserves-head" className="font-mono text-caption uppercase eyebrow text-text-subtle"><MaswaliFacts facts={factsOf(t.millionea.reservesHead)} /></span>
-                <span className="text-body-sm text-text-muted text-pretty">{keepFact(locale, t.millionea.reserveRule)}</span>
+                <span className="text-body-sm text-text-muted text-pretty">{keepFact(locale, reserveRuleAfterHead(t))}</span>
               </div>
               <ol>{reserves.map(row)}</ol>
             </section>

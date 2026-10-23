@@ -6,12 +6,17 @@
  * L22) and the once-per-week notices (M9) — the kit's `NoticeBar`, under the header, as the platform's away bar.
  * Top to bottom at a phone's width (S5-DESIGN-HUB, R1-hub H1): the week, its state in its own ink, the product's name, its
  * two doors (How to play, the reader's tickets) and the game in one line (M2); the week strip; the jackpot's HEAD (the
- * figure and its rule); the buy block (the door, the close, the closing pill in the last hour); the reader's tickets; the
- * pool's LEDGER; a second week being graded; the fifteen public questions with each attested result's stamp; last week
- * as one closed row; How to play and the register. From 768 the head and the ledger stand beside the buy block (M1); from
- * 1024 two columns, the market page's grid (the questions, last week and the links on the left; the jackpot's head and
- * the door pinned 72px down on the right — clear of the 56px header — with the ledger, the tickets and the graded week
- * reading on under it, H2). Every "·"-joined line is a fact line (`maswali-facts.tsx`, A1).
+ * figure and its rule); the buy block (the door and its one status line: the close and the closing pill in the last hour,
+ * or how far a closed week's results have come); the pool's LEDGER; the reader's tickets; a second week being graded; the
+ * fifteen public questions with each attested result's stamp; last week as one closed row; How to play and the register.
+ * From 768 the head stands beside the door and the ledger beside the reader's tickets (M1); from 1024 two columns, the
+ * market page's grid (the questions, last week and the links on the left; the jackpot's head and the door pinned 72px
+ * down on the right — clear of the 56px header — with the ledger, the tickets and the graded week reading on under it,
+ * H2). Every "·"-joined line is a fact line (`maswali-facts.tsx`, A1).
+ * ⭐ ONE FRAME, THE PAGE'S AND ITS LOADING DRAWING'S (S5-R2-HUB; `hub-frame.ts`): every place a band stands is written once
+ * and both compose it, and the reader's own tickets stand LAST in the buy column (MASWALI-PLAN §10 §3.3: "the pool block,
+ * the buy block and my tickets"; the v6 frames) — the one band whose height is the reader's, so the swap from the drawing
+ * to the page moves nothing above or beside it, whether the reader holds no ticket, one, or many.
  *
  * ⛔ THE GATE FIRST (`millioneaGate`): a hidden product is a missing page, here and in the metadata (MR-2).
  * ⛔ AN UNEARNED SURFACE: no gold in this file (§M8a item 7; `test:gold-is-money` 1d). The door to the slip is the
@@ -27,7 +32,6 @@ import Link from "next/link";
 import { PageContainer } from "@/components/layout/page-container";
 import { PAGE_HEADER_PILL, PageHeader } from "@/components/ui/page-header";
 import { Callout } from "@/components/ui/callout";
-import { EmptyState } from "@/components/ui/empty-state";
 import { NoticeBar } from "@/components/ui/notice-bar";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { I } from "@/components/ui/glyphs";
@@ -36,12 +40,14 @@ import { MaswaliWeekStrip } from "@/components/maswali/maswali-week-strip";
 import { MaswaliFacts, factsOf, keepFact } from "@/components/maswali/maswali-facts";
 import { MaswaliHeldTicketRow } from "@/components/maswali/maswali-ticket";
 import { MaswaliClosingPill } from "@/components/maswali/maswali-slip";
+import { MaswaliStrike } from "@/components/maswali/maswali-strike";
+import { MaswaliEmptyState } from "@/components/maswali/maswali-empty-state";
 import { MillioneaGlyph } from "@/components/maswali/maswali-glyph";
 import { counted, eatWeekdayClock, reserveLabel, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
 import { weekdayClock } from "@/components/maswali/maswali-numerals";
 import { millioneaGate } from "@/lib/server/millionea-gate";
 import {
-  millioneaCloseMove, millioneaFinalWeekAhead, millioneaHub, millioneaHubCommitments, millioneaMyTicketsWeek,
+  millioneaCloseMove, millioneaFinalWeekAhead, millioneaHub, millioneaHubCancelEnds, millioneaHubCommitments, millioneaMyTicketsWeek,
   type MillioneaHub, type MillioneaHubWeek, type MillioneaNotice, type MillioneaTicketsWeek,
 } from "@/lib/server/maswali-player";
 import { millioneaBreakOf, millioneaDoor, millioneaOpenTemplate, millioneaWalletHeld } from "@/lib/server/millionea-doors";
@@ -55,13 +61,15 @@ import { fillNodes, moneyRuns } from "@/lib/fill-nodes";
 import { cn, fill, formatNumber, formatTzs } from "@/lib/utils";
 import { MAIN_COUNT, RESERVE_COUNT, displayMap, weekVoidCertain } from "@/lib/maswali-score";
 import type { Dict, Locale } from "@/lib/i18n-dict";
+import { HUB_DOOR, HUB_EYEBROW, HUB_GRID, HUB_MINE, HUB_PINNED, HUB_QUESTIONS, HUB_STRIP, hubAside, hubCell, hubMain, hubTail } from "./hub-frame";
 import { HubPoolHead, HubPoolLedger, HubPoolLive } from "./hub-pool";
 import { HubNotices, type HubNotice } from "./hub-notices";
 import { HubOutcomeStamp, HubPressGroup } from "./hub-stamp";
-import { carryingRollover, closeMovedWords, finalAheadWords, lastWeekWords, nextOpenWords, voidingWords } from "./hub-words";
-import { MILLIONEA_HREF, MillioneaPreviewMark, MillioneaReadingLinks, registerWeekHref, ticketPageHref } from "./millionea-parts";
+import { carryingRollover, closeMovedWords, closeWords, finalAheadWords, lastWeekWords, noWeekBody, pausedWords, voidWords, voidingWords } from "./hub-words";
+import { hubIntroText } from "./hub-page-words";
+import { MILLIONEA_HREF, MillioneaReadingLinks, registerWeekHref, ticketPageHref } from "./millionea-parts";
 import { WeekCommitments, WeekStateChip, weekChipWord } from "./register/register-parts";
-import { bySlot, capReachedLine, gradableOf, lineOf, millioneaWeekPhase, msOf, ordinalOf, phaseNow, phasesOf, resultDoorSerial, resultLine, textIn } from "./millionea-view";
+import { bySlot, capReachedLine, gradableOf, lineOf, millioneaWeekPhase, msOf, ordinalOf, phaseNow, phasesOf, reserveRuleAfterHead, resultDoorSerial, resultLine, textIn } from "./millionea-view";
 
 export const dynamic = "force-dynamic";
 
@@ -89,7 +97,7 @@ export async function generateMetadata(): Promise<Metadata> {
  */
 function WeekLabel({ t, w, nowMs, paused }: { t: Dict; w: MillioneaHubWeek; nowMs: number; paused: boolean }) {
   return (
-    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+    <span className={HUB_EYEBROW}>
       <span>{weekWord(t, weekNumberOf(w.code))}</span>
       <WeekStateChip t={t} state={w.state} phase={millioneaWeekPhase(w, nowMs)} paused={paused} />
     </span>
@@ -174,47 +182,52 @@ async function noticesOf(t: Dict, hub: MillioneaHub, userId: string | null, carr
  * L13 · what a voided MAIN question leaves the week, in the ticket's own words (`maswali-ticket.tsx`, one wording per
  * truth): the reserve that stands in once the graded set has named it ("Void ↪ A1"), "too few reserves: the week is due to
  * be voided" once the void is certain, else "a reserve will take its place". A reserve's void is its stamp alone.
+ * ⭐ S5-R2-HUB · after the row's stamp (which says "Void") the words are the sentence's second fact, as the register's week
+ * page draws them (`voidWords`): one drawing for one truth, never "Void" alone on a first line, never "voided" on a last.
  */
-function voidWordsOf(t: Dict, q: MillioneaHubWeek["questions"][number], gq: ReturnType<typeof gradableOf>): ReactNode {
+function voidWordsOf(t: Dict, locale: Locale, q: MillioneaHubWeek["questions"][number], gq: ReturnType<typeof gradableOf>): ReactNode {
   if (q.role !== "MAIN" || q.outcome !== "VOID") return null;
   try {
-    if (weekVoidCertain(gq)) return t.millionea.voidWeekCertain;
+    if (weekVoidCertain(gq)) return voidWords(locale, t.millionea.voidWeekCertain);
     const row = displayMap(gq)?.find((r) => r.slot === q.slot);
     if (row?.state === "REPLACED_BY") {
-      return <>{t.millionea.void}<MillioneaGlyph name="standIn" s={14} />{reserveLabel(row.reserve - MAIN_COUNT)}</>;
+      // The reserve's label is a numeral, as in its own row ("A1", §T5).
+      return <>{t.millionea.void}<MillioneaGlyph name="standIn" s={14} /><span className="mono">{reserveLabel(row.reserve - MAIN_COUNT)}</span></>;
     }
   } catch {
     // A record the grader refuses names no stand-in: the waiting words below are true of it.
   }
-  return t.millionea.voidAwaiting;
+  return voidWords(locale, t.millionea.voidAwaiting);
 }
 
 /**
  * One public question: its number, its category, its words, its event's time, and once attested the world's result.
  * ⭐ M1 · from 768 a table row — number, category, words, then the time with the result stamp under it (M12: side by side
  * at 1280 they left the question ~120px); a phone keeps the stacked row. A voided question's words are struck in the
- * muted ink, as the ticket strikes them (L13). ⭐ M11 · the stamp presses when its result arrives while the reader looks.
+ * muted ink, as the ticket strikes them (L13) — through the one strike, which ends at the last mark's ink (`MaswaliStrike`,
+ * DESIGN_AUTHORITY §M8a item 24: a plain strike ran half an em past a Chinese "？"). ⭐ M11 · the stamp presses when its
+ * result arrives while the reader looks.
  */
 function QuestionRow({ t, locale, q, voidWords }: { t: Dict; locale: Locale; q: MillioneaHubWeek["questions"][number]; voidWords: ReactNode }) {
   const at = msOf(q.eventStartsAt);
   const reserve = q.role === "RESERVE";
   const voided = q.outcome === "VOID";
   return (
-    <li className="grid grid-cols-[32px_minmax(0,1fr)] gap-x-2 gap-y-1 border-t border-border py-3 md:grid-cols-[32px_104px_minmax(0,1fr)_auto] md:items-baseline" data-slot={q.slot}>
-      <span className={cn("font-mono text-body-sm font-bold tabular-nums", reserve ? "text-text-subtle" : "text-text-muted")}>
+    <li className={HUB_QUESTIONS.row} data-slot={q.slot}>
+      <span className={cn(HUB_QUESTIONS.number, reserve ? "text-text-subtle" : "text-text-muted")}>
         {reserve ? reserveLabel(ordinalOf(q)) : q.slot}
       </span>
-      <span className="col-start-2 font-mono text-micro uppercase eyebrow text-text-subtle md:col-start-auto">
+      <span className={HUB_QUESTIONS.category}>
         {marketCategoryLabel(t, q.category)}
       </span>
-      <span className="col-start-2 flex min-w-0 flex-col gap-1 md:col-start-auto">
-        <span className={cn("text-body-sm text-pretty", voided ? "text-text-muted line-through decoration-border-strong" : "text-text")}>{textIn(locale, q.text)}</span>
-        {voidWords && <span className="inline-flex flex-wrap items-center gap-x-1 text-body-sm text-text-muted" data-testid="millionea-hub-void-words">{voidWords}</span>}
+      <span className={HUB_QUESTIONS.words}>
+        <span className={cn(HUB_QUESTIONS.text, voided ? "text-text-muted" : "text-text")}>{voided ? <MaswaliStrike text={textIn(locale, q.text)} /> : textIn(locale, q.text)}</span>
+        {voidWords && <span className="inline-flex flex-wrap items-center gap-x-1 text-body-sm text-text-muted text-pretty" data-testid="millionea-hub-void-words">{voidWords}</span>}
       </span>
-      <span className="col-start-2 flex flex-wrap items-center gap-2 md:col-start-auto md:flex-col md:items-end md:gap-1.5">
+      <span className={HUB_QUESTIONS.when}>
         {/* "Event Saturday 09:00" is one run: a day never parts from its time (S5 VIS A1) — its words in the body face, its
             clock a numeral (the lead's L7 ruling, §T5). */}
-        {at !== null && <span className="whitespace-nowrap text-body-sm text-text-subtle">{fillNodes(t.millionea.eventAt, { when: weekdayClock(t, at) })}</span>}
+        {at !== null && <span className={HUB_QUESTIONS.time}>{fillNodes(t.millionea.eventAt, { when: weekdayClock(t, at) })}</span>}
         <HubOutcomeStamp slot={q.slot} outcome={q.outcome} />
       </span>
     </li>
@@ -231,16 +244,16 @@ function WeekQuestions({ t, locale, w }: { t: Dict; locale: Locale; w: Millionea
   // "This week's questions" for the week on sale alone; a week being graded is named by its number (S5-FIX-PLAYER P8, the
   // register's own R6: "Week 47's questions" — the hub headed a past week's fifteen "this week's" when none sold).
   const heading = w.state === "OPEN" ? t.millionea.weekQuestions : fill(t.millionea.regWeekQuestions, { week: weekNumberOf(w.code) });
-  const row = (q: (typeof qs)[number]) => <QuestionRow key={q.slot} t={t} locale={locale} q={q} voidWords={voidWordsOf(t, q, gq)} />;
+  const row = (q: (typeof qs)[number]) => <QuestionRow key={q.slot} t={t} locale={locale} q={q} voidWords={voidWordsOf(t, locale, q, gq)} />;
   return (
-    <section id="mln-questions" aria-labelledby="mln-questions-h" className="flex scroll-mt-[96px] flex-col" data-testid="millionea-hub-questions">
-      <h2 id="mln-questions-h" className="pb-2 font-display text-title-sm font-bold text-text">{heading}</h2>
+    <section id="mln-questions" aria-labelledby="mln-questions-h" className={HUB_QUESTIONS.section} data-testid="millionea-hub-questions">
+      <h2 id="mln-questions-h" className={HUB_QUESTIONS.heading}>{heading}</h2>
       <HubPressGroup outcomes={Object.fromEntries(qs.map((q) => [q.slot, q.outcome]))}>
         <ol>{qs.filter((q) => q.role === "MAIN").map(row)}</ol>
         <div className="mat-inset mt-1.5 rounded-control px-2" data-testid="millionea-hub-reserves">
           <div className="flex flex-col gap-0.5 pb-1.5 pt-2">
             <span className="font-mono text-caption uppercase eyebrow text-text-subtle"><MaswaliFacts facts={factsOf(t.millionea.reservesHead)} /></span>
-            <span className="text-body-sm text-text-muted text-pretty">{keepFact(locale, t.millionea.reserveRule)}</span>
+            <span className="text-body-sm text-text-muted text-pretty">{keepFact(locale, reserveRuleAfterHead(t))}</span>
           </div>
           <ol>{qs.filter((q) => q.role === "RESERVE").map(row)}</ol>
         </div>
@@ -257,6 +270,7 @@ function WeekQuestions({ t, locale, w }: { t: Dict; locale: Locale; w: Millionea
  * ⭐ L14 · a voided week says it in the register's words for that same week ("Week 48 · Voided · Every ticket refunded",
  * or "Refunds on their way" until every refund landed — the read model's `refundsPending`), never a bare "Voided".
  * ⭐ H4 · after Millionea has ended (`retired`), the row is the FINAL week's, under that name, however long ago it ran.
+ * A DRIVE line's week has no public register page: its row is its words, no door to a page that is not there.
  */
 function LastWeekRow({ t, locale, hub, retired = false }: { t: Dict; locale: Locale; hub: MillioneaHub; retired?: boolean }) {
   const last = hub.lastWeek;
@@ -266,16 +280,32 @@ function LastWeekRow({ t, locale, hub, retired = false }: { t: Dict; locale: Loc
   return (
     <section aria-label={label} className="flex flex-col gap-1.5" data-testid="millionea-hub-last-week">
       <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{label}</span>
-      <Link
-        href={registerWeekHref(last.code) as never}
-        className="mat-inset flex items-center justify-between gap-2 rounded-control px-3 py-2 text-body-sm text-text-muted"
-        style={{ minHeight: "var(--h-control-md)" }}
-      >
-        <span className="min-w-0">{words}</span>
-        <I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle" />
-      </Link>
+      {hub.line === "PUBLIC" ? (
+        <Link href={registerWeekHref(last.code) as never} className={DOOR_ROW} style={DOOR_ROW_FLOOR}>
+          <span className="min-w-0">{words}</span>
+          <I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle" />
+        </Link>
+      ) : (
+        <p className={DOOR_ROW} style={DOOR_ROW_FLOOR}><span className="min-w-0">{words}</span></p>
+      )}
     </section>
   );
+}
+
+/** A week's door row — last week's, the graded week's facts — in one anatomy: the inset rung, the whole row the link, the
+ *  medium control's height at least (P16's tap floor), the register's row end. */
+const DOOR_ROW = "mat-inset flex items-center justify-between gap-2 rounded-control px-3 py-2 text-body-sm text-text-muted";
+const DOOR_ROW_FLOOR = { minHeight: "var(--h-control-md)" } as const;
+
+/** Whether the reader's block draws anything — a selling week's always (its count line), any other week's only with a
+ *  held row to show: `MineBlock`'s own test, which the column's cells read too (no cell stands empty at 768). */
+function mineDrawn(w: MillioneaHubWeek): boolean {
+  return !!w.mine && (w.state === "OPEN" || w.mine.tickets.some((x) => x.shown !== "cancelled"));
+}
+/** Whether the buy block draws anything: nothing while a week on sale does not sell to the reader (paused, a public week
+ *  at STAFF_PREVIEW) and no break stands in its place — `BuyDoor`'s own test, which the column's cells read too. */
+function buyDrawn(w: MillioneaHubWeek, onBreak: boolean): boolean {
+  return onBreak || w.selling || w.state !== "OPEN";
 }
 
 /**
@@ -283,21 +313,36 @@ function LastWeekRow({ t, locale, hub, retired = false }: { t: Dict; locale: Loc
  * to Tiketi zangu (R1-hub M8: at the cap, ten rows ran ~900px) — under "Tiketi zako wiki hii: 2 kati ya 10" for the week on
  * SALE alone (S5-FIX-PLAYER P8): the cap is a selling week's allowance, and a week being graded is not "this week" (its
  * block said "Your tickets this week: 2 of 10" under the open week's own line). A week being graded keeps its rows.
+ * ⭐ S5-R2-HUB · the week on sale's block stands LAST in the buy column, after the pool's ledger (`hub-frame.ts`): its
+ * height is the reader's — none, a row, three and "See all" — so nothing above or beside it moves with it, and the loading
+ * drawing's neutral block is replaced in place (it stood between the door and the ledger: the ledger landed 135–170px
+ * below its drawing whenever the reader held a ticket).
+ * ⭐ S5-R2-HUB · a closed week's rows stand under their own label, "Your tickets" (the tickets page's own title): under
+ * the ledger, unlabelled, they read as more of the ledger (the tile readers, closed and resolving at every width).
  */
-function MineBlock({ t, locale, w }: { t: Dict; locale: Locale; w: MillioneaHubWeek }) {
-  if (!w.mine) return null;
+function MineBlock({ t, locale, w, nowMs, cancelEnds, className }: {
+  t: Dict; locale: Locale; w: MillioneaHubWeek; nowMs: number;
+  /** Each held ticket's free-cancel end, by serial (`millioneaHubCancelEnds`, the ticket page's own test) — L20. */
+  cancelEnds?: Readonly<Record<string, string>>;
+  className?: string;
+}) {
+  if (!w.mine || !mineDrawn(w)) return null;
   const held = w.mine.tickets.filter((x) => x.shown !== "cancelled").sort((a, b) => Date.parse(b.boughtAt) - Date.parse(a.boughtAt));
   const onSale = w.state === "OPEN";
-  if (!onSale && held.length === 0) return null;
   return (
-    <div className="flex flex-col gap-2" data-testid="millionea-hub-mine">
-      {onSale && <p className="text-body-sm text-text-muted">{keepFact(locale, fill(t.millionea.yourTicketsThisWeek, { n: formatNumber(w.mine.held), cap: formatNumber(w.mine.cap) }))}</p>}
+    <div className={cn(HUB_MINE.box, className)} data-testid="millionea-hub-mine">
+      {onSale && <p className={HUB_MINE.count}>{keepFact(locale, fill(t.millionea.yourTicketsThisWeek, { n: formatNumber(w.mine.held), cap: formatNumber(w.mine.cap) }))}</p>}
+      {!onSale && <p className={HUB_MINE.count}>{t.millionea.ticketsTitle}</p>}
+      {/* L4 · the row lifts and presses as the kit's raised card does and is named for what it opens ("View ticket · MLN-…");
+          L20 · while its free cancel is open, the row says so in the ticket page's own words — TICKETS' row, handed the
+          dictionary, the window's end and this render's instant. */}
       {held.slice(0, HELD_SHOWN).map((row) => (
-        <MaswaliHeldTicketRow key={row.serial} href={ticketPageHref(row.serial)} serial={row.serial} line={lineOf(w.questions, row.slots, w.state)} />
+        <MaswaliHeldTicketRow key={row.serial} t={t} href={ticketPageHref(row.serial)} serial={row.serial} line={lineOf(w.questions, row.slots, w.state)}
+          cancelUntil={msOf(cancelEnds?.[row.serial]) ?? undefined} serverNow={nowMs} />
       ))}
       {held.length > HELD_SHOWN && (
         <Link href={MILLIONEA_HREF.tickets as never} className="inline-flex items-center gap-1 self-start text-body-sm text-text-link hover:text-text-linkHover" style={{ minHeight: "var(--h-control-md)" }} data-testid="millionea-hub-see-all">
-          {fill(t.millionea.seeAllTickets, { n: formatNumber(held.length) })}
+          <span>{keepFact(locale, fill(t.millionea.seeAllTickets, { n: formatNumber(held.length) }))}</span>
           <I.chevronRight s={14} edge="end" text="body-400" />
         </Link>
       )}
@@ -306,14 +351,16 @@ function MineBlock({ t, locale, w }: { t: Dict; locale: Locale; w: MillioneaHubW
 }
 
 /**
- * The buy block's DOOR (§10 §3.3 item 4): the door, and — beside a door that buys — the printed close with the closing
- * pill in its row. `nextOpen` is when the next week opens on the template (`nextWeekOpen`) — null in a final week or while
- * Millionea ends, and the cap line then promises no next week (the S5 review of 24ec0d33, MEDIUM 5).
+ * The buy block's DOOR (§10 §3.3 item 4): the door and, beside a door that buys, its one status line — the printed close
+ * with the closing pill in its row. A closed week's "Follow the results" stands alone here: how far its results have come
+ * is the week's own cell under it (`WeekFacts`, S5-R2-HUB 12).
+ * `nextOpen` is when the next week opens on the template (`nextWeekOpen`) — null in a final week or while Millionea ends,
+ * and the cap line then promises no next week (the S5 review of 24ec0d33, MEDIUM 5).
  * ⭐ M3 · A GUEST IS OFFERED SIGN UP FIRST (§K 8d), then Sign in — the market page's own pair, through the one door rule
  * (`authDoorHrefs`: back to the slip after, the page's `ref` and `invite` carried beside `next`, never dropped).
  */
-function BuyDoor({ t, w, signedIn, nowMs, nextOpen, breakBody, walletHeld = false, guest, className }: {
-  t: Dict; w: MillioneaHubWeek; signedIn: boolean; nowMs: number; nextOpen: number | null;
+function BuyDoor({ t, locale, w, signedIn, nowMs, nextOpen, breakBody, walletHeld = false, guest, className }: {
+  t: Dict; locale: Locale; w: MillioneaHubWeek; signedIn: boolean; nowMs: number; nextOpen: number | null;
   breakBody: { text: string; keep: readonly string[] } | null; walletHeld?: boolean; guest: { signIn: string; signUp: string }; className?: string;
 }) {
   const closesMs = msOf(w.closesAt) ?? 0;
@@ -348,8 +395,9 @@ function BuyDoor({ t, w, signedIn, nowMs, nextOpen, breakBody, walletHeld = fals
     // The test id on a wrapper: the kit's Callout takes none (FLOW 13's was dropped from the page; FLOW 14).
     door = <div data-testid="millionea-hub-held"><Callout tone="neutral" role="status">{millioneaRefusalBody("wallet_frozen", t)}</Callout></div>;
   } else if (open && atCap) {
-    // The cap's one line, the slip's refusal says it too (S5-FIX-PLAYER P13): the next week only when one can follow.
-    door = <Callout tone="info" role="status">{capReachedLine(t, w.ticketCap, nextOpen)}</Callout>;
+    // The cap's one line, the slip's refusal says it too (S5-FIX-PLAYER P13): the next week only when one can follow — its
+    // counts and its week's number numerals (§T5, round 2), its phrases kept whole.
+    door = <Callout tone="info" role="status">{keepFact(locale, capReachedLine(t, w.ticketCap, nextOpen))}</Callout>;
   } else if (open) {
     buys = true;
     door = (
@@ -362,21 +410,22 @@ function BuyDoor({ t, w, signedIn, nowMs, nextOpen, breakBody, walletHeld = fals
     // wins; both measured 1.79:1 on the page's ground) — a ghost border under §A1's 3:1 is the kit's, reported for every page.
     door = <a href="#mln-questions" className="btn btn-ghost btn-lg w-full" data-testid="millionea-hub-follow">{t.millionea.followResults}</a>;
   }
-  if (door === null) return null;
+  if (!buyDrawn(w, !!breakBody)) return null;
   return (
-    <div className={cn("flex flex-col gap-3", className)} data-testid="millionea-hub-buy">
+    <div className={cn(HUB_DOOR.box, className)} data-testid="millionea-hub-buy">
       {door}
       {/* A printed time draws the clock (MASWALI-PLAN §10c: `clock` is "a time or date"); the hourglass is the countdown's
           own key, worn by the closing pill. ⭐ R1-motion M8 · the pill stands IN the close's row, the row already at the
           pill's height; and the row makes the pill's room itself (`.kp-mln-close:has(.closing-pill)`, globals.css): in the
           last hour the close is today, so its weekday steps aside — the line never grows a second one (sw 320: 239px of
           words beside a 76px pill in a 288px column), and nothing under it moves. The weekday in the body face, the clock
-          a `.mono` numeral (the lead's L7 ruling). */}
+          a `.mono` numeral (the lead's L7 ruling). S5-R2-HUB · the line is the one wording the slip and the ticket say, its
+          zone held to its clock (`closeWords`, the lead's ruling 2026-10-22). */}
       {open && buys && (
-        <div className="kp-mln-close flex min-h-5 flex-wrap items-center gap-x-2 gap-y-1" data-testid="millionea-hub-close">
-          <p className="flex items-center gap-1.5 text-body-sm text-text-muted">
+        <div className={HUB_DOOR.close} data-testid="millionea-hub-close">
+          <p className={HUB_DOOR.closeLine}>
             <I.clock s={14} className="shrink-0" />
-            <span>{fillNodes(t.millionea.salesCloseAt, { when: weekdayClock(t, closesMs, { className: "text-text", dayClass: "kp-mln-close-day" }) })}</span>
+            <span>{closeWords(t, closesMs)}</span>
           </p>
           <MaswaliClosingPill closesAt={closesMs} serverNow={nowMs} compact />
         </div>
@@ -385,30 +434,38 @@ function BuyDoor({ t, w, signedIn, nowMs, nextOpen, breakBody, walletHeld = fals
   );
 }
 
-/** The buy block's FACTS: once the week has closed, how far its results have come — results in, valid reserves left,
- *  the objection window's end while open (P6) and the next event (L12) — and the reader's tickets. A fact line (A1). */
-function BuyFacts({ t, locale, w, nowMs, className }: { t: Dict; locale: Locale; w: MillioneaHubWeek; nowMs: number; className?: string }) {
-  const live = w.state !== "OPEN"
-    ? [keepFact(locale, fill(t.millionea.resultsOut, { n: formatNumber(w.resultsOut) })), keepFact(locale, reservesLeftLine(t, w)), objectionsLine(t, locale, w, nowMs), nextEventLine(t, w)]
-    : null;
-  const held = !!w.mine && (w.state === "OPEN" || w.mine.tickets.some((x) => x.shown !== "cancelled"));
-  if (!live && !held) return null;
-  return (
-    <div className={cn("flex flex-col gap-3", className)} data-testid="millionea-hub-facts">
-      {live && <p className="text-body-sm text-text-muted"><MaswaliFacts facts={live} /></p>}
-      <MineBlock t={t} locale={locale} w={w} />
-    </div>
-  );
+/**
+ * A CLOSED WEEK'S STATUS, UNDER ITS DOOR: how far its results have come — results in, valid reserves left, the objection
+ * window's end while open (P6) and the next event (L12) — a fact line (A1); nothing while the week sells.
+ * ⭐ S5-R2-HUB 12 · ITS OWN CELL (§M8a item 27; the tile readers, voiding at 768 in sw, en and zh): inside the door's block
+ * these three or four lines made "Follow the results" taller than the jackpot's head beside it, and from 768 the head's
+ * cell hung over an empty band (80px at sw and en 768) before the ledger. Under the door in the column's second row, they
+ * start level with the ledger, which follows the head; from 1024 they read on under the pinned pair, which holds only the
+ * head and the door (H2: the jackpot's head and the button, nothing else, stay pinned).
+ */
+function WeekFacts({ t, locale, w, nowMs, className }: { t: Dict; locale: Locale; w: MillioneaHubWeek; nowMs: number; className?: string }) {
+  if (w.state === "OPEN") return null;
+  const facts = [keepFact(locale, fill(t.millionea.resultsOut, { n: formatNumber(w.resultsOut) })), keepFact(locale, reservesLeftLine(t, w)), objectionsLine(t, locale, w, nowMs), nextEventLine(t, w)];
+  return <p className={cn("text-body-sm text-text-muted", className)} data-testid="millionea-hub-facts"><MaswaliFacts facts={facts} /></p>;
 }
 
 /** A second week still being graded while this one sells (MR-3): where it stands (P6, in its state's ink — M5), its
- *  results so far — and while it is open, its objection window's end; the next event (L12) — and the reader's tickets. */
+ *  results so far — and while it is open, its objection window's end; the next event (L12) — and the reader's tickets.
+ *  ⭐ L5 · its facts are the door to the week's register page (a public week's page from the moment it opens, REGISTER's
+ *  H2): the last-week row's own drawing, the whole row the link with the register's row end — so no reader meets a card
+ *  that leads nowhere. A DRIVE week has no public page: its facts stand as words. */
 function GradingBlock({ t, locale, w, nowMs, className }: { t: Dict; locale: Locale; w: MillioneaHubWeek; nowMs: number; className?: string }) {
+  const facts = <MaswaliFacts facts={[keepFact(locale, fill(t.millionea.resultsOut, { n: formatNumber(w.resultsOut) })), objectionsLine(t, locale, w, nowMs), nextEventLine(t, w)]} />;
   return (
     <section aria-label={weekLabelText(t, w, nowMs, false)} className={cn("mat-flat flex flex-col gap-2 rounded-card p-3", className)} data-testid="millionea-hub-grading">
       <span className="font-mono text-micro uppercase eyebrow text-text-subtle"><WeekLabel t={t} w={w} nowMs={nowMs} paused={false} /></span>
-      <p className="text-body-sm text-text-muted"><MaswaliFacts facts={[keepFact(locale, fill(t.millionea.resultsOut, { n: formatNumber(w.resultsOut) })), objectionsLine(t, locale, w, nowMs), nextEventLine(t, w)]} /></p>
-      <MineBlock t={t} locale={locale} w={w} />
+      {w.visibility === "PUBLIC" ? (
+        <Link href={registerWeekHref(w.code) as never} className={DOOR_ROW} style={DOOR_ROW_FLOOR} data-testid="millionea-hub-grading-door">
+          <span className="min-w-0">{facts}</span>
+          <I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle" />
+        </Link>
+      ) : <p className="text-body-sm text-text-muted">{facts}</p>}
+      <MineBlock t={t} locale={locale} w={w} nowMs={nowMs} />
     </section>
   );
 }
@@ -416,14 +473,14 @@ function GradingBlock({ t, locale, w, nowMs, className }: { t: Dict; locale: Loc
 /** M6 · a week being voided, named: how many mains voided against how few valid reserves, and by when it is final if no
  *  objection changes it — the week's own "results and payout" end (`resultsBy`: the objection window's end once stamped,
  *  else the latest void deadline plus the frozen window). Neutral, never an error (M8). */
-function VoidingNotice({ t, w }: { t: Dict; w: MillioneaHubWeek }) {
+function VoidingNotice({ t, locale, w }: { t: Dict; locale: Locale; w: MillioneaHubWeek }) {
   const by = msOf(w.resultsBy);
   if (by === null) return null;
   // The reserves not voided themselves (never below zero: at most five can void), as the sentence says "only 2 valid".
   const valid = RESERVE_COUNT - w.voidedReserves;
   return (
     <div data-testid="millionea-hub-voiding">
-      <Callout tone="neutral" role="status">{voidingWords(t, w.voidedMains, valid, by)}</Callout>
+      <Callout tone="neutral" role="status">{voidingWords(t, locale, w.voidedMains, valid, by)}</Callout>
     </div>
   );
 }
@@ -445,10 +502,12 @@ export default async function MillioneaHubPage({ searchParams }: { searchParams:
   const retired = hub.life === "RETIRED";
   // M7 · a moved close, while it is still ahead; L22 · the final week announced ahead, while the week on sale is not it.
   // The lead's ruling on R1-register H2: the week's two commitments, printed in its section from the moment each is stamped.
-  const [moved, finalAhead, commitments] = await Promise.all([
+  // L20 · each held ticket's free-cancel end, while the week sells and the reader holds one (the ticket page's own test).
+  const [moved, finalAhead, commitments, cancelEnds] = await Promise.all([
     w ? millioneaCloseMove(w, nowMs) : Promise.resolve(null),
     hub.life === "ENDING" && !w?.isFinal ? millioneaFinalWeekAhead(hub.line) : Promise.resolve(null),
     w ? millioneaHubCommitments(w.id) : Promise.resolve(null),
+    w && gate.userId && w.state === "OPEN" && (w.mine?.held ?? 0) > 0 ? millioneaHubCancelEnds(w.id, gate.userId, now) : Promise.resolve({}),
   ]);
   // M10 · the carry leaves from the rollover notice's own figure — and only from the rollover that IS this week's carry in
   // (the figure's own provenance, `carryFromCode`), so it never travels from a week the ledger does not name.
@@ -462,38 +521,34 @@ export default async function MillioneaHubPage({ searchParams }: { searchParams:
   const guest = authDoorHrefs(MILLIONEA_HREF.slip, query);
   const finalAheadMs = finalAhead ? msOf(finalAhead.opensAt) : null;
 
-  // ⭐ H1 · THE HEAD, THE DOOR, THEN THE LEDGER — the door on a phone's first screen. From 768 the head and the ledger stand
-  // beside the door and the tickets (M1, the v6 768 frame); from 1024 one column, its head and door pinned 72px down (the
-  // market page's offset: the 56px header + 16px), and only those (H2): at a 780px viewport the whole column never fit,
-  // and its tickets and the graded week hid under the fold. The pinned pair keeps the page's ground behind it, so what
-  // reads on under it never shows through.
+  // ⭐ H1 · THE HEAD, THE DOOR, THEN THE LEDGER — the door on a phone's first screen; the reader's own tickets after the
+  // ledger, last (S5-R2-HUB). From 768 the head beside the door and the ledger beside the tickets (M1, the v6 768 frame);
+  // from 1024 one column, its head and door pinned 72px down (the market page's offset: the 56px header + 16px), and only
+  // those (H2): at a 780px viewport the whole column never fit, and its tickets and the graded week hid under the fold.
+  // The pinned pair keeps the page's ground behind it, so what reads on under it never shows through. Every place is the
+  // frame's (`hub-frame.ts`), which the loading drawing composes too.
+  const twoUp = !!w?.pool;
   const aside = w && (
     <aside
       aria-labelledby={w.pool ? JACKPOT_LABEL_ID : undefined}
       aria-label={w.pool ? undefined : weekLabelText(t, w, nowMs, hub.paused)}
-      className={cn(
-        // `items-start` holds a grid row's items to their own height; from 1024 the column is a flex column, where the same
-        // word would shrink each block to its content's width, so there the blocks stretch to the column again.
-        "grid grid-cols-1 items-start gap-4 lg:col-start-2 lg:row-span-2 lg:flex lg:flex-col lg:items-stretch lg:gap-4 lg:self-stretch",
-        w.pool && "md:grid-cols-2 md:gap-x-6",
-        phases ? "lg:row-start-2" : "lg:row-start-1",
-      )}
+      className={hubAside(twoUp, !!phases)}
       data-testid="millionea-hub-aside"
     >
-      {/* Pinned from 1024 at the header's foot with 16px of the page's own ground above the head (pt-3, given back by
-          -mt-3 at rest): what reads on in the column passes under the pair and never shows in the gap above it. */}
-      <div className="contents lg:sticky lg:top-[56px] lg:z-10 lg:-mt-3 lg:flex lg:flex-col lg:gap-3 lg:bg-bg-base lg:pb-3 lg:pt-3" data-testid="millionea-hub-pinned">
-        {w.pool && <HubPoolHead final={w.isFinal} labelId={JACKPOT_LABEL_ID} className="md:col-start-1 md:row-start-1" />}
+      <div className={HUB_PINNED} data-testid="millionea-hub-pinned">
+        {w.pool && <HubPoolHead final={w.isFinal} labelId={JACKPOT_LABEL_ID} className={hubCell(twoUp, buyDrawn(w, !!breakBody) ? "head" : "headAlone")} />}
         {/* From 768 to 1023 the door stands beside the jackpot's head, centred on it: the next row (the ledger beside the
             reader's tickets) then starts level in both columns. */}
         <BuyDoor
-          t={t} w={w} signedIn={!!gate.userId} nowMs={nowMs} nextOpen={nextWeekOpen(hub, millioneaOpenTemplate(), nowMs)}
-          breakBody={breakBody} walletHeld={walletHeld} guest={guest} className={w.pool ? "md:col-start-2 md:row-start-1 md:self-center lg:self-auto" : undefined}
+          t={t} locale={locale} w={w} signedIn={!!gate.userId} nowMs={nowMs} nextOpen={nextWeekOpen(hub, millioneaOpenTemplate(), nowMs)}
+          breakBody={breakBody} walletHeld={walletHeld} guest={guest} className={hubCell(twoUp, "door")}
         />
       </div>
-      <BuyFacts t={t} locale={locale} w={w} nowMs={nowMs} className={w.pool ? "md:col-start-2 md:row-start-2" : undefined} />
-      {w.pool && <HubPoolLedger carryFrom={carries ? CARRIED_FIGURE_ID : undefined} carryPlay={carries} className="md:col-start-1 md:row-start-2 md:row-span-2" />}
-      {hub.grading && <GradingBlock t={t} locale={locale} w={hub.grading} nowMs={nowMs} className={w.pool ? "md:col-start-2 md:row-start-3" : undefined} />}
+      {/* A closed week's facts follow its door on a phone, stand under it from 768, read on under the pinned pair from 1024. */}
+      <WeekFacts t={t} locale={locale} w={w} nowMs={nowMs} className={hubCell(twoUp, "facts")} />
+      {w.pool && <HubPoolLedger carryFrom={carries ? CARRIED_FIGURE_ID : undefined} carryPlay={carries} className={hubCell(twoUp, "ledger")} />}
+      <MineBlock t={t} locale={locale} w={w} nowMs={nowMs} cancelEnds={cancelEnds} className={hubCell(twoUp, w.state === "OPEN" ? "mine" : "mineUnderFacts")} />
+      {hub.grading && <GradingBlock t={t} locale={locale} w={hub.grading} nowMs={nowMs} className={hubCell(twoUp, mineDrawn(w) ? "grading" : "mine")} />}
     </aside>
   );
 
@@ -521,7 +576,7 @@ export default async function MillioneaHubPage({ searchParams }: { searchParams:
           <PageHeader
             eyebrow={w ? <WeekLabel t={t} w={w} nowMs={nowMs} paused={hub.paused} /> : undefined}
             title={t.millionea.productTitle}
-            subtitle={w && !retired ? fill(t.millionea.howOne, { price: formatTzs(w.ticketPrice) }) : undefined}
+            subtitle={w && !retired ? keepFact(locale, hubIntroText(t, formatTzs(w.ticketPrice))) : undefined}
             actionsWrap
             actions={retired ? undefined : (
               <div className="flex shrink-0 items-center gap-1" data-testid="millionea-hub-doors">
@@ -536,35 +591,42 @@ export default async function MillioneaHubPage({ searchParams }: { searchParams:
               </div>
             )}
           />
-          {gate.preview && <MillioneaPreviewMark t={t} />}
+          {/* A staff preview is marked once, above the page, by the platform's bar (S5-FIX-PLATFORM D12, AppShell's
+              `MillioneaPreviewBar`) — no mark of the hub's own in its column. */}
           {retired ? (
             // ⭐ H4 · MILLIONEA HAS ENDED: the closed statement, the final week's row and the register — and nothing that
             // promises a sale ("No Millionea week is on sale right now", "…published when sales open"), which never comes.
             <div className="flex flex-col gap-4" data-testid="millionea-hub-retired">
               {hub.lastWeek && (
-                <Callout tone="neutral" glyph="finalWeek" role="status">{fill(t.millionea.stoppedSunset, { week: weekNumberOf(hub.lastWeek.code) })}</Callout>
+                <Callout tone="neutral" glyph="finalWeek" role="status">{keepFact(locale, fill(t.millionea.stoppedSunset, { week: weekNumberOf(hub.lastWeek.code) }))}</Callout>
               )}
               <LastWeekRow t={t} locale={locale} hub={hub} retired />
               <MillioneaReadingLinks t={t} how={false} />
             </div>
           ) : (
             <>
-              {hub.paused && <Callout tone="neutral" glyph="salesPaused" role="status">{t.millionea.paused}</Callout>}
+              {/* The paused notice keeps its last pair together, as every Millionea line is kept (`pausedWords`, keepFact):
+                  "salama." stood alone at sw 320. */}
+              {hub.paused && (
+                <div data-testid="millionea-hub-paused">
+                  <Callout tone="neutral" glyph="salesPaused" role="status">{pausedWords(t, locale)}</Callout>
+                </div>
+              )}
               {/* ⭐ H3 + H1 · Millionea's final week is said ONCE, in the jackpot's head: its rule line is the final week's,
                   led by the week's own mark (§10c `finalWeek`, flag-checkered — `flag` means "object to a result", P17;
                   `MaswaliPoolHead`). The page-wide "Final week of Millionea" box above it said the week a third time and put
                   the door under a 360 phone's fold (y 770). A week ahead, the announcement bar says it (L22). */}
-              {w && voidingNow(w, nowMs) && <VoidingNotice t={t} w={w} />}
+              {w && voidingNow(w, nowMs) && <VoidingNotice t={t} locale={locale} w={w} />}
               {w ? (
-                <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+                <div className={HUB_GRID}>
                   {/* The strip spans the measure (S5 VIS P4): each of its three ranges has a third of it, whole on its line. */}
                   {phases && (
-                    <div className="lg:col-span-2">
+                    <div className={HUB_STRIP}>
                       <MaswaliWeekStrip t={t} phases={phases} current={phaseNow(w, phases, nowMs)} />
                     </div>
                   )}
                   {w.pool ? <HubPoolLive weekId={w.id} initial={w.pool} price={w.ticketPrice} voiding={voidingNow(w, nowMs)}>{aside}</HubPoolLive> : aside}
-                  <div className={cn("flex flex-col gap-6 lg:col-start-1", phases ? "lg:row-start-2" : "lg:row-start-1")}>
+                  <div className={hubMain(!!phases)}>
                     <WeekQuestions t={t} locale={locale} w={w} />
                     {/* The week's fingerprints, under its fifteen (the register's own drawing, `WeekCommitments`): the
                         question set's hash from the open, the tickets' root from the close — each only once stamped. */}
@@ -575,23 +637,18 @@ export default async function MillioneaHubPage({ searchParams }: { searchParams:
                       />
                     )}
                   </div>
-                  <div className={cn("flex flex-col gap-4 lg:col-start-1", phases ? "lg:row-start-3" : "lg:row-start-2")}>
+                  <div className={hubTail(!!phases)}>
                     <LastWeekRow t={t} locale={locale} hub={hub} />
                     <MillioneaReadingLinks t={t} />
                   </div>
                 </div>
               ) : (
                 // ⭐ L6 · no week on sale is the platform's empty state, as the register's and the tickets' are; L21 · while
-                // sales are paused it promises no next open.
+                // sales are paused it promises no next open. The next open's day never parts from its clock (A1): the kit's
+                // kept run (`EmptyStateBody`'s `keep`). §T5 · its numerals in the numerals' face, as Tiketi zangu's empty
+                // states set theirs: Millionea's own empty state (`MaswaliEmptyState`, the kit's opt-in numeral part).
                 <div className="flex flex-col gap-4" data-testid="millionea-hub-no-week">
-                  <EmptyState
-                    title={t.millionea.hubNoWeek}
-                    body={[
-                      msOf(hub.nextOpensAt) !== null && !hub.paused ? nextOpenWords(t, msOf(hub.nextOpensAt) ?? 0) : null,
-                      t.millionea.questionsAtOpen,
-                    ].filter((x): x is string => !!x).join(locale === "zh" ? "" : " ")}
-                    fill
-                  />
+                  <MaswaliEmptyState title={t.millionea.hubNoWeek} body={noWeekBody(t, locale, hub.paused ? null : msOf(hub.nextOpensAt))} fill />
                   <LastWeekRow t={t} locale={locale} hub={hub} />
                   <MillioneaReadingLinks t={t} />
                 </div>

@@ -11,12 +11,25 @@
  * are measured in a browser by `qa:maswali-hub-states`, and its read model's new reads by `test:maswali-hub-reads`.
  *   §1 M4/H1 the pool ledger is the one Millionea ledger  §2 L10 the figure holds one line at 320
  *   §3 H3 the final week's rule under the figure          §4 L15 a conditional refund row: no figure, no dash
- *   §5 motion L1 a live frame ticks each value it moved   §6 M9/M10/M7 calm bars; the carry's origin and landing
+ *   §5 motion L1 a live frame ticks each value it moved   §6 M9/M10/M7 calm bars; the carry's origin and landing (its
+ *                                                          destination a box of the row's line, H6)
  *   §7 L2/L18 the strip: mono ranges, a shape for "now"   §8 M2 the kit's header pill and its wrapping row
  *   §9 M11 a result that arrives presses once            §10 the words, as decided, in three languages; zh's one
  *                                                          spacing rule on every timed line the hub fills
+ *   §11 L14 last week's row in the register's words      §12 L7/§T5 a time's face, every numeral .mono
+ *   §13 L7 (round 2) the loading drawing composes the page's frame: the reader's block last, a guest by the shell's mark,
+ *       every block sweeping                              §14 L6/L21 the no-week body keeps its day with its clock, its
+ *                                                          numerals in their face (Millionea's empty state, §T5)
+ *   §15 the segment's loading state draws the page being opened (a census of every Millionea page)
+ *   §16 L13 a voided main's words in the register's form, one wrap unit; the paused notice's and the voiding notice's
+ *       last pairs
+ *   §17 7b the head's absent figure is the platform's empty slot
+ *   §18 the close line in the one wording (salesCloseColon)  §19 the frame's line boxes, pills and the head's card order;
+ *       G2: the drawing's eyebrow (the frame's row, the week's word, the chip) and the questions' heading
+ *   §20 the lead's rulings 2a-2c: the result notices in the page form, last week's fee an amount, the reserves' rule
+ *       after its head (the shared `reserveRuleAfterHead`)
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
@@ -64,6 +77,10 @@ const POOL = req("../src/components/maswali/maswali-pool-figure.tsx") as typeof 
 const { MaswaliPoolHead } = POOL;
 const MLR = req("../src/components/maswali/maswali-ledger.tsx") as typeof import("../src/components/maswali/maswali-ledger.tsx");
 const HP = req("../src/app/millionea/hub-pool.tsx") as typeof import("../src/app/millionea/hub-pool.tsx");
+const GH = req("../src/app/millionea/hub-ghost.tsx") as typeof import("../src/app/millionea/hub-ghost.tsx");
+const FRAME = req("../src/app/millionea/hub-frame.ts") as typeof import("../src/app/millionea/hub-frame.ts");
+/** An attribute's value as react-dom/server writes it (its five escaped characters). */
+const escAttr = (s: string) => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 type View = import("../src/components/maswali/maswali-pool-figure.tsx").PoolView;
 const SELLING: View = { kind: "selling", carriedIn: { week: 47, amount: null }, sales: { tickets: 41, amount: 41_000 }, pool: 41_000, floor: 1_000_000, jackpot: 1_000_000 };
 const VOIDING: View = { kind: "voiding", carriedIn: null, sales: { tickets: 10, amount: 10_000 }, pool: 10_000, floor: 1_000_000, price: 1_000 };
@@ -118,24 +135,31 @@ const ledgerDefects = (l: L3, m: string) => {
   const sw = hubLedgerOf("sw", figure());
   const keptCha = (m: string) => /<span class="whitespace-nowrap">(?:[^<]*\s)?cha <\/span>chini\b|<span class="whitespace-nowrap">[^<]*\bcha chini\b/.test(m);
   ok("1.2 · sw \"Kiwango cha chini kilichohakikishwa\" keeps \"cha\" with \"chini\": no line ends on the connective", keptCha(sw), (sw.match(/.{0,60}cha .{0,30}/) ?? [""])[0]);
-  // The label as WIP 1 drew it: a fact line of `keepFact`s, which keeps runs and figures but not a connective.
-  const FACTS = req("../src/components/maswali/maswali-facts.tsx") as typeof import("../src/components/maswali/maswali-facts.tsx");
-  const factsOnly = inApp("sw", h(FACTS.MaswaliFacts as never, { facts: FACTS.factsOf(dict.sw.millionea.floor).map((f) => FACTS.keepFact("sw", f)) } as never));
-  ok("1.2′ PLANT · the label drawn as a bare fact line (its connective free to end a line) is reported", !keptCha(factsOnly), factsOnly.slice(0, 160));
+  // The label as WIP 1 drew it: kept as a sentence is (its last two words), its connective free. (WIP 1's fact line of
+  // `keepFact`s drew it so; since HUB-2B the fact keeper keeps a connective too — test:maswali-facts §6 — so the plant
+  // draws the platform's sentence keeper, `keepText`, which keeps none.)
+  const { keepText } = req("../src/components/ui/keep-run.tsx") as typeof import("../src/components/ui/keep-run.tsx");
+  const factsOnly = inApp("sw", h("span", null, keepText(dict.sw.millionea.floor) as never));
+  ok("1.2′ PLANT · the label kept only as a sentence is (its connective free to end a line) is reported", !keptCha(factsOnly), factsOnly.slice(0, 160));
   const oldDl = "<dl><div><dt>Jackpot</dt><dd>TZS 1,000,000</dd></div></dl>";
   ok("1.1′ PLANT · the old home-made <dl> ledger is reported", ledgerDefects("en", oldDl).length > 0);
   const eyebrows = hubLedgerOf("en", figure()).replaceAll('class="min-w-0 text-body-sm text-text"', 'class="min-w-0 font-mono text-micro uppercase eyebrow text-text-subtle"');
   ok("1.1″ PLANT · WIP 1's rows (the confirm's micro capitals for a ledger's nouns) are reported", ledgerDefects("en", eyebrows).some((x) => x.includes("capitals")));
-  // M10 · a carry that came opens its week's register page; one still waiting on its week names the week and links nothing
-  // — the register draws a week once it is final (its live page is the REGISTER lane's, H2), and a door never opens a 404.
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (round 2, L5 · REGISTER's H2: the register draws a public week from the moment it
+  // opens): every carry on the PUBLIC line opens its week's register page — the one still waiting on its week too — and on
+  // a DRIVE line none does (a drive week's chain is private; the public register has no page for it: never a 404 door).
   const { registerWeekHref } = req("../src/app/millionea/millionea-parts.tsx") as typeof import("../src/app/millionea/millionea-parts.tsx");
   const inRow = (input: ReturnType<typeof HP.ledgerInputOf>) => MLR.millioneaLedgerRows(dict.en as never, "en", input).find((r) => r.key === "in");
-  const waiting = HP.ledgerInputOf(figure() as never, 1_000, false);
-  const came = HP.ledgerInputOf(figure({ carryPendingCode: null, carryIn: 389_000, carryFromCode: "MLN-2026-W47", atLeast: false }) as never, 1_000, false);
-  const linkDefects = (w: typeof waiting) => [...(inRow(w)?.href ? ["the waiting carry links a week the register does not draw yet"] : []), ...(inRow(came)?.href !== registerWeekHref("MLN-2026-W47") ? ["the carry that came links nowhere"] : [])];
-  ok("1.3 · the carry that came opens Week 47's register page; the carry still waiting on Week 47 links nothing", linkDefects(waiting).length === 0, j(linkDefects(waiting)));
-  ok("1.3′ PLANT · a waiting carry linked to its week's page (a 404 until that week is final) is reported",
-    linkDefects({ ...waiting, carryIn: { ...waiting.carryIn!, href: registerWeekHref("MLN-2026-W47") } }).length > 0);
+  const came = { carryPendingCode: null, carryIn: 389_000, carryFromCode: "MLN-2026-W47", atLeast: false };
+  const at = (over: Record<string, unknown>) => inRow(HP.ledgerInputOf(figure(over) as never, 1_000, false))?.href ?? null;
+  const linkDefects = (href: (over: Record<string, unknown>) => string | null) => [
+    ...(href({}) !== registerWeekHref("MLN-2026-W47") ? ["the waiting carry does not open its week's page"] : []),
+    ...(href(came) !== registerWeekHref("MLN-2026-W47") ? ["the carry that came links nowhere"] : []),
+    ...(href({ visibility: "DRIVE" }) !== null || href({ ...came, visibility: "DRIVE" }) !== null ? ["a drive week's carry links the public register"] : []),
+  ];
+  ok("1.3 · on the public line both carries open Week 47's register page — the one that came and the one still waiting; on a drive line neither links", linkDefects(at).length === 0, j(linkDefects(at)));
+  ok("1.3′ PLANT · the old waiting carry that linked nothing, and a drive carry that links the public register, are each reported",
+    linkDefects((over) => (over.carryPendingCode === null ? at(over) : null)).length > 0 && linkDefects((over) => registerWeekHref(String(over.carryFromCode ?? "MLN-2026-W47"))).length > 0);
 }
 
 // ── §2 · L10 · the figure holds one line at 320 ──────────────────────────────────────────────────────────────────────────
@@ -171,16 +195,29 @@ const finalDefects = (l: L3, m: string, want: boolean) => {
   const at = t.indexOf(line), ten = t.indexOf(tenOnly ?? "\u0000"), feeAt = t.indexOf(fee ?? "\u0000"), carry = t.indexOf(fill(dict[l].millionea.pendingCarry, { week: 47 }));
   const mark = /data-testid="millionea-hub-final-rule"><(?:svg|span aria-hidden)/.test(m);
   if (!want) return at >= 0 ? [`${l}: the final week's line where no final week runs`] : [];
-  return at >= 0 && ten < 0 && feeAt > at && (carry < 0 || feeAt < carry) && mark ? [] : [`${l}: final@${at} 10/10-only@${ten} fee@${feeAt} carry@${carry} mark ${mark}`];
+  // S5-R2-HUB · the card's order (DOORS' M2; the lead's ruling 2026-10-22): the carry's line stands right after the figure.
+  return at >= 0 && ten < 0 && feeAt > at && (carry < 0 || carry < at) && mark ? [] : [`${l}: final@${at} 10/10-only@${ten} fee@${feeAt} carry@${carry} mark ${mark}`];
 };
 {
   const d = LOCALES.flatMap((l) => [...finalDefects(l, headOf(l, SELLING, true), true), ...finalDefects(l, headOf(l, SELLING, false), false), ...finalDefects(l, headOf(l, VOIDING, true), false)]);
-  ok("3.1 · a final week's head: the figure, then ONE rule — the final week's mark, \"Final week: if no ticket gets 10/10, the pool is shared equally by this week's highest-scoring tickets, with no floor top-up · 13% fee at payout\" — then the carry's line, in three languages; the 10/10 rule alone not beside it; none in a week that is not final, none on a void", d.length === 0, d.join(" | "));
+  ok("3.1 · a final week's head: the figure, the carry's line that adds to it, then ONE rule — the final week's mark, \"Final week: if no ticket gets 10/10, the pool is shared equally by this week's highest-scoring tickets, with no floor top-up · 13% fee at payout\" — in three languages; the 10/10 rule alone not beside it; none in a week that is not final, none on a void", d.length === 0, d.join(" | "));
   // The heads as they were: the 10/10 rule alone (round 1), and the 10/10 rule with the final week's line under it (WIP 1).
   const alone = headOf("en", SELLING, false), twice = alone.replace("</div>", `<span>${dict.en.millionea.finalWeekRule}</span></div>`);
   ok("3.1′ PLANT · the old final weeks (the 10/10 rule alone; the 10/10 rule and the final line both) are each reported", finalDefects("en", alone, true).length > 0 && finalDefects("en", twice, true).length > 0);
   const unmarked = headOf("en", SELLING, true).replace(/(data-testid="millionea-hub-final-rule">)<(?:svg[\s\S]*?<\/svg>|span aria-hidden[^>]*><\/span>)/, "$1");
   ok("3.1″ PLANT · a final week's rule without the week's mark is reported", unmarked !== headOf("en", SELLING, true) && finalDefects("en", unmarked, true).length > 0);
+  // ⭐ S5-R2-HUB · each rule balances a fact that wraps inside itself: at 320 Swahili's first fact broke greedily and
+  // stranded its kept run on a line of its own ("Inagawanywa sawa kwa kila tiketi" / "ya 10/10", open-classic-sw-320 of
+  // round 2's run a). ⚠️ RE-PINNED IN THE OPEN (HUB-2B): the class stands on the rule's own LINE now
+  // (`HUB_POOL_HEAD.rule` / `.finalRule`: `[&_.kp-mln-fact]:text-balance`), not on its list, so the loading drawing's rule
+  // — a fact list the kit's GhostWords draws — balances by the same class. The lines themselves are measured in a browser
+  // (`qa:maswali-hub-states`' open state); here, the class on the rule's line over its one list, in every head a week can draw.
+  const BALANCE = escAttr("[&_.kp-mln-fact]:text-balance");
+  const balanced = (m: string) => (tagWith(m, 'data-head="rule"').includes(BALANCE) ? count(m, 'class="kp-mln-facts') : 0);
+  const heads = LOCALES.flatMap((l) => [["selling", headOf(l, SELLING, false)], ["final", headOf(l, SELLING, true)]].map(([k, m]) => [`${l} ${k}`, balanced(m)] as const));
+  ok("3.2 · in three languages, the selling week's and the final week's rule line each balance their ONE fact list (a fact wrapping inside itself)", heads.every(([, n]) => n === 1), j(heads));
+  const greedy = headOf("sw", SELLING, false).replace(` ${BALANCE}`, "");
+  ok("3.2′ PLANT · the round-1 rule (its facts wrapping greedily) is reported", balanced(greedy) === 0);
 }
 
 // ── §4 · L15 · a conditional refund row ──────────────────────────────────────────────────────────────────────────────────
@@ -250,6 +287,18 @@ console.log("\n§6 · M9/M10 · a returning notice is the platform's calm bar (N
   const pending = dressedOf("en", figure(), NOT_MOVED, { from: "mln-carried-figure", play: true }).some((r) => carryIn([r], r.key)?.type === MaswaliCarry);
   const none2 = dressedOf("en", landed, NOT_MOVED, null).some((r) => carryIn([r], r.key)?.type === MaswaliCarry);
   ok("6.4′ CONTROL · no other row carries; a carry still pending (no figure yet) lands nowhere; and with no notice to carry from, nothing carries", !elsewhere && !pending && !none2, j({ elsewhere, pending, none2 }));
+  // ⭐ S5-R2-HUB 9 · the carry's destination is a box of the row's line: the frame sets the ledger's figures to line-height 0
+  // (hub-frame.ts NUMERALS), and the carry's own inline FLEX wrapper around that one figure was 0px tall — an empty box the
+  // carry's one measurement refuses, so it never played (the drive recorded [1371, 679, 80, 0]). Rendered through the hub's
+  // own ledger island, as the page draws it: the wrapper is an inline block, which takes the row's own line box.
+  const rendered = inApp("en", h(HP.HubPoolLive as never, { weekId: "w", initial: landed, price: 1_000 } as never,
+    h(HP.HubPoolLedger as never, { carryFrom: "mln-carried-figure", carryPlay: true } as never)));
+  const wrapper = (m: string) => /<span data-row="in"><span class="([^"]*)">/.exec(m)?.[1] ?? null;
+  ok(`6.6 · the carried figure's wrapper is an inline block, a box of the row's line under the frame's numeral rule ("${wrapper(rendered)}")`,
+    wrapper(rendered) === "inline-block", rendered.slice(rendered.indexOf('data-row="in"') - 20, rendered.indexOf('data-row="in"') + 120));
+  const flex = inApp("en", h(MLR.MaswaliLedger as never, { rows: dressedOf("en", landed, NOT_MOVED, null).map((r) => (r.key === "in"
+    ? { ...r, value: h("span", { "data-row": "in" }, h(MaswaliCarry as never, { from: "mln-carried-figure", play: true } as never, (r.value as { props: { children: unknown } }).props.children as never)) } : r)) } as never));
+  ok(`6.6′ PLANT · round 2's wrapper (the carry's own inline flex box: 0px tall under the numeral rule) is reported ("${wrapper(flex)}")`, wrapper(flex) !== null && wrapper(flex) !== "inline-block");
   // M10 · ONE origin: of two unseen rollovers (a reader away for two weeks), only the week this week's figure carries in
   // from — its own `carryFromCode` — marks the id; none while that carry waits on its week, none from a week it does not name.
   const { carryingRollover } = req("../src/app/millionea/hub-words.tsx") as typeof import("../src/app/millionea/hub-words.tsx");
@@ -377,7 +426,7 @@ console.log("\n§10 · the hub's new and changed words, as decided, in three lan
     nextOpen: W.nextOpenWords(t, EAT("2026-12-07T00:01:00")),
     sameDay: say(W.closeMovedWords(t, FRI_16, FRI_18)),
     acrossDays: say(W.closeMovedWords(t, FRI_16, THU_18)),
-    voiding: say(W.voidingWords(t, 3, 2, EAT("2026-12-08T12:00:00"))),
+    voiding: say(W.voidingWords(t, l, 3, 2, EAT("2026-12-08T12:00:00"))),
     finalAhead: say(W.finalAheadWords(t, l, 52, EAT("2026-11-30T00:01:00"), EAT("2026-11-20T10:00:00"))),
   });
   const HAN_GAP = /[㐀-䶿一-鿿豈-﫿]\s+[㐀-䶿一-鿿豈-﫿]/;
@@ -448,17 +497,468 @@ console.log("\n§12 · L7 · a time on the hub: its weekday in the body face, it
   const off = LOCALES.flatMap((l) => [
     markup(N.weekdayClock(dict[l] as never, FRI_18)),
     markup(W.closeMovedWords(dict[l] as never, FRI_16, FRI_18)),
-    markup(W.voidingWords(dict[l] as never, 3, 2, FRI_18)),
+    markup(W.voidingWords(dict[l] as never, l, 3, 2, FRI_18)),
     markup(W.finalAheadWords(dict[l] as never, l, 52, FRI_18, FRI_16)),
   ].flatMap(faceDefects).map((x) => `${l}: ${x}`));
   ok("12.1 · in three languages the close's time, the moved close, the voiding sentence and the final week's date set each numeral `.mono` and nothing else — no time set whole in the mono face", off.length === 0, off.slice(0, 3).join(" | "));
   const sw = markup(N.weekdayClock(dict.sw as never, FRI_18));
   ok("12.2 · the weekday stands outside the numeral: \"Ijumaa \" in the body face, \"18:00\" a .mono run, one unbreakable span", /<span class="whitespace-nowrap"><span>Ijumaa <\/span><span class="mono">18:00<\/span><\/span>/.test(sw), sw);
   ok("12.1′ PLANT · the old all-mono time (\"Ijumaa 18:00\" set whole in font-mono) is reported", faceDefects('<span class="whitespace-nowrap font-mono">Ijumaa 18:00</span>').length > 0);
+  // §T5 (the lead's round-2 ruling): EVERY numeral of these sentences is a `.mono` run — the voiding sentence's counts and
+  // the final week's number as well as their times and dates: with every `.mono` run taken out, no digit is left.
+  // (an entity is markup too: "Millionea&#x27;s" holds no numeral)
+  const bare = (m: string) => m.replace(/<span class="mono">[^<]*<\/span>/g, "").replace(/<[^>]+>/g, "").replace(/&#?\w+;/g, "").match(/\d+/g) ?? [];
+  const lines = (l: L3) => ({
+    voiding: markup(W.voidingWords(dict[l] as never, l, 3, 2, FRI_18)),
+    finalAhead: markup(W.finalAheadWords(dict[l] as never, l, 52, FRI_18, FRI_16)),
+    moved: markup(W.closeMovedWords(dict[l] as never, FRI_16, FRI_18)),
+  });
+  const left = LOCALES.flatMap((l) => Object.entries(lines(l)).filter(([, m]) => bare(m).length > 0).map(([k, m]) => `${l} ${k}: ${bare(m).join(",")}`));
+  ok("12.3 · §T5 in three languages no digit of the voiding sentence (\"3 … 2 …\"), the final week ahead (\"Week 52 …\") or the moved close stands outside a .mono run", left.length === 0, left.join(" | "));
+  // PLANT · the round-1 fills, their counts and the week's number handed in as bare text, are caught.
+  const { fillNodes } = req("../src/lib/fill-nodes.tsx") as typeof import("../src/lib/fill-nodes.tsx");
+  const old = [
+    markup(fillNodes(dict.en.millionea.weekVoidingBody, { voided: "3", valid: "2", when: N.weekdayClock(dict.en as never, FRI_18) })),
+    markup(fillNodes(dict.en.millionea.finalWeekAhead, { week: 52, date: "30 Nov" })),
+  ];
+  ok("12.3′ PLANT · the round-1 fills (the counts and the week's number bare) are reported", old.every((m) => bare(m).length > 0), j(old.map(bare)));
 }
 
-// ── §13 · L22 · the final week's date only while it is ahead ─────────────────────────────────────────────────────────────
-console.log("\n§13 · L22 · the final week announced: \"It opens {date}\" only while the open is ahead; past it, or unread, the week alone (the lead's ruling (b))");
+// ── §13 · L7 (round 2) · the loading drawing is the hub's frame ──────────────────────────────────────────────────────────
+console.log("\n§13 · L7 (round 2) · the hub's loading drawing composes the page's own frame (hub-frame.ts): the reader's block last in the buy column, a guest's door by the shell's mark, every block sweeping");
+// ⭐ The lead's round-2 ruling on R1-hub's loading row: the drawing is the hub's invariant frame, so the swap to the page
+// moves nothing in the common states. Here, what it is made of, in three languages; the swap itself is measured in a
+// browser (`qa:maswali-hub-states`' "ghost" state: every band's box, drawn and landed, for a reader holding none, one, many).
+const ghostOf = (l: L3) => inApp(l, h(GH.MillioneaHubGhost as never, {} as never));
+{
+  // ⚠️ RE-PINNED IN THE OPEN (HUB-2B): the eyebrow is a band of its own now — the week's words and the chip's, unseen.
+  const ORDER = ["eyebrow", "doors", "strip", "jackpot", "door", "ledger", "mine", "questions"];
+  const MEMBER = escAttr("[[data-viewer=guest]_&]:hidden"), GUEST = escAttr("hidden [[data-viewer=guest]_&]:block");
+  const frameDefects = (l: L3, m: string) => {
+    const d: string[] = [];
+    const bands = [...m.matchAll(/data-ghost="([a-z]+)"/g)].map((x) => x[1]);
+    if (j(bands) !== j(ORDER)) d.push(`${l}: bands ${j(bands)}`);
+    for (const [name, cls] of [["grid", FRAME.HUB_GRID], ["buy column", FRAME.hubAside(true, true)], ["pinned pair", FRAME.HUB_PINNED]] as const) {
+      if (count(m, `class="${escAttr(cls)}"`) !== 1) d.push(`${l}: the ${name} is not the frame's`);
+    }
+    const mine = tagWith(m, 'data-ghost="mine"'), ledger = tagWith(m, 'data-ghost="ledger"');
+    if (!mine.includes(escAttr(FRAME.hubCell(true, "mine") ?? "\u0000")) || !ledger.includes(escAttr(FRAME.hubCell(true, "ledger") ?? "\u0000"))) d.push(`${l}: the ledger and the reader's block are not in the frame's cells`);
+    if (count(m, `class="${escAttr(FRAME.HUB_QUESTIONS.row)} kp-shimmer-track"`) !== 10) d.push(`${l}: the question rows are not the page's rows`);
+    if (!/aria-busy="true" data-ghost-page="hub"/.test(m)) d.push(`${l}: no data-ghost-page="hub" on the drawing's root`);
+    return d;
+  };
+  const guestDefects = (l: L3, m: string) => {
+    const d: string[] = [];
+    if (!tagWith(m, 'data-ghost="mine"').includes(MEMBER)) d.push(`${l}: the reader's block is drawn for a guest`);
+    if (count(m, `class="${MEMBER}"`) !== 1 || count(m, `class="${GUEST}"`) !== 1) d.push(`${l}: no player's door beside one guest's door (${count(m, `class="${MEMBER}"`)}/${count(m, `class="${GUEST}"`)})`);
+    return d;
+  };
+  const sweepDefects = (l: L3, m: string) => {
+    const d: string[] = [];
+    for (const b of ["jackpot", "ledger"]) if (!/\bkp-shimmer-track\b/.test(tagWith(m, `data-ghost="${b}"`))) d.push(`${l}: the ${b} does not sweep`);
+    if (!/class="mat-raised flex flex-col gap-1\.5 rounded-control p-2 kp-shimmer-track"/.test(m)) d.push(`${l}: the held ticket's block does not sweep`);
+    return d;
+  };
+  const all = LOCALES.flatMap((l) => { const m = ghostOf(l); return [...frameDefects(l, m), ...guestDefects(l, m), ...sweepDefects(l, m)]; });
+  ok("13.1 · in three languages the drawing's bands stand in the page's order — the head's eyebrow and its two doors, the strip, jackpot, door, ledger, the reader's block LAST in the buy column, then the questions — in the frame's own grid, column, pinned pair and cells, with the page's ten question rows, marked data-ghost-page=\"hub\"", all.filter((x) => !/guest|sweep/.test(x)).length === 0, all.join(" | "));
+  ok("13.2 · a guest's door is drawn beside the player's, each shown by the shell's mark (main[data-viewer=\"guest\"]), and no block of tickets for a guest", all.filter((x) => /guest/.test(x)).length === 0, all.join(" | "));
+  ok("13.3 · every block sweeps with the platform's skeleton shimmer (the jackpot, the ledger, the held ticket's block)", all.filter((x) => /sweep/.test(x)).length === 0, all.join(" | "));
+  const en = ghostOf("en");
+  // PLANTS: the round-1 drawing (no reader's block: the ledger straight after the door), its column (no `lg:items-stretch`:
+  // the blocks drawn ~250px wide in the 360px column), and a block that stands still.
+  const noMine = en.replace(/<div class="[^"]*" data-ghost="mine">[\s\S]*?<\/div><\/div><\/div>/, "");
+  ok("13.1′ PLANT · the round-1 drawing (the ledger straight after the door, no reader's block) is reported", noMine !== en && frameDefects("en", noMine).some((x) => x.includes("bands")), frameDefects("en", noMine).join(" | "));
+  const narrow = en.replace(escAttr(FRAME.hubAside(true, true)), escAttr(FRAME.hubAside(true, true).replace(" lg:items-stretch", "")));
+  ok("13.2′ PLANT · round 1's column (its blocks not stretched from 1024) is reported", narrow !== en && frameDefects("en", narrow).some((x) => x.includes("buy column")));
+  const still = en.replace(/(class="[^"]*?) kp-shimmer-track([^"]*" data-ghost="ledger")/, "$1$2");
+  ok("13.3′ PLANT · a ledger block that stands still is reported", still !== en && sweepDefects("en", still).some((x) => x.includes("ledger")));
+}
+
+// ── §14 · L6/L21 · the no-week body ─────────────────────────────────────────────────────────────────────────────────────
+console.log("\n§14 · L6/L21 · the no-week empty state's body: the next open's day kept with its clock (A1), none while paused, zh's two sentences joined with no space");
+{
+  const W = req("../src/app/millionea/hub-words.tsx") as typeof import("../src/app/millionea/hub-words.tsx");
+  const N = req("../src/components/maswali/maswali-format.ts") as typeof import("../src/components/maswali/maswali-format.ts");
+  const ES = req("../src/components/ui/empty-state-text.ts") as typeof import("../src/components/ui/empty-state-text.ts");
+  const MON = Date.parse("2026-12-07T00:01:00+03:00");
+  const drawn = (body: import("../src/components/ui/empty-state-text.ts").EmptyStateBody) => renderToStaticMarkup(h("p", null, ES.emptyStateBody(body) as never));
+  const keptRuns = (m: string) => [...m.matchAll(/<span class="whitespace-nowrap">([\s\S]*?)<\/span>/g)].map((x) => textOf(x[1]));
+  const kept = (l: L3, m: string) => { const when = N.eatWeekdayClock(dict[l] as never, MON); return keptRuns(m).some((x) => x.includes(when)); };
+  // ⭐ S5-R2-HUB · and every phrase Millionea keeps whole (`factRuns`): "Maswali 15" broke "Maswali" / "15" at sw 360.
+  const FACTS = req("../src/components/maswali/maswali-facts.tsx") as typeof import("../src/components/maswali/maswali-facts.tsx");
+  const looseOf = (l: L3, text: string, m: string) => FACTS.factRuns(l, text).filter((r) => !keptRuns(m).some((x) => x.includes(r)));
+  const off = LOCALES.flatMap((l) => {
+    const d: string[] = [];
+    const body = W.noWeekBody(dict[l] as never, l, MON);
+    const want = [fill(dict[l].millionea.nextOpensAt, { when: N.eatWeekdayClock(dict[l] as never, MON) }), dict[l].millionea.questionsAtOpen].join(l === "zh" ? "" : " ");
+    if (body.text !== want) d.push(`${l}: "${body.text}"`);
+    if (!kept(l, drawn(body))) d.push(`${l}: the day parts from its clock`);
+    const loose = looseOf(l, body.text, drawn(body));
+    if (FACTS.factRuns(l, body.text).length < 2 || loose.length > 0) d.push(`${l}: phrases not kept ${j(loose)}`);
+    const paused = W.noWeekBody(dict[l] as never, l, null);
+    if (paused.text !== dict[l].millionea.questionsAtOpen || paused.keep.some((x) => /\d{1,2}:\d{2}/.test(x))) d.push(`${l}: paused says "${paused.text}"`);
+    return d;
+  });
+  ok("14.1 · in three languages the body is the next open's sentence then the questions' (zh joined with no space), the next open's day and clock one kept run, every phrase Millionea keeps whole (\"Maswali 15\") kept, and while paused only the questions' sentence", off.length === 0, off.join(" | "));
+  const plain = drawn(W.noWeekBody(dict.sw as never, "sw", MON).text);
+  ok("14.1′ PLANT · round 1's body (one plain string: nothing kept) is reported", !kept("sw", plain), plain.slice(0, 200));
+  const swBody = W.noWeekBody(dict.sw as never, "sw", MON);
+  const clockOnly = drawn({ text: swBody.text, keep: [N.eatWeekdayClock(dict.sw as never, MON)] });
+  ok("14.1″ PLANT · the body keeping its clock alone (\"Maswali\" / \"15\" free to part) is reported", looseOf("sw", swBody.text, clockOnly).length > 0, clockOnly.slice(0, 200));
+  // ⭐ S5-R2-HUB 6 (the merge's wiring) · §T5: the hub draws the no-week state as Millionea's own empty state
+  // (`MaswaliEmptyState`, TICKETS' round 2: the kit's opt-in numeral part), so its clock and its count are numerals — and
+  // nothing but their face changes from the kit's own drawing. The page's numerals are censused on the rendered page too
+  // (`qa:maswali-hub-states`' §T5 check: the no-week body is the hub's own line since this commit).
+  const { MaswaliEmptyState } = req("../src/components/maswali/maswali-empty-state.tsx") as typeof import("../src/components/maswali/maswali-empty-state.tsx");
+  const { EmptyState } = req("../src/components/ui/empty-state.tsx") as typeof import("../src/components/ui/empty-state.tsx");
+  const faceless = (m: string) => m.replace(/<span class="mono">([^<]*)<\/span>/g, "$1");
+  const bareDigits = (m: string) => textOf(m.replace(/<span class="mono">[^<]*<\/span>/g, "")).match(/\d+/g) ?? [];
+  const asHub = (l: L3, Kind: unknown) => inApp(l, h(Kind as never, { title: dict[l].millionea.hubNoWeek, body: W.noWeekBody(dict[l] as never, l, MON), fill: true } as never));
+  const t5 = LOCALES.flatMap((l) => {
+    const m = asHub(l, MaswaliEmptyState), plainKit = asHub(l, EmptyState);
+    const d: string[] = [];
+    if (bareDigits(m).length > 0) d.push(`${l}: bare ${j(bareDigits(m))}`);
+    if (!m.includes('<span class="mono">00:01</span>') || !m.includes('<span class="mono">15</span>')) d.push(`${l}: the clock or the count is not a numeral`);
+    if (faceless(m) !== plainKit) d.push(`${l}: more than the numerals' face changed`);
+    return d;
+  });
+  ok("14.2 · §T5 in three languages the hub's no-week body, drawn as the hub draws it (Millionea's empty state), sets the next open's clock and the questions' count as numerals, and nothing but their face differs from the kit's own drawing", t5.length === 0, t5.join(" | "));
+  const kitOnly = asHub("sw", EmptyState);
+  ok("14.2′ PLANT · round 1's call (the kit's EmptyState, no numeral part: \"00:01\" and \"15\" in the body face) is reported", bareDigits(kitOnly).length >= 2, j(bareDigits(kitOnly)));
+}
+
+// ── §16 · L13 · a voided main's words, after its stamp ────────────────────────────────────────────────────────────────
+console.log("\n§16 · L13 · a voided main's words after its stamp are the register's: the sentence's second fact, opening with a capital, its last two words kept — never \"Void\" alone on a first line, never \"voided\" on a last");
+{
+  const W = req("../src/app/millionea/hub-words.tsx") as typeof import("../src/app/millionea/hub-words.tsx");
+  const FACTS = req("../src/components/maswali/maswali-facts.tsx") as typeof import("../src/components/maswali/maswali-facts.tsx");
+  // Each kept run whole, the numerals' spans inside it included (a run's own span is closed by its matching tag).
+  const keptRuns = (m: string) => [...m.matchAll(/<span class="whitespace-nowrap">/g)].map((open) => {
+    let depth = 0, i = open.index ?? 0;
+    for (; i < m.length; i++) {
+      if (m.startsWith("<span", i)) depth++;
+      else if (m.startsWith("</span>", i) && --depth === 0) break;
+    }
+    return textOf(m.slice(open.index ?? 0, i)).trim();
+  });
+  // The line's last two words (zh: its last two characters) inside one kept run — "…due to be voided" never leaves "voided".
+  const tail = (l: L3, line: string) => { const last = FACTS.factsOf(line).at(-1) ?? ""; return l === "zh" ? last.slice(-2) : last.split(/\s+/).slice(-2).join(" "); };
+  // The register's week page draws the same row so (REGISTER's `MarkWords`): after the stamp that says "Void", the words
+  // that follow its first fact, opening with a capital.
+  const voidDefects = (l: L3, key: "voidAwaiting" | "voidWeekCertain", m: string) => {
+    const line = dict[l].millionea[key];
+    const rest = FACTS.factsOf(line).slice(1).join(" ");
+    const want = rest.charAt(0).toLocaleUpperCase() + rest.slice(1);
+    const d: string[] = [];
+    if (textOf(m) !== want) d.push(`${l} ${key}: "${textOf(m)}" for "${want}"`);
+    if (count(m, 'class="kp-mln-fact"') > 0) d.push(`${l} ${key}: a fact line (its long second fact moves whole and leaves "Void" alone)`);
+    if (!keptRuns(m).some((x) => x.endsWith(tail(l, line)))) d.push(`${l} ${key}: its last pair is free to part`);
+    return d;
+  };
+  const off = LOCALES.flatMap((l) => (["voidAwaiting", "voidWeekCertain"] as const).flatMap((k) => voidDefects(l, k, inApp(l, W.voidWords(l, dict[l].millionea[k])))));
+  ok("16.1 · in three languages a voided main's words are the register's — \"A reserve will take its place\", \"Too few reserves: the week is due to be voided\" — their last two words one kept run", off.length === 0, off.join(" | "));
+  const asFacts = inApp("en", h(FACTS.MaswaliFacts as never, { facts: FACTS.factsOf(dict.en.millionea.voidWeekCertain).map((f) => FACTS.keepFact("en", f)) } as never));
+  ok("16.1′ PLANT · round 2's fact line (\"Void\" alone on a first line) and round 1's plain sentence (\"voided\" alone on a last) are each reported",
+    voidDefects("en", "voidWeekCertain", asFacts).length > 0 && voidDefects("en", "voidWeekCertain", inApp("en", dict.en.millionea.voidWeekCertain)).length > 0);
+  // ⭐ S5-R2-HUB 6 · ONE WRAP UNIT: the words box is an inline flex row, so what it holds at its top level is what the browser
+  // lays out as flex items — the words must be ONE node there (the keeper's runs inside it), never the keeper's pieces as
+  // they come, each its own item (a sentence wider than its line then broke into a block above its kept run).
+  const topNodes = (m: string) => {
+    let depth = 0, n = 0;
+    for (const tok of m.split(/(<[^>]+>)/).filter(Boolean)) {
+      if (tok.startsWith("<!--")) continue;
+      if (tok.startsWith("</")) { depth--; continue; }
+      if (tok.startsWith("<")) { if (depth === 0) n++; if (!tok.endsWith("/>")) depth++; continue; }
+      if (depth === 0 && tok.trim()) n++;
+    }
+    return n;
+  };
+  const flat = (node: unknown) => renderToStaticMarkup(h(React.Fragment, null, node as never));
+  const units = LOCALES.flatMap((l) => (["voidAwaiting", "voidWeekCertain"] as const).map((k) => [`${l} ${k}`, topNodes(flat(W.voidWords(l, dict[l].millionea[k])))] as const));
+  ok("16.4 · in three languages the void words are ONE node in the row's flex box — one wrap unit, the kept runs inside it", units.every(([, n]) => n === 1), j(units));
+  const certainRest = FACTS.factsOf(dict.en.millionea.voidWeekCertain).slice(1).join(" ");
+  const pieces = topNodes(flat(FACTS.keepFact("en", certainRest.charAt(0).toUpperCase() + certainRest.slice(1))));
+  ok(`16.4′ PLANT · the keeper's pieces handed to the flex box as they come (${pieces} flex items: the round-2 drawing) are reported`, pieces > 1, `${pieces}`);
+  // The paused notice is Millionea's own sentence, kept as every Millionea line is (`pausedWords`, keepFact): its last two
+  // words one kept run ("salama." stood alone at sw 320), its numerals a numeral should a wording ever hold one.
+  const pausedDefects = (l: L3, m: string) => {
+    const line = dict[l].millionea.paused;
+    return textOf(m) === line && keptRuns(m).some((x) => x.endsWith(tail(l, line))) ? [] : [`${l}: "${textOf(m)}" ${j(keptRuns(m))}`];
+  };
+  const paused = LOCALES.flatMap((l) => pausedDefects(l, inApp(l, W.pausedWords(dict[l] as never, l))));
+  ok("16.2 · in three languages the paused notice's words are the dictionary's, their last two words one kept run", paused.length === 0, paused.join(" | "));
+  ok("16.2′ PLANT · the plain sentence (\"salama.\" free to stand alone) is reported", pausedDefects("sw", inApp("sw", dict.sw.millionea.paused)).length > 0);
+  // M6 · the voiding notice, kept as every Millionea line is (`voidingWords`, keepFact): its last two words one run (sw 1024
+  // left "itarejeshwa." alone), a count with its noun ("5 道": zh 320 parted them), its numerals numerals.
+  const BY = Date.parse("2026-12-08T23:59:00+03:00");
+  const { fillNodes } = req("../src/lib/fill-nodes.tsx") as typeof import("../src/lib/fill-nodes.tsx");
+  const N = req("../src/components/maswali/maswali-format.ts") as typeof import("../src/components/maswali/maswali-format.ts");
+  const noticeDefects = (l: L3, m: string) => {
+    const line = fill(dict[l].millionea.weekVoidingBody, { voided: 6, valid: 5, when: N.eatWeekdayClock(dict[l] as never, BY) });
+    const d: string[] = [];
+    if (textOf(m) !== line) d.push(`${l}: "${textOf(m)}"`);
+    if (!keptRuns(m).some((x) => x.endsWith(tail(l, line)))) d.push(`${l}: its last pair is free to part`);
+    if (l === "zh" && !keptRuns(m).some((x) => x.includes("5 道"))) d.push("zh: \"5\" free to part from \"道\"");
+    return d;
+  };
+  const notices = LOCALES.flatMap((l) => noticeDefects(l, inApp(l, W.voidingWords(dict[l] as never, l, 6, 5, BY))));
+  ok("16.3 · in three languages the voiding notice keeps its last two words, zh's count with its noun (\"5 道\"), each numeral a numeral", notices.length === 0, notices.join(" | "));
+  const roundOne = (l: L3) => inApp(l, fillNodes(dict[l].millionea.weekVoidingBody, { voided: "6", valid: "5", when: N.eatWeekdayClock(dict[l] as never, BY) }));
+  ok("16.3′ PLANT · the round-1 fill (nothing kept) is reported in sw and zh", noticeDefects("sw", roundOne("sw")).length > 0 && noticeDefects("zh", roundOne("zh")).length > 0);
+}
+
+// ── §17 · 7b · the head's absent figure is the platform's empty slot ─────────────────────────────────────────────────────
+console.log("\n§17 · the lead's 7b · a jackpot head with no figure to state (before sales, being voided, voided) shows the platform's empty slot: the em-dash in the faint ink, hidden from the screen reader as the market card hides it");
+{
+  // The market card's empty slot (`.mcardp-pct--empty`, DESIGN_AUTHORITY B6's noPrice): the em-dash in --text-faint.
+  const css = readFileSync(join(ROOT, "src/app/globals.css"), "utf8");
+  const EMPTY = `<span class="${FRAME.HUB_POOL_HEAD.figure}" data-testid="millionea-hub-figure"><span class="text-text-faint" aria-hidden="true">—</span></span>`;
+  const slotOf = (m: string) => { const at = m.indexOf('data-testid="millionea-hub-figure"'); return at < 0 ? "" : m.slice(m.lastIndexOf("<span", at), m.indexOf("</span></span>", at) + 14); };
+  const heads = LOCALES.map((l) => slotOf(headOf(l, VOIDING)));
+  ok("17.1 · in three languages a head being voided draws its figure's slot as the platform's empty slot (the market card's: the em-dash in the faint ink, aria-hidden) — the head's line kept",
+    /\.mcardp-pct--empty\s*\{\s*color:\s*var\(--text-faint\)/.test(css) && heads.every((x) => x === EMPTY), j(heads));
+  const bright = headOf("en", VOIDING).replace('<span class="text-text-faint" aria-hidden="true">—</span>', "—");
+  ok("17.1′ PLANT · round 1's bright \"—\" (the figure's own ink, read aloud) is reported", slotOf(bright) !== EMPTY);
+}
+
+// ── §15 · the segment's loading state draws the page being opened ────────────────────────────────────────────────────
+console.log("\n§15 · Millionea's segment loading state (millionea/loading.tsx wraps every Millionea page) draws the page being opened: each page's own drawing by its address, the hub's for the hub; a census of every page");
+// ⭐ The lead's item (REGISTER's measure, 2026-10-22: on a throttled hop between Millionea pages the HUB's drawing stood
+// 14–22 s before How to play or the register landed). The pick (`MillioneaGhostPick`, the platform's `RoutePick`) is
+// rendered at each page's address and must draw exactly what that page's own loading file draws.
+{
+  const atPath = (path: string, el: unknown, l: L3 = "sw") =>
+    renderToStaticMarkup(h(AppRouterContext.Provider, { value: ROUTER }, h(PathnameContext.Provider, { value: path }, h(I18nProvider as never, { initial: l } as never, el as never))));
+  const pages = (readdirSync(join(ROOT, "src/app/millionea"), { recursive: true }) as string[])
+    .map((p) => p.replace(/\\/g, "/")).filter((p) => p === "page.tsx" || p.endsWith("/page.tsx"));
+  const addressOf = (p: string) => `/millionea${p === "page.tsx" ? "" : `/${p.replace(/\/page\.tsx$/, "")}`}`.replace(/\[[^\]]+\]/g, "MLN-2026-W49-000041");
+  const picked = (address: string) => (GH.MILLIONEA_GHOST_ROUTES as readonly string[]).includes(address) || GH.MILLIONEA_GHOST_PATTERNS.some((s) => new RegExp(s).test(address));
+  const unpicked = (list: string[]) => list.map(addressOf).filter((a) => !picked(a));
+  ok(`15.1 · the census: every Millionea page (${pages.length}: ${pages.map(addressOf).join(", ")}) is named by the pick — an address or a pattern`, pages.length >= 7 && unpicked(pages).length === 0, j(unpicked(pages)));
+  ok("15.1′ PLANT · a new Millionea page with no pick is reported", unpicked([...pages, "archive/page.tsx"]).includes("/millionea/archive"));
+  // Each page's drawing, at its address: the pick draws what the page's own loading file draws, in three languages; the hub
+  // its own drawing; an address with no page of its own, the hub's.
+  const own = (p: string) => (req(join(ROOT, "src/app/millionea", p.replace(/page\.tsx$/, "loading.tsx"))) as { default: () => unknown }).default;
+  const differs = LOCALES.flatMap((l) => pages.flatMap((p) => {
+    const a = addressOf(p);
+    const want = p === "page.tsx" ? atPath(a, h(GH.MillioneaHubGhost as never), l) : atPath(a, h(own(p) as never), l);
+    return atPath(a, h(GH.MillioneaGhostPick as never), l) === want ? [] : [`${l} ${a}`];
+  }));
+  const elsewhere = atPath("/millionea/elsewhere", h(GH.MillioneaGhostPick as never)) === atPath("/millionea/elsewhere", h(GH.MillioneaHubGhost as never));
+  ok("15.2 · in three languages, at each page's address the pick draws exactly what that page's own loading file draws (the hub its own drawing); an address with no page, the hub's", differs.length === 0 && elsewhere, j(differs));
+  // A journey reader's Tiketi zangu (its Millionea kind under the journey's own head) is the journey's route ghost, handed in;
+  // every other page stays one drawing for both shells.
+  const J = h("i", { "data-journey-route": "" });
+  const journeyAt = (a: string) => atPath(a, h(GH.MillioneaGhostPick as never, { journey: J } as never));
+  ok("15.3 · for a journey reader the tickets page is the journey's own route ghost; How to play and the hub are the same drawings as for a classic reader",
+    journeyAt("/millionea/tickets").includes("data-journey-route") && journeyAt("/millionea/how") === atPath("/millionea/how", h(GH.MillioneaGhostPick as never)) && !journeyAt("/millionea").includes("data-journey-route"));
+  // PLANT · the loading file as it was: the hub's drawing whatever the page being opened.
+  const howOwn = atPath("/millionea/how", h(own("how/page.tsx") as never));
+  ok("15.2′ PLANT · the old loading state (the hub's drawing on the way to How to play) is reported", atPath("/millionea/how", h(GH.MillioneaHubGhost as never)) !== howOwn);
+}
+
+// ── §18 · the close line, in the one wording ─────────────────────────────────────────────────────────────────────────────
+console.log("\n§18 · the lead's ruling (2026-10-22): the close line says the week's close in the one wording the slip and the ticket say (`salesCloseColon`) — its weekday free to step aside in the last hour, its clock a numeral, its zone held to the clock");
+{
+  const W = req("../src/app/millionea/hub-words.tsx") as typeof import("../src/app/millionea/hub-words.tsx");
+  const N = req("../src/components/maswali/maswali-format.ts") as typeof import("../src/components/maswali/maswali-format.ts");
+  const { fillNodes } = req("../src/lib/fill-nodes.tsx") as typeof import("../src/lib/fill-nodes.tsx");
+  const { weekdayClock } = req("../src/components/maswali/maswali-numerals.tsx") as typeof import("../src/components/maswali/maswali-numerals.tsx");
+  const AT = Date.parse("2026-12-04T15:00:00.000Z"); // a Friday, 18:00 EAT
+  const drawn = (el: unknown) => renderToStaticMarkup(h("p", null, el as never));
+  const closeDefects = (l: L3, m: string) => {
+    const d: string[] = [];
+    const want = fill(dict[l].millionea.salesCloseColon, { when: N.eatWeekdayClock(dict[l] as never, AT) });
+    if (textOf(m) !== want) d.push(`${l}: "${textOf(m)}" for "${want}"`);
+    if (!m.includes(`<span class="kp-mln-close-day">${escAttr(N.eatWeekday(dict[l] as never, AT))} </span>`)) d.push(`${l}: the weekday is not its own span`);
+    if (!m.includes(`<span class="mono">${N.eatClock(AT)}</span></span><span class="kp-mln-close-zone"> EAT</span></span>`) || !/<span class="whitespace-nowrap"><span class="whitespace-nowrap text-text">/.test(m)) {
+      d.push(`${l}: the clock is not a numeral held to its zone in one run`);
+    }
+    return d;
+  };
+  const off = LOCALES.flatMap((l) => closeDefects(l, drawn(W.closeWords(dict[l] as never, AT))));
+  ok("18.1 · in three languages the close line is the one wording — \"Sales close: Friday 18:00 EAT\", \"Mauzo yanafungwa: Ijumaa 18:00 EAT\", \"销售截止：周五 18:00 EAT\" — its weekday its own span, its clock a numeral, the zone held to the clock in one unbreakable run",
+    off.length === 0, off.join(" | "));
+  const old = drawn(fillNodes(dict.en.millionea.salesCloseAt, { when: weekdayClock(dict.en as never, AT, { className: "text-text", dayClass: "kp-mln-close-day" }) }));
+  ok("18.1′ PLANT · the hub's old line (\"Sales close Friday 18:00\": another wording, no zone) is reported", closeDefects("en", old).length > 0);
+  const page = readFileSync(join(ROOT, "src/app/millionea/page.tsx"), "utf8");
+  ok("18.2 · the hub's close row draws it, and no hub line says the old wording", page.includes("<span>{closeWords(t, closesMs)}</span>") && !page.includes("salesCloseAt"));
+  // R1-motion M8 · the last hour: the weekday steps aside, and below 360 the zone too — at sw 320 the words beside the
+  // closing pill measured 298px with the zone in a 296px row (the drive measures the row: "the line does not grow").
+  const css = readFileSync(join(ROOT, "src/app/globals.css"), "utf8").replace(/\s+/g, " ");
+  // ⚠️ RE-PINNED IN THE OPEN (HUB-2B 24): the rule states its density reason now (test:density-contract), a comment inside
+  // its media block; the rule itself is the same. (`css` is read with its white space collapsed.)
+  const narrow = (s: string) => /@media \(max-width: 359\.98px\) \{ (?:\/\*[^*]*(?:\*(?!\/)[^*]*)*\*\/ )?\.kp-mln-close:has\(\.closing-pill\) \.kp-mln-close-zone \{ display: none; \} \}/.test(s);
+  ok("18.3 · in the last hour, below 360, the zone steps aside with the weekday, so the close and the pill keep one line", narrow(css));
+  ok("18.3′ PLANT · the rule gone is reported", !narrow(css.replace(".kp-mln-close-zone { display: none; }", "")));
+}
+
+// ── §19 · the frame's line boxes ────────────────────────────────────────────────────────────────────────────────────────
+console.log("\n§19 · L7 (round 2) · the drawing's lines are the page's line boxes: a numeral never grows its line, the drawing stands in the page root's class, the head's two pills are as wide as their labels; the head says the card's order; every line it can know is the page's own words, unseen (HUB-2B), and its templates the width of their class");
+{
+  const LINES: Record<string, string> = {
+    "the strip": FRAME.HUB_STRIP, "the rule": FRAME.HUB_POOL_HEAD.rule, "the final week's rule": FRAME.HUB_POOL_HEAD.finalRule,
+    "the carry's line": FRAME.HUB_POOL_HEAD.carry, "the ledger": FRAME.HUB_LEDGER, "the count line": FRAME.HUB_MINE.count, "a question's time": FRAME.HUB_QUESTIONS.time,
+  };
+  const growing = (lines: Record<string, string>) => Object.entries(lines)
+    .filter(([, cls]) => !cls.split(" ").includes("[&_.mono]:leading-[0]") || !cls.split(" ").includes("[&_.amount]:leading-[0]")).map(([k]) => k);
+  ok(`19.1 · every frame line that can hold a numeral sets its numerals' line height to 0 (the platform's recipe, globals.css .kp-cjk-gap), so a mono numeral never grows its line: ${Object.keys(LINES).join(", ")}`,
+    growing(LINES).length === 0, j(growing(LINES)));
+  ok("19.1′ PLANT · the strip as it was (each timed range 1px taller than its line) is reported", j(growing({ ...LINES, "the strip": "lg:col-span-2" })) === j(["the strip"]));
+  // The page root's own class on the drawing's root: Chinese eyebrows at the label rung, 12/16 (globals.css A3).
+  const pageRoot = /<PageContainer tier="reading" className="([^"]+)">/.exec(readFileSync(join(ROOT, "src/app/millionea/page.tsx"), "utf8"))?.[1] ?? "";
+  const rootOf = (m: string) => (/^<div data-measure="[a-z]+" class="([^"]*)"/.exec(m)?.[1] ?? "").split(" ");
+  const roots = LOCALES.map((l) => rootOf(ghostOf(l)));
+  ok("19.2 · the drawing stands in the page root's own class (kp-mln-zh: the jackpot's label stood 2px short in zh), in three languages",
+    pageRoot === "kp-mln-zh" && roots.every((r) => r.includes(pageRoot)), j({ pageRoot, roots }));
+  ok("19.2′ PLANT · the drawing without it is reported", !rootOf(ghostOf("zh").replace(" kp-mln-zh", "")).includes(pageRoot));
+  // The head's two pills: each label's length in the face's own units — a Latin character one `ch` of the monospaced face,
+  // an ideograph one `em` — held to the dictionary's own labels (the drive measures each pill against the page's).
+  const units = (s: string) => { const c = [...s]; const wide = c.filter((x) => /[　-鿿豈-﫿＀-￯]/.test(x)).length; return [c.length - wide, wide]; };
+  const labelDefects = (table: typeof GH.DOOR_LABELS) => LOCALES.flatMap((l) => {
+    const want = [units(dict[l].millionea.howToPlay), units(dict[l].millionea.ticketsTitle)];
+    return j(table[l]) === j(want) ? [] : [`${l}: ${j(table[l])} for ${j(want)}`];
+  });
+  ok("19.3 · the drawing's two pills are its labels' lengths in every language — the dictionary's How to play and Your tickets", labelDefects(GH.DOOR_LABELS).length === 0, labelDefects(GH.DOOR_LABELS).join(" | "));
+  ok("19.3′ PLANT · a Swahili label one character short (the second pill jumped 31px on landing at sw 360) is reported", labelDefects({ ...GH.DOOR_LABELS, sw: [[15, 0], GH.DOOR_LABELS.sw[1]] }).length > 0);
+  // The head, in the card's order (DOORS' M2; the lead's ruling 2026-10-22): the figure, the carry's line, then the rule.
+  const orderOf = (m: string) => ['data-testid="millionea-hub-figure"', 'data-head="carry"', 'data-head="rule"'].map((a) => m.indexOf(a));
+  const heads = LOCALES.map((l) => [l, orderOf(headOf(l, SELLING))] as const);
+  const inOrder = (at: readonly number[]) => at.every((x, i) => x >= 0 && (i === 0 || x > (at[i - 1] ?? -1)));
+  ok("19.4 · in three languages the head draws the figure, then the carry's line that adds to it, then the rule (the card's order)", heads.every(([, at]) => inOrder(at)), j(heads));
+  ok("19.4′ PLANT · the head's old order (the rule, then the carry's line) is reported",
+    !inOrder(orderOf('<span data-testid="millionea-hub-figure"></span><span data-head="rule"></span><span data-head="carry"></span>')));
+
+  // ⭐ HUB-2B (the lead's ruling of 2026-10-23; DESIGN_AUTHORITY §M8a items 22 and 25) · THE DRAWING'S TEXTS ARE THE PAGE'S
+  // OWN WORDS, SET UNSEEN through the kit's one part (R3-2B's `GhostWords`): the line tables it kept (WRAPS, the eyebrow's
+  // and the heading's widths, the strip's runs) are gone, and each line lands where the page's does in any engine, by
+  // construction. Static words are the dictionary's; data the drawing cannot know is a SAME-WIDTH TEMPLATE
+  // (`hub-page-words.ts`). The drive holds every band against the page ±1px in Chromium and WebKit at a phone's ratios.
+  const HPW = req("../src/app/millionea/hub-page-words.ts") as typeof import("../src/app/millionea/hub-page-words.ts");
+  const GWS = req("../src/components/maswali/maswali-ghost-words-shown.tsx") as typeof import("../src/components/maswali/maswali-ghost-words-shown.tsx");
+  const STRIP = req("../src/components/maswali/maswali-week-strip.tsx") as typeof import("../src/components/maswali/maswali-week-strip.tsx");
+  const { weekChipWord } = req("../src/app/millionea/register/register-parts.tsx") as typeof import("../src/app/millionea/register/register-parts.tsx");
+  const { weekWord: wordOf } = req("../src/components/maswali/maswali-format.ts") as typeof import("../src/components/maswali/maswali-format.ts");
+  /** The drawing as a reader Millionea is visible to gets it: inside the shell's words provider. */
+  const shownOf = (l: L3) => inApp(l, h(GWS.GhostWordsProvider as never, null, h(GH.MillioneaHubGhost as never, {} as never)));
+  /** Each word band's words, as the reader's copy and search would read them (unseen, but in the document). */
+  const bandsOf = (m: string) => [...m.matchAll(/<span class="kp-ghost-words__words">/g)].map((open) => {
+    const at = (open.index ?? 0) + open[0].length;
+    let depth = 1, end = at;
+    for (const t of m.slice(at).matchAll(/<span\b[^>]*>|<\/span>/g)) { depth += t[0] === "</span>" ? -1 : 1; if (depth === 0) { end = at + (t.index ?? 0); break; } }
+    return textOf(m.slice(at, end));
+  });
+  const { factsOf: factsOfRule } = req("../src/components/maswali/maswali-facts.tsx") as typeof import("../src/components/maswali/maswali-facts.tsx");
+  /** What the page draws for the template week, in the page's own builders: every line the drawing must set. */
+  const wantOf = (l: L3) => {
+    const t = dict[l] as never as Parameters<typeof HPW.hubIntroText>[0];
+    const strip = STRIP.weekStripWords(t, HPW.TEMPLATE_PHASES);
+    return [
+      ["the eyebrow's week", fill(dict[l].millionea.week, { week: "00" })],
+      ["the chip's word", weekChipWord(t, "OPEN", null, false)],
+      ["the head's line", HPW.hubIntroText(t, formatTzs(HPW.TEMPLATE.price))],
+      ...strip.flatMap((p, i) => [[`the strip's label ${i + 1}`, p.label], ...p.runs.map((r, k) => [`the strip's run ${i + 1}.${k + 1}`, r])]),
+      ...factsOfRule(HPW.hubRuleText(t, HPW.TEMPLATE.pct)).map((f, i) => [`the rule's fact ${i + 1}`, f]),
+      ["the carry's label", fill(dict[l].millionea.carriedIn, { week: "00" })],
+      ["the floor's label", dict[l].millionea.floor],
+      ["the floor's figure", formatTzs(HPW.TEMPLATE.floor)],
+      ["the questions' heading", dict[l].millionea.weekQuestions],
+    ] as Array<[string, string]>;
+  };
+  const wordDefects = (l: L3, m: string) => {
+    const bands = bandsOf(m), want = wantOf(l);
+    const missing = want.filter(([, w]) => !bands.includes(w)).map(([k, w]) => `${k} "${w}"`);
+    return [...missing.map((x) => `${l}: not set as its own words — ${x}`), ...(bands.length === want.length ? [] : [`${l}: ${bands.length} word bands for ${want.length} lines`])];
+  };
+  const words = LOCALES.flatMap((l) => wordDefects(l, shownOf(l)));
+  ok(`19.5 · in three languages the drawing sets every line it can know as the page's own words, unseen (${wantOf("en").length} bands: the eyebrow's week and the chip's word, the head's line, the strip's labels and runs, the rule's facts, the carry's and the floor's labels, the floor's figure, the questions' heading) — each built by the page's own function`,
+    words.length === 0, words.join(" | "));
+  const tabled = shownOf("en").replace(/<span class="kp-ghost-words"><span class="kp-ghost-words__words">This week&#x27;s questions<\/span><\/span>/, '<span class="inline-block h-[0.85em] w-[200px]"></span>');
+  ok("19.5′ PLANT · round 1's heading (one 200px bar for every language's words) is reported", tabled !== shownOf("en") && wordDefects("en", tabled).some((x) => x.includes("the questions' heading")));
+  // ONE SOURCE: the page draws the same words with the same functions — its head's line (`hubIntroText`), its pool head's
+  // rule (`poolRule` → `hubRuleText`) and its strip (`weekStripWords`, which the strip draws unchanged).
+  const pageSrc = readFileSync(join(ROOT, "src/app/millionea/page.tsx"), "utf8"), poolSrc = readFileSync(join(ROOT, "src/components/maswali/maswali-pool-figure.tsx"), "utf8");
+  const stripSrc = readFileSync(join(ROOT, "src/components/maswali/maswali-week-strip.tsx"), "utf8");
+  const oneSource = [
+    pageSrc.includes("keepFact(locale, hubIntroText(t, formatTzs(w.ticketPrice)))") ? null : "the page's head line is not hubIntroText",
+    poolSrc.includes(": hubRuleText(t, pct);") ? null : "the pool head's rule is not hubRuleText",
+    stripSrc.includes("const rows = weekStripWords(t, phases).map(") ? null : "the strip does not draw weekStripWords",
+  ].filter((x): x is string => x !== null);
+  // The strip draws exactly its words: the component rendered for the template week reads the joined words.
+  const stripText = (l: L3) => textOf(renderToStaticMarkup(h(STRIP.MaswaliWeekStrip as never, { t: dict[l], phases: HPW.TEMPLATE_PHASES, current: 0 } as never)));
+  const stripWords = (l: L3) => STRIP.weekStripWords(dict[l] as never, HPW.TEMPLATE_PHASES).map((p) => `${p.label} · ${p.runs.join(" ")}`).join("");
+  const stripOff = LOCALES.filter((l) => stripText(l) !== stripWords(l)).map((l) => `${l}: "${stripText(l)}" vs "${stripWords(l)}"`);
+  ok("19.6 · the page and the drawing build one set of words: the head's line, the rule and the strip each through one function, and the strip draws exactly its words",
+    oneSource.length === 0 && stripOff.length === 0, [...oneSource, ...stripOff].join(" | "));
+  ok("19.6′ PLANT · a page that fills its head line itself is reported", !pageSrc.replace("keepFact(locale, hubIntroText(t, formatTzs(w.ticketPrice)))", "keepFact(locale, fill(t.millionea.howOne, { price: formatTzs(w.ticketPrice) }))").includes("keepFact(locale, hubIntroText(t, formatTzs(w.ticketPrice)))"));
+  // THE TEMPLATES are the width of their class: a two-digit week ("Wiki 00" set as "Wiki 49" is, character for character
+  // but the digits, which are the numerals' face), and the ruled price, rate and week template of the config
+  // (`MASWALI_DEFAULTS`). A week of one digit (1–9) is one numeral narrower: printed, its line count unchanged.
+  const { MASWALI_DEFAULTS: CFG } = req("../src/lib/server/maswali-config.ts") as typeof import("../src/lib/server/maswali-config.ts");
+  const sameClass = (a: string, b: string) => a.length === b.length && a.replace(/\d/g, "0") === b.replace(/\d/g, "0");
+  const eat = (ms: number) => { const d = new Date(ms + 3 * 3_600_000); return { weekday: ((d.getUTCDay() + 6) % 7) + 1, clock: `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}` }; };
+  const templateDefects = (tpl: typeof HPW.TEMPLATE, phases: typeof HPW.TEMPLATE_PHASES) => [
+    ...LOCALES.filter((l) => !sameClass(fill(dict[l].millionea.week, { week: tpl.week }), wordOf(dict[l] as never, 49))).map((l) => `${l}: the week's template is not a two-digit week`),
+    formatTzs(tpl.price) === formatTzs(CFG.ticketPriceTzs) ? null : `the price ${formatTzs(tpl.price)} is not the ruled ${formatTzs(CFG.ticketPriceTzs)}`,
+    tpl.pct === Math.round(CFG.jackpotFeeRate * 100) ? null : `the rate ${tpl.pct}% is not the ruled ${CFG.jackpotFeeRate * 100}%`,
+    tpl.floor === CFG.floorTzs ? null : `the floor ${formatTzs(tpl.floor)} is not the ruled ${formatTzs(CFG.floorTzs)}`,
+    j(eat(phases.salesFrom)) === j({ weekday: CFG.openWeekday, clock: CFG.openAt }) ? null : `the template opens ${j(eat(phases.salesFrom))}, the config ${CFG.openWeekday} ${CFG.openAt}`,
+    j(eat(phases.salesTo)) === j({ weekday: CFG.closeWeekday, clock: CFG.closeAt }) ? null : `the template closes ${j(eat(phases.salesTo))}, the config ${CFG.closeWeekday} ${CFG.closeAt}`,
+    j(eat(phases.resultsTo)) === j({ weekday: CFG.finalDeadlineWeekday, clock: CFG.finalDeadlineAt }) ? null : `the template's results end ${j(eat(phases.resultsTo))}, the config's final deadline ${CFG.finalDeadlineWeekday} ${CFG.finalDeadlineAt}`,
+  ].filter((x): x is string => x !== null);
+  const oneDigit = LOCALES.map((l) => `${l} "${wordOf(dict[l] as never, 9)}" vs "${fill(dict[l].millionea.week, { week: "00" })}"`).join(", ");
+  console.log(`  a week of one digit (1–9) is one numeral narrower than the template — ${oneDigit}; the eyebrow and the carry's label stay one line`);
+  const tplOff = templateDefects(HPW.TEMPLATE, HPW.TEMPLATE_PHASES);
+  ok("19.7 · the templates are the width of their class: a two-digit week (\"Wiki 00\"), the config's ruled price (TZS 1,000), rate (13%) and floor (TZS 1,000,000), the template week's open, close and final deadline (Monday 00:00, Friday 18:00, Monday 23:59 EAT)",
+    tplOff.length === 0, tplOff.join(" | "));
+  const drifted = templateDefects({ ...HPW.TEMPLATE, week: "000", pct: 15 }, { ...HPW.TEMPLATE_PHASES, salesTo: HPW.TEMPLATE_PHASES.salesTo - 3_600_000 });
+  ok("19.7′ PLANT · a template off its class (a three-digit week, a 15% rate, a close an hour early) is reported", drifted.length >= 5, j(drifted));
+}
+
+// ── §20 · the lead's rulings 2a-2c ────────────────────────────────────────────────────────────────────────────────────
+console.log("\n§20 · the lead's rulings (2026-10-22): on Millionea's own page a week is named without the product, every notice sentence ends with its full stop; last week's fee is an amount; the reserves' rule never repeats its head");
+{
+  // 2a · the nine result lines (the hub is their only reader): "Week 49: your ticket did not win." — never "Millionea Week 49: …".
+  const KEYS = ["resultWon", "resultWonMany", "resultMixed", "resultLost", "resultLostOne", "resultForfeitedOne", "resultForfeited", "resultRefunded", "resultRefundedOne"] as const;
+  const pageForm = (l: L3, v: string) => (v.startsWith("Millionea") ? [`${l}: "${v}" names the product`] : []).concat(v.endsWith(l === "zh" ? "。" : ".") ? [] : [`${l}: "${v}" has no full stop`]);
+  const forms = LOCALES.flatMap((l) => KEYS.flatMap((k) => pageForm(l, String(dict[l].millionea[k]))));
+  ok("20.1 · in three languages each of the hub's nine result notices names its week without the product (\"Week 49: …\", \"Wiki 49: …\", \"第49周：…\") and ends with its full stop", forms.length === 0, forms.join(" | "));
+  ok("20.1′ PLANT · the old notice (\"Millionea Week {week}: your ticket did not win\") is reported", pageForm("en", "Millionea Week {week}: your ticket did not win").length === 2);
+  // 2b · a rolled-over week's fee, "TZS 0" through formatTzs, in the money face like every other amount.
+  const P = req("../src/components/maswali/maswali-pool-figure.tsx") as typeof import("../src/components/maswali/maswali-pool-figure.tsx");
+  const zero = escAttr(formatTzs(0));
+  const feeDefects = (l: L3, m: string) => (m.includes(`<span class="amount">${zero}</span>`) ? [] : [`${l}: "${textOf(m)}"`]);
+  const fees = LOCALES.flatMap((l) => feeDefects(l, inApp(l, h(P.MaswaliLastWeek as never, { t: dict[l], locale: l, week: 41, carried: 389_000 } as never))));
+  ok("20.2 · in three languages last week's rolled-over row says its fee as an amount (\"ada TZS 0\"), in the money face", fees.length === 0, fees.join(" | "));
+  ok("20.2′ PLANT · the literal \"ada 0\" is reported", feeDefects("sw", "<span>Wiki 41 · hakuna 10/10 · ada 0</span>").length > 0);
+  // 2c · the reserves' rule under its head (the shared helper): the sentence after its head's own words, opening with a capital.
+  const V = req("../src/app/millionea/millionea-view.ts") as typeof import("../src/app/millionea/millionea-view.ts");
+  const WANT: Record<L3, string> = { en: "Count only when a main question voids, in order", sw: "Zinahesabiwa tu swali kuu likibatilishwa, kwa mpangilio", zh: "仅在正选题作废时按顺序计入" };
+  const rules = LOCALES.filter((l) => V.reserveRuleAfterHead(dict[l] as never) !== WANT[l]).map((l) => `${l}: "${V.reserveRuleAfterHead(dict[l] as never)}"`);
+  ok("20.3 · in three languages the reserves' rule under its head does not repeat the head (\"Reserves · A1–A5\" over \"Count only when a main question voids, in order\")", rules.length === 0, rules.join(" | "));
+  const odd = { ...dict.en, millionea: { ...dict.en.millionea, reserveRule: "Only when a main question voids do reserves count" } };
+  ok("20.3′ PLANT · a sentence that does not open with its head is kept whole (never cut wrong), and the hub draws the helper, not the whole rule",
+    V.reserveRuleAfterHead(odd as never) === odd.millionea.reserveRule && readFileSync(join(ROOT, "src/app/millionea/page.tsx"), "utf8").includes("{keepFact(locale, reserveRuleAfterHead(t))}"));
+  // The drawing keeps the page's ledger and the kit's skeleton look (the lead's item from REGISTER's one rhythm; the tile
+  // readers): the ledger's rows the list's one gap apart, no step of space after the total; and the held ticket's block
+  // drawn with the raised card's own bars, never the page's darker bar (a hole on the raised surface).
+  const between = (m: string, from: string, to: string) => m.slice(m.indexOf(from), m.indexOf(to));
+  const stepDefects = (m: string) => (/\bmt-3\b/.test(between(m, 'data-ghost="ledger"', 'data-ghost="mine"')) ? ["the ledger steps a row apart"] : []);
+  const blockDefects = (m: string) => {
+    const block = between(m, 'class="mat-raised', 'data-ghost="questions"');
+    return count(block, "bg-bg-elevated") >= 3 && !block.includes("bg-bg-overlay") ? [] : ["the held block's bars are not the raised card's own"];
+  };
+  const drawn = LOCALES.flatMap((l) => [...stepDefects(ghostOf(l)), ...blockDefects(ghostOf(l))].map((x) => `${l}: ${x}`));
+  ok("20.4 · in three languages the drawing's ledger stands every row the list's one gap apart (no step after the total), and the held ticket's block draws its serial and its two socket rows in the raised card's own bars", drawn.length === 0, drawn.join(" | "));
+  const en = ghostOf("en");
+  const stepped = en.replace(/(data-ghost="ledger"[\s\S]*?class="flex items-baseline)/, "$1 mt-3");
+  ok("20.4′ PLANT · round 1's step after the total and the dark bar in the held block are each reported",
+    stepped !== en && stepDefects(stepped).length > 0 && blockDefects(en.replace(/(class="mat-raised[\s\S]*?)bg-bg-elevated/, "$1bg-bg-overlay")).length > 0);
+}
+
+// ── §21 · L22 · the final week's date only while it is ahead ─────────────────────────────────────────────────────────────
+// (S7-F9's section; renumbered from §13 at HUB-2B's merge of S6's release: the hub's §13 is the loading drawing.)
+console.log("\n§21 · L22 · the final week announced: \"It opens {date}\" only while the open is ahead; past it, or unread, the week alone (the lead's ruling (b))");
 {
   // ⭐ The lead's ruling (b) of 2026-10-22: the bar says the day the final week opens only while that is still ahead. A
   // final week still a draft once its time has come (the Owner has not opened it yet) — or whose time cannot be read — is
@@ -483,18 +983,25 @@ console.log("\n§13 · L22 · the final week announced: \"It opens {date}\" only
     return out;
   };
   const off = LOCALES.flatMap((l) => dateDefects(l, readsOf(l)));
-  ok("13.1 · in three languages a final week whose open is ahead reads the lead's sentence with its day (\"…It opens 30 Nov.\"), and once its time has passed, at the very instant, or with no time to read, S7's F1 words with no date (\"Millionea is coming to an end. Week 52 will be the final week.\")",
+  ok("21.1 · in three languages a final week whose open is ahead reads the lead's sentence with its day (\"…It opens 30 Nov.\"), and once its time has passed, at the very instant, or with no time to read, S7's F1 words with no date (\"Millionea is coming to an end. Week 52 will be the final week.\")",
     off.length === 0, off.join(" | "));
   // The bar as it was: the lead's dated sentence whatever the hour — on 30 Nov at 09:00 still "It opens 30 Nov.".
   const { fillNodes } = req("../src/lib/fill-nodes.tsx") as typeof import("../src/lib/fill-nodes.tsx");
   const before = readsOf("en"), stale = say(fillNodes(dict.en.millionea.finalWeekAhead, { week: 52, date: "30 Nov" }));
-  ok("13.1′ PLANT · the old always-dated bar (\"It opens 30 Nov.\" after the open's time) is reported", dateDefects("en", { ...before, passed: stale }).length > 0, stale);
+  ok("21.1′ PLANT · the old always-dated bar (\"It opens 30 Nov.\" after the open's time) is reported", dateDefects("en", { ...before, passed: stale }).length > 0, stale);
 }
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI HUB: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run prints (S5-DESIGN-HUB 3: 34; 4, the one ledger and zh's spacing rule: 43; 6, one
  *  carry origin: 45; 7, no door to a week the register does not draw yet: 47; 9, one final-week rule and last week's
- *  words: 50; 10, a time's face: 53; S7-F9, L22's date only while ahead, the lead's ruling (b): 55). It only rises. */
-const MIN_ASSERTIONS = 55;
+ *  words: 50; 10, a time's face: 53; round 2, every numeral of the timed sentences: 55; S5-R2-HUB, the rule's balance, the
+ *  drawing's frame, the no-week body and the segment's pick: 70; the void words' fact lines, the head's empty slot and
+ *  the no-week body's kept phrases: 75; the paused notice's pair, the close line's one wording, the frame's line boxes,
+ *  pills and the head's card order: 90; the void words in the register's form, the voiding notice kept, the lead's rulings 2a-2c and the drawing's ledger and held block: 100;
+ *  S5-R2-HUB 6, the no-week body's numerals in Millionea's empty state and the void words one wrap unit: 104;
+ *  S5-R2-HUB 7, G2's eyebrow and heading: 108; S5-R2-HUB 9, the carry's destination a box of its line: 110; HUB-2B, the
+ *  drawing's words unseen through GhostWords, one source with the page, its templates of their class: 112; with S7-F9's §21
+ *  (L22's date only while ahead, the lead's ruling (b); S7 counted 55 on its own branch) at the merge of S6's release: 114). It only rises. */
+const MIN_ASSERTIONS = 114;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

@@ -9,10 +9,10 @@
  *   §1 THE DRAWING, rendered: a struck text that ends on a full-width mark draws that mark in `.kp-mln-strike-end` (`--q`
  *      for ？) and only that one; a Latin "?" is drawn as it came; the text reads as written in every language.
  *   §2 THE TRIMS: the stylesheet cuts the mark back by exactly the platform's measured trims (`CJK_TRIM_EM`, cjk-marks.tsx).
- *   §3 ONE DRAWING: every Millionea file that strikes text strikes it through `MaswaliStrike` — the hub's page adopts it
- *      at the merge (`ADOPTS_AT_MERGE`, a list that may only shrink: the entry goes when the hub draws it).
+ *   §3 ONE DRAWING: every Millionea file that strikes text strikes it through `MaswaliStrike` — the ticket and, since
+ *      S5-R2-HUB 6 (the merge's wiring), the hub's question rows (`ADOPTS_AT_MERGE`, a list that may only shrink, is empty).
  *   §4 PLANTS: the drawing without its end mark (§1), a trim that is not the platform's (§2), the ticket's own strike
- *      put back (§3).
+ *      put back and the hub's own strike put back (§3).
  *   §5 IN THE BROWSER (Chromium always, WebKit where installed; the platform's CJK face stack at 13px): the strike ends at
  *      the last mark's ink, the ink is whole, the lines lie where the plain text's lie — and, the control, a plain strike
  *      runs on past the ink. ⚠️ Only where the machine's Chinese face draws ？ in the LEFT half of its em, as the platform's
@@ -118,8 +118,8 @@ ok(`2.1 · \`.kp-mln-strike-end\` clips ${CJK_TRIM_EM.mark}em and \`--q\` ${CJK_
 /* ══ §3 · ONE DRAWING ══════════════════════════════════════════════════════════════════════════════════════════════════ */
 section("§3 · every Millionea file that strikes text strikes it through MaswaliStrike");
 /** ⛔ MAY ONLY SHRINK: a file here still draws its own strike and adopts `MaswaliStrike` at the merge (the lead's ruling of
- *  2026-10-22). When it draws through the component, its entry goes. */
-const ADOPTS_AT_MERGE = new Set(["src/app/millionea/page.tsx"]);
+ *  2026-10-22). When it draws through the component, its entry goes — the hub's page went with S5-R2-HUB 6. */
+const ADOPTS_AT_MERGE = new Set<string>();
 const MLN_DIRS = ["src/app/millionea", "src/components/maswali", "src/app/results"];
 const files = (dir: string): string[] => {
   const abs = join(ROOT, dir);
@@ -153,8 +153,10 @@ const oneDrawingDefects = (readAt: (rel: string) => string) => {
 };
 const d3 = oneDrawingDefects(raw);
 const TICKET = "src/components/maswali/maswali-ticket.tsx";
-ok(`3.1 · the ticket strikes a voided question through MaswaliStrike, and no Millionea file but ${[...ADOPTS_AT_MERGE].join(", ")} (it adopts it at the merge) draws a strike of its own (${MLN_FILES.length} files read)`,
-  d3.length === 0 && usesStrike(raw(TICKET)) && !strikesIn(TICKET, raw(TICKET)).length, d3.join(" | "));
+const HUB = "src/app/millionea/page.tsx";
+const adopting = ADOPTS_AT_MERGE.size ? `no Millionea file but ${[...ADOPTS_AT_MERGE].join(", ")} (it adopts it at the merge)` : "no Millionea file";
+ok(`3.1 · the ticket and the hub's question rows strike a voided question through MaswaliStrike, and ${adopting} draws a strike of its own (${MLN_FILES.length} files read)`,
+  d3.length === 0 && [TICKET, HUB].every((f) => usesStrike(raw(f)) && !strikesIn(f, raw(f)).length), d3.join(" | "));
 
 /* ══ §4 · PLANTS ═══════════════════════════════════════════════════════════════════════════════════════════════════════ */
 section("§4 · each part taken out is caught");
@@ -168,6 +170,11 @@ const ticketBack = (rel: string) => rel === TICKET
   : raw(rel);
 ok("4.3 PLANT · the ticket's own strike put back (the release's line): §3 reports it",
   ticketBack(TICKET) !== raw(TICKET) && oneDrawingDefects(ticketBack).some((x) => x.startsWith(TICKET)));
+const hubBack = (rel: string) => rel === HUB
+  ? raw(rel).replace('voided ? "text-text-muted" : "text-text")}>{voided ? <MaswaliStrike text={textIn(locale, q.text)} /> : textIn(locale, q.text)}', 'voided ? "text-text-muted line-through decoration-border-strong" : "text-text")}>{textIn(locale, q.text)}')
+  : raw(rel);
+ok("4.4 PLANT · the hub's own strike put back (the release's question row): §3 reports it",
+  hubBack(HUB) !== raw(HUB) && oneDrawingDefects(hubBack).some((x) => x.startsWith(HUB)));
 
 /* ══ §5 · IN THE BROWSER ═══════════════════════════════════════════════════════════════════════════════════════════════ */
 section("§5 · in the browser: the strike ends at the last mark's ink, and nothing moves");
@@ -272,7 +279,8 @@ for (const [name, engine] of ENGINES) {
 }
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI STRIKE: ${pass} passed, ${fail} failed (browser: ${ranIn.length ? ranIn.join(" + ") : "did not run"})\n${"═".repeat(70)}`);
-/** The floor is the count a green run printed: 6 in memory, and 4 in each engine whose face §5 runs on. */
-const MIN_ASSERTIONS = 6 + PER_ENGINE * browserRan;
+/** The floor is the count a green run printed: 6 in memory (7 since S5-R2-HUB 6's plant of the hub's own strike), and 4 in
+ *  each engine whose face §5 runs on. */
+const MIN_ASSERTIONS = 7 + PER_ENGINE * browserRan;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

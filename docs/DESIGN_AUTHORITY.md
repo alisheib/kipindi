@@ -3339,9 +3339,10 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     Millionea-only row in `STATUS_TONE_EXCEPTIONS` with that reason; VOIDED is VOID's own slate and no exception.
 14. **One ledger prints a week's money (Ali, 2026-10-21 10/10 pass — the register critic's H3 and H5).** Every Millionea
     surface that prints a week's money draws the rows of `millioneaLedgerRows` with `MaswaliLedger`
-    (`components/maswali/maswali-ledger.tsx`): the register's week page and How to play's worked examples now, the win
-    ledger and the hub's pool block as they adopt it. Its labels are the kit `ReceiptRow`'s sentence-case label
-    (`labelStyle="sentence"`, the body face — a ledger's nouns, never eyebrow capitals that letter-space the money inside
+    (`components/maswali/maswali-ledger.tsx`): the register's week page, How to play's worked examples, the win ledger
+    (`winLedgerRows`) and the hub's pool block (`HubPoolLedger`; its loading drawing too, item 25). Its labels are the
+    kit `ReceiptRow`'s sentence-case label (`labelStyle="sentence"`, the body face — a ledger's nouns, never eyebrow
+    capitals that letter-space the money inside
     them, §M4), each row's detail a `note` line under it. It prints MR-26's identity on its face as two matching totals,
     each from its own components — "Money in" (carried in + ticket sales + the floor's top-up) and "Money out" (fee + paid
     to winners + carried forward; a voided week, its refunds and the carry handed on) — between them the jackpot's story
@@ -3528,25 +3529,109 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
       inline-block it was a place a line could break, and a fact whose first run did not fit sat a line low under an
       empty one (HUB, sw 320). `test:maswali-design` 4.A1, `test:maswali-fact-mark` (Chromium, WebKit).
     - **The kept runs** (`keepFact`). A phrase is one unbreakable run: a week and its number, a clock with its day and
-      zone, a reserve range, a cap's count, a number and its noun, a money figure (`.amount`), and a one-letter word with
-      the word after it ("A ticket", never "A" / "ticket"). Every run fits the narrowest box a fact line is drawn in at
-      320, 180px (`test:maswali-facts`, the census of every Millionea string in sw, en and zh). So a noun before a cap's
+      zone, a reserve range, a cap's count, a number and its noun, a money figure (`.amount`), a one-letter word with
+      the word after it ("A ticket", never "A" / "ticket"), and a connective with the word after it — the kit's one rule
+      for titles and labels (`connectiveRanges`, "ya", "za", "kwa", "na"…, "of", "and"; MASWALI-BUILD S5-R2-HUB, the
+      lead's ruling of 2026-10-23): "…kuchukua nafasi" / "ya maswali yaliyobatilishwa", never a line ending on "ya" (the
+      hub's `reservesShort` at sw 360 and 1280). Every run fits the narrowest box a fact line is drawn in at 320, 180px
+      (`test:maswali-facts`, the census of every Millionea string in sw, en and zh, which measures a connective's run with
+      the word it holds; §6 its rule and its plant). So a noun before a cap's
       count stays free ("Matokeo" / "5 kati ya 15 yametolewa"), the digits of a money figure start no number phrase,
       and a run that would start inside a figure starts after it: a figure is its own run however the jackpot grows.
       The words are the dictionary's, character for character.
     - **The week's close is said one way**: `salesCloseColon` ("Sales close: Friday 18:00 EAT", "Mauzo yanafungwa:
       Ijumaa 18:00 EAT", "销售截止：周五 18:00 EAT"), its zone kept with its clock: the card and its ghost
-      (`test:maswali-doors` 1.1, 1.8), the slip and the ticket. ⚠️ The hub's close row and the register's week row still
-      say `salesCloseAt`, with no zone, until the S5 round-2 merge rules on them.
+      (`test:maswali-doors` 1.1, 1.8), the slip, the ticket, the hub's close row (item 26; `test:maswali-hub` 18.1) and
+      the register's week row (MASWALI-BUILD S5-R2-REGISTER 25; `test:maswali-register` 7.7). No surface draws
+      `salesCloseAt` any more; the key stays in the dictionary only for the guards' plants of the old wording.
     - **A struck question** (`MaswaliStrike`, `.kp-mln-strike-end`). The strike is the strong border ink and ends at the
       ink of the text's last full-width mark, cut back by the platform's measured trims (`cjk-marks.tsx`: 0.65em, ？
-      0.5em) with a `clip-path` that moves nothing; a plain strike ran half an em past "？" ("…吗？-"). The ticket draws it;
-      ⚠️ the hub's question rows adopt it at the S5 round-2 merge. `test:maswali-strike` (the browser's strike against
-      the ink, Chromium and WebKit).
+      0.5em) with a `clip-path` that moves nothing; a plain strike ran half an em past "？" ("…吗？-"). The ticket and the
+      hub's question rows draw it (the hub's adopted with the merge's wiring, MASWALI-BUILD S5-R2-HUB 6): no Millionea file
+      strikes text of its own. `test:maswali-strike` (the browser's strike against the ink, Chromium and WebKit;
+      `qa:maswali-hub-states`' voiding state reads the hub's struck rows).
     - **A seeded week keeps the product's clock (dev only).** The dev seeds (`src/app/api/dev-test/**`) open a week at its
       drafted open and close it at its drafted close, the config's own times, so a tile never draws a time the product
       would not: opened and closed a minute late, the tiles read "Jumatatu 00:01" beside the template's "Jumatatu 00:00",
       and a close at 18:01. `test:maswali-seed-clock`.
+25. **The hub's loading drawing is the hub's own frame (lead 2026-10-22, round 2 on R1-hub's loading row; MASWALI-BUILD
+    S5-R2-HUB).** Which drawing a Millionea page shows on the way in: item 22. The hub's own:
+    - The page and its drawing (`hub-ghost.tsx`) compose ONE frame, written once in `hub-frame.ts`: the grid, the strip,
+      the buy column and its pinned pair, each block's cell, the question rows.
+    - The drawing stands in the page root's class (`kp-mln-zh`).
+    - ⭐ ITS LINES ARE THE PAGE'S OWN WORDS, UNSEEN (the lead's ruling of 2026-10-23, item 22; MASWALI-BUILD S5-R2-HUB,
+      HUB-2B). Every line the drawing can know is set in the page's own words through the kit's one part, `GhostWords`
+      (item 22): the page's type, measure and face, the ink unseen, a bar under each line box. So it breaks where the
+      page's does in any engine at any pixel ratio, by construction, and the per-language tables the drawing kept are
+      gone (its lines, the eyebrow's and the heading's widths, the strip's runs: Chromium and WebKit break the same
+      paragraph at different words). Its words are the head's line, the jackpot's rule, the ledger's carry and floor
+      labels, the questions' heading, the strip's labels and ranges (each range its page's two kept runs), the eyebrow's
+      week and the week's chip (the kit's `Chip` at its status metrics, in the skeleton's fill, around its word).
+      What it cannot know is a SAME-WIDTH TEMPLATE, the width of its whole class (`hub-page-words.ts`):
+      - a week's number: two digits in the numerals' face ("Wiki 00"). A week of one digit is one numeral narrower,
+        and its line count is unchanged;
+      - the price, the rate and the floor: the config's ruled TZS 1,000, 13% and TZS 1,000,000 (the floor's figure decides
+        where the ledger's floor label wraps beside it);
+      - the strip: the template week, opening Monday 00:00 and closing Friday 18:00 EAT, events Saturday to Sunday, and
+        results to the final deadline, Monday.
+      The page builds the same words with the same functions (`hubIntroText`, `hubRuleText`, `weekStripWords`). A
+      block of word bands sweeps as its own box (`kp-shimmer-track`); the part draws no motion of its own.
+      `test:maswali-hub` 19.5–19.7, `test:maswali-ui` 1.3.
+    - It draws the head's two pills at their labels' lengths: a table of character counts in the monospaced face held
+      to the dictionary, exact by construction (`ch` and `em`).
+    - Its ledger keeps item 14's one rhythm (MASWALI-BUILD S5-R2-REGISTER 27): no step of space after the total, and the
+      carry's row as tall as its line (REGISTER's row; the page's tap target stands out of its flow).
+    - On the held ticket's raised card its bars are that card's own (`bg-bg-elevated`, as the kit's `GhostCard` holds
+      its `GhostBar`). The page's darker bar read there as a hole.
+    - The reader's own block stands LAST in the buy column, the one band whose height is the reader's.
+    - A numeral never grows a frame line. Every frame line's inline numerals (`.mono`, `.amount`) take line-height 0,
+      the platform's `.kp-cjk-gap` recipe; a mono numeral had made its line a pixel taller.
+    So the swap moves nothing above or beside that block: within ±1px for a reader holding none, one or many at 360 and
+    1280, and one at all six widths in three languages (`qa:maswali-hub-states` "ghost"). An earlier week's pending carry
+    line is not drawn, because its window is that week's settlement, never the calendar; its residual is printed.
+26. **The hub's own lines: one order, one wording (lead 2026-10-22; MASWALI-BUILD S5-R2-HUB).** The jackpot head says
+    the card's order (DOORS' M2): the label, the figure, then — while an earlier week is unsettled — item 9's carry line,
+    which adds to that figure, then the rule. Under the fee, the carry line read as adding to the fee. The sales close is
+    item 24's one wording. And:
+    - On Millionea's own page a week is named without the product, and a notice sentence ends with its full stop: "Week 49:
+      your ticket did not win." / "Wiki 49: tiketi yako haikushinda." / "第49周：您的彩票未中奖。" (the nine `result*` lines,
+      which the hub alone reads). A surface where the reader may be elsewhere names the product itself (`productLabel`).
+    - A zero is an amount like every other, through `formatTzs` in the money face: a rolled-over week's row says
+      "… · ada TZS 0" (`lastWeekRolled`'s `{fee}`).
+    - A line under its head never repeats the head. Under "Reserves · A1–A5" the decided rule is said without the head's
+      words, "Count only when a main question voids, in order". ONE shared helper does it, `reserveRuleAfterHead(t)` in
+      `src/app/millionea/millionea-view.ts`, for every place that draws the pair: the hub's questions, the slip's reserve
+      step and the ticket's reserves (`test:maswali-hub` 20.3, `test:maswali-slip-design` 3.7, `test:maswali-tickets`
+      26.1). A language whose sentence ever stops opening with its head keeps the whole sentence.
+    - A voided main question's words follow its stamp, which already says "Void": the sentence's second fact, opening with
+      a capital ("Too few reserves: the week is due to be voided"), as the register's week page draws the same row. The
+      words are ONE wrap unit in the row's flex box (the keeper's runs inside one element): handed over as the keeper's
+      pieces, each stood as a flex item of its own and a sentence wider than its line broke into a block above its kept run.
+    - No week on sale: the empty state's numerals — the next open's clock, the questions' count — are numerals (§T5), as
+      Tiketi zangu's empty states set theirs: the hub draws Millionea's own empty state (`MaswaliEmptyState`, the kit's
+      opt-in numeral part), never the kit's plain body.
+    - The week's voiding notice is kept as every Millionea line is: its last two words, a count with its noun ("5 道"),
+      its day with its clock.
+27. **The hub's buy column (MASWALI-BUILD S5-R2-HUB, the tile readers).**
+    - At 768 no cell stands empty. A head with no door beside it (sales paused) runs both columns; with no block of the
+      reader's, the graded week takes that block's cell, level with the ledger. A closed week's facts (results in, valid
+      reserves left, the objection window, the next event) are their own cell under the door, level with the ledger,
+      which follows the head; from 1024 they read on under the pinned pair, which holds only the head and the door. Inside
+      the door's block they made it taller than the head, and an empty band (80px at sw and en 768) stood under the head.
+    - From 1024 the pinned head and door stand on the page's own ground, whose foot fades, so nothing passes under them
+      cut flat. At rest the block under them stands the column's own gap below.
+    - A closed week's held rows stand under "Your tickets", the tickets page's own title.
+    - The carried figure's flight into the ledger (item 1's N1, from the rollover notice's own figure) lands on a box of
+      the row's line: the carry's wrapper is an inline block, so the frame's numeral rule (a figure's line height 0,
+      item 25) never leaves it an empty box. As an inline flex box it was 0px tall, the carry's one measurement refused
+      it, and the flight never played (the drive's red at sw 1920×1440).
+    - The ledger keeps the carry it was handed for its life and plays it once: a render while the token flies never cuts
+      it. A server action that re-signs a returning player's session (last seen five minutes or more before) re-renders
+      the route, the rollover's own seen mark among them, and so do the poller and a pool frame; a render made after the
+      seen mark no longer carries the rollover.
+    - A held wallet is told the buy's refusal in the buy block, the one sentence the slip and the buy say
+      (`millioneaRefusalBody`, MASWALI-BUILD FLOW 13), and is never offered the fill door it could not buy through. It
+      stands in the door's own cell (`millionea-hub-held`; `test:millionea-held-wallet`).
 29. **An admin reads plain words (Ali, 2026-10-22: his admin guide must be "clear, perfect … no unneeded wording"; the
     lead's rulings G1–G8 on the S6-DOCS lane's walk of `/admin/maswali`; MASWALI-BUILD S6-ADMIN).** Every word the
     Millionea console draws — page text, labels, hints, chips, refusals, the open's checklist, the alerts, and the

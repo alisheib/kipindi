@@ -1,5 +1,6 @@
 import { Fragment, cloneElement, isValidElement, type ReactNode } from "react";
 import { keepRanges, keptRanges, mergeRanges } from "@/components/ui/keep-run";
+import { connectiveRanges } from "@/lib/connectives";
 import { moneyRuns } from "@/lib/fill-nodes";
 import { cn } from "@/lib/utils";
 import type { Locale } from "@/lib/i18n-dict";
@@ -26,8 +27,11 @@ import type { Locale } from "@/lib/i18n-dict";
  *     span, the words untouched (no no-break space, no word joiner — a copy and a screen reader read the dictionary's
  *     text). Its runs are the platform's (`keptRanges`: a spaced dash held to the word before it, a possessive with its
  *     noun, the last two words), Millionea's own (`factRuns`, below), each money figure whole and alone (a run that would
- *     start inside a figure starts after it), and each one-letter word with the word after it (`oneLetterRanges`). Every
- *     run fits the narrowest line a fact is drawn in, 180px at 320 (`test:maswali-facts`' census).
+ *     start inside a figure starts after it), each one-letter word with the word after it (`oneLetterRanges`), and each
+ *     connective with the word after it — the kit's one rule for titles and labels (`connectiveRanges`, lib/connectives.ts:
+ *     "ya", "za", "kwa", "na"…, "of", "and"), so no line ends on one ("…kuchukua nafasi ya" / "maswali…", the hub's
+ *     `reservesShort` at sw 360 and 1280). Every run fits the narrowest line a fact is drawn in, 180px at 320
+ *     (`test:maswali-facts`' census, which measures a connective's run with the word it holds).
  * ⛔ The list's text is the same text as before for everything but the eye: each separator is also in the DOM as a
  *    screen-reader-only " · " (`sr-only`), so an accessible name, a copy and a search read "A · B · C" exactly as the old
  *    joined string did; the drawn mark is generated content with empty alternative text, read by nobody twice.
@@ -206,8 +210,10 @@ function numeralNodes(node: ReactNode): ReactNode {
 
 /**
  * One fact with its phrases kept whole and its figures in the money face: the platform's kept runs (`keptRanges`) and
- * Millionea's (`factRuns`), plus any run the caller names and each one-letter word with the word after it
- * (`oneLetterRanges`), each a `white-space: nowrap` span; every money figure an
+ * Millionea's (`factRuns`), plus any run the caller names, each one-letter word with the word after it
+ * (`oneLetterRanges`) and each connective with the word after it (`connectiveRanges`: the connective and its white space
+ * one run — no engine breaks after a space that closes a nowrap box, so the break after it is gone and every other break
+ * stays, a break inside the next word included), each a `white-space: nowrap` span; every money figure an
  * `.amount` and every other numeral `.mono` (`numeralRuns`, §T5) — but in a heading in the display face (`numerals:
  * false`), where a numeral keeps the heading's face. The words are never changed.
  */
@@ -225,6 +231,6 @@ export function keepFact(locale: Locale, text: string, runs: readonly string[] =
     }
     return from < b ? [[from, b]] : [];
   });
-  const ranges = mergeRanges([...kept, ...money, ...oneLetterRanges(text)]);
+  const ranges = mergeRanges([...kept, ...money, ...oneLetterRanges(text), ...connectiveRanges(text)]);
   return keepRanges(text, ranges, opts.numerals === false ? (part) => moneyRuns(part) : (part) => numeralRuns(part));
 }

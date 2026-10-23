@@ -133,11 +133,12 @@ export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // planted classic edit) reported; inside them one key each, `walletFrozen` (the lead's three sentences, the English
   // apostrophe the dictionary's typographic one), and one two-line comment in the English block. Its diff against
   // 1341177e5 is those 5 added lines; no line removed, no other line changed — `error.failWalletFrozen` stays as it was.
-  // D19a RE-PINNED AT MASWALI-BUILD FLOW 14 (was 989199be6, FLOW 13's; the lead's ruling of 2026-10-23, a held wallet's free
-  // cancel): the strip-mln check — outside the three `millionea` blocks byte-identical, its control reported; inside them
-  // one key each, `cancelWalletFrozen` (the cancel's own verb, in `cancelNotOpen`'s form), and one two-line comment in the
-  // English block. Its diff against 989199be6 is those 5 added lines; no line removed, no other line changed.
-  "src/lib/i18n-dict.ts": "3481f131e6b924cda84f406efe4102716dd5ab95",
+  // D19a RE-PINNED AT THE POLISH RELEASE'S MERGE (the lead, 2026-10-23): FLOW 14's pin 3481f131e (`cancelWalletFrozen`,
+  // a held wallet's free cancel) and HUB-2B's pin 2382f3ea3 (S5-R2-HUB 20: the nine `result*` notices in the page form and
+  // `lastWeekRolled`'s fee an amount) both stood over 989199be6; the merged dictionary holds both. The strip-mln check against
+  // main 3ec32bb72's dictionary: outside the three `millionea` blocks byte-identical, its control (a planted classic edit)
+  // reported; inside them exactly eleven keys per language — HUB-2B's ten and FLOW 14's one, as each lane pinned them.
+  "src/lib/i18n-dict.ts": "cd82baeeaa09cabbf193b2777182a68f697d03df",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
 };

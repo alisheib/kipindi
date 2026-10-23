@@ -32,6 +32,7 @@
  *   §22      the hub's held row (the hub critic's L4 + L20, the lead's lines)
  *   §25      the hop: the list's loading state draws the DESTINATION's drawing (a ticket's own on a ticket); each drawing
  *            names its page (`data-ghost-page`) on one box-less wrapper around it, which moves nothing; the kit untouched
+ *   §26 2c   the reserves' rule under its head never repeats the head (the shared `reserveRuleAfterHead`, S5-R2-HUB 6)
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect in an IN-MEMORY copy — a source string, a dictionary value,
  *    or a component COMPILED from a planted copy of its own source — and requires the check it targets to fail; a plant whose
@@ -1070,6 +1071,19 @@ check("25.3", "the mark moves nothing: inside its box-less wrapper each drawing 
   return d;
 });
 
+// ── §26 · the lead's ruling 2c, wired by S5-R2-HUB 6 at the merge ──────────────────────────────────────────────────────
+// Under its head ("Reserves · A1–A5") the reserves' rule is said after the head's own words — the one shared helper,
+// `reserveRuleAfterHead` (millionea-view.ts) — never the whole sentence, which opens with the head and said it twice.
+check("26.1", "the ticket's reserves' rule under its head never repeats the head: after \"Reserves · A1–A5\" it says the shared `reserveRuleAfterHead` (\"Count only when a main question voids, in order\") once, and the whole sentence nowhere, in sw/en/zh", (w) => {
+  const d: string[] = [];
+  const { reserveRuleAfterHead } = req("../src/app/millionea/millionea-view.ts") as { reserveRuleAfterHead: (t: unknown) => string };
+  for (const l of LOCALES) {
+    const t = textOf(ticketMarkup(w, l)), after = reserveRuleAfterHead(w.dict[l]);
+    need(d, t.split(after).length - 1 === 1 && !t.includes(mln(w, l).reserveRule), `${l}: "${after}" ×${t.split(after).length - 1}, the whole rule ${t.includes(mln(w, l).reserveRule) ? "drawn" : "absent"}`);
+  }
+  return d;
+});
+
 /* ── run ─────────────────────────────────────────────────────────────────────────────────────────────────────────── */
 const runAll = (w: World, quiet: boolean) => {
   const failed: string[] = [];
@@ -1188,6 +1202,7 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["the mark's wrapper given a box (no `contents`)", "25.3", plantSrc("listGhost", '<div className="contents space-y-6" data-ghost-page="tickets">', '<div className="space-y-6" data-ghost-page="tickets">')],
   ["the rhythm left behind (the wrapper's bands lose their spacing)", "25.3", plantSrc("ticketGhost", '<div className="contents space-y-5" data-ghost-page="ticket">', '<div className="contents" data-ghost-page="ticket">')],
   ["the kit changed for the mark", "25.3", plantSrc("pageContainer", "      data-empty-state-owner={emptyStateOwner}\n", "      data-empty-state-owner={emptyStateOwner}\n      data-ghost-page={id}\n")],
+  ["2c undone — the reserves' whole rule under its head (the head's words said twice)", "26.1", plantSrc("ticket", "{keepFact(locale, reserveRuleAfterHead(t))}", "{keepFact(locale, t.millionea.reserveRule)}")],
 ];
 let caught = 0;
 for (const [name, target, world] of PLANTS) {

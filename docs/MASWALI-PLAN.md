@@ -3434,7 +3434,7 @@ The design is built from five objects. All of them are made of parts 50pick alre
 | **A reserve counts only when a main question is voided, in order; a voided reserve is skipped.** | Annex sockets stay "Akiba" (standing by) whatever their event does. A reserve becomes a mark only after the Carry (N1) moves it into the vacated main socket. The annex socket keeps "→4". A voided reserve shows `sealNil` and "Batili", and the next reserve carries. |
 | **More voided mains than valid reserves voids the week and refunds every ticket.** | A live line reads "Akiba halali zilizobaki: 4 kati ya 5" (valid reserves left: 4 of 5). When it can no longer cover the voided mains, the week band reads "Wiki imebatilishwa" and every stub rejoins (N3 reversed). |
 | **The guaranteed floor and the rollover.** | The ledger has two lines, real money and the floor, and the jackpot line repeats the larger. When real money passes the floor, the floor line drops to muted ink but stays visible. |
-| **The 13% fee is taken at payout, and only then.** | It appears in the R-HEADLINE everywhere. The ledger's fee line reads "—" until a payout. Rollover strata print "ada 0". |
+| **The 13% fee is taken at payout, and only then.** | It appears in the R-HEADLINE everywhere. The ledger's fee line reads "—" until a payout. Rollover strata print the zero fee as an amount, "ada TZS 0" (DESIGN_AUTHORITY §M8a item 26). |
 | **An equal share per winning ticket.** | The win ledger reads "÷ tiketi 3 zilizoshinda" (÷ 3 winning tickets), and "× 2" when the player holds two. |
 | **Sales close before the first event.** | Slip and hub print "Mauzo yanafungwa: Ijumaa 18:00" over "Tukio la kwanza: Ijumaa 19:30". The officer tool refuses any other order (R-WEEK), so the second time is always later. |
 
@@ -3686,7 +3686,7 @@ When all fifteen results are final, the substitution map is final too. Carries p
   - Rollover in, tickets sold × 1,000, real money, floor, jackpot.
   - Winning tickets, the 13% fee with TRA/GBT of the fee, the house top-up, paid, the per-ticket share.
   - **The rounding remainder line**, and what was carried out.
-- **The strata history:** "Wiki 40 · TZS 412,000 imeletwa mbele · ada 0", one row per carried week.
+- **The strata history:** "Wiki 40 · TZS 412,000 imeletwa mbele · ada TZS 0", one row per carried week (the zero fee an amount: §M8a item 26).
 - **After settlement only:** the standing-count history ("tiketi zisizo na kosa baada ya kila tokeo", tickets without a miss after each result).
 - **Last:** a link to the audit-chain entry on `/fairness`. No personal data.
 

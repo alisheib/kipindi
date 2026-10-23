@@ -302,7 +302,9 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
     ['"/wallet/deposit/return": <DepositReturnLoading />', 'import DepositReturnLoading from "@/app/wallet/deposit/return/loading";', "src/app/wallet/deposit/return/loading.tsx", "export default function DepositReturnLoading() {"],
     ['["^/markets/[^/]+$", <QuestionGhost />]', 'import { QuestionGhost } from "@/components/journey/question/question-ghost";', "src/components/journey/question/question-ghost.tsx", "export function QuestionGhost() {"],
     // RE-PINNED (MASWALI-BUILD S5 pages): Maswali Millionea's four, each its loading file's own drawing.
-    ['"/millionea": <MillioneaHubGhost />', 'import { MillioneaHubGhost } from "@/app/millionea/hub-ghost";', "src/app/millionea/loading.tsx", "return <MillioneaHubGhost />;"],
+    // RE-PINNED (S5-R2-HUB 1): Millionea's segment loading file draws the page being opened (`MillioneaGhostPick`, beside
+    // the hub's drawing in hub-ghost.tsx) — at /millionea the hub's drawing; test:maswali-hub §15 renders each address.
+    ['"/millionea": <MillioneaHubGhost />', 'import { MillioneaHubGhost } from "@/app/millionea/hub-ghost";', "src/app/millionea/loading.tsx", "return <MillioneaGhostPick />;"],
     ['"/millionea/slip": <MillioneaSlipGhost />', 'import { MillioneaSlipGhost } from "@/app/millionea/slip/slip-ghost";', "src/app/millionea/slip/loading.tsx", "return <MillioneaSlipGhost />;"],
     // RE-PINNED (S5-FIX-PLATFORM, the tickets design lane's M9): its head is handed the page's three kinds.
     // RE-PINNED (S5-R2-TICKETS): Tiketi zangu's segment loading file draws the page being opened (`MillioneaTicketsGhostPick`,

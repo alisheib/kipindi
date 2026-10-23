@@ -522,9 +522,11 @@ const heldGuardDefects = (hubSrc: string) => {
   const model = code(read("src/components/maswali/maswali-card-model.ts"));
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-FIX-PLAYER P13): the cap's line is one helper now (`capReachedLine`), which the
   // slip's refusal says too; §5 P13 checks its words in three languages.
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-DESIGN-HUB round 2, §T5): the hub draws the same line as a fact — its counts and
+  // its week's number `.mono` numerals, its phrases kept whole (`keepFact`); the words are the helper's, unchanged.
   const viewSrc = squash(code(read("src/app/millionea/millionea-view.ts")));
   ok("2.R4f · the hub's cap line promises no next week when none follows (`capReachedOnly`), and neither the hub nor the card counts seven days from a week's open",
-    hubSrc.includes("door = <Callout tone=\"info\" role=\"status\">{capReachedLine(t, w.ticketCap, nextOpen)}</Callout>;")
+    hubSrc.includes("door = <Callout tone=\"info\" role=\"status\">{keepFact(locale, capReachedLine(t, w.ticketCap, nextOpen))}</Callout>;")
       && viewSrc.includes("return nextOpenMs === null ? fill(t.millionea.capReachedOnly, { cap })")
       && hubSrc.includes("nextOpen={nextWeekOpen(hub, millioneaOpenTemplate(), nowMs)}")
       && !/7 \* 86_400_000/.test(hubSrc) && !/opened \+ 7 \* DAY_MS/.test(model));
@@ -932,14 +934,18 @@ const cardBlockDefects = (src: string) => {
     aheadOff.length === 0, aheadOff.join(" | "));
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-HUB H1): the pool block is its HEAD and its LEDGER now; the order is the head's.
   const { MaswaliPoolHead } = req("../src/components/maswali/maswali-pool-figure.tsx") as { MaswaliPoolHead: (p: Record<string, unknown>) => unknown };
-  const hubOrder = LOCALES.filter((l) => {
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-HUB, the lead's ruling): the card's order is DOORS' M2 one — the carry's line
+  // right after the figure it adds to (under the fee it read as adding to the fee, as the hub's sw tile reader read it).
+  const carryFirst = (l: L3, text: string) => {
     const d = dict[l].millionea;
-    const text = textOf(inApp(l, h(MaswaliPoolHead as never, { t: dict[l], locale: l, pct: 13,
-      view: { kind: "selling", carriedIn: { week: 47, amount: null }, sales: { tickets: 41, amount: 41_000 }, pool: 41_000, floor: 1_000_000, jackpot: 1_000_000 } } as never)));
     const rule = text.indexOf(fill(FACTS.factsOf(d.ruleShared)[0] ?? "", { pct: 13 })), carry = text.indexOf(fill(d.pendingCarry, { week: 47 }));
-    return !(rule >= 0 && carry > rule);
-  });
-  ok("4.P3c · the hub's pool block says the same order: the figure, the R-HEADLINE's rule, then the carry's line (it said the carry first)", hubOrder.length === 0, j(hubOrder));
+    return carry >= 0 && rule > carry;
+  };
+  const hubOrder = LOCALES.filter((l) => !carryFirst(l, textOf(inApp(l, h(MaswaliPoolHead as never, { t: dict[l], locale: l, pct: 13,
+    view: { kind: "selling", carriedIn: { week: 47, amount: null }, sales: { tickets: 41, amount: 41_000 }, pool: 41_000, floor: 1_000_000, jackpot: 1_000_000 } } as never)))));
+  ok("4.P3c · the hub's pool block says the card's order: the figure, the carry's line that adds to it, then the R-HEADLINE's rule", hubOrder.length === 0, j(hubOrder));
+  ok("4.P3c′ PLANT · the head's old order (the rule, then the carry's line) is reported",
+    !carryFirst("en", `${fill(FACTS.factsOf(dict.en.millionea.ruleShared)[0] ?? "", { pct: 13 })} ${fill(dict.en.millionea.pendingCarry, { week: 47 })}`));
 }
 
 // P4 · the strip: a label, then its whole range
@@ -968,17 +974,24 @@ const cardBlockDefects = (src: string) => {
     stripDefects("en", renderToStaticMarkup(h("ol", null, h("li", null, "Sales · Monday 00:01 – Friday 18:00 EAT")))).length > 0);
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-HUB M1): the two columns start at 1024 (the market page's grid), so the
   // strip spans them from 1024; the aside and the questions both start under it.
-  const gridDefects = (src: string) => {
+  // ⚠️ RE-PINNED (S5-R2-HUB): the hub's places are written once in `hub-frame.ts` (the page and its loading drawing compose
+  // them): the frame's own values are read, and the page's use of them.
+  const FRAME = req("../src/app/millionea/hub-frame.ts") as typeof import("../src/app/millionea/hub-frame.ts");
+  const gridDefects = (src: string, frame: Pick<typeof FRAME, "HUB_STRIP" | "hubAside" | "hubMain" | "hubTail"> = FRAME) => {
     const s = squash(code(src));
     const d2: string[] = [];
-    if (!s.includes('<div className="lg:col-span-2"> <MaswaliWeekStrip')) d2.push("the strip does not span the measure from 1024");
-    if (count(s, 'phases ? "lg:row-start-2" : "lg:row-start-1"') !== 2) d2.push("the aside and the questions do not start under the strip");
+    if (!/(?:^| )lg:col-span-2(?: |$)/.test(frame.HUB_STRIP) || !s.includes("<div className={HUB_STRIP}> <MaswaliWeekStrip")) d2.push("the strip does not span the measure from 1024");
+    const under = [frame.hubAside(true, true), frame.hubMain(true)].every((c) => / lg:row-start-2(?: |$)/.test(c)) && / lg:row-start-3(?: |$)/.test(frame.hubTail(true))
+      && [frame.hubAside(true, false), frame.hubMain(false)].every((c) => / lg:row-start-1(?: |$)/.test(c));
+    if (!under || !s.includes("className={hubAside(twoUp, !!phases)}") || !s.includes("<div className={hubMain(!!phases)}>") || !s.includes("<div className={hubTail(!!phases)}>"))
+      d2.push("the aside and the questions do not start under the strip");
     return d2;
   };
   ok("4.P4b · from 1024 the hub's strip spans both columns (each range then has a third of the measure), and the aside, the questions and last week start under it",
     gridDefects(read(HUB)).length === 0, gridDefects(read(HUB)).join(" | "));
-  ok("4.P4b′ PLANT · the strip back in the left column is reported",
-    gridDefects(read(HUB).replace('<div className="lg:col-span-2">\n                      <MaswaliWeekStrip', '<div className="lg:col-start-1">\n                      <MaswaliWeekStrip')).length > 0);
+  ok("4.P4b′ PLANT · the strip back in the left column is reported (in the page, and in the frame)",
+    gridDefects(read(HUB).replace("<div className={HUB_STRIP}>", '<div className="lg:col-start-1">')).length > 0
+      && gridDefects(read(HUB), { ...FRAME, HUB_STRIP: "lg:col-start-1" }).length > 0);
 }
 
 // P5 · the carry's row and the fee row say what is true
@@ -1318,13 +1331,18 @@ const sellingDefects = (src: string) => {
   const s = squash(code(src));
   const d: string[] = [];
   const at = s.indexOf("function BuyDoor(");
-  const block = at < 0 ? "" : s.slice(at, s.indexOf("function BuyFacts(", at));
+  // ⚠️ RE-PINNED (S5-R2-HUB): `BuyFacts` went (a closed week's results line is the door's own status line); the door's
+  // block ends where the graded week's begins.
+  const block = at < 0 ? "" : s.slice(at, s.indexOf("function GradingBlock(", at));
   if (!block.includes("const open = w.selling;")) d.push("the close line and the pill do not ask whether the week sells");
   if (/const open = w\.state === "OPEN"/.test(block)) d.push("the close line asks the state alone (a paused week counts down)");
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-HUB, R1-motion M8): the row is `kp-mln-close`, which makes the pill's room
   // in the last hour (its weekday steps aside, globals.css) — the row, its clock and its pill are as they were.
-  const row = block.indexOf("{open && buys && ( <div className=\"kp-mln-close flex min-h-5 flex-wrap items-center gap-x-2 gap-y-1\" data-testid=\"millionea-hub-close\"> <p className=\"flex items-center gap-1.5 text-body-sm text-text-muted\"> <I.clock s={14} className=\"shrink-0\" />");
-  if (row < 0) d.push("the printed close is not drawn under `open` and a buying door, with the clock");
+  // ⚠️ RE-PINNED (S5-R2-HUB): the row's classes are the frame's (`HUB_DOOR`, hub-frame.ts) — read there by value.
+  const DOOR = (req("../src/app/millionea/hub-frame.ts") as typeof import("../src/app/millionea/hub-frame.ts")).HUB_DOOR;
+  const row = block.indexOf("{open && buys && ( <div className={HUB_DOOR.close} data-testid=\"millionea-hub-close\"> <p className={HUB_DOOR.closeLine}> <I.clock s={14} className=\"shrink-0\" />");
+  if (row < 0 || DOOR.close !== "kp-mln-close flex min-h-5 flex-wrap items-center gap-x-2 gap-y-1" || DOOR.closeLine !== "flex items-center gap-1.5 text-body-sm text-text-muted")
+    d.push("the printed close is not drawn under `open` and a buying door, with the clock");
   if (!(row >= 0 && block.indexOf("<MaswaliClosingPill closesAt={closesMs} serverNow={nowMs} compact />", row) > row)) d.push("the pill is not drawn in the close's row under `open`");
   return d;
 };
@@ -1539,7 +1557,8 @@ const weekLabelDefects = (src: string) => {
   if (!s.includes("const rollover = carryingRollover(hub.notices, w?.pool ?? null);") || !s.includes("const carries = rollover !== null;")
     || !s.includes("carryFrom={carries ? CARRIED_FIGURE_ID : undefined}")) d.push("the carry can leave from a figure that is not this week's carry");
   const mine = s.slice(s.indexOf("function MineBlock("), s.indexOf("function BuyDoor("));
-  if (!mine.includes("const onSale = w.state === \"OPEN\";") || !mine.includes("{onSale && <p className=\"text-body-sm text-text-muted\">{keepFact(locale, fill(t.millionea.yourTicketsThisWeek,")) d.push("a week being graded says \"Your tickets this week: n of cap\"");
+  // ⚠️ RE-PINNED (S5-R2-HUB): the cap line's classes are the frame's (`HUB_MINE.count`, hub-frame.ts).
+  if (!mine.includes("const onSale = w.state === \"OPEN\";") || !mine.includes("{onSale && <p className={HUB_MINE.count}>{keepFact(locale, fill(t.millionea.yourTicketsThisWeek,")) d.push("a week being graded says \"Your tickets this week: n of cap\"");
   return d;
 };
 {
@@ -1548,7 +1567,7 @@ const weekLabelDefects = (src: string) => {
     d.length === 0, d.join(" | "));
   const plants = [
     weekLabelDefects(read(HUB).replace("if (!last || (!retired && !hub.lastWeekIsPrevious)) return null;", "if (!last) return null;")),
-    weekLabelDefects(read(HUB).replace("{onSale && <p className=\"text-body-sm text-text-muted\">", "{<p className=\"text-body-sm text-text-muted\">")),
+    weekLabelDefects(read(HUB).replace("{onSale && <p className={HUB_MINE.count}>", "{<p className={HUB_MINE.count}>")),
     weekLabelDefects(read(HUB).replace(">{heading}</h2>", ">{t.millionea.weekQuestions}</h2>")),
   ];
   ok("5.P8′ PLANT · each old label put back — \"Last week\" for any final week, the cap line under a graded week, \"This week's questions\" over a past week — is reported", plants.every((p) => p.length > 0), j(plants));
