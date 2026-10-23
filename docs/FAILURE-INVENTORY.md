@@ -1420,6 +1420,16 @@ notice's does. Held by `test:maswali-fairness` L.13 (the old support path refuse
 line required, in every language), L.13b (the final week's rule equals `finalWeekRule`), L.13c (L.13's predicate over
 planted copies) and L.4 (the hash), and by `test:terms-binding` §1–§3 with their controls.
 
+#### ✅ Two reds the legal run found on the integrated head, neither the legal change's (S6-INT 33)
+
+Run 39875472498 (S6-INT 31): `test:harm-watch` H.10e, on both stores, found a figure in two sentences that name the
+detectors — the lane tag "S6-DOCS" written at the head of S6-DOCS 6's own comments in `harm-watch.ts` and its cases (the
+public-repository rule counts any figure in such a sentence). THE RULE stands as H.10e states it: a sentence that names a
+detector carries no figure, a lane tag's included; the two comments now open on their words. `test:wallet-status-writers`
+1.2 counted 43 wallet write sites against a pin of 42: S7-OB's objection drive seeder
+(`dev-test/seed-maswali-objections/route.ts`, its players created ACTIVE) came in with S6-INT 21 and the pin did not move;
+it is a dev-only fixture (§2.7) and the production writers stay three (§2.5). The pin is 43, the site named beside it.
+
 #### ✅ Item 6 · the harm watch's candidate window was typed beside the detectors it serves (S6-DOCS 6)
 
 The harm watch reads its candidates — the accounts a player-safety marker can be raised on — from a window that must

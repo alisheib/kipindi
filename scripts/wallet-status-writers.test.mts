@@ -428,7 +428,11 @@ const FILE_FLOOR = 800;
 // dev-test seeder does — `dev-test/maswali-hub-act/route.ts` (newPlayer), `dev-test/seed-maswali-register/route.ts`
 // (player) and `dev-test/seed-maswali-tickets/route.ts` (account). Each is judged `fixture` and proven dev-only by §2.7;
 // the production writers stay exactly 3 (§2.5). §1's list was read before the pin moved.
-const SITE_COUNT = 42;
+// 43 since 2026-10-22 (MASWALI-BUILD S7-OB, merged into the S6 release at S6-INT 21): `dev-test/seed-maswali-objections/
+// route.ts` (account) creates the objection drives' players ACTIVE, as every dev-test seeder does — judged `fixture` and
+// proven dev-only by §2.7; the production writers stay exactly 3 (§2.5). The pin was left at 42 by that merge: §1's list
+// of run 39875472498 (S6-INT 33) named the site before the pin moved.
+const SITE_COUNT = 43;
 ok(`1.1 the walk read every .ts/.tsx under src/`, files.length >= FILE_FLOOR, `${files.length} files (floor ${FILE_FLOOR})`);
 ok(`1.2 ⛔ RATCHET · the census found exactly the wallet write sites measured`, all.length === SITE_COUNT,
   `${all.length} sites (pinned ${SITE_COUNT} — a changed count is a changed population: read §1's list, then move the pin)`);

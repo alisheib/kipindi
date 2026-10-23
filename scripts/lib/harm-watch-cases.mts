@@ -353,7 +353,7 @@ export async function runHarmCases(ok: Ok, impl: HarmImpl, HW: Any): Promise<{ o
       && LITERAL.test("const sinceThen = Date.now() - 4_321;") && LITERAL.test(["const span = ", "DAY_MS", " * ", String(13), ";"].join(""))
       && strayOf(["const ", "SPAN_", "LIMIT", " = ", String(17), ";"].join("")) === 1,
     String(code.match(LITERAL)?.[0] ?? strayConsts.join(", ")));
-  // ⭐ S6-DOCS · the candidate window is the detectors' own: derived from the windows they export, never typed —
+  // ⭐ The candidate window is the detectors' own: derived from the windows they export, never typed —
   // by value (the module's constant equals the larger window in whole days) and in source (its derivation line).
   {
     const rg = await import("../../src/lib/server/responsible-gambling.ts");
