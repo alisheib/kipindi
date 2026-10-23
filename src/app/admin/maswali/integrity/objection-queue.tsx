@@ -87,7 +87,7 @@ export async function MillioneaObjectionQueue({ viewerId, viewerIsOwner, canRule
                               ? `You set ${q.label}'s present result on an earlier objection, so another officer rules on its objections${fallback}.`
                               : w.viewerHoldsTicket ? `You hold a ticket in ${w.code}, so another officer rules on its objections${fallback}.` : null;
                         return (
-                          <li key={o.id} id={`objection-${o.id}`} className="rounded-md border border-border-subtle p-3 space-y-2 scroll-mt-24">
+                          <li key={o.id} id={`objection-${o.id}`} className="rounded-md border border-border-subtle p-3 space-y-2 scroll-mt-11">
                             <div><ObjectionStatusBadge status={o.status} /></div>
                             {/* One run of words, so a narrow line wraps between them — never a separator left at a line's start. */}
                             <p className="text-body-sm">
