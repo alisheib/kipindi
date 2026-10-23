@@ -6,6 +6,7 @@ import { fillNodes } from "@/lib/fill-nodes";
 import { cn, fill, formatTzs } from "@/lib/utils";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import { HUB_POOL_HEAD } from "@/app/millionea/hub-frame";
+import { hubRuleText } from "@/app/millionea/hub-page-words";
 
 /**
  * THE POOL FIGURE — the week's jackpot headline and its rule (MASWALI-BUILD S5; MASWALI-PLAN §10 §3.3, §10 §6 "an UNEARNED
@@ -59,7 +60,7 @@ export function poolRule(t: Dict, view: PoolView, pct: number): string | null {
   if (view.kind === "voiding" || view.kind === "voided") return null;
   return view.kind === "sunset"
     ? counted(view.top.tickets, t.millionea.sunsetScoreOne, t.millionea.sunsetScore, { score: view.top.score })
-    : fill(t.millionea.ruleShared, { pct });
+    : hubRuleText(t, pct);
 }
 
 /**
@@ -120,7 +121,7 @@ export function MaswaliPoolHead({ t, locale, view, pct, final = false, tick, lab
   const pending = v.carriedIn?.amount === null;
   const rule = poolRule(t, view, pct);
   const finalLine = poolFinalLine(t, view, final);
-  const facts = (line: string) => <MaswaliFacts facts={factsOf(line).map((f) => keepFact(locale, f))} className={HUB_POOL_HEAD.facts} />;
+  const facts = (line: string) => <MaswaliFacts facts={factsOf(line).map((f) => keepFact(locale, f))} />;
   // ⭐ ONE FRAME FOR THE HEAD AND ITS DRAWING (S5-R2-HUB): every class here is `hub-frame.ts`'s, which the hub's loading
   // drawing composes too — so the drawn head is this head's height, line box by line box.
   return (
@@ -133,7 +134,7 @@ export function MaswaliPoolHead({ t, locale, view, pct, final = false, tick, lab
       {finalLine ? (
         <span className={HUB_POOL_HEAD.finalRule} data-head="rule" data-testid="millionea-hub-final-rule">
           <MillioneaGlyph name="finalWeek" s={14} className="relative top-0.5 shrink-0 text-text-subtle" />
-          <MaswaliFacts facts={[finalLine, ...(rule ? factsOf(rule).slice(1) : [])].map((f) => keepFact(locale, f))} className={HUB_POOL_HEAD.facts} />
+          <MaswaliFacts facts={[finalLine, ...(rule ? factsOf(rule).slice(1) : [])].map((f) => keepFact(locale, f))} />
         </span>
       ) : rule && <span className={HUB_POOL_HEAD.rule} data-head="rule">{facts(rule)}</span>}
     </div>

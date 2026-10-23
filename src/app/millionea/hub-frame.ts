@@ -105,15 +105,16 @@ export function hubTail(strip: boolean): string {
 /** The jackpot's head (`MaswaliPoolHead`), in the card's order (§M8a item 26): its box, its label, the figure, then —
  *  while an earlier week's carry is pending — the line that says so (item 9), then its rule, the final week's led by its
  *  mark. Each fact line of the rule balances
- *  a fact that wraps inside itself (`[&>.kp-mln-fact]:text-balance`): at 320 Swahili's first fact broke greedily and
- *  stranded its kept run alone ("Inagawanywa sawa kwa kila tiketi" / "ya 10/10"); a fact that fits its line is untouched. */
+ *  a fact that wraps inside itself (`[&_.kp-mln-fact]:text-balance`, set on the rule's own line): at 320 Swahili's first
+ *  fact broke greedily and stranded its kept run alone ("Inagawanywa sawa kwa kila tiketi" / "ya 10/10"); a fact that fits
+ *  its line is untouched. The rule is set on the LINE, not on its list, so the loading drawing's rule — a fact list the
+ *  kit's `GhostWords` draws (HUB-2B) — balances by the same class. */
 export const HUB_POOL_HEAD = {
   box: "mat-flat flex flex-col gap-1 rounded-card p-3",
   label: "font-mono text-micro uppercase eyebrow text-text-subtle",
   figure: "font-mono text-title-sm font-semibold text-text tabular-nums xs:text-title-md",
-  rule: `text-body-sm text-text-muted ${NUMERALS}`,
-  finalRule: `flex items-baseline gap-1.5 text-body-sm text-text-muted ${NUMERALS}`,
-  facts: "[&>.kp-mln-fact]:text-balance",
+  rule: `text-body-sm text-text-muted ${NUMERALS} [&_.kp-mln-fact]:text-balance`,
+  finalRule: `flex items-baseline gap-1.5 text-body-sm text-text-muted ${NUMERALS} [&_.kp-mln-fact]:text-balance`,
   carry: `text-body-sm text-text-muted text-pretty ${NUMERALS}`,
 } as const;
 

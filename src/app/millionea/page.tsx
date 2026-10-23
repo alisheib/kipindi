@@ -65,6 +65,7 @@ import { HubPoolHead, HubPoolLedger, HubPoolLive } from "./hub-pool";
 import { HubNotices, type HubNotice } from "./hub-notices";
 import { HubOutcomeStamp, HubPressGroup } from "./hub-stamp";
 import { carryingRollover, closeMovedWords, closeWords, finalAheadWords, lastWeekWords, noWeekBody, pausedWords, voidWords, voidingWords } from "./hub-words";
+import { hubIntroText } from "./hub-page-words";
 import { MILLIONEA_HREF, MillioneaReadingLinks, registerWeekHref, ticketPageHref } from "./millionea-parts";
 import { WeekCommitments, WeekStateChip, weekChipWord } from "./register/register-parts";
 import { bySlot, capReachedLine, gradableOf, lineOf, millioneaWeekPhase, msOf, ordinalOf, phaseNow, phasesOf, reserveRuleAfterHead, resultDoorSerial, resultLine, textIn } from "./millionea-view";
@@ -566,7 +567,7 @@ export default async function MillioneaHubPage({ searchParams }: { searchParams:
           <PageHeader
             eyebrow={w ? <WeekLabel t={t} w={w} nowMs={nowMs} paused={hub.paused} /> : undefined}
             title={t.millionea.productTitle}
-            subtitle={w && !retired ? keepFact(locale, fill(t.millionea.howOne, { price: formatTzs(w.ticketPrice) })) : undefined}
+            subtitle={w && !retired ? keepFact(locale, hubIntroText(t, formatTzs(w.ticketPrice))) : undefined}
             actionsWrap
             actions={retired ? undefined : (
               <div className="flex shrink-0 items-center gap-1" data-testid="millionea-hub-doors">
