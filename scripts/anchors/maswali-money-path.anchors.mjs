@@ -1322,11 +1322,11 @@ export const MUTATIONS = [
     suite: "notify",
   },
   {
-    name: "(NOB15) the question's records leave the ruling out: the sealer's correction back to the first result is told to nobody, though every holder was told the ruled one",
+    name: "(NOB15) the question's records leave the ruling out: a correction back to the first result is told to nobody, though every holder was told the ruled one",
     file: NOTIFY,
     from: "      targetType: \"MaswaliQuestion\", targetIds: [questionId], actions: [SEALED_ACTION, CORRECTED_ACTION, CONFIRMED_ACTION, UPHELD_ACTION], sinceIso: EPOCH, limit: 500,",
     to: "      targetType: \"MaswaliQuestion\", targetIds: [questionId], actions: [SEALED_ACTION, CORRECTED_ACTION, CONFIRMED_ACTION], sinceIso: EPOCH, limit: 500,",
-    expect: "10b.8f · ⭐ the sealer's correction",
+    expect: "10b.8f · ⭐ the ruling officer's correction",
     suite: "notify",
   },
   {
@@ -1338,7 +1338,7 @@ export const MUTATIONS = [
     suite: "notify",
   },
   {
-    name: "(NOB17) with two officers required, a ruling waits for a confirmation it never gets: the sealer's correction back is told to nobody",
+    name: "(NOB17) with two officers required, a ruling waits for a confirmation it never gets: the correction back is told to nobody",
     file: NOTIFY,
     from: "    if (!twoOfficer || s.action === UPHELD_ACTION) finals.push(current);",
     to: "    if (!twoOfficer) finals.push(current);",
