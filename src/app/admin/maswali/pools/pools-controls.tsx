@@ -148,7 +148,7 @@ export function LicenceCeremony() {
         body={<div className="space-y-2">
           <p>Basis: <strong>{review?.label}</strong></p>
           {review?.kind !== "NONE" && <p>Where it is kept: <strong className="block break-words">{review?.ref}</strong></p>}
-          <p>{review?.kind === "NONE" ? "No week can open while None is recorded; the ruling of 2026-10-23 does not override it." : "This becomes the basis in force; weeks can open on it once the guarantee covers them."}</p>
+          <p>{review?.kind === "NONE" ? "No week can open while None is recorded; the ruling of 23 October 2026 does not override it." : "This becomes the basis in force; weeks can open on it once the guarantee covers them."}</p>
           <DialogError error={error} />
         </div>}
         onConfirm={() => {

@@ -1661,7 +1661,8 @@ ticked, and is ✅ only when that one is too.
 **Gate A, before any real-money ticket (the first public week is the drive):**
 
 1. ☑ **Licence basis in force (OD-01)** — met 2026-10-23 by Ali's ruling (COMPLIANCE-DECISIONS § "2026-10-23 · Maswali
-   Millionea — the licence basis is 50pick's GBT licence …"), built by MASWALI-BUILD LICBASIS 1:
+   Millionea — the licence basis is 50pick's GBT licence …"), built by MASWALI-BUILD LICBASIS 1 (`b3e4a2a42`; its
+   console words made plain by LICBASIS 2):
    - Millionea runs under 50pick's Gaming Board licence — the platform's licence number, the System page's setting the
      footer prints — and the Board needs nothing further in writing. It builds on his ruling of 2026-10-16 (the
      COMPLIANCE entry naming the fixed price, the house floor, the rollover across weeks, the payout-only fee and the

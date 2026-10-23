@@ -25,9 +25,9 @@ number: *"the licence number already exists as a parameter in footer, take it"*.
    writing; any review is the Board's, and its team watches the live site. This is OD-01's option (b), the Owner's dated
    ruling recording the Board's answer, and it meets Gate A line 1 (`docs/MASWALI-PLAN.md` §6.1). It builds on the ruling
    of 2026-10-16 (§ "2026-10-16 · Maswali Millionea — the management-reviewed proposal of 2026-10-16 is final …" below:
-   his own dated ruling over a written Board note, the risk accepted). Nothing is
-   owed to the Board or to the GLI lab from our side: no disclosure letter (written only on Ali's word), and the GLI file
-   records the change (`docs/gli-remediation-tracker.md`, row CM-1).
+   his own dated ruling over a written Board note, the risk accepted). Nothing is owed to the Board or to the GLI lab
+   from our side: no disclosure letter (written only on Ali's word), and the GLI file records the change
+   (`docs/gli-remediation-tracker.md`, row CM-1).
 2. **How it stands in code** (`src/lib/server/maswali-licence.ts`, MASWALI-BUILD LICBASIS). While no basis has ever been
    recorded, the basis in force is this ruling's — kind `OWNER_RULING`, its reference built from the licence number,
    dated 2026-10-23, signed by the ruling rather than by an account — derived at every read: no Owner click, no write at

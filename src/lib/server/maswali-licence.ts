@@ -84,6 +84,8 @@ export function licenceBasisAllowsOpen(b: LicenceBasis): boolean {
 export const LICENCE_RULING_DATE = "2026-10-23";
 /** Who signs the ruling's basis: the ruling, never a person (no account recorded it). */
 export const LICENCE_RULING_BY = "the Owner's ruling of 2026-10-23";
+/** The ruling's day as the console's sentences say it to an officer. */
+const RULING_DAY = "23 October 2026";
 
 /** The basis the ruling supplies, standing on the platform's licence number. */
 export function rulingLicenceBasis(licenceNumber: string): LicenceBasis {
@@ -101,14 +103,19 @@ export function rulingLicenceBasis(licenceNumber: string): LicenceBasis {
 
 /**
  * Why no week can open, in the words the open refuses with — the builder's checklist, the console's alert and the Pools
- * card say the same sentence. Each ends "(OD-01)." and no other refusal does (the admin drive reads them by that).
+ * card say the same sentence. ⛔ PLAIN WORDS: an officer reads the rule, never its programme code (the S6 rule an admin
+ * reads plain words, DESIGN_AUTHORITY §M8a item 29); each code stays in the comment beside its sentence. Each names
+ * "licence basis", and no other line of the open's checklist does — the admin drive reads them by that.
  */
+// OD-01 · a recorded None is the Owner's withdrawal, and the ruling never overrides it.
 export const LICENCE_WITHDRAWN =
-  "The Owner recorded None for the licence basis; the ruling of 2026-10-23 does not override that. No week opens until the Owner records a basis (OD-01).";
+  `The Owner recorded None for the licence basis; the ruling of ${RULING_DAY} does not override that. No week opens until the Owner records a basis.`;
+// OD-01 · nothing recorded, and no valid licence number for the ruling to stand on: no default.
 export const LICENCE_NO_NUMBER =
-  "No licence basis is recorded, and the licence number on the System page is empty or not valid, so the Owner's ruling of 2026-10-23 cannot supply one. Save the licence number there, or the Owner records a basis (OD-01).";
+  `No licence basis is recorded, and the licence number on the System page is empty or not valid, so the Owner's ruling of ${RULING_DAY} cannot supply one. Save the licence number there, or the Owner records a basis.`;
+// OD-01 · a stored record that does not validate counts as None, never as "nothing recorded".
 export const LICENCE_RECORD_INVALID =
-  "The recorded licence basis does not validate, so it counts as None. No week opens until the Owner records it again (OD-01).";
+  "The recorded licence basis is incomplete or unreadable, so it counts as None. No week opens until the Owner records it again.";
 
 /** The licence basis as the open and the console read it. */
 export type LicenceStanding = {
@@ -224,7 +231,7 @@ export async function recordLicenceBasis(
 /** The console head's tile: its value and its note. */
 export function licenceTile(s: LicenceStanding): { value: string; note: string } {
   if (s.holds !== null) return { value: "None", note: "No week can open" };
-  if (s.source === "RULING") return { value: "Owner ruling", note: `GBT licence no. ${s.licenceNumber} · the ruling of 2026-10-23` };
+  if (s.source === "RULING") return { value: "Owner ruling", note: `GBT licence no. ${s.licenceNumber} · the ruling of ${RULING_DAY}` };
   return { value: s.basis.kind === "GBT_WRITTEN" ? "Board letter" : "Owner ruling", note: s.basis.ref ?? "" };
 }
 
@@ -232,7 +239,7 @@ export function licenceTile(s: LicenceStanding): { value: string; note: string }
 export function licenceNowLine(s: LicenceStanding): string {
   if (s.holds !== null) return `none. ${s.holds}`;
   if (s.source === "RULING") {
-    return `50pick's Gaming Board licence no. ${s.licenceNumber}, by the Owner's ruling of 2026-10-23 — the Board needs nothing `
+    return `50pick's Gaming Board licence no. ${s.licenceNumber}, by the Owner's ruling of ${RULING_DAY} — the Board needs nothing `
       + "further in writing. It stands while no basis is recorded here: recording one below replaces it, and recording None "
       + "closes every week.";
   }

@@ -57,7 +57,10 @@ const same = (a: unknown, b: unknown) => JSON.stringify(canon(a)) === JSON.strin
 const onPostgres = STORE === "postgres";
 const registry = (globalThis as unknown as { __50PICK_CONFIGS?: Map<string, unknown> }).__50PICK_CONFIGS!;
 const DAY = 86_400_000;
-const OD01 = /\(OD-01\)\.$/;
+/** A licence refusal names "licence basis"; no other line of the open's checklist does (the admin drive reads it so). */
+const LICENCE_ITEM = /licence basis/;
+/** The programme's codes, as the S6 plain-words census reads them (DESIGN_AUTHORITY §M8a item 29): never on a console. */
+const PROGRAMME_CODE = /\b(?:MB|OD|MR|OPEN)-\d+[a-z]?\b|\bR-[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*\b/;
 
 const { LICENCE_WITHDRAWN, LICENCE_NO_NUMBER, LICENCE_RECORD_INVALID, LICENCE_BASIS_NONE } = lic;
 const DRAFTER = "usr_lic_drafter", READER = "usr_lic_reader", OWNER = "usr_lic_owner";
@@ -189,7 +192,7 @@ console.log("\n§1 · the rule, pure: the Owner's record, else the ruling of 202
       && RULED.recordedAt === "2026-10-23" && RULED.recordedBy === "the Owner's ruling of 2026-10-23" && !/^usr_/.test(RULED.recordedBy ?? "") && lic.licenceBasisProblem(RULED) === null,
     JSON.stringify(RULED));
   const reasons = [LICENCE_WITHDRAWN, LICENCE_NO_NUMBER, LICENCE_RECORD_INVALID];
-  ok("1.11 · the three refusals are three different sentences, each ending \"(OD-01).\" — the one refusal that does", new Set(reasons).size === 3 && reasons.every((r) => OD01.test(r)));
+  ok("1.11 · the three refusals are three different sentences, each naming the licence basis", new Set(reasons).size === 3 && reasons.every((r) => LICENCE_ITEM.test(r)));
   // The admin drive's checker (`maswali-admin-checklist.mjs`) must read each refusal as the licence item, and must fail
   // when the standing reads None but no licence item is listed (its positive control).
   const ATTEST = "A second reader has not attested that English, Swahili and Chinese agree (MB-79).";
@@ -199,13 +202,19 @@ console.log("\n§1 · the rule, pure: the Owner's record, else the ruling of 202
   // The console's words, one place (`licenceTile`, `licenceNowLine`), for each standing.
   const ruling = lic.licenceStandingOf(null, N), letter = lic.licenceStandingOf(LETTER, N), own = lic.licenceStandingOf(OWN, N), withdrawn = lic.licenceStandingOf(NONE, N);
   ok("1.13 · the console head: the ruling reads Owner ruling on the GBT licence number; a record reads its own kind and reference; a held gate reads None",
-    same(lic.licenceTile(ruling), { value: "Owner ruling", note: `GBT licence no. ${N} · the ruling of 2026-10-23` })
+    same(lic.licenceTile(ruling), { value: "Owner ruling", note: `GBT licence no. ${N} · the ruling of 23 October 2026` })
       && same(lic.licenceTile(letter), { value: "Board letter", note: LETTER.ref }) && same(lic.licenceTile(own), { value: "Owner ruling", note: OWN.ref })
       && same(lic.licenceTile(withdrawn), { value: "None", note: "No week can open" }));
   ok("1.14 · the Pools card says where the basis comes from, and that a record replaces it; a record shows its own reference; a held gate says why",
-    lic.licenceNowLine(ruling) === `50pick's Gaming Board licence no. ${N}, by the Owner's ruling of 2026-10-23 — the Board needs nothing further in writing. It stands while no basis is recorded here: recording one below replaces it, and recording None closes every week.`
+    lic.licenceNowLine(ruling) === `50pick's Gaming Board licence no. ${N}, by the Owner's ruling of 23 October 2026 — the Board needs nothing further in writing. It stands while no basis is recorded here: recording one below replaces it, and recording None closes every week.`
       && lic.licenceNowLine(letter) === `the Board's letter · ${LETTER.ref}` && lic.licenceNowLine(own) === `the Owner's ruling · ${OWN.ref}`
       && lic.licenceNowLine(withdrawn) === `none. ${LICENCE_WITHDRAWN}`);
+  // ⛔ Plain words (DESIGN_AUTHORITY §M8a item 29): nothing the console draws from this module carries a programme code.
+  const drawn = [...reasons, ...[ruling, letter, own, withdrawn, lic.licenceStandingOf(null, ""), lic.licenceStandingOf({ ...LETTER, recordedBy: null }, N)]
+    .flatMap((s) => [lic.licenceNowLine(s), lic.licenceTile(s).value, lic.licenceTile(s).note])];
+  const coded = drawn.filter((t) => PROGRAMME_CODE.test(t));
+  ok("1.15 · ⛔ plain words: no refusal, tile or card line carries a programme code (the code stays in a comment)", coded.length === 0, coded.join(" | "));
+  ok("1.15b · control: the census reads a code where one stands", PROGRAMME_CODE.test("No week opens until the Owner records a basis (OD-01).") && !PROGRAMME_CODE.test(LICENCE_WITHDRAWN));
 }
 
 // ── §0 · the house's side: trusted sources, the guarantee (OD-02), three attested drafts ─────────────────────────────
@@ -262,13 +271,13 @@ console.log("\n§4 · ⭐ no record and a licence number → a week OPENS on the
   const problems = await problemsOf(W.id, W.opensAt);
   ok("4.1 · ⭐ the open checklist passes: not one problem, the licence basis among them", problems.length === 0, JSON.stringify(problems));
   ok("4.2 · the console head shows the ruling's basis on the licence number",
-    same(await tileOf(), { value: "Owner ruling", note: `GBT licence no. ${NUMBER} · the ruling of 2026-10-23` }), JSON.stringify(await tileOf()));
+    same(await tileOf(), { value: "Owner ruling", note: `GBT licence no. ${NUMBER} · the ruling of 23 October 2026` }), JSON.stringify(await tileOf()));
   const line = await nowLineOf();
   ok("4.3 · the Pools card says where it comes from, and that the Owner can still record another",
-    line.startsWith(`50pick's Gaming Board licence no. ${NUMBER}, by the Owner's ruling of 2026-10-23 — the Board needs nothing further in writing.`)
+    line.startsWith(`50pick's Gaming Board licence no. ${NUMBER}, by the Owner's ruling of 23 October 2026 — the Board needs nothing further in writing.`)
       && line.includes("recording one below replaces it, and recording None closes every week."), line);
   const alerts = await consoleRead.consoleAlerts(W.opensAt);
-  ok("4.4 · no licence alert", !alerts.some((a) => OD01.test(a.text)), JSON.stringify(alerts));
+  ok("4.4 · no licence alert", !alerts.some((a) => LICENCE_ITEM.test(a.text)), JSON.stringify(alerts));
   const opened = await svc.openWeek({ weekId: W.id, officerId: DRAFTER, guarantee: money.guaranteeReader, now: W.opensAt });
   ok("4.5 · ⭐ the week OPENS, against the real guarantee", opened.ok && opened.week.state === "OPEN", errOf(opened));
   const row = await openedLicence(W.id);
@@ -309,7 +318,7 @@ console.log("\n§6 · ⭐ a recorded GBT_WRITTEN decides, and a week opens on it
     && s.basis.ref === REF && s.basis.recordedAt === "2026-10-24T09:00:00.000Z" && s.basis.recordedBy === OWNER, JSON.stringify(s));
   ok("6.2 · the console head and the Pools card show the record", same(await tileOf(), { value: "Board letter", note: REF }) && (await nowLineOf()) === `the Board's letter · ${REF}`);
   const problems = await problemsOf(D.id, D.opensAt);
-  ok("6.3 · the builder's checklist names no licence item", !problems.some((p) => OD01.test(p)), JSON.stringify(problems));
+  ok("6.3 · the builder's checklist names no licence item", !problems.some((p) => LICENCE_ITEM.test(p)), JSON.stringify(problems));
   const opened = await svc.openWeek({ weekId: D.id, officerId: DRAFTER, guarantee: money.guaranteeReader, now: D.opensAt });
   ok("6.4 · ⭐ the week opens on the Board's letter", opened.ok && opened.week.state === "OPEN", errOf(opened));
   const row = await openedLicence(D.id);
@@ -330,7 +339,7 @@ console.log("\n§7 · ⭐ a recorded OWNER_RULING decides over the ruling's defa
   ok("7.3 · the console head and the Pools card show the Owner's own reference", same(await tileOf(), { value: "Owner ruling", note: REF })
     && (await nowLineOf()) === `the Owner's ruling · ${REF}`);
   const problems = await problemsOf(X.id, X.opensAt);
-  ok("7.4 · the builder's checklist names no licence item", !problems.some((p) => OD01.test(p)), JSON.stringify(problems));
+  ok("7.4 · the builder's checklist names no licence item", !problems.some((p) => LICENCE_ITEM.test(p)), JSON.stringify(problems));
 }
 
 // ── §8 · a stored record that does not validate ──────────────────────────────────────────────────────────────────────

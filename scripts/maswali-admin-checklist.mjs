@@ -20,9 +20,9 @@ export function checkOpenChecklist(standing, problems) {
   if (current === 0 || current < required) expected.push("guarantee");
   const actual = problems.map((item) => {
     if (/^A second reader has not attested that English, Swahili and Chinese agree/.test(item)) return "attestation";
-    // Each of the open's three licence refusals ends "(OD-01)." and no other refusal does (`maswali-licence.ts`;
-    // `test:maswali-licence-gate` §1.12 feeds this the real sentences).
-    if (/\(OD-01\)\.$/.test(item)) return "licence";
+    // Each of the open's three licence refusals names "licence basis", and no other line of the checklist does
+    // (`maswali-licence.ts`; `test:maswali-licence-gate` §1.11–§1.12 feed this the real sentences).
+    if (/licence basis/.test(item)) return "licence";
     const guarantee = /^The guarantee holds (TZS [\d,]+); (TZS [\d,]+) is needed to open/.exec(item);
     if (guarantee && amount(guarantee[1]) === current && amount(guarantee[2]) > current && amount(guarantee[2]) >= required) return "guarantee";
     return "unrecognized";

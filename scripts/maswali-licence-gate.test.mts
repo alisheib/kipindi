@@ -21,6 +21,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:maswali-licence-gate",
   casesFile: "scripts/lib/maswali-licence-gate-child.mts",
-  minPass: { memory: 66, postgres: 63 }, // printed by the first green run (MASWALI-BUILD LICBASIS 1)
+  minPass: { memory: 68, postgres: 65 }, // printed by the green run of MASWALI-BUILD LICBASIS 2 (66 / 63 at LICBASIS 1)
   dbPrefix: "mlw_licence",
 });
