@@ -1,3 +1,46 @@
+# ⭐ STOP 7 — 2026-10-23 ~05:50 UTC (ALI-BLADE15, ali-7e; Ali moves to another machine: "push the progress we reached overnight")
+**READ THIS BLOCK FIRST, then §0 of MASWALI-PLAN on `claude/maswali-s5-release` (3f213880c).**
+
+**PRODUCTION (main):** `3f213880c` pushed 05:46 UTC = the S5 release + the 2026-10-23 ACTIVE record (COMPLIANCE-DECISIONS
+"2026-10-23 · Maswali Millionea — switched ON for everyone ahead of the launch gate …") + the door-ghost plate fix.
+⚠️ ITS READ-BACK WAS STILL RUNNING AT THE STOP: run **39907596724** (`tools/jobs/prod-readback.sh` via ci-run) — read it
+first; if Railway's build failed, rebuild (the first build of 2ed817395 failed once as a Railway transient; a push of the
+same tree rebuilt it). **MILLIONEA IS ACTIVE** (Railway variable `FEATURE_MILLIONEA=ACTIVE` on service 50pick/production,
+set 2026-10-22 23:20 UTC via the GraphQL API with a WORKSPACE token Ali pasted — it lives only in this machine's scratchpad:
+ask Ali for a fresh one on the new machine, and remind him to ROTATE the pasted one). The code ceiling stays WITHDRAWN on
+purpose (deleting the variable hides Millionea). Gate at 3f213880c: CI 702/702, build, first-load, responsive 7641/0, motion
+43/0, revoked-deadend 46/0, admin-section-gate 21/0, needle-rest 55/35 (production's own red, same cases); plate fix:
+doors 65/0 (new 2.3b + plant), door census WITHDRAWN+plant 44/0, STAFF_PREVIEW 43/0, qa:chunks-prod's journey-html rule
+clean on all 6 routes at ACTIVE. At ACTIVE before the fix (3aecf0edd): production qa:live 357/0; qa:chunks-prod failed
+ONLY that journey-html rule on /markets (the reason for the fix).
+**⛔ DEADLINES (the owner's ACTIVE ruling):** before any week OPENS for sale (Monday 00:00 EAT): S6's Millionea rules page
+and Terms section LIVE (production `/legal/rules/millionea` was a 404 — S6 has now BUILT them, unverified at the S6 head,
+see below); before the FIRST settlement: S7 + S6's notices, tax lines and payout-float alert LIVE.
+**F7 CORRECTED:** the "ticket page reload loop" was a MISREAD — the bounded product drive's tile flaked ("Target page
+closed") in 2 of 9 runs and the page then sat open for 60 minutes, refreshing once a minute (the designed 60 s
+RefreshPoller: 60 GETs in 60 min); a 7-minute held run read 8 GETs in 7 min. The product's ticket page is correct; the
+drive's flake after 3a.5 is open (tooling).
+**LANE HEADS AT THE STOP (every helper was cut off ~00:30 UTC by the account's session limit; the lead pushed every local
+commit and committed the two lanes' uncommitted edits as "WIP: not verified"):**
+- S6 `claude/maswali-s6-release` **f83e8de8c**: S6-INT 29–34 — main merged; **the Millionea rules published as
+  v2026-10-23** (the objection door as built, the reversed-payment hold) and the Terms page (S6-INT 30), D19a re-pinned
+  (31), ADMIN's four reds merged (32), the legal run's other reds (33), fairness floor 77 (34). NOT yet gated at this head.
+- S6-ADMIN `767662baf` (its four reds re-pinned; merged into S6). S6-DOCS `8b00c8e57`.
+- S6-LINT `6f3bb08fd` = WIP (11 files: the boot write / ruling 6 / findings — unverified). The original lint review stayed on
+  OMEGA; the lane was told to re-derive it (lint-review-blade.md in its scratch — did not travel).
+- S6-MONEY `ce082dd5a` (OD-13 + batches; MB-11 RULING: alert before crediting and on the week page before release, NEVER
+  block — told to the lane). S6-NOTICES `7b541b891` = WIP (4 files: M-2's cap/DOWN gate, leader.ts touched — unverified).
+- S7 `claude/maswali-s7-s5` **75b20ccde** (S7-F9 21: MB-97 recorded against the rush run).
+- HUB `536b66535` (S5-R2-HUB 13 WIP: the drive's drawing in WebKit). R3-FIX `3b24c846c` (S5-R3-FIX 4–6: CI installs
+  fonts-noto-cjk; the register's and How's drawings re-measured on the phones' engines; "a line table cannot hold both
+  engines — measured"). R2 integration `fa8d21731` (HUB and R3-FIX not merged yet).
+**NEXT, IN ORDER:** (1) the read-back of 3f213880c; (2) S6's legal pages to production before Monday: gate the S6 head (or
+a minimal legal slice of it) on the runner — tsc, CI battery, the legal suites, the rules page and Terms rendered at
+ACTIVE in en/sw/zh — then push; (3) S7 to production before the first settlement; (4) S6's money/notices/lint finished
+and pushed; (5) round 2 (HUB + R3-FIX merged, D19a once, render + critics); (6) the admin guide PDF; (7) cleanup.
+
+---
+
 # STOP 6 — 2026-10-22 ~18:20 UTC (ALI-BLADE15, the Claude session ali-7e; Ali: "push all now … continue in 2 hours")
 
 Say **"continue maswali"** in a new session. Read THIS file first, then `lead/NOTES.md` here, then MASWALI-PLAN §0 on

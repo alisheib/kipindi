@@ -35,6 +35,15 @@
 - CI at 2ed817395: 702/702 in-memory; browser gates responsive 7641/0, motion 43/0, revoked-deadend 46/0,
   admin-section-gate 21/0; needle-rest RED (U43's known red since 7e3a06ea0 — proof on main pending: run dark-main);
   s10/s11/s12 skipped by CI's stop → run pg-proofs.
+- F7 · 🔴 AT ACTIVE (found 2026-10-23 by the bounded product drive, runs 39867875286/39867909278): after the first ticket
+  is bought, its ticket page (/millionea/tickets/<serial>) RELOADS ITSELF in a loop — 60 GETs + 118 fetchMyNotifications
+  POSTs in the dev server log — and the drive's next page.evaluate fails "Target page, context or browser has been closed"
+  (then hangs to the timeout). Steps 1.1–3a.5 PASS (seed, card, hub, tab at 1280/1024, slip 15 radios, buy, stamp, ticket
+  page). Scheduler on or off: same. Nothing sells on production yet (Owner steps) — MUST be fixed before a week opens
+  (Monday 00:00 EAT). Diagnostic run 39875704800 logs each Document request's initiator.
+- F8 · AT ACTIVE on production: qa:chunks-prod's journey-html rule failed on /markets (www + apex) — the board's loading
+  picture drew Millionea's door ghost with the journey plate class. Fixed 3f213880c (own class, one shared CSS rule,
+  doors 2.3b + plant); proof run 39873273851 + CI 39873259229.
 - F4 · R2 integration re-pins (fa8d21731): r4j 3.4 register pick; millionea-shell §3 View ticket = Link (3.0b new);
   landing-doors 3.1 premise; spacing-scale 390. All green on the runner (r4j 92/0, shell 50/0, landing 10/0 + red 31/31,
   spacing 10/0, tsc 0).

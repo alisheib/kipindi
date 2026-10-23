@@ -1,5 +1,11 @@
 # Lane S6-MN — S6's money and delivery paths: S6-MONEY then S6-NOTICES (finish both) — lead ali-7e on ALI-BLADE15, 2026-10-22
 
+> ⭐ 2026-10-23 ~02:40 EAT: Ali switched Millionea ON for everyone on production (FEATURE_MILLIONEA=ACTIVE, live on main
+> 3aecf0edd = the S5 release). Nothing sells until the Owner's steps and an open week (earliest Monday 00:00 EAT). Your
+> two lanes must be on main BEFORE THE FIRST WEEKEND SETTLEMENT: the float checked before crediting (MB-11), the locked
+> winner's payout (OD-13), the winner notices (M-2 and the rest). Work fast, never loosely: every money rule below holds.
+> Merge `origin/claude/maswali-s6-release` into each lane first (it carries S7 and the S5 release on main).
+
 - Two lane branches, one after the other, each in its own worktree you create:
   `git -C C:/kipindi-main fetch origin`, then
   `git -C C:/kipindi-main worktree add -b claude/maswali-s6-money C:/kipindi-mln-s6money origin/claude/maswali-s6-money` and
