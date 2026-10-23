@@ -3045,6 +3045,15 @@ the corrections are recorded here rather than tidied away.
      own, and nothing else moves. ⚠️ A change every classic reader sees at 320–334px. Guard: `qa:classic-rail` (each
      label's natural width against its box, and no two labels' ink closer than 8px, at 320–340, 360 and 412 in both
      engines and at ratios 2.625, 3 and 1; dark and drawn).
+   - ⚠️ **A LINE TABLE CANNOT HOLD BOTH ENGINES — measured, and open (2026-10-23, run 39871844391).** A label's fit and a
+     rail's gap hold in both engines by taking the wider; a loading drawing's per-language line table cannot, because
+     the engines break the same paragraph at different words: of 180 cells of the register's index and How to play
+     (ten widths × sw/en/zh × three ratios), 81 take a different number of lines in WebKit — at the widths the drawings
+     are judged at, the index's intro 8 lines in Chromium and 9 in WebKit at 320 (en), How's third English step 2 and 1
+     from 768, its Swahili steps 2·3·3·2 and 3·3·3·2 at 360. (Chromium rounds every glyph's advance to the pixel; WebKit
+     does not — and on the runner WebKit also lays the page out 8px narrower, inside a classic scrollbar an iPhone does
+     not draw.) So the drawings' tables follow **Chromium**, the engine `qa:maswali-register-shots` drives, until the
+     lead rules how a drawing holds both (§M8a item 22).
 
 ⚠️ **THE INSTRUMENT NEEDED TWO CORRECTIONS BEFORE IT MEASURED ANYTHING REAL,** and both were
 false POSITIVES that would have "fixed" correct code: it first reported every cell of tables
@@ -3410,8 +3419,9 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     holds every Millionea hop to it on a throttled network — only the destination's own drawing, or none, is ever up; its
     `--prove-red` undoes the register's pick and must catch it. A drawing is drawn in the page's own type — a line of
     words is the kit's bar inside the very line box those words fill (`GhostTextLine`, the hub's L7 rule), its lines per
-    language from the page's measured tables (measured in the phones' two engines, §M4a rule 5 — never on another
-    machine) — and lands where the page puts each band (`qa:maswali-register-shots`'
+    language from the page's measured tables (measured on the runner with the phones' Chinese face, in Chromium — never
+    on another machine; ⚠️ WebKit breaks many of the same paragraphs at other words, so no one table holds both engines:
+    §M4a rule 5, open) — and lands where the page puts each band (`qa:maswali-register-shots`'
     how-ghost and register-ghosts hops, within 1px, each drawing read once the route's entrance — `.route-enter`, 10px
     rising over `--t-move` — has settled).
 23. **A fact list spaces its marks as a typed " · " does (the lead's SEP ruling, 2026-10-22 — measured, no CSS change).**
