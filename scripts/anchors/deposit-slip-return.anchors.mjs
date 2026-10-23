@@ -47,4 +47,11 @@ export const MUTATIONS = [
     to: "depositReturnSlip: \"\",",
     failure: /FAIL 3[.]1 /,
   },
+  {
+    name: "(DSR7) the slip's deposit door hops softly again — the journey's board chrome stays over the payment",
+    file: "src/app/millionea/slip/slip-client.tsx",
+    from: "navigate(() => window.location.assign(`/wallet/deposit?${new URLSearchParams({ amount: String(amount), from: \"low-balance\", returnPath: MILLIONEA_SLIP_RETURN })}`))",
+    to: "navigate(() => router.push(`/wallet/deposit?${new URLSearchParams({ amount: String(amount), from: \"low-balance\", returnPath: MILLIONEA_SLIP_RETURN })}` as never))",
+    failure: /FAIL 2[.]1b /,
+  },
 ];

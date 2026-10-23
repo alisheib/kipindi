@@ -406,8 +406,10 @@ export function SlipClient({
     <DepositOffer t={t} locale={locale} plan={plan} fallback={slipFallbackDeposit(fundsNow, total)} railNames={plan ? depositFacts?.deposit.railNames ?? [] : []}
       amount={depositAmount} onAmount={setDepositAmount}
       onClose={() => setConfirmOpen(false)}
-      // ⭐ MB-57 (FLOW 3): the deposit carries the slip's way back, and nothing else of it — the answers stay in this tab.
-      onDeposit={(amount) => navigate(() => router.push(`/wallet/deposit?${new URLSearchParams({ amount: String(amount), from: "low-balance", returnPath: MILLIONEA_SLIP_RETURN })}` as never))} />
+      // ⭐ MB-57 (FLOW 3): the deposit carries the slip's way back, and nothing else of it — the answers stay in this tab. A
+      // DOCUMENT request, as the bet sheet's door makes (`bet-sheet-host.tsx`): the journey's payment focus is chosen by the
+      // root shell on a document request, and a soft route kept the board's header and tabs over the deposit (FLOW's walk).
+      onDeposit={(amount) => navigate(() => window.location.assign(`/wallet/deposit?${new URLSearchParams({ amount: String(amount), from: "low-balance", returnPath: MILLIONEA_SLIP_RETURN })}`))} />
   ) : undefined;
 
   // The stamp's facts as the receipt's rows (§3.7; the Up & Down receipt's `details`): the serials of a batch, the price or

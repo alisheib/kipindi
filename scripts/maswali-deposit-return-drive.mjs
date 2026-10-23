@@ -163,6 +163,10 @@ async function drawnCase(shell, locale, width, pass, { tickets = 1, expectDoor =
     await page.waitForLoadState("load");
     await pageChecks(page, `${label} · deposit page`, locale);
     ok(`${label} · ⭐ the deposit form carries the way back`, (await page.locator('form input[type="hidden"][name="returnPath"]').getAttribute("value").catch(() => null)) === (expectDoor ? "/millionea/slip" : null));
+    // The journey's payment focus: the root shell's own frame, with no board header and no tabs — the door is a document request.
+    const focused = await page.locator("[data-focused-payment]").count();
+    ok(`${label} · ⭐ the deposit opens in ${shell === "journey" ? "the journey's payment focus (no board header, no tabs)" : "the classic shell, as every classic deposit does"}`,
+      shell === "journey" ? focused === 1 : focused === 0, `data-focused-payment ×${focused}`);
     await tile(page, `${name}-2-deposit`);
     await payDeposit(page, shell);
     await page.waitForURL(/\/wallet\/deposit\/wait\/|\/wallet\?/, { timeout: 120_000 });

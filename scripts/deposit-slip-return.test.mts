@@ -81,6 +81,9 @@ const slip = read("src/app/millionea/slip/slip-client.tsx");
 ok("2.1 · ⭐ the slip's deposit door carries the way back beside the amount and the low-balance tag — and nothing else of the slip",
   slip.includes("new URLSearchParams({ amount: String(amount), from: \"low-balance\", returnPath: MILLIONEA_SLIP_RETURN })")
     && !/new URLSearchParams\(\{[^}]*\b(?:slips|picks|answers|week)\b/.test(slip));
+ok("2.1b · ⭐ …as a DOCUMENT request, as the bet sheet's door makes — the journey's payment focus is chosen by the root shell on one, and a soft route kept the board's header and tabs over the deposit",
+  slip.includes("navigate(() => window.location.assign(`/wallet/deposit?${new URLSearchParams({ amount: String(amount), from: \"low-balance\", returnPath: MILLIONEA_SLIP_RETURN })}`))")
+    && !slip.includes("router.push(`/wallet/deposit?"));
 const page = read("src/app/wallet/deposit/page.tsx");
 ok("2.2 · ⭐ the deposit page honours it only with no saved bet beside it and only while Millionea is visible to the reader",
   page.includes("const slipAsked = sp.bet ? null : slipReturnPath(sp.returnPath);")

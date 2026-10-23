@@ -537,7 +537,9 @@ section("§9 · the batch stamp's dwell lives with every other dwell");
   ok("9.2 · motion M4 · \"View ticket\" starts the progress bar on its press — it is the kit's Link, which NavProgress's own listener starts on (§F10) — and the deposit door, a programmatic move, still raises `50pick:navigating`",
     client.includes("primaryHref={stamp ? (many ? MILLIONEA_HREF.tickets : millioneaTicketHref(stamp.serials[0])) : undefined}")
       && nav.includes('document.addEventListener("click", onClick, { capture: true });') && nav.includes('closest("a[href]")')
-      && /onDeposit=\{\(amount\) => navigate\(\(\) => router\.push\(/.test(client) && client.includes('window.dispatchEvent(new Event("50pick:navigating"));'));
+      // Re-pinned at MASWALI-BUILD FLOW 3: the door is a document request now (window.location.assign, the journey's
+      // payment focus), still raised through `navigate` and its event.
+      && /onDeposit=\{\(amount\) => navigate\(\(\) => window\.location\.assign\(/.test(client) && client.includes('window.dispatchEvent(new Event("50pick:navigating"));'));
   ok("9.3 · motion M3 · the stamp keeps its words through its exit: its content is the last cut shown (`shownCut`), and closing clears only `cut`",
     client.includes("const stamp = shownCut;") && client.includes("onClose={() => setCut(null)}") && !/setShownCut\(null\)/.test(client));
   ok("9.4 · M10 · a block on the money path stays until read (`durationMs: 0` for `danger`)",

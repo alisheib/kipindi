@@ -1750,13 +1750,16 @@ Each entry is the rule as it stands, where it is enforced, and the case and the 
 Found in a browser on the release (both shells, en 360): the slip's low-balance door sent the player to `/wallet/deposit`
 with no way back. Classic — production's reader — ended on the wallet's "Funds added" result with one door, "Done"; the
 journey's wait page offered "View receipt" and "Back to wallet". The answers were still in the tab, and nothing led there.
+And in the journey the door's soft hop (`router.push`) kept the board's header and tabs over the deposit, which the root
+shell replaces with the payment focus only on a document request (the bet sheet's door makes one, `bet-sheet-host.tsx`).
 THE RULE is MASWALI-PLAN MB-57's ("after a deposit, return to the slip with picks intact and never place the ticket
 automatically"), as built and recorded in its row and in `docs/FLOWS.md` § 4 ("A deposit started from the Millionea
 slip"): only the way back travels, in the addresses (`returnPath=/millionea/slip`, `src/lib/journey/slip-return.ts`, its
-one allowed return), honoured only with no saved bet beside it and only while Millionea is visible to the reader; the
-deposit lands on the wait page in both shells and, once paid, offers "Return to your answers"; a card deposit gets no door
-(the gateway's fixed return address, accepted by the lead). Held by `test:deposit-slip-return` (the allow-list, the wiring,
-the words) with plants (DSR1)–(DSR6) of `red:deposit-slip-return` — (DSR1) drops the slip from the allowed returns — and
+one allowed return), the door a document request; honoured only with no saved bet beside it and only while Millionea is
+visible to the reader; the deposit lands on the wait page in both shells and, once paid, offers "Return to your answers";
+a card deposit gets no door (the gateway's fixed return address, accepted by the lead). Held by `test:deposit-slip-return`
+(the allow-list, the wiring, the document request, the words) with plants (DSR1)–(DSR7) of `red:deposit-slip-return` —
+(DSR1) drops the slip from the allowed returns — and
 `qa:maswali-deposit-return` (sw/en/zh × 360/1280 × classic/journey, two tickets in each shell, a plain deposit's control,
 the dark mode on a WITHDRAWN server, and its own plant).
 
