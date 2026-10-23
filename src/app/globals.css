@@ -4806,13 +4806,16 @@ html[data-sheet-open] .route-enter { animation: none; }
   /* density: general — the hub's close line in its last hour, its words and its countdown on one line in a 296px row; not card spacing; both card-spacing settings. */
   .kp-mln-close:has(.closing-pill) .kp-mln-close-zone { display: none; }
 }
-/* MASWALI-BUILD S5-R2-HUB · THE PINNED PAIR'S FOOT FADES (`HUB_PINNED`, hub-frame.ts; the tile readers: mid-scroll the
-   ledger slid out from under the pinned jackpot and door cut flat, a box with no top). From 1024 the pair stands on the
-   page's own ground; its foot — the pair's `pb-4`, 20px, the column's own gap — fades to nothing, so what reads on in the
-   column leaves from under it through a soft edge. At rest that foot lies in the column's gap, over the same ground, and
-   shows nothing. */
+/* MASWALI-BUILD S5-R2-HUB 26 · THE PINNED PAIR STANDS ON AN OPAQUE GROUND, EDGED BY ONE HAIRLINE (`HUB_PINNED`,
+   hub-frame.ts; `HubPinned`, hub-pinned.tsx; the lead's design call, 2026-10-23). The tile readers found that mid-scroll,
+   rows reading on in the column showed through the pair's fading foot, cut in half under the door. From 1024 the pair
+   stands on the page's own ground across its whole box, with no fade. Its top is at the bar's foot, so nothing that reads
+   on shows through it or in the gap above it. While the pair stands pinned (`data-stuck`), its lower edge is one
+   hairline, the kit's divider, and what passes under it leaves at that one edge. At rest its foot lies in the column's
+   gap, ground on ground, and it draws no edge. */
 @media (min-width: 1024px) {
-  .kp-mln-pinned { background: linear-gradient(to bottom, var(--bg-base) calc(100% - var(--sp-5)), transparent); }
+  .kp-mln-pinned { background: var(--bg-base); }
+  .kp-mln-pinned[data-stuck] { box-shadow: inset 0 -1px 0 var(--border-divider); }
 }
 /* MASWALI-BUILD S5 · VIS-P P10 · A SOCKET AT REST: a reserve the week did not need, a socket of a voided week, every socket
    of a cancelled or refunded ticket — the open ring at the disabled control's own opacity, so it never reads as the live

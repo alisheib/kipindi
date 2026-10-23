@@ -133,12 +133,14 @@ export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // planted classic edit) reported; inside them one key each, `walletFrozen` (the lead's three sentences, the English
   // apostrophe the dictionary's typographic one), and one two-line comment in the English block. Its diff against
   // 1341177e5 is those 5 added lines; no line removed, no other line changed — `error.failWalletFrozen` stays as it was.
-  // D19a RE-PINNED AT THE POLISH RELEASE'S MERGE (the lead, 2026-10-23): FLOW 14's pin 3481f131e (`cancelWalletFrozen`,
-  // a held wallet's free cancel) and HUB-2B's pin 2382f3ea3 (S5-R2-HUB 20: the nine `result*` notices in the page form and
-  // `lastWeekRolled`'s fee an amount) both stood over 989199be6; the merged dictionary holds both. The strip-mln check against
-  // main 3ec32bb72's dictionary: outside the three `millionea` blocks byte-identical, its control (a planted classic edit)
-  // reported; inside them exactly eleven keys per language — HUB-2B's ten and FLOW 14's one, as each lane pinned them.
-  "src/lib/i18n-dict.ts": "cd82baeeaa09cabbf193b2777182a68f697d03df",
+  // D19a RE-PINNED AT THE POLISH RELEASE'S SECOND MERGE (the lead, 2026-10-23): the polish head's pin cd82baeea (FLOW 14's
+  // `cancelWalletFrozen` and HUB-2B's ten hub keys over 989199be6) and HUB 26's pin da3c40599 (the zh final rule's
+  // clause order, the lead's approval of 2026-10-23: "最后一周：若无彩票答对 10/10，奖池不进行保底补足，由本周得分最高的彩票平分" —
+  // the same meaning, the same characters plus one comma) both changed it; the merged dictionary holds both. The
+  // strip-mln check against main 3ec32bb72's dictionary: outside the three `millionea` blocks byte-identical, its control
+  // (a planted classic edit) reported; inside them eleven keys in en and sw and twelve in zh — HUB-2B's ten, FLOW 14's
+  // one, and in zh the final rule.
+  "src/lib/i18n-dict.ts": "2e6a971b66a73c0c889ab1aba6a821037c979cdb",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
 };

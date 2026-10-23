@@ -9498,7 +9498,7 @@ export const dict = {
       nextWeekOpens: "第{week}周{day}开放",
       finalWeek: "Millionea 最后一周",
       finalAheadShort: "第{week}周为最后一周",
-      finalWeekRule: "最后一周：若无彩票答对 10/10，奖池由本周得分最高的彩票平分，不进行保底补足",
+      finalWeekRule: "最后一周：若无彩票答对 10/10，奖池不进行保底补足，由本周得分最高的彩票平分",
       // Millionea's zh rule (the lead's ruling, 2026-10-21): a space only where a Latin letter or a digit meets a Han
       // character. {date} is formatEatDate's day ("2026年11月30日"): a digit first, 日 last — so a space before it, none after.
       finalWeekAhead: "第{week}周将是 Millionea 的最后一周，于 {date}开放。",

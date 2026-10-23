@@ -395,7 +395,9 @@ console.log("\n§10 · the hub's new and changed words, as decided, in three lan
       weekVoidingBody: "Maswali makuu {voided} batili, akiba halali {valid} tu. Ikiwa hakuna pingamizi litakalobadilisha hili kufikia {when}, wiki itabatilishwa na kila tiketi itarejeshwa.",
     },
     zh: {
-      finalWeekRule: "最后一周：若无彩票答对 10/10，奖池由本周得分最高的彩票平分，不进行保底补足",
+      // S5-R2-HUB 26 (the lead's ruling, 2026-10-23): the floor clause stands before the sharing clause. Chinese breaks
+      // only at its punctuation, so the old order fell into lines [199,194,91] at 320 and 360.
+      finalWeekRule: "最后一周：若无彩票答对 10/10，奖池不进行保底补足，由本周得分最高的彩票平分",
       finalWeekAhead: "第{week}周将是 Millionea 的最后一周，于 {date}开放。",
       finalAhead: "Millionea 即将结束。第{week}周将为最后一周。",
       weekVoidingBody: "{voided} 道正选题作废，有效备选题仅 {valid} 道。若至{when} 无异议改变此结果，整周将作废，每张彩票均将退款。",
@@ -991,6 +993,33 @@ console.log("\n§21 · L22 · the final week announced: \"It opens {date}\" only
   ok("21.1′ PLANT · the old always-dated bar (\"It opens 30 Nov.\" after the open's time) is reported", dateDefects("en", { ...before, passed: stale }).length > 0, stale);
 }
 
+// ── §22 · the pinned pair's ground (S5-R2-HUB 26, the lead's design call) ──────────────────────────────────────────────────
+console.log("\n§22 · from 1024 the pinned pair stands on an opaque ground with no fade, and while pinned its lower edge is one hairline, the kit's divider");
+{
+  // The tile read: mid-scroll the rows reading on in the column showed through the pair's fading foot. The pixels are read
+  // in a browser (`qa:maswali-hub-states`: the pair's strips shot with and without the column under it, with the old foot
+  // planted). Here the rule itself: one opaque ground, the hairline only on the pinned pair, and the page's pair is the one
+  // component that marks it.
+  const css = readFileSync(join(ROOT, "src/app/globals.css"), "utf8").replace(/\r\n/g, "\n");
+  const pageSrc = readFileSync(join(ROOT, "src/app/millionea/page.tsx"), "utf8");
+  const pinnedSrc = readFileSync(join(ROOT, "src/app/millionea/hub-pinned.tsx"), "utf8");
+  const RULE = "@media (min-width: 1024px) {\n  .kp-mln-pinned { background: var(--bg-base); }\n  .kp-mln-pinned[data-stuck] { box-shadow: inset 0 -1px 0 var(--border-divider); }\n}";
+  const groundDefects = (sheet: string) => {
+    const d: string[] = [];
+    if (count(sheet, RULE) !== 1) d.push("the pair's opaque ground and its pinned hairline are not the one rule");
+    const rules = [...sheet.matchAll(/\.kp-mln-pinned[^{]*\{([^}]*)\}/g)].map((m) => m[1]);
+    if (rules.some((r) => /gradient|transparent|opacity/.test(r))) d.push("a rule of the pair's draws a fade or a see-through ground");
+    return d;
+  };
+  const marks = pageSrc.includes("<HubPinned className={HUB_PINNED}>") && count(pageSrc, 'data-testid="millionea-hub-pinned"') === 0
+    && pinnedSrc.includes('data-testid="millionea-hub-pinned" data-stuck={stuck ? "" : undefined}')
+    && pinnedSrc.includes('window.matchMedia("(min-width: 1024px)")');
+  ok("22.1 · the pair's ground is the page's own, opaque, with no fade, its lower edge one hairline (the kit's divider) only while it stands pinned; the page's pair is `HubPinned`, which marks it pinned (`data-stuck`) only from 1024",
+    groundDefects(css).length === 0 && marks, j({ defects: groundDefects(css), marks }));
+  const fade = css.replace(".kp-mln-pinned { background: var(--bg-base); }", ".kp-mln-pinned { background: linear-gradient(to bottom, var(--bg-base) calc(100% - var(--sp-5)), transparent); }");
+  ok("22.1′ PLANT · the old fading foot is reported", groundDefects(fade).length > 0, j(groundDefects(fade)));
+}
+
 console.log(`\n${"═".repeat(70)}\n  MASWALI HUB: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run prints (S5-DESIGN-HUB 3: 34; 4, the one ledger and zh's spacing rule: 43; 6, one
  *  carry origin: 45; 7, no door to a week the register does not draw yet: 47; 9, one final-week rule and last week's
@@ -1001,7 +1030,8 @@ console.log(`\n${"═".repeat(70)}\n  MASWALI HUB: ${pass} passed, ${fail} faile
  *  S5-R2-HUB 6, the no-week body's numerals in Millionea's empty state and the void words one wrap unit: 104;
  *  S5-R2-HUB 7, G2's eyebrow and heading: 108; S5-R2-HUB 9, the carry's destination a box of its line: 110; HUB-2B, the
  *  drawing's words unseen through GhostWords, one source with the page, its templates of their class: 112; with S7-F9's §21
- *  (L22's date only while ahead, the lead's ruling (b); S7 counted 55 on its own branch) at the merge of S6's release: 114). It only rises. */
-const MIN_ASSERTIONS = 114;
+ *  (L22's date only while ahead, the lead's ruling (b); S7 counted 55 on its own branch) at the merge of S6's release: 114;
+ *  S5-R2-HUB 26, the pinned pair's opaque ground and its hairline: 116). It only rises. */
+const MIN_ASSERTIONS = 116;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

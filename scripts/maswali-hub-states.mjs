@@ -26,6 +26,7 @@
  */
 import { chromium, webkit } from "playwright";
 import { mkdirSync } from "node:fs";
+import { PNG } from "pngjs";
 import { premise, mintStaffPass, demoSession, LOCALE_COOKIE, SESSION_COOKIE } from "./live/journey-pass.mjs";
 
 const BASE = process.env.BASE || "http://localhost:3550";
@@ -201,6 +202,90 @@ const railHeight = (page) => page.evaluate(() => {
   return el ? Math.round(el.getBoundingClientRect().height) : 0;
 });
 const box = (page, testId) => page.getByTestId(testId).first().boundingBox().catch(() => null);
+/** S5-R2-HUB 26 · what shows through the pinned pair while the column reads on under it. Two strips are read: from the
+ *  bar's foot to the head, and the foot from the door to the hairline. Each is shot as it stands, then again with every
+ *  other block of the column hidden. A device row that differs between the two shots shows something passing under the
+ *  pair. The strips are read 24px in from each side and 3px clear of the head and the door, so their rounded corners and
+ *  shadows, the same in both shots, are no part of it. */
+async function pinnedGround(page) {
+  const g = await page.evaluate(() => {
+    const p = document.querySelector('[data-testid="millionea-hub-pinned"]');
+    const h = document.querySelector("header");
+    const first = p?.firstElementChild, last = p?.lastElementChild;
+    if (!p || !h || !first || !last) return null;
+    const r = p.getBoundingClientRect(), cs = getComputedStyle(p);
+    const probe = document.createElement("div");
+    probe.style.color = "var(--border-divider)";
+    document.body.append(probe);
+    const divider = getComputedStyle(probe).color;
+    probe.remove();
+    return { x: r.x, y: r.y, width: r.width, bottom: r.bottom, header: h.getBoundingClientRect().bottom, head: first.getBoundingClientRect().top,
+      door: last.getBoundingClientRect().bottom, stuck: p.hasAttribute("data-stuck"), shadow: cs.boxShadow, divider };
+  });
+  if (!g) return null;
+  const top = Math.max(0, Math.min(g.header, g.y));
+  const clip = { x: Math.round(g.x + 24), y: Math.round(top), width: Math.round(g.width - 48), height: Math.round(g.bottom - top) };
+  const shot = async () => PNG.sync.read(await page.screenshot({ clip }));
+  const seen = await shot();
+  const hide = await page.addStyleTag({ content: '[data-testid="millionea-hub-aside"] > :not([data-testid="millionea-hub-pinned"]) { visibility: hidden !important; }' });
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  const bare = await shot();
+  await hide.evaluate((el) => el.remove());
+  const scale = seen.height / clip.height;
+  const rows = [];
+  const strip = (from, to) => { for (let y = Math.ceil((from - clip.y) * scale) + 1; y < Math.floor((to - clip.y) * scale) - 1; y++) rows.push(y); };
+  strip(Math.max(g.header, g.y), g.head - 3);
+  strip(g.door + 3, g.bottom - 1);
+  const bad = [];
+  for (const y of rows) {
+    let worst = 0;
+    for (let x = 0; x < seen.width; x++) {
+      const i = (y * seen.width + x) * 4;
+      for (let c = 0; c < 3; c++) worst = Math.max(worst, Math.abs(seen.data[i + c] - bare.data[i + c]));
+    }
+    if (worst > 2) bad.push({ y: +(clip.y + y / scale).toFixed(1), worst });
+  }
+  return { ...g, rows: rows.length, badCount: bad.length, bad: bad.slice(0, 6) };
+}
+/** S5-R2-HUB 26 · nothing shows through the pinned pair (from 1024, in every state the drive shoots that draws one).
+ *  The column's next block is read under the pinned pair twice: with its top border 10px inside the pair's foot, and
+ *  standing under the head. While the pair stands pinned it carries `data-stuck` and its one hairline, the kit's divider,
+ *  and its ground shows not one pixel of what passes under it, in the gap above the head or in its foot. Plant: the old
+ *  fading foot is reported. A state with no pair (no week, Millionea ended) has nothing to read; a page too short to
+ *  pin the pair at a position says so, and that position is not read. */
+async function pinnedGroundChecks(page, label) {
+  for (const [where, into] of [["its foot", 10], ["its head", null]]) {
+    const at = await page.evaluate((into) => {
+      const p = document.querySelector('[data-testid="millionea-hub-pinned"]');
+      if (!p || getComputedStyle(p).position !== "sticky") return null;
+      window.scrollTo(0, 0);
+      const r = p.getBoundingClientRect(), top = parseFloat(getComputedStyle(p).top);
+      const next = p.nextElementSibling;
+      return { y: Math.round(r.top - top + (into ?? r.height)), max: document.documentElement.scrollHeight - innerHeight,
+        next: !!next && next.getBoundingClientRect().height > 0 };
+    }, into);
+    if (!at) return;
+    if (at.y > at.max) { console.log(`INFO ${label} · the page is too short to pin the pair under ${where} (${at.y} > ${at.max})`); continue; }
+    if (!at.next) { console.log(`INFO ${label} · nothing reads on under the pinned pair in this state; its ground is read, its plant is not`); }
+    await page.evaluate((y) => window.scrollTo(0, y), at.y);
+    await page.waitForTimeout(300);
+    const g = await pinnedGround(page);
+    ok(`${label} · scrolled under ${where}, the pinned pair is marked pinned and its lower edge is one hairline, the kit's divider (${g?.shadow})`,
+      !!g && g.stuck && /inset/.test(g.shadow) && /0px -1px 0px/.test(g.shadow) && g.shadow.startsWith(g.divider), j(g && { stuck: g.stuck, shadow: g.shadow, divider: g.divider }));
+    ok(`${label} · scrolled under ${where}, the pinned pair's top stands at the bar's foot, and no pixel of what passes under it shows in the gap above its head or in its foot (${g?.rows} device rows read, ${g?.badCount} differ)`,
+      !!g && g.rows > 0 && g.badCount === 0 && g.y <= g.header + 1, j(g));
+    if (into !== null && at.next) {
+      const plant = await page.addStyleTag({ content: ".kp-mln-pinned { background: linear-gradient(to bottom, var(--bg-base) calc(100% - var(--sp-5)), transparent) !important; }" });
+      await page.waitForTimeout(100);
+      const planted = await pinnedGround(page);
+      ok(`${label} · PLANT · the old fading foot lets the next block show through, and the read reports it (${planted?.badCount} rows differ)`, !!planted && planted.badCount > 0, j(planted));
+      await plant.evaluate((el) => el.remove());
+      await page.waitForTimeout(100);
+    }
+  }
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForTimeout(200);
+}
 
 /**
  * Shoot one state: every (locale, width) of the shell's matrix — load, the base checks, the state's own checks, the first
@@ -228,6 +313,7 @@ async function shoot(state, shell, ctx, { check, oneView = false, path = "/milli
       await ruleChecks(page, label);
       await doorRowChecks(page, label);
       await widowChecks(page, label);
+      if (width >= 1024) await pinnedGroundChecks(page, label);
       if (width === 768) await holeChecks(page, label);
       if (width <= YIELD_AT) await yieldCheck(page, `${label} · s1`);
       const name = `${state}-${shell}-${locale}-${width}`;
@@ -289,19 +375,27 @@ async function openWeekChecks(page, label, locale, width, { door = "millionea-hu
       d.x >= head.x + head.width && d.y >= head.y - 1 && d.y + d.height <= head.y + head.height + 1, j({ head, d }));
   }
   if (width >= 1024 && head) {
-    // S5-R2-HUB · the pinned pair's foot (the tile read: mid-scroll the ledger slid out from under the pair cut flat, a box
-    // with no top): its ground fades over its foot — as deep as the column's own gap — and at rest the block under it stands
-    // that gap below (it stood 36px against the column's 20).
+    // S5-R2-HUB 26 · the pinned pair's ground (the lead's design call; the tile read: mid-scroll the rows reading on in the
+    // column showed through the pair's fading foot). It is the page's own ground, opaque, with no fade, and it runs on past
+    // the door by the column's own gap. At rest the pair draws no edge, and the block under it stands that gap below (it
+    // stood 36px against the column's 20).
     const foot = await page.evaluate(() => {
       const p = document.querySelector('[data-testid="millionea-hub-pinned"]');
       const aside = p?.parentElement, next = p?.nextElementSibling, last = p?.lastElementChild;
       if (!p || !aside || !next || !last) return null;
       const cs = getComputedStyle(p);
-      return { image: cs.backgroundImage.slice(0, 160), pad: parseFloat(cs.paddingBottom), colGap: parseFloat(getComputedStyle(aside).rowGap),
+      const probe = document.createElement("div");
+      probe.style.background = "var(--bg-base)";
+      document.body.append(probe);
+      const ground = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return { image: cs.backgroundImage.slice(0, 160), color: cs.backgroundColor, ground, shadow: cs.boxShadow, stuck: p.hasAttribute("data-stuck"),
+        pad: parseFloat(cs.paddingBottom), colGap: parseFloat(getComputedStyle(aside).rowGap),
         gap: Math.round(next.getBoundingClientRect().top - last.getBoundingClientRect().bottom) };
     });
-    ok(`${label} · the pinned pair's ground fades over its foot, and at rest the next block stands the column's own gap under the pair (${foot?.gap}px of ${foot?.colGap}px)`,
-      !!foot && foot.image.includes(`calc(100% - ${foot.pad}px)`) && foot.pad === foot.colGap && Math.abs(foot.gap - foot.colGap) <= 1, j(foot));
+    ok(`${label} · the pinned pair stands on the page's own ground, opaque with no fade, and at rest draws no edge; the next block stands the column's own gap under the pair (${foot?.gap}px of ${foot?.colGap}px)`,
+      !!foot && foot.image === "none" && foot.color === foot.ground && !/\/\s*0(\.0+)?\)|rgba\([^)]*,\s*0\)|transparent/.test(foot.color)
+        && !foot.stuck && foot.shadow === "none" && foot.pad === foot.colGap && Math.abs(foot.gap - foot.colGap) <= 1, j(foot));
     await page.evaluate(() => window.scrollTo(0, 900));
     await page.waitForTimeout(300);
     const pinnedHead = await box(page, "millionea-hub-jackpot");
@@ -1390,8 +1484,9 @@ if (RUN === "b") {
   const finalCheck = async (page, label, locale, width) => {
     await openWeekChecks(page, label, locale, width);
     const rule = await page.getByTestId("millionea-hub-final-rule").textContent().catch(() => null);
-    // The head's ONE rule in the final week (efaccba2d): the critic's key with the fee as its rule's own fact.
-    if (locale === "en") ok(`${label} · H3 the final week's rule stands under the figure`, rule === "Final week: if no ticket gets 10/10, the pool is shared equally by this week's highest-scoring tickets · 13% fee at payout", j(rule));
+    // The head's ONE rule in the final week (efaccba2d): the critic's key with the fee as its rule's own fact, in S7-F9's
+    // words (the final week tops up no floor; S5-R2-HUB 26 reads them).
+    if (locale === "en") ok(`${label} · H3 the final week's rule stands under the figure`, rule === "Final week: if no ticket gets 10/10, the pool is shared equally by this week's highest-scoring tickets, with no floor top-up · 13% fee at payout", j(rule));
     ok(`${label} · H3 the final week's rule is drawn`, !!rule);
   };
   await shoot("final", "classic", demoClassic, { check: finalCheck });

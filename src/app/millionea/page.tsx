@@ -63,6 +63,7 @@ import { MAIN_COUNT, RESERVE_COUNT, displayMap, weekVoidCertain } from "@/lib/ma
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import { HUB_DOOR, HUB_EYEBROW, HUB_GRID, HUB_MINE, HUB_PINNED, HUB_QUESTIONS, HUB_STRIP, hubAside, hubCell, hubMain, hubTail } from "./hub-frame";
 import { HubPoolHead, HubPoolLedger, HubPoolLive } from "./hub-pool";
+import { HubPinned } from "./hub-pinned";
 import { HubNotices, type HubNotice } from "./hub-notices";
 import { HubOutcomeStamp, HubPressGroup } from "./hub-stamp";
 import { carryingRollover, closeMovedWords, closeWords, finalAheadWords, lastWeekWords, noWeekBody, pausedWords, voidWords, voidingWords } from "./hub-words";
@@ -535,7 +536,7 @@ export default async function MillioneaHubPage({ searchParams }: { searchParams:
       className={hubAside(twoUp, !!phases)}
       data-testid="millionea-hub-aside"
     >
-      <div className={HUB_PINNED} data-testid="millionea-hub-pinned">
+      <HubPinned className={HUB_PINNED}>
         {w.pool && <HubPoolHead final={w.isFinal} labelId={JACKPOT_LABEL_ID} className={hubCell(twoUp, buyDrawn(w, !!breakBody) ? "head" : "headAlone")} />}
         {/* From 768 to 1023 the door stands beside the jackpot's head, centred on it: the next row (the ledger beside the
             reader's tickets) then starts level in both columns. */}
@@ -543,7 +544,7 @@ export default async function MillioneaHubPage({ searchParams }: { searchParams:
           t={t} locale={locale} w={w} signedIn={!!gate.userId} nowMs={nowMs} nextOpen={nextWeekOpen(hub, millioneaOpenTemplate(), nowMs)}
           breakBody={breakBody} walletHeld={walletHeld} guest={guest} className={hubCell(twoUp, "door")}
         />
-      </div>
+      </HubPinned>
       {/* A closed week's facts follow its door on a phone, stand under it from 768, read on under the pinned pair from 1024. */}
       <WeekFacts t={t} locale={locale} w={w} nowMs={nowMs} className={hubCell(twoUp, "facts")} />
       {w.pool && <HubPoolLedger carryFrom={carries ? CARRIED_FIGURE_ID : undefined} carryPlay={carries} className={hubCell(twoUp, "ledger")} />}
