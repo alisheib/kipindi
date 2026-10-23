@@ -510,9 +510,10 @@ export const MUTATIONS = [
   {
     name: "(64) the open's audit row is written under the lock, before its commit",
     file: SVC,
-    // Re-pinned at the S7 × S5 merge: the opened row carries S7's re-frozen final deadline (`due.finalDeadlineAt`).
-    from: "    owed.push({ category: \"ADMIN\", action: \"maswali.week.opened\", actorId: input.officerId, targetType: \"MaswaliCycle\", targetId: week.id,\n      payload: { code: week.code, marketId: market.id, questionSetHash: qHash, closesAt: week.closesAt, finalDeadlineAt: due.finalDeadlineAt, rules, isFinal: opened.isFinal } });",
-    to: "    void recordOwed([{ category: \"ADMIN\", action: \"maswali.week.opened\", actorId: input.officerId, targetType: \"MaswaliCycle\", targetId: week.id,\n      payload: { code: week.code, marketId: market.id, questionSetHash: qHash, closesAt: week.closesAt, finalDeadlineAt: due.finalDeadlineAt, rules, isFinal: opened.isFinal } }]);",
+    // Re-pinned at the S7 × S5 merge: the opened row carries S7's re-frozen final deadline (`due.finalDeadlineAt`); and at
+    // S7-SHIP's merge of main fd5368668 (LICBASIS): it carries the licence basis the week sold under (`licence: basis`) too.
+    from: "    owed.push({ category: \"ADMIN\", action: \"maswali.week.opened\", actorId: input.officerId, targetType: \"MaswaliCycle\", targetId: week.id,\n      payload: { code: week.code, marketId: market.id, questionSetHash: qHash, closesAt: week.closesAt, finalDeadlineAt: due.finalDeadlineAt, rules, isFinal: opened.isFinal, licence: basis } });",
+    to: "    void recordOwed([{ category: \"ADMIN\", action: \"maswali.week.opened\", actorId: input.officerId, targetType: \"MaswaliCycle\", targetId: week.id,\n      payload: { code: week.code, marketId: market.id, questionSetHash: qHash, closesAt: week.closesAt, finalDeadlineAt: due.finalDeadlineAt, rules, isFinal: opened.isFinal, licence: basis } }]);",
     expect: "3.1b · ⭐ the open's audit row and its pool notice each come once",
     suite: "engine-pg",
   },

@@ -278,7 +278,8 @@ The shared ticker's LIVE pip, word, separators and controls are neutral; keyboar
 brand. The Journey balance delta keeps its signed number in neutral ink; the classic
 capsule retains its earlier directional delta. The full pre-B5 house-gold
 treatment returns on named shell accents and controls (§M3a), including the classic bell,
-product-line dots, footer midpoint and deposit doors. Ali's 2026-10-20 amendment restores
+footer midpoint and deposit doors (and, until Ali's 2026-10-23 ruling deleted it, Up & Down's
+product-line dot: every nav tab alike, §K 3). Ali's 2026-10-20 amendment restores
 the external social marks' original vendor colours; these registered marks are not app-state
 or betting-side ink. The 50pick mark keeps YES/NO side halves
 and uses its delivered gilt needle and hub (§B1a).
@@ -2223,6 +2224,19 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
    (R-RAIL 4B), in a 56×32 pip; a tab's focus ring is drawn around its pill. ⛔ `--pill-active` is not a destination's
    mark: it stays the see-through selection of filters, menus and a page's section tabs (§K 7c), whose language inside a
    page is still the underline.
+   ⭐ **EVERY NAV TAB ALIKE — NO PRODUCT-LINE DOT, NO DESTINATION'S OWN INK (Ali, 2026-10-23:** *"people are
+   misunderstanding and thinking there is a certain notification there … please remove the golden dot, make it like
+   other tabs please, cleanly, perfect … make it everywhere needed"*, then his choice, *"Remove Up & Down's dot"*;
+   `docs/COMPLIANCE-DECISIONS.md`, "2026-10-23 · Up & Down loses its golden dot"**).** In every bar of destinations each
+   destination is drawn as its siblings: one box, one ink at rest, one hover, one lit state, and no mark of its own
+   beside its glyph and its words — only a state may add one (an unread count, a coming-soon flag). Up & Down's 5px
+   gilt "product-line dot" (the classic rail's pip corner, `.kp-rail__dot`; before the classic bar's words) and the
+   bar's `--brand-300` ink for it (`.kp-navlink[data-accent]`) are deleted — a dot on a tab reads as a notification
+   that never clears. The ONE ruled difference is Millionea's: its words' ink and its glyph resting in gold (§M8a item
+   11), which no reader takes for a notification. A notification dot is a state and stays where it is one (the bell's
+   unread mark; the journey's Akaunti dot, `.kp-rail__badge`). Guards:
+   `test:nav-tabs-alike` (the classic rail and bar and the journey's rail and bar, rendered and painted, with plants;
+   `red:nav-tabs-alike` puts the dot back) and `qa:classic-rail` (the drawn rail).
    ⭐ **FILL MEANS A STATE; DUOTONE IS IDENTITY ON A PLATE; LINE IS EVERYTHING ELSE (PHOSPHOR-MIGRATION W4, §8c; Ali,
    2026-10-19: "nothing should be plain … everything visually perfect, logically perfect").** A glyph's tier says what it
    is, so the tier is never chosen for looks:
@@ -2730,8 +2744,8 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
      and label (`.kp-rail` and `.kp-rail__item`, worn unchanged from 360; below it, the label rule further down).
      **Five while Millionea shows**, its tab after Juu/Chini, the nav saying so (`data-tabs="5"`, absent for four, so a
      reader who is not shown Millionea is drawn today's rail, markup and boxes).
-     ⛔ **No centre coin, no More, no accent dot:** money-in is the header's "+ Weka pesa", and what More carried is a
-     row in Akaunti (8c).
+     ⛔ **No centre coin, no More, no accent dot** (no nav draws one since Ali's ruling of 2026-10-23, §K 3): money-in
+     is the header's "+ Weka pesa", and what More carried is a row in Akaunti (8c).
    - **The grid goes on the LIST** (A18): on the nav, the whole list would be one cell.
    - **Which tab is lit comes from `activeTabFor` over the drawn list**, the list and table the desktop destinations
      read too, and `aria-current="page"` is given only on a tab's own page, `"true"` across the rest of its section
@@ -2883,7 +2897,9 @@ Maswali Millionea's jackpot, floor, rollover and stub are unearned and never gol
 that U43 B5 removed.** The delivered mark, shared needle and split instrument,
 available wallet balance and its flash/eye, deposit entries, bet and sell commit
 buttons, classic bell and shell accents, and RESOLVED status regain their named
-gold treatment. A bet, sale or deposit still earns no money by itself. Earned
+gold treatment — but no destination's dot: Up & Down's product-line dot, which this
+ruling had brought back, was deleted by Ali's ruling of 2026-10-23 (every nav tab
+alike, §K 3). A bet, sale or deposit still earns no money by itself. Earned
 payout amounts and win celebrations remain separately identified by the struck
 win treatment (§M3). Gold is not a generic tint for unrelated copy, a HOT/LIVE
 signal, an unearned bonus offer or an error. The U43 2026-10-19 gold-only-winnings
@@ -2919,7 +2935,8 @@ they use `btn-primary` and `--pill-active` (owner ruling R5: 50pick's look, unch
 **Historical U43 B5 pass (2026-10-19, superseded for gold on 2026-10-20):**
 it removed gold from the wallet balance, flash and eye, deposit and bet/sell doors,
 classic rail coin, bell, navigation dots, footer midpoint, instrument needle and
-mark centre. Ali asked for that earlier gold treatment back after seeing it live.
+mark centre. Ali asked for that earlier gold treatment back after seeing it live
+(the navigation dots then went for good on 2026-10-23, his ruling in §K 3).
 The shared `test:u43-shell-palette` and `test:u43-bar-ink` guards now pin the
 restored paint with mutation proof. LIVE and HOT remain neutral. External social
 marks keep their original vendor colours under Ali's 2026-10-20 amendment.
@@ -3507,11 +3524,14 @@ the thing a session is told to trust. Found by auditing the close-out, not by re
 2. ✅ **Q7 — the `Au` / `Ag` LETTERMARK CHIPS ARE FINAL.** No artwork is coming. ⚠️ They are
    ELEMENT symbols, not `ticker.slice(0,2)`: XAU and XAG both start "XA" and once rendered
    identical chips.
-3. ✅ **Q8 — the Up & Down nav ships as the indigo pill with NO countdown.** The refusal at
-   `top-app-bar.tsx:33-37` stands on its stated grounds: a permanent countdown in global chrome
+3. ✅ **Q8 — the Up & Down nav ships with NO countdown.** The refusal in `top-app-bar.tsx`'s
+   header note stands on its stated grounds: a permanent countdown in global chrome
    is a persistent urgency cue (an RG problem for a licensed operator) and a per-second
    re-render fails the *"usable on a low-end Android over 2G"* bar. ⚠️ Ali did not tick this one
    explicitly; it is closed on that argument and reopens by instruction, not by rediscovery.
+   The "indigo pill" this item named gave way on 2026-08-13 to a 5px gilt dot and `--brand-300`
+   ink, and those to nothing on 2026-10-23 (Ali's ruling): Up & Down's link is drawn exactly as
+   its siblings (§K 3, "Every nav tab alike").
 4. ✅ **Q6 and the crest chief band opacity** — closed the same day; see *Closed here* below.
 
 ### ✅ Closed here, 2026-08-10 (session 38) — these were never Ali's to decide

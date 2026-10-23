@@ -313,6 +313,11 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
       // v2026-10-14's words, byte for byte (TERMS_TEXT_SHA unchanged). COMPLIANCE § "2026-10-23 · Terms v2026-10-23 …".
       ["src/app/legal/terms/page.tsx", "7422553402f76402e87c183f2c8fe5f7171d8c3a"],
       ["src/lib/terms-version.ts", "7422553402f76402e87c183f2c8fe5f7171d8c3a"],
+      // 2026-10-23 (lane UDDOT, Ali's ruling "Remove Up & Down's dot"; DESIGN_AUTHORITY §K 3): COMMENT ONLY — the legal
+      // nav's DG-P-11 code comment now states the rule in force (every nav tab alike, the old product-line dot and ink
+      // superseded). No published word and no code changed: `git diff origin/main -- src/app/legal/` is that one JSX
+      // comment. Re-pinned at the lane commit that made it (07e643421), on the lead's decision (b) of 2026-10-23.
+      ["src/app/legal/legal-nav.tsx", "07e643421d92bd5c090c8ff511cba35fb9c4c2ce"],
     ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };
     const extraBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_EXTRA.get(rel)}:${rel}`)); } catch { return null; } };

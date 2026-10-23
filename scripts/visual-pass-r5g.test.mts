@@ -784,6 +784,7 @@ const keptIn = (mk: string, open: string) => { const m = new RegExp(`${open}((?:
     "src/lib/server/reports/catalogue.ts": "a regulator report's note (staff exports), not a player's line",
     "src/lib/support-config.ts": "an evidence record (`FIRST_LICENSED_EVIDENCE().basis`), printed on no player surface",
     "src/lib/maswali-support-scripts.ts": "staff console: the support desk's Millionea complaint script names the regulator for the officer to read out (MASWALI-BUILD S6, MB-91) — drawn only on /admin/maswali/lookup, not a player's line",
+    "src/lib/server/maswali-licence.ts": "staff record wording (Millionea's licence basis under the Owner's ruling of 2026-10-23: the reference kept in each open's audit row), not a player's line",
   };
   const unclassified = files.filter((f) => !CLASS[f]);
   ok(`4.12 · every source that prints the regulator's name (${files.length} files, the dictionary aside) is classified: kept whole (5), frozen, never able to split, legal prose under D19a, the acronym, or not a player's line`,

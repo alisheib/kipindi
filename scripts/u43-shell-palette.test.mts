@@ -111,9 +111,13 @@ check("5.7 classic avatar accent restores gold; sign out stays plain",
   && menu.includes('accent ? "text-gold-300"')
   && menu.includes('text-text-muted hover:text-text hover:bg-bg-overlay')
   && !/text-danger-fg|bg-danger-/.test(menu.slice(menu.indexOf('role="menuitem"', menu.indexOf('Sign-out')), menu.indexOf('{t.common.signOut}'))));
-check("5.8 header and rail product-line dots restore house gilt",
-  bar.includes('background: "var(--gilt)"')
-  && /background:\s*var\(--gilt\)/.test(rule(css, '.kp-rail__dot')));
+// ⭐ FLIPPED BY THE OWNER (Ali, 2026-10-23: "please remove the golden dot, make it like other tabs please"; DESIGN_AUTHORITY
+// §K 3, "Every nav tab alike"): the restored house gold never reaches a destination — Up & Down's product-line dot is
+// deleted from the header and the rail, with the header's own ink for it. `test:nav-tabs-alike` reads the drawn bars.
+check("5.8 header and rail draw no product-line dot and no destination's own ink (every nav tab alike)",
+  !bar.includes('background: "var(--gilt)"') && !/data-accent|accent:\s*true|it\.accent/.test(bar)
+  && !/kp-rail__dot|accent:\s*true/.test(rail)
+  && rule(css, '.kp-rail__dot') === "" && !/\[data-accent\]/.test(css));
 check("5.9 classic Coming soon flag and footer midpoint restore house gold; page-body flag stays neutral",
   /var\(--gold-500\) 9%/.test(rule(css, '.cs-badge'))
   && /var\(--gold-500\) 22%/.test(rule(css, '.cs-badge'))
