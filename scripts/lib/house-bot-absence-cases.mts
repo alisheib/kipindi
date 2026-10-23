@@ -67,7 +67,11 @@ export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // planted classic edit is reported); inside them only S5 round 2's ruled player words moved — "Objection window" for
   // the check window (MR-16), the one sales-close wording with its zone, "Buy ticket"/"Ticket bought" (Ali's 2026-10-21
   // ruling 7), the slip's counted asks, the final week's rule (MR-30) — no policy string, no classic word.
-  "src/lib/i18n-dict.ts": "e851d5fa577fb1dc216476a46eb1b78d289adfbd",
+  // 2026-10-23 (S5 round 2: REGISTER, TICKETS' landing door, PLATFORM's rail): e851d5fa5 → d8fb5c6ea. Reviewed the same
+  // way: outside the three `millionea` blocks byte-identical; inside them three keys only — `feeZero` takes the amount
+  // ("fee {fee}", filled with formatTzs(0)), `regTicketsSoldOne` ("1 ticket at {price}"), `landingInvite` (Ali's own words
+  // of 2026-10-22, "Be this week's winner?" / "Kuwa mshindi wa wiki hii?" / "成为本周赢家？").
+  "src/lib/i18n-dict.ts": "d8fb5c6ea72cc6deda795b8211c6541baedc444e",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
 };

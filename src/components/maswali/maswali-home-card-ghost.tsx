@@ -60,7 +60,7 @@ export function MaswaliHomeCardGhost({ t, locale, host, preview = false, classNa
   const state = [keep(fill(t.millionea.salesCloseColon, { when: `${t.millionea.weekdays[4]} 18:00` })), keep(fill(t.millionea.cardPrice, { price: formatTzs(1_000) }))];
   return (
     <div aria-hidden className={cn("kp-mln-zh kp-mln-ghost kp-shimmer-track", doorClass(host), className)} data-ghost-part="millionea">
-      <span className="kp-mln-door__plate kp-jhome-ghost__plate" />
+      <span className="kp-mln-door__plate kp-mln-ghost__plate" />
       <span className="kp-mln-door__head">
         <span className="kp-mln-door__title">
           <span className="font-display text-body-lg font-semibold">
