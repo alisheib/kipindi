@@ -7,13 +7,19 @@ import { firstDepositNotice, kycNoticeDismissValue } from "@/lib/server/kyc-noti
 import { KYC_NOTICE_COOKIE } from "@/lib/kyc-notice";
 import { cookies } from "next/headers";
 import { isFundingUuid } from "@/lib/journey/funding-storage";
+import { slipReturnPath } from "@/lib/journey/slip-return";
+import { resolveMillionea } from "@/lib/server/millionea-preview";
 
 export const dynamic = "force-dynamic";
 
-export default async function RecoverDepositPage({ searchParams }: { searchParams: Promise<{ key?: string }> }) {
+export default async function RecoverDepositPage({ searchParams }: { searchParams: Promise<{ key?: string; returnPath?: string }> }) {
   const session = await currentSession();
   if (!session) redirect(`/auth/login?next=${encodeURIComponent(pathWithQuery("/wallet/deposit/wait", await searchParams))}`);
-  const key = (await searchParams).key ?? "";
+  const sp = await searchParams;
+  const key = sp.key ?? "";
+  // MB-57 (MASWALI-BUILD FLOW 3): the Millionea slip's way back, honoured only while Millionea is visible to this reader.
+  const slipAsked = slipReturnPath(sp.returnPath);
+  const slipReturn = slipAsked && (await resolveMillionea()).visible ? slipAsked : null;
   const read = await readDepositStatus(session.userId, { kind: "funding-key", value: key });
   const notice = await firstDepositNotice(session.userId, {
     dismissCookie: (await cookies()).get(KYC_NOTICE_COOKIE)?.value, depositInHand: true,
@@ -21,5 +27,5 @@ export default async function RecoverDepositPage({ searchParams }: { searchParam
   return <DepositWaitingClient ownerId={session.userId} initial={read.view}
     lookupUrl={`/api/wallet/deposits/recover?key=${encodeURIComponent(key)}`}
     paymentKey={isFundingUuid(key) ? key : null}
-    firstDepositNotice={notice} noticeDismissValue={notice ? kycNoticeDismissValue(session.userId) : null} />;
+    firstDepositNotice={notice} noticeDismissValue={notice ? kycNoticeDismissValue(session.userId) : null} slipReturn={slipReturn} />;
 }

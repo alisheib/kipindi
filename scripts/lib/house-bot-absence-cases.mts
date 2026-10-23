@@ -118,7 +118,11 @@ export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // D19a RE-PINNED AT S6-SHIP 10 (was the blob d61b83910, S6-INT 21's): the dictionary as the merge of main 07a400bc3 left it
   // (S6-SHIP 9, 0f65d3975) — this branch's plus round 2's three keys above, nothing else: its diff against d61b83910 is
   // main's own round-2 dictionary diff, line for line (12 lines, en/sw/zh). No other line changed.
-  "src/lib/i18n-dict.ts": "2ef1a9d9f7b5e334ab134adf9ee014b923921a03",
+  // D19a RE-PINNED AT MASWALI-BUILD FLOW 3 (was 2ef1a9d9f7b5, S6-SHIP 10's; the lead's ruling of 2026-10-23, MB-57): inside
+  // the three `millionea` blocks only, two keys each — `depositPaidSlip` and `depositReturnSlip`, the deposit wait page's
+  // sentence and door once a deposit started from the slip has arrived — and one two-line comment in the English block.
+  // Its diff against 2ef1a9d9f7b5 is those 8 added lines; no line removed, no other line changed.
+  "src/lib/i18n-dict.ts": "1341177e5e1520c3f5ba316edb9ec34fe7ea217d",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
 };

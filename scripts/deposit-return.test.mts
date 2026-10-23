@@ -136,9 +136,11 @@ const keyedActionGuard = (source: string) => source.includes("const validKey = !
 check("all deposit actions refuse an unkeyed payment before dispatch", keyedActionGuard(depositActionSource));
 if (red) check("plant: an unkeyed charge path is caught",
   !keyedActionGuard(depositActionSource.replace("if (!validKey) await fail(t.error.somethingDidntWork);", "if (false) await fail(t.error.somethingDidntWork);")));
-const ambiguousActionGuard = (source: string) => source.includes("if (data.recoveryRequired) redirect(`/wallet/deposit/wait?key=${encodeURIComponent(idempotencyKey!)}` as never);")
+// MASWALI-BUILD FLOW 3 (MB-57): the recovery keeps the Millionea slip's way back beside the key (`slipQuery`, empty for
+// every other deposit), and the wait page now takes a slip deposit in either shell (`journeyFlow || slipReturn`).
+const ambiguousActionGuard = (source: string) => source.includes("if (data.recoveryRequired) redirect(`/wallet/deposit/wait?key=${encodeURIComponent(idempotencyKey!)}${slipQuery ? `&${slipQuery}` : \"\"}` as never);")
   && source.indexOf("if (data.redirectUrl)") < source.indexOf("if (data.recoveryRequired)")
-  && source.indexOf("if (data.recoveryRequired)") < source.indexOf("if (journeyFlow) redirect");
+  && source.indexOf("if (data.recoveryRequired)") < source.indexOf("if (journeyFlow || slipReturn) redirect");
 check("ambiguous classic and focused outcomes keep the original key in owned recovery", ambiguousActionGuard(depositActionSource));
 if (red) check("plant: reminting after an ambiguous answer is caught", !ambiguousActionGuard(depositActionSource.replace("if (data.recoveryRequired)", "if (false)")));
 const cardRecoveryGuard = (source: string) => source.includes("gate.inert = true;")

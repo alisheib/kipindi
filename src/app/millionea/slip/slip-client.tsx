@@ -25,6 +25,7 @@ import { refusalReason, refusalVariant, renderFailure, type ReasonedFailure } fr
 import { millioneaTicketHref } from "@/lib/position-permalink";
 import { DWELL_MILLIONEA_BATCH_STAMP_MS } from "@/lib/feedback-timing";
 import { depositLeftAfterFor, depositRequestFor, type DepositOption, type ShortfallPlan } from "@/lib/journey/shortfall";
+import { MILLIONEA_SLIP_RETURN } from "@/lib/journey/slip-return";
 import { pendingBand, type SheetLine } from "@/lib/journey/sheet-state";
 import { useServerNowGated } from "@/lib/use-shared-second";
 import type { MaswaliPick } from "@/lib/maswali-score";
@@ -405,7 +406,8 @@ export function SlipClient({
     <DepositOffer t={t} locale={locale} plan={plan} fallback={slipFallbackDeposit(fundsNow, total)} railNames={plan ? depositFacts?.deposit.railNames ?? [] : []}
       amount={depositAmount} onAmount={setDepositAmount}
       onClose={() => setConfirmOpen(false)}
-      onDeposit={(amount) => navigate(() => router.push(`/wallet/deposit?${new URLSearchParams({ amount: String(amount), from: "low-balance" })}` as never))} />
+      // ⭐ MB-57 (FLOW 3): the deposit carries the slip's way back, and nothing else of it — the answers stay in this tab.
+      onDeposit={(amount) => navigate(() => router.push(`/wallet/deposit?${new URLSearchParams({ amount: String(amount), from: "low-balance", returnPath: MILLIONEA_SLIP_RETURN })}` as never))} />
   ) : undefined;
 
   // The stamp's facts as the receipt's rows (§3.7; the Up & Down receipt's `details`): the serials of a batch, the price or

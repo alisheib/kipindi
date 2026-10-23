@@ -24,9 +24,13 @@ type WaitingView =
 
 const fundingKey = fundingStorageKey;
 
-export function DepositWaitingClient({ ownerId, initial, lookupUrl, paymentKey, firstDepositNotice, noticeDismissValue }: {
+export function DepositWaitingClient({ ownerId, initial, lookupUrl, paymentKey, firstDepositNotice, noticeDismissValue, slipReturn = null }: {
   ownerId: string; initial: WaitingView; lookupUrl: string; paymentKey: string | null;
   firstDepositNotice: FirstDepositNotice | null; noticeDismissValue: string | null;
+  /** MB-57 (MASWALI-BUILD FLOW 3): the Millionea slip's way back — the page's answer, allowed and visible to this reader
+   *  (`lib/journey/slip-return.ts`); null for every other deposit. Offered once the money arrived, and after a failed
+   *  payment, exactly where a saved bet's way back stands; never a ticket bought by itself. */
+  slipReturn?: string | null;
 }) {
   const { t } = useT();
   const [view, setView] = useState<WaitingView>(initial);
@@ -215,6 +219,8 @@ export function DepositWaitingClient({ ownerId, initial, lookupUrl, paymentKey, 
 
   const band = view.state === "PENDING" ? depositWaitingBand(view.createdAt, view.serverNow) : "unknown";
   const savedQuote = view.state === "UNKNOWN" || !view.pendingBet ? null : parseBetParam(view.pendingBet.bet);
+  // MB-57 (FLOW 3): the slip's way back — never beside a saved bet, whose own way back this page keeps as it was.
+  const slipBack = slipReturn && view.state !== "UNKNOWN" && !view.pendingBet ? slipReturn : null;
   const existingMoneyChoice = view.state === "PENDING" && band === "late" && savedQuote?.stake !== null
     && savedQuote?.stake !== undefined && typeof view.spendable === "number" && view.spendable >= savedQuote.stake;
   const pendingText = band === "fresh" ? t.journey.depositWaitFresh
@@ -227,7 +233,7 @@ export function DepositWaitingClient({ ownerId, initial, lookupUrl, paymentKey, 
     : view.state === "REVIEW" ? t.wallet.returnReviewTitle
     : view.state === "PENDING" ? t.wallet.returnPendingTitle : t.journey.depositWaitUnknown;
   const body = view.state === "UNKNOWN" && view.noPayment ? t.journey.depositNoPaymentBody
-    : view.state === "PAID" ? (view.pendingBet ? t.journey.depositPaidManual : t.wallet.returnPaidBody)
+    : view.state === "PAID" ? (view.pendingBet ? t.journey.depositPaidManual : slipBack ? t.millionea.depositPaidSlip : t.wallet.returnPaidBody)
     : view.state === "FAILED" ? t.journey.depositFailedBody
     : view.state === "HELD" || view.state === "RETURNED" ? t.wallet.returnReversedBody
     : view.state === "REVIEW" ? t.wallet.returnReviewBody
@@ -251,10 +257,14 @@ export function DepositWaitingClient({ ownerId, initial, lookupUrl, paymentKey, 
     {view.state === "PAID" && returnBlocked && <Callout tone="neutral" title={t.journey.depositReturnNeedsTab}>{noticeBody(t.journey.depositReturnNeedsTabBody)}</Callout>}
     {view.state === "PAID" && returnTapReason === "new-tab" && !returnBlocked && <Callout tone="info" title={t.journey.depositNewTabTitle}>{noticeBody(t.journey.depositNewTabBody)}</Callout>}
     {view.state === "PAID" && returnTapReason && !returnBlocked && <Button type="button" size="lg" fullWidth onClick={returnToChoice}>{t.journey.depositReturnToChoice}</Button>}
+    {/* MB-57 (FLOW 3): the slip's way back where the saved bet's stands — a document request, as this page's other doors are,
+        so the payment's focused shell is left whole; the slip reads its answers from this tab. */}
+    {view.state === "PAID" && slipBack && <a href={slipBack} className="btn btn-primary btn-lg flex w-full justify-center" data-testid="deposit-slip-return">{t.millionea.depositReturnSlip}</a>}
     {view.state === "FAILED" && !failureReleased && <Button type="button" size="lg" fullWidth disabled={checkingFailure} onClick={() => { void recheckFailure(); }}
       className="disabled:opacity-50">{t.journey.depositCheckPayment}</Button>}
     {view.state === "FAILED" && failureReleased && <a href="/wallet/deposit" className="btn btn-primary btn-lg flex w-full justify-center">{t.error.tryAgain}</a>}
     {view.state === "FAILED" && view.pendingBet && <Button type="button" variant="ghost" size="lg" fullWidth onClick={returnToChoice}>{t.journey.depositReturnToChoice}</Button>}
+    {view.state === "FAILED" && slipBack && <a href={slipBack} className="btn btn-ghost btn-lg flex w-full justify-center" data-testid="deposit-slip-return">{t.millionea.depositReturnSlip}</a>}
     {view.state !== "FAILED" && view.state !== "UNKNOWN" && <a href={`/wallet/receipt/${view.txnId}`} className="btn btn-ghost btn-lg flex w-full justify-center">{t.wallet.viewReceipt}</a>}
     {view.state === "UNKNOWN" && view.noPayment && noPaymentReleased && <a href="/wallet/deposit" className="btn btn-primary btn-lg flex w-full justify-center">{t.error.tryAgain}</a>}
     {view.state === "UNKNOWN" && (!view.noPayment || !noPaymentReleased) && <Button type="button" variant="ghost" size="lg" fullWidth onClick={() => { void refresh(); }}>{t.error.tryAgain}</Button>}
