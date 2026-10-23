@@ -175,4 +175,18 @@ export const MUTATIONS = [
     to: "an officer seals the void\";",
     failure: /FAIL 9[.]6b /,
   },
+  {
+    name: "(AP25) 9.7 · the seal table's mark reads \"void proposed\" again",
+    file: "src/lib/maswali-admin-format.ts",
+    from: "export const VOID_DEADLINE_PASSED = \"past its void deadline\";",
+    to: "export const VOID_DEADLINE_PASSED = \"void proposed\";",
+    failure: /FAIL 9[.]7 /,
+  },
+  {
+    name: "(AP26) 9.7 · the seal table writes its own \"void proposed\" beside the rule's words",
+    file: "src/app/admin/maswali/[weekId]/week-controls.tsx",
+    from: "<span className=\"block text-body-sm text-warning\">{VOID_DEADLINE_PASSED}</span>}",
+    to: "<span className=\"block text-body-sm text-warning\">void proposed</span>}",
+    failure: /FAIL 9[.]7 /,
+  },
 ];

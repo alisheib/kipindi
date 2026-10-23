@@ -1703,5 +1703,8 @@ reads "MLN-…: n question(s) passed their void deadline unsealed. Seal each fro
 by the deadline; void only a question with no result by then, on “Not played by its void deadline” or “No reading from
 the sources”." (`voidDeadlineAlertText`, the two grounds drawn from `MASWALI_VOID_REASON_LABEL`), and the audit note
 says the same (`VOID_DEADLINE_NOTE`). The code comments that said "the system proposes a void, an officer seals it" and
-the architecture document's lines were corrected with it. Held by `test:maswali-admin-plain` 9.6 (the rendered alert and
-its wiring) and 9.6b (the note), with the plants (AP22)–(AP24) of `red:maswali-admin-plain`.
+the architecture document's lines were corrected with it. The seal table marked such a row "void proposed", which leaned
+toward a void the rule may not allow: it reads "past its void deadline", the fact alone (FLOW 2, the lead's ruling of
+2026-10-23; `VOID_DEADLINE_PASSED`, `maswali-admin-format.ts` — the console is English only), and the admin guide quotes
+the new label. Held by `test:maswali-admin-plain` 9.6 (the rendered alert and its wiring), 9.6b (the note) and 9.7 (the
+mark, and no console page saying "void proposed"), with the plants (AP22)–(AP26) of `red:maswali-admin-plain`.

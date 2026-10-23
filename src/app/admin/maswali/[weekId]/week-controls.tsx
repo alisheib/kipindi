@@ -23,6 +23,7 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 import { isMaswaliVoidReason, MASWALI_VOID_REASON_LABEL } from "@/lib/maswali-void-reason";
+import { VOID_DEADLINE_PASSED } from "@/lib/maswali-admin-format";
 import { withoutSealedPicks } from "@/lib/maswali-seal-batch";
 import {
   attestMaswaliParityAction, confirmMaswaliSealAction, correctMaswaliSealAction, discardMaswaliDraftAction, moveMaswaliCloseAction, openMaswaliWeekAction,
@@ -241,7 +242,7 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
               const p = picks[r.slot] ?? { outcome: "", evidence: "" };
               return (
                 <tr key={r.slot}>
-                  <td className="text-left tabular align-top">{r.label}{r.proposedVoid && <span className="block text-body-sm text-warning">void proposed</span>}</td>
+                  <td className="text-left tabular align-top">{r.label}{r.proposedVoid && <span className="block text-body-sm text-warning">{VOID_DEADLINE_PASSED}</span>}</td>
                   <td className="text-left align-top max-w-[360px]">
                     <span className="block">{r.textEn}</span>
                     <span className="block text-body-sm text-text-tertiary">{r.criterionEn}</span>

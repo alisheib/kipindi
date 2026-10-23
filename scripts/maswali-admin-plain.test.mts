@@ -25,7 +25,8 @@
  *      Millionea card links a page the viewer may open — the weeks, Integrity or Pools, by role — or none.
  *      9.6 (MASWALI-BUILD FLOW 1, the GUIDE lane's finding, the lead's word of 2026-10-23) the void-deadline alert states the
  *      binding rule — seal from the source a result it gave by the deadline; void only a question with no result by then,
- *      on the two grounds the deadline opens — and 9.6b the scheduler's audit note says the same.
+ *      on the two grounds the deadline opens — and 9.6b the scheduler's audit note says the same. 9.7 (FLOW 2) the seal
+ *      table marks such a question "past its void deadline", never "void proposed".
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -41,7 +42,7 @@ import { FROZEN_RULES_GROUPS, RULES_FIELDS, frozenRulesFormValues } from "../src
 import { ControlLocked, CONTROL_WHO } from "../src/components/admin/control-locked.tsx";
 import { ROLE_LABEL } from "../src/lib/server/roles.ts";
 import { CATEGORY_LABEL } from "../src/lib/ai/poll-vocabulary.ts";
-import { EVENT_KIND_LABEL, eatInText, officerHandle } from "../src/lib/maswali-admin-format.ts";
+import { EVENT_KIND_LABEL, VOID_DEADLINE_PASSED, eatInText, officerHandle } from "../src/lib/maswali-admin-format.ts";
 import { MILLIONEA_STRIP_LINKS, millioneaStripLink, millioneaStripMore } from "../src/lib/maswali-strip-link.ts";
 import { canViewPath } from "../src/lib/server/rbac.ts";
 import { releaseWaitAlertText, voidDeadlineAlertText } from "../src/lib/server/maswali-console.ts";
@@ -283,6 +284,16 @@ const pageWords = (path: string) => decomment(read(path)).replace(/&ldquo;/g, "�
     VOID_DEADLINE_NOTE === "the void deadline passed unsealed; an officer seals the result from its source if the source gave it by the deadline, and voids the question only if it had no result by then"
       && schedulerCode.includes("note: VOID_DEADLINE_NOTE }") && !/seals the void/.test(schedulerCode),
     VOID_DEADLINE_NOTE);
+
+  // 9.7 · the seal table's mark on a question still unsealed at its void deadline is the fact, never a verdict: "past its
+  // void deadline" (FLOW 2, the lead's ruling of 2026-10-23) — it read "void proposed". No console page prints the old words.
+  const sealTable = pageWords("src/app/admin/maswali/[weekId]/week-controls.tsx");
+  const consolePagesSay = consoleFiles.filter((f) => /void proposed/i.test(pageWords(f)));
+  ok("9.7 · ⭐ a question past its void deadline and unsealed is marked \"past its void deadline\" in the seal table — no console page says \"void proposed\"",
+    VOID_DEADLINE_PASSED === "past its void deadline"
+      && sealTable.includes('{r.proposedVoid && <span className="block text-body-sm text-warning">{VOID_DEADLINE_PASSED}</span>}')
+      && consolePagesSay.length === 0,
+    `${VOID_DEADLINE_PASSED}${consolePagesSay.length ? ` · still in ${consolePagesSay.join(", ")}` : ""}`);
 }
 {
   // 9.5 · the front page's Millionea card links a page the viewer may open, asked with that page's own gate question
@@ -305,7 +316,7 @@ const pageWords = (path: string) => decomment(read(path)).replace(/&ldquo;/g, "�
       && !home.includes(">Open the weeks</Link>") && !home.includes("more on the weeks page</li>"));
 }
 
-const FLOOR = 43; // the count the first green run printed: 28 at S6-ADMIN 6 (run 39824239196); 41 with §9 (S6-SHIP 6); 43 with 9.6 (FLOW 1)
+const FLOOR = 44; // the count the first green run printed: 28 at S6-ADMIN 6 (run 39824239196); 41 with §9 (S6-SHIP 6); 43 with 9.6 (FLOW 1); 44 with 9.7 (FLOW 2)
 ok(`floor · at least ${FLOOR} checks ran before this one`, passed + failed >= FLOOR, `${passed + failed} ran`);
 console.log(`\nmaswali-admin-plain: ${passed} passed, ${failed} failed`);
 if (failed) process.exitCode = 1;

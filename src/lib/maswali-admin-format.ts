@@ -77,6 +77,15 @@ export const EVENT_KIND_LABEL: Readonly<Record<string, string>> = {
   ANNOUNCEMENT: "Announcement",
 };
 
+/**
+ * ⭐ MASWALI-BUILD FLOW 2 (the lead's ruling of 2026-10-23) · THE SEAL TABLE'S MARK ON A QUESTION STILL UNSEALED AT ITS VOID
+ * DEADLINE. A fact, not a verdict: the officer seals the result from its source if the source gave it by the deadline,
+ * and voids only a question with no result by then (the rules' section 5; the console's alert says so in full,
+ * `voidDeadlineAlertText`). It read "void proposed", which leaned toward a void the rule may not allow. The console is
+ * English only. `test:maswali-admin-plain` 9.7.
+ */
+export const VOID_DEADLINE_PASSED = "past its void deadline";
+
 type ChipVariant = "neutral" | "live" | "pending" | "resolved" | "success" | "danger" | "info";
 
 /** A week's state as a chip: the word the console uses and its tone. */
