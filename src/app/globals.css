@@ -4812,10 +4812,19 @@ html[data-sheet-open] .route-enter { animation: none; }
    stands on the page's own ground across its whole box, with no fade. Its top is at the bar's foot, so nothing that reads
    on shows through it or in the gap above it. While the pair stands pinned (`data-stuck`), its lower edge is one
    hairline, the kit's divider, and what passes under it leaves at that one edge. At rest its foot lies in the column's
-   gap, ground on ground, and it draws no edge. */
+   gap, ground on ground, and it draws no edge.
+   S5-R2-HUB 28 · THE GROUND RUNS ONE PIXEL PAST THE PAIR'S SIDES AND TWO UNDER THE BAR. HUB 27's own pixel read at 1280
+   and 2.625 still found two device-pixel seams. The bar and the pinned pair snap to device pixels apart, which left one
+   row between them, and the row showed the glyphs passing under. The pair's sides fall on the column's fractional edge,
+   where the ledger's border passing under bled through as a faint vertical line. Three plain shadows of the ground close
+   both seams: 2px up, under the bar (z-30) wherever it stands, and 1px out at each side. They draw nothing at rest, since
+   that is ground on ground in the grid's gaps, and nothing below the pair. They are casts, not inner lights, so M1 is
+   untouched. The hairline is a real 1px line in the kit's divider ink, the pair's own `::after` across its foot. An
+   inset shadow on one edge would be a one-sided inner light, which M1 forbids (`test:m1-light` 1.1). The line sits
+   inside the pair's box, so nothing moves when it appears. */
 @media (min-width: 1024px) {
-  .kp-mln-pinned { background: var(--bg-base); }
-  .kp-mln-pinned[data-stuck] { box-shadow: inset 0 -1px 0 var(--border-divider); }
+  .kp-mln-pinned { background: var(--bg-base); box-shadow: 0 -2px 0 var(--bg-base), -1px 0 0 var(--bg-base), 1px 0 0 var(--bg-base); }
+  .kp-mln-pinned[data-stuck]::after { content: ""; position: absolute; inset-inline: 0; bottom: 0; height: 1px; background: var(--border-divider); }
 }
 /* MASWALI-BUILD S5 · VIS-P P10 · A SOCKET AT REST: a reserve the week did not need, a socket of a voided week, every socket
    of a cancelled or refunded ticket — the open ring at the disabled control's own opacity, so it never reads as the live

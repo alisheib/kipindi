@@ -202,29 +202,39 @@ const railHeight = (page) => page.evaluate(() => {
   return el ? Math.round(el.getBoundingClientRect().height) : 0;
 });
 const box = (page, testId) => page.getByTestId(testId).first().boundingBox().catch(() => null);
-/** S5-R2-HUB 26 · what shows through the pinned pair while the column reads on under it. Two strips are read: from the
- *  bar's foot to the head, and the foot from the door to the hairline. Each is shot as it stands, then again with every
- *  other block of the column hidden. A device row that differs between the two shots shows something passing under the
- *  pair. The strips are read 24px in from each side and 3px clear of the head and the door, so their rounded corners and
- *  shadows, the same in both shots, are no part of it. */
+/** S5-R2-HUB 26/28 · what shows through the pinned pair while the column reads on under it. The read covers the pair's
+ *  whole box, from 2px inside the bar (where the bar and the pair meet) down to its foot. Only the device pixels wholly
+ *  inside it are counted, one device pixel in from its sides and its last row. Below the pair, and beside it, the
+ *  column's own blocks may show, as designed: a card's shadow, a border's last row. The box is shot as it
+ *  stands, then again with every other block of the column hidden. A device pixel that differs between the two shots,
+ *  outside the pair's own blocks, shows something passing under the pair: through its ground, in a seam at the bar's
+ *  foot, or at its sides. The head and the door are left out because they draw their own live words, such as the last
+ *  hour's countdown. */
 async function pinnedGround(page) {
   const g = await page.evaluate(() => {
     const p = document.querySelector('[data-testid="millionea-hub-pinned"]');
     const h = document.querySelector("header");
-    const first = p?.firstElementChild, last = p?.lastElementChild;
-    if (!p || !h || !first || !last) return null;
+    if (!p || !h || p.children.length === 0) return null;
     const r = p.getBoundingClientRect(), cs = getComputedStyle(p);
     const probe = document.createElement("div");
     probe.style.color = "var(--border-divider)";
     document.body.append(probe);
     const divider = getComputedStyle(probe).color;
     probe.remove();
-    return { x: r.x, y: r.y, width: r.width, bottom: r.bottom, header: h.getBoundingClientRect().bottom, head: first.getBoundingClientRect().top,
-      door: last.getBoundingClientRect().bottom, stuck: p.hasAttribute("data-stuck"), shadow: cs.boxShadow, divider };
+    const blocks = [...p.children].map((c) => c.getBoundingClientRect()).filter((b) => b.width > 0 && b.height > 0)
+      .map((b) => ({ x: b.x, y: b.y, r: b.right, b: b.bottom }));
+    return { x: r.x, y: r.y, width: r.width, bottom: r.bottom, header: h.getBoundingClientRect().bottom, blocks,
+      stuck: p.hasAttribute("data-stuck"), shadow: cs.boxShadow, divider,
+      edge: (({ content, height, backgroundColor, bottom }) => ({ content, height, color: backgroundColor, bottom }))(getComputedStyle(p, "::after")) };
   });
   if (!g) return null;
-  const top = Math.max(0, Math.min(g.header, g.y));
-  const clip = { x: Math.round(g.x + 24), y: Math.round(top), width: Math.round(g.width - 48), height: Math.round(g.bottom - top) };
+  // Counted: the device pixels wholly inside the pair's own box (and the 2px of the bar above it), one device pixel in
+  // from its sides and its foot's last row. Those edge pixels are the box's own boundary, where a block beside or below
+  // it shares the pixel by design.
+  const px = 1 / DPR;
+  const box = { x0: g.x + px, x1: g.x + g.width - px, y0: Math.max(0, Math.min(g.header, g.y) - 2), y1: g.bottom - px };
+  const top = Math.floor(box.y0);
+  const clip = { x: Math.max(0, Math.floor(g.x - 1)), y: top, width: Math.ceil(g.x + g.width + 1) - Math.max(0, Math.floor(g.x - 1)), height: Math.ceil(g.bottom) - top };
   const shot = async () => PNG.sync.read(await page.screenshot({ clip }));
   const seen = await shot();
   const hide = await page.addStyleTag({ content: '[data-testid="millionea-hub-aside"] > :not([data-testid="millionea-hub-pinned"]) { visibility: hidden !important; }' });
@@ -232,20 +242,25 @@ async function pinnedGround(page) {
   const bare = await shot();
   await hide.evaluate((el) => el.remove());
   const scale = seen.height / clip.height;
-  const rows = [];
-  const strip = (from, to) => { for (let y = Math.ceil((from - clip.y) * scale) + 1; y < Math.floor((to - clip.y) * scale) - 1; y++) rows.push(y); };
-  strip(Math.max(g.header, g.y), g.head - 3);
-  strip(g.door + 3, g.bottom - 1);
+  const inBlock = (cx, cy) => g.blocks.some((b) => cx >= b.x - 0.5 && cx <= b.r + 0.5 && cy >= b.y - 0.5 && cy <= b.b + 0.5);
+  let read = 0;
   const bad = [];
-  for (const y of rows) {
-    let worst = 0;
+  const EPS = 0.01;
+  for (let y = 0; y < seen.height; y++) {
+    const cy = clip.y + (y + 0.5) / scale;
+    if (clip.y + y / scale < box.y0 - EPS || clip.y + (y + 1) / scale > box.y1 + EPS) continue;
+    let worst = 0, at = -1;
     for (let x = 0; x < seen.width; x++) {
+      if (clip.x + x / scale < box.x0 - EPS || clip.x + (x + 1) / scale > box.x1 + EPS) continue;
+      if (inBlock(clip.x + (x + 0.5) / scale, cy)) continue;
+      read++;
       const i = (y * seen.width + x) * 4;
-      for (let c = 0; c < 3; c++) worst = Math.max(worst, Math.abs(seen.data[i + c] - bare.data[i + c]));
+      for (let c = 0; c < 3; c++) { const d = Math.abs(seen.data[i + c] - bare.data[i + c]); if (d > worst) { worst = d; at = x; } }
     }
-    if (worst > 2) bad.push({ y: +(clip.y + y / scale).toFixed(1), worst });
+    if (worst > 2) bad.push({ y: +cy.toFixed(1), x: +(clip.x + (at + 0.5) / scale).toFixed(1), worst });
   }
-  return { ...g, rows: rows.length, badCount: bad.length, bad: bad.slice(0, 6) };
+  const { blocks, ...rest } = g;
+  return { ...rest, blocks: blocks.length, rows: seen.height, read, badCount: bad.length, bad: bad.slice(0, 6) };
 }
 /** S5-R2-HUB 26 · nothing shows through the pinned pair (from 1024, in every state the drive shoots that draws one).
  *  The column's next block is read under the pinned pair twice: with its top border 10px inside the pair's foot, and
@@ -270,8 +285,8 @@ async function pinnedGroundChecks(page, label) {
     await page.evaluate((y) => window.scrollTo(0, y), at.y);
     await page.waitForTimeout(300);
     const g = await pinnedGround(page);
-    ok(`${label} · scrolled under ${where}, the pinned pair is marked pinned and its lower edge is one hairline, the kit's divider (${g?.shadow})`,
-      !!g && g.stuck && /inset/.test(g.shadow) && /0px -1px 0px/.test(g.shadow) && g.shadow.startsWith(g.divider), j(g && { stuck: g.stuck, shadow: g.shadow, divider: g.divider }));
+    ok(`${label} · scrolled under ${where}, the pinned pair is marked pinned and its lower edge is one hairline, a 1px line in the kit's divider ink (${g?.edge?.height} ${g?.edge?.color})`,
+      !!g && g.stuck && g.edge.content !== "none" && g.edge.height === "1px" && g.edge.bottom === "0px" && g.edge.color === g.divider && !/\binset\b/.test(g.shadow), j(g && { stuck: g.stuck, edge: g.edge, shadow: g.shadow, divider: g.divider }));
     ok(`${label} · scrolled under ${where}, the pinned pair's top stands at the bar's foot, and no pixel of what passes under it shows in the gap above its head or in its foot (${g?.rows} device rows read, ${g?.badCount} differ)`,
       !!g && g.rows > 0 && g.badCount === 0 && g.y <= g.header + 1, j(g));
     if (into !== null && at.next) {
@@ -280,6 +295,14 @@ async function pinnedGroundChecks(page, label) {
       const planted = await pinnedGround(page);
       ok(`${label} · PLANT · the old fading foot lets the next block show through, and the read reports it (${planted?.badCount} rows differ)`, !!planted && planted.badCount > 0, j(planted));
       await plant.evaluate((el) => el.remove());
+      await page.waitForTimeout(100);
+    }
+    if (process.env.MLN_HUB_SEAM_PROBE) {
+      const seam = await page.addStyleTag({ content: ".kp-mln-pinned, .kp-mln-pinned[data-stuck] { box-shadow: inset 0 -1px 0 var(--border-divider) !important; }" });
+      await page.waitForTimeout(100);
+      const s = await pinnedGround(page);
+      console.log(`INFO SEAM ${label} · ${where} · HUB 27's ground (no seam shadows): ${s?.badCount} rows differ ${j(s?.bad)}`);
+      await seam.evaluate((el) => el.remove());
       await page.waitForTimeout(100);
     }
   }
@@ -389,13 +412,13 @@ async function openWeekChecks(page, label, locale, width, { door = "millionea-hu
       document.body.append(probe);
       const ground = getComputedStyle(probe).backgroundColor;
       probe.remove();
-      return { image: cs.backgroundImage.slice(0, 160), color: cs.backgroundColor, ground, shadow: cs.boxShadow, stuck: p.hasAttribute("data-stuck"),
+      return { image: cs.backgroundImage.slice(0, 160), color: cs.backgroundColor, ground, shadow: cs.boxShadow, edge: getComputedStyle(p, "::after").content, stuck: p.hasAttribute("data-stuck"),
         pad: parseFloat(cs.paddingBottom), colGap: parseFloat(getComputedStyle(aside).rowGap),
         gap: Math.round(next.getBoundingClientRect().top - last.getBoundingClientRect().bottom) };
     });
     ok(`${label} · the pinned pair stands on the page's own ground, opaque with no fade, and at rest draws no edge; the next block stands the column's own gap under the pair (${foot?.gap}px of ${foot?.colGap}px)`,
       !!foot && foot.image === "none" && foot.color === foot.ground && !/\/\s*0(\.0+)?\)|rgba\([^)]*,\s*0\)|transparent/.test(foot.color)
-        && !foot.stuck && foot.shadow === "none" && foot.pad === foot.colGap && Math.abs(foot.gap - foot.colGap) <= 1, j(foot));
+        && !foot.stuck && foot.edge === "none" && !/\binset\b/.test(foot.shadow) && foot.pad === foot.colGap && Math.abs(foot.gap - foot.colGap) <= 1, j(foot));
     await page.evaluate(() => window.scrollTo(0, 900));
     await page.waitForTimeout(300);
     const pinnedHead = await box(page, "millionea-hub-jackpot");
