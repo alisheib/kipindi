@@ -67,6 +67,59 @@ const DPR = Number(process.env.MLN_HUB_DPR || 1);
 if (!["chromium", "webkit"].includes(ENGINE) || !(DPR > 0)) die(`MLN_HUB_ENGINE=${ENGINE} MLN_HUB_DPR=${process.env.MLN_HUB_DPR}: chromium or webkit, a ratio above 0`);
 const browser = await (ENGINE === "webkit" ? webkit : chromium).launch();
 console.log(`INFO engine · ${ENGINE} ${browser.version()} at device pixel ratio ${DPR}`);
+/**
+ * ⭐ WEBKIT'S SLOW LINK (HUB-2B, 2026-10-23; R2B item 1). WebKit has no devtools protocol, so the swap there cannot slow
+ * the network as Chromium's does. Holding the move's request WHOLE at the route (S5-R2-HUB 12/13) showed no drawing: in
+ * 27 of 27 WebKit ghost views of the baseline (run 39949428809, at b224987e9) "the route's loading drawing is shown on
+ * the way in" was red. `next dev` never prefetches, so the router has no loading boundary until the response's first
+ * bytes, and a hold withholds them all. A real slow phone gets them, because the server streams the loading boundary
+ * first. So in WebKit the swap's pages are opened through a local reverse proxy (`WEBKIT_SLOW`, the drive's own) that
+ * STREAMS the hub's move response at Chromium's throttle, 12 KB/s, while the drawing is measured, and at full speed once
+ * released. Everything else passes untouched, the dev server's HMR socket included.
+ */
+const WEBKIT_SLOW = await (async () => {
+  if (ENGINE !== "webkit") return null;
+  const http = await import("node:http"), net = await import("node:net");
+  const up = new URL(BASE);
+  let slow = false;
+  const isMove = (req) => { const u = new URL(req.url ?? "/", BASE); return u.pathname === "/millionea" && (req.headers["rsc"] === "1" || u.searchParams.has("_rsc")) && !req.headers["next-router-prefetch"]; };
+  const server = http.createServer((req, res) => {
+    const out = http.request({ host: up.hostname, port: up.port, path: req.url, method: req.method, headers: { ...req.headers, host: up.host } }, (ur) => {
+      res.writeHead(ur.statusCode ?? 502, ur.headers);
+      if (!(slow && isMove(req))) { ur.pipe(res); return; }
+      // The move's answer, at 12 KB/s while `slow` holds: 1 KB a slice, every 83 ms; the rest at once when released.
+      const queue = []; let ended = false, pumping = false;
+      const pump = () => {
+        if (pumping) return; pumping = true;
+        const step = () => {
+          if (queue.length === 0) { pumping = false; if (ended) res.end(); return; }
+          if (!slow) { while (queue.length) res.write(queue.shift()); pumping = false; if (ended) res.end(); return; }
+          const head = queue[0];
+          if (head.length > 1024) { res.write(head.subarray(0, 1024)); queue[0] = head.subarray(1024); } else res.write(queue.shift());
+          setTimeout(step, 83);
+        };
+        step();
+      };
+      ur.on("data", (c) => { queue.push(Buffer.from(c)); pump(); });
+      ur.on("end", () => { ended = true; pump(); });
+    });
+    out.on("error", () => res.destroy());
+    req.pipe(out);
+  });
+  // The dev server's socket (HMR) passes through as it came.
+  server.on("upgrade", (req, socket, head) => {
+    const s = net.connect(Number(up.port), up.hostname, () => {
+      s.write(`${req.method} ${req.url} HTTP/1.1\r\n${Object.entries(req.headers).map(([k, v]) => `${k}: ${k === "host" ? up.host : v}`).join("\r\n")}\r\n\r\n`);
+      if (head?.length) s.write(head);
+      s.pipe(socket); socket.pipe(s);
+    });
+    s.on("error", () => socket.destroy()); socket.on("error", () => s.destroy());
+  });
+  await new Promise((done) => server.listen(0, done));
+  const port = server.address().port;
+  console.log(`INFO engine · webkit's swap is opened through the drive's slow link (localhost:${port} → ${up.host})`);
+  return { base: `http://localhost:${port}`, hold: () => { slow = true; }, release: () => { slow = false; }, close: () => server.close() };
+})();
 const errs = [];
 
 /**
@@ -98,8 +151,8 @@ async function readerContext(cookies) {
 async function setLocale(ctx, locale) {
   await ctx.addCookies([{ name: LOCALE_COOKIE, value: locale, url: BASE }]);
 }
-async function open(page, path) {
-  const res = await page.goto(`${BASE}${path}`, { waitUntil: "load", timeout: 180_000 });
+async function open(page, path, base = BASE) {
+  const res = await page.goto(`${base}${path}`, { waitUntil: "load", timeout: 180_000 });
   await page.waitForLoadState("networkidle", { timeout: 2_000 }).catch(() => {});
   await page.evaluate(async () => {
     await document.fonts.ready;
@@ -406,7 +459,9 @@ async function stateWordChecks(page, label, locale, word, tone = "royal") {
       sameLine, centreOff: week && sameLine ? Math.round(((r.top + r.bottom) / 2 - (week.top + week.bottom) / 2) * 10) / 10 : null,
     };
   });
-  ok(`${label} · M5 the week's state is the register's chip in its state's ink (${tone}), never the eyebrow's subtle ink`, !!s && s.color === s[tone] && s.color !== s.subtle && parseFloat(s.border) >= 1, j(s));
+  // The chip's border is drawn: at least one device pixel (HUB-2B: WebKit snaps a border to the device's pixels — 1px at
+  // ratio 2.625 is 2 device pixels, read back as 0.762px — so a 1px border reads under 1 there; Chromium reads 1).
+  ok(`${label} · M5 the week's state is the register's chip in its state's ink (${tone}), never the eyebrow's subtle ink`, !!s && s.color === s[tone] && s.color !== s.subtle && parseFloat(s.border) * DPR >= 1, j(s));
   if (s?.sameLine) ok(`${label} · M5 the chip stands centred on the week word's line (${s.centreOff}px)`, Math.abs(s.centreOff ?? 99) <= 1.5, j(s));
   if (word) ok(`${label} · M5 the state word reads "${word[locale]}"`, s?.text === word[locale], j(s));
 }
@@ -762,21 +817,17 @@ if (RUN === "a") {
     page.on("pageerror", (e) => errs.push(`${name}: ${e}`));
     await page.setViewportSize({ width, height: HEIGHT });
     if (reduced) await page.emulateMedia({ reducedMotion: "reduce" });
-    await open(page, "/millionea/how");
-    // The page's answer is held back while the drawing is measured: Chromium's network slowed (its devtools protocol), and
-    // in WebKit — which has none — the move's own request for the hub held at the route (S5-R2-HUB 12) until released.
+    // The page's answer is slowed while the drawing is measured: Chromium's network through its devtools protocol, and in
+    // WebKit — which has none — the move's own answer streamed slowly by the drive's own link (`WEBKIT_SLOW`, above).
+    await open(page, "/millionea/how", WEBKIT_SLOW ? WEBKIT_SLOW.base : BASE);
     let cdp = null, release = () => {};
     if (ENGINE === "chromium") {
       cdp = await ctx.newCDPSession(page);
       await cdp.send("Network.enable");
       await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 400, downloadThroughput: 12 * 1024, uploadThroughput: 64 * 1024 });
     } else {
-      const held = new Promise((done) => { release = done; });
-      // Only the move's own request: a prefetch of the hub held here leaves the move waiting on it, and no drawing shows.
-      await page.route((url) => url.pathname === "/millionea", async (route) => {
-        if (!route.request().headers()["next-router-prefetch"]) await held;
-        await route.continue().catch(() => {});
-      });
+      WEBKIT_SLOW.hold();
+      release = () => WEBKIT_SLOW.release();
     }
     // The app router's own move (`window.next.router`, what a Link calls): a phone's classic rail has no Millionea tab.
     await page.evaluate(() => { window.next?.router?.push("/millionea"); });
@@ -788,7 +839,7 @@ if (RUN === "a") {
     const sweep = drawn ? await page.evaluate(SWEEPS) : null;
     if (drawn) await page.screenshot({ path: `${OUT}/${name}.png` });
     if (cdp) await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
-    else { release(); await page.unrouteAll({ behavior: "ignoreErrors" }).catch(() => {}); }
+    else release();
     await page.waitForSelector('[data-testid="millionea-hub"]', { timeout: 60_000 }).catch(() => {});
     await page.waitForTimeout(800);
     const real = await page.evaluate(BANDS, false);
@@ -1422,5 +1473,6 @@ for (const [line, where] of t5Elsewhere) console.log(`INFO §T5 a numeral in the
 for (const [key, where] of notesSeen) console.log(`INFO the one ledger · a note on row "${key}" — first at ${where}`);
 for (const line of yieldSeen) console.log(`INFO D15 the bubble yielded — ${line}`);
 await browser.close();
+WEBKIT_SLOW?.close();
 console.log(`\nmaswali-hub-states (run ${RUN}): ${pass} passed, ${fail} failed · tiles in ${OUT}/`);
 process.exit(fail === 0 ? 0 : 1);
