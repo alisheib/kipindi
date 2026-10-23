@@ -166,7 +166,7 @@ against each other within a daily budget, may fetch their own price, and the ros
 | **Where** | Release and live readback: [`docs/HOUSE-BOTS.md`](HOUSE-BOTS.md) §§12.20–12.21; current programme status: [`plans/house-bots/RESUME-HERE.md`](../plans/house-bots/RESUME-HERE.md) §0e; management and admin instructions: `docs/50pick-house-bots-desk-guide.pdf`. |
 | **Next** | Read [`plans/house-bots/RESUME-HERE.md`](../plans/house-bots/RESUME-HERE.md) §0e — never this cell |
 
-## ▶ 0i · MASWALI MILLIONEA — the third product, a weekly jackpot — `MASWALI-BUILD` · 🔨 **S1–S7 on `main`; rollout ACTIVE on production since 2026-10-22 23:32 UTC (Ali's ruling of 2026-10-23, ahead of the launch gate — nothing sells until an admin pays the guarantee in and a week opens); S7 and S6 live with `c5dede03d` (the rules page and Terms, the notices, the tax lines, the payout-float check); the polish release (S5 round 2b) next, then S8 — Ali's list. ▶ Resume: MASWALI-PLAN §0** · 11/13 sessions ✅
+## ▶ 0i · MASWALI MILLIONEA — the third product, a weekly jackpot — `MASWALI-BUILD` · 🔨 **S1–S7 on `main` and the development is complete (the polish release `21b246e5f`, 2026-10-23); rollout ACTIVE on production since 2026-10-22 23:32 UTC — nothing sells until an admin pays the guarantee in and a week opens; S8 is Ali's list in MASWALI-PLAN §6.1 (the first public week is the drive). ▶ Resume: MASWALI-PLAN §0** · 12/13 sessions ✅
 
 Ali, 2026-10-16: *"disregard any august rulgint he enw paln is final ruling"* · *"th enew pd is rveewd by management and
 update dlatly so any old ruels repalc ehtem if lost y those fomr the new pdf"* · *"we need to be very creative in how we

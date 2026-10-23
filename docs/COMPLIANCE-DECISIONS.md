@@ -8,6 +8,49 @@
 
 ---
 
+## 2026-10-23 · Maswali Millionea — Ali's launch-gate answers: the production checks, OD-22 recorded, the agent terms at launch, rollback understood, QL.1 by hand, two-line bell titles, and the launch word (owner)
+
+**Context.** Asked every open launch-gate decision at once (the build lead, the session asheib-f3), Ali answered each
+(2026-10-23, ~14:45 UTC). His choices, verbatim from the prompt's options:
+
+1. **Two read-only production checks — "Yes, both".** Run the same day, in a READ ONLY transaction, counts only:
+   - *the insider bar (MASWALI-PLAN §6.1 line 4):* production holds ADMIN 3 · GROWTH 2 · PLAYER 286 accounts — no role
+     outside PLAYER, AGENT and the seven staff roles, so every staff account is refused by the buy path (`isStaffRole`,
+     "Staff accounts cannot buy Millionea tickets"); 5 house bots, and `HOUSE_PRODUCT_POLICY.MASWALI` is `"denied"`;
+     0 Millionea tickets so far;
+   - *RULES §5 step 6 for Millionea (line 9):* no `maswali.config` row is stored, so the ruled figures are in force —
+     TZS 1,000 a ticket, a TZS 1,000,000 floor, a 13% fee at payout, 10 tickets a week — and the live rules page
+     (`/legal/rules/millionea`) states the same figures; no `maswali.licenceBasis` row, so the Owner's ruling of
+     2026-10-23 is the basis in force.
+2. **OD-22 — "Yes, record it".** This entry is the dated ruling that amends Vodacom S16 "in bounds" item 8: the five
+   journey measures exclude MASWALI; harm markers are reported for all players and for players without a ticket, and
+   judged on the latter. The code already applies it (`journey-measures-dal.ts`, MASWALI-BUILD S6). The Vodacom lane
+   records it in VODACOM-PLAN §0 at its next session (this lane does not edit that tracker).
+3. **OD-20, the agent terms — "Prepare now, live at launch".** The clause "agents earn no commission on Maswali
+   Millionea tickets, and invite bonuses do not apply to them" and a new agent-terms version are prepared on branch
+   `claude/maswali-agent-terms`; they go live with the first public week.
+4. **Rollback — "Understood".** The Owner switch to WITHDRAWN hides Millionea and never deletes tickets; a sales pause
+   never blocks settlement, refunds or withdrawals; stopping Millionea for good is the sunset (a final week).
+5. **QL.1 — "Manual now, build later".** Until a question carries its event and competition, Trading keeps the OD-14
+   limits by hand (no two questions on one event; at most 4 from one competition), as the admin guide's step B1 says;
+   the automatic check is built after the first week.
+6. **FL.5, the bell — "Two-line Millionea titles".** A Millionea notice's title may take a second line in the bell, so
+   no title is cut on a phone; the words stay as ruled.
+7. **Cloudflare's Email Address Obfuscation — off.** Ali first chose to switch it off himself, then handed the build
+   lead a Cloudflare API token for it ("do anything you want with email obfuscation"). The lead set the 50pick.tz zone's
+   `email_obfuscation` to `off` (~14:55 UTC) and read it back `off`; `/help` and `/legal/rules/millionea` no longer
+   carry `__cf_email__` links or Cloudflare's `email-decode` script (it had thrown once on `/help` in the read-back of
+   `3ec32bb72`), and the support address is a plain `mailto:` link. The token was used for that setting alone, is
+   stored nowhere, and Ali revokes it.
+8. **The launch word — "Yes, open when both are done".** Once an admin has paid the guarantee in (§6.1 line 2) and
+   Finance has confirmed the payout float in writing (line 3), an admin may open the first public week — the earliest
+   Monday 00:00 EAT. That week is the drive (Ali, 2026-10-22); its record closes S8 (line 12).
+
+**Records.** MASWALI-PLAN §6.1 lines 4, 8, 9, 11 and 13 ticked with this release; line 7 keeps one sub-item (the
+Vodacom lane's note); lines 2, 3 and 12 are the launch's own. FAILURE-INVENTORY QL.1 stays open as a dated choice.
+
+---
+
 ## 2026-10-23 · Marketing — a campaign not tagged Millionea is sent exactly as before the claims lint; only a Millionea campaign meets it (the build lead's ruling; MASWALI-BUILD S6-SHIP 5)
 
 **What it rules.** With Millionea at the ACTIVE ceiling in production, the S6 release ships the Millionea claims lint for

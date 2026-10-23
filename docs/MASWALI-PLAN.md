@@ -38,6 +38,42 @@ does") and a week opens (the earliest Monday 00:00 EAT). The licence basis needs
 Ali's ruling of 2026-10-23 (LICBASIS, below). ✅ The deadlines are met: S6's Millionea rules page (`/legal/rules/millionea`) and its Terms section, and S7 and
 S6's notices, tax-report lines and payout-float check, are live with `c5dede03d` (2026-10-23).
 
+**✅ 2026-10-23 — the polish release on `main`: the Millionea development is complete (the Claude session asheib-f3 on
+OMEGA; Ali: "push live everything and clean up perfectly and end progress").**
+- **HUB-2B** (`claude/maswali-s5-r2-hub`): the hub's round 2 — its loading drawing in GhostWords (every static text its
+  own words unseen, every figure a same-width template), so it lands where the page does in Chromium and WebKit; the
+  facts keeper keeps a connective with the word after it; a closed week's facts in their own cell.
+- **R3-2B** (`claude/maswali-s5-r3-fix`): the phone rails' labels whole in both phone engines (the classic rail and the
+  journey rail, four and five tabs; DESIGN_AUTHORITY §K 8b, §M8a item 11); CI installs the phones' Chinese face; a static
+  loading paragraph sets its own words unseen (`maswali-ghost-words.tsx`, DESIGN_AUTHORITY §M4a rule 5) — the provider
+  sits in AppShell only while Millionea is visible, so a hidden reader's page stays byte-identical; qa:hover-touch judges
+  a tap as a phone leaves it.
+- **HEADER-1024**: in Swahili at 1024 a signed-in player's header row now fits (least slack 11.4px; it ran 16.6px past its
+  edge) — only the bar's spacing gives way when the row is full; every guest tile is byte-identical to before.
+- **S6-NOTICES' correctSeal ruling**: only the officer who set a question's present result corrects it — its sealer, or
+  for a ruled result the officer who ruled; the second officer is never that officer; a Compliance-ruled result changes
+  only through another objection (RULES §2.12). **GUIDE 10**: the admin guide's B10/B11 say so, word for word.
+- **FLOW 14–16b**: a held wallet is offered no Millionea door the money path refuses (Tiketi zangu, the ticket's free
+  cancel, each saying Millionea's sentence); every Millionea bell title leads with its event and takes up to three lines
+  in the bell, so none is cut on a phone (Ali's FL.5 ruling; every other bell row stays one line, byte for byte).
+- Gates at the code head (critical only, Ali's word): tsc 0; qa:live 381/0 at ACTIVE and 391/0
+  at the default; the classic rail drawn 239/0; the header fit 36/0; the ghost hops 51/0; the door census 40/0 at
+  WITHDRAWN; test:maswali-fairness ALL PASS; objections 54/54 and notify 159/165 on the two stores; m1-light, r6c 92/0,
+  r10 93/0, tab-anchors, titles 8/0 (red 4/4), held-wallet 13/0, the admin guide 11/0, the hub 116/0, ui 163/0, design
+  154/0, blob-pin 8/0, disclosure 123/0. CI on `17301a7e3` found five reds from the lanes' meeting (the zh final rule
+  against the rules page, a one-sided inner light, the bell's dot and clamp census, a cancel sentence outside the keep,
+  an officer link to no anchor), each fixed and green here; the in-memory battery ran 266 suites green before the push;
+  CI on this head runs after it (Ali: "push now … if they find anything, fix and re-push").
+- Not run: classic parity for the integrated head (HEADER-1024's own compare against `4c75dbbb6`'s baseline named every
+  difference; R3-2B's rails drawn 239/0, dark 199/0 and its tiles); the long red twins.
+- Also today, outside the code: Cloudflare's Email Address Obfuscation is off for 50pick.tz (Ali's token; its script had
+  thrown once on `/help`), read back `off`, and the live pages carry plain `mailto:` links.
+- Follow-ups, outside this release: QL.1 (Trading keeps the question limits by hand until a question carries its event
+  and competition — Ali's choice); the e-mail subjects still put the week first; HUB-2B's list of line-break and spacing
+  notes (hand-over branch, STOP 9 `FOLLOW-UPS.md`); two lanes' unshipped work kept on their branches, never verified —
+  `claude/maswali-s6-notices` (`7b541b891`: M-2, a letter the provider refused three times is sent by no run again; L-2
+  to L-4, the integrity card's sentences) and `claude/maswali-s6-lint` (`6f3bb08fd`, its last WIP).
+
 **✅ 2026-10-23 — S7 and S6 on `main` (the Claude session asheib-f3 on OMEGA; Ali: "finish everything by 6 maximum" —
 "check only what's critical, no need for long-time things").** This release is S7 and S6 together, with the day's final
 end-to-end review folded in:
@@ -72,11 +108,6 @@ end-to-end review folded in:
   cleanly at console 12 and c5 4 caught, 0 missed); S6's reds batches B–D (83 twins; batch A 19 of 22 caught, 0 missed,
   and money-path 135/135); classic parity for S6 (it touches no classic page beyond a server action and its own glyphs;
   S7's part was 67/67). The admin drive's 6.4 is the drive's own race (the void lands; 6.4b and 6.4c pass).
-- **The next release — the polish:** S6-NOTICES' correctSeal ruling (`ff3eab8c1`: only the officer who set a question's
-  present result corrects it; a Compliance-ruled result changes only through another objection) with GUIDE 10
-  (`96772abeb`); FLOW 14 (Tiketi zangu and the ticket's cancel for a held wallet); HUB-2B, R3-2B (static loading
-  paragraphs set their own words unseen, so they land in any engine) and HEADER-1024 (Swahili at 1024: a signed-in
-  header row past its edge).
 
 **✅ 2026-10-23 — UDDOT and LICBASIS on `main` `4c75dbbb6` (the Claude session asheib-f3 on OMEGA; Ali: "remove the golden dot …
 people are misunderstanding and thinking there is a certain notification there"; on the licence basis: "mark this
@@ -122,15 +153,19 @@ order you think is perfect … give me the pdf … mark progress done").**
   margins and an undrawn chart) — measured directly on fresh servers of both commits: identical (the reading container
   1080px at x100 with 100px margins, the chart not yet drawn on either).
 
-**State (2026-10-23):** S1–S7 are on `main` and Millionea is ACTIVE on production (Ali's ruling of 2026-10-23): every
-player surface, the rules page and Terms, the notices, the tax lines, the payout-float check and the hardening. Nothing
-sells until an admin pays the guarantee in and a week opens (the earliest Monday 00:00 EAT). The polish release (above)
-follows; then S8 is Ali's list.
+**State (2026-10-23):** the Millionea development is complete. S1–S7 are on `main` (12/13 sessions ✅) and Millionea
+is ACTIVE on production (Ali's ruling of 2026-10-23): every player surface with both 10/10 rounds, the rules page and
+Terms, the notices, the tax lines, the payout-float check, the hardening and the admin guide. Nothing sells until an
+admin pays the guarantee in and a week opens (the earliest Monday 00:00 EAT). Only S8 remains — Ali's list.
 
-**Next:** in order — (1) the polish release to `main` (the parts listed above), read back, §1's S5 row ticked and
-§6.1 line 6 with it; (2) S8 — Ali's list in §6.1: an admin pays the guarantee in (Pools → the Owner card → Guarantee:
-the amount and the bank reference → Pay in), Finance funds and confirms the payout float, the rulings on lines 4 and
-7–10, line 13 read, then his launch word; the first public week is the drive (Ali, 2026-10-22).
+**Next:** S8 — the launch, which Ali gave on 2026-10-23 (COMPLIANCE-DECISIONS § "2026-10-23 · Maswali Millionea — Ali's
+launch-gate answers …"), in order: (1) an admin pays the guarantee in (§6.1 line 2: Pools → the Owner card → Guarantee:
+the amount and the bank reference → Pay in; the admin guide on Ali's Desktop shows each step); (2) Finance funds the
+Selcom payout float and confirms it in writing (line 3); (3) line 7's last sub-items — the measures view's launch date and
+the Vodacom lane's note; (4) then an admin opens the first public week (the earliest Monday 00:00 EAT) and the agent terms
+branch `claude/maswali-agent-terms` goes live with it; that week is the drive (Ali, 2026-10-22) and its record closes S8
+(line 12). Also on Ali's list: rotate every Railway variable (the incident); revoke the Cloudflare token used for the
+email setting; QL.1 after the first week.
 
 ## §0a · Historical handovers (superseded by §0 above)
 
@@ -1023,7 +1058,7 @@ never build there. The repository is public: describe anti-abuse controls by wha
 | D2 | Design R2: received and inherited | ✅ | 2b335451f (2026-10-17): filed raw at `design-system/v6-2026-10-17-millionea/` with its INHERIT-MANIFEST; no gate failed |
 | S4 | Admin console and operations | ✅ | on `main` dark at `f312d652` (2026-10-18); the milestone battery closes its deferred `test:all` gate, and the console's shots were read tile by tile at 360/768/1280/1920 |
 | D3 | Ali's N1–N4 rulings, filed in DESIGN_AUTHORITY and motion.css | ✅ | 2b6bf5bf (2026-10-17): DESIGN_AUTHORITY §M8a, COMPLIANCE-DECISIONS, the manifests, the agency note; the N-block lands in `motion.css` with its first consumer in S5 (`test:dead-css`) |
-| S5 | Player surfaces | 🔨 | on `claude/maswali-s5-release`, with the fix lanes and `main` `bfa0b7d57` merged (2026-10-21 PM) and the design lanes' 10/10 pass in flight; focused source and two-store action checks, the 198/198 disposable-PostgreSQL money battery, earlier player tiles and classic parity are green; final exact-commit suite, render, build, local live QA, dark deploy and production read-back remain |
+| S5 | Player surfaces | ✅ | on `main` at `21b246e5f` (2026-10-23, the polish release): every player surface with Ali's 10/10 rounds 1 and 2, the hub's round 2, the phone engines' text (R3), the Swahili header at 1024 — §0 |
 | S6 | Fairness, notices, reports, legal, data | ✅ | on `main` at `c5dede03d` (2026-10-23, with S7): the rules page and Terms, the winner and objection notices, the tax-report lines, the payout-float check, the admin console's plain words, the admin guide — §0 |
 | S7 | Adversarial hardening | ✅ | on `main` at `c5dede03d` (2026-10-23, with S6): the objection door, the takeover alert, the held-winner release in bounded sections, the product-line fence migration — FAILURE-INVENTORY §9, §0 |
 | S8 | Live drive and public launch | ⬜ | starts when every §6 line but "(after ACTIVE)" is ticked; the first public week is the drive (Ali, 2026-10-22); closes on its record |
@@ -1767,7 +1802,9 @@ ticked, and is ✅ only when that one is too.
    it, and refuse-to-open was proven red in S3. *(Ali, 2026-10-23: an admin pays it in — Pools → the Owner card →
    Guarantee → the amount and the bank reference → Pay in → type FUND GUARANTEE; the operator guide carries the steps.)*
 3. ☐ **Payout float funded:** the Selcom float covers the largest possible floor payout plus a buffer. Finance confirms in writing. The low-float alert is wired.
-4. ☐ **Insider bar** verified against production's live staff list and desk designations (read-only counts). `HOUSE_PRODUCT_POLICY.MASWALI = "denied"` is live.
+4. ☑ **Insider bar** verified against production's live staff list and desk designations (read-only counts). `HOUSE_PRODUCT_POLICY.MASWALI = "denied"` is live.
+   Met 2026-10-23 (COMPLIANCE-DECISIONS § "2026-10-23 · Maswali Millionea — Ali's launch-gate answers …"): production's read-only counts — ADMIN 3 · GROWTH 2 · PLAYER 286, no role outside
+   PLAYER, AGENT and the seven staff roles (each refused by the buy path); 5 house bots, MASWALI denied; 0 tickets.
 5. ☑ **Officer staffing** — met 2026-10-23 by Ali's ruling *"all admins could seal them, all admins are trusted officers"*
    (COMPLIANCE-DECISIONS § "2026-10-23 · Maswali Millionea — the licence basis is 50pick's GBT licence …"): every ADMIN
    account is an officer for the weekend seal, so no named primary and backup is needed. The grant rule: the ADMIN role
@@ -1778,25 +1815,41 @@ ticked, and is ✅ only when that one is too.
 
 **Gate B, before rollout ACTIVE:**
 
-6. ☐ **The classic-shell entry points** (OD-23, as amended: the bar's Millionea link — DESIGN_AUTHORITY §M8a item 11 —
+6. ☑ **The classic-shell entry points** (OD-23, as amended: the bar's Millionea link — DESIGN_AUTHORITY §M8a item 11 —
    the phone rail's Millionea track in Live's place and the landing's Millionea line, Ali 2026-10-22) and the journey entry
    (home card plus the third Tiketi switch) are live behind the same rollout. They were shot at 320/360/768/1280 in sw, en
    and zh, and read one by one.
+   Met 2026-10-23 with the polish release: the rail's Millionea track, More with Live first and no dot on any tab
+   (qa:classic-rail drawn 221/0 and the lead's tile read at `4c75dbbb6`; R3-2B's rails in both phone engines — classic
+   drawn 239/0 and dark 199/0, the journey rail's four and five tabs 2538/0 each, 48 tiles at 320/340/360/412 in sw, en
+   and zh read with no cut label), the landing's line (landing-doors 266/0 dark, 791/0 drawn at `07a400bc3`) and the
+   journey entry (S5's drives).
 7. ☐ **Vodacom S16 baseline note:**
    - a dated COMPLIANCE-DECISIONS ruling amending S16 "in bounds" item 8 (OD-22): the five measures exclude MASWALI, and harm markers are reported for all players and for players without a ticket;
    - `journey-measures-dal.ts` filter live;
    - the launch date marked on the measures view;
    - VODACOM-PLAN §0 notified through the Vodacom lane, not edited by this lane.
-8. ☐ **Tax treatment ruled (OD-08)** and the reconciling lines live. Otherwise the first no-winner week jams locking and filing of the **whole** book. Withholding tax on winnings confirmed by Finance/TRA (MB-77). *(2026-10-21: Finance's confirmation of both is recorded on Ali's word — COMPLIANCE-DECISIONS § "2026-10-21 · Maswali Millionea — …"; the box ticks when S6's reconciling lines are live.)*
-9. ☐ **RULES §5 step 6** verified on production (database and screen). Both PDFs regenerated and rasterised.
+   2026-10-23: the dated ruling is recorded (COMPLIANCE-DECISIONS § "2026-10-23 · Maswali Millionea — Ali's launch-gate answers …", item 2) and the filter is live; owed — the
+   launch date on the measures view and the Vodacom lane's note.
+8. ☑ **Tax treatment ruled (OD-08)** and the reconciling lines live. Otherwise the first no-winner week jams locking and filing of the **whole** book. Withholding tax on winnings confirmed by Finance/TRA (MB-77). *(2026-10-21: Finance's confirmation of both is recorded on Ali's word — COMPLIANCE-DECISIONS § "2026-10-21 · Maswali Millionea — …"; the box ticks when S6's reconciling lines are live.)*
+   Met 2026-10-23: S6's reconciling lines are live with `3ec32bb72` (e2e:tax-report 20/0 at its gate), on Finance's
+   confirmation recorded on Ali's word on 2026-10-21.
+9. ☑ **RULES §5 step 6** verified on production (database and screen). Both PDFs regenerated and rasterised.
+   Met 2026-10-23 (COMPLIANCE-DECISIONS § "2026-10-23 · Maswali Millionea — Ali's launch-gate answers …"): no `maswali.config` row is stored on production, so the ruled figures are in force —
+   TZS 1,000 a ticket, a TZS 1,000,000 floor, a 13% fee, 10 tickets a week — and the live rules page states them; the
+   operator guide and the rates PDF were regenerated and read page by page.
 10. ☐ **Agent terms** version bumped per OD-20. Terms and Millionea rules versions effective at ACTIVE.
-11. ☐ **Monitoring and runbook:** alerts proven, operator guide published, support scripts live.
+11. ☑ **Monitoring and runbook:** alerts proven, operator guide published, support scripts live.
+    Met 2026-10-23: the console's alerts proven (test:maswali-admin-plain 49/0, its red 32/32), the operator guide
+    published (`docs/50pick-maswali-operator-guide.pdf`, on Ali's Desktop), the desk's scripts live in the ticket lookup
+    (`maswali-support-scripts.ts`).
 12. ☐ (after ACTIVE) **The S8 drive record — the first public week's acceptance record** — exists at
     `docs/qa/millionea-live-drive-2026MMDD.md`, and its numbers equal §5's formulas to the shilling.
-13. ☐ **Rollback is understood:**
+13. ☑ **Rollback is understood:**
     - the Owner switch to WITHDRAWN hides surfaces and never deletes tickets;
     - a sales pause never blocks settlement, refunds or withdrawals;
     - a product stop is the sunset.
+    Met 2026-10-23 — Ali: "Understood" (COMPLIANCE-DECISIONS § "2026-10-23 · Maswali Millionea — Ali's launch-gate answers …").
 14. ☑ **S7's three KNOWN-RED cases closed or accepted in writing** (the S7 review, 2026-10-18; `FAILURE-INVENTORY.md`
     §9) — all three CLOSED on 2026-10-22, on `claude/maswali-s7-s5` at S7-MERGE 3 (the objection lane's `1c8b42284`
     merged over S7-F9 13, the merged tree green): OB.0 — the per-question objection door MR-16 promises (MB-23), built
