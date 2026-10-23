@@ -1141,10 +1141,12 @@ const emptyListDefects = (src: string) => {
   const d: string[] = [];
   if (!s.includes("const invite = total === 0 && gate.visible && (await millioneaBreakOf(gate.userId)) === null;")) d.push("the empty list does not ask the break before it invites");
   if (!s.includes("const hubWeek = invite ? (await millioneaHubNow(gate.userId, gate.state))?.week ?? null : null;")) d.push("the week on sale is read for a reader the list may not invite");
-  if (!s.includes("body={selling ? fill(t.millionea.emptyTicketsNext,")) d.push("the body is not the week on sale's own line");
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-23 (MASWALI-BUILD FLOW 14, the lead's ruling): a held wallet hears the buy's refusal
+  // where the week on sale stood, and is offered no slip (`held`; test:millionea-held-wallet 2.5 holds its sentence).
+  if (!s.includes('body={selling ? held ? millioneaRefusalBody("wallet_frozen", t) ?? undefined : fill(t.millionea.emptyTicketsNext,')) d.push("the body is not the week on sale's own line");
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-TICKETS M3): the call is the platform's primary verb to the slip, "Fill a
   // ticket", and only for a week on sale — which is read only for a reader the invitation admits (`hubWeek` asks `invite`).
-  if (!s.includes("const selling = hubWeek?.selling ? hubWeek : null;") || !s.includes('action={selling ? ( <Link href={MILLIONEA_HREF.slip as never} className="btn btn-primary btn-md">{t.millionea.titleSlip}</Link> ) : undefined}')) d.push("the door to the hub is offered without the invitation's answer");
+  if (!s.includes("const selling = hubWeek?.selling ? hubWeek : null;") || !s.includes('action={selling && !held ? ( <Link href={MILLIONEA_HREF.slip as never} className="btn btn-primary btn-md">{t.millionea.titleSlip}</Link> ) : undefined}')) d.push("the door to the hub is offered without the invitation's answer");
   if (/action=\{gate\.visible \?/.test(s)) d.push("the door to the hub is offered on the rollout alone");
   return d;
 };
@@ -1153,7 +1155,7 @@ const emptyListDefects = (src: string) => {
   ok("14.1 · Tiketi zangu's empty list invites (the week on sale, the door to the hub) only a reader shown Millionea and NOT on a break — on a break, the title alone (the home card's rule)", d.length === 0, d.join(" | "));
   const onRollout = emptyListDefects(read(`${APP}/tickets/page.tsx`).replace("const invite = total === 0 && gate.visible && (await millioneaBreakOf(gate.userId)) === null;", "const invite = total === 0 && gate.visible;"));
   ok("14.1′ CONTROL · an invitation that forgets the break is reported", onRollout.includes("the empty list does not ask the break before it invites"), onRollout.join(" | "));
-  const oldDoor = emptyListDefects(read(`${APP}/tickets/page.tsx`).replace("action={selling ? (", "action={gate.visible ? ("));
+  const oldDoor = emptyListDefects(read(`${APP}/tickets/page.tsx`).replace("action={selling && !held ? (", "action={gate.visible ? ("));
   ok("14.1″ CONTROL · the old door, offered on the rollout alone, is reported", oldDoor.includes("the door to the hub is offered on the rollout alone"), oldDoor.join(" | "));
 }
 

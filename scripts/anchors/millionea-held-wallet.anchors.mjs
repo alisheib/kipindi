@@ -1,5 +1,6 @@
-// Disk plants for `red:millionea-held-wallet` (MASWALI-BUILD FLOW 13: a held wallet hears ONE Millionea sentence — the
-// slip's pre-refusal, the buy's refusal and the hub's buy block) and `test:red-anchors`. The red runner
+// Disk plants for `red:millionea-held-wallet` (MASWALI-BUILD FLOW 13 and FLOW 14: a held wallet hears Millionea's own
+// sentences — the slip's pre-refusal, the buy's refusal, the hub's buy block, Tiketi zangu's empty list and the free
+// cancel — and is offered no door the money path refuses) and `test:red-anchors`. The red runner
 // (`scripts/millionea-held-wallet.test.mts --prove-red`) writes each plant into the real source, runs the suite, requires it
 // to fail ON THE NAMED CASE (`failure`), and restores the file byte for byte.
 // A dot is matched as [.], so no escape is typed.
@@ -34,7 +35,7 @@ export const MUTATIONS = [
     failure: /FAIL 2[.]3 /,
   },
   {
-    name: "(HW5) the hub's held read narrows to FROZEN — a CLOSED wallet is offered the fill door the buy refuses",
+    name: "(HW5) the pages' held read narrows to FROZEN — a CLOSED wallet is offered doors the money path refuses",
     file: "src/lib/server/millionea-doors.ts",
     from: "return !!wallet && wallet.status !== \"ACTIVE\";",
     to: "return !!wallet && wallet.status === \"FROZEN\";",
@@ -46,5 +47,33 @@ export const MUTATIONS = [
     from: "walletFrozen: \"Pochi yako imegandishwa, kwa hiyo huwezi kukata tiketi. Wasiliana na msaada kutatua hili.\",",
     to: "walletFrozen: \"Pochi yako imegandishwa, kwa hiyo huwezi kuweka dau. Wasiliana na msaada kutatua hili.\",",
     failure: /FAIL 3[.]1 /,
+  },
+  {
+    name: "(HW7) Tiketi zangu's empty list offers a held wallet the slip again",
+    file: "src/app/millionea/tickets/page.tsx",
+    from: "action={selling && !held ? (",
+    to: "action={selling ? (",
+    failure: /FAIL 2[.]5 /,
+  },
+  {
+    name: "(HW8) the ticket page draws the free cancel for a held wallet — a door the cancel refuses",
+    file: "src/app/millionea/tickets/[serial]/page.tsx",
+    from: "const cancelHeld = cancellable && (await millioneaWalletHeld(gate.userId));",
+    to: "const cancelHeld = false;",
+    failure: /FAIL 2[.]6 /,
+  },
+  {
+    name: "(HW9) the cancel's refusal says the platform's \"bets can't be placed\" under \"Not cancelled\" again",
+    file: "src/app/millionea/tickets/[serial]/ticket-acts.tsx",
+    from: "          : reason === \"wallet_frozen\" ? t.millionea.cancelWalletFrozen\n",
+    to: "",
+    failure: /FAIL 2[.]7 /,
+  },
+  {
+    name: "(HW10) the Swahili cancel sentence leaves the cancel's own verb",
+    file: "src/lib/i18n-dict.ts",
+    from: "kwa hiyo tiketi hii haiwezi kughairiwa. Wasiliana",
+    to: "kwa hiyo tiketi hii haiwezi kufutwa. Wasiliana",
+    failure: /FAIL 3[.]3 /,
   },
 ];

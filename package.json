@@ -888,6 +888,8 @@
     "qa:result-reference": "node scripts/qa-result-reference.mjs",
     "test:millionea-held-wallet": "tsx scripts/millionea-held-wallet.test.mts",
     "red:millionea-held-wallet": "tsx scripts/millionea-held-wallet.test.mts --prove-red",
+    "test:millionea-titles": "tsx scripts/millionea-titles.test.mts",
+    "red:millionea-titles": "tsx scripts/millionea-titles.test.mts --prove-red",
     "test:deposit-replay": "tsx scripts/deposit-replay.test.mts",
     "red:deposit-replay": "tsx scripts/deposit-replay.test.mts --prove-red",
     "db:probe-deposit-replay": "tsx scripts/db-scratch.mts --reset --run npx tsx scripts/live/pg-probe-run.mts scripts/deposit-replay.test.mts --pg",

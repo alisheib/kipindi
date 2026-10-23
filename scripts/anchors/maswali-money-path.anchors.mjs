@@ -1258,8 +1258,8 @@ export const MUTATIONS = [
   {
     name: "(NOB7) the receipt's English title says \"Ticket cut\" again — Ali's ruling 7 of 2026-10-21 undone, and a second copy of the slip's word",
     file: "src/lib/server/notification-service.ts",
-    from: "    titleEn: bought ? `${w.en} · ${bought.en}` : w.en,",
-    to: "    titleEn: n === 1 ? `${w.en} · Ticket cut` : `${w.en} · ${n} tickets cut`,",
+    from: "    ...(bought ? millioneaTitle(bought, w) : { titleEn: w.en, titleSw: w.sw, titleZh: w.zh }),",
+    to: "    ...millioneaTitle({ en: n === 1 ? \"Ticket cut\" : `${n} tickets cut`, sw: \"Tiketi imekatwa\", zh: \"已出票\" }, w),",
     expect: "10b.10 · ⭐ the receipt's title",
     suite: "notify",
   },

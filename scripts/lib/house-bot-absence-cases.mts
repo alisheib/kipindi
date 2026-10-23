@@ -133,7 +133,11 @@ export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // planted classic edit) reported; inside them one key each, `walletFrozen` (the lead's three sentences, the English
   // apostrophe the dictionary's typographic one), and one two-line comment in the English block. Its diff against
   // 1341177e5 is those 5 added lines; no line removed, no other line changed — `error.failWalletFrozen` stays as it was.
-  "src/lib/i18n-dict.ts": "989199be69c9eaf5fbd8b916e527f0bb54e77e9a",
+  // D19a RE-PINNED AT MASWALI-BUILD FLOW 14 (was 989199be6, FLOW 13's; the lead's ruling of 2026-10-23, a held wallet's free
+  // cancel): the strip-mln check — outside the three `millionea` blocks byte-identical, its control reported; inside them
+  // one key each, `cancelWalletFrozen` (the cancel's own verb, in `cancelNotOpen`'s form), and one two-line comment in the
+  // English block. Its diff against 989199be6 is those 5 added lines; no line removed, no other line changed.
+  "src/lib/i18n-dict.ts": "3481f131e6b924cda84f406efe4102716dd5ab95",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
 };

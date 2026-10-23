@@ -345,7 +345,8 @@ function BuyDoor({ t, w, signedIn, nowMs, nextOpen, breakBody, walletHeld = fals
   } else if (open && walletHeld) {
     // ⭐ FLOW 13 (the lead's ruling of 2026-10-23): a held wallet hears the buy's own refusal here, in Millionea's words — the
     // one sentence the slip and the buy say (`millioneaRefusalBody`) — never a door to fifteen answers it cannot buy.
-    door = <Callout tone="neutral" role="status" data-testid="millionea-hub-held">{millioneaRefusalBody("wallet_frozen", t)}</Callout>;
+    // The test id on a wrapper: the kit's Callout takes none (FLOW 13's was dropped from the page; FLOW 14).
+    door = <div data-testid="millionea-hub-held"><Callout tone="neutral" role="status">{millioneaRefusalBody("wallet_frozen", t)}</Callout></div>;
   } else if (open && atCap) {
     // The cap's one line, the slip's refusal says it too (S5-FIX-PLAYER P13): the next week only when one can follow.
     door = <Callout tone="info" role="status">{capReachedLine(t, w.ticketCap, nextOpen)}</Callout>;

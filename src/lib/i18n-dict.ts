@@ -3736,6 +3736,9 @@ export const dict = {
       previewChip: "Preview",
       cancelWindowClosed: "The free cancel has ended for this ticket. It stands, and you will find it in your tickets.",
       cancelNotOpen: "This ticket can no longer be cancelled: its week has moved on.",
+      // FLOW 14 (the lead's ruling of 2026-10-23): a held wallet's free cancel, in the cancel's own verb (`confirmCancel`, in
+      // `cancelNotOpen`'s form) — drawn in the cancel control's place, and said by the cancel's refusal.
+      cancelWalletFrozen: "Your wallet is frozen, so this ticket can’t be cancelled. Contact support to resolve it.",
       regEmpty: "No week is final yet.",
       titleSlip: "Fill a ticket",
       positionsRow: "Millionea tickets this week: {n}",
@@ -6725,6 +6728,7 @@ export const dict = {
       previewChip: "Onyesho la awali",
       cancelWindowClosed: "Muda wa kughairi bila malipo umeisha kwa tiketi hii. Tiketi inaendelea, na utaipata kwenye tiketi zako.",
       cancelNotOpen: "Tiketi hii haiwezi kughairiwa tena: wiki yake imesonga mbele.",
+      cancelWalletFrozen: "Pochi yako imegandishwa, kwa hiyo tiketi hii haiwezi kughairiwa. Wasiliana na msaada kutatua hili.",
       regEmpty: "Bado hakuna wiki iliyokamilika.",
       titleSlip: "Jaza tiketi",
       positionsRow: "Tiketi za Millionea wiki hii: {n}",
@@ -9688,6 +9692,7 @@ export const dict = {
       previewChip: "预览",
       cancelWindowClosed: "此彩票的免费取消期已结束。彩票继续有效，可在您的彩票中查看。",
       cancelNotOpen: "此彩票已无法取消：其所属周已进入下一阶段。",
+      cancelWalletFrozen: "您的钱包已冻结，无法取消此彩票。请联系客服处理。",
       regEmpty: "尚无已确定的周。",
       titleSlip: "填写彩票",
       positionsRow: "本周 Millionea 彩票：{n} 张",

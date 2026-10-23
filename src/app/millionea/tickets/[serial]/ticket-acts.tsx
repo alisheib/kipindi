@@ -72,7 +72,7 @@ export function TicketHost({ serial, through, children }: { serial: string; thro
  *    "2026-W49-000041?"); the price one money run; the platform's "take it back" (`rotateCcw`) on its plate, never the
  *    warning triangle a free exit does not earn (the journey's free-exit confirm draws none).
  * A refusal is said in Millionea's own words where the platform's would speak of selling (`exit_window_closed`,
- * `position_not_open`), else in the registry's, under "Not cancelled" — never the button's own verb as its title — as the
+ * `position_not_open`) or of bets (`wallet_frozen`: `cancelWalletFrozen`, FLOW 14), else in the registry's, under "Not cancelled" — never the button's own verb as its title — as the
  * factual toast, or the danger one; a danger refusal is a money path's, so it stays until it is read (§F2, §F8:
  * `durationMs: 0`, as the market bet's own refusal).
  * ⭐ THE CANCEL SAYS WHOSE PAGE IT WAS (round 3): `expectedOwnerId`, as the slip sends it with the buy — an account that
@@ -116,7 +116,8 @@ export function TicketCancel({ serial, ownerId, until, serverNow, price, cap, wi
       const reason = refusalReason(failure);
       const body = reason === "exit_window_closed" ? t.millionea.cancelWindowClosed
         : reason === "position_not_open" ? t.millionea.cancelNotOpen
-          : renderFailure(failure, t.error as unknown as Record<string, string>, t.common.couldNotPlace, (n) => formatTzs(n)).body;
+          : reason === "wallet_frozen" ? t.millionea.cancelWalletFrozen
+            : renderFailure(failure, t.error as unknown as Record<string, string>, t.common.couldNotPlace, (n) => formatTzs(n)).body;
       const variant = refusalVariant(reason);
       toast({ title: t.millionea.cancelRefusedTitle, description: body, variant, ...(variant === "danger" ? { durationMs: 0 } : null) });
       router.refresh();

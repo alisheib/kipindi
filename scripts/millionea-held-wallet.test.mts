@@ -1,22 +1,24 @@
 /**
- * test:millionea-held-wallet — A HELD WALLET HEARS ONE MILLIONEA SENTENCE (MASWALI-BUILD FLOW 13, the lead's ruling of
- * 2026-10-23 on FLOW 10's follow-ups: "one Millionea sentence for the buy's refusal AND the slip's pre-refusal, in Ali's
- * ruled buy vocabulary" and "for a held wallet, the hub's buy block says the same refusal instead of the 'Fill a ticket'
- * door").
+ * test:millionea-held-wallet — A HELD WALLET HEARS MILLIONEA'S OWN SENTENCES, AND NO DOOR THE MONEY PATH REFUSES
+ * (MASWALI-BUILD FLOW 13 and FLOW 14, the lead's rulings of 2026-10-23: "one Millionea sentence for the buy's refusal AND
+ * the slip's pre-refusal, in Ali's ruled buy vocabulary"; "for a held wallet, the hub's buy block says the same refusal
+ * instead of the 'Fill a ticket' door"; Tiketi zangu's empty state "gets the same treatment"; and the free cancel: "for a
+ * held wallet, the sentence is drawn in the cancel control's place", its toast the same).
  *
  *   npx tsx scripts/millionea-held-wallet.test.mts               (npm run test:millionea-held-wallet)
  *   npx tsx scripts/millionea-held-wallet.test.mts --prove-red   (npm run red:millionea-held-wallet — each plant on disk, restored)
  *
  * §1 THE ONE CHOICE (`lib/millionea-refusal.ts`): `wallet_frozen` is said in `millionea.walletFrozen`; every other reason
  *    keeps the registry's sentence (the choice answers null).
- * §2 THE THREE SURFACES READ IT, and the hub's read is the buy's own condition: the slip page's pre-refusal (before the
- *    registry's fallback), the buy's refusal toast, the hub's buy block (after a break and a guest's door, before the cap's
- *    line and the fill door, from `millioneaWalletHeld`); the buy, the slip's read and the hub's read all hold a wallet
- *    whose status is not ACTIVE.
- * §3 THE WORDS — the lead's three sentences exactly (the English apostrophe the dictionary's typographic one), and the
- *    platform's `error.failWalletFrozen` untouched for every other product.
+ * §2 THE SURFACES READ IT, and every held read is the money path's own condition: the slip page's pre-refusal (before the
+ *    registry's fallback), the buy's refusal toast, the hub's buy block (after a break's notice and a guest's door, before
+ *    the cap's line and the fill door, from `millioneaWalletHeld`), Tiketi zangu's empty state (no slip, the sentence for
+ *    the week on sale), and the free cancel (`millionea.cancelWalletFrozen` in the control's place and in its refusal).
+ * §3 THE WORDS — the lead's sentences exactly (the English apostrophe the dictionary's typographic one), the cancel's in
+ *    the cancel's own verbs, and the platform's `error.failWalletFrozen` untouched for every other product.
  * That the slip refuses a held wallet at all, on both stores, and the buy with the same reason, is test:maswali-player 4.7b
- * (FLOW 10); the drawn proof — the slip, the buy's toast and the hub in sw/en/zh — is FLOW 13's recorded browser walk.
+ * (FLOW 10); the drawn proof — the hub, the slip, the buy's toast, Tiketi zangu and the ticket's cancel in sw/en/zh — is
+ * FLOW 13 and FLOW 14's recorded browser walk.
  * Pure and static: it reads files and calls a pure function; no server, no database.
  */
 import { readFileSync, writeFileSync } from "node:fs";
@@ -78,8 +80,8 @@ const OTHERS: unknown[] = ["wallet_missing", "balance_insufficient", "millionea_
 const said = OTHERS.filter((r) => millioneaRefusalBody(r as string | null | undefined, dict.en) !== null);
 ok("1.2 · ⛔ every other reason keeps the registry's sentence — the choice answers null", said.length === 0, JSON.stringify(said));
 
-// ── §2 · the three surfaces ─────────────────────────────────────────────────────────────────────────────────────────────
-console.log("\n§2 · the three surfaces read it");
+// ── §2 · the surfaces ───────────────────────────────────────────────────────────────────────────────────────────────────
+console.log("\n§2 · the surfaces read it");
 const slipPage = read("src/app/millionea/slip/page.tsx");
 ok("2.1 · ⭐ the slip's pre-refusal says it instead of the slip — before the registry's fallback, which would say \"bets\"",
   slipPage.includes('import { millioneaRefusalBody } from "@/lib/millionea-refusal";')
@@ -93,26 +95,43 @@ ok("2.2 · ⭐ the buy's refusal toast says it — the one sentence, the registr
     && slipClient.includes("toast({ title: t.millionea.refusedTitle, description: millioneaRefusalBody(reason, t) ?? said.body, variant,")
     && !slipClient.includes("description: said.body"));
 const hub = read("src/app/millionea/page.tsx");
-ok("2.3 · ⭐ the hub's buy block says it for a held wallet instead of the fill door — after a break's notice and a guest's door, before the cap's line",
+ok("2.3 · ⭐ the hub's buy block says it for a held wallet instead of the fill door — after a break's notice and a guest's door, before the cap's line; its test id on an element that draws (the kit's Callout takes none)",
   hub.includes("const walletHeld = await millioneaWalletHeld(gate.userId);")
     && hub.includes("breakBody={breakBody} walletHeld={walletHeld} guest={guest}")
     && inOrder(hub, [
       "if (breakBody) {",
       "} else if (open && !signedIn) {",
-      '} else if (open && walletHeld) { door = <Callout tone="neutral" role="status" data-testid="millionea-hub-held">{millioneaRefusalBody("wallet_frozen", t)}</Callout>; } else if (open && atCap) {',
+      '} else if (open && walletHeld) { door = <div data-testid="millionea-hub-held"><Callout tone="neutral" role="status">{millioneaRefusalBody("wallet_frozen", t)}</Callout></div>; } else if (open && atCap) {',
       "} else if (open) { buys = true; door = ( <Link href={MILLIONEA_HREF.slip as never}",
     ]));
 const doors = read("src/lib/server/millionea-doors.ts");
 const player = read("src/lib/server/maswali-player.ts");
 const money = read("src/lib/server/maswali-money-service.ts");
-ok("2.4 · ⭐ one condition: the buy, the slip's read and the hub's read each hold a wallet whose status is not ACTIVE — and the hub's read fails open (the slip and the buy still refuse)",
-  money.includes('if (!wallet || wallet.status !== "ACTIVE") return refuse("Wallet unavailable.", { code: "NOT_FOUND", reason: wallet ? "wallet_frozen" : "wallet_missing" });')
+ok("2.4 · ⭐ one condition: the buy and the cancel refuse, and the slip's and the pages' reads hold, a wallet whose status is not ACTIVE — the pages' read failing open (the money path still refuses)",
+  money.includes('if (!wallet || wallet.status !== "ACTIVE") { return refuse("Wallet unavailable.", { code: "NOT_FOUND", reason: wallet ? "wallet_frozen" : "wallet_missing" }); }')
+    && money.includes('if (!wallet || wallet.status !== "ACTIVE") return refuse("Wallet unavailable.", { code: "NOT_FOUND", reason: wallet ? "wallet_frozen" : "wallet_missing" });')
     && player.includes('frozen = !!wallet && wallet.status !== "ACTIVE";')
     && inOrder(doors, [
       "export const millioneaWalletHeld = cache(async (userId: string | null): Promise<boolean> => {",
       "if (!userId) return false;",
       'return !!wallet && wallet.status !== "ACTIVE"; } catch { return false; }',
     ]));
+const tickets = read("src/app/millionea/tickets/page.tsx");
+ok("2.5 · ⭐ Tiketi zangu's empty list offers a held wallet no slip — the sentence stands for the week on sale (read only while one sells, after the break's rule)",
+  inOrder(tickets, [
+    "const invite = total === 0 && gate.visible && (await millioneaBreakOf(gate.userId)) === null;",
+    "const selling = hubWeek?.selling ? hubWeek : null;",
+    "const held = selling !== null && (await millioneaWalletHeld(gate.userId));",
+    'body={selling ? held ? millioneaRefusalBody("wallet_frozen", t) ?? undefined : fill(t.millionea.emptyTicketsNext,',
+    "action={selling && !held ? ( <Link href={MILLIONEA_HREF.slip as never}",
+  ]) && (tickets.match(/MILLIONEA_HREF\.slip/g) ?? []).length === 1);
+const ticket = read("src/app/millionea/tickets/[serial]/page.tsx");
+ok("2.6 · ⭐ the ticket page draws the cancel's sentence in the cancel control's place for a held wallet (read only for a cancellable ticket)",
+  ticket.includes("const cancelHeld = cancellable && (await millioneaWalletHeld(gate.userId));")
+    && ticket.includes('cancel={cancellable && cancelUntil !== null && rules ? cancelHeld ? <div data-testid="millionea-ticket-cancel-held"><Callout tone="neutral" role="status">{t.millionea.cancelWalletFrozen}</Callout></div> : <TicketCancel'));
+const acts = read("src/app/millionea/tickets/[serial]/ticket-acts.tsx");
+ok("2.7 · ⭐ the cancel's refusal says the same sentence when the hold lands while the page is open — before the registry's fallback",
+  acts.includes('const body = reason === "exit_window_closed" ? t.millionea.cancelWindowClosed : reason === "position_not_open" ? t.millionea.cancelNotOpen : reason === "wallet_frozen" ? t.millionea.cancelWalletFrozen : renderFailure('));
 
 // ── §3 · the words ──────────────────────────────────────────────────────────────────────────────────────────────────────
 console.log("\n§3 · the words");
@@ -130,8 +149,18 @@ const PLATFORM = {
 } as const;
 ok("3.2 · the platform's sentence stays for every other product (`error.failWalletFrozen`, untouched)",
   LOCALES.every((l) => e(l).failWalletFrozen === PLATFORM[l]), LOCALES.map((l) => e(l).failWalletFrozen).join(" | "));
+const CANCEL = {
+  en: "Your wallet is frozen, so this ticket can’t be cancelled. Contact support to resolve it.",
+  sw: "Pochi yako imegandishwa, kwa hiyo tiketi hii haiwezi kughairiwa. Wasiliana na msaada kutatua hili.",
+  zh: "您的钱包已冻结，无法取消此彩票。请联系客服处理。",
+} as const;
+ok("3.3 · ⭐ the cancel's sentence in the cancel's own words — the button's verb (Ghairi tiketi / 取消彩票) in the form the player already reads (`cancelNotOpen`: \"haiwezi kughairiwa\")",
+  LOCALES.every((l) => m(l).cancelWalletFrozen === CANCEL[l])
+    && m("sw").confirmCancel === "Ghairi tiketi" && m("sw").cancelNotOpen.includes("haiwezi kughairiwa")
+    && m("zh").confirmCancel === "取消彩票" && m("zh").cancelNotOpen.includes("无法取消"),
+  LOCALES.map((l) => m(l).cancelWalletFrozen).join(" | "));
 
-const FLOOR = 8;
+const FLOOR = 12;
 ok(`floor · at least ${FLOOR} checks ran before this one`, passed + failed >= FLOOR, `${passed + failed} ran`);
 console.log(`\nmillionea-held-wallet: ${passed} passed, ${failed} failed`);
 if (failed) process.exitCode = 1;

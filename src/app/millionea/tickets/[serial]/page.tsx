@@ -30,7 +30,7 @@
  */
 import type { Metadata } from "next";
 import { generateMetadata as notFoundMetadata } from "@/app/not-found";
-import { millioneaTicketsDoor } from "@/lib/server/millionea-doors";
+import { millioneaTicketsDoor, millioneaWalletHeld } from "@/lib/server/millionea-doors";
 import { notFound, redirect } from "next/navigation";
 import { PageContainer } from "@/components/layout/page-container";
 import { BackLink } from "@/components/ui/back-link";
@@ -139,6 +139,9 @@ export default async function MillioneaTicketPage({ params }: { params: Promise<
   // The cap and the window the cancel names are the week's frozen ones: a cancellable ticket's week is the one on sale,
   // whose rules the how-to read answers (source WEEK).
   const rules = cancellable ? await millioneaHowTo({ userId: gate.userId, state: gate.state }) : null;
+  // ⭐ FLOW 14 (the lead's ruling of 2026-10-23): a held wallet cannot cancel (`cancelMaswaliTicket` refuses `wallet_frozen`),
+  // so the cancel's place says so in Millionea's words — never a door the money path refuses (`millioneaWalletHeld`).
+  const cancelHeld = cancellable && (await millioneaWalletHeld(gate.userId));
   const paid = view.win !== null && view.share === "paid";
   // M6 · a final PUBLIC week has its register page: the stub's question-set hash and the receipt's legal line open it, for
   // a reader the product is shown to (to a holder let in at a kill the register is an unknown address).
@@ -267,7 +270,9 @@ export default async function MillioneaTicketPage({ params }: { params: Promise<
               } : undefined}
               cannotWin={running && view.cannotWinSoFar}
               cancel={cancellable && cancelUntil !== null && rules
-                ? <TicketCancel serial={view.serial} ownerId={gate.userId} until={cancelUntil} serverNow={nowMs} price={view.stub.price} cap={rules.ticketCap} windowMins={rules.freeCancelMinutes} />
+                ? cancelHeld
+                  ? <div data-testid="millionea-ticket-cancel-held"><Callout tone="neutral" role="status">{t.millionea.cancelWalletFrozen}</Callout></div>
+                  : <TicketCancel serial={view.serial} ownerId={gate.userId} until={cancelUntil} serverNow={nowMs} price={view.stub.price} cap={rules.ticketCap} windowMins={rules.freeCancelMinutes} />
                 : undefined}
               play={play}
             />
