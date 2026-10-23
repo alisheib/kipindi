@@ -27,9 +27,10 @@
  *     width − every visible child's outer width, a growing child at its minimum − the gaps) plus the lead's give left.
  * CELLS: a guest, the demo player, the demo player with an unconfirmed email, and the demo player under an officer's hold
  * (each minted just before its own cells: every /auth/demo visit resets the hold, the email and the balance) × sw · en ·
- * zh × /markets, /updown, /live and (signed in) /positions — each page lights a different link, and a lit link is bolder
- * and wider — × the widths below: every 8px across the band where the links first show beside the cluster, then the
- * desktop rungs to 1920. Widths are walked by resizing the loaded page (the header is CSS-responsive); 1024 is loaded.
+ * zh × /markets, /updown, /live — each page lights a different link, and a lit link is bolder and wider — × 1024, 1032,
+ * 1040 (main still overflowed there), 1048 (where main first fitted), 1280 (the lockup and Deposit's word return) and
+ * 1920. KP_HDR_WIDTHS=sweep walks every 8px from 1024 to 1280 and the desktop rungs to 1920, and adds /positions for the
+ * signed-in readers. Widths are walked by resizing the loaded page (the header is CSS-responsive); the first is loaded.
  *
  * ⛔ REFUSES anything but `http://localhost:PORT` on an in-memory dev server (`live/journey-pass.mjs`'s premise). It
  * moves the one demo account's hold and email state, so never point it at a server another drive is using. It writes
@@ -40,7 +41,7 @@ import { premise, demoSession, LOCALE_COOKIE } from "./live/journey-pass.mjs";
 
 const BASE = process.env.BASE || process.env.KP_BASE || "http://localhost:3720";
 const PROVE_RED = process.argv.includes("--prove-red");
-// The cells that matter by default (the lead's matrix, 2026-10-23): 1024 and the widths main still overflowed at, the xl
+// The cells that matter by default (the lead's matrix, 2026-10-23): 1024 to 1048, where main first fitted, the xl
 // rung where the lockup and Deposit's word return, and the widest board. KP_HDR_WIDTHS=sweep walks 1024–1280 every 8px
 // and the desktop rungs to 1920 (the measurement that found the defect); KP_HDR_READERS / LOCALES / KP_HDR_ROUTES narrow.
 const SWEEP = [...Array.from({ length: 33 }, (_, i) => 1024 + i * 8), 1279, 1280, 1300, 1366, 1440, 1536, 1600, 1920];
