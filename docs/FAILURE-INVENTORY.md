@@ -1708,3 +1708,34 @@ toward a void the rule may not allow: it reads "past its void deadline", the fac
 2026-10-23; `VOID_DEADLINE_PASSED`, `maswali-admin-format.ts` — the console is English only), and the admin guide quotes
 the new label. Held by `test:maswali-admin-plain` 9.6 (the rendered alert and its wiring), 9.6b (the note) and 9.7 (the
 mark, and no console page saying "void proposed"), with the plants (AP22)–(AP26) of `red:maswali-admin-plain`.
+
+## §9d · MASWALI MILLIONEA — the final flow evaluation's fixes (FLOW, 2026-10-23)
+
+Ali, 2026-10-23: *"evaluate the final redirections and workflow of maswali … fix anything you notice not in place
+perfectly"*. The FLOW lane walked the release (`claude/maswali-s6-release`) at production's setting, ACTIVE, as a player.
+Each entry is the rule as it stands, where it is enforced, and the case and the plant that hold it.
+
+#### ✅ FL.1 · a deposit started from the slip never led back to it — fixed by FLOW 3 (MB-57)
+
+Found in a browser on the release (both shells, en 360): the slip's low-balance door sent the player to `/wallet/deposit`
+with no way back. Classic — production's reader — ended on the wallet's "Funds added" result with one door, "Done"; the
+journey's wait page offered "View receipt" and "Back to wallet". The answers were still in the tab, and nothing led there.
+THE RULE is MASWALI-PLAN MB-57's ("after a deposit, return to the slip with picks intact and never place the ticket
+automatically"), as built and recorded in its row and in `docs/FLOWS.md` § 4 ("A deposit started from the Millionea
+slip"): only the way back travels, in the addresses (`returnPath=/millionea/slip`, `src/lib/journey/slip-return.ts`, its
+one allowed return), honoured only with no saved bet beside it and only while Millionea is visible to the reader; the
+deposit lands on the wait page in both shells and, once paid, offers "Return to your answers"; a card deposit gets no door
+(the gateway's fixed return address, accepted by the lead). Held by `test:deposit-slip-return` (the allow-list, the wiring,
+the words) with plants (DSR1)–(DSR6) of `red:deposit-slip-return` — (DSR1) drops the slip from the allowed returns — and
+`qa:maswali-deposit-return` (sw/en/zh × 360/1280 × classic/journey, two tickets in each shell, a plain deposit's control,
+the dark mode on a WITHDRAWN server, and its own plant).
+
+#### ✅ FL.2 · the wallet's deposit result left one character of its reference alone — fixed by FLOW 4
+
+Found on the same walk: at 360 the classic wallet's result drew `txn_b7f5f7cd59628ee1bb86d11` over a lone `3` — the
+28-character id 1–2px wider than its box, wrapped greedily by `break-all`. THE RULE is DESIGN_AUTHORITY §M4a rule 5: a
+result modal's value that is one unbroken token of 16+ characters breaks only between near-equal chunks (14/14 for the id;
+`src/lib/even-break.ts`, drawn by `OperationResultModal`'s `DetailValue`), one line when it fits, the exact string on a copy.
+Classic-visible for every caller whose value is such a token; no classic parity cell draws a result modal. Held by
+`test:result-reference` with plants (RR1)–(RR4) of `red:result-reference`, and `qa:result-reference` (a real deposit's
+reference at 320/360 × sw/en/zh, measured character by character, with an in-page control that the old wrap is caught).
