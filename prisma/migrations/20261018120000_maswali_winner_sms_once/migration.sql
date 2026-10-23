@@ -31,9 +31,11 @@
 --   rows, but every row is read to find them), under a SHARE lock held for the whole build — CONCURRENTLY cannot run
 --   inside this file's transaction — so every SMS write, a login or withdrawal code's among them, waits for that scan.
 --   While an attempt waits for the lock (at most 3 s, `lock_timeout`), the SMS writes that arrive after it queue behind
---   it; between attempts it holds nothing. ⏳ The build's time is the table's size: the lead measures the production table
---   READ-ONLY before the merge
---   (`SELECT pg_size_pretty(pg_total_relation_size('"SmsMessage"')), count(*) FROM "SmsMessage";`).
+--   it; between attempts it holds nothing. The build's time is the table's size, measured on production READ-ONLY before
+--   the release (`SELECT pg_size_pretty(pg_total_relation_size('"SmsMessage"')), count(*) FROM "SmsMessage";`): ✅ on
+--   2026-10-23 ~09:25 UTC (Ali's pre-approved read, one read-only transaction, rolled back, by the build lead) it held
+--   3,102 rows, 1,840 kB in total with a 912 kB heap — a scan of that size takes milliseconds inside the deploy's migrate,
+--   so the release needs no plan around this build.
 -- ⛔ THE LOCK WAIT RETRIES INSIDE THIS FILE (the S2-BOOT-1 shape, `20260930200000_market_short_titles`): it runs at
 --   container boot (`prisma migrate deploy`), where one missed lock would fail the boot — and a failed migration leaves a
 --   `_prisma_migrations` row that blocks every later boot (P3009). So each attempt waits at most 3 s, and the whole thing

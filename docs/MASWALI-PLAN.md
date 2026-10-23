@@ -691,7 +691,13 @@ The State paragraph below is the last push's.)**
     control count — both sides now pin the SAME number, so git merges it with no conflict although the union is
     higher: recount it after the merge; `maswali-console.ts`'s imports; `maswali-service.ts` (the close's lock callback keeps
     S7's lock transaction AND N's after-commit hook). Measure the production "SmsMessage" table read-only before its
-    winner-SMS migration ships (the query is in its header).
+    winner-SMS migration ships (the query is in its header). ✅ **Measured** 2026-10-23 ~09:25 UTC (Ali's pre-approved read,
+    one read-only transaction, rolled back, by the build lead): 3,102 rows, 1,840 kB in total, a 912 kB heap — the
+    partial index of `20261018120000_maswali_winner_sms_once` builds in milliseconds inside the deploy's migrate, so the
+    deploy needs no plan around it. ✅ **The migration proof** (S6-SHIP 11, a throwaway PostgreSQL 18.3, the order the
+    releases ship): main's 112 migrations, then S7's set applied exactly its product-line fence, then S6's exactly this
+    index; a second deploy "No pending migrations to apply."; both replay cleanly; `verify:backup-schema` 16/0 with all
+    114; `test:backup` 140/0 — recorded in the migration's own header.
   - **Between the lanes** (pairwise trial merges): the integrity page (D, R, N), `maswali-console.ts` (R, N, round 3),
     `maswali-config.ts` (round 3, D), `pools/page.tsx` (round 3, R), `package.json` (all) — merge in the order S7 with
     round 3 → L → D → R → N, each onto the one before, so every later lane resolves against what landed.
