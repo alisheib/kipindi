@@ -790,8 +790,8 @@ export const MUTATIONS = [
   {
     name: "c5-s4:S4-M11 · RE-POINTED · a read before the seal, outside `if (r.ok)` — the register named 3.188.8, which is gone; 0.191.0 (which the entry ALSO named) counts the reader over all 21 decision files and reads 0",
     file: RESOLVER_QUEUE_BULK_RESOLVE_ACTION,
-    from: "        const r = await resolveMarket({ marketId: id, outcome, officerId: g.userId });",
-    to: "        houseStakes[id] = await houseStakeForAudit(id, \"market.resolve.bulk\"); const r = await resolveMarket({ marketId: id, outcome, officerId: g.userId });",
+    from: "        const r = await resolveMarket({ marketId: id, outcome, officerId: g.userId, twoOfficerNow: async () => requireTwoOfficer });",
+    to: "        houseStakes[id] = await houseStakeForAudit(id, \"market.resolve.bulk\"); const r = await resolveMarket({ marketId: id, outcome, officerId: g.userId, twoOfficerNow: async () => requireTwoOfficer });",
     expect: "0.191.0 · ⛔ D20's un-build, measured: all 21 decision files are read, and NOT ONE names a house-stake reader or carries a single allowed requester occurrence — so every problem the scan can report below is a new one",
     suite: "reports-mem",
   },

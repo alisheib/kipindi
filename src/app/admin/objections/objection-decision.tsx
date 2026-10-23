@@ -60,7 +60,7 @@ export function ObjectionDecision({ objectionId, canReverse, canDecide = true }:
     return (
       <span
         className="inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.08em] text-text-tertiary"
-        title="Upholding or rejecting an objection is a compliance decision — ask an Admin or Compliance officer."
+        title="Upholding or rejecting an objection is a compliance decision — ask the Owner or a Compliance officer."
       >
         <I.alertCircle s={12} /> Compliance only
       </span>

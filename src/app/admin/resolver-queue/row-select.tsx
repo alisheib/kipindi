@@ -99,13 +99,17 @@ export function RowVerdict({
   return (
     <div className="px-4 py-3 border-b border-border">
       {/* ⭐ ALWAYS RENDERED — an eligible row says so as plainly as a blocked one, because
-          "nothing is shown" is exactly the state that was misread as broken. */}
+          "nothing is shown" is exactly the state that was misread as broken.
+          S7-F8 14 · and it says what the BAR will do — the verdict's own `stage`: with two-admin authorization ON the bar
+          stages it for a second officer, it never seals it. */}
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         {verdict.eligible ? (
           <Chip size="sm" variant="success" title={verdict.modeIsAuto
             ? "This market clears every clause of the platform's auto-resolve floor."
+            : verdict.stage === "stage1"
+            ? "This market clears the auto-resolve floor. Two-admin authorization is on, so the bulk bar stages it — a different officer countersigns it on the market's own card to seal it."
             : "This market clears the auto-resolve floor. Resolution mode is set to human, so nothing seals it automatically — the bulk bar will."}>
-            {verdict.modeIsAuto ? BULK_VERDICT.eligibleAuto.en : BULK_VERDICT.eligible.en}
+            {verdict.modeIsAuto ? BULK_VERDICT.eligibleAuto.en : verdict.stage === "stage1" ? BULK_VERDICT.eligibleStaged.en : BULK_VERDICT.eligible.en}
           </Chip>
         ) : chip ? (
           <Chip

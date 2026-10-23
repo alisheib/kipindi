@@ -37,7 +37,7 @@ import { REFUSED_FUNDS_FORFEIT_DESCRIPTION } from "@/lib/refused-funds-outcomes"
 import type { FailureReason, FailureDetail } from "@/lib/failure-reasons";
 import { paymentMethodName } from "@/lib/payment-providers";
 import { notifyDeposit, notifyWithdraw, notifyAdminsAmlReview, notifyRefusedFundsReturnFailed } from "./notification-service";
-import { afterCommit, currentLockTx, runOutsideLock, withLock } from "./locks";
+import { afterCommit, currentLockTx, inLock, runOutsideLock, withLock } from "./locks";
 import { depositRecheckBinding, isStoredFundingKey, matchesDepositRecheckBinding, parseDepositRecheckBinding, type DepositRecheckBinding } from "@/lib/journey/deposit-recheck-binding";
 import { matchesProcessingProbeBinding, parseProcessingProbeBinding, withdrawalProbeBinding, type ProcessingProbeBinding } from "./payment-probe-binding";
 import { emit } from "./event-bus";
@@ -48,9 +48,24 @@ import { depositResultStatus, isRgHeldDeposit, RG_RETURN_MARK } from "@/lib/wall
 import { DEPOSIT_FINAL_NEGATIVE_MARK, DEPOSIT_STATUS_REVIEW_MARK, hasDepositStatusReview } from "@/lib/wallet/deposit-review";
 import { payoutDestinationFor } from "@/lib/payout-destination";
 import type { z } from "zod";
+import type { Prisma } from "@prisma/client";
 import type { ServiceResult } from "./auth-service";
 import { formatTzs, formatDateTime } from "@/lib/utils";
 import { parseSavedDepositBet, sameDepositFunding, type SavedDepositBet } from "@/lib/journey/deposit-state";
+
+/**
+ * ⭐ OD-13 · AN OFFICER'S PAYMENT OF A LOCKED MILLIONEA WINNER'S SHARE, as `withdraw` takes it (`opts.lockedWinnerShare`;
+ * the act is `payLockedWinnerShare`, `maswali-share-payout.ts`). ⛔ The caller never wraps `withdraw` in a lock: the hold
+ * phase takes `outerLock` itself, and the dispatch must run outside every lock (`refused-funds.ts` records why).
+ */
+export type LockedWinnerShare = {
+  /** The winning ticket whose share this payment pays: carried on the payout's own record. */
+  ticketId: string;
+  /** The lock the hold phase takes BEFORE the wallet lock — the Millionea chain (`maswali:chain`), the platform's order. */
+  outerLock: string;
+  /** Asked inside both locks, before any money moves: the officer-facing refusal, or null to go on. */
+  recheck: (tx: Prisma.TransactionClient | null) => Promise<string | null>;
+};
 
 /**
  * Source-of-Funds thresholds (AML Act 2006 + LCCP SR 9.2). An accepted SoF
@@ -1121,6 +1136,8 @@ export async function settlePaymentWebhook(
       if (reviewAdded) afterCommit(currentLockTx(), () => notifyDeposit(txn.userId,
         { status: "AML_REVIEW", amount: Math.abs(txn.amount), provider: friendlyProvider(txn.provider), txnId: txn.id,
           savedReturn: !!parseSavedDepositBet(txn.pendingBet) }));
+      // MB-74 · RD.5: a CREDITED deposit now under review may have bought a Millionea share already paid — held, never debited.
+      if (reviewAdded && txn.status === "CONFIRMED") await holdMillioneaSharesOfReviewedDeposit(txn.id);
       audit({ category: "SECURITY", action: "webhook.amount_mismatch", actorId: null, targetType: "Transaction", targetId: txn.id,
         payload: { expected: txn.amount, got: input.amount, providerRef: input.providerRef, was: txn.status } });
       auditNeedsReviewOnce(txn.id, "provider reported a DIFFERENT amount for a terminal deposit — no money changed automatically", {
@@ -1154,6 +1171,8 @@ export async function settlePaymentWebhook(
       if (reviewAdded) afterCommit(currentLockTx(), () => notifyDeposit(txn.userId,
         { status: "AML_REVIEW", amount: Math.abs(txn.amount), provider: friendlyProvider(txn.provider), txnId: txn.id,
           savedReturn: !!parseSavedDepositBet(txn.pendingBet) }));
+      // MB-74 · RD.5: a CREDITED deposit reversed may have bought a Millionea share already paid — held, never debited.
+      if (reviewAdded && txn.status === "CONFIRMED") await holdMillioneaSharesOfReviewedDeposit(txn.id);
       audit({
         category: "SECURITY",
         action: "webhook.terminal_contradicted",
@@ -1244,6 +1263,27 @@ async function markDepositStatusReview(txnId: string, reported: "CONFIRMED" | "F
     if (!saved || !hasDepositStatusReview(saved)) throw new Error("Deposit review signal was not persisted.");
     return true;
   });
+}
+
+/**
+ * ⭐ MB-74 · RD.5 (MASWALI-BUILD S7-F9): a CREDITED deposit just marked for review may have bought a Millionea ticket that
+ * has already won and been paid — `holdSharesForReversedDeposit` holds those shares for Compliance. Never a debit and never
+ * a reversal: the money decision stays an officer's (the rule above). The hold takes `maswali:chain`, which is never taken
+ * under a wallet lock, so from inside a lock it runs once that lock's work has committed, outside every lock; from no lock
+ * it is awaited, so the webhook answers after the hold. A failure is logged and never fails the webhook: the nightly heal
+ * (`healReversedDepositHolds`) places the hold.
+ */
+async function holdMillioneaSharesOfReviewedDeposit(depositTxnId: string): Promise<void> {
+  const hold = async () => {
+    try {
+      const { holdSharesForReversedDeposit } = await import("./maswali-settlement");
+      await holdSharesForReversedDeposit(depositTxnId);
+    } catch (err) {
+      console.error(`[wallet] deposit ${depositTxnId}'s Millionea shares could not be held now; the nightly heal holds them:`, (err as Error)?.message ?? err);
+    }
+  };
+  if (inLock()) afterCommit(currentLockTx(), () => { void runOutsideLock(hold); });
+  else await hold();
 }
 
 /** A pre-lock unique reference may have collided or changed while waiting. Read through the SAME wallet transaction
@@ -1794,21 +1834,40 @@ export async function withdraw(
    * per-withdrawal cap (`WITHDRAW_MAX_TZS`, via WithdrawSchema), and the exactly-once transaction
    * and reconcile path. ⛔ NOT a two-officer AML hold: this list named one until the owner ruling
    * of 2026-09-13 switched it off for every withdrawal (`WITHDRAWAL_AML_HOLD`, payments.ts).
+   *
+   * ⭐ OD-13 — A COMPLIANCE OFFICER PAYS A MILLIONEA WINNER WHOSE ACCOUNT CANNOT SIGN IN (MASWALI-BUILD S6-MONEY,
+   * 2026-10-22). `lockedWinnerShare` is set ONLY by `payLockedWinnerShare` (`maswali-share-payout.ts`): one payment
+   * of a winning share, at the holder's request. It changes exactly three things, each asserted below:
+   *   · the player's attempt bucket is not charged — it is an officer's act, not the player's attempt;
+   *   · the money hold runs under `outerLock` (the Millionea chain) and THEN the wallet lock — the platform's
+   *     order — and asks `recheck` inside both, before any money moves;
+   *   · the wallet may be FROZEN or CLOSED, but only while the self-exclusion is the one hold standing (or none
+   *     is): the freeze is not lifted, and an officer's hold, an identity refusal or a held Millionea share still
+   *     stops the money here.
+   * Everything else holds — OD-13: "Identity and email rules are unchanged": the identity gate, the confirmed
+   * email, the registered-number binding, the per-withdrawal cap, the rail minimum, the live withdrawal fee, the
+   * network's kill switch, and the exactly-once transaction and reconcile path. A replayed key answers `replayed`.
    */
-  opts?: { refusedFundsReturn?: { decisionId: string } },
-): Promise<ServiceResult<{ txnId: string; status: StoredTxn["status"]; fee: number; net: number }>> {
+  opts?: { refusedFundsReturn?: { decisionId: string }; lockedWinnerShare?: LockedWinnerShare },
+): Promise<ServiceResult<{ txnId: string; status: StoredTxn["status"]; fee: number; net: number; replayed?: true }>> {
   const actor = actorId ?? userId;
   const operatorInitiated = !!actorId && actorId !== userId;
   const refundReturn = opts?.refusedFundsReturn ?? null;
+  const lockedShare = opts?.lockedWinnerShare ?? null;
   // A return is by definition an officer acting on someone else's account.
   if (refundReturn && !operatorInitiated) {
     return { ok: false, error: "A refused-funds return must be initiated by an officer.", code: "INVALID" };
   }
+  // OD-13 · so is a locked winner's payment — and it is never also a return: each changes the rules in its own way.
+  if (lockedShare && (!operatorInitiated || refundReturn)) {
+    return { ok: false, error: "A locked winner's payment must be initiated by an officer, on its own.", code: "INVALID" };
+  }
   // ⛔ A REFUSED-FUNDS RETURN IS NOT CHARGED TO THE PLAYER'S ATTEMPT BUCKET (found in review, 2026-09-13). It is an
   // officer's decision about someone else's account, reached only after `decideRefusedFunds` has forfeited the
   // remainder — a refused player who had hammered the withdraw button would otherwise make the officer's return
-  // fail AFTER that forfeit committed. Officer actions carry their own limits upstream.
-  if (!refundReturn) {
+  // fail AFTER that forfeit committed. Officer actions carry their own limits upstream. OD-13 · nor is an officer's
+  // payment of a locked winner's share: the holder cannot sign in to make an attempt at all.
+  if (!refundReturn && !lockedShare) {
     const rl = await rateCheckAsync(userId, "wallet.withdraw");
     if (!rl.allowed) return { ok: false, error: "Too many withdrawal attempts.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
   }
@@ -1828,7 +1887,7 @@ export async function withdraw(
       if (existing.userId !== userId || existing.type !== "WITHDRAWAL")
         return { ok: false, error: "The withdrawal request key belongs to another payment.", code: "CONFLICT" };
       const f = existing.fee ?? 0;
-      return { ok: true, data: { txnId: existing.id, status: existing.status, fee: f, net: Math.abs(existing.amount) - f } };
+      return { ok: true, data: { txnId: existing.id, status: existing.status, fee: f, net: Math.abs(existing.amount) - f, replayed: true } };
     }
   }
 
@@ -2079,8 +2138,14 @@ export async function withdraw(
    *
    * `settleWithdrawalConfirmed` already threads `tx` through `withMoneyTx` for exactly this
    * reason. This is the same shape, on the path that takes the money in the first place.
+   *
+   * ⭐ OD-13 · AN OFFICER'S PAYMENT OF A LOCKED WINNER'S SHARE TAKES THE MILLIONEA CHAIN LOCK FIRST (`inOuterLock`),
+   * and the wallet lock JOINS its transaction (`locks.ts`) — the platform's chain → wallet order — so no hold, release,
+   * forfeit or settlement of that share can land between its `recheck` and the money. Only this hold phase is inside:
+   * the dispatch below runs outside every lock, as for any withdrawal. Every other withdrawal takes the wallet alone.
    */
-  const hold = await withLock(`wallet:${userId}`, async (tx) => {
+  const inOuterLock = <T>(fn: () => Promise<T>): Promise<T> => (lockedShare ? withLock(lockedShare.outerLock, fn) : fn());
+  const hold = await inOuterLock(() => withLock(`wallet:${userId}`, async (tx) => {
     // Re-check idempotency INSIDE the lock. The pre-lock check above is only a
     // fast-path; a concurrent same-key withdrawal (2G double-tap) may have created
     // the txn between that read and our acquiring the lock. Without this re-check
@@ -2111,7 +2176,18 @@ export async function withdraw(
     // written as "a frozen wallet may pay", which paid a return straight through an officer's own "do not pay" hold or a
     // self-exclusion. It is "this refusal's hold may pay": any other reason still stops the money here.
     const refundThroughFreeze = !!refundReturn && w.status === "FROZEN" && currentFreezeReasons(w).every((r) => r === "IDENTITY_REFUSED");
-    if (w.status !== "ACTIVE" && !refundThroughFreeze) return { ok: false as const, error: "Wallet frozen.", code: "SUSPENDED" as const };
+    // ⭐ OD-13 · A LOCKED WINNER'S SHARE LEAVES THROUGH THE SELF-EXCLUSION, NEVER AROUND ANOTHER HOLD: the wallet the
+    // self-exclusion froze — or a closed one, whose released share has no other way out — pays this one payment while
+    // the self-exclusion is the only hold standing, or none is. The freeze stays: nothing here lifts it. An officer's hold,
+    // an identity refusal or a held Millionea share still stops the money, exactly as for every other withdrawal.
+    const shareThroughFreeze = !!lockedShare && (w.status === "FROZEN" || w.status === "CLOSED")
+      && currentFreezeReasons(w).every((r) => r === "SELF_EXCLUSION");
+    if (w.status !== "ACTIVE" && !refundThroughFreeze && !shareThroughFreeze) return { ok: false as const, error: "Wallet frozen.", code: "SUSPENDED" as const };
+    // ⭐ OD-13 · the share asked again, inside both locks and before any money moves (`payLockedWinnerShare`'s recheck).
+    if (lockedShare) {
+      const refused = await lockedShare.recheck(tx);
+      if (refused) return { ok: false as const, error: refused, code: "INVALID" as const };
+    }
     // 🔴 `E-223` · THIS REFUSAL USED TO SAY NOTHING. It returned `INVALID` with no `reason`,
     // so `errorCopy` fell through to the generic `errInvalid` — *"That didn't go through.
     // Check the details and try again."* — on the most common refusal of the money-out
@@ -2158,17 +2234,20 @@ export async function withdraw(
     // `kycStatus` is stamped on EVERY withdrawal, verified or not. A stamp that only
     // appeared on unverified payouts would make its own absence ambiguous — indis-
     // tinguishable from an audit write that failed (see the fail-open note below).
-    audit({ category: "WALLET", action: "withdraw.initiated", actorId: actor, targetType: "Transaction", targetId: txnId, payload: { provider: parse.data.provider, amount, fee, gatewayShare, net, kycStatus, onBehalfOf: userId, operatorInitiated } });
+    audit({ category: "WALLET", action: "withdraw.initiated", actorId: actor, targetType: "Transaction", targetId: txnId, payload: {
+      provider: parse.data.provider, amount, fee, gatewayShare, net, kycStatus, onBehalfOf: userId, operatorInitiated,
+      ...(lockedShare ? { millioneaShareTicket: lockedShare.ticketId } : {}),
+    } });
     emit("wallet:balance", { userId, balance: balanceAfter });
     return { ok: true as const, duplicate: null };
-  });
+  }));
   if (!hold.ok) return hold;
   // Idempotent replay: a concurrent same-key withdrawal already created the txn.
   // Return its result WITHOUT debiting or dispatching again (exactly-once).
   if (hold.duplicate) {
     const dup = hold.duplicate;
     const f = dup.fee ?? 0;
-    return { ok: true, data: { txnId: dup.id, status: dup.status, fee: f, net: Math.abs(dup.amount) - f } };
+    return { ok: true, data: { txnId: dup.id, status: dup.status, fee: f, net: Math.abs(dup.amount) - f, replayed: true } };
   }
   // F7 · the holder's own money moved: a live, ACTIVE house bot on this account tells every admin (02 §3.6).
   runOutsideLock(() => {

@@ -183,6 +183,64 @@ export function inclusionProof(tickets: readonly CommittedTicket[], ticketId: st
   return { ticketId, leaf: s[index].leaf, index, size: s.length, path };
 }
 
+/** A week's tree, hashed once: its root, its size, and any one ticket's audit path read from the stored nodes. */
+export type CommitmentTree = {
+  /** The Merkle Tree Hash over the tickets — `merkleRoot`'s answer for the same set. */
+  root: string;
+  size: number;
+  /** The ticket's audit path, or null when the ticket is not in the tree. */
+  proof: (ticketId: string) => InclusionProof | null;
+};
+
+/**
+ * ⭐ THE TREE BUILT ONCE (MASWALI-BUILD S6 review #9). A week's root never moves after its close, so neither does its
+ * tree: every node of the RFC 6962 decomposition is hashed a single time here, and each ticket's path is then READ, never
+ * re-hashed — `proof(id)` gives exactly what `inclusionProof(tickets, id)` gives, which stays as the RFC's direct
+ * transcription and the reference `test:maswali-fairness` §P compares this with at every index of every small size.
+ * Two kinds of node cover every sibling that walk asks for: the LEVELS (level j holds each run of 2^j leaves that starts
+ * at a multiple of 2^j — every left part is one, and so is every part inside one), and the few parts along the right
+ * edge that run to the last leaf without being a power of two in size (`edge`, keyed by their first leaf).
+ */
+export function commitmentTree(tickets: readonly CommittedTicket[]): CommitmentTree {
+  const s = ordered(tickets);
+  const size = s.length;
+  const at = new Map<string, number>();
+  s.forEach((t, i) => at.set(t.ticketId, i));
+  const levels: Uint8Array[][] = [s.map((t) => leafNode(t.leaf))];
+  for (let below = levels[0]; below.length > 1; below = levels[levels.length - 1]) {
+    const up: Uint8Array[] = [];
+    for (let i = 0; i + 1 < below.length; i += 2) up.push(innerNode(below[i], below[i + 1]));
+    levels.push(up);
+  }
+  const edge = new Map<number, Uint8Array>();
+  const node = (start: number, d: number): Uint8Array => {
+    if ((d & (d - 1)) === 0 && start % d === 0) return levels[31 - Math.clz32(d)][start / d];
+    const known = edge.get(start);
+    if (known) return known;
+    const k = splitPoint(d);
+    const h = innerNode(node(start, k), node(start + k, d - k));
+    edge.set(start, h);
+    return h;
+  };
+  const root = toHex(size === 0 ? sha256(new Uint8Array(0)) : node(0, size));
+  return {
+    root, size,
+    proof: (ticketId: string): InclusionProof | null => {
+      const index = at.get(ticketId);
+      if (index === undefined) return null;
+      const path: string[] = [];
+      const walk = (m: number, start: number, d: number) => {
+        if (d <= 1) return;
+        const k = splitPoint(d);
+        if (m < k) { walk(m, start, k); path.push(toHex(node(start + k, d - k))); }
+        else { walk(m - k, start + k, d - k); path.push(toHex(node(start, k))); }
+      };
+      walk(index, 0, size);
+      return { ticketId, leaf: s[index].leaf, index, size, path };
+    },
+  };
+}
+
 /** ⭐ Does this proof put this leaf under this root? Pure; what a browser runs on `/fairness`. Never throws. */
 export function verifyInclusion(proof: InclusionProof, rootHex: string): boolean {
   try {

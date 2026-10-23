@@ -34,6 +34,11 @@ const PAGE = "src/app/admin/resolver-queue/page.tsx";
 const ROW = "src/app/admin/resolver-queue/row-select.tsx";
 const COPY = "src/app/admin/resolver-queue/bulk-verdict-copy.ts";
 const SUITE = "scripts/bulk-resolve.test.mts";
+const MARKET_PAGE = "src/app/admin/resolver/[id]/page.tsx";
+const TOGGLE = "src/app/admin/resolver-queue/two-admin-toggle.tsx";
+const CONTROLS = "src/app/admin/resolver-queue/resolve-controls.tsx";
+const CEREMONY = "src/app/admin/resolver/[id]/resolution-ceremony.tsx";
+const ACTIONS = "src/app/markets/actions.ts";
 
 export const MUTATIONS = [
   {
@@ -209,8 +214,8 @@ export const MUTATIONS = [
     name: "🔴 the AI's excerpt is written as the OFFICER's player-facing evidence",
     file: ACTION,
     expect: "10.9 NOTHING is written as the officer's player-facing evidence",
-    from: `        const r = await resolveMarket({ marketId: id, outcome, officerId: g.userId });`,
-    to: `        const r = await resolveMarket({ marketId: id, outcome, officerId: g.userId, evidence: m.sentinelEvidence ?? undefined });`,
+    from: `        const r = await resolveMarket({ marketId: id, outcome, officerId: g.userId, twoOfficerNow: async () => requireTwoOfficer });`,
+    to: `        const r = await resolveMarket({ marketId: id, outcome, officerId: g.userId, twoOfficerNow: async () => requireTwoOfficer, evidence: m.sentinelEvidence ?? undefined });`,
   },
   {
     name: "🔴 the override audit is written for a row the floor never refused",
@@ -343,5 +348,171 @@ export const MUTATIONS = [
     to: `  type MarketRows = Awaited<ReturnType<typeof listMarkets>>;
   const everyMarketEver = await listMarkets();
   void everyMarketEver;`,
+  },
+  {
+    name: "S7-F6 · the bulk action runs whatever ceremony the setting reads now, never the one the bar drew",
+    file: ACTION,
+    expect: "11.5h the bar posts the batch it drew",
+    from: `    if (String(formData.get("drawnTwoAdmin") ?? "") !== (twoOfficerRead ? "1" : "0")) {`,
+    to: `    if (false) {`,
+  },
+
+  /* ── MASWALI-BUILD S7-F7 1 · the unknown two-officer setting, one plant per guard ──────────
+     Rounds 5 and 6 (S7-F5, S7-F6) drew no control while the setting is unknown and made each action run only the
+     ceremony its page drew; their guards (11.5d–11.5i) had no plant, and 11.5d was red on the code it was written for
+     (its needle matched the page's gate wrapper). Each defect below undoes one of those changes alone. */
+  {
+    name: "S7-F7 · a queue row offers Resolve YES / NO / Void while the two-officer setting is unknown",
+    file: PAGE,
+    expect: "11.5d while the setting is unknown neither page offers a resolve control",
+    from: `                      twoOfficerRead === null ? (`,
+    to: `                      false ? (`,
+  },
+  {
+    name: "S7-F7 · the market page draws the ceremony while the two-officer setting is unknown",
+    file: MARKET_PAGE,
+    expect: "11.5d while the setting is unknown neither page offers a resolve control",
+    from: `              ) : canResolve && twoOfficerRead === null ? (`,
+    to: `              ) : false ? (`,
+  },
+  {
+    name: "S7-F7 · the bulk bar is drawn while the two-officer setting is unknown",
+    file: PAGE,
+    expect: "11.5g while the setting is unknown the queue draws no bulk bar",
+    from: `            {canBulk ? (
+              twoOfficerRead === null ? (`,
+    to: `            {canBulk ? (
+              false ? (`,
+  },
+  {
+    name: "S7-F7 · the two-admin switch is drawn while the setting is unknown (its press flips a value nobody read)",
+    file: TOGGLE,
+    expect: "11.5f the two-admin switch names an unread setting as unknown",
+    from: `  if (enabled === null) {`,
+    to: `  if (false) {`,
+  },
+  {
+    name: "S7-F7 · the single resolve action runs whatever ceremony the setting reads now, never the one the page drew",
+    file: ACTIONS,
+    expect: "11.5e both controls post the ceremony they drew",
+    from: `  if (drawn !== (twoOfficerNow ? "1" : "0")) {`,
+    to: `  if (false) {`,
+  },
+  {
+    name: "S7-F7 · the queue's resolve control posts no ceremony, so the action cannot tell what the officer confirmed",
+    file: CONTROLS,
+    expect: "11.5e both controls post the ceremony they drew",
+    from: `      fd.set("drawnTwoAdmin", twoAdmin ? "1" : "0");`,
+    to: `      void twoAdmin;`,
+  },
+  {
+    name: "S7-F7 · the market page's ceremony posts no ceremony, so the action cannot tell what the officer confirmed",
+    file: CEREMONY,
+    expect: "11.5e both controls post the ceremony they drew",
+    from: `      fd.set("drawnTwoAdmin", twoAdmin ? "1" : "0");`,
+    to: `      void twoAdmin;`,
+  },
+  {
+    name: "S7-F7 · the bulk bar posts no batch, so the bulk action cannot tell what the officer confirmed",
+    file: BAR,
+    expect: "11.5h the bar posts the batch it drew",
+    from: `      fd.set("drawnTwoAdmin", requireTwoOfficer ? "1" : "0");`,
+    to: `      void requireTwoOfficer;`,
+  },
+  {
+    name: "S7-F7 · the single action lets resolveMarket read the setting again, after it checked the drawn ceremony",
+    file: ACTIONS,
+    expect: "11.5i one read decides the ceremony",
+    from: `  const r = await resolveMarket({ marketId, outcome, officerId: session.userId, evidence, twoOfficerNow: async () => twoOfficerNow });`,
+    to: `  const r = await resolveMarket({ marketId, outcome, officerId: session.userId, evidence });`,
+  },
+  {
+    name: "S7-F7 · the bulk action lets resolveMarket read the setting again for each market, after the batch's own read",
+    file: ACTION,
+    expect: "11.5i one read decides the ceremony",
+    from: `        const r = await resolveMarket({ marketId: id, outcome, officerId: g.userId, twoOfficerNow: async () => requireTwoOfficer });`,
+    to: `        const r = await resolveMarket({ marketId: id, outcome, officerId: g.userId });`,
+  },
+
+  /* ── MASWALI-BUILD S7-F7 6–8 · the lead's ruling and two 360px fixes, one plant per guard ─────────────────────────
+     6 · while the two-officer setting is UNKNOWN no page names a ceremony that may not be in force (11.5c, re-pinned):
+         each plant lets a strict word draw for an unknown setting again.
+     7 · the bulk bar's label keeps a sentence's width at 360 (11.28).
+     8 · the ceremony's verdict cards go one per row below sm, so BATILISHA never reaches its card's edge (11.27). */
+  {
+    name: "S7-F7 · a queue row draws the two-officer stages for an UNKNOWN setting (the neutral words are skipped)",
+    file: PAGE,
+    expect: "11.5c …an unknown names no ceremony on either page",
+    from: `                  {twoOfficerRead === null ? (`,
+    to: `                  {false ? (`,
+  },
+  {
+    name: "S7-F7 · the queue header counts markets 'awaiting 2nd' officer while the setting is UNKNOWN",
+    file: PAGE,
+    expect: "11.5c …an unknown names no ceremony on either page",
+    from: `              {twoOfficerRead === true && awaitingStage2 > 0 &&`,
+    to: `              {requireTwoOfficer && awaitingStage2 > 0 &&`,
+  },
+  {
+    name: "S7-F7 · the market page titles an open market's cards 'Two-officer attestation' / 'Stage-1 attestation' while the setting is UNKNOWN",
+    file: MARKET_PAGE,
+    expect: "11.5c …an unknown names no ceremony on either page",
+    from: `  const unknownOpen = twoOfficerRead === null && !settled;`,
+    to: `  const unknownOpen = false && !settled;`,
+  },
+  {
+    name: "S7-F7 · the bulk bar's label may shrink to nothing again, so at 360 it reads one word per line beside the buttons",
+    file: BAR,
+    expect: "11.28 at 360 the bar's label keeps a sentence's width",
+    from: `        <div className="min-w-[220px] flex-1">`,
+    to: `        <div className="min-w-0 flex-1">`,
+  },
+  {
+    name: "S7-F7 · the ceremony's verdict cards sit three across at 360 again, and BATILISHA runs to the VOID card's edge",
+    file: CEREMONY,
+    expect: "11.27 the ceremony's verdict cards go one per row below sm",
+    from: `    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">`,
+    to: `    <div className="grid grid-cols-3 gap-2">`,
+  },
+
+  /* ── MASWALI-BUILD S7-F8 13 · a row's tick box and bulk verdict go with the bar (11.5j): one plant each lets a row draw
+     its part again while the two-officer setting is unread and the bar is withheld. */
+  {
+    name: "S7-F8 · a queue row draws its tick box while the two-officer setting is UNKNOWN (the bar is withheld)",
+    file: PAGE,
+    expect: "11.5j while the setting is unknown no row draws the bar's parts",
+    from: `{canBulk && twoOfficerRead !== null && verdictById.has(m.id) && (\n                      <div className="shrink-0">`,
+    to: `{canBulk && verdictById.has(m.id) && (\n                      <div className="shrink-0">`,
+  },
+  {
+    name: "S7-F8 · a queue row draws its bulk verdict ('…this one will seal') while the two-officer setting is UNKNOWN",
+    file: PAGE,
+    expect: "11.5j while the setting is unknown no row draws the bar's parts",
+    from: `{canBulk && twoOfficerRead !== null && verdictById.has(m.id) && (\n                    <RowVerdict`,
+    to: `{canBulk && verdictById.has(m.id) && (\n                    <RowVerdict`,
+  },
+
+  /* ── MASWALI-BUILD S7-F8 14 · an eligible row says what the bar will do (11.15b): with two-admin ON it is staged for a
+     second officer, never "will seal". One plant each for the words, their title and the dictionary entry. */
+  {
+    name: "S7-F8 · an eligible row says 'this one will seal' with two-admin ON, where the bar only stages it",
+    file: ROW,
+    expect: "11.15b an eligible row says what the bar will do",
+    from: `{verdict.modeIsAuto ? BULK_VERDICT.eligibleAuto.en : verdict.stage === "stage1" ? BULK_VERDICT.eligibleStaged.en : BULK_VERDICT.eligible.en}`,
+    to: `{verdict.modeIsAuto ? BULK_VERDICT.eligibleAuto.en : BULK_VERDICT.eligible.en}`,
+  },
+  {
+    name: "S7-F8 · an eligible row's title says 'the bulk bar will' seal it with two-admin ON",
+    file: ROW,
+    expect: "11.15b an eligible row says what the bar will do",
+    from: `            ? "This market clears the auto-resolve floor. Two-admin authorization is on, so the bulk bar stages it — a different officer countersigns it on the market's own card to seal it."`,
+    to: `            ? "This market clears the auto-resolve floor. Resolution mode is set to human, so nothing seals it automatically — the bulk bar will."`,
+  },
+  {
+    name: "S7-F8 · the dictionary's staged words say 'will seal' again",
+    file: "src/lib/admin-status-lexicon.ts",
+    expect: "11.15b an eligible row says what the bar will do",
+    from: `  eligibleStaged:           { en: "Clears the auto-resolve floor — this one will be staged" },`,
+    to: `  eligibleStaged:           { en: "Clears the auto-resolve floor — this one will seal" },`,
   },
 ];

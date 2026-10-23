@@ -41,7 +41,9 @@ function sourceChecks(w: World) {
       && w.cache.includes("MAX_ENTRIES = 32"),
     // S5-FIX-SRV 2 · a correction now forgets its week once the correction has COMMITTED (it runs on the lock's transaction).
     // S5-FIX-SRV (finding 2's class) · so does the week void's decision: queued on its lock's transaction, never called bare.
-    invalidate: w.service.includes("invalidateMillioneaRegisterWeek(res.code);\n  return { ok: true, recorded: await recordOwed(res.owed) };")
+    // ⚠️ RE-PINNED IN THE OPEN (S6-INT 22): S6-INT 14's M-3 writes the correction's owed records before its notice, so the
+    // forgetting is followed by `const recorded = …` instead of the return — still after the lock has committed, still first.
+    invalidate: w.service.includes("invalidateMillioneaRegisterWeek(res.code);\n  const recorded = await recordOwed(res.owed);")
       && w.service.includes("afterCommit(lockTx, () => invalidateMillioneaRegisterWeek(week.code));")
       && count(w.service, "invalidateMillioneaRegisterWeek(week.code);") === 0
       && w.service.includes("invalidateMillioneaRegisterWeek(stamped.week.code);")
@@ -113,7 +115,7 @@ if (process.argv.includes("--prove-red")) {
     { name: "no PUBLIC check", file: "cache", from: 'head.visibility === "PUBLIC"', to: "true", fails: "failClosed" },
     { name: "cache outlives TTL", file: "cache", from: "current.expiresAt > now()", to: "true", fails: "bounded" },
     { name: "pending refunds cached", file: "cache", from: "!value.refundsPending", to: "true", fails: "bounded" },
-    { name: "correction does not invalidate", file: "service", from: "invalidateMillioneaRegisterWeek(res.code);\n  return { ok: true, recorded: await recordOwed(res.owed) };", to: "return { ok: true, recorded: await recordOwed(res.owed) };", fails: "invalidate" },
+    { name: "correction does not invalidate", file: "service", from: "invalidateMillioneaRegisterWeek(res.code);\n  const recorded = await recordOwed(res.owed);", to: "const recorded = await recordOwed(res.owed);", fails: "invalidate" },
     { name: "the void forgets its week before its decision commits", file: "service", from: "afterCommit(lockTx, () => invalidateMillioneaRegisterWeek(week.code));", to: "invalidateMillioneaRegisterWeek(week.code);", fails: "invalidate" },
     { name: "settlement does not invalidate", file: "settlement", from: "invalidateMillioneaRegisterWeek(first.code);", to: "", fails: "invalidate" },
     { name: "late in-flight reader repopulates", file: "cache", from: "generationOf(code) !== generation", to: "false", fails: "invalidate" },

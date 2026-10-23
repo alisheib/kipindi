@@ -24,6 +24,11 @@
  *   R8  · on Postgres, a forfeit or a hold whose commit fails leaves neither half (R8.1, R8.2)
  *   R9  · the final week's wide tie: 300 winners paid in bulk, the shape counted and the time printed (§11, R9.1–R9.6)
  *   B9  · while a final week is ENDING, an earlier week still runs and a later one is refused (§11, B9.1, B9.2)
+ * And S7's own (2026-10-19/21): a missing payee refused before the carry (§4b, 4b.1–4b.3); holds that outlast one section of
+ * the chain lock's 30-second transaction yield it between sections, each section re-reading the week and re-placing a hold
+ * a lift removed meanwhile (§S7F8, S7F8.0–S7F8.2 — S16's all-held 7,000-winner shape measured on scratch Postgres); and the
+ * lifts, their twin: a release refused after its holds lifts them in sections, a lift stopped midway leaves every account
+ * whole and the heal finishes it, each hold lifted exactly once (S7F8.3–S7F8.6).
  */
 const STORE = process.env.HB_MONEY_STORE ?? "unknown";
 process.env.SESSION_SECRET ??= "maswali-settle-session-secret-0123456789abcdef";
@@ -150,6 +155,43 @@ console.log("\n§4 · (c) 1,500 tickets with 7 winners");
   ok("4.5 · the POOL ends at exactly 0", (await W.balanceOf(acct.pool(week.marketId))) === 0);
   ok("4.6 · 7 WIN positions and 1,493 LOSS", ((await W.w.svc.listPositionsForMarket(week.marketId)) as any[]).filter((x) => x.status === "WIN").length === 7
     && ((await W.w.svc.listPositionsForMarket(week.marketId)) as any[]).filter((x) => x.status === "LOSS").length === 1_493);
+}
+
+// ── §4b · the batched payee pre-read refuses before the memory store's first write ──────────────
+console.log("\n§4b · a missing winner wallet aborts the whole release before its carry claim");
+{
+  const { week, start } = await W.openWeek({ weeksAhead: ahead++ });
+  const winners = await sellWeek(week.id, 24, 2);
+  const before = await Promise.all(winners.map(bal));
+  const poolBefore = await W.balanceOf(acct.pool(week.marketId));
+  const jackpotBefore = await jackpot(), guaranteeBefore = await guarantee();
+  const at = await W.closeAndSeal(week, start);
+  const preview = await settle.previewMaswaliSettlement(week.id, at);
+  const realFind = W.db.wallet.findByUserIds;
+  W.db.wallet.findByUserIds = async (...args: any[]) =>
+    (await realFind.apply(W.db.wallet, args)).filter((wallet: any) => wallet.userId !== winners[1]);
+  let refused: any;
+  try {
+    refused = preview.ok ? await settle.settleMaswaliWeek({ weekId: week.id, releasedBy: RELEASER, digest: preview.preview.digest, now: at }) : preview;
+  } finally {
+    W.db.wallet.findByUserIds = realFind;
+  }
+  const still = await dal.weekStore.get(week.id);
+  const positions = await W.w.svc.listPositionsForMarket(week.marketId);
+  const tickets = await dal.ticketStore.listForWeek(week.id);
+  ok("4b.1 · ⛔ a missing payee is refused before the carry or any winner mark is written",
+    !refused.ok && /MISSING:/.test(errOf(refused)) && still.state === "RESOLVING" && still.rolloverIn === null
+      && positions.every((p: any) => p.status === "OPEN") && tickets.every((t: any) => t.status === "LIVE"),
+    J({ refusal: errOf(refused), state: still.state, rolloverIn: still.rolloverIn }));
+  ok("4b.2 · ⛔ the refused release leaves both wallets, the pool, jackpot and guarantee unchanged",
+    (await Promise.all(winners.map(bal))).every((v, i) => v === before[i])
+      && (await W.balanceOf(acct.pool(week.marketId))) === poolBefore
+      && (await jackpot()) === jackpotBefore && (await guarantee()) === guaranteeBefore);
+  const recovered = await W.release(week.id, at);
+  const share = recovered.ok && recovered.preview.arithmetic.kind === "PAYOUT" ? recovered.preview.arithmetic.share : 0;
+  ok("4b.3 · the same week then releases once, with one payout and the full share per winner",
+    recovered.ok && recovered.week.state === "SETTLED" && share > 0
+      && (await Promise.all(winners.map(bal))).every((v, i) => v - before[i] === share), errOf(recovered));
 }
 
 // ── §5 · (d) a void leaves R untouched; the chain waits for it ──────────────
@@ -633,6 +675,152 @@ console.log("\n§R6 · the hold and every lift share one lock (MB-43); R8 · a h
   await W.setUserFields(P2, { status: "ACTIVE" });
 }
 
+// ── S7-F8 · a release whose holds outlast one section of the chain lock (MB-43, R6; the lock's 30-second budget) ────
+// On Postgres every hold is its own committed write placed while the release holds `maswali:chain`, and that lock is a
+// transaction with a 30-second budget: S16 measured a few thousand held winners overrunning it (the release rolled back,
+// nothing paid). So the holds yield the lock between sections, and each section re-reads what the last one held — a lift
+// may run while the lock is let go. `holdSectionMs: 0` makes every section place ONE hold and the money take a section of
+// its own, so three held winners show it here.
+console.log("\n§S7F8 · the holds in sections of the chain lock: each section re-reads the week and the holds before it, and the week pays once");
+{
+  const { getAuditForTargetDurable, auditFlush } = await import("../../src/lib/server/audit.ts");
+  const heldOf = async (u: string) => (((await W.bal(u)).freezeReasons ?? []) as string[]).includes("MILLIONEA_SHARE");
+  /** A week with three winners whose accounts are suspended after their purchase (held) and one free winner. */
+  const heldWeek = async () => {
+    const H = [await W.user({ balance: 200_000 }), await W.user({ balance: 200_000 }), await W.user({ balance: 200_000 })];
+    const F = await W.user({ balance: 200_000 });
+    const { week, start } = await W.openWeek({ weeksAhead: ahead++ });
+    for (const u of [...H, F]) {
+      const b = await W.buy(u, week.id, [W.WIN]);
+      if (!b.ok) throw new Error(`S7F8: a winner's purchase was refused: ${b.error}`);
+    }
+    await W.sell(week.id, 6, W.LOSE, players.slice(140, 150));
+    for (const u of H) await W.setUserFields(u, { status: "SUSPENDED" });
+    return { week, at: await W.closeAndSeal(week, start), H, F };
+  };
+  const outcome = async (weekId: string, H: string[], F: string, before: number[], r: any) => {
+    const tickets = await dal.ticketStore.listForWeek(weekId);
+    const ticketOf = (u: string) => tickets.find((t: any) => t.userId === u && t.won);
+    const share = r.ok && r.preview?.arithmetic?.kind === "PAYOUT" ? r.preview.arithmetic.share : 0;
+    const gained = (await Promise.all([...H, F].map(bal))).map((v, i) => v - before[i]);
+    return {
+      settled: r.ok === true && r.week?.state === "SETTLED" && r.preview?.held === 3 && share > 0,
+      sharesHeld: H.every((u) => ticketOf(u)?.frozenReason === "account suspended") && ticketOf(F)?.frozenReason === null,
+      walletsHeld: await Promise.all(H.map(heldOf)), freeHeld: await heldOf(F),
+      paidOnce: gained.every((g) => g === share), share, gained,
+    };
+  };
+
+  // Control: the same shape on the default section budget — three holds fit one section, as every release so far.
+  {
+    const { week, at, H, F } = await heldWeek();
+    const before = await Promise.all([...H, F].map(bal));
+    const sections: number[] = [];
+    settle.__setMaswaliSettleSeamsForTests({ betweenHoldSections: async (n: number) => { sections.push(n); } });
+    let r: any;
+    try { r = await W.release(week.id, at); } finally { settle.__setMaswaliSettleSeamsForTests(null); }
+    const o = await outcome(week.id, H, F, before, r);
+    ok("S7F8.0 · control: three held winners' holds fit ONE section of the chain lock, and the week pays as it always did",
+      sections.length === 0 && o.settled && o.sharesHeld && o.walletsHeld.every(Boolean) && !o.freeHeld && o.paidOnce, J({ r: errOf(r), sections, o }));
+    for (const u of H) await W.setUserFields(u, { status: "ACTIVE" });
+  }
+
+  const { week, at, H, F } = await heldWeek();
+  const before = await Promise.all([...H, F].map(bal));
+  const sections: number[] = [];
+  const healed: string[][] = [];
+  settle.__setMaswaliSettleSeamsForTests({
+    holdSectionMs: 0,
+    betweenHoldSections: async (n: number) => {
+      sections.push(n);
+      // ⭐ A LIFT WHILE THE LOCK IS LET GO: the heal runs between the first two sections. The first section's hold has no
+      //    held share behind it yet (none has landed), so the heal lifts it — as it must for a real stray.
+      if (n === 1) healed.push((await settle.healStrayMillioneaHolds()).lifted);
+    },
+  });
+  let r: any;
+  try { r = await W.release(week.id, at); } finally { settle.__setMaswaliSettleSeamsForTests(null); }
+  const o = await outcome(week.id, H, F, before, r);
+  // One hold a section, in the week's ticket order: the first (yield 1; the heal lifts it), the same again (yield 2), the
+  // second (yield 3), the third (yield 4), then the money in a section of its own.
+  ok("S7F8.1 · ⭐ holds that outlast a section let the chain lock go between sections, four times, and the week still settles once: every held share landed held, every held wallet held, the free winner paid free",
+    J(sections) === J([1, 2, 3, 4]) && o.settled && o.sharesHeld && o.walletsHeld.every(Boolean) && !o.freeHeld && o.paidOnce,
+    J({ r: errOf(r), sections, o }));
+  await auditFlush();
+  const trail = async (u: string) => {
+    const rows = (await getAuditForTargetDurable("User", u, { limit: 200 })).entries
+      .filter((e: any) => String(e.payload?.reason) === "MILLIONEA_SHARE");
+    return { added: rows.filter((e: any) => e.action === "wallet.freeze_added").length, removed: rows.filter((e: any) => e.action === "wallet.freeze_removed").length };
+  };
+  const trails = await Promise.all(H.map(trail));
+  const liftedByHeal = H.filter((u) => healed[0]?.includes(u));
+  ok("S7F8.2 · ⭐ the hold a lift removed between two sections was read again under the next section's lock and placed again before the money (R6): the lifted winner's trail is two holds and one lift, each other held winner's one hold",
+    healed.length === 1 && liftedByHeal.length === 1
+      && H.every((u, i) => (u === liftedByHeal[0] ? trails[i].added === 2 && trails[i].removed === 1 : trails[i].added === 1 && trails[i].removed === 0)),
+    J({ healed, trails }));
+  for (const u of H) await W.setUserFields(u, { status: "ACTIVE" }); // the accounts' own reviews end
+
+  // ── THE LIFTS IN SECTIONS (the holds' twin): a release refused AFTER its holds lifts them again, section by section of
+  //    the chain lock; a lift that stops midway leaves every account whole, and the heal finishes it, each hold lifted once.
+  //    ⚠️ A FAULT THE PRODUCT CANNOT PRODUCE, DECLARED (as R6.4): the guarantee drained below the week's top-up after the
+  //    preview, so the release refuses in its money — after every hold is placed. One week carries all four acts (MR-3: a
+  //    later week could not even start while this one is unsettled).
+  {
+    const x = await heldWeek();
+    const balances = await Promise.all([...x.H, x.F].map(bal));
+    const g = (await guarantee())!;
+    if (g > 1) await money.postMaswaliLines(`test_drain_s7f8_${x.week.id}`, ledger.maswaliGuaranteeReturnEntries({ amount: g - 1, reference: "TEST-FAULT", actorId: OWNER }), null);
+    const untouched = async () => J(await Promise.all([...x.H, x.F].map(bal))) === J(balances)
+      && (await dal.weekStore.get(x.week.id)).state === "RESOLVING" && (await dal.weekStore.get(x.week.id)).rolloverIn === null;
+    const freed = async () => Promise.all(x.H.map(async (u) => !(await heldOf(u)) && (await W.bal(u)).status === "ACTIVE"));
+
+    const liftSections: number[] = [];
+    settle.__setMaswaliSettleSeamsForTests({ holdSectionMs: 0, betweenLiftSections: async (n: number) => { liftSections.push(n); } });
+    let r1: any;
+    try { r1 = await W.release(x.week.id, x.at); } finally { settle.__setMaswaliSettleSeamsForTests(null); }
+    await auditFlush();
+    const t1 = await Promise.all(x.H.map(trail));
+    ok("S7F8.3 · ⭐ a release refused after its holds lifts them again in sections of the chain lock (one account a section here): every held wallet free, each hold placed once and lifted once, nothing paid",
+      !r1.ok && /guarantee holds less/.test(errOf(r1)) && J(liftSections) === J([1, 2]) && (await freed()).every(Boolean)
+        && t1.every((y) => y.added === 1 && y.removed === 1) && (await untouched()),
+      J({ refusal: errOf(r1), liftSections, trails: t1 }));
+
+    settle.__setMaswaliSettleSeamsForTests({
+      holdSectionMs: 0,
+      betweenLiftSections: async (n: number) => { if (n === 1) throw new Error("TEST-FAULT · the process stops midway through the lifts"); },
+    });
+    let r2: any;
+    try { r2 = await W.release(x.week.id, x.at); } finally { settle.__setMaswaliSettleSeamsForTests(null); }
+    const stopped = await freed();
+    await auditFlush();
+    const t2 = await Promise.all(x.H.map(trail));
+    ok("S7F8.4 · ⭐ a lift that stops after its first section leaves every account whole — lifted and recorded, or still held — never half, and nothing paid",
+      !r2.ok && stopped.filter(Boolean).length === 1
+        && x.H.every((_, i) => t2[i].added === 2 && t2[i].removed === (stopped[i] ? 2 : 1)) && (await untouched()),
+      J({ refusal: errOf(r2), stopped, trails: t2 }));
+
+    const healedNow = await settle.healStrayMillioneaHolds();
+    await auditFlush();
+    const t3 = await Promise.all(x.H.map(trail));
+    const leftHeld = x.H.filter((_, i) => !stopped[i]);
+    ok("S7F8.5 · ⭐ …and the heal lifts exactly the rest: no wallet left frozen, each hold lifted exactly once (two holds, two lifts each)",
+      leftHeld.length === 2 && leftHeld.every((u) => healedNow.lifted.includes(u)) && x.H.filter((_, i) => stopped[i]).every((u) => !healedNow.lifted.includes(u))
+        && (await freed()).every(Boolean) && t3.every((y) => y.added === 2 && y.removed === 2),
+      J({ healed: healedNow.lifted, trails: t3 }));
+
+    const refill = await money.fundMaswaliGuarantee({ amount: FUND * 2, reference: "TEST-RAIL-S7F8", typed: money.GUARANTEE_FUND_WORD, ownerId: OWNER });
+    const r4 = await W.release(x.week.id, x.at);
+    await auditFlush();
+    const t4 = await Promise.all(x.H.map(trail));
+    const o4 = await outcome(x.week.id, x.H, x.F, balances, r4);
+    ok("S7F8.6 · control: refilled, the same week settles once — its held shares landing held, its holds placed a third time, each lifted twice before",
+      refill.ok && o4.settled && o4.sharesHeld && o4.walletsHeld.every(Boolean) && !o4.freeHeld && o4.paidOnce
+        && t4.every((y) => y.added === 3 && y.removed === 2),
+      J({ r4: errOf(r4), o4, trails: t4 }));
+    for (const u of x.H) await W.setUserFields(u, { status: "ACTIVE" });
+  }
+}
+
 // ── §11 · the sunset: the final week's top score shares the whole jackpot ───
 console.log("\n§11 · the sunset (MR-30, OD-03)");
 {
@@ -678,25 +866,36 @@ console.log("\n§11 · the sunset (MR-30, OD-03)");
   const before = await Promise.all(top.map(bal));
   const at = await W.closeAndSeal(week, start);
   const p = await settle.previewMaswaliSettlement(week.id, at);
-  // ⭐ R9 · THE BULK SHAPE, counted on the store's own calls: ONE settleMaswaliWinners call moves all 300 positions, no
-  //    position is written one by one, and the wallets are credited once per winning PLAYER (30), never once per ticket.
+  // ⭐ R9 · THE BULK SHAPE, counted on the store's own calls: one position update, one credit of 30 players, one
+  //    insert of 300 ticket payout rows, and no direct per-player wallet adjustment from settlement. The memory DAL's
+  //    implementation of creditMany may call adjust internally; that is one store call, not 30 settlement calls.
   const ps = W.w.mdal.positionStore, wal = W.db.wallet;
-  const calls = { winners: 0, winnerIds: 0, sets: 0, adjusts: 0 };
+  const calls = { winners: 0, winnerIds: 0, sets: 0, adjusts: 0, credits: 0, creditUsers: 0, inserts: 0, payoutRows: 0 };
+  let insideCreditMany = false; // the memory DAL implements its one bulk call using adjust internally
   const realWinners = ps.settleMaswaliWinners, realSet = ps.set, realAdjust = wal.adjust;
+  const realCredit = wal.creditMany, realTxnMany = W.db.txn.createMany;
   ps.settleMaswaliWinners = (...args: any[]) => { calls.winners++; calls.winnerIds += args[1].length; return realWinners.apply(ps, args); };
   ps.set = (...args: any[]) => { calls.sets++; return realSet.apply(ps, args); };
-  wal.adjust = (...args: any[]) => { calls.adjusts++; return realAdjust.apply(wal, args); };
+  wal.adjust = (...args: any[]) => { if (!insideCreditMany) calls.adjusts++; return realAdjust.apply(wal, args); };
+  wal.creditMany = async (...args: any[]) => {
+    calls.credits++; calls.creditUsers += args[0].length;
+    insideCreditMany = true;
+    try { return await realCredit.apply(wal, args); }
+    finally { insideCreditMany = false; }
+  };
+  W.db.txn.createMany = (...args: any[]) => { calls.inserts++; calls.payoutRows += args[0].length; return realTxnMany.apply(W.db.txn, args); };
   const t0 = Date.now();
   let r: any;
   try {
     r = p.ok ? await settle.settleMaswaliWeek({ weekId: week.id, releasedBy: RELEASER, digest: p.preview.digest, now: at }) : p;
   } finally {
-    ps.settleMaswaliWinners = realWinners; ps.set = realSet; wal.adjust = realAdjust;
+    ps.settleMaswaliWinners = realWinners; ps.set = realSet; wal.adjust = realAdjust; wal.creditMany = realCredit; W.db.txn.createMany = realTxnMany;
   }
   const ms = Date.now() - t0;
   console.log(`      R9 · the release of ${TOP} winners took ${ms} ms on ${STORE}`);
-  ok("R9.6 · ⭐ the bulk shape, counted: ONE settleMaswaliWinners call moves all 300 positions, none is written one by one, 30 credits pay 30 players",
-    r.ok && calls.winners === 1 && calls.winnerIds === TOP && calls.sets === 0 && calls.adjusts === TOP / EACH, J(calls));
+  ok("R9.6 · ⭐ the bulk shape, counted: one position update, one 30-player credit, one 300-row payout insert, no direct per-player adjusts",
+    r.ok && calls.winners === 1 && calls.winnerIds === TOP && calls.sets === 0 && calls.adjusts === 0
+      && calls.credits === 1 && calls.creditUsers === TOP / EACH && calls.inserts === 1 && calls.payoutRows === TOP, J(calls));
   const a = p.ok ? p.preview.arithmetic : null;
   const J0 = R + (TOP + LOW) * 1_000;
   const F = Math.round(0.13 * J0);

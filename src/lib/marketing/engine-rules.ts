@@ -194,7 +194,8 @@ export type EngineStopReason =
  *  review): the slice took so long between its claim and the wire that its claim was too old to send (the engine's
  *  send-age bound) — its people went back as they were, and the next slice is smaller when it can be. */
 export type SliceWait =
-  | "busy" | "quiet_hours" | "window_unreadable" | "money_busy" | "otp_failing" | "before_send_unanswered" | "slice_too_slow";
+  | "busy" | "quiet_hours" | "window_unreadable" | "money_busy" | "otp_failing" | "before_send_unanswered" | "slice_too_slow"
+  | "rules_unreadable";
 
 /** The shop-wide holds that are a wait, never a pause: the rows go back as they were and the step tries again. */
 export type ShopWideWait = "quiet_hours" | "window_unreadable" | "not_running" | "before_send_unanswered" | "slice_too_slow";

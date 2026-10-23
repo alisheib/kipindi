@@ -25,6 +25,13 @@ export type TaxReportView = {
   history: TaxLock[];
   /** Lines where the live books differ from the locked snapshot — empty when unlocked or unchanged. */
   drift: DriftLine[];
+  /**
+   * ⭐ S6 · THIS PERIOD holds a Millionea week (`buildTaxReportData`'s `hasWeek`, read from the same books as the figures):
+   * the page then offers the Millionea pill. Read beside the report, never into it, so Polls and Up & Down data — and
+   * their lock fingerprints — stay exactly what they are; and false for every period that holds no week, so such a
+   * period's page is the one it always was, whatever Millionea does in other periods.
+   */
+  millionea: boolean;
 };
 
 export function driftBetween(locked: TaxReportData, live: TaxReportData): DriftLine[] {
@@ -40,6 +47,10 @@ export function driftBetween(locked: TaxReportData, live: TaxReportData): DriftL
     { line: "TRA tax", locked: a.tax.tra, live: b.tax.tra, unit: "tzs" },
     { line: "GBT levy", locked: a.tax.gbt, live: b.tax.gbt, unit: "tzs" },
     { line: "Total Tax payable", locked: a.tax.total, live: b.tax.total, unit: "tzs" },
+    // ⭐ S6 · OD-08 — Millionea's three reconciling lines: absent on both sides (so 0 = 0, never named) where neither holds a week.
+    { line: "Jackpot brought forward", locked: a.report1.jackpotBroughtForwardCents ?? 0, live: b.report1.jackpotBroughtForwardCents ?? 0, unit: "cents" },
+    { line: "House floor top-up", locked: a.report1.floorTopUpCents ?? 0, live: b.report1.floorTopUpCents ?? 0, unit: "cents" },
+    { line: "Carried to the jackpot", locked: a.report1.carriedToJackpotCents ?? 0, live: b.report1.carriedToJackpotCents ?? 0, unit: "cents" },
   ];
   const out = lines.filter((l) => l.locked !== l.live);
   // ⭐ THE DAYS TOO (2026-10-04): a correction that moves money from one day to another leaves every period line equal,
@@ -69,8 +80,10 @@ export async function loadTaxReportView(opts: { period: TaxPeriod; product: Prod
 > {
   const live = await buildTaxReportData(opts);
   if (!live.ok) return live;
+  // The pill is an offer, never a figure: it follows the very read the figures came from.
+  const millionea = live.hasWeek;
   if (opts.period.kind === "custom") {
-    return { ok: true, view: { data: live.data, live: live.data, lock: null, history: [], drift: [] } };
+    return { ok: true, view: { data: live.data, live: live.data, lock: null, history: [], drift: [], millionea } };
   }
   const history = await locksForPeriod(opts.period.kind, opts.period.key, opts.product);
   const lock = history.find((l) => l.unlockedAtMs === null) ?? null;
@@ -82,6 +95,7 @@ export async function loadTaxReportView(opts: { period: TaxPeriod; product: Prod
       lock,
       history,
       drift: lock ? driftBetween(lock.snapshot, live.data) : [],
+      millionea,
     },
   };
 }

@@ -11,7 +11,7 @@
  * REDACT   · PredictionMarket survives as a stamped tombstone — titles and resolution
  *            criterion blanked, short titles and competition nulled (S2), pools / feeSnapshot /
  *            resolvedOutcome / settledAt KEPT
- * NEVER    · AuditLog, HouseBot, HouseBotAlertOnce, HouseBotControl, HouseBotEvent, HouseBotIntent, HouseBotPress, HouseBotRuntime, HouseBotTarget, HousePoolLedger, LedgerEntry, MaswaliTicket, Position, Transaction, UpDownObservation
+ * NEVER    · AuditLog, HouseBot, HouseBotAlertOnce, HouseBotControl, HouseBotEvent, HouseBotIntent, HouseBotPress, HouseBotRuntime, HouseBotTarget, HousePoolLedger, LedgerEntry, MaswaliCycle, MaswaliNoticeSeen, MaswaliQuestion, MaswaliTicket, Position, Transaction, UpDownObservation
  *
  * ═══ ⛔ AND THE NEVER LINE ABOVE IS ENFORCED, WHICH UNTIL 2026-09-20 IT WAS NOT ═══
  *
@@ -38,6 +38,10 @@
  *     `prisma generate` has run. A ninth house table is protected without anyone remembering
  *     this file. Only the six statutory singletons are named one at a time, because no property
  *     of the schema picks out exactly those six.
+ *   · MILLIONEA'S RECORD IS A SECOND FAMILY ON THE SAME TERMS (MASWALI-BUILD S6, MB-67): the week, its
+ *     questions, its tickets and the seen marks — the prefix `Maswali`, or a relation owned into it
+ *     (`deriveMaswaliFamily`), with a pinned floor. No Up & Down chain holds a Millionea week, so no
+ *     purge reaches one today; the guard makes that a property of the client, not of the chain lookup.
  *   · THE LINE ABOVE IS A CHECKED ARTEFACT. §12 parses it and holds it equal to `neverList()`,
  *     so the prose cannot drift from the guard a second time.
  *

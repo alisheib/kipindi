@@ -44,8 +44,8 @@ import { randomId } from "@/lib/server/crypto";
 import { createSession } from "@/lib/server/session";
 import { coolOff } from "@/lib/server/responsible-gambling";
 import {
-  SUNSET_WORD, attestParity, closeWeek, createWeek, gradable, moveClose, openWeek, purchaseMaswaliTickets, readDraftVersion, sealQuestion, sunsetMaswali, voidWeek,
-  type DraftQuestionInput,
+  SUNSET_WORD, __setMaswaliCloseClockForTests, attestParity, closeWeek, createWeek, gradable, moveClose, openWeek, purchaseMaswaliTickets, readDraftVersion,
+  sealQuestion, sunsetMaswali, voidWeek, type DraftQuestionInput,
 } from "@/lib/server/maswali-service";
 import { questionStore, weekStore, type StoredWeek } from "@/lib/server/maswali-dal";
 import { weekVoidCertain } from "@/lib/maswali-score";
@@ -111,7 +111,11 @@ export async function POST(req: Request) {
   if (process.env.NODE_ENV === "production") return NextResponse.json({ ok: false, error: "Not available" }, { status: 404 });
   if (process.env.DATABASE_URL) return refuse("This route writes only to an in-memory dev store; this server has a database configured.");
   const b = ((await req.json().catch(() => null)) ?? {}) as Body;
-  const res = await act(b);
+  // S7 (MB-84) · a close that is not early waits for the database's clock; the seeded weeks run on their own week clock,
+  // so this request hands the close that clock as the database's — as `seed-maswali` does — and puts it back after.
+  __setMaswaliCloseClockForTests((weekClockMs) => weekClockMs);
+  let res: NextResponse;
+  try { res = await act(b); } finally { __setMaswaliCloseClockForTests(null); }
   if (res.status === 200) revalidateTag(MASWALI_PUBLIC_WEEK_QUESTIONS_TAG, { expire: 0 });
   return res;
 }

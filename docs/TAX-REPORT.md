@@ -15,6 +15,7 @@
 | Day by day | 🟢 **LIVE 2026-10-04, `d4db96bb`** (served from 11:45 UTC, read back from `?dpl=`) — every week, month or custom window lists its days, each that day's own report (§6b) |
 | Finance's filing lines | 🟢 **LIVE 2026-10-06, `9d1550da`** (served from 11:57 UTC, read back from `?dpl=`; `/admin/tax` still redirects to sign-in, the export route answers an anonymous request with 401, clean boot) (Jaykishan, Finance — §6c): Report 2 opens with **Sales less refunds** and its **tickets** and closes with **Net commission revenue**, as Finance's monthly sheet files them; the report names deposits and withdrawals once, in a note, and nowhere beside a figure |
 | GBT levy | 🟢 **LIVE 2026-10-06, `17e9e335`** (served from 13:43 UTC, read back from `?dpl=`, clean boot) — the Gaming Board's line reads "GBT levy" on every surface (Ali: "change gbt tax to gbt levy"; §12 item 13) |
+| Millionea | 🔨 **MASWALI-BUILD S6, integrated on `claude/maswali-s6-release`, dark** — a Maswali Millionea week is filed by OD-08 (§6d): three reconciling lines, Report 2 on the fee its settlement booked, a Millionea pill on a period that holds a week. Polls and Up & Down are byte-identical (`test:tax-report` §12 (S6) 12.14). Finance's written confirmation of OD-08 is owed before ACTIVE (MASWALI-PLAN §6 Gate B) |
 | Who sees it | Owner (ADMIN), Finance, Compliance, Auditor — accounting VIEW (`roles.ts` `ROUTE_DOMAINS`) |
 | Who locks a period | Finance or the Owner (accounting ACT). The Owner alone (the stored ADMIN role) reopens one, records new rates, or locks a period out of balance — including one product while the whole book behind it is out |
 | Proof | `npm run test:tax-report` (engine + reader on real bets/settlements) · `npm run red:tax-report` (every declared mutation caught) |
@@ -44,6 +45,9 @@
 | **On hold brought forward** *(reconciling item)* | Stakes placed before the period that were still waiting when it opened. |
 | **Sales less refunds** *(Report 2, Finance's filing line)* | Sales − Refunds: the stakes placed in the period less every stake returned in it — including refunds, in this period, of tickets placed before it, so a short period can print a negative figure. Its **tickets** = tickets placed in the period − tickets refunded in it (one ticket is one bet; each refunded ticket counts once — its refund record, or a bet staked wholly from bonus and voided, which has none). |
 | **Net commission revenue** *(Report 2, Finance's filing line)* | Commission − Total tax: the commission left once TRA and GBT are paid. |
+| **Jackpot brought forward** *(Millionea reconciling item, §6d)* | The carried Millionea jackpot (R) a week draws into its pool when a ticket wins (the final week draws the whole jackpot). Players' money from earlier weeks — not this period's Sales. A week with no winner claims its carry but moves none of it. |
+| **House floor top-up** *(Millionea reconciling item)* | What the house's guarantee paid into a winning week's pool to bring its jackpot up to the floor (U). The house's own money — not Sales. |
+| **Carried to the jackpot** *(Millionea reconciling item)* | What left a week's pool for a later week's players: the whole sales of a week with no winner, or a paying week's rounding. Not Payout — nobody has been paid it yet. |
 
 ⛔ **Deposits and withdrawals are not lines of this report** — players' own money moving into and out of their wallets.
 The report says so once, in its notes and in the page's *How these figures are made*, and never beside a figure: the
@@ -70,7 +74,8 @@ the two reconciling items, then *Check: accounted total* and *Difference from Sa
 |---|---|
 | Sales · Payout · Refunds | The **money records** — CONFIRMED `Transaction` rows `BET_PLACED`, `BET_PAYOUT`, `BET_REFUND`, `CASHOUT` (what each wallet was actually debited and credited), by the record's own timestamp. Withdrawals, deposits, bonuses and adjustments are not read. |
 | On hold · Brought forward | The **bets** (`Position`): a bet is on hold at instant T when `placedAt < T` and it had not left "open" at T (`status = OPEN`, or `settledAt` null or ≥ T). Every way a bet leaves open stamps `settledAt`. Read by `positionStore.listLiveDuring(start, end)` (both store twins). |
-| Platform fee kept | Each resulted **round's own frozen rates**, through `chargedFee` — the very call settlement debits (pinned against real settlement by `test:charged-fee`). Kept = pool − floor(net pool): the booked fee floor(fee) plus the rounding. |
+| Platform fee kept | Each resulted **round's own frozen rates**, through `chargedFee` — the very call settlement debits (pinned against real settlement by `test:charged-fee`). Kept = pool − floor(net pool): the booked fee floor(fee) plus the rounding. A Millionea week's fee kept is `chargedFee`'s jackpot arm, round(its frozen rate × its jackpot J), the expression its settlement ran (pinned by `test:maswali-reporting`). |
+| Millionea's three lines · its booked fee | The **week's own settlement record** (`MaswaliCycle`: `rolloverIn` when a ticket won, `topUp`, `carryOut`, `jackpot`, `fee`), written in the same transaction as its ledger group `maswali_settle_<week>`. The memory store keeps no ledger, so this is the one record both stores answer from; `test:maswali-reporting` proves on Postgres that it equals the group's ledger lines to the shilling. |
 
 Because the three are independent, a check that does not close is a real disagreement in the books, and the report
 says exactly where: the difference splits — **to the cent, by construction** — into one group per bet, one per
@@ -114,8 +119,11 @@ total of **20** step by step, against 19 rounded once (§3.3).
 - **Period types:** Month (default: the last complete month), Week (Monday–Sunday), Day, Custom (date and time, up to
   366 days). All boundaries are **East Africa Time**. A period still running is **PARTIAL**: shown and exported, marked
   "not for filing", never lockable.
-- **Products:** All · Polls · Up & Down (`PredictionMarket.productLine`). Polls + Up & Down = All on every Report 1
-  line (`test:tax-report` §12.3). The tax lines are computed on each product's own Payout and rounded at each step, so
+- **Products:** All · Polls · Up & Down (`PredictionMarket.productLine`) · and **Millionea** on a period that holds a
+  Millionea week (S6: the pill is offered for that period, or on the Millionea view itself; every other period's page is
+  unchanged). Polls + Up & Down = All on every Report 1
+  line (`test:tax-report` §12.3); where the period holds a week, Polls + Up & Down + Millionea = All on every line,
+  Millionea's three included (§12 (S6) 12.15). The tax lines are computed on each product's own Payout and rounded at each step, so
   they can differ from All by a shilling (Payout 999 + 999: Total tax 20 + 20 against All's 39 — §12.3b). A money
   record whose bet or round cannot be found appears only under All — and a single-product view still reports the
   **whole book's** check: while the whole book is out, a product cannot be locked or filed (Owner override with a
@@ -129,8 +137,8 @@ total of **20** step by step, against 19 rounded once (§3.3).
   `20261003180000_tax_period_lock`), and audits `tax_report.period.locked`. One live lock per period and product —
   enforced by a partial unique index. The product CHECK `TaxPeriodLock_product_check` is re-added wider by
   `20261017120200_maswali_tax_product` (MASWALI-BUILD S1: ALL, MARKET, UPDOWN and now MASWALI, the report's product
-  filter since S0.5); until S6 builds the Millionea tax lines the report refuses any period holding a Millionea week,
-  so nothing can be locked under it. A running period — or one that ended less than a minute ago — is read to a
+  filter since S0.5); S6 builds the Millionea lines (§6d), so a period holding a week locks like any other, product by
+  product, under the same rules. A running period — or one that ended less than a minute ago — is read to a
   minute before now (`RUNNING_MARGIN_MS`), so a bet still committing can never show as a false exception.
 - **A locked period shows its snapshot** — on screen and in every export — and names every line where the live books
   have moved since (the drift table), so a late correction is never silent.
@@ -223,6 +231,40 @@ confirmed unchanged; the sheet's lines are added around it.
   from its own snapshot, and the lock fingerprint (which hashes those figures) already covers them (§15.9). The drift
   table names the lines they are made of (Sales, Refunds, Commission, Total tax).
 
+## §6d · Millionea — the jackpot-payout model (MASWALI-BUILD S6, OD-08)
+
+The ruling (`docs/MASWALI-PLAN.md` §9 OD-08, Ali's acceptance of 2026-10-16; Finance confirmed it on 2026-10-21 —
+`docs/COMPLIANCE-DECISIONS.md` 2026-10-21 item 5, on Ali's word; GBT's answer is still owed, on Ali's list for S8): Report 1 gains three lines, Report 2 files the booked 13% of J, statutory GGR is unchanged with
+liability and guarantee lines and a note, and the levy on the house's own top-up and the period shift are accepted.
+
+- **Why the plan's rule needs three more items.** A Millionea week's pool takes money in that is not Sales (the carried
+  jackpot R, the house's floor top-up U) and sends money out that is not Payout (to the jackpot, for a later week). So
+  a view that holds a week reads
+  > **Sales + On hold brought forward + Jackpot brought forward + House floor top-up = Payout + Refunds + Platform fee kept + On hold + Carried to the jackpot**
+  Without them a week with no winner fails the check by its whole sales (RESULT_MISMATCH) and blocks locking and filing
+  the whole book, Polls and Up & Down included (MB-65). A view that holds no week prints the six lines it always did.
+- **Where they come from.** Each resulted week's own settlement record (§3). R counts only when a ticket won (a
+  no-winner week claims its carry but moves none of it; the final week's sunset draws the whole jackpot); the fee kept
+  is recomputed by `chargedFee` from the week's frozen rate and its jackpot, so a booked fee that is off its own rate is
+  named (RESULT_MISMATCH, product Millionea), never copied in. A week whose record is missing is named too.
+- **Report 2.** A week's winners' Payout is never the taxable reference (13% of it is 0.87 of the fee, MASWALI-PLAN
+  §5a.4). Report 2 files the fee each paying week's settlement BOOKED, in the rate stretch the week paid in: on All
+  products, Commission on the Polls and Up & Down Payout, the weeks' jackpots and the fee booked, then their sum; on the
+  Millionea view, its jackpots and its booked fee. TRA and GBT are then the report's own rates on that rounded total, step
+  by step — never the levies a settlement booked. The fee includes 13% of the house's own top-up, and a week's fee is
+  filed in the period it paid (both accepted by OD-08).
+- **What stays exactly as it was.** Polls and Up & Down: every figure, every exception, the whole book's check and the
+  lock fingerprint, with or without weeks in the period (`test:tax-report` §12 (S6) 12.14); a period with no week, all
+  products (12.14b). The Millionea pill is read beside the report, never into it.
+- **Proof.** `test:tax-report` §12 (S6): planted weeks (no winner with a claimed carry and a free cancel; a carry with a
+  top-up; seven winners with rounding; a void; a fee off its rate; a missing record; a paying week whose record lacks its
+  fee, 12.19c; and one whose booked levies are null, 12.19d, which files whole — the report prices its levies from the
+  fee and asks a record only for the figures it reads), every line, both reports, the documents and the drift;
+  `red:tax-report`'s fourteen S6 plants (the
+  `MASWALI-BUILD S6` block of `scripts/anchors/tax-report.anchors.mjs`; corrected 2026-10-18 — this line said twelve
+  when the block held thirteen, and the round-2 review added the record-gap plant). `test:maswali-reporting` drives the
+  real week settlement on both stores and holds the report and the statutory pack to what it booked.
+
 ## §7 · Exports
 
 `GET /api/admin/tax/export?format=pdf|xlsx|csv&<the page's own period query>&product=…`
@@ -269,7 +311,7 @@ writes no manual refund: every one is a rule or a recorded officer decision). Th
 
 | Instrument | What it proves |
 |---|---|
-| `npm run test:tax-report` | §1 purity · §2 the worked example · §3 rounding · §4 rate input · §5 effective dates · §6 EAT periods · §7 cents · §8 reasons · §9 the reader on REAL bets, settlements, a one-sided refund, an emergency void, a free exit and an Up & Down round, read back to the cent · §10 a withdrawal changes nothing · §11 a round resulted after the cut-off · §12 products, rounding residue, planted defects, and the whole-book check a single product carries · §13 locks, drift, the PDF/Excel/CSV documents, and their states: custom window, PARTIAL, SETTLING (closed less than the lock grace ago), WHOLE BOOK OUT OF BALANCE; the period type in every file name and reference; drift rows in a locked CSV; the Owner's acknowledged filings (title + first note); the lock fingerprint (stable across reads, sensitive to a TRA/GBT re-split and to the whole book); the printed PDF measured at ten-digit figures (§13.27, control §13.28) and the workbook's tab (§13.29) · §14 **day by day**: real bets placed and settled across three EAT days (one across midnight, one on its stroke, one brought forward into an 08:00 window), every day read back to the cent AND as that day opened on its own; the days adding up; a running month's days so far; a payout a day late kept on its product's day; the PDF, workbook and CSV day tables; the New Year label; an old lock that holds no days; the billion-a-day fit and the footer · §15 **Finance's filing lines**: the September 2026 sheet to the shilling (3,063,000 · 1,074 tickets · 227,670 · 22,767 · 11,384 · 34,151 · 193,519), the lines on the reader's own books, the CSV's Count column, Polls + Up & Down adding up, a locked snapshot printing them, deposits and withdrawals named once and beside no figure, the widest figures measured in print (§15.12, control §15.13), a refund of a ticket placed before the window printing −1 ticket on every surface (§15.14–§15.15), a bonus-staked ticket voided with no record (§15.16), a month split by a rate change (§15.17), the count's words (§15.18), the GBT levy named so on every surface (§15.19) |
+| `npm run test:tax-report` | §1 purity · §2 the worked example · §3 rounding · §4 rate input · §5 effective dates · §6 EAT periods · §7 cents · §8 reasons · §9 the reader on REAL bets, settlements, a one-sided refund, an emergency void, a free exit and an Up & Down round, read back to the cent · §10 a withdrawal changes nothing · §11 a round resulted after the cut-off · §12 products, rounding residue, planted defects, and the whole-book check a single product carries · §12 (S6) **Millionea** (§6d): planted weeks filed by their three reconciling lines and their booked fee, Polls + Up & Down + Millionea = All, Polls and Up & Down byte-identical with and without weeks, a fee off its own rate and a missing week named, the documents and the drift · §13 locks, drift, the PDF/Excel/CSV documents, and their states: custom window, PARTIAL, SETTLING (closed less than the lock grace ago), WHOLE BOOK OUT OF BALANCE; the period type in every file name and reference; drift rows in a locked CSV; the Owner's acknowledged filings (title + first note); the lock fingerprint (stable across reads, sensitive to a TRA/GBT re-split and to the whole book); the printed PDF measured at ten-digit figures (§13.27, control §13.28) and the workbook's tab (§13.29) · §14 **day by day**: real bets placed and settled across three EAT days (one across midnight, one on its stroke, one brought forward into an 08:00 window), every day read back to the cent AND as that day opened on its own; the days adding up; a running month's days so far; a payout a day late kept on its product's day; the PDF, workbook and CSV day tables; the New Year label; an old lock that holds no days; the billion-a-day fit and the footer · §15 **Finance's filing lines**: the September 2026 sheet to the shilling (3,063,000 · 1,074 tickets · 227,670 · 22,767 · 11,384 · 34,151 · 193,519), the lines on the reader's own books, the CSV's Count column, Polls + Up & Down adding up, a locked snapshot printing them, deposits and withdrawals named once and beside no figure, the widest figures measured in print (§15.12, control §15.13), a refund of a ticket placed before the window printing −1 ticket on every surface (§15.14–§15.15), a bonus-staked ticket voided with no record (§15.16), a month split by a rate change (§15.17), the count's words (§15.18), the GBT levy named so on every surface (§15.19) |
 | `npm run red:tax-report` | Mutates a COPY of `src/` with each declared defect (`scripts/anchors/tax-report.anchors.mjs`) and proves `test:tax-report` goes red on the named check — the plan's formula and rounding, every line of the check, the products, the locks, and each protection the 2026-10-03 adversarial review added (the whole-book loophole, the settling copy, a week's file overwriting its Monday's, merged rate segments, link inference, the running period's one-minute margin), and those of the second review (an acknowledged filing printed bare, the lock fingerprint, four-across tiles, a narrow id column, the window printed to "now"), and the day-by-day's twelve (an edge past the window, a day link opening the rest of the window, days measured on the cut-off, midnight filed under the day before, a forgotten brought-forward, a bet dropped from the day it left, a day dropping the bets its records name, the silent tax clause, an old filing's missing days unsaid, cents rounded away, a sign flipped in the workbook, an out-of-balance day hidden in print), and Finance's filing lines' eight (the refunds forgotten, the refunded tickets counted, the tax added to the commission, the commission before tax printed as net, the printed line's tickets dropped, the CSV's Count left blank, withdrawals named on the Payout line again, the deposits-and-withdrawals note dropped, the count clamped at zero, the bonus-staked ticket left unrefunded, net commission from the first rate period only, a hyphen for the minus, the page's line losing its no-break spaces), and six more where the GBT line is called a tax again (Report 2, By product, the workbook's day columns, the CSV's product and day rows, the drift) |
 | `npm run test:tax-report-page` | The surfaces at source level, every check with a planted-violation control: the page computes nothing and has no `?? 0`; the export gates on the stored role + 2FA + same-origin and audits before the first byte; every action gates first (reopen and rates on the stored ADMIN role, `requireOwner`); a lock recomputes from the books, refuses unless its fingerprint is the one the page showed, and treats a whole-book difference as its own; the lock panel is rebuilt per period and product; the dev seeder is dead in production; §5 the day card reads the view's own days (the live view's for an old lock), opens each through the engine's `daySlice`, uses the documents' own words, lays out a table only from 1280px, prints the whole period from Report 1/2, keeps both pagers' pages, and the route hands the workbook its wide layout; §6 Finance's filing lines are Report 2's own rows — the page makes no sum of its own, each of the four ways it could proven refused — and withdrawals are named once, in their own definition; §6.3 the Rates form names the GBT levy so |
 | `npm run e2e:tax-report` | The same real flows on a LOOPBACK Postgres (`DATABASE_URL=…127.0.0.1…`): every Prisma twin the reader uses, the migration applied from empty, and the partial unique index refusing a second live lock |
@@ -364,3 +406,6 @@ writes no manual refund: every one is a rule or a recorded officer decision). Th
    the workbook's day columns, the CSV, the drift and the Rates form all read "GBT levy"; TRA's line stays "TRA tax", and
    "Total Tax payable" (TRA + GBT) keeps its name, as Finance's sheet does. Same arithmetic, same place — only the word.
    `test:tax-report` §15.19 and `test:tax-report-page` §6.3 hold it.
+14. **Millionea is filed by OD-08** (MASWALI-BUILD S6; §6d): three reconciling lines read from each week's own settlement
+   record, Report 2 on the fee the week's settlement booked, Millionea beside Polls and Up & Down only where a period holds a
+   week, and its pill on such a period. Polls and Up & Down are byte-identical with or without weeks in the period.

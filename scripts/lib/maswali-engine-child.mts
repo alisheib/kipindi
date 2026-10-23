@@ -24,6 +24,9 @@ process.env.SESSION_SECRET ??= "maswali-engine-session-secret-0123456789abcdef";
 const { eatWeekStartMs, eatWeekAt, eatWeekCode } = await import("../../src/lib/eat-day.ts");
 const { utcToZonedLocal } = await import("../../src/lib/maswali-time.ts");
 const svc = await import("../../src/lib/server/maswali-service.ts");
+// S7 · the weeks run on an injected week clock, weeks ahead, and a close that is not early is checked on the database's
+// clock (MB-84): the suite hands the close that same week clock as the database's, as the money world does.
+svc.__setMaswaliCloseClockForTests((weekClockMs: number) => weekClockMs);
 const { weekStore, questionStore, ticketStore, __resetMaswaliMemoryStores } = await import("../../src/lib/server/maswali-dal.ts");
 const { recordLicenceBasis, LICENCE_WITHDRAWN } = await import("../../src/lib/server/maswali-licence.ts");
 const { saveMaswaliConfig } = await import("../../src/lib/server/maswali-config.ts");
@@ -216,7 +219,8 @@ const nowOpen = new Date(W2 + 60_000); // Monday 00:01 EAT
   // line of the checklist, names "licence basis" — `maswali-licence.ts`).
   const before = await listed();
   ok("2.0 · ⭐ with nothing recorded, the Owner's ruling of 2026-10-23 is the basis: the builder's checklist names the short guarantee (OD-02) and no licence item",
-    !before.some((p) => /licence basis/.test(p)) && before.some((p) => /^The guarantee holds TZS 0; TZS [\d,]+ is needed to open \(OD-02\)\.$/.test(p)), JSON.stringify(before));
+    // S6-ADMIN · the words end at the rule, never at its code (DESIGN_AUTHORITY §M8a item 29): no "(OD-02)" on the screen.
+    !before.some((p) => /licence basis/.test(p)) && before.some((p) => /^The guarantee holds TZS 0; TZS [\d,]+ is needed to open\.$/.test(p)), JSON.stringify(before));
   // ⛔ A recorded None is the Owner's withdrawal, and the ruling never stands in over it.
   await recordLicenceBasis({ kind: "NONE", ref: null }, OWNER);
   const withdrawn = await listed();
@@ -1155,6 +1159,60 @@ console.log("\n§14 · inside the chain lock every write takes its transaction; 
       && poolsControls.includes("onWarning?.(r.auditWarning ?? null);") && poolsControls.includes("(warning) => raiseAuditWarning(\"pools:stop\", warning)")
       && before(poolsPage, "<StandingAuditWarning slot=\"pools:stop\" />", "{canSunset ? <SunsetCeremony")
       && builder.includes("if (r.recorded === false) {") && builder.includes("title: \"Week drafted, but the audit record was not written\""));
+}
+
+// ── §15 · a draft discarded (S6-ADMIN, the lead's ruling G5) ──────────────────────────────────────────────────────────
+console.log("\n§15 · a draft that never opened is discarded whole; a week that opened, and the announced final week, never are");
+{
+  const W11 = weekStartAhead(11), W12 = weekStartAhead(12);
+  const made = await svc.createWeek({ weekStartMs: W11, questions: questions(W11), officerId: DRAFTER });
+  ok("15.0 · premise: a draft for its Monday, with its fifteen questions", made.ok && (await questionStore.listForWeek(made.ok ? made.week.id : "")).length === 15, errOf(made));
+  if (made.ok) {
+    const w = made.week;
+    const gone = await svc.discardDraftWeek({ weekId: w.id, officerId: OTHER });
+    ok("15.1 · ⭐ a draft that never opened is discarded whole: the week and its fifteen questions leave, its code with them",
+      gone.ok && (await weekStore.get(w.id)) === null && (await questionStore.listForWeek(w.id)).length === 0 && (await weekStore.getByCode(w.code)) === null,
+      errOf(gone));
+    await auditFlush();
+    const rows = (await getAuditByActionsDurable(["maswali.week.discarded"], { limit: 500 })).entries.filter((e) => e.targetId === w.id);
+    ok("15.2 · ⭐ the discard is audited once, after its commit: by the officer who discarded it, naming the week",
+      gone.ok && gone.recorded === true && rows.length === 1 && rows[0].actorId === OTHER && (rows[0].payload as { code?: string } | null)?.code === w.code,
+      JSON.stringify({ recorded: gone.ok ? gone.recorded : null, rows: rows.map((r) => [r.actorId, r.payload]) }));
+    const again = await svc.createWeek({ weekStartMs: W11, questions: questions(W11), officerId: DRAFTER });
+    ok("15.3 · its Monday and its line are free: a new draft for the same Monday is made, under the same code", again.ok && again.week.code === w.code, errOf(again));
+    const twice = await svc.discardDraftWeek({ weekId: w.id, officerId: OTHER });
+    ok("15.4 · a week already discarded is no week: refused", !twice.ok && /No such week/.test(errOf(twice)), errOf(twice));
+  }
+  const opened = (await weekStore.list({})).find((x) => x.state !== "DRAFT");
+  ok("15.5p · premise: a week that opened is on this store", !!opened, opened?.state ?? "none");
+  if (opened) {
+    const qsBefore = (await questionStore.listForWeek(opened.id)).length;
+    const refused = await svc.discardDraftWeek({ weekId: opened.id, officerId: OTHER });
+    const kept = await weekStore.get(opened.id);
+    ok("15.5 · ⛔ a week that opened is never discarded: refused with the reason, and the week and its questions stay",
+      !refused.ok && /has opened, so it is never discarded/.test(errOf(refused)) && kept?.state === opened.state && (await questionStore.listForWeek(opened.id)).length === qsBefore,
+      errOf(refused));
+    const direct = await weekStore.discardDraft(opened.id).catch((e: unknown) => `threw: ${(e as Error)?.message ?? e}`);
+    ok("15.5b · ⛔ …and the store itself refuses it: the delete is conditional on a draft with no market and no ticket",
+      direct === false && (await weekStore.get(opened.id))?.state === opened.state && (await questionStore.listForWeek(opened.id)).length === qsBefore,
+      String(direct));
+  }
+  const fin = await svc.createWeek({ weekStartMs: W12, questions: questions(W12), officerId: DRAFTER });
+  if (fin.ok) {
+    await weekStore.patch(fin.week.id, { isFinal: true });
+    const refusedFinal = await svc.discardDraftWeek({ weekId: fin.week.id, officerId: OTHER });
+    ok("15.6 · ⛔ the announced final week is never discarded, even as a draft: refused, and it stays",
+      !refusedFinal.ok && /announced final week/.test(errOf(refusedFinal)) && (await weekStore.get(fin.week.id))?.isFinal === true
+        && (await questionStore.listForWeek(fin.week.id)).length === 15,
+      errOf(refusedFinal));
+  } else ok("15.6 · premise: a draft to make the final week", false, errOf(fin));
+  // One truth for every act (§14): the discard answers its warning in the one wording, raised into the list it lands on.
+  const acts = readFileSync("src/app/admin/maswali/actions.ts", "utf8"), wc = readFileSync("src/app/admin/maswali/[weekId]/week-controls.tsx", "utf8");
+  const list = readFileSync("src/app/admin/maswali/page.tsx", "utf8");
+  ok("15.7 · the discard answers its warning when its record is short, in the console's one wording, and the list it lands on shows it",
+    acts.includes('const DISCARD_AUDIT_WARNING = "The discard landed, but its audit record could not be fully written. Tell an administrator; do not repeat the discard.";')
+      && acts.includes("auditWarning: r.recorded ? null : DISCARD_AUDIT_WARNING")
+      && wc.includes('raiseAuditWarning("weeks:discard", r.auditWarning ?? null);') && list.includes('<StandingAuditWarning slot="weeks:discard" />'));
 }
 
 console.log(`${String.fromCharCode(10)}@@SUMMARY ${JSON.stringify({ pass, fail, store: STORE })}`);

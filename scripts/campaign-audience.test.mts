@@ -208,7 +208,7 @@ await consenting("pa08", "+255681000008", 8);                                   
 await db.responsible.upsert(rgRow("pa08", iso(T0 + 30 * DAY)));
 await consenting("pa09", "+255681000009", 9, { status: "COOLED_OFF" });                          // on a break
 await db.responsible.upsert(rgRow("pa09", null, { coolingOffUntil: iso(T0 + 2 * DAY) }));
-await consenting("pa10", "+255681000010", 10);                                                   // a harm marker: three deposits inside an hour — MUTED for marketing since 2026-10-21, so pa10 RECEIVES
+await consenting("pa10", "+255681000010", 10);                                                   // a harm marker: a burst of deposits — MUTED for marketing since 2026-10-21, so this player RECEIVES
 await db.wallet.create({ id: "wal_pa10", userId: "pa10", balance: 0, pending: 0, hold: 0, currency: "TZS", status: "ACTIVE", createdAt: iso(T0), updatedAt: iso(T0) } as never);
 for (let i = 0; i < 3; i++) {
   await db.txn.create({
@@ -271,7 +271,7 @@ const NEVER = ["cb07", "ps01", "pe01", "pf01"];
 type Figures = Pick<AudienceSplit, "matching" | "unsendable" | "reachable" | "willReceive" | "notReceiving" | "unanswered" | "notReceivingTotal" | "unchecked">;
 /* ⭐ U33r · pa18, the promised referee, is the protected line's SIXTH number — one line for every role, never its own.
    2026-10-21 · the harm markers are MUTED for marketing (Ali; COMPLIANCE-DECISIONS § "2026-10-21 · Harm markers muted for
-   marketing SMS (owner ruling)"): pa10 moves from protected to will receive — 4→5, 7→6, 17→16 (players 4→5, 7→6, 13→12). */
+   marketing SMS (owner ruling)"). So pa10 moves from protected to will receive — 4→5, 7→6, 17→16 (players 4→5, 7→6, 13→12). */
 const EXPECT_BOTH: Figures = {
   matching: 23, unsendable: 2, reachable: 21, willReceive: 5,
   notReceiving: { suppressed: 2, no_consent: 3, withdrawn: 3, age_unknown: 2, protected: 6 }, unanswered: 0, notReceivingTotal: 16, unchecked: 0,

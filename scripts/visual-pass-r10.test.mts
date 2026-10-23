@@ -336,6 +336,7 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
     ["src/app/auth/2fa/page.tsx", '<I.arrowLeft s={12} edge="start" text="mono-400" className="mt-0.5" />', 1, "text", "the back link's start — it typed ← (the mono face's arrow, a weight under its words); on its first line (3.6)"],
     ["src/app/auth/otp/page.tsx", '<I.arrowLeft s={12} edge="start" text="mono-400" className="mt-0.5" />', 1, "text", "the change-number link's start — it typed ←; on its first line where its words wrap (3.6)"],
     ["src/app/help/page.tsx", '<I.chevronDown s={13} edge="end" className="transition-transform group-open:rotate-180" />', 1, "edge", "each FAQ row's end (§2)"],
+    ["src/app/help/millionea-help.tsx", '<I.chevronDown s={13} edge="end" className="transition-transform group-open:rotate-180" />', 1, "edge", "each Millionea question's row end on /help — the FAQ's own caret, turned by the same rule (MASWALI-BUILD S6)"],
     ["src/app/profile/activity/page.tsx", "<I.arrowDownToLine s={14} />", 1, "slot", "the Deposits tile's pictogram: the slot pulls it (§4) — the one deposit arrow since PHOSPHOR-MIGRATION W4 (§8b; it drew the plain ↓)"],
     ["src/app/profile/activity/page.tsx", "<I.arrowUpFromLine s={14} />", 1, "slot", "the Withdrawals tile's pictogram: the slot pulls it (§4) — the one withdraw arrow since W4 (it drew the plain ↑)"],
     ["src/app/profile/kyc/page.tsx", '<I.arrowLeft s={12} edge="start" text="mono-400" />', 1, "text", "the footer's back link's start — it typed ←"],

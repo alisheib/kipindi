@@ -1,7 +1,8 @@
 "use server";
 
 /**
- * /admin/maswali — the TRADING officer's acts on a Millionea week (MASWALI-BUILD S4; MASWALI-PLAN §7b S4 items 1 and 3).
+ * /admin/maswali — the TRADING officer's acts on a Millionea week (MASWALI-BUILD S4; MASWALI-PLAN §7b S4 items 1 and 3),
+ * and the Owner's two beside them (S7-F2): the rules of the next week and the public-holiday list.
  *
  * Every act names its control and takes its domain from `CONTROL_DOMAIN` (E-27), so the page can ask the question the
  * action will ask and render a locked control instead of one that bounces. `requireStaff` checks the stored role, writes
@@ -14,18 +15,21 @@ import { safeError } from "@/lib/server/safe-error";
 import { requireStaff } from "@/lib/server/rbac-guard";
 import { CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import {
-  attestParity, confirmSeal, correctSeal, createWeek, editDraftQuestions, moveClose, openWeek, sealQuestion,
+  attestParity, confirmSeal, correctSeal, createWeek, discardDraftWeek, editDraftQuestions, moveClose, openWeek, sealQuestion,
   type DraftQuestionInput,
 } from "@/lib/server/maswali-service";
 import { guaranteeReader } from "@/lib/server/maswali-money-service";
 import { noteSealDevice } from "@/lib/server/maswali-integrity";
+import { saveMaswaliConfig } from "@/lib/server/maswali-config";
+import { saveMaswaliHolidays } from "@/lib/server/maswali-holidays";
 import { applySealBatch, CONFIRM_AUDIT_WARNING, parseSealRows, SEAL_AUDIT_WARNING, type SealBatchResult } from "@/lib/maswali-seal-batch";
 import { clientMeta } from "@/lib/server/auth-service";
 import { eatWeekStartMs } from "@/lib/eat-day";
 import { MASWALI_PUBLIC_WEEK_QUESTIONS_TAG } from "@/lib/server/maswali-player";
 import type { MaswaliOutcome } from "@/lib/maswali-score";
+import { parseHolidayList, parseRulesForm } from "./rules-form";
 
-type ActionResult = { ok: true; weekId?: string; recorded?: boolean; auditWarning?: string | null } | { ok: false; error: string };
+type ActionResult = { ok: true; weekId?: string; recorded?: boolean; auditWarning?: string | null } | { ok: false; error: string; field?: string };
 
 const refresh = (weekId?: string) => {
   // A newly opened set or a seal must be visible on the next read, including across different readers' requests.
@@ -74,6 +78,26 @@ export async function createMaswaliWeekAction(formData: FormData): Promise<Actio
     return { ok: true, weekId: r.week.id, recorded: r.recorded };
   } catch (err) {
     return { ok: false, error: safeError(err, "The week could not be drafted") };
+  }
+}
+
+/** S6-ADMIN · G5 · a landed discard whose audit row was not written (the draft is gone), in the console's one wording. */
+const DISCARD_AUDIT_WARNING = "The discard landed, but its audit record could not be fully written. Tell an administrator; do not repeat the discard.";
+
+/**
+ * ⭐ S6-ADMIN · G5 · discard a draft that never opened — behind the draft's own control (`createMaswaliWeek`): whoever may
+ * draft a week may take back a draft. The service refuses a week that opened, and the announced final week.
+ */
+export async function discardMaswaliDraftAction(formData: FormData): Promise<ActionResult> {
+  const session = await requireStaff(CONTROL_DOMAIN.createMaswaliWeek, "discardMaswaliDraft");
+  const weekId = str(formData, "weekId");
+  try {
+    const r = await discardDraftWeek({ weekId, officerId: session.userId });
+    if (!r.ok) return { ok: false, error: r.error };
+    try { refresh(); } catch { /* The draft is already gone; the client navigates away. */ }
+    return { ok: true, recorded: r.recorded, auditWarning: r.recorded ? null : DISCARD_AUDIT_WARNING };
+  } catch (err) {
+    return { ok: false, error: safeError(err, "The draft could not be discarded") };
   }
 }
 
@@ -193,6 +217,42 @@ export async function confirmMaswaliSealAction(formData: FormData): Promise<Acti
     return { ok: true, weekId, auditWarning: r.recorded ? null : CONFIRM_AUDIT_WARNING };
   } catch (err) {
     return { ok: false, error: safeError(err, "The confirmation could not be recorded") };
+  }
+}
+
+/**
+ * ⭐ S7-F2 · THE RULES OF THE NEXT WEEK (`maswali.config`): every field, read back by the form's own list, validated by
+ * the config's own validator and saved through its own verified setter, which audits `{ before, after, changes }`. A
+ * running week is untouched — it reads the rules it froze at its open (MB-75). The Owner's (`ops`, CONTROL_DOMAIN).
+ */
+export async function saveMaswaliConfigAction(formData: FormData): Promise<ActionResult> {
+  const session = await requireStaff(CONTROL_DOMAIN.saveMaswaliConfig, "saveMaswaliConfig");
+  try {
+    const parsed = parseRulesForm((k) => { const v = formData.get(k); return typeof v === "string" ? v : null; });
+    if (!parsed.ok) return { ok: false, error: parsed.error, field: parsed.field };
+    const r = await saveMaswaliConfig(parsed.updates, session.userId);
+    if (!r.ok) return { ok: false, error: r.error };
+    // S5-FIX-SRV A7 (the S7 × S5 merge) · the rules are saved: a failed refresh never reports the save as failed.
+    try { refresh(); } catch { /* The rules already saved; the client refreshes too. */ }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: safeError(err, "The Millionea rules could not be saved") };
+  }
+}
+
+/** ⭐ S7-F2 · the Owner's list of public holidays (MB-85, OD-27), validated by its own store and read back before "saved". */
+export async function saveMaswaliHolidaysAction(formData: FormData): Promise<ActionResult> {
+  const session = await requireStaff(CONTROL_DOMAIN.saveMaswaliHolidays, "saveMaswaliHolidays");
+  try {
+    const dates = parseHolidayList(str(formData, "dates"));
+    if (!dates) return { ok: false, error: "The holiday list could not be read. Reload the page and try again." };
+    const r = await saveMaswaliHolidays(dates, session.userId);
+    if (!r.ok) return { ok: false, error: r.error };
+    // S5-FIX-SRV A7 (the S7 × S5 merge) · the list is saved: a failed refresh never reports the save as failed.
+    try { refresh(); } catch { /* The list already saved; the client refreshes too. */ }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: safeError(err, "The holiday list could not be saved") };
   }
 }
 

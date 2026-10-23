@@ -11,13 +11,21 @@
  *
  * The floor is per store (7.6 reads the voided pool on Postgres only, and so do §8's R4b.4 and R7.7, which need a
  * transaction to roll back). It only ever rises: +28 on both stores and +2 on Postgres with §8, the review's findings of
- * 2026-10-17 (R4a, R4b, R5, R7, R10a, R10b).
+ * 2026-10-17 (R4a, R4b, R5, R7, R10a, R10b); +6 on both with §9, the stale slip (S7, MR-30); +2 on both with SF.7/SF.8, the refusal is an OPEN week's (S7-F4); +3 on both with SF.2a/SF.6a/SF.6b, the stop
+ * and the in-lock stale-slip check share the market lock (S7-F4); +1 on both with SF.2b, the unheld stop finishes inside
+ * the same wait (S7-F5); +1 on both with 7.0a, the bonus case's premise — the grant landed with turnover still to make
+ * (S7-F7 2): 110 on memory, 113 on Postgres, what the merged integration's run printed; +2 on both with R10b.4b/R10b.4c,
+ * the batched desk check fails closed for an omitted account and for a failed batch (9277c9ab5): 112 on memory, 115 on
+ * Postgres, what 66f3af8be's run printed (2026-10-21); +1 on both with the S7 × S5 merge's one case list
+ * (claude/maswali-s7-s5): 113 on memory, 116 on Postgres, what dfb438dd2's run printed (2026-10-22); +1 on both with 2.14,
+ * the binding rules' version on each ticket (MB-69, MASWALI-BUILD S6-MONEY 1): 114 on memory, 117 on Postgres, what the
+ * lane's run printed (2026-10-22).
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({
   suite: "test:maswali-purchase",
   casesFile: "scripts/lib/maswali-purchase-child.mts",
-  minPass: { memory: 97, postgres: 100 },
+  minPass: { memory: 114, postgres: 117 },
   dbPrefix: "mlw_purchase",
 });

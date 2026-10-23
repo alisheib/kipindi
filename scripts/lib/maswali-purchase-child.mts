@@ -4,7 +4,8 @@
  *   npx tsx scripts/maswali-purchase.test.mts     (npm run test:maswali-purchase)
  *
  *   §1 who may buy and when: the rollout, the week, the account (MR-10), the picks (MR-9), the price (MR-8)
- *   §2 ⭐ one purchase of N tickets: one debit, N positions, N transactions, N salted tickets, one ledger group (MB-31)
+ *   §2 ⭐ one purchase of N tickets: one debit, N positions, N transactions, N salted tickets, one ledger group (MB-31),
+ *      each ticket stamped with the binding rules' version it was bought under (MB-69, OD-18; S6-MONEY 1)
  *   §3 the replay: the same key is the same purchase — never twice, never another purchase's receipt
  *   §4 the cap (MR-11), counted inside the wallet lock: concurrent purchases of one account end at exactly the cap
  *   §5 real balance only (MR-10) and the responsible-gambling gates, through the one bet path
@@ -23,6 +24,7 @@ const { svc: market } = W.w;
 const { dal, money, acct } = W;
 const { leafHash } = await import("../../src/lib/maswali-commitment.ts");
 const rg = await import("../../src/lib/server/responsible-gambling.ts");
+const RULES = await import("../../src/lib/millionea-rules-version.ts");
 
 process.exitCode = 1;
 let pass = 0, fail = 0;
@@ -35,7 +37,13 @@ const why = (r: { ok: boolean; reason?: string; error?: string }) => (r.ok ? "ok
 /** One player's positions on one week's market, their transactions, their notices — read through the stores. */
 const positionsOn = async (u: string, marketId: string) => ((await market.listPositionsForMarket(marketId)) as any[]).filter((x) => x.userId === u);
 const txnsOf = async (u: string) => (await W.db.txn.findByUser(u, 500)) as any[];
-const noticesOf = async (u: string) => ((await W.db.notification.findByUser(u, 500)) as any[] | null) ?? [];
+/**
+ * ⭐ MASWALI-BUILD S6 (2026-10-18): the player's bell rows that are NOT Millionea's own. A week now writes its own notices
+ * (`maswali-notify.ts`, held by `test:maswali-notify`), so 7.5 counts the rest: a poll's or Up & Down's notice on a ticket
+ * is still the defect, and a planted one (`red:maswali-money-path` (6)) links to `/markets/…`, never `/millionea`.
+ */
+const noticesOf = async (u: string) => (((await W.db.notification.findByUser(u, 500)) as any[] | null) ?? [])
+  .filter((n) => !String(n.href ?? "").startsWith("/millionea"));
 const settleDust = () => new Promise((r) => setTimeout(r, 400)); // a notice is written after its money commits
 
 await W.setup({ guarantee: 20_000_000 });
@@ -104,6 +112,14 @@ const bought = await W.buy(buyer, week.id, three, { key: "key-three" });
   const m = await market.getMarket(week.marketId);
   ok("2.12 · the market's pool holds all three stakes on one side", m.yesPool === 3 * price && m.noPool === 0, `${m.yesPool}/${m.noPool}`);
   ok("2.13 · ⭐ the week's POOL ledger account holds them too (both stores)", (await W.balanceOf(acct.pool(week.marketId))) === 3 * price, `${await W.balanceOf(acct.pool(week.marketId))}`);
+  // ⭐ MB-69 · OD-18: the binding rules bind on purchase, so each ticket records — as stored, read back through the store —
+  // the version it was bought under (the one constant the rules page prints), then the week's mark: its code and the
+  // instant its figures froze. Written out here, never through the module's own stamp function.
+  const frozenAt = W.svc.frozenRules(week)?.frozenAt;
+  const stamp = `${RULES.MILLIONEA_RULES_VERSION} · ${week.code}@${frozenAt}`;
+  ok("2.14 · ⭐ MB-69 · each ticket records the binding rules' version it was bought under, beside the week's mark (OD-18)",
+    /^\d{4}-\d{2}-\d{2}$/.test(RULES.MILLIONEA_RULES_VERSION) && typeof frozenAt === "string" && rows.length === 3
+      && rows.every((t: any) => t.rulesVersion === stamp), J({ want: stamp, got: rows.map((t: any) => t.rulesVersion) }));
 }
 
 // ── §3 · the replay ─────────────────────────────────────────────────────────
@@ -236,9 +252,12 @@ console.log("\n§7 · a voided week refunds every ticket");
   const { week: v, start } = await W.openWeek({ weeksAhead: 3 });
   const a = await W.user({ balance: 50_000 }), b = await W.user({ balance: 50_000 });
   // `a` holds a bonus with progress made on other bets: a ticket accrues no turnover (OD-27), so its refund must remove none.
-  // The bonus offer is withdrawn in shipped code. Open it only for this local fixture, then
-  // restore the switch: a refused grant makes a zero-to-zero turnover assertion vacuous.
   const bonus = await import("../../src/lib/server/bonus-service.ts");
+  // ⛔ MASWALI-BUILD S7-F7 2 · THE BONUS IS THIS CASE'S FIXTURE, SO ITS FEATURE IS ON FOR THE GRANT ALONE. The bonus wallet is
+  //    WITHDRAWN from the product (`feature-state.ts`) and `creditBonus` refuses while it sleeps, so `a` held no bonus: 7.0b
+  //    and 7.3b compared 0 with 0, and red:maswali-money-path's (6b) — a void refund that reverses turnover — stayed green.
+  //    The switch is the server-side one an operator would set, scoped as `withdrawn-features` §4 scopes it and put back
+  //    after; the accrual, the summary and a reversal never read it. 7.0a and 7.0c each name the premise they hold.
   const bonusGrant = await (async () => {
     const previous = process.env.FEATURE_BONUS;
     process.env.FEATURE_BONUS = "ACTIVE";
@@ -284,15 +303,26 @@ console.log(`${String.fromCharCode(10)}§8 · the review's findings: the receipt
   const act = await import("../../src/lib/server/activity-summary.ts");
   const { auditFlush, getAuditForTarget } = await import("../../src/lib/server/audit.ts");
   const desks = W.w.dal.houseBotStore;
-  const realLookup = desks.findLiveByUserId;
-  /** R10b's fault, declared: the desk lookup throws — for every account, or only for `only`. `realDesk` puts it back. */
+  const realSingleLookup = desks.findLiveByUserId;
+  const realBatchLookup = desks.findLiveByUserIds;
+  /** R10b's fault reaches the purchase's single lookup and settlement's batched lookup. */
   const blindDesk = (only?: string) => {
     desks.findLiveByUserId = async (id: string, tx?: unknown) => {
       if (!only || id === only) throw new Error("injected: the desk lookup could not be read");
-      return realLookup.call(desks, id, tx);
+      return realSingleLookup.call(desks, id, tx);
     };
+    desks.findLiveByUserIds = async (ids: readonly string[], tx?: unknown) =>
+      (await realBatchLookup.call(desks, ids, tx)).map((r: { userId: string; outcome: string }) =>
+        !only || r.userId === only ? { ...r, outcome: "unreadable" as const } : r);
   };
-  const realDesk = () => { desks.findLiveByUserId = realLookup; };
+  const missingDesk = (only: string) => {
+    desks.findLiveByUserIds = async (ids: readonly string[], tx?: unknown) =>
+      (await realBatchLookup.call(desks, ids, tx)).filter((r: { userId: string }) => r.userId !== only);
+  };
+  const failedBatch = () => {
+    desks.findLiveByUserIds = async () => { throw new Error("injected: batched desk checks unavailable"); };
+  };
+  const realDesk = () => { desks.findLiveByUserId = realSingleLookup; desks.findLiveByUserIds = realBatchLookup; };
   const setRollout = (state: string) => { process.env.FEATURE_MILLIONEA = state; };
   /**
    * ⚠️ A FIXTURE OF TIME, declared (the world's `backdate`, widened): a ticket bought `byMs` ago — its ticket row, its
@@ -437,6 +467,16 @@ console.log(`${String.fromCharCode(10)}§8 · the review's findings: the receipt
   const clean = await W.settle.previewMaswaliSettlement(D.id, atD);
   ok("R10b.4 · with every desk check readable, the preview holds no winner (control)", clean.ok && clean.preview.winners === 2 && clean.preview.held === 0,
     clean.ok ? J({ winners: clean.preview.winners, held: clean.preview.held }) : clean.error);
+  let missing: any;
+  try { missingDesk(uHold); missing = await W.settle.previewMaswaliSettlement(D.id, atD); } finally { realDesk(); }
+  ok("R10b.4b · an omitted per-user desk outcome holds exactly one winner (fail closed)",
+    missing.ok && missing.preview.winners === 2 && missing.preview.held === 1,
+    missing.ok ? J({ winners: missing.preview.winners, held: missing.preview.held }) : missing.error);
+  let failed: any;
+  try { failedBatch(); failed = await W.settle.previewMaswaliSettlement(D.id, atD); } finally { realDesk(); }
+  ok("R10b.4c · a failed batched desk check holds both winners (fail closed)",
+    failed.ok && failed.preview.winners === 2 && failed.preview.held === 2,
+    failed.ok ? J({ winners: failed.preview.winners, held: failed.preview.held }) : failed.error);
   const holdBefore = (await W.bal(uHold)).balance;
   let rel: any;
   try { blindDesk(uHold); rel = await W.release(D.id, atD); } finally { realDesk(); }
@@ -463,6 +503,94 @@ console.log(`${String.fromCharCode(10)}§8 · the review's findings: the receipt
   ok("R5.3 · ⭐ …so the panel's headroom is exactly what the gate admits: one shilling more is refused", inside.allowed && !past.allowed, J({ room, inside, past }));
   const raw = await W.db.txn.sumGamblingNetSince(u, Date.now() - 86_400_000);
   ok("R5.4 · …while the raw gambling net, which the panel read before, counts the win and the refund as money back", raw > 0, `${raw}`);
+}
+
+// ── §9 · the stale slip (S7, MR-30) ─────────────────────────────────────────
+console.log(`${String.fromCharCode(10)}§9 · a slip opened before the stop never sells a final-week ticket`);
+{
+  // A PUBLIC week after every other (the last to open), made the final week while it is ON SALE by the Owner's own act.
+  // `shownFinal` is what the player's slip posts: whether it stated the final week's rule when it opened.
+  const { week: Z } = await W.openWeek({ weeksAhead: 6 });
+  const buyAs = (u: string, shownFinal: boolean, key: string) =>
+    W.svc.purchaseMaswaliTickets({ userId: u, weekId: Z.id, slips: [W.LOSE], idempotencyKey: key, shownFinal, stateNow: async () => "ACTIVE" });
+  const count = async () => (await dal.weekStore.get(Z.id)).ticketCount;
+  const early = await W.user({ balance: 50_000 });
+  const plain = await buyAs(early, false, "s7-stale-before-0001");
+  ok("SF.1 · a week never final sells to a slip that stated no final week, as before (control)", plain.ok && !plain.data.replayed && (await count()) === 1, why(plain));
+  // S7-F5 · the control first: with no lock held, the same stop finishes inside the same wait, so SF.2a's wait is the
+  // lock's, never a slow store's. ⚠️ A FIXTURE, DECLARED: the Owner's order is then withdrawn (no act can do that), so the
+  // held stop below meets the week as it was.
+  let freeDone = false;
+  const freeStop = W.svc.sunsetMaswali({ weekId: Z.id, ownerId: OWNER, typed: W.svc.SUNSET_WORD, reason: "purchase suite: the unheld control" })
+    .then((r: any) => { freeDone = true; return r; });
+  await new Promise((r) => setTimeout(r, 400));
+  const freeInTime = freeDone;
+  const freeR = await freeStop;
+  ok("SF.2b · control: with no lock held, the same stop finishes inside the same wait (the wait SF.2a meets is the lock's)",
+    freeInTime && freeR.ok && freeR.week.isFinal === true, `${freeInTime ? "in time" : "late"} · ${why(freeR)}`);
+  await dal.weekStore.patch(Z.id, { isFinal: false });
+  // S7-F4 · the stop waits for a purchase in flight on the week's market: the market lock is held here, as a purchase holds
+  // it from its in-lock finality read to its commit, while the Owner's stop runs.
+  const { withLock } = await import("../../src/lib/server/locks.ts");
+  let letGo!: () => void;
+  const held = new Promise<void>((r) => { letGo = r; });
+  let entered!: () => void;
+  const holding = new Promise<void>((r) => { entered = r; });
+  const flight = withLock(`market:${Z.marketId}`, async () => { entered(); await held; });
+  await holding;
+  let stopped = false;
+  const stopping = W.svc.sunsetMaswali({ weekId: Z.id, ownerId: OWNER, typed: W.svc.SUNSET_WORD, reason: "purchase suite stops Millionea" })
+    .then((r: any) => { stopped = true; return r; });
+  await new Promise((r) => setTimeout(r, 400));
+  const finalWhileHeld = (await dal.weekStore.get(Z.id)).isFinal;
+  const waited = !stopped && finalWhileHeld === false;
+  letGo();
+  await flight;
+  const stop = await stopping;
+  ok("SF.2a · ⛔ S7-F4 · the Owner's stop waits for a purchase in flight on the week's market: the week is not final while that lock is held",
+    waited, J({ stopped, finalWhileHeld }));
+  ok("SF.2 · the Owner makes the week on sale the final week (the fixture)", stop.ok && stop.week.isFinal === true && stop.week.state === "OPEN", why(stop));
+  const stale = await W.user({ balance: 50_000 });
+  const refused = await buyAs(stale, false, "s7-stale-slip-0001");
+  ok("SF.3 · ⛔ a slip opened before the stop is refused: the week is final now and the slip did not say so",
+    !refused.ok && refused.reason === "millionea_week_final" && refused.code === "INVALID", why(refused));
+  ok("SF.4 · …and nothing moved: no debit, no ticket, the week's count unchanged",
+    (await W.bal(stale)).balance === 50_000 && (await dal.ticketStore.listForUser(stale)).length === 0 && (await count()) === 1, J({ bal: await W.bal(stale), count: await count() }));
+  const fresh = await buyAs(stale, true, "s7-fresh-slip-0001");
+  ok("SF.5 · a slip opened after the stop (it states the final week) is sold (control)",
+    fresh.ok && !fresh.data.replayed && (await W.bal(stale)).balance === 50_000 - price && (await count()) === 2, why(fresh));
+  const replay = await buyAs(early, false, "s7-stale-before-0001");
+  ok("SF.6 · ⭐ L2 · the same key of a purchase that landed before the stop answers its own receipt, never the refusal, and charges nothing",
+    replay.ok && replay.data.replayed === true && J(replay.data.maswali.tickets) === J(plain.data.maswali.tickets)
+      && (await W.bal(early)).balance === 50_000 - price && (await count()) === 2, why(replay));
+
+  // S7-F4 · a stop landing between the slip's check and the money transaction: such a purchase passed
+  // `purchaseMaswaliTickets`' check while the week was not final, so it reaches the ticket arm with its slip's answer —
+  // the path taken here directly, after the stop.
+  const midFlight = (u: string, key: string) => market.buyPosition(u, {
+    marketId: Z.marketId, side: "YES", stake: price, idempotencyKey: key, maswali: { weekId: Z.id, slips: [W.LOSE], shownFinal: false } });
+  const mid = await W.user({ balance: 50_000 });
+  const inFlight = await midFlight(mid, "s7f4-mid-flight-0001");
+  ok("SF.6a · ⛔ S7-F4 · a stop landing between the slip's check and the money transaction refuses inside the locks, and nothing moves",
+    !inFlight.ok && inFlight.reason === "millionea_week_final" && (await W.bal(mid)).balance === 50_000
+      && (await dal.ticketStore.listForUser(mid)).length === 0 && (await count()) === 2, why(inFlight));
+  const landedMid = await midFlight(early, "s7-stale-before-0001");
+  ok("SF.6b · ⭐ …while a key that landed before the stop still answers its own receipt from the wallet lock, charging nothing (control)",
+    landedMid.ok && landedMid.data.replayed === true && J(landedMid.data.maswali?.tickets) === J(plain.data.maswali.tickets)
+      && (await W.bal(early)).balance === 50_000 - price && (await count()) === 2, why(landedMid));
+
+  // S7-F4 · the refusal is the OPEN week's: once the final week has CLOSED, a stale slip gets the closed week's own answer.
+  const shut = await W.svc.closeWeek({ weekId: Z.id, now: new Date(Date.parse(Z.closesAt) + 60_000) });
+  const late = await W.user({ balance: 50_000 });
+  const staleShut = await buyAs(late, false, "s7-stale-shut-0001");
+  const freshShut = await buyAs(late, true, "s7-fresh-shut-0001");
+  ok("SF.7 · ⛔ a stale slip on the final week once it has CLOSED gets the closed week's own answer, never the stale-slip refusal: the one a slip that stated the rule gets",
+    shut.ok && !staleShut.ok && !freshShut.ok && staleShut.reason !== "millionea_week_final" && staleShut.reason === freshShut.reason
+      && (await W.bal(late)).balance === 50_000 && (await count()) === 2, `${shut.ok ? "closed" : shut.error} · ${why(staleShut)} · ${why(freshShut)}`);
+  const replayShut = await buyAs(early, false, "s7-stale-before-0001");
+  ok("SF.8 · …and the same key of a purchase that landed still answers its own receipt on the closed week, charging nothing (control)",
+    replayShut.ok && replayShut.data.replayed === true && J(replayShut.data.maswali.tickets) === J(plain.data.maswali.tickets)
+      && (await W.bal(early)).balance === 50_000 - price && (await count()) === 2, why(replayShut));
 }
 
 console.log(`${String.fromCharCode(10)}@@SUMMARY ${JSON.stringify({ pass, fail, store: STORE })}`);

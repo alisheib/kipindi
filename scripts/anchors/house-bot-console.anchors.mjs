@@ -2453,7 +2453,19 @@ import { formatEat } from "@/lib/utils";`,
     from: `      if (!channelAllowed("ROUND_RESULT", { houseOnly: line.totals.ownRounds === 0 }).email) continue;
 `,
     to: ``,
-    expect: "0.235.1 · ⛔ RULING 235 · 04 F6's helper has EXACTLY ONE production caller",
+    // MASWALI-BUILD S6 round 17 (M2) · re-pinned with the census: two known callers, so the digest's removal leaves one.
+    expect: "0.235.1 · ⛔ RULING 235 · 04 F6's helper has EXACTLY TWO production callers",
+    suite: "reports-mem",
+  },
+  {
+    /* MASWALI-BUILD S6 round 17 (the lead's ruling M2) · the winner SMS is the census's second known caller because it
+       ASKS the policy; a winner SMS that decides the channel on a rule of its own is no longer a caller, and 0.235.1b says
+       why. */
+    name: "235-winner-sms-decides · Millionea's winner SMS decides the channel itself instead of asking F6's policy",
+    file: "src/lib/server/maswali-winner-sms.ts",
+    from: `  if (!channelAllowed("WIN").sms) return hold("channel_closed", null);`,
+    to: `  if (process.env.SMS_PROVIDER === "off") return hold("channel_closed", null);`,
+    expect: "0.235.1b · ⛔ round 17 (M2)",
     suite: "reports-mem",
   },
   {

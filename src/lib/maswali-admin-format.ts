@@ -16,6 +16,28 @@ export function fmtEat(iso: string | null | undefined): string {
   return Number.isFinite(d.getTime()) ? EAT.format(d) : "—";
 }
 
+/**
+ * ⭐ S6-ADMIN · G4 · AN INSTANT INSIDE A SENTENCE THE CONSOLE PRINTS — a refusal, the open's checklist, an alert:
+ * "Fri 23 Oct, 18:00 (EAT)", the console's own time with its zone named, as its tables and hints write it. Never a raw
+ * ISO string (the lead's ruling G4). Takes an ISO string or an epoch in milliseconds.
+ */
+export function eatInText(at: string | number | null | undefined): string {
+  const iso = typeof at === "number" ? (Number.isFinite(at) ? new Date(at).toISOString() : null) : at;
+  return `${fmtEat(iso)} (EAT)`;
+}
+
+/**
+ * ⭐ HOW LONG AGO, AS THE CONSOLE SAYS IT (MASWALI-BUILD FLOW 8, the lead's ruling of 2026-10-23, from the GUIDE lane's walk):
+ * the platform console's own wording ("4 h ago", "3 d ago" — the house console's `relativeEat`), in whole hours under 48
+ * hours and whole days from 48. The real time since the instant, never a setting's threshold (the release-wait alert
+ * printed "Alert when a release waits (hours)" as if it were the time since the window closed). A negative elapsed time
+ * (a clock behind) reads as "0 h ago", never as a future.
+ */
+export function agoInText(elapsedMs: number): string {
+  const hours = Math.max(0, Math.floor((Number.isFinite(elapsedMs) ? elapsedMs : 0) / 3_600_000));
+  return hours < 48 ? `${hours} h ago` : `${Math.floor(hours / 24)} d ago`;
+}
+
 const EAT_DAY = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Dar_es_Salaam", weekday: "short", day: "2-digit", month: "short" });
 const EAT_CLOCK = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Dar_es_Salaam", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 
@@ -47,6 +69,34 @@ export function fmtInZone(iso: string | null | undefined, zone: string): string 
     return `${EAT.format(d)} · EAT`;
   }
 }
+
+/**
+ * ⭐ S6-ADMIN · G3 · AN OFFICER WITH NO NAME ON RECORD, as the console names them: a stable handle from the id's tail, in the
+ * player handle's shape (`displayLabel`: "Player #A3F2K8") — "Officer #A3F2K8", never the raw id.
+ */
+export function officerHandle(id: string): string {
+  return `Officer #${id.replace(/^usr_/, "").slice(-6).toUpperCase()}`;
+}
+
+/**
+ * ⭐ S6-ADMIN · G6 · THE KINDS OF EVENT a question is built on, in the console's words (the lead's ruling G6: labels, not codes).
+ * The stored value stays the code (`EventKind`, `maswali-dal.ts`); each kind has its criterion template in the builder.
+ */
+export const EVENT_KIND_LABEL: Readonly<Record<string, string>> = {
+  SPORT: "Match result",
+  PRICE: "Price or rate",
+  WEATHER: "Weather reading",
+  ANNOUNCEMENT: "Announcement",
+};
+
+/**
+ * ⭐ MASWALI-BUILD FLOW 2 (the lead's ruling of 2026-10-23) · THE SEAL TABLE'S MARK ON A QUESTION STILL UNSEALED AT ITS VOID
+ * DEADLINE. A fact, not a verdict: the officer seals the result from its source if the source gave it by the deadline,
+ * and voids only a question with no result by then (the rules' section 5; the console's alert says so in full,
+ * `voidDeadlineAlertText`). It read "void proposed", which leaned toward a void the rule may not allow. The console is
+ * English only. `test:maswali-admin-plain` 9.7.
+ */
+export const VOID_DEADLINE_PASSED = "past its void deadline";
 
 type ChipVariant = "neutral" | "live" | "pending" | "resolved" | "success" | "danger" | "info";
 

@@ -41,10 +41,20 @@
  *     whole window in which a new table would otherwise slip through.
  *
  * ⛔ THE UNION ONLY EVER GROWS, so no derivation can silently lower the floor. `isProtectedModel`
- * is `STATUTORY_MODELS ∪ HOUSE_FAMILY_FLOOR ∪ /^HouseBot/ ∪ dmmfHouseFamily()`. If the DMMF is
+ * is `STATUTORY_MODELS ∪ HOUSE_FAMILY_FLOOR ∪ /^HouseBot/ ∪ dmmfHouseFamily()`, and since S6 also
+ * `MASWALI_FAMILY_FLOOR ∪ /^Maswali/ ∪ dmmfMaswaliFamily()`. If the DMMF is
  * absent or shaped differently in a future client, protection falls back on the pinned floor and
  * the prefix — never below them — and `test:chain-purge` §10 asserts the floor is still a SUBSET
  * of what the schema derives, so a floor that went stale is a failing assertion, not a quiet hole.
+ *
+ * ═══ ⭐ AND A SECOND FAMILY, MILLIONEA'S RECORD (MASWALI-BUILD S6, MB-67) ═══
+ *
+ * A Millionea ticket hangs off its `Position`, so the house rule's clause ③ already protected it. The week, its fifteen
+ * questions and the seen marks hang off no money table at all — the week's market is a `PredictionMarket`, which the
+ * purge REDACTS — so nothing kept a purge from writing them. `deriveMaswaliFamily()` is the same shape of rule: the name
+ * prefix `Maswali` (R-NAME names every Millionea table so), or a singular relation the model OWNS into the family, to a
+ * fixed point. It joins the union below on exactly the house family's terms: a pinned floor, the prefix, and the
+ * derivation from the generated client — read by the same two instruments.
  *
  * ═══ ⚠️ SCOPE — THIS IS THE PURGE'S NEVER LIST, NOT A GLOBAL BAN ═══
  *
@@ -107,6 +117,21 @@ export const HOUSE_FAMILY_FLOOR = [
   "HouseBotPress",
 ] as const;
 
+/** MASWALI-BUILD S6 · the name prefix every Millionea table carries (R-NAME: code modules and tables are `maswali-*`). */
+export const MASWALI_MODEL_PREFIX = "Maswali";
+
+/**
+ * ⭐ MILLIONEA'S FLOOR, NOT A LIST — the house floor's job for the second family: what `deriveMaswaliFamily` derives from
+ * `prisma/schema.prisma` today, pinned so a DMMF that comes back empty cannot narrow the guard; `test:chain-purge` §10
+ * holds it a SUBSET of what the schema derives.
+ */
+export const MASWALI_FAMILY_FLOOR = [
+  "MaswaliCycle",
+  "MaswaliNoticeSeen",
+  "MaswaliQuestion",
+  "MaswaliTicket",
+] as const;
+
 /** The shape both readers reduce to, so ONE rule can be applied to a generated client and to text. */
 export type ModelShape = {
   name: string;
@@ -150,6 +175,30 @@ export function deriveHouseFamily(models: ReadonlyArray<ModelShape>): string[] {
         family.add(m.name);
         grew = true;
       }
+    }
+    if (!grew) break;
+  }
+  return [...family].sort();
+}
+
+/** Clause ③'s edge for the Millionea family: a SINGULAR relation the model OWNS (it carries the foreign key). */
+const ownsSingular = (f: ModelShape["fields"][number]): boolean => f.ownsRelation === true && f.isList !== true;
+
+/**
+ * ⭐ MASWALI-BUILD S6 · MILLIONEA'S RULE (MB-67) — the house rule's shape for the third product's record: a model is in
+ * the family when its NAME begins with `Maswali`, or when it OWNS a singular relation into the family, to a fixed point
+ * bounded by the model count. ⛔ Owned, never a back-relation — the lesson of `deriveHouseFamily`'s clause ③: a
+ * `PredictionMarket` carries `maswaliCycle MaswaliCycle?` and a `Position` carries `maswaliTicket MaswaliTicket?`, and
+ * following those would protect the whole market model — every Up & Down market the purge exists to redact.
+ */
+export function deriveMaswaliFamily(models: ReadonlyArray<ModelShape>): string[] {
+  const family = new Set<string>(models.filter((m) => m.name.startsWith(MASWALI_MODEL_PREFIX)).map((m) => m.name));
+  for (let pass = 0; pass < models.length; pass++) {
+    let grew = false;
+    for (const m of models) {
+      if (family.has(m.name) || !m.fields.some((f) => ownsSingular(f) && family.has(f.type))) continue;
+      family.add(m.name);
+      grew = true;
     }
     if (!grew) break;
   }
@@ -200,34 +249,56 @@ export function parsePrismaModels(schema: string): ModelShape[] {
  * array, and the union in `isProtectedModel` keeps the floor and the prefix. ⛔ It can only ever
  * ADD to the protection; there is no path by which this returning `[]` removes a table.
  */
+/**
+ * The generated client's models in the ONE shape both families' rules read — or null when the client carries no DMMF.
+ * Throws nothing a caller must handle: each family's reader below turns a throw into "derived nothing".
+ */
+function dmmfModelShapes(): ModelShape[] | null {
+  type DmmfField = { name: string; type: string; isList?: boolean; relationFromFields?: readonly string[] };
+  const models: ReadonlyArray<{ name: string; fields?: ReadonlyArray<DmmfField> }> | undefined = (Prisma as unknown as {
+    dmmf?: { datamodel?: { models?: ReadonlyArray<{ name: string; fields?: ReadonlyArray<DmmfField> }> } };
+  }).dmmf?.datamodel?.models;
+  return models
+    ? models.map((m) => ({
+        name: m.name,
+        fields: (m.fields ?? []).map((f) => ({
+          name: f.name,
+          type: f.type,
+          isList: f.isList === true,
+          // The owning side is the only one the DMMF gives a non-empty `relationFromFields`.
+          ownsRelation: Array.isArray(f.relationFromFields) && f.relationFromFields.length > 0,
+        })),
+      }))
+    : null;
+}
+
 let dmmfFamily: string[] | null = null;
 export function dmmfHouseFamily(): string[] {
   if (dmmfFamily) return dmmfFamily;
   try {
-    type DmmfField = { name: string; type: string; isList?: boolean; relationFromFields?: readonly string[] };
-    const models: ReadonlyArray<{ name: string; fields?: ReadonlyArray<DmmfField> }> | undefined = (Prisma as unknown as {
-      dmmf?: { datamodel?: { models?: ReadonlyArray<{ name: string; fields?: ReadonlyArray<DmmfField> }> } };
-    }).dmmf?.datamodel?.models;
-    dmmfFamily = models
-      ? deriveHouseFamily(models.map((m) => ({
-          name: m.name,
-          fields: (m.fields ?? []).map((f) => ({
-            name: f.name,
-            type: f.type,
-            isList: f.isList === true,
-            // The owning side is the only one the DMMF gives a non-empty `relationFromFields`.
-            ownsRelation: Array.isArray(f.relationFromFields) && f.relationFromFields.length > 0,
-          })),
-        })))
-      : [];
+    const shapes = dmmfModelShapes();
+    dmmfFamily = shapes ? deriveHouseFamily(shapes) : [];
   } catch {
     dmmfFamily = [];
   }
   return dmmfFamily;
 }
 
-/** ⚠️ Test-only: the memo is process-lifetime, and a case that feeds a fixture must be able to clear it. */
-export function __resetDmmfFamilyMemo(): void { dmmfFamily = null; }
+/** MASWALI-BUILD S6 · the Millionea family as the GENERATED CLIENT sees it — memoised, never throwing, only ever adding. */
+let dmmfMaswali: string[] | null = null;
+export function dmmfMaswaliFamily(): string[] {
+  if (dmmfMaswali) return dmmfMaswali;
+  try {
+    const shapes = dmmfModelShapes();
+    dmmfMaswali = shapes ? deriveMaswaliFamily(shapes) : [];
+  } catch {
+    dmmfMaswali = [];
+  }
+  return dmmfMaswali;
+}
+
+/** ⚠️ Test-only: the memos are process-lifetime, and a case that feeds a fixture must be able to clear them. */
+export function __resetDmmfFamilyMemo(): void { dmmfFamily = null; dmmfMaswali = null; }
 
 /**
  * The NEVER list, rendered from the code rather than typed into a comment. `test:chain-purge` §12
@@ -235,7 +306,9 @@ export function __resetDmmfFamilyMemo(): void { dmmfFamily = null; }
  * again — which is the defect this whole module was written for.
  */
 export function neverList(): string[] {
-  return [...new Set<string>([...STATUTORY_MODELS, ...HOUSE_FAMILY_FLOOR, ...dmmfHouseFamily()])].sort();
+  return [...new Set<string>([
+    ...STATUTORY_MODELS, ...HOUSE_FAMILY_FLOOR, ...dmmfHouseFamily(), ...MASWALI_FAMILY_FLOOR, ...dmmfMaswaliFamily(),
+  ])].sort();
 }
 
 /** `houseBotIntent` → `HouseBotIntent`. Prisma lower-cases only the first character of a model name. */
@@ -253,7 +326,10 @@ export function isProtectedModel(name: string): boolean {
   if (model.startsWith(HOUSE_MODEL_PREFIX)) return true;
   if ((STATUTORY_MODELS as readonly string[]).some((m) => m.toLowerCase() === lower)) return true;
   if ((HOUSE_FAMILY_FLOOR as readonly string[]).some((m) => m.toLowerCase() === lower)) return true;
-  return dmmfHouseFamily().some((m) => m.toLowerCase() === lower);
+  // MASWALI-BUILD S6 · the Millionea family, on the house family's terms: the prefix, the floor, the derived set.
+  if (model.startsWith(MASWALI_MODEL_PREFIX)) return true;
+  if ((MASWALI_FAMILY_FLOOR as readonly string[]).some((m) => m.toLowerCase() === lower)) return true;
+  return dmmfHouseFamily().some((m) => m.toLowerCase() === lower) || dmmfMaswaliFamily().some((m) => m.toLowerCase() === lower);
 }
 
 /**
@@ -284,7 +360,7 @@ export class PurgeProtectedTableError extends Error {
 function refuseModel(model: string, method: string): never {
   throw new PurgeProtectedTableError(
     `chain-purge: ${model}.${method}() is refused — ${model} is on the purge's NEVER list ` +
-    `(the statutory record and the house tables, 04 A20 / POCA Cap 423 §16). The purge may READ ` +
+    `(the statutory record, the house tables and Millionea's record, 04 A20 / POCA Cap 423 §16). The purge may READ ` +
     `these tables and may never write them. If a new house table belongs outside this rule, that ` +
     `is an owner decision, not a code change.`,
   );

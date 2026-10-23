@@ -54,6 +54,19 @@ import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 import { moneyRuns } from "@/lib/fill-nodes";
 import { useResultModalPresence } from "@/lib/result-modal-presence";
+import { evenBreakChunks } from "@/lib/even-break";
+
+/**
+ * ⭐ A DETAIL'S VALUE (MASWALI-BUILD FLOW 4, the lead's ruling of 2026-10-23): an unbroken token — the wallet's transaction
+ * reference, a serial — breaks only between its near-equal chunks (`lib/even-break.ts`), so no line holds one character
+ * alone; any other value is drawn as it always was. `overflow-wrap: break-word` is the floor for a box narrower than a
+ * chunk. A copy of the value is the exact string. `test:result-reference`, `qa:result-reference`.
+ */
+export function DetailValue({ value }: { value: string }) {
+  const chunks = evenBreakChunks(value);
+  if (!chunks) return <>{value}</>;
+  return <>{chunks.map((chunk, i) => <span key={i}>{i > 0 && <wbr />}{chunk}</span>)}</>;
+}
 
 const DEFAULT_AUTO_CLOSE_MS = 5_000;
 
@@ -584,9 +597,12 @@ export function OperationResultModal({
                  CLIPPED it. Wide screens hid this — at 360px the reference a player
                  needs to quote to support was cut off mid-string. Reported from a
                  real withdrawal, 2026-07-29.
-                 `min-w-0` restores shrinkability, `break-all` is the only break that
-                 works on an unbroken token, and `flex-wrap` + `ml-auto` lets the
-                 value drop onto its own full-width row and stay right-aligned. */
+                 `min-w-0` restores shrinkability, and `flex-wrap` + `ml-auto` lets the
+                 value drop onto its own full-width row and stay right-aligned.
+                 ⭐ FLOW 4 (2026-10-23): an unbroken token no longer breaks anywhere
+                 (`break-all` wrapped greedily and left "3" alone under the wallet's
+                 28-character id at 360); it breaks only between near-equal chunks
+                 (`DetailValue`, `lib/even-break.ts`). Other values keep `break-all`. */
               <div
                 key={i}
                 className="orm-detail rounded-md border border-border bg-bg-overlay/60 px-3 py-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5"
@@ -599,6 +615,16 @@ export function OperationResultModal({
                     <p className="text-body-sm italic text-text-subtle">{d.sw}</p>
                   )}
                 </div>
+                {evenBreakChunks(d.value) ? (
+                  /* FLOW 4 · an unbroken token: its near-equal chunks, breaking only between them (`DetailValue`). */
+                  <p
+                    data-detail-value
+                    className="min-w-0 ml-auto text-right font-mono text-[14px] font-bold tabular-nums [word-break:normal] [overflow-wrap:break-word]"
+                    style={{ color: d.tone === "good" ? "var(--success-fg)" : d.tone === "bad" ? "var(--danger-fg)" : "var(--text)" }}
+                  >
+                    <DetailValue value={d.value} />
+                  </p>
+                ) : (
                 <p
                   className="min-w-0 ml-auto text-right font-mono text-[14px] font-bold tabular-nums break-all"
                   style={{
@@ -610,6 +636,7 @@ export function OperationResultModal({
                 >
                   {d.value}
                 </p>
+                )}
               </div>
             ))}
           </div>

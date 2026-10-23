@@ -230,6 +230,18 @@ section("§4 · the slip");
   const full = await W.user({ balance: 100_000 });
   const fb = await W.buy(full, A.id, Array.from({ length: cap }, () => W.LOSE), { key: "player-full-a-0001" });
   ok("4.7 · a viewer holding the cap meets the cap before filling the slip", fb.ok && (await P.millioneaSlip(viewer(full)))?.refusal === "millionea_cap_reached", why(fb));
+  // ⭐ FLOW 10 (the lead's ruling of 2026-10-23): a held wallet hears the buy's own refusal before filling fifteen picks —
+  // the slip page says it instead of the slip, in the buy's words — and the buy still refuses with the same reason.
+  const { addWalletFreeze, removeWalletFreeze }: any = await import("../../src/lib/server/wallet-freeze.ts");
+  const heldWallet = await W.user({ balance: 50_000 });
+  await addWalletFreeze(heldWallet, "OFFICER", { actorId: "usr_mln_compliance", note: "player suite · a held wallet's slip" });
+  const heldSlip = await P.millioneaSlip(viewer(heldWallet));
+  const heldBuy = seen(await W.buy(heldWallet, A.id, [W.LOSE], { key: "player-held-a-0001" }));
+  await removeWalletFreeze(heldWallet, "OFFICER", { actorId: "usr_mln_compliance", note: "player suite · the hold lifted" });
+  const liftedSlip = await P.millioneaSlip(viewer(heldWallet));
+  ok("4.7b · ⭐ a held wallet meets the buy's own refusal before filling the slip — the reason the buy itself gives — and the lifted hold lifts it",
+    heldSlip?.refusal === "wallet_frozen" && heldBuy?.ok === false && heldBuy.reason === "wallet_frozen" && liftedSlip?.refusal === null,
+    J({ slip: heldSlip?.refusal, buy: why(heldBuy), lifted: liftedSlip?.refusal }));
   const pause: any = await import("../../src/lib/server/maswali-pause.ts");
   await pause.pauseMaswaliSales({ officerId: "usr_mln_compliance", reason: "player suite pause check" });
   const paused = await P.millioneaSlip(viewer(P1));
@@ -539,7 +551,7 @@ ok("8.3 · the week settled: two tickets of ten of ten", releasedA.ok && (await 
   ok("8.5 · ⭐ the win ledger: jackpot, the fee, to the winners, the equal share, ×2 for the viewer's two, the top-up — every figure the settlement's; no share held or forfeited",
     J(v.win) === J({
       jackpot: expectA.J, fee: expectA.F, traLevy: expectA.tra, gbtLevy: expectA.gbt, toWinners: expectA.J - expectA.F, winners: 2, share: expectA.share,
-      paid: expectA.paid, remainder: expectA.dust, topUp: expectA.U, yourWinningTickets: 2, yourTotal: 2 * expectA.share,
+      paid: expectA.paid, remainder: expectA.dust, carriedOut: expectA.carryOut, topUp: expectA.U, yourWinningTickets: 2, yourTotal: 2 * expectA.share,
       yourHeldTickets: 0, yourForfeitedTickets: 0, basis: "TEN_OF_TEN", winningScore: 10,
     }), J(v.win));
   const l = await P.millioneaTicket(P1, p1Lose.serial);
@@ -1173,9 +1185,12 @@ section("§13 · by state, never newest-N; unreadable rules; the hub while Milli
 }
 // (After §12b's two weeks in the calendar: a week never opens before one of its line that already opened, R3.)
 const { week: F, start: fStart } = await W.openWeek({ weeksAhead: 9 });
-// RR2 · one ticket in what becomes the final week, its first main to miss (§14).
+// One ticket in F, its first main to miss: F closes before the Owner's stop, so it settles under its own rules (§14).
 const PT = await W.user({ balance: 20_000 });
-const bT = await W.buy(PT, F.id, [W.LOSE], { key: "player-pt-f-0001" });
+const bF = await W.buy(PT, F.id, [W.LOSE], { key: "player-pt-f-0001" });
+// G, the week after F: the Owner's stop, ordered once F has closed, makes it the final week (13.5, §14).
+const gStart = W.weekStartAhead(10);
+let G: any = null;
 {
   // ⚠️ A FIXTURE OF A FAULT, undone below: the drive week's frozen rules re-stamped as a version this build cannot read —
   // what a week frozen by a newer build looks like to an older container in a rolling deploy.
@@ -1196,6 +1211,13 @@ const bT = await W.buy(PT, F.id, [W.LOSE], { key: "player-pt-f-0001" });
   ok("13.3 · ⛔ L3 · an unsettled week whose frozen rules cannot be read leaves the requirement unknown, so no week shows its floor (fail closed) — and restored, the floor returns",
     before?.floor === floor && unreadable && dBlind === null && !!blind && blind.floor === null && blind.jackpot === (blind.carryIn ?? 0) + blind.sales && after?.floor === floor,
     J({ before: before?.floor, unreadable, blind: blind && { floor: blind.floor, jackpot: blind.jackpot }, after: after?.floor }));
+  // The How page on the PUBLIC line, whose week on sale is F: its frozen rules unreadable for the same reason.
+  await restamp(F.id, 2);
+  const howBlind = await P.millioneaHowTo(viewer(P3)).then(() => "answered", (e: unknown) => String((e as Error)?.message ?? e));
+  await restamp(F.id, 1);
+  const howBack = await P.millioneaHowTo(viewer(P3));
+  ok("13.3b · ⛔ the How page fails closed on a running week whose frozen terms cannot be read — never today's settings as if no week ran — and restored, it states the week's own",
+    /frozen terms cannot be read/.test(howBlind) && howBack.source === "WEEK" && howBack.weekCode === F.code, J({ howBlind, back: [howBack.source, howBack.weekCode] }));
 }
 {
   // S5-FIX-PLAYER P10 · a question sealed VOID before the close (MB-15) on the selling drive week: a ticket cut BEFORE the void
@@ -1219,25 +1241,65 @@ const bT = await W.buy(PT, F.id, [W.LOSE], { key: "player-pt-f-0001" });
   const live = await P.millioneaHub(viewer(P3));
   ok("13.4 · L2 · the control: no public week on sale and Millionea LIVE — the hub states when the next week opens",
     closedF.ok && live.life === "LIVE" && live.week?.id === F.id && typeof live.nextOpensAt === "string", J({ life: live.life, next: live.nextOpensAt }));
-  const sunset = await W.svc.sunsetMaswali({ weekId: F.id, ownerId: OWNER, typed: W.svc.SUNSET_WORD, reason: "player suite ends Millionea" });
+  // S7 · THE OWNER'S STOP AFTER A CLOSE (MR-30, OD-03; the lead's decision of 2026-10-18): F's sales have closed, so its
+  // results are being decided and it is never made final; the stop takes effect from the next week to open, G.
+  const refusedF = await W.svc.sunsetMaswali({ weekId: F.id, ownerId: OWNER, typed: W.svc.SUNSET_WORD, reason: "player suite ends Millionea" });
+  ok("13.5a · ⛔ a closed week is never made the final week: its results are being decided, so the stop takes effect from the next week",
+    !refusedF.ok && /results are being decided/.test(why(refusedF)) && (await dal.weekStore.get(F.id))?.isFinal === false, why(refusedF));
+  const g = await W.svc.createWeek({ weekStartMs: gStart, questions: W.questions(gStart), officerId: DRAFTER, now: new Date(gStart - 3 * DAY) });
+  if (!g.ok) throw new Error(`§13: week G was not drafted: ${g.error}`);
+  await W.svc.attestParity({ weekId: g.week.id, officerId: READER, readVersion: await W.svc.readDraftVersion(g.week.id) });
+  G = g.week;
+  const sunset = await W.svc.sunsetMaswali({ weekId: G.id, ownerId: OWNER, typed: W.svc.SUNSET_WORD, reason: "player suite ends Millionea" });
   const ending = await P.millioneaHub(viewer(P3));
   ok("13.5 · ⛔ L2 · while Millionea is ENDING (a final week runs, nothing opens after it), no 'next opens' line",
     sunset.ok && ending.life === "ENDING" && ending.week?.id === F.id && ending.nextOpensAt === null, `${why(sunset)} · ${J({ life: ending.life, next: ending.nextOpensAt })}`);
+  ok("13.5b · ⛔ F1 · while the final week is still a draft the hub ANNOUNCES it: its week and the time it was announced to open (MR-30, OD-03)",
+    ending.finalAhead?.code === G.code && ending.finalAhead?.opensAt === G.opensAt && (await dal.weekStore.get(G.id))?.state === "DRAFT",
+    J({ finalAhead: ending.finalAhead, g: G.code }));
 }
 
 // ── §14 · the final week (RR2): a miss is not "cannot win" there — and released, the top score wins ──────────────────
 section("§14 · the final week: no 'cannot win' line, and the top score wins");
 {
+  // F first, under its own rules: no 10 of 10, so it rolls over and its 9 of 10 is paid nothing — and the final week G
+  // claims its carry in chain order (MR-3).
   const atF = await W.closeAndSeal(F, fStart);
-  const tT = (await dal.ticketStore.listForUser(PT, { cycleId: F.id }))[0];
+  const relF = await W.release(F.id, atF);
+  const fT = (await dal.ticketStore.listForUser(PT, { cycleId: F.id }))[0];
+  ok("14.0 · ⭐ the week refused as final settles under its own rules: no 10 of 10, so it rolls over and its 9 of 10 is paid nothing (a score decides money only in a final week)",
+    bF.ok && relF.ok && relF.week.state === "SETTLED" && (relF.week.winningTickets ?? 0) === 0 && fT?.won === false && (fT?.payout ?? 0) === 0, `${why(relF)} · ${J({ won: fT?.won, payout: fT?.payout })}`);
+  const oG = await W.svc.openWeek({ weekId: G.id, officerId: DRAFTER, guarantee: W.money.guaranteeReader, now: new Date(gStart + 60_000) });
+  if (!oG.ok) throw new Error(`§14: the final week did not open: ${oG.error}`);
+  const openedHub = await P.millioneaHub(viewer(P3));
+  ok("14.0b · F1 · once the final week opens it is the hub's own week, saying so itself, and nothing is announced as still to come",
+    openedHub.finalAhead === null && openedHub.week?.id === G.id && openedHub.week?.isFinal === true, J({ finalAhead: openedHub.finalAhead, week: openedHub.week?.id }));
+  // S7 · MR-30 · THE SLIP'S OWN FORM in the final week: a slip opened before the stop posts that it stated no final week,
+  // and a form that says nothing reads the same way. Both are refused before anything moves; the slip that states it buys.
+  // (Its slip misses every main, so G's top score below stays PT's 9 of 10.)
+  const PS = await W.user({ balance: 20_000 });
+  const finalForm = (key: string, shown?: string) =>
+    form({ expectedOwnerId: PS, weekId: G.id, idempotencyKey: key, slips: J([W.slip("NO")]), ...(shown === undefined ? {} : { shownFinal: shown }) });
+  const staleForm = await ACT.buyMillioneaFromForm(PS, finalForm("act-ps-g-0001", "0"), ACTIVE);
+  const silentForm = await ACT.buyMillioneaFromForm(PS, finalForm("act-ps-g-0002"), ACTIVE);
+  ok("14.0c · ⛔ MR-30 · in the final week a slip that did not state it is refused, and so is a form that says nothing; nothing moved",
+    !staleForm.ok && staleForm.reason === "millionea_week_final" && !silentForm.ok && silentForm.reason === "millionea_week_final"
+      && (await W.bal(PS)).balance === 20_000 && (await dal.ticketStore.listForUser(PS)).length === 0, `${why(staleForm)} · ${why(silentForm)}`);
+  const shownForm = await ACT.buyMillioneaFromForm(PS, finalForm("act-ps-g-0003", "1"), ACTIVE);
+  ok("14.0d · …and the slip that states the final week buys its ticket (control)",
+    shownForm.ok && shownForm.data.tickets.length === 1 && (await dal.ticketStore.listForUser(PS, { cycleId: G.id })).length === 1, why(shownForm));
+  // RR2 · one ticket in the final week, its first main to miss.
+  const bT = await W.buy(PT, G.id, [W.LOSE], { key: "player-pt-g-0001" });
+  const atG = await W.closeAndSeal(oG.week, gStart);
+  const tT = (await dal.ticketStore.listForUser(PT, { cycleId: G.id }))[0];
   const vT = await P.millioneaTicket(PT, tT.serial);
   ok("14.1 · ⭐ RR2 · in the final week a ticket with a miss is NOT 'cannot win': with no 10 of 10 the top score shares the jackpot (MR-30), so the provisional line is never drawn there",
     bT.ok && vT.week.isFinal === true && vT.shown === "running" && vT.slots[0].mark === "missed" && vT.cannotWinSoFar === false,
     J({ isFinal: vT.week.isFinal, mark: vT.slots[0].mark, cannot: vT.cannotWinSoFar }));
-  const relF = await W.release(F.id, atF);
+  const relG = await W.release(G.id, atG);
   const wT = await P.millioneaTicket(PT, tT.serial);
   ok("14.2 · …the proof: released, the final week pays its top score — that very ticket won, its share paid, on 9 of 10 (TOP_SCORE)",
-    relF.ok && wT.shown === "won" && wT.share === "paid" && wT.win?.basis === "TOP_SCORE" && wT.win.winningScore === 9, `${why(relF)} · ${J(wT?.win)}`);
+    relG.ok && wT.shown === "won" && wT.share === "paid" && wT.win?.basis === "TOP_SCORE" && wT.win.winningScore === 9, `${why(relG)} · ${J(wT?.win)}`);
 }
 
 console.log(`${NL}@@SUMMARY ${JSON.stringify({ pass, fail, store: STORE })}`);

@@ -46,6 +46,8 @@ import { keepConnectives } from "@/components/ui/keep-run";
 import { getServerT } from "@/lib/i18n-server";
 import { outcomeWord } from "@/lib/side-label";
 import { pickLocalized } from "@/lib/localized";
+// MASWALI-BUILD S6 · Millionea's commitments and "verify my ticket", for a reader the rollout admits (nothing otherwise).
+import { MillioneaFairness } from "./millionea-section";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -420,6 +422,7 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
           </div>
         )}
       </section>
+      <MillioneaFairness t={t} locale={locale} />
     </div>
   );
 }

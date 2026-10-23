@@ -3033,6 +3033,18 @@ the corrections are recorded here rather than tidied away.
    legitimate *paired with* `title`, which keeps the full string reachable. `/admin/proposals` and
    `/admin/compliance` truncated their primary content with no affordance (**33px box, 486px of
    content**).
+5. ⛔ **AN UNBROKEN TOKEN NEVER LEAVES ONE CHARACTER ALONE** (MASWALI-BUILD FLOW 4, the lead's ruling of 2026-10-23).
+   A reference has no space, so `break-all` was its only break, and `break-all` is greedy: the wallet's deposit result
+   drew `txn_b7f5f7cd59628ee1bb86d11` over a lone `3` at 360 (its 28 mono characters 1–2px wider than the box). A result
+   modal's detail value that is one token of 16 characters or more now breaks ONLY between near-equal chunks
+   (`lib/even-break.ts`: two halves, or one chunk per ~14 characters; `<wbr>` between them, so a copy is the exact string):
+   it stays one line when it fits, and otherwise its last line holds a whole chunk — 14/14 for the transaction id.
+   `overflow-wrap: break-word` is the floor for a box narrower than a chunk. ⚠️ Classic-visible, for every caller of
+   `OperationResultModal` whose value is such a token (the wallet's deposit and withdrawal reference; a Millionea batch's
+   serials, which fit on one line at 320 and so do not move); no classic parity cell draws a result modal. Guards:
+   `test:result-reference` (the chunks, the drawn markup, the wiring, with its plants) and `qa:result-reference` (a real
+   deposit's reference at 320/360 × sw/en/zh, the line lengths measured, with an in-page control that the old wrap is
+   caught).
 
 **And one rule over every rule above and below it that depends on how wide text draws (2026-10-23):**
 
@@ -3407,8 +3419,29 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     dialog is unchanged (`test:maswali-slip-design` §1); `test:enter-where-pressed` 5.8 pins the call with its plant, and
     `qa:dialog-way-back` drives it at 360 in Chromium and WebKit (scrollY unchanged across the close, focus on the opener,
     the jump back when `preventScroll` is dropped).
-<!-- Items 19 and 20 (the final week's wording; the final week announced ahead) are S6's and S7's, and join this list when
-     those branches merge — numbered there first, so this item is 21 (the lead's numbering, 2026-10-22). -->
+19. **The final week's rule has one wording, wherever it is told (the lead's ruling, 2026-10-22; MR-30, the S6 legal
+    review).** One dictionary key, `finalWeekRule`, with MR-30's floor clause last: en "Final week: if no ticket gets
+    10/10, the pool is shared equally by this week's highest-scoring tickets, with no floor top-up"; sw the same sentence
+    ending ", bila nyongeza hadi kiwango cha chini"; zh ending "，不进行保底补足". The hub draws it under the jackpot in a
+    final week, the slip as its first rule, the confirm sheet beside the fee rule, How to play inside its stop rule, and
+    /help right after its 10/10 and carry lines. The stop rule (`ruleSunset`) keeps the legal lane's stop clauses — the
+    week on sale made final at once; with no week on sale and one being decided, the next week, even at short notice; at
+    any time a week named a full week ahead; never opened before its announced time; the forms opened from then on say
+    so — and fills the rule as `{rule}` in place of its own pool clause (the lead's ruling D1 of 2026-10-22: "its final
+    week is announced in advance" is refused, since a week on sale can be made final at once). /help's own sentence
+    (`millioneaFairness.helpFinalWeek`) is retired (D1). Why: two sentences said one truth (S7's purchase line
+    `finalRule` beside the hub's key, /help's beside both), and the hub's and How's sentence left out the floor clause,
+    which is material — a final week with no 10/10 is never topped up to the floor. The law states the same rule in the
+    same terms: RULES §2.12's sunset paragraph (S7-F9 14), so no player reads one rule on a screen and another in the
+    rules. Guards: `test:maswali-design` 2.F3a and 2.F3b (with its plant), `test:maswali-hub` 3.1 and §10,
+    `test:maswali-fairness` H.10 (/help) and H.12 (the stop clauses, read as How draws them).
+20. **The final week announced ahead names its day only while that day is ahead (the lead's ruling (b), 2026-10-22;
+    MR-30, OD-03).** The hub's L22 bar says "Week 52 will be Millionea's final week. It opens 30 Nov." while the open is
+    still to come. A final week still a draft once its time has passed — or whose time cannot be read — is announced
+    without a date, in S7's reviewed F1 words: "Millionea is coming to an end. Week 52 will be the final week." (sw
+    "Millionea inakaribia kufikia mwisho. Wiki 52 itakuwa wiki ya mwisho.", zh "Millionea 即将结束。第52周将为最后一周。").
+    Why: "It opens 30 Nov." read on 30 Nov at 09:00, of a week no one has opened, promises a moment already gone. Guards:
+    `test:maswali-hub` §13 (with its plant) and `test:maswali-design` 2.F1d.
 21. **The classic landing's line (Ali, 2026-10-22 — MASWALI-BUILD S5 landing door).** *Ali: "a small line … 'Be this week's
     winner?' — with a clickable link to Millionea, the same colour as the animation in the Millionea tab; make it perfect
     visually and logically".* **Where:** the second door of the classic landing hero's door row, after Live — under a
@@ -3576,6 +3609,38 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
       it. A server action that re-signs a returning player's session (last seen five minutes or more before) re-renders
       the route, the rollover's own seen mark among them, and so do the poller and a pool frame; a render made after the
       seen mark no longer carries the rollover.
+    - A held wallet is told the buy's refusal in the buy block, the one sentence the slip and the buy say
+      (`millioneaRefusalBody`, MASWALI-BUILD FLOW 13), and is never offered the fill door it could not buy through. It
+      stands in the door's own cell (`millionea-hub-held`; `test:millionea-held-wallet`).
+29. **An admin reads plain words (Ali, 2026-10-22: his admin guide must be "clear, perfect … no unneeded wording"; the
+    lead's rulings G1–G8 on the S6-DOCS lane's walk of `/admin/maswali`; MASWALI-BUILD S6-ADMIN).** Every word the
+    Millionea console draws — page text, labels, hints, chips, refusals, the open's checklist, the alerts, and the
+    services' and the settlement's answers it prints — says what a rule is in plain words. ⛔ **Never a programme code**
+    (`MB-nn`, `OD-nn`, `MR-nn`, `OPEN-nn`, `R-…`): a code stays in a comment beside the words that replaced it, and the
+    words carry the rule itself — the week builder's chance hint states the band the rules allow ("The rules allow
+    30–70%"), and the move of a sales close states its latest allowed close as an EAT time ("no later than Sat 07 Nov,
+    09:30 (EAT), 30 minutes before the first event"). The evidence pack an auditor downloads reads the same way. Guard:
+    `test:maswali-admin-words` §1 — a census over every Millionea source an admin's screen can be drawn from, derived
+    from the folders (the console, its download route, every Millionea service and shared module, the lock chip) — with
+    `red:maswali-admin-words`; the desk scripts (`maswali-support-scripts.ts`) are in it since the S6-DOCS lane's item 9
+    stripped their codes (S6-DOCS 12 deleted their waiting exclusion).
+    ⭐ **And the rest of plain (the lead's rulings G2–G8, S6-ADMIN 6).** **Names, never ids** — an officer by their name
+    (`consoleOfficerName`: the display name, else the stable handle "Officer #A3F2K8"), a week by its code, an account
+    by its handle ("Player #…"); no console page prints an id field as text. **Every time in a sentence is EAT, as the
+    console writes it** — "Fri 23 Oct, 18:00 (EAT)" (`eatInText`): the open's checklist, every refusal and every alert.
+    **Labels, never enums** — a state in the console's state words (`weekStateChip`), a role as `ROLE_LABEL` names it, an
+    account status as the status lexicon words it, a builder's category and kind as words (`CATEGORY_LABEL`,
+    `EVENT_KIND_LABEL`); the stored value stays the code. **The lock chip names who works a control in the roles' own
+    words** — "Release · Finance officers only", tooltip "Ask the Owner or a Finance officer." (`CONTROL_WHO`; the Owner
+    is never "an Admin") — a platform component, so the classic console reads the same words. **A week's own rules are
+    readable where it runs** — its page carries "Rules this week froze" (a draft: "Rules if it opened now") in the
+    Owner's form's own labels and units, its fee from its market's snapshot, "Cannot be read" when it cannot be; Pools
+    carries each open week's fee for Finance. **Every list a console page draws has a code search, filters, sort and a
+    pager on the week list's own URL parameters** (the evidence archive too). **A draft that never opened can be
+    discarded** (the draft's own control, typed `DISCARD`, audited); a week that opened, or the announced final week,
+    never. Guards: `test:maswali-admin-plain` §2–§8 (rendered strings, the id and raw-time censuses, the wiring) with its
+    14 disk plants (`red:maswali-admin-plain`), `test:maswali-engine` §15 (the discard on both stores; plants
+    (110)–(112)), `qa:maswali-admin-drive` 3.3g, 4.2c and 6.5g (the rendered words, the discard, the archive's filter).
 
 ---
 

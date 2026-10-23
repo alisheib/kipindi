@@ -65,6 +65,8 @@ import { parseQuery, queryToWhere, fieldNames, NOTIFICATION_SEARCH, CONTACT_SEAR
 import { FINAL_REFUSAL_CODES } from "@/lib/kyc-refusal";
 // 2026-10-10 (review R5.1) · the post-check list's statuses — the memory half (store.ts) reads the same list.
 import { POST_CHECK_LIST_STATUSES } from "@/lib/kyc-approval";
+// MASWALI-BUILD S6 round 3 (A5) · the targets whose one message is reserved by its row — the memory half reads the same list.
+import { isExclusiveSmsTarget } from "@/lib/sms-targets";
 import type {
   StoredUser,
   StoredKyc,
@@ -1519,6 +1521,8 @@ function toStoredObjection(o: any): StoredObjection {
     reviewNote: o.reviewNote ?? null,
     remedy: (o.remedy ?? null) as StoredObjection["remedy"],
     outcomeAtFiling: o.outcomeAtFiling ?? null,
+    // S6 review R2-11 · the Millionea question objected to (1..15); null on every other product.
+    questionOrdinal: o.questionOrdinal ?? null,
   };
 }
 
@@ -2345,6 +2349,16 @@ export const prismaDb = {
     findByUserId: async (userId: string, tx?: Prisma.TransactionClient | null): Promise<StoredWallet | null> => {
       const w = await (tx ?? pc()).wallet.findUnique({ where: { userId } });
       return w ? toStoredWallet(w) : null;
+    },
+    /** Bounded payee pre-read for a whole Millionea release, on the joined money transaction. */
+    findByUserIds: async (userIds: readonly string[], tx?: Prisma.TransactionClient | null): Promise<StoredWallet[]> => {
+      const unique = [...new Set(userIds)];
+      const out: StoredWallet[] = [];
+      for (let i = 0; i < unique.length; i += 5_000) {
+        const rows = await (tx ?? pc()).wallet.findMany({ where: { userId: { in: unique.slice(i, i + 5_000) } } });
+        for (const row of rows) out.push(toStoredWallet(row));
+      }
+      return out;
     },
     listAll: async (): Promise<StoredWallet[]> => {
       const rows = await pc().wallet.findMany();
@@ -3705,8 +3719,10 @@ export const prismaDb = {
   // An OPEN row here freezes a market's settlement, so these are money-bearing
   // compliance records — they persist, they are never silently dropped.
   objection: {
-    create: async (o: StoredObjection): Promise<StoredObjection> => {
-      const row = await pc().objection.create({
+    /** `tx`: the enclosing lock's transaction (the Millionea objection door files on it); a second Millionea objection by
+     *  the same player on the same question fails on `Objection_maswali_question_player_key` (P2002). */
+    create: async (o: StoredObjection, tx?: Prisma.TransactionClient): Promise<StoredObjection> => {
+      const row = await (tx ?? pc()).objection.create({
         data: {
           id: o.id,
           marketId: o.marketId,
@@ -3720,6 +3736,7 @@ export const prismaDb = {
           reviewNote: o.reviewNote,
           remedy: o.remedy,
           outcomeAtFiling: o.outcomeAtFiling,
+          questionOrdinal: o.questionOrdinal ?? null,
         },
       });
       return toStoredObjection(row);
@@ -3727,6 +3744,18 @@ export const prismaDb = {
     findById: async (id: string): Promise<StoredObjection | null> => {
       const row = await pc().objection.findUnique({ where: { id } });
       return row ? toStoredObjection(row) : null;
+    },
+    /** ⭐ Rule on an objection only while it is OPEN — a conditional update (DATA-LAYER rule 2): true when THIS write
+     *  decided it, so two officers ruling on one case at once land exactly one ruling. `tx`: the lock's transaction. */
+    decideOpen: async (id: string, patch: Pick<StoredObjection, "status" | "reviewedBy" | "reviewedAt" | "reviewNote" | "remedy">, tx?: Prisma.TransactionClient): Promise<boolean> => {
+      const r = await (tx ?? pc()).objection.updateMany({
+        where: { id, status: "OPEN" },
+        data: {
+          status: patch.status, reviewedBy: patch.reviewedBy,
+          reviewedAt: patch.reviewedAt ? new Date(patch.reviewedAt) : null, reviewNote: patch.reviewNote, remedy: patch.remedy,
+        },
+      });
+      return r.count === 1;
     },
     update: async (id: string, patch: Partial<StoredObjection>): Promise<StoredObjection | null> => {
       const row = await pc().objection.update({
@@ -3757,8 +3786,9 @@ export const prismaDb = {
      *  remedy, who ruled and when. Narrow on purpose (four columns, no player text, no cap): the public
      *  sign-off reads it, and a capped newest-1000 list would silently drop an old ruling (v3 review). */
     listUpheldRulings: async (): Promise<Array<{ marketId: string; remedy: string; reviewedBy: string | null; reviewedAt: string | null }>> => {
+      // A Millionea ruling changes one question's result, never its market's verdict: no row of a market's sign-off.
       const rows = await pc().objection.findMany({
-        where: { status: "UPHELD", remedy: { in: ["REVERSE", "VOID"] } },
+        where: { status: "UPHELD", remedy: { in: ["REVERSE", "VOID"] }, questionOrdinal: null },
         select: { marketId: true, remedy: true, reviewedBy: true, reviewedAt: true },
       });
       return rows.map((r) => ({
@@ -4190,19 +4220,24 @@ export const prismaDb = {
       // `createMany` cannot return rows, and these are written BEFORE the HTTP call so a
       // crash mid-send still leaves a row for a receipt to land on. The input IS the row.
       if (ms.length === 0) return [];
-      await pc().smsMessage.createMany({
-        data: ms.map((m) => ({
-          reference: m.reference, msisdn: m.msisdn, purpose: m.purpose, provider: m.provider,
-          senderId: m.senderId, bodyLen: m.bodyLen, status: m.status, providerMsg: m.providerMsg,
-          dlrStatus: m.dlrStatus, dlrDesc: m.dlrDesc, balanceTzs: m.balanceTzs,
-          attempts: m.attempts, targetType: m.targetType, targetId: m.targetId,
-          createdAt: new Date(m.createdAt),
-          sentAt: m.sentAt ? new Date(m.sentAt) : null,
-          deliveredAt: m.deliveredAt ? new Date(m.deliveredAt) : null,
-          failedAt: m.failedAt ? new Date(m.failedAt) : null,
-        })),
-        skipDuplicates: true,
-      });
+      const data = (rows: StoredSmsMessage[]) => rows.map((m) => ({
+        reference: m.reference, msisdn: m.msisdn, purpose: m.purpose, provider: m.provider,
+        senderId: m.senderId, bodyLen: m.bodyLen, status: m.status, providerMsg: m.providerMsg,
+        dlrStatus: m.dlrStatus, dlrDesc: m.dlrDesc, balanceTzs: m.balanceTzs,
+        attempts: m.attempts, targetType: m.targetType, targetId: m.targetId,
+        createdAt: new Date(m.createdAt),
+        sentAt: m.sentAt ? new Date(m.sentAt) : null,
+        deliveredAt: m.deliveredAt ? new Date(m.deliveredAt) : null,
+        failedAt: m.failedAt ? new Date(m.failedAt) : null,
+      }));
+      // ⭐ MASWALI-BUILD S6 round 3 (A5) · an exclusive target's row is its message's RESERVATION (`@/lib/sms-targets`, the
+      // unique partial index of 20261018120000_maswali_winner_sms_once): a plain INSERT, so a second process's row for the
+      // same target FAILS and its batch sends nothing. ⛔ Never `skipDuplicates` for it: that drops the row silently, and the
+      // message would still go. Every other row keeps the batch's own rule.
+      const exclusive = ms.filter((m) => isExclusiveSmsTarget(m.targetType));
+      const rest = exclusive.length === 0 ? ms : ms.filter((m) => !isExclusiveSmsTarget(m.targetType));
+      if (exclusive.length > 0) await pc().smsMessage.createMany({ data: data(exclusive) });
+      if (rest.length > 0) await pc().smsMessage.createMany({ data: data(rest), skipDuplicates: true });
       return ms;
     },
     findByReference: async (reference: string): Promise<StoredSmsMessage | null> => {

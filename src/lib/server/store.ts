@@ -6,6 +6,7 @@
  * All call sites must have `await` (Phase 3) before flipping the flag.
  */
 import { prismaDb } from "./prisma-dal";
+import { isExclusiveSmsTarget, SmsTargetTakenError } from "@/lib/sms-targets";
 import { hasDatabase } from "./prisma";
 import { randomId } from "./crypto";
 import { matchesFilters, sortAndPage, summarise, type TxnSearchFilters, type TxnSearchResult } from "./txn-filters";
@@ -460,6 +461,23 @@ export type StoredSmsMessage = {
  *  Prisma DAL must enforce the SAME rule — a monotonic guard implemented in only one
  *  backend is a guard that holds in tests and not in production. */
 export const SMS_TERMINAL: readonly SmsStatus[] = ["DELIVERED", "FAILED"];
+
+/**
+ * ⭐ ONE ROW PER EXCLUSIVE TARGET (`@/lib/sms-targets`, MASWALI-BUILD S6 round 3 A5) — the memory twin's half of the unique
+ * partial index Postgres holds (`20261018120000_maswali_winner_sms_once`): a write naming an exclusive target that already
+ * has its row, or naming it twice, is REFUSED whole before anything is written — so a second batch for it sends nothing,
+ * exactly as the Prisma twin's plain insert fails there.
+ */
+function refuseTakenSmsTargets(ms: readonly StoredSmsMessage[]): void {
+  const taken = new Set<string>();
+  for (const m of ms) {
+    if (!isExclusiveSmsTarget(m.targetType)) continue;
+    const key = `${m.targetType} ${m.targetId ?? ""}`;
+    const held = taken.has(key) || [...store.smsMessages.values()].some((x) => x.targetType === m.targetType && x.targetId === m.targetId);
+    if (held) throw new SmsTargetTakenError(String(m.targetType));
+    taken.add(key);
+  }
+}
 
 /** One normalised line of a delivery receipt. ⛔ `status: null` means WE DO NOT RECOGNISE
  *  the provider's token: record it raw and leave the row's status exactly as it was.
@@ -2055,8 +2073,10 @@ export type ObjectionReason =
 export type ObjectionStatus = "OPEN" | "UPHELD" | "REJECTED";
 
 /** What the officer did about an upheld objection. Only reachable while the
- *  market is unsettled — which is the entire reason settlement is gated. */
-export type ObjectionRemedy = "VOID" | "REVERSE";
+ *  market is unsettled — which is the entire reason settlement is gated.
+ *  REINSTATE is a Maswali Millionea question's alone (MR-16: an upheld objection can bring a voided question back); a
+ *  Yes/No market's ruling stays VOID or REVERSE (`upholdObjection` refuses anything else). */
+export type ObjectionRemedy = "VOID" | "REVERSE" | "REINSTATE";
 
 /**
  * A player's formal objection to a market's verdict, filed inside the objection
@@ -2080,6 +2100,11 @@ export type StoredObjection = {
   /** The verdict at the time of filing, so the audit trail shows what was
    *  actually being disputed even after a remedy changes the market. */
   outcomeAtFiling: string | null;
+  /** Maswali Millionea only (MR-16, MB-23): the question objected to, as its canonical slot 1..15 (M1..M10 = 1..10,
+   *  A1..A5 = 11..15, the reserves — the plan's R1..R5). Absent or null on every other product. One per (market, question, player), open or decided — the
+   *  partial unique index `Objection_maswali_question_player_key`. Kept by BOTH stores (S6 review R2-11, null when it
+   *  names none), so the week's evidence pack says which question an objection was about. */
+  questionOrdinal?: number | null;
 };
 
 /** F3 — a player's star on a market. Composite id `${marketId}:${userId}`. */
@@ -2843,6 +2868,16 @@ const memoryDb = {
       const id = store.walletsByUser.get(userId);
       return id ? store.wallets.get(id) ?? null : null;
     },
+    /** Read a set of payees before any settlement write; missing wallets are omitted for the caller to refuse. */
+    findByUserIds: (userIds: readonly string[], _tx?: unknown): StoredWallet[] => {
+      const out: StoredWallet[] = [];
+      for (const userId of new Set(userIds)) {
+        const id = store.walletsByUser.get(userId);
+        const wallet = id ? store.wallets.get(id) : null;
+        if (wallet) out.push(wallet);
+      }
+      return out;
+    },
     /** All wallets — analytics only (wallet liability total). */
     listAll: (): StoredWallet[] => Array.from(store.wallets.values()),
     create: (w: StoredWallet) => { store.wallets.set(w.id, w); store.walletsByUser.set(w.userId, w.id); return w; },
@@ -3596,8 +3631,27 @@ const memoryDb = {
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
   },
   objection: {
-    create: (o: StoredObjection): StoredObjection => { store.objections.set(o.id, o); return o; },
+    /** ⭐ A Millionea objection is one per (market, question, player), open or decided: the database's partial unique
+     *  index `Objection_maswali_question_player_key`, held here too — refused with the code Prisma gives (P2002), so the
+     *  objection door answers both stores the same way. `_tx` is the Prisma twin's (the lock's transaction).
+     *  R2-11 · the question an objection names is kept, null when it names none — the Postgres twin's shape exactly. */
+    create: (o: StoredObjection, _tx?: unknown): StoredObjection => {
+      if (o.questionOrdinal != null && (Array.from(store.objections.values()) as StoredObjection[])
+        .some((x) => x.marketId === o.marketId && x.questionOrdinal === o.questionOrdinal && x.userId === o.userId)) {
+        throw Object.assign(new Error("Unique constraint failed on Objection_maswali_question_player_key"), { code: "P2002" });
+      }
+      const row = { ...o, questionOrdinal: o.questionOrdinal ?? null };
+      store.objections.set(o.id, row);
+      return row;
+    },
     findById: (id: string): StoredObjection | null => store.objections.get(id) ?? null,
+    /** Rule on an objection only while it is OPEN — the Prisma twin's conditional update. True when this call decided it. */
+    decideOpen: (id: string, patch: Pick<StoredObjection, "status" | "reviewedBy" | "reviewedAt" | "reviewNote" | "remedy">, _tx?: unknown): boolean => {
+      const o = store.objections.get(id);
+      if (!o || o.status !== "OPEN") return false;
+      store.objections.set(id, { ...o, ...patch });
+      return true;
+    },
     update: (id: string, patch: Partial<StoredObjection>): StoredObjection | null => {
       const o = store.objections.get(id);
       if (!o) return null;
@@ -3618,10 +3672,11 @@ const memoryDb = {
       (Array.from(store.objections.values()) as StoredObjection[])
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         .slice(0, limit),
-    /** Every objection UPHELD with a remedy that changed the verdict (REVERSE or VOID). */
+    /** Every objection UPHELD with a remedy that changed the verdict (REVERSE or VOID). A Millionea ruling changes one
+     *  question's result, never its market's verdict, so it is no row of a market's sign-off. */
     listUpheldRulings: (): Array<{ marketId: string; remedy: string; reviewedBy: string | null; reviewedAt: string | null }> =>
       (Array.from(store.objections.values()) as StoredObjection[])
-        .filter((o) => o.status === "UPHELD" && (o.remedy === "REVERSE" || o.remedy === "VOID"))
+        .filter((o) => o.status === "UPHELD" && (o.remedy === "REVERSE" || o.remedy === "VOID") && o.questionOrdinal == null)
         .map((o) => ({ marketId: o.marketId, remedy: o.remedy ?? "", reviewedBy: o.reviewedBy ?? null, reviewedAt: o.reviewedAt ?? null })),
   },
   proposalVote: {
@@ -3777,8 +3832,8 @@ const memoryDb = {
   },
 
   smsMessage: {
-    create: (m: StoredSmsMessage): StoredSmsMessage => { store.smsMessages.set(m.reference, m); return m; },
-    createMany: (ms: StoredSmsMessage[]): StoredSmsMessage[] => { for (const m of ms) store.smsMessages.set(m.reference, m); return ms; },
+    create: (m: StoredSmsMessage): StoredSmsMessage => { refuseTakenSmsTargets([m]); store.smsMessages.set(m.reference, m); return m; },
+    createMany: (ms: StoredSmsMessage[]): StoredSmsMessage[] => { refuseTakenSmsTargets(ms); for (const m of ms) store.smsMessages.set(m.reference, m); return ms; },
     findByReference: (reference: string): StoredSmsMessage | null => store.smsMessages.get(reference) ?? null,
     update: (reference: string, patch: Partial<StoredSmsMessage>): StoredSmsMessage | null => {
       const m = store.smsMessages.get(reference);

@@ -488,6 +488,139 @@ ok("CONTROL: the projection still emits the money fields a subject is entitled t
   projectedTxn.includes("txn_dsar_future_column") && projectedTxn.includes("5000") && projectedTxn.includes("dsar-ref"),
   "If this fails the projection is empty and the assertions above are vacuous.");
 
+// ── 10 · MILLIONEA TICKETS: one allowlist for both doors, the salt to its owner only (MASWALI-BUILD S6, MB-67) ──
+section("10 · a holder's tickets reach both doors; the salt only the owner's; a non-holder's file is unchanged");
+
+/**
+ * 🔴 THE GAP. A ticket's fifteen answers were in neither door — the file carried the stake and the payout and not what the
+ * money was staked on. ⭐ THE LAW, MEASURED HERE: one projection (`dsarMaswaliTicketView`) for both doors; the salt
+ * (MB-32: shown to its owner only) in the player's own download and NOT in the bundle an officer builds; the unsalted
+ * replay hash and the officer's reason for a held share in neither; and a person with no Millionea row at all — no
+ * ticket, no seen mark — gets the file they always got: the same keys, in the same order, and no Millionea key (the
+ * brief's control: a Yes/No or Up & Down player's export stays byte-identical). A seen mark alone is Millionea data,
+ * and both doors release it (10.14).
+ * ⚠️ The rows are written through the Millionea DAL itself, which is what both doors read — a purchase's money path is
+ * `test:maswali-purchase`'s; this section is about what the doors RELEASE.
+ */
+{
+  const MLN: Any = await import("../src/lib/server/maswali-dal.ts");
+  const { dsarMaswaliTicketView } = await import("../src/lib/server/privacy.ts");
+  // ⚠️ Neither id contains the other: `normalise` replaces known ids as substrings, in order.
+  const HOLDER_M = "u_dsar_mlnholder";
+  const TWIN_M = "u_dsar_mlntwin";
+  await mkAccount(HOLDER_M, "+255700000046");
+  await mkAccount(TWIN_M, "+255700000047");
+
+  const SALT = "0123456789abcdef0123456789abcdef";
+  const PICKS_KEY = "SENTINEL-PICKS-KEY-unsalted-9b1d";
+  const HELD_WHY = "SENTINEL-OFFICER-REASON-held-4e2a";
+  const at = "2026-10-12T09:00:00.000Z";
+  const weekId = "mlw_dsar_week";
+  await MLN.weekStore.create({
+    id: weekId, marketId: "mkt_dsar_mln", code: "MLN-2026-W42", seq: 4242, visibility: "PUBLIC", state: "SETTLED",
+    opensAt: "2026-10-11T21:00:00.000Z", closesAt: "2026-10-16T15:00:00.000Z", finalDeadlineAt: "2026-10-19T20:59:00.000Z",
+    closedAt: "2026-10-16T15:00:30.000Z", rulesSnapshot: { v: 1 }, questionSetHash: "a".repeat(64), ticketMerkleRoot: "b".repeat(64),
+    ticketCount: 2, salesAtClose: 2_000, gradedSetFinalAt: null, objectionsCloseAt: null, objectionRestarted: false,
+    rolloverIn: 0, jackpot: 1_000_000, fee: 130_000, traLevy: 13_000, gbtLevy: 6_500, topUp: 998_000, winningTickets: 1,
+    sharePerTicket: 870_000, paidTotal: 870_000, carryOut: 0, dustCarried: 0, settlementGroupId: "maswali_settle_mlw_dsar_week",
+    settledAt: "2026-10-20T09:00:00.000Z", releasedBy: "usr_mln_accounting", isFinal: false, parityAttestedBy: "usr_reader",
+    parityAttestedAt: at, createdBy: "usr_drafter", createdAt: at, updatedAt: at,
+  });
+  const PICKS = Array.from({ length: 15 }, (_, i) => (i % 3 === 0 ? "NO" : "YES"));
+  const ticket = (id: string, serial: string, over: Record<string, unknown>) => ({
+    id, positionId: `pos_${id}`, cycleId: weekId, userId: HOLDER_M, serial, selections: PICKS, salt: SALT,
+    selectionsHash: "c".repeat(64), picksKey: PICKS_KEY, status: "SETTLED", cancelledAt: null, closeAtPurchase: "2026-10-16T15:00:00.000Z",
+    rulesVersion: "millionea-2026-10-17", score: 9, won: false, payout: 0, frozenReason: null, lastViewedAt: null, createdAt: at, ...over,
+  });
+  await MLN.ticketStore.create(ticket("mlt_dsar_lost", "MLN-2026-W42-000001", {}));
+  await MLN.ticketStore.create(ticket("mlt_dsar_held", "MLN-2026-W42-000002", { score: 10, won: true, payout: 870_000, frozenReason: `held · ${HELD_WHY}` }));
+  await MLN.noticeStore.markSeen(HOLDER_M, weekId, "RESULT", "2026-10-20T10:00:00.000Z");
+
+  const raw = await MLN.ticketStore.listForUser(HOLDER_M);
+  ok("10.CONTROL · the stored rows really carry the salt, the unsalted replay hash and the officer's reason — so their absence below is a measurement",
+    raw.length === 2 && raw.every((t: Any) => t.salt === SALT && t.picksKey === PICKS_KEY) && raw.some((t: Any) => (t.frozenReason ?? "").includes(HELD_WHY)),
+    JSON.stringify(raw.map((t: Any) => ({ salt: t.salt, picksKey: t.picksKey, frozenReason: t.frozenReason }))));
+
+  const own: Any = await exportUserData(HOLDER_M);
+  const bundle: Any = await buildDsarBundle(HOLDER_M);
+  const ownTickets: Any[] = own.millionea?.tickets ?? [];
+  const bundleTickets: Any[] = bundle?.millionea?.tickets ?? [];
+  const LABELS = [...Array.from({ length: 10 }, (_, i) => `M${i + 1}`), ...Array.from({ length: 5 }, (_, i) => `A${i + 1}`)];
+  const picksRight = (t: Any) => JSON.stringify(Object.keys(t?.picks ?? {})) === JSON.stringify(LABELS) && LABELS.every((l, i) => t.picks[l] === PICKS[i]);
+  ok("10.1 · ⭐ the player's own download carries every ticket — its serial, its week and its fifteen answers under the labels the ticket prints (M1…M10, A1…A5)",
+    ownTickets.length === 2 && ownTickets.every(picksRight) && ownTickets.every((t) => t.week === "MLN-2026-W42" && t.selectionsHash === "c".repeat(64)),
+    JSON.stringify(ownTickets[0] ?? null).slice(0, 300));
+  ok("10.2 · ⭐ the officer's bundle carries the same tickets and answers",
+    bundleTickets.length === 2 && bundleTickets.every(picksRight) && JSON.stringify(bundleTickets.map((t) => t.serial).sort()) === JSON.stringify(["MLN-2026-W42-000001", "MLN-2026-W42-000002"]),
+    JSON.stringify(bundleTickets.map((t) => t.serial)));
+  ok("10.3 · ⛔ MB-32 · the salt is in the OWNER's download — its value on every ticket",
+    ownTickets.every((t) => t.salt === SALT), JSON.stringify(ownTickets.map((t) => t.salt)));
+  const bundleJson = JSON.stringify(bundle);
+  ok("10.4 · ⛔ MB-32 · …and NOT in the bundle an officer builds — neither its value nor its key, anywhere in the file",
+    !bundleJson.includes(SALT) && bundleTickets.every((t) => !("salt" in t)), bundleJson.includes(SALT) ? "the salt value is in the bundle" : "");
+  for (const [door, file] of [["player export", own], ["officer bundle", bundle]] as Array<[string, unknown]>) {
+    const json = JSON.stringify(file);
+    ok(`10.5 · ⛔ the ${door} carries neither the unsalted replay hash nor the officer's reason for the held share — value or key`,
+      !json.includes(PICKS_KEY) && !json.includes("picksKey") && !json.includes(HELD_WHY) && !json.includes("frozenReason"),
+      [json.includes(PICKS_KEY) && "picksKey value", json.includes(HELD_WHY) && "the officer's reason"].filter(Boolean).join(", "));
+  }
+  ok("10.6 · the held share reads as the ticket page names it — held, with the credited amount — and the lost ticket has no share",
+    ownTickets.find((t) => t.serial === "MLN-2026-W42-000002")?.share === "held" && ownTickets.find((t) => t.serial === "MLN-2026-W42-000002")?.payout === 870_000
+      && ownTickets.find((t) => t.serial === "MLN-2026-W42-000001")?.share === null,
+    JSON.stringify(ownTickets.map((t) => ({ serial: t.serial, share: t.share, payout: t.payout }))));
+  const keysOf = (t: Any) => Object.keys(t ?? {}).join(",");
+  ok("10.7 · ONE projection: the two doors' ticket fields are the same list, in the same order, but for the owner's salt",
+    ownTickets.length > 0 && keysOf(ownTickets[0]).replace(",salt", "") === keysOf(bundleTickets[0]) && keysOf(ownTickets[0]).includes(",salt"),
+    `own: ${keysOf(ownTickets[0])}\n       bundle: ${keysOf(bundleTickets[0])}`);
+  ok("10.8 · both doors carry the hub notice the holder saw, with its week and instant",
+    JSON.stringify(own.millionea?.noticesSeen) === JSON.stringify([{ week: "MLN-2026-W42", notice: "RESULT", seenAt: "2026-10-20T10:00:00.000Z" }])
+      && JSON.stringify(bundle?.millionea?.noticesSeen) === JSON.stringify(own.millionea?.noticesSeen),
+    JSON.stringify(own.millionea?.noticesSeen));
+  const future = JSON.stringify(dsarMaswaliTicketView({ ...raw[0], recoveryPin: "SENTINEL-FUTURE-TICKET-COLUMN" } as never, "MLN-2026-W42", "owner"));
+  ok("10.9 · ⛔ AN ALLOWLIST · a ticket column the projection has never heard of reaches neither door",
+    !future.includes("SENTINEL-FUTURE-TICKET-COLUMN") && !future.includes("recoveryPin") && future.includes("MLN-2026-W42-"), future.slice(0, 120));
+
+  /* ⭐ THE BRIEF'S CONTROL: A PERSON WHO NEVER HELD A TICKET GETS THE FILE THEY ALWAYS GOT. Both doors' top-level keys, in
+     order, written out (never read from the modules under test) as they stood before S6 at b495ede2 — and the holder's
+     files are shown to differ from them by exactly the one key, so the absence is measured over doors that CAN add it. */
+  const OWN_KEYS = "generatedAt,user,kyc,wallet,responsibleGambling,transactions,marketing,auditEntries";
+  const BUNDLE_KEYS = "generatedAt,schemaVersion,user,wallet,transactions,kyc,responsibleGambling,notificationsCount,marketing,rights";
+  for (const who of [userId, TWIN_M]) {
+    const o = await exportUserData(who);
+    const b = await buildDsarBundle(who);
+    ok(`10.10 · ⛔ ${who === userId ? "a Yes/No player" : "the holder's identical twin with no ticket"} · both doors carry exactly the keys they carried before Millionea, in order, and no Millionea key`,
+      Object.keys(o).join(",") === OWN_KEYS && Object.keys(b ?? {}).join(",") === BUNDLE_KEYS && !("millionea" in o) && !("millionea" in (b ?? {})),
+      `export: ${Object.keys(o).join(",")}\n       bundle: ${Object.keys(b ?? {}).join(",")}`);
+  }
+  ok("10.11 · CONTROL · the holder's two files are those same keys with ONE added — `millionea`, right after the transactions",
+    Object.keys(own).join(",") === OWN_KEYS.replace("transactions,", "transactions,millionea,")
+      && Object.keys(bundle ?? {}).join(",") === BUNDLE_KEYS.replace("transactions,", "transactions,millionea,"),
+    `export: ${Object.keys(own).join(",")}\n       bundle: ${Object.keys(bundle ?? {}).join(",")}`);
+  KNOWN_IDS.push(HOLDER_M, TWIN_M, `wal_${HOLDER_M}`, `wal_${TWIN_M}`);
+  for (const door of ["exportUserData", "buildDsarBundle"] as const) {
+    const open = door === "exportUserData" ? exportUserData : buildDsarBundle;
+    const { millionea: _m, ...rest } = ((await open(HOLDER_M)) ?? {}) as Record<string, unknown>;
+    void _m;
+    ok(`10.12 · ⭐ the holder's ${door} with its Millionea section taken out is IDENTICAL to the ticket-less twin's, once ids, times and numbers are normalised — the section adds, it changes nothing else`,
+      JSON.stringify(normalise(rest)) === JSON.stringify(normalise(await open(TWIN_M))),
+      `holder ${JSON.stringify(normalise(rest)).length}B vs twin ${JSON.stringify(normalise(await open(TWIN_M))).length}B`);
+  }
+  ok("10.13 · ⛔ D19 · the holder's two files name nothing house at any depth", houseHits(JSON.stringify(own)).length === 0 && houseHits(bundleJson).length === 0,
+    [...houseHits(JSON.stringify(own)), ...houseHits(bundleJson)].slice(0, 5).join(", "));
+
+  /* 2026-10-18 · S6 review · A SEEN MARK WITHOUT A TICKET. The rollover notice is shown to every hub viewer, ticket or not
+     (`maswali-player.ts`), and its seen mark is that person's data: both doors release it, with no ticket beside it. */
+  const VIEWER_M = "u_dsar_mlnviewer";
+  await mkAccount(VIEWER_M, "+255700000048");
+  await MLN.noticeStore.markSeen(VIEWER_M, weekId, "ROLLOVER", "2026-10-13T08:00:00.000Z");
+  const viewerOwn: Any = await exportUserData(VIEWER_M);
+  const viewerBundle: Any = await buildDsarBundle(VIEWER_M);
+  const VIEWER_SECTION = JSON.stringify({ tickets: [], noticesSeen: [{ week: "MLN-2026-W42", notice: "ROLLOVER", seenAt: "2026-10-13T08:00:00.000Z" }] });
+  ok("10.14 · ⭐ a person who never bought but saw a hub notice finds that seen mark in both doors — and no ticket",
+    JSON.stringify(viewerOwn.millionea) === VIEWER_SECTION && JSON.stringify(viewerBundle?.millionea) === VIEWER_SECTION,
+    JSON.stringify([viewerOwn.millionea ?? null, viewerBundle?.millionea ?? null]));
+}
+
 console.log("");
 console.log("─".repeat(64));
 console.log(`  DSAR EXPORT SECRETS: ${pass} passed, ${fail} failed`);

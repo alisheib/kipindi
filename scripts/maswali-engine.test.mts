@@ -17,6 +17,8 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:maswali-engine",
   casesFile: "scripts/lib/maswali-engine-child.mts",
-  minPass: { memory: 203, postgres: 211 }, // + LICBASIS 2.0b (the recorded None in the checklist): printed by the green run at 82d49d05b
+  // S6-ADMIN 10: §15 (the draft discard), printed by the green run 39826898317 at 71ded2939 (212/220); with LICBASIS's 2.0b
+  // (the recorded None in the checklist) merged at S6-SHIP 19: 213/221, printed by the run on that merge.
+  minPass: { memory: 213, postgres: 221 },
   dbPrefix: "mlw_engine",
 });

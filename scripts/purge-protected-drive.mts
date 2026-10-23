@@ -131,6 +131,11 @@ try {
   ok("2 · 🔴 houseBot.create is refused", refused(() => guarded.houseBot.create({ data: hb })) === "refused");
   ok("2 · 🔴 auditLog.deleteMany is refused", refused(() => guarded.auditLog.deleteMany({})) === "refused");
   ok("2 · 🔴 ledgerEntry.updateMany is refused", refused(() => guarded.ledgerEntry.updateMany({ data: {} })) === "refused");
+  // MASWALI-BUILD S6 · MB-67 · Millionea's record on a REAL client: the generated client's own models, the derived family.
+  for (const m of ["maswaliCycle", "maswaliQuestion", "maswaliTicket", "maswaliNoticeSeen"] as const) {
+    ok(`2 · 🔴 ${m}.deleteMany is refused — Millionea's 7-year record`,
+       refused(() => (guarded as unknown as Record<string, { deleteMany: (a: unknown) => unknown }>)[m].deleteMany({})) === "refused");
+  }
   ok("2 · ⛔ $queryRawUnsafe is refused — a SQL string walks past a per-model guard",
      refused(() => (guarded as unknown as { $queryRawUnsafe: (s: string) => unknown }).$queryRawUnsafe(`DELETE FROM "HouseBotIntent"`)) === "refused");
 

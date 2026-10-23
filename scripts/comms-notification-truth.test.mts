@@ -136,6 +136,37 @@ const EMITTED: { fn: string; row: StoredNotification | null }[] = [
   // string, "5 Sep 2026, 14:32", printed in all three bodies; each body now says the instant itself.)
   { fn: "notifyVerdictRecorded",     row: await N.notifyVerdictRecorded(U, { marketTitle: { en: "Sealed poll", sw: "Kura iliyofungwa", zh: "已封存的投票" }, marketId: "mkt_12", outcome: "YES", paysAt: "2026-09-05T11:32:00.000Z" }) },
   { fn: "notifyVerdictRecorded",     row: await N.notifyVerdictRecorded(U, { marketTitle: { en: "Sealed poll", sw: "Kura iliyofungwa", zh: "已封存的投票" }, marketId: "mkt_12", outcome: "NO", paysAt: "2026-09-05T12:47:00.000Z", reversed: true }) },
+  // ── Maswali Millionea (MASWALI-BUILD S6, MB-68): a week's notices, each driven on every shape whose words differ — one
+  // ticket and several, a main and a reserve voided, a win paid and a win held, a rollover and a week someone else won.
+  // 2026-10-18 (lane N round 2): a void keyed by its seal instant; a held-only win is its own VERDICT emitter (never a gold
+  // WIN); a correction (reinstated, and YES↔NO) and a moved close join the set.
+  { fn: "notifyMillioneaTicketsCut",      row: await N.notifyMillioneaTicketsCut(U, { weekCode: "MLN-2026-W44", serials: ["MLN-2026-W44-000123"], firstPositionId: "pos_c3_mln_1", totalTzs: 1_000, freeCancelUntil: "2026-10-30T11:05:00.000Z" }) },
+  { fn: "notifyMillioneaTicketsCut",      row: await N.notifyMillioneaTicketsCut(U, { weekCode: "MLN-2026-W44", serials: ["MLN-2026-W44-000124", "MLN-2026-W44-000125"], firstPositionId: "pos_c3_mln_2", totalTzs: 2_000, freeCancelUntil: null }) },
+  { fn: "notifyMillioneaTicketCancelled", row: await N.notifyMillioneaTicketCancelled(U, { weekCode: "MLN-2026-W44", serial: "MLN-2026-W44-000123", refundedTzs: 1_000 }) },
+  { fn: "notifyMillioneaSalesClosed",     row: await N.notifyMillioneaSalesClosed(U, { weekCode: "MLN-2026-W44", tickets: 2, closedAt: "2026-10-30T15:00:00.000Z" }) },
+  { fn: "notifyMillioneaQuestionVoided",  row: await N.notifyMillioneaQuestionVoided(U, { weekCode: "MLN-2026-W44", role: "MAIN", ordinal: 7, slot: 7, ground: "not_played", sealedAt: "2026-11-03T09:00:00.000Z" }) },
+  { fn: "notifyMillioneaQuestionVoided",  row: await N.notifyMillioneaQuestionVoided(U, { weekCode: "MLN-2026-W44", role: "RESERVE", ordinal: 2, slot: 12, ground: "abandoned", sealedAt: "2026-11-03T09:05:00.000Z" }) },
+  { fn: "notifyMillioneaQuestionCorrected", row: await N.notifyMillioneaQuestionCorrected(U, { weekCode: "MLN-2026-W44", role: "MAIN", ordinal: 7, slot: 7, sealedAt: "2026-11-03T10:00:00.000Z", reinstated: true }) },
+  { fn: "notifyMillioneaQuestionCorrected", row: await N.notifyMillioneaQuestionCorrected(U, { weekCode: "MLN-2026-W44", role: "RESERVE", ordinal: 2, slot: 12, sealedAt: "2026-11-03T10:05:00.000Z", reinstated: false }) },
+  // S6-NOTICES (2026-10-23) · the same notice for a result an upheld objection changed: reversed with the window restarted,
+  // reversed keeping its window, and a reserve reinstated.
+  { fn: "notifyMillioneaQuestionCorrected", row: await N.notifyMillioneaQuestionCorrected(U, { weekCode: "MLN-2026-W44", role: "MAIN", ordinal: 8, slot: 8, sealedAt: "2026-11-03T11:00:00.000Z", reinstated: false, cause: "objection", windowRestarted: true }) },
+  { fn: "notifyMillioneaQuestionCorrected", row: await N.notifyMillioneaQuestionCorrected(U, { weekCode: "MLN-2026-W44", role: "MAIN", ordinal: 9, slot: 9, sealedAt: "2026-11-03T11:05:00.000Z", reinstated: false, cause: "objection", windowRestarted: false }) },
+  { fn: "notifyMillioneaQuestionCorrected", row: await N.notifyMillioneaQuestionCorrected(U, { weekCode: "MLN-2026-W44", role: "RESERVE", ordinal: 3, slot: 13, sealedAt: "2026-11-03T11:10:00.000Z", reinstated: true, cause: "objection", windowRestarted: false }) },
+  { fn: "notifyMillioneaCloseMoved",      row: await N.notifyMillioneaCloseMoved(U, { weekCode: "MLN-2026-W44", tickets: 2, closesAt: "2026-10-30T13:00:00.000Z", move: 1 }) },
+  { fn: "notifyMillioneaWon",             row: await N.notifyMillioneaWon(U, { weekCode: "MLN-2026-W44", winningSerial: "MLN-2026-W44-000124", paidTickets: 1, paidTzs: 870_000, heldTickets: 0, shareTzs: 870_000, score: 10, maxPerWithdrawalTzs: 5_000_000, withdrawalFeeRate: 0.015, cannotSignIn: false }) },
+  { fn: "notifyMillioneaWonHeld",         row: await N.notifyMillioneaWonHeld(U, { weekCode: "MLN-2026-W45", winningSerial: "MLN-2026-W45-000301", paidTickets: 0, paidTzs: 0, heldTickets: 2, shareTzs: 435_000, score: 10, maxPerWithdrawalTzs: 5_000_000, withdrawalFeeRate: 0.015, cannotSignIn: false }) },
+  { fn: "notifyMillioneaNotWon",          row: await N.notifyMillioneaNotWon(U, { weekCode: "MLN-2026-W46", tickets: 2, spentTzs: 2_000, winningTickets: 0, winningScore: null, carried: { amountTzs: 1_234_000, intoWeekCode: "MLN-2026-W47" } }) },
+  { fn: "notifyMillioneaNotWon",          row: await N.notifyMillioneaNotWon(U, { weekCode: "MLN-2026-W48", tickets: 1, spentTzs: 1_000, winningTickets: 3, winningScore: 10, carried: null }) },
+  { fn: "notifyMillioneaWeekRefunded",    row: await N.notifyMillioneaWeekRefunded(U, { weekCode: "MLN-2026-W49", tickets: 2, refundedTzs: 2_000 }) },
+  // S6-NOTICES (2026-10-23) · a question's objection: the ruling in every shape whose words differ (it stands; reversed; a main
+  // voided and a reserve voided; reinstated), each on its own key — and the officers' ping on the filing.
+  { fn: "notifyMillioneaObjectionDecided", row: await N.notifyMillioneaObjectionDecided(U, { weekCode: "MLN-2026-W50", role: "MAIN", ordinal: 3, slot: 3, serial: "MLN-2026-W50-000101", ruling: "REJECT", note: "The official source confirms the seal" }) },
+  { fn: "notifyMillioneaObjectionDecided", row: await N.notifyMillioneaObjectionDecided(U, { weekCode: "MLN-2026-W50", role: "MAIN", ordinal: 4, slot: 4, serial: "MLN-2026-W50-000101", ruling: "REVERSE", note: "The official source published the other result" }) },
+  { fn: "notifyMillioneaObjectionDecided", row: await N.notifyMillioneaObjectionDecided(U, { weekCode: "MLN-2026-W50", role: "MAIN", ordinal: 5, slot: 5, serial: "MLN-2026-W50-000101", ruling: "VOID", note: "The event was not played" }) },
+  { fn: "notifyMillioneaObjectionDecided", row: await N.notifyMillioneaObjectionDecided(U, { weekCode: "MLN-2026-W50", role: "RESERVE", ordinal: 2, slot: 12, serial: "MLN-2026-W50-000101", ruling: "VOID", note: "The reserve's event was abandoned" }) },
+  { fn: "notifyMillioneaObjectionDecided", row: await N.notifyMillioneaObjectionDecided(U, { weekCode: "MLN-2026-W50", role: "MAIN", ordinal: 6, slot: 6, serial: "MLN-2026-W50-000101", ruling: "REINSTATE", note: "The event was played after all" }) },
+  { fn: "notifyAdminMillioneaObjectionFiled", row: await N.notifyAdminMillioneaObjectionFiled("c3_officer", { weekCode: "MLN-2026-W50", role: "MAIN", ordinal: 3, objectionId: "obj_c3_mln" }) },
   { fn: "notifyAdminKycReview",      row: await N.notifyAdminKycReview("c3_officer", { playerLabel: "Asha M.", userId: U }) },
   // 2026-10-10 · the URGENT shape: the NIDA number's own birth digits say under 18, so the case must not wait its turn.
   { fn: "notifyAdminKycReview",      row: await N.notifyAdminKycReview("c3_officer", { playerLabel: "Asha M.", userId: U, urgent: true }) },

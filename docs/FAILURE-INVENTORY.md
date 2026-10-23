@@ -1047,6 +1047,20 @@ silently missing — 7/7 became 8/8 without a new mutation being written).
 A runner that ran `git checkout` would have hidden this defect *and* destroyed the session's own
 uncommitted work.
 
+### 8.4 · ⚪ `red:house-bot-c5` cannot be stopped mid-run without leaving its plant — recorded (S7-SHIP, 2026-10-23), no fix in this release
+
+The shared restore guard (`scripts/lib/red-restore-guard.mjs`) gives a red drive a safe stop: when the suite child it
+waits on ends with STATUS_CONTROL_C_EXIT (0xC000013A — a console Ctrl-C or Ctrl-Break, or that status set on purpose), the
+drive reads it (`isConsoleStop`), puts the planted file back and halts (`haltIfStopped`). `red:maswali-money-path` and
+`red:house-bot-console` are built that way. `red:house-bot-c5` is not: its `run()` never reads the child's status (a
+stopped child only reads as red, and the drive goes on to its next plant), and its SIGINT/SIGTERM handlers release the
+lock and exit WITHOUT restoring the file it planted. Measured on OMEGA (2026-10-23, in an S7-SHIP red-only tree): its suite
+shell ended with 0xC000013A, and c5 went on to its next two plants; its process tree ended, and the plant stayed on disk
+(`scripts/lib/house-bot-reports-cases.mts`) beside the drive's lock — both cleared from git by the batch around it, in a
+tree that held nothing else. The remedy is the money-path drive's pattern (`armRestoreGuard`, `isConsoleStop` read in
+`run()`, `haltIfStopped` between plants). A record only — nothing changed in this release (the lead, 2026-10-23). Until
+it lands, stop `red:house-bot-c5` only in a tree of its own, and restore that tree from git afterwards.
+
 ---
 
 ### §7.3 · WHAT THE LEXICON SWEEP MISSED — found by Ali's consultants, after it shipped
@@ -1263,3 +1277,616 @@ reads the leftover boundary as a stall.
 production's logs per 29 hours. That is `observationStore.ensure`'s **intended** P2002 handler:
 two chains sharing a boundary race to create one row, the loser catches the violation and
 re-reads. It is the write-once guarantee working, logged by Prisma rather than by us.
+
+---
+
+## §9 · MASWALI MILLIONEA — what S7 left open, recorded (2026-10-18)
+
+S7's acceptance (`docs/MASWALI-PLAN.md` §7b S7): every finding is fixed or recorded here. These three were booked as
+KNOWN-RED cases in `test:maswali-adversarial` (a case that reports, never fails the suite, until the work lands) and
+stood on the launch gate as Gate B line 14 (`MASWALI-PLAN.md` §6.1). All three are closed (2026-10-22): RD.5 and TK.2 by
+S7-F9, each with its commits, and OB.0 by S7-OB — each case passes now. One more, QL.1 (found 2026-10-23), is OPEN: it
+stands first below; the last entry is a finding of S7's ship that is older than S7, recorded here only. What is live on
+production is `MASWALI-PLAN.md` §0's to say.
+
+#### ⏳ QL.1 · two of the question rules are not checked on a week drafted in the console — OPEN (found 2026-10-23; for Ali's list)
+
+Found by the GUIDE lane's walk; checked by MASWALI-BUILD FLOW against the code. The accepted rule for building questions
+(OD-14, `MASWALI-PLAN.md` §9, accepted 2026-10-16) says a week carries no two questions on one event and at most 4 from
+one competition (the Owner's rules form: "Questions from one competition, at most", default 4). Neither is enforced for a
+question drafted in the console, because nothing on such a question says which event or competition it is about: a
+stored question (`MaswaliQuestion`, `StoredQuestion`) has its texts, criteria, category, source, event kind, start and
+zone, its chance and an optional linked Yes/No market — no event and no competition. The builder's calendar suggestions
+carry an event's id, and filling a slot from one drops it (`fillFrom`, `week-builder.tsx`). So the open's checklist
+(`openProblems`, `maswali-service.ts`) can only:
+- catch the SAME question twice — its "same event" check keys on the source's host, the start and the English criterion's
+  words, so two questions on one match with different criteria ("Simba win?", "Simba score 2 or more?") both pass;
+- count questions per LINKED Yes/No market, not per competition — so it never fires for a console-drafted week, counts
+  five questions linked to five Premier League markets as five competitions, and, when it fires, names the market by its
+  id ("5 questions share mkt_…"), against the console's names-never-ids rule (G3 in §9c).
+Until it is built, Trading keeps both limits by hand (the admin guide's step B1 says so). WHAT IT WOULD TAKE: (1) two
+nullable fields on a question — its competition (a key of `src/lib/markets/competitions.ts`, as a Yes/No market's
+`competition` is) and its event (the events calendar's id when filled from a suggestion, else a fixture key the officer
+types) — an additive migration on both stores, frozen at the open like the question's other fields; (2) the builder asks
+for both and `fillFrom` keeps the suggestion's; (3) `openProblems` refuses more questions from one competition than the cap
+allows (a fifth, at the default) and two questions on one event, each in words naming the competition by its label and
+the slots by their labels (the checklist and the open read the same function), with cases on both stores and plants; (4) a decision on drafts made
+before the fields exist (refuse their open until each is filled, or check what they carry); (5) the guide's one sentence
+then changes. The rest of OD-14 that needs the same identity — no dependent pairs, and sports only from competitions with
+public integrity monitoring — waits on the same fields.
+
+#### ✅ OB.0 · MB-23 · a player objects to one question — CLOSED (S7-OB, 2026-10-22)
+
+MR-16's per-question objection door exists, on both stores and across instances:
+- **The player** objects from the ticket page while the week's own window is open (24 hours from the graded set's
+  finality, never closing before 12:00 EAT, frozen in the week's rules): one question at a time, once per question,
+  only while holding a live ticket in the week; the ticket then shows each of their objections in every state, with
+  the officer's note once ruled.
+- **Compliance** rules on `/admin/maswali/integrity` — REJECT, or uphold with REVERSE, VOID or REINSTATE — through the
+  kit's typed confirmation, never the question's sealer or confirmer, never the officer whose upheld ruling set its
+  present result, never the objector or an officer holding a ticket in the week; the Owner is the fallback.
+- **The money:** an OPEN objection holds the week's settlement and its week void; an upheld change re-grades the week
+  (MR-17) and restarts the window once; a SETTLED week is final. Filing, ruling and release serialize on the chain lock.
+Proof: `test:maswali-objections` (both stores) and its red twin `red:maswali-objections`; `test:maswali-adversarial`
+OB.0 (now a passing case) and §4b OM with the money-path plants (S7-OB-…); `load:maswali-objection-cross-instance`
+(S18, two processes per race on one PostgreSQL); `qa:maswali-objection-console` and `qa:maswali-objection-door`.
+- **The notices** (S6-NOTICES, 2026-10-23 — FLOW's walk found none was sent): the Yes/No objection's own two, for a
+  Millionea question, registered in `MILLIONEA_NOTICES` (comms-registry.ts, `objectionFiled` and `objectionDecided`) and
+  sent by `maswali-notify.ts` once the act has committed, never for a refused one — a filing pings every console officer
+  the Yes/No ping reaches (ADMIN, COMPLIANCE, MODERATOR), once each per filing; a ruling tells the one holder who filed
+  it, once (its key is the filer's ticket and the question), with the ruling and the officer's note, in the bell only, as
+  the platform's notice is (no letter). Proof: `test:maswali-notify` §10b (both stores) and the plants (NOB1)–(NOB6) of
+  `red:maswali-money-path`.
+- **An upheld change, told to every holder** (S6-NOTICES, the lead, 2026-10-23): a REVERSE, VOID or REINSTATE changes the
+  question's result for every holder, and only its filer was told. Every other holder of a live ticket is now told, once
+  per ruling (the instant of its record keys it), after the commit and never on a REJECT (registry row `objectionUpheld`):
+  a REVERSE or a REINSTATE as the seal correction's own notice, one emitter (`notifyMillioneaQuestionCorrected`), in the
+  objection's words ("…corrected after an objection was upheld"; the window sentence only when that ruling restarted the
+  window, MR-16); a VOID as the void notice. Never to its filer, whose decided notice says it. The ruling's record is one of
+  the question's own seal records, so any later run reads it: a void told again by a catch-up never reaches its filer, and a
+  later correction is read from the result the ruling set — final at once, also while two officers are required (without
+  it, a sealer's correction back to the first result would be told to nobody, though every holder had been told the ruled
+  one). Proof: `test:maswali-notify` 10b.8b–8h and the plants (NOB9)–(NOB17).
+
+*Recorded 2026-10-18:* MR-16 promised a per-question objection in Millionea's own window, and no objection door existed for a
+Millionea week; the settlement's refusal while any objection was open (OB.1–OB.5) and the sealer's own correction held.
+
+#### ✅ RD.5 · MB-74 · a deposit reversed after its winner was paid — closed (S7-F9 9, `378b842d0`, 2026-10-22)
+
+A deposit the provider reverses after the week has paid its winner could leave a share, already paid free, withdrawable
+before the reversal lands. **Closed** (the lead's ruling of 2026-10-22): the moment a credited deposit is contradicted —
+reversed, or re-reported at another amount — the webhook that marks it for review also holds, at once, every paid
+winning Millionea share of that account whose ticket was bought at or after the deposit was credited, for Compliance to
+release or forfeit (OD-07). Nothing is debited, a share held once for a deposit is never held for it again, a nightly
+heal places a hold a stopped process left unplaced, and the integrity page shows the deposit behind each such hold. A
+share whose record lacks its payout counts as paid, never as 0 (S7-F9 13). Proven on both stores
+(`test:maswali-adversarial` RD.5–RD.11, a release in flight included) and across instances (S16 §6b), with red plants
+in `red:maswali-money-path`. The rules' reversal clause is the S6 legal lane's to carry.
+
+#### ✅ TK.2 · MB-96 · account-takeover alerting — closed (S7-F9 8 and 11, `32b7f7992` and `8194bf3e3`, 2026-10-22)
+
+The takeover alert MB-96 asks for was not built. **Closed** (the lead's rulings of 2026-10-22: an alert only): a winning
+account that may have been taken over since its payout raises a critical alert on the console — a count per week, never
+an account — and is named on the integrity page for Compliance to review, where the share can be held; nothing blocks
+money (2026-10-10). The preventive control (E-215, TK.1) still holds. A winner whose share, or whose week's paid total,
+the records lack is watched all the same, never passed over as 0 (S7-F9 13). Proven on both stores
+(`test:maswali-adversarial` TK.2–TK.7), with red plants in `red:maswali-money-path`.
+
+#### ⚪ Older than S7 · the database the migrations build and `prisma/schema.prisma` disagree — recorded (S7-SHIP, 2026-10-23)
+
+S7's migration proof (its one migration applied after main's folder, on a throwaway PostgreSQL 18.3) also asked
+`prisma migrate diff --from-url <that database> --to-schema-datamodel prisma/schema.prisma --exit-code`: exit 2, not empty.
+The migrations build what the schema file does not declare — the hand-written trigram search indexes of
+`20260728030000_search_trgm_small_tables` and `20260926120000_restore_search_trgm_indexes` (`PredictionMarket` on
+category, resolutionCriterion, titleEn, titleSw and titleZh; `AiUsageEvent` on detail, errorType and model), a database
+default on `DepositFundingClaim.updatedAt` (`20261015133000_deposit_funding_claim`; the schema's `@updatedAt` has none),
+and `JourneyFunnelDay`'s unique index under the 63-character name PostgreSQL cut its 66-character name to
+(`20261001120000_journey_funnel`), not Prisma's own shortening. Not S7's: main's own folder against main's own schema (main
+at `ac9fd7c21`) gives the identical diff, and S7 changes neither the schema nor any earlier migration. A record only —
+nothing to fix in this release (the lead, 2026-10-23). `prisma migrate dev` would propose dropping those indexes: one more
+reason it never runs against anything but a throwaway database (`AGENTS.md` §5).
+
+## §9b · MASWALI MILLIONEA — the S6 integration's fixes, each a FINAL rule (2026-10-22)
+
+Each entry is the rule as it stands, where it is enforced, and the case and the plant that hold it (MASWALI-BUILD S6-INT,
+branch `claude/maswali-s6-release`).
+
+#### ✅ Lint finding 9 · an oversized body cost the server time that grew with its square (S6-INT 16; S6-LINT 4)
+
+The claims lint (`src/lib/marketing/millionea-claims.ts`) read a body of any length on the composer's one door, which
+every campaign meets (a classic one too), and its signal patterns cost time that grows with the square of a long run: one
+save or composer request (the save action has no length cap of its own) could hold the server's one process for minutes.
+THE RULE: a body longer than `CLAIMS_MAX_CHARS` (640 characters) is read by no claims rule — nothing that long can be sent
+(one SMS at most), and the composer's length rule refuses it in its own sentence. WHERE IT IS ENFORCED (S6-LINT 4, after
+S6-LINT 1 moved the untagged rules to the server): three guards, each the first line of its function and each needed on
+its own — the composer's one door (`millioneaCampaignProblems`, every rule), and in
+`src/lib/server/marketing/millionea-untagged.ts` the server's untagged path (`untaggedCampaignProblems`) and the
+quadratic signal reader itself (`millioneaSignals`), whoever calls them. Held by `test:maswali-claims` §8 (the review's
+1 MB body answered in under 50 ms; a claim padded to the limit still refused; past it, nothing read) and the plants of
+`red:maswali-claims`: (C27) the reader's guard (8.1), (C35) the path's (8.6b), (C36) the door's (8.6).
+
+#### ✅ M-1 · a winner SMS that did not go was counted as sent by the next run (the lead's ruling 1; S6-INT 17)
+
+A winner's SMS refused by the gateway, or lost in transport, left its row (FAILED, UNKNOWN), and the next run read that
+row as "already sent" and recorded the run complete — a tally that called a message sent that never went. THE RULE
+(`src/lib/server/maswali-winner-sms.ts`, `maswali-notify.ts`): a winner SMS that did not go is never sent again — once per
+player-week — and is counted `notResent`, never as sent, by this run and by any later one; the run is complete, and the
+desk list names the winner for a call (a winner counts as reached only by a DELIVERED receipt, a seen mark or the desk's
+recorded call). Held by `test:maswali-notify` 6.11d and 9.8b and the plants (N13), (N14) of `red:maswali-money-path`.
+
+#### ✅ S16 · a winner's share missing from its record was told as TZS 0 (S6-INT 14, recorded here at S6-INT 17)
+
+The desk list summed a winner's paid shares with a missing payout as 0, and the winner's notice did the same — a money
+notice that could say "You won TZS 0". THE RULE (lane R's round 6, carried to the notices): a missing figure is said,
+never printed as 0. The desk list prints "Not on record" (`unreachedWinners`, `paidTzs` null); a winner whose paid share,
+or the week's share, cannot be read from the records gets no money notice at all — the run counts `share_unread`, and
+the winner stays on the desk list for a call (`maswali-notify.ts`). Held by `test:maswali-notify` 5.5b on both stores
+and the plant (N15) of `red:maswali-money-path`.
+
+#### ✅ The register's forgetting after a correction — its guard red since S6-INT 14, re-pinned (S6-INT 22)
+
+`test:maswali-register-cache` holds that a seal's correction makes the public register forget its week only once the
+correction has committed (S5-FIX-SRV 2). S6-INT 14's M-3 (the correction's owed records written before its notice) moved
+the line that follows the forgetting, and the guard and its plant still read the old line: the suite was red ("source
+invalidate") on every release head since, unseen because no batch ran it (found by S6-ADMIN 3's light run). THE RULE is
+unchanged (`correctSeal`, `maswali-service.ts`: the forgetting runs after the lock has committed, before the record and
+the notice); the guard and the plant "correction does not invalidate" are re-pinned to the line as it stands. Held by
+`test:maswali-register-cache` (source invalidate) and `red:maswali-register-cache`.
+
+#### ✅ The desk list's address column read as a player's contact — `test:read-tiers` 7.1 red since S6-INT 14 (S6-INT 23)
+
+The integrity page's "Winners not yet reached" (MB-93) says where a winner's letter could go — a confirmed address, one
+never confirmed, or none — from a field the console named `email`, so the read-tiers ratchet (every player's contact on
+an admin surface is wired through `<Sensitive>` or reviewed) counted the column as a contact reaching a reader: 7.1 was
+red on every release head since S6-INT 14 (proven red on the runner at S6-INT 21; found by S6-DOCS 2's light run). The
+column never held an address. THE RULE: the console hands the desk list a state, never the address, under a name that
+says so — `UnreachedWinner.emailState` (`maswali-console.ts`, read by `/admin/maswali/integrity`); no reviewed exception
+was added, so the ratchet's lists did not grow. Held by `test:read-tiers` 7.1 and `test:maswali-notify` (the desk list's
+rows, both stores).
+
+#### ✅ L-8 (part) · the untagged rules shipped in the composer's browser bundle (S6-LINT 1, the lead's ruling 6)
+
+The claims lint was one client-reachable module, so the rules a campaign NOT tagged Millionea meets — the product's words,
+the figure reader and the refusal that names the product — shipped in the admin composer's static chunk and ran in its
+live counter (lane N's review, L-8). THE RULE: the untagged rules are the server's alone
+(`src/lib/server/marketing/millionea-untagged.ts`); every server door — the save, the test send, the engine's slice, the
+composer's previews — asks `untaggedRulesFor` and hands what it answers to the composer's one door, and the live counter
+runs the tagged rules only, so a body the untagged rules refuse is refused at the save, in their words. Held by
+`test:maswali-claims` §9.1 (neither the composer's import graph nor any other client module's reaches them), §9.2–9.3b
+(the counter judges an untagged campaign as before; each door hands them in) and the plants (C30)–(C34) of
+`red:maswali-claims`.
+
+#### ✅ Ruling 6 · the claims lint judged a classic campaign while Millionea was dark, and stamped its first run at boot (S6-LINT 6)
+
+The untagged rules (a campaign NOT tagged Millionea refused for Millionea's words) ran at every server door whatever
+Millionea's ceiling, so with the product WITHDRAWN a classic campaign could be refused, paused or flagged over a product no
+one could see; and their stamp — the instant they first ran, which decides whether a classic campaign already sending is
+flagged or judged in full — was written by `instrumentation.ts` at boot: a database write awaited before the server serves,
+in every process, under any ceiling. THE RULE (the lead's ruling 6 and its accepted correction): a server door hands the
+untagged rules in only while Millionea's ceiling is ACTIVE (`untaggedRulesFor`, `millionea-untagged.ts`); below it —
+WITHDRAWN or STAFF_PREVIEW — a campaign not tagged Millionea is saved, tested, sent and previewed exactly as before the lint.
+Nothing of the lint runs at boot. The stamp is written by the first door that judges a campaign with the untagged rules — the
+save, the test send or the engine's slice, each through `stampUntaggedRun` (`millionea-lint-epoch.ts`), which never throws
+and never refuses — and nothing reads or writes it before: not below the ceiling, not for a campaign tagged Millionea, not on
+the composer's preview. Held by `test:maswali-claims` §10 (10.1 a census of the boot's code; 10.2–10.3 every door under no
+environment, WITHDRAWN and STAFF_PREVIEW; 10.4 each door first at ACTIVE) and the plants (C37)–(C41) of `red:maswali-claims`.
+
+#### ✅ Item 1 · a holder's inclusion proof asked the product's gate (S6-DOCS 4)
+
+`/fairness/millionea/[serial]` asked `millioneaGate`, so when the product is hidden (a kill: WITHDRAWN) a holder's own
+proof answered as a missing page while the ticket it proves stayed theirs (L5: a kill hides the product, never a holder's
+tickets). THE RULE: the proof page asks the tickets' gate (`millioneaTicketGate`) and its title S5's tickets door
+(`millioneaTicketsDoor`), as the ticket page does. Held by `test:maswali-fairness` H.6 (both stores) and its control
+H.6c (the page planted back on the product's gate is caught).
+
+#### ✅ Item 8 · the evidence pack left out the payout made with the float unread (S6-DOCS 4)
+
+The pack carried the float check's `maswali.settlement.float_low` but not S7-F2's fail-closed `float_unread` — the row
+that says a week paid out while the payout float could not be read. THE RULE: the week's audit record in the pack carries
+both float findings (`EVIDENCE_WEEK_ACTIONS`, `maswali-evidence.ts`). Held by `test:maswali-evidence` 1.7b on both stores.
+
+#### ✅ Item 9 · the desk scripts printed programme codes, and sent a check-window claim the old way (S6-DOCS 4)
+
+Six codes ("(MB-86)", "(OD-07)" …) stood in what the desk reads (the G1 census waited on this file), and the complaint
+script told the desk that "Compliance rules on" a challenge taken down by hand. THE RULE: the words carry the rule and a
+code stays in a comment; inside the check window the holder objects to the question from the ticket's page ("Object to a
+result"), and one who cannot is taken down word for word and passed to Compliance — a Compliance officer who did not
+record the result rules on it (MR-16 as built, S7-OB). Held by `test:maswali-admin-words` §1: this file is in its census
+since S6-DOCS 12 deleted its waiting exclusion, after the ADMIN lane reached this branch (its premise 1.0 names it).
+
+#### ✅ The binding rules told a holder to dispute a result through support, and lacked the reversed-payment clause (S6-INT 30)
+
+Found against the lead's order of 2026-10-23 (Millionea ACTIVE in production): `/legal/rules/millionea` §6 said a holder
+"may raise it with support, naming the question" — written while no objection path existed, and false once S7-OB built
+the door — and §12's disputes line said the same; MB-74's hold on the shares a reversed payment could have bought was
+built (S7-F9 9) with no word in the rules; §11 stated the final week's rule in words of its own beside the one wording
+every screen uses. THE RULE: the binding text states what the system does, in the system's terms — §6 the objection door
+as built (MR-16), §12 the reversed-payment hold (MB-74), §11 `finalWeekRule` character for character — and the version
+moves with the text at publication (v2026-10-23). The Terms' §4 paragraph (OD-18) prints with the product, as the privacy
+notice's does. Held by `test:maswali-fairness` L.13 (the old support path refused, the door, the hold and the disputes
+line required, in every language), L.13b (the final week's rule equals `finalWeekRule`), L.13c (L.13's predicate over
+planted copies) and L.4 (the hash), and by `test:terms-binding` §1–§3 with their controls.
+
+#### ✅ Two reds the legal run found on the integrated head, neither the legal change's (S6-INT 33)
+
+Run 39875472498 (S6-INT 31): `test:harm-watch` H.10e, on both stores, found a figure in two sentences that name the
+detectors — the lane tag "S6-DOCS" written at the head of S6-DOCS 6's own comments in `harm-watch.ts` and its cases (the
+public-repository rule counts any figure in such a sentence). THE RULE stands as H.10e states it: a sentence that names a
+detector carries no figure, a lane tag's included; the two comments now open on their words. `test:wallet-status-writers`
+1.2 counted 43 wallet write sites against a pin of 42: S7-OB's objection drive seeder
+(`dev-test/seed-maswali-objections/route.ts`, its players created ACTIVE) came in with S6-INT 21 and the pin did not move;
+it is a dev-only fixture (§2.7) and the production writers stay three (§2.5). The pin is 43, the site named beside it.
+
+#### ✅ Item 6 · the harm watch's candidate window was typed beside the detectors it serves (S6-DOCS 6)
+
+The harm watch reads its candidates — the accounts a player-safety marker can be raised on — from a window that must
+hold every deposit the detectors read, and that window was a number typed in `harm-watch.ts`: a detector's window moved
+in `responsible-gambling.ts` would have left accounts out of the count in silence. THE RULE: the detectors export their
+own windows (`RECENT_ACTIVITY_MS`, `DEPOSIT_ESCALATION_LOOKBACK_MS`, read by the detectors themselves) and the watch
+derives its window from the larger, in whole days (`HARM_WATCH_CANDIDATE_DAYS`); no document or comment states either
+value (the public-repository rule). Held by `test:harm-watch` H.10f (the derivation by value and in source, with a
+planted typed window caught), H.2 (the count equals Player Safety's full walk, both stores) and H.10e.
+
+#### ✅ SM.1 · MB-69 · a ticket did not record the rules version it was bought under
+
+OD-18 binds the Millionea rules on purchase, "with the version stamped on each ticket". The purchase wrote only the
+week's code and the instant its figures froze, and the module that holds the version said the stamp was still to be
+wired. Fixed in S6-MONEY 1: every ticket records `MILLIONEA_RULES_VERSION` beside its week's mark, through one function
+(`millioneaTicketRulesStamp`). Guard: `test:maswali-purchase` 2.14 (both stores); plant (SM1).
+
+#### ✅ SM.2 · MB-44 · OD-13 · a winner whose account cannot sign in was promised a payment no code could make
+
+A self-excluded, closed or suspended winner's share sat in a wallet nobody could withdraw from: a self-exclusion freezes
+the wallet, and the holder cannot sign in. OD-13 decided "a Compliance officer pays to the registered number at the
+holder's request. Identity and email rules are unchanged", and no act did it. **Closed** (S6-MONEY 2–5; the lead's ruling
+(k)): Compliance's `payLockedWinnerShare` on the integrity page pays the share through the platform's own withdrawal, to
+the registered number only, through the self-exclusion's freeze and never around another hold, exactly once, in the chain
+→ wallet lock order, recorded and read back (§ "2026-10-23 · Maswali Millionea — a winner whose account cannot sign in is
+paid by a Compliance officer" in `COMPLIANCE-DECISIONS.md`). THE RULE: a locked winner's money leaves only by this act,
+only to the account's own number, only under the withdrawal rules every player meets. Guards: `test:maswali-share-payout`
+§A–§C (both stores), `load:maswali-cross-instance` §6c, `test:maswali-rbac` §2 and §10; plants (SM2)–(SM13) and
+(SM-rbac-1)–(SM-rbac-3).
+
+#### ✅ SM.3 · MB-11 · the payout float was compared only after the winners were credited, and only the weeks' officers saw its alert
+
+The settlement compared a week's shares with the disbursement float after its commit, and the console strip that
+carried the finding was drawn only for a viewer of the weeks (trading) and the Owner: Finance, who tops the float up, and
+Compliance never saw it. **Closed** (S6-MONEY 6; the build lead's ruling of 2026-10-23, which also ruled out the S6-MONEY
+brief's "a short or unread float stops the crediting"). THE RULE: at a release the float is read once, before any hold
+or credit and outside every lock, against the week's shares and the headroom kept for withdrawals; a short or unreadable
+float is that payout's one record (`read: "before crediting"`), written after the commit and before any winner is told,
+and is never a block — the credit is the winners' entitlement in the platform's books, and an external read must never
+stall a settlement. The releasing officer reads the same comparison beside the button on Pools (`releaseFloatLine`), so
+Finance's top-up before a release is a human gate. The console's front page shows the float's alerts to Finance and
+Compliance too (`millioneaStripAlerts`), and to no role that reads none of Millionea. Guards: `test:maswali-adversarial`
+FL.1 (a float of 0 never stops or shrinks a payout), FL.2b, FL.5b, FL.6, FL.6b (both stores); plants (SM14)–(SM17).
+
+#### ✅ SM.4 · MB-35 · a connected group holding a winning ticket was an order on the integrity page, never an alert
+
+The cluster report counted the lines of a week holding a winning ticket once its results were final and put them first,
+but nothing told Compliance before the week paid. **Closed** (S6-MONEY 6). THE RULE: from the moment a week's results are
+final until it pays, a line of its connected-accounts report holding a winning ticket raises a critical alert naming the
+week — above the report on the integrity page, and on the console's front page for Compliance, the Auditor and the
+Owner, never for the trading officer who seals (MR-14) nor Finance; a report that cannot be read for such a week is its
+own critical alert. The words say what the control enforces, never what ties the accounts. Guards:
+`test:maswali-integrity` 4.9–4.13 (both stores); plants (SM18)–(SM21).
+
+#### ⏸ The claims lint's untagged rules would refuse ordinary marketing at production's ceiling — held OFF (S6-SHIP 5, the build lead's ruling of 2026-10-23)
+
+Millionea runs at the ACTIVE ceiling in production since 2026-10-22, and at that ceiling S6-LINT 6 hands the untagged
+rules (a campaign NOT tagged Millionea refused for Millionea's words, and for a body in Chinese characters) to every
+marketing door. The lint review after round 17 left findings open in those rules — some refuse ordinary marketing copy —
+so shipping them would have blocked the owner's ordinary campaigns. THE RULE for this release: the untagged rules are off
+(`MILLIONEA_UNTAGGED_RULES_ON = false`, `src/lib/server/marketing/millionea-untagged.ts`): the one decision
+(`untaggedRulesFor`) hands them to no door, whatever the ceiling; a campaign not tagged Millionea — in any language — is
+saved, test-sent, previewed and sent exactly as before the lint, and the rules' first-run stamp is never written. The
+claims lint judges only campaigns tagged Millionea (a name that begins with "Millionea"), which still meet the tagged
+rules in full. Held by `test:maswali-claims` §11 (11.1 the decision under every ceiling; 11.2–11.5 the save, the test
+send, the slice and the preview at ACTIVE, with Swahili and English bodies in Millionea's words and a Chinese line, each
+against the verdict before the lint; 11.6 no stamp; 11.7 a tagged campaign still judged; 11.8 the seventeen door checks
+held while the rules are off) and the plants of `red:maswali-claims`: (C42) the rules switched back on, (C43)–(C46) a
+door that decides around the one decision; the six plants that need the rules handed in, (C31)–(C34), (C40) and (C41),
+are held while they are off.
+**Open, waiting for the LINT release** (the review's findings, by what each rule does wrongly): 1–4 (HIGH) and 5, 6 and 10
+(MEDIUM) — phrasings of a claim the rules let pass; 7 and 8 (MEDIUM) — ordinary copy the rules refuse; 12 (LOW) — both
+kinds; 11 (LOW) — comments that still describe a way past a rule; 13 (LOW) — gaps in the suite and its red twin. Finding 9 is
+closed (S6-INT 16, S6-LINT 4). The release that fixes and verifies them turns the rules on and re-aims §11.
+
+#### ✅ The reds the release head carried into the S6-SHIP gate, none the lane's own change (S6-SHIP 5, 7 and 14)
+
+Found by S6-SHIP's light batch and by GitHub CI (run 39931171337 on e71e8fe8a, whose in-memory step failed only these
+beside S7's own; main's CI, 39928712493 on 07a400bc3, failed none of them) on the merged head (S7, main and the S6 lanes
+in), each red on the code before S6-SHIP's change:
+- `test:maswali-claims` 6.2 (since S6-INT 30: the sign-in service, which sends the one-time codes, names Millionea to stamp
+  the Terms version at registration) — 6.2 names it, 6.2e pins its two lines;
+- `test:guards-exist` (MB-47's row and the claims suite's header cited the guard by its planned name,
+  `test:millionea-claims`) — both cite `test:maswali-claims`, the guard as built; the inherited-phantoms list did not grow;
+- `test:failure-reasons` 9f.gate and `test:kyc-gate` 8.3 (since the S6-MONEY merge: OD-13's locked-share list reads the
+  identity gate to word an officer's line) — both censuses name that one read beside `withdraw()`, and 9f.sharepay holds
+  that the list writes no identity refusal and pays only through `withdraw()`;
+- `test:type-scale` §1/§2 (since the S6-MONEY merge: the locked-share card printed a money figure inside tracked sentence
+  type) — the figure wears the money treatment in its own span;
+- `test:harm-watch` H.10e, both stores (S6-DOCS 6's two sentences on the candidate window named the detectors with a unit;
+  S6-INT 33 took their lane tag out, which was not all of it) — the sentences say "rounded up", no unit;
+- `test:glyph-sync` §1b (since S6-INT 1 regenerated the sprites: production serves S5's app.b899eae1.svg, which this tree
+  neither built nor kept) — `PREVIOUS_SPRITES` names the pair main serves (app.b899eae1.svg, admin.75aeb290.svg) and the
+  file is restored from main, byte for byte; W6's app.76a3696e.svg leaves (one release each);
+- `test:maswali-admin-shots-caret` (since S6-ADMIN 6 added the ruled cards' tile loop, which calls the capture helper too) —
+  the guard counts one helper call per width loop, with a control (a loop that never captures is caught);
+- `test:eyebrow-roles` (S6-ADMIN 6's evidence-archive count, an uppercase tracked readout no one had read) — declared
+  `OTHER` beside the other three lists' counts.
+THE RULE in each case is the guard's own, unchanged: a census names what it finds, a citation names a guard that exists,
+the identity gate refuses only inside a withdrawal, money is set in the money type, a safety sentence names no parameter, a
+sprite production serves stays one release, every capture keeps the caret, every tracked uppercase site is read.
+`test:visual-pass-r5e` 6.5 (S7-OB's objection door's no-break space) is S7's, fixed on S7's branch by S7-SHIP 2 and merged
+into the release at S6-SHIP 16.
+
+#### ✅ Evidence 7.3 · a read made by one of the week's own notices was counted as the evidence pack's, on Postgres (S6-SHIP 17)
+
+`test:maswali-evidence` 7.3 holds that the evidence pack is built in a bounded number of reads: it counts the reads of
+the week and of its tickets one pack makes, and requires as many for a week with six crowded lines as for a week with
+none. Its spies counted every call made while the pack was building, from anywhere. The week with six crowded lines has
+just been voided, and its own notices (its seventeen purchases', its fifteen voided questions', its refund's) still run
+on their own after the void and read the week as they send. In the S6-SHIP database battery at `28edef6cb` the Postgres
+half printed `{"six":[2,2],"none":[2,1]}`: one more read of the week, counted for the six-line pack. The memory half of
+the same run printed `[2,1]` for both and passed. The pack's own code reads the week once; it was not changed. Re-run
+alone at `b243a8455` (10:52 UTC): memory 68 passed, Postgres 70 passed, 0 failed; 7.3 printed
+`{"six":[2,1],"none":[2,1]}` on both stores. The count, not the pack, depended on timing. THE RULE: the pack's read
+counts are taken in the pack's own async context. Every spy (the week, the tickets, the raw statements) counts only
+inside an `AsyncLocalStorage` entered around `maswaliEvidencePack` alone, and a read made outside it is counted apart
+(`outside`, printed in 7.3's detail). It is held by two cases. 7.3c: a read of the week started outside the pack while
+it builds, as a notice's lands, is seen apart, and the pack's counts stay the clean build's. 7.3d: a pack made to read
+the week once more per crowded line is counted six more for six lines, which 7.3 fails. Mutation proofs (S6-SHIP 17):
+with the scope undone (every call counted as the pack's), 7.3c fails on both stores with the battery's own shape,
+`{"outside":0,"pack":[2,2,…],"clean":[2,1,…]}`; with a read per crowded line planted in `maswaliEvidencePack` itself,
+7.3 fails on both stores, `{"six":[2,7],"none":[2,1]}`. Each file was restored byte for byte (sha256 compared). Floors:
+memory 68 → 70, Postgres 70 → 72, as printed.
+
+#### ✅ The purchase's bell said "Ticket cut" in English after Ali ruled "Ticket bought" (S6-NOTICES, 2026-10-23; FLOW's walk)
+
+Ali's ruling 7 of 2026-10-21 (COMPLIANCE-DECISIONS) replaced the calque "Cut ticket" with "Buy ticket · {price}", "Ticket
+bought" and "Buying…", and the slip's own result says "Ticket bought" / "{n} tickets bought" (`millionea.ticketCut`,
+`ticketsCut`). The purchase's bell (`notifyMillioneaTicketsCut`) kept its own English copy, "Ticket cut" / "{n} tickets
+cut", while its comment claimed to mirror the slip. THE RULE: the bell's title reads the slip's own keys in all three
+languages (`millioneaWordIn`, notification-service.ts) — one wording, one home; Swahili "Tiketi imekatwa" and Chinese
+"已出票" as ruled. No other player-readable English "ticket(s) cut" exists (letters, SMS, receipts, OG cards, the bell:
+read 2026-10-23). Held by `test:maswali-notify` 10b.10 (the rendered titles, one ticket and two, en/sw/zh) and the plant
+(NOB7) of `red:maswali-money-path`. ⭐ And its free cancel (the lead, 2026-10-23): the bell said "Free cancel until {time}"
+with no zone where the slip says "… EAT"; it now prints the slip's own line, `millionea.cancelFreeUntil`, with the slip's
+own clock (`eatClock`), in all three languages. Held by 10b.10b and the plant (NOB8).
+
+## §9c · MASWALI MILLIONEA — the admin console, walked and made plain (S6, 2026-10-22)
+
+Ali, 2026-10-22: "admin make sure full control with the right sorting etc. and management", and his admin guide must be
+"clear, perfect … no unneeded wording". The S6-DOCS lane walked `/admin/maswali` on `d97266317` for that guide and found
+the gaps G1–G8 below; the S6-ADMIN lane's baseline on the same head found three console suites already red (AD.0). Each
+entry names the commit that closed it.
+
+#### ✅ AD.0 · three console suites red on the release head — fixed by S6-ADMIN 1
+
+Found by S6-ADMIN's baseline run on `d97266317`, before any change of its own:
+- `test:maswali-admin-form-validation` — the desk's two typed records on the integrity page (`MarkReachedControl`,
+  "Reached by phone…", and `ClearLettersControl`, "Checked…") showed their refusal on the page, under the scrim, while
+  their dialog was open, and never inside the dialog (§F4: a refusal is stated where the officer is reading).
+- `test:maswali-admin-touch` — the same two buttons were the kit's `xs` rung, a 32px target under the 40px floor (§A).
+- `test:maswali-admin-route-population` — `/admin/maswali/evidence` and `/admin/maswali/lookup` were missing from the
+  design-gate population (`scripts/design-gate/routes.mjs`), so no design instrument measured either page.
+
+Fixed: each refusal inside its dialog and gated off the page while the dialog is open, both buttons on the `sm` rung
+(40px), both routes in the population. The three suites are the cases; the base run is the undone state, red as above.
+
+#### ✅ G1 · the programme's codes were printed to officers all over the console — fixed by S6-ADMIN 3
+
+The S6-DOCS walk found "(MB-75)", "(MB-85, OD-27)", "OD-14: inside the rules' band", "(MR-13)", "(OD-02)" and their kin
+on the console's pages, in its hints and dialogs, and in what the services hand the screen: the open's checklist, the
+refusals, the holiday warnings, the alerts ("… (MB-96)", "(MB-11)"), the settlement's and the stop's answers. The census
+found 76 such codes outside comments in 19 files on the branch's head before the sweep (and 6 more in the desk scripts,
+the S6-DOCS lane's item 9) — seven of those files the walk had not listed: the stop's confirmation text
+(`maswali-admin-form-validation.ts`), the rules form's and the frozen snapshot's paid-exit refusals (`maswali-config.ts`),
+the evidence pack's "capture not taken (MB-80 owed)" (`maswali-evidence.ts`), the watched invariants' guarantee lines
+(`maswali-invariants.ts`), the guarantee's return refusal (`maswali-money-service.ts`), the scheduler's void-proposal
+note in the audit log (`maswali-scheduler.ts`) and the void's market evidence (`maswali-void.ts`). THE RULE
+(DESIGN_AUTHORITY §M8a item 29): every word reads as the rule itself, and a code
+stays in a comment beside it; the builder's chance hint states the band ("The rules allow 30–70%") and the move of the
+close states its latest close as an EAT time. Held by `test:maswali-admin-words` §1 (the census, its population derived
+from the folders) and its in-memory plants (`red:maswali-admin-words`: a code back in JSX text, a refusal, an alert and an
+attribute is caught; one in a comment is not).
+
+#### ✅ G2 · no console screen showed the rules a running week froze — fixed by S6-ADMIN 6
+
+`consoleWeekDetail` returned the frozen rules and `/admin/maswali/[weekId]` drew none of them: an officer asked "what fee
+does this running week take?" had no console answer, and Finance cannot open the week page at all. THE RULE: the week's
+page carries "Rules this week froze" (a draft: "Rules if it opened now") — every rule the week froze, in the Owner's
+form's own labels and units (one label list, `RULES_FIELDS`, drawn by `RulesRead`), its fee read from its market's
+snapshot (`weekFeeRate`, the fee's one home per week) and "Cannot be read" when it cannot be, never 0; Pools carries each
+open week's fee in its own column. Held by `test:maswali-admin-plain` §2 (the card rendered, an unread fee said) with
+plants (AP1)–(AP3), and `qa:maswali-admin-drive` 6.5g.1–6.5g.2.
+
+#### ✅ G3 · raw ids where names belong — fixed by S6-ADMIN 6
+
+"Seals from a new device" printed "officer usr_… · week mlw_…", the seal log's "Sealed by" and "Second officer" printed
+user ids, and the connected accounts' table printed each account's raw id. THE RULE: an officer by name
+(`consoleOfficerName`: the display name, else the stable handle "Officer #…" — `officerHandle`), a week by its code, an
+account by its handle ("Player #…", `displayLabel`). Held by `test:maswali-admin-plain` §3 (the handle; a census that no
+console page prints an id field as text — it finds the four old prints on S6-ADMIN 5) with plants (AP4), (AP5).
+
+#### ✅ G4 · raw ISO times in refusals, the open's checklist and an alert — fixed by S6-ADMIN 6
+
+"…before the first event (2026-11-06T…Z)", the moved close's "it is now <ISO>", "starts at <ISO>", the final week's
+"announced to open at <ISO>", the void deadline "(<ISO>)" in the seal, the correction and the objection ruling, and the
+alert "sales should have closed at <ISO>". THE RULE: a time in a sentence is "Fri 23 Oct, 18:00 (EAT)" (`eatInText`).
+Held by `test:maswali-admin-plain` §4 (the phrase; a census of the console-bound services' sentences) with plants (AP6),
+(AP7); the engine's and the adversarial suites' refusal cases read the same sentences on both stores.
+
+#### ✅ G5 · a draft could not be discarded — fixed by S6-ADMIN 6
+
+A draft made for the wrong Monday or line stayed a DRAFT for ever, and "Week … already exists" blocked redrafting that
+Monday. THE RULE: a draft that never opened — no market, no ticket, not the announced final week — is discarded whole
+with its fifteen questions (`discardDraftWeek`, `weekStore.discardDraft`, a conditional delete on both stores), behind the
+draft's own control (`createMaswaliWeek`), on a typed `DISCARD`, audited (`maswali.week.discarded`); a week that opened
+is never discarded (its record is what was sold). Held by `test:maswali-engine` §15 on both stores with plants (110) a
+week that opened reaches the discard, (111) the store deletes a week that opened, (112) a discard is never audited;
+`test:maswali-admin-plain` §5 with (AP8), (AP9); `qa:maswali-admin-drive` 6.5g.3.
+
+#### ✅ G6 · the builder's categories and kinds were codes — fixed by S6-ADMIN 6
+
+The week builder offered "macro", "culture" and "sport", "price". THE RULE: words — the console's category table
+(`CATEGORY_LABEL`, the events console's too) and the kinds' (`EVENT_KIND_LABEL`: Match result, Price or rate, Weather
+reading, Announcement); the stored value stays the code. Held by `test:maswali-admin-plain` §6 with plant (AP10), and
+`qa:maswali-admin-drive` 3.3g (every option read in the browser).
+
+#### ✅ G7 · the evidence archive was the one list with no search or filter — fixed by S6-ADMIN 6
+
+`/admin/maswali/evidence` paged newest first with no week-code search and no state filter. THE RULE: it is a list like
+the other three — the week list's own query and URL parameters (`q`, `state`, `line`, `sort`, `dir`, `page`), a code
+search, state and line filters, sortable columns, a pager, counted whole before the page. The same pass found the week
+list's own state filter offering the enums ("RESOLVING"): it now offers the console's state words. Held by
+`test:maswali-admin-plain` §7 with plants (AP11), (AP12), and `qa:maswali-admin-drive` 6.5g.4.
+
+#### ✅ G8 · the lock chip spoke domain codes and called the Owner "an Admin" — fixed by S6-ADMIN 6
+
+The chip read "<control> · accounting only" and its tooltip "Ask an Admin or Finance officer" (ADMIN is "Owner"
+everywhere else), and the Winners table printed "PLAYER · ACTIVE". THE RULE: the chip names the officers whose role works
+the domain and whom to ask, in `ROLE_LABEL`'s words ("Release · Finance officers only" — "Ask the Owner or a Finance
+officer."), and the table prints a role and an account status as words. ⭐ A platform component: the classic console's
+chips read the same words; the classic AI toolkit's and the classic objection console's two locked sentences, and the
+Millionea objection ruling's role refusal ("an ADMIN or COMPLIANCE officer"), were reworded with it. Held by
+`test:maswali-admin-plain` §8 (the chip rendered, every word against `ROLE_LABEL`) with plants (AP13), (AP14), and
+`qa:maswali-admin-drive` 4.2c (a Trading officer's chip read in the browser).
+
+#### ✅ AD.1 · three suites still read the console's words as they were before G1 and G8 — re-pinned by S6-ADMIN 10
+
+Run 39826898317 on `71ded2939` (S6-ADMIN 8) found them, each on both stores: `test:maswali-adversarial` TK.4b expected the
+takeover alert to end "may hold the share (MB-96)." — G1 moved the code into a comment beside the words, so the reviewed
+words end "may hold the share."; `test:maswali-objections` 2.1 expected the ruling's role refusal to say "ADMIN or
+COMPLIANCE" — G8 words it "Only the Owner or a Compliance officer rules on an objection."; `test:house-bot-reports`
+0.232.2, the line-pinned census of the marked money writes, found four sites moved by G1's and G4's line changes
+(maswali-money-service.ts 455→456 and 580→581, maswali-settlement.ts 451→453 and 816→818), each nine-line write
+byte-identical. THE RULE: a suite that reads what the console prints pins the words the console prints now; the census is
+re-derived from the run's printed list, never by hand. The same run's `red:maswali-engine` printed "108/108 caught, 0
+missed, 0 files left dirty": its "FAIL [postgres] 13.2" line is plant (79) caught, not a red. The engine's floor rose to
+the counts it printed there (memory 212, Postgres 220: §15, the draft discard).
+
+#### ✅ GD.1 · five console texts said what the code does not do — fixed by S6-SHIP 6 (the lead's rulings of 2026-10-23)
+
+Found by the GUIDE lane's walk for the final admin guide, on the release head. THE RULE: a console sentence states what the
+code does, and a link names a page its reader may open. Each is fixed as ruled:
+- The integrity page's "Marketing wordings" card said a campaign using Millionea's words without its tag "is refused until
+  it is tagged or reworded" — false since the untagged rules are off in this release (§9b, S6-SHIP 5). It now says only
+  campaigns tagged as Millionea are checked against these wordings, and other campaigns are not judged in this release.
+- The weeks page's "Rules for the next week" card named the complaint answer target as the one setting that applies at
+  once, while the release-wait alert reads the live "Alert when a release waits (hours)" for every week. It names both.
+- The release-wait alert said "Accounting releases it."; the console's one word for that role is "Finance".
+- The move-close dialog said the service checks "the notice period" — `moveClose` checks no notice period; it names what
+  the move checks: the free-cancel window and the first event.
+- The front page's Millionea card linked every viewer to the weeks and said the rest were "on the weeks page", a page
+  Finance and Compliance cannot open. Its link is now the first page the viewer may open, asked with that page's own gate
+  (`viewerMayOpen`): the weeks, else Integrity, else Pools, else none (`src/lib/maswali-strip-link.ts`); "on the weeks
+  page" is said only beside the weeks link.
+Held by `test:maswali-admin-plain` §9 (9.1–9.4 on the words an officer reads, each against the code it describes; 9.5 a
+case per role, 9.5b–c the last line and the page's wiring) and the plants (AP15)–(AP21) of `red:maswali-admin-plain`.
+
+#### ✅ GD.2 · the void-deadline alert and its audit note told officers to void — fixed by FLOW 1 (the lead's word of 2026-10-23)
+
+Found by the GUIDE lane's walk for the final admin guide. A week with questions past their void deadline and unsealed
+raised "… passed their void deadline unsealed; void each one, with its ground." on the weeks page and the front page's
+card, and the scheduler wrote "an officer seals the void" into the audit log (which the evidence pack carries). Both
+told officers to void a question whose source had answered. THE RULE is the binding Millionea rules' section 5 (MR-15):
+a result the source gave by the void deadline is sealed from its source; only a question with no result by then is
+voided — on "Not played by its void deadline" or "No reading from the sources", the seal form's own words. The alert now
+reads "MLN-…: n question(s) passed their void deadline unsealed. Seal each from its source if the source gave its result
+by the deadline; void only a question with no result by then, on “Not played by its void deadline” or “No reading from
+the sources”." (`voidDeadlineAlertText`, the two grounds drawn from `MASWALI_VOID_REASON_LABEL`), and the audit note
+says the same (`VOID_DEADLINE_NOTE`). The code comments that said "the system proposes a void, an officer seals it" and
+the architecture document's lines were corrected with it. The seal table marked such a row "void proposed", which leaned
+toward a void the rule may not allow: it reads "past its void deadline", the fact alone (FLOW 2, the lead's ruling of
+2026-10-23; `VOID_DEADLINE_PASSED`, `maswali-admin-format.ts` — the console is English only), and the admin guide quotes
+the new label. Held by `test:maswali-admin-plain` 9.6 (the rendered alert and its wiring), 9.6b (the note) and 9.7 (the
+mark, and no console page saying "void proposed"), with the plants (AP22)–(AP26) of `red:maswali-admin-plain`.
+
+#### ✅ GD.3 · the release-wait alert printed its threshold as the elapsed time, and sent Finance to release a week an objection held — fixed by FLOW 8 (the lead's rulings of 2026-10-23)
+
+Two findings on one alert. The GUIDE lane's: `consoleAlerts` called `releaseWaitAlertText(w.code, cfg.releaseAlertHours)`, so
+the alert always said "its window closed 4 h ago" — the "Alert when a release waits (hours)" setting — even a week after the
+window closed. FLOW's: an objection filed in the window and still OPEN after it closes freezes the week (settlement and the
+week void refuse while one stands), yet the alert said "Finance releases it", a release Finance cannot make. THE RULE: the
+alert states the REAL time since the window closed, in the console's own relative wording (`agoInText`,
+`maswali-admin-format.ts`: whole hours under 48, whole days from 48 — "30 h ago", "7 d ago" — the house console's
+"N h ago" / "N d ago"), never a setting; and while an objection still stands it says "…its window closed 30 h ago and an
+objection still stands, so it cannot be settled. Compliance rules on it on the integrity page." (plural: "2 objections
+still stand … on them"), never "Finance releases it" (`releaseWaitAlertText`, the count read with `countOpenObjections`
+on the week's market; a failed count keeps the release's words, and the release re-checks). Held by
+`test:maswali-admin-plain` 9.3 (re-pinned), 9.3b (elapsed, never the threshold), 9.3c (the days form) and 9.3d (the
+objection variant and its read), with the plants (AP27)–(AP30) of `red:maswali-admin-plain`.
+
+#### ✅ GD.4 · three alerts named a question "slot 14" — fixed by FLOW 12 (the lead's ruling of 2026-10-23)
+
+Found in the GUIDE lane's Weeks picture: "MLN-2026-W46: slot 14 is unsealed 12 hours after its event started." — the
+storage number of a question, which no officer reads anywhere else; the seal console, the objections, the integrity page and
+the guide name it M1–M10, A1–A5. THE RULE: everything an officer reads names a question by its label (`slotLabel`). The
+two unsealed-question alerts and the linked-market mismatch alert now read "MLN-2026-W46: A4 is unsealed 12 hours after its
+event started." and "… A4 is sealed YES, but its linked Yes/No market resolved NO." (`unsealedAlertText`,
+`linkedMismatchAlertText`, `maswali-console.ts`), and the seal table's partial-seal message falls back to the label, never
+"slot n" (`week-controls.tsx`). The grep of the console, its services, integrity and the notices for a bare slot found
+nothing else an officer reads (the rest are internal keys and developer errors). Held by `test:maswali-admin-plain` 9.8 (the
+rendered alerts, their wiring, a census of the console's sources) with the plants (AP31)–(AP32) of `red:maswali-admin-plain`.
+
+## §9d · MASWALI MILLIONEA — the final flow evaluation's fixes (FLOW, 2026-10-23)
+
+Ali, 2026-10-23: *"evaluate the final redirections and workflow of maswali … fix anything you notice not in place
+perfectly"*. The FLOW lane walked the release (`claude/maswali-s6-release`) at production's setting, ACTIVE, as a player.
+Each entry is the rule as it stands, where it is enforced, and the case and the plant that hold it.
+
+#### ✅ FL.1 · a deposit started from the slip never led back to it — fixed by FLOW 3 (MB-57)
+
+Found in a browser on the release (both shells, en 360): the slip's low-balance door sent the player to `/wallet/deposit`
+with no way back. Classic — production's reader — ended on the wallet's "Funds added" result with one door, "Done"; the
+journey's wait page offered "View receipt" and "Back to wallet". The answers were still in the tab, and nothing led there.
+And in the journey the door's soft hop (`router.push`) kept the board's header and tabs over the deposit, which the root
+shell replaces with the payment focus only on a document request (the bet sheet's door makes one, `bet-sheet-host.tsx`).
+THE RULE is MASWALI-PLAN MB-57's ("after a deposit, return to the slip with picks intact and never place the ticket
+automatically"), as built and recorded in its row and in `docs/FLOWS.md` § 4 ("A deposit started from the Millionea
+slip"): only the way back travels, in the addresses (`returnPath=/millionea/slip`, `src/lib/journey/slip-return.ts`, its
+one allowed return), the door a document request; honoured only with no saved bet beside it and only while Millionea is
+visible to the reader; the deposit lands on the wait page in both shells and, once paid, offers "Return to your answers";
+a card deposit gets no door (the gateway's fixed return address, accepted by the lead). Held by `test:deposit-slip-return`
+(the allow-list, the wiring, the document request, the words) with plants (DSR1)–(DSR7) of `red:deposit-slip-return` —
+(DSR1) drops the slip from the allowed returns — and
+`qa:maswali-deposit-return` (sw/en/zh × 360/1280 × classic/journey, two tickets in each shell, a plain deposit's control,
+the dark mode on a WITHDRAWN server, and its own plant).
+
+#### ✅ FL.2 · the wallet's deposit result left one character of its reference alone — fixed by FLOW 4
+
+Found on the same walk: at 360 the classic wallet's result drew `txn_b7f5f7cd59628ee1bb86d11` over a lone `3` — the
+28-character id 1–2px wider than its box, wrapped greedily by `break-all`. THE RULE is DESIGN_AUTHORITY §M4a rule 5: a
+result modal's value that is one unbroken token of 16+ characters breaks only between near-equal chunks (14/14 for the id;
+`src/lib/even-break.ts`, drawn by `OperationResultModal`'s `DetailValue`), one line when it fits, the exact string on a copy.
+Classic-visible for every caller whose value is such a token; no classic parity cell draws a result modal. Held by
+`test:result-reference` with plants (RR1)–(RR5) of `red:result-reference`, and `qa:result-reference` (a real deposit's
+reference at 320/360 × sw/en/zh, measured character by character, with an in-page control that the old wrap is caught).
+
+#### ✅ FL.3 · a held wallet answered fifteen questions before hearing it could not buy — fixed by FLOW 10 (the lead's ruling of 2026-10-23)
+
+Found in the code on the same walk: the slip says paused, sales closed, staff and the cap BEFORE any pick
+(`millioneaSlip`'s refusal, said instead of the slip), but not a held wallet — an officer's hold, a self-exclusion's freeze —
+which the buy refuses (`wallet_frozen`). Such a player answered all fifteen and pressed Continue to be refused, while the
+landing's line already hides itself from a frozen wallet (DESIGN_AUTHORITY §M8a item 21) and the deposit page says so
+first. THE RULE: a held wallet meets the buy's own refusal, in the buy's own words, before any pick — the slip page says it
+instead of the slip, as it says the cap — and the buy still decides (a wallet held while the slip is open meets the same
+refusal at the buy). The condition is the buy's own (a wallet whose status is not ACTIVE). Held by `test:maswali-player`
+4.7b on both stores (the slip's refusal, the buy's same reason, and the lift), with a recorded plant (the pre-refusal
+dropped: 4.7b failed on the memory store, 194/1, and the file was restored byte for byte). The words since FLOW 13: FL.4.
+
+#### ✅ FL.4 · a held wallet heard "bets", and the hub still offered it the slip — fixed by FLOW 13 (the lead's ruling of 2026-10-23)
+
+FL.3's follow-ups, put to the lead: the refusal FL.3 drew was the platform's sentence, "Your wallet is frozen, so bets can’t
+be placed." — a Millionea ticket is bought, never placed as a bet (Ali's ruling 7: "Buy ticket", "Kata tiketi", 出票) — and
+the hub still offered a held wallet "Fill a ticket", one tap from that refusal. THE RULE: a held wallet hears ONE Millionea
+sentence, `millionea.walletFrozen` — "Your wallet is frozen, so tickets can’t be bought. Contact support to resolve it." /
+"Pochi yako imegandishwa, kwa hiyo huwezi kukata tiketi. Wasiliana na msaada kutatua hili." / "您的钱包已冻结，无法出票。请联系客服处理。"
+— chosen in one place (`src/lib/millionea-refusal.ts`, `millioneaRefusalBody`) and said by three surfaces: the slip's
+pre-refusal (instead of the slip), the buy's refusal (the slip's toast) and the hub's buy block, which says it in place of
+the fill door (after a break's notice and a guest's door, before the cap's line; `millioneaWalletHeld`, the buy's own
+condition, failing open — the slip and the buy still refuse). Every other reason keeps the registry's sentence, and the
+platform's `error.failWalletFrozen` stays for every other product. Held by `test:millionea-held-wallet` (the one choice, the
+three surfaces and their order, the one condition, the words) with plants (HW1)–(HW6) of `red:millionea-held-wallet`.

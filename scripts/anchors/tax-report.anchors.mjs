@@ -584,4 +584,111 @@ export const MUTATIONS = [
     to: '{ line: "GBT tax", locked: a.tax.gbt',
     expect: "15.19",
   },
+  // ── MASWALI-BUILD S6 (2026-10-18) · Millionea filed by its own lines (OD-08, MB-65) — each a way a week could be filed
+  // wrong again, or could move a poll's figures. `expect` is a §12 (S6) case of `test:tax-report`.
+  {
+    // ⭐ MB-65 itself: without the three lines a no-winner week fails the check by its sales and blocks the whole book.
+    name: "tax-report.ts — the check forgets Millionea's three reconciling lines (a no-winner week jams the book again)",
+    file: "src/lib/tax-report.ts",
+    from: "  const accountedCents = pollCents + (r.carriedToJackpotCents ?? 0) - (r.jackpotBroughtForwardCents ?? 0) - (r.floorTopUpCents ?? 0);",
+    to: "  const accountedCents = pollCents;",
+    expect: "12.16b",
+  },
+  {
+    name: "tax-report-data.ts — a no-winner week's claimed carry counted as money into its pool (it moves none)",
+    file: "src/lib/server/tax-report-data.ts",
+    from: "    inCents: k > 0 ? toCents(w.rolloverIn as number) : 0,",
+    to: "    inCents: toCents(w.rolloverIn as number),",
+    expect: "12.16",
+  },
+  {
+    name: "tax-report-data.ts — a Millionea share taxed as Payout (13% of 0.87 of the jackpot, beside the booked fee)",
+    file: "src/lib/server/tax-report-data.ts",
+    from: '      if (prod !== "MASWALI") segPayout[i < 0 ? Math.max(0, L.segments.length - 1) : i] += amountCents;',
+    to: "      segPayout[i < 0 ? Math.max(0, L.segments.length - 1) : i] += amountCents;",
+    expect: "12.17",
+  },
+  {
+    name: "tax-report.ts — Report 2 drops the fee the weeks booked (Millionea filed at zero commission)",
+    file: "src/lib/tax-report.ts",
+    from: "  const commission = t.commission + bookedFee;",
+    to: "  const commission = t.commission;",
+    expect: "12.17",
+  },
+  {
+    name: "tax-report-data.ts — Millionea left out of the products (Polls + Up & Down + Millionea no longer = All)",
+    file: "src/lib/server/tax-report-data.ts",
+    from: '  const products: readonly Product[] = L.hasWeek ? ["MARKET", "UPDOWN", "MASWALI"] : ["MARKET", "UPDOWN"];',
+    to: '  const products: readonly Product[] = ["MARKET", "UPDOWN"];',
+    expect: "12.15",
+  },
+  {
+    // ⛔ The byte-identical promise: a period with no week must keep Report 1's six lines (and its lock fingerprint).
+    name: "tax-report-data.ts — Millionea's lines printed on every view (a period with no week no longer files as before)",
+    file: "src/lib/server/tax-report-data.ts",
+    from: '  const jackpotLines = filter === "MASWALI" || (filter === "ALL" && L.hasWeek);',
+    to: "  const jackpotLines = true;",
+    expect: "12.14b",
+  },
+  {
+    // The fee kept is RECOMPUTED from the week's own rate and jackpot; copying the booked column hides a week whose fee is off.
+    name: "tax-report-data.ts — the week's fee kept copied from its booked column (a fee off its own rate passes unseen)",
+    file: "src/lib/server/tax-report-data.ts",
+    from: "    keepCents: fee * 100,",
+    to: "    keepCents: Math.round(w.fee ?? 0) * 100,",
+    expect: "12.19",
+  },
+  {
+    // ⭐ Round 2 — a settled week's record that lacks a figure is a fault in it, never a default: without the check a
+    // paying week whose fee is null files "fee booked 0" on its jackpot, and no exception says so.
+    name: "tax-report-data.ts — a settled week whose record lacks its fee filed at a booked fee of 0 (the record's gaps unchecked)",
+    file: "src/lib/server/tax-report-data.ts",
+    from: "  if (gaps.length) return none(`Week ${w.code} is settled, but its settlement record lacks ${lacksText(gaps)}: its fee and its jackpot lines cannot be read.`);",
+    to: "",
+    expect: "12.19c",
+  },
+  {
+    name: "tax-report-doc.ts — Report 1 prints Millionea's carried line as 0 (the printed lines stop adding up)",
+    file: "src/lib/server/tax-report-doc.ts",
+    from: '      { line: "Carried to the jackpot", cents: r.carriedToJackpotCents ?? 0,',
+    to: '      { line: "Carried to the jackpot", cents: 0,',
+    expect: "12.23b",
+  },
+  {
+    name: "tax-report-view.ts — a locked Millionea filing stays silent when its carried line moves",
+    file: "src/lib/server/tax-report-view.ts",
+    from: '    { line: "Carried to the jackpot", locked: a.report1.carriedToJackpotCents ?? 0, live: b.report1.carriedToJackpotCents ?? 0, unit: "cents" },',
+    to: "",
+    expect: "12.28",
+  },
+  {
+    name: "payout.ts — a week's fee is not its settlement's (13% of the winners' share instead of round(13% × J))",
+    file: "src/lib/payout.ts",
+    from: "  const fee = Math.round(r.jackpotFeeRate * J);",
+    to: "  const fee = Math.floor(r.jackpotFeeRate * J * 0.87);",
+    expect: "12.20",
+  },
+  {
+    name: "tax-report-doc.ts — the Millionea view's Commission described as the report's rate on Payout",
+    file: "src/lib/server/tax-report-doc.ts",
+    from: '      { line: `Commission${tag}`, label: "Commission", segment, basis: booked,',
+    to: '      { line: `Commission${tag}`, label: "Commission", segment, basis: rateLine(s.rates.commissionBp, "Payout"),',
+    expect: "12.24b",
+  },
+  {
+    name: "tax-report.ts — parseProduct drops the Millionea pill (its link opens All products)",
+    file: "src/lib/tax-report.ts",
+    from: ' : s === "MASWALI" ? "MASWALI" : "ALL";',
+    to: ' : "ALL";',
+    expect: "12.21",
+  },
+  {
+    // ⭐ The pill follows the PERIOD: offered on every period once any week exists, a Polls month that holds none would
+    // change its page.
+    name: "tax-report-view.ts — the Millionea pill offered on a period that holds no week",
+    file: "src/lib/server/tax-report-view.ts",
+    from: "  const millionea = live.hasWeek;",
+    to: "  const millionea = true;",
+    expect: "12.29b",
+  },
 ];

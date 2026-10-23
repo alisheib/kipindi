@@ -43,6 +43,8 @@ import { MOBILE_MONEY_METHODS } from "@/lib/payment-providers";
 import { CardIntentBridge } from "./card-intent-bridge";
 import { FundingReleaseBridge } from "./funding-release-bridge";
 import { isFundingUuid } from "@/lib/journey/funding-storage";
+import { slipReturnPath } from "@/lib/journey/slip-return";
+import { resolveMillionea } from "@/lib/server/millionea-preview";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Deposit", which a Swahili player saw in their browser tab and history.
@@ -96,6 +98,11 @@ export async function renderDepositPage(searchParams: Promise<DepositSearch>, ca
   const releaseKey = releaseProof?.startsWith(ownerPrefix)
     && isFundingUuid(releaseProof.slice(ownerPrefix.length))
     ? releaseProof.slice(ownerPrefix.length) : null;
+  // ⭐ MB-57 (MASWALI-BUILD FLOW 3, `lib/journey/slip-return.ts`): a deposit started from the Millionea slip carries its way
+  // back — `returnPath` with no saved bet beside it — honoured only while Millionea is visible to this reader (a hidden
+  // product draws and follows nothing). The form posts it; the action lands the player on the wait page, which offers it.
+  const slipAsked = sp.bet ? null : slipReturnPath(sp.returnPath);
+  const slipReturn = slipAsked && (await resolveMillionea()).visible ? slipAsked : null;
   const prevProvider = sp.provider ?? "";
   const prevAmount = sp.amount ?? "";
   // ⭐ Jay item #8 — see the note in `moneyFormMsisdn`. Same rule, same reason: this action
@@ -331,6 +338,7 @@ export async function renderDepositPage(searchParams: Promise<DepositSearch>, ca
           quickAmounts={quickAmounts}
           spendable={spendable}
           fromLowBalance={sp.from === "low-balance"}
+          slipReturn={slipReturn}
         />
       ) : (
       <form action={depositAction} className="group/deposit rounded-xl glass-panel p-5 lg:p-6">
@@ -354,6 +362,8 @@ export async function renderDepositPage(searchParams: Promise<DepositSearch>, ca
               `hidden` keeps it out of the wrapper's `space-y-5` sibling count, as on the key above (2026-10-08, WP12 tile 068):
               without it a low-balance deposit put the 24px gap back above the method chooser. */}
           {sp.from === "low-balance" && <input type="hidden" hidden name="origin" value="low_balance" />}
+          {/* MB-57 · the slip's way back (FLOW 3): `hidden`, like the two above, so the wrapper's rhythm counts no sibling. */}
+          {slipReturn && <input type="hidden" hidden name="returnPath" value={slipReturn} />}
           <fieldset>
             <FieldLegend as="legend" className="mb-2">
               {t.wallet.choosePaymentMethod}

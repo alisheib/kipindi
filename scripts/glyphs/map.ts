@@ -281,6 +281,8 @@ export const ADMIN_KEYS: readonly string[] = [
   "dashboard", "journey", "insights", "settlement", "finance", "house", "desk", "reports", "tax", "aiUsage",
   "roster", "cohorts", "sources", "rounds", "weeks", "pools", "integrity", "contacts", "invites", "traffic",
   "privacy", "audit", "approvals", "staff", "roles",
+  // MASWALI-BUILD S6 (2026-10-19): Millionea's evidence pack, a console destination of its own.
+  "evidence",
 ];
 
 /**
@@ -311,7 +313,11 @@ export const FILL_KEYS: readonly string[] = [
   // own keys ship it in the admin sprite; a reused player key ships it in its own group's file.
   "dashboard", "journey", "insights", "settlement", "finance", "house", "desk", "reports", "tax", "mobileMoney",
   "receipt", "roster", "cohorts", "calendar", "bot", "brain", "idea", "resolved", "sources", "percent", "sparkle",
-  "rounds", "weeks", "pools", "integrity", "users", "gift", "contacts", "invites", "megaphone", "traffic", "agent",
+  "rounds", "weeks", "pools", "integrity",
+  // MASWALI-BUILD S6 (2026-10-19): Millionea's Evidence (its own key) and Ticket lookup (search, a player key: its Fill
+  // ships in the app sprite).
+  "evidence", "search",
+  "users", "gift", "contacts", "invites", "megaphone", "traffic", "agent",
   "tippingScales", "idCard", "flag", "comment", "shieldAlert", "circleStop", "privacy", "archive", "audit", "server",
   "aiUsage", "approvals", "keyRound", "staff", "roles",
   // W4 (docs/PHOSPHOR-MIGRATION.md §8c: Fill means a state) — `idCard`, `resolved`, `live` and `pause` ship it above.
@@ -363,10 +369,11 @@ export const DUO_KEYS: readonly string[] = [
  * load; `npm run glyphs:gen` keeps these files and deletes every other stale one, and `test:glyph-sync` §1 allows exactly
  * these. The next release that changes a sprite names the then-live files instead (one release each, never a pile).
  * File names inside `public/icons/g/`.
- * MASWALI-BUILD S5 (lands after PHOSPHOR release 2b, W6): main 4471bb44 serves app.76a3696e.svg and
- * admin.75aeb290.svg. Keep both for the release's open pages.
+ * MASWALI-BUILD S6-SHIP 14 (the S7 + S6 release, after the S5 release on main): main 07a400bc3 serves app.b899eae1.svg and
+ * admin.75aeb290.svg — S5's — while this release builds its own app and admin sprites. Keep both for the release's open
+ * pages; app.76a3696e.svg (W6's, which S5 kept) leaves.
  */
-export const PREVIOUS_SPRITES: readonly string[] = ["app.76a3696e.svg", "admin.75aeb290.svg"];
+export const PREVIOUS_SPRITES: readonly string[] = ["app.b899eae1.svg", "admin.75aeb290.svg"];
 
 /** Keys that share one Phosphor drawing because they mean the same thing; the swap collapses each pair. */
 export const ALIASES: Array<[string, string]> = [
@@ -434,6 +441,9 @@ export const NEW_KEYS: Record<string, MapEntry> = {
   weeks: { ph: "list-numbers" }, // Millionea's weeks, each fifteen numbered questions
   pools: { ph: "treasure-chest" }, // Millionea's prize pools and the jackpot
   integrity: { ph: "gavel" }, // Millionea's integrity rulings: the sales pause, voids, held shares, winners screened
+  // MASWALI-BUILD S6 (2026-10-19): Millionea's per-week evidence pack (MB-92) — one final week's record, examined and
+  // handed to the regulator: a document under the magnifier. (Its neighbour Ticket lookup wears `search`, the lookup's own.)
+  evidence: { ph: "file-magnifying-glass" },
   contacts: { ph: "address-book" }, // the marketing contact book
   invites: { ph: "paper-plane-tilt" }, // invitations sent (the invite campaigns)
   traffic: { ph: "chart-line" }, // the site's traffic over time

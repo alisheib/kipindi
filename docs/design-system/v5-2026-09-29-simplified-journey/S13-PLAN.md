@@ -27,9 +27,10 @@ and 2 more after line 3562: old lines 28–964 are +3, every line after 3562 is 
 :3929 (:3883), §3.10 :4841–4869 (:4795–4823), §0f :3666–3743 (:3620–3697), the session law :392–423 (:389–420), the
 OMEGA-COMPILE01 SSD rule :411–416 (:408–413), "`origin` is persisted on the deposit row and the position" :4859 (:4813), the
 definitions table :4851–4857 (:4805–4811), the export line :4865 (:4819), "House-bot rows are excluded per row" :4847
-(:4801), S15 "one commit" :5070–5071, §8's harm markers :5228–5229. `docs/COMPLIANCE-DECISIONS.md` gained 60 lines at its
-head: D20a is :3024 (:2964), "Keep them in reports as normal players" :3019 (:2959), D20d :3027 (:2967), and "Watched after
-launch … next to the 'short balance → deposit' measure" :1540–1541 (:1480–1481) — the old numbers now point at other rulings.
+(:4801), S15 "one commit" :5070–5071; §8's harm markers are at `docs/VODACOM-PLAN.md`:5228–5229.
+`docs/COMPLIANCE-DECISIONS.md` gained 60 lines at its head: D20a is :3024 (:2964), "Keep them in reports as normal players"
+:3019 (:2959), D20d :3027 (:2967), and "Watched after launch … next to the 'short balance → deposit' measure" :1540–1541
+(:1480–1481) — the old numbers now point at other rulings.
 `bet-sheet-host.tsx` gained the A21 warm-up: `open()`'s `sheet_open` is :259–271 (:258–270), the card tap :425 (:424), the
 deposit link with `from=low-balance` :394 (:393), the counted low-balance frame :512–517 (:498–503, the send at :515).
 
@@ -39,9 +40,10 @@ deposit link with `from=low-balance` :394 (:393), the counted low-balance frame 
 :234–247 and :345–387; `deposit-state.ts` :16, :19, :34, :200–209) are identical there and on `origin/codex/vodacom-s9`.
 
 **A3 · The harm detector's citation.** `responsible-gambling.ts`:671–693 is the doc header and the start of the marker union.
-The detector Player Safety runs is `detectHarmMarkers` (:863–885; the DETECTORS list :734–858), called for every user by
-`detectHarmMarkersForAllUsers` (:887–902, not :892–903) from `admin/compliance/page.tsx`:581. It has no `now` parameter
-(it reads `Date.now()`), so WP3's snapshot time sets only the day key and the candidate window.
+The detector Player Safety runs is `detectHarmMarkers` (`responsible-gambling.ts`:863–885; the DETECTORS list
+`responsible-gambling.ts`:734–858), called for every user by `detectHarmMarkersForAllUsers` (`responsible-gambling.ts`:887–902,
+not `responsible-gambling.ts`:892–903) from `admin/compliance/page.tsx`:581. It has no `now` parameter (it reads
+`Date.now()`), so WP3's snapshot time sets only the day key and the candidate window.
 
 **A4 · Correction 7 overstates `test:report-parity` §4.** It counts only the literal `db.txn.listAll()` in four named files
 (:267–274, the regex at :275): it would not catch `db.user.list()` or a Prisma `findMany` with no `where`. WP5 adds its files
@@ -62,10 +64,11 @@ with `simpleJourneyCeiling()`: a WITHDRAWN ceiling is a real WITHDRAWN (the stor
 **A7 · The compare-and-swap writers throw without a database** (`config-store.ts`:162, :181). WP2 and WP3 keep an inline
 memory twin (a `globalThis` row, `simple-journey-switch.ts`'s pattern) and use the two writers only on Postgres.
 
-**A8 · WP3's "a plant that narrows 8 days to 7 fails" cannot fail.** RAPID_DEPOSIT_ESCALATION needs a confirmed deposit in the
-last 24 hours and CHASING_LOSSES three in the last 7 days, so a 7-day candidate window loses no flagged account — the eighth day
-is margin. A plant that cannot fail proves nothing (`50pick-standards` §5b rule 8): the plants narrow to 24 hours and to 6 days,
-and a fixture whose three top-ups are 6.88–6.96 days old makes the 6-day plant lose a flagged account at any hour of the day.
+**A8 · WP3's plant that narrows the candidate window slightly cannot fail.** Both markers are raised only on an account's own
+recent confirmed deposits (`responsible-gambling.ts`, the DETECTORS list), and the candidate window holds every deposit either
+detector reads, so a slightly narrower window loses no flagged account. A plant that cannot fail proves nothing
+(`AGENTS.md` §8): the plants narrow the window far enough to lose a flagged account, and a late fixture
+makes the narrower plant lose one whenever the count is taken.
 
 **A9 · WP4 is not built on this branch** (it edits `bet-sheet-host.tsx` and waits for S10's edits there). Two of its facts
 change what the definitions may claim, so they are two flags in `measures.ts`, false today and turned true by WP4 in the same
@@ -127,7 +130,7 @@ session to apply when it lands this work. `docs/DATA-RETENTION.md` gains its two
   - the split by campaign, for the measure that can be split;
   - the definitions table;
   - the agency report: which report is due, and its downloads;
-  - a launch watch, shown only to staff who may see it: S15's rollback figures, and the two harm markers that the
+  - a launch watch, shown only to staff who may see it: S15's rollback figures, and the harm markers that the
     compliance record says are "watched next to the 'short balance → deposit' measure"
     (`COMPLIANCE-DECISIONS.md`:1480-1481).
 - **The weekly report as PDF, Excel and CSV.** It is built from the same view by the existing report machinery: the
@@ -294,8 +297,8 @@ parallel once WP6 exists.
     - Only the cap's ceremony writes a row (`journey.rollout.set`, `simple-journey-ceremony.ts`:119).
     - The S15 flip is "one commit" (VODACOM-PLAN.md:5024-5025). If the cap is absent, the deploy alone flips the journey
       and writes nothing.
-19. **The harm markers keep no history.** "NOTHING persists a harm flag"; each flag lasts as long as its detector's
-    window, at most 8 days (`responsible-gambling.ts`:790-795). The compliance page recomputes them for every user on
+19. **The harm markers keep no history.** "NOTHING persists a harm flag"; each flag lasts only as long as its detector's
+    own look-back (`responsible-gambling.ts`:790-795). The compliance page recomputes them for every user on
     each render (:892-903; `admin/compliance/page.tsx`:581, :616-621). So "watched next to measure 3" (§8 :5182-5183;
     S8-PLAN Risk 21, :1291-1294; `COMPLIANCE-DECISIONS.md`:1480-1481) needs a daily count before anything can be
     compared.
@@ -415,6 +418,26 @@ small numbers (Risk 5).
 | 4b | Deposit → any bet (30 min) | a confirmed player deposit, its 30 minutes passed | those followed by the same player's unmarked bet within 30 min (R2) | R2 rows whose 30 minutes have passed | Yes | Yes | No |
 | 5 | Time to first bet | a new player whose first 24 h have passed | players whose first unmarked bet came within 24 h of sign-up (R4); also the median minutes among them | R4 players whose first 24 h have passed | Yes | Yes | No |
 | ref | Up & Down and other shortfall deposits (internal panel only; counts, no share) | — | R1 rows with no saved question bet (a round, or none) | shown beside it: C(`low_balance`, [updown], v, days) | Yes | Yes | No |
+
+⭐ 2026-10-18 (MASWALI-BUILD S6, OD-22, the round-5 review's ruling): **4b and 5 leave out a unit whose player bought a
+Maswali Millionea ticket within that unit's own horizon** — the window the measure itself reads for it: the 30 minutes
+after a deposit (4b's follow-up) and the 24 hours after a sign-up (5's first bet), both from the measures' own
+constants, both ends included. A ticket of ANY week counts, the private drive's included (OD-21). R2 and R4 mark such a
+unit (`ticketInHorizon`, one definition of a ticket in `journey-measures-dal.ts`: R2 reads `ticketPurchases`, R4 and
+the harm watch's second count `firstTickets`) and the view leaves it out, numerator and denominator alike — so a sign-up who buys only
+a ticket, or a deposit spent only on tickets, cannot move them. No launch instant decides it: every figure is final once
+its horizon has passed, in either launch order, and every window, before and after, is judged by the same rule. No
+ticket is read at all while no Millionea week has ever opened, and none outside the units' own horizons (rounds 6 and 7,
+bounded by the ticket's `createdAt`: R2 reads each chunk of its deposits over that chunk's own span of horizons; R4 reads
+each sign-up's first ticket alone, one row per buyer — exact, since no ticket precedes its own account). Each cell
+counts the units it left out (`leftOut`, round 6, the lead's
+decision), and each surface names the population ("Players without a Millionea ticket") — and carries the note — only
+where a cell IT PRINTS left a unit out: a file prints the five's before, after 7/14/28 and its period; the panel prints
+the five's before and after 7/14/28, and 4b's line before and after 7; neither prints a since-launch cell. So a file
+whose printed cells left none out reads as it would with no Millionea at all, and regenerates as filed whatever its
+unprinted cells come to hold. A unit counts only once its horizon's end plus the money lock's transaction timeout has
+passed (round 6), so a bet or a ticket stamped inside its horizon but committed after a read cannot move a filed
+figure. A ticket is never a bet in any measure.
 
 **Why each pair nests, and where it can still break:**
 
@@ -765,19 +788,29 @@ others the build greps); `test:red-anchors`.
 
 ### WP3 — The harm watch's daily count (S; depends on WP0)
 
-**Goal.** Give the compliance record's "watched next to the 'short balance → deposit' measure" something to compare. Once
-per EAT day, the system counts the accounts flagged RAPID_DEPOSIT_ESCALATION and CHASING_LOSSES by the same detector
-Player Safety uses (`responsible-gambling.ts`:671-693).
+**Goal.** Give the compliance record's "watched next to the 'short balance → deposit' measure" something to compare. The
+system counts the accounts flagged RAPID_DEPOSIT_ESCALATION and CHASING_LOSSES by the same detector Player Safety uses
+(`responsible-gambling.ts`:671-693). The count is kept as a series. It is taken once per EAT day.
 
 **Files.**
 - `src/lib/server/harm-watch.ts` (new):
   - `snapshotHarmMarkers(now)` runs once per EAT day after 03:00 EAT, leader only, idempotent by day;
-  - the candidates are accounts with a CONFIRMED deposit created in the last 8 days. No other account can carry either
-    marker: RAPID_DEPOSIT_ESCALATION needs a confirmed deposit created in the last 24 hours (:735-760), and
-    CHASING_LOSSES one in the last 7 days (:762, :797-798). The eighth day is a margin;
+  - the candidates are the accounts with a CONFIRMED deposit created inside the candidate window
+    (`HARM_WATCH_CANDIDATE_DAYS`), which holds every deposit either detector reads. No other account can carry
+    either marker: both are raised only on an account's own recent confirmed deposits (`responsible-gambling.ts`, the
+    DETECTORS list);
   - `detectHarmMarkers(userId)` runs unchanged for each candidate;
   - the counts go to the `SystemConfig` row `journey.harm.daily` (`{day, rapidDeposit, chasingLosses, scanned}`, at most
     400 entries);
+    ⭐ 2026-10-18 (MASWALI-BUILD S6, OD-22): a day counted after the first PUBLIC Maswali Millionea week opened also
+    writes the same three numbers over the candidates holding no ticket, into their OWN row, `journey.harm.noTicket.daily`,
+    in this row's shape — so this row keeps exactly the shape above and a build older than S6 still reads it. The count
+    itself is unchanged (D20a); S16's bounds are judged on the second row, and a day counted before that opening is a whole
+    count — the split dates the event it reports, so the private drive's opening starts nothing (round 4); once it has,
+    a ticket of any week, the drive's included, puts its holder out of the second count (one definition of a ticket).
+    Measures 5 and 4b key on no opening (round 5). Who holds a ticket is read bounded at the count's instant, outside
+    the day's time ceiling (round 6) and within a budget of its own (round 7): a slow ticket read never costs the day its
+    own count, and a read past its budget costs the day only its split. The prelaunch reset drops both rows;
   - `harmWatchSeries(days)` reads them back.
 - `src/lib/server/lifecycle.ts`: one daily chore line.
 - `scripts/ops-prelaunch-reset.mts`: classify the key (dropped).
@@ -785,10 +818,10 @@ Player Safety uses (`responsible-gambling.ts`:671-693).
 - `docs/DATA-RETENTION.md`: a row.
 
 **Steps.**
-1. **One detector, unchanged.** The snapshot never adds a marker, and never excludes or splits an account: D20a and D20d
+1. **The same detector, unchanged.** The snapshot never adds a marker, and never excludes or splits an account: D20a and D20d
    (`COMPLIANCE-DECISIONS.md`:2964, :2967) keep the detector's population as it is.
 2. **Prove the candidate set loses nothing.** On fixtures, the candidate count equals the count from a full walk of every
-   user, and a plant that narrows 8 days to 7 fails.
+   user, and a plant that narrows the window far enough to lose a flagged account fails (A8).
 3. **Keep the lifecycle tick on time.** The snapshot runs with a time ceiling and records "not counted today" if it
    overruns. A day with no snapshot is "not counted", never 0.
 
@@ -1252,7 +1285,8 @@ Each is a call taken under Ali's delegation, filed as a numbered §0h point by W
 18. **The panel is for accounting VIEW** (ADMIN, FINANCE, COMPLIANCE, AUDITOR), as `/admin/insights` is. Overrule: a
     growth-domain copy without money for GROWTH, for example on `/admin/traffic`.
 19. **The harm watch.**
-    - A daily count of accounts carrying the two markers, by Player Safety's own detector.
+    - A count of the accounts carrying each marker, by Player Safety's own detector. It is kept as a series. It is taken
+      once per EAT day.
     - Kept 400 days, beside "short balance → deposit".
     - Compliance VIEW only, and never in a file.
 
@@ -1317,8 +1351,8 @@ Each is a call taken under Ali's delegation, filed as a numbered §0h point by W
      is counted before they sign off.
 7. [Open point 18] **Who sees the measures:** you, Finance, Compliance and Auditor. Overrule: also your Growth officers,
    on a page without money figures.
-8. [Open point 19] **The warning signs of harm** (several deposits in an hour, top-ups right after betting) are counted
-   once a day. They are shown beside "short balance → deposit" to you, Compliance and Auditor, and never sent to the
+8. [Open point 19] **The warning signs of harm** (the patterns the published policy names, `/legal/responsible-gambling`
+   §3) are counted once a day. They are shown beside "short balance → deposit" to you, Compliance and Auditor, and never sent to the
    agency.
 9. [Open point 20] **The launch watch shows the figures behind S15's rollback rules:** bets per day, and the share of
    deposits that go through. Nothing switches off by itself, and no alert is sent.

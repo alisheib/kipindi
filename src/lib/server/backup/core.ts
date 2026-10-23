@@ -28,13 +28,13 @@
  * data instead of re-implementing the arithmetic.
  */
 import { Prisma } from "@prisma/client";
-import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes, scryptSync } from "node:crypto";
 
 /* ── Manifest ────────────────────────────────────────────────────────────── */
 
-/** 2 adds `undeclaredTables` (2026-07-30). Nothing rejects an older manifest — the
- *  field is read defensively — but the artifact header should say which shape it is. */
-export const MANIFEST_VERSION = 2;
+/** 2 adds `undeclaredTables`; 3 adds executable-schema integrity. Older artifacts
+ *  remain readable, but only version 3 can certify restored functions and triggers. */
+export const MANIFEST_VERSION = 3;
 /** The line prefix the manifest is written under, inside the SQL header. */
 export const MANIFEST_MARKER = "-- @manifest ";
 
@@ -107,6 +107,8 @@ export type BackupManifest = {
     checkConstraints: number;
     foreignKeys: number;
   };
+  /** Catalog fingerprint of executable schema objects. Older artifacts omit this field. */
+  databaseLogic?: { functions: number; triggers: number; sha256: string };
   /** Row count per table, keyed by table name. */
   tables: Record<string, number>;
   /**
@@ -425,6 +427,49 @@ export function lit(v: string | null): string {
 
 export function ident(name: string): string {
   return `"${name.replace(/"/g, '""')}"`;
+}
+
+/** User-owned executable schema objects; extension members are rebuilt by CREATE EXTENSION. */
+export const DATABASE_LOGIC_SQL = `
+  select 'function'::text as kind,
+         format('%I.%I(%s)', n.nspname, p.proname, pg_get_function_identity_arguments(p.oid)) as name,
+         pg_get_functiondef(p.oid) as definition,
+         null::text as relation, null::text as trigger_name, null::text as enabled
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public' and p.prokind in ('f', 'p')
+     and not exists (
+       select 1 from pg_depend d
+        where d.classid = 'pg_proc'::regclass and d.objid = p.oid
+          and d.refclassid = 'pg_extension'::regclass and d.deptype = 'e'
+     )
+  union all
+  select 'trigger'::text as kind,
+         format('%I.%I.%I', n.nspname, c.relname, t.tgname) as name,
+         pg_get_triggerdef(t.oid, true) as definition,
+         format('%I.%I', n.nspname, c.relname) as relation,
+         t.tgname as trigger_name, t.tgenabled::text as enabled
+    from pg_trigger t join pg_class c on c.oid = t.tgrelid
+      join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname = 'public' and not t.tgisinternal
+     and not exists (
+       select 1 from pg_depend d
+        where d.classid = 'pg_trigger'::regclass and d.objid = t.oid
+          and d.refclassid = 'pg_extension'::regclass and d.deptype = 'e'
+     )
+  order by kind, name`;
+
+export type DatabaseLogicRow = {
+  kind: 'function' | 'trigger'; name: string; definition: string;
+  relation: string | null; trigger_name: string | null; enabled: string | null;
+};
+
+export function databaseLogicFingerprint(rows: DatabaseLogicRow[]): NonNullable<BackupManifest['databaseLogic']> {
+  const ordered = [...rows].sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name));
+  return {
+    functions: ordered.filter((r) => r.kind === 'function').length,
+    triggers: ordered.filter((r) => r.kind === 'trigger').length,
+    sha256: createHash('sha256').update(JSON.stringify(ordered)).digest('hex'),
+  };
 }
 
 /**

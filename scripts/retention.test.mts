@@ -121,6 +121,40 @@ await db.txn.create({
   createdAt: iso(now - 400 * DAY), updatedAt: iso(now - 400 * DAY),
 } as never);
 
+// MASWALI-BUILD S6 · MB-67 · Millionea's record, 400 days old — the week, a question, a ticket and a seen mark. The answers
+// behind a bet are the betting record (7 years): no retention pass may reach them, whatever their age.
+const MLN = await import("../src/lib/server/maswali-dal.ts");
+const MLN_WEEK = "mlw_ret_week";
+await MLN.weekStore.create({
+  id: MLN_WEEK, marketId: "mkt_ret_mln", code: "MLN-2025-W30", seq: 2530, visibility: "PUBLIC", state: "SETTLED",
+  opensAt: iso(now - 404 * DAY), closesAt: iso(now - 400 * DAY), finalDeadlineAt: iso(now - 397 * DAY), closedAt: iso(now - 400 * DAY),
+  rulesSnapshot: { v: 1 }, questionSetHash: "d".repeat(64), ticketMerkleRoot: "e".repeat(64), ticketCount: 1, salesAtClose: 1_000,
+  gradedSetFinalAt: iso(now - 398 * DAY), objectionsCloseAt: iso(now - 397 * DAY), objectionRestarted: false,
+  rolloverIn: 0, jackpot: null, fee: 0, traLevy: 0, gbtLevy: 0, topUp: 0, winningTickets: 0, sharePerTicket: null,
+  paidTotal: 0, carryOut: 1_000, dustCarried: 0, settlementGroupId: `maswali_settle_${MLN_WEEK}`, settledAt: iso(now - 396 * DAY),
+  releasedBy: "usr_accounting", isFinal: false, parityAttestedBy: "usr_reader", parityAttestedAt: iso(now - 405 * DAY),
+  createdBy: "usr_drafter", createdAt: iso(now - 406 * DAY), updatedAt: iso(now - 396 * DAY),
+});
+await MLN.questionStore.createMany(MLN_WEEK, [{
+  id: "mlq_ret_1", role: "MAIN", ordinal: 1, slot: 1, category: "sports", textEn: "Q?", textSw: "Q?", textZh: "Q?",
+  criterionEn: "YES if so.", criterionSw: "NDIO ikiwa hivyo.", criterionZh: "是则为是。", sourceUrl: "https://www.tff.or.tz/fixtures",
+  sourceDomain: "tff.or.tz", fallbackSourceUrl: null, fallbackSourceDomain: null, readingTolerance: null, eventKind: "SPORT",
+  eventStartsAt: iso(now - 399 * DAY), eventZone: "Africa/Dar_es_Salaam", voidDeadlineAt: iso(now - 397 * DAY),
+  probabilityEstimate: 0.5, probabilitySource: "officer estimate", linkedMarketId: null,
+}]);
+await MLN.ticketStore.create({
+  id: "mlt_ret_1", positionId: "pos_mlt_ret_1", cycleId: MLN_WEEK, userId: "u_ret", serial: "MLN-2025-W30-000001",
+  selections: Array.from({ length: 15 }, () => "NO"), salt: "f".repeat(32), selectionsHash: "a".repeat(64), picksKey: "b".repeat(64),
+  status: "SETTLED", cancelledAt: null, closeAtPurchase: iso(now - 400 * DAY), rulesVersion: "millionea-2026-10-17", score: 3,
+  won: false, payout: 0, frozenReason: null, lastViewedAt: iso(now - 395 * DAY), createdAt: iso(now - 401 * DAY),
+});
+await MLN.noticeStore.markSeen("u_ret", MLN_WEEK, "RESULT", iso(now - 395 * DAY));
+const millioneaRecord = async () => JSON.stringify({
+  week: await MLN.weekStore.get(MLN_WEEK), questions: await MLN.questionStore.listForWeek(MLN_WEEK),
+  tickets: await MLN.ticketStore.listForUser("u_ret"), seen: await MLN.noticeStore.seenFor("u_ret", [MLN_WEEK]),
+});
+const millioneaBefore = await millioneaRecord();
+
 const auditBefore = getAuditPage({ limit: 10_000 }).length;
 
 // ── 1 · CONTROL — the fixtures exist before we measure a deletion ─────────────────────
@@ -183,6 +217,16 @@ ok("🔴 the 400-day-old DEPOSIT is still there — money is kept 7 years (POCA 
 ok("the wallet balance is unchanged", (await db.wallet.findByUserId("u_ret"))?.balance === 250_000);
 ok("the user row survives (FKs and audit traceability depend on it)",
   !!(await db.user.findById("u_ret")));
+ok("🔴 MASWALI-BUILD S6 · MB-67 · the 400-day-old Millionea record — the week, its question, the ticket with its fifteen answers and the seen mark — is BYTE-IDENTICAL after the pass",
+  millioneaBefore.includes("MLN-2025-W30-000001") && (await millioneaRecord()) === millioneaBefore,
+  "The answers behind a bet are the betting record: kept 7 years, like the bet (docs/DATA-RETENTION.md §1).");
+{
+  // …and by construction, not by luck: the daily pass names no Millionea store, table or module (comments stripped, the
+  // way every source read in this repository is made — a sentence explaining the rule must not be read as code).
+  const code = readFileSync("src/lib/server/retention.ts", "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+  ok("⛔ MASWALI-BUILD S6 · retention.purge.daily names no Millionea store, table or module — it cannot reach them",
+    code.includes("runRetentionPass") && !/maswali|millionea/i.test(code), (code.match(/maswali|millionea/i) ?? [""])[0]);
+}
 ok("🔴 the audit chain still verifies end to end", verifyChain().valid,
   "Pruning anything the chain covers would break the HMAC links that make it evidence.");
 ok("the chain GREW (the purge is recorded), it did not shrink",

@@ -12,6 +12,12 @@
  * changes nothing) and §11 (a round resulted after the cut-off stays On hold, then reclassifies).
  * §14 is the day-by-day breakdown: real bets placed and settled across three EAT days (one across midnight, one
  * on its stroke), every day read back as its own report and as that day opened on its own, the days adding up.
+ * §12 (S6) is Maswali Millionea (MASWALI-BUILD S6, OD-08): planted weeks — no winner, a carry with a floor top-up,
+ * seven winners with rounding carried, a void — filed by their three reconciling lines and their booked fee, beside a
+ * poll and a round that are byte-identical with and without the weeks (`test:maswali-reporting` drives the real week);
+ * and the weeks whose record cannot be filed from — a fee off its rate, a record missing, a record lacking its fee
+ * (12.19c, round 2) — each named as an exception, never filed as a zero; and a week whose booked levies are null files
+ * whole (12.19d, round 5: the report never reads them).
  *
  * ⛔ NO DATABASE, EVER: the URL is deleted before any server module loads, so this suite cannot
  * write to a real database even when one is configured in the shell. TZ is forced to Honolulu so a
@@ -401,6 +407,280 @@ console.log("§12 · the product filter partitions the books; rounding and defec
   wholeOutView = xu;
   X0 = X.exceptions[0] ?? null;
   outAllView = X;
+}
+
+/* ═══ §12 (S6) · MILLIONEA: A WEEK FILES BY ITS OWN LINES, AND POLLS AND UP & DOWN DO NOT MOVE ═══════════ */
+// MASWALI-BUILD S6, OD-08 (MB-65). The weeks are PLANTED through the DAL (a market of their own model, their tickets'
+// positions and money records, the week's settlement record) — as §12's defects are — so every shape is exact: a
+// no-winner week with a claimed carry and a free cancel, a paying week with a carry and a floor top-up, a paying week
+// with rounding carried, a voided week. `test:maswali-reporting` drives the REAL week settlement on both stores and holds
+// this reader to what it booked. The poll and the round beside them go through the real services, as §9's do.
+console.log("§12 (S6) · a Millionea week files by its three reconciling lines and its booked fee (OD-08, MB-65)");
+{
+  const { weekStore } = (await load("src/lib/server/maswali-dal.ts")) as typeof import("../src/lib/server/maswali-dal.ts");
+  const P = (await load("src/lib/payout.ts")) as typeof import("../src/lib/payout.ts");
+  const D = (await load("src/lib/server/tax-report-doc.ts")) as typeof import("../src/lib/server/tax-report-doc.ts");
+  const L = (await load("src/lib/server/tax-locks.ts")) as typeof import("../src/lib/server/tax-locks.ts");
+  const V = (await load("src/lib/server/tax-report-view.ts")) as typeof import("../src/lib/server/tax-report-view.ts");
+  const { findPdfOverflows } = (await load("src/lib/server/reports/pdf.ts")) as typeof import("../src/lib/server/reports/pdf.ts");
+  type Data = Awaited<ReturnType<typeof read>>;
+  type Product = import("../src/lib/tax-report.ts").ProductFilter;
+  /** A read that turns a refusal or a throw into a FAIL line under its case's id — a planted defect is named, never a crash. */
+  const readM = async (id: string, startMs: number, endMs: number, product: Product): Promise<Data | null> => {
+    try {
+      const r = await buildTaxReportData({ period: custom(startMs, endMs), product, nowMs: FAR });
+      if (r.ok) return r.data;
+      ok(`${id} (read ${product})`, false, r.error);
+    } catch (e) {
+      ok(`${id} (read ${product})`, false, String((e as Error)?.message ?? e).slice(0, 240));
+    }
+    return null;
+  };
+  const gen = { generatorId: "usr_tx_gen", generatorName: "Test Officer", generatedAtMs: FAR, lock: null };
+
+  // ── The window: a poll and an Up & Down round through the real services, read BEFORE any week exists ─────────────
+  const tM0 = Date.now(); await sleep(5);
+  const cp = await market("mln-control-poll");   // YES wins: losing NO 5,000 → fee 650, the winner 9,350
+  await bet("mcp", cp.id, "YES", 5_000); await bet("mcp", cp.id, "NO", 5_000);
+  await resolveAndSettle(cp.id, "YES");
+  const cu = await market("mln-control-round");  // flipped to Up & Down: NO wins → fee 130, the winner 1,870
+  await bet("mcu", cu.id, "YES", 1_000); await bet("mcu", cu.id, "NO", 1_000);
+  { const m = await marketStore.get(cu.id); await marketStore.set({ ...m!, productLine: "UPDOWN" } as never); }
+  await resolveAndSettle(cu.id, "NO");
+  await sleep(5);
+  const tEnd = Date.now() + 3_600_000;
+  const pollsBefore = await readM("12.14", tM0, tEnd, "MARKET");
+  const roundsBefore = await readM("12.14", tM0, tEnd, "UPDOWN");
+  const allBefore = await readM("12.14b", tM0, tEnd, "ALL");
+
+  // ── The weeks, planted ─────────────────────────────────────────────────────────────────────────────────────────
+  await user("tx_mln_player");
+  let mseq = 0;
+  type Ticket = { status: "WIN" | "LOSS" | "CASHED_OUT" | "VOID"; payout?: number };
+  type Cols = Partial<import("../src/lib/server/maswali-dal.ts").StoredWeek>;
+  const txn = (id: string, positionId: string, type: string, amount: number, at: string) => db.txn.create({
+    id, walletId: "wal_tx_mln_player", userId: "tx_mln_player", type, status: "CONFIRMED", amount, fee: 0, taxWithheld: 0, balanceAfter: null,
+    currency: "TZS", provider: "INTERNAL", providerRef: null, msisdn: null, description: "planted Millionea ticket", positionId, amlReason: null,
+    createdAt: at, updatedAt: at, completedAt: at,
+  } as never);
+  async function plantWeek(tag: string, state: "SETTLED" | "VOIDED", tickets: Ticket[], cols: Cols, o: { record?: boolean } = {}): Promise<string> {
+    const m = await svc.createMarket({
+      titleEn: `Maswali Millionea · tax ${tag}`, titleSw: `Maswali Millionea · ${tag}`, category: "macro", sourceUrl: "https://bot.go.tz",
+      resolutionCriterion: "A planted week for the tax report.", resolutionAt: new Date(Date.now() + 7 * 864e5).toISOString(), proposedBy: "test",
+      productLine: "MASWALI", rateOverrides: { feeModel: "jackpot-payout", jackpotFeeRate: 0.13, paidExitWindowMinutes: 0 },
+    } as never);
+    const placedAt = nowIso();
+    await sleep(3);
+    const settledAt = nowIso();
+    let live = 0;
+    for (const t of tickets) {
+      const id = `pos_tx_mln_${tag}_${++mseq}`;
+      const finalPayout = t.status === "WIN" ? (t.payout ?? 0) : t.status === "LOSS" ? 0 : 1_000;
+      await positionStore.set({ id, userId: "tx_mln_player", marketId: m.id, side: "YES", stake: 1_000, bonusStakeTzs: 0, potentialPayout: 0,
+        status: t.status, finalPayout, placedAt, settledAt, idempotencyKey: null } as never);
+      await txn(`txn_tx_mln_${tag}_${mseq}_b`, id, "BET_PLACED", -1_000, placedAt);
+      const back = t.status === "WIN" ? "BET_PAYOUT" : t.status === "CASHED_OUT" ? "CASHOUT" : t.status === "VOID" ? "BET_REFUND" : null;
+      if (back) await txn(`txn_tx_mln_${tag}_${mseq}_r`, id, back, finalPayout, settledAt);
+      if (t.status !== "CASHED_OUT") live++;
+    }
+    // The market as the week's own paths leave it: the settlement stamps it RESOLVED with no verdict; the void, VOID.
+    const cur = await marketStore.get(m.id);
+    await marketStore.set({ ...cur!, yesPool: live * 1_000, status: state === "VOIDED" ? "VOIDED" : "RESOLVED",
+      resolvedOutcome: state === "VOIDED" ? "VOID" : null, settledAt } as never);
+    if (o.record !== false) {
+      await weekStore.create({
+        id: `mlw_tx_${tag}`, marketId: m.id, code: `MLN-TX-${tag}`, seq: 9_000 + mseq, visibility: "PUBLIC", state,
+        opensAt: placedAt, closesAt: settledAt, finalDeadlineAt: settledAt, closedAt: settledAt,
+        rulesSnapshot: { planted: true }, questionSetHash: "planted", ticketMerkleRoot: null, ticketCount: live, salesAtClose: live * 1_000,
+        gradedSetFinalAt: null, objectionsCloseAt: null, objectionRestarted: false,
+        rolloverIn: null, jackpot: null, fee: null, traLevy: null, gbtLevy: null, topUp: null, winningTickets: null, sharePerTicket: null,
+        paidTotal: null, carryOut: null, dustCarried: null, settlementGroupId: null, settledAt: state === "SETTLED" ? settledAt : null, releasedBy: null,
+        isFinal: false, parityAttestedBy: null, parityAttestedAt: null, createdBy: "test", createdAt: placedAt, updatedAt: settledAt,
+        ...cols,
+      });
+    }
+    return m.id;
+  }
+  // A · no winner: 4 sold, 1 cancelled free, S 3,000 rolled; its claimed carry of 50,000 is a claim, never money in.
+  await plantWeek("A", "SETTLED", [{ status: "LOSS" }, { status: "LOSS" }, { status: "LOSS" }, { status: "CASHED_OUT" }],
+    { rolloverIn: 50_000, fee: 0, traLevy: 0, gbtLevy: 0, topUp: 0, winningTickets: 0, paidTotal: 0, carryOut: 3_000, dustCarried: 0 });
+  // B · one winner: S 4,000 + R 300,000 + U 696,000 = J 1,000,000 = F 130,000 + paid 870,000.
+  await plantWeek("B", "SETTLED", [{ status: "WIN", payout: 870_000 }, { status: "LOSS" }, { status: "LOSS" }, { status: "LOSS" }],
+    { rolloverIn: 300_000, jackpot: 1_000_000, fee: 130_000, traLevy: 13_000, gbtLevy: 6_500, topUp: 696_000, winningTickets: 1, sharePerTicket: 870_000, paidTotal: 870_000, carryOut: 0, dustCarried: 0 });
+  // C · seven winners: S 7,000 + R 993,000 = J 1,000,000 = F 130,000 + 7 × 124,285 + 5 carried (MASWALI-PLAN §5a.1).
+  await plantWeek("C", "SETTLED", Array.from({ length: 7 }, () => ({ status: "WIN" as const, payout: 124_285 })),
+    { rolloverIn: 993_000, jackpot: 1_000_000, fee: 130_000, traLevy: 13_000, gbtLevy: 6_500, topUp: 0, winningTickets: 7, sharePerTicket: 124_285, paidTotal: 869_995, carryOut: 5, dustCarried: 5 });
+  // D · voided whole: both tickets refunded, no fee, R untouched (MR-18).
+  await plantWeek("D", "VOIDED", [{ status: "VOID" }, { status: "VOID" }], {});
+  await sleep(5);
+  const pollsAfter = await readM("12.14", tM0, tEnd, "MARKET");
+  const roundsAfter = await readM("12.14", tM0, tEnd, "UPDOWN");
+  const all = await readM("12.15", tM0, tEnd, "ALL");
+  const mln = await readM("12.16", tM0, tEnd, "MASWALI");
+
+  // ── 12.14 · Polls and Up & Down do not move ────────────────────────────────────────────────────────────────────
+  const same = (a: Data | null, b: Data | null) => !!a && !!b && JSON.stringify(a) === JSON.stringify(b) && L.seenFingerprint(a) === L.seenFingerprint(b);
+  ok("12.14 ⛔ Polls and Up & Down are byte-identical with and without Millionea weeks in the period — every figure, the whole book's check, the lock fingerprint",
+    same(pollsBefore, pollsAfter) && same(roundsBefore, roundsAfter) && pollsAfter?.main.report1.payoutCents === 9_350_00 && roundsAfter?.main.report1.payoutCents === 1_870_00,
+    JSON.stringify({ polls: [pollsBefore?.main.report1, pollsAfter?.main.report1], whole: [pollsBefore?.wholeBook, pollsAfter?.wholeBook] }).slice(0, 400));
+  ok("12.14b CONTROL — a period with no week files exactly as before: Report 1's six lines, the two products, no Millionea part in Report 2",
+    !!allBefore && Object.keys(allBefore.main.report1).join(",") === "salesCents,payoutCents,onHoldCents,refundsCents,feeKeptCents,broughtForwardCents"
+      && allBefore.byProduct?.map((p) => p.product).join(",") === "MARKET,UPDOWN" && !("jackpot" in allBefore.main.tax)
+      && allBefore.main.tax.segments.every((s) => !("jackpot" in s)),
+    JSON.stringify({ keys: allBefore && Object.keys(allBefore.main.report1), parts: allBefore?.byProduct?.map((p) => p.product) }));
+  ok("12.14c CONTROL — a Polls lock's drift sees nothing move under it when the weeks land", !!pollsBefore && !!pollsAfter && V.driftBetween(pollsBefore, pollsAfter).length === 0);
+
+  // ── 12.15 · Polls + Up & Down + Millionea = All ────────────────────────────────────────────────────────────────
+  ok("12.15 the All view stands Millionea beside Polls and Up & Down", all?.byProduct?.map((p) => p.product).join(",") === "MARKET,UPDOWN,MASWALI",
+    JSON.stringify(all?.byProduct?.map((p) => p.product)));
+  for (const k of ["salesCents", "payoutCents", "onHoldCents", "refundsCents", "feeKeptCents", "broughtForwardCents", "jackpotBroughtForwardCents", "floorTopUpCents", "carriedToJackpotCents"] as const) {
+    eq(`12.15 Polls + Up & Down + Millionea = All · ${k}`, (all?.byProduct ?? []).reduce((t, p) => t + (p.report1[k] ?? 0), 0), all?.main.report1[k] ?? null);
+  }
+  eq("12.15b All: Sales 29,000 · Payout 1,751,215 · fee kept 260,780 — and balanced, with no exception",
+    all ? [all.main.report1.salesCents, all.main.report1.payoutCents, all.main.report1.feeKeptCents, all.main.reconciliation.balanced, all.exceptionCount] : null,
+    [29_000_00, 1_751_215_00, 260_780_00, true, 0]);
+
+  // ── 12.16 · the Millionea view, line by line ───────────────────────────────────────────────────────────────────
+  const r1 = mln?.main.report1;
+  eq("12.16 the Millionea view: Sales 17,000 · Payout 1,739,995 · Refunds 3,000 · fee kept 260,000 · jackpot brought forward 1,293,000 · house floor top-up 696,000 · carried 3,005",
+    r1 ? [r1.salesCents, r1.payoutCents, r1.refundsCents, r1.feeKeptCents, r1.onHoldCents, r1.broughtForwardCents, r1.jackpotBroughtForwardCents, r1.floorTopUpCents, r1.carriedToJackpotCents] : null,
+    [17_000_00, 1_739_995_00, 3_000_00, 260_000_00, 0, 0, 1_293_000_00, 696_000_00, 3_005_00]);
+  ok("12.16b ⭐ THE CHECK CLOSES with the three lines — a no-winner week, two paying weeks and a void (MB-65: without them it was out by every week's movements)",
+    !!mln && mln.main.reconciliation.balanced && mln.exceptionCount === 0, JSON.stringify({ rec: mln?.main.reconciliation, x: mln?.exceptions.slice(0, 3) }));
+  if (r1) {
+    const plain = { salesCents: r1.salesCents, payoutCents: r1.payoutCents, onHoldCents: r1.onHoldCents, refundsCents: r1.refundsCents, feeKeptCents: r1.feeKeptCents, broughtForwardCents: r1.broughtForwardCents };
+    eq("12.16c CONTROL — the same books read without the three lines are out by exactly them (1,293,000 + 696,000 − 3,005)",
+      E.reconcile(plain).differenceCents, -(1_293_000_00 + 696_000_00 - 3_005_00));
+  }
+  eq("12.16d counts: 17 tickets placed, 8 payments, 3 refunds, 3 weeks resulted, none on hold",
+    mln ? [mln.main.counts.betsPlaced, mln.main.counts.payoutRecords, mln.main.counts.refundRecords, mln.main.counts.roundsResulted, mln.main.counts.betsOnHold] : null, [17, 8, 3, 3, 0]);
+  eq("12.16e the refunds keep their reasons: the free cancel a player exit (1 × 1,000), the void a cancelled round (2 × 2,000)",
+    mln ? Object.fromEntries(mln.main.refundsByReason.map((r) => [r.code, [r.count, r.cents]])) : null,
+    { ONE_SIDED_BET: [0, 0], ROUND_CANCELLED: [2, 2_000_00], PLAYER_EXIT: [1, 1_000_00], OTHER: [0, 0] });
+
+  // ── 12.17–12.18 · Report 2: the booked fee ─────────────────────────────────────────────────────────────────────
+  const t2 = mln?.main.tax;
+  eq("12.17 ⭐ Report 2 files the fee the weeks' settlements BOOKED (2 × 130,000 on 2,000,000 of jackpots) — TRA 26,000 · GBT 13,000 · Total 39,000",
+    t2 ? [t2.commission, t2.tra, t2.gbt, t2.total, t2.jackpot?.jackpotCents, t2.jackpot?.bookedFee, t2.jackpot?.feeRateBp, t2.jackpot?.weeks, t2.payoutCents] : null,
+    [260_000, 26_000, 13_000, 39_000, 2_000_000_00, 260_000, 1300, 2, 0]);
+  ok("12.17b CONTROL — 13% × the weeks' Payout would have filed 226,199 (0.87 of the booked fee, MASWALI-PLAN §5a.4); the report does not",
+    E.taxOnPayout(1_739_995_00, E.APPROVED_RATES).commission === 226_199 && t2?.commission !== 226_199);
+  const ta = all?.main.tax;
+  eq("12.18 All products' Report 2: 13% × the Polls and Up & Down Payout (11,220 → 1,459) + the booked 260,000 = 261,459 · TRA 26,146 · GBT 13,073 · Total 39,219",
+    ta ? [ta.payoutCents, ta.jackpot?.payoutCommission, ta.commission, ta.tra, ta.gbt, ta.total] : null, [11_220_00, 1_459, 261_459, 26_146, 13_073, 39_219]);
+  eq("12.18b each product's own tax: Polls 1,216 / 183 · Up & Down 243 / 36 · Millionea 260,000 / 39,000",
+    all?.byProduct?.map((p) => [p.product, p.tax.commission, p.tax.total]) ?? null, [["MARKET", 1_216, 183], ["UPDOWN", 243, 36], ["MASWALI", 260_000, 39_000]]);
+
+  // ── 12.19 · a week that does not close is named ────────────────────────────────────────────────────────────────
+  const tY0 = Date.now(); await sleep(5);
+  // E · its booked fee is 130,001, one shilling off its own rate × J; its columns close on the booked figure.
+  await plantWeek("E", "SETTLED", [{ status: "WIN", payout: 869_999 }, { status: "LOSS" }],
+    { rolloverIn: 0, jackpot: 1_000_000, fee: 130_001, traLevy: 13_000, gbtLevy: 6_500, topUp: 998_000, winningTickets: 1, sharePerTicket: 869_999, paidTotal: 869_999, carryOut: 0, dustCarried: 0 });
+  // F · its tickets resulted, but the week's own record is gone.
+  await plantWeek("F", "SETTLED", [{ status: "LOSS" }], {}, { record: false });
+  await sleep(5);
+  const Y = await readM("12.19", tY0, Date.now() + 3_600_000, "MASWALI");
+  eq("12.19 a week whose booked fee is not its own rate × J is named (+1), and a week whose record is missing (+1,000): Millionea RESULT_MISMATCHes",
+    (Y?.exceptions ?? []).map((e) => [e.kind, e.product, e.contributionCents]).sort(), [["RESULT_MISMATCH", "MASWALI", 100], ["RESULT_MISMATCH", "MASWALI", 100_000]].sort());
+  ok("12.19b …the exceptions explain every shilling (1,001), the missing record says so, and Report 2 still files the fee as booked (130,001)",
+    !!Y && Y.explainedCents === Y.main.reconciliation.differenceCents && Y.main.reconciliation.differenceCents === 1_001_00
+      && Y.exceptions.some((e) => /record is missing/.test(e.note)) && Y.main.tax.commission === 130_001,
+    JSON.stringify({ d: Y?.main.reconciliation, x: Y?.exceptions.map((e) => e.note.slice(0, 60)), c: Y?.main.tax.commission }));
+  // G · ⭐ round 2 — B's week to the shilling, but its settlement record lacks its fee: a fault in the record, named, and
+  // never a booked fee of 0 filed in Report 2 (before, the week filed "fee booked 0" on its 1,000,000 jackpot, unflagged).
+  const tG0 = Date.now(); await sleep(5);
+  await plantWeek("G", "SETTLED", [{ status: "WIN", payout: 870_000 }, { status: "LOSS" }, { status: "LOSS" }, { status: "LOSS" }],
+    { rolloverIn: 300_000, jackpot: 1_000_000, fee: null, traLevy: 13_000, gbtLevy: 6_500, topUp: 696_000, winningTickets: 1, sharePerTicket: 870_000, paidTotal: 870_000, carryOut: 0, dustCarried: 0 });
+  await sleep(5);
+  const G = await readM("12.19c", tG0, Date.now() + 3_600_000, "MASWALI");
+  ok("12.19c ⛔ a settled paying week whose record lacks its fee is a RESULT_MISMATCH that names what the record lacks — and Report 2 files no booked fee of 0 for it",
+    !!G && G.exceptions.length === 1 && G.exceptions[0].kind === "RESULT_MISMATCH" && G.exceptions[0].product === "MASWALI"
+      && /^Week MLN-TX-G is settled, but its settlement record lacks its fee:/.test(G.exceptions[0].note) && G.main.tax.jackpot === undefined,
+    JSON.stringify({ x: G?.exceptions.map((e) => [e.kind, e.note.slice(0, 90)]), jackpot: G?.main.tax.jackpot ?? null }));
+  // H · ⭐ round 5 — B's week again, its booked levies null: this report prices its levies from the fee and never reads the
+  // booked ones, so the week files whole (each reader asks only for what it reads); 12.19c is the control.
+  const tH0 = Date.now(); await sleep(5);
+  await plantWeek("H", "SETTLED", [{ status: "WIN", payout: 870_000 }, { status: "LOSS" }, { status: "LOSS" }, { status: "LOSS" }],
+    { rolloverIn: 300_000, jackpot: 1_000_000, fee: 130_000, traLevy: null, gbtLevy: null, topUp: 696_000, winningTickets: 1, sharePerTicket: 870_000, paidTotal: 870_000, carryOut: 0, dustCarried: 0 });
+  await sleep(5);
+  const H = await readM("12.19d", tH0, Date.now() + 3_600_000, "MASWALI");
+  ok("12.19d ⭐ R5 · a paying week whose booked levies are null still files whole here — no exception, the fee it booked filed (130,000) — since this report never reads them",
+    !!H && H.exceptionCount === 0 && H.main.reconciliation.balanced && H.main.tax.jackpot?.bookedFee === 130_000 && H.main.tax.commission === 130_000,
+    JSON.stringify({ x: H?.exceptions.map((e) => [e.kind, e.note.slice(0, 90)]), jackpot: H?.main.tax.jackpot ?? null }));
+
+  // ── 12.20–12.22 · the fee mirror and the tax line, pure ────────────────────────────────────────────────────────
+  const J13 = { feeModel: "jackpot-payout" as const, jackpotFeeRate: 0.13, commissionRate: 0.1, feeCeilingRate: 1 / 3 };
+  const pdf = P.chargedFee({ yesPool: 300_000, noPool: 0, productLine: "MASWALI", week: { state: "SETTLED", jackpot: 1_050_000, winningTickets: 3 } }, J13);
+  eq("12.20 chargedFee prices a week as its settlement did, round(13% × J): the PDF case J 1,050,000 → 136,500, 913,500 to share",
+    [pdf.fee, pdf.netPool, pdf.refunded], [136_500, 913_500, false]);
+  const k0 = P.chargedFee({ yesPool: 300_000, noPool: 0, productLine: "MASWALI", week: { state: "SETTLED", jackpot: null, winningTickets: 0 } }, J13);
+  const vd = P.chargedFee({ yesPool: 2_000, noPool: 0, productLine: "MASWALI", week: { state: "VOIDED" } }, J13);
+  ok("12.20b a no-winner week takes no fee and shares nothing; a voided week is a refund at no fee",
+    k0.fee === 0 && !k0.refunded && k0.netPool === 0 && vd.fee === 0 && vd.refunded && vd.netPool === 2_000, JSON.stringify({ k0, vd }));
+  const throws = (f: () => unknown) => { try { f(); return false; } catch { return true; } };
+  ok("12.20c ⛔ a week that paid with no jackpot on record, a week priced under a pool model, and a week handed in without its settlement all THROW",
+    throws(() => P.chargedFee({ yesPool: 1, noPool: 0, productLine: "MASWALI", week: { state: "SETTLED", jackpot: null, winningTickets: 1 } }, J13))
+      && throws(() => P.chargedFee({ yesPool: 1, noPool: 0, productLine: "MASWALI", week: { state: "SETTLED", jackpot: 1_000_000, winningTickets: 1 } }, { commissionRate: 0.1, feeCeilingRate: 1 / 3 }))
+      && throws(() => P.chargedFee({ yesPool: 1, noPool: 0, resolvedOutcome: "YES", productLine: "MASWALI" }, J13)));
+  const LS = { feeModel: "loser-share" as const, platformFeeRate: 0.03, operatorFeeRate: 0.10, commissionRate: 0.1, feeCeilingRate: 1 / 3 };
+  ok("12.20d CONTROL — a poll is priced exactly as before (settlement's own poolFee)",
+    P.chargedFee({ yesPool: 20_000, noPool: 5_000, resolvedOutcome: "NO" }, LS).fee === P.poolFee(20_000, 5_000, LS, "NO").fee);
+  eq("12.21 the Millionea pill's value round-trips: parseProduct reads MASWALI (any case); an unknown value is still All",
+    [E.parseProduct("MASWALI"), E.parseProduct(" maswali "), E.parseProduct("JACKPOT"), E.parseProduct("UPDOWN")], ["MASWALI", "MASWALI", "ALL", "UPDOWN"]);
+  eq("12.22 with no paying week the jackpot-aware tax IS taxOnPayout — the same lines, no Millionea part",
+    E.taxOnPayoutAndJackpot(570_000_00, null, E.APPROVED_RATES), E.taxOnPayout(570_000_00, E.APPROVED_RATES));
+  const tj = E.taxOnPayoutAndJackpot(0, { jackpotCents: 1_000_000_00, bookedFee: 130_000, feeRateBp: 1300, weeks: 1 }, E.APPROVED_RATES);
+  eq("12.22b the floor week of §5a.4: the booked 130,000 → TRA 13,000 · GBT 6,500, where 13% × its Payout of 870,000 would file 113,100",
+    [tj.commission, tj.tra, tj.gbt, E.taxOnPayout(870_000_00, E.APPROVED_RATES).commission], [130_000, 13_000, 6_500, 113_100]);
+
+  // ── 12.23–12.28 · the page's rows, the files, the drift ───────────────────────────────────────────────────────
+  const mr1 = mln ? D.report1Rows(mln.main) : [];
+  eq("12.23 Report 1 prints Millionea's three items after the two every period needs, then the widened check",
+    mr1.map((r) => r.line), ["Sales", "Payout", "On hold", "Refunds", "Platform fee kept", "Less: on hold brought forward", "Less: jackpot brought forward",
+      "Less: house floor top-up", "Carried to the jackpot", "Check: accounted total", "Difference from Sales (must be 0)"]);
+  eq("12.23b …with the reader's amounts: the check equals Sales", mr1.map((r) => r.cents),
+    [17_000_00, 1_739_995_00, 0, 3_000_00, 260_000_00, 0, -1_293_000_00, -696_000_00, 3_005_00, 17_000_00, 0]);
+  const pr1 = pollsAfter ? D.report1Rows(pollsAfter.main) : [];
+  ok("12.23c CONTROL — a Polls view prints the plan's eight lines and the check exactly as before",
+    pr1.map((r) => r.line).join("|") === "Sales|Payout|On hold|Refunds|Platform fee kept|Less: on hold brought forward|Check: accounted total|Difference from Sales (must be 0)"
+      && pr1[6]?.basis === "Payout + On hold + Refunds + Platform fee kept − on hold brought forward", pr1.map((r) => r.line).join("|"));
+  const mr2 = mln ? D.report2Rows(mln.main) : [];
+  eq("12.24 Report 2 on the Millionea view: its jackpots and the fee they booked, then the levies on it",
+    mr2.map((r) => [r.line, r.amount]), [["Sales less refunds", 14_000_00], ["Jackpot paid (taxable reference)", 2_000_000_00], ["Commission", 260_000],
+      ["TRA tax", 26_000], ["GBT levy", 13_000], ["Total Tax payable", 39_000], ["Net commission revenue", 221_000]]);
+  ok("12.24b …the Commission's basis is the weeks' own frozen rate on the jackpot, never the report's rate on Payout", mr2[2]?.basis === "13% × Jackpot, booked at payout", mr2[2]?.basis);
+  const ar2 = all ? D.report2Rows(all.main) : [];
+  eq("12.25 Report 2 on All products: Commission on the Polls and Up & Down Payout, the jackpots and the fee booked, then their sum",
+    ar2.map((r) => [r.line, r.amount]),
+    [["Sales less refunds", 26_000_00], ["Payout (taxable reference)", 11_220_00], ["Commission on Payout", 1_459], ["Millionea jackpot paid", 2_000_000_00],
+      ["Millionea fee booked", 260_000], ["Commission", 261_459], ["TRA tax", 26_146], ["GBT levy", 13_073], ["Total Tax payable", 39_219], ["Net commission revenue", 222_240]]);
+  ok("12.25b CONTROL — a Polls view's Report 2 is the plan's lines exactly as before",
+    pollsAfter !== null && D.report2Rows(pollsAfter.main).map((r) => r.line).join("|") === "Sales less refunds|Payout (taxable reference)|Commission|TRA tax|GBT levy|Total Tax payable|Net commission revenue");
+  const mdoc = mln ? D.buildTaxDocument(mln, gen) : null;
+  const pdoc = pollsAfter ? D.buildTaxDocument(pollsAfter, gen) : null;
+  ok("12.26 the documents state the Millionea treatment where they hold a week, with the weeks' own 13% — and a Polls document does not",
+    !!mdoc && !!pdoc && (mdoc.notes ?? []).some((n) => n.startsWith("Millionea is taxed on the fee its settlement booked — 13% of each paying week's jackpot"))
+      && !(pdoc.notes ?? []).some((n) => n.includes("Millionea")));
+  const acsv = all ? D.buildTaxCsv(all, { generatorName: "Test Officer", generatedAtMs: FAR, lock: null, reference: "TAX-TEST" }) : "";
+  ok("12.26b the CSV's By product carries Millionea's column and its three lines as plain numbers (Polls at 0)",
+    acsv.includes('"By product — Millionea","Carried to the jackpot","",3005,""') && acsv.includes('"By product — Polls","Carried to the jackpot","",0,""')
+      && acsv.includes('"Report 1 — Total Reporting System","Less: jackpot brought forward",'),
+    acsv.split(String.fromCharCode(10)).filter((l) => l.includes("jackpot")).slice(0, 4).join(" | "));
+  const adoc = all ? D.buildTaxDocument(all, gen) : null;
+  const over = mdoc && adoc ? [...findPdfOverflows(mdoc), ...findPdfOverflows(adoc)] : null;
+  ok("12.27 the Millionea view's PDF and the four products' PDF fit every box (the new lines, the fourth By product column)",
+    over !== null && over.length === 0, JSON.stringify(over?.slice(0, 4)));
+  if (mln) {
+    const moved = { ...mln, main: { ...mln.main, report1: { ...mln.main.report1, carriedToJackpotCents: (mln.main.report1.carriedToJackpotCents ?? 0) + 100 } } };
+    ok("12.28 a locked Millionea view names a moved reconciling line in its drift (Carried to the jackpot 3,005 → 3,006)",
+      V.driftBetween(mln, moved).some((x) => x.line === "Carried to the jackpot" && x.locked === 3_005_00 && x.live === 3_006_00));
+  } else ok("12.28 (fixture) the Millionea view was read", false);
+  // ── 12.29 · the Millionea pill follows the PERIOD: offered where the period holds a week, never on one that holds none ──
+  const pv = await V.loadTaxReportView({ period: custom(tM0, tEnd), product: "MARKET", nowMs: FAR });
+  const pa = await V.loadTaxReportView({ period: custom(tA0, tCut), product: "ALL", nowMs: FAR });
+  ok("12.29 the Millionea pill is offered on a period that holds a week — on its Polls view too", pv.ok && pv.view.millionea === true, pv.ok ? "" : pv.error);
+  ok("12.29b CONTROL — a period that holds no week offers no Millionea pill, whatever other periods hold, so its page is as it was",
+    pa.ok && pa.view.millionea === false, pa.ok ? "" : pa.error);
 }
 
 /* ═══ §13 · LOCKS, DRIFT AND THE DOCUMENTS ════════════════════════════════════════════════════════ */
@@ -1021,6 +1301,10 @@ console.log("§15 · Sales less refunds with its tickets, and Net commission rev
   }
 }
 
+// S6-DOCS · THE FLOOR, at the count a green run printed (269 on a8b43c946, run 39825278061): a suite that goes blind
+// prints fewer, and only ever rises.
+const TAX_REPORT_FLOOR = 269;
+if (pass + fails.length < TAX_REPORT_FLOOR) fails.push(`floor · at least ${TAX_REPORT_FLOOR} checks ran — ${pass + fails.length} ran`);
 console.log(`\ntax-report: ${pass} passed, ${fails.length} failed`);
 if (fails.length) { console.log("\nFAILED:"); for (const f of fails) console.log(`  - ${f}`); }
 process.exitCode = fails.length === 0 ? 0 : 1;

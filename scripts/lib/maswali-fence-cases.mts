@@ -95,6 +95,41 @@ export async function runFenceCases(ok: Ok): Promise<{ onPostgres: boolean }> {
   const afterDue: Any = await svc.getMarket(wk.id);
   ok("2.4 · resolveDueMarket skips a week and leaves it untouched (no AI or automatic seal, MR-14)",
     due?.status === "skipped" && afterDue?.status === "LIVE" && !afterDue?.resolvedOutcome, `${JSON.stringify(due)} · ${afterDue?.status}`);
+  // ⭐ S7-F9 · THE AUTO-RESOLVER AGAINST TWO-ADMIN AUTHORIZATION (MASWALI-PLAN §7b S7; the S7 brief's item 3). The AI's
+  // automatic seal stamps BOTH stages as `system_auto_resolver` and never reads the two-admin setting (the 2026-07-24
+  // ruling: automatic resolution is its own axis), so a Millionea week must never reach it at all. Every condition under
+  // which it seals a poll alone is set here — the two-admin setting ON, the market in automatic mode, a confident and
+  // determined assessment citing the market's own source — and the week is still skipped, with nothing stamped; the
+  // operator's re-check of a closed week writes nothing either. CONTROL: the same assessment seals a poll in automatic mode,
+  // so it is one the automatic path acts on, and these cases cannot pass for want of a verdict.
+  const { getRequireTwoOfficerResolution, setRequireTwoOfficerResolution } = await import("../../src/lib/server/resolution-policy.ts");
+  const twoAdminWas = await getRequireTwoOfficerResolution();
+  await setRequireTwoOfficerResolution(true, admin);
+  const verdict = (m: Any) => ({ marketId: m.id, title: m.titleEn, determined: true, outcome: "YES", confidence: 100,
+    evidence: "The official source published the final result.", sourceUrl: `${m.sourceUrl}/result`, action: "assessed" });
+  const autoWk: Any = await week("Maswali Millionea · fence probe (automatic mode)");
+  await w.mdal.marketStore.stamp(autoWk.id, { resolutionMode: "auto" });
+  const autoDue: Any = await svc.resolveDueMarket(autoWk.id, { assessment: verdict(autoWk) });
+  const autoAfter: Any = await svc.getMarket(autoWk.id);
+  const untouched = (m: Any) => m?.status === "LIVE" && !m?.resolvedOutcome && !m?.resolutionStage1By && !m?.resolutionStage2By
+    && !m?.resolveClaimedAt && !m?.resolutionNotifiedAt && !m?.sentinelOutcome;
+  ok("2.4b · ⭐ with two-admin authorization ON, a week in automatic mode handed a confident verdict of its own source is still skipped: no outcome, no stage, no claim, no recommendation (MR-14: only officers seal a Millionea question)",
+    autoDue?.status === "skipped" && untouched(autoAfter),
+    `${JSON.stringify(autoDue)} · ${autoAfter?.status} · ${autoAfter?.resolutionStage1By ?? "-"}/${autoAfter?.resolutionStage2By ?? "-"}`);
+  await w.mdal.marketStore.stamp(autoWk.id, { status: "CLOSED" });
+  const reDue: Any = await svc.resolveDueMarket(autoWk.id, { assessment: verdict(autoWk), reassessClosed: true });
+  const reAfter: Any = await svc.getMarket(autoWk.id);
+  ok("2.4c · …and the operator's re-check of a closed week records nothing on it (no recommendation an officer could seal from)",
+    reDue?.status === "skipped" && reAfter?.status === "CLOSED" && !reAfter?.sentinelOutcome && !reAfter?.resolvedOutcome && !reAfter?.resolutionStage1By,
+    `${JSON.stringify(reDue)} · ${reAfter?.status} · ${reAfter?.sentinelOutcome ?? "-"}`);
+  const autoPoll: Any = await w.poll({ graceMin: 5, paidMin: 0, title: "Fence control poll (automatic mode)" });
+  await w.mdal.marketStore.stamp(autoPoll.id, { resolutionMode: "auto" });
+  const pollDue: Any = await svc.resolveDueMarket(autoPoll.id, { assessment: verdict(autoPoll) });
+  const pollAfter: Any = await svc.getMarket(autoPoll.id);
+  ok("2.4d · CONTROL: the same verdict seals a poll in automatic mode, both stages system_auto_resolver, two-admin ON (the 2026-07-24 ruling, unchanged)",
+    pollDue?.status === "resolved-auto" && pollAfter?.status === "RESOLVED" && pollAfter?.resolutionStage1By === "system_auto_resolver"
+      && pollAfter?.resolutionStage2By === "system_auto_resolver", `${JSON.stringify(pollDue)} · ${pollAfter?.status}`);
+  await setRequireTwoOfficerResolution(twoAdminWas, admin);
   ok("2.5 · sentinelCheckOne answers nothing for a week, before any paid call", (await sentinelCheckOne(wk.id)) === null);
   const ev: Any = await svc.emergencyVoidMarket({ marketId: wk.id, officerId: admin, reason: "fence probe void" });
   ok("2.6 · emergencyVoidMarket refuses a week (it has its own Compliance control)", !ev.ok && ev.error === FENCE, show(ev));
@@ -221,7 +256,8 @@ export const CENSUS: Readonly<Record<string, { n: number; why: string }>> = {
   "src/lib/server/objections-service.ts": { n: 3, why: "upholdObjection's round correction (the linked round's read, its missing-round refusal, the correction evidence); a week's market row turns RESOLVED or VOIDED only in the write that stamps settledAt (maswali-settlement, maswali-void), so no objection is ever filed on it (ALREADY_SETTLED) and upholding refuses a settled market" },
   "src/lib/server/short-title-service.ts": { n: 1, why: "the round's own refusal, with the week's refusal beside it" },
   "src/lib/side-label.ts": { n: 2, why: "the exhaustive guard and the round arm of positionStatusWord" },
-  "src/lib/tax-report.ts": { n: 1, why: "parseProduct: MASWALI is not selectable until S6, by design" },
+  // ⚠️ Reason re-worded 2026-10-18 (MASWALI-BUILD S6): the count is unchanged — parseProduct's own Up & Down arm, beside its MASWALI arm.
+  "src/lib/tax-report.ts": { n: 1, why: "parseProduct: the Up & Down arm, beside the Millionea arm S6 added (each product its own value)" },
   // 2026-10-21 · U43 Release B (1384383fd) — classified by the U43 lane, for the Maswali lane's review.
   "src/lib/updown-round-name.ts": { n: 1, why: "marketDisplayTitle renames only a stored round title; every other line, a week included, shows its own stored title" },
 };
@@ -262,7 +298,17 @@ function runCensus(ok: Ok): void {
     (lit("src/app/admin/settlement/actions.ts").match(/isFencedMaswali\(await getMarket\(marketId\)\)/g) ?? []).length === 2);
   ok("5.5 · recheckMarketNowAction refuses a week before the paid AI call",
     /isFencedMaswali\(await getMarket\(marketId\)\)[\s\S]*sentinelCheckOne/.test(lit("src/app/admin/resolver-queue/resolution-mode-action.ts")));
-  ok("5.6 · the tax report refuses a period that holds a week (fail-closed until S6)",
-    /b\.productLine === "MASWALI"\)\)\s*\{\s*return \{ ok: false/.test(lit("src/lib/server/tax-report-data.ts")));
+  // ⚠️ RE-PINNED 2026-10-18 (MASWALI-BUILD S6, OD-08): S6 replaced the fail-closed refusal with the week's own treatment,
+  // as this case's label always said it would. What is pinned now: a resulted week takes its own arm BEFORE the poll
+  // mirror (`roundKeep` → `chargedFee`, which still throws on a week handed in without its settlement, 3.1), from its own
+  // settlement record, and the refusal is gone. `test:tax-report` §12 and `test:maswali-reporting` hold the figures.
+  {
+    const tax = lit("src/lib/server/tax-report-data.ts");
+    const arm = tax.indexOf("const wk = weekKeep(b, L.weeks.get(marketId));");
+    const poll = tax.indexOf("const keep = b ? roundKeep(b) : null;");
+    ok("5.6 · the tax report files a week by its own lines (S6, OD-08): its arm comes before the poll mirror, and the S0.5 refusal is gone",
+      arm > -1 && poll > -1 && arm < poll && /weekStore\.getByMarketId\(b\.id\)/.test(tax) && !/learns Millionea in MASWALI-PLAN S6/.test(tax),
+      `arm at ${arm}, poll mirror at ${poll}`);
+  }
   ok("5.7 · nextDeadlineFor arms a poll only", /if \(storedProductLine\(m\.productLine\) !== "MARKET"\) return null;/.test(lit("src/lib/server/market-scheduler.ts")));
 }

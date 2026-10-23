@@ -271,7 +271,7 @@ setAffiliateConfig({
   ok("6.link.gate · ⛔ viewerMayOpen asks the section gate's own view question on its stored-row read, and fails closed",
     /export async function viewerMayOpen\(path: string\)/.test(gate)
       && /const user = session \? await viewerRow\(session\.userId\) : null;\s*if \(!user \|\| !isStaffRole\(user\.role\) \|\| !path\.startsWith\("\/admin"\)\) return false;/.test(gate)
-      && /return isOwnerOnlyPath\(path\) \? isAdmin\(user\.role\) : await canView\(user\.role, domainForPath\(path\)\);\s*\} catch \{\s*return false;/.test(gate));
+      && /return isOwnerOnlyPath\(path\) \? isAdmin\(user\.role\) : await canViewPath\(user\.role, path\);\s*\} catch \{\s*return false;/.test(gate));
   const { canView } = await import("../src/lib/server/rbac");
   const { domainForPath } = await import("../src/lib/server/roles");
   const playersDomain = domainForPath("/admin/players/usr_x");

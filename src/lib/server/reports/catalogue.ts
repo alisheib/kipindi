@@ -17,8 +17,9 @@ import {
   grossGamingRevenue, netGamingRevenue, kycFunnel, rgRosterCounts,
 } from "../analytics";
 import { currentPackPeriod, packPeriodLabel, packPeriodBounds } from "../report-pack";
-// The single definition of a Tanzanian day. Never re-derive one locally.
-import { startOfEatDay, eatDateLabel } from "../report-money";
+// The single definition of a Tanzanian day. Never re-derive one locally. ⭐ MASWALI-BUILD S6 · MB-66 — and the per-game
+// split with Millionea's jackpot model, for the monthly pack.
+import { startOfEatDay, eatDateLabel, moneyByGame, holdsMillionea, jackpotProblemsText, type GameMoney, type JackpotMoney } from "../report-money";
 // The SAR reports at the large-payout line. Until 2026-09-13 the withdrawal AML hold used the same
 // constant; the owner ruling switched the hold off (`WITHDRAWAL_AML_HOLD`), the line stays.
 import { AML_REVIEW_THRESHOLD_TZS } from "../payments";
@@ -27,6 +28,8 @@ import { getGlobalConfig } from "../market-config";
 import { houseAccountMovement } from "../ledger";
 import type { Report, Row, SignatureRow, SummaryItem } from "./types";
 import { adminCount, formatDateTime, formatTzs } from "@/lib/utils";
+// The products' names, as the Government Tax Report prints them: one vocabulary for the two regulator documents.
+import { PRODUCT_LABEL } from "@/lib/tax-report";
 import { buildFinanceWindow, type FinanceWindowArg } from "./finance-window";
 // ⭐ The window each report covers, declared once. Every `meta.period` below is one of these
 // rendered — never a fresh hand-typed period string. See ./coverage.ts.
@@ -89,6 +92,119 @@ function makeReference(acronym: string, generatorId: string): string {
 // 1 · GBT MONTHLY SUMMARY
 // ─────────────────────────────────────────────────────────────────────
 
+/**
+ * ⭐ MASWALI-BUILD S6 · MB-66 (OD-08) — THE MONTH'S MILLIONEA LINES, from its own per-game split (`report-money`
+ * `JackpotMoney`, read from the weeks settled in the month and the month's transactions). `ggrExJackpot` is the pack's
+ * GGR less what the weeks carried to the jackpot and drew from it; a forfeited share moves the liability but was never
+ * gaming revenue, so it is not in that adjustment.
+ */
+type MillioneaPackLines = {
+  game: GameMoney;
+  carried: number;
+  claimed: number;
+  forfeited: number;
+  movement: number;
+  guarantee: number;
+  fee: number;
+  weeks: number;
+  ggrExJackpot: number;
+};
+
+function millioneaPackLines(g: { maswali: GameMoney; jackpot?: JackpotMoney }, ggr: number): MillioneaPackLines {
+  // A month whose split holds Millionea stakes but neither a settled week nor a forfeit moved no jackpot: read, not assumed.
+  const j: JackpotMoney = g.jackpot
+    ?? { carried: 0, claimed: 0, forfeited: 0, movement: 0, guarantee: 0, fee: 0, ggrExJackpot: g.maswali.ggr, weeks: 0 };
+  return {
+    game: g.maswali, carried: j.carried, claimed: j.claimed, forfeited: j.forfeited, movement: j.movement,
+    guarantee: j.guarantee, fee: j.fee, weeks: j.weeks,
+    ggrExJackpot: ggr - (j.carried - j.claimed),
+  };
+}
+
+/** The month's product split and its Millionea section. `partialLabel` names a month still running. */
+function millioneaPackSections(
+  g: { market: GameMoney; updown: GameMoney; maswali: GameMoney; unattributed: GameMoney },
+  m: MillioneaPackLines,
+  partialLabel: string | null,
+): Report["sections"] {
+  const games: Array<[string, GameMoney]> = [
+    [PRODUCT_LABEL.MARKET, g.market],
+    [PRODUCT_LABEL.UPDOWN, g.updown],
+    [PRODUCT_LABEL.MASWALI, g.maswali],
+    // Disclosed, never folded into a game (the per-game split's own rule, report-money F-03).
+    ...(g.unattributed.stakes > 0 || g.unattributed.payouts > 0 || g.unattributed.refunds > 0
+      ? [["Unattributed (game not determinable)", g.unattributed] as [string, GameMoney]]
+      : []),
+  ];
+  const period = partialLabel ? `${partialLabel} UP TO THE GENERATION TIMESTAMP (a part-month)` : "the period stated above";
+  return [
+    {
+      title: "By game",
+      description:
+        `Bet money by game over ${period}: each bet counted to its own market's game. Unattributed is bet money whose ` +
+        "position record no longer resolves, so its game cannot be determined; it is shown, never assigned to a game.",
+      columns: [
+        { header: "Game", key: "game", width: 32 },
+        { header: "Stakes", sub: "TZS", key: "stakes", format: "tzs", align: "right", width: 17 },
+        { header: "Payouts", sub: "TZS", key: "payouts", format: "tzs", align: "right", width: 17 },
+        { header: "Refunded stakes", sub: "TZS", key: "refunds", format: "tzs", align: "right", width: 17 },
+        { header: "GGR", sub: "TZS", key: "ggr", format: "tzs", align: "right", width: 17 },
+      ],
+      rows: games.map(([game, x]) => ({ game, stakes: x.stakes, payouts: x.payouts, refunds: x.refunds, ggr: x.ggr })),
+      totals: {
+        game: "Combined",
+        stakes: games.reduce((s, [, x]) => s + x.stakes, 0),
+        payouts: games.reduce((s, [, x]) => s + x.payouts, 0),
+        refunds: games.reduce((s, [, x]) => s + x.refunds, 0),
+        ggr: games.reduce((s, [, x]) => s + x.ggr, 0),
+      },
+    },
+    {
+      title: "Maswali Millionea: jackpot and guarantee",
+      description:
+        `${adminCount(m.weeks, "week")} settled in ${period}. Each line is read from those weeks' settlement records and ` +
+        "the period's own transactions. The jackpot is money owed to future Millionea winners, never revenue; the " +
+        "guarantee is the house's own money, paid into a paying week to bring its jackpot to the floor.",
+      columns: [
+        { header: "Line", key: "metric", width: 38 },
+        { header: "Value", sub: "TZS", key: "value", format: "tzs", align: "right", width: 20 },
+        { header: "Basis", key: "basis", width: 42 },
+      ],
+      rows: [
+        { metric: "Carried to the jackpot", value: m.carried, basis: "weeks with no winner: their whole sales; paying weeks: their rounding" },
+        { metric: "Claimed from the jackpot", value: -m.claimed, basis: "the carry each paying week drew into its pool" },
+        ...(m.forfeited > 0
+          ? [{ metric: "Forfeited shares returned to the jackpot", value: m.forfeited, basis: "winning shares paid, then forfeited and returned from the winner's wallet" }]
+          : []),
+        { metric: "Jackpot liability movement", value: m.movement, basis: m.forfeited > 0 ? "carried − claimed + forfeited" : "carried − claimed" },
+        { metric: "House guarantee contribution", value: m.guarantee, basis: "the house's floor top-ups of paying weeks" },
+        { metric: "Fee booked at payout", value: m.fee, basis: "each paying week's fee on its jackpot, at its own frozen rate" },
+        { metric: "Millionea GGR", value: m.game.ggr, basis: "Millionea stakes − payouts − refunded stakes" },
+        { metric: "Millionea GGR excluding the jackpot movement", value: m.game.ggr - (m.carried - m.claimed), basis: "Millionea GGR − (carried − claimed)" },
+      ],
+    },
+  ];
+}
+
+/** The note the ruling asks for (OD-08), and the forfeit's sentence only when the month holds one. */
+function millioneaPackNotes(m: MillioneaPackLines): string[] {
+  return [
+    "Maswali Millionea. GGR above is the statutory figure, unchanged: every game's stakes, payouts and refunded stakes " +
+      "alike. A Millionea week's GGR is not what the operator earned on it. A week with no winner carries its whole " +
+      "sales to the jackpot, owed to the players of the next winning week; a paying week pays out the carry it claimed " +
+      "and the house's floor top-up besides its own sales. The jackpot liability movement and the house guarantee " +
+      "contribution are therefore stated beside GGR, and GGR excluding the Millionea jackpot movement takes out what the " +
+      "weeks carried to the jackpot less what they drew from it.",
+    "Millionea's fee is booked only when a week pays: a share of the whole jackpot, the house's top-up included, at the " +
+      "week's own frozen rate. TRA and GBT are booked on that fee by the same settlement, as for every game. A week's " +
+      "stakes and its settlement can fall in different months; each line is stated in the month its money moved.",
+    ...(m.forfeited > 0
+      ? ["A forfeited Millionea share was paid out as winnings and then returned to the jackpot from the winner's wallet: " +
+          "it moves the jackpot liability without being gaming revenue, so it is not taken out of GGR."]
+      : []),
+  ];
+}
+
 export async function buildGbtMonthly(generatorId: string, packPeriod: string = currentPackPeriod()): Promise<Report> {
   // Statutory GBT monthly pack: the figures MUST cover the exact calendar month
   // named by `packPeriod` (YYYY-MM), not a rolling 28-day window — otherwise the
@@ -110,6 +226,24 @@ export async function buildGbtMonthly(generatorId: string, packPeriod: string = 
   const kyc = await kycFunnel();
   const rg = await rgRosterCounts();
   const provs = await providerSummary(bounds);
+  /* ⭐ MASWALI-BUILD S6 · MB-66 (OD-08) — THE PER-GAME SPLIT, AND MILLIONEA'S JACKPOT MODEL BESIDE GGR. The ruling: statutory
+     GGR is unchanged, with added liability and guarantee lines and a note. Read over the SAME bounds as every figure
+     above; only a month that holds Millionea money gains a row, a section or a note, so every other month's pack is the
+     document it always was. ⛔ No catch, as no read above has one: a pack that cannot read its Millionea lines is not
+     built, rather than filed without them. */
+  const byGame = await moneyByGame(bounds.start, bounds.end);
+  // The split contains a failed read of the weeks (the other games keep their figures there); a FILING does not: a month
+  // whose weeks could not be read would print no jackpot line where one may belong — missing, not zero.
+  // ⛔ FAIL-CLOSED, DELIBERATELY (kept by the S6 round-2 review): it refuses EVERY month while the weeks are unreadable,
+  // one that holds no Millionea week included — only the weeks can say whether a month holds one, so no month can be told
+  // apart from one that does. The cost is a retry; the alternative is a filed pack that may be missing its jackpot lines.
+  // A month that holds a week whose record is incomplete names that week (round 3); a month that does not builds as ever.
+  if (byGame.jackpotUnread) {
+    throw new Error(byGame.jackpotProblems
+      ? `${jackpotProblemsText(byGame.jackpotProblems)}: the monthly pack was not built, since its jackpot lines would be missing, not zero. Complete the record and try again.`
+      : "The Millionea weeks could not be read, so the monthly pack was not built (its jackpot lines would be missing, not zero). Try again.");
+  }
+  const mln = holdsMillionea(byGame) ? millioneaPackLines(byGame, ggr) : null;
 
   // The EAT calendar dates (not the UTC instant, which would read as the last day of the prior
   // month since EAT midnight is 21:00 UTC the day before) — now from the coverage declaration this
@@ -157,9 +291,16 @@ export async function buildGbtMonthly(generatorId: string, packPeriod: string = 
           { metric: "Deposits — total", value: dep.amount, count: dep.count },
           { metric: "Withdrawals — total", value: wd.amount, count: wd.count },
           { metric: "Gross gaming revenue (GGR)", value: ggr, count: null },
+          // ⭐ S6 · MB-66 — beside GGR, never instead of it; the Millionea section below shows how each is made.
+          ...(mln ? [
+            { metric: "Millionea jackpot liability movement", value: mln.movement, count: null },
+            { metric: "Millionea house guarantee contribution", value: mln.guarantee, count: null },
+            { metric: "GGR excluding the Millionea jackpot movement", value: mln.ggrExJackpot, count: null },
+          ] : []),
           { metric: "Net gaming revenue (NGR)", value: ngr, count: null },
         ],
       },
+      ...(mln ? millioneaPackSections(byGame, mln, partial ? packPeriodLabel(packPeriod) : null) : []),
       {
         title: "KYC funnel",
         /* ⭐ 2026-10-10 — players verify with typed details and are approved automatically when the checks pass; an
@@ -235,6 +376,8 @@ export async function buildGbtMonthly(generatorId: string, packPeriod: string = 
       "GGR = total stakes − total payouts − refunded stakes. A refunded stake is returned in full and earns the operator nothing, so it is removed from the base.",
       "NGR = GGR − bonus cost − agent commission − payment-processing fees (pre-tax operator bottom line).",
       "Agent commission is contracted income paid to vetted agents out of the operator fee AFTER TRA and GBT levies; it does not reduce the levy base.",
+      // ⭐ S6 · MB-66 (OD-08) — the note the ruling asks for, only on a month that holds Millionea money.
+      ...(mln ? millioneaPackNotes(mln) : []),
       "All amounts in Tanzanian Shillings (TZS). Rounded to the nearest shilling.",
       // PROVENANCE — must describe what this builder actually reads.
       //
@@ -249,7 +392,12 @@ export async function buildGbtMonthly(generatorId: string, packPeriod: string = 
          Found by reading the rendered PDF of a partial month, not by a suite. */
       "Source: the Transaction, User and KYC tables, aggregated for the period stated above. " +
         "Financial figures are computed by the shared money module used by the " +
-        "operator console, so the console and this pack cannot disagree.",
+        "operator console, so the console and this pack cannot disagree." +
+        // ⭐ S6 · a month that holds Millionea money reads two more sources, and says so; every other month's line is as it was.
+        (mln
+          ? " The Millionea lines also read each week's own settlement record, and the By game split reads the Position and " +
+            "Market tables that attribute each stake to its game."
+          : ""),
       // Scope caveat — the honest disclosure of §1.9. kycFunnel() and rgRosterCounts()
       // take no window; they are as-of-generation snapshots sitting beside period-bounded
       // money. Until they are windowed, the document must say so rather than let a reader

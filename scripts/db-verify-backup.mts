@@ -39,6 +39,7 @@ import { gunzipSync } from "node:zlib";
 import pg from "pg";
 import {
   BACKUP_KEY_ENV,
+  DATABASE_LOGIC_SQL,
   NON_ASCII_FINGERPRINT_SQL,
   SHAPE_SQL,
   backupKey,
@@ -48,6 +49,8 @@ import {
   readManifest,
   recordTargetFor,
   type BackupManifest,
+  type DatabaseLogicRow,
+  databaseLogicFingerprint,
 } from "../src/lib/server/backup/core.ts";
 import type { BackupRun } from "../src/lib/server/backup/state.ts";
 import { BACKUP_STATE_KEY } from "../src/lib/server/backup/state.ts";
@@ -314,6 +317,32 @@ async function main(): Promise<void> {
         const flag = key === "uniqueIndexes" || key === "foreignKeys" ? "🔴 " : "";
         ok(`${flag}${key}`.padEnd(24), got[key] === manifest.shape[key], `${got[key]} / ${manifest.shape[key]}`);
       }
+    }
+
+    // Functions/triggers are absent from Prisma's schema diff, yet can be money
+    // fences. Compare restored catalog definitions and trigger enablement with the
+    // source catalog fingerprint captured in the artifact, not merely their count.
+    if (manifest.version >= 3 && !manifest.databaseLogic) {
+      ok("🔴 executable schema manifest".padEnd(24), false, "version 3 has no function/trigger fingerprint");
+    } else if (manifest.databaseLogic) {
+      const restoredLogic = databaseLogicFingerprint((await client.query<DatabaseLogicRow>(DATABASE_LOGIC_SQL)).rows);
+      console.log("\nExecutable database schema vs manifest:");
+      ok("database functions".padEnd(24), restoredLogic.functions === manifest.databaseLogic.functions,
+        `${restoredLogic.functions} / ${manifest.databaseLogic.functions}`);
+      ok("database triggers".padEnd(24), restoredLogic.triggers === manifest.databaseLogic.triggers,
+        `${restoredLogic.triggers} / ${manifest.databaseLogic.triggers}`);
+      ok("🔴 database logic fingerprint".padEnd(24), restoredLogic.sha256 === manifest.databaseLogic.sha256,
+        `${restoredLogic.sha256.slice(0, 12)}… / ${manifest.databaseLogic.sha256.slice(0, 12)}…`);
+    } else {
+      const fenced = await client.query<{ n: string }>(
+        `select count(*)::text as n from "_prisma_migrations"
+          where migration_name = $1 and finished_at is not null and rolled_back_at is null`,
+        ["20261018130000_maswali_product_line_fence"],
+      );
+      ok("🔴 legacy artifact fence".padEnd(24), fenced.rows[0].n === "0",
+        fenced.rows[0].n === "0"
+          ? "this older artifact predates the product-line trigger"
+          : "migration recorded as applied, but no source trigger fingerprint was captured");
     }
 
     // ── 4. Row counts ────────────────────────────────────────────────────────

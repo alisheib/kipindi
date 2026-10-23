@@ -8,9 +8,20 @@
  * counted in the lock, bonus money buying a ticket, a pool tolerance of one shilling, a guarantee not read before paying,
  * the loss limit offset by a win, a held winner paid free, a forfeit to the house, the drive's money in the public
  * jackpot, a close that does not wait for a purchase in flight, a week void that pushes no balance, refunds twice, books
- * no ledger group or leaves its tickets LIVE — runs the memory child that mutation names (`test:maswali-purchase`,
- * `test:maswali-settle`, `test:maswali-close-race` or `test:maswali-void`), and requires it to go red ON THAT
- * MUTATION'S OWN ASSERTION. Then it puts every file back byte for byte.
+ * no ledger group or leaves its tickets LIVE, and S7's adversarial fixes (a close moved on the container's clock, a
+ * correction that skips a seal's rules, an insider's second signature, a reclassified week sold, a reversed deposit paid
+ * free, the memory store's product line, OD-12's promotion) and S7-F's (a close stamped on the container's clock, a short
+ * float kept off the console, a ticket holder designated to the desk, the holiday review unread, a closed week made
+ * final, any draft made final at short notice, a week's deadlines not re-frozen at the open) and S7-F2's (a failed read
+ * thrown at the buyer, a close the database's clock refused left to the reconcile, a refused stop naming no next act, a
+ * float finding that outlives its top-up or goes silent, the holiday review ending at the open, an unreadable week's
+ * floor counted as 0, the rules form storing a percentage as typed) and S7-F9's (a winner's account taken over after its
+ * payout seen by no one, a deposit contradicted after its winner was paid leaving the share free, held twice, or held for
+ * money that cannot have bought it, and the shares read before the chain lock) — runs the memory child that mutation names
+ * (`test:maswali-purchase`, `test:maswali-settle`, `test:maswali-close-race`, `test:maswali-void`,
+ * `test:maswali-adversarial` — the last on the plant's own sections — `test:maswali-notify`, and S6-MONEY's
+ * `test:maswali-share-payout` and `test:maswali-integrity`), and requires it to go red ON THAT MUTATION'S OWN
+ * ASSERTION. Then it puts every file back byte for byte.
  *
  * Built on `red-maswali-engine.mjs`: a lock file against a concurrent run, a refusal to start when a target differs from
  * git HEAD, temp-file + rename writes, the shared anchor resolver, a green baseline of every suite it uses before any
@@ -35,6 +46,21 @@ const SUITES = {
   settle: "npx tsx scripts/lib/maswali-settle-child.mts",
   closerace: "npx tsx scripts/lib/maswali-close-race-child.mts",
   void: "npx tsx scripts/lib/maswali-void-child.mts",
+  adversarial: "npx tsx scripts/lib/maswali-adversarial-child.mts",
+  // MASWALI-BUILD S6 (lane N, review round 2): the notices' witness and their own key.
+  notify: "npx tsx scripts/lib/maswali-notify-child.mts",
+  // MASWALI-BUILD S6-MONEY · OD-13: a share paid by an officer to a winner whose account cannot sign in.
+  sharepay: "npx tsx scripts/lib/maswali-share-payout-child.mts",
+  // MASWALI-BUILD S6-MONEY · MB-35: a connected group holding a winner, alerted to Compliance before the week pays.
+  integrity: "npx tsx scripts/lib/maswali-integrity-child.mts",
+};
+/**
+ * A mutation's suite, as a command. `<suite>:<ids>` runs that child on those sections alone (`--only <ids>`, which the
+ * adversarial child reads), so a plant is caught on its own section in seconds; a bare name runs the whole child.
+ */
+const commandOf = (suite) => {
+  const [name, only] = suite.split(":");
+  return only ? `${SUITES[name]} --only ${only}` : SUITES[name];
 };
 const MEM_ENV = { ...process.env, DATABASE_URL: "", USE_PRISMA_DAL: "false", HB_MONEY_STORE: "memory" };
 const lf = (s) => s.split(CR + LF).join(LF);
@@ -48,7 +74,7 @@ const write = (p, s) => {
 };
 const run = (suite) => {
   try {
-    const out = execSync(SUITES[suite], { stdio: "pipe", encoding: "utf8", maxBuffer: 256 * 1024 * 1024, env: MEM_ENV, timeout: 20 * 60_000 });
+    const out = execSync(commandOf(suite), { stdio: "pipe", encoding: "utf8", maxBuffer: 256 * 1024 * 1024, env: MEM_ENV, timeout: 20 * 60_000 });
     return { red: false, output: out };
   } catch (e) {
     if (isConsoleStop(e)) requestStop("the child exited with STATUS_CONTROL_C_EXIT — a console stop (Ctrl-C / Ctrl-Break) reached this drive");
@@ -61,7 +87,7 @@ if (existsSync(LOCK)) {
   console.error(`REFUSING TO RUN — ${LOCK} exists, so another drive of this red is in flight. If none is, delete it.`);
   process.exit(1);
 }
-for (const d of DEFECTS) if (!SUITES[d.suite]) { console.error(`REFUSING TO RUN — ${d.name} names an unknown suite "${d.suite}"`); process.exit(1); }
+for (const d of DEFECTS) if (!SUITES[d.suite.split(":")[0]]) { console.error(`REFUSING TO RUN — ${d.name} names an unknown suite "${d.suite}"`); process.exit(1); }
 const files = [...new Set(DEFECTS.map((d) => d.file))];
 for (const f of files) {
   const head = execSync(`git show HEAD:${f}`, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });

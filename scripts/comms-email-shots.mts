@@ -58,6 +58,12 @@ const PAGES: { name: string; html: string }[] = [
   // claim. Registered since E-37 but absent from this pass until 2026-09-04:
   // the coverage check below was red and nobody had re-run the visual gate.
   { name: "updownDigestHtml", html: E.updownDigestHtml({ dayLabel: "2 Aug", rounds: 4, wins: 1, losses: 3, refunds: 0, wonPayout: 8_700, lostStake: 15_000, refundedStake: 0, staked: 20_000, returned: 8_700, net: -11_300 }) },
+  // MASWALI-BUILD S6 · the three Millionea letters: the win on both branches (gold paid, with the ladder; royal held), the
+  // rollover and the week void's refund, at their widest real content (ten winning serials, the longest Swahili lines).
+  { name: "millioneaWinHtml", html: E.millioneaWinHtml({ weekNumber: 44, serials: Array.from({ length: 10 }, (_, i) => `MLN-2026-W44-0001${String(20 + i)}`), paidTickets: 10, heldTickets: 0, shareTzs: 870_000, paidTzs: 8_700_000, score: 10, maxPerWithdrawalTzs: 5_000_000, withdrawalFeeRate: 0.015, cannotSignIn: false, ticketHref: "/millionea/tickets/MLN-2026-W44-000120" }) },
+  { name: "millioneaWinHtml.held", html: E.millioneaWinHtml({ weekNumber: 44, serials: ["MLN-2026-W44-000123"], paidTickets: 0, heldTickets: 1, shareTzs: 870_000, paidTzs: 0, score: 10, maxPerWithdrawalTzs: 5_000_000, withdrawalFeeRate: 0.015, cannotSignIn: true, ticketHref: "/millionea/tickets/MLN-2026-W44-000123" }) },
+  { name: "millioneaNotWonHtml", html: E.millioneaNotWonHtml({ weekNumber: 44, tickets: 10, spentTzs: 10_000, winningTickets: 0, winningScore: null, carried: { amountTzs: 12_345_000, intoWeekNumber: 45 } }) },
+  { name: "millioneaWeekRefundedHtml", html: E.millioneaWeekRefundedHtml({ weekNumber: 44, serials: Array.from({ length: 10 }, (_, i) => `MLN-2026-W44-0001${String(20 + i)}`), refundedTzs: 10_000 }) },
   { name: "marketCancelledRefundHtml", html: E.marketCancelledRefundHtml({ title: LONG, reason: "The published source retracted its result after settlement", amount: 25_000, bonusStakeTzs: 0, reference: "pos_41ab77cd" }) },
   { name: "marketCancelledAdminHtml", html: E.marketCancelledAdminHtml({ title: LONG, reason: "Source retracted", refundedCount: 42, refundedTzs: 1_050_000 }) },
   { name: "marketResolutionAdminHtml", html: E.marketResolutionAdminHtml({ title: LONG, closedAt: "2026-07-31T09:00:00.000Z", reviewUrl: "/admin/resolver-queue" }) },

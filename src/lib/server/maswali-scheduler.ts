@@ -6,8 +6,11 @@
  * from the poll scheduler (`nextDeadlineFor` returns null for MASWALI) and from Up & Down's, so no product can starve
  * another, the Up & Down precedent.
  *
- *   · OPEN and past its close            → `closeWeek` (the commitment, exactly once)
- *   · CLOSED / RESOLVING                 → `recomputeGate`; a void deadline passed unsealed → a proposal for an officer
+ *   · OPEN and past its close            → `closeWeek` (the commitment, exactly once); a close the database's clock
+ *     refused (a timer that fired a few ms early on the container's clock) is asked again the moment that clock arrives
+ *   · CLOSED / RESOLVING                 → `recomputeGate`; a void deadline passed unsealed → flagged for an officer, who
+ *     seals the result from its source if the source gave it by the deadline, and voids only a question that had none
+ *     (`VOID_DEADLINE_NOTE`)
  *   · a certain week void, window closed → `voidWeek` (stamped VOIDED, then every ticket refunded in one bulk transaction)
  *   · VOIDED and its refunds not landed  → `voidWeek` again, every tick until they land (R1: a refusal or a rollback
  *     after the stamp is retried, never stranded)
@@ -27,6 +30,8 @@ import { unrefundedVoids } from "./maswali-void";
 const MAX_SLEEP_MS = 5 * 60_000;
 /** The shortest sleep: an instant due sooner waits this long, so the timer never spins (a past one is no wake time). */
 const PAST_GRACE_MS = 1_000;
+/** How far past the database's arrival at a refused close the tick asks again: the clock has then passed it. */
+const CLOSE_RETRY_MARGIN_MS = 1_000;
 
 declare global {
   // eslint-disable-next-line no-var
@@ -35,8 +40,27 @@ declare global {
   var __50PICK_MLN_PROPOSED: Set<string> | undefined;
   // eslint-disable-next-line no-var
   var __50PICK_MLN_TICKING: Promise<TickReport> | undefined;
+  // eslint-disable-next-line no-var
+  var __50PICK_MLN_CLOSE_RETRY: Map<string, number> | undefined;
 }
 const proposed = (globalThis.__50PICK_MLN_PROPOSED ??= new Set<string>());
+/**
+ * ⭐ S7-F2 (L1) · week id → the container instant its refused close is asked again. The timer fires on the container's
+ * clock and the close is checked on the database's (MB-84), so a timer a few ms early met a refusal, and the next wake
+ * was the 5-minute reconcile: the week stayed OPEN, and the console's "the close is not stamped" alert could fire on a
+ * week nothing was wrong with. A refusal records closesAt − dbNow + 1 s here, from its own instant (S7-F3); the next
+ * attempt, or a week no longer OPEN, ends it.
+ */
+const closeRetry = (globalThis.__50PICK_MLN_CLOSE_RETRY ??= new Map<string, number>());
+
+/**
+ * The audit log's note on a question flagged at its void deadline (`maswali.question.void_proposed`, which the evidence
+ * pack carries). ⭐ FLOW 1 (the GUIDE lane's finding, the lead's word of 2026-10-23): the binding rule (the Millionea rules'
+ * section 5, MR-15) — the result is sealed from its source when the source gave it by the deadline; only a question with
+ * no result by then is voided. It said "an officer seals the void". `test:maswali-admin-plain` §9.6b.
+ */
+export const VOID_DEADLINE_NOTE =
+  "the void deadline passed unsealed; an officer seals the result from its source if the source gave it by the deadline, and voids the question only if it had no result by then";
 
 export function maswaliSchedulerEnabled(): boolean {
   return process.env.MASWALI_SCHEDULER !== "false";
@@ -54,6 +78,8 @@ export function runMaswaliTick(now: Date = new Date()): Promise<TickReport> {
   const run = (async (): Promise<TickReport> => {
     const report: TickReport = { closed: 0, voided: 0, proposals: 0, failures: 0 };
     const nowMs = now.getTime();
+    /** The container's instant this tick began, so a step's own instant on the tick's clock is `nowMs` + the time run. */
+    const startedMs = Date.now();
     let weeks: StoredWeek[];
     try {
       // R1 · a VOIDED week is listed only while its refunds are owed (its market not settled): resumed below, every tick.
@@ -72,8 +98,13 @@ export function runMaswaliTick(now: Date = new Date()): Promise<TickReport> {
           continue;
         }
         if (w.state === "OPEN" && Date.parse(w.closesAt) <= nowMs) {
+          // S7-F3 · the attempt consumes a recorded retry: only a fresh refusal on the database's clock records one again.
+          closeRetry.delete(w.id);
           const r = await closeWeek({ weekId: w.id, now });
           if (r.ok && !r.already) report.closed++;
+          // ⭐ S7-F3 · measured from the refusal's own instant (the tick's clock plus the time it has run), never the tick's
+          //    start: the weeks before this one may have taken longer than the shortfall and the margin.
+          if (!r.ok && "dbShortMs" in r) closeRetry.set(w.id, nowMs + (Date.now() - startedMs) + r.dbShortMs + CLOSE_RETRY_MARGIN_MS);
           continue;
         }
         if (w.state === "CLOSED" || w.state === "RESOLVING") {
@@ -85,7 +116,8 @@ export function runMaswaliTick(now: Date = new Date()): Promise<TickReport> {
             report.proposals++;
             const q = (await questionStore.listForWeek(w.id)).find((x) => x.slot === slot);
             audit({ category: "ADMIN", action: "maswali.question.void_proposed", actorId: "system_maswali", targetType: "MaswaliQuestion", targetId: q?.id ?? `${w.id}#${slot}`,
-              payload: { week: w.code, slot, voidDeadlineAt: q?.voidDeadlineAt ?? null, note: "the void deadline passed unsealed; an officer seals the void (MR-15)" } });
+              // MR-15 · the record's note is read in the audit log: words, never the code (S6-ADMIN, §M8a item 29).
+              payload: { week: w.code, slot, voidDeadlineAt: q?.voidDeadlineAt ?? null, note: VOID_DEADLINE_NOTE } });
           }
           const fresh = await weekStore.get(w.id);
           if (g.ok && g.gate.ready && g.gate.weekVoid && fresh?.objectionsCloseAt && Date.parse(fresh.objectionsCloseAt) <= nowMs) {
@@ -101,6 +133,9 @@ export function runMaswaliTick(now: Date = new Date()): Promise<TickReport> {
           payload: { code: w.code, state: w.state, error: String((e as Error)?.message ?? e).slice(0, 300) } });
       }
     }
+    // S6 · MB-93 · a week's notices a stopped run left part-sent are finished by the reconcile — launched after this tick's
+    // own work and never waited on here, so no close or void waits behind a letter or an SMS (`maswali-notify.ts`).
+    void import("./maswali-notify").then((m) => m.reconcileMillioneaNotices(now)).catch(() => {});
     return report;
   })().finally(() => { if (globalThis.__50PICK_MLN_TICKING === run) globalThis.__50PICK_MLN_TICKING = undefined; });
   globalThis.__50PICK_MLN_TICKING = run;
@@ -113,13 +148,23 @@ export function runMaswaliTick(now: Date = new Date()): Promise<TickReport> {
  * for accounting's release (or a close a failing tick did not stamp) re-armed the timer at its one-second grace, and the
  * tick took `maswali:chain` every second until someone acted. What is already due waits for the normal cadence: the timer
  * sleeps at most MAX_SLEEP_MS, and the lifecycle's reconcile runs the tick seconds after a boot and every five minutes.
+ * ⭐ S7-F2 (L1) · an OPEN week's refused close is a wake time too: the instant the tick recorded (`closeRetry`).
  */
 export async function nextMaswaliDueMs(nowMs: number = Date.now()): Promise<number | null> {
   const weeks = await weekStore.list({ states: ["OPEN", "CLOSED", "RESOLVING"] });
   let next: number | null = null;
   const take = (t: number) => { if (Number.isFinite(t) && t > nowMs && (next === null || t < next)) next = t; };
+  for (const id of closeRetry.keys()) if (!weeks.some((w) => w.id === id && w.state === "OPEN")) closeRetry.delete(id);
   for (const w of weeks) {
-    if (w.state === "OPEN") { take(Date.parse(w.closesAt)); continue; }
+    // ⭐ S7-F3 · a recorded retry stays a wake time once passed — at the grace, the one past instant that is: the tick that
+    //    recorded it may have run on past it, and the database's clock has then reached the close. Only while the close
+    //    itself is due, so the next tick's attempt consumes it and it never spins (the doctrine above stands otherwise).
+    const retry = closeRetry.get(w.id);
+    if (w.state === "OPEN") {
+      take(Date.parse(w.closesAt));
+      if (retry !== undefined && Date.parse(w.closesAt) <= nowMs) take(Math.max(retry, nowMs + PAST_GRACE_MS));
+      continue;
+    }
     if (w.objectionsCloseAt) take(Date.parse(w.objectionsCloseAt));
     for (const q of await questionStore.listForWeek(w.id)) if (q.outcome === null) take(Date.parse(q.voidDeadlineAt));
   }
@@ -173,4 +218,5 @@ export function __resetMaswaliScheduler(): void {
   globalThis.__50PICK_MLN_TIMER = undefined;
   globalThis.__50PICK_MLN_TICKING = undefined;
   proposed.clear();
+  closeRetry.clear();
 }

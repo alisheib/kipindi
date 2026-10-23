@@ -79,6 +79,9 @@ const eatMs = (iso, hhmm) => Date.parse(`${iso}T${hhmm}:00+03:00`);
 const plusDays = (iso, n) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * DAY).toISOString().slice(0, 10);
 const words = (iso) => new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${iso}T00:00:00Z`));
 
+/** S6-ADMIN · G6 · the words the builder shows for each card's category and kind (the console's tables), in their order. */
+const CATEGORY_WORD = { sports: "Sports", macro: "Macro", weather: "Weather", crypto: "Crypto", culture: "Culture", tech: "Tech", other: "Other" };
+const KIND_WORD = { sport: "Match result", price: "Price or rate", weather: "Weather reading", announcement: "Announcement" };
 /**
  * The fifteen cards. Every source is a trusted default for its category (`seedDefaultSources`), the reserves come from
  * five distinct sources (OD-14 asks three), every chance sits inside the 30–70% band, no two cards share an event, and
@@ -412,18 +415,32 @@ await part("3 · draft", async () => {
     ok("3.3c the officer edits M1 to the reviewed question before saving", (await m1.inputValue()) === ROWS[0].en);
   }
 
+  // S6-ADMIN · G6 · the builder offers its categories and kinds as words, never codes: read every option of M1's two lists.
+  {
+    const m1 = page.locator('section[aria-label="Question M1"]');
+    const optionsOf = async (name) => {
+      await m1.getByRole("combobox", { name, exact: true }).click();
+      const all = (await page.getByRole("option").allTextContents()).map((l) => clip(l));
+      await page.keyboard.press("Escape");
+      return all;
+    };
+    const cats = await optionsOf("M1 category"), kinds = await optionsOf("M1 kind");
+    ok("3.3g ⭐ G6 · the builder's categories and kinds are words, never codes",
+      cats.join("|") === Object.values(CATEGORY_WORD).join("|") && kinds.join("|") === Object.values(KIND_WORD).join("|"),
+      `categories: ${cats.join(", ")} · kinds: ${kinds.join(", ")}`);
+  }
   const cards = [];
   for (const r of ROWS) {
     const sec = page.locator(`section[aria-label="Question ${r.label}"]`);
     const field = (name) => sec.getByRole("textbox", { name, exact: true });
     await sec.scrollIntoViewIfNeeded();
-    await choose(page, sec.getByRole("combobox", { name: `${r.label} category`, exact: true }), r.category);
-    await choose(page, sec.getByRole("combobox", { name: `${r.label} kind`, exact: true }), r.kind);
+    await choose(page, sec.getByRole("combobox", { name: `${r.label} category`, exact: true }), CATEGORY_WORD[r.category]);
+    await choose(page, sec.getByRole("combobox", { name: `${r.label} kind`, exact: true }), KIND_WORD[r.kind]);
     await field("Question · English").fill(r.en);
     await field("Question · Kiswahili").fill(r.sw);
     await field("Question · 中文").fill(r.zh);
     // MB-21 · the kind's own template, read back from the box, then every {…} filled from the card's facts.
-    await sec.getByRole("button", { name: `Use the ${r.kind} template`, exact: true }).click();
+    await sec.getByRole("button", { name: `Use the ${KIND_WORD[r.kind].toLowerCase()} template`, exact: true }).click();
     const crit = field("How it resolves · English");
     const warn = sec.getByText(/^Fill every .+ before saving[.]$/);
     const template = (await until(async () => { const v = await crit.inputValue(); return /[{}]/.test(v) ? v : null; }, 10_000)) ?? "";
@@ -535,6 +552,13 @@ await part("4 · attest and open", async () => {
     ok("4.2b the second reader attests after the hard confirm: the page says the three languages are attested",
       secondReview.gated && !!attested, secondReview.refusal || await alertText(theirs.getByRole("alert")));
     await checkpoint(reader, "4.2", "06-attested-by-second-reader");
+    // S6-ADMIN · G8 · the lock chip a Trading officer reads names who works the control in the roles' own words.
+    await go(reader, "/admin/maswali");
+    const lock = card(reader, "Rules for the next week").locator("[title]").filter({ hasText: "Change the rules" }).first();
+    const lockText = clip(await lock.textContent().catch(() => ""));
+    const lockTitle = (await lock.getAttribute("title").catch(() => null)) ?? "";
+    ok("4.2c ⭐ G8 · a Trading officer's lock chip reads “Change the rules · The Owner only” and says whom to ask",
+      lockText.split("·").map((s) => s.trim()).join(" · ") === "Change the rules · The Owner only" && lockTitle === "Change the rules — The Owner only. Ask the Owner.", `${lockText} | ${lockTitle}`);
   } finally {
     await readerCtx.close();
   }
@@ -837,7 +861,7 @@ await part("6.4 · void a week", async () => {
       if (clip(await cells.nth(2).textContent()) === "Voided") already.push(clip(await cells.nth(0).textContent()));
     }
     skipped("6.4 void a week", already.length > 0
-      ? `no week waits to be voided: ${already.join(", ")} already reads Voided — the Millionea tick voided it on its own once its window had closed (maswali-scheduler.ts:81-84). Start next dev with MASWALI_SCHEDULER=false LIFECYCLE_TICKER=false to drive the console's own void.`
+      ? `no week waits to be voided: ${already.join(", ")} already reads Voided — the Millionea tick voided it on its own once its window had closed (maswali-scheduler.ts, runMaswaliTick: a certain week void, its window closed). Start next dev with MASWALI_SCHEDULER=false LIFECYCLE_TICKER=false to drive the console's own void.`
       : "no seeded week's void is certain on this store (the seed's weeks.voidable)");
     return;
   }
@@ -879,8 +903,8 @@ await part("6.5 · hold, release and forfeit a share", async () => {
     });
     const held = r.closed && await until(async () => (await heldRow(s.serial).count()) > 0, 60_000);
     const said = await screening(s.serial);
-    ok(`${tag} compliance holds the share on ${s.serial} (the confirm armed only on HOLD): it is listed under Held shares and the winner reads "compliance · …"`,
-      r.gated && !!held && said === `compliance · ${HOLD_WHY}`, r.refusal || said);
+    ok(`${tag} compliance holds the share on ${s.serial} (the confirm armed only on HOLD): it is listed under Held shares and the winner's screening reads its reason`,
+      r.gated && !!held && said === HOLD_WHY, r.refusal || said); // R2-1: the console reads the reason, never the raw mark
     await checkpoint(page, tag, tile);
   }
   await hold(A, "6.5", "19-held");
@@ -903,9 +927,41 @@ await part("6.5 · hold, release and forfeit a share", async () => {
   });
   const forfeited = r2.closed && await until(async () => (await heldRow(B.serial).getByText("Forfeited", { exact: true }).count()) > 0, 60_000);
   const said = await screening(B.serial);
-  ok(`6.5d compliance forfeits ${B.serial} to the jackpot (the confirm armed only on FORFEIT SHARE): its row reads Forfeited and the winner "forfeited · …"`,
-    r2.gated && !!forfeited && said === `forfeited · ${FORFEIT_WHY}`, r2.refusal || said);
+  ok(`6.5d compliance forfeits ${B.serial} to the jackpot (the confirm armed only on FORFEIT SHARE): its row reads Forfeited and the winner's screening reads its reason`,
+    r2.gated && !!forfeited && said === FORFEIT_WHY, r2.refusal || said); // R2-1: the reason, never the raw mark
   await checkpoint(page, "6.5d", "22-forfeited");
+});
+
+// ── 6.5g · S6-ADMIN · the console in plain words: the fee a week froze (G2), a draft discarded (G5), the archive's list (G7) ──
+await part("6.5g · the console in plain words", async () => {
+  await go(page, "/admin/maswali/pools");
+  const fees = (await page.locator("[data-fee-rate]").allTextContents()).map((t) => clip(t));
+  ok("6.5g.1 ⭐ G2 · Pools shows the fee each open week froze, as a percentage", fees.length > 0 && fees.every((f) => /^[0-9]+(?:[.][0-9]+)?%$/.test(f)), fees.join(", "));
+  await go(page, "/admin/maswali?state=DRAFT");
+  const link = region(page, "Millionea weeks").getByRole("link", { name: /^ML[ND]-/ }).first();
+  if ((await link.count()) === 0) { skipped("6.5g.2 a draft's rules and its discard", "no draft on this store"); }
+  else {
+    const code = clip(await link.textContent());
+    await link.click();
+    await settle(page);
+    const rules = clip(await card(page, "Rules if it opened now").textContent().catch(() => ""), 4000);
+    ok("6.5g.2 ⭐ G2 · a draft's page reads the rules its open would freeze, the fee at payout among them",
+      /Fee at payout [(]% of the jackpot[)] ?[0-9]/.test(rules) && rules.includes("Ticket price (TZS)") && !rules.includes("Complaint answer target"), rules.slice(0, 240));
+    await page.getByRole("button", { name: "Discard draft", exact: true }).click();
+    const r = await confirmDialog(page, `Discard ${code}?`, { word: "DISCARD", confirm: "Discard the draft", alert: (dlg) => dlg.getByRole("alert") });
+    const landed = r.closed && await until(async () => new URL(page.url()).pathname === "/admin/maswali", 60_000);
+    await checkpoint(page, "6.5g", "23-draft-discarded");
+    await go(page, `/admin/maswali?q=${encodeURIComponent(code)}`);
+    const listed = await region(page, "Millionea weeks").getByRole("link", { name: code, exact: true }).count().catch(() => -1);
+    ok(`6.5g.3 ⭐ G5 · the draft ${code} is discarded on DISCARD (the confirm armed only by the word) and leaves the list`,
+      r.gated && !!landed && listed === 0, r.refusal || `landed ${landed} · still listed ${listed}`);
+  }
+  await go(page, "/admin/maswali/evidence?state=SETTLED");
+  const shown = Number(await page.locator("[data-result-count]").getAttribute("data-result-count").catch(() => "-1"));
+  const chips = (await region(page, "Millionea weeks and their evidence").getByRole("row").locator("td:nth-child(2)").allTextContents().catch(() => [])).map((t) => clip(t));
+  ok("6.5g.4 ⭐ G7 · the evidence archive filters by state: every week it lists reads Settled",
+    shown >= 1 && chips.length === Math.min(shown, 20) && chips.every((c) => c === "Settled"), `${shown} · ${chips.join(", ")}`);
+  await checkpoint(page, "6.5g", "24-evidence-filtered");
 });
 
 // ── 6.6 · LAST: the Owner stops the product, its audit row lost (S5-FIX-SRV) ─────────────────────────────────────────

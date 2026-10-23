@@ -102,6 +102,8 @@ import { withLock } from "./locks";
 import { ALERT_KEY } from "@/lib/house-bot/constants";
 import { eraseMarketingFor, unlinkCampaignRecipients } from "./marketing/erase";
 import type { MarketingErasureCounts } from "./marketing/erase";
+// MASWALI-BUILD S6 review R2-6 (MB-67) · the seen marks' one eraser — never a week, question or ticket store.
+import { noticeStore } from "./maswali-dal";
 
 /**
  * How long the identity record is held after account closure before erasure may destroy
@@ -236,6 +238,9 @@ export type AnonymizeOutcome =
         houseBots: number;
         /** Notification rows whose quoted bot label was replaced (04 R6) — admin inboxes included. */
         houseBotNotificationsRedacted: number;
+        /** MASWALI-BUILD S6 review R2-6 · the account's Millionea seen marks deleted — display flags, not the betting
+         *  record; its tickets, weeks and questions are kept, byte for byte. */
+        millioneaSeenMarks: number;
       } & MarketingErasureCounts;
     };
 
@@ -372,7 +377,7 @@ export async function anonymizeClosedAccount(
     orphanObjectsDeleted: 0,
     agentApplicationsRedacted: 0, agentDocumentsDeleted: 0, agentDocumentObjectsFailed: 0,
     extraRequestsCleared: 0, comments: 0, notificationsDeleted: 0, notificationsRedacted: 0,
-    otps: 0, pushSubscriptions: 0, watchlistEntries: 0, houseBots: 0, houseBotNotificationsRedacted: 0,
+    otps: 0, pushSubscriptions: 0, watchlistEntries: 0, houseBots: 0, houseBotNotificationsRedacted: 0, millioneaSeenMarks: 0,
     marketingConsentWithdrawn: 0, marketingContactsEmptied: 0, marketingListMembershipsDeleted: 0, marketingStagedRowsDeleted: 0,
     campaignRecipientsUnlinked: 0,
   };
@@ -715,6 +720,8 @@ export async function anonymizeClosedAccount(
   const watched = await db.watchlist.listMarketIdsForUser(userId);
   for (const marketId of watched) await db.watchlist.remove(marketId, userId);
   counts.watchlistEntries = watched.length;
+  // R2-6 · the hub notices the account saw: a display flag, deleted. Its Millionea tickets are the betting record and stay.
+  counts.millioneaSeenMarks = await noticeStore.eraseForUser(userId);
   await removeTotp(userId);
   await clearBackupCodes(userId);
   await revokeUserSessions(userId);

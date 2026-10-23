@@ -36,6 +36,8 @@ import { positionPermalinkHref } from "@/lib/position-permalink";
 // 2026-09-13 · the identity review wait is ONE number, quoted wherever it is stated (here, the
 // officer's overdue-review alert).
 import { KYC_REVIEW_SLA_HOURS } from "@/lib/kyc-sla";
+// MASWALI-BUILD S6 · a Millionea win's withdrawal example is priced by the fee's one function (RULES §2.7, MB-11).
+import { computeWithdrawalFee } from "@/lib/payout";
 
 const FROM = "noreply@50pick.tz";
 /**
@@ -115,6 +117,9 @@ type SendInput = {
    *  so Postmark does NOT rewrite them through its click-tracking redirect — a
    *  mis-set tracking domain would otherwise send the click "nowhere". */
   trackLinks?: boolean;
+  /** The provider's own metadata on the message — a money letter carries a one-way digest of its letter's target (`letter`),
+   *  so the provider's search answers for THIS letter and no account id leaves (MASWALI-BUILD S6, rounds 8, 14 and 17). */
+  metadata?: Record<string, string>;
 };
 
 /**
@@ -234,7 +239,49 @@ export type SendResult = {
   /** `sent` · `stub` (no provider configured) · `no-address` · `suppressed` · `failed` · `unconfirmed` (a money mail
    *  withheld because the address on file was never confirmed — `sendEmailToUser`'s `confirmedOnly`, 2026-10-07). */
   reason: "sent" | "stub" | "no-address" | "suppressed" | "failed" | "unconfirmed";
+  /**
+   * What KIND of failure a `failed` is (MASWALI-BUILD S6, the lane-N review's rounds 4 and 5, M6 and MEDIUM 5) — for a
+   * caller that must send a letter at most once: `refused`, a definite answer that it was not taken, or a request that never
+   * left (a reply that refused it, a name that did not resolve, a refused connection) — worth sending again; `permanent`,
+   * the provider's inactive recipient (a hard bounce), which can never clear; `ambiguous`, a request that MAY have reached
+   * the provider (our own timeout after it went out, a 2xx with no MessageID, a gateway's answer, a connection cut mid-way)
+   * — never sent again. Absent on every other reason.
+   */
+  failure?: "refused" | "permanent" | "ambiguous";
+  /** The provider's own 5xx reply (round 15): a money letter reads it as one the provider may have taken (searched for
+   *  before any resend); every other mail reads it by `failure`, as before. */
+  serverError?: true;
 };
+
+/** The provider's one refusal that can never clear for this recipient: an inactive recipient (a hard bounce, a complaint). */
+const PERMANENT_EMAIL_ERROR_CODE = 406;
+/** ⛔ Round 6 (M1) · the positive evidence that a request with no reply NEVER LEFT: a name that did not resolve, a
+ *  connection refused or unreachable, a TLS handshake that failed before the request went out. */
+const NEVER_LEFT = /^(?:connect (?:ECONNREFUSED|EHOSTUNREACH|ENETUNREACH)|getaddrinfo (?:ENOTFOUND|EAI_AGAIN))\b|before secure TLS connection was established|unable to verify the first certificate|self[- ]signed certificate|certificate has expired|Hostname\/IP does not match certificate/i;
+/** …and the same evidence as the error's own code (round 8, L1). */
+const NEVER_LEFT_CODES: ReadonlySet<string> = new Set([
+  "ENOTFOUND", "EAI_AGAIN", "ECONNREFUSED", "EHOSTUNREACH", "ENETUNREACH", "CERT_HAS_EXPIRED", "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+  "DEPTH_ZERO_SELF_SIGNED_CERT", "SELF_SIGNED_CERT_IN_CHAIN", "ERR_TLS_CERT_ALTNAME_INVALID",
+]);
+
+/**
+ * ⭐ WHAT KIND OF FAILURE a send's error is (round 5, MEDIUM 5 and LOW 12) — read from what the provider's client carries
+ * (`transformError`: the reply's status → `.statusCode`, its ErrorCode → `.code`, its Message → `.message`).
+ */
+function failureOf(err: unknown): NonNullable<SendResult["failure"]> {
+  const e = (err ?? {}) as { message?: unknown; statusCode?: unknown; code?: unknown };
+  const message = String(e.message ?? "");
+  if (OWN_FAILURE_TEXT.some((own) => message.startsWith(own))) return "ambiguous";
+  const status = typeof e.statusCode === "number" && e.statusCode > 0 ? e.statusCode : null;
+  if (status === 502 || status === 504) return "ambiguous";
+  if (status !== null && status >= 400 && status < 600) return e.code === PERMANENT_EMAIL_ERROR_CODE ? "permanent" : "refused";
+  if (status !== null) return "ambiguous";
+  // ⛔ Round 6 (M1) · no reply: refused only on positive evidence that the request never left — anything else (a
+  // connection dropped after the reply's headers, a reset, a client's own error) may have reached the provider.
+  const cause = (e as { cause?: { code?: unknown } }).cause;
+  const codes = [e.code, cause?.code].filter((c): c is string => typeof c === "string");
+  return NEVER_LEFT.test(message.trim()) || codes.some((c) => NEVER_LEFT_CODES.has(c)) ? "refused" : "ambiguous";
+}
 
 /**
  * DELIVERY HEALTH — so a dead provider cannot be a silent one.
@@ -381,7 +428,7 @@ function recordFailure(reason: string, tag?: string): void {
   }
 }
 
-export async function sendEmail({ to, subject, html, tag, trackLinks = true }: SendInput): Promise<SendResult> {
+export async function sendEmail({ to, subject, html, tag, trackLinks = true, metadata }: SendInput): Promise<SendResult> {
   // Capture BEFORE the skip/suppression returns below, so a test can assert on
   // mail addressed to a stub/suppressed address too.
   if (outboxArmed()) {
@@ -428,6 +475,7 @@ export async function sendEmail({ to, subject, html, tag, trackLinks = true }: S
         TrackOpens: true,
         TrackLinks: trackLinks ? LinkTrackingOptions.HtmlOnly : LinkTrackingOptions.None,
         MessageStream: "outbound",
+        ...(metadata ? { Metadata: metadata } : {}),
       }),
       EMAIL_SEND_TIMEOUT_MS,
     );
@@ -442,13 +490,45 @@ export async function sendEmail({ to, subject, html, tag, trackLinks = true }: S
     recordSuccess();
     return { ok: true, messageId: res.MessageID, reason: "sent" };
   } catch (err) {
-    const e = err as Error & { statusCode?: number; errorCode?: number };
-    const detail = `${e.message} (statusCode=${e.statusCode ?? "?"}, errorCode=${e.errorCode ?? "?"})`;
+    const e = err as Error & { statusCode?: number; code?: number | string };
+    const detail = `${e.message} (statusCode=${e.statusCode ?? "?"}, errorCode=${e.code ?? "?"})`;
     console.error(`[email] Send failed: ${detail} (to=${maskEmail(to)})`);
     // A non-2xx, a timeout and a dead key all arrive here. They are all
     // "we did not deliver", and they all count toward the outage threshold.
     recordFailure(detail, tag);
-    return { ok: false, reason: "failed" };
+    // ⭐ Rounds 4 and 5 (M6, MEDIUM 5) · …and says what kind of failure it is (`failureOf`).
+    // ⭐ Round 15 · and whether the provider itself answered 5xx — a money letter's own reading (`letterOutcome`).
+    const status = (err as { statusCode?: unknown } | null)?.statusCode;
+    return { ok: false, reason: "failed", failure: failureOf(err), ...(typeof status === "number" && status >= 500 && status < 600 ? { serverError: true as const } : {}) };
+  }
+}
+
+/**
+ * ⭐ MASWALI-BUILD S6 (the lane-N review's round 6, M2, the lead's decision) · DID A LETTER GO? — the provider's own
+ * outbound-message search, by recipient and tag, from the day before `sinceIso`: `"found"` (the provider took such a
+ * letter), `"absent"` (it holds none), or null when the search cannot be read (no provider, no answer, an answer that is
+ * not one) — an unread search is never taken for either. Bounded like a send. Never throws.
+ */
+export async function findOutboundLetter(q: { to: string; tag: string; sinceIso: string; letter: string }): Promise<"found" | "absent" | null> {
+  const pm = client();
+  const since = Date.parse(q?.sinceIso ?? "");
+  if (!pm || !q?.to || !q?.tag || !q?.letter || !Number.isFinite(since)) return null;
+  try {
+    // ⭐ Round 8 (M1) · THIS letter, never another with its tag: asked by the letter's own metadata, between the day before
+    // its attempt and two days after, and each message the provider returns is compared with it.
+    const day = 24 * 60 * 60_000;
+    const fromDate = new Date(since - day).toISOString().slice(0, 10);
+    const toDate = new Date(since + 2 * day).toISOString().slice(0, 10);
+    const res = await withTimeout(pm.getOutboundMessages({
+      count: 50, offset: 0, recipient: q.to, tag: q.tag, fromDate, toDate, metadata_letter: q.letter,
+    }), EMAIL_SEND_TIMEOUT_MS);
+    const messages = (res as { Messages?: unknown } | null)?.Messages;
+    if (!Array.isArray(messages)) return null;
+    const mine = messages.some((m) => ((m as { Metadata?: Record<string, unknown> } | null)?.Metadata ?? {}).letter === q.letter);
+    return mine ? "found" : "absent";
+  } catch (err) {
+    console.error(`[email] the outbound-message search failed (to=${maskEmail(q.to)}, tag=${q.tag}):`, (err as Error)?.message ?? err);
+    return null;
   }
 }
 
@@ -796,6 +876,33 @@ async function recipientOnBreak(userId: string): Promise<boolean> {
   }
 }
 
+/** An account as its letters' address is read. */
+type LetterAddressee = { email?: string | null; emailVerifiedAt?: unknown; status?: unknown; phoneE164?: string | null } | null | undefined;
+
+/**
+ * ⭐ THE ADDRESS A LETTER TO THIS ACCOUNT GOES TO — one rule for the send (`sendEmailToUser`) and for the provider's search
+ * (`letterAddressOf`; MASWALI-BUILD S6, the lane-N review's round 7, M2): the stored address — for a `confirmedOnly`
+ * letter only a confirmed one, but any for an account that cannot sign in — else the live phone map's (never for a
+ * `confirmedOnly` letter); withheld otherwise, with why.
+ */
+function letterAddress(user: LetterAddressee, confirmedOnly: boolean): { email: string } | { withheld: "unconfirmed" | "no-address" } {
+  if (confirmedOnly && user?.email && !user.emailVerifiedAt && !CANNOT_SIGN_IN.has(String(user.status))) return { withheld: "unconfirmed" };
+  const email = user?.email || (confirmedOnly ? "" : resolvePhoneEmail(user?.phoneE164 ?? ""));
+  return email ? { email } : { withheld: "no-address" };
+}
+
+/** ⭐ The address `sendEmailToUser` sends this account's letter to, with these options — null when it would send none (or
+ *  the account cannot be read). Never throws. */
+export async function letterAddressOf(userId: string, opts: { confirmedOnly?: boolean } = {}): Promise<string | null> {
+  try {
+    const { db } = await import("./store");
+    const to = letterAddress(await db.user.findById(userId), opts.confirmedOnly === true);
+    return "email" in to ? to.email : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function sendEmailToUser(
   userId: string,
   build: (email: string, reader: LetterReader) => SendInput,
@@ -804,14 +911,15 @@ export async function sendEmailToUser(
   try {
     const { db } = await import("./store");
     const user = await db.user.findById(userId);
-    if (opts.confirmedOnly && user?.email && !user.emailVerifiedAt && !CANNOT_SIGN_IN.has(String(user.status))) {
-      console.warn(`[email] sendEmailToUser withheld — money mail to an unconfirmed address for user ${userId.slice(0, 14)}… (user.email=${maskEmail(user.email)})`);
+    const to = letterAddress(user, opts.confirmedOnly === true);
+    if ("withheld" in to && to.withheld === "unconfirmed") {
+      console.warn(`[email] sendEmailToUser withheld — money mail to an unconfirmed address for user ${userId.slice(0, 14)}… (user.email=${maskEmail(user?.email ?? "")})`);
       return { ok: false, reason: "unconfirmed" };
     }
     // Prefer the stored email; fall back to the live phone→email map so receipts
     // reach mapped accounts even if user.email was never persisted (matches how
-    // login/welcome emails resolve the address). ⛔ Never for a `confirmedOnly` send (above).
-    const email = user?.email || (opts.confirmedOnly ? "" : resolvePhoneEmail(user?.phoneE164 ?? ""));
+    // login/welcome emails resolve the address). ⛔ Never for a `confirmedOnly` send (`letterAddress`).
+    const email = "email" in to ? to.email : "";
     if (!email) {
       console.warn(`[email] sendEmailToUser skipped — no email for user ${userId.slice(0, 14)}… (user.email=${user?.email ? maskEmail(user.email) : "null"}, phone=${user?.phoneE164?.slice(0, 6) ?? "?"}…)`);
       return { ok: false, reason: "no-address" };
@@ -825,7 +933,8 @@ export async function sendEmailToUser(
     return result;
   } catch (err) {
     console.error("[email] sendEmailToUser failed:", (err as Error)?.message);
-    return { ok: false, reason: "failed" };
+    // `sendEmail` never throws: a throw here came before it — nothing was sent (round 4, M6).
+    return { ok: false, reason: "failed", failure: "refused" };
   }
 }
 
@@ -1290,6 +1399,161 @@ export function oneSidedRefundHtml({ reference, stake, marketTitle, settledAt }:
     ])}
     ${refNote()}
     ${ctaButton("/markets", "Browse markets \u00b7 Angalia masoko")}
+  `);
+}
+
+// ─── Maswali Millionea (MASWALI-BUILD S6; MB-11, MB-44, MB-68) ───────────────────────────────────────────────────────
+// Three letters, each beside its bell notice (`maswali-notify.ts` sends both, once, after the money commits). The receipt,
+// the cancel, the close and a voided question are bell notices only: the ticket page is their record (MB-93).
+
+/**
+ * ⭐ A MILLIONEA WIN — the one Millionea letter that may be gold, and gold ONLY when a share was PAID (MB-68: gold chrome on
+ * the paid-win email only — registered dual, as `proposalApprovedHtml` is). A paid win states the week, the winning
+ * tickets, the share and the total, and how a share becomes cash, which MB-11 found nothing told a winner: a confirmed
+ * email and the typed identity details, at most the per-withdrawal cap to the registered number, the RULES §2.7 fee with
+ * this win's own example. A share held for Compliance (MB-43) is the royal branch: held, and the team will contact them.
+ * ⛔ No review or AML word (MB-11), no later week's figure, no promotion (MB-44, OD-13). The ladder is the one identity
+ * sentence a money letter carries — by MB-11's ruling of 2026-10-16, the quiet rule's exception (comms-registry.ts).
+ */
+export function millioneaWinHtml({ weekNumber, serials, paidTickets, heldTickets, shareTzs, paidTzs, score, maxPerWithdrawalTzs, withdrawalFeeRate, cannotSignIn, ticketHref }: {
+  weekNumber: number;
+  /** The winning tickets' serials, paid and held alike. */
+  serials: readonly string[];
+  paidTickets: number;
+  heldTickets: number;
+  /** One ticket's share (equal for every winning ticket, MR-24), and the paid shares' sum. */
+  shareTzs: number;
+  paidTzs: number;
+  /** 10, or the final week's highest score (MR-30). */
+  score: number;
+  /** The withdrawal ladder as it stands at send time: the most per withdrawal, and the fee's live rate. */
+  maxPerWithdrawalTzs: number;
+  withdrawalFeeRate: number;
+  /** The account cannot sign in (self-excluded, closed, suspended): the team pays at the holder's request (OD-13). */
+  cannotSignIn: boolean;
+  /** The winning ticket's own page. */
+  ticketHref: string;
+}): string {
+  const won = paidTickets + heldTickets;
+  const reached = score < 10 ? `the week's highest score, ${score} of 10` : "10/10";
+  const reachedSw = score < 10 ? `alama ya juu wiki hii, ${score} kati ya 10` : "10/10";
+  const who = won === 1 ? "Your ticket" : `${won} of your tickets`;
+  const whoSw = won === 1 ? "Tiketi yako imefikia" : `Tiketi zako ${won} zimefikia`;
+  const rows = [
+    { label: "Week", value: `Week ${weekNumber}` },
+    { label: won === 1 ? "Winning ticket" : "Winning tickets", value: serials.join(", ") },
+  ];
+  const heldEn = `The share for ${heldTickets === 1 ? "1 ticket" : `${heldTickets} tickets`} is held for now; our team will contact you.`;
+  const heldSw = `Zawadi ya tiketi ${heldTickets} imeshikiliwa kwa sasa; timu yetu itawasiliana nawe.`;
+  if (paidTickets === 0) {
+    return wrap(`
+    ${eyebrow(`Millionea · Week ${weekNumber}`, `Millionea · Wiki ${weekNumber}`)}
+    ${heading(won === 1 ? "Your ticket won" : `${won} of your tickets won`)}
+    ${subtitle(`${who} reached ${reached}. ${heldEn}`)}
+    ${subtitleSw(`${whoSw} ${reachedSw}. ${heldSw}`)}
+    ${detailRows(rows)}
+    ${refNote()}
+    ${ctaButton(ticketHref, "View your ticket · Tazama tiketi yako")}
+  `);
+  }
+  const x = Math.min(paidTzs, maxPerWithdrawalTzs);
+  const arrives = x - computeWithdrawalFee(x, withdrawalFeeRate);
+  const pct = +(withdrawalFeeRate * 100).toFixed(2);
+  const ladder = cannotSignIn
+    ? `${subtitle("Our team pays it to your registered number when you ask: reply to this letter.")}
+    ${subtitleSw("Timu yetu itazilipa kwa namba yako iliyosajiliwa ukiomba: jibu barua hii.")}`
+    : `${subtitle("To withdraw your share:")}
+    ${detailRows([
+      { label: "A withdrawal needs", value: "A confirmed email · your typed identity details" },
+      { label: "At most, each time", value: `${formatTzs(maxPerWithdrawalTzs)} · to your registered number` },
+      { label: `Fee ${pct}%`, value: `${formatTzs(x)} arrives as ${formatTzs(arrives)}` },
+    ])}
+    ${subtitleSw(`Ili kutoa: barua pepe iliyothibitishwa na taarifa zako za utambulisho ulizoandika; hadi ${formatTzs(maxPerWithdrawalTzs)} kwa kila utoaji, kwa namba yako iliyosajiliwa; ada ${pct}% (${formatTzs(x)} inafika kama ${formatTzs(arrives)}).`)}`;
+  return wrapGold(`
+    ${eyebrow(`Millionea · Week ${weekNumber}`, `Millionea · Wiki ${weekNumber}`, true)}
+    ${heading(`You won ${formatTzs(paidTzs)}`, GILT)}
+    ${subtitle(`${who} reached ${reached}. The share is in your main balance.`)}
+    ${subtitleSw(`${whoSw} ${reachedSw}. Zawadi iko kwenye salio lako kuu.`)}
+    ${detailRows([
+      ...rows,
+      { label: "For your ticket", value: formatTzs(shareTzs), tone: "good" as const },
+      { label: "Your total", value: formatTzs(paidTzs), tone: "good" as const },
+    ])}
+    ${heldTickets > 0 ? `${subtitle(heldEn)}
+    ${subtitleSw(heldSw)}` : ""}
+    ${ladder}
+    ${refNote()}
+    ${ctaButton(ticketHref, "View your ticket · Tazama tiketi yako", "gold")}
+  `);
+}
+
+/**
+ * A Millionea week settled with none of the reader's tickets winning — the loss said plainly, with what it cost (LCCP, as
+ * `lossNotificationHtml` says it), and in a week no ticket won, the rollover as the S5 notice states it, told to a holder
+ * only (OD-25). ⛔ `carried` is passed only once the reader's break has been asked at send time (R8-D): on a break the
+ * caller passes null and the line is left out, never reworded.
+ */
+export function millioneaNotWonHtml({ weekNumber, tickets, spentTzs, winningTickets, winningScore, carried }: {
+  weekNumber: number;
+  tickets: number;
+  spentTzs: number;
+  /** The tickets that won the week (at 10/10, or at the final week's highest score); 0 when no ticket won. */
+  winningTickets: number;
+  /** 10, or the final week's highest score; null when no ticket won. */
+  winningScore: number | null;
+  /** A no-winner week's carry and the week it carries into (null: not opened yet) — or null on a break. */
+  carried: { amountTzs: number; intoWeekNumber: number | null } | null;
+}): string {
+  const k = winningTickets;
+  const top = winningScore !== null && winningScore < 10;
+  const into = carried?.intoWeekNumber ? { en: `into Week ${carried.intoWeekNumber}`, sw: `kwenye Wiki ${carried.intoWeekNumber}` } : { en: "to the next week", sw: "kwenye wiki inayofuata" };
+  const line = k > 0
+    ? (top
+      ? { en: `${k === 1 ? "1 ticket" : `${k} tickets`} reached the week's highest score, ${winningScore} of 10.`, sw: `${k === 1 ? "Tiketi 1 ilifikia" : `Tiketi ${k} zilifikia`} alama ya juu wiki hii, ${winningScore} kati ya 10.` }
+      : { en: `${k === 1 ? "1 ticket" : `${k} tickets`} reached 10/10 this week.`, sw: `${k === 1 ? "Tiketi 1 ilifikia" : `Tiketi ${k} zilifikia`} 10/10 wiki hii.` })
+    : carried
+      ? { en: `No ticket reached 10/10: ${formatTzs(carried.amountTzs)} carried forward ${into.en}, with no fee.`, sw: `Hakuna tiketi ya 10/10: ${formatTzs(carried.amountTzs)} imeletwa mbele ${into.sw}, bila ada.` }
+      : { en: "No ticket reached 10/10.", sw: "Hakuna tiketi ya 10/10." };
+  return wrap(`
+    ${eyebrow(`Millionea · Week ${weekNumber}`, `Millionea · Wiki ${weekNumber}`)}
+    ${heading(tickets === 1 ? "Your ticket did not win" : `Your ${tickets} tickets did not win`)}
+    ${subtitle(line.en)}
+    ${subtitleSw(line.sw)}
+    ${detailRows([
+      { label: "Week", value: `Week ${weekNumber}` },
+      { label: "Spent this week", value: `${tickets === 1 ? "1 ticket" : `${tickets} tickets`} · ${formatTzs(spentTzs)}`, tone: "bad" },
+    ])}
+    ${subtitle("Most people play for fun. If it stops feeling fun, take a break.")}
+    ${subtitleSw("Kama haifurahishi tena, pumzika.")}
+    ${refNote()}
+    ${ctaButton("/profile/responsible-gambling", "Set limits · Weka mipaka")}
+  `);
+}
+
+/**
+ * A Millionea week voided whole (MR-18) and every one of the reader's tickets refunded in full — the S5 notice's facts
+ * ("Your {n} tickets refunded · {amount} returned to main balance"). No fee, no reason a player cannot read.
+ */
+export function millioneaWeekRefundedHtml({ weekNumber, serials, refundedTzs }: {
+  weekNumber: number;
+  /** The refunded tickets' serials. */
+  serials: readonly string[];
+  refundedTzs: number;
+}): string {
+  const n = serials.length;
+  return wrap(`
+    ${eyebrow(`Millionea · Week ${weekNumber}`, `Millionea · Wiki ${weekNumber}`)}
+    ${heading(`Week ${weekNumber} voided · ${formatTzs(refundedTzs)} refunded`)}
+    ${subtitle(`More main questions voided than there were valid reserves, so the week voided whole. ${n === 1 ? "Your ticket was" : `Your ${n} tickets were`} refunded in full to your main balance.`)}
+    ${subtitleSw(`Maswali makuu batili yalizidi akiba halali, hivyo wiki imebatilishwa yote. ${n === 1 ? "Tiketi yako imerejeshwa" : `Tiketi zako ${n} zimerejeshwa`} kikamilifu kwenye salio lako kuu.`)}
+    ${detailRows([
+      { label: "Week", value: `Week ${weekNumber}` },
+      { label: n === 1 ? "Ticket" : "Tickets", value: serials.join(", ") },
+      { label: "Refunded", value: formatTzs(refundedTzs), tone: "good" },
+      { label: "Fee", value: "None" },
+    ])}
+    ${refNote()}
+    ${ctaButton("/millionea/tickets", "View your tickets · Tazama tiketi zako")}
   `);
 }
 

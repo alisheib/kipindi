@@ -8,6 +8,128 @@
 
 ---
 
+## 2026-10-23 · Marketing — a campaign not tagged Millionea is sent exactly as before the claims lint; only a Millionea campaign meets it (the build lead's ruling; MASWALI-BUILD S6-SHIP 5)
+
+**What it rules.** With Millionea at the ACTIVE ceiling in production, the S6 release ships the Millionea claims lint for
+campaigns tagged Millionea only (a name that begins with "Millionea"), which it judges in full. A campaign not tagged
+Millionea, in any language, is saved, test-sent, previewed and sent exactly as on `main` before S6: the classic marketing
+path is unchanged. The lint's untagged rules stay off (`MILLIONEA_UNTAGGED_RULES_ON`, `millionea-untagged.ts`) until the
+release that fixes and verifies the lint review's open findings (`FAILURE-INVENTORY.md` §9b); until then nothing refuses
+a campaign that speaks of Millionea without the tag, so an officer tags every Millionea campaign. Guards:
+`test:maswali-claims` §11 and `red:maswali-claims` (C42)–(C46).
+
+---
+
+## 2026-10-23 · Maswali Millionea — a winner whose account cannot sign in is paid by a Compliance officer, as OD-13 decided; the identity and email rules do not change (MASWALI-BUILD S6-MONEY)
+
+**Authority.** OD-13 (`MASWALI-PLAN.md` §9), ruled as recommended on 2026-10-16 (§ "2026-10-16 · Maswali Millionea — the
+management-reviewed proposal of 2026-10-16 is final; every 2026-08-29 Maswali ruling is void"): *"a Compliance officer
+pays to the registered number at the holder's request. Identity and email rules are unchanged. No marketing goes with
+the notice."* The build lead's ruling (k) of 2026-10-22: build the officer's payment through the freeze before ACTIVE.
+
+**What is built.** `/admin/maswali/integrity` lists "Winners who cannot sign in": every paid, unheld winning share whose
+holder's account is self-excluded, closed or suspended, until it is paid in full, with why it cannot be paid now when it
+cannot. At the holder's request a Compliance officer (control `payLockedWinnerShare`; the Owner, as everywhere) chooses the
+network of the registered number, writes how and when the holder asked, types PAY SHARE, and the share is paid through the
+platform's own withdrawal: to the number registered on the account only, at the live withdrawal fee, behind the identity
+gate and the confirmed-email gate, within the per-withdrawal maximum (a larger share in equal parts, one act each), with
+the rail's minimum and the network's kill switch as for any withdrawal. The money leaves the wallet the self-exclusion
+froze — or a closed one, whose released share has no other way out — for that payment only: the freeze is not lifted,
+and any other hold (an officer's, an identity refusal, a held share) still stops it. Each payment happens once (one key
+per ticket and attempt; two officers at once pay once, across instances too), under the Millionea chain lock and then the
+wallet lock, the share asked again inside both; each is recorded (`maswali.share.paid_locked`, COMPLIANCE, awaited and read
+back) and travels in the week's evidence pack. No marketing goes with it: the holder hears only the withdrawal's own
+service notice.
+
+**As built — what "unchanged" means here (the lead's note).** A locked winner who never verified their identity, or who
+has no confirmed email address, cannot be paid until they do: the row says so, and the act refuses. It stands on Ali's
+launch list.
+
+**Proof.** `test:maswali-share-payout` (both stores), `load:maswali-cross-instance` §6c (two officers on two processes
+pay once; a payment racing a hold), `red:maswali-money-path` (SM2)–(SM13), `test:maswali-rbac` §2 and §10.
+
+---
+
+## 2026-10-23 · The Maswali Millionea rules are published as version 2026-10-23 — the objection door as built, the reversed-payment hold and the final week's rule in its one wording (MASWALI-BUILD S6-INT 30)
+
+**Authority.** The build lead's order of 2026-10-23, after Ali switched Maswali Millionea on for everyone in production
+(`FEATURE_MILLIONEA=ACTIVE`, live since 2026-10-22 23:32 UTC on main `3aecf0edd`): "LEGAL FIRST: make sure the Millionea
+rules page … and the Terms section exist, are correct against RULES §2.12 and MR-1…MR-32 (finalWeekRule, the Yes/No
+payment-reversal/forfeiture clause S7 found missing — MB-74, the objection door's rule MR-16 as built), and render at
+ACTIVE in en/sw/zh". Nothing can be bought before a week opens (Monday 00:00 EAT at the earliest), and
+`/legal/rules/millionea` answers as a missing page in production until the S6 release reaches main.
+
+**What moved** (`src/app/legal/rules/_content-millionea.tsx`, en/sw/zh):
+- §6 "Results, the check window and settlement": a holder no longer raises a disputed result "with support" — the
+  binding text states the objection door S7-OB built (RULES §2.12 "Objections", MR-16 as built): an uncancelled holder
+  objects to one question from the ticket's page, once per question, giving a reason; an officer who had no hand in that
+  result and holds no ticket in the week rules — the result stands, or it is reversed, voided on a §5 ground, or (a voided
+  question) reinstated with its result; the holder reads the decision and the officer's note on the ticket's page; the week
+  is neither paid nor voided while an objection is undecided; the first ruling that changes the counted results grades the
+  week again and restarts the window once they are final, and a later one grades it again and keeps the window. The
+  sealing officer's own correction is unchanged.
+- §12: "Disputes" points a disputed result at the door; a new "Reversed payments" line states the hold MB-74 built
+  (S7-F9 9): a payment into an account that is reversed after a week has paid holds at once the share of every winning
+  ticket bought once it had reached the account, and after review each is released or forfeited to the jackpot. It carries
+  the Yes/No rules' clause ("payment reversals after settlement … lead to … forfeiture of winnings", their §8) into
+  Millionea as far as the system does it.
+- §11: the final week's rule is stated in its one wording — the players' sentence `finalWeekRule` in each language,
+  character for character (DESIGN_AUTHORITY §M8a item 19; RULES §2.12 quotes the English) — with the 10 of 10 week's win
+  and the fee stated beside it. What it says did not change: without a 10 of 10 the week's highest scores share the
+  jackpot equally, with no floor top-up.
+- `MILLIONEA_RULES_VERSION` 2026-10-18 → 2026-10-23; `MILLIONEA_RULES_TEXT_SHA` 46f7b1b18732 → 8375d7809e2f.
+
+**Why the version moved.** The entry of 2026-10-18 says the version moves at publication, and this is the text the
+release publishes. Version 2026-10-18 was read by staff only and bound no ticket: no week has opened.
+
+**Owed.** The Swahili and the Chinese of §6's objection paragraph, §12's reversed-payment line and its disputes line are
+new words for the native reading (Gate B); the English is binding. What the plan has and the system does not — a
+regulator-ordered refund and a Compliance week void for a fault (OD-26) — stays unstated until it is built.
+
+**Guards.** `test:maswali-fairness` L.4 (the hash), L.13 (the door, the hold and the disputes line in every language; the
+old support path refused), L.13b (the final week's rule is `finalWeekRule` in every language), L.13c (L.13's predicate
+over planted copies: each defect caught, the real text passed); D19a (`test:house-bot-disclosure` §5), re-pinned at the
+commit.
+
+---
+
+## 2026-10-23 · Terms v2026-10-23 above the Millionea ceiling — §4 names the Maswali Millionea ticket's own rules (OD-18; MASWALI-BUILD S6-INT 30)
+
+**Authority.** The same order of the build lead, 2026-10-23; OD-18 — existing terms do not change before launch, and the
+paragraph waited for the launch commit (`docs/MASWALI-ARCHITECTURE.md` §9 held its draft). The launch came by Ali's
+switch, ahead of that commit.
+
+**What moved** (`src/app/legal/terms/page.tsx`, `src/lib/terms-version.ts`, `src/lib/server/auth-service.ts`). §4 "How
+price-competition markets work" gains one paragraph in en/sw/zh: "Maswali Millionea is not a price-competition market. A
+Millionea ticket is bought and settled under its own binding rules, the Maswali Millionea Rules, as published when the
+ticket is bought. This section's statements about our commission, about a winning bet never being paid less than it
+staked, about one-sided markets and about cash-out do not apply to a ticket; the rest of these terms do." It is drawn
+inside `MillioneaWording`, so it prints — and with it the version 2026-10-23, `TERMS_VERSION_WITH_MILLIONEA` — only while
+the server's ceiling admits the product, as the privacy notice's Millionea paragraph does (§ "Privacy v2026-10-17").
+Registration stamps the version of the rendering the page showed, `termsVersionFor(millioneaWordingPublished())`. Below
+the ceiling the Terms are v2026-10-14's text, byte for byte (`TERMS_TEXT_SHA` unchanged; above it
+`TERMS_TEXT_SHA_WITH_MILLIONEA` 219c1dbcfa07). The draft's "in the version recorded on the ticket" became "as published when the
+ticket is bought": a ticket records its week and the instant its rules froze, not the rules' version (the stamp waits,
+MASWALI-ARCHITECTURE §9), and the rules bind as published at purchase (their §12).
+
+**No 14-day §10 notice and no re-acceptance.** No right a player holds, and nothing a player may do, changes: Yes/No and
+Up & Down read as they did, and the paragraph tells a new product's buyers which rules bind their ticket — rules each
+buyer accepts on purchase. ⚠️ For Ali's confirmation: the 2026-09-13/14 precedent covered changes favourable to players;
+this one leaves existing players untouched and scopes §4 for a new product.
+
+**Owed.** The Swahili and the Chinese for the native reading (Gate B).
+
+**Guards.** `test:terms-binding` §1 (the page and the registration stamp read the version of the rendering in force), §2
+(each rendering's hash beside its version), §3 (one wrapped paragraph per language inside §4, linking the rules; below the
+ceiling the Terms name Millionea nowhere), each with its controls; D19a (`test:house-bot-disclosure` §5), re-pinned at
+the commit.
+
+⟶ The stamp is built (MASWALI-BUILD S6-MONEY 1, merged into the S6 release at S6-SHIP 3): every ticket records, at its
+purchase, `MILLIONEA_RULES_VERSION` beside its week's mark (`millioneaTicketRulesStamp`; `MASWALI-PLAN.md` §8 MB-69). The
+paragraph's "as published when the ticket is bought" stays true, and the Terms text does not move.
+
+---
+
 ## 2026-10-23 · Up & Down loses its golden dot — every nav tab alike (owner ruling)
 
 **Authority.** Ali, 2026-10-23, to the MASWALI-BUILD lead session on OMEGA-COMPILE01. He reported that *"people are
@@ -129,6 +251,49 @@ switch as permission to open a week for sale before the deadlines above are met.
 
 ---
 
+## 2026-10-22 · The Maswali Millionea rules' §11 states the stale-form rule — the hash moves a sixth time inside version 2026-10-18, before anything was published (MASWALI-BUILD S6-DOCS)
+
+**Authority.** The build lead's S6-DOCS brief (2026-10-22, its open list): "the binding rules text's §11 states the
+stale-form rule (a form opened before a week was made final cannot buy) — a move of the binding text goes with its hash
+in `millionea-rules-version.ts` inside the unpublished version, with a dated COMPLIANCE line". The rule is built: the
+purchase refuses a slip that did not state the final week's rule once its week has been made final, and nothing is
+charged (`maswali-money-service.ts`, inside the market lock; `maswali-service.ts`, before it).
+
+**What moved.** §11 "If Millionea ends" gains one paragraph, in the decided words How to play's stop rule already
+carries (`ruleSunset`, en/sw/zh — one wording per truth): "Once a week is final, the Millionea page and every ticket
+form opened from then on say so, and a ticket cannot be bought from a form opened before." Nothing else moves.
+`MILLIONEA_RULES_TEXT_SHA` moves d5a5e9e3e680 → 46f7b1b18732 under `MILLIONEA_RULES_VERSION` 2026-10-18.
+
+**Why the version did not move.** The product is WITHDRAWN and the Millionea rules are served only above that ceiling:
+nobody but staff has read 2026-10-18, and no ticket has been bought under it. At publication the version moves, as the
+entry of 2026-10-18 says.
+
+---
+
+## 2026-10-22 · The Maswali Millionea rules' Chinese text names an event 事件 — the hash moves a fifth time inside version 2026-10-18, before anything was published (MASWALI-BUILD S6)
+
+**Authority.** The build lead's ruling D2 of 2026-10-22, on Ali's ruling of 2026-10-21 (§ "2026-10-21 · Maswali
+Millionea — staff preview after S5, no separate drive-week buying phase, the ruled words final, …", item 4: the decided
+words ship as they are, with no separate native review). The decided Chinese word for a Millionea event is 事件 (the S5
+visual pass's §D; the dictionary carries it since MASWALI-BUILD S6-INT 10). `src/lib/millionea-rules-version.ts` lets
+the hash move alone inside a version nobody has been served, recorded here, as § "2026-10-18 · The Maswali Millionea
+rules' text hash moved four times inside version 2026-10-18, …" records the first four moves.
+
+**What moved.** The binding rules' Chinese text takes 事件 where it said 赛事, in three places: the close's distance
+before the week's first event, the officer's limit on moving the close, and the void ground for an event begun before
+the close. The English and the Swahili texts, the meaning and every figure are unchanged. `MILLIONEA_RULES_TEXT_SHA`
+moves 4ed78ea80417 → d5a5e9e3e680 under `MILLIONEA_RULES_VERSION` 2026-10-18 (MASWALI-BUILD S6-INT 11).
+
+**Why the version did not move.** The product is WITHDRAWN, and the Millionea rules are served only above that ceiling:
+nobody but staff has read 2026-10-18, and no ticket has been bought under it. At publication the version moves, as the
+entry of 2026-10-18 says.
+
+**What does not change (the same ruling).** The live classic documents keep 赛事, their established word for a market's
+event: the general Terms §6, the Yes/No rules and the Up & Down rules. A Millionea release does not move a live classic
+legal version, so the two words standing side by side across the products is deliberate, not an inconsistency.
+
+---
+
 ## 2026-10-22 · The language-change loader wears its green and red again (owner ruling)
 
 **Authority.** Ali, 2026-10-22, relayed by the MASWALI-BUILD lead session on OMEGA-COMPILE01: *"on change language the
@@ -203,13 +368,13 @@ everyone, later if needed I tell you to activate it"*, and *"I have full GBT lic
 chose *"code only, leave the page"*.
 
 **Why it came up.** The marketing gate refused an officer's own test number. A read-only production check showed both
-of the officer's ADMIN accounts ACTIVE, 25 or over, with no self-exclusion and no break: the refusal was the automatic
-harm marker `LATE_NIGHT_PLAY` (5 and 9 bets between 00:00 and 06:00 EAT in seven days, from staff testing). The marker
-is not stored — it is recomputed from the account's transactions at every send — so nothing could be removed from the
-database, and nothing was.
+of the officer's ADMIN accounts ACTIVE, 25 or over, with no self-exclusion and no break. The refusal came from an
+automatic harm marker, set off by staff testing on those accounts. What the markers watch for is the published
+responsible-gambling policy's (`/legal/responsible-gambling` §3), and this record does not restate it (the repository is
+public; the wording follows S6-INT's rule for these records). The marker is not stored — it is recomputed from the
+account's transactions at every send — so nothing could be removed from the database, and nothing was.
 
-**What it rules.** The automatic harm markers (rapid deposits, deposits soon after placing a bet, late-night play) no
-longer stop a marketing SMS, for anyone: `MARKETING_HARM_MARKERS_MUTED = true` in `src/lib/server/marketing/rg.ts`
+**What it rules.** The automatic harm markers no longer stop a marketing SMS, for anyone: `MARKETING_HARM_MARKERS_MUTED = true` in `src/lib/server/marketing/rg.ts`
 makes the gate's default dependency report no harm flag. Everyone the markers were holding is released at the next
 send; there is no per-person state to clear.
 
@@ -364,6 +529,118 @@ each account whose holder is on it (`test:house-bot-seam` §6 (s) by hand, `test
 the catch-up statement itself proved on Postgres in §13c, the shift's population in `test:house-bot-console` 2.ca; each
 assertion proved by a planted defect, `red:house-bot-money` / `red:house-bot-console` `--only ca-`). Build record:
 [`HOUSE-BOTS.md`](HOUSE-BOTS.md) §12.22.
+
+---
+
+## 2026-10-18 · The Maswali Millionea rules' text hash moved four times inside version 2026-10-18, before anything was published (MASWALI-BUILD S6)
+
+**Authority.** `src/lib/millionea-rules-version.ts`: the binding text cannot move without the version moving with it, *"or,
+for a same-day correction inside a version published that day, record it in COMPLIANCE-DECISIONS.md and move only the
+hash"*. MASWALI-BUILD S6 lane L moved the hash four times on 2026-10-18, under the lead's routing of the adversarial
+reviews of the branch (rounds 2 to 5); this records all four, each with the lane round that made it and what the move
+gained — a gain a later round reworded is marked so, and kept. Every round is carried by the legal lane's squash commit
+902afae56, merged with its history into the S6 integration at 8620862fc (S6-INT 1); the lane's own round commits left with
+its branch, so none is named here.
+
+**What moved** — `MILLIONEA_RULES_TEXT_SHA` under `MILLIONEA_RULES_VERSION` 2026-10-18:
+
+| Move | What the binding text gained or lost |
+|---|---|
+| 707c9f634d7c (the text as first written) → 2c3c95afeeb9, round 2 | Only what is built: the check window as built (a result raised with support and corrected by its sealing officer; no formal objection); the final week's exception to the 10 of 10 and to the rollover; the remainder of a week topped up to the floor ("there is none" — revised in rounds 3 to 5); the open's default time, by an officer's open; the sunset's three cases, with no regulator refund and no whole-week void for a fault (both OD-26, Gate B; the cases revised in round 3); a week on sale printed from its own times and its questions' void hours (the void hours revised in round 4: S7 re-freezes them at the open); "week id / ticket id"; a forfeited share, and no per-ticket refund; MR-5's case under "materially wrong" (revised in round 3) |
+| 2c3c95afeeb9 → 9f864924a75e, round 3 | The planned final week, named on the hub and the home card and never opened early; the stop while no week is on sale and a week's results are being decided, exactly as `sunsetMaswali` accepts it (mln-s7-fix), and the stop between weeks; what the jackpot account keeps after the last week; the remainder of a week raised to the floor ("none of it carries" — revised in round 4); the floor scoped to a 10 of 10 week; a correction's evidence and its second officer ("needs it again" — revised in round 4); the counted set; MR-5's case under MR-15's ground; today's settings when no week is current, with a drafted week's times and void deadlines kept (revised in round 4: the open re-freezes them) |
+| 9f864924a75e → 0812ab00056f, round 4 | The remainder as the money moves: into the next jackpot as far as the week's own money covers it, the rest with the guarantee (all of it in a topped-up week; the top-up's wording revised in round 5); with no week current, today's settings and a week's own figures fixed at its open (revised in round 5: its close excepted); no public week after the last; the week's own figures named, and the withdrawal fee as the platform's current one; a corrected result confirmed when its original seal needed a second officer |
+| 0812ab00056f → 4ed78ea80417, round 5 | The guarantee's top-up covers only the fee and the shares; a final week's remainder stays in the jackpot account; a week's own figures fixed when it opens, its close excepted |
+
+(A value `b0bf9a6fa080` named in the module's notes for a while was never held by a commit: it was a working copy
+between 707c9f634d7c and 2c3c95afeeb9.)
+
+⟶ A fifth move, 4ed78ea80417 → d5a5e9e3e680, on 2026-10-22: § "2026-10-22 · The Maswali Millionea rules' Chinese text
+names an event 事件 — …".
+
+⟶ A sixth move, d5a5e9e3e680 → 46f7b1b18732, on 2026-10-22: § "2026-10-22 · The Maswali Millionea rules' §11
+states the stale-form rule — …".
+
+**Why the version did not move.** The product is WITHDRAWN: `/legal/rules/millionea` answers as the 404 to every reader
+the rollout does not admit, nobody but staff has read 2026-10-18, and no ticket has been bought under it.
+
+**⛔ At publication the version moves.** The day the rules are first served to anyone who can buy a ticket under them — the
+S8 drive's preview-pass holders, or every player at ACTIVE — `MILLIONEA_RULES_VERSION` takes that date with the hash
+then pinned, in one commit; from then on every change of the binding text moves both, as the module says. The version
+stamped on each ticket (MB-69 / OD-18) is Gate B.
+
+⟶ The stamp is built (2026-10-22, MASWALI-BUILD S6-MONEY 1): every ticket records, at its purchase,
+`MILLIONEA_RULES_VERSION` beside its week's mark (`millioneaTicketRulesStamp`; `MASWALI-PLAN.md` §8 MB-69). The
+Terms section MB-69 also asks for is built too: § "2026-10-23 · Terms v2026-10-23 above the Millionea ceiling …".
+
+---
+
+## 2026-10-18 · Stopping Maswali Millionea — a stop during a week's sales makes that week final; after its close, the next week to open (the build lead, under the owner's delegation, MR-30 / OD-03)
+
+**Authority.** MR-30 and OD-03 (`MASWALI-PLAN.md` §3, §9), ruled as recommended on 2026-10-16 (§ "2026-10-16 · Maswali
+Millionea — the management-reviewed proposal of 2026-10-16 is final; every 2026-08-29 Maswali ruling is void"): a final
+week is announced at least one full week before its sales open, and the Owner may stop the product. The build lead
+decided on 2026-10-18, under the owner's delegation for the build, how a stop is taken once a week is running, because
+the 13% fee applies to a sunset payout and not to a rollover: a stop ordered while a week's results are being decided
+could choose who is paid, with those results in view.
+
+**What it rules.** The Owner's final-week ceremony (`sunsetMaswali`, mln-s7-fix) takes a stop in one of three ways:
+1. **A planned final week** — a week not yet on sale, made final at least one full week before its sales open.
+2. **A stop while a week is on sale** makes THAT week the final week at once (no result is known yet).
+3. **A stop while no week is on sale and a week's results are being decided** (its sales closed, not yet settled)
+   cannot take that week, which settles under its own rules — a week without a 10 of 10 rolls over as always; the
+   refusal names the Owner's next act — make the NEXT week to open (once drafted) the final week, accepted even at less
+   than a full week's notice.
+A stop between weeks, while no week is on sale or being decided, takes the first path. **A final week never opens before
+the time it was announced with** (`openWeek`, mln-sf F2), and once a week is final its page and every slip opened from
+then on say so (a ticket bought before a stop ordered on sale was bought under §11, which says a week on sale may become
+final).
+If no ticket of the final week reaches 10 of 10, its highest-scoring tickets share the jackpot, and the fee applies.
+
+**What does not change.** The regulator-ordered stop (refund the current week) is a separate act, not built yet (OD-26,
+Gate B); the binding rules do not state it until it is.
+
+**Where it is stated.** `/legal/rules/millionea` §11 and How to play's sunset line (`millionea.ruleSunset`), in en, sw
+and zh; RULES.md §2.12's sunset paragraph; the operator guide's Owner row.
+
+---
+
+## 2026-10-18 · S16's "in bounds" amended for Maswali Millionea — its tickets leave the measures, and harm markers gain a count over the players without a ticket (OD-22)
+
+**Authority.** Ali, 2026-10-16: *"Accept all recommendations"* — every owner decision OD-01…OD-30 of
+[`MASWALI-PLAN.md`](MASWALI-PLAN.md) §9 is ruled as recommended there (§ "2026-10-16 · Maswali Millionea — the
+management-reviewed proposal of 2026-10-16 is final; every 2026-08-29 Maswali ruling is void"). OD-22's recommendation,
+so ruled: *"the five measures exclude Millionea. Harm markers are reported for all players and for players without a
+ticket, and judged on the latter. Amend item 8 by a dated ruling."* (MASWALI-PLAN §9 item 28; MR-31). This entry is that
+dated amendment. The build is MASWALI-BUILD S6 lane R, on `mln-s6-reports`.
+
+**What item 8 now says.** § "2026-10-14 · The owner's answers to the open points — Up & Down follow-ups, S9's held-deposit
+words, S16's "in bounds", S10–S13 accepted" item 8 defines S16's "measures in bounds": seven days after launch, each of
+the five measures at or above its 14-day pre-launch baseline, and neither harm count above its own baseline. The
+harm counts are S13's two. They are the counts of RAPID_DEPOSIT_ESCALATION and CHASING_LOSSES. Under OD-22:
+1. **A Millionea ticket is never a bet in any of the five measures**: every bet read leaves out positions on a MASWALI
+   market (`journey-measures-dal.ts`).
+2. **Measures 4b and 5 leave out a unit whose player bought a Millionea ticket** — of any week, the private drive's
+   included — **within that unit's own horizon** (5: the first-bet horizon after the sign-up; 4b: the follow-up window
+   after the deposit), in every window before and after the launch alike (lane R round 5): a ticket-only
+   sign-up or deposit cannot move them, and no figure moves once its horizon has passed; the measures view names that
+   population exactly where a unit was left out.
+3. **The harm markers gain a count over the players with no Millionea ticket**, beside the count over every player, as
+   before. That count starts when the first PUBLIC week opens (`publicAt`), never a drive week's, and reads the players
+   who had bought no Millionea ticket by the time that day was counted (any week, the private drive's included; a
+   cancelled ticket counts) — the harm watch's second row, `journey.harm.noTicket.daily`.
+   **S16's bounds are judged on the second.** The first count is unchanged.
+4. **The view marks the day the first public week opened; before it the harm watch keeps one count.**
+
+**What does not change.** The five measures' definitions, their 14-day baselines and the seven-day window stay as they
+were. So does the count over every player, which is still reported. And so does the harm detector itself.
+
+**Where it is built and guarded.** Lane R ("the S16 measures leave Millionea out and report harm twice (OD-22, MB-46)" and
+its rounds), squashed into the S6 integration as MASWALI-BUILD S6-INT 8 — the lane's own commits left with its branch —
+held by `test:journey-measures` M.12 and M.12b–M.12g,
+`test:harm-watch` H.11–H.11g, `test:journey-measures-view` V.16–V.18 and V.16e–V.20b, and `test:maswali-reporting`
+R7.2/R7.2b, with the dated notes in the S13
+plan. VODACOM-PLAN §0
+hears of it through the Vodacom lane, not from this lane (MASWALI-PLAN Gate B item 7).
 
 ---
 
@@ -626,7 +903,8 @@ questions, after asking to be asked everything at once. Each answer below is his
    didn't go through".
 7. **Withdrawals get the deposits' key door** (S9): a malformed request key is refused before anything is reserved.
 8. **S16's "measures in bounds" is defined**: seven days after launch, each of the five measures is at or above its 14-day
-   pre-launch baseline, and no harm marker (RAPID_DEPOSIT_ESCALATION, CHASING_LOSSES daily counts) rises above its own.
+   pre-launch baseline, and neither harm count rises above its own baseline. The harm counts are S13's two. They are the
+   counts of RAPID_DEPOSIT_ESCALATION and CHASING_LOSSES.
 9. **Every recommended answer in S10-PLAN, S11-PLAN, S12-PLAN and S13-PLAN "Points for Ali" is accepted** (the plans hold
    the wording), apart from the points above that he answered directly.
 10. **Not accepted as asked:** Ali asked the coordinator to delete the QA player, create its own account on production,
@@ -1669,7 +1947,7 @@ item 7. ⛔ Never remove: the self-exclusion, under-18 and responsible-gambling 
 
 ## 2026-10-07 · Marketing SMS go to anyone with a phone — consent is not a condition (the owner's FINAL rule), and his approvals given in the session
 
-⟶ superseded in part on 2026-10-21 by § "2026-10-21 · Harm markers muted for marketing SMS (owner ruling)" — item 2's "a sign of harm" only: the automatic harm markers do not stop a marketing SMS while that ruling stands.
+⟶ superseded in part on 2026-10-21 by § "2026-10-21 · Harm markers muted for marketing SMS (owner ruling)". What it supersedes is item 2's "a sign of harm" only. While that ruling stands, the automatic harm markers do not stop a marketing SMS.
 
 ⟶ superseded on 2026-10-09 by § "2026-10-09 · Privacy v2026-10-09 — a marketing SMS is sent exactly as the officer wrote it: no stop link, no 18+, no helpline, no source line (owner ruling)" — in part: no message keeps a stop link (a person's own stop is still honoured), the G5 source line is printed in no message, and Privacy §4's gateway bullet names no company.
 
@@ -4036,17 +4314,16 @@ could not tell which revision bound them. Its header now reads **Version 2026-09
 
 | §3 said | What the code does |
 |---|---|
-| "chasing losses (multiple deposits within a losing session)" | The `CHASING_LOSSES` detector counts deposits made within 30 minutes of **placing** a bet. It cannot see a loss (its own comment; ledger row 10.8, still open). |
+| "chasing losses (multiple deposits within a losing session)" | The `CHASING_LOSSES` detector counts deposits made soon after **placing** a bet. It cannot see a loss (its own comment; ledger row 10.8, still open). |
 | "declined card cycling" | No detector counts declined card attempts. Card deposits exist (Selcom checkout), but nothing watches their declines. |
-| "breaching previous self-imposed limits" | Detector 4 (`LIMIT_BREACH_HISTORY`) is a comment only and never raises a flag. |
+| "breaching previous self-imposed limits" | The `LIMIT_BREACH_HISTORY` detector is a comment only and never raises a flag. |
 | "unusual transaction patterns" | No detector. |
-| "late-night extended play" | `LATE_NIGHT_PLAY` counts bets placed 00:00–06:00 EAT. It measures bets, not time spent. |
-| "Any single marker triggers an in-app prompt; multiple markers trigger a contact from our Player Safety team within 24 hours" | `detectHarmMarkers` has one caller, `detectHarmMarkersForAllUsers`, used only by the staff console `/admin/compliance`. No player prompt, no outreach job, no 24-hour clock. `SESSION_OVERRUN` is also unreachable there: no session start is passed (the 2026-08-20 entry recorded this). |
+| "late-night extended play" | `LATE_NIGHT_PLAY` counts bets placed in the late-night band the published policy names (`/legal/responsible-gambling` §3). It measures bets, not time spent. |
+| "Any single marker triggers an in-app prompt; multiple markers trigger a contact from our Player Safety team within 24 hours" | `detectHarmMarkers` has one caller, `detectHarmMarkersForAllUsers`, used only by the staff console `/admin/compliance`. No player prompt, no outreach job, no clock for one. `SESSION_OVERRUN` is also unreachable there: no session start is passed (the 2026-08-20 entry recorded this). |
 
-**§3 now says,** in all three languages, only what runs: several deposits within an hour or a day's deposits far above
-the account's recent daily average; repeated deposits shortly after placing a bet; repeated betting late at night
-(00:00–06:00 EAT); an account showing one of these is listed for the compliance team; and the §2 tools are the player's
-to use at any time. It promises no prompt and no contact.
+**§3 now says,** in all three languages, only what runs — the patterns the detectors look for are the ones the published
+policy names (`/legal/responsible-gambling` §3), not restated here; an account showing one of these is listed for the
+compliance team; and the §2 tools are the player's to use at any time. It promises no prompt and no contact.
 
 **⛔ Do not restore** a card marker, a limit-breach marker, "unusual transaction patterns", an in-app prompt or a timed
 contact until the control exists: build it first, then write it here and re-version the policy.
@@ -4678,9 +4955,10 @@ Three of §4's four bullets remain unenforceable, and this panel is the first su
 them bite:
 
 - **"no sign-up nudges in the late-night window"** — *there is no late-night window in code.* The
-  only 00:00–06:00 EAT band on this platform is a **retrospective harm detector** in
-  `responsible-gambling.ts`, computed only when an officer opens the compliance page. Honouring
-  this bullet would mean *creating* the window, not reusing one. It was not created here.
+  only late-night band on this platform (the band the published policy names, `/legal/responsible-gambling`
+  §3) is a **retrospective harm detector** in `responsible-gambling.ts`, computed only when an officer
+  opens the compliance page. Honouring this bullet would mean *creating* the window, not reusing one. It
+  was not created here.
 - **"players under 25"** — `User.dob` exists; nothing computes an age band.
 - **"in vulnerability segments"** — no such concept exists in the code at all.
 
@@ -6375,11 +6653,11 @@ changed in this pass:
    wiring gap, not a missing input.
 2. **The `SESSION_OVERRUN` responsible-gambling detector is unreachable.**
    `responsible-gambling.ts:537-551` returns immediately unless `ctx.opts.sessionStartedAt`
-   is set, and its only caller (`:593`) passes no options. The detector that watches for a
-   player sitting on the platform past 4× their reality-check interval has never produced a
-   flag and cannot. Note the neighbouring detector #4 is *declared* an intentional no-op in
-   a comment — so this file already has a convention for saying so honestly, and #5 should
-   either be wired or labelled the same way.
+   is set, and its only caller (`responsible-gambling.ts:593`) passes no options. The detector
+   that watches for a session running well past the player's own reality-check interval has
+   never produced a flag and cannot. Note the neighbouring `LIMIT_BREACH_HISTORY` detector is
+   *declared* an intentional no-op in a comment — so this file already has a convention for
+   saying so honestly, and `SESSION_OVERRUN` should either be wired or labelled the same way.
 
 **Code:** `src/app/legal/privacy/page.tsx` (9 lines, 3 claims × 3 locales).
 **Tests:** `test:cert-d1` §2b (74/74, both negatives driven red).

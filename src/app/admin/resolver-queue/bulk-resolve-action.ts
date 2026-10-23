@@ -133,18 +133,32 @@ export async function bulkResolveMarketsAction(formData: FormData): Promise<Bulk
   try {
     const { getMarket, resolveMarket, resolvePublishCategory } = await import("@/lib/server/market-service");
     const { getEffectiveConfig, getEffectiveResolutionMode } = await import("@/lib/server/market-config");
-    const { getRequireTwoOfficerResolution } = await import("@/lib/server/resolution-policy");
+    const { readRequireTwoOfficerResolution } = await import("@/lib/server/resolution-policy");
     const { sentinelSourceVerdict } = await import("@/lib/server/market-sentinel");
     const { listSources, sourceMatchesAny, listDisabledCategories } = await import("@/lib/server/source-registry");
     const { armMarket } = await import("@/lib/server/market-scheduler");
 
     // Read ONCE for the whole batch. `isSourceTrusted` re-reads the registry per call, so
     // asking it per market is a 20× store read for one answer that cannot change mid-batch.
-    const [requireTwoOfficer, sources, disabledList] = await Promise.all([
-      getRequireTwoOfficerResolution(),
+    const [twoOfficerRead, sources, disabledList] = await Promise.all([
+      readRequireTwoOfficerResolution().catch(() => null),
       listSources({ enabledOnly: true }),
       listDisabledCategories(),
     ]);
+    // ⛔ MASWALI-BUILD S7-F3 · THE SETTING IS READ, OR THE BATCH REFUSES WHOLE, before any market is attempted: the plain
+    //    getter answered the code default (one officer) while its read failed, so every verdict below was drawn, and every
+    //    seal made, single-officer with the setting ON. `resolveMarket` refuses on its own read as well.
+    if (twoOfficerRead === null) {
+      return { ok: false, error: "The two-officer setting could not be read, so nothing was resolved. Try again in a moment." };
+    }
+    // ⛔ MASWALI-BUILD S7-F6 · THE BATCH THE BAR DREW IS THE ONE THAT RUNS (as `resolveMarketAction`): the bar posts whether
+    //    it drew the two-officer batch (`drawnTwoAdmin`). A setting that reads otherwise now (a toggle, or a read that
+    //    recovered), or a post without it, refuses the whole batch before any market is attempted: a batch confirmed as
+    //    staging never seals, and a seal is never confirmed without its warning.
+    if (String(formData.get("drawnTwoAdmin") ?? "") !== (twoOfficerRead ? "1" : "0")) {
+      return { ok: false, error: "The two-officer setting changed after this page was drawn, so nothing was resolved. Reload the page and resolve again." };
+    }
+    const requireTwoOfficer: boolean = twoOfficerRead;
     const disabledCategories = new Set(disabledList);
 
     for (const id of unique) {
@@ -260,7 +274,8 @@ export async function bulkResolveMarketsAction(formData: FormData): Promise<Bulk
        * words nobody wrote.
        */
       try {
-        const r = await resolveMarket({ marketId: id, outcome, officerId: g.userId });
+        // S7-F6 · the batch's one read decides every market's ceremony: resolveMarket never reads again.
+        const r = await resolveMarket({ marketId: id, outcome, officerId: g.userId, twoOfficerNow: async () => requireTwoOfficer });
         if (r.ok) {
           if (r.data?.stage === "stage1") {
             staged.push({ marketId: id, title, outcome, awaitingSecond: true });

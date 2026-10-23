@@ -290,6 +290,23 @@ console.log("\n§4 · each game's own contribution");
   ok("4.8 · ⚠️ …and a live pool showing its whole handle is NOT a broken book",
     live.closesTo === 39_500,
     "the market still holds the pool by design — the page must not label this a variance");
+
+  /* ⭐ MASWALI-BUILD S6 · MB-04 — A MILLIONEA WEEK HAS THREE LEGS NO POLL HAS. The §5 six-week trajectory's week 2: S
+   * 400,000 staked, the carried 300,000 and the guarantee's 300,000 in, 870,000 paid, the fee 130,000 (levies 19,500), nothing
+   * carried out. Read without its legs — what the S3 reader did — a correct week read "did not close", every week. */
+  const wk = {
+    marketId: "mkt_week2", outcome: null,
+    poolIn: 400_000, bonusIn: 0, paidOut: 870_000, bonusRefunded: 0, feeBooked: 130_000, leviesBooked: 19_500,
+  } as const;
+  const w2 = gameBook({ ...wk, carryIn: 300_000, topUp: 300_000, carryOut: 0 });
+  ok("4.9 · ⭐ a Millionea week closes to zero with its own legs: handle + carry in + top-up − paid − fee − carry out",
+    w2.closesTo === 0, `closesTo ${w2.closesTo}`);
+  ok("4.9b · ⭐ …and its net retained is the fee less the levies less the house's own top-up: −189,500 (MASWALI-PLAN §5a.3, week 2)",
+    w2.netRetained === -189_500, `netRetained ${w2.netRetained}`);
+  ok("4.9c · CONTROL — read without its legs, the same correct week reads 'did not close' by −600,000 (the weekly false alarm)",
+    gameBook(wk).closesTo === -600_000);
+  ok("4.9d · …and a week with no winner closes too: its whole sales carried out to the jackpot, no fee, nothing retained",
+    ((n) => n.closesTo === 0 && n.netRetained === 0)(gameBook({ marketId: "mkt_week1", outcome: null, poolIn: 300_000, bonusIn: 0, paidOut: 0, bonusRefunded: 0, feeBooked: 0, leviesBooked: 0, carryIn: 0, topUp: 0, carryOut: 300_000 })));
 }
 
 /* ═══ §5 · THE WATERFALL CLOSES ════════════════════════════════════════════════════════ */
@@ -342,6 +359,16 @@ console.log("\n§5 · the waterfall is an identity, not a picture");
     "collapsing them would report promotional turnover as money that came in");
   ok("5.control · a bonus-free period is unmoved by 5.6 (the split is not vacuous)",
     waterfall({ stakeIn: 100, bonusIn: 0, winningsPaid: 0, feeEarned: 0, leviesOut: 0, aggregatorOut: 0, bonusCost: 0, agentCommissionOut: 0 }).handle === 100);
+  /* ⭐ MASWALI-BUILD S6 · MB-04 — "JACKPOT GUARANTEE PAID". A floor week's fee includes 13% of the house's own top-up, so a
+   * waterfall that books the fee without the top-up reports the owner a profit on money the guarantee paid out. */
+  const floor = waterfall({
+    stakeIn: 400_000, bonusIn: 0, winningsPaid: 870_000, feeEarned: 130_000, leviesOut: 19_500, aggregatorOut: 0, bonusCost: 0,
+    agentCommissionOut: 0, guaranteePaid: 300_000,
+  });
+  ok("5.9 · ⭐ the jackpot guarantee paid is its OWN step, subtracted: 130,000 − 19,500 − 300,000 = −189,500",
+    floor.guaranteePaid === 300_000 && floor.netRetained === -189_500, `got ${floor.netRetained}`);
+  ok("5.9.control · a window with no Millionea top-up is unmoved (the step is 0 and named so)",
+    w.guaranteePaid === 0 && w.netRetained === 55_000);
 }
 
 /* ═══ §6 · RECONCILIATION HAS NO TOLERANCE ═════════════════════════════════════════════ */
@@ -426,8 +453,11 @@ console.log(`\nhouse-book: ${pass} passed, ${fails.length} failed  (of ${pass + 
  * executing printed "ALL PASS — 0 passed, 0 failed" and exited 0.
  * The floor below is the count `npm run test:house-book` PRINTED at `670a0bc1` on 2026-09-18, in the run this commit records. It
  * only ever RISES, and only to a number a run printed — never to an arithmetic guess.
+ * ⭐ RAISED 2026-10-19 (MASWALI-BUILD S6 reports, the lane's runs): 64, the count lane R's round 15 printed, and printed
+ * again on the integrated tree at its squash, MASWALI-BUILD S6-INT 8 (S6's Millionea week in the house book added its
+ * cases).
  */
-const MIN_ASSERTIONS = 58;
+const MIN_ASSERTIONS = 64;
 if (pass < MIN_ASSERTIONS) {
   console.error(`\n!! FLOOR — test:house-book ran ${pass} assertion(s), fewer than the ${MIN_ASSERTIONS} a green run printed. Cases that stop running are not cases that pass.`);
   process.exit(4);

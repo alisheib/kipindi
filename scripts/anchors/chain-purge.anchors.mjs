@@ -258,8 +258,42 @@ export const MUTATIONS = [
     why: "🔴 THE ORIGINAL DEFECT IN MINIATURE, and the reason the NEVER line is parsed rather than read. One name leaves the comment — a tidy-up, a merge, a reflow — and the file's most-read sentence quietly stops describing what the code holds. That is precisely how fourteen tables came to be documented and six enforced, for as long as the file existed",
     file: SERVICE,
     suite: "chain-purge",
-    from: ` * NEVER    · AuditLog, HouseBot, HouseBotAlertOnce, HouseBotControl, HouseBotEvent, HouseBotIntent, HouseBotPress, HouseBotRuntime, HouseBotTarget, HousePoolLedger, LedgerEntry, MaswaliTicket, Position, Transaction, UpDownObservation`,
-    to: ` * NEVER    · AuditLog, HouseBot, HouseBotAlertOnce, HouseBotControl, HouseBotEvent, HouseBotIntent, HouseBotRuntime, HouseBotTarget, HousePoolLedger, LedgerEntry, MaswaliTicket, Position, Transaction, UpDownObservation`,
+    // ⚠️ RE-ANCHORED 2026-10-18 (MASWALI-BUILD S6, MB-67): the line gained MaswaliCycle, MaswaliNoticeSeen and
+    // MaswaliQuestion with the Millionea family; the planted defect is unchanged (HouseBotPress leaves the comment).
+    from: ` * NEVER    · AuditLog, HouseBot, HouseBotAlertOnce, HouseBotControl, HouseBotEvent, HouseBotIntent, HouseBotPress, HouseBotRuntime, HouseBotTarget, HousePoolLedger, LedgerEntry, MaswaliCycle, MaswaliNoticeSeen, MaswaliQuestion, MaswaliTicket, Position, Transaction, UpDownObservation`,
+    to: ` * NEVER    · AuditLog, HouseBot, HouseBotAlertOnce, HouseBotControl, HouseBotEvent, HouseBotIntent, HouseBotRuntime, HouseBotTarget, HousePoolLedger, LedgerEntry, MaswaliCycle, MaswaliNoticeSeen, MaswaliQuestion, MaswaliTicket, Position, Transaction, UpDownObservation`,
     expect: "12: ⭐ …and every table the guard protects is named in the docblock",
+  },
+  // ─────────────────────────────────────────────────────────────────────────────────────────
+  // 2026-10-18 · MASWALI-BUILD S6 (MB-67) · MILLIONEA'S RECORD, the second family. The week, its questions and the seen
+  // marks hang off no money table, so until S6 nothing kept a purge from writing them. These are the three shapes its
+  // protection would really leave by — the house family's own three, on the new rule.
+  // ─────────────────────────────────────────────────────────────────────────────────────────
+  {
+    name: "a-millionea-exemption-is-added-to-the-predicate",
+    why: "The one-line early return, aimed at the second family: a purge that 'needs' to tidy a week's rows adds it, and the week, its questions, its tickets and the seen marks all leave the NEVER list at once — while the docblock still names them, because the list is rendered from the floors",
+    file: GUARD,
+    suite: "chain-purge",
+    from: `export function isProtectedModel(name: string): boolean {`,
+    to: `export function isProtectedModel(name: string): boolean {\n  if (name.toLowerCase().startsWith("maswali")) return false;`,
+    expect: "9: 🔴 the purge CANNOT write maswaliCycle — every mutating method is refused",
+  },
+  {
+    name: "a-millionea-table-is-added-and-forgotten",
+    why: "A new table that belongs to a week but is not named Maswali-something: it hangs off the family only by the relation it OWNS, and the runtime guard cannot see it until `prisma generate` runs — the window the schema reading exists for",
+    file: SCHEMA,
+    suite: "chain-purge",
+    from: `model MaswaliQuestion {`,
+    to: `model WeekEvidenceNote {\n  id      String       @id\n  cycleId String\n  cycle   MaswaliCycle @relation(fields: [cycleId], references: [id])\n}\n\nmodel MaswaliQuestion {`,
+    expect: "10: 🔴 MILLIONEA · every Millionea table the SCHEMA declares is protected — the week, its questions, its tickets and the seen marks",
+  },
+  {
+    name: "the-millionea-rule-follows-back-relations",
+    why: "🔴 The house family's own 2026-09-20 defect, on the new rule: follow any singular field whose type is in the family and `PredictionMarket` — which carries the back-relation `maswaliCycle` — joins it, so the purge can no longer redact any market at all",
+    file: GUARD,
+    suite: "chain-purge",
+    from: `const ownsSingular = (f: ModelShape["fields"][number]): boolean => f.ownsRelation === true && f.isList !== true;`,
+    to: `const ownsSingular = (f: ModelShape["fields"][number]): boolean => f.isList !== true;`,
+    expect: "10: 🔴 MILLIONEA · CONTROL — the market a week points at stays OUT (a back-relation is not ownership), so the purge can still redact it",
   },
 ];

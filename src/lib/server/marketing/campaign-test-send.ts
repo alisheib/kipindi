@@ -107,9 +107,12 @@ import type { WordingVersion } from "@/lib/marketing/marketing-wordings";
 import { ensureOptOutToken } from "@/lib/server/marketing/optout-service";
 import { readMarketingLiveSwitch, marketingLiveGate } from "@/lib/server/marketing/live-switch";
 import type { MarketingLiveSwitch } from "@/lib/server/marketing/live-switch";
-import { renderForRecipient, firstNameFor } from "@/lib/marketing/campaign-template";
+import { renderForRecipient, firstNameFor, withMillioneaFacts } from "@/lib/marketing/campaign-template";
 import type { CampaignTemplate, CampaignVariant, RecipientOrigin } from "@/lib/marketing/campaign-template";
 import { footerMeasurementToken } from "@/lib/marketing/footer";
+import { campaignProductOf, type MillioneaFacts } from "@/lib/marketing/millionea-claims";
+import { untaggedRulesFor } from "@/lib/server/marketing/millionea-untagged";
+import { millioneaLintEpoch, stampUntaggedRun } from "@/lib/server/marketing/millionea-lint-epoch";
 import { parseTzNumber } from "@/lib/tz-msisdn";
 import { maskPhone } from "@/lib/phone-normalize";
 import type { Role } from "@/lib/server/roles";
@@ -397,6 +400,13 @@ export type CampaignTestDeps = {
   ensureToken: (raw: string) => Promise<string | null>;
   /** THE ONE renderer (`renderForRecipient`) — swapped only by a red plant. */
   render: typeof renderForRecipient;
+  /** ⭐ HIGH 1 · the week's facts a Millionea campaign is rendered with (`millioneaMarketingFacts`, read lazily). Optional,
+   *  so a dependency set written before it still type-checks; a set without it reads none — a Millionea campaign is
+   *  then refused as unread, never sent unchecked. */
+  millioneaFacts?: () => Promise<MillioneaFacts | null>;
+  /** ⭐ S6-LINT 6 · the stamp of the instant Millionea's claims rules first ran (`millioneaLintEpoch`): a test of a campaign
+   *  not tagged Millionea under the ACTIVE ceiling is one of the doors that stamps it. Optional; it never refuses a test. */
+  millioneaLintEpoch?: (clock: Date) => Promise<string | null>;
   dispatch: typeof dispatchSlice;
   /** Undefined = the ONE gate, `mayReceiveMarketingSms` (`dispatchSlice`'s own default) — for a typed number, the ONE gate
    *  asked with this test's attestation as its context. */
@@ -434,6 +444,8 @@ export const CAMPAIGN_TEST_DEPS: CampaignTestDeps = {
   adultTestWording: () => currentWording("adult.test"),
   ensureToken: (raw) => ensureOptOutToken(raw),
   render: renderForRecipient,
+  millioneaFacts: () => import("@/lib/server/maswali-marketing").then((m) => m.millioneaMarketingFacts()),
+  millioneaLintEpoch: (clock: Date) => millioneaLintEpoch({ clock }),
   dispatch: dispatchSlice,
   gate: undefined,
   send: campaignTestSend,
@@ -462,7 +474,7 @@ async function windowOf(deps: CampaignTestDeps): Promise<SendWindowState> {
  *  chain that is never pruned. */
 const CAMPAIGN_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
-/** The stored row as the renderer reads it (U35's nullable columns as blank text). */
+/** The stored row as the renderer reads it (U35's nullable columns as blank text), and the product its name declares. */
 function templateOf(c: StoredSmsCampaign): CampaignTemplate {
   return {
     bodySw: c.bodySw ?? "",
@@ -470,6 +482,9 @@ function templateOf(c: StoredSmsCampaign): CampaignTemplate {
     nameFallbackSw: c.nameFallbackSw ?? "",
     nameFallbackEn: c.nameFallbackEn ?? "",
     sourcePhrase: c.sourcePhrase ?? "",
+    product: campaignProductOf(c.name),
+    // ⭐ S6-LINT 1 · a campaign not tagged Millionea meets the untagged rules the one decision hands this door (none while off: S6-SHIP 5).
+    untaggedRules: untaggedRulesFor(c.name),
   };
 }
 
@@ -546,7 +561,11 @@ export async function sendCampaignTest(
   if (campaign === null) return refuse("not_found", TEST_NOT_FOUND);
   foundId = campaign.id;
   if (campaign.status !== "DRAFT") return refuse("not_draft", TEST_NOT_DRAFT);
-  const template = templateOf(campaign);
+  // ⭐ HIGH 1 · a Millionea campaign is rendered with the week's facts, read now (none read: refused at step 7, in words).
+  const template = await withMillioneaFacts(templateOf(campaign), deps.millioneaFacts);
+  // ⛔ S6-LINT 6 · the untagged rules judge this test (a campaign not tagged Millionea, under the ACTIVE ceiling): their
+  // first run is stamped before they do. Never a refusal; below the ceiling, or for a tagged campaign, nothing is read.
+  if (template.untaggedRules !== undefined) await stampUntaggedRun(deps.millioneaLintEpoch, deps.now());
   if (variant === "EN" && template.bodyEn.trim() === "") return refuse("no_english_body", TEST_NO_ENGLISH);
 
   // ── 3 · ⛔ THE RECIPIENT — the officer's own account's number, or the typed one, judged by the numbering plan ──

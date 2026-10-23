@@ -134,7 +134,12 @@ async function maybeCheckMaswaliInvariants(): Promise<void> {
   if (now - tickerStartedAt < RECONCILE_BOOT_GRACE_MS) return;
   if (now - lastMaswaliInvariantsAt < RECONCILE_EVERY_MS) return;
   lastMaswaliInvariantsAt = now;
-  // The stray-hold heal first (the review's R6 residual): a MILLIONEA_SHARE freeze with no held share behind it — left by
+  // MB-74 · RD.5 (S7-F9): first, every credited deposit marked for review holds the paid shares it may have bought and
+  // that a stop between the mark and the hold left free — never one Compliance has already decided for that deposit.
+  const { healReversedDepositHolds } = await import("./maswali-settlement");
+  const reheld = await healReversedDepositHolds().catch((e) => { console.error("[lifecycle] Millionea reversal holds:", e); return null; });
+  if (reheld && reheld.held.length > 0) console.warn(`[lifecycle] Millionea: ${reheld.held.length} share(s) held for a reversed deposit`);
+  // The stray-hold heal next (the review's R6 residual): a MILLIONEA_SHARE freeze with no held share behind it — left by
   // a crash between a hold's own commit and its release — is lifted and audited; a held share is never touched.
   const { healStrayMillioneaHolds } = await import("./maswali-settlement");
   const healed = await healStrayMillioneaHolds().catch((e) => { console.error("[lifecycle] Millionea stray holds:", e); return null; });

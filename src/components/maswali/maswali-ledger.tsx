@@ -3,7 +3,8 @@ import Link from "next/link";
 import { ReceiptRow } from "@/components/ui/receipt-row";
 import { I } from "@/components/ui/glyphs";
 import { MaswaliFacts, factsOf, keepFact } from "@/components/maswali/maswali-facts";
-import { counted, weekWord } from "@/components/maswali/maswali-format";
+import { counted, remainderNoteOf, weekWord } from "@/components/maswali/maswali-format";
+import { remainderFate } from "@/lib/maswali-money";
 import { cn, fill, formatTzs, formatTzsSigned } from "@/lib/utils";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 
@@ -85,6 +86,12 @@ export type MillioneaLedgerInput = {
   refunds: { amount: number; landed: boolean } | null;
   /** The sunset's payout to the highest score (MR-30, `TOP_SCORE`): its score and its tickets. */
   sunset: { score: number; tickets: number } | null;
+  /**
+   * S7 F4 (MR-25, MR-30) · the week was Millionea's final one. A final week that paid has no next jackpot: what its money
+   * carried stays in the jackpot account (its carry row says so, never "Week N+1"), and the remainder's note says where
+   * it went from the week's own figures (`remainderFate`). Absent: not the final week.
+   */
+  finalWeek?: boolean;
 };
 
 /** One row of the ledger, as `MaswaliLedger` draws it — the kit ReceiptRow's own vocabulary. */
@@ -269,12 +276,20 @@ export function millioneaLedgerRows(t: Dict, locale: Locale, f: MillioneaLedgerI
           note: f.sunset ? noteLine(locale, factsOf(counted(f.sunset.tickets, m.sunsetScoreOne, m.sunsetScore, { score: f.sunset.score }))) : undefined,
         });
       }
-      // MR-25 · the remainder only in a week the house did not top up (P4): a top-up already left it out.
+      // MR-25 · the remainder only in a week the house did not top up (P4): a top-up already left it out. ⭐ S7 F4 · its note
+      // is where it went, read off the week's own figures (`remainderFate`: the next jackpot as far as the week's own money
+      // covered it, the guarantee for the rest; a final week's stays in the jackpot account) — never one sentence for all.
       const remainder = f.topUp === 0 ? (f.remainder ?? 0) : 0;
-      if (remainder > 0) afterIn.push({ key: "dust", label: m.remainder, note: m.remainderNote, value: money(remainder) });
       const out = f.carriedForward;
+      const final = f.finalWeek === true;
+      if (remainder > 0) {
+        afterIn.push({ key: "dust", label: m.remainder, note: remainderNoteOf(t, remainderFate(remainder, out?.amount ?? 0), final), value: money(remainder) });
+      }
       if (out && out.amount > 0) {
-        afterIn.push({ key: "out", label: carryLabel(t, locale, m.carriedOut, m.carriedOutNoWeek, out.week), value: money(out.amount), href: out.href ?? null });
+        // ⛔ S7 · a final week that paid has no next week (MR-30): what it carried stays in the jackpot account.
+        afterIn.push(final
+          ? { key: "out", label: m.keptInJackpot, value: money(out.amount) }
+          : { key: "out", label: carryLabel(t, locale, m.carriedOut, m.carriedOutNoWeek, out.week), value: money(out.amount), href: out.href ?? null });
       }
       const paid = f.paid ?? 0, carried = out?.amount ?? 0;
       // The parts, fee · paid · carried, in that order in every language; a carry of nothing is no part of the sum and is

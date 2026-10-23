@@ -155,6 +155,9 @@ const LOADER = "src/components/ui/page-loader.tsx";
  *  opening band depends on its data (a title by state, a flag by programme state). */
 const GENERIC = walk("src/app").filter((f) => f.endsWith("/loading.tsx") && !f.startsWith("src/app/admin/") && /<PageLoader\b/.test(code(f))).sort();
 const CASES: Record<string, Array<[string, string]>> = {
+  // MASWALI-BUILD S6 (2026-10-18): a Millionea ticket's inclusion proof. Its loading state renders before the gate answers,
+  // so it prints no word of the product: the title's line is held by a word bar carrying the eyebrow's own word.
+  "src/app/fairness/millionea/[serial]/loading.tsx": [["title={f.proofTitle}", "title={<GhostText>{t.footer.fairness}</GhostText>}"]],
   "src/app/profile/kyc/loading.tsx": [['title={kyc?.status === "APPROVED" ? t.profile.verifyTitleApproved : finalRefusal ? t.kycGate.titleRejected : pending ? (photoCase ? t.kycGate.titlePendingAgent : t.profile.kycCheckingTitle) : t.profile.verifyIdentity}', "title={<GhostText>{t.profile.verifyIdentity}</GhostText>}"]], // set and not shown since 2026-10-09 (1.4); 2026-10-10: a case with our team is titled by its status
 };
 /** The one route whose first band IS its data: the proposal's own head card, its h1 the proposal's title. */

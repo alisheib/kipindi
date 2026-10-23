@@ -8,6 +8,10 @@
  * ⏱ THE WEEK'S CLOCK IS INJECTED, MONEY'S IS REAL. The weeks sit two and more weeks ahead of today, opened, closed and
  *    sealed at their own instants (`now`), exactly as the S2 engine suite runs them; a purchase reads the real database
  *    clock, which is before every close. The settlement takes the week's clock for the objection window.
+ * ⏱ S7 · AND THE CLOSE TAKES THE WEEK'S CLOCK AS THE DATABASE'S (MB-84): a close that is not early is checked on the
+ *    database clock, which no week here ever reaches, so the world installs `__setMaswaliCloseClockForTests` with the
+ *    week clock the close is called with (`weekCloseClock`). A case that measures the real database clock takes it away
+ *    and puts it back (`test:maswali-adversarial` §1).
  *
  * ⛔ IMPORT ORDER IS THE CONTRACT (the stores pick Postgres or memory on first import): the child sets the environment,
  *    then awaits `loadMaswaliWorld()`.
@@ -39,6 +43,9 @@ export async function loadMaswaliWorld() {
   const { utcToZonedLocal }: Any = await import("../../src/lib/maswali-time.ts");
   const { recordLicenceBasis }: Any = await import("../../src/lib/server/maswali-licence.ts");
   const { MAIN_COUNT }: Any = await import("../../src/lib/maswali-score.ts");
+  // S7 · the close reads the week clock it is called with as the database's (the header): every suite's weeks close.
+  const weekCloseClock = (weekClockMs: number) => weekClockMs;
+  svc.__setMaswaliCloseClockForTests(weekCloseClock);
 
   const SOURCES = [
     { category: "sports", url: "https://www.nbc.co.tz/results" }, { category: "sports", url: "https://www.tff.or.tz/fixtures" },
@@ -149,6 +156,6 @@ export async function loadMaswaliWorld() {
 
   return {
     ...w, w, svc, money, settle, dal, ledger, acct, eatWeekAt, weekStartAhead, questions, setup, openWeek, slip, WIN, LOSE, buy, sell,
-    closeAndSeal, release, balanceOf,
+    closeAndSeal, release, balanceOf, weekCloseClock,
   };
 }

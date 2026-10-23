@@ -100,6 +100,10 @@ export async function register() {
     } catch (err) {
       console.error("[instrumentation] Failed to start the house-bot engine:", err);
     }
+
+    // ⛔ MASWALI-BUILD S6-LINT 6 (the lead's ruling 6, its accepted correction) · NOTHING OF THE CLAIMS LINT RUNS AT BOOT: no
+    // read or write of its stamp, no import of its modules. Its stamp is written by the first door that judges a campaign
+    // under its untagged rules (`millionea-lint-epoch.ts`), never here (`test:maswali-claims` §10 holds this file to it).
   }
 }
 

@@ -34,7 +34,7 @@ const { sentinelSourceVerdict } = await import("../src/lib/server/market-sentine
 const { listSources, sourceMatchesAny } = await import("../src/lib/server/source-registry.ts");
 const { resolvePublishCategory } = await import("../src/lib/server/market-service.ts");
 const { getEffectiveConfig, getEffectiveResolutionMode } = await import("../src/lib/server/market-config.ts");
-const { getRequireTwoOfficerResolution } = await import("../src/lib/server/resolution-policy.ts");
+const { readRequireTwoOfficerResolution } = await import("../src/lib/server/resolution-policy.ts");
 const { prisma: prismaFn } = await import("../src/lib/server/prisma.ts");
 const prisma = prismaFn();
 if (!prisma) { console.error("no prisma client"); process.exit(2); }
@@ -43,10 +43,14 @@ const rows = await prisma.predictionMarket.findMany({
   where: { status: { in: ["CLOSED", "LIVE"] }, productLine: "MARKET" },
   orderBy: { resolutionAt: "asc" },
 });
-const [requireTwoOfficer, sources] = await Promise.all([
-  getRequireTwoOfficerResolution(),
+const [twoOfficerRead, sources] = await Promise.all([
+  readRequireTwoOfficerResolution().catch(() => null),
   listSources({ enabledOnly: true }),
 ]);
+// ⛔ MASWALI-BUILD S7-F4 · THE SETTING IS READ, OR THE CENSUS DRAWS NOTHING (as the bulk action refuses, S7-F3): the plain
+//    getter answers the code default (one officer) while its read fails, so every verdict would be drawn single-officer.
+if (twoOfficerRead === null) { console.error("the two-officer setting could not be read, so no verdict is drawn"); process.exit(2); }
+const requireTwoOfficer: boolean = twoOfficerRead;
 
 const tally = new Map<string, number>();
 let eligible = 0, closed = 0;

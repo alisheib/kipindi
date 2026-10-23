@@ -1417,7 +1417,8 @@ console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-surfaces: $
  * which is worse than a red. This is the count the first green run PRINTED; it only ever RISES, and only to a
  * number a run has printed.
  */
-const MIN_ASSERTIONS = 73;
+// 2026-10-19 MASWALI-BUILD S7 · 73 → 74, what the run PRINTED on mln-sf at 3f6af84e1 (S7 rounds 4–6 merged).
+const MIN_ASSERTIONS = 74;
 if (pass < MIN_ASSERTIONS) {
   console.error(`\n!! FLOOR — test:house-bot-surfaces ran ${pass} assertion(s), fewer than the ${MIN_ASSERTIONS} a green run printed.`);
   process.exit(4);

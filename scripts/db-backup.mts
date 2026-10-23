@@ -55,6 +55,7 @@ import { createRequire } from "node:module";
 import { join } from "node:path";
 import {
   BACKUP_KEY_ENV,
+  DATABASE_LOGIC_SQL,
   MANIFEST_MARKER,
   MANIFEST_VERSION,
   NON_ASCII_FINGERPRINT_SQL,
@@ -72,6 +73,8 @@ import {
   sqlObjectNames,
   tableOrder,
   type BackupManifest,
+  type DatabaseLogicRow,
+  databaseLogicFingerprint,
 } from "../src/lib/server/backup/core.ts";
 
 /** Keep a single INSERT statement under this. Payload JSON rows can be large. */
@@ -449,6 +452,26 @@ async function main(): Promise<void> {
     fail("A foreign-key statement survived the strip and would run before the unique indexes it needs.");
   }
 
+  // Prisma's diff omits functions and triggers. Read their definitions from the SAME
+  // source snapshot as the rows, then recreate them only after data and constraints.
+  // Restoring _prisma_migrations alone would otherwise mark their migration applied
+  // while silently leaving the database without its product-line fence.
+  const logicRows = await q<DatabaseLogicRow[]>(DATABASE_LOGIC_SQL);
+  const databaseLogic = databaseLogicFingerprint(logicRows);
+  const functionSql = logicRows.filter((r) => r.kind === "function")
+    .map((r) => r.definition.trim().replace(/;?\s*$/, ";")).join("\n");
+  const triggerSql = logicRows.filter((r) => r.kind === "trigger")
+    .map((r) => {
+      const create = r.definition.trim().replace(/;?\s*$/, ";");
+      if (r.enabled === "O") return create;
+      if (!r.relation || !r.trigger_name) fail(`Trigger ${r.name} has no relation/name in the catalog.`);
+      const mode = r.enabled === "D" ? "DISABLE" : r.enabled === "R" ? "ENABLE REPLICA"
+        : r.enabled === "A" ? "ENABLE ALWAYS" : null;
+      if (!mode) fail(`Trigger ${r.name} has an unknown enabled state ${r.enabled}.`);
+      return `${create}\nALTER TABLE ${r.relation} ${mode} TRIGGER ${ident(r.trigger_name)};`;
+    }).join("\n");
+  console.log(`   ${databaseLogic.functions} user functions and ${databaseLogic.triggers} triggers taken from Postgres.\n`);
+
   // ── 3. Data — every column cast to text, Postgres doing all the formatting ──
   const parts: string[] = [];
   const tables: Record<string, number> = {};
@@ -601,6 +624,7 @@ async function main(): Promise<void> {
     schemaSha256: createHash("sha256").update(ddl).digest("hex"),
     encoding,
     shape,
+    databaseLogic,
     sourceIntegrity,
     extensions: extRows,
     tables,
@@ -679,6 +703,12 @@ async function main(): Promise<void> {
     `-- ============ SEQUENCES ============`,
     `-- Without this the first audit write after a restore collides on AuditLog.seq.`,
     sequenceResetSql(),
+    ``,
+    `-- ============ DATABASE FUNCTIONS ============`,
+    functionSql || `-- (no user functions)`,
+    ``,
+    `-- ============ DATABASE TRIGGERS ============`,
+    triggerSql || `-- (no user triggers)`,
     ``,
     `COMMIT;`,
     ``,

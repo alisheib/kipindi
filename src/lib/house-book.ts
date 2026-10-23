@@ -269,10 +269,21 @@ export type GameBookInput = {
   feeBooked: number;
   /** Σ `SETTLEMENT_TRA_LEVY` + `SETTLEMENT_GBT_LEVY` credited to the levy accounts. */
   leviesBooked: number;
+  /**
+   * ⭐ MASWALI-BUILD S6 · MB-04 — A MILLIONEA WEEK'S POOL HAS THREE LEGS NO POLL HAS, read from its own ledger rows (0, or
+   * absent, for every poll and round): the carried jackpot it drew in (`MASWALI_ROLLOVER_IN`, or the final week's
+   * `MASWALI_SUNSET`), the guarantee's floor top-up (`MASWALI_TOPUP`), and what it sent to the jackpot
+   * (`MASWALI_ROLLOVER_OUT`: a no-winner week's whole sales, a paying week's rounding). Without them every settled week
+   * read "did not close" — a false alarm, weekly.
+   */
+  carryIn?: number;
+  topUp?: number;
+  carryOut?: number;
 };
 
 export type GameBook = GameBookInput & {
-  /** ⭐ What this game left the owner: gross fee minus the levies it generated. */
+  /** ⭐ What this game left the owner: gross fee minus the levies it generated (and, for a Millionea week, minus the
+   *  house's own floor top-up, S6). */
   netRetained: number;
   /** ⚠️ `true` for a VOID — refunded, no fee. Rendered as `VOID · no fee`, never filtered. */
   noFee: boolean;
@@ -280,7 +291,8 @@ export type GameBook = GameBookInput & {
   handle: number;
   /**
    * ⭐ THE PER-GAME IDENTITY, AND IT MUST BE ZERO ON A SETTLED BOOK:
-   * `handle − paidOut − bonusRefunded − feeBooked`.
+   * `handle + carryIn + topUp − paidOut − bonusRefunded − feeBooked − carryOut` (the three legs are a Millionea week's
+   * alone, so for every poll and round it is `handle − paidOut − bonusRefunded − feeBooked`, as it always was).
    *
    * A LIVE market holds its pool by design and will show its whole handle here — that is not a
    * defect and the page must not label it one. ⛔ No tolerance: measured on production
@@ -304,12 +316,17 @@ export type GameBook = GameBookInput & {
  */
 export function gameBook(g: GameBookInput): GameBook {
   const handle = g.poolIn + g.bonusIn;
+  // ⭐ S6 · MB-04 — a Millionea week's own legs: R and U into its pool, the carry out of it. Absent, so 0, for every
+  // poll and round, whose identity is therefore exactly the one it always was.
+  const legs = (g.carryIn ?? 0) + (g.topUp ?? 0) - (g.carryOut ?? 0);
   return {
     ...g,
-    netRetained: g.feeBooked - g.leviesBooked,
+    // The house's own floor top-up is the owner's money paid into the week: the game's net is its fee less its levies
+    // less that top-up (MASWALI-PLAN §5a.1, "house result = operator net − U") — the waterfall's "Jackpot guarantee paid".
+    netRetained: g.feeBooked - g.leviesBooked - (g.topUp ?? 0),
     noFee: g.outcome === "VOID" || g.feeBooked === 0,
     handle,
-    closesTo: handle - g.paidOut - g.bonusRefunded - g.feeBooked,
+    closesTo: handle + legs - g.paidOut - g.bonusRefunded - g.feeBooked,
   };
 }
 
@@ -340,6 +357,13 @@ export type Waterfall = {
    * and the `> 0` filter is the exact bug that overstated bonus cost by 14,000).
    */
   agentCommissionOut: number;
+  /**
+   * ⭐ MASWALI-BUILD S6 · MB-04 — "JACKPOT GUARANTEE PAID": what the Millionea guarantee paid into winning weeks' pools to
+   * bring them to their floor (`MASWALI_TOPUP` out of `HOUSE:MASWALI_GUARANTEE`). The owner's own money paid out: the fee
+   * earned above includes the week's frozen fee share of it, so without this step the waterfall booked the fee on the
+   * house's own top-up as revenue. 0 in every window that holds no such week.
+   */
+  guaranteePaid: number;
   netRetained: number;
 };
 
@@ -381,17 +405,22 @@ export function waterfall(input: {
   aggregatorOut: number;
   bonusCost: number;
   agentCommissionOut: number;
+  /** ⭐ S6 · MB-04 — the Millionea guarantee's floor top-ups in the window (`Waterfall.guaranteePaid`). Absent = none. */
+  guaranteePaid?: number;
 }): Waterfall {
   const handle = input.stakeIn + input.bonusIn;
   const ggr = handle - input.winningsPaid;
+  const guaranteePaid = input.guaranteePaid ?? 0;
   return {
     ...input,
+    guaranteePaid,
     handle,
     ggr,
     // ⛔ NOT `− input.aggregatorOut`. See the block above: it was never in `feeEarned`.
     // ⭐ Agent commission IS subtracted: it is paid out of `feeEarned` (after the levies) and
     // is booked to its own account, so — unlike the gateway share — it is inside the fee.
-    netRetained: input.feeEarned - input.leviesOut - input.bonusCost - input.agentCommissionOut,
+    // ⭐ S6 · and so is the jackpot guarantee paid: the house's own money, on which `feeEarned` took the week's fee share (MB-04).
+    netRetained: input.feeEarned - input.leviesOut - input.bonusCost - input.agentCommissionOut - guaranteePaid,
   };
 }
 

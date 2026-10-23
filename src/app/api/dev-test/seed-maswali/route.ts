@@ -19,12 +19,18 @@
  * and integrity pages read the real clock. ⚠️ The Millionea tick voids a certain week once its window has closed
  * (`maswali-scheduler.ts`), so the voidable week waits for the console's own void only while no tick runs
  * (`MASWALI_SCHEDULER=false` and `LIFECYCLE_TICKER=false` on the dev server); otherwise the system voids it first.
+ * ⚠️ AND A THIRD (S7, MB-84): a close that is not early is checked on the database's clock, which no week here reaches, so
+ * the seed hands each close its week's own clock as the database's (`__setMaswaliCloseClockForTests`, as the suites'
+ * worlds do) and takes it back when it is done.
  */
 import { NextResponse } from "next/server";
 import { db } from "@/lib/server/store";
 import type { StoredUser, StoredWallet } from "@/lib/server/store";
 import { randomId } from "@/lib/server/crypto";
-import { attestParity, closeWeek, createWeek, openWeek, purchaseMaswaliTickets, readDraftVersion, rolloutSells, sealQuestion, type DraftQuestionInput } from "@/lib/server/maswali-service";
+import {
+  __setMaswaliCloseClockForTests, attestParity, closeWeek, createWeek, openWeek, purchaseMaswaliTickets, readDraftVersion, rolloutSells, sealQuestion,
+  type DraftQuestionInput,
+} from "@/lib/server/maswali-service";
 import { millioneaStateNow } from "@/lib/server/millionea-switch";
 import { weekStore } from "@/lib/server/maswali-dal";
 import { fundMaswaliGuarantee, guaranteeReader, GUARANTEE_FUND_WORD, maswaliAccountBalance } from "@/lib/server/maswali-money-service";
@@ -112,6 +118,7 @@ async function closeAndSeal(week: { id: string; closesAt: string }, ms: number, 
 
 export async function POST() {
   if (process.env.NODE_ENV === "production") return NextResponse.json({ ok: false, error: "Not available" }, { status: 404 });
+  __setMaswaliCloseClockForTests((weekClockMs) => weekClockMs);
   try {
     if (!rolloutSells(await millioneaStateNow(0), "PUBLIC")) {
       return NextResponse.json({ ok: false, error: "Start next dev with FEATURE_MILLIONEA=ACTIVE to seed Millionea weeks: the ticket arm reads the real rollout." }, { status: 409 });
@@ -167,5 +174,7 @@ export async function POST() {
     });
   } catch (err) {
     return NextResponse.json({ ok: false, error: String((err as Error).message ?? err) }, { status: 500 });
+  } finally {
+    __setMaswaliCloseClockForTests(null);
   }
 }

@@ -15,6 +15,8 @@ import { readKycMoneySnapshot } from "./kyc-money";
 import { moneyForWindow, EAT_OFFSET_MS } from "./report-money";
 import { listMarkets, ratesFor } from "./market-service";
 import { chargedFee, levySplit, type FeeModel } from "../payout";
+import { weekStore } from "./maswali-dal";
+import { lacksText, settledWeekGaps, type SettlementField } from "./maswali-week-record";
 
 /**
  * 🔴 `"today"` AND `"qtd"` ARE GONE FROM THIS UNION, AND THAT IS THE FIX — not re-pointing them.
@@ -95,7 +97,8 @@ export type PollFeeRow = {
   marketId: string;
   title: string;
   settledAt: string;
-  outcome: "YES" | "NO";
+  /** ⭐ S6 · "JACKPOT" for a Millionea week that paid: its market carries no verdict, and its fee is a share of the jackpot. */
+  outcome: "YES" | "NO" | "JACKPOT";
   feeModel: FeeModel;
   pool: number;
   fee: number;
@@ -105,7 +108,26 @@ export type SettlementFeesByPoll = {
   rows: PollFeeRow[];
   byModel: Record<FeeModel, { count: number; fee: number }>;
   totalFee: number;
+  /**
+   * ⭐ S6 · the Millionea weeks resulted in the period whose own record could not price their fee (missing, not settled,
+   * or incomplete): named so a reader can say the total is INCOMPLETE, never folded in as a fee of 0. Absent when none.
+   * Round 6 · each carries its gap: `lacks`, what a SETTLED record lacks of what this view prices it from
+   * (`settledWeekGaps`), or null when the week holds no settled record at all — said by `unreadFeesText`.
+   */
+  unread?: Array<{ marketId: string; title: string; lacks: SettlementField[] | null }>;
 };
+
+/**
+ * ⭐ S6 · round 6 — the weeks whose fee is not in the view, in words, one clause each: a settled record that lacks a
+ * figure says which (`lacksText`, "Week 42's settlement record lacks its jackpot"); a week with no settled record says
+ * that. One sentence for /admin/finance and the finance window's note.
+ */
+export function unreadFeesText(unread: NonNullable<SettlementFeesByPoll["unread"]>): string {
+  return unread.map((u) => {
+    const name = u.title || u.marketId;
+    return u.lacks ? `${name}'s settlement record lacks ${lacksText(u.lacks)}` : `${name} has no settled record of its own`;
+  }).join("; ");
+}
 
 /**
  * Per-poll settlement commission for the period, WITH the fee model each poll used
@@ -130,23 +152,45 @@ export async function settlementFeesByPoll(period: Window = "28d"): Promise<Sett
   // 6,689 on production, one per Up & Down round, growing ~360 a day — to keep the ones settled in
   // the window. The `settledAt` bounds below are the same ones the loop re-checks, so the rows kept
   // are identical (`test:report-window-reads` §5).
-  const markets = await listMarkets({ status: "RESOLVED", productLine: "ALL", settledFrom: start, settledTo: end }).catch(() => []);
+  // ⛔ S6 round 3 · NO CATCH: a failed read used to come back as "no polls settled", a figure nobody read. It throws, and
+  // each caller says the fees could not be read (/admin/finance's card, the finance window's note).
+  const markets = await listMarkets({ status: "RESOLVED", productLine: "ALL", settledFrom: start, settledTo: end });
   const rows: PollFeeRow[] = [];
+  const unread: NonNullable<SettlementFeesByPoll["unread"]> = [];
   const byModel: Record<FeeModel, { count: number; fee: number }> = {
     "loser-share": { count: 0, fee: 0 },
     "capped-commission": { count: 0, fee: 0 },
-    // Millionea weeks are skipped below until S6 teaches this view their fee; the key exists so the record is whole.
+    // ⭐ S6 · a Millionea week that paid, priced by its own model (below).
     "jackpot-payout": { count: 0, fee: 0 },
   };
   for (const m of markets) {
     if (!m.settledAt) continue; // adjudicated but not yet settled → no fee booked
     const ts = new Date(m.settledAt).getTime();
     if (ts < start || ts >= end) continue;
+    // ⭐ MASWALI-BUILD S6 · a Millionea week carries no verdict, so it is taken BEFORE the verdict test, and priced by the
+    // jackpot-payout model from its own settlement record — `chargedFee`'s week arm, round(its frozen rate × J), what its
+    // settlement booked — never by the poll mirror below (which refuses it by design). A week with no winner books no fee
+    // and is not listed. ⛔ Its record read throws rather than drop a fee from the total; and a resulted week whose record
+    // is missing, unsettled or lacks what this view prices it from (`settledWeekGaps`: its winners and its jackpot — only
+    // those, round 5) is named as UNREAD, never priced at 0 — with its gap (round 6), so its words say what it lacks.
+    if (m.productLine === "MASWALI") {
+      const w = await weekStore.getByMarketId(m.id);
+      if (!w || w.state !== "SETTLED") { unread.push({ marketId: m.id, title: m.titleEn, lacks: null }); continue; }
+      const gaps = settledWeekGaps(w, ["winningTickets", "jackpot"]);
+      if (gaps.length > 0) { unread.push({ marketId: m.id, title: m.titleEn, lacks: gaps }); continue; }
+      if (!w.winningTickets) continue;
+      const wr = ratesFor(m);
+      const wfee = Math.round(chargedFee({ yesPool: m.yesPool, noPool: m.noPool, productLine: "MASWALI", week: { state: "SETTLED", jackpot: w.jackpot, winningTickets: w.winningTickets } }, wr).fee);
+      rows.push({
+        marketId: m.id, title: m.titleEn, settledAt: m.settledAt, outcome: "JACKPOT", feeModel: "jackpot-payout",
+        // A paying week's jackpot was checked present just above (`settledWeekGaps`).
+        pool: Math.round(w.jackpot as number), fee: wfee, operatorNet: levySplit(wfee, wr).operatorNet,
+      });
+      byModel["jackpot-payout"].count += 1;
+      byModel["jackpot-payout"].fee += wfee;
+      continue;
+    }
     if (m.resolvedOutcome !== "YES" && m.resolvedOutcome !== "NO") continue; // VOID = refund, 0 fee
-    // ⛔ S0.5 · a Millionea week's fee is the jackpot-payout model, read from its settlement columns, and this view
-    // learns it in S6 — before any week can settle (MASWALI-PLAN §7b corrections). Until then it is named and skipped
-    // here, never run through the poll mirror below (which throws on it by design).
-    if (m.productLine === "MASWALI") continue;
     const rates = ratesFor(m);
     const fb = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: m.resolvedOutcome, productLine: m.productLine }, rates);
     if (fb.refunded) continue; // one side only: every stake refunded at 0 fee (settleMarket's one-sided branch)
@@ -167,7 +211,7 @@ export async function settlementFeesByPoll(period: Window = "28d"): Promise<Sett
     byModel[model].fee += fee;
   }
   rows.sort((a, b) => new Date(b.settledAt).getTime() - new Date(a.settledAt).getTime());
-  return { rows, byModel, totalFee: rows.reduce((s, r) => s + r.fee, 0) };
+  return { rows, byModel, totalFee: rows.reduce((s, r) => s + r.fee, 0), ...(unread.length ? { unread } : {}) };
 }
 
 export async function depositsTotal(period: Window = "28d") {

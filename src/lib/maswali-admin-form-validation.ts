@@ -44,12 +44,17 @@ export function sunsetChoices(weeks: readonly SunsetCandidate[], raw: string): {
   return { rows: matches.slice(0, SUNSET_MATCH_LIMIT), total: matches.length, needsLookup };
 }
 
-/** Review the exact target and the consequence before the typed final-week confirmation. */
+/**
+ * Review the exact target and the consequence before the typed final-week confirmation. A draft's notice is the stop's own
+ * rule (`sunsetMaswali`, S7-F): a full week — or, while a closed week's results are being decided and no week is on sale,
+ * less for the next week to open, its buyers told at purchase.
+ */
 export function sunsetConfirmText(week: SunsetCandidate): { title: string; body: string } {
   return {
     title: `Make ${week.code} the final week?`,
     body: week.state === "DRAFT"
-      ? `${week.code} is a draft. The service requires a full week's notice before it opens. Once this final week runs, no later week can open; if no ticket gets 10 of 10, the top score shares the jackpot.`
+      // OD-03 · a final week is announced a full week before it opens. ⛔ Words, never the code (S6-ADMIN, §M8a item 29).
+      ? `${week.code} is a draft. The service requires a full week's notice before it opens — or, while a closed week's results are being decided and no week is on sale, less if it is the next week to open. Once this final week runs, no later week can open; if no ticket gets 10 of 10, the top score shares the jackpot.`
       : `${week.code} becomes final at once. Once this final week runs, no later week can open; if no ticket gets 10 of 10, the top score shares the jackpot.`,
   };
 }

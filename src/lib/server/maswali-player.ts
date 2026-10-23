@@ -607,6 +607,10 @@ export type MillioneaHub = {
   paused: boolean;
   /** MR-30 · LIVE; ENDING (a final week runs); RETIRED (Millionea has ended); PASSES_ON (the next week becomes final). */
   life: "LIVE" | "ENDING" | "RETIRED" | "PASSES_ON";
+  /** MR-30 · OD-03 · THE ANNOUNCEMENT: the public final week while it is still a draft — its code and the time it was
+   *  announced to open, which it never opens before (`openWeek`). Null once it opens (it is then `week`, and says so
+   *  itself), on the drive line, and whenever no final week waits to open. */
+  finalAhead: { code: string; opensAt: string } | null;
   /** No week on sale: when the template opens the next one (MB-84 — no pre-sale). A fact of the published schedule, never
    *  a promise a week will open (a week may be skipped, OD-27). Null while a week sells, and while Millionea is ending
    *  (a final week runs, so nothing after it opens) or has ended (S5 review L2). */
@@ -678,14 +682,19 @@ export async function millioneaHub(viewer: MillioneaViewer, now: Date = new Date
   }
   const paused = getSalesPause().paused;
   let life: MillioneaHub["life"] = "LIVE";
-  try { life = (await sunsetState()).kind; } catch { life = "LIVE"; }
+  let finalAhead: MillioneaHub["finalAhead"] = null;
+  try {
+    const sun = await sunsetState();
+    life = sun.kind;
+    if (sun.kind === "ENDING" && sun.week.state === "DRAFT" && line === "PUBLIC") finalAhead = { code: sun.week.code, opensAt: sun.week.opensAt };
+  } catch { life = "LIVE"; }
   return {
     line,
     week: lead ? await hubWeekOf(lead, viewer, nowMs, paused) : null,
     grading: other ? await hubWeekOf(other, viewer, nowMs, paused) : null,
     lastWeek: last ? await summaryOf(last) : null,
     lastWeekIsPrevious,
-    paused, life,
+    paused, life, finalAhead,
     nextOpensAt: open || life === "ENDING" || life === "RETIRED" ? null : templateNextOpen(nowMs),
     notices: viewer.userId ? await millioneaNotices(viewer.userId, line).catch(() => []) : [],
     asOf: now.toISOString(),
@@ -724,10 +733,16 @@ export async function millioneaSlip(viewer: MillioneaViewer, now: Date = new Dat
   const terms = await termsOf(week);
   if (!terms) return null;
   const qs = await questionStore.listForWeek(week.id);
-  let held: number | null = null, balance: number | null = null, staff = false;
+  let held: number | null = null, balance: number | null = null, staff = false, frozen = false;
   if (viewer.userId) {
     held = await ticketStore.countLiveForUser(week.id, viewer.userId);
-    try { balance = (await db.wallet.findByUserId(viewer.userId))?.balance ?? null; } catch { balance = null; }
+    try {
+      const wallet = await db.wallet.findByUserId(viewer.userId);
+      balance = wallet?.balance ?? null;
+      // ⭐ FLOW 10 (the lead's ruling of 2026-10-23): a held wallet hears the buy's own refusal before any pick — the buy's
+      // own condition (`purchaseMaswaliTickets`: a wallet whose status is not ACTIVE is `wallet_frozen`); the buy still decides.
+      frozen = !!wallet && wallet.status !== "ACTIVE";
+    } catch { balance = null; }
     try { staff = isStaffRole((await db.user.findById(viewer.userId))?.role); } catch { staff = false; }
   }
   const closesMs = Date.parse(week.closesAt);
@@ -736,8 +751,9 @@ export async function millioneaSlip(viewer: MillioneaViewer, now: Date = new Dat
       : closesMs <= nowMs ? "millionea_sales_closed"
         : getSalesPause().paused ? "millionea_paused"
           : staff ? "millionea_staff_barred"
-            : held !== null && held >= terms.rules.ticketCapPerWeek ? "millionea_cap_reached"
-              : null;
+            : frozen ? "wallet_frozen"
+              : held !== null && held >= terms.rules.ticketCapPerWeek ? "millionea_cap_reached"
+                : null;
   return {
     week: { id: week.id, code: week.code, visibility: week.visibility, isFinal: week.isFinal, closesAt: week.closesAt },
     firstEventAt: firstEventOf(qs), questions: questionsOf(qs, gradable(qs)),
@@ -851,8 +867,10 @@ export type MillioneaTicketView = MillioneaTicketRow & {
     toWinners: number;
     winners: number; share: number;
     /** k × share; with `remainder` — the rounding of the equal split, (J − F) − k × share (MR-25) — it is `toWinners`.
-     *  The remainder joins the next jackpot only in a week the house did not top up (U already excludes it). */
+     *  The remainder joins the next jackpot as far as the week's own money covers it (`remainderFate`). */
     paid: number; remainder: number;
+    /** What the week handed the next (its settled carry-out): with `remainder`, where the remainder went. */
+    carriedOut: number;
     /** The house's floor top-up — printed, and it never rolls (MR-22). */
     topUp: number;
     /** The viewer's winning tickets this week whose share is THEIRS (paid), and those shares' sum. ⛔ A held or a
@@ -956,7 +974,7 @@ export async function millioneaTicket(userId: string, serial: string, now: Date 
     const J = week.jackpot ?? 0, F = week.fee ?? 0, paid = week.paidTotal ?? 0;
     win = {
       jackpot: J, fee: F, traLevy: week.traLevy ?? 0, gbtLevy: week.gbtLevy ?? 0, toWinners: J - F,
-      winners: week.winningTickets ?? 0, share: week.sharePerTicket ?? 0, paid, remainder: J - F - paid,
+      winners: week.winningTickets ?? 0, share: week.sharePerTicket ?? 0, paid, remainder: J - F - paid, carriedOut: week.carryOut ?? 0,
       topUp: week.topUp ?? 0, yourWinningTickets: paidMine.length, yourTotal: paidMine.reduce((s, x) => s + paidOf(x), 0),
       yourHeldTickets: sharesOf("held").length, yourForfeitedTickets: sharesOf("forfeited").length,
       basis: t.score != null && t.score < MAIN_COUNT ? "TOP_SCORE" : "TEN_OF_TEN", winningScore: t.score ?? MAIN_COUNT,
@@ -1188,6 +1206,9 @@ export async function millioneaHowTo(viewer: MillioneaViewer): Promise<Millionea
   // (R3) — the hub's own week.
   const current = (await weekStore.openFor(line)) ?? newestFirst(await weekStore.list({ visibility: line, states: GRADING }))[0] ?? null;
   const terms = current ? await termsOf(current) : null;
+  // ⛔ FAIL CLOSED (the S6 legal review, round 4): a week runs but its frozen terms cannot be read — today's settings are
+  //    not its figures, and "no week is on sale" would be false. The page's error boundary answers instead.
+  if (current && !terms) throw new Error(`[maswali-player] week ${current.code}'s frozen terms cannot be read: the How page states no figure`);
   let base: Omit<MillioneaHowTo, "examples">;
   if (current && terms) {
     const r = terms.rules;

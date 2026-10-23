@@ -36,6 +36,7 @@ import { breakSentence } from "@/lib/break-end";
 import { renderFailure } from "@/lib/failure-reasons";
 import { formatTzs, pctNum } from "@/lib/utils";
 import type { Dict } from "@/lib/i18n-dict";
+import { millioneaRefusalBody } from "@/lib/millionea-refusal";
 import { MILLIONEA_HREF, signInHref } from "../millionea-parts";
 import { capReachedLine, hiddenSlotsOf, msOf, slipQuestionsOf } from "../millionea-view";
 import { SlipClient } from "./slip-client";
@@ -103,6 +104,9 @@ export default async function MillioneaSlipPage() {
       said = { body: capReachedLine(t, slip.ticketCap, hub ? nextWeekOpen(hub, millioneaOpenTemplate(), nowMs) : null), tone: "info" };
     } else if (slip.refusal === "millionea_not_available") {
       said = { body: t.millionea.hubNoWeek, tone: "neutral" };
+    } else if (millioneaRefusalBody(slip.refusal, t)) {
+      // FLOW 13 · a held wallet in Millionea's own buy words — the one sentence the buy's refusal and the hub say too.
+      said = { body: millioneaRefusalBody(slip.refusal, t)!, tone: "neutral" };
     } else {
       const r = renderFailure(
         { ok: false, error: "", reason: slip.refusal, detail: { ticketCap: slip.ticketCap } },
@@ -133,6 +137,7 @@ export default async function MillioneaSlipPage() {
         userId={gate.userId}
         weekId={slip.week.id}
         weekNumber={weekNumberOf(slip.week.code)}
+        finalWeek={slip.week.isFinal}
         closesAt={closesAt}
         firstEventAt={msOf(slip.firstEventAt)}
         serverNow={nowMs}

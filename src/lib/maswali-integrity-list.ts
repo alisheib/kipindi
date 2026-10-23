@@ -15,6 +15,14 @@ export type IntegrityListQuery = {
   winners: { q: string; review: WinnerReview; sort: WinnerSort; dir: Direction; page: number };
   seals: { q: string; state: SealState; sort: SealSort; dir: Direction; page: number };
   voidable: { q: string; line: VoidableLine; sort: VoidableSort; dir: Direction; page: number };
+  /** S6-INT · the cluster report's own state on the same page (the S6 data lane's ConnectedAccounts): its rows' page, the
+   *  line opened, and that line's accounts' page — carried by every other list's links and forms, so paging one list never
+   *  closes the line an officer opened. */
+  cluster: { page: number; group: string; groupPage: number };
+  /** S6-INT 14 · the winners not yet reached (lane N's desk list, MB-93): its page, carried the same way (S17). */
+  unreached: { page: number };
+  /** S6-MONEY · the shares owed to winners who cannot sign in (OD-13): its page, carried the same way. */
+  locked: { page: number };
 };
 
 const first = (value: string | string[] | undefined) => typeof value === "string" ? value : Array.isArray(value) ? value[0] ?? "" : "";
@@ -44,10 +52,16 @@ export function parseIntegrityListQuery(sp: Record<string, string | string[] | u
       sort: oneOf(first(sp.vsort), ["week", "tickets"] as const, "week"),
       dir: dirOf(first(sp.vdir)), page: pageOf(first(sp.vpage)),
     },
+    // A line's key is `<weekId>.<line id>` (an id and 16 hex): anything longer is no line of this page.
+    cluster: { page: pageOf(first(sp.cpage)), group: first(sp.cgroup).trim().slice(0, 80), groupPage: pageOf(first(sp.gpage)) },
+    unreached: { page: pageOf(first(sp.npage)) },
+    locked: { page: pageOf(first(sp.ppage)) },
   };
 }
 
-/** These are the only values passed to sort links, filter forms and the four independent pagers. */
+/** These are the only values passed to sort links, filter forms and the four independent pagers — and the cluster report's
+ *  three (S6-INT), so a list's link keeps the line the officer opened, the unreached winners' page (S6-INT 14), and the
+ *  page of shares owed to winners who cannot sign in (S6-MONEY, OD-13). */
 export function integrityListParams(query: IntegrityListQuery): Record<string, string | undefined> {
   return {
     hq: query.held.q || undefined,
@@ -69,6 +83,11 @@ export function integrityListParams(query: IntegrityListQuery): Record<string, s
     vsort: query.voidable.sort === "week" ? undefined : query.voidable.sort,
     vdir: query.voidable.dir === "desc" ? undefined : query.voidable.dir,
     vpage: query.voidable.page > 1 ? String(query.voidable.page) : undefined,
+    cpage: query.cluster.page > 1 ? String(query.cluster.page) : undefined,
+    cgroup: query.cluster.group || undefined,
+    gpage: query.cluster.groupPage > 1 ? String(query.cluster.groupPage) : undefined,
+    npage: query.unreached.page > 1 ? String(query.unreached.page) : undefined,
+    ppage: query.locked.page > 1 ? String(query.locked.page) : undefined,
   };
 }
 
@@ -98,7 +117,8 @@ const WINNER_SEARCH: EntitySchema = { fields: {
 const SEAL_SEARCH: EntitySchema = { fields: { week: { columns: ["code"], kind: "text" } }, default: ["code"], viewModel: true };
 const VOIDABLE_SEARCH: EntitySchema = { fields: { week: { columns: ["code"], kind: "text" } }, default: ["code"], viewModel: true };
 
-export type HeldListRow = { weekCode: string; weekSeq: number; serial: string; holder: string; payout: number; forfeited: boolean };
+/** `payout` null: the ticket's record lacks its share (S6 round 6) — sorted last, printed "Not on record", never 0. */
+export type HeldListRow = { weekCode: string; weekSeq: number; serial: string; holder: string; payout: number | null; forfeited: boolean };
 export function selectHeldShares<T extends HeldListRow>(all: readonly T[], query: IntegrityListQuery["held"], perPage: number): Result<T> {
   const parsed = parseQuery(query.q, { fields: ["week", "ticket", "holder"] });
   const filtered = all.filter((row) =>

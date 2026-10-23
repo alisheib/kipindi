@@ -48,6 +48,9 @@ const PAGES = [
   ["edit", `/admin/maswali/${w.draft}/edit`, /Edit MLN-/],
   ["pools", "/admin/maswali/pools", /Millionea · Pools/],
   ["integrity", "/admin/maswali/integrity", /Millionea · Integrity/],
+  // MASWALI-BUILD S6 · the evidence pack (MB-92) and the support desk's lookup (MB-64).
+  ["evidence", "/admin/maswali/evidence", /Millionea · Evidence/],
+  ["lookup", "/admin/maswali/lookup", /Millionea · Ticket lookup/],
 ];
 
 for (const [name, path, heading] of PAGES) {
@@ -60,6 +63,40 @@ for (const [name, path, heading] of PAGES) {
   for (const width of [360, 768, 1280, 1920]) {
     await page.setViewportSize({ width, height: 900 });
     await page.waitForTimeout(250);
+    const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    ok(`${name} · no horizontal overflow @${width}`, over <= 1, `overflow=${over}px`);
+    await captureTile(page, name, width);
+  }
+  ok(`${name} · no console error`, errs.length === 0, errs.slice(0, 3).join(" | "));
+}
+
+// ⭐ S6-ADMIN (the lead's rulings G2–G8) · the cards each ruling changed, scrolled into view, a tile per width: the rules a
+// week froze (G2), the fee on Pools (G2), the new-device seals, the seal log, the winners and the connected accounts
+// (G3, G8), the discard (G5), the archive's filters (G7) and the week list's state words (G7).
+const card = (title) => page.locator("[data-card-pad]").filter({ has: page.locator("[data-section-heading]").filter({ hasText: new RegExp(`^${title}$`) }) }).first();
+const CARDS = [
+  ["plain-rules-frozen", `/admin/maswali/${w.selling}`, "Rules this week froze"],
+  ["plain-rules-draft", `/admin/maswali/${w.draft}`, "Rules if it opened now"],
+  ["plain-discard", `/admin/maswali/${w.draft}`, "Before it can open"],
+  ["plain-pools-fee", "/admin/maswali/pools", "Open weeks"],
+  ["plain-new-devices", "/admin/maswali/integrity", "Seals from a new device"],
+  ["plain-seal-log", "/admin/maswali/integrity", "Seal log"],
+  ["plain-winners", "/admin/maswali/integrity", "Winners"],
+  ["plain-evidence", "/admin/maswali/evidence", "Weeks"],
+  ["plain-week-list", "/admin/maswali", "Weeks"],
+];
+for (const [name, path, title] of CARDS) {
+  errs.length = 0;
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const res = await page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded" });
+  await page.waitForLoadState("networkidle").catch(() => {});
+  ok(`${name} · answers 200`, res?.status() === 200, `${res?.status()}`);
+  const c = card(title);
+  ok(`${name} · the card "${title}" is drawn`, (await c.count()) === 1);
+  for (const width of [360, 768, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.waitForTimeout(250);
+    await c.scrollIntoViewIfNeeded().catch(() => {});
     const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     ok(`${name} · no horizontal overflow @${width}`, over <= 1, `overflow=${over}px`);
     await captureTile(page, name, width);

@@ -45,7 +45,7 @@ import type { AudienceSplitView } from "./audience-view-model";
 import { wholeNumberAudienceProblem, CAMPAIGN_AUDIENCE_UNREADABLE } from "@/lib/server/marketing/campaign-draft";
 import {
   TEST_OWN_NUMBER_UNUSABLE, TEST_TYPED_OUTREACH_CLOSED, TEST_TYPED_NO_ATTESTATION_WORDING, TEST_TEMPLATE_INVALID,
-  mayTestTypedNumber,
+  mayTestTypedNumber, CAMPAIGN_TEST_DEPS,
 } from "@/lib/server/marketing/campaign-test-send";
 import { licenceOutreach } from "@/lib/server/marketing/outreach-record";
 import { currentWording } from "@/lib/server/marketing/wordings";
@@ -55,6 +55,8 @@ import { renderForRecipient, firstNameFor } from "@/lib/marketing/campaign-templ
 import type { CampaignDraftFields, CampaignTemplate } from "@/lib/marketing/campaign-template";
 import { CAMPAIGN_SCREEN_ROUTES, campaignDraftHref } from "@/lib/marketing/campaign-status";
 import { footerMeasurementToken } from "@/lib/marketing/footer";
+import { campaignProductOf, millioneaFactsFrom, type MillioneaComposeFacts } from "@/lib/marketing/millionea-claims";
+import { untaggedRulesFor } from "@/lib/server/marketing/millionea-untagged";
 import { maskPhone } from "@/lib/phone-normalize";
 import { parseTzNumber } from "@/lib/tz-msisdn";
 import { railProblemNote, smsProviderLabel } from "@/app/admin/system/sms-credit-tile";
@@ -199,7 +201,13 @@ function fieldsOf(c: StoredSmsCampaign): CampaignDraftFields {
 
 function templateOf(c: StoredSmsCampaign): CampaignTemplate {
   const f = fieldsOf(c);
-  return { bodySw: f.bodySw, bodyEn: f.bodyEn, nameFallbackSw: f.nameFallbackSw, nameFallbackEn: f.nameFallbackEn, sourcePhrase: c.sourcePhrase ?? "" };
+  return {
+    bodySw: f.bodySw, bodyEn: f.bodyEn, nameFallbackSw: f.nameFallbackSw, nameFallbackEn: f.nameFallbackEn, sourcePhrase: c.sourcePhrase ?? "",
+    // ⭐ HIGH 1 · the product the stored name declares, as the test send and the engine read it.
+    product: campaignProductOf(c.name),
+    // ⭐ S6-LINT 1 · a campaign not tagged Millionea meets the untagged rules the one decision hands this door (none while off: S6-SHIP 5).
+    untaggedRules: untaggedRulesFor(c.name),
+  };
 }
 
 /**
@@ -212,11 +220,12 @@ function templateOf(c: StoredSmsCampaign): CampaignTemplate {
  */
 export function composeTypedView(
   draft: StoredSmsCampaign | null,
-  facts: { outreachOpen: boolean; adult: { text: string; v: number } | null },
+  facts: { outreachOpen: boolean; adult: { text: string; v: number } | null; millionea?: MillioneaComposeFacts },
 ): ComposeTypedView {
   const attestation = facts.adult === null ? null : { text: facts.adult.text, version: facts.adult.v };
   if (draft === null || draft.status !== "DRAFT") return { allowed: false, why: null, preview: null, attestation };
-  const template = templateOf(draft);
+  // ⭐ HIGH 1 · a Millionea draft with the week's facts the loader read (none: unread, so its preview is refused in words).
+  const template: CampaignTemplate = { ...templateOf(draft), millioneaFacts: facts.millionea };
   const why = !facts.outreachOpen ? TEST_TYPED_OUTREACH_CLOSED
     : attestation === null ? TEST_TYPED_NO_ATTESTATION_WORDING
       : null;
@@ -519,9 +528,15 @@ export async function loadComposer(sp: ComposeParams): Promise<ComposeView> {
   const parsed = officer ? parseTzNumber(officer.phoneE164) : null;
   const key = parsed !== null && parsed.verdict === "ok" && parsed.msisdn ? parsed.msisdn : null;
 
+  // ⭐ HIGH 1 · a Millionea draft's previews render as its test send will: with the week's facts, read through the test
+  // send's own reader — and only for a Millionea draft (no Millionea module loads for any other).
+  const millionea: MillioneaComposeFacts = draft !== null && draft.status === "DRAFT" && campaignProductOf(draft.name) === "MILLIONEA"
+    ? await millioneaFactsFrom(CAMPAIGN_TEST_DEPS.millioneaFacts)
+    : undefined;
+
   let preview: ComposeTestView["preview"] = null;
   if (draft !== null && draft.status === "DRAFT") {
-    const template = templateOf(draft);
+    const template: CampaignTemplate = { ...templateOf(draft), millioneaFacts: millionea };
     const name = firstNameFor({ userDisplayName: officer?.displayName ?? null });
     const text = (variant: "SW" | "EN") =>
       renderForRecipient(template, { variant, name, token: footerMeasurementToken(), origin: "account" }).text;
@@ -545,7 +560,7 @@ export async function loadComposer(sp: ComposeParams): Promise<ComposeView> {
       liveNote: live.ok ? null : COMPOSE_TEST_LIVE_NOTE,
       windowNote: composeTestWindowNote(await liveSendWindow()),
       typed: typedOffered
-        ? composeTypedView(draft, { outreachOpen: licenceOutreach().state === "open", adult: currentWording("adult.test") })
+        ? composeTypedView(draft, { outreachOpen: licenceOutreach().state === "open", adult: currentWording("adult.test"), millionea })
         : TYPED_NOT_OFFERED,
       typedOffered,
     },

@@ -469,6 +469,8 @@ this table records the W3 choice.
 | Millionea · Weeks | `weeks` | list-numbers | new (see the note below) |
 | Millionea · Pools | `pools` | treasure-chest | new |
 | Millionea · Integrity | `integrity` | gavel | new |
+| Millionea · Evidence | `evidence` | file-magnifying-glass | new (MASWALI-BUILD S6, 2026-10-19: the per-week evidence pack, one week's record examined, MB-92) |
+| Millionea · Ticket lookup | `search` | magnifying-glass | reused (the lookup's own search; its Fill added for the lit row, MASWALI-BUILD S6, 2026-10-19) |
 | Growth · Affiliate | `users` | users | reused (the friends programme's player rows) |
 | Growth · Bonuses | `gift` | gift | reused |
 | Growth · Contacts | `contacts` | address-book | new |

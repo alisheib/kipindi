@@ -27,7 +27,8 @@ import { isLiveMoneyMode } from "./runtime-mode";
 // compile time — there is no runtime cycle.
 import { selfExclusionStanding } from "./responsible-gambling";
 import { SUPPORT_PHONE } from "@/lib/server/support-config";
-import { TERMS_VERSION } from "@/lib/terms-version";
+import { termsVersionFor } from "@/lib/terms-version";
+import { millioneaWordingPublished } from "@/lib/millionea-rollout";
 import { messagingLocaleOf } from "@/lib/server/marketing/consent-ledger";
 import { registrationContactAtSignup } from "@/lib/server/marketing/registration-contact";
 
@@ -52,8 +53,9 @@ function adminBootstrapPhones(): Set<string> {
 const OTP_TTL_MS = 5 * 60 * 1000;
 /**
  * The version stamped on `User.acceptedTermsVersion` at registration — WHICH TEXT of `/legal/terms`
- * that person agreed to — is `TERMS_VERSION`, imported above from `src/lib/terms-version.ts`, the
- * module the Terms page prints from.
+ * that person agreed to — is `termsVersionFor(millioneaWordingPublished())`, from `src/lib/terms-version.ts`, the
+ * module the Terms page prints from: the page has two renderings since 2026-10-23 (§4's Maswali Millionea paragraph
+ * prints only above the product's ceiling), and the stamp names the one the page showed.
  *
  * 🔴 IT USED TO BE A LITERAL HERE, and it drifted from the page twice: 2026-09-09 moved this stamp and
  * not the page; 2026-09-13 moved the page (§2, §3, the new §3a, §5) and not this stamp, so players who
@@ -647,7 +649,8 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
     displayName: null,
     dob: baseParse.data.dob,
     region: null,
-    acceptedTermsVersion: TERMS_VERSION,
+    // The version of the rendering the page showed: with §4's Millionea paragraph above the ceiling, without it below.
+    acceptedTermsVersion: termsVersionFor(millioneaWordingPublished()),
     acceptedTermsAt: new Date().toISOString(),
     // ⛔ NO MARKETING CHOICE AT SIGN-UP (2026-10-07). The SMS-offers box is REMOVED — the owner's final rule
     // (COMPLIANCE-DECISIONS § "2026-10-07 · Marketing SMS go to anyone with a phone — consent is not a condition"):

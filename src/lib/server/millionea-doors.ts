@@ -23,6 +23,7 @@ import { getMaswaliConfig } from "./maswali-config";
 import { frozenRules } from "./maswali-service";
 import { ticketStore, weekStore } from "./maswali-dal";
 import { isLockedOut } from "./responsible-gambling";
+import { db } from "./store";
 import { breakStateOf, type BreakState } from "@/lib/break-end";
 import { millioneaTicketAdmission } from "./millionea-gate";
 import { millioneaCeiling, type RolloutState } from "@/lib/millionea-rollout";
@@ -93,6 +94,22 @@ export const millioneaBreakOf = cache(async (userId: string | null): Promise<Bre
     return breakStateOf(await isLockedOut(userId));
   } catch {
     return null;
+  }
+});
+
+/**
+ * ⭐ FLOW 13 (the lead's ruling of 2026-10-23): is the signed-in reader's wallet held — the buy's own condition, a wallet
+ * whose status is not ACTIVE (`purchaseMaswaliTickets`' `wallet_frozen`; the landing reads the same for its line)? The hub's
+ * buy block then says the buy's refusal instead of the fill door. Fails OPEN like the break's read: a failed read offers the
+ * door, and the slip and the buy still refuse.
+ */
+export const millioneaWalletHeld = cache(async (userId: string | null): Promise<boolean> => {
+  if (!userId) return false;
+  try {
+    const wallet = await db.wallet.findByUserId(userId);
+    return !!wallet && wallet.status !== "ACTIVE";
+  } catch {
+    return false;
   }
 });
 

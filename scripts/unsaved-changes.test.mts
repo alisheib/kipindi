@@ -188,6 +188,7 @@ const EXEMPT: Record<string, string> = {
   "app/admin/maswali/page.tsx": "② week-code search and state/line filters submit GET searchParams; draft edits live in the guarded builder",
   "app/admin/maswali/integrity/page.tsx": "② held/winner/seal search and filters submit GET searchParams; share decisions live in guarded controls",
   "app/admin/maswali/pools/page.tsx": "② open-week and rollover search/filters submit GET searchParams; money and rollout forms live in guarded controls",
+  "app/admin/maswali/evidence/page.tsx": "② week-code search and state/line filters submit GET searchParams (S6-ADMIN G7); the page holds no other control",
   /* The tax report's period picker (2026-10-04): a month navigates on selection, a typed day or custom window on Go /
      Apply — the destination is built by the page's own link builder, so the period lives in the URL and comes back
      with Back. A date typed and not applied is a picker position, not work. */
@@ -201,6 +202,9 @@ const EXEMPT: Record<string, string> = {
   "app/admin/totp-verify/verify-form.tsx": "④ a TOTP code, read off the authenticator app",
   // ⑤ nothing is ever saved
   "app/admin/config/fee-simulator.tsx": "⑤ a calculator — it calls no server action at all",
+  // S6-INT · the desk's ticket lookup (MB-64): two fields that ask for ONE ticket and keep nothing — the answer is replaced by
+  // the next lookup and forgotten on leaving, by design ("nothing is kept", lookup-form.tsx). Nothing typed is work to save.
+  "app/admin/maswali/lookup/lookup-form.tsx": "⑤ a lookup query — a serial and a number in, one ticket out; nothing is kept, by design (MB-64)",
 };
 
 /* ⛔ THE VACUITY FLOOR. If the control vocabulary changed under it, this gate would find nothing

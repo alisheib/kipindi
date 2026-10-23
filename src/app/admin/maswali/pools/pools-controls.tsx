@@ -111,7 +111,7 @@ export function GuaranteeCeremony({ canFund, canReturn }: { canFund: boolean; ca
           <p>Amount: <strong>{review ? formatTzs(Number(review.amount)) : ""}</strong></p>
           <p>Bank or rail reference: <strong className="block break-words">{review?.reference}</strong></p>
           <p>{review?.mode === "return"
-            ? "Never below what the unsettled weeks need (OD-02); the service refuses a return that would leave the floor unbacked."
+            ? "Never below what the unsettled weeks need; the service refuses a return that would leave the floor unbacked." // OD-02
             : "Owner capital paid in to back the floor. It is the owner's money, committed: it never counts as retained earnings."}</p>
           <DialogError error={error} />
         </div>}
@@ -185,7 +185,11 @@ export function RolloutCeremony({ expectSeq, current }: { expectSeq: number; cur
   );
 }
 
-export function SunsetCeremony({ weeks }: { weeks: SunsetCandidate[] }) {
+/**
+ * The Owner's stop. `nextAct` is the console's reading of the Owner's next act (`consoleStanding().stopNextAct`): with no
+ * week to offer — none on sale, a week being decided, no draft — the control names it (S7-F4), or says it is unknown.
+ */
+export function SunsetCeremony({ weeks, nextAct }: { weeks: SunsetCandidate[]; nextAct: string | null }) {
   const mayAct = useMayAct();
   const { pending, error, note, run } = useAct();
   const [weekId, setWeekId] = useState("");
@@ -193,7 +197,9 @@ export function SunsetCeremony({ weeks }: { weeks: SunsetCandidate[] }) {
   const [reason, setReason] = useState("");
   const [open, setOpen] = useState(false);
   if (!mayAct) return <ActReadOnly />;
-  if (weeks.length === 0) return <p className="text-body-sm text-text-secondary">No public week can be made final now.</p>;
+  if (weeks.length === 0) {
+    return <p className="text-body-sm text-text-secondary">{nextAct ?? "No week can be made final now, and the next step could not be read. Reload the page."}</p>;
+  }
   const choices = sunsetChoices(weeks, lookup);
   const selected = weeks.find((week) => week.id === weekId) ?? null;
   const review = selected ? sunsetConfirmText(selected) : null;

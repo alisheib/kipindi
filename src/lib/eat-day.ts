@@ -161,3 +161,13 @@ export function eatWeekCode(prefix: string, atMs: number): string {
   const { year, week } = eatIsoWeek(atMs);
   return `${prefix}-${year}-W${String(week).padStart(2, "0")}`;
 }
+
+/**
+ * The ISO week a stamped week code names — `eatWeekCode`'s own inverse ("MLN-2026-W44" → 44, a drive week's "MLD-…"
+ * alike), so a notice's "Week 44" is the engine's stamp and never a count kept elsewhere. 0 for a string that is not one.
+ * (MASWALI-BUILD S6: the server's notices read it; the S5 pages' `weekNumberOf` says the same of the same code.)
+ */
+export function eatWeekNumberOf(code: string): number {
+  const m = /^[A-Z]{2,5}-[0-9]{4}-W([0-9]{2})$/.exec(code);
+  return m ? Number(m[1]) : 0;
+}

@@ -17,16 +17,24 @@ import { CONSOLE_PER_PAGE, consoleStanding, poolsView } from "@/lib/server/maswa
 import { licenceNowLine } from "@/lib/server/maswali-licence";
 import { readMillioneaSwitchFresh } from "@/lib/server/millionea-switch";
 import { weekStore } from "@/lib/server/maswali-dal";
-import { formatTzs } from "@/lib/utils";
+import { fmtRate, formatTzs } from "@/lib/utils";
 import { fmtEat, weekStateChip } from "@/lib/maswali-admin-format";
 import { openState, poolsLine, poolsSearchParams, queryOpenWeeks, queryRolloverTrail, type OpenSort, type TrailSort } from "@/lib/maswali-admin-pools-query";
+import { lacksText } from "@/lib/server/maswali-week-record";
+import { floatCover, releaseFloatLine } from "@/lib/server/maswali-settlement";
 import { GuaranteeCeremony, LicenceCeremony, ReleaseControl, RolloutCeremony, SunsetCeremony } from "./pools-controls";
 import { StandingAuditWarning } from "../audit-warning";
 
 export const metadata = { title: "Admin · Millionea · Pools" };
 export const dynamic = "force-dynamic";
 
-const money = (v: number | null) => (v === null ? "Unreadable" : formatTzs(v));
+/**
+ * ⛔ S6 · ONE WORD FOR A MISSING FIGURE on this page (round 6, the lead's ruling): a balance that could not be read and a
+ * settled week's figure its record lacks (`settledWeekGaps`) alike read "Cannot be read" — never 0, never a dash — and so
+ * do the licence basis and the rollout when the standing cannot be read (round 7).
+ */
+const CANNOT_BE_READ = "Cannot be read";
+const money = (v: number | null) => (v === null ? CANNOT_BE_READ : formatTzs(v));
 
 /**
  * /admin/maswali/pools — ACCOUNTING's page (MASWALI-BUILD S4; MASWALI-PLAN §7b S4 item 1, OD-06, OD-02, MB-03, MB-11,
@@ -68,7 +76,9 @@ async function Content({ searchParams }: PoolsPageProps) {
   ]);
   const [canRelease, canFund, canReturn, canSunset, canLicence, canRollout] = can;
   // Every public week by its state, never the newest few: a drafted week far ahead can still be made the final one.
-  const sunsetCandidates = (await weekStore.list({ visibility: "PUBLIC" }).catch(() => [])).filter((w) => !w.isFinal && w.state !== "SETTLED" && w.state !== "VOIDED");
+  // ⛔ S7 · never a week whose sales have closed: its results are being decided, and the stop refuses it (`sunsetMaswali`).
+  const sunsetCandidates = (await weekStore.list({ visibility: "PUBLIC" }).catch(() => []))
+    .filter((w) => !w.isFinal && (w.state === "DRAFT" || w.state === "OPEN"));
 
   if (!v) {
     return (<><AdminPageHead title="Millionea · Pools" sw="Mifuko" /><AdminBody><p className="text-body-sm text-danger-fg">The pools could not be read.</p></AdminBody></>);
@@ -86,7 +96,8 @@ async function Content({ searchParams }: PoolsPageProps) {
   const trail = queryRolloverTrail(v.trail, { code: trailCode, line: trailLine, ...trailSort });
   const trailPage = parsePage(sp.tpage, trail.length, CONSOLE_PER_PAGE);
   const trailRows = trail.slice((trailPage - 1) * CONSOLE_PER_PAGE, trailPage * CONSOLE_PER_PAGE);
-  const short = v.guarantee !== null && v.guarantee < v.requirement;
+  // S7-F2 · a requirement that cannot be read (a week's frozen rules cannot be read) is unknown, shown so, never as covered.
+  const short = v.guarantee !== null && v.requirement !== null && v.guarantee < v.requirement;
   const floatShort = v.float !== null && v.pendingPayout > v.float;
   return (
     <>
@@ -94,9 +105,10 @@ async function Content({ searchParams }: PoolsPageProps) {
       <AdminBody>
         <KpiGrid cols="1-sm2-xl4">
           <AdminKpi label="Jackpot carried" sw="Jackpot" value={money(v.jackpotPublic)} note="Players' money, for the next winning week" {...(v.jackpotPublic === null ? { tone: "danger" as const } : {})} />
-          <AdminKpi label="Guarantee" sw="Dhamana" value={money(v.guarantee)} note={`Needed now: ${formatTzs(v.requirement)} (OD-02)`} {...(v.guarantee === null || short ? { tone: "danger" as const } : {})} />
+          {/* OD-02 · the guarantee against what the unsettled weeks need · OD-21 · the drive's jackpot is its own. */}
+          <AdminKpi label="Guarantee" sw="Dhamana" value={money(v.guarantee)} note={`Needed now: ${money(v.requirement)}`} {...(v.guarantee === null || v.requirement === null || short ? { tone: "danger" as const } : {})} />
           <AdminKpi label="Payout float" sw="Akiba ya malipo" value={money(v.float)} note={`Prepared payouts: ${formatTzs(v.pendingPayout)}`} {...(floatShort ? { tone: "warning" as const } : {})} />
-          <AdminKpi label="Drive jackpot" sw="Jackpot ya majaribio" value={money(v.jackpotDrive)} note="The private drive's own (OD-21)" />
+          <AdminKpi label="Drive jackpot" sw="Jackpot ya majaribio" value={money(v.jackpotDrive)} note="The private drive's own" />
         </KpiGrid>
 
         <AdminCard title="Open weeks" sw="Wiki zilizo wazi" padding="p-0">
@@ -128,7 +140,9 @@ async function Content({ searchParams }: PoolsPageProps) {
                     <SortTh field="week" label="Week" current={openSort.sort} dir={openSort.dir} sp={sp} baseHref="/admin/maswali/pools" prefix="o" />
                     <SortTh field="state" label="State" current={openSort.sort} dir={openSort.dir} sp={sp} baseHref="/admin/maswali/pools" prefix="o" />
                     <SortTh field="sales" label="Sales" current={openSort.sort} dir={openSort.dir} sp={sp} baseHref="/admin/maswali/pools" prefix="o" align="right" />
-                    <th className="text-right">Carry claimed</th>
+                    <th className="text-right">Carry in</th>
+                    {/* S6-ADMIN · G2 · the fee each week froze: Finance reads it here, since it cannot open the week's own page. */}
+                    <th className="text-right">Fee at payout</th>
                     <SortTh field="coverage" label="Coverage" current={openSort.sort} dir={openSort.dir} sp={sp} baseHref="/admin/maswali/pools" prefix="o" align="right" />
                     <SortTh field="topUp" label="Worst top-up" current={openSort.sort} dir={openSort.dir} sp={sp} baseHref="/admin/maswali/pools" prefix="o" align="right" />
                     <th className="text-left">Settlement</th>
@@ -137,20 +151,26 @@ async function Content({ searchParams }: PoolsPageProps) {
                     {openPageRows.map((w) => {
                       const chip = weekStateChip(w.row.state);
                       const a = w.preview?.arithmetic;
+                      // ⭐ S6-MONEY · MB-11 · the payout float against THIS week's shares, read beside the button: Finance tops it
+                      //    up before a release when it is short — the officer decides; the release never refuses (the lead's
+                      //    ruling of 2026-10-23), and the release reads the float again before any credit and records it.
+                      const floatLine = a?.kind === "PAYOUT" && a.paid > 0 ? releaseFloatLine(floatCover(a.paid, v.float)) : null;
                       return (
                         <tr key={w.row.id}>
                           <td className="text-left tabular">{w.row.code}{w.row.visibility === "DRIVE" ? " · drive" : ""}</td>
                           <td className="text-left"><Chip variant={chip.variant} size="sm">{chip.label}</Chip></td>
-                          <td className="text-right tabular">{formatTzs(w.sales)}</td>
+                          <td className="text-right tabular">{money(w.sales)}</td>
                           <td className="text-right tabular">{w.rolloverIn === null ? "Not yet" : formatTzs(w.rolloverIn)}</td>
+                          <td className="text-right tabular" data-fee-rate={w.row.code}>{w.feeRate === null ? CANNOT_BE_READ : fmtRate(w.feeRate)}</td>
                           <td className="text-right tabular">{w.distinctCombos.toLocaleString("en")} of 1,024 · {(w.coverage * 100).toFixed(1)}%</td>
-                          <td className="text-right tabular">{formatTzs(w.worstTopUp)}</td>
+                          <td className="text-right tabular">{money(w.worstTopUp)}</td>
                           <td className="text-left align-top min-w-[280px]">
                             {w.preview ? (
                               <div className="space-y-1">
                                 <p className="text-body-sm">{a?.kind === "ROLLOVER" ? <>No 10 of 10: <span className="font-mono tabular-nums">{formatTzs(w.preview.sales)}</span> rolls to the jackpot.</>
                                   : <>{a?.k} winner{a?.k === 1 ? "" : "s"} · <span className="font-mono tabular-nums">{formatTzs(a && a.kind === "PAYOUT" ? a.share : 0)}</span> each · fee <span className="font-mono tabular-nums">{formatTzs(a && a.kind === "PAYOUT" ? a.F : 0)}</span> · top-up <span className="font-mono tabular-nums">{formatTzs(w.preview.guaranteeNeeded)}</span>{w.preview.basis === "TOP_SCORE" ? ` · final week, top score ${w.preview.winningScore} of 10` : ""}</>}</p>
-                                {w.preview.held > 0 && <p className="text-body-sm text-warning">{w.preview.held} winner(s) will be paid and held for Compliance (MB-43).</p>}
+                                {w.preview.held > 0 && <p className="text-body-sm text-warning">{w.preview.held} winner(s) will be paid and held for Compliance.{/* MB-43 */}</p>}
+                                {floatLine && <p data-release-float={w.row.code} className={floatLine.tone === "warning" ? "text-body-sm text-warning" : "text-body-sm text-text-secondary"}>{floatLine.text}</p>}
                                 {canRelease ? <ReleaseControl weekId={w.row.id} code={w.row.code} digest={w.preview.digest} />
                                   : <ControlLocked what="Release" need={CONTROL_DOMAIN.releaseMaswaliSettlement} />}
                               </div>
@@ -204,11 +224,11 @@ async function Content({ searchParams }: PoolsPageProps) {
                   <tbody>
                     {trailRows.map((t) => (
                       <tr key={t.code}>
-                        <td className="text-left tabular">{t.code}</td><td className="text-left tabular">{fmtEat(t.settledAt)}</td>
-                        <td className="text-right tabular">{formatTzs(t.sales)}</td><td className="text-right tabular">{formatTzs(t.rolloverIn)}</td>
-                        <td className="text-right tabular">{t.winners}</td><td className="text-right tabular">{formatTzs(t.fee)}</td>
-                        <td className="text-right tabular">{formatTzs(t.topUp)}</td><td className="text-right tabular">{formatTzs(t.paid)}</td>
-                        <td className="text-right tabular">{formatTzs(t.carryOut)}</td><td className="text-right tabular">{formatTzs(t.levyOnOwnTopUp)}</td>
+                        <td className="text-left tabular">{t.code}{t.lacks.length > 0 && <span className="block text-body-sm text-warning-fg">Read, but its settlement record lacks {lacksText(t.lacks)} — not zero</span>}</td><td className="text-left tabular">{t.settledAt === null ? CANNOT_BE_READ : fmtEat(t.settledAt)}</td>
+                        <td className="text-right tabular">{money(t.sales)}</td><td className="text-right tabular">{money(t.rolloverIn)}</td>
+                        <td className="text-right tabular">{t.winners ?? CANNOT_BE_READ}</td><td className="text-right tabular">{money(t.fee)}</td>
+                        <td className="text-right tabular">{money(t.topUp)}</td><td className="text-right tabular">{money(t.paid)}</td>
+                        <td className="text-right tabular">{money(t.carryOut)}</td><td className="text-right tabular">{money(t.levyOnOwnTopUp)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -231,12 +251,12 @@ async function Content({ searchParams }: PoolsPageProps) {
             </section>
             <section className="space-y-2">
               <h3 className="font-semibold text-body">Licence basis</h3>
-              <p className="text-body-sm text-text-secondary break-words">Now: {standing ? licenceNowLine(standing.licence) : "unreadable"}</p>
+              <p className="text-body-sm text-text-secondary break-words">Now: {standing ? licenceNowLine(standing.licence) : CANNOT_BE_READ}</p>
               {canLicence ? <LicenceCeremony /> : <ControlLocked what="Record the licence basis" need={CONTROL_DOMAIN.setMaswaliLicenceBasis} block />}
             </section>
             <section className="space-y-2">
               <h3 className="font-semibold text-body">Rollout</h3>
-              <p className="text-body-sm text-text-secondary">Visible to: {standing?.rollout ?? "unreadable"}. The switch controls who SEES Millionea; selling needs the licence, the guarantee and an open week too.</p>
+              <p className="text-body-sm text-text-secondary">Visible to: {standing?.rollout ?? CANNOT_BE_READ}. The switch controls who SEES Millionea; selling needs the licence, the guarantee and an open week too.</p>
               {canRollout ? (sw && sw.kind !== "UNREAD"
                   ? <RolloutCeremony expectSeq={sw.kind === "SET" ? sw.seq : 0} current={standing?.rollout ?? "WITHDRAWN"} />
                   : <p className="text-body-sm text-danger-fg">The switch could not be read, so it cannot be moved now.</p>)
@@ -244,10 +264,11 @@ async function Content({ searchParams }: PoolsPageProps) {
             </section>
             <section className="space-y-2">
               <h3 className="font-semibold text-body">Stop the product</h3>
-              <p className="text-body-sm text-text-secondary">{standing?.sunset.kind === "ENDING" ? `Week ${standing.sunset.week.code} is the final week.` : standing?.sunset.kind === "RETIRED" ? "Millionea has ended." : "The final week runs normally; if no ticket gets 10 of 10, the top score shares the jackpot (MR-30)."}</p>
+              {/* MR-30 · the sunset: the final week runs normally, and with no 10 of 10 the top score shares the jackpot. */}
+              <p className="text-body-sm text-text-secondary">{standing?.sunset.kind === "ENDING" ? `Week ${standing.sunset.week.code} is the final week.` : standing?.sunset.kind === "RETIRED" ? "Millionea has ended." : "The final week runs normally; if no ticket gets 10 of 10, the top score shares the jackpot."}</p>
               {/* S5-FIX-SRV · the stop's form gives way once a final week stands: its audit warning stands here instead. */}
               <StandingAuditWarning slot="pools:stop" />
-              {canSunset ? <SunsetCeremony weeks={sunsetCandidates.map((w) => ({ id: w.id, code: w.code, state: w.state }))} />
+              {canSunset ? <SunsetCeremony weeks={sunsetCandidates.map((w) => ({ id: w.id, code: w.code, state: w.state }))} nextAct={standing?.stopNextAct ?? null} />
                 : <ControlLocked what="Make a week the final week" need={CONTROL_DOMAIN.sunsetMaswali} block />}
             </section>
           </div>

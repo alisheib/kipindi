@@ -34,7 +34,7 @@ export async function millioneaHomeCard(t: Dict, nowMs: number, opts: { onBreak?
   return (
     <div data-testid="millionea-home-card" className={opts.className}>
       <MaswaliHomeCard t={t} locale={locale} week={model.week} jackpot={model.jackpot} pct={model.pct} cap={model.cap} state={model.state} finalWeek={model.finalWeek}
-        atLeast={model.atLeast} pendingWeek={model.pendingWeek} preview={door.preview} host={opts.host} />
+        finalAhead={model.finalAhead} atLeast={model.atLeast} pendingWeek={model.pendingWeek} preview={door.preview} host={opts.host} />
     </div>
   );
 }

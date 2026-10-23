@@ -578,11 +578,11 @@ console.log("\n§6 · the screen shows the refusal the server computed (E-240, m
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// §7 — a harm detector may not DESCRIBE an outcome it cannot OBSERVE  (Unit 10.8)
+// §7 — a harm detector may not DESCRIBE an outcome it cannot OBSERVE. (Unit 10.8)
 // ────────────────────────────────────────────────────────────────────────────
 /**
- * 🔴 `CHASING_LOSSES` told compliance officers it counted deposits "within 30 min of a
- * LOSING bet". Its filter is `BET_PLACED && CONFIRMED` — every bet, won or lost — and its
+ * 🔴 `CHASING_LOSSES` told compliance officers it counted deposits that followed a
+ * LOSING bet. Its filter is `BET_PLACED && CONFIRMED` — every bet, won or lost — and its
  * local was even named `lostBets`. Nothing in it has ever known whether a bet lost.
  *
  * ⛔ AND IT CANNOT, AT THAT ANCHOR, EVEN IN PRINCIPLE: the window opens when the bet is
@@ -591,7 +591,7 @@ console.log("\n§6 · the screen shows the refusal the server computed (E-240, m
  * right after a bet settles against them, is never caught, because settlement is nowhere
  * near placement.
  *
- * ⭐ THE RULE IS THE CLASS, NOT THE INSTANCE. Fixing one sentence leaves the next
+ * ⭐ THE RULE IS THE CLASS, NOT THE INSTANCE. Fixing a sentence leaves the next
  * detector free to make the same overreach, and there is no suite over this file at all
  * — `grep -rln CHASING_LOSSES scripts/` returned nothing before this section existed. So:
  * a detector that never reads an outcome-bearing signal may not use outcome vocabulary in
@@ -633,13 +633,13 @@ console.log("\n§6 · the screen shows the refusal the server computed (E-240, m
   ok("7.3 ★ no harm-marker detail claims an outcome the detector cannot observe",
     overreach.length === 0, overreach.join(" | "));
 
-  // ⭐ CONTROL — the pattern must still catch the exact sentence this row retired, or 7.3
+  // ⭐ CONTROL — the pattern must still catch a sentence that claims the bet's outcome, or 7.3
   // proves only that it ran. Kept as a fixture rather than trusted.
-  ok("7.4 ⚠️ CONTROL — the detector still fires on the retired sentence",
-    OUTCOME_CLAIM.test("`${chases} deposits within 30 min of a losing bet over the last 7 days`"));
+  ok("7.4 ⚠️ CONTROL — the pattern still fires on a sentence that claims the bet's outcome",
+    OUTCOME_CLAIM.test(["`${chases} deposits made", "soon after a losing bet`"].join(" ")));
   // ⭐ CONTROL — and it must NOT fire on the replacement, or it would demand the fix back.
   ok("7.5 ⚠️ CONTROL — …and does NOT fire on the corrected sentence",
-    !OUTCOME_CLAIM.test("`${chases} deposits within 30 min of placing a bet over the last 7 days`"));
+    !OUTCOME_CLAIM.test(["`${chases} deposits made", "soon after placing a bet`"].join(" ")));
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -817,11 +817,11 @@ console.log("\n§8 · the marketing predicate is a STANDING, never a lockout (ma
   }
   // 2026-10-21 · Ali's ruling: the harm markers are MUTED for marketing SMS (`MARKETING_HARM_MARKERS_MUTED`,
   // COMPLIANCE-DECISIONS § "2026-10-21 · Harm markers muted for marketing SMS"). The detector still flags this player —
-  // three deposits inside an hour — and the DEFAULT dependency lets them through; 8.11 and 8.12 keep proving that step 3
-  // refuses whatever flags it is handed. Reactivating (the constant `false`) turns this back into `rg_harm_marker`.
+  // the rapid-deposit pattern — and the DEFAULT dependency lets them through; 8.11 and 8.12 keep proving that the harm
+  // step refuses whatever flags it is handed. Reactivating (the constant `false`) turns this back into `rg_harm_marker`.
   const { detectHarmMarkers } = await import("../src/lib/server/responsible-gambling.ts");
   const realFlags = await detectHarmMarkers("mk_harm_real");
-  ok("8.11b′ the detector itself still flags the player: three deposits inside an hour",
+  ok("8.11b′ the detector itself still flags the player: the rapid-deposit pattern",
     realFlags.some((f) => f.marker === "RAPID_DEPOSIT_ESCALATION"), JSON.stringify(realFlags.map((f) => f.marker)));
   await expect("8.11b ⏸ the DEFAULT dependency is MUTED (2026-10-21) — the same flagged player is ALLOWED for marketing",
     marketingRgStanding({ id: "mk_harm_real", status: "ACTIVE" }, idHarmReal, T), "ALLOWED");

@@ -12,7 +12,10 @@
  * afterwards. A mutation whose anchor is missing is reported as PROVING NOTHING — never skipped
  * quietly, because a stale anchor is an ABSENT test that fails in the direction of looking fine.
  *
- * ⭐ WHAT THE 23 CASES ARE. Every one restores a defect this platform has actually had, or the
+ * ⭐ CASES 24–26 (2026-10-18, MASWALI-BUILD S6, MB-67) ARE MILLIONEA'S RECORD — the second family's exemption, its
+ * forgotten table and its back-relation sweep, the house family's three shapes on the new rule.
+ *
+ * ⭐ WHAT THE FIRST 23 CASES ARE. Every one restores a defect this platform has actually had, or the
  * exact reversal of a decision taken because it had one. Cases 1–10 are the tombstone design:
  * deleting the market instead of stamping it (production, 2026-08-28), blanking the pools along
  * with the titles, the two-officer gate silently becoming one, export-after-destroy, the unscoped

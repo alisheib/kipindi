@@ -538,9 +538,11 @@ check("9.1", "A1 · no register body joins two facts into one string with \" · 
 // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER, the critic's H3 and H5): the notes are the kit row's own `note`
 // line, under the label; the levies are ONE muted line out of the fee (the critic's H5), drawn as facts — each fact one
 // wrap unit, so no "·" can open or close a line (A1) — never one plain "TRA … · GBT …" string.
-check("9.2", "A1 · the ledger's notes stand on their own line (the kit row's `note`), and the levies are one muted line under the fee drawn as facts (`factLine`: no \"·\" opens or closes a line) — never a plain \"TRA … · GBT …\" string", (w) => {
+// ⚠️ RE-PINNED AT THE S7 × S5 MERGE (2026-10-22): S7's F4 lives in the ONE ledger now — the remainder's note is where it went
+// (`remainderNoteOf` over `remainderFate`, the week's own figures), never one sentence for every week; §15.F4 renders it.
+check("9.2", "A1 · the ledger's notes stand on their own line (the kit row's `note`) — the remainder's saying where it went (S7 F4) — and the levies are one muted line under the fee drawn as facts (`factLine`: no \"·\" opens or closes a line) — never a plain \"TRA … · GBT …\" string", (w) => {
   const s = code(w, "ledger");
-  const notes = s.includes("note: m.topUpNote") && s.includes("note: m.remainderNote");
+  const notes = s.includes("note: m.topUpNote") && s.includes("note: remainderNoteOf(t, remainderFate(remainder, out?.amount ?? 0), final)");
   // ⚠️ RE-PINNED 2026-10-21 (the lead's ruling): a note's line is `noteLine` — its parts as facts, each ONE run.
   const levies = s.includes("note: f.levies && fee > 0 ? noteLine(locale, factsOf(fill(m.ledgerLevies, {")
     && s.includes("function noteLine(locale: Locale, parts: readonly string[]): ReactNode { return <MaswaliFacts facts={parts.map((p) => keepFact(locale, p, [p]))} />; }")
@@ -562,10 +564,11 @@ check("9.4", "A1 · `kept` draws each run it is given as ONE nowrap span, the wo
 });
 // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER): the labels are the ONE Millionea ledger's (`maswali-ledger.tsx`),
 // each drawn through `keepFact` with its runs named — the platform's kept runs and Millionea's own, every figure an `.amount`.
+// ⚠️ RE-PINNED AT THE S7 × S5 MERGE (2026-10-22): S7's final-week carry row (48ddb855b) lives in that ledger too.
 // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-REGISTER, the lead's item 5): every refund sentence is drawn by the ledger's one
 // `refundLabel`, its price kept WITH the word before it ("…refunded / TZS 1,000" left the figure alone on a line; HUB's read
 // of the hub) — rendered in three languages by test:maswali-design-register 2.14.
-check("9.5", "A1 · every ledger label or note that carries a week, an amount or a % is drawn through `keepFact` with that run (the carries' weeks, the sales note's two phrases, the refunds' price with its word, the fee's %, the split's \"÷ k\")", (w) => {
+check("9.5", "A1 · every ledger label or note that carries a week, an amount or a % is drawn through `keepFact` with that run (the carries' weeks, the sales note's two phrases, the refunds' price with its word, the fee's %, the split's \"÷ k\"); a final week that paid names the jackpot account (S7)", (w) => {
   const s = code(w, "ledger");
   const want = [
     "return week === null ? noWeek : keepFact(locale, fill(withWeek, { week }), [weekWord(t, week)]);",
@@ -581,7 +584,9 @@ check("9.5", "A1 · every ledger label or note that carries a week, an amount or
   // Every carry — in, out, and a voided week's handed on again — names its week through the one `carryLabel`.
   const carries = count(s, "label: carryLabel(t, locale, m.carriedIn, m.carriedInNoWeek, carryIn.week)") + count(s, "label: carryLabel(t, locale, m.carriedOut, m.carriedOutNoWeek, out.week)")
     + count(s, "label: carryLabel(t, locale, m.carriedOutAgain, m.carriedForwardAgain, again.week)");
-  return [missing.length === 0 && carries === 4, j({ missing, carries })];
+  // S7 · a final week that paid has no next week (MR-30): its carry row names the jackpot account, never "Week N+1".
+  const finalOut = s.includes('afterIn.push(final ? { key: "out", label: m.keptInJackpot, value: money(out.amount) }');
+  return [missing.length === 0 && carries === 4 && finalOut, j({ missing, carries, finalOut })];
 });
 check("9.5s", "R2 · a sold ticket's count and translated unit-price phrase are two separate kept runs at phone width — the sales row's note (\"1,050 tickets at TZS 1,000\" under \"Ticket sales\")", (w) => {
   const s = code(w, "ledger");
@@ -860,6 +865,35 @@ check("15.4", "the whole ledger of a won week, in order and to the shilling: sal
   const levies = rows.find((r) => r.key === "fee")?.note ?? "";
   return [j(rows.map((r) => [r.key, r.value])) === j(want) && levies.includes("TZS 13,663") && levies.includes("TZS 6,832"), j({ rows: rows.map((r) => [r.key, r.value]), levies })];
 });
+// ⭐ S7 F4 (MR-25, MR-30) in the ONE ledger (the S7 × S5 merge, 2026-10-22): the remainder's note says where it went, read
+// off the week's own figures — the register and the win receipt both draw these rows. The floor-bound week with no top-up
+// (R 998 + S 999,000 → J 1,000,000, F 130,000, 7 × 124,285 = 869,995, dust 5, U 0: the week's own money carried 3 of the 5)
+// says "part"; a final week that paid keeps its carry in the jackpot account and never names a next week.
+const PART_WEEK = regWeek({ carryIn: 998, sales: 999_000, tickets: 999, jackpot: 1_000_000, fee: 130_000, winners: 7, share: 124_285, paid: 869_995,
+  toWinners: 870_000, remainder: 5, topUp: 0, traLevy: 13_000, gbtLevy: 6_500, carriedForward: 3 });
+check("15.F4a", "S7 F4 · the remainder's note is its own fate, in three languages: carried whole → \"joins the next jackpot\"; the floor-bound week whose money carried 3 of its 5 → the part note — never one sentence for every week", (w) => {
+  const off = LOCALES.flatMap((l) => {
+    const d = mln(w, l);
+    const carried = ledgerOf(w, l, LEDGER_CASES.dust).find((r) => r.key === "dust");
+    const part = ledgerOf(w, l, PART_WEEK).find((r) => r.key === "dust");
+    const ok = carried?.note === d.remainderNote && part?.note === d.remainderNotePart && part.value === formatTzs(5) && d.remainderNotePart !== d.remainderNote;
+    return ok ? [] : [`${l}: ${j({ carried: carried?.note, part: part?.note })}`];
+  });
+  return [off.length === 0, off.join(" | ")];
+});
+check("15.F4b", "S7 · a final week that paid has no next week (MR-30): its carry row is \"Kept in the jackpot account (the final week)\", unlinked, and its remainder's note says it stays in the jackpot account — CONTROL: the same week not final names the next week", (w) => {
+  const off = LOCALES.flatMap((l) => {
+    const d = mln(w, l);
+    const finalWeek = { ...LEDGER_CASES.dust, isFinal: true, carryToCode: "MLN-2026-W49" };
+    const rows = w.ledger(w.dict[l] as never, l, finalWeek);
+    const out = rows.find((r) => r.key === "out"), dust = rows.find((r) => r.key === "dust");
+    const control = ledgerOf(w, l, { ...finalWeek, isFinal: false }).find((r) => r.key === "out");
+    const ok = textOf(out?.label as ReactNode) === d.keptInJackpot && (out?.href ?? null) === null && textOf((dust?.note ?? "") as ReactNode) === d.remainderNoteFinal
+      && control?.label === fill(d.carriedOut, { week: 49 });
+    return ok ? [] : [`${l}: ${j({ out: textOf(out?.label as ReactNode), href: out?.href ?? null, dust: textOf((dust?.note ?? "") as ReactNode), control: control?.label })}`];
+  });
+  return [off.length === 0, off.join(" | ")];
+});
 
 // ── §16 · the tile read of 2026-10-21 (S5-DESIGN-REGISTER) ──────────────────────────────────────────────────────────────
 // Read on the states run's tiles: the zh objection window ran off the 320 page as one run (week-voided/-rolled zh-320-s10:
@@ -917,7 +951,12 @@ if (!PROVE_RED) {
   const { pass, fail } = runAll(REAL, false);
   console.log(`\n${"═".repeat(70)}\n  MASWALI REGISTER: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
   /** The floor is the count a green run PRINTS; it only rises, to a printed number. */
-  const MIN_ASSERTIONS = 61; // S5-FIX-PLAYER §15 (P3, P4, P9, P11) added five; S5-DESIGN-REGISTER (3.9, 5.3, 5.4, 7.5, 7.6, 9.8, 14.3) seven, §16 (the tile read) five; S5-R2-REGISTER (3.10, 7.7, 7.8) three
+  // S5-FIX-PLAYER §15 (P3, P4, P9, P11) added five; S5-DESIGN-REGISTER (3.9, 5.3, 5.4, 7.5, 7.6, 9.8, 14.3) seven, §16 (the
+  // tile read) five; the S7 × S5 merge, S7's F4 cases (15.F4a, 15.F4b), two: 60 printed at dfb438dd2 (2026-10-22);
+  // S5-R2-REGISTER (3.10, 7.7, 7.8) three: 61 on main. Both sides' cases run here (S6-SHIP 9 and S7-SHIP 4, each a
+  // merge of main 07a400bc3):
+  // 63 printed on the merged tree.
+  const MIN_ASSERTIONS = 63;
   if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
   process.exit(fail === 0 ? 0 : 1);
 }
@@ -1023,6 +1062,9 @@ const PLANTS: Array<[string, string, World | null]> = [
   // §9
   ["A1 undone — a ledger note after a \"·\"", "9.1", plantSrc("ledger", "label: m.topUp, note: m.topUpNote,", "label: `${m.topUp} · ${m.topUpNote}`,")],
   ["A1 undone — the levies one plain \"·\"-joined string", "9.2", plantSrc("ledger", "return <MaswaliFacts facts={parts.map((p) => keepFact(locale, p, [p]))} />;", 'return parts.join(" · ");')],
+  // S7 (re-pointed at the S7 × S5 merge from the register page's own ledger to the ONE ledger's lines).
+  ["S7 remainder note fixed to the generic next-jackpot line", "9.2", plantSrc("ledger", "note: remainderNoteOf(t, remainderFate(remainder, out?.amount ?? 0), final)", "note: m.remainderNote")],
+  ["S7 undone — a final week that paid names \"the next week\" for its carry", "9.5", plantSrc("ledger", '? { key: "out", label: m.keptInJackpot, value: money(out.amount) }', '? { key: "out", label: m.carriedOutNoWeek, value: money(out.amount) }')],
   ["A1 undone — the standing's count ungrouped", "9.3", plantSrc("week", "{formatNumber(s.ticketsWithoutAMiss)}", "{s.ticketsWithoutAMiss}")],
   ["a `kept` that keeps nothing", "9.4", { ...REAL, kept: (text) => text }],
   ["A1 undone — the refund's price free to break", "9.5", plantSrc("ledger", "label: refundLabel(locale, m.refundEach, price)", "label: fill(m.refundEach, { price })")],
@@ -1079,6 +1121,8 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["P11 undone — the fee unsigned (\"TZS −136,630\")", "15.3", { ...REAL, ledger: (t, l, wk) => registerLedgerRows(t, l, wk).map((r) => (r.key === "fee" && (wk.fee ?? 0) > 0 ? { ...r, value: formatTzs(-(wk.fee ?? 0)) } : r)) }],
   ["the levies dropped from under a won week's fee", "15.4", { ...REAL, ledger: (t, l, wk) => registerLedgerRows(t, l, wk).map((r) => (r.key === "fee" ? { ...r, note: undefined } : r)) }],
   ["P9 undone — the carry's weeks counted from the week's open (47 and 49 across the voided week)", "15.5", { ...REAL, ledger: (t, l, wk) => registerLedgerRows(t, l, { ...wk, carryFromCode: wk.carryFromCode ? "MLN-2026-W47" : null, carryToCode: wk.carryToCode ? "MLN-2026-W49" : null }) }],
+  ["S7 F4 undone — one remainder note for every week (the next jackpot, always)", "15.F4a", { ...REAL, ledger: (t, l, wk) => registerLedgerRows(t, l, wk).map((r) => (r.key === "dust" ? { ...r, note: t.millionea.remainderNote } : r)) }],
+  ["S7 undone — the final week's flag never reaches the ledger (its carry named as the next week's)", "15.F4b", { ...REAL, ledger: (t, l, wk) => registerLedgerRows(t, l, { ...wk, isFinal: false }) }],
   // §16 — the tile read's fixes undone
   ["the zh window one unbreakable run again (\":00\" off the 320 page)", "16.1", plantSrc("week", '<span className="font-mono text-text-subtle">{keepFact(locale, l.time, l.runs ?? [l.time])}</span>', '<span className="whitespace-nowrap font-mono text-text-subtle">{l.time}</span>')],
   ["the window's runs dropped (kept whole by its default run)", "16.1", plantSrc("week", ", runs: [a, b] }]", " }]")],

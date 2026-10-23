@@ -6,7 +6,13 @@ const source = readFileSync(fileURLToPath(new URL("./maswali-admin-shots.mjs", i
 const helper = source.match(/^const captureTile = (.+);$/m)?.[1];
 assert.ok(helper, "admin tile capture helper must exist");
 assert.equal((source.match(/\.screenshot\s*\(/g) ?? []).length, 1, "all admin captures must use the helper");
-assert.equal((source.match(/await captureTile\(page, name, width\)/g) ?? []).length, 1, "each admin width must call the helper");
+// MASWALI-BUILD S6-SHIP · every loop over the admin widths captures through the helper — the pages' loop and, since
+// S6-ADMIN 6, the ruled cards' loop: one call per width loop (the count was pinned at 1, and read the second loop as a fault).
+const widthLoops = (text) => (text.match(/for \(const width of \[[^\]]+\]\)/g) ?? []).length;
+const helperCalls = (text) => (text.match(/await captureTile\(page, name, width\)/g) ?? []).length;
+assert.ok(widthLoops(source) >= 1 && helperCalls(source) === widthLoops(source), "each admin width must call the helper");
+const loopWithoutHelper = `${source}\nfor (const width of [360]) { await page.setViewportSize({ width, height: 900 }); }\n`;
+assert.notEqual(helperCalls(loopWithoutHelper), widthLoops(loopWithoutHelper), "control: a width loop that never captures is caught");
 
 async function checkCapture(body) {
   const capture = new Function("OUT", `return (${body});`)(".50pick-shots/maswali");

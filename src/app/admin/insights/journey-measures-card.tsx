@@ -2,7 +2,7 @@
 import { AdminCard } from "@/components/admin/admin-shell";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { cellMarks, countText, dueText, halvesText, minutesText, REFERENCE_ROW } from "@/lib/journey/measures";
-import { journeyMeasuresView, type JourneyMeasuresView, type MeasureRow, type ReferenceCell } from "@/lib/server/journey-measures";
+import { journeyMeasuresView, panelLabels, type JourneyMeasuresView, type MeasureRow, type ReferenceCell } from "@/lib/server/journey-measures";
 import { MeasuresRail } from "./measures-rail";
 import { LaunchWatchCard } from "./launch-watch-card";
 import { MeasuresExportButtons } from "./measures-export-buttons";
@@ -34,6 +34,9 @@ function Reference({ cell }: { cell: ReferenceCell }) {
 function MeasuresCard({ view, downloads }: { view: JourneyMeasuresView; downloads: { entries: AuditEntry[]; total: number; truncated: boolean } | null }) {
   const five = view.rows.filter((r) => r.def.no !== "4b");
   const comparison = view.rows.find((r) => r.def.no === "4b");
+  // ⭐ S6 · OD-22 (round 6) — the population each line names, and the note, from the cells THIS panel prints (`PANEL_CELLS`).
+  const labels = panelLabels(view);
+  const comparisonPopulation = comparison ? labels.population(comparison) : null;
   const launchLine = view.launch.state === "unreadable"
     ? "The launch record could not be read. Figures are held until it can."
     : view.launch.state === "not-launched"
@@ -41,23 +44,27 @@ function MeasuresCard({ view, downloads }: { view: JourneyMeasuresView; download
       : `Launched ${view.launch.launchDay} EAT · current journey: ${view.launch.current === "ACTIVE" ? "active" : "paused"}.`;
   return <AdminCard title="Simplified Journey measures" sw="Vipimo vya safari rahisi">
     <p className={view.launch.state === "unreadable" ? "text-body-sm text-warning-fg" : "text-body-sm text-text-subtle"}>{launchLine}</p>
+    {/* ⭐ MASWALI-BUILD S6 · MB-46 — Millionea's launch, marked here once it has one; a failed read is said, never assumed. */}
+    {view.millionea.launchDay && <p className="mt-1 text-body-sm text-text-subtle">Maswali Millionea launched {view.millionea.launchDay} EAT. Its tickets are not counted as bets in any measure.</p>}
+    {!view.millionea.readable && <p className="mt-1 text-body-sm text-warning-fg">Whether Maswali Millionea has launched could not be read.</p>}
     <p className="mt-1 text-body-sm text-text-subtle">Before: 14 full East Africa days. After: the first 7, 14 and 28 full active days. The launch day itself counts on neither side.</p>
     <MeasuresRail campaigns={view.campaigns.seen} selected={view.campaign} />
-    <ul className="mt-3 space-y-3 sm:hidden" data-testid="journey-measures-mobile">{five.map((row) =>
+    <ul className="mt-3 space-y-3 sm:hidden" data-testid="journey-measures-mobile">{five.map((row) => { const population = labels.population(row); return (
       <li key={row.def.key} className="rounded-lg border border-border/60 p-3">
         <p className="font-semibold text-text">{row.def.no}. {row.def.name}</p>
         <p className="text-body-sm text-text-subtle">{row.def.nameSw}</p>
+        {population && <p className="text-body-sm text-text-subtle">{population.en} · {population.sw}</p>}
         <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2">
           <div><dt className="text-body-sm text-text-subtle">Before · 14 days</dt><dd><MeasureCell row={row} where="before" /></dd></div>
           {AFTER.map((n) => <div key={n}><dt className="text-body-sm text-text-subtle">After · {n} days</dt><dd><MeasureCell row={row} where={n} /></dd></div>)}
         </dl>
-      </li>)}</ul>
+      </li>); })}</ul>
     <div className="mt-3 hidden sm:block"><ScrollX label="Before and after Simplified Journey measures">
       <table className="admin-tbl min-w-[880px]"><thead><tr><th>Measure</th><th>Before · 14 days</th>{AFTER.map((n) => <th key={n}>After · {n} days</th>)}</tr></thead>
-        <tbody>{five.map((row) => <tr key={row.def.key} className="align-top"><td><span className="block font-semibold text-text">{row.def.no}. {row.def.name}</span><span className="block text-body-sm text-text-subtle">{row.def.nameSw}</span></td><td><MeasureCell row={row} where="before" /></td>{AFTER.map((n) => <td key={n}><MeasureCell row={row} where={n} /></td>)}</tr>)}</tbody>
+        <tbody>{five.map((row) => { const population = labels.population(row); return <tr key={row.def.key} className="align-top"><td><span className="block font-semibold text-text">{row.def.no}. {row.def.name}</span><span className="block text-body-sm text-text-subtle">{row.def.nameSw}</span>{population && <span className="block text-body-sm text-text-subtle">{population.en} · {population.sw}</span>}</td><td><MeasureCell row={row} where="before" /></td>{AFTER.map((n) => <td key={n}><MeasureCell row={row} where={n} /></td>)}</tr>; })}</tbody>
       </table>
     </ScrollX></div>
-    {comparison && <p className="mt-3 text-body-sm text-text-subtle">Comparison (4b), deposit → any bet in 30 minutes: before {comparison.before.text}; after 7 days {comparison.after[7].text}. This is separate from the agency&apos;s five measures.</p>}
+    {comparison && <p className="mt-3 text-body-sm text-text-subtle">Comparison (4b), deposit → any bet in 30 minutes: before {comparison.before.text}; after 7 days {comparison.after[7].text}. This is separate from the agency&apos;s five measures.{comparisonPopulation && <span> {comparisonPopulation.en} · {comparisonPopulation.sw}.</span>}</p>}
     <div className="mt-3 border-t border-border/60 pt-3">
       <p className="font-semibold text-text">Reference · {REFERENCE_ROW.name}</p><p className="text-body-sm text-text-subtle">Counts only; these deposits and notices are not a nested pair.</p>
       <div className="mt-1 grid grid-cols-1 gap-1 text-body-sm sm:grid-cols-2"><p>Before: <Reference cell={view.reference.before} /></p>{AFTER.map((n) => <p key={n}>After {n}: <Reference cell={view.reference.after[n]} /></p>)}</div>
@@ -89,7 +96,7 @@ function MeasuresCard({ view, downloads }: { view: JourneyMeasuresView; download
     <details className="mt-4 border-t border-border/60 pt-3"><summary className="cursor-pointer text-body-sm font-semibold text-text">How each measure is counted · Jinsi vipimo vinavyohesabiwa</summary><div className="mt-3 space-y-3">
       {view.rows.map(({ def }) => <div key={def.key} className="rounded-lg border border-border/60 p-3"><p className="font-semibold text-text">{def.no}. {def.name} <span className="font-normal text-text-subtle">· {def.nameSw}</span></p><p className="text-body-sm text-text-subtle">Unit: {def.unit}</p><p className="text-body-sm text-text-subtle">First count: {def.numerator.text}</p><p className="text-body-sm text-text-subtle">Whole: {def.denominator.text}</p>{def.notes.map((note) => <p key={note} className="text-body-sm text-text-subtle">{note}</p>)}</div>)}
       <div className="rounded-lg border border-border/60 p-3"><p className="font-semibold text-text">Reference. {REFERENCE_ROW.name} <span className="font-normal text-text-subtle">· {REFERENCE_ROW.nameSw}</span></p><p className="text-body-sm text-text-subtle">{REFERENCE_ROW.text}</p></div>
-      {view.definitions.notes.map((note) => <p key={note} className="text-body-sm text-text-subtle">{note}</p>)}
+      {[...view.definitions.notes, ...(labels.note ? [labels.note] : [])].map((note) => <p key={note} className="text-body-sm text-text-subtle">{note}</p>)}
     </div></details>
   </AdminCard>;
 }

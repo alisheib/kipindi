@@ -26,6 +26,7 @@ import type { LossPosition, WinLines } from "@/components/maswali/maswali-win-le
 import { counted, eatWeekday, weekNumberOf } from "@/components/maswali/maswali-format";
 import { factsOf } from "@/components/maswali/maswali-facts";
 import { MAIN_COUNT, weekVoidCertain, type GradableQuestion, type MaswaliPick } from "@/lib/maswali-score";
+import { remainderFate } from "@/lib/maswali-money";
 import type { WeekState } from "@/lib/maswali-week-label";
 import { marketCategoryLabel } from "@/lib/localized";
 import { eatIsoWeek } from "@/lib/eat-day";
@@ -218,8 +219,9 @@ function shareOf(part: number, whole: number): number | null {
 }
 
 /** ⭐ THE WIN LEDGER'S LINES (§10 §3.13), every one the settlement's. A floor week prints its top-up; the rounding
- *  remainder only in a week the house did not top up (`MillioneaTicketView.win.remainder`'s own rule, MR-25). */
-export function winLinesOf(win: NonNullable<MillioneaTicketView["win"]>): WinLines {
+ *  remainder prints with where it went, as the register says it (`remainderFate`, MR-25): the next jackpot as far as the
+ *  week's own money covered it, the guarantee for the rest — all of it in a week the guarantee topped up. */
+export function winLinesOf(win: NonNullable<MillioneaTicketView["win"]>, finalWeek = false): WinLines {
   const tra = shareOf(win.traLevy, win.fee), gbt = shareOf(win.gbtLevy, win.fee);
   return {
     jackpot: win.jackpot,
@@ -232,7 +234,9 @@ export function winLinesOf(win: NonNullable<MillioneaTicketView["win"]>): WinLin
     yours: win.yourWinningTickets,
     yourTotal: win.yourTotal,
     topUp: win.topUp > 0 ? win.topUp : undefined,
-    remainder: win.topUp === 0 && win.remainder > 0 ? win.remainder : undefined,
+    remainder: win.remainder > 0 ? win.remainder : undefined,
+    remainderFate: win.remainder > 0 ? remainderFate(win.remainder, win.carriedOut) : undefined,
+    finalWeek: finalWeek || undefined,
     sunsetNoTopUp: win.basis === "TOP_SCORE" ? true : undefined,
   };
 }

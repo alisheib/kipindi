@@ -28,14 +28,15 @@ import { harmWatchSeries, type HarmDay } from "./harm-watch";
 import { journeyLaunchRecord } from "./journey-launch";
 import {
   S9_ON, betsOf, campaignVisits, confirmedDeposits, counterRows, depositOutcomesByDay, homeViewsByDay, joinedPlayers,
-  returnedBetsOf, shortfallDeposits, type BetRead, type DepositRead, type JoinRead, type OutcomeDay,
+  millioneaOpenings, returnedBetsOf, shortfallDeposits, type BetRead, type DepositRead, type JoinRead, type MillioneaOpenings,
+  type OutcomeDay,
 } from "./journey-measures-dal";
 import { JOURNEY_FUNNEL_RETENTION_DAYS, type FunnelRow } from "./journey-funnel";
 
 const DAY_MS = 86_400_000;
 const TTL_MS = 60_000;
 
-export type SourceKey = "launch" | "counters" | "views" | "campaigns" | "shortfall" | "deposits" | "bets" | "returned" | "joined" | "outcomes" | "harm";
+export type SourceKey = "launch" | "counters" | "views" | "campaigns" | "shortfall" | "deposits" | "bets" | "returned" | "joined" | "outcomes" | "harm" | "millionea";
 export type SourceState = "ok" | "unreadable" | "unavailable" | "not-read";
 
 /** The period a file covers (the panel reads all of them at once). */
@@ -52,7 +53,25 @@ export type MeasureRow = {
   periodChange: { tenths: number; text: string } | null;
   /** Measure 5 only: the median minutes to a first bet among the numerator, per column (null: no such player). */
   median: { before: number | null; after: Record<7 | 14 | 28, number | null>; sinceLaunch: number | null; period: number | null } | null;
+  /**
+   * ⭐ S6 · OD-22 (round 6, the lead's decision) — HOW MANY UNITS EACH CELL LEFT OUT, cell by cell: measures 5 and 4b
+   * leave out a unit whose player bought a Millionea ticket within the window the measure reads for it
+   * (`journey-measures-dal.ts`, R2 and R4, round 5); a cell that prints no counts left none out of them. Null for every
+   * other measure. ⛔ The view names no population: each renderer names it — and carries the note — only where a cell
+   * IT PRINTS left a unit out (`populationWhere`), so no surface is ever labelled by a cell it does not print.
+   */
+  leftOut: { before: number; after: Record<7 | 14 | 28, number>; sinceLaunch: number; period: number } | null;
 };
+
+/** ⭐ S6 · OD-22 (round 6) — where a row's cell sits, as a renderer names the cells it prints (`populationWhere`). */
+export type CellPlace = "before" | 7 | 14 | 28 | "sinceLaunch" | "period";
+
+/** ⭐ S6 · OD-22 — the population's words, the harm rows' own (`launch-watch-card.tsx`). */
+export const WITHOUT_TICKET_POPULATION = Object.freeze({
+  en: "Players without a Millionea ticket",
+  sw: "Wachezaji wasio na tiketi ya Millionea",
+  zh: "没有 Millionea 彩票的玩家",
+});
 
 export type ReferenceCell = { status: "counts" | "unreadable" | "unavailable" | "not-launched" | "pruned"; deposits: number | null; notices: number | null; note: string | null };
 
@@ -91,6 +110,17 @@ export type LaunchWatch = {
     readable: boolean;
     before: { rapidDeposit: number | null; chasingLosses: number | null; daysCounted: number };
     days: Array<{ day: string; counted: HarmDay | null }>;
+    /**
+     * ⭐ MASWALI-BUILD S6 · OD-22 — THE SAME MARKERS FOR PLAYERS WITHOUT A MILLIONEA TICKET, the series S16's bounds are
+     * judged on. Null until a PUBLIC Millionea week has opened (round 4: the split dates that event — the private drive's
+     * opening starts nothing — so until then the two are one and the panel reads as before). A day counted before that
+     * opening is the whole count; a later day counted without its split reads "not counted" here.
+     */
+    withoutTicket: null | {
+      readable: boolean;
+      before: { rapidDeposit: number | null; chasingLosses: number | null; daysCounted: number };
+      days: Array<{ day: string; counts: { rapidDeposit: number; chasingLosses: number } | null }>;
+    };
   };
   /** S16's "measures in bounds" (Ali's rule, 2026-10-14) — read only with the harm counts, so only for compliance VIEW. */
   bounds: InBoundsVerdict | null;
@@ -113,6 +143,13 @@ export type JourneyMeasuresView = {
   watch: LaunchWatch;
   sources: Record<SourceKey, SourceState>;
   s9: boolean;
+  /**
+   * ⭐ MASWALI-BUILD S6 · MB-46 — Maswali Millionea's launch, marked on the view: the EAT day its first public week opened
+   * (null before it has). Its tickets are no bet in any measure here (`journey-measures-dal.ts`); the day tells a reader
+   * where a jackpot began to sit beside the journey's own figures. It decides nothing else (round 5).
+   */
+  millionea: { readable: boolean; launchDay: string | null };
+  /** The core's definition notes, word for word. ⭐ S6 · each renderer adds `millioneaNote()` where it names a population. */
   definitions: { notes: string[] };
 };
 
@@ -130,10 +167,11 @@ type Reads = {
   campaignVisits: typeof campaignVisits; shortfallDeposits: typeof shortfallDeposits; confirmedDeposits: typeof confirmedDeposits;
   betsOf: typeof betsOf; returnedBetsOf: typeof returnedBetsOf; joinedPlayers: typeof joinedPlayers;
   depositOutcomesByDay: typeof depositOutcomesByDay; harmWatchSeries: typeof harmWatchSeries;
+  millioneaOpenings: typeof millioneaOpenings;
 };
 const REAL_READS: Reads = {
   launch: journeyLaunchRecord, counterRows, homeViewsByDay, campaignVisits, shortfallDeposits, confirmedDeposits, betsOf,
-  returnedBetsOf, joinedPlayers, depositOutcomesByDay, harmWatchSeries,
+  returnedBetsOf, joinedPlayers, depositOutcomesByDay, harmWatchSeries, millioneaOpenings,
 };
 let readsOverride: Partial<Reads> | null = null;
 /** ⚠️ TEST SEAM — replace some reads (a suite plants a failing one). Clears the memo. Never called by the product. */
@@ -188,6 +226,7 @@ async function build(nowMs: number, campaign: string | null, period: MeasuresPer
   const sources: Record<SourceKey, SourceState> = {
     launch: "not-read", counters: "not-read", views: "not-read", campaigns: "not-read", shortfall: "not-read", deposits: "not-read",
     bets: "not-read", returned: S9_ON ? "not-read" : "unavailable", joined: "not-read", outcomes: "not-read", harm: "not-read",
+    millionea: "not-read",
   };
   const retained = retainedFromDay(nowMs);
 
@@ -219,7 +258,7 @@ async function build(nowMs: number, campaign: string | null, period: MeasuresPer
   const toDay = allDays[allDays.length - 1] ?? addDays(windows.today, -1);
   const fromMs = eatDayStartMs(fromDay), toMs = eatDayEndMs(toDay);
 
-  const [counters, views, visits, shortfall, deposits, joined, outcomes] = await Promise.all([
+  const [counters, views, visits, shortfall, depositsRead, joinedRead, outcomes, openings] = await Promise.all([
     settle(() => R.counterRows(fromDay, toDay)),
     settle(() => R.homeViewsByDay(fromDay, toDay)),
     settle(() => R.campaignVisits(fromDay, toDay)),
@@ -227,7 +266,23 @@ async function build(nowMs: number, campaign: string | null, period: MeasuresPer
     settle(() => R.confirmedDeposits(fromMs, toMs)),
     settle(() => R.joinedPlayers(fromMs, toMs)),
     settle(() => R.depositOutcomesByDay(fromMs, toMs)),
+    settle(() => R.millioneaOpenings()),
   ]);
+  sources.millionea = openings.ok ? "ok" : "unreadable";
+  // ⭐ S6 · MB-46 — the launch day the panel marks (its own sentence). The population lines and the note do NOT follow
+  // it, nor any cell a surface does not print: each renderer names the population — and carries the note — only where a
+  // cell IT PRINTS left a unit out (round 6, `populationWhere`). So a file whose printed cells left none out reads as it
+  // would with no Millionea at all, and regenerates as filed whatever its unprinted cells (since launch, 4b) come to hold.
+  const millionea = { readable: openings.ok, launchDay: openings.ok && openings.value.publicAt !== null ? eatDayKey(openings.value.publicAt) : null };
+  // ⭐ S6 · OD-22 (round 5) — a unit whose player bought a Millionea ticket within the window the measure reads for it
+  // (`ticketInHorizon`, the DAL's one definition of a ticket) is left out of 5 and 4b in every window, before and after
+  // alike; the day of each unit left out lets every cell count what it left out (round 6, `leftOut`).
+  const keep = <T extends { ticketInHorizon?: true }>(r: Read<T[]>): Read<T[]> => (r.ok ? { ok: true, value: r.value.filter((x) => !x.ticketInHorizon) } : r);
+  const deposits = keep(depositsRead), joined = keep(joinedRead);
+  const markedDays = {
+    depositToAnyBet: depositsRead.ok ? depositsRead.value.filter((d) => d.ticketInHorizon).map((d) => eatDayKey(d.at)) : [],
+    timeToFirstBet: joinedRead.ok ? joinedRead.value.filter((p) => p.ticketInHorizon).map((p) => eatDayKey(p.joinedAt)) : [],
+  };
   sources.counters = counters.ok ? "ok" : "unreadable";
   sources.views = views.ok ? "ok" : "unreadable";
   sources.campaigns = visits.ok ? "ok" : "unreadable";
@@ -295,7 +350,7 @@ async function build(nowMs: number, campaign: string | null, period: MeasuresPer
       case "depositToBet": {
         if (side === "before" || !S9_ON) return { cell: cellFor(null, null, { ...base, readable: true }), median: null };
         const inWin = shortfall.ok ? shortfall.value.filter((x) => x.savedBet && days.has(eatDayKey(x.at))) : [];
-        const due = inWin.filter((x) => x.at + DEPOSIT_FOLLOW_UP_MS <= nowMs);
+        const due = inWin.filter((x) => dueAt(x.at + DEPOSIT_FOLLOW_UP_MS, nowMs));
         const matched = returned.ok
           ? matchReturnedBets(due.filter((x) => x.completedAt !== null).map((x) => ({ id: x.id, userId: x.userId, at: x.completedAt as number, savedBet: x.savedBet })), returned.value)
           : new Set<string>();
@@ -303,7 +358,7 @@ async function build(nowMs: number, campaign: string | null, period: MeasuresPer
       }
       case "depositToAnyBet": {
         const inWin = deposits.ok ? deposits.value.filter((x) => days.has(eatDayKey(x.at))) : [];
-        const due = inWin.filter((x) => x.at + DEPOSIT_FOLLOW_UP_MS <= nowMs);
+        const due = inWin.filter((x) => dueAt(x.at + DEPOSIT_FOLLOW_UP_MS, nowMs));
         const byUser = new Map<string, number[]>();
         if (bets.ok) for (const b of bets.value) { const l = byUser.get(b.userId) ?? []; l.push(b.placedAt); byUser.set(b.userId, l); }
         const n = due.filter((x) => followedWithin(x, byUser)).length;
@@ -311,7 +366,7 @@ async function build(nowMs: number, campaign: string | null, period: MeasuresPer
       }
       case "timeToFirstBet": {
         const inWin: JoinRead[] = joined.ok ? joined.value.filter((p) => days.has(eatDayKey(p.joinedAt))) : [];
-        const due = inWin.filter((p) => p.joinedAt + FIRST_BET_HORIZON_MS <= nowMs);
+        const due = inWin.filter((p) => dueAt(p.joinedAt + FIRST_BET_HORIZON_MS, nowMs));
         const within = due.filter((p) => p.firstBetAt !== null && p.firstBetAt <= p.joinedAt + FIRST_BET_HORIZON_MS);
         const minutes = within.map((p) => Math.max(0, ((p.firstBetAt as number) - p.joinedAt) / 60_000));
         return {
@@ -329,6 +384,14 @@ async function build(nowMs: number, campaign: string | null, period: MeasuresPer
     const a = Object.fromEntries(AFTER.map((n) => [n, cellOf(m, windows.after[n], "after", campaign)])) as Record<7 | 14 | 28, { cell: Cell; median: number | null }>;
     const s = cellOf(m, windows.sinceLaunch, "after", campaign);
     const p = period.kind === "baseline" ? b : cellOf(m, periodWindow, "after", campaign);
+    // ⭐ S6 · OD-22 (round 6) — what each of 5's and 4b's cells left out, counted over that cell's own days, and only where
+    // the cell prints its counts (an unreadable, not-split or not-launched cell left nothing out of a figure).
+    const marked = m.key === "timeToFirstBet" ? markedDays.timeToFirstBet : m.key === "depositToAnyBet" ? markedDays.depositToAnyBet : null;
+    const leftIn = (c: Cell, w: DayWindow): number => {
+      if (!marked || c.n === null || c.d === null) return 0;
+      const days = new Set(w.days);
+      return marked.filter((d) => days.has(d)).length;
+    };
     return {
       def: m,
       before: b.cell,
@@ -339,6 +402,14 @@ async function build(nowMs: number, campaign: string | null, period: MeasuresPer
       periodChange: period.kind === "baseline" ? null : changeOf(b.cell, p.cell),
       median: m.key === "timeToFirstBet"
         ? { before: b.median, after: { 7: a[7].median, 14: a[14].median, 28: a[28].median }, sinceLaunch: s.median, period: p.median }
+        : null,
+      leftOut: marked
+        ? {
+          before: leftIn(b.cell, windows.before),
+          after: { 7: leftIn(a[7].cell, windows.after[7]), 14: leftIn(a[14].cell, windows.after[14]), 28: leftIn(a[28].cell, windows.after[28]) },
+          sinceLaunch: leftIn(s.cell, windows.sinceLaunch),
+          period: leftIn(p.cell, periodWindow),
+        }
         : null,
     };
   });
@@ -385,7 +456,7 @@ async function build(nowMs: number, campaign: string | null, period: MeasuresPer
 
   /* 7 · the launch watch */
   const watch = await launchWatch({
-    windows, facts, launchUnreadable, rows, counters, outcomes, gapDays, includeHarm, nowMs, sources, harmRead: R.harmWatchSeries,
+    windows, facts, launchUnreadable, rows, counters, outcomes, gapDays, includeHarm, nowMs, sources, harmRead: R.harmWatchSeries, openings,
     boundsCells: Object.fromEntries(measureRows.filter((r) => (S13_RULINGS.inBounds.measures as readonly string[]).includes(r.def.key))
       .map((r) => [r.def.key, { before: r.before, after: r.after[7] }])) as Record<InBoundsKey, { before: Cell; after: Cell }>,
   });
@@ -394,9 +465,64 @@ async function build(nowMs: number, campaign: string | null, period: MeasuresPer
     generatedAt: nowMs, campaign, period, periodWindow, launch, windows, rows: measureRows,
     reference: { before: refOf(windows.before, "before"), after: { 7: refOf(windows.after[7], "after"), 14: refOf(windows.after[14], "after"), 28: refOf(windows.after[28], "after") } },
     campaigns: { seen, table, window: campWindow },
-    schedule, watch, sources, s9: S9_ON,
+    schedule, watch, sources, s9: S9_ON, millionea,
+    // ⭐ S6 · OD-22 (round 6) — the core's notes alone: the Millionea sentence is each renderer's, carried exactly where it
+    // names a population (`populationWhere`), so it follows the cells that surface prints.
     definitions: { notes: definitionNotes() },
   };
+}
+
+/**
+ * ⭐ S6 · round 6 (LOW 1) — A UNIT IS DUE ONLY ONCE EVERY WRITE STAMPED INSIDE ITS HORIZON CAN BE SEEN. A bet's and a
+ * ticket's instant is stamped inside the money lock's transaction and is visible to a reader only once that transaction
+ * commits — at most the lock's budget later: its default (`locks.ts`, `withAdvisoryLock` and `withLock`). A larger
+ * budget is passed only by a market's settlement and its emergency void, which stamp no unit these measures count
+ * (`test:journey-measures-view` V.22b reads the defaults and those callers, and fails when either differs). So measures
+ * 4, 4b and 5 count a unit only once its horizon's end plus that default has passed: a read between a stamp and its
+ * commit can never count a unit that a later read would follow or leave out, and a file made once every unit is due
+ * regenerates as filed.
+ */
+export const COMMIT_LAG_MS = 30_000;
+function dueAt(horizonEnd: number, nowMs: number): boolean {
+  return horizonEnd + COMMIT_LAG_MS <= nowMs;
+}
+
+/**
+ * ⭐ S6 · OD-22 — the definitions' sentence a surface carries where it names a population (the panel and the three
+ * files). The horizons are the measures' own constants, never retyped; no launch date, so the sentence never moves once
+ * filed.
+ */
+export function millioneaNote(): string {
+  return `Maswali Millionea tickets are not counted as bets in any measure, and measure 5 leaves out a new player who bought one within the ${FIRST_BET_HORIZON_MS / 3_600_000} hours it reads after the sign-up (4b likewise leaves out a deposit followed by one within its ${DEPOSIT_FOLLOW_UP_MS / 60_000} minutes).`;
+}
+
+/**
+ * ⭐ S6 · OD-22 (round 6, the lead's decision) — THE POPULATION A RENDERER NAMES FOR A ROW: the words exactly when a cell
+ * IT PRINTS (`printed`) left a unit out; null otherwise, and always for a measure that leaves none out. A cell the
+ * renderer does not print — the files print no since-launch cell and no 4b, the panel's 4b line only before and after 7
+ * — can never label it.
+ */
+export function populationWhere(row: MeasureRow, printed: readonly CellPlace[]): typeof WITHOUT_TICKET_POPULATION | null {
+  const l = row.leftOut;
+  if (!l) return null;
+  const at = (c: CellPlace): number => (c === "before" ? l.before : c === "sinceLaunch" ? l.sinceLaunch : c === "period" ? l.period : l.after[c]);
+  return printed.some((c) => at(c) > 0) ? WITHOUT_TICKET_POPULATION : null;
+}
+
+/**
+ * ⭐ S6 · OD-22 (round 6) — THE CELLS THE PANEL PRINTS (`journey-measures-card.tsx`): each of the five's before and
+ * after 7/14/28, and the comparison line's (4b) before and after 7 — never a since-launch cell.
+ */
+export const PANEL_CELLS = { five: ["before", 7, 14, 28], comparison: ["before", 7] } as const satisfies Record<"five" | "comparison", readonly CellPlace[]>;
+
+/**
+ * ⭐ S6 · OD-22 (round 6) — the panel's population lines and its note, from its own cells: a row (or the 4b line) names
+ * the population where one of ITS printed cells left a unit out, and the note is carried when either line names one
+ * (LOW 7: 4b's line as well as measure 5's).
+ */
+export function panelLabels(view: JourneyMeasuresView): { population: (row: MeasureRow) => typeof WITHOUT_TICKET_POPULATION | null; note: string | null } {
+  const population = (row: MeasureRow) => populationWhere(row, row.def.no === "4b" ? PANEL_CELLS.comparison : PANEL_CELLS.five);
+  return { population, note: view.rows.some((r) => population(r) !== null) ? millioneaNote() : null };
 }
 
 /** The question bets' origins (old and new journeys) and every bet origin, from the one allow-list. */
@@ -408,6 +534,8 @@ async function launchWatch(x: {
   counters: Read<FunnelRow[]>; outcomes: Read<Map<string, OutcomeDay>>; gapDays: ReadonlySet<string>; includeHarm: boolean; nowMs: number;
   sources: Record<SourceKey, SourceState>; harmRead: typeof harmWatchSeries;
   boundsCells: Record<InBoundsKey, { before: Cell; after: Cell }>;
+  /** S6 · OD-22 — when Millionea's first PUBLIC week opened, for reading the harm counts of players without a ticket. */
+  openings: Read<MillioneaOpenings>;
 }): Promise<LaunchWatch> {
   const R = S13_RULINGS.rollback;
   const perDay = (day: string): WatchDay => {
@@ -463,6 +591,30 @@ async function launchWatch(x: {
     x.sources.harm = s.ok ? "ok" : "unreadable";
     const counted = (day: string): HarmDay | null => (s.ok ? s.byDay.get(day) ?? null : null);
     const beforeCounted = x.windows.before.days.map(counted).filter((d): d is Extract<HarmDay, { rapidDeposit: number }> => !!d && "rapidDeposit" in d);
+    /* ⭐ S6 · OD-22 — a day's count of players WITHOUT a Millionea ticket, from the first PUBLIC week's opening (round 4,
+       the lead's ruling: the split dates the event it reports — the private drive's opening starts nothing; once it has,
+       a ticket of any week, the drive's included, puts its holder out of the second count). Measures 5 and 4b key on no
+       opening at all (round 5: a unit's own horizon). While no public week has opened it is the whole count, whatever the
+       second row holds, so every number and the verdict are exactly as before S6. Once one has: the second row's day when
+       it holds one (`harm-watch.ts`, its own key); a day counted before that opening is the whole count; a later day
+       without a second count is not counted.
+       `opened` undefined = the openings could not be read, and `second` null = the second row could not be: then only a
+       day the second row holds can answer. */
+    const opened: number | null | undefined = x.openings.ok ? x.openings.value.publicAt : undefined;
+    const second = s.ok ? s.noTicketByDay : null;
+    const noTicketOf = (day: string): { rapidDeposit: number; chasingLosses: number } | null => {
+      const c = counted(day);
+      if (!c || !("rapidDeposit" in c)) return null;
+      const whole = { rapidDeposit: c.rapidDeposit, chasingLosses: c.chasingLosses };
+      if (opened === null) return whole;
+      // ⛔ Round 5 · a day counted before the first public opening is the whole count, checked BEFORE the second row: a
+      // second count the row holds for it (a build that split from an earlier opening wrote one) is never used.
+      if (opened !== undefined && Date.parse(c.at) < opened) return whole;
+      const own = second?.get(day);
+      if (own && "rapidDeposit" in own) return { rapidDeposit: own.rapidDeposit, chasingLosses: own.chasingLosses };
+      return null;
+    };
+    const beforeWithout = x.windows.before.days.map(noTicketOf).filter((c): c is { rapidDeposit: number; chasingLosses: number } => c !== null);
     harm = {
       readable: s.ok,
       before: {
@@ -471,10 +623,28 @@ async function launchWatch(x: {
         daysCounted: beforeCounted.length,
       },
       days: x.windows.sinceLaunch.days.map((day) => ({ day, counted: counted(day) })),
+      // Only once a public week has opened (or the openings are unreadable): before that the two series are one.
+      withoutTicket: opened === null ? null : {
+        readable: s.ok && opened !== undefined && second !== null,
+        before: {
+          rapidDeposit: beforeWithout.length ? beforeWithout.reduce((n, d) => n + d.rapidDeposit, 0) / beforeWithout.length : null,
+          chasingLosses: beforeWithout.length ? beforeWithout.reduce((n, d) => n + d.chasingLosses, 0) / beforeWithout.length : null,
+          daysCounted: beforeWithout.length,
+        },
+        days: x.windows.sinceLaunch.days.map((day) => ({ day, counts: noTicketOf(day) })),
+      },
     };
-    // S16's rule reads the harm counts, so its verdict exists only where the harm rows do.
+    // S16's rule reads the harm counts, so its verdict exists only where the harm rows do. ⭐ S6 · OD-22 — it is judged on
+    // the players WITHOUT a ticket; before any Millionea week that series is the whole count, so the verdict is unchanged.
+    // ⛔ When the openings or the second row cannot be read, it is judged on EVERY player (the whole count, as before S6) —
+    // the stricter reading, since no subset can count more — and only the split says it is unreadable.
+    const judged = (day: string): { rapidDeposit: number; chasingLosses: number } | null => {
+      if (opened !== undefined && second !== null) return noTicketOf(day);
+      const c = counted(day);
+      return c && "rapidDeposit" in c ? { rapidDeposit: c.rapidDeposit, chasingLosses: c.chasingLosses } : null;
+    };
     const series = (key: "rapidDeposit" | "chasingLosses", days: readonly string[]) =>
-      days.map((d) => { const c = counted(d); return c && "rapidDeposit" in c ? c[key] : null; });
+      days.map((d) => { const c = judged(d); return c ? c[key] : null; });
     const harmDays: HarmDays | null = s.ok
       ? {
         rapidDeposit: { before: series("rapidDeposit", x.windows.before.days), after: series("rapidDeposit", x.windows.after[7].days) },

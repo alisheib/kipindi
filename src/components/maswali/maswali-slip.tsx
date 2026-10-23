@@ -307,7 +307,7 @@ const SlipRow = memo(function SlipRow({ q, pick, closed, flagged, onPick }: {
 
 export function MaswaliSlip({
   week, questions, picks, onPick, closesAt, firstEventAt, serverNow, price, cap, ticketNumber, ticketName, actionLabel, finish,
-  refused, onRefuse, closed, closedJustNow, onContinue, switcher, addTicket, followHref, className,
+  refused, onRefuse, closed, closedJustNow, onContinue, finalWeek = false, switcher, addTicket, followHref, className,
 }: {
   week: number;
   /** All fifteen, mains first. */
@@ -339,6 +339,10 @@ export function MaswaliSlip({
   closedJustNow?: boolean;
   /** Every ticket answered and a press on "Continue": the composer opens the confirm sheet. */
   onContinue: () => void;
+  /** The sunset week (MR-30): a slip opened once the week is final states its rule, here and on the confirm sheet. A slip
+   *  opened before a stop ordered on sale never sells its ticket: the purchase refuses it (`millionea_week_final`, S7-F3)
+   *  and the page redraws the slip with the rule. */
+  finalWeek?: boolean;
   /** The ticket switcher (several tickets), under the head. */
   switcher?: ReactNode;
   /** "Add another ticket", after the reserves. */
@@ -396,8 +400,12 @@ export function MaswaliSlip({
   // The rules box: the price, and the cap — from 1280 the cap is the summary panel's alone (P7). ⭐ The reserves' rule is
   // said ONCE, in the reserves' own head where it applies (it stood here too). ⭐ From 1280 the price stands in the box ALONE,
   // and a list of one draws no marker (`soleFromXl`): a lone "·" before it read as a stray dot (tiles empty-*-1280).
+  // ⛔ S7 F3 · a final week's different payout rule is the first thing its buyer reads (MR-30), in the one wording the hub
+  //    and How say it in (`finalWeekRule`, the lead's ruling of 2026-10-22) — and then the price is not alone from 1280, so
+  //    it keeps its marker as the rule above it does.
   const rules: ReadonlyArray<{ key: string; node: ReactNode; className?: string; soleFromXl?: boolean }> = [
-    { key: "price", node: priceLine, soleFromXl: true },
+    ...(finalWeek ? [{ key: "final", node: keepFact(locale, t.millionea.finalWeekRule) }] : []),
+    { key: "price", node: priceLine, soleFromXl: !finalWeek },
     { key: "cap", node: capLine, className: "xl:hidden" },
   ];
   // The one line that says what is still unanswered, directly above the control it explains (the bet sheet's rule, M2) —
@@ -557,7 +565,7 @@ function useFreeCancel(open: boolean, serverNow: number, closesAt: number, minut
  */
 export function MaswaliSlipConfirm({
   open, onClose, handoff, week, questions, picks, slips, total, balance, ticketNumber, cap, closesAt, serverNow, freeCancelMinutes, pct,
-  lowBalance, deposit, closed, pending, onCommit,
+  finalWeek = false, lowBalance, deposit, closed, pending, onCommit,
 }: {
   open: boolean;
   onClose: () => void;
@@ -580,6 +588,8 @@ export function MaswaliSlipConfirm({
   freeCancelMinutes: number;
   /** The week's fee rate, as a number of percent. */
   pct: number;
+  /** The sunset week (MR-30): the sheet states its rule beside the fee rule, so the press is made knowing it. */
+  finalWeek?: boolean;
   /** The main balance is below the total: say so, and offer the deposit door instead of the commit. */
   lowBalance?: boolean;
   deposit?: ReactNode;
@@ -604,6 +614,7 @@ export function MaswaliSlipConfirm({
       : fill(t.millionea.ticketNofCap, { n: formatNumber(ticketNumber), cap: formatNumber(cap) }),
     cancelUntil === null ? null : fill(t.millionea.cancelFreeUntil, { time: eatClock(cancelUntil) }),
     fill(t.millionea.ruleSharedJackpot, { pct }),
+    finalWeek ? t.millionea.finalWeekRule : null,
   ].filter((l): l is string => l !== null);
   const closedLine = fill(t.millionea.salesClosedAt, { when: `${eatWeekdayClock(t, closesAt)} EAT` });
   return (

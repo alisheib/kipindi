@@ -155,7 +155,7 @@ const CONFIG_ZERO: Record<string, string> = {
 // A switch that survived the reset would keep paying with its paper trail gone. See the header.
 // ⛔ The two S13 observation keys (2026-10-14) are dropped too — and, like every key here, ALSO named in step 8's DELETE
 // and in the verify step: this list only CLASSIFIES, the SQL is what deletes.
-const CONFIG_DROP_PATTERNS = [/^chat\.daily\./, /^bootstrap\.login_promoted:/, /^test\.overrides$/, /^invite\.rewards\.switch$/, /^journey\.rollout\.switch$/, /^journey\.rollout\.observed$/, /^journey\.harm\.daily$/];
+const CONFIG_DROP_PATTERNS = [/^chat\.daily\./, /^bootstrap\.login_promoted:/, /^test\.overrides$/, /^invite\.rewards\.switch$/, /^journey\.rollout\.switch$/, /^journey\.rollout\.observed$/, /^journey\.harm\.daily$/, /^journey\.harm\.noTicket\.daily$/];
 
 // ── argv ───────────────────────────────────────────────────────────────────
 const argv = process.argv.slice(2);
@@ -708,7 +708,7 @@ async function execute(keep: { ids: string[]; rows: any[] }, unknownConfig: stri
       `DELETE FROM "SystemConfig"
         WHERE key LIKE 'chat.daily.%' OR key LIKE 'bootstrap.login_promoted:%' OR key='test.overrides'
            OR key='invite.rewards.switch' OR key='journey.rollout.switch'
-           OR key='journey.rollout.observed' OR key='journey.harm.daily'`,
+           OR key='journey.rollout.observed' OR key='journey.harm.daily' OR key='journey.harm.noTicket.daily'`,
     ],
 
     // 9 ── AI cost history and the audit chain.
@@ -1005,6 +1005,12 @@ async function assertions(keepIds: string[], base: Baseline, resetAt?: string) {
     ? await g(`SELECT count(*)::int n FROM "SystemConfig" WHERE key IN ('journey.rollout.observed','journey.harm.daily') AND "updatedAt" <= '${resetAt.replace(/'/g, "")}'::timestamptz`)
     : await g(`SELECT count(*)::int n FROM "SystemConfig" WHERE key IN ('journey.rollout.observed','journey.harm.daily')`);
   c.push({ name: resetAt ? "S13 launch record and harm count not older than the reset" : "S13 launch record and harm count gone (the next pass starts them again)", ok: observed === 0, got: `${observed}` });
+  // ⭐ MASWALI-BUILD S6 · OD-22 — the harm watch's second count (players without a Millionea ticket) lives in its own
+  // row: dropped, deleted and verified exactly as the first.
+  const harmSplit = resetAt
+    ? await g(`SELECT count(*)::int n FROM "SystemConfig" WHERE key='journey.harm.noTicket.daily' AND "updatedAt" <= '${resetAt.replace(/'/g, "")}'::timestamptz`)
+    : await g(`SELECT count(*)::int n FROM "SystemConfig" WHERE key='journey.harm.noTicket.daily'`);
+  c.push({ name: resetAt ? "the harm watch's second count not older than the reset" : "the harm watch's second count gone (the next pass starts it again)", ok: harmSplit === 0, got: `${harmSplit}` });
 
   const hp = await one(`SELECT value FROM "SystemConfig" WHERE key='house.pool.state'`);
   c.push({

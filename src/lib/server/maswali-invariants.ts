@@ -8,14 +8,14 @@
  *   2. every settled week's mirrored columns close: S + R + U = F + paid + carryOut, or a rollover's carryOut = S;
  *   3. the JACKPOT equals what the weeks say it holds — Σ over settled weeks (carryOut − the R it claimed, or S rolled) plus
  *      every forfeited share — and at most ONE unsettled week has claimed a carry, which the jackpot still covers;
- *   4. the GUARANTEE holds at least OD-02's requirement over every unsettled week;
+ *   4. the GUARANTEE holds at least OD-02's requirement over every unsettled week, each week's frozen rules readable;
  *   5. every week's live-ticket count equals its non-cancelled tickets, and a voided week holds no LIVE ticket.
  * A broken invariant is a WATCHED compliance record (`lifecycle.ts` writes it), never a silent console line.
  */
 import { acct, maswaliJackpotOf } from "./ledger";
 import { ticketStore, weekStore, type StoredWeek } from "./maswali-dal";
 import { maswaliAccountBalance } from "./maswali-money-service";
-import { readMaswaliRulesSnapshot } from "./maswali-config";
+import { unsettledFloors } from "./maswali-config";
 import { guaranteeRequirement } from "@/lib/maswali-money";
 import { formatTzs } from "@/lib/utils";
 
@@ -59,13 +59,17 @@ export async function checkMaswaliInvariants(): Promise<MaswaliInvariantReport> 
   }
 
   const unsettled = weeks.filter((w) => w.state === "OPEN" || w.state === "CLOSED" || w.state === "RESOLVING");
-  const need = guaranteeRequirement(unsettled.map((w) => {
-    const r = readMaswaliRulesSnapshot(w.rulesSnapshot);
-    return { floor: r.ok ? r.rules.floorTzs : 0, confirmedCarryIn: w.rolloverIn };
-  }));
+  // ⛔ S7-F2 · FAIL CLOSED: a week whose frozen rules cannot be read has an unknown floor, so the guarantee cannot be shown
+  //    to cover the unsettled weeks — a broken invariant, never a floor of 0 that hides a shortfall.
+  const floors = unsettledFloors(unsettled);
+  // OD-02 · the guarantee covers every unsettled week. ⛔ Words, never the code (S6-ADMIN, DESIGN_AUTHORITY §M8a item 29).
+  for (const w of floors.ok ? [] : floors.unreadable) problems.push(`${w.code}: its frozen rules cannot be read, so its floor is unknown and the guarantee cannot be shown to cover the unsettled weeks.`);
   const held = await maswaliAccountBalance(acct.maswaliGuarantee);
   if (held === null) problems.push("The guarantee could not be read.");
-  else if (held < need) problems.push(`The guarantee holds ${formatTzs(held)}; the unsettled weeks need ${formatTzs(need)} (OD-02).`);
+  else if (floors.ok) {
+    const need = guaranteeRequirement(floors.weeks);
+    if (held < need) problems.push(`The guarantee holds ${formatTzs(held)}; the unsettled weeks need ${formatTzs(need)}.`);
+  }
 
   for (const w of weeks) {
     if (w.state === "DRAFT") continue;

@@ -250,6 +250,8 @@ export function registerLedgerRows(t: Dict, locale: Locale, w: MillioneaWeekMone
     carriedForward: out > 0 ? { amount: out, week: to ? weekNumberOf(to) : null, href: pageOf(to) } : null,
     refunds: kind === "voided" ? { amount: w.sales ?? 0, landed: !w.refundsPending } : null,
     sunset: w.basis === "TOP_SCORE" && w.winningScore !== null ? { score: w.winningScore, tickets: w.winners ?? 0 } : null,
+    // S7 F4 · the final week's carry and remainder are said as its own (the register and the win receipt, one builder).
+    finalWeek: w.isFinal,
   });
 }
 

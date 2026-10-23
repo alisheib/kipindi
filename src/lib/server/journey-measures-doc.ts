@@ -1,20 +1,34 @@
 /** S13 agency files: one view, one row model, three renderers. No measure is recomputed here. */
 import type { Report, Row, Section, SummaryItem } from "./reports/types";
-import type { JourneyMeasuresView, MeasureRow } from "./journey-measures";
-import { cellMarks, countText, dueText, halvesText, minutesText, spanText, type Cell, type DayWindow } from "@/lib/journey/measures";
+import { millioneaNote, populationWhere, type CellPlace, type JourneyMeasuresView, type MeasureRow } from "./journey-measures";
+import { addDays, addMonths, cellMarks, countText, dueText, halvesText, minutesText, nextMondayAfter, spanText, type Cell, type DayWindow } from "@/lib/journey/measures";
 import { CSV_BOM, CSV_EOL, csvCell } from "@/lib/contacts/csv-write";
 
 export type MeasuresDocumentOptions = { generatorId: string; generatorName: string; generatedAtMs: number; reference: string; layout?: "pdf" | "xlsx" };
-type Line = { section: string; measure: MeasureRow; label: string; window: DayWindow; cell: Cell; change: string | null; median: number | null };
+type Line = { section: string; measure: MeasureRow; label: string; window: DayWindow; cell: Cell; change: string | null; median: number | null; place: CellPlace };
 const FIVE = (v: JourneyMeasuresView) => v.rows.filter((r) => r.def.no !== "4b");
+
+/**
+ * ⭐ S6 round 6 (LOW 8) — THE REQUESTED REPORT as one line, the period a file was asked for: never the report due on the
+ * day it was fetched (a week-3 file fetched in week 6 read "Week 6 of 8"), so a file regenerates byte-identical.
+ */
+export function requestedText(view: JourneyMeasuresView): string {
+  const p = view.period;
+  if (p.kind === "baseline") return dueText({ kind: "baseline" });
+  if (p.kind === "month") return dueText({ kind: "month", month: p.month, dueDay: nextMondayAfter(addDays(`${addMonths(p.month, 1)}-01`, -1)) });
+  const k = view.schedule.mondays.indexOf(p.monday);
+  const fromDay = addDays(p.monday, -7), toDay = addDays(p.monday, -1);
+  return k < 0 ? `Week — ${spanText(fromDay, toDay)}` : dueText({ kind: "week", k: k + 1, of: view.schedule.mondays.length, monday: p.monday, fromDay, toDay });
+}
 
 /** The screen's exact cells, in the order both the document and CSV print them. */
 export function documentLines(view: JourneyMeasuresView): Line[] {
   const lines: Line[] = [];
+  const requested = requestedText(view);
   for (const measure of FIVE(view)) {
-    lines.push({ section: "Before and after", measure, label: "Before · 14 days", window: view.windows.before, cell: measure.before, change: null, median: measure.median?.before ?? null });
-    for (const days of [7, 14, 28] as const) lines.push({ section: "Before and after", measure, label: `After · ${days} days`, window: view.windows.after[days], cell: measure.after[days], change: measure.changes[days]?.text ?? null, median: measure.median?.after[days] ?? null });
-    lines.push({ section: "This period", measure, label: dueText(view.schedule.due), window: view.periodWindow, cell: measure.period, change: measure.periodChange?.text ?? null, median: measure.median?.period ?? null });
+    lines.push({ section: "Before and after", measure, label: "Before · 14 days", window: view.windows.before, cell: measure.before, change: null, median: measure.median?.before ?? null, place: "before" });
+    for (const days of [7, 14, 28] as const) lines.push({ section: "Before and after", measure, label: `After · ${days} days`, window: view.windows.after[days], cell: measure.after[days], change: measure.changes[days]?.text ?? null, median: measure.median?.after[days] ?? null, place: days });
+    lines.push({ section: "This period", measure, label: requested, window: view.periodWindow, cell: measure.period, change: measure.periodChange?.text ?? null, median: measure.median?.period ?? null, place: "period" });
   }
   return lines;
 }
@@ -23,9 +37,23 @@ const periodSpan = (window: DayWindow) => window.fromDay && window.toDay ? `${sp
 const cellNote = (line: Line) => [line.cell.note, ...cellMarks(line.cell), line.change && `${line.change} vs before`, line.measure.median && `Median ${minutesText(line.median)}`].filter(Boolean).join(" · ");
 const numeric = (c: Cell) => c.tenths === null ? null : c.tenths / 1000;
 
-function reportRows(lines: Line[]): Row[] {
+/**
+ * ⭐ S6 · OD-22 (round 6, the lead's decision) — the population THIS FILE names for a measure: exactly when a cell the
+ * file prints (its own lines) left a unit out. A cell it does not print — since launch, or 4b's — never labels it, so a
+ * file regenerates byte-identical whatever those cells come to hold.
+ */
+const populationIn = (lines: readonly Line[], m: MeasureRow) => populationWhere(m, lines.filter((l) => l.measure === m).map((l) => l.place));
+/** A measure's label: with the population where one of this file's cells of it left a unit out — as it always was otherwise. */
+const measureLabel = (lines: readonly Line[], m: MeasureRow) => {
+  const p = populationIn(lines, m);
+  return `${m.def.no}. ${m.def.name}${p ? ` · ${p.en}` : ""}`;
+};
+/** The file's method notes: the view's, and the Millionea sentence exactly when this file names a population. */
+const fileNotes = (view: JourneyMeasuresView, lines: readonly Line[]) => [...view.definitions.notes, ...(FIVE(view).some((m) => populationIn(lines, m)) ? [millioneaNote()] : [])];
+
+function reportRows(lines: Line[], all: readonly Line[]): Row[] {
   return lines.map((line) => ({
-    measure: `${line.measure.def.no}. ${line.measure.def.name}`,
+    measure: measureLabel(all, line.measure),
     window: `${line.label} · ${periodSpan(line.window)}`,
     numerator: line.cell.n,
     denominator: line.cell.d,
@@ -47,8 +75,8 @@ const MEASURE_COLUMNS: Section["columns"] = [
 
 export function buildJourneyMeasuresDocument(view: JourneyMeasuresView, opts: MeasuresDocumentOptions): Report {
   const lines = documentLines(view);
-  const due = dueText(view.schedule.due);
-  const period = `${due} · ${periodSpan(view.periodWindow)} · ${view.periodWindow.days.length} counted East Africa day${view.periodWindow.days.length === 1 ? "" : "s"}`;
+  const requested = requestedText(view);
+  const period = `${requested} · ${periodSpan(view.periodWindow)} · ${view.periodWindow.days.length} counted East Africa day${view.periodWindow.days.length === 1 ? "" : "s"}`;
   const summary: SummaryItem[] = FIVE(view).map((r) => r.period.tenths === null
     ? { label: `${r.def.no}. ${r.def.name}`, value: r.period.text, delta: r.period.note ?? undefined }
     : { label: `${r.def.no}. ${r.def.name}`, num: r.period.tenths / 1000, format: "percent", delta: halvesText(r.period) ?? undefined });
@@ -72,8 +100,8 @@ export function buildJourneyMeasuresDocument(view: JourneyMeasuresView, opts: Me
     denominator: r.def.denominator.text,
   }));
   const sections: Section[] = [
-    { title: "Before and after", titleSw: "Kabla na baada", description: "The five agency measures; a share always travels with both counts, its status and its window.", columns: MEASURE_COLUMNS, rows: reportRows(beforeAfter) },
-    { title: "This period", titleSw: "Kipindi hiki", description: period, columns: MEASURE_COLUMNS, rows: reportRows(thisPeriod) },
+    { title: "Before and after", titleSw: "Kabla na baada", description: "The five agency measures; a share always travels with both counts, its status and its window.", columns: MEASURE_COLUMNS, rows: reportRows(beforeAfter, lines) },
+    { title: "This period", titleSw: "Kipindi hiki", description: period, columns: MEASURE_COLUMNS, rows: reportRows(thisPeriod, lines) },
     { title: "By campaign", titleSw: "Kwa kampeni", description: "Only bet sheet → bet placed has both halves tagged. Landing visits are context, not the denominator.", columns: [
       { key: "campaign", header: "Campaign", width: 22 },
       { key: "sheetOpens", header: "Sheet opens", width: 14, format: "integer" },
@@ -92,7 +120,7 @@ export function buildJourneyMeasuresDocument(view: JourneyMeasuresView, opts: Me
   ];
   return {
     title: "50pick — Simplified Journey measures",
-    subtitle: due,
+    subtitle: requested,
     orientation: "landscape",
     reference: opts.reference,
     meta: { generatedAt: new Date(opts.generatedAtMs).toISOString(), generatedBy: opts.generatorName, period, classification: "Confidential" },
@@ -100,7 +128,7 @@ export function buildJourneyMeasuresDocument(view: JourneyMeasuresView, opts: Me
     summaryColumns: 2,
     sections,
     notes: [
-      ...view.definitions.notes,
+      ...fileNotes(view, lines),
       `Requested period: ${period}.`,
       `The launch day is excluded. Skipped days: ${view.periodWindow.skipped.length ? view.periodWindow.skipped.map((d) => `${d.day} (${d.why})`).join(", ") : "none"}.`,
       "A change says what moved in percentage points, not why.",
@@ -114,8 +142,9 @@ export function buildJourneyMeasuresDocument(view: JourneyMeasuresView, opts: Me
 export function buildJourneyMeasuresCsv(view: JourneyMeasuresView): string {
   const head = ["Section", "Measure", "Period", "From · EAT", "To · EAT", "Days", "Numerator", "Denominator", "Percent", "Status", "Note"];
   const rows: Array<Array<string | number | null>> = [head];
-  for (const line of documentLines(view)) rows.push([
-    line.section, `${line.measure.def.no}. ${line.measure.def.name}`, line.label,
+  const lines = documentLines(view);
+  for (const line of lines) rows.push([
+    line.section, measureLabel(lines, line.measure), line.label,
     line.window.fromDay, line.window.toDay, line.window.days.length,
     line.cell.n, line.cell.d, line.cell.tenths === null ? null : line.cell.text,
     line.cell.status, cellNote(line),
@@ -126,7 +155,7 @@ export function buildJourneyMeasuresCsv(view: JourneyMeasuresView): string {
     c.sheetToBet.status, [c.visitOnly ? "visit only" : null, c.sheetToBet.note].filter(Boolean).join(" · "),
   ]);
   for (const { def } of view.rows) rows.push(["How counted", `${def.no}. ${def.name}`, def.unit, null, null, null, null, null, null, "definition", `First count: ${def.numerator.text} Whole: ${def.denominator.text} ${def.notes.join(" ")}`]);
-  for (const note of view.definitions.notes) rows.push(["Method", null, null, null, null, null, null, null, null, "note", note]);
+  for (const note of fileNotes(view, lines)) rows.push(["Method", null, null, null, null, null, null, null, null, "note", note]);
   return CSV_BOM + rows.map((r) => r.map(csvCell).join(",") + CSV_EOL).join("");
 }
 

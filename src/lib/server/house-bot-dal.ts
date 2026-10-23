@@ -1426,6 +1426,8 @@ export interface HouseBotStore {
   get(id: string, tx?: HouseTx): Promise<StoredHouseBot | null>;
   /** The account's non-REMOVED bot, if any — one indexed read for the holder hook. */
   findLiveByUserId(userId: string, tx?: HouseTx): Promise<StoredHouseBot | null>;
+  /** One outcome per requested winner; a failed batch is unreadable, never an implicit clearance. */
+  findLiveByUserIds(userIds: readonly string[], tx?: HouseTx): Promise<Array<{ userId: string; outcome: "designated" | "clear" | "unreadable" }>>;
   /** Every designation of the account, REMOVED included, newest first (erasure, data rights). */
   listByUserId(userId: string, tx?: HouseTx): Promise<StoredHouseBot[]>;
   /** Every non-REMOVED bot, oldest designation first. */
@@ -2463,6 +2465,10 @@ const memoryHouseBots: HouseBotStore = {
   async findLiveByUserId(userId) {
     const r = [...memBots.values()].find((b) => b.userId === userId && b.status !== "REMOVED");
     return r ? clone(r) : null;
+  },
+  async findLiveByUserIds(userIds) {
+    const designated = new Set([...memBots.values()].filter((b) => b.status !== "REMOVED").map((b) => b.userId));
+    return [...new Set(userIds)].map((userId) => ({ userId, outcome: designated.has(userId) ? "designated" as const : "clear" as const }));
   },
   async listByUserId(userId) {
     return [...memBots.values()].filter((b) => b.userId === userId)
@@ -3846,6 +3852,22 @@ const prismaHouseBots: HouseBotStore = {
   async findLiveByUserId(userId, tx) {
     const rows = await sql(tx, `SELECT * FROM "HouseBot" WHERE "userId" = $1::text AND "status" <> 'REMOVED' LIMIT 1`, [userId]);
     return rows[0] ? toHouseBot(rows[0]) : null;
+  },
+  async findLiveByUserIds(userIds, tx) {
+    const unique = [...new Set(userIds)];
+    const out: Array<{ userId: string; outcome: "designated" | "clear" | "unreadable" }> = [];
+    for (let i = 0; i < unique.length; i += 5_000) {
+      const chunk = unique.slice(i, i + 5_000);
+      try {
+        const rows = await sql(tx, `SELECT DISTINCT "userId" FROM "HouseBot" WHERE "userId" = ANY($1::text[]) AND "status" <> 'REMOVED'`, [chunk]);
+        const designated = new Set(rows.map((r) => String(r.userId)));
+        for (const userId of chunk) out.push({ userId, outcome: designated.has(userId) ? "designated" : "clear" });
+      } catch {
+        console.error("[house-bot-dal] winner designation batch unreadable; its shares must be held for review");
+        for (const userId of chunk) out.push({ userId, outcome: "unreadable" });
+      }
+    }
+    return out;
   },
   async listByUserId(userId, tx) {
     const rows = await sql(tx, `SELECT * FROM "HouseBot" WHERE "userId" = $1::text ORDER BY "designatedAt" DESC`, [userId]);

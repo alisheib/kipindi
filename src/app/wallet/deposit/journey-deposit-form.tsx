@@ -20,7 +20,7 @@ import { fundingStorageKey, parseStoredFunding, releaseStoredFunding, writeStore
 
 export function JourneyDepositForm({
   ownerId, releaseKey, rawBet, returnPath, initialAmount, requestedAmount, initialPhone, registeredPhone, initialProvider,
-  providers, maxAmount, ceilingBinding, quickAmounts, spendable, fromLowBalance,
+  providers, maxAmount, ceilingBinding, quickAmounts, spendable, fromLowBalance, slipReturn = null,
 }: {
   ownerId: string;
   releaseKey: string | null;
@@ -37,6 +37,9 @@ export function JourneyDepositForm({
   quickAmounts: number[];
   spendable: number | null;
   fromLowBalance: boolean;
+  /** MB-57 (MASWALI-BUILD FLOW 3): the Millionea slip's way back, already allowed and visible to this reader (the page's
+   *  answer, `lib/journey/slip-return.ts`) — posted beside the payment so the action lands on the wait page that offers it. */
+  slipReturn?: string | null;
 }) {
   const { t } = useT();
   const formRef = useRef<HTMLFormElement>(null);
@@ -169,6 +172,7 @@ export function JourneyDepositForm({
         <input type="hidden" hidden name="idempotencyKey" defaultValue="" />
         <input type="hidden" hidden name="pendingBet" defaultValue="" />
         {fromLowBalance && <input type="hidden" hidden name="origin" value="low_balance" />}
+        {slipReturn && !rawBet && <input type="hidden" hidden name="returnPath" value={slipReturn} />}
         {selectedBet && selectedStake !== null && <div data-testid="journey-deposit-bet-strip" className="rounded-lg border border-border bg-bg-inset px-4 py-3 text-body-sm text-text-muted">
           <div className="flex flex-wrap items-center gap-2">
             <Chip data-testid="journey-deposit-side" variant={selectedBet.side === "YES" || selectedBet.side === "UP" ? "yes" : "no"}>

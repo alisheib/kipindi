@@ -10,6 +10,7 @@
  * ⛔ No ticket data reaches this component (MR-14, MB-34): the rows carry the question, its source and its seal only.
  */
 import { useState, useTransition } from "react";
+import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input, Field } from "@/components/ui/input";
@@ -22,9 +23,11 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 import { isMaswaliVoidReason, MASWALI_VOID_REASON_LABEL } from "@/lib/maswali-void-reason";
+import { VOID_DEADLINE_PASSED } from "@/lib/maswali-admin-format";
+import { slotLabel } from "@/lib/maswali-score";
 import { withoutSealedPicks } from "@/lib/maswali-seal-batch";
 import {
-  attestMaswaliParityAction, confirmMaswaliSealAction, correctMaswaliSealAction, moveMaswaliCloseAction, openMaswaliWeekAction,
+  attestMaswaliParityAction, confirmMaswaliSealAction, correctMaswaliSealAction, discardMaswaliDraftAction, moveMaswaliCloseAction, openMaswaliWeekAction,
   sealMaswaliQuestionsAction, voidMaswaliQuestionAction,
 } from "../actions";
 import { AuditWarning, raiseAuditWarning } from "../audit-warning";
@@ -46,6 +49,48 @@ function useAct() {
     });
   };
   return { pending, error, run, setError, start };
+}
+
+// ── Discard a draft (S6-ADMIN · G5) ───────────────────────────────────────────────────────────────────────
+
+/** The typed word the discard asks for. */
+const DISCARD_WORD = "DISCARD";
+
+/**
+ * ⭐ S6-ADMIN · G5 · DISCARD A DRAFT that never opened: a typed confirmation, then the list of weeks. The service refuses a
+ * week that opened and the announced final week, in its own words, inside the dialog. A discard whose audit record was
+ * not written raises its warning into the list's standing slot (`weeks:discard`): this page is gone once it lands.
+ */
+export function DiscardDraftControl({ weekId, weekCode }: { weekId: string; weekCode: string }) {
+  const mayAct = useMayAct();
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (!mayAct) return <ActReadOnly />;
+  const discard = () => {
+    setError(null);
+    start(async () => {
+      const r = await discardMaswaliDraftAction(fd({ weekId }));
+      if (!r.ok) { setError(r.error ?? "That did not go through."); return; }
+      raiseAuditWarning("weeks:discard", r.auditWarning ?? null);
+      setOpen(false);
+      router.push("/admin/maswali" as Route);
+    });
+  };
+  return (
+    <span className="inline-flex flex-col gap-1">
+      <Button size="sm" variant="claret" disabled={pending} onClick={() => { setError(null); setOpen(true); }}>Discard draft</Button>
+      {!open && error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
+      <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="claret" tier="hard" typedWord={DISCARD_WORD}
+        title={`Discard ${weekCode}?`} confirmLabel="Discard the draft"
+        body={<div className="space-y-2">
+          <p>The draft and its fifteen questions are deleted, and its Monday is free for a new draft. Nothing was sold: a week that opened is never discarded.</p>
+          {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
+        </div>}
+        onConfirm={discard} />
+    </span>
+  );
 }
 
 // ── Attest and open ─────────────────────────────────────────────────────────────────────────────────
@@ -81,7 +126,7 @@ export function AttestOpenControls({ weekId, weekCode, attestedBy, canAttest, ca
       <ConfirmModal open={confirm} onClose={() => setConfirm(false)} loading={pending} tone="brand"
         title="Open the week for sale?" confirmLabel="Open the week"
         body={<div className="space-y-2">
-          <p>The rules, the fifteen questions and their sources freeze now and cannot change afterwards (MR-13). Players can buy as soon as Millionea is visible to them.</p>
+          <p>The rules, the fifteen questions and their sources freeze now and cannot change afterwards. Players can buy as soon as Millionea is visible to them.{/* MR-13 */}</p>
           {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
         </div>}
         onConfirm={() => run(() => openMaswaliWeekAction(fd({ weekId })), () => setConfirm(false), (warning) => raiseAuditWarning(`week:${weekId}`, warning))} />
@@ -91,8 +136,14 @@ export function AttestOpenControls({ weekId, weekCode, attestedBy, canAttest, ca
 
 // ── Move the close ──────────────────────────────────────────────────────────────────────────────────
 
-/** `closesAt` is the close this page was drawn with: the move sends it, and the service refuses if another move landed since (A3). */
-export function MoveCloseForm({ weekId, weekCode, currentEat, closesAt }: { weekId: string; weekCode: string; currentEat: string; closesAt: string }) {
+/**
+ * `closesAt` is the close this page was drawn with: the move sends it, and the service refuses if another move landed since (A3).
+ * `latest` is the latest close the week's frozen rules allow — the first event less the rules' minutes before it — in EAT,
+ * so the officer reads the bound as a time, never as a rule's name (S6-ADMIN; null when the rules cannot be read).
+ */
+export function MoveCloseForm({ weekId, weekCode, currentEat, closesAt, latest }: {
+  weekId: string; weekCode: string; currentEat: string; closesAt: string; latest: { eat: string; minutes: number } | null;
+}) {
   const mayAct = useMayAct();
   const { pending, error, run, setError } = useAct();
   const [date, setDate] = useState("");
@@ -101,7 +152,10 @@ export function MoveCloseForm({ weekId, weekCode, currentEat, closesAt }: { week
   const [auditWarning, setAuditWarning] = useState<string | null>(null);
   return (
     <div className="space-y-3 max-w-form">
-      <p className="text-body-sm text-text-secondary">Now closes {currentEat} (EAT). Earlier, never inside the next notice period; later, never past the first event less its buffer (MB-28).</p>
+      {/* MB-28 · the move's two bounds, as the service's own refusals state them (`moveClose`). */}
+      <p className="text-body-sm text-text-secondary">Now closes {currentEat} (EAT). Earlier: at least the free-cancel window from now, so every ticket keeps it. {latest
+        ? <>Later: no later than {latest.eat} (EAT), {latest.minutes} minutes before the first event.</>
+        : <>Later: never closer to the first event than the week&apos;s rules allow.</>}</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="New close date (EAT)"><DateSelect value={date} onChange={setDate} size="md" /></Field>
         <Field label="New close time (EAT)"><TimeSelect value={time} onChange={setTime} size="md" aria-label="New close time" /></Field>
@@ -115,7 +169,7 @@ export function MoveCloseForm({ weekId, weekCode, currentEat, closesAt }: { week
         body={<div className="space-y-2">
           <p>Current close: <strong>{review?.fromEat} (EAT)</strong></p>
           <p>New close: <strong>{review?.toEat} (EAT)</strong></p>
-          <p>The service checks the notice period, free-cancel window and first event before accepting this move.</p>
+          <p>The service checks the free-cancel window and the first event before accepting this move.</p>
           {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
         </div>}
         onConfirm={() => {
@@ -189,7 +243,7 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
               const p = picks[r.slot] ?? { outcome: "", evidence: "" };
               return (
                 <tr key={r.slot}>
-                  <td className="text-left tabular align-top">{r.label}{r.proposedVoid && <span className="block text-body-sm text-warning">void proposed</span>}</td>
+                  <td className="text-left tabular align-top">{r.label}{r.proposedVoid && <span className="block text-body-sm text-warning">{VOID_DEADLINE_PASSED}</span>}</td>
                   <td className="text-left align-top max-w-[360px]">
                     <span className="block">{r.textEn}</span>
                     <span className="block text-body-sm text-text-tertiary">{r.criterionEn}</span>
@@ -250,7 +304,7 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
             setSealOpen(false);
             setSealAuditWarning(result.auditWarning);
             if (!result.ok) {
-              const applied = result.sealed.map((slot) => rows.find((row) => row.slot === slot)?.label ?? `slot ${slot}`);
+              const applied = result.sealed.map((slot) => rows.find((row) => row.slot === slot)?.label ?? slotLabel(slot));
               setError(applied.length ? `${applied.join(", ")} sealed. ${result.error} The sealed results will not be retried.` : result.error);
             }
             router.refresh();
@@ -261,7 +315,7 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
         title={`Void ${voidRow?.label ?? ""}?`} confirmLabel="Void the question"
         body={
           <div className="space-y-3 text-left">
-            <p>A voided main is replaced by the next usable reserve; a voided reserve is skipped (MR-17).</p>
+            <p>A voided main is replaced by the next usable reserve; a voided reserve is skipped.{/* MR-17 */}</p>
             <Field label="Ground" required error={voidTried && !isMaswaliVoidReason(voidReason) ? "Choose a ground from the list." : undefined}><Select size="md" value={voidReason} onChange={setVoidReason} ariaLabel="Void ground" options={[{ value: "", label: "Choose the ground" }, ...voidReasons.map((v) => ({ value: v, label: isMaswaliVoidReason(v) ? MASWALI_VOID_REASON_LABEL[v] : v }))]} /></Field>
             <Field label="Evidence" required error={voidTried && voidEvidence.trim().length < 10 ? "Write at least 10 characters of evidence." : undefined}><Input size="md" value={voidEvidence} onChange={(e) => setVoidEvidence(e.target.value)} placeholder="What happened, as the source records it" /></Field>
             {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
@@ -277,7 +331,7 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
         title={`Correct ${correctRow?.label ?? ""}?`} confirmLabel="Record the correction"
         body={
           <div className="space-y-3 text-left">
-            <p>Only the officer who sealed it may correct it, and only inside the objection window; the window starts again (OD-09).</p>
+            <p>Only the officer who sealed it may correct it, and only inside the objection window; the window starts again.{/* OD-09 */}</p>
             <Field label="Correct result"><Select size="md" value={correction.outcome} onChange={(v) => setCorrection((c) => ({ ...c, outcome: v }))} ariaLabel="Correct result" options={[{ value: "YES", label: "YES" }, { value: "NO", label: "NO" }, { value: "VOID", label: "VOID" }]} /></Field>
             {correction.outcome === "VOID" && <Field label="Ground" required error={correctTried && !isMaswaliVoidReason(correction.voidReason) ? "Choose a ground from the list." : undefined}><Select size="md" value={correction.voidReason} onChange={(v) => setCorrection((c) => ({ ...c, voidReason: v }))} ariaLabel="Void ground" options={[{ value: "", label: "Choose the ground" }, ...voidReasons.map((v) => ({ value: v, label: isMaswaliVoidReason(v) ? MASWALI_VOID_REASON_LABEL[v] : v }))]} /></Field>}
             <Field label="Evidence" required error={correctTried && correction.evidence.trim().length < 10 ? "Write at least 10 characters of evidence." : undefined}><Input size="md" value={correction.evidence} onChange={(e) => setCorrection((c) => ({ ...c, evidence: e.target.value }))} /></Field>

@@ -49,6 +49,7 @@
  * Guard: `npm run test:campaign-compose`.
  */
 import { sizeSms, unitsIn, capUnits, SMS_MAX_SEGMENTS, type SmsEncoding, type SmsSize } from "@/lib/sms-compose";
+import { millioneaCampaignProblems, UNTAGGED_CAMPAIGN, type MillioneaComposeContext } from "@/lib/marketing/millionea-claims";
 
 /** The opt-out path's token length. ⛔ The route itself is plan U8; this is the length it must mint. */
 export const OPTOUT_TOKEN_CHARS = 8;
@@ -110,12 +111,20 @@ export type MarketingCompose = {
  * ⛔ ONE CALLER IN `src/` (U37a): `lib/marketing/campaign-template.ts`, the renderer the counter, the test send and
  * the real send all go through. A screen or an engine composing here on its own is how the officer is shown one
  * message and a recipient sent another — `test:campaign-compose` §16.1 holds the population.
+ *
+ * ⭐ HIGH 1 (MASWALI-BUILD S6) · `millionea` is the campaign's DECLARED product and, where a server door read the week, its
+ * facts (`millionea-claims.ts`); for any other campaign, the untagged rules where a server door handed them in (S6-LINT 1:
+ * the server's alone, `lib/server/marketing/millionea-untagged.ts`; S6-LINT 6: only under Millionea's ACTIVE ceiling;
+ * S6-SHIP 5: off in this release, `MILLIONEA_UNTAGGED_RULES_ON`). A caller that names none (`UNTAGGED_CAMPAIGN`, the
+ * composer's live counter, every door while the rules are off or below that ceiling) meets no Millionea rule: its problems
+ * are exactly what they were.
  */
 export function composeMarketing(
   body: string,
   token: string,
   locale: MarketingLocale = "SW",
   sourcePhrase = "",
+  millionea: MillioneaComposeContext = UNTAGGED_CAMPAIGN,
 ): MarketingCompose {
   const trimmed = (body ?? "").trim();
   // ⛔ The owner's ruling of 2026-10-09: the text sent IS the officer's text. The footer is empty, so neither the token
@@ -147,6 +156,14 @@ export function composeMarketing(
         `which cuts a message from 160 characters to 70. Replacing it is usually enough.`,
     );
   }
+  // ⭐ MB-47 · HIGH 1 (MASWALI-BUILD S6) · Millionea's claims rules, by the campaign's DECLARED product (`millionea-claims.ts`):
+  // a Millionea campaign carries the headline's three facts, claims nothing else and — where its door read the week — states
+  // the week's own fee while Millionea is open; any other campaign meets the untagged rules where a server door handed them
+  // in (S6-LINT 1), and no rule at all where none did.
+  // ⭐ The rules judge the TEMPLATE (`millionea.judged`: the body with the counter's reserved name), never a recipient's own
+  // name. An untagged text with no Millionea signal is refused nothing, so its problems are exactly what they were
+  // (`test:maswali-claims`' control corpus).
+  problems.push(...millioneaCampaignProblems((millionea.judged ?? trimmed).trim(), millionea));
 
   return { text, size, budget, problems, ok: problems.length === 0 };
 }

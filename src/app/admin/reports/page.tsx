@@ -16,7 +16,7 @@ import { houseAuditForConsole } from "@/lib/server/house-console-read";
 import { GenerateButton } from "./generate-button";
 import { ReportPackCard } from "./report-pack-card";
 import { formatDateTime, formatTzs, formatTzsCompact } from "@/lib/utils";
-import { reportSummary, dailyPnl, categoryBreakdown, moneyByGame, loadReportWindow } from "@/lib/server/report-money";
+import { reportSummary, dailyPnl, categoryBreakdown, moneyByGame, loadReportWindow, jackpotProblemsText } from "@/lib/server/report-money";
 import { resolveRange } from "@/lib/server/date-range";
 // ⭐ `reportCoverage` is the ONE answer to "what window does this report cover?", read off the
 // catalogue registry — never a coverage string typed again on this page. See reports/coverage.ts.
@@ -574,6 +574,28 @@ async function AdminReportsContent({
             <p className="px-4 py-3 text-body-sm text-text-tertiary leading-snug">
               Bet-derived money only. Deposits, withdrawals, bonuses and payment fees belong to neither game and stay in
               the platform totals above. The statutory pack reports the COMBINED totals; TRA and GBT are booked per settlement on each poll&apos;s fee, whichever game.
+              {/* ⭐ MASWALI-BUILD S6 · MB-66 — a Millionea week's GGR is not what it earned (report-money `JackpotMoney`). Said
+                  only for a window that settled a week or returned a forfeited share; every other window reads as before. */}
+              {byGame.jackpot && (
+                <>
+                  {" "}
+                  Millionea&apos;s GGR is not what it earned: its jackpot, money owed to future winners, moved by{" "}
+                  {formatTzs(byGame.jackpot.movement)} in this window and the house paid {formatTzs(byGame.jackpot.guarantee)} of
+                  floor top-up. Leaving out what its weeks carried to and drew from the jackpot, its GGR is{" "}
+                  {formatTzs(byGame.jackpot.ggrExJackpot)} ({byGame.jackpot.weeks.toLocaleString()}{" "}
+                  {byGame.jackpot.weeks === 1 ? "week" : "weeks"} settled).
+                </>
+              )}
+              {byGame.jackpotUnread && (
+                <>
+                  {" "}
+                  {/* ⭐ S6 · a week this window holds whose record is incomplete was READ: it is named with what its record
+                      lacks (round 5), never called unreadable; a failed read is said as before. */}
+                  {byGame.jackpotProblems
+                    ? <span className="text-warning-fg">The Millionea weeks were read, but {jackpotProblemsText(byGame.jackpotProblems)}, so its jackpot lines are not shown — omitted, not zero.</span>
+                    : <span className="text-warning-fg">The Millionea weeks could not be read, so its jackpot lines are not shown — omitted, not zero.</span>}
+                </>
+              )}
               {(byGame.unattributed.stakes > 0 || byGame.unattributed.payouts > 0 || byGame.unattributed.refunds > 0) && (
                 <>
                   {" "}

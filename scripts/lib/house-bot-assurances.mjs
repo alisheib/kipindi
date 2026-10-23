@@ -245,16 +245,28 @@ export function chatbotLiterals(js) {
  * correct, so every check over it would have passed while the population was the whole module. ⛔ The end
  * is found as the template's own closing backtick, and the caller's floor asserts the slice does NOT
  * contain the code that follows it.
+ * ⭐ MASWALI-BUILD S6 (2026-10-18): THE SLICE IS EVERY WORD THE MODEL CAN BE GIVEN — the template, then the text
+ * Millionea's passage puts into it at Millionea's global ACTIVE (`millioneaPrompt`): the `MILLIONEA_SWAPS` list, which
+ * rewrites template lines, and `millioneaSection`, the lines it adds. Each part is found by its own declaration and
+ * ends at its own close; a part that is missing adds nothing (the template alone is today's prompt), so 6.2–6.4 and 6.7
+ * judge Millionea's words exactly as they judge the template's, and 6.4's closed set holds its `${m.*}` holes. A file
+ * with no template is still the empty slice 6.c8 asserts.
  */
 export function systemPromptSlice(chatSource) {
-  const iFn = chatSource.indexOf("function buildSystemPrompt");
+  const src = chatSource.replace(/\r\n/g, "\n");
+  const iFn = src.indexOf("function buildSystemPrompt");
   if (iFn < 0) return "";
-  const iTick = chatSource.indexOf("return `", iFn);
+  const iTick = src.indexOf("return `", iFn);
   if (iTick < 0) return "";
   const start = iTick + "return `".length;
-  const iEnd = chatSource.indexOf("`;", start);
+  const iEnd = src.indexOf("`;", start);
   if (iEnd < 0) return "";
-  return chatSource.slice(start, iEnd).replace(/\r\n/g, "\n");
+  const part = (from, to) => {
+    const a = src.indexOf(from);
+    const b = a < 0 ? -1 : src.indexOf(to, a);
+    return b < 0 ? "" : src.slice(a, b + to.length);
+  };
+  return [src.slice(start, iEnd), part("const MILLIONEA_SWAPS", "\n];"), part("function millioneaSection(", "\n}\n")].filter(Boolean).join("\n");
 }
 
 /** Every `${...}` interpolation in the prompt slice — the CLOSED set case 6.4 pins. A new hole is a new
@@ -274,13 +286,28 @@ export function promptInterpolations(slice) {
  * stake, a figure the owner then lowered to 500, so the sentence reads `PLATFORM_MIN_STAKE` / `PLATFORM_MAX_STAKE` through
  * `formatTzs`, exactly as the withdrawal cap already did. A formatted number from `payout.ts` carries no text a house fact
  * could ride in on.
+ * ⭐ 2026-10-18 (MASWALI-BUILD S6): eleven holes MORE, all Millionea's passage's (the slice now reads it) — `m.*`, the
+ * week's rules as `millionea-chat.ts` formats them (`formatTzs` amounts, whole numbers, weekday names from the
+ * dictionary, HH:MM clocks), and `floor`, the one clause built from `m.floor` or the empty string. Each is read from the
+ * rules with no user (`millioneaChatFacts`, global ACTIVE only), so none carries operator prose.
  */
 export const PROMPT_INTERPOLATIONS = Object.freeze([
   "SUPPORT_EMAIL()",
   "SUPPORT_PHONE()",
+  "floor",
   "formatTzs(PLATFORM_MAX_STAKE)",
   "formatTzs(PLATFORM_MIN_STAKE)",
   "formatTzs(WITHDRAW_MAX_TZS)",
   "langLine",
+  "m.cap",
+  "m.checkWindowHours",
+  "m.closeAt",
+  "m.closeDay",
+  "m.feePct",
+  "m.floor",
+  "m.freeCancelMinutes",
+  "m.openAt",
+  "m.openDay",
+  "m.price",
   "objectionHours",
 ]);

@@ -55,6 +55,39 @@ npx tsx scripts/load/s10-cross-instance.mts                   # S10: cross-insta
 Always `reset-db.mjs` before a run that asserts on money totals — a persistent DB carries
 state across runs (fixed IDs collide, audit chains don't chain across runs).
 
+## Millionea (MASWALI-BUILD S7) — self-contained
+
+These three boot the on-box scratch cluster themselves (`scripts/db-scratch.mts`), create their own
+database, migrate it and drop it at the end, so they need no `DATABASE_URL`, no marker row and no
+`reset-db.mjs`. Every act is several OS processes on one database, started at one instant by a barrier.
+
+```powershell
+npm run load:maswali-cross-instance   # S16: the cap, a key, a reference, the close, two releases, a correction,
+                                      #      a void — each from two instances at once — and 10,000 tickets settled
+                                      #      in both shapes (3 winners; ~7,000 distinct winning players), timed
+npm run load:maswali-rush             # S17 (MB-31): the Friday 18:00 rush at 10× the synthetic S7 test reference on two
+                                      #      instances, Up & Down running, the close on the real clock; latency
+                                      #      percentiles, refusals by reason, then POOL, drift and the trial balance;
+                                      #      MB-97 beside it: the week page read per request, the pool frames fanned
+                                      #      out to live streams (coalesced), and the inclusion proofs' cost
+npm run load:maswali-objection-cross-instance   # S18 (MB-23): the objection door on two instances at once — a filing
+                                      #      against the release, a REVERSE against the release, two officers on one
+                                      #      case, two REVERSEs of one question, two filings on one question
+```
+
+S17's latency targets are named constants at `TBD-BASELINE`: the lead sets them from the first measured
+baseline (S7's acceptance) and records them beside their results. Set on 2026-10-22: a landed purchase at most
+1,000 ms at p95 and 2,000 ms at p99, and no purchase answered BUSY after its retries (`docs/MASWALI-PLAN.md` §7b S7);
+the refusal, Up & Down and close-stamp targets still print without a verdict, and so do MB-97's three (the week-page
+read's p95, a pool frame's reach to its last live stream, one inclusion proof's p95). MB-97's identities are judged on
+every run that loads them: every page read answered and naming the week, every stream given every frame, the frames
+coalesced, the live figure never ahead of the money, every sampled proof under the committed root.
+The purchase-rate reference is a disposable load target chosen in `docs/MASWALI-PLAN.md` §7b S7, not a measured
+production peak, and MB-97's page-read rate (one read a planned purchase) and stream count are test inputs too, not a
+measured audience. S17 fails if the planned arrival load does not reach the purchase and Up & Down paths.
+
+Knobs and what each act asserts are in each script's header.
+
 ## The instrumentation hook
 
 Each spike installs its **own** pool-limited `PrismaClient` on `globalThis.__50PICK_PRISMA`

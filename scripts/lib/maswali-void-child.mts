@@ -55,7 +55,14 @@ const bal = async (u: string) => (await W.bal(u)).balance as number;
 const pool = (marketId: string) => W.balanceOf(acct.pool(marketId));
 const jackpot = () => W.balanceOf(acct.maswaliJackpot);
 const guarantee = () => W.balanceOf(acct.maswaliGuarantee);
-const noticesOf = async (u: string) => (((await W.db.notification.findByUser(u, 500)) as any[] | null) ?? []).length;
+/**
+ * The player's bell rows that are NOT Millionea's own. ⭐ MASWALI-BUILD S6 (2026-10-18): a week now writes its own notices
+ * (a receipt, the close, a void, the refund — `maswali-notify.ts`, held by `test:maswali-notify`), so 1.13 counts the rest:
+ * a poll's or Up & Down's notice on a ticket is still the defect, and a planted one (`red:maswali-money-path` (6)) links
+ * to `/markets/…`, never `/millionea`.
+ */
+const noticesOf = async (u: string) => (((await W.db.notification.findByUser(u, 500)) as any[] | null) ?? [])
+  .filter((n) => !String(n.href ?? "").startsWith("/millionea")).length;
 const ALL_VOID = Array.from({ length: 15 }, () => ({ void: "not_played" }));
 /** The R1 alert for one week, or undefined. */
 const voidAlert = (alerts: any[], weekId: string) =>

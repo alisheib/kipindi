@@ -141,7 +141,12 @@ export function carryingRollover<N extends { notice: string; code: string }>(
 }
 
 /** L22 · "Week 52 will be Millionea's final week. It opens 30 Nov." — the lead's words, the day as every "on {date}" line
- *  reads it (`formatEatDate`: zh "2026年11月30日", a digit first); the week's number a numeral too (§T5, round 2). */
-export function finalAheadWords(t: Dict, locale: Locale, week: number, opensMs: number, nowMs: number): ReactNode {
+ *  reads it (`formatEatDate`: zh "2026年11月30日", a digit first); the week's number a numeral too (§T5, round 2).
+ *  ⭐ The lead's ruling (b) of 2026-10-22: the date is said ONLY while the open is still ahead. A final week still a draft
+ *  once its time has passed (an Owner who has not opened it yet), or whose time cannot be read, is announced without one —
+ *  "Millionea is coming to an end. Week 52 will be the final week." (S7's F1 words, as reviewed) — never "It opens" a day
+ *  already gone. */
+export function finalAheadWords(t: Dict, locale: Locale, week: number, opensMs: number | null, nowMs: number): ReactNode {
+  if (opensMs === null || !(opensMs > nowMs)) return fillNodes(t.millionea.finalAhead, { week: numeralFace(String(week)) });
   return fillNodes(t.millionea.finalWeekAhead, { week: numeralFace(String(week)), date: run(formatEatDate(opensMs, nowMs, t.common.monthsShort, locale)) });
 }

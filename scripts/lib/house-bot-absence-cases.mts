@@ -62,23 +62,85 @@ const lf = (s: string) => s.replace(/\r\n/g, "\n");
 export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // S5 player/register and MB-89 multi-ticket words, merged with U43's reviewed three-language copy.
   // The exact merged dictionary blob is pinned; a future copy edit must be reviewed and re-pinned.
-  // 2026-10-22 (the S5 dark release): e634e4dc7 → e851d5fa5. Reviewed by the lead: OUTSIDE the three `millionea` blocks
-  // (en/sw/zh) the two blobs are byte-identical (a brace-matched strip of each block, with a positive control that a
-  // planted classic edit is reported); inside them only S5 round 2's ruled player words moved — "Objection window" for
-  // the check window (MR-16), the one sales-close wording with its zone, "Buy ticket"/"Ticket bought" (Ali's 2026-10-21
-  // ruling 7), the slip's counted asks, the final week's rule (MR-30) — no policy string, no classic word.
+  // D19a RE-PINNED ONCE AT THE S7 × S5 MERGE (claude/maswali-s7-s5, 2026-10-22; was e634e4dc7, the release's): the release's
+  // dictionary + S7's reviewed words, byte for byte as S7's D19a pin (f28803da1) held them — the stale-slip refusal
+  // (failMillioneaWeekFinal), F4's remainder notes and the final week's carry row, the card's finalAheadShort and the
+  // purchase's finalRule, in en/sw/zh — less S7's two hub-only announcement words (finalAheadAt, finalAhead), which left
+  // with the hub callout the release's L22 bar replaced. Every other line is the release's; the merge commit lists the diff.
+  // D19a RE-PINNED AT THE S6 INTEGRATION'S MERGE OF mln-s6-int (8620862fc, S6-INT 1; was 6c1d110fa, the S7 × S5 merge's): the
+  // legal lane's `millioneaFairness` namespace (/fairness, the proof route, /help) and How to play's sunset line as built
+  // (test:maswali-fairness H.12 pins its fragments), and the zh void grounds in the lane's meaning with S5's U+200B breaks
+  // — sw and zh for native review at Gate B; no versioned policy string moves. The merge commit lists every resolution.
+  // D19a RE-PINNED (S7-F9, the lead's ruling (a) of 2026-10-22; was 6c1d110fa): ONE wording for the final week's rule —
+  // `finalWeekRule` gains MR-30's floor clause in en/sw/zh (the lead's words), S7's `finalRule` is removed in all three,
+  // and `ruleSunset` keeps its first clause and fills the rule as {rule}. No other line changed.
+  // D19a RE-PINNED (S7-F9, the lead's ruling (b) of 2026-10-22; was 5a95302db): S7's F1 no-date announcement
+  // (`finalAhead`) is back in en/sw/zh, byte for byte as S7's reviewed pin (f28803da1) held it, for L22 once a final week's
+  // open has passed. No other line changed.
+  // D19a RE-PINNED AT S6-INT 9 (the S6 integration's merge of S7-F9 2-8; was f88a4470d, S6-INT 1's, and 7a9a98ffe,
+  // S7-F9's): both sides' lines, and `ruleSunset` in the one wording — the legal lane's stop clauses (H.12), then {rule},
+  // the lead's `finalWeekRule`, in place of their own pool clause, in en/sw/zh. No other line changed.
+  // D19a RE-PINNED AT S6-INT 10 (was b84814a4a, S6-INT 9's): the zh void ground for MR-5's case names its event 事件, the
+  // lead's zh word for a Millionea event (test:maswali-design 4.D), where S6-INT 1 had taken 赛事. No other line changed.
+  // D19a RE-PINNED AT S6-INT 11 (was f11aa8c51, S6-INT 10's): `millioneaFairness.helpFinalWeek` is removed in en/sw/zh —
+  // /help draws `finalWeekRule`, the one wording (the lead's ruling (a) of 2026-10-22). No other line changed.
+  // D19a RE-PINNED AT S6-INT 13 (the merge of S7-MERGE 2, which carries S5's round 2; was 24f9c8407, S6-INT 11's):
+  // S5-R2-SLIP's `draftTicketsNoun` (the noun once over the switcher's pills, the lead's ruling (a) of round 2) in
+  // en/sw/zh. No other line changed.
+  // D19a RE-PINNED AT S7-MERGE 2 (the S5 release's round 2, e34bcdc95; was 7a9a98ffe): S7's dictionary plus the release's
+  // one addition since 81e312f01 — `draftTicketsNoun` in en/sw/zh ("Tickets" / "Tiketi" / "彩票", SLIP round 2's ruling
+  // (a)). No other line changed.
+  // D19a RE-PINNED (S7-OB, the Millionea objection door, 2026-10-22; was 475f305f6, S7-MERGE 2's): S7's dictionary as pinned
+  // above plus 24 `millionea.obj*` keys in en/sw/zh — the ticket page's door: its window and the money's rule, the dialog's
+  // title, intro, question picker and filed toast, each refusal in the player's words, and the player's objections in every
+  // state with the officer's note. No other line changed.
+  // D19a RE-PINNED AT S7-MERGE 3 (the objection lane merged over S7-F9 13, 2026-10-22; was fad013995, S7-OB's): one comment
+  // line, the {hours} placeholder's note naming the window by its one name — "objection window", the lead's P6 ruling.
+  // No published word changed.
+  // D19a RE-PINNED AT S6-INT 21 (the merge of S7 at a7feccbef, S7-MERGE 3 with the objection lane; was 28a7cf951,
+  // S6-INT 13's, and bd4addcfc, S7-MERGE 3's): the union of the two — S7-OB's 24 `millionea.obj*` keys in en/sw/zh and
+  // S7-MERGE 3's one comment line ("objection window") beside S6's lines since S7-MERGE 2. No other line changed.
+  // THE RELEASE'S OWN RE-PIN, kept as its record (the S5 dark release, 2026-10-22: e634e4dc7 → e851d5fa5). Reviewed by the
+  // lead: OUTSIDE the three `millionea` blocks (en/sw/zh) the two blobs are byte-identical (a brace-matched strip of each
+  // block, with a positive control that a planted classic edit is reported); inside them only S5 round 2's ruled player
+  // words moved — "Objection window" for the check window (MR-16), the one sales-close wording with its zone, "Buy
+  // ticket"/"Ticket bought" (Ali's 2026-10-21 ruling 7), the slip's counted asks, the final week's rule (MR-30) — no policy
+  // string, no classic word. e851d5fa5 is the release's dictionary at e34bcdc95, which S7-MERGE 2 merged.
+  // NOT RE-PINNED AT S7-MERGE 4 (the release at 2ed817395, 2026-10-22): the release has not touched the dictionary since
+  // e34bcdc95, so the merged dictionary is S7's, byte for byte, and the pin stays S7's.
+  // NOT RE-PINNED AT S6-INT 25 (the merge of S7 at 66ec6e9be: S7-MERGE 4 with the S5 release at 2ed817395, S7-F9 14-16): S7's
+  // dictionary is unchanged since S7-MERGE 3 (bd4addcfc, merged at S6-INT 21), so the merged dictionary is S6-INT 21's,
+  // byte for byte, and the pin stays d61b83910.
   // 2026-10-23 (S5 round 2: REGISTER, TICKETS' landing door, PLATFORM's rail): e851d5fa5 → d8fb5c6ea. Reviewed the same
   // way: outside the three `millionea` blocks byte-identical; inside them three keys only — `feeZero` takes the amount
   // ("fee {fee}", filled with formatTzs(0)), `regTicketsSoldOne` ("1 ticket at {price}"), `landingInvite` (Ali's own words
   // of 2026-10-22, "Be this week's winner?" / "Kuwa mshindi wa wiki hii?" / "成为本周赢家？").
-  // 2026-10-23 (S5 round 2: HUB, merged with main 4c75dbbb6 — MASWALI-BUILD S5-R2-HUB 15): d8fb5c6ea → 44ebc7238. Reviewed
-  // the same way (HUB-2B's strip of each `millionea` block by brace matching, comments skipped, with the planted-classic-
-  // edit control reported): outside the three blocks byte-identical; inside them ten keys per language only, the lead's
-  // rulings of 2026-10-22 on the hub's own lines — the nine `result*` notices in the page form ("Week {week}: your ticket
-  // did not win." for "Millionea Week {week}: your ticket did not win": the week named without the product, a full stop),
-  // and `lastWeekRolled`'s fee an amount ("· fee {fee}", filled with formatTzs(0), as `feeZero` above). No policy string,
-  // no classic word.
-  "src/lib/i18n-dict.ts": "44ebc7238f1337238c548b698b75e5fbae9d2608",
+  // D19a RE-PINNED AT S6-SHIP 10 (was the blob d61b83910, S6-INT 21's): the dictionary as the merge of main 07a400bc3 left it
+  // (S6-SHIP 9, 0f65d3975) — this branch's plus round 2's three keys above, nothing else: its diff against d61b83910 is
+  // main's own round-2 dictionary diff, line for line (12 lines, en/sw/zh). No other line changed.
+  // S7-SHIP 4 re-pinned S7's own branch at its merge of main 07a400bc3: 4a229943f, S7's dictionary plus the same three
+  // round-2 keys.
+  // NOT RE-PINNED AT S6-SHIP 16 (the merge of S7 at 2a1f6fc72: S7-SHIP 2-5): this branch already held S7's dictionary
+  // (S6-INT 21) and round 2's three keys (S6-SHIP 9), so the merged dictionary is S6-SHIP 10's, byte for byte, and the
+  // pin stays 2ef1a9d9f.
+  // D19a RE-PINNED AT MASWALI-BUILD FLOW 3 (was 2ef1a9d9f7b5, S6-SHIP 10's; the lead's ruling of 2026-10-23, MB-57): inside
+  // the three `millionea` blocks only, two keys each — `depositPaidSlip` and `depositReturnSlip`, the deposit wait page's
+  // sentence and door once a deposit started from the slip has arrived — and one two-line comment in the English block.
+  // Its diff against 2ef1a9d9f7b5 is those 8 added lines; no line removed, no other line changed. FLOW 11 (the merge of the
+  // release at 79db50fdc, S6-SHIP 16-18) changes no line of the dictionary: the merged blob is FLOW 3's, byte for byte.
+  // D19a RE-PINNED AT MASWALI-BUILD FLOW 13 (was 1341177e5, FLOW 3's; the lead's ruling of 2026-10-23, the held wallet in
+  // Millionea's buy words): the strip-mln check — outside the three `millionea` blocks byte-identical, its control (a
+  // planted classic edit) reported; inside them one key each, `walletFrozen` (the lead's three sentences, the English
+  // apostrophe the dictionary's typographic one), and one two-line comment in the English block. Its diff against
+  // 1341177e5 is those 5 added lines; no line removed, no other line changed — `error.failWalletFrozen` stays as it was.
+  // D19a RE-PINNED AT MASWALI-BUILD S5-R2-HUB 20 (HUB-2B's merge of this release at c5dede03d; was 989199be6, FLOW 13's):
+  // the strip-mln check (each `millionea` block cut out by brace matching, comments skipped, a planted classic edit
+  // reported) — outside the three blocks byte-identical to c5dede03d's dictionary; inside them ten keys per language,
+  // the lead's rulings of 2026-10-22 on the hub's own lines (S5-R2-HUB 4, first pinned at S5-R2-HUB 15 over main 4c75dbbb6
+  // as 44ebc7238): the nine `result*` notices in the page form ("Week {week}: your ticket did not win." for "Millionea Week
+  // {week}: your ticket did not win") and `lastWeekRolled`'s fee an amount ("· fee {fee}", as `feeZero`). No policy
+  // string, no classic word; FLOW 13's `walletFrozen` stands as FLOW pinned it.
+  "src/lib/i18n-dict.ts": "2382f3ea3211ab53d4bab8001eff921aebcaba37",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
 };
@@ -238,12 +300,36 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     // any changed blob must be reviewed and re-pinned in this file explicitly.
     const APPROVED_EXTRA = new Map([
       ["src/app/legal/_components.tsx", PHOS_R2A_PART2],
-      ["src/app/legal/rules/page.tsx", PHOS_R2A_PART2],
+      // S6-INT 2 · the chooser's third door (the legal lane's ThreeDoors, drawn on release 2a part 2's RuleCard) at the merge
+      // that joined them (8620862fc), whose blob is the page as it stands; the two doors' arm is release 2a part 2's, unchanged.
+      ["src/app/legal/rules/page.tsx", "8620862fc"],
       // 2026-10-22: 8d126b819 → c58b316ff — the one reviewed line between them: the never-printed Millionea slip
       // paragraph's English "removed once your ticket is cut" → "… is bought" (Ali's 2026-10-21 ruling 7; the
       // Privacy v2026-10-17 entry is amended; production's notice is unchanged).
       ["src/app/legal/privacy/page.tsx", "c58b316ff2116976f5021ad89b242ce09244953e"],
       ["src/app/legal/responsible-gambling/page.tsx", W4],
+      // MASWALI-BUILD S6 lane L (2026-10-18) publishes the Maswali Millionea rules: the binding text in three languages
+      // (`_content-millionea.tsx`, its hash pinned with its version in `millionea-rules-version.ts`) and its route (gated: a
+      // hidden product's address answers as the 404). Pinned at 902afae56, the lane's squash commit, merged with its history
+      // into claude/maswali-s6-release (S6-INT 1), whose blobs are the two files as they stand. The rules page's third door
+      // (the chooser) and the dictionary are re-pinned at that merge in the follow-up commit.
+      // S6-INT 12 · the binding text re-pinned at 3ea9f088f (S6-INT 11), whose blob is the file as it stands: its Chinese
+      // names an event 事件 (the lead's ruling D2; MILLIONEA_RULES_TEXT_SHA d5a5e9e3e680). The route stays at 902afae56.
+      // S6-DOCS 9 · re-pinned at S6-DOCS 8, whose blob is the file as it stands: §11 states the stale-form rule in the
+      // decided words `ruleSunset` carries (MILLIONEA_RULES_TEXT_SHA 46f7b1b18732; COMPLIANCE § "2026-10-22 · The Maswali
+      // Millionea rules' §11 states the stale-form rule …"). Nothing else in the file moved.
+      // S6-INT 31 · re-pinned at S6-INT 30, whose blob is the file as it stands: the rules published as v2026-10-23 — §6 the
+      // objection door as built, §12 the reversed-payment hold and the disputes line, §11 the final week's rule in its one
+      // wording (the lead's order of 2026-10-23; MILLIONEA_RULES_TEXT_SHA 8375d7809e2f; COMPLIANCE § "2026-10-23 · The Maswali
+      // Millionea rules are published as version 2026-10-23 …").
+      ["src/app/legal/rules/_content-millionea.tsx", "7422553402f76402e87c183f2c8fe5f7171d8c3a"],
+      ["src/app/legal/rules/millionea/page.tsx", "902afae56"],
+      // S6-INT 31 · the Terms at S6-INT 30, whose blobs are the two files as they stand: §4's Maswali Millionea paragraph
+      // (OD-18) inside MillioneaWording, printed with TERMS_VERSION_WITH_MILLIONEA only above the ceiling, the version the
+      // page prints and registration stamps read from the ceiling (termsVersionFor). Below the ceiling the page prints
+      // v2026-10-14's words, byte for byte (TERMS_TEXT_SHA unchanged). COMPLIANCE § "2026-10-23 · Terms v2026-10-23 …".
+      ["src/app/legal/terms/page.tsx", "7422553402f76402e87c183f2c8fe5f7171d8c3a"],
+      ["src/lib/terms-version.ts", "7422553402f76402e87c183f2c8fe5f7171d8c3a"],
       // 2026-10-23 (lane UDDOT, Ali's ruling "Remove Up & Down's dot"; DESIGN_AUTHORITY §K 3): COMMENT ONLY — the legal
       // nav's DG-P-11 code comment now states the rule in force (every nav tab alike, the old product-line dot and ink
       // superseded). No published word and no code changed: `git diff origin/main -- src/app/legal/` is that one JSX

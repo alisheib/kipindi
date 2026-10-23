@@ -601,6 +601,8 @@ export function poolFee(yesPool: number, noPool: number, rates: Partial<FeeRates
  * (`opts.outcome !== "VOID" && ((yes > 0 && no === 0) || (yes === 0 && no > 0))`) → refund, fee 0;
  * (2) VOID → refund, fee 0; (3) otherwise the very call settlement debits, `poolFee(yes, no, rates, winner)`.
  * `test:charged-fee` drives the REAL settlement on every branch and pins this equal to what it debited.
+ * ⭐ A MILLIONEA WEEK (S6) is handed in with `week`, as its settlement left it, and priced by its own model
+ * (`jackpotCharged`); `test:maswali-reporting` pins that arm to what the real week settlement booked, on both stores.
  * ⛔ It is NOT on any money path: `poolFee` and settlement are untouched, and nothing may pay, book or
  * refund from this. On a refund every charge field is 0 and `netPool` is the whole pool (it all went back).
  */
@@ -609,17 +611,29 @@ export interface ChargedFee extends FeeBreakdown {
   refunded: boolean;
 }
 
+/**
+ * ⭐ A MILLIONEA WEEK, AS ITS OWN SETTLEMENT LEFT IT (MASWALI-BUILD S6; RULES §2.12, §3 `jackpot-payout`) — the week's
+ * mirrored columns (`MaswaliCycle`), written in the same transaction as its ledger group: VOIDED (MR-18: every ticket
+ * refunded, no fee), or SETTLED with the jackpot J it paid (null when no ticket won) and its winning tickets k.
+ */
+export type JackpotWeekSettled =
+  | { state: "VOIDED" }
+  | { state: "SETTLED"; jackpot: number | null; winningTickets: number };
+
 export function chargedFee(
   // `productLine` is a plain string so this module stays import-free (it ships to the client): the stored value is enough.
-  m: { yesPool: number; noPool: number; resolvedOutcome: Side | "VOID"; productLine?: string | null },
+  m:
+    | { yesPool: number; noPool: number; resolvedOutcome: Side | "VOID"; productLine?: string | null }
+    | { yesPool: number; noPool: number; productLine: "MASWALI"; week: JackpotWeekSettled },
   rates: Partial<FeeRates>,
 ): ChargedFee {
-  // ⛔ S0.5 · THE FENCE. A Millionea week holds every shilling on one side, so this mirror of `settleMarket` would call
-  // it a zero-fee refund. Its fee is its own model (13% of the jackpot, at payout only — RULES §2.12 from S1), read
-  // from the week's settlement columns, and the readers learn it in S6. Until then a caller that hands one in fails
-  // loudly rather than printing a wrong figure. Every caller passes `productLine` (`test:maswali-fence` census).
+  // ⭐ S6 · A MILLIONEA WEEK IS PRICED BY ITS OWN MODEL, from its own settlement (`jackpotCharged`): never this poll mirror.
+  if ("week" in m) return jackpotCharged(m, m.week, rates);
+  // ⛔ S0.5 · THE FENCE, KEPT FOR A WEEK HANDED IN WITHOUT ITS SETTLEMENT. A Millionea week holds every shilling on one
+  // side, so the poll mirror below would call it a zero-fee refund; a caller that names a week but not how it settled
+  // fails loudly rather than printing a wrong figure. Every caller passes `productLine` (`test:maswali-fence` census).
   if (m.productLine === "MASWALI") {
-    throw new Error("chargedFee: a Millionea week's fee is the jackpot-payout model, read from its settlement (MASWALI-PLAN S6) — never this poll mirror.");
+    throw new Error("chargedFee: a Millionea week's fee is the jackpot-payout model — hand in the week as its settlement left it, never this poll mirror.");
   }
   const isOneSided = m.resolvedOutcome !== "VOID"
     && ((m.yesPool > 0 && m.noPool === 0) || (m.yesPool === 0 && m.noPool > 0));
@@ -634,6 +648,40 @@ export function chargedFee(
     };
   }
   return { ...poolFee(m.yesPool, m.noPool, rates, m.resolvedOutcome), refunded: false };
+}
+
+/**
+ * ⭐ THE FEE A MILLIONEA WEEK'S SETTLEMENT TOOK, recomputed the way it took it (MASWALI-BUILD S6; MASWALI-PLAN §5b).
+ * The settlement runs `maswali-money.ts → settleArithmetic`, whose fee is `Math.round(feeRate × J)`, and only when the
+ * week has a winning ticket: this is that expression, over the week's FROZEN rate (`feeSnapshot.jackpotFeeRate`, read
+ * as `readRates` reads every rate) and the J the settlement stamped. So a reader that compares it with the fee the
+ * week BOOKED is comparing two independent records, and the sunset's J (R + S, no floor) needs no arm of its own.
+ *   · VOIDED → every ticket refunded at no fee (MR-18): the poll mirror's refund shape, `netPool` the whole pool.
+ *   · SETTLED, no winning ticket → no fee, nothing shared: S rolled to the jackpot (MR-21), `netPool` 0.
+ *   · SETTLED with k ≥ 1 → fee = round(rate × J), `netPool` = J − fee (what the k shares and the dust came out of).
+ * ⛔ A week whose snapshot froze another model, or that paid with no jackpot on record, THROWS — a reader must fail
+ * loudly rather than print a fee nobody can stand behind (`readRates` already refuses a jackpot model with no rate).
+ * Not on any money path, as `chargedFee`.
+ */
+function jackpotCharged(m: { yesPool: number; noPool: number }, week: JackpotWeekSettled, rates: Partial<FeeRates>): ChargedFee {
+  const yes = Math.max(0, m.yesPool);
+  const no = Math.max(0, m.noPool);
+  const pool = yes + no;
+  const shape = { pool, smaller: Math.min(yes, no), larger: Math.max(yes, no), ceiling: 0, capped: false, shareOfLosers: 0 };
+  if (week.state === "VOIDED") return { ...shape, commission: 0, fee: 0, netPool: pool, refunded: true };
+  const r = readRates(rates);
+  if (r.feeModel !== "jackpot-payout") {
+    throw new Error(`chargedFee: a Millionea week priced under ${r.feeModel} — its snapshot froze no jackpot fee (RULES §3)`);
+  }
+  const k = week.winningTickets;
+  if (!Number.isSafeInteger(k) || k < 0) throw new Error(`chargedFee: a Millionea week's winning tickets must be a whole count, got ${k}`);
+  if (k === 0) return { ...shape, commission: 0, fee: 0, netPool: 0, refunded: false };
+  const J = week.jackpot;
+  if (J === null || !Number.isSafeInteger(J) || J < 0) {
+    throw new Error(`chargedFee: a Millionea week that paid ${k} ticket(s) has no settled jackpot on record (got ${J})`);
+  }
+  const fee = Math.round(r.jackpotFeeRate * J);
+  return { ...shape, commission: fee, fee, netPool: J - fee, refunded: false };
 }
 
 /**

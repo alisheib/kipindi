@@ -433,8 +433,9 @@ section("§6 · the short main balance asks the bet sheet's own plan");
   ok("6.6 · MR-10 · bonus money never buys a ticket: the plan is asked with a bonus of nothing",
     code("src/lib/millionea-slip-money.ts").includes("wallet: { status: facts.walletStatus, balance: main, bonusBalance: 0 },"));
   const client = code("src/app/millionea/slip/slip-client.tsx");
-  ok("6.7 · H4 · the door goes where the bet sheet's goes, tagged as a low-balance deposit, the progress bar first (§F10)",
-    client.includes('`/wallet/deposit?${new URLSearchParams({ amount: String(amount), from: "low-balance" })}`') && client.includes('window.dispatchEvent(new Event("50pick:navigating"));'));
+  // Re-pinned at MASWALI-BUILD FLOW 3 (MB-57): the door also carries the slip's way back (`returnPath`, test:deposit-slip-return).
+  ok("6.7 · H4 · the door goes where the bet sheet's goes, tagged as a low-balance deposit, with the slip's way back, the progress bar first (§F10)",
+    client.includes('`/wallet/deposit?${new URLSearchParams({ amount: String(amount), from: "low-balance", returnPath: MILLIONEA_SLIP_RETURN })}`') && client.includes('window.dispatchEvent(new Event("50pick:navigating"));'));
   ok("6.1′ CONTROL · the raw shortfall the old door offered is under the minimum the deposit takes", 600 < DEPOSIT_MIN_TZS);
 }
 
@@ -541,7 +542,9 @@ section("§9 · the batch stamp's dwell lives with every other dwell");
   ok("9.2 · motion M4 · \"View ticket\" starts the progress bar on its press — it is the kit's Link, which NavProgress's own listener starts on (§F10) — and the deposit door, a programmatic move, still raises `50pick:navigating`",
     client.includes("primaryHref={stamp ? (many ? MILLIONEA_HREF.tickets : millioneaTicketHref(stamp.serials[0])) : undefined}")
       && nav.includes('document.addEventListener("click", onClick, { capture: true });') && nav.includes('closest("a[href]")')
-      && /onDeposit=\{\(amount\) => navigate\(\(\) => router\.push\(/.test(client) && client.includes('window.dispatchEvent(new Event("50pick:navigating"));'));
+      // Re-pinned at MASWALI-BUILD FLOW 3: the door is a document request now (window.location.assign, the journey's
+      // payment focus), still raised through `navigate` and its event.
+      && /onDeposit=\{\(amount\) => navigate\(\(\) => window\.location\.assign\(/.test(client) && client.includes('window.dispatchEvent(new Event("50pick:navigating"));'));
   ok("9.3 · motion M3 · the stamp keeps its words through its exit: its content is the last cut shown (`shownCut`), and closing clears only `cut`",
     client.includes("const stamp = shownCut;") && client.includes("onClose={() => setCut(null)}") && !/setShownCut\(null\)/.test(client));
   ok("9.4 · M10 · a block on the money path stays until read (`durationMs: 0` for `danger`)",
@@ -606,8 +609,10 @@ section("§10 · each fix undone in memory is caught by its case (the source pla
     'const EMPTY_STEP = { background: "var(--border-strong)", boxShadow: "none", transition: STEP_FILL } as const;')) as { SteppedProgress: (p: Record<string, unknown>) => unknown };
   const solidMeter = renderToStaticMarkup(h(solid.SteppedProgress as never, { groups: [{ steps: 10, done: 3 }, { steps: 5, done: 0 }] } as never));
   ok("10.8 PLANT · H1 · VIS-P's solid empty step put back is caught (no hollow ring)", !solidMeter.includes("var(--border-control)") && solidMeter.includes("background:var(--border-strong)"));
-  // The lone marker: the price drawn with its "·" from 1280 again.
-  const lone = planted('{ key: "price", node: priceLine, soleFromXl: true }', '{ key: "price", node: priceLine }');
+  // The lone marker: the price drawn with its "·" from 1280 again. ⚠️ RE-PINNED ON S7 (S7-F9 15): S7's slip keeps the price's
+  // marker in a final week, where the week's rule stands before the price (`soleFromXl: !finalWeek`, S7-MERGE 1, the F3
+  // rule); this slip is no final week, so the price stands alone and the plant drops the same switch.
+  const lone = planted('{ key: "price", node: priceLine, soleFromXl: !finalWeek }', '{ key: "price", node: priceLine }');
   const loneItem = /<li class="([^"]*)"><span aria-hidden="true" class="([^"]*)">·<\/span><span class="min-w-0">(?:(?!<\/li>)[\s\S])*?a ticket/.exec(drawSlip(lone, {}));
   ok("10.9 PLANT · the price's lone \"·\" from 1280 put back is caught", !!loneItem && !loneItem[2].split(" ").includes("xl:hidden"));
   // S5-R2-HUB 6 · the whole rule under its head again (the release's line, which repeated "Reserves A1–A5" under its head).

@@ -87,7 +87,7 @@ export function doorDay(t: Dict, locale: Locale, weekday: string, dayKey: string
   return <span className="whitespace-nowrap">{weekday} {parts.map((p, i) => (i % 2 === 1 ? <span key={i} className="mono">{p}</span> : p))}</span>;
 }
 
-export function MaswaliHomeCard({ t, locale, week, jackpot, pct, cap, state, finalWeek, atLeast = false, pendingWeek = null, preview = false, host = "board", href = "/millionea", idBase = "mln-card", className }: {
+export function MaswaliHomeCard({ t, locale, week, jackpot, pct, cap, state, finalWeek, finalAhead = null, atLeast = false, pendingWeek = null, preview = false, host = "board", href = "/millionea", idBase = "mln-card", className }: {
   t: Dict;
   /** The reader's language: the fact lines keep its phrases whole (`keepFact`), and a date reads its way. */
   locale: Locale;
@@ -103,8 +103,10 @@ export function MaswaliHomeCard({ t, locale, week, jackpot, pct, cap, state, fin
   /** The weekly cap, from the week's snapshot. */
   cap: number;
   state: HomeCardState;
-  /** The final week of a sunset (announced in advance). */
+  /** The final week of a sunset: this card's own week. */
   finalWeek?: boolean;
+  /** The final week's number while it is still to open (MR-30, OD-03): the card names it, whatever week it shows. */
+  finalAhead?: number | null;
   /** At STAFF_PREVIEW, the preview's mark in the title row, as every Millionea page and /results carry it (L12). */
   preview?: boolean;
   host?: DoorHost;
@@ -195,7 +197,7 @@ export function MaswaliHomeCard({ t, locale, week, jackpot, pct, cap, state, fin
   // read among it, never in the name.
   const named = headline.length > 0 && jackpot !== null;
   const labelledBy = [`${idBase}-title`, named ? `${idBase}-figure` : null].filter(Boolean).join(" ");
-  const describedBy = [preview ? `${idBase}-preview` : null, finalWeek ? `${idBase}-final` : null,
+  const describedBy = [preview ? `${idBase}-preview` : null, finalWeek || finalAhead !== null ? `${idBase}-final` : null,
     ...headIds.map((id, i) => (i === at && headline.length > 0 && !named ? `${idBase}-figure` : id)).filter((id): id is string => id !== undefined),
     `${idBase}-state`].filter(Boolean).join(" ");
   return (
@@ -222,6 +224,9 @@ export function MaswaliHomeCard({ t, locale, week, jackpot, pct, cap, state, fin
           )}
         </span>
         {finalWeek && <span id={`${idBase}-final`} className="text-body-sm text-text-muted">{keep(t.millionea.finalWeek)}</span>}
+        {/* S7 · F1 (MR-30, OD-03): every card but the final week's own names the announced final week, by its number — in
+            the final week's own slot (the two never stand together), and its description reads it. */}
+        {!finalWeek && finalAhead !== null && <span id={`${idBase}-final`} className="text-body-sm text-text-muted">{keep(fill(t.millionea.finalAheadShort, { week: finalAhead }))}</span>}
       </span>
       {headline.length > 0 && (
         <span className="kp-mln-door__rule text-body-sm text-text-muted">

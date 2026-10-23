@@ -158,4 +158,23 @@ export const MUTATIONS = [
     expect: "5.4 · settleMarketAction and holdSettlementAction",
     suite: "memory",
   },
+  {
+    // S7-F9 (the S7 brief's item 3): the automatic resolver's door. 2.4 had no plant: its fence could go and no red said so.
+    name: "(18) the automatic resolver reaches a week again (resolveDueMarket's fence removed)",
+    file: SVC,
+    from: "  if (isFencedMaswali(pre)) return { status: \"skipped\" };",
+    to: "  if (false) return { status: \"skipped\" };",
+    expect: "2.4 · resolveDueMarket skips a week",
+    suite: "memory",
+  },
+  {
+    // The fence kept for the scheduler's call but not for a verdict handed in: the AI then seals a week alone, both stages
+    // its own, whatever the two-admin setting says.
+    name: "(19) a verdict handed to the automatic resolver seals a week alone (the fence narrowed to calls with no verdict)",
+    file: SVC,
+    from: "  if (isFencedMaswali(pre)) return { status: \"skipped\" };",
+    to: "  if (isFencedMaswali(pre) && !opts?.assessment) return { status: \"skipped\" };",
+    expect: "2.4b · ⭐ with two-admin authorization ON",
+    suite: "memory",
+  },
 ];

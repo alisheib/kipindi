@@ -41,6 +41,8 @@ import type { StoredTxn } from "./store";
 import { isDemoMarket } from "./market-service";
 import type { MarketCategory } from "./market-service";
 import { positionStore, marketStore } from "./market-dal";
+import { weekStore, type StoredWeek } from "./maswali-dal";
+import { lacksText, settledWeekGaps, type SettlementField } from "./maswali-week-record";
 
 /**
  * The ONE preset still passed by name — `categoryBreakdown("30d")` on /admin/insights, whose card
@@ -404,9 +406,10 @@ export async function loadMoneyAttribution(positionIds?: readonly string[]): Pro
  * so the per-game split can DISCLOSE what it does not know instead of guessing.
  */
 // MASWALI (Maswali Millionea weeks) is a game of its own from S0.5 — never folded into MARKET.
-// ⚠️ OWED BY S6 (MASWALI-PLAN §7b, S6 item 5): a Millionea week's hold is its FEE only. Stakes carried to
-// HOUSE:MASWALI_JACKPOT are money owed to players, not GGR, so `stakes − payouts − refunds` overstates it until S6
-// teaches this split the jackpot model. No week can settle before S6.
+// ⭐ S6 (MASWALI-PLAN §7b item 5, MB-66, OD-08): its `GameMoney` is a game's like any other — the statutory GGR is
+// unchanged — and `moneyByGame` adds its jackpot model beside it (`JackpotMoney`, below): stakes carried to
+// HOUSE:MASWALI_JACKPOT are money owed to players, and a paying week pays out the carry it claimed and the house's own
+// floor top-up besides its own sales, so the GGR of a Millionea week is never read alone as what the operator earned.
 export type GameLine = "MARKET" | "UPDOWN" | "MASWALI" | "UNATTRIBUTED";
 
 export type GameMoney = {
@@ -426,6 +429,136 @@ export type GameMoney = {
 
 function emptyGame(game: GameLine): GameMoney {
   return { game, stakes: 0, payouts: 0, refunds: 0, ggr: 0, holdPct: 0, bets: 0, players: 0 };
+}
+
+/**
+ * ⭐ MASWALI-BUILD S6 · MB-66 (OD-08) — ONE MILLIONEA WEEK SETTLED IN A WINDOW, as its settlement left it: the columns
+ * of its week record, written in the same transaction as its ledger group (`maswali_settle_<weekId>`), on both stores.
+ * Read, never re-derived from a rate.
+ */
+export type JackpotWeekRow = {
+  weekId: string;
+  code: string;
+  visibility: StoredWeek["visibility"];
+  settledAt: string;
+  /** S — the week's sales at its close. */
+  sales: number;
+  /** k — its winning tickets. 0 = a no-winner week. */
+  winningTickets: number;
+  /** What it drew FROM the jackpot into its pool: the carry it claimed (a final week's whole jackpot), when a ticket won.
+   *  ⛔ A no-winner week stamps its claim but moves none of it (MR-22), so it draws 0. */
+  claimed: number;
+  /** U — the guarantee's floor top-up into its pool: the house's own money. */
+  topUp: number;
+  /** J — the jackpot it paid; null for a no-winner week. */
+  jackpot: number | null;
+  /** F — the fee booked at its payout. */
+  fee: number;
+  /** k × share — what its winners were paid. */
+  paid: number;
+  /** What it sent TO the jackpot: a no-winner week's whole sales, a paying week's rounding. */
+  carried: number;
+};
+
+/**
+ * ⭐ MASWALI-BUILD S6 · MB-66 (OD-08) — MILLIONEA'S JACKPOT MODEL OVER A WINDOW, beside its `GameMoney`.
+ *
+ * A week's tickets are a poll's shape, so its stakes, payouts and refunds count as any game's and the statutory GGR is
+ * unchanged. But that GGR is not what the operator earned: a no-winner week's whole sales go to the jackpot, owed to the
+ * next winning week's players, and a paying week pays out the carry it claimed and the house's floor top-up besides its
+ * own sales (MASWALI-PLAN §5a.4: week 1 reads +300,000, week 2 −470,000). These lines state the difference:
+ *   · `movement` — the jackpot liability's change: carried − claimed + forfeited (equal to the jackpot accounts' ledger
+ *     movement over the same weeks);
+ *   · `guarantee` — the house's own floor top-ups (U);
+ *   · `ggrExJackpot` — Millionea's GGR less (carried − claimed). Over weeks that settled inside the window it is exactly
+ *     fee − guarantee; a week still open adds its stakes, as any game's open stakes do.
+ * ⚠️ A FORFEITED SHARE (OD-07) moves the liability but was never gaming revenue: it was paid out, and the player's
+ * wallet returned it to the jackpot. So it is in `movement` and NOT in the GGR adjustment.
+ */
+export type JackpotMoney = {
+  carried: number;
+  claimed: number;
+  forfeited: number;
+  movement: number;
+  guarantee: number;
+  fee: number;
+  ggrExJackpot: number;
+  /** Weeks settled in the window. */
+  weeks: number;
+};
+
+/** ⭐ S6 · a settled week a window holds whose record cannot supply its lines (`settledWeekGaps`), by name. */
+export type JackpotWeekProblem = { weekId: string; code: string; lacks: SettlementField[] };
+
+/**
+ * ⭐ S6 · every Millionea week settled in `[start, end)`, oldest first, from the week records (both stores, every
+ * visibility: a drive week's tickets are in the window's transactions too, so its jackpot lines belong beside them).
+ * ⛔ A WEEK WHOSE RECORD IS INCOMPLETE IS A PROBLEM OF THAT WEEK, named in the window that holds it (`problems`) — never
+ * a zero, and never a fault of every window (round 3). A week is placed by its own settlement instant, or, when its record
+ * lost that, by the one its settlement stamped on its market in the same transaction; a SETTLED week that has neither —
+ * two faults in one transaction — holds every window and is named in each, since none can be shown not to hold it. Of
+ * its columns, only the ones these lines read are asked for (round 5). ⛔ Throws when the store cannot be read.
+ */
+export async function jackpotWeeksSettled(start: number, end: number): Promise<{ rows: JackpotWeekRow[]; problems: JackpotWeekProblem[] }> {
+  const weeks = await weekStore.list({ states: ["SETTLED"] });
+  const own = (w: StoredWeek) => Date.parse(w.settledAt ?? "");
+  const byMarket = new Map<string, number>();
+  for (const w of weeks) {
+    if (Number.isFinite(own(w)) || !w.marketId) continue;
+    const t = Date.parse((await marketStore.get(w.marketId))?.settledAt ?? "");
+    if (Number.isFinite(t)) byMarket.set(w.id, t);
+  }
+  const at = (w: StoredWeek): number | null => (Number.isFinite(own(w)) ? own(w) : byMarket.get(w.id) ?? null);
+  const held = weeks
+    .filter((w) => { const t = at(w); return t === null || (t >= start && t < end); })
+    .sort((a, b) => (at(a) ?? 0) - (at(b) ?? 0) || a.seq - b.seq);
+  const rows: JackpotWeekRow[] = [], problems: JackpotWeekProblem[] = [];
+  for (const w of held) {
+    const paidWeek = (w.winningTickets ?? 0) > 0;
+    const gaps = settledWeekGaps(w, ["settledAt", "salesAtClose", "winningTickets", "topUp", "fee", "paidTotal", "carryOut", "jackpot", ...(paidWeek ? (["rolloverIn"] as const) : [])]);
+    if (gaps.length) { problems.push({ weekId: w.id, code: w.code, lacks: gaps }); continue; }
+    // Every column below was checked present just above: these are the record's own figures, never a default.
+    const k = w.winningTickets as number;
+    rows.push({
+      weekId: w.id, code: w.code, visibility: w.visibility, settledAt: w.settledAt as string,
+      sales: Math.round(w.salesAtClose as number),
+      winningTickets: k,
+      claimed: k > 0 ? Math.round(w.rolloverIn as number) : 0,
+      topUp: Math.round(w.topUp as number),
+      jackpot: k > 0 ? (w.jackpot as number) : null,
+      fee: Math.round(w.fee as number),
+      paid: Math.round(w.paidTotal as number),
+      carried: Math.round(w.carryOut as number),
+    });
+  }
+  return { rows, problems };
+}
+
+/**
+ * ⭐ S6 · the problem weeks, as one clause a note or a refusal names them by — in words, never column names
+ * (`lacksText`): "Millionea week X's settlement record lacks its fee and its TRA levy".
+ */
+export function jackpotProblemsText(problems: readonly JackpotWeekProblem[]): string {
+  return problems.map((p) => `Millionea week ${p.code}'s settlement record lacks ${lacksText(p.lacks)}`).join("; ");
+}
+
+/** The window's jackpot model from its settled weeks, its forfeits and Millionea's own GGR (see `JackpotMoney`). */
+function jackpotMoney(maswaliGgr: number, weeks: readonly JackpotWeekRow[], forfeited: number): JackpotMoney {
+  const carried = weeks.reduce((s, w) => s + w.carried, 0);
+  const claimed = weeks.reduce((s, w) => s + w.claimed, 0);
+  return {
+    carried, claimed, forfeited,
+    movement: carried - claimed + forfeited,
+    guarantee: weeks.reduce((s, w) => s + w.topUp, 0),
+    fee: weeks.reduce((s, w) => s + w.fee, 0),
+    ggrExJackpot: maswaliGgr - (carried - claimed),
+    weeks: weeks.length,
+  };
+}
+
+/** True when a window's per-game split holds any Millionea money — the readers' one test for adding its lines. */
+export function holdsMillionea(g: { maswali: GameMoney; jackpot?: JackpotMoney }): boolean {
+  return g.jackpot !== undefined || g.maswali.stakes > 0 || g.maswali.payouts > 0 || g.maswali.refunds > 0;
 }
 
 /**
@@ -465,7 +598,12 @@ export async function moneyByGame(
   /** Pass the snapshot from `loadReportWindow()` when the caller also runs
    *  `categoryBreakdown` — see the DG-A-01 notes above. Omit and it reads its own. */
   ctx?: ReportWindow,
-): Promise<{ market: GameMoney; updown: GameMoney; maswali: GameMoney; unattributed: GameMoney }> {
+): Promise<{
+  market: GameMoney; updown: GameMoney; maswali: GameMoney; unattributed: GameMoney;
+  jackpot?: JackpotMoney; jackpotWeeks?: JackpotWeekRow[]; jackpotUnread?: true;
+  /** ⭐ S6 · the settled weeks this window holds whose records are incomplete; present (with `jackpotUnread`) only then. */
+  jackpotProblems?: JackpotWeekProblem[];
+}> {
   const allTxn = await windowTxns(ctx, start, end);
   const attr = await windowAttribution(ctx, start, end, allTxn);
   // ⛔ `?? "MARKET"` here is UNCHANGED and is not the F-03 defect below: this resolves a
@@ -482,10 +620,17 @@ export async function moneyByGame(
     UNATTRIBUTED: { ...emptyGame("UNATTRIBUTED"), _players: new Set<string>() },
   };
 
+  let forfeited = 0;
   for (const t of allTxn) {
     if (t.status !== "CONFIRMED") continue;
     if (!within(t, start, end)) continue;
     if (!t.positionId) continue; // deposits/withdrawals/bonus have no position → platform-level, not a game
+    // ⭐ S6 · OD-07 — a forfeited Millionea share: the ticket's own ADJUSTMENT_DEBIT, returned to the jackpot. It is no
+    // game's turnover (as before, it is not a GGR row); it is counted only into the jackpot's movement, below.
+    if (t.type === "ADJUSTMENT_DEBIT") {
+      if (plByPosition.get(t.positionId) === "MASWALI") forfeited += Math.abs(t.amount);
+      continue;
+    }
     if (t.type !== "BET_PLACED" && t.type !== "BET_PAYOUT" && t.type !== "CASHOUT" && t.type !== "BET_REFUND") continue;
     // ⛔ NO `?? "MARKET"`. An unresolvable positionId means we do not know the game;
     // saying "MARKET" would put money on a regulator-facing line that cannot support it.
@@ -505,7 +650,28 @@ export async function moneyByGame(
       bets: g.bets, players: g._players.size,
     };
   };
-  return { market: finish(out.MARKET), updown: finish(out.UPDOWN), maswali: finish(out.MASWALI), unattributed: finish(out.UNATTRIBUTED) };
+  const maswali = finish(out.MASWALI);
+  // ⭐ S6 · MB-66 — the jackpot model, from the weeks settled in this window. Read whatever the window's transactions
+  // hold: a no-winner week's settlement writes no transaction at all, only its rollover. Attached only when the window
+  // holds a settled week or a forfeit, so every other window's split is exactly what it was.
+  // ⛔ CONTAINED: a failed read of the weeks never costs the other games their split (the Up & Down economics card, the
+  // reports console). It is said instead — `jackpotUnread` — and each reader of the jackpot lines decides what that means.
+  // A week this window holds whose record is incomplete makes its lines unread too, and is NAMED (`jackpotProblems`):
+  // totals that left it out would be a figure nobody read. A window that does not hold it reads as it always did.
+  const read = await jackpotWeeksSettled(start, end).catch((err: unknown) => {
+    console.error("[report-money] the Millionea weeks could not be read:", String((err as Error)?.message ?? err).slice(0, 300));
+    return null;
+  });
+  const weeks = read && read.problems.length === 0 ? read.rows : null;
+  const jackpot = weeks !== null && (weeks.length > 0 || forfeited > 0) ? jackpotMoney(maswali.ggr, weeks, forfeited) : null;
+  return {
+    market: finish(out.MARKET), updown: finish(out.UPDOWN), maswali, unattributed: finish(out.UNATTRIBUTED),
+    // The weeks themselves ride beside their totals: a reader that lists them prints the very rows these lines were
+    // made from, never a second read a settlement could land between.
+    ...(jackpot && weeks ? { jackpot, jackpotWeeks: weeks } : {}),
+    ...(weeks === null ? { jackpotUnread: true as const } : {}),
+    ...(read && read.problems.length > 0 ? { jackpotProblems: read.problems } : {}),
+  };
 }
 
 export type DailyPnlRow = {

@@ -15,7 +15,7 @@
  * restore guard, and a byte-identical check at the end. MEMORY ONLY: the Postgres-only reads are held by the suite's own
  * Postgres child (see the anchors file).
  * ⛔ Run it detached under the heavy-node lock, never piped, and never beside another red drive: it rewrites live money
- * files for minutes (seventeen memory runs). From `red:all`, give it a `--timeout` of at least 1200 seconds.
+ * files for minutes (nineteen memory runs). From `red:all`, give it a `--timeout` of at least 1200 seconds.
  * ⚠️ This file carries no backslash: line breaks are built from their code points.
  */
 import { readFileSync, writeFileSync, renameSync, unlinkSync, existsSync } from "node:fs";

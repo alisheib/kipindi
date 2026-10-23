@@ -11,6 +11,7 @@ import { cn, fill, formatNumber, formatTzs } from "@/lib/utils";
 import type { Dict } from "@/lib/i18n-dict";
 import type { SocketMark } from "@/components/maswali/maswali-seal-line";
 import type { MaswaliOutcome, MaswaliPick } from "@/lib/maswali-score";
+import type { RemainderFate } from "@/lib/maswali-money";
 
 /**
  * THE WIN LEDGER — and the one file where Millionea's money is gold (MASWALI-BUILD S5; MASWALI-PLAN §10 §3.13–§3.14;
@@ -111,8 +112,12 @@ export type WinLines = {
   yourTotal: number;
   /** The floor's top-up: printed, never carried. */
   topUp?: number;
-  /** The rounding remainder left by an equal share (carried as real money, never paid from house money). */
+  /** The rounding remainder left by an equal share, and where it went (`remainderFate`: the next jackpot, as far as the
+   *  week's own money covered it, and the guarantee for the rest). */
   remainder?: number;
+  remainderFate?: RemainderFate;
+  /** The week was Millionea's final one (MR-30): what it carried stays in the jackpot account. */
+  finalWeek?: boolean;
   /** When the week's spend exceeds the win, the spend and the net (U+2212 below zero). */
   spent?: { tickets: number; amount: number; net: number };
   /** The sunset week: no floor top-up and no 10/10 (Timeline E). */

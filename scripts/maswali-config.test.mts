@@ -59,6 +59,8 @@ console.log("\n§1 · the ruled defaults validate, and are the numbers the law s
     && /\| \*\*Millionea floor\*\* \| A winning week's jackpot is \*\*at least TZS 1,000,000\*\*/.test(rules)
     && /\| \*\*Millionea cap\*\* \| \*\*10 tickets per account per week\*\*/.test(rules));
   ok("1.9 · the sync read starts from the defaults", JSON.stringify(getMaswaliConfig()) === JSON.stringify(MASWALI_DEFAULTS));
+  ok("1.10 · S6 review R2-7 · the desk's complaint answer target is a setting, 5 working days by default (MB-91; Ali confirmed five days on 2026-10-21, COMPLIANCE-DECISIONS item 6)",
+    d.complaintAnswerDays === 5);
 }
 
 // ── §2 · every field refuses what it must ───────────────────────────────────
@@ -87,6 +89,9 @@ console.log("\n§2 · every field refuses what it must");
     ["per-competition 0", { questionCaps: { probabilityMin: 0.3, probabilityMax: 0.7, maxPerCompetition: 0, minReserveSources: 3 } }, /per competition/],
     ["unknown guarantee policy", { guaranteeReservePolicy: "PAY_FROM_HOUSE_CASH" as never }, /guarantee policy/],
     ["a paid exit window", { paidExitWindowMinutes: 5 as never }, /no paid early exit/],
+    // S6 review R2-7 · the desk's complaint answer target (MB-91).
+    ["a complaint answer target of 0 days", { complaintAnswerDays: 0 }, /complaint answer target/],
+    ["a complaint answer target that is not whole", { complaintAnswerDays: 2.5 }, /complaint answer target/],
   ];
   for (const [name, over, re] of bad) {
     const why = maswaliConfigProblem(with_(over));
@@ -109,6 +114,11 @@ console.log("\n§3 · the write is verified; a refused save changes nothing");
   ok("3.5 · the other fields kept their values (a shallow merge, not a reset)", fresh.ok && fresh.config.floorTzs === 1_000_000 && fresh.config.jackpotFeeRate === 0.13);
   const back = await saveMaswaliConfig({ ticketCapPerWeek: 10, closeAt: "18:00" }, "usr_officer");
   ok("3.6 · and back to the ruled values", back.ok && JSON.stringify(getMaswaliConfig()) === JSON.stringify(MASWALI_DEFAULTS));
+  const desk = await saveMaswaliConfig({ complaintAnswerDays: 7 }, "usr_officer");
+  ok("3.7 · R2-7 · the complaint answer target saves like every rule — verified, and read back by the next read",
+    desk.ok && desk.config.complaintAnswerDays === 7 && getMaswaliConfig().complaintAnswerDays === 7, JSON.stringify(desk).slice(0, 160));
+  const deskBack = await saveMaswaliConfig({ complaintAnswerDays: MASWALI_DEFAULTS.complaintAnswerDays }, "usr_officer");
+  ok("3.8 · and back to the default", deskBack.ok && JSON.stringify(getMaswaliConfig()) === JSON.stringify(MASWALI_DEFAULTS));
 }
 
 // ── §4 · the week's snapshot ────────────────────────────────────────────────
@@ -118,7 +128,9 @@ console.log("\n§4 · the week's frozen rules");
   const snap = snapshotMaswaliRules(MASWALI_DEFAULTS, at);
   ok("4.1 · version 1 with its freeze time", snap.v === 1 && snap.frozenAt === at.toISOString());
   ok("4.2 · ⛔ the fee is NOT in the rules snapshot — it has one home, the week's feeSnapshot", !("jackpotFeeRate" in snap));
-  const fields = Object.keys(MASWALI_DEFAULTS).filter((k) => k !== "jackpotFeeRate");
+  ok("4.2b · ⛔ R2-7 · nor is the desk's complaint answer target — a support promise, never a week's rule, quoted as it stands",
+    !("complaintAnswerDays" in snap));
+  const fields = Object.keys(MASWALI_DEFAULTS).filter((k) => k !== "jackpotFeeRate" && k !== "complaintAnswerDays");
   ok("4.3 · every other field is frozen", fields.every((k) => JSON.stringify((snap as Record<string, unknown>)[k]) === JSON.stringify((MASWALI_DEFAULTS as Record<string, unknown>)[k])), fields.join(","));
   ok("4.4 · the nested caps are a COPY (editing the config cannot reach a frozen week)", snap.questionCaps !== MASWALI_DEFAULTS.questionCaps);
   ok("4.5 · freezing an invalid config throws", throws(() => snapshotMaswaliRules(with_({ ticketCapPerWeek: 0 }), at)) !== null);
@@ -128,6 +140,40 @@ console.log("\n§4 · the week's frozen rules");
   ok("4.8 · ⛔ a snapshot with no freeze time is refused", !readMaswaliRulesSnapshot({ ...snap, frozenAt: undefined }).ok);
   ok("4.9 · ⛔ a tampered snapshot (a cap of 0) is refused", !readMaswaliRulesSnapshot({ ...snap, ticketCapPerWeek: 0 }).ok);
   ok("4.10 · ⛔ no snapshot at all is refused", !readMaswaliRulesSnapshot(null).ok);
+  // S7-F3 · LOW-3 · A RUNNING WEEK IS READ AGAINST ITS OWN VERSION, NEVER TODAY'S VALIDATOR. A week frozen while the ranges
+  // were wider (a cap of 150, a price of 1.5M, a 2-minute buffer) must stay readable once today's ranges are narrower:
+  // `maswaliConfigProblem` refuses each value below, as a tightened validator would, and the week's rules still read.
+  const looser = { ...JSON.parse(JSON.stringify(snap)), ticketCapPerWeek: 150, ticketPriceTzs: 1_500_000, minLockBufferMinutes: 2 };
+  const tightened = [with_({ ticketCapPerWeek: 150 }), with_({ ticketPriceTzs: 1_500_000, floorTzs: 2_000_000 }), with_({ minLockBufferMinutes: 2 })].map((c) => maswaliConfigProblem(c));
+  const kept = readMaswaliRulesSnapshot(looser);
+  ok("4.11 · ⭐ S7-F3 · a week frozen under wider ranges stays readable after today's validator narrowed them (its cap, price and buffer as frozen)",
+    tightened.every((why) => why !== null) && kept.ok && kept.rules.ticketCapPerWeek === 150 && kept.rules.ticketPriceTzs === 1_500_000 && kept.rules.minLockBufferMinutes === 2,
+    JSON.stringify({ tightened, kept: kept.ok ? "read" : kept.error }));
+  // …the control: a snapshot that is not version 1's shape is still unreadable, field by field.
+  const malformed: Array<[string, Record<string, unknown>]> = [
+    ["a cap written as text", { ticketCapPerWeek: "10" }], ["a fractional cap", { ticketCapPerWeek: 2.5 }], ["a price of 0", { ticketPriceTzs: 0 }],
+    ["a negative floor", { floorTzs: -1 }], ["no close", { closeAt: undefined }], ["a close at 24:00", { closeAt: "24:00" }],
+    ["the close at the open", { closeWeekday: 1, closeAt: "00:00" }], ["a void deadline of 0", { voidDeadlineHours: 0 }],
+    ["a reversed probability band", { questionCaps: { probabilityMin: 0.7, probabilityMax: 0.3, maxPerCompetition: 4, minReserveSources: 3 } }],
+    ["no question rules", { questionCaps: null }], ["a policy v1 does not know", { guaranteeReservePolicy: "PAY_FROM_HOUSE_CASH" }],
+    ["a paid exit", { paidExitWindowMinutes: 5 }],
+  ];
+  const readable = malformed.filter(([, over]) => readMaswaliRulesSnapshot({ ...JSON.parse(JSON.stringify(snap)), ...over }).ok).map(([name]) => name);
+  ok("4.12 · ⛔ …and a snapshot that is not version 1's shape is still refused, each malformation on its own (control)", readable.length === 0, readable.join(", "));
+  // S7-F4 · VERSION 1'S MONEY CEILING (10^12 TZS): its money fields were bounded only by MAX_SAFE_INTEGER, under which a
+  // price times a cap, or a few floors added, leave the exact integers. Above the ceiling a snapshot is refused; at it, read.
+  const CEIL = 1_000_000_000_000;
+  const over: Array<[string, Record<string, unknown>]> = [
+    ["a price one shilling above it", { ticketPriceTzs: CEIL + 1 }], ["a floor one shilling above it", { floorTzs: CEIL + 1 }],
+    ["one purchase at the cap above it", { ticketPriceTzs: 100_000_000_000, ticketCapPerWeek: 11 }],
+    ["a price near MAX_SAFE_INTEGER", { ticketPriceTzs: Number.MAX_SAFE_INTEGER }],
+  ];
+  const overRead = over.map(([name, o]) => [name, readMaswaliRulesSnapshot({ ...JSON.parse(JSON.stringify(snap)), ...o })] as const);
+  ok("4.13 · ⛔ S7-F4 · a v1 snapshot whose money passes version 1's ceiling is refused, each on its own: a price, a floor, one purchase at the cap",
+    overRead.every(([, r]) => !r.ok && /ceiling/.test(r.error)), JSON.stringify(overRead.map(([name, r]) => [name, r.ok ? "read" : r.error])));
+  const atCeiling = readMaswaliRulesSnapshot({ ...JSON.parse(JSON.stringify(snap)), ticketPriceTzs: 10_000_000_000, ticketCapPerWeek: 100, floorTzs: CEIL });
+  ok("4.14 · control: …while money AT the ceiling still reads — a floor of exactly 10^12, and one purchase at the cap of exactly 10^12",
+    atCeiling.ok && atCeiling.rules.floorTzs === CEIL && atCeiling.rules.ticketPriceTzs * atCeiling.rules.ticketCapPerWeek === CEIL, atCeiling.ok ? "" : atCeiling.error);
 }
 
 // ── §5 · the licence basis ──────────────────────────────────────────────────
@@ -195,6 +241,10 @@ console.log("\n§7 · ⚠️ POSITIVE CONTROLS");
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI CONFIG: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run PRINTED (MASWALI-BUILD S1, the first run); it only rises, to a printed number. */
-const MIN_ASSERTIONS = 1;
+// S7-F5 (2026-10-18, the lead): the static count of its ok call sites, 56 (one runs in a loop, so a green run prints more):
+// a case that silently stops running fails the floor.
+// S7 (2026-10-19, rounds 4–6 merged into mln-sf): raised to what the merged tree's green run PRINTED, 77 — the loop walks a
+// fixed table of refusals, so the count is the same every run, and a refusal that stops running now fails the floor too.
+const MIN_ASSERTIONS = 77;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

@@ -231,11 +231,33 @@ export const CONTROL_DOMAIN = {
   holdMaswaliShare: "compliance",
   releaseMaswaliShare: "compliance",
   forfeitMaswaliShare: "compliance",
+  /** S6 · MB-93 · the desk records a call that reached a winner (on /integrity, typed). */
+  markMillioneaWinnerReached: "compliance",
+  clearUnresolvedLetter: "compliance",
+  /** S7-OB · a ruling on a player's objection to one question (MR-16), on /integrity: the platform's ruling act, and
+   *  the service asks the same roles (`requireRulingOfficer`: ADMIN or COMPLIANCE). */
+  ruleMaswaliObjection: "compliance",
+  /** S6-MONEY · OD-13 ("a Compliance officer pays to the registered number at the holder's request"): one payment of a
+   *  winning share whose holder's account cannot sign in, through the self-exclusion, never around another hold (on
+   *  /integrity, typed `PAY SHARE`; `maswali-share-payout.ts`). */
+  payLockedWinnerShare: "compliance",
   fundMaswaliGuarantee: "ops",
   returnMaswaliGuarantee: "ops",
   sunsetMaswali: "ops",
   setMaswaliLicenceBasis: "ops",
   setMillioneaRollout: "ops",
+  /**
+   * ⭐ MASWALI-BUILD S7-F2 · THE RULES OF THE NEXT WEEK (`maswali.config`) AND THE PUBLIC-HOLIDAY LIST, on the trading page
+   * (`/admin/maswali`) beside the weeks they shape — the Owner's, `ops`, and this is the only domain both platform laws
+   * allow there. "Trading never touches money/PII/config" (`DEFAULT_GRANTS`, Ali-approved), and the price, the floor
+   * and the fee are money-grade config; and a control sits only where its acting role can open its page (E-23,
+   * `test:maswali-rbac` §4) — FINANCE, the one non-Owner `accounting` actor, cannot open a trading page, so the platform
+   * rates' own `accounting` would leave the form Owner-only anyway, with a bounce instead of a lock. The holiday list is
+   * the Owner's record already (`maswali-holidays.ts`). A trading officer reads both, read-only, on the same page.
+   * ⛔ The licence basis is NOT this form: it stays the Owner's own ceremony on /pools (`setMaswaliLicenceBasis`).
+   */
+  saveMaswaliConfig: "ops",
+  saveMaswaliHolidays: "ops",
 } as const satisfies Record<string, AdminDomain>;
 
 export type ControlId = keyof typeof CONTROL_DOMAIN;

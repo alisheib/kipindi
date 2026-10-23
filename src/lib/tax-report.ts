@@ -35,6 +35,12 @@
  *    winnings PLUS that fee, and a check without the fee is short by exactly the fee, every
  *    period. It is printed as its own line — never folded into Payout — because Payout must stay
  *    what the plan says it is: "winnings paid out after each round is completed".
+ *  · ⭐ MILLIONEA (MASWALI-BUILD S6, OD-08). A Maswali Millionea week's pool also takes in money that is not
+ *    Sales (the carried jackpot, the house's floor top-up) and sends out money that is not Payout (to the
+ *    jackpot, for a later week). So a view that holds a week carries three more reconciling lines — Jackpot
+ *    brought forward, House floor top-up, Carried to the jackpot — and Report 2 files the fee the week's
+ *    settlement BOOKED (a share of its jackpot), never 13% × its winners' Payout. A view that holds no week
+ *    is exactly what it always was.
  *
  * ⛔ THE CHECK IS A REAL RECONCILIATION, NOT AN IDENTITY. The reader (`server/tax-report-data.ts`)
  * takes Sales, Payout and Refunds from the MONEY RECORDS (the Transaction table — what each wallet
@@ -231,6 +237,34 @@ export type TaxLines = {
   gbt: number;
   /** TRA + GBT — a sum of whole shillings, so no rounding of its own. */
   total: number;
+  /**
+   * ⭐ S6 · OD-08 — the Millionea part of this stretch, present ONLY when a Millionea week paid inside it, so every other
+   * stretch's lines are exactly what they always were. `commission` above then INCLUDES the fee those weeks' settlements
+   * booked, and TRA and GBT are taken on that rounded total.
+   */
+  jackpot?: JackpotTaxLines;
+};
+
+/**
+ * The Millionea weeks that paid inside one rate stretch, as Report 2 files them (OD-08, MB-65): the fee each week's
+ * settlement BOOKED, a share of its jackpot J, at the week's own frozen rate — never 13% × its winners' Payout, which is
+ * 0.87 of it (MASWALI-PLAN §5a.4). ⛔ Whole shillings, as booked; the report's own rates never re-price it.
+ */
+export type JackpotTaxPart = {
+  /** Σ J of the weeks that paid, in cents — the reference the booked fee is a share of. */
+  jackpotCents: number;
+  /** Σ the fees those weeks' settlements booked, whole TZS. */
+  bookedFee: number;
+  /** The weeks' one frozen fee rate in basis points, or null when they froze different ones. */
+  feeRateBp: number | null;
+  /** How many weeks paid. */
+  weeks: number;
+};
+
+/** A stretch's Millionea part once taxed: the commission on the Polls and Up & Down Payout beside the weeks' booked fee. */
+export type JackpotTaxLines = JackpotTaxPart & {
+  /** Commission = round(rate × Payout) on the stretch's Polls and Up & Down winnings — `taxOnPayout`'s own line. */
+  payoutCommission: number;
 };
 
 /**
@@ -248,6 +282,27 @@ export function taxOnPayout(payoutCents: number, rates: RateSet): TaxLines {
   return { payoutCents, rates: { ...rates }, commission, tra, gbt, total: tra + gbt };
 }
 
+/**
+ * ⭐ S6 · OD-08 — REPORT 2 FOR A STRETCH THAT HOLDS MILLIONEA WEEKS THAT PAID. Commission = `taxOnPayout`'s own
+ * round(rate × Payout) on the Polls and Up & Down winnings, PLUS the fee those weeks' settlements booked; then TRA and
+ * GBT on that rounded total, each rounded at its step (plan §3.3), at the report's own rates. ⛔ Never re-based on the
+ * levies a settlement booked: the report's rates make the levy lines, as they always have. With no paying week this IS
+ * `taxOnPayout`, the very object, so no other period's lines can move.
+ */
+export function taxOnPayoutAndJackpot(payoutCents: number, jackpot: JackpotTaxPart | null, rates: RateSet): TaxLines {
+  const t = taxOnPayout(payoutCents, rates);
+  if (!jackpot) return t;
+  const { jackpotCents, bookedFee, feeRateBp, weeks } = jackpot;
+  if (!Number.isSafeInteger(jackpotCents) || jackpotCents < 0 || !Number.isSafeInteger(bookedFee) || bookedFee < 0 || !Number.isSafeInteger(weeks) || weeks < 1) {
+    throw new RangeError(`taxOnPayoutAndJackpot: a Millionea part must be whole and non-negative, with at least one week — got ${JSON.stringify(jackpot)}`);
+  }
+  if (feeRateBp !== null && !isValidBp(feeRateBp)) throw new RangeError(`taxOnPayoutAndJackpot: the weeks' fee rate must be basis points, got ${feeRateBp}`);
+  const commission = t.commission + bookedFee;
+  const tra = Number(roundHalfAwayFromZero(BigInt(commission) * BigInt(rates.traBp), BigInt(BP_WHOLE)));
+  const gbt = Number(roundHalfAwayFromZero(BigInt(commission) * BigInt(rates.gbtBp), BigInt(BP_WHOLE)));
+  return { ...t, commission, tra, gbt, total: tra + gbt, jackpot: { jackpotCents, bookedFee, feeRateBp, weeks, payoutCommission: t.commission } };
+}
+
 /** One taxed segment, with its bounds and the version it was priced under. */
 export type TaxSegment = TaxLines & { startMs: number; endMs: number; versionId: string; effectiveFrom: string };
 
@@ -259,23 +314,39 @@ export type TaxTotals = {
   tra: number;
   gbt: number;
   total: number;
+  /** ⭐ S6 · the Millionea parts of the segments, summed — present only when a week paid inside the period. */
+  jackpot?: JackpotTaxLines;
 };
 
 /**
  * Report 2 across rate segments. Each segment is taxed and rounded on its own; the period's totals
  * are the SUMS of those whole-shilling lines — rounding once per step per segment, never again on
  * the total (which would create or destroy a shilling the segment lines do not show).
+ * ⭐ S6 · a segment that holds Millionea weeks that paid carries their booked fee (`taxOnPayoutAndJackpot`); every
+ * other segment, and every period with none, is taxed exactly as before.
  */
-export function taxForSegments(parts: ReadonlyArray<{ segment: RateSegment; payoutCents: number }>): TaxTotals {
-  const segments: TaxSegment[] = parts.map(({ segment, payoutCents }) => ({
-    ...taxOnPayout(payoutCents, segment.version.rates),
+export function taxForSegments(parts: ReadonlyArray<{ segment: RateSegment; payoutCents: number; jackpot?: JackpotTaxPart | null }>): TaxTotals {
+  const segments: TaxSegment[] = parts.map(({ segment, payoutCents, jackpot }) => ({
+    ...taxOnPayoutAndJackpot(payoutCents, jackpot ?? null, segment.version.rates),
     startMs: segment.startMs,
     endMs: segment.endMs,
     versionId: segment.version.id,
     effectiveFrom: segment.version.effectiveFrom,
   }));
   const sum = (k: "payoutCents" | "commission" | "tra" | "gbt" | "total") => segments.reduce((t, s) => t + s[k], 0);
-  return { segments, payoutCents: sum("payoutCents"), commission: sum("commission"), tra: sum("tra"), gbt: sum("gbt"), total: sum("total") };
+  const totals: TaxTotals = { segments, payoutCents: sum("payoutCents"), commission: sum("commission"), tra: sum("tra"), gbt: sum("gbt"), total: sum("total") };
+  const paid = segments.flatMap((s) => (s.jackpot ? [s.jackpot] : []));
+  if (paid.length === 0) return totals;
+  const rates = new Set(paid.map((p) => p.feeRateBp));
+  const [only] = [...rates];
+  totals.jackpot = {
+    jackpotCents: paid.reduce((t, p) => t + p.jackpotCents, 0),
+    bookedFee: paid.reduce((t, p) => t + p.bookedFee, 0),
+    feeRateBp: rates.size === 1 ? only : null,
+    weeks: paid.reduce((t, p) => t + p.weeks, 0),
+    payoutCommission: paid.reduce((t, p) => t + p.payoutCommission, 0),
+  };
+  return totals;
 }
 
 // ════════════════════════════════════════════════════════════════════════════════════════════
@@ -296,10 +367,24 @@ export type Report1 = {
   feeKeptCents: number;
   /** Stakes already waiting for a result when the period opened (placed before it). */
   broughtForwardCents: number;
+  /*
+   * ⭐ S6 · OD-08 (MB-65) — MILLIONEA'S THREE RECONCILING LINES. A week's pool takes money in that is not Sales (the carried
+   * jackpot, the house's floor top-up) and sends money out that is not Payout (to the jackpot, for a later week), so without
+   * them a no-winner week fails the check by its whole sales and blocks the WHOLE book. They are present only on a view that
+   * holds Millionea (the Millionea view, or All products over a period that holds a week), so every other period's Report 1
+   * — and its lock fingerprint — is exactly what it always was.
+   */
+  /** The carried jackpot (R) a paying week drew into its pool, and a final week's whole jackpot (MR-30) — money in, not Sales. */
+  jackpotBroughtForwardCents?: number;
+  /** The guarantee's top-up of a paying week to its floor (U) — the house's own money in, not Sales. */
+  floorTopUpCents?: number;
+  /** What left the weeks' pools for the jackpot: a no-winner week's whole sales, a paying week's rounding — not Payout. */
+  carriedToJackpotCents?: number;
 };
 
 export type Reconciliation = {
-  /** Payout + On hold + Refunds + Platform fee kept − On hold brought forward: what Sales must equal. */
+  /** Payout + On hold + Refunds + Platform fee kept − On hold brought forward: what Sales must equal. On a view that holds
+   *  Millionea, also + Carried to the jackpot − Jackpot brought forward − House floor top-up. */
   accountedCents: number;
   /** Sales − accounted. Zero, or the period is blocked. */
   differenceCents: number;
@@ -311,7 +396,10 @@ export function reconcile(r: Report1): Reconciliation {
   for (const [k, v] of Object.entries(r)) {
     if (!Number.isSafeInteger(v)) throw new RangeError(`reconcile: ${k} must be a safe integer number of cents, got ${v}`);
   }
-  const accountedCents = r.payoutCents + r.onHoldCents + r.refundsCents + r.feeKeptCents - r.broughtForwardCents;
+  const pollCents = r.payoutCents + r.onHoldCents + r.refundsCents + r.feeKeptCents - r.broughtForwardCents;
+  // ⭐ S6 · OD-08 — the money a Millionea week's pool took in that was not Sales, and sent out that was not Payout. Each is
+  // absent (so nothing is added) on a view that holds no week, where this IS the check it always was.
+  const accountedCents = pollCents + (r.carriedToJackpotCents ?? 0) - (r.jackpotBroughtForwardCents ?? 0) - (r.floorTopUpCents ?? 0);
   const differenceCents = r.salesCents - accountedCents;
   return { accountedCents, differenceCents, balanced: differenceCents === 0 };
 }
@@ -441,16 +529,16 @@ export function classifyRefund(input: {
 
 /**
  * The product filter. `MARKET` is a poll; `UPDOWN` an Up & Down round; `MASWALI` a Maswali Millionea week
- * (PredictionMarket.productLine). ⛔ MASWALI is in the type from S0.5 so no read can file a week as a poll, but it is
- * not selectable (`parseProduct`, the page's PRODUCTS) and a period holding a week is refused, until S6 teaches the
- * report the jackpot-payout model and its reconciling lines (OD-08).
+ * (PredictionMarket.productLine). ⭐ S6 (OD-08): a week is filed under the jackpot-payout model — Report 1's three
+ * reconciling lines and Report 2's booked fee — and Millionea is a product of its own here, beside Polls and Up & Down.
+ * The page offers its pill once a week has opened; the filter reads it whatever the page offers.
  */
 export type ProductFilter = "ALL" | "MARKET" | "UPDOWN" | "MASWALI";
 export const PRODUCT_LABEL: Readonly<Record<ProductFilter, string>> = Object.freeze({ ALL: "All products", MARKET: "Polls", UPDOWN: "Up & Down", MASWALI: "Millionea" });
 
 export function parseProduct(v: unknown): ProductFilter {
   const s = typeof v === "string" ? v.trim().toUpperCase() : "";
-  return s === "MARKET" || s === "POLLS" ? "MARKET" : s === "UPDOWN" ? "UPDOWN" : "ALL";
+  return s === "MARKET" || s === "POLLS" ? "MARKET" : s === "UPDOWN" ? "UPDOWN" : s === "MASWALI" ? "MASWALI" : "ALL";
 }
 
 /** What kind of disagreement an exception records. */

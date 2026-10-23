@@ -250,16 +250,26 @@ ok("§2b the witnesses are real: Postmark sends with open and click tracking, th
 // ⭐ S11 WP6 (2026-10-14): the prompt takes a third input, the journey's words — and it is the GLOBAL rollout's state
 // (`simpleJourneyStateNow() === "ACTIVE"`), a setting every reader shares, never the reader's pass or session: so the §4
 // sentence's premise holds, "built from the locale and global settings alone". The control below plants per-reader values.
-const systemCallIsGlobal = (src: string) => /system: systemPrompt\(locale, \(await getGlobalConfig\(\)\)\.objectionWindowHours, \(await simpleJourneyStateNow\(\)\) === "ACTIVE"\)/.test(src)
-  && src.includes("function systemPrompt(locale: string, objectionHours: number, journey: boolean): string {")
-  && /const prompt = buildSystemPrompt\(locale, objectionHours\);[ \r\n]*return journey \? journeyPrompt\(prompt\) : prompt;/.test(src);
+// ⭐ MASWALI-BUILD S6 (2026-10-18): a FOURTH input, Millionea's passage (MB-71) — and it is a setting too. The action passes
+// `await millioneaChatFacts()`, which reads Millionea's GLOBAL rollout and the rules every reader shares
+// (`src/lib/server/millionea-chat.ts`: `millioneaStateNow()`, then `millioneaHowTo` with no user), never a session, a cookie
+// or a preview. Re-pinned with that module read beside the action, and two more plants: the facts keyed on the reader.
+const mlnChatSrc = code(read("src/lib/server/millionea-chat.ts"));
+const millioneaFactsAreGlobal = (src: string) => /millioneaStateNow\(\)/.test(src) && src.includes('millioneaHowTo({ userId: null, state: "ACTIVE" })')
+  && !/getSession|resolveMillionea|cookies\(|headers\(|sessionUserId/.test(src);
+const systemCallIsGlobal = (src: string, mln: string = mlnChatSrc) => /system: systemPrompt\(locale, \(await getGlobalConfig\(\)\)\.objectionWindowHours, \(await simpleJourneyStateNow\(\)\) === "ACTIVE", await millioneaChatFacts\(\)\)/.test(src)
+  && src.includes("function systemPrompt(locale: string, objectionHours: number, journey: boolean, millionea: MillioneaChatFacts | null = null): string {")
+  && /const prompt = millioneaPrompt\(buildSystemPrompt\(locale, objectionHours\), millionea\);[ \r\n]*return journey \? journeyPrompt\(prompt\) : prompt;/.test(src)
+  && millioneaFactsAreGlobal(mln);
 ok("§2c the chat sends the conversation and no account data (the §4 sentence's premise)",
   systemCallIsGlobal(chatSrc)
   && /\.\.\.history\.slice\(-10\)/.test(chatSrc));
 ok("§2c control · a prompt keyed on the reader — the session, or a preview pass — is refused",
-  [`(await simpleJourneyStateNow()) === "ACTIVE"`].every((g) => chatSrc.includes(g))
-    && !systemCallIsGlobal(chatSrc.replace('(await simpleJourneyStateNow()) === "ACTIVE")', "Boolean(session.userId))"))
-    && !systemCallIsGlobal(chatSrc.replace('(await simpleJourneyStateNow()) === "ACTIVE")', "(await resolveSimpleJourney()).journey)")));
+  [`(await simpleJourneyStateNow()) === "ACTIVE"`, "await millioneaChatFacts()", 'millioneaHowTo({ userId: null, state: "ACTIVE" })'].every((g) => (chatSrc + mlnChatSrc).includes(g))
+    && !systemCallIsGlobal(chatSrc.replace('(await simpleJourneyStateNow()) === "ACTIVE",', "Boolean(session.userId),"))
+    && !systemCallIsGlobal(chatSrc.replace('(await simpleJourneyStateNow()) === "ACTIVE",', "(await resolveSimpleJourney()).journey,"))
+    && !systemCallIsGlobal(chatSrc.replace("await millioneaChatFacts())", "await millioneaChatFactsFor((await resolveMillionea()).state, readRules))"))
+    && !systemCallIsGlobal(chatSrc, mlnChatSrc.replace('millioneaHowTo({ userId: null, state: "ACTIVE" })', 'millioneaHowTo({ userId: (await getSession())?.userId ?? null, state: "ACTIVE" })')));
 ok("§2d the scrub removes what §4 says it removes — Tanzanian mobile numbers, 12+ digit numbers, email addresses",
   /\.replace\(\/\(\?:\\\+\?255\|0\)7\\d\{8\}\/g, "<msisdn>"\)/.test(monitoringSrc)
   && /\.replace\(\/\\b\\d\{12,\}\\b\/g, "<digits>"\)/.test(monitoringSrc)

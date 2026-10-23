@@ -196,6 +196,8 @@ export type WaterfallRead = {
   bonusCost: number;
   /** Net agent commission that reached partners' wallets in the window (clawbacks subtract). */
   agentCommissionOut: number;
+  /** ⭐ S6 · MB-04 — what the Millionea guarantee paid into winning weeks' pools in the window (its floor top-ups). */
+  guaranteePaid: number;
 };
 
 /**
@@ -261,8 +263,14 @@ export async function readWaterfall(start: Date, end: Date): Promise<WaterfallRe
   const agentCommissionOut = await q(
     `SELECT SUM(amount) AS sum FROM "LedgerEntry"
       WHERE ${win} AND "entryType" = 'AGENT_COMMISSION' AND account LIKE 'PLAYER:%'`);
+  /* ⭐ MASWALI-BUILD S6 · MB-04 — "JACKPOT GUARANTEE PAID": the guarantee's floor top-ups, read on the guarantee's own
+   * account (`MASWALI_TOPUP` debits it). The fee earned above already holds the week's fee share of them, so the waterfall
+   * subtracts them as a step of their own. Nothing else debits the account with this type; 0 in a window with no paying floor week. */
+  const guaranteePaid = await q(
+    `SELECT SUM(-amount) AS sum FROM "LedgerEntry"
+      WHERE ${win} AND "entryType" = 'MASWALI_TOPUP' AND account = 'HOUSE:MASWALI_GUARANTEE' AND amount < 0`);
 
-  return { stakeIn, bonusIn, winningsPaid, feeEarned, leviesOut, aggregatorOut, bonusCost, agentCommissionOut };
+  return { stakeIn, bonusIn, winningsPaid, feeEarned, leviesOut, aggregatorOut, bonusCost, agentCommissionOut, guaranteePaid };
 }
 
 export type GameLedgerRow = {
@@ -273,6 +281,10 @@ export type GameLedgerRow = {
   bonusRefunded: number;
   feeBooked: number;
   leviesBooked: number;
+  /** ⭐ S6 · MB-04 — a Millionea week's three pool legs (`GameBookInput`); 0 for every poll and round. */
+  carryIn: number;
+  topUp: number;
+  carryOut: number;
 };
 
 /**
@@ -293,6 +305,7 @@ export async function readGameRows(start: Date, end: Date): Promise<GameLedgerRo
   const rows = await pc.$queryRawUnsafe<Array<{
     marketid: string; poolin: string | null; bonusin: string | null; paidout: string | null;
     bonusrefunded: string | null; feebooked: string | null; leviesbooked: string | null;
+    carryin: string | null; topup: string | null; carryout: string | null;
   }>>(
     /* ⛔ FOUR LEGS OF THE POOL, NOT TWO. `stakeEntries` credits the pool with BOTH
      * `STAKE_DEBIT` and `BONUS_SPEND`, and `refundEntries` returns them down two different
@@ -315,7 +328,8 @@ export async function readGameRows(start: Date, end: Date): Promise<GameLedgerRo
             SUM(CASE WHEN account = 'HOUSE:COMMISSION' AND amount > 0
                      THEN amount ELSE 0 END) AS feebooked,
             SUM(CASE WHEN account IN ('HOUSE:TRA_LEVY','HOUSE:GBT_LEVY') AND amount > 0
-                     THEN amount ELSE 0 END) AS leviesbooked
+                     THEN amount ELSE 0 END) AS leviesbooked,
+            ${MASWALI_LEGS}
        FROM "LedgerEntry"
       WHERE "marketId" IS NOT NULL AND "createdAt" >= $1 AND "createdAt" < $2
       GROUP BY "marketId"`,
@@ -329,8 +343,24 @@ export async function readGameRows(start: Date, end: Date): Promise<GameLedgerRo
     bonusRefunded: Number(r.bonusrefunded ?? 0),
     feeBooked: Number(r.feebooked ?? 0),
     leviesBooked: Number(r.leviesbooked ?? 0),
+    carryIn: Number(r.carryin ?? 0),
+    topUp: Number(r.topup ?? 0),
+    carryOut: Number(r.carryout ?? 0),
   }));
 }
+
+/**
+ * ⭐ MASWALI-BUILD S6 · MB-04 — A MILLIONEA WEEK'S THREE POOL LEGS, as SQL columns of the per-game reads, each read on the
+ * week's own POOL rows: the carried jackpot drawn in (`MASWALI_ROLLOVER_IN`, and the final week's `MASWALI_SUNSET`), the
+ * guarantee's floor top-up (`MASWALI_TOPUP`), and what left for the jackpot (`MASWALI_ROLLOVER_OUT`, a debit of the
+ * pool). No poll or round carries these types, so their columns are 0 there and their books are unchanged.
+ */
+const MASWALI_LEGS = `SUM(CASE WHEN "entryType" IN ('MASWALI_ROLLOVER_IN','MASWALI_SUNSET') AND account LIKE 'POOL:%' AND amount > 0
+                     THEN amount ELSE 0 END) AS carryin,
+            SUM(CASE WHEN "entryType" = 'MASWALI_TOPUP' AND account LIKE 'POOL:%' AND amount > 0
+                     THEN amount ELSE 0 END) AS topup,
+            SUM(CASE WHEN "entryType" = 'MASWALI_ROLLOVER_OUT' AND account LIKE 'POOL:%' AND amount < 0
+                     THEN -amount ELSE 0 END) AS carryout`;
 
 /**
  * ⭐ THE UNATTRIBUTED FEE — the other half of the BY GAME reconciliation.
@@ -424,6 +454,7 @@ export async function readGameTotals(marketId: string): Promise<GameTotals | nul
        SUM(CASE WHEN account='HOUSE:COMMISSION' AND "entryType"='SETTLEMENT_COMMISSION' AND amount>0 THEN amount ELSE 0 END) AS settlementfee,
        SUM(CASE WHEN account='HOUSE:COMMISSION' AND "entryType"='CASHOUT_FEE' AND amount>0 THEN amount ELSE 0 END) AS earlyexitfee,
        SUM(CASE WHEN account IN ('HOUSE:TRA_LEVY','HOUSE:GBT_LEVY') AND amount>0 THEN amount ELSE 0 END) AS leviesbooked,
+       ${MASWALI_LEGS},
        COUNT(*) AS entries
      FROM "LedgerEntry" WHERE "marketId" = $1`,
     marketId,
@@ -441,6 +472,9 @@ export async function readGameTotals(marketId: string): Promise<GameTotals | nul
     settlementFee: n("settlementfee"),
     earlyExitFee: n("earlyexitfee"),
     leviesBooked: n("leviesbooked"),
+    carryIn: n("carryin"),
+    topUp: n("topup"),
+    carryOut: n("carryout"),
     entries: n("entries"),
   };
 }

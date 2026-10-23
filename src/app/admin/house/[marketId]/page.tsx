@@ -28,7 +28,9 @@ import { describeFeeModel, chargedFee } from "@/lib/payout";
 import { ratesFor } from "@/lib/server/market-service";
 import { hasOwnSnapshot } from "@/lib/server/market-config";
 import { officerLabel } from "@/lib/server/actor-label";
-import { marketStore } from "@/lib/server/market-dal";
+import { marketStore, type MarketBook } from "@/lib/server/market-dal";
+import { weekStore } from "@/lib/server/maswali-dal";
+import type { FeeSnapshot } from "@/lib/payout";
 import { gameBook, reconcile } from "@/lib/house-book";
 import { readGameTotals, readGameEntries, countGameEntryLines, readRateChangesBefore } from "@/lib/server/house-ledger";
 
@@ -55,6 +57,19 @@ function Amt({ v }: { v: number }) {
 }
 function Signed({ v }: { v: number }) {
   return <span className="amount">{v > 0 ? "+" : ""}{formatTzs(v)}</span>;
+}
+
+/**
+ * ⭐ MASWALI-BUILD S6 · MB-04 — a Millionea week re-priced through its own model: `chargedFee`'s week arm, round(its
+ * frozen rate × the jackpot J it settled), the settlement's own expression, against the fee it booked. A week whose
+ * snapshot cannot price it reads "not recomputed", never a figure (the arm throws rather than guess).
+ */
+function weekRecompute(meta: MarketBook, jackpot: number | null, winningTickets: number, rates: FeeSnapshot): number | null {
+  try {
+    return chargedFee({ yesPool: meta.yesPool, noPool: meta.noPool, productLine: "MASWALI", week: { state: "SETTLED", jackpot, winningTickets } }, rates).fee;
+  } catch {
+    return null;
+  }
 }
 
 type HouseGameProps = {
@@ -132,11 +147,16 @@ async function HouseGameContent({
   /* ⭐ landing v3 C1 · `chargedFee`, not `poolFee`: settlement books NOTHING on a one-sided pool (every stake is
    * refunded whatever the verdict), and `poolFee(…, winner)` priced a loser-share fee off the funded side there —
    * a variance manufactured on a correct book. `chargedFee` mirrors settlement's own branches. */
+  // ⭐ S6 · MB-04 — a Millionea week's own record: its jackpot J and its winning tickets price its recompute. Its market
+  // carries no verdict, so the poll arm below never reaches it; it takes its own arm after it (`weekRecompute`).
+  const week = meta?.productLine === "MASWALI" ? await weekStore.getByMarketId(marketId).catch(() => null) : null;
   const computed = rates && meta && winner && settled
-    // A Millionea week's fee is the jackpot-payout model (S6 teaches this recompute); until then there is no poll
-    // mirror to recompute it with, so the check reads "not computed", never a wrong figure (S0.5).
+    // A Millionea week is never a poll: were its market ever stamped with a verdict, the poll mirror is still not its
+    // price (S0.5), so it reads "not computed" here and is re-priced by its own model below.
     ? (meta.productLine === "MASWALI" ? null : Math.round(chargedFee({ yesPool: meta.yesPool, noPool: meta.noPool, resolvedOutcome: winner, productLine: meta.productLine }, rates).fee))
-    : null;
+    : rates && meta && settled && week && week.state === "SETTLED" && week.winningTickets !== null
+      ? weekRecompute(meta, week.jackpot, week.winningTickets, rates)
+      : null;
   /* ⛔ THE SETTLEMENT SLICE ONLY. `poolFee` does not model an early exit, and the early-exit fee
    * is booked per exit against the pool as it stood then — including it would report a variance
    * equal to every cash-out fee the game ever charged. */
@@ -181,7 +201,8 @@ async function HouseGameContent({
               <span className="font-mono">{marketId}</span> · {meta.status}
               {" · "}
               {outcome === null
-                ? "not settled"
+                // ⭐ S6 · a settled Millionea week carries no verdict: it is graded, not resolved YES or NO.
+                ? (productLine === "MASWALI" && meta.settledAt ? "week settled" : "not settled")
                 : outcomeWordIn("en", outcome, productLine)}
               {meta.settledAt ? ` · settled ${eatDayKey(Date.parse(meta.settledAt))}` : ""}
             </p>
@@ -194,7 +215,7 @@ async function HouseGameContent({
           <AdminKpi label="Handle" sw="Jumla ya dau" value={formatTzsCompact(g.handle)} delta="real + bonus" deltaDir="flat" />
           <AdminKpi label="Paid out" sw="Kilicholipwa" value={formatTzsCompact(g.paidOut + g.bonusRefunded)} delta="to players" deltaDir="flat" />
           <AdminKpi label="Fee booked" sw="Ada" value={formatTzsCompact(g.feeBooked)} delta="gross, pre-levy" deltaDir="flat" />
-          <AdminKpi label="Net retained" sw="Faida halisi" gold value={formatTzsCompact(g.netRetained)} delta="after its levies" deltaDir="flat" />
+          <AdminKpi label="Net retained" sw="Faida halisi" gold value={formatTzsCompact(g.netRetained)} delta={g.topUp ? "after levies and top-up" : "after its levies"} deltaDir="flat" />
         </KpiGrid>
 
         <AdminCard title="The arithmetic" sw="Hesabu">
@@ -204,9 +225,13 @@ async function HouseGameContent({
               <tbody>
                 <tr><td className="text-left">Real stake into the pool</td><td className="tabular text-right"><Signed v={g.poolIn} /></td></tr>
                 <tr><td className="text-left">Bonus stake into the pool</td><td className="tabular text-right"><Signed v={g.bonusIn} /></td></tr>
+                {/* ⭐ MASWALI-BUILD S6 · MB-04 — a Millionea week's own legs, each shown only where it moved money. */}
+                {g.carryIn ? <tr><td className="text-left">Carried jackpot into the pool</td><td className="tabular text-right"><Signed v={g.carryIn} /></td></tr> : null}
+                {g.topUp ? <tr><td className="text-left">House floor top-up into the pool</td><td className="tabular text-right"><Signed v={g.topUp} /></td></tr> : null}
                 <tr><td className="text-left">Paid to players</td><td className="tabular text-right"><Signed v={-g.paidOut} /></td></tr>
                 <tr><td className="text-left">Bonus returned to players</td><td className="tabular text-right"><Signed v={-g.bonusRefunded} /></td></tr>
                 <tr><td className="text-left">Fee taken</td><td className="tabular text-right"><Signed v={-g.feeBooked} /></td></tr>
+                {g.carryOut ? <tr><td className="text-left">Carried to the jackpot</td><td className="tabular text-right"><Signed v={-g.carryOut} /></td></tr> : null}
                 <tr className="font-semibold">
                   <td className="text-left">Left in the pool</td>
                   <td className={["tabular text-right font-semibold", g.closesTo !== 0 && settled ? "text-danger" : ""].join(" ")}>
@@ -221,14 +246,23 @@ async function HouseGameContent({
                 like one. A settled market's pool should be empty; an unsettled one's should not. */}
             {settled
               ? g.closesTo === 0
-                ? "This game's pool closed to exactly zero — every shilling staked was paid out, refunded or taken as fee."
+                ? (g.carryIn || g.topUp || g.carryOut
+                  ? "This week's pool closed to exactly zero — every shilling in it was paid out, refunded, taken as fee or carried to the jackpot."
+                  : "This game's pool closed to exactly zero — every shilling staked was paid out, refunded or taken as fee.")
                 : "This game's pool did not close to zero. That is a real disagreement about real money and it is shown rather than absorbed; there is no tolerance here."
               : "This game has not settled, so it is still holding its pool. That is by design, not a discrepancy."}
           </p>
-          <p className="mt-2 text-body-sm text-text-subtle">
-            Then the levies: <Amt v={g.leviesBooked} /> of the fee went to TRA and GBT, leaving{" "}
-            <Amt v={g.netRetained} /> retained.
-          </p>
+          {g.topUp ? (
+            <p className="mt-2 text-body-sm text-text-subtle">
+              Then the levies: <Amt v={g.leviesBooked} /> of the fee went to TRA and GBT, and the house&rsquo;s guarantee paid{" "}
+              <Amt v={g.topUp} /> into the pool to bring the jackpot to its floor, leaving <Amt v={g.netRetained} /> retained.
+            </p>
+          ) : (
+            <p className="mt-2 text-body-sm text-text-subtle">
+              Then the levies: <Amt v={g.leviesBooked} /> of the fee went to TRA and GBT, leaving{" "}
+              <Amt v={g.netRetained} /> retained.
+            </p>
+          )}
         </AdminCard>
 
         <AdminCard
@@ -265,7 +299,9 @@ async function HouseGameContent({
                       <td className="text-left">
                         Re-priced from this game&rsquo;s own rates
                         <span className="block text-text-tertiary">
-                          pools {formatTzs(meta.yesPool)} / {formatTzs(meta.noPool)} at {caption}
+                          {week && week.jackpot !== null
+                            ? <>jackpot {formatTzs(week.jackpot)} at {caption}</>
+                            : <>pools {formatTzs(meta.yesPool)} / {formatTzs(meta.noPool)} at {caption}</>}
                         </span>
                       </td>
                       <td className="tabular text-right"><Amt v={rec.computed} /></td>

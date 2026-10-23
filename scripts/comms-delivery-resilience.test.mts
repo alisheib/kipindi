@@ -26,7 +26,7 @@
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-aaaa";
 process.env.OTP_PEPPER ??= "test-only-otp-pepper-16chars";
 
-import { createServer, type Server } from "node:http";
+import { createServer, globalAgent, type Server } from "node:http";
 import { AddressInfo } from "node:net";
 
 let pass = 0, fail = 0;
@@ -36,12 +36,28 @@ const ok = (label: string, cond: boolean, extra?: string) => {
 const section = (s: string) => console.log(`\n── ${s} ${"─".repeat(Math.max(0, 62 - s.length))}`);
 
 /** Behaviour the fake Postmark should exhibit for the next request. */
-type Mode = "ok" | "unauthorized" | "server-error" | "hang" | "garbage";
+type Mode = "ok" | "unauthorized" | "server-error" | "hang" | "garbage" | "inactive" | "invalid" | "gateway" | "dropped";
 let mode: Mode = "ok";
 let received = 0;
 const openSockets: import("node:net").Socket[] = [];
 
+/** Round 6 (M2) · what the fake provider's outbound-message search answers, and the searches it was asked. */
+let searchMode: "found" | "absent" | "broken" | "foreign" = "absent";
+const searches: string[] = [];
 const server: Server = createServer((req, res) => {
+  if (req.method === "GET" && String(req.url ?? "").startsWith("/messages/outbound")) {
+    searches.push(String(req.url));
+    if (searchMode === "broken") {
+      res.writeHead(500, { "content-type": "application/json" });
+      return res.end(JSON.stringify({ ErrorCode: 0, Message: "Internal Server Error" }));
+    }
+    // Round 8 (M1) · the message the provider returns carries its own metadata: this letter's, or another letter's.
+    const asked = new URL(String(req.url), "http://fake").searchParams.get("metadata_letter") ?? "";
+    const messages = searchMode === "found" ? [{ MessageID: "m-1", Metadata: { letter: asked } }]
+      : searchMode === "foreign" ? [{ MessageID: "m-2", Metadata: { letter: `${asked}-another` } }] : [];
+    res.writeHead(200, { "content-type": "application/json" });
+    return res.end(JSON.stringify({ TotalCount: messages.length, Messages: messages }));
+  }
   received++;
   if (mode === "hang") return; // accept, never answer — the socket just sits there
   if (mode === "unauthorized") {
@@ -55,6 +71,25 @@ const server: Server = createServer((req, res) => {
   if (mode === "garbage") {
     res.writeHead(200, { "content-type": "text/html" });
     return res.end("<html>a proxy ate your API</html>");
+  }
+  if (mode === "inactive") {
+    res.writeHead(422, { "content-type": "application/json" });
+    return res.end(JSON.stringify({ ErrorCode: 406, Message: "You tried to send to a recipient that has been marked as inactive." }));
+  }
+  if (mode === "invalid") {
+    res.writeHead(422, { "content-type": "application/json" });
+    return res.end(JSON.stringify({ ErrorCode: 300, Message: "Invalid 'Reply-To' address." }));
+  }
+  if (mode === "gateway") {
+    res.writeHead(502, { "content-type": "text/html" });
+    return res.end("<html>bad gateway</html>");
+  }
+  if (mode === "dropped") {
+    // Round 6 (M1) · the reply's headers go out, then the connection drops before its body.
+    res.writeHead(200, { "content-type": "application/json" });
+    res.flushHeaders();
+    setTimeout(() => res.socket?.destroy(), 20);
+    return;
   }
   res.writeHead(200, { "content-type": "application/json" });
   res.end(JSON.stringify({ To: "x@y.tz", SubmittedAt: new Date().toISOString(), MessageID: "msg-1", ErrorCode: 0, Message: "OK" }));
@@ -99,7 +134,10 @@ section("0 · the transport is real, not stubbed");
 
 // ── 1 · Non-2xx ────────────────────────────────────────────────────────────────
 section("1 · a dead key and a 500 are failures, and never throw");
-for (const [label, m] of [["401 dead key", "unauthorized"], ["500 provider error", "server-error"], ["200 with garbage body", "garbage"]] as const) {
+// ⭐ MASWALI-BUILD S6 (the lane-N review's round 4, M6) · and each says WHAT KIND of failure it is: a reply that refused it is
+// `refused` (worth sending again), a 2xx the provider may have taken is `ambiguous` (never sent again). A provider's own 5xx
+// is marked as one (round 15): only a money letter reads it as ambiguous.
+for (const [label, m, kind] of [["401 dead key", "unauthorized", "refused"], ["500 provider error", "server-error", "refused"], ["200 with garbage body", "garbage", "ambiguous"]] as const) {
   resetEmailHealth();
   mode = m;
   let threw = false;
@@ -110,6 +148,7 @@ for (const [label, m] of [["401 dead key", "unauthorized"], ["500 provider error
   ok(`${label}: counted against delivery health`, emailHealth().consecutiveFailures === 1);
   ok(`${label}: the reason is recorded, not just logged`, !!emailHealth().lastFailureReason);
   ok(`${label}: health degrades`, emailHealth().status === "DEGRADED");
+  ok(`${label}: …and says what kind of failure it is — ${kind}`, r?.failure === kind, String(r?.failure));
 }
 
 // ── 2 · A hung provider must not hang the request ──────────────────────────────
@@ -126,6 +165,34 @@ section("2 · timeout — a socket that never answers must not stall a password 
   ok("…and is bounded at all (this file previously had NO timeout)", ms < 30_000, `took ${ms}ms`);
   ok("the timeout is recorded as a failure", emailHealth().consecutiveFailures === 1);
   ok("…and names the timeout in the reason", /timed out/i.test(emailHealth().lastFailureReason ?? ""));
+  ok("…and says it is AMBIGUOUS: the provider may still have it, so a letter is never sent twice (round 4, M6)", r.failure === "ambiguous", String(r.failure));
+}
+
+// ── 2b · A refusal that can never clear ────────────────────────────────────────
+section("2b · round 4 (M6) · an inactive recipient is a PERMANENT refusal; a delivery carries no failure");
+{
+  resetEmailHealth();
+  mode = "inactive";
+  const r = await sendEmail(MAIL);
+  ok("an inactive recipient (422, its error code) is a failure that can never clear: permanent", !r.ok && r.reason === "failed" && r.failure === "permanent", String(r.failure));
+  // ⭐ Round 5 (MEDIUM 5, LOW 12) · a request the provider refused for a field it can accept once fixed is REFUSED (sent
+  // again), never a hard bounce; a gateway's answer is AMBIGUOUS — the provider behind it may have taken the letter.
+  mode = "invalid";
+  const invalid = await sendEmail(MAIL);
+  ok("a request refused for a field the provider rejects (its error code 300) is refused — sent again once fixed, never a hard bounce",
+    !invalid.ok && invalid.reason === "failed" && invalid.failure === "refused", String(invalid.failure));
+  mode = "gateway";
+  const gateway = await sendEmail(MAIL);
+  ok("a gateway's 502 is ambiguous: the provider behind it may have the letter, so it is never sent twice",
+    !gateway.ok && gateway.reason === "failed" && gateway.failure === "ambiguous", String(gateway.failure));
+  // ⭐ Round 6 (M1) · a connection dropped after the reply's headers: the provider answered, so the letter may be there.
+  mode = "dropped";
+  const dropped = await sendEmail(MAIL);
+  ok("a connection dropped after the reply's headers is ambiguous — never refused, never sent twice",
+    !dropped.ok && dropped.reason === "failed" && dropped.failure === "ambiguous", String(dropped.failure));
+  mode = "ok";
+  const good = await sendEmail(MAIL);
+  ok("control · a delivery is sent, and carries no failure at all", good.ok && good.reason === "sent" && good.failure === undefined, String(good.failure));
 }
 
 // ── 3 · An outage becomes LOUD ─────────────────────────────────────────────────
@@ -233,8 +300,52 @@ section("6 · a hung provider must not slow a reset, and a hit must look like a 
   ok("…and nothing was sent for it", received === before + 1, `received ${received - before}`);
 }
 
+// ── 6b · Round 6 (M2) · the provider's outbound-message search ────────────────
+section("6b · round 6 (M2) · did a letter go? the provider's own search answers found, absent, or unread — never a guess");
+{
+  // Round 14 · a letter is named to the provider by a one-way digest of its letter (`letterMetadata`), so the search is asked
+  // by one: it matches its own letter and refuses another's.
+  const q = { to: "player@example.tz", tag: "millionea-win", sinceIso: new Date().toISOString(), letter: "3f9a0c1e5b7d2468ace0f13579bdf024" };
+  searchMode = "found";
+  const found = await E.findOutboundLetter(q);
+  searchMode = "absent";
+  const absent = await E.findOutboundLetter(q);
+  searchMode = "broken";
+  const broken = await E.findOutboundLetter(q);
+  const asked = searches.slice(-3);
+  ok("the search answers found, then absent, and an unreadable search is null — never taken for either",
+    found === "found" && absent === "absent" && broken === null, JSON.stringify({ found, absent, broken }));
+  ok("…and it asks by the letter's recipient and tag", asked.length === 3 && asked.every((u) => /recipient=player%40example\.tz/i.test(u) && /tag=millionea-win/i.test(u)),
+    asked.join(" | "));
+  ok("…and by THIS letter's own metadata, between the day before its attempt and two days after (round 8, M1)",
+    asked.every((u) => /metadata_letter=3f9a0c1e5b7d2468ace0f13579bdf024(?:&|$)/i.test(u) && /fromdate=/i.test(u) && /todate=/i.test(u)), asked.join(" | "));
+  searchMode = "foreign";
+  const foreign = await E.findOutboundLetter(q);
+  ok("⭐ round 8 (M1) · a message the provider returns for ANOTHER letter is not this letter's: absent, never confirmed", foreign === "absent", String(foreign));
+  const askedBefore = searches.length;
+  const none = await E.findOutboundLetter({ ...q, to: "" });
+  const noLetter = await E.findOutboundLetter({ ...q, letter: "" });
+  ok("control · a search with no recipient, or no letter to ask for, asks the provider nothing and answers null",
+    none === null && noLetter === null && searches.length === askedBefore, `${String(none)} ${String(noLetter)}`);
+  searchMode = "absent";
+}
+
 for (const s of openSockets) s.destroy();
-server.close();
+await new Promise<void>((r) => server.close(() => r()));
+
+// ── 7 · Round 5 (MEDIUM 5) · a request that never left ────────────────────────
+section("7 · round 5 (MEDIUM 5) · with the provider's address refusing every connection, a letter is REFUSED — it never left");
+{
+  // S6-INT 14 · Node keeps HTTP sockets alive by default (since 19): the client would reuse a socket the server above
+  // destroyed, and a reused socket's reset is rightly AMBIGUOUS (a request may have gone). This section asks about a
+  // connection REFUSED, so it starts with no pooled socket — every request opens a fresh connection to the closed port.
+  globalAgent.destroy();
+  resetEmailHealth();
+  const before = received;
+  const r = await sendEmail(MAIL);
+  ok("a refused connection is a failure the next run sends again — the letter provably never left", !r.ok && r.reason === "failed" && r.failure === "refused" && received === before,
+    `${String(r.failure)} · requests ${received - before}`);
+}
 
 console.log(`\ncert-c2 (delivery resilience): ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

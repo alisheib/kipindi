@@ -35,6 +35,8 @@ const CRUMB_LABELS: Record<string, string> = {
   campaigns: "SMS campaigns",
   // The crumb, the nav item and the page title say the same two words.
   tax: "Tax report",
+  // The crumb, the nav item and the page title say the same two words (MASWALI-BUILD S6, MB-64).
+  lookup: "Ticket lookup",
 };
 
 /**
@@ -241,6 +243,10 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
       { href: "/admin/maswali",           label: "Weeks",     key: "maswali", glyph: "weeks", domain: "trading" },
       { href: "/admin/maswali/pools",     label: "Pools",     key: "maswali-pools", glyph: "pools", domain: "accounting" },
       { href: "/admin/maswali/integrity", label: "Integrity", key: "maswali-integrity", glyph: "integrity", domain: "compliance" },
+      // MASWALI-BUILD S6 · MB-92 · the per-week evidence pack — the Auditor's way in. Its glyph: a document under examination.
+      { href: "/admin/maswali/evidence",  label: "Evidence",  key: "maswali-evidence", glyph: "evidence", domain: "compliance" },
+      // MASWALI-BUILD S6 · MB-64 · the support desk's lookup of one ticket, beside its scripts. Its glyph: search's own.
+      { href: "/admin/maswali/lookup",    label: "Ticket lookup", key: "maswali-lookup", glyph: "search", domain: "support" },
     ],
   },
   {
@@ -314,10 +320,14 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
 export function filterNavGroups(
   viewDomains: ReadonlySet<AdminDomain> | readonly AdminDomain[],
   isOwner: boolean,
+  /** The console's one route exception, asked of an item its domain would hide (MB-92: the Auditor reads the Millionea
+   *  console — `auditorReadsPath` in roles.ts, handed in by the server shell, so this client-imported module imports no
+   *  value from a server one). Never consulted for an `ownerOnly` item. */
+  alsoVisible?: (href: string) => boolean,
 ): NavGroup[] {
   const set = viewDomains instanceof Set ? viewDomains : new Set(viewDomains);
   const visible = (it: NavItem) =>
-    !!it.allStaff || (it.ownerOnly ? isOwner : set.has(it.domain));
+    !!it.allStaff || (it.ownerOnly ? isOwner : set.has(it.domain) || !!alsoVisible?.(it.href));
   return NAV_GROUPS
     .map((g) => ({ ...g, items: g.items.filter(visible) }))
     .filter((g) => g.items.length > 0);
@@ -366,6 +376,8 @@ const ROUTE_KEYS: ReadonlyArray<readonly [prefix: string, key: string]> = [
   // ⚠️ The same order law as Up & Down: the specific Millionea prefixes precede the bare one.
   ["/admin/maswali/pools", "maswali-pools"],
   ["/admin/maswali/integrity", "maswali-integrity"],
+  ["/admin/maswali/evidence", "maswali-evidence"],
+  ["/admin/maswali/lookup", "maswali-lookup"],
   ["/admin/maswali", "maswali"],
   ["/admin/agents", "agents"],
   ["/admin/affiliate", "affiliate"],

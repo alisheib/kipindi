@@ -1191,8 +1191,17 @@ console.log("\n§9f · the identity reasons come from the withdrawal gate, and f
   const callers = tree
     .filter((t) => /\bassertIdentityForPayout\s*\(/.test(t.code.replace(/\bfunction\s+assertIdentityForPayout\s*\(/g, "")))
     .map((t) => t.f);
-  ok("9f.gate · ★ the gate has exactly one caller outside its own file — wallet-service",
-     callers.length === 1 && callers[0].endsWith("src/lib/server/wallet-service.ts"), callers.join(", ") || "(none)");
+  // ⭐ MASWALI-BUILD S6-SHIP 5 (the S6-MONEY merge) · OD-13's officer payment of a locked winner's share goes through
+  // withdraw() — the gate's one refusing caller — and its console list (`lockedWinnerShares`, maswali-share-payout.ts) reads
+  // the same gate only to word an officer's line on why a share cannot be paid yet: a read, never a refusal (9f.sharepay).
+  const GATE_CALLERS = ["src/lib/server/maswali-share-payout.ts", "src/lib/server/wallet-service.ts"];
+  ok("9f.gate · ★ the gate has exactly two callers outside its own file — wallet-service's withdraw(), and the locked-share list's officer line",
+     callers.length === GATE_CALLERS.length && GATE_CALLERS.every((g) => callers.some((c) => c.endsWith(g))), callers.join(", ") || "(none)");
+  const sharePayCode = strip(readFileSync("src/lib/server/maswali-share-payout.ts", "utf8"));
+  ok("9f.sharepay · ⛔ …and that second caller writes no identity refusal of its own and pays only through withdraw(): its gate read words the officer's line",
+     !/\breason:\s*["']kyc_/.test(sharePayCode) && /await withdraw\(holder\.id,/.test(sharePayCode)
+       && (sharePayCode.match(/\bassertIdentityForPayout\s*\(/g) ?? []).length === 1,
+     `refusal=${/\breason:\s*["']kyc_/.test(sharePayCode)} withdraw=${/await withdraw\(holder\.id,/.test(sharePayCode)}`);
 
   const bodyOf = (src: string, head: string) => {
     const i = src.indexOf(head);

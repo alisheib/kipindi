@@ -30,8 +30,8 @@ import { db } from "@/lib/server/store";
 import type { StoredUser, StoredWallet } from "@/lib/server/store";
 import { randomId } from "@/lib/server/crypto";
 import {
-  attestParity, closeWeek, createWeek, openWeek, purchaseMaswaliTickets, readDraftVersion, rolloutSells, sealQuestion, sunsetMaswali, SUNSET_WORD, voidWeek,
-  type DraftQuestionInput,
+  __setMaswaliCloseClockForTests, attestParity, closeWeek, createWeek, openWeek, purchaseMaswaliTickets, readDraftVersion, rolloutSells, sealQuestion,
+  sunsetMaswali, SUNSET_WORD, voidWeek, type DraftQuestionInput,
 } from "@/lib/server/maswali-service";
 import { millioneaStateNow } from "@/lib/server/millionea-switch";
 import { weekStore } from "@/lib/server/maswali-dal";
@@ -249,6 +249,9 @@ async function sunset(): Promise<Record<string, string>> {
 
 export async function POST(req: Request) {
   if (process.env.NODE_ENV === "production") return NextResponse.json({ ok: false, error: "Not available" }, { status: 404 });
+  // S7 (MB-84) · a close that is not early waits for the database's clock; the seeded weeks run on their own week clock,
+  // so this request hands the close that clock as the database's — as `seed-maswali` does — and puts it back after.
+  __setMaswaliCloseClockForTests((weekClockMs) => weekClockMs);
   try {
     const body = (await req.json().catch(() => ({}))) as { scenario?: string; pause?: boolean };
     if (body.pause) {
@@ -269,5 +272,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, scenario: body.scenario === "sunset" ? "sunset" : "states", weeks });
   } catch (err) {
     return NextResponse.json({ ok: false, error: String((err as Error).message ?? err) }, { status: 500 });
+  } finally {
+    __setMaswaliCloseClockForTests(null);
   }
 }

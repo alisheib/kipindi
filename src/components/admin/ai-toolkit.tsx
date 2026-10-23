@@ -243,7 +243,7 @@ export function AiToolkit({ status, canAct = true }: { status: AiToolkitStatus; 
                   <I.lock s={11} aria-hidden className="mt-[1px] shrink-0" />
                   <span>
                     Status only — switching an AI feature is a <strong className="text-text-tertiary">compliance</strong> decision.
-                    Ask an Admin or Compliance officer.
+                    Ask the Owner or a Compliance officer.
                   </span>
                 </p>
               )}
