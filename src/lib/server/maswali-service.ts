@@ -1125,7 +1125,8 @@ export async function recomputeGate(weekId: string, now?: Date): Promise<Result<
   return { ok: true, gate: res.gate, weekVoidCertain: res.weekVoidCertain };
 }
 
-/** The questions whose void deadline has passed unsealed — the system PROPOSES a void; an officer seals it (MR-15). */
+/** The questions whose void deadline has passed unsealed — flagged for an officer, who seals the result from its source if
+ *  the source gave it by the deadline, and voids only a question with no result by then (MR-15). */
 export async function proposeVoidsAtDeadline(weekId: string, now?: Date): Promise<number[]> {
   const nowMs = (now ?? new Date()).getTime();
   const qs = await questionStore.listForWeek(weekId);

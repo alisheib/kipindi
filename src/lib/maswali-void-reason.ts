@@ -60,8 +60,9 @@ export const MASWALI_VOID_REASON_KEY: Record<MaswaliVoidReason, string> = {
 
 /**
  * May an officer seal this ground NOW? `not_played` and `no_source` turn on the question's own void deadline: before it,
- * the event may still be played or the source may still answer, so the void is refused (the system proposes it once the
- * deadline passes, MR-15). The other grounds are facts an officer can establish at any time.
+ * the event may still be played or the source may still answer, so the void is refused (once the deadline passes with no
+ * seal, the console flags the question: its result from the source if the source gave it by then, else this void, MR-15).
+ * The other grounds are facts an officer can establish at any time.
  */
 export function voidGroundAvailable(reason: MaswaliVoidReason, voidDeadlineAtMs: number, nowMs: number): boolean {
   switch (reason) {

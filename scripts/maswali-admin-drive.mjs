@@ -859,7 +859,7 @@ await part("6.4 · void a week", async () => {
       if (clip(await cells.nth(2).textContent()) === "Voided") already.push(clip(await cells.nth(0).textContent()));
     }
     skipped("6.4 void a week", already.length > 0
-      ? `no week waits to be voided: ${already.join(", ")} already reads Voided — the Millionea tick voided it on its own once its window had closed (maswali-scheduler.ts:81-84). Start next dev with MASWALI_SCHEDULER=false LIFECYCLE_TICKER=false to drive the console's own void.`
+      ? `no week waits to be voided: ${already.join(", ")} already reads Voided — the Millionea tick voided it on its own once its window had closed (maswali-scheduler.ts, runMaswaliTick: a certain week void, its window closed). Start next dev with MASWALI_SCHEDULER=false LIFECYCLE_TICKER=false to drive the console's own void.`
       : "no seeded week's void is certain on this store (the seed's weeks.voidable)");
     return;
   }

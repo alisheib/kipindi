@@ -154,4 +154,25 @@ export const MUTATIONS = [
     to: "action={<Link href={\"/admin/maswali\" as Route} className=\"link text-body-sm\">Open the weeks</Link>}",
     failure: /FAIL 9[.]5c /,
   },
+  {
+    name: "(AP22) 9.6 · the void-deadline alert tells officers to void each question again, whatever its source gave",
+    file: "src/lib/server/maswali-console.ts",
+    from: "unsealed. Seal each from its source if the source gave its result by the deadline; void only a question with no result by then, on “${MASWALI_VOID_REASON_LABEL.not_played}” or “${MASWALI_VOID_REASON_LABEL.no_source}”.`;",
+    to: "unsealed; void each one, with its ground.`;",
+    failure: /FAIL 9[.]6 /,
+  },
+  {
+    name: "(AP23) 9.6 · the console's alert stops drawing the rule's words and writes its own again",
+    file: "src/lib/server/maswali-console.ts",
+    from: "text: voidDeadlineAlertText(w.code, proposed.length) });",
+    to: "text: `${w.code}: ${proposed.length} question(s) passed their void deadline unsealed; void each one, with its ground.` });",
+    failure: /FAIL 9[.]6 /,
+  },
+  {
+    name: "(AP24) 9.6b · the scheduler's audit note says an officer seals the void again",
+    file: "src/lib/server/maswali-scheduler.ts",
+    from: "an officer seals the result from its source if the source gave it by the deadline, and voids the question only if it had no result by then\";",
+    to: "an officer seals the void\";",
+    failure: /FAIL 9[.]6b /,
+  },
 ];

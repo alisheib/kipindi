@@ -1271,7 +1271,34 @@ re-reads. It is the write-once guarantee working, logged by Prisma rather than b
 S7's acceptance (`docs/MASWALI-PLAN.md` §7b S7): every finding is fixed or recorded here. These three were booked as
 KNOWN-RED cases in `test:maswali-adversarial` (a case that reports, never fails the suite, until the work lands) and
 stood on the launch gate as Gate B line 14 (`MASWALI-PLAN.md` §6.1). All three are closed (2026-10-22): RD.5 and TK.2 by
-S7-F9, each with its commits, and OB.0 by S7-OB — each case passes now. Millionea is dark on production (`WITHDRAWN`).
+S7-F9, each with its commits, and OB.0 by S7-OB — each case passes now. One more, QL.1 (found 2026-10-23), is OPEN: it
+stands first below. What is live on production is `MASWALI-PLAN.md` §0's to say.
+
+#### ⏳ QL.1 · two of the question rules are not checked on a week drafted in the console — OPEN (found 2026-10-23; for Ali's list)
+
+Found by the GUIDE lane's walk; checked by MASWALI-BUILD FLOW against the code. The accepted rule for building questions
+(OD-14, `MASWALI-PLAN.md` §9, accepted 2026-10-16) says a week carries no two questions on one event and at most 4 from
+one competition (the Owner's rules form: "Questions from one competition, at most", default 4). Neither is enforced for a
+question drafted in the console, because nothing on such a question says which event or competition it is about: a
+stored question (`MaswaliQuestion`, `StoredQuestion`) has its texts, criteria, category, source, event kind, start and
+zone, its chance and an optional linked Yes/No market — no event and no competition. The builder's calendar suggestions
+carry an event's id, and filling a slot from one drops it (`fillFrom`, `week-builder.tsx`). So the open's checklist
+(`openProblems`, `maswali-service.ts`) can only:
+- catch the SAME question twice — its "same event" check keys on the source's host, the start and the English criterion's
+  words, so two questions on one match with different criteria ("Simba win?", "Simba score 2 or more?") both pass;
+- count questions per LINKED Yes/No market, not per competition — so it never fires for a console-drafted week, counts
+  five questions linked to five Premier League markets as five competitions, and, when it fires, names the market by its
+  id ("5 questions share mkt_…"), against the console's names-never-ids rule (G3 in §9c).
+Until it is built, Trading keeps both limits by hand (the admin guide's step B1 says so). WHAT IT WOULD TAKE: (1) two
+nullable fields on a question — its competition (a key of `src/lib/markets/competitions.ts`, as a Yes/No market's
+`competition` is) and its event (the events calendar's id when filled from a suggestion, else a fixture key the officer
+types) — an additive migration on both stores, frozen at the open like the question's other fields; (2) the builder asks
+for both and `fillFrom` keeps the suggestion's; (3) `openProblems` refuses more questions from one competition than the cap
+allows (a fifth, at the default) and two questions on one event, each in words naming the competition by its label and
+the slots by their labels (the checklist and the open read the same function), with cases on both stores and plants; (4) a decision on drafts made
+before the fields exist (refuse their open until each is filled, or check what they carry); (5) the guide's one sentence
+then changes. The rest of OD-14 that needs the same identity — no dependent pairs, and sports only from competitions with
+public integrity monitoring — waits on the same fields.
 
 #### ✅ OB.0 · MB-23 · a player objects to one question — CLOSED (S7-OB, 2026-10-22)
 
@@ -1663,3 +1690,18 @@ code does, and a link names a page its reader may open. Each is fixed as ruled:
   page" is said only beside the weeks link.
 Held by `test:maswali-admin-plain` §9 (9.1–9.4 on the words an officer reads, each against the code it describes; 9.5 a
 case per role, 9.5b–c the last line and the page's wiring) and the plants (AP15)–(AP21) of `red:maswali-admin-plain`.
+
+#### ✅ GD.2 · the void-deadline alert and its audit note told officers to void — fixed by FLOW 1 (the lead's word of 2026-10-23)
+
+Found by the GUIDE lane's walk for the final admin guide. A week with questions past their void deadline and unsealed
+raised "… passed their void deadline unsealed; void each one, with its ground." on the weeks page and the front page's
+card, and the scheduler wrote "an officer seals the void" into the audit log (which the evidence pack carries). Both
+told officers to void a question whose source had answered. THE RULE is the binding Millionea rules' section 5 (MR-15):
+a result the source gave by the void deadline is sealed from its source; only a question with no result by then is
+voided — on "Not played by its void deadline" or "No reading from the sources", the seal form's own words. The alert now
+reads "MLN-…: n question(s) passed their void deadline unsealed. Seal each from its source if the source gave its result
+by the deadline; void only a question with no result by then, on “Not played by its void deadline” or “No reading from
+the sources”." (`voidDeadlineAlertText`, the two grounds drawn from `MASWALI_VOID_REASON_LABEL`), and the audit note
+says the same (`VOID_DEADLINE_NOTE`). The code comments that said "the system proposes a void, an officer seals it" and
+the architecture document's lines were corrected with it. Held by `test:maswali-admin-plain` 9.6 (the rendered alert and
+its wiring) and 9.6b (the note), with the plants (AP22)–(AP24) of `red:maswali-admin-plain`.

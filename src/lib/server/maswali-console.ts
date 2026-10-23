@@ -43,6 +43,7 @@ import { guaranteeRequirement } from "@/lib/maswali-money";
 import type { RolloutState } from "@/lib/millionea-rollout";
 import { formatTzs } from "@/lib/utils";
 import { eatInText, fmtEat } from "@/lib/maswali-admin-format";
+import { MASWALI_VOID_REASON_LABEL } from "@/lib/maswali-void-reason";
 import { parseWeekListQuery, selectWeekPage, type WeekListQuery } from "@/lib/maswali-week-list";
 import { parseIntegrityListQuery, selectHeldShares, selectWinnerTickets, selectSealWeeks, selectVoidableWeeks, type IntegrityListQuery } from "@/lib/maswali-integrity-list";
 
@@ -116,7 +117,8 @@ export type ConsoleWeekDetail = {
    * never a refusal (MB-85: a public holiday the close falls on). Null once the close has passed.
    */
   warnings: string[] | null;
-  /** Slots whose void deadline passed unsealed: the system proposes a void, an officer seals it (MR-15). */
+  /** Slots whose void deadline passed unsealed, flagged for an officer: the result from its source if the source gave it
+   *  by the deadline, the void only when it gave none by then (MR-15; `voidDeadlineAlertText`). */
   proposedVoids: number[];
 };
 
@@ -191,6 +193,17 @@ export function releaseWaitAlertText(weekCode: string, hours: number): string {
   return `${weekCode}: its results are final and its window closed ${hours} h ago, and it is not settled. Finance releases it.`;
 }
 
+/**
+ * The alert for a week with questions past their void deadline and unsealed. ⭐ FLOW 1 (the GUIDE lane's finding, the
+ * lead's word of 2026-10-23): it states the binding rule (the Millionea rules' section 5, MR-15) — a result the source
+ * gave by the deadline is sealed from its source, and only a question with no result by then is voided, on one of the two
+ * grounds the deadline opens, named as the seal form offers them. It said "void each one, with its ground", which told
+ * officers to void a question whose source had answered. `test:maswali-admin-plain` §9.6.
+ */
+export function voidDeadlineAlertText(weekCode: string, count: number): string {
+  return `${weekCode}: ${count} question(s) passed their void deadline unsealed. Seal each from its source if the source gave its result by the deadline; void only a question with no result by then, on “${MASWALI_VOID_REASON_LABEL.not_played}” or “${MASWALI_VOID_REASON_LABEL.no_source}”.`;
+}
+
 /** `deps.readFloat` reads the payout float (the payments provider's by default; a suite hands its own); `deps.readTakeover`
  *  the winners' takeover watch (`maswali-takeover.ts` by default). */
 export async function consoleAlerts(
@@ -232,8 +245,9 @@ export async function consoleAlerts(
         }
       }
       const proposed = await proposeVoidsAtDeadline(w.id, now);
-      // MR-15 · a question unsealed at its void deadline voids on a ground from the closed list, sealed by an officer.
-      if (proposed.length) out.push({ level: "warning", weekId: w.id, text: `${w.code}: ${proposed.length} question(s) passed their void deadline unsealed; void each one, with its ground.` });
+      // MR-15 · a question unsealed at its void deadline is sealed from its source if the source gave its result by then;
+      // only one with no result by then voids, on a ground from the closed list, sealed by an officer.
+      if (proposed.length) out.push({ level: "warning", weekId: w.id, text: voidDeadlineAlertText(w.code, proposed.length) });
       if (w.objectionsCloseAt && Date.parse(w.objectionsCloseAt) + cfg.releaseAlertHours * HOUR < nowMs) {
         out.push({ level: "critical", weekId: w.id, text: releaseWaitAlertText(w.code, cfg.releaseAlertHours) });
       }

@@ -23,6 +23,9 @@
  *      settings apply at once: the complaint answer target and the release alert, which reads the live setting); 9.3 the
  *      release-wait alert says "Finance"; 9.4 the move-close dialog names only what the move checks; 9.5 the front page's
  *      Millionea card links a page the viewer may open — the weeks, Integrity or Pools, by role — or none.
+ *      9.6 (MASWALI-BUILD FLOW 1, the GUIDE lane's finding, the lead's word of 2026-10-23) the void-deadline alert states the
+ *      binding rule — seal from the source a result it gave by the deadline; void only a question with no result by then,
+ *      on the two grounds the deadline opens — and 9.6b the scheduler's audit note says the same.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -41,7 +44,9 @@ import { CATEGORY_LABEL } from "../src/lib/ai/poll-vocabulary.ts";
 import { EVENT_KIND_LABEL, eatInText, officerHandle } from "../src/lib/maswali-admin-format.ts";
 import { MILLIONEA_STRIP_LINKS, millioneaStripLink, millioneaStripMore } from "../src/lib/maswali-strip-link.ts";
 import { canViewPath } from "../src/lib/server/rbac.ts";
-import { releaseWaitAlertText } from "../src/lib/server/maswali-console.ts";
+import { releaseWaitAlertText, voidDeadlineAlertText } from "../src/lib/server/maswali-console.ts";
+import { VOID_DEADLINE_NOTE } from "../src/lib/server/maswali-scheduler.ts";
+import { MASWALI_VOID_REASON_LABEL } from "../src/lib/maswali-void-reason.ts";
 import { untaggedRulesFor } from "../src/lib/server/marketing/millionea-untagged.ts";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
@@ -260,6 +265,24 @@ const pageWords = (path: string) => decomment(read(path)).replace(/&ldquo;/g, "�
       && refusals.some((r) => r.includes("so every ticket keeps its free-cancel window.")) && refusals.some((r) => r.includes("minutes before the first event."))
       && refusals.length > 5 && !refusals.some((r) => /notice/i.test(r)),
     `${refusals.length} refusals in moveClose`);
+
+  // 9.6 · the void-deadline alert, as the console draws it (`{a.text}`, the weeks page and the front page's card): the
+  // rules' section 5 — a result the source gave by the deadline is sealed from its source; only a question with no result
+  // by then is voided, on "Not played by its void deadline" or "No reading from the sources", the seal form's own words.
+  const voidAlert = voidDeadlineAlertText("MLN-2026-W44", 2);
+  const GROUNDS = [MASWALI_VOID_REASON_LABEL.not_played, MASWALI_VOID_REASON_LABEL.no_source];
+  ok("9.6 · ⭐ the void-deadline alert says to seal from its source a result the source gave by the deadline, and to void only a question with no result by then, on the two grounds the deadline opens",
+    voidAlert === "MLN-2026-W44: 2 question(s) passed their void deadline unsealed. Seal each from its source if the source gave its result by the deadline; void only a question with no result by then, on “Not played by its void deadline” or “No reading from the sources”."
+      && GROUNDS.every((g) => voidAlert.includes(`“${g}”`)) && !/void each one/i.test(voidAlert)
+      && alertsFn.includes("text: voidDeadlineAlertText(w.code, proposed.length)") && !/void each one/i.test(alertsFn),
+    voidAlert);
+
+  // 9.6b · the same rule in the audit log's note on each flagged question (the evidence pack carries it).
+  const schedulerCode = decomment(read("src/lib/server/maswali-scheduler.ts"));
+  ok("9.6b · ⭐ the scheduler's audit note says the result is sealed from its source when given by the deadline, and the question voided only with no result by then",
+    VOID_DEADLINE_NOTE === "the void deadline passed unsealed; an officer seals the result from its source if the source gave it by the deadline, and voids the question only if it had no result by then"
+      && schedulerCode.includes("note: VOID_DEADLINE_NOTE }") && !/seals the void/.test(schedulerCode),
+    VOID_DEADLINE_NOTE);
 }
 {
   // 9.5 · the front page's Millionea card links a page the viewer may open, asked with that page's own gate question
@@ -282,7 +305,7 @@ const pageWords = (path: string) => decomment(read(path)).replace(/&ldquo;/g, "�
       && !home.includes(">Open the weeks</Link>") && !home.includes("more on the weeks page</li>"));
 }
 
-const FLOOR = 41; // the count the first green run printed: 28 at S6-ADMIN 6 (run 39824239196); 41 with §9 (S6-SHIP 6)
+const FLOOR = 43; // the count the first green run printed: 28 at S6-ADMIN 6 (run 39824239196); 41 with §9 (S6-SHIP 6); 43 with 9.6 (FLOW 1)
 ok(`floor · at least ${FLOOR} checks ran before this one`, passed + failed >= FLOOR, `${passed + failed} ran`);
 console.log(`\nmaswali-admin-plain: ${passed} passed, ${failed} failed`);
 if (failed) process.exitCode = 1;

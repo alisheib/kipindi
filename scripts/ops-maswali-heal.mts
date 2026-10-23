@@ -1,7 +1,8 @@
 /**
  * OPS — HEAL stuck Millionea weeks (MASWALI-BUILD S4 item 8): a close that was due and not stamped, a certain week void
- * whose window has closed, a VOIDED week whose refunds have not landed (R1), a void deadline passed unsealed (proposed,
- * never sealed by this script — MR-15).
+ * whose window has closed, a VOIDED week whose refunds have not landed (R1), a void deadline passed unsealed (flagged for
+ * an officer — the result from its source if the source gave it by the deadline, else the void — never sealed by this
+ * script, MR-15).
  *
  *   railway run npx tsx scripts/ops-maswali-heal.mts            (dry run: what is stuck, and what the heal would do)
  *   railway run npx tsx scripts/ops-maswali-heal.mts --apply    (runs the scheduler's own reconcile once)
