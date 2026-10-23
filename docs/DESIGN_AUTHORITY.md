@@ -3283,9 +3283,13 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
       inline-block it was a place a line could break, and a fact whose first run did not fit sat a line low under an
       empty one (HUB, sw 320). `test:maswali-design` 4.A1, `test:maswali-fact-mark` (Chromium, WebKit).
     - **The kept runs** (`keepFact`). A phrase is one unbreakable run: a week and its number, a clock with its day and
-      zone, a reserve range, a cap's count, a number and its noun, a money figure (`.amount`), and a one-letter word with
-      the word after it ("A ticket", never "A" / "ticket"). Every run fits the narrowest box a fact line is drawn in at
-      320, 180px (`test:maswali-facts`, the census of every Millionea string in sw, en and zh). So a noun before a cap's
+      zone, a reserve range, a cap's count, a number and its noun, a money figure (`.amount`), a one-letter word with
+      the word after it ("A ticket", never "A" / "ticket"), and a connective with the word after it — the kit's one rule
+      for titles and labels (`connectiveRanges`, "ya", "za", "kwa", "na"…, "of", "and"; MASWALI-BUILD S5-R2-HUB, the
+      lead's ruling of 2026-10-23): "…kuchukua nafasi" / "ya maswali yaliyobatilishwa", never a line ending on "ya" (the
+      hub's `reservesShort` at sw 360 and 1280). Every run fits the narrowest box a fact line is drawn in at 320, 180px
+      (`test:maswali-facts`, the census of every Millionea string in sw, en and zh, which measures a connective's run with
+      the word it holds; §6 its rule and its plant). So a noun before a cap's
       count stays free ("Matokeo" / "5 kati ya 15 yametolewa"), the digits of a money figure start no number phrase,
       and a run that would start inside a figure starts after it: a figure is its own run however the jackpot grows.
       The words are the dictionary's, character for character.

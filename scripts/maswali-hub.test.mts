@@ -132,10 +132,12 @@ const ledgerDefects = (l: L3, m: string) => {
   const sw = hubLedgerOf("sw", figure());
   const keptCha = (m: string) => /<span class="whitespace-nowrap">(?:[^<]*\s)?cha <\/span>chini\b|<span class="whitespace-nowrap">[^<]*\bcha chini\b/.test(m);
   ok("1.2 · sw \"Kiwango cha chini kilichohakikishwa\" keeps \"cha\" with \"chini\": no line ends on the connective", keptCha(sw), (sw.match(/.{0,60}cha .{0,30}/) ?? [""])[0]);
-  // The label as WIP 1 drew it: a fact line of `keepFact`s, which keeps runs and figures but not a connective.
-  const FACTS = req("../src/components/maswali/maswali-facts.tsx") as typeof import("../src/components/maswali/maswali-facts.tsx");
-  const factsOnly = inApp("sw", h(FACTS.MaswaliFacts as never, { facts: FACTS.factsOf(dict.sw.millionea.floor).map((f) => FACTS.keepFact("sw", f)) } as never));
-  ok("1.2′ PLANT · the label drawn as a bare fact line (its connective free to end a line) is reported", !keptCha(factsOnly), factsOnly.slice(0, 160));
+  // The label as WIP 1 drew it: kept as a sentence is (its last two words), its connective free. (WIP 1's fact line of
+  // `keepFact`s drew it so; since HUB-2B the fact keeper keeps a connective too — test:maswali-facts §6 — so the plant
+  // draws the platform's sentence keeper, `keepText`, which keeps none.)
+  const { keepText } = req("../src/components/ui/keep-run.tsx") as typeof import("../src/components/ui/keep-run.tsx");
+  const factsOnly = inApp("sw", h("span", null, keepText(dict.sw.millionea.floor) as never));
+  ok("1.2′ PLANT · the label kept only as a sentence is (its connective free to end a line) is reported", !keptCha(factsOnly), factsOnly.slice(0, 160));
   const oldDl = "<dl><div><dt>Jackpot</dt><dd>TZS 1,000,000</dd></div></dl>";
   ok("1.1′ PLANT · the old home-made <dl> ledger is reported", ledgerDefects("en", oldDl).length > 0);
   const eyebrows = hubLedgerOf("en", figure()).replaceAll('class="min-w-0 text-body-sm text-text"', 'class="min-w-0 font-mono text-micro uppercase eyebrow text-text-subtle"');
