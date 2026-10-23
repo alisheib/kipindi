@@ -1220,14 +1220,18 @@ console.log(`${LF}§10b · ⭐ S6-NOTICES · an objection filed pings the office
   const decidedRuns0 = runsCount("objection");
   const bySealer = await ruleOn(id3, SEALER, "REJECT", 3, 2);
   const byModerator = await ruleOn(id3, MOD, "REJECT", 3, 2);
+  // …and one refused INSIDE the ruling's lock, past every gate before it: a ruling on a seal the officer did not review.
+  const q3 = await qOf(3);
+  const stale = await ob.decideMillioneaObjection({ objectionId: id3, officerId: OFF, ruling: "REJECT", note: "Checked against the official source for question 3",
+    expectedOutcome: q3?.outcome, expectedSealedAt: "2026-01-01T00:00:00.000Z", now: inWindow(2) });
   await settleAll();
   const decidedRuns1 = runsCount("objection");
   const openLaunch = await notify.noticeObjectionDecided(id3);
   await settleAll();
-  ok("10b.4 · ⭐ a refused ruling (the question's sealer, a moderator) tells the filer nothing and launches no run — and a launch for an objection still OPEN tells nobody",
-    !bySealer.ok && !byModerator.ok && decidedRuns1 === decidedRuns0 && openLaunch.sent === 0 && openLaunch.recipients === 0
-      && (await withHref(F1, decidedHref(serialF1, 3))).length === 0,
-    J({ bySealer: errOf(bySealer), byModerator: errOf(byModerator), decidedRuns0, decidedRuns1, openLaunch: { sent: openLaunch.sent, recipients: openLaunch.recipients } }));
+  ok("10b.4 · ⭐ a refused ruling (the question's sealer, a moderator, a seal the officer did not review) tells the filer nothing and launches no run — and a launch for an objection still OPEN tells nobody",
+    !bySealer.ok && !byModerator.ok && !stale.ok && /changed since you reviewed it/.test(errOf(stale)) && decidedRuns1 === decidedRuns0
+      && openLaunch.sent === 0 && openLaunch.recipients === 0 && (await withHref(F1, decidedHref(serialF1, 3))).length === 0,
+    J({ bySealer: errOf(bySealer), byModerator: errOf(byModerator), stale: errOf(stale), decidedRuns0, decidedRuns1, openLaunch: { sent: openLaunch.sent, recipients: openLaunch.recipients } }));
 
   // REJECT, by an officer who may rule: the filer is told once — the ruling, the officer's note, three languages, no answer.
   const rejected = await ruleOn(id3, OFF, "REJECT", 3, 3);
