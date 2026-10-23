@@ -28,12 +28,14 @@ type Tiers = readonly [below360: number, from360: number, from768: number];
 /** The first and third steps — DATA: the week's ticket price (step 1), its floor and fee (step 3), which admins set (L2),
  *  so the drawing cannot know their words — as the lines the page's take in each language, measured in Chromium on the
  *  runner with the phones' Chinese face at 320, 360 and 768 (`qa:maswali-register-shots`' how-ghost hop; DESIGN_AUTHORITY
- *  §M4a rule 5). Where WebKit draws a cell in another count, its count is printed beside it (⏳ the runner's read).
+ *  §M4a rule 5). WEBKIT, printed beside each cell where it draws another count (run 39953673548, S5-R3-FIX 8: ratios
+ *  2.625, 3 and 1 alike, the runner's classic scrollbar removed). Every other cell is the same in both engines. Between the
+ *  judged widths WebKit also takes step 1 to 3 lines at sw 359 and zh 330–375, and step 3 to 1 line at en 767–1280.
  */
 const DATA_STEP_LINES: Record<Locale, { one: Tiers; three: Tiers }> = {
-  en: { one: [3, 3, 2], three: [3, 3, 2] },
+  en: { one: [3, 3, 2], three: [3, 3, 2 /* WebKit 1 */] },
   sw: { one: [3, 2, 1], three: [4, 3, 2] },
-  zh: { one: [3, 2, 1], three: [3, 2, 1] },
+  zh: { one: [3, 2 /* WebKit 3 */, 1], three: [3, 2, 1] },
 };
 
 /** A paragraph's lines, `n` of them, the last one short. */

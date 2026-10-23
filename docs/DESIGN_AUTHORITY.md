@@ -3074,15 +3074,23 @@ the corrections are recorded here rather than tidied away.
      own, and nothing else moves. ⚠️ A change every classic reader sees at 320–334px. Guard: `qa:classic-rail` (each
      label's natural width against its box, and no two labels' ink closer than 8px, at 320–340, 360 and 412 in both
      engines and at ratios 2.625, 3 and 1; dark and drawn).
-   - ⚠️ **A LINE TABLE CANNOT HOLD BOTH ENGINES — measured, and open (2026-10-23, run 39871844391).** A label's fit and a
-     rail's gap hold in both engines by taking the wider; a loading drawing's per-language line table cannot, because
-     the engines break the same paragraph at different words: of 180 cells of the register's index and How to play
-     (ten widths × sw/en/zh × three ratios), 81 take a different number of lines in WebKit — at the widths the drawings
-     are judged at, the index's intro 8 lines in Chromium and 9 in WebKit at 320 (en), How's third English step 2 and 1
-     from 768, its Swahili steps 2·3·3·2 and 3·3·3·2 at 360. (Chromium rounds every glyph's advance to the pixel; WebKit
-     does not — and on the runner WebKit also lays the page out 8px narrower, inside a classic scrollbar an iPhone does
-     not draw.) So the drawings' tables follow **Chromium**, the engine `qa:maswali-register-shots` drives, until the
-     lead rules how a drawing holds both (§M8a item 22).
+   - ⭐ **A STATIC PARAGRAPH'S DRAWING SETS ITS OWN WORDS; ONLY DATA KEEPS A TABLE (the lead's ruling of 2026-10-23 on
+     the point left open here; MASWALI-BUILD S5-R3-FIX 7 and 8).** A label's fit and a rail's gap hold in both engines
+     by taking the wider; a loading drawing's per-language line table cannot, because the engines break the same
+     paragraph at different words — measured (run 39871844391): of 180 cells of the register's index and How to play (ten
+     widths × sw/en/zh × three ratios), 81 took a different number of lines in WebKit, the index's intro 8 lines in
+     Chromium and 9 in WebKit at 320 (en) among them (Chromium rounds every glyph's advance to the pixel; WebKit does not).
+     So a drawing that models a STATIC paragraph — words the dictionary holds whole, with no datum in them: the register
+     index's intro, How to play's second and fourth steps and its example's caption, the commitments' closing sentence, a
+     fingerprint's 64 characters, the ledger's labels — sets that paragraph's own words unseen, in the page's own type,
+     measure and face, with GhostLine's band under each line box they break into (the kit's `GhostWords`, §M8a item 22):
+     it lands where the page does in any engine, by construction, and its per-language table is deleted. A DATA
+     paragraph — a week's facts and times, the root's time line, How's first and third steps (the price, floor and fee
+     admins set) — keeps a table measured in **Chromium** (the engine `qa:maswali-register-shots` drives), with WebKit's
+     count printed beside each cell where it differs; and a datum whose width class is fixed — two mono digits, a fixed
+     clock, a fingerprint's length — is set as a same-width template instead of a table (the carry's week, "48"). On the
+     runner WebKit lays the page out 8px narrower, inside a classic scrollbar an iPhone does not draw, so its counts are
+     read with that scrollbar removed.
 
 ⚠️ **THE INSTRUMENT NEEDED TWO CORRECTIONS BEFORE IT MEASURED ANYTHING REAL,** and both were
 false POSITIVES that would have "fixed" correct code: it first reported every cell of tables
@@ -3469,12 +3477,12 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     `test:visual-pass-r5h` 1.2/1.3/5.1). Each drawing names its page (`data-ghost-page`), and `qa:millionea-ghost-hops`
     holds every Millionea hop to it on a throttled network — only the destination's own drawing, or none, is ever up; its
     `--prove-red` undoes the register's pick and must catch it. A drawing is drawn in the page's own type — a line of
-    words is the kit's bar inside the very line box those words fill (`GhostTextLine`, the hub's L7 rule), its lines per
-    language from the page's measured tables (measured on the runner with the phones' Chinese face, in Chromium — never
-    on another machine; ⚠️ WebKit breaks many of the same paragraphs at other words, so no one table holds both engines:
-    §M4a rule 5, open) — and lands where the page puts each band (`qa:maswali-register-shots`'
-    how-ghost and register-ghosts hops, within 1px, each drawing read once the route's entrance — `.route-enter`, 10px
-    rising over `--t-move` — has settled).
+    words is the kit's bar inside the very line box those words fill (`GhostTextLine`, the hub's L7 rule); a STATIC
+    paragraph is its own words, set unseen (the sub-point below), and a DATA paragraph its lines per language from the
+    page's measured table (measured on the runner with the phones' Chinese face, in Chromium — never on another machine —
+    WebKit's count printed beside each cell where it differs: §M4a rule 5) — and lands where the page puts each band
+    (`qa:maswali-register-shots`' how-ghost and register-ghosts hops, within 1px, each drawing read once the route's
+    entrance — `.route-enter`, 10px rising over `--t-move` — has settled).
     - ⭐ **A STATIC PARAGRAPH'S WORDS, SET UNSEEN — THE KIT'S ONE PART (the lead's ruling of 2026-10-23 on R3-FIX 6's open
       point; MASWALI-BUILD S5-R3-FIX 7).** A drawing that models a STATIC paragraph — words the dictionary holds whole,
       with no datum in them — sets that paragraph's own words through `GhostWords` (`maswali-ghost-words.tsx`), from a
@@ -3492,6 +3500,17 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
       drawing names no word itself, and a recipe only as `words={…}`.
       `test:maswali-ui` 1.3 and 1.3a–1.3d (the part rendered by React's server renderer with and without its provider in
       sw, en and zh), each with its plant.
+      **Applied (S5-R3-FIX 8):** How to play's drawing sets its second and fourth steps and its example's caption
+      (`how/how-words.ts`); the register's index its intro, and a week's drawing the ledger's six labels (a rolled week's,
+      the carry at the template week "48", the ledger's own chevron drawn unseen beside it), both fingerprints (a 64-
+      character template) and the commitments' closing sentence (`register/register-words.ts`) — the pages read the same
+      recipes. Their tables are gone (`STEP_LINES` for the static steps, `CAPTION_LINES`, `INTRO_LINES`,
+      `FINGERPRINT_LINES`, `FLOOR_LINES`, `CARRY_LINES`, the explainer's tier); the data tables stay (How's first and third
+      steps, a week's facts and times, the root's time line). A ledger label's column is its row less its figure, which is
+      data, drawn as a bar: the label's words are exact, its column as wide as the drawing's figure. `test:maswali-ui` 1.3e
+      runs the three drawings whole with and without the provider (its control: a shell that hands it to a hidden reader);
+      `test:maswali-register` 12.2–12.4 hold the recipes to the pages' words — the ledger's labels to the ONE ledger's rows
+      in three languages.
 23. **A fact list spaces its marks as a typed " · " does (the lead's SEP ruling, 2026-10-22 — measured, no CSS change).**
     `MaswaliFacts` draws each fact as one wrap unit, its separators never opening or ending a line, at `--mln-sep`: 0.9em
     in the body face; inside a tracked mono eyebrow `calc(3ch + 0.42em)`, 3ch in Chinese (the hub's L1 rule,

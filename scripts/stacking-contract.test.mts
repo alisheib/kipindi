@@ -456,8 +456,10 @@ console.log("\n§5 · no non-portaled `position: fixed` inside route content");
 const shell = src("src/components/layout/app-shell.tsx");
 const routeTransition = src("src/components/ui/route-transition.tsx");
 const globalsRaw = rd("src/app/globals.css");
+// ⚠️ RE-PINNED IN THE OPEN 2026-10-23 (MASWALI-BUILD S5-R3-FIX 7): the children pass through the loading drawings' words
+// provider inside RouteTransition (`withGhostWords(children)`, a context provider that renders no box) — still wrapped.
 ok("5.1a every route's children go through <RouteTransition>",
-   /<RouteTransition>\{children\}<\/RouteTransition>/.test(shell),
+   /<RouteTransition>\{(?:children|withGhostWords\(children\))\}<\/RouteTransition>/.test(shell),
    "app-shell.tsx no longer wraps children — re-derive whether the trap still exists before asserting it",
    "route content is wrapped");
 ok("5.1b RouteTransition really stamps `route-enter`",

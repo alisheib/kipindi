@@ -557,7 +557,7 @@ if (SCENARIO !== "states" && wantPage("how-ghost")) {
 // The index's from How, and a week's from the index (the register segment's loading picks it, S5-R2-REGISTER 18), band by
 // band as How's: where the page puts each band and as tall, within 1px. The states seed opens the index as a week on sale
 // opens it — its first running row the week on sale — and the week drawn is a rolled one, the common weekly case. What a
-// wordless drawing cannot know is printed, not judged: how many rows "In progress" holds (the seed's five), so where the
+// drawing cannot know — the week's data — is printed, not judged: how many rows "In progress" holds (the seed's five), so where the
 // final weeks start; how many rows a week's ledger holds, so how tall its card is and where the commitments start.
 const INDEX_BANDS = (drawing) => {
   const box = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return { y: Math.round(r.top + scrollY), h: Math.round(r.height * 10) / 10 }; };
