@@ -7,18 +7,24 @@
  *                                                                     the default WITHDRAWN)
  *   BASE=http://localhost:3720 npm run red:classic-header-fit       (--prove-red: each defect planted IN THE PAGE)
  *
- * 🔴 THE DEFECT (found by the UDDOT lane's parity read, 2026-10-23): in Swahili at 1024, for a signed-in player, the
- * desktop links (502.5px) and the right cluster (400px: language, balance capsule, Deposit, bell, account) plus the bar's
- * three fixed 12px gaps ran 14.5px past the row's content edge — 16.5px at FEATURE_MILLIONEA=ACTIVE, where Millionea's
- * link stands in Results' place — into the 32px gutter, the account menu 4.5px from the screen's edge. The empty flex
- * spacer between the two clusters still cost the two gaps on its sides. ⛔ E-190's rule (`live/clip.mjs`, a control past
- * the SCREEN) cannot see it: the row stays on screen and `scrollWidth` reads 1024.
+ * 🔴 THE DEFECT (found by the UDDOT lane's parity read; measured on main 4c75dbbb6, 2026-10-23): in Swahili at 1024, for
+ * a signed-in player, the desktop links and the right cluster (language, balance capsule, Deposit, bell, account) plus the
+ * bar's three fixed 12px gaps ran 16.6px past the row's content edge at FEATURE_MILLIONEA=ACTIVE, as production runs
+ * (14.6px at WITHDRAWN) — into the 32px gutter, the account menu 15.4px from the screen's edge, up to ~1047px. The empty
+ * flex spacer between the two clusters still cost the two gaps on its sides. ⛔ E-190's rule (`live/clip.mjs`, a control
+ * past the SCREEN) cannot see it: the row stays on screen and `scrollWidth` reads 1024.
  *
- * THE RULE, per cell: every visible child of the header's row, and every control inside it, ends inside the row's content
- * edge (its box minus its padding) and starts inside it — the home link's 40px box borrows 7px of gutter each side below
- * 1280 BY DESIGN (`top-app-bar.tsx`), so for it the MARK is held, not the box; every label is whole (a desktop link, More,
- * the language code, the balance); and the row's SLACK (its free px, the journey's `qa:journey-header-fit` definition)
- * is printed — a number, never a threshold.
+ * THE RULE, per cell:
+ *   · every visible child of the header's row, and every control inside it, ends inside the row's content edge (its box
+ *     minus its padding) and starts inside it — the home link's 40px box borrows 7px of gutter each side below 1280 BY
+ *     DESIGN (`top-app-bar.tsx`), so for it the MARK is held, not the box;
+ *   · the links stay inside the nav and no control overlaps the next — the nav may give its lead (`min-width: 0`), so a
+ *     row that needs more than its spacing can give would overrun THERE before it reached the edge;
+ *   · WHERE THE ROW HAS ROOM NOTHING MOVES: with the spacer at (or past) its basis, two gaps — nothing gave — the first
+ *     link stands where it stood (the mark's link + the gap + the old 10px lead) and the cluster ends at the edge;
+ *   · every label is whole (a desktop link, More, the language code, the balance);
+ *   · the row's SLACK is printed — a number, never a threshold: the journey's `qa:journey-header-fit` definition (content
+ *     width − every visible child's outer width, a growing child at its minimum − the gaps) plus the lead's give left.
  * CELLS: a guest, the demo player, the demo player with an unconfirmed email, and the demo player under an officer's hold
  * (each minted just before its own cells: every /auth/demo visit resets the hold, the email and the balance) × sw · en ·
  * zh × /markets, /updown, /live and (signed in) /positions — each page lights a different link, and a lit link is bolder
@@ -60,9 +66,12 @@ const ROW_PROBE = () => {
   const rr = row.getBoundingClientRect();
   const left = rr.left + (parseFloat(rs.paddingLeft) || 0);
   const right = rr.right - (parseFloat(rs.paddingRight) || 0);
+  const gap = parseFloat(rs.columnGap) || 0;
   const shown = (el) => { const cs = getComputedStyle(el); const b = el.getBoundingClientRect(); return cs.display !== "none" && cs.visibility !== "hidden" && b.width > 0 && b.height > 0; };
   const name = (el) => (el.getAttribute("aria-label") || el.textContent || el.tagName).trim().replace(/\s+/g, " ").slice(0, 40);
   const home = row.querySelector(':scope > a[href="/"]');
+  const nav = row.querySelector(":scope > nav");
+  const navShown = !!nav && shown(nav);
   const past = [];
   for (const el of [...row.children].filter(shown)) {
     const b = el.getBoundingClientRect();
@@ -70,8 +79,10 @@ const ROW_PROBE = () => {
     if (el !== home && b.left < left - 0.5) past.push(`${name(el)} starts ${b.left.toFixed(1)} < ${left.toFixed(1)}`);
   }
   // Every control inside the row (a closed <details> keeps laid-out boxes it never paints: its summary only).
-  for (const el of row.querySelectorAll('a[href], button, summary, [role="button"]')) {
-    if (!shown(el) || el === home || (el.tagName !== "SUMMARY" && el.closest("details:not([open])"))) continue;
+  const controls = [...row.querySelectorAll('a[href], button, summary, [role="button"]')]
+    .filter((el) => shown(el) && !(el.tagName !== "SUMMARY" && el.closest("details:not([open])")));
+  for (const el of controls) {
+    if (el === home) continue;
     const b = el.getBoundingClientRect();
     if (b.right > right + 0.5) past.push(`control ${name(el)} ends ${b.right.toFixed(1)} > ${right.toFixed(1)}`);
     if (b.left < left - 0.5) past.push(`control ${name(el)} starts ${b.left.toFixed(1)} < ${left.toFixed(1)}`);
@@ -85,31 +96,67 @@ const ROW_PROBE = () => {
   // HEADER-1024: the spacings that give way read the row's own gap ladder (`--kp-bar-gap`), so the two must agree.
   const ladder = rs.getPropertyValue("--kp-bar-gap").trim();
   const ladderPx = ladder ? (() => { const t = document.createElement("div"); t.style.width = ladder; t.style.flex = "none"; row.appendChild(t); const v = t.getBoundingClientRect().width; t.remove(); return v; })() : null;
-  if (ladderPx !== null && Math.abs(ladderPx - (parseFloat(rs.columnGap) || 0)) > 0.5) past.push(`--kp-bar-gap ${ladder} = ${ladderPx}px ≠ the row's gap ${rs.columnGap}`);
+  if (ladderPx !== null && Math.abs(ladderPx - gap) > 0.5) past.push(`--kp-bar-gap ${ladder} = ${ladderPx}px ≠ the row's gap ${rs.columnGap}`);
+  // HEADER-1024: the links stay inside the nav, and no control overlaps the next (the outermost controls, left to right).
+  const over = [];
+  const outer = controls.filter((el) => !controls.some((o) => o !== el && o.contains(el)));
+  if (navShown) {
+    const nb = nav.getBoundingClientRect();
+    for (const el of outer.filter((c) => nav.contains(c))) {
+      const b = el.getBoundingClientRect();
+      if (b.right > nb.right + 0.5) over.push(`${name(el)} overruns the nav (${b.right.toFixed(1)} > ${nb.right.toFixed(1)})`);
+    }
+  }
+  const byX = outer.map((el) => ({ el, b: el.getBoundingClientRect() })).sort((a, z) => a.b.left - z.b.left);
+  for (let i = 1; i < byX.length; i++) {
+    if (byX[i].b.left < byX[i - 1].b.right - 0.5) over.push(`${name(byX[i].el)} overlaps ${name(byX[i - 1].el)} (${byX[i].b.left.toFixed(1)} < ${byX[i - 1].b.right.toFixed(1)})`);
+  }
   // Every label whole: a desktop link, More, the language code, the balance's figure.
   const cut = [...row.querySelectorAll('nav a, nav button, details > summary, [data-testid="wallet-balance-pill"], [data-testid="wallet-balance-capsule"]')]
     .filter(shown).filter((el) => el.scrollWidth > el.clientWidth + 0.5).map((el) => `${name(el)} clipped (${el.scrollWidth} > ${el.clientWidth})`);
-  // The slack — the journey header-fit's definition: content width − every visible child's outer width (a growing child
-  // at its minimum) − the gaps between them.
-  const gap = parseFloat(rs.columnGap) || 0;
+  // HEADER-1024: WHERE THE ROW HAS ROOM NOTHING MOVES. The spacer at (or past) its basis — two gaps — means nothing gave;
+  // then the first link stands at the mark's link + the gap + the old 10px lead, and the cluster ends at the edge.
   const vis = [...row.children].filter((el) => getComputedStyle(el).display !== "none");
+  const fill = vis.find((el) => (parseFloat(getComputedStyle(el).flexGrow) || 0) > 0) ?? null;
+  const first = navShown ? outer.find((el) => nav.contains(el)) ?? null : null;
+  const markEnd = home && shown(home) ? home.getBoundingClientRect().right + (parseFloat(getComputedStyle(home).marginRight) || 0) : null;
+  const lead = first && markEnd !== null ? Math.round((first.getBoundingClientRect().left - markEnd) * 10) / 10 : null;
+  const roomy = !!fill && fill.getBoundingClientRect().width >= 2 * gap - 0.5;
+  const moved = [];
+  if (roomy && lead !== null && Math.abs(lead - (gap + 10)) > 0.5) moved.push(`the links start ${lead}px after the mark's link, not ${gap + 10}px (the gap + the old 10px lead)`);
+  if (roomy && vis.length) {
+    const end = vis[vis.length - 1].getBoundingClientRect().right;
+    if (Math.abs(end - right) > 0.5) moved.push(`the cluster ends ${end.toFixed(1)}, not at the edge ${right.toFixed(1)}`);
+  }
+  // The slack — the journey header-fit's definition: content width − every visible child's outer width (a growing child
+  // at its minimum) − the gaps between them — plus the give the nav's lead (`::before`) still has past its floor.
   let used = 0;
   for (const el of vis) {
     const cs = getComputedStyle(el);
     const grows = (parseFloat(cs.flexGrow) || 0) > 0;
     used += (grows ? (parseFloat(cs.minWidth) || 0) : el.getBoundingClientRect().width) + (parseFloat(cs.marginLeft) || 0) + (parseFloat(cs.marginRight) || 0);
   }
-  const slack = Math.round((right - left - used - gap * Math.max(0, vis.length - 1)) * 10) / 10;
+  let leadGive = 0;
+  if (navShown && first) {
+    const before = getComputedStyle(nav, "::before");
+    if (before.content && before.content !== "none" && before.content !== "normal") {
+      leadGive = Math.max(0, first.getBoundingClientRect().left - nav.getBoundingClientRect().left - (parseFloat(getComputedStyle(nav).columnGap) || 0) - (parseFloat(before.minWidth) || 0));
+    }
+  }
+  const slack = Math.round((right - left - used - gap * Math.max(0, vis.length - 1) + leadGive) * 10) / 10;
   const links = [...row.querySelectorAll("nav a.kp-navlink")].filter(shown).map((a) => a.textContent.trim());
-  return { vw: innerWidth, lang: document.documentElement.lang, right: +right.toFixed(1), slack, past, cut, links };
+  return { vw: innerWidth, lang: document.documentElement.lang, right: +right.toFixed(1), slack, lead, roomy, past, over, moved, cut, links };
 };
 
-/** The plants: each a stylesheet that must turn this drive red (sw, the player, /markets, 1024). */
+/** The plants: each a stylesheet that must turn this drive red, in sw on /markets at 1024 — the player's row (the full
+ *  one) or a guest's (one with room) — caught by the check it names. */
 const PLANTS = [
-  { id: "wider-label", what: "a desktop link 64px wider (the next longer label)", css: "header.app-topbar nav a.kp-navlink:first-child { padding-right: 76px !important; }" },
-  { id: "fixed-gaps", what: "the bar's spacing that gives way held at full width (HEADER-1024 undone)", css: ".kp-bar-lead, .kp-bar-fill { flex-shrink: 0 !important; }" },
-  { id: "cut-label", what: "a desktop link's label cut by its box", css: "header.app-topbar nav a.kp-navlink { max-width: 40px !important; overflow: hidden !important; }" },
+  { id: "wider-label", reader: "player", what: "a desktop link 64px wider (more than the spacing can give)", css: "header.app-topbar nav a.kp-navlink:first-child { padding-right: 76px !important; }", caught: (m) => m.past.length + m.over.length > 0 },
+  { id: "fixed-gaps", reader: "player", what: "the bar's spacing that gives way held at full width (HEADER-1024 undone)", css: ".kp-bar-lead, .kp-bar-fill { flex-shrink: 0 !important; }", caught: (m) => m.past.length > 0 },
+  { id: "cut-label", reader: "player", what: "a desktop link's label cut by its box", css: "header.app-topbar nav a.kp-navlink { max-width: 40px !important; overflow: hidden !important; }", caught: (m) => m.cut.length > 0 },
+  { id: "lead-short", reader: "guest", what: "the links' lead sized by its basis alone (HEADER-1024 2's first build: every link 12px left in a row with room)", css: ".kp-bar-lead::before { width: auto !important; }", caught: (m) => m.moved.length > 0 },
 ];
+const problems = (m) => [...m.past, ...m.over, ...m.moved, ...m.cut];
 
 const pre = await premise(BASE);
 if (pre.refuse) { console.error(`PREMISE ABSENT — ${pre.refuse}`); process.exit(2); }
@@ -151,22 +198,24 @@ try {
       const cookie = r.door === null ? null : await demoSession(browser, BASE, { query: r.door });
       for (const l of LOCALES) for (const route of ROUTES(r.door !== null)) {
         const rows = await walk(r.id, cookie, l, route, WIDTHS);
-        const bad = rows.filter((x) => !x.m || x.m.past.length || x.m.cut.length || x.m.lang !== l);
+        const bad = rows.filter((x) => !x.m || problems(x.m).length || x.m.lang !== l);
         const least = rows.filter((x) => x.m).reduce((a, x) => (a === null || x.m.slack < a.slack ? { w: x.w, slack: x.m.slack } : a), null);
         const at1024 = rows[0]?.m;
-        ok(`${r.id} · ${l} · ${route} — the row fits its content edge and every label is whole at all ${rows.length} widths (slack at 1024 ${at1024?.slack}px; least ${least?.slack}px at ${least?.w})`,
-          bad.length === 0, bad.slice(0, 3).map((x) => `${x.w}: ${x.m ? [x.m.lang !== l ? `lang ${x.m.lang}` : "", ...x.m.past, ...x.m.cut].filter(Boolean).join("; ") : "no classic header"}`).join(" ‖ "));
+        ok(`${r.id} · ${l} · ${route} — the row fits its content edge, nothing overlaps, every label is whole and, where the row has room, nothing moved at all ${rows.length} widths (slack at 1024 ${at1024?.slack}px; least ${least?.slack}px at ${least?.w})`,
+          bad.length === 0, bad.slice(0, 3).map((x) => `${x.w}: ${x.m ? [x.m.lang !== l ? `lang ${x.m.lang}` : "", ...problems(x.m)].filter(Boolean).join("; ") : "no classic header"}`).join(" ‖ "));
       }
     }
   } else {
-    console.log(`red:classic-header-fit · Millionea ${MLN} at ${BASE} — each defect planted in the page must be caught (sw, the player, /markets, 1024)`);
-    const cookie = await demoSession(browser, BASE, { query: "" });
-    const clean = (await walk("player", cookie, "sw", "/markets", [1024]))[0].m;
-    ok("CONTROL · the clean page fits at 1024 before anything is planted", !!clean && clean.past.length === 0 && clean.cut.length === 0, clean ? `slack ${clean.slack}px ${[...clean.past, ...clean.cut].join("; ")}` : "no classic header");
+    console.log(`red:classic-header-fit · Millionea ${MLN} at ${BASE} — each defect planted in the page must be caught (sw, /markets, 1024: the player's full row, a guest's row with room)`);
+    const cookies = { player: await demoSession(browser, BASE, { query: "" }), guest: null };
+    for (const reader of ["player", "guest"]) {
+      const clean = (await walk(reader, cookies[reader], "sw", "/markets", [1024]))[0].m;
+      ok(`CONTROL · ${reader} · the clean page passes at 1024 before anything is planted`, !!clean && problems(clean).length === 0,
+        clean ? `slack ${clean.slack}px, the links' lead ${clean.lead}px${clean.roomy ? "" : " (the row gave)"} ${problems(clean).join("; ")}` : "no classic header");
+    }
     for (const p of PLANTS) {
-      const m = (await walk("player", cookie, "sw", "/markets", [1024], p.css))[0].m;
-      const caught = !!m && (p.id === "cut-label" ? m.cut.length > 0 : m.past.length > 0);
-      ok(`PLANT · ${p.what} → reported`, caught, m ? `slack ${m.slack}px · ${[...m.past, ...m.cut].slice(0, 2).join("; ") || "nothing reported"}` : "no classic header");
+      const m = (await walk(p.reader, cookies[p.reader], "sw", "/markets", [1024], p.css))[0].m;
+      ok(`PLANT · ${p.what} → reported`, !!m && p.caught(m), m ? `${p.reader} · slack ${m.slack}px · ${problems(m).slice(0, 2).join("; ") || "nothing reported"}` : "no classic header");
     }
   }
 } finally {

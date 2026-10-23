@@ -187,13 +187,15 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
           overridden spacing scale, and it is charged THREE times across logo | nav | spacer |
           cluster — 60px of air at the one band where the bar is 65px short in Swahili. Dropping
           back to the `gap-2` this row already uses below `sm` returns 24px of it. ⚠️ The nav
-          keeps its own `ml-2.5`, so the logo never touches the first link. Both values are the
-          two the row already carries; no new step enters the scale.
+          keeps its own 10px lead (once `ml-2.5`, now `.kp-bar-lead`'s first item), so the logo never
+          touches the first link. Both values are the two the row already carries; no new step
+          enters the scale.
           ⭐ MASWALI-BUILD HEADER-1024 (2026-10-23): the row keeps that ladder, and `.kp-bar-row` carries the same ladder as
           `--kp-bar-gap` (globals.css — 12 · 20 · 12 · 20px) for the two spacings that held fixed px and now give way when
           the row is full: the spacer between the clusters (`.kp-bar-fill`, first) and the nav's lead, the old `ml-2.5`
-          (`.kp-bar-lead`, next), each down to 8px. `qa:classic-header-fit` holds the two ladders equal at every width. In Swahili at 1024 a signed-in row ran 16.6px past its content edge (measured on main
-          4c75dbbb6 at ACTIVE); where a row has room every pixel stands where it stood. `qa:classic-header-fit` holds it. */}
+          (`.kp-bar-lead`, next), each down to 8px. In Swahili at 1024 a signed-in row ran 16.6px past its content edge
+          (measured on main 4c75dbbb6 at ACTIVE); where a row has room every pixel stands where it stood.
+          `qa:classic-header-fit` holds both, and the two ladders equal, at every width. */}
       {/* ⚠️ `px-2` BELOW `sm`, NOT `px-3` — the last 8px, and the only one left that costs no
           control. At 320 signed in the right cluster needed 273px into 254px of room. The caret
           yield (14px, `language-menu.tsx`) and the avatar's duplicate gap (4px,

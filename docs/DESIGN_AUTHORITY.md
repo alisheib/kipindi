@@ -2244,7 +2244,8 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
    into the gutter (FEATURE_MILLIONEA=ACTIVE; 14.6 WITHDRAWN). ⛔ No label is cut, no control yields, nothing moves where
    the row has room: the spacer between the clusters (`.kp-bar-fill`) and the links' lead (`.kp-bar-lead`) sit at the old
    gaps' widths and, only when the row is full, give way — the spacer first — each down to 8px (`globals.css`, the top
-   bar's row). Guards: `qa:classic-header-fit` (the edges, whole labels, the slack) and `red:classic-header-fit`.
+   bar's row). Guards: `qa:classic-header-fit` (the edges; the links inside the nav and no control over the next; where
+   the row has room, the links and the cluster where they stood; whole labels; the slack) and `red:classic-header-fit`.
    ⭐ **FILL MEANS A STATE; DUOTONE IS IDENTITY ON A PLATE; LINE IS EVERYTHING ELSE (PHOSPHOR-MIGRATION W4, §8c; Ali,
    2026-10-19: "nothing should be plain … everything visually perfect, logically perfect").** A glyph's tier says what it
    is, so the tier is never chosen for looks:
