@@ -1631,3 +1631,22 @@ byte-identical. THE RULE: a suite that reads what the console prints pins the wo
 re-derived from the run's printed list, never by hand. The same run's `red:maswali-engine` printed "108/108 caught, 0
 missed, 0 files left dirty": its "FAIL [postgres] 13.2" line is plant (79) caught, not a red. The engine's floor rose to
 the counts it printed there (memory 212, Postgres 220: §15, the draft discard).
+
+#### ✅ GD.1 · five console texts said what the code does not do — fixed by S6-SHIP 6 (the lead's rulings of 2026-10-23)
+
+Found by the GUIDE lane's walk for the final admin guide, on the release head. THE RULE: a console sentence states what the
+code does, and a link names a page its reader may open. Each is fixed as ruled:
+- The integrity page's "Marketing wordings" card said a campaign using Millionea's words without its tag "is refused until
+  it is tagged or reworded" — false since the untagged rules are off in this release (§9b, S6-SHIP 5). It now says only
+  campaigns tagged as Millionea are checked against these wordings, and other campaigns are not judged in this release.
+- The weeks page's "Rules for the next week" card named the complaint answer target as the one setting that applies at
+  once, while the release-wait alert reads the live "Alert when a release waits (hours)" for every week. It names both.
+- The release-wait alert said "Accounting releases it."; the console's one word for that role is "Finance".
+- The move-close dialog said the service checks "the notice period" — `moveClose` checks no notice period; it names what
+  the move checks: the free-cancel window and the first event.
+- The front page's Millionea card linked every viewer to the weeks and said the rest were "on the weeks page", a page
+  Finance and Compliance cannot open. Its link is now the first page the viewer may open, asked with that page's own gate
+  (`viewerMayOpen`): the weeks, else Integrity, else Pools, else none (`src/lib/maswali-strip-link.ts`); "on the weeks
+  page" is said only beside the weeks link.
+Held by `test:maswali-admin-plain` §9 (9.1–9.4 on the words an officer reads, each against the code it describes; 9.5 a
+case per role, 9.5b–c the last line and the page's wiring) and the plants (AP15)–(AP21) of `red:maswali-admin-plain`.

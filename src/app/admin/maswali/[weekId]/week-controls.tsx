@@ -167,7 +167,7 @@ export function MoveCloseForm({ weekId, weekCode, currentEat, closesAt, latest }
         body={<div className="space-y-2">
           <p>Current close: <strong>{review?.fromEat} (EAT)</strong></p>
           <p>New close: <strong>{review?.toEat} (EAT)</strong></p>
-          <p>The service checks the notice period, free-cancel window and first event before accepting this move.</p>
+          <p>The service checks the free-cancel window and the first event before accepting this move.</p>
           {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
         </div>}
         onConfirm={() => {

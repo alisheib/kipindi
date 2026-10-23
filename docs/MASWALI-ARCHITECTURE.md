@@ -116,7 +116,7 @@ product (`npm run test:maswali-fairness` H.7; S5's ghosts are wordless for the s
 | `src/lib/server/maswali-settlement.ts` | The preview, the release, holds, releases and forfeits of a share, the sunset's top score |
 | `src/lib/server/maswali-void.ts` | The week void's refunds, exactly once, at any size |
 | `src/lib/server/maswali-invariants.ts` | The nightly invariants |
-| `src/lib/server/maswali-console.ts` · `maswali-integrity.ts` · `src/lib/maswali-admin-format.ts` | What the console reads: the weeks, the alerts, the pools, the integrity reports |
+| `src/lib/server/maswali-console.ts` · `maswali-integrity.ts` · `src/lib/maswali-admin-format.ts` · `src/lib/maswali-strip-link.ts` | What the console reads: the weeks, the alerts, the pools, the integrity reports; where the front page's Millionea card links |
 | `src/lib/server/maswali-player.ts` · `maswali-player-acts.ts` · `maswali-pool-feed.ts` | What the player surfaces read and do; the live pool figure |
 | `src/lib/server/maswali-fairness.ts` | What `/fairness` publishes, and one owner's inclusion proof |
 | `src/lib/server/millionea-legal.ts` · `src/lib/millionea-rules-version.ts` | The binding rules' figures (one week's, never a mix), their version and the hash of their text |
@@ -220,6 +220,7 @@ domains are in `ROUTE_DOMAINS` (`src/lib/server/roles.ts`).
 | A locked winner's money leaving | `payLockedWinnerShare` (compliance), through `withdraw`'s `lockedWinnerShare` alone |
 | A week's shares against the payout float | `floatCover` (`maswali-settlement.ts`): the release, its after-commit check and the Pools line |
 | Who the console's front-page strip speaks to | `millioneaStripAlerts` (`maswali-console.ts`): every alert for trading; the float's for Finance and Compliance; a connected group holding a winner for Compliance (never trading) |
+| Where the front-page strip's card links | `millioneaStripLink` (`src/lib/maswali-strip-link.ts`): the first of the weeks, Integrity and Pools the viewer may open (`viewerMayOpen`, the page's own gate), else no link |
 | Who rules on an objection | `ruleMaswaliObjection` (compliance; `maswali-objections.ts` bars the question's sealer, its confirmer, the officer whose upheld ruling set its result, the objector and a holder) |
 | What a campaign may say about Millionea | `millionea-claims.ts` (the tagged rules, the composer's one door) and `millionea-untagged.ts` (the server's alone) |
 | A notice sent once | `maswali-notify.ts`: each notice's own key, its run's lease and record |

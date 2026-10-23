@@ -514,8 +514,9 @@ async function Content({ searchParams }: IntegrityPageProps) {
             <>
               <p className="text-body-sm text-text-secondary mb-3">
                 {wordings.facts.live ? null : <span className="text-warning">Millionea is not public yet, so no campaign may be about it. </span>}
-                {/* MB-47 · the campaign lint · OD-30 · no wording names a winner. */}
-                A Millionea campaign is one whose name begins with &ldquo;Millionea&rdquo;: it carries its headline&apos;s three facts and the week&apos;s own fee, and the composer refuses an amount, a win or a winner, a sum, an income, a guarantee, a rank or a chance; any other campaign that uses Millionea&apos;s words is refused until it is tagged or reworded, and no wording names a winner.
+                {/* MB-47 · the campaign lint · OD-30 · no wording names a winner · S6-SHIP 6 (the lead's ruling of 2026-10-23): the
+                    untagged rules are off in this release (`MILLIONEA_UNTAGGED_RULES_ON`), so the lint checks tagged campaigns only. */}
+                A Millionea campaign is one whose name begins with &ldquo;Millionea&rdquo;: it carries its headline&apos;s three facts and the week&apos;s own fee, and the composer refuses an amount, a win or a winner, a sum, an income, a guarantee, a rank or a chance. Only campaigns tagged as Millionea are checked against these wordings; other campaigns are not judged in this release. No wording names a winner.
                 {" "}The fee below is {wordings.facts.source === "WEEK" ? `${wordings.facts.weekCode ?? "this week"}'s own` : "the one the next week will freeze"}.
               </p>
               <ul className="space-y-2">
