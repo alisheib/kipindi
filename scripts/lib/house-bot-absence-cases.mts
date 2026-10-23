@@ -115,9 +115,10 @@ export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // way: outside the three `millionea` blocks byte-identical; inside them three keys only — `feeZero` takes the amount
   // ("fee {fee}", filled with formatTzs(0)), `regTicketsSoldOne` ("1 ticket at {price}"), `landingInvite` (Ali's own words
   // of 2026-10-22, "Be this week's winner?" / "Kuwa mshindi wa wiki hii?" / "成为本周赢家？").
-  // ⏳ S6-SHIP 9 (the merge of main 07a400bc3): the merged dictionary is this branch's plus round 2's three keys — pinned at
-  // the merge's own sha by S6-SHIP 10, once the merge exists (a pin names a commit whose blob is the file).
-  "src/lib/i18n-dict.ts": "d61b839100b27874e62d343d855435e2f23400e4",
+  // D19a RE-PINNED AT S6-SHIP 10 (was the blob d61b83910, S6-INT 21's): the dictionary as the merge of main 07a400bc3 left it
+  // (S6-SHIP 9, 0f65d3975) — this branch's plus round 2's three keys above, nothing else: its diff against d61b83910 is
+  // main's own round-2 dictionary diff, line for line (12 lines, en/sw/zh). No other line changed.
+  "src/lib/i18n-dict.ts": "2ef1a9d9f7b5e334ab134adf9ee014b923921a03",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
 };
