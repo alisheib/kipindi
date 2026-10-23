@@ -17,7 +17,7 @@ One fact, one home. Nothing below restates a rule or a figure; each links instea
 | [`RULES.md`](RULES.md) §2.12 | 🟢 LAW — what Millionea charges, and when | How it is built |
 | [`MASWALI-PLAN.md`](MASWALI-PLAN.md) | The programme: §0 where it stands · §3 the rulebook (MR-1…MR-32) · §5 the money, worked · §6 the launch gate and the weekly runbook · §8 the blind areas · §9 the Owner's decisions | The file map |
 | [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) § 2026-10-16 | The Owner's decision | — |
-| [`maswali-operator-guide.html`](maswali-operator-guide.html) → [`50pick-maswali-operator-guide.pdf`](50pick-maswali-operator-guide.pdf) | The admin guide: how Millionea works, how admins run each console step, what every console word means | Code, file names, the desk's scripts |
+| [`maswali-operator-guide.html`](maswali-operator-guide.html) → [`50pick-maswali-operator-guide.pdf`](50pick-maswali-operator-guide.pdf) | The admin guide: how Millionea works, how admins run each console step, what every console word means | Code, file names, rule numbers, the desk's scripts |
 | [`rates-for-admins.html`](rates-for-admins.html) · [`rates-decisions-needed.html`](rates-decisions-needed.html) | The sources of `50pick-rates-for-admins.pdf` and `50pick-betting-rules-final.pdf` | — |
 | [`UPDOWN-ARCHITECTURE.md`](UPDOWN-ARCHITECTURE.md) | The second product's — the precedent this one follows | — |
 
