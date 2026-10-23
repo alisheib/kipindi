@@ -4802,7 +4802,10 @@ html[data-sheet-open] .route-enter { animation: none; }
    S5-R2-HUB · the line is the one wording now, "Mauzo yanafungwa: {when} EAT" (the lead's ruling, the slip's and the
    ticket's words): below 360 its zone steps aside too, since there the words and the pill would take 298px of a 296px row. */
 .kp-mln-close:has(.closing-pill) .kp-mln-close-day { display: none; }
-@media (max-width: 359.98px) { .kp-mln-close:has(.closing-pill) .kp-mln-close-zone { display: none; } }
+@media (max-width: 359.98px) {
+  /* density: general — the hub's close line in its last hour, its words and its countdown on one line in a 296px row; not card spacing; both card-spacing settings. */
+  .kp-mln-close:has(.closing-pill) .kp-mln-close-zone { display: none; }
+}
 /* MASWALI-BUILD S5-R2-HUB · THE PINNED PAIR'S FOOT FADES (`HUB_PINNED`, hub-frame.ts; the tile readers: mid-scroll the
    ledger slid out from under the pinned jackpot and door cut flat, a box with no top). From 1024 the pair stands on the
    page's own ground; its foot — the pair's `pb-4`, 20px, the column's own gap — fades to nothing, so what reads on in the

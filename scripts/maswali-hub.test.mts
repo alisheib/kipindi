@@ -786,7 +786,9 @@ console.log("\n§18 · the lead's ruling (2026-10-22): the close line says the w
   // R1-motion M8 · the last hour: the weekday steps aside, and below 360 the zone too — at sw 320 the words beside the
   // closing pill measured 298px with the zone in a 296px row (the drive measures the row: "the line does not grow").
   const css = readFileSync(join(ROOT, "src/app/globals.css"), "utf8").replace(/\s+/g, " ");
-  const narrow = (s: string) => s.includes("@media (max-width: 359.98px) { .kp-mln-close:has(.closing-pill) .kp-mln-close-zone { display: none; } }");
+  // ⚠️ RE-PINNED IN THE OPEN (HUB-2B 24): the rule states its density reason now (test:density-contract), a comment inside
+  // its media block; the rule itself is the same. (`css` is read with its white space collapsed.)
+  const narrow = (s: string) => /@media \(max-width: 359\.98px\) \{ (?:\/\*[^*]*(?:\*(?!\/)[^*]*)*\*\/ )?\.kp-mln-close:has\(\.closing-pill\) \.kp-mln-close-zone \{ display: none; \} \}/.test(s);
   ok("18.3 · in the last hour, below 360, the zone steps aside with the weekday, so the close and the pill keep one line", narrow(css));
   ok("18.3′ PLANT · the rule gone is reported", !narrow(css.replace(".kp-mln-close-zone { display: none; }", "")));
 }
