@@ -35,11 +35,50 @@ live from 2026-10-22 23:32 UTC; the code's shipped ceiling stays WITHDRAWN on pu
 stored switch, to hide it again). Every visitor sees the product; NOTHING SELLS until an admin pays the guarantee in
 (Pools → the Owner card → Guarantee: the amount and the bank reference → Pay in; Ali: "the bank thing my admin later
 does") and a week opens (the earliest Monday 00:00 EAT). The licence basis needs no step: it is 50pick's GBT licence by
-Ali's ruling of 2026-10-23 (LICBASIS, below). ⛔ DEADLINES: before any week OPENS — S6's Millionea rules page
-(`/legal/rules/millionea`, a 404 until S6 ships) and its Terms section live; before the FIRST settlement — S7 and S6's
-notices, tax-report lines and payout-float check live. §6.1's lines stay unticked until each is true.
+Ali's ruling of 2026-10-23 (LICBASIS, below). ✅ The deadlines are met: S6's Millionea rules page (`/legal/rules/millionea`) and its Terms section, and S7 and
+S6's notices, tax-report lines and payout-float check, are live with `c5dede03d` (2026-10-23).
 
-**⏳ 2026-10-23 — UDDOT and LICBASIS on `main` (the Claude session asheib-f3 on OMEGA; Ali: "remove the golden dot …
+**✅ 2026-10-23 — S7 and S6 on `main` (the Claude session asheib-f3 on OMEGA; Ali: "finish everything by 6 maximum" —
+"check only what's critical, no need for long-time things").** This release is S7 and S6 together, with the day's final
+end-to-end review folded in:
+- **S6 — fairness, notices, reports, legal, data:** the Millionea rules page (`/legal/rules/millionea`) and its Terms
+  section; the winner notices (bell, letter, one SMS — migration `20261018120000_maswali_winner_sms_once`); the objection
+  notices (the filer hears the ruling; officers are pinged on a filing; every other holder hears an upheld change); the
+  purchase bell says "Ticket bought" (Ali's ruling 7 of 2026-10-21) and names EAT; the tax-report lines; the payout-float
+  check; the admin console's plain words — the release-wait alert gives the real time since the window closed and, while
+  an objection stands, sends the reader to Compliance; alerts name a question M1–M10 / A1–A5; a held wallet hears one
+  Millionea sentence before any pick (the slip, the buy and the hub); MB-57's way back from a deposit to the slip; the
+  admin guide `docs/50pick-maswali-operator-guide.pdf` (on Ali's Desktop: rules first, nine pictures of one demo story).
+- **S7 — adversarial hardening:** the objection door (OB.0), the takeover alert (TK.2), RD.5, the held-winner release
+  in bounded sections of the lock, the product-line fence migration `20261018130000_maswali_product_line_fence`, every
+  licence reader through LICBASIS's standing (FAILURE-INVENTORY §9).
+- **Gates — critical only, by Ali's word.** S7 at `fddc779b4` (code `b05c3abc0`): tsc 0; the migration proof (main's 112,
+  then exactly the fence; nothing pending after; a clean replay; fence 4/4; the backup round trip VERIFIED);
+  verify:backup-schema 16/0; test:backup 140/0; 17 two-store suites at or above their floors; reds money-path 99/99,
+  engine 105/105, licence-gate 5/5; build; first-load; qa:live 379/0 ACTIVE and 391/0 default; the admin drive 103/0;
+  e2e:maswali-money 38/38 per store, e2e:maswali-fault 16/0; and, before LICBASIS, CI 708/708 with only main's 35
+  needle-rest cases, parity 67/67, e2e:money 64/0, fault 34/0, card 100/0. S6 at the code head `c5dede03d`: tsc 0;
+  next build + first-load PASS (10 routes); qa:live 381/0 at ACTIVE and 391/0 at the default; the legal drive 36/0 at ACTIVE and 24/0 at WITHDRAWN (the rules page and Terms in en, sw and zh at 320/360/768/1280, version 2026-10-23)
+  and 10/0 word for word against the binding source; the door census 48/0 WITHDRAWN (with its plant) and 45/0
+  STAFF_PREVIEW; on both stores objections 49/49, notify 159/165, engine 213/221, adversarial 233/242, player 195/195,
+  purchase 114/117, void 52/57; e2e:money 64/0 (drift 0.00), fault 34/0, card 100/0, report-reads 13/0, tax-report
+  20/0, audit-roundtrip 3/0, e2e:maswali-money ALL PASS, e2e:maswali-fault 16/0; the migration proof in production's
+  order (main's 112, then exactly the fence, then exactly `20261018120000_maswali_winner_sms_once`; a second deploy
+  "No pending migrations to apply"; both replay; the index and the fence present); red:maswali-money-path on the 74
+  plants of the files changed since `79db50fdc` 74/74 caught; 55 readers green; CI (run 39955354568) every step green but
+  test:needle-rest 55/35, the same 35 failing case lines as main's own runs (diffed).
+- **Not run, by Ali's word** ("anything long but the same expected results — no need"): S7's red:house-bot-console and
+  red:house-bot-c5 (they prove the house-bot guards' plants; their targets moved only through UDDOT and LICBASIS; stopped
+  cleanly at console 12 and c5 4 caught, 0 missed); S6's reds batches B–D (83 twins; batch A 19 of 22 caught, 0 missed,
+  and money-path 135/135); classic parity for S6 (it touches no classic page beyond a server action and its own glyphs;
+  S7's part was 67/67). The admin drive's 6.4 is the drive's own race (the void lands; 6.4b and 6.4c pass).
+- **The next release — the polish:** S6-NOTICES' correctSeal ruling (`ff3eab8c1`: only the officer who set a question's
+  present result corrects it; a Compliance-ruled result changes only through another objection) with GUIDE 10
+  (`96772abeb`); FLOW 14 (Tiketi zangu and the ticket's cancel for a held wallet); HUB-2B, R3-2B (static loading
+  paragraphs set their own words unseen, so they land in any engine) and HEADER-1024 (Swahili at 1024: a signed-in
+  header row past its edge).
+
+**✅ 2026-10-23 — UDDOT and LICBASIS on `main` `4c75dbbb6` (the Claude session asheib-f3 on OMEGA; Ali: "remove the golden dot …
 people are misunderstanding and thinking there is a certain notification there"; on the licence basis: "mark this
 done").**
 - **UDDOT** (`788de909a`): Up & Down's golden dot is gone from every nav — the desktop header and the phone rail — so
@@ -58,14 +97,6 @@ done").**
   391/0 at the default; qa:classic-rail drawn 221/0 (the lead read its tiles: no tab carries a dot; Millionea keeps
   its gold diamond and ink, lit and unlit, in sw, en and zh); CI on `c01777bd0` (run 39941714860): every step green
   but test:needle-rest 55/35 — the same 35 failing case lines as main's own run 39928712493 at `07a400bc3` (diffed).
-- In flight: lane S7-SHIP merges this `main` into `claude/maswali-s7-s5`; lane S6-SHIP takes S7's head into
-  `claude/maswali-s6-release` with FLOW (MB-57; the result modal's reference wrap; the console's release-wait alert
-  while an objection stands; the slip's held-wallet refusal before the answers), S6-NOTICES (the decided-objection
-  notice and the officers' ping on a filing; "Ticket bought" in the purchase bell — Ali's ruling 7 of 2026-10-21) and
-  GUIDE (the admin guide re-shot on one demo timeline), for `main` before Monday 00:00 EAT. Then S5 round 2b: HUB-2B
-  (`claude/maswali-s5-r2-hub`), R3-2B (`claude/maswali-s5-r3-fix`; the lead's ruling: a static paragraph's loading
-  drawing sets its own words unseen, so it lands in any engine) and HEADER-1024 (in Swahili at 1024 a signed-in
-  player's header row runs past its content edge — already so on `main` before UDDOT, which narrowed it by 13px).
 
 **✅ 2026-10-23 morning (the Claude session asheib-f3 on OMEGA; Ali: "replace in the navbar on mobile Millionea with Live … the
 order you think is perfect … give me the pdf … mark progress done").**
@@ -91,15 +122,15 @@ order you think is perfect … give me the pdf … mark progress done").**
   margins and an undrawn chart) — measured directly on fresh servers of both commits: identical (the reading container
   1080px at x100 with 100px margins, the chart not yet drawn on either).
 
-**State (2026-10-23):** S1–S5 are on `main` and Millionea is ACTIVE on production (Ali's ruling of 2026-10-23): S5 with
-round 2 of DOORS, SLIP, TICKETS, FACTS, REGISTER and PLATFORM (the phone rail's Millionea track; Live leads More), the
-Next.js security patch, UDDOT (no dot on any nav tab) and LICBASIS (the licence basis by the Owner's ruling; every admin
-seals). S7 and S6 ship together before Monday 00:00 EAT (the in-flight list above); S5's round 2b follows.
+**State (2026-10-23):** S1–S7 are on `main` and Millionea is ACTIVE on production (Ali's ruling of 2026-10-23): every
+player surface, the rules page and Terms, the notices, the tax lines, the payout-float check and the hardening. Nothing
+sells until an admin pays the guarantee in and a week opens (the earliest Monday 00:00 EAT). The polish release (above)
+follows; then S8 is Ali's list.
 
-**Next:** in order — (1) the S7 + S6 release to `main` (S7-SHIP, then S6-SHIP; the rules page and the Terms section
-before any week opens), read back (AGENTS §4), §1's S6 and S7 rows ticked; (2) S5 round 2b (HUB-2B, R3-2B,
-HEADER-1024) to `main`, read back, §1's S5 row ticked; (3) S8 — Ali's list in §6.1 (an admin pays the guarantee in;
-his launch word); the first public week is the drive (Ali, 2026-10-22).
+**Next:** in order — (1) the polish release to `main` (the parts listed above), read back, §1's S5 row ticked and
+§6.1 line 6 with it; (2) S8 — Ali's list in §6.1: an admin pays the guarantee in (Pools → the Owner card → Guarantee:
+the amount and the bank reference → Pay in), Finance funds and confirms the payout float, the rulings on lines 4 and
+7–10, line 13 read, then his launch word; the first public week is the drive (Ali, 2026-10-22).
 
 ## §0a · Historical handovers (superseded by §0 above)
 
@@ -993,8 +1024,8 @@ never build there. The repository is public: describe anti-abuse controls by wha
 | S4 | Admin console and operations | ✅ | on `main` dark at `f312d652` (2026-10-18); the milestone battery closes its deferred `test:all` gate, and the console's shots were read tile by tile at 360/768/1280/1920 |
 | D3 | Ali's N1–N4 rulings, filed in DESIGN_AUTHORITY and motion.css | ✅ | 2b6bf5bf (2026-10-17): DESIGN_AUTHORITY §M8a, COMPLIANCE-DECISIONS, the manifests, the agency note; the N-block lands in `motion.css` with its first consumer in S5 (`test:dead-css`) |
 | S5 | Player surfaces | 🔨 | on `claude/maswali-s5-release`, with the fix lanes and `main` `bfa0b7d57` merged (2026-10-21 PM) and the design lanes' 10/10 pass in flight; focused source and two-store action checks, the 198/198 disposable-PostgreSQL money battery, earlier player tiles and classic parity are green; final exact-commit suite, render, build, local live QA, dark deploy and production read-back remain |
-| S6 | Fairness, notices, reports, legal, data | 🔨 | legal + data squash-merged on `mln-s6-int` `81c60f0f`; reports round 15 accepted on `mln-s6-reports` `57624a2f`; notices round 17 complete on `mln-s6-notices` `bd74c982c` (both BLOCKERs fixed; its final-head checks owed) — §0 |
-| S7 | Adversarial hardening | 🔨 | on `claude/maswali-s7` at `2cba1f577`: F7 integrated, and S7-F8 1–6 — the held-winner release placed in 5 s sections of the lock (a 7,000-held week settles once in 81.6 s), measured on both stores and under the S16 10,000-ticket load; the S17 rush and the F7 6–8 render read are owed; lands after S5 |
+| S6 | Fairness, notices, reports, legal, data | ✅ | on `main` at `c5dede03d` (2026-10-23, with S7): the rules page and Terms, the winner and objection notices, the tax-report lines, the payout-float check, the admin console's plain words, the admin guide — §0 |
+| S7 | Adversarial hardening | ✅ | on `main` at `c5dede03d` (2026-10-23, with S6): the objection door, the takeover alert, the held-winner release in bounded sections, the product-line fence migration — FAILURE-INVENTORY §9, §0 |
 | S8 | Live drive and public launch | ⬜ | starts when every §6 line but "(after ACTIVE)" is ticked; the first public week is the drive (Ali, 2026-10-22); closes on its record |
 
 **Status values:** ⬜ not started (cites no commit) · 🔨 in progress · ✅ done (cites a commit that exists) · ⛔ blocked
