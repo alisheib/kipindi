@@ -96,6 +96,15 @@ Session revocation, RBAC, HSTS/headers is confirmed accurate.
 | 4.5f | Book external penetration test (long lead — book now) | Med | `[ ]` | Old-doc M1. |
 | 4.5g | Redis-backed rate limiter (survives restarts) | High | `[ ]` | In-memory today. Old-doc H1. |
 
+## CHANGE MANAGEMENT — product changes after the scope above
+
+> A change to what the certified platform does is recorded here, so a later lab round sees it. The plan's §1.2
+> ("Change management & build integrity") is the build side; this is the product side. Status as the legend above.
+
+| ID | Change | Status | Evidence / what's left |
+|----|--------|--------|------------------------|
+| CM-1 | **Maswali Millionea** — a third product: a fixed-price weekly ticket of fifteen questions, a house-backed jackpot floor, rollover across weeks, a fee at payout only, and a sunset (the law: [`RULES.md`](RULES.md) §2.12; the programme: [`MASWALI-PLAN.md`](MASWALI-PLAN.md)). Asked for by OD-01 / MB-39 ("add a GLI change-management row") | `[x]` | Visible to every player since 2026-10-22. It runs under 50pick's Gaming Board licence by the Owner's ruling of 2026-10-23: the Board needs nothing further in writing and handles any review itself, so nothing is submitted to the lab or the Board from our side ([`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) § "2026-10-23 · Maswali Millionea — the licence basis is 50pick's GBT licence …"). Include it in the scope of any future lab round. |
+
 ## DECISIONS — RESOLVED 2026-07-06 (Ali)
 
 > **Scope signal:** GLI will **log in as users and hands-on test live behaviour/performance** — they

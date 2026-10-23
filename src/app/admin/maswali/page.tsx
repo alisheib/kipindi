@@ -15,6 +15,7 @@ import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { AdminPagination, buildBaseHref } from "@/components/admin/admin-pagination";
 import { SortTh } from "@/components/admin/admin-sort";
 import { CONSOLE_PER_PAGE, consoleAlerts, consoleStanding, pageConsoleWeeks, type ConsoleWeekRow } from "@/lib/server/maswali-console";
+import { licenceTile } from "@/lib/server/maswali-licence";
 import { parseWeekListQuery, weekListParams } from "@/lib/maswali-week-list";
 import { WEEK_STATES } from "@/lib/maswali-week-label";
 import { maswaliAccountBalance } from "@/lib/server/maswali-money-service";
@@ -64,7 +65,7 @@ async function AdminMaswaliContent({ searchParams }: MaswaliPageProps) {
       <AdminBody>
         <KpiGrid cols="1-sm2-xl4">
           <AdminKpi label="Rollout" sw="Uonekano" value={standing?.rollout ?? "Unreadable"} note={standing?.rollout === "WITHDRAWN" ? "Nobody sees Millionea" : standing?.rollout === "STAFF_PREVIEW" ? "Staff only" : standing?.rollout === "ACTIVE" ? "Everyone" : "The switch could not be read"} {...(standing?.rollout ? {} : { tone: "danger" as const })} />
-          <AdminKpi label="Licence basis" sw="Msingi wa leseni" value={standing ? (standing.licence.kind === "NONE" ? "None" : standing.licence.kind === "GBT_WRITTEN" ? "Board letter" : "Owner ruling") : "Unreadable"} note={standing?.licence.kind === "NONE" ? "No week can open" : standing?.licence.ref ?? undefined} {...(standing?.licence.kind === "NONE" ? { tone: "warning" as const } : {})} />
+          <AdminKpi label="Licence basis" sw="Msingi wa leseni" value={standing ? licenceTile(standing.licence).value : "Unreadable"} note={standing ? licenceTile(standing.licence).note : undefined} {...(standing?.licence.holds ? { tone: "warning" as const } : {})} />
           <AdminKpi label="Sales" sw="Mauzo" value={standing ? (standing.pause.paused ? "Paused" : "Running") : "Unreadable"} note={standing?.pause.paused ? standing.pause.reason ?? undefined : standing?.sunset.kind === "ENDING" ? `Final week: ${standing.sunset.week.code}` : standing?.sunset.kind === "RETIRED" ? "Millionea has ended" : undefined} {...(standing?.pause.paused ? { tone: "warning" as const } : {})} />
           <AdminKpi label="Guarantee" sw="Dhamana" value={guarantee === null ? "Unreadable" : formatTzs(guarantee)} note="Owner capital backing the floor" {...(guarantee === null ? { tone: "danger" as const } : {})} />
         </KpiGrid>

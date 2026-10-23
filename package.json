@@ -689,6 +689,8 @@
     "test:maswali-fence": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-fence.test.mts",
     "red:maswali-fence": "node scripts/red-maswali-fence.mjs",
     "test:maswali-config": "tsx scripts/maswali-config.test.mts",
+    "test:maswali-licence-gate": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-licence-gate.test.mts",
+    "red:maswali-licence-gate": "node scripts/red-maswali-licence-gate.mjs",
     "test:maswali-ledger": "tsx scripts/maswali-ledger.test.mts",
     "test:maswali-rollout": "tsx scripts/maswali-rollout.test.mts",
     "test:maswali-law": "tsx scripts/maswali-law.test.mts",

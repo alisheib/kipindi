@@ -14,12 +14,12 @@
  * ⛔ A BALANCE THAT COULD NOT BE READ IS `null`, NEVER 0: the page says it could not be read.
  */
 import { questionStore, ticketStore, weekStore, type StoredQuestion, type StoredTicket, type StoredWeek } from "./maswali-dal";
-import { frozenRules, gradable, guaranteeProblem, NO_LICENCE_BASIS, openProblems, proposeVoidsAtDeadline, sunsetState } from "./maswali-service";
+import { frozenRules, gradable, guaranteeProblem, openProblems, proposeVoidsAtDeadline, sunsetState } from "./maswali-service";
 import { guaranteeReader, maswaliAccountBalance } from "./maswali-money-service";
 import { previewMaswaliSettlement, type MaswaliSettlementPreview } from "./maswali-settlement";
 import { unrefundedVoids } from "./maswali-void";
 import { getMaswaliConfig, snapshotMaswaliRules, type MaswaliRulesSnapshot } from "./maswali-config";
-import { getLicenceBasis, licenceBasisAllowsOpen, type LicenceBasis } from "./maswali-licence";
+import { getLicenceStanding, type LicenceStanding } from "./maswali-licence";
 import { getSalesPause, type SalesPause } from "./maswali-pause";
 import { millioneaStateNow } from "./millionea-switch";
 import { acct, maswaliJackpotOf } from "./ledger";
@@ -106,9 +106,12 @@ export async function consoleWeekDetail(weekId: string, now: Date = new Date()):
     if (!rules) problems = ["The Millionea rules do not validate; fix them on the rules page first."];
     else {
       // The week's own checks, then the two the open asks beside them, in its own words: without these the checklist said
-      // every check passes while the open refused for want of a licence basis or the guarantee.
+      // every check passes while the open refused for want of a licence basis or the guarantee. The licence item appears
+      // only while the gate truly holds (a recorded None, a record that does not validate, or no record and no valid
+      // licence number) — with nothing recorded, the Owner's ruling of 2026-10-23 is the basis (`maswali-licence.ts`).
       problems = await openProblems(week, questions, rules, now.getTime());
-      if (!licenceBasisAllowsOpen(getLicenceBasis())) problems.unshift(NO_LICENCE_BASIS);
+      const licence = getLicenceStanding();
+      if (licence.holds !== null) problems.unshift(licence.holds);
       const short = await guaranteeProblem(week, rules, guaranteeReader);
       if (short) problems.push(short);
     }
@@ -167,9 +170,11 @@ export async function consoleAlerts(now: Date = new Date()): Promise<ConsoleAler
   if (held === null) out.push({ level: "critical", text: "The guarantee balance could not be read." });
   else if (held < need) out.push({ level: "critical", text: `The guarantee holds ${formatTzs(held)}; the unsettled weeks need ${formatTzs(need)} (OD-02).` });
   // The product's own standing speaks only once Millionea has a week — any week, settled ones included (`maxSeq` is 0
-  // only before the first draft): before it, a missing licence basis is the plan's Gate A, not an alert for every officer.
+  // only before the first draft): before it, a licence basis that holds the gate is the plan's Gate A, not an alert for
+  // every officer. It speaks only while the gate truly holds, in the open's own words.
   if ((await weekStore.maxSeq()) > 0) {
-    if (!licenceBasisAllowsOpen(getLicenceBasis())) out.push({ level: "warning", text: "No licence basis is recorded; no week can open until the Owner records it (OD-01)." });
+    const licence = getLicenceStanding();
+    if (licence.holds !== null) out.push({ level: "warning", text: licence.holds });
     const pause = getSalesPause();
     if (pause.paused) out.push({ level: "warning", text: `Sales are paused: ${pause.reason ?? "no reason recorded"}.` });
   }
@@ -182,11 +187,11 @@ function requirementOf(weeks: StoredWeek[]): number {
 }
 
 /** The product's switches at a glance — the head of every Millionea page. */
-export type ConsoleStanding = { rollout: RolloutState | null; licence: LicenceBasis; pause: SalesPause; sunset: Awaited<ReturnType<typeof sunsetState>> };
+export type ConsoleStanding = { rollout: RolloutState | null; licence: LicenceStanding; pause: SalesPause; sunset: Awaited<ReturnType<typeof sunsetState>> };
 
 export async function consoleStanding(): Promise<ConsoleStanding> {
   const rollout = await millioneaStateNow().catch(() => null);
-  return { rollout, licence: getLicenceBasis(), pause: getSalesPause(), sunset: await sunsetState() };
+  return { rollout, licence: getLicenceStanding(), pause: getSalesPause(), sunset: await sunsetState() };
 }
 
 // ── DRAFTING HELP (MASWALI-PLAN §7b S4 item 7) ──────────────────────────────────────────────────────
