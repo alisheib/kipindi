@@ -328,6 +328,14 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
       // superseded). No published word and no code changed: `git diff origin/main -- src/app/legal/` is that one JSX
       // comment. Re-pinned at the lane commit that made it (07e643421), on the lead's decision (b) of 2026-10-23.
       ["src/app/legal/legal-nav.tsx", "07e643421d92bd5c090c8ff511cba35fb9c4c2ce"],
+      // MASWALI-BUILD AGENT-TERMS 2 · Ali's ruling of 2026-10-23 approving OD-20 ("Agents and invites", MASWALI-PLAN §9;
+      // "Prepare now, live at launch"): the agent terms' §3 gains its last paragraph in en/sw/zh — no commission on Maswali
+      // Millionea tickets, and first-bet invite rewards do not apply to them — published as v2026-10-23
+      // (AGENT_TERMS_VERSION, AGENT_TERMS_TEXT_SHA 27ebec097af3; test:agent-terms-binding §5 holds the clause word for
+      // word). Pinned at AGENT-TERMS 1 (71c5a16a6), whose blob is the page as it stands: `git diff origin/main --
+      // src/app/legal/` is those three added lines and nothing else. ⚠️ A COMMIT pin: if the launch merge rebases or
+      // squashes this branch, re-pin it at the commit that lands.
+      ["src/app/legal/agent-terms/page.tsx", "71c5a16a6e4f42ff8c630418702d0e04ee2e0691"],
     ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };
     const extraBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_EXTRA.get(rel)}:${rel}`)); } catch { return null; } };
