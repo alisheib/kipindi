@@ -8,6 +8,63 @@
 
 ---
 
+## 2026-10-23 · Maswali Millionea — the licence basis is 50pick's GBT licence; an admin pays the guarantee in; every admin seals (owner rulings)
+
+**Authority.** Ali, 2026-10-23, to the MASWALI-BUILD lead session on OMEGA-COMPILE01. Asked whether the Gaming Board's
+written confirmation was still needed for Millionea: *"you have our GBT licence already and after asking GBT they said
+no written anything needed. any review they will handle it. nothing from our side. our licence number enough for any
+operation and their team are always monitoring the live website so they can see any issue so no worries, mark this
+done"*. Asked who presses the Owner's buttons: *"the basis you click it please … licence basis you click anything and
+mark done perfectly"*; *"the bank thing my admin later does, mention this in pdf instructions"*. Asked for the licence
+number: *"the licence number already exists as a parameter in footer, take it"*. Asked who seals the weekend's results:
+*"all admins could seal them, all admins are trusted officers"*.
+
+**What it rules.**
+1. **The licence basis.** Millionea runs under 50pick's Gaming Board of Tanzania licence — the platform's licence number,
+   the System page's setting that every footer prints — by this ruling. The Board, asked, needs nothing further in
+   writing; any review is the Board's, and its team watches the live site. This is OD-01's option (b), the Owner's dated
+   ruling recording the Board's answer, and it meets Gate A line 1 (`docs/MASWALI-PLAN.md` §6.1). It builds on the ruling
+   of 2026-10-16 (§ "2026-10-16 · Maswali Millionea — the management-reviewed proposal of 2026-10-16 is final …" below:
+   his own dated ruling over a written Board note, the risk accepted). Nothing is
+   owed to the Board or to the GLI lab from our side: no disclosure letter (written only on Ali's word), and the GLI file
+   records the change (`docs/gli-remediation-tracker.md`, row CM-1).
+2. **How it stands in code** (`src/lib/server/maswali-licence.ts`, MASWALI-BUILD LICBASIS). While no basis has ever been
+   recorded, the basis in force is this ruling's — kind `OWNER_RULING`, its reference built from the licence number,
+   dated 2026-10-23, signed by the ruling rather than by an account — derived at every read: no Owner click, no write at
+   boot and no data migration. A basis the Owner records always wins, an explicit "None (withdraw it)" included: a
+   recorded None keeps every week closed, and this ruling never overrides it. If the licence number is empty or not
+   valid, there is no default: no week opens, and the console says why. The Pools page's Owner card and the console's
+   head say where the basis comes from, and the open's audit row names the basis each week sold under. (An agent does not
+   sign in to production as the Owner, so the ruling stands in code instead of a click.)
+3. **The guarantee is paid in by an admin** ("the bank thing my admin later does"): Pools → the Owner card → Guarantee →
+   the amount and the bank or rail reference → Pay in → type FUND GUARANTEE. The Owner's controls on that card are the
+   ADMIN role's, so every ADMIN account can do it. Gate A line 2 stays open until that pay-in lands (OD-02: TZS 2,000,000
+   before week 1), and the operator guide carries the steps.
+4. **The officers.** Every ADMIN account seals the weekend's results: all admins are trusted officers. The ADMIN role
+   passes every control's grant before any grant table is read (`canUseControl` in `src/lib/server/control-gates.ts`,
+   `requireStaff` in `src/lib/server/rbac-guard.ts`; `test:maswali-rbac` §2 proves ADMIN on every Millionea control), so
+   no named primary and backup is needed. This meets Gate A line 5.
+
+**What it does not change.** OD-01's options stay open to the Owner: he may record the Board's letter, a ruling of his
+own, or None at any time on the Pools page, and a record replaces this ruling's basis at once. OD-02's guarantee
+requirement, the float letter (Gate A line 3) and the insider bar (line 4) are untouched.
+
+**Supersedes in part.** § "2026-10-23 · Maswali Millionea — switched ON for everyone …" below: its "until the Owner sets
+the licence basis" and its Gate A steps "the licence basis" and "the officers" are met by this ruling — marked in place.
+§ "2026-10-16 · Maswali Millionea — the management-reviewed proposal of 2026-10-16 is final …": its licence basis now
+stands as ruled here — marked in place.
+
+**Why it is logged here.** So that no later pass makes an Owner click a condition of opening a week again, writes the
+ruling's basis into the store, or lets the ruling override a recorded None.
+
+**Guards.** `test:maswali-licence-gate` (both stores: no record and a licence number opens a week; no record and no valid
+number refuses with its reason; a recorded None refuses; a recorded Board letter or ruling decides; a stored record that
+does not validate refuses) · `red:maswali-licence-gate` (five plants: the default over a recorded None, the default with
+no licence number, the stored record ignored, a stored row without a kind read as nothing recorded, the ruling written as
+a record at boot) · `test:maswali-config` §5 · `test:maswali-engine` §2 · `test:maswali-rbac` §2.
+
+---
+
 ## 2026-10-23 · Maswali Millionea — switched ON for everyone ahead of the launch gate; nothing sells until the Owner's steps; S6 and S7 owed by fixed deadlines (owner ruling)
 
 **Authority.** Ali, 2026-10-23 (~02:15–02:30 EAT), to the MASWALI-BUILD lead session on ALI-BLADE15, after being told
@@ -20,16 +77,19 @@ continue your checks overnight"*, *"proceed make it live as need perfectly"*.
 `FEATURE_MILLIONEA=ACTIVE` on the 50pick service (production), on `main` `3aecf0edd` (the S5 release). The code's shipped
 ceiling (`MILLIONEA_SHIPPED`) stays WITHDRAWN on purpose: deleting the variable hides Millionea again, and so does the
 Owner's stored switch in the console — neither deletes a ticket. Every visitor now sees the product (its tab, the hub, How
-to play, the register). Nothing can be bought until the Owner sets the licence basis, funds the guarantee and a week
-opens — the earliest Monday 00:00 EAT.
+to play, the register). Nothing can be bought until ~~the Owner sets the licence basis,~~ the guarantee is funded and a
+week opens — the earliest Monday 00:00 EAT. ⚠️ Superseded in part the same day by § "2026-10-23 · Maswali Millionea — the
+licence basis is 50pick's GBT licence …" above: the licence basis needs no Owner step, and an admin pays the guarantee in.
 
 **What it does not change — the deadlines, recorded so no later pass reads ACTIVE as "the launch is done".** It reverses
 MASWALI-PLAN §6.1's order ("gate A and gate B are both checked before ACTIVE") for the rollout switch alone; every §6 line
 stays unticked until it is true. Before any week OPENS for sale: S6's Millionea rules page (`/legal/rules/millionea`, a
 404 at the switch) and its Terms section are live. Before the FIRST settlement: S7 (the held-winner settlement, the
 reversed-deposit hold, the takeover alert, the objection door) and S6's winner notices, tax-report lines and payout-float
-check are live. The Owner's Gate A steps (the licence basis, the guarantee, Finance's float letter, the officers, the
-insider bar) remain his. MASWALI-PLAN §0 tracks each deadline.
+check are live. The Owner's Gate A steps (~~the licence basis,~~ the guarantee, Finance's float letter, ~~the officers,~~
+the insider bar) remain his. ⚠️ Superseded in part the same day by § "2026-10-23 · Maswali Millionea — the licence basis is
+50pick's GBT licence …" above: the licence basis and the officers are met by his ruling, and an admin pays the guarantee
+in. MASWALI-PLAN §0 tracks each deadline.
 
 **Why it is logged here.** The plan's gate put ACTIVE last; the Owner chose to show the product first and let his admins
 prepare weeks while the remaining sessions land. A later pass must not "restore" WITHDRAWN on its own, nor treat the
@@ -414,6 +474,8 @@ answered, in five rounds the same day, every question the PDF leaves open. The p
   unless the fund covers every unsettled week, and settlement aborts rather than pay less.
 - **The licence basis is Ali's own dated ruling** — he chose it over a written Gaming Board note for a fixed-price
   weekly jackpot with a house-backed floor and rollover, and **accepts that risk**. This entry is that ruling.
+  ⚠️ Since 2026-10-23 the basis is 50pick's GBT licence by his later ruling, in force without any Owner record (a basis
+  he records still decides): § "2026-10-23 · Maswali Millionea — the licence basis is 50pick's GBT licence …".
 - **Disputes:** one 24-hour window per week, opening when the graded set is final and never closing before 12:00 EAT,
   ruled by an officer other than the one who sealed the result.
 

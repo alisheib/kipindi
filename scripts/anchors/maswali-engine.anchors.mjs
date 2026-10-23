@@ -506,8 +506,8 @@ export const MUTATIONS = [
   {
     name: "(64) the open's audit row is written under the lock, before its commit",
     file: SVC,
-    from: "    owed.push({ category: \"ADMIN\", action: \"maswali.week.opened\", actorId: input.officerId, targetType: \"MaswaliCycle\", targetId: week.id,\n      payload: { code: week.code, marketId: market.id, questionSetHash: qHash, closesAt: week.closesAt, rules, isFinal: opened.isFinal } });",
-    to: "    void recordOwed([{ category: \"ADMIN\", action: \"maswali.week.opened\", actorId: input.officerId, targetType: \"MaswaliCycle\", targetId: week.id,\n      payload: { code: week.code, marketId: market.id, questionSetHash: qHash, closesAt: week.closesAt, rules, isFinal: opened.isFinal } }]);",
+    from: "    owed.push({ category: \"ADMIN\", action: \"maswali.week.opened\", actorId: input.officerId, targetType: \"MaswaliCycle\", targetId: week.id,\n      payload: { code: week.code, marketId: market.id, questionSetHash: qHash, closesAt: week.closesAt, rules, isFinal: opened.isFinal, licence: basis } });",
+    to: "    void recordOwed([{ category: \"ADMIN\", action: \"maswali.week.opened\", actorId: input.officerId, targetType: \"MaswaliCycle\", targetId: week.id,\n      payload: { code: week.code, marketId: market.id, questionSetHash: qHash, closesAt: week.closesAt, rules, isFinal: opened.isFinal, licence: basis } }]);",
     expect: "3.1b · ⭐ the open's audit row and its pool notice each come once",
     suite: "engine-pg",
   },

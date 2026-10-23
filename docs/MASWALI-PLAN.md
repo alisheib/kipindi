@@ -998,6 +998,11 @@ record is the COMPLIANCE-DECISIONS entry named at the top of this file.
 TZS 2,000,000 by an audited owner ceremony · licence basis = Ali's dated ruling (risk accepted) · one 24-hour dispute
 window per week, never closing before 12:00 EAT.
 
+**Ruled 2026-10-23** (COMPLIANCE-DECISIONS § "2026-10-23 · Maswali Millionea — the licence basis is 50pick's GBT licence
+…"): the licence basis is 50pick's Gaming Board licence, by his ruling — the Board needs nothing further in writing, and
+with no basis recorded the ruling stands in code on the platform's licence number (a basis the Owner records still
+decides) · an admin pays the guarantee in · every ADMIN account seals the weekend's results.
+
 **Not a ruling, a fact of the rules:** which reserve is drawn in which voided slot is presentation only. The graded set
 is always "the first *k* non-void reserves", so the lowest-numbered voided main takes the first such reserve.
 
@@ -1313,8 +1318,12 @@ grade(week, picks):
 - Millionea launches publicly once it is built and its live drive passes. It does not wait for the Vodacom S16 check.
 - The S16 baseline accounts for it (OD-22, accepted): the five measures exclude Millionea, and harm markers are
   reported for all players and for players without a ticket, by a dated ruling amending S16's "in bounds".
-- The licence basis is **Ali's dated ruling of 2026-10-16** (OD-01): he chose it over a written Gaming Board note and
-  accepted the risk. The Owner-only `maswali.licenceBasis` records it, and no week opens while it reads NONE.
+- The licence basis is **50pick's Gaming Board licence, by Ali's dated rulings of 2026-10-16 and 2026-10-23** (OD-01):
+  he chose his own dated ruling over a written Gaming Board note and accepted the risk, and the Board needs nothing
+  further in writing. A basis the Owner records in `maswali.licenceBasis` always decides, and a recorded None keeps every
+  week closed; with none ever recorded, the 2026-10-23 ruling is the basis, on the platform's licence number; with an
+  empty or invalid licence number too, no week opens (`maswali-licence.ts`; COMPLIANCE-DECISIONS § "2026-10-23 · Maswali
+  Millionea — the licence basis is 50pick's GBT licence …").
 
 **MR-32 · Filing the law.** `[Ali 2026-10-16: R-FEE, R-CAP; Platform: RULES §5]`
 - The RULES §5 ceremony runs in full:
@@ -1651,18 +1660,31 @@ ticked, and is ✅ only when that one is too.
 
 **Gate A, before any real-money ticket (the first public week is the drive):**
 
-1. ☐ **Licence basis recorded (OD-01):**
-   - Ali chose his own dated ruling (2026-10-16, the COMPLIANCE entry) over a written Gaming Board note, and accepted
-     the risk; the entry names the fixed price, the house floor, the rollover across weeks, the payout-only fee and
-     the sunset;
-   - `maswali.licenceBasis = OWNER_RULING`, pointing at that entry, set by the Owner and audited;
-   - the GLI change-management row added.
+1. ☑ **Licence basis in force (OD-01)** — met 2026-10-23 by Ali's ruling (COMPLIANCE-DECISIONS § "2026-10-23 · Maswali
+   Millionea — the licence basis is 50pick's GBT licence …"), built by MASWALI-BUILD LICBASIS 1:
+   - Millionea runs under 50pick's Gaming Board licence — the platform's licence number, the System page's setting the
+     footer prints — and the Board needs nothing further in writing. It builds on his ruling of 2026-10-16 (the
+     COMPLIANCE entry naming the fixed price, the house floor, the rollover across weeks, the payout-only fee and the
+     sunset), where he chose his own dated ruling over a written Gaming Board note and accepted the risk;
+   - in code (`maswali-licence.ts`): with no basis ever recorded, the basis in force is that ruling's (`OWNER_RULING` on
+     the licence number), read at every open — no Owner click and no write; a basis the Owner records in
+     `maswali.licenceBasis` always decides, a recorded None keeps every week closed, and an empty or invalid licence
+     number leaves no default (`test:maswali-licence-gate`, `red:maswali-licence-gate`);
+   - the GLI change-management row added: `docs/gli-remediation-tracker.md` CM-1 records Millionea as a change to the
+     platform; by the same ruling nothing is submitted to the lab or the Board from our side.
    - A Board disclosure letter is optional and is written only on Ali's word.
 2. ☐ **Guarantee account funded** with TZS 2,000,000 (OD-02, ruled) through the Owner ceremony. The pools page shows
-   it, and refuse-to-open was proven red in S3.
+   it, and refuse-to-open was proven red in S3. *(Ali, 2026-10-23: an admin pays it in — Pools → the Owner card →
+   Guarantee → the amount and the bank reference → Pay in → type FUND GUARANTEE; the operator guide carries the steps.)*
 3. ☐ **Payout float funded:** the Selcom float covers the largest possible floor payout plus a buffer. Finance confirms in writing. The low-float alert is wired.
 4. ☐ **Insider bar** verified against production's live staff list and desk designations (read-only counts). `HOUSE_PRODUCT_POLICY.MASWALI = "denied"` is live.
-5. ☐ **Officer staffing:** a primary and a backup officer named for the weekend seal. `DEFAULT_GRANTS` checked on production for every Millionea control.
+5. ☑ **Officer staffing** — met 2026-10-23 by Ali's ruling *"all admins could seal them, all admins are trusted officers"*
+   (COMPLIANCE-DECISIONS § "2026-10-23 · Maswali Millionea — the licence basis is 50pick's GBT licence …"): every ADMIN
+   account is an officer for the weekend seal, so no named primary and backup is needed. The grant rule: the ADMIN role
+   passes every control before any grant table is read (`canUseControl`, `control-gates.ts`; `requireStaff`,
+   `rbac-guard.ts`; `test:maswali-rbac` §2 proves ADMIN on all 21 Millionea controls), so production's stored grants
+   cannot take a control from an admin. A non-ADMIN officer acts only through the grant table (`DEFAULT_GRANTS`: trading
+   = MODERATOR).
 
 **Gate B, before rollout ACTIVE:**
 
@@ -1692,12 +1714,12 @@ ticked, and is ✅ only when that one is too.
 |---|---|---|
 | **Wed (week N−1)** | Trading officer | Draft week N+1 from the template. AI candidates come from `EventCalendar` and the officer approves them. 15 questions on the criterion template, each with source and fallback, an event start in the source's zone, a void deadline (OD-09b), a probability and its source, and the OD-14 caps. Holiday review: 25 Dec 2026 and 1 Jan 2027 are Fridays |
 | **Thu–Sat** | Second reader | EN/SW/ZH parity attestation (MB-79). Banned-topic and category screen |
-| **Sun** | Trading + accounting | **Pre-open checklist:** 15/15 present; every event start ≥ Fri 18:00 + buffer; licence basis on record; guarantee ≥ requirement (Σ unsettled weeks); float OK. A week that is not ready **does not open**, never short, and the hub says so |
+| **Sun** | Trading + accounting | **Pre-open checklist:** 15/15 present; every event start ≥ Fri 18:00 + buffer; a licence basis in force (the Owner's record, or the 2026-10-23 ruling's — the console names it); guarantee ≥ requirement (Σ unsettled weeks); float OK. A week that is not ready **does not open**, never short, and the hub says so |
 | **Mon 00:00** | Scheduler | Week opens. The question-set hash is published, `rulesSnapshot` frozen, and the headline is the funded floor or real money, "plus week N−1's carry-over once final" |
 | **Mon–Fri** | Officer + watch | Sales. Fixture-drift watch daily (hourly on Friday). If an event moves earlier, move the close earlier (MR-5; OD-10 if sales already ran past it). Marketing only from approved wordings, to opted-in players |
 | **Fri 17:00** | System | "Closes in 1 hour" to opted-in players (marketing gate) |
 | **Fri 18:00** | Scheduler | **Close**, checked on the DB clock. Merkle root, count and sales stamped; hash time shown. Exposure meter (combinations covered ÷ 1,024). Cluster report to compliance |
-| **Fri eve–Sun** | One officer (backup on call) | Seal each question with evidence as results land; the AI prepares evidence and a suggestion only. Voids by reason code; reserves sealed in order (all 15 by default). Alerts at +2h and +12h for anything unsealed. Settlement gate checklist on `/admin/maswali/[weekId]` |
+| **Fri eve–Sun** | Any admin (every ADMIN account seals — Ali, 2026-10-23) | Seal each question with evidence as results land; the AI prepares evidence and a suggestion only. Voids by reason code; reserves sealed in order (all 15 by default). Alerts at +2h and +12h for anything unsealed. Settlement gate checklist on `/admin/maswali/[weekId]` |
 | **Graded set final** | System | The objection window opens (OD-05; recommended 24h, never closing before 12:00 EAT). An upheld objection that changes the graded set restarts it once |
 | **Mon/Tue** | Accounting officer | Settlement **preview**: S agrees three ways, the arithmetic, the guarantee in-transaction, the float. **Release** (OD-06). Credits, notices, register, rollover or payout. Week N+1's headline now includes the confirmed carry |
 | **Tue 12:00** | Alert | "Unsettled by Tuesday" escalates to the Owner and compliance |
@@ -2131,6 +2153,8 @@ disclosure letter (Ali chose his own dated ruling as the licence basis — a let
 
    - TRA and GBT rates come from global config and freeze into `feeSnapshot`.
    - A separate Owner-only key, `maswali.licenceBasis` = `{kind: "NONE" | "GBT_WRITTEN" | "OWNER_RULING", ref, recordedAt, recordedBy}`.
+     *As amended 2026-10-23 (MASWALI-BUILD LICBASIS): while nothing is recorded, the basis in force is the Owner's ruling
+     of 2026-10-23 on the platform's licence number, derived at read time — `maswali-licence.ts`, §6.1 line 1.*
    - ⛔ All of these freeze into `rulesSnapshot` when a week opens. `/admin/config` says "applies from the next week" (MB-75).
 5. **Rollout switch (`feature-state.ts`):**
    - `MILLIONEA_SHIPPED: RolloutState = "WITHDRAWN"`.
@@ -2746,7 +2770,7 @@ to the shilling.
 
 | ID | Sev | Gap | Treatment | Owner | Closes | Src |
 |---|---|---|---|---|---|---|
-| MB-39 | C | Voiding the August rulings removed the only gate on real money. Ali's general statements on 2026-09-29 and 2026-10-14 name no jackpot. The licence file never describes a fixed-price ticket, a house floor, a rollover across weeks, a payout-only fee or a sunset (OPEN-1). | • COMPLIANCE-DECISIONS gets a dated entry.<br>• Write `docs/BOARD-DISCLOSURE-MILLIONEA.md`.<br>• Add a GLI change-management row and publish the void policy.<br>• Ask which tax class applies.<br>• Code gate: `maswali.config.licenceBasis` (Owner-set, audited); `test:maswali-licence-gate` proves the refusal with a positive control.<br>• A feature-state guard. | Ali, Board | S0, S1; before S8 | A4, C1 |
+| MB-39 | C | Voiding the August rulings removed the only gate on real money. Ali's general statements on 2026-09-29 and 2026-10-14 name no jackpot. The licence file never describes a fixed-price ticket, a house floor, a rollover across weeks, a payout-only fee or a sunset (OPEN-1). | • COMPLIANCE-DECISIONS gets a dated entry (2026-10-16; 2026-10-23: the basis is 50pick's GBT licence by Ali's ruling).<br>• ~~Write `docs/BOARD-DISCLOSURE-MILLIONEA.md`.~~ Not owed: Ali chose his own ruling (2026-10-16) and the Board needs nothing further in writing (2026-10-23); a letter is written only on his word.<br>• Add a GLI change-management row (✅ 2026-10-23: `docs/gli-remediation-tracker.md` CM-1) and publish the void policy.<br>• Ask which tax class applies.<br>• Code gate: `maswali.licenceBasis` (its own key, Owner-set, audited). As built 2026-10-23 (MASWALI-BUILD LICBASIS): the basis in force is the Owner's record — a recorded None closes every week — else the 2026-10-23 ruling on the platform's licence number, else none; `test:maswali-licence-gate` (both stores) proves the refusal and the open with positive controls, `red:maswali-licence-gate` its five plants.<br>• A feature-state guard. | Ali, Board | S0, S1; before S8 | A4, C1 |
 | MB-40 | H | The responsible-gambling gates hold only on the one purchase path. A jackpot payout or week-void refund lifts the rolling-24h loss limit by that amount. The session-limit refusal arrives after the player has built 15 picks. | • One path only (`buyPositionInner` with a Millionea context).<br>• e2e drives the real action for self-excluded, on-a-break, session-limit, loss-limit and suspended players.<br>• The draft is kept on refusal.<br>• Harm markers tracked per product.<br>• Loss-limit offset: OD-17. | Eng, Ali | S3, S7 | C10 |
 | MB-41 | H | The insider bar leaves four things open:<br>• which accounts (7 `STAFF_ROLES` and live desk designations);<br>• promotion mid-week;<br>• QA personas, which have no marker;<br>• D19, which forbids house wording, while R-INSIDERS wants a "clear message". | Check in the purchase lock. Staff get an explicit refusal reason. Desk accounts get a neutral one ("This account can't buy Millionea tickets. Contact support."), which satisfies both R-INSIDERS and D19. The seal path refuses an officer who holds a ticket in that week. Winners are screened against staff phones and devices. Mid-week edges, QA accounts and households: OD-12. | Eng, Ali | S3 | B29, C6 |
 | MB-42 | M | MASWALI = "denied" for house bots triggers a daily false `PRODUCT_DENIED` alarm in `scopeAlerts`. `predictorExtra` inflates counts players see. | Return early before `scopeAlerts` for MASWALI. Remove MASWALI from INTENT/TARGET lines. The ticket count comes only from the week's own count. File a COMPLIANCE-DECISIONS entry for the denial. | Eng | S1 · ✅ S0.5 `9834aaf0` for the false alarm and the INTENT/TARGET lines; the week's own ticket count (S5) and the COMPLIANCE-DECISIONS entry remain | C7 |
@@ -2778,7 +2802,7 @@ to the shilling.
 | ID | Sev | Gap | Treatment | Owner | Closes | Src |
 |---|---|---|---|---|---|---|
 | MB-60 | M | No ruling on who voids a question, who voids a whole week by hand, or who triggers the sunset. | Register each control once in `CONTROL_DOMAIN`. In `ROUTE_DOMAINS`, `/admin/maswali/pools` (accounting) sits above `/admin/maswali` (trading). Show the control-locked state. `test:maswali-rbac` covers 7 roles. Authority: OD-26. | Eng, Ali | S4 | C21 |
-| MB-61 | M | No weekly calendar or staffing for 90 strings, 15 sources and weekend seals. One missed seal stalls two weeks. | Calendar: draft Wednesday, freeze Sunday, open Monday 00:00 EAT, close Friday 18:00, seal by Monday 12:00. A primary and a backup officer. Pre-open checklist; a week never opens short. Alerts at +2h and +12h per question. A settle checklist. | Eng, Ali (staffing) | S4 | C24, B35 |
+| MB-61 | M | No weekly calendar or staffing for 90 strings, 15 sources and weekend seals. One missed seal stalls two weeks. | Calendar: draft Wednesday, freeze Sunday, open Monday 00:00 EAT, close Friday 18:00, seal by Monday 12:00. ~~A primary and a backup officer.~~ Every ADMIN account seals (Ali, 2026-10-23: "all admins are trusted officers" — §6.1 line 5). Pre-open checklist; a week never opens short. Alerts at +2h and +12h per question. A settle checklist. | Eng, Ali (staffing) | S4 | C24, B35 |
 | MB-62 | H | No Millionea sales stop and no incident runbook. | An audited sales pause (compliance domain) that never blocks settle, refund, cancel or withdraw. `ops:millionea-*` scripts, dry-run by default. A runbook covering each scenario. Semantics: OD-03. | Eng | S4 | C34 |
 | MB-63 | H | No monitoring for a weekly product's failure modes. | Nightly invariants (MB-16, MB-07). Alerts: unsealed question, void budget exhausted, unsettled by Tuesday, close not stamped, float short, floor unfunded, clusters, pick shifts. A Millionea card on `/admin`. | Eng | S4, S6 | C33 |
 | MB-64 | M | Support has no scripts and no Millionea view. | en/sw scripts, including those listed in MB-91. A read-only per-ticket lookup for the support domain, audited and opened per request, so it never gives the sealing officer aggregate data. Chat handoff. Operator guide PDF. | Eng, Ali | S6 | C29 |
@@ -2878,6 +2902,9 @@ to the shilling.
 **Ali, 2026-10-16: "Accept all recommendations".** Read every "Rec" below as the ruling, with three explicit
 answers given the same day, which override the text where they differ:
 - **OD-01 · licence basis:** Ali's own dated ruling is enough — not the Gaming Board's written note. Risk accepted.
+  *As built (2026-10-23, MASWALI-BUILD LICBASIS): his ruling of 2026-10-23 makes 50pick's GBT licence the basis — with no
+  basis recorded it stands in code on the platform's licence number, and a basis the Owner records (None included)
+  always decides (COMPLIANCE-DECISIONS § "2026-10-23 · Maswali Millionea — the licence basis is 50pick's GBT licence …").*
 - **OD-02 · guarantee funding:** pre-fund TZS 2,000,000 by the audited owner ceremony before week 1.
 - **OD-05 · objections:** one 24-hour window per week, never closing before 12:00 EAT, ruled by another officer.
 
@@ -2891,7 +2918,7 @@ These are only the items his rulings do not cover, ordered by how much they bloc
 
 1. **OD-01 · Licence basis (OPEN-1, MB-39).**
    - Options: (a) the GBT's written confirmation; (b) Ali's dated ruling recording a verbal GBT answer and accepting the risk; (c) neither.
-   - Rec: (a), falling back to (b) before the live drive. Either one must name the fixed price, the house floor, the rollover across weeks, the payout-only 13% fee and the sunset. The code gate opens only once one is recorded.
+   - Rec: (a), falling back to (b) before the live drive. Either one must name the fixed price, the house floor, the rollover across weeks, the payout-only 13% fee and the sunset. ~~The code gate opens only once one is recorded.~~ As built 2026-10-23: the code gate opens on a basis in force — a recorded one, or, with none ever recorded, (b) as the Owner's ruling of 2026-10-23 on the platform's licence number (see the answers above).
 2. **OD-02 · Guarantee funding (OPEN-6, MB-03).**
    - Options: (a) pre-fund; (b) pay from house cash at payout. Level: 1M per unsettled week, or 1M minus the confirmed carry.
    - Rec: (a). The Owner deposits 2,000,000 before week 1 through an audited owner-capital ceremony. A week opens only if the fund is at least Σ (1,000,000 − confirmed carry-in) over every unsettled week, including the new one. Settlement aborts rather than pay less.

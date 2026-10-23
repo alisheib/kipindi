@@ -8,7 +8,9 @@
  *   §2 every field refuses what it must (and the refusal names the field in words)
  *   §3 the write is verified and audited; a refused save changes nothing
  *   §4 the week's snapshot: every field but the fee, version 1, a freeze time; refused unless it validates
- *   §5 the licence basis: NONE never opens; a recorded basis does; a bad record is refused
+ *   §5 the licence basis: with nothing recorded the Owner's ruling of 2026-10-23 is the basis, on the platform's licence
+ *      number; a recorded basis decides; a recorded NONE never opens, the ruling notwithstanding; a bad record is refused
+ *      (both stores, every case and its plants: `test:maswali-licence-gate`)
  *   §6 the fee model: `jackpot-payout` is read, frozen with its rate, refused without one, and never a pool fee
  *   §7 ⚠️ POSITIVE CONTROLS — the validators really refuse a planted bad value
  *
@@ -19,8 +21,10 @@ import {
   saveMaswaliConfig, snapshotMaswaliRules, type MaswaliConfig,
 } from "../src/lib/server/maswali-config.ts";
 import {
-  LICENCE_BASIS_NONE, getLicenceBasis, licenceBasisAllowsOpen, licenceBasisProblem, readLicenceBasisFresh, recordLicenceBasis,
+  LICENCE_BASIS_NONE, LICENCE_RULING_BY, LICENCE_WITHDRAWN, getLicenceBasis, getLicenceStanding, licenceBasisAllowsOpen, licenceBasisProblem,
+  readLicenceStandingFresh, recordLicenceBasis, rulingLicenceBasis,
 } from "../src/lib/server/maswali-licence.ts";
+import { getSupportConfig } from "../src/lib/server/support-config.ts";
 import { FEE_MODELS, MAX_JACKPOT_FEE_RATE, describeFeeModel, poolFee, FEE_CAPTION_MAX_CHARS } from "../src/lib/payout.ts";
 import { snapshotFromConfig, snapshotOrLegacy, getGlobalConfig } from "../src/lib/server/market-config.ts";
 import { readFileSync } from "node:fs";
@@ -127,26 +131,35 @@ console.log("\n§4 · the week's frozen rules");
 }
 
 // ── §5 · the licence basis ──────────────────────────────────────────────────
-console.log("\n§5 · the licence basis gates the open");
+console.log("\n§5 · the licence basis gates the open: the Owner's record, or his ruling of 2026-10-23");
 {
-  ok("5.1 · it ships NONE", JSON.stringify(getLicenceBasis()) === JSON.stringify(LICENCE_BASIS_NONE));
+  const number = getSupportConfig().licenceNumber;
+  const s0 = getLicenceStanding();
+  ok("5.1 · ⭐ nothing is recorded, so the Owner's ruling of 2026-10-23 is the basis — on the platform's licence number, dated the ruling's day, signed by the ruling",
+    s0.source === "RULING" && s0.holds === null && s0.licenceNumber === number && JSON.stringify(s0.basis) === JSON.stringify(rulingLicenceBasis(number))
+      && s0.basis.kind === "OWNER_RULING" && (s0.basis.ref ?? "").includes(`licence no. ${number},`) && s0.basis.recordedAt === "2026-10-23"
+      && s0.basis.recordedBy === LICENCE_RULING_BY, JSON.stringify(s0));
+  ok("5.1b · …and it opens: the ruling's basis passes the validator every record passes", licenceBasisAllowsOpen(s0.basis) && licenceBasisProblem(s0.basis) === null);
   ok("5.2 · ⛔ NONE never opens", !licenceBasisAllowsOpen(LICENCE_BASIS_NONE));
-  const fresh0 = await readLicenceBasisFresh();
-  ok("5.3 · the fresh read is NONE", fresh0.ok && fresh0.basis.kind === "NONE");
+  const fresh0 = await readLicenceStandingFresh();
+  ok("5.3 · the fresh read answers the same standing", fresh0.ok && JSON.stringify(fresh0.standing) === JSON.stringify(s0), JSON.stringify(fresh0));
   const short = await recordLicenceBasis({ kind: "OWNER_RULING", ref: "abc" }, "usr_owner");
   ok("5.4 · a ruling with no real reference is refused", !short.ok, JSON.stringify(short));
   const rec = await recordLicenceBasis({ kind: "OWNER_RULING", ref: "  Owner ruling 2026-10-16,  COMPLIANCE-DECISIONS  " }, "usr_owner", new Date("2026-10-20T09:00:00Z"));
   ok("5.5 · the Owner's ruling records, trimmed, dated and signed", rec.ok && rec.basis.kind === "OWNER_RULING"
     && rec.basis.ref === "Owner ruling 2026-10-16, COMPLIANCE-DECISIONS" && rec.basis.recordedAt === "2026-10-20T09:00:00.000Z" && rec.basis.recordedBy === "usr_owner", JSON.stringify(rec));
   ok("5.6 · ⭐ POSITIVE CONTROL · a recorded basis opens", rec.ok && licenceBasisAllowsOpen(rec.basis));
-  const fresh1 = await readLicenceBasisFresh();
-  ok("5.7 · the fresh read sees it", fresh1.ok && fresh1.basis.kind === "OWNER_RULING");
+  const fresh1 = await readLicenceStandingFresh();
+  ok("5.7 · the fresh read sees it, and the record decides: its own reference, not the ruling's", fresh1.ok && fresh1.standing.source === "RECORD"
+    && fresh1.standing.basis.kind === "OWNER_RULING" && fresh1.standing.basis.ref === "Owner ruling 2026-10-16, COMPLIANCE-DECISIONS", JSON.stringify(fresh1));
   ok("5.8 · a forged record (a basis with no author) is refused by the validator", licenceBasisProblem({ kind: "GBT_WRITTEN", ref: "GBT/2026/001", recordedAt: "2026-10-20T09:00:00.000Z", recordedBy: null }) !== null);
   ok("5.9 · …and cannot open", !licenceBasisAllowsOpen({ kind: "GBT_WRITTEN", ref: "GBT/2026/001", recordedAt: "2026-10-20T09:00:00.000Z", recordedBy: null }));
   ok("5.10 · an unknown kind is refused", licenceBasisProblem({ kind: "VERBAL" as never, ref: "spoken", recordedAt: "2026-10-20T09:00:00.000Z", recordedBy: "usr_owner" }) !== null);
   const withdrawn = await recordLicenceBasis({ kind: "NONE", ref: "ignored" }, "usr_owner");
   ok("5.11 · withdrawing it is recorded as a clean NONE", withdrawn.ok && JSON.stringify(withdrawn.basis) === JSON.stringify(LICENCE_BASIS_NONE));
-  ok("5.12 · …which closes the gate again", !licenceBasisAllowsOpen(getLicenceBasis()));
+  const s1 = getLicenceStanding();
+  ok("5.12 · …which closes the gate again: the ruling does not stand in over a recorded None", !licenceBasisAllowsOpen(getLicenceBasis())
+    && s1.source === "RECORD" && s1.holds === LICENCE_WITHDRAWN, JSON.stringify(s1));
 }
 
 // ── §6 · the fee model ──────────────────────────────────────────────────────
